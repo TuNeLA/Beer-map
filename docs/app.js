@@ -66,6 +66,8 @@
     L.tileLayer(ESRI + "World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19, opacity: 0.85 }).addTo(map);
   }
   map.attributionControl.setPrefix(false);
+  // Keep popups clear of the top HUD and the bottom dock.
+  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 240), maxWidth: 300 });
 
   map.createPane("bars"); map.getPane("bars").style.zIndex = 590;
   map.createPane("hotbars"); map.getPane("hotbars").style.zIndex = 650;
@@ -92,6 +94,38 @@
   var hotLayer = L.layerGroup().addTo(map);
   var barLayer = L.layerGroup().addTo(map);
 
+  /* ---------- Heat glow (leaflet.heat). Its canvas goes in overlayPane (z 400), under the marker pane (z 600). ---------- */
+  var HEAT_KEY = "olnu.heat";
+  var heatOn = U.ls.get(HEAT_KEY, "1") !== "0";
+  var heat = null;
+  if (typeof L.heatLayer === "function") {
+    heat = L.heatLayer([], {
+      radius: 34, blur: 26, maxZoom: 11, max: 4, minOpacity: 0.25,
+      gradient: { 0.1: "rgba(60,25,0,0)", 0.3: "#a85a08", 0.5: "#f5a623", 0.68: "#ff7a1a", 0.85: "#ff3b3b", 1.0: "#fff6e0" }
+    });
+  }
+  function heatWeight(b) {
+    var n = b.beer_count | 0, l = U.level(n);
+    return Math.max(1, n) * (l === 2 ? 3 : l === 1 ? 2 : 1);
+  }
+  function renderHeat() {
+    if (!heat) return;
+    if (heatOn && !map.hasLayer(heat)) heat.addTo(map);
+    if (!heatOn && map.hasLayer(heat)) map.removeLayer(heat);
+    if (heatOn) heat.setLatLngs(beers.map(function (b) { return [b.lat, b.lng, heatWeight(b)]; }));
+  }
+  function applyHeatBtn() {
+    var b = $("btn-heat");
+    b.hidden = !heat;
+    b.textContent = t("heat");
+    b.setAttribute("aria-pressed", String(heatOn));
+    b.setAttribute("aria-label", heatOn ? t("heatOn") : t("heatOff"));
+  }
+  $("btn-heat").addEventListener("click", function () {
+    heatOn = !heatOn; U.ls.set(HEAT_KEY, heatOn ? "1" : "0");
+    applyHeatBtn(); renderHeat();
+  });
+
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
   function beerIcon(b) {
     var l = U.level(b.beer_count);
@@ -110,13 +144,20 @@
     if (l === 1) return '<div class="pp-hot">🔥 ' + U.esc(t("hot")) + "</div>";
     return "";
   }
+  function skalCount(b) { return Math.max(0, b.skal_count | 0); }
+  function skalBtn(b, small) {
+    var done = !!b.i_skaled;
+    return '<button type="button" class="skal-btn' + (small ? " small" : "") + '" data-skal="' + U.esc(String(b.id)) + '"' +
+      (done ? " disabled" : "") + ">" + U.esc(done ? t("skaled", skalCount(b)) : t("skal", skalCount(b))) + "</button>";
+  }
   function beerPopup(b) {
     var h = '<div class="pp-title">' + U.esc(t("beerNo", b.beer_count | 0)) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
     h += levelLine(U.level(b.beer_count));
-    if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + "</div>";
+    if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
     if (b.friend_name) h += '<div class="pp-friend">' + U.esc(b.friend_name) + "</div>";
     if (!b.precise) h += '<div class="pp-note">' + U.esc(t("approx")) + "</div>";
+    if (!b.is_mine) h += skalBtn(b, false);
     return h;
   }
   function barTypeLabel(type) { var m = t("barTypes"); return m[type] || m.bar; }
@@ -139,6 +180,17 @@
     h += levelLine(maxLevel(list));
     if (names.length) h += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
     if (list.some(function (b) { return b.is_mine; })) h += '<div class="pp-mine">' + U.esc(t("you")) + "</div>";
+    var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
+    if (tot) h += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
+    if (list.length) {
+      var rows = list.slice().sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); }).slice(0, 8);
+      h += '<ul class="pp-list">' + rows.map(function (b) {
+        var l = U.level(b.beer_count);
+        return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
+          '<span class="pp-n">' + (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
+          (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
+      }).join("") + "</ul>";
+    }
     h += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
     return h;
   }
@@ -168,6 +220,7 @@
       agg.beers.forEach(function (b) { markerById[b.id] = m; });
     });
     renderPlainBars();
+    renderHeat();
     updateCounts();
     renderTicker();
   }
@@ -241,6 +294,52 @@
     prevLevels = now;
   }
 
+  /* ---------- Skål ---------- */
+  var mySkals = {};          // beer id -> count after my skål (kept until the server agrees)
+  var prevMySkal = null;     // own skal_count at last poll (null before first load)
+  function skalAlert() {
+    var m = myBeer(), n = m ? skalCount(m) : null;
+    if (prevMySkal != null && n != null && n > prevMySkal) {
+      toast(t("skalUp", n - prevMySkal), { cls: "skal" });
+      window.FX.vibrate(25);
+    }
+    if (firstLoadDone || n != null) prevMySkal = n == null ? 0 : n;
+  }
+  function beerById(id) { for (var i = 0; i < beers.length; i++) if (String(beers[i].id) === String(id)) return beers[i]; return null; }
+  function doSkal(button) {
+    var id = button.getAttribute("data-skal"), b = beerById(id);
+    if (!b || b.i_skaled || button.disabled) return;
+    window.FX.unlock();
+    button.disabled = true; button.classList.add("busy");
+    rpc("skal", { p_beer_id: b.id }).then(function (r) {
+      button.classList.remove("busy");
+      if (r.error) {
+        var c = U.errCode(r.error);
+        button.disabled = false;
+        if (c === "own_beer") { toast(t("skalOwn"), { err: true }); button.disabled = true; }
+        else if (c === "beer_not_found") { toast(t("skalGone"), { err: true }); refresh(); }
+        else toast(errMsg(r.error), { err: true });
+        return;
+      }
+      var d = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+      var n = Math.max(skalCount(b), d.skal_count | 0);
+      b.skal_count = n; b.i_skaled = true; mySkals[b.id] = n;
+      document.querySelectorAll('.skal-btn[data-skal="' + String(id).replace(/["\\]/g, "") + '"]').forEach(function (x) {
+        x.disabled = true; x.textContent = t("skaled", n);
+      });
+      if (!d.already) {
+        window.FX.sound.clink(); window.FX.vibrate([18, 40, 18]);
+        button.classList.add("pop");
+      }
+    });
+  }
+  map.on("popupopen", function (e) {
+    var root = e.popup.getElement(); if (!root) return;
+    root.querySelectorAll(".skal-btn").forEach(function (x) {
+      x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doSkal(x); });
+    });
+  });
+
   /* ---------- Counts / chrome ---------- */
   function friendsDrinking() {
     var seen = {};
@@ -277,7 +376,8 @@
       st.hidden = false;
       st.className = "my-streak" + lvlClass(l);
       st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
-        (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺");
+        (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺") +
+        (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
     } else st.hidden = true;
   }
   function applyStaticText() {
@@ -293,6 +393,9 @@
     $("install-close").setAttribute("aria-label", t("close"));
     $("demo-chip").hidden = !DEMO_MODE;
     $("btn-skip").textContent = t("skip");
+    $("btn-top").setAttribute("aria-label", t("top"));
+    $("btn-top").title = t("top");
+    applyHeatBtn();
     applyPrec();
     updateCounts();
     tickerKey = ""; renderTicker();
@@ -320,8 +423,14 @@
     return rpc("live_beers").then(function (r) {
       if (r.error) throw r.error;
       beers = (r.data || []).filter(function (b) { return b && isFinite(b.lat) && isFinite(b.lng); });
+      beers.forEach(function (b) {
+        b.skal_count = Math.max(0, b.skal_count | 0); b.i_skaled = !!b.i_skaled;
+        var mine = mySkals[b.id];
+        if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
+      });
       render();
       streakAlerts();
+      skalAlert();
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") { reauth(); return; }
@@ -355,6 +464,8 @@
       case "not_authenticated": reauth(); return t("notAuth");
       case "invalid_subscription": return t("invalidSub");
       case "code_generation_failed": return t("codeGenFail");
+      case "own_beer": return t("skalOwn");
+      case "beer_not_found": return t("skalGone");
       default: return fallback || t("fail");
     }
   }
@@ -428,6 +539,9 @@
   $("btn-beer").addEventListener("click", function () {
     if (busy || cooldownLeft() > 0) return;
     if (!DEMO_MODE && !authed) { signIn(); return; }
+    window.FX.unlock();
+    window.FX.splash($("btn-beer"));
+    window.FX.vibrate(20);
     setBusy(true);
     getPosition().then(function (pos) {
       return rpc("post_beer", { p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: prec === "exact" })
@@ -442,8 +556,13 @@
           }
           saveNight(d, true);
           var n = d.beer_count | 0, l = U.level(n);
-          toast(levelToast(n), { cls: l === 2 ? "med" : l === 1 ? "hot" : "" });
-          if (navigator.vibrate) { try { navigator.vibrate(l ? [40, 60, 40] : 30); } catch (e) {} }
+          if (n === 10) window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose") });
+          else if (n === 5) window.FX.takeover(1, { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") });
+          else {
+            toast(levelToast(n), { cls: l === 2 ? "med" : l === 1 ? "hot" : "" });
+            window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
+          }
+          window.FX.sound.beer();
           if (d.milestone != null && !DEMO_MODE && client) {
             try { client.functions.invoke("notify-group").catch(function () {}); } catch (e) {}
           }
@@ -657,6 +776,96 @@
   }
   $("btn-groups").addEventListener("click", showGroups);
 
+  /* ---------- Top list tonight ---------- */
+  var topTab = U.ls.get("olnu.topTab", "bars");
+  function lvlIcon(l) { return l === 2 ? "🚁" : l === 1 ? "🔥" : ""; }
+  function cityOf(b) { var c = window.CITIES.nearest(b.lat, b.lng); return c ? c.name : null; }
+  function flyTo(lat, lng, z, openId) {
+    closeSheet();
+    map.flyTo([lat, lng], z, { duration: 1.2 });
+    if (openId == null) return;
+    map.once("moveend", function () {
+      setTimeout(function () {
+        var m = markerById[openId]; if (!m) return;
+        if (clusters.hasLayer(m)) clusters.zoomToShowLayer(m, function () { m.openPopup(); }); else m.openPopup();
+      }, 150);
+    });
+  }
+  function topRows(kind) {
+    if (kind === "bars") {
+      var per = window.BARS.assign(beers).perBar;
+      return Object.keys(per).map(function (k) { return per[k]; })
+        .sort(function (a, b) { return b.beers.length - a.beers.length || maxLevel(b.beers) - maxLevel(a.beers); })
+        .slice(0, 15).map(function (a) {
+          var sk = 0; a.beers.forEach(function (b) { sk += skalCount(b); });
+          return { name: a.bar.name || t("unnamedBar"), sub: barTypeLabel(a.bar.type) + (sk ? " · " + t("skalN", sk) : ""),
+            n: a.beers.length, icon: lvlIcon(maxLevel(a.beers)), lat: a.bar.lat, lng: a.bar.lng, z: 17,
+            friend: a.beers.some(function (b) { return b.friend_name; }) };
+        });
+    }
+    if (kind === "cities") {
+      var g = {};
+      beers.forEach(function (b) {
+        var c = cityOf(b), k = c || "";
+        var x = g[k] || (g[k] = { name: c || t("other"), list: [], other: !c });
+        x.list.push(b);
+      });
+      return Object.keys(g).map(function (k) { return g[k]; })
+        .sort(function (a, b) { return (a.other - b.other) || b.list.length - a.list.length; })
+        .slice(0, 20).map(function (x) {
+          var c = null; window.CITIES.list.forEach(function (cc) { if (cc.name === x.name) c = cc; });
+          var lat = 0, lng = 0; x.list.forEach(function (b) { lat += b.lat; lng += b.lng; });
+          var tot = 0; x.list.forEach(function (b) { tot += b.beer_count | 0; });
+          return { name: x.name, sub: t("beersN", tot), n: x.list.length, icon: lvlIcon(maxLevel(x.list)),
+            lat: c ? c.lat : lat / x.list.length, lng: c ? c.lng : lng / x.list.length, z: c ? 12 : 7,
+            friend: x.list.some(function (b) { return b.friend_name; }) };
+        });
+    }
+    return beers.filter(function (b) { return U.level(b.beer_count) > 0; })
+      .sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); })
+      .slice(0, 20).map(function (b) {
+        var bar = b.precise ? window.BARS.nearest(b.lat, b.lng) : null;
+        var where = bar && bar.name ? bar.name : cityOf(b) || t("other");
+        return { name: whoOf(b), sub: where, n: b.beer_count | 0, icon: lvlIcon(U.level(b.beer_count)),
+          lat: b.lat, lng: b.lng, z: 17, id: b.id, friend: !!b.friend_name, mine: !!b.is_mine };
+      });
+  }
+  function showTop() {
+    openSheet(t("top"), function (body) {
+      var tabs = el("div", { class: "tabs", role: "tablist" });
+      var list = el("ol", { class: "toplist" });
+      var note = el("p", { class: "muted top-note" });
+      var kinds = [["bars", t("topBars")], ["cities", t("topCities")], ["streaks", t("topStreaks")]];
+      function draw() {
+        tabs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-selected", String(b.getAttribute("data-k") === topTab)); });
+        list.innerHTML = "";
+        var rows = topRows(topTab);
+        note.textContent = topTab === "bars" ? t("topNote") : "";
+        if (!rows.length) {
+          list.appendChild(el("li", { class: "muted top-empty", text: topTab === "bars" ? t("topNoBars") : topTab === "cities" ? t("topNoCities") : t("topNoStreaks") }));
+          return;
+        }
+        rows.forEach(function (r, i) {
+          var li = el("li", {}, [el("button", { type: "button", class: "top-row" + (r.friend ? " friend" : "") + (r.mine ? " mine" : ""),
+            onclick: function () { flyTo(r.lat, r.lng, r.z, r.id); } }, [
+            el("span", { class: "top-rank", text: String(i + 1).padStart(2, "0") }),
+            el("span", { class: "top-main" }, [el("span", { class: "top-name", text: r.name }), el("span", { class: "top-sub", text: r.sub })]),
+            el("span", { class: "top-n", text: (r.icon ? r.icon + " " : "") + r.n + (topTab === "streaks" ? " 🍺" : "") })
+          ])]);
+          list.appendChild(li);
+        });
+      }
+      kinds.forEach(function (k) {
+        tabs.appendChild(el("button", { type: "button", role: "tab", "data-k": k[0], text: k[1], onclick: function () {
+          topTab = k[0]; U.ls.set("olnu.topTab", topTab); draw();
+        } }));
+      });
+      body.appendChild(tabs); body.appendChild(list); body.appendChild(note);
+      draw();
+    });
+  }
+  $("btn-top").addEventListener("click", showTop);
+
   /* ---------- Notifications ---------- */
   function iosNeedsInstall() { return U.isIOS() && !U.isStandalone(); }
   function enableNotifs() {
@@ -727,6 +936,23 @@
           enableNotifs().then(function (res) { sw.setAttribute("aria-checked", String(res === "on")); });
         }
       });
+
+      body.appendChild(el("h3", { text: t("sound") }));
+      var snd = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(!window.FX.muted()), "aria-label": t("soundLabel") });
+      snd.addEventListener("click", function () {
+        var on = snd.getAttribute("aria-checked") === "true";
+        window.FX.setMuted(on); snd.setAttribute("aria-checked", String(!on));
+        if (!on) { window.FX.unlock(); window.FX.sound.clink(); }
+      });
+      body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
+
+      if (DEMO_MODE) {
+        body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("skipMed"), "btn-small btn-debug", function () {
+          window.DEMO.jumpTo9();
+          U.ls.setJSON("olnu.night", { count: 9, expires: U.next5am().getTime(), lastTap: 0 });
+          closeSheet(); refresh().then(tickCooldown);
+        })]));
+      }
 
       body.appendChild(el("h3", { text: t("about") }));
       body.appendChild(el("p", { text: t("privacy") }));

@@ -79,7 +79,24 @@
       aboutMore: "Din öl syns på kartan till kl 05. 15 min mellan öl. Kartdata © OpenStreetMap-bidragsgivare.",
       demo: "Demoläge: allt är påhittat och sparas bara i den här webbläsaren.",
       skip: "DEBUG: hoppa över väntan",
-      friendsNow: function (n) { return n + " vänner dricker nu"; }
+      friendsNow: function (n) { return n + " vänner dricker nu"; },
+      heat: "🔥 Värme", heatOn: "Värmekarta på", heatOff: "Värmekarta av",
+      top: "Topplista ikväll", topBars: "Barer", topCities: "Städer", topStreaks: "Streaks",
+      topNoBars: "Inga öl vid barer än.", topNoCities: "Inga öl än ikväll.", topNoStreaks: "Ingen streak än.",
+      other: "Övrigt", beersN: function (n) { return n + " 🍺"; },
+      topNote: "Bara öl med exakt plats räknas till barer.",
+      skal: function (n) { return "🍻 Skål! (" + n + ")"; },
+      skaled: function (n) { return "🍻 Skålat (" + n + ")"; },
+      skalN: function (n) { return "🍻 " + n + " skål"; },
+      skalUp: function (n) { return "🍻 +" + n + " skål!"; },
+      skalDone: "🍻 Skål!", skalOwn: "Du kan inte skåla med dig själv.",
+      skalGone: "Den ölen finns inte längre.",
+      barSkal: function (n) { return "🍻 " + n + " skål här"; },
+      sound: "Ljud", soundLabel: "Ljud när du tar en öl",
+      hotTitle: "HOT STREAK", hotSub: "Öl nr 5 ikväll. Du kör hårt!",
+      medTitle: "MEDEVAC", medSub: "Öl nr 10. Drick vatten. Ta taxi hem.",
+      tapClose: "Tryck för att stänga",
+      skipMed: "DEBUG: hoppa till öl 10"
     },
     en: {
       live: function (n) { return "<b>" + n + "</b> drinking beer in Sweden now"; },
@@ -159,7 +176,24 @@
       aboutMore: "Your beer shows on the map until 05:00. 15 min between beers. Map data © OpenStreetMap contributors.",
       demo: "Demo mode: everything is made up and saved only in this browser.",
       skip: "DEBUG: skip cooldown",
-      friendsNow: function (n) { return n + " friends drinking now"; }
+      friendsNow: function (n) { return n + " friends drinking now"; },
+      heat: "🔥 Heat", heatOn: "Heat map on", heatOff: "Heat map off",
+      top: "Top list tonight", topBars: "Bars", topCities: "Cities", topStreaks: "Streaks",
+      topNoBars: "No beers at bars yet.", topNoCities: "No beers yet tonight.", topNoStreaks: "No streaks yet.",
+      other: "Other", beersN: function (n) { return n + " 🍺"; },
+      topNote: "Only beers with an exact spot count at bars.",
+      skal: function (n) { return "🍻 Cheers! (" + n + ")"; },
+      skaled: function (n) { return "🍻 Cheered (" + n + ")"; },
+      skalN: function (n) { return "🍻 " + n + " cheers"; },
+      skalUp: function (n) { return "🍻 +" + n + " cheers!"; },
+      skalDone: "🍻 Cheers!", skalOwn: "You cannot cheer your own beer.",
+      skalGone: "That beer is gone.",
+      barSkal: function (n) { return "🍻 " + n + " cheers here"; },
+      sound: "Sound", soundLabel: "Sound when you have a beer",
+      hotTitle: "HOT STREAK", hotSub: "Beer no. 5 tonight. You go hard!",
+      medTitle: "MEDEVAC", medSub: "Beer no. 10. Drink water. Take a taxi home.",
+      tapClose: "Tap to close",
+      skipMed: "DEBUG: jump to beer 10"
     }
   };
   var lang = "sv";

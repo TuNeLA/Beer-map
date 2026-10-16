@@ -11,6 +11,8 @@ supabase db push          # applies supabase/migrations/0001_olnu.sql
 ```
 (Or paste the file into Dashboard → SQL Editor and run it.)
 
+v3 (Skål!): run `supabase/migrations/0002_skal.sql` after `0001_olnu.sql` in the SQL Editor (safe to run again).
+
 The file is safe to run again. It upgrades a v1 database to v2: it adds `beers.stopped` and
 `beers.notified_level`, drops `beers.notified`, and drops and re-creates `post_beer`, `stop_beer`
 and `live_beers`. Note: `supabase db push` runs each migration file only once. To apply the v2

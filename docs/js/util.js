@@ -63,7 +63,7 @@
   };
   U.errCode = function (err) {
     var m = (err && (err.message || err.details || err.hint || String(err))) || "";
-    var codes = ["outside_sweden", "invalid_name", "group_not_found", "not_authenticated", "invalid_subscription", "code_generation_failed"];
+    var codes = ["outside_sweden", "invalid_name", "group_not_found", "not_authenticated", "invalid_subscription", "code_generation_failed", "own_beer", "beer_not_found"];
     for (var i = 0; i < codes.length; i++) if (m.indexOf(codes[i]) >= 0) return codes[i];
     if (/jwt|401|not authenticated/i.test(m)) return "not_authenticated";
     return "error";

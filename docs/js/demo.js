@@ -49,7 +49,8 @@
     function minutesAgo() { return new Date(now - Math.floor(r() * 300) * 60e3).toISOString(); }
     function push(lat, lng, precise, friend) {
       out.push({ id: id++, lat: +lat.toFixed(5), lng: +lng.toFixed(5), beer_count: 1 + Math.floor(r() * r() * 5),
-        precise: precise, created_at: minutesAgo(), is_mine: false, friend_name: friend || null });
+        precise: precise, created_at: minutesAgo(), is_mine: false, friend_name: friend || null,
+        skal_count: r() < 0.45 ? Math.floor(r() * r() * 9) : 0, i_skaled: false });
     }
     BARS.forEach(function (b) {
       for (var i = 0; i < b.n; i++) {
@@ -73,6 +74,7 @@
     setCount(BARS[0].n + BARS[1].n + BARS[2].n + BARS[3].n, 7); // Ölstugan Tullen
     out[out.length - 3].beer_count = 6;                  // Elin
     out[out.length - 5].beer_count = 8;                  // a city beer (not at a bar)
+    out.forEach(function (b) { if (b.beer_count >= 5) b.skal_count += 3 + Math.floor(r() * 6); });
     base = out;
   }
 
@@ -99,7 +101,7 @@
         if (left > 0) return ok(shape(false, Math.ceil(left / 1000), false, null));
       }
       var isNew = !b;
-      if (!b) b = { id: 1, beer_count: 0, created_at: now.toISOString(), expires_at: U.next5am(now).toISOString() };
+      if (!b) b = { id: 1, beer_count: 0, skal_count: 0, created_at: now.toISOString(), expires_at: U.next5am(now).toISOString() };
       b.lat = lat; b.lng = lng; b.precise = !!p.p_precise; b.beer_count += 1; b.updated_at = now.toISOString(); b.stopped = false;
       s.mine = b; save(s);
       var c = b.beer_count;
@@ -108,12 +110,13 @@
     stop_beer: function () { var s = state(); if (s.mine) s.mine.stopped = true; save(s); return ok(null); },
     live_beers: function () {
       if (!base) buildBase();
-      var s = state(), rows = base.slice();
+      var s = state(), sk = s.skaled || {};
+      var rows = base.map(function (r) { return sk[r.id] ? Object.assign({}, r, { skal_count: r.skal_count + 1, i_skaled: true }) : r; });
       var inKomp = s.groups.some(function (g) { return g.demo; });
       if (!inKomp) rows = rows.map(function (r) { return r.friend_name ? Object.assign({}, r, { friend_name: null }) : r; });
       if (s.mine && !s.mine.stopped && new Date(s.mine.expires_at) > new Date()) {
         rows.push({ id: s.mine.id, lat: s.mine.lat, lng: s.mine.lng, beer_count: s.mine.beer_count, precise: s.mine.precise,
-          created_at: s.mine.created_at, is_mine: true, friend_name: null });
+          created_at: s.mine.created_at, is_mine: true, friend_name: null, skal_count: s.mine.skal_count | 0, i_skaled: false });
       }
       return ok(rows);
     },
@@ -141,12 +144,41 @@
           active_count: (g.demo ? FRIENDS.length : 0) + (mine ? 1 : 0) };
       }));
     },
+    skal: function (p) {
+      if (!base) buildBase();
+      var s = state(), id = p.p_beer_id;
+      if (s.mine && String(s.mine.id) === String(id)) return fail("own_beer");
+      var b = base.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!b) return fail("beer_not_found");
+      s.skaled = s.skaled || {};
+      var already = !!s.skaled[b.id];
+      s.skaled[b.id] = true; save(s);
+      return ok({ skal_count: b.skal_count + 1, already: already });
+    },
     set_display_name: function () { return ok(null); },
     save_push_subscription: function () { return ok(null); },
     delete_push_subscription: function () { return ok(null); }
   };
 
+  // Every ~40 s a fake stranger skåls your own beer (if it is live).
+  setInterval(function () {
+    var s = state(), m = s.mine;
+    if (!m || m.stopped || new Date(m.expires_at) <= new Date()) return;
+    m.skal_count = (m.skal_count | 0) + 1 + (Math.random() < 0.3 ? 1 : 0); save(s);
+  }, 40000);
+
   window.DEMO = {
+    // Debug: set own count to 9 and skip the wait, so the next tap is beer 10.
+    jumpTo9: function () {
+      var s = state(), now = new Date();
+      if (!s.mine || new Date(s.mine.expires_at) <= now) {
+        s.mine = { id: 1, beer_count: 0, skal_count: 0, lat: 59.33570, lng: 18.07390, precise: true, created_at: now.toISOString(),
+          expires_at: U.next5am(now).toISOString() };
+      }
+      s.mine.beer_count = 9; s.mine.stopped = false;
+      s.mine.updated_at = new Date(Date.now() - U.COOLDOWN_MS - 1000).toISOString();
+      save(s);
+    },
     skipCooldown: function () {
       var s = state();
       if (s.mine) { s.mine.updated_at = new Date(Date.now() - U.COOLDOWN_MS - 1000).toISOString(); save(s); }

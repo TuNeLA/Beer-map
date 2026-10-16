@@ -1,8 +1,8 @@
 /* Öl Nu service worker. */
-var VERSION = "olnu-v3";
+var VERSION = "olnu-v4";
 var SHELL = [
   "./", "./index.html", "./styles.css", "./config.js", "./app.js",
-  "./js/i18n.js", "./js/util.js", "./js/demo.js", "./js/bars.js", "./js/push.js",
+  "./js/i18n.js", "./js/util.js", "./js/demo.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js",
   "./manifest.webmanifest", "./favicon.ico",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"

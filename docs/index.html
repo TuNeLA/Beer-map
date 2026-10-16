@@ -32,6 +32,7 @@
     <span id="demo-chip" class="chip chip-demo" hidden>Demo</span>
   </div>
   <div id="live-count" class="live-count" aria-live="polite">🍺 –</div>
+  <button id="btn-top" class="icon-btn" type="button" aria-label="Topplista ikväll">🏆</button>
   <button id="btn-settings" class="icon-btn" type="button" aria-label="Inställningar" data-i18n-aria="settings">
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.4-2.5.1-1-.1-1 2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.6c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L6.5 11l-.1 1 .1 1-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5-2.2-1.6Z"/></svg>
   </button>
@@ -41,6 +42,7 @@
   <div class="tk-viewport"><div id="ticker-track" class="tk-track"></div></div>
 </div>
 <div id="my-streak" class="my-streak" hidden></div>
+<button id="btn-heat" class="map-chip" type="button" aria-pressed="false" hidden>🔥 Värme</button>
 
 <div id="install-banner" class="banner" hidden>
   <span id="install-text"></span>
@@ -91,6 +93,7 @@
 <script src="./config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="./js/i18n.js"></script>
@@ -98,6 +101,8 @@
 <script src="./js/demo.js"></script>
 <script src="./js/bars.js"></script>
 <script src="./js/push.js"></script>
+<script src="./js/fx.js"></script>
+<script src="./js/cities.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>
