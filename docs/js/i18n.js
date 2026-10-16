@@ -76,7 +76,7 @@
       yes: "Ja tack", notNow: "Inte nu",
       language: "Språk", notifications: "Notiser", about: "Om Öl Nu",
       privacy: "Ingen inloggning. Vi sparar ingen statistik. Ditt namn finns bara på din telefon och syns bara för dina grupper.",
-      aboutMore: "Din öl syns på kartan till kl 05. 15 min mellan öl. Kartdata © OpenStreetMap-bidragsgivare.",
+      aboutMore: "Din öl syns på kartan till kl 05. 10 min mellan öl, 15 min mellan shots. Kartdata © OpenStreetMap-bidragsgivare.",
       soonChip: "Snart", soonBtn: "SNART", soonSub: "Startar snart",
       soonLive: "Startar snart",
       soonToast: "Öl Nu startar snart. Kartan och barerna fungerar redan.",
@@ -108,7 +108,7 @@
       heat: "🔥 Värme", heatOn: "Värmekarta på", heatOff: "Värmekarta av",
       top: "Topplista ikväll", topBars: "Barer", topCities: "Städer", topStreaks: "Streaks",
       topNoBars: "Inga öl vid barer än.", topNoCities: "Inga öl än ikväll.", topNoStreaks: "Ingen streak än.",
-      other: "Övrigt", beersN: function (n) { return n + " 🍺"; },
+      other: "Övrigt", beersN: function (n) { return n + " 🍺"; }, perPerson: "pers", cityAvgSub: function (p, tot) { return p + (p === 1 ? " person" : " personer") + " · " + tot + " öl totalt"; },
       topNote: "Bara öl med exakt plats räknas till barer.",
       skal: function (n) { return "🍻 Skål! (" + n + ")"; },
       skaled: function (n) { return "🍻 Skålat (" + n + ")"; },
@@ -120,7 +120,14 @@
       sound: "Ljud", soundLabel: "Ljud när du tar en öl",
       hotTitle: "HOT STREAK", hotSub: "Öl nr 5 ikväll. Du kör hårt!",
       medTitle: "MEDEVAC", medSub: "Öl nr 10. Drick vatten. Ta taxi hem.",
-      tapClose: "Tryck för att stänga"
+      tapClose: "Tryck för att stänga",
+      shot: "SHOT", shotAria: "Rapportera shot",
+      shotNo: function (n) { return "🥃 Shot nr " + n + " ikväll!"; },
+      shotNextIn: "Nästa shot om",
+      shotCooldown: function (m) { return "Lugn, soldat. Nästa shot om " + m + "."; },
+      shotSoon: "🥃 Shots kommer snart!",
+      shotsN: function (n) { return "🥃 " + n + " " + (n === 1 ? "shot" : "shots"); },
+      barShots: function (n) { return "🥃 " + n + " " + (n === 1 ? "shot" : "shots") + " här"; }
     },
     en: {
       live: function (n) { return "<b>" + n + "</b> drinking beer in Sweden now"; },
@@ -197,7 +204,7 @@
       yes: "Yes please", notNow: "Not now",
       language: "Language", notifications: "Notifications", about: "About Öl Nu",
       privacy: "No login. We keep no statistics. Your name is only on your phone and only your groups see it.",
-      aboutMore: "Your beer shows on the map until 05:00. 15 min between beers. Map data © OpenStreetMap contributors.",
+      aboutMore: "Your beer shows on the map until 05:00. 10 min between beers, 15 min between shots. Map data © OpenStreetMap contributors.",
       soonChip: "Soon", soonBtn: "SOON", soonSub: "Coming soon",
       soonLive: "Coming soon",
       soonToast: "Öl Nu is coming soon. The map and bars already work.",
@@ -229,7 +236,7 @@
       heat: "🔥 Heat", heatOn: "Heat map on", heatOff: "Heat map off",
       top: "Top list tonight", topBars: "Bars", topCities: "Cities", topStreaks: "Streaks",
       topNoBars: "No beers at bars yet.", topNoCities: "No beers yet tonight.", topNoStreaks: "No streaks yet.",
-      other: "Other", beersN: function (n) { return n + " 🍺"; },
+      other: "Other", beersN: function (n) { return n + " 🍺"; }, perPerson: "pers", cityAvgSub: function (p, tot) { return p + (p === 1 ? " person" : " people") + " · " + tot + " beers total"; },
       topNote: "Only beers with an exact spot count at bars.",
       skal: function (n) { return "🍻 Cheers! (" + n + ")"; },
       skaled: function (n) { return "🍻 Cheered (" + n + ")"; },
@@ -241,7 +248,14 @@
       sound: "Sound", soundLabel: "Sound when you have a beer",
       hotTitle: "HOT STREAK", hotSub: "Beer no. 5 tonight. You go hard!",
       medTitle: "MEDEVAC", medSub: "Beer no. 10. Drink water. Take a taxi home.",
-      tapClose: "Tap to close"
+      tapClose: "Tap to close",
+      shot: "SHOT", shotAria: "Report shot",
+      shotNo: function (n) { return "🥃 Shot no. " + n + " tonight!"; },
+      shotNextIn: "Next shot in",
+      shotCooldown: function (m) { return "Easy, soldier. Next shot in " + m + "."; },
+      shotSoon: "🥃 Shots are coming soon!",
+      shotsN: function (n) { return "🥃 " + n + " " + (n === 1 ? "shot" : "shots"); },
+      barShots: function (n) { return "🥃 " + n + " " + (n === 1 ? "shot" : "shots") + " here"; }
     }
   };
   var lang = "sv";

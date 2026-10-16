@@ -150,7 +150,8 @@
   });
   function heatWeight(b) {
     var n = b.beer_count | 0, l = U.level(n);
-    return Math.max(1, n) * (l === 2 ? 3 : l === 1 ? 2 : 1);
+    var w = (n > 0 ? n * (l === 2 ? 3 : l === 1 ? 2 : 1) : 0) + shotCount(b) * 0.5;
+    return Math.max(0.5, w);
   }
   function renderHeat() {
     if (!heat) return;
@@ -171,12 +172,16 @@
   });
 
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
-  // Single pin: compact pill "N 🍺". Streak shows only as the pill border.
+  // Shots (v5): missing field = 0.
+  function shotCount(b) { return Math.max(0, (b && b.shot_count) | 0); }
+  function sumShots(list) { var s = 0; (list || []).forEach(function (b) { s += shotCount(b); }); return s; }
+  // Single pin: compact pill "N 🍺" (+ " · M 🥃"). Streak shows only as the pill border.
   function beerIcon(b) {
-    var n = Math.max(1, b.beer_count | 0);
+    var sh = shotCount(b);
+    var n = sh > 0 ? Math.max(0, b.beer_count | 0) : Math.max(1, b.beer_count | 0);
     var label = b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" :
       b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "";
-    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
+    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label, shots: sh });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function levelLine(l) {
@@ -191,8 +196,10 @@
       (done ? " disabled" : "") + ">" + U.esc(done ? t("skaled", skalCount(b)) : t("skal", skalCount(b))) + "</button>";
   }
   function beerPopup(b) {
-    var h = '<div class="pp-title">' + U.esc(t("beerNo", b.beer_count | 0)) + "</div>" +
+    var sh = shotCount(b), bc = b.beer_count | 0;
+    var h = '<div class="pp-title">' + U.esc(bc === 0 && sh > 0 ? t("shotsN", sh) : t("beerNo", bc)) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
+    if (sh > 0 && bc > 0) h += '<div class="pp-shot">' + U.esc(t("shotsN", sh)) + "</div>";
     h += levelLine(U.level(b.beer_count));
     if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
     if (b.friend_name) h += '<div class="pp-friend">' + U.esc(b.friend_name) + "</div>";
@@ -206,7 +213,7 @@
   function hotBarIcon(agg) {
     var friend = agg.beers.some(function (b) { return b.friend_name; });
     var mine = agg.beers.some(function (b) { return b.is_mine; });
-    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar" });
+    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar", shots: sumShots(agg.beers) });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function barPopup(bar, list) {
@@ -221,12 +228,15 @@
     if (list.some(function (b) { return b.is_mine; })) h += '<div class="pp-mine">' + U.esc(t("you")) + "</div>";
     var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
     if (tot) h += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
+    var shTot = sumShots(list);
+    if (shTot) h += '<div class="pp-shot">' + U.esc(t("barShots", shTot)) + "</div>";
     if (list.length) {
       var rows = list.slice().sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); }).slice(0, 8);
       h += '<ul class="pp-list">' + rows.map(function (b) {
         var l = U.level(b.beer_count);
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
+          '<span class="pp-n">' + ((b.beer_count | 0) === 0 && shotCount(b) ? "" : (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺")) +
+          (shotCount(b) ? ((b.beer_count | 0) ? " · " : "") + shotCount(b) + " 🥃" : "") + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
     }
@@ -401,6 +411,24 @@
     else if (d.wait_seconds > 0) m.lastTap = Date.now() + d.wait_seconds * 1000 - U.COOLDOWN_MS;
     U.ls.setJSON("olnu.night", m);
   }
+  // Own shot state on the phone: {count, expires, lastTap}. Separate from the beer timer.
+  var SHOT_KEY = "olnu.shot";
+  function myShot() {
+    var m = U.ls.getJSON(SHOT_KEY, null);
+    if (!m || !m.expires || Date.now() > m.expires) return null;
+    return m;
+  }
+  function saveShot(d, accepted) {
+    var m = myShot() || {};
+    m.count = d.shot_count | 0;
+    m.expires = d.expires_at ? new Date(d.expires_at).getTime() : U.next5am().getTime();
+    if (accepted) m.lastTap = Date.now();
+    else if (d.wait_seconds > 0) m.lastTap = Date.now() + d.wait_seconds * 1000 - U.SHOT_COOLDOWN_MS;
+    U.ls.setJSON(SHOT_KEY, m);
+    // Keep the beer count on the phone in sync, without touching the beer timer.
+    var n = myNight();
+    if (n) { n.count = d.beer_count | 0; U.ls.setJSON("olnu.night", n); }
+  }
   function updateCounts() {
     $("live-count").innerHTML = LIVE ? t("live", beers.length | 0) : t("soonLive");
     var f = friendsDrinking(), badge = $("groups-badge");
@@ -409,19 +437,22 @@
     var mine = myBeer();
     $("btn-stop").hidden = !mine;
     var night = myNight(), n = mine ? mine.beer_count | 0 : night ? night.count | 0 : 0;
+    var shotSt = myShot(), shots = mine ? shotCount(mine) : shotSt ? shotSt.count | 0 : 0;
     var st = $("my-streak");
-    if (n > 0) {
+    if (n > 0 || shots > 0) {
       var l = U.level(n);
       st.hidden = false;
       st.className = "my-streak" + lvlClass(l);
       st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
         (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺") +
+        (shots > 0 ? ' <span class="ms-shot">· <b>' + shots + "</b> 🥃</span>" : "") +
         (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
     } else st.hidden = true;
   }
   function applyStaticText() {
     $("beer-label").textContent = t("beer");
     $("beer-sub").textContent = t("beerSub");
+    $("shot-label").textContent = t("shot");
     $("btn-stop").textContent = t("stop");
     $("btn-stop").title = t("stopHint");
     $("groups-label").textContent = t("groups");
@@ -442,6 +473,7 @@
     updateCounts();
     tickerKey = ""; renderTicker();
     tickCooldown();
+    tickShot();
   }
 
   /* ---------- Precision toggle ---------- */
@@ -486,7 +518,7 @@
   function startPoll() { if (!pollTimer && LIVE) pollTimer = setInterval(refresh, POLL_MS); }
   function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") { startPoll(); refresh(); tickCooldown(); }
+    if (document.visibilityState === "visible") { startPoll(); refresh(); tickCooldown(); tickShot(); }
     else stopPoll();
   });
 
@@ -569,7 +601,8 @@
       $("beer-label").textContent = U.mmss(left);
       $("beer-sub").textContent = t("nextIn");
       btnEl.setAttribute("aria-label", t("nextIn") + " " + U.mmss(left));
-      ring.style.strokeDashoffset = String(RING_LEN * (1 - left / U.COOLDOWN_MS));
+      // Server wait may be longer than the local fallback (old server): clamp the ring to 0..1.
+      ring.style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, left / U.COOLDOWN_MS)));
       if (!cdTimer) cdTimer = setInterval(tickCooldown, 1000);
     } else {
       if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
@@ -685,6 +718,77 @@
       Promise.resolve(client.functions.invoke("notify-group")).then(function () {}, function () {});
     } catch (e) {}
   }
+  /* ---------- Shot button (v5) ---------- */
+  var SHOT_RING = 2 * Math.PI * 21;
+  var shotTimer = null, shotBusy = false;
+  function shotLeft() {
+    var m = myShot();
+    if (!m || !m.lastTap) return 0;
+    return Math.max(0, m.lastTap + U.SHOT_COOLDOWN_MS - Date.now());
+  }
+  function tickShot() {
+    var b = $("btn-shot"), ring = $("shot-ring"), lab = $("shot-label");
+    var left = LIVE ? shotLeft() : 0, on = left > 0;
+    b.classList.toggle("cooldown", on);
+    b.classList.toggle("soon", !LIVE);
+    if (on) {
+      lab.textContent = U.mmss(left);
+      b.setAttribute("aria-label", t("shotNextIn") + " " + U.mmss(left));
+      ring.style.strokeDashoffset = String(SHOT_RING * (1 - Math.min(1, left / U.SHOT_COOLDOWN_MS)));
+      if (!shotTimer) shotTimer = setInterval(tickShot, 1000);
+    } else {
+      if (shotTimer) { clearInterval(shotTimer); shotTimer = null; }
+      lab.textContent = t("shot");
+      b.setAttribute("aria-label", t("shotAria"));
+      ring.style.strokeDashoffset = String(SHOT_RING);
+    }
+    b.setAttribute("aria-disabled", String(on || !LIVE));
+  }
+  $("shot-ring").style.strokeDasharray = String(SHOT_RING);
+  // post_shot not deployed yet → PostgREST 404 / PGRST202 "Could not find the function".
+  function shotMissing(e) {
+    if (!e) return false;
+    var m = [e.code, e.message, e.details, e.hint, e.status].map(function (x) { return x == null ? "" : String(x); }).join(" ");
+    return /PGRST202|post_shot|could not find the function|function .* does not exist|not found|\b404\b/i.test(m) &&
+      !/outside_sweden|not_authenticated/.test(m);
+  }
+  function setShotBusy(v) { shotBusy = v; $("btn-shot").classList.toggle("busy", v); }
+  $("btn-shot").addEventListener("click", function () {
+    if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
+    if (shotBusy) return;
+    var left = shotLeft();
+    if (left > 0) { toast(t("shotCooldown", U.mmss(left)), { id: "shotcd" }); return; }
+    if (navigator.onLine === false) { toast(t("offline"), { err: true, id: "off" }); return; }
+    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
+    window.FX.unlock();
+    window.FX.vibrate(12);
+    setShotBusy(true);
+    getPosition().then(function (pos) {
+      return rpc("post_shot", { p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: prec === "exact" })
+        .then(function (r) {
+          if (r.error) {
+            if (shotMissing(r.error)) { toast(t("shotSoon"), { id: "shotsoon" }); return; }
+            toast(errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
+            return;
+          }
+          var d = parseData(r.data);
+          if (d.accepted === false) {
+            saveShot(d, false);
+            toast(t("shotCooldown", U.mmss((d.wait_seconds | 0) * 1000)), { id: "shotcd" });
+            return;
+          }
+          saveShot(d, true);
+          toast(t("shotNo", Math.max(1, d.shot_count | 0)), { cls: "shot" });
+          window.FX.sound.shot();
+          window.FX.vibrate([15, 30, 15]);
+          $("btn-shot").classList.remove("pop"); void $("btn-shot").offsetWidth; $("btn-shot").classList.add("pop");
+          if (isFinite(d.lat) && isFinite(d.lng)) map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
+          refresh();
+        });
+    }, locError).catch(function () { toast(t("postFail"), { err: true }); })
+      .then(function () { setShotBusy(false); tickShot(); updateCounts(); });
+  });
+
   $("btn-stop").addEventListener("click", function () {
     var sb = $("btn-stop"); if (sb.disabled) return;
     sb.disabled = true;
@@ -946,7 +1050,8 @@
         .sort(function (a, b) { return b.beers.length - a.beers.length || maxLevel(b.beers) - maxLevel(a.beers); })
         .slice(0, 15).map(function (a) {
           var sk = 0; a.beers.forEach(function (b) { sk += skalCount(b); });
-          return { name: a.bar.name || t("unnamedBar"), sub: barTypeLabel(a.bar.type) + (sk ? " · " + t("skalN", sk) : ""),
+          var sh = sumShots(a.beers);
+          return { name: a.bar.name || t("unnamedBar"), sub: barTypeLabel(a.bar.type) + (sh ? " · " + t("shotsN", sh) : "") + (sk ? " · " + t("skalN", sk) : ""),
             n: a.beers.length, icon: lvlIcon(maxLevel(a.beers)), lat: a.bar.lat, lng: a.bar.lng, z: 17,
             friend: a.beers.some(function (b) { return b.friend_name; }) };
         });
@@ -958,13 +1063,18 @@
         var x = g[k] || (g[k] = { name: c || t("other"), list: [], other: !c });
         x.list.push(b);
       });
+      // Ranked by average beers per person (people = everyone who reported tonight).
+      var avgOf = function (x) { var tot = 0; x.list.forEach(function (b) { tot += b.beer_count | 0; }); return x.list.length ? tot / x.list.length : 0; };
       return Object.keys(g).map(function (k) { return g[k]; })
-        .sort(function (a, b) { return (a.other - b.other) || b.list.length - a.list.length; })
+        .sort(function (a, b) { return (a.other - b.other) || (avgOf(b) - avgOf(a)) || b.list.length - a.list.length; })
         .slice(0, 20).map(function (x) {
           var c = null; window.CITIES.list.forEach(function (cc) { if (cc.name === x.name) c = cc; });
           var lat = 0, lng = 0; x.list.forEach(function (b) { lat += b.lat; lng += b.lng; });
           var tot = 0; x.list.forEach(function (b) { tot += b.beer_count | 0; });
-          return { name: x.name, sub: t("beersN", tot), n: x.list.length, icon: lvlIcon(maxLevel(x.list)),
+          var sh = sumShots(x.list);
+          var avg = avgOf(x);
+          var avgTxt = (Math.round(avg * 10) / 10).toString().replace(".", I.lang === "sv" ? "," : ".");
+          return { name: x.name, sub: t("cityAvgSub", x.list.length, tot) + (sh ? " · " + sh + " 🥃" : ""), n: avgTxt + " 🍺/" + t("perPerson"), icon: lvlIcon(maxLevel(x.list)),
             lat: c ? c.lat : lat / x.list.length, lng: c ? c.lng : lng / x.list.length, z: c ? 12 : 7,
             friend: x.list.some(function (b) { return b.friend_name; }) };
         });

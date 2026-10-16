@@ -377,6 +377,32 @@ input.code-inp{text-transform:uppercase;letter-spacing:.35em;font-size:24px;text
 .takeover.still .to-flames span,.takeover.still .to-heli{animation:none}
 .takeover.still .to-heli{left:50%;transform:translateX(-50%)}
 
+/* ---------- v5: shots ---------- */
+.pill .psep{color:var(--muted);font-size:11px;margin:0 1px}
+.pill .pn.ps{color:#ffd28a}
+.pp-shot{font-family:var(--hud);color:#ffd28a;margin-top:3px}
+.my-streak .ms-shot{color:#ffd28a}
+.my-streak .ms-shot b{color:#ffd28a}
+.toast.shot{border-color:#d9822b;border-left-color:#d9822b;color:#ffd28a}
+/* Small round shot button. Sits up-left of the ÖL! ring, tangent to it, so it never covers the big button. */
+.shot-btn{position:absolute;left:-37px;top:-3px;width:50px;height:50px;border-radius:50%;padding:0;cursor:pointer;z-index:2;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  background:radial-gradient(circle at 35% 30%,#4a2a10 0%,#2a1606 70%,#1a0d03 100%);color:#ffd28a;
+  border:2px solid #d9822b;box-shadow:0 0 0 2px rgba(10,15,28,.9),0 4px 14px rgba(217,130,43,.35);transition:transform .12s ease,filter .2s}
+.shot-btn:active{transform:scale(.92)}
+.shot-svg{position:absolute;inset:-2px;width:50px;height:50px;transform:rotate(-90deg);pointer-events:none}
+.shot-track{fill:none;stroke:transparent;stroke-width:3}
+.shot-ring{fill:none;stroke:var(--amber-2);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.shot-ico{font-size:17px;line-height:1}
+.shot-label{font-family:var(--hud);font-size:10px;letter-spacing:.06em;line-height:1;margin-top:1px}
+.shot-btn.cooldown{filter:saturate(.4) brightness(.8);cursor:not-allowed}
+.shot-btn.cooldown .shot-track{stroke:rgba(255,194,77,.18)}
+.shot-btn.cooldown .shot-label{font-size:10.5px;letter-spacing:0}
+.shot-btn.busy .shot-ico{animation:pulse 1s ease-in-out infinite}
+.shot-btn.soon{filter:grayscale(.75) brightness(.8);cursor:not-allowed}
+.shot-btn.pop{animation:shotpop .3s ease-out}
+@keyframes shotpop{40%{transform:scale(1.15)}}
+
 @media (max-width:380px){
   .brand-name{font-size:21px}
   .live-count{font-size:11.5px;padding:5px 7px}
