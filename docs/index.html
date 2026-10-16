@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Öl Nu</title>
+<meta name="description" content="Live ölkarta över Sverige.">
+<meta name="theme-color" content="#0a0f1c">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Öl Nu">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./favicon.ico" sizes="any">
+<link rel="icon" href="./icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="map" aria-label="Karta"></div>
+<div class="hud-overlay" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">Öl Nu</span>
+    <span id="demo-chip" class="chip chip-demo" hidden>Demo</span>
+  </div>
+  <div id="live-count" class="live-count" aria-live="polite">🍺 –</div>
+  <button id="btn-settings" class="icon-btn" type="button" aria-label="Inställningar" data-i18n-aria="settings">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.4-2.5.1-1-.1-1 2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.6c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L6.5 11l-.1 1 .1 1-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5-2.2-1.6Z"/></svg>
+  </button>
+</header>
+<div class="ticker hud-panel" role="marquee" aria-live="off">
+  <span class="tk-live" id="tk-live">LIVE</span>
+  <div class="tk-viewport"><div id="ticker-track" class="tk-track"></div></div>
+</div>
+<div id="my-streak" class="my-streak" hidden></div>
+
+<div id="install-banner" class="banner" hidden>
+  <span id="install-text"></span>
+  <button id="install-go" class="btn btn-small btn-amber" type="button" hidden></button>
+  <button id="install-close" class="icon-btn icon-btn-small" type="button" aria-label="Stäng">✕</button>
+</div>
+
+<div class="dock">
+  <div class="dock-top">
+    <button id="btn-stop" class="btn btn-small btn-ghost stop-btn" type="button" hidden></button>
+    <button id="btn-skip" class="btn btn-small btn-debug" type="button" hidden></button>
+  </div>
+  <div class="dock-row">
+    <button id="btn-groups" class="side-btn" type="button">
+      <span class="side-ico" aria-hidden="true">👥</span>
+      <span id="groups-label" class="side-label"></span>
+      <span id="groups-badge" class="badge-green" hidden></span>
+    </button>
+    <div class="beer-wrap">
+      <svg class="cd-svg" viewBox="0 0 124 124" aria-hidden="true">
+        <circle class="cd-track" cx="62" cy="62" r="56"/>
+        <circle id="cd-ring" class="cd-ring" cx="62" cy="62" r="56"/>
+      </svg>
+      <button id="btn-beer" class="beer-btn" type="button"><span id="beer-label" class="beer-label">ÖL!</span><span id="beer-sub" class="beer-sub"></span></button>
+    </div>
+    <div class="prec">
+      <div class="seg" role="radiogroup" id="prec-seg">
+        <button type="button" role="radio" data-prec="exact" id="prec-exact"></button>
+        <button type="button" role="radio" data-prec="area" id="prec-area"></button>
+      </div>
+    </div>
+  </div>
+  <div id="prec-hint" class="prec-hint"></div>
+</div>
+
+<div id="backdrop" class="backdrop" hidden></div>
+<section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="sheet-head">
+    <h2 id="sheet-title"></h2>
+    <button id="sheet-close" class="icon-btn" type="button" aria-label="Stäng">✕</button>
+  </div>
+  <div id="sheet-body" class="sheet-body"></div>
+</section>
+
+<div id="toasts" class="toasts" aria-live="assertive"></div>
+
+<script src="./config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="./js/i18n.js"></script>
+<script src="./js/util.js"></script>
+<script src="./js/demo.js"></script>
+<script src="./js/bars.js"></script>
+<script src="./js/push.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
