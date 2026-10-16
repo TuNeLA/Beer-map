@@ -121,6 +121,8 @@
   if (L.HeatLayer && !L.HeatLayer.prototype._olnuFixed) {
     var HP = L.HeatLayer.prototype, origReset = HP._reset;
     HP._reset = function () {
+      // The library sets transform-origin 50% 50%; Leaflet's zoom maths needs 0 0.
+      if (this._canvas) { this._canvas.style.transformOrigin = "0 0"; this._canvas.style.webkitTransformOrigin = "0 0"; }
       origReset.call(this);
       this._nw0 = this._map.containerPointToLatLng([0, 0]);
       this._z0 = this._map.getZoom();
