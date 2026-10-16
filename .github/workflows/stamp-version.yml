@@ -1,0 +1,29 @@
+# Gives the service worker a new cache version on every app change,
+# so every phone gets the full new version (never a mix of old and new files).
+name: Stamp app version
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: stamp-version
+  cancel-in-progress: false
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hash app files and stamp sw.js
+        run: |
+          HASH=$(find docs -type f ! -name sw.js ! -name bars.json -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
+          sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
+          grep -n '^var VERSION' docs/sw.js
+          if git diff --quiet; then echo "No change"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Stamp app version $HASH [skip ci]"
+          git pull --rebase
+          git push

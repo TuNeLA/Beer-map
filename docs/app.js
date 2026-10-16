@@ -716,6 +716,32 @@
     });
   }
   function withName(fn) { if (getName()) fn(); else askName(fn); }
+  function showRename(back) {
+    openSheet(t("rename"), function (body) {
+      var inp = el("input", { class: "inp", id: "rename-inp", maxlength: "30", autocomplete: "nickname", enterkeyhint: "done", value: getName(), placeholder: t("namePh") });
+      var busy = false;
+      var go = function () {
+        if (busy) return;
+        var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
+        busy = true;
+        U.ls.set("olnu.name", n);
+        rpc("set_display_name", { p_display_name: n }).then(function (r) {
+          busy = false;
+          if (r.error) { toast(errMsg(r.error), { err: true }); return; }
+          toast(t("nameSaved"));
+          if (back) back(); else closeSheet();
+        });
+      };
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+      body.appendChild(el("label", { class: "fld", for: "rename-inp", text: t("nameHint") }));
+      body.appendChild(inp);
+      body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [
+        btn(t("cancel"), "", function () { if (back) back(); else closeSheet(); }),
+        btn(t("save"), "btn-amber", go)
+      ]));
+      setTimeout(function () { inp.focus(); inp.select(); }, 50);
+    });
+  }
 
   /* ---------- Groups ---------- */
   function joinLink(code) { return location.origin + location.pathname + "?join=" + encodeURIComponent(code); }
@@ -729,6 +755,13 @@
     withName(function () {
       openSheet(t("groups"), function (body) {
         var list = el("ul", { class: "glist" });
+        body.appendChild(el("div", { class: "namebar", style: "display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:6px" }, [
+          el("div", { style: "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [
+            el("span", { class: "muted", text: t("nameLabel") + " " }),
+            el("strong", { text: getName() })
+          ]),
+          btn("✏️ " + t("rename"), "btn-small", function () { showRename(showGroups); })
+        ]));
         body.appendChild(el("h3", { text: t("myGroups") + friendsNowText() }));
         body.appendChild(list);
         body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [
@@ -1071,8 +1104,28 @@
 
   /* ---------- Service worker ---------- */
   if ("serviceWorker" in navigator) {
+    // Auto-update: always check for a new sw.js, and reload once when a new version takes over.
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloading = false;
+    var typing = function () {
+      var a = document.activeElement;
+      return a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
+    };
+    var reloadNow = function () {
+      if (reloading) return;
+      if (typing()) { setTimeout(reloadNow, 5000); return; }
+      reloading = true; location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (hadController) reloadNow();   // first install: no reload needed
+      hadController = true;
+    });
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
+      navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" }).then(function (reg) {
+        var check = function () { reg.update().catch(function () {}); };
+        document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+        setInterval(check, 10 * 60 * 1000);
+      }).catch(function () {});
     });
   }
 
