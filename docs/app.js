@@ -245,14 +245,29 @@
 
   var markerById = {};   // beer id -> marker (or hot bar marker)
   var hotBarIds = {};    // bar id -> true
+  // Keep an open popup open when the 30 s poll or a map move redraws the markers.
+  var openKey = null, redrawing = false, plainBarMarkers = {};
+  map.on("popupopen", function (e) { var s = e.popup && e.popup._source; openKey = s && s.options.olnuKey || null; });
+  map.on("popupclose", function () { if (!redrawing) openKey = null; });
+  function reopenPopup(keep) {
+    if (!keep) return;
+    var id = keep.slice(1), m = keep.charAt(0) === "b" ? markerById[id] : null;
+    if (!m) hotLayer.eachLayer(function (x) { if (x.options.olnuKey === "h" + id) m = x; });
+    if (!m && plainBarMarkers[id]) m = plainBarMarkers[id];
+    if (!m || !m.getPopup()) { openKey = null; return; }
+    if (clusters.hasLayer(m) && clusters.getVisibleParent(m) !== m) { openKey = null; return; }
+    var pp = m.getPopup(), ap = pp.options.autoPan;
+    pp.options.autoPan = false; m.openPopup(); pp.options.autoPan = ap;
+  }
   function render() {
-    var z = map.getZoom();
+    var z = map.getZoom(), keep = openKey;
+    redrawing = true;
     clusters.clearLayers(); hotLayer.clearLayers(); markerById = {}; hotBarIds = {};
     var split = z >= HOT_ZOOM ? window.BARS.assign(beers) : { perBar: {}, rest: beers };
     var ms = split.rest.map(function (b) {
       var l = U.level(b.beer_count);
       var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l,
-        zIndexOffset: (b.is_mine ? 900 : b.friend_name ? 500 : 0) + l * 300, keyboard: false });
+        zIndexOffset: (b.is_mine ? 900 : b.friend_name ? 500 : 0) + l * 300, keyboard: false, olnuKey: "b" + b.id });
       m.bindPopup(function () { return beerPopup(b); });
       markerById[b.id] = m;
       return m;
@@ -262,18 +277,23 @@
       var agg = split.perBar[id];
       hotBarIds[id] = true;
       var m = L.marker([agg.bar.lat, agg.bar.lng], { icon: hotBarIcon(agg), pane: "hotbars", keyboard: false,
-        zIndexOffset: 1000 + agg.beers.length + maxLevel(agg.beers) * 500 });
+        zIndexOffset: 1000 + agg.beers.length + maxLevel(agg.beers) * 500, olnuKey: "h" + id });
       m.bindPopup(function () { return barPopup(agg.bar, agg.beers); }, { pane: "popupPane" });
       m.addTo(hotLayer);
       agg.beers.forEach(function (b) { markerById[b.id] = m; });
     });
     renderPlainBars();
+    redrawing = false;
+    reopenPopup(keep);
     renderHeat();
     updateCounts();
     renderTicker();
   }
   function renderPlainBars() {
-    barLayer.clearLayers();
+    var wasRedrawing = redrawing, keep = openKey;
+    redrawing = true;
+    barLayer.clearLayers(); plainBarMarkers = {};
+    redrawing = wasRedrawing;
     if (map.getZoom() < BAR_ZOOM) return;
     var list = window.BARS.inBounds(map.getBounds().pad(0.15), MAX_PLAIN_BARS + 50);
     var n = 0;
@@ -286,10 +306,13 @@
           pane: "bars", keyboard: false,
           icon: L.divIcon({ html: '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + "</div>", className: "", iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10] })
         });
+        m.options.olnuKey = "p" + bar.id;
         m.bindPopup(function () { return barPopup(bar, []); });
         m.addTo(barLayer);
+        plainBarMarkers[bar.id] = m;
       })(bar);
     }
+    if (!wasRedrawing && keep && keep.charAt(0) === "p") reopenPopup(keep);
   }
   var lastZoomBand = null;
   map.on("zoomend", function () {
@@ -406,7 +429,11 @@
     var m = myNight() || {};
     m.count = d.beer_count | 0;
     m.expires = d.expires_at ? new Date(d.expires_at).getTime() : U.next5am().getTime();
-    if (accepted) m.lastTap = Date.now();
+    if (accepted) {
+      m.lastTap = Date.now();
+      // Server without 0003 (no shot_count field) still has the old 15 min beer cooldown.
+      if (!("shot_count" in d)) m.lastTap += 15 * 60 * 1000 - U.COOLDOWN_MS;
+    }
     else if (d.wait_seconds > 0) m.lastTap = Date.now() + d.wait_seconds * 1000 - U.COOLDOWN_MS;
     U.ls.setJSON("olnu.night", m);
   }
@@ -488,9 +515,10 @@
   });
 
   /* ---------- Live beers ---------- */
-  var loading = false;
+  var loading = false, refreshAgain = false;
   function refresh() {
-    if (loading) return Promise.resolve();
+    // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
+    if (loading) { refreshAgain = true; return Promise.resolve(); }
     if (!LIVE || !authed) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
@@ -510,7 +538,10 @@
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") { reauth(); return; }
       if (!firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
-    }).then(function () { loading = false; });
+    }).then(function () {
+      loading = false;
+      if (refreshAgain) { refreshAgain = false; refresh(); }
+    });
   }
   // Poll only while the tab is visible. Hidden tab = no timer at all.
   var pollTimer = null;
@@ -567,6 +598,9 @@
     // Try to refresh the token first: signing out makes a NEW anonymous user and loses all groups.
     client.auth.refreshSession().then(function (r) {
       if (r && r.data && r.data.session && !r.error) return;
+      // Network error (phone just woke up, bad signal): keep the session. A new anonymous
+      // user would lose all groups and leave the old pin on the map.
+      if (authRetryable(r && r.error)) return;
       return client.auth.signOut().catch(function () {});
     }).catch(function () {}).then(function () { return signIn(); })
       .then(function () { reauthing = false; });
@@ -1234,6 +1268,11 @@
     if ("serviceWorker" in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
       return Promise.all(rs.map(function (r) { return r.unregister(); }));
     }));
+    // Also refresh the browser HTTP cache (max-age=600 on GitHub Pages), else the reload can get old files.
+    ["./", "./index.html", "./sw.js", "./config.js", "./app.js", "./styles.css", "./js/i18n.js", "./js/util.js",
+      "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js"].forEach(function (u) {
+      jobs.push(fetch(u, { cache: "reload" }).catch(function () {}));
+    });
     Promise.all(jobs).catch(function () {}).then(function () {
       var u = location.pathname + "?v=" + Date.now() + location.hash;
       location.replace(u);
@@ -1272,7 +1311,7 @@
     };
     var reloadNow = function () {
       if (reloading) return;
-      if (typing()) { setTimeout(reloadNow, 5000); return; }
+      if (typing() || busy || shotBusy) { setTimeout(reloadNow, 5000); return; }
       reloading = true; location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", function () {
@@ -1303,9 +1342,14 @@
   // Anonymous sign-in. Retries 3 times (1 s, 3 s, 6 s), then shows a clear message with a retry button.
   var signingIn = null;
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function authRetryable(e) {
+    return !!e && (e.name === "AuthRetryableFetchError" || navigator.onLine === false || e.status === 0 || /fetch|network/i.test(String(e.message || "")));
+  }
   function trySignInOnce() {
     return Promise.resolve(client.auth.getSession()).then(function (res) {
       if (res && res.data && res.data.session) return res;
+      // Token refresh failed on the network: try again later, do not make a new user.
+      if (res && authRetryable(res.error)) throw res.error;
       return Promise.resolve(client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; return r; });
     });
   }

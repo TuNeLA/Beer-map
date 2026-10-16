@@ -11,7 +11,9 @@ var CDN_HOSTS = ["cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.c
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) {
-    return Promise.all(SHELL.map(function (u) { return c.add(u).catch(function () {}); }));
+    // cache: "reload" skips the browser HTTP cache (GitHub Pages sends max-age=600),
+    // so a new version never stores an older app.js next to a newer index.html.
+    return Promise.all(SHELL.map(function (u) { return c.add(new Request(u, { cache: "reload" })).catch(function () {}); }));
   }).then(function () { return self.skipWaiting(); }));
 });
 
@@ -22,7 +24,15 @@ self.addEventListener("activate", function (e) {
 });
 
 function networkFirst(req) {
-  return fetch(req).then(function (res) {
+  // no-cache: always ask the server (304 is cheap). Else the HTTP cache (max-age=600) can give an
+  // old index.html next to a new app.js, and the app crashes on missing elements.
+  var fresh = req;
+  try { fresh = req.mode === "navigate" ? new Request(req.url, { cache: "no-cache", credentials: "same-origin" }) : new Request(req, { cache: "no-cache" }); } catch (e) {}
+  return fetch(fresh).then(function (res) {
+    // A redirected response cannot answer a navigation: use the normal request then.
+    if (fresh !== req && res && res.redirected && req.mode === "navigate") return fetch(req);
+    return res;
+  }).then(function (res) {
     if (res && res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(req, copy); }); }
     return res;
   }).catch(function () {

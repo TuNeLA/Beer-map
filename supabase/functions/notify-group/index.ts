@@ -77,6 +77,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (curErr) throw curErr;
     if (!current) return json({ sent: 0, failed: 0 });
     const count = current.beer_count as number;
+    // v5: a row with only shots (beer_count 0) is not a beer milestone.
+    if (!(count >= 1)) return json({ sent: 0, failed: 0 });
     const level = count >= 10 ? 10 : count >= 5 ? 5 : 1;
 
     // Atomic claim: raise notified_level to the target once. A concurrent call
@@ -102,7 +104,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
       return { title: `🍺 ${name} är ute på uppdrag`, body: "Första ölen ikväll. Öppna kartan." };
     };
-    const tag = `olnu-${uid}-${level}`;
+    // Tag uses the beer id (already in the url), not the user id: recipients must not learn user ids.
+    const tag = `olnu-${beerId}-${level}`;
 
     // 3. Caller's groups and display name per group.
     const { data: mine, error: mineErr } = await admin
