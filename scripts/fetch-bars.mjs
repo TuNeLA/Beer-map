@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fetch all bars/pubs/nightclubs/biergartens in Sweden from OpenStreetMap (Overpass)
-// and write docs/bars.json as [{id,name,lat,lng,type}]. Node 18+ (global fetch).
+// and write docs/bars.json as [{id,name,lat,lng,type}]. Node 18+ (global fetch). Run weekly by .github/workflows/bars.yml.
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -19,16 +19,45 @@ out center tags;`;
 
 const r5 = (v) => Math.round(v * 1e5) / 1e5;
 
-const res = await fetch(endpoint, {
-  method: "POST",
-  headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "olnu-fetch-bars/1.0" },
-  body: "data=" + encodeURIComponent(query),
-});
-if (!res.ok) {
-  console.error(`Overpass error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+// Polite client: identify ourselves, give the server time, retry a few times with back-off.
+const UA = "OlNu-bars/1.1 (+https://github.com/TuNeLA/Beer-map; weekly fetch of Swedish bars)";
+const TIMEOUT_MS = 10 * 60 * 1000; // generous: whole-country query can take minutes
+const mirrors = [endpoint, "https://overpass.kumi.systems/api/interpreter"];
+
+async function fetchOnce(url) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA, Accept: "application/json" },
+      body: "data=" + encodeURIComponent(query),
+      signal: ctl.signal,
+    });
+    if (!res.ok) throw new Error(`Overpass ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+let json = null;
+let lastErr = null;
+for (let attempt = 0; attempt < 4 && !json; attempt++) {
+  const url = mirrors[attempt % mirrors.length];
+  try {
+    console.log(`Fetching bars from ${url} (attempt ${attempt + 1})…`);
+    json = await fetchOnce(url);
+  } catch (e) {
+    lastErr = e;
+    console.error(String(e && e.message || e));
+    if (attempt < 3) await new Promise((r) => setTimeout(r, 30000 * (attempt + 1)));
+  }
+}
+if (!json) {
+  console.error("Giving up:", lastErr && lastErr.message);
   process.exit(1);
 }
-const json = await res.json();
 const seen = new Set();
 const bars = [];
 for (const el of json.elements || []) {
@@ -42,5 +71,10 @@ for (const el of json.elements || []) {
   bars.push({ id, name: t.name ?? null, lat: r5(lat), lng: r5(lng), type: t.amenity || "bar" });
 }
 bars.sort((a, b) => a.lat - b.lat || a.lng - b.lng);
+// Safety: Sweden has thousands of bars. A tiny result means a broken query; keep the old file.
+if (bars.length < 500) {
+  console.error(`Only ${bars.length} bars returned; not writing ${out}.`);
+  process.exit(1);
+}
 await writeFile(out, JSON.stringify(bars));
 console.log(`Wrote ${bars.length} bars to ${out}`);

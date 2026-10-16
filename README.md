@@ -11,20 +11,25 @@ Live beer map of Sweden. Tap **ÖL!** and your beer goes on the map. Everybody s
 - Pins stay until 05:00. Then the night resets.
 - Works on Android and iPhone (add to home screen).
 
-**Live demo:** https://tunela.github.io/Beer-map/
+**Live site:** https://tunela.github.io/Beer-map/
 
 <img src=".github/screenshot-demo.png" width="260"> <img src=".github/screenshot-medevac.png" width="260">
 
-## Try it now (demo mode)
+## Try it
 
-The app runs in demo mode with fake data when `docs/config.js` is empty.
+The site has **no fake data**. It needs two things to work:
+
+1. **Keys in `docs/config.js`** (see "Make it live" below). Without `SUPABASE_URL`, the site shows **"Startar snart / Coming soon"**: the map and the real bars work, but the ÖL! button is off.
+2. **The bars workflow** (`.github/workflows/bars.yml`). It makes `docs/bars.json` (all bars in Sweden) and commits it to `main`. It runs every week, and when you start it by hand: **Actions → Bars (OpenStreetMap) → Run workflow**. Until `bars.json` exists, the app asks OpenStreetMap for bars near you when you zoom in, and keeps them on the phone for 7 days.
+
+Run it on your computer:
 
 ```
 cd docs
 python -m http.server 8000
 ```
 
-Open http://localhost:8000. In demo mode, the "DEBUG: hoppa över väntan" button skips the 15 min wait.
+Open http://localhost:8000. The map starts at your location (if you allow it) or at Ludvika.
 
 ## Make it live
 
@@ -72,13 +77,12 @@ window.OLNU_CONFIG = {
 
 The anon key is safe to share. The database only allows the app's own functions.
 
-### 5. Get all bars in Sweden (optional, recommended)
+### 5. Get all bars in Sweden
 
-```
-node scripts/fetch-bars.mjs
-```
+Run the workflow **Actions → Bars (OpenStreetMap) → Run workflow** once. It also runs every Monday.
+Or run it on your computer: `node scripts/fetch-bars.mjs` (Node 20). Both make `docs/bars.json`.
 
-This makes `docs/bars.json`. Without it, the app asks OpenStreetMap for bars when you zoom in.
+Push notifications are optional. If `VAPID_PUBLIC_KEY` is empty, the app hides the notification switch. Everything else works.
 
 ### 6. Put it online (GitHub Pages)
 
@@ -103,6 +107,7 @@ The app is at https://tunela.github.io/Beer-map/. Push to `main` to update it.
 - `supabase/migrations/0001_olnu.sql` — database, rules and functions
 - `supabase/functions/notify-group/` — push notifications to groups
 - `scripts/fetch-bars.mjs` — downloads Swedish bars from OpenStreetMap
+- `.github/workflows/bars.yml` — runs the bar download every week and commits `docs/bars.json`
 - `CONTRACT.md` — the full spec
 
 

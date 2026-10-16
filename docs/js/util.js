@@ -73,5 +73,17 @@
     '<path d="M6 7.5a2.5 2.5 0 0 1 2-4 3 3 0 0 1 4.6-.4A2.6 2.6 0 0 1 16 5.5V8H6Z" fill="#ffffff"/></svg>';
   U.GLASS_OUTLINE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h10v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5Z" fill="none" stroke="#f5a623" stroke-width="2.4"/>' +
     '<path d="M16 9h2.2A1.8 1.8 0 0 1 20 10.8v3.4a1.8 1.8 0 0 1-1.8 1.8H16" fill="none" stroke="#f5a623" stroke-width="2.4"/></svg>';
+  // Compact count pill used for bar badges, single pins and clusters: "10 🍺".
+  // Streak is shown ONLY by the border class: p0 normal (thin amber), p1 HOT STREAK (flame glow), p2 MEDEVAC (red/white pulse).
+  // Friend present = green inner ring + green dot. No icon circle inside.
+  U.pillHTML = function (n, lvl, o) {
+    o = o || {};
+    lvl = lvl === 2 ? 2 : lvl === 1 ? 1 : 0;
+    var cls = "pill p" + lvl + (o.friend ? " pf" : "") + (o.mine ? " pm" : "") + (o.approx ? " pa" : "") + (o.cls ? " " + o.cls : "");
+    return '<div class="' + cls + '"><span class="pn">' + (Math.max(0, n | 0)) + "</span>" +
+      (o.noEmoji ? "" : '<span class="pe" aria-hidden="true">🍺</span>') +
+      (o.friend ? '<span class="pfd" aria-hidden="true"></span>' : "") +
+      (o.label || "") + "</div>";
+  };
   window.U = U;
 })();

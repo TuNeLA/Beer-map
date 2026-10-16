@@ -2,7 +2,10 @@
 (function () {
   "use strict";
   var U = window.U;
-  var OVERPASS = "https://overpass-api.de/api/interpreter";
+  // Main Overpass server first, a mirror second (used only when the main one fails).
+  var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+  var FETCH_TIMEOUT_MS = 30000, RETRY_AFTER_MS = 30000;
+  var failedAt = 0, endpointIx = 0;
   var TILE = 0.05, TTL = 7 * 86400e3, PREFIX = "olnu.bars.", MAX_TILES = 16;
   var ASSIGN_M = 75, GRID = 0.01;
 
@@ -78,6 +81,8 @@
     if (mode !== "overpass") return;
     if (map.getZoom() < 13) return;
     if (inFlight) { pending = true; return; }
+    if (failedAt && Date.now() - failedAt < RETRY_AFTER_MS) return;   // back off after an error
+    if (navigator.onLine === false) return;
     var bnd = map.getBounds();
     var y0 = Math.floor(bnd.getSouth() / TILE), y1 = Math.floor(bnd.getNorth() / TILE);
     var x0 = Math.floor(bnd.getWest() / TILE), x1 = Math.floor(bnd.getEast() / TILE);
@@ -100,8 +105,10 @@
     var q = '[out:json][timeout:25];(node["amenity"~"^(bar|pub|nightclub|biergarten)$"](' + bb +
       ');way["amenity"~"^(bar|pub|nightclub|biergarten)$"](' + bb + '););out center tags;';
     inFlight = true;
-    fetch(OVERPASS, { method: "POST", body: "data=" + encodeURIComponent(q),
-      headers: { "Content-Type": "application/x-www-form-urlencoded" } })
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var tm = ctl ? setTimeout(function () { ctl.abort(); }, FETCH_TIMEOUT_MS) : null;
+    fetch(OVERPASS[endpointIx % OVERPASS.length], { method: "POST", body: "data=" + encodeURIComponent(q),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctl ? ctl.signal : undefined })
       .then(function (r) { if (!r.ok) throw new Error("overpass " + r.status); return r.json(); })
       .then(function (json) {
         var list = parseOverpass(json), per = {};
@@ -112,10 +119,12 @@
           addBar(b);
         });
         Object.keys(per).forEach(function (k) { writeTile(k, per[k]); fetchedThisSession[k] = true; });
+        failedAt = 0;
         onChange();
       })
-      .catch(function () { /* silent: bars are optional */ })
+      .catch(function () { failedAt = Date.now(); endpointIx++; /* silent: bars are optional */ })
       .then(function () {
+        if (tm) clearTimeout(tm);
         inFlight = false;
         if (pending) { pending = false; fetchViewport(map); }
       });
@@ -125,12 +134,11 @@
     init: function (opts) {
       onChange = opts.onChange || onChange;
       var map = opts.map;
-      if (opts.staticBars) { opts.staticBars.forEach(addBar); mode = "static"; onChange(); return; }
       var debounced = U.debounce(function () { fetchViewport(map); }, 600);
       fetch("./bars.json", { cache: "no-cache" })
         .then(function (r) { if (!r.ok) throw new Error("no bars.json"); return r.json(); })
         .then(function (list) {
-          if (!Array.isArray(list)) throw new Error("bad bars.json");
+          if (!Array.isArray(list) || !list.length) throw new Error("bad bars.json");
           list.forEach(addBar); mode = "static"; onChange();
         })
         .catch(function () {
@@ -138,6 +146,8 @@
           loadAllCachedTiles(); onChange();
           map.on("moveend", debounced);
           debounced();
+          // Retry after a failed request even if the map does not move.
+          setInterval(function () { if (failedAt && document.visibilityState !== "hidden") fetchViewport(map); }, RETRY_AFTER_MS + 1000);
         });
     },
     nearest: nearestBar,

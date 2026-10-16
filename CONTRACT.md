@@ -44,7 +44,7 @@ App: "Öl Nu" (Swedish: "beer now"). A live map of Sweden. Tap one big Beer butt
 ```js
 window.OLNU_CONFIG = { SUPABASE_URL: "", SUPABASE_ANON_KEY: "", VAPID_PUBLIC_KEY: "" };
 ```
-Empty URL → DEMO MODE: fake beers around Swedish cities, local-only posting, fake groups, clear "Demo" badge.
+Empty URL → COMING SOON mode (v4): real map and real bars, no beers, ÖL! button disabled with "Startar snart". No fake data anywhere.
 
 ## Deep links
 - Join link / QR content: `<app origin+path>?join=CODE`. Opening it shows a join sheet (ask name if missing).

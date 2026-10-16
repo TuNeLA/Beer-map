@@ -29,7 +29,7 @@
 <header class="topbar">
   <div class="brand">
     <span class="brand-name">Öl Nu</span>
-    <span id="demo-chip" class="chip chip-demo" hidden>Demo</span>
+    <span id="soon-chip" class="chip chip-soon" hidden>Snart</span>
   </div>
   <div id="live-count" class="live-count" aria-live="polite">🍺 –</div>
   <button id="btn-top" class="icon-btn" type="button" aria-label="Topplista ikväll">🏆</button>
@@ -43,6 +43,8 @@
 </div>
 <div id="my-streak" class="my-streak" hidden></div>
 <button id="btn-heat" class="map-chip" type="button" aria-pressed="false" hidden>🔥 Värme</button>
+<button id="btn-locate" class="locate-btn" type="button" aria-label="Visa var jag är"><span aria-hidden="true">📍</span></button>
+<div id="offline-banner" class="offline-banner" role="status" hidden><span id="offline-text">Du är offline.</span></div>
 
 <div id="install-banner" class="banner" hidden>
   <span id="install-text"></span>
@@ -53,7 +55,6 @@
 <div class="dock">
   <div class="dock-top">
     <button id="btn-stop" class="btn btn-small btn-ghost stop-btn" type="button" hidden></button>
-    <button id="btn-skip" class="btn btn-small btn-debug" type="button" hidden></button>
   </div>
   <div class="dock-row">
     <button id="btn-groups" class="side-btn" type="button">
@@ -90,6 +91,10 @@
 
 <div id="toasts" class="toasts" aria-live="assertive"></div>
 
+<div id="intro" class="intro" role="dialog" aria-modal="true" aria-label="Öl Nu" hidden>
+  <div id="intro-body" class="intro-card hud-panel"></div>
+</div>
+
 <script src="./config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -98,7 +103,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="./js/i18n.js"></script>
 <script src="./js/util.js"></script>
-<script src="./js/demo.js"></script>
 <script src="./js/bars.js"></script>
 <script src="./js/push.js"></script>
 <script src="./js/fx.js"></script>

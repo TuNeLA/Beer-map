@@ -3,13 +3,16 @@
   "use strict";
   var U = window.U, I = window.I18N, t = I.t;
   var CFG = window.OLNU_CONFIG || {};
-  var DEMO_MODE = !CFG.SUPABASE_URL;
+  // No Supabase keys yet → "coming soon" mode: real map + real bars, no beers, ÖL! disabled.
+  var LIVE = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY);
+  var PUSH_ON = LIVE && !!CFG.VAPID_PUBLIC_KEY;
   var client = null;
   var authed = false;
 
   var SWEDEN = [[55.0, 10.9], [69.1, 24.2]];
   var MAX_BOUNDS = [[53.3, 7.5], [70.8, 27.8]];
-  var POLL_MS = 30000;
+  var POLL_MS = 30000, RPC_TIMEOUT_MS = 15000;
+  var LUDVIKA = [60.1496, 15.1878], START_ZOOM = 14;
   var HOT_ZOOM = 11, BAR_ZOOM = 13, MAX_PLAIN_BARS = 300;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -19,17 +22,29 @@
   var busy = false;
 
   /* ---------- RPC wrapper ---------- */
+  // Always resolves to {data, error}. Never rejects, never hangs longer than RPC_TIMEOUT_MS.
   function rpc(name, params) {
-    if (DEMO_MODE) return window.DEMO.rpc(name, params);
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
-    return Promise.resolve(params ? client.rpc(name, params) : client.rpc(name))
-      .catch(function (e) { return { data: null, error: e }; });
+    return new Promise(function (resolve) {
+      var done = false;
+      var tm = setTimeout(function () { done = true; resolve({ data: null, error: { message: "timeout" } }); }, RPC_TIMEOUT_MS);
+      var finish = function (r) { if (done) return; done = true; clearTimeout(tm); resolve(r); };
+      try {
+        Promise.resolve(params ? client.rpc(name, params) : client.rpc(name))
+          .then(function (r) { finish(r || { data: null, error: null }); }, function (e) { finish({ data: null, error: e || { message: "error" } }); });
+      } catch (e) { finish({ data: null, error: e }); }
+    });
+  }
+  function parseData(d) {
+    if (typeof d === "string") { try { return JSON.parse(d) || {}; } catch (e) { return {}; } }
+    return d || {};
   }
 
   /* ---------- Toasts ---------- */
   function toast(msg, opts) {
     opts = opts || {};
     var box = $("toasts"), el = document.createElement("div");
+    if (opts.id) { toastClear(opts.id); el.setAttribute("data-id", opts.id); }
     el.className = "toast" + (opts.err ? " err" : "") + (opts.cls ? " " + opts.cls : "");
     el.setAttribute("role", opts.err ? "alert" : "status");
     var span = document.createElement("span"); span.textContent = msg; el.appendChild(span);
@@ -44,13 +59,17 @@
     box.appendChild(el);
     if (opts.ms !== 0) setTimeout(function () { el.remove(); }, opts.ms || 3800);
   }
+  function toastClear(id) {
+    document.querySelectorAll('#toasts [data-id="' + id + '"]').forEach(function (x) { x.remove(); });
+  }
 
   /* ---------- Map ---------- */
   var map = L.map("map", {
     zoomControl: false, attributionControl: true, minZoom: 4, maxZoom: 19,
     maxBounds: MAX_BOUNDS, maxBoundsViscosity: 0.8, worldCopyJump: false, tap: true
   });
-  map.fitBounds(SWEDEN, { padding: [10, 10] });
+  // Start on Ludvika. If the user allows location, we move to them (see locate()).
+  map.setView(LUDVIKA, START_ZOOM);
   // Default tiles: Esri Dark Gray Canvas (no key, no watermark). With CFG.CARTO_KEY set: CARTO dark_all.
   if (CFG.CARTO_KEY) {
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=" + encodeURIComponent(CFG.CARTO_KEY), {
@@ -75,18 +94,17 @@
   var clusters = L.markerClusterGroup({
     showCoverageOnHover: false, spiderfyOnMaxZoom: true, maxClusterRadius: 50, disableClusteringAtZoom: 18,
     iconCreateFunction: function (cluster) {
-      var kids = cluster.getAllChildMarkers(), friend = false, lvl = 0, n = 0;
+      var kids = cluster.getAllChildMarkers(), friend = false, mine = false, lvl = 0, n = 0;
       for (var i = 0; i < kids.length; i++) {
         if (kids[i].options.friend) friend = true;
+        if (kids[i].options.mine) mine = true;
         if ((kids[i].options.streak | 0) > lvl) lvl = kids[i].options.streak | 0;
         n++;
       }
-      var size = n < 10 ? 40 : n < 100 ? 48 : 58;
-      var fs = n < 10 ? 18 : n < 100 ? 20 : 22;
-      var flag = lvl === 2 ? '<span class="cl-flag">🚁</span>' : lvl === 1 ? '<span class="cl-flag">🔥</span>' : "";
+      // Cluster: just the number. The border shows the highest streak inside.
       return L.divIcon({
-        html: '<div class="cl' + (friend ? " friend" : "") + (lvl ? " lvl" + lvl : "") + '" style="font-size:' + fs + 'px">' + n + flag + "</div>",
-        className: "marker-cluster", iconSize: [size, size]
+        html: U.pillHTML(n, lvl, { friend: friend, mine: mine, noEmoji: true, cls: "p-cl" }),
+        className: "olnu-cl", iconSize: [0, 0], iconAnchor: [0, 0]
       });
     }
   });
@@ -116,7 +134,7 @@
   }
   function applyHeatBtn() {
     var b = $("btn-heat");
-    b.hidden = !heat;
+    b.hidden = !heat || !LIVE;
     b.textContent = t("heat");
     b.setAttribute("aria-pressed", String(heatOn));
     b.setAttribute("aria-label", heatOn ? t("heatOn") : t("heatOff"));
@@ -127,17 +145,13 @@
   });
 
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
+  // Single pin: compact pill "N 🍺". Streak shows only as the pill border.
   function beerIcon(b) {
-    var l = U.level(b.beer_count);
-    var cls = "bm" + (b.is_mine ? " mine" : b.friend_name ? " friend" : "") + (b.precise ? "" : " approx") + lvlClass(l);
-    var html = '<div class="' + cls + '"><div class="bm-dot">' + (l === 2 ? '<span class="bm-heli">🚁</span>' : U.GLASS_SVG) + "</div>" +
-      (l === 1 ? '<span class="bm-fire">🔥</span>' : "") +
-      (b.beer_count > 1 ? '<span class="bm-n">' + (b.beer_count | 0) + "</span>" : "") +
-      (b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" : "") +
-      (b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "") +
-      "</div>";
-    var s = l === 2 ? 46 : 34;
-    return L.divIcon({ html: html, className: "", iconSize: [s, s], iconAnchor: [s / 2, s / 2], popupAnchor: [0, -s / 2] });
+    var n = Math.max(1, b.beer_count | 0);
+    var label = b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" :
+      b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "";
+    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
+    return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function levelLine(l) {
     if (l === 2) return '<div class="pp-med">🚁 ' + U.esc(t("medevac")) + '</div><div class="pp-care">' + U.esc(t("care")) + "</div>";
@@ -162,13 +176,12 @@
   }
   function barTypeLabel(type) { var m = t("barTypes"); return m[type] || m.bar; }
   function maxLevel(list) { var l = 0; list.forEach(function (b) { l = Math.max(l, U.level(b.beer_count)); }); return l; }
+  // Bar badge: compact pill "N 🍺" (N = people at the bar). Border = highest streak there.
   function hotBarIcon(agg) {
     var friend = agg.beers.some(function (b) { return b.friend_name; });
     var mine = agg.beers.some(function (b) { return b.is_mine; });
-    var l = maxLevel(agg.beers);
-    var html = '<div class="bar-hot' + (friend ? " friend" : mine ? " mine" : "") + lvlClass(l) + '"><span class="bar-ico">' +
-      (l === 2 ? "🚁" : U.GLASS_SVG) + "</span>" + agg.beers.length + " 🍺" + (l === 1 ? " 🔥" : "") + "</div>";
-    return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -14] });
+    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar" });
+    return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function barPopup(bar, list) {
     list = list || [];
@@ -321,7 +334,7 @@
         else toast(errMsg(r.error), { err: true });
         return;
       }
-      var d = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+      var d = parseData(r.data);
       var n = Math.max(skalCount(b), d.skal_count | 0);
       b.skal_count = n; b.i_skaled = true; mySkals[b.id] = n;
       document.querySelectorAll('.skal-btn[data-skal="' + String(id).replace(/["\\]/g, "") + '"]').forEach(function (x) {
@@ -363,7 +376,7 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = t("live", beers.length | 0);
+    $("live-count").innerHTML = LIVE ? t("live", beers.length | 0) : t("soonLive");
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
@@ -391,8 +404,11 @@
     $("btn-settings").setAttribute("aria-label", t("settings"));
     $("sheet-close").setAttribute("aria-label", t("close"));
     $("install-close").setAttribute("aria-label", t("close"));
-    $("demo-chip").hidden = !DEMO_MODE;
-    $("btn-skip").textContent = t("skip");
+    $("soon-chip").hidden = LIVE;
+    $("soon-chip").textContent = t("soonChip");
+    $("btn-locate").setAttribute("aria-label", t("locate"));
+    $("btn-locate").title = t("locate");
+    $("offline-text").textContent = t("offline");
     $("btn-top").setAttribute("aria-label", t("top"));
     $("btn-top").title = t("top");
     applyHeatBtn();
@@ -418,7 +434,8 @@
   var loading = false;
   function refresh() {
     if (loading) return Promise.resolve();
-    if (!DEMO_MODE && !authed) return Promise.resolve();
+    if (!LIVE || !authed) return Promise.resolve();
+    if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
     return rpc("live_beers").then(function (r) {
       if (r.error) throw r.error;
@@ -431,14 +448,31 @@
       render();
       streakAlerts();
       skalAlert();
+      toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") { reauth(); return; }
-      if (!firstLoadDone) toast(t("loadFail"), { err: true, action: { label: t("retry"), fn: refresh } });
+      if (!firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
     }).then(function () { loading = false; });
   }
-  setInterval(function () { if (document.visibilityState === "visible") refresh(); }, POLL_MS);
-  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { refresh(); tickCooldown(); } });
+  // Poll only while the tab is visible. Hidden tab = no timer at all.
+  var pollTimer = null;
+  function startPoll() { if (!pollTimer && LIVE) pollTimer = setInterval(refresh, POLL_MS); }
+  function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") { startPoll(); refresh(); tickCooldown(); }
+    else stopPoll();
+  });
+
+  /* ---------- Offline banner ---------- */
+  function applyOnline() {
+    var off = navigator.onLine === false;
+    $("offline-banner").hidden = !off;
+    document.body.classList.toggle("is-offline", off);
+    if (!off) refresh();
+  }
+  window.addEventListener("online", applyOnline);
+  window.addEventListener("offline", applyOnline);
 
   function handleFocus() {
     if (pendingFocus == null) return;
@@ -471,7 +505,7 @@
   }
   var reauthing = false;
   function reauth() {
-    if (DEMO_MODE || !client || reauthing) return;
+    if (!LIVE || !client || reauthing) return;
     reauthing = true; authed = false;
     // Try to refresh the token first: signing out makes a NEW anonymous user and loses all groups.
     client.auth.refreshSession().then(function (r) {
@@ -493,7 +527,17 @@
     var left = cooldownLeft(), btnEl = $("btn-beer"), ring = $("cd-ring");
     var on = left > 0;
     btnEl.classList.toggle("cooldown", on);
-    $("btn-skip").hidden = !(DEMO_MODE && on);
+    btnEl.classList.toggle("soon", !LIVE);
+    if (!LIVE) {
+      // Coming soon: no backend yet. Button is visible but disabled.
+      if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
+      btnEl.disabled = true;
+      $("beer-label").textContent = t("soonBtn");
+      $("beer-sub").textContent = t("soonSub");
+      btnEl.setAttribute("aria-label", t("soonBtn") + " — " + t("soonSub"));
+      ring.style.strokeDashoffset = String(RING_LEN);
+      return;
+    }
     if (on) {
       btnEl.disabled = true;
       $("beer-label").textContent = U.mmss(left);
@@ -511,20 +555,55 @@
     }
   }
   $("cd-ring").style.strokeDasharray = String(RING_LEN);
-  $("btn-skip").addEventListener("click", function () {
-    if (!DEMO_MODE) return;
-    window.DEMO.skipCooldown();
-    var m = myNight(); if (m) { m.lastTap = 0; U.ls.setJSON("olnu.night", m); }
-    tickCooldown();
-  });
 
   /* ---------- Beer button ---------- */
-  function getPosition() {
+  function getPosition(opts) {
     return new Promise(function (res, rej) {
       if (!("geolocation" in navigator)) { rej({ code: 2 }); return; }
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 });
+      try {
+        navigator.geolocation.getCurrentPosition(res, rej, opts || { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 });
+      } catch (e) { rej({ code: 2 }); }
     });
   }
+  // Explain how to turn location on, for the browser the user has.
+  function locHelp() {
+    var ua = navigator.userAgent || "";
+    if (U.isIOS()) return t("locHelpIOS");
+    if (/Firefox/i.test(ua)) return t("locHelpFirefox");
+    if (/Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg/i.test(ua)) return t("locHelpSafari");
+    return t("locHelpChrome");
+  }
+  function locError(err) {
+    if (err && err.code === 1) toast(t("locDenied") + " " + locHelp(), { err: true, ms: 12000, id: "loc" });
+    else if (err && err.code === 3) toast(t("locTimeout"), { err: true, ms: 6000, id: "loc" });
+    else toast(t("locFail"), { err: true, ms: 6000, id: "loc" });
+  }
+
+  /* ---------- Locate me ---------- */
+  var meLayer = L.layerGroup().addTo(map);
+  function showMe(lat, lng, acc) {
+    meLayer.clearLayers();
+    if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
+    L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
+      interactive: false, keyboard: false }).addTo(meLayer);
+  }
+  function inSweden(lat, lng) { return lat >= SWEDEN[0][0] && lat <= SWEDEN[1][0] && lng >= SWEDEN[0][1] && lng <= SWEDEN[1][1]; }
+  function locate(opts) {
+    opts = opts || {};
+    var b = $("btn-locate"); b.classList.add("busy");
+    return getPosition({ enableHighAccuracy: !!opts.precise, timeout: 12000, maximumAge: 60000 }).then(function (pos) {
+      var la = pos.coords.latitude, ln = pos.coords.longitude;
+      showMe(la, ln, pos.coords.accuracy);
+      if (inSweden(la, ln)) map.setView([la, ln], Math.max(opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate });
+      else if (!opts.quiet) toast(t("outside"), { ms: 5000 });
+      U.ls.set("olnu.locOk", "1");
+      return true;
+    }, function (err) {
+      if (!opts.quiet) locError(err);
+      return false;
+    }).then(function (ok) { b.classList.remove("busy"); return ok; });
+  }
+  $("btn-locate").addEventListener("click", function () { locate({ animate: true, precise: true }); });
   function setBusy(v) {
     busy = v; var b = $("btn-beer"); b.disabled = v || cooldownLeft() > 0; b.classList.toggle("busy", v);
   }
@@ -537,8 +616,10 @@
     return t("lvlN", n);
   }
   $("btn-beer").addEventListener("click", function () {
+    if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (busy || cooldownLeft() > 0) return;
-    if (!DEMO_MODE && !authed) { signIn(); return; }
+    if (navigator.onLine === false) { toast(t("offline"), { err: true, id: "off" }); return; }
+    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
     window.FX.unlock();
     window.FX.splash($("btn-beer"));
     window.FX.vibrate(20);
@@ -547,8 +628,7 @@
       return rpc("post_beer", { p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: prec === "exact" })
         .then(function (r) {
           if (r.error) { toast(errMsg(r.error, t("postFail")), { err: true, ms: 6000 }); return; }
-          var d = r.data || {};
-          if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = {}; } }
+          var d = parseData(r.data);
           if (d.accepted === false) {
             saveNight(d, false);
             toast(t("cooldownToast", U.mmss((d.wait_seconds | 0) * 1000)));
@@ -563,22 +643,27 @@
             window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
           }
           window.FX.sound.beer();
-          if (d.milestone != null && !DEMO_MODE && client) {
-            try { client.functions.invoke("notify-group").catch(function () {}); } catch (e) {}
-          }
+          if (d.milestone != null) notifyGroup();
           if (isFinite(d.lat) && isFinite(d.lng)) {
             map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
           }
-          return refresh();
+          refresh();
         });
-    }, function (err) {
-      if (err && err.code === 1) toast(t("locDenied"), { err: true, ms: 10000 });
-      else toast(t("locFail"), { err: true, ms: 5000 });
-    }).catch(function () { toast(t("postFail"), { err: true }); })
+    }, locError).catch(function () { toast(t("postFail"), { err: true }); })
       .then(function () { setBusy(false); tickCooldown(); updateCounts(); });
   });
+  // Push to the group. Fully silent: no push keys, no function deployed, network error → nothing happens.
+  function notifyGroup() {
+    if (!PUSH_ON || !client || !client.functions) return;
+    try {
+      Promise.resolve(client.functions.invoke("notify-group")).then(function () {}, function () {});
+    } catch (e) {}
+  }
   $("btn-stop").addEventListener("click", function () {
+    var sb = $("btn-stop"); if (sb.disabled) return;
+    sb.disabled = true;
     rpc("stop_beer").then(function (r) {
+      sb.disabled = false;
       if (r.error) { toast(errMsg(r.error), { err: true }); return; }
       toast(t("stopped"), { ms: 5000 }); refresh();
     });
@@ -637,6 +722,10 @@
   function friendsNowText() { var f = friendsDrinking(); return f ? " · " + t("friendsNow", f) : ""; }
 
   function showGroups() {
+    if (!LIVE) {
+      openSheet(t("groups"), function (body) { body.appendChild(el("div", { class: "info", text: t("soonInfo") })); });
+      return;
+    }
     withName(function () {
       openSheet(t("groups"), function (body) {
         var list = el("ul", { class: "glist" });
@@ -695,7 +784,7 @@
           if (n.length < 1 || n.length > 40) { toast(t("groupNameNeeded"), { err: true }); return; }
           rpc("create_group", { p_name: n, p_display_name: getName() }).then(function (r) {
             if (r.error || !r.data) { toast(errMsg(r.error), { err: true }); return; }
-            var g = typeof r.data === "string" ? JSON.parse(r.data) : r.data;
+            var g = parseData(r.data);
             toast(t("created")); refresh(); showCode(g, true);
           });
         };
@@ -722,7 +811,7 @@
           if (c.length !== 6) { toast(t("codeNeeded"), { err: true }); return; }
           rpc("join_group", { p_code: c, p_display_name: getName() }).then(function (r) {
             if (r.error) { toast(errMsg(r.error), { err: true }); return; }
-            var g = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+            var g = parseData(r.data);
             toast(t("joined", g.name || "")); refresh();
             showGroups();
             notifPromptOnce();
@@ -869,7 +958,7 @@
   /* ---------- Notifications ---------- */
   function iosNeedsInstall() { return U.isIOS() && !U.isStandalone(); }
   function enableNotifs() {
-    if (DEMO_MODE) { toast(t("notifDemo")); return Promise.resolve("demo"); }
+    if (!PUSH_ON) return Promise.resolve("nokey");
     if (iosNeedsInstall()) { toast(t("iosInstall"), { ms: 8000 }); return Promise.resolve("ios"); }
     return window.PUSH.enable(rpc, CFG.VAPID_PUBLIC_KEY).then(function (res) {
       if (res === "on") toast(t("notifOn"));
@@ -880,6 +969,7 @@
     }).catch(function (e) { toast(errMsg(e), { err: true }); return "error"; });
   }
   function notifPromptOnce(container) {
+    if (!PUSH_ON || !window.PUSH.supported()) return;
     if (U.ls.get("olnu.notifAsked", "") === "1") return;
     U.ls.set("olnu.notifAsked", "1");
     var box = el("div", { class: "info", style: "margin-top:14px" });
@@ -899,7 +989,7 @@
   /* ---------- Settings ---------- */
   function showSettings() {
     openSheet(t("settings"), function (body) {
-      if (DEMO_MODE) body.appendChild(el("div", { class: "info", text: t("demo") }));
+      if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName") });
       var saveName = function () {
@@ -921,6 +1011,7 @@
       });
       body.appendChild(seg);
 
+      if (PUSH_ON) {
       body.appendChild(el("h3", { text: t("notifications") }));
       var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": "false", "aria-label": t("notif") });
       var row = el("div", { class: "toggle-row" }, [el("span", { text: t("notif") }), sw]);
@@ -936,6 +1027,7 @@
           enableNotifs().then(function (res) { sw.setAttribute("aria-checked", String(res === "on")); });
         }
       });
+      }
 
       body.appendChild(el("h3", { text: t("sound") }));
       var snd = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(!window.FX.muted()), "aria-label": t("soundLabel") });
@@ -946,13 +1038,9 @@
       });
       body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
 
-      if (DEMO_MODE) {
-        body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("skipMed"), "btn-small btn-debug", function () {
-          window.DEMO.jumpTo9();
-          U.ls.setJSON("olnu.night", { count: 9, expires: U.next5am().getTime(), lastTap: 0 });
-          closeSheet(); refresh().then(tickCooldown);
-        })]));
-      }
+      body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("showIntro"), "btn-small", function () {
+        closeSheet(); showIntro(true);
+      })]));
 
       body.appendChild(el("h3", { text: t("about") }));
       body.appendChild(el("p", { text: t("privacy") }));
@@ -1000,37 +1088,122 @@
   }
 
   /* ---------- Auth + start ---------- */
+  // Anonymous sign-in. Retries 3 times (1 s, 3 s, 6 s), then shows a clear message with a retry button.
+  var signingIn = null;
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function trySignInOnce() {
+    return Promise.resolve(client.auth.getSession()).then(function (res) {
+      if (res && res.data && res.data.session) return res;
+      return Promise.resolve(client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; return r; });
+    });
+  }
   function signIn() {
     if (!client) return Promise.resolve();
-    return client.auth.getSession().then(function (res) {
-      if (res && res.data && res.data.session) return res;
-      return client.auth.signInAnonymously().then(function (r) { if (r.error) throw r.error; return r; });
-    }).then(function () {
+    if (signingIn) return signingIn;
+    toastClear("auth");
+    var delays = [1000, 3000, 6000], attempt = 0;
+    function go() {
+      return trySignInOnce().catch(function (e) {
+        if (attempt >= delays.length) throw e;
+        return wait(delays[attempt++]).then(go);
+      });
+    }
+    signingIn = go().then(function () {
       authed = true;
-      window.PUSH.resync(rpc);
+      toastClear("auth");
+      if (PUSH_ON) window.PUSH.resync(rpc);
+      startPoll();
       return refresh();
-    }).catch(function () {
-      toast(t("authFail"), { err: true, ms: 0, action: { label: t("retry"), fn: signIn } });
+    }).catch(function (e) {
+      var m = String((e && e.message) || "");
+      var key = navigator.onLine === false ? "authOffline" : /anonymous/i.test(m) && /disabled/i.test(m) ? "authDisabled" : "authFail";
+      toast(t(key), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } });
+    }).then(function () { signingIn = null; });
+    return signingIn;
+  }
+
+  /* ---------- First start (shown once) ---------- */
+  var INTRO_KEY = "olnu.intro";
+  function introDone() { return U.ls.get(INTRO_KEY, "") === "1"; }
+  function showIntro(again) {
+    return new Promise(function (resolve) {
+      var root = $("intro"), body = $("intro-body");
+      function close() { root.hidden = true; body.innerHTML = ""; resolve(); }
+      function stepAge() {
+        body.innerHTML = "";
+        var steps = el("ol", { class: "intro-steps" }, [
+          el("li", {}, [el("span", { class: "is-n", text: "1" }), el("span", { text: t("intro1") })]),
+          el("li", {}, [el("span", { class: "is-n", text: "2" }), el("span", { text: t("intro2") })]),
+          el("li", {}, [el("span", { class: "is-n", text: "3" }), el("span", { text: t("intro3") })])
+        ]);
+        var cb = el("input", { type: "checkbox", id: "age-cb" });
+        var go = btn(t("introGo"), "btn-amber btn-block", function () {
+          if (!cb.checked) { toast(t("ageNeeded"), { err: true, id: "age" }); return; }
+          U.ls.set(INTRO_KEY, "1");
+          toastClear("age");
+          if (again || U.ls.get("olnu.locOk", "") === "1") close(); else stepLoc();
+        });
+        go.disabled = true;
+        cb.addEventListener("change", function () { go.disabled = !cb.checked; });
+        var langRow = el("div", { class: "intro-lang" });
+        ["sv", "en"].forEach(function (l) {
+          langRow.appendChild(el("button", { type: "button", class: "intro-lang-b", "aria-pressed": String(I.lang === l), text: l.toUpperCase(),
+            onclick: function () { I.set(l); applyStaticText(); render(); stepAge(); } }));
+        });
+        body.appendChild(langRow);
+        body.appendChild(el("div", { class: "intro-brand", text: "Öl Nu" }));
+        body.appendChild(el("p", { class: "intro-tag", text: t("introTag") }));
+        body.appendChild(steps);
+        body.appendChild(el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));
+        body.appendChild(go);
+        body.appendChild(el("p", { class: "intro-priv", text: t("introPrivacy") }));
+      }
+      function stepLoc() {
+        body.innerHTML = "";
+        body.appendChild(el("div", { class: "intro-big", text: "📍" }));
+        body.appendChild(el("h2", { class: "intro-h", text: t("locTitle") }));
+        body.appendChild(el("p", { class: "intro-p", text: t("locWhy") }));
+        body.appendChild(el("p", { class: "intro-p muted", text: t("locWhy2") }));
+        var allow = btn(t("locAllow"), "btn-amber btn-block", function () {
+          allow.disabled = true;
+          locate({ quiet: false }).then(close);
+        });
+        body.appendChild(allow);
+        body.appendChild(btn(t("locLater"), "btn-block btn-ghost intro-later", close));
+      }
+      stepAge();
+      root.hidden = false;
     });
   }
 
   function start() {
     applyStaticText();
-    window.BARS.init({ map: map, staticBars: DEMO_MODE ? window.DEMO.bars : null, onChange: render });
-    var ready;
-    if (DEMO_MODE) {
-      ready = refresh();
-    } else {
+    applyOnline();
+    window.BARS.init({ map: map, onChange: render });
+    var intro = introDone() ? Promise.resolve() : showIntro(false);
+    // Returning user who allowed location before: center on them quietly.
+    if (introDone() && U.ls.get("olnu.locOk", "") === "1") locate({ quiet: true });
+    else if (introDone() && navigator.permissions && navigator.permissions.query) {
+      try {
+        navigator.permissions.query({ name: "geolocation" }).then(function (p) {
+          if (p && p.state === "granted") locate({ quiet: true });
+        }, function () {});
+      } catch (e) {}
+    }
+    var ready = Promise.resolve();
+    if (LIVE) {
       try {
         client = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
           auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "olnu.auth" }
         });
       } catch (e) { client = null; }
-      ready = client ? signIn() : Promise.resolve(toast(t("authFail"), { err: true }));
+      ready = client ? signIn() : Promise.resolve(toast(t("authFail"), { err: true, ms: 0, id: "auth" }));
     }
     if (joinCode) {
       var c = U.cleanCode(joinCode);
-      Promise.resolve(ready).then(function () { showJoin(c); });
+      Promise.all([ready, intro]).then(function () {
+        if (LIVE) showJoin(c); else toast(t("soonToast"), { id: "soon" });
+      });
     }
   }
   start();
