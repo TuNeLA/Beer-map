@@ -11,7 +11,7 @@ Live beer map of Sweden. Tap **ÖL!** and your beer goes on the map. Everybody s
 - Pins stay until 05:00. Then the night resets.
 - Works on Android and iPhone (add to home screen).
 
-**Live demo:** https://tunela.github.io/beer-map/
+**Live demo:** https://tunela.github.io/Beer-map/
 
 <img src=".github/screenshot-demo.png" width="260"> <img src=".github/screenshot-medevac.png" width="260">
 
@@ -82,8 +82,8 @@ This makes `docs/bars.json`. Without it, the app asks OpenStreetMap for bars whe
 
 ### 6. Put it online (GitHub Pages)
 
-The repo is https://github.com/TuNeLA/beer-map. GitHub Pages serves the `docs/` folder.
-The app is at https://tunela.github.io/beer-map/. Push to `main` to update it.
+The repo is https://github.com/TuNeLA/Beer-map. GitHub Pages serves the `docs/` folder.
+The app is at https://tunela.github.io/Beer-map/. Push to `main` to update it.
 
 ### 7. Install on the phone
 
