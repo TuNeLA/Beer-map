@@ -1,0 +1,59 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # TEST key only (committed in android/olnu-test.keystore). For sideloading.
+      # Make a new private key before any Play Store release.
+      OLNU_KEYSTORE_PASSWORD: VUOBf3RaNAr_Knel2fr7GOPg
+      OLNU_KEY_ALIAS: olnu
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build release APK
+        run: gradle -p android assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/olnu.apk
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: olnu-apk
+          path: out/olnu.apk
+
+      - name: Publish release android-latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Öl Nu Android (latest)
+          body: |
+            Latest Android build of Öl Nu (TWA). Download olnu.apk and install it.
+            Signed with a TEST key. For sideloading only.
+            Commit: ${{ github.sha }}
+          files: out/olnu.apk
+          make_latest: true
+          prerelease: false

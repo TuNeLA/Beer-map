@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'se.tunela.olnu'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'se.tunela.olnu'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            // TEST key for sideloading only. See README "Android app".
+            storeFile file(System.getenv('OLNU_KEYSTORE') ?: '../olnu-test.keystore')
+            storePassword System.getenv('OLNU_KEYSTORE_PASSWORD')
+            keyAlias System.getenv('OLNU_KEY_ALIAS') ?: 'olnu'
+            keyPassword System.getenv('OLNU_KEY_PASSWORD') ?: System.getenv('OLNU_KEYSTORE_PASSWORD')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

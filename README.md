@@ -104,3 +104,22 @@ The app is at https://tunela.github.io/Beer-map/. Push to `main` to update it.
 - `supabase/functions/notify-group/` — push notifications to groups
 - `scripts/fetch-bars.mjs` — downloads Swedish bars from OpenStreetMap
 - `CONTRACT.md` — the full spec
+
+
+## Android app
+
+The Android app is a Trusted Web Activity (TWA). It opens the live site in Chrome, so location, offline mode and push notifications work.
+
+Install:
+
+1. On your phone, open https://github.com/TuNeLA/Beer-map/releases/latest
+2. Download `olnu.apk`.
+3. When Android asks, allow "Install unknown apps" for Chrome.
+4. Open the file and tap Install.
+
+Notes:
+
+- The APK is built by GitHub Actions (`.github/workflows/android.yml`) when `android/**` changes. You can also start it by hand (Actions > Android APK > Run workflow).
+- **Test key:** the APK is signed with `android/olnu-test.keystore`. Its password is in the workflow file. This key is public. Use it for sideloading only. Make a new private key (kept as a GitHub secret) before any Play Store release, and update `docs/.well-known/assetlinks.json` with the new SHA-256 fingerprint.
+- Test key SHA-256: `C5:59:91:C6:3F:67:3A:BF:31:06:14:73:27:DF:A7:F2:B9:E6:C8:63:1B:25:3C:97:D4:E1:64:EB:AF:80:07:19`
+- **Thin URL bar:** the app shows a thin URL bar at the top. The reason: Android looks for `assetlinks.json` at the domain root (`https://tunela.github.io/.well-known/assetlinks.json`). This repo only puts it at `/Beer-map/.well-known/`. To fix it, make a repo `TuNeLA.github.io` with `.well-known/assetlinks.json` (copy from `docs/.well-known/`), or use a custom domain.
