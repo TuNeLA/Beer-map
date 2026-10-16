@@ -225,7 +225,6 @@
     if (list.length) h += '<div class="pp-data"><b>' + U.esc(t("barHere", list.length)) + "</b></div>";
     h += levelLine(maxLevel(list));
     if (names.length) h += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
-    if (list.some(function (b) { return b.is_mine; })) h += '<div class="pp-mine">' + U.esc(t("you")) + "</div>";
     var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
     if (tot) h += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
     var shTot = sumShots(list);
