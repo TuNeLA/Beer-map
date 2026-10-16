@@ -1,0 +1,6 @@
+[
+  {"id":"x-lobbybaren-ludvika","name":"Lobbybaren (Grand Hotel Elektra)","lat":60.15098,"lng":15.18663,"type":"bar"},
+  {"id":"x-la-parma-ludvika","name":"La Parma Pub & Restaurang","lat":60.15124,"lng":15.18797,"type":"pub"},
+  {"id":"x-grekiska-grill-bar-ludvika","name":"Grekiska Grill & Bar","lat":60.15205,"lng":15.18059,"type":"restaurant"},
+  {"id":"x-blackstone-ludvika","name":"Blackstone Steakhouse","lat":60.15038,"lng":15.18507,"type":"restaurant"}
+]

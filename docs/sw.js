@@ -1,7 +1,7 @@
 /* Öl Nu service worker. */
-var VERSION = "olnu-v5";
+var VERSION = "olnu-v6";
 var SHELL = [
-  "./", "./index.html", "./styles.css", "./config.js", "./app.js",
+  "./", "./index.html", "./styles.css", "./config.js", "./app.js", "./bars-extra.json",
   "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js",
   "./manifest.webmanifest", "./favicon.ico",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-512-maskable.png",
@@ -52,7 +52,7 @@ self.addEventListener("fetch", function (e) {
   if (sameOrigin) {
     var scopePath = new URL(self.registration.scope).pathname;
     if (url.pathname.indexOf(scopePath) !== 0) return;
-    if (/\/bars\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) { e.respondWith(networkFirst(req)); return; }
+    if (/\/bars(-extra)?\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) { e.respondWith(networkFirst(req)); return; }
     if (req.mode === "navigate" || /\.html?$/.test(url.pathname) || url.pathname === scopePath) { e.respondWith(networkFirst(req)); return; }
   }
   e.respondWith(cacheFirst(req));

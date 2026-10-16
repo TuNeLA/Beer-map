@@ -15,11 +15,62 @@
   var inFlight = false, pending = false;
   var onChange = function () {};
 
+  var DEDUPE_M = 60;
+  var extras = [];        // hand-curated bars from bars-extra.json
+
+  function gridKey(b) { return Math.floor(b.lat / GRID) + "_" + Math.floor(b.lng / GRID); }
+
+  function insertBar(b) {
+    bars[b.id] = b;
+    var k = gridKey(b);
+    (grid[k] || (grid[k] = [])).push(b);
+  }
+
+  function removeBar(b) {
+    delete bars[b.id];
+    var cell = grid[gridKey(b)];
+    if (cell) { var i = cell.indexOf(b); if (i >= 0) cell.splice(i, 1); }
+  }
+
+  function normName(s) {
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/['’´`]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  }
+  // Similar: one name contains the other, or the first word (3+ letters) is the same.
+  function similarName(a, b) {
+    var x = normName(a), y = normName(b);
+    if (!x || !y) return false;
+    if (x.indexOf(y) >= 0 || y.indexOf(x) >= 0) return true;
+    var fx = x.split(" ")[0], fy = y.split(" ")[0];
+    return fx.length >= 3 && fx === fy;
+  }
+  function isDuplicate(extra, b) {
+    return similarName(extra.name, b.name) && U.haversine(extra.lat, extra.lng, b.lat, b.lng) <= DEDUPE_M;
+  }
+
   function addBar(b) {
     if (!b || bars[b.id] || typeof b.lat !== "number" || typeof b.lng !== "number") return;
-    bars[b.id] = b;
-    var k = Math.floor(b.lat / GRID) + "_" + Math.floor(b.lng / GRID);
-    (grid[k] || (grid[k] = [])).push(b);
+    // A real OSM bar wins over a curated extra with a similar name close by.
+    for (var i = 0; i < extras.length; i++) {
+      var ex = extras[i];
+      if (bars[ex.id] === ex && isDuplicate(ex, b)) removeBar(ex);
+    }
+    insertBar(b);
+  }
+
+  function addExtra(b) {
+    if (!b || typeof b.id !== "string" || bars[b.id] || typeof b.lat !== "number" || typeof b.lng !== "number") return;
+    b.extra = true;
+    extras.push(b);
+    for (var id in bars) { if (!bars[id].extra && isDuplicate(b, bars[id])) return; }
+    insertBar(b);
+  }
+
+  function loadExtras() {
+    return fetch("./bars-extra.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("no bars-extra.json"); return r.json(); })
+      .then(function (list) { if (Array.isArray(list)) list.forEach(addExtra); })
+      .catch(function () { /* extras are optional */ });
   }
 
   function nearestBar(lat, lng) {
@@ -135,15 +186,18 @@
       onChange = opts.onChange || onChange;
       var map = opts.map;
       var debounced = U.debounce(function () { fetchViewport(map); }, 600);
+      var extrasReady = loadExtras();
       fetch("./bars.json", { cache: "no-cache" })
         .then(function (r) { if (!r.ok) throw new Error("no bars.json"); return r.json(); })
         .then(function (list) {
           if (!Array.isArray(list) || !list.length) throw new Error("bad bars.json");
-          list.forEach(addBar); mode = "static"; onChange();
+          list.forEach(addBar); mode = "static";
+          return extrasReady.then(function () { onChange(); });
         })
         .catch(function () {
           mode = "overpass";
           loadAllCachedTiles(); onChange();
+          extrasReady.then(function () { onChange(); });
           map.on("moveend", debounced);
           debounced();
           // Retry after a failed request even if the map does not move.
