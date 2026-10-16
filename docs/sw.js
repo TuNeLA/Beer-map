@@ -1,5 +1,5 @@
 /* Öl Nu service worker. */
-var VERSION = "olnu-a5b87987cf";
+var VERSION = "olnu-6c08a5f402";
 var SHELL = [
   "./", "./index.html", "./styles.css", "./config.js", "./app.js", "./bars-extra.json",
   "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js",
