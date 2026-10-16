@@ -1104,6 +1104,30 @@
       body.appendChild(el("h3", { text: t("about") }));
       body.appendChild(el("p", { text: t("privacy") }));
       body.appendChild(el("p", { class: "muted", text: t("aboutMore") }));
+
+      // Version + force update
+      var ver = el("span", { class: "muted", text: t("version") + " …" });
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) {
+          var k = ks.filter(function (x) { return x.indexOf("olnu-") === 0; })[0];
+          ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : "–");
+        }).catch(function () { ver.textContent = t("version") + " –"; });
+      } else { ver.textContent = t("version") + " –"; }
+      body.appendChild(el("div", { class: "toggle-row", style: "margin-top:10px" }, [ver, btn(t("updateNow"), "btn-small", forceUpdate)]));
+    });
+  }
+  function forceUpdate() {
+    toast(t("updating"));
+    var jobs = [];
+    if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) {
+      return Promise.all(ks.filter(function (k) { return k.indexOf("olnu-") === 0; }).map(function (k) { return caches.delete(k); }));
+    }));
+    if ("serviceWorker" in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+      return Promise.all(rs.map(function (r) { return r.unregister(); }));
+    }));
+    Promise.all(jobs).catch(function () {}).then(function () {
+      var u = location.pathname + "?v=" + Date.now() + location.hash;
+      location.replace(u);
     });
   }
   $("btn-settings").addEventListener("click", showSettings);
