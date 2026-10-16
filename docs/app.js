@@ -703,7 +703,7 @@
   function validName(s) { s = (s || "").trim(); return s.length >= 1 && s.length <= 30 ? s : null; }
   function askName(then) {
     openSheet(t("yourName"), function (body) {
-      var inp = el("input", { class: "inp", id: "name-inp", maxlength: "30", autocomplete: "nickname", enterkeyhint: "done", value: getName() });
+      var inp = el("input", { class: "inp", id: "name-inp", maxlength: "30", autocomplete: "nickname", enterkeyhint: "done", value: getName(), placeholder: t("namePh") });
       var go = function () {
         var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
         U.ls.set("olnu.name", n); then();
@@ -991,7 +991,7 @@
     openSheet(t("settings"), function (body) {
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
       body.appendChild(el("h3", { text: t("yourName") }));
-      var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName") });
+      var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
       var saveName = function () {
         var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
         U.ls.set("olnu.name", n);
