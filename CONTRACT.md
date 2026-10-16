@@ -122,3 +122,9 @@ Old and new app versions must work at the same time against one database.
 - `live_beers` gets `shot_count int` appended at the END (after i_skaled).
 - A row with beer_count 0 and shot_count > 0 is a valid live pin ("0 🍺 · 1 🥃" → show as shots only).
 - Errors: same as post_beer (`outside_sweden`, `not_authenticated`).
+
+## v6 CHANGES — place names in the feed + heat where beers were drunk (additive)
+- Feed/ticker/toasts name the spot with `BARS.describe(b)`: precise pin within 75 m of a named bar or restaurant → "vid X"; within 300 m → "nära X"; else, or for any approximate pin, the nearest town ("i Ludvika"); else "på okänd plats". Approximate pins never show a bar or restaurant name.
+- `docs/places.json` = `[[name, lat, lng, t]]`, t = r (restaurant) | f (fast_food) | c (cafe). Made weekly by `scripts/fetch-places.mjs` (bars.yml). Used only for naming, never drawn. Optional: missing file → bars + towns.
+- Migration `0005_heat_events.sql`: table `beer_events(kind, lat, lng, precise, n, created_at, expires_at)` with NO user_id, filled by a trigger on `beers` when beer_count or shot_count goes up. RPC `heat_points()` → setof `(lat, lng, w)` for tonight, precise events snapped to ~55 m cells. Weight: beer 1 (2 at beer 5–9, 3 at 10+), shot 0.5.
+- Client: heat layer uses `heat_points` when it exists; when the RPC is missing it falls back to live pins weighted by count (old behaviour).

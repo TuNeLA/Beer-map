@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/fetch-bars.mjs'
+      - 'scripts/fetch-places.mjs'
       - '.github/workflows/bars.yml'
   schedule:
     - cron: '17 4 * * 1'   # every Monday 04:17 UTC
@@ -20,7 +21,7 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,15 +34,23 @@ jobs:
       - name: Fetch bars from Overpass
         run: node scripts/fetch-bars.mjs
 
-      - name: Commit docs/bars.json if changed
+      - name: Fetch restaurant names from Overpass
+        # Optional: if this fails, the app falls back to bar names and towns.
+        # Own time limit, so a slow Overpass cannot use up the job time and lose the bars.json commit.
+        continue-on-error: true
+        timeout-minutes: 12
+        run: node scripts/fetch-places.mjs
+
+      - name: Commit docs/bars.json and docs/places.json if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/bars.json
+          if [ -f docs/places.json ]; then git add docs/places.json; fi
           if git diff --cached --quiet; then
-            echo "bars.json unchanged"
+            echo "bars.json and places.json unchanged"
             exit 0
           fi
-          git commit -m "Update bars.json from OpenStreetMap [skip ci]"
+          git commit -m "Update bars.json and places.json from OpenStreetMap [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main

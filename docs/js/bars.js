@@ -181,7 +181,63 @@
       });
   }
 
+  /* ---------- Places: restaurants, cafés, fast food (only used to name a spot, never drawn) ---------- */
+  // docs/places.json = [[name, lat, lng, t], …] made weekly by scripts/fetch-places.mjs. t: r|f|c.
+  var places = {}, placesState = "idle", onPlaces = [];
+  var PLACE_TYPES = { r: "restaurant", f: "fast_food", c: "cafe" };
+  function loadPlaces() {
+    if (placesState !== "idle") return;
+    placesState = "loading";
+    fetch("./places.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("no places.json"); return r.json(); })
+      .then(function (list) {
+        if (!Array.isArray(list)) throw new Error("bad places.json");
+        list.forEach(function (p) {
+          var o = Array.isArray(p) ? { name: p[0], lat: p[1], lng: p[2], type: PLACE_TYPES[p[3]] || "restaurant" } : p;
+          if (!o || !o.name || typeof o.lat !== "number" || typeof o.lng !== "number") return;
+          var k = gridKey(o);
+          (places[k] || (places[k] = [])).push(o);
+        });
+        placesState = "ready";
+        onPlaces.forEach(function (f) { try { f(); } catch (e) {} });
+      })
+      .catch(function () { placesState = "failed"; /* optional: fall back to bars + town */ });
+  }
+  // Nearest named spot (bar or place) within maxM metres. Search radius limited to the 3x3 grid (~1 km).
+  function nearestNamed(lat, lng, maxM) {
+    var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), best = null, bestD = maxM;
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+      var k = (gy + dy) + "_" + (gx + dx);
+      [grid[k], places[k]].forEach(function (cell) {
+        if (!cell) return;
+        for (var i = 0; i < cell.length; i++) {
+          if (!cell[i].name) continue;
+          var d = U.haversine(lat, lng, cell[i].lat, cell[i].lng);
+          if (d <= bestD) { bestD = d; best = cell[i]; }
+        }
+      });
+    }
+    return best ? { spot: best, d: bestD } : null;
+  }
+
   window.BARS = {
+    // Where is this beer? → { kind: "at"|"near"|"town"|"unknown", name }
+    //  at:   precise pin within 75 m of a named bar or restaurant
+    //  near: precise pin within 300 m of one
+    //  town: approximate pin (the user hid the exact spot), or nothing named close by
+    describe: function (b) {
+      if (b && b.precise) {
+        var bar = nearestBar(b.lat, b.lng);
+        if (bar && bar.name) return { kind: "at", name: bar.name };
+        var n = nearestNamed(b.lat, b.lng, 300);
+        if (n) return { kind: n.d <= ASSIGN_M ? "at" : "near", name: n.spot.name };
+      }
+      var c = window.CITIES && window.CITIES.nearest(b.lat, b.lng);
+      if (c) return { kind: "town", name: c.name };
+      return { kind: "unknown", name: null };
+    },
+    loadPlaces: loadPlaces,
+    onPlacesReady: function (f) { onPlaces.push(f); if (placesState === "ready") f(); },
     init: function (opts) {
       onChange = opts.onChange || onChange;
       var map = opts.map;

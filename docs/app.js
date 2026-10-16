@@ -153,11 +153,31 @@
     var w = (n > 0 ? n * (l === 2 ? 3 : l === 1 ? 2 : 1) : 0) + shotCount(b) * 0.5;
     return Math.max(0.5, w);
   }
+  // heatPoints: tonight's beers at the place each one was drunk (RPC heat_points, migration 0005).
+  // null = not available (old database) → fall back to the live pins weighted by their count.
+  var heatPoints = null, heatRpcMissing = false, heatFetchedAt = 0;
+  function loadHeatPoints() {
+    if (!heat || heatRpcMissing || !heatOn || Date.now() - heatFetchedAt < 25000) return;
+    heatFetchedAt = Date.now();
+    rpc("heat_points").then(function (r) {
+      if (r.error) {
+        var m = String(r.error.message || r.error.code || "");
+        if (/PGRST202|could not find the function|does not exist|\b404\b/i.test(m)) heatRpcMissing = true;
+        return;
+      }
+      var list = (r.data || []).filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng) && p.w > 0; });
+      heatPoints = list.map(function (p) { return [+p.lat, +p.lng, +p.w]; });
+      renderHeat();
+    });
+  }
   function renderHeat() {
     if (!heat) return;
     if (heatOn && !map.hasLayer(heat)) heat.addTo(map);
     if (!heatOn && map.hasLayer(heat)) map.removeLayer(heat);
-    if (heatOn) heat.setLatLngs(beers.map(function (b) { return [b.lat, b.lng, heatWeight(b)]; }));
+    if (!heatOn) return;
+    // Use the per-beer trail when the server has it; an empty trail with live pins means it is still filling.
+    if (heatPoints && (heatPoints.length || !beers.length)) heat.setLatLngs(heatPoints);
+    else heat.setLatLngs(beers.map(function (b) { return [b.lat, b.lng, heatWeight(b)]; }));
   }
   function applyHeatBtn() {
     var b = $("btn-heat");
@@ -168,7 +188,7 @@
   }
   $("btn-heat").addEventListener("click", function () {
     heatOn = !heatOn; U.ls.set(HEAT_KEY, heatOn ? "1" : "0");
-    applyHeatBtn(); renderHeat();
+    applyHeatBtn(); heatFetchedAt = 0; loadHeatPoints(); renderHeat();
   });
 
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
@@ -324,9 +344,15 @@
 
   /* ---------- Ticker + streak alerts ---------- */
   function whoOf(b) { return b.is_mine ? t("you") : b.friend_name || t("someone"); }
+  // Place phrase with its preposition: "vid Pub X" / "nära Pizzeria Y" / "i Ludvika" / "på okänd plats".
   function whereOf(b) {
-    var bar = b.precise ? window.BARS.nearest(b.lat, b.lng) : null;
-    return bar && bar.name ? bar.name : t("unknownPlace");
+    var d = window.BARS.describe(b);
+    return d.kind === "unknown" ? t("whereUnknown") : t("where_" + d.kind, d.name);
+  }
+  // Short place label without preposition, for list rows.
+  function placeLabel(b) {
+    var d = window.BARS.describe(b);
+    return d.kind === "near" ? t("nearX", d.name) : d.name || t("other");
   }
   var tickerKey = "";
   function renderTicker() {
@@ -531,6 +557,7 @@
         if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
       });
       render();
+      loadHeatPoints();
       streakAlerts();
       skalAlert();
       toastClear("load");
@@ -1115,9 +1142,7 @@
     return beers.filter(function (b) { return U.level(b.beer_count) > 0; })
       .sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); })
       .slice(0, 20).map(function (b) {
-        var bar = b.precise ? window.BARS.nearest(b.lat, b.lng) : null;
-        var where = bar && bar.name ? bar.name : cityOf(b) || t("other");
-        return { name: whoOf(b), sub: where, n: b.beer_count | 0, icon: lvlIcon(U.level(b.beer_count)),
+        return { name: whoOf(b), sub: placeLabel(b), n: b.beer_count | 0, icon: lvlIcon(U.level(b.beer_count)),
           lat: b.lat, lng: b.lng, z: 17, id: b.id, friend: !!b.friend_name, mine: !!b.is_mine };
       });
   }
@@ -1436,6 +1461,9 @@
     applyStaticText();
     applyOnline();
     window.BARS.init({ map: map, onChange: render });
+    // Restaurant names for the feed: load after the map is up, then redraw the ticker.
+    setTimeout(window.BARS.loadPlaces, 1500);
+    window.BARS.onPlacesReady(function () { tickerKey = ""; renderTicker(); });
     var intro = introDone() ? Promise.resolve() : showIntro(false);
     // Returning user who allowed location before: center on them quietly.
     if (introDone() && U.ls.get("olnu.locOk", "") === "1") locate({ quiet: true });

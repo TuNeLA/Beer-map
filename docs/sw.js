@@ -62,7 +62,7 @@ self.addEventListener("fetch", function (e) {
   if (sameOrigin) {
     var scopePath = new URL(self.registration.scope).pathname;
     if (url.pathname.indexOf(scopePath) !== 0) return;
-    if (/\/bars(-extra)?\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) { e.respondWith(networkFirst(req)); return; }
+    if (/\/(bars(-extra)?|places)\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) { e.respondWith(networkFirst(req)); return; }
     if (req.mode === "navigate" || /\.html?$/.test(url.pathname) || url.pathname === scopePath) { e.respondWith(networkFirst(req)); return; }
   }
   e.respondWith(cacheFirst(req));
