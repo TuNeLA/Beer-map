@@ -116,12 +116,36 @@
   var HEAT_KEY = "olnu.heat";
   var heatOn = U.ls.get(HEAT_KEY, "1") !== "0";
   var heat = null;
+  // Fix leaflet.heat 0.2.0 zoom drift on Leaflet 1.9: its _animateZoom uses the old
+  // pre-1.0 maths. Remember where the canvas was drawn, then scale it from that spot.
+  if (L.HeatLayer && !L.HeatLayer.prototype._olnuFixed) {
+    var HP = L.HeatLayer.prototype, origReset = HP._reset;
+    HP._reset = function () {
+      origReset.call(this);
+      this._nw0 = this._map.containerPointToLatLng([0, 0]);
+      this._z0 = this._map.getZoom();
+    };
+    HP._animateZoom = function (e) {
+      var m = this._map;
+      if (!this._canvas || !this._nw0) return;
+      var scale = m.getZoomScale(e.zoom, this._z0);
+      var pos = m._latLngToNewLayerPoint(this._nw0, e.zoom, e.center);
+      L.DomUtil.setTransform(this._canvas, pos, scale);
+    };
+    HP._olnuFixed = true;
+  }
   if (typeof L.heatLayer === "function") {
     heat = L.heatLayer([], {
       radius: 34, blur: 26, maxZoom: 11, max: 4, minOpacity: 0.25,
       gradient: { 0.1: "rgba(60,25,0,0)", 0.3: "#a85a08", 0.5: "#f5a623", 0.68: "#ff7a1a", 0.85: "#ff3b3b", 1.0: "#fff6e0" }
     });
   }
+  // Pinch-zoom on phones fires "zoom" (not "zoomanim"): keep the heat glued to the map.
+  map.on("zoom", function () {
+    if (heat && map.hasLayer(heat) && !map._animatingZoom) {
+      heat._animateZoom({ zoom: map.getZoom(), center: map.getCenter() });
+    }
+  });
   function heatWeight(b) {
     var n = b.beer_count | 0, l = U.level(n);
     return Math.max(1, n) * (l === 2 ? 3 : l === 1 ? 2 : 1);
