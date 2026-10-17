@@ -534,7 +534,17 @@
   var chaosRes = null;         // last result of CHAOS.compute
   var chaosPrevOn = null;      // was it chaos at the last poll? (null before the first poll)
   var chaosShown = false;
-  var chaosHidden = null;      // {at, out, hot} when the user tapped ✕
+  // {at, out, hot, until} when the user tapped ✕ or the banner hid itself. Saved, so it stays away
+  // after the app is reopened, until 05:00 or until the night gets clearly wilder.
+  var CHAOS_SEEN_KEY = "olnu.chaosSeen", CHAOS_AUTO_MS = 9000, chaosAutoTimer = null;
+  var chaosHidden = (function () {
+    var v = U.ls.getJSON(CHAOS_SEEN_KEY, null);
+    return v && v.until > Date.now() ? v : null;
+  })();
+  function chaosMarkSeen(r) {
+    chaosHidden = { at: Date.now(), out: r.out | 0, hot: r.hot | 0, until: U.next5am().getTime() };
+    U.ls.setJSON(CHAOS_SEEN_KEY, chaosHidden);
+  }
   var chaosLine = null;        // {lang, ix} of the headline on screen
   var chaosLastIx = -1;        // last headline index, never the same twice in a row
   var CHAOS_BACK_MS = 60 * 60 * 1000;
@@ -573,14 +583,17 @@
   }
   function chaosSuppressed(r) {
     if (!chaosHidden) return false;
-    var back = Date.now() - chaosHidden.at >= CHAOS_BACK_MS || r.out >= Math.ceil(chaosHidden.out * 1.5) || r.hot > chaosHidden.hot;
-    if (back) chaosHidden = null;
+    // Comes back only when clearly wilder: 50 % more people out (min +5) or 2 more on hot streak, or after the night.
+    var back = Date.now() > (chaosHidden.until || 0) ||
+      r.out >= Math.max(Math.ceil(chaosHidden.out * 1.5), chaosHidden.out + 5) || r.hot >= chaosHidden.hot + 2;
+    if (back) { chaosHidden = null; U.ls.del(CHAOS_SEEN_KEY); }
     return !back;
   }
   function setChaosHeight() {
     var box = $("chaos");
-    var h = box.hidden ? 0 : box.offsetHeight + 6;
-    document.documentElement.style.setProperty("--chaos-h", h + "px");
+    // The banner floats over the HUD (it hides itself after a few seconds), so buttons never jump.
+    var h = 0;
+    document.documentElement.style.setProperty("--chaos-h", "0px");
     // Keep popups clear of the banner too.
     L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(10, 150 + h);
   }
@@ -600,6 +613,12 @@
       $("chaos-close").setAttribute("aria-label", t("chaosHide"));
     }
     setChaosHeight();
+    if (started) {
+      clearTimeout(chaosAutoTimer);
+      chaosAutoTimer = setTimeout(function () {
+        if (chaosShown && chaosRes) { chaosMarkSeen(chaosRes); renderChaos(); }
+      }, CHAOS_AUTO_MS);
+    } else if (!show) clearTimeout(chaosAutoTimer);
     return started;
   }
   // fromPoll: called after live_beers loaded. Else (location or language changed): redraw, no toast.
@@ -620,7 +639,7 @@
   });
   $("chaos-close").addEventListener("click", function () {
     if (!chaosRes) return;
-    chaosHidden = { at: Date.now(), out: chaosRes.out, hot: chaosRes.hot };
+    chaosMarkSeen(chaosRes);
     renderChaos();
   });
   window.addEventListener("resize", U.debounce(setChaosHeight, 150));

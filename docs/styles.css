@@ -378,7 +378,7 @@ input.code-inp{text-transform:uppercase;letter-spacing:.35em;font-size:24px;text
 .takeover.still .to-heli{left:50%;transform:translateX(-50%)}
 
 /* ---------- v6: Kaos i stan banner (under the ticker; pushes the HUD line, Värme chip, locate and toasts down) ---------- */
-.chaos{position:fixed;z-index:999;top:calc(var(--sat) + 100px);left:calc(var(--sal) + 10px);right:calc(var(--sar) + 10px);
+.chaos{position:fixed;z-index:1001;top:calc(var(--sat) + 100px);left:calc(var(--sal) + 10px);right:calc(var(--sar) + 10px);
   display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;color:#fff;
   background:repeating-linear-gradient(135deg,rgba(255,194,77,.07) 0 8px,transparent 8px 16px),linear-gradient(90deg,rgba(179,18,27,.96),rgba(110,14,20,.94));
   border:1px solid var(--red);border-left:4px solid var(--amber);box-shadow:0 0 16px rgba(255,59,59,.45);
