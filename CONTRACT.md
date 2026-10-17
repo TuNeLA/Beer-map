@@ -193,3 +193,8 @@ Call `supabase.functions.invoke('notify-group', {body})`. Old calls (no body, `h
 - **Friend pushes** (milestone 1/5): some lines now include the sender's title, e.g. "🎖️ Öl-veteranen Oskar dricker för fullo!". Level 10 lines stay caring (no title).
 - **Level-up push** (automatic, in the normal after-beer call): when the caller's lifetime total reaches a new title, group-mates get "⬆️ {namn} har blivit befordrad till {titel}!" (or a variant), url `/?focus=<beer id>`, tag `olnu-title-<beer id>`. Once per title per user, ever. Response gets `levelup: n`.
 - The function also cleans `beer_events` older than 10 days (5% of calls). The `beer_events` trigger no longer cleans.
+
+## v8 OTHER DRINKS + GROUP STATUS (additive)
+- `post_other(p_kind text, p_lat, p_lng, p_precise)` → json `{accepted, wait_seconds, id, beer_count, other_count, other_kind, expires_at}`. p_kind ∈ rom, vin, cider, drink, shot, whisky, annat. 10 min cooldown between other drinks (own timer). Moves the pin. Never counts as beer (no streak, title, milestone, week_beers). Errors: outside_sweden, invalid_kind.
+- `live_others()` → setof `(beer_id bigint, other_count int, other_kind text)` for live rows with other drinks. Join with live_beers by id. A live_beers row with beer_count 0 and other_count > 0 is a valid pin (show "🥃 1 rom").
+- `group_status(p_group_id uuid)` → setof `(name, beers, others, other_kind, live, total, is_me)` — all members, tonight's counts (0 if none), live = pin visible, total = lifetime beers. Error: not_member.
