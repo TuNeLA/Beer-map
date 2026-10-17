@@ -486,8 +486,14 @@
       if (btn || !ctx.input || off.post_photo) return;
       btn = el("button", { type: "button", class: "ph-btn", title: L("Skicka bild", "Send photo"), "aria-label": L("Skicka bild", "Send photo"), text: "📷" });
       input = el("input", { type: "file", accept: "image/*", class: "ph-file", tabindex: "-1", "aria-hidden": "true" });
-      btn.addEventListener("click", function () { input.value = ""; input.click(); });
+      // Android can close the page while the camera/gallery is open (low memory). Remember the chat,
+      // so the app opens it again after the restart and tells what happened (onAuthed below).
+      btn.addEventListener("click", function () {
+        try { localStorage.setItem("olnu.phPick", JSON.stringify({ g: g.id, t: Date.now() })); } catch (e) {}
+        input.value = ""; input.click();
+      });
       input.addEventListener("change", function () {
+        try { localStorage.removeItem("olnu.phPick"); } catch (e) {}
         var f = input.files && input.files[0];
         if (!f) return;
         if (f.type && !/^image\//.test(f.type)) { toast(errText("invalid_photo"), { err: true }); return; }
@@ -509,7 +515,18 @@
     if (inited) return;
     inited = true; A = api;
   }
-  window.PHOTO = { init: init, chatOpen: chatOpen, _shrink: shrink, _viewer: viewer, _url: photoUrl, _remember: remember };   // _url/_remember: chief.js
+  // The page was restarted while the photo picker was open: open the chat again and explain.
+  function onAuthed() {
+    var p = null;
+    try { p = JSON.parse(localStorage.getItem("olnu.phPick") || "null"); localStorage.removeItem("olnu.phPick"); } catch (e) {}
+    if (!p || !p.g || Date.now() - (p.t || 0) > 5 * 60e3) return;
+    setTimeout(function () {
+      try { if (window.SOCIAL && window.SOCIAL.openChatLink) window.SOCIAL.openChatLink(p.g); } catch (e) {}
+      toast(L("📷 Telefonen startade om appen medan kameran var öppen. Ta bilden först, välj den sen från Galleriet med 📷.",
+        "📷 The phone restarted the app while the camera was open. Take the photo first, then pick it from the Gallery with 📷."), { ms: 9000 });
+    }, 1200);
+  }
+  window.PHOTO = { init: init, onAuthed: onAuthed, chatOpen: chatOpen, _shrink: shrink, _viewer: viewer, _url: photoUrl, _remember: remember };   // _url/_remember: chief.js
 
   // Until app.js lists window.PHOTO in mods() and social.js calls PHOTO.chatOpen, ride along with the
   // existing AFTER hooks (after.js loads before this file). Both paths are safe together (guards above).
