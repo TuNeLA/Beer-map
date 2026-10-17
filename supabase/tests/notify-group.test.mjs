@@ -227,4 +227,49 @@ t("isUuid and bucketStart", () => {
   assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120 });
 });
 
+// ---- v9 INKALLELSE ----
+t("rally lines: ~10 call-out lines with {namn}, ~5 yes lines with {namn} and {yes}", () => {
+  assert.ok(m.RALLY_LINES.length >= 10);
+  for (const l of m.RALLY_LINES) assert.ok(l.includes("{namn}"), l);
+  assert.ok(m.RALLY_LINES.filter((l) => l.includes("{body}")).length >= 5);
+  assert.ok(m.RALLY_YES_LINES.length >= 5);
+  for (const l of m.RALLY_YES_LINES) assert.ok(l.includes("{namn}") && l.includes("{yes}"), l);
+});
+
+t("rallyPayload with and without place, actions, no leftover placeholders", () => {
+  const p = m.rallyPayload(0, "Anton", "Behöver män till skyttegraven!", "Pitchers", 42);
+  assert.equal(p.title, "🪖 Anton: Behöver män till skyttegraven!");
+  assert.equal(p.body, "📍 Pitchers · Svara i appen");
+  assert.equal(p.url, "/?rally=42");
+  assert.equal(p.tag, "olnu-rally-42");
+  assert.equal(p.rally_id, 42);
+  assert.deepEqual(p.actions, [{ action: "yes", title: "✅ Jag kommer" }, { action: "no", title: "❌ Kan inte" }]);
+  assert.equal(m.rallyPayload(1, "A", "hemma hos mig", null, 7).body, "Svara i appen");
+  assert.equal(m.rallyPayload(1, "A", "x", "", 7).body, "Svara i appen");
+  assert.equal(m.rallyPayload(1, "Bo", "Ses på Pitchers", null, 7).title, "📯 Bo blåser till samling! Ses på Pitchers");
+  for (let i = -3; i < m.RALLY_LINES.length + 3; i++) {
+    const q = m.rallyPayload(i, "A", "B", "C", 1);
+    assert.ok(q.title.includes("A") && !/\{\w+\}/.test(q.title), q.title);
+  }
+});
+
+t("rallyYesPayload: stacks per rally, count in text", () => {
+  const p = m.rallyYesPayload(0, "Oskar", 7, 42);
+  assert.equal(p.title, "✅ Oskar är på väg! 7 på väg nu");
+  assert.equal(p.url, "/?rally=42");
+  assert.equal(p.tag, "olnu-rally-42-yes");
+  for (let i = 0; i < m.RALLY_YES_LINES.length + 2; i++) {
+    const q = m.rallyYesPayload(i, "X", 3, 1);
+    assert.ok(q.title.includes("X") && q.title.includes("3") && !/\{\w+\}/.test(q.title), q.title);
+  }
+});
+
+t("parseRallyId", () => {
+  assert.equal(m.parseRallyId(42), 42);
+  assert.equal(m.parseRallyId("42"), 42);
+  for (const bad of [0, -1, 1.5, NaN, Infinity, "", "4a", "-3", " 4", null, undefined, {}, 2 ** 60, "1234567890123456"]) {
+    assert.equal(m.parseRallyId(bad), null, String(bad));
+  }
+});
+
 console.log(`\n${passed} tests passed`);

@@ -198,3 +198,41 @@ Call `supabase.functions.invoke('notify-group', {body})`. Old calls (no body, `h
 - `post_other(p_kind text, p_lat, p_lng, p_precise)` → json `{accepted, wait_seconds, id, beer_count, other_count, other_kind, expires_at}`. p_kind ∈ rom, vin, cider, drink, shot, whisky, annat. 10 min cooldown between other drinks (own timer). Moves the pin. Never counts as beer (no streak, title, milestone, week_beers). Errors: outside_sweden, invalid_kind.
 - `live_others()` → setof `(beer_id bigint, other_count int, other_kind text)` for live rows with other drinks. Join with live_beers by id. A live_beers row with beer_count 0 and other_count > 0 is a valid pin (show "🥃 1 rom").
 - `group_status(p_group_id uuid)` → setof `(name, beers, others, other_kind, live, total, is_me)` — all members, tonight's counts (0 if none), live = pin visible, total = lifetime beers. Error: not_member.
+
+## v9 INKALLELSE (rally / call-out; additive)
+A group member calls friends to come ("🪖 Behöver män till skyttegraven! Ses på Pitchers", "hemma hos mig"). Members answer yes / no / maybe. Everyone in the group sees "7 på väg". Migration `supabase/migrations/0009_rally.sql` (also in `setup.sql`; `update-now.sql` = only 0009). Needs 0001–0008 first. All RPCs: authenticated only, `not_authenticated` without a session. A missing RPC (old database) = feature off, hide the UI.
+
+### Tables (RLS on, no policies, no client access)
+- `rallies(id bigserial, group_id uuid, user_id uuid, body text 1–100, place text ≤ 60 null, lat float8 null, lng float8 null, created_at, expires_at = next 05:00 Europe/Stockholm, closed bool default false)`
+- `rally_answers(rally_id bigint, user_id uuid, answer 'yes'|'no'|'maybe', updated_at, notified bool default false, pk(rally_id, user_id))`
+- "Live rally" = `expires_at > now()` and not `closed`.
+
+### RPCs
+| name | params | returns | errors |
+|---|---|---|---|
+| `create_rally` | `p_group_id uuid, p_body text, p_place text default null, p_lat float8 default null, p_lng float8 default null` | json `{id bigint}` | `not_member`, `invalid_msg`, `slow_down` |
+| `answer_rally` | `p_rally_id bigint, p_answer text` | json `{yes int, no int, maybe int, mine text}` | `invalid_answer`, `rally_not_found`, `not_member` |
+| `close_rally` | `p_rally_id bigint` | void | `rally_not_found` |
+| `group_rallies` | `p_group_id uuid` | setof `(id bigint, name text, body text, place text, lat float8, lng float8, created_at timestamptz, yes int, no int, maybe int, my_answer text, yes_names text[], is_mine bool)` | `not_member` |
+| `my_rallies` | – | setof: the same columns as `group_rallies`, then `group_id uuid, group_name text` | – |
+
+Rules:
+- **create_rally**: caller must be a member of the group. Body and place are trimmed (control chars → space). Empty body → `"Behöver förstärkning!"`. Body > 100 or place > 60 chars → `invalid_msg`. Empty place → null. `p_lat/p_lng` are optional: kept (rounded to 5 decimals) only when BOTH are given and inside the Sweden bbox, else silently ignored (no error). Max 1 new rally per 3 min per user, all groups → `slow_down`. The creator is answered `yes` automatically. Any older open rally by the same user in the same group is closed. After success, call `notify-group` with `{event:"rally", rally_id: id}`.
+- **answer_rally**: rally must be live (else `rally_not_found`, also for unknown ids). Caller must be a member of the rally's group (else `not_member`). `p_answer` is trimmed and lower-cased; not yes/no/maybe → `invalid_answer` (checked first). Upsert: the caller can change the answer any time; the creator can too. Counts = current members only. When `mine` = `"yes"`, call `notify-group` with `{event:"rally_yes", rally_id}` (the server sends at most once per member per rally, so calling again is harmless).
+- **close_rally**: creator only (else `rally_not_found`). Closing twice is fine. Closed rallies disappear from both lists.
+- **group_rallies / my_rallies**: live rallies only, newest first (`created_at` desc), max 10. `my_rallies` covers all the caller's groups (for a HUD banner). Never returns rallies of groups the caller is not in. `name` = creator's display_name in that group (null if the creator left → show "Någon"). `yes/no/maybe` and `yes_names` count current members only. `yes_names` = display names of members who answered yes, creator first, then by time of last answer. `my_answer` = caller's answer or null. `is_mine` = caller created it. `lat/lng` may be null (no map point; show `place` or nothing).
+- UI text: "{yes} på väg" (e.g. "7 på väg").
+
+### Edge function `notify-group` — new body events
+Old events work as before. Responses `{sent, failed}` plus `reason` when nothing was sent. New reasons: `no_rally`, `already_sent`, `no_answer` (plus `no_group`).
+| body | who gets it | limit | payload |
+|---|---|---|---|
+| `{event:"rally", rally_id}` | members of the rally's group only (not the caller, not other groups) | once per rally (`push_sent` kind `rally:<id>`, night = rally `expires_at`) | title random line, e.g. "🪖 {namn}: {body}", "📯 {namn} blåser till samling! {body}", "🚨 Förstärkning behövs! {namn} kallar"; body `"📍 <place> · Svara i appen"` or `"Svara i appen"` (no place); url `/?rally=<id>`; tag `olnu-rally-<id>`; `rally_id: <id>`; `actions: [{action:"yes", title:"✅ Jag kommer"}, {action:"no", title:"❌ Kan inte"}]` |
+| `{event:"rally_yes", rally_id}` | the rally creator only (never the caller) | once per member per rally (atomic `rally_answers.notified` claim; yes → no → yes does not push again) | title random line, e.g. "✅ {namn} är på väg! {yes} på väg nu", "🪖 {namn} har anslutit till skyttegraven! {yes} på väg", "🏃 {namn} springer mot dig. {yes} på väg."; body "Tryck för att se vilka som kommer."; url `/?rally=<id>`; tag `olnu-rally-<id>-yes` (one stacked notification per rally); `rally_id: <id>` |
+- `rally`: caller must be the creator, the rally live and created < 5 min ago (else `no_rally`). Caller no longer in the group → `no_group`. Second call → `already_sent`.
+- `rally_yes`: rally live (else `no_rally`); caller and creator must both still be members (else `no_group`); caller's answer must be `yes` and not yet notified (else `no_answer`). `{yes}` = current members who answered yes, creator included.
+- `rally_id` may be a number or a digit string.
+- **Service worker**: show `actions` when present. On `notificationclick` with `event.action` = `"yes"` or `"no"` (and a `rally_id` / rally url), open `/?rally=<id>&answer=yes|no`; plain click opens `url`.
+
+### Deep link
+- `?rally=<id>[&answer=yes|no|maybe]`: open the group's rally view and show that rally (look it up in `my_rallies`; not found → toast "Inkallelsen är över"). With `answer`, call `answer_rally(id, answer)` once (then `notify-group {event:"rally_yes"}` when the answer is yes) and remove `answer` from the URL so a reload does not answer again.

@@ -9,6 +9,7 @@
 //  C) LEVEL-UP (v7): when the caller's lifetime beers reach a new title, push to group-mates once
 //     per title ever.
 // Body events (v7 SOCIAL): {event:"comehere"|"sos"|"msg", ...}, plus "home"/"pause" from v6.
+// Body events (v9 INKALLELSE): {event:"rally"|"rally_yes", rally_id}.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -395,6 +396,67 @@ export function kaosPayload(idx: number, stad: string, out: number, hot: number,
   return { title, body, url: "/", tag: `olnu-kaos-${nightLabel(nightIso)}` };
 }
 
+// ---- v9 INKALLELSE (rally) ----
+
+/** Call-out lines to group-mates. {namn} = creator, {body} = rally text. */
+export const RALLY_LINES: string[] = [
+  "🪖 {namn}: {body}",
+  "📯 {namn} blåser till samling! {body}",
+  "🚨 Förstärkning behövs! {namn} kallar",
+  "🍻 {namn} har öppnat baren. Kommer du?",
+  "🫡 Inkallelse från {namn}. Uppdrag: öl.",
+  "📣 {namn} kallar in trupperna: {body}",
+  "🥁 Trummorna går! {namn}: {body}",
+  "📡 Nödsignal från {namn}: {body}",
+  "🎖️ Order från {namn}: {body}",
+  "🚁 {namn} begär luftunderstöd. {body}",
+];
+
+/** "Someone is coming" lines to the creator. {yes} = number on the way. */
+export const RALLY_YES_LINES: string[] = [
+  "✅ {namn} är på väg! {yes} på väg nu",
+  "🪖 {namn} har anslutit till skyttegraven! {yes} på väg",
+  "🏃 {namn} springer mot dig. {yes} på väg.",
+  "🫡 {namn} har tagit emot ordern. {yes} på väg",
+  "🚕 {namn} har hoppat in i taxin. {yes} på väg nu",
+];
+
+/** Rally id from the request body: a positive safe integer (number or digit string), else null. */
+export function parseRallyId(x: unknown): number | null {
+  const n = typeof x === "number" ? x : typeof x === "string" && /^\d{1,15}$/.test(x) ? Number(x) : NaN;
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+function wrapIdx(idx: number, n: number): number {
+  return ((Math.floor(idx) % n) + n) % n;
+}
+
+/** Push to group-mates. The service worker opens /?rally=<id>&answer=yes|no for the actions. */
+export function rallyPayload(idx: number, namn: string, body: string, place: string | null | undefined, rallyId: number) {
+  return {
+    title: fill(RALLY_LINES[wrapIdx(idx, RALLY_LINES.length)], { namn, body }),
+    body: place ? `📍 ${place} · Svara i appen` : "Svara i appen",
+    url: `/?rally=${rallyId}`,
+    tag: `olnu-rally-${rallyId}`,
+    rally_id: rallyId,
+    actions: [
+      { action: "yes", title: "✅ Jag kommer" },
+      { action: "no", title: "❌ Kan inte" },
+    ],
+  };
+}
+
+/** Push to the rally creator when a member answers yes (same tag, so they stack into one). */
+export function rallyYesPayload(idx: number, namn: string, yes: number, rallyId: number) {
+  return {
+    title: fill(RALLY_YES_LINES[wrapIdx(idx, RALLY_YES_LINES.length)], { namn, yes }),
+    body: "Tryck för att se vilka som kommer.",
+    url: `/?rally=${rallyId}`,
+    tag: `olnu-rally-${rallyId}-yes`,
+    rally_id: rallyId,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -743,6 +805,77 @@ async function msgPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
 }
 
+// ---- v9 INKALLELSE ----
+
+type Rally = {
+  id: number; group_id: string; user_id: string; body: string; place: string | null;
+  created_at: string; expires_at: string; closed: boolean;
+};
+
+/** Live, open rally by id, or null. */
+async function loadRally(admin: Admin, rallyId: number): Promise<Rally | null> {
+  const { data, error } = await admin
+    .from("rallies").select("id, group_id, user_id, body, place, created_at, expires_at, closed")
+    .eq("id", rallyId).eq("closed", false).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (error) throw error;
+  return (data as Rally) ?? null;
+}
+
+// {event:"rally", rally_id}: the creator calls group-mates of that ONE group. Once per rally.
+async function rallyPush(admin: Admin, uid: string, b: Body) {
+  const rid = parseRallyId(b.rally_id);
+  if (rid === null) return { ...NONE, reason: "no_rally" };
+  const r = await loadRally(admin, rid);
+  if (!r || r.user_id !== uid || Date.parse(r.created_at) <= Date.now() - 5 * 60 * 1000) {
+    return { ...NONE, reason: "no_rally" };
+  }
+  const mates = await mateNames(admin, uid, r.group_id); // empty when the caller left the group
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: claimed, error } = await admin
+    .from("push_sent")
+    .upsert([{ user_id: uid, kind: `rally:${r.id}`, night: r.expires_at }],
+      { onConflict: "user_id,kind,night", ignoreDuplicates: true })
+    .select("user_id");
+  if (error) throw error;
+  if (!claimed || claimed.length === 0) return { ...NONE, reason: "already_sent" };
+  const idx = Math.floor(Math.random() * RALLY_LINES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(rallyPayload(idx, mates.get(s.user_id) ?? "En vän", r.body, r.place, r.id)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+
+// {event:"rally_yes", rally_id}: tell the creator that the caller is on the way. Once per answer
+// (atomic claim of rally_answers.notified). Never to the caller.
+async function rallyYesPush(admin: Admin, uid: string, b: Body) {
+  const rid = parseRallyId(b.rally_id);
+  if (rid === null) return { ...NONE, reason: "no_rally" };
+  const r = await loadRally(admin, rid);
+  if (!r) return { ...NONE, reason: "no_rally" };
+  if (r.user_id === uid) return { ...NONE, reason: "no_answer" };
+  const { data: members, error: mErr } = await admin
+    .from("group_members").select("user_id, display_name").eq("group_id", r.group_id);
+  if (mErr) throw mErr;
+  const nameOf = new Map<string, string>();
+  for (const m of members ?? []) nameOf.set(m.user_id as string, m.display_name as string);
+  if (!nameOf.has(uid) || !nameOf.has(r.user_id)) return { ...NONE, reason: "no_group" };
+  const { data: claimed, error: cErr } = await admin
+    .from("rally_answers").update({ notified: true })
+    .eq("rally_id", r.id).eq("user_id", uid).eq("answer", "yes").eq("notified", false)
+    .select("user_id");
+  if (cErr) throw cErr;
+  if (!claimed || claimed.length === 0) return { ...NONE, reason: "no_answer" };
+  const { data: yesRows, error: yErr } = await admin
+    .from("rally_answers").select("user_id").eq("rally_id", r.id).eq("answer", "yes");
+  if (yErr) throw yErr;
+  const yes = ((yesRows ?? []) as { user_id: string }[]).filter((x) => nameOf.has(x.user_id)).length;
+  const idx = Math.floor(Math.random() * RALLY_YES_LINES.length);
+  const payload = JSON.stringify(rallyYesPayload(idx, nameOf.get(uid) ?? "En vän", yes, r.id));
+  const jobs = (await subsOf(admin, [r.user_id])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+
 // Status push to group-mates: "home" (Jag är hemma) or "pause" (öltorsk). Once per kind per night.
 async function statusPush(admin: Admin, uid: string, kind: "home" | "pause") {
   const none = { sent: 0, failed: 0, status: 0 };
@@ -851,6 +984,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "comehere") return json(await comeHere(admin, uid, body));
     if (event === "sos") return json(await sos(admin, uid, body));
     if (event === "msg") return json(await msgPush(admin, uid, body));
+    if (event === "rally") return json(await rallyPush(admin, uid, body));
+    if (event === "rally_yes") return json(await rallyYesPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };
