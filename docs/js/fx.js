@@ -83,6 +83,46 @@
     o.connect(lp); lp.connect(g); g.connect(out); o.start(at); o.stop(at + 1.7);
   }
 
+  // Voice: the phone's own Swedish voice says a random line, with a random "character"
+  // (pitch/tempo). Off when sound is muted, or when the phone has no Swedish voice.
+  var VOICE_LINES = [
+    "Skååål!", "Skål på dej!", "Hörru, skål då!", "Nu jäklar. Skål!", "Skål för sjutton!",
+    "Ner me den!", "Botten upp, soldat!", "Uppdrag slutfört. Skål!", "En till, en till!",
+    "Int' kan man väl säga nej?", "Det här ska firas. Skål!", "Senaste nytt: ännu en öl. Skål!",
+    "Order mottagen. Öl levererad.", "Gutår!", "Ja men ta mej tusan. Skål!", "Skål, och drick lite vatten nu.",
+    "Hej å hå, nu går det undan!", "Sånt här gillar vi i Dalarna. Skål!", "Kalasbra. Skål!", "Ölen är din vän. Skål!"
+  ];
+  var VOICES = [
+    { rate: 1.15, pitch: 0.7 },   // sergeanten
+    { rate: 0.8, pitch: 0.55 },   // gubben från Dalarna
+    { rate: 1.0, pitch: 1.0 },    // nyhetsuppläsaren
+    { rate: 1.25, pitch: 1.5 },   // den glada
+    { rate: 0.9, pitch: 1.2 }     // den lugna
+  ];
+  var lastVoiceLine = -1;
+  function svVoice() {
+    try {
+      var vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+      for (var i = 0; i < vs.length; i++) if (/^sv/i.test(vs[i].lang)) return vs[i];
+    } catch (e) {}
+    return null;
+  }
+  try { if (window.speechSynthesis) window.speechSynthesis.getVoices(); } catch (e) {}
+  function say() {
+    if (muted() || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+    var v = svVoice(); if (!v) return;
+    var i = Math.floor(Math.random() * VOICE_LINES.length);
+    if (i === lastVoiceLine) i = (i + 1) % VOICE_LINES.length;
+    lastVoiceLine = i;
+    var ch = VOICES[Math.floor(Math.random() * VOICES.length)];
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(VOICE_LINES[i]);
+      u.voice = v; u.lang = v.lang; u.rate = ch.rate; u.pitch = ch.pitch; u.volume = 1;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
   var sound = {
     beer: function () {
       var c = ready(); if (!c) return;
@@ -90,6 +130,7 @@
         var out = master(c, 0.55), t0 = c.currentTime + 0.02;
         pssh(c, t0, out); ping(c, t0 + 0.28, 2350, out); ping(c, t0 + 0.4, 2900, out, 0.28);
       } catch (e) {}
+      setTimeout(say, 650);
     },
     clink: function () {
       var c = ready(); if (!c) return;
@@ -159,5 +200,5 @@
   }
 
   window.FX = { vibrate: vibrate, unlock: unlock, sound: sound, splash: splash, takeover: takeover,
-    muted: muted, setMuted: setMuted, reduced: reduced };
+    muted: muted, setMuted: setMuted, reduced: reduced, say: say };
 })();
