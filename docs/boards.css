@@ -1,0 +1,15 @@
+/* Öl Nu v17 TOPPLISTOR (js/boards.js): local top list + Wall of Fame in the 🏆 sheet. */
+.bd-box{margin-top:16px;border-top:1px solid var(--line);padding-top:6px}
+.bd-board,.bd-wall{margin-top:10px}
+.bd-h{margin:8px 0 4px}
+.bd-note{font-size:12px;margin:6px 0 0;line-height:1.4}
+.bd-row,.bd-wrow{cursor:default}
+.bd-row:active,.bd-wrow:active{transform:none}
+.bd-row.bd-anon .top-name{font-style:italic;opacity:.85}
+.bd-wrow .top-sub{white-space:normal;overflow:visible;text-overflow:clip}
+.bd-ico{font-size:20px;min-width:30px;text-align:center}
+.bd-gap{text-align:center;color:var(--muted);line-height:1;padding:0}
+.bd-optin{margin-top:12px;padding:6px 10px;border:1px dashed var(--line);background:var(--night)}
+.bd-optin .toggle-row{min-height:44px}
+.bd-optin .toggle-row span{overflow-wrap:anywhere}
+.bd-optin .switch[disabled]{opacity:.6;cursor:wait}

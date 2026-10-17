@@ -593,3 +593,41 @@ Migration `supabase/migrations/0016_privacy_erase.sql` (applied on the server 20
 - G worldwide: no map bounds (minZoom 3, worldCopyJump); position checks are "finite, |lat| ≤ 85"; Sweden stays the start view; server `outside_sweden` → "Servern tar int' emot öl utanför Sverige än – snart!".
 - H all drinks: levels, numbers and sorting use `U.drinks(b)` = beer_count + other_count (pins, HUD "Ikväll: N 🍺", crowd list, bar popup, top lists, group status/chat, chaos, heat fallback, news). HOT STREAK / MEDEVAC takeovers when the total crosses 5 / 10, also after ANNAT; water reminder every 3rd drink; "ta det lugnt" counts other drinks. Only the total is shown (no 🍺/🥃 split). Server-side totals come later.
 - F ticker mix: group items (tk-friend / tk-me, kinds `group*`/`me*`/`friend*`) take up to 4 of 6 slots, then town items (bars, rates, check-in crowds, chaos, anonymous town lines), then general filler.
+
+## v17 WORLDWIDE + ALL DRINKS + TOPPLISTOR (server + js/boards.js; additive)
+Migration `supabase/migrations/0023_world_alldrinks_boards.sql` (applied on the server 2026-10-17 as 0023_world_alldrinks_a / _b / _c; also appended to `setup.sql`). Needs 0001–0022. No RPC changed its return type; new json fields are at the end. Client: `docs/js/boards.js` (`window.BOARDS`, through `mods()`) + `docs/boards.css`. A missing board RPC (old database, PGRST202) = the board sections and the switch hide.
+
+### Worldwide (owner decision 1)
+- Valid position = finite, |lat| ≤ 85, lng −180..180 (`olnu_world_ok`). Error code stays `outside_sweden` (now = invalid coordinates).
+- World: `post_beer_v2`, `post_other_v2`, `check_in`, `record_bar`, `set_push_location`, `create_rally` (lat/lng kept), `report_queue` / `add_offer` / `beer_type_stats` (via `olnu_bp_in_sweden`, now world bounds), `create_crawl`, `guess_night`, `poll_v2`, notify-group `sos` (`validPt`).
+- `poll_v2`: box clamped to |lat| ≤ 85 instead of Sweden. A box with `min_lng > max_lng` (across the date line) or a box that reaches past ±180 after the 15 % margin = the whole lng range (−180..180). `bbox` in the answer shows the box used.
+- Still Sweden-only (bodies contain row removal, so they were not replaced): old `post_beer` and old `post_other`. Old apps that call them keep the old rule. `post_beer_v2` / `post_other_v2` post outside Sweden through the old bodies at a placeholder point; a BEFORE trigger (`olnu_a_world_pos`, runs first, transaction-local setting `olnu.world_pos`) writes the real rounded position before any other trigger sees the row (heat, medal cell, town, snap, undo state all get the real place).
+- `post_beer_v2` gets new fields `lat`, `lng` (the stored row), `drinks` (= beer_count + other_count); `milestone` is now 1 / 5 / 10 when the accepted tap made **drinks** exactly 1 / 5 / 10. `post_other_v2` gets `lat`, `lng`, `drinks`, `milestone` (same rule).
+
+### All drinks count (owner decision 2)
+- `week_beers` (trigger `olnu_week_beers`, now on beer_count AND other_count) counts every drink. So lifetime total, titles (`my_stats`, `poll_v2.me`, `pins[].total`, `friend_totals`, `group_status.total`), `group_league` and Ligamästare count beers + other drinks. Undo still takes 1 off.
+- Medals (`olnu_medal_eval`): nights, hot (5+), medevac (10+), holidays, Förtruppen, Fältresa use beers + others per night; m1…m1000 use the lifetime total. `medal_nights` gets first_at / early / owl / cell also from an other drink. `award_medals('home')` and `claim_medevac` (≥ 10) use drinks.
+- Owner stats: per night `drinks`; `beers.drinks_tonight`, `beers.drinks_last_night`; `all_time` / `avg_per_person` / hot / medevac use drinks; `owner_hours` also counts other drinks (trigger `olnu_board_beers`).
+- notify-group: levels (1 / 5 / 10), the "live drink" check, KAOS counts and level-ups use `drinksOf(beer)` = beer_count + other_count. Friend push texts are unchanged.
+- **Backfill (2026-10-17)**: for every live row, this week's `week_beers` was raised so lifetime ≥ tonight's drinks. Quiet: the title each live user now holds was claimed in `push_sent` (`title:<titel>`, no level-up push), and `notified_level` was set to the current drink level (no late 5 / 10 push). Medals for the new totals come as normal in-app toasts (no push).
+
+### 🏆 Topplista + 🏛️ Wall of Fame (owner decisions 3 + 4)
+Tables (RLS on, no policies, no client access; rows are never removed): `board_optin(user_id, show default false, name 1–30 null)`, `board_nights(user_id, night, drinks, lat, lng)` (place rounded to 0.05° lat / 0.1° lng ≈ 5 km; filled by trigger `olnu_board_beers` on drink changes, also after undo; backfilled from `medal_nights` + `after_nights` town / check-in bars / cell and from `beers`), `board_bars(bar_id, lat, lng)` (from `checkins` + `bar_taps`, for bars abroad), `board_rl` (rate limit). "Radera allt om mig" moves `board_optin` to a new id and the trigger turns it off and clears the name.
+
+| name | params | returns | errors |
+|---|---|---|---|
+| `set_board_optin` | `p_on bool, p_name text default null` | jsonb `{on, name}` | `invalid_name` (p_name given but not 1–30 chars after cleaning) |
+| `my_board_optin` | – | jsonb `{on, name}` | – |
+| `local_board` | `p_lat, p_lng float8, p_km float8 default 20, p_period text default 'tonight'` | setof `(rank int, name text, total int, nights int, is_me bool)` | `outside_sweden`, `invalid_period`, `slow_down` |
+| `wall_of_fame` | `p_lat, p_lng float8, p_km float8 default 20` | setof `(category text, name text, value int, is_me bool, top bool)` | `outside_sweden`, `slow_down` |
+
+Rules:
+- **Names**: `name` is set only when that user switched the board on (`board_optin.show`): their board name, else their group display name (min), else null. Off (default) → null → client shows "Hemlig agent" / "Du (hemlig)". The caller's own row follows the same rule. Never a position, never a user id.
+- Radius `p_km` clamped to 5–50 km; the centre is rounded to 0.01°. Max 30 board calls (both RPCs together) per user per minute → `slow_down`.
+- `local_board` tonight: tonight's rows (live night, stopped/"hemma" included) with drinks > 0 whose pin is within the radius; ghost (Spökläge) rows never count. `nights` = 1. Week: `board_nights` from Monday (evening date Europe/Stockholm, i.e. Monday evening onward) whose night place is within the radius; `total` = sum of drinks, `nights` = count. Order: total desc, nights desc; `rank` = SQL rank() (ties share a rank). Top 10 + the caller's row.
+- `wall_of_fame` (all time, nights whose place is in the radius): `best_night` (most drinks one night), `nights` (most nights out), `bars` (most different bars in `medal_checkins`, bar inside the radius), `stammis` (most nights at one bar in the radius), `skal` (skål given, `after_nights`, from v16), `home` (nights with "Jag är hemma": `medal_nights.home` or `after_nights.home_at`). One row per category with `top = true` (ties → who got there first), plus the caller's own row (`is_me`, `top = false`) when the caller has a value but is not the holder. Values > 0 only.
+
+### Client (js/boards.js, owner decision 5)
+- 🏆 sheet (hook `topSheet`): "🏆 <Stad>s törstigaste" (tabs Ikväll / Veckan, `local_board`), the switch "Visa mig på topplistan", "🏛️ <Stad>s Wall of Fame" (`wall_of_fame`). Town = `CITIES.nearest()` of the own pin → last GPS position → map centre (genitive: "Ludvikas", "Borås"); none → "Närområdets …". Results cached 60 s per place.
+- Settings (hook `settingsSheet`): "🏆 Topplistan" with the same switch. The switch sends `set_board_optin(on, local name)`; a name the server refuses → saved without a name.
+- Swedish texts with Dalarna humour inside boards.js, English fallback (`I18N.lang === "en"`). Old server → sections and switch hide (no error toast).

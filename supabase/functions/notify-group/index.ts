@@ -8,6 +8,8 @@
 //     per subscriber per night (push_sent). Anonymous counts only: no names, no exact places.
 //  C) LEVEL-UP (v7): when the caller's lifetime beers reach a new title, push to group-mates once
 //     per title ever.
+// v17: "beers" above = all drinks (beer_count + other_count); week_beers counts other drinks too.
+//     Clients also call it (no body) after an accepted other drink. SOS accepts world positions.
 // Body events (v7 SOCIAL): {event:"comehere"|"sos"|"msg", ...}, plus "home"/"pause" from v6.
 // Body events (v9 INKALLELSE): {event:"rally"|"rally_yes", rally_id}.
 // Body events (v10 CHECKA IN): {event:"checkin", bar?} -> "📍 {namn} har anlänt till {bar}".
@@ -21,7 +23,14 @@ import webpush from "npm:web-push@3.6.7";
 // ---- pure:start (no Deno / network below this line until pure:end; tested by supabase/tests) ----
 
 export type Pt = { lat: number; lng: number };
-export type LiveBeer = Pt & { beer_count: number };
+export type LiveBeer = Pt & { beer_count: number; other_count?: number | null };
+
+/** v17: all drinks count (beers + other drinks) for levels, chaos and level-ups. */
+export function drinksOf(b: { beer_count?: number | null; other_count?: number | null } | null | undefined): number {
+  if (!b) return 0;
+  const n = (Number(b.beer_count) || 0) + (Number(b.other_count) || 0);
+  return n > 0 ? n : 0;
+}
 
 export const CHAOS_RADIUS_KM = 5;
 export const PUSH_RADIUS_KM = 10;
@@ -51,10 +60,11 @@ export function chaosCheck(center: Pt, beers: LiveBeer[]) {
   let out = 0;
   let hot = 0;
   for (const b of beers) {
-    if (!(b.beer_count >= 1)) continue;
+    const n = drinksOf(b);
+    if (!(n >= 1)) continue;
     if (haversineKm(center, b) > CHAOS_RADIUS_KM) continue;
     out++;
-    if (b.beer_count >= 5) hot++;
+    if (n >= 5) hot++;
   }
   return { out, hot, chaos: out >= CHAOS_MIN_OUT || hot >= CHAOS_MIN_HOT };
 }
@@ -329,11 +339,11 @@ export function comeherePayload(idx: number, namn: string, bar: string, beerId: 
   };
 }
 
-/** Finite numbers inside the Sweden bbox (same as post_beer). */
+/** Finite numbers anywhere in the world (v17: |lat| <= 85, lng -180..180; same as post_beer_v2). */
 export function validPt(lat: unknown, lng: unknown): lat is number {
   return typeof lat === "number" && typeof lng === "number" &&
     Number.isFinite(lat) && Number.isFinite(lng) &&
-    lat >= 55.0 && lat <= 69.1 && lng >= 10.9 && lng <= 24.2;
+    lat >= -85.0 && lat <= 85.0 && lng >= -180.0 && lng <= 180.0;
 }
 
 /** SOS: the only push with an exact location, only to group-mates. */
@@ -816,10 +826,9 @@ async function kaosJobs(
   const b5 = boxAround(center, CHAOS_RADIUS_KM);
   const { data: near, error: nearErr } = await admin
     .from("beers")
-    .select("lat, lng, beer_count")
+    .select("lat, lng, beer_count, other_count")
     .gt("expires_at", nowIso)
     .eq("stopped", false)
-    .gte("beer_count", 1)
     .gte("lat", b5.minLat).lte("lat", b5.maxLat)
     .gte("lng", b5.minLng).lte("lng", b5.maxLng)
     .limit(5000);
@@ -1152,10 +1161,10 @@ async function statusPush(admin: Admin, uid: string, kind: "home" | "pause") {
   const none = { sent: 0, failed: 0, status: 0 };
   const nowIso = new Date().toISOString();
   const { data: beer, error } = await admin
-    .from("beers").select("id, expires_at, beer_count")
+    .from("beers").select("id, expires_at, beer_count, other_count")
     .eq("user_id", uid).gt("expires_at", nowIso).maybeSingle();
   if (error) throw error;
-  if (!beer || !(beer.beer_count >= 1)) return none;
+  if (!beer || !(drinksOf(beer) >= 1)) return none;
 
   const { data: mine, error: mineErr } = await admin
     .from("group_members").select("group_id, display_name").eq("user_id", uid);
@@ -1387,14 +1396,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };
     const { data: beer, error: beerErr } = await admin
       .from("beers")
-      .select("id, lat, lng, beer_count, notified_level, stopped, expires_at, updated_at")
+      .select("id, lat, lng, beer_count, other_count, notified_level, stopped, expires_at, updated_at")
       .eq("user_id", uid)
       .maybeSingle();
     if (beerErr) throw beerErr;
     const now = Date.now();
     const since = new Date(now - 5 * 60 * 1000).toISOString();
     if (
-      !beer || !(beer.beer_count >= 1) || beer.stopped ||
+      !beer || !(drinksOf(beer) >= 1) || beer.stopped ||
       Date.parse(beer.expires_at) <= now || Date.parse(beer.updated_at) <= Date.parse(since)
     ) {
       return json(nothing);
@@ -1413,7 +1422,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const titel = total >= 0 ? titleFor(total).title : "";
 
     // A) FRIENDS: milestone push, once per level per night.
-    const level = milestoneLevel(beer.beer_count as number);
+    // v17: levels count all drinks (beers + other drinks). Migration 0023 set notified_level for
+    // tonight's rows to their current level, so the switch sends no late pushes.
+    const level = milestoneLevel(drinksOf(beer));
     if (level > 0 && (beer.notified_level ?? 0) < level) {
       // Atomic claim: a concurrent call (or a retry) finds notified_level already >= level.
       const { data: claimed, error: claimErr } = await admin

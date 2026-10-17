@@ -50,6 +50,15 @@ t("boxAround contains the circle", () => {
   assert.ok(m.haversineKm(LUD, east) >= 10);
 });
 
+t("drinksOf + chaos counts other drinks (v17)", () => {
+  assert.equal(m.drinksOf({ beer_count: 3, other_count: 2 }), 5);
+  assert.equal(m.drinksOf({ beer_count: 0, other_count: null }), 0);
+  assert.equal(m.drinksOf(null), 0);
+  const beers = [0, 0.5, 1].map((km) => ({ ...at(km, 1), other_count: 4 }));
+  assert.deepEqual(m.chaosCheck(LUD, beers), { out: 3, hot: 3, chaos: true });
+  assert.deepEqual(m.chaosCheck(LUD, [{ ...at(0, 0), other_count: 1 }]), { out: 1, hot: 0, chaos: false });
+});
+
 t("milestoneLevel", () => {
   assert.deepEqual([0, 1, 4, 5, 9, 10, 15].map(m.milestoneLevel), [0, 1, 1, 5, 5, 10, 10]);
 });
@@ -199,10 +208,13 @@ t("sosPayload: exact place rounded to 5 decimals", () => {
   assert.equal(p.tag, "olnu-sos-1700000000000");
 });
 
-t("validPt: Sweden bbox, numbers only", () => {
+t("validPt: world (v17), numbers only", () => {
   assert.equal(m.validPt(60.1, 15.2), true);
-  assert.equal(m.validPt(50, 15), false);
-  assert.equal(m.validPt(60, 30), false);
+  assert.equal(m.validPt(37.98, 23.72), true);
+  assert.equal(m.validPt(13.75, 100.5), true);
+  assert.equal(m.validPt(-33.9, -180), true);
+  assert.equal(m.validPt(86, 15), false);
+  assert.equal(m.validPt(60, 180.5), false);
   assert.equal(m.validPt("60", 15), false);
   assert.equal(m.validPt(NaN, 15), false);
   assert.equal(m.validPt(undefined, undefined), false);
