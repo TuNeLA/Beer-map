@@ -698,3 +698,9 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 .rl-pin.me{box-shadow:0 0 0 2px var(--green),0 0 12px rgba(57,217,138,.5)}
 .rl-pin-lbl{display:none;font-weight:600;font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis}
 .rl-zoomed .rl-pin-lbl{display:inline}
+
+/* rl-pin-lift: a call-out pin floats ABOVE its spot (with a short stem), so the bar icon under it stays free to tap.
+   The name label is not shown on the map (tap the pin for details). */
+.rl-pin{transform:translate(-50%,calc(-100% - 30px))}
+.rl-pin::after{bottom:-12px;border:0;width:2px;height:11px;background:var(--green);opacity:.8;pointer-events:none}
+.rl-zoomed .rl-pin-lbl,.rl-pin-lbl{display:none}
