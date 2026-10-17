@@ -672,3 +672,9 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 
 .jam-btn{display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:46px;margin-top:6px;background:#1db954;border-color:#1db954;color:#04160a;font-weight:700}
 .jam-steps{margin:0 0 6px;padding-left:22px;line-height:1.5}
+
+.chat-msg{position:relative}
+.cm-like{display:inline-flex;align-items:center;gap:3px;margin-top:4px;min-height:30px;min-width:44px;padding:0 8px;cursor:pointer;font-size:13px;
+  background:transparent;border:1px solid var(--line-soft);color:var(--muted);border-radius:14px}
+.cm-like.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.12)}
+.cm-like:active{transform:scale(.92)}

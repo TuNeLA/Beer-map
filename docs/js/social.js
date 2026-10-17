@@ -421,9 +421,50 @@
           el("div", { class: "cm-head" }, [nmEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") }),
-          jamLink(m.body) ? el("a", { class: "btn btn-block jam-btn", href: jamLink(m.body), target: "_blank", rel: "noopener noreferrer", text: t("jamJoin") }) : null
+          jamLink(m.body) ? el("a", { class: "btn btn-block jam-btn", href: jamLink(m.body), target: "_blank", rel: "noopener noreferrer", text: t("jamJoin") }) : null,
+          likesOff ? null : likeBtn(m)
         ]));
       }
+      // 👍 likes (0019). Tap the button or double-tap the message. Missing RPC on an old server → hidden.
+      var likeEls = {}, likesOff = false, likeBusy = {};
+      function paintLike(id, n, mine, names) {
+        var b = likeEls[id]; if (!b) return;
+        b.textContent = "👍" + (n ? " " + n : "");
+        b.classList.toggle("on", !!mine);
+        b.setAttribute("aria-pressed", String(!!mine));
+        b.title = names && names.length ? names.join(", ") : "";
+      }
+      function likeBtn(m) {
+        var b = el("button", { type: "button", class: "cm-like", "aria-pressed": "false", "aria-label": t("chatLike"), text: "👍" });
+        likeEls[m.id] = b;
+        b.addEventListener("click", function () { toggleLike(m.id); });
+        return b;
+      }
+      function toggleLike(id) {
+        if (likesOff || likeBusy[id]) return;
+        likeBusy[id] = true;
+        A.rpc("like_msg", { p_msg_id: +id }).then(function (r) {
+          likeBusy[id] = false;
+          if (r.error) { if (U.missing(r.error)) { likesOff = true; } return; }
+          var d = A.parseData(r.data);
+          paintLike(id, d.likes | 0, !!d.liked, null);
+          if (d.liked) window.FX.vibrate(15);
+          loadLikes();
+        });
+      }
+      function loadLikes() {
+        if (likesOff || !alive()) return;
+        A.rpc("msg_likes", { p_group_id: g.id }).then(function (r) {
+          if (r.error) { if (U.missing(r.error)) { likesOff = true; Object.keys(likeEls).forEach(function (k) { likeEls[k].remove(); }); } return; }
+          var got = {};
+          (r.data || []).forEach(function (x) { got[x.msg_id] = 1; paintLike(x.msg_id, x.likes | 0, x.liked, x.names); });
+          Object.keys(likeEls).forEach(function (k) { if (!got[k]) paintLike(k, 0, false, null); });
+        });
+      }
+      list.addEventListener("dblclick", function (e) {
+        var li = e.target.closest(".chat-msg"); if (!li) return;
+        var b = li.querySelector(".cm-like"); if (b) b.click();
+      });
       function load() {
         if (!alive()) { clearInterval(timer); return; }
         if (loading || document.visibilityState === "hidden") return;
@@ -462,8 +503,8 @@
         });
       }
       var tick = 0;
-      timer = setInterval(function () { load(); if (++tick % 3 === 0) loadStats(); }, 10000);
-      load(); loadStats();
+      timer = setInterval(function () { load(); loadLikes(); if (++tick % 3 === 0) loadStats(); }, 10000);
+      load(); loadStats(); setTimeout(loadLikes, 600);
     });
   }
   function openChatLink(id) {
