@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -131,7 +131,7 @@
     map.on("movestart", function () { setOpen(false); });
   })();
   // Keep popups clear of the top HUD and the bottom dock.
-  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 290), maxWidth: 300 });
+  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 290), maxWidth: Math.min(300, Math.max(220, (window.innerWidth || 360) - 60)) });
 
   map.createPane("bars"); map.getPane("bars").style.zIndex = 590;
   map.createPane("hotbars"); map.getPane("hotbars").style.zIndex = 650;
@@ -174,48 +174,143 @@
   var hotLayer = L.layerGroup().addTo(map);
   var barLayer = L.layerGroup().addTo(map);
 
-  /* ---------- Heat glow (leaflet.heat). Its canvas goes in overlayPane (z 400), under the marker pane (z 600). ---------- */
+  /* ---------- Heat glow (leaflet.heat). Its canvas goes in overlayPane (z 400), under the marker pane (z 600). ----------
+     Polish (owner: "heat doesn't match the numbers, the hotspot jumps when a pinch ends, zoomed out I want hotspots"):
+     - radius in metres (HEAT_R_M), clamped 24–60 px (14 px was too small to see at zoom 10), recomputed for the zoom of every drawn frame;
+     - the canvas is never CSS-scaled: during a pinch it is redrawn on each "zoom" event, during a zoom animation
+       it is redrawn every frame with the same easing as Leaflet's CSS zoom, so the last animated frame IS the
+       final frame (no jump at zoomend, also where the px clamp applies);
+     - no maxZoom fade; colour scale per view (≈ 0.6 × the hottest cell in view), softer curve zoomed out;
+     - fed the same bar-snapped spots as the markers (live drinks), plus tonight's server trail at low weight. */
   var HEAT_KEY = "olnu.heat";
   var heatOn = U.ls.get(HEAT_KEY, "1") !== "0";
   var heat = null;
-  // Fix leaflet.heat 0.2.0 zoom drift on Leaflet 1.9: its _animateZoom uses the old
-  // pre-1.0 maths. Remember where the canvas was drawn, then scale it from that spot.
+  var HEAT_R_M = 120, HEAT_MIN_PX = 24, HEAT_MAX_PX = 60, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
+  function heatRadiusPx(z, lat) {
+    var mpp = 156543.03 * Math.cos((lat || 0) * Math.PI / 180) / Math.pow(2, z);
+    return Math.max(HEAT_MIN_PX, Math.min(HEAT_MAX_PX, HEAT_R_M / Math.max(1e-6, mpp)));
+  }
+  // Fade the glow when zoomed in close (markers + labels carry the detail there). Continuous: no jump.
+  function heatOpacity(z) { return z <= 15 ? 0.85 : z >= 17.5 ? 0.35 : 0.85 - (z - 15) / 2.5 * 0.5; }
+  // Softer colour curve when zoomed out, so small towns still glow next to a big one (Strava-style per-view scale).
+  function heatGamma(z) { return z <= 11 ? 0.5 : z >= 14 ? 1 : 0.5 + (z - 11) / 3 * 0.5; }
+  // CSS cubic-bezier(0,0,0.25,1) = Leaflet's zoom transition. Returns eased progress for t in 0..1.
+  function zoomEase(t) {
+    if (t <= 0) return 0; if (t >= 1) return 1;
+    var x1 = 0, y1 = 0, x2 = 0.25, y2 = 1, lo = 0, hi = 1, u = t;
+    for (var i = 0; i < 24; i++) {
+      u = (lo + hi) / 2;
+      var x = 3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u;
+      if (x < t) lo = u; else hi = u;
+    }
+    return 3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
+  }
   if (L.HeatLayer && !L.HeatLayer.prototype._olnuFixed) {
-    var HP = L.HeatLayer.prototype, origReset = HP._reset;
-    HP._reset = function () {
-      // The library sets transform-origin 50% 50%; Leaflet's zoom maths needs 0 0.
-      if (this._canvas) { this._canvas.style.transformOrigin = "0 0"; this._canvas.style.webkitTransformOrigin = "0 0"; }
-      origReset.call(this);
-      this._nw0 = this._map.containerPointToLatLng([0, 0]);
-      this._z0 = this._map.getZoom();
+    var HP = L.HeatLayer.prototype, origInit = HP._initCanvas;
+    HP._initCanvas = function () {
+      origInit.call(this);
+      // We animate it ourselves: no CSS zoom transition, no CSS scale.
+      L.DomUtil.removeClass(this._canvas, "leaflet-zoom-animated");
+      this._canvas.style.transformOrigin = "0 0"; this._canvas.style.webkitTransformOrigin = "0 0";
     };
+    // proj(latlng) → container point of the frame; z = (fractional) zoom of the frame; normZ: zoom for the colour scale.
+    HP._drawFrame = function (proj, z, lat, norm) {
+      var m = this._map; if (!m || !this._heat) return;
+      var R = heatRadiusPx(z, lat);
+      if (!this._rNow || Math.abs(R - this._rNow) > 0.2) { this._heat.radius(R * 0.5, R * 0.5); this._rNow = R; }
+      var size = m.getSize(), r = this._heat._r, g = Math.max(2, r / 2), cells = {}, list = [];
+      if (this._canvas.width !== size.x) this._canvas.width = this._heat._width = size.x;
+      if (this._canvas.height !== size.y) this._canvas.height = this._heat._height = size.y;
+      L.DomUtil.setTransform(this._canvas, m.containerPointToLayerPoint([0, 0]), 1);
+      var ll = this._latlngs || [], i, p, w, k, c;
+      for (i = 0; i < ll.length; i++) {
+        p = proj(ll[i]);
+        if (p.x < -r || p.y < -r || p.x > size.x + r || p.y > size.y + r) continue;
+        w = ll[i][2] != null ? +ll[i][2] : 1; if (!(w > 0)) continue;
+        // Cells anchored to the map (not the screen), weighted mean position like leaflet.heat.
+        var o = this._cellOrigin ? proj(this._cellOrigin) : { x: 0, y: 0 };
+        k = Math.floor((p.x - o.x) / g) + "_" + Math.floor((p.y - o.y) / g);
+        c = cells[k];
+        if (c) { c[0] = (c[0] * c[2] + p.x * w) / (c[2] + w); c[1] = (c[1] * c[2] + p.y * w) / (c[2] + w); c[2] += w; }
+        else { c = cells[k] = [p.x, p.y, w]; list.push(c); }
+      }
+      var peak = norm;
+      if (peak == null) { peak = 0; for (i = 0; i < list.length; i++) if (list[i][2] > peak) peak = list[i][2]; }
+      peak = Math.max(HEAT_FLOOR, peak);
+      var gam = heatGamma(z), data = [];
+      for (i = 0; i < list.length; i++) data.push([Math.round(list[i][0]), Math.round(list[i][1]), Math.min(1, Math.pow(list[i][2] / peak, gam) / 0.6)]);
+      this._heat.max(1);
+      this._heat.data(data).draw(this.options.minOpacity);
+      this._canvas.style.opacity = String(heatOpacity(z));
+      this._lastPeak = peak;
+    };
+    // Hottest cell of a view (center/zoom), for a stable colour scale through a whole animation.
+    HP._peakFor = function (proj, z, lat) {
+      var m = this._map, size = m.getSize(), r = heatRadiusPx(z, lat), g = Math.max(2, r / 2), cells = {}, peak = 0;
+      var ll = this._latlngs || [], o = this._cellOrigin ? proj(this._cellOrigin) : { x: 0, y: 0 };
+      for (var i = 0; i < ll.length; i++) {
+        var p = proj(ll[i]); if (p.x < -r || p.y < -r || p.x > size.x + r || p.y > size.y + r) continue;
+        var k = Math.floor((p.x - o.x) / g) + "_" + Math.floor((p.y - o.y) / g);
+        cells[k] = (cells[k] || 0) + (+ll[i][2] || 1); if (cells[k] > peak) peak = cells[k];
+      }
+      return peak;
+    };
+    HP._redraw = function () {
+      this._frame = null;
+      if (this._anim) return;   // the zoom animation draws its own frames (its last frame = the final view)
+      var m = this._map; if (!m) return;
+      this._drawFrame(function (x) { return m.latLngToContainerPoint(x); }, m.getZoom(), m.getCenter().lat, null);
+    };
+    HP._reset = function () { if (this._anim) return; this._redraw(); };
+    // Zoom animation (double tap, +/-, flyTo end, pinch release snap): draw every frame with Leaflet's easing.
     HP._animateZoom = function (e) {
-      var m = this._map;
-      if (!this._canvas || !this._nw0) return;
-      var scale = m.getZoomScale(e.zoom, this._z0);
-      var pos = m._latLngToNewLayerPoint(this._nw0, e.zoom, e.center);
-      L.DomUtil.setTransform(this._canvas, pos, scale);
+      var m = this._map, self = this; if (!m || !this._heat) return;
+      if (this._anim) cancelAnimationFrame(this._anim.raf);
+      var z0 = m.getZoom(), z1 = e.zoom, S = m.getZoomScale(z1, z0), pane = m._getMapPanePos(), lat = e.center.lat;
+      var p0 = function (x) { return m.latLngToContainerPoint(x); };
+      var p1 = function (x) { return m._latLngToNewLayerPoint(x, z1, e.center).add(pane); };
+      var norm = this._peakFor(p1, z1, lat), t0 = performance.now();
+      var a = this._anim = { raf: 0 };
+      var frame = function () {
+        if (self._anim !== a) return;
+        var t = Math.min(1, (performance.now() - t0) / HEAT_ANIM_MS), q = zoomEase(t), s = 1 + (S - 1) * q;
+        var zf = z0 + Math.log(s) / Math.LN2;
+        self._drawFrame(function (x) { var a0 = p0(x), a1 = p1(x); return L.point(a0.x + (a1.x - a0.x) * q, a0.y + (a1.y - a0.y) * q); }, zf, lat, norm);
+        if (t < 1 && m._animatingZoom !== false) a.raf = requestAnimationFrame(frame);
+        else a.raf = 0;
+      };
+      frame();
+      // Leaflet ends the zoom with zoomend → moveend (_reset). Draw the exact final frame there.
+      m.once("zoomend", function () { if (self._anim === a) { cancelAnimationFrame(a.raf); self._anim = null; self._redraw(); } });
     };
     HP._olnuFixed = true;
   }
   if (typeof L.heatLayer === "function") {
     heat = L.heatLayer([], {
-      radius: 34, blur: 26, maxZoom: 11, max: 4, minOpacity: 0.25,
+      radius: 25, blur: 30, minOpacity: 0.25,
       gradient: { 0.1: "rgba(60,25,0,0)", 0.3: "#a85a08", 0.5: "#f5a623", 0.68: "#ff7a1a", 0.85: "#ff3b3b", 1.0: "#fff6e0" }
     });
+    heat._cellOrigin = L.latLng(LUDVIKA[0], LUDVIKA[1]);
   }
-  // Pinch-zoom on phones fires "zoom" (not "zoomanim"): keep the heat glued to the map.
+  // Pinch-zoom on phones fires "zoom" on every frame (no zoomanim until the fingers lift): redraw at the live zoom.
+  var heatPinchRaf = 0;
   map.on("zoom", function () {
-    if (heat && map.hasLayer(heat) && !map._animatingZoom) {
-      heat._animateZoom({ zoom: map.getZoom(), center: map.getCenter() });
-    }
+    if (!heat || !map.hasLayer(heat) || map._animatingZoom || heat._anim || heatPinchRaf) return;
+    heatPinchRaf = requestAnimationFrame(function () {
+      heatPinchRaf = 0;
+      if (!map._animatingZoom && !heat._anim && map.hasLayer(heat)) heat._redraw();
+    });
   });
-  function heatWeight(b) {
-    var n = U.drinks(b), l = U.level(n);
-    return Math.max(0.5, n * (l === 2 ? 3 : l === 1 ? 2 : 1));
+  // Where a pin is drawn: on its bar's point when it belongs to a bar (same rule as the markers), else its own spot.
+  function pinSpot(b) {
+    if (b.snap === "area" || !b.precise) return [b.lat, b.lng];
+    var bar = null;
+    if (b.bar_id != null) bar = window.BARS.byId(b.bar_id);
+    else if (!b.snap && window.BARS.nearestSpot) bar = window.BARS.nearestSpot(b.lat, b.lng);
+    return bar ? [bar.lat, bar.lng] : [b.lat, b.lng];
   }
-  // heatPoints: tonight's beers at the place each one was drunk (RPC heat_points, migration 0005).
-  // null = not available (old database) → fall back to the live pins weighted by their count.
+  // heatPoints: tonight's trail from the server (heat_points / poll_v2.heat, already snapped to bars / 55 m cells).
+  // null = not available (old database).
   var heatPoints = null, heatRpcMissing = false, heatFetchedAt = 0;
   function loadHeatPoints() {
     if (pollV2 === "on") return;   // v13: heat comes with poll_v2 (max once per minute, only when the layer is on)
@@ -232,15 +327,19 @@
       renderHeat();
     });
   }
+  // Live drinks (weight = the number on the pill, at the marker's spot) + the night's trail at low weight.
+  function heatData() {
+    var out = [];
+    beerOnly().forEach(function (b) { var s = pinSpot(b); out.push([s[0], s[1], Math.max(1, U.drinks(b))]); });
+    if (heatPoints) heatPoints.forEach(function (p) { out.push([p[0], p[1], p[2] * HEAT_TRAIL_W]); });
+    return out;
+  }
   function renderHeat() {
     if (!heat) return;
     if (heatOn && !map.hasLayer(heat)) heat.addTo(map);
     if (!heatOn && map.hasLayer(heat)) map.removeLayer(heat);
     if (!heatOn) return;
-    // Use the per-beer trail when the server has it; an empty trail with live pins means it is still filling.
-    var bo = beerOnly();
-    if (heatPoints && (heatPoints.length || !bo.length)) heat.setLatLngs(heatPoints);
-    else heat.setLatLngs(bo.map(function (b) { return [b.lat, b.lng, heatWeight(b)]; }));
+    heat.setLatLngs(heatData());
   }
   function applyHeatBtn() {
     var b = $("btn-heat");
@@ -264,10 +363,59 @@
     var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
-  function levelLine(l) {
+  /* ---------- Drink levels (polish): Swedish names from js/levels-content.js (LEVELS_SV at 3/5/7/10/13/16/20).
+     Each person gets one of the 6 names per level per night (hash of night + person + level: stable, no flicker).
+     English keeps HOT STREAK / MEDEVAC. 10+ stays caring. ---------- */
+  function lvList() { return I.lang === "sv" && Array.isArray(window.LEVELS_SV) && window.LEVELS_SV.length ? window.LEVELS_SV : null; }
+  function lvOf(n) {
+    var all = lvList(), best = null; if (!all) return null;
+    for (var i = 0; i < all.length; i++) if (n >= all[i].at && (!best || all[i].at > best.at)) best = all[i];
+    return best;
+  }
+  function lvAt(at) { var all = lvList() || []; for (var i = 0; i < all.length; i++) if (all[i].at === at) return all[i]; return null; }
+  function hashStr(x) { var h = 2166136261; x = String(x); for (var i = 0; i < x.length; i++) { h ^= x.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function lvNight() { try { return window.NEWS && window.NEWS.nightKey ? window.NEWS.nightKey() : ""; } catch (e) { return ""; } }
+  function personKey(b) {
+    if (!b || b.is_mine) return "me";
+    if (b.friend_name) return "f:" + b.friend_name;
+    return "s:" + (b.bar_id || "") + ":" + (+b.lat).toFixed(4) + "," + (+b.lng).toFixed(4) + ":" + (b.created_at || "");
+  }
+  function lvName(lv, key) { return lv.names[hashStr(lvNight() + "|" + key + "|" + lv.key) % lv.names.length]; }
+  var lvLastLine = {};
+  function lvLine(lv) {
+    var a = lv.lines || [], i = Math.floor(Math.random() * a.length);
+    if (a.length > 1 && i === lvLastLine[lv.key]) i = (i + 1) % a.length;
+    lvLastLine[lv.key] = i;
+    return a[i] || "";
+  }
+  function noLeadEmoji(s) { return String(s || "").replace(/^[^0-9A-Za-zÅÄÖåäöÉé"'(]+/, ""); }
+  // "🔥 Het på gröten" for a pin (null below level 3 or in English).
+  function lvTag(b) { var lv = lvOf(U.drinks(b)); return lv ? { lv: lv, name: lvName(lv, personKey(b)) } : null; }
+  function lvEmoji(b) {
+    var x = lvTag(b); if (x) return x.lv.emoji;
+    var l = U.level(U.drinks(b)); return l === 2 ? "🚁" : l === 1 ? "🔥" : "🍺";
+  }
+  // Popup line for a pin (x = one pin) or a bar (x = list: its top drinker). l = U.level of that count.
+  function levelLine(l, x) {
+    var b = Array.isArray(x) ? x.slice().sort(function (a, c) { return U.drinks(c) - U.drinks(a); })[0] : x;
+    var tag = b ? lvTag(b) : null;
+    if (tag) {
+      return '<div class="pp-lv" style="color:' + U.esc(tag.lv.color) + '">' + tag.lv.emoji + " " + U.esc(tag.name) + "</div>" +
+        (U.drinks(b) >= 10 ? '<div class="pp-care">' + U.esc(t("care")) + "</div>" : "");
+    }
     if (l === 2) return '<div class="pp-med">🚁 ' + U.esc(t("medevac")) + '</div><div class="pp-care">' + U.esc(t("care")) + "</div>";
     if (l === 1) return '<div class="pp-hot">🔥 ' + U.esc(t("hot")) + "</div>";
     return "";
+  }
+  // Toast when someone else reaches 5 / 10. Friends: LEVEL_FRIEND_SV lines. Strangers: "🔥 Någon vid X: Het på gröten!"
+  function streakToastText(b, l, who, where) {
+    var tag = lvTag(b);
+    if (tag && b.friend_name && window.LEVEL_FRIEND_SV) {
+      var arr = window.LEVEL_FRIEND_SV[l === 2 ? "at10" : "at5"] || [];
+      if (arr.length) return arr[hashStr(lvNight() + b.friend_name + l + Math.floor(Date.now() / 6e5)) % arr.length].replace(/\{name\}/g, b.friend_name);
+    }
+    if (tag) return tag.lv.emoji + " " + who + " " + where + ": " + tag.name + "!";
+    return l === 2 ? t("newMed", who, where) : t("newHot", who, where);
   }
   function skalCount(b) { return Math.max(0, b.skal_count | 0); }
   function skalBtn(b, small) {
@@ -283,7 +431,7 @@
   function beerPopup(b) {
     var h = '<div class="pp-title">' + U.esc(t("beerNo", U.drinks(b))) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
-    h += levelLine(U.level(U.drinks(b)));
+    h += levelLine(U.level(U.drinks(b)), b);
     if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
     if (b.friend_name) h += '<div class="pp-friend">' + U.esc(b.friend_name) + "</div>";
     h += mods("beerTitleHTML", b);
@@ -295,39 +443,83 @@
   }
   function barTypeLabel(type) { var m = t("barTypes"); return m[type] || (t("placeTypes") || {})[type] || m.bar; }
   function maxLevel(list) { var l = 0; list.forEach(function (b) { l = Math.max(l, U.level(U.drinks(b))); }); return l; }
-  // Bar badge: compact pill "N 🍺" (N = people at the bar). Border = highest streak there.
-  function hotBarIcon(agg) {
-    var friend = agg.beers.some(function (b) { return b.friend_name; });
-    var mine = agg.beers.some(function (b) { return b.is_mine; });
-    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar",
-      label: mods("barBadgeHTML", agg.bar, agg.beers, map.getZoom()) });
-    return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
+  /* ---------- One marker per bar (polish 2026-10-17, research "place stack") ----------
+     Bar icon + people pill + check-in badge + call-out badge (🪖N) + name label = ONE composite marker with
+     one ≥ 44×44 px hit area. A tap anywhere on it opens ONE popup with the sections Checka in, Inkallelser,
+     Folk här nu, Incheckade. Labels only at zoom ≥ 16 and only when they do not collide. Selected = 1.25×. */
+  var LABEL_ZOOM = 16;
+  function friendHere(list) { return list.some(function (b) { return b.friend_name; }); }
+  // Priority for z-order and label collision: call-out > friends present > people > check-ins > empty bar.
+  function barPrio(c) {
+    return (c.rallies.length ? 4000 : 0) + (friendHere(c.beers) || c.cis.some(function (x) { return x.is_friend || x.is_mine; }) ? 3000 : 0) +
+      (c.beers.length ? 1000 + Math.min(500, c.beers.length * 10) : 0) + (c.cis.length ? 200 + c.cis.length : 0) + maxLevel(c.beers) * 100;
+  }
+  function compositeIcon(c) {
+    var bar = c.bar, z = map.getZoom(), list = c.beers, h = '<div class="cm-in">';
+    h += bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + mods("barIcoHTML", bar) + "</div>" :
+      '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + mods("barIcoHTML", bar) + "</div>";
+    if (list.length) {
+      h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar",
+        label: mods("barBadgeHTML", bar, list, z) });
+    }
+    if (c.rallies.length) {
+      var yes = 0, me = false;
+      c.rallies.forEach(function (r) { yes = Math.max(yes, r.yes | 0); if (r.my_answer === "yes") me = true; });
+      h += '<span class="cm-rally' + (me ? " me" : "") + '" title="' + U.esc(t("cmRallyAria", yes)) + '">🪖<b>' + yes + "</b>" + (c.rallies.length > 1 ? '<i class="cm-dot"></i>' : "") + "</span>";
+    }
+    // Check-in badge: always on a bar without drinkers; next to a people pill only when zoomed in (less clutter).
+    if (c.cis.length && (!list.length || z >= LABEL_ZOOM)) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";
+    if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";
+    h += "</div>";
+    return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : ""),
+      iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -20] });
+  }
+  // Check-ins per bar id (from the poll), rally badges per bar id (js/rally.js).
+  function checkinsByBar() {
+    var out = {};
+    checkins.forEach(function (c) { var id = String(c.bar_id || ""); if (id) (out[id] = out[id] || []).push(c); });
+    return out;
+  }
+  function rallyBadges(z) {
+    try { return window.RALLY && window.RALLY.barBadges ? window.RALLY.barBadges(z) || {} : {}; } catch (e) { return {}; }
+  }
+  function sec(title, body, cls) {
+    return '<div class="pp-sec' + (cls ? " " + cls : "") + '"><div class="pp-sec-h">' + U.esc(title) + "</div>" + body + "</div>";
   }
   function barPopup(bar, list) {
     list = list || [];
-    var names = [];
-    list.forEach(function (b) { if (b.friend_name && names.indexOf(b.friend_name) < 0) names.push(b.friend_name); });
+    var id = bar.id != null ? String(bar.id) : null;
     var h = '<div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
-      '<div class="muted">' + U.esc(barTypeLabel(bar.type)) + "</div>";
-    if (list.length) h += '<div class="pp-data"><b>' + U.esc(t("barHere", list.length)) + "</b></div>";
-    h += checkinHTML(bar);
-    h += mods("barPopupHTML", bar, list);
-    h += levelLine(maxLevel(list));
-    if (names.length) h += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
-    var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
-    if (tot) h += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
+      '<div class="muted">' + U.esc(barTypeLabel(bar.type)) + (list.length ? " · <b>" + U.esc(t("barHere", list.length)) + "</b>" : "") + "</div>";
+    // 1. Checka in
+    h += checkinBtnHTML(bar);
+    // 2. Inkallelser (call-outs at this bar): Kommer + route
+    var rl = "";
+    try { rl = id && window.RALLY && window.RALLY.barSectionHTML ? window.RALLY.barSectionHTML(id) : ""; } catch (e) { rl = ""; }
+    if (rl) h += sec(t("secRally"), rl, "pp-sec-rl");
+    // 3. Folk här nu
     if (list.length) {
+      var names = [], body = "";
+      list.forEach(function (b) { if (b.friend_name && names.indexOf(b.friend_name) < 0) names.push(b.friend_name); });
+      body += levelLine(maxLevel(list), list);
+      if (names.length) body += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
+      var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
+      if (tot) body += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
       var rows = list.slice().sort(function (a, b) { return U.drinks(b) - U.drinks(a); }).slice(0, 8);
-      h += '<ul class="pp-list">' + rows.map(function (b) {
-        var l = U.level(U.drinks(b));
+      body += '<ul class="pp-list">' + rows.map(function (b) {
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + U.drinks(b) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
+          '<span class="pp-n">' + U.drinks(b) + " " + lvEmoji(b) + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
-      if (list.length > 8 && bar.id != null) {
-        h += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(String(bar.id)) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
+      if (list.length > 8 && id != null) {
+        body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
       }
+      h += sec(t("secHere", list.length), body, "pp-sec-here");
     }
+    // 4. Incheckade
+    var ci = checkinNamesHTML(bar);
+    if (ci) h += sec(t("secCi"), ci, "pp-sec-ci");
+    h += mods("barPopupHTML", bar, list);
     h += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
     return h;
   }
@@ -356,23 +548,28 @@
     var id = String(bar.id);
     return checkins.filter(function (c) { return String(c.bar_id) === id; });
   }
-  // "📍 Incheckade här: Anton, Oskar + 2 till" + the big button (LIVE and signed in only).
-  function checkinHTML(bar) {
+  // "Anton, Oskar + 2 till" (names: me + friends; strangers only as a count).
+  function checkinNamesHTML(bar) {
     if (!LIVE || bar == null || bar.id == null) return "";
-    ciBarById[String(bar.id)] = bar;
-    var list = checkinsAt(bar), names = [], more = 0, h = "";
+    var list = checkinsAt(bar), names = [], more = 0;
     list.forEach(function (c) {
       var n = c.is_mine ? (getName() || t("you")) : c.is_friend && c.name ? c.name : null;
       if (n && names.indexOf(n) < 0) names.push(n); else if (!n) more++;
     });
-    if (names.length) h += '<div class="pp-ci">' + U.esc(t("ciHere", names, more)) + "</div>";
-    else if (more) h += '<div class="pp-ci">' + U.esc(t("ciHereAnon", more)) + "</div>";
-    if (!authed || checkinState === "missing") return h;
-    var me = myCheckin(), here = me && me.id === String(bar.id);
-    h += '<button type="button" class="ci-btn" data-ci="' + U.esc(String(bar.id)) + '"' + (here ? " disabled" : "") + ">" +
-      U.esc(here ? t("ciDone") : t("ciBtn")) + "</button>";
-    return h;
+    if (names.length) return '<div class="pp-ci">' + U.esc(t("ciHere", names, more)) + "</div>";
+    if (more) return '<div class="pp-ci">' + U.esc(t("ciHereAnon", more)) + "</div>";
+    return "";
   }
+  // The big "📍 Checka in" button (LIVE and signed in only).
+  function checkinBtnHTML(bar) {
+    if (!LIVE || bar == null || bar.id == null) return "";
+    ciBarById[String(bar.id)] = bar;
+    if (!authed || checkinState === "missing") return "";
+    var me = myCheckin(), here = me && me.id === String(bar.id);
+    return '<button type="button" class="ci-btn" data-ci="' + U.esc(String(bar.id)) + '"' + (here ? " disabled" : "") + ">" +
+      U.esc(here ? t("ciDone") : t("ciBtn")) + "</button>";
+  }
+  function checkinHTML(bar) { return checkinNamesHTML(bar) + checkinBtnHTML(bar); }
   function doCheckin(button) {
     var bar = ciBarById[button.getAttribute("data-ci")];
     if (!bar || button.disabled) return;
@@ -427,10 +624,20 @@
     var pp = m.getPopup(), ap = pp.options.autoPan;
     pp.options.autoPan = false; m.openPopup(); pp.options.autoPan = ap;
   }
+  var compIds = {};      // bar id -> true: drawn as a composite with content (people / call-out / check-ins)
+  function addComposite(c, layer, pane) {
+    var prio = barPrio(c);
+    var m = L.marker([c.bar.lat, c.bar.lng], { icon: compositeIcon(c), pane: pane, keyboard: false,
+      zIndexOffset: 1000 + prio, olnuKey: (pane === "hotbars" ? "h" : "p") + c.bar.id, olnuPrio: prio });
+    m.bindPopup(function () { return barPopup(c.bar, c.beers); }, { pane: "popupPane" });
+    m.on("add", function () { var ic = m.getElement(); if (ic) { ic.setAttribute("data-bar", String(c.bar.id)); ic.setAttribute("data-prio", String(prio)); } });
+    m.addTo(layer);
+    return m;
+  }
   function render() {
     var z = map.getZoom(), keep = openKey;
     redrawing = true;
-    clusters.clearLayers(); hotLayer.clearLayers(); markerById = {}; hotBarIds = {};
+    clusters.clearLayers(); hotLayer.clearLayers(); markerById = {}; hotBarIds = {}; compIds = {};
     var split = z >= HOT_ZOOM ? window.BARS.assign(beers) : { perBar: {}, rest: beers };
     var ms = split.rest.map(function (b) {
       var l = U.level(U.drinks(b));
@@ -441,14 +648,17 @@
       return m;
     });
     clusters.addLayers(ms);
-    Object.keys(split.perBar).forEach(function (id) {
-      var agg = split.perBar[id];
-      hotBarIds[id] = true;
-      var m = L.marker([agg.bar.lat, agg.bar.lng], { icon: hotBarIcon(agg), pane: "hotbars", keyboard: false,
-        zIndexOffset: 1000 + agg.beers.length + maxLevel(agg.beers) * 500, olnuKey: "h" + id });
-      m.bindPopup(function () { return barPopup(agg.bar, agg.beers); }, { pane: "popupPane" });
-      m.addTo(hotLayer);
-      agg.beers.forEach(function (b) { markerById[b.id] = m; });
+    // Composite bars: people (z ≥ 11), call-outs at the bar (z ≥ 11), check-ins (z ≥ 13).
+    var comp = {}, rb = z >= HOT_ZOOM ? rallyBadges(z) : {}, cib = z >= BAR_ZOOM ? checkinsByBar() : {};
+    var get = function (id, bar) { return comp[id] || (comp[id] = { bar: bar, beers: [], rallies: [], cis: [] }); };
+    Object.keys(split.perBar).forEach(function (id) { var a = split.perBar[id]; get(id, a.bar).beers = a.beers; });
+    Object.keys(rb).forEach(function (id) { var x = rb[id]; if (x && x.bar) get(id, x.bar).rallies = x.rallies || []; });
+    Object.keys(cib).forEach(function (id) { var bar = window.BARS.byId(id); if (bar) get(id, bar).cis = cib[id]; });
+    Object.keys(comp).forEach(function (id) {
+      var c = comp[id];
+      hotBarIds[id] = true; compIds[id] = true;
+      var m = addComposite(c, hotLayer, "hotbars");
+      c.beers.forEach(function (b) { markerById[b.id] = m; });
     });
     renderPlainBars();
     redrawing = false;
@@ -456,40 +666,68 @@
     renderHeat();
     updateCounts();
     renderTicker();
+    labelsSoon();
   }
   function renderPlainBars() {
     var wasRedrawing = redrawing, keep = openKey;
     redrawing = true;
     barLayer.clearLayers(); plainBarMarkers = {};
     redrawing = wasRedrawing;
-    if (map.getZoom() < BAR_ZOOM) return;
+    if (map.getZoom() < BAR_ZOOM) { labelsSoon(); return; }
     var list = window.BARS.inBounds(map.getBounds().pad(0.15), MAX_PLAIN_BARS + 50);
-    // v14: a restaurant/café is drawn only when someone is checked in there (beers there make a hot badge).
-    var seenCi = {};
-    checkins.forEach(function (c) {
-      var id = String(c.bar_id || ""); if (seenCi[id]) return; seenCi[id] = 1;
-      var sp = window.BARS.byId(id);
-      if (sp && sp.place && map.getBounds().pad(0.15).contains([sp.lat, sp.lng])) list.unshift(sp);
-    });
     var n = 0;
     for (var i = 0; i < list.length && n < MAX_PLAIN_BARS; i++) {
       var bar = list[i];
       if (hotBarIds[bar.id]) continue;
       n++;
-      (function (bar) {
-        var m = L.marker([bar.lat, bar.lng], {
-          pane: "bars", keyboard: false,
-          icon: L.divIcon({ html: bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️</div>' :
-            '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + mods("barIcoHTML", bar) + "</div>", className: "", iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10] })
-        });
-        m.options.olnuKey = "p" + bar.id;
-        m.bindPopup(function () { return barPopup(bar, []); });
-        m.addTo(barLayer);
-        plainBarMarkers[bar.id] = m;
-      })(bar);
+      plainBarMarkers[bar.id] = addComposite({ bar: bar, beers: [], rallies: [], cis: [] }, barLayer, "bars");
     }
     if (!wasRedrawing && keep && keep.charAt(0) === "p") reopenPopup(keep);
+    labelsSoon();
   }
+  /* Bar name labels: zoom ≥ 16 only; a label that would cover a higher-priority label or another marker hides. */
+  var labelTimer = 0;
+  function labelsSoon() { clearTimeout(labelTimer); labelTimer = setTimeout(placeLabels, 60); }
+  function placeLabels() {
+    var on = map.getZoom() >= LABEL_ZOOM, cont = map.getContainer();
+    cont.classList.toggle("cm-labels", on);
+    if (!on) return;
+    var icons = Array.prototype.slice.call(cont.querySelectorAll(".leaflet-marker-icon"));
+    var obstacles = [], labels = [];
+    icons.forEach(function (ic) {
+      ic.querySelectorAll(".bar-ico, .pill, .rl-pin, .cm-rally").forEach(function (x) { obstacles.push({ ic: ic, r: x.getBoundingClientRect() }); });
+      var lb = ic.querySelector(".cm-lbl");
+      if (lb) { lb.classList.remove("lbl-hide"); labels.push({ ic: ic, el: lb, p: +(ic.getAttribute("data-prio") || 0) }); }
+    });
+    labels.sort(function (a, b) { return b.p - a.p; });
+    var kept = [], W = cont.clientWidth, H = cont.clientHeight, cr = cont.getBoundingClientRect();
+    var hit = function (a, b) { return a.left < b.right + 2 && a.right > b.left - 2 && a.top < b.bottom + 1 && a.bottom > b.top - 1; };
+    labels.forEach(function (x) {
+      var r = x.el.getBoundingClientRect();
+      if (r.right < cr.left || r.left > cr.left + W || r.bottom < cr.top || r.top > cr.top + H) return;   // off screen: keep, costs nothing
+      var bad = kept.some(function (k) { return hit(r, k); }) ||
+        obstacles.some(function (o) { return o.ic !== x.ic && hit(r, o.r); });
+      if (bad) x.el.classList.add("lbl-hide"); else kept.push(r);
+    });
+  }
+  map.on("zoomend moveend", labelsSoon);
+  // Selected marker: 1.25× and on top while its popup is open.
+  var selMarker = null;
+  map.on("popupopen", function (e) {
+    var s = e.popup && e.popup._source;
+    // Modules add content after open (and fonts load late): pan again once the popup has its final size.
+    setTimeout(function () { try { if (e.popup.isOpen() && e.popup.options.autoPan !== false) { e.popup._adjustPan(); } } catch (x) {} }, 80);
+    if (selMarker && selMarker !== s && selMarker.getElement()) L.DomUtil.removeClass(selMarker.getElement(), "cm-sel");
+    selMarker = null;
+    if (s && s.getElement && s.getElement() && L.DomUtil.hasClass(s.getElement(), "cm")) {
+      selMarker = s; L.DomUtil.addClass(s.getElement(), "cm-sel"); s.setZIndexOffset(30000);
+    }
+  });
+  map.on("popupclose", function (e) {
+    var s = e.popup && e.popup._source;
+    if (s && s.getElement && s.getElement()) { L.DomUtil.removeClass(s.getElement(), "cm-sel"); if (s.options.olnuPrio != null) s.setZIndexOffset(1000 + s.options.olnuPrio); }
+    if (s === selMarker) selMarker = null;
+  });
   var lastZoomBand = null;
   map.on("zoomend", function () {
     // Band 2 (zoom 16+): bar badges get the small Lugnt/Livligt/Packat tag.
@@ -511,6 +749,35 @@
     var d = window.BARS.describe(b);
     return d.kind === "near" ? t("nearX", d.name) : d.name || t("other");
   }
+  /* News context (polish): my groups' members tonight (home_status, max every 3 min, only with groups),
+     call-outs, my name/title/new medals, check-ins, centre. */
+  var groupRows = [], groupRowsAt = 0, groupRowsOff = false, groupRowsBusy = false, GROUP_NEWS_MS = 180000;
+  function loadGroupNews() {
+    if (!LIVE || !authed || groupRowsOff || groupRowsBusy || document.hidden) return;
+    if (Date.now() - groupRowsAt < GROUP_NEWS_MS) return;
+    groupRowsBusy = true; groupRowsAt = Date.now();
+    rpc("home_status", { p_last: false }).then(function (r) {
+      groupRowsBusy = false;
+      if (r.error) { if (U.missing(r.error)) groupRowsOff = true; return; }
+      groupRows = Array.isArray(r.data) ? r.data.filter(function (x) { return x && x.group_id != null; }) : [];
+      newsDirty = true;
+    });
+  }
+  function newsCtx(titles) {
+    var me = meState || {}, medals = [];
+    try {
+      var mm = window.MEDALS && window.MEDALS.mine ? window.MEDALS.mine() : null;
+      if (mm) Object.keys(mm).forEach(function (id) {
+        var at = Date.parse(mm[id] && mm[id].at || "") || 0;
+        if (at && Date.now() - at < 2 * 3600e3) medals.push(window.MEDALS.info(id).name);
+      });
+    } catch (e) {}
+    var rl = [];
+    try { rl = window.RALLY && window.RALLY.list ? window.RALLY.list() : []; } catch (e) { rl = []; }
+    return { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
+      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins,
+      home: groupRows, rallies: rl, myName: getName() || null, myTitle: me.title || null, myMedals: medals.slice(0, 3) };
+  }
   // LIVE ticker = funny TV news feed (js/news.js). New headlines after each poll (or language change), not on map moves.
   var tickerKey = "", newsDirty = true, newsPrev = [];
   function renderTicker() {
@@ -518,8 +785,7 @@
     newsDirty = false;
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
-    var items = window.NEWS ? window.NEWS.build(beerOnly(), { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
-      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins }) : [];
+    var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
     if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
     newsPrev = items.map(function (x) { return x.text; });
     tickerKey = "v2";
@@ -579,8 +845,7 @@
     newsDirty = false;
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
-    var items = window.NEWS ? window.NEWS.build(beerOnly(), { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
-      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins }) : [];
+    var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
     if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
     newsPrev = items.map(function (x) { return x.text; });
     tickPending = items;
@@ -607,7 +872,7 @@
         var before = prevLevels[b.id] | 0, l = now[b.id];
         if (l > before) {
           var who = whoOf(b), where = whereOf(b);
-          toast(l === 2 ? t("newMed", who, where) : t("newHot", who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
+          toast(streakToastText(b, l, who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
         }
       });
     }
@@ -625,7 +890,7 @@
       [2, 1].some(function (l) {
         if (cur[l].length <= before[l]) return false;
         var b = cur[l][cur[l].length - 1], who = whoOf(b), where = whereOf(b);
-        toast(l === 2 ? t("newMed", who, where) : t("newHot", who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
+        toast(streakToastText(b, l, who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
         return true;
       });
     }
@@ -961,8 +1226,9 @@
       var l = U.level(n);
       st.hidden = false;
       st.className = "my-streak" + lvlClass(l);
+      var mlv = lvOf(n), mtag = mlv ? ' ' + mlv.emoji + ' <span class="ms-tag ms-lv" style="--lv:' + U.esc(mlv.color) + '">' + U.esc(lvName(mlv, "me")) + "</span>" : null;
       st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
-        (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺") +
+        (mtag || (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺")) +
         (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
     } else st.hidden = true;
     // v9 HUD chips (title, ghost, taxi, come here). Built by the modules; clicks go to mods("hudClick").
@@ -1155,6 +1421,7 @@
       });
       if (window.NEWS) window.NEWS.update(beerOnly());
       newsDirty = true;
+      loadGroupNews();
       render();
       loadHeatPoints();
       streakAlerts(box);
@@ -1404,6 +1671,12 @@
   }
   function levelToast(n) {
     if (n === 1) return t("lvl1");
+    var lv = lvOf(n);
+    if (lv) {
+      var nm = lvName(lv, "me");
+      if (n === lv.at) return lv.emoji + " " + nm + "! " + t("lvlN", n) + " · " + noLeadEmoji(lvLine(lv));
+      return lv.emoji + " " + t("lvlN", n) + " · " + nm + (n >= 10 ? " · " + t("lvWater") : "");
+    }
     if (n === 5) return t("lvl5");
     if (n === 10) return t("lvl10");
     if (n > 10) return t("lvlMed", n);
@@ -1418,13 +1691,34 @@
     return oc;
   }
   // HOT STREAK / MEDEVAC takeover when the total crosses 5 / 10 (after ÖL! or after ANNAT). Returns true when shown.
-  function drinkFx(total, prev) {
+  // Swedish: title = my level name tonight, sub = a random line of that level, plus a random FX gag (fx.js).
+  // 5 = fire takeover, 10 = blue-light takeover (taxi buttons). 3, 7, 13, 16, 20 = small pops (toast + small effect).
+  // opts.noToast: the caller shows its own toast (ÖL! flow: levelToast). Returns true when a takeover ran.
+  function drinkFx(total, prev, opts) {
+    opts = opts || {};
+    var lv10 = lvAt(10), lv5 = lvAt(5);
     if (prev < 10 && total >= 10) {
       var medExtra = mods("medevacExtraHTML");
-      window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 });
+      window.FX.takeover(2, lv10 ? { title: lvName(lv10, "me"), sub: lvLine(lv10), icon: lv10.emoji, color: lv10.color, gag: true, hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }
+        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 });
       return true;
     }
-    if (prev < 5 && total >= 5) { window.FX.takeover(1, { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") }); return true; }
+    if (prev < 5 && total >= 5) {
+      window.FX.takeover(1, lv5 ? { title: lvName(lv5, "me"), sub: lvLine(lv5), icon: lv5.emoji, color: lv5.color, gag: true, hint: t("tapClose") }
+        : { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") });
+      return true;
+    }
+    // Small pops: the highest level crossed (3, 7, 13, 16, 20).
+    var all = lvList() || [], pop = null;
+    all.forEach(function (lv) { if (lv.at !== 5 && lv.at !== 10 && prev < lv.at && total >= lv.at && (!pop || lv.at > pop.at)) pop = lv; });
+    if (pop) {
+      if (window.FX.levelPop) window.FX.levelPop({ emoji: pop.emoji, color: pop.color, intensity: pop.intensity | 0, care: pop.at >= 13 });
+      if (!opts.noToast) toast(pop.emoji + " " + lvName(pop, "me") + "! " + noLeadEmoji(lvLine(pop)), { ms: 6000, cls: pop.at >= 13 ? "lv-care" : "lv-pop" });
+      // 13+ stays caring: water + taxi, one tap away.
+      if (pop.at >= 13) setTimeout(function () {
+        toast(t("lvCareToast"), { ms: 9000, cls: "lv-care", action: { label: t("lvTaxiBtn"), fn: function () { mods("hudClick", "taxi"); } } });
+      }, 1200);
+    }
     return false;
   }
   // "Var dricker du?" — sometimes asks which bar you are at, so the beer counts there.
@@ -1594,9 +1888,10 @@
           saveNight(d, true);
           lastAcceptAt = Date.now();
           if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
-          var total = (d.beer_count | 0) + othersNow(), l = U.level(total);
+          // v17 server: d.drinks = total drinks tonight (beers + others). Older server: beers + others we know.
+          var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow(), l = U.level(total);
           if (meState) { meState.beer_count = d.beer_count | 0; meState.undo_until = d.undo_until || null; }
-          var big = drinkFx(total, Math.max(before, total - 1));
+          var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
           var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
           var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
           if (res.v2 && d.undo_until) showUndo(d, text, cls);

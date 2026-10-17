@@ -1338,4 +1338,17 @@
     }
   };
   document.documentElement.lang = lang;
+  // Polish 2026-10-17: one marker per bar (popup sections), levels, haptics.
+  window.I18N.add({
+    sv: {
+      secRally: "🪖 Inkallelser", secHere: function (n) { return "🍺 Folk här nu (" + n + ")"; }, secCi: "🚪 Incheckade",
+      cmRallyAria: function (n) { return "Inkallelse här, " + n + " på väg"; },
+      lvWater: "Drick vatten.", lvCareToast: "💧 Ta ett stort glas vatten nu. Behöver du skjuts hem?", lvTaxiBtn: "🚕 Taxi"
+    },
+    en: {
+      secRally: "🪖 Call-outs", secHere: function (n) { return "🍺 Here now (" + n + ")"; }, secCi: "🚪 Checked in",
+      cmRallyAria: function (n) { return "Call-out here, " + n + " on the way"; },
+      lvWater: "Drink water.", lvCareToast: "💧 Have a big glass of water now. Need a ride home?", lvTaxiBtn: "🚕 Taxi"
+    }
+  });
 })();

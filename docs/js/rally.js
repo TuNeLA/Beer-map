@@ -92,7 +92,7 @@
   }
 
   /* ---------- Answer ---------- */
-  function answer(id, ans, quiet) {
+  function answer(id, ans, quiet, noFly) {
     var r = byId(id);
     return call("answer_rally", { p_rally_id: +id, p_answer: ans }).then(function (res) {
       if (res.error) {
@@ -115,7 +115,7 @@
         var marks = U.ls.getJSON(ANS_KEY, {}) || {}; marks[String(id)] = Date.now(); U.ls.setJSON(ANS_KEY, marks);
         drawFlags();
         var w = whereOf(r);
-        if (w && ans !== "no") {
+        if (w && ans !== "no" && !noFly) {
           if (openId == null) { A.closeSheet(); A.map.flyTo([w.lat, w.lng], 16, { duration: 1 }); }
           A.toast(t("rallyFlagHint"), { ms: 6000 });
         }
@@ -212,8 +212,63 @@
     placeCache[name] = best;
     return best;
   }
-  // Every active call-out with a place stays on the map as a flag: "🪖 Ström · 3 på väg" (+ ✅ if I come).
-  var flagsLayer = null, flagZoomHooked = false;
+  // Which call-outs are shown at all (same rule for the flag pin and the bar badge).
+  function visibleRallies() {
+    var marks = U.ls.getJSON(ANS_KEY, {}) || {}, nowMs = Date.now();
+    return rallies.filter(function (r) {
+      if (r.my_answer === "no") return false;                 // answered "no": nothing on the map
+      var at = marks[String(r.id)];
+      return !(at && nowMs - at > FLAG_MS && !r.is_mine);      // yes/maybe: 1 h after the answer; not answered: while active
+    });
+  }
+  // Polish (one marker per bar): a call-out placed at/near a bar (≤ 60 m) becomes the 🪖 badge on that bar's
+  // composite marker (app.js) from zoom 11; elsewhere (or zoomed further out) it keeps its own small pin.
+  var BADGE_M = 60, BADGE_ZOOM = 11;
+  function barOf(r) {
+    var w = whereOf(r); if (!w || !window.BARS || !window.BARS.nearby) return null;
+    // Bars within 60 m. A restaurant/café only when the call-out names it (a home party next to a pizzeria stays a pin).
+    var near = window.BARS.nearby(w.lat, w.lng, BADGE_M, 3, { places: true, placeM: BADGE_M, maxPlaces: 3 });
+    var pl = String(r.place || "").trim().toLowerCase();
+    for (var i = 0; i < near.length; i++) {
+      if (!near[i].place) return near[i].bar;
+      var n = String(near[i].bar.name || "").toLowerCase();
+      if (pl.length >= 3 && n && (n.indexOf(pl) >= 0 || pl.indexOf(n) >= 0)) return near[i].bar;
+    }
+    return null;
+  }
+  function barBadges(z) {
+    var out = {};
+    if (state !== "on" || (z != null && z < BADGE_ZOOM)) return out;
+    visibleRallies().forEach(function (r) {
+      var bar = barOf(r); if (!bar || bar.id == null) return;
+      var id = String(bar.id), x = out[id] || (out[id] = { bar: bar, rallies: [] });
+      x.rallies.push(r);
+    });
+    return out;
+  }
+  function badgeKey() {
+    var b = barBadges(A && A.map ? A.map.getZoom() : 0);
+    return Object.keys(b).sort().map(function (id) {
+      return id + ":" + b[id].rallies.map(function (r) { return r.id + "/" + (r.yes | 0) + "/" + (r.my_answer || ""); }).join(",");
+    }).join("|");
+  }
+  // "Inkallelser" section of a bar popup: who calls, how many come, Kommer + route.
+  function barSectionHTML(barId) {
+    var b = barBadges(null)[String(barId)]; if (!b) return "";
+    return b.rallies.map(function (r) {
+      var who = r.is_mine ? t("you") : (r.name || t("someone")), w = whereOf(r);
+      var h = '<div class="pp-rl-row" data-rl-id="' + esc(String(r.id)) + '">' +
+        '<button type="button" class="pp-rl-txt" data-rl-open="1">🪖 ' + esc(who + ": " + (r.body || t("rallyDefault"))) +
+        "<small>" + esc(t("rallyOnWay", r.yes | 0) + " · " + U.timeHM(r.created_at)) + "</small></button>";
+      if (!r.is_mine) {
+        h += '<div class="pp-rl-btns"><button type="button" data-rl-ans="yes" class="' + (r.my_answer === "yes" ? "on" : "") + '" aria-pressed="' + (r.my_answer === "yes") + '">' + esc(t("rallyYes")) + "</button>" +
+          (w ? '<a class="pp-rl-route" href="' + esc(dirUrl(w)) + '" target="_blank" rel="noopener noreferrer">' + esc(t("rallyRoute")) + "</a>" : "") + "</div>";
+      }
+      return h + "</div>";
+    }).join("");
+  }
+  // Every active call-out with a place stays on the map: as a badge on its bar, or as a small pin "🪖 3".
+  var flagsLayer = null, flagZoomHooked = false, lastBadgeKey = "";
   function drawFlags() {
     if (!A || !A.map || !window.L) return;
     if (!flagsLayer) flagsLayer = L.layerGroup().addTo(A.map);
@@ -222,14 +277,17 @@
       flagZoomHooked = true;
       var zc = function () { var el = A.map.getContainer(); el.classList.toggle("rl-zoomed", A.map.getZoom() >= 16); };
       A.map.on("zoomend", zc); zc();
+      A.map.on("zoomend", function () { drawFlags(); });
     }
-    var marks = U.ls.getJSON(ANS_KEY, {}) || {}, nowMs = Date.now();
-    rallies.forEach(function (r) {
+    var z = A.map.getZoom(), onBar = {};
+    var bb = barBadges(z);
+    Object.keys(bb).forEach(function (id) { bb[id].rallies.forEach(function (r) { onBar[String(r.id)] = true; }); });
+    // The bars' composite markers carry the badge: redraw them when the badges changed.
+    var key = badgeKey();
+    if (key !== lastBadgeKey) { lastBadgeKey = key; try { A.render(); } catch (e) {} }
+    visibleRallies().forEach(function (r) {
+      if (onBar[String(r.id)]) return;
       var w = whereOf(r); if (!w) return;
-      // Answered "no": no flag. Answered yes/maybe: flag for 1 h after the answer. Not answered: while active.
-      if (r.my_answer === "no") return;
-      var at = marks[String(r.id)];
-      if (at && nowMs - at > FLAG_MS && !r.is_mine) return;
       var who = r.is_mine ? t("you") : (r.name || t("someone"));
       var me = r.my_answer === "yes" ? " ✅" : r.my_answer === "maybe" ? " 🤔" : "";
       var m = L.marker([w.lat, w.lng], { keyboard: false, zIndexOffset: 3500,
@@ -382,6 +440,23 @@
         else if (b.hasAttribute("data-open")) { var r = byId(id); if (r) openRally(r); }
       });
       window.addEventListener("resize", U.debounce(setH, 150));
+      // Bar popup "Inkallelser" section: Kommer / open the call-out.
+      if (A.map) A.map.on("popupopen", function (e) {
+        var root = e.popup && e.popup.getElement(); if (!root) return;
+        root.querySelectorAll(".pp-rl-row").forEach(function (row) {
+          var id = row.getAttribute("data-rl-id");
+          row.querySelectorAll("[data-rl-ans]").forEach(function (b) {
+            b.addEventListener("click", function (ev) {
+              ev.preventDefault(); ev.stopPropagation();
+              if (b.disabled) return; b.disabled = true;
+              answer(id, b.getAttribute("data-rl-ans"), false, true).then(function () { b.disabled = false; });
+            });
+          });
+          row.querySelectorAll("[data-rl-open]").forEach(function (b) {
+            b.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); var r = byId(id); if (r) { A.map.closePopup(); openRally(r); } });
+          });
+        });
+      });
     },
     applyText: function () { renderBanner(); },
     onAuthed: function () {},   // v14: the first poll brings the rallies (poll_v2) or onPoll loads them
@@ -403,6 +478,9 @@
       });
       wrap.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyBtn"), "btn-small btn-block", function () { startCreate(g); })]));
     },
-    openLink: openLink
+    openLink: openLink,
+    barBadges: barBadges, barSectionHTML: barSectionHTML,
+    list: function () { return state === "on" ? rallies.slice() : []; },
+    drawFlags: function () { drawFlags(); }
   };
 })();

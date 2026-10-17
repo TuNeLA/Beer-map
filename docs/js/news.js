@@ -75,18 +75,151 @@
     } catch (e) { return []; }
   }
 
+  // Polish 2026-10-17: group + town templates from js/news-gt.js (window.NEWS_GT, Swedish only).
+  // groupLeader: a template without its own care line gets one when n >= 8 (never cheer more drinking).
+  function gtTemplates() {
+    try {
+      var g = window.NEWS_GT;
+      if (I.lang === "en" || !Array.isArray(g)) return [];
+      return g.map(function (x) {
+        if (!x || x.k !== "groupLeader" || typeof x.f !== "function" || String(x.f).indexOf("d.n >= 8") >= 0) return x;
+        var f = x.f;
+        return { k: x.k, f: function (d) { var s = f(d); return d && d.n >= 8 ? s + " Ta ett glas vatten emellan, va?" : s; } };
+      });
+    } catch (e) { return []; }
+  }
+  // Friend reaching 5 / 10 (LEVEL_FRIEND_SV, Swedish only).
+  function lvFriendTemplates() {
+    var f = window.LEVEL_FRIEND_SV, out = [];
+    if (I.lang === "en" || !f) return out;
+    (f.at5 || []).forEach(function (l) { out.push({ k: "friendLv5", f: function (d) { return l.replace(/\{name\}/g, d.name); } }); });
+    (f.at10 || []).forEach(function (l) { out.push({ k: "friendLv10", f: function (d) { return l.replace(/\{name\}/g, d.name); } }); });
+    return out;
+  }
+  // "Befordran" memory per night: name -> title seen, name -> when the title changed (for groupNewRank).
+  var RANK_KEY = "olnu.newsRanks";
+  function rankNews(now, list) {
+    var out = [];
+    try {
+      var key = nightKey(now), r = U.ls.getJSON(RANK_KEY, null);
+      if (!r || r.night !== key) r = { night: key, t: (r && r.t) || {}, fresh: {} };
+      list.forEach(function (x) {
+        if (!x.name || !x.title) return;
+        var was = r.t[x.name];
+        if (was && was !== x.title) r.fresh[x.name] = { title: x.title, at: now.getTime() };
+        r.t[x.name] = x.title;
+      });
+      Object.keys(r.fresh).forEach(function (n) {
+        var f = r.fresh[n];
+        if (now.getTime() - f.at < 90 * 60e3) out.push({ name: n, title: f.title });
+      });
+      U.ls.setJSON(RANK_KEY, r);
+    } catch (e) {}
+    return out;
+  }
+
   /* ---------- Categories for the mix ---------- */
-  var GENERAL = { random: 1, total: 1, t1: 1, t2: 1, t3: 1, t4: 1, t5: 1 };
+  var GENERAL = { random: 1, total: 1, t1: 1, t2: 1, t3: 1, t4: 1, t5: 1, general: 1 };
   var TOWN = { barReport: 1, barRate: 1, barRateHigh: 1, barStranger: 1, checkinCrowd: 1, anon: 1, anonSidetrack: 1,
     calm: 1, forecast: 1, takeover: 1, queueLong: 1, queueNone: 1, hot: 1, med: 1, chaos: 1 };
   function catOf(x) {
     var cls = " " + (x.cls || "") + " ", k = String(x.k || "");
     if (cls.indexOf(" tk-friend ") >= 0 || cls.indexOf(" tk-me ") >= 0 || /^(group|me[A-Z]|friend)/.test(k)) return "group";
     if (GENERAL[k]) return "general";
-    if (TOWN[k]) return "town";
+    if (TOWN[k] || /^town/.test(k)) return "town";
     var d = x.d || {};
     return d.bar || d.stad || d.where ? "town" : "general";
   }
+
+  /* ---------- Group + town candidates (NEWS_GT kinds) ----------
+     ctx.home = home_status rows of tonight (every member of my groups: beers, others, was_out, live, home, home_at),
+     ctx.rallies = my groups' call-outs, ctx.myName / ctx.myTitle / ctx.myMedals, ctx.titles (friend titles),
+     ctx.checkins, pins (friend_name / is_mine with bar_id). Time of day = Europe/Stockholm. */
+  function groupTownCands(beers, ctx, now, per, add) {
+    var hh = hourNow(now), myName = ctx.myName || t("you");
+    // Where is each named person? name -> bar name (pins with a bar, then check-ins).
+    var barOfName = {}, skalOfName = {};
+    beers.forEach(function (b) {
+      var nm = b.is_mine ? myName : b.friend_name; if (!nm) return;
+      skalOfName[nm] = (skalOfName[nm] | 0) + (b.skal_count | 0);
+      if (b.bar_id != null && b.snap !== "area" && window.BARS) { var bar = window.BARS.byId(b.bar_id); if (bar && bar.name) barOfName[nm] = bar.name; }
+    });
+    (ctx.checkins || []).forEach(function (c) {
+      var nm = c.is_mine ? myName : c.is_friend ? c.name : null;
+      if (nm && c.bar_name && !barOfName[nm]) barOfName[nm] = c.bar_name;
+    });
+    var groups = {}, order = [];
+    (ctx.home || []).forEach(function (r) {
+      if (!r || r.group_id == null || !r.group_name) return;
+      var g = groups[r.group_id];
+      if (!g) { g = groups[r.group_id] = { id: r.group_id, name: r.group_name, m: [] }; order.push(g); }
+      g.m.push(r);
+    });
+    order.forEach(function (g) {
+      var nameOf = function (r) { return r.is_me ? myName : r.name; };
+      var drinks = function (r) { return Math.max(0, r.beers | 0) + Math.max(0, r.others | 0); };
+      var out = g.m.filter(function (r) { return r.live || r.was_out || drinks(r) > 0; });
+      var total = 0; out.forEach(function (r) { total += drinks(r); });
+      var G = g.name;
+      if (out.length >= 2 && total >= 2) add("groupTotal", { group: G, n: total, k: out.length }, 1, "tk-friend");
+      if (g.m.length >= 3 && out.length === g.m.length) add("groupAllOut", { group: G, k: out.length }, 2, "tk-friend");
+      if (out.length === 1 && g.m.length >= 2) add("groupFirstOut", { name: nameOf(out[0]), group: G }, 1, "tk-friend");
+      if (!out.length && (hh >= 19 || hh < 3)) add("groupQuiet", { group: G }, 0, "tk-friend");
+      var lead = out.slice().sort(function (a, b) { return drinks(b) - drinks(a); });
+      if (lead.length >= 2 && drinks(lead[0]) >= 3 && drinks(lead[0]) > drinks(lead[1])) {
+        add("groupLeader", { name: nameOf(lead[0]), group: G, n: drinks(lead[0]) }, drinks(lead[0]) >= 8 ? 2 : 1, "tk-friend");
+      }
+      g.m.forEach(function (r) {
+        var at = Date.parse(r.home_at || "") || 0;
+        if (r.home && at && now.getTime() - at < 90 * 60e3 && !r.is_me) add("groupHome", { name: nameOf(r), group: G }, 2, "tk-friend");
+      });
+      var atBar = {}, bars = 0, skal = 0;
+      out.forEach(function (r) {
+        var b = barOfName[nameOf(r)]; if (b) { if (!atBar[b]) bars++; atBar[b] = (atBar[b] | 0) + 1; }
+        skal += skalOfName[nameOf(r)] | 0;
+      });
+      var best = null; Object.keys(atBar).forEach(function (b) { if (!best || atBar[b] > atBar[best]) best = b; });
+      if (best && atBar[best] >= 2) add("groupSameBar", { k: atBar[best], group: G, bar: best }, 2, "tk-friend");
+      if (bars >= 2) add("groupSplit", { group: G, bars: bars }, 1, "tk-friend");
+      if (skal >= 3) add("groupSkal", { group: G, s: skal }, 1, "tk-friend");
+      (ctx.rallies || []).forEach(function (r) {
+        if (String(r.group_id) !== String(g.id) || (r.yes | 0) < 1) return;
+        add("groupRally", { name: r.is_mine ? myName : (r.name || t("someone")), group: r.group_name || G, k: r.yes | 0 }, 2, "tk-friend");
+      });
+    });
+    // Promotions (titles) tonight: me + friends.
+    var tl = [], titles = ctx.titles || {};
+    if (ctx.myTitle) tl.push({ name: myName, title: ctx.myTitle });
+    beers.forEach(function (b) { if (b.friend_name && titles[b.id]) tl.push({ name: b.friend_name, title: titles[b.id] }); });
+    rankNews(now, tl).forEach(function (x) { add("groupNewRank", x, 1, "tk-friend"); });
+    // My medals earned in the last 2 h.
+    (ctx.myMedals || []).forEach(function (m) { add("groupMedal", { name: myName, medal: m }, 1, "tk-me"); });
+
+    // Town (anonymous): the town of the map/user centre.
+    var c = ctx.center, town = c && townAt(c.lat, c.lng);
+    if (!town) return;
+    var byTown = {}, k = 0, barSet = {}, ranking = [];
+    beers.forEach(function (b) { var tw = townAt(b.lat, b.lng); if (tw) byTown[tw] = (byTown[tw] | 0) + 1; });
+    k = byTown[town] | 0;
+    Object.keys(per || {}).forEach(function (id) {
+      var a = per[id]; if (!a.bar || !a.bar.name || townAt(a.bar.lat, a.bar.lng) !== town) return;
+      barSet[id] = 1;
+      if (a.beers.length >= 2) ranking.push({ bar: a.bar.name, n: a.beers.length });   // a bar name only with 2+ people
+    });
+    var nb = Object.keys(barSet).length;
+    if (k >= 2 && nb >= 1) add("townOut", { town: town, k: k, b: nb }, 2);
+    if (k < 3) add("townQuiet", { town: town }, 0, "tk-quiet");
+    if (k >= 1 && hh >= 1 && hh < 5) add("townLate", { town: town, k: k }, 2);
+    if (k >= 1 && hh >= 15 && hh < 20) add("townEarly", { town: town, k: k }, 1);
+    add("townWeather", { town: town }, 0);
+    var rival = null;
+    Object.keys(byTown).forEach(function (tw) { if (tw !== town && (!rival || byTown[tw] > byTown[rival])) rival = tw; });
+    if (rival && k >= 1) add("townCompare", { town: town, k: k, rival: rival, rk: byTown[rival] }, 2);
+    ranking.sort(function (a, b) { return b.n - a.n; });
+    if (ranking.length >= 3) add("townBarRanking", { town: town, bar1: ranking[0].bar, bar2: ranking[1].bar, bar3: ranking[2].bar }, 2);
+    add("general", {}, 0);
+  }
+  var lastBeers = [], lastCtx = {};
 
   /* ---------- Build one cycle ---------- */
   // ctx: {center:{lat,lng}, now:Date, prev:[texts of last cycle], titles, others, checkins (v10: live_checkins rows)}
@@ -97,7 +230,8 @@
     var now = ctx.now || new Date(), prev = ctx.prev || [];
     var bp = window.BARSPLUS, bpTpl = [];
     try { bpTpl = bp && bp.newsTemplates ? bp.newsTemplates() || [] : []; } catch (e) { bpTpl = []; }
-    var tpl = (t("news") || []).concat(moreTemplates()).concat(bpTpl), byKind = {};
+    var tpl = (t("news") || []).concat(moreTemplates()).concat(gtTemplates()).concat(lvFriendTemplates()).concat(bpTpl), byKind = {};
+    lastBeers = beers; lastCtx = ctx;
     tpl.forEach(function (x) {
       if (!x || typeof x.k !== "string" || typeof x.f !== "function") return;
       (byKind[x.k] = byKind[x.k] || []).push(x.f);
@@ -132,7 +266,8 @@
       .slice(0, 3)
       .forEach(function (b) {
         var med = U.level(b.beer_count) === 2;
-        add(med ? "med" : "hot", { who: whoFor(b), where: whereFor(b), n: b.beer_count | 0 }, 3,
+        // Strangers' alerts compete with the town news (imp 2); named people stay on top (imp 3).
+        add(med ? "med" : "hot", { who: whoFor(b), where: whereFor(b), n: b.beer_count | 0 }, b.friend_name || b.is_mine ? 3 : 2,
           (med ? "tk-med" : "tk-hot") + (b.friend_name ? " tk-friend" : ""));
       });
 
@@ -146,6 +281,8 @@
         var k = s.last - n;
         add(k <= 3 && Math.random() < 0.5 ? "recClose" : "recChase", { name: b.friend_name, n: n, rek: s.last, k: k }, 2, "tk-friend");
       }
+      if (n >= 10) add("friendLv10", d, 2, "tk-friend");
+      else if (n >= 5) add("friendLv5", d, 2, "tk-friend");
       if (n === 4) add("hotClose", d, 2, "tk-friend");
       if (n === 9) add("medClose", d, 2, "tk-friend");
       if (n >= 1 && n <= 3) add("friendOut", d, 0, "tk-friend");
@@ -240,6 +377,8 @@
       if (lt) add("anon", { anon: pick(anon), stad: lt, n: lb.beer_count | 0 }, 0);
     }
 
+    groupTownCands(beers, ctx, now, per, add);
+
     // Country, local town, forecast, time of day.
     if (beers.length) add("total", { n: beers.length }, 0);
     var c = ctx.center, stad = (c && townAt(c.lat, c.lng)) || t("newsTown");
@@ -289,8 +428,10 @@
     shuffle(out);
     var lastText = prev.length ? prev[prev.length - 1] : null;
     if (out.length > 1 && out[0].text === lastText) out.push(out.shift());
-    return out.map(function (x) { return { text: x.text, cls: x.cls }; });
+    return out.map(function (x) { return { text: x.text, cls: x.cls, k: x.k }; });
   }
 
-  window.NEWS = { build: build, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey };
+  window.NEWS = { build: build, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
+    // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
+    last: function () { return { beers: lastBeers, ctx: lastCtx }; } };
 })();

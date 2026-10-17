@@ -328,8 +328,11 @@
         var l = getLog(); l.others = Math.max((l.others | 0) + 1, d.other_count | 0); saveLog(l);
         award("side");
         // v14 (owner): all drinks count – HOT STREAK / MEDEVAC at 5 / 10 drinks, water and "ta det lugnt" too.
-        var total = Math.max(0, d.beer_count | 0) + Math.max(0, d.other_count | 0);
+        // v17 server: d.drinks = total drinks tonight (beers + others) when present.
+        var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : Math.max(0, d.beer_count | 0) + Math.max(0, d.other_count | 0);
         if (A.drinkFx && total > 0) A.drinkFx(total, total - 1);
+        // Friend 5/10 pushes also when an other drink crosses the level (server decides; fire-and-forget).
+        if (!ghostOn() && A.PUSH_ON && A.invoke) { try { A.invoke("notify-group").then(function () {}, function () {}); } catch (e) {} }
         if (total > 0 && total % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
           action: MED() && MED().on() ? { label: I.lang === "en" ? "💧 Done" : "💧 Druckit vatten", fn: function () { MED().waterTaken(); } } : null }, 2600);
         if (MED() && MED().noteBeer) MED().noteBeer();

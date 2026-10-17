@@ -14,7 +14,27 @@
   function vibrate(p) {
     // Before the first tap the browser blocks vibration (and logs an error): skip it then.
     try { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) {}
-    try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {}
+    try { if (navigator.vibrate) { navigator.vibrate(p); return; } } catch (e) {}
+    iosTick();
+  }
+  // iPhone: Safari has no navigator.vibrate. Documented workaround (iOS 17.4+/18): clicking the label of a hidden
+  // <input type="checkbox" switch> inside a user gesture gives one system haptic tick. iOS only, guarded, silent.
+  var iosSw = null;
+  function iosTick() {
+    try {
+      if (!U.isIOS || !U.isIOS()) return;
+      if (navigator.userActivation && !navigator.userActivation.isActive) return;   // only inside a tap
+      if (!iosSw) {
+        iosSw = document.createElement("label");
+        iosSw.setAttribute("aria-hidden", "true");
+        iosSw.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
+        var inp = document.createElement("input");
+        inp.type = "checkbox"; inp.setAttribute("switch", ""); inp.tabIndex = -1;
+        iosSw.appendChild(inp);
+        document.body.appendChild(iosSw);
+      }
+      iosSw.click();
+    } catch (e) {}
   }
 
   // Call inside a user tap. Makes (or wakes) the audio context.
@@ -423,16 +443,31 @@
   };
   var MED_LIST = ["lightbar", "beacons", "searchlight", "stripes"];
 
-  /* ---------- Ambient: edge glow over the map, under HUD and dock ---------- */
-  var AMB_MS = { 1: 3 * 60e3, 2: 5 * 60e3 }, amb = null;
+  /* ---------- Ambient: edge glow over the map, under HUD and dock ----------
+     Owner curve: 0–10 s TOTAL CHAOS (takeover + full ambient), 10–20 s fade, then a very subtle glow
+     (opacity ≤ 0.15, thin edges only) for the rest of the window (3 min hot / 5 min medevac), then off.
+     Same on app open: a 10 s burst, then subtle. Pulses stay ≤ 2 Hz (flash safety). */
+  var AMB_MS = { 1: 3 * 60e3, 2: 5 * 60e3 }, AMB_BURST_MS = 10000, AMB_FADE_MS = 10000, AMB_CALM_OP = 0.15, amb = null;
   function ambientStop(fast) {
     if (!amb) return;
-    var a = amb; amb = null; clearTimeout(a.timer);
+    var a = amb; amb = null; clearTimeout(a.timer); clearTimeout(a.calmT);
     if (fast) { a.el.remove(); return; }
+    a.el.style.transition = "opacity 1.5s ease"; a.el.style.opacity = "0";
     a.el.classList.add("out");
     setTimeout(function () { a.el.remove(); }, 1600);
   }
-  function ambient(level, ms) {
+  // burstMs: how long the full effect still runs (default 10 s). Then a 10 s fade into the subtle state.
+  function ambientCalm(a, burstMs, fadeMs) {
+    clearTimeout(a.calmT);
+    a.el.classList.remove("amb-calm"); a.el.style.transition = ""; a.el.style.opacity = "";
+    a.calmT = setTimeout(function () {
+      if (amb !== a) return;
+      a.el.style.transition = "opacity " + ((fadeMs || AMB_FADE_MS) / 1000) + "s linear";
+      a.el.classList.add("amb-calm");
+      a.el.style.opacity = String(AMB_CALM_OP);
+    }, Math.max(0, burstMs == null ? AMB_BURST_MS : burstMs));
+  }
+  function ambient(level, ms, burstMs, fadeMs) {
     level = level | 0;
     if (!level) { ambientStop(); return; }
     ms = ms > 0 ? ms : AMB_MS[level] || 60e3;
@@ -453,6 +488,7 @@
     el.innerHTML = h;
     document.body.appendChild(el);
     amb = { el: el, level: level, end: end, timer: setTimeout(function () { ambientStop(); }, ms) };
+    ambientCalm(amb, burstMs, fadeMs);
   }
 
   /* ---------- Night memory: when HOT / MEDEVAC was first reached tonight ---------- */
@@ -491,10 +527,16 @@
         return '<span class="bw">' + h + "</span>";
       }).join(" ");
     }
+    // Polish: Swedish level emoji/colour + a random FX gag caption (never the same twice in a row).
+    var gag = "";
+    if (opts.gag === true && window.I18N && window.I18N.lang === "sv" && Array.isArray(window.FX_GAGS_SV) && window.FX_GAGS_SV.length) gag = pickNoRepeat("gag", window.FX_GAGS_SV);
+    else if (typeof opts.gag === "string") gag = opts.gag;
+    if (opts.color) el.style.setProperty("--lv-color", String(opts.color));
     el.innerHTML = '<div class="fx-layer" aria-hidden="true"></div>' +
-      '<div class="to-core"><div class="to-icon" aria-hidden="true">' + (level === 2 ? "🚁" : "🔥") + "</div>" +
+      '<div class="to-core"><div class="to-icon" aria-hidden="true">' + U.esc(opts.icon || (level === 2 ? "🚁" : "🔥")) + "</div>" +
       '<div class="to-title">' + titleHTML + "</div>" +
       '<div class="to-sub">' + U.esc(opts.sub || "") + "</div>" +
+      (gag ? '<div class="to-gag">' + U.esc(gag) + "</div>" : "") +
       // extraHTML: trusted HTML built by the app (e.g. taxi buttons). Its links work; a tap elsewhere closes.
       (opts.extraHTML ? '<div class="to-extra">' + opts.extraHTML + "</div>" : "") +
       '<div class="to-hint">' + U.esc(opts.hint || "") + "</div></div>";
@@ -512,10 +554,12 @@
       if (now) el.remove();
       else { el.classList.add("out"); setTimeout(function () { el.remove(); }, 260); }
     }
+    var tkStart = Date.now();
     function done() {
       if (closed) return;
       kill(false);
-      if (!opts.noAmbient) ambient(level, AMB_MS[level]);
+      // 10 s of total chaos counted from the takeover start, then the fade + subtle glow.
+      if (!opts.noAmbient) ambient(level, AMB_MS[level], AMB_BURST_MS - (Date.now() - tkStart));
     }
     var ctl = { el: el, kill: kill };
     el.addEventListener("click", done);
@@ -523,7 +567,7 @@
     var dur = Math.max(opts.ms || 0, level === 2 ? 5200 : 4300);
     timer = setTimeout(done, dur);
     lastTk = { level: level, at: Date.now() };
-    if (!opts.noAmbient) markReached(level);
+    if (!opts.noAmbient) { markReached(level); fxSeenMark(level); }
     if (level === 2) { vibrate([200, 80, 200, 80, 400]); sound.medevac(); }
     else { vibrate([120, 60, 120, 60, 240]); sound.hot(); }
     return variant;
@@ -580,6 +624,28 @@
     fn(anchor);
   }
 
+  /* ---------- Small level pop (3, 7, 13, 16, 20): emoji burst + one soft edge flash, < 2 s ----------
+     o: {emoji, color, intensity 1–7, care}. Care (13+): calm, no particles. One flash only (flash safety). */
+  function levelPop(o) {
+    o = o || {};
+    var k = Math.max(1, Math.min(7, o.intensity | 0 || 1)), rm = reduced();
+    var el = document.createElement("div");
+    el.className = "fx-pop" + (o.care ? " care" : "") + (rm ? " still" : "");
+    el.setAttribute("aria-hidden", "true");
+    el.style.setProperty("--pc", String(o.color || "#f5a623"));
+    el.style.setProperty("--pk", String(k));
+    var h = '<i class="fp-edge"></i><b class="fp-emo">' + U.esc(o.emoji || "🍺") + "</b>";
+    if (!o.care && !rm) for (var i = 0; i < 4 + k * 2; i++) {
+      var a = rnd(-170, -10) * Math.PI / 180, d = rnd(60, 110 + k * 18);
+      h += '<s style="--dx:' + (Math.cos(a) * d).toFixed(0) + "px;--dy:" + (Math.sin(a) * d).toFixed(0) + "px;animation-delay:" + rnd(0, 120).toFixed(0) + 'ms">' + U.esc(o.emoji || "🍺") + "</s>";
+    }
+    el.innerHTML = h;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 1500 + k * 100);
+    vibrate(o.care ? 30 : k >= 3 ? [40, 50, 40, 50, 80] : [30, 40, 60]);
+    try { if (!o.care) sound.clink(); } catch (e) {}
+  }
+
   /* ---------- Watch #my-streak (class " hot" / " medevac" set by app.js) ---------- */
   var LOAD_AT = Date.now(), seenLevel = 0;
   function streakLevel(st) {
@@ -590,18 +656,32 @@
     var L = streakLevel(st);
     if (L === seenLevel) return;
     var prev = seenLevel; seenLevel = L;
-    if (L < prev) { if (amb && amb.level > L) { ambientStop(); if (L) ambient(L, 10000); } return; }
+    if (L < prev) { if (amb && amb.level > L) { ambientStop(); if (L) ambient(L, 10000, 0); } return; }
     if (!L) return;
     // A takeover for this level just ran (or is about to): it starts the long ambient itself.
     setTimeout(function () {
       if (seenLevel !== L) return;
       if (lastTk.level >= L && Date.now() - lastTk.at < 20000) return;
-      var old = markReached(L), win = AMB_MS[L], ms;
-      if (old) ms = Math.max(10000, old + win - Date.now());       // reached earlier tonight (app reopened)
-      else ms = Date.now() - LOAD_AT < 20000 ? 10000 : win;        // first seen right after open / new now
-      ambient(L, ms);
+      var old = markReached(L), win = AMB_MS[L], left = old ? old + win - Date.now() : win;
+      if (fxSeen(L)) {
+        // Already saw the full effect for this level tonight on this phone: a ~1 s soft flash that fades
+        // into the subtle glow (while still inside its 3/5 min window), or out (window over).
+        ambient(L, Math.max(left, 1800), 0, 1000);
+        return;
+      }
+      fxSeenMark(L);
+      ambient(L, Math.max(left, 20000));   // first time: 10 s chaos, 10 s fade, then subtle
     }, 1200);
   }
+  // Per night: has this phone shown the full 10 s effect for a level? olnu.fxSeen = {night, hot, med}
+  var SEEN_KEY = "olnu.fxSeen";
+  function fxSeenGet() {
+    var r = U.ls.getJSON(SEEN_KEY, null), k = nightKey();
+    if (!r || r.night !== k) r = { night: k, hot: false, med: false };
+    return r;
+  }
+  function fxSeen(level) { return !!fxSeenGet()[level === 2 ? "med" : "hot"]; }
+  function fxSeenMark(level) { var r = fxSeenGet(); r[level === 2 ? "med" : "hot"] = true; U.ls.setJSON(SEEN_KEY, r); }
   function watch() {
     var st = document.getElementById("my-streak");
     if (!st || !window.MutationObserver) return;
@@ -610,7 +690,7 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch); else watch();
 
-  window.FX = { vibrate: vibrate, unlock: unlock, sound: sound, splash: splash, takeover: takeover,
+  window.FX = { vibrate: vibrate, unlock: unlock, sound: sound, splash: splash, takeover: takeover, levelPop: levelPop,
     muted: muted, setMuted: setMuted, reduced: reduced, say: say,
     ambient: ambient, ambientStop: ambientStop,
     variants: { 1: HOT_LIST.slice(), 2: MED_LIST.slice(), beer: ["foam", "bubbles", "clink"] } };

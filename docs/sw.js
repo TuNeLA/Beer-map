@@ -1,8 +1,8 @@
 /* Öl Nu service worker. */
 var VERSION = "olnu-48b116657c";
 var SHELL = [
-  "./", "./index.html", "./styles.css", "./fx.css", "./medals.css", "./barsplus.css", "./v14.css", "./games.css", "./after.css", "./config.js", "./app.js", "./bars-extra.json", "./bars-closed.json",
-  "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news-more.js", "./js/news.js", "./js/medals.js", "./js/social.js", "./js/drink-lines.js", "./js/taxi-data.js", "./js/extras.js", "./js/rally.js", "./js/barsplus.js", "./js/v14.js", "./js/games-content.js", "./js/games.js", "./js/after-content.js", "./js/after.js",
+  "./", "./index.html", "./styles.css", "./fx.css", "./medals.css", "./barsplus.css", "./v14.css", "./games.css", "./after.css", "./boards.css", "./config.js", "./app.js", "./bars-extra.json", "./bars-closed.json",
+  "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news-more.js", "./js/news.js", "./js/medals.js", "./js/social.js", "./js/drink-lines.js", "./js/taxi-data.js", "./js/extras.js", "./js/rally.js", "./js/barsplus.js", "./js/v14.js", "./js/games-content.js", "./js/games.js", "./js/after-content.js", "./js/after.js", "./js/boards.js", "./js/levels-content.js", "./js/news-gt.js",
   "./manifest.webmanifest", "./favicon.ico",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"
