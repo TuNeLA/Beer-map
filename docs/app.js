@@ -1766,8 +1766,10 @@
     if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) {
       return Promise.all(ks.filter(function (k) { return k.indexOf("olnu-") === 0; }).map(function (k) { return caches.delete(k); }));
     }));
+    // Do NOT unregister the service worker: that also deletes the push subscription (notifications turned
+    // themselves off). Ask it to fetch the newest sw.js instead; the new one takes over on reload.
     if ("serviceWorker" in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
-      return Promise.all(rs.map(function (r) { return r.unregister(); }));
+      return Promise.all(rs.map(function (r) { return r.update().catch(function () {}); }));
     }));
     // Also refresh the browser HTTP cache (max-age=600 on GitHub Pages), else the reload can get old files.
     ["./", "./index.html", "./sw.js", "./config.js", "./app.js", "./styles.css", "./js/i18n.js", "./js/util.js",
@@ -1872,7 +1874,7 @@
     signingIn = go().then(function () {
       authed = true;
       toastClear("auth");
-      if (PUSH_ON) window.PUSH.resync(rpc).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
+      if (PUSH_ON) window.PUSH.resync(rpc, CFG.VAPID_PUBLIC_KEY).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
       startPoll();
       mods("onAuthed");
       return refresh();

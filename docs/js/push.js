@@ -49,11 +49,14 @@
       }).then(function (sub) {
         var k = keysOf(sub);
         return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth })
-          .then(function (r) { if (r.error) throw r.error; return "on"; });
+          .then(function (r) { if (r.error) throw r.error; want("1"); return "on"; });
       });
     });
   }
+  // "1" = the user turned notifications on, "0" = the user turned them off. Unset = not known (older version).
+  function want(v) { try { if (v != null) localStorage.setItem("olnu.pushWant", v); return localStorage.getItem("olnu.pushWant"); } catch (e) { return null; } }
   function disable(rpc) {
+    want("0");
     return current().then(function (sub) {
       if (!sub) return "off";
       var ep = sub.endpoint;
@@ -63,9 +66,20 @@
     });
   }
   // Re-save an existing subscription for the current (maybe new) anonymous user. Errors ignored.
-  function resync(rpc) {
+  // Self-heal: if the subscription is gone (browser dropped it, old "Uppdatera nu" removed the service
+  // worker) but permission is still granted and the user did not turn it off, subscribe again silently.
+  function resync(rpc, vapidKey) {
     if (!supported() || Notification.permission !== "granted") return Promise.resolve();
     return current().then(function (sub) {
+      if (!sub && vapidKey && want() !== "0") {
+        return navigator.serviceWorker.ready.then(function (reg) {
+          return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidKey) });
+        }).then(function (nsub) {
+          var nk = keysOf(nsub);
+          return rpc("save_push_subscription", { p_endpoint: nsub.endpoint, p_p256dh: nk.p256dh, p_auth: nk.auth })
+            .then(function (r) { if (!r.error) want("1"); });
+        });
+      }
       if (!sub) return;
       var k = keysOf(sub);
       return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth });
@@ -86,5 +100,5 @@
       });
     }).catch(function () {});
   }
-  window.PUSH = { supported: supported, current: current, enable: enable, disable: disable, resync: resync, setLocation: setLocation, urlBase64ToUint8Array: urlBase64ToUint8Array };
+  window.PUSH = { supported: supported, current: current, enable: enable, disable: disable, resync: resync, want: want, setLocation: setLocation, urlBase64ToUint8Array: urlBase64ToUint8Array };
 })();
