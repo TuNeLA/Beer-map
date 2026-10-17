@@ -69,7 +69,7 @@
       pickFlag: "Stopp {0}/{1}",
       // Bingo
       bingoHead: "Kvällsbingo",
-      bingoHint: "Bocka av det som händer. Hedersystem: alla ser vem som bockade. Tre i rad = BINGO!",
+      bingoHint: "Bocka av det som händer. Hederssystem: alla ser vem som bockade. Tre i rad = BINGO!",
       bingoLines: "🎱 {0} rad(er) klara",
       bingoToast: "🎱 BINGO i {0}! Tre i rad. Hela gänget jublar.",
       bingoNotYours: "Bara {0} kan ta bort den bocken.",

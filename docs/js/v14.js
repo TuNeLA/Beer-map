@@ -15,7 +15,7 @@
       live: function (n) { return "<b>" + n + "</b> dricker i världen just nu"; },
       outsideServer: "Servern tar int' emot öl utanför Sverige än – snart!",
       tonight: "Ikväll", beerNo: function (n) { return n + " 🍺 ikväll"; },
-      lvlN: function (n) { return "Nr " + n + " ikväll. Skål!"; },
+      lvlN: function (n) { return n >= 10 ? "Nr " + n + " ikväll. Ta ett glas vatten nu, kompis." : "Nr " + n + " ikväll. Skål!"; },
       // Undo
       undoBtn: "ÅNGRA", undoBusy: "Ångrar…",
       undoReported: function (n) { return "🍺 Nr " + n + " rapporterad"; },

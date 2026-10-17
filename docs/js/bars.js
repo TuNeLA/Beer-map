@@ -212,6 +212,20 @@
   var places = {}, placesById = {}, placesState = "idle", onPlaces = [];
   var PLACE_TYPES = { r: "restaurant", f: "fast_food", c: "cafe" };
   var pMap = null, tIndex = null, tState = {}, tQueue = 0, MAX_TILE_LOADS = 12;
+  // Same venue twice (restaurant tile + bar with a similar name, ≤ 60 m): the bar is the real one.
+  function barTwin(o) {
+    var gy = Math.floor(o.lat / GRID), gx = Math.floor(o.lng / GRID);
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+      var cell = grid[(gy + dy) + "_" + (gx + dx)]; if (!cell) continue;
+      for (var i = 0; i < cell.length; i++) if (isDuplicate(o, cell[i])) return cell[i];
+    }
+    return null;
+  }
+  function canon(o) {
+    if (!o || !o.place) return o;
+    if (o.dupOf && bars[o.dupOf.id] === o.dupOf) return o.dupOf;
+    var t = barTwin(o); o.dupOf = t; return t || o;
+  }
   function placeId(lat, lng) { return "pl_" + Math.round(lat * 1e5) + "_" + Math.round(lng * 1e5); }
   function addPlaces(list) {
     if (!Array.isArray(list)) return;
@@ -315,7 +329,7 @@
   }
   // Drink spot for a pin: a bar within 75 m wins, else a restaurant/café within 40 m (same rule as the server).
   var PLACE_M = 40;   // restaurants are small and often next to homes: 40 m (bars 75 m), same as the server
-  function nearestSpot(lat, lng) { return nearestBar(lat, lng) || nearestPlace(lat, lng, PLACE_M); }
+  function nearestSpot(lat, lng) { return nearestBar(lat, lng) || canon(nearestPlace(lat, lng, PLACE_M)); }
   // Nearest named spot (bar or place) within maxM metres. Search radius limited to the 3x3 grid (~1 km).
   function nearestNamed(lat, lng, maxM) {
     var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), best = null, bestD = maxM;
@@ -408,7 +422,8 @@
     placeId: placeId,
     placesReady: function () { return placesState === "ready"; },
     ensurePlaces: ensurePlaces,
-    byId: function (id) { return bars[id] || placesById[id] || null; },
+    byId: function (id) { return bars[id] || canon(placesById[id]) || null; },
+    canonId: function (id) { var o = bars[id] || canon(placesById[id]); return o ? String(o.id) : String(id || ""); },
     inBounds: function (b, max) {
       var out = [];
       for (var id in bars) { if (b.contains([bars[id].lat, bars[id].lng])) { out.push(bars[id]); if (max && out.length >= max) break; } }
@@ -422,7 +437,7 @@
       beers.forEach(function (be) {
         var bar = null;
         if (be.snap === "area" || !be.precise) bar = null;
-        else if (be.bar_id != null) bar = bars[be.bar_id] || placesById[be.bar_id] || null;
+        else if (be.bar_id != null) bar = bars[be.bar_id] || canon(placesById[be.bar_id]) || null;
         else if (!be.snap) bar = nearestSpot(be.lat, be.lng);   // old server: no snap/bar_id fields
         if (!bar) { rest.push(be); return; }
         var a = perBar[bar.id] || (perBar[bar.id] = { bar: bar, beers: [] });

@@ -512,7 +512,7 @@
   // Check-ins per bar id (from the poll), rally badges per bar id (js/rally.js).
   function checkinsByBar() {
     var out = {};
-    checkins.forEach(function (c) { var id = String(c.bar_id || ""); if (id) (out[id] = out[id] || []).push(c); });
+    checkins.forEach(function (c) { var id = c.bar_id ? window.BARS.canonId(c.bar_id) : ""; if (id) (out[id] = out[id] || []).push(c); });
     return out;
   }
   function rallyBadges(z) {
@@ -581,7 +581,7 @@
   }
   function checkinsAt(bar) {
     var id = String(bar.id);
-    return checkins.filter(function (c) { return String(c.bar_id) === id; });
+    return checkins.filter(function (c) { return window.BARS.canonId(c.bar_id) === window.BARS.canonId(id); });
   }
   // "Anton, Oskar + 2 till" (names: me + friends; strangers only as a count).
   function checkinNamesHTML(bar) {
