@@ -338,7 +338,7 @@
   }
 
   var LEVEL_LINES = [
-    "⬆️ Du har levlat din dryckesegenskap! Nu é du {ny}.",
+    "⬆️ Du har levlat din dryckesegenskap! Nu ä du {ny}.",
     "📈 +1 i Törst. +2 i Charm. −1 i Balans.",
     "📜 Ny skill upplåst: öppna kapsyl med tändare. Chans att lyckas: 34 %.",
     "🎲 Du slog en naturlig 20 på törstslaget!",

@@ -5,10 +5,10 @@ window.DELIGHT_CONTENT = {
   /* ---------- 1. Rare map events: caption lines (one is picked) + bonus lines when the sprite is tapped ---------- */
   events: {
     alg: {
-      sv: { cap: ["⚠️ ÄLGVARNING – sektor {sektor}. Kontakten é stor, brun och har företräde.",
+      sv: { cap: ["⚠️ ÄLGVARNING – sektor {sektor}. Kontakten ä stor, brun och har företräde.",
                   "🫎 Älg på kartan! Han har int' sökt tillstånd. Ingen har vågat säga nåt.",
                   "🫎 Fiendens stridsvagn identifierad. Visade sig va' en älg. Larmet avblåst."],
-            tap: ["🫎 BRÖÖL! Älgen nickar åt dig. Du é nu hedersmedlem i jaktlaget.",
+            tap: ["🫎 BRÖÖL! Älgen nickar åt dig. Du ä nu hedersmedlem i jaktlaget.",
                   "🫎 Älgen tittar på dig. Länge. Sen går han. Ingen vet vad det betydde.",
                   "🫎 Du klappade en älg på en karta. Mamma hade vari' stolt. Typ."] },
       en: { cap: "⚠️ MOOSE ALERT – sector {sektor}. It has right of way.", tap: "🫎 The moose nods. You are now an honorary hunter." }
@@ -26,7 +26,7 @@ window.DELIGHT_CONTENT = {
       sv: { cap: ["⛷️ En Vasaloppsåkare korsar kartan. Han tror att Mora ligger åt det hållet. Ingen rättar honom.",
                   "⛷️ Skidåkare i sektor {sektor}! Blåbärssoppa i ena handen, fel karta i den andra.",
                   "⛷️ Åkare nr 4711 har gått vilse sen 1987. Han hälsar att han mår bra."],
-            tap: ["⛷️ 'Hur långt é dä kvar?' – 'Ungefär hela Dalarna, pôjk.'",
+            tap: ["⛷️ 'Hur långt ä dä kvar?' – 'Ungefär hela Dalarna, pôjk.'",
                   "⛷️ Du gav honom en mugg blåbärssoppa. Han åkte vidare med nytt hopp.",
                   "⛷️ 'I fäders spår, för framtida segrar!' ropar han. Sen åker han in i en snödriva."] },
       en: { cap: "⛷️ A Vasaloppet skier crosses the map. He thinks Mora is this way.", tap: "⛷️ You gave him blueberry soup. He skis on with new hope." }
@@ -43,15 +43,15 @@ window.DELIGHT_CONTENT = {
     traktor: {
       sv: { cap: ["🚜 Traktorkö på Storgatan! Hastighet: 12 km/h. Moral: hög.",
                   "🚜 Bonde i täten, fem bilar bakom. Alla har accepterat sitt öde.",
-                  "🚜 Pansarkolonn på väg genom {sektor}. Den é grön och luktar hö."],
+                  "🚜 Pansarkolonn på väg genom {sektor}. Den ä grön och luktar hö."],
             tap: ["🚜 Bonden lyfter ett finger från ratten. Den finaste hälsningen som finns i Dalarna.",
                   "🚜 Kön rör sig 3 meter. Folk jublar.",
-                  "🚜 'Hä é int' bråttom', säger bonden. Han har rätt."] },
+                  "🚜 'Hä ä int' bråttom', säger bonden. Han har rätt."] },
       en: { cap: "🚜 Tractor queue on the main street. Speed 12 km/h. Morale high.", tap: "🚜 The farmer lifts one finger off the wheel. Highest honour." }
     },
     ander: {
       sv: { cap: ["🦆 Andflock i V-formation över {sektor}. Bättre ordning än i kompaniet.",
-                  "🦆 Flygvapnet har skickat förstärkning. Det é änder.",
+                  "🦆 Flygvapnet har skickat förstärkning. Det ä änder.",
                   "🦆 Änderna flyger söderut. De har hört om kebaben i Borlänge."],
             tap: ["🦆 KVACK! Hela flocken svarar. Du har nu befälet över en skvadron änder.",
                   "🦆 Den sista anden flyger lite snett. Vi kallar honom Anton. Nej, vi gör int' det.",
@@ -60,7 +60,7 @@ window.DELIGHT_CONTENT = {
     },
     norrsken: {
       sv: { cap: ["🌌 Norrsken över kartan! Himlen festar också ikväll.",
-                  "🌌 Gröna ljus på himlen. Spaningen bekräftar: det é int' grannens laser.",
+                  "🌌 Gröna ljus på himlen. Spaningen bekräftar: det ä int' grannens laser.",
                   "🌌 Norrsken över {sektor}. Ölguden har tänt diskolampan."],
             tap: ["🌌 Du önskade dig nåt. Norrskenet sa 'kanske'.",
                   "🌌 Titta upp på riktigt ibland också. Himlen har ingen app.",
@@ -69,9 +69,9 @@ window.DELIGHT_CONTENT = {
     },
     spelman: {
       sv: { cap: ["🎻 Spelmanslaget marscherar förbi! Fiol, nyckelharpa och en kille med triangel.",
-                  "🎺 Musikkåren på manöver i {sektor}. Ingen vet vilken låt det é. Inte de heller.",
-                  "🪗 Dragspel på kartan! Det é antingen fest eller begravning. Det låter likadant."],
-            tap: ["🎻 Du önskade en låt. De spelade samma låt igen. Hä é traditionen.",
+                  "🎺 Musikkåren på manöver i {sektor}. Ingen vet vilken låt det ä. Inte de heller.",
+                  "🪗 Dragspel på kartan! Det ä antingen fest eller begravning. Det låter likadant."],
+            tap: ["🎻 Du önskade en låt. De spelade samma låt igen. Hä ä traditionen.",
                   "🎺 Trumpetaren tappade takten. Triangeln tog över. Kaos.",
                   "🪗 'Vi spelar bara en till', säger de. De har sagt så sen 1974."] },
       en: { cap: "🎻 The fiddlers march past! Fiddle, nyckelharpa and a triangle.", tap: "🎻 You asked for a song. They played the same one again." }
@@ -90,13 +90,13 @@ window.DELIGHT_CONTENT = {
                   "🚗 EPA-kolonn rullar genom {sektor}. Dunk dunk dunk. Dunk.",
                   "🛵 Motoriserat förband på patrull. Bensin: halv. Självförtroende: fullt."],
             tap: ["🛵 Föraren tutar två gånger. Det betyder 'tjena' på mopedspråk.",
-                  "🚗 Musiken é så hög att kartan vibrerar. Eller é dä din telefon?",
+                  "🚗 Musiken ä så hög att kartan vibrerar. Eller ä dä din telefon?",
                   "🛵 Ett varv till runt torget. Som vanligt."] },
       en: { cap: "🛵 Moped cruise on the main street! Speed 30. Volume 120 dB.", tap: "🛵 Two honks. That means 'hi'." }
     },
     gadda: {
-      sv: { cap: ["🐟 En gädda hoppar i Väsman! Hon é större än i fjol. Hon é alltid större än i fjol.",
-                  "🐟 Ubåtskränkning i {sektor}! Visade sig va' en gädda. Hon é stolt över det.",
+      sv: { cap: ["🐟 En gädda hoppar i Väsman! Hon ä större än i fjol. Hon ä alltid större än i fjol.",
+                  "🐟 Ubåtskränkning i {sektor}! Visade sig va' en gädda. Hon ä stolt över det.",
                   "🐟 Fisken hoppade så högt att den syntes på kartan. Rekord."],
             tap: ["🐟 Du fångade henne! Hon vägde 14 kilo. Eller 4. Beror på vem som berättar.",
                   "🐟 Gäddan blinkar åt dig och dyker. Hon kommer tillbaka i nästa historia.",
@@ -105,11 +105,11 @@ window.DELIGHT_CONTENT = {
     },
     ballong: {
       sv: { cap: ["🎈 En ballong stiger över {sektor}. Nån har tappat sitt kalas.",
-                  "🎈 Spaningsballong i luftrummet! Den é röd och har ett ansikte ritat med tusch.",
+                  "🎈 Spaningsballong i luftrummet! Den ä röd och har ett ansikte ritat med tusch.",
                   "🎈 Luftburen enhet på väg uppåt. Mål: okänt. Moral: lätt."],
             tap: ["🎈 Du nästan nådde den. Nästan.",
                   "🎈 Ballongen hälsar och svävar vidare mot Grangärde.",
-                  "🎈 POFF! Nej. Den klarade sig. Den é starkare än den ser ut."] },
+                  "🎈 POFF! Nej. Den klarade sig. Den ä starkare än den ser ut."] },
       en: { cap: "🎈 A balloon rises over {sektor}. Someone lost their party.", tap: "🎈 You almost reached it. Almost." }
     },
     snow: {
@@ -123,7 +123,7 @@ window.DELIGHT_CONTENT = {
     },
     aska: {
       sv: { cap: ["⚡ Åska över {sektor}! Räkna sekunderna. Eller gå in. Gå in.",
-                  "🌩️ Artillerield från himlen. Det é bara Tor som har kalas.",
+                  "🌩️ Artillerield från himlen. Det ä bara Tor som har kalas.",
                   "⚡ Oväder på ingång. Stäng fönstret och ta in tvätten, soldat."],
             tap: ["🌩️ 1… 2… 3… BOM. Tre kilometer bort. Ungefär.",
                   "⚡ Blixten slog ner i en tom ölback. Den mår bra.",
@@ -134,25 +134,25 @@ window.DELIGHT_CONTENT = {
       sv: { cap: ["🌭 Korvgubben rullar förbi! Senap, ketchup och rostad lök. Taktiskt viktigt.",
                   "🌭 Matförråd på hjul i {sektor}. Förplägnaden har anlänt.",
                   "🌭 Korvvagnen patrullerar. Han har bröd. Han har korv. Han har en plan."],
-            tap: ["🌭 'Med allt?' – 'Med allt.' Det é så man vet att man é vuxen.",
+            tap: ["🌭 'Med allt?' – 'Med allt.' Det ä så man vet att man ä vuxen.",
                   "🌭 Korvgubben ropar: 'Ät nåt, pôjk!' Bra råd faktiskt.",
-                  "🌭 Du fick en extra servett. Det é kärlek i korvvärlden."] },
+                  "🌭 Du fick en extra servett. Det ä kärlek i korvvärlden."] },
       en: { cap: "🌭 The hot dog cart rolls by! Supplies have arrived.", tap: "🌭 'Eat something!' Good advice actually." }
     },
     spoke: {
       sv: { cap: ["👻 Ett spöke svävar över {sektor}. Det har bara ett lakan och massor av självförtroende.",
                   "👻 Halloween-patrull: ett spöke letar efter godis. Det fick en kapsyl.",
-                  "👻 BU! Ingen blev rädd. Spöket é lite ledset nu."],
+                  "👻 BU! Ingen blev rädd. Spöket ä lite ledset nu."],
             tap: ["👻 Spöket blev glad att du såg det. Ingen ser spöken längre.",
                   "👻 'Bus eller godis?' – 'Vatten?' – 'Okej då.'",
                   "👻 Lakanet var nytvättat. Ett hygieniskt spöke."] },
       en: { cap: "👻 A ghost floats over {sektor}. Only a sheet and lots of confidence.", tap: "👻 'Trick or treat?' – 'Water?' – 'Fine.'" }
     },
     tomte: {
-      sv: { cap: ["🎅 Tomten på moped! Renarna é lediga ikväll.",
+      sv: { cap: ["🎅 Tomten på moped! Renarna ä lediga ikväll.",
                   "🎅 Okänd man i rött kör genom {sektor}. Han har en lista. Han kollar den två gånger.",
                   "🎅 Tomtepatrull! Ni som varit snälla: drick vatten. Ni andra: drick också vatten."],
-            tap: ["🎅 'Ho ho ho!' Du é på listan. Den snälla. Tror vi.",
+            tap: ["🎅 'Ho ho ho!' Du ä på listan. Den snälla. Tror vi.",
                   "🎅 Tomten tutar. Mopeden låter som en arg geting.",
                   "🎅 Han kastade en pepparkaka åt dig. Den landade i snön."] },
       en: { cap: "🎅 Santa on a moped! The reindeer have the night off.", tap: "🎅 Ho ho ho! You are on the nice list." }
@@ -160,7 +160,7 @@ window.DELIGHT_CONTENT = {
     dalahast: {
       sv: { cap: ["🐎 En JÄTTELIK Dalahäst galopperar förbi Väsman! Kurbitsen fladdrar i vinden.",
                   "🐎 SÄLLSYNT: Den vilda Dalahästen har setts i {sektor}. Ingen har lyckats fånga den.",
-                  "🐎 Kavalleriet é här! Det é en enda häst. Den é röd. Den é perfekt."],
+                  "🐎 Kavalleriet ä här! Det ä en enda häst. Den ä röd. Den ä perfekt."],
             tap: ["🐎 Du rörde vid den vilda Dalahästen! Hä hände senast 1923. Kanske.",
                   "🐎 Hästen gnäggar på dalmål. Du förstod varje ord.",
                   "🐎 Den stannade, poserade och galopperade vidare. Ta en skärmdump nästa gång!"] },
@@ -170,13 +170,13 @@ window.DELIGHT_CONTENT = {
       sv: { cap: ["🎣 MYCKET SÄLLSYNT: Ölguden fiskar i Väsman. Han har int' fått nåt sen i tisdags.",
                   "🎣 Ölguden sitter vid kartkanten med metspö. Han säger att han jobbar.",
                   "🎣 Ölguden har tagit ledigt. Han fiskar. Störst fisk vinner. Han har ingen fisk."],
-            tap: ["🎣 'Hä nappar int' ikväll', säger Ölguden. 'Men hä é int' fisken som é poängen.'",
-                  "🎣 Ölguden fick en gammal stövel. Han é nöjd ändå.",
+            tap: ["🎣 'Hä nappar int' ikväll', säger Ölguden. 'Men hä ä int' fisken som ä poängen.'",
+                  "🎣 Ölguden fick en gammal stövel. Han ä nöjd ändå.",
                   "🎣 'Ro hem, pôjk. Hä gör jag också snart.'"] },
       en: { cap: "🎣 VERY RARE: the Beer God is fishing in the lake.", tap: "🎣 'No bites tonight. But fish aren't the point.'" }
     },
     mygg: {
-      sv: { cap: ["🦟 MYGGLARM i {sektor}! Fienden é liten, många och törstig.",
+      sv: { cap: ["🦟 MYGGLARM i {sektor}! Fienden ä liten, många och törstig.",
                   "🦟 Luftangrepp! Myggskvadron på väg. Alla enheter: smörj in er.",
                   "🦟 Mygg på kartan. De har hittat dig även här."],
             tap: ["🦟 PANG! Du träffade en. 4 000 kvar.",
@@ -185,7 +185,7 @@ window.DELIGHT_CONTENT = {
       en: { cap: "🦟 MOSQUITO ALERT! The enemy is small, many and thirsty.", tap: "🦟 SMACK! Got one. 4,000 left." }
     },
     troll: {
-      sv: { cap: ["🧌 Ett troll korsar skogsvägen. Klockan é mycket. Hä é trolltid.",
+      sv: { cap: ["🧌 Ett troll korsar skogsvägen. Klockan ä mycket. Hä ä trolltid.",
                   "🧌 Okänd varelse i skogen vid {sektor}. Stor näsa, liten hatt, inga planer.",
                   "🧌 Trollet går hem från festen. Han ser ut som du kommer se ut imorgon."],
             tap: ["🧌 Trollet säger 'gonatt' och går in under en gran.",
@@ -197,9 +197,9 @@ window.DELIGHT_CONTENT = {
       sv: { cap: ["🥙 En flygande kebab kretsar över {sektor}. Kebabradarn har blivit självmedveten.",
                   "🥙 Oidentifierad rulle i omloppsbana! Vitlökssås-spår bekräftat.",
                   "🥙 Kebaben flyger. Ingen vet hur. Den vet inte själv."],
-            tap: ["🥙 Du nästan fångade kebaben. Den é snabb för att va' en kebab.",
+            tap: ["🥙 Du nästan fångade kebaben. Den ä snabb för att va' en kebab.",
                   "🥙 Mild, medel eller stark? Kebaben väljer själv. Stark.",
-                  "🥙 Kebaben landade i nån annans hand. Livet é orättvist."] },
+                  "🥙 Kebaben landade i nån annans hand. Livet ä orättvist."] },
       en: { cap: "🥙 A flying kebab orbits {sektor}. The kebab radar is self-aware.", tap: "🥙 Almost caught it. Fast for a kebab." }
     },
     glitch: {
@@ -215,7 +215,7 @@ window.DELIGHT_CONTENT = {
       sv: { cap: ["🛰️ Spaningssatellit över {sektor}. Den letar efter roliga människor. Hittade några.",
                   "🛰️ Satelliten skannar kartan. Resultat: 3 katter, 1 korvkiosk, 0 problem.",
                   "🛰️ Ölradarn synkar med rymden. Var god dröj. Fortsätt va' trevlig."],
-            tap: ["🛰️ Satelliten vinkar med solpanelen. Den é ensam där uppe.",
+            tap: ["🛰️ Satelliten vinkar med solpanelen. Den ä ensam där uppe.",
                   "🛰️ Bild tagen! Du blinkade. Vi tar en till om 90 minuter.",
                   "🛰️ 'Ludvika, vi har ett problem.' – 'Nej, vi har det mysigt.'"] },
       en: { cap: "🛰️ Recon satellite over {sektor}. Scanning for fun people.", tap: "🛰️ Photo taken! You blinked." }
@@ -223,26 +223,26 @@ window.DELIGHT_CONTENT = {
     uggla: {
       sv: { cap: ["🦉 En uggla vid kartkanten. Hon har nattskift, precis som du.",
                   "🦉 Nattspanare på post. Hon ser allt. Hon säger inget.",
-                  "🦉 'Hoo?' frågar ugglan. Bra fråga. Hoo é ute ikväll?"],
+                  "🦉 'Hoo?' frågar ugglan. Bra fråga. Hoo ä ute ikväll?"],
             tap: ["🦉 Ugglan blinkar. Långsamt. Visdom överförd.",
                   "🦉 'Hoo hoo.' Det betyder 'drick vatten' på ugglespråk.",
-                  "🦉 Ugglan vänder huvudet 270 grader. Hon é imponerad av dig."] },
+                  "🦉 Ugglan vänder huvudet 270 grader. Hon ä imponerad av dig."] },
       en: { cap: "🦉 An owl at the map edge. Night shift, like you.", tap: "🦉 The owl blinks slowly. Wisdom transferred." }
     },
     odjur: {
       sv: { cap: ["🦕 LEGENDARISKT: Väsmanodjuret har siktats! Ingen kommer tro dig. Ta en skärmdump.",
-                  "🦕 Sjöodjur i {sektor}! Det é större än gäddan. Gäddan é sur.",
-                  "🦕 Nessie har en kusin i Dalarna. Hon heter Vässe och é blyg."],
-            tap: ["🦕 Vässe nickar åt dig och sjunker ner. Du é nu en av de utvalda.",
+                  "🦕 Sjöodjur i {sektor}! Det ä större än gäddan. Gäddan ä sur.",
+                  "🦕 Nessie har en kusin i Dalarna. Hon heter Vässe och ä blyg."],
+            tap: ["🦕 Vässe nickar åt dig och sjunker ner. Du ä nu en av de utvalda.",
                   "🦕 Du har sett Väsmanodjuret. Det betyder tur i… nånting. Vi vet int' vad.",
                   "🦕 Odjuret ger dig en kapsyl från 1952 och försvinner."] },
       en: { cap: "🦕 LEGENDARY: the lake monster has been seen! Take a screenshot.", tap: "🦕 She nods and sinks. You are now one of the chosen." }
     },
     lucia: {
-      sv: { cap: ["🕯️ Luciatåget går genom {sektor}! Någon sjunger falskt. Det é tradition.",
+      sv: { cap: ["🕯️ Luciatåget går genom {sektor}! Någon sjunger falskt. Det ä tradition.",
                   "🕯️ Ljusbärare på marsch. Lussekatter i fickorna.",
                   "🕯️ Sankta Lucia, ljusklara hägring… och en stjärngosse som tappat sin strut."],
-            tap: ["🕯️ Du fick en lussekatt. Den é lite bränd. Perfekt.",
+            tap: ["🕯️ Du fick en lussekatt. Den ä lite bränd. Perfekt.",
                   "🕯️ Pepparkaksgubben i slutet av tåget vinkar.",
                   "🕯️ Ljusen fladdrar. Brandvarnaren håller andan."] },
       en: { cap: "🕯️ The Lucia procession walks through {sektor}!", tap: "🕯️ You got a saffron bun. Slightly burnt. Perfect." }
@@ -270,15 +270,15 @@ window.DELIGHT_CONTENT = {
       "🧊 Hämtar is från Kopparberg…", "📡 Ställer in antennen. Lite till. Lite till…", "🧮 Räknar kapsyler…",
       "🎯 Siktar in kartan…", "🧥 Tar på lusekoftan…", "🐻 Ber björnen flytta på sig…", "☕ Kokar kaffe åt serverhamstern…",
       "🐹 Väcker serverhamstern…", "🔐 Låser in dina hemligheter…", "🧂 Saltar kartan lagom…", "🚜 Kör om traktorn på Storgatan…",
-      "🧭 Frågar en bonde om vägen…", "🌲 Räknar granar. Det é många…", "🎲 Slår tärning om kvällens öde…",
+      "🧭 Frågar en bonde om vägen…", "🌲 Räknar granar. Det ä många…", "🎲 Slår tärning om kvällens öde…",
       "🎻 Stämmer nyckelharpan…", "🕯️ Tänder lyktorna längs gatan…", "🪵 Lägger ved på brasan…",
       "🧯 Testar brandsläckaren. Bara för säkerhets skull…", "🗝️ Hittar nyckeln till högkvarteret…",
-      "🛰️ Laddar ner Sverige. Det é stort…", "📶 Letar täckning i skogen…", "🥾 Snör kängorna…",
+      "🛰️ Laddar ner Sverige. Det ä stort…", "📶 Letar täckning i skogen…", "🥾 Snör kängorna…",
       "🎙️ Testar högtalarna: 'Ett, två, Dalarna'…", "🍞 Rostar tunnbröd…", "🧹 Sopar kartan ren…", "🔭 Spanar efter kompisar…"
     ],
     en: ["📡 Calibrating the beer radar…", "🍺 Cooling the satellites…", "🫎 Checking for moose…", "🔋 Charging morale…",
          "🐹 Waking the server hamster…", "🧭 Finding north…", "🎖️ Polishing medals…", "🔭 Looking for friends…"],
-    done: { sv: ["✅ KLART. Kartan é din.", "✅ Allt grönt. Kör lugnt.", "✅ Uppkopplad. God kväll, soldat.", "✅ Systemet é redo. Du med?"],
+    done: { sv: ["✅ KLART. Kartan ä din.", "✅ Allt grönt. Kör lugnt.", "✅ Uppkopplad. God kväll, soldat.", "✅ Systemet ä redo. Du med?"],
             en: ["✅ READY. The map is yours.", "✅ All green."] },
     ok: { sv: "OK", en: "OK" }
   },
@@ -287,18 +287,18 @@ window.DELIGHT_CONTENT = {
   empty: {
     sv: [
       "🌵 {stad} ikväll: en tumbleweed och en katt.", "🦗 Tyst i {stad}. Bara syrsorna har vakt.",
-      "🫎 Tyst i stan. Till och med älgarna har gått hem.", "🐈 Spaning i {stad}: en katt. Katten é int' intresserad.",
+      "🫎 Tyst i stan. Till och med älgarna har gått hem.", "🐈 Spaning i {stad}: en katt. Katten ä int' intresserad.",
       "📻 Radiotystnad över {stad}. Någon måste bryta den.", "🛰️ Satelliten ser inget i {stad}. Den kollade två gånger.",
       "🕸️ {stad}: spindlarna har tagit över krogen.", "🧊 Kallt på kartan i {stad}. Tänd en lykta, nån?",
       "🌲 {stad} sover. Granarna snarkar.", "🚜 En traktor. En lampa. Inga människor. {stad} ikväll.",
-      "🔭 Spanaren rapporterar: inga kontakter i {stad}. Han äter sin matsäck.", "📭 Inga pins här. Lådan é tom, soldat.",
-      "🦉 Bara ugglan é ute i {stad}. Och hon dricker bara vatten.", "🌙 Månen har hela {stad} för sig själv.",
-      "🗺️ Kartan över {stad} é så tom att man ser jordens rundning.", "🛋️ {stad} har valt soffan ikväll. Respekt.",
+      "🔭 Spanaren rapporterar: inga kontakter i {stad}. Han äter sin matsäck.", "📭 Inga pins här. Lådan ä tom, soldat.",
+      "🦉 Bara ugglan ä ute i {stad}. Och hon dricker bara vatten.", "🌙 Månen har hela {stad} för sig själv.",
+      "🗺️ Kartan över {stad} ä så tom att man ser jordens rundning.", "🛋️ {stad} har valt soffan ikväll. Respekt.",
       "🎻 Spelmanslaget i {stad} spelar för tomma bord.", "🐟 Gäddorna i Väsman har mer liv än {stad} just nu.",
       "🧹 Nån har sopat {stad} ren från folk.", "📡 Ölradarn piper int' ens. Den har somnat.",
       "🥶 {stad}: 0 pins, 1 frusen ekorre.", "🎖️ Den första pinnen i {stad} ikväll får äran. Och ingen medalj. Bara äran.",
-      "🍃 Ett löv blåser förbi på Storgatan. Det é kvällens händelse i {stad}.", "🛰️ Kartan laddade klart. Det é bara int' nåt här.",
-      "🧭 Alla har gått åt fel håll från {stad}. Typiskt.", "🫖 {stad} har teafton. Det é också fest.",
+      "🍃 Ett löv blåser förbi på Storgatan. Det ä kvällens händelse i {stad}.", "🛰️ Kartan laddade klart. Det ä bara int' nåt här.",
+      "🧭 Alla har gått åt fel håll från {stad}. Typiskt.", "🫖 {stad} har teafton. Det ä också fest.",
       "🪑 Stolarna står upp-och-ner på borden i {stad}.", "👻 Spökstad-läge: {stad}. Men ett trevligt spöke.",
       "🚂 Malmtåget passerade {stad}. Ingen vinkade. Ingen var där.", "😴 {stad} har tagit en tupplur. Väck den försiktigt.",
       "🐻 Björnen tittade in i {stad}, såg ingen och gick hem igen.", "📯 Ingen har blåst till samling i {stad} än. Kanske du?"
@@ -311,19 +311,19 @@ window.DELIGHT_CONTENT = {
   /* ---------- 4. Easter eggs ---------- */
   gud: {   // Ölgudens ordspråk (logo tapped 7 times). Never about drinking more.
     sv: [
-      "Den som väntar på nåt gott, väntar ofta i kö till baren.", "En öl i handen é bättre än tio på kartan.",
-      "Hä é int' mängden, pôjk. Hä é sällskapet.", "Vatten mellan varje. Hä har gudarna alltid vetat.",
+      "Den som väntar på nåt gott, väntar ofta i kö till baren.", "En öl i handen ä bättre än tio på kartan.",
+      "Hä ä int' mängden, pôjk. Hä ä sällskapet.", "Vatten mellan varje. Hä har gudarna alltid vetat.",
       "Den som går hem i tid, vaknar som en kung.", "Ingen har ångrat ett glas vatten. Ingen.",
-      "Kebaben é int' svaret. Men den é ett bra svar.", "Lyssna på ugglan, int' på trollet.",
-      "En vän som följer dig hem é värd mer än en full krog.", "Hä é bättre att skåla en gång på riktigt än tio gånger på låtsas.",
-      "Taxin é din vän. Behandla den som en vän.", "Morgondagen ser allt. Var snäll mot den.",
-      "Den som dansar dåligt men glatt, dansar bäst.", "Ölguden ser dig. Han tycker du é trevlig.",
-      "Tisdag é också en dag. Men en lugn dag.", "Säg tack till bartendern. Hen é en hjälte.",
-      "Dalarna é stort. Hjärtat ska va' större.", "Det finns ingen skam i lättöl. Bara lättnad.",
-      "Bästa partytricket: att veta när festen é slut.", "Kompisen som säger 'nu går vi hem' é en sann vän.",
+      "Kebaben ä int' svaret. Men den ä ett bra svar.", "Lyssna på ugglan, int' på trollet.",
+      "En vän som följer dig hem ä värd mer än en full krog.", "Hä ä bättre att skåla en gång på riktigt än tio gånger på låtsas.",
+      "Taxin ä din vän. Behandla den som en vän.", "Morgondagen ser allt. Var snäll mot den.",
+      "Den som dansar dåligt men glatt, dansar bäst.", "Ölguden ser dig. Han tycker du ä trevlig.",
+      "Tisdag ä också en dag. Men en lugn dag.", "Säg tack till bartendern. Hen ä en hjälte.",
+      "Dalarna ä stort. Hjärtat ska va' större.", "Det finns ingen skam i lättöl. Bara lättnad.",
+      "Bästa partytricket: att veta när festen ä slut.", "Kompisen som säger 'nu går vi hem' ä en sann vän.",
       "Den som är snäll mot dörrvakten, är klok.", "Jag skapade humle på dag ett. Vilodagen kom på dag två.",
-      "Pins försvinner vid fem. Minnen gör det int'.", "Ett skratt é gratis. En skål med kompisar också.",
-      "Hä bästa i kvällen é int' ölen. Hä é de du dricker den med.", "Drick som en sköldpadda: långsamt och med skal… nej vänta.",
+      "Pins försvinner vid fem. Minnen gör det int'.", "Ett skratt ä gratis. En skål med kompisar också.",
+      "Hä bästa i kvällen ä int' ölen. Hä ä de du dricker den med.", "Drick som en sköldpadda: långsamt och med skal… nej vänta.",
       "Lugn i stormen, mjuk i skummet.", "Den som har kebab har vänner. Tillfälligt.",
       "Ta ett foto, int' ett glas till.", "Ölguden har talat. Ölguden ska nu sova."
     ],
@@ -337,9 +337,9 @@ window.DELIGHT_CONTENT = {
       "🤫 Hemligt meddelande: klockan går int' fortare för att du håller in knappen.",
       "🤫 Agent, du har hittat den hemliga knappen. Den gör ingenting. Grattis.",
       "🤫 Ölguden: 'Tålamod, pôjk. Drick ett glas vatten under tiden.'",
-      "🤫 Knappen har registrerat din otålighet. Den é rörd.",
-      "🤫 Nedräkningen é int' ett förslag. Den é ett löfte.",
-      "🤫 Psst. Hä bästa du kan göra nu é att prata med nån.",
+      "🤫 Knappen har registrerat din otålighet. Den ä rörd.",
+      "🤫 Nedräkningen ä int' ett förslag. Den ä ett löfte.",
+      "🤫 Psst. Hä bästa du kan göra nu ä att prata med nån.",
       "🤫 Om du håller in knappen i 10 år till händer… fortfarande ingenting.",
       "🤫 Hemlig order: gå och skåla med någon. På riktigt.",
       "🤫 Kodord accepterat: 'VÄSMAN'. Belöning: denna text.",
@@ -349,10 +349,10 @@ window.DELIGHT_CONTENT = {
   },
   shake: {
     sv: ["🫧 Skakad, int' rörd.", "🫧 Du skakade telefonen. Skummet tackar.", "🫧 Skumlarm! Någon skakar i {stad}.",
-         "🫧 Shaken, not stirred – på dalmål.", "🫧 Telefonen é nu väl blandad.", "🫧 Ölguden kände en jordbävning. Det var du."],
+         "🫧 Shaken, not stirred – på dalmål.", "🫧 Telefonen ä nu väl blandad.", "🫧 Ölguden kände en jordbävning. Det var du."],
     en: ["🫧 Shaken, not stirred.", "🫧 You shook the phone. The foam says thanks."],
     setting: { sv: "📳 Skaka telefonen = skum", en: "📳 Shake phone = foam" },
-    on: { sv: "📳 Skak-skämtet é på. Skaka!", en: "📳 Shake joke on. Shake it!" },
+    on: { sv: "📳 Skak-skämtet ä på. Skaka!", en: "📳 Shake joke on. Shake it!" },
     denied: { sv: "📳 Telefonen sa nej till rörelse. Okej då.", en: "📳 Motion access denied." }
   },
   skal: {
@@ -363,23 +363,23 @@ window.DELIGHT_CONTENT = {
   /* ---------- 5. Moods: greeting on the first open of the day (1 = Monday … 7 = Sunday) + sunrise at 05:00 ---------- */
   greet: {
     sv: {
-      1: ["☕ Måndag. Ölguden é stängd. Kom tillbaka när kaffet har verkat.", "😩 Måndag, soldat. Vi rör oss långsamt idag.",
+      1: ["☕ Måndag. Ölguden ä stängd. Kom tillbaka när kaffet har verkat.", "😩 Måndag, soldat. Vi rör oss långsamt idag.",
           "🛌 Måndag. Hela kompaniet har sjukanmält sig. Utom du. Respekt."],
-      2: ["🍺 Tisdagstörst? Lugn nu, det é tisdag.", "🦗 Tisdag. Den tystaste dagen i Dalarna.", "🫖 Tisdag. Te och mys. Eller en lugn en."],
-      3: ["🤔 Onsdag… Lilllördag? Med frågetecken.", "🐪 Onsdag! Puckeln é nådd. Nu går det utför.", "📅 Onsdag. Halvvägs. Vi klarar det."],
-      4: ["🧘 Torsdag. Ölguden stretchar inför helgen.", "🍲 Torsdag = ärtsoppa. Det é militärt.", "🎯 Torsdag. Planeringsdag inför operation helg."],
+      2: ["🍺 Tisdagstörst? Lugn nu, det ä tisdag.", "🦗 Tisdag. Den tystaste dagen i Dalarna.", "🫖 Tisdag. Te och mys. Eller en lugn en."],
+      3: ["🤔 Onsdag… Lilllördag? Med frågetecken.", "🐪 Onsdag! Puckeln ä nådd. Nu går det utför.", "📅 Onsdag. Halvvägs. Vi klarar det."],
+      4: ["🧘 Torsdag. Ölguden stretchar inför helgen.", "🍲 Torsdag = ärtsoppa. Det ä militärt.", "🎯 Torsdag. Planeringsdag inför operation helg."],
       5: ["🎉 FREDAG! Operation helg inledd. Ta det lugnt, ta det kul.", "😎 Fredag. Ölguden har tagit på sig solglasögonen.",
           "📯 Fredag! Samla trupperna. Och någon som kör hem."],
-      6: ["🎊 Lördag! Kvällen é ung. Det é du också, typ.", "🕺 Lördag. Dansskorna é putsade.", "🍻 Lördag. Bästa dagen att träffa kompisar."],
+      6: ["🎊 Lördag! Kvällen ä ung. Det ä du också, typ.", "🕺 Lördag. Dansskorna ä putsade.", "🍻 Lördag. Bästa dagen att träffa kompisar."],
       7: ["😬 Söndag. Ångesten knackar på. Öppna int'.", "🧊 Söndag. Ölguden har ispåse på huvudet.", "🛋️ Söndag. Soffan har ringt. Den saknar dig."]
     },
     en: { 1: ["☕ Monday. The Beer God is closed."], 2: ["🍺 Tuesday thirst? Easy, it's Tuesday."], 3: ["🤔 Wednesday… little Saturday?"],
           4: ["🧘 Thursday. Stretching before the weekend."], 5: ["🎉 FRIDAY! Operation weekend started. Take it easy."],
           6: ["🎊 Saturday! See your friends."], 7: ["😬 Sunday. The angst is knocking. Don't open."] },
-    late: { sv: " Klockan é mycket – drick vatten.", en: " It's late – drink water." }
+    late: { sv: " Klockan ä mycket – drick vatten.", en: " It's late – drink water." }
   },
   sunrise: {
-    sv: ["🌅 Ny dag. Nya möjligheter. Drick vatten.", "🌅 Klockan é fem. Natten é slut. Pinsen flyger hem som lyktor.",
+    sv: ["🌅 Ny dag. Nya möjligheter. Drick vatten.", "🌅 Klockan ä fem. Natten ä slut. Pinsen flyger hem som lyktor.",
          "🌅 Gryning över {stad}. Alla pins återgår till basen.", "🌅 Operation natt avslutad. Bra jobbat. Sov gott.",
          "🌅 Solen kommer. Trollen blir sten. Du blir trött.", "🌅 Ölguden sopar kartan. Vi ses ikväll – eller imorgon."],
     en: ["🌅 New day. New chances. Drink water.", "🌅 5 o'clock. The night is over. Pins fly home like lanterns."]
@@ -431,7 +431,7 @@ window.DELIGHT_CONTENT = {
   capLines: {   // shown when a new cap is opened (never about drinking)
     c: { sv: ["Daglig ranson utdelad.", "En till i samlingen. Fint.", "Vanlig, men din.", "Kapsylen glänser lite. Bara lite."],
          en: ["Daily ration issued.", "One more for the album."] },
-    r: { sv: ["SÄLLSYNT! Kompaniet é avundsjukt.", "Sällsynt fynd, soldat. Visa kompisarna.", "Ooh. Den här é int' vanlig."],
+    r: { sv: ["SÄLLSYNT! Kompaniet ä avundsjukt.", "Sällsynt fynd, soldat. Visa kompisarna.", "Ooh. Den här ä int' vanlig."],
          en: ["RARE! The company is jealous."] },
     l: { sv: ["LEGENDARISK! Ölguden själv nickar.", "LEGENDARISK. Den här berättar man om på äldreboendet.", "Legendarisk kapsyl. Rama in telefonen."],
          en: ["LEGENDARY! The Beer God nods."] }

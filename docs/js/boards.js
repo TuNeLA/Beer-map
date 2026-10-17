@@ -30,7 +30,7 @@
     nightsN: [" kvällar", " nights"],
     toggle: ["Visa mig på topplistan", "Show me on the top list"],
     toggleOn: ["🏆 Nu syns du på topplistan. Skärp dig, dä!", "🏆 You are on the top list now."],
-    toggleOff: ["🕵️ Du é en hemlig agent igen.", "🕵️ You are a secret agent again."],
+    toggleOff: ["🕵️ Du ä en hemlig agent igen.", "🕵️ You are a secret agent again."],
     toggleFail: ["Kunde inte spara. Försök igen.", "Could not save. Try again."],
     toggleNote: ["Av = du syns som \"Hemlig agent\". Ingen plats visas, bara antal.",
       "Off = you show as \"Secret agent\". No place is shown, only counts."],
@@ -56,7 +56,7 @@
     ],
     wall: [
       ["Inga rekord än. Historien skrivs ikväll, kanske.", "No records yet."],
-      ["Wall of Fame é tom. Spikarna sitter uppe, tavlorna saknas.", "The Wall of Fame is empty."]
+      ["Wall of Fame ä tom. Spikarna sitter uppe, tavlorna saknas.", "The Wall of Fame is empty."]
     ]
   };
   function emptyLine(k) { var p = pick(EMPTY[k]); return sv() ? p[0] : p[1]; }

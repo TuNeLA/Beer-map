@@ -254,12 +254,12 @@
 
   /* ---------- 2. "🚑 Jag kollar" ---------- */
   var MED_ASK = [
-    "🚑 {name} é på 10. Vem kollar läget?",
+    "🚑 {name} ä på 10. Vem kollar läget?",
     "🚁 {name} har nått MEDEVAC. Nån som tar ett snack och ett glas vatten?",
-    "💚 {name} é på 10 öl. Vem kollar att allt é lugnt?",
-    "🚑 Larm i gruppen: {name} é på 10. Vem tar hand om kompisen?",
-    "🫂 {name} é på 10. En kompis behövs, int' en publik. Vem kollar?",
-    "💧 {name} é på 10. Vem går dit med vatten?"
+    "💚 {name} ä på 10 öl. Vem kollar att allt ä lugnt?",
+    "🚑 Larm i gruppen: {name} ä på 10. Vem tar hand om kompisen?",
+    "🫂 {name} ä på 10. En kompis behövs, int' en publik. Vem kollar?",
+    "💧 {name} ä på 10. Vem går dit med vatten?"
   ];
   var MED_SEEN_KEY = "olnu.afMedSeen";
   var medPins = [], checks = [], checksAt = 0, checksBusy = false, checkSeen = {};
@@ -467,7 +467,7 @@
         extra: L((d.best_bars | 0) + " krogar den kvällen", (d.best_bars | 0) + " bars that night") }
         : { e: "⭐", big: "–", small: L("bästa kvällen", "best night"), line: "", extra: "" },
       d.top_type ? { e: "🍺", big: v.topType, small: L("favoritsort", "favourite type"), line: wrapLine(["topType"], v), extra: "" }
-        : { e: "🍻", big: String((d.skal_given | 0) + (d.skal_got | 0)), small: L("skål", "cheers"), line: L("Skålen flög. Det é det som räknas.", "Cheers flew."), extra: "" },
+        : { e: "🍻", big: String((d.skal_given | 0) + (d.skal_got | 0)), small: L("skål", "cheers"), line: L("Skålen flög. Det ä det som räknas.", "Cheers flew."), extra: "" },
       { e: "🎖️", big: v.rank || "–", small: L("din grad", "your rank"), line: wrapLine(["rank", "total", "nights"], v),
         extra: L(v.total + " öl loggade. Statistik, inte tävling.", v.total + " beers logged. Stats, not a contest.") }
     ];
@@ -493,7 +493,7 @@
       y += 172;
     });
     c.fillStyle = "#6f7d4f"; c.font = '30px "Share Tech Mono", monospace'; c.textAlign = "center";
-    c.fillText("💧 " + L("Lagom é ett fint svenskt ord.", "Moderation is a fine word."), W / 2, H - 80);
+    c.fillText("💧 " + L("Lagom ä ett fint svenskt ord.", "Moderation is a fine word."), W / 2, H - 80);
   }
   function openWrapped(kind, offset) {
     if (!A || !A.LIVE || off.my_wrapped) return;
@@ -660,7 +660,7 @@
       holding = true;
       navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (s) {
         stream = s;
-        if (!holding) { cleanup(); A.toast(L("🎙️ Mikrofonen é redo. Håll inne knappen och prata.", "🎙️ Mic ready. Hold the button and talk.")); return; }
+        if (!holding) { cleanup(); A.toast(L("🎙️ Mikrofonen ä redo. Håll inne knappen och prata.", "🎙️ Mic ready. Hold the button and talk.")); return; }
         var mime = pickMime(), opts = { audioBitsPerSecond: 32000 };
         if (mime) opts.mimeType = mime;
         try { rec = new MediaRecorder(s, opts); } catch (x) { rec = new MediaRecorder(s); }
@@ -767,7 +767,7 @@
       if (b.disabled) return;   // already checked in here
       A.getPosition().then(function (pos) {
         var d = U.haversine(pos.coords.latitude, pos.coords.longitude, bar.lat, bar.lng);
-        if (d > 300) { A.toast(L("📍 Du é " + Math.round(d / 10) * 10 + " m bort. Kom närmare (300 m) för att checka in via QR.", "📍 You're " + Math.round(d) + " m away (max 300 m)."), { ms: 6000 }); return; }
+        if (d > 300) { A.toast(L("📍 Du ä " + Math.round(d / 10) * 10 + " m bort. Kom närmare (300 m) för att checka in via QR.", "📍 You're " + Math.round(d) + " m away (max 300 m)."), { ms: 6000 }); return; }
         var btn = document.querySelector('.ci-btn[data-ci="' + pc.id.replace(/["\\]/g, "") + '"]') || b;
         if (!btn.disabled) btn.click();
       }, function (err) { A.locError(err); });
@@ -784,7 +784,7 @@
     var top = null, me = null;
     r.rows.forEach(function (x) { if ((x.rank | 0) === 1 && (x.nights | 0) >= 2) top = x; if (x.is_me) me = x; });
     var h = "";
-    if (top) h += '<div class="af-stam-l">👑 ' + esc(top.is_me ? L("Du é stammis här", "You're the regular here") : L("Stammis: ", "Regular: ") + (top.name || L("en hemlig agent", "a secret agent"))) +
+    if (top) h += '<div class="af-stam-l">👑 ' + esc(top.is_me ? L("Du ä stammis här", "You're the regular here") : L("Stammis: ", "Regular: ") + (top.name || L("en hemlig agent", "a secret agent"))) +
       " (" + esc(String(top.nights | 0) + L(" kvällar", " nights")) + ")</div>";
     if (me && !(top && top.is_me)) h += '<div class="af-stam-me muted">🪑 ' + esc(L("Du: " + (me.nights | 0) + (me.nights === 1 ? " kväll" : " kvällar") + " här senaste 30 dagarna", "You: " + (me.nights | 0) + " nights here (30 days)")) + "</div>";
     return h;
@@ -879,7 +879,7 @@
     var p = here();
     A.openSheet(L("🌯 Öppet nu", "🌯 Open now"), function (body) {
       var el = A.el, list = el("ul", { class: "af-kebab" });
-      body.appendChild(el("p", { class: "muted", text: L("Mat nära dig (2,5 km) från OpenStreetMap. Öppettider kan vara fel: ring om du é osäker.", "Food near you (2.5 km) from OpenStreetMap.") }));
+      body.appendChild(el("p", { class: "muted", text: L("Mat nära dig (2,5 km) från OpenStreetMap. Öppettider kan vara fel: ring om du ä osäker.", "Food near you (2.5 km) from OpenStreetMap.") }));
       body.appendChild(list);
       if (!p) { list.appendChild(el("li", { class: "muted", text: L("Ingen position. Tryck 📍 först.", "No position yet.") })); return; }
       list.appendChild(el("li", { class: "muted", text: "…" }));
@@ -889,7 +889,7 @@
         var s = sthlm(), items = all.map(function (x) { return { x: x, open: openNow(x.oh, s), d: U.haversine(p.lat, p.lng, x.lat, x.lng) }; })
           .filter(function (o) { return o.open === true || (o.open === null && o.x.fast); })
           .sort(function (a, b) { return (b.open === true) - (a.open === true) || (b.x.fast - a.x.fast) || a.d - b.d; }).slice(0, 25);
-        if (!items.length) { list.appendChild(el("li", { class: "muted", text: L("Inget öppet ställe hittat nära dig. Kylskåpet é din vän.", "Nothing open found nearby.") })); return; }
+        if (!items.length) { list.appendChild(el("li", { class: "muted", text: L("Inget öppet ställe hittat nära dig. Kylskåpet ä din vän.", "Nothing open found nearby.") })); return; }
         items.forEach(function (o) {
           var kebab = /kebab|pizza|burger|falafel|grill/i.test(o.x.cuisine + " " + o.x.name);
           list.appendChild(el("li", {}, [el("button", { type: "button", class: "af-krow", onclick: function () { A.closeSheet(); A.flyTo(o.x.lat, o.x.lng, 17, null); } }, [
@@ -908,9 +908,9 @@
 
   /* ---------- Ticker (window.NEWS) ---------- */
   var KEBAB_NEWS = [
-    "🌯 Kebabradarn é på: tryck 🚕 och 🌯 Öppet nu för mat nära dig.",
-    "🌯 Klockan é mycket. Kebaben ringer. Svara.",
-    "🍔 Nattmat-rapport: grillen é varm nånstans nära dig. Kolla 🌯 Öppet nu.",
+    "🌯 Kebabradarn ä på: tryck 🚕 och 🌯 Öppet nu för mat nära dig.",
+    "🌯 Klockan ä mycket. Kebaben ringer. Svara.",
+    "🍔 Nattmat-rapport: grillen ä varm nånstans nära dig. Kolla 🌯 Öppet nu.",
     "🌯 Underrättelse: en falafel har setts i närheten. Öppet nu-listan vet mer."
   ];
   function newsTemplates() {

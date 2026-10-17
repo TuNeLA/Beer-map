@@ -106,7 +106,7 @@
       if ((d.mine || ans) === "yes") A.invoke("notify-group", { event: "rally_yes", rally_id: +id });
       if (!quiet) {
         var E = ans === "yes" && r && !r.is_mine ? etaApi() : null;
-        // v18: after "✅ Kommer" offer the ETA chips ("Hur långt bort é du?") in the rally sheet.
+        // v18: after "✅ Kommer" offer the ETA chips ("Hur långt bort ä du?") in the rally sheet.
         A.toast(t(ans === "yes" ? "rallyYesToast" : ans === "maybe" ? "rallyMaybeToast" : "rallyNoToast"),
           E && openId == null ? { ms: 7000, action: { label: E.text("rallyBtn"), fn: function () { var x = byId(id) || r; if (A.map) A.map.closePopup(); openRally(x); } } } : undefined);
         window.FX.vibrate(ans === "yes" ? [30, 40, 30] : 20);
@@ -190,7 +190,7 @@
     var w = whereOf(r);
     return { bar_id: null, bar_name: r.place || null, lat: w ? w.lat : null, lng: w ? w.lng : null };
   }
-  // "På väg: Anton (7 min), Lisa (✅)" + after "✅ Kommer": "Hur långt bort é du?" chips or my countdown.
+  // "På väg: Anton (7 min), Lisa (✅)" + after "✅ Kommer": "Hur långt bort ä du?" chips or my countdown.
   function etaPart(body, r) {
     var E = etaApi(); if (!E) return;
     var el = A.el;
