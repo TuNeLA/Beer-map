@@ -499,18 +499,68 @@
       others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins }) : [];
     if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
     newsPrev = items.map(function (x) { return x.text; });
-    var chars = 0;
-    var html = '<span class="tk-kick">' + U.esc(t("newsKick")) + "</span>" + items.map(function (x) {
-      chars += x.text.length;
-      return '<span class="tk-item' + (x.cls ? " " + x.cls : "") + '">' + U.esc(x.text) + "</span>";
-    }).join('<span class="tk-sep">///</span>') + '<span class="tk-sep">///</span>';
-    tickerKey = html;
+    tickerKey = "v2";
+    tickPending = items; tickIx = 0;
+    tickStart();
+  }
+  /* Smooth news belt: one constant speed, never restarts. New headlines are queued and join at the
+     end of the belt; items that have left on the left side are removed. */
+  var TICK_PX_S = 55, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false;
+  function tickPiece() {
+    var track = $("ticker-track"), frag = document.createDocumentFragment();
+    if (!tickKickDone) {
+      tickKickDone = true;
+      frag.appendChild(el("span", { class: "tk-kick", text: t("newsKick") }));
+    } else frag.appendChild(el("span", { class: "tk-sep", text: "///" }));
+    if (tickIx >= tickPending.length) {   // all queued shown once: build a fresh set next time
+      tickIx = 0; newsDirty = true;
+      try { renderTickerItemsOnly(); } catch (e) {}
+    }
+    var x = tickPending[tickIx++] || { text: t("tickQuiet"), cls: "tk-quiet" };
+    frag.appendChild(el("span", { class: "tk-item" + (x.cls ? " " + x.cls : ""), text: x.text }));
+    track.appendChild(frag);
+  }
+  function tickFill() {
+    var track = $("ticker-track"), vp = track.parentNode, need = (vp ? vp.clientWidth : 400) * 2 + 200, guard = 0;
+    while (track.scrollWidth - tickOff < need && guard++ < 20) tickPiece();
+  }
+  function tickFrame(ts) {
+    tickRaf = 0;
     var track = $("ticker-track");
-    // Duplicate content for a seamless loop.
-    track.innerHTML = '<span class="tk-run">' + html + '</span><span class="tk-run" aria-hidden="true">' + html + "</span>";
-    track.classList.add("moving");
-    // About 55 px per second at 13 px font.
-    track.style.animationDuration = Math.max(16, Math.round(chars * 0.13)) + "s";
+    var dt = tickLast ? Math.min(0.1, (ts - tickLast) / 1000) : 0;
+    tickLast = ts;
+    tickOff += TICK_PX_S * dt;
+    var first = track.firstChild, guard = 0;
+    while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
+      tickOff -= first.offsetWidth; track.removeChild(first); first = track.firstChild;
+    }
+    tickFill();
+    track.style.transform = "translate3d(" + (-tickOff).toFixed(2) + "px,0,0)";
+    tickRaf = requestAnimationFrame(tickFrame);
+  }
+  function tickStart() {
+    var track = $("ticker-track");
+    track.classList.remove("moving"); track.style.animation = "none";
+    if (window.FX && window.FX.reduced && window.FX.reduced()) {
+      // Reduced motion: static list, the user can scroll it sideways.
+      track.innerHTML = ""; tickKickDone = false; tickIx = 0;
+      for (var i = 0; i < tickPending.length; i++) tickPiece();
+      track.style.transform = "none";
+      return;
+    }
+    if (!track.firstChild) tickFill();
+    if (!tickRaf) { tickLast = 0; tickRaf = requestAnimationFrame(tickFrame); }
+  }
+  // Build a fresh set of headlines for the queue without touching what is on screen.
+  function renderTickerItemsOnly() {
+    newsDirty = false;
+    var titles = null;
+    try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
+    var items = window.NEWS ? window.NEWS.build(beerOnly(), { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
+      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins }) : [];
+    if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
+    newsPrev = items.map(function (x) { return x.text; });
+    tickPending = items;
   }
   var prevLevels = null;
   function streakAlerts() {

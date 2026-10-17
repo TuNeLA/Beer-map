@@ -59,7 +59,8 @@ button{font:inherit;color:inherit}
 .tk-live::before{content:"●";color:#fff;animation:blink 1.2s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
 .tk-viewport{flex:1;overflow:hidden;height:100%;position:relative;mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
-.tk-track{display:flex;white-space:nowrap;height:100%;align-items:center;font-family:var(--hud);font-size:13px;width:max-content}
+.tk-track{display:flex;white-space:nowrap;height:100%;align-items:center;font-family:var(--hud);font-size:13px;width:max-content;will-change:transform}
+.tk-track>span{flex:0 0 auto}
 .tk-track.moving{animation:tick 30s linear infinite}
 .tk-run{display:inline-flex;align-items:center;padding-left:12px}
 .tk-item{color:var(--amber-2)}
