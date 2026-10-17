@@ -64,12 +64,25 @@
   };
   U.errCode = function (err) {
     var m = (err && (err.message || err.details || err.hint || String(err))) || "";
-    var codes = ["outside_sweden", "invalid_name", "group_not_found", "not_authenticated", "invalid_subscription", "code_generation_failed", "own_beer", "beer_not_found"];
+    var codes = ["outside_sweden", "invalid_name", "group_not_found", "not_authenticated", "invalid_subscription", "code_generation_failed", "own_beer", "beer_not_found",
+      "not_member", "invalid_msg", "slow_down", "invalid_emoji", "invalid_kind"];
     for (var i = 0; i < codes.length; i++) if (m.indexOf(codes[i]) >= 0) return codes[i];
     if (/jwt|401|not authenticated/i.test(m)) return "not_authenticated";
     return "error";
   };
-  U.GLASS_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h10v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6Z" fill="#fff3d6"/>' +
+  // v9: the RPC does not exist on this (older) database → that feature is off.
+  U.missing = function (err) {
+    if (!err) return false;
+    var m = String((err.code || "") + " " + (err.message || "") + " " + (err.details || "") + " " + (err.hint || ""));
+    return /PGRST202|could not find the function|does not exist|\b404\b/i.test(m) || err.status === 404;
+  };
+  // Hour 0–23 in Europe/Stockholm.
+  U.hourSthlm = function (d) {
+    d = d || new Date();
+    try { return parseInt(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", hour: "2-digit", hourCycle: "h23" }).format(d), 10) % 24; }
+    catch (e) { return d.getHours(); }
+  };
+  U.GLASS_SVG ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h10v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6Z" fill="#fff3d6"/>' +
     '<path d="M16 9h2.2A1.8 1.8 0 0 1 20 10.8v3.4a1.8 1.8 0 0 1-1.8 1.8H16" fill="none" stroke="#fff3d6" stroke-width="2"/>' +
     '<path d="M6 7.5a2.5 2.5 0 0 1 2-4 3 3 0 0 1 4.6-.4A2.6 2.6 0 0 1 16 5.5V8H6Z" fill="#ffffff"/></svg>';
   U.GLASS_OUTLINE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h10v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5Z" fill="none" stroke="#f5a623" stroke-width="2.4"/>' +
@@ -83,6 +96,12 @@
     var cls = "pill p" + lvl + (o.friend ? " pf" : "") + (o.mine ? " pm" : "") + (o.approx ? " pa" : "") + (o.cls ? " " + o.cls : "");
     n = Math.max(0, n | 0);
     var body = '<span class="pn">' + n + "</span>" + (o.noEmoji ? "" : '<span class="pe" aria-hidden="true">🍺</span>');
+    // v9: other drinks (sidospår). "2 🍺 · 1 🥃", or "🥃 1" when there is no beer.
+    var oc = Math.max(0, o.other | 0);
+    if (oc && !o.noEmoji) {
+      body = n > 0 ? body + '<span class="po">· ' + oc + '<span aria-hidden="true">🥃</span></span>'
+        : '<span class="pe" aria-hidden="true">🥃</span><span class="pn">' + oc + "</span>";
+    }
     return '<div class="' + cls + '">' + body +
       (o.friend ? '<span class="pfd" aria-hidden="true"></span>' : "") +
       (o.label || "") + "</div>";

@@ -48,8 +48,22 @@
     return similarName(extra.name, b.name) && U.haversine(extra.lat, extra.lng, b.lat, b.lng) <= DEDUPE_M;
   }
 
+  // Closed places (docs/bars-closed.json = [{id, name, note}]): never shown, from any source.
+  var closed = {};
+  function loadClosed() {
+    return fetch("./bars-closed.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("no bars-closed.json"); return r.json(); })
+      .then(function (list) {
+        if (!Array.isArray(list)) return;
+        list.forEach(function (c) { if (c && c.id != null) closed[String(c.id)] = true; });
+        Object.keys(closed).forEach(function (id) { if (bars[id]) removeBar(bars[id]); });
+      })
+      .catch(function () { /* optional */ });
+  }
+
   function addBar(b) {
     if (!b || bars[b.id] || typeof b.lat !== "number" || typeof b.lng !== "number") return;
+    if (closed[String(b.id)]) return;
     // A real OSM bar wins over a curated extra with a similar name close by.
     for (var i = 0; i < extras.length; i++) {
       var ex = extras[i];
@@ -60,6 +74,7 @@
 
   function addExtra(b) {
     if (!b || typeof b.id !== "string" || bars[b.id] || typeof b.lat !== "number" || typeof b.lng !== "number") return;
+    if (closed[b.id]) return;
     b.extra = true;
     extras.push(b);
     for (var id in bars) { if (!bars[id].extra && isDuplicate(b, bars[id])) return; }
@@ -92,7 +107,12 @@
       var lng = el.lon != null ? el.lon : el.center && el.center.lon;
       if (lat == null || lng == null) return;
       var t = el.tags || {};
-      out.push({ id: el.type[0] + el.id, name: t.name || null, lat: +(+lat).toFixed(5), lng: +(+lng).toFixed(5), type: t.amenity || "bar" });
+      var bar = { id: el.type[0] + el.id, name: t.name || null, lat: +(+lat).toFixed(5), lng: +(+lng).toFixed(5), type: t.amenity || "bar" };
+      // Optional info for the bar popup, only when OSM has it.
+      if (t.opening_hours) bar.opening_hours = String(t.opening_hours).slice(0, 120);
+      if (t.website || t["contact:website"]) bar.website = String(t.website || t["contact:website"]).slice(0, 200);
+      if (t.phone || t["contact:phone"]) bar.phone = String(t.phone || t["contact:phone"]).slice(0, 40);
+      out.push(bar);
     });
     return out;
   }
@@ -242,9 +262,11 @@
       onChange = opts.onChange || onChange;
       var map = opts.map;
       var debounced = U.debounce(function () { fetchViewport(map); }, 600);
-      var extrasReady = loadExtras();
+      var closedReady = loadClosed();
+      var extrasReady = closedReady.then(loadExtras);
       fetch("./bars.json", { cache: "no-cache" })
         .then(function (r) { if (!r.ok) throw new Error("no bars.json"); return r.json(); })
+        .then(function (list) { return closedReady.then(function () { return list; }); })
         .then(function (list) {
           if (!Array.isArray(list) || !list.length) throw new Error("bad bars.json");
           list.forEach(addBar); mode = "static";
@@ -261,6 +283,7 @@
         });
     },
     nearest: nearestBar,
+    byId: function (id) { return bars[id] || null; },
     inBounds: function (b, max) {
       var out = [];
       for (var id in bars) { if (b.contains([bars[id].lat, bars[id].lng])) { out.push(bars[id]); if (max && out.length >= max) break; } }

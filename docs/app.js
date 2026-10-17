@@ -39,6 +39,17 @@
     if (typeof d === "string") { try { return JSON.parse(d) || {}; } catch (e) { return {}; } }
     return d || {};
   }
+  // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
+  function mods(fn, a, b, c) {
+    var out = "";
+    [window.SOCIAL, window.EXTRAS, window.RALLY].forEach(function (m) {
+      if (!m || typeof m[fn] !== "function") return;
+      try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
+    });
+    return out;
+  }
+  // Pins with at least one beer (chaos, heat, counts and news stay beers only; v8 other-drink pins are left out).
+  function beerOnly() { return beers.filter(function (b) { return (b.beer_count | 0) >= 1; }); }
 
   /* ---------- Toasts ---------- */
   function toast(msg, opts) {
@@ -194,8 +205,9 @@
     if (!heatOn && map.hasLayer(heat)) map.removeLayer(heat);
     if (!heatOn) return;
     // Use the per-beer trail when the server has it; an empty trail with live pins means it is still filling.
-    if (heatPoints && (heatPoints.length || !beers.length)) heat.setLatLngs(heatPoints);
-    else heat.setLatLngs(beers.map(function (b) { return [b.lat, b.lng, heatWeight(b)]; }));
+    var bo = beerOnly();
+    if (heatPoints && (heatPoints.length || !bo.length)) heat.setLatLngs(heatPoints);
+    else heat.setLatLngs(bo.map(function (b) { return [b.lat, b.lng, heatWeight(b)]; }));
   }
   function applyHeatBtn() {
     var b = $("btn-heat");
@@ -212,10 +224,10 @@
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
   // Single pin: compact pill "N 🍺". Streak shows only as the pill border.
   function beerIcon(b) {
-    var n = Math.max(1, b.beer_count | 0);
+    var oc = b.other_count | 0, n = oc ? Math.max(0, b.beer_count | 0) : Math.max(1, b.beer_count | 0);
     var label = b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" :
       b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "";
-    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
+    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label, other: oc });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function levelLine(l) {
@@ -229,14 +241,22 @@
     return '<button type="button" class="skal-btn' + (small ? " small" : "") + '" data-skal="' + U.esc(String(b.id)) + '"' +
       (done ? " disabled" : "") + ">" + U.esc(done ? t("skaled", skalCount(b)) : t("skal", skalCount(b))) + "</button>";
   }
+  function otherLine(b) {
+    var oc = b.other_count | 0; if (!oc) return "";
+    var k = (t("kindLow") || {})[b.other_kind] || (t("kindLow") || {}).annat || "";
+    return '<div class="pp-other">' + U.esc(oc === 1 ? t("otherPlus", oc, k) : t("otherPlusMany", oc, k)) + "</div>";
+  }
   function beerPopup(b) {
-    var h = '<div class="pp-title">' + U.esc(t("beerNo", b.beer_count | 0)) + "</div>" +
+    var h = '<div class="pp-title">' + U.esc((b.beer_count | 0) >= 1 ? t("beerNo", b.beer_count | 0) : t("otherPin")) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
+    h += otherLine(b);
     h += levelLine(U.level(b.beer_count));
     if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
     if (b.friend_name) h += '<div class="pp-friend">' + U.esc(b.friend_name) + "</div>";
+    h += mods("beerTitleHTML", b);
     if (!b.precise) h += '<div class="pp-note">' + U.esc(t("approx")) + "</div>";
     if (!b.is_mine) h += skalBtn(b, false);
+    h += mods("beerPopupHTML", b);
     return h;
   }
   function barTypeLabel(type) { var m = t("barTypes"); return m[type] || m.bar; }
@@ -245,7 +265,8 @@
   function hotBarIcon(agg) {
     var friend = agg.beers.some(function (b) { return b.friend_name; });
     var mine = agg.beers.some(function (b) { return b.is_mine; });
-    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar" });
+    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar",
+      label: mods("barBadgeHTML", agg.bar, agg.beers, map.getZoom()) });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function barPopup(bar, list) {
@@ -255,6 +276,7 @@
     var h = '<div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
       '<div class="muted">' + U.esc(barTypeLabel(bar.type)) + "</div>";
     if (list.length) h += '<div class="pp-data"><b>' + U.esc(t("barHere", list.length)) + "</b></div>";
+    h += mods("barPopupHTML", bar, list);
     h += levelLine(maxLevel(list));
     if (names.length) h += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
     var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
@@ -333,7 +355,7 @@
       (function (bar) {
         var m = L.marker([bar.lat, bar.lng], {
           pane: "bars", keyboard: false,
-          icon: L.divIcon({ html: '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + "</div>", className: "", iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10] })
+          icon: L.divIcon({ html: '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + mods("barIcoHTML", bar) + "</div>", className: "", iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10] })
         });
         m.options.olnuKey = "p" + bar.id;
         m.bindPopup(function () { return barPopup(bar, []); });
@@ -345,11 +367,12 @@
   }
   var lastZoomBand = null;
   map.on("zoomend", function () {
-    var z = map.getZoom(), band = z >= HOT_ZOOM ? 1 : 0;
+    // Band 2 (zoom 16+): bar badges get the small Lugnt/Livligt/Packat tag.
+    var z = map.getZoom(), band = z >= 16 ? 2 : z >= HOT_ZOOM ? 1 : 0;
     if (band !== lastZoomBand) { lastZoomBand = band; render(); } else renderPlainBars();
   });
   map.on("moveend", U.debounce(renderPlainBars, 150));
-  lastZoomBand = map.getZoom() >= HOT_ZOOM ? 1 : 0;
+  lastZoomBand = map.getZoom() >= 16 ? 2 : map.getZoom() >= HOT_ZOOM ? 1 : 0;
 
   /* ---------- Ticker + streak alerts ---------- */
   function whoOf(b) { return b.is_mine ? t("you") : b.friend_name || t("someone"); }
@@ -368,7 +391,10 @@
   function renderTicker() {
     if (!newsDirty && tickerKey) return;
     newsDirty = false;
-    var items = window.NEWS ? window.NEWS.build(beers, { center: chaosCenter(), now: new Date(), prev: newsPrev }) : [];
+    var titles = null;
+    try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
+    var items = window.NEWS ? window.NEWS.build(beerOnly(), { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
+      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }) }) : [];
     if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
     newsPrev = items.map(function (x) { return x.text; });
     var chars = 0;
@@ -477,7 +503,7 @@
   // fromPoll: called after live_beers loaded. Else (location or language changed): redraw, no toast.
   function evalChaos(fromPoll) {
     if (!window.CHAOS || !LIVE) return;
-    chaosRes = window.CHAOS.compute(beers, chaosCenter());
+    chaosRes = window.CHAOS.compute(beerOnly(), chaosCenter());
     var started = renderChaos();
     if (!fromPoll) return;
     if (chaosPrevOn === false && chaosRes.on && started) {
@@ -568,22 +594,30 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = LIVE ? t("live", beers.length | 0) : t("soonLive");
+    $("live-count").innerHTML = LIVE ? t("live", beerOnly().length | 0) : t("soonLive");
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
     var mine = myBeer();
     $("btn-stop").hidden = !mine;
     var night = myNight(), n = mine ? mine.beer_count | 0 : night ? night.count | 0 : 0;
+    // Other drinks tonight: from the live pin, else the local count (pin hidden).
+    var oc = mine ? mine.other_count | 0 : 0;
+    try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
     var st = $("my-streak");
-    if (n > 0) {
+    if (n > 0 || oc > 0) {
       var l = U.level(n);
       st.hidden = false;
       st.className = "my-streak" + lvlClass(l);
       st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
         (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺") +
+        (oc ? ' <span class="ms-other">· ' + oc + " 🥃</span>" : "") +
         (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
     } else st.hidden = true;
+    // v9 HUD chips (title, ghost, taxi, come here). Built by the modules; clicks go to mods("hudClick").
+    var hx = $("hud-x"), chips = LIVE ? mods("hudChipsHTML", { mine: mine, n: n }) : "";
+    if (hx.getAttribute("data-html") !== chips) { hx.innerHTML = chips; hx.setAttribute("data-html", chips); }
+    hx.hidden = !chips;
   }
   function applyStaticText() {
     $("beer-label").textContent = t("beer");
@@ -607,6 +641,7 @@
     $("btn-top").title = t("top");
     applyHeatBtn();
     applyPrec();
+    mods("applyText");
     updateCounts();
     tickerKey = ""; newsDirty = true; renderTicker();
     if (chaosRes) evalChaos(false);
@@ -629,16 +664,38 @@
 
   /* ---------- Live beers ---------- */
   var loading = false, refreshAgain = false;
+  // v8 other drinks: beer id -> {other_count, other_kind}. null = RPC missing (old database) → feature off.
+  var othersMap = {}, othersState = "unknown";   // "unknown" | "on" | "missing"
+  function fetchOthers() {
+    if (othersState === "missing") return Promise.resolve({});
+    return rpc("live_others").then(function (r) {
+      if (r.error) {
+        if (U.missing(r.error)) { othersState = "missing"; othersMap = {}; mods("onOthersState", false); }
+        return othersMap;   // network error: keep the last known map
+      }
+      var m = {};
+      (r.data || []).forEach(function (o) { if (o && o.beer_id != null) m[o.beer_id] = o; });
+      othersMap = m;
+      if (othersState !== "on") { othersState = "on"; mods("onOthersState", true); }
+      return m;
+    });
+  }
   function refresh() {
     // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
     if (loading) { refreshAgain = true; return Promise.resolve(); }
     if (!LIVE || !authed) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
-    return rpc("live_beers").then(function (r) {
+    return Promise.all([rpc("live_beers"), fetchOthers()]).then(function (res) {
+      var r = res[0], others = res[1] || {};
       if (r.error) throw r.error;
-      // Beer only: rows with no beer (e.g. shots-only rows from an older app) are not pins.
-      beers = (r.data || []).filter(function (b) { return b && isFinite(b.lat) && isFinite(b.lng) && (b.beer_count | 0) >= 1; });
+      // Pins: rows with a beer, or (v8) with another drink. Shots-only rows from an older app are not pins.
+      beers = (r.data || []).filter(function (b) {
+        if (!b || !isFinite(b.lat) || !isFinite(b.lng)) return false;
+        var o = others[b.id];
+        b.other_count = o ? Math.max(0, o.other_count | 0) : 0; b.other_kind = o ? o.other_kind || null : null;
+        return (b.beer_count | 0) >= 1 || b.other_count >= 1;
+      });
       beers.forEach(function (b) {
         b.skal_count = Math.max(0, b.skal_count | 0); b.i_skaled = !!b.i_skaled;
         var mine = mySkals[b.id];
@@ -653,6 +710,7 @@
       skalAlert();
       toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
+      mods("onPoll", beers);
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") { reauth(); return; }
       if (!firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
@@ -850,14 +908,19 @@
           saveNight(d, true);
           if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
           var n = d.beer_count | 0, l = U.level(n);
-          if (n === 10) window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose") });
+          var ghost = !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
+          var medExtra = n === 10 ? mods("medevacExtraHTML") : "";
+          if (n === 10) window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 });
           else if (n === 5) window.FX.takeover(1, { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") });
           else {
             toast(levelToast(n), { cls: l === 2 ? "med" : l === 1 ? "hot" : "" });
             window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
           }
           window.FX.sound.beer();
-          notifyGroup();   // server: friend milestones + KAOS I STAN check
+          // Spökläge: hide the pin at once and tell nobody. Else: server friend milestones + KAOS I STAN check.
+          if (ghost) rpc("stop_beer").then(function () { refresh(); });
+          else notifyGroup();
+          mods("onBeerAccepted", d, { precise: prec === "exact", ghost: ghost });
           if (PUSH_ON) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
           if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
             setTimeout(function () { askNotifSheet(); }, 2200);
@@ -885,6 +948,7 @@
       sb.disabled = false;
       if (r.error) { toast(errMsg(r.error), { err: true }); return; }
       toast(kind === "home" ? t("stopHomeToast") : t("stopPauseToast"), { ms: 5000 }); refresh();
+      mods("onStopped", kind);
       if (PUSH_ON && client && client.functions) {
         try { Promise.resolve(client.functions.invoke("notify-group", { body: { event: kind } })).then(function () {}, function () {}); } catch (e) {}
       }
@@ -897,6 +961,7 @@
       body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn("🏠 " + t("stopHome"), "btn-green btn-block", function () { stopBeer("home"); })]));
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("🥀 " + t("stopPause"), "btn-amber btn-block", function () { stopBeer("pause"); })]));
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("cancel"), "btn-block", closeSheet)]));
+      mods("stopSheet", body);   // taxi + SOS
     });
   });
 
@@ -999,6 +1064,7 @@
           btn(t("create"), "btn-amber", showCreate), btn(t("join"), "btn-green", function () { showJoin(""); })
         ]));
         body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("📲 " + t("inviteBtn"), "btn-block", showInvite)]));
+        mods("groupsSheet", body);   // "Kom hit!"
         list.appendChild(el("li", { class: "muted", text: "…" }));
         rpc("my_groups").then(function (r) {
           list.innerHTML = "";
@@ -1038,6 +1104,7 @@
     ])]);
     li.appendChild(wrap);
     li.style.display = "block";
+    mods("groupItem", g, wrap, main);   // chat button + tap for group status
     return li;
   }
   function showCreate() {
@@ -1159,7 +1226,7 @@
     }
     if (kind === "cities") {
       var g = {};
-      beers.forEach(function (b) {
+      beerOnly().forEach(function (b) {
         var c = cityOf(b), k = c || "";
         var x = g[k] || (g[k] = { name: c || t("other"), list: [], other: !c });
         x.list.push(b);
@@ -1192,9 +1259,13 @@
       var list = el("ol", { class: "toplist" });
       var note = el("p", { class: "muted top-note" });
       var kinds = [["bars", t("topBars")], ["cities", t("topCities")], ["streaks", t("topStreaks")]];
+      var league = !!(window.SOCIAL && window.SOCIAL.leagueOn && window.SOCIAL.leagueOn());
+      if (league) { kinds.push(["league", t("topLeague")]); tabs.classList.add("t4"); }
+      else if (topTab === "league") topTab = "bars";
       function draw() {
         tabs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-selected", String(b.getAttribute("data-k") === topTab)); });
         list.innerHTML = "";
+        if (topTab === "league") { note.textContent = ""; window.SOCIAL.drawLeague(list, note); return; }
         var rows = topRows(topTab);
         note.textContent = topTab === "bars" ? t("topNote") : "";
         if (!rows.length) {
@@ -1379,6 +1450,8 @@
       });
       body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
 
+      mods("settingsSheet", body);   // ghost mode, badges, night summary, SOS
+
       body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("showIntro"), "btn-small", function () {
         closeSheet(); showIntro(true);
       })]));
@@ -1409,7 +1482,7 @@
     }));
     // Also refresh the browser HTTP cache (max-age=600 on GitHub Pages), else the reload can get old files.
     ["./", "./index.html", "./sw.js", "./config.js", "./app.js", "./styles.css", "./js/i18n.js", "./js/util.js",
-      "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js"].forEach(function (u) {
+      "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news.js", "./js/social.js", "./js/extras.js", "./js/rally.js"].forEach(function (u) {
       jobs.push(fetch(u, { cache: "reload" }).catch(function () {}));
     });
     Promise.all(jobs).catch(function () {}).then(function () {
@@ -1471,9 +1544,12 @@
   var joinCode = params.get("join");
   var focusId = params.get("focus");
   var invited = params.has("invite");
+  var chatId = params.get("chat"), sosAt = params.get("sos");   // v9 push links
+  var rallyId = params.get("rally"), rallyAns = params.get("answer");
   if (focusId) pendingFocus = focusId;
-  if (joinCode || focusId || invited) {
-    params.delete("join"); params.delete("focus"); params.delete("invite");
+  if (joinCode || focusId || invited || chatId || sosAt || rallyId || rallyAns) {
+    params.delete("join"); params.delete("focus"); params.delete("invite"); params.delete("chat"); params.delete("sos");
+    params.delete("rally"); params.delete("answer");   // a reload must not answer again
     var qs = params.toString();
     try { history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash); } catch (e) {}
   }
@@ -1509,6 +1585,7 @@
       toastClear("auth");
       if (PUSH_ON) window.PUSH.resync(rpc).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
       startPoll();
+      mods("onAuthed");
       return refresh();
     }).catch(function (e) {
       var m = String((e && e.message) || "");
@@ -1574,6 +1651,11 @@
 
   function start() {
     U.ls.del("olnu.shot");   // shots were removed; drop the old timer
+    mods("init", appApi());
+    $("hud-x").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-hx]"); if (!b || b.disabled) return;
+      mods("hudClick", b.getAttribute("data-hx"), b);
+    });
     applyStaticText();
     applyOnline();
     // Bars load after the first poll: then also re-check the busiest bar in the chaos banner (no toast).
@@ -1612,8 +1694,41 @@
       if (!U.isStandalone() && (invited || inAppBrowser() || U.ls.get("olnu.guideSeen", "") !== "1")) {
         U.ls.set("olnu.guideSeen", "1");
         setTimeout(showInstallGuide, 900);
-      } else setTimeout(startNotifAsk, 1200);
+      } else setTimeout(function () {
+        // v9: a deep-linked chat or last night's summary goes first; the notification question waits for next time.
+        if (chatId || rallyId) return;
+        if (!mods("onReadyShow")) startNotifAsk();
+      }, 1200);
     });
+    if (chatId) Promise.all([ready, intro]).then(function () { if (LIVE) mods("openChatLink", chatId); });
+    if (rallyId && !chatId) Promise.all([ready, intro]).then(function () { if (LIVE) mods("openLink", rallyId, rallyAns); });
+    if (sosAt) mods("showSosLink", sosAt);
+  }
+  // v9: what js/social.js and js/extras.js may use. Getters for state that changes.
+  function appApi() {
+    return {
+      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, toast: toast, toastClear: toastClear,
+      openSheet: openSheet, closeSheet: closeSheet, el: el, btn: btn, errMsg: errMsg, flyTo: flyTo, refresh: refresh,
+      render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
+      beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
+      authed: function () { return authed; }, client: function () { return client; }, prec: function () { return prec; },
+      center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, showGroups: showGroups,
+      copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
+      setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },
+      sheetOpen: function () { return !$("sheet").hidden; },
+      // functions.invoke that always resolves to {data, error} (never rejects, max RPC_TIMEOUT_MS).
+      invoke: function (name, body) {
+        if (!client || !client.functions) return Promise.resolve({ data: null, error: { message: "no_client" } });
+        return new Promise(function (resolve) {
+          var done = false, tm = setTimeout(function () { done = true; resolve({ data: null, error: { message: "timeout" } }); }, RPC_TIMEOUT_MS);
+          var fin = function (r) { if (done) return; done = true; clearTimeout(tm); resolve(r); };
+          try {
+            Promise.resolve(client.functions.invoke(name, body ? { body: body } : undefined))
+              .then(function (r) { fin({ data: r ? parseData(r.data) : {}, error: r ? r.error : null }); }, function (e) { fin({ data: null, error: e || { message: "error" } }); });
+          } catch (e) { fin({ data: null, error: e }); }
+        });
+      }
+    };
   }
   function startNotifAsk() {
     if (!PUSH_ON || !authed || !window.PUSH.supported()) return;

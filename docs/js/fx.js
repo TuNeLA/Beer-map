@@ -12,6 +12,8 @@
   function setMuted(v) { U.ls.set(MUTE_KEY, v ? "1" : "0"); }
 
   function vibrate(p) {
+    // Before the first tap the browser blocks vibration (and logs an error): skip it then.
+    try { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) {}
     try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {}
   }
 
@@ -190,6 +192,8 @@
     html += '<div class="to-core"><div class="to-icon" aria-hidden="true">' + (level === 2 ? "🚁" : "🔥") + "</div>" +
       '<div class="to-title">' + U.esc(opts.title || "") + "</div>" +
       '<div class="to-sub">' + U.esc(opts.sub || "") + "</div>" +
+      // extraHTML: trusted HTML built by the app (e.g. taxi buttons). Its links work; a tap elsewhere closes.
+      (opts.extraHTML ? '<div class="to-extra">' + opts.extraHTML + "</div>" : "") +
       '<div class="to-hint">' + U.esc(opts.hint || "") + "</div></div>";
     el.innerHTML = html;
     var done = function () { if (el.parentNode) { el.classList.add("out"); setTimeout(function () { el.remove(); }, 220); } if (current === el) current = null; };

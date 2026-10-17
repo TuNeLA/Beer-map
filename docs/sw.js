@@ -1,8 +1,8 @@
 /* Öl Nu service worker. */
-var VERSION = "olnu-06b190d951";
+var VERSION = "olnu-97ddd99e64";
 var SHELL = [
-  "./", "./index.html", "./styles.css", "./config.js", "./app.js", "./bars-extra.json",
-  "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news.js",
+  "./", "./index.html", "./styles.css", "./config.js", "./app.js", "./bars-extra.json", "./bars-closed.json",
+  "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news.js", "./js/social.js", "./js/extras.js", "./js/rally.js",
   "./manifest.webmanifest", "./favicon.ico",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"
@@ -62,7 +62,7 @@ self.addEventListener("fetch", function (e) {
   if (sameOrigin) {
     var scopePath = new URL(self.registration.scope).pathname;
     if (url.pathname.indexOf(scopePath) !== 0) return;
-    if (/\/(bars(-extra)?|places)\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) { e.respondWith(networkFirst(req)); return; }
+    if (/\/(bars(-extra|-closed)?|places)\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) { e.respondWith(networkFirst(req)); return; }
     if (req.mode === "navigate" || /\.html?$/.test(url.pathname) || url.pathname === scopePath) { e.respondWith(networkFirst(req)); return; }
   }
   e.respondWith(cacheFirst(req));
@@ -72,18 +72,30 @@ self.addEventListener("push", function (e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : "" }; }
   var title = d.title || "🍺 Öl Nu";
-  e.waitUntil(self.registration.showNotification(title, {
+  var opts = {
     body: d.body || "",
     icon: "./icons/icon-192.png",
     badge: "./icons/badge-96.png",
     tag: d.tag || d.url || "olnu",
-    data: { url: d.url || "./" }
-  }));
+    requireInteraction: !!(d.requireInteraction || d.sos),
+    data: { url: d.url || "./", rally_id: d.rally_id != null ? String(d.rally_id) : null }
+  };
+  // Rally pushes carry buttons ("✅ Jag kommer" / "❌ Kan inte").
+  if (Array.isArray(d.actions) && d.actions.length) {
+    opts.actions = d.actions.filter(function (a) { return a && a.action && a.title; }).slice(0, 2)
+      .map(function (a) { return { action: String(a.action), title: String(a.title) }; });
+  }
+  e.waitUntil(self.registration.showNotification(title, opts));
 });
 
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();
-  var raw = (e.notification.data && e.notification.data.url) || "./";
+  var data = e.notification.data || {}, raw = data.url || "./";
+  // Rally buttons: open the rally and answer it ("&answer=yes|no").
+  if ((e.action === "yes" || e.action === "no") && (data.rally_id || /[?&]rally=/.test(raw))) {
+    if (!/[?&]rally=/.test(raw)) raw = "/?rally=" + encodeURIComponent(data.rally_id);
+    raw += (raw.indexOf("?") >= 0 ? "&" : "?") + "answer=" + e.action;
+  }
   // Payload urls like "/?focus=12" are resolved against the scope so they work under a sub-path.
   var target;
   try {

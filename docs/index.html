@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="./styles.css?v=06b190d951">
+<link rel="stylesheet" href="./styles.css?v=97ddd99e64">
 </head>
 <body>
 <div id="map" aria-label="Karta"></div>
@@ -46,8 +46,13 @@
   <button id="chaos-show" class="chaos-show" type="button">Visa</button>
   <button id="chaos-close" class="chaos-x" type="button" aria-label="Dölj kaos-larmet">✕</button>
 </div>
-<div id="my-streak" class="my-streak" hidden></div>
+<div id="rally" class="rally hud-panel" role="status" hidden></div>
+<div class="hud-left">
+  <div id="my-streak" class="my-streak" hidden></div>
+  <div id="hud-x" class="hud-x" hidden></div>
+</div>
 <button id="btn-heat" class="map-chip" type="button" aria-pressed="false" hidden>🔥 Värme</button>
+<button id="btn-ghostpins" class="map-chip ghost-chip" type="button" aria-pressed="false" hidden>👻 Förra veckan</button>
 <button id="btn-attrib" class="attrib-btn" type="button" aria-label="Kartkällor" title="Kartkällor" aria-expanded="false" aria-controls="attrib-pop"><span aria-hidden="true">i</span></button>
 <div id="attrib-pop" class="attrib-pop" role="note" hidden></div>
 <button id="btn-locate" class="locate-btn" type="button" aria-label="Visa var jag är"><span aria-hidden="true">📍</span></button>
@@ -75,6 +80,13 @@
         <circle id="cd-ring" class="cd-ring" cx="62" cy="62" r="56"/>
       </svg>
       <button id="btn-beer" class="beer-btn" type="button"><span id="beer-label" class="beer-label">ÖL!</span><span id="beer-sub" class="beer-sub"></span></button>
+      <div id="other-wrap" class="other-wrap" hidden>
+        <svg class="ocd-svg" viewBox="0 0 60 60" aria-hidden="true">
+          <circle class="ocd-track" cx="30" cy="30" r="27"/>
+          <circle id="ocd-ring" class="ocd-ring" cx="30" cy="30" r="27"/>
+        </svg>
+        <button id="btn-other" class="other-btn" type="button"><span id="other-label" class="other-label">🥃 ANNAT</span></button>
+      </div>
     </div>
     <div class="prec">
       <div class="seg" role="radiogroup" id="prec-seg">
@@ -102,20 +114,23 @@
   <div id="intro-body" class="intro-card hud-panel"></div>
 </div>
 
-<script src="./config.js?v=06b190d951"></script>
+<script src="./config.js?v=97ddd99e64"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="./js/i18n.js?v=06b190d951"></script>
-<script src="./js/util.js?v=06b190d951"></script>
-<script src="./js/bars.js?v=06b190d951"></script>
-<script src="./js/push.js?v=06b190d951"></script>
-<script src="./js/fx.js?v=06b190d951"></script>
-<script src="./js/cities.js?v=06b190d951"></script>
-<script src="./js/chaos.js?v=06b190d951"></script>
-<script src="./js/news.js?v=06b190d951"></script>
-<script src="./app.js?v=06b190d951"></script>
+<script src="./js/i18n.js?v=97ddd99e64"></script>
+<script src="./js/util.js?v=97ddd99e64"></script>
+<script src="./js/bars.js?v=97ddd99e64"></script>
+<script src="./js/push.js?v=97ddd99e64"></script>
+<script src="./js/fx.js?v=97ddd99e64"></script>
+<script src="./js/cities.js?v=97ddd99e64"></script>
+<script src="./js/chaos.js?v=97ddd99e64"></script>
+<script src="./js/news.js?v=97ddd99e64"></script>
+<script src="./js/social.js?v=97ddd99e64"></script>
+<script src="./js/extras.js?v=97ddd99e64"></script>
+<script src="./js/rally.js?v=97ddd99e64"></script>
+<script src="./app.js?v=97ddd99e64"></script>
 </body>
 </html>

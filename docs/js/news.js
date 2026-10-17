@@ -139,6 +139,25 @@
       else if (friends.length && mn > 0) add("meLead", {}, 1, "tk-me");
     }
 
+    // v9: friends' titles (ctx.titles: beer id -> title; friends only, from friend_totals).
+    var titles = ctx.titles || {};
+    friends.forEach(function (b) {
+      var ti = titles[b.id];
+      if (ti && Math.random() < 0.5) add("fTitle", { title: ti, name: b.friend_name, n: b.beer_count | 0 }, 1, "tk-friend");
+    });
+    // v9: side tracks (other drinks). ctx.others = all live pins with other_count/other_kind.
+    var nat = t("drinkNat") || {}, sideAnon = 0;
+    (ctx.others || []).forEach(function (b) {
+      if (!b || (b.other_count | 0) < 1) return;
+      var drink = nat[b.other_kind] || nat.annat || "?";
+      if (b.is_mine) add("meSidetrack", { drink: drink }, 1, "tk-me");
+      else if (b.friend_name) add("sidetrack", { name: b.friend_name, drink: drink }, 2, "tk-friend");
+      else if (sideAnon < 1) {
+        var st = townAt(b.lat, b.lng);
+        if (st) { sideAnon++; add("anonSidetrack", { stad: st, anon: pick(anon), drink: drink }, 0); }
+      }
+    });
+
     // Bars with 2+ people.
     bars.sort(function (a, b) { return b.beers.length - a.beers.length; }).slice(0, 2).forEach(function (a) {
       add("barReport", { bar: a.bar.name, k: a.beers.length }, 0);
