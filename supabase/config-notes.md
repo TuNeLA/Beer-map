@@ -63,3 +63,22 @@ Client contract:
   Kaos url `/`, tag `olnu-kaos-<evening date>`.
 
 Tests: `node --experimental-strip-types supabase/tests/notify-group.test.mjs`.
+
+## v7 SOCIAL (migration 0007)
+1. Run `supabase/update-now.sql` (= `migrations/0007_social.sql`) in the SQL Editor. Safe to run again.
+   It has no remove-type statements (create-or-replace / if not exists / on conflict only).
+   Needs Postgres 14+ (`create or replace trigger`); Supabase projects are 15+.
+2. Deploy `notify-group` again (one file, `index.ts`). No new secrets.
+3. New: weekly beers + lifetime titles (`week_beers`, trigger `olnu_week_beers`), Kung av baren
+   (`record_bar`, `bar_kings`), group league (`group_league`), group chat (`post_group_msg`,
+   `group_msgs`), reactions (`react`, `beer_reactions`), ghost pins (`ghost_points`), titles
+   (`my_stats`, `friend_totals`). Edge events `comehere`, `sos`, `msg`, and the level-up push.
+   Full contract: CONTRACT.md → "v7 SOCIAL".
+4. Cleanup moved: `olnu_log_beer_event` no longer cleans `beer_events`; `notify-group` removes
+   rows older than 10 days on 5% of calls (ghost pins show days 1–8). Old `group_msgs`,
+   `reactions` and `bar_taps` rows are never shown (filtered by time / live beers). Optional
+   pg_cron cleanup for them can be added later in the Dashboard.
+5. Privacy: messages, kings' names and titles are only visible to group-mates. `group_league`
+   hides other groups' names. Only the SOS push carries an exact location, and only to group-mates.
+
+Tests: `node --experimental-strip-types supabase/tests/notify-group.test.mjs` (pure helpers, incl. v7).

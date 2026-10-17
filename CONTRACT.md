@@ -128,3 +128,68 @@ Old and new app versions must work at the same time against one database.
 - `docs/places.json` = `[[name, lat, lng, t]]`, t = r (restaurant) | f (fast_food) | c (cafe). Made weekly by `scripts/fetch-places.mjs` (bars.yml). Used only for naming, never drawn. Optional: missing file → bars + towns.
 - Migration `0005_heat_events.sql`: table `beer_events(kind, lat, lng, precise, n, created_at, expires_at)` with NO user_id, filled by a trigger on `beers` when beer_count or shot_count goes up. RPC `heat_points()` → setof `(lat, lng, w)` for tonight, precise events snapped to ~55 m cells. Weight: beer 1 (2 at beer 5–9, 3 at 10+), shot 0.5.
 - Client: heat layer uses `heat_points` when it exists; when the RPC is missing it falls back to live pins weighted by count (old behaviour).
+
+## v7 SOCIAL (additive; old clients keep working)
+Migration `supabase/migrations/0007_social.sql` (also in `setup.sql`; `update-now.sql` = only 0007). Needs 0001–0006 first. All RPCs: authenticated only, raise `not_authenticated` without a session. "This week" = Monday 00:00 → Sunday, Europe/Stockholm. "Live beer" = not expired and not stopped. Clients must treat a missing RPC (old database) as "feature off" and hide that UI.
+
+### Tables (RLS on, no policies, no client access)
+- `week_beers(user_id, week date, n)`: filled by trigger `olnu_week_beers` on `beers` (every increase of beer_count). History starts with v7.
+- `bar_taps(user_id, bar_id, week, n, bar_name, lat, lng, last_at)`, `group_msgs(id, group_id, user_id, body, created_at, expires_at)`, `reactions(beer_id, user_id, emoji, active, created_at, updated_at)`.
+- `push_sent.sent_at` (new column) for edge-function rate limits.
+
+### RPCs
+| name | params | returns | errors |
+|---|---|---|---|
+| `record_bar` | `p_bar_id text, p_bar_name text, p_lat float8, p_lng float8` | void | none (silently ignored when rules fail) |
+| `bar_kings` | `p_bar_ids text[]` (max 500 used) | setof `(bar_id text, king_name text, king_n int, is_me bool)` | – |
+| `group_league` | – | setof `(group_id uuid, name text, total int, members int, rank int, is_mine bool)` | – |
+| `post_group_msg` | `p_group_id uuid, p_body text` | json `{id bigint, created_at timestamptz}` | `not_member`, `invalid_msg`, `slow_down` |
+| `group_msgs` | `p_group_id uuid, p_after_id bigint default 0` | setof `(id bigint, name text, body text, created_at timestamptz, is_me bool)` | `not_member` |
+| `react` | `p_beer_id bigint, p_emoji text` | json `{counts: {"🔥": n, ...}, mine: ["🔥", ...]}` | `invalid_emoji`, `beer_not_found`, `own_beer` |
+| `beer_reactions` | – | setof `(beer_id bigint, emoji text, n int, mine bool)` | – |
+| `ghost_points` | – | setof `(lat float8, lng float8, w float8)` | – |
+| `my_stats` | – | json `{total int, week int, title text, next_title text\|null, next_at int\|null}` | – |
+| `friend_totals` | – | setof `(beer_id bigint, total int)` | – |
+
+Rules:
+- **Weekly beers**: each accepted beer adds 1 to the caller's row for this week.
+- **Kung av baren**: call `record_bar` right after an accepted `post_beer` when the precise pin is at a bar (bars.json `id`, `name`, bar `lat/lng`). Counts only when the caller has a live **precise** beer accepted in the last 3 min within 150 m of `p_lat/p_lng`; max 1 per caller per bar per 9 min. `bar_kings`: one row per bar with check-ins this week (bars without rows = no king). King = highest `n` this week; tie → who reached it first. `king_name` = the king's display_name in a group shared with the caller (or own name when `is_me`), else null → show "En hemlig agent".
+- **Grupp-mot-grupp**: `group_league` ranks all groups with ≥ 2 members by this week's sum of members' beers (`rank` 1.., unique; ties → older group first). Returns the top 10 plus all the caller's groups (≥ 2 members), ordered by rank. `name` is null for groups the caller is not in → show "Grupp #<rank>".
+- **Kvittra**: body is trimmed (control chars removed), 1–140 chars, else `invalid_msg`. Max 1 message per 20 s per user (all groups) → `slow_down`. Messages expire at the next 05:00 (same as pins). `group_msgs(p_after_id = 0)` = newest 100, oldest first; `p_after_id > 0` = next ≤ 100 with `id > p_after_id`, oldest first (poll with the last id you have). `name` = sender's display_name in this group; null if the sender left → show "Någon". After `post_group_msg` succeeds, call `notify-group` with `{event:"msg", group_id}`.
+- **Reaktioner**: emojis `🔥 😂 💀 💪` (exact strings). `react` toggles the caller's emoji on/off. `counts` only has emojis with n > 0 (missing = 0). Beer must be live and not own. `beer_reactions` covers all live beers (poll with `live_beers`).
+- **Spökpins**: `ghost_points` = anonymous beers from 1 to 8 days ago (shots excluded), precise ones snapped to ~55 m cells, approximate ones on their ~550 m grid. `w` = number of beers in the cell. Draw faint "ghost" dots/heat.
+- **Levels & titles**: lifetime beers = sum of `week_beers`. Title by lifetime total (exact strings; same list in `notify-group` `TITLES` and SQL `olnu_titles()`):
+
+  | from | title |
+  |---|---|
+  | 0 | Rekryt |
+  | 5 | Menig Mjöd |
+  | 15 | Korpral Kork |
+  | 30 | Sergeant Skum |
+  | 50 | Löjtnant Lager |
+  | 75 | Kapten Kapsyl |
+  | 100 | Major Malt |
+  | 150 | Öl-veteranen |
+  | 200 | Överste Öl |
+  | 300 | General Gambrinus |
+  | 500 | Fältmarskalk Fatöl |
+  | 750 | Bryggerilegenden |
+  | 1000 | Ölguden |
+
+  `my_stats`: `next_title`/`next_at` are null at "Ölguden". `friend_totals`: lifetime totals for live beers of the caller and of users who share a group with the caller only (strangers never returned → show no title for them). Frontend computes the title from `total` with the table above.
+
+### Edge function `notify-group` — new body events
+Call `supabase.functions.invoke('notify-group', {body})`. Old calls (no body, `home`, `pause`) work as before. Responses are `{sent, failed}` plus `reason` when nothing was sent: `no_beer`, `no_group`, `slow_down`, `bad_location`, `bad_group`, `no_msg`. HTTP errors as before (`unauthorized` 401, `server_not_configured`/`internal_error` 500).
+| body | who gets it | limit | payload |
+|---|---|---|---|
+| `{event:"comehere", bar_name?: string, lat?, lng?}` | group-mates | 1 per 10 min per caller | title random line, e.g. "📍 {namn} vill att du kommer till {bar}!" (no bar: "📍 {namn} vill att du kommer hit"); body "Tryck för att se var."; url `/?focus=<caller's beer id>`; tag `olnu-come-<beer id>` |
+| `{event:"sos", lat, lng}` | group-mates | 1 per 3 min per caller | title "🆘 {namn} behöver hjälp!", body "Tryck för att se var.", url `/?sos=<lat>,<lng>` (5 decimals), tag `olnu-sos-<ms>`, extra `sos: true`, `requireInteraction: true`. High priority. |
+| `{event:"msg", group_id}` | other members of that group | 1 per sender per group per 2 min | title "💬 {namn}: {body}", body "i <group name>", url `/?chat=<group_id>`, tag `olnu-msg-<group_id>` |
+- `comehere` needs a live pin (else `no_beer`). `bar_name` is used only when the pin is precise (an approximate pin never reveals a bar). `lat/lng` are accepted but not sent. Send the bar name from bars.json.
+- `sos` needs `lat/lng` inside Sweden (else `bad_location`). It is the ONLY push with an exact location, and only to group-mates. It works without a pin.
+- `msg` pushes the caller's newest live message in that group if it is < 5 min old (else `no_msg`).
+- Service worker: show `requireInteraction` when set; open `url` on click.
+- Deep links (new): `?sos=<lat>,<lng>` → fly to that point and show a red SOS marker with the sender's name from the notification if available ("🆘 Behöver hjälp här"). `?chat=<group_id>` → open that group's chat.
+- **Friend pushes** (milestone 1/5): some lines now include the sender's title, e.g. "🎖️ Öl-veteranen Oskar dricker för fullo!". Level 10 lines stay caring (no title).
+- **Level-up push** (automatic, in the normal after-beer call): when the caller's lifetime total reaches a new title, group-mates get "⬆️ {namn} har blivit befordrad till {titel}!" (or a variant), url `/?focus=<beer id>`, tag `olnu-title-<beer id>`. Once per title per user, ever. Response gets `levelup: n`.
+- The function also cleans `beer_events` older than 10 days (5% of calls). The `beer_events` trigger no longer cleans.

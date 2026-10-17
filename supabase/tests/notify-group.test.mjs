@@ -118,4 +118,113 @@ t("fill leaves unknown placeholders", () => {
   assert.equal(m.fill("{namn} {x}", { namn: "Bosse" }), "Bosse {x}");
 });
 
+// ---- v7 SOCIAL ----
+t("titles: ladder, exact strings, next", () => {
+  assert.equal(m.TITLES.length, 13);
+  assert.deepEqual(m.titleFor(0), { title: "Rekryt", at: 0, next_title: "Menig Mjöd", next_at: 5 });
+  assert.equal(m.titleFor(4).title, "Rekryt");
+  assert.equal(m.titleFor(5).title, "Menig Mjöd");
+  assert.equal(m.titleFor(149).title, "Major Malt");
+  assert.equal(m.titleFor(150).title, "Öl-veteranen");
+  assert.deepEqual(m.titleFor(1000), { title: "Ölguden", at: 1000, next_title: null, next_at: null });
+  assert.equal(m.titleFor(99999).title, "Ölguden");
+  assert.equal(m.titleFor(-3).title, "Rekryt");
+  assert.equal(m.titleFor(NaN).title, "Rekryt");
+  for (let i = 1; i < m.TITLES.length; i++) assert.ok(m.TITLES[i][0] > m.TITLES[i - 1][0]);
+});
+
+t("titles match migration 0007 olnu_titles()", () => {
+  const sql = readFileSync(join(here, "../migrations/0007_social.sql"), "utf8");
+  const pairs = [...sql.matchAll(/\((\d+), '([^']+)'\)/g)].map((x) => [Number(x[1]), x[2]]);
+  assert.deepEqual(pairs, m.TITLES);
+});
+
+t("friend lines with {titel}: level 1 and 5 have some, level 10 has none", () => {
+  const n1 = m.FRIEND_LINES[1].filter((l) => l.includes("{titel}")).length;
+  const n5 = m.FRIEND_LINES[5].filter((l) => l.includes("{titel}")).length;
+  assert.ok(n1 >= 6, String(n1));
+  assert.ok(n5 >= 3, String(n5));
+  assert.equal(m.FRIEND_LINES[10].filter((l) => l.includes("{titel}")).length, 0);
+});
+
+t("fillFriend with and without title", () => {
+  assert.equal(m.fillFriend("🎖️ {titel} {namn} dricker för fullo!", "Oskar", "Öl-veteranen"),
+    "🎖️ Öl-veteranen Oskar dricker för fullo!");
+  assert.equal(m.fillFriend("🎖️ {titel} {namn} dricker för fullo!", "Oskar", ""), "🎖️ Oskar dricker för fullo!");
+  for (const lvl of [1, 5, 10]) {
+    for (const l of m.FRIEND_LINES[lvl]) assert.ok(!/\{\w+\}/.test(m.fillFriend(l, "A", "")), l);
+  }
+});
+
+t("levelUpPayload", () => {
+  const p = m.levelUpPayload(0, "Bosse", "Korpral Kork", 42);
+  assert.equal(p.title, "⬆️ Bosse har blivit befordrad till Korpral Kork!");
+  assert.equal(p.url, "/?focus=42");
+  assert.equal(p.tag, "olnu-title-42");
+  for (let i = 0; i < m.LEVELUP_LINES.length + 2; i++) {
+    const q = m.levelUpPayload(i, "X", "Y", 1);
+    assert.ok(q.title.includes("X") && q.title.includes("Y") && !/\{\w+\}/.test(q.title));
+  }
+});
+
+t("comehere: 8 bar lines, bar and no-bar payloads", () => {
+  assert.ok(m.COMEHERE_LINES.length >= 8);
+  for (const l of m.COMEHERE_LINES) assert.ok(l.includes("{namn}") && l.includes("{bar}"), l);
+  const a = m.comeherePayload(0, "Anton", "Puben", 7);
+  assert.equal(a.title, "📍 Anton vill att du kommer till Puben!");
+  assert.equal(a.url, "/?focus=7");
+  const b = m.comeherePayload(0, "Anton", "", 7);
+  assert.equal(b.title, "📍 Anton vill att du kommer hit");
+  assert.equal(b.url, "/?focus=7");
+  for (let i = 0; i < 20; i++) {
+    assert.ok(!/\{\w+\}/.test(m.comeherePayload(i, "A", "B", 1).title));
+    assert.ok(!/\{\w+\}/.test(m.comeherePayload(i, "A", "", 1).title));
+  }
+});
+
+t("cleanBarName", () => {
+  assert.equal(m.cleanBarName("  Puben\n\t Ludvika  "), "Puben Ludvika");
+  assert.equal(m.cleanBarName("x".repeat(100)).length, 60);
+  assert.equal(m.cleanBarName(null), "");
+  assert.equal(m.cleanBarName(42), "");
+  assert.equal(m.cleanBarName("a\u0000b"), "a b");
+});
+
+t("sosPayload: exact place rounded to 5 decimals", () => {
+  const p = m.sosPayload("Cilla", 60.1496123456, 15.18781, 1700000000000);
+  assert.equal(p.title, "🆘 Cilla behöver hjälp!");
+  assert.equal(p.body, "Tryck för att se var.");
+  assert.equal(p.url, "/?sos=60.14961,15.18781");
+  assert.equal(p.sos, true);
+  assert.equal(p.tag, "olnu-sos-1700000000000");
+});
+
+t("validPt: Sweden bbox, numbers only", () => {
+  assert.equal(m.validPt(60.1, 15.2), true);
+  assert.equal(m.validPt(50, 15), false);
+  assert.equal(m.validPt(60, 30), false);
+  assert.equal(m.validPt("60", 15), false);
+  assert.equal(m.validPt(NaN, 15), false);
+  assert.equal(m.validPt(undefined, undefined), false);
+});
+
+t("msgPayload", () => {
+  const p = m.msgPayload("Bosse", "Kommer om 5!", "Gänget", "aaaaaaaa-0000-0000-0000-000000000001");
+  assert.equal(p.title, "💬 Bosse: Kommer om 5!");
+  assert.equal(p.body, "i Gänget");
+  assert.equal(p.url, "/?chat=aaaaaaaa-0000-0000-0000-000000000001");
+  assert.equal(p.tag, "olnu-msg-aaaaaaaa-0000-0000-0000-000000000001");
+  assert.equal(m.msgPayload("A", "b", "", "g").body, "Nytt i gruppchatten");
+});
+
+t("isUuid and bucketStart", () => {
+  assert.equal(m.isUuid("aaaaaaaa-0000-0000-0000-000000000001"), true);
+  assert.equal(m.isUuid("nope"), false);
+  assert.equal(m.isUuid(5), false);
+  assert.equal(m.bucketStart(1_000_000, 600), 600_000);
+  assert.equal(m.bucketStart(1_199_999, 600), 600_000);
+  assert.equal(m.bucketStart(1_200_000, 600), 1_200_000);
+  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120 });
+});
+
 console.log(`\n${passed} tests passed`);

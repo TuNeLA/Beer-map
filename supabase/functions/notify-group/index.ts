@@ -6,6 +6,9 @@
 //  B) KAOS I STAN: when the area around the caller's beer is wild (>= 10 live beers or >= 3 on
 //     HOT STREAK within 5 km), push to subscribers whose saved area is within 10 km, at most once
 //     per subscriber per night (push_sent). Anonymous counts only: no names, no exact places.
+//  C) LEVEL-UP (v7): when the caller's lifetime beers reach a new title, push to group-mates once
+//     per title ever.
+// Body events (v7 SOCIAL): {event:"comehere"|"sos"|"msg", ...}, plus "home"/"pause" from v6.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -115,6 +118,13 @@ export const FRIEND_LINES: Record<1 | 5 | 10, string[]> = {
     "🏁 Startskottet har gått! {namn} är igång.",
     "🦌 {namn} har brutit sig ut ur skogen och tagit en öl.",
     "📞 {namn} är ute. Morsan vet inte om det än.",
+    "🎖️ {titel} {namn} dricker för fullo!",
+    "🍻 {titel} {namn} är ute på uppdrag",
+    "📣 {titel} {namn} har lämnat basen!",
+    "🫡 {titel} {namn} har ryckt ut. Uppdrag: öl.",
+    "🪖 {titel} {namn} rapporterar: första ölen är i hand.",
+    "📡 Spaning: {titel} {namn} har setts med en kall.",
+    "🚁 {titel} {namn} har landat på krogen.",
   ],
   5: [
     "🔥 {namn} är på HOT STREAK! Öl nr 5",
@@ -137,6 +147,9 @@ export const FRIEND_LINES: Record<1 | 5 | 10, string[]> = {
     "🍺🍺🍺🍺🍺 {namn}. Mer behöver vi inte säga.",
     "🚒 Ring brandkåren – {namn} brinner! Öl nr 5",
     "🎤 {namn} har börjat prata om att starta band. Fem öl.",
+    "🔥 {titel} {namn} är på HOT STREAK! Öl nr 5",
+    "🎖️ {titel} {namn} kör hårt – fem öl!",
+    "🪖 {titel} {namn} har tagit fem. Truppen följer efter?",
   ],
   10: [
     "🚁 MEDEVAC: kolla till {namn}! Öl nr 10",
@@ -223,6 +236,127 @@ export function fill(tpl: string, vars: Record<string, string | number>): string
   return tpl.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 }
 
+// ---- v7 SOCIAL ----
+
+/** Title ladder by lifetime beers. Same list in migration 0007 (olnu_titles) and CONTRACT.md. */
+export const TITLES: [number, string][] = [
+  [0, "Rekryt"], [5, "Menig Mjöd"], [15, "Korpral Kork"], [30, "Sergeant Skum"],
+  [50, "Löjtnant Lager"], [75, "Kapten Kapsyl"], [100, "Major Malt"], [150, "Öl-veteranen"],
+  [200, "Överste Öl"], [300, "General Gambrinus"], [500, "Fältmarskalk Fatöl"],
+  [750, "Bryggerilegenden"], [1000, "Ölguden"],
+];
+
+export function titleFor(total: number) {
+  const t = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
+  let i = 0;
+  while (i + 1 < TITLES.length && TITLES[i + 1][0] <= t) i++;
+  const next = TITLES[i + 1];
+  return {
+    title: TITLES[i][1],
+    at: TITLES[i][0],
+    next_title: next ? next[1] : null,
+    next_at: next ? next[0] : null,
+  };
+}
+
+/** Friend line with name and title. Without a title, "{titel} " is removed. */
+export function fillFriend(tpl: string, namn: string, titel: string): string {
+  return fill(titel ? tpl : tpl.replace(/\{titel\}\s*/g, ""), { namn, titel });
+}
+
+export const LEVELUP_LINES: string[] = [
+  "⬆️ {namn} har blivit befordrad till {titel}!",
+  "🎖️ Ceremoni! {namn} är nu {titel}. Applåder.",
+  "📜 Generalstaben meddelar: {namn} är nu {titel}.",
+  "🎺 Fanfar! {namn} har avancerat till {titel}.",
+  "🫡 Givakt! Hälsa på {titel} {namn}.",
+  "🏅 Ny rang i gruppen: {namn} är {titel}!",
+];
+
+export function levelUpPayload(idx: number, namn: string, titel: string, beerId: number) {
+  return {
+    title: fill(LEVELUP_LINES[((idx % LEVELUP_LINES.length) + LEVELUP_LINES.length) % LEVELUP_LINES.length], { namn, titel }),
+    body: "Ny rang i Öl Nu. Skål för det! 🍻",
+    url: `/?focus=${beerId}`,
+    tag: `olnu-title-${beerId}`,
+  };
+}
+
+export const COMEHERE_LINES: string[] = [
+  "📍 {namn} vill att du kommer till {bar}!",
+  "🍺 {namn}: Kom hit till {bar}, det é fest!",
+  "🚨 Inkallelse! {namn} behöver förstärkning på {bar}.",
+  "📣 {namn} ropar från {bar}: Var é du?!",
+  "🍻 {namn} har ställt fram ett glas åt dig på {bar}.",
+  "🫡 Order från {namn}: Infinna dig på {bar}. Nu.",
+  "🎉 Det händer grejer på {bar}! {namn} väntar på dig.",
+  "🚕 Ta en taxi till {bar}. {namn} saknar dig redan.",
+];
+
+export const COMEHERE_NOBAR_LINES: string[] = [
+  "📍 {namn} vill att du kommer hit",
+  "🍺 {namn}: Kom hit, det é fest!",
+  "📣 {namn} kallar på förstärkning. Kolla kartan!",
+];
+
+/** Bar names come from the client: one line, no control chars, max 60 chars. */
+export function cleanBarName(x: unknown): string {
+  if (typeof x !== "string") return "";
+  // deno-lint-ignore no-control-regex
+  return x.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60).trim();
+}
+
+export function comeherePayload(idx: number, namn: string, bar: string, beerId: number) {
+  const lines = bar ? COMEHERE_LINES : COMEHERE_NOBAR_LINES;
+  return {
+    title: fill(lines[((idx % lines.length) + lines.length) % lines.length], { namn, bar }),
+    body: "Tryck för att se var.",
+    url: `/?focus=${beerId}`,
+    tag: `olnu-come-${beerId}`,
+  };
+}
+
+/** Finite numbers inside the Sweden bbox (same as post_beer). */
+export function validPt(lat: unknown, lng: unknown): lat is number {
+  return typeof lat === "number" && typeof lng === "number" &&
+    Number.isFinite(lat) && Number.isFinite(lng) &&
+    lat >= 55.0 && lat <= 69.1 && lng >= 10.9 && lng <= 24.2;
+}
+
+/** SOS: the only push with an exact location, only to group-mates. */
+export function sosPayload(namn: string, lat: number, lng: number, stamp: number) {
+  return {
+    title: `🆘 ${namn} behöver hjälp!`,
+    body: "Tryck för att se var.",
+    url: `/?sos=${lat.toFixed(5)},${lng.toFixed(5)}`,
+    tag: `olnu-sos-${stamp}`,
+    sos: true,
+    requireInteraction: true,
+  };
+}
+
+export function msgPayload(namn: string, body: string, groupName: string, groupId: string) {
+  return {
+    title: `💬 ${namn}: ${body}`,
+    body: groupName ? `i ${groupName}` : "Nytt i gruppchatten",
+    url: `/?chat=${groupId}`,
+    tag: `olnu-msg-${groupId}`,
+  };
+}
+
+export function isUuid(x: unknown): x is string {
+  return typeof x === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
+}
+
+/** Start of the fixed time bucket (ms) that contains nowMs. */
+export function bucketStart(nowMs: number, windowSec: number): number {
+  const w = windowSec * 1000;
+  return Math.floor(nowMs / w) * w;
+}
+
+/** Event rate limits in seconds (push_sent kind -> window). */
+export const RATE_SEC = { comehere: 600, sos: 180, msg: 120 } as const;
+
 /** Random index in [0, n), never equal to `avoid` when n > 1. */
 export function pickIndex(n: number, avoid: number | undefined, rand: () => number = Math.random): number {
   if (n <= 1) return 0;
@@ -308,7 +442,7 @@ type Job = { sub: Sub; payload: string };
 // deno-lint-ignore no-explicit-any
 type Admin = any;
 
-async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 5 | 10): Promise<Job[]> {
+async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 5 | 10, titel = ""): Promise<Job[]> {
   const { data: mine, error: mineErr } = await admin
     .from("group_members")
     .select("group_id, display_name")
@@ -356,7 +490,7 @@ async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 
   const tag = `olnu-${beerId}-${level}`;
   return ((subs ?? []) as Sub[]).map((s) => {
     const name = senderNameFor.get(s.user_id) ?? "En vän";
-    const title = fill(lines[lineFor.get(s.user_id) ?? 0], { namn: name });
+    const title = fillFriend(lines[lineFor.get(s.user_id) ?? 0], name, titel);
     return {
       sub: s,
       payload: JSON.stringify({ title, body: FRIEND_BODY[level], url: `/?focus=${beerId}`, tag }),
@@ -433,13 +567,13 @@ async function kaosJobs(
   return { jobs, out, hot, chaos };
 }
 
-async function sendAll(admin: Admin, jobs: Job[]) {
+async function sendAll(admin: Admin, jobs: Job[], ttl = 3600) {
   const results = await Promise.allSettled(
     jobs.map((j) =>
       webpush.sendNotification(
         { endpoint: j.sub.endpoint, keys: { p256dh: j.sub.p256dh, auth: j.sub.auth } },
         j.payload,
-        { TTL: 3600, urgency: "high" },
+        { TTL: ttl, urgency: "high" },
       )
     ),
   );
@@ -461,6 +595,152 @@ async function sendAll(admin: Admin, jobs: Job[]) {
     if (error) console.error("failed to delete dead subscriptions", error);
   }
   return { sent, failed };
+}
+
+// ---- v7 SOCIAL helpers ----
+
+/** Group-mates of uid -> sender name (uid's display_name in a shared group, smallest).
+ *  With onlyGroup: only that group. */
+async function mateNames(admin: Admin, uid: string, onlyGroup?: string): Promise<Map<string, string>> {
+  let q = admin.from("group_members").select("group_id, display_name").eq("user_id", uid);
+  if (onlyGroup) q = q.eq("group_id", onlyGroup);
+  const { data: mine, error } = await q;
+  if (error) throw error;
+  const nameFor = new Map<string, string>();
+  if (!mine || mine.length === 0) return nameFor;
+  const nameByGroup = new Map<string, string>();
+  for (const m of mine) nameByGroup.set(m.group_id as string, m.display_name as string);
+  const { data: others, error: oErr } = await admin
+    .from("group_members").select("group_id, user_id")
+    .in("group_id", [...nameByGroup.keys()]).neq("user_id", uid);
+  if (oErr) throw oErr;
+  for (const o of others ?? []) {
+    const name = nameByGroup.get(o.group_id as string);
+    if (!name) continue;
+    const prev = nameFor.get(o.user_id as string);
+    if (prev === undefined || name < prev) nameFor.set(o.user_id as string, name);
+  }
+  return nameFor;
+}
+
+async function subsOf(admin: Admin, userIds: string[]): Promise<Sub[]> {
+  if (userIds.length === 0) return [];
+  const { data, error } = await admin
+    .from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth").in("user_id", userIds);
+  if (error) throw error;
+  return (data ?? []) as Sub[];
+}
+
+/** Sliding rate limit without removing rows: refuse when a push_sent row of this kind was sent in
+ *  the last windowSec, else claim the row for the current time bucket (atomic per bucket). */
+async function rateClaim(admin: Admin, uid: string, kind: string, windowSec: number): Promise<boolean> {
+  const now = Date.now();
+  const { data: recent, error } = await admin
+    .from("push_sent").select("kind")
+    .eq("user_id", uid).eq("kind", kind)
+    .gt("sent_at", new Date(now - windowSec * 1000).toISOString())
+    .limit(1);
+  if (error) throw error;
+  if (recent && recent.length > 0) return false;
+  const { data: claimed, error: cErr } = await admin
+    .from("push_sent")
+    .upsert(
+      [{ user_id: uid, kind, night: new Date(bucketStart(now, windowSec)).toISOString(), sent_at: new Date(now).toISOString() }],
+      { onConflict: "user_id,kind,night", ignoreDuplicates: true },
+    )
+    .select("user_id");
+  if (cErr) throw cErr;
+  return !!claimed && claimed.length > 0;
+}
+
+async function lifetimeTotal(admin: Admin, uid: string): Promise<number> {
+  const { data, error } = await admin.from("week_beers").select("n").eq("user_id", uid);
+  if (error) throw error;
+  return ((data ?? []) as { n: number }[]).reduce((a, r) => a + (r.n ?? 0), 0);
+}
+
+/** Once per title per user, ever (push_sent kind 'title:<title>', night 2100-01-01). */
+async function levelUpJobs(admin: Admin, uid: string, beerId: number, total: number): Promise<Job[]> {
+  const t = titleFor(total);
+  if (t.at <= 0) return [];
+  const mates = await mateNames(admin, uid);
+  if (mates.size === 0) return [];
+  const { data: claimed, error } = await admin
+    .from("push_sent")
+    .upsert([{ user_id: uid, kind: `title:${t.title}`, night: "2100-01-01T00:00:00Z" }],
+      { onConflict: "user_id,kind,night", ignoreDuplicates: true })
+    .select("user_id");
+  if (error) throw error;
+  if (!claimed || claimed.length === 0) return [];
+  const idx = Math.floor(Math.random() * LEVELUP_LINES.length);
+  return (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(levelUpPayload(idx, mates.get(s.user_id) ?? "En vän", t.title, beerId)),
+  }));
+}
+
+// deno-lint-ignore no-explicit-any
+type Body = Record<string, any>;
+const NONE = { sent: 0, failed: 0 };
+
+// {event:"comehere", bar_name?, lat?, lng?}: "come here" to group-mates. Needs a live pin.
+// The url points at the caller's pin, so it never shows more than the pin itself shows.
+// bar_name is only used when the pin is precise (an approximate pin must not reveal the bar).
+async function comeHere(admin: Admin, uid: string, b: Body) {
+  const { data: beer, error } = await admin
+    .from("beers").select("id, precise, stopped, expires_at")
+    .eq("user_id", uid).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (error) throw error;
+  if (!beer || beer.stopped) return { ...NONE, reason: "no_beer" };
+  const mates = await mateNames(admin, uid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  if (!(await rateClaim(admin, uid, "comehere", RATE_SEC.comehere))) return { ...NONE, reason: "slow_down" };
+  const bar = beer.precise ? cleanBarName(b.bar_name) : "";
+  const idx = Math.floor(Math.random() * (bar ? COMEHERE_LINES : COMEHERE_NOBAR_LINES).length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(comeherePayload(idx, mates.get(s.user_id) ?? "En vän", bar, beer.id as number)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs) : NONE;
+}
+
+// {event:"sos", lat, lng}: high priority push with the exact place, to group-mates only.
+async function sos(admin: Admin, uid: string, b: Body) {
+  if (!validPt(b.lat, b.lng)) return { ...NONE, reason: "bad_location" };
+  const mates = await mateNames(admin, uid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  if (!(await rateClaim(admin, uid, "sos", RATE_SEC.sos))) return { ...NONE, reason: "slow_down" };
+  const stamp = Date.now();
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(sosPayload(mates.get(s.user_id) ?? "En vän", b.lat as number, b.lng as number, stamp)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 900) : NONE;
+}
+
+// {event:"msg", group_id}: push the caller's newest live message (< 5 min old) in that group.
+async function msgPush(admin: Admin, uid: string, b: Body) {
+  if (!isUuid(b.group_id)) return { ...NONE, reason: "bad_group" };
+  const gid = b.group_id as string;
+  const mates = await mateNames(admin, uid, gid); // empty when the caller is not a member
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const nowIso = new Date().toISOString();
+  const { data: msg, error } = await admin
+    .from("group_msgs").select("id, body, created_at")
+    .eq("group_id", gid).eq("user_id", uid).gt("expires_at", nowIso)
+    .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .order("id", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!msg) return { ...NONE, reason: "no_msg" };
+  if (!(await rateClaim(admin, uid, `msg:${gid}`, RATE_SEC.msg))) return { ...NONE, reason: "slow_down" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  // The sender's name is the same for every member of this one group.
+  const { data: me } = await admin
+    .from("group_members").select("display_name").eq("group_id", gid).eq("user_id", uid).maybeSingle();
+  const namn = (me?.display_name as string) ?? "Någon";
+  const payload = JSON.stringify(msgPayload(namn, msg.body as string, (g?.name as string) ?? "", gid));
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
 }
 
 // Status push to group-mates: "home" (Jag är hemma) or "pause" (öltorsk). Once per kind per night.
@@ -550,15 +830,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Optional body {event: "home" | "pause"} from "Sluta dricka". Old clients send no body.
+    // Light cleanup: anonymous heat events older than 10 days (ghost_points shows 1-8 days).
+    if (Math.random() < 0.05) {
+      const { error } = await admin.from("beer_events").delete()
+        .lt("created_at", new Date(Date.now() - 10 * 86_400_000).toISOString());
+      if (error) console.error("beer_events cleanup failed", error);
+    }
+
+    // Optional body {event: ...}. Old clients send no body (= beer push).
     let event = "";
+    let body: Body = {};
     try {
       const bj = await req.json();
-      event = bj && typeof bj.event === "string" ? bj.event : "";
+      if (bj && typeof bj === "object") body = bj as Body;
+      event = typeof body.event === "string" ? body.event : "";
     } catch (_e) { event = ""; }
     if (event === "home" || event === "pause") {
       return json(await statusPush(admin, uid, event));
     }
+    if (event === "comehere") return json(await comeHere(admin, uid, body));
+    if (event === "sos") return json(await sos(admin, uid, body));
+    if (event === "msg") return json(await msgPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };
@@ -580,6 +872,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const jobs: Job[] = [];
     let friendCount = 0;
 
+    // Lifetime beers -> title (migration 0007). Missing table -> no title, pushes still work.
+    let total = -1;
+    try {
+      total = await lifetimeTotal(admin, uid);
+    } catch (e) {
+      console.error("lifetime total failed", e);
+    }
+    const titel = total >= 0 ? titleFor(total).title : "";
+
     // A) FRIENDS: milestone push, once per level per night.
     const level = milestoneLevel(beer.beer_count as number);
     if (level > 0 && (beer.notified_level ?? 0) < level) {
@@ -595,7 +896,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .select("id");
       if (claimErr) throw claimErr;
       if (claimed && claimed.length > 0) {
-        const fj = await friendJobs(admin, uid, claimed[0].id as number, level as 1 | 5 | 10);
+        const fj = await friendJobs(admin, uid, claimed[0].id as number, level as 1 | 5 | 10, titel);
         friendCount = fj.length;
         jobs.push(...fj);
       }
@@ -612,9 +913,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
       console.error("kaos check failed", e);
     }
 
+    // C) LEVEL-UP: new title -> group-mates, once per title per user ever.
+    let levelUpCount = 0;
+    if (total > 0) {
+      try {
+        const lj = await levelUpJobs(admin, uid, beer.id as number, total);
+        levelUpCount = lj.length;
+        jobs.push(...lj);
+      } catch (e) {
+        console.error("level-up check failed", e);
+      }
+    }
+
     if (jobs.length === 0) return json(nothing);
     const { sent, failed } = await sendAll(admin, jobs);
-    return json({ sent, failed, friends: friendCount, kaos: kaosCount });
+    return json({ sent, failed, friends: friendCount, kaos: kaosCount, levelup: levelUpCount });
   } catch (e) {
     console.error("notify-group error", e);
     return json({ error: "internal_error" }, 500);
