@@ -305,6 +305,33 @@
       var inp = el("input", { class: "inp chat-inp", id: "chat-inp", maxlength: "140", enterkeyhint: "send", autocomplete: "off",
         placeholder: t("chatPh"), "aria-label": t("chatPh") });
       var lastId = 0, seen = {}, timer = null, sending = false, loading = false;
+      // Rank + beers now per member (from group_status). Every chat row shows "🎖️ Sergeant Skum Oskar · 4 🍺".
+      var stats = {}, meStat = null, heads = [];
+      function statOf(m) { return m.is_me ? meStat : stats[m.name || ""] || null; }
+      function headText(m) {
+        var s = statOf(m), nm = m.name || (m.is_me ? t("you") : t("someone"));
+        return s ? t("chatWho", titleFor(s.total).title, nm) : nm;
+      }
+      function beersText(m) {
+        var s = statOf(m); if (!s) return "";
+        return s.beers + " 🍺" + (s.others ? " · " + s.others + " 🥃" : "");
+      }
+      function paintHeads() {
+        heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.textContent = beersText(h.m); });
+      }
+      function loadStats() {
+        if (!statusOn() || !alive()) return;
+        call("group_status", { p_group_id: g.id }).then(function (r) {
+          if (r.error || !alive()) return;
+          stats = {}; meStat = null;
+          (r.data || []).forEach(function (x) {
+            var s = { beers: Math.max(0, x.beers | 0), others: Math.max(0, x.others | 0), total: Math.max(0, x.total | 0) };
+            if (x.is_me) meStat = s;
+            if (x.name) stats[x.name] = s;
+          });
+          paintHeads();
+        });
+      }
       var sendBtn = A.btn(t("chatSend"), "btn-amber chat-send", go);
       body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [A.btn(t("back"), "btn-small", function () { A.showGroups(); })]));
       body.appendChild(list);
@@ -316,8 +343,10 @@
         if (!m || seen[m.id]) return;
         seen[m.id] = 1;
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
+        var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", text: beersText(m) });
+        heads.push({ m: m, name: nmEl, n: nEl });
         list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : "") }, [
-          el("div", { class: "cm-head" }, [el("span", { class: "cm-name", text: m.is_me ? t("you") : m.name || t("someone") }),
+          el("div", { class: "cm-head" }, [nmEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") })
         ]));
@@ -356,11 +385,12 @@
           inp.value = "";
           A.invoke("notify-group", { event: "msg", group_id: g.id });   // fire-and-forget
           if (window.EXTRAS && window.EXTRAS.award) window.EXTRAS.award("chat");
-          load();
+          load(); loadStats();
         });
       }
-      timer = setInterval(load, 10000);
-      load();
+      var tick = 0;
+      timer = setInterval(function () { load(); if (++tick % 3 === 0) loadStats(); }, 10000);
+      load(); loadStats();
     });
   }
   function openChatLink(id) {
