@@ -3159,11 +3159,15 @@
   }
   // A tapped notification while the app is open: the service worker sends the link here.
   // Open exactly what the notification was about (chat, rally, bar, pin, SOS) without a reload.
-  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function (e) {
-    var d = e.data || {};
-    if (d.type !== "olnu-open" || !d.url) return;
-    try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {}
-    var q; try { q = new URL(d.url).searchParams; } catch (err) { return; }
+  var lastOpenUrl = "", lastOpenAt = 0;
+  function routeOpen(url) {
+    if (!url || (url === lastOpenUrl && Date.now() - lastOpenAt < 4000)) return;
+    lastOpenUrl = url; lastOpenAt = Date.now();
+    try { caches.open("olnu-pending").then(function (cc) { return cc.delete("./__pending_open"); }).catch(function () {}); } catch (err) {}
+    var q; try { q = new URL(url, location.href).searchParams; } catch (err) { return; }
+    // Show exactly what the notification was about: nothing else may grab the screen.
+    pendingFocus = null;
+    try { map.closePopup(); } catch (err) {}
     if (!$("sheet").hidden) closeSheet();
     var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos");
     if (c) { if (LIVE) mods("openChatLink", c); }
@@ -3171,7 +3175,22 @@
     else if (b) openBarById(b, 0);
     else if (so) mods("showSosLink", so);
     else if (f) { pendingFocus = f; refresh(); }
+  }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function (e) {
+    var d = e.data || {};
+    if (d.type !== "olnu-open" || !d.url) return;
+    try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {}
+    routeOpen(d.url);
   });
+  // A notification tapped while this page was frozen in the background: pick it up when visible.
+  function checkPendingOpen() {
+    if (!window.caches || document.hidden) return;
+    caches.open("olnu-pending").then(function (cc) { return cc.match("./__pending_open"); })
+      .then(function (r) { return r ? r.text() : null; })
+      .then(function (url) { if (url) routeOpen(url); }).catch(function () {});
+  }
+  document.addEventListener("visibilitychange", checkPendingOpen);
+  setTimeout(checkPendingOpen, 1500);
   // v12: fly to a bar (bars.json id) and open its popup. Bars load async: retry for ~12 s.
   function openBarById(id, tries) {
     var bar = window.BARS.byId(String(id));

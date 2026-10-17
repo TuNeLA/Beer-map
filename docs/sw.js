@@ -109,7 +109,9 @@ self.addEventListener("notificationclick", function (e) {
         // The app is already open: tell it what to show (chat, rally, bar, pin). No reload needed.
         // Old app versions ignore the message, so navigate as a fallback when nobody answers.
         var client = c;
-        return client.focus().then(function (fc) {
+        // Also park the target in the Cache API: a frozen background page reads it when it becomes visible.
+        var park = caches.open("olnu-pending").then(function (cc) { return cc.put("./__pending_open", new Response(target)); }).catch(function () {});
+        return park.then(function () { return client.focus(); }).then(function (fc) {
           fc = fc || client;
           return new Promise(function (resolve) {
             var done = false, ch = new MessageChannel();
@@ -118,7 +120,7 @@ self.addEventListener("notificationclick", function (e) {
             setTimeout(function () {
               if (done) return;
               if (fc.navigate) fc.navigate(target).then(resolve, function () { resolve(fc); }); else resolve(fc);
-            }, 700);
+            }, 2500);
           });
         });
       }
