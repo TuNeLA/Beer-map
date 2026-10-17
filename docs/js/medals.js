@@ -62,13 +62,24 @@
     ["sommelier", "⭐", "Ölsommelieren", "Fem olika ölsorter. Du säger ”fruktiga toner” nu. Förlåt oss.", "Välj 5 olika ölsorter efter ÖL!."],
     ["erovrare", "🏰", "Erövraren", "Din grupp tog över en krog. Flaggan vajar i Dalarna!", "Ta över en krog med din grupp (flest incheckade).", 1],
     ["tipsare", "📣", "Kunskapsspridaren", "Tre krogtips. Du är gruppens egen nöjesguide.", "Tipsa gruppen om en krog 3 gånger."],
+    ["uppdrag", "🎯", "Uppdragstagaren", "Uppdrag slutfört. Högkvarteret har noterat det i liggaren.", "Slutför ett av kvällens uppdrag.", 1],
+    ["uppdrag3", "🏅", "Fullt pådrag", "Tre av tre uppdrag på en kväll. Generalstaben tar av sig mössan.", "Slutför alla tre uppdrag samma kväll.", 1],
+    ["runda", "🗺️", "Rundvandraren", "Krogrundan gick i mål. Skorna förtjänar en medalj också.", "Gå klart en krogrunda med gruppen (minst 2 stopp själv).", 1],
+    ["detektiv", "🔎", "Detektiven", "Du knäckte den hemliga agenten. Sherlock från Ludvika.", "Gissa rätt på den hemliga agenten.", 1],
+    ["spion", "🕵️", "Mästerspionen", "Ingen genomskådade dig. Farligt bra.", "Var hemlig agent utan att någon gissar rätt.", 1],
+    ["orakel", "🔮", "Oraklet", "Bäst gissning på kvällens öl. Kristallkulan är polerad.", "Vinn Gissa kvällen i din grupp.", 1],
+    ["bingo", "🎱", "Bingo!", "Tre i rad. Hela gänget jublar.", "Var med när gruppen får bingo i Kvällsbingo.", 1],
     // "Varit med om": hidden until earned, caring text, never a goal.
     ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Drick vatten och ta det lugnt nästa gång.", "", 1, 1],
     ["medevac", "🚁", "Varit med om: medevac", "Du har varit med om en medevac-kväll. Vi är glada att du kom hem. Ta det lugnt. 💧", "", 1, 1]
   ];
   var BY = {};
   CAT.forEach(function (c, i) { BY[c[0]] = { id: c[0], e: c[1], name: c[2], line: c[3], how: c[4], stack: !!c[5], secret: !!c[6], i: i }; });
-  function info(id) { return BY[id] || { id: id, e: "🎖️", name: id, line: "", how: "", i: 999 }; }
+  function info(id) {
+    // Medals added to CAT after load (after.js / games.js) are found too.
+    if (!BY[id]) CAT.forEach(function (c, i) { if (c[0] === id) BY[id] = { id: c[0], e: c[1], name: c[2], line: c[3], how: c[4], stack: !!c[5], secret: !!c[6], i: i }; });
+    return BY[id] || { id: id, e: "🎖️", name: id, line: "", how: "", i: 999 };
+  }
 
   // Old local badges (extras.js) -> server medals the client may claim once.
   var LEGACY = { early: "dagsljus", owl: "uggla", home01: "hemvarn", chat: "radio", side: "sidospar", ghost: "spoke", barhop: "krogrunda" };

@@ -4767,6 +4767,2485 @@ end $$;
 -- ---------------------------------------------------------------------------
 select public.olnu_resnap();
 
+-- ===========================================================================
+-- 0018_after.sql (v16 EFTERÅT, omgång 3)
+-- ===========================================================================
+-- Öl Nu v16 EFTERÅT (omgång 3: efteråt, socialt och krogar). Additive. Safe to run again.
+-- Needs 0001-0015 (0014 optional: beer types; 0015 optional: bars_lite names).
+-- * Kom hem säkert: mark_home(), home_status()           * "Jag kollar": claim_medevac(), medevac_checks()
+-- * Bakisrapporten: my_night_report()                     * Öl Wrapped: my_wrapped()
+-- * Högtidsläge: new holiday medals (olnu_medal_eval_after) * Röstmeddelande: post_voice(), group_voices(), voice_audio()
+-- * Stad mot stad: city_league() (points, never total beers) * Stammis-krona: bar_regulars() (most NIGHTS, 30 days)
+-- Rules: RLS on, no policies; SECURITY DEFINER + search_path; EXECUTE for authenticated only.
+-- This file has no remove-type statements on purpose (create-or-replace, "if not exists",
+-- "on conflict" only). Every trigger body catches its own errors: a bug here never blocks a beer,
+-- a check-in or a skål. Rows are never removed; every read filters on time.
+
+-- ---------------------------------------------------------------------------
+-- 1. Towns (for Stad mot stad). Only a town name is ever stored per night, never a place.
+-- ---------------------------------------------------------------------------
+create table if not exists public.olnu_towns (
+  name text primary key,
+  lat  float8 not null,
+  lng  float8 not null
+);
+alter table public.olnu_towns enable row level security;
+
+insert into public.olnu_towns (name, lat, lng) values
+  ('Stockholm', 59.3293, 18.0686), ('Göteborg', 57.7089, 11.9746), ('Malmö', 55.6050, 13.0038),
+  ('Uppsala', 59.8586, 17.6389), ('Västerås', 59.6099, 16.5448), ('Örebro', 59.2753, 15.2134),
+  ('Linköping', 58.4108, 15.6214), ('Helsingborg', 56.0465, 12.6945), ('Jönköping', 57.7826, 14.1618),
+  ('Norrköping', 58.5877, 16.1924), ('Lund', 55.7047, 13.1910), ('Umeå', 63.8258, 20.2630),
+  ('Gävle', 60.6749, 17.1413), ('Borås', 57.7210, 12.9401), ('Södertälje', 59.1955, 17.6253),
+  ('Eskilstuna', 59.3666, 16.5077), ('Halmstad', 56.6745, 12.8578), ('Växjö', 56.8777, 14.8091),
+  ('Karlstad', 59.3793, 13.5036), ('Sundsvall', 62.3908, 17.3069), ('Luleå', 65.5848, 22.1547),
+  ('Trollhättan', 58.2837, 12.2886), ('Östersund', 63.1792, 14.6357), ('Borlänge', 60.4858, 15.4371),
+  ('Falun', 60.6065, 15.6355), ('Kalmar', 56.6634, 16.3566), ('Kristianstad', 56.0294, 14.1567),
+  ('Skövde', 58.3903, 13.8461), ('Karlskrona', 56.1612, 15.5869), ('Uddevalla', 58.3498, 11.9356),
+  ('Varberg', 57.1056, 12.2508), ('Visby', 57.6348, 18.2948), ('Kiruna', 67.8558, 20.2253),
+  ('Ludvika', 60.1496, 15.1878), ('Nyköping', 58.7530, 17.0079), ('Motala', 58.5371, 15.0365),
+  ('Piteå', 65.3172, 21.4794), ('Skellefteå', 64.7507, 20.9528), ('Örnsköldsvik', 63.2909, 18.7153),
+  ('Mora', 61.0070, 14.5430), ('Smedjebacken', 60.1405, 15.4128), ('Avesta', 60.1455, 16.1679),
+  ('Hedemora', 60.2765, 15.9881), ('Säter', 60.3466, 15.7506), ('Leksand', 60.7307, 14.9993),
+  ('Rättvik', 60.8857, 15.1199), ('Grängesberg', 60.0786, 14.9967), ('Malung', 60.6855, 13.7157),
+  ('Vansbro', 60.5108, 14.2244), ('Orsa', 61.1203, 14.6153), ('Älvdalen', 61.2272, 14.0393),
+  ('Fagersta', 60.0040, 15.7932), ('Kopparberg', 59.8740, 14.9950), ('Lindesberg', 59.5940, 15.2290),
+  ('Sala', 59.9200, 16.6060), ('Sandviken', 60.6199, 16.7759), ('Hofors', 60.5460, 16.2870),
+  ('Köping', 59.5140, 15.9930), ('Arboga', 59.3940, 15.8380), ('Enköping', 59.6360, 17.0770),
+  ('Hudiksvall', 61.7290, 17.1040), ('Söderhamn', 61.3040, 17.0590), ('Bollnäs', 61.3480, 16.3940),
+  ('Kristinehamn', 59.3090, 14.1080), ('Arvika', 59.6550, 12.5850), ('Lidköping', 58.5050, 13.1580),
+  ('Alingsås', 57.9300, 12.5330), ('Kungsbacka', 57.4870, 12.0760), ('Ystad', 55.4290, 13.8200),
+  ('Trelleborg', 55.3750, 13.1570), ('Landskrona', 55.8700, 12.8300), ('Västervik', 57.7580, 16.6370),
+  ('Härnösand', 62.6320, 17.9380), ('Kramfors', 62.9310, 17.7770), ('Boden', 65.8250, 21.6890),
+  ('Gällivare', 67.1330, 20.6600), ('Haparanda', 65.8350, 24.1370), ('Lycksele', 64.5950, 18.6760),
+  ('Sälen', 61.1600, 13.2650), ('Åre', 63.3990, 13.0810)
+on conflict (name) do update set lat = excluded.lat, lng = excluded.lng;
+
+-- Nearest town within 30 km (null when none).
+create or replace function public.olnu_town_of(p_lat float8, p_lng float8)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select t.name from public.olnu_towns t
+   where p_lat is not null and p_lng is not null
+     and abs(t.lat - p_lat) < 0.3 and abs(t.lng - p_lng) < 0.6
+   order by (t.lat - p_lat) ^ 2 + ((t.lng - p_lng) * cos(radians(p_lat))) ^ 2
+   limit 1;
+$$;
+
+-- Display name of p_user as seen by p_viewer: own name, or the name in a shared group, else null.
+create or replace function public.olnu_name_for(p_viewer uuid, p_user uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case when p_viewer = p_user
+    then (select min(m.display_name) from public.group_members m where m.user_id = p_user)
+    else (select min(t.display_name) from public.group_members t
+            join public.group_members v on v.group_id = t.group_id and v.user_id = p_viewer
+           where t.user_id = p_user) end;
+$$;
+
+create or replace function public.olnu_shares_group(p_a uuid, p_b uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.group_members a
+                   join public.group_members b on b.group_id = a.group_id and b.user_id = p_b
+                  where a.user_id = p_a);
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Night facts (one row per user per night; history starts with v16)
+-- ---------------------------------------------------------------------------
+create table if not exists public.after_nights (
+  user_id    uuid not null,
+  night      timestamptz not null,
+  town       text,
+  out        boolean not null default false,
+  checkins   int not null default 0,
+  skal_given int not null default 0,
+  skal_got   int not null default 0,
+  home_at    timestamptz,
+  primary key (user_id, night)
+);
+create index if not exists after_nights_night_idx on public.after_nights (night);
+alter table public.after_nights enable row level security;
+
+create or replace function public.olnu_after_beers_tg()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_ob int := 0;
+  v_oo int := 0;
+begin
+  begin
+    if tg_op = 'UPDATE' then
+      v_ob := coalesce(old.beer_count, 0);
+      v_oo := coalesce(old.other_count, 0);
+    end if;
+    if coalesce(new.beer_count, 0) > v_ob or coalesce(new.other_count, 0) > v_oo then
+      insert into public.after_nights as a (user_id, night, town, out)
+      values (new.user_id, new.expires_at, public.olnu_town_of(new.lat, new.lng), true)
+      on conflict (user_id, night) do update
+         set out = true, town = coalesce(a.town, excluded.town);
+    end if;
+  exception when others then
+    null;
+  end;
+  return new;
+end; $$;
+
+create or replace trigger olnu_after_beers
+  after insert or update of beer_count, other_count on public.beers
+  for each row execute function public.olnu_after_beers_tg();
+
+create or replace function public.olnu_after_checkin_tg()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  begin
+    if tg_op = 'INSERT' or new.created_at is distinct from old.created_at then
+      insert into public.after_nights as a (user_id, night, town, checkins)
+      values (new.user_id, public.olnu_night_of(now()), public.olnu_town_of(new.lat, new.lng), 1)
+      on conflict (user_id, night) do update
+         set checkins = a.checkins + 1, town = coalesce(a.town, excluded.town);
+    end if;
+  exception when others then
+    null;
+  end;
+  return new;
+end; $$;
+
+create or replace trigger olnu_after_checkins
+  after insert or update on public.checkins
+  for each row execute function public.olnu_after_checkin_tg();
+
+create or replace function public.olnu_after_skal_tg()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_owner uuid;
+  v_night timestamptz := public.olnu_night_of(now());
+begin
+  begin
+    insert into public.after_nights as a (user_id, night, skal_given) values (new.user_id, v_night, 1)
+    on conflict (user_id, night) do update set skal_given = a.skal_given + 1;
+    select b.user_id into v_owner from public.beers b where b.id = new.beer_id;
+    if v_owner is not null and v_owner <> new.user_id then
+      insert into public.after_nights as a (user_id, night, skal_got) values (v_owner, v_night, 1)
+      on conflict (user_id, night) do update set skal_got = a.skal_got + 1;
+    end if;
+  exception when others then
+    null;
+  end;
+  return new;
+end; $$;
+
+create or replace trigger olnu_after_skals
+  after insert on public.skals
+  for each row execute function public.olnu_after_skal_tg();
+
+-- Backfill tonight from live rows (only fills empty rows).
+insert into public.after_nights (user_id, night, town, out)
+select b.user_id, b.expires_at, public.olnu_town_of(b.lat, b.lng), true
+  from public.beers b
+ where b.expires_at > now() and (b.beer_count > 0 or coalesce(b.other_count, 0) > 0)
+on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- 3. Kom hem säkert
+-- ---------------------------------------------------------------------------
+-- mark_home() -> jsonb {ok, home_at, reason?}. Needs a beer row tonight with a drink.
+create or replace function public.mark_home()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_b   record;
+  v_at  timestamptz;
+begin
+  select b.expires_at, b.lat, b.lng into v_b from public.beers b
+   where b.user_id = v_uid and b.expires_at > now() and (b.beer_count >= 1 or coalesce(b.other_count, 0) >= 1);
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'no_night');
+  end if;
+  insert into public.after_nights as a (user_id, night, town, out, home_at)
+  values (v_uid, v_b.expires_at, public.olnu_town_of(v_b.lat, v_b.lng), true, now())
+  on conflict (user_id, night) do update set home_at = coalesce(a.home_at, now()), out = true
+  returning a.home_at into v_at;
+  update public.medal_nights mn set home = true where mn.user_id = v_uid and mn.night = v_b.expires_at and not mn.home;
+  return jsonb_build_object('ok', true, 'home_at', v_at);
+end;
+$$;
+
+-- home_status(p_last default false) -> one row per member of each of the caller's groups.
+-- p_last = false: tonight; true: last night (the morning-after card).
+create or replace function public.home_status(p_last boolean default false)
+returns table (group_id uuid, group_name text, name text, is_me boolean, beers int, others int,
+               was_out boolean, home boolean, home_at timestamptz, live boolean, night timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid   uuid := public.olnu_uid();
+  v_night timestamptz := case when coalesce(p_last, false)
+                           then public.olnu_night_of(now() - interval '24 hours')
+                           else public.olnu_night_of(now()) end;
+begin
+  return query
+  select g.id, g.name, gm.display_name, gm.user_id = v_uid,
+         coalesce(mn.beers, 0), coalesce(mn.others, 0),
+         coalesce(mn.beers, 0) + coalesce(mn.others, 0) > 0 or coalesce(an.out, false),
+         an.home_at is not null or coalesce(mn.home, false),
+         an.home_at,
+         (not coalesce(p_last, false)) and exists (select 1 from public.beers b where b.user_id = gm.user_id
+            and b.expires_at > now() and not b.stopped and (b.beer_count >= 1 or coalesce(b.other_count, 0) >= 1)),
+         v_night
+    from public.group_members me
+    join public.groups g on g.id = me.group_id
+    join public.group_members gm on gm.group_id = me.group_id
+    left join public.medal_nights mn on mn.user_id = gm.user_id and mn.night = v_night
+    left join public.after_nights an on an.user_id = gm.user_id and an.night = v_night
+   where me.user_id = v_uid
+   order by g.name, gm.display_name
+   limit 1000;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 4. "Jag kollar" (MEDEVAC buddy check). First tap owns it.
+-- ---------------------------------------------------------------------------
+create table if not exists public.medevac_checks (
+  id         bigserial primary key,
+  target     uuid not null,
+  night      timestamptz not null,
+  checker    uuid not null,
+  created_at timestamptz not null default now(),
+  notified   boolean not null default false,
+  unique (target, night)
+);
+create index if not exists medevac_checks_night_idx on public.medevac_checks (night);
+alter table public.medevac_checks enable row level security;
+
+-- claim_medevac(p_beer_id) -> jsonb {ok, mine, id, checker}. ok=false = someone was first.
+-- Errors: beer_not_found (not live or under 10 beers), own_beer, not_friend.
+create or replace function public.claim_medevac(p_beer_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_b   record;
+  v_row public.medevac_checks;
+begin
+  select b.user_id, b.expires_at, b.beer_count into v_b from public.beers b
+   where b.id = p_beer_id and b.expires_at > now();
+  if not found or coalesce(v_b.beer_count, 0) < 10 then
+    raise exception 'beer_not_found';
+  end if;
+  if v_b.user_id = v_uid then
+    raise exception 'own_beer';
+  end if;
+  if not public.olnu_shares_group(v_uid, v_b.user_id) then
+    raise exception 'not_friend';
+  end if;
+  insert into public.medevac_checks (target, night, checker)
+  values (v_b.user_id, v_b.expires_at, v_uid)
+  on conflict (target, night) do nothing
+  returning * into v_row;
+  if v_row.id is not null then
+    return jsonb_build_object('ok', true, 'mine', true, 'id', v_row.id, 'checker', public.olnu_name_for(v_uid, v_uid));
+  end if;
+  select * into v_row from public.medevac_checks c where c.target = v_b.user_id and c.night = v_b.expires_at;
+  return jsonb_build_object('ok', false, 'mine', v_row.checker = v_uid, 'id', v_row.id,
+    'checker', public.olnu_name_for(v_uid, v_row.checker));
+end;
+$$;
+
+-- medevac_checks() -> tonight's checks the caller may see (target or checker is the caller or a group-mate).
+create or replace function public.medevac_checks()
+returns table (id bigint, beer_id bigint, target_name text, checker_name text,
+               target_is_me boolean, checker_is_me boolean, created_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  return query
+  select c.id, b.id, public.olnu_name_for(v_uid, c.target), public.olnu_name_for(v_uid, c.checker),
+         c.target = v_uid, c.checker = v_uid, c.created_at
+    from public.medevac_checks c
+    left join public.beers b on b.user_id = c.target and b.expires_at = c.night
+   where c.night > now()
+     and (c.target = v_uid or c.checker = v_uid
+          or public.olnu_shares_group(v_uid, c.target) or public.olnu_shares_group(v_uid, c.checker))
+   order by c.created_at desc
+   limit 50;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 5. Bakisrapporten: my_night_report(p_last default true) -> jsonb
+-- ---------------------------------------------------------------------------
+create or replace function public.my_night_report(p_last boolean default true)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid   uuid := public.olnu_uid();
+  v_night timestamptz := case when coalesce(p_last, true)
+                           then public.olnu_night_of(now() - interval '24 hours')
+                           else public.olnu_night_of(now()) end;
+  v_mn    record;
+  v_an    record;
+  v_bars  int := 0;
+  v_types jsonb := '[]'::jsonb;
+  v_week  int := 0;
+begin
+  select mn.beers, mn.others, mn.first_at, mn.home into v_mn from public.medal_nights mn
+   where mn.user_id = v_uid and mn.night = v_night;
+  select an.checkins, an.skal_given, an.skal_got, an.home_at, an.town into v_an from public.after_nights an
+   where an.user_id = v_uid and an.night = v_night;
+  select count(distinct c.bar_id) into v_bars from public.medal_checkins c where c.user_id = v_uid and c.night = v_night;
+  begin
+    select coalesce(jsonb_agg(jsonb_build_object('type', x.type, 'n', x.n) order by x.n desc), '[]'::jsonb) into v_types
+      from (select bt.type, count(*)::int n from public.beer_types bt
+             where bt.user_id = v_uid and bt.night = v_night group by bt.type) x;
+  exception when others then
+    v_types := '[]'::jsonb;
+  end;
+  select count(*) into v_week from public.medal_nights mn
+   where mn.user_id = v_uid and mn.night < v_night and mn.night >= v_night - interval '7 days'
+     and mn.beers + mn.others > 0;
+  return jsonb_build_object(
+    'night', v_night,
+    'evening', public.olnu_evening(v_night),
+    'out', coalesce(v_mn.beers, 0) + coalesce(v_mn.others, 0) > 0,
+    'beers', coalesce(v_mn.beers, 0),
+    'others', coalesce(v_mn.others, 0),
+    'first_at', v_mn.first_at,
+    'bars', coalesce(v_bars, 0),
+    'checkins', coalesce(v_an.checkins, 0),
+    'skal_given', coalesce(v_an.skal_given, 0),
+    'skal_got', coalesce(v_an.skal_got, 0),
+    'home', v_an.home_at is not null or coalesce(v_mn.home, false),
+    'home_at', v_an.home_at,
+    'town', v_an.town,
+    'types', v_types,
+    'nights_week_before', coalesce(v_week, 0));
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 6. Öl Wrapped: my_wrapped(p_kind 'month'|'year', p_offset default 1) -> jsonb
+--    offset 1 = last month / last year, 0 = this one so far. Evenings (the day the night started).
+-- ---------------------------------------------------------------------------
+create or replace function public.my_wrapped(p_kind text default 'month', p_offset int default 1)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_kind text := case when lower(coalesce(p_kind, '')) = 'year' then 'year' else 'month' end;
+  v_off  int := greatest(0, least(24, coalesce(p_offset, 1)));
+  v_today date := (now() at time zone 'Europe/Stockholm')::date;
+  v_from date;
+  v_to   date;
+  v_nights int := 0; v_beers int := 0; v_others int := 0; v_home int := 0;
+  v_bars int := 0; v_sg int := 0; v_sr int := 0; v_towns int := 0;
+  v_fav record; v_best record; v_type text; v_type_n int := 0;
+  v_fav_name text;
+  v_total int := public.olnu_lifetime(v_uid);
+  v_title text;
+begin
+  if v_kind = 'year' then
+    v_from := (date_trunc('year', v_today) - make_interval(years => v_off))::date;
+    v_to := (v_from + interval '1 year')::date - 1;
+  else
+    v_from := (date_trunc('month', v_today) - make_interval(months => v_off))::date;
+    v_to := (v_from + interval '1 month')::date - 1;
+  end if;
+
+  select count(*) filter (where mn.beers + mn.others > 0), coalesce(sum(mn.beers), 0), coalesce(sum(mn.others), 0),
+         count(*) filter (where mn.home and mn.beers + mn.others > 0)
+    into v_nights, v_beers, v_others, v_home
+    from public.medal_nights mn
+   where mn.user_id = v_uid and public.olnu_evening(mn.night) between v_from and v_to;
+
+  select count(distinct c.bar_id) into v_bars from public.medal_checkins c
+   where c.user_id = v_uid and public.olnu_evening(c.night) between v_from and v_to;
+
+  select c.bar_id, count(distinct c.night)::int n into v_fav from public.medal_checkins c
+   where c.user_id = v_uid and public.olnu_evening(c.night) between v_from and v_to
+   group by c.bar_id order by count(distinct c.night) desc, max(c.night) desc limit 1;
+  if v_fav.bar_id is not null then
+    begin
+      select bl.name into v_fav_name from public.bars_lite bl where bl.id = v_fav.bar_id;
+    exception when others then
+      v_fav_name := null;
+    end;
+    if v_fav_name is null then
+      select t.bar_name into v_fav_name from public.bar_taps t where t.bar_id = v_fav.bar_id and t.bar_name is not null
+       order by t.last_at desc limit 1;
+    end if;
+    if v_fav_name is null then
+      select c.bar_name into v_fav_name from public.checkins c where c.bar_id = v_fav.bar_id order by c.created_at desc limit 1;
+    end if;
+  end if;
+
+  select coalesce(sum(an.skal_given), 0), coalesce(sum(an.skal_got), 0),
+         count(distinct an.town) filter (where an.town is not null),
+         greatest(v_home, count(*) filter (where an.home_at is not null))
+    into v_sg, v_sr, v_towns, v_home
+    from public.after_nights an
+   where an.user_id = v_uid and public.olnu_evening(an.night) between v_from and v_to;
+
+  -- Best night: the most social one (bars, skål, home safe), beers only break ties. Never "most beers".
+  select public.olnu_evening(mn.night) as evening, mn.beers,
+         coalesce((select count(distinct c.bar_id) from public.medal_checkins c where c.user_id = v_uid and c.night = mn.night), 0) as bars
+    into v_best
+    from public.medal_nights mn
+    left join public.after_nights an on an.user_id = mn.user_id and an.night = mn.night
+   where mn.user_id = v_uid and public.olnu_evening(mn.night) between v_from and v_to and mn.beers + mn.others > 0
+   order by coalesce((select count(distinct c.bar_id) from public.medal_checkins c where c.user_id = v_uid and c.night = mn.night), 0) * 3
+            + coalesce(an.skal_given, 0) + coalesce(an.skal_got, 0) + case when an.home_at is not null or mn.home then 2 else 0 end desc,
+            mn.beers desc, mn.night desc
+   limit 1;
+
+  begin
+    select bt.type, count(*)::int into v_type, v_type_n from public.beer_types bt
+     where bt.user_id = v_uid and public.olnu_evening(bt.night) between v_from and v_to
+     group by bt.type order by count(*) desc, max(bt.created_at) desc limit 1;
+  exception when others then
+    v_type := null; v_type_n := 0;
+  end;
+
+  select t.title into v_title from public.olnu_titles() t where t.at <= v_total order by t.at desc limit 1;
+
+  return jsonb_build_object(
+    'kind', v_kind, 'from', v_from, 'to', v_to,
+    'nights', coalesce(v_nights, 0), 'beers', coalesce(v_beers, 0), 'others', coalesce(v_others, 0),
+    'home_nights', coalesce(v_home, 0), 'bars', coalesce(v_bars, 0), 'towns', coalesce(v_towns, 0),
+    'skal_given', coalesce(v_sg, 0), 'skal_got', coalesce(v_sr, 0),
+    'fav_bar_id', v_fav.bar_id, 'fav_bar_name', v_fav_name, 'fav_bar_nights', coalesce(v_fav.n, 0),
+    'best_evening', v_best.evening, 'best_beers', coalesce(v_best.beers, 0), 'best_bars', coalesce(v_best.bars, 0),
+    'top_type', v_type, 'top_type_n', coalesce(v_type_n, 0),
+    'total', coalesce(v_total, 0), 'title', v_title);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 7. Högtidsläge: more holiday medals (0012 has valborg, midsommar, lucia, nyar)
+-- ---------------------------------------------------------------------------
+-- Easter Sunday (Gregorian, anonymous algorithm).
+create or replace function public.olnu_easter(p_year int)
+returns date
+language plpgsql
+immutable
+set search_path = public
+as $$
+declare
+  a int := p_year % 19; b int := p_year / 100; c int := p_year % 100;
+  d int; e int; f int; g int; h int; i int; k int; l int; m int; mo int; dy int;
+begin
+  d := b / 4; e := b % 4; f := (b + 8) / 25; g := (b - f + 1) / 3;
+  h := (19 * a + b - d - g + 15) % 30; i := c / 4; k := c % 4;
+  l := (32 + 2 * e + 2 * i - h - k) % 7; m := (a + 11 * h + 22 * l) / 451;
+  mo := (h + l - 7 * m + 114) / 31; dy := ((h + l - 7 * m + 114) % 31) + 1;
+  return make_date(p_year, mo, dy);
+end;
+$$;
+
+-- Holiday id of an evening date (null = none). Same rules as docs/js/after.js holidayOf().
+create or replace function public.olnu_holiday(p_day date)
+returns text
+language plpgsql
+immutable
+set search_path = public
+as $$
+declare
+  v_md  text := to_char(p_day, 'MM-DD');
+  v_dow int := extract(isodow from p_day)::int;
+  v_e   date := public.olnu_easter(extract(year from p_day)::int);
+  v_adv date;
+begin
+  if v_md = '12-24' then return 'julafton'; end if;
+  if v_md = '12-31' then return 'nyarsafton'; end if;
+  if v_md = '12-13' then return 'lucia'; end if;
+  if v_md = '04-30' then return 'valborg'; end if;
+  if v_md = '10-31' then return 'halloween'; end if;
+  if v_dow = 5 and v_md between '06-19' and '06-25' then return 'midsommar'; end if;
+  if p_day between v_e - 2 and v_e then return 'pask'; end if;
+  if p_day = v_e - 47 then return 'fettisdagen'; end if;
+  -- First Sunday of Advent: the Sunday between 27 Nov and 3 Dec.
+  v_adv := make_date(extract(year from p_day)::int, 12, 3);
+  v_adv := v_adv - (extract(isodow from v_adv)::int % 7);
+  if p_day = v_adv then return 'forstaAdvent'; end if;
+  if v_dow = 5 and extract(day from p_day) = 13 then return 'fredag13'; end if;
+  if v_dow = 5 and extract(month from p_day) = 8 then return 'kraftskiva'; end if;
+  return null;
+end;
+$$;
+
+-- New medal ids: jul, fettis, pask, advent, fredag13, halloween, kraftskiva (stack per year;
+-- fredag13 per occurrence) and kompisvakt (said "🚑 Jag kollar" for a friend; stacks). Caring, never a drinking goal.
+create or replace function public.olnu_medal_eval_after(p_uid uuid)
+returns table (medal text, n int)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_jul int := 0; v_fett int := 0; v_pask int := 0; v_adv int := 0; v_f13 int := 0; v_hall int := 0; v_kraft int := 0;
+  v_kv int := 0;
+begin
+  begin
+    select count(distinct extract(year from x.ev)) filter (where x.h = 'julafton'),
+           count(distinct extract(year from x.ev)) filter (where x.h = 'fettisdagen'),
+           count(distinct extract(year from x.ev)) filter (where x.h = 'pask'),
+           count(distinct extract(year from x.ev)) filter (where x.h = 'forstaAdvent'),
+           count(distinct x.ev) filter (where x.h = 'fredag13'),
+           count(distinct extract(year from x.ev)) filter (where x.h = 'halloween'),
+           count(distinct extract(year from x.ev)) filter (where x.h = 'kraftskiva')
+      into v_jul, v_fett, v_pask, v_adv, v_f13, v_hall, v_kraft
+      from (select public.olnu_evening(mn.night) as ev, public.olnu_holiday(public.olnu_evening(mn.night)) as h
+              from public.medal_nights mn where mn.user_id = p_uid and mn.beers >= 1) x
+     where x.h is not null;
+    select count(*) into v_kv from public.medevac_checks c where c.checker = p_uid;
+  exception when others then
+    return;
+  end;
+  return query
+  select v.medal, v.n from (values
+    ('jul', v_jul), ('fettis', v_fett), ('pask', v_pask), ('advent', v_adv),
+    ('fredag13', v_f13), ('halloween', v_hall), ('kraftskiva', v_kraft), ('kompisvakt', v_kv)
+  ) as v(medal, n);
+end;
+$$;
+
+-- Same name and return type as 0012/0014. Now unions EVERY public function named
+-- olnu_medal_eval / olnu_medal_eval_<x>(uuid) returning (medal text, n int), so later
+-- rounds only add an eval function and never need to touch this one again. Counts never go down.
+create or replace function public.olnu_medal_store(p_uid uuid)
+returns table (medal text, count int, is_new bool, earned_at timestamptz)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_sql text;
+begin
+  select string_agg(format('select x.medal as m, x.n from public.%I($1) x', p.proname), ' union all ' order by p.proname)
+    into v_sql
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname ~ '^olnu_medal_eval(_[a-z0-9]+)?$'
+     and pg_get_function_identity_arguments(p.oid) = 'p_uid uuid'
+     and pg_get_function_result(p.oid) = 'TABLE(medal text, n integer)';
+  if v_sql is null then
+    return;
+  end if;
+  return query execute
+    'with ev as (' || v_sql || '),
+     e as (select ev.m, max(ev.n)::int as n from ev where ev.n >= 1 group by ev.m),
+     up as (
+       insert into public.user_medals as um (user_id, medal, count, earned_at, updated_at)
+       select $1, e.m, e.n, now(), now() from e
+       on conflict on constraint user_medals_pkey do update
+          set count = greatest(um.count, excluded.count), updated_at = now()
+        where excluded.count > um.count
+       returning um.medal, um.count, (um.earned_at = now()) as fresh, um.earned_at)
+     select up.medal, up.count, up.fresh, up.earned_at from up'
+  using p_uid;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 8. Röstmeddelande (voice skål, max 5 s / 60 KB, lives until 05:00, group members only)
+-- ---------------------------------------------------------------------------
+create table if not exists public.voice_msgs (
+  id         bigserial primary key,
+  group_id   uuid not null,
+  user_id    uuid not null,
+  mime       text not null,
+  dur_ms     int not null default 0,
+  audio      bytea not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default public.olnu_next_expiry(),
+  notified   boolean not null default false
+);
+create index if not exists voice_msgs_group_idx on public.voice_msgs (group_id, id);
+create index if not exists voice_msgs_user_idx on public.voice_msgs (user_id, created_at);
+alter table public.voice_msgs enable row level security;
+
+-- post_voice -> jsonb {id, created_at, left}. Errors: not_member, invalid_voice, voice_limit (10 per night), slow_down (5 s).
+create or replace function public.post_voice(p_group_id uuid, p_mime text, p_b64 text, p_dur_ms int default 0)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_mime text := lower(btrim(coalesce(p_mime, '')));
+  v_data bytea;
+  v_n    int;
+  v_row  public.voice_msgs;
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  if v_mime !~ '^audio/(webm|ogg|mp4|aac|mpeg|x-m4a)(; ?codecs="?[a-z0-9.,]{1,30}"?)?$' then
+    raise exception 'invalid_voice';
+  end if;
+  if p_b64 is null or length(p_b64) > 90000 then
+    raise exception 'invalid_voice';
+  end if;
+  begin
+    v_data := decode(regexp_replace(p_b64, '\s', '', 'g'), 'base64');
+  exception when others then
+    raise exception 'invalid_voice';
+  end;
+  if octet_length(v_data) < 100 or octet_length(v_data) > 61440 then
+    raise exception 'invalid_voice';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_voice:' || v_uid::text, 0));
+  if exists (select 1 from public.voice_msgs v where v.user_id = v_uid and v.created_at > now() - interval '5 seconds') then
+    raise exception 'slow_down';
+  end if;
+  select count(*) into v_n from public.voice_msgs v where v.user_id = v_uid and v.expires_at = public.olnu_next_expiry();
+  if v_n >= 10 then
+    raise exception 'voice_limit';
+  end if;
+  insert into public.voice_msgs (group_id, user_id, mime, dur_ms, audio)
+  values (p_group_id, v_uid, v_mime, greatest(0, least(6000, coalesce(p_dur_ms, 0))), v_data)
+  returning * into v_row;
+  return jsonb_build_object('id', v_row.id, 'created_at', v_row.created_at, 'left', 9 - v_n);
+end;
+$$;
+
+-- group_voices(p_group_id, p_after_id default 0) -> live voice messages (no audio), oldest first, max 30.
+create or replace function public.group_voices(p_group_id uuid, p_after_id bigint default 0)
+returns table (id bigint, name text, mime text, dur_ms int, bytes int, created_at timestamptz, is_me boolean)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  return query
+  select x.id, x.name, x.mime, x.dur_ms, x.bytes, x.created_at, x.is_me from (
+    select v.id, gm.display_name as name, v.mime, v.dur_ms, octet_length(v.audio) as bytes, v.created_at, v.user_id = v_uid as is_me
+      from public.voice_msgs v
+      left join public.group_members gm on gm.group_id = v.group_id and gm.user_id = v.user_id
+     where v.group_id = p_group_id and v.expires_at > now() and v.id > coalesce(p_after_id, 0)
+     order by v.id desc limit 30) x
+   order by x.id;
+end;
+$$;
+
+-- voice_audio(p_id) -> jsonb {id, mime, b64}. Errors: voice_not_found, not_member.
+create or replace function public.voice_audio(p_id bigint)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_row public.voice_msgs;
+begin
+  select * into v_row from public.voice_msgs v where v.id = p_id and v.expires_at > now();
+  if not found then
+    raise exception 'voice_not_found';
+  end if;
+  if not exists (select 1 from public.group_members m where m.group_id = v_row.group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  return jsonb_build_object('id', v_row.id, 'mime', v_row.mime, 'dur_ms', v_row.dur_ms,
+    'b64', replace(encode(v_row.audio, 'base64'), E'\n', ''));
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 9. Stad mot stad: weekly town league. NOT total beers (no competition drinking).
+--    Per user and night in the town: 1 night out + 1 home safe + 0.5 per check-in (max 5) + 0.25 per skål given (max 10).
+--    poäng = round(10 * sum / active users). Ranked only with >= 3 active users.
+-- ---------------------------------------------------------------------------
+create or replace function public.city_league(p_week_offset int default 0)
+returns table (rank int, town text, points int, users int, nights int, checkins int, skal int, home int, is_mine boolean)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_from date := public.olnu_week_start(now()) - 7 * greatest(0, least(52, coalesce(p_week_offset, 0)));
+  v_to   date := v_from + 6;
+  v_mine text;
+begin
+  select an.town into v_mine from public.after_nights an
+   where an.user_id = v_uid and an.town is not null and public.olnu_evening(an.night) between v_from and v_to
+   group by an.town order by count(*) desc, max(an.night) desc limit 1;
+  if v_mine is null then
+    select an.town into v_mine from public.after_nights an
+     where an.user_id = v_uid and an.town is not null order by an.night desc limit 1;
+  end if;
+  return query
+  with f as (
+    select an.town as tw, an.user_id as u,
+           case when an.out then 1 else 0 end as o,
+           case when an.out and an.home_at is not null then 1 else 0 end as h,
+           least(an.checkins, 5) as c, least(an.skal_given, 10) as s
+      from public.after_nights an
+     where an.town is not null and public.olnu_evening(an.night) between v_from and v_to
+       and (an.out or an.checkins > 0 or an.skal_given > 0)
+  ),
+  t as (
+    select f.tw, count(distinct f.u)::int as us, sum(f.o)::int as ni, sum(f.c)::int as ci, sum(f.s)::int as sk, sum(f.h)::int as ho,
+           round(10.0 * (sum(f.o) + sum(f.h) + 0.5 * sum(f.c) + 0.25 * sum(f.s)) / greatest(1, count(distinct f.u)))::int as pts
+      from f group by f.tw
+  ),
+  r as (
+    select t.*, case when t.us >= 3 then (row_number() over (order by (t.us >= 3) desc, t.pts desc, t.us desc, t.tw))::int end as rk
+      from t
+  )
+  select r.rk, r.tw, r.pts, r.us, r.ni, r.ci, r.sk, r.ho, r.tw = v_mine
+    from r
+   where (r.rk is not null and r.rk <= 12) or r.tw = v_mine
+   order by r.rk nulls last, r.tw;
+  if v_mine is not null and not exists (select 1 from public.after_nights an where an.town = v_mine
+       and public.olnu_evening(an.night) between v_from and v_to) then
+    return query select null::int, v_mine, 0, 0, 0, 0, 0, 0, true;
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 10. Stammis-krona: most NIGHTS at a bar in the last 30 days (not most beers). bar_kings stays for old apps.
+--     bar_regulars(p_bar_id) -> top 3 (min 2 nights) + the caller's own row. Names only for self / group-mates.
+-- ---------------------------------------------------------------------------
+create or replace function public.bar_regulars(p_bar_id text)
+returns table (rank int, name text, nights int, is_me boolean, last_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  return query
+  with n as (
+    select c.user_id as u, count(distinct c.night)::int as k, max(c.night) as la
+      from public.medal_checkins c
+     where c.bar_id = left(coalesce(p_bar_id, ''), 80) and c.night > now() - interval '30 days'
+     group by c.user_id
+  ),
+  r as (select n.*, (row_number() over (order by n.k desc, n.la asc, n.u))::int as rk from n)
+  select r.rk, public.olnu_name_for(v_uid, r.u), r.k, r.u = v_uid, r.la
+    from r
+   where (r.rk <= 3 and r.k >= 2) or r.u = v_uid
+   order by r.rk;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 11. Grants
+-- ---------------------------------------------------------------------------
+revoke all on table public.olnu_towns, public.after_nights, public.medevac_checks, public.voice_msgs from public;
+do $$
+declare
+  f text;
+  fns text[] := array[
+    'public.mark_home()',
+    'public.home_status(boolean)',
+    'public.claim_medevac(bigint)',
+    'public.medevac_checks()',
+    'public.my_night_report(boolean)',
+    'public.my_wrapped(text, integer)',
+    'public.post_voice(uuid, text, text, integer)',
+    'public.group_voices(uuid, bigint)',
+    'public.voice_audio(bigint)',
+    'public.city_league(integer)',
+    'public.bar_regulars(text)'
+  ];
+  internal text[] := array[
+    'public.olnu_town_of(double precision, double precision)',
+    'public.olnu_name_for(uuid, uuid)',
+    'public.olnu_shares_group(uuid, uuid)',
+    'public.olnu_after_beers_tg()',
+    'public.olnu_after_checkin_tg()',
+    'public.olnu_after_skal_tg()',
+    'public.olnu_easter(integer)',
+    'public.olnu_holiday(date)',
+    'public.olnu_medal_eval_after(uuid)',
+    'public.olnu_medal_store(uuid)'
+  ];
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on table public.olnu_towns, public.after_nights, public.medevac_checks, public.voice_msgs from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on table public.olnu_towns, public.after_nights, public.medevac_checks, public.voice_msgs from authenticated';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    execute 'grant all on table public.olnu_towns, public.after_nights, public.medevac_checks, public.voice_msgs to service_role';
+    execute 'grant usage, select on sequence public.medevac_checks_id_seq, public.voice_msgs_id_seq to service_role';
+  end if;
+  foreach f in array fns loop
+    execute format('revoke all on function %s from public', f);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on function %s from anon', f);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('grant execute on function %s to authenticated', f);
+    end if;
+  end loop;
+  foreach f in array internal loop
+    execute format('revoke all on function %s from public', f);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on function %s from anon', f);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('revoke all on function %s from authenticated', f);
+    end if;
+  end loop;
+end $$;
+
+-- ===== supabase/migrations/0016_privacy_erase.sql =====
+-- Öl Nu v14: privacy (server part of the v14 client). Additive. Safe to run again.
+-- Binding spec: CONTRACT.md, section "v14 CLIENT".
+--  1. olnu_near_bar(): restaurants, cafés and fast food places (bars_lite.type restaurant | fast_food | cafe,
+--     ids "pl_<lat*1e5>_<lng*1e5>") are snap points too, within 40 m (bars: 75 m); a bar always wins.
+--  2. delete_my_data(): "Radera allt om mig". Rows are never removed (this file has no remove-type
+--     statements on purpose). Instead every row of the caller is anonymized: it is moved to a new random
+--     user id that no login can ever have, positions are set to 0/0 or null, texts are blanked, and live
+--     things end now. The caller leaves all groups and the push subscriptions go (existing RPC logic).
+--     Afterwards the auth user owns nothing. The client then signs out and clears the phone.
+-- Needs 0001-0015 first. Postgres 14+.
+
+-- ---------------------------------------------------------------------------
+-- 1. Nearest snap point: bars (75 m) first, then restaurants / cafés / fast food (40 m)
+-- ---------------------------------------------------------------------------
+create or replace function public.olnu_near_bar(p_lat float8, p_lng float8)
+returns table (id text, lat float8, lng float8)
+language sql
+stable
+set search_path = public
+as $$
+  select bl.id, bl.lat, bl.lng
+    from public.bars_lite bl
+   where bl.active
+     and bl.lat between p_lat - 0.0007 and p_lat + 0.0007
+     and bl.lng between p_lng - 0.0019 and p_lng + 0.0019
+     and power((bl.lat - p_lat) * 111195, 2) + power((bl.lng - p_lng) * 111195 * cos(radians(p_lat)), 2)
+         <= case when coalesce(bl.type, '') in ('restaurant', 'fast_food', 'cafe') then 1600 else 5625 end
+   order by (coalesce(bl.type, '') in ('restaurant', 'fast_food', 'cafe')),
+            power((bl.lat - p_lat) * 111195, 2) + power((bl.lng - p_lng) * 111195 * cos(radians(p_lat)), 2), bl.id
+   limit 1;
+$$;
+
+revoke all on function public.olnu_near_bar(float8, float8) from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.olnu_near_bar(float8, float8) from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function public.olnu_near_bar(float8, float8) from authenticated';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 2. delete_my_data() -> jsonb {ok, groups_left, subscriptions, moved_rows}
+-- ---------------------------------------------------------------------------
+-- Every row of the caller goes to v_new (a fresh random uuid that is not an auth user), so nothing
+-- links it to the person any more. Group-wide counts (a skål on a friend's pin, a beer in tonight's
+-- totals) stay as anonymous numbers. Earned medals and night facts are no longer anyone's.
+create or replace function public.delete_my_data()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_new  uuid := gen_random_uuid();
+  v_g    uuid;
+  v_ep   text;
+  v_ng   int := 0;
+  v_ns   int := 0;
+  v_rows int := 0;
+  v_n    int;
+  v_tab  text;
+  v_col  text;
+begin
+  -- Groups: leave every group (the old leave_group logic; an empty group goes away with it).
+  for v_g in select gm.group_id from public.group_members gm where gm.user_id = v_uid loop
+    perform public.leave_group(v_g);
+    v_ng := v_ng + 1;
+  end loop;
+  update public.groups g set created_by = null where g.created_by = v_uid;
+
+  -- Push: the old delete_push_subscription logic for each endpoint.
+  for v_ep in select ps.endpoint from public.push_subscriptions ps where ps.user_id = v_uid loop
+    perform public.delete_push_subscription(v_ep);
+    v_ns := v_ns + 1;
+  end loop;
+
+  -- Stats and medal facts first: the medal triggers on beers / checkins / bar_taps (fired by the
+  -- updates below) then find these rows already moved and add nothing that could clash.
+  update public.week_beers w set user_id = v_new where w.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.bar_taps t set user_id = v_new, lat = null, lng = null where t.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  update public.user_medals um set user_id = v_new where um.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.medal_nights mn set user_id = v_new, cell = null where mn.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.medal_checkins mc set user_id = v_new where mc.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.medal_counts mo set user_id = v_new where mo.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.medal_claims ml set user_id = v_new where ml.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.push_sent p set user_id = v_new where p.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  -- Pin: hidden now, no position, no undo state.
+  update public.beers b
+     set user_id = v_new, lat = 0, lng = 0, precise = false, stopped = true, ghost = false,
+         expires_at = least(b.expires_at, now()),
+         prev_lat = null, prev_lng = null, prev_precise = null, prev_stopped = null, prev_ghost = null,
+         prev_beer_at = null, prev_for = null
+   where b.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  update public.checkins c
+     set user_id = v_new, lat = 0, lng = 0, expires_at = least(c.expires_at, now())
+   where c.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  update public.group_msgs m
+     set user_id = v_new, body = '🗑️', expires_at = least(m.expires_at, now())
+   where m.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  update public.rallies r
+     set user_id = v_new, body = '🗑️', place = null, lat = null, lng = null, closed = true,
+         expires_at = least(r.expires_at, now())
+   where r.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  update public.rally_answers a set user_id = v_new where a.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.skals s set user_id = v_new where s.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+  update public.reactions x set user_id = v_new, active = false where x.user_id = v_uid;
+  get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+
+  -- v12 tables (0014 is optional): only when they exist.
+  if to_regclass('public.bar_queue') is not null then
+    execute 'update public.bar_queue q set user_id = $1, expires_at = least(q.expires_at, now()) where q.user_id = $2' using v_new, v_uid;
+    get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+    execute 'update public.bar_offers o set user_id = $1, expires_at = least(o.expires_at, now()) where o.user_id = $2' using v_new, v_uid;
+    get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+    execute 'update public.bar_offer_votes v set user_id = $1 where v.user_id = $2' using v_new, v_uid;
+    get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+    execute 'update public.bar_tips tp set user_id = $1, body = null where tp.user_id = $2' using v_new, v_uid;
+    get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+    execute 'update public.beer_types bt set user_id = $1, lat = null, lng = null where bt.user_id = $2' using v_new, v_uid;
+    get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+    execute 'update public.group_flags f set updated_by = null where f.updated_by = $1' using v_uid;
+  end if;
+
+  -- Newer tables (games, voice, chat likes, …): blank what is personal, then move every uuid column that
+  -- points at the caller to v_new. Generic, so tables added later are covered too. Each statement runs in
+  -- its own block: one odd table can never stop the rest.
+  begin
+    if to_regclass('public.voice_msgs') is not null then
+      execute 'update public.voice_msgs v set audio = ''\x''::bytea, dur_ms = 0, expires_at = least(v.expires_at, now()) where v.user_id = $1' using v_uid;
+    end if;
+  exception when others then null;
+  end;
+  begin
+    if to_regclass('public.game_guesses') is not null then
+      execute 'update public.game_guesses g set lat = null, lng = null, town = null where g.user_id = $1' using v_uid;
+    end if;
+  exception when others then null;
+  end;
+  begin
+    if to_regclass('public.after_nights') is not null then
+      execute 'update public.after_nights a set town = null where a.user_id = $1' using v_uid;
+    end if;
+  exception when others then null;
+  end;
+  for v_tab, v_col in
+    select c.table_name::text, c.column_name::text
+      from information_schema.columns c
+      join information_schema.tables tb on tb.table_schema = c.table_schema and tb.table_name = c.table_name
+     where c.table_schema = 'public' and tb.table_type = 'BASE TABLE' and c.data_type = 'uuid'
+       and c.column_name not in ('id', 'group_id')
+       and c.table_name not in ('groups', 'group_members', 'group_flags', 'push_subscriptions')
+  loop
+    begin
+      execute format('update public.%I set %I = $1 where %I = $2', v_tab, v_col, v_col) using v_new, v_uid;
+      get diagnostics v_n = row_count; v_rows := v_rows + v_n;
+    exception when others then null;
+    end;
+  end loop;
+
+  return jsonb_build_object('ok', true, 'groups_left', v_ng, 'subscriptions', v_ns, 'moved_rows', v_rows);
+end;
+$$;
+
+revoke all on function public.delete_my_data() from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.delete_my_data() from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'grant execute on function public.delete_my_data() to authenticated';
+  end if;
+end $$;
+
+-- 3. Re-snap tonight's pins and heat rows (restaurants may have been added to bars_lite).
+select public.olnu_resnap();
+
+-- ===== supabase/migrations/0017_games.sql =====
+-- Öl Nu v15 LEK (omgång 2). Additive. Safe to run again. Needs 0001-0014 (0015 optional).
+-- Six small group games, all for "tonight" (night = the next 05:00 Europe/Stockholm, olnu_night_of):
+--   1. Kvällens uppdrag   3 missions per user per night, checked from server facts (never "drink N beers").
+--   2. Krogrunda          a member draws a route of 2-6 bars; members' check-ins tick the stops.
+--   3. Hemlig agent       one random member who is out gets a secret (harmless) mission; next day the
+--                         group guesses who it was (one vote each), reveal when all voted or at 12:00.
+--   4. Gissa kvällen      guess before 21:00 how many beers the town (20 km) logs tonight; next day the
+--                         closest guess in each group is "Dagens orakel".
+--   5. Kvällsbingo        one 3x3 card per group per night, members tick squares (honour system).
+--   6. Sugen-status       "sugen" / "kanske" / "inte" for tonight, seen by group-mates.
+-- Medals (olnu_medal_eval_games): uppdrag, uppdrag3, runda, detektiv, spion, orakel, bingo.
+-- olnu_medal_store is replaced by a version that merges olnu_medal_eval() with EVERY function named
+-- public.olnu_medal_eval_<x>(uuid) (0014 bars, this file games, later files only add their own).
+-- All texts live in the client (docs/js/games-content.js); the server only stores ids and numbers.
+-- Every internal olnu_g_* function takes p_now so the night logic can be tested; the RPCs pass now().
+-- This file has no remove-type statements on purpose (create-or-replace, "if not exists",
+-- "on conflict" only). Rows are never removed: every read filters on the night.
+
+-- 0015 adds this column too (same definition); needed here so a 0014-only database works.
+alter table public.beer_events add column if not exists undone boolean not null default false;
+
+-- ---------------------------------------------------------------------------
+-- 1. Tables (RLS on, no policies, no client access)
+-- ---------------------------------------------------------------------------
+create table if not exists public.game_mission_cat (
+  id          text primary key check (id ~ '^m[0-9]{3}$'),
+  kind        text not null check (kind in ('checkin_bars', 'skal_give', 'skal_get', 'chat', 'rally_yes', 'group_out',
+                                            'home', 'water', 'beer_type', 'queue_report', 'tip', 'early', 'other_none')),
+  goal        int  not null check (goal between 1 and 50),
+  needs_group boolean not null default false,
+  active      boolean not null default true
+);
+
+create table if not exists public.game_missions (
+  user_id    uuid not null,
+  night      timestamptz not null,
+  slot       smallint not null check (slot between 1 and 3),
+  mission    text not null,
+  kind       text not null,
+  goal       int  not null,
+  progress   int  not null default 0,
+  done_at    timestamptz,
+  created_at timestamptz not null default now(),
+  primary key (user_id, night, slot)
+);
+create index if not exists game_missions_done_idx on public.game_missions (user_id, done_at);
+
+-- Facts the server cannot see elsewhere: water taps, "Jag är hemma" time, bingo tick changes.
+create table if not exists public.game_facts (
+  user_id       uuid not null,
+  night         timestamptz not null,
+  water         int not null default 0,
+  water_at      timestamptz,
+  home_at       timestamptz,
+  bingo_changes int not null default 0,
+  primary key (user_id, night)
+);
+
+create table if not exists public.game_sugen (
+  user_id    uuid not null,
+  night      timestamptz not null,
+  status     text not null check (status in ('sugen', 'kanske', 'inte', 'none')),
+  changes    int not null default 1,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, night)
+);
+
+create table if not exists public.game_crawls (
+  id         bigserial primary key,
+  group_id   uuid not null,
+  user_id    uuid not null,
+  night      timestamptz not null,
+  stops      jsonb not null,
+  n          int not null check (n between 2 and 6),
+  created_at timestamptz not null default now(),
+  closed     boolean not null default false,
+  done_at    timestamptz
+);
+create index if not exists game_crawls_group_idx on public.game_crawls (group_id, night);
+create index if not exists game_crawls_user_idx  on public.game_crawls (user_id, created_at);
+
+create table if not exists public.game_agents (
+  group_id    uuid not null,
+  night       timestamptz not null,
+  agent       uuid not null,
+  mission     int not null,
+  started_by  uuid not null,
+  created_at  timestamptz not null default now(),
+  revealed_at timestamptz,
+  correct     int,
+  votes       int,
+  primary key (group_id, night)
+);
+create index if not exists game_agents_agent_idx on public.game_agents (agent);
+
+create table if not exists public.game_agent_votes (
+  group_id   uuid not null,
+  night      timestamptz not null,
+  voter      uuid not null,
+  suspect    uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (group_id, night, voter)
+);
+create index if not exists game_agent_votes_voter_idx on public.game_agent_votes (voter);
+
+create table if not exists public.game_guesses (
+  user_id    uuid not null,
+  night      timestamptz not null,
+  guess      int not null check (guess between 0 and 20000),
+  town       text not null check (char_length(town) between 1 and 40),
+  lat        float8 not null,
+  lng        float8 not null,
+  changes    int not null default 1,
+  real       int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, night)
+);
+create index if not exists game_guesses_night_idx on public.game_guesses (night);
+
+-- "Dagens orakel": the best guess per group for a finished night (only groups with 2+ guesses).
+create table if not exists public.game_oracles (
+  group_id   uuid not null,
+  night      timestamptz not null,
+  user_id    uuid not null,
+  guess      int not null,
+  real       int not null,
+  err        float8 not null,
+  guessers   int not null,
+  created_at timestamptz not null default now(),
+  primary key (group_id, night)
+);
+create index if not exists game_oracles_user_idx on public.game_oracles (user_id);
+
+create table if not exists public.game_bingo_cards (
+  group_id   uuid not null,
+  night      timestamptz not null,
+  card       int[] not null,
+  n          int not null,
+  lines      int not null default 0,
+  bingo_at   timestamptz,
+  created_at timestamptz not null default now(),
+  primary key (group_id, night)
+);
+
+create table if not exists public.game_bingo_ticks (
+  group_id   uuid not null,
+  night      timestamptz not null,
+  idx        smallint not null check (idx between 0 and 8),
+  user_id    uuid not null,
+  ticked     boolean not null default true,
+  updated_at timestamptz not null default now(),
+  primary key (group_id, night, idx)
+);
+create index if not exists game_bingo_ticks_user_idx on public.game_bingo_ticks (user_id);
+
+do $$
+declare
+  t text;
+  tabs text[] := array['game_mission_cat', 'game_missions', 'game_facts', 'game_sugen', 'game_crawls', 'game_agents',
+                       'game_agent_votes', 'game_guesses', 'game_oracles', 'game_bingo_cards', 'game_bingo_ticks'];
+begin
+  foreach t in array tabs loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('revoke all on table public.%I from public', t);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on table public.%I from anon', t);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('revoke all on table public.%I from authenticated', t);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'service_role') then
+      execute format('grant all on table public.%I to service_role', t);
+    end if;
+  end loop;
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on sequence public.game_crawls_id_seq from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on sequence public.game_crawls_id_seq from authenticated';
+  end if;
+end $$;
+
+-- Mission catalog (ids = docs/js/games-content.js; texts only in the client).
+-- needs_group: only given to users who are in a group when the missions are assigned.
+insert into public.game_mission_cat (id, kind, goal, needs_group) values
+  ('m001', 'checkin_bars', 2, false),
+  ('m002', 'checkin_bars', 3, false),
+  ('m003', 'checkin_bars', 2, false),
+  ('m004', 'checkin_bars', 3, false),
+  ('m005', 'checkin_bars', 2, false),
+  ('m006', 'checkin_bars', 4, false),
+  ('m007', 'checkin_bars', 2, false),
+  ('m008', 'checkin_bars', 3, false),
+  ('m009', 'checkin_bars', 2, false),
+  ('m010', 'checkin_bars', 3, false),
+  ('m011', 'checkin_bars', 2, false),
+  ('m012', 'checkin_bars', 2, false),
+  ('m013', 'checkin_bars', 3, false),
+  ('m014', 'checkin_bars', 2, false),
+  ('m015', 'checkin_bars', 3, false),
+  ('m016', 'checkin_bars', 2, false),
+  ('m017', 'skal_give', 3, false),
+  ('m018', 'skal_give', 5, false),
+  ('m019', 'skal_give', 1, false),
+  ('m020', 'skal_give', 3, false),
+  ('m021', 'skal_give', 2, false),
+  ('m022', 'skal_give', 4, false),
+  ('m023', 'skal_give', 3, false),
+  ('m024', 'skal_give', 10, false),
+  ('m025', 'skal_give', 2, false),
+  ('m026', 'skal_give', 5, false),
+  ('m027', 'skal_give', 3, false),
+  ('m028', 'skal_give', 1, false),
+  ('m029', 'skal_get', 3, false),
+  ('m030', 'skal_get', 5, false),
+  ('m031', 'skal_get', 1, false),
+  ('m032', 'skal_get', 2, false),
+  ('m033', 'skal_get', 3, false),
+  ('m034', 'skal_get', 4, false),
+  ('m035', 'skal_get', 2, false),
+  ('m036', 'skal_get', 10, false),
+  ('m037', 'skal_get', 3, false),
+  ('m038', 'skal_get', 6, false),
+  ('m039', 'chat', 1, true),
+  ('m040', 'chat', 3, true),
+  ('m041', 'chat', 5, true),
+  ('m042', 'chat', 1, true),
+  ('m043', 'chat', 2, true),
+  ('m044', 'chat', 3, true),
+  ('m045', 'chat', 1, true),
+  ('m046', 'chat', 4, true),
+  ('m047', 'chat', 2, true),
+  ('m048', 'chat', 10, true),
+  ('m049', 'rally_yes', 1, true),
+  ('m050', 'rally_yes', 1, true),
+  ('m051', 'rally_yes', 2, true),
+  ('m052', 'rally_yes', 1, true),
+  ('m053', 'rally_yes', 1, true),
+  ('m054', 'rally_yes', 1, true),
+  ('m055', 'rally_yes', 3, true),
+  ('m056', 'group_out', 3, true),
+  ('m057', 'group_out', 4, true),
+  ('m058', 'group_out', 2, true),
+  ('m059', 'group_out', 5, true),
+  ('m060', 'group_out', 3, true),
+  ('m061', 'group_out', 6, true),
+  ('m062', 'group_out', 3, true),
+  ('m063', 'group_out', 4, true),
+  ('m064', 'group_out', 2, true),
+  ('m065', 'group_out', 8, true),
+  ('m066', 'home', 1, false),
+  ('m067', 'home', 1, false),
+  ('m068', 'home', 1, false),
+  ('m069', 'home', 1, false),
+  ('m070', 'home', 1, false),
+  ('m071', 'home', 1, false),
+  ('m072', 'home', 1, false),
+  ('m073', 'home', 1, false),
+  ('m074', 'home', 1, false),
+  ('m075', 'home', 1, false),
+  ('m076', 'water', 1, false),
+  ('m077', 'water', 2, false),
+  ('m078', 'water', 3, false),
+  ('m079', 'water', 4, false),
+  ('m080', 'water', 1, false),
+  ('m081', 'water', 2, false),
+  ('m082', 'water', 3, false),
+  ('m083', 'water', 5, false),
+  ('m084', 'water', 2, false),
+  ('m085', 'water', 3, false),
+  ('m086', 'water', 2, false),
+  ('m087', 'water', 4, false),
+  ('m088', 'beer_type', 2, false),
+  ('m089', 'beer_type', 3, false),
+  ('m090', 'beer_type', 2, false),
+  ('m091', 'beer_type', 2, false),
+  ('m092', 'beer_type', 2, false),
+  ('m093', 'beer_type', 3, false),
+  ('m094', 'beer_type', 2, false),
+  ('m095', 'beer_type', 2, false),
+  ('m096', 'beer_type', 2, false),
+  ('m097', 'beer_type', 3, false),
+  ('m098', 'queue_report', 1, false),
+  ('m099', 'queue_report', 2, false),
+  ('m100', 'queue_report', 1, false),
+  ('m101', 'queue_report', 3, false),
+  ('m102', 'queue_report', 1, false),
+  ('m103', 'queue_report', 2, false),
+  ('m104', 'queue_report', 1, false),
+  ('m105', 'queue_report', 2, false),
+  ('m106', 'tip', 1, true),
+  ('m107', 'tip', 1, true),
+  ('m108', 'tip', 2, true),
+  ('m109', 'tip', 1, true),
+  ('m110', 'tip', 1, true),
+  ('m111', 'tip', 1, true),
+  ('m112', 'tip', 3, true),
+  ('m113', 'tip', 1, true),
+  ('m114', 'early', 1, false),
+  ('m115', 'early', 1, false),
+  ('m116', 'early', 1, false),
+  ('m117', 'early', 1, false),
+  ('m118', 'early', 1, false),
+  ('m119', 'early', 1, false),
+  ('m120', 'early', 1, false),
+  ('m121', 'early', 1, false),
+  ('m122', 'other_none', 1, false),
+  ('m123', 'other_none', 1, false),
+  ('m124', 'other_none', 1, false),
+  ('m125', 'other_none', 1, false),
+  ('m126', 'other_none', 1, false),
+  ('m127', 'other_none', 1, false),
+  ('m128', 'other_none', 1, false),
+  ('m129', 'other_none', 1, false)
+on conflict (id) do update
+   set kind = excluded.kind, goal = excluded.goal, needs_group = excluded.needs_group, active = true;
+
+-- ---------------------------------------------------------------------------
+-- 2. Helpers (internal, not callable by clients)
+-- ---------------------------------------------------------------------------
+
+-- The night before p_night (local calendar arithmetic, DST-correct).
+create or replace function public.olnu_g_prev(p_night timestamptz)
+returns timestamptz language sql stable set search_path = public as $$
+  select ((p_night at time zone 'Europe/Stockholm') - interval '1 day') at time zone 'Europe/Stockholm';
+$$;
+
+-- Stable opaque key for a member inside one group (never the user id).
+create or replace function public.olnu_g_key(p_group uuid, p_uid uuid)
+returns text language sql immutable set search_path = public as $$
+  select substr(md5(p_group::text || ':' || p_uid::text || ':olnu-game'), 1, 12);
+$$;
+
+-- Out right now: a visible live pin (not stopped, so ghost pins never count) or a live check-in.
+create or replace function public.olnu_g_live(p_uid uuid, p_night timestamptz, p_now timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_now < p_night and (
+    exists (select 1 from public.beers b
+             where b.user_id = p_uid and b.expires_at = p_night and not b.stopped
+               and (b.beer_count >= 1 or coalesce(b.other_count, 0) >= 1))
+    or exists (select 1 from public.checkins c where c.user_id = p_uid and c.expires_at = p_night));
+$$;
+
+-- Has been out tonight (any beer / other drink logged, ghost too, or a check-in).
+create or replace function public.olnu_g_outtonight(p_uid uuid, p_night timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.medal_nights mn
+                  where mn.user_id = p_uid and mn.night = p_night and (mn.beers >= 1 or mn.others >= 1))
+      or exists (select 1 from public.beers b
+                  where b.user_id = p_uid and b.expires_at = p_night and (b.beer_count >= 1 or coalesce(b.other_count, 0) >= 1))
+      or exists (select 1 from public.checkins c where c.user_id = p_uid and c.expires_at = p_night)
+      or exists (select 1 from public.medal_checkins m where m.user_id = p_uid and m.night = p_night);
+$$;
+
+-- Beers logged tonight within 20 km of a point (anonymous heat events; undone and ghost beers excluded).
+create or replace function public.olnu_g_real(p_night timestamptz, p_lat float8, p_lng float8)
+returns int language sql stable security definer set search_path = public as $$
+  select count(*)::int from public.beer_events e
+   where e.kind = 'beer' and not e.undone and e.expires_at = p_night
+     and e.lat between p_lat - 0.19 and p_lat + 0.19
+     and e.lng between p_lng - 0.56 and p_lng + 0.56
+     and public.olnu_dist_m(p_lat, p_lng, e.lat, e.lng) <= 20000;
+$$;
+
+-- Number of bingo lines (rows, columns, diagonals) in a set of ticked squares 0-8.
+create or replace function public.olnu_g_lines(p_t int[])
+returns int language sql immutable set search_path = public as $$
+  select count(*)::int from (values (array[0,1,2]), (array[3,4,5]), (array[6,7,8]), (array[0,3,6]),
+                                    (array[1,4,7]), (array[2,5,8]), (array[0,4,8]), (array[2,4,6])) l(a)
+   where l.a <@ coalesce(p_t, '{}'::int[]);
+$$;
+
+create or replace function public.olnu_g_member(p_group uuid, p_uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.group_members m where m.group_id = p_group and m.user_id = p_uid);
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 3. Missions
+-- ---------------------------------------------------------------------------
+
+-- Progress of one mission kind tonight, from server facts only. Never counts beers drunk.
+create or replace function public.olnu_g_progress(p_uid uuid, p_night timestamptz, p_kind text, p_now timestamptz)
+returns int
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v      int := 0;
+  v_from timestamptz := p_night - interval '30 hours';
+  v_eve  timestamp := public.olnu_evening(p_night)::timestamp;
+  v_beers int; v_others int; v_first timestamptz; v_home timestamptz;
+begin
+  begin
+    if p_kind = 'checkin_bars' then
+      select count(distinct c.bar_id) into v from public.medal_checkins c where c.user_id = p_uid and c.night = p_night;
+    elsif p_kind = 'skal_give' then
+      select count(*) into v from public.skals s
+       where s.user_id = p_uid and s.created_at > v_from and public.olnu_night_of(s.created_at) = p_night;
+    elsif p_kind = 'skal_get' then
+      select count(distinct s.user_id) into v from public.skals s join public.beers b on b.id = s.beer_id
+       where b.user_id = p_uid and b.expires_at = p_night and s.user_id <> p_uid;
+    elsif p_kind = 'chat' then
+      select count(*) into v from public.group_msgs m
+       where m.user_id = p_uid and m.created_at > v_from and public.olnu_night_of(m.created_at) = p_night;
+    elsif p_kind = 'rally_yes' then
+      select count(*) into v from public.rally_answers a join public.rallies r on r.id = a.rally_id
+       where a.user_id = p_uid and a.answer = 'yes' and r.user_id <> p_uid and r.expires_at = p_night;
+    elsif p_kind = 'group_out' then
+      select coalesce(max(x.n), 0) into v from (
+        select gm.group_id, count(*) filter (where public.olnu_g_live(o.user_id, p_night, p_now)) as n
+          from public.group_members gm join public.group_members o on o.group_id = gm.group_id
+         where gm.user_id = p_uid
+         group by gm.group_id) x;
+    elsif p_kind = 'water' then
+      select coalesce(max(f.water), 0) into v from public.game_facts f where f.user_id = p_uid and f.night = p_night;
+    elsif p_kind = 'beer_type' then
+      select count(distinct t.type) into v from public.beer_types t
+       where t.user_id = p_uid and t.night = p_night and t.type <> 'annan';
+    elsif p_kind = 'queue_report' then
+      select count(*) into v from public.bar_queue q
+       where q.user_id = p_uid and q.created_at > v_from and public.olnu_night_of(q.created_at) = p_night;
+    elsif p_kind = 'tip' then
+      select count(*) into v from public.bar_tips t
+       where t.user_id = p_uid and t.created_at > v_from and public.olnu_night_of(t.created_at) = p_night;
+    elsif p_kind in ('home', 'early', 'other_none') then
+      select mn.beers, mn.others, mn.first_at into v_beers, v_others, v_first
+        from public.medal_nights mn where mn.user_id = p_uid and mn.night = p_night;
+      select f.home_at into v_home from public.game_facts f where f.user_id = p_uid and f.night = p_night;
+      if p_kind = 'home' then
+        -- "Jag är hemma" after the first beer and before 02:00 (local wall clock).
+        if coalesce(v_beers, 0) >= 1 and v_first is not null and v_home is not null and v_home >= v_first
+           and (v_home at time zone 'Europe/Stockholm') < (p_night at time zone 'Europe/Stockholm') - interval '3 hours' then
+          v := 1;
+        end if;
+      elsif p_kind = 'early' then
+        if coalesce(v_beers, 0) >= 1 and v_first is not null
+           and (v_first at time zone 'Europe/Stockholm') < v_eve + interval '20 hours' then
+          v := 1;
+        end if;
+      else
+        -- Only beer tonight: checked from 23:00 (or after "Jag är hemma").
+        if coalesce(v_beers, 0) >= 1 and coalesce(v_others, 0) = 0
+           and ((p_now at time zone 'Europe/Stockholm') >= v_eve + interval '23 hours' or v_home is not null) then
+          v := 1;
+        end if;
+      end if;
+    end if;
+  exception when others then
+    v := 0;
+  end;
+  return coalesce(v, 0);
+end;
+$$;
+
+-- Give the 3 missions of a night once (deterministic from user + night; stored, so a reload never
+-- changes them). 3 different kinds. Group missions only for users in a group. "early" is not given
+-- from 19:00 and "home" not from 01:00 (too late to do them).
+create or replace function public.olnu_g_assign(p_uid uuid, p_night timestamptz, p_now timestamptz)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_group boolean := exists (select 1 from public.group_members m where m.user_id = p_uid);
+  v_h     int := extract(hour from (p_now at time zone 'Europe/Stockholm'))::int;
+  v_seed  text := p_uid::text || ':' || (extract(epoch from p_night)::bigint)::text;
+begin
+  if exists (select 1 from public.game_missions gm where gm.user_id = p_uid and gm.night = p_night) then
+    return;
+  end if;
+  insert into public.game_missions (user_id, night, slot, mission, kind, goal)
+  select p_uid, p_night, x.rn, x.id, x.kind, x.goal from (
+    select y.id, y.kind, y.goal, row_number() over (order by y.h) as rn from (
+      select distinct on (c.kind) c.id, c.kind, c.goal, md5(v_seed || ':' || c.id) as h
+        from public.game_mission_cat c
+       where c.active and (v_group or not c.needs_group)
+         and not (c.kind = 'early' and (v_h >= 19 or v_h < 5))
+         and not (c.kind = 'home' and v_h >= 1 and v_h < 5)
+       order by c.kind, md5(v_seed || ':' || c.id)) y) x
+   where x.rn <= 3
+  on conflict do nothing;
+end;
+$$;
+
+-- The caller's own game state tonight (missions with progress, guess, sugen, agent missions).
+create or replace function public.olnu_g_me(p_uid uuid, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_prev  timestamptz := public.olnu_g_prev(public.olnu_night_of(p_now));
+  v_close timestamptz := (public.olnu_evening(public.olnu_night_of(p_now))::timestamp + interval '21 hours') at time zone 'Europe/Stockholm';
+  r record;
+  v_p int;
+  v_m jsonb := '[]'::jsonb;
+  v_done int := 0;
+  v_fresh boolean;
+  v_guess jsonb := null;
+  v_gprev jsonb := null;
+  v_g record;
+  v_real int;
+  v_f record;
+  v_sugen text;
+  v_agents jsonb;
+  v_tlat float8; v_tlng float8;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('olnu_game:' || p_uid::text, 0));
+  perform public.olnu_g_assign(p_uid, v_night, p_now);
+  for r in select * from public.game_missions gm where gm.user_id = p_uid and gm.night = v_night order by gm.slot loop
+    v_fresh := false;
+    if r.done_at is null then
+      v_p := least(r.goal, public.olnu_g_progress(p_uid, v_night, r.kind, p_now));
+      if v_p >= r.goal then
+        update public.game_missions gm set progress = v_p, done_at = p_now
+         where gm.user_id = p_uid and gm.night = v_night and gm.slot = r.slot and gm.done_at is null;
+        v_fresh := true;
+        r.done_at := p_now;
+      elsif v_p <> r.progress then
+        update public.game_missions gm set progress = v_p
+         where gm.user_id = p_uid and gm.night = v_night and gm.slot = r.slot;
+      end if;
+    else
+      v_p := r.goal;
+    end if;
+    if r.done_at is not null then v_done := v_done + 1; end if;
+    v_m := v_m || jsonb_build_object('slot', r.slot, 'id', r.mission, 'kind', r.kind, 'goal', r.goal,
+      'progress', v_p, 'done', r.done_at is not null, 'fresh', v_fresh, 'done_at', r.done_at);
+  end loop;
+
+  select * into v_g from public.game_guesses g where g.user_id = p_uid and g.night = v_night;
+  if found then
+    v_guess := jsonb_build_object('guess', v_g.guess, 'town', v_g.town);
+    v_tlat := v_g.lat; v_tlng := v_g.lng;
+  end if;
+  select * into v_g from public.game_guesses g where g.user_id = p_uid and g.night = v_prev;
+  if found then
+    v_real := v_g.real;
+    if v_real is null then
+      v_real := public.olnu_g_real(v_prev, v_g.lat, v_g.lng);
+      update public.game_guesses g set real = v_real where g.user_id = p_uid and g.night = v_prev and g.real is null;
+    end if;
+    v_gprev := jsonb_build_object('guess', v_g.guess, 'town', v_g.town, 'real', v_real);
+  end if;
+
+  select f.water, f.home_at into v_f from public.game_facts f where f.user_id = p_uid and f.night = v_night;
+  select s.status into v_sugen from public.game_sugen s where s.user_id = p_uid and s.night = v_night;
+
+  select coalesce(jsonb_agg(jsonb_build_object('group_id', a.group_id, 'group_name', g.name, 'mission', a.mission)), '[]'::jsonb)
+    into v_agents
+    from public.game_agents a join public.groups g on g.id = a.group_id
+   where a.agent = p_uid and a.night = v_night
+     and exists (select 1 from public.group_members m where m.group_id = a.group_id and m.user_id = p_uid);
+
+  return jsonb_build_object(
+    'night', v_night, 'missions', v_m, 'done_n', v_done,
+    'water', coalesce(v_f.water, 0), 'home_at', v_f.home_at,
+    'guess', v_guess, 'guess_open', p_now < v_close, 'guess_closes', v_close,
+    'guess_so_far', case when p_now >= v_close and v_guess is not null
+                         then public.olnu_g_real(v_night, v_tlat, v_tlng) end,
+    'guess_prev', v_gprev,
+    'sugen', case when v_sugen = 'none' then null else v_sugen end,
+    'out', public.olnu_g_outtonight(p_uid, v_night),
+    'agent', v_agents);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 4. Group games: lazy end-of-night steps (idempotent)
+-- ---------------------------------------------------------------------------
+
+-- Hemlig agent: reveal after 05:00 when every member except the agent has voted, or at 12:00 local.
+create or replace function public.olnu_g_reveal(p_group uuid, p_night timestamptz, p_now timestamptz)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.game_agents a
+     set revealed_at = p_now,
+         correct = (select count(*) from public.game_agent_votes v
+                     where v.group_id = a.group_id and v.night = a.night and v.suspect = a.agent),
+         votes = (select count(*) from public.game_agent_votes v where v.group_id = a.group_id and v.night = a.night)
+   where a.group_id = p_group and a.night = p_night and a.revealed_at is null and p_now >= p_night
+     and (p_now >= ((p_night at time zone 'Europe/Stockholm') + interval '7 hours') at time zone 'Europe/Stockholm'
+          or (select count(*) from public.game_agent_votes v where v.group_id = a.group_id and v.night = a.night)
+             >= (select count(*) from public.group_members m where m.group_id = p_group and m.user_id <> a.agent));
+end;
+$$;
+
+-- Gissa kvällen: the best guess of a finished night in one group (needs 2+ guesses by current members).
+create or replace function public.olnu_g_oracle(p_group uuid, p_night timestamptz, p_now timestamptz)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_now < p_night or exists (select 1 from public.game_oracles o where o.group_id = p_group and o.night = p_night) then
+    return;
+  end if;
+  update public.game_guesses g set real = public.olnu_g_real(g.night, g.lat, g.lng)
+   where g.night = p_night and g.real is null
+     and g.user_id in (select m.user_id from public.group_members m where m.group_id = p_group);
+  insert into public.game_oracles (group_id, night, user_id, guess, real, err, guessers)
+  select p_group, p_night, x.user_id, x.guess, x.real, x.err, x.cnt from (
+    select g.user_id, g.guess, g.real, g.created_at,
+           abs(g.guess - g.real)::float8 / greatest(g.real, 1) as err,
+           count(*) over () as cnt
+      from public.game_guesses g
+      join public.group_members m on m.user_id = g.user_id and m.group_id = p_group
+     where g.night = p_night and g.real is not null) x
+   where x.cnt >= 2
+   order by x.err, x.created_at, x.user_id
+   limit 1
+  on conflict do nothing;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 5. Group state (one group). p_full = the group sheet; else a compact summary for the poll.
+-- ---------------------------------------------------------------------------
+create or replace function public.olnu_g_group(p_uid uuid, p_group uuid, p_now timestamptz,
+                                               p_full boolean default false, p_bingo_n int default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_prev  timestamptz := public.olnu_g_prev(public.olnu_night_of(p_now));
+  v_out   jsonb := '{}'::jsonb;
+  v_j     jsonb;
+  v_c     record;
+  v_stops jsonb;
+  v_dn    int;
+  v_card  record;
+  v_t     int[];
+  v_ticks jsonb;
+  v_a     record;
+  v_n     int;
+  v_bn    int := greatest(9, least(400, coalesce(p_bingo_n, 40)));
+begin
+  if not public.olnu_g_member(p_group, p_uid) then
+    raise exception 'not_member';
+  end if;
+
+  -- Sugen-status tonight (visible members only; "out" = visible pin or check-in right now).
+  select coalesce(jsonb_agg(jsonb_build_object('k', public.olnu_g_key(p_group, m.user_id), 'name', m.display_name,
+           'is_me', m.user_id = p_uid, 'status', s.status, 'at', s.updated_at,
+           'out', public.olnu_g_live(m.user_id, v_night, p_now)) order by s.updated_at desc), '[]'::jsonb)
+    into v_j
+    from public.group_members m
+    join public.game_sugen s on s.user_id = m.user_id and s.night = v_night and s.status <> 'none'
+   where m.group_id = p_group;
+  v_out := v_out || jsonb_build_object('sugen', v_j);
+
+  -- Krogrunda: the newest open route tonight. A stop is done when a member checked in there tonight.
+  select * into v_c from public.game_crawls c
+   where c.group_id = p_group and c.night = v_night and not c.closed order by c.id desc limit 1;
+  if found then
+    select jsonb_agg(jsonb_build_object('i', s.ord - 1, 'id', s.v->>'id', 'name', s.v->>'name',
+             'lat', (s.v->>'lat')::float8, 'lng', (s.v->>'lng')::float8, 'done', w.names is not null,
+             'who', case when p_full then w.names end) order by s.ord),
+           count(*) filter (where w.names is not null)
+      into v_stops, v_dn
+      from jsonb_array_elements(v_c.stops) with ordinality s(v, ord)
+      left join lateral (
+        select jsonb_agg(m.display_name order by m.display_name) as names
+          from public.group_members m
+          join public.medal_checkins mc on mc.user_id = m.user_id and mc.night = v_night and mc.bar_id = s.v->>'id'
+         where m.group_id = p_group) w on true;
+    if v_dn >= v_c.n and v_c.done_at is null then
+      update public.game_crawls c set done_at = p_now where c.id = v_c.id and c.done_at is null;
+      v_c.done_at := p_now;
+    end if;
+    v_out := v_out || jsonb_build_object('crawl', jsonb_build_object(
+      'id', v_c.id, 'n', v_c.n, 'done_n', v_dn, 'done', v_c.done_at is not null, 'done_at', v_c.done_at,
+      'is_mine', v_c.user_id = p_uid, 'created_at', v_c.created_at,
+      'by', (select m.display_name from public.group_members m where m.group_id = p_group and m.user_id = v_c.user_id),
+      'stops', v_stops));
+  else
+    v_out := v_out || jsonb_build_object('crawl', null);
+  end if;
+
+  -- Kvällsbingo: the group sheet makes tonight's card (9 different square numbers below p_bingo_n).
+  select * into v_card from public.game_bingo_cards b where b.group_id = p_group and b.night = v_night;
+  if not found and p_full then
+    insert into public.game_bingo_cards (group_id, night, card, n)
+    select p_group, v_night, array_agg(z.x), v_bn
+      from (select x from generate_series(0, v_bn - 1) x order by random() limit 9) z
+    on conflict do nothing;
+    select * into v_card from public.game_bingo_cards b where b.group_id = p_group and b.night = v_night;
+  end if;
+  if v_card.group_id is not null then
+    select array_agg(t.idx::int order by t.idx),
+           jsonb_agg(jsonb_build_object('idx', t.idx, 'name', m.display_name, 'is_me', t.user_id = p_uid) order by t.idx)
+      into v_t, v_ticks
+      from public.game_bingo_ticks t
+      left join public.group_members m on m.group_id = p_group and m.user_id = t.user_id
+     where t.group_id = p_group and t.night = v_night and t.ticked;
+    v_out := v_out || jsonb_build_object('bingo', jsonb_build_object(
+      'card', case when p_full then to_jsonb(v_card.card) end, 'n', v_card.n,
+      'ticks', case when p_full then coalesce(v_ticks, '[]'::jsonb) else to_jsonb(coalesce(array_length(v_t, 1), 0)) end,
+      'lines', public.olnu_g_lines(v_t), 'bingo_at', v_card.bingo_at));
+  else
+    v_out := v_out || jsonb_build_object('bingo', null);
+  end if;
+
+  -- Hemlig agent tonight. Only the agent sees the mission.
+  select * into v_a from public.game_agents a where a.group_id = p_group and a.night = v_night;
+  if found then
+    v_out := v_out || jsonb_build_object('agent', jsonb_build_object(
+      'active', true, 'is_me', v_a.agent = p_uid, 'mission', case when v_a.agent = p_uid then v_a.mission end,
+      'by', (select m.display_name from public.group_members m where m.group_id = p_group and m.user_id = v_a.started_by)));
+  else
+    v_out := v_out || jsonb_build_object('agent', null);
+  end if;
+
+  -- Hemlig agent last night: voting from 05:00, reveal when all voted or at 12:00.
+  begin
+    perform public.olnu_g_reveal(p_group, v_prev, p_now);
+  exception when others then
+    null;
+  end;
+  select * into v_a from public.game_agents a where a.group_id = p_group and a.night = v_prev;
+  if found then
+    select count(*) into v_n from public.game_agent_votes v where v.group_id = p_group and v.night = v_prev;
+    v_j := jsonb_build_object(
+      'revealed', v_a.revealed_at is not null, 'voting', v_a.revealed_at is null,
+      'reveal_at', ((v_prev at time zone 'Europe/Stockholm') + interval '7 hours') at time zone 'Europe/Stockholm',
+      'votes', v_n,
+      'needed', (select count(*) from public.group_members m where m.group_id = p_group and m.user_id <> v_a.agent),
+      'is_agent', v_a.agent = p_uid,
+      'my_vote', (select public.olnu_g_key(p_group, v.suspect) from public.game_agent_votes v
+                   where v.group_id = p_group and v.night = v_prev and v.voter = p_uid),
+      'mission', case when v_a.revealed_at is not null or v_a.agent = p_uid then v_a.mission end);
+    if v_a.revealed_at is not null then
+      v_j := v_j || jsonb_build_object(
+        'agent_name', (select m.display_name from public.group_members m where m.group_id = p_group and m.user_id = v_a.agent),
+        'agent_k', public.olnu_g_key(p_group, v_a.agent), 'correct', coalesce(v_a.correct, 0),
+        'correct_names', (select coalesce(jsonb_agg(m.display_name order by v.created_at), '[]'::jsonb)
+                            from public.game_agent_votes v
+                            join public.group_members m on m.group_id = p_group and m.user_id = v.voter
+                           where v.group_id = p_group and v.night = v_prev and v.suspect = v_a.agent),
+        'i_was_right', exists (select 1 from public.game_agent_votes v where v.group_id = p_group and v.night = v_prev
+                                 and v.voter = p_uid and v.suspect = v_a.agent));
+    end if;
+    v_out := v_out || jsonb_build_object('agent_prev', v_j);
+  else
+    v_out := v_out || jsonb_build_object('agent_prev', null);
+  end if;
+
+  -- Gissa kvällen: "Dagens orakel" = best guess last night.
+  begin
+    perform public.olnu_g_oracle(p_group, v_prev, p_now);
+  exception when others then
+    null;
+  end;
+  select o.*, m.display_name into v_a from public.game_oracles o
+    left join public.group_members m on m.group_id = p_group and m.user_id = o.user_id
+   where o.group_id = p_group and o.night = v_prev;
+  if found then
+    v_out := v_out || jsonb_build_object('oracle', jsonb_build_object(
+      'name', v_a.display_name, 'is_me', v_a.user_id = p_uid, 'guess', v_a.guess, 'real', v_a.real,
+      'err', round(v_a.err::numeric, 3), 'guessers', v_a.guessers));
+  else
+    v_out := v_out || jsonb_build_object('oracle', null);
+  end if;
+
+  if p_full then
+    -- Members (key for the agent vote), points, guesses.
+    select coalesce(jsonb_agg(jsonb_build_object('k', public.olnu_g_key(p_group, m.user_id), 'name', m.display_name,
+             'is_me', m.user_id = p_uid, 'out', public.olnu_g_live(m.user_id, v_night, p_now)) order by m.joined_at), '[]'::jsonb)
+      into v_j from public.group_members m where m.group_id = p_group;
+    v_out := v_out || jsonb_build_object('members', v_j);
+
+    select coalesce(jsonb_agg(jsonb_build_object('name', x.name, 'is_me', x.is_me, 'pts', x.pts) order by x.pts desc, x.name), '[]'::jsonb)
+      into v_j
+      from (select m.display_name as name, m.user_id = p_uid as is_me,
+                   (select count(*) from public.game_agent_votes v
+                      join public.game_agents a on a.group_id = v.group_id and a.night = v.night
+                     where v.group_id = p_group and v.voter = m.user_id and v.suspect = a.agent and a.revealed_at is not null)
+                   + 2 * (select count(*) from public.game_agents a
+                           where a.group_id = p_group and a.agent = m.user_id and a.revealed_at is not null
+                             and coalesce(a.correct, 0) = 0 and coalesce(a.votes, 0) >= 1) as pts
+              from public.group_members m where m.group_id = p_group) x
+     where x.pts > 0;
+    v_out := v_out || jsonb_build_object('points', v_j);
+
+    select coalesce(jsonb_agg(jsonb_build_object('name', m.display_name, 'is_me', m.user_id = p_uid,
+             'guess', g.guess, 'real', g.real, 'town', g.town) order by abs(g.guess - coalesce(g.real, 0))), '[]'::jsonb)
+      into v_j
+      from public.game_guesses g join public.group_members m on m.user_id = g.user_id and m.group_id = p_group
+     where g.night = v_prev;
+    v_out := v_out || jsonb_build_object('guesses_prev', v_j);
+
+    select coalesce(jsonb_agg(jsonb_build_object('name', m.display_name, 'is_me', m.user_id = p_uid) order by g.created_at), '[]'::jsonb)
+      into v_j
+      from public.game_guesses g join public.group_members m on m.user_id = g.user_id and m.group_id = p_group
+     where g.night = v_night;
+    v_out := v_out || jsonb_build_object('guessed', v_j);
+  end if;
+
+  return v_out || jsonb_build_object('night', v_night);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 6. Actions (internal versions take p_now; the RPCs below pass now())
+-- ---------------------------------------------------------------------------
+
+create or replace function public.olnu_g_water(p_uid uuid, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_f record;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('olnu_game:' || p_uid::text, 0));
+  insert into public.game_facts (user_id, night) values (p_uid, v_night) on conflict do nothing;
+  select * into v_f from public.game_facts f where f.user_id = p_uid and f.night = v_night;
+  if v_f.water_at is not null and v_f.water_at > p_now - interval '5 minutes' then
+    return jsonb_build_object('ok', false, 'water', v_f.water,
+      'wait_seconds', greatest(1, ceil(extract(epoch from (v_f.water_at + interval '5 minutes' - p_now)))::int));
+  end if;
+  if v_f.water >= 10 then
+    return jsonb_build_object('ok', false, 'water', v_f.water, 'wait_seconds', 0, 'reason', 'limit');
+  end if;
+  update public.game_facts f set water = f.water + 1, water_at = p_now where f.user_id = p_uid and f.night = v_night;
+  return jsonb_build_object('ok', true, 'water', v_f.water + 1, 'wait_seconds', 0);
+end;
+$$;
+
+-- "Jag är hemma": keeps the first press after tonight's first beer.
+create or replace function public.olnu_g_home(p_uid uuid, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_first timestamptz;
+  v_home  timestamptz;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('olnu_game:' || p_uid::text, 0));
+  select mn.first_at into v_first from public.medal_nights mn where mn.user_id = p_uid and mn.night = v_night;
+  insert into public.game_facts as f (user_id, night, home_at) values (p_uid, v_night, p_now)
+  on conflict (user_id, night) do update
+     set home_at = case when f.home_at is null or (v_first is not null and f.home_at < v_first) then excluded.home_at
+                        else f.home_at end
+  returning f.home_at into v_home;
+  return jsonb_build_object('ok', true, 'home_at', v_home);
+end;
+$$;
+
+create or replace function public.olnu_g_sugen(p_uid uuid, p_status text, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_s     text := lower(btrim(coalesce(p_status, '')));
+  v_old   record;
+begin
+  if v_s = '' then v_s := 'none'; end if;
+  if v_s not in ('sugen', 'kanske', 'inte', 'none') then
+    raise exception 'invalid_status';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_game:' || p_uid::text, 0));
+  select * into v_old from public.game_sugen s where s.user_id = p_uid and s.night = v_night;
+  if found then
+    if v_old.status = v_s then
+      return jsonb_build_object('status', case when v_s = 'none' then null else v_s end, 'changed', false);
+    end if;
+    if v_old.updated_at > p_now - interval '10 seconds' or v_old.changes >= 40 then
+      raise exception 'slow_down';
+    end if;
+  end if;
+  insert into public.game_sugen as s (user_id, night, status, updated_at) values (p_uid, v_night, v_s, p_now)
+  on conflict (user_id, night) do update set status = excluded.status, updated_at = excluded.updated_at, changes = s.changes + 1;
+  return jsonb_build_object('status', case when v_s = 'none' then null else v_s end, 'changed', true);
+end;
+$$;
+
+create or replace function public.olnu_g_crawl(p_uid uuid, p_group uuid, p_stops jsonb, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_stops jsonb;
+  v_n int; v_ids int; v_bad int;
+  v_id bigint;
+begin
+  if not public.olnu_g_member(p_group, p_uid) then
+    raise exception 'not_member';
+  end if;
+  if p_stops is null or jsonb_typeof(p_stops) <> 'array' or jsonb_array_length(p_stops) not between 2 and 6 then
+    raise exception 'invalid_crawl';
+  end if;
+  begin
+    select jsonb_agg(jsonb_build_object('id', x.id, 'name', x.name, 'lat', round(x.lat::numeric, 5)::float8,
+             'lng', round(x.lng::numeric, 5)::float8) order by x.ord),
+           count(*), count(distinct x.id),
+           count(*) filter (where x.id is null or char_length(x.id) not between 1 and 80
+                              or x.name is null or char_length(x.name) not between 1 and 60
+                              or x.lat is null or x.lng is null
+                              or x.lat not between 55.0 and 69.1 or x.lng not between 10.9 and 24.2)
+      into v_stops, v_n, v_ids, v_bad
+      from (select e.ord,
+                   btrim(e.v->>'id') as id,
+                   btrim(regexp_replace(regexp_replace(coalesce(e.v->>'name', ''), '[\x00-\x1F\x7F]', ' ', 'g'), '\s+', ' ', 'g')) as name,
+                   (e.v->>'lat')::float8 as lat, (e.v->>'lng')::float8 as lng
+              from jsonb_array_elements(p_stops) with ordinality e(v, ord)) x;
+  exception when others then
+    raise exception 'invalid_crawl';
+  end;
+  if v_bad > 0 or v_ids <> v_n then
+    raise exception 'invalid_crawl';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_game:' || p_uid::text, 0));
+  if exists (select 1 from public.game_crawls c where c.user_id = p_uid and c.created_at > p_now - interval '2 minutes'
+                                                  and c.created_at <= p_now) then
+    raise exception 'slow_down';
+  end if;
+  update public.game_crawls c set closed = true where c.group_id = p_group and c.night = v_night and not c.closed;
+  insert into public.game_crawls (group_id, user_id, night, stops, n, created_at)
+  values (p_group, p_uid, v_night, v_stops, v_n, p_now)
+  returning id into v_id;
+  return jsonb_build_object('id', v_id, 'n', v_n);
+end;
+$$;
+
+create or replace function public.olnu_g_start_agent(p_uid uuid, p_group uuid, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_a     record;
+  v_agent uuid;
+  v_out   int;
+begin
+  if not public.olnu_g_member(p_group, p_uid) then
+    raise exception 'not_member';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_agent:' || p_group::text, 0));
+  select * into v_a from public.game_agents a where a.group_id = p_group and a.night = v_night;
+  if found then
+    return jsonb_build_object('ok', true, 'already', true, 'is_me', v_a.agent = p_uid);
+  end if;
+  if (select count(*) from public.group_members m where m.group_id = p_group) < 3 then
+    raise exception 'not_enough';
+  end if;
+  select count(*) into v_out from public.group_members m
+   where m.group_id = p_group and public.olnu_g_outtonight(m.user_id, v_night);
+  if v_out < 2 then
+    raise exception 'not_enough';
+  end if;
+  select m.user_id into v_agent from public.group_members m
+   where m.group_id = p_group and public.olnu_g_outtonight(m.user_id, v_night)
+   order by random() limit 1;
+  insert into public.game_agents (group_id, night, agent, mission, started_by, created_at)
+  values (p_group, v_night, v_agent, floor(random() * 1000)::int, p_uid, p_now)
+  on conflict do nothing;
+  return jsonb_build_object('ok', true, 'already', false, 'is_me', v_agent = p_uid);
+end;
+$$;
+
+create or replace function public.olnu_g_vote(p_uid uuid, p_group uuid, p_member text, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_prev timestamptz := public.olnu_g_prev(public.olnu_night_of(p_now));
+  v_a    record;
+  v_s    uuid;
+  v_new  boolean;
+begin
+  if not public.olnu_g_member(p_group, p_uid) then
+    raise exception 'not_member';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_agent:' || p_group::text, 0));
+  perform public.olnu_g_reveal(p_group, v_prev, p_now);
+  select * into v_a from public.game_agents a where a.group_id = p_group and a.night = v_prev;
+  if not found or v_a.revealed_at is not null then
+    raise exception 'no_agent';
+  end if;
+  if v_a.agent = p_uid then
+    raise exception 'is_agent';
+  end if;
+  select m.user_id into v_s from public.group_members m
+   where m.group_id = p_group and public.olnu_g_key(p_group, m.user_id) = btrim(coalesce(p_member, ''));
+  if v_s is null or v_s = p_uid then
+    raise exception 'invalid_suspect';
+  end if;
+  insert into public.game_agent_votes (group_id, night, voter, suspect, created_at)
+  values (p_group, v_prev, p_uid, v_s, p_now)
+  on conflict do nothing;
+  v_new := found;
+  perform public.olnu_g_reveal(p_group, v_prev, p_now);
+  return jsonb_build_object('ok', true, 'already', not v_new,
+    'revealed', exists (select 1 from public.game_agents a where a.group_id = p_group and a.night = v_prev and a.revealed_at is not null));
+end;
+$$;
+
+create or replace function public.olnu_g_tick(p_uid uuid, p_group uuid, p_idx int, p_on boolean, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_card  record;
+  v_t     record;
+  v_ch    int;
+  v_arr   int[];
+  v_lines int;
+  v_new   boolean := false;
+  v_on    boolean := coalesce(p_on, true);
+begin
+  if not public.olnu_g_member(p_group, p_uid) then
+    raise exception 'not_member';
+  end if;
+  if p_idx is null or p_idx not between 0 and 8 then
+    raise exception 'invalid_idx';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_bingo:' || p_group::text, 0));
+  select * into v_card from public.game_bingo_cards b where b.group_id = p_group and b.night = v_night;
+  if not found then
+    raise exception 'no_card';
+  end if;
+  select * into v_t from public.game_bingo_ticks t where t.group_id = p_group and t.night = v_night and t.idx = p_idx;
+  if (v_on and coalesce(v_t.ticked, false)) or (not v_on and not coalesce(v_t.ticked, false)) then
+    null;   -- nothing to change
+  else
+    if not v_on and v_t.user_id <> p_uid then
+      raise exception 'not_yours';
+    end if;
+    select f.bingo_changes into v_ch from public.game_facts f where f.user_id = p_uid and f.night = v_night;
+    if coalesce(v_ch, 0) >= 100 then
+      raise exception 'slow_down';
+    end if;
+    insert into public.game_facts as f (user_id, night, bingo_changes) values (p_uid, v_night, 1)
+    on conflict (user_id, night) do update set bingo_changes = f.bingo_changes + 1;
+    insert into public.game_bingo_ticks as t (group_id, night, idx, user_id, ticked, updated_at)
+    values (p_group, v_night, p_idx, p_uid, v_on, p_now)
+    on conflict (group_id, night, idx) do update set user_id = excluded.user_id, ticked = excluded.ticked, updated_at = excluded.updated_at;
+  end if;
+  select array_agg(t.idx::int order by t.idx) into v_arr from public.game_bingo_ticks t
+   where t.group_id = p_group and t.night = v_night and t.ticked;
+  v_lines := public.olnu_g_lines(v_arr);
+  if v_lines > v_card.lines then
+    update public.game_bingo_cards b set lines = v_lines, bingo_at = coalesce(b.bingo_at, p_now)
+     where b.group_id = p_group and b.night = v_night;
+    v_new := true;
+  end if;
+  return jsonb_build_object('ok', true, 'ticked', to_jsonb(coalesce(v_arr, '{}'::int[])), 'lines', v_lines, 'new_bingo', v_new);
+end;
+$$;
+
+create or replace function public.olnu_g_guess(p_uid uuid, p_guess int, p_town text, p_lat float8, p_lng float8, p_now timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_night timestamptz := public.olnu_night_of(p_now);
+  v_close timestamptz := (public.olnu_evening(public.olnu_night_of(p_now))::timestamp + interval '21 hours') at time zone 'Europe/Stockholm';
+  v_town  text := left(btrim(regexp_replace(regexp_replace(coalesce(p_town, ''), '[\x00-\x1F\x7F]', ' ', 'g'), '\s+', ' ', 'g')), 40);
+  v_ch    int;
+begin
+  if p_now >= v_close then
+    raise exception 'too_late';
+  end if;
+  if p_guess is null or p_guess not between 0 and 20000 then
+    raise exception 'invalid_guess';
+  end if;
+  if p_lat is null or p_lng is null or p_lat <> p_lat or p_lng <> p_lng
+     or p_lat not between 55.0 and 69.1 or p_lng not between 10.9 and 24.2 then
+    raise exception 'outside_sweden';
+  end if;
+  if v_town = '' then v_town := 'Närområdet'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_game:' || p_uid::text, 0));
+  select g.changes into v_ch from public.game_guesses g where g.user_id = p_uid and g.night = v_night;
+  if coalesce(v_ch, 0) >= 20 then
+    raise exception 'slow_down';
+  end if;
+  insert into public.game_guesses as g (user_id, night, guess, town, lat, lng, created_at, updated_at)
+  values (p_uid, v_night, p_guess, v_town, round(p_lat::numeric, 2)::float8, round(p_lng::numeric, 2)::float8, p_now, p_now)
+  on conflict (user_id, night) do update
+     set guess = excluded.guess, town = excluded.town, lat = excluded.lat, lng = excluded.lng,
+         updated_at = excluded.updated_at, changes = g.changes + 1;
+  return jsonb_build_object('ok', true, 'guess', p_guess, 'town', v_town, 'closes_at', v_close);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 7. RPCs (authenticated only; not_authenticated without a session)
+-- ---------------------------------------------------------------------------
+
+-- game_poll() -> jsonb {v, server_time, night, me, groups:[summary + id, name]} (max 20 groups).
+create or replace function public.game_poll()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_now timestamptz := now();
+  v_me  jsonb;
+  v_gs  jsonb;
+begin
+  v_me := public.olnu_g_me(v_uid, v_now);
+  select coalesce(jsonb_agg(public.olnu_g_group(v_uid, x.id, v_now, false, null)
+                            || jsonb_build_object('id', x.id, 'name', x.name) order by x.created_at), '[]'::jsonb)
+    into v_gs
+    from (select g.id, g.name, g.created_at from public.groups g
+            join public.group_members m on m.group_id = g.id and m.user_id = v_uid
+           order by g.created_at limit 20) x;
+  return jsonb_build_object('v', 1, 'server_time', v_now, 'night', public.olnu_night_of(v_now), 'me', v_me, 'groups', v_gs);
+end;
+$$;
+
+-- game_group(p_group_id, p_bingo_n default 40) -> jsonb, full state for the group sheet. Error: not_member.
+create or replace function public.game_group(p_group_id uuid, p_bingo_n int default 40)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  return public.olnu_g_group(v_uid, p_group_id, now(), true, p_bingo_n)
+      || jsonb_build_object('id', p_group_id, 'name', (select g.name from public.groups g where g.id = p_group_id));
+end;
+$$;
+
+create or replace function public.game_water()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_water(v_uid, now()); end; $$;
+
+create or replace function public.game_home()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_home(v_uid, now()); end; $$;
+
+create or replace function public.set_sugen(p_status text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_sugen(v_uid, p_status, now()); end; $$;
+
+create or replace function public.create_crawl(p_group_id uuid, p_stops jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_crawl(v_uid, p_group_id, p_stops, now()); end; $$;
+
+-- close_crawl(p_crawl_id): the creator ends tonight's route. Error: crawl_not_found.
+create or replace function public.close_crawl(p_crawl_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin
+  update public.game_crawls c set closed = true
+   where c.id = p_crawl_id and c.user_id = v_uid and c.night = public.olnu_night_of(now());
+  if not found then
+    raise exception 'crawl_not_found';
+  end if;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+create or replace function public.start_agent(p_group_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_start_agent(v_uid, p_group_id, now()); end; $$;
+
+create or replace function public.vote_agent(p_group_id uuid, p_member text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_vote(v_uid, p_group_id, p_member, now()); end; $$;
+
+create or replace function public.tick_bingo(p_group_id uuid, p_idx int, p_on boolean default true)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_tick(v_uid, p_group_id, p_idx, p_on, now()); end; $$;
+
+create or replace function public.guess_night(p_guess int, p_town text, p_lat float8, p_lng float8)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin return public.olnu_g_guess(v_uid, p_guess, p_town, p_lat, p_lng, now()); end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 8. Medals
+--    uppdrag   Uppdragstagaren   missions done (stacks)
+--    uppdrag3  Fullt pådrag      nights with 3 of 3 missions (stacks)
+--    runda     Rundvandraren     finished pub crawls with 2+ own stops (stacks)
+--    detektiv  Detektiven        correct guesses of the secret agent (stacks)
+--    spion     Mästerspionen     agent and nobody guessed right (needs 1+ vote; stacks)
+--    orakel    Oraklet           best "Gissa kvällen" guess in a group (stacks)
+--    bingo     Bingo!            nights where a group card got a line and you ticked a square (stacks)
+-- ---------------------------------------------------------------------------
+create or replace function public.olnu_medal_eval_games(p_uid uuid)
+returns table (medal text, n int)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_m int := 0; v_m3 int := 0; v_r int := 0; v_d int := 0; v_s int := 0; v_o int := 0; v_b int := 0;
+begin
+  begin
+    select count(*) into v_m from public.game_missions gm where gm.user_id = p_uid and gm.done_at is not null;
+    select count(*) into v_m3 from (
+      select gm.night from public.game_missions gm where gm.user_id = p_uid and gm.done_at is not null
+       group by gm.night having count(*) >= 3) x;
+    select count(*) into v_r from public.game_crawls k
+     where k.done_at is not null
+       and k.group_id in (select m.group_id from public.group_members m where m.user_id = p_uid)
+       and (select count(*) from jsonb_array_elements(k.stops) s
+             where exists (select 1 from public.medal_checkins mc
+                            where mc.user_id = p_uid and mc.night = k.night and mc.bar_id = s->>'id')) >= 2;
+    select count(*) into v_d from public.game_agent_votes v
+      join public.game_agents a on a.group_id = v.group_id and a.night = v.night
+     where v.voter = p_uid and v.suspect = a.agent and a.revealed_at is not null;
+    select count(*) into v_s from public.game_agents a
+     where a.agent = p_uid and a.revealed_at is not null and coalesce(a.correct, 0) = 0 and coalesce(a.votes, 0) >= 1;
+    select count(*) into v_o from public.game_oracles o where o.user_id = p_uid;
+    select count(distinct c.night) into v_b from public.game_bingo_cards c
+     where c.bingo_at is not null
+       and exists (select 1 from public.game_bingo_ticks t
+                    where t.group_id = c.group_id and t.night = c.night and t.user_id = p_uid and t.ticked);
+  exception when others then
+    return;
+  end;
+  return query
+  select v.medal, v.n from (values
+    ('uppdrag', v_m), ('uppdrag3', v_m3), ('runda', v_r), ('detektiv', v_d),
+    ('spion', v_s), ('orakel', v_o), ('bingo', v_b)
+  ) as v(medal, n);
+end;
+$$;
+
+-- Same name and return type as 0012/0014. Byte-for-byte the same body as in 0018_after.sql, so the
+-- order the two files run in does not matter. Unions EVERY public function named
+-- olnu_medal_eval / olnu_medal_eval_<x>(uuid) returning (medal text, n int), so later
+-- rounds only add an eval function and never need to touch this one again. Counts never go down.
+create or replace function public.olnu_medal_store(p_uid uuid)
+returns table (medal text, count int, is_new bool, earned_at timestamptz)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_sql text;
+begin
+  select string_agg(format('select x.medal as m, x.n from public.%I($1) x', p.proname), ' union all ' order by p.proname)
+    into v_sql
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public' and p.proname ~ '^olnu_medal_eval(_[a-z0-9]+)?$'
+     and pg_get_function_identity_arguments(p.oid) = 'p_uid uuid'
+     and pg_get_function_result(p.oid) = 'TABLE(medal text, n integer)';
+  if v_sql is null then
+    return;
+  end if;
+  return query execute
+    'with ev as (' || v_sql || '),
+     e as (select ev.m, max(ev.n)::int as n from ev where ev.n >= 1 group by ev.m),
+     up as (
+       insert into public.user_medals as um (user_id, medal, count, earned_at, updated_at)
+       select $1, e.m, e.n, now(), now() from e
+       on conflict on constraint user_medals_pkey do update
+          set count = greatest(um.count, excluded.count), updated_at = now()
+        where excluded.count > um.count
+       returning um.medal, um.count, (um.earned_at = now()) as fresh, um.earned_at)
+     select up.medal, up.count, up.fresh, up.earned_at from up'
+  using p_uid;
+end;
+$$;
+
+-- olnu_g_anonymize(old, new): moves every game row of a user to another (random) user id and blanks
+-- what could point at a place. For "Radera allt om mig" (0016, the erase RPC): call
+--   perform public.olnu_g_anonymize(v_uid, v_new);
+-- next to the other anonymizing updates. Catches its own errors (a missing table never blocks the erase).
+create or replace function public.olnu_g_anonymize(p_old uuid, p_new uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  begin
+    update public.game_missions g set user_id = p_new where g.user_id = p_old;
+    update public.game_facts g set user_id = p_new where g.user_id = p_old;
+    update public.game_sugen g set user_id = p_new, status = 'none' where g.user_id = p_old;
+    update public.game_crawls g set user_id = p_new, closed = true where g.user_id = p_old;
+    update public.game_agents g set agent = p_new where g.agent = p_old;
+    update public.game_agents g set started_by = p_new where g.started_by = p_old;
+    update public.game_agent_votes g set voter = p_new where g.voter = p_old;
+    update public.game_agent_votes g set suspect = p_new where g.suspect = p_old;
+    update public.game_guesses g set user_id = p_new, town = 'Närområdet', lat = 0, lng = 0 where g.user_id = p_old;
+    update public.game_oracles g set user_id = p_new where g.user_id = p_old;
+    update public.game_bingo_ticks g set user_id = p_new where g.user_id = p_old;
+  exception when others then
+    null;
+  end;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 9. Grants
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  f text;
+  fns text[] := array[
+    'public.game_poll()',
+    'public.game_group(uuid, integer)',
+    'public.game_water()',
+    'public.game_home()',
+    'public.set_sugen(text)',
+    'public.create_crawl(uuid, jsonb)',
+    'public.close_crawl(bigint)',
+    'public.start_agent(uuid)',
+    'public.vote_agent(uuid, text)',
+    'public.tick_bingo(uuid, integer, boolean)',
+    'public.guess_night(integer, text, double precision, double precision)'
+  ];
+  internal text[] := array[
+    'public.olnu_g_prev(timestamptz)',
+    'public.olnu_g_key(uuid, uuid)',
+    'public.olnu_g_live(uuid, timestamptz, timestamptz)',
+    'public.olnu_g_outtonight(uuid, timestamptz)',
+    'public.olnu_g_real(timestamptz, double precision, double precision)',
+    'public.olnu_g_lines(integer[])',
+    'public.olnu_g_member(uuid, uuid)',
+    'public.olnu_g_progress(uuid, timestamptz, text, timestamptz)',
+    'public.olnu_g_assign(uuid, timestamptz, timestamptz)',
+    'public.olnu_g_me(uuid, timestamptz)',
+    'public.olnu_g_reveal(uuid, timestamptz, timestamptz)',
+    'public.olnu_g_oracle(uuid, timestamptz, timestamptz)',
+    'public.olnu_g_group(uuid, uuid, timestamptz, boolean, integer)',
+    'public.olnu_g_water(uuid, timestamptz)',
+    'public.olnu_g_home(uuid, timestamptz)',
+    'public.olnu_g_sugen(uuid, text, timestamptz)',
+    'public.olnu_g_crawl(uuid, uuid, jsonb, timestamptz)',
+    'public.olnu_g_start_agent(uuid, uuid, timestamptz)',
+    'public.olnu_g_vote(uuid, uuid, text, timestamptz)',
+    'public.olnu_g_tick(uuid, uuid, integer, boolean, timestamptz)',
+    'public.olnu_g_guess(uuid, integer, text, double precision, double precision, timestamptz)',
+    'public.olnu_medal_eval_games(uuid)',
+    'public.olnu_g_anonymize(uuid, uuid)',
+    'public.olnu_medal_store(uuid)'
+  ];
+begin
+  foreach f in array fns loop
+    execute format('revoke all on function %s from public', f);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on function %s from anon', f);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('grant execute on function %s to authenticated', f);
+    end if;
+  end loop;
+  foreach f in array internal loop
+    execute format('revoke all on function %s from public', f);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on function %s from anon', f);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('revoke all on function %s from authenticated', f);
+    end if;
+  end loop;
+end $$;
+
 -- ===== 0019_chat_likes.sql =====
 -- 0019 Chat likes (additive). A member can like any message in a group they are in (toggle).
 -- msg_likes(p_group_id, p_after_id) returns like counts + who liked, for live messages.
@@ -4938,3 +7417,34 @@ begin
   returning group_msgs.id, group_msgs.created_at into v_id, v_at;
   return json_build_object('id', v_id, 'created_at', v_at);
 end; $function$;
+
+-- ===== 0022_more_drinks.sql =====
+-- 0022 Grogg and bubbel. post_other_v2 accepts the old kinds plus 'grogg' and 'bubbel'.
+-- New kinds go through post_other('annat') (same cooldown and rules) and then set other_kind.
+create or replace function public.post_other_v2(p_kind text, p_lat double precision, p_lng double precision, p_precise boolean)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_kind text := lower(btrim(coalesce(p_kind, '')));
+  v_r    jsonb;
+begin
+  if v_kind not in ('rom', 'vin', 'cider', 'drink', 'shot', 'whisky', 'annat', 'grogg', 'bubbel') then
+    raise exception 'invalid_kind';
+  end if;
+  if v_kind in ('grogg', 'bubbel') then
+    v_r := public.post_other('annat', p_lat, p_lng, p_precise)::jsonb;
+    if (v_r->>'accepted')::boolean then
+      update public.beers set other_kind = v_kind where id = (v_r->>'id')::bigint and user_id = v_uid;
+      v_r := jsonb_set(v_r, '{other_kind}', to_jsonb(v_kind));
+    end if;
+    return v_r::json;
+  end if;
+  return public.post_other(v_kind, p_lat, p_lng, p_precise);
+end;
+$$;
+revoke all on function public.post_other_v2(text, double precision, double precision, boolean) from public, anon;
+grant execute on function public.post_other_v2(text, double precision, double precision, boolean) to authenticated;

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Krog-QR · Öl Nu</title>
+<meta name="description" content="Skriv ut en QR-affisch: skanna och checka in på krogen i Öl Nu.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="./favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+:root{
+  --night:#0a0f1c; --night-3:#18233a; --text:#ece6d6; --muted:#9aa3a0; --amber:#f5a623; --ink:#111522; --olive:#4b5636;
+  --display:"Black Ops One", Impact, system-ui, sans-serif; --hud:"Share Tech Mono", ui-monospace, Menlo, monospace;
+  --body:"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--night);color:var(--text);font-family:var(--body)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:14px 16px}
+.bar p{margin:0;color:var(--muted);font-size:14px;flex-basis:100%;text-align:center}
+.btn{min-height:46px;padding:0 18px;border:1px solid var(--amber);background:var(--amber);color:#241300;font:700 16px var(--body);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--amber)}
+.sheet{width:min(210mm,100% - 32px);margin:0 auto 24px;aspect-ratio:210/297;background:#fffdf6;color:var(--ink);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:7% 7% 6%;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.sheet::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(rgba(17,21,34,.045) 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,rgba(17,21,34,.045) 1px,transparent 1px) 0 0/24px 24px}
+.br{position:absolute;width:13%;aspect-ratio:1;border:0 solid var(--amber)}
+.br.tl{top:3.5%;left:3.5%;border-top-width:8px;border-left-width:8px}
+.br.tr{top:3.5%;right:3.5%;border-top-width:8px;border-right-width:8px}
+.br.bl{bottom:3.5%;left:3.5%;border-bottom-width:8px;border-left-width:8px}
+.br.brr{bottom:3.5%;right:3.5%;border-bottom-width:8px;border-right-width:8px}
+.top{position:relative;text-align:center;width:100%}
+.brand{font-family:var(--display);font-size:clamp(22px,5vw,46px);letter-spacing:.06em;color:var(--amber);-webkit-text-stroke:1px #a06200}
+.op{font-family:var(--hud);font-size:clamp(11px,2vw,16px);letter-spacing:.3em;color:var(--olive);margin-top:4px}
+.name{font-family:var(--display);font-size:clamp(26px,7.5vw,70px);line-height:1.02;margin:3% 0 0;overflow-wrap:anywhere}
+.qrbox{position:relative;width:62%;aspect-ratio:1;padding:3%;background:#fff;border:6px solid var(--ink);display:grid;place-items:center}
+.qrbox::after{content:"";position:absolute;inset:-16px;border:2px dashed rgba(17,21,34,.35);pointer-events:none}
+#qr,#qr canvas,#qr img{width:100% !important;height:100% !important;image-rendering:pixelated}
+.cta{position:relative;text-align:center;width:100%}
+.cta h2{font-family:var(--display);font-size:clamp(26px,7vw,64px);margin:0;letter-spacing:.02em}
+.steps{display:flex;justify-content:center;gap:4%;margin:2% 0 0;font-family:var(--hud);font-size:clamp(10px,1.9vw,16px);text-transform:uppercase;letter-spacing:.08em}
+.steps span b{color:var(--amber);-webkit-text-stroke:.5px #a06200}
+.fine{margin-top:2.5%;font-size:clamp(9px,1.6vw,13px);color:#5b6170}
+.err{max-width:560px;margin:40px auto;padding:20px;border:1px solid var(--amber);text-align:center}
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{background:#fff}
+  .bar{display:none}
+  .sheet{width:210mm;height:297mm;aspect-ratio:auto;margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="bar" id="bar">
+  <p id="hint">Skriv ut på A4 och sätt upp på krogen. Gästerna skannar och checkar in i Öl Nu (inom 300 m).</p>
+  <button class="btn" type="button" id="print">🖨️ Skriv ut</button>
+  <a class="btn ghost" id="back" href="./" style="display:inline-flex;align-items:center;text-decoration:none">← Till kartan</a>
+</div>
+<main id="out"></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  // The app lives next to this page (works whether Pages serves the repo root or docs/).
+  var APP = /^https?:$/.test(location.protocol) ? new URL("./", location.href).href.split("?")[0] : "https://tunela.github.io/Beer-map/docs/";
+  var p = new URLSearchParams(location.search);
+  var id = String(p.get("bar") || "").trim().slice(0, 80), given = String(p.get("n") || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 60);
+  var out = document.getElementById("out");
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  document.getElementById("print").addEventListener("click", function () { window.print(); });
+  if (!id) { out.appendChild(el("div", "err", "Ingen krog vald. Öppna en krog på kartan och tryck ”🖨️ Skriv ut QR-affisch”.")); document.getElementById("print").disabled = true; return; }
+  function load(url) { return fetch(url, { cache: "force-cache" }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }); }
+  Promise.all([load("./bars.json"), load("./bars-extra.json")]).then(function (res) {
+    var name = "";
+    res.forEach(function (list) { (Array.isArray(list) ? list : []).forEach(function (b) { if (b && String(b.id) === id && b.name) name = String(b.name); }); });
+    draw(name || given || "Krogen");
+  });
+  function draw(name) {
+    document.title = "Krog-QR · " + name;
+    var link = APP + "?bar=" + encodeURIComponent(id) + "&checkin=1";
+    var sheet = el("section", "sheet");
+    ["tl", "tr", "bl", "brr"].forEach(function (c) { sheet.appendChild(el("span", "br " + c)); });
+    var top = el("div", "top");
+    top.appendChild(el("div", "brand", "ÖL NU"));
+    top.appendChild(el("div", "op", "// OPERATION INCHECKNING //"));
+    top.appendChild(el("h1", "name", name));
+    sheet.appendChild(top);
+    var box = el("div", "qrbox"), q = el("div"); q.id = "qr"; box.appendChild(q); sheet.appendChild(box);
+    var cta = el("div", "cta");
+    cta.appendChild(el("h2", null, "SKANNA & CHECKA IN"));
+    var st = el("div", "steps");
+    [["1", "Skanna"], ["2", "Öppna Öl Nu"], ["3", "Du é incheckad"]].forEach(function (s) {
+      var sp = el("span"); var b = el("b", null, s[0] + " "); sp.appendChild(b); sp.appendChild(document.createTextNode(s[1])); st.appendChild(sp);
+    });
+    cta.appendChild(st);
+    cta.appendChild(el("div", "fine", "Live ölkarta över Sverige · Gratis · 18 år · Drick lagom 💧"));
+    sheet.appendChild(cta);
+    out.appendChild(sheet);
+    try {
+      new QRCode(q, { text: link, width: 600, height: 600, colorDark: "#111522", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+    } catch (e) { q.appendChild(el("div", null, link)); }
+    q.title = link;
+  }
+})();
+</script>
+</body>
+</html>

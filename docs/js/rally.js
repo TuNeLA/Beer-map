@@ -38,6 +38,18 @@
       refreshOpenSheet();
     });
   }
+  // v13 poll_v2 carries the my_rallies rows: no extra call per poll.
+  var fromPoll = false;
+  function fromPollData(d) {
+    if (!d || !Array.isArray(d.rallies)) { fromPoll = false; return; }
+    fromPoll = true;
+    var was = state;
+    state = "on";
+    rallies = d.rallies.filter(function (x) { return x && x.id != null; });
+    renderBanner(); drawFlags();
+    if (was !== "on") A.updateCounts();
+    refreshOpenSheet();
+  }
   function hidden() { var h = U.ls.getJSON(HIDE_KEY, []); return Array.isArray(h) ? h : []; }
   function hide(id) { var h = hidden(); if (h.indexOf(String(id)) < 0) h.push(String(id)); U.ls.setJSON(HIDE_KEY, h.slice(-50)); }
   function byId(id) { for (var i = 0; i < rallies.length; i++) if (String(rallies[i].id) === String(id)) return rallies[i]; return null; }
@@ -372,8 +384,9 @@
       window.addEventListener("resize", U.debounce(setH, 150));
     },
     applyText: function () { renderBanner(); },
-    onAuthed: function () { load(); },
-    onPoll: function () { load(); padPopups(); },
+    onAuthed: function () {},   // v14: the first poll brings the rallies (poll_v2) or onPoll loads them
+    onPollData: function (d) { if (A && state !== "off") fromPollData(d); else fromPoll = false; },
+    onPoll: function () { if (!fromPoll) load(); padPopups(); },
     hudChipsHTML: function () {
       return state === "on" ? '<button type="button" class="hx-chip hx-rally" data-hx="rally">' + esc(t("rallyBtn")) + "</button>" : "";
     },

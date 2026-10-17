@@ -1,0 +1,77 @@
+/* Öl Nu v16 EFTERÅT (js/after.js). Uses the variables from styles.css. */
+
+/* 5. Högtidsläge: accent ring on the ÖL! button + emoji badge */
+.af-hol .beer-btn{box-shadow:0 0 0 3px var(--af-hol,var(--amber)),0 0 26px var(--af-hol,var(--amber)),inset 0 -8px 18px rgba(0,0,0,.25)}
+.af-hol .cd-track{stroke:var(--af-hol,var(--amber));stroke-opacity:.35}
+.af-hol .tk-live{background:var(--af-hol,var(--red));color:#0a0f1c}
+.af-hol-e{position:absolute;right:-6px;top:-4px;z-index:3;min-width:30px;height:30px;padding:0 5px;display:grid;place-items:center;font-size:16px;line-height:1;
+  background:var(--night-2);border:2px solid var(--af-hol,var(--amber));border-radius:16px;pointer-events:none;white-space:nowrap;
+  box-shadow:0 0 10px var(--af-hol,var(--amber))}
+@media (prefers-reduced-motion:no-preference){.af-hol-e{animation:af-bob 3.2s ease-in-out infinite}}
+@keyframes af-bob{50%{transform:translateY(-3px)}}
+
+/* HUD chip (max one): 🚑 buddy check / 🌯 kebab */
+.af-chip-med{border-color:var(--red) !important;color:#fff !important;background:rgba(179,18,27,.55) !important}
+@media (prefers-reduced-motion:no-preference){.af-chip-med{animation:af-pulse 1.6s ease-in-out infinite}}
+@keyframes af-pulse{50%{box-shadow:0 0 0 4px rgba(255,59,59,.25)}}
+
+/* 1. Kom hem säkert */
+.af-home{display:inline-block;margin-top:2px;font-family:var(--hud);font-size:12px;color:var(--muted)}
+.af-home.ok{color:var(--green)}
+.af-missing{margin:0 0 12px;padding:12px 12px;border:1px solid rgba(61,220,132,.45);background:rgba(31,164,92,.12)}
+.af-missing-t{font-weight:700;margin-bottom:4px}
+
+/* 2. Jag kollar (popup) */
+.af-med{margin-top:6px;font-size:13px;color:var(--green);font-weight:700}
+.af-med-btn{display:block;width:100%;margin-top:8px;min-height:40px;border:1px solid var(--green);background:rgba(31,164,92,.18);color:#d8ffe9;font-weight:700;cursor:pointer}
+.af-med-btn:disabled{opacity:.6}
+
+/* 3 + 4. Cards */
+.af-lead{font-size:16px;font-weight:600;margin:4px 0 10px}
+.af-tip{color:var(--green);margin:10px 0 0}
+.af-card-cv{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;border:1px solid var(--line)}
+.af-story{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:none}
+.af-story::-webkit-scrollbar{display:none}
+.af-scard{flex:0 0 100%;scroll-snap-align:center;min-height:300px;padding:18px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:linear-gradient(160deg,rgba(199,125,255,.16),rgba(16,24,38,.95) 60%);border:1px solid rgba(199,125,255,.45)}
+.af-sn{align-self:flex-end;font-family:var(--hud);font-size:12px;color:var(--muted)}
+.af-se{font-size:52px;line-height:1.1}
+.af-sbig{font-family:var(--display);font-size:clamp(26px,9vw,44px);color:#ecd9ff;line-height:1.1;margin:6px 0 2px;overflow-wrap:anywhere}
+.af-ssmall{font-family:var(--hud);text-transform:uppercase;color:var(--muted);font-size:13px;letter-spacing:.06em}
+.af-sline{margin:12px 0 4px;font-size:15px}
+.af-sextra{font-family:var(--hud);font-size:12px;color:var(--gold)}
+.af-dots{display:flex;justify-content:center;gap:6px;margin:6px 0}
+.af-dots span{width:8px;height:8px;border-radius:50%;background:var(--line-soft)}
+.af-dots span.on{background:#c77dff}
+.af-swipe{text-align:center;margin:0 0 6px;font-size:12px}
+
+/* 6. Röstskål */
+.chat-input .af-mic{flex:0 0 auto;width:48px;min-height:48px;border:1px solid var(--line);background:var(--night-3);font-size:20px;cursor:pointer;position:relative;
+  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.chat-input .af-mic.rec{background:var(--red-d);border-color:var(--red)}
+.chat-input .af-mic:disabled{opacity:.5}
+.af-rec-t{position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font:700 12px/20px var(--hud);text-align:center}
+.af-play{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--line);background:rgba(245,166,35,.12);color:var(--text);font-weight:700;cursor:pointer}
+.af-play.on{background:var(--amber);color:#241300}
+
+/* 7. Stad mot stad */
+.af-league{margin-top:14px}
+.af-llist{list-style:none;margin:0;padding:0}
+.af-lnote{font-size:12px;margin-top:6px}
+
+/* 8 + 9. Bar popup: stammis + QR link */
+.af-stam:empty{display:none}
+.af-stam{margin-top:6px;font-size:13px}
+.af-stam-l{color:var(--gold);font-weight:700}
+.af-stam-me{font-size:12px}
+.af-qr{display:inline-block;margin-top:8px;font-size:12px;color:var(--amber-2);text-decoration:underline;text-underline-offset:2px}
+
+/* 10. Kebab-radar */
+.af-kebab{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.af-krow{width:100%;display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 10px;border:1px solid var(--line-soft);background:var(--night-3);text-align:left;cursor:pointer}
+.af-ke{font-size:22px}
+.af-kmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.af-kname{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.af-ksub{font-family:var(--hud);font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.af-ksub.open{color:var(--green)}
+.af-kd{font-family:var(--hud);font-size:12px;color:var(--amber-2);white-space:nowrap}

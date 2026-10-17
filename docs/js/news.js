@@ -75,6 +75,19 @@
     } catch (e) { return []; }
   }
 
+  /* ---------- Categories for the mix ---------- */
+  var GENERAL = { random: 1, total: 1, t1: 1, t2: 1, t3: 1, t4: 1, t5: 1 };
+  var TOWN = { barReport: 1, barRate: 1, barRateHigh: 1, barStranger: 1, checkinCrowd: 1, anon: 1, anonSidetrack: 1,
+    calm: 1, forecast: 1, takeover: 1, queueLong: 1, queueNone: 1, hot: 1, med: 1, chaos: 1 };
+  function catOf(x) {
+    var cls = " " + (x.cls || "") + " ", k = String(x.k || "");
+    if (cls.indexOf(" tk-friend ") >= 0 || cls.indexOf(" tk-me ") >= 0 || /^(group|me[A-Z]|friend)/.test(k)) return "group";
+    if (GENERAL[k]) return "general";
+    if (TOWN[k]) return "town";
+    var d = x.d || {};
+    return d.bar || d.stad || d.where ? "town" : "general";
+  }
+
   /* ---------- Build one cycle ---------- */
   // ctx: {center:{lat,lng}, now:Date, prev:[texts of last cycle], titles, others, checkins (v10: live_checkins rows)}
   // Returns [{text, cls}] — max 6, shuffled, no text twice, first item never the last cycle's last item.
@@ -166,7 +179,8 @@
     (ctx.others || []).forEach(function (b) {
       if (!b || (b.other_count | 0) < 1) return;
       var drink = nat[b.other_kind] || nat.annat || "?";
-      var key = String(b.id != null ? b.id : b.beer_id), seen = sideSeen[key];
+      // Strangers' ids rotate every 10 min: key them by spot + drink instead.
+      var key = b.is_mine || b.friend_name ? String(b.id != null ? b.id : b.beer_id) : "s:" + (b.bar_id || (+b.lat).toFixed(4) + "," + (+b.lng).toFixed(4)) + ":" + (b.other_kind || ""), seen = sideSeen[key];
       if (!seen || (b.other_count | 0) > seen.n) seen = sideSeen[key] = { n: b.other_count | 0, at: nowT };
       var fresh = nowT - seen.at < SIDE_FRESH_MS;
       if (!fresh && Math.random() > 0.12) return;
@@ -256,17 +270,22 @@
       if (!text || seen[text]) return;
       if (usedId) { recentUsed.push(usedId); if (recentUsed.length > 60) recentUsed.shift(); }
       seen[text] = true;
-      items.push({ text: text, cls: x.cls, imp: x.imp, old: prev.indexOf(text) >= 0, r: Math.random() });
+      items.push({ text: text, cls: x.cls, imp: x.imp, k: x.k, d: x.d, old: prev.indexOf(text) >= 0, r: Math.random() });
     });
-    // Mix: max 2 streak alerts, max 2 named highlights, the rest from the other news (new texts before old ones).
-    items.sort(function (a, b) { return b.imp - a.imp || (a.old - b.old) || a.r - b.r; });
-    var out = [], cap = { 3: 2, 2: 2 }, used = {}, rest = [];
-    items.forEach(function (x) {
-      if (cap[x.imp] && (used[x.imp] | 0) < cap[x.imp]) { used[x.imp] = (used[x.imp] | 0) + 1; out.push(x); }
-      else rest.push(x);
-    });
-    rest.sort(function (a, b) { return (a.old - b.old) || a.r - b.r; });
-    out = out.concat(rest).slice(0, MAX_ITEMS);
+    // v14 mix (owner): the ticker is MOSTLY about the user's own groups.
+    //  group = tk-friend / tk-me items and kinds starting with "group" or "me" → up to ~4 of 6 slots;
+    //  town  = things near the user (bars, rates, check-in crowds, chaos, anonymous town lines);
+    //  general = random filler, country total, time of day.
+    // A quiet group (0–1 items) leaves most slots to town news, then general. No text twice.
+    var by = function (a, b) { return b.imp - a.imp || (a.old - b.old) || a.r - b.r; };
+    var grp = [], town = [], gen = [];
+    items.forEach(function (x) { (catOf(x) === "group" ? grp : catOf(x) === "town" ? town : gen).push(x); });
+    grp.sort(by); town.sort(by); gen.sort(function (a, b) { return (a.old - b.old) || a.r - b.r; });
+    var out = grp.splice(0, Math.min(grp.length, 4));
+    var room = MAX_ITEMS - out.length - (gen.length ? 1 : 0);
+    out = out.concat(town.splice(0, Math.max(0, room)));
+    [gen, grp, town].forEach(function (list) { while (out.length < MAX_ITEMS && list.length) out.push(list.shift()); });
+    out = out.slice(0, MAX_ITEMS);
     shuffle(out);
     var lastText = prev.length ? prev[prev.length - 1] : null;
     if (out.length > 1 && out[0].text === lastText) out.push(out.shift());

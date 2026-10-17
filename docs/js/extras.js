@@ -244,7 +244,7 @@
   /* ---------- Annan drink / sidospår (v8, Q) ---------- */
   var OTHER_CD_KEY = "olnu.otherCd", OTHER_MS = 10 * 60 * 1000, OTHER_RING = 2 * Math.PI * 27;
   var otherTimer = null, otherBusy = false, otherMissing = false;
-  var KINDS = ["rom", "vin", "cider", "drink", "shot", "whisky", "annat"];
+  var KINDS = ["rom", "vin", "cider", "drink", "shot", "whisky", "grogg", "bubbel", "annat"];
   function otherLeft() { var end = +U.ls.get(OTHER_CD_KEY, "0") || 0; return Math.max(0, end - Date.now()); }
   function applyOther() {
     var wrap = $("other-wrap"); if (!wrap) return;
@@ -294,7 +294,15 @@
     window.FX.unlock(); window.FX.vibrate(20);
     var kinds = t("kinds") || {};
     A.getPosition().then(function (pos) {
-      return A.rpc("post_other", { p_kind: kind, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: A.prec() === "exact" }).then(function (r) {
+      var prm = { p_kind: kind, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: A.prec() === "exact" };
+      // post_other_v2 knows grogg/bubbel (0022). Old server: fall back to post_other ("annat" for the new kinds).
+      return A.rpc("post_other_v2", prm).then(function (r) {
+        if (r.error && U.missing(r.error)) {
+          var old = { p_kind: kind === "grogg" || kind === "bubbel" ? "annat" : kind, p_lat: prm.p_lat, p_lng: prm.p_lng, p_precise: prm.p_precise };
+          return A.rpc("post_other", old);
+        }
+        return r;
+      }).then(function (r) {
         if (r.error) {
           if (U.missing(r.error)) { otherMissing = true; A.toast(t("postFail"), { err: true }); return; }
           A.toast(U.errCode(r.error) === "invalid_kind" ? t("invalidKind") : A.errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
@@ -319,6 +327,12 @@
         window.FX.sound.clink(); window.FX.vibrate([30, 40, 30]);
         var l = getLog(); l.others = Math.max((l.others | 0) + 1, d.other_count | 0); saveLog(l);
         award("side");
+        // v14 (owner): all drinks count – HOT STREAK / MEDEVAC at 5 / 10 drinks, water and "ta det lugnt" too.
+        var total = Math.max(0, d.beer_count | 0) + Math.max(0, d.other_count | 0);
+        if (A.drinkFx && total > 0) A.drinkFx(total, total - 1);
+        if (total > 0 && total % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
+          action: MED() && MED().on() ? { label: I.lang === "en" ? "💧 Done" : "💧 Druckit vatten", fn: function () { MED().waterTaken(); } } : null }, 2600);
+        if (MED() && MED().noteBeer) MED().noteBeer();
         if (ghostOn()) { toastLater(t("ghostToast"), {}, 1500); A.rpc("stop_beer").then(function () { A.refresh(); }); }
         var la = isFinite(d.lat) ? +d.lat : pos.coords.latitude, ln = isFinite(d.lng) ? +d.lng : pos.coords.longitude;
         A.setLastLoc(la, ln); A.map.setView([la, ln], Math.max(A.map.getZoom(), 15));
@@ -352,7 +366,8 @@
       saveLog(l);
       var nights = addNight(l.key);
       // Water first: it is the important one. Badge toasts queue after it.
-      if (n > 0 && n % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
+      var tot = o.total != null ? o.total | 0 : n;   // v14: all drinks count
+      if (tot > 0 && tot % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
         action: MED() && MED().on() ? { label: I.lang === "en" ? "💧 Done" : "💧 Druckit vatten", fn: function () { MED().waterTaken(); } } : null }, 2600);
       if (MED()) MED().onBeerAccepted(d, o);
       award("first");
@@ -364,8 +379,8 @@
       var h = U.hourSthlm();
       if (h >= 5 && h < 18) award("early");
       if (h >= 2 && h < 5) award("owl");
-      if (n >= 5) award("hot");
-      if (n >= 10) award("med");
+      if (tot >= 5) award("hot");
+      if (tot >= 10) award("med");
       if (nights >= 3) award("week");
       if (o.ghost) { award("ghost"); toastLater(t("ghostToast"), {}, 1200); }
       A.updateCounts();

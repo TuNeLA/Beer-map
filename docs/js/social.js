@@ -51,7 +51,12 @@
     statsAt = Date.now();
     return call("my_stats").then(function (r) {
       if (r.error) return;   // missing → v7=false (onMissing); network error → try again later
-      var d = A.parseData(r.data);
+      applyStats(A.parseData(r.data));
+    }).then(function () { if (statsDone) { statsDone(); statsDone = null; } });
+  }
+  // v13: poll_v2 "me" carries the my_stats fields, so no extra call is needed.
+  function applyStats(d) {
+    {
       v7 = true;
       var total = Math.max(0, d.total | 0), tf = titleFor(total);
       stats = { total: total, week: d.week | 0, title: d.title || tf.title,
@@ -65,7 +70,7 @@
       var grew = beforeTotal !== "" && total > (+beforeTotal || 0);
       if (before && before !== stats.title && (grew || !ladderNew)) promoted(stats.title, before, total);
       else if (ladderNew && before && before !== stats.title) A.toast(t("ladderNew", stats.title), { cls: "promo", ms: 6500 });
-    }).then(function () { if (statsDone) { statsDone(); statsDone = null; } });
+    }
   }
   function promoted(title, oldTitle, total) {
     if (window.MEDALS && window.MEDALS.levelUp) {
@@ -84,7 +89,9 @@
 
   // Friends' lifetime totals (beer id -> total). Strangers are never returned by the server.
   var totals = {}, totalsAt = 0, totalsIds = "";
+  var pollData = false;   // true while poll_v2 delivers stats, reactions and totals
   function loadTotals(force) {
+    if (pollData) return;
     if (v7 !== true || off.friend_totals) return;
     var ids = A.beers().filter(function (b) { return b.friend_name; }).map(function (b) { return b.id; }).sort().join(",");
     if (!force && ids === totalsIds && Date.now() - totalsAt < 120000) return;
@@ -182,6 +189,7 @@
   /* ---------- Reaktioner (L) ---------- */
   var RX = ["🔥", "😂", "💀", "💪"], rx = {};
   function loadRx() {
+    if (pollData) return;
     if (v7 !== true || off.beer_reactions) return;
     call("beer_reactions").then(function (r) {
       if (r.error) return;
@@ -230,7 +238,12 @@
     if (!b || button.disabled || off.react) return;
     button.disabled = true;
     window.FX.unlock();
-    call("react", { p_beer_id: b.id, p_emoji: e }).then(function (r) {
+    var go = pollData && !off.react_v2 ? call("react_v2", { p_pin: String(b.id), p_emoji: e }).then(function (r) {
+      if (r.error && r.off) return call("react", { p_beer_id: b.id, p_emoji: e });
+      if (r.error && codeOf(r.error) === "beer_not_found") return Promise.resolve(A.refresh(true)).then(function () { return r; });
+      return r;
+    }) : call("react", { p_beer_id: b.id, p_emoji: e });
+    go.then(function (r) {
       button.disabled = false;
       if (r.error) {
         var c = codeOf(r.error);
@@ -377,7 +390,7 @@
       }
       function beersText(m) {
         var s = statOf(m); if (!s) return "";
-        return s.beers + " 🍺" + (s.others ? " · " + s.others + " 🥃" : "");
+        return (s.beers + s.others) + " 🍺";   // v14: all drinks, total only
       }
       function paintHeads() {
         heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.textContent = beersText(h.m); });
@@ -402,6 +415,8 @@
       body.appendChild(el("p", { class: "muted chat-note", text: t("chatNote") }));
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       function alive() { return document.body.contains(list); }
+      // v16: voice skål (js/after.js) adds a mic button and voice rows to this chat.
+      try { if (window.AFTER && window.AFTER.chatOpen) window.AFTER.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
       function add(m) {
         if (!m || seen[m.id]) return;
         seen[m.id] = 1;
@@ -417,7 +432,7 @@
         // Each person gets their own colour (same name = same colour every time). Me = gold (CSS).
         var col = m.is_me ? null : chatColor(m.name || "");
         if (col) nmEl.style.color = col;
-        list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "" }, [
+        list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "", "data-at": String(m.created_at || "") }, [
           el("div", { class: "cm-head" }, [nmEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") }),
@@ -572,8 +587,9 @@
           return;
         }
         var kinds = t("kindLow") || {}, rowsByName = {}, meRow = null;
-        (r.data || []).forEach(function (m) {
-          var beers = Math.max(0, m.beers | 0), others = Math.max(0, m.others | 0), parts = [];
+        var tot = function (m) { return Math.max(0, m.beers | 0) + Math.max(0, m.others | 0); };
+        (r.data || []).slice().sort(function (a, b) { return tot(b) - tot(a); }).forEach(function (m) {
+          var beers = Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), others = 0, parts = [];   // v14: all drinks count, total only
           if (beers) parts.push(beers + " 🍺");
           if (others) parts.push(others + " 🥃 " + (kinds[m.other_kind] || kinds.annat || ""));
           var tf = titleFor(m.total | 0);
@@ -588,6 +604,7 @@
             el("span", { class: "st-n", text: parts.length ? parts.join(" · ") : t("statusNone") })
           ]);
           list.appendChild(row);
+          try { if (window.AFTER && window.AFTER.statusRow) window.AFTER.statusRow(g, m, row); } catch (e) {}   // v16: 🏠 home tonight
           if (m.is_me) meRow = medEl; else if (m.name) (rowsByName[m.name] = rowsByName[m.name] || []).push(medEl);
           if (medalsOn()) {
             row.classList.add("st-tap"); row.setAttribute("role", "button"); row.setAttribute("tabindex", "0");
@@ -731,15 +748,34 @@
       map.on("moveend", U.debounce(function () { loadKings(); applyGhost(); }, 800));
     },
     applyText: function () { applyGhost(); },
-    onAuthed: function () {
-      loadStats().then(function () { if (v7 === true) window.SOCIAL.onPoll(); });
+    // v13 poll_v2: stats ("me"), reactions (pins[].rx/my_rx) and lifetime totals (pins[].total) in one call.
+    onPollData: function (d) {
+      if (!d || !Array.isArray(d.pins)) { pollData = false; return; }
+      pollData = true;
+      if (d.me && d.me.title !== undefined) { statsAt = Date.now(); applyStats(d.me); if (statsDone) { statsDone(); statsDone = null; } }
+      var m = {}, tm = {};
+      d.pins.forEach(function (p) {
+        var key = String(p.id);
+        if (p.total != null) tm[key] = Math.max(0, p.total | 0);
+        if (!p.rx && !p.my_rx) return;
+        var o = {}, mine = Array.isArray(p.my_rx) ? p.my_rx : [];
+        RX.forEach(function (e) {
+          var n = Math.max(0, (p.rx || {})[e] | 0);
+          if (n || mine.indexOf(e) >= 0) o[e] = { n: n, mine: mine.indexOf(e) >= 0 };
+        });
+        m[key] = o;
+      });
+      rx = m; totals = tm; totalsAt = Date.now();
+      updateOpenRx();
     },
+    // v14: no calls here; the first poll brings the stats (poll_v2 "me"), or onPoll loads them (old server).
+    onAuthed: function () {},
     onPoll: function () {
       if (!A) return;
       if (v7 === null && A.authed() && !off.my_stats && Date.now() - statsAt > 60000) loadStats();
       if (v7 !== true) return;
       loadRx(); loadKings(); loadTotals(false); loadGhosts(); applyGhost();
-      if (Date.now() - statsAt > 5 * 60000) loadStats();
+      if (!pollData && Date.now() - statsAt > 5 * 60000) loadStats();
     },
     onBeerAccepted: function (d, o) {
       if (v7 !== true) return;

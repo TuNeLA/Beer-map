@@ -1,0 +1,17 @@
+/* Öl Nu v14 — undo toast, place markers, privacy page, "Var dricker du?" places. */
+.toast.undo{max-width:460px;padding:12px 12px 12px 16px;font-size:16px;border-color:var(--amber-2);box-shadow:0 0 0 2px rgba(245,166,35,.35),0 12px 30px #000c}
+.toast.undo .btn{min-height:44px;min-width:96px;font-size:15px;font-weight:800;letter-spacing:.06em;background:var(--amber);border-color:var(--amber);color:#241300}
+.toast.undo.undo-mini{font-size:13px;padding:6px 8px 6px 12px;opacity:.92;box-shadow:0 6px 18px #000a}
+.toast.undo.undo-mini .btn{min-height:36px;min-width:72px;font-size:12px}
+.toast.undo.hot{border-color:var(--fire)}
+.toast.undo.med{background:var(--red-d);color:#fff}
+.bar-ico.place-ico{font-size:12px;border-color:var(--amber-2);line-height:1}
+.where-sub{margin:14px 0 0;font-size:12.5px;text-transform:uppercase;letter-spacing:.08em}
+.btn.where-place{border-style:dashed}
+.pp-hide{margin-top:8px}
+.priv-list{margin:0 0 6px;padding-left:20px;line-height:1.45}
+.priv-list li{margin:4px 0}
+.intro-privlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--amber-2);text-decoration:underline;font:inherit;font-size:14px;min-height:44px;cursor:pointer}
+.intro-privtext{max-height:56vh;max-height:56dvh;overflow:auto;text-align:left;font-size:14px;margin-bottom:12px}
+.intro-privtext h3{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--amber);margin:14px 0 6px}
+.home-state{margin:4px 0 8px;font-weight:700}

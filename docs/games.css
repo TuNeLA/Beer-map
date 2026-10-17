@@ -1,0 +1,135 @@
+/* Öl Nu v15 LEK (js/games.js): missions, pub crawl, secret agent, guess the night, night bingo, sugen-status.
+   Uses the theme variables from styles.css only. Tuned for a 360 px phone. */
+
+/* ---------- HUD chip (the only new chip) ---------- */
+.hx-chip.gm-chip{color:var(--amber-2)}
+.hx-chip.gm-chip.all{color:#00260f;background:var(--green);border-color:var(--green);font-weight:700}
+
+/* ---------- Shared ---------- */
+.gm{font-size:14px}
+.gm h3{margin-top:14px}
+.gm-top{display:flex;justify-content:flex-start;margin-bottom:6px}
+.gm-note{font-size:12.5px;color:var(--muted);line-height:1.4;margin:6px 0}
+.gm-row{display:flex;gap:6px;margin-top:8px}
+.gm-row>.btn{flex:1 1 0;min-width:0;padding:0 8px}
+.gm-done{display:inline-block;font-family:var(--hud);font-size:12.5px;color:#00260f;background:var(--green);padding:3px 8px;margin:4px 0}
+.gm-card{border:1px solid var(--line-soft);border-left:3px solid var(--gold);background:rgba(255,224,138,.05);padding:9px 10px;margin:6px 0 10px}
+.gm-reveal{font-weight:700;color:var(--gold);line-height:1.35}
+.gm-agm{font-size:13px;margin-top:4px;color:var(--text)}
+
+/* ---------- Missions ---------- */
+.gm-ms{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gm-m{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;background:var(--night);border:1px solid var(--line-soft);border-left:3px solid var(--amber)}
+.gm-m.done{border-left-color:var(--green);background:rgba(61,220,132,.06)}
+.gm-m-e{font-size:20px;line-height:1.2;flex:0 0 auto;width:24px;text-align:center}
+.gm-m-b{flex:1 1 auto;min-width:0}
+.gm-m-t{font-size:13.5px;line-height:1.35;overflow-wrap:anywhere}
+.gm-m.done .gm-m-t{color:#c9ffd9}
+.gm-m-p{display:flex;align-items:center;gap:8px;margin-top:6px}
+.gm-bar{flex:1 1 auto;height:6px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+.gm-bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width .3s}
+.gm-m.done .gm-bar>span{background:var(--green)}
+.gm-m-n{font-family:var(--hud);font-size:12px;color:var(--amber-2);flex:0 0 auto}
+.gm-water{margin-top:7px;min-height:36px;border-color:#4aa3ff;color:#cfe6ff}
+.gm-glinks{display:flex;flex-wrap:wrap;gap:6px}
+.gm-glinks>.btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- Sugen ---------- */
+.gm-seg{display:flex;gap:5px}
+.gm-sb{flex:1 1 0;min-width:0;min-height:42px;padding:0 4px;border:1px solid var(--line);background:var(--night-3);color:var(--text);
+  font-family:var(--body);font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm-sb.on.s-sugen{background:var(--amber);border-color:var(--amber);color:#241300}
+.gm-sb.on.s-kanske{background:var(--olive);border-color:var(--olive);color:#fff}
+.gm-sb.on.s-inte{background:#3a4560;border-color:#56627e;color:#fff}
+.gm-sb:disabled{opacity:.6}
+.gm-slist{list-style:none;margin:10px 0 0;padding:0}
+.gm-srow{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid rgba(255,255,255,.06)}
+.gm-se{font-size:18px;width:24px;text-align:center}
+.gm-sn{font-weight:700;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-ss{flex:1 1 auto;min-width:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm-srow.s-sugen .gm-ss{color:var(--amber-2)}
+.gm-st{font-family:var(--hud);font-size:11.5px;color:var(--muted);flex:0 0 auto}
+
+/* ---------- Group sheet tabs ---------- */
+.gm-tabs{display:flex;gap:3px;border-bottom:1px solid var(--line);margin:2px 0 4px;position:sticky;top:0;z-index:2;background:var(--night-2)}
+.gm-tab{flex:1 1 0;min-width:0;min-height:40px;padding:0 2px;border:1px solid transparent;border-bottom:none;background:transparent;color:var(--muted);
+  font-family:var(--body);font-weight:700;font-size:11.5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm-tab[aria-selected="true"]{color:var(--amber-2);border-color:var(--line);background:var(--night);box-shadow:inset 0 2px 0 var(--amber)}
+.gm-pane{min-height:120px}
+
+/* ---------- Group list row ---------- */
+.gm-gi{margin-top:8px}
+.gm-gchips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.gm-gchip{font-size:11.5px;padding:2px 7px;border:1px solid var(--line-soft);background:var(--night-3);color:var(--text);white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.gm-gchip.s-sugen{border-color:var(--amber);color:var(--amber-2)}
+.gm-gchip.s-inte{color:var(--muted)}
+.gm-gbtn{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}
+.gm-gl{flex:0 0 auto}
+.gm-gs{flex:1 1 auto;min-width:0;text-align:right;font-family:var(--hud);font-weight:400;font-size:11.5px;color:var(--amber-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- Krogrunda ---------- */
+.gm-stops{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.gm-stop{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 8px;background:var(--night);border:1px solid var(--line-soft)}
+.gm-stop.ok{border-color:rgba(61,220,132,.5);background:rgba(61,220,132,.06)}
+.gm-sn2{flex:0 0 auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:15px;
+  color:#241300;background:var(--amber)}
+.gm-stop.ok .gm-sn2{background:var(--green);color:#00260f}
+.gm-stb{flex:1 1 auto;min-width:0}
+.gm-stn{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-stw{font-size:11.5px;color:#9be8b6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-go{flex:0 0 auto;min-height:36px;min-width:40px;padding:0 8px}
+.gm-end{margin-top:8px}
+
+/* Picker */
+.gm-pchips{list-style:none;margin:4px 0 8px;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+.gm-pchip{min-height:32px;padding:0 8px;border:1px solid var(--amber);background:rgba(245,166,35,.12);color:var(--amber-2);font-family:var(--body);
+  font-weight:700;font-size:12.5px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-psearch{min-height:44px;font-size:16px;margin-bottom:6px}
+.gm-plist{list-style:none;margin:0 0 10px;padding:0;max-height:42vh;overflow-y:auto;border:1px solid var(--line-soft)}
+.gm-pbar{width:100%;display:flex;align-items:center;gap:8px;min-height:42px;padding:0 10px;border:none;border-bottom:1px solid rgba(255,255,255,.06);
+  background:transparent;color:var(--text);font-family:var(--body);font-size:14px;text-align:left;cursor:pointer}
+.gm-pbar.on{background:rgba(245,166,35,.14);color:var(--amber-2);font-weight:700}
+.gm-pn{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-pd{flex:0 0 auto;font-family:var(--hud);font-size:11.5px;color:var(--muted)}
+.gm-psave:disabled{opacity:.5}
+
+/* Map flag (numbered stop) */
+.gm-flag{position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:var(--amber);color:#241300;
+  border:2px solid #241300;font-family:var(--display);font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.gm-flag::after{content:"";position:absolute;left:-2px;top:100%;width:3px;height:8px;background:#241300}
+.gm-flag b{font-weight:400}
+.gm-flag i{position:absolute;right:-8px;top:-8px;font-style:normal;font-size:10px;line-height:14px;width:14px;height:14px;text-align:center;
+  background:var(--green);color:#00260f;border-radius:50%}
+.gm-flag.ok{background:var(--green);color:#00260f}
+.gm-flag.fin{box-shadow:0 0 0 2px var(--gold),0 2px 6px rgba(0,0,0,.5)}
+
+/* ---------- Bingo ---------- */
+.gm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:6px 0}
+.gm-sq{position:relative;min-height:78px;padding:6px 4px 16px;border:1px solid var(--line);background:var(--night);color:var(--text);
+  font-family:var(--body);font-size:11.5px;line-height:1.25;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+.gm-sqt{overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.gm-sq.on{background:rgba(61,220,132,.16);border-color:var(--green);color:#e6ffee}
+.gm-sq.on.me{box-shadow:inset 0 0 0 1px var(--green)}
+.gm-sqw{position:absolute;left:2px;right:2px;bottom:2px;font-family:var(--hud);font-size:10px;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm-sq:disabled{opacity:.6}
+.gm-bingo-l{font-weight:700}
+
+/* ---------- Agent ---------- */
+.gm-vq{font-weight:700;margin-bottom:6px}
+.gm-votes{display:flex;flex-wrap:wrap;gap:5px}
+.gm-vb{min-height:40px;padding:0 12px;border:1px solid var(--line);background:var(--night-3);color:var(--text);font-family:var(--body);font-weight:700;
+  font-size:13px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-vb:disabled{opacity:.6}
+.gm-secret{border:1px dashed var(--gold);background:repeating-linear-gradient(135deg,rgba(255,224,138,.05) 0 8px,transparent 8px 16px);padding:10px;margin:8px 0}
+.gm-sec-h{font-family:var(--display);color:var(--gold);font-size:15px;letter-spacing:.5px;text-transform:uppercase}
+.gm-sec-m{margin-top:6px;font-size:15px;font-weight:700;line-height:1.35}
+.gm-pts{color:var(--gold)}
+
+/* ---------- Guess ---------- */
+.gm-prompt{font-size:13px;color:var(--amber-2);margin:4px 0 6px}
+.gm-glbl{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.gm-grow{display:flex;gap:6px}
+.gm-ginp{flex:1 1 auto;min-width:0;min-height:44px;font-size:18px}
+.gm-grow>.btn{flex:0 0 auto;min-height:44px}
+
+@media (prefers-reduced-motion: reduce){.gm-bar>span{transition:none}}

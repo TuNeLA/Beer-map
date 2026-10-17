@@ -12,6 +12,7 @@
 // Body events (v9 INKALLELSE): {event:"rally"|"rally_yes", rally_id}.
 // Body events (v10 CHECKA IN): {event:"checkin", bar?} -> "📍 {namn} har anlänt till {bar}".
 // Body events (v12 KROGARNA): {event:"tip", tip_id} -> krogtips, {event:"takeover", bar_id} -> "🏰 Ni har tagit över {bar}!".
+// Body events (v16 EFTERÅT): {event:"medevac_check", check_id} -> "🚑 Lisa kollar på Oskar", {event:"voice", voice_id} -> röstskål.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -572,6 +573,134 @@ export function takeoverPayload(idx: number, grupp: string, bar: string, barId: 
   };
 }
 
+
+// ---- v16 EFTERÅT ----
+// Kom hem säkert: extra home lines (content B23). {namn}, {tid} = HH:MM.
+export const SAFE_HOME_LINES: string[] = [
+  "🏠 {namn} é hemma. Basen é säkrad.",
+  "🏠 {namn} har tryckt Jag är hemma. Högkvarteret andas ut.",
+  "🏠 {namn} é i säng, eller på väg dit. Snyggt, soldat.",
+  "🏠 Landat: {namn} é hemma {tid}. Tornet tackar.",
+  "🏠 {namn} é hemma. Ölguden bockar av ett namn i sin bok.",
+  "🏠 {namn} har nått basen. Inga skadade, inga saknade.",
+  "🏠 Kudden rapporterar: {namn} é på plats.",
+  "🏠 {namn} é hemma kl. {tid}. Morsan hade varit nöjd.",
+  "🏠 Ett namn mindre att oroa sig för: {namn} é hemma.",
+  "🏠 {namn} é hemma. Drick ett glas vatten innan du somnar, pojk.",
+  "🏠 Högkvarteret bekräftar: {namn} é tillbaka på basen.",
+  "🏠 {namn} gick hem som en hjälte. Eller i alla fall som en människa.",
+  "🏠 {namn} é hemma och i säkerhet. Bra jobbat, soldat.",
+  "🏠 Dörren é låst, skorna é av: {namn} é hemma.",
+  "🏠 {namn} har checkat ut från stan och in i sängen.",
+  "🏠 Pling! {namn} é hemma. Gruppen kan pusta ut.",
+  "🏠 {namn} é hemma {tid}. Ingen behöver skicka ut sökpatrull.",
+  "🏠 {namn} é på basen. Ladda mobilen, ladda dig själv.",
+  "🏠 {namn} é hemma. Ölguden höjer sitt vattenglas.",
+  "🏠 Säker hemkomst: {namn}. Kvällens bästa nyhet.",
+  "🏠 {namn} é hemma. Kylskåpet hälsar välkommen, men gå och lägg dig.",
+  "🏠 Reträtt genomförd: {namn} é hemma kl. {tid}.",
+  "🏠 {namn} é hemma. Grannkatten såg alltihop och godkände.",
+  "🏠 {namn} har lämnat slagfältet för täcket.",
+  "🏠 {namn} é hemma. Den som trycker på knappen é en ansvarsfull själ.",
+  "🏠 Uppdrag Hemgång klart: {namn} é hemma.",
+  "🏠 {namn} é i hamn. Ankaret é kastat i sängen.",
+  "🏠 {namn} é hemma {tid}. Bakisrapporten kommer i morgon.",
+  "🏠 Till gruppen: {namn} é hemma och mår bra.",
+  "🏠 {namn} é hemma. En soldat i sängen é värd två på stan.",
+  "🏠 {namn} har tryckt på knappen. Kvällens viktigaste tryck.",
+  "🏠 Basen meddelar ankomst: {namn}. Lampan é släckt.",
+  "🏠 {namn} é hemma. Sov gott, vi ses i morgon.",
+  "🏠 {namn} é hemma säkert. Ölguden somnar lite lugnare.",
+  "🏠 Hemkomst registrerad för {namn}. Vattenglaset é obligatoriskt.",
+  "🏠 {namn} é hemma. Tack till den som följde med en bit på vägen.",
+  "🏠 {namn} é tillbaka i baracken. Tystnad i logementet.",
+  "🏠 {namn} é hemma. Gruppchatten kan sänka beredskapen ett snäpp.",
+  "🏠 Bekräftat från fältet: {namn} é hemma kl. {tid}. Utmärkt.",
+  "🏠 {namn} é hemma. Det é så det ska va', dä.",
+];
+
+// Röstskål in the group chat. {namn}
+export const VOICE_LINES: string[] = [
+  "🎙️ {namn} skickade ett röstskål.",
+  "🎙️ {namn} har spelat in ett röstmeddelande från fältet.",
+  "🎙️ Radio {namn} sänder live från krogen.",
+  "🎙️ {namn} rapporterar via kommradion. Över.",
+  "🎙️ Ljudbevis från {namn}: stämningen é god.",
+  "🎙️ {namn} har skickat ett röstskål. Volymen står på tolv.",
+  "🎙️ Högkvarteret har tagit emot en ljudfil från {namn}. Analys pågår.",
+  "🎙️ {namn} skålar med rösten. Det låter som Dalarna.",
+  "🎙️ Röstbrev från {namn}. Bakgrundsljud: glada människor.",
+  "🎙️ {namn} skickade ett 'skååål' med äkta dalmål.",
+  "🎙️ Ny sändning från {namn}. Sänk volymen innan du lyssnar.",
+  "🎙️ {namn} har talat. Gruppen lyssnar andäktigt.",
+  "🎙️ Kommradion sprakar: det é {namn} med en hälsning.",
+  "🎙️ {namn} spelade in en lägesrapport. Ingen förstod, alla skrattade.",
+  "🎙️ Ett röstskål från {namn}. Ölguden nickar i takt.",
+  "🎙️ {namn} sänder från frontlinjen. Över och ut.",
+  "🎙️ Röstmeddelande från {namn}. Innehåll: hemligt, men roligt.",
+  "🎙️ {namn} har lagt till ljud i kvällens krönika.",
+  "🎙️ {namn} skickade en skål i ljudform. Skåla tillbaka, pojk.",
+  "🎙️ Ljudsignal från {namn}. Antingen en skål eller en raggarbil som startar.",
+];
+
+/** HH:MM in Europe/Stockholm. */
+export function hhmm(ms: number): string {
+  try {
+    return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .format(new Date(ms));
+  } catch (_e) {
+    const d = new Date(ms);
+    return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+  }
+}
+
+/** Home push title: old HOME_LINES + SAFE_HOME_LINES. idx over the joined list. */
+export function homeTitle(idx: number, namn: string, ms: number): string {
+  const all = HOME_LINES.concat(SAFE_HOME_LINES);
+  return fill(all[wrapIdx(idx, all.length)], { namn, tid: hhmm(ms) });
+}
+export function homeLineCount(): number { return HOME_LINES.length + SAFE_HOME_LINES.length; }
+
+// "🚑 Jag kollar": a friend takes care of a mate on MEDEVAC (10 beers). Caring, never shaming.
+export const MEDCHECK_LINES: string[] = [
+  "🚑 {namn} kollar läget med {mal}. Bra jobbat, kompis.",
+  "💚 {namn} har koll på {mal} ikväll.",
+  "🫡 {namn} tar hand om {mal}. Ingen soldat lämnas kvar.",
+  "🚑 {namn} är på väg till {mal} med ett glas vatten.",
+  "🤝 {namn} kollar till {mal}. Så gör riktiga vänner.",
+  "💧 {namn} har {mal} under uppsikt. Vatten är beställt.",
+  "🛡️ {namn} står vakt vid {mal}. Lugnt läge.",
+  "🚕 {namn} kollar läget med {mal} och har taxinumret redo.",
+  "💚 Kompisvakten {namn} har koll på {mal}.",
+  "🫂 {namn} ser efter {mal} ikväll. Tack!",
+];
+export const MEDCHECK_ME_LINES: string[] = [
+  "💚 {namn} kommer och kollar läget med dig.",
+  "🚑 {namn} har koll på dig ikväll. Ta ett glas vatten.",
+  "🫂 {namn} ser efter dig. Säg till om du vill hem.",
+  "💧 {namn} är på väg med vatten. Du är i goda händer.",
+  "🛡️ {namn} står vakt. Ta det lugnt nu.",
+];
+export function medcheckPayload(idx: number, namn: string, mal: string | null, beerId: number | null, checkId: number) {
+  const me = mal === null;
+  const lines = me ? MEDCHECK_ME_LINES : MEDCHECK_LINES;
+  return {
+    title: fill(lines[wrapIdx(idx, lines.length)], { namn: cleanBarName(namn) || "En vän", mal: cleanBarName(mal ?? "") || "kompisen" }),
+    body: me ? "Drick vatten. Ta taxi hem. 🚕" : "Tack för att ni tar hand om varandra.",
+    url: beerId ? `/?focus=${beerId}` : "/",
+    tag: `olnu-medcheck-${checkId}`,
+  };
+}
+
+export function voicePayload(idx: number, namn: string, groupName: string, groupId: string) {
+  return {
+    title: fill(VOICE_LINES[wrapIdx(idx, VOICE_LINES.length)], { namn: cleanBarName(namn) || "En vän" }),
+    body: `i ${cleanBarName(groupName) || "gruppen"} · Tryck för att lyssna`,
+    url: `/?chat=${groupId}`,
+    tag: `olnu-voice-${groupId}`,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1060,13 +1189,16 @@ async function statusPush(admin: Admin, uid: string, kind: "home" | "pause") {
     .in("user_id", [...nameFor.keys()]);
   if (subsErr) throw subsErr;
 
-  const lines = kind === "home" ? HOME_LINES : PAUSE_LINES;
-  const idx = Math.floor(Math.random() * lines.length);
+  const lines = PAUSE_LINES;
+  // v16: home uses HOME_LINES + SAFE_HOME_LINES (some with the time, "hemma kl. 01:32").
+  const idx = Math.floor(Math.random() * (kind === "home" ? homeLineCount() : lines.length));
+  const stampMs = Date.now();
   const body = kind === "home" ? "Kvällen är slut för den här soldaten." : "Pinnen är borta från kartan.";
   const jobs: Job[] = ((subs ?? []) as Sub[]).map((s) => ({
     sub: s,
     payload: JSON.stringify({
-      title: fill(lines[idx], { namn: nameFor.get(s.user_id) ?? "En vän" }),
+      title: kind === "home" ? homeTitle(idx, nameFor.get(s.user_id) ?? "En vän", stampMs)
+        : fill(lines[idx], { namn: nameFor.get(s.user_id) ?? "En vän" }),
       body, url: "/", tag: `olnu-${beer.id}-${kind}`,
     }),
   }));
@@ -1133,6 +1265,65 @@ async function takeoverPush(admin: Admin, uid: string, b: Body) {
   return { sent, failed };
 }
 
+// ---- v16 EFTERÅT ----
+// {event:"medevac_check", check_id}: "🚑 Lisa kollar på Oskar" to group-mates of the checker who also share a
+// group with the target, plus the target ("💚 Lisa kommer och kollar läget med dig"). Once per check
+// (atomic medevac_checks.notified claim, row < 5 min old, caller = checker); else reason no_check.
+async function medcheckPush(admin: Admin, uid: string, b: Body) {
+  const cid = parseRallyId(b.check_id);
+  if (cid === null) return { ...NONE, reason: "no_check" };
+  const { data: claimed, error } = await admin
+    .from("medevac_checks").update({ notified: true })
+    .eq("id", cid).eq("checker", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id, target, night");
+  if (error) throw error;
+  const row = claimed && claimed[0];
+  if (!row) return { ...NONE, reason: "no_check" };
+  const target = row.target as string;
+  const mates = await mateNames(admin, uid);              // recipient -> checker's name
+  const tNames = await mateNames(admin, target);          // recipient -> target's name
+  const { data: beer } = await admin.from("beers").select("id").eq("user_id", target)
+    .eq("expires_at", row.night).maybeSingle();
+  const beerId = (beer?.id as number) ?? null;
+  const ids = [...mates.keys()].filter((u) => u === target || tNames.has(u));
+  if (ids.length === 0) return { ...NONE, reason: "no_group" };
+  const idx = Math.floor(Math.random() * 1000);
+  const jobs = (await subsOf(admin, ids)).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(medcheckPayload(idx, mates.get(s.user_id) ?? "En vän",
+      s.user_id === target ? null : (tNames.get(s.user_id) ?? null), beerId, cid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+
+// {event:"voice", voice_id}: "🎙️ Anton skickade ett röstskål" to the other members of that group.
+// The voice row must be the caller's, < 5 min old, not pushed (atomic claim); max 1 push per sender per group
+// per 2 min (push_sent kind voice:<group>). Reasons: no_voice, no_group, slow_down.
+async function voicePush(admin: Admin, uid: string, b: Body) {
+  const vid = parseRallyId(b.voice_id);
+  if (vid === null) return { ...NONE, reason: "no_voice" };
+  const { data: claimed, error } = await admin
+    .from("voice_msgs").update({ notified: true })
+    .eq("id", vid).eq("user_id", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id, group_id");
+  if (error) throw error;
+  const v = claimed && claimed[0];
+  if (!v) return { ...NONE, reason: "no_voice" };
+  const gid = v.group_id as string;
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  if (!(await rateClaim(admin, uid, `voice:${gid}`, 120))) return { ...NONE, reason: "slow_down" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const idx = Math.floor(Math.random() * VOICE_LINES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(voicePayload(idx, mates.get(s.user_id) ?? "En vän", (g?.name as string) ?? "", gid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1189,6 +1380,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "checkin") return json(await checkinPush(admin, uid, body));
     if (event === "tip") return json(await tipPush(admin, uid, body));
     if (event === "takeover") return json(await takeoverPush(admin, uid, body));
+    if (event === "medevac_check") return json(await medcheckPush(admin, uid, body));
+    if (event === "voice") return json(await voicePush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

@@ -312,4 +312,39 @@ t("takeover lines: 15, payload filled", () => {
   }
 });
 
+// ---- v16 EFTERÅT ----
+t("home lines: old + 40 safeHome, all filled", () => {
+  assert.equal(m.SAFE_HOME_LINES.length, 40);
+  assert.equal(m.homeLineCount(), m.HOME_LINES.length + 40);
+  const ms = Date.UTC(2026, 9, 17, 23, 32);   // 01:32 Stockholm (CEST)
+  for (let i = 0; i < m.homeLineCount(); i++) {
+    const s = m.homeTitle(i, "Oskar", ms);
+    assert.ok(s.includes("Oskar") && !/[{}]/.test(s), s);
+    if (m.SAFE_HOME_LINES.concat([]).some((x) => x.includes("{tid}")) && s.includes(":")) assert.ok(/01:32|Oskar/.test(s));
+  }
+  assert.equal(m.hhmm(ms), "01:32");
+});
+t("voice lines: 20, payload", () => {
+  assert.equal(m.VOICE_LINES.length, 20);
+  for (let i = 0; i < 20; i++) {
+    const p = m.voicePayload(i, "Anton", "Gänget", "g-1");
+    assert.ok(p.title.includes("Anton") && !/[{}]/.test(p.title), p.title);
+    assert.equal(p.url, "/?chat=g-1");
+    assert.equal(p.tag, "olnu-voice-g-1");
+    assert.ok(p.body.includes("Gänget"));
+  }
+});
+t("medevac check payload: mates + target", () => {
+  for (let i = 0; i < 12; i++) {
+    const a = m.medcheckPayload(i, "Lisa", "Oskar", 42, 7);
+    assert.ok(a.title.includes("Lisa") && a.title.includes("Oskar") && !/[{}]/.test(a.title), a.title);
+    assert.equal(a.url, "/?focus=42");
+    assert.equal(a.tag, "olnu-medcheck-7");
+    const b = m.medcheckPayload(i, "Lisa", null, null, 7);
+    assert.ok(b.title.includes("Lisa") && !b.title.includes("Oskar") && !/[{}]/.test(b.title), b.title);
+    assert.equal(b.url, "/");
+    assert.ok(b.body.includes("vatten"));
+  }
+});
+
 console.log(`\n${passed} tests passed`);

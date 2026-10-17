@@ -201,10 +201,14 @@
       });
   }
 
-  /* ---------- Places: restaurants, cafés, fast food (only used to name a spot, never drawn) ---------- */
+  /* ---------- Places: restaurants, cafés, fast food ---------- */
   // docs/places.json = [[name, lat, lng, t], …] made weekly by scripts/fetch-places.mjs. t: r|f|c.
-  var places = {}, placesState = "idle", onPlaces = [];
+  // v14: places are also drink spots ("Var dricker du?", check-in, crowd counts) but are drawn only when
+  // someone has a beer or a check-in there. Stable id = "pl_<lat*1e5>_<lng*1e5>" (same rule as the
+  // server's bars_lite import, so the server's bar_id matches).
+  var places = {}, placesById = {}, placesState = "idle", onPlaces = [];
   var PLACE_TYPES = { r: "restaurant", f: "fast_food", c: "cafe" };
+  function placeId(lat, lng) { return "pl_" + Math.round(lat * 1e5) + "_" + Math.round(lng * 1e5); }
   function loadPlaces() {
     if (placesState !== "idle") return;
     placesState = "loading";
@@ -215,6 +219,10 @@
         list.forEach(function (p) {
           var o = Array.isArray(p) ? { name: p[0], lat: p[1], lng: p[2], type: PLACE_TYPES[p[3]] || "restaurant" } : p;
           if (!o || !o.name || typeof o.lat !== "number" || typeof o.lng !== "number") return;
+          o.id = o.id || placeId(o.lat, o.lng);
+          if (placesById[o.id]) return;
+          o.place = true;
+          placesById[o.id] = o;
           var k = gridKey(o);
           (places[k] || (places[k] = [])).push(o);
         });
@@ -223,6 +231,20 @@
       })
       .catch(function () { placesState = "failed"; /* optional: fall back to bars + town */ });
   }
+  function nearestPlace(lat, lng, maxM) {
+    var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), best = null, bestD = maxM;
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+      var cell = places[(gy + dy) + "_" + (gx + dx)]; if (!cell) continue;
+      for (var i = 0; i < cell.length; i++) {
+        var d = U.haversine(lat, lng, cell[i].lat, cell[i].lng);
+        if (d <= bestD) { bestD = d; best = cell[i]; }
+      }
+    }
+    return best;
+  }
+  // Drink spot for a pin: a bar within 75 m wins, else a restaurant/café within 40 m (same rule as the server).
+  var PLACE_M = 40;   // restaurants are small and often next to homes: 40 m (bars 75 m), same as the server
+  function nearestSpot(lat, lng) { return nearestBar(lat, lng) || nearestPlace(lat, lng, PLACE_M); }
   // Nearest named spot (bar or place) within maxM metres. Search radius limited to the 3x3 grid (~1 km).
   function nearestNamed(lat, lng, maxM) {
     var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), best = null, bestD = maxM;
@@ -284,30 +306,50 @@
     },
     nearest: nearestBar,
     // Named bars within maxM metres, nearest first: [{ bar, d }]. Search is the 3x3 grid (~1 km).
-    nearby: function (lat, lng, maxM, max) {
-      var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), out = [];
+    // opts.places: also restaurants/cafés/fast food (after the bars, marked place:true), up to opts.maxPlaces.
+    nearby: function (lat, lng, maxM, max, opts) {
+      var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), out = [], pl = [];
       for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
-        var cell = grid[(gy + dy) + "_" + (gx + dx)]; if (!cell) continue;
-        for (var i = 0; i < cell.length; i++) {
+        var k = (gy + dy) + "_" + (gx + dx), cell = grid[k];
+        if (cell) for (var i = 0; i < cell.length; i++) {
           if (!cell[i].name) continue;
           var d = U.haversine(lat, lng, cell[i].lat, cell[i].lng);
           if (d <= maxM) out.push({ bar: cell[i], d: d });
         }
+        var pc = opts && opts.places ? places[k] : null;
+        if (pc) for (var j = 0; j < pc.length; j++) {
+          var d2 = U.haversine(lat, lng, pc[j].lat, pc[j].lng);
+          if (d2 <= (opts.placeM || maxM)) pl.push({ bar: pc[j], d: d2, place: true });
+        }
       }
       out.sort(function (a, b) { return a.d - b.d; });
-      return max ? out.slice(0, max) : out;
+      pl.sort(function (a, b) { return a.d - b.d; });
+      out = max ? out.slice(0, max) : out;
+      // A restaurant that is the same spot as a listed bar (similar name, ≤ 80 m) is left out.
+      pl = pl.filter(function (p) {
+        return !out.some(function (b) { return similarName(p.bar.name, b.bar.name) && U.haversine(p.bar.lat, p.bar.lng, b.bar.lat, b.bar.lng) <= 80; });
+      });
+      return out.concat(pl.slice(0, opts && opts.maxPlaces != null ? opts.maxPlaces : 4));
     },
-    byId: function (id) { return bars[id] || null; },
+    nearestSpot: nearestSpot,
+    placeId: placeId,
+    placesReady: function () { return placesState === "ready"; },
+    byId: function (id) { return bars[id] || placesById[id] || null; },
     inBounds: function (b, max) {
       var out = [];
       for (var id in bars) { if (b.contains([bars[id].lat, bars[id].lng])) { out.push(bars[id]); if (max && out.length >= max) break; } }
       return out;
     },
-    // Split live beers into per-bar aggregates and the rest.
+    // Split live pins into per-spot aggregates and the rest.
+    // v14: the server's bar_id (poll_v2, 75 m, bars before restaurants) decides; no bar_id = not at a spot.
+    // snap "area" never belongs to a spot. Old server (no snap field): nearest bar, else place (75 m).
     assign: function (beers) {
       var perBar = {}, rest = [];
       beers.forEach(function (be) {
-        var bar = be.precise ? nearestBar(be.lat, be.lng) : null;
+        var bar = null;
+        if (be.snap === "area" || !be.precise) bar = null;
+        else if (be.bar_id != null) bar = bars[be.bar_id] || placesById[be.bar_id] || null;
+        else if (!be.snap) bar = nearestSpot(be.lat, be.lng);   // old server: no snap/bar_id fields
         if (!bar) { rest.push(be); return; }
         var a = perBar[bar.id] || (perBar[bar.id] = { bar: bar, beers: [] });
         a.beers.push(be);

@@ -741,3 +741,19 @@ window.SIDETRACK_MORE = [
   { k: "anonSidetrack", f: function (d) { return "📺 Ölguden har fått ett anonymt brev från " + d.stad + ": " + d.anon + " dricker " + d.drink + "."; } }
 ];
 (function () { if (window.NEWS_MORE && window.SIDETRACK_MORE) window.NEWS_MORE.sv = window.NEWS_MORE.sv.concat(window.SIDETRACK_MORE); })();
+(function () {
+  window.NEWS_MORE.sv = window.NEWS_MORE.sv.concat([
+    { k: "sidetrack_grogg", f: function (d) { return "🍹 " + d.name + " har gått över till grogg. Raggarandan lever."; } },
+    { k: "sidetrack_grogg", f: function (d) { return "🍹 " + d.name + " blandar grogg. Ölguden tittar bort."; } },
+    { k: "sidetrack_grogg", f: function (d) { return "🍹 Bygdegårdsvarning: " + d.name + " har grogg i handen."; } },
+    { k: "sidetrack_grogg", f: function (d) { return "🍹 " + d.name + " och en grogg. Dansbandet har börjat spela i fjärran."; } },
+    { k: "sidetrack_grogg", f: function (d) { return "🍹 " + d.name + " tog en grogg. Mopeden får stå, tack."; } },
+    { k: "sidetrack_grogg", f: function (d) { return "🍹 Grogg-rapport: " + d.name + " é på sidospår med isbitar."; } },
+    { k: "sidetrack_bubbel", f: function (d) { return "🍾 " + d.name + " dricker bubbel. Vem fyller år?"; } },
+    { k: "sidetrack_bubbel", f: function (d) { return "🍾 Korken flög hos " + d.name + ". Ölguden duckade."; } },
+    { k: "sidetrack_bubbel", f: function (d) { return "🍾 " + d.name + " har gått över till bubbel. Fint folk på stan."; } },
+    { k: "sidetrack_bubbel", f: function (d) { return "🍾 " + d.name + " skålar i bubbel. Bryggeriet känner sig sviket."; } },
+    { k: "sidetrack_bubbel", f: function (d) { return "🍾 Bubbelvarning: " + d.name + " har lillfingret uppe."; } },
+    { k: "sidetrack_bubbel", f: function (d) { return "🍾 " + d.name + " firar med bubbel. Vad, vet ingen."; } }
+  ]);
+})();

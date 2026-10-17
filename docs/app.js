@@ -11,7 +11,7 @@
 
   var SWEDEN = [[55.0, 10.9], [69.1, 24.2]];
   var MAX_BOUNDS = [[53.3, 7.5], [70.8, 27.8]];
-  var POLL_MS = 30000, RPC_TIMEOUT_MS = 15000;
+  var POLL_MS = 30000, POLL_SLOW_MS = 60000, IDLE_MS = 180000, HEAT_MS = 60000, RPC_TIMEOUT_MS = 15000;
   var LUDVIKA = [60.1496, 15.1878], START_ZOOM = 14;
   var HOT_ZOOM = 11, BAR_ZOOM = 13, MAX_PLAIN_BARS = 300;
 
@@ -44,14 +44,23 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
     return out;
   }
-  // Pins with at least one beer (chaos, heat, counts and news stay beers only; v8 other-drink pins are left out).
-  function beerOnly() { return beers.filter(function (b) { return (b.beer_count | 0) >= 1; }); }
+  // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
+  // Used for levels, chaos, heat, counts, top lists and news numbers. The real rows stay in "beers".
+  var drinkViews = null;
+  function beerOnly() {
+    if (drinkViews) return drinkViews;
+    drinkViews = beers.filter(function (b) { return U.drinks(b) >= 1; }).map(function (b) {
+      var v = Object.create(b); v.beer_count = U.drinks(b); v.beers_only = b.beer_count | 0; v.other_count = 0; v.row = b;
+      return v;
+    });
+    return drinkViews;
+  }
 
   /* ---------- Toasts ---------- */
   function toast(msg, opts) {
@@ -64,22 +73,26 @@
     if (opts.action) {
       var b = document.createElement("button"); b.className = "btn btn-small"; b.type = "button";
       b.textContent = opts.action.label;
-      b.onclick = function () { el.remove(); opts.action.fn(); };
+      b.onclick = function () { if (!opts.action.stay) el.remove(); opts.action.fn(b, el); };
       el.appendChild(b);
     }
     el.addEventListener("click", function (e) { if (e.target === el || e.target === span) el.remove(); });
-    while (box.children.length > 2) box.firstChild.remove();
+    if (opts.keep) el.setAttribute("data-keep", "1");
+    var drop = Array.prototype.filter.call(box.children, function (x) { return !x.hasAttribute("data-keep"); });
+    while (drop.length > 2) drop.shift().remove();
     box.appendChild(el);
     if (opts.ms !== 0) setTimeout(function () { el.remove(); }, opts.ms || 3800);
+    return el;
   }
   function toastClear(id) {
     document.querySelectorAll('#toasts [data-id="' + id + '"]').forEach(function (x) { x.remove(); });
   }
 
   /* ---------- Map ---------- */
+  // v14 worldwide: no Sweden bounds. worldCopyJump keeps pins visible across the date line.
   var map = L.map("map", {
-    zoomControl: false, attributionControl: false, minZoom: 4, maxZoom: 19,
-    maxBounds: MAX_BOUNDS, maxBoundsViscosity: 0.8, worldCopyJump: false, tap: true
+    zoomControl: false, attributionControl: false, minZoom: 3, maxZoom: 19,
+    worldCopyJump: true, tap: true
   });
   // Start on Ludvika. If the user allows location, we move to them (see locate()).
   map.setView(LUDVIKA, START_ZOOM);
@@ -198,13 +211,14 @@
     }
   });
   function heatWeight(b) {
-    var n = b.beer_count | 0, l = U.level(n);
+    var n = U.drinks(b), l = U.level(n);
     return Math.max(0.5, n * (l === 2 ? 3 : l === 1 ? 2 : 1));
   }
   // heatPoints: tonight's beers at the place each one was drunk (RPC heat_points, migration 0005).
   // null = not available (old database) → fall back to the live pins weighted by their count.
   var heatPoints = null, heatRpcMissing = false, heatFetchedAt = 0;
   function loadHeatPoints() {
+    if (pollV2 === "on") return;   // v13: heat comes with poll_v2 (max once per minute, only when the layer is on)
     if (!heat || heatRpcMissing || !heatOn || Date.now() - heatFetchedAt < 25000) return;
     heatFetchedAt = Date.now();
     rpc("heat_points").then(function (r) {
@@ -237,16 +251,17 @@
   }
   $("btn-heat").addEventListener("click", function () {
     heatOn = !heatOn; U.ls.set(HEAT_KEY, heatOn ? "1" : "0");
-    applyHeatBtn(); heatFetchedAt = 0; loadHeatPoints(); renderHeat();
+    applyHeatBtn(); heatFetchedAt = 0; heatAskAt = 0; loadHeatPoints(); renderHeat();
+    if (heatOn && pollV2 === "on") refresh();
   });
 
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
   // Single pin: compact pill "N 🍺". Streak shows only as the pill border.
   function beerIcon(b) {
-    var oc = b.other_count | 0, n = oc ? Math.max(0, b.beer_count | 0) : Math.max(1, b.beer_count | 0);
+    var n = Math.max(1, U.drinks(b));
     var label = b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" :
       b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "";
-    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label, other: oc });
+    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function levelLine(l) {
@@ -266,20 +281,20 @@
     return '<div class="pp-other">' + U.esc(oc === 1 ? t("otherPlus", oc, k) : t("otherPlusMany", oc, k)) + "</div>";
   }
   function beerPopup(b) {
-    var h = '<div class="pp-title">' + U.esc((b.beer_count | 0) >= 1 ? t("beerNo", b.beer_count | 0) : t("otherPin")) + "</div>" +
+    var h = '<div class="pp-title">' + U.esc(t("beerNo", U.drinks(b))) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
-    h += otherLine(b);
-    h += levelLine(U.level(b.beer_count));
+    h += levelLine(U.level(U.drinks(b)));
     if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
     if (b.friend_name) h += '<div class="pp-friend">' + U.esc(b.friend_name) + "</div>";
     h += mods("beerTitleHTML", b);
     if (!b.precise) h += '<div class="pp-note">' + U.esc(t("approx")) + "</div>";
     if (!b.is_mine) h += skalBtn(b, false);
+    else h += '<button type="button" class="btn btn-small btn-block pp-hide" data-hidepin="1">' + U.esc(t("hidePin")) + "</button>";
     h += mods("beerPopupHTML", b);
     return h;
   }
-  function barTypeLabel(type) { var m = t("barTypes"); return m[type] || m.bar; }
-  function maxLevel(list) { var l = 0; list.forEach(function (b) { l = Math.max(l, U.level(b.beer_count)); }); return l; }
+  function barTypeLabel(type) { var m = t("barTypes"); return m[type] || (t("placeTypes") || {})[type] || m.bar; }
+  function maxLevel(list) { var l = 0; list.forEach(function (b) { l = Math.max(l, U.level(U.drinks(b))); }); return l; }
   // Bar badge: compact pill "N 🍺" (N = people at the bar). Border = highest streak there.
   function hotBarIcon(agg) {
     var friend = agg.beers.some(function (b) { return b.friend_name; });
@@ -302,11 +317,11 @@
     var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
     if (tot) h += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
     if (list.length) {
-      var rows = list.slice().sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); }).slice(0, 8);
+      var rows = list.slice().sort(function (a, b) { return U.drinks(b) - U.drinks(a); }).slice(0, 8);
       h += '<ul class="pp-list">' + rows.map(function (b) {
-        var l = U.level(b.beer_count);
+        var l = U.level(U.drinks(b));
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
+          '<span class="pp-n">' + U.drinks(b) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
       if (list.length > 8 && bar.id != null) {
@@ -334,7 +349,7 @@
     if (!mine) { if (loc && (Date.now() - loc.at) > 120e3) U.ls.del(CI_KEY); return; }
     var at = Date.parse(mine.created_at) || Date.now();
     if (!loc || loc.id !== mine.bar_id || Math.abs(loc.at - at) > 5000) {
-      U.ls.setJSON(CI_KEY, { id: String(mine.bar_id), name: mine.bar_name, lat: +mine.lat, lng: +mine.lng, at: at, until: U.next5am().getTime() });
+      U.ls.setJSON(CI_KEY, { id: String(mine.bar_id), name: mine.bar_name, lat: +mine.lat, lng: +mine.lng, at: at, until: nightEnd() });
     }
   }
   function checkinsAt(bar) {
@@ -382,7 +397,7 @@
         }
         var d = parseData(r.data);
         if (d.ok === false) { reset(); toast(t("ciWait", Math.max(1, d.wait_seconds | 0))); return; }
-        U.ls.setJSON(CI_KEY, { id: String(bar.id), name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: U.next5am().getTime() });
+        U.ls.setJSON(CI_KEY, { id: String(bar.id), name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: nightEnd() });
         button.textContent = t("ciDone");
         var lines = t("ciToasts") || [];
         toast(lines.length ? lines[Math.floor(Math.random() * lines.length)](d.bar_name || name) : t("ciDone"), { ms: 5000, cls: "skal" });
@@ -418,7 +433,7 @@
     clusters.clearLayers(); hotLayer.clearLayers(); markerById = {}; hotBarIds = {};
     var split = z >= HOT_ZOOM ? window.BARS.assign(beers) : { perBar: {}, rest: beers };
     var ms = split.rest.map(function (b) {
-      var l = U.level(b.beer_count);
+      var l = U.level(U.drinks(b));
       var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l, beerId: b.id,
         zIndexOffset: (b.is_mine ? 900 : b.friend_name ? 500 : 0) + l * 300, keyboard: false, olnuKey: "b" + b.id });
       m.bindPopup(function () { return beerPopup(b); });
@@ -449,6 +464,13 @@
     redrawing = wasRedrawing;
     if (map.getZoom() < BAR_ZOOM) return;
     var list = window.BARS.inBounds(map.getBounds().pad(0.15), MAX_PLAIN_BARS + 50);
+    // v14: a restaurant/café is drawn only when someone is checked in there (beers there make a hot badge).
+    var seenCi = {};
+    checkins.forEach(function (c) {
+      var id = String(c.bar_id || ""); if (seenCi[id]) return; seenCi[id] = 1;
+      var sp = window.BARS.byId(id);
+      if (sp && sp.place && map.getBounds().pad(0.15).contains([sp.lat, sp.lng])) list.unshift(sp);
+    });
     var n = 0;
     for (var i = 0; i < list.length && n < MAX_PLAIN_BARS; i++) {
       var bar = list[i];
@@ -457,7 +479,8 @@
       (function (bar) {
         var m = L.marker([bar.lat, bar.lng], {
           pane: "bars", keyboard: false,
-          icon: L.divIcon({ html: '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + mods("barIcoHTML", bar) + "</div>", className: "", iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10] })
+          icon: L.divIcon({ html: bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️</div>' :
+            '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + mods("barIcoHTML", bar) + "</div>", className: "", iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10] })
         });
         m.options.olnuKey = "p" + bar.id;
         m.bindPopup(function () { return barPopup(bar, []); });
@@ -562,13 +585,25 @@
     newsPrev = items.map(function (x) { return x.text; });
     tickPending = items;
   }
-  var prevLevels = null;
-  function streakAlerts() {
+  // Known pins (friends) keep their numeric id: compare by id. Strangers get a new opaque id every
+  // 10 min and only the map view is polled: count strangers per level inside the part of the map both
+  // polls covered, and toast only when that count went up (an id change or a pan never toasts).
+  var prevLevels = null, prevStr = null, prevBox = null;
+  function strangerLevels(box) {
+    var c = { 1: [], 2: [] };
+    beers.forEach(function (b) {
+      if (b.is_mine || b.friend_name || b.is_friend) return;
+      if (box && !(b.lat >= box[0] && b.lat <= box[2] && b.lng >= box[1] && b.lng <= box[3])) return;
+      var l = U.level(U.drinks(b)); if (l) c[l].push(b);
+    });
+    return c;
+  }
+  function streakAlerts(box) {
     var now = {};
-    beers.forEach(function (b) { now[b.id] = U.level(b.beer_count); });
+    beers.forEach(function (b) { if (b.is_mine || b.friend_name || b.is_friend) now[b.id] = U.level(U.drinks(b)); });
     if (prevLevels) {
       beers.forEach(function (b) {
-        if (b.is_mine) return;
+        if (b.is_mine || now[b.id] == null) return;
         var before = prevLevels[b.id] | 0, l = now[b.id];
         if (l > before) {
           var who = whoOf(b), where = whereOf(b);
@@ -577,6 +612,26 @@
       });
     }
     prevLevels = now;
+    // Strangers: overlap of the previous and the current poll box (whole world when there is no box).
+    var inter = null;
+    if (box && prevBox) inter = [Math.max(box[0], prevBox[0]), Math.max(box[1], prevBox[1]), Math.min(box[2], prevBox[2]), Math.min(box[3], prevBox[3])];
+    if (inter && (inter[0] > inter[2] || inter[1] > inter[3])) inter = null;
+    var cur = strangerLevels(inter);
+    if (prevStr && (inter || (!box && !prevBox))) {
+      var before = { 1: 0, 2: 0 };
+      prevStr.forEach(function (x) {
+        if (!inter || (x.lat >= inter[0] && x.lat <= inter[2] && x.lng >= inter[1] && x.lng <= inter[3])) before[x.l]++;
+      });
+      [2, 1].some(function (l) {
+        if (cur[l].length <= before[l]) return false;
+        var b = cur[l][cur[l].length - 1], who = whoOf(b), where = whereOf(b);
+        toast(l === 2 ? t("newMed", who, where) : t("newHot", who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
+        return true;
+      });
+    }
+    var all = strangerLevels(null);
+    prevStr = all[1].map(function (b) { return { lat: b.lat, lng: b.lng, l: 1 }; }).concat(all[2].map(function (b) { return { lat: b.lat, lng: b.lng, l: 2 }; }));
+    prevBox = box || null;
   }
 
   /* ---------- Kaos i stan (in-app only, anonymous counts) ---------- */
@@ -592,7 +647,7 @@
     return v && v.until > Date.now() ? v : null;
   })();
   function chaosMarkSeen(r) {
-    chaosHidden = { at: Date.now(), out: r.out | 0, hot: r.hot | 0, until: U.next5am().getTime() };
+    chaosHidden = { at: Date.now(), out: r.out | 0, hot: r.hot | 0, until: nightEnd() };
     U.ls.setJSON(CHAOS_SEEN_KEY, chaosHidden);
   }
   var chaosLine = null;        // {lang, ix} of the headline on screen
@@ -706,12 +761,40 @@
     if (firstLoadDone || n != null) prevMySkal = n == null ? 0 : n;
   }
   function beerById(id) { for (var i = 0; i < beers.length; i++) if (String(beers[i].id) === String(id)) return beers[i]; return null; }
+  // Same person after a re-poll: a known pin keeps its id; a stranger's opaque id rotates every 10 min,
+  // so match by spot (bar or grid point) + counts.
+  function samePin(b) {
+    var x = beerById(b.id); if (x) return x;
+    if (b.is_mine || b.friend_name) return null;
+    for (var i = 0; i < beers.length; i++) {
+      var y = beers[i];
+      if (y.is_mine || y.friend_name) continue;
+      if ((y.bar_id || "") === (b.bar_id || "") && Math.abs(y.lat - b.lat) < 1e-6 && Math.abs(y.lng - b.lng) < 1e-6 &&
+          (y.beer_count | 0) === (b.beer_count | 0) && (y.other_count | 0) === (b.other_count | 0)) return y;
+    }
+    return null;
+  }
+  // v13: skal_v2(String(id)); old server: skal(numeric id). beer_not_found → re-poll once and retry.
+  function skalCall(b, retried) {
+    if (pollV2 !== "on") return rpc("skal", { p_beer_id: b.id });
+    return rpc("skal_v2", { p_pin: String(b.id) }).then(function (r) {
+      if (r.error && U.missing(r.error)) { pollV2 = "missing"; return rpc("skal", { p_beer_id: b.id }); }
+      if (r.error && U.errCode(r.error) === "beer_not_found" && !retried) {
+        return refresh(true).then(function () {
+          var nb = samePin(b);
+          if (!nb) return r;
+          return skalCall(nb, true).then(function (r2) { r2.pin = nb; return r2; });
+        });
+      }
+      return r;
+    });
+  }
   function doSkal(button) {
     var id = button.getAttribute("data-skal"), b = beerById(id);
     if (!b || b.i_skaled || button.disabled) return;
     window.FX.unlock();
     button.disabled = true; button.classList.add("busy");
-    rpc("skal", { p_beer_id: b.id }).then(function (r) {
+    skalCall(b, false).then(function (r) {
       button.classList.remove("busy");
       if (r.error) {
         var c = U.errCode(r.error);
@@ -721,6 +804,7 @@
         else toast(errMsg(r.error), { err: true });
         return;
       }
+      if (r.pin) b = r.pin;
       var d = parseData(r.data);
       var n = Math.max(skalCount(b), d.skal_count | 0);
       b.skal_count = n; b.i_skaled = true; mySkals[b.id] = n;
@@ -738,13 +822,16 @@
     root.querySelectorAll(".skal-btn").forEach(function (x) {
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doSkal(x); });
     });
+    root.querySelectorAll("[data-hidepin]").forEach(function (x) {
+      x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); map.closePopup(); showStopSheet(); });
+    });
     root.querySelectorAll(".ci-btn").forEach(function (x) {
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doCheckin(x); });
     });
     root.querySelectorAll(".pp-all").forEach(function (x) {
       x.addEventListener("click", function (ev) {
         ev.preventDefault(); ev.stopPropagation();
-        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(beers).perBar[id];
+        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(beers).perBar[id];   // (rows, not views)
         map.closePopup();
         if (agg && agg.beers.length) openCrowd(agg.beers, agg.bar);
       });
@@ -755,14 +842,12 @@
   // Me first, then friends, then most beers.
   function crowdSort(a, b) {
     var ra = a.is_mine ? 0 : a.friend_name ? 1 : 2, rb = b.is_mine ? 0 : b.friend_name ? 1 : 2;
-    return ra - rb || (b.beer_count | 0) - (a.beer_count | 0) || (b.other_count | 0) - (a.other_count | 0) ||
+    return ra - rb || U.drinks(b) - U.drinks(a) ||
       String(a.created_at || "").localeCompare(String(b.created_at || ""));
   }
   function crowdCountHTML(b) {
-    var n = b.beer_count | 0, oc = b.other_count | 0, l = U.level(n), h = "";
-    if (n > 0 || !oc) h += "<b>" + n + "</b> 🍺" + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : "");
-    if (oc) h += '<span class="cr-oc">' + (n > 0 ? "+" : "") + oc + " 🥃</span>";
-    return h;
+    var n = U.drinks(b), l = U.level(n);
+    return "<b>" + n + "</b> 🍺" + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : "");
   }
   // bar: the bar these beers belong to (bar popup "Visa alla"), or null (cluster tap).
   function openCrowd(list, bar) {
@@ -770,7 +855,7 @@
     if (!list.length) return;
     var tot = 0, oth = 0, fr = 0, lat = 0, lng = 0, allPrecise = true;
     list.forEach(function (b) {
-      tot += b.beer_count | 0; oth += b.other_count | 0; if (b.friend_name) fr++;
+      tot += U.drinks(b); if (b.friend_name) fr++;
       lat += b.lat; lng += b.lng; if (!b.precise) allPrecise = false;
     });
     var where;
@@ -787,7 +872,7 @@
       ]));
       var ul = el("ul", { class: "crowd-list" });
       list.forEach(function (b) {
-        var l = U.level(b.beer_count);
+        var l = U.level(U.drinks(b));
         var sub = t("since", U.timeHM(b.created_at)) + (b.precise ? "" : " · " + t("crowdApprox"));
         var main = el("button", { type: "button", class: "cr-main", "aria-label": t("crowdShow", whoOf(b)), onclick: function () { showBeer(b); } }, [
           el("span", { class: "cr-name", text: whoOf(b) }),
@@ -831,6 +916,14 @@
     beers.forEach(function (b) { if (b.friend_name) seen[b.id] = 1; });
     return Object.keys(seen).length;
   }
+  // v13 poll_v2 "me": the server's view of the caller (count, cooldown, undo, ghost). null on an old server.
+  var meState = null;
+  // End of tonight: the server's expires_at when known, else the next 05:00 Stockholm (DST-safe).
+  function nightEnd() {
+    var e = meState && meState.expires_at ? Date.parse(meState.expires_at) : NaN;
+    if (!isFinite(e) || e < Date.now()) { var n = myNight(); e = n && n.expires ? n.expires : NaN; }
+    return isFinite(e) && e > Date.now() ? e : U.next5am().getTime();
+  }
   function myBeer() { for (var i = 0; i < beers.length; i++) if (beers[i].is_mine) return beers[i]; return null; }
 
   // Own night state kept on the phone: {count, expires, lastTap}. Server stays the authority.
@@ -842,7 +935,7 @@
   function saveNight(d, accepted) {
     var m = myNight() || {};
     m.count = d.beer_count | 0;
-    m.expires = d.expires_at ? new Date(d.expires_at).getTime() : U.next5am().getTime();
+    m.expires = d.expires_at ? new Date(d.expires_at).getTime() : nightEnd();
     // The server's wait_seconds always wins. Without it (accepted tap) the local fallback is 10 min.
     var wait = d.wait_seconds | 0;
     if (wait > 0) m.lastTap = Date.now() + wait * 1000 - U.COOLDOWN_MS;
@@ -850,24 +943,26 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = LIVE ? t("live", beerOnly().length | 0) : t("soonLive");
+    $("live-count").innerHTML = LIVE ? t("live", liveTotal != null ? liveTotal : beerOnly().length | 0) : t("soonLive");
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
     var mine = myBeer();
     $("btn-stop").hidden = true; // Hidden from the dock (user asked). Still reachable in ⚙️ Inställningar.
-    var night = myNight(), n = mine ? mine.beer_count | 0 : night ? night.count | 0 : 0;
-    // Other drinks tonight: from the live pin, else the local count (pin hidden).
-    var oc = mine ? mine.other_count | 0 : 0;
-    try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
+    // v14: all drinks count. Server "me" first (also right when the pin is hidden), then the pin, then the phone.
+    var night = myNight(), n = meState ? U.drinks(meState) : mine ? U.drinks(mine) : night ? (night.count | 0) : 0;
+    if (!meState) {
+      var oc = mine ? mine.other_count | 0 : 0;
+      try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
+      if (!mine) n += oc;
+    }
     var st = $("my-streak");
-    if (n > 0 || oc > 0) {
+    if (n > 0) {
       var l = U.level(n);
       st.hidden = false;
       st.className = "my-streak" + lvlClass(l);
       st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
         (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺") +
-        (oc ? ' <span class="ms-other">· ' + oc + " 🥃</span>" : "") +
         (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
     } else st.hidden = true;
     // v9 HUD chips (title, ghost, taxi, come here). Built by the modules; clicks go to mods("hudClick").
@@ -921,7 +1016,7 @@
   });
 
   /* ---------- Live beers ---------- */
-  var loading = false, refreshAgain = false;
+  var loading = false, refreshAgain = false, loadingP = null;
   // v8 other drinks: beer id -> {other_count, other_kind}. null = RPC missing (old database) → feature off.
   var othersMap = {}, othersState = "unknown";   // "unknown" | "on" | "missing"
   function fetchOthers() {
@@ -953,37 +1048,121 @@
       return checkins;
     });
   }
-  function refresh() {
-    // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
-    if (loading) { refreshAgain = true; return Promise.resolve(); }
-    if (!LIVE || !authed || movedState) return Promise.resolve();
-    if (document.visibilityState === "hidden") return Promise.resolve();
-    loading = true;
+  // v13 poll_v2: one call per poll for the map view (+ margin). "unknown" | "on" | "missing" (old server).
+  var pollV2 = "unknown", liveTotal = null, heatAskAt = 0, pollBox = null, lastPollAt = 0, lastAcceptAt = 0;
+  function viewBox() {
+    var b = map.getBounds(), s = Math.max(-85, b.getSouth()), n = Math.min(85, b.getNorth());
+    var w = b.getWest(), e = b.getEast();
+    // Wide view or across the date line: the whole longitude range. Else wrap into -180..180.
+    if (e - w >= 360) { w = -180; e = 180; }
+    else {
+      w = ((w + 180) % 360 + 360) % 360 - 180; e = ((e + 180) % 360 + 360) % 360 - 180;
+      if (e < w) { w = -180; e = 180; }
+    }
+    return { p_min_lat: s, p_min_lng: w, p_max_lat: n, p_max_lng: e };
+  }
+  function normPins(list) {
+    return (list || []).filter(function (b) { return b && isFinite(b.lat) && isFinite(b.lng) && b.id != null; }).map(function (b) {
+      b.lat = +b.lat; b.lng = +b.lng;
+      b.beer_count = Math.max(0, b.beer_count | 0); b.other_count = Math.max(0, b.other_count | 0); b.other_kind = b.other_kind || null;
+      b.precise = !!b.precise; b.is_mine = !!b.is_mine; b.friend_name = b.friend_name || null;
+      b.skal_count = Math.max(0, b.skal_count | 0); b.i_skaled = !!b.i_skaled;
+      return b;
+    }).filter(function (b) { return b.beer_count >= 1 || b.other_count >= 1; });
+  }
+  // The server's "me" → cooldown, night count, check-in end. A poll that started before an accepted beer
+  // came back is older than that beer: its cooldown is ignored.
+  function applyMe(me, startedAt) {
+    if (!me || typeof me !== "object") return;
+    meState = me;
+    if (startedAt < lastAcceptAt) return;
+    var m = myNight() || {};
+    m.count = me.beer_count | 0;
+    if (me.expires_at) m.expires = Date.parse(me.expires_at) || nightEnd();
+    else if (!m.expires) m.expires = nightEnd();
+    var w = me.wait_seconds | 0;
+    m.lastTap = w > 0 ? Date.now() + w * 1000 - U.COOLDOWN_MS : 0;
+    U.ls.setJSON("olnu.night", m);
+    tickCooldown();
+    undoSync(me);
+  }
+  function fetchV2(startedAt, wantHeat) {
+    var p = viewBox(); p.p_since = null; p.p_heat = !!wantHeat;
+    return rpc("poll_v2", p).then(function (r) {
+      if (r.error) {
+        if (U.missing(r.error)) { pollV2 = "missing"; return null; }
+        throw r.error;
+      }
+      var d = parseData(r.data);
+      if (!d || !Array.isArray(d.pins)) { pollV2 = "missing"; return null; }
+      pollV2 = "on";
+      return d;
+    });
+  }
+  function fetchOld() {
     return Promise.all([rpc("live_beers"), fetchOthers(), fetchCheckins()]).then(function (res) {
       var r = res[0], others = res[1] || {};
-      if (movedState) return;   // the account moved away while this poll ran
       if (r.error) throw r.error;
-      // Pins: rows with a beer, or (v8) with another drink. Shots-only rows from an older app are not pins.
-      beers = (r.data || []).filter(function (b) {
+      return (r.data || []).filter(function (b) {
         if (!b || !isFinite(b.lat) || !isFinite(b.lng)) return false;
         var o = others[b.id];
         b.other_count = o ? Math.max(0, o.other_count | 0) : 0; b.other_kind = o ? o.other_kind || null : null;
         return (b.beer_count | 0) >= 1 || b.other_count >= 1;
       });
+    });
+  }
+  function refresh(force) {
+    // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
+    if (loading) { refreshAgain = true; return loadingP || Promise.resolve(); }
+    if (!LIVE || !authed || movedState) return Promise.resolve();
+    if (document.visibilityState === "hidden") return Promise.resolve();
+    loading = true;
+    var startedAt = Date.now(), box = null, dv2 = null;
+    var wantHeat = !!(heat && heatOn && (force === "heat" || Date.now() - heatAskAt >= HEAT_MS));
+    var step = pollV2 === "missing" ? Promise.resolve(null) : fetchV2(startedAt, wantHeat).catch(function (e) {
+      if (U.errCode(e) === "not_authenticated") throw e;
+      return pollV2 === "on" ? Promise.reject(e) : null;   // invalid_bbox / odd error on first try: old calls
+    });
+    loadingP = step.then(function (d) {
+      if (movedState) return;
+      if (d) {
+        dv2 = d;
+        box = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
+        pollBox = box;
+        beers = normPins(d.pins);
+        liveTotal = d.live_total != null ? d.live_total | 0 : null;
+        checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+        checkinState = "on"; syncMyCheckin();
+        if (othersState !== "on") { othersState = "on"; mods("onOthersState", true); }
+        if (Array.isArray(d.heat)) {
+          heatAskAt = Date.now();
+          heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
+        }
+        applyMe(d.me, startedAt);
+        return;
+      }
+      return fetchOld().then(function (list) {
+        if (movedState) return;
+        beers = normPins(list); liveTotal = null; pollBox = null; meState = null;
+      });
+    }).then(function () {
+      if (movedState) return;
+      drinkViews = null;
+      lastPollAt = Date.now();
       beers.forEach(function (b) {
-        b.skal_count = Math.max(0, b.skal_count | 0); b.i_skaled = !!b.i_skaled;
         var mine = mySkals[b.id];
         if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
       });
-      if (window.NEWS) window.NEWS.update(beers);
+      if (window.NEWS) window.NEWS.update(beerOnly());
       newsDirty = true;
       render();
       loadHeatPoints();
-      streakAlerts();
+      streakAlerts(box);
       evalChaos(true);
       skalAlert();
       toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
+      mods("onPollData", dv2);
       mods("onPoll", beers);
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") {
@@ -994,18 +1173,41 @@
       }
       if (!firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
     }).then(function () {
-      loading = false;
+      loading = false; loadingP = null;
       if (refreshAgain) { refreshAgain = false; refresh(); }
+      schedulePoll();
     });
+    return loadingP;
   }
-  // Poll only while the tab is visible. Hidden tab = no timer at all.
-  var pollTimer = null;
-  function startPoll() { if (!pollTimer && LIVE) pollTimer = setInterval(refresh, POLL_MS); }
-  function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  // Poll every 30 s; every 60 s when the map was not touched for 3 min. Hidden tab = no timer at all.
+  var pollTimer = null, lastTouch = Date.now(), pollOn = false;
+  function idle() { return Date.now() - lastTouch > IDLE_MS; }
+  function schedulePoll() {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    if (!pollOn || !LIVE || loading || document.visibilityState === "hidden") return;   // a running poll schedules the next itself
+    var wait = (idle() ? POLL_SLOW_MS : POLL_MS) - (Date.now() - lastPollAt);
+    pollTimer = setTimeout(function () { pollTimer = null; refresh(); }, Math.max(1000, wait));
+  }
+  function startPoll() { if (LIVE) { pollOn = true; schedulePoll(); } }
+  function stopPoll() { pollOn = false; if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+  function touched() {
+    var wasIdle = idle();
+    lastTouch = Date.now();
+    if (wasIdle && pollOn) schedulePoll();   // back from slow mode: next poll on the fast schedule
+  }
+  ["pointerdown", "keydown", "wheel"].forEach(function (ev) { document.addEventListener(ev, touched, { passive: true, capture: true }); });
+  map.on("movestart zoomstart", touched);
+  // poll_v2 returns only the view (+ margin): a move outside the last box polls again (max every 3 s).
+  map.on("moveend", U.debounce(function () {
+    if (pollV2 !== "on" || !pollBox || loading) return;
+    var b = map.getBounds(), v = viewBox();
+    var inside = v.p_min_lat >= pollBox[0] && v.p_min_lng >= pollBox[1] && v.p_max_lat <= pollBox[2] && v.p_max_lng <= pollBox[3];
+    if (!inside && Date.now() - lastPollAt > 3000) refresh();
+  }, 400));
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") {
       if (flyttOnVisible()) return;   // back from the new app: the account moved, do not poll with the old token
-      startPoll(); refresh(); tickCooldown();
+      lastTouch = Date.now(); startPoll(); refresh(); tickCooldown();
     }
     else { flyttHiddenAt = Date.now(); stopPoll(); }
   });
@@ -1038,7 +1240,7 @@
   /* ---------- Error messages ---------- */
   function errMsg(e, fallback) {
     switch (U.errCode(e)) {
-      case "outside_sweden": return t("outside");
+      case "outside_sweden": return t("outsideServer");
       case "invalid_name": return t("invalidName");
       case "group_not_found": return t("notFound");
       case "not_authenticated": reauth(); return t("notAuth");
@@ -1055,13 +1257,37 @@
     reauthing = true; authed = false;
     // Try to refresh the token first: signing out makes a NEW anonymous user and loses all groups.
     client.auth.refreshSession().then(function (r) {
-      if (r && r.data && r.data.session && !r.error) return;
+      if (r && r.data && r.data.session && !r.error) return "ok";
       // Network error (phone just woke up, bad signal): keep the session. A new anonymous
       // user would lose all groups and leave the old pin on the map.
-      if (authRetryable(r && r.error)) return;
-      return client.auth.signOut().catch(function () {});
-    }).catch(function () {}).then(function () { return signIn(); })
-      .then(function () { reauthing = false; });
+      if (authRetryable(r && r.error)) return "ok";
+      try { console.warn("olnu reauth", r && r.error && (r.error.message || r.error.status)); } catch (e) {}
+      // v14: never silently: warn and offer the flyttkod first.
+      return askNewAccount().then(function (choice) {
+        if (choice !== "new") return choice;
+        U.ls.del("olnu.uid");
+        return Promise.resolve(client.auth.signOut()).catch(function () {}).then(function () { return "ok"; });
+      });
+    }).catch(function () { return "ok"; }).then(function (res) {
+      reauthing = false;
+      if (res === "retry") { setTimeout(reauth, 300); return; }
+      if (res === "ok") return signIn();
+    });
+  }
+  // "Din inloggning gick ut": continue with a new account, paste a flyttkod, or try again.
+  var askingAcc = null;
+  function askNewAccount() {
+    if (askingAcc) return askingAcc;
+    askingAcc = new Promise(function (resolve) {
+      var done = false, fin = function (v) { if (done) return; done = true; askingAcc = null; resolve(v); };
+      openSheet(t("reauthTitle"), function (body) {
+        body.appendChild(el("p", { text: t("reauthText") }));
+        body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn(t("reauthRetry"), "btn-green btn-block", function () { fin("retry"); closeSheet("pick"); })]));
+        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("reauthFlytt"), "btn-amber btn-block", function () { fin("flytt"); showFlyttImport(); })]));
+        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("reauthNew"), "btn-ghost btn-block", function () { fin("new"); closeSheet("pick"); })]));
+      }, { now: true, onClose: function () { fin("later"); } });
+    });
+    return askingAcc;
   }
 
   /* ---------- Cooldown ---------- */
@@ -1103,8 +1329,23 @@
       btnEl.removeAttribute("aria-label");
       ring.style.strokeDashoffset = String(RING_LEN);
     }
+    fitBeerLabel();
   }
   $("cd-ring").style.strokeDasharray = String(RING_LEN);
+  // v14: the label always fits inside the round button ("BEER!" is wider than "ÖL!").
+  var fitKey = "";
+  function fitBeerLabel() {
+    var lab = $("beer-label"), b = $("btn-beer");
+    if (!lab || !b) return;
+    var key = lab.textContent + "|" + b.className + "|" + b.clientWidth;
+    if (key === fitKey) return;
+    fitKey = key;
+    lab.style.fontSize = "";
+    var room = b.clientWidth * 0.8, size = parseFloat(getComputedStyle(lab).fontSize) || 34, guard = 0;
+    if (!room) return;
+    while (lab.scrollWidth > room && size > 14 && guard++ < 30) { size -= 1; lab.style.fontSize = size + "px"; }
+  }
+  window.addEventListener("resize", U.debounce(function () { fitKey = ""; fitBeerLabel(); }, 150));
 
   /* ---------- Beer button ---------- */
   function getPosition(opts) {
@@ -1140,15 +1381,15 @@
     L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false, keyboard: false }).addTo(meLayer);
   }
-  function inSweden(lat, lng) { return lat >= SWEDEN[0][0] && lat <= SWEDEN[1][0] && lng >= SWEDEN[0][1] && lng <= SWEDEN[1][1]; }
+  // v14 worldwide: any valid position (the server may still refuse outside Sweden: outside_sweden toast).
+  function inSweden(lat, lng) { return U.validPos(lat, lng); }
   function locate(opts) {
     opts = opts || {};
     var b = $("btn-locate"); b.classList.add("busy");
     return getPosition({ enableHighAccuracy: !!opts.precise, timeout: 12000, maximumAge: 60000 }).then(function (pos) {
       var la = pos.coords.latitude, ln = pos.coords.longitude;
       showMe(la, ln, pos.coords.accuracy);
-      if (inSweden(la, ln)) map.setView([la, ln], Math.max(opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate });
-      else if (!opts.quiet) toast(t("outside"), { ms: 5000 });
+      if (U.validPos(la, ln)) map.setView([la, ln], Math.max(opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate });
       U.ls.set("olnu.locOk", "1");
       return true;
     }, function (err) {
@@ -1159,6 +1400,7 @@
   $("btn-locate").addEventListener("click", function () { locate({ animate: true, precise: true }); });
   function setBusy(v) {
     busy = v; var b = $("btn-beer"); b.disabled = v || cooldownLeft() > 0; b.classList.toggle("busy", v);
+    if (!v) setTimeout(drainSheets, 80);
   }
   function levelToast(n) {
     if (n === 1) return t("lvl1");
@@ -1168,20 +1410,39 @@
     if (n > 5) return t("lvlHot", n);
     return t("lvlN", n);
   }
+  // v14: all drinks count. Drinks tonight after an accepted beer = beers + other drinks (server "me" or pin).
+  function othersNow() {
+    var oc = meState ? meState.other_count | 0 : 0, mine = myBeer();
+    if (mine) oc = Math.max(oc, mine.other_count | 0);
+    try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
+    return oc;
+  }
+  // HOT STREAK / MEDEVAC takeover when the total crosses 5 / 10 (after ÖL! or after ANNAT). Returns true when shown.
+  function drinkFx(total, prev) {
+    if (prev < 10 && total >= 10) {
+      var medExtra = mods("medevacExtraHTML");
+      window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 });
+      return true;
+    }
+    if (prev < 5 && total >= 5) { window.FX.takeover(1, { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") }); return true; }
+    return false;
+  }
   // "Var dricker du?" — sometimes asks which bar you are at, so the beer counts there.
   // Asks: on the first beer tonight, when you moved > 150 m since the last pick, or now and then (1 in 4).
   // Else it reuses the last picked bar while you stay within 150 m of where you picked it.
-  // Close the sheet = use the real GPS position. A picked bar puts the pin on the bar.
-  var WHERE_KEY = "olnu.where", WHERE_R = 400, WHERE_STAY = 150;
+  // v14: ✕ / backdrop / Escape / another sheet = CANCEL (no beer). Bars first, then restaurants/cafés (🍽️).
+  // 🏠 Hemzon: the beer is posted as an area unless a bar or restaurant is picked.
+  var WHERE_KEY = "olnu.where", WHERE_R = 400, WHERE_STAY = 150, WHERE_PLACE_R = 150;
   function askWhere(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
-    var real = { lat: lat, lng: lng, precise: prec === "exact" };
+    var home = !!(window.PRIVACY && window.PRIVACY.inHome(lat, lng));
+    var real = { lat: lat, lng: lng, precise: prec === "exact" && !home, home: home };
     // v10: fresh own check-in (< 3 h) and still within 150 m of it → drink there, no question.
     var ci = myCheckin();
     if (ci && Date.now() - ci.at < CI_FRESH_MS && U.haversine(lat, lng, ci.lat, ci.lng) <= CI_STAY_M) {
       return Promise.resolve({ lat: ci.lat, lng: ci.lng, precise: prec === "exact" });
     }
-    var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6) : [];
+    var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6, { places: true, placeM: WHERE_PLACE_R, maxPlaces: 4 }) : [];
     if (!list.length) return Promise.resolve(real);
     var last = U.ls.getJSON(WHERE_KEY, null), night = myNight();
     var fresh = last && last.until > Date.now();
@@ -1194,24 +1455,114 @@
       var done = false;
       function pick(bar) {
         if (done) return; done = true;
-        U.ls.setJSON(WHERE_KEY, { atLat: lat, atLng: lng, until: U.nightEnd ? U.nightEnd() : Date.now() + 6 * 3600e3,
+        U.ls.setJSON(WHERE_KEY, { atLat: lat, atLng: lng, until: nightEnd(),
           bar: bar ? { id: bar.id, name: bar.name, lat: bar.lat, lng: bar.lng } : null });
-        sheetOnClose = null; closeSheet();
+        closeSheet("pick");
         resolve(bar ? { lat: bar.lat, lng: bar.lng, precise: true } : real);
       }
       openSheet(t("whereTitle"), function (body) {
         body.appendChild(el("p", { class: "muted", text: t("whereInfo") }));
-        list.forEach(function (x, i) {
+        var bars = list.filter(function (x) { return !x.place; }), places = list.filter(function (x) { return x.place; });
+        var row = function (x, i, emo) {
           var m = Math.round(x.d / 10) * 10;
           body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [
-            btn("🍺 " + x.bar.name + "  · " + (m < 20 ? t("whereHere") : m + " m"), (i === 0 ? "btn-amber " : "") + "btn-block", function () { pick(x.bar); })
+            btn(emo + " " + x.bar.name + "  · " + (m < 20 ? t("whereHere") : m + " m"), (i === 0 && emo === "🍺" ? "btn-amber " : "") + "btn-block" + (x.place ? " where-place" : ""), function () { pick(x.bar); })
           ]));
-        });
+        };
+        bars.forEach(function (x, i) { row(x, i, "🍺"); });
+        if (places.length) {
+          body.appendChild(el("p", { class: "muted where-sub", text: t("wherePlaces") }));
+          places.forEach(function (x, i) { row(x, i, "🍽️"); });
+        }
         body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn("🏠 " + t("whereNone"), "btn-ghost btn-block", function () { pick(null); })]));
-      });
-      sheetOnClose = function () { if (!done) { done = true; resolve(real); } };
+      }, { now: true, lock: true, onClose: function () { if (!done) { done = true; resolve(null); } } });
     });
   }
+  /* ---------- Post: post_beer_v2 (v13) with fallback to post_beer ---------- */
+  var postV2 = "unknown";   // "unknown" | "on" | "missing"
+  function postBeer(spot, ghost) {
+    var p = { p_lat: spot.lat, p_lng: spot.lng, p_precise: !!spot.precise };
+    if (postV2 === "missing") return rpc("post_beer", p).then(function (r) { return { r: r, v2: false }; });
+    p.p_hidden = !!ghost;
+    return rpc("post_beer_v2", p).then(function (r) {
+      if (r.error && U.missing(r.error)) {
+        postV2 = "missing"; delete p.p_hidden;
+        return rpc("post_beer", p).then(function (r2) { return { r: r2, v2: false }; });
+      }
+      if (!r.error) postV2 = "on";
+      return { r: r, v2: true };
+    });
+  }
+  /* ---------- ↩️ ÅNGRA (undo_beer, 2 min) + push only after the undo window ---------- */
+  var NOTIFY_KEY = "olnu.notifyAt", notifyTimer = null;
+  var undoEl = null, undoTimer = null, undoMiniTimer = null, UNDO_BIG_MS = 12000;
+  function scheduleNotify(atMs) {
+    flushNotify(true);   // a beer still waiting: its window ends now (the next beer)
+    U.ls.set(NOTIFY_KEY, String(atMs));
+    clearTimeout(notifyTimer);
+    notifyTimer = setTimeout(function () { flushNotify(false); }, Math.max(0, atMs - Date.now()) + 1500);
+  }
+  function flushNotify(now) {
+    var at = +U.ls.get(NOTIFY_KEY, "0") || 0;
+    if (!at || (!now && Date.now() < at)) return;
+    U.ls.del(NOTIFY_KEY); clearTimeout(notifyTimer); notifyTimer = null;
+    if (Date.now() - at < 4 * 60e3) notifyGroup();   // notify-group needs a beer from the last 5 min
+  }
+  function cancelNotify() { U.ls.del(NOTIFY_KEY); clearTimeout(notifyTimer); notifyTimer = null; }
+  function resumeNotify() {
+    var at = +U.ls.get(NOTIFY_KEY, "0") || 0;
+    if (!at) return;
+    if (Date.now() >= at) flushNotify(false);
+    else { clearTimeout(notifyTimer); notifyTimer = setTimeout(function () { flushNotify(false); }, at - Date.now() + 1500); }
+  }
+  function clearUndo() {
+    clearTimeout(undoTimer); clearTimeout(undoMiniTimer); undoTimer = undoMiniTimer = null;
+    if (undoEl) { undoEl.remove(); undoEl = null; }
+  }
+  function showUndo(d, text, cls) {
+    clearUndo();
+    var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
+    left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
+    undoEl = toast(text, { id: "undo", ms: 0, keep: true, cls: "undo" + (cls ? " " + cls : ""),
+      action: { label: "↩️ " + t("undoBtn"), stay: true, fn: function (b) { doUndo(b); } } });
+    undoMiniTimer = setTimeout(function () { if (undoEl) undoEl.classList.add("undo-mini"); }, UNDO_BIG_MS);
+    undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
+  }
+  var undoing = false;
+  function doUndo(button) {
+    if (undoing) return;
+    undoing = true;
+    if (button) { button.disabled = true; button.textContent = t("undoBusy"); }
+    rpc("undo_beer").then(function (r) {
+      undoing = false;
+      if (r.error) {
+        if (button) { button.disabled = false; button.textContent = "↩️ " + t("undoBtn"); }
+        toast(t("undoFail"), { err: true });
+        return;
+      }
+      var d = parseData(r.data);
+      clearUndo();
+      if (!d.ok) {
+        toast(d.reason === "limit" ? t("undoLimit") : d.reason === "no_beer" ? t("undoNone") : t("undoTooLate"), { ms: 5000 });
+        flushNotify(true);
+        return;
+      }
+      cancelNotify();   // an undone milestone sends no push
+      var lines = t("undoToasts") || [];
+      toast(lines.length ? lines[Math.floor(Math.random() * lines.length)] : "↩️", { ms: 5500, cls: "skal" });
+      window.FX.vibrate([15, 30, 15]);
+      var m = myNight() || {};
+      m.count = d.beer_count | 0; m.lastTap = 0;   // the old cooldown comes back with the next poll
+      U.ls.setJSON("olnu.night", m);
+      lastAcceptAt = 0;
+      mods("onBeerUndone", d);
+      tickCooldown(); updateCounts();
+      refresh();
+    });
+  }
+  // A poll says the undo window is over (or undone on another phone): drop the button.
+  function undoSync(me) { if (undoEl && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
+
   $("btn-beer").addEventListener("click", function () {
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (busy || cooldownLeft() > 0) return;
@@ -1222,9 +1573,16 @@
     window.FX.vibrate(20);
     setBusy(true);
     getPosition().then(askWhere).then(function (spot) {
-      return rpc("post_beer", { p_lat: spot.lat, p_lng: spot.lng, p_precise: spot.precise })
-        .then(function (r) {
-          if (r.error) { toast(errMsg(r.error, t("postFail")), { err: true, ms: 6000 }); return; }
+      if (!spot) { toast(t("whereCancel"), { id: "where" }); return; }
+      var ghost = !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
+      var before = U.drinks(meState || myBeer() || {});
+      return postBeer(spot, ghost)
+        .then(function (res) {
+          var r = res.r;
+          if (r.error) {
+            toast(U.errCode(r.error) === "outside_sweden" ? t("outsideServer") : errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
+            return;
+          }
           var d = parseData(r.data);
           if (d.accepted === false) {
             saveNight(d, false);
@@ -1232,26 +1590,27 @@
             return;
           }
           saveNight(d, true);
+          lastAcceptAt = Date.now();
           if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
-          var n = d.beer_count | 0, l = U.level(n);
-          var ghost = !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
-          var medExtra = n === 10 ? mods("medevacExtraHTML") : "";
-          if (n === 10) window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 });
-          else if (n === 5) window.FX.takeover(1, { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") });
-          else {
-            toast(levelToast(n), { cls: l === 2 ? "med" : l === 1 ? "hot" : "" });
-            window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
-          }
+          var total = (d.beer_count | 0) + othersNow(), l = U.level(total);
+          if (meState) { meState.beer_count = d.beer_count | 0; meState.undo_until = d.undo_until || null; }
+          var big = drinkFx(total, Math.max(before, total - 1));
+          var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
+          var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
+          if (res.v2 && d.undo_until) showUndo(d, text, cls);
+          else if (!big) toast(text, { cls: cls });
+          if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
           window.FX.sound.beer();
-          // Spökläge: hide the pin at once and tell nobody. Else: server friend milestones + KAOS I STAN check.
-          if (ghost) rpc("stop_beer").then(function () { refresh(); });
+          // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
+          if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
+          else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
           else notifyGroup();
-          mods("onBeerAccepted", d, { precise: prec === "exact", ghost: ghost });
-          if (PUSH_ON) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
+          mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
+          if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
           if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
             setTimeout(function () { askNotifSheet(); }, 2200);
           }
-          if (isFinite(d.lat) && isFinite(d.lng)) {
+          if (isFinite(d.lat) && isFinite(d.lng) && !ghost) {
             map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
           }
           refresh();
@@ -1269,7 +1628,7 @@
   // "Sluta dricka": choose "Jag är hemma" or "Öltorsk". Both hide the pin; the group gets a fun push.
   function stopBeer(kind) {
     var sb = $("btn-stop"); if (sb.disabled) return;
-    sb.disabled = true; closeSheet();
+    sb.disabled = true; closeSheet("pick");
     rpc("stop_beer").then(function (r) {
       sb.disabled = false;
       if (r.error) { toast(errMsg(r.error), { err: true }); return; }
@@ -1280,32 +1639,51 @@
       }
     });
   }
-  $("btn-stop").addEventListener("click", function () {
+  // "🙈 Göm min pin" (own-pin popup, Settings): the same choices as "Sluta dricka".
+  function showStopSheet() {
     if ($("btn-stop").disabled) return;
     openSheet(t("stopTitle"), function (body) {
       body.appendChild(el("p", { class: "muted", text: t("stopInfo") }));
       body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn("🏠 " + t("stopHome"), "btn-green btn-block", function () { stopBeer("home"); })]));
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("🥀 " + t("stopPause"), "btn-amber btn-block", function () { stopBeer("pause"); })]));
-      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("cancel"), "btn-block", closeSheet)]));
+      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("cancel"), "btn-block", function () { closeSheet(); })]));
       mods("stopSheet", body);   // taxi + SOS
     });
-  });
+  }
+  $("btn-stop").addEventListener("click", showStopSheet);
 
-  /* ---------- Sheet ---------- */
-  var sheetOnClose = null;
-  function openSheet(title, build) {
+  /* ---------- Sheet (v14: one sheet at a time + a queue) ----------
+     A sheet that opens while "Var dricker du?" is open (lock) or while a beer is posted (busy) waits in
+     a queue and opens afterwards. Replacing a sheet settles the old one's onClose("replaced"); closing
+     with ✕ / backdrop / Escape gives onClose("cancel"). */
+  var sheetCur = null, sheetQueue = [];
+  function sheetLocked() { return !!(sheetCur && sheetCur.lock && !$("sheet").hidden); }
+  function openSheet(title, build, opts) {
+    opts = opts || {};
+    if (!opts.now && (sheetLocked() || busy)) { sheetQueue.push([title, build, opts]); return false; }
+    var prev = sheetCur; sheetCur = null;
+    if (prev && prev.onClose) { try { prev.onClose("replaced"); } catch (e) {} }
+    sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
     $("sheet-title").textContent = title;
     var body = $("sheet-body"); body.innerHTML = "";
     build(body);
     $("sheet").hidden = false; $("backdrop").hidden = false;
+    return true;
   }
-  function closeSheet() {
+  function closeSheet(reason) {
     $("sheet").hidden = true; $("backdrop").hidden = true; $("sheet-body").innerHTML = "";
-    var f = sheetOnClose; sheetOnClose = null; if (f) f();
+    var cur = sheetCur; sheetCur = null;
+    if (cur && cur.onClose) { try { cur.onClose(typeof reason === "string" ? reason : "cancel"); } catch (e) {} }
+    setTimeout(drainSheets, 80);
   }
-  $("sheet-close").addEventListener("click", closeSheet);
-  $("backdrop").addEventListener("click", closeSheet);
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+  function drainSheets() {
+    if (!sheetQueue.length || busy || !$("sheet").hidden || !$("intro").hidden) return;
+    var x = sheetQueue.shift();
+    openSheet(x[0], x[1], x[2]);
+  }
+  $("sheet-close").addEventListener("click", function () { closeSheet("cancel"); });
+  $("backdrop").addEventListener("click", function () { closeSheet("cancel"); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet("cancel"); });
 
   function el(tag, attrs, kids) {
     var n = document.createElement(tag);
@@ -1567,10 +1945,10 @@
             friend: x.list.some(function (b) { return b.friend_name; }) };
         });
     }
-    return beers.filter(function (b) { return U.level(b.beer_count) > 0; })
-      .sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); })
+    return beers.filter(function (b) { return U.level(U.drinks(b)) > 0; })
+      .sort(function (a, b) { return U.drinks(b) - U.drinks(a); })
       .slice(0, 20).map(function (b) {
-        return { name: whoOf(b), sub: placeLabel(b), n: b.beer_count | 0, icon: lvlIcon(U.level(b.beer_count)),
+        return { name: whoOf(b), sub: placeLabel(b), n: U.drinks(b), icon: lvlIcon(U.level(U.drinks(b))),
           lat: b.lat, lng: b.lng, z: 17, id: b.id, friend: !!b.friend_name, mine: !!b.is_mine };
       });
   }
@@ -1752,7 +2130,7 @@
       body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("📲 " + t("inviteBtn"), "btn-amber btn-block", showInvite)]));
       if (!U.isStandalone()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("guideTitle"), "btn-block", showInstallGuide)]));
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
-      if (LIVE && myBeer()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("stop"), "btn-block", function () { $("btn-stop").click(); })]));
+      if (LIVE && myBeer()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", showStopSheet)]));
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
       var saveName = function () {
@@ -1815,8 +2193,16 @@
         closeSheet(); showIntro(true);
       })]));
 
-      body.appendChild(el("h3", { text: t("about") }));
-      body.appendChild(el("p", { text: t("privacy") }));
+      if (window.PRIVACY) {
+        if (LIVE) window.PRIVACY.homeBlock(body);
+        body.appendChild(el("h3", { text: t("about") }));
+        body.appendChild(el("p", { text: t("privacy") }));
+        body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [btn(t("privBtn"), "btn-block", function () { window.PRIVACY.showPrivacy(showSettings); })]));
+        if (LIVE && authed) body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [btn(t("delBtn"), "btn-block btn-danger btn-small", window.PRIVACY.showDelete)]));
+      } else {
+        body.appendChild(el("h3", { text: t("about") }));
+        body.appendChild(el("p", { text: t("privacy") }));
+      }
       body.appendChild(el("p", { class: "muted", text: t("aboutMore") }));
 
       // Version + force update
@@ -1842,10 +2228,17 @@
       return Promise.all(rs.map(function (r) { return r.update().catch(function () {}); }));
     }));
     // Also refresh the browser HTTP cache (max-age=600 on GitHub Pages), else the reload can get old files.
-    ["./", "./index.html", "./sw.js", "./config.js", "./app.js", "./styles.css", "./js/i18n.js", "./js/util.js",
-      "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news.js", "./js/social.js", "./js/extras.js", "./js/rally.js"].forEach(function (u) {
-      jobs.push(fetch(u, { cache: "reload" }).catch(function () {}));
-    });
+    // The list is sw.js's own SHELL (one list for both), plus the files the page loaded now.
+    jobs.push(fetch("./sw.js", { cache: "reload" }).then(function (r) { return r.text(); }).then(function (txt) {
+      var m = txt.match(/var SHELL = \[([\s\S]*?)\];/), list = [];
+      if (m) list = (m[1].match(/"([^"]+)"/g) || []).map(function (x) { return x.slice(1, -1); });
+      document.querySelectorAll("script[src], link[rel=stylesheet][href]").forEach(function (n) {
+        var u = n.getAttribute("src") || n.getAttribute("href") || "";
+        if (u.indexOf("./") === 0 && list.indexOf(u) < 0) list.push(u);
+      });
+      if (!list.length) list = ["./", "./index.html", "./app.js", "./styles.css"];
+      return Promise.all(list.map(function (u) { return fetch(u, { cache: "reload" }).catch(function () {}); }));
+    }).catch(function () {}));
     Promise.all(jobs).catch(function () {}).then(function () {
       var u = location.pathname + "?v=" + Date.now() + location.hash;
       location.replace(u);
@@ -1884,7 +2277,8 @@
     };
     var reloadNow = function () {
       if (reloading) return;
-      if (typing() || busy) { setTimeout(reloadNow, 5000); return; }
+      // Wait while typing, posting a beer, a sheet / intro is open, a takeover is shown or the undo button is up.
+      if (typing() || busy || !$("sheet").hidden || !$("intro").hidden || document.querySelector(".takeover") || undoEl) { setTimeout(reloadNow, 5000); return; }
       reloading = true; location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", function () {
@@ -1928,7 +2322,13 @@
       if (res && res.data && res.data.session) return res;
       // Token refresh failed on the network: try again later, do not make a new user.
       if (res && authRetryable(res.error)) throw res.error;
-      return Promise.resolve(client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; return r; });
+      // v14: this phone had an account (olnu.uid) but the session is gone: never make a new one silently.
+      var ask = U.ls.get("olnu.uid", "") && !storedAuth() && !movedNow() ? askNewAccount() : Promise.resolve("new");
+      return ask.then(function (choice) {
+        if (choice !== "new") throw { message: "choice_" + choice, keep: true };
+        U.ls.del("olnu.uid");
+        return Promise.resolve(client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; return r; });
+      });
     });
   }
   function signIn() {
@@ -1938,6 +2338,7 @@
     var delays = [1000, 3000, 6000], attempt = 0;
     function go() {
       return trySignInOnce().catch(function (e) {
+        if (e && e.keep) throw e;   // the user chose "later" / a flyttkod: no retries, no new account
         if (attempt >= delays.length) throw e;
         return wait(delays[attempt++]).then(go);
       });
@@ -1945,12 +2346,15 @@
     signingIn = go().then(function () {
       authed = true;
       toastClear("auth");
+      var uid = storedUid(); if (uid) U.ls.set("olnu.uid", uid);
+      resumeNotify();
       if (PUSH_ON) window.PUSH.resync(rpc, CFG.VAPID_PUBLIC_KEY).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
       startPoll();
       mods("onAuthed");
       return refresh();
     }).catch(function (e) {
       var m = String((e && e.message) || "");
+      if (e && e.keep) { if (m === "choice_retry") setTimeout(signIn, 300); else if (m === "choice_later") toast(t("authFail"), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } }); return; }
       var key = navigator.onLine === false ? "authOffline" : /anonymous/i.test(m) && /disabled/i.test(m) ? "authDisabled" : "authFail";
       toast(t(key), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } });
     }).then(function () { signingIn = null; });
@@ -2151,7 +2555,7 @@
     var pend = U.ls.getJSON("olnu.flyttPending", null) || {};
     stopRefresh();
     var u = storedUid() || pend.u || "";
-    U.ls.del(AUTH_KEY); U.ls.del(AUTH_KEY + "-code-verifier"); U.ls.del(AUTH_KEY + "-user");
+    U.ls.del(AUTH_KEY); U.ls.del(AUTH_KEY + "-code-verifier"); U.ls.del(AUTH_KEY + "-user"); U.ls.del("olnu.uid");
     U.ls.set("olnu.moved", String(Date.now()));
     U.ls.set("olnu.movedTo", kind || pend.kind || "other");
     if (u) U.ls.set("olnu.movedU", u);
@@ -2193,7 +2597,7 @@
     movedState = true;
     var kind = U.ls.get("olnu.movedTo", "other");
     movedShowing = new Promise(function (resolve) {
-      if (!$("sheet").hidden) { sheetOnClose = null; closeSheet(); }
+      if (!$("sheet").hidden) { if (sheetCur && !sheetCur.lock) sheetCur.onClose = null; closeSheet("replaced"); }
       var root = $("intro"), body = $("intro-body");
       body.innerHTML = "";
       body.classList.add("flytt-card");
@@ -2248,9 +2652,8 @@
       if (navigator.share) row.appendChild(btn("📲 " + t("share"), "", function () { navigator.share({ title: "Öl Nu", url: link }).catch(function () {}); }));
       body.appendChild(row);
       body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("flyttSecret") }));
-      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttDone"), "btn-block", closeSheet)]));
-    });
-    sheetOnClose = function () { showMoved().then(signIn); };
+      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttDone"), "btn-block", function () { closeSheet(); })]));
+    }, { now: true, onClose: function () { showMoved().then(signIn); } });
   }
   function copyFlytt(text) {
     var done = function () { toast(t("flyttCopied"), { id: "flytt" }); };
@@ -2298,8 +2701,41 @@
   }
 
   /* ---------- First start (shown once) ---------- */
-  var INTRO_KEY = "olnu.intro";
+  var INTRO_KEY = "olnu.intro", AGE_KEY = "olnu.age18";
   function introDone() { return U.ls.get(INTRO_KEY, "") === "1"; }
+  function ageOk() { return U.ls.get(AGE_KEY, "") === "1"; }
+  // v14 🔞: users who saw the intro before the age question get it once.
+  function showAgeOnce() {
+    return new Promise(function (resolve) {
+      var root = $("intro"), body = $("intro-body");
+      function stepAsk() {
+        body.innerHTML = "";
+        var cb = el("input", { type: "checkbox", id: "age-cb" });
+        var go = btn(t("introGo"), "btn-amber btn-block", function () {
+          if (!cb.checked) { toast(t("ageNeeded"), { err: true, id: "age" }); return; }
+          U.ls.set(AGE_KEY, "1"); toastClear("age");
+          root.hidden = true; body.innerHTML = ""; resolve();
+        });
+        go.disabled = true;
+        cb.addEventListener("change", function () { go.disabled = !cb.checked; });
+        body.appendChild(el("div", { class: "intro-big", text: "🔞" }));
+        body.appendChild(el("h2", { class: "intro-h", text: t("ageTitle") }));
+        body.appendChild(el("p", { class: "intro-p", text: t("ageText") }));
+        body.appendChild(el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));
+        body.appendChild(go);
+        if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: function () {
+          body.innerHTML = "";
+          var box = el("div", { class: "intro-privtext" });
+          window.PRIVACY.fillPrivacy(box, null);
+          body.appendChild(el("h2", { class: "intro-h", text: t("privTitle") }));
+          body.appendChild(box);
+          body.appendChild(btn(t("back"), "btn-block btn-amber", stepAsk));
+        } }));
+      }
+      stepAsk();
+      root.hidden = false;
+    });
+  }
   function showIntro(again) {
     return new Promise(function (resolve) {
       var root = $("intro"), body = $("intro-body");
@@ -2314,7 +2750,7 @@
         var cb = el("input", { type: "checkbox", id: "age-cb" });
         var go = btn(t("introGo"), "btn-amber btn-block", function () {
           if (!cb.checked) { toast(t("ageNeeded"), { err: true, id: "age" }); return; }
-          U.ls.set(INTRO_KEY, "1");
+          U.ls.set(INTRO_KEY, "1"); U.ls.set(AGE_KEY, "1");
           toastClear("age");
           if (again || U.ls.get("olnu.locOk", "") === "1") close(); else stepLoc();
         });
@@ -2332,6 +2768,16 @@
         body.appendChild(el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));
         body.appendChild(go);
         body.appendChild(el("p", { class: "intro-priv", text: t("introPrivacy") }));
+        if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: stepPriv }));
+      }
+      // 🔒 Integritet inside the intro card (the intro covers the sheet layer).
+      function stepPriv() {
+        body.innerHTML = "";
+        body.appendChild(el("h2", { class: "intro-h", text: t("privTitle") }));
+        var box = el("div", { class: "intro-privtext" });
+        window.PRIVACY.fillPrivacy(box, null);
+        body.appendChild(box);
+        body.appendChild(btn(t("back"), "btn-block btn-amber", stepAge));
       }
       function stepLoc() {
         body.innerHTML = "";
@@ -2376,7 +2822,7 @@
       var moved = sessionStorage.getItem("olnu.flyttOk");
       if (moved) { sessionStorage.removeItem("olnu.flyttOk"); toast(t("flyttOk", moved === "-" ? "" : moved), { ms: 6000, cls: "skal" }); }
     } catch (e) {}
-    var intro = introDone() ? Promise.resolve() : showIntro(false);
+    var intro = introDone() ? (ageOk() ? Promise.resolve() : showAgeOnce()) : showIntro(false);
     // Returning user who allowed location before: center on them quietly.
     if (introDone() && U.ls.get("olnu.locOk", "") === "1") locate({ quiet: true });
     else if (introDone() && navigator.permissions && navigator.permissions.query) {
@@ -2459,7 +2905,9 @@
       render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
       beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
       authed: function () { return authed; }, client: function () { return client; }, prec: function () { return prec; },
-      center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, showGroups: showGroups,
+      center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, validPos: U.validPos, showGroups: showGroups,
+      drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, me: function () { return meState; },
+      pollV2: function () { return pollV2 === "on"; },
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
       checkins: function () { return checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return lastLoc; },
       setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },

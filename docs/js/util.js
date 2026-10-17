@@ -30,21 +30,36 @@
       var d = new Date(iso); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
     }
   };
-  // Next 05:00 Europe/Stockholm after "from".
+  // Wall-clock parts in Europe/Stockholm for one instant.
+  var sthlmFmt = null;
+  function sthlmParts(ms) {
+    if (!sthlmFmt) sthlmFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+    var p = {};
+    sthlmFmt.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    return p;
+  }
+  // Stockholm UTC offset (ms) at one instant.
+  function sthlmOffset(ms) {
+    var p = sthlmParts(ms);
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+  }
+  // Next 05:00 Europe/Stockholm after "from". DST-safe: the offset is taken at the target instant
+  // (two passes), not at "from" (2026-10-24 22:00 → 2026-10-25 05:00 CET, not 04:00).
+  // Prefer the server's expires_at when there is one (it uses the same rule).
   U.next5am = function (from) {
     from = from || new Date();
-    var parts = {};
-    try {
-      new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit",
-        hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })
-        .formatToParts(from).forEach(function (p) { parts[p.type] = p.value; });
-    } catch (e) { return new Date(from.getTime() + 6 * 3600e3); }
-    var localAsUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
-    var offset = localAsUTC - Math.floor(from.getTime() / 1000) * 1000;
-    var target = Date.UTC(+parts.year, +parts.month - 1, +parts.day, 5, 0, 0);
-    if (+parts.hour >= 5) target += 86400e3;
-    return new Date(target - offset);
+    var t0 = from.getTime(), p;
+    try { p = sthlmParts(t0); } catch (e) { return new Date(t0 + 6 * 3600e3); }
+    var day = Date.UTC(+p.year, +p.month - 1, +p.day + ((+p.hour % 24) >= 5 ? 1 : 0), 5, 0, 0);   // 05:00 wall clock, as if UTC
+    var guess = day - sthlmOffset(day);
+    guess = day - sthlmOffset(guess);
+    return new Date(guess);
   };
+  // Total drinks on a pin (owner decision: all drinks count for levels, numbers and sorting).
+  U.drinks = function (b) { return b ? Math.max(0, b.beer_count | 0) + Math.max(0, b.other_count | 0) : 0; };
+  // A position that any map/server can use (worldwide).
+  U.validPos = function (lat, lng) { return isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 85 && Math.abs(lng) <= 180; };
   U.isIOS = function () {
     var ua = navigator.userAgent || "";
     return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);

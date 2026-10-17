@@ -462,3 +462,134 @@ Migration `supabase/migrations/0015_privacy_poll.sql` (applied on the server 202
 6. Undo: after an accepted beer show "ÅNGRA" until `undo_until`; call `undo_beer()`, then re-poll. Call `notify-group` only after the undo window has passed (or the toast closed without undo), so an undone milestone sends no push.
 7. Header count from `live_total`; HUD/cooldown from `me` (`wait_seconds`, `undo_until`, `undos_left`, `hidden`, `ghost`, title fields).
 8. DST: the server 05:00 logic (`olnu_next_expiry`, `olnu_night_of`) is DST-correct (tested 2026-10-24/25 and 2027-03-27/28). The client should use `expires_at` from the server instead of computing 05:00 itself (`U.next5am` is wrong across DST, review P3-1).
+
+## v16 EFTERÅT (omgång 3: efteråt, socialt och krogar; additive)
+Migration `supabase/migrations/0018_after.sql` (applied on the server 2026-10-17; also appended to `setup.sql`). Needs 0001–0015 (0014 optional). Client: `docs/js/after.js` (`window.AFTER`, called through `mods()`), `docs/js/after-content.js` (`window.AFTER_CONTENT`, texts), `docs/after.css`, `docs/qr.html`. A missing RPC (old database) = that feature hides, no error. All RPCs: authenticated only, `not_authenticated` without a session.
+
+### Tables (RLS on, no policies, no client access; rows are never removed, reads filter on time)
+- `olnu_towns(name pk, lat, lng)` — 80 towns (Dalarna + all larger towns). `olnu_town_of(lat,lng)` = nearest within ~30 km.
+- `after_nights(user_id, night, town, out, checkins, skal_given, skal_got, home_at)` pk (user_id, night). Filled by triggers on `beers` (drink count up → `out`, town of the first pin), `checkins` (+1 per new check-in) and `skals` (given / got). Only a TOWN name is stored, never a place. History starts with v16.
+- `medevac_checks(id, target, night, checker, created_at, notified)` unique (target, night).
+- `voice_msgs(id, group_id, user_id, mime, dur_ms, audio bytea ≤ 60 KB, created_at, expires_at = next 05:00, notified)`.
+
+### RPCs
+| name | params | returns | errors |
+|---|---|---|---|
+| `mark_home` | – | jsonb `{ok, home_at}` / `{ok:false, reason:"no_night"}` | – |
+| `home_status` | `p_last bool default false` | setof `(group_id, group_name, name, is_me, beers, others, was_out, home, home_at, live, night)` — every member of every caller group, tonight (or last night) | – |
+| `claim_medevac` | `p_beer_id bigint` | jsonb `{ok, mine, id, checker}` (`ok:false` = someone was first) | `beer_not_found` (not live or < 10 beers), `own_beer`, `not_friend` |
+| `medevac_checks` | – | setof `(id, beer_id, target_name, checker_name, target_is_me, checker_is_me, created_at)` tonight, where target or checker is the caller or a group-mate | – |
+| `my_night_report` | `p_last bool default true` | jsonb `{night, evening, out, beers, others, first_at, bars, checkins, skal_given, skal_got, home, home_at, town, types:[{type,n}], nights_week_before}` | – |
+| `my_wrapped` | `p_kind 'month'\|'year' default 'month', p_offset int default 1` | jsonb `{kind, from, to, nights, beers, others, home_nights, bars, towns, skal_given, skal_got, fav_bar_id, fav_bar_name, fav_bar_nights, best_evening, best_beers, best_bars, top_type, top_type_n, total, title}` | – |
+| `post_voice` | `p_group_id uuid, p_mime text, p_b64 text, p_dur_ms int default 0` | jsonb `{id, created_at, left}` | `not_member`, `invalid_voice` (mime not audio/webm\|ogg\|mp4\|aac\|mpeg\|x-m4a, bad base64, < 100 B or > 60 KB), `voice_limit` (10 per user per night), `slow_down` (5 s) |
+| `group_voices` | `p_group_id uuid, p_after_id bigint default 0` | setof `(id, name, mime, dur_ms, bytes, created_at, is_me)` live, newest 30, oldest first (no audio) | `not_member` |
+| `voice_audio` | `p_id bigint` | jsonb `{id, mime, dur_ms, b64}` | `voice_not_found` (expired/unknown), `not_member` |
+| `city_league` | `p_week_offset int default 0` | setof `(rank, town, points, users, nights, checkins, skal, home, is_mine)` top 12 + the caller's town | – |
+| `bar_regulars` | `p_bar_id text` | setof `(rank, name, nights, is_me, last_at)` top 3 (min 2 nights) + the caller's own row | – |
+
+Rules:
+- **Kom hem säkert**: client calls `mark_home()` on "Jag är hemma" (hook `onStopped("home")`; also sets `medal_nights.home`). Group view shows "✅ hemma 01:32" / "🌙 ej hemma än". Morning (05:00–15:00, first open): mates who were out last night and never pressed home → in-app card only (`safeHome.missing` lines). NO automatic morning push. The existing `notify-group {event:"home"}` push (once per night) now also uses the 40 `safeHome.home` lines (some with "kl. {tid}").
+- **Jag kollar**: a friend pin with ≥ 10 beers → toast "🚑 Oskar é på 10. Vem kollar läget?" + button (+ the one HUD chip "🚑 Oskar"). First tap owns it; everyone sees "💚 Lisa kollar på Oskar". Medal `kompisvakt` (stacks).
+- **Bakisrapporten / Wrapped**: server facts only (`medal_nights`, `medal_checkins`, `after_nights`, `beer_types`). Best night = most social (bars×3 + skål + home safe), never most beers. Wrapped opens itself once on the 1st–3rd of a month (January: the year), else from settings.
+- **Stad mot stad** (law: no competition drinking — total beers never count): per user and night in a town: 1 night out + 1 home safe + 0.5 per check-in (max 5) + 0.25 per skål given (max 10); `points = round(10 × sum / active users)`. Ranked only with ≥ 3 active users; week = Monday 00:00 Europe/Stockholm.
+- **Stammis-krona**: most distinct NIGHTS at the bar in 30 days (check-ins + king taps via `medal_checkins`), min 2. Names only for self / group-mates (else "en hemlig agent"). `bar_kings` stays for old apps.
+- **Holiday medals** (`olnu_medal_eval_after`, ids stable): `jul`, `fettis`, `pask` (Fri–Sun), `advent` (1st Sunday of Advent), `fredag13` (per date), `halloween` (31 Oct), `kraftskiva` (Fridays in August) — per year; `kompisvakt`. `olnu_holiday(date)` = same rules as `AFTER.holidayOf()`.
+- **olnu_medal_store** now unions EVERY `public.olnu_medal_eval[_x](p_uid uuid) returns table(medal text, n int)` dynamically. Later rounds add an eval function only; never redefine the store again.
+
+### Edge function `notify-group` — new body events
+| body | who gets it | limit | payload |
+|---|---|---|---|
+| `{event:"medevac_check", check_id}` | group-mates of the checker who also share a group with the target, + the target | once per check (atomic `medevac_checks.notified`, row < 5 min, caller = checker) else `no_check` | title e.g. "🚑 {namn} kollar läget med {mal}" (target: "💚 {namn} kommer och kollar läget med dig"); body "Tack för att ni tar hand om varandra." / "Drick vatten. Ta taxi hem. 🚕"; url `/?focus=<beer id>`; tag `olnu-medcheck-<id>` |
+| `{event:"voice", voice_id}` | other members of that group | atomic `voice_msgs.notified` (< 5 min, own row) else `no_voice`; 1 per sender per group per 2 min → `slow_down` | title 1 of 20 `voiceMsg` lines; body "i <grupp> · Tryck för att lyssna"; url `/?chat=<group_id>`; tag `olnu-voice-<group_id>` |
+
+### Deep links / pages
+- `docs/qr.html?bar=<id>[&n=<name>]`: printable A4 poster (qrcodejs) with a QR to `<app url next to qr.html>?bar=<id>&checkin=1` (live: https://tunela.github.io/Beer-map/docs/ or /Beer-map/, whichever serves qr.html). Link "🖨️ Skriv ut QR-affisch" in every bar popup.
+- `?bar=<id>&checkin=1`: app opens the bar (v12 `?bar=`); `after.js` removes `checkin` from the URL and taps "📍 Checka in" when the GPS position is ≤ 300 m from the bar (else a toast with the distance). Ghost mode rules of check-in apply.
+- `?hol=<holiday key>`: preview the holiday theme (testing).
+
+### Röstskål — iOS caveats
+- MediaRecorder: iOS Safari 14.5+ (records `audio/mp4`), Chrome/Android `audio/webm;codecs=opus`. Older iOS: no mic button (feature hidden).
+- iOS < 17.4 cannot play WebM/Opus: the play button shows "🔇 kan inte spelas" via `canPlayType`. Android/desktop play `audio/mp4` fine.
+- iOS PWA asks for the microphone again on most launches; the first press only asks for permission ("Mikrofonen é redo. Håll inne igen.").
+
+## v15 LEK (omgång 2; additive)
+Migration `supabase/migrations/0017_games.sql` (applied on the server 2026-10-17 as 0017_games_tables / _logic / _rpcs; also appended to `setup.sql`). Needs 0001–0014 (0015 optional). Client: `docs/js/games-content.js` (`window.GAMES_CONTENT`, all texts) + `docs/js/games.js` (`window.GAMES`, called through `mods()`) + `docs/games.css`. A missing RPC (old database, PGRST202) = the whole feature hides (no chip, no group button), no error.
+
+"Tonight" = the night key `olnu_night_of(now())` (next 05:00 Europe/Stockholm, DST-correct). Everything resets at 05:00. No game asks anyone to drink more; no mission counts beers.
+
+### Tables (RLS on, no policies, no client access; rows are never removed, reads filter on the night)
+`game_mission_cat(id, kind, goal, needs_group, active)`, `game_missions(user_id, night, slot 1–3, mission, kind, goal, progress, done_at)`, `game_facts(user_id, night, water, water_at, home_at, bingo_changes)`, `game_sugen(user_id, night, status, changes, updated_at)`, `game_crawls(id, group_id, user_id, night, stops jsonb, n 2–6, created_at, closed, done_at)`, `game_agents(group_id, night, agent, mission, started_by, created_at, revealed_at, correct, votes)`, `game_agent_votes(group_id, night, voter, suspect)`, `game_guesses(user_id, night, guess 0–20000, town, lat, lng (0.01), changes, real)`, `game_oracles(group_id, night, user_id, guess, real, err, guessers)`, `game_bingo_cards(group_id, night, card int[9], n, lines, bingo_at)`, `game_bingo_ticks(group_id, night, idx 0–8, user_id, ticked)`.
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `game_poll` | – | jsonb `{v, server_time, night, me, groups:[summary + id, name]}` (max 20 groups) | – |
+| `game_group` | `p_group_id uuid, p_bingo_n int default 40` | jsonb full group state (+ `members`, `points`, `guesses_prev`, `guessed`, bingo `card` + named `ticks`) | `not_member` |
+| `game_water` | – | jsonb `{ok, water, wait_seconds, reason?:'limit'}` | – |
+| `game_home` | – | jsonb `{ok, home_at}` | – |
+| `set_sugen` | `p_status text` ('sugen'\|'kanske'\|'inte'\|'none'/'' = clear) | jsonb `{status, changed}` | `invalid_status`, `slow_down` |
+| `create_crawl` | `p_group_id uuid, p_stops jsonb` (2–6 × `{id, name, lat, lng}`) | jsonb `{id, n}` | `not_member`, `invalid_crawl`, `slow_down` |
+| `close_crawl` | `p_crawl_id bigint` | jsonb `{ok}` | `crawl_not_found` |
+| `start_agent` | `p_group_id uuid` | jsonb `{ok, already, is_me}` | `not_member`, `not_enough` |
+| `vote_agent` | `p_group_id uuid, p_member text` (member key `k`) | jsonb `{ok, already, revealed}` | `not_member`, `no_agent`, `is_agent`, `invalid_suspect` |
+| `tick_bingo` | `p_group_id uuid, p_idx int, p_on bool default true` | jsonb `{ok, ticked int[], lines, new_bingo}` | `not_member`, `invalid_idx`, `no_card`, `not_yours`, `slow_down` |
+| `guess_night` | `p_guess int, p_town text, p_lat, p_lng` | jsonb `{ok, guess, town, closes_at}` | `too_late`, `invalid_guess`, `outside_sweden`, `slow_down` |
+
+`me` = `{night, missions:[{slot, id, kind, goal, progress, done, fresh, done_at}], done_n, water, home_at, guess:{guess, town}|null, guess_open, guess_closes, guess_so_far (only after 21:00), guess_prev:{guess, town, real}|null, sugen, out, agent:[{group_id, group_name, mission}]}` (`agent` = groups where the caller is tonight's secret agent).
+Group summary = `{sugen:[{k, name, is_me, status, at, out}], crawl:{id, n, done_n, done, done_at, is_mine, created_at, by, stops:[{i, id, name, lat, lng, done, who(full only)}]}|null, bingo:{n, lines, bingo_at, ticks (count; full: [{idx, name, is_me}]), card (full only)}|null, agent:{active, is_me, mission (agent only), by}|null, agent_prev:{revealed, voting, reveal_at, votes, needed, is_agent, my_vote, mission (after reveal or agent), agent_name, agent_k, correct, correct_names, i_was_right}|null, oracle:{name, is_me, guess, real, err, guessers}|null, night}`. `k` = opaque member key (md5 of group + user, 12 hex), never a user id.
+
+Rules:
+- **Kvällens uppdrag**: 3 missions per user per night, 3 different kinds, picked once (deterministic md5 of user + night) and stored, so a reload never changes them. Group kinds (`chat`, `rally_yes`, `group_out`, `tip`) only for users in a group at assignment; `early` not given from 19:00, `home` not from 01:00. Progress from server facts: `checkin_bars` (distinct bars in `medal_checkins`), `skal_give`, `skal_get` (different people), `chat` (group_msgs), `rally_yes` (yes on others' rallies), `group_out` (max members of one group out right now: visible pin or live check-in; ghost never counts), `home` ("Jag är hemma" via `game_home`, after the first beer, before 02:00 local), `water` (`game_water`: 1 per 5 min, max 10 per night), `beer_type` (distinct, not "annan"), `queue_report`, `tip`, `early` (first beer before 20:00), `other_none` (beer and no other drink, from 23:00 or after home). A done mission stays done. Texts: `GAMES_CONTENT.missions` by id (catalog ids m001–m129 must match `game_mission_cat`).
+- **Krogrunda**: any member makes a route of 2–6 distinct bars (Sweden bbox, name 1–60, id 1–80; else `invalid_crawl`). Max 1 new route per user per 2 min (`slow_down`). A new route closes the group's older open route tonight. A stop is done when any current member checked in there tonight (`medal_checkins`: check-ins + Kung av baren taps). All stops done → `done_at`. Only the creator can close it.
+- **Hemlig agent**: once per group per night; group needs 3+ members and 2+ who were out tonight (else `not_enough`). The server picks one random member who was out; `mission` = random 0–999, client text = `secretAgent.missions[mission % length]`. Only the agent sees the mission. Voting is for LAST night's agent, from 05:00: one vote per member (not the agent: `is_agent`; not yourself: `invalid_suspect`), no changing. Reveal when every member except the agent voted, or at 12:00 local. Points: +1 per right guess, +2 for an agent nobody guessed (with 1+ vote).
+- **Gissa kvällen**: before 21:00 local (`too_late` after), 0–20000, max 20 changes per night. Town = `CITIES.nearest()` centre (else the user's position rounded 0.01, "Närområdet"). Real = tonight's anonymous `beer_events` beers within 20 km (undone and ghost beers excluded). Next day each group's best guess (relative error, 2+ guessers among current members) = "Dagens orakel" (`oracle`), until the next 05:00.
+- **Kvällsbingo**: the first `game_group` call of the night makes the card: 9 different square numbers below `p_bingo_n` (client sends its square count; text = `bingo[n % length]`, keep the list order, add new squares at the end). Members tick (honour system, everyone sees who); only the ticker can untick (`not_yours`). Lines = rows, columns, diagonals; `new_bingo` when the count of lines goes up for the first time. Max 100 tick changes per user per night.
+- **Sugen-status**: tonight only; 1 change per 10 s and 40 per night (`slow_down`); same status again = `changed:false`. Shown in the group view and as chips in the group list. No push from the server (the group sees a toast on its next poll).
+- **Medals** (`olnu_medal_eval_games`, merged by the generic `olnu_medal_store` that unions every `olnu_medal_eval_<x>(uuid)`; same body as 0018): `uppdrag` Uppdragstagaren (missions done, stacks), `uppdrag3` Fullt pådrag (3/3 nights, stacks), `runda` Rundvandraren (finished crawl with 2+ own stops, stacks), `detektiv` Detektiven (right agent guesses, stacks), `spion` Mästerspionen (agent nobody guessed, stacks), `orakel` Oraklet (Dagens orakel, stacks), `bingo` Bingo! (nights your group got a line and you ticked, stacks).
+- **Radera allt om mig**: `olnu_g_anonymize(old, new)` moves all game rows to the new random id; the erase RPC should call it (see lead notes).
+
+### Frontend (games.js)
+- ONE HUD chip "🎯 1/3" (green at 3/3) → "Kvällens uppdrag" sheet: 3 missions with progress, "💧 Jag tog vatten" on a water mission, Sugen buttons, Gissa kvällen, buttons to each group's games.
+- Group list (`groupItem`): Sugen chips + one "🎲 Lek" button with a short summary (🗺️ 1/3 · 🎱 2/9 · 🕵️ Rösta! · 🔮 name) → group sheet with tabs Sugen / Runda / Bingo / Agent / Gissa. Crawl picker = bars in the current map view, search, tap in order.
+- Map: numbered flags (pane `gameflags`, zoom ≥ 11) for tonight's crawls of the user's groups; green with ✓ when done.
+- Polls `game_poll` with the app poll (max every 45 s) and ~3 s after taps/beers. Toasts for changes (mission done = `missionDone` line + medal award, sugen, crawl created/stop/done, BINGO, agent picked/reveal/vote nudge, oracle), never repeated after a reload (`olnu.gameSeen` per night); the first poll after opening shows max 2.
+- The existing "💧 Druckit vatten" toast button (`MEDALS.waterTaken`) also counts for the water mission (wrapped in `games.js`). "Jag är hemma" → `game_home` via `onStopped("home")`.
+
+## v14 CLIENT (privacy, undo, poll_v2 client, restaurants, worldwide, all drinks)
+Migration `supabase/migrations/0016_privacy_erase.sql` (applied on the server 2026-10-17; in `setup.sql` after 0015). Client files: `docs/app.js`, `docs/js/v14.js` (`window.PRIVACY` + v14 strings via `I18N.add`), `docs/v14.css`, `docs/js/bars.js`, `docs/js/news.js`, `docs/js/social.js`, `docs/js/rally.js`, `docs/js/extras.js`, `docs/js/util.js`. A missing new RPC = the old behaviour, silently.
+
+### Poll (v13 "Client must" 1–8, done)
+- One `poll_v2(view bbox, null, p_heat)` per poll. bbox = map bounds, lat clamped to ±85, lng wrapped to −180..180; a view ≥ 360° wide or across the date line asks the whole lng range. A pan outside the returned `bbox` polls again (max every 3 s).
+- Every 30 s; every 60 s when the map was not touched (pointer/key/wheel/move) for 3 min; no polling while the tab is hidden. `p_heat=true` at most once per 60 s and only while the heat layer is on (toggling it on asks at once); the last heat is kept.
+- `poll_v2` missing (PGRST202 / no `pins`) → `live_beers` + `live_others` + `live_checkins` (+ `heat_points`, `beer_reactions`, `my_rallies`, `friend_totals`, `my_stats` as before). `post_beer_v2` missing → `post_beer` (+ `stop_beer` for ghost, push at once, no undo). `skal_v2`/`react_v2` are used only while pins come from `poll_v2`.
+- Modules get the raw poll through the hook `onPollData(d)` (null on the old path) before `onPoll`: social takes stats from `me`, reactions from `pins[].rx/my_rx`, lifetime totals from `pins[].total`; rally takes `rallies`.
+- Keys are `String(id)`. Stranger streak toasts compare counts per level inside the overlap of the previous and current poll box (an id rotation or a pan never toasts). Skål/react on `beer_not_found` → re-poll once, find the same pin (bar_id/position + counts) and retry once.
+- Header = `live_total` ("N dricker i världen just nu"). HUD/cooldown/count from `me`; a poll that started before an accepted beer does not overwrite its cooldown. `U.next5am` is DST-safe (offset at the target instant); `nightEnd()` prefers the server `expires_at`.
+- Measured with the mocked app (fake clock): 4 requests/min while used (poll_v2 ×2, bar_status, bar_kings), 3/min idle (review: ~13/min).
+
+### ↩️ Ångra
+- After an accepted `post_beer_v2` with `undo_until`: a big toast "Nr N ikväll · ↩️ ÅNGRA" for 12 s, then a small one until `undo_until` (clamped 10 s – 125 s for clock skew); it survives other toasts (`data-keep`). Tap → `undo_beer()` → random line from 10 (`undoToasts`), local count/cooldown reset, re-poll. Refusals: `too_late`, `limit`, `no_beer` → own toasts.
+- `notify-group` (milestone push) is sent only when the undo window has passed (`olnu.notifyAt`, survives a reload; sent if < 4 min late), or at once when the next beer is accepted; an undo cancels it. Ghost beers never push.
+
+### Sheets
+- One sheet at a time. `openSheet(title, build, {now, lock, onClose})`: while a `lock` sheet ("Var dricker du?") is open or a beer is being posted, other sheets wait in a queue and open afterwards. Replacing a sheet calls the old `onClose("replaced")`; ✕ / backdrop / Escape → `onClose("cancel")`.
+- "Var dricker du?": closing it = NO beer ("Ingen öl rapporterad"); the ÖL! button is always enabled again. Bars first (🍺), then up to 4 restaurants/cafés/fast food within 150 m (🍽️, dashed; a place with a similar name ≤ 80 m from a listed bar is left out), then "🏠 Ingen krog".
+- The service-worker reload waits while typing, posting, a sheet/intro/takeover is open or the undo toast is up. "Uppdatera nu" re-fetches the files listed in `sw.js` SHELL plus every local script/stylesheet of the page.
+
+### Restaurants
+- `places.json` places get `id = "pl_" + round(lat*1e5) + "_" + round(lng*1e5)`. `BARS.byId` finds bars and places. Server `bars_lite` holds the same 18,763 places (type restaurant | fast_food | cafe; re-import with `scripts/places-lite-sql.py`, then `select public.olnu_resnap();`).
+- Snap/assign rule (server `olnu_near_bar`, client `BARS.nearestSpot`): a bar within 75 m wins; else a place within 40 m. With `poll_v2` the server `bar_id` decides (no `bar_id` = not at a spot; `snap:"area"` never). Old server: the client rule.
+- A place is drawn (🍽️ marker, popup with check-in) only when someone is checked in there; beers there make the normal hot badge. `check_in` accepts `pl_…` ids.
+
+### Privacy & law
+- 🔒 Integritet (Settings + intro + 18+ card): what is stored, who sees what, how long (pins/chat/check-ins hidden at 05:00, rows kept until a cleanup exists; medal/stat facts kept), no ads/tracking/selling, Esri/Google Fonts see the IP, contact = GitHub issues. The old "Vi sparar ingen statistik" texts are gone.
+- 🗑️ Radera allt om mig (Settings, two confirms): push off on this phone, `delete_my_data()`, then all `olnu*` localStorage keys and sessionStorage are cleared, `signOut()`, reload.
+- `delete_my_data()` → jsonb `{ok, groups_left, subscriptions, moved_rows}`; authenticated only. Leaves every group (`leave_group`), removes push subscriptions (`delete_push_subscription`), then anonymizes: every row of the caller moves to a fresh random uuid that is no login (positions → 0/0 or null, chat/rally text → "🗑️", voice audio emptied, live things end now). A generic sweep moves every other public uuid column that equals the caller (game, voice, likes … and future tables). Rows are never removed; the auth user stays but owns nothing.
+- 🔞 The intro needs "Jag är 18 år eller äldre" (`olnu.age18=1`); users who saw the intro before get a one-time 18+ card.
+- 🏠 Hemzon (Settings, `olnu.home` = {lat, lng, r: 300}, phone only): a beer inside it is posted with `p_precise=false` unless a bar/restaurant is picked; the toast adds "🏠 Hemzon: ungefärlig plats".
+- Session repair: a failed refresh, or a phone that had an account (`olnu.uid`) but lost the session, shows "Din inloggning gick ut" (🔄 Försök igen / 📥 Jag har en flyttkod / Fortsätt med nytt konto). A new anonymous account is made only after that choice.
+
+### Owner decisions in the client
+- G worldwide: no map bounds (minZoom 3, worldCopyJump); position checks are "finite, |lat| ≤ 85"; Sweden stays the start view; server `outside_sweden` → "Servern tar int' emot öl utanför Sverige än – snart!".
+- H all drinks: levels, numbers and sorting use `U.drinks(b)` = beer_count + other_count (pins, HUD "Ikväll: N 🍺", crowd list, bar popup, top lists, group status/chat, chaos, heat fallback, news). HOT STREAK / MEDEVAC takeovers when the total crosses 5 / 10, also after ANNAT; water reminder every 3rd drink; "ta det lugnt" counts other drinks. Only the total is shown (no 🍺/🥃 split). Server-side totals come later.
+- F ticker mix: group items (tk-friend / tk-me, kinds `group*`/`me*`/`friend*`) take up to 4 of 6 slots, then town items (bars, rates, check-in crowds, chaos, anonymous town lines), then general filler.
