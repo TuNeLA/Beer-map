@@ -285,7 +285,10 @@
         var wait = (d.wait_seconds | 0) > 0 ? (d.wait_seconds | 0) * 1000 : OTHER_MS;
         U.ls.set(OTHER_CD_KEY, String(Date.now() + wait));
         var name = (kinds[kind] || ["", kind])[1];
-        A.toast(pick(t("otherToasts")).replace(/\{d\}/g, name), { cls: "hot" });
+        // Half the time a line made for this drink (rom → pirat), else a general line with the drink's name.
+        var byKind = (t("otherToastsKind") || {})[kind];
+        var line = byKind && byKind.length && Math.random() < 0.6 ? pick(byKind) : pick(t("otherToasts"));
+        A.toast(line.replace(/\{d\}/g, name), { cls: "hot" });
         window.FX.sound.clink(); window.FX.vibrate([30, 40, 30]);
         var l = getLog(); l.others = Math.max((l.others | 0) + 1, d.other_count | 0); saveLog(l);
         award("side");
