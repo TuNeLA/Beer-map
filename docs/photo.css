@@ -1,0 +1,42 @@
+/* Öl Nu v21 BILDER: photos in the group chat (js/photo.js). */
+.chat-input .ph-btn{flex:0 0 auto;width:48px;min-height:48px;border:1px solid var(--line);background:var(--night-3);font-size:20px;cursor:pointer}
+.chat-input .ph-btn:disabled{opacity:.5}
+.chat-input .ph-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px}
+
+/* Image bubble */
+.chat-msg.ph-msg{max-width:min(85%,264px)}
+.ph-frame{position:relative;margin:4px 0 2px;border-radius:14px;overflow:hidden;background:var(--night-2);border:1px solid var(--line-soft);
+  max-height:260px;max-width:100%;cursor:zoom-in;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.ph-frame .ph-img{display:block;width:100%;height:100%;object-fit:cover;-webkit-user-drag:none;pointer-events:none}
+.ph-frame .ph-spin{position:absolute;inset:0;display:grid;place-items:center;font-size:var(--fs-s);color:var(--muted);text-align:center;padding:6px}
+.ph-frame.loading .ph-spin{font-size:28px;animation:ph-pulse 1.2s ease-in-out infinite}
+.ph-frame.loading{background:linear-gradient(110deg,var(--night-2) 30%,var(--night-3) 50%,var(--night-2) 70%) 0 0/300% 100%;animation:ph-shine 1.4s linear infinite}
+.ph-frame.gone{cursor:default}
+.cm-body.ph-nocap{display:none}
+@keyframes ph-pulse{50%{opacity:.35}}
+@keyframes ph-shine{to{background-position:-300% 0}}
+
+/* Overlays (above the sheet 1600, below toasts 2000) */
+.ph-ov{position:fixed;inset:0;z-index:1900;background:var(--scrim);display:flex;align-items:center;justify-content:center;
+  padding:calc(var(--sat) + 12px) calc(var(--sar) + 16px) calc(var(--sab) + 12px) calc(var(--sal) + 16px)}
+.ph-card{width:100%;max-width:420px;max-height:100%;overflow:auto;background:var(--night-2);border:1px solid var(--line);padding:14px}
+.ph-title{margin:0 0 10px;font-family:var(--display);font-weight:400;font-size:var(--fs-l);letter-spacing:.5px}
+.ph-prev-box{position:relative;display:grid;place-items:center;min-height:140px;background:#000;border-radius:14px;overflow:hidden;margin-bottom:10px}
+.ph-prev{display:block;max-width:100%;max-height:44vh;max-height:44dvh;object-fit:contain}
+.ph-prev:not([src]){display:none}
+.ph-wait{color:var(--muted);font-size:var(--fs-s);padding:20px;text-align:center}
+.ph-cap{width:100%;font-family:var(--body);font-size:16px}
+.ph-priv{margin:8px 0 2px;font-size:var(--fs-s);color:var(--olive-text)}
+.ph-info{margin:0 0 10px;font:var(--fs-xs) var(--hud)}
+.ph-row{display:flex;gap:8px}
+.ph-row .btn{flex:1;min-height:var(--tap)}
+
+.ph-view{background:rgba(0,0,0,.94);padding:0;flex-direction:column}
+.ph-stage{flex:1;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;cursor:zoom-in}
+.ph-big{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;transition:transform .05s linear;
+  -webkit-user-drag:none;-webkit-touch-callout:none;user-select:none;pointer-events:none}
+.ph-bar{display:flex;gap:10px;width:100%;max-width:560px;padding:10px calc(var(--sar) + 16px) calc(var(--sab) + 12px) calc(var(--sal) + 16px)}
+.ph-bar .ph-save{flex:1;text-align:center;text-decoration:none;min-height:var(--tap);display:flex;align-items:center;justify-content:center}
+.ph-bar .ph-x{flex:0 0 var(--tap);min-height:var(--tap)}
+.ph-gone{color:var(--muted);text-align:center}
+@media (prefers-reduced-motion:reduce){.ph-frame.loading,.ph-frame.loading .ph-spin{animation:none}.ph-big{transition:none}}

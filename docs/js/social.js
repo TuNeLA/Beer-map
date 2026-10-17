@@ -9,6 +9,21 @@
   var v7 = null;             // null = not known yet, true = social RPCs exist, false = old database
   var off = {};              // rpc name -> true when it is missing
   var esc = U.esc;
+  // 0029 keep-history switch + older messages (own strings; I18N fallback to Swedish).
+  var KS = {
+    sv: { keepLabel: "💾 Spara chatten efter kl 05", keepInfo: "Meddelanden, bilder och röstskål ligger kvar för alltid i gruppen.",
+      keepNote: "💾 Sparas i gruppen.", keepAdmin: "Bara den som skapade gruppen kan ändra det.",
+      keepOnToasts: ["💾 Sparat för evigheten! Nu ä varje dumhet historia.", "💾 Arkivet ä öppet. Ölguden för protokoll från och med nu.",
+        "💾 Chatten sparas. Tänk på barnbarnen när du skriver.", "💾 Klart! Inget försvinner kl 05 längre – int' ens det du ångrar."],
+      keepOffToasts: ["🧹 Okej, kl 05 städar vi som förr. Det som sägs i natt stannar i natt.", "🧹 Chatten försvinner kl 05 igen. Bevisen ä snart borta.",
+        "🧹 Tillbaka till engångschatt. Ölguden glömmer allt i gryningen."],
+      older: "⬆️ Visa äldre", olderNone: "Inga äldre meddelanden." },
+    en: { keepLabel: "💾 Keep the chat after 05:00", keepInfo: "Messages, photos and voice cheers stay in the group forever.",
+      keepNote: "💾 Kept in the group.", keepAdmin: "Only the group's creator can change this.",
+      keepOnToasts: ["💾 Saved for eternity!"], keepOffToasts: ["🧹 The chat vanishes at 05:00 again."],
+      older: "⬆️ Show older", olderNone: "No older messages." }
+  };
+  function KT(k) { var o = KS[I.lang === "en" ? "en" : "sv"]; return o[k] != null ? o[k] : KS.sv[k]; }
 
   function call(name, params) {
     if (!A || !A.LIVE || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
@@ -412,12 +427,84 @@
       body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [A.btn(t("back"), "btn-small", function () { A.showGroups(); })]));
       body.appendChild(list);
       body.appendChild(el("div", { class: "chat-input" }, [inp, sendBtn]));
-      body.appendChild(el("p", { class: "muted chat-note", text: t("chatNote") }));
+      var note = el("p", { class: "muted chat-note", text: t("chatNote") });
+      body.appendChild(note);
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       function alive() { return document.body.contains(list); }
+      // 0029: "💾 Spara chatten efter kl 05" (group setting). Hidden on an old server (RPC missing).
+      var keepOn = false;
+      (function () {
+        if (off.group_keep_history) return;
+        var cb = el("input", { type: "checkbox", class: "chat-keep-cb", "aria-describedby": "chat-keep-info" });
+        var box = el("div", { class: "chat-keep", hidden: "" }, [
+          el("label", { class: "chat-keep-l" }, [cb, el("span", { text: KT("keepLabel") })]),
+          el("p", { class: "muted chat-keep-i", id: "chat-keep-info", text: KT("keepInfo") })
+        ]);
+        list.parentNode.insertBefore(box, list);
+        function paint(v) { keepOn = !!v; cb.checked = keepOn; note.textContent = keepOn ? KT("keepNote") : t("chatNote"); }
+        call("group_keep_history", { p_group_id: g.id }).then(function (r) {
+          if (r.error || !alive()) return;
+          box.hidden = false; paint(r.data === true || r.data === "true");
+        });
+        cb.addEventListener("change", function () {
+          var want = cb.checked; cb.disabled = true;
+          call("set_group_keep_history", { p_group_id: g.id, p_on: want }).then(function (r) {
+            cb.disabled = false;
+            if (r.error) {
+              paint(keepOn);
+              A.toast(/not_admin/.test(String((r.error && r.error.message) || "")) ? KT("keepAdmin") : codeOf(r.error) === "not_member" ? t("chatNotMember") : t("chatFail"), { err: true });
+              return;
+            }
+            paint(r.data === true || r.data === "true");
+            var l = KT(keepOn ? "keepOnToasts" : "keepOffToasts");
+            A.toast(l[Math.floor(Math.random() * l.length)], { ms: 4500 });
+            try { window.FX.vibrate(15); } catch (e) {}
+          });
+        });
+      })();
+      // Older messages: group_msgs only pages forward (id > p_after_id, ids are global), so step back in id windows.
+      var oldestId = 0, olderLi = null, olderBusy = false;
+      function showOlder(on) {
+        if (!on) { if (olderLi) { olderLi.remove(); olderLi = null; } return; }
+        if (olderLi) return;
+        var b = A.btn(KT("older"), "btn-small btn-block chat-older", loadOlder);
+        olderLi = el("li", { class: "chat-older-li" }, [b]);
+        list.insertBefore(olderLi, list.firstChild);
+      }
+      function loadOlder() {
+        if (olderBusy || !oldestId) return;
+        olderBusy = true;
+        var got = [], target = oldestId, win = 500, calls = 0, start = Math.max(0, target - win);
+        var before = list.scrollHeight;
+        function step(after) {
+          calls++;
+          call("group_msgs", { p_group_id: g.id, p_after_id: after }).then(function (r) {
+            if (r.error || !alive()) { olderBusy = false; return; }
+            var rows = (r.data || []).filter(function (m) { return m.id < target; });
+            rows.forEach(function (m) { if (!seen[m.id]) got.push(m); });
+            var full = (r.data || []).length >= 100 && rows.length === (r.data || []).length;
+            if (full && calls < 12) { step(rows[rows.length - 1].id); return; }       // fill up to the oldest we have
+            if (!got.length && start > 0 && calls < 12) { win *= 4; start = Math.max(0, target - win); step(start); return; }
+            finish(start <= 0 && !full);
+          });
+        }
+        function finish(reachedStart) {
+          olderBusy = false;
+          got.sort(function (a, b) { return a.id - b.id; });
+          var keep = got.slice(-100), anchor = olderLi ? olderLi.nextSibling : list.firstChild;
+          keep.forEach(function (m) { add(m, anchor); });
+          if (keep.length) oldestId = keep[0].id;
+          list.scrollTop += list.scrollHeight - before;
+          if (!keep.length || (reachedStart && got.length <= 100)) showOlder(false);
+          if (!keep.length) A.toast(KT("olderNone"));
+          loadLikes();
+        }
+        step(start);
+      }
       // v16: voice skål (js/after.js) adds a mic button and voice rows to this chat.
       try { if (window.AFTER && window.AFTER.chatOpen) window.AFTER.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
-      function add(m) {
+      try { if (window.PHOTO && window.PHOTO.chatOpen) window.PHOTO.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
+      function add(m, anchor) {
         if (!m || seen[m.id]) return;
         seen[m.id] = 1;
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
@@ -432,19 +519,19 @@
         // Each person gets their own colour (same name = same colour every time). Me = gold (CSS).
         var col = m.is_me ? null : chatColor(m.name || "");
         if (col) nmEl.style.color = col;
-        list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "", "data-at": String(m.created_at || "") }, [
+        list.insertBefore(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "", "data-at": String(m.created_at || ""), "data-mid": String(m.id) }, [
           el("div", { class: "cm-head" }, [nmEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") }),
           jamLink(m.body) ? el("a", { class: "btn btn-block jam-btn", href: jamLink(m.body), target: "_blank", rel: "noopener noreferrer", text: t("jamJoin") }) : null,
           reactRow(m)
-        ]));
+        ]), anchor || null);
       }
       // Reactions (0020): long-press or double-tap a message → 🍻 😂 🔥 ❤️. Only used emojis are shown.
-      var REACTS = ["🍻", "😂", "🔥", "❤️"], reactRows = {}, reactsOff = false, reactBusy = {}, picker = null, pickerAt = 0;
+      var REACTS = ["🍻", "😂", "🔥", "❤️"], reactRows = {}, chatMsgs = {}, reactsOff = false, reactBusy = {}, picker = null, pickerAt = 0;
       function reactRow(m) {
         var row = el("div", { class: "cm-reacts" });
-        reactRows[m.id] = row;
+        reactRows[m.id] = row; chatMsgs[m.id] = m;   // v19: GANG quote option needs the message
         return row;
       }
       function paintReacts(id, list) {
@@ -467,9 +554,11 @@
           b.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker(); sendReact(id, e); });
           picker.appendChild(b);
         });
+        // v19 Citatboken (js/gang.js): "📖 Citat" in the same menu.
+        try { if (window.GANG && window.GANG.chatPick) window.GANG.chatPick(picker, g, chatMsgs[id], closePicker); } catch (x) {}
         li.appendChild(picker); pickerAt = Date.now();
         // Near the top of the list: show the picker under the message instead of above it.
-        if (li.offsetTop - list.scrollTop < 50) { picker.style.top = "auto"; picker.style.bottom = "-44px"; }
+        if (li.getBoundingClientRect().top - list.getBoundingClientRect().top < 50) { picker.style.top = "auto"; picker.style.bottom = "-44px"; }
         window.FX.vibrate(12);
       }
       function sendReact(id, emoji) {
@@ -523,7 +612,9 @@
           }
           var rows = (r.data || []).slice().sort(function (a, b) { return a.id - b.id; });
           var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+          var firstPage = lastId === 0;
           rows.forEach(function (m) { add(m); if (m.id > lastId) lastId = m.id; });
+          if (firstPage && rows.length) { oldestId = rows[0].id; if (rows.length >= 100) showOlder(true); }
           if (!list.children.length) list.appendChild(el("li", { class: "muted chat-empty", text: t("chatEmpty") }));
           if (rows.length && (nearBottom || rows.length === list.children.length)) list.scrollTop = list.scrollHeight;
         });

@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -77,15 +77,42 @@
       el.appendChild(b);
     }
     el.addEventListener("click", function (e) { if (e.target === el || e.target === span) el.remove(); });
-    if (opts.keep) el.setAttribute("data-keep", "1");
-    var drop = Array.prototype.filter.call(box.children, function (x) { return !x.hasAttribute("data-keep"); });
-    while (drop.length > 2) drop.shift().remove();
-    box.appendChild(el);
-    if (opts.ms !== 0) setTimeout(function () { el.remove(); }, opts.ms || 3800);
+    if (opts.keep) { el.setAttribute("data-keep", "1"); toastShow(el, opts); return el; }
+    // Design pass 2: toast queue. Max 1 visible (2 when both are alarms) + 1 waiting. Rank: 3 = error or a toast with a button,
+    // 2 = alarm (medevac, undo, level pop, kaos), 1 = the answer to a tap (within 2.5 s), 0 = calm news (polls, kings,
+    // medals). A toast replaces the visible one only with an equal or higher rank (the old one then waits); calm
+    // toasts also wait while a sheet is open. A newer toast replaces a waiting one of the same or lower rank.
+    var rank = opts.err || opts.action ? 3 : opts.urgent || /\b(med|undo|lv-pop|chaos-toast|promo)\b/.test(opts.cls || "") ? 2 : Date.now() - lastTap < 2500 ? 1 : 0;
+    el._olnuT = { opts: opts, rank: rank };
+    var vis = toastsVisible(), vr = vis.length ? Math.max.apply(null, vis.map(function (x) { return x._olnuT ? x._olnuT.rank : 0; })) : -1;
+    if (!vis.length && (rank > 0 || !sheetIsOpen())) toastShow(el, opts);
+    else if (rank >= 2 && vis.every(function (x) { return x._olnuT && x._olnuT.rank >= 2; })) {
+      // Two alarms about the same moment (friend at 10: level line + "Jag kollar") may stand together; never more than 2.
+      while (vis.length >= 2) vis.shift().remove();
+      toastShow(el, opts);
+    } else if (vis.length && rank >= 1 && rank >= vr) {
+      vis.forEach(function (x) { var r = x._olnuT ? x._olnuT.rank : 0; if (r >= 1 && (!toastWait || r >= toastWait._olnuT.rank)) toastWait = x; x.remove(); });
+      toastShow(el, opts);
+    } else if (!toastWait || rank >= toastWait._olnuT.rank) toastWait = el;
     return el;
   }
+  var toastWait = null, lastTap = 0;
+  ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function () { lastTap = Date.now(); }, true); });
+  function sheetIsOpen() { var s = $("sheet"); return !!(s && !s.hidden); }
+  function toastsVisible() { return Array.prototype.filter.call($("toasts").children, function (x) { return !x.hasAttribute("data-keep"); }); }
+  function toastShow(el, opts) {
+    $("toasts").appendChild(el);
+    if (opts.ms !== 0) setTimeout(function () { el.remove(); }, opts.ms || 3800);
+  }
+  function toastPump() {
+    if (!toastWait || toastsVisible().length || (sheetIsOpen() && !toastWait._olnuT.rank)) return;
+    var el = toastWait; toastWait = null;
+    toastShow(el, el._olnuT.opts);
+  }
+  if (window.MutationObserver) new MutationObserver(function () { setTimeout(toastPump, 250); }).observe($("toasts"), { childList: true });
   function toastClear(id) {
     document.querySelectorAll('#toasts [data-id="' + id + '"]').forEach(function (x) { x.remove(); });
+    if (toastWait && toastWait.getAttribute("data-id") === id) toastWait = null;
   }
 
   /* ---------- Map ---------- */
@@ -522,42 +549,155 @@
   function sec(title, body, cls) {
     return '<div class="pp-sec' + (cls ? " " + cls : "") + '"><div class="pp-sec-h">' + U.esc(title) + "</div>" + body + "</div>";
   }
+  /* ---------- Bar sheet (design pass 2, owner: "the list you see when you tap a place is far too full") ----------
+     Header (name · type · "≈ 7 här · Livligt" · 👑 🏰 🕺 🚶) → ONE action row (Checka in, På väg, Kommer when exactly
+     one call-out) → one short care line at 10+ → compact folds, closed by default: Inkallelser, Folk här, Kö ·
+     erbjudanden · tips, Incheckade, Stammis & kung, Info. Module sections (barPopupHTML hooks) are wrapped, not
+     removed: their HTML is sorted into the folds by class, so their own click wiring keeps working. On phones the
+     Leaflet popup element itself is lifted into a bottom sheet (popupopen below), so every popupopen hook still runs. */
+  function tl(sv, en) { return window.I18N && window.I18N.lang === "en" ? en : sv; }
+  var FOLD_KEY = "olnu.folds", popBox = document.createElement("div"), foldOnce = null;
+  function foldsOpen() { try { return JSON.parse(sessionStorage.getItem(FOLD_KEY) || "{}") || {}; } catch (e) { return {}; } }
+  function foldSave(k, on) { try { var f = foldsOpen(); if (on) f[k] = 1; else delete f[k]; sessionStorage.setItem(FOLD_KEY, JSON.stringify(f)); } catch (e) {} }
+  document.addEventListener("toggle", function (e) {
+    var d = e.target; if (!d || !d.classList || !d.classList.contains("pp-fold")) return;
+    foldSave(d.getAttribute("data-fold"), d.open);
+  }, true);
+  function fold(key, title, n, body, cls, open) {
+    if (!body) return "";
+    return '<details class="pp-fold pp-sec ' + (cls || "") + '" data-fold="' + key + '"' + (open ? " open" : "") + ">" +
+      '<summary><span class="pp-sec-h">' + U.esc(title) + "</span>" + (n ? '<span class="pf-n">' + n + "</span>" : "") +
+      '<span class="pf-chev" aria-hidden="true">›</span></summary><div class="pf-body">' + body + "</div></details>";
+  }
+  // "VILKEN FEST" → "Vilken fest" (only when the whole text is shouted; mixed case stays as written).
+  function unshout(s) {
+    var letters = String(s).replace(/[^A-Za-zÅÄÖåäöÉé]/g, "");
+    return letters.length >= 6 && letters === letters.toUpperCase() ? s.charAt(0) + s.slice(1).toLowerCase() : s;
+  }
+  function take(sel) { var out = ""; popBox.querySelectorAll(sel).forEach(function (x) { out += x.outerHTML; x.remove(); }); return out; }
   function barPopup(bar, list) {
     list = list || [];
-    var id = bar.id != null ? String(bar.id) : null;
-    var h = '<div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
-      '<div class="muted">' + U.esc(barTypeLabel(bar.type)) + (list.length ? " · <b>" + U.esc(t("barHere", list.length)) + "</b>" : "") + "</div>";
-    // 1. Checka in
-    h += checkinBtnHTML(bar);
-    // 2. Inkallelser (call-outs at this bar): Kommer + route
-    var rl = "";
+    var id = bar.id != null ? String(bar.id) : null, open = foldsOpen(), once = foldOnce; foldOnce = null;
+    var isOpen = function (k) { return !!open[k] || once === k; };
+    // Module sections, sorted by class.
+    popBox.innerHTML = mods("barPopupHTML", bar, list);
+    var crowdEl = popBox.querySelector(".pp-crowd"), crowd = crowdEl ? crowdEl.textContent : "", crowdCls = crowdEl ? crowdEl.className.replace("pp-crowd", "").trim() : "";
+    if (crowdEl) crowdEl.remove();
+    var dance = popBox.innerHTML.indexOf("🕺") >= 0;
+    var eta = take(".pp-sec-eta");
+    var own = take(".bp-own"), qEl = popBox.querySelector(".bp-q"), qCls = qEl ? (qEl.className.match(/q-\w+/) || [""])[0] : "", qTxt = qEl ? qEl.textContent : "";
+    var bp = take(".bp"), ofN = (bp.match(/class="bp-of"/g) || []).length;
+    var king = take(".pp-king"), stam = take(".af-stam");
+    var info = take(".pp-info, .pp-links, .af-qr, .gg-pop") + popBox.innerHTML.trim();
+    popBox.innerHTML = "";
+    var hasKing = /pp-king"/.test(king) || /class="pp-king"/.test(king);
+    // Header
+    var h = '<div class="bs-head"><div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
+      '<div class="bs-meta">' + U.esc(barTypeLabel(bar.type)) +
+      (list.length ? ' · <b class="bs-n">' + U.esc(tl("≈ " + list.length + " här", "≈ " + list.length + " here")) + "</b>" : "") +
+      (crowd ? ' · <span class="pp-crowd-t ' + U.esc(crowdCls) + '">' + U.esc(crowd) + "</span>" : "") + "</div>";
+    var icons = (hasKing ? '<span title="' + U.esc(tl("Kung", "King")) + '">👑</span>' : "") + (own ? '<span title="' + U.esc(tl("Övertagen", "Taken over")) + '">🏰</span>' : "") +
+      (dance ? "<span>🕺</span>" : "") + (qEl ? '<span class="bs-q ' + U.esc(qCls) + '" title="' + U.esc(qTxt) + '">🚶</span>' : "");
+    if (icons) h += '<div class="bs-icons" aria-hidden="true">' + icons + "</div>";
+    h += "</div>";
+    // Call-outs (rally.js rows): compact, route link as 🧭, shouting toned down.
+    var rl = "", nRl = 0;
     try { rl = id && window.RALLY && window.RALLY.barSectionHTML ? window.RALLY.barSectionHTML(id) : ""; } catch (e) { rl = ""; }
-    if (rl) h += sec(t("secRally"), rl, "pp-sec-rl");
-    // 3. Folk här nu
+    var kommer = "";
+    if (rl) {
+      popBox.innerHTML = rl;
+      var rows = popBox.querySelectorAll(".pp-rl-row"); nRl = rows.length;
+      rows.forEach(function (row) {
+        var tx = row.querySelector(".pp-rl-txt");
+        if (tx && tx.firstChild && tx.firstChild.nodeType === 3) {   // "🪖 Ström: HÅRDMUSIK…" → only the message part
+          var raw = tx.firstChild.textContent, ix = raw.indexOf(": ");
+          tx.firstChild.textContent = ix > 0 ? raw.slice(0, ix + 2) + unshout(raw.slice(ix + 2)) : unshout(raw);
+        }
+        var a = row.querySelector("a.pp-rl-route");
+        if (a) { a.setAttribute("aria-label", a.textContent); a.setAttribute("title", a.textContent); a.textContent = "🧭"; }
+      });
+      if (nRl === 1) {
+        var y = popBox.querySelector('[data-rl-ans="yes"]');
+        if (y) kommer = '<button type="button" class="pa-kommer' + (y.classList.contains("on") ? " on" : "") + '" data-proxy-rl="' + U.esc(rows[0].getAttribute("data-rl-id") || "") + '">' + U.esc(y.textContent) + "</button>";
+      }
+      rl = popBox.innerHTML; popBox.innerHTML = "";
+    }
+    // ONE action row
+    var act = checkinBtnHTML(bar) + eta + kommer;
+    if (act) h += '<div class="pp-act">' + act + "</div>";
+    // At most one short care line (someone here at 10+)
+    var top = list.slice().sort(function (a, b) { return U.drinks(b) - U.drinks(a); })[0];
+    if (top && U.drinks(top) >= 10) { var tg = lvTag(top); h += '<div class="pp-care1">' + U.esc(tg ? tg.lv.emoji + " " + tg.name : "🚁 " + t("medevac")) + "</div>"; }
+    // Folds (closed ones tile two per row; an open one takes the full width)
+    var h0 = h; h = "";
+    h += fold("rally", tl("🪖 Inkallelser", "🪖 Call-outs"), nRl, rl, "pp-sec-rl", isOpen("rally"));
     if (list.length) {
       var names = [], body = "";
       list.forEach(function (b) { if (b.friend_name && names.indexOf(b.friend_name) < 0) names.push(b.friend_name); });
-      body += levelLine(maxLevel(list), list);
+      if (!(top && U.drinks(top) >= 10)) body += levelLine(maxLevel(list), list);
       if (names.length) body += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
       var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
       if (tot) body += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
-      var rows = list.slice().sort(function (a, b) { return U.drinks(b) - U.drinks(a); }).slice(0, 8);
-      body += '<ul class="pp-list">' + rows.map(function (b) {
+      var prow = list.slice().sort(function (a, b) { return U.drinks(b) - U.drinks(a); }).slice(0, 8);
+      body += '<ul class="pp-list">' + prow.map(function (b) {
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
           '<span class="pp-n">' + U.drinks(b) + " " + lvEmoji(b) + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
-      if (list.length > 8 && id != null) {
-        body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
-      }
-      h += sec(t("secHere", list.length), body, "pp-sec-here");
+      if (list.length > 8 && id != null) body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
+      body += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
+      h += fold("here", tl("🍺 Folk här", "🍺 People here"), list.length, body, "pp-sec-here", isOpen("here"));
     }
-    // 4. Incheckade
+    h += fold("bp", tl("📋 Kö · erbjudanden · tips", "📋 Queue · offers · tips"), ofN, bp, "pp-sec-bp", isOpen("bp"));
     var ci = checkinNamesHTML(bar);
-    if (ci) h += sec(t("secCi"), ci, "pp-sec-ci");
-    h += mods("barPopupHTML", bar, list);
-    h += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
-    return h;
+    h += fold("ci", tl("🚪 Incheckade", "🚪 Checked in"), id != null ? checkinsAt(bar).length : 0, ci, "pp-sec-ci", isOpen("ci"));
+    h += fold("stam", tl("🎖️ Stammis & kung", "🎖️ Regulars & king"), 0, own + king + stam, "pp-sec-stam", isOpen("stam"));
+    h += fold("info", tl("ℹ️ Info", "ℹ️ Info"), 0, info, "pp-sec-info", isOpen("info"));
+    return '<div class="bs">' + h0 + (h ? '<div class="pp-folds">' + h + "</div>" : "") + "</div>";
+  }
+  // Phones: the bar popup's element is moved out of the map into a fixed bottom sheet. It stays a Leaflet popup
+  // (popupopen hooks, e.popup.update(), closePopup and a tap on the map all keep working).
+  function sheetMode() { return !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches); }
+  var barSheet = null, sheetScroll = {};
+  // While the sheet is open, other code must not pan the map to "fit" a popup that is no longer on the map.
+  var panBy0 = map.panBy;
+  map.panBy = function (off, o) { if (barSheet && !(o && o.olnuSheet)) return this; return panBy0.call(this, off, o); };
+  map.on("popupopen", function (e) {
+    var pp = e.popup, root = pp && pp.getElement();
+    if (!root || !root.querySelector(".bs")) return;
+    if (!root._olnuBs) root._olnuBs = true, root.addEventListener("click", function (ev) {
+      var k = ev.target.closest && ev.target.closest(".pa-kommer"); if (!k) return;
+      ev.preventDefault(); ev.stopPropagation();
+      var b = root.querySelector('.pp-rl-row[data-rl-id="' + (k.getAttribute("data-proxy-rl") || "").replace(/["\\]/g, "") + '"] [data-rl-ans="yes"]');
+      if (b) { b.click(); k.classList.add("on"); }
+    });
+    if (!sheetMode()) return;
+    barSheet = pp;
+    root.classList.add("olnu-sheet");
+    if (root.parentNode !== document.body) document.body.appendChild(root);
+    document.body.classList.add("barsheet-open");
+    var key = pp._source && pp._source.options.olnuKey, sc = root.querySelector(".leaflet-popup-content");
+    if (key && sheetScroll[key] && sc) sc.scrollTop = sheetScroll[key];
+    if (sc) sc.addEventListener("scroll", function () { if (key) sheetScroll[key] = sc.scrollTop; }, { passive: true });
+    // Keep the bar itself visible in the map strip above the sheet.
+    requestAnimationFrame(function () {
+      if (barSheet !== pp) return;
+      var ll = pp.getLatLng(); if (!ll) return;
+      var p = map.latLngToContainerPoint(ll), top = 150, bottom = window.innerHeight - root.getBoundingClientRect().height - 16;
+      var want = Math.max(top, Math.min(bottom, (top + bottom) / 2));
+      if (p.y > bottom || p.y < top) map.panBy([0, Math.round(p.y - want)], { animate: true, duration: 0.3, olnuSheet: true });
+    });
+  });
+  map.on("popupclose", function (e) {
+    if (e.popup !== barSheet) return;
+    barSheet = null;
+    document.body.classList.remove("barsheet-open");
+    if (!redrawing) sheetScroll = {};
+  });
+  // Which part of the bar marker was tapped: open that fold once (🪖 → call-outs, people pill → people, 🚪 → check-ins).
+  function foldFromTap(e) {
+    var tg = e.target && e.target.closest ? e.target : null; if (!tg) return;
+    foldOnce = tg.closest(".cm-rally") ? "rally" : tg.closest(".pill") ? "here" : tg.closest(".cm-ci") ? "ci" : tg.closest(".cm-king, .cm-flag") ? "stam" : null;
   }
 
   /* ---------- v10 Checka in ---------- */
@@ -665,8 +805,12 @@
     var prio = barPrio(c);
     var m = L.marker([c.bar.lat, c.bar.lng], { icon: compositeIcon(c), pane: pane, keyboard: false,
       zIndexOffset: 1000 + prio, olnuKey: (pane === "hotbars" ? "h" : "p") + c.bar.id, olnuPrio: prio });
-    m.bindPopup(function () { return barPopup(c.bar, c.beers); }, { pane: "popupPane" });
-    m.on("add", function () { var ic = m.getElement(); if (ic) { ic.setAttribute("data-bar", String(c.bar.id)); ic.setAttribute("data-prio", String(prio)); } });
+    m.bindPopup(function () { return barPopup(c.bar, c.beers); }, { pane: "popupPane", className: "olnu-bar", autoPan: !sheetMode() });
+    m.on("add", function () {
+      var ic = m.getElement(); if (!ic) return;
+      ic.setAttribute("data-bar", String(c.bar.id)); ic.setAttribute("data-prio", String(prio));
+      if (!ic._olnuFold) { ic._olnuFold = true; ic.addEventListener("click", foldFromTap, true); ic.addEventListener("pointerdown", foldFromTap, true); }
+    });
     m.addTo(layer);
     return m;
   }
@@ -2066,6 +2210,7 @@
     var cur = sheetCur; sheetCur = null;
     if (cur && cur.onClose) { try { cur.onClose(typeof reason === "string" ? reason : "cancel"); } catch (e) {} }
     setTimeout(drainSheets, 80);
+    setTimeout(toastPump, 300);   // a calm toast that waited for the sheet
   }
   function drainSheets() {
     if (!sheetQueue.length || busy || !$("sheet").hidden || !$("intro").hidden) return;
@@ -3229,7 +3374,10 @@
     window.BARS.init({ map: map, onChange: function () { render(); if (chaosRes) evalChaos(false); } });
     // Restaurant names for the feed: load after the map is up, then redraw the ticker.
     setTimeout(window.BARS.loadPlaces, 1500);
-    window.BARS.onPlacesReady(function () { tickerKey = ""; newsDirty = true; renderTicker(); });
+    // Places now load in tiles as the map moves: redraw the markers too, so a restaurant with a check-in or with
+    // people (known only after its tile arrived) gets its marker.
+    var placesRender = U.debounce(function () { render(); }, 300);
+    window.BARS.onPlacesReady(function () { tickerKey = ""; newsDirty = true; renderTicker(); placesRender(); });
     // Flyttkod first (finish a pending export, import a code, or ask in a new home-screen app), then intro + sign-in.
     var boot;
     try { boot = flyttBoot(); } catch (e) { boot = Promise.resolve(); }
@@ -3328,7 +3476,7 @@
       if (!m) hotLayer.eachLayer(function (x) { if (x.options.olnuKey === "h" + id) m = x; });
       if (m && m.getPopup()) { m.openPopup(); return; }
       var agg = window.BARS.assign(beers).perBar[id];
-      L.popup({ offset: L.point(0, -10) }).setLatLng([bar.lat, bar.lng]).setContent(barPopup(bar, agg ? agg.beers : [])).openOn(map);
+      L.popup({ offset: L.point(0, -10), className: "olnu-bar", autoPan: !sheetMode() }).setLatLng([bar.lat, bar.lng]).setContent(barPopup(bar, agg ? agg.beers : [])).openOn(map);
     };
     map.once("moveend", function () { setTimeout(open, 250); });
     map.flyTo([bar.lat, bar.lng], Math.max(map.getZoom(), 17), { duration: 0.9 });

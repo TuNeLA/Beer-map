@@ -914,6 +914,79 @@ body:has(#sheet:not([hidden])) .tk-track,body:has(#sheet:not([hidden])) .chaos{a
 .cm.cm-quiet .bar-ico svg{width:9px;height:9px}
 .cm.cm-lit .bar-ico{border-color:var(--green);box-shadow:0 0 6px rgba(61,220,132,.55)}
 .leaflet-heatmap-layer{opacity:1}
+/* ---------- Design pass 2: bar sheet (app.js barPopup + sheet mode) ----------
+   Phones: the Leaflet bar popup becomes a bottom sheet (element moved to <body>, Leaflet positions overridden).
+   First view = header + one action row + closed folds, ≤ 50 % of the screen; the map stays live above it. */
+.leaflet-popup.olnu-sheet{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;transform:none !important;
+  margin:0 auto !important;max-width:560px;z-index:1500;opacity:1 !important;animation:up .2s ease-out}
+.olnu-sheet .leaflet-popup-tip-container{display:none}
+.olnu-sheet .leaflet-popup-content-wrapper{border-radius:0;border:1px solid var(--line);border-bottom:0;background:var(--night-2);
+  box-shadow:0 -10px 40px #000a;padding-bottom:var(--sab)}
+.olnu-sheet::before,.olnu-sheet::after{content:"";position:absolute;z-index:1;top:-1px;width:18px;height:18px;border-top:3px solid var(--amber);pointer-events:none}
+.olnu-sheet::before{left:-1px;border-left:3px solid var(--amber)}
+.olnu-sheet::after{right:-1px;border-right:3px solid var(--amber)}
+.olnu-sheet .leaflet-popup-content{width:auto !important;margin:10px calc(var(--sar) + 16px) 12px calc(var(--sal) + 16px) !important;
+  max-height:min(72dvh,calc(100dvh - 160px)) !important;overflow-y:auto;overscroll-behavior:contain}
+.olnu-sheet a.leaflet-popup-close-button{top:4px;right:calc(var(--sar) + 6px);font-size:24px;color:var(--amber-2)}
+body.barsheet-open .dock,body.barsheet-open .locate-btn,body.barsheet-open .attrib-btn{opacity:0;pointer-events:none}
+body.barsheet-open .toasts{top:calc(var(--sat) + 108px) !important;bottom:auto !important}
+/* header */
+.bs-head{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;padding-right:34px}
+.bs-head .pp-title{grid-column:1;font-size:var(--fs-l);line-height:1.15;overflow-wrap:anywhere}
+.bs-meta{grid-column:1;font-size:var(--fs-s);color:var(--muted)}
+.bs-meta .bs-n{color:var(--text);font-weight:700}
+.pp-crowd-t{font-weight:700}
+.pp-crowd-t.c1{color:#8fd19e}.pp-crowd-t.c2{color:var(--amber-2)}.pp-crowd-t.c3{color:#ff6b5b}
+.bs-icons{grid-column:2;grid-row:1 / span 2;display:flex;gap:4px;font-size:var(--fs-m);line-height:1}
+.bs-q{box-shadow:inset 0 -2px 0 var(--amber-2)}.bs-q.q-none{box-shadow:inset 0 -2px 0 var(--green)}.bs-q.q-long{box-shadow:inset 0 -2px 0 var(--red)}
+/* ONE action row: Checka in · På väg · Kommer (module ETA box flattened with display:contents, its handlers untouched) */
+.pp-act{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.pp-act>.ci-btn{order:1;flex:1 1 0;width:auto;margin:0;min-height:48px;font-family:var(--body);font-size:var(--fs-m)}
+.pp-act .pp-sec-eta,.pp-act .eta{display:contents}
+.pp-act .pp-sec-eta>.pp-sec-h{display:none}
+.pp-act .eta-go,.pp-act .pa-kommer{order:2;flex:1 1 0;min-height:48px;padding:0 8px;cursor:pointer;font:700 var(--fs-m) var(--body);
+  color:var(--green);background:rgba(61,220,132,.08);border:1px solid var(--green);
+  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.pp-act .pa-kommer{order:3}
+.pp-act .pa-kommer.on{background:var(--green);color:var(--on-green)}
+.pp-act .eta-row,.pp-act .eta-me,.pp-act .eta-acts,.pp-act .eta-pick,.pp-act .eta-else{order:9;flex:1 0 100%;font-size:var(--fs-s);margin:0}
+.pp-care1{margin:6px 0 2px;font:600 var(--fs-s)/1.3 var(--body);color:#9fd3ff}
+/* folds */
+.pp-fold{margin:0;padding:0;border-top:1px solid var(--line-soft)}
+.pp-act+.pp-fold,.bs-head+.pp-fold,.pp-care1+.pp-fold{margin-top:6px}
+.pp-fold>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.pp-fold>summary::-webkit-details-marker{display:none}
+.pp-fold>summary:focus-visible{outline:2px solid var(--amber-2);outline-offset:-2px}
+.pp-fold .pp-sec-h{flex:1 1 auto;min-width:0;margin:0;font:700 var(--fs-m)/1.2 var(--body);color:var(--text)}
+.pf-n{flex:0 0 auto;min-width:26px;padding:1px 6px;text-align:center;font:400 var(--fs-s)/1.4 var(--hud);color:var(--amber-2);background:rgba(245,166,35,.1);border:1px solid var(--line)}
+.pf-chev{flex:0 0 auto;width:20px;text-align:center;color:var(--amber);font-size:var(--fs-l);line-height:1;transition:transform .15s}
+.pp-fold[open]>summary .pf-chev{transform:rotate(90deg)}
+.pf-body{padding:0 0 10px}
+.pf-body .pp-list{max-height:none}
+/* call-out rows: one line (2 at most), small Kommer / 🧭, never shouting */
+.pp-sec-rl .pp-rl-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px;padding:4px 0;min-height:52px}
+.pp-sec-rl .pp-rl-txt{font:600 var(--fs-s)/1.3 var(--body);text-transform:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:2px 0}
+.pp-sec-rl .pp-rl-txt small{display:inline;font:400 var(--fs-s) var(--body);color:var(--green)}
+.pp-sec-rl .pp-rl-txt small::before{content:" · "}
+.pp-sec-rl .pp-rl-btns{margin:0;gap:4px;flex-wrap:nowrap}
+.pp-sec-rl .pp-rl-btns>*{flex:0 0 auto;min-width:44px;min-height:44px;padding:0 10px;font-size:var(--fs-s)}
+.pp-sec-rl .pp-rl-btns>a{font-size:var(--fs-m);padding:0 8px}
+/* folds as a 2-column grid of 44 px tiles; an open fold spans both columns */
+.pp-folds{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.pp-folds .pp-fold{border:1px solid var(--line-soft);background:rgba(10,15,28,.55);min-width:0}
+.pp-folds .pp-fold>summary{padding:0 6px 0 10px;gap:6px}
+.pp-folds .pp-fold .pp-sec-h{font-size:var(--fs-s);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-folds .pp-fold[open]{grid-column:1 / -1;border-color:var(--line)}
+.pp-folds .pp-fold[open] .pp-sec-h{font-size:var(--fs-m);white-space:normal}
+.pp-folds .pf-body{padding:0 10px 10px}
+.pp-folds .pf-n{min-width:22px;padding:0 4px}
+.pp-folds .pf-chev{width:14px}
+.pp-act .eta-row,.pp-act .eta-me,.pp-act .eta-else{padding:3px 8px;line-height:1.3}
+/* outside .leaflet-container Leaflet's own close-button rules no longer apply */
+.olnu-sheet a.leaflet-popup-close-button{position:absolute;top:4px;right:calc(var(--sar) + 4px);width:44px;height:44px;display:grid;place-items:center;
+  font:400 26px/1 var(--body);text-decoration:none;color:var(--amber-2);background:transparent;border:0;z-index:2}
+.olnu-sheet .leaflet-popup-content a{color:var(--amber-2)}
+.olnu-sheet a.leaflet-popup-close-button{background:var(--night-2);border:1px solid var(--line-soft)}
 
 /* Small ÅNGRA button: a round ↩️ just left of the ÖL! button, 10 s after a beer. */
 .undo-fab{position:fixed;z-index:1460;left:calc(50% - 84px);bottom:calc(var(--dock-h,212px) - 60px);width:48px;height:48px;border-radius:50%;
@@ -925,3 +998,6 @@ body:has(#sheet:not([hidden])) .tk-track,body:has(#sheet:not([hidden])) .chaos{a
 
 /* toasts-over-strip: while the beer-type strip is open, toasts sit above it so the chips stay tappable. */
 body:has(.bp-strip:not([hidden])) .toasts{bottom:calc(var(--dock-h,212px) + var(--bp-strip-h,190px)) !important}
+/* KAOS + call-out at the same time: the call-out keeps the rail (its ✅ Kommer stays reachable), kaos stacks under it */
+body:has(#rally:not([hidden])) .chaos{top:calc(var(--sat) + 104px) !important}
+.pp-act:has(.pa-kommer)>.ci-btn,.pp-act:has(.pa-kommer) .eta-go,.pp-act .pa-kommer{font-size:var(--fs-s);padding:0 4px}

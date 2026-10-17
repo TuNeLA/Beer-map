@@ -9267,3 +9267,2564 @@ create or replace trigger rallies_short_life before insert on public.rallies
   for each row execute function public.olnu_rally_short_life();
 update public.rallies set expires_at = least(expires_at, created_at + interval '2 hours')
  where expires_at > now();
+
+-- ===== supabase/migrations/0026_gang.sql =====
+-- 0026 v19 GÄNGET (group fun pack). Client: docs/js/gang.js + docs/js/gang-content.js + docs/gang.css.
+-- 1 Citatboken (quote book, revealed 10:00 the next day)   2 Mest troligt (vote a member)
+-- 3 Vart ska vi? (bar poll -> call-out via create_rally)    4 Bakisbrunchen (morning brunch call)
+-- 5 Kebabtoppen (late-night food ratings, monthly per town) 6 Skuldboken (who owes whom + Swish number)
+-- 7 Morgontidningen (facts of the group's last night for a fake tabloid page, drawn by the client)
+-- Additive only. Needs 0001-0025 (groups, group_msgs, rallies + create_rally, medal_nights, medal_checkins,
+-- after_nights, bars_lite, olnu_towns, etas, bar_takeovers). Rows are never removed; reads filter on time.
+-- RLS on, no policies. All RPCs: SECURITY DEFINER, search_path public, olnu_uid(), authenticated only.
+-- Safe to run again.
+
+-- ---------------------------------------------------------------------------
+-- Tables
+-- ---------------------------------------------------------------------------
+create table if not exists public.gang_quotes (
+  id          bigserial primary key,
+  group_id    uuid not null,
+  user_id     uuid not null,                       -- who saved it
+  who         text not null check (char_length(who) between 1 and 30),
+  body        text not null check (char_length(body) between 1 and 140),
+  msg_id      bigint null,
+  night       timestamptz not null,
+  reveal_at   timestamptz not null,
+  created_at  timestamptz not null default now(),
+  hidden      boolean not null default false,
+  hidden_by   uuid null,
+  hidden_at   timestamptz null
+);
+create index if not exists gang_quotes_group_idx on public.gang_quotes (group_id, id desc);
+create index if not exists gang_quotes_user_idx on public.gang_quotes (user_id, created_at desc);
+
+create table if not exists public.gang_mt_rounds (
+  id          bigserial primary key,
+  group_id    uuid not null,
+  user_id     uuid not null,                       -- who started it
+  q           int not null check (q between 0 and 9999),
+  night       timestamptz not null,
+  created_at  timestamptz not null default now(),
+  ends_at     timestamptz not null,
+  closed_at   timestamptz null
+);
+create index if not exists gang_mt_rounds_group_idx on public.gang_mt_rounds (group_id, night, id desc);
+create index if not exists gang_mt_rounds_user_idx on public.gang_mt_rounds (user_id, created_at desc);
+
+create table if not exists public.gang_mt_votes (
+  round_id    bigint not null,
+  voter       uuid not null,
+  target      uuid not null,
+  updated_at  timestamptz not null default now(),
+  primary key (round_id, voter)
+);
+
+create table if not exists public.gang_polls (
+  id          bigserial primary key,
+  group_id    uuid not null,
+  user_id     uuid not null,
+  night       timestamptz not null,
+  options     jsonb not null,                      -- [{id, name, lat, lng}] 2-4
+  created_at  timestamptz not null default now(),
+  ends_at     timestamptz not null,
+  ended_at    timestamptz null,
+  ended_by    uuid null,
+  winner      int null,
+  rally_id    bigint null,
+  rally_error text null
+);
+create index if not exists gang_polls_group_idx on public.gang_polls (group_id, id desc);
+create index if not exists gang_polls_user_idx on public.gang_polls (user_id, created_at desc);
+
+create table if not exists public.gang_poll_votes (
+  poll_id     bigint not null,
+  user_id     uuid not null,
+  opt         int not null check (opt between 0 and 3),
+  updated_at  timestamptz not null default now(),
+  primary key (poll_id, user_id)
+);
+
+create table if not exists public.gang_brunches (
+  id          bigserial primary key,
+  group_id    uuid not null,
+  user_id     uuid not null,
+  place       text not null check (char_length(place) between 1 and 60),
+  place_id    text null,
+  lat         float8 null,
+  lng         float8 null,
+  at_time     text null,                           -- 'HH:MM' or null (= nu)
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null,
+  closed      boolean not null default false
+);
+create index if not exists gang_brunches_group_idx on public.gang_brunches (group_id, id desc);
+create index if not exists gang_brunches_user_idx on public.gang_brunches (user_id, created_at desc);
+
+create table if not exists public.gang_brunch_answers (
+  brunch_id   bigint not null,
+  user_id     uuid not null,
+  answer      text not null check (answer in ('ja', 'kanske', 'nej')),
+  updated_at  timestamptz not null default now(),
+  primary key (brunch_id, user_id)
+);
+
+create table if not exists public.kebab_ratings (
+  id          bigserial primary key,
+  user_id     uuid not null,
+  place_id    text not null check (char_length(place_id) between 1 and 80),
+  place_name  text not null check (char_length(place_name) between 1 and 60),
+  lat         float8 not null,
+  lng         float8 not null,
+  town        text not null,
+  stars       int not null check (stars between 1 and 5),
+  tag         text null,
+  night       timestamptz not null,
+  month       date not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (user_id, place_id, night)
+);
+create index if not exists kebab_ratings_town_idx on public.kebab_ratings (town, month);
+create index if not exists kebab_ratings_place_idx on public.kebab_ratings (place_id, month);
+create index if not exists kebab_ratings_user_idx on public.kebab_ratings (user_id, updated_at desc);
+
+create table if not exists public.gang_debts (
+  id           bigserial primary key,
+  group_id     uuid not null,
+  created_by   uuid not null,
+  debtor       uuid not null,
+  creditor     uuid not null,
+  amount       int not null check (amount between 1 and 50000),
+  what         text not null check (char_length(what) between 1 and 40),
+  created_at   timestamptz not null default now(),
+  paid_at      timestamptz null,
+  paid_by      uuid null,
+  cancelled_at timestamptz null,
+  cancelled_by uuid null
+);
+create index if not exists gang_debts_group_idx on public.gang_debts (group_id, id desc);
+create index if not exists gang_debts_user_idx on public.gang_debts (created_by, created_at desc);
+
+create table if not exists public.gang_swish (
+  group_id    uuid not null,
+  user_id     uuid not null,
+  number      text null,
+  changes     int not null default 0,
+  updated_at  timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
+alter table public.gang_quotes         enable row level security;
+alter table public.gang_mt_rounds      enable row level security;
+alter table public.gang_mt_votes       enable row level security;
+alter table public.gang_polls          enable row level security;
+alter table public.gang_poll_votes     enable row level security;
+alter table public.gang_brunches       enable row level security;
+alter table public.gang_brunch_answers enable row level security;
+alter table public.kebab_ratings       enable row level security;
+alter table public.gang_debts          enable row level security;
+alter table public.gang_swish          enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Helpers (internal, no grants)
+-- ---------------------------------------------------------------------------
+-- One line, no control chars, spaces squeezed, trimmed. Empty -> ''.
+create or replace function public.olnu_gang_clean(p text)
+returns text language sql immutable set search_path = public as $$
+  select btrim(regexp_replace(regexp_replace(coalesce(p, ''), '[\x00-\x1F\x7F]', ' ', 'g'), '\s+', ' ', 'g'));
+$$;
+
+-- Opaque member key (never a user id).
+create or replace function public.olnu_gang_k(p_group uuid, p_uid uuid)
+returns text language sql immutable set search_path = public as $$
+  select substr(md5(p_group::text || ':' || p_uid::text || ':olnu-gang'), 1, 12);
+$$;
+
+create or replace function public.olnu_gang_member(p_group uuid, p_uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.group_members m where m.group_id = p_group and m.user_id = p_uid);
+$$;
+
+-- Member user id from key, or null.
+create or replace function public.olnu_gang_uid_of(p_group uuid, p_k text)
+returns uuid language sql stable security definer set search_path = public as $$
+  select m.user_id from public.group_members m
+   where m.group_id = p_group and public.olnu_gang_k(p_group, m.user_id) = p_k limit 1;
+$$;
+
+create or replace function public.olnu_gang_name(p_group uuid, p_uid uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select m.display_name from public.group_members m where m.group_id = p_group and m.user_id = p_uid;
+$$;
+
+-- The night that ended last (the 05:00 boundary at or before now), DST-correct.
+create or replace function public.olnu_gang_last_night()
+returns timestamptz language sql stable set search_path = public as $$
+  select ((public.olnu_night_of(now()) at time zone 'Europe/Stockholm') - interval '1 day') at time zone 'Europe/Stockholm';
+$$;
+
+-- 10:00 Europe/Stockholm on the day the night ends.
+create or replace function public.olnu_gang_reveal(p_night timestamptz)
+returns timestamptz language sql stable set search_path = public as $$
+  select (((p_night at time zone 'Europe/Stockholm')::date + time '10:00') at time zone 'Europe/Stockholm');
+$$;
+
+create or replace function public.olnu_gang_hour()
+returns int language sql stable set search_path = public as $$
+  select extract(hour from (now() at time zone 'Europe/Stockholm'))::int;
+$$;
+
+-- Town key for kebab lists: the nearest known town (~30 km), else a ~50 km cell.
+create or replace function public.olnu_gang_town(p_lat float8, p_lng float8)
+returns text language sql stable security definer set search_path = public as $$
+  select coalesce(public.olnu_town_of(p_lat, p_lng),
+                  '~' || (round(p_lat::numeric * 2) / 2)::text || ':' || (round(p_lng::numeric))::text);
+$$;
+
+create or replace function public.olnu_gang_rl(p_key text)
+returns void language sql set search_path = public as $$
+  select pg_advisory_xact_lock(hashtextextended('olnu_gang:' || p_key, 0));
+$$;
+
+-- Mest troligt: a round is open while not closed, not past ends_at, and not everyone (current members) voted.
+create or replace function public.olnu_gang_mt_done(r public.gang_mt_rounds)
+returns boolean language sql stable security definer set search_path = public as $$
+  select r.closed_at is not null or r.ends_at <= now()
+      or (select count(*) from public.gang_mt_votes v
+            join public.group_members m on m.group_id = r.group_id and m.user_id = v.voter
+           where v.round_id = r.id)
+         >= greatest(2, (select count(*) from public.group_members m where m.group_id = r.group_id));
+$$;
+
+create or replace function public.olnu_gang_mt_json(r public.gang_mt_rounds, p_uid uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with votes as (
+    select v.voter, v.target from public.gang_mt_votes v
+      join public.group_members m on m.group_id = r.group_id and m.user_id = v.voter
+      join public.group_members t on t.group_id = r.group_id and t.user_id = v.target
+     where v.round_id = r.id
+  ), res as (
+    select v.target, count(*)::int as n from votes v group by v.target
+  )
+  select jsonb_build_object(
+    'id', r.id, 'q', r.q, 'created_at', r.created_at, 'ends_at', r.ends_at,
+    'by', public.olnu_gang_name(r.group_id, r.user_id), 'by_me', r.user_id = p_uid,
+    'votes', (select count(*) from votes)::int,
+    'needed', greatest(2, (select count(*) from public.group_members m where m.group_id = r.group_id))::int,
+    'my_vote', (select public.olnu_gang_k(r.group_id, v.target) from votes v where v.voter = p_uid),
+    'done', public.olnu_gang_mt_done(r),
+    'results', case when public.olnu_gang_mt_done(r) then coalesce((
+        select jsonb_agg(jsonb_build_object('k', public.olnu_gang_k(r.group_id, x.target),
+                                            'name', public.olnu_gang_name(r.group_id, x.target),
+                                            'is_me', x.target = p_uid, 'n', x.n) order by x.n desc, public.olnu_gang_name(r.group_id, x.target))
+          from res x), '[]'::jsonb) else null end);
+$$;
+
+create or replace function public.olnu_gang_poll_json(p public.gang_polls, p_uid uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with votes as (
+    select v.user_id, v.opt, v.updated_at from public.gang_poll_votes v
+      join public.group_members m on m.group_id = p.group_id and m.user_id = v.user_id
+     where v.poll_id = p.id
+  )
+  select jsonb_build_object(
+    'id', p.id, 'by', public.olnu_gang_name(p.group_id, p.user_id), 'by_me', p.user_id = p_uid,
+    'created_at', p.created_at, 'ends_at', p.ends_at,
+    'ended', p.ended_at is not null or p.ends_at <= now(), 'ended_at', coalesce(p.ended_at, case when p.ends_at <= now() then p.ends_at end),
+    'winner', p.winner, 'rally_id', p.rally_id, 'rally_error', p.rally_error,
+    'rally_mine', exists (select 1 from public.rallies r where r.id = p.rally_id and r.user_id = p_uid),
+    'my_vote', (select v.opt from votes v where v.user_id = p_uid),
+    'votes', (select count(*) from votes)::int,
+    'options', coalesce((
+      select jsonb_agg(o.value || jsonb_build_object(
+               'i', (o.ord - 1)::int,
+               'n', (select count(*) from votes v where v.opt = o.ord - 1)::int,
+               'names', coalesce((select jsonb_agg(public.olnu_gang_name(p.group_id, v.user_id) order by v.updated_at)
+                                    from votes v where v.opt = o.ord - 1), '[]'::jsonb)) order by o.ord)
+        from jsonb_array_elements(p.options) with ordinality o(value, ord)), '[]'::jsonb));
+$$;
+
+-- Winner of a poll: most votes (current members); tie -> the option that reached that count first
+-- (earliest last vote among tied); no votes -> null.
+create or replace function public.olnu_gang_poll_winner(p public.gang_polls)
+returns int language sql stable security definer set search_path = public as $$
+  select v.opt from public.gang_poll_votes v
+    join public.group_members m on m.group_id = p.group_id and m.user_id = v.user_id
+   where v.poll_id = p.id
+   group by v.opt
+   order by count(*) desc, max(v.updated_at), v.opt
+   limit 1;
+$$;
+
+-- End a poll (lock held by caller). Picks the winner and makes the call-out with create_rally as the caller.
+create or replace function public.olnu_gang_poll_finish(p_id bigint, p_uid uuid)
+returns public.gang_polls language plpgsql security definer set search_path = public as $$
+declare
+  p public.gang_polls;
+  w int;
+  o jsonb;
+  r json;
+  v_rally bigint := null;
+  v_err text := null;
+begin
+  select * into p from public.gang_polls x where x.id = p_id for update;
+  if p.ended_at is not null then return p; end if;
+  w := public.olnu_gang_poll_winner(p);
+  if w is not null then
+    o := p.options -> w;
+    begin
+      r := public.create_rally(p.group_id, left('🗳️ Gänget har röstat: ' || (o ->> 'name') || '!', 100),
+                               left(o ->> 'name', 60), (o ->> 'lat')::float8, (o ->> 'lng')::float8);
+      v_rally := (r ->> 'id')::bigint;
+    exception when others then
+      v_err := left(sqlerrm, 40);   -- e.g. slow_down: the result still shows, the app offers the call-out button
+    end;
+  end if;
+  update public.gang_polls x
+     set ended_at = now(), ended_by = p_uid, winner = w, rally_id = v_rally, rally_error = v_err
+   where x.id = p_id
+  returning * into p;
+  return p;
+end; $$;
+
+create or replace function public.olnu_gang_brunch_json(b public.gang_brunches, p_uid uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with a as (
+    select x.user_id, x.answer, x.updated_at from public.gang_brunch_answers x
+      join public.group_members m on m.group_id = b.group_id and m.user_id = x.user_id
+     where x.brunch_id = b.id
+  )
+  select jsonb_build_object(
+    'id', b.id, 'by', public.olnu_gang_name(b.group_id, b.user_id), 'by_me', b.user_id = p_uid,
+    'place', b.place, 'place_id', b.place_id, 'lat', b.lat, 'lng', b.lng, 'at_time', b.at_time,
+    'created_at', b.created_at, 'expires_at', b.expires_at,
+    'mine', (select a.answer from a where a.user_id = p_uid),
+    'ja', coalesce((select jsonb_agg(public.olnu_gang_name(b.group_id, a.user_id) order by a.user_id <> b.user_id, a.updated_at) from a where a.answer = 'ja'), '[]'::jsonb),
+    'kanske', coalesce((select jsonb_agg(public.olnu_gang_name(b.group_id, a.user_id) order by a.updated_at) from a where a.answer = 'kanske'), '[]'::jsonb),
+    'nej', coalesce((select jsonb_agg(public.olnu_gang_name(b.group_id, a.user_id) order by a.updated_at) from a where a.answer = 'nej'), '[]'::jsonb));
+$$;
+
+-- Open debts between current members only. Net per member: + = gets money, - = owes.
+create or replace function public.olnu_gang_debts_json(p_group uuid, p_uid uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with mem as (select m.user_id, m.display_name from public.group_members m where m.group_id = p_group),
+  open as (
+    select d.* from public.gang_debts d
+     where d.group_id = p_group and d.paid_at is null and d.cancelled_at is null
+       and d.debtor in (select user_id from mem) and d.creditor in (select user_id from mem)
+  ),
+  paid as (
+    select d.* from public.gang_debts d
+     where d.group_id = p_group and d.paid_at is not null and d.cancelled_at is null and d.paid_at > now() - interval '14 days'
+     order by d.paid_at desc limit 10
+  ),
+  net as (
+    select u.user_id, sum(u.amt)::int as net from (
+      select o.creditor as user_id, o.amount as amt from open o
+      union all select o.debtor, -o.amount from open o) u group by u.user_id
+  )
+  select jsonb_build_object(
+    'open', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', o.id, 'amount', o.amount, 'what', o.what, 'created_at', o.created_at,
+        'debtor', public.olnu_gang_k(p_group, o.debtor), 'debtor_name', public.olnu_gang_name(p_group, o.debtor),
+        'creditor', public.olnu_gang_k(p_group, o.creditor), 'creditor_name', public.olnu_gang_name(p_group, o.creditor),
+        'by', public.olnu_gang_name(p_group, o.created_by),
+        'i_owe', o.debtor = p_uid, 'owed_me', o.creditor = p_uid,
+        'can_cancel', o.created_by = p_uid or o.creditor = p_uid) order by o.id desc) from open o), '[]'::jsonb),
+    'paid', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', o.id, 'amount', o.amount, 'what', o.what, 'paid_at', o.paid_at,
+        'debtor_name', public.olnu_gang_name(p_group, o.debtor), 'creditor_name', public.olnu_gang_name(p_group, o.creditor),
+        'can_undo', (o.debtor = p_uid or o.creditor = p_uid or o.created_by = p_uid) and o.paid_at > now() - interval '1 day')
+        order by o.paid_at desc) from paid o), '[]'::jsonb),
+    'net', coalesce((select jsonb_agg(jsonb_build_object('k', public.olnu_gang_k(p_group, n.user_id),
+        'name', public.olnu_gang_name(p_group, n.user_id), 'is_me', n.user_id = p_uid, 'net', n.net) order by n.net desc)
+        from net n where n.net <> 0), '[]'::jsonb),
+    'swish', coalesce((select jsonb_agg(jsonb_build_object('k', public.olnu_gang_k(p_group, s.user_id),
+        'name', public.olnu_gang_name(p_group, s.user_id), 'is_me', s.user_id = p_uid, 'number', s.number))
+        from public.gang_swish s where s.group_id = p_group and s.number is not null
+         and s.user_id in (select user_id from mem)), '[]'::jsonb));
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 1. Citatboken
+-- ---------------------------------------------------------------------------
+-- add_quote(group, who, body, msg_id?) -> {id, reveal_at, who, body}
+-- With a msg_id of a live message in this group: who = sender's name, body = the message (client values ignored).
+create or replace function public.add_quote(p_group_id uuid, p_who text, p_body text, p_msg_id bigint default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_who text := public.olnu_gang_clean(p_who);
+  v_body text := public.olnu_gang_clean(p_body);
+  v_night timestamptz := public.olnu_night_of(now());
+  m public.group_msgs;
+  v_id bigint;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if p_msg_id is not null then
+    select * into m from public.group_msgs x where x.id = p_msg_id and x.group_id = p_group_id;
+    if found then
+      v_body := public.olnu_gang_clean(m.body);
+      v_who := coalesce(public.olnu_gang_name(p_group_id, m.user_id), v_who);
+    end if;
+  end if;
+  v_body := btrim(v_body, ' "”“');
+  if v_who = '' or char_length(v_who) > 30 or v_body = '' or char_length(v_body) > 140 then raise exception 'invalid_quote'; end if;
+  perform public.olnu_gang_rl('q:' || v_uid::text);
+  if exists (select 1 from public.gang_quotes q where q.user_id = v_uid and q.created_at > now() - interval '8 seconds') then
+    raise exception 'slow_down';
+  end if;
+  if (select count(*) from public.gang_quotes q where q.user_id = v_uid and q.night = v_night) >= 40 then
+    raise exception 'slow_down';
+  end if;
+  -- Same quote twice tonight in this group -> the old row.
+  select q.id into v_id from public.gang_quotes q
+   where q.group_id = p_group_id and q.night = v_night and lower(q.body) = lower(v_body) and lower(q.who) = lower(v_who) and not q.hidden
+   limit 1;
+  if v_id is null then
+    insert into public.gang_quotes (group_id, user_id, who, body, msg_id, night, reveal_at)
+    values (p_group_id, v_uid, v_who, v_body, case when m.id is not null then m.id end, v_night, public.olnu_gang_reveal(v_night))
+    returning id into v_id;
+  end if;
+  return jsonb_build_object('id', v_id, 'reveal_at', public.olnu_gang_reveal(v_night), 'who', v_who, 'body', v_body);
+end; $$;
+
+-- hide_quote(id): the saver, or a member whose display name equals "who" (the quoted person). Not undone.
+create or replace function public.hide_quote(p_quote_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  q public.gang_quotes;
+begin
+  select * into q from public.gang_quotes x where x.id = p_quote_id;
+  if not found or not public.olnu_gang_member(q.group_id, v_uid) then raise exception 'quote_not_found'; end if;
+  if q.user_id <> v_uid and lower(coalesce(public.olnu_gang_name(q.group_id, v_uid), '')) <> lower(q.who) then
+    raise exception 'not_yours';
+  end if;
+  update public.gang_quotes x set hidden = true, hidden_by = v_uid, hidden_at = now() where x.id = q.id;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+-- gang_quotes(group, before_id?) -> setof rows, newest first, max 30: revealed quotes + the caller's own pending ones.
+create or replace function public.gang_quotes(p_group_id uuid, p_before_id bigint default null)
+returns table (id bigint, who text, body text, by_name text, by_me boolean, created_at timestamptz, night timestamptz,
+               reveal_at timestamptz, revealed boolean, can_hide boolean)
+language plpgsql security definer set search_path = public stable as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_me text;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  v_me := lower(coalesce(public.olnu_gang_name(p_group_id, v_uid), ''));
+  return query
+  select q.id, q.who, q.body, public.olnu_gang_name(q.group_id, q.user_id), q.user_id = v_uid, q.created_at, q.night,
+         q.reveal_at, q.reveal_at <= now(), q.user_id = v_uid or lower(q.who) = v_me
+    from public.gang_quotes q
+   where q.group_id = p_group_id and not q.hidden
+     and (q.reveal_at <= now() or q.user_id = v_uid)
+     and (p_before_id is null or q.id < p_before_id)
+   order by q.id desc
+   limit 30;
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 2. Mest troligt
+-- ---------------------------------------------------------------------------
+-- mt_start(group, n = number of questions in the client list) -> {id, q}
+-- One open round per group (round_open). Needs 2+ members (not_enough). 1 start per 15 s per user.
+-- q = random index < n, not used by the group in the last 30 days when possible.
+create or replace function public.mt_start(p_group_id uuid, p_n int default 120)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_n int := least(greatest(coalesce(p_n, 120), 1), 10000);
+  r public.gang_mt_rounds;
+  v_q int;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if (select count(*) from public.group_members m where m.group_id = p_group_id) < 2 then raise exception 'not_enough'; end if;
+  perform public.olnu_gang_rl('mt:' || p_group_id::text);
+  for r in select * from public.gang_mt_rounds x where x.group_id = p_group_id and x.closed_at is null and x.ends_at > now() loop
+    if not public.olnu_gang_mt_done(r) then raise exception 'round_open'; end if;
+  end loop;
+  if exists (select 1 from public.gang_mt_rounds x where x.user_id = v_uid and x.created_at > now() - interval '15 seconds') then
+    raise exception 'slow_down';
+  end if;
+  select g.i into v_q from generate_series(0, v_n - 1) g(i)
+   where g.i not in (select x.q from public.gang_mt_rounds x where x.group_id = p_group_id and x.created_at > now() - interval '30 days')
+   order by random() limit 1;
+  if v_q is null then v_q := floor(random() * v_n)::int; end if;
+  insert into public.gang_mt_rounds (group_id, user_id, q, night, ends_at)
+  values (p_group_id, v_uid, v_q, public.olnu_night_of(now()), now() + interval '10 minutes')
+  returning * into r;
+  return jsonb_build_object('id', r.id, 'q', r.q);
+end; $$;
+
+-- mt_vote(round, member key) -> round json. Change allowed until the round is done.
+create or replace function public.mt_vote(p_round_id bigint, p_member text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  r public.gang_mt_rounds;
+  v_t uuid;
+begin
+  select * into r from public.gang_mt_rounds x where x.id = p_round_id;
+  if not found or not public.olnu_gang_member(r.group_id, v_uid) then raise exception 'round_not_found'; end if;
+  if public.olnu_gang_mt_done(r) then raise exception 'round_done'; end if;
+  v_t := public.olnu_gang_uid_of(r.group_id, p_member);
+  if v_t is null then raise exception 'invalid_member'; end if;
+  insert into public.gang_mt_votes (round_id, voter, target) values (r.id, v_uid, v_t)
+  on conflict (round_id, voter) do update set target = excluded.target, updated_at = now();
+  return public.olnu_gang_mt_json(r, v_uid);
+end; $$;
+
+-- mt_close(round): the starter ends it now (results show).
+create or replace function public.mt_close(p_round_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  r public.gang_mt_rounds;
+begin
+  update public.gang_mt_rounds x set closed_at = coalesce(x.closed_at, now())
+   where x.id = p_round_id and x.user_id = v_uid
+  returning * into r;
+  if not found then raise exception 'round_not_found'; end if;
+  return public.olnu_gang_mt_json(r, v_uid);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 3. Vart ska vi?
+-- ---------------------------------------------------------------------------
+-- create_bar_poll(group, options jsonb [{id, name, lat, lng}] 2-4 distinct) -> {id, ends_at}
+create or replace function public.create_bar_poll(p_group_id uuid, p_options jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_opts jsonb := '[]'::jsonb;
+  o jsonb;
+  v_id text; v_name text; v_lat float8; v_lng float8;
+  p public.gang_polls;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if p_options is null or jsonb_typeof(p_options) <> 'array' or jsonb_array_length(p_options) not between 2 and 4 then
+    raise exception 'invalid_poll';
+  end if;
+  for o in select value from jsonb_array_elements(p_options) loop
+    if jsonb_typeof(o) <> 'object' then raise exception 'invalid_poll'; end if;
+    v_id := public.olnu_gang_clean(o ->> 'id');
+    v_name := public.olnu_gang_clean(o ->> 'name');
+    begin
+      v_lat := (o ->> 'lat')::float8; v_lng := (o ->> 'lng')::float8;
+    exception when others then raise exception 'invalid_poll';
+    end;
+    if v_id = '' or char_length(v_id) > 80 or v_name = '' or char_length(v_name) > 60 or not public.olnu_world_ok(v_lat, v_lng) then
+      raise exception 'invalid_poll';
+    end if;
+    if exists (select 1 from jsonb_array_elements(v_opts) e where e.value ->> 'id' = v_id) then raise exception 'invalid_poll'; end if;
+    v_opts := v_opts || jsonb_build_array(jsonb_build_object('id', v_id, 'name', v_name,
+                'lat', round(v_lat::numeric, 5)::float8, 'lng', round(v_lng::numeric, 5)::float8));
+  end loop;
+  perform public.olnu_gang_rl('poll:' || p_group_id::text);
+  -- An open poll past its 15 min is finished first (its winner becomes the call-out).
+  for p in select * from public.gang_polls x where x.group_id = p_group_id and x.ended_at is null loop
+    if p.ends_at > now() then raise exception 'poll_open'; end if;
+    perform public.olnu_gang_poll_finish(p.id, v_uid);
+  end loop;
+  if exists (select 1 from public.gang_polls x where x.user_id = v_uid and x.created_at > now() - interval '2 minutes') then
+    raise exception 'slow_down';
+  end if;
+  insert into public.gang_polls (group_id, user_id, night, options, ends_at)
+  values (p_group_id, v_uid, public.olnu_night_of(now()), v_opts, now() + interval '15 minutes')
+  returning * into p;
+  -- The creator votes like everyone else (no automatic vote).
+  return jsonb_build_object('id', p.id, 'ends_at', p.ends_at);
+end; $$;
+
+-- vote_bar_poll(poll, option 0-3) -> poll json. Change allowed until the end.
+create or replace function public.vote_bar_poll(p_poll_id bigint, p_option int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  p public.gang_polls;
+begin
+  select * into p from public.gang_polls x where x.id = p_poll_id;
+  if not found or not public.olnu_gang_member(p.group_id, v_uid) then raise exception 'poll_not_found'; end if;
+  if p.ended_at is not null or p.ends_at <= now() then raise exception 'poll_ended'; end if;
+  if p_option is null or p_option < 0 or p_option >= jsonb_array_length(p.options) then raise exception 'invalid_option'; end if;
+  insert into public.gang_poll_votes (poll_id, user_id, opt) values (p.id, v_uid, p_option)
+  on conflict (poll_id, user_id) do update set opt = excluded.opt, updated_at = now();
+  return public.olnu_gang_poll_json(p, v_uid);
+end; $$;
+
+-- end_bar_poll(poll): the creator any time; any member after the 15 min. Idempotent.
+-- Winner -> create_rally (as the caller): body "🗳️ Gänget har röstat: <bar>!", place + position of the bar.
+-- -> poll json (+ fields winner, rally_id, rally_error).
+create or replace function public.end_bar_poll(p_poll_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  p public.gang_polls;
+begin
+  select * into p from public.gang_polls x where x.id = p_poll_id;
+  if not found or not public.olnu_gang_member(p.group_id, v_uid) then raise exception 'poll_not_found'; end if;
+  if p.ended_at is null then
+    if p.user_id <> v_uid and p.ends_at > now() then raise exception 'not_yours'; end if;
+    perform public.olnu_gang_rl('poll:' || p.group_id::text);
+    p := public.olnu_gang_poll_finish(p.id, v_uid);
+  end if;
+  return public.olnu_gang_poll_json(p, v_uid);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 4. Bakisbrunchen
+-- ---------------------------------------------------------------------------
+-- create_brunch(group, place, place_id?, lat?, lng?, at 'HH:MM'?) -> {id}
+-- Only 06:00-13:59 Europe/Stockholm (not_morning). Lives until 16:00 today (at least 2 h). One open brunch per group:
+-- the caller's own older one is replaced; someone else's -> brunch_open. 1 new per 2 min per user.
+create or replace function public.create_brunch(p_group_id uuid, p_place text, p_place_id text default null,
+                                                p_lat float8 default null, p_lng float8 default null, p_at text default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_place text := public.olnu_gang_clean(p_place);
+  v_pid text := nullif(public.olnu_gang_clean(p_place_id), '');
+  v_at text := nullif(public.olnu_gang_clean(p_at), '');
+  v_h int := public.olnu_gang_hour();
+  v_lat float8; v_lng float8;
+  v_id bigint;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if v_h < 6 or v_h >= 14 then raise exception 'not_morning'; end if;
+  if v_place = '' or char_length(v_place) > 60 or (v_pid is not null and char_length(v_pid) > 80)
+     or (v_at is not null and v_at !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$') then
+    raise exception 'invalid_brunch';
+  end if;
+  if public.olnu_world_ok(p_lat, p_lng) then v_lat := round(p_lat::numeric, 5)::float8; v_lng := round(p_lng::numeric, 5)::float8; end if;
+  perform public.olnu_gang_rl('brunch:' || p_group_id::text);
+  if exists (select 1 from public.gang_brunches b where b.user_id = v_uid and b.created_at > now() - interval '2 minutes') then
+    raise exception 'slow_down';
+  end if;
+  if exists (select 1 from public.gang_brunches b where b.group_id = p_group_id and not b.closed and b.expires_at > now() and b.user_id <> v_uid) then
+    raise exception 'brunch_open';
+  end if;
+  update public.gang_brunches b set closed = true where b.group_id = p_group_id and b.user_id = v_uid and not b.closed;
+  insert into public.gang_brunches (group_id, user_id, place, place_id, lat, lng, at_time, expires_at)
+  values (p_group_id, v_uid, v_place, v_pid, v_lat, v_lng, v_at,
+          greatest((((now() at time zone 'Europe/Stockholm')::date + time '16:00') at time zone 'Europe/Stockholm'),
+                   now() + interval '2 hours'))
+  returning id into v_id;
+  insert into public.gang_brunch_answers (brunch_id, user_id, answer) values (v_id, v_uid, 'ja');
+  return jsonb_build_object('id', v_id);
+end; $$;
+
+-- answer_brunch(brunch, 'ja'|'kanske'|'nej') -> brunch json
+create or replace function public.answer_brunch(p_brunch_id bigint, p_answer text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_a text := lower(btrim(coalesce(p_answer, '')));
+  b public.gang_brunches;
+begin
+  if v_a not in ('ja', 'kanske', 'nej') then raise exception 'invalid_answer'; end if;
+  select * into b from public.gang_brunches x where x.id = p_brunch_id and not x.closed and x.expires_at > now();
+  if not found or not public.olnu_gang_member(b.group_id, v_uid) then raise exception 'brunch_not_found'; end if;
+  insert into public.gang_brunch_answers (brunch_id, user_id, answer) values (b.id, v_uid, v_a)
+  on conflict (brunch_id, user_id) do update set answer = excluded.answer, updated_at = now();
+  return public.olnu_gang_brunch_json(b, v_uid);
+end; $$;
+
+-- close_brunch(brunch): the creator ends it.
+create or replace function public.close_brunch(p_brunch_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_id bigint;
+begin
+  update public.gang_brunches x set closed = true where x.id = p_brunch_id and x.user_id = v_uid returning x.id into v_id;
+  if v_id is null then raise exception 'brunch_not_found'; end if;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 5. Kebabtoppen (food only)
+-- ---------------------------------------------------------------------------
+-- rate_kebab(place id, name, place lat/lng, stars 1-5, tag?, my lat/lng) -> {ok, is_new, avg, n, town}
+-- Place: a bars_lite row of type fast_food/restaurant, or a "pl_" place id (places tiles). Bars/pubs -> not_food.
+-- Caller within 2 km of the place (too_far). One rating per place per night (a second call changes it).
+-- 1 call per 5 s per user (slow_down). Tags: whitelist below.
+create or replace function public.rate_kebab(p_place_id text, p_name text, p_lat float8, p_lng float8, p_stars int,
+                                             p_tag text default null, p_my_lat float8 default null, p_my_lng float8 default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_pid text := public.olnu_gang_clean(p_place_id);
+  v_name text := public.olnu_gang_clean(p_name);
+  v_tag text := nullif(lower(public.olnu_gang_clean(p_tag)), '');
+  v_night timestamptz := public.olnu_night_of(now());
+  v_month date := date_trunc('month', now() at time zone 'Europe/Stockholm')::date;
+  bl public.bars_lite;
+  v_town text;
+  v_new boolean;
+  v_avg numeric; v_n int;
+begin
+  if p_stars is null or p_stars < 1 or p_stars > 5 then raise exception 'invalid_stars'; end if;
+  if v_tag is not null and v_tag not in ('sas', 'storst', 'snabbast', 'krispigast', 'trevligast', 'prisvard', 'starkast', 'raddare') then
+    raise exception 'invalid_tag';
+  end if;
+  if v_pid = '' or char_length(v_pid) > 80 then raise exception 'invalid_place'; end if;
+  select * into bl from public.bars_lite b where b.id = v_pid;
+  if found then
+    if coalesce(bl.type, '') not in ('fast_food', 'restaurant') then raise exception 'not_food'; end if;
+    p_lat := bl.lat; p_lng := bl.lng;
+    v_name := coalesce(nullif(public.olnu_gang_clean(bl.name), ''), v_name);
+  elsif v_pid !~ '^pl_-?[0-9]+_-?[0-9]+$' then
+    raise exception 'not_food';
+  end if;
+  v_name := left(v_name, 60);
+  if v_name = '' or not public.olnu_world_ok(p_lat, p_lng) then raise exception 'invalid_place'; end if;
+  if not public.olnu_world_ok(p_my_lat, p_my_lng) or public.olnu_dist_m(p_lat, p_lng, p_my_lat, p_my_lng) > 2000 then
+    raise exception 'too_far';
+  end if;
+  perform public.olnu_gang_rl('kebab:' || v_uid::text);
+  if exists (select 1 from public.kebab_ratings k where k.user_id = v_uid and k.updated_at > now() - interval '5 seconds') then
+    raise exception 'slow_down';
+  end if;
+  v_town := public.olnu_gang_town(p_lat, p_lng);
+  v_new := not exists (select 1 from public.kebab_ratings k where k.user_id = v_uid and k.place_id = v_pid and k.night = v_night);
+  insert into public.kebab_ratings (user_id, place_id, place_name, lat, lng, town, stars, tag, night, month)
+  values (v_uid, v_pid, v_name, round(p_lat::numeric, 5)::float8, round(p_lng::numeric, 5)::float8, v_town, p_stars, v_tag, v_night, v_month)
+  on conflict (user_id, place_id, night) do update set stars = excluded.stars, tag = excluded.tag, updated_at = now();
+  select round(avg(x.stars)::numeric, 2), count(*)::int into v_avg, v_n
+    from (select distinct on (k.user_id) k.stars from public.kebab_ratings k
+           where k.place_id = v_pid and k.month = v_month order by k.user_id, k.updated_at desc) x;
+  return jsonb_build_object('ok', true, 'is_new', v_new, 'avg', v_avg, 'n', v_n,
+                            'town', case when left(v_town, 1) = '~' then null else v_town end);
+end; $$;
+
+-- kebab_top(lat, lng, month_offset 0|1) -> {town, month, list:[{rank, place_id, name, lat, lng, avg, n, tag, my_stars}]}
+-- Town of the given point; this month (or last month). One vote per user per place per month (the latest).
+-- Rank: avg desc, n desc, first rating. Top 10.
+create or replace function public.kebab_top(p_lat float8, p_lng float8, p_month_offset int default 0)
+returns jsonb language plpgsql security definer set search_path = public stable as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_town text;
+  v_month date := (date_trunc('month', now() at time zone 'Europe/Stockholm')
+                   - make_interval(months => least(greatest(coalesce(p_month_offset, 0), 0), 12)))::date;
+  v_list jsonb;
+begin
+  if not public.olnu_world_ok(p_lat, p_lng) then raise exception 'outside_sweden'; end if;
+  v_town := public.olnu_gang_town(p_lat, p_lng);
+  with latest as (
+    select distinct on (k.user_id, k.place_id) k.* from public.kebab_ratings k
+     where k.town = v_town and k.month = v_month
+     order by k.user_id, k.place_id, k.updated_at desc
+  ), agg as (
+    select l.place_id, max(l.place_name) as name, avg(l.lat) as lat, avg(l.lng) as lng,
+           round(avg(l.stars)::numeric, 2) as avg, count(*)::int as n, min(l.created_at) as first_at,
+           (select l2.tag from latest l2 where l2.place_id = l.place_id and l2.tag is not null
+             group by l2.tag order by count(*) desc, l2.tag limit 1) as tag,
+           max(case when l.user_id = v_uid then l.stars end) as my_stars
+      from latest l group by l.place_id
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('rank', x.rk, 'place_id', x.place_id, 'name', x.name, 'lat', x.lat, 'lng', x.lng,
+           'avg', x.avg, 'n', x.n, 'tag', x.tag, 'my_stars', x.my_stars) order by x.rk), '[]'::jsonb)
+    into v_list
+    from (select a.*, row_number() over (order by a.avg desc, a.n desc, a.first_at)::int as rk from agg a) x
+   where x.rk <= 10;
+  return jsonb_build_object('town', case when left(v_town, 1) = '~' then null else v_town end,
+                            'month', v_month, 'list', v_list);
+end; $$;
+
+-- kebab_place(place id) -> {avg, n, my_stars, my_tag, rated_tonight, tags:[{tag, n}]} (this month)
+create or replace function public.kebab_place(p_place_id text)
+returns jsonb language plpgsql security definer set search_path = public stable as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_month date := date_trunc('month', now() at time zone 'Europe/Stockholm')::date;
+  v_night timestamptz := public.olnu_night_of(now());
+  r jsonb;
+begin
+  with latest as (
+    select distinct on (k.user_id) k.* from public.kebab_ratings k
+     where k.place_id = p_place_id and k.month = v_month order by k.user_id, k.updated_at desc
+  )
+  select jsonb_build_object(
+    'avg', (select round(avg(l.stars)::numeric, 2) from latest l),
+    'n', (select count(*) from latest l)::int,
+    'my_stars', (select l.stars from latest l where l.user_id = v_uid),
+    'my_tag', (select l.tag from latest l where l.user_id = v_uid),
+    'rated_tonight', exists (select 1 from public.kebab_ratings k where k.user_id = v_uid and k.place_id = p_place_id and k.night = v_night),
+    'tags', coalesce((select jsonb_agg(jsonb_build_object('tag', t.tag, 'n', t.n) order by t.n desc)
+                       from (select l.tag, count(*)::int n from latest l where l.tag is not null group by l.tag) t), '[]'::jsonb))
+    into r;
+  return r;
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 6. Skuldboken
+-- ---------------------------------------------------------------------------
+-- add_debt(group, debtor key, creditor key, amount kr 1-50000, what 1-40) -> {id}
+create or replace function public.add_debt(p_group_id uuid, p_debtor text, p_creditor text, p_amount int, p_what text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_d uuid; v_c uuid;
+  v_what text := left(public.olnu_gang_clean(p_what), 40);
+  v_id bigint;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  v_d := public.olnu_gang_uid_of(p_group_id, p_debtor);
+  v_c := public.olnu_gang_uid_of(p_group_id, p_creditor);
+  if v_d is null or v_c is null or v_d = v_c or p_amount is null or p_amount < 1 or p_amount > 50000 or v_what = '' then
+    raise exception 'invalid_debt';
+  end if;
+  perform public.olnu_gang_rl('debt:' || v_uid::text);
+  if exists (select 1 from public.gang_debts d where d.created_by = v_uid and d.created_at > now() - interval '3 seconds')
+     or (select count(*) from public.gang_debts d where d.created_by = v_uid and d.created_at > now() - interval '1 hour') >= 30 then
+    raise exception 'slow_down';
+  end if;
+  insert into public.gang_debts (group_id, created_by, debtor, creditor, amount, what)
+  values (p_group_id, v_uid, v_d, v_c, p_amount, v_what) returning id into v_id;
+  return jsonb_build_object('id', v_id);
+end; $$;
+
+-- settle_debt(id, 'paid'|'unpaid'|'cancel') -> {ok}
+-- paid: debtor, creditor or the writer. unpaid (undo within 24 h): same people. cancel: the writer or the creditor.
+create or replace function public.settle_debt(p_debt_id bigint, p_action text default 'paid')
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_a text := lower(btrim(coalesce(p_action, '')));
+  d public.gang_debts;
+begin
+  if v_a not in ('paid', 'unpaid', 'cancel') then raise exception 'invalid_action'; end if;
+  select * into d from public.gang_debts x where x.id = p_debt_id and x.cancelled_at is null;
+  if not found or not public.olnu_gang_member(d.group_id, v_uid) then raise exception 'debt_not_found'; end if;
+  if v_a = 'cancel' then
+    if v_uid not in (d.created_by, d.creditor) then raise exception 'not_yours'; end if;
+    update public.gang_debts x set cancelled_at = now(), cancelled_by = v_uid where x.id = d.id;
+  elsif v_a = 'paid' then
+    if v_uid not in (d.created_by, d.creditor, d.debtor) then raise exception 'not_yours'; end if;
+    update public.gang_debts x set paid_at = coalesce(x.paid_at, now()), paid_by = coalesce(x.paid_by, v_uid) where x.id = d.id;
+  else
+    if v_uid not in (d.created_by, d.creditor, d.debtor) then raise exception 'not_yours'; end if;
+    if d.paid_at is null or d.paid_at < now() - interval '1 day' then raise exception 'too_late'; end if;
+    update public.gang_debts x set paid_at = null, paid_by = null where x.id = d.id;
+  end if;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+-- set_swish(group, number) -> {number}. Swedish mobile only: 07xxxxxxxx (spaces, dashes and +46/0046 accepted).
+-- '' or null clears it. Visible to the members of THIS group only. 20 changes per group per user.
+create or replace function public.set_swish(p_group_id uuid, p_number text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v text := regexp_replace(coalesce(p_number, ''), '[\s\-().]', '', 'g');
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if v like '+46%' then v := '0' || substr(v, 4); elsif v like '0046%' then v := '0' || substr(v, 5); end if;
+  if v = '' then v := null;
+  elsif v !~ '^07[0-9]{8}$' then raise exception 'invalid_swish';
+  end if;
+  if (select s.changes from public.gang_swish s where s.group_id = p_group_id and s.user_id = v_uid) >= 20 then
+    raise exception 'slow_down';
+  end if;
+  insert into public.gang_swish (group_id, user_id, number, changes) values (p_group_id, v_uid, v, 1)
+  on conflict (group_id, user_id) do update set number = excluded.number, changes = public.gang_swish.changes + 1, updated_at = now();
+  return jsonb_build_object('number', v);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- 7. Morgontidningen: facts of the group's last night (no drink counts per person)
+-- ---------------------------------------------------------------------------
+-- gang_paper(group, p_night default null = the night that ended last) -> jsonb
+-- {night, evening, group_name, town, out_n, members:[{k, name, is_me, out, bars, bar_names[], first_at, home_at,
+--   skal, eta_max, rallies, mt_wins, quotes, kebab}], quotes:[{who, body}] (after 10:00), mt:[{q, names[]}],
+--   takeovers:[bar names], crawl_done bool, ready bool}
+create or replace function public.gang_paper(p_group_id uuid, p_night timestamptz default null)
+returns jsonb language plpgsql security definer set search_path = public stable as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := coalesce(p_night, public.olnu_gang_last_night());
+  v_mem jsonb; v_q jsonb; v_mt jsonb; v_take jsonb; v_town text; v_out int; v_crawl boolean := false;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if v_night > public.olnu_gang_last_night() then v_night := public.olnu_gang_last_night(); end if;
+  with mem as (
+    select m.user_id, m.display_name from public.group_members m where m.group_id = p_group_id
+  ), mn as (
+    select n.user_id, (n.beers + n.others) > 0 as out, n.first_at, n.home from public.medal_nights n
+     where n.night = v_night and n.user_id in (select user_id from mem)
+  ), an as (
+    select a.user_id, a.out, a.town, a.home_at, a.skal_given from public.after_nights a
+     where a.night = v_night and a.user_id in (select user_id from mem)
+  ), bars as (
+    select c.user_id, count(distinct c.bar_id)::int as n,
+           (select jsonb_agg(distinct b.name) from public.medal_checkins c2 join public.bars_lite b on b.id = c2.bar_id
+             where c2.user_id = c.user_id and c2.night = v_night and b.name is not null) as names
+      from public.medal_checkins c
+     where c.night = v_night and c.user_id in (select user_id from mem) group by c.user_id
+  ), eta as (
+    select e.user_id, max(e.minutes)::int as mx from public.etas e
+     where e.user_id in (select user_id from mem) and public.olnu_night_of(e.created_at) = v_night and e.cancelled_at is null
+     group by e.user_id
+  ), ral as (
+    select r.user_id, count(*)::int as n from public.rallies r
+     where r.group_id = p_group_id and public.olnu_night_of(r.created_at) = v_night group by r.user_id
+  ), rounds as (
+    select r.* from public.gang_mt_rounds r where r.group_id = p_group_id and r.night = v_night
+  ), mtw as (
+    select w.target as user_id, count(*)::int as n from (
+      select distinct on (v.round_id) v.round_id, v.target, count(*) over (partition by v.round_id, v.target) as c
+        from public.gang_mt_votes v where v.round_id in (select id from rounds)
+       order by v.round_id, c desc, v.target) w group by w.target
+  ), kb as (
+    select distinct on (k.user_id) k.user_id, k.place_name from public.kebab_ratings k
+     where k.night = v_night and k.user_id in (select user_id from mem) order by k.user_id, k.stars desc, k.created_at
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'k', public.olnu_gang_k(p_group_id, m.user_id), 'name', m.display_name, 'is_me', m.user_id = v_uid,
+           'out', coalesce(mn.out, false) or coalesce(an.out, false) or coalesce(b.n, 0) > 0,
+           'bars', coalesce(b.n, 0), 'bar_names', coalesce(b.names, '[]'::jsonb),
+           'first_at', mn.first_at,
+           'home_at', coalesce(an.home_at, case when mn.home then v_night end),
+           'skal', coalesce(an.skal_given, 0), 'eta_max', e.mx, 'rallies', coalesce(r.n, 0),
+           'mt_wins', coalesce(w.n, 0),
+           'quotes', (select count(*) from public.gang_quotes q where q.group_id = p_group_id and q.night = v_night
+                       and not q.hidden and lower(q.who) = lower(m.display_name))::int,
+           'kebab', kb.place_name) order by m.display_name), '[]'::jsonb),
+         (select a.town from an a where a.town is not null group by a.town order by count(*) desc, a.town limit 1)
+    into v_mem, v_town
+    from mem m
+    left join mn on mn.user_id = m.user_id left join an on an.user_id = m.user_id
+    left join bars b on b.user_id = m.user_id left join eta e on e.user_id = m.user_id
+    left join ral r on r.user_id = m.user_id left join mtw w on w.user_id = m.user_id
+    left join kb on kb.user_id = m.user_id;
+
+  select count(*)::int into v_out from jsonb_array_elements(v_mem) x where (x.value ->> 'out')::boolean;
+
+  select coalesce(jsonb_agg(jsonb_build_object('who', q.who, 'body', q.body) order by q.id), '[]'::jsonb) into v_q
+    from (select * from public.gang_quotes q where q.group_id = p_group_id and q.night = v_night and not q.hidden
+            and q.reveal_at <= now() order by q.id limit 8) q;
+
+  select coalesce(jsonb_agg(jsonb_build_object('q', r.q, 'names', (
+           select coalesce(jsonb_agg(public.olnu_gang_name(p_group_id, x.target) order by x.target), '[]'::jsonb) from (
+             select v.target, count(*) c, max(count(*)) over () mx from public.gang_mt_votes v
+              where v.round_id = r.id group by v.target) x where x.c = x.mx)) order by r.id), '[]'::jsonb)
+    into v_mt
+    from public.gang_mt_rounds r where r.group_id = p_group_id and r.night = v_night
+     and exists (select 1 from public.gang_mt_votes v where v.round_id = r.id);
+
+  begin
+    select coalesce(jsonb_agg(distinct t.bar_name), '[]'::jsonb) into v_take
+      from public.bar_takeovers t where t.group_id = p_group_id and t.night = v_night and t.bar_name is not null;
+  exception when others then v_take := '[]'::jsonb;
+  end;
+  begin
+    select exists (select 1 from public.game_crawls c where c.group_id = p_group_id and c.night = v_night and c.done_at is not null)
+      into v_crawl;
+  exception when others then v_crawl := false;
+  end;
+
+  return jsonb_build_object('night', v_night, 'evening', public.olnu_evening(v_night),
+    'group_name', (select g.name from public.groups g where g.id = p_group_id),
+    'town', v_town, 'out_n', v_out, 'members', v_mem, 'quotes', v_q, 'mt', v_mt,
+    'takeovers', coalesce(v_take, '[]'::jsonb), 'crawl_done', coalesce(v_crawl, false), 'ready', v_out > 0);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- Group state + light poll
+-- ---------------------------------------------------------------------------
+-- gang_group(group) -> {server_time, night, hour, members:[{k, name, is_me}], mt:{round, history[]},
+--   poll (newest of tonight, open or ended < 60 min) | null, brunch (open) | null,
+--   quotes:{pending (tonight, group, hidden until reveal), mine_pending, next_reveal, yesterday:[...]}, debts}
+-- An open poll past its 15 min is finished here (winner -> call-out).
+create or replace function public.gang_group(p_group_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  v_last timestamptz := public.olnu_gang_last_night();
+  p public.gang_polls;
+  r public.gang_mt_rounds;
+  b public.gang_brunches;
+  v_round jsonb := null; v_hist jsonb; v_poll jsonb := null; v_brunch jsonb := null;
+begin
+  if not public.olnu_gang_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  for p in select * from public.gang_polls x where x.group_id = p_group_id and x.ended_at is null and x.ends_at <= now() loop
+    perform public.olnu_gang_rl('poll:' || p_group_id::text);
+    perform public.olnu_gang_poll_finish(p.id, v_uid);
+  end loop;
+  select * into r from public.gang_mt_rounds x where x.group_id = p_group_id and x.night = v_night order by x.id desc limit 1;
+  if found then v_round := public.olnu_gang_mt_json(r, v_uid); end if;
+  select coalesce(jsonb_agg(public.olnu_gang_mt_json(x, v_uid) order by x.id desc), '[]'::jsonb) into v_hist
+    from (select * from public.gang_mt_rounds y where y.group_id = p_group_id and y.night = v_night order by y.id desc limit 20) x;
+  select * into p from public.gang_polls x
+   where x.group_id = p_group_id and (x.ended_at is null or x.ended_at > now() - interval '60 minutes')
+   order by x.id desc limit 1;
+  if found then v_poll := public.olnu_gang_poll_json(p, v_uid); end if;
+  select * into b from public.gang_brunches x where x.group_id = p_group_id and not x.closed and x.expires_at > now()
+   order by x.id desc limit 1;
+  if found then v_brunch := public.olnu_gang_brunch_json(b, v_uid); end if;
+  return jsonb_build_object(
+    'server_time', now(), 'night', v_night, 'last_night', v_last, 'hour', public.olnu_gang_hour(),
+    'members', (select coalesce(jsonb_agg(jsonb_build_object('k', public.olnu_gang_k(p_group_id, m.user_id),
+                  'name', m.display_name, 'is_me', m.user_id = v_uid) order by m.user_id <> v_uid, m.display_name), '[]'::jsonb)
+                  from public.group_members m where m.group_id = p_group_id),
+    'mt', jsonb_build_object('round', v_round, 'history', v_hist),
+    'poll', v_poll, 'brunch', v_brunch,
+    'quotes', jsonb_build_object(
+      'pending', (select count(*) from public.gang_quotes q where q.group_id = p_group_id and not q.hidden and q.reveal_at > now())::int,
+      'next_reveal', (select min(q.reveal_at) from public.gang_quotes q where q.group_id = p_group_id and not q.hidden and q.reveal_at > now()),
+      'yesterday', (select coalesce(jsonb_agg(jsonb_build_object('id', q.id, 'who', q.who, 'body', q.body, 'at', q.created_at) order by q.id), '[]'::jsonb)
+                      from public.gang_quotes q where q.group_id = p_group_id and not q.hidden and q.night = v_last and q.reveal_at <= now())),
+    'debts', public.olnu_gang_debts_json(p_group_id, v_uid));
+end; $$;
+
+-- gang_poll() -> {v, server_time, night, last_night, hour, groups:[{id, name, mt_open, mt_voted, mt_last, poll_open, poll_id,
+--   poll_voted, poll_winner (bar name, ended < 60 min), poll_due, brunch:{id, by, place, at_time, mine}|null, quotes_pending, quotes_yday, paper, debt_net}]} (max 20 groups)
+create or replace function public.gang_poll()
+returns jsonb language plpgsql security definer set search_path = public stable as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  v_last timestamptz := public.olnu_gang_last_night();
+  v_groups jsonb;
+begin
+  select coalesce(jsonb_agg(x.j order by x.joined), '[]'::jsonb) into v_groups from (
+    select gm.joined_at as joined, jsonb_build_object(
+      'id', g.id, 'name', g.name,
+      'mt_open', exists (select 1 from public.gang_mt_rounds r where r.group_id = g.id and r.night = v_night and not public.olnu_gang_mt_done(r)),
+      'mt_voted', exists (select 1 from public.gang_mt_rounds r join public.gang_mt_votes v on v.round_id = r.id and v.voter = v_uid
+                           where r.group_id = g.id and r.night = v_night and not public.olnu_gang_mt_done(r)),
+      'mt_last', (select r.id from public.gang_mt_rounds r where r.group_id = g.id and r.night = v_night order by r.id desc limit 1),
+      'poll_open', exists (select 1 from public.gang_polls p where p.group_id = g.id and p.ended_at is null and p.ends_at > now()),
+      'poll_id', (select p.id from public.gang_polls p where p.group_id = g.id and (p.ended_at is null or p.ended_at > now() - interval '60 minutes') order by p.id desc limit 1),
+      'poll_voted', exists (select 1 from public.gang_polls p join public.gang_poll_votes v on v.poll_id = p.id and v.user_id = v_uid
+                             where p.group_id = g.id and p.ended_at is null and p.ends_at > now()),
+      'poll_winner', (select p.options -> p.winner ->> 'name' from public.gang_polls p
+                       where p.group_id = g.id and p.ended_at > now() - interval '60 minutes' and p.winner is not null
+                       order by p.id desc limit 1),
+      'poll_due', exists (select 1 from public.gang_polls p where p.group_id = g.id and p.ended_at is null and p.ends_at <= now()),
+      'brunch', (select jsonb_build_object('id', b.id, 'by', public.olnu_gang_name(g.id, b.user_id), 'by_me', b.user_id = v_uid,
+                   'place', b.place, 'at_time', b.at_time,
+                   'mine', (select a.answer from public.gang_brunch_answers a where a.brunch_id = b.id and a.user_id = v_uid),
+                   'ja', (select count(*) from public.gang_brunch_answers a join public.group_members m2 on m2.group_id = g.id and m2.user_id = a.user_id
+                           where a.brunch_id = b.id and a.answer = 'ja')::int)
+                   from public.gang_brunches b where b.group_id = g.id and not b.closed and b.expires_at > now() order by b.id desc limit 1),
+      'quotes_pending', (select count(*) from public.gang_quotes q where q.group_id = g.id and not q.hidden and q.reveal_at > now())::int,
+      'quotes_yday', (select count(*) from public.gang_quotes q where q.group_id = g.id and not q.hidden and q.night = v_last and q.reveal_at <= now())::int,
+      'paper', exists (select 1 from public.group_members m3
+                        where m3.group_id = g.id and (
+                          exists (select 1 from public.medal_nights n where n.user_id = m3.user_id and n.night = v_last and n.beers + n.others > 0)
+                          or exists (select 1 from public.medal_checkins c where c.user_id = m3.user_id and c.night = v_last))),
+      'debt_net', (select coalesce(sum(case when d.creditor = v_uid then d.amount else -d.amount end), 0)::int
+                     from public.gang_debts d where d.group_id = g.id and d.paid_at is null and d.cancelled_at is null
+                      and (d.creditor = v_uid or d.debtor = v_uid)
+                      and d.debtor in (select m4.user_id from public.group_members m4 where m4.group_id = g.id)
+                      and d.creditor in (select m4.user_id from public.group_members m4 where m4.group_id = g.id))
+    ) as j
+    from public.group_members gm join public.groups g on g.id = gm.group_id
+   where gm.user_id = v_uid
+   order by gm.joined_at limit 20) x;
+  return jsonb_build_object('v', 1, 'server_time', now(), 'night', v_night, 'last_night', v_last,
+                            'hour', public.olnu_gang_hour(), 'groups', v_groups);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- Grants
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  f text;
+  internal text[] := array[
+    'public.olnu_gang_clean(text)', 'public.olnu_gang_k(uuid, uuid)', 'public.olnu_gang_member(uuid, uuid)',
+    'public.olnu_gang_uid_of(uuid, text)', 'public.olnu_gang_name(uuid, uuid)', 'public.olnu_gang_last_night()',
+    'public.olnu_gang_reveal(timestamptz)', 'public.olnu_gang_hour()', 'public.olnu_gang_town(float8, float8)',
+    'public.olnu_gang_rl(text)', 'public.olnu_gang_mt_done(public.gang_mt_rounds)',
+    'public.olnu_gang_mt_json(public.gang_mt_rounds, uuid)', 'public.olnu_gang_poll_json(public.gang_polls, uuid)',
+    'public.olnu_gang_poll_winner(public.gang_polls)', 'public.olnu_gang_poll_finish(bigint, uuid)',
+    'public.olnu_gang_brunch_json(public.gang_brunches, uuid)', 'public.olnu_gang_debts_json(uuid, uuid)'];
+  rpcs text[] := array[
+    'public.add_quote(uuid, text, text, bigint)', 'public.hide_quote(bigint)', 'public.gang_quotes(uuid, bigint)',
+    'public.mt_start(uuid, int)', 'public.mt_vote(bigint, text)', 'public.mt_close(bigint)',
+    'public.create_bar_poll(uuid, jsonb)', 'public.vote_bar_poll(bigint, int)', 'public.end_bar_poll(bigint)',
+    'public.create_brunch(uuid, text, text, float8, float8, text)', 'public.answer_brunch(bigint, text)', 'public.close_brunch(bigint)',
+    'public.rate_kebab(text, text, float8, float8, int, text, float8, float8)', 'public.kebab_top(float8, float8, int)',
+    'public.kebab_place(text)',
+    'public.add_debt(uuid, text, text, int, text)', 'public.settle_debt(bigint, text)', 'public.set_swish(uuid, text)',
+    'public.gang_paper(uuid, timestamptz)', 'public.gang_group(uuid)', 'public.gang_poll()'];
+begin
+  foreach f in array internal || rpcs loop
+    execute format('revoke all on function %s from public', f);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on function %s from anon', f);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('revoke all on function %s from authenticated', f);
+    end if;
+  end loop;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    foreach f in array rpcs loop
+      execute format('grant execute on function %s to authenticated', f);
+    end loop;
+  end if;
+end $$;
+
+-- ===== supabase/migrations/0029_keep_history.sql =====
+-- 0029 Groups can keep their chat (+ voice, + photos when 0028 exists) after 05:00, forever.
+-- A group setting keep_history (default off = everything ends at 05:00 as before).
+-- Any member can see it; any member can change it (groups have no admins besides created_by;
+-- the creator or, if the creator left, any member may toggle). Changing it also extends or
+-- shortens the group's current live messages.
+create table if not exists public.group_settings (
+  group_id     uuid primary key,
+  keep_history boolean not null default false,
+  changed_by   uuid,
+  changed_at   timestamptz not null default now()
+);
+alter table public.group_settings enable row level security;
+revoke all on public.group_settings from anon, authenticated;
+
+create or replace function public.olnu_group_keeps(p_group_id uuid)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select s.keep_history from public.group_settings s where s.group_id = p_group_id), false);
+$$;
+revoke all on function public.olnu_group_keeps(uuid) from public, anon, authenticated;
+
+-- New rows in a keeping group never expire.
+create or replace function public.olnu_keep_history_ins()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if public.olnu_group_keeps(new.group_id) then new.expires_at := 'infinity'::timestamptz; end if;
+  return new;
+end; $$;
+revoke all on function public.olnu_keep_history_ins() from public, anon, authenticated;
+create or replace trigger group_msgs_keep before insert on public.group_msgs
+  for each row execute function public.olnu_keep_history_ins();
+create or replace trigger voice_msgs_keep before insert on public.voice_msgs
+  for each row execute function public.olnu_keep_history_ins();
+
+create or replace function public.group_keep_history(p_group_id uuid)
+returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid();
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  return public.olnu_group_keeps(p_group_id);
+end; $$;
+
+create or replace function public.set_group_keep_history(p_group_id uuid, p_on boolean)
+returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := public.olnu_uid(); v_creator uuid; v_on boolean := coalesce(p_on, false);
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  select g.created_by into v_creator from public.groups g where g.id = p_group_id;
+  if v_creator is not null and v_creator <> v_uid
+     and exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_creator) then
+    raise exception 'not_admin';
+  end if;
+  insert into public.group_settings as s (group_id, keep_history, changed_by, changed_at)
+  values (p_group_id, v_on, v_uid, now())
+  on conflict (group_id) do update set keep_history = v_on, changed_by = v_uid, changed_at = now();
+  if v_on then
+    update public.group_msgs set expires_at = 'infinity' where group_id = p_group_id and expires_at > now();
+    update public.voice_msgs set expires_at = 'infinity' where group_id = p_group_id and expires_at > now();
+  else
+    update public.group_msgs set expires_at = public.olnu_next_expiry() where group_id = p_group_id and expires_at = 'infinity';
+    update public.voice_msgs set expires_at = public.olnu_next_expiry() where group_id = p_group_id and expires_at = 'infinity';
+  end if;
+  return v_on;
+end; $$;
+
+revoke all on function public.group_keep_history(uuid) from public, anon;
+revoke all on function public.set_group_keep_history(uuid, boolean) from public, anon;
+grant execute on function public.group_keep_history(uuid) to authenticated;
+grant execute on function public.set_group_keep_history(uuid, boolean) to authenticated;
+
+-- ===== supabase/migrations/0028_chat_photos.sql =====
+-- 0028 v21 BILDER (photos in the group chat). Client: docs/js/photo.js + docs/photo.css.
+-- The phone makes a small JPEG (max 1024 px, about 120 KB, no EXIF). The server keeps the bytes in
+-- chat_photos and adds a normal chat row (body "📷" or "📷 <caption>") so the photo sits in order in the
+-- chat. Old apps see only that text. The link msg -> photo is chat_photos.msg_id.
+-- Space on the free plan: post_photo first sets bytes = null on expired photos (an UPDATE, rows stay),
+-- so autovacuum can reuse the space. Max 60 photos per group per night, 10 per user per night.
+-- Keep history (0029, optional): a keeping group's photos get expires_at = infinity (insert trigger) and
+-- follow the group setting when it is switched on or off (trigger on group_settings). Works without 0029.
+-- Additive only. Needs 0001-0021 (group_members, group_msgs, olnu_uid, olnu_next_expiry).
+-- Rows are never removed; every read filters on time. RLS on, no policies.
+-- All RPCs: SECURITY DEFINER, search_path public, olnu_uid(), EXECUTE for authenticated only. Safe to run again.
+
+create table if not exists public.chat_photos (
+  id         bigserial primary key,
+  group_id   uuid not null,
+  user_id    uuid not null,
+  msg_id     bigint null,
+  mime       text not null,
+  bytes      bytea null,
+  size       int not null default 0,
+  w          int not null default 0,
+  h          int not null default 0,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+create index if not exists chat_photos_group_idx on public.chat_photos (group_id, id);
+create index if not exists chat_photos_user_idx  on public.chat_photos (user_id, created_at);
+create index if not exists chat_photos_msg_idx   on public.chat_photos (msg_id);
+create index if not exists chat_photos_live_idx  on public.chat_photos (expires_at) where bytes is not null;
+alter table public.chat_photos enable row level security;
+revoke all on table public.chat_photos from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on table public.chat_photos from anon';
+    execute 'revoke all on sequence public.chat_photos_id_seq from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on table public.chat_photos from authenticated';
+    execute 'revoke all on sequence public.chat_photos_id_seq from authenticated';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    execute 'grant all on table public.chat_photos to service_role';
+  end if;
+end $$;
+
+-- "Radera allt om mig" (the erase RPC of 0016) moves every uuid column of the caller to a new random id.
+-- When user_id of a photo changes, the picture itself is emptied and the photo ends now.
+create or replace function public.olnu_photo_anon_tg()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  begin
+    if new.user_id is distinct from old.user_id then
+      new.bytes := null;
+      new.size := 0;
+      new.expires_at := least(new.expires_at, now());
+    end if;
+  exception when others then null;
+  end;
+  return new;
+end;
+$$;
+revoke all on function public.olnu_photo_anon_tg() from public;
+create or replace trigger chat_photos_anon before update of user_id on public.chat_photos
+  for each row execute function public.olnu_photo_anon_tg();
+
+-- post_photo(p_group_id, p_b64, p_w, p_h, p_caption default null) -> jsonb {id, msg_id, created_at, expires_at, left, mime}
+-- Errors: not_member, invalid_photo (bad base64, not JPEG/WebP, < 200 B or > 160 KB, bad size),
+--         invalid_msg (caption > 138 chars), slow_down (15 s), photo_limit (10 per user per night),
+--         group_photo_limit (60 per group per night).
+create or replace function public.post_photo(p_group_id uuid, p_b64 text, p_w int default 0, p_h int default 0, p_caption text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_cap  text := btrim(regexp_replace(coalesce(p_caption, ''), '[\x00-\x1F\x7F]', ' ', 'g'));
+  v_exp  timestamptz := public.olnu_next_expiry();
+  -- Start of tonight (05:00 yesterday, DST-correct). Limits count by created_at, because a keeping group
+  -- (0029 keep_history) stores expires_at = infinity.
+  v_from timestamptz := ((v_exp at time zone 'Europe/Stockholm') - interval '1 day') at time zone 'Europe/Stockholm';
+  v_data bytea;
+  v_mime text;
+  v_n    int;
+  v_g    int;
+  v_body text;
+  v_mid  bigint;
+  v_row  public.chat_photos;
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  if char_length(v_cap) > 138 then
+    raise exception 'invalid_msg';
+  end if;
+  if p_b64 is null or length(p_b64) > 220000 then
+    raise exception 'invalid_photo';
+  end if;
+  begin
+    v_data := decode(regexp_replace(p_b64, '\s', '', 'g'), 'base64');
+  exception when others then
+    raise exception 'invalid_photo';
+  end;
+  if v_data is null or octet_length(v_data) < 200 or octet_length(v_data) > 163840 then
+    raise exception 'invalid_photo';
+  end if;
+  -- Magic bytes: JPEG FF D8 FF, WebP "RIFF" .... "WEBP".
+  if substring(v_data from 1 for 3) = '\xffd8ff'::bytea then
+    v_mime := 'image/jpeg';
+  elsif substring(v_data from 1 for 4) = '\x52494646'::bytea and substring(v_data from 9 for 4) = '\x57454250'::bytea then
+    v_mime := 'image/webp';
+  else
+    raise exception 'invalid_photo';
+  end if;
+  if coalesce(p_w, 0) < 1 or coalesce(p_h, 0) < 1 or p_w > 2048 or p_h > 2048 then
+    raise exception 'invalid_photo';
+  end if;
+
+  -- Keep the database small: empty the bytes of expired photos (rows stay, space is reused).
+  -- expires_at < now() only: rows of keeping groups (infinity) never match.
+  update public.chat_photos cp set bytes = null where cp.expires_at < now() and cp.bytes is not null;
+
+  perform pg_advisory_xact_lock(hashtextextended('olnu_photo:' || v_uid::text, 0));
+  if exists (select 1 from public.chat_photos cp where cp.user_id = v_uid and cp.created_at > now() - interval '15 seconds') then
+    raise exception 'slow_down';
+  end if;
+  select count(*) into v_n from public.chat_photos cp where cp.user_id = v_uid and cp.created_at >= v_from;
+  if v_n >= 10 then
+    raise exception 'photo_limit';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_photo_g:' || p_group_id::text, 0));
+  select count(*) into v_g from public.chat_photos cp where cp.group_id = p_group_id and cp.created_at >= v_from;
+  if v_g >= 60 then
+    raise exception 'group_photo_limit';
+  end if;
+
+  v_body := case when v_cap = '' then '📷' else '📷 ' || v_cap end;
+  insert into public.group_msgs (group_id, user_id, body, expires_at)
+  values (p_group_id, v_uid, v_body, v_exp)
+  returning id into v_mid;
+  insert into public.chat_photos (group_id, user_id, msg_id, mime, bytes, size, w, h, expires_at)
+  values (p_group_id, v_uid, v_mid, v_mime, v_data, octet_length(v_data), p_w, p_h, v_exp)
+  returning * into v_row;
+  return jsonb_build_object('id', v_row.id, 'msg_id', v_mid, 'created_at', v_row.created_at,
+    'expires_at', v_row.expires_at, 'left', 9 - v_n, 'mime', v_mime);
+end;
+$$;
+
+-- group_photos(p_group_id, p_after_id default 0, p_before_id default null) -> live photos (no bytes), oldest first,
+-- the newest 100 with id > p_after_id; with p_before_id: the newest 100 with id < p_before_id (older chat pages).
+-- created_at equals the created_at of the linked chat row (same transaction, same now()).
+create or replace function public.group_photos(p_group_id uuid, p_after_id bigint default 0, p_before_id bigint default null)
+returns table (id bigint, msg_id bigint, w int, h int, size int, created_at timestamptz, is_me boolean)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  return query
+  select x.id, x.msg_id, x.w, x.h, x.size, x.created_at, x.is_me from (
+    select cp.id, cp.msg_id, cp.w, cp.h, cp.size, cp.created_at, cp.user_id = v_uid as is_me
+      from public.chat_photos cp
+     where cp.group_id = p_group_id and cp.expires_at > now() and cp.bytes is not null
+       and cp.id > coalesce(p_after_id, 0) and (p_before_id is null or cp.id < p_before_id)
+     order by cp.id desc limit 100) x
+   order by x.id;
+end;
+$$;
+
+-- group_photo(p_photo_id) -> jsonb {id, mime, w, h, b64}. Errors: photo_not_found (expired/unknown), not_member.
+create or replace function public.group_photo(p_photo_id bigint)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_row public.chat_photos;
+begin
+  select * into v_row from public.chat_photos cp where cp.id = p_photo_id and cp.expires_at > now() and cp.bytes is not null;
+  if not found then
+    raise exception 'photo_not_found';
+  end if;
+  if not exists (select 1 from public.group_members m where m.group_id = v_row.group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  return jsonb_build_object('id', v_row.id, 'mime', v_row.mime, 'w', v_row.w, 'h', v_row.h,
+    'b64', replace(encode(v_row.bytes, 'base64'), E'\n', ''));
+end;
+$$;
+
+revoke all on function public.post_photo(uuid, text, integer, integer, text) from public;
+revoke all on function public.group_photos(uuid, bigint, bigint) from public;
+revoke all on function public.group_photo(bigint) from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.olnu_photo_anon_tg(), public.post_photo(uuid, text, integer, integer, text), '
+         || 'public.group_photos(uuid, bigint, bigint), public.group_photo(bigint) from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function public.olnu_photo_anon_tg() from authenticated';
+    execute 'grant execute on function public.post_photo(uuid, text, integer, integer, text), '
+         || 'public.group_photos(uuid, bigint, bigint), public.group_photo(bigint) to authenticated';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Keep history (0029). Only when 0029 is there; safe in any order (run 0028 again after 0029).
+-- ---------------------------------------------------------------------------
+create or replace function public.olnu_photo_keep_tg()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  begin
+    if new.keep_history then
+      update public.chat_photos cp set expires_at = 'infinity'::timestamptz
+       where cp.group_id = new.group_id and cp.expires_at > now() and cp.bytes is not null;
+    elsif tg_op = 'UPDATE' then
+      update public.chat_photos cp set expires_at = public.olnu_next_expiry()
+       where cp.group_id = new.group_id and cp.expires_at = 'infinity'::timestamptz;
+    end if;
+  exception when others then null;
+  end;
+  return null;
+end;
+$$;
+revoke all on function public.olnu_photo_keep_tg() from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.olnu_photo_keep_tg() from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function public.olnu_photo_keep_tg() from authenticated';
+  end if;
+  if to_regprocedure('public.olnu_keep_history_ins()') is not null then
+    execute 'create or replace trigger chat_photos_keep before insert on public.chat_photos '
+         || 'for each row execute function public.olnu_keep_history_ins()';
+  end if;
+  if to_regclass('public.group_settings') is not null then
+    execute 'create or replace trigger group_settings_photos after insert or update of keep_history on public.group_settings '
+         || 'for each row execute function public.olnu_photo_keep_tg()';
+  end if;
+end $$;
+
+-- ===========================================================================
+-- 0027_crew.sql (v20 TRUPPEN)
+-- ===========================================================================
+-- 0027 v20 TRUPPEN (crew pack). Client: docs/js/crew.js + docs/js/crew-content.js + docs/crew.css.
+-- 1 Avgångstavlan (group departure board: "Vi drar 22:30 till Pitchers", Med!)
+-- 2 Vilken kväll? (date poll: Kan / Kanske / Kan inte, winner)
+-- 3 Ingen lämnas kvar ("Hej då" button; who left, who is still out; alone card)
+-- 4 Dansgolvsmätaren (dance floor report on a bar: 0 Tomt / 1 Lite rörelse / 2 Fullt ös; 300 m; lives 30 min)
+-- 5 Skålstafetten (one virtual torch per town per night, passed between groups, accept within 10 min)
+-- 6 Kvällsrepris (next day 05-18: replay of the group's night from bar points / ~550 m grid points only)
+-- 7 Hur mår truppen? (one-tap group check: bra / snurr / hem)
+-- Additive only. Needs 0001-0025 (groups, checkins, beers.snap_*, bars_lite, olnu_towns, olnu_town_of,
+-- after_nights, group_flags, olnu_dist_m, olnu_world_ok, olnu_night_of, olnu_evening).
+-- Rows are never removed; every read filters on time. RLS on, no policies.
+-- All RPCs: SECURITY DEFINER, search_path public, olnu_uid(), EXECUTE for authenticated only.
+-- No pushes in this version (in-app only). Safe to run again.
+
+-- ---------------------------------------------------------------------------
+-- Tables
+-- ---------------------------------------------------------------------------
+create table if not exists public.crew_deps (
+  id           bigserial primary key,
+  group_id     uuid not null,
+  user_id      uuid not null,
+  night        timestamptz not null,
+  leave_at     timestamptz not null,
+  bar_id       text null,
+  bar_name     text null,
+  lat          float8 null,
+  lng          float8 null,
+  created_at   timestamptz not null default now(),
+  cancelled_at timestamptz null,
+  notified     boolean not null default false
+);
+create index if not exists crew_deps_group_idx on public.crew_deps (group_id, night);
+create index if not exists crew_deps_user_idx on public.crew_deps (user_id, created_at desc);
+
+create table if not exists public.crew_dep_going (
+  dep_id      bigint not null,
+  user_id     uuid not null,
+  going       boolean not null default true,
+  updated_at  timestamptz not null default now(),
+  primary key (dep_id, user_id)
+);
+
+create table if not exists public.crew_date_polls (
+  id          bigserial primary key,
+  group_id    uuid not null,
+  user_id     uuid not null,
+  title       text null,
+  dates       date[] not null,
+  created_at  timestamptz not null default now(),
+  ends_at     timestamptz not null,
+  closed_at   timestamptz null
+);
+create index if not exists crew_date_polls_group_idx on public.crew_date_polls (group_id, id desc);
+create index if not exists crew_date_polls_user_idx on public.crew_date_polls (user_id, created_at desc);
+
+create table if not exists public.crew_date_votes (
+  poll_id     bigint not null,
+  user_id     uuid not null,
+  d           date not null,
+  answer      text not null check (answer in ('kan', 'kanske', 'nej')),
+  updated_at  timestamptz not null default now(),
+  primary key (poll_id, user_id, d)
+);
+
+create table if not exists public.crew_byes (
+  user_id     uuid not null,
+  night       timestamptz not null,
+  at          timestamptz not null default now(),
+  cleared_at  timestamptz null,
+  primary key (user_id, night)
+);
+
+create table if not exists public.crew_dance (
+  id          bigserial primary key,
+  bar_id      text not null,
+  user_id     uuid not null,
+  level       smallint not null check (level between 0 and 2),
+  bar_lat     float8 not null,
+  bar_lng     float8 not null,
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null
+);
+create index if not exists crew_dance_bar_idx on public.crew_dance (bar_id, expires_at);
+create index if not exists crew_dance_user_idx on public.crew_dance (user_id, bar_id, created_at desc);
+
+create table if not exists public.crew_torches (
+  id             bigserial primary key,
+  town           text not null,                 -- 't:<town>' or 'z:<lat>:<lng>' (~50 km zone)
+  town_name      text null,
+  c_lat          float8 not null,
+  c_lng          float8 not null,
+  night          timestamptz not null,
+  holder         uuid null,                     -- group id
+  pending        uuid null,                     -- group id that must accept
+  pending_from   uuid null,
+  pending_at     timestamptz null,
+  pending_until  timestamptz null,
+  passes         int not null default 0,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  unique (town, night)
+);
+create index if not exists crew_torches_night_idx on public.crew_torches (night);
+
+create table if not exists public.crew_torch_hops (
+  id          bigserial primary key,
+  torch_id    bigint not null,
+  from_group  uuid null,
+  to_group    uuid not null,
+  how         text not null check (how in ('light', 'pass', 'random')),
+  by_user     uuid null,
+  bar_id      text null,
+  bar_name    text null,
+  lat         float8 null,                      -- bar point only (never a pin / home)
+  lng         float8 null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists crew_torch_hops_torch_idx on public.crew_torch_hops (torch_id, id);
+create index if not exists crew_torch_hops_to_idx on public.crew_torch_hops (to_group, created_at desc);
+
+-- Per-user night track for Kvällsrepris: bar points (check-ins, pins snapped to a bar) or the
+-- ~550 m grid point of a pin. Never an exact pin, never a ghost pin. Read for 24 h only.
+create table if not exists public.crew_tracks (
+  id          bigserial primary key,
+  user_id     uuid not null,
+  night       timestamptz not null,
+  at          timestamptz not null default now(),
+  kind        text not null check (kind in ('ci', 'drink')),
+  bar_id      text null,
+  bar_name    text null,
+  lat         float8 not null,
+  lng         float8 not null
+);
+create index if not exists crew_tracks_user_idx on public.crew_tracks (user_id, night, at);
+
+create table if not exists public.crew_moods (
+  id          bigserial primary key,
+  group_id    uuid not null,
+  user_id     uuid not null,
+  night       timestamptz not null,
+  created_at  timestamptz not null default now(),
+  ends_at     timestamptz not null
+);
+create index if not exists crew_moods_group_idx on public.crew_moods (group_id, id desc);
+create index if not exists crew_moods_user_idx on public.crew_moods (user_id, created_at desc);
+
+create table if not exists public.crew_mood_answers (
+  mood_id     bigint not null,
+  user_id     uuid not null,
+  answer      text not null check (answer in ('bra', 'snurr', 'hem')),
+  updated_at  timestamptz not null default now(),
+  primary key (mood_id, user_id)
+);
+
+alter table public.crew_deps         enable row level security;
+alter table public.crew_dep_going    enable row level security;
+alter table public.crew_date_polls   enable row level security;
+alter table public.crew_date_votes   enable row level security;
+alter table public.crew_byes         enable row level security;
+alter table public.crew_dance        enable row level security;
+alter table public.crew_torches      enable row level security;
+alter table public.crew_torch_hops   enable row level security;
+alter table public.crew_tracks       enable row level security;
+alter table public.crew_moods        enable row level security;
+alter table public.crew_mood_answers enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Helpers (not callable by clients)
+-- ---------------------------------------------------------------------------
+create or replace function public.olnu_crew_clean(p text, n int)
+returns text language sql immutable set search_path = public as $$
+  select nullif(left(btrim(regexp_replace(regexp_replace(coalesce(p, ''), '[\x00-\x1F\x7F]', ' ', 'g'), '\s+', ' ', 'g')), n), '');
+$$;
+
+-- Opaque member key (never a user id).
+create or replace function public.olnu_crew_k(p_group uuid, p_uid uuid)
+returns text language sql immutable set search_path = public as $$
+  select left(md5('crew:' || p_group::text || ':' || p_uid::text), 12);
+$$;
+
+create or replace function public.olnu_crew_member(p_group uuid, p_uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.group_members m where m.group_id = p_group and m.user_id = p_uid);
+$$;
+
+create or replace function public.olnu_crew_name(p_group uuid, p_uid uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select m.display_name from public.group_members m where m.group_id = p_group and m.user_id = p_uid;
+$$;
+
+-- "Now" for the replay window only (local tests can set olnu.crew_now; clients cannot set it).
+create or replace function public.olnu_crew_now()
+returns timestamptz language sql stable set search_path = public as $$
+  select coalesce(nullif(current_setting('olnu.crew_now', true), '')::timestamptz, now());
+$$;
+
+-- The night that ended most recently (the 05:00 before the current night key). DST-safe (26 h back).
+create or replace function public.olnu_crew_last_night(p_now timestamptz)
+returns timestamptz language sql stable set search_path = public as $$
+  select public.olnu_night_of(public.olnu_night_of(p_now) - interval '26 hours');
+$$;
+
+-- Torch town of a point: nearest olnu_towns town (~30 km), else a ~50 km zone.
+create or replace function public.olnu_crew_town(p_lat float8, p_lng float8)
+returns table (key text, name text, lat float8, lng float8)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_name text;
+begin
+  if p_lat is null or p_lng is null then return; end if;
+  v_name := public.olnu_town_of(p_lat, p_lng);
+  if v_name is not null then
+    return query select 't:' || t.name, t.name, t.lat, t.lng from public.olnu_towns t where t.name = v_name limit 1;
+    return;
+  end if;
+  return query select 'z:' || (round(p_lat::numeric * 2) / 2)::numeric(6, 1)::text || ':' || round(p_lng::numeric)::int::text,
+                      null::text, ((round(p_lat::numeric * 2) / 2))::float8, (round(p_lng::numeric))::float8;
+end; $$;
+
+-- Where a user is right now: the newest of a live check-in (< 3 h) and a live visible pin.
+-- bar_lat/bar_lng = the bar point (check-in point, or the snap point of a pin snapped to a bar).
+create or replace function public.olnu_crew_pres(p_uid uuid)
+returns table (lat float8, lng float8, bar_id text, bar_name text, bar_lat float8, bar_lng float8, at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select x.lat, x.lng, x.bar_id, x.bar_name, x.bar_lat, x.bar_lng, x.at from (
+    select c.lat, c.lng, c.bar_id, c.bar_name, coalesce(bl.lat, c.lat) as bar_lat, coalesce(bl.lng, c.lng) as bar_lng,
+           c.created_at as at
+      from public.checkins c left join public.bars_lite bl on bl.id = c.bar_id
+     where c.user_id = p_uid and c.expires_at > now() and c.created_at > now() - interval '3 hours'
+    union all
+    select b.lat, b.lng, b.snap_bar, bl.name,
+           case when b.snap_bar is not null then coalesce(bl.lat, b.snap_lat) end,
+           case when b.snap_bar is not null then coalesce(bl.lng, b.snap_lng) end,
+           greatest(b.beer_at, b.other_at, b.created_at)
+      from public.beers b left join public.bars_lite bl on bl.id = b.snap_bar
+     where b.user_id = p_uid and b.expires_at > now() and not b.stopped and not b.ghost
+       and (coalesce(b.beer_count, 0) + coalesce(b.other_count, 0)) >= 1
+  ) x order by x.at desc limit 1;
+$$;
+
+-- Members of a group tonight with state: out | left (Hej då) | home (Jag är hemma) | quiet (was out, no
+-- live pin/check-in) | none. A newer pin/check-in after Hej då/home counts as out again.
+create or replace function public.olnu_crew_members(p_group uuid, p_viewer uuid)
+returns table (uid uuid, k text, name text, is_me boolean, state text, left_at timestamptz,
+               lat float8, lng float8, bar_id text, bar_name text, pres_at timestamptz, joined_at timestamptz)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_night timestamptz := public.olnu_night_of(now());
+begin
+  return query
+  with m as (
+    select gm.user_id, gm.display_name, gm.joined_at from public.group_members gm where gm.group_id = p_group
+  ), x as (
+    select m.user_id, m.display_name, m.joined_at, p.lat, p.lng, p.bar_id, p.bar_name, p.at,
+           (select y.at from public.crew_byes y where y.user_id = m.user_id and y.night = v_night and y.cleared_at is null) as bye_at,
+           (select an.home_at from public.after_nights an where an.user_id = m.user_id and an.night = v_night) as home_at,
+           coalesce((select an.out from public.after_nights an where an.user_id = m.user_id and an.night = v_night), false) as was_out
+      from m left join lateral public.olnu_crew_pres(m.user_id) p on true
+  )
+  select x.user_id, public.olnu_crew_k(p_group, x.user_id), x.display_name, x.user_id = p_viewer,
+         case
+           when x.at is not null and (x.bye_at is null or x.at > x.bye_at) and (x.home_at is null or x.at > x.home_at) then 'out'
+           when x.bye_at is not null and (x.home_at is null or x.bye_at >= x.home_at) then 'left'
+           when x.home_at is not null then 'home'
+           when x.was_out then 'quiet'
+           else 'none'
+         end,
+         greatest(x.bye_at, x.home_at),
+         x.lat, x.lng, x.bar_id, x.bar_name, x.at, x.joined_at
+    from x;
+end; $$;
+
+-- Groups with members out in a torch town right now (members who said Hej då are not counted).
+-- bar = the bar where most of the group's present members are (bar points only).
+create or replace function public.olnu_crew_town_groups(p_key text, p_lat float8, p_lng float8)
+returns table (group_id uuid, n int, bar_id text, bar_name text, bar_lat float8, bar_lng float8)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_night timestamptz := public.olnu_night_of(now());
+begin
+  return query
+  with raw as (
+    select c.user_id as u, c.lat, c.lng, c.bar_id as bid, c.bar_name as bname,
+           coalesce(bl.lat, c.lat) as blat, coalesce(bl.lng, c.lng) as blng, c.created_at as at
+      from public.checkins c left join public.bars_lite bl on bl.id = c.bar_id
+     where c.expires_at > now() and c.created_at > now() - interval '3 hours'
+       and abs(c.lat - p_lat) < 0.6 and abs(c.lng - p_lng) < 1.2
+    union all
+    select b.user_id, b.lat, b.lng, b.snap_bar, bl.name,
+           case when b.snap_bar is not null then coalesce(bl.lat, b.snap_lat) end,
+           case when b.snap_bar is not null then coalesce(bl.lng, b.snap_lng) end,
+           greatest(b.beer_at, b.other_at, b.created_at)
+      from public.beers b left join public.bars_lite bl on bl.id = b.snap_bar
+     where b.expires_at > now() and not b.stopped and not b.ghost
+       and (coalesce(b.beer_count, 0) + coalesce(b.other_count, 0)) >= 1
+       and abs(b.lat - p_lat) < 0.6 and abs(b.lng - p_lng) < 1.2
+  ), pres as (
+    select distinct on (r.u) r.* from raw r order by r.u, r.at desc
+  ), ok as (
+    select p.* from pres p
+     where (select t.key from public.olnu_crew_town(p.lat, p.lng) t) = p_key
+       and not exists (select 1 from public.crew_byes y where y.user_id = p.u and y.night = v_night
+                         and y.cleared_at is null and y.at >= p.at)
+       and not exists (select 1 from public.after_nights an where an.user_id = p.u and an.night = v_night
+                         and an.home_at is not null and an.home_at >= p.at)
+  ), gm as (
+    select m.group_id as g, ok.* from ok join public.group_members m on m.user_id = ok.u
+  ), cnt as (
+    select gm.g, count(distinct gm.u)::int as n from gm group by gm.g
+  ), bars as (
+    select gm.g, gm.bid, max(gm.bname) as bname, max(gm.blat) as blat, max(gm.blng) as blng,
+           count(distinct gm.u) as c, max(gm.at) as mat
+      from gm where gm.bid is not null and gm.blat is not null group by gm.g, gm.bid
+  ), best as (
+    select distinct on (b.g) b.* from bars b order by b.g, b.c desc, b.mat desc
+  )
+  select cnt.g, cnt.n, best.bid, best.bname, best.blat, best.blng
+    from cnt left join best on best.g = cnt.g;
+end; $$;
+
+-- Group label for a viewer: name when the viewer is a member or the group opted in to be shown on
+-- the map (0014 group_flags.show_on_map), else null (client: "en grupp vid <bar>" / "en grupp i stan").
+create or replace function public.olnu_crew_glabel(p_group uuid, p_viewer uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select case when p_group is null then null else jsonb_build_object(
+    'name', case when public.olnu_crew_member(p_group, p_viewer)
+                   or coalesce((select f.show_on_map from public.group_flags f where f.group_id = p_group), false)
+                 then (select g.name from public.groups g where g.id = p_group) end,
+    'mine', public.olnu_crew_member(p_group, p_viewer)) end;
+$$;
+
+-- Torch timeout: a pending pass not accepted in time (or declined) moves on to a random other group in
+-- town (not the giver, not the one that let it go). Nobody else in town -> it stays with the holder.
+create or replace function public.olnu_crew_torch_move(p_torch bigint, p_skip uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  t public.crew_torches;
+  c record;
+begin
+  select * into t from public.crew_torches x where x.id = p_torch for update;
+  if not found or t.pending is null then return; end if;
+  select * into c from public.olnu_crew_town_groups(t.town, t.c_lat, t.c_lng) g
+   where g.group_id is distinct from t.holder and g.group_id is distinct from p_skip
+     and g.group_id is distinct from t.pending
+   order by random() limit 1;
+  if c.group_id is null then
+    update public.crew_torches x set pending = null, pending_from = null, pending_at = null, pending_until = null,
+           updated_at = now() where x.id = t.id;
+    return;
+  end if;
+  insert into public.crew_torch_hops (torch_id, from_group, to_group, how, bar_id, bar_name, lat, lng)
+  values (t.id, t.holder, c.group_id, 'random', c.bar_id, c.bar_name, c.bar_lat, c.bar_lng);
+  update public.crew_torches x set holder = c.group_id, pending = null, pending_from = null, pending_at = null,
+         pending_until = null, passes = x.passes + 1, updated_at = now() where x.id = t.id;
+end; $$;
+
+create or replace function public.olnu_crew_torch_tick(p_torch bigint)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  t public.crew_torches;
+begin
+  select * into t from public.crew_torches x where x.id = p_torch;
+  if found and t.pending is not null and t.pending_until <= now() then
+    perform pg_advisory_xact_lock(hashtextextended('olnu_crew_torch:' || t.id::text, 0));
+    select * into t from public.crew_torches x where x.id = p_torch;
+    if t.pending is not null and t.pending_until <= now() then
+      perform public.olnu_crew_torch_move(t.id, t.pending);
+    end if;
+  end if;
+end; $$;
+
+-- Caller's torch town: own presence first, else the given point.
+create or replace function public.olnu_crew_my_town(p_uid uuid, p_lat float8, p_lng float8)
+returns table (key text, name text, lat float8, lng float8)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  p record;
+begin
+  select * into p from public.olnu_crew_pres(p_uid);
+  if p.lat is not null then
+    return query select * from public.olnu_crew_town(p.lat, p.lng);
+    return;
+  end if;
+  if public.olnu_world_ok(p_lat, p_lng) then
+    return query select * from public.olnu_crew_town(p_lat, p_lng);
+  end if;
+end; $$;
+
+-- Full torch state for a viewer.
+create or replace function public.olnu_crew_torch_json(p_torch bigint, p_uid uuid, p_cands boolean)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  t public.crew_torches;
+  v_hops jsonb; v_cands jsonb := '[]'::jsonb; v_mine boolean;
+  v_hb record;
+begin
+  select * into t from public.crew_torches x where x.id = p_torch;
+  if not found then return null; end if;
+  v_mine := t.holder is not null and public.olnu_crew_member(t.holder, p_uid);
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'at', h.created_at, 'how', h.how, 'bar_name', h.bar_name, 'lat', h.lat, 'lng', h.lng,
+           'to', public.olnu_crew_glabel(h.to_group, p_uid),
+           'by', case when h.by_user is not null and public.olnu_crew_member(h.to_group, p_uid)
+                      then public.olnu_crew_name(h.to_group, h.by_user) end) order by h.id), '[]'::jsonb)
+    into v_hops from public.crew_torch_hops h where h.torch_id = t.id;
+  select h.bar_name into v_hb from public.crew_torch_hops h where h.torch_id = t.id and h.to_group = t.holder
+   order by h.id desc limit 1;
+  if p_cands and v_mine and t.pending is null then
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'key', left(md5('crewt:' || t.id::text || ':' || g.group_id::text), 12),
+             'label', public.olnu_crew_glabel(g.group_id, p_uid), 'bar_name', g.bar_name, 'n', g.n)
+             order by g.n desc, g.bar_name), '[]'::jsonb)
+      into v_cands from public.olnu_crew_town_groups(t.town, t.c_lat, t.c_lng) g
+     where g.group_id is distinct from t.holder;
+  end if;
+  return jsonb_build_object(
+    'id', t.id, 'town', t.town_name, 'night', t.night, 'passes', t.passes,
+    'holder', public.olnu_crew_glabel(t.holder, p_uid), 'holder_bar', v_hb.bar_name,
+    'holder_group', case when v_mine then t.holder end,
+    'pending', case when t.pending is null then null else jsonb_build_object(
+        'to', public.olnu_crew_glabel(t.pending, p_uid),
+        'to_group', case when public.olnu_crew_member(t.pending, p_uid) then t.pending end,
+        'from', public.olnu_crew_glabel(t.pending_from, p_uid),
+        'at', t.pending_at, 'until', t.pending_until) end,
+    'hops', v_hops, 'cands', v_cands);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- Track triggers (Kvällsrepris). They never block a check-in or a drink.
+-- ---------------------------------------------------------------------------
+create or replace function public.olnu_crew_track_add(p_uid uuid, p_kind text, p_bar text, p_name text, p_lat float8, p_lng float8)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_night timestamptz := public.olnu_night_of(now());
+  v_last record;
+begin
+  if p_lat is null or p_lng is null then return; end if;
+  if (select count(*) from public.crew_tracks x where x.user_id = p_uid and x.night = v_night) >= 300 then return; end if;
+  select x.lat, x.lng, x.at, x.kind into v_last from public.crew_tracks x
+   where x.user_id = p_uid and x.night = v_night order by x.at desc limit 1;
+  -- same point and same kind within 5 min -> one point
+  if v_last.lat is not null and v_last.lat = p_lat and v_last.lng = p_lng and v_last.kind = p_kind
+     and v_last.at > now() - interval '5 minutes' then return; end if;
+  insert into public.crew_tracks (user_id, night, kind, bar_id, bar_name, lat, lng)
+  values (p_uid, v_night, p_kind, p_bar, left(p_name, 60), round(p_lat::numeric, 5)::float8, round(p_lng::numeric, 5)::float8);
+end; $$;
+
+create or replace function public.olnu_crew_ci_tg()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_lat float8; v_lng float8;
+begin
+  begin
+    if tg_op = 'INSERT' or new.created_at is distinct from old.created_at or new.bar_id is distinct from old.bar_id then
+      select bl.lat, bl.lng into v_lat, v_lng from public.bars_lite bl where bl.id = new.bar_id;
+      perform public.olnu_crew_track_add(new.user_id, 'ci', new.bar_id, new.bar_name,
+                                         coalesce(v_lat, new.lat), coalesce(v_lng, new.lng));
+    end if;
+  exception when others then
+    null;   -- a replay bug never blocks a check-in
+  end;
+  return new;
+end; $$;
+create or replace trigger olnu_crew_checkins
+  after insert or update on public.checkins
+  for each row execute function public.olnu_crew_ci_tg();
+
+-- Deferred to the end of the transaction: post_beer_v2 with Spökläge first writes a visible row and
+-- hides it later in the same call, so the trigger re-reads the final row before it writes a track.
+create or replace function public.olnu_crew_beer_tg()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  b public.beers;
+  v_name text;
+begin
+  begin
+    if tg_op = 'INSERT'
+       or coalesce(new.beer_count, 0) > coalesce(old.beer_count, 0)
+       or coalesce(new.other_count, 0) > coalesce(old.other_count, 0) then
+      select * into b from public.beers x where x.id = new.id;
+      if found and not coalesce(b.stopped, false) and not coalesce(b.ghost, false)
+         and b.snap_lat is not null and b.snap_lng is not null
+         and (coalesce(b.beer_count, 0) + coalesce(b.other_count, 0)) >= 1 then
+        if b.snap_bar is not null then
+          select bl.name into v_name from public.bars_lite bl where bl.id = b.snap_bar;
+        end if;
+        -- snap point = the bar point (pin at a bar) or the ~550 m grid point; never the exact pin
+        perform public.olnu_crew_track_add(b.user_id, 'drink', b.snap_bar, v_name, b.snap_lat, b.snap_lng);
+      end if;
+    end if;
+  exception when others then
+    null;   -- a replay bug never blocks a drink
+  end;
+  return null;
+end; $$;
+do $$
+begin
+  if not exists (select 1 from pg_trigger where tgname = 'olnu_crew_beers_end' and tgrelid = 'public.beers'::regclass) then
+    create constraint trigger olnu_crew_beers_end
+      after insert or update on public.beers
+      deferrable initially deferred
+      for each row execute function public.olnu_crew_beer_tg();
+  end if;
+end $$;
+
+
+-- ---------------------------------------------------------------------------
+-- Group state json (shared by crew_group and crew_poll)
+-- ---------------------------------------------------------------------------
+-- Replay window: 05:00-18:00 local on the day after the night, and at least one track point.
+create or replace function public.olnu_crew_replay_open(p_group uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.olnu_crew_now() < public.olnu_crew_last_night(public.olnu_crew_now()) + interval '13 hours'
+     and exists (select 1 from public.crew_tracks t join public.group_members m on m.user_id = t.user_id
+                  where m.group_id = p_group and t.night = public.olnu_crew_last_night(public.olnu_crew_now()));
+$$;
+
+create or replace function public.olnu_crew_group_json(p_group uuid, p_uid uuid, p_full boolean)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_night timestamptz := public.olnu_night_of(now());
+  v_mm jsonb; v_deps jsonb; v_dates jsonb := null; v_mood jsonb := null; v_alone jsonb := null;
+  v_out int; v_gone int; v_me text;
+  dp public.crew_date_polls; md public.crew_moods;
+begin
+  select coalesce(jsonb_agg(jsonb_build_object('uid', x.uid, 'k', x.k, 'name', x.name, 'is_me', x.is_me, 'state', x.state,
+           'left_at', x.left_at, 'lat', x.lat, 'lng', x.lng, 'bar_name', x.bar_name, 'pres_at', x.pres_at)
+           order by x.name), '[]'::jsonb)
+    into v_mm from public.olnu_crew_members(p_group, p_uid) x;
+
+  select count(*) filter (where r.state = 'out'), count(*) filter (where r.state in ('left', 'home', 'quiet')),
+         max(r.state) filter (where r.is_me)
+    into v_out, v_gone, v_me
+    from jsonb_to_recordset(v_mm) as r(uid uuid, k text, name text, is_me boolean, state text);
+  if v_out = 1 and v_gone >= 1 then
+    select jsonb_build_object('k', r.k, 'name', r.name, 'is_me', r.is_me, 'bar_name', r.bar_name)
+      into v_alone
+      from jsonb_to_recordset(v_mm) as r(k text, name text, is_me boolean, state text, bar_name text)
+     where r.state = 'out' limit 1;
+  end if;
+
+  -- Avgångstavlan: live departures tonight (until 15 min after the time)
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', d.id, 'by', public.olnu_crew_name(p_group, d.user_id), 'is_mine', d.user_id = p_uid,
+           'leave_at', d.leave_at, 'bar_id', d.bar_id, 'bar_name', d.bar_name, 'lat', d.lat, 'lng', d.lng,
+           'created_at', d.created_at,
+           'going_n', (select count(*) from public.crew_dep_going g join public.group_members m
+                        on m.group_id = p_group and m.user_id = g.user_id where g.dep_id = d.id and g.going),
+           'i_going', exists (select 1 from public.crew_dep_going g where g.dep_id = d.id and g.user_id = p_uid and g.going),
+           'going_names', case when p_full then (select coalesce(jsonb_agg(m.display_name order by g.updated_at), '[]'::jsonb)
+                              from public.crew_dep_going g join public.group_members m on m.group_id = p_group and m.user_id = g.user_id
+                             where g.dep_id = d.id and g.going) end)
+           order by d.leave_at), '[]'::jsonb)
+    into v_deps
+    from public.crew_deps d
+   where d.group_id = p_group and d.night = v_night and d.cancelled_at is null and d.leave_at > now() - interval '15 minutes';
+
+  -- Vilken kväll?: newest poll that has not ended
+  select * into dp from public.crew_date_polls p where p.group_id = p_group and p.ends_at > now()
+   order by p.id desc limit 1;
+  if found then
+    with opts as (
+      select o.d, (select count(*) from public.crew_date_votes v join public.group_members m on m.group_id = p_group and m.user_id = v.user_id
+                    where v.poll_id = dp.id and v.d = o.d and v.answer = 'kan') as kan,
+                  (select count(*) from public.crew_date_votes v join public.group_members m on m.group_id = p_group and m.user_id = v.user_id
+                    where v.poll_id = dp.id and v.d = o.d and v.answer = 'kanske') as kanske,
+                  (select count(*) from public.crew_date_votes v join public.group_members m on m.group_id = p_group and m.user_id = v.user_id
+                    where v.poll_id = dp.id and v.d = o.d and v.answer = 'nej') as nej,
+                  (select v.answer from public.crew_date_votes v where v.poll_id = dp.id and v.d = o.d and v.user_id = p_uid) as my
+        from unnest(dp.dates) as o(d)
+    )
+    select jsonb_build_object(
+      'id', dp.id, 'title', dp.title, 'by', public.olnu_crew_name(p_group, dp.user_id), 'is_mine', dp.user_id = p_uid,
+      'closed', dp.closed_at is not null, 'created_at', dp.created_at, 'ends_at', dp.ends_at,
+      'voters', (select count(distinct v.user_id) from public.crew_date_votes v join public.group_members m
+                  on m.group_id = p_group and m.user_id = v.user_id where v.poll_id = dp.id),
+      'i_voted', exists (select 1 from public.crew_date_votes v where v.poll_id = dp.id and v.user_id = p_uid),
+      'winner', (select o.d from opts o where o.kan + o.kanske > 0 order by o.kan desc, o.kanske desc, o.nej, o.d limit 1),
+      'dates', (select jsonb_agg(jsonb_build_object('d', o.d, 'kan', o.kan, 'kanske', o.kanske, 'nej', o.nej, 'my', o.my,
+                  'kan_names', case when p_full then (select coalesce(jsonb_agg(m.display_name order by v.updated_at), '[]'::jsonb)
+                       from public.crew_date_votes v join public.group_members m on m.group_id = p_group and m.user_id = v.user_id
+                      where v.poll_id = dp.id and v.d = o.d and v.answer = 'kan') end) order by o.d) from opts o))
+      into v_dates;
+  end if;
+
+  -- Hur mår truppen?: newest live check (ends 40 min after start)
+  select * into md from public.crew_moods x where x.group_id = p_group and x.ends_at > now() order by x.id desc limit 1;
+  if found then
+    with ans as (
+      select a.user_id, a.answer, a.updated_at from public.crew_mood_answers a
+        join public.group_members m on m.group_id = p_group and m.user_id = a.user_id
+       where a.mood_id = md.id
+    ), mm as (
+      select * from jsonb_to_recordset(v_mm) as r(uid uuid, k text, name text, is_me boolean, state text,
+                                                   lat float8, lng float8, bar_name text)
+    )
+    select jsonb_build_object(
+      'id', md.id, 'by', public.olnu_crew_name(p_group, md.user_id), 'is_mine', md.user_id = p_uid,
+      'created_at', md.created_at, 'ends_at', md.ends_at,
+      'my', (select a.answer from ans a where a.user_id = p_uid),
+      'bra', (select count(*) from ans a where a.answer = 'bra'),
+      'snurr', (select count(*) from ans a where a.answer = 'snurr'),
+      'hem', (select count(*) from ans a where a.answer = 'hem'),
+      'answers', (select coalesce(jsonb_agg(jsonb_build_object(
+          'k', m.k, 'name', m.name, 'is_me', m.is_me, 'answer', a.answer, 'at', a.updated_at, 'bar_name', m.bar_name,
+          'near', case when a.answer = 'snurr' and m.lat is not null then
+             (select coalesce(jsonb_agg(o.name order by public.olnu_dist_m(m.lat, m.lng, o.lat, o.lng)), '[]'::jsonb)
+                from mm o where o.uid <> m.uid and o.state = 'out' and o.lat is not null
+                 and public.olnu_dist_m(m.lat, m.lng, o.lat, o.lng) <= 400) end)
+          order by a.updated_at), '[]'::jsonb)
+          from ans a join mm m on m.uid = a.user_id),
+      'waiting', (select count(*) from mm m where not exists (select 1 from ans a where a.user_id = m.uid)))
+      into v_mood;
+  end if;
+
+  return jsonb_build_object(
+    'id', p_group, 'name', (select g.name from public.groups g where g.id = p_group),
+    'me_state', v_me, 'out_n', v_out, 'gone_n', v_gone, 'alone', v_alone,
+    'deps', v_deps, 'dates', v_dates, 'mood', v_mood,
+    'replay', public.olnu_crew_replay_open(p_group),
+    'members', case when p_full then (select coalesce(jsonb_agg(jsonb_build_object('k', r.k, 'name', r.name, 'is_me', r.is_me,
+                 'state', r.state, 'bar_name', r.bar_name, 'left_at', r.left_at, 'at', r.pres_at)), '[]'::jsonb)
+                 from jsonb_to_recordset(v_mm) as r(k text, name text, is_me boolean, state text, bar_name text,
+                                                    left_at timestamptz, pres_at timestamptz)) end);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- RPCs
+-- ---------------------------------------------------------------------------
+-- crew_group(group) -> full group state. Error: not_member.
+create or replace function public.crew_group(p_group_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  return public.olnu_crew_group_json(p_group_id, v_uid, true) || jsonb_build_object('server_time', now());
+end; $$;
+
+-- crew_poll(lat?, lng?) -> {v, server_time, night, me:{bye}, groups:[lite state], torch, offers:[torch]}
+create or replace function public.crew_poll(p_lat float8 default null, p_lng float8 default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  v_groups jsonb; v_torch jsonb := null; v_offers jsonb;
+  tw record; v_tid bigint; r record;
+begin
+  select coalesce(jsonb_agg(public.olnu_crew_group_json(m.group_id, v_uid, false) order by m.joined_at), '[]'::jsonb)
+    into v_groups
+    from (select gm.group_id, gm.joined_at from public.group_members gm where gm.user_id = v_uid
+           order by gm.joined_at limit 10) m;
+  -- torches pending to one of my groups (any town) + the torch of my town
+  for r in select t.id from public.crew_torches t
+            where t.night = v_night and t.pending is not null
+              and t.pending in (select gm.group_id from public.group_members gm where gm.user_id = v_uid) loop
+    perform public.olnu_crew_torch_tick(r.id);
+  end loop;
+  select * into tw from public.olnu_crew_my_town(v_uid, p_lat, p_lng);
+  if tw.key is not null then
+    select t.id into v_tid from public.crew_torches t where t.town = tw.key and t.night = v_night;
+    if v_tid is not null then
+      perform public.olnu_crew_torch_tick(v_tid);
+      v_torch := public.olnu_crew_torch_json(v_tid, v_uid, false);
+    else
+      v_torch := jsonb_build_object('id', null, 'town', tw.name, 'lit', false);
+    end if;
+  end if;
+  select coalesce(jsonb_agg(public.olnu_crew_torch_json(t.id, v_uid, false)), '[]'::jsonb) into v_offers
+    from public.crew_torches t
+   where t.night = v_night and t.pending is not null and t.pending_until > now()
+     and t.pending in (select gm.group_id from public.group_members gm where gm.user_id = v_uid);
+  return jsonb_build_object('v', 1, 'server_time', now(), 'night', v_night,
+    'me', jsonb_build_object('bye_at', (select y.at from public.crew_byes y where y.user_id = v_uid and y.night = v_night and y.cleared_at is null)),
+    'groups', v_groups, 'torch', v_torch, 'offers', v_offers);
+end; $$;
+
+-- 1 Avgångstavlan --------------------------------------------------------------
+-- crew_dep_set(group, leave_at, bar?) -> {id, leave_at}. Errors: not_member, invalid_time (not between
+-- now-1 min and now+12 h), invalid_bar, slow_down (1 per 30 s per user), board_full (max 4 live per group).
+-- A new departure by the same user in the same group replaces the older one. The creator is "Med!".
+create or replace function public.crew_dep_set(p_group_id uuid, p_leave_at timestamptz, p_bar_id text default null,
+                                               p_bar_name text default null, p_lat float8 default null, p_lng float8 default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  v_bar text := public.olnu_crew_clean(p_bar_id, 200);
+  v_name text := public.olnu_crew_clean(p_bar_name, 200);
+  v_lat float8; v_lng float8; v_id bigint;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if p_leave_at is null or p_leave_at < now() - interval '1 minute' or p_leave_at > now() + interval '12 hours' then
+    raise exception 'invalid_time';
+  end if;
+  if (v_bar is not null and char_length(v_bar) > 80) or (v_name is not null and char_length(v_name) > 60) then
+    raise exception 'invalid_bar';
+  end if;
+  if public.olnu_world_ok(p_lat, p_lng) then
+    v_lat := round(p_lat::numeric, 5)::float8; v_lng := round(p_lng::numeric, 5)::float8;
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_dep:' || p_group_id::text, 0));
+  if exists (select 1 from public.crew_deps d where d.user_id = v_uid and d.created_at > now() - interval '30 seconds') then
+    raise exception 'slow_down';
+  end if;
+  update public.crew_deps d set cancelled_at = now()
+   where d.group_id = p_group_id and d.user_id = v_uid and d.night = v_night and d.cancelled_at is null;
+  if (select count(*) from public.crew_deps d where d.group_id = p_group_id and d.night = v_night
+         and d.cancelled_at is null and d.leave_at > now() - interval '15 minutes') >= 4 then
+    raise exception 'board_full';
+  end if;
+  insert into public.crew_deps (group_id, user_id, night, leave_at, bar_id, bar_name, lat, lng)
+  values (p_group_id, v_uid, v_night, date_trunc('minute', p_leave_at), v_bar, v_name, v_lat, v_lng)
+  returning id into v_id;
+  insert into public.crew_dep_going (dep_id, user_id, going) values (v_id, v_uid, true)
+  on conflict (dep_id, user_id) do update set going = true, updated_at = now();
+  return jsonb_build_object('id', v_id, 'leave_at', date_trunc('minute', p_leave_at));
+end; $$;
+
+-- crew_dep_join(dep, on) -> {going_n, i_going}. Errors: dep_not_found, not_member.
+create or replace function public.crew_dep_join(p_dep_id bigint, p_on boolean default true)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  d public.crew_deps;
+begin
+  select * into d from public.crew_deps x where x.id = p_dep_id and x.cancelled_at is null
+     and x.night = public.olnu_night_of(now()) and x.leave_at > now() - interval '15 minutes';
+  if not found then raise exception 'dep_not_found'; end if;
+  if not public.olnu_crew_member(d.group_id, v_uid) then raise exception 'not_member'; end if;
+  insert into public.crew_dep_going (dep_id, user_id, going) values (d.id, v_uid, coalesce(p_on, true))
+  on conflict (dep_id, user_id) do update set going = excluded.going, updated_at = now();
+  return jsonb_build_object('i_going', coalesce(p_on, true),
+    'going_n', (select count(*) from public.crew_dep_going g join public.group_members m
+                 on m.group_id = d.group_id and m.user_id = g.user_id where g.dep_id = d.id and g.going));
+end; $$;
+
+-- crew_dep_cancel(dep) -> {ok}. Creator only (else dep_not_found).
+create or replace function public.crew_dep_cancel(p_dep_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  update public.crew_deps d set cancelled_at = coalesce(d.cancelled_at, now()) where d.id = p_dep_id and d.user_id = v_uid;
+  if not found then raise exception 'dep_not_found'; end if;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+-- 2 Vilken kväll? --------------------------------------------------------------
+-- crew_dates_create(group, dates[], title?) -> {id}. 2-5 distinct dates from tonight's evening date up to
+-- +90 days, title max 40. Errors: not_member, invalid_dates, invalid_msg, slow_down (1 per 2 min per user).
+-- Closes the group's older open poll. The poll ends at 05:00 after its last date.
+create or replace function public.crew_dates_create(p_group_id uuid, p_dates date[], p_title text default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_today date := public.olnu_evening(public.olnu_night_of(now()));
+  v_dates date[]; v_title text := public.olnu_crew_clean(p_title, 200); v_id bigint;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  select array_agg(distinct x order by x) into v_dates from unnest(coalesce(p_dates, '{}'::date[])) x where x is not null;
+  if v_dates is null or array_length(v_dates, 1) < 2 or array_length(v_dates, 1) > 5
+     or v_dates[1] < v_today or v_dates[array_length(v_dates, 1)] > v_today + 90 then
+    raise exception 'invalid_dates';
+  end if;
+  if v_title is not null and char_length(v_title) > 40 then raise exception 'invalid_msg'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_dates:' || v_uid::text, 0));
+  if exists (select 1 from public.crew_date_polls p where p.user_id = v_uid and p.created_at > now() - interval '2 minutes') then
+    raise exception 'slow_down';
+  end if;
+  update public.crew_date_polls p set closed_at = now()
+   where p.group_id = p_group_id and p.closed_at is null and p.ends_at > now();
+  insert into public.crew_date_polls (group_id, user_id, title, dates, ends_at)
+  values (p_group_id, v_uid, v_title, v_dates,
+          ((v_dates[array_length(v_dates, 1)] + 1)::timestamp + interval '5 hours') at time zone 'Europe/Stockholm')
+  returning id into v_id;
+  return jsonb_build_object('id', v_id);
+end; $$;
+
+-- crew_dates_vote(poll, date, answer kan|kanske|nej) -> {ok, d, answer}.
+-- Errors: invalid_answer (checked first), poll_not_found (closed/ended/unknown), not_member, invalid_dates.
+create or replace function public.crew_dates_vote(p_poll_id bigint, p_date date, p_answer text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_a text := lower(btrim(coalesce(p_answer, '')));
+  p public.crew_date_polls;
+begin
+  if v_a not in ('kan', 'kanske', 'nej') then raise exception 'invalid_answer'; end if;
+  select * into p from public.crew_date_polls x where x.id = p_poll_id and x.closed_at is null and x.ends_at > now();
+  if not found then raise exception 'poll_not_found'; end if;
+  if not public.olnu_crew_member(p.group_id, v_uid) then raise exception 'not_member'; end if;
+  if p_date is null or not (p_date = any (p.dates)) then raise exception 'invalid_dates'; end if;
+  insert into public.crew_date_votes (poll_id, user_id, d, answer) values (p.id, v_uid, p_date, v_a)
+  on conflict (poll_id, user_id, d) do update set answer = excluded.answer, updated_at = now();
+  return jsonb_build_object('ok', true, 'd', p_date, 'answer', v_a);
+end; $$;
+
+-- crew_dates_close(poll) -> {ok}. Creator only (else poll_not_found). The result stays visible.
+create or replace function public.crew_dates_close(p_poll_id bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  update public.crew_date_polls p set closed_at = coalesce(p.closed_at, now())
+   where p.id = p_poll_id and p.user_id = v_uid and p.ends_at > now();
+  if not found then raise exception 'poll_not_found'; end if;
+  return jsonb_build_object('ok', true);
+end; $$;
+
+-- 3 Ingen lämnas kvar ----------------------------------------------------------
+-- crew_bye(on default true) -> {ok, bye_at}. "Hej då" for tonight (all groups). on=false = "Jag ä kvar ändå".
+create or replace function public.crew_bye(p_on boolean default true)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  v_at timestamptz;
+begin
+  if coalesce(p_on, true) then
+    insert into public.crew_byes (user_id, night, at) values (v_uid, v_night, now())
+    on conflict (user_id, night) do update set at = now(), cleared_at = null;
+    v_at := now();
+  else
+    update public.crew_byes y set cleared_at = now() where y.user_id = v_uid and y.night = v_night;
+  end if;
+  return jsonb_build_object('ok', true, 'bye_at', v_at);
+end; $$;
+
+-- 4 Dansgolvsmätaren -----------------------------------------------------------
+-- crew_dance_report(bar, bar point, my point, level 0|1|2) -> {ok, wait_seconds, level, n, avg}
+-- Errors: invalid_level, invalid_bar, outside_sweden (= invalid coordinates), too_far (> 300 m).
+-- 1 report per user per bar per 10 min (ok=false + wait_seconds). A report lives 30 min.
+create or replace function public.crew_dance_report(p_bar_id text, p_bar_name text, p_bar_lat float8, p_bar_lng float8,
+                                                    p_lat float8, p_lng float8, p_level int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_bar text := public.olnu_crew_clean(p_bar_id, 200);
+  v_blat float8 := p_bar_lat; v_blng float8 := p_bar_lng;
+  v_last timestamptz; s jsonb;
+begin
+  if p_level is null or p_level not in (0, 1, 2) then raise exception 'invalid_level'; end if;
+  if v_bar is null or char_length(v_bar) > 80 then raise exception 'invalid_bar'; end if;
+  select bl.lat, bl.lng into v_blat, v_blng from public.bars_lite bl where bl.id = v_bar;
+  if v_blat is null then v_blat := p_bar_lat; v_blng := p_bar_lng; end if;
+  if not public.olnu_world_ok(v_blat, v_blng) or not public.olnu_world_ok(p_lat, p_lng) then raise exception 'outside_sweden'; end if;
+  if public.olnu_dist_m(v_blat, v_blng, p_lat, p_lng) > 300 then raise exception 'too_far'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_dance:' || v_uid::text, 0));
+  select max(d.created_at) into v_last from public.crew_dance d where d.user_id = v_uid and d.bar_id = v_bar;
+  if v_last is not null and v_last > now() - interval '10 minutes' then
+    s := public.olnu_crew_dance_json(v_bar);
+    return s || jsonb_build_object('ok', false,
+      'wait_seconds', greatest(1, ceil(extract(epoch from (v_last + interval '10 minutes' - now())))::int));
+  end if;
+  insert into public.crew_dance (bar_id, user_id, level, bar_lat, bar_lng, expires_at)
+  values (v_bar, v_uid, p_level, round(v_blat::numeric, 5)::float8, round(v_blng::numeric, 5)::float8, now() + interval '30 minutes');
+  return public.olnu_crew_dance_json(v_bar) || jsonb_build_object('ok', true, 'wait_seconds', 0);
+end; $$;
+
+-- Meter of a bar: newer reports weigh more (weight 1 at 0 min -> 0.5 at 30 min). level = rounded avg.
+create or replace function public.olnu_crew_dance_json(p_bar text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'n', count(*),
+    'avg', case when count(*) > 0 then round((sum(d.level * w) / sum(w))::numeric, 2) end,
+    'level', case when count(*) > 0 then round(sum(d.level * w) / sum(w))::int end,
+    'at', max(d.created_at))
+  from (select x.level, x.created_at,
+               (1.0 - least(1.0, extract(epoch from (now() - x.created_at)) / 1800.0) * 0.5) as w
+          from public.crew_dance x where x.bar_id = p_bar and x.expires_at > now()) d;
+$$;
+
+-- crew_dance_bar(bar) -> {n, avg, level, at, wait_seconds (own 10-min limit)}
+create or replace function public.crew_dance_bar(p_bar_id text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_last timestamptz;
+begin
+  select max(d.created_at) into v_last from public.crew_dance d where d.user_id = v_uid and d.bar_id = p_bar_id;
+  return public.olnu_crew_dance_json(p_bar_id) || jsonb_build_object('wait_seconds',
+    case when v_last > now() - interval '10 minutes'
+         then greatest(1, ceil(extract(epoch from (v_last + interval '10 minutes' - now())))::int) else 0 end);
+end; $$;
+
+-- 5 Skålstafetten --------------------------------------------------------------
+-- crew_torch(lat?, lng?) -> torch state of the caller's town (own pin/check-in first, else the point):
+-- {id, town, passes, holder{name,mine}, holder_bar, holder_group, pending{to,to_group,from,at,until}|null,
+--  hops:[{at, how, bar_name, lat, lng, to{name,mine}, by}], cands:[{key, label, bar_name, n}], lit,
+--  my_groups:[{id, name, n}] (my groups out in this town, for lighting)} / {lit:false, town, my_groups} / {town:null}
+create or replace function public.crew_torch(p_lat float8 default null, p_lng float8 default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  tw record; v_tid bigint; v_my jsonb;
+begin
+  select * into tw from public.olnu_crew_my_town(v_uid, p_lat, p_lng);
+  if tw.key is null then return jsonb_build_object('town', null, 'lit', false, 'no_town', true, 'my_groups', '[]'::jsonb); end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id', g.group_id, 'name', (select x.name from public.groups x where x.id = g.group_id), 'n', g.n)), '[]'::jsonb)
+    into v_my from public.olnu_crew_town_groups(tw.key, tw.lat, tw.lng) g
+   where public.olnu_crew_member(g.group_id, v_uid);
+  select t.id into v_tid from public.crew_torches t where t.town = tw.key and t.night = v_night;
+  if v_tid is null then
+    return jsonb_build_object('town', tw.name, 'lit', false, 'my_groups', v_my);
+  end if;
+  perform public.olnu_crew_torch_tick(v_tid);
+  return public.olnu_crew_torch_json(v_tid, v_uid, true) || jsonb_build_object('lit', true, 'my_groups', v_my);
+end; $$;
+
+-- crew_torch_light(group, lat?, lng?) -> {ok, already, id}. Lights tonight's torch of the caller's town for
+-- the group. The group must have a member out in that town. Errors: not_member, no_town, not_out.
+create or replace function public.crew_torch_light(p_group_id uuid, p_lat float8 default null, p_lng float8 default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_night timestamptz := public.olnu_night_of(now());
+  tw record; g record; v_id bigint;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  select * into tw from public.olnu_crew_my_town(v_uid, p_lat, p_lng);
+  if tw.key is null then raise exception 'no_town'; end if;
+  select * into g from public.olnu_crew_town_groups(tw.key, tw.lat, tw.lng) x where x.group_id = p_group_id;
+  if g.group_id is null then raise exception 'not_out'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_torch_town:' || tw.key || v_night::text, 0));
+  select t.id into v_id from public.crew_torches t where t.town = tw.key and t.night = v_night;
+  if v_id is not null then return jsonb_build_object('ok', false, 'already', true, 'id', v_id); end if;
+  insert into public.crew_torches (town, town_name, c_lat, c_lng, night, holder)
+  values (tw.key, tw.name, tw.lat, tw.lng, v_night, p_group_id) returning id into v_id;
+  insert into public.crew_torch_hops (torch_id, from_group, to_group, how, by_user, bar_id, bar_name, lat, lng)
+  values (v_id, null, p_group_id, 'light', v_uid, g.bar_id, g.bar_name, g.bar_lat, g.bar_lng);
+  return jsonb_build_object('ok', true, 'already', false, 'id', v_id);
+end; $$;
+
+-- crew_torch_pass(group, key) -> {ok, until}. The holder group passes the torch to another group out in
+-- town (key from cands). Errors: not_member, no_torch (group holds no torch tonight), torch_pending, invalid_target.
+create or replace function public.crew_torch_pass(p_group_id uuid, p_key text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  t public.crew_torches; c record;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  select * into t from public.crew_torches x where x.holder = p_group_id and x.night = public.olnu_night_of(now())
+   order by x.updated_at desc limit 1;
+  if not found then raise exception 'no_torch'; end if;
+  perform public.olnu_crew_torch_tick(t.id);
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_torch:' || t.id::text, 0));
+  select * into t from public.crew_torches x where x.id = t.id;
+  if t.holder is distinct from p_group_id then raise exception 'no_torch'; end if;
+  if t.pending is not null then raise exception 'torch_pending'; end if;
+  select * into c from public.olnu_crew_town_groups(t.town, t.c_lat, t.c_lng) g
+   where g.group_id <> t.holder and left(md5('crewt:' || t.id::text || ':' || g.group_id::text), 12) = p_key;
+  if c.group_id is null then raise exception 'invalid_target'; end if;
+  update public.crew_torches x set pending = c.group_id, pending_from = p_group_id, pending_at = now(),
+         pending_until = now() + interval '10 minutes', updated_at = now() where x.id = t.id;
+  return jsonb_build_object('ok', true, 'until', now() + interval '10 minutes');
+end; $$;
+
+-- crew_torch_answer(group, accept) -> {ok, holder}. A member of the group the torch is offered to takes it
+-- (accept) or lets it go on (it then moves to a random other group in town). Errors: not_member, no_offer.
+create or replace function public.crew_torch_answer(p_group_id uuid, p_accept boolean default true)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  t public.crew_torches; g record;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  select * into t from public.crew_torches x where x.pending = p_group_id and x.night = public.olnu_night_of(now())
+   order by x.pending_at desc limit 1;
+  if not found then raise exception 'no_offer'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_torch:' || t.id::text, 0));
+  select * into t from public.crew_torches x where x.id = t.id;
+  if t.pending is distinct from p_group_id or t.pending_until <= now() then
+    perform public.olnu_crew_torch_tick(t.id);
+    raise exception 'no_offer';
+  end if;
+  if not coalesce(p_accept, true) then
+    perform public.olnu_crew_torch_move(t.id, p_group_id);
+    return jsonb_build_object('ok', true, 'holder', false);
+  end if;
+  select * into g from public.olnu_crew_town_groups(t.town, t.c_lat, t.c_lng) x where x.group_id = p_group_id;
+  insert into public.crew_torch_hops (torch_id, from_group, to_group, how, by_user, bar_id, bar_name, lat, lng)
+  values (t.id, t.holder, p_group_id, 'pass', v_uid, g.bar_id, g.bar_name, g.bar_lat, g.bar_lng);
+  update public.crew_torches x set holder = p_group_id, pending = null, pending_from = null, pending_at = null,
+         pending_until = null, passes = x.passes + 1, updated_at = now() where x.id = t.id;
+  return jsonb_build_object('ok', true, 'holder', true);
+end; $$;
+
+-- 6 Kvällsrepris ---------------------------------------------------------------
+-- crew_replay(group) -> {available:false, opens_at} or {available:true, night, evening, members:[{k,name,is_me}],
+-- points:[{k, at, lat, lng, bar_name, kind}], summary:{...}}. Members only; current members' points of last
+-- night; bar points / ~550 m grid points only. Open 05:00-18:00 local the day after. Error: not_member.
+create or replace function public.crew_replay(p_group_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_now timestamptz := public.olnu_crew_now();
+  v_last timestamptz := public.olnu_crew_last_night(v_now);
+  v_pts jsonb; v_mem jsonb; v_sum jsonb;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  if v_now >= v_last + interval '13 hours' then
+    return jsonb_build_object('available', false, 'opens_at', public.olnu_night_of(v_now));
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object('k', public.olnu_crew_k(p_group_id, t.user_id), 'at', t.at,
+           'lat', t.lat, 'lng', t.lng, 'bar_name', t.bar_name, 'kind', t.kind) order by t.at, t.id), '[]'::jsonb)
+    into v_pts
+    from (select x.* from public.crew_tracks x join public.group_members m on m.group_id = p_group_id and m.user_id = x.user_id
+           where x.night = v_last order by x.at limit 1500) t;
+  if jsonb_array_length(v_pts) = 0 then
+    return jsonb_build_object('available', false, 'empty', true, 'opens_at', public.olnu_night_of(v_now));
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object('k', public.olnu_crew_k(p_group_id, m.user_id), 'name', m.display_name,
+           'is_me', m.user_id = v_uid,
+           'home_at', (select an.home_at from public.after_nights an where an.user_id = m.user_id and an.night = v_last),
+           'bye_at', (select y.at from public.crew_byes y where y.user_id = m.user_id and y.night = v_last and y.cleared_at is null))
+           order by m.joined_at), '[]'::jsonb)
+    into v_mem from public.group_members m
+   where m.group_id = p_group_id
+     and exists (select 1 from public.crew_tracks x where x.user_id = m.user_id and x.night = v_last);
+  select jsonb_build_object(
+    'members_out', count(distinct x.user_id),
+    'bars', count(distinct x.bar_id) filter (where x.bar_id is not null),
+    'checkins', count(*) filter (where x.kind = 'ci'),
+    'points', count(*),
+    'first_at', min(x.at), 'last_at', max(x.at),
+    'top_bar', (select y.bar_name from public.crew_tracks y join public.group_members m2 on m2.group_id = p_group_id and m2.user_id = y.user_id
+                 where y.night = v_last and y.bar_name is not null
+                 group by y.bar_name order by count(distinct y.user_id) desc, count(*) desc limit 1),
+    'torch', (select count(*) from public.crew_torch_hops h join public.crew_torches tt on tt.id = h.torch_id
+               where h.to_group = p_group_id and tt.night = v_last))
+    into v_sum
+    from public.crew_tracks x join public.group_members m on m.group_id = p_group_id and m.user_id = x.user_id
+   where x.night = v_last;
+  return jsonb_build_object('available', true, 'night', v_last, 'evening', public.olnu_evening(v_last),
+    'members', v_mem, 'points', v_pts, 'summary', v_sum);
+end; $$;
+
+-- 7 Hur mår truppen? -----------------------------------------------------------
+-- crew_mood_start(group) -> {id, already}. A live check of the group is reused (already=true).
+-- Max 1 new check per user per 10 min (slow_down). Lives 40 min. The starter is not auto-answered.
+create or replace function public.crew_mood_start(p_group_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_id bigint;
+begin
+  if not public.olnu_crew_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_crew_mood:' || p_group_id::text, 0));
+  select x.id into v_id from public.crew_moods x where x.group_id = p_group_id and x.ends_at > now() order by x.id desc limit 1;
+  if v_id is not null then return jsonb_build_object('id', v_id, 'already', true); end if;
+  if exists (select 1 from public.crew_moods x where x.user_id = v_uid and x.created_at > now() - interval '10 minutes') then
+    raise exception 'slow_down';
+  end if;
+  insert into public.crew_moods (group_id, user_id, night, ends_at)
+  values (p_group_id, v_uid, public.olnu_night_of(now()), now() + interval '40 minutes') returning id into v_id;
+  return jsonb_build_object('id', v_id, 'already', false);
+end; $$;
+
+-- crew_mood_answer(check, answer bra|snurr|hem) -> {ok, answer}. Errors: invalid_answer, mood_not_found, not_member.
+create or replace function public.crew_mood_answer(p_mood_id bigint, p_answer text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_a text := lower(btrim(coalesce(p_answer, '')));
+  md public.crew_moods;
+begin
+  if v_a not in ('bra', 'snurr', 'hem') then raise exception 'invalid_answer'; end if;
+  select * into md from public.crew_moods x where x.id = p_mood_id and x.ends_at > now();
+  if not found then raise exception 'mood_not_found'; end if;
+  if not public.olnu_crew_member(md.group_id, v_uid) then raise exception 'not_member'; end if;
+  insert into public.crew_mood_answers (mood_id, user_id, answer) values (md.id, v_uid, v_a)
+  on conflict (mood_id, user_id) do update set answer = excluded.answer, updated_at = now();
+  return jsonb_build_object('ok', true, 'answer', v_a);
+end; $$;
+
+-- ---------------------------------------------------------------------------
+-- Grants: helpers for nobody, RPCs for authenticated only.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_helpers text := 'public.olnu_crew_clean(text, int), public.olnu_crew_k(uuid, uuid), public.olnu_crew_member(uuid, uuid), '
+    || 'public.olnu_crew_name(uuid, uuid), public.olnu_crew_now(), public.olnu_crew_last_night(timestamptz), '
+    || 'public.olnu_crew_town(float8, float8), public.olnu_crew_pres(uuid), public.olnu_crew_members(uuid, uuid), '
+    || 'public.olnu_crew_town_groups(text, float8, float8), public.olnu_crew_glabel(uuid, uuid), '
+    || 'public.olnu_crew_torch_move(bigint, uuid), public.olnu_crew_torch_tick(bigint), '
+    || 'public.olnu_crew_my_town(uuid, float8, float8), public.olnu_crew_torch_json(bigint, uuid, boolean), '
+    || 'public.olnu_crew_track_add(uuid, text, text, text, float8, float8), public.olnu_crew_ci_tg(), public.olnu_crew_beer_tg(), '
+    || 'public.olnu_crew_replay_open(uuid), public.olnu_crew_group_json(uuid, uuid, boolean), public.olnu_crew_dance_json(text)';
+  v_rpcs text := 'public.crew_group(uuid), public.crew_poll(float8, float8), '
+    || 'public.crew_dep_set(uuid, timestamptz, text, text, float8, float8), public.crew_dep_join(bigint, boolean), '
+    || 'public.crew_dep_cancel(bigint), public.crew_dates_create(uuid, date[], text), '
+    || 'public.crew_dates_vote(bigint, date, text), public.crew_dates_close(bigint), public.crew_bye(boolean), '
+    || 'public.crew_dance_report(text, text, float8, float8, float8, float8, int), public.crew_dance_bar(text), '
+    || 'public.crew_torch(float8, float8), public.crew_torch_light(uuid, float8, float8), public.crew_torch_pass(uuid, text), '
+    || 'public.crew_torch_answer(uuid, boolean), public.crew_replay(uuid), public.crew_mood_start(uuid), '
+    || 'public.crew_mood_answer(bigint, text)';
+begin
+  execute 'revoke all on function ' || v_helpers || ' from public';
+  execute 'revoke all on function ' || v_rpcs || ' from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function ' || v_helpers || ' from anon';
+    execute 'revoke all on function ' || v_rpcs || ' from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function ' || v_helpers || ' from authenticated';
+    execute 'grant execute on function ' || v_rpcs || ' to authenticated';
+  end if;
+end $$;
