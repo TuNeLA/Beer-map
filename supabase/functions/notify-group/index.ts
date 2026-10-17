@@ -193,6 +193,32 @@ export const KAOS_LINES: string[] = [
   "🦆 Till och med änderna i {stad} har gått ut.",
 ];
 
+export const HOME_LINES: string[] = [
+  "🏠 {namn} har kommit hem. Uppdraget slutfört!",
+  "🛌 {namn} är hemma och i säng. God natt, soldat.",
+  "🏠 {namn} har landat hemma. Inga förluster rapporterade.",
+  "🦉 {namn} är hemma. Resten av er får klara er själva.",
+  "🏡 {namn} har tagit sig hem helskinnad. Skål för det!",
+  "🧦 {namn} är hemma i tofflorna. Kvällen är över.",
+  "📦 Leverans klar: {namn} är hemma.",
+  "🛬 {namn} har landat på hemmaplan.",
+  "🌙 {namn} har checkat ut. Hemma och säker.",
+  "🐻 Björnen har gått i ide. {namn} är hemma.",
+];
+
+export const PAUSE_LINES: string[] = [
+  "🥀 {namn} har fått öltorsk. Nån borde skicka hjälp!",
+  "🏜️ Torka i glaset hos {namn}. Öltorsk konstaterad.",
+  "😢 {namn} har slutat dricka. Ska vi ringa nån?",
+  "🍺❌ {namn} har lagt ner glaset. Vad är det som händer?!",
+  "🚱 {namn} har drabbats av akut öltorsk.",
+  "😴 {namn} har tagit paus. Svag insats, soldat.",
+  "🐢 {namn} tar det lugnt nu. Tråkmåns.",
+  "🧊 {namn} har frusit fast. Inget mer öl på ett tag.",
+  "🫗 Glaset är tomt och {namn} fyller inte på. Larm!",
+  "🪦 Här vilar kvällen för {namn}. Den var kort men fin.",
+];
+
 export function fill(tpl: string, vars: Record<string, string | number>): string {
   return tpl.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 }
@@ -437,6 +463,63 @@ async function sendAll(admin: Admin, jobs: Job[]) {
   return { sent, failed };
 }
 
+// Status push to group-mates: "home" (Jag är hemma) or "pause" (öltorsk). Once per kind per night.
+async function statusPush(admin: Admin, uid: string, kind: "home" | "pause") {
+  const none = { sent: 0, failed: 0, status: 0 };
+  const nowIso = new Date().toISOString();
+  const { data: beer, error } = await admin
+    .from("beers").select("id, expires_at, beer_count")
+    .eq("user_id", uid).gt("expires_at", nowIso).maybeSingle();
+  if (error) throw error;
+  if (!beer || !(beer.beer_count >= 1)) return none;
+
+  const { data: mine, error: mineErr } = await admin
+    .from("group_members").select("group_id, display_name").eq("user_id", uid);
+  if (mineErr) throw mineErr;
+  if (!mine || mine.length === 0) return none;
+
+  // Claim once per kind per night (anti-spam), only after we know there is a group.
+  const { data: claimed, error: cErr } = await admin
+    .from("push_sent")
+    .upsert([{ user_id: uid, kind, night: beer.expires_at }], { onConflict: "user_id,kind,night", ignoreDuplicates: true })
+    .select("user_id");
+  if (cErr) throw cErr;
+  if (!claimed || claimed.length === 0) return none;
+
+  const nameByGroup = new Map<string, string>();
+  for (const m of mine) nameByGroup.set(m.group_id as string, m.display_name as string);
+  const { data: others, error: othersErr } = await admin
+    .from("group_members").select("group_id, user_id")
+    .in("group_id", [...nameByGroup.keys()]).neq("user_id", uid);
+  if (othersErr) throw othersErr;
+  const nameFor = new Map<string, string>();
+  for (const o of others ?? []) {
+    const name = nameByGroup.get(o.group_id as string);
+    if (!name) continue;
+    const prev = nameFor.get(o.user_id as string);
+    if (prev === undefined || name < prev) nameFor.set(o.user_id as string, name);
+  }
+  if (nameFor.size === 0) return none;
+  const { data: subs, error: subsErr } = await admin
+    .from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth")
+    .in("user_id", [...nameFor.keys()]);
+  if (subsErr) throw subsErr;
+
+  const lines = kind === "home" ? HOME_LINES : PAUSE_LINES;
+  const idx = Math.floor(Math.random() * lines.length);
+  const body = kind === "home" ? "Kvällen är slut för den här soldaten." : "Pinnen är borta från kartan.";
+  const jobs: Job[] = ((subs ?? []) as Sub[]).map((s) => ({
+    sub: s,
+    payload: JSON.stringify({
+      title: fill(lines[idx], { namn: nameFor.get(s.user_id) ?? "En vän" }),
+      body, url: "/", tag: `olnu-${beer.id}-${kind}`,
+    }),
+  }));
+  if (jobs.length === 0) return none;
+  const r = await sendAll(admin, jobs);
+  return { ...r, status: jobs.length };
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -466,6 +549,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    // Optional body {event: "home" | "pause"} from "Sluta dricka". Old clients send no body.
+    let event = "";
+    try {
+      const bj = await req.json();
+      event = bj && typeof bj.event === "string" ? bj.event : "";
+    } catch (_e) { event = ""; }
+    if (event === "home" || event === "pause") {
+      return json(await statusPush(admin, uid, event));
+    }
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

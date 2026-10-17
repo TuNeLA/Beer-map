@@ -853,13 +853,26 @@
       Promise.resolve(client.functions.invoke("notify-group")).then(function () {}, function () {});
     } catch (e) {}
   }
-  $("btn-stop").addEventListener("click", function () {
+  // "Sluta dricka": choose "Jag är hemma" or "Öltorsk". Both hide the pin; the group gets a fun push.
+  function stopBeer(kind) {
     var sb = $("btn-stop"); if (sb.disabled) return;
-    sb.disabled = true;
+    sb.disabled = true; closeSheet();
     rpc("stop_beer").then(function (r) {
       sb.disabled = false;
       if (r.error) { toast(errMsg(r.error), { err: true }); return; }
-      toast(t("stopped"), { ms: 5000 }); refresh();
+      toast(kind === "home" ? t("stopHomeToast") : t("stopPauseToast"), { ms: 5000 }); refresh();
+      if (PUSH_ON && client && client.functions) {
+        try { Promise.resolve(client.functions.invoke("notify-group", { body: { event: kind } })).then(function () {}, function () {}); } catch (e) {}
+      }
+    });
+  }
+  $("btn-stop").addEventListener("click", function () {
+    if ($("btn-stop").disabled) return;
+    openSheet(t("stopTitle"), function (body) {
+      body.appendChild(el("p", { class: "muted", text: t("stopInfo") }));
+      body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn("🏠 " + t("stopHome"), "btn-green btn-block", function () { stopBeer("home"); })]));
+      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("🥀 " + t("stopPause"), "btn-amber btn-block", function () { stopBeer("pause"); })]));
+      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("cancel"), "btn-block", closeSheet)]));
     });
   });
 
