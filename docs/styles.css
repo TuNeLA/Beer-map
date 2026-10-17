@@ -418,3 +418,21 @@ input.code-inp{text-transform:uppercase;letter-spacing:.35em;font-size:24px;text
   font-size:44px;line-height:1;color:var(--amber,#f5a623);text-shadow:0 0 12px rgba(245,166,35,.8);pointer-events:none;animation:guideBounce 1s ease-in-out infinite}
 @keyframes guideBounce{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,10px)}}
 @media (prefers-reduced-motion:reduce){.guide-arrow{animation:none}}
+
+/* ---------- v8: map sources ⓘ button + popover (replaces the wide Leaflet attribution bar) ---------- */
+.attrib-btn{position:fixed;z-index:999;left:calc(var(--sal) + 10px);bottom:calc(var(--dock-h,212px) + 4px);width:28px;height:28px;padding:0;border-radius:50%;
+  border:1px solid rgba(245,166,35,.45);background:rgba(10,15,28,.55);color:var(--muted);cursor:pointer;display:grid;place-items:center;
+  font:italic 700 15px/1 Georgia,"Times New Roman",serif;opacity:.75;-webkit-tap-highlight-color:transparent}
+.attrib-btn::after{content:"";position:absolute;inset:-8px}   /* bigger tap target, same look */
+.attrib-btn:hover,.attrib-btn[aria-expanded="true"]{opacity:1;color:var(--amber-2);border-color:var(--amber)}
+.attrib-btn:focus-visible{outline:2px solid var(--amber-2);outline-offset:2px;opacity:1}
+.attrib-pop{position:fixed;z-index:1001;left:calc(var(--sal) + 10px);bottom:calc(var(--dock-h,212px) + 40px);
+  max-width:min(300px,calc(100vw - 20px - var(--sal) - var(--sar)));padding:8px 10px;background:rgba(10,15,28,.95);border:1px solid var(--line);
+  color:var(--muted);font-size:11.5px;line-height:1.45;box-shadow:0 8px 24px #000a}
+.attrib-pop a{color:var(--amber-2)}
+.attrib-pop[hidden]{display:none}
+
+/* ---------- v8: news ticker ---------- */
+.tk-kick{flex:0 0 auto;color:#241300;background:var(--amber);padding:1px 7px;margin-right:12px;font-size:11.5px;letter-spacing:.06em}
+.tk-item.tk-hot{color:var(--fire)}
+.tk-item.tk-me{color:var(--gold)}

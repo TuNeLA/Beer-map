@@ -86,11 +86,13 @@
   // Voice: the phone's own Swedish voice says a random line, with a random "character"
   // (pitch/tempo). Off when sound is muted, or when the phone has no Swedish voice.
   var VOICE_LINES = [
-    "Skååål!", "Skål på dej!", "Hörru, skål då!", "Nu jäklar. Skål!", "Skål för sjutton!",
-    "Ner me den!", "Botten upp, soldat!", "Uppdrag slutfört. Skål!", "En till, en till!",
-    "Int' kan man väl säga nej?", "Det här ska firas. Skål!", "Senaste nytt: ännu en öl. Skål!",
-    "Order mottagen. Öl levererad.", "Gutår!", "Ja men ta mej tusan. Skål!", "Skål, och drick lite vatten nu.",
-    "Hej å hå, nu går det undan!", "Sånt här gillar vi i Dalarna. Skål!", "Kalasbra. Skål!", "Ölen är din vän. Skål!"
+    // Spelled the way it sounds in dalmål, so the phone voice says it with a Dalarna touch.
+    "Skååål!", "Skål på däj!", "Hörrö du, skål då!", "Nu jäklar ä dä fest. Skål!", "Ja men skål för sjutton!",
+    "Ner mä'n!", "Botten opp, pojk!", "Dä ä la klart vi ska ha en öl!", "En te, en te!",
+    "Int' kan man la säj nej?", "Dä hära ska firas. Skål!", "Nu går ä undan i byn!",
+    "Ja ja, dä ä bra dä. Skål!", "Gutår, gutår!", "Ja men ta mäj tusan. Skål!", "Skål, å drick lite vatten no.",
+    "Hej å hå, nu bär ä i väg!", "Såntdära gillar vi i Dalarna. Skål!", "Kalasbra dä hära. Skål!", "Va gör du då? Skål!",
+    "Int' sitt hemma no, kom ut!", "Dä ä fredag i hela kroppen. Skål!", "Ölen ä din bäste kompis. Skål!", "Nu ä dä slut på vattnet. Skål!"
   ];
   var VOICES = [
     { rate: 1.15, pitch: 0.7 },   // sergeanten

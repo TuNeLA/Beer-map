@@ -65,7 +65,7 @@
 
   /* ---------- Map ---------- */
   var map = L.map("map", {
-    zoomControl: false, attributionControl: true, minZoom: 4, maxZoom: 19,
+    zoomControl: false, attributionControl: false, minZoom: 4, maxZoom: 19,
     maxBounds: MAX_BOUNDS, maxBoundsViscosity: 0.8, worldCopyJump: false, tap: true
   });
   // Start on Ludvika. If the user allows location, we move to them (see locate()).
@@ -84,7 +84,26 @@
     }).addTo(map);
     L.tileLayer(ESRI + "World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19, opacity: 0.85 }).addTo(map);
   }
-  map.attributionControl.setPrefix(false);
+  // Dock height as a CSS var, so the ⓘ map-sources button sits just above the dock (the Sluta dricka row comes and goes).
+  (function () {
+    var dock = document.querySelector(".dock");
+    function upd() { document.documentElement.style.setProperty("--dock-h", Math.round(dock.getBoundingClientRect().height) + "px"); }
+    upd();
+    if (window.ResizeObserver) new ResizeObserver(upd).observe(dock); else window.addEventListener("resize", upd);
+  })();
+  /* Map sources: a small ⓘ button with a popover (OSM guidelines allow an "i" toggle on small screens). */
+  (function () {
+    var btn = $("btn-attrib"), pop = $("attrib-pop"), parts = [];
+    map.eachLayer(function (l) { var a = l.getAttribution && l.getAttribution(); if (a && parts.indexOf(a) < 0) parts.push(a); });
+    pop.innerHTML = parts.join(" | ");   // static strings from the tile layers above
+    function setOpen(on) { pop.hidden = !on; btn.setAttribute("aria-expanded", String(on)); }
+    btn.addEventListener("click", function (e) { e.stopPropagation(); setOpen(pop.hidden); });
+    document.addEventListener("pointerdown", function (e) {
+      if (!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) setOpen(false);
+    }, true);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !pop.hidden) { setOpen(false); btn.focus(); } });
+    map.on("movestart", function () { setOpen(false); });
+  })();
   // Keep popups clear of the top HUD and the bottom dock.
   L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 240), maxWidth: 300 });
 
@@ -344,25 +363,26 @@
     var d = window.BARS.describe(b);
     return d.kind === "near" ? t("nearX", d.name) : d.name || t("other");
   }
-  var tickerKey = "";
+  // LIVE ticker = funny TV news feed (js/news.js). New headlines after each poll (or language change), not on map moves.
+  var tickerKey = "", newsDirty = true, newsPrev = [];
   function renderTicker() {
-    var list = beers.filter(function (b) { return U.level(b.beer_count) > 0; })
-      .sort(function (a, b) { return U.level(b.beer_count) - U.level(a.beer_count) || b.beer_count - a.beer_count; })
-      .slice(0, 12);
-    var items = list.map(function (b) {
-      var who = whoOf(b), where = whereOf(b), n = b.beer_count | 0;
-      var friend = b.friend_name ? " tk-friend" : "";
-      return '<span class="tk-item' + friend + (U.level(n) === 2 ? " tk-med" : "") + '">' +
-        U.esc(U.level(n) === 2 ? t("tickMed", who, where, n) : t("tickHot", who, where, n)) + "</span>";
-    });
-    var html = items.length ? items.join('<span class="tk-sep">///</span>') : '<span class="tk-item tk-quiet">' + U.esc(t("tickQuiet")) + "</span>";
-    if (html === tickerKey) return;
+    if (!newsDirty && tickerKey) return;
+    newsDirty = false;
+    var items = window.NEWS ? window.NEWS.build(beers, { center: chaosCenter(), now: new Date(), prev: newsPrev }) : [];
+    if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
+    newsPrev = items.map(function (x) { return x.text; });
+    var chars = 0;
+    var html = '<span class="tk-kick">' + U.esc(t("newsKick")) + "</span>" + items.map(function (x) {
+      chars += x.text.length;
+      return '<span class="tk-item' + (x.cls ? " " + x.cls : "") + '">' + U.esc(x.text) + "</span>";
+    }).join('<span class="tk-sep">///</span>') + '<span class="tk-sep">///</span>';
     tickerKey = html;
     var track = $("ticker-track");
     // Duplicate content for a seamless loop.
-    track.innerHTML = '<span class="tk-run">' + html + '</span>' + (items.length ? '<span class="tk-run" aria-hidden="true">' + html + "</span>" : "");
-    track.classList.toggle("moving", items.length > 0);
-    track.style.animationDuration = Math.max(14, items.length * 7) + "s";
+    track.innerHTML = '<span class="tk-run">' + html + '</span><span class="tk-run" aria-hidden="true">' + html + "</span>";
+    track.classList.add("moving");
+    // About 55 px per second at 13 px font.
+    track.style.animationDuration = Math.max(16, Math.round(chars * 0.13)) + "s";
   }
   var prevLevels = null;
   function streakAlerts() {
@@ -579,6 +599,8 @@
     $("soon-chip").hidden = LIVE;
     $("soon-chip").textContent = t("soonChip");
     $("btn-locate").setAttribute("aria-label", t("locate"));
+    $("btn-attrib").setAttribute("aria-label", t("mapSources"));
+    $("btn-attrib").title = t("mapSources");
     $("btn-locate").title = t("locate");
     $("offline-text").textContent = t("offline");
     $("btn-top").setAttribute("aria-label", t("top"));
@@ -586,7 +608,7 @@
     applyHeatBtn();
     applyPrec();
     updateCounts();
-    tickerKey = ""; renderTicker();
+    tickerKey = ""; newsDirty = true; renderTicker();
     if (chaosRes) evalChaos(false);
     $("chaos-show").textContent = t("chaosShow");
     $("chaos-close").setAttribute("aria-label", t("chaosHide"));
@@ -622,6 +644,8 @@
         var mine = mySkals[b.id];
         if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
       });
+      if (window.NEWS) window.NEWS.update(beers);
+      newsDirty = true;
       render();
       loadHeatPoints();
       streakAlerts();
@@ -1556,7 +1580,7 @@
     window.BARS.init({ map: map, onChange: function () { render(); if (chaosRes) evalChaos(false); } });
     // Restaurant names for the feed: load after the map is up, then redraw the ticker.
     setTimeout(window.BARS.loadPlaces, 1500);
-    window.BARS.onPlacesReady(function () { tickerKey = ""; renderTicker(); });
+    window.BARS.onPlacesReady(function () { tickerKey = ""; newsDirty = true; renderTicker(); });
     var intro = introDone() ? Promise.resolve() : showIntro(false);
     // Returning user who allowed location before: center on them quietly.
     if (introDone() && U.ls.get("olnu.locOk", "") === "1") locate({ quiet: true });

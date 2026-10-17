@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="./styles.css?v=da4b09eb5c">
+<link rel="stylesheet" href="./styles.css?v=ed5cd49be5">
 </head>
 <body>
 <div id="map" aria-label="Karta"></div>
@@ -48,6 +48,8 @@
 </div>
 <div id="my-streak" class="my-streak" hidden></div>
 <button id="btn-heat" class="map-chip" type="button" aria-pressed="false" hidden>🔥 Värme</button>
+<button id="btn-attrib" class="attrib-btn" type="button" aria-label="Kartkällor" title="Kartkällor" aria-expanded="false" aria-controls="attrib-pop"><span aria-hidden="true">i</span></button>
+<div id="attrib-pop" class="attrib-pop" role="note" hidden></div>
 <button id="btn-locate" class="locate-btn" type="button" aria-label="Visa var jag är"><span aria-hidden="true">📍</span></button>
 <div id="offline-banner" class="offline-banner" role="status" hidden><span id="offline-text">Du är offline.</span></div>
 
@@ -100,19 +102,20 @@
   <div id="intro-body" class="intro-card hud-panel"></div>
 </div>
 
-<script src="./config.js?v=da4b09eb5c"></script>
+<script src="./config.js?v=ed5cd49be5"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="./js/i18n.js?v=da4b09eb5c"></script>
-<script src="./js/util.js?v=da4b09eb5c"></script>
-<script src="./js/bars.js?v=da4b09eb5c"></script>
-<script src="./js/push.js?v=da4b09eb5c"></script>
-<script src="./js/fx.js?v=da4b09eb5c"></script>
-<script src="./js/cities.js?v=da4b09eb5c"></script>
-<script src="./js/chaos.js?v=da4b09eb5c"></script>
-<script src="./app.js?v=da4b09eb5c"></script>
+<script src="./js/i18n.js?v=6a8ae9b2ba"></script>
+<script src="./js/util.js?v=6a8ae9b2ba"></script>
+<script src="./js/bars.js?v=6a8ae9b2ba"></script>
+<script src="./js/push.js?v=6a8ae9b2ba"></script>
+<script src="./js/fx.js?v=6a8ae9b2ba"></script>
+<script src="./js/cities.js?v=6a8ae9b2ba"></script>
+<script src="./js/chaos.js?v=6a8ae9b2ba"></script>
+<script src="./js/news.js?v=6a8ae9b2ba"></script>
+<script src="./app.js?v=6a8ae9b2ba"></script>
 </body>
 </html>
