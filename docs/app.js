@@ -599,7 +599,7 @@
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
     var mine = myBeer();
-    $("btn-stop").hidden = !mine;
+    $("btn-stop").hidden = true; // Hidden from the dock (user asked). Still reachable in ⚙️ Inställningar.
     var night = myNight(), n = mine ? mine.beer_count | 0 : night ? night.count | 0 : 0;
     // Other drinks tonight: from the live pin, else the local count (pin hidden).
     var oc = mine ? mine.other_count | 0 : 0;
@@ -886,6 +886,45 @@
     if (n > 5) return t("lvlHot", n);
     return t("lvlN", n);
   }
+  // "Var dricker du?" — sometimes asks which bar you are at, so the beer counts there.
+  // Asks: on the first beer tonight, when you moved > 150 m since the last pick, or now and then (1 in 4).
+  // Else it reuses the last picked bar while you stay within 150 m of where you picked it.
+  // Close the sheet = use the real GPS position. A picked bar puts the pin on the bar.
+  var WHERE_KEY = "olnu.where", WHERE_R = 400, WHERE_STAY = 150;
+  function askWhere(pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    var real = { lat: lat, lng: lng, precise: prec === "exact" };
+    var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6) : [];
+    if (!list.length) return Promise.resolve(real);
+    var last = U.ls.getJSON(WHERE_KEY, null), night = myNight();
+    var fresh = last && last.until > Date.now();
+    var stayed = fresh && U.haversine(lat, lng, last.atLat, last.atLng) <= WHERE_STAY;
+    var first = !night || !(night.count | 0);
+    if (stayed && !first && Math.random() >= 0.25) {
+      return Promise.resolve(last.bar ? { lat: last.bar.lat, lng: last.bar.lng, precise: true } : real);
+    }
+    return new Promise(function (resolve) {
+      var done = false;
+      function pick(bar) {
+        if (done) return; done = true;
+        U.ls.setJSON(WHERE_KEY, { atLat: lat, atLng: lng, until: U.nightEnd ? U.nightEnd() : Date.now() + 6 * 3600e3,
+          bar: bar ? { id: bar.id, name: bar.name, lat: bar.lat, lng: bar.lng } : null });
+        sheetOnClose = null; closeSheet();
+        resolve(bar ? { lat: bar.lat, lng: bar.lng, precise: true } : real);
+      }
+      openSheet(t("whereTitle"), function (body) {
+        body.appendChild(el("p", { class: "muted", text: t("whereInfo") }));
+        list.forEach(function (x, i) {
+          var m = Math.round(x.d / 10) * 10;
+          body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [
+            btn("🍺 " + x.bar.name + "  · " + (m < 20 ? t("whereHere") : m + " m"), (i === 0 ? "btn-amber " : "") + "btn-block", function () { pick(x.bar); })
+          ]));
+        });
+        body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn("🏠 " + t("whereNone"), "btn-ghost btn-block", function () { pick(null); })]));
+      });
+      sheetOnClose = function () { if (!done) { done = true; resolve(real); } };
+    });
+  }
   $("btn-beer").addEventListener("click", function () {
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (busy || cooldownLeft() > 0) return;
@@ -895,8 +934,8 @@
     window.FX.splash($("btn-beer"));
     window.FX.vibrate(20);
     setBusy(true);
-    getPosition().then(function (pos) {
-      return rpc("post_beer", { p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: prec === "exact" })
+    getPosition().then(askWhere).then(function (spot) {
+      return rpc("post_beer", { p_lat: spot.lat, p_lng: spot.lng, p_precise: spot.precise })
         .then(function (r) {
           if (r.error) { toast(errMsg(r.error, t("postFail")), { err: true, ms: 6000 }); return; }
           var d = parseData(r.data);
@@ -1402,6 +1441,7 @@
       body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("📲 " + t("inviteBtn"), "btn-amber btn-block", showInvite)]));
       if (!U.isStandalone()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("guideTitle"), "btn-block", showInstallGuide)]));
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
+      if (LIVE && myBeer()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("stop"), "btn-block", function () { $("btn-stop").click(); })]));
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
       var saveName = function () {

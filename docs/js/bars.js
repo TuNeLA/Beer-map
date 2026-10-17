@@ -283,6 +283,20 @@
         });
     },
     nearest: nearestBar,
+    // Named bars within maxM metres, nearest first: [{ bar, d }]. Search is the 3x3 grid (~1 km).
+    nearby: function (lat, lng, maxM, max) {
+      var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), out = [];
+      for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+        var cell = grid[(gy + dy) + "_" + (gx + dx)]; if (!cell) continue;
+        for (var i = 0; i < cell.length; i++) {
+          if (!cell[i].name) continue;
+          var d = U.haversine(lat, lng, cell[i].lat, cell[i].lng);
+          if (d <= maxM) out.push({ bar: cell[i], d: d });
+        }
+      }
+      out.sort(function (a, b) { return a.d - b.d; });
+      return max ? out.slice(0, max) : out;
+    },
     byId: function (id) { return bars[id] || null; },
     inBounds: function (b, max) {
       var out = [];
