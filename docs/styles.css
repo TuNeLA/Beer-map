@@ -619,3 +619,43 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 .ci-btn.busy{opacity:.6}
 .pp-ci{margin-top:6px;color:var(--green);font-size:13px}
 .hx-ci{color:var(--green);border-color:var(--green-d);max-width:150px}
+
+/* ---------- Crowd list sheet (cluster tap / "Visa alla") ---------- */
+.crowd-head{display:flex;flex-direction:column;gap:2px;margin:0 0 10px}
+.crowd-where{font-weight:700;font-size:15px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crowd-sum{font-family:var(--hud);font-size:12.5px;color:var(--muted)}
+.crowd-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cr-row{display:flex;align-items:center;gap:8px;min-height:56px;padding:4px 8px 4px 0;background:var(--night);
+  border:1px solid var(--line-soft);border-left:3px solid var(--amber)}
+.cr-row.friend{border-left-color:var(--green)}
+.cr-row.mine{border-left-color:var(--gold);background:rgba(58,38,0,.35)}
+.cr-row.hot{box-shadow:inset 3px 0 0 var(--fire)}
+.cr-row.medevac{box-shadow:inset 3px 0 0 var(--red)}
+.cr-main{flex:1;min-width:0;align-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  padding:4px 0 4px 10px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.cr-main:active{background:var(--night-3)}
+.cr-name{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-row.friend .cr-name{color:var(--green)}
+.cr-row.mine .cr-name{color:var(--gold)}
+.cr-sub{font-family:var(--hud);font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-n{flex:0 0 auto;font-family:var(--hud);font-size:14px;color:var(--amber-2);white-space:nowrap;text-align:right}
+.cr-n b{font-weight:400;font-size:17px}
+.cr-oc{display:block;font-size:12px;color:#d9b8ff}
+.cr-act{flex:0 0 auto}
+.cr-act .skal-btn.small{min-height:40px;min-width:76px;font-size:12px}
+.cr-skal{flex:0 0 auto;font-family:var(--hud);font-size:12px;color:var(--gold);min-width:76px;text-align:center}
+.crowd-note{margin-top:10px !important;font-size:12px}
+.pp-all{margin-top:8px}
+@media (max-width:370px){.cr-act .skal-btn.small{min-width:0;padding:0 6px}.cr-skal{min-width:0}.cr-name{font-size:15px}}
+
+/* ---------- Flytta konto (flyttkod) ---------- */
+.flytt-step{padding:12px;margin:4px 0 10px;background:rgba(245,166,35,.08);border:1px solid var(--line);border-left:3px solid var(--amber)}
+.flytt-step p{margin:0 0 8px}
+.flytt-warn{border-color:rgba(255,59,59,.45);background:rgba(255,59,59,.08)}
+.flytt-link{font-family:var(--hud);font-size:11px;color:var(--muted);text-align:center;word-break:break-all;max-height:3.6em;overflow:hidden;margin:4px 0}
+.flytt-paste{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.flytt-paste[hidden]{display:none}
+.flytt-skip{display:block;margin:8px auto 0;background:none;border:0;color:var(--muted);text-decoration:underline;font:inherit;font-size:13px;cursor:pointer;min-height:40px}
+.flytt-card .intro-p{text-align:center}
+.flytt-card .btn-block+.btn-block{margin-top:8px}
+.guide-steps[hidden],.flytt-skip[hidden]{display:none}

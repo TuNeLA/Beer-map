@@ -263,3 +263,19 @@ Tap a bar on the map → "📍 Checka in". Group-mates get "📍 Anton har anlä
 - `live_checkins` is fetched in the same 30 s poll as `live_beers`.
 - ÖL! tap: a fresh own check-in (< 3 h) within 150 m of the GPS position → the beer goes on that bar, no "Var dricker du?" question.
 - Ticker (`news.js`): `ctx.checkins`; kinds `checkin` (friend, last 45 min, imp 2), `meCheckin` (imp 1), `checkinCrowd` (bar with 2+ check-ins, imp 1), `friendBeer` (friends with n ≥ 1, imp 0). Swedish templates from `js/news-more.js` (`window.NEWS_MORE.sv`) are merged in; fallbacks in `i18n.js`.
+
+## v11 CROWD LIST + FLYTTKOD (frontend only; no server change)
+### Crowded spots
+- Clusters never spiderfy and never switch off (no `disableClusteringAtZoom`). `maxClusterRadius` = 130 px at zoom ≥ 13 (a pill + name label is ~90–130 px wide), else 80.
+- Cluster tap (`zoomToBoundsOnClick:false`, own `clusterclick`): if the pins span ≤ 120 m, or zoom ≥ 17, or zooming would not split them → bottom sheet "🍺 N dricker här" (+ "📍 vid X" via `BARS.describe`; approximate pins only name the town). Else zoom to the cluster bounds.
+- Sheet rows: me first, then friends, then beer_count desc. Row = name (`whoOf`), "sedan HH:MM", beers + level + other drinks, Skål button (same `doSkal`; own row shows "🍻 N skål"). Tap a name → fly to the pin and open its popup (a popup on the pin's spot when it is still clustered).
+- Bar popup with more than 8 people: "👥 Visa alla (N)" opens the same sheet.
+
+### Flyttkod (move the account to the home-screen app / another phone)
+- Code = base64url(JSON `{v:1, rt, u, name, ls}`): `rt` = current refresh token from localStorage `olnu.auth`, `u` = user id, `ls` = whitelisted `olnu.*` keys (lang, prec, intro, locOk, night, checkin, title, badges, ghostMode, mute, heat, …; big ones dropped to keep the code ≤ 900 chars). Not moved: auth, bar caches, push state, "already asked" flags. The code is a login credential: never logged, never sent anywhere.
+- Import (before anonymous sign-in): `?flytt=<code>` / `#flytt=<code>`, or pasted (code or whole link). `auth.refreshSession({refresh_token})`; on failure the old session is put back and the app signs in as normal with a toast. Success → write keys, reload once (toast "✅ Kontot är flyttat"). A code whose `u` is already the current user, or that was tried before in this browser (`olnu.flyttUsed` = short hashes), is ignored (an iOS start URL may keep `?flytt=`).
+- Export: the source never uses that session again (refresh tokens rotate; reuse can revoke the session). It removes `olnu.auth` WITHOUT signOut, stops auto refresh, sets `olnu.moved` (+ `olnu.movedTo`, `olnu.movedU`) and shows a full-screen notice with "Fortsätt här ändå" (= new anonymous account).
+  - Settings "📲 Flytta till annan app / telefon": warning + confirm → push unsubscribed, logged out at once, sheet with QR + "Kopiera länk".
+  - iOS Safari install guide: step 1 "📋 Förbered flytt" → `?flytt=` in the URL (replaceState) + link on the clipboard; `olnu.flyttPending`. The move finishes when the page comes back after ≥ 10 s hidden, on next load, when the server rejects the token (401), or before the access token expires.
+  - In-app browser help: "📋 Kopiera flyttlänk" (same pending flow).
+- Standalone first start with no session and no code: "Har du använt Öl Nu i Safari/webbläsaren förut?" → "📋 Klistra in flyttkod" (clipboard, text field fallback) / "Nej, börja nytt" (`olnu.flyttAsked`). Settings also has "📥 Jag har en flyttkod".

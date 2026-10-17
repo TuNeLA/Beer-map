@@ -25,6 +25,8 @@
   // Always resolves to {data, error}. Never rejects, never hangs longer than RPC_TIMEOUT_MS.
   function rpc(name, params) {
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
+    // Account moved away (flyttkod): this browser must never use or refresh that session again.
+    if (flyttGuard()) return Promise.resolve({ data: null, error: { message: "moved" } });
     return new Promise(function (resolve) {
       var done = false;
       var tm = setTimeout(function () { done = true; resolve({ data: null, error: { message: "timeout" } }); }, RPC_TIMEOUT_MS);
@@ -121,8 +123,14 @@
   map.createPane("bars"); map.getPane("bars").style.zIndex = 590;
   map.createPane("hotbars"); map.getPane("hotbars").style.zIndex = 650;
 
+  // Never spiderfy (a crowded spot became a tangle). A tap on a cluster zooms in, or, when zooming
+  // would not split it (same spot, or already close in), opens a clean list sheet (openCrowd).
+  // Clustering stays on at every zoom (no disableClusteringAtZoom) so pins never sit on top of each other.
+  // A pill with a name label ("5 🍺 · 2 🥃" + "Robban") is ~90–130 px wide, so pins closer than that
+  // stay in one cluster; pins further apart show one by one.
   var clusters = L.markerClusterGroup({
-    showCoverageOnHover: false, spiderfyOnMaxZoom: true, maxClusterRadius: 50, disableClusteringAtZoom: 18,
+    showCoverageOnHover: false, spiderfyOnMaxZoom: false, zoomToBoundsOnClick: false,
+    maxClusterRadius: function (z) { return z >= 13 ? 130 : 80; },
     iconCreateFunction: function (cluster) {
       var kids = cluster.getAllChildMarkers(), friend = false, mine = false, lvl = 0, n = 0;
       for (var i = 0; i < kids.length; i++) {
@@ -139,6 +147,17 @@
     }
   });
   map.addLayer(clusters);
+  var CROWD_SPAN_M = 120, CROWD_ZOOM = 17;
+  clusters.on("clusterclick", function (e) {
+    var c = e.layer; if (!c) return;
+    var list = [];
+    c.getAllChildMarkers().forEach(function (m) { var b = beerById(m.options.beerId); if (b) list.push(b); });
+    var bnds = c.getBounds(), z = map.getZoom();
+    var span = bnds.isValid() ? U.haversine(bnds.getSouth(), bnds.getWest(), bnds.getNorth(), bnds.getEast()) : 0;
+    var target = bnds.isValid() ? map.getBoundsZoom(bnds.pad(0.3)) : z;
+    if (list.length && (span <= CROWD_SPAN_M || z >= CROWD_ZOOM || target <= z || z >= map.getMaxZoom())) openCrowd(list, null);
+    else c.zoomToBounds({ padding: [40, 40] });
+  });
   var hotLayer = L.layerGroup().addTo(map);
   var barLayer = L.layerGroup().addTo(map);
 
@@ -290,6 +309,9 @@
           '<span class="pp-n">' + (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
+      if (list.length > 8 && bar.id != null) {
+        h += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(String(bar.id)) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
+      }
     }
     h += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
     return h;
@@ -397,7 +419,7 @@
     var split = z >= HOT_ZOOM ? window.BARS.assign(beers) : { perBar: {}, rest: beers };
     var ms = split.rest.map(function (b) {
       var l = U.level(b.beer_count);
-      var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l,
+      var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l, beerId: b.id,
         zIndexOffset: (b.is_mine ? 900 : b.friend_name ? 500 : 0) + l * 300, keyboard: false, olnuKey: "b" + b.id });
       m.bindPopup(function () { return beerPopup(b); });
       markerById[b.id] = m;
@@ -650,7 +672,89 @@
     root.querySelectorAll(".ci-btn").forEach(function (x) {
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doCheckin(x); });
     });
+    root.querySelectorAll(".pp-all").forEach(function (x) {
+      x.addEventListener("click", function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(beers).perBar[id];
+        map.closePopup();
+        if (agg && agg.beers.length) openCrowd(agg.beers, agg.bar);
+      });
+    });
   });
+
+  /* ---------- Crowd list (many people at one spot) ---------- */
+  // Me first, then friends, then most beers.
+  function crowdSort(a, b) {
+    var ra = a.is_mine ? 0 : a.friend_name ? 1 : 2, rb = b.is_mine ? 0 : b.friend_name ? 1 : 2;
+    return ra - rb || (b.beer_count | 0) - (a.beer_count | 0) || (b.other_count | 0) - (a.other_count | 0) ||
+      String(a.created_at || "").localeCompare(String(b.created_at || ""));
+  }
+  function crowdCountHTML(b) {
+    var n = b.beer_count | 0, oc = b.other_count | 0, l = U.level(n), h = "";
+    if (n > 0 || !oc) h += "<b>" + n + "</b> 🍺" + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : "");
+    if (oc) h += '<span class="cr-oc">' + (n > 0 ? "+" : "") + oc + " 🥃</span>";
+    return h;
+  }
+  // bar: the bar these beers belong to (bar popup "Visa alla"), or null (cluster tap).
+  function openCrowd(list, bar) {
+    list = (list || []).slice().sort(crowdSort);
+    if (!list.length) return;
+    var tot = 0, oth = 0, fr = 0, lat = 0, lng = 0, allPrecise = true;
+    list.forEach(function (b) {
+      tot += b.beer_count | 0; oth += b.other_count | 0; if (b.friend_name) fr++;
+      lat += b.lat; lng += b.lng; if (!b.precise) allPrecise = false;
+    });
+    var where;
+    if (bar) where = t("where_at", bar.name || t("unnamedBar"));
+    else {
+      // Approximate pins never reveal a bar: then only the town.
+      var d = window.BARS.describe({ lat: lat / list.length, lng: lng / list.length, precise: allPrecise });
+      where = d.kind === "unknown" ? t("whereUnknown") : t("where_" + d.kind, d.name);
+    }
+    openSheet(t("crowdTitle", list.length), function (body) {
+      body.appendChild(el("div", { class: "crowd-head" }, [
+        el("div", { class: "crowd-where", text: "📍 " + where }),
+        el("div", { class: "crowd-sum", text: t("crowdSum", tot, oth, fr) })
+      ]));
+      var ul = el("ul", { class: "crowd-list" });
+      list.forEach(function (b) {
+        var l = U.level(b.beer_count);
+        var sub = t("since", U.timeHM(b.created_at)) + (b.precise ? "" : " · " + t("crowdApprox"));
+        var main = el("button", { type: "button", class: "cr-main", "aria-label": t("crowdShow", whoOf(b)), onclick: function () { showBeer(b); } }, [
+          el("span", { class: "cr-name", text: whoOf(b) }),
+          el("span", { class: "cr-sub", text: sub })
+        ]);
+        var right;
+        if (b.is_mine) right = el("span", { class: "cr-skal", text: t("skalN", skalCount(b)) });
+        else {
+          right = el("span", { class: "cr-act", html: skalBtn(b, true) });
+          var sb = right.querySelector(".skal-btn");
+          if (sb) sb.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doSkal(sb); });
+        }
+        ul.appendChild(el("li", { class: "cr-row" + (b.is_mine ? " mine" : b.friend_name ? " friend" : "") + lvlClass(l) }, [
+          main, el("span", { class: "cr-n", html: crowdCountHTML(b) }), right
+        ]));
+      });
+      body.appendChild(ul);
+      body.appendChild(el("p", { class: "muted crowd-note", text: t("crowdTap") }));
+    });
+  }
+  // Fly to one beer and open its popup. When the pin is still inside a cluster (same spot),
+  // the popup opens on its own at the pin's position (no spiderfy).
+  function showBeer(b, z) {
+    if (!b) return;
+    closeSheet();
+    var opened = false;
+    var open = function () {
+      if (opened) return; opened = true;
+      var cur = beerById(b.id) || b, m = markerById[cur.id];
+      if (m && clusters.hasLayer(m) && clusters.getVisibleParent(m) === m) { m.openPopup(); return; }
+      L.popup({ offset: L.point(0, -12) }).setLatLng([cur.lat, cur.lng]).setContent(beerPopup(cur)).openOn(map);
+    };
+    map.once("moveend", function () { setTimeout(open, 200); });
+    map.flyTo([b.lat, b.lng], Math.max(map.getZoom(), z || 18), { duration: 0.9 });
+    setTimeout(open, 2200);   // flyTo to the same view may not fire moveend
+  }
 
   /* ---------- Counts / chrome ---------- */
   function friendsDrinking() {
@@ -783,11 +887,12 @@
   function refresh() {
     // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
     if (loading) { refreshAgain = true; return Promise.resolve(); }
-    if (!LIVE || !authed) return Promise.resolve();
+    if (!LIVE || !authed || movedState) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
     return Promise.all([rpc("live_beers"), fetchOthers(), fetchCheckins()]).then(function (res) {
       var r = res[0], others = res[1] || {};
+      if (movedState) return;   // the account moved away while this poll ran
       if (r.error) throw r.error;
       // Pins: rows with a beer, or (v8) with another drink. Shots-only rows from an older app are not pins.
       beers = (r.data || []).filter(function (b) {
@@ -812,7 +917,12 @@
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
       mods("onPoll", beers);
     }).catch(function (e) {
-      if (U.errCode(e) === "not_authenticated") { reauth(); return; }
+      if (U.errCode(e) === "not_authenticated") {
+        // Export pending and the server stopped taking our token: the new app has taken the account over.
+        var pend = U.ls.getJSON("olnu.flyttPending", null);
+        if (pend && !movedState) { finishExport(pend.kind, false); showMoved().then(signIn); return; }
+        reauth(); return;
+      }
       if (!firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
     }).then(function () {
       loading = false;
@@ -824,8 +934,11 @@
   function startPoll() { if (!pollTimer && LIVE) pollTimer = setInterval(refresh, POLL_MS); }
   function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") { startPoll(); refresh(); tickCooldown(); }
-    else stopPoll();
+    if (document.visibilityState === "visible") {
+      if (flyttOnVisible()) return;   // back from the new app: the account moved, do not poll with the old token
+      startPoll(); refresh(); tickCooldown();
+    }
+    else { flyttHiddenAt = Date.now(); stopPoll(); }
   });
 
   /* ---------- Offline banner ---------- */
@@ -848,8 +961,8 @@
     setTimeout(function () {
       var m = markerById[b.id];
       if (!m) return;
-      if (clusters.hasLayer(m)) clusters.zoomToShowLayer(m, function () { m.openPopup(); });
-      else m.openPopup();
+      // A hot bar badge: open the bar popup. A clustered pin: zoom in, then its own popup (never spiderfy).
+      if (!clusters.hasLayer(m)) m.openPopup(); else showBeer(b, 18);
     }, 350);
   }
 
@@ -869,7 +982,7 @@
   }
   var reauthing = false;
   function reauth() {
-    if (!LIVE || !client || reauthing) return;
+    if (!LIVE || !client || reauthing || movedState || flyttPendingNow()) return;
     reauthing = true; authed = false;
     // Try to refresh the token first: signing out makes a NEW anonymous user and loses all groups.
     client.auth.refreshSession().then(function (r) {
@@ -1347,14 +1460,9 @@
   function cityOf(b) { var c = window.CITIES.nearest(b.lat, b.lng); return c ? c.name : null; }
   function flyTo(lat, lng, z, openId) {
     closeSheet();
+    var b = openId == null ? null : beerById(openId);
+    if (b) { showBeer(b, z); return; }
     map.flyTo([lat, lng], z, { duration: 1.2 });
-    if (openId == null) return;
-    map.once("moveend", function () {
-      setTimeout(function () {
-        var m = markerById[openId]; if (!m) return;
-        if (clusters.hasLayer(m)) clusters.zoomToShowLayer(m, function () { m.openPopup(); }); else m.openPopup();
-      }, 150);
-    });
   }
   function topRows(kind) {
     if (kind === "bars") {
@@ -1515,8 +1623,36 @@
         body.appendChild(el("p", { html: "<b>" + U.esc(t("guideInApp")) + "</b>" }));
         body.appendChild(ol([U.esc(t("guideInApp1")), U.esc(U.isIOS() ? t("guideInApp2ios") : t("guideInApp2and"))]));
         body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "btn-amber btn-block", function () { copyText(inviteLink()); })]));
+        // Flyttlänk: opening it in Safari/Chrome brings this account (name, groups) along.
+        if (LIVE && storedAuth() && !movedState) {
+          body.appendChild(el("p", { class: "muted", style: "margin-top:12px", text: t("flyttInAppHelp") }));
+          body.appendChild(el("div", { class: "row", style: "margin-top:6px" }, [btn(t("flyttInApp"), "btn-block", function () {
+            var code = prepareExport("inapp"); if (code) copyFlytt(flyttLink(code));
+          })]));
+          body.appendChild(el("p", { class: "muted", style: "font-size:12px", text: t("flyttSecret") }));
+        }
       } else if (U.isIOS()) {
-        body.appendChild(ol([t("guideIos1"), t("guideIos2"), t("guideIos3"), t("guideIos4")]));
+        var steps = ol([t("guideIos1"), t("guideIos2"), t("guideIos3"), t("guideIos4")]);
+        if (LIVE && storedAuth() && !movedState) {
+          // Step 1: put the account in the URL (iOS may keep it as the start URL) and on the clipboard
+          // (the home-screen app asks for it). The move finishes when this page comes back (finishExport).
+          steps.setAttribute("start", "2"); steps.hidden = true;
+          var box = el("div", { class: "flytt-step" });
+          box.appendChild(el("p", { html: "1. " + t("flyttIos1") }));
+          var prep = btn(t("flyttPrep"), "btn-amber btn-block", function () {
+            var code = prepareExport("home"); if (!code) return;
+            try { history.replaceState(null, "", location.pathname + "?flytt=" + code + location.hash); } catch (e) {}
+            copyFlytt(flyttLink(code));   // inside the tap: iOS allows the clipboard only here
+            prep.disabled = true; prep.textContent = t("flyttPrepped");
+            skip.hidden = true; steps.hidden = false;
+          });
+          var skip = el("button", { type: "button", class: "flytt-skip", text: t("flyttSkip"), onclick: function () { skip.hidden = true; steps.hidden = false; } });
+          box.appendChild(prep);
+          box.appendChild(el("p", { class: "muted", style: "font-size:12px;margin:8px 0 0", text: t("flyttSecret") }));
+          body.appendChild(box);
+          body.appendChild(skip);
+        }
+        body.appendChild(steps);
         var arrow = el("div", { class: "guide-arrow", "aria-hidden": "true", text: "⬇" });
         document.body.appendChild(arrow);
         var obs = new MutationObserver(function () { if ($("sheet").hidden) { arrow.remove(); obs.disconnect(); } });
@@ -1596,6 +1732,14 @@
       body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
 
       mods("settingsSheet", body);   // ghost mode, badges, night summary, SOS
+
+      if (LIVE) {
+        body.appendChild(el("h3", { text: t("flyttSection") }));
+        var fr = el("div", { class: "row" });
+        if (storedAuth() && !movedState) fr.appendChild(btn(t("flyttBtn"), "btn-block", showFlyttExport));
+        fr.appendChild(btn(t("flyttImportBtn"), "btn-block btn-small", showFlyttImport));
+        body.appendChild(fr);
+      }
 
       body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("showIntro"), "btn-small", function () {
         closeSheet(); showIntro(true);
@@ -1715,7 +1859,7 @@
     });
   }
   function signIn() {
-    if (!client) return Promise.resolve();
+    if (!client || movedState) return Promise.resolve();
     if (signingIn) return signingIn;
     toastClear("auth");
     var delays = [1000, 3000, 6000], attempt = 0;
@@ -1738,6 +1882,346 @@
       toast(t(key), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } });
     }).then(function () { signingIn = null; });
     return signingIn;
+  }
+
+  /* ---------- Flytta konto (flyttkod) ----------
+     iPhone: a home-screen app has its own storage, separate from Safari. Android: an in-app browser
+     (Messenger, Snapchat) has its own storage, separate from Chrome. Without help the user gets a new
+     anonymous account there and loses name and groups.
+     Code = base64url(JSON {v:1, rt: refresh token, u: user id, name, ls: {whitelisted olnu.* keys}}).
+     Refresh tokens rotate, and Supabase revokes the whole session if an old token is used again.
+     So after an export the source browser must never use that session again: we remove "olnu.auth"
+     WITHOUT signOut (signOut would revoke the session on the server) and stop the auto refresh.
+     The code is a login credential: never log it, never send it anywhere. */
+  var AUTH_KEY = "olnu.auth";
+  // Useful olnu.* keys that follow the account (most important first; big ones drop out to keep the code short).
+  // Not moved: auth, bar caches, push state and "already asked" flags (the new app must ask again).
+  var FLYTT_KEYS = ["lang", "prec", "intro", "locOk", "night", "checkin", "title", "badges", "ghostMode", "mute", "heat",
+    "otherCd", "where", "comeAt", "nights", "records", "kingOf", "rallyHidden", "topTab", "nightlast", "barsEver", "nightlog"];
+  var FLYTT_MAX = 900, FLYTT_HIDDEN_MS = 10000;
+  var movedState = false, flyttHiddenAt = 0;
+  function b64urlEnc(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function b64urlDec(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
+  function storedAuth() {
+    var a = U.ls.getJSON(AUTH_KEY, null);
+    return a && typeof a === "object" && a.refresh_token ? a : null;
+  }
+  function storedUid() { var a = storedAuth(); return a && a.user && a.user.id ? String(a.user.id) : ""; }
+  function makeFlyttCode() {
+    var a = storedAuth(); if (!a) return null;
+    var p = { v: 1, rt: String(a.refresh_token), u: storedUid() || null, name: getName() || null, ls: {} };
+    var code = b64urlEnc(JSON.stringify(p));
+    FLYTT_KEYS.forEach(function (k) {
+      var v = U.ls.get("olnu." + k, null);
+      if (v == null || v === "") return;
+      p.ls[k] = v;
+      var c = b64urlEnc(JSON.stringify(p));
+      if (c.length > FLYTT_MAX) delete p.ls[k]; else code = c;
+    });
+    return code;
+  }
+  // Accepts a raw code or a whole link with ?flytt= / #flytt=. Returns the payload or null.
+  function readFlytt(text) {
+    try {
+      var s = String(text || "").trim(), m = s.match(/flytt=([A-Za-z0-9_-]+)/);
+      s = (m ? m[1] : s).replace(/[^A-Za-z0-9_-]/g, "");
+      if (s.length < 16 || s.length > 6000) return null;
+      var p = JSON.parse(b64urlDec(s));
+      if (!p || p.v !== 1 || typeof p.rt !== "string" || p.rt.length < 6 || p.rt.length > 600) return null;
+      return p;
+    } catch (e) { return null; }
+  }
+  function flyttLink(code) { return location.origin + location.pathname + "?flytt=" + code; }
+  // Codes already tried in this browser (a short hash, never the token). A home-screen app that kept
+  // ?flytt= in its start URL must not try the same (used) token on every launch.
+  function rtHash(rt) { var h = 5381; for (var i = 0; i < rt.length; i++) h = ((h * 33) ^ rt.charCodeAt(i)) >>> 0; return h.toString(36); }
+  function flyttTried(rt) { var l = U.ls.getJSON("olnu.flyttUsed", []); return Array.isArray(l) && l.indexOf(rtHash(rt)) >= 0; }
+  function flyttMark(rt) {
+    var l = U.ls.getJSON("olnu.flyttUsed", []); if (!Array.isArray(l)) l = [];
+    if (l.indexOf(rtHash(rt)) < 0) l.push(rtHash(rt));
+    U.ls.setJSON("olnu.flyttUsed", l.slice(-8));
+  }
+  function urlFlyttCode() {
+    try {
+      var q = new URLSearchParams(location.search).get("flytt");
+      if (q) return q;
+      var m = String(location.hash || "").match(/flytt=([A-Za-z0-9_-]+)/);
+      return m ? m[1] : null;
+    } catch (e) { return null; }
+  }
+  function cleanUrl() {
+    var ps = new URLSearchParams(location.search); ps.delete("flytt");
+    var qs = ps.toString(), h = String(location.hash || "").replace(/[#&]?flytt=[A-Za-z0-9_-]*/, "");
+    if (h === "#") h = "";
+    return location.pathname + (qs ? "?" + qs : "") + h;
+  }
+  function stripFlytt() { try { history.replaceState(null, "", cleanUrl()); } catch (e) {} }
+  function stopRefresh() { try { if (client && client.auth && client.auth.stopAutoRefresh) Promise.resolve(client.auth.stopAutoRefresh()).catch(function () {}); } catch (e) {} }
+
+  // --- Import (new app / phone) ---
+  // Resolves "ok" | "same" | "tried" | "bad" | "net". Never touches the old session on failure.
+  function importFlytt(p) {
+    if (!client || !p) return Promise.resolve("bad");
+    var cur = storedUid();
+    if (cur && p.u && cur === String(p.u)) return Promise.resolve("same");
+    if (flyttTried(p.rt)) return Promise.resolve("tried");
+    var backup = U.ls.get(AUTH_KEY, null);
+    var restore = function () { if (backup && !U.ls.get(AUTH_KEY, null)) U.ls.set(AUTH_KEY, backup); };
+    return new Promise(function (resolve) {
+      var done = false, tm = setTimeout(function () { done = true; restore(); resolve("net"); }, RPC_TIMEOUT_MS);
+      var fin = function (v) { if (done) return; done = true; clearTimeout(tm); resolve(v); };
+      Promise.resolve(client.auth.refreshSession({ refresh_token: p.rt })).then(function (r) {
+        if (r && r.data && r.data.session && !r.error) {
+          flyttMark(p.rt);
+          var ls = p.ls && typeof p.ls === "object" ? p.ls : {};
+          FLYTT_KEYS.forEach(function (k) { if (typeof ls[k] === "string") U.ls.set("olnu." + k, ls[k]); });
+          if (validName(p.name)) U.ls.set("olnu.name", validName(p.name));
+          ["olnu.moved", "olnu.movedTo", "olnu.movedU", "olnu.flyttPending"].forEach(U.ls.del);
+          U.ls.set("olnu.flyttAsked", "1");
+          fin("ok"); return;
+        }
+        // A failed refresh makes supabase-js drop the session it had: put the old one back.
+        restore();
+        var e = r && r.error;
+        if (authRetryable(e)) { fin("net"); return; }
+        flyttMark(p.rt); fin("bad");
+      }, function (e) { restore(); fin(authRetryable(e) ? "net" : "bad"); });
+    });
+  }
+  // After a good import: start again clean, so every module reads the moved settings.
+  function reloadAfterImport(p) {
+    try { sessionStorage.setItem("olnu.flyttOk", validName(p.name) || "-"); } catch (e) {}
+    location.replace(cleanUrl());
+  }
+  function flyttResultToast(res, hadAccount) {
+    if (res === "bad") toast(hadAccount ? t("flyttBad") : t("flyttBadNew"), { err: true, ms: 8000, id: "flytt" });
+    else if (res === "net") toast(t("flyttNet"), { err: true, ms: 8000, id: "flytt" });
+    else if (res === "same") toast(t("flyttSame"), { id: "flytt" });
+  }
+  // A code from the URL (link, QR, or the start URL of an iOS home-screen app).
+  function runUrlImport(p) {
+    stripFlytt();
+    if (!p) { toast(t("flyttBadNew"), { err: true, ms: 8000, id: "flytt" }); return Promise.resolve(); }
+    var had = !!storedAuth();
+    return importFlytt(p).then(function (res) {
+      if (res === "ok") { reloadAfterImport(p); return new Promise(function () {}); }   // page reloads
+      if (res !== "tried" && res !== "same") flyttResultToast(res, had);
+    });
+  }
+  // Paste box: clipboard button (read inside the tap) + a text field fallback.
+  function flyttPasteUI(box, replacing) {
+    var inp = el("input", { class: "inp", id: "flytt-inp", autocomplete: "off", autocapitalize: "off", autocorrect: "off",
+      spellcheck: "false", enterkeyhint: "go", placeholder: t("flyttInputPh"), "aria-label": t("flyttInputPh") });
+    var busyNow = false;
+    var go = function (text) {
+      if (busyNow) return;
+      var p = readFlytt(text);
+      if (!p) { toast(t("flyttBadFormat"), { err: true, id: "flytt" }); form.hidden = false; return; }
+      busyNow = true; pb.disabled = true; gob.disabled = true;
+      importFlytt(p).then(function (res) {
+        busyNow = false; pb.disabled = false; gob.disabled = false;
+        if (res === "ok") { reloadAfterImport(p); return; }
+        flyttResultToast(res === "tried" ? "bad" : res, true);
+        form.hidden = false;
+      });
+    };
+    var gob = btn(t("flyttGo"), "btn-green btn-block", function () { go(inp.value); });
+    var form = el("div", { class: "flytt-paste", hidden: "" }, [inp, gob]);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(inp.value); });
+    var pb = btn(t("flyttPaste"), "btn-amber btn-block", function () {
+      var show = function () { form.hidden = false; setTimeout(function () { inp.focus(); }, 50); };
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(function (s) {
+          if (readFlytt(s)) go(s); else { toast(t("flyttPasteFail"), { id: "flytt" }); show(); }
+        }, function () { toast(t("flyttPasteFail"), { id: "flytt" }); show(); });
+      } else show();
+    });
+    if (replacing) box.appendChild(el("p", { class: "muted", text: t("flyttReplace") }));
+    box.appendChild(pb);
+    box.appendChild(form);
+  }
+  // First start of a home-screen app with no account: offer to bring the old one.
+  function askFlytt() {
+    return new Promise(function (resolve) {
+      var root = $("intro"), body = $("intro-body");
+      body.innerHTML = "";
+      body.classList.add("flytt-card");
+      body.appendChild(el("div", { class: "intro-big", text: "📲" }));
+      body.appendChild(el("h2", { class: "intro-h", text: t("flyttAskTitle") }));
+      body.appendChild(el("p", { class: "intro-p", text: t("flyttAskText") }));
+      var box = el("div");
+      flyttPasteUI(box, false);
+      body.appendChild(box);
+      body.appendChild(btn(t("flyttNo"), "btn-block btn-ghost intro-later", function () {
+        U.ls.set("olnu.flyttAsked", "1");
+        root.hidden = true; body.innerHTML = ""; body.classList.remove("flytt-card");
+        resolve();
+      }));
+      body.appendChild(el("p", { class: "intro-priv", text: t("flyttSecret") }));
+      root.hidden = false;
+    });
+  }
+
+  // --- Export (this browser hands the account over) ---
+  function flyttPendingNow() { return !!U.ls.getJSON("olnu.flyttPending", null); }
+  // Step 1 for the iOS guide and the in-app browser: make the code, keep using this session for now
+  // (Safari must stay open to add the app), but never refresh it again. Finished later (finishExport).
+  function prepareExport(kind) {
+    var code = makeFlyttCode();
+    if (!code) { toast(t("flyttNoAcc"), { err: true, id: "flytt" }); return null; }
+    stopRefresh();
+    U.ls.setJSON("olnu.flyttPending", { at: Date.now(), kind: kind, u: storedUid() });
+    return code;
+  }
+  // This browser lets go of the account: no signOut (it would revoke the session for the new app too).
+  function finishExport(kind, atBoot) {
+    var pend = U.ls.getJSON("olnu.flyttPending", null) || {};
+    stopRefresh();
+    var u = storedUid() || pend.u || "";
+    U.ls.del(AUTH_KEY); U.ls.del(AUTH_KEY + "-code-verifier"); U.ls.del(AUTH_KEY + "-user");
+    U.ls.set("olnu.moved", String(Date.now()));
+    U.ls.set("olnu.movedTo", kind || pend.kind || "other");
+    if (u) U.ls.set("olnu.movedU", u);
+    U.ls.del("olnu.flyttPending");
+    movedState = true; authed = false; stopPoll();
+    if (!atBoot) { beers = []; checkins = []; render(); }
+  }
+  function clearMoved() { ["olnu.moved", "olnu.movedTo", "olnu.movedU"].forEach(U.ls.del); movedState = false; }
+  function movedNow() { return !!U.ls.get("olnu.moved", "") && !storedAuth(); }
+  // Called by rpc(): true = do not call the server. A pending export finishes before the access token
+  // runs out, because supabase-js would then refresh it and burn the token the new app needs.
+  function flyttGuard() {
+    if (movedState) return true;
+    var pend = U.ls.getJSON("olnu.flyttPending", null);
+    if (!pend) return false;
+    var a = storedAuth();
+    if (!a || !a.expires_at || a.expires_at * 1000 - Date.now() < 60000) {
+      finishExport(pend.kind, false);
+      showMoved().then(signIn);
+      return true;
+    }
+    return false;
+  }
+  // Back after the user left this page for ≥ 10 s (opened the home-screen app / Chrome): finish the move.
+  // (called by the visibilitychange handler of the poll, before it polls)
+  function flyttOnVisible() {
+    var pend = U.ls.getJSON("olnu.flyttPending", null);
+    if (pend && flyttHiddenAt && Date.now() - flyttHiddenAt >= FLYTT_HIDDEN_MS && !movedState) {
+      finishExport(pend.kind, false);
+      showMoved().then(signIn);
+      return true;
+    }
+    return movedState;
+  }
+  // Full-screen notice. Resolves when the user picks "Fortsätt här ändå" (fresh anonymous account).
+  var movedShowing = null;
+  function showMoved() {
+    if (movedShowing) return movedShowing;
+    movedState = true;
+    var kind = U.ls.get("olnu.movedTo", "other");
+    movedShowing = new Promise(function (resolve) {
+      if (!$("sheet").hidden) { sheetOnClose = null; closeSheet(); }
+      var root = $("intro"), body = $("intro-body");
+      body.innerHTML = "";
+      body.classList.add("flytt-card");
+      var home = kind === "home";
+      body.appendChild(el("div", { class: "intro-big", text: "📲" }));
+      body.appendChild(el("h2", { class: "intro-h", text: home ? t("flyttMovedHome") : t("flyttMovedOther") }));
+      body.appendChild(el("p", { class: "intro-p", html: "<b>" + U.esc(home ? t("flyttMovedHome2") : t("flyttMovedOther2")) + "</b>" }));
+      if (home && U.isIOS() && !U.isStandalone()) body.appendChild(el("p", { class: "intro-p muted", text: t("flyttMovedHome3") }));
+      body.appendChild(btn(t("flyttStay"), "btn-block btn-ghost intro-later", function () {
+        clearMoved(); stripFlytt();
+        root.hidden = true; body.innerHTML = ""; body.classList.remove("flytt-card");
+        movedShowing = null;
+        resolve();
+      }));
+      body.appendChild(el("p", { class: "intro-priv", text: t("flyttStayNote") }));
+      root.hidden = false;
+    });
+    return movedShowing;
+  }
+  // Settings: confirm, then make the code, log this browser out (no signOut) and show QR + link.
+  function showFlyttExport() {
+    openSheet(t("flyttTitle"), function (body) {
+      body.appendChild(el("div", { class: "info flytt-warn", html: "<b>" + U.esc(t("flyttWarn")) + "</b>" }));
+      body.appendChild(el("p", { class: "muted", text: t("flyttSecret") }));
+      var go = btn(t("flyttConfirm"), "btn-amber", function () {
+        var code = makeFlyttCode();
+        if (!code) { toast(t("flyttNoAcc"), { err: true, id: "flytt" }); return; }
+        go.disabled = true;
+        stopRefresh();
+        // This phone must not get the moved account's pushes any more (max 3 s, errors ignored).
+        var unsub = PUSH_ON && window.PUSH.supported() ? Promise.race([window.PUSH.disable(rpc).catch(function () {}), wait(3000)]) : Promise.resolve();
+        unsub.then(function () {
+          finishExport("other", false);
+          showFlyttCode(code);
+        });
+      });
+      body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn(t("cancel"), "", showSettings), go]));
+    });
+  }
+  function showFlyttCode(code) {
+    var link = flyttLink(code);
+    openSheet(t("flyttTitle"), function (body) {
+      body.appendChild(el("p", { text: t("flyttQrHelp") }));
+      var qr = el("div", { class: "qr", "aria-hidden": "true" });
+      body.appendChild(qr);
+      try {
+        if (window.QRCode) new window.QRCode(qr, { text: link, width: 232, height: 232, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.L });
+        else qr.remove();
+      } catch (e) { qr.remove(); }
+      body.appendChild(el("p", { class: "flytt-link", text: link }));
+      var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttCopy"), "btn-amber", function () { copyFlytt(link); })]);
+      if (navigator.share) row.appendChild(btn("📲 " + t("share"), "", function () { navigator.share({ title: "Öl Nu", url: link }).catch(function () {}); }));
+      body.appendChild(row);
+      body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("flyttSecret") }));
+      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttDone"), "btn-block", closeSheet)]));
+    });
+    sheetOnClose = function () { showMoved().then(signIn); };
+  }
+  function copyFlytt(text) {
+    var done = function () { toast(t("flyttCopied"), { id: "flytt" }); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { if (fallbackCopy(text)) done(); });
+    } else if (fallbackCopy(text)) done();
+  }
+  function showFlyttImport() {
+    openSheet(t("flyttImportBtn"), function (body) {
+      body.appendChild(el("p", { text: t("flyttAskText") }));
+      flyttPasteUI(body, !!storedAuth());
+      body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("flyttSecret") }));
+    });
+  }
+  // Runs once before sign-in. Order matters: a pending export ends BEFORE the client exists
+  // (its start-up could refresh the token), and an import happens BEFORE anonymous sign-in.
+  function flyttBoot() {
+    if (!LIVE) return Promise.resolve();
+    var pend = U.ls.getJSON("olnu.flyttPending", null);
+    if (pend && storedAuth()) finishExport(pend.kind, true);
+    else if (pend) U.ls.del("olnu.flyttPending");
+    makeClient();
+    if (!client) return Promise.resolve();
+    if (U.ls.get("olnu.moved", "") && storedAuth()) clearMoved();
+    var code = urlFlyttCode(), p = code ? readFlytt(code) : null;
+    var step = Promise.resolve();
+    if (code) {
+      // The source browser keeps its own code in the URL (iOS may use it as the home-screen start URL).
+      var own = movedNow() && p && p.u && String(p.u) === U.ls.get("olnu.movedU", "");
+      if (!own) step = runUrlImport(p);
+    }
+    return step.then(function () {
+      if (movedNow()) return showMoved();
+      movedState = false;
+      if (U.isStandalone() && !storedAuth() && U.ls.get("olnu.flyttAsked", "") !== "1") return askFlytt();
+    });
+  }
+  function makeClient() {
+    if (client) return;
+    try {
+      client = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_KEY }
+      });
+    } catch (e) { client = null; }
   }
 
   /* ---------- First start (shown once) ---------- */
@@ -1809,6 +2293,16 @@
     // Restaurant names for the feed: load after the map is up, then redraw the ticker.
     setTimeout(window.BARS.loadPlaces, 1500);
     window.BARS.onPlacesReady(function () { tickerKey = ""; newsDirty = true; renderTicker(); });
+    // Flyttkod first (finish a pending export, import a code, or ask in a new home-screen app), then intro + sign-in.
+    var boot;
+    try { boot = flyttBoot(); } catch (e) { boot = Promise.resolve(); }
+    Promise.resolve(boot).catch(function () {}).then(startRest);
+  }
+  function startRest() {
+    try {
+      var moved = sessionStorage.getItem("olnu.flyttOk");
+      if (moved) { sessionStorage.removeItem("olnu.flyttOk"); toast(t("flyttOk", moved === "-" ? "" : moved), { ms: 6000, cls: "skal" }); }
+    } catch (e) {}
     var intro = introDone() ? Promise.resolve() : showIntro(false);
     // Returning user who allowed location before: center on them quietly.
     if (introDone() && U.ls.get("olnu.locOk", "") === "1") locate({ quiet: true });
@@ -1821,11 +2315,7 @@
     }
     var ready = Promise.resolve();
     if (LIVE) {
-      try {
-        client = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "olnu.auth" }
-        });
-      } catch (e) { client = null; }
+      makeClient();   // normally made in flyttBoot already
       ready = client ? signIn() : Promise.resolve(toast(t("authFail"), { err: true, ms: 0, id: "auth" }));
     }
     if (joinCode) {
