@@ -1,7 +1,7 @@
 /* Öl Nu v11 — MEDALS & RANKS (CONTRACT "v11 MEDALS & RANKS").
    Medals live on the server (user_medals) so group-mates can see them. This file has:
    the medal catalog (names + funny texts), award/claim calls, the "Uniform" sheet (rank + all medals),
-   the medal row for the group view, the level-up popup and the "Ta det lugnt" nudge.
+   the medal row for the group view, the level-up popup.
    It is driven from extras.js / social.js hooks (app.js mods() does not know this file).
    Every RPC may be missing on an older database: medals then fall back to the old local badges. */
 (function () {
@@ -39,7 +39,7 @@
     ["trumslag", "📯", "Trumslagaren", "Du blåste till samling. Folket kom.", "Skicka en inkallelse."],
     ["hemvarn", "🏠", "Hemvärnet", "Du sa ”jag är hemma”. Klokt, soldat.", "Tryck ”Jag är hemma” en kväll.", 1],
     ["komhem", "🛡️", "Kom hem säkert", "Fem kvällar hem i god ordning. Finaste medaljen.", "Tryck ”Jag är hemma” 5 kvällar.", 1],
-    ["vatten", "💧", "Vattenbäraren", "Du drack vatten när appen sa till. Legend.", "Tryck ”💧 Druckit vatten” vid en vattenpåminnelse.", 1],
+    ["vatten", "💧", "Vattenbäraren", "Du laddade superkraften med vatten. Legend.", "Tryck ”💧 Druckit vatten” när bränsle-toasten dyker upp.", 1],
     ["dagsljus", "☀️", "Dagsljusdivisionen", "Öl medan solen står på himlen.", "En öl före kl 16.", 1],
     ["uggla", "🦉", "Nattugglan", "Sent ute. Ugglan nickar gillande.", "En öl mellan 01 och 05.", 1],
     ["tisdag", "🌮", "Tisdagstörst", "En helt vanlig tisdag. Eller?", "En öl en tisdag.", 1],
@@ -70,8 +70,8 @@
     ["orakel", "🔮", "Oraklet", "Bäst gissning på kvällens öl. Kristallkulan är polerad.", "Vinn Gissa kvällen i din grupp.", 1],
     ["bingo", "🎱", "Bingo!", "Tre i rad. Hela gänget jublar.", "Var med när gruppen får bingo i Kvällsbingo.", 1],
     // "Varit med om": hidden until earned, caring text, never a goal.
-    ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Drick vatten och ta det lugnt nästa gång.", "", 1, 1],
-    ["medevac", "🚁", "Varit med om: medevac", "Du har varit med om en medevac-kväll. Vi är glada att du kom hem. Ta det lugnt. 💧", "", 1, 1]
+    ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Glöden lever kvar i historierna.", "", 1, 1],
+    ["medevac", "🚁", "Varit med om: medevac", "Du har varit med om en legendkväll. Truppen minns, och du kom hem. 🫡", "", 1, 1]
   ];
   var BY = {};
   CAT.forEach(function (c, i) { BY[c[0]] = { id: c[0], e: c[1], name: c[2], line: c[3], how: c[4], stack: !!c[5], secret: !!c[6], i: i }; });
@@ -362,6 +362,8 @@
     var o = popQ.shift(); if (!o) return;
     // Wait for the HOT STREAK / MEDEVAC takeover to finish.
     if (document.querySelector(".takeover")) { popQ.unshift(o); setTimeout(nextPop, 900); return; }
+    // Never on top of the beer-type strip (js/barsplus.js): wait until it closes.
+    if (window.OLNU_STRIP && window.OLNU_STRIP.up()) { popQ.unshift(o); window.OLNU_STRIP.after(nextPop); return; }
     popOpen = true;
     var wrap = document.createElement("div");
     wrap.className = "mx-pop " + (o.cls || "");
@@ -464,76 +466,14 @@
     });
   }
 
-  /* ---------- "Ta det lugnt": a friendly nudge when beers come fast (not a ban) ---------- */
-  var CALM_LINES = [
-    "🐢 Lugna ner dig lite, innan du blir stammis på Systembolaget.",
-    "💧 Ölen springer inte iväg. Ta ett glas vatten, pojk.",
-    "🐌 Snigeltempo är också ett tempo. Det bästa tempot.",
-    "⏸️ Paus-knappen finns. Den är gratis.",
-    "🚦 Gult ljus, kompis. Sakta in lite.",
-    "🌲 Skogen står kvar imorgon. Ölen med.",
-    "🐴 Även Dalahästen tar det i skritt ibland.",
-    "🧘 Andas in. Andas ut. Lite vatten. Sen fortsätter vi.",
-    "🍕 Har du ätit nåt? Pizza är också en strategi.",
-    "⏳ Kvällen är lång. Fördela krafterna, soldat.",
-    "🧊 Kyl ner tempot. Inte bara ölen.",
-    "🎖️ Order från staben: ta det lugnt. Det är en order.",
-    "🥨 Ta en kringla. Eller en korv. Nåt fast i magen.",
-    "🐻 Björnen går i ide för att den har vett. Var som björnen. Fast vaken.",
-    "🚶 Gå en sväng. Frisk luft är också en drink.",
-    "💧 Ett glas vatten nu = en bättre morgon. Lovar.",
-    "🛶 Ro lugnt över Väsman. Ingen vinner på att paddla i cirklar.",
-    "📉 Tempot går fortare än börsen 2008. Bromsa lite.",
-    "🗣️ Prata lite med folk mellan ölen. Det är ju det som är grejen.",
-    "🧓 Farfar i Grangärde säger: ”Int’ ska du skynda, pôjk.”",
-    "🦉 Ugglan är klok för att den tar det lugnt. Bli en uggla.",
-    "🧭 Vägen hem blir längre ju fortare du kör nu.",
-    "🏁 Det här är inget race. Ingen får medalj för fart. Vi har kollat.",
-    "🔋 Spara lite batteri till senare ikväll.",
-    "🎻 Följ spelmännen. De spelar i lugnt tempo.",
-    "🥤 Mellanlanda med en läsk. Piloter gör så.",
-    "🐢 Sköldpaddan vann loppet. Kom ihåg det.",
-    "😌 Lugn i stugan. Ölen finns kvar om tio minuter också.",
-    "🌙 Natten är ung. Ingen brådska, kompis.",
-    "🫖 Ingen säger att du ska dricka te. Men lite långsammare kanske?",
-    "🪵 Elda lagom, så håller brasan hela kvällen.",
-    "🧯 Lite för mycket fart i lägret. Vi kyler ner.",
-    "🕰️ Kyrkklockan går långsamt. Följ den.",
-    "💃 Dansa en låt mellan ölen. Det räknas som träning.",
-    "🎣 Fiske kräver tålamod. Öl också.",
-    "🛑 Halt! Vattenpaus vid nästa vägskäl.",
-    "📻 Radio Dalarna rapporterar: högt tempo i området. Sänk farten.",
-    "🍔 Mat först, öl sen. Klassisk taktik.",
-    "🏔️ Det är maraton, inte sprint. Även i Dalarna.",
-    "🤝 Kolla läget med kompisarna. Dags för en vattenrunda?",
-    "🧃 Vill du imponera? Beställ ett glas vatten. Ingen ser det komma.",
-    "🐿️ Ekorren samlar krafter inför vintern. Gör som ekorren."
-  ];
-  var CALM_WATER = [1, 15];   // lines with a "💧 Jag tar vatten" button
-  var TIMES_KEY = "olnu.beerTimes", CALM_KEY = "olnu.calmAt";
+  /* ---------- Beer times (owner: no "Ta det lugnt" nudge any more; the server's 10-min gap stays) ---------- */
+  var TIMES_KEY = "olnu.beerTimes";
   function noteBeer() {
     var now = Date.now(), list = U.ls.getJSON(TIMES_KEY, []);
     if (!Array.isArray(list)) list = [];
     list = list.filter(function (x) { return typeof x === "number" && now - x < 3 * 3600e3; });
-    list.push(now); list = list.slice(-12);
-    U.ls.setJSON(TIMES_KEY, list);
-    var in40 = list.filter(function (x) { return now - x <= 40 * 60e3; }).length;
-    var in100 = list.filter(function (x) { return now - x <= 100 * 60e3; }).length;
-    if (in40 < 3 && in100 < 5) return;
-    var last = +U.ls.get(CALM_KEY, "0") || 0;
-    if (now - last < 30 * 60e3) return;
-    U.ls.set(CALM_KEY, String(now));
-    calmDown();
-  }
-  function calmDown() {
-    var line = freshLine("olnu.calmSeen", CALM_LINES), idx = CALM_LINES.indexOf(line);
-    var water = CALM_WATER.indexOf(idx) >= 0;
-    popup({
-      cls: "mx-calm", icon: "🐢", delay: 3200, ms: 12000,
-      title: L("TA DET LUGNT", "EASY THERE"), line: line, ok: L("Okej, okej 😅", "Okay, okay 😅"),
-      buttons: water ? [{ label: L("💧 Jag tar vatten", "💧 I'll have water"), cls: "btn-green", fn: function () { waterTaken(); } }] : [],
-      fx: function () { window.FX.vibrate([30, 60, 30]); }
-    });
+    list.push(now);
+    U.ls.setJSON(TIMES_KEY, list.slice(-12));
   }
   function waterTaken() {
     A.toast(L("💧 Bra jobbat, soldat!", "💧 Well done, soldier!"), { cls: "water", ms: 3500 });
@@ -544,8 +484,8 @@
   window.MEDALS = {
     CAT: CAT, info: info, on: on, award: award, claim: claim, showMine: showMine, showUniform: showUniform,
     memberMedals: memberMedals, openMember: openMember, medalRowHTML: medalRowHTML, ribbonBg: ribbonBg,
-    levelUp: levelUp, calmDown: calmDown, waterTaken: waterTaken, noteBeer: noteBeer,
-    LEVEL_LINES: LEVEL_LINES, CALM_LINES: CALM_LINES,
+    levelUp: levelUp, waterTaken: waterTaken, noteBeer: noteBeer,
+    LEVEL_LINES: LEVEL_LINES,
     mine: function () { return mine; },
     init: function (api) {
       A = api;

@@ -120,7 +120,7 @@
       { k: "meCheckin", f: function (d) { return "📺 Du ä på " + d.bar + ". Bartendern har sett dig. Det finns ingen återvändo."; } },
       { k: "meCheckin", f: function (d) { return "🚨 Du har anlänt till " + d.bar + ". Personalen har fått veta."; } },
       { k: "meCheckin", f: function (d) { return "📺 Välkommen till " + d.bar + "! Du har gjort ett bra val ikväll."; } },
-      { k: "meCheckin", f: function (d) { return "📺 Du ä inne på " + d.bar + ". Ta det lugnt vid kranen, pojk."; } },
+      { k: "meCheckin", f: function (d) { return "📺 Du ä inne på " + d.bar + ". Truppen ä på plats, pôjk."; } },
       { k: "meCheckin", f: function (d) { return "🎖️ Du har säkrat " + d.bar + ". Nästa mål: bardisken."; } },
       { k: "meCheckin", f: function (d) { return "📺 Du har checkat in på " + d.bar + ". Kartan lyser lite starkare nu."; } },
       { k: "meCheckin", f: function (d) { return "📺 Du har tagit dig till " + d.bar + ". Morsan vet var du ä. Typ."; } },
@@ -369,7 +369,7 @@
     { k: "barRateHigh", f: function (d) { return "🔥 " + d.r + " öl i timmen på " + d.bar + ". Kylen gråter. Glasen svettas."; } },
     { k: "barRateHigh", f: function (d) { return "🚨 " + d.bar + " slår rekord: " + d.r + " öl i timmen. Ölguden har bokat bord."; } },
     { k: "barRateHigh", f: function (d) { return "📺 " + d.bar + " på " + d.r + " öl i timmen. Grannkommunerna hör skålandet."; } },
-    { k: "barRateHigh", f: function (d) { return "🚨 Kaos-index " + d.bar + ": " + d.r + " öl/h. Ta ett glas vatten, soldater!"; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 Kaos-index " + d.bar + ": " + d.r + " öl/h. Stämningen ä elektrisk!"; } },
     { k: "barRateHigh", f: function (d) { return "🔥 " + d.bar + " kör " + d.r + " öl i timmen. Kranen har bytt namn till Brandsprutan."; } },
     { k: "barRateHigh", f: function (d) { return "📺 " + d.r + " öl i timmen på " + d.bar + "! Pantmaskinen har lagt sig ner och gråtit."; } },
     { k: "barRateHigh", f: function (d) { return "🚨 Varning: " + d.bar + " har " + d.r + " öl i timmen. Glöm int' korven, la."; } }

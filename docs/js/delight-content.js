@@ -19,7 +19,7 @@ window.DELIGHT_CONTENT = {
                   "🛸 Utomjordingarna landade, tittade på Dalarna och sa: 'hä va' väl int' så tokut'."],
             tap: ["👽 'Ta oss till er ledare.' Du pekade på korvkiosken. De verkar nöjda.",
                   "👽 Rymdvarelsen ger dig tummen upp. Den har tre tummar. Det blir många tummar.",
-                  "🛸 Du fick ett vänligt pip från rymden. Det betyder antagligen 'drick vatten'."] },
+                  "🛸 Du fick ett vänligt pip från rymden. Det betyder antagligen 'legender ombord'."] },
       en: { cap: "🛸 UFO over Grängesberg! It is beaming up a crate of light beer.", tap: "👽 'Take us to your leader.' You pointed at the hot dog stand." }
     },
     vasa: {
@@ -151,7 +151,7 @@ window.DELIGHT_CONTENT = {
     tomte: {
       sv: { cap: ["🎅 Tomten på moped! Renarna ä lediga ikväll.",
                   "🎅 Okänd man i rött kör genom {sektor}. Han har en lista. Han kollar den två gånger.",
-                  "🎅 Tomtepatrull! Ni som varit snälla: drick vatten. Ni andra: drick också vatten."],
+                  "🎅 Tomtepatrull! Ni som varit snälla: legendstatus. Ni andra: också legendstatus."],
             tap: ["🎅 'Ho ho ho!' Du ä på listan. Den snälla. Tror vi.",
                   "🎅 Tomten tutar. Mopeden låter som en arg geting.",
                   "🎅 Han kastade en pepparkaka åt dig. Den landade i snön."] },
@@ -225,7 +225,7 @@ window.DELIGHT_CONTENT = {
                   "🦉 Nattspanare på post. Hon ser allt. Hon säger inget.",
                   "🦉 'Hoo?' frågar ugglan. Bra fråga. Hoo ä ute ikväll?"],
             tap: ["🦉 Ugglan blinkar. Långsamt. Visdom överförd.",
-                  "🦉 'Hoo hoo.' Det betyder 'drick vatten' på ugglespråk.",
+                  "🦉 'Hoo hoo.' Det betyder 'grymt gäng' på ugglespråk.",
                   "🦉 Ugglan vänder huvudet 270 grader. Hon ä imponerad av dig."] },
       en: { cap: "🦉 An owl at the map edge. Night shift, like you.", tap: "🦉 The owl blinks slowly. Wisdom transferred." }
     },
@@ -368,18 +368,18 @@ window.DELIGHT_CONTENT = {
       2: ["🍺 Tisdagstörst? Lugn nu, det ä tisdag.", "🦗 Tisdag. Den tystaste dagen i Dalarna.", "🫖 Tisdag. Te och mys. Eller en lugn en."],
       3: ["🤔 Onsdag… Lilllördag? Med frågetecken.", "🐪 Onsdag! Puckeln ä nådd. Nu går det utför.", "📅 Onsdag. Halvvägs. Vi klarar det."],
       4: ["🧘 Torsdag. Ölguden stretchar inför helgen.", "🍲 Torsdag = ärtsoppa. Det ä militärt.", "🎯 Torsdag. Planeringsdag inför operation helg."],
-      5: ["🎉 FREDAG! Operation helg inledd. Ta det lugnt, ta det kul.", "😎 Fredag. Ölguden har tagit på sig solglasögonen.",
+      5: ["🎉 FREDAG! Operation helg inledd. Ta det kul, ta hand om gänget.", "😎 Fredag. Ölguden har tagit på sig solglasögonen.",
           "📯 Fredag! Samla trupperna. Och någon som kör hem."],
       6: ["🎊 Lördag! Kvällen ä ung. Det ä du också, typ.", "🕺 Lördag. Dansskorna ä putsade.", "🍻 Lördag. Bästa dagen att träffa kompisar."],
       7: ["😬 Söndag. Ångesten knackar på. Öppna int'.", "🧊 Söndag. Ölguden har ispåse på huvudet.", "🛋️ Söndag. Soffan har ringt. Den saknar dig."]
     },
     en: { 1: ["☕ Monday. The Beer God is closed."], 2: ["🍺 Tuesday thirst? Easy, it's Tuesday."], 3: ["🤔 Wednesday… little Saturday?"],
-          4: ["🧘 Thursday. Stretching before the weekend."], 5: ["🎉 FRIDAY! Operation weekend started. Take it easy."],
+          4: ["🧘 Thursday. Stretching before the weekend."], 5: ["🎉 FRIDAY! Operation weekend started. Have fun, look after the squad."],
           6: ["🎊 Saturday! See your friends."], 7: ["😬 Sunday. The angst is knocking. Don't open."] },
-    late: { sv: " Klockan ä mycket – drick vatten.", en: " It's late – drink water." }
+    late: { sv: " Klockan ä mycket – natten ä legendarisk.", en: " It's late – legendary night." }
   },
   sunrise: {
-    sv: ["🌅 Ny dag. Nya möjligheter. Drick vatten.", "🌅 Klockan ä fem. Natten ä slut. Pinsen flyger hem som lyktor.",
+    sv: ["🌅 Ny dag. Nya möjligheter. Nya historier.", "🌅 Klockan ä fem. Natten ä slut. Pinsen flyger hem som lyktor.",
          "🌅 Gryning över {stad}. Alla pins återgår till basen.", "🌅 Operation natt avslutad. Bra jobbat. Sov gott.",
          "🌅 Solen kommer. Trollen blir sten. Du blir trött.", "🌅 Ölguden sopar kartan. Vi ses ikväll – eller imorgon."],
     en: ["🌅 New day. New chances. Drink water.", "🌅 5 o'clock. The night is over. Pins fly home like lanterns."]

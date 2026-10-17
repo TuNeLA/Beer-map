@@ -253,13 +253,14 @@
   }
 
   /* ---------- 2. "🚑 Jag kollar" ---------- */
+  // Owner 2026-10-18: crew hype, not warnings. The "Jag kollar" button (buddy check) stays as a tool.
   var MED_ASK = [
-    "🚑 {name} ä på 10. Vem kollar läget?",
-    "🚁 {name} har nått MEDEVAC. Nån som tar ett snack och ett glas vatten?",
-    "💚 {name} ä på 10 öl. Vem kollar att allt ä lugnt?",
-    "🚑 Larm i gruppen: {name} ä på 10. Vem tar hand om kompisen?",
-    "🫂 {name} ä på 10. En kompis behövs, int' en publik. Vem kollar?",
-    "💧 {name} ä på 10. Vem går dit med vatten?"
+    "🦅 {name} har gått in i legendläge! Vem i truppen hänger med hen?",
+    "🎖️ {name} ä kvällens legend. Vem går dit och gör honnör?",
+    "💚 {name} ä i legendläge. Ingen lämnas kvar – vem ä wingman?",
+    "🦅 Truppen kallar: {name} behöver en wingman. Vem tar uppdraget?",
+    "🫂 {name} skriver historia ikväll. Vem ä med i kapitlet?",
+    "⚡ {name} ä i toppform. Vem i gänget kollar in och hyllar?"
   ];
   var MED_SEEN_KEY = "olnu.afMedSeen";
   var medPins = [], checks = [], checksAt = 0, checksBusy = false, checkSeen = {};
@@ -281,7 +282,7 @@
         if (seen[c.id] || c.checker_is_me) return;
         seen[c.id] = now; dirty = true;
         if (Date.now() - (Date.parse(c.created_at) || 0) > 30 * 60000) return;
-        A.toast(c.target_is_me ? L("💚 " + (c.checker_name || "En kompis") + " kollar läget med dig. Drick vatten. 🚕", "💚 " + (c.checker_name || "A friend") + " is checking on you.")
+        A.toast(c.target_is_me ? L("💚 " + (c.checker_name || "En kompis") + " ä din wingman ikväll. Truppen håller ihop. 🫡", "💚 " + (c.checker_name || "A friend") + " is checking on you.")
           : L("💚 " + (c.checker_name || "En kompis") + " kollar på " + (c.target_name || "kompisen") + ".", "💚 " + (c.checker_name || "A friend") + " is checking on " + (c.target_name || "your mate") + "."), { cls: "water", ms: 6000 });
       });
       Object.keys(seen).forEach(function (k) { if (now - seen[k] > 2 * 86400000) { delete seen[k]; dirty = true; } });

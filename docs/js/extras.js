@@ -341,7 +341,7 @@
         if (A.drinkFx && total > 0) A.drinkFx(total, total - 1);
         // Friend 5/10 pushes also when an other drink crosses the level (server decides; fire-and-forget).
         if (!ghostOn() && A.PUSH_ON && A.invoke) { try { A.invoke("notify-group").then(function () {}, function () {}); } catch (e) {} }
-        if (total > 0 && total % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
+        if (total > 0 && total % 4 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
           action: MED() && MED().on() ? { label: I.lang === "en" ? "💧 Done" : "💧 Druckit vatten", fn: function () { MED().waterTaken(); } } : null }, 2600);
         if (MED() && MED().noteBeer) MED().noteBeer();
         if (ghostOn()) { toastLater(t("ghostToast"), {}, 1500); A.rpc("stop_beer").then(function () { A.refresh(); }); }
@@ -376,9 +376,9 @@
       if (bar && l.bars.indexOf(bar.id) < 0) l.bars.push(bar.id);
       saveLog(l);
       var nights = addNight(l.key);
-      // Water first: it is the important one. Badge toasts queue after it.
+      // A light "bränsle" (fuel) line every 4th drink, never a warning (owner 2026-10-18). Badge toasts queue after it.
       var tot = o.total != null ? o.total | 0 : n;   // v14: all drinks count
-      if (tot > 0 && tot % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
+      if (tot > 0 && tot % 4 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
         action: MED() && MED().on() ? { label: I.lang === "en" ? "💧 Done" : "💧 Druckit vatten", fn: function () { MED().waterTaken(); } } : null }, 2600);
       if (MED()) MED().onBeerAccepted(d, o);
       award("first");

@@ -110,8 +110,8 @@
   var VOICE_LINES = [
     // Spelled the way it sounds in dalmål, so the phone voice says it with a Dalarna touch.
     "Skååål!", "Skål på däj!", "Hörrö du, skål då!", "Nu jäklar ä dä fest. Skål!", "Ja men skål för sjutton!",
-    "Dä ä la klart vi ska ha en öl!", "En te, en te!",
-    "Int' kan man la säj nej?", "Dä hära ska firas. Skål!", "Nu går ä undan i byn!",
+    "Dä ä la klart vi ska ha en öl!", "Truppen ä samlad. Skål!",
+    "Dä hära blir en legendarisk kväll!", "Dä hära ska firas. Skål!", "Nu går ä undan i byn!",
     "Ja ja, dä ä bra dä. Skål!", "Gutår, gutår!", "Ja men ta mäj tusan. Skål!", "Skål, å drick lite vatten no.",
     "Hej å hå, nu bär ä i väg!", "Såntdära gillar vi i Dalarna. Skål!", "Kalasbra dä hära. Skål!", "Va gör du då? Skål!",
     "Dä ä fredag i hela kroppen. Skål!", "Ölen ä din bäste kompis. Skål!", 
@@ -132,17 +132,14 @@
     return null;
   }
   try { if (window.speechSynthesis) window.speechSynthesis.getVoices(); } catch (e) {}
-  // From 10 drinks the voice only says caring things (owner: no cheering at MEDEVAC).
-  var CARE_VOICE = ["Ta ett glas vatten nu, kompis.", "Dags för korv och vatten, soldat.", "Lugnt nu. Ölen springer int' iväg.",
-    "Taxin ä din vän ikväll.", "Kolla läget med kompisarna, va?", "Vatten först, sen ser vi."];
-  function drinksNow() { try { var m = (document.querySelector("#my-streak, .ikv-pill, .my-streak") || {}).textContent || ""; var x = m.match(/\d+/); return x ? +x[0] : 0; } catch (e) { return 0; } }
+  // Owner: the same hype voice lines at every level (no separate "care" voice any more).
   function say() {
     if (muted() || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
     var v = svVoice(); if (!v) return;
-    var care = drinksNow() >= 10, pool = care ? CARE_VOICE : VOICE_LINES;
+    var pool = VOICE_LINES;
     var i = Math.floor(Math.random() * pool.length);
-    if (!care && i === lastVoiceLine) i = (i + 1) % pool.length;
-    if (!care) lastVoiceLine = i;
+    if (i === lastVoiceLine) i = (i + 1) % pool.length;
+    lastVoiceLine = i;
     var ch = VOICES[Math.floor(Math.random() * VOICES.length)];
     try {
       window.speechSynthesis.cancel();

@@ -76,16 +76,12 @@
   }
 
   // Polish 2026-10-17: group + town templates from js/news-gt.js (window.NEWS_GT, Swedish only).
-  // groupLeader: a template without its own care line gets one when n >= 8 (never cheer more drinking).
+  // Owner 2026-10-18: no added "drick vatten" care lines (no warning texts).
   function gtTemplates() {
     try {
       var g = window.NEWS_GT;
       if (I.lang === "en" || !Array.isArray(g)) return [];
-      return g.map(function (x) {
-        if (!x || x.k !== "groupLeader" || typeof x.f !== "function" || String(x.f).indexOf("d.n >= 8") >= 0) return x;
-        var f = x.f;
-        return { k: x.k, f: function (d) { var s = f(d); return d && d.n >= 8 ? s + " Ta ett glas vatten emellan, va?" : s; } };
-      });
+      return g.slice();
     } catch (e) { return []; }
   }
   // Friend reaching 5 / 10 (LEVEL_FRIEND_SV, Swedish only).

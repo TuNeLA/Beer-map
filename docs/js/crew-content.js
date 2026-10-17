@@ -131,7 +131,7 @@
       ],
       moodHem: ["🏠 Bra beslut. Säg hej då till gänget när du drar.", "🏠 Hem snart, noterat. Ta taxi om dä ä långt.", "🏠 Reträtten planeras. Ingen lämnas kvar."],
       moodSum: {
-        allBra: ["💪 Hela truppen ä stridsduglig. Ölguden ä nöjd.", "👍 Alla mår bra. Drick vatten ändå, för sakens skull."],
+        allBra: ["💪 Hela truppen ä stridsduglig. Ölguden ä nöjd.", "👍 Alla mår bra. Truppen ä i toppform."],
         snurr: ["😵 {n} känner sig snurrig. Vatten, mat och sällskap — ta hand om varandra.", "🫂 {n} snurrig i ledet. Kolla till dem, bjud på vatten."],
         hem: ["🏠 {n} drar hem snart. Följs ni åt?", "🏠 {n} på väg hem snart. Gå tillsammans om ni kan."],
         mixed: ["📋 Blandad rapport. Ta hand om varandra, soldater.", "📻 Läget ä blandat. Den som mår bäst kollar på resten."]

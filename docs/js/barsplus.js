@@ -367,14 +367,39 @@
 
   /* ---------- 3. Ölsorter: chips after ÖL! ---------- */
   var strip = null, stripTimer = null, stripLeft = 0, stripLast = 0;
+  /* Strip gate (owner: "kan inte välja ölsort"): while the strip is up (or about to show after ÖL!), no
+     takeover, level popup, sheet or map event may open on top of it. They wait in this queue and run
+     one by one after the strip closes (chip picked, ✕ or timeout). window.OLNU_STRIP = { up, after }. */
+  var gateQ = [], gateUntil = 0, gateTimer = null;
+  function stripUp() { return !!(strip && !strip.hidden) || Date.now() < gateUntil; }
+  function afterStrip(fn) {
+    if (typeof fn !== "function") return;
+    if (!stripUp()) { fn(); return; }
+    gateQ.push(fn);
+    if (!gateTimer) gateTimer = setTimeout(gateCheck, 1000);   // safety net if the strip never showed
+  }
+  function gateCheck() {
+    gateTimer = null;
+    if (stripUp()) { gateTimer = setTimeout(gateCheck, 1000); return; }
+    var q = gateQ; gateQ = [];
+    q.forEach(function (f, i) { setTimeout(function () { try { f(); } catch (e) {} }, 350 + i * 300); });
+  }
+  window.OLNU_STRIP = { up: stripUp, after: afterStrip };
   function hideStrip() {
     if (stripTimer) { clearInterval(stripTimer); stripTimer = null; }
     if (strip) { strip.hidden = true; strip.innerHTML = ""; }
+    gateUntil = 0;
+    if (gateTimer) clearTimeout(gateTimer);
+    gateTimer = setTimeout(gateCheck, 0);
   }
   function showStrip(delay) {
     // Old server (0014 missing): bar_status is known missing by now -> no strip at all.
     if (off.set_beer_type || state === "missing" || !A || !A.authed()) return;
-    setTimeout(function () {
+    var waitUntil = Date.now() + (delay || 0) + 15000;
+    gateUntil = Date.now() + (delay || 0) + 600;
+    setTimeout(function open() {
+      // A HOT / MEDEVAC takeover from this same tap is on screen: show the strip after it (max ~15 s).
+      if (document.querySelector(".takeover") && Date.now() < waitUntil) { gateUntil = Date.now() + 900; setTimeout(open, 300); return; }
       if (!strip) { strip = document.createElement("div"); strip.className = "bp-strip hud-panel"; strip.setAttribute("role", "group"); document.body.appendChild(strip); }
       var names = t("bpTypes") || {}, emo = t("bpTypeEmoji") || {}, last = U.ls.get(TYPE_KEY, "");
       if (TYPES.indexOf(last) < 0) last = "";
@@ -1027,7 +1052,7 @@
     onBeerAccepted: function (d) {
       if ((d && d.beer_count | 0) < 1) return;
       var n = d.beer_count | 0;
-      showStrip(n === 5 || n === 10 ? 2600 : 900);
+      showStrip(900);
     },
     topSheet: topSheet,
     groupItem: function (g, wrap) { groupItem(g, wrap); }

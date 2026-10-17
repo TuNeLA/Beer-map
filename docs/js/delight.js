@@ -288,6 +288,7 @@
     try { var it = $("intro"); if (it && !it.hidden) return true; } catch (e) {}
     try { if (A && A.sheetOpen && A.sheetOpen()) return true; } catch (e) {}
     if (document.querySelector(".takeover")) return true;
+    try { if (window.OLNU_STRIP && window.OLNU_STRIP.up()) return true; } catch (e) {}   // never over the beer-type strip
     return document.hidden;
   }
   // One possible event per "open". Seen slots are remembered, so the same hour shows nothing new.

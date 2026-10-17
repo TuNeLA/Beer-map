@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -96,8 +96,13 @@
     } else if (!toastWait || rank >= toastWait._olnuT.rank) toastWait = el;
     return el;
   }
-  var toastWait = null, lastTap = 0;
-  ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function () { lastTap = Date.now(); }, true); });
+  var toastWait = null, lastTap = 0, lastTapOut = 0;
+  ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function (e) {
+    lastTap = Date.now();
+    // A tap outside the beer-type strip and the ÖL! button = the user asked for something (a sheet may open now).
+    var tg = e && e.target && e.target.closest ? e.target : null;
+    if (!tg || !tg.closest(".bp-strip, #btn-beer")) lastTapOut = Date.now();
+  }, true); });
   function sheetIsOpen() { var s = $("sheet"); return !!(s && !s.hidden); }
   function toastsVisible() { return Array.prototype.filter.call($("toasts").children, function (x) { return !x.hasAttribute("data-keep"); }); }
   function toastShow(el, opts) {
@@ -1915,7 +1920,7 @@
     if (lv) {
       var nm = lvName(lv, "me");
       if (n === lv.at) return lv.emoji + " " + nm + "! " + t("lvlN", n) + " · " + noLeadEmoji(lvLine(lv));
-      return lv.emoji + " " + t("lvlN", n) + " · " + nm + (n >= 10 ? " · " + t("lvWater") : "");
+      return lv.emoji + " " + t("lvlN", n) + " · " + nm;
     }
     if (n === 5) return t("lvl5");
     if (n === 10) return t("lvl10");
@@ -1934,18 +1939,21 @@
   // Swedish: title = my level name tonight, sub = a random line of that level, plus a random FX gag (fx.js).
   // 5 = fire takeover, 10 = blue-light takeover (taxi buttons). 3, 7, 13, 16, 20 = small pops (toast + small effect).
   // opts.noToast: the caller shows its own toast (ÖL! flow: levelToast). Returns true when a takeover ran.
+  // Takeovers never cover the beer-type strip: they wait until it closes (js/barsplus.js OLNU_STRIP).
+  function stripUp() { try { return !!(window.OLNU_STRIP && window.OLNU_STRIP.up()); } catch (e) { return false; } }
+  function stripAfter(fn) { if (window.OLNU_STRIP && window.OLNU_STRIP.after) window.OLNU_STRIP.after(fn); else fn(); }
   function drinkFx(total, prev, opts) {
     opts = opts || {};
     var lv10 = lvAt(10), lv5 = lvAt(5);
     if (prev < 10 && total >= 10) {
       var medExtra = mods("medevacExtraHTML");
-      window.FX.takeover(2, lv10 ? { title: lvName(lv10, "me"), sub: lvLine(lv10), icon: lv10.emoji, color: lv10.color, gag: true, hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }
-        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 });
+      stripAfter(function () { window.FX.takeover(2, lv10 ? { title: lvName(lv10, "me"), sub: lvLine(lv10), icon: lv10.emoji, color: lv10.color, gag: true, hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }
+        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }); });
       return true;
     }
     if (prev < 5 && total >= 5) {
-      window.FX.takeover(1, lv5 ? { title: lvName(lv5, "me"), sub: lvLine(lv5), icon: lv5.emoji, color: lv5.color, gag: true, hint: t("tapClose") }
-        : { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") });
+      stripAfter(function () { window.FX.takeover(1, lv5 ? { title: lvName(lv5, "me"), sub: lvLine(lv5), icon: lv5.emoji, color: lv5.color, gag: true, hint: t("tapClose") }
+        : { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") }); });
       return true;
     }
     // Small pops: the highest level crossed (3, 7, 13, 16, 20).
@@ -1953,11 +1961,8 @@
     all.forEach(function (lv) { if (lv.at !== 5 && lv.at !== 10 && prev < lv.at && total >= lv.at && (!pop || lv.at > pop.at)) pop = lv; });
     if (pop) {
       if (window.FX.levelPop) window.FX.levelPop({ emoji: pop.emoji, color: pop.color, intensity: pop.intensity | 0, care: pop.at >= 13 });
-      if (!opts.noToast) toast(pop.emoji + " " + lvName(pop, "me") + "! " + noLeadEmoji(lvLine(pop)), { ms: 6000, cls: pop.at >= 13 ? "lv-care" : "lv-pop" });
-      // 13+ stays caring: water + taxi, one tap away.
-      if (pop.at >= 13) setTimeout(function () {
-        toast(t("lvCareToast"), { ms: 9000, cls: "lv-care", action: { label: t("lvTaxiBtn"), fn: function () { mods("hudClick", "taxi"); } } });
-      }, 1200);
+      if (!opts.noToast) toast(pop.emoji + " " + lvName(pop, "me") + "! " + noLeadEmoji(lvLine(pop)), { ms: 6000, cls: "lv-pop" });
+      // Owner: no warning toasts. The 🚕 Taxi button in the HUD stays (a tool, not a text).
     }
     return false;
   }
@@ -2202,6 +2207,8 @@
   function openSheet(title, build, opts) {
     opts = opts || {};
     if (!opts.now && (sheetLocked() || busy)) { sheetQueue.push([title, build, opts]); return false; }
+    // Beer-type strip up: a sheet the user did not just tap for waits until the strip closes.
+    if (!opts.now && stripUp() && Date.now() - lastTapOut > 1200) { sheetQueue.push([title, build, opts]); stripAfter(drainSheets); return false; }
     var prev = sheetCur; sheetCur = null;
     if (prev && prev.onClose) { try { prev.onClose("replaced"); } catch (e) {} }
     sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
@@ -2220,6 +2227,7 @@
   }
   function drainSheets() {
     if (!sheetQueue.length || busy || !$("sheet").hidden || !$("intro").hidden) return;
+    if (stripUp()) { stripAfter(drainSheets); return; }
     var x = sheetQueue.shift();
     openSheet(x[0], x[1], x[2]);
   }
@@ -3444,8 +3452,9 @@
     pendingFocus = null;
     try { map.closePopup(); } catch (err) {}
     if (!$("sheet").hidden) closeSheet();
-    var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos");
-    if (c) { if (LIVE) mods("openChatLink", c); }
+    var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos"), st = q.get("status");
+    if (st) { if (LIVE) mods("openStatusLink", st); }
+    else if (c) { if (LIVE) mods("openChatLink", c); }
     else if (r) { if (LIVE) mods("openLink", r, q.get("answer")); }
     else if (b) openBarById(b, 0);
     else if (so) mods("showSosLink", so);
