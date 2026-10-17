@@ -536,10 +536,49 @@
   }
 
   /* ---------- Public hooks ---------- */
+  // Keep every open popup between the top HUD and the dock (ÖL!, ANNAT). The space is measured on the
+  // real screen; the content scrolls inside, and the map moves so the whole popup is visible.
+  // Runs on open and whenever the popup content changes size (sections opening, lists loading).
+  function popupFit() {
+    var map = A && A.map; if (!map || !window.ResizeObserver) return;
+    var ro = null, cur = null, busy = false;
+    function limits() {
+      var top = 70, bottom = window.innerHeight - 200;
+      var beer = document.getElementById("btn-beer"), annat = document.getElementById("btn-other");
+      [beer, annat].forEach(function (e) { if (e) { var r = e.getBoundingClientRect(); if (r.height) bottom = Math.min(bottom, r.top - 10); } });
+      document.querySelectorAll(".hud-left, .ticker, #rally:not([hidden]), .my-streak").forEach(function (e) {
+        var r = e.getBoundingClientRect(); if (r.height && r.bottom < window.innerHeight / 2) top = Math.max(top, r.bottom + 8);
+      });
+      if (bottom - top < 220) top = Math.max(60, bottom - 220);   // tiny screens: allow over the HUD chips
+      return { top: top, bottom: bottom };
+    }
+    function fit() {
+      if (!cur || busy) return;
+      var wrap = cur.getElement && cur.getElement(); if (!wrap) return;
+      var content = wrap.querySelector(".leaflet-popup-content"); if (!content) return;
+      var lim = limits(), extra = wrap.getBoundingClientRect().height - content.getBoundingClientRect().height;
+      content.style.maxHeight = Math.max(160, Math.floor(lim.bottom - lim.top - extra - 14)) + "px";
+      var r = wrap.getBoundingClientRect(), dy = 0;
+      if (r.bottom > lim.bottom) dy = r.bottom - lim.bottom;          // move the map up
+      else if (r.top < lim.top) dy = r.top - lim.top;                  // move the map down
+      if (Math.abs(dy) > 2) { busy = true; map.panBy([0, Math.round(dy)], { animate: true, duration: 0.25 }); setTimeout(function () { busy = false; }, 300); }
+    }
+    map.on("popupopen", function (e) {
+      cur = e.popup;
+      if (ro) ro.disconnect();
+      var el = cur.getElement && cur.getElement();
+      ro = new ResizeObserver(function () { setTimeout(fit, 30); });
+      if (el) { var c = el.querySelector(".leaflet-popup-content"); if (c) { ro.observe(c); Array.prototype.forEach.call(c.children, function (k) { ro.observe(k); }); } }
+      setTimeout(fit, 60); setTimeout(fit, 400);
+    });
+    map.on("popupclose", function () { cur = null; if (ro) ro.disconnect(); });
+    window.addEventListener("resize", function () { setTimeout(fit, 100); });
+  }
   window.BARSPLUS = {
     newsTemplates: newsTemplates, newsCands: newsCands, status: function () { return status; },
     init: function (api) {
       A = api;
+      popupFit();
       // Buttons live in Leaflet popups (click bubbling stops at the popup): listen on each popup element.
       A.map.on("popupopen", function (e) {
         var root = e.popup && e.popup.getElement && e.popup.getElement();
