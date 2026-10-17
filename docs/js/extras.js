@@ -262,6 +262,14 @@
       body.appendChild(grid);
     });
   }
+  // Random line that was not shown in the last 8 picks for this drink.
+  var recentDrink = {};
+  function pickFresh(kind, list) {
+    var r = recentDrink[kind] || (recentDrink[kind] = []), i, tries = 0;
+    do { i = Math.floor(Math.random() * list.length); } while (r.indexOf(i) >= 0 && ++tries < 20);
+    r.push(i); if (r.length > Math.min(8, list.length - 1)) r.shift();
+    return list[i];
+  }
   function postOther(kind) {
     if (otherBusy) return;
     if (!A.authed()) { A.toast(t("connecting")); return; }
@@ -286,8 +294,10 @@
         U.ls.set(OTHER_CD_KEY, String(Date.now() + wait));
         var name = (kinds[kind] || ["", kind])[1];
         // Half the time a line made for this drink (rom → pirat), else a general line with the drink's name.
-        var byKind = (t("otherToastsKind") || {})[kind];
-        var line = byKind && byKind.length && Math.random() < 0.6 ? pick(byKind) : pick(t("otherToasts"));
+        // Always a line made for this drink: 30 per drink in drink-lines.js (Swedish), else the short i18n list.
+        var big = I.lang !== "en" && window.DRINK_LINES ? window.DRINK_LINES[kind] : null;
+        var byKind = big && big.length ? big : (t("otherToastsKind") || {})[kind];
+        var line = byKind && byKind.length ? pickFresh(kind, byKind) : pick(t("otherToasts"));
         A.toast(line.replace(/\{d\}/g, name), { cls: "hot" });
         window.FX.sound.clink(); window.FX.vibrate([30, 40, 30]);
         var l = getLog(); l.others = Math.max((l.others | 0) + 1, d.other_count | 0); saveLog(l);
