@@ -58,6 +58,13 @@ if (!json) {
   console.error("Giving up:", lastErr && lastErr.message);
   process.exit(1);
 }
+// Places we know are closed (OSM is not always up to date). Edit docs/bars-closed.json to add more.
+let closed = new Set();
+try {
+  const { readFile } = await import("node:fs/promises");
+  const list = JSON.parse(await readFile(resolve(here, "../docs/bars-closed.json"), "utf8"));
+  closed = new Set(list.map((x) => x.id));
+} catch (_e) { /* no list: keep all */ }
 const seen = new Set();
 const bars = [];
 for (const el of json.elements || []) {
@@ -65,7 +72,7 @@ for (const el of json.elements || []) {
   const lng = el.lon ?? el.center?.lon;
   if (lat == null || lng == null) continue;
   const id = el.type[0] + el.id; // "n123" / "w456", same ids as the in-app Overpass fallback
-  if (seen.has(id)) continue;
+  if (seen.has(id) || closed.has(id)) continue;
   seen.add(id);
   const t = el.tags || {};
   bars.push({ id, name: t.name ?? null, lat: r5(lat), lng: r5(lng), type: t.amenity || "bar" });
