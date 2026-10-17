@@ -1,0 +1,55 @@
+/* Öl Nu v22 — Gruppchef + lägesrapport (js/chief.js). No flashing; the low-time hint is a colour change only. */
+.chief-banner{position:fixed;z-index:1003;left:calc(var(--sal,0px) + 10px);right:calc(var(--sar,0px) + 10px);
+  bottom:calc(var(--sab,0px) + 150px);display:flex;align-items:stretch;min-height:52px;
+  background:linear-gradient(90deg,rgba(28,40,64,.97),rgba(16,22,38,.96));border:1px solid var(--line,#33415c);border-left:4px solid var(--amber,#f5a623);
+  box-shadow:0 6px 20px #000b;color:var(--text,#fff)}
+.chief-banner[hidden]{display:none}
+.cb-txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;text-align:left;padding:4px 8px;background:none;border:0;color:inherit;cursor:pointer;font:inherit}
+.cb-txt b{font:700 var(--fs-s,13px)/1.25 var(--body,inherit);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cb-sub{font-size:var(--fs-xs,12px);color:var(--muted,#9aa6bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-cd{font-family:var(--hud,monospace);font-weight:700;font-variant-numeric:tabular-nums}
+.chief-banner>.cb-cd{flex:0 0 auto;align-self:center;padding:0 8px;font-size:18px;color:var(--amber-2,#ffd27a)}
+.cb-cd.cb-low{color:#ff8a65}
+.cb-go{flex:0 0 auto;min-height:52px;padding:0 12px;border-radius:0;font-weight:700}
+.cb-x{flex:0 0 auto;width:44px;border:0;border-left:1px solid rgba(255,255,255,.18);background:rgba(10,15,28,.35);color:#fff;cursor:pointer}
+.hx-chief b{font-family:var(--hud,monospace);font-variant-numeric:tabular-nums}
+.hx-chief.hx-urgent{border-color:var(--amber,#f5a623);color:var(--amber-2,#ffd27a)}
+
+/* Groups sheet */
+.chief-gi{margin-top:8px;padding:8px 10px;border:1px solid var(--line-soft,#2a3550);border-left:3px solid var(--amber,#f5a623);background:rgba(245,166,35,.05)}
+.chief-line{display:flex;align-items:center;gap:6px;min-height:36px}
+.chief-badge{font-size:18px}
+.chief-name{flex:1 1 auto;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chief-hand{flex:0 0 auto;min-height:36px;padding:0 10px;cursor:pointer;background:transparent;border:1px solid var(--line-soft,#2a3550);color:var(--muted,#9aa6bd);font:600 13px var(--body,inherit)}
+.chief-rq{display:block;width:100%;margin:6px 0;padding:8px 10px;min-height:44px;text-align:left;cursor:pointer;background:rgba(255,255,255,.04);
+  border:1px solid var(--line-soft,#2a3550);color:var(--text,#fff);font:inherit;font-size:13px}
+.chief-rq.live{border-color:var(--amber,#f5a623)}
+.chief-req{margin-top:6px}
+.chief-help{font-size:12px;margin:4px 0 0}
+.chief-pick .chip-btn{min-height:44px}
+
+/* Report sheet */
+.cr-head{padding:8px 10px;margin-bottom:10px;border-left:3px solid var(--amber,#f5a623);background:rgba(245,166,35,.07)}
+.cr-head.done{border-left-color:var(--green,#39d98a);background:rgba(57,217,138,.07)}
+.cr-g{font-size:13px;color:var(--muted,#9aa6bd)}
+.cr-state{font:700 16px/1.3 var(--body,inherit);margin-top:2px}
+.cr-state .cb-cd{font-size:18px;color:var(--amber-2,#ffd27a)}
+.cr-n{font-size:13px;margin-top:2px}
+.cr-shoot{margin:4px 0 10px}
+.cr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.cr-cell{display:flex;flex-direction:column;padding:0;cursor:pointer;background:var(--night-2,#151c2e);border:1px solid var(--line-soft,#2a3550);color:var(--text,#fff);font:inherit;text-align:left;overflow:hidden}
+.cr-cell.late{border-style:dashed;opacity:.85}
+.cr-ph{position:relative;aspect-ratio:1/1;display:grid;place-items:center;background:#000;overflow:hidden}
+.cr-ph.gone{font-size:12px;color:var(--muted,#9aa6bd)}
+.cr-img{width:100%;height:100%;object-fit:cover;display:block}
+.cr-spin{font-size:22px;opacity:.5}
+.cr-cap{display:flex;justify-content:space-between;gap:4px;padding:4px 6px;font-size:12px}
+.cr-cap b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-cap small{font-family:var(--hud,monospace);color:var(--muted,#9aa6bd)}
+.cr-empty{text-align:center;padding:16px 0}
+.cr-lines{margin-top:10px}
+.cr-l{margin:4px 0;font-size:14px;line-height:1.35}
+.cr-l.ok{color:var(--green,#39d98a)}
+.cr-l.late{color:var(--amber-2,#ffd27a)}
+.cr-l.miss{color:var(--muted,#9aa6bd)}
+.cr-note{font-size:12px;margin-top:12px;text-align:center}

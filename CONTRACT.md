@@ -716,6 +716,50 @@ Rules:
 ### Chat history switch (0029, social.js)
 - Chat sheet: "💾 Spara chatten efter kl 05" switch (`group_keep_history` / `set_group_keep_history`; hidden when the RPC is missing; `not_admin` → "Bara den som skapade gruppen kan ändra det."), the footer note changes to "💾 Sparas i gruppen.". "⬆️ Visa äldre" appears when the first page had 100 messages: it steps back in id windows with `group_msgs(p_after_id)` (ids are global, max 12 calls per press, 100 messages per press). A cleaner server RPC would be `group_msgs_before(p_group_id, p_before_id)` (newest 100 with id < before).
 
+## v22 GRUPPCHEF + LÄGESRAPPORT (+ stacked call-outs; additive)
+Migration `supabase/migrations/0030_chief_status.sql` (applied on the server 2026-10-18 as `0030_chief_status`; appended to `setup.sql`). Needs 0001–0029 (groups, group_members, group_msgs, chat_photos, olnu_uid, olnu_night_of, olnu_next_expiry). Contains no removing statements (rows are never removed; reads filter on time). Client: `docs/js/chief.js` (`window.CHIEF`) + `docs/chief.css`; uses `PHOTO._shrink/_viewer/_url/_remember` from photo.js. A missing RPC (old database) = no chief row, no chip, no banner.
+
+### Tables (RLS on, no policies, no client access; service_role has all)
+- `group_chiefs(group_id pk, user_id, set_by, updated_at)` — the appointed chief.
+- `status_reqs(id, group_id, user_id = chief, night, created_at, ends_at = created_at + 10 min, notified)` — `notified` is the push claim.
+- `status_answers(req_id, user_id, photo_id → chat_photos.id, msg_id → group_msgs.id, created_at)`, pk `(req_id, user_id)`.
+- Chief rule (`olnu_chief_of`): the appointed one while still a member, else `groups.created_by` while a member, else the member who joined first.
+- Member keys are opaque: `k = md5(group:user:olnu-chief)[0:12]` (never a user id).
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `chief_state` | `p_group_id uuid` | jsonb `{group_id, chief_k, chief_name, is_chief, is_creator, can_hand, members[{k,name,is_me,is_chief}], used, max: 6, next_at, req}` — `req` = newest request of the last 2 h (status report shape) or null | `not_member` |
+| `set_chief` | `p_group_id uuid, p_k text` | `chief_state` | `not_member`, `not_allowed` (only the chief or the creator), `invalid_member` |
+| `request_status` | `p_group_id uuid` | status report of the new request | `not_member`, `not_chief`, `status_slow` (1 per 20 min per group), `status_limit` (6 per group per night, night = since the last 05:00) |
+| `status_report` | `p_req_id bigint` | jsonb `{id, group_id, group_name, by, by_me, created_at, ends_at, now, late_until, needed, answered, done, mine, answers[{k,name,is_me,is_chief,photo_id,msg_id,at,sec,in_time,rank}], missing[{k,name,is_me}]}` (requests ≤ 12 h old) | `status_not_found`, `not_member` |
+| `my_status` | — | jsonb array of status reports, all my groups, requests of the last 70 min, newest first | — |
+| `answer_status` | `p_req_id bigint, p_b64 text, p_w int default 0, p_h int default 0, p_caption text default null` | jsonb `{photo_id, msg_id, rank, in_time, sec}` | `status_not_found`, `not_member`, `status_closed` (> 60 min after the start), `status_answered` (one per member), `invalid_photo` (same checks as `post_photo`), `invalid_msg` (caption > 100) |
+
+Rules:
+- `needed` = members who joined before the request, without the chief who asked (the chief may answer too, never "missing"). `answered` counts in-time answers of `needed` members. `done` = past `ends_at`, or every needed member answered in time.
+- `answer_status` writes a normal chat photo (same as `post_photo`, same 0029 keep-history trigger): chat body `"📷 🎖️ Lägesrapport"` or `"📷 🎖️ Lägesrapport: <caption>"`. It does NOT count against the post_photo limits (it is limited to one per request and member). Late answers (after 10 min, up to 60 min) are kept with `in_time = false`.
+- No penalty for a missed report; the client shows a fun "saknas i strid" line only.
+
+### Edge function `notify-group` — new body event (v16 of the function)
+- `{event:"status_req", req_id}` → every other member of that group. The row must be the caller's, < 3 min old, `notified = false` (atomic claim → true). Title from `STATUS_LINES` (15, `{namn}` = chief), body `"Ta ett foto på vad som händer – 10 min · <grupp>"`, url `/?status=<id>`, tag `olnu-status-<id>`, TTL 600 s. Reasons: `no_req`, `no_group`.
+
+### Deep link
+- `?status=<id>` opens the report sheet. App open: sw.js posts the url → `app.js routeOpen` → `mods("openStatusLink", id)`. Cold start: chief.js reads `location.search` in `onAuthed` / `onReadyShow` (returns "chief" so the notification question waits) and removes the param.
+
+### Frontend (chief.js)
+- Grupper sheet (`groupItem`): "🎖️ Gruppchef: X" + "Lämna över" (chief or creator → member chips → `set_chief`); latest report line (live countdown or "Visa"); for the chief "📸 Begär lägesrapport" (disabled with "Nästa om N min" / "Max 6 ikväll") + "n/6 ikväll".
+- Request → `request_status` → `notify-group status_req` → the report sheet opens for the chief.
+- Members: `my_status` on every poll (≥ 20 s apart) and on `visibilitychange`; a new request → toast once + fixed banner (bottom, above the dock) "📸 Lägesrapport! Ta ett foto på vad som händer · 9:41 · 📸 Foto · ✕" + urgent HUD chip `📸 9:41` (`hx-urgent`). Countdown from the server clock (`now`), 1 Hz text tick, no flashing.
+- 📸 → file picker (camera or library) → `PHOTO._shrink` (≤ 1024 px JPEG ≈ 120 KB, no EXIF) → preview with countdown + optional text → `answer_status`. Toasts: first in ("🥇 Först in!…"), normal, late.
+- Report sheet (refresh every 6 s while open): head (group, asked by, countdown / "Rapporten ä klar", n/m), "📸 Skicka min rapport" when I have not answered (late: "Skicka ändå"), photo grid (🥇 first, 🐢 last in time, ⏰ late; tap = PHOTO viewer), when done: "I tid", "Först in", "Sist in (men in)", "Kom sent", one "🫥 <namn>: Saknas i strid. …" line per missing member (seeded, 10 variants), or an "alla i tid" line.
+
+### Stacked call-outs (rally.js, client only; no server change)
+- Call-outs of ONE group that point to the same place are one stack: same bar (`barOf`, ≤ 60 m), or ≤ 60 m apart, or the same place text when neither has a position. Banner, bar-popup "Inkallelser" row, map pin, Grupper card and the detail sheet show one stack: every sender + message, one "N på väg" (distinct `yes_names`), one ✅ Kommer.
+- Heading by stack size: 1 "Förstärkning begärd", 2 "Två trupper kallar – det brinner", 3 "LARM: hela plutonen behövs", 4+ "TOTALMOBILISERING" — 16 lines per level (sv; 6 en), stable per stack and level, no line used twice in one night (localStorage `olnu.rallyHeads`). Colours: green → amber → orange → red; level 4 has a soft 0.6 Hz glow (off with reduced motion).
+- ✅ Kommer / 🤔 / ❌ on a stack answers EVERY call-out of the stack that is not mine (`answer_rally` per id + `rally_yes` push per id, so each sender sees it). A push action button (`?rally=<id>&answer=yes`) answers only that call-out, then the sheet shows the whole stack. "✕ Stäng" per own call-out in the sheet. 2 h expiry (0025) unchanged.
+- `RALLY.barBadges()` now returns per bar `{bar, rallies: [one light row per stack: {id, yes (combined), my_answer, is_mine, n}], stacks}`; `RALLY.stacks()` is new; `RALLY.list()` still returns raw rows.
+
 ## v21 BILDER (photos in the group chat; additive)
 Migration `supabase/migrations/0028_chat_photos.sql` (applied on the server 2026-10-17 as `0028_chat_photos`; also appended to `setup.sql`, after 0029). Needs 0001–0021; uses 0029 (keep history) when it is there. Client: `docs/js/photo.js` (`window.PHOTO`) + `docs/photo.css`. A missing RPC (old database, PGRST202) = no 📷 button, no error; the "📷 …" chat rows stay plain text.
 
@@ -791,3 +835,41 @@ Rules:
 - Polls `crew_poll` with the app poll (max every 40 s; no poll while hidden); the open sheet refreshes `crew_group` every 20 s. Toasts once per item (`olnu.crewSeen`, per night); first poll after opening max 2.
 - `stopSheet`: "👋 Säg hej då till truppen" when in a group and not said yet. `onStopped("home")` re-polls (server counts `home_at` as left).
 - Wanted pushes later (notify-group, not done): `dep` (new departure → group), `dep_t5` (T−5 to members who said Med!), `dates` (new poll + winner when closed), `mood` (check started → group), `alone` (caring card → group-mates of the alone member, once per night per member), `torch_offer` (→ receiving group), `torch_got` / `torch_random` (→ new holder group).
+
+## v23 ÖNSKELISTAN + GRUPPDUELLEN (additive)
+Migration `supabase/migrations/0031_wishes_duels.sql` (applied on the server 2026-10-18 as `0031_wishes_duels` + `0031_wishes_duels_b_side_inclusive`; also appended to `setup.sql`). Needs 0001–0029 (`chat_photos` from 0028 is optional). No row is ever removed (status flags + time filters). Client: `docs/js/wish.js` (`window.WISH`), `docs/js/duel.js` (`window.DUEL`), `docs/duel.css` (both). A missing RPC (old database, PGRST202) = that feature hides, no error. In-app only: no push events.
+
+### Tables (RLS on, no policies, no client access)
+`feature_wishes(id, user_id, name 1–30 null, body 3–500, category kartan|grupper|chatt|lek|texter|annat null, created_at, status ny|planerad|byggs|klar|nej|dold, status_at, votes)`, `wish_votes(wish_id, user_id, active, created_at, updated_at)`, `duels(id, group_a = challenger, group_b, created_by, via qr|code|near, status pending|active|declined|cancelled|expired, created_at, answer_by, answered_by, accepted_at, ends_at = 05:00, finished_at, drinks_a/b, spirit_a/b, winner a|b|draw)`, `duel_sides(duel_id, user_id, side a|b, first_at, changed_at, changes)`, `duel_tokens(token 8 chars, group_id, user_id, created_at, expires_at)`, `duel_open(group_id, open)`, `duel_log(user_id, kind drink|checkin|skal|photo, n, at)` (filled by triggers on `beers` (drink delta, −1 after undo), `checkins`, `skals`, `chat_photos`; only users in a group; triggers never block the write). View `owner_wishes_v` (all wishes, votes desc, newest; no user ids; no grants for anon/authenticated → SQL editor / execute_sql only).
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `submit_wish` | `p_text, p_category default null, p_name default null` | jsonb `{id, dup, left_today, votes}` | `invalid_wish` (3–500 chars after cleaning, no links), `invalid_category`, `slow_down` (5 per user per Stockholm day; 1 per 15 s) |
+| `vote_wish` | `p_wish_id bigint` | jsonb `{votes, mine}` (toggle) | `wish_not_found`, `slow_down` (40/min) |
+| `top_wishes` | `p_limit int default 30 (1–100), p_category default null` | setof `(id, body, category, name, votes, status, created_at, mine, is_mine)` — not `dold` (own always), open first, votes desc, newest | – |
+| `owner_wishes` | `p_key text` (owner key, anon allowed) | jsonb `{generated_at, total, wishes:[{id, body, category, name, votes, status, created_at}]}` max 1000 | wrong key → 403 `forbidden` (logged like owner_stats), `rate_limited` |
+| `owner_set_wish` | `p_key, p_wish_id, p_status` | jsonb `{ok, status}` | `invalid_status`, `wish_not_found`, 403 |
+| `duel_invite` | `p_group_id` | jsonb `{token, expires_at, group_name}` | `not_member`, `slow_down` (20 tokens/h), `code_generation_failed` |
+| `duel_token_info` | `p_token` | jsonb `{group_name, members, expires_at, mine, groups:[{id, name, state ok\|same\|dueling\|full}]}` | `token_not_found` |
+| `duel_accept_token` | `p_token, p_group_id` | duel json + `already bool` | `token_not_found`, `not_member`, `same_group`, `too_many_duels` |
+| `duel_challenge` | `p_group_id, p_code default null (group code), p_handle default null (from duel_nearby)` | duel json (status pending) | `not_member`, `group_not_found`, `same_group`, `already_dueling`, `too_many_duels`, `slow_down` (1/20 s) |
+| `duel_answer` | `p_duel_id, p_accept bool` | duel json | `duel_not_found` (not in the challenged group), `duel_over` |
+| `duel_cancel` | `p_duel_id` | `{ok}` | `duel_not_found`, `duel_over` |
+| `duel_pick_side` | `p_duel_id, p_group_id` | duel json | `duel_not_found`, `not_both`, `duel_over`, `invalid_side`, `side_locked` |
+| `duel_set_open` | `p_group_id, p_on bool` | `{open}` | `not_member` |
+| `duel_nearby` | `p_group_id, p_lat, p_lng` | jsonb `{open, groups:[{handle, name, members, out}]}` | `not_member`, `outside_sweden` (= invalid coordinates) |
+| `duel_poll` | – | jsonb `{v, server_time, night, open:[group ids], duels:[duel json]}` (max 40) | – |
+
+Duel json (caller's view): `{id, status pending|active|done|expired|declined, via, incoming, outgoing, created_at, answer_by, accepted_at, ends_at, finished_at, group:{id, name, wins}, opp:{name, members, wins}, us:{drinks, spirit, members, undecided}, them:{…}, both, needs_pick, pick:{group_id, can_switch, locked_at}|null, sides:[{id,name}]|null (only for a member of both), winner us|them|draw|null}`. Never user ids or member names of the other group.
+
+Rules:
+- **Önska**: text one line (control chars → space), 3–500 chars, no links. Same text as a visible wish → no new row, the caller's +1 goes on that wish (`dup`). The writer's own +1 is added automatically. `name` only when the user ticks "Visa mitt namn". Owner statuses: `ny` (default), `planerad`, `byggs`, `klar`, `nej`, `dold` (hidden from everyone but the writer). Owner: docs/stats.html section "💡 Önskelista" (sorted votes → date, status select) or `select * from owner_wishes_v;`.
+- **Duel start**: QR = `duel_invite` token (8 chars, 30 min, never past 05:00, reused while > 10 min left, many opponents may use it), link `./?duel=TOKEN`. The scanner taps "⚔️ Anta för <grupp>" → `duel_accept_token` → live at once (a pending challenge between the pair is accepted; a live one is returned with `already`). Fallback: `duel_challenge` with the other group's 6-char group code or a `duel_nearby` handle → pending for 30 min; any member of the challenged group answers. `duel_nearby` lists only groups that switched on `duel_set_open`, with ≥ 1 member out tonight (visible non-ghost live pin or live check-in) within 30 km; handle = md5(group, night) — never the group id or code.
+- **Limits**: one live/pending duel per pair per night; max 10 live + pending duels per group per night (`too_many_duels`).
+- **Score**: `drinks` = plain sum of `duel_log` drink deltas (beer + other drinks) since `accepted_at` until `ends_at`, per counted member, floored at 0 per member; no cap. The server's 10-min gap between drinks is unchanged. `spirit` (Truppanda) per member = min(3, check-ins)×3 + min(10, skål given) + min(3, photos)×2 — side stat + tiebreaker. Winner: more drinks; tie → more spirit; else `draw`. Counted members = current members of that group; a member of BOTH groups counts only for the side picked in `duel_sides` (before picking: for neither; `undecided` shows how many). Pick: any time while pending/live; one switch within 10 min of the first pick; then `side_locked`. Per duel.
+- **End**: at `ends_at` (05:00 local). `duel_poll` settles ended duels (stores drinks/spirit/winner, idempotent, advisory lock) and returns them for 16 h (winner card). `opp.wins` / `group.wins` = all-time duel wins (the group medal count).
+
+### Frontend
+- **wish.js**: entry "💡 Önska en feature" in ⚙️ (`settingsSheet`), at the bottom of the 🏆 sheet (`topSheet`), and a small "💡 Önska" chip in the HUD Ikväll panel (`hudChipsHTML`/`hudClick` `data-hx="wish"`; `HUD_ALWAYS` in wish.js — with it the Ikväll pill also shows at 0 drinks). Sheet: textarea (counter /500), category chips, "Visa mitt namn", send, "🔥 Mest önskat" (top 30, "👍 Jag vill också · n" toggle, status badge). 20 thank-you toasts (dalmål, never twice in a row).
+- **duel.js**: group row button (`groupItem`) "⚔️ Utmana grupp" / "⚔️ Dueller" + summary. Sheet per group: pick cards (member of both), duel table when 3+ live/done duels, one card per duel (score, tug-of-war bar, 42 commentary lines (start/lead/behind/tied/big) — rivalry only, never "drink more/faster", drinks/members/Truppanda rows, time left, wins), pending answer/cancel, winner card with 🥇. Challenge: "⚔️ Visa utmaningskod" (QR + code + copy/share), type a code (8 = duel token → accept sheet, 6 = group code → challenge), "📍 Grupper nära er ikväll" + "Låt grupper nära oss utmana oss". HUD chip (`data-hx="duel"`): incoming › pick side › winner card › live score. Toasts once per event (`olnu.duelSeen`). `duel_poll` on auth and with the app poll (max every 30 s; every 15 s while the sheet shows a live duel). Deep link `?duel=TOKEN` is read and removed by duel.js; it opens the accept sheet after sign-in and the intro.

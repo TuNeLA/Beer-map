@@ -509,7 +509,7 @@
     if (inited) return;
     inited = true; A = api;
   }
-  window.PHOTO = { init: init, chatOpen: chatOpen, _shrink: shrink, _viewer: viewer };
+  window.PHOTO = { init: init, chatOpen: chatOpen, _shrink: shrink, _viewer: viewer, _url: photoUrl, _remember: remember };   // _url/_remember: chief.js
 
   // Until app.js lists window.PHOTO in mods() and social.js calls PHOTO.chatOpen, ride along with the
   // existing AFTER hooks (after.js loads before this file). Both paths are safe together (guards above).

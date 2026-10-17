@@ -16,6 +16,7 @@
 // Body events (v12 KROGARNA): {event:"tip", tip_id} -> krogtips, {event:"takeover", bar_id} -> "🏰 Ni har tagit över {bar}!".
 // Body events (v16 EFTERÅT): {event:"medevac_check", check_id} -> "🚑 Lisa kollar på Oskar", {event:"voice", voice_id} -> röstskål.
 // Body events (v18 ETA): {event:"eta", eta_id} -> "🪖 Anton ä på marsch mot Pitchers. ETA 7 min." to mates already there.
+// Body events (v22 GRUPPCHEF): {event:"status_req", req_id} -> "📸 Lägesrapport! {namn} vill se läget – 10 min" to the group.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -902,6 +903,33 @@ export function etaRecipients(o: {
   return [...out].sort();
 }
 
+// ---- v22 GRUPPCHEF: lägesrapport ----
+export const STATUS_LINES: string[] = [
+  "📸 Lägesrapport! Gruppchef {namn} vill se läget",
+  "🎖️ Gruppchef {namn} begär lägesrapport. Foto, nu!",
+  "📡 {namn} ropar på radion: lägesrapport, över!",
+  "🪖 Uppställning! {namn} vill ha bildbevis",
+  "📸 Spaningsorder från {namn}: fota vad som händer",
+  "🔭 {namn} spanar efter truppen. Skicka en bild!",
+  "📻 Högkvarteret ({namn}) begär lägesbild",
+  "🎯 Uppdrag från {namn}: ett foto på läget",
+  "🚨 Lägesrapport! {namn} vill veta hur dä ser ut",
+  "🦌 {namn} undrar var truppen ä. Bild, tack!",
+  "🗺️ {namn} ritar om kartan. Skicka läget!",
+  "📸 Klick-order från gruppchef {namn}",
+  "🪖 Gruppchef {namn}: visa mä vad som händer, soldat",
+  "📡 Underrättelse behövs! {namn} vill se läget",
+  "🎖️ {namn} kräver bildbevis. Klockan tickar",
+];
+export function statusReqPayload(idx: number, namn: string, groupName: string, reqId: number) {
+  return {
+    title: fill(STATUS_LINES[wrapIdx(idx, STATUS_LINES.length)], { namn: cleanBarName(namn) || "Gruppchefen" }),
+    body: `Ta ett foto på vad som händer – 10 min · ${cleanBarName(groupName) || "gruppen"}`,
+    url: `/?status=${reqId}`,
+    tag: `olnu-status-${reqId}`,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1592,6 +1620,33 @@ async function etaPush(admin: Admin, uid: string, b: Body) {
   return { ...(await sendAll(admin, jobs, 1800)), recipients: rcpt.length };
 }
 
+// ---- v22 GRUPPCHEF ----
+// {event:"status_req", req_id}: the chief's lägesrapport to every other member of that ONE group.
+// The status_reqs row must be the caller's, < 3 min old and not pushed (atomic `notified` claim).
+// Reasons: no_req, no_group.
+async function statusReqPush(admin: Admin, uid: string, b: Body) {
+  const rid = parseRallyId(b.req_id);
+  if (rid === null) return { ...NONE, reason: "no_req" };
+  const { data: claimed, error } = await admin
+    .from("status_reqs").update({ notified: true })
+    .eq("id", rid).eq("user_id", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString())
+    .select("id, group_id");
+  if (error) throw error;
+  const r = claimed && claimed[0];
+  if (!r) return { ...NONE, reason: "no_req" };
+  const gid = r.group_id as string;
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const idx = Math.floor(Math.random() * STATUS_LINES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(statusReqPayload(idx, mates.get(s.user_id) ?? "Gruppchefen", (g?.name as string) ?? "", rid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1651,6 +1706,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "medevac_check") return json(await medcheckPush(admin, uid, body));
     if (event === "voice") return json(await voicePush(admin, uid, body));
     if (event === "eta") return json(await etaPush(admin, uid, body));
+    if (event === "status_req") return json(await statusReqPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

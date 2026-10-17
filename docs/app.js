@@ -1456,7 +1456,7 @@
     if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
     hx.hidden = !html;
     // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
-    var urgent = hx.querySelector(".af-chip-med") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
+    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
     hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
     if (urgent) urgent.classList.add("hx-urgent");
     if (st.hidden) hudPanel(false);
