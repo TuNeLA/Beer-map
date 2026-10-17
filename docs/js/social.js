@@ -532,7 +532,8 @@
         });
       }
       var tick = 0;
-      timer = setInterval(function () { load(); loadLikes(); if (++tick % 3 === 0) loadStats(); }, 10000);
+      // New messages every 3 s while the chat is open; reactions every 9 s, ranks every 30 s.
+      timer = setInterval(function () { load(); ++tick; if (tick % 3 === 0) loadLikes(); if (tick % 10 === 0) loadStats(); }, 3000);
       load(); loadStats(); setTimeout(loadLikes, 600);
     });
   }
