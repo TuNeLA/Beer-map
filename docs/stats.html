@@ -88,6 +88,18 @@ details summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:8px}
 .btn:active{background:var(--amber-d)}
 .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line-soft);width:auto;padding:6px 10px;font-size:11px;margin:0}
 .msg{margin-top:12px;padding:10px 12px;border-radius:4px;font-size:14px;border:1px solid var(--red-d);background:rgba(179,18,27,.18);color:#ffd2d2}
+/* Önskelista (0031) */
+ol.wl{list-style:none;margin:0;padding:0}
+ol.wl li{padding:9px 0;border-bottom:1px solid var(--line-soft)}
+ol.wl .wb{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+ol.wl .wm{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:5px;font-family:var(--hud);font-size:12px;color:var(--muted)}
+ol.wl .wv{color:var(--amber-2);font-size:14px}
+ol.wl select{font:12px var(--hud);color:var(--text);background:var(--night);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
+ol.wl li.st-dold .wb{opacity:.45;text-decoration:line-through}
+ol.wl li.st-klar .wb{color:var(--green)}
+.wf{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.wf button{font:12px var(--hud);color:var(--muted);background:transparent;border:1px solid var(--line-soft);border-radius:14px;padding:5px 10px;cursor:pointer}
+.wf button.on{color:var(--night);background:var(--amber);border-color:var(--amber)}
 @media (min-width:560px){ .kpis{grid-template-columns:repeat(4,1fr)} .grid{grid-template-columns:repeat(3,1fr)} }
 </style>
 </head>
@@ -159,6 +171,13 @@ details summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:8px}
     <section class="panel">
       <h2>Tabeller <span>· antal rader</span></h2>
       <table id="tTech"></table>
+    </section>
+
+    <section class="panel" id="pWishes" hidden>
+      <h2>💡 Önskelista <span id="wCount"></span></h2>
+      <div class="wf" id="wFilter" role="group" aria-label="Filtrera på status"></div>
+      <ol class="wl" id="lWishes"></ol>
+      <p class="note">Sorterad på röster, sedan datum. Status syns för användarna ("Dold" gömmer önskan för alla utom den som skrev den). I SQL: <code>select * from owner_wishes_v;</code></p>
     </section>
 
     <p class="note">Bara summor. Inga namn, inga exakta platser, inga användar-id. Skål, reaktioner och chatt försvinner när en natt tar slut, så 7 d-siffrorna kan vara för låga. Uppdateras var 60:e sekund när sidan syns.</p>
@@ -244,11 +263,69 @@ details summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:8px}
       $("main").hidden = false;
       render(d || {});
       var at = d && d.generated_at ? new Date(d.generated_at) : new Date();
+      fetchWishes();
       setStamp("Uppdaterad " + at.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), true);
       startTimer();
     }, function (e) {
       busy = false;
       if ($("main").hidden) showLogin(errorText(e)); else setStamp(errorText(e), false);
+    });
+  }
+
+  // ---- Önskelista (owner_wishes, migration 0031). Missing RPC = the panel stays hidden. ----
+  var WST = ["ny", "planerad", "byggs", "klar", "nej", "dold"];
+  var WST_L = { ny: "Ny", planerad: "Planerad", byggs: "Byggs", klar: "Klar", nej: "Blir inte", dold: "Dold" };
+  var WCAT = { kartan: "🗺️ Kartan", grupper: "👥 Grupper", chatt: "💬 Chatt", lek: "🎲 Lek", texter: "✍️ Texter", annat: "✨ Annat" };
+  var wishes = [], wFilter = "alla", wBusy = false;
+  function fetchWishes() {
+    if (!key || !sb || wBusy) return;
+    wBusy = true;
+    sb.rpc("owner_wishes", { p_key: key }).then(function (res) {
+      wBusy = false;
+      var d = res.data;
+      if (res.error || !d || d.message === "forbidden" || !Array.isArray(d.wishes)) { if (res.error && !/forbidden/.test(String(res.error.message || ""))) $("pWishes").hidden = true; return; }
+      wishes = d.wishes;
+      $("pWishes").hidden = false;
+      renderWishes();
+    }, function () { wBusy = false; });
+  }
+  function renderWishes() {
+    var f = $("wFilter"); f.textContent = "";
+    ["alla"].concat(WST).forEach(function (st) {
+      var n = st === "alla" ? wishes.length : wishes.filter(function (w) { return w.status === st; }).length;
+      if (st !== "alla" && !n) return;
+      var b = document.createElement("button"); b.type = "button";
+      b.textContent = (st === "alla" ? "Alla" : WST_L[st]) + " " + n;
+      if (wFilter === st) b.className = "on";
+      b.addEventListener("click", function () { wFilter = st; renderWishes(); });
+      f.appendChild(b);
+    });
+    $("wCount").textContent = "· " + fmt(wishes.length) + " st";
+    var ol = $("lWishes"); ol.textContent = "";
+    var rows = wishes.filter(function (w) { return wFilter === "alla" || w.status === wFilter; });
+    if (!rows.length) { var e = document.createElement("li"); e.className = "empty"; e.textContent = "Inga önskningar här än."; ol.appendChild(e); return; }
+    rows.forEach(function (w) {
+      var li = document.createElement("li"); li.className = "st-" + w.status;
+      var b = document.createElement("div"); b.className = "wb"; b.textContent = w.body; li.appendChild(b);
+      var m = document.createElement("div"); m.className = "wm";
+      var v = document.createElement("span"); v.className = "wv"; v.textContent = "👍 " + fmt(w.votes); m.appendChild(v);
+      if (w.category) { var c = document.createElement("span"); c.textContent = WCAT[w.category] || w.category; m.appendChild(c); }
+      var dt = document.createElement("span"); var dd = new Date(w.created_at);
+      dt.textContent = dd.toLocaleDateString("sv-SE", { day: "numeric", month: "short" }) + " " + dd.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+      m.appendChild(dt);
+      if (w.name) { var nmEl = document.createElement("span"); nmEl.textContent = "· " + w.name; m.appendChild(nmEl); }
+      var sel = document.createElement("select"); sel.setAttribute("aria-label", "Status för önskan " + w.id);
+      WST.forEach(function (st) { var o = document.createElement("option"); o.value = st; o.textContent = WST_L[st]; if (st === w.status) o.selected = true; sel.appendChild(o); });
+      sel.addEventListener("change", function () {
+        var nv = sel.value; sel.disabled = true;
+        sb.rpc("owner_set_wish", { p_key: key, p_wish_id: w.id, p_status: nv }).then(function (res) {
+          sel.disabled = false;
+          if (res.error || (res.data && res.data.message === "forbidden")) { sel.value = w.status; setStamp("Kunde inte spara status.", false); return; }
+          w.status = nv; renderWishes();
+        }, function () { sel.disabled = false; sel.value = w.status; });
+      });
+      m.appendChild(sel);
+      li.appendChild(m); ol.appendChild(li);
     });
   }
 
