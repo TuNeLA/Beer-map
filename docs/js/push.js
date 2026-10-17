@@ -71,5 +71,20 @@
       return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth });
     }).catch(function () {});
   }
-  window.PUSH = { supported: supported, current: current, enable: enable, disable: disable, resync: resync, urlBase64ToUint8Array: urlBase64ToUint8Array };
+  // Save the approximate area (server rounds to ~1 km) so "KAOS I STAN" pushes reach people nearby.
+  // Throttled to once per 6 h per ~1 km cell. Errors ignored (old database without the RPC is fine).
+  function setLocation(rpc, lat, lng, force) {
+    if (!supported() || Notification.permission !== "granted") return Promise.resolve();
+    if (!isFinite(lat) || !isFinite(lng)) return Promise.resolve();
+    var cell = Math.round(lat * 100) + "," + Math.round(lng * 100), now = Date.now(), last = {};
+    try { last = JSON.parse(localStorage.getItem("olnu.pushLoc") || "{}") || {}; } catch (e) {}
+    if (!force && last.c === cell && now - (last.t || 0) < 6 * 3600 * 1000) return Promise.resolve();
+    return current().then(function (sub) {
+      if (!sub) return;
+      return rpc("set_push_location", { p_lat: lat, p_lng: lng }).then(function (r) {
+        if (r && !r.error) { try { localStorage.setItem("olnu.pushLoc", JSON.stringify({ c: cell, t: now })); } catch (e) {} }
+      });
+    }).catch(function () {});
+  }
+  window.PUSH = { supported: supported, current: current, enable: enable, disable: disable, resync: resync, setLocation: setLocation, urlBase64ToUint8Array: urlBase64ToUint8Array };
 })();

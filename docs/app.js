@@ -769,6 +769,7 @@
   var meLayer = L.layerGroup().addTo(map);
   function showMe(lat, lng, acc) {
     lastLoc = { lat: lat, lng: lng };
+    if (PUSH_ON && authed) window.PUSH.setLocation(rpc, lat, lng);
     if (chaosRes) evalChaos(false);
     meLayer.clearLayers();
     if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
@@ -832,7 +833,11 @@
             window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
           }
           window.FX.sound.beer();
-          if (d.milestone != null) notifyGroup();
+          notifyGroup();   // server: friend milestones + KAOS I STAN check
+          if (PUSH_ON) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
+          if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
+            setTimeout(function () { askNotifSheet(); }, 2200);
+          }
           if (isFinite(d.lat) && isFinite(d.lng)) {
             map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
           }
@@ -1185,12 +1190,19 @@
     if (!PUSH_ON) return Promise.resolve("nokey");
     if (iosNeedsInstall()) { toast(t("iosInstall"), { ms: 8000 }); return Promise.resolve("ios"); }
     return window.PUSH.enable(rpc, CFG.VAPID_PUBLIC_KEY).then(function (res) {
-      if (res === "on") toast(t("notifOn"));
+      if (res === "on") { toast(t("notifOn")); if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng, true); }
       else if (res === "denied") toast(t("notifDenied"), { err: true, ms: 6000 });
       else if (res === "nokey") toast(t("notifNoKey"), { err: true });
       else toast(t("notifUnsupported"), { err: true });
       return res;
     }).catch(function (e) { toast(errMsg(e), { err: true }); return "error"; });
+  }
+  function askNotifSheet() {
+    if (U.ls.get("olnu.notifAsked", "") === "1") return;
+    openSheet(t("notifAskTitle"), function (body) {
+      body.appendChild(el("p", { text: t("notifAskText") }));
+      notifPromptOnce(body);
+    });
   }
   function notifPromptOnce(container) {
     if (!PUSH_ON || !window.PUSH.supported()) return;
@@ -1389,7 +1401,7 @@
     signingIn = go().then(function () {
       authed = true;
       toastClear("auth");
-      if (PUSH_ON) window.PUSH.resync(rpc);
+      if (PUSH_ON) window.PUSH.resync(rpc).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
       startPoll();
       return refresh();
     }).catch(function (e) {
