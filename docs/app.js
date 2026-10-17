@@ -1519,13 +1519,15 @@
     clearTimeout(undoTimer); clearTimeout(undoMiniTimer); undoTimer = undoMiniTimer = null;
     if (undoEl) { undoEl.remove(); undoEl = null; }
   }
+  var UNDO_SHOW_MS = 10000;
   function showUndo(d, text, cls) {
     clearUndo();
     var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
     undoEl = toast(text, { id: "undo", ms: 0, keep: true, cls: "undo" + (cls ? " " + cls : ""),
       action: { label: "↩️ " + t("undoBtn"), stay: true, fn: function (b) { doUndo(b); } } });
-    undoMiniTimer = setTimeout(function () { if (undoEl) undoEl.classList.add("undo-mini"); }, UNDO_BIG_MS);
+    // The ÅNGRA toast stays 10 s only (owner: it was in the way). The group push still waits for the full window.
+    undoMiniTimer = setTimeout(function () { if (undoEl) { undoEl.remove(); undoEl = null; } }, UNDO_SHOW_MS);
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
   }
   var undoing = false;
