@@ -15,6 +15,7 @@
 // Body events (v10 CHECKA IN): {event:"checkin", bar?} -> "📍 {namn} har anlänt till {bar}".
 // Body events (v12 KROGARNA): {event:"tip", tip_id} -> krogtips, {event:"takeover", bar_id} -> "🏰 Ni har tagit över {bar}!".
 // Body events (v16 EFTERÅT): {event:"medevac_check", check_id} -> "🚑 Lisa kollar på Oskar", {event:"voice", voice_id} -> röstskål.
+// Body events (v18 ETA): {event:"eta", eta_id} -> "🪖 Anton é på marsch mot Pitchers. ETA 7 min." to mates already there.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -378,7 +379,7 @@ export function bucketStart(nowMs: number, windowSec: number): number {
 }
 
 /** Event rate limits in seconds (push_sent kind -> window). */
-export const RATE_SEC = { comehere: 600, sos: 180, msg: 120, checkin: 600 } as const;
+export const RATE_SEC = { comehere: 600, sos: 180, msg: 120, checkin: 600, eta: 600 } as const;
 
 // ---- v10 CHECKA IN ----
 export const CHECKIN_LINES: string[] = [
@@ -709,6 +710,196 @@ export function voicePayload(idx: number, namn: string, groupName: string, group
     url: `/?chat=${groupId}`,
     tag: `olnu-voice-${groupId}`,
   };
+}
+
+// ---- v18 ETA ("🏃 Jag é på väg") ----
+// Titles by distance in time: short (≤ 5 min), mid (10–15), long (20–30). {namn}, {min}, {bar}.
+export const ETA_LINES: Record<"short" | "mid" | "long", string[]> = {
+  short: [
+    "🏃 {namn} é nästan framme vid {bar}. {min} min. Håll dörren!",
+    "🪖 {namn} é på marsch mot {bar}. ETA {min} min. Håll en stol!",
+    "📡 {namn} syns på radarn. {min} min till {bar}.",
+    "🚪 {namn} står typ i dörren till {bar}. {min} min.",
+    "⏱️ T minus {min} min: {namn} landar på {bar}.",
+    "🐎 {namn} galopperar som en dalahäst mot {bar}. {min} min kvar.",
+    "🫡 {namn} rapporterar: {min} min från {bar}. Över.",
+    "🎯 Målet i sikte! {namn} é {min} min från {bar}.",
+    "🏁 Upploppet! {namn} é {min} min från {bar}.",
+    "🚁 {namn} har påbörjat inflygning mot {bar}. {min} min.",
+    "🦌 {namn} har setts korsa vägen mot {bar}. {min} min bort.",
+    "🔔 Pling! {namn} é runt hörnet. {min} min till {bar}.",
+    "🥾 Kängorna slår i asfalten: {namn} é {min} min från {bar}.",
+    "📣 Givakt vid {bar}! {namn} anländer om {min} min.",
+    "🧭 {namn} har {bar} i kikarsiktet. {min} min.",
+    "🚶 {namn} går så det ryker. {bar} om {min} min.",
+    "🛬 {namn} har fällt ut landningsstället. {bar} om {min} min.",
+    "🪑 Håll en stol varm på {bar}. {namn} é där om {min} min.",
+    "💨 {namn} har bråttom som en dalkarl till midsommarstången. {min} min till {bar}.",
+    "🏃 {namn} springer mot {bar} som en pistvakt i nedförsbacke. {min} min.",
+    "📻 Sprak sprak: {namn} é {min} min bort. {bar}, ta emot!",
+    "🐻 Björnen é nästan ute ur skogen: {namn}, {min} min till {bar}.",
+    "👟 {namn} har tagit sista backen. {min} min till {bar}.",
+    "🎺 Fanfaren kan börja öva: {namn} é vid {bar} om {min} min.",
+    "🕵️ Spaningen bekräftar: {namn} é {min} min från {bar}.",
+    "🚨 Nära kontakt! {namn} når {bar} om {min} min.",
+  ],
+  mid: [
+    "📡 Förstärkning på väg: {namn}, {min} minuter bort. Ställ fram en kall.",
+    "🪖 Kolonnen rör sig. {namn} når {bar} om {min} min.",
+    "🚌 {namn} é på väg mot {bar}. ETA {min} min, inga stopp planerade.",
+    "🗺️ {namn} har lagt ut kursen mot {bar}. {min} min.",
+    "🛷 {namn} åker kälke mot {bar}. Beräknad ankomst: {min} min.",
+    "🚜 {namn} har startat traktorn mot {bar}. {min} min, om det int' é kö i rondellen.",
+    "🫡 Order mottagen. {namn} marscherar mot {bar}, {min} min.",
+    "🦆 {namn} flyger i formation mot {bar}. {min} min.",
+    "⏳ Timglaset é vänt: {namn} é på {bar} om {min} min.",
+    "📯 {namn} har blåst till uppbrott. {bar} om {min} min.",
+    "🥁 Trummorna går: {namn} é på väg till {bar}. {min} min.",
+    "🎒 {namn} har packat ryggsäcken. Destination {bar}, {min} min.",
+    "🛰️ Satelliten ser {namn} på väg mot {bar}. {min} min kvar.",
+    "🐴 Dalahästen é sadlad. {namn} rider mot {bar}, {min} min.",
+    "🚂 Tåget {namn} avgår mot {bar}. Ankomst om {min} min.",
+    "🧥 {namn} har tagit på sig finjackan och é {min} min från {bar}.",
+    "📍 {namn} é på väg till {bar}. {min} min. Säg till vakten!",
+    "🔭 Utkiken rapporterar: {namn} närmar sig {bar}. {min} min.",
+    "🚴 {namn} trampar mot {bar} som i Vasaloppet fast på cykel. {min} min.",
+    "🛶 {namn} paddlar mot {bar}. Motström, men {min} min.",
+    "🎖️ Uppdrag {bar}: {namn} é i rörelse. {min} min till mål.",
+    "🌲 {namn} har lämnat skogen och siktar på {bar}. {min} min.",
+    "☎️ {namn} ringer int', {namn} kommer. {bar} om {min} min.",
+    "🏃 Kompis på ingång! {namn} é vid {bar} om {min} min.",
+    "📦 Leverans på väg till {bar}: en {namn}. Beräknad tid {min} min.",
+    "🚕 {namn} har hoppat in i taxin mot {bar}. {min} min, dä.",
+    "🪂 {namn} har hoppat ut över {bar}. Landning om {min} min.",
+    "⚓ {namn} har lättat ankar mot {bar}. {min} min.",
+  ],
+  long: [
+    "🌭 {namn} tar omvägen förbi korvkiosken. {bar} om {min} min.",
+    "🐢 {namn} é på väg mot {bar}. Lugnt tempo: {min} min.",
+    "🗻 {namn} har en bit kvar till {bar}. {min} min. Håll ut!",
+    "🚜 {namn} kör traktor mot {bar}. {min} min, i medvind.",
+    "🧭 {namn} navigerar efter stjärnorna mot {bar}. ETA {min} min.",
+    "🪖 Långmarsch! {namn} når {bar} om {min} min.",
+    "🚿 {namn} ska bara duscha först. Sen {bar}. {min} min, säger hen.",
+    "👔 {namn} väljer skjorta. Det kan ta tid. {bar} om {min} min.",
+    "🦌 {namn} tar skogsvägen till {bar}. Räkna med {min} min.",
+    "🛤️ {namn} har lång väg men stort hjärta. {bar} om {min} min.",
+    "📻 Långdistansradio: {namn} é {min} min från {bar}. Över.",
+    "🐌 Snigelpost från {namn}: anländer till {bar} om {min} min.",
+    "⛽ {namn} tankar och kör (nykter chaufför!). {bar} om {min} min.",
+    "🎿 {namn} åker Vasaloppet till {bar}. Mål om {min} min.",
+    "🏔️ {namn} har påbörjat bestigningen av {bar}. {min} min till toppen.",
+    "🚌 {namn} väntar på bussen till {bar}. {min} min, om busschauffören vill.",
+    "🍕 {namn} käkar först (klokt!). {bar} om {min} min.",
+    "💧 {namn} dricker ett glas vatten och drar. {bar} om {min} min.",
+    "🧦 {namn} letar efter den andra strumpan. {bar} om {min} min.",
+    "🛰️ Fjärrspaning: {namn} é långt bort. {min} min till {bar}.",
+    "🎒 {namn} har packat för expedition {bar}. {min} min.",
+    "🐕 {namn} rastar hunden först. Sen {bar}, {min} min.",
+    "🚣 {namn} ror över sjön till {bar}. {min} min, om vinden é snäll.",
+    "📜 Generalstaben meddelar: {namn} anländer till {bar} om {min} min.",
+    "🌙 {namn} é på väg i månskenet. {bar} om {min} min.",
+    "🦉 Ugglan har sett {namn} på väg mot {bar}. {min} min.",
+    "🪵 {namn} har stängt spjället hemma. {bar} om {min} min.",
+    "🏃 {namn} é på väg till {bar} men har långt. {min} min, pojk.",
+  ],
+};
+
+export const ETA_BODIES: string[] = [
+  "Tryck för att se var {namn} é.",
+  "Håll en plats åt {namn}. Tryck för kartan.",
+  "Tryck för att följa {namn} på kartan.",
+  "Kolla kartan. Förstärkningen é på väg.",
+  "Tryck för att se {namn} på kartan. Över.",
+  "Ingen panik. {namn} é på väg. Tryck för kartan.",
+  "Ställ fram ett glas vatten åt {namn}. Tryck för kartan.",
+  "Spara en stol. Tryck för att se kartan.",
+  "Tryck för att se var {namn} é. Vinka när hen kommer.",
+  "Truppen växer. Tryck för att se kartan.",
+  "Tryck för lägesbilden.",
+  "Lägesrapport: {namn} rör sig. Tryck för kartan.",
+  "Tryck för att se baren och vem som kommer.",
+  "Möt upp i dörren? Tryck för kartan.",
+  "Tryck för att se var {namn} é, dä.",
+  "Radion sprakar. Tryck för att se kartan.",
+  "Säg hej när {namn} kliver in. Tryck för kartan.",
+  "Tryck för att se vilka som é på väg.",
+  "Fältpost från {namn}. Tryck för kartan.",
+  "Håll ställningarna tills {namn} é framme.",
+  "Tryck för att se hur långt {namn} har kvar.",
+  "Öppna kartan. {namn} é på väg.",
+  "Tryck för att se {bar} på kartan.",
+  "Bered plats i skyttegraven. Tryck för kartan.",
+  "Hälsa {namn} välkommen. Tryck för kartan.",
+  "Ingen soldat lämnas kvar. Tryck för kartan.",
+  "Tryck för att se var {namn} é. Över och ut.",
+  "Ta det lugnt, {namn} é snart där.",
+  "Spaningsbild uppdaterad. Tryck för kartan.",
+  "Tryck och se när {namn} é framme.",
+];
+
+export type EtaKind = "short" | "mid" | "long";
+export function etaKind(min: number): EtaKind {
+  return min <= 5 ? "short" : min <= 15 ? "mid" : "long";
+}
+/** Minutes left (at least 1) from eta_at to now. */
+export function etaMinsLeft(etaAtIso: string, nowMs: number): number {
+  const ms = Date.parse(etaAtIso) - nowMs;
+  return Number.isFinite(ms) ? Math.max(1, Math.ceil(ms / 60000)) : 1;
+}
+export function etaLineCount(kind: EtaKind): number { return ETA_LINES[kind].length; }
+
+export function etaPayload(
+  idx: number, bodyIdx: number, namn: string, min: number, bar: string | null | undefined,
+  barId: string | null | undefined, rallyId: number | null | undefined, etaId: number,
+) {
+  const k = etaKind(min);
+  const lines = ETA_LINES[k];
+  const b = cleanBarName(bar ?? "") || "samlingsplatsen";
+  const n = cleanBarName(namn) || "En vän";
+  const vars = { namn: n, min: Math.max(1, Math.round(min)), bar: b };
+  return {
+    title: fill(lines[wrapIdx(idx, lines.length)], vars),
+    body: fill(ETA_BODIES[wrapIdx(bodyIdx, ETA_BODIES.length)], vars),
+    url: rallyId ? `/?rally=${rallyId}` : barId ? `/?bar=${encodeURIComponent(barId)}` : "/",
+    tag: `olnu-eta-${etaId}`,
+    ...(rallyId ? { rally_id: rallyId } : {}),
+  };
+}
+
+export type EtaTarget = { bar_id?: string | null; lat?: number | null; lng?: number | null };
+export type EtaCheckin = { user_id: string; bar_id?: string | null; lat?: number | null; lng?: number | null; created_at: string };
+export type EtaPin = { user_id: string; lat: number; lng: number; precise?: boolean | null; stopped?: boolean | null; ghost?: boolean | null; snap_bar?: string | null };
+export const ETA_NEAR_M = 100;
+export const ETA_CHECKIN_MS = 3 * 3600 * 1000;
+
+/** Who gets the ETA push: group-mates who are AT the target right now (check-in at that bar in the
+ *  last 3 h — or within 100 m when the target has no bar — or a precise visible pin within 100 m /
+ *  snapped to that bar), plus the rally creator. Never the caller, never non-mates. Sorted, unique. */
+export function etaRecipients(o: {
+  caller: string; mates: Iterable<string>; target: EtaTarget; checkins: EtaCheckin[]; pins: EtaPin[];
+  rallyCreator?: string | null; nowMs: number;
+}): string[] {
+  const mates = new Set(o.mates);
+  mates.delete(o.caller);
+  const t = o.target;
+  const hasPt = typeof t.lat === "number" && typeof t.lng === "number" && Number.isFinite(t.lat) && Number.isFinite(t.lng);
+  const near = (lat: unknown, lng: unknown) =>
+    hasPt && typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng) &&
+    haversineKm({ lat: t.lat as number, lng: t.lng as number }, { lat, lng }) * 1000 <= ETA_NEAR_M;
+  const out = new Set<string>();
+  for (const c of o.checkins) {
+    if (!mates.has(c.user_id)) continue;
+    const at = Date.parse(c.created_at);
+    if (!Number.isFinite(at) || at < o.nowMs - ETA_CHECKIN_MS) continue;
+    if (t.bar_id ? c.bar_id === t.bar_id : near(c.lat, c.lng)) out.add(c.user_id);
+  }
+  for (const p of o.pins) {
+    if (!mates.has(p.user_id) || !p.precise || p.stopped || p.ghost) continue;
+    if ((t.bar_id && p.snap_bar === t.bar_id) || near(p.lat, p.lng)) out.add(p.user_id);
+  }
+  if (o.rallyCreator && mates.has(o.rallyCreator)) out.add(o.rallyCreator);
+  return [...out].sort();
 }
 
 // ---- pure:end ----
@@ -1333,6 +1524,74 @@ async function voicePush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
 
+// ---- v18 ETA ----
+// {event:"eta", eta_id}: "🪖 Anton é på marsch mot Pitchers. ETA 7 min." to group-mates who are AT the target
+// right now, plus the rally creator for a rally ETA. The etas row must be the caller's, live, < 5 min old and
+// not pushed (atomic `notified` claim); max 1 ETA push per sender per 10 min (push_sent kind "eta").
+// Reasons: no_eta, no_rally, no_group, nobody_there, slow_down.
+const lastEtaLine = new Map<string, number>();
+async function etaPush(admin: Admin, uid: string, b: Body) {
+  const eid = parseRallyId(b.eta_id);
+  if (eid === null) return { ...NONE, reason: "no_eta" };
+  const nowIso = new Date().toISOString();
+  const { data: claimed, error } = await admin
+    .from("etas").update({ notified: true })
+    .eq("id", eid).eq("user_id", uid).eq("notified", false)
+    .is("cancelled_at", null).is("arrived_at", null).gt("expires_at", nowIso)
+    .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id, group_id, bar_id, bar_name, lat, lng, rally_id, eta_at");
+  if (error) throw error;
+  const e = claimed && claimed[0];
+  if (!e) return { ...NONE, reason: "no_eta" };
+  const mates = await mateNames(admin, uid, (e.group_id as string) || undefined);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const ids = [...mates.keys()];
+  let rallyCreator: string | null = null;
+  if (e.rally_id) {
+    const r = await loadRally(admin, Number(e.rally_id));
+    if (!r) return { ...NONE, reason: "no_rally" };   // a rally ETA ends with its rally
+    if (r.user_id !== uid) rallyCreator = r.user_id;
+  }
+  const { data: cis, error: cErr } = await admin
+    .from("checkins").select("user_id, bar_id, lat, lng, created_at")
+    .in("user_id", ids).gt("expires_at", nowIso)
+    .gt("created_at", new Date(Date.now() - 3 * 3600 * 1000).toISOString());
+  if (cErr) throw cErr;
+  const { data: pins, error: pErr } = await admin
+    .from("beers").select("user_id, lat, lng, precise, stopped, ghost, snap_bar")
+    .in("user_id", ids).gt("expires_at", nowIso).eq("stopped", false).eq("precise", true);
+  if (pErr) throw pErr;
+  const rcpt = etaRecipients({
+    caller: uid, mates: ids, target: { bar_id: e.bar_id, lat: e.lat, lng: e.lng },
+    checkins: (cis ?? []) as EtaCheckin[], pins: (pins ?? []) as EtaPin[], rallyCreator, nowMs: Date.now(),
+  });
+  if (rcpt.length === 0) return { ...NONE, reason: "nobody_there" };
+  if (!(await rateClaim(admin, uid, "eta", RATE_SEC.eta))) return { ...NONE, reason: "slow_down" };
+  const min = etaMinsLeft(e.eta_at as string, Date.now());
+  const kind = etaKind(min);
+  if (lastEtaLine.size > 5000) lastEtaLine.clear();
+  const pickFor = new Map<string, [number, number]>();
+  for (const rid of rcpt) {
+    const key = `${rid}:${kind}`;
+    const idx = pickIndex(etaLineCount(kind), lastEtaLine.get(key));
+    lastEtaLine.set(key, idx);
+    const bkey = `${rid}:body`;
+    const bIdx = pickIndex(ETA_BODIES.length, lastEtaLine.get(bkey));
+    lastEtaLine.set(bkey, bIdx);
+    pickFor.set(rid, [idx, bIdx]);
+  }
+  const jobs = (await subsOf(admin, rcpt)).map((s) => {
+    const [i, bi] = pickFor.get(s.user_id) ?? [0, 0];
+    return {
+      sub: s,
+      payload: JSON.stringify(etaPayload(i, bi, mates.get(s.user_id) ?? "En vän", min, e.bar_name as string,
+        e.bar_id as string, e.rally_id ? Number(e.rally_id) : null, e.id as number)),
+    };
+  });
+  if (!jobs.length) return { ...NONE, reason: "nobody_there", recipients: rcpt.length };
+  return { ...(await sendAll(admin, jobs, 1800)), recipients: rcpt.length };
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1391,6 +1650,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "takeover") return json(await takeoverPush(admin, uid, body));
     if (event === "medevac_check") return json(await medcheckPush(admin, uid, body));
     if (event === "voice") return json(await voicePush(admin, uid, body));
+    if (event === "eta") return json(await etaPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

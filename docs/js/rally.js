@@ -105,7 +105,10 @@
       if (r) { r.yes = d.yes | 0; r.no = d.no | 0; r.maybe = d.maybe | 0; r.my_answer = d.mine || ans; }
       if ((d.mine || ans) === "yes") A.invoke("notify-group", { event: "rally_yes", rally_id: +id });
       if (!quiet) {
-        A.toast(t(ans === "yes" ? "rallyYesToast" : ans === "maybe" ? "rallyMaybeToast" : "rallyNoToast"));
+        var E = ans === "yes" && r && !r.is_mine ? etaApi() : null;
+        // v18: after "✅ Kommer" offer the ETA chips ("Hur långt bort é du?") in the rally sheet.
+        A.toast(t(ans === "yes" ? "rallyYesToast" : ans === "maybe" ? "rallyMaybeToast" : "rallyNoToast"),
+          E && openId == null ? { ms: 7000, action: { label: E.text("rallyBtn"), fn: function () { var x = byId(id) || r; if (A.map) A.map.closePopup(); openRally(x); } } } : undefined);
         window.FX.vibrate(ans === "yes" ? [30, 40, 30] : 20);
       }
       renderBanner(); refreshOpenSheet();
@@ -145,6 +148,7 @@
     body.appendChild(el("p", { class: "muted", text: t("rallyCounts", r.yes | 0, r.maybe | 0, r.no | 0) }));
     var names = Array.isArray(r.yes_names) ? r.yes_names.filter(Boolean) : [];
     body.appendChild(el("p", { class: "rl-names", text: names.length ? t("rallyGoing", names.join(", ")) : t("rallyNobody") }));
+    etaPart(body, r);
     if (!r.is_mine) {
       var row = el("div", { class: "row rl-ans-row" });
       ["yes", "maybe", "no"].forEach(function (a) {
@@ -176,6 +180,55 @@
         });
       })]));
     }
+  }
+  /* ---------- v18 ETA in the rally sheet (engine in barsplus.js: BARSPLUS.eta) ---------- */
+  function etaApi() { var E = window.BARSPLUS && window.BARSPLUS.eta; return E && E.on && E.on() ? E : null; }
+  // Where to send the ETA: the bar the call-out resolves to, else its point + place text, else only the rally.
+  function etaTarget(r) {
+    var bar = null; try { bar = barOf(r); } catch (e) { bar = null; }
+    if (bar && bar.id != null) return { bar_id: String(bar.id), bar_name: bar.name || r.place || null, lat: bar.lat, lng: bar.lng };
+    var w = whereOf(r);
+    return { bar_id: null, bar_name: r.place || null, lat: w ? w.lat : null, lng: w ? w.lng : null };
+  }
+  // "På väg: Anton (7 min), Lisa (✅)" + after "✅ Kommer": "Hur långt bort é du?" chips or my countdown.
+  function etaPart(body, r) {
+    var E = etaApi(); if (!E) return;
+    var el = A.el;
+    E.onChange(refreshOpenSheet);
+    var list = E.forRally(r.id);
+    body.appendChild(el("p", { class: "rl-eta-list", text: list.length
+      ? E.fill(E.text("rallyOnWay"), { list: list.map(function (x) { return E.nameOf(x) + " (" + (x.arrived ? "✅" : E.minText(x)) + ")"; }).join(", ") })
+      : E.text("rallyNone") }));
+    if (r.is_mine || r.my_answer !== "yes") return;
+    var me = E.mine(), box = el("div", { class: "rl-eta" });
+    if (me && String(me.rally_id) === String(r.id)) {
+      if (me.arrived) box.appendChild(el("div", { class: "eta-me arr", text: E.text("mineArr") }));
+      else {
+        var line = el("div", { class: "eta-me" });
+        if (E.msLeft(me) > 0) {
+          line.appendChild(document.createTextNode(E.text("rallyMine")));
+          line.appendChild(el("b", { class: "eta-cd", "data-until": String(Date.parse(me.eta_at)), text: E.cdText(me) }));
+        } else line.textContent = E.text("mineLate");
+        box.appendChild(line);
+        var here = A.btn(E.text("here"), "btn-small btn-green", function () { here.disabled = true; E.end(true); });
+        var stop = A.btn(E.text("cancel"), "btn-small", function () { stop.disabled = true; E.end(false); });
+        box.appendChild(el("div", { class: "row eta-acts" }, [here, stop]));
+        E.tick();
+      }
+    } else {
+      box.appendChild(el("div", { class: "eta-q", text: E.text("rallyQ") }));
+      var chips = el("div", { class: "eta-chips" });
+      E.MINUTES.forEach(function (n) {
+        var c = el("button", { type: "button", class: "eta-chip", "data-eta-min": String(n), text: E.fill(E.text("chip"), { n: n }) });
+        c.addEventListener("click", function () {
+          chips.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+          E.set(etaTarget(r), n, r.id).then(function () { chips.querySelectorAll("button").forEach(function (x) { x.disabled = false; }); });
+        });
+        chips.appendChild(c);
+      });
+      box.appendChild(chips);
+    }
+    body.appendChild(box);
   }
   function dirUrl(r) {
     var ll = (+r.lat).toFixed(5) + "," + (+r.lng).toFixed(5);

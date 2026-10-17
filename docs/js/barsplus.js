@@ -143,6 +143,11 @@
   }
   // Compact: owner + queue are one short line each; offers and all buttons sit in ONE collapsed section.
   function barPopupHTML(bar, list) {
+    var e = "";
+    try { e = etaSectionHTML(bar); } catch (x) { e = ""; }
+    return e + bpPopupHTML(bar, list);
+  }
+  function bpPopupHTML(bar, list) {
     if (!on() || !bar || bar.id == null) return "";
     var id = String(bar.id), s = status[id], h = "";
     barCache[id] = bar;
@@ -535,6 +540,388 @@
     return out;
   }
 
+  /* ---------- v18 ETA: "🏃 Jag é på väg" (CONTRACT "v18 ETA", migration 0024) ----------
+     Bar popup: button → chips 5/10/15/20/30 min → set_eta + notify-group {event:"eta"}. Own ETA with countdown,
+     "✅ Framme!" / "✖️ Avbryt". Group-mates heading to the bar: "🏃 Anton · 7 min". The rally sheet (rally.js)
+     uses BARSPLUS.eta. One group_etas() call per poll (max every 25 s). Missing RPC → no ETA UI at all. */
+  var ETX = {
+    sv: {
+      head: "🏃 På väg hit", btn: "🏃 Jag é på väg", q: "Hur långt bort é du?", chip: "{n} min",
+      mine: "⏱️ Du é framme om ", mineLate: "⏱️ ETA:n har passerat – é du framme?", mineElse: "Du é på väg till {bar} ({min}).",
+      mineArr: "✅ Du é framme. Bra marscherat, soldat!", arrived: "✅ {namn} é framme", soon: "snart",
+      here: "✅ Framme!", cancel: "✖️ Avbryt", wait: "Lugn i stegen! Ny ETA om {s} s.",
+      fail: "ETA:n gick int' fram. Försök igen.", noGroup: "Ingen grupp att säga till. Gå med i en grupp så ser kompisarna din ETA.",
+      gone: "Inkallelsen é över.", rallyQ: "Hur långt bort é du?", rallyOnWay: "🏃 ETA: {list}", rallyNone: "🏃 Ingen har angett ETA än.",
+      rallyBtn: "⏱️ Ange ETA", rallyMine: "Din ETA: ", you: "Du", place: "samlingsplatsen",
+      set: [
+        "🪖 Marschorder given! {bar} om {min} min. Kompisarna é varskodda.",
+        "📡 ETA {min} min skickad. Truppen på {bar} håller en stol.",
+        "🏃 Spring int' för fort nu. {bar} om {min} min.",
+        "🫡 Uppfattat! Du é på {bar} om {min} min. Över.",
+        "🚁 Inflygning registrerad: {bar}, {min} min.",
+        "🐎 Sadla dalahästen. {bar} väntar om {min} min.",
+        "📻 Radion sprakar: ”{min} min till {bar}”. Över och ut.",
+        "🧭 Kursen é satt mot {bar}. {min} min, dä.",
+        "🥾 Snöra kängorna! {bar} om {min} min.",
+        "🎯 Målet: {bar}. Tid: {min} min. Uppdraget: kom fram helskinnad.",
+        "📣 Truppen vet nu att du kommer till {bar} om {min} min.",
+        "🚜 Traktorn é startad. {bar} om {min} min.",
+        "🛷 Kälken é vallad. {bar} om {min} min.",
+        "⏱️ Klockan tickar: {min} min till {bar}. Ingen stress.",
+        "🦌 Ta skogsvägen om du vill. {bar} om {min} min.",
+        "🪑 Stolen é bokad på {bar}. Du har {min} min.",
+        "💧 Ta en vatten på vägen. {bar} om {min} min.",
+        "🗺️ Kartan é uppdaterad: du é {min} min från {bar}.",
+        "🚕 Taxi eller apostlahästar? {bar} om {min} min oavsett.",
+        "🔔 Pling! Förvarning skickad. {bar} om {min} min.",
+        "🐻 Björnen har lämnat idet. {bar} om {min} min.",
+        "🥁 Trumvirvel… du é på {bar} om {min} min.",
+        "🧥 Glöm int' jackan. {bar} om {min} min, pojk.",
+        "🛰️ Satelliten följer dig. {bar} om {min} min.",
+        "🎺 Fanfaren övar redan på {bar}. {min} min kvar.",
+        "🚶 Lagom takt nu. {bar} om {min} min.",
+        "📦 Leverans av dig till {bar} beräknad om {min} min.",
+        "🎒 Packningen é klar. Mot {bar}, {min} min.",
+        "🐢 Ingen brådska – {bar} står kvar om {min} min också.",
+        "🦆 Flyg i formation mot {bar}. {min} min.",
+        "⚓ Ankaret é lättat. {bar} om {min} min.",
+        "🫡 Order bekräftad, soldat. {bar}, {min} min.",
+        "🧑‍✈️ Kaptenen meddelar: beräknad ankomst till {bar} om {min} min.",
+        "🌲 Ut ur skogen, in på {bar}. {min} min.",
+        "🛶 Paddla lugnt. {bar} om {min} min.",
+        "📯 Uppbrott! Truppen väntar på {bar} om {min} min.",
+        "🏁 Startskottet har gått. {bar} om {min} min.",
+        "🎖️ Uppdrag {bar} é aktiverat. {min} min till mål.",
+        "😎 Snyggt planerat. {bar} om {min} min. Gruppen é informerad.",
+        "🔦 Ta med ficklampa om det é mörkt i backen. {bar} om {min} min."
+      ],
+      arrive: [
+        "✅ {namn} é framme vid {bar}. Uppdraget slutfört!",
+        "🛬 Touchdown! {namn} har landat på {bar}.",
+        "🫡 {namn} rapporterar: på plats vid {bar}. Över.",
+        "🎯 Målet nått. {namn} é på {bar}.",
+        "🪖 Förstärkningen har anlänt: {namn} é på {bar}.",
+        "🏁 {namn} har gått i mål på {bar}. Bra tid!",
+        "🚪 Dörren till {bar} gick upp och in klev {namn}.",
+        "📡 Radarn bekräftar: {namn} é på {bar}.",
+        "🐎 Dalahästen é parkerad. {namn} é framme vid {bar}.",
+        "🎺 Fanfar! {namn} har anlänt till {bar}.",
+        "🧭 Koordinaterna stämmer: {namn} é på {bar}.",
+        "🙌 {namn} é framme! Säg hej på {bar}.",
+        "🐻 Björnen é på plats: {namn} har kommit till {bar}.",
+        "🚁 {namn} har landat på {bar}. Helikoptern kan vända.",
+        "⚓ {namn} har kastat ankar vid {bar}.",
+        "📦 Leveransen é framme: en {namn} till {bar}.",
+        "🥾 Kängorna é avtorkade. {namn} é på {bar}.",
+        "🌟 {namn} é framme vid {bar}. Truppen é komplett, typ.",
+        "🦌 En vild {namn} har setts komma in på {bar}.",
+        "🔔 Pling! {namn} é framme på {bar}.",
+        "🎖️ {namn} klarade marschen till {bar}. Medalj? Kanske.",
+        "🛶 {namn} har lagt till vid {bar}.",
+        "📻 {namn} é framme vid {bar}. Över och ut.",
+        "🪑 Stolen é fylld: {namn} sitter på {bar}.",
+        "😄 {namn} hittade fram till {bar}. Kartan funkar, dä!"
+      ],
+      cancelT: [
+        "✖️ Marschen é avblåst. Ingen fara, soldat.",
+        "🛑 ETA:n é struken. Truppen klarar sig.",
+        "🔙 Reträtt! Ingen é arg (nästan).",
+        "🛋️ Soffan vann den här gången.",
+        "📻 Avbryt, avbryt! Uppfattat. Över.",
+        "🐢 Ändrade planer – helt okej.",
+        "🌙 Ny order: stanna där du é.",
+        "🧦 Strumpan hittades int'? Vi förstår.",
+        "🫡 Uppdraget é avbrutet. Vila, soldat.",
+        "🚜 Traktorn é tillbaka i ladan.",
+        "💧 Klokt kanske. Drick ett glas vatten.",
+        "🗺️ Kursen é nollställd.",
+        "🦌 Du tog en annan stig. Inga problem.",
+        "📡 Signalen é bruten. Kompisarna ser int' din ETA längre.",
+        "🛷 Kälken står kvar i backen.",
+        "🐻 Björnen gick tillbaka i idet.",
+        "🔕 ETA:n é borta. Ingen väntar i dörren.",
+        "🏠 Hemmaplan é också en plan.",
+        "⛔ Stopp i marschen. Ny chans om en stund.",
+        "🎺 Fanfaren pausas. Vi ses en annan gång."
+      ],
+      row: [
+        "🏃 {namn} · {min}",
+        "🪖 {namn} marscherar hit · {min}",
+        "📡 {namn} på radarn · {min}",
+        "🚶 {namn} é på väg · {min}",
+        "🐎 {namn} galopperar hit · {min}",
+        "🛬 {namn} i inflygning · {min}",
+        "🥾 {namn} i marsch · {min}",
+        "🦌 {namn} genar genom skogen · {min}",
+        "🚁 {namn} landar om {min}",
+        "🧭 {namn} har kurs hit · {min}",
+        "🫡 {namn} rapporterar {min} bort",
+        "🛷 {namn} åker kälke hit · {min}",
+        "🚜 {namn} kör traktor hit · {min}",
+        "📻 {namn}: ”{min}, över”",
+        "🎯 {namn} har {bar} i sikte · {min}",
+        "🐻 {namn} har lämnat idet · {min}",
+        "⏱️ {namn} framme om {min}",
+        "🚕 {namn} i taxin · {min}",
+        "🎒 {namn} med full packning · {min}",
+        "🦆 {namn} flyger hit · {min}"
+      ]
+    },
+    en: {
+      head: "🏃 On the way here", btn: "🏃 I'm on my way", q: "How far away are you?", chip: "{n} min",
+      mine: "⏱️ You arrive in ", mineLate: "⏱️ Your ETA has passed – are you there?", mineElse: "You're on your way to {bar} ({min}).",
+      mineArr: "✅ You made it. Well marched, soldier!", arrived: "✅ {namn} is here", soon: "soon",
+      here: "✅ I'm here!", cancel: "✖️ Cancel", wait: "Easy! New ETA in {s} s.",
+      fail: "Couldn't send the ETA. Try again.", noGroup: "No group to tell. Join a group so friends see your ETA.",
+      gone: "The call-out is over.", rallyQ: "How far away are you?", rallyOnWay: "🏃 ETA: {list}", rallyNone: "🏃 No ETAs yet.",
+      rallyBtn: "⏱️ Set ETA", rallyMine: "Your ETA: ", you: "You", place: "the meeting point",
+      set: ["🪖 Marching orders sent! {bar} in {min} min.", "📡 ETA {min} min sent. Your squad at {bar} saves you a seat.",
+        "🏃 Don't run too fast. {bar} in {min} min.", "🫡 Copy that! {bar} in {min} min. Over.", "🧭 Course set for {bar}. {min} min."],
+      arrive: ["✅ {namn} made it to {bar}. Mission complete!", "🛬 Touchdown! {namn} has landed at {bar}.", "🎯 Target reached: {namn} is at {bar}."],
+      cancelT: ["✖️ March called off. No worries, soldier.", "🛑 ETA cancelled. The squad will cope.", "🛋️ The sofa won this time."],
+      row: ["🏃 {namn} · {min}", "🪖 {namn} marching here · {min}", "📡 {namn} on radar · {min}", "⏱️ {namn} arrives in {min}"]
+    }
+  };
+  function ex(k) { var en = I.lang === "en" ? ETX.en[k] : undefined; return en !== undefined ? en : ETX.sv[k]; }
+  function fillE(s, v) { return String(s || "").replace(/\{(\w+)\}/g, function (m, k) { return v && v[k] != null ? String(v[k]) : m; }); }
+  var SEEN_KEY = "olnu.etaSeen";
+  // Random line, never one of the last 10 of that kind (remembered on the phone).
+  function pickE(kind) {
+    var list = ex(kind) || [], seen = U.ls.getJSON(SEEN_KEY, {}) || {};
+    if (!list.length) return "";
+    var last = Array.isArray(seen[kind]) ? seen[kind] : [], keep = Math.min(10, list.length - 1), bad = last.slice(-keep);
+    var ok = []; for (var i = 0; i < list.length; i++) if (bad.indexOf(i) < 0) ok.push(i);
+    var idx = ok.length ? ok[Math.floor(Math.random() * ok.length)] : Math.floor(Math.random() * list.length);
+    seen[kind] = last.concat([idx]).slice(-10);
+    U.ls.setJSON(SEEN_KEY, seen);
+    return list[idx];
+  }
+  var eta = { st: "unknown", rows: [], at: 0, busy: false, empty: 0, listeners: [], prevLive: {}, toasted: null, first: true };
+  var ETA_MIN = [5, 10, 15, 20, 30];
+  var pickOpen = {};                 // bar id -> chips open (the app rebuilds popups when the map moves)
+  function etaOn() { return !!(A && A.LIVE && A.authed() && eta.st === "on"); }
+  function msLeft(r) { var d = Date.parse(r.eta_at); return isFinite(d) ? d - Date.now() : 0; }
+  function minsLeft(r) { return Math.max(0, Math.ceil(msLeft(r) / 60000)); }
+  function minText(r) { var m = minsLeft(r); return m > 0 ? m + " min" : ex("soon"); }
+  function isLive(r) { return r && !r.arrived && msLeft(r) > -20 * 60e3; }
+  function myEta() {
+    var best = null;
+    eta.rows.forEach(function (r) { if (r.is_me && (!best || Date.parse(r.created_at) > Date.parse(best.created_at))) best = r; });
+    return best;
+  }
+  function nameOf(r) { return r.is_me ? (A.getName() || ex("you")) : (r.name || t("someone")); }
+  function etaCall(name, params) {
+    return call(name, params).then(function (r) {
+      if (r.error && off[name]) { eta.st = "off"; eta.rows = []; refreshEtaUI(); }
+      return r;
+    });
+  }
+  function toastedMap() {
+    if (!eta.toasted) {
+      var m = U.ls.getJSON("olnu.etaToasted", {}) || {}, now = Date.now();
+      Object.keys(m).forEach(function (k) { if (now - m[k] > 12 * 3600e3) delete m[k]; });
+      eta.toasted = m;
+    }
+    return eta.toasted;
+  }
+  function onceToast(key) {
+    var m = toastedMap(); if (m[key]) return false;
+    m[key] = Date.now(); U.ls.setJSON("olnu.etaToasted", m); return true;
+  }
+  // Is this ETA heading to where I am (my check-in) or to my own call-out?
+  function relevant(r) {
+    try {
+      var ci = A.myCheckin && A.myCheckin();
+      if (ci && r.bar_id && String(ci.id) === String(r.bar_id)) return true;
+      if (r.rally_id != null && window.RALLY && window.RALLY.list) {
+        return window.RALLY.list().some(function (x) { return String(x.id) === String(r.rally_id) && x.is_mine; });
+      }
+    } catch (e) {}
+    return false;
+  }
+  function loadEtas(force) {
+    if (!A || !A.LIVE || !A.authed() || eta.st === "off") return Promise.resolve();
+    var gap = eta.empty >= 3 ? 90000 : 25000;
+    if (eta.busy || (!force && Date.now() - eta.at < gap)) return Promise.resolve();
+    eta.busy = true; eta.at = Date.now();
+    return etaCall("group_etas").then(function (r) {
+      eta.busy = false;
+      if (r.error) return;
+      var was = eta.st;
+      eta.st = "on";
+      if (was !== "on") { try { A.render(); } catch (x) {} }
+      var rows = (r.data || []).filter(function (x) { return x && x.id != null; });
+      eta.empty = rows.length ? 0 : eta.empty + 1;
+      var prev = eta.prevLive, live = {};
+      rows.forEach(function (x) {
+        var k = String(x.id);
+        if (isLive(x)) live[k] = true;
+        if (x.is_me) {
+          if (prev[k] && x.arrived && onceToast("a" + k)) {
+            A.toast(fillE(pickE("arrive"), { namn: nameOf(x), bar: x.bar_name || ex("place") }), { cls: "skal", ms: 6000 });
+            fx();
+          }
+          return;
+        }
+        if (!relevant(x)) return;
+        // A mate's new ETA to my place (not on the first load for old rows), and the moment they arrive.
+        if (isLive(x) && !prev[k] && Date.now() - Date.parse(x.created_at) < 5 * 60e3 && onceToast("n" + k)) {
+          A.toast(rowLine(x, 0), { ms: 6000 });
+        }
+        if (x.arrived && (prev[k] || Date.now() - Date.parse(x.arrived_at) < 2 * 60e3) && onceToast("a" + k)) {
+          A.toast(fillE(pickE("arrive"), { namn: nameOf(x), bar: x.bar_name || ex("place") }), { cls: "skal", ms: 6000 });
+        }
+      });
+      eta.prevLive = live; eta.first = false;
+      eta.rows = rows;
+      refreshEtaUI();
+    }, function () { eta.busy = false; });
+  }
+  function rowLine(r, i) {
+    var list = ex("row") || [], n = list.length || 1, idx = (Math.abs(+r.id || 0) + (i || 0)) % n;
+    return fillE(list[idx], { namn: nameOf(r), min: minText(r), bar: r.bar_name || ex("place") });
+  }
+  function rowsFor(barId) {
+    var id = String(barId);
+    return eta.rows.filter(function (r) { return !r.is_me && r.bar_id != null && String(r.bar_id) === id && (isLive(r) || r.arrived); });
+  }
+  function cdText(r) { var ms = msLeft(r); return ms > 0 ? U.mmss(ms) : ex("soon"); }
+  // Inner HTML of the ETA box in a bar popup.
+  function etaInner(bar) {
+    var id = String(bar.id), h = "", rows = rowsFor(id), used = {};
+    rows.forEach(function (r, i) {
+      if (r.arrived) { h += '<div class="eta-row arr">' + esc(fillE(ex("arrived"), { namn: nameOf(r) })) + "</div>"; return; }
+      var line = rowLine(r, 0);
+      if (used[line.split(" ")[0]]) line = rowLine(r, i + 1);   // no two equal lines in a row
+      used[line.split(" ")[0]] = true;
+      h += '<div class="eta-row">' + esc(line) + "</div>";
+    });
+    var me = myEta();
+    if (me && String(me.bar_id) === id && (isLive(me) || me.arrived)) {
+      if (me.arrived) h += '<div class="eta-me arr">' + esc(ex("mineArr")) + "</div>";
+      else {
+        var late = msLeft(me) <= 0;
+        h += '<div class="eta-me">' + (late ? esc(ex("mineLate")) : esc(ex("mine")) + '<b class="eta-cd" data-until="' + Date.parse(me.eta_at) + '">' + esc(cdText(me)) + "</b>") + "</div>" +
+          '<div class="eta-acts"><button type="button" class="eta-here" data-eta-act="here">' + esc(ex("here")) + "</button>" +
+          '<button type="button" class="eta-x" data-eta-act="cancel">' + esc(ex("cancel")) + "</button></div>";
+      }
+      return h;
+    }
+    if (me && isLive(me) && me.bar_name) h += '<div class="eta-else muted">' + esc(fillE(ex("mineElse"), { bar: me.bar_name, min: minText(me) })) + "</div>";
+    var po = !!pickOpen[id];
+    h += '<button type="button" class="eta-go" data-eta-act="open" aria-expanded="' + po + '">' + esc(ex("btn")) + "</button>" +
+      '<div class="eta-pick"' + (po ? "" : " hidden") + '><div class="eta-q">' + esc(ex("q")) + '</div><div class="eta-chips">' +
+      ETA_MIN.map(function (n) { return '<button type="button" class="eta-chip" data-eta-min="' + n + '">' + esc(fillE(ex("chip"), { n: n })) + "</button>"; }).join("") +
+      "</div></div>";
+    return h;
+  }
+  function etaSectionHTML(bar) {
+    if (!etaOn() || !bar || bar.id == null || !isFinite(bar.lat) || !isFinite(bar.lng)) return "";
+    barCache[String(bar.id)] = bar;
+    return '<div class="pp-sec pp-sec-eta"><div class="pp-sec-h">' + esc(ex("head")) + '</div><div class="eta" data-eta-bar="' + esc(String(bar.id)) + '">' +
+      etaInner(bar) + "</div></div>";
+  }
+  // Re-draw every open ETA box (popups) and tell listeners (rally sheet).
+  function refreshEtaUI() {
+    document.querySelectorAll(".eta[data-eta-bar]").forEach(function (box) {
+      var bar = barOf(box.getAttribute("data-eta-bar"));
+      if (!etaOn() || !bar) { var s = box.closest(".pp-sec-eta"); if (s) s.hidden = true; return; }
+      box.innerHTML = etaInner(bar);
+    });
+    eta.listeners.forEach(function (fn) { try { fn(); } catch (e) {} });
+    tickCd();
+  }
+  var cdTimer = null;
+  function tickCd() {
+    if (cdTimer) return;
+    cdTimer = setInterval(function () {
+      var els = document.querySelectorAll(".eta-cd[data-until]");
+      if (!els.length) { clearInterval(cdTimer); cdTimer = null; return; }
+      els.forEach(function (e) { var ms = +e.getAttribute("data-until") - Date.now(); e.textContent = ms > 0 ? U.mmss(ms) : ex("soon"); });
+    }, 1000);
+  }
+  // target = {bar_id, bar_name, lat, lng}; rallyId optional. Resolves true on success.
+  function setEta(target, min, rallyId) {
+    if (!etaOn()) return Promise.resolve(false);
+    var p = { p_bar_id: target.bar_id != null ? String(target.bar_id) : null, p_bar_name: target.bar_name ? cleanName(target.bar_name) : null,
+      p_lat: isFinite(target.lat) && target.lat != null ? +target.lat : null, p_lng: isFinite(target.lng) && target.lng != null ? +target.lng : null,
+      p_minutes: min };
+    if (rallyId != null) p.p_rally_id = +rallyId;
+    return etaCall("set_eta", p).then(function (r) {
+      if (r.error) {
+        if (r.off) return false;
+        var m = String(r.error.message || "");
+        A.toast(m.indexOf("rally_not_found") >= 0 ? ex("gone") : ex("fail"), { err: true });
+        return false;
+      }
+      var d = A.parseData(r.data);
+      if (d.ok === false) { A.toast(fillE(ex("wait"), { s: Math.max(1, d.wait_seconds | 0) }), { ms: 4500 }); return false; }
+      d.is_me = true;
+      eta.rows = eta.rows.filter(function (x) { return !(x.is_me && isLive(x)); }).concat([d]);
+      eta.prevLive[String(d.id)] = true;
+      A.toast(fillE(pickE("set"), { bar: d.bar_name || target.bar_name || ex("place"), min: min }), { cls: "skal", ms: 5500 });
+      fx();
+      if (A.PUSH_ON && d.id != null) A.invoke("notify-group", { event: "eta", eta_id: d.id }).then(function (res) {
+        if (res && res.data && res.data.reason === "no_group") A.toast(ex("noGroup"), { ms: 6000 });
+      });
+      refreshEtaUI();
+      setTimeout(function () { loadEtas(true); }, 1500);
+      return true;
+    });
+  }
+  function endEta(arrived) {
+    return etaCall("cancel_eta", arrived ? { p_arrived: true } : {}).then(function (r) {
+      if (r.error) { if (!r.off) A.toast(ex("fail"), { err: true }); return false; }
+      var d = A.parseData(r.data), me = myEta();
+      if (me && d.ok !== false) {
+        if (arrived) { me.arrived = true; me.arrived_at = new Date().toISOString(); onceToast("a" + me.id); }
+        else eta.rows = eta.rows.filter(function (x) { return x !== me; });
+      }
+      if (arrived) { A.toast(fillE(pickE("arrive"), { namn: A.getName() || ex("you"), bar: (me && me.bar_name) || ex("place") }), { cls: "skal", ms: 5000 }); fx(); }
+      else A.toast(pickE("cancelT"), { ms: 4500 });
+      refreshEtaUI();
+      setTimeout(function () { loadEtas(true); }, 1200);
+      return true;
+    });
+  }
+  function etaClick(ev, box, tg) {
+    var b = tg.closest("button"); if (!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    var bar = barOf(box.getAttribute("data-eta-bar")); if (!bar || b.disabled) return;
+    var act = b.getAttribute("data-eta-act");
+    if (act === "open") {
+      var p = box.querySelector(".eta-pick"); if (!p) return;
+      p.hidden = !p.hidden; b.setAttribute("aria-expanded", String(!p.hidden));
+      pickOpen[String(bar.id)] = !p.hidden;
+      return;
+    }
+    if (act === "here" || act === "cancel") { b.disabled = true; endEta(act === "here").then(function () { b.disabled = false; }); return; }
+    var min = +b.getAttribute("data-eta-min");
+    if (ETA_MIN.indexOf(min) < 0) return;
+    A.withName(function () {
+      box.querySelectorAll(".eta-chip").forEach(function (x) { x.disabled = true; });
+      setEta({ bar_id: bar.id, bar_name: bar.name || t("unnamedBar"), lat: bar.lat, lng: bar.lng }, min, null).then(function (done) {
+        if (done) { pickOpen[String(bar.id)] = false; refreshEtaUI(); }
+        document.querySelectorAll(".eta-chip").forEach(function (x) { x.disabled = false; });
+      });
+    });
+  }
+  // For rally.js: live + arrived ETAs of one call-out, mine, chips.
+  var etaApi = {
+    on: etaOn,
+    MINUTES: ETA_MIN.slice(),
+    text: ex, fill: fillE,
+    minText: minText, cdText: cdText, msLeft: msLeft, isLive: isLive, nameOf: nameOf,
+    mine: function () { var m = myEta(); return m && (isLive(m) || m.arrived) ? m : null; },
+    forRally: function (id) {
+      return eta.rows.filter(function (r) { return r.rally_id != null && String(r.rally_id) === String(id) && (isLive(r) || r.arrived); })
+        .sort(function (a, b) { return Date.parse(a.eta_at) - Date.parse(b.eta_at); });
+    },
+    set: setEta, end: endEta, load: function () { return loadEtas(true); },
+    onChange: function (fn) { if (eta.listeners.indexOf(fn) < 0) eta.listeners.push(fn); },
+    tick: tickCd
+  };
+
   /* ---------- Public hooks ---------- */
   // Keep every open popup between the top HUD and the dock (ÖL!, ANNAT). The space is measured on the
   // real screen; the content scrolls inside, and the map moves so the whole popup is visible.
@@ -582,10 +969,13 @@
       // Buttons live in Leaflet popups (click bubbling stops at the popup): listen on each popup element.
       A.map.on("popupopen", function (e) {
         var root = e.popup && e.popup.getElement && e.popup.getElement();
+        if (root && root.querySelector(".eta[data-eta-bar]")) setTimeout(refreshEtaUI, 0);   // popup HTML may be older than the ETA list
         if (!root || root._olnuBp) return;
         root._olnuBp = true;
         root.addEventListener("click", function (ev) {
           var tg = ev.target; if (!tg || !tg.closest) return;
+          var ebox = tg.closest(".eta[data-eta-bar]");
+          if (ebox) { etaClick(ev, ebox, tg); return; }
           var box = tg.closest(".bp"); if (!box) return;
           var id = box.getAttribute("data-bp"), bar = barOf(id);
           var sum = tg.closest("summary");
@@ -598,6 +988,7 @@
                 e.popup.options.autoPan = false;   // Leaflet would pan back to show the popup top
                 e.popup.update();   // rebuilds the content: use the new element
                 e.popup.options.autoPan = ap;
+                refreshEtaUI();
                 var nd = e.popup.getElement() && e.popup.getElement().querySelector('.bp[data-bp="' + id.replace(/["\\]/g, "") + '"] .bp-more');
                 if (nd) det = nd;
                 if (det.open) {   // bring the opened section above the dock (the top HUD may then cover the popup title)
@@ -626,8 +1017,9 @@
         });
       });
     },
-    onAuthed: function () { loadStatus(true); },
-    onPoll: function () { loadStatus(false); },
+    onAuthed: function () { loadStatus(true); loadEtas(true); },
+    onPoll: function () { loadStatus(false); loadEtas(false); },
+    eta: etaApi,
     barPopupHTML: barPopupHTML,
     barBadgeHTML: barBadgeHTML,
     barIcoHTML: barIcoHTML,

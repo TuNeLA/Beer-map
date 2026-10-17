@@ -11,7 +11,7 @@ begin
 end;
 $$;
 revoke all on function public.olnu_rally_short_life() from public, anon, authenticated;
-create trigger rallies_short_life before insert on public.rallies
+create or replace trigger rallies_short_life before insert on public.rallies
   for each row execute function public.olnu_rally_short_life();
 update public.rallies set expires_at = least(expires_at, created_at + interval '2 hours')
  where expires_at > now();

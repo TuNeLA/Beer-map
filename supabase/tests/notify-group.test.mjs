@@ -236,7 +236,7 @@ t("isUuid and bucketStart", () => {
   assert.equal(m.bucketStart(1_000_000, 600), 600_000);
   assert.equal(m.bucketStart(1_199_999, 600), 600_000);
   assert.equal(m.bucketStart(1_200_000, 600), 1_200_000);
-  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120, checkin: 600 });
+  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120, checkin: 600, eta: 600 });
 });
 
 // ---- v9 INKALLELSE ----
@@ -357,6 +357,84 @@ t("medevac check payload: mates + target", () => {
     assert.equal(b.url, "/");
     assert.ok(b.body.includes("vatten"));
   }
+});
+
+// ---- v18 ETA ----
+t("eta lines: >= 80 titles, 30 bodies, all with placeholders, no repeats", () => {
+  const all = [...m.ETA_LINES.short, ...m.ETA_LINES.mid, ...m.ETA_LINES.long];
+  assert.ok(all.length >= 80, String(all.length));
+  assert.equal(new Set(all).size, all.length, "duplicate title");
+  assert.ok(m.ETA_BODIES.length >= 30);
+  assert.equal(new Set(m.ETA_BODIES).size, m.ETA_BODIES.length, "duplicate body");
+  for (const l of all) assert.ok(l.includes("{namn}") && l.includes("{min}"), l);
+  assert.ok(all.filter((l) => l.includes("{bar}")).length >= all.length - 2);
+  for (const l of all.concat(m.ETA_BODIES)) assert.ok(!/\{(?!namn\}|min\}|bar\})/.test(l), l);
+});
+t("eta kind + minutes left", () => {
+  assert.equal(m.etaKind(1), "short"); assert.equal(m.etaKind(5), "short");
+  assert.equal(m.etaKind(6), "mid"); assert.equal(m.etaKind(15), "mid");
+  assert.equal(m.etaKind(16), "long"); assert.equal(m.etaKind(30), "long");
+  const now = Date.parse("2026-10-17T20:00:00Z");
+  assert.equal(m.etaMinsLeft("2026-10-17T20:07:00Z", now), 7);
+  assert.equal(m.etaMinsLeft("2026-10-17T20:06:01Z", now), 7);
+  assert.equal(m.etaMinsLeft("2026-10-17T19:50:00Z", now), 1);
+  assert.equal(m.etaMinsLeft("bad", now), 1);
+});
+t("eta payload: bar url, rally url, filled, tag", () => {
+  for (let i = 0; i < 40; i++) {
+    for (const min of [3, 10, 27]) {
+      const p = m.etaPayload(i, i, "Anton", min, "Pitchers", "osm 1/2", null, 9);
+      assert.ok(p.title.includes("Anton") && p.title.includes(String(min)), p.title);
+      assert.ok(!/[{}]/.test(p.title + p.body), p.title + p.body);
+      assert.equal(p.url, "/?bar=osm%201%2F2");
+      assert.equal(p.tag, "olnu-eta-9");
+      assert.equal(p.rally_id, undefined);
+    }
+  }
+  const r = m.etaPayload(0, 0, "", 12, null, null, 77, 10);
+  assert.equal(r.url, "/?rally=77"); assert.equal(r.rally_id, 77);
+  assert.ok(r.title.includes("En vän"), r.title);
+  assert.ok(m.etaPayload(1, 0, "", 12, null, null, 77, 10).title.includes("samlingsplatsen"));
+  assert.equal(m.etaPayload(0, 0, "A", 5, "B", null, null, 1).url, "/");
+  // the short list is used for 5 min, the long one for 30
+  assert.equal(m.etaPayload(3, 0, "A", 5, "B", "b", null, 1).title, m.fill(m.ETA_LINES.short[3], { namn: "A", min: 5, bar: "B" }));
+  assert.equal(m.etaPayload(3, 0, "A", 30, "B", "b", null, 1).title, m.fill(m.ETA_LINES.long[3], { namn: "A", min: 30, bar: "B" }));
+});
+t("eta recipients: only mates at the target, plus the rally creator", () => {
+  const now = Date.parse("2026-10-17T21:00:00Z");
+  const T = { bar_id: "pit", lat: 68.35, lng: 18.80 };
+  const recent = "2026-10-17T20:30:00Z", old = "2026-10-17T17:30:00Z";
+  const base = { caller: "me", mates: ["a", "b", "c", "d", "e", "f", "g", "h"], target: T, nowMs: now };
+  const r = m.etaRecipients({
+    ...base,
+    checkins: [
+      { user_id: "a", bar_id: "pit", lat: 68.35, lng: 18.80, created_at: recent },     // checked in there -> yes
+      { user_id: "b", bar_id: "other", lat: 68.3502, lng: 18.80, created_at: recent }, // other bar 20 m away -> no
+      { user_id: "c", bar_id: "pit", lat: 68.35, lng: 18.80, created_at: old },        // > 3 h ago -> no
+      { user_id: "x", bar_id: "pit", lat: 68.35, lng: 18.80, created_at: recent },     // not a mate -> no
+      { user_id: "me", bar_id: "pit", lat: 68.35, lng: 18.80, created_at: recent },    // caller -> no
+    ],
+    pins: [
+      { user_id: "d", lat: 68.3505, lng: 18.80, precise: true },                       // 56 m -> yes
+      { user_id: "e", lat: 68.352, lng: 18.80, precise: true },                        // 220 m -> no
+      { user_id: "f", lat: 68.35, lng: 18.80, precise: false },                        // approximate -> no
+      { user_id: "g", lat: 68.35, lng: 18.80, precise: true, ghost: true },            // ghost -> no
+      { user_id: "h", lat: 68.40, lng: 18.90, precise: true, snap_bar: "pit" },        // server snapped to the bar -> yes
+      { user_id: "y", lat: 68.35, lng: 18.80, precise: true },                         // not a mate -> no
+    ],
+  });
+  assert.deepEqual(r, ["a", "d", "h"]);
+  // rally: creator always (when a mate), target without bar -> check-ins within 100 m count
+  const r2 = m.etaRecipients({
+    ...base, target: { bar_id: null, lat: 68.35, lng: 18.80 }, rallyCreator: "c",
+    checkins: [{ user_id: "b", bar_id: "other", lat: 68.3502, lng: 18.80, created_at: recent }], pins: [],
+  });
+  assert.deepEqual(r2, ["b", "c"]);
+  // rally without coords: only the creator; creator = caller or not a mate -> nobody
+  assert.deepEqual(m.etaRecipients({ ...base, target: {}, rallyCreator: "a", checkins: [], pins: [{ user_id: "d", lat: 68.35, lng: 18.8, precise: true }] }), ["a"]);
+  assert.deepEqual(m.etaRecipients({ ...base, target: {}, rallyCreator: "me", checkins: [], pins: [] }), []);
+  assert.deepEqual(m.etaRecipients({ ...base, target: {}, rallyCreator: "zz", checkins: [], pins: [] }), []);
+  assert.equal(m.RATE_SEC.eta, 600);
 });
 
 console.log(`\n${passed} tests passed`);

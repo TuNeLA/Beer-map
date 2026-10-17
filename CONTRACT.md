@@ -631,3 +631,35 @@ Rules:
 - 🏆 sheet (hook `topSheet`): "🏆 <Stad>s törstigaste" (tabs Ikväll / Veckan, `local_board`), the switch "Visa mig på topplistan", "🏛️ <Stad>s Wall of Fame" (`wall_of_fame`). Town = `CITIES.nearest()` of the own pin → last GPS position → map centre (genitive: "Ludvikas", "Borås"); none → "Närområdets …". Results cached 60 s per place.
 - Settings (hook `settingsSheet`): "🏆 Topplistan" with the same switch. The switch sends `set_board_optin(on, local name)`; a name the server refuses → saved without a name.
 - Swedish texts with Dalarna humour inside boards.js, English fallback (`I18N.lang === "en"`). Old server → sections and switch hide (no error toast).
+
+## v18 ETA ("🏃 Jag é på väg"; additive)
+Migration `supabase/migrations/0024_eta.sql` (also appended to `setup.sql`). Needs 0001–0023. Client: `docs/js/barsplus.js` (ETA engine, `BARSPLUS.eta`), `docs/js/rally.js` (rally sheet), `docs/barsplus.css`. A missing RPC (old database, PGRST202) = no ETA UI at all, no error.
+
+### Table (RLS on, no policies, no client access; rows are never removed, reads filter on time)
+- `etas(id, user_id, group_id null (= the rally's group for a rally ETA), bar_id null, bar_name null, lat, lng null, rally_id null, minutes 5|10|15|20|30, created_at, eta_at = created_at + minutes, expires_at = next 05:00 (rally ETA: min(05:00, rally expires_at)), arrived_at null, cancelled_at null, notified bool)`.
+- **Live** ETA = not expired, not cancelled, not arrived, `eta_at > now() − 20 min`, and (rally ETA) its rally still open and not expired.
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `set_eta` | `p_bar_id text, p_bar_name text, p_lat float8, p_lng float8, p_minutes int, p_rally_id bigint default null` | jsonb `{ok, wait_seconds, id, bar_id, bar_name, lat, lng, rally_id, minutes, created_at, eta_at, expires_at, mins_left, arrived, arrived_at, active}` | `invalid_minutes`, `invalid_bar`, `outside_sweden` (= invalid coordinates), `rally_not_found`, `not_member` |
+| `cancel_eta` | `p_arrived bool default false` | jsonb `{ok, id, arrived}` / `{ok:false, reason:"no_eta"}` | – |
+| `my_eta` | – | jsonb = the row fields above (newest live, or arrived < 15 min ago) / `{active:false}` | – |
+| `group_etas` | – | setof `(id, name, is_me, bar_id, bar_name, lat, lng, rally_id, minutes, eta_at, mins_left, created_at, arrived, arrived_at)` | – |
+
+Rules:
+- **set_eta**: minutes must be 5/10/15/20/30. Bar ETA: bar id 1–80, name 1–60 (cleaned), valid world position (rounded to 5 decimals). Rally ETA (`p_rally_id`): rally must be live (`rally_not_found`), caller a member of its group (`not_member`); bar id/name/position optional — missing ones come from the rally (`place`, `lat/lng`); only that group sees it. Max 1 new ETA per user per 2 min → `ok:false` + `wait_seconds` + the current row, nothing changes. A new ETA cancels the caller's older live one (one live ETA per user).
+- **Auto "framme"** (triggers that never block the write): a check-in at the ETA's bar (or, for an ETA without bar id, a check-in within 100 m), or a new drink with a precise, visible (not stopped, not ghost) pin within 100 m of the target or snapped to that bar (`beers.snap_bar`). `cancel_eta(true)` = "✅ Framme!", `cancel_eta()` = "✖️ Avbryt".
+- **group_etas**: the caller's own ETAs plus ETAs of users who share a group with the caller (a rally ETA only for members of the rally's group). Live rows plus rows that arrived in the last 15 min. `name` = display name in the shared group (rally: in that group; own: smallest own name). Order `eta_at`, max 300. One call per poll (client: max every 25 s; 90 s after 3 empty answers).
+
+### Edge function `notify-group` — new body event
+| body | who gets it | limit | payload |
+|---|---|---|---|
+| `{event:"eta", eta_id}` | group-mates (rally ETA: that group only) who are AT the target now: check-in at that bar in the last 3 h (target without bar: check-in within 100 m), or a precise, visible live pin within 100 m / snapped to that bar; plus the rally creator for a rally ETA. Never the caller. | etas row must be the caller's, live, < 5 min old, not pushed (atomic `notified` claim) else `no_eta`; rally ended → `no_rally`; 1 ETA push per sender per 10 min (`push_sent` kind `eta`) → `slow_down`; nobody there → `nobody_there` | title 1 of 82 lines by minutes left (≤ 5 short, 10–15 mid, 20–30 long; dalmål + military; per recipient never the same line twice in a row), e.g. "🪖 {namn} é på marsch mot {bar}. ETA {min} min. Håll en stol!"; body 1 of 30, e.g. "Tryck för att se var {namn} é."; url `/?rally=<id>` for a rally ETA else `/?bar=<bar_id>`; tag `olnu-eta-<id>`; `rally_id` when a rally |
+- Response `{sent, failed, recipients}`, or `{sent:0, failed:0, reason}`.
+
+### Frontend
+- Bar popup section "🏃 På väg hit" (hook `barPopupHTML`, before the v12 part): mates heading there ("🪖 Lisa marscherar hit · 7 min", 20 row lines; "✅ Oskar é framme"), own ETA with a live countdown + "✅ Framme!" / "✖️ Avbryt", else "🏃 Jag é på väg" → chips 5/10/15/20/30 min → `set_eta` + `notify-group {event:"eta", eta_id}` (when push is configured). Toasts: 40 "set" lines, 25 arrival lines, 20 cancel lines; the phone remembers the last 10 per kind (`olnu.etaSeen`) and never repeats them.
+- Rally sheet: "🏃 ETA: Lisa (12 min), Anton (✅)"; after "✅ Kommer": "Hur långt bort é du?" chips (target = the bar the call-out resolves to, else its point + place text, plus `p_rally_id`), or my countdown + Framme/Avbryt. The "Kommer" toast gets a "⏱️ Ange ETA" button.
+- In-app toasts (once per ETA, `olnu.etaToasted`): a mate's new ETA to the bar I am checked in at or to my own call-out, and their arrival.
+- Swedish (dalmål/military) with an English fallback inside barsplus.js.
