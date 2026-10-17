@@ -33,7 +33,7 @@
       var was = state;
       state = "on";
       rallies = (r.data || []).filter(function (x) { return x && x.id != null; });
-      renderBanner();
+      renderBanner(); drawFlags();
       if (was !== "on") A.updateCounts();
       refreshOpenSheet();
     });
@@ -168,6 +168,24 @@
           Math.max(1, Math.round(m * 1.25 / 80))));
       }, function () {}, { maximumAge: 300000, timeout: 8000, enableHighAccuracy: false });
     } catch (e) {}
+  }
+  // Every active call-out with a place stays on the map as a flag: "🪖 Ström · 3 på väg" (+ ✅ if I come).
+  var flagsLayer = null;
+  function drawFlags() {
+    if (!A || !A.map || !window.L) return;
+    if (!flagsLayer) flagsLayer = L.layerGroup().addTo(A.map);
+    flagsLayer.clearLayers();
+    rallies.forEach(function (r) {
+      if (r.lat == null || r.lng == null || !isFinite(r.lat) || !isFinite(r.lng)) return;
+      var who = r.is_mine ? t("you") : (r.name || t("someone"));
+      var me = r.my_answer === "yes" ? " ✅" : r.my_answer === "maybe" ? " 🤔" : "";
+      var m = L.marker([+r.lat, +r.lng], { keyboard: false, zIndexOffset: 3500,
+        icon: L.divIcon({ className: "", iconSize: [0, 0], iconAnchor: [0, 0],
+          html: '<div class="rl-flag rl-flag-live' + (r.my_answer === "yes" ? " me" : "") + '"><span>🪖</span><b>' +
+            esc(who + (r.place ? " · " + r.place : "")) + "</b><i>" + esc(t("rallyOnWay", r.yes | 0)) + me + "</i></div>" }) });
+      m.on("click", function () { openRally(byId(r.id) || r); });
+      flagsLayer.addLayer(m);
+    });
   }
   function openRally(r) {
     A.openSheet(t("rallyTitle"), function (body) { openId = r.id; openBody = body; fillDetail(body, r); });
@@ -311,6 +329,14 @@
     hudClick: function (action) { if (action === "rally") startCreate(null); },
     groupItem: function (g, wrap) {
       if (state !== "on") return;
+      // Active call-outs of this group, tap → details (route, who comes).
+      rallies.filter(function (r) { return String(r.group_id) === String(g.id); }).forEach(function (r) {
+        var who = r.is_mine ? t("you") : (r.name || t("someone"));
+        var mine = r.my_answer === "yes" ? " · ✅" : r.my_answer === "maybe" ? " · 🤔" : "";
+        wrap.appendChild(A.el("button", { type: "button", class: "rl-group-item",
+          text: "🪖 " + who + ": " + (r.body || t("rallyDefault")) + (r.place ? " · 📍 " + r.place : "") + " — " + t("rallyOnWay", r.yes | 0) + mine,
+          onclick: function () { openRally(byId(r.id) || r); } }));
+      });
       wrap.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyBtn"), "btn-small btn-block", function () { startCreate(g); })]));
     },
     openLink: openLink

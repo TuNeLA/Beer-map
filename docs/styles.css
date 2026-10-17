@@ -662,3 +662,9 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 
 .rl-route{display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:52px;font-size:16px}
 .rl-dist{text-align:center;margin:4px 0 0}
+
+.rl-flag-live{cursor:pointer;pointer-events:auto;flex-direction:row}
+.rl-flag-live i{font-style:normal;font-family:var(--hud);font-size:11.5px;color:var(--green);margin-left:4px}
+.rl-flag-live.me{box-shadow:0 0 0 2px var(--green),0 0 14px rgba(57,217,138,.45)}
+.rl-group-item{display:block;width:100%;margin-top:8px;padding:10px 12px;min-height:48px;text-align:left;cursor:pointer;
+  background:rgba(57,217,138,.08);border:1px solid rgba(57,217,138,.4);border-left:3px solid var(--green);color:var(--text);font:inherit;font-size:14px;line-height:1.3}
