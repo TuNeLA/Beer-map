@@ -39,3 +39,27 @@ supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=ma
 supabase functions deploy notify-group
 ```
 JWT verification can stay ON: the client sends the anonymous user's JWT with `supabase.functions.invoke`.
+
+## Push v7: friend milestones + "Kaos i stan" (migration 0006)
+1. Run `supabase/update-now.sql` (or `migrations/0006_push_nearby.sql`) in the SQL Editor. Safe to run again.
+2. Function secrets (same as before, all three are needed):
+   ```
+   supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:you@example.com
+   ```
+   `VAPID_PUBLIC_KEY` must be the same key as in `docs/config.js`.
+3. Deploy `notify-group` again (one file, `index.ts`).
+
+Client contract:
+- After `save_push_subscription`, and again when the app opens (at most about once a day), call
+  `rpc('set_push_location', {p_lat, p_lng})` with the phone's position. The server rounds it to
+  0.01° (about 1 km) and saves it on all of the user's subscriptions. Points outside Sweden are
+  ignored. Without this call the user gets friend pushes but no "Kaos i stan" pushes.
+- Call `functions.invoke('notify-group')` (fire-and-forget) after EVERY `post_beer` with
+  `accepted = true`. Old clients that call it only on `milestone` keep working.
+- The function sends friend pushes at beer 1, 5 and 10 (once per level per night), and a "Kaos i
+  stan" push to subscribers within 10 km when ≥ 10 live beers or ≥ 3 on HOT STREAK are within
+  5 km of the beer (once per subscriber per night, never to the beer's owner).
+- Push payload `{title, body, url, tag}`. Friend url `/?focus=<beer id>`, tag `olnu-<beer id>-<level>`.
+  Kaos url `/`, tag `olnu-kaos-<evening date>`.
+
+Tests: `node --experimental-strip-types supabase/tests/notify-group.test.mjs`.

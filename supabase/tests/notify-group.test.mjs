@@ -1,0 +1,121 @@
+// Pure-function tests for supabase/functions/notify-group/index.ts (chaos rule, line picker, towns).
+// Run: node --experimental-strip-types supabase/tests/notify-group.test.mjs
+// It copies the "pure:start … pure:end" block of index.ts to a temp .ts file and imports it,
+// so no Deno, network or npm packages are needed.
+import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import assert from "node:assert/strict";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const src = readFileSync(join(here, "../functions/notify-group/index.ts"), "utf8");
+const block = src.split("// ---- pure:start")[1]?.split("// ---- pure:end")[0];
+assert.ok(block, "pure block markers not found");
+const tmp = join(mkdtempSync(join(tmpdir(), "olnu-")), "pure.ts");
+writeFileSync(tmp, "//" + block);
+const m = await import(pathToFileURL(tmp).href);
+
+let passed = 0;
+const t = (name, fn) => { fn(); passed++; console.log("ok -", name); };
+
+const LUD = { lat: 60.1496, lng: 15.1878 };
+const at = (km, count) => ({ lat: LUD.lat + km / 111.32, lng: LUD.lng, beer_count: count });
+
+t("haversine ~ 1 deg lat = 111 km", () => {
+  const d = m.haversineKm({ lat: 60, lng: 15 }, { lat: 61, lng: 15 });
+  assert.ok(Math.abs(d - 111.2) < 0.5, String(d));
+});
+
+t("chaos: 9 out, 2 hot -> calm", () => {
+  const beers = [...Array(7)].map(() => at(1, 2)).concat([at(2, 5), at(3, 7)]);
+  assert.deepEqual(m.chaosCheck(LUD, beers), { out: 9, hot: 2, chaos: false });
+});
+t("chaos: 10 out -> chaos", () => {
+  const beers = [...Array(10)].map(() => at(1, 1));
+  assert.equal(m.chaosCheck(LUD, beers).chaos, true);
+});
+t("chaos: 3 hot -> chaos", () => {
+  const r = m.chaosCheck(LUD, [at(0, 5), at(1, 9), at(4.9, 12)]);
+  assert.deepEqual(r, { out: 3, hot: 3, chaos: true });
+});
+t("chaos: beers beyond 5 km and beer_count 0 do not count", () => {
+  const beers = [...Array(20)].map(() => at(5.2, 6)).concat([...Array(20)].map(() => at(1, 0)));
+  assert.deepEqual(m.chaosCheck(LUD, beers), { out: 0, hot: 0, chaos: false });
+});
+t("boxAround contains the circle", () => {
+  const b = m.boxAround(LUD, 10);
+  assert.ok(m.haversineKm(LUD, { lat: b.maxLat, lng: LUD.lng }) >= 10);
+  const east = { lat: LUD.lat, lng: b.maxLng };
+  assert.ok(m.haversineKm(LUD, east) >= 10);
+});
+
+t("milestoneLevel", () => {
+  assert.deepEqual([0, 1, 4, 5, 9, 10, 15].map(m.milestoneLevel), [0, 1, 1, 5, 5, 10, 10]);
+});
+
+t("nearestTown: Ludvika and fallback", () => {
+  assert.equal(m.nearestTown({ lat: 60.15, lng: 15.19 }), "Ludvika");
+  assert.equal(m.nearestTown({ lat: 60.49, lng: 15.44 }), "Borlänge");
+  assert.equal(m.nearestTown({ lat: 68.5, lng: 17.5 }), "stan");
+  assert.ok(m.TOWNS.length >= 40);
+});
+
+t("line lists: about 6 per level, all use {namn}", () => {
+  for (const lvl of [1, 5, 10]) {
+    assert.ok(m.FRIEND_LINES[lvl].length >= 6);
+    for (const l of m.FRIEND_LINES[lvl]) assert.ok(l.includes("{namn}"), l);
+  }
+  assert.ok(m.KAOS_LINES.length >= 7);
+});
+
+t("pickIndex never repeats the last line", () => {
+  for (let n = 2; n <= 9; n++) {
+    let last;
+    const seen = new Set();
+    for (let i = 0; i < 2000; i++) {
+      const idx = m.pickIndex(n, last);
+      assert.ok(idx >= 0 && idx < n);
+      assert.notEqual(idx, last);
+      seen.add(idx);
+      last = idx;
+    }
+    assert.equal(seen.size, n, "all lines used");
+  }
+  assert.equal(m.pickIndex(1, 0), 0);
+  // edge rand values
+  assert.equal(m.pickIndex(3, 2, () => 0.999999), 1);
+  assert.equal(m.pickIndex(3, 0, () => 0), 1);
+});
+
+t("kaosLineIndex differs on consecutive nights for the same user", () => {
+  const n = m.KAOS_LINES.length;
+  const nights = ["2026-10-18T03:00:00Z", "2026-10-19T03:00:00Z", "2026-10-26T04:00:00Z", "2026-10-27T04:00:00Z"];
+  for (const u of ["a1b2c3d4-0000-0000-0000-000000000001", "ffffffff-ffff-ffff-ffff-ffffffffffff"]) {
+    const ids = nights.map((x) => m.kaosLineIndex(n, x, u));
+    assert.notEqual(ids[0], ids[1]);
+    assert.notEqual(ids[2], ids[3]);
+    for (const i of ids) assert.ok(i >= 0 && i < n);
+  }
+});
+
+t("kaosPayload text, body and tag (no names, no user id)", () => {
+  const p = m.kaosPayload(0, "Ludvika", 12, 3, "2026-10-18T03:00:00Z");
+  assert.equal(p.title, "🚨 Nu ballar det ur i Ludvika!");
+  assert.equal(p.body, "12 ute · 3 på hot streak");
+  assert.equal(p.url, "/");
+  assert.equal(p.tag, "olnu-kaos-2026-10-17");
+  const q = m.kaosPayload(8, "Falun", 10, 0, "2026-10-26T04:00:00Z");
+  assert.equal(q.body, "10 ute");
+  assert.equal(q.title, "🍻 10 pers är ute i Falun just nu. Och du då?");
+  assert.equal(q.tag, "olnu-kaos-2026-10-25");
+  for (let i = 0; i < m.KAOS_LINES.length; i++) {
+    assert.ok(!/\{\w+\}/.test(m.kaosPayload(i, "X", 1, 1, "2026-10-18T03:00:00Z").title));
+  }
+});
+
+t("fill leaves unknown placeholders", () => {
+  assert.equal(m.fill("{namn} {x}", { namn: "Bosse" }), "Bosse {x}");
+});
+
+console.log(`\n${passed} tests passed`);
