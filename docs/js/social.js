@@ -23,10 +23,19 @@
   }
   function codeOf(err) { return U.errCode(err); }
 
-  /* ---------- Titles (same ladder as SQL olnu_titles() and notify-group TITLES) ---------- */
-  var TITLES = [[0, "Rekryt"], [5, "Menig Mjöd"], [15, "Korpral Kork"], [30, "Sergeant Skum"], [50, "Löjtnant Lager"],
-    [75, "Kapten Kapsyl"], [100, "Major Malt"], [150, "Öl-veteranen"], [200, "Överste Öl"], [300, "General Gambrinus"],
-    [500, "Fältmarskalk Fatöl"], [750, "Bryggerilegenden"], [1000, "Ölguden"]];
+  /* ---------- Titles (v11, 36 steps; same ladder as SQL olnu_titles() in 0012 and notify-group TITLES) ---------- */
+  var TITLES = [[0, "Rekryt"], [3, "Mönstrad Mellanöl"], [5, "Menig Mjöd"], [7, "Vicekorpral Kapsyl"],
+    [10, "Kapsylkorpral från Grangärde"], [13, "Skumsergeant"], [17, "Furir Flaskhals"],
+    [22, "Överfurir Fatkran"], [28, "Fanjunkare Flasköppnare"], [35, "Fänrik Fatöl"],
+    [43, "Löjtnant Lager"], [52, "Premiärlöjtnant Pilsner"], [62, "Kapten Kaggen"],
+    [75, "Ryttmästare Humle"], [90, "Major Malt från Smedjebacken"], [110, "Överstelöjtnant Ölstop"],
+    [130, "Överste Ölkorv"], [155, "Brigadgeneral Bärs"], [180, "Generalmajor Gambrinus"],
+    [210, "Generallöjtnant Guldskum"], [245, "General Dalabärs"], [285, "Fältmarskalk Fradga"],
+    [330, "Riksmarskalk Rundtur"], [380, "Baron av Bryggstugan"], [430, "Hertig av Humlegården"],
+    [490, "Ärkehertig av Ölkranen"], [560, "Kung Kapsyl av Dalarna"], [640, "Ölkejsaren"],
+    [730, "Bryggerilegenden"], [830, "Halvguden från Väsman"], [920, "Myten från Grängesberg"],
+    [1000, "Legenden från Ludvika"], [1100, "Sagofiguren från Säfsnäs"], [1200, "Oraklet i Ölstugan"],
+    [1300, "Överbefälhavare Öl"], [1500, "Ölguden"]];
   function titleFor(total) {
     total = Math.max(0, total | 0);
     var i = 0; while (i + 1 < TITLES.length && total >= TITLES[i + 1][0]) i++;
@@ -36,7 +45,7 @@
 
   var stats = null, statsAt = 0, statsDone = null;
   var statsReady = new Promise(function (r) { statsDone = r; });
-  var TITLE_KEY = "olnu.title";
+  var TITLE_KEY = "olnu.title", TOTAL_KEY = "olnu.titleTotal", LADDER_KEY = "olnu.ladder";
   function loadStats() {
     if (!A || !A.authed() || off.my_stats) { if (statsDone) statsDone(); return Promise.resolve(); }
     statsAt = Date.now();
@@ -47,13 +56,23 @@
       var total = Math.max(0, d.total | 0), tf = titleFor(total);
       stats = { total: total, week: d.week | 0, title: d.title || tf.title,
         next: d.next_title !== undefined ? d.next_title : tf.next, nextAt: d.next_at !== undefined ? d.next_at : tf.nextAt };
-      var before = U.ls.get(TITLE_KEY, "");
-      U.ls.set(TITLE_KEY, stats.title);
+      var before = U.ls.get(TITLE_KEY, ""), beforeTotal = U.ls.get(TOTAL_KEY, "");
+      var ladderNew = U.ls.get(LADDER_KEY, "") !== "11";
+      U.ls.set(TITLE_KEY, stats.title); U.ls.set(TOTAL_KEY, String(total)); U.ls.set(LADDER_KEY, "11");
       A.updateCounts();
-      if (before && before !== stats.title) promoted(stats.title);
+      // v11: a real promotion = more beers than last time AND a new title. A title that changed only
+      // because the ladder changed (app update) gets a quiet "new ranks" toast instead.
+      var grew = beforeTotal !== "" && total > (+beforeTotal || 0);
+      if (before && before !== stats.title && (grew || !ladderNew)) promoted(stats.title, before, total);
+      else if (ladderNew && before && before !== stats.title) A.toast(t("ladderNew", stats.title), { cls: "promo", ms: 6500 });
     }).then(function () { if (statsDone) { statsDone(); statsDone = null; } });
   }
-  function promoted(title) {
+  function promoted(title, oldTitle, total) {
+    if (window.MEDALS && window.MEDALS.levelUp) {
+      window.MEDALS.levelUp(oldTitle, title, total);
+      setTimeout(function () { window.FX.splash(document.querySelector(".hx-title")); }, 2700);
+      return;
+    }
     A.toast(t("promoted", title), { cls: "promo", ms: 6500 });
     window.FX.unlock(); window.FX.sound.hot(); window.FX.vibrate([60, 40, 60, 40, 140]);
     setTimeout(function () { window.FX.splash(document.querySelector(".hx-title")); }, 50);
@@ -360,6 +379,12 @@
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
         var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", text: beersText(m) });
         heads.push({ m: m, name: nmEl, n: nEl });
+        if (medalsOn() && (m.name || m.is_me)) {
+          nmEl.classList.add("cm-tap"); nmEl.setAttribute("role", "button"); nmEl.setAttribute("tabindex", "0");
+          var openU = function () { var s = statOf(m); window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null }, function () { openChat(g); }); };
+          nmEl.addEventListener("click", openU);
+          nmEl.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openU(); } });
+        }
         // Each person gets their own colour (same name = same colour every time). Me = gold (CSS).
         var col = m.is_me ? null : chatColor(m.name || "");
         if (col) nmEl.style.color = col;
@@ -426,6 +451,7 @@
   }
 
   /* ---------- Group status (v8, P) ---------- */
+  function medalsOn() { return !!(window.MEDALS && window.MEDALS.on()); }
   function statusOn() { return A.othersOn() && !off.group_status; }
   function showStatus(g) {
     var el = A.el;
@@ -444,20 +470,38 @@
           list.appendChild(el("li", { class: "muted", text: codeOf(r.error) === "not_member" ? t("chatNotMember") : t("statusFail") }));
           return;
         }
-        var kinds = t("kindLow") || {};
+        var kinds = t("kindLow") || {}, rowsByName = {}, meRow = null;
         (r.data || []).forEach(function (m) {
           var beers = Math.max(0, m.beers | 0), others = Math.max(0, m.others | 0), parts = [];
           if (beers) parts.push(beers + " 🍺");
           if (others) parts.push(others + " 🥃 " + (kinds[m.other_kind] || kinds.annat || ""));
           var tf = titleFor(m.total | 0);
-          list.appendChild(el("li", { class: "st-row" + (m.is_me ? " me" : "") }, [
+          var medEl = el("span", { class: "st-medals", "aria-hidden": "true" });
+          var row = el("li", { class: "st-row" + (m.is_me ? " me" : "") }, [
             el("span", { class: "st-dot" + (m.live ? " on" : ""), title: m.live ? t("statusLive") : "", "aria-label": m.live ? t("statusLive") : "" }),
             el("span", { class: "st-main" }, [
               el("span", { class: "st-name", text: (m.is_me ? t("you") + " · " : "") + (m.name || t("someone")) }),
-              el("span", { class: "st-title", text: "🎖️ " + tf.title })
+              el("span", { class: "st-title", text: "🎖️ " + tf.title }),
+              medEl
             ]),
             el("span", { class: "st-n", text: parts.length ? parts.join(" · ") : t("statusNone") })
-          ]));
+          ]);
+          list.appendChild(row);
+          if (m.is_me) meRow = medEl; else if (m.name) (rowsByName[m.name] = rowsByName[m.name] || []).push(medEl);
+          if (medalsOn()) {
+            row.classList.add("st-tap"); row.setAttribute("role", "button"); row.setAttribute("tabindex", "0");
+            row.setAttribute("aria-label", (m.name || t("someone")) + " — " + t("uniform"));
+            var openU = function () { window.MEDALS.openMember(g, m, function () { showStatus(g); }); };
+            row.addEventListener("click", openU);
+            row.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openU(); } });
+          }
+        });
+        if (medalsOn()) window.MEDALS.memberMedals(g.id).then(function (v) {
+          if (!v || !document.body.contains(list)) return;
+          if (meRow) meRow.innerHTML = window.MEDALS.medalRowHTML(v.me, 8);
+          Object.keys(rowsByName).forEach(function (nm) {
+            rowsByName[nm].forEach(function (x) { x.innerHTML = window.MEDALS.medalRowHTML(v.byName[nm] || {}, 8); });
+          });
         });
       });
     });

@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a0f1c">
+<meta name="color-scheme" content="dark">
+<title>Öl Nu Statistik</title>
+<link rel="icon" href="./favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+:root{
+  --night:#0a0f1c; --night-2:#101826; --night-3:#18233a; --line:rgba(245,166,35,.28); --line-soft:rgba(255,255,255,.1);
+  --text:#ece6d6; --muted:#9aa3a0; --olive:#6f7d4f;
+  --amber:#f5a623; --amber-2:#ffc24d; --amber-d:#c77a0e; --foam:#fffaf0;
+  --gold:#ffe08a; --green:#3ddc84; --green-d:#1fa45c; --red:#ff3b3b; --red-d:#b3121b; --fire:#ff7a1a;
+  --display:"Black Ops One", "Impact", system-ui, sans-serif;
+  --hud:"Share Tech Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --body:"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{background:var(--night)}
+body{margin:0;min-height:100vh;background:var(--night);color:var(--text);font-family:var(--body);
+  background-image:linear-gradient(rgba(245,166,35,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(245,166,35,.04) 1px,transparent 1px);
+  background-size:48px 48px;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none !important}
+.wrap{max-width:720px;margin:0 auto;padding:calc(var(--sat) + 14px) 16px calc(var(--sab) + 32px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+h1{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.04em;margin:0;color:var(--amber)}
+h1 small{display:block;font-family:var(--hud);font-size:11px;color:var(--muted);letter-spacing:.12em;margin-top:2px}
+.stamp{font-family:var(--hud);font-size:11px;color:var(--muted);text-align:right;line-height:1.4}
+.stamp b{color:var(--green);font-weight:400}
+.stamp.err b{color:var(--red)}
+.panel{position:relative;background:linear-gradient(180deg,var(--night-2),rgba(16,24,38,.92));border:1px solid var(--line);
+  border-radius:6px;padding:14px;margin-bottom:12px}
+.panel::before,.panel::after{content:"";position:absolute;width:10px;height:10px;pointer-events:none;border:2px solid var(--amber)}
+.panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+h2{font-family:var(--hud);font-weight:400;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-2);margin:0 0 10px}
+h2 span{color:var(--muted);letter-spacing:.04em;text-transform:none}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kpi{margin:0;padding:12px}
+.kpi .lbl{font-family:var(--hud);font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.kpi .val{font-family:var(--display);font-size:34px;line-height:1.1;color:var(--foam);margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.stat{display:flex;flex-direction:column;padding:6px 0;border-bottom:1px solid var(--line-soft)}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-family:var(--hud);font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .axis{font-family:var(--hud);font-size:10px;fill:var(--muted)}
+.chart .grid-l{stroke:var(--line-soft);stroke-width:1}
+.chart .hit{fill:transparent;cursor:pointer}
+.chart .mark{pointer-events:none}
+.chart g.on .mark{filter:brightness(1.25)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--night-3);border:1px solid var(--line);border-radius:4px;
+  padding:6px 8px;font-size:12px;line-height:1.35;white-space:nowrap;transform:translate(-50%,-100%);z-index:5}
+.tip b{font-family:var(--hud);font-weight:400;color:var(--amber-2)}
+ol.bars{list-style:none;margin:0;padding:0}
+ol.bars li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line-soft)}
+ol.bars .rk{font-family:var(--hud);color:var(--muted);font-size:12px}
+ol.bars .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+ol.bars .ct{font-family:var(--hud);font-size:13px;color:var(--text);text-align:right}
+ol.bars .ct small{color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:5px 4px;border-bottom:1px solid var(--line-soft);text-align:right;font-variant-numeric:tabular-nums}
+th{font-family:var(--hud);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.06em}
+td:first-child,th:first-child{text-align:left}
+td.mono{font-family:var(--hud)}
+details summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:8px}
+.note{font-size:11px;color:var(--muted);margin:8px 0 0;line-height:1.4}
+/* Login */
+.login{max-width:380px;margin:12vh auto 0}
+.login p{font-size:14px;color:var(--muted);margin:0 0 12px}
+.login input{width:100%;font:16px var(--hud);color:var(--text);background:var(--night);border:1px solid var(--line);border-radius:4px;padding:12px}
+.login input:focus{outline:2px solid var(--amber);outline-offset:1px}
+.btn{display:inline-block;margin-top:10px;width:100%;padding:12px;font:700 15px var(--body);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--night);background:var(--amber);border:0;border-radius:4px;cursor:pointer}
+.btn:active{background:var(--amber-d)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line-soft);width:auto;padding:6px 10px;font-size:11px;margin:0}
+.msg{margin-top:12px;padding:10px 12px;border-radius:4px;font-size:14px;border:1px solid var(--red-d);background:rgba(179,18,27,.18);color:#ffd2d2}
+@media (min-width:560px){ .kpis{grid-template-columns:repeat(4,1fr)} .grid{grid-template-columns:repeat(3,1fr)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ÖL NU<small>LÄGESRAPPORT · ENDAST ÄGARE</small></h1>
+    <div class="stamp" id="stamp" aria-live="polite"></div>
+  </header>
+
+  <section class="panel login" id="login" hidden>
+    <h2>Behörighet krävs</h2>
+    <p>Ange ägarnyckeln. Den sparas bara i den här fliken.</p>
+    <form id="loginForm" autocomplete="off">
+      <input id="keyInput" type="password" inputmode="text" autocapitalize="off" spellcheck="false" placeholder="Ägarnyckel" aria-label="Ägarnyckel" required>
+      <button class="btn" type="submit">Visa statistik</button>
+    </form>
+    <div class="msg" id="loginMsg" role="alert" hidden></div>
+  </section>
+
+  <main id="main" hidden>
+    <div class="kpis">
+      <div class="panel kpi"><div class="lbl">Ute ikväll</div><div class="val" id="kOut">–</div><div class="sub" id="kOutSub"></div></div>
+      <div class="panel kpi"><div class="lbl">Öl ikväll</div><div class="val" id="kBeers">–</div><div class="sub" id="kBeersSub"></div></div>
+      <div class="panel kpi"><div class="lbl">Användare</div><div class="val" id="kUsers">–</div><div class="sub" id="kUsersSub"></div></div>
+      <div class="panel kpi"><div class="lbl">Nya 7 d</div><div class="val" id="kNew">–</div><div class="sub" id="kNewSub"></div></div>
+    </div>
+
+    <section class="panel">
+      <h2>Öl per natt <span>· 30 nätter</span></h2>
+      <div class="legend"><span><i style="background:var(--amber)"></i>Öl</span><span><i style="background:var(--olive)"></i>Annat</span></div>
+      <div class="chart" id="chNights"></div>
+      <details><summary>Visa som tabell</summary><table id="tNights"></table></details>
+    </section>
+
+    <section class="panel">
+      <h2>Toppnivå per timme <span>· öl, 30 d, svensk tid</span></h2>
+      <div class="chart" id="chHours"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Öl</h2>
+      <div class="grid" id="gBeers"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Användare</h2>
+      <div class="grid" id="gUsers"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Toppbarer <span>· 30 d</span></h2>
+      <ol class="bars" id="lBars"></ol>
+      <div class="grid" id="gPlaces" style="margin-top:10px"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Socialt <span>· 7 d</span></h2>
+      <div class="grid" id="gSocial"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Omsorg <span>· hot streak 5+ och medevac 10+</span></h2>
+      <div class="legend"><span><i style="background:var(--fire)"></i>5–9 öl</span><span><i style="background:var(--red)"></i>10+ öl</span></div>
+      <div class="chart" id="chCare"></div>
+      <div class="grid" id="gCare" style="margin-top:10px"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Tabeller <span>· antal rader</span></h2>
+      <table id="tTech"></table>
+    </section>
+
+    <p class="note">Bara summor. Inga namn, inga exakta platser, inga användar-id. Skål, reaktioner och chatt försvinner när en natt tar slut, så 7 d-siffrorna kan vara för låga. Uppdateras var 60:e sekund när sidan syns.</p>
+    <button class="btn ghost" id="logout" type="button">Glöm nyckeln</button>
+  </main>
+</div>
+
+<script src="./config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function () {
+  "use strict";
+  var SS_KEY = "olnu.ownerKey";
+  var cfg = window.OLNU_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = null;
+  var timer = null;
+  var busy = false;
+  var nf = new Intl.NumberFormat("sv-SE");
+  var fmt = function (n) { return n == null || isNaN(n) ? "–" : nf.format(n); };
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function store(k) { try { if (k) sessionStorage.setItem(SS_KEY, k); else sessionStorage.removeItem(SS_KEY); } catch (e) {} }
+  function load() { try { return sessionStorage.getItem(SS_KEY) || ""; } catch (e) { return ""; } }
+
+  // Key from #k=... (then removed from the address bar), else sessionStorage.
+  var key = "";
+  var m = /(?:^|[#&])k=([^&]+)/.exec(location.hash || "");
+  if (m) {
+    try { key = decodeURIComponent(m[1]); } catch (e) { key = m[1]; }
+    store(key);
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+  } else {
+    key = load();
+  }
+
+  function showLogin(msg) {
+    $("main").hidden = true;
+    $("login").hidden = false;
+    var box = $("loginMsg");
+    if (msg) { box.textContent = msg; box.hidden = false; } else { box.hidden = true; }
+    stopTimer();
+    setTimeout(function () { try { $("keyInput").focus(); } catch (e) {} }, 0);
+  }
+
+  function setStamp(text, ok) {
+    var s = $("stamp");
+    s.className = "stamp" + (ok ? "" : " err");
+    s.textContent = "";
+    var b = document.createElement("b"); b.textContent = ok ? "● LIVE" : "● FEL";
+    s.appendChild(b); s.appendChild(document.createElement("br")); s.appendChild(document.createTextNode(text));
+  }
+
+  function errorText(err) {
+    var msg = String((err && (err.message || err.error)) || "");
+    if (/forbidden/.test(msg)) return "Fel nyckel. Kontrollera och försök igen.";
+    if (/rate_limited/.test(msg)) return "För många fel försök. Vänta en timme och försök igen.";
+    if (/owner_stats|function|schema cache/i.test(msg)) return "Servern saknar owner_stats. Kör migration 0013.";
+    return "Kunde inte hämta statistik. Kontrollera nätet. (" + (msg || "okänt fel") + ")";
+  }
+
+  function fetchStats() {
+    if (!key || busy) return;
+    if (!sb) {
+      if (!cfg.SUPABASE_URL || !window.supabase) { showLogin("Ingen server är konfigurerad (config.js)."); return; }
+      sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      });
+    }
+    busy = true;
+    sb.rpc("owner_stats", { p_key: key }).then(function (res) {
+      busy = false;
+      var d = res.data;
+      var err = res.error || (d && d.message === "forbidden" ? d : null);
+      if (err) {
+        var t = errorText(err);
+        if (/forbidden|rate_limited/.test(String(err.message || ""))) { store(""); key = ""; showLogin(t); }
+        else if ($("main").hidden) showLogin(t);
+        else setStamp(t, false);
+        return;
+      }
+      $("login").hidden = true;
+      $("main").hidden = false;
+      render(d || {});
+      var at = d && d.generated_at ? new Date(d.generated_at) : new Date();
+      setStamp("Uppdaterad " + at.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), true);
+      startTimer();
+    }, function (e) {
+      busy = false;
+      if ($("main").hidden) showLogin(errorText(e)); else setStamp(errorText(e), false);
+    });
+  }
+
+  function startTimer() {
+    if (timer) return;
+    timer = setInterval(function () { if (document.visibilityState === "visible") fetchStats(); }, 60000);
+  }
+  function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && key && !$("main").hidden) fetchStats();
+  });
+
+  // ---- render helpers ----
+  function stats(el, items) {
+    el.textContent = "";
+    items.forEach(function (it) {
+      var d = document.createElement("div"); d.className = "stat";
+      var k = document.createElement("span"); k.className = "k"; k.textContent = it[0];
+      var v = document.createElement("span"); v.className = "v"; v.textContent = it[1];
+      d.appendChild(k); d.appendChild(v); el.appendChild(d);
+    });
+  }
+  function svgEl(name, attrs, parent) {
+    var e = document.createElementNS(SVGNS, name);
+    for (var a in attrs) e.setAttribute(a, attrs[a]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function niceMax(v) {
+    if (v <= 4) return 4;
+    var p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+    var s = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+    return s * p;
+  }
+  // Rounded top only (4 px), anchored to the baseline.
+  function barPath(x, y, w, h, r) {
+    if (h <= 0) return "";
+    r = Math.min(r, w / 2, h);
+    return "M" + x + "," + (y + h) + "V" + (y + r) + "Q" + x + "," + y + " " + (x + r) + "," + y +
+      "H" + (x + w - r) + "Q" + (x + w) + "," + y + " " + (x + w) + "," + (y + r) + "V" + (y + h) + "Z";
+  }
+
+  // Stacked bar chart. series: [{key, color}], rows: objects. label(row,i) -> x label or "".
+  function barChart(host, rows, series, opts) {
+    host.textContent = "";
+    var W = 360, H = opts.h || 170, L = 28, R = 4, T = 8, B = 22;
+    var pw = W - L - R, ph = H - T - B;
+    var tot = rows.map(function (r) { return series.reduce(function (s, se) { return s + (+r[se.key] || 0); }, 0); });
+    var max = niceMax(Math.max.apply(null, tot.concat([0])));
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": opts.aria });
+    [0, 0.5, 1].forEach(function (f) {
+      var y = T + ph - f * ph;
+      svgEl("line", { x1: L, x2: W - R, y1: y, y2: y, "class": "grid-l" }, svg);
+      var t = svgEl("text", { x: L - 5, y: y + 3, "text-anchor": "end", "class": "axis" }, svg);
+      t.textContent = fmt(Math.round(max * f * 10) / 10);
+    });
+    var slot = pw / rows.length, bw = Math.max(2, slot - 2);
+    var tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; host.appendChild(tip);
+    var active = null;
+    rows.forEach(function (r, i) {
+      var x = L + i * slot + (slot - bw) / 2;
+      var g = svgEl("g", {}, svg);
+      var y0 = T + ph, n = series.length;
+      // Draw from the bottom; only the top segment gets rounded corners; 2 px gap between segments.
+      var segs = series.map(function (se) { return { se: se, v: +r[se.key] || 0 }; }).filter(function (s) { return s.v > 0; });
+      segs.forEach(function (s, j) {
+        var h = s.v / max * ph;
+        var top = j === segs.length - 1;
+        var gap = j > 0 ? 2 : 0;
+        var y = y0 - h;
+        var hh = Math.max(0, h - gap);
+        if (top) svgEl("path", { d: barPath(x, y, bw, hh, 4), fill: s.se.color, "class": "mark" }, g);
+        else svgEl("rect", { x: x, y: y, width: bw, height: hh, fill: s.se.color, "class": "mark" }, g);
+        y0 = y;
+      });
+      var lb = opts.label(r, i);
+      if (lb) { var t = svgEl("text", { x: x + bw / 2, y: H - 6, "text-anchor": "middle", "class": "axis" }, svg); t.textContent = lb; }
+      var hit = svgEl("rect", { x: L + i * slot, y: T, width: slot, height: ph, "class": "hit" }, g);
+      function show() {
+        if (active) active.classList.remove("on");
+        active = g; g.classList.add("on");
+        tip.textContent = "";
+        var hb = document.createElement("b"); hb.textContent = opts.title(r, i); tip.appendChild(hb);
+        opts.lines(r).forEach(function (ln) { tip.appendChild(document.createElement("br")); tip.appendChild(document.createTextNode(ln)); });
+        var box = host.getBoundingClientRect();
+        var px = (x + bw / 2) / W * box.width;
+        var py = (y0 / H) * box.height - 6;
+        tip.hidden = false;
+        var half = tip.offsetWidth / 2;
+        tip.style.left = Math.min(Math.max(px, half), box.width - half) + "px";
+        tip.style.top = Math.max(py, tip.offsetHeight) + "px";
+      }
+      hit.addEventListener("mouseenter", show);
+      hit.addEventListener("click", show);
+    });
+    svg.addEventListener("mouseleave", function () { tip.hidden = true; if (active) active.classList.remove("on"); active = null; });
+    host.appendChild(svg);
+  }
+
+  var MON = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+  var DOW = ["sön", "mån", "tis", "ons", "tor", "fre", "lör"];
+  function dayLabel(iso, long) {
+    var p = String(iso || "").split("-");
+    if (p.length < 3) return "";
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return (long ? DOW[d.getDay()] + " " : "") + d.getDate() + " " + MON[d.getMonth()];
+  }
+
+  function render(d) {
+    var u = d.users || {}, b = d.beers || {}, p = d.places || {}, s = d.social || {}, c = d.care || {}, tech = d.tech || {};
+    var nights = Array.isArray(b.per_night) ? b.per_night : [];
+
+    $("kOut").textContent = fmt(u.active_tonight);
+    $("kOutSub").textContent = fmt(u.out_now) + " pins syns nu";
+    $("kBeers").textContent = fmt(b.tonight);
+    $("kBeersSub").textContent = "+ " + fmt(b.others_tonight) + " annat · i går " + fmt(b.last_night);
+    $("kUsers").textContent = fmt(u.total);
+    $("kUsersSub").textContent = fmt(u.named) + " med namn";
+    $("kNew").textContent = fmt(u.new_7d);
+    $("kNewSub").textContent = fmt(u.new_today) + " i dag · " + fmt(u.new_30d) + " på 30 d";
+
+    barChart($("chNights"), nights, [{ key: "beers", color: "var(--amber)" }, { key: "others", color: "var(--olive)" }], {
+      aria: "Öl och andra drycker per natt, senaste 30 nätterna",
+      label: function (r, i) { return (i % 7 === 1 || i === nights.length - 1) ? dayLabel(r.night) : ""; },
+      title: function (r) { return dayLabel(r.night, true); },
+      lines: function (r) { return [fmt(r.beers) + " öl · " + fmt(r.others) + " annat", fmt(r.people) + " personer"]; }
+    });
+    var tn = $("tNights"); tn.textContent = "";
+    var hr = tn.insertRow(); ["Natt", "Öl", "Annat", "Pers.", "5+", "10+"].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; hr.appendChild(th); });
+    nights.slice().reverse().forEach(function (r) {
+      var row = tn.insertRow();
+      [dayLabel(r.night, true), fmt(r.beers), fmt(r.others), fmt(r.people), fmt(r.hot), fmt(r.medevac)].forEach(function (v) { row.insertCell().textContent = v; });
+    });
+
+    var hours = (Array.isArray(b.peak_hours) ? b.peak_hours : []).map(function (n, h) { return { h: h, n: n }; });
+    barChart($("chHours"), hours, [{ key: "n", color: "var(--amber)" }], {
+      h: 140, aria: "Öl per timme på dygnet, senaste 30 dagarna",
+      label: function (r) { return r.h % 6 === 0 ? String(r.h).padStart(2, "0") : ""; },
+      title: function (r) { return String(r.h).padStart(2, "0") + ":00–" + String(r.h).padStart(2, "0") + ":59"; },
+      lines: function (r) { return [fmt(r.n) + " öl"]; }
+    });
+
+    var sum = function (k) { return nights.reduce(function (a, r) { return a + (+r[k] || 0); }, 0); };
+    var maxNight = nights.reduce(function (a, r) { return (+r.beers || 0) > (+a.beers || 0) ? r : a; }, {});
+    stats($("gBeers"), [
+      ["Totalt alla tider", fmt(b.all_time)],
+      ["30 nätter", fmt(sum("beers"))],
+      ["Annat 30 n", fmt(sum("others"))],
+      ["Snitt per person/natt", b.avg_per_person == null ? "–" : String(b.avg_per_person).replace(".", ",")],
+      ["I går natt", fmt(b.last_night)],
+      ["Bästa natt", maxNight.night ? fmt(maxNight.beers) + " (" + dayLabel(maxNight.night) + ")" : "–"]
+    ]);
+    stats($("gUsers"), [
+      ["Totalt", fmt(u.total)], ["Med namn", fmt(u.named)], ["Nya i dag", fmt(u.new_today)],
+      ["Nya 30 d", fmt(u.new_30d)], ["Aktiva 7 d", fmt(u.active_7d)], ["Öppnat appen 7 d", fmt(u.opened_7d)],
+      ["Push på", fmt(u.push)], ["Ute ikväll", fmt(u.active_tonight)]
+    ]);
+
+    var ol = $("lBars"); ol.textContent = "";
+    var bars = Array.isArray(p.top_bars) ? p.top_bars : [];
+    if (!bars.length) { var li0 = document.createElement("li"); li0.className = "empty"; li0.textContent = "Inga barer än."; li0.style.display = "block"; ol.appendChild(li0); }
+    bars.forEach(function (r, i) {
+      var li = document.createElement("li");
+      var rk = document.createElement("span"); rk.className = "rk"; rk.textContent = String(i + 1).padStart(2, "0");
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = r.name || "Okänd bar"; nm.title = r.name || "";
+      var ct = document.createElement("span"); ct.className = "ct";
+      ct.textContent = fmt(r.beers) + " 🍺 ";
+      var sm = document.createElement("small"); sm.textContent = "· " + fmt(r.checkins) + " 📍"; ct.appendChild(sm);
+      li.appendChild(rk); li.appendChild(nm); li.appendChild(ct); ol.appendChild(li);
+    });
+    stats($("gPlaces"), [["Incheckade ikväll", fmt(p.checkins_tonight)], ["Barbesök 30 d", fmt(p.checkins_30d)], ["Incheckare 30 d", fmt(p.checkin_users_30d)]]);
+
+    stats($("gSocial"), [
+      ["Grupper", fmt(s.groups)], ["Grupper 2+", fmt(s.groups_2plus)],
+      ["Snitt gruppstorlek", s.avg_group_size == null ? "–" : String(s.avg_group_size).replace(".", ",")],
+      ["Chatt", fmt(s.msgs_7d)], ["Skål", fmt(s.skal_7d)], ["Inkallelser", fmt(s.rallies_7d)], ["Reaktioner", fmt(s.reactions_7d)]
+    ]);
+
+    var care = nights.map(function (r) { return { night: r.night, mid: Math.max(0, (+r.hot || 0) - (+r.medevac || 0)), med: +r.medevac || 0, hot: +r.hot || 0 }; });
+    barChart($("chCare"), care, [{ key: "mid", color: "var(--fire)" }, { key: "med", color: "var(--red)" }], {
+      h: 120, aria: "Hot streak och medevac per natt, senaste 30 nätterna",
+      label: function (r, i) { return (i % 7 === 1 || i === care.length - 1) ? dayLabel(r.night) : ""; },
+      title: function (r) { return dayLabel(r.night, true); },
+      lines: function (r) { return ["🔥 " + fmt(r.hot) + " med 5+ öl", "🚁 " + fmt(r.med) + " med 10+ öl"]; }
+    });
+    stats($("gCare"), [
+      ["🔥 Hot streak ikväll", fmt(c.hot_tonight)], ["🚁 Medevac ikväll", fmt(c.medevac_tonight)],
+      ["🔥 5+ på 30 n", fmt(sum("hot"))], ["🚁 10+ på 30 n", fmt(sum("medevac"))],
+      ["🏠 Hemma 7 d", c.home_tracked ? fmt(c.home_7d) : "spåras ej"]
+    ]);
+
+    var tt = $("tTech"); tt.textContent = "";
+    Object.keys(tech).sort(function (a, z) { return (tech[z] || 0) - (tech[a] || 0) || a.localeCompare(z); }).forEach(function (k) {
+      var row = tt.insertRow();
+      var c1 = row.insertCell(); c1.textContent = k; c1.className = "mono";
+      row.insertCell().textContent = fmt(tech[k]);
+    });
+  }
+
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = $("keyInput").value.trim();
+    if (!v) return;
+    key = v; store(v); $("keyInput").value = "";
+    $("loginMsg").hidden = true;
+    fetchStats();
+  });
+  $("logout").addEventListener("click", function () { store(""); key = ""; showLogin(""); setStamp("Utloggad", false); });
+
+  if (key) fetchStats(); else showLogin("");
+})();
+</script>
+</body>
+</html>

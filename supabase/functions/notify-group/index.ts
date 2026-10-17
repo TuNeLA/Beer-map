@@ -240,12 +240,21 @@ export function fill(tpl: string, vars: Record<string, string | number>): string
 
 // ---- v7 SOCIAL ----
 
-/** Title ladder by lifetime beers. Same list in migration 0007 (olnu_titles) and CONTRACT.md. */
+/** Title ladder by lifetime beers (v11, 36 steps). Same list in migration 0012 (olnu_titles),
+ *  docs/js/social.js TITLES and CONTRACT.md. */
 export const TITLES: [number, string][] = [
-  [0, "Rekryt"], [5, "Menig Mjöd"], [15, "Korpral Kork"], [30, "Sergeant Skum"],
-  [50, "Löjtnant Lager"], [75, "Kapten Kapsyl"], [100, "Major Malt"], [150, "Öl-veteranen"],
-  [200, "Överste Öl"], [300, "General Gambrinus"], [500, "Fältmarskalk Fatöl"],
-  [750, "Bryggerilegenden"], [1000, "Ölguden"],
+  [0, "Rekryt"], [3, "Mönstrad Mellanöl"], [5, "Menig Mjöd"], [7, "Vicekorpral Kapsyl"],
+  [10, "Kapsylkorpral från Grangärde"], [13, "Skumsergeant"], [17, "Furir Flaskhals"],
+  [22, "Överfurir Fatkran"], [28, "Fanjunkare Flasköppnare"], [35, "Fänrik Fatöl"],
+  [43, "Löjtnant Lager"], [52, "Premiärlöjtnant Pilsner"], [62, "Kapten Kaggen"],
+  [75, "Ryttmästare Humle"], [90, "Major Malt från Smedjebacken"], [110, "Överstelöjtnant Ölstop"],
+  [130, "Överste Ölkorv"], [155, "Brigadgeneral Bärs"], [180, "Generalmajor Gambrinus"],
+  [210, "Generallöjtnant Guldskum"], [245, "General Dalabärs"], [285, "Fältmarskalk Fradga"],
+  [330, "Riksmarskalk Rundtur"], [380, "Baron av Bryggstugan"], [430, "Hertig av Humlegården"],
+  [490, "Ärkehertig av Ölkranen"], [560, "Kung Kapsyl av Dalarna"], [640, "Ölkejsaren"],
+  [730, "Bryggerilegenden"], [830, "Halvguden från Väsman"], [920, "Myten från Grängesberg"],
+  [1000, "Legenden från Ludvika"], [1100, "Sagofiguren från Säfsnäs"], [1200, "Oraklet i Ölstugan"],
+  [1300, "Överbefälhavare Öl"], [1500, "Ölguden"],
 ];
 
 export function titleFor(total: number) {
@@ -773,6 +782,9 @@ async function lifetimeTotal(admin: Admin, uid: string): Promise<number> {
 async function levelUpJobs(admin: Admin, uid: string, beerId: number, total: number): Promise<Job[]> {
   const t = titleFor(total);
   if (t.at <= 0) return [];
+  // Only a rank reached just now (this beer or the one before). Users whose rank name changed
+  // with the v11 ladder, but who did not just pass a step, get no push.
+  if (total - t.at > 1) return [];
   const mates = await mateNames(admin, uid);
   if (mates.size === 0) return [];
   const { data: claimed, error } = await admin

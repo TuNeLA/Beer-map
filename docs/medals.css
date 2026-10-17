@@ -1,0 +1,64 @@
+/* Öl Nu v11 — medals, uniform, level-up and "ta det lugnt" popups. Uses the tokens from styles.css. */
+
+/* Group view: medal row under each member, tap = uniform */
+.st-tap{cursor:pointer}
+.st-tap:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.st-medals{display:flex;flex-wrap:wrap;align-items:center;gap:2px;min-height:0;margin-top:2px;font-size:15px;line-height:1.2}
+.st-medals:empty{display:none}
+.md-pip{position:relative;display:inline-block}
+.md-pip sub{font-family:var(--hud);font-size:9px;color:var(--gold);margin-left:-2px;vertical-align:-2px}
+.md-more{font-family:var(--hud);font-size:11px;color:var(--muted);margin-left:4px}
+.cm-tap{cursor:pointer;text-decoration:underline dotted rgba(255,224,138,.5);text-underline-offset:3px}
+
+/* Uniform sheet */
+.uni-box{position:relative;padding:14px 12px 12px;background:
+  linear-gradient(180deg,rgba(111,125,79,.28),rgba(16,24,38,.95) 70%),var(--night);
+  border:1px solid var(--line);border-top:3px solid var(--olive);text-align:center;margin-top:4px}
+.uni-name{font-family:var(--hud);font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;overflow-wrap:anywhere}
+.uni-chev{font-size:18px;color:var(--gold);letter-spacing:4px;margin-top:4px;text-shadow:0 0 10px rgba(255,224,138,.5)}
+.uni-rank{font-family:var(--display);font-size:clamp(22px,7vw,30px);line-height:1.1;color:var(--gold);margin:4px 0 2px;overflow-wrap:anywhere;
+  text-shadow:0 2px 0 rgba(0,0,0,.5)}
+.uni-sub{font-family:var(--hud);font-size:12px;color:var(--amber-2)}
+.uni-box .rank-bar{margin:10px auto 6px;max-width:320px}
+.uni-next{font-size:13px;color:var(--muted)}
+.uni-ribbon{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:12px;padding:10px 6px 6px;
+  border-top:1px dashed var(--line);font-size:24px;line-height:1.2}
+.uni-ribbon .md-pip sub{font-size:11px}
+.uni-ribbon .muted{font-size:13px}
+
+.medal-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.medal{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:8px 10px;
+  background:var(--night);border:1px solid var(--line-soft);opacity:.55;min-width:0}
+.medal .md-e{grid-row:1 / span 2;font-size:26px;filter:grayscale(1)}
+.medal .md-n{font-weight:700;font-size:13.5px;overflow-wrap:anywhere}
+.medal .md-d{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.medal.on{opacity:1;border-color:var(--line);border-left:3px solid var(--gold)}
+.medal.on .md-e{filter:none}
+.medal.on .md-n{color:var(--gold)}
+.medal.on.soft{border-left-color:var(--olive)}
+.medal.on.soft .md-n{color:var(--text)}
+
+.toast.medal-toast{border-color:var(--gold);border-left-color:var(--gold);color:var(--gold)}
+
+/* Popups: level-up and "ta det lugnt" */
+.mx-pop{position:fixed;inset:0;z-index:2600;display:grid;place-items:center;padding:16px;background:rgba(5,8,15,.55);
+  animation:mxIn .2s ease-out}
+.mx-pop.out{opacity:0;transition:opacity .2s}
+.mx-card{position:relative;width:min(420px,100%);padding:18px 16px 14px;text-align:center;background:var(--night-2);
+  border:1px solid var(--line);border-top:3px solid var(--gold);box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 30px rgba(255,224,138,.25)}
+.mx-icon{font-size:44px;line-height:1}
+.mx-title{font-family:var(--display);font-size:28px;color:var(--gold);letter-spacing:1.5px;margin-top:6px}
+.mx-ranks{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;margin:10px 0 4px}
+.mx-old{font-family:var(--hud);font-size:13px;color:var(--muted);text-decoration:line-through}
+.mx-arrow{color:var(--amber)}
+.mx-new{font-family:var(--display);font-size:22px;color:var(--amber-2);overflow-wrap:anywhere}
+.mx-sub{font-family:var(--hud);font-size:12px;color:var(--muted)}
+.mx-line{margin:12px 0 14px;font-size:16px;line-height:1.4;color:var(--text)}
+.mx-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.mx-btns .btn{flex:1 1 120px}
+.mx-level .mx-card{animation:mxPromo 1.2s ease-in-out 2}
+.mx-calm .mx-card{border-top-color:var(--green);box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 24px rgba(61,220,132,.2)}
+.mx-calm .mx-title{color:var(--green)}
+@keyframes mxIn{from{opacity:0}to{opacity:1}}
+@keyframes mxPromo{50%{box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 46px rgba(255,224,138,.7)}}
+@media (prefers-reduced-motion: reduce){.mx-pop,.mx-level .mx-card{animation:none}}

@@ -279,3 +279,75 @@ Tap a bar on the map → "📍 Checka in". Group-mates get "📍 Anton har anlä
   - iOS Safari install guide: step 1 "📋 Förbered flytt" → `?flytt=` in the URL (replaceState) + link on the clipboard; `olnu.flyttPending`. The move finishes when the page comes back after ≥ 10 s hidden, on next load, when the server rejects the token (401), or before the access token expires.
   - In-app browser help: "📋 Kopiera flyttlänk" (same pending flow).
 - Standalone first start with no session and no code: "Har du använt Öl Nu i Safari/webbläsaren förut?" → "📋 Klistra in flyttkod" (clipboard, text field fallback) / "Nej, börja nytt" (`olnu.flyttAsked`). Settings also has "📥 Jag har en flyttkod".
+
+## v11 MEDALS & RANKS (additive)
+Migration `supabase/migrations/0012_medals.sql` (also in `setup.sql`). Needs 0001–0011 first. A missing RPC (old database) = feature off: the app falls back to the old local badges sheet, no error.
+
+### Ranks (36 steps)
+Lifetime beers → title. `olnu_titles()` (SQL), `TITLES` in `notify-group` and `docs/js/social.js` are identical (same function names and return types as v7; `my_stats` unchanged):
+
+| from | title | from | title | from | title |
+|---|---|---|---|---|---|
+| 0 | Rekryt | 52 | Premiärlöjtnant Pilsner | 330 | Riksmarskalk Rundtur |
+| 3 | Mönstrad Mellanöl | 62 | Kapten Kaggen | 380 | Baron av Bryggstugan |
+| 5 | Menig Mjöd | 75 | Ryttmästare Humle | 430 | Hertig av Humlegården |
+| 7 | Vicekorpral Kapsyl | 90 | Major Malt från Smedjebacken | 490 | Ärkehertig av Ölkranen |
+| 10 | Kapsylkorpral från Grangärde | 110 | Överstelöjtnant Ölstop | 560 | Kung Kapsyl av Dalarna |
+| 13 | Skumsergeant | 130 | Överste Ölkorv | 640 | Ölkejsaren |
+| 17 | Furir Flaskhals | 155 | Brigadgeneral Bärs | 730 | Bryggerilegenden |
+| 22 | Överfurir Fatkran | 180 | Generalmajor Gambrinus | 830 | Halvguden från Väsman |
+| 28 | Fanjunkare Flasköppnare | 210 | Generallöjtnant Guldskum | 920 | Myten från Grängesberg |
+| 35 | Fänrik Fatöl | 245 | General Dalabärs | 1000 | Legenden från Ludvika |
+| 43 | Löjtnant Lager | 285 | Fältmarskalk Fradga | 1100 | Sagofiguren från Säfsnäs |
+| | | | | 1200 | Oraklet i Ölstugan |
+| | | | | 1300 | Överbefälhavare Öl |
+| | | | | 1500 | Ölguden |
+
+- `notify-group` level-up push: only when the rank was reached just now (`total - rank_start <= 1`), so the ladder change itself sends no pushes. Still once per title per user ever.
+- Client: a real promotion (lifetime total went up and the title changed) shows the BEFORDRAN popup (old ➜ new rank, random RPG-style line from 44, never one of the last 10, sound + vibration). A title that changed only because of the new ladder shows one quiet toast ("Armén har fått nya grader!").
+
+### Tables (RLS on, no policies, no client access)
+- `user_medals(user_id, medal text, earned_at, count int, updated_at)`, pk (user_id, medal). Never taken back; `count` never goes down.
+- Fact logs (filled by triggers, because beers/checkins/skals rows only live one night): `medal_nights(user_id, night, beers, others, first_at, early, owl, home, cell)` (`cell` = ~50 km region, never a precise place), `medal_checkins(user_id, bar_id, night)` (from `checkins` and `bar_taps`), `medal_counts(user_id, skal_given, skal_got, msgs)`, `medal_claims(user_id, medal, night)`. Every trigger catches its own errors: a medal bug can never block a beer, check-in, skål or chat message.
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `award_medals` | `p_event text default null` | setof `(medal text, count int, is_new bool, earned_at timestamptz)` — only medals that are new or whose count went up in this call | – |
+| `claim_medal` | `p_medal text` | same as `award_medals` | `invalid_medal` |
+| `my_medals` | – | setof `(medal text, earned_at timestamptz, count int)` | – |
+| `member_medals` | `p_group_id uuid` | setof `(name text, is_me bool, medal text, earned_at timestamptz, count int)` for all members of that group | `not_member` |
+- `award_medals` evaluates every rule from server data and stores the result. `p_event = 'home'` marks tonight as "came home" (only when the caller has a beer row tonight). The client calls it after an accepted beer, after "Jag är hemma" (`'home'`), after chat/skål/rally taps, on a new check-in, when the app opens, and every 5 min while open.
+- `claim_medal` whitelist (low stakes, the server cannot see them): `vatten` (tapped "💧 Druckit vatten" / "💧 Jag tar vatten"; once per night), `spoke` (beer in ghost mode; once per night), and once-only migration of old local badges: `dagsljus`, `uggla`, `sidospar`, `hemvarn`, `radio`, `krogrunda`.
+
+### Medals (ids are stable; names and texts live in `docs/js/medals.js`)
+No medal rewards drinking fast or many beers in a short time. Stacking medals show "×N".
+- Lifetime beers: `m1` Första kapsylen, `m10` Tian, `m50` Femtiolappen, `m100` Hundringen, `m250` Kvartstusen, `m500` Halvtusen, `m1000` Tusenåringen.
+- Nights out: `n5` Nattpatrull, `n25` Nattveteran, `n100` Hundra nätter.
+- Bars (distinct, check-ins + king taps): `b5` Krogturist, `b15` Kartläsare, `b40` Krogkartograf; `krogrunda` (3 bars one night, stacks), `stammis` (same bar 5 nights, stacks per bar).
+- Skål: `sg10`/`sg100` given (Skålbroder, Skålkanonen), `sr10`/`sr100` received (Folkkär, Skålmagneten).
+- Rally: `inryckt` (said yes once), `alltid` Alltid redo (yes 10 times), `trumslag` Trumslagaren (sent a rally).
+- Home: `hemvarn` Hemvärnet (nights with "Jag är hemma", stacks), `komhem` Kom hem säkert (per 5 such nights).
+- Time: `dagsljus` (beer 05–16), `uggla` Nattugglan (beer 01–05), `tisdag` Tisdagstörst — all stack per night.
+- Group: `fortrupp` Förtruppen (first of the group out, a mate out too; stacks), `kung` Barkungen (king of a bar in a week; stacks), `liga` Ligamästare (group won a finished week; stacks), `pluton` (in a group), `kompani` Kompanichef (created a group with 5+ members).
+- Chat: `radio` (1 message), `signal` Signalisten (50).
+- Holidays (evening date, stacks per year): `valborg` (30 Apr), `midsommar` (Friday 19–25 Jun), `lucia` (13 Dec), `nyar` (31 Dec).
+- Other: `faltresa` Fältresa (beer in another ~50 km region; stacks), `sidospar` (other drink), `spoke` Spökpatrullen, `vatten` Vattenbäraren.
+- "Varit med om" (hidden until earned, caring text, toast without fanfare, never a goal): `het` (a night with 5+), `medevac` (a night with 10+).
+
+### Frontend
+- `docs/js/medals.js` (`window.MEDALS`, driven through `extras.js` hooks) + `docs/medals.css`.
+- **Uniform**: big rank, "Grad N/36", progress bar to the next rank, ribbon of all medals, then all medals: earned (emoji, name, ×N, funny line) and locked (grey, how to get it). "🎖️ Min uniform" = HUD rank chip / settings button. Tap a member in the group view or a name in the chat → that member's uniform (`member_medals` + `group_status.total`).
+- **Group view**: medal row under each member (max 8 emojis + "+N").
+- New medal → toast "🎖️ Ny medalj: … !" + clink + vibration. First run after the update: one summary toast instead of many.
+- **Ta det lugnt** (client only, localStorage `olnu.beerTimes`): 3 beers within 40 min or 5 within 100 min → friendly popup with a random line (42 lines, not the last 10 again), max once per 30 min. Two lines have a "💧 Jag tar vatten" button (→ `claim_medal('vatten')`). The water toast every 3rd beer has a "💧 Druckit vatten" button too.
+
+## OWNER STATS (owner only; additive)
+Migration `supabase/migrations/0013_owner_stats.sql` (also in `setup.sql`). Needs 0001–0012.
+- Page `docs/stats.html`: self-contained, NOT linked from the app, NOT in `sw.js`. Key from `#k=<key>` (removed from the address bar at once) or a password field; kept in `sessionStorage` (`olnu.ownerKey`) only. Refreshes every 60 s while visible.
+- Tables (RLS on, no policies, no client access): `owner_keys(key_hash, created_at)` (SHA-256 hex of the key; the plain key is never stored in the DB or the repo), `owner_key_fails(at)`, `owner_hours(hour, beers)` (beers per hour, filled by trigger `olnu_owner_hours` on `beer_events`; no user id, no place).
+- RPC `owner_stats(p_key text)` → one jsonb `{generated_at, night_ends, users, beers, places, social, care, tech}`. Aggregates only: no names (except bar names), no exact locations, no user ids. SECURITY DEFINER, EXECUTE for `anon` + `authenticated`.
+  - Wrong key: logs a row in `owner_key_fails` and answers HTTP 403 `{"code":"PT403","message":"forbidden"}` (supabase-js: `error.message = "forbidden"`). Not a raise, so the log row is kept.
+  - More than 20 fails in the last hour → raise `rate_limited` (for every key).
+- Night = the 05:00 Europe/Stockholm boundary (`olnu_next_expiry`). History comes from `medal_nights` / `medal_checkins` (0012), `beer_events` (~10 days), `week_beers`, `owner_hours`. Skål, reactions and chat rows go away with the night, so the 7 d numbers for them are a lower bound.
+- New key: `insert into public.owner_keys (key_hash) values (encode(extensions.digest('<key>', 'sha256'), 'hex'));` (run in the SQL editor; never commit the key).

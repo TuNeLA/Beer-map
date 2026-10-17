@@ -21,8 +21,8 @@ jobs:
           # index.html is left out of the hash: it is stamped below, and HTML is always fetched fresh.
           HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
           sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
-          # Give every local script and the stylesheet a ?v=HASH so a new page can never run with old cached code.
-          sed -i -E "s#(src=\"\./[^\"?]+\.js)(\?v=[A-Za-z0-9]+)?\"#\1?v=$HASH\"#g; s#(href=\"\./styles\.css)(\?v=[A-Za-z0-9]+)?\"#\1?v=$HASH\"#g" docs/index.html
+          # Give every local script and stylesheet a ?v=HASH so a new page can never run with old cached code.
+          sed -i -E "s#(src=\"\./[^\"?]+\.js)(\?v=[A-Za-z0-9]+)?\"#\1?v=$HASH\"#g; s#(href=\"\./[^\"?]+\.css)(\?v=[A-Za-z0-9]+)?\"#\1?v=$HASH\"#g" docs/index.html
           grep -n '?v=' docs/index.html | head -3
           grep -n '^var VERSION' docs/sw.js
           if git diff --quiet; then echo "No change"; exit 0; fi

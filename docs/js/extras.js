@@ -76,6 +76,10 @@
     have[id] = Date.now();
     U.ls.setJSON(BADGE_KEY, have);
     var l = getLog(); if (l.badges.indexOf(id) < 0) { l.badges.push(id); saveLog(l); }
+    if (id === "chat" && MED()) MED().onChat();
+    // v11: medals live on the server; their toast comes from medals.js. The local badge stays for the
+    // night card and as a fallback on an old database.
+    if (MED() && MED().on()) return true;
     toastLater(t("badgeNew", badgeEmoji(id), badgeName(id)), { cls: "badge-toast", ms: 4500 }, 2200);
     setTimeout(function () { window.FX.vibrate([20, 30, 20]); }, 2200);
     return true;
@@ -91,7 +95,13 @@
     return list.filter(function (k) { var d = Date.parse(k + "T12:00:00Z"); return isFinite(d) && now - d <= 7 * 86400e3; }).length;
   }
 
+  function MED() { return window.MEDALS || null; }
+  // v11: "Min uniform" (server medals + rank). Old local badge sheet when medals are not available.
   function showBadges() {
+    if (MED() && MED().on()) { MED().showMine(); return; }
+    showBadgesLegacy();
+  }
+  function showBadgesLegacy() {
     A.openSheet(t("badgesBtn"), function (body) {
       var el = A.el, have = U.ls.getJSON(BADGE_KEY, {}) || {};
       var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats();
@@ -313,11 +323,12 @@
 
   /* ---------- Public hooks ---------- */
   window.EXTRAS = {
-    ghostOn: ghostOn, award: award, showBadges: showBadges, showNight: showNightBest, taxiHTML: taxiHTML,
+    ghostOn: ghostOn, award: award, showBadges: showBadges, showBadgesLegacy: showBadgesLegacy, showNight: showNightBest, taxiHTML: taxiHTML,
     otherTonight: function () { try { return getLog().others | 0; } catch (e) { return 0; } },
 
     init: function (api) {
       A = api;
+      if (MED()) MED().init(api);
       getLog();   // roll over to a new night if needed (keeps last night for the summary)
       $("btn-other").addEventListener("click", pickOther);
       $("ocd-ring").style.strokeDasharray = String(OTHER_RING);
@@ -334,7 +345,9 @@
       saveLog(l);
       var nights = addNight(l.key);
       // Water first: it is the important one. Badge toasts queue after it.
-      if (n > 0 && n % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 5000 }, 2600);
+      if (n > 0 && n % 3 === 0) toastLater(pick(t("water")), { cls: "water", ms: 7000,
+        action: MED() && MED().on() ? { label: I.lang === "en" ? "💧 Done" : "💧 Druckit vatten", fn: function () { MED().waterTaken(); } } : null }, 2600);
+      if (MED()) MED().onBeerAccepted(d, o);
       award("first");
       if (bar) {
         var ever = U.ls.getJSON(BARS_KEY, []); if (!Array.isArray(ever)) ever = [];
@@ -350,7 +363,9 @@
       if (o.ghost) { award("ghost"); toastLater(t("ghostToast"), {}, 1200); }
       A.updateCounts();
     },
+    onAuthed: function () { if (MED()) MED().onAuthed(); },
     onPoll: function (beers) {
+      if (MED()) MED().onPoll();
       var mine = A.myBeer(); if (!mine) return;
       var l = getLog(), sk = Math.max(0, mine.skal_count | 0);
       l.skal = Math.max(l.skal | 0, sk);
@@ -360,6 +375,7 @@
       if (sk >= 10) award("skalking");
     },
     onStopped: function (kind) {
+      if (MED()) MED().onStopped(kind);
       if (kind !== "home") return;
       var l = getLog(), night = A.myNight(), n = Math.max(l.beers | 0, night ? night.count | 0 : 0);
       if (n < 1) return;
