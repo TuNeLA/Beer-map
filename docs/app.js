@@ -118,7 +118,7 @@
     map.on("movestart", function () { setOpen(false); });
   })();
   // Keep popups clear of the top HUD and the bottom dock.
-  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 240), maxWidth: 300 });
+  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 290), maxWidth: 300 });
 
   map.createPane("bars"); map.getPane("bars").style.zIndex = 590;
   map.createPane("hotbars"); map.getPane("hotbars").style.zIndex = 650;
