@@ -97,6 +97,7 @@
         window.FX.vibrate(ans === "yes" ? [30, 40, 30] : 20);
       }
       renderBanner(); refreshOpenSheet();
+      if (!quiet && ans === "yes" && r && openId == null && isFinite(r.lat) && r.lat != null) openRally(r);
       setTimeout(load, 800);   // fresh yes_names
       return true;
     });
@@ -132,6 +133,15 @@
       body.appendChild(row);
     }
     if (isFinite(r.lat) && isFinite(r.lng) && r.lat != null && r.lng != null) {
+      // Walking directions in the phone's own map app (Apple Maps on iPhone, Google Maps elsewhere).
+      if (!r.is_mine) {
+        var go = el("a", { class: "btn btn-block rl-route" + (r.my_answer === "yes" ? " btn-green" : ""), href: dirUrl(r),
+          target: "_blank", rel: "noopener noreferrer", text: t("rallyRoute") });
+        body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [go]));
+        var dist = el("p", { class: "muted rl-dist", text: "" });
+        body.appendChild(dist);
+        distTo(r, function (txt) { dist.textContent = txt; });
+      }
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyShowMap"), "btn-block", function () { showFlag(r); })]));
     }
     if (r.is_mine) {
@@ -143,6 +153,21 @@
         });
       })]));
     }
+  }
+  function dirUrl(r) {
+    var ll = (+r.lat).toFixed(5) + "," + (+r.lng).toFixed(5);
+    return U.isIOS() ? "https://maps.apple.com/?daddr=" + ll + "&dirflg=w"
+      : "https://www.google.com/maps/dir/?api=1&destination=" + ll + "&travelmode=walking";
+  }
+  // "ca 650 m · ca 8 min att gå" from the phone's last known position (no new GPS prompt if it fails).
+  function distTo(r, cb) {
+    try {
+      navigator.geolocation.getCurrentPosition(function (p) {
+        var m = U.haversine(p.coords.latitude, p.coords.longitude, +r.lat, +r.lng);
+        cb(t("rallyDist", m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(1).replace(".", ",") + " km",
+          Math.max(1, Math.round(m * 1.25 / 80))));
+      }, function () {}, { maximumAge: 300000, timeout: 8000, enableHighAccuracy: false });
+    } catch (e) {}
   }
   function openRally(r) {
     A.openSheet(t("rallyTitle"), function (body) { openId = r.id; openBody = body; fillDetail(body, r); });

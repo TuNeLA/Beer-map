@@ -659,3 +659,6 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 .flytt-card .intro-p{text-align:center}
 .flytt-card .btn-block+.btn-block{margin-top:8px}
 .guide-steps[hidden],.flytt-skip[hidden]{display:none}
+
+.rl-route{display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:52px;font-size:16px}
+.rl-dist{text-align:center;margin:4px 0 0}
