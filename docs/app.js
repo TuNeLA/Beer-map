@@ -1500,6 +1500,19 @@
         if (LIVE) showJoin(c); else toast(t("soonToast"), { id: "soon" });
       });
     }
+    // Ask for notifications at start (not during a join link). The phone's own question only
+    // appears after a tap on "Ja", because browsers need a user gesture.
+    if (!joinCode) Promise.all([ready, intro]).then(function () { setTimeout(startNotifAsk, 1200); });
+  }
+  function startNotifAsk() {
+    if (!PUSH_ON || !authed || !window.PUSH.supported()) return;
+    if (Notification.permission !== "default") return;          // already yes or no
+    if ($("sheet") && !$("sheet").hidden) return;                // another sheet is open
+    var last = +U.ls.get("olnu.notifAskAt", "0") || 0;
+    if (Date.now() - last < 3 * 86400000) return;               // max once per 3 days
+    U.ls.set("olnu.notifAskAt", String(Date.now()));
+    U.ls.set("olnu.notifAsked", "");                             // let the prompt box show again
+    askNotifSheet();
   }
   start();
 })();
