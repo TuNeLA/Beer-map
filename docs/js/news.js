@@ -50,6 +50,8 @@
     return { last: last, best: best };
   }
 
+  var recentUsed = [];   // template ids shown lately (memory only)
+
   /* ---------- Helpers ---------- */
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function shuffle(a) {
@@ -159,20 +161,28 @@
     var hotNear = near.filter(function (b) { return U.level(b.beer_count) > 0; }).length;
     if (near.length < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
     if (near.length >= 1) add("forecast", { stad: stad, n: near.length, p: Math.min(99, near.length * 9 + hotNear * 10) }, 0);
+    // Two random "filler" headlines every round: the biggest source of variety.
+    add("random", { stad: stad }, 0); add("random", { stad: stad }, 0);
     var h = hourNow(now), tk = h >= 5 && h < 20 ? "t1" : h >= 20 && h < 23 ? "t2" : h >= 23 || h < 1 ? "t3" : h < 3 ? "t4" : "t5";
     add(tk, { hh: ("0" + h).slice(-2) }, 0);
 
     // Turn candidates into texts. One random template per candidate. Drop duplicates.
     var seen = {}, items = [];
     cand.forEach(function (x) {
-      var fs = byKind[x.k].slice(), text = "";
-      // Prefer a template text that was not on screen last cycle.
-      shuffle(fs);
-      for (var i = 0; i < fs.length; i++) {
-        try { text = String(fs[i](x.d)); } catch (e) { text = ""; }
-        if (text && prev.indexOf(text) < 0) break;
+      // Prefer templates not used in the last ~60 headlines, then texts not on screen last cycle.
+      var ids = byKind[x.k].map(function (f, i) { return { f: f, id: x.k + ":" + i }; });
+      shuffle(ids);
+      ids.sort(function (a, b) { return (recentUsed.indexOf(a.id) >= 0) - (recentUsed.indexOf(b.id) >= 0); });
+      var text = "", usedId = null;
+      for (var i = 0; i < ids.length; i++) {
+        var tx = "";
+        try { tx = String(ids[i].f(x.d)); } catch (e) { tx = ""; }
+        if (!tx || seen[tx]) continue;
+        text = tx; usedId = ids[i].id;
+        if (prev.indexOf(tx) < 0) break;
       }
       if (!text || seen[text]) return;
+      if (usedId) { recentUsed.push(usedId); if (recentUsed.length > 60) recentUsed.shift(); }
       seen[text] = true;
       items.push({ text: text, cls: x.cls, imp: x.imp, old: prev.indexOf(text) >= 0, r: Math.random() });
     });
