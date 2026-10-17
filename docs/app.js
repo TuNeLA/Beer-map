@@ -2414,6 +2414,21 @@
     if (sosAt) mods("showSosLink", sosAt);
     if (barLink && !chatId && !rallyId) Promise.all([ready, intro]).then(function () { openBarById(barLink, 0); });
   }
+  // A tapped notification while the app is open: the service worker sends the link here.
+  // Open exactly what the notification was about (chat, rally, bar, pin, SOS) without a reload.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function (e) {
+    var d = e.data || {};
+    if (d.type !== "olnu-open" || !d.url) return;
+    try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {}
+    var q; try { q = new URL(d.url).searchParams; } catch (err) { return; }
+    if (!$("sheet").hidden) closeSheet();
+    var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos");
+    if (c) { if (LIVE) mods("openChatLink", c); }
+    else if (r) { if (LIVE) mods("openLink", r, q.get("answer")); }
+    else if (b) openBarById(b, 0);
+    else if (so) mods("showSosLink", so);
+    else if (f) { pendingFocus = f; refresh(); }
+  });
   // v12: fly to a bar (bars.json id) and open its popup. Bars load async: retry for ~12 s.
   function openBarById(id, tries) {
     var bar = window.BARS.byId(String(id));

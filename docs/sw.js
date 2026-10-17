@@ -106,7 +106,21 @@ self.addEventListener("notificationclick", function (e) {
     for (var i = 0; i < list.length; i++) {
       var c = list[i];
       if (c.url.indexOf(self.registration.scope) === 0 && "focus" in c) {
-        return c.focus().then(function (fc) { return fc && fc.navigate ? fc.navigate(target).catch(function () { return fc; }) : fc; });
+        // The app is already open: tell it what to show (chat, rally, bar, pin). No reload needed.
+        // Old app versions ignore the message, so navigate as a fallback when nobody answers.
+        var client = c;
+        return client.focus().then(function (fc) {
+          fc = fc || client;
+          return new Promise(function (resolve) {
+            var done = false, ch = new MessageChannel();
+            ch.port1.onmessage = function () { done = true; resolve(fc); };
+            try { fc.postMessage({ type: "olnu-open", url: target }, [ch.port2]); } catch (err) {}
+            setTimeout(function () {
+              if (done) return;
+              if (fc.navigate) fc.navigate(target).then(resolve, function () { resolve(fc); }); else resolve(fc);
+            }, 700);
+          });
+        });
       }
     }
     return self.clients.openWindow(target);
