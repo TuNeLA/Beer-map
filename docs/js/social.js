@@ -422,49 +422,78 @@
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") }),
           jamLink(m.body) ? el("a", { class: "btn btn-block jam-btn", href: jamLink(m.body), target: "_blank", rel: "noopener noreferrer", text: t("jamJoin") }) : null,
-          likesOff ? null : likeBtn(m)
+          reactRow(m)
         ]));
       }
-      // 👍 likes (0019). Tap the button or double-tap the message. Missing RPC on an old server → hidden.
-      var likeEls = {}, likesOff = false, likeBusy = {};
-      function paintLike(id, n, mine, names) {
-        var b = likeEls[id]; if (!b) return;
-        b.textContent = "👍" + (n ? " " + n : "");
-        b.classList.toggle("on", !!mine);
-        b.setAttribute("aria-pressed", String(!!mine));
-        b.title = names && names.length ? names.join(", ") : "";
+      // Reactions (0020): long-press or double-tap a message → 🍻 😂 🔥 ❤️. Only used emojis are shown.
+      var REACTS = ["🍻", "😂", "🔥", "❤️"], reactRows = {}, reactsOff = false, reactBusy = {}, picker = null, pickerAt = 0;
+      function reactRow(m) {
+        var row = el("div", { class: "cm-reacts" });
+        reactRows[m.id] = row;
+        return row;
       }
-      function likeBtn(m) {
-        var b = el("button", { type: "button", class: "cm-like", "aria-pressed": "false", "aria-label": t("chatLike"), text: "👍" });
-        likeEls[m.id] = b;
-        b.addEventListener("click", function () { toggleLike(m.id); });
-        return b;
+      function paintReacts(id, list) {
+        var row = reactRows[id]; if (!row) return;
+        row.innerHTML = "";
+        (list || []).forEach(function (x) {
+          var c = el("button", { type: "button", class: "cm-react" + (x.mine ? " on" : ""), text: x.emoji + " " + x.n,
+            title: (x.names || []).join(", "), "aria-label": x.emoji + " " + (x.names || []).join(", ") });
+          c.addEventListener("click", function (e) { e.stopPropagation(); sendReact(id, x.emoji); });
+          row.appendChild(c);
+        });
       }
-      function toggleLike(id) {
-        if (likesOff || likeBusy[id]) return;
-        likeBusy[id] = true;
-        A.rpc("like_msg", { p_msg_id: +id }).then(function (r) {
-          likeBusy[id] = false;
-          if (r.error) { if (U.missing(r.error)) { likesOff = true; } return; }
-          var d = A.parseData(r.data);
-          paintLike(id, d.likes | 0, !!d.liked, null);
-          if (d.liked) window.FX.vibrate(15);
+      function closePicker() { if (picker) { picker.remove(); picker = null; } }
+      function openPicker(li, id) {
+        if (reactsOff) return;
+        closePicker();
+        picker = el("div", { class: "cm-picker", role: "menu" });
+        REACTS.forEach(function (e) {
+          var b = el("button", { type: "button", class: "cm-pick", role: "menuitem", text: e });
+          b.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker(); sendReact(id, e); });
+          picker.appendChild(b);
+        });
+        li.appendChild(picker); pickerAt = Date.now();
+        // Near the top of the list: show the picker under the message instead of above it.
+        if (li.offsetTop - list.scrollTop < 50) { picker.style.top = "auto"; picker.style.bottom = "-44px"; }
+        window.FX.vibrate(12);
+      }
+      function sendReact(id, emoji) {
+        if (reactsOff || reactBusy[id]) return;
+        reactBusy[id] = true;
+        A.rpc("react_msg", { p_msg_id: +id, p_emoji: emoji }).then(function (r) {
+          reactBusy[id] = false;
+          if (r.error) { if (U.missing(r.error)) reactsOff = true; return; }
           loadLikes();
         });
       }
       function loadLikes() {
-        if (likesOff || !alive()) return;
-        A.rpc("msg_likes", { p_group_id: g.id }).then(function (r) {
-          if (r.error) { if (U.missing(r.error)) { likesOff = true; Object.keys(likeEls).forEach(function (k) { likeEls[k].remove(); }); } return; }
-          var got = {};
-          (r.data || []).forEach(function (x) { got[x.msg_id] = 1; paintLike(x.msg_id, x.likes | 0, x.liked, x.names); });
-          Object.keys(likeEls).forEach(function (k) { if (!got[k]) paintLike(k, 0, false, null); });
+        if (reactsOff || !alive()) return;
+        A.rpc("msg_reacts", { p_group_id: g.id }).then(function (r) {
+          if (r.error) { if (U.missing(r.error)) reactsOff = true; return; }
+          var by = {};
+          (r.data || []).forEach(function (x) { (by[x.msg_id] = by[x.msg_id] || []).push(x); });
+          Object.keys(reactRows).forEach(function (k) {
+            var l = (by[k] || []).sort(function (a, b) { return REACTS.indexOf(a.emoji) - REACTS.indexOf(b.emoji); });
+            paintReacts(k, l);
+          });
         });
       }
-      list.addEventListener("dblclick", function (e) {
-        var li = e.target.closest(".chat-msg"); if (!li) return;
-        var b = li.querySelector(".cm-like"); if (b) b.click();
+      // Long-press (450 ms) or double-tap opens the picker. Tap elsewhere closes it.
+      var pressT = null, pressLi = null;
+      function msgIdOf(li) { for (var k in reactRows) if (li.contains(reactRows[k])) return k; return null; }
+      list.addEventListener("pointerdown", function (e) {
+        var li = e.target.closest(".chat-msg"); if (!li || e.target.closest("a,button")) return;
+        pressLi = li; clearTimeout(pressT);
+        pressT = setTimeout(function () { var id = msgIdOf(li); if (id) openPicker(li, id); }, 450);
       });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { list.addEventListener(ev, function () { clearTimeout(pressT); }); });
+      list.addEventListener("scroll", function () { clearTimeout(pressT); });
+      list.addEventListener("contextmenu", function (e) { if (e.target.closest(".chat-msg")) e.preventDefault(); });
+      list.addEventListener("dblclick", function (e) {
+        var li = e.target.closest(".chat-msg"); if (!li || e.target.closest("a,button")) return;
+        var id = msgIdOf(li); if (id) openPicker(li, id);
+      });
+      list.addEventListener("click", function (e) { if (picker && Date.now() - pickerAt > 500 && !e.target.closest(".cm-picker")) closePicker(); });
       function load() {
         if (!alive()) { clearInterval(timer); return; }
         if (loading || document.visibilityState === "hidden") return;

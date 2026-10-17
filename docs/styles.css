@@ -678,3 +678,15 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
   background:transparent;border:1px solid var(--line-soft);color:var(--muted);border-radius:14px}
 .cm-like.on{border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.12)}
 .cm-like:active{transform:scale(.92)}
+
+.cm-reacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.cm-reacts:empty{display:none}
+.cm-react{min-height:28px;padding:0 8px;border-radius:14px;cursor:pointer;font-size:13px;background:rgba(255,255,255,.06);border:1px solid var(--line-soft);color:var(--text)}
+.cm-react.on{border-color:var(--amber);background:rgba(245,166,35,.15)}
+.cm-picker{position:absolute;z-index:5;left:8px;top:-44px;display:flex;gap:4px;padding:5px 6px;border-radius:24px;
+  background:var(--night-2);border:1px solid var(--line);box-shadow:0 6px 18px #000a;animation:pickIn .14s ease-out}
+.chat-msg.me .cm-picker{left:auto;right:8px}
+.cm-pick{width:42px;height:42px;border:0;border-radius:50%;background:transparent;font-size:24px;cursor:pointer}
+.cm-pick:active{transform:scale(1.25);background:rgba(255,255,255,.08)}
+.chat-msg{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@keyframes pickIn{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
