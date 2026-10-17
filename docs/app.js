@@ -394,7 +394,8 @@
     if (b.friend_name) return "f:" + b.friend_name;
     return "s:" + (b.bar_id || "") + ":" + (+b.lat).toFixed(4) + "," + (+b.lng).toFixed(4) + ":" + (b.created_at || "");
   }
-  function lvName(lv, key) { return lv.names[hashStr(lvNight() + "|" + key + "|" + lv.key) % lv.names.length]; }
+  // The name changes every 10 minutes (same for everyone in that window), so it never feels stuck.
+  function lvName(lv, key) { return lv.names[hashStr(lvNight() + "|" + key + "|" + lv.key + "|" + Math.floor(Date.now() / 6e5)) % lv.names.length]; }
   var lvLastLine = {};
   function lvLine(lv) {
     var a = lv.lines || [], i = Math.floor(Math.random() * a.length);

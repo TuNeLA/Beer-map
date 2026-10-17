@@ -4,7 +4,7 @@
   window.LEVELS_SV = [
     {
       at: 3, key: "varm", emoji: "🌡️", color: "#f5a623", intensity: 1,
-      names: ["Uppvärmd", "Ljummen i kistan", "Varm i kläderna", "Tinad", "Glöden pyr", "Motorn ä varm"],
+      names: ["Uppvärmd", "Ljummen i kistan", "Varm i kläderna", "Tinad", "Glöden pyr", "Motorn ä varm", "Smått varm", "Uppvärmd i Dalarna", "Första gnistan", "Motorn går på tomgång", "Ljummen som en sommarsjö", "Värmen kommer krypande", "Glad i hågen", "Skumhatten på", "Uppvärmningen klar", "Lätt rosig om kinden", "Halvvägs till hojt", "Snart i farten", "Pigg som en mört", "Glöden i kaminen"],
       lines: [
         "🌡️ Tre stycken. Motorn ä varm, nu kan vi köra, la.",
         "🌡️ Högkvarteret: soldaten har nått driftstemperatur.",
@@ -40,7 +40,7 @@
     },
     {
       at: 5, key: "het", emoji: "🔥", color: "#ff5722", intensity: 2,
-      names: ["Het på gröten", "Glöden ä tänd", "Nu brinner byn", "Het som en bastu", "Nu jävlar", "Full fart i backen"],
+      names: ["Het på gröten", "Glöden ä tänd", "Nu brinner byn", "Het som en bastu", "Nu jävlar", "Full fart i backen", "Het i hälsingehatten", "Bastun ä på", "Det ryker om dojorna", "Glödhet i Ludvika", "Elden ä lös", "Full rulle", "Skummet sprutar", "Taket lyfter", "Heta linjen", "Kaminen glöder", "Brasan sprakar", "Het som en korvgrill", "Nu ä dä liv", "Flammorna slår"],
       lines: [
         "🔥 Nu jävlar! Fem stycken och glöden ä tänd.",
         "🔥 Het på gröten! Byn har märkt att du ä här.",
@@ -86,7 +86,7 @@
     },
     {
       at: 7, key: "hojt", emoji: "🤘", color: "#e91e63", intensity: 3,
-      names: ["Ute på hojten", "Pistvaktsläge", "Raggarkungen", "Nu ä dä fest, dä", "Hojt i backen", "Vild som en älg"],
+      names: ["Ute på hojten", "Pistvaktsläge", "Raggarkungen", "Nu ä dä fest, dä", "Hojt i backen", "Vild som en älg", "Hojt i stugan", "Vild som en dalahäst", "Kung i byn", "Dansgolvets general", "Midsommar i oktober", "Hela byn sjunger", "Raggarbilen varvar", "Älgen ä lös", "Festkommendant", "Fullt ös i Väsman", "Hojt å hej", "Lirarn i baren", "Allsången kör", "Kalaskapten"],
       lines: [
         "🤘 Sju stycken! Nu ä du ute på hojten, la.",
         "🤘 Pistvaktsläge aktiverat. Backen ä din ikväll.",
@@ -132,7 +132,7 @@
     },
     {
       at: 10, key: "blaljus", emoji: "🚑", color: "#2196f3", intensity: 4,
-      names: ["Blåljus", "Ambulansläge", "Larmet går", "Helikoptern ä kallad", "Sjukvårdare till bar", "Medevac i Dalarna"],
+      names: ["Blåljus", "Ambulansläge", "Larmet går", "Helikoptern ä kallad", "Sjukvårdare till bar", "Medevac i Dalarna", "Blåljus i byn", "Sjukvårdstältet öppet", "Ambulansen står redo", "Fältsjukvård kallad", "Larmcentralen ringer", "Vattenbäraren kommer", "Räddningstjänst på plats", "Sjukvårdare i beredskap", "Lugna ner tempot", "Pausläge i Dalarna", "Vatten mellan varje", "Medevac på stand-by", "Läkarens order: vatten", "Doktorn säger lugnt"],
       lines: [
         "🚑 Blåljus! Tio stycken. Någon bör kolla läget nu.",
         "🚑 Ambulansläge. Ta ett stort glas vatten, kompis.",
@@ -178,7 +178,7 @@
     },
     {
       at: 13, key: "kolla", emoji: "💧", color: "#00bcd4", intensity: 5,
-      names: ["Någon kollar läget", "Vattenpaus beordrad", "Korvkiosken kallar", "Dags för macka", "Vattnet ä din vän", "Taxi på ingång?"],
+      names: ["Någon kollar läget", "Vattenpaus beordrad", "Korvkiosken kallar", "Dags för macka", "Vattnet ä din vän", "Taxi på ingång?", "Tunnbrödsrulle beordrad", "Kebaben väntar", "Pizzan kallar", "Vatten på bordet", "Matpaus nu", "Mos å korv, tack", "Frisk luft kallar", "Sätt dig en stund", "Kompis, kolla läget", "Kranvattnet kallar", "Ladda mobilen", "Hemplanen klar?", "Macka i magen", "Grillen kallar"],
       lines: [
         "💧 Tretton. Någon bör kolla läget nu, på riktigt.",
         "💧 Vattenpaus beordrad! Ett stort glas, och sen ett till.",
@@ -214,7 +214,7 @@
     },
     {
       at: 16, key: "hemat", emoji: "🛏️", color: "#7e57c2", intensity: 6,
-      names: ["Dags att gå hem", "Hemåt, kompis", "Sängen saknar dig", "Taxi nu, pojk", "Kudden väntar", "Reträtt beordrad"],
+      names: ["Dags att gå hem", "Hemåt, kompis", "Sängen saknar dig", "Taxi nu, pojk", "Kudden väntar", "Reträtt beordrad", "Hemresa beordrad", "Täcket kallar", "Morgondagen tackar", "Sängen ä bäddad", "Taxin ä din vän", "Följ med kompisen hem", "Hemåt i god ordning", "Nattmacka och säng", "Skorna av, kompis", "Sov gott, soldat", "Kudden ringer", "Värmen hemma väntar", "Uppdrag: hem", "Sista bussen hem"],
       lines: [
         "🛏️ Sexton. Dags att gå hem, kompis.",
         "🛏️ Sängen saknar dig. Den har ringt flera gånger.",
@@ -250,7 +250,7 @@
     },
     {
       at: 20, key: "basta", emoji: "🫶", color: "#b0bec5", intensity: 7,
-      names: ["Nu ä dä bra, la", "Basta, kompis", "Sista utposten", "Hem och sov nu", "Kompisarna tar dig", "Uppdraget ä klart"],
+      names: ["Nu ä dä bra, la", "Basta, kompis", "Sista utposten", "Hem och sov nu", "Kompisarna tar dig", "Uppdraget ä klart", "Tack för ikväll", "Kvällen ä vunnen", "Kompisarna har dig", "Säng och vatten", "Hem i trygghet", "Bästa beslutet: hem", "Nu vilar vi", "Kvällen ä i hamn", "Fältet ä tömt", "Hemma ä bäst", "God natt, soldat", "Vila nu, kompis", "Imorgon ä också en dag", "Trupperna drar sig hem"],
       lines: [
         "🫶 Tjugo. Nu ä dä bra, la. Dags att stanna.",
         "🫶 Någon bör vara med dig nu. Säg till en kompis hur du mår.",

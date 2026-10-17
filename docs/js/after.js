@@ -1011,7 +1011,7 @@
       if (!A || !A.LIVE) return "";
       var m = openMed();
       if (m) return '<button type="button" class="hx-chip af-chip-med" data-hx="afmed" aria-label="' + esc(fill(MED_ASK[0], { name: m.friend_name })) + '">🚑 ' + esc(m.friend_name) + "</button>";
-      if (lateNight() && (ctx && ctx.n | 0) >= 1) return '<button type="button" class="hx-chip af-chip-kebab" data-hx="afkebab" aria-label="' + esc(L("Öppet nu: mat nära dig", "Open now: food nearby")) + '">🌯</button>';
+      if (lateNight() && (ctx && ctx.n | 0) >= 1) return '<button type="button" class="hx-chip af-chip-kebab" data-hx="afkebab" aria-label="' + esc(L("Öppet nu: mat nära dig", "Open now: food nearby")) + '">🌯 ' + esc(L("Mat nu", "Food now")) + '</button>';
       return "";
     },
     hudClick: function (action) {
