@@ -329,6 +329,35 @@
     chatColUsed[CHAT_COLORS[ix]] = 1;
     return (chatColAssigned[key] = CHAT_COLORS[ix]);
   }
+  /* ---------- 🎵 Spotify Jam (hemmafest) ----------
+     Spotify has no public API to start a Jam, so the host starts it in Spotify, copies the invite link
+     and shares it here. The app posts it in the group chat; the chat shows a big "Gå med i Jam" button. */
+  function jamLink(text) {
+    var m = String(text || "").match(/https:\/\/(?:open\.spotify\.com|spotify\.link|spotify\.app\.link)\/[^\s"'<>]+/i);
+    return m ? m[0] : null;
+  }
+  function hostJam(g) {
+    var el = A.el;
+    A.openSheet(t("jamTitle"), function (body) {
+      body.appendChild(el("ol", { class: "jam-steps" }, (t("jamSteps") || []).map(function (x) { return el("li", { text: x }); })));
+      body.appendChild(el("div", { class: "row", style: "margin:8px 0" }, [el("a", { class: "btn btn-block jam-btn", href: "https://open.spotify.com/", target: "_blank", rel: "noopener noreferrer", text: t("jamOpen") })]));
+      var inp = el("input", { class: "inp", maxlength: "120", placeholder: "https://spotify.link/…", "aria-label": t("jamPaste"), autocomplete: "off" });
+      var paste = A.btn(t("jamPaste"), "btn-small", function () {
+        try { navigator.clipboard.readText().then(function (x) { if (jamLink(x)) inp.value = jamLink(x); else A.toast(t("jamBad"), { err: true }); }, function () {}); } catch (e) {}
+      });
+      body.appendChild(el("div", { style: "display:flex;gap:8px" }, [inp, paste]));
+      body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [A.btn(t("jamShare"), "btn-green btn-block", function () {
+        var link = jamLink(inp.value);
+        if (!link) { A.toast(t("jamBad"), { err: true }); return; }
+        var text = t("jamMsg", link);
+        call("post_group_msg", { p_group_id: g.id, p_body: text.length <= 140 ? text : link }).then(function (r) {
+          if (r.error) { A.toast(t("chatFail"), { err: true }); return; }
+          A.invoke("notify-group", { event: "msg", group_id: g.id });
+          A.toast(t("jamDone")); openChat(g);
+        });
+      })]));
+    });
+  }
   function chatOn() { return v7 === true && !off.group_msgs && !off.post_group_msg; }
   function openChat(g) {
     if (!chatOn() || !g || !g.id) return;
@@ -391,7 +420,8 @@
         list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "" }, [
           el("div", { class: "cm-head" }, [nmEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
-          el("div", { class: "cm-body", text: String(m.body || "") })
+          el("div", { class: "cm-body", text: String(m.body || "") }),
+          jamLink(m.body) ? el("a", { class: "btn btn-block jam-btn", href: jamLink(m.body), target: "_blank", rel: "noopener noreferrer", text: t("jamJoin") }) : null
         ]));
       }
       function load() {
@@ -695,6 +725,7 @@
         main.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showStatus(g); } });
       }
       if (chatOn()) wrap.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("chat"), "btn-small btn-block", function () { openChat(g); })]));
+      if (chatOn()) wrap.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("jamHost"), "btn-small btn-block jam-host", function () { hostJam(g); })]));
     },
     openChatLink: openChatLink,
     showSosLink: function (s) { showSosLink(s); }
