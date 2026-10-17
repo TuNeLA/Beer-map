@@ -409,3 +409,12 @@ input.code-inp{text-transform:uppercase;letter-spacing:.35em;font-size:24px;text
   .hud-overlay::after{display:none}
   .tk-viewport{overflow-x:auto}
 }
+
+/* Install guide */
+.guide-steps{margin:8px 0 0;padding-left:22px;display:grid;gap:10px;line-height:1.45}
+.guide-steps li{padding-left:4px}
+.guide-ico{display:inline-block;padding:0 4px;border-radius:6px;background:rgba(255,255,255,.08)}
+.guide-arrow{position:fixed;left:50%;bottom:calc(4px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9999;
+  font-size:44px;line-height:1;color:var(--amber,#f5a623);text-shadow:0 0 12px rgba(245,166,35,.8);pointer-events:none;animation:guideBounce 1s ease-in-out infinite}
+@keyframes guideBounce{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,10px)}}
+@media (prefers-reduced-motion:reduce){.guide-arrow{animation:none}}

@@ -961,6 +961,7 @@
         body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [
           btn(t("create"), "btn-amber", showCreate), btn(t("join"), "btn-green", function () { showJoin(""); })
         ]));
+        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("📲 " + t("inviteBtn"), "btn-block", showInvite)]));
         list.appendChild(el("li", { class: "muted", text: "…" }));
         rpc("my_groups").then(function (r) {
           list.innerHTML = "";
@@ -1222,9 +1223,76 @@
     (container || $("sheet-body")).appendChild(box);
   }
 
+  /* ---------- Invite friends + install guide ---------- */
+  function inviteLink() { return location.origin + location.pathname + "?invite=1"; }
+  function showInvite() {
+    openSheet(t("inviteTitle"), function (body) {
+      var link = inviteLink();
+      body.appendChild(el("p", { text: t("inviteText") }));
+      var qr = el("div", { class: "qr", "aria-hidden": "true" });
+      body.appendChild(qr);
+      try {
+        if (window.QRCode) new window.QRCode(qr, { text: link, width: 184, height: 184, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M });
+        else qr.remove();
+      } catch (e) { qr.remove(); }
+      body.appendChild(el("p", { class: "muted", style: "text-align:center;word-break:break-all", text: link }));
+      var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "", function () { copyText(t("inviteShare") + " " + link); })]);
+      if (navigator.share) {
+        row.appendChild(btn("📲 " + t("share"), "btn-amber", function () {
+          navigator.share({ title: "Öl Nu", text: t("inviteShare"), url: link }).catch(function () {});
+        }));
+      }
+      body.appendChild(row);
+      body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("inviteHint") }));
+    });
+  }
+  function inAppBrowser() {
+    var ua = navigator.userAgent || "";
+    return /FBAN|FBAV|FB_IAB|Instagram|Snapchat|Line\/|Messenger|TikTok|musical_ly|LinkedInApp|Twitter/i.test(ua);
+  }
+  function showInstallGuide() {
+    if (U.isStandalone()) return;
+    if ($("install-banner")) $("install-banner").hidden = true;
+    openSheet(t("guideTitle"), function (body) {
+      var ol = function (items) {
+        var list = el("ol", { class: "guide-steps" });
+        items.forEach(function (x) { list.appendChild(el("li", { html: x })); });
+        return list;
+      };
+      if (inAppBrowser()) {
+        body.appendChild(el("p", { html: "<b>" + U.esc(t("guideInApp")) + "</b>" }));
+        body.appendChild(ol([U.esc(t("guideInApp1")), U.esc(U.isIOS() ? t("guideInApp2ios") : t("guideInApp2and"))]));
+        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "btn-amber btn-block", function () { copyText(inviteLink()); })]));
+      } else if (U.isIOS()) {
+        body.appendChild(ol([t("guideIos1"), t("guideIos2"), t("guideIos3"), t("guideIos4")]));
+        var arrow = el("div", { class: "guide-arrow", "aria-hidden": "true", text: "⬇" });
+        document.body.appendChild(arrow);
+        var obs = new MutationObserver(function () { if ($("sheet").hidden) { arrow.remove(); obs.disconnect(); } });
+        obs.observe($("sheet"), { attributes: true, attributeFilter: ["hidden"] });
+      } else if (deferredPrompt) {
+        body.appendChild(el("p", { text: t("guideAndroidOne") }));
+        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("📲 " + t("guideInstallBtn"), "btn-amber btn-block", function () {
+          var dp = deferredPrompt; if (!dp) return;
+          dp.prompt();
+          Promise.resolve(dp.userChoice).catch(function () {}).then(function () { deferredPrompt = null; hideInstallBanner(); closeSheet(); });
+        })]));
+      } else if (/Android/i.test(navigator.userAgent || "")) {
+        body.appendChild(ol([t("guideAnd1"), t("guideAnd2"), t("guideAnd3")]));
+      } else {
+        body.appendChild(el("p", { text: t("guideDesktop") }));
+        var qr = el("div", { class: "qr", "aria-hidden": "true" });
+        body.appendChild(qr);
+        try { if (window.QRCode) new window.QRCode(qr, { text: inviteLink(), width: 184, height: 184, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); else qr.remove(); } catch (e) { qr.remove(); }
+      }
+      body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn(t("guideLater"), "btn-block", closeSheet)]));
+    });
+  }
+
   /* ---------- Settings ---------- */
   function showSettings() {
     openSheet(t("settings"), function (body) {
+      body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("📲 " + t("inviteBtn"), "btn-amber btn-block", showInvite)]));
+      if (!U.isStandalone()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("guideTitle"), "btn-block", showInstallGuide)]));
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
@@ -1365,9 +1433,10 @@
   var params = new URLSearchParams(location.search);
   var joinCode = params.get("join");
   var focusId = params.get("focus");
+  var invited = params.has("invite");
   if (focusId) pendingFocus = focusId;
-  if (joinCode || focusId) {
-    params.delete("join"); params.delete("focus");
+  if (joinCode || focusId || invited) {
+    params.delete("join"); params.delete("focus"); params.delete("invite");
     var qs = params.toString();
     try { history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash); } catch (e) {}
   }
@@ -1502,7 +1571,12 @@
     }
     // Ask for notifications at start (not during a join link). The phone's own question only
     // appears after a tap on "Ja", because browsers need a user gesture.
-    if (!joinCode) Promise.all([ready, intro]).then(function () { setTimeout(startNotifAsk, 1200); });
+    if (!joinCode) Promise.all([ready, intro]).then(function () {
+      if (!U.isStandalone() && (invited || inAppBrowser() || U.ls.get("olnu.guideSeen", "") !== "1")) {
+        U.ls.set("olnu.guideSeen", "1");
+        setTimeout(showInstallGuide, 900);
+      } else setTimeout(startNotifAsk, 1200);
+    });
   }
   function startNotifAsk() {
     if (!PUSH_ON || !authed || !window.PUSH.supported()) return;
