@@ -17,18 +17,25 @@
   }
 
   /* ---------- Taxi (B) ----------
-     Ludvika Taxi AB, 0240-139 00 — confirmed on taxidalarna.se/har-finns-vi and taxi.nu/ludvika-taxi.
-     Shown only near Ludvika (≤ 60 km); Uber everywhere. */
+     Local taxi of the nearest town (≤ 40 km) from js/taxi-data.js; else the nationwide TaxiKurir line.
+     Ludvika Taxi stays as the built-in default if the data file is missing. Uber everywhere. */
   var TAXI = { name: "Ludvika Taxi", tel: "+4624013900", text: "0240-139 00", lat: 60.1496, lng: 15.1878 };
   var UBER = "https://m.uber.com/ul/?action=setPickup";
-  function nearLudvika() {
-    var c = A.center();
-    return !c || U.haversine(c.lat, c.lng, TAXI.lat, TAXI.lng) <= 60000;
+  function taxiFor() {
+    var c = A.center(), data = window.TAXI_DATA;
+    if (!data || !data.towns || !c) return !c || U.haversine(c.lat, c.lng, TAXI.lat, TAXI.lng) <= 60000 ? TAXI : null;
+    var best = null, bestD = 40000;
+    data.towns.forEach(function (x) {
+      var dd = U.haversine(c.lat, c.lng, x.lat, x.lng);
+      if (dd <= bestD) { bestD = dd; best = x; }
+    });
+    return best || data.fallback || null;
   }
   function taxiHTML(cls) {
+    var tx = taxiFor();
     return '<div class="taxi-row">' +
-      (nearLudvika() ? '<a class="' + cls + ' taxi-local" href="tel:' + TAXI.tel + '">' + esc(t("taxiLocal")) +
-        ' <span class="taxi-num">' + esc(TAXI.text) + "</span></a>" : "") +
+      (tx ? '<a class="' + cls + ' taxi-local" href="tel:' + esc(tx.tel) + '">🚕 ' + esc(tx.name) +
+        ' <span class="taxi-num">' + esc(tx.text) + "</span></a>" : "") +
       '<a class="' + cls + ' taxi-uber" href="' + UBER + '" target="_blank" rel="noopener noreferrer">' + esc(t("taxiUber")) + "</a></div>";
   }
   function taxiBlock(container) {
