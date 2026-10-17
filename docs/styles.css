@@ -1007,3 +1007,12 @@ body:has(#rally:not([hidden])) .chaos{top:calc(var(--sat) + 104px) !important}
 .olnu-zlo .cm-quiet{opacity:0;pointer-events:none}
 .olnu-zlo .cm .cm-lbl{display:none}
 .olnu-zxlo .leaflet-marker-pane .cm{transform-origin:center;opacity:.82}
+
+/* Group list: one short card per group; the options are on the group's own page. */
+.glist .gcard{display:flex;align-items:center;gap:12px;cursor:pointer;padding:14px 16px;min-height:64px}
+.glist .gcard:active{transform:scale(.99);filter:brightness(1.15)}
+.gcard-main{flex:1;min-width:0}
+.gcard-main .gname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gcard-live{color:#3ddc84}
+.gcard-go{font-size:28px;line-height:1;color:var(--amber,#f5a623);flex:none}
+.g-back{background:none;border:0;color:var(--amber,#f5a623);font:inherit;font-weight:700;padding:6px 0 12px;cursor:pointer}

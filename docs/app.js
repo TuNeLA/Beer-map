@@ -2340,9 +2340,35 @@
           if (r.error) { list.appendChild(el("li", { class: "muted", text: t("fail") })); return; }
           var gs = r.data || [];
           if (!gs.length) { list.appendChild(el("li", { class: "muted", text: t("noGroups") })); return; }
-          sortGroupsByChat(gs).forEach(function (g) { list.appendChild(groupItem(g)); });
+          // Owner: "I want to see all the groups, not the options. Tap a group, then see the options."
+          // One group: show it open as before. Several: a short card per group; a tap opens that group's page.
+          if (gs.length === 1) { list.appendChild(groupItem(gs[0])); return; }
+          sortGroupsByChat(gs).forEach(function (g) { list.appendChild(groupCard(g)); });
         });
       });
+    });
+  }
+  function groupCard(g) {
+    var n = g.active_count | 0;
+    var li = el("li", { class: "gitem gcard", role: "button", tabindex: "0", "aria-label": g.name }, [
+      el("div", { class: "gcard-main" }, [
+        el("div", { class: "gname", text: g.name }),
+        el("div", { class: "gsub", html: (n ? '<span class="gcard-live">● </span>' : "") + t("drinkingOf", n, g.member_count | 0) })
+      ]),
+      el("span", { class: "gcard-go", "aria-hidden": "true", text: "›" })
+    ]);
+    var open = function () { showGroupPage(g); };
+    li.addEventListener("click", open);
+    li.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    return li;
+  }
+  function showGroupPage(g) {
+    try { window.olnuGroupBump(g.id, 0.5); } catch (e) {}
+    openSheet(g.name, function (body) {
+      body.appendChild(el("button", { type: "button", class: "g-back", text: "‹ " + t("myGroups"), onclick: showGroups }));
+      var list = el("ul", { class: "glist" });
+      list.appendChild(groupItem(g));
+      body.appendChild(list);
     });
   }
   function groupItem(g) {
