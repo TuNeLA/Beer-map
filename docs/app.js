@@ -150,8 +150,7 @@
   });
   function heatWeight(b) {
     var n = b.beer_count | 0, l = U.level(n);
-    var w = (n > 0 ? n * (l === 2 ? 3 : l === 1 ? 2 : 1) : 0) + shotCount(b) * 0.5;
-    return Math.max(0.5, w);
+    return Math.max(0.5, n * (l === 2 ? 3 : l === 1 ? 2 : 1));
   }
   // heatPoints: tonight's beers at the place each one was drunk (RPC heat_points, migration 0005).
   // null = not available (old database) → fall back to the live pins weighted by their count.
@@ -192,16 +191,12 @@
   });
 
   function lvlClass(l) { return l === 2 ? " medevac" : l === 1 ? " hot" : ""; }
-  // Shots (v5): missing field = 0.
-  function shotCount(b) { return Math.max(0, (b && b.shot_count) | 0); }
-  function sumShots(list) { var s = 0; (list || []).forEach(function (b) { s += shotCount(b); }); return s; }
-  // Single pin: compact pill "N 🍺" (+ " · M 🥃"). Streak shows only as the pill border.
+  // Single pin: compact pill "N 🍺". Streak shows only as the pill border.
   function beerIcon(b) {
-    var sh = shotCount(b);
-    var n = sh > 0 ? Math.max(0, b.beer_count | 0) : Math.max(1, b.beer_count | 0);
+    var n = Math.max(1, b.beer_count | 0);
     var label = b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" :
       b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "";
-    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label, shots: sh });
+    var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function levelLine(l) {
@@ -216,10 +211,8 @@
       (done ? " disabled" : "") + ">" + U.esc(done ? t("skaled", skalCount(b)) : t("skal", skalCount(b))) + "</button>";
   }
   function beerPopup(b) {
-    var sh = shotCount(b), bc = b.beer_count | 0;
-    var h = '<div class="pp-title">' + U.esc(bc === 0 && sh > 0 ? t("shotsN", sh) : t("beerNo", bc)) + "</div>" +
+    var h = '<div class="pp-title">' + U.esc(t("beerNo", b.beer_count | 0)) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
-    if (sh > 0 && bc > 0) h += '<div class="pp-shot">' + U.esc(t("shotsN", sh)) + "</div>";
     h += levelLine(U.level(b.beer_count));
     if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
     if (b.friend_name) h += '<div class="pp-friend">' + U.esc(b.friend_name) + "</div>";
@@ -233,7 +226,7 @@
   function hotBarIcon(agg) {
     var friend = agg.beers.some(function (b) { return b.friend_name; });
     var mine = agg.beers.some(function (b) { return b.is_mine; });
-    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar", shots: sumShots(agg.beers) });
+    var html = U.pillHTML(agg.beers.length, maxLevel(agg.beers), { friend: friend, mine: mine, cls: "p-bar" });
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   function barPopup(bar, list) {
@@ -247,15 +240,12 @@
     if (names.length) h += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
     var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
     if (tot) h += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
-    var shTot = sumShots(list);
-    if (shTot) h += '<div class="pp-shot">' + U.esc(t("barShots", shTot)) + "</div>";
     if (list.length) {
       var rows = list.slice().sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); }).slice(0, 8);
       h += '<ul class="pp-list">' + rows.map(function (b) {
         var l = U.level(b.beer_count);
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + ((b.beer_count | 0) === 0 && shotCount(b) ? "" : (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺")) +
-          (shotCount(b) ? ((b.beer_count | 0) ? " · " : "") + shotCount(b) + " 🥃" : "") + "</span>" +
+          '<span class="pp-n">' + (b.beer_count | 0) + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : " 🍺") + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
     }
@@ -391,6 +381,102 @@
     prevLevels = now;
   }
 
+  /* ---------- Kaos i stan (in-app only, anonymous counts) ---------- */
+  var lastLoc = null;          // last known own location {lat, lng} (locate or own beer tap)
+  var chaosRes = null;         // last result of CHAOS.compute
+  var chaosPrevOn = null;      // was it chaos at the last poll? (null before the first poll)
+  var chaosShown = false;
+  var chaosHidden = null;      // {at, out, hot} when the user tapped ✕
+  var chaosLine = null;        // {lang, ix} of the headline on screen
+  var chaosLastIx = -1;        // last headline index, never the same twice in a row
+  var CHAOS_BACK_MS = 60 * 60 * 1000;
+  function chaosCenter() {
+    if (lastLoc) return lastLoc;
+    var m = myBeer();
+    if (m) return { lat: m.lat, lng: m.lng };
+    var c = map.getCenter();
+    return { lat: c.lat, lng: c.lng };
+  }
+  function chaosFits(line, r) {
+    if (line.indexOf("{bar}") >= 0 && !r.bar) return false;
+    if (line.indexOf("{hot}") >= 0 && !r.hot) return false;
+    return true;
+  }
+  function pickChaosLine(r) {
+    var lines = t("chaosLines") || [], ok = [];
+    lines.forEach(function (l, i) { if (chaosFits(l, r)) ok.push(i); });
+    if (ok.length > 1) ok = ok.filter(function (i) { return i !== chaosLastIx; });
+    var ix = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 0;
+    chaosLastIx = ix;
+    chaosLine = { lang: I.lang, ix: ix };
+  }
+  function chaosHeadline(r) {
+    var lines = t("chaosLines") || [];
+    if (!chaosLine || chaosLine.lang !== I.lang || !lines[chaosLine.ix] || !chaosFits(lines[chaosLine.ix], r)) pickChaosLine(r);
+    var town = r.city || t("chaosTown");
+    return String(lines[chaosLine.ix] || "").replace(/\{stad\}/g, town).replace(/\{n\}/g, String(r.out))
+      .replace(/\{hot\}/g, String(r.hot)).replace(/\{bar\}/g, r.bar || "");
+  }
+  function chaosFacts(r) {
+    var parts = [t("chaosOut", r.out)];
+    if (r.hot) parts.push(t("chaosHot", r.hot));
+    if (r.bar) parts.push(t("chaosBar", r.bar));
+    return parts.join(" · ");
+  }
+  function chaosSuppressed(r) {
+    if (!chaosHidden) return false;
+    var back = Date.now() - chaosHidden.at >= CHAOS_BACK_MS || r.out >= Math.ceil(chaosHidden.out * 1.5) || r.hot > chaosHidden.hot;
+    if (back) chaosHidden = null;
+    return !back;
+  }
+  function setChaosHeight() {
+    var box = $("chaos");
+    var h = box.hidden ? 0 : box.offsetHeight + 6;
+    document.documentElement.style.setProperty("--chaos-h", h + "px");
+    // Keep popups clear of the banner too.
+    L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(10, 150 + h);
+  }
+  function renderChaos() {
+    var box = $("chaos"), r = chaosRes;
+    var show = !!(LIVE && r && r.on && !chaosSuppressed(r));
+    if (show && !chaosShown) pickChaosLine(r);   // new headline each time it starts or comes back
+    var started = show && !chaosShown;
+    chaosShown = show;
+    box.hidden = !show;
+    if (show) {
+      $("chaos-head").textContent = chaosHeadline(r);
+      $("chaos-facts").textContent = chaosFacts(r);
+      box.setAttribute("aria-label", t("chaosAria", r.city || t("chaosTown")));
+      $("chaos-show").textContent = t("chaosShow");
+      $("chaos-show").hidden = !r.target;
+      $("chaos-close").setAttribute("aria-label", t("chaosHide"));
+    }
+    setChaosHeight();
+    return started;
+  }
+  // fromPoll: called after live_beers loaded. Else (location or language changed): redraw, no toast.
+  function evalChaos(fromPoll) {
+    if (!window.CHAOS || !LIVE) return;
+    chaosRes = window.CHAOS.compute(beers, chaosCenter());
+    var started = renderChaos();
+    if (!fromPoll) return;
+    if (chaosPrevOn === false && chaosRes.on && started) {
+      toast($("chaos-head").textContent, { cls: "chaos-toast", ms: 5000, id: "chaos" });
+      if (!window.FX.muted()) window.FX.vibrate([30, 50, 30]);
+    }
+    chaosPrevOn = chaosRes.on;
+  }
+  $("chaos-show").addEventListener("click", function () {
+    var g = chaosRes && chaosRes.target; if (!g) return;
+    flyTo(g.lat, g.lng, g.zoom, null);
+  });
+  $("chaos-close").addEventListener("click", function () {
+    if (!chaosRes) return;
+    chaosHidden = { at: Date.now(), out: chaosRes.out, hot: chaosRes.hot };
+    renderChaos();
+  });
+  window.addEventListener("resize", U.debounce(setChaosHeight, 150));
+
   /* ---------- Skål ---------- */
   var mySkals = {};          // beer id -> count after my skål (kept until the server agrees)
   var prevMySkal = null;     // own skal_count at last poll (null before first load)
@@ -455,31 +541,11 @@
     var m = myNight() || {};
     m.count = d.beer_count | 0;
     m.expires = d.expires_at ? new Date(d.expires_at).getTime() : U.next5am().getTime();
-    if (accepted) {
-      m.lastTap = Date.now();
-      // Server without 0003 (no shot_count field) still has the old 15 min beer cooldown.
-      if (!("shot_count" in d)) m.lastTap += 15 * 60 * 1000 - U.COOLDOWN_MS;
-    }
-    else if (d.wait_seconds > 0) m.lastTap = Date.now() + d.wait_seconds * 1000 - U.COOLDOWN_MS;
+    // The server's wait_seconds always wins. Without it (accepted tap) the local fallback is 10 min.
+    var wait = d.wait_seconds | 0;
+    if (wait > 0) m.lastTap = Date.now() + wait * 1000 - U.COOLDOWN_MS;
+    else if (accepted) m.lastTap = Date.now();
     U.ls.setJSON("olnu.night", m);
-  }
-  // Own shot state on the phone: {count, expires, lastTap}. Separate from the beer timer.
-  var SHOT_KEY = "olnu.shot";
-  function myShot() {
-    var m = U.ls.getJSON(SHOT_KEY, null);
-    if (!m || !m.expires || Date.now() > m.expires) return null;
-    return m;
-  }
-  function saveShot(d, accepted) {
-    var m = myShot() || {};
-    m.count = d.shot_count | 0;
-    m.expires = d.expires_at ? new Date(d.expires_at).getTime() : U.next5am().getTime();
-    if (accepted) m.lastTap = Date.now();
-    else if (d.wait_seconds > 0) m.lastTap = Date.now() + d.wait_seconds * 1000 - U.SHOT_COOLDOWN_MS;
-    U.ls.setJSON(SHOT_KEY, m);
-    // Keep the beer count on the phone in sync, without touching the beer timer.
-    var n = myNight();
-    if (n) { n.count = d.beer_count | 0; U.ls.setJSON("olnu.night", n); }
   }
   function updateCounts() {
     $("live-count").innerHTML = LIVE ? t("live", beers.length | 0) : t("soonLive");
@@ -489,22 +555,19 @@
     var mine = myBeer();
     $("btn-stop").hidden = !mine;
     var night = myNight(), n = mine ? mine.beer_count | 0 : night ? night.count | 0 : 0;
-    var shotSt = myShot(), shots = mine ? shotCount(mine) : shotSt ? shotSt.count | 0 : 0;
     var st = $("my-streak");
-    if (n > 0 || shots > 0) {
+    if (n > 0) {
       var l = U.level(n);
       st.hidden = false;
       st.className = "my-streak" + lvlClass(l);
       st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
         (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺") +
-        (shots > 0 ? ' <span class="ms-shot">· <b>' + shots + "</b> 🥃</span>" : "") +
         (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
     } else st.hidden = true;
   }
   function applyStaticText() {
     $("beer-label").textContent = t("beer");
     $("beer-sub").textContent = t("beerSub");
-    $("shot-label").textContent = t("shot");
     $("btn-stop").textContent = t("stop");
     $("btn-stop").title = t("stopHint");
     $("groups-label").textContent = t("groups");
@@ -524,8 +587,10 @@
     applyPrec();
     updateCounts();
     tickerKey = ""; renderTicker();
+    if (chaosRes) evalChaos(false);
+    $("chaos-show").textContent = t("chaosShow");
+    $("chaos-close").setAttribute("aria-label", t("chaosHide"));
     tickCooldown();
-    tickShot();
   }
 
   /* ---------- Precision toggle ---------- */
@@ -550,7 +615,8 @@
     loading = true;
     return rpc("live_beers").then(function (r) {
       if (r.error) throw r.error;
-      beers = (r.data || []).filter(function (b) { return b && isFinite(b.lat) && isFinite(b.lng); });
+      // Beer only: rows with no beer (e.g. shots-only rows from an older app) are not pins.
+      beers = (r.data || []).filter(function (b) { return b && isFinite(b.lat) && isFinite(b.lng) && (b.beer_count | 0) >= 1; });
       beers.forEach(function (b) {
         b.skal_count = Math.max(0, b.skal_count | 0); b.i_skaled = !!b.i_skaled;
         var mine = mySkals[b.id];
@@ -559,6 +625,7 @@
       render();
       loadHeatPoints();
       streakAlerts();
+      evalChaos(true);
       skalAlert();
       toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
@@ -575,7 +642,7 @@
   function startPoll() { if (!pollTimer && LIVE) pollTimer = setInterval(refresh, POLL_MS); }
   function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") { startPoll(); refresh(); tickCooldown(); tickShot(); }
+    if (document.visibilityState === "visible") { startPoll(); refresh(); tickCooldown(); }
     else stopPoll();
   });
 
@@ -701,6 +768,8 @@
   /* ---------- Locate me ---------- */
   var meLayer = L.layerGroup().addTo(map);
   function showMe(lat, lng, acc) {
+    lastLoc = { lat: lat, lng: lng };
+    if (chaosRes) evalChaos(false);
     meLayer.clearLayers();
     if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
     L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
@@ -754,6 +823,7 @@
             return;
           }
           saveNight(d, true);
+          if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
           var n = d.beer_count | 0, l = U.level(n);
           if (n === 10) window.FX.takeover(2, { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose") });
           else if (n === 5) window.FX.takeover(1, { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") });
@@ -778,77 +848,6 @@
       Promise.resolve(client.functions.invoke("notify-group")).then(function () {}, function () {});
     } catch (e) {}
   }
-  /* ---------- Shot button (v5) ---------- */
-  var SHOT_RING = 2 * Math.PI * 21;
-  var shotTimer = null, shotBusy = false;
-  function shotLeft() {
-    var m = myShot();
-    if (!m || !m.lastTap) return 0;
-    return Math.max(0, m.lastTap + U.SHOT_COOLDOWN_MS - Date.now());
-  }
-  function tickShot() {
-    var b = $("btn-shot"), ring = $("shot-ring"), lab = $("shot-label");
-    var left = LIVE ? shotLeft() : 0, on = left > 0;
-    b.classList.toggle("cooldown", on);
-    b.classList.toggle("soon", !LIVE);
-    if (on) {
-      lab.textContent = U.mmss(left);
-      b.setAttribute("aria-label", t("shotNextIn") + " " + U.mmss(left));
-      ring.style.strokeDashoffset = String(SHOT_RING * (1 - Math.min(1, left / U.SHOT_COOLDOWN_MS)));
-      if (!shotTimer) shotTimer = setInterval(tickShot, 1000);
-    } else {
-      if (shotTimer) { clearInterval(shotTimer); shotTimer = null; }
-      lab.textContent = t("shot");
-      b.setAttribute("aria-label", t("shotAria"));
-      ring.style.strokeDashoffset = String(SHOT_RING);
-    }
-    b.setAttribute("aria-disabled", String(on || !LIVE));
-  }
-  $("shot-ring").style.strokeDasharray = String(SHOT_RING);
-  // post_shot not deployed yet → PostgREST 404 / PGRST202 "Could not find the function".
-  function shotMissing(e) {
-    if (!e) return false;
-    var m = [e.code, e.message, e.details, e.hint, e.status].map(function (x) { return x == null ? "" : String(x); }).join(" ");
-    return /PGRST202|post_shot|could not find the function|function .* does not exist|not found|\b404\b/i.test(m) &&
-      !/outside_sweden|not_authenticated/.test(m);
-  }
-  function setShotBusy(v) { shotBusy = v; $("btn-shot").classList.toggle("busy", v); }
-  $("btn-shot").addEventListener("click", function () {
-    if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
-    if (shotBusy) return;
-    var left = shotLeft();
-    if (left > 0) { toast(t("shotCooldown", U.mmss(left)), { id: "shotcd" }); return; }
-    if (navigator.onLine === false) { toast(t("offline"), { err: true, id: "off" }); return; }
-    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
-    window.FX.unlock();
-    window.FX.vibrate(12);
-    setShotBusy(true);
-    getPosition().then(function (pos) {
-      return rpc("post_shot", { p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: prec === "exact" })
-        .then(function (r) {
-          if (r.error) {
-            if (shotMissing(r.error)) { toast(t("shotSoon"), { id: "shotsoon" }); return; }
-            toast(errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
-            return;
-          }
-          var d = parseData(r.data);
-          if (d.accepted === false) {
-            saveShot(d, false);
-            toast(t("shotCooldown", U.mmss((d.wait_seconds | 0) * 1000)), { id: "shotcd" });
-            return;
-          }
-          saveShot(d, true);
-          toast(t("shotNo", Math.max(1, d.shot_count | 0)), { cls: "shot" });
-          window.FX.sound.shot();
-          window.FX.vibrate([15, 30, 15]);
-          $("btn-shot").classList.remove("pop"); void $("btn-shot").offsetWidth; $("btn-shot").classList.add("pop");
-          if (isFinite(d.lat) && isFinite(d.lng)) map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
-          refresh();
-        });
-    }, locError).catch(function () { toast(t("postFail"), { err: true }); })
-      .then(function () { setShotBusy(false); tickShot(); updateCounts(); });
-  });
-
   $("btn-stop").addEventListener("click", function () {
     var sb = $("btn-stop"); if (sb.disabled) return;
     sb.disabled = true;
@@ -1110,8 +1109,7 @@
         .sort(function (a, b) { return b.beers.length - a.beers.length || maxLevel(b.beers) - maxLevel(a.beers); })
         .slice(0, 15).map(function (a) {
           var sk = 0; a.beers.forEach(function (b) { sk += skalCount(b); });
-          var sh = sumShots(a.beers);
-          return { name: a.bar.name || t("unnamedBar"), sub: barTypeLabel(a.bar.type) + (sh ? " · " + t("shotsN", sh) : "") + (sk ? " · " + t("skalN", sk) : ""),
+          return { name: a.bar.name || t("unnamedBar"), sub: barTypeLabel(a.bar.type) + (sk ? " · " + t("skalN", sk) : ""),
             n: a.beers.length, icon: lvlIcon(maxLevel(a.beers)), lat: a.bar.lat, lng: a.bar.lng, z: 17,
             friend: a.beers.some(function (b) { return b.friend_name; }) };
         });
@@ -1131,10 +1129,9 @@
           var c = null; window.CITIES.list.forEach(function (cc) { if (cc.name === x.name) c = cc; });
           var lat = 0, lng = 0; x.list.forEach(function (b) { lat += b.lat; lng += b.lng; });
           var tot = 0; x.list.forEach(function (b) { tot += b.beer_count | 0; });
-          var sh = sumShots(x.list);
           var avg = avgOf(x);
           var avgTxt = (Math.round(avg * 10) / 10).toString().replace(".", I.lang === "sv" ? "," : ".");
-          return { name: x.name, sub: t("cityAvgSub", x.list.length, tot) + (sh ? " · " + sh + " 🥃" : ""), n: avgTxt + " 🍺/" + t("perPerson"), icon: lvlIcon(maxLevel(x.list)),
+          return { name: x.name, sub: t("cityAvgSub", x.list.length, tot), n: avgTxt + " 🍺/" + t("perPerson"), icon: lvlIcon(maxLevel(x.list)),
             lat: c ? c.lat : lat / x.list.length, lng: c ? c.lng : lng / x.list.length, z: c ? 12 : 7,
             friend: x.list.some(function (b) { return b.friend_name; }) };
         });
@@ -1295,7 +1292,7 @@
     }));
     // Also refresh the browser HTTP cache (max-age=600 on GitHub Pages), else the reload can get old files.
     ["./", "./index.html", "./sw.js", "./config.js", "./app.js", "./styles.css", "./js/i18n.js", "./js/util.js",
-      "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js"].forEach(function (u) {
+      "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js"].forEach(function (u) {
       jobs.push(fetch(u, { cache: "reload" }).catch(function () {}));
     });
     Promise.all(jobs).catch(function () {}).then(function () {
@@ -1336,7 +1333,7 @@
     };
     var reloadNow = function () {
       if (reloading) return;
-      if (typing() || busy || shotBusy) { setTimeout(reloadNow, 5000); return; }
+      if (typing() || busy) { setTimeout(reloadNow, 5000); return; }
       reloading = true; location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", function () {
@@ -1458,9 +1455,11 @@
   }
 
   function start() {
+    U.ls.del("olnu.shot");   // shots were removed; drop the old timer
     applyStaticText();
     applyOnline();
-    window.BARS.init({ map: map, onChange: render });
+    // Bars load after the first poll: then also re-check the busiest bar in the chaos banner (no toast).
+    window.BARS.init({ map: map, onChange: function () { render(); if (chaosRes) evalChaos(false); } });
     // Restaurant names for the feed: load after the map is up, then redraw the ticker.
     setTimeout(window.BARS.loadPlaces, 1500);
     window.BARS.onPlacesReady(function () { tickerKey = ""; renderTicker(); });

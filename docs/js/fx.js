@@ -95,24 +95,6 @@
       var c = ready(); if (!c) return;
       try { var out = master(c, 0.5), t0 = c.currentTime + 0.01; ping(c, t0, 2600, out); ping(c, t0 + 0.09, 3150, out, 0.25); } catch (e) {}
     },
-    // Shot: a sharp glass knock on the table + a short high tick.
-    shot: function () {
-      var c = ready(); if (!c) return;
-      try {
-        var out = master(c, 0.6), t0 = c.currentTime + 0.01;
-        var o = c.createOscillator(), g = c.createGain();
-        o.type = "triangle"; o.frequency.setValueAtTime(420, t0); o.frequency.exponentialRampToValueAtTime(140, t0 + 0.09);
-        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.9, t0 + 0.003);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
-        o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + 0.14);
-        var src = c.createBufferSource(); src.buffer = noiseBuf(c, 0.06);
-        var hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 3500;
-        var gn = c.createGain();
-        gn.gain.setValueAtTime(0.5, t0); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
-        src.connect(hp); hp.connect(gn); gn.connect(out); src.start(t0); src.stop(t0 + 0.06);
-        ping(c, t0 + 0.02, 3300, out, 0.22);
-      } catch (e) {}
-    },
     hot: function () {
       var c = ready(); if (!c) return;
       try { var out = master(c, 0.5); whoosh(c, c.currentTime + 0.02, out); } catch (e) {}

@@ -41,6 +41,11 @@
   <span class="tk-live" id="tk-live">LIVE</span>
   <div class="tk-viewport"><div id="ticker-track" class="tk-track"></div></div>
 </div>
+<div id="chaos" class="chaos" role="status" hidden>
+  <div class="chaos-txt"><span id="chaos-head" class="chaos-head"></span><span id="chaos-facts" class="chaos-facts"></span></div>
+  <button id="chaos-show" class="chaos-show" type="button">Visa</button>
+  <button id="chaos-close" class="chaos-x" type="button" aria-label="Dölj kaos-larmet">✕</button>
+</div>
 <div id="my-streak" class="my-streak" hidden></div>
 <button id="btn-heat" class="map-chip" type="button" aria-pressed="false" hidden>🔥 Värme</button>
 <button id="btn-locate" class="locate-btn" type="button" aria-label="Visa var jag är"><span aria-hidden="true">📍</span></button>
@@ -68,10 +73,6 @@
         <circle id="cd-ring" class="cd-ring" cx="62" cy="62" r="56"/>
       </svg>
       <button id="btn-beer" class="beer-btn" type="button"><span id="beer-label" class="beer-label">ÖL!</span><span id="beer-sub" class="beer-sub"></span></button>
-      <button id="btn-shot" class="shot-btn" type="button" aria-label="Rapportera shot">
-        <svg class="shot-svg" viewBox="0 0 48 48" aria-hidden="true"><circle class="shot-track" cx="24" cy="24" r="21"/><circle id="shot-ring" class="shot-ring" cx="24" cy="24" r="21"/></svg>
-        <span class="shot-ico" aria-hidden="true">🥃</span><span id="shot-label" class="shot-label">SHOT</span>
-      </button>
     </div>
     <div class="prec">
       <div class="seg" role="radiogroup" id="prec-seg">
@@ -111,6 +112,7 @@
 <script src="./js/push.js"></script>
 <script src="./js/fx.js"></script>
 <script src="./js/cities.js"></script>
+<script src="./js/chaos.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

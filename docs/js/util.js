@@ -56,8 +56,7 @@
   // Streak level: 0 normal, 1 HOT STREAK (5–9), 2 MEDEVAC (10+).
   U.level = function (n) { n = n | 0; return n >= 10 ? 2 : n >= 5 ? 1 : 0; };
   // Client-side fallbacks only. The server's wait_seconds is always the authority.
-  U.COOLDOWN_MS = 10 * 60 * 1000;        // beers (v5: 10 min)
-  U.SHOT_COOLDOWN_MS = 15 * 60 * 1000;   // shots (own timer)
+  U.COOLDOWN_MS = 10 * 60 * 1000;        // beers: 10 min
   U.mmss = function (ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); };
   U.CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   U.cleanCode = function (s) {
@@ -75,7 +74,7 @@
     '<path d="M6 7.5a2.5 2.5 0 0 1 2-4 3 3 0 0 1 4.6-.4A2.6 2.6 0 0 1 16 5.5V8H6Z" fill="#ffffff"/></svg>';
   U.GLASS_OUTLINE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h10v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5Z" fill="none" stroke="#f5a623" stroke-width="2.4"/>' +
     '<path d="M16 9h2.2A1.8 1.8 0 0 1 20 10.8v3.4a1.8 1.8 0 0 1-1.8 1.8H16" fill="none" stroke="#f5a623" stroke-width="2.4"/></svg>';
-  // Compact count pill used for bar badges, single pins and clusters: "10 🍺", "2 🍺 · 3 🥃" or "3 🥃".
+  // Compact count pill used for bar badges, single pins and clusters: "10 🍺".
   // Streak is shown ONLY by the border class: p0 normal (thin amber), p1 HOT STREAK (flame glow), p2 MEDEVAC (red/white pulse).
   // Friend present = green inner ring + green dot. No icon circle inside.
   U.pillHTML = function (n, lvl, o) {
@@ -83,10 +82,7 @@
     lvl = lvl === 2 ? 2 : lvl === 1 ? 1 : 0;
     var cls = "pill p" + lvl + (o.friend ? " pf" : "") + (o.mine ? " pm" : "") + (o.approx ? " pa" : "") + (o.cls ? " " + o.cls : "");
     n = Math.max(0, n | 0);
-    var shots = o.noEmoji ? 0 : Math.max(0, o.shots | 0);
-    var beerPart = '<span class="pn">' + n + "</span>" + (o.noEmoji ? "" : '<span class="pe" aria-hidden="true">🍺</span>');
-    var shotPart = shots ? '<span class="pn ps">' + shots + '</span><span class="pe" aria-hidden="true">🥃</span>' : "";
-    var body = shots && n === 0 ? shotPart : beerPart + (shots ? '<span class="psep" aria-hidden="true">·</span>' + shotPart : "");
+    var body = '<span class="pn">' + n + "</span>" + (o.noEmoji ? "" : '<span class="pe" aria-hidden="true">🍺</span>');
     return '<div class="' + cls + '">' + body +
       (o.friend ? '<span class="pfd" aria-hidden="true"></span>' : "") +
       (o.label || "") + "</div>";
