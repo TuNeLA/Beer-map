@@ -10,6 +10,7 @@
 //     per title ever.
 // Body events (v7 SOCIAL): {event:"comehere"|"sos"|"msg", ...}, plus "home"/"pause" from v6.
 // Body events (v9 INKALLELSE): {event:"rally"|"rally_yes", rally_id}.
+// Body events (v10 CHECKA IN): {event:"checkin", bar?} -> "📍 {namn} har anlänt till {bar}".
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -356,7 +357,53 @@ export function bucketStart(nowMs: number, windowSec: number): number {
 }
 
 /** Event rate limits in seconds (push_sent kind -> window). */
-export const RATE_SEC = { comehere: 600, sos: 180, msg: 120 } as const;
+export const RATE_SEC = { comehere: 600, sos: 180, msg: 120, checkin: 600 } as const;
+
+// ---- v10 CHECKA IN ----
+export const CHECKIN_LINES: string[] = [
+  "📍 {namn} har anlänt till {bar}",
+  "🍺 {namn} har checkat in på {bar}. Ölen är beställd.",
+  "🚪 Dörren till {bar} slogs upp. In klev {namn}.",
+  "🫡 {namn} rapporterar: på plats vid {bar}.",
+  "🪖 {namn} har intagit {bar}. Positionen är säkrad.",
+  "📡 Spaning: {namn} har setts gå in på {bar}.",
+  "🎺 Fanfar! {namn} har gjort entré på {bar}.",
+  "🚁 {namn} har landat på {bar}. Ölbasen är bemannad.",
+  "🛬 Touchdown! {namn} är på {bar}.",
+  "📣 Hör upp! {namn} har anlänt till {bar}.",
+  "🐻 Björnen har lämnat idet. {namn} är på {bar}.",
+  "🍻 {namn} har tagit plats på {bar}. Stolen bredvid är ledig.",
+  "🚜 {namn} har parkerat traktorn utanför {bar}.",
+  "🦌 En vild {namn} har setts på {bar}!",
+  "🧭 Koordinaterna är bekräftade: {namn} är på {bar}.",
+  "🎯 Målet nått! {namn} står i baren på {bar}.",
+  "🕵️ Hemlig källa: {namn} sitter på {bar} just nu.",
+  "📯 {namn} blåser i hornet från {bar}. Kom!",
+  "🏁 {namn} har gått i mål på {bar}. Nu börjar kvällen.",
+  "🚕 Taxin har lämnat av {namn} vid {bar}.",
+  "🎪 Cirkusen har kommit till stan: {namn} är på {bar}.",
+  "🧲 {bar} drog till sig {namn}. Vem blir nästa?",
+  "🎤 {namn} har tagit över {bar}. Karaoke kan inte uteslutas.",
+  "⚓ {namn} har kastat ankar på {bar}.",
+  "🛎️ Pling! {namn} har checkat in på {bar}.",
+];
+
+export const CHECKIN_BODY: string[] = [
+  "Tryck för att se var. Hänger du på?",
+  "Öppna kartan. Det finns plats för en till.",
+  "Tryck för att se baren på kartan.",
+  "Ska du bara sitta hemma? Kolla kartan.",
+];
+
+export function checkinPayload(idx: number, namn: string, bar: string, stamp: number) {
+  const b = bar || "baren";
+  return {
+    title: fill(CHECKIN_LINES[((Math.floor(idx) % CHECKIN_LINES.length) + CHECKIN_LINES.length) % CHECKIN_LINES.length], { namn, bar: b }),
+    body: CHECKIN_BODY[((Math.floor(idx) % CHECKIN_BODY.length) + CHECKIN_BODY.length) % CHECKIN_BODY.length],
+    url: "/",
+    tag: `olnu-checkin-${stamp}`,
+  };
+}
 
 /** Random index in [0, n), never equal to `avoid` when n > 1. */
 export function pickIndex(n: number, avoid: number | undefined, rand: () => number = Math.random): number {
@@ -623,7 +670,8 @@ async function kaosJobs(
   // Light cleanup of old nights (kept out of the SQL migration on purpose).
   if (Math.random() < 0.05) {
     const old = new Date(Date.now() - 2 * 86_400_000).toISOString();
-    const { error } = await admin.from("push_sent").delete().lt("night", old);
+    // Keep the forever rows (level-up 'title:*', night 2100-01-01): they are in the future anyway, but be explicit.
+    const { error } = await admin.from("push_sent").delete().lt("night", old).neq("night", "2100-01-01T00:00:00Z");
     if (error) console.error("push_sent cleanup failed", error);
   }
   return { jobs, out, hot, chaos };
@@ -876,6 +924,29 @@ async function rallyYesPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
 
+// ---- v10 CHECKA IN ----
+// {event:"checkin", bar?}: "📍 Anton har anlänt till La Parma" to group-mates. Needs a live check-in
+// made in the last 5 min (the bar name comes from that row, not from the body). 1 per 10 min per sender.
+async function checkinPush(admin: Admin, uid: string, _b: Body) {
+  const { data: ci, error } = await admin
+    .from("checkins").select("bar_name, created_at, expires_at")
+    .eq("user_id", uid).gt("expires_at", new Date().toISOString())
+    .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString()).maybeSingle();
+  if (error) throw error;
+  if (!ci) return { ...NONE, reason: "no_checkin" };
+  const mates = await mateNames(admin, uid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  if (!(await rateClaim(admin, uid, "checkin", RATE_SEC.checkin))) return { ...NONE, reason: "slow_down" };
+  const bar = cleanBarName(ci.bar_name);
+  const idx = Math.floor(Math.random() * CHECKIN_LINES.length);
+  const stamp = Date.now();
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(checkinPayload(idx, mates.get(s.user_id) ?? "En vän", bar, stamp)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+
 // Status push to group-mates: "home" (Jag är hemma) or "pause" (öltorsk). Once per kind per night.
 async function statusPush(admin: Admin, uid: string, kind: "home" | "pause") {
   const none = { sent: 0, failed: 0, status: 0 };
@@ -986,6 +1057,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "msg") return json(await msgPush(admin, uid, body));
     if (event === "rally") return json(await rallyPush(admin, uid, body));
     if (event === "rally_yes") return json(await rallyYesPush(admin, uid, body));
+    if (event === "checkin") return json(await checkinPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

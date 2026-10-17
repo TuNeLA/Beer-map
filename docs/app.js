@@ -276,6 +276,7 @@
     var h = '<div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
       '<div class="muted">' + U.esc(barTypeLabel(bar.type)) + "</div>";
     if (list.length) h += '<div class="pp-data"><b>' + U.esc(t("barHere", list.length)) + "</b></div>";
+    h += checkinHTML(bar);
     h += mods("barPopupHTML", bar, list);
     h += levelLine(maxLevel(list));
     if (names.length) h += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
@@ -292,6 +293,85 @@
     }
     h += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
     return h;
+  }
+
+  /* ---------- v10 Checka in ---------- */
+  var CI_KEY = "olnu.checkin", CI_FRESH_MS = 3 * 3600e3, CI_STAY_M = 150;
+  var ciBarById = {};    // bar id -> bar, for the button in an open popup
+  // Own check-in on this phone: {id, name, lat, lng, at, until}. null when none or after 05:00.
+  function myCheckin() {
+    var c = U.ls.getJSON(CI_KEY, null);
+    if (!c || !c.until || Date.now() > c.until || !isFinite(c.lat) || !isFinite(c.lng)) return null;
+    return c;
+  }
+  // The server row wins (e.g. checked in on another phone, or the night ended).
+  function syncMyCheckin() {
+    var mine = null;
+    checkins.forEach(function (c) { if (c.is_mine) mine = c; });
+    var loc = myCheckin();
+    if (!mine) { if (loc && (Date.now() - loc.at) > 120e3) U.ls.del(CI_KEY); return; }
+    var at = Date.parse(mine.created_at) || Date.now();
+    if (!loc || loc.id !== mine.bar_id || Math.abs(loc.at - at) > 5000) {
+      U.ls.setJSON(CI_KEY, { id: String(mine.bar_id), name: mine.bar_name, lat: +mine.lat, lng: +mine.lng, at: at, until: U.next5am().getTime() });
+    }
+  }
+  function checkinsAt(bar) {
+    var id = String(bar.id);
+    return checkins.filter(function (c) { return String(c.bar_id) === id; });
+  }
+  // "📍 Incheckade här: Anton, Oskar + 2 till" + the big button (LIVE and signed in only).
+  function checkinHTML(bar) {
+    if (!LIVE || bar == null || bar.id == null) return "";
+    ciBarById[String(bar.id)] = bar;
+    var list = checkinsAt(bar), names = [], more = 0, h = "";
+    list.forEach(function (c) {
+      var n = c.is_mine ? (getName() || t("you")) : c.is_friend && c.name ? c.name : null;
+      if (n && names.indexOf(n) < 0) names.push(n); else if (!n) more++;
+    });
+    if (names.length) h += '<div class="pp-ci">' + U.esc(t("ciHere", names, more)) + "</div>";
+    else if (more) h += '<div class="pp-ci">' + U.esc(t("ciHereAnon", more)) + "</div>";
+    if (!authed || checkinState === "missing") return h;
+    var me = myCheckin(), here = me && me.id === String(bar.id);
+    h += '<button type="button" class="ci-btn" data-ci="' + U.esc(String(bar.id)) + '"' + (here ? " disabled" : "") + ">" +
+      U.esc(here ? t("ciDone") : t("ciBtn")) + "</button>";
+    return h;
+  }
+  function doCheckin(button) {
+    var bar = ciBarById[button.getAttribute("data-ci")];
+    if (!bar || button.disabled) return;
+    if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
+    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
+    window.FX.unlock();
+    // Spökläge: nothing goes to the server, nobody is told.
+    if (window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn()) { toast(t("ciGhost"), { ms: 5000 }); return; }
+    var name = String(bar.name || t("unnamedBar")).replace(/\s+/g, " ").trim().slice(0, 60);
+    withName(function () {
+      if (!$("sheet").hidden) closeSheet();   // the name sheet (first time only)
+      button.disabled = true; button.classList.add("busy"); button.textContent = t("ciBusy");
+      rpc("check_in", { p_bar_id: String(bar.id), p_bar_name: name, p_lat: bar.lat, p_lng: bar.lng }).then(function (r) {
+        button.classList.remove("busy");
+        var reset = function () { button.disabled = false; button.textContent = t("ciBtn"); };
+        if (r.error) {
+          reset();
+          if (U.missing(r.error)) { checkinState = "missing"; toast(t("ciOff"), { err: true }); return; }
+          var c = U.errCode(r.error);
+          toast(c === "outside_sweden" || c === "not_authenticated" ? errMsg(r.error) : t("ciFail"), { err: true });
+          return;
+        }
+        var d = parseData(r.data);
+        if (d.ok === false) { reset(); toast(t("ciWait", Math.max(1, d.wait_seconds | 0))); return; }
+        U.ls.setJSON(CI_KEY, { id: String(bar.id), name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: U.next5am().getTime() });
+        button.textContent = t("ciDone");
+        var lines = t("ciToasts") || [];
+        toast(lines.length ? lines[Math.floor(Math.random() * lines.length)](d.bar_name || name) : t("ciDone"), { ms: 5000, cls: "skal" });
+        window.FX.sound.clink(); window.FX.vibrate([18, 40, 18, 40, 60]);
+        if (PUSH_ON && client && client.functions) {
+          try { Promise.resolve(client.functions.invoke("notify-group", { body: { event: "checkin", bar: d.bar_name || name } })).then(function () {}, function () {}); } catch (e) {}
+        }
+        updateCounts();
+        refresh();
+      });
+    });
   }
 
   var markerById = {};   // beer id -> marker (or hot bar marker)
@@ -394,7 +474,7 @@
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
     var items = window.NEWS ? window.NEWS.build(beerOnly(), { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
-      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }) }) : [];
+      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins }) : [];
     if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
     newsPrev = items.map(function (x) { return x.text; });
     var chars = 0;
@@ -567,6 +647,9 @@
     root.querySelectorAll(".skal-btn").forEach(function (x) {
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doSkal(x); });
     });
+    root.querySelectorAll(".ci-btn").forEach(function (x) {
+      x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doCheckin(x); });
+    });
   });
 
   /* ---------- Counts / chrome ---------- */
@@ -616,6 +699,8 @@
     } else st.hidden = true;
     // v9 HUD chips (title, ghost, taxi, come here). Built by the modules; clicks go to mods("hudClick").
     var hx = $("hud-x"), chips = LIVE ? mods("hudChipsHTML", { mine: mine, n: n }) : "";
+    var ci = LIVE ? myCheckin() : null;
+    if (ci) chips += '<button type="button" class="hx-chip hx-ci" data-hx="checkin" aria-label="' + U.esc(t("ciChip", ci.name)) + '">📍 ' + U.esc(ci.name) + "</button>";
     if (hx.getAttribute("data-html") !== chips) { hx.innerHTML = chips; hx.setAttribute("data-html", chips); }
     hx.hidden = !chips;
   }
@@ -680,13 +765,28 @@
       return m;
     });
   }
+  // v10 Checka in: tonight's check-ins (RPC live_checkins, migration 0011). "missing" = old database → feature off.
+  var checkins = [], checkinState = "unknown";   // "unknown" | "on" | "missing"
+  function fetchCheckins() {
+    if (checkinState === "missing") return Promise.resolve(checkins);
+    return rpc("live_checkins").then(function (r) {
+      if (r.error) {
+        if (U.missing(r.error)) { checkinState = "missing"; checkins = []; }
+        return checkins;   // network error: keep the last list
+      }
+      checkins = (r.data || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      checkinState = "on";
+      syncMyCheckin();
+      return checkins;
+    });
+  }
   function refresh() {
     // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
     if (loading) { refreshAgain = true; return Promise.resolve(); }
     if (!LIVE || !authed) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
-    return Promise.all([rpc("live_beers"), fetchOthers()]).then(function (res) {
+    return Promise.all([rpc("live_beers"), fetchOthers(), fetchCheckins()]).then(function (res) {
       var r = res[0], others = res[1] || {};
       if (r.error) throw r.error;
       // Pins: rows with a beer, or (v8) with another drink. Shots-only rows from an older app are not pins.
@@ -894,6 +994,11 @@
   function askWhere(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     var real = { lat: lat, lng: lng, precise: prec === "exact" };
+    // v10: fresh own check-in (< 3 h) and still within 150 m of it → drink there, no question.
+    var ci = myCheckin();
+    if (ci && Date.now() - ci.at < CI_FRESH_MS && U.haversine(lat, lng, ci.lat, ci.lng) <= CI_STAY_M) {
+      return Promise.resolve({ lat: ci.lat, lng: ci.lng, precise: prec === "exact" });
+    }
     var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6) : [];
     if (!list.length) return Promise.resolve(real);
     var last = U.ls.getJSON(WHERE_KEY, null), night = myNight();
@@ -1694,6 +1799,7 @@
     mods("init", appApi());
     $("hud-x").addEventListener("click", function (e) {
       var b = e.target.closest("[data-hx]"); if (!b || b.disabled) return;
+      if (b.getAttribute("data-hx") === "checkin") { var ci = myCheckin(); if (ci) flyTo(ci.lat, ci.lng, 17, null); return; }
       mods("hudClick", b.getAttribute("data-hx"), b);
     });
     applyStaticText();
@@ -1754,6 +1860,7 @@
       authed: function () { return authed; }, client: function () { return client; }, prec: function () { return prec; },
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, showGroups: showGroups,
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
+      checkins: function () { return checkins; }, myCheckin: myCheckin,
       setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },
       sheetOpen: function () { return !$("sheet").hidden; },
       // functions.invoke that always resolves to {data, error} (never rejects, max RPC_TIMEOUT_MS).

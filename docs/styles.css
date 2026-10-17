@@ -609,3 +609,11 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 .chip-btn[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:#241300}
 .rl-inp{font-family:var(--body);font-size:16px;margin-bottom:6px}
 .rl-loc{margin:8px 0 0}
+/* ---------- v10: Checka in ---------- */
+.ci-btn{display:block;width:100%;margin-top:10px;min-height:48px;padding:0 12px;cursor:pointer;font-family:var(--hud);font-size:16px;font-weight:700;letter-spacing:.04em;
+  color:#00260f;background:var(--green);border:1px solid var(--green);clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.ci-btn:active{transform:scale(.97)}
+.ci-btn:disabled{background:var(--night-3);color:var(--green);border-color:var(--line);cursor:default}
+.ci-btn.busy{opacity:.6}
+.pp-ci{margin-top:6px;color:var(--green);font-size:13px}
+.hx-ci{color:var(--green);border-color:var(--green-d);max-width:150px}

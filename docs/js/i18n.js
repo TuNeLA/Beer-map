@@ -2,6 +2,24 @@
   "use strict";
   var STR = {
     sv: {
+      /* ---------- v10 Checka in ---------- */
+      ciBtn: "📍 Checka in", ciDone: "✅ Du é incheckad här", ciBusy: "📍 Checkar in…",
+      ciHere: function (names, more) { return "📍 Incheckade här: " + names.join(", ") + (more ? " + " + more + " till" : ""); },
+      ciHereAnon: function (n) { return "📍 Incheckade här: " + n + (n === 1 ? " person" : " personer"); },
+      ciToasts: [
+        function (b) { return "📍 Incheckad på " + b + ". Gruppen é underrättad."; },
+        function (b) { return "📍 Du har anlänt till " + b + ". Ölen väntar."; },
+        function (b) { return "🫡 På plats vid " + b + ". Rapport skickad till gruppen."; },
+        function (b) { return "🪖 " + b + " é intagen. Positionen é säkrad."; },
+        function (b) { return "🛬 Touchdown på " + b + "! Gruppen vet var du é."; },
+        function (b) { return "🍻 Incheckad på " + b + ". Nu får kompisarna komma hit."; },
+        function (b) { return "📡 Signal skickad: du é på " + b + "."; },
+        function (b) { return "🎺 Fanfar! Du har gjort entré på " + b + "."; }
+      ],
+      ciGhost: "👻 Spökläge é på. Ingen incheckning, ingen vet var du é.",
+      ciWait: function (s) { return "Lugn i leden! Vänta " + s + " s innan du checkar in igen."; },
+      ciFail: "Kunde inte checka in. Försök igen.", ciOff: "Incheckning finns int' än. Uppdatera appen snart.",
+      ciChip: function (b) { return "Incheckad på " + b; },
       /* ---------- v9 social + extras ---------- */
       crowd1: "Lugnt", crowd2: "Livligt", crowd3: "Packat",
       barOpen: "Öppet", barWeb: "Hemsida", barCall: "Ring",
@@ -260,6 +278,19 @@
       // d: name (friend), n (beers), rek (last night's record), k (difference), who, where (" vid X" / " i Y" / ""),
       // bar, anon, stad, p (percent), s (skål), hh (hour).
       news: [
+        // v10 fallbacks (js/news-more.js adds more): checkin (d.name, d.bar), meCheckin (d.bar), checkinCrowd (d.bar, d.k), friendBeer (d.name, d.n).
+        { k: "checkin", f: function (d) { return "📍 " + d.name + " har anlänt till " + d.bar + "."; } },
+        { k: "checkin", f: function (d) { return "📺 Ögonvittnen: " + d.name + " har klivit in på " + d.bar + "."; } },
+        { k: "checkin", f: function (d) { return "🪖 " + d.name + " har intagit " + d.bar + ". Förstärkning önskas."; } },
+        { k: "meCheckin", f: function (d) { return "📍 Du é incheckad på " + d.bar + ". Hela gruppen vet."; } },
+        { k: "meCheckin", f: function (d) { return "📺 Källor bekräftar: du sitter på " + d.bar + "."; } },
+        { k: "meCheckin", f: function (d) { return "🫡 Basen " + d.bar + " é bemannad. Av dig."; } },
+        { k: "checkinCrowd", f: function (d) { return "📍 " + d.k + " har checkat in på " + d.bar + ". Det börjar likna fest."; } },
+        { k: "checkinCrowd", f: function (d) { return "📺 Kö till " + d.bar + "? " + d.k + " incheckade hittills."; } },
+        { k: "checkinCrowd", f: function (d) { return "🎪 " + d.bar + " drar folk: " + d.k + " har anlänt."; } },
+        { k: "friendBeer", f: function (d) { return "🍺 " + d.name + " har " + d.n + " öl i kroppen. Rapporten é bekräftad."; } },
+        { k: "friendBeer", f: function (d) { return "📺 Läget: " + d.name + " på öl nr " + d.n + "."; } },
+        { k: "friendBeer", f: function (d) { return "📡 Spaning: " + d.name + " har knäckt öl nr " + d.n + "."; } },
         // v9: friend titles (d.title, d.name, d.n) and side tracks (d.name / d.anon, d.stad, d.drink).
         { k: "fTitle", f: function (d) { return "🎖️ " + d.title + " " + d.name + " dricker för fullo!"; } },
         { k: "fTitle", f: function (d) { return "📺 " + d.title + " " + d.name + " é ute på uppdrag. Öl nr " + d.n + "."; } },
@@ -435,6 +466,24 @@
       ]
     },
     en: {
+      /* ---------- v10 Check in ---------- */
+      ciBtn: "📍 Check in", ciDone: "✅ You are checked in here", ciBusy: "📍 Checking in…",
+      ciHere: function (names, more) { return "📍 Checked in here: " + names.join(", ") + (more ? " + " + more + " more" : ""); },
+      ciHereAnon: function (n) { return "📍 Checked in here: " + n + (n === 1 ? " person" : " people"); },
+      ciToasts: [
+        function (b) { return "📍 Checked in at " + b + ". Your group has been told."; },
+        function (b) { return "📍 You have arrived at " + b + ". The beer is waiting."; },
+        function (b) { return "🫡 In position at " + b + ". Report sent to the group."; },
+        function (b) { return "🪖 " + b + " is taken. Position secured."; },
+        function (b) { return "🛬 Touchdown at " + b + "! Your group knows where you are."; },
+        function (b) { return "🍻 Checked in at " + b + ". Now your friends can come here."; },
+        function (b) { return "📡 Signal sent: you are at " + b + "."; },
+        function (b) { return "🎺 Fanfare! You have entered " + b + "."; }
+      ],
+      ciGhost: "👻 Ghost mode is on. No check-in, nobody knows where you are.",
+      ciWait: function (s) { return "Easy, soldier! Wait " + s + " s before you check in again."; },
+      ciFail: "Could not check in. Try again.", ciOff: "Check-in is not available yet. Update the app soon.",
+      ciChip: function (b) { return "Checked in at " + b; },
       /* ---------- v9 social + extras ---------- */
       crowd1: "Chill", crowd2: "Lively", crowd3: "Packed",
       barOpen: "Open", barWeb: "Website", barCall: "Call",
@@ -686,6 +735,19 @@
       newsAnon: ["Unknown person", "A secret agent", "Somebody", "A mystery figure"],
       newsTown: "the village",
       news: [
+        // v10 fallbacks: checkin (d.name, d.bar), meCheckin (d.bar), checkinCrowd (d.bar, d.k), friendBeer (d.name, d.n).
+        { k: "checkin", f: function (d) { return "📍 " + d.name + " has arrived at " + d.bar + "."; } },
+        { k: "checkin", f: function (d) { return "📺 Witnesses: " + d.name + " just walked into " + d.bar + "."; } },
+        { k: "checkin", f: function (d) { return "🪖 " + d.name + " has taken " + d.bar + ". Backup wanted."; } },
+        { k: "meCheckin", f: function (d) { return "📍 You are checked in at " + d.bar + ". The whole group knows."; } },
+        { k: "meCheckin", f: function (d) { return "📺 Sources confirm: you are at " + d.bar + "."; } },
+        { k: "meCheckin", f: function (d) { return "🫡 Base " + d.bar + " is manned. By you."; } },
+        { k: "checkinCrowd", f: function (d) { return "📍 " + d.k + " have checked in at " + d.bar + ". Party incoming."; } },
+        { k: "checkinCrowd", f: function (d) { return "📺 Queue at " + d.bar + "? " + d.k + " checked in so far."; } },
+        { k: "checkinCrowd", f: function (d) { return "🎪 " + d.bar + " pulls a crowd: " + d.k + " have arrived."; } },
+        { k: "friendBeer", f: function (d) { return "🍺 " + d.name + " is on beer " + d.n + ". Report confirmed."; } },
+        { k: "friendBeer", f: function (d) { return "📺 Status: " + d.name + " on beer no. " + d.n + "."; } },
+        { k: "friendBeer", f: function (d) { return "📡 Intel: " + d.name + " has cracked beer no. " + d.n + "."; } },
         { k: "fTitle", f: function (d) { return "🎖️ " + d.title + " " + d.name + " is drinking at full speed!"; } },
         { k: "fTitle", f: function (d) { return "📺 " + d.title + " " + d.name + " is out on a mission. Beer no. " + d.n + "."; } },
         { k: "sidetrack", f: function (d) { return "📺 " + d.name + " is on a side track and betrayed the beer god with " + d.drink + "!"; } },

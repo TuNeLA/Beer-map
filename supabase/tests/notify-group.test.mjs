@@ -224,7 +224,7 @@ t("isUuid and bucketStart", () => {
   assert.equal(m.bucketStart(1_000_000, 600), 600_000);
   assert.equal(m.bucketStart(1_199_999, 600), 600_000);
   assert.equal(m.bucketStart(1_200_000, 600), 1_200_000);
-  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120 });
+  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120, checkin: 600 });
 });
 
 // ---- v9 INKALLELSE ----
@@ -270,6 +270,17 @@ t("parseRallyId", () => {
   for (const bad of [0, -1, 1.5, NaN, Infinity, "", "4a", "-3", " 4", null, undefined, {}, 2 ** 60, "1234567890123456"]) {
     assert.equal(m.parseRallyId(bad), null, String(bad));
   }
+});
+
+t("checkin lines: enough, all filled, rate 10 min", () => {
+  assert.ok(m.CHECKIN_LINES.length >= 25);
+  assert.equal(m.RATE_SEC.checkin, 600);
+  for (let i = -1; i < m.CHECKIN_LINES.length + 2; i++) {
+    const q = m.checkinPayload(i, "Anton", "La Parma", 7);
+    assert.ok(q.title.includes("Anton") && q.title.includes("La Parma") && !/\{\w+\}/.test(q.title), q.title);
+    assert.ok(q.body && q.url === "/" && q.tag === "olnu-checkin-7");
+  }
+  assert.ok(m.checkinPayload(0, "A", "", 1).title.includes("baren"));
 });
 
 console.log(`\n${passed} tests passed`);

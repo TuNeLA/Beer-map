@@ -2,7 +2,7 @@
 var VERSION = "olnu-ecaf270c1f";
 var SHELL = [
   "./", "./index.html", "./styles.css", "./config.js", "./app.js", "./bars-extra.json", "./bars-closed.json",
-  "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news.js", "./js/social.js", "./js/extras.js", "./js/rally.js",
+  "./js/i18n.js", "./js/util.js", "./js/bars.js", "./js/push.js", "./js/fx.js", "./js/cities.js", "./js/chaos.js", "./js/news-more.js", "./js/news.js", "./js/social.js", "./js/extras.js", "./js/rally.js",
   "./manifest.webmanifest", "./favicon.ico",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"

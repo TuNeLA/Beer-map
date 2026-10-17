@@ -66,15 +66,26 @@
   }
   function townAt(lat, lng) { var c = window.CITIES && window.CITIES.nearest(lat, lng); return c ? c.name : null; }
 
+  // v10: extra Swedish headlines from js/news-more.js (window.NEWS_MORE = {sv: [{k, f}]}). English: none extra.
+  function moreTemplates() {
+    try {
+      var m = window.NEWS_MORE, l = I.lang === "en" ? "en" : "sv";
+      return l === "sv" && m && Array.isArray(m.sv) ? m.sv : [];
+    } catch (e) { return []; }
+  }
+
   /* ---------- Build one cycle ---------- */
-  // ctx: {center:{lat,lng}, now:Date, prev:[texts of last cycle]}
+  // ctx: {center:{lat,lng}, now:Date, prev:[texts of last cycle], titles, others, checkins (v10: live_checkins rows)}
   // Returns [{text, cls}] — max 6, shuffled, no text twice, first item never the last cycle's last item.
   function build(beers, ctx) {
     ctx = ctx || {};
     beers = beers || [];
     var now = ctx.now || new Date(), prev = ctx.prev || [];
-    var tpl = t("news") || [], byKind = {};
-    tpl.forEach(function (x) { (byKind[x.k] = byKind[x.k] || []).push(x.f); });
+    var tpl = (t("news") || []).concat(moreTemplates()), byKind = {};
+    tpl.forEach(function (x) {
+      if (!x || typeof x.k !== "string" || typeof x.f !== "function") return;
+      (byKind[x.k] = byKind[x.k] || []).push(x.f);
+    });
     var cand = [];   // {k, d, imp, cls}
     function add(k, d, imp, cls) { if (byKind[k]) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" }); }
     var anon = t("newsAnon") || ["?"];
@@ -122,6 +133,7 @@
       if (n === 4) add("hotClose", d, 2, "tk-friend");
       if (n === 9) add("medClose", d, 2, "tk-friend");
       if (n >= 1 && n <= 3) add("friendOut", d, 0, "tk-friend");
+      if (n >= 1) add("friendBeer", d, 0, "tk-friend");
       var sk = b.skal_count | 0;
       if (sk >= 1) add("skal", { name: b.friend_name, s: sk }, 1, "tk-friend");
     });
@@ -157,6 +169,25 @@
         if (st) { sideAnon++; add("anonSidetrack", { stad: st, anon: pick(anon), drink: drink }, 0); }
       }
     });
+
+    // v10: check-ins (ctx.checkins = live_checkins rows). Friends by name (last 45 min), me, and bars
+    // with 2+ check-ins (bar name is fine at 2+; strangers stay anonymous, only a count).
+    var cis = ctx.checkins || [], nowMs = now.getTime(), ciFriends = 0, ciBars = {};
+    cis.forEach(function (c) {
+      if (!c || !c.bar_name) return;
+      var at = Date.parse(c.created_at) || 0;
+      if (c.is_mine) add("meCheckin", { bar: c.bar_name }, 1, "tk-me");
+      else if (c.is_friend && c.name && nowMs - at <= 45 * 60e3 && ciFriends < 2) {
+        ciFriends++;
+        add("checkin", { name: c.name, bar: c.bar_name }, 2, "tk-friend");
+      }
+      var key = String(c.bar_id || c.bar_name);
+      (ciBars[key] = ciBars[key] || { bar: c.bar_name, k: 0 }).k++;
+    });
+    Object.keys(ciBars).map(function (k) { return ciBars[k]; })
+      .filter(function (x) { return x.k >= 2; })
+      .sort(function (a, b) { return b.k - a.k; }).slice(0, 2)
+      .forEach(function (x) { add("checkinCrowd", { bar: x.bar, k: x.k }, 1); });
 
     // Bars with 2+ people.
     bars.sort(function (a, b) { return b.beers.length - a.beers.length; }).slice(0, 2).forEach(function (a) {

@@ -236,3 +236,30 @@ Old events work as before. Responses `{sent, failed}` plus `reason` when nothing
 
 ### Deep link
 - `?rally=<id>[&answer=yes|no|maybe]`: open the group's rally view and show that rally (look it up in `my_rallies`; not found → toast "Inkallelsen är över"). With `answer`, call `answer_rally(id, answer)` once (then `notify-group {event:"rally_yes"}` when the answer is yes) and remove `answer` from the URL so a reload does not answer again.
+
+## v10 CHECKA IN (additive)
+Tap a bar on the map → "📍 Checka in". Group-mates get "📍 Anton har anlänt till La Parma". Migration `supabase/migrations/0011_checkin.sql` (also in `setup.sql`). Needs 0001–0010 first. A missing RPC (old database) = feature off: hide the button, no error.
+
+### Table (RLS on, no policies, no client access)
+- `checkins(user_id uuid pk, bar_id text 1–80, bar_name text 1–60, lat float8, lng float8, created_at, expires_at = next 05:00 Europe/Stockholm)`. One row per user (a new check-in replaces the old one, upsert). Old rows are never removed; every read filters `expires_at > now()`.
+
+### RPCs
+| name | params | returns | errors |
+|---|---|---|---|
+| `check_in` | `p_bar_id text, p_bar_name text, p_lat float8, p_lng float8` | jsonb `{ok bool, bar_name text, wait_seconds int}` | `outside_sweden`, `invalid_bar`, `not_authenticated` |
+| `live_checkins` | – | setof `(bar_id text, bar_name text, lat float8, lng float8, name text, is_mine bool, is_friend bool, created_at timestamptz)` | `not_authenticated` |
+- `check_in`: lat/lng inside the Sweden bbox (else `outside_sweden`); bar name control chars → space, trimmed, 1–60 chars, bar id 1–80 (else `invalid_bar`). Rate limit: 1 per 2 min per user → `ok=false`, `wait_seconds` > 0, `bar_name` = current check-in, nothing changes. Stored lat/lng rounded to 5 decimals.
+- `live_checkins`: tonight's live rows, oldest first, max 2000. `name` = own display_name (any group; null without a group — the app shows its local name) for `is_mine`, the user's display_name in a shared group for `is_friend`, else null (strangers are anonymous). Same rule as `live_beers.friend_name`.
+- Spökläge (ghost mode): the client does NOT call `check_in` (toast only).
+
+### Edge function `notify-group` — new body event
+| body | who gets it | limit | payload |
+|---|---|---|---|
+| `{event:"checkin", bar?}` | group-mates | 1 per 10 min per caller (`push_sent` kind `checkin`) | title random line (25), e.g. "📍 {namn} har anlänt till {bar}"; body random short line; url `/`; tag `olnu-checkin-<ms>` |
+- Needs a live check-in made < 5 min ago (else reason `no_checkin`). The bar name comes from the `checkins` row, not from the body. Other reasons: `no_group`, `slow_down`.
+
+### Frontend
+- Every bar popup (with or without beers): "📍 Incheckade här: Anton, Oskar + 2 till" (strangers only as a count) and a big "📍 Checka in" button (LIVE + signed in). Asks for a name first if none. After success: funny toast, clink + vibrate, then `notify-group {event:"checkin", bar}`. Own check-in is kept in localStorage `olnu.checkin` (until 05:00) and shown as a small HUD chip "📍 <bar>" (tap = fly there).
+- `live_checkins` is fetched in the same 30 s poll as `live_beers`.
+- ÖL! tap: a fresh own check-in (< 3 h) within 150 m of the GPS position → the beer goes on that bar, no "Var dricker du?" question.
+- Ticker (`news.js`): `ctx.checkins`; kinds `checkin` (friend, last 45 min, imp 2), `meCheckin` (imp 1), `checkinCrowd` (bar with 2+ check-ins, imp 1), `friendBeer` (friends with n ≥ 1, imp 0). Swedish templates from `js/news-more.js` (`window.NEWS_MORE.sv`) are merged in; fallbacks in `i18n.js`.
