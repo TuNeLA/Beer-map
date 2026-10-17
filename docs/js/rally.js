@@ -201,11 +201,16 @@
     return best;
   }
   // Every active call-out with a place stays on the map as a flag: "🪖 Ström · 3 på väg" (+ ✅ if I come).
-  var flagsLayer = null;
+  var flagsLayer = null, flagZoomHooked = false;
   function drawFlags() {
     if (!A || !A.map || !window.L) return;
     if (!flagsLayer) flagsLayer = L.layerGroup().addTo(A.map);
     flagsLayer.clearLayers();
+    if (!flagZoomHooked) {
+      flagZoomHooked = true;
+      var zc = function () { var el = A.map.getContainer(); el.classList.toggle("rl-zoomed", A.map.getZoom() >= 16); };
+      A.map.on("zoomend", zc); zc();
+    }
     var marks = U.ls.getJSON(ANS_KEY, {}) || {}, nowMs = Date.now();
     rallies.forEach(function (r) {
       var w = whereOf(r); if (!w) return;
@@ -217,8 +222,9 @@
       var me = r.my_answer === "yes" ? " ✅" : r.my_answer === "maybe" ? " 🤔" : "";
       var m = L.marker([w.lat, w.lng], { keyboard: false, zIndexOffset: 3500,
         icon: L.divIcon({ className: "", iconSize: [0, 0], iconAnchor: [0, 0],
-          html: '<div class="rl-flag rl-flag-live' + (r.my_answer === "yes" ? " me" : "") + '"><span>🪖</span><b>' +
-            esc(who + (r.place ? " · " + r.place : "")) + "</b><i>" + esc(t("rallyOnWay", r.yes | 0)) + me + "</i></div>" }) });
+          // Small pin: 🪖 + people on the way. The name/place only shows when zoomed in close (≥ 16).
+          html: '<div class="rl-pin' + (r.my_answer === "yes" ? " me" : "") + '"><span>🪖</span><i>' + (r.yes | 0) + me +
+            '</i><b class="rl-pin-lbl">' + esc(who + (r.place ? " · " + r.place : "")) + "</b></div>" }) });
       m.on("click", function () { openRally(byId(r.id) || r); });
       flagsLayer.addLayer(m);
     });
