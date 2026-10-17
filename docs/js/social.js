@@ -296,6 +296,13 @@
   }
 
   /* ---------- Group chat (J) ---------- */
+  // Bright colours that read well on the dark chat background. Gold is kept for "me".
+  var CHAT_COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#a78bfa", "#22d3ee", "#fb923c", "#f87171", "#a3e635", "#34d399", "#c084fc", "#38bdf8", "#fda4af"];
+  function chatColor(name) {
+    var h = 0, s = String(name).toLowerCase();
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return CHAT_COLORS[Math.abs(h) % CHAT_COLORS.length];
+  }
   function chatOn() { return v7 === true && !off.group_msgs && !off.post_group_msg; }
   function openChat(g) {
     if (!chatOn() || !g || !g.id) return;
@@ -345,7 +352,10 @@
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
         var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", text: beersText(m) });
         heads.push({ m: m, name: nmEl, n: nEl });
-        list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : "") }, [
+        // Each person gets their own colour (same name = same colour every time). Me = gold (CSS).
+        var col = m.is_me ? null : chatColor(m.name || "");
+        if (col) nmEl.style.color = col;
+        list.appendChild(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "" }, [
           el("div", { class: "cm-head" }, [nmEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") })
