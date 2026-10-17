@@ -1001,3 +1001,9 @@ body:has(.bp-strip:not([hidden])) .toasts{bottom:calc(var(--dock-h,212px) + var(
 /* KAOS + call-out at the same time: the call-out keeps the rail (its ✅ Kommer stays reachable), kaos stacks under it */
 body:has(#rally:not([hidden])) .chaos{top:calc(var(--sat) + 104px) !important}
 .pp-act:has(.pa-kommer)>.ci-btn,.pp-act:has(.pa-kommer) .eta-go,.pp-act .pa-kommer{font-size:var(--fs-s);padding:0 4px}
+
+/* Zoomed out: the heat glow is the star. Bar icons go away, pills get smaller and see-through. */
+.olnu-zlo .cm .bar-ico{display:none}
+.olnu-zlo .cm-quiet{opacity:0;pointer-events:none}
+.olnu-zlo .cm .cm-lbl{display:none}
+.olnu-zxlo .leaflet-marker-pane .cm{transform-origin:center;opacity:.82}

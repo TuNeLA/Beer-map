@@ -198,6 +198,9 @@
     if (list.length && (span <= CROWD_SPAN_M || z >= CROWD_ZOOM || target <= z || z >= map.getMaxZoom())) openCrowd(list, null);
     else c.zoomToBounds({ padding: [40, 40] });
   });
+  // Zoomed out: a class on the map so CSS can slim the markers and let the heat glow show.
+  function zoomClass() { var z = map.getZoom(); map.getContainer().classList.toggle("olnu-zlo", z < 14); map.getContainer().classList.toggle("olnu-zxlo", z < 12.5); }
+  map.on("zoomend", zoomClass); zoomClass();
   var hotLayer = L.layerGroup().addTo(map);
   var barLayer = L.layerGroup().addTo(map);
 
@@ -215,7 +218,10 @@
   var HEAT_R_M = 170, HEAT_MIN_PX = 34, HEAT_MAX_PX = 80, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
   function heatRadiusPx(z, lat) {
     var mpp = 156543.03 * Math.cos((lat || 0) * Math.PI / 180) / Math.pow(2, z);
-    return Math.max(HEAT_MIN_PX, Math.min(HEAT_MAX_PX, HEAT_R_M / Math.max(1e-6, mpp)));
+    // Zoomed out the glow must be clearly bigger than the markers (owner: "heatmapen är helt gömd"):
+    // min 34 px at zoom 15+, growing to 120 px at zoom 11 and below.
+    var minPx = z >= 15 ? HEAT_MIN_PX : z <= 11 ? 120 : HEAT_MIN_PX + (15 - z) / 4 * (120 - HEAT_MIN_PX);
+    return Math.max(minPx, Math.min(Math.max(HEAT_MAX_PX, minPx), HEAT_R_M / Math.max(1e-6, mpp)));
   }
   // Fade the glow when zoomed in close (markers + labels carry the detail there). Continuous: no jump.
   function heatOpacity(z) { return z <= 15.5 ? 1 : z >= 18 ? 0.45 : 1 - (z - 15.5) / 2.5 * 0.55; }
