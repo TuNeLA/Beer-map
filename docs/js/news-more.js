@@ -335,4 +335,43 @@
       { k: "random", f: function () { return "📺 Mopeden fick stå hemma ikväll. Klokt val, säger redaktionen."; } }
     ]
   };
+
+  // Beers per hour at a bar (news.js kinds barRate / barRateHigh): d.bar, d.r, d.k.
+  window.NEWS_MORE.sv = window.NEWS_MORE.sv.concat([
+    { k: "barRate", f: function (d) { return "📺 " + d.bar + ": ca " + d.r + " öl i timmen. Kranen går varm men håller."; } },
+    { k: "barRate", f: function (d) { return "🍺 Mätning från " + d.bar + ": " + d.r + " öl i timmen. Stabilt som en Volvo 240."; } },
+    { k: "barRate", f: function (d) { return "📊 " + d.bar + " levererar " + d.r + " öl i timmen. Bryggeriet nickar nöjt."; } },
+    { k: "barRate", f: function (d) { return "🎖️ Underrättelse: " + d.bar + " håller " + d.r + " öl i timmen. Inga oroligheter."; } },
+    { k: "barRate", f: function (d) { return "📺 " + d.r + " öl i timmen på " + d.bar + ". Lugnt tempo, som en söndag i Grangärde."; } },
+    { k: "barRate", f: function (d) { return "🚨 " + d.bar + " rapporterar " + d.r + " öl i timmen. Personalen har int' svettats än."; } },
+    { k: "barRate", f: function (d) { return "📡 Radarn visar " + d.r + " öl i timmen över " + d.bar + ". Molnfritt."; } },
+    { k: "barRate", f: function (d) { return "🍻 " + d.bar + ": " + d.r + " öl i timmen, " + d.k + " soldater på plats. Ordning och reda."; } },
+    { k: "barRate", f: function (d) { return "📺 Ölflödet på " + d.bar + ": " + d.r + " i timmen. Kranen visslar en glad trudelutt."; } },
+    { k: "barRate", f: function (d) { return "🎖️ Högkvarteret noterar " + d.r + " öl i timmen på " + d.bar + ". Godkänt tempo."; } },
+    { k: "barRate", f: function (d) { return "📺 " + d.bar + " går på " + d.r + " öl i timmen. Pantburkarna börjar köa."; } },
+    { k: "barRate", f: function (d) { return "🍺 " + d.r + " öl i timmen på " + d.bar + ". Bartendern har hunnit dricka kaffe en gång."; } },
+    { k: "barRate", f: function (d) { return "📊 Tempomätare " + d.bar + ": " + d.r + " öl/h. Lagom é bäst, säger mormor."; } },
+    { k: "barRate", f: function (d) { return "📺 " + d.bar + " rullar på i " + d.r + " öl i timmen. Som tåget till Borlänge, fast i tid."; } },
+    { k: "barRate", f: function (d) { return "🚨 Lugn rapport: " + d.bar + " har " + d.r + " öl i timmen. Ingen panik i kylrummet."; } },
+    { k: "barRate", f: function (d) { return "📡 " + d.bar + " sänder: " + d.r + " öl i timmen. Signalen é stark och klar."; } },
+    { k: "barRate", f: function (d) { return "🍻 " + d.k + " personer, " + d.r + " öl i timmen på " + d.bar + ". Dä é la trevligt dä."; } },
+    { k: "barRate", f: function (d) { return "📺 Kassan på " + d.bar + " plingar " + d.r + " gånger i timmen. Musik i öronen."; } },
+    { k: "barRate", f: function (d) { return "🎖️ " + d.bar + ": " + d.r + " öl/h. Kompaniet håller formationen."; } },
+    { k: "barRate", f: function (d) { return "📺 På " + d.bar + " går dä " + d.r + " öl i timmen. Glasdiskaren har fått rytm."; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 " + d.bar + ": " + d.r + " öl i timmen! Nu é dom helt galna där inne!"; } },
+    { k: "barRateHigh", f: function (d) { return "📺 EXTRA: " + d.r + " öl i timmen på " + d.bar + ". Kranen ber om semester."; } },
+    { k: "barRateHigh", f: function (d) { return "🔥 " + d.bar + " har gått bärsärk: " + d.r + " öl i timmen. Brandkåren står redo med vatten."; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 Larm från " + d.bar + ": " + d.r + " öl i timmen. Bartendern har fått fyra armar."; } },
+    { k: "barRateHigh", f: function (d) { return "📺 " + d.r + " öl i timmen på " + d.bar + "! Bryggeriet har ringt in extrapersonal."; } },
+    { k: "barRateHigh", f: function (d) { return "🎖️ " + d.bar + " håller " + d.r + " öl i timmen. Generalen har tagit av sig mössan av respekt."; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 " + d.bar + ": " + d.r + " öl/h. Det é int' en krog längre, dä é en fabrik."; } },
+    { k: "barRateHigh", f: function (d) { return "📺 Seismografen i Ludvika slog ut: " + d.r + " öl i timmen på " + d.bar + "."; } },
+    { k: "barRateHigh", f: function (d) { return "🔥 " + d.r + " öl i timmen på " + d.bar + ". Kylen gråter. Glasen svettas."; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 " + d.bar + " slår rekord: " + d.r + " öl i timmen. Ölguden har bokat bord."; } },
+    { k: "barRateHigh", f: function (d) { return "📺 " + d.bar + " på " + d.r + " öl i timmen. Grannkommunerna hör skålandet."; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 Kaos-index " + d.bar + ": " + d.r + " öl/h. Ta ett glas vatten, soldater!"; } },
+    { k: "barRateHigh", f: function (d) { return "🔥 " + d.bar + " kör " + d.r + " öl i timmen. Kranen har bytt namn till Brandsprutan."; } },
+    { k: "barRateHigh", f: function (d) { return "📺 " + d.r + " öl i timmen på " + d.bar + "! Pantmaskinen har lagt sig ner och gråtit."; } },
+    { k: "barRateHigh", f: function (d) { return "🚨 Varning: " + d.bar + " har " + d.r + " öl i timmen. Glöm int' korven, la."; } }
+  ]);
 })();

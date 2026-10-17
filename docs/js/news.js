@@ -199,6 +199,14 @@
     // Bars with 2+ people.
     bars.sort(function (a, b) { return b.beers.length - a.beers.length; }).slice(0, 2).forEach(function (a) {
       add("barReport", { bar: a.bar.name, k: a.beers.length }, 0);
+      // Beers per hour at the bar (estimate): each person's beers / hours since their first beer tonight.
+      var rate = 0;
+      a.beers.forEach(function (b) {
+        var h = Math.max(0.75, (now.getTime() - (Date.parse(b.created_at) || now.getTime())) / 3600e3);
+        rate += (b.beer_count | 0) / h;
+      });
+      rate = Math.round(rate);
+      if (rate >= 4) add(rate >= 30 ? "barRateHigh" : "barRate", { bar: a.bar.name, r: rate, k: a.beers.length }, rate >= 30 ? 2 : 1);
       var str = a.beers.filter(function (b) { return !b.is_mine && !b.friend_name; })
         .sort(function (x, y) { return (y.beer_count | 0) - (x.beer_count | 0); })[0];
       if (str) add("barStranger", { bar: a.bar.name, n: str.beer_count | 0, anon: pick(anon) }, 0);
