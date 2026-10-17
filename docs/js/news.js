@@ -51,6 +51,7 @@
   }
 
   var recentUsed = [];   // template ids shown lately (memory only)
+  var sideSeen = {}, SIDE_FRESH_MS = 40 * 60 * 1000;   // pin id -> {n: other_count, at: when it went up}
 
   /* ---------- Helpers ---------- */
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -158,12 +159,18 @@
       if (ti && Math.random() < 0.5) add("fTitle", { title: ti, name: b.friend_name, n: b.beer_count | 0 }, 1, "tk-friend");
     });
     // v9: side tracks (other drinks). ctx.others = all live pins with other_count/other_kind.
-    var nat = t("drinkNat") || {}, sideAnon = 0;
+    // A side track is news for ~40 min after the drink (count went up). After that only now and then.
+    var nat = t("drinkNat") || {}, sideAnon = 0, nowT = now.getTime();
     (ctx.others || []).forEach(function (b) {
       if (!b || (b.other_count | 0) < 1) return;
       var drink = nat[b.other_kind] || nat.annat || "?";
-      if (b.is_mine) add("meSidetrack", { drink: drink }, 1, "tk-me");
-      else if (b.friend_name) add("sidetrack", { name: b.friend_name, drink: drink }, 2, "tk-friend");
+      var key = String(b.id != null ? b.id : b.beer_id), seen = sideSeen[key];
+      if (!seen || (b.other_count | 0) > seen.n) seen = sideSeen[key] = { n: b.other_count | 0, at: nowT };
+      var fresh = nowT - seen.at < SIDE_FRESH_MS;
+      if (!fresh && Math.random() > 0.12) return;
+      var sk = "sidetrack_" + (b.other_kind || "annat");
+      if (b.is_mine) add("meSidetrack", { drink: drink }, fresh ? 1 : 0, "tk-me");
+      else if (b.friend_name) add(byKind[sk] && Math.random() < 0.5 ? sk : "sidetrack", { name: b.friend_name, drink: drink }, fresh ? 2 : 0, "tk-friend");
       else if (sideAnon < 1) {
         var st = townAt(b.lat, b.lng);
         if (st) { sideAnon++; add("anonSidetrack", { stad: st, anon: pick(anon), drink: drink }, 0); }
