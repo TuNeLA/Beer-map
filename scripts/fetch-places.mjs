@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // Fetch named restaurants, fast food places and cafés in Sweden from OpenStreetMap (Overpass)
 // and write docs/places.json as [[name, lat, lng, t], …] with t = r (restaurant) | f (fast_food) | c (cafe).
+// Also writes docs/places/ (small tiles + index.json, see scripts/places-tiles.mjs): the app loads only the tiles
+// for the map view. places.json stays as the fallback.
 // The app uses it only to name the spot where someone drinks ("nära Pizzeria X"), never to draw markers.
 // Node 18+ (global fetch). Run weekly by .github/workflows/bars.yml.
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { writePlaceTiles } from "./places-tiles.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(here, "../docs/places.json");
@@ -82,3 +85,5 @@ if (places.length < 3000) {
 }
 await writeFile(out, JSON.stringify(places));
 console.log(`Wrote ${places.length} places to ${out}`);
+const tiles = await writePlaceTiles(places, resolve(here, "../docs/places"));
+console.log(`Wrote ${tiles.files} place tiles to docs/places/`);

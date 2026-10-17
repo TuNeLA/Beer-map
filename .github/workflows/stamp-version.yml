@@ -19,10 +19,18 @@ jobs:
       - name: Hash app files and stamp sw.js
         run: |
           # index.html is left out of the hash: it is stamped below, and HTML is always fetched fresh.
-          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
+          # Data (bars.json, places.json, docs/places/ tiles) is left out too: the weekly data update must not
+          # make every phone download the whole app again (the service worker refreshes data on its own).
+          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path 'docs/places/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
           sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
-          # Give every local script and stylesheet a ?v=HASH so a new page can never run with old cached code.
-          sed -i -E "s#(src=\"\./[^\"?]+\.js)(\?v=[A-Za-z0-9]+)?\"#\1?v=$HASH\"#g; s#(href=\"\./[^\"?]+\.css)(\?v=[A-Za-z0-9]+)?\"#\1?v=$HASH\"#g" docs/index.html
+          # Give every local script and stylesheet a ?v=<hash of that file> so a new page can never run with old
+          # cached code, and an unchanged file keeps its URL (the service worker copies it, no new download).
+          for f in $(grep -oE '(src|href)="\./[^"?]+\.(js|css)' docs/index.html | sed -E 's/^(src|href)="\.\///' | sort -u); do
+            [ -f "docs/$f" ] || continue
+            H=$(sha256sum "docs/$f" | cut -c1-10)
+            F=$(printf '%s' "$f" | sed 's/[.]/\\./g')
+            sed -i -E "s#((src|href)=\"\./$F)(\?v=[A-Za-z0-9]+)?\"#\1?v=$H\"#g" docs/index.html
+          done
           grep -n '?v=' docs/index.html | head -3
           grep -n '^var VERSION' docs/sw.js
           if git diff --quiet; then echo "No change"; exit 0; fi

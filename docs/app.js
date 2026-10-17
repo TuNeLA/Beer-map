@@ -780,6 +780,8 @@
   }
   // LIVE ticker = funny TV news feed (js/news.js). New headlines after each poll (or language change), not on map moves.
   var tickerKey = "", newsDirty = true, newsPrev = [];
+  // Lazy-loaded news texts (boot.js): use them at the next ticker refill.
+  document.addEventListener("olnu:lazy", function () { newsDirty = true; });
   function renderTicker() {
     if (!newsDirty && tickerKey) return;
     newsDirty = false;
@@ -2517,7 +2519,7 @@
     toast(t("updating"));
     var jobs = [];
     if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) {
-      return Promise.all(ks.filter(function (k) { return k.indexOf("olnu-") === 0; }).map(function (k) { return caches.delete(k); }));
+      return Promise.all(ks.filter(function (k) { return k.indexOf("olnu-") === 0 && k !== "olnu-pending"; }).map(function (k) { return caches.delete(k); }));
     }));
     // Do NOT unregister the service worker: that also deletes the push subscription (notifications turned
     // themselves off). Ask it to fetch the newest sw.js instead; the new one takes over on reload.

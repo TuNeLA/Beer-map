@@ -206,30 +206,101 @@
   // v14: places are also drink spots ("Var dricker du?", check-in, crowd counts) but are drawn only when
   // someone has a beer or a check-in there. Stable id = "pl_<lat*1e5>_<lng*1e5>" (same rule as the
   // server's bars_lite import, so the server's bar_id matches).
+  // Perf: the same rows are also split into small tiles (docs/places/, scripts/places-tiles.mjs). Only the
+  // tiles for the map view (+25 %) are loaded, and more when the map moves or nearby() asks for a new spot.
+  // No tile index → the full places.json, as before.
   var places = {}, placesById = {}, placesState = "idle", onPlaces = [];
   var PLACE_TYPES = { r: "restaurant", f: "fast_food", c: "cafe" };
+  var pMap = null, tIndex = null, tState = {}, tQueue = 0, MAX_TILE_LOADS = 12;
   function placeId(lat, lng) { return "pl_" + Math.round(lat * 1e5) + "_" + Math.round(lng * 1e5); }
-  function loadPlaces() {
-    if (placesState !== "idle") return;
+  function addPlaces(list) {
+    if (!Array.isArray(list)) return;
+    list.forEach(function (p) {
+      var o = Array.isArray(p) ? { name: p[0], lat: p[1], lng: p[2], type: PLACE_TYPES[p[3]] || "restaurant" } : p;
+      if (!o || !o.name || typeof o.lat !== "number" || typeof o.lng !== "number") return;
+      o.id = o.id || placeId(o.lat, o.lng);
+      if (placesById[o.id]) return;
+      o.place = true;
+      placesById[o.id] = o;
+      var k = gridKey(o);
+      (places[k] || (places[k] = [])).push(o);
+    });
+  }
+  function placesChanged() {
+    placesState = "ready";
+    onPlaces.forEach(function (f) { try { f(); } catch (e) {} });
+  }
+  function loadFullPlaces() {
     placesState = "loading";
     fetch("./places.json", { cache: "no-cache" })
       .then(function (r) { if (!r.ok) throw new Error("no places.json"); return r.json(); })
       .then(function (list) {
         if (!Array.isArray(list)) throw new Error("bad places.json");
-        list.forEach(function (p) {
-          var o = Array.isArray(p) ? { name: p[0], lat: p[1], lng: p[2], type: PLACE_TYPES[p[3]] || "restaurant" } : p;
-          if (!o || !o.name || typeof o.lat !== "number" || typeof o.lng !== "number") return;
-          o.id = o.id || placeId(o.lat, o.lng);
-          if (placesById[o.id]) return;
-          o.place = true;
-          placesById[o.id] = o;
-          var k = gridKey(o);
-          (places[k] || (places[k] = [])).push(o);
-        });
-        placesState = "ready";
-        onPlaces.forEach(function (f) { try { f(); } catch (e) {} });
+        tIndex = null;
+        addPlaces(list);
+        placesChanged();
       })
       .catch(function () { placesState = "failed"; /* optional: fall back to bars + town */ });
+  }
+  // Leaf tiles (file keys) of the index that touch the box s,w,n,e: [{ k, lat, lng }] (lat/lng = tile centre).
+  function leavesIn(s, w, n, e) {
+    var out = [], BL = tIndex.b[0], BW = tIndex.b[1];
+    var y0 = Math.floor(s / BL), y1 = Math.floor(n / BL), x0 = Math.floor(w / BW), x1 = Math.floor(e / BW);
+    if ((y1 - y0 + 1) * (x1 - x0 + 1) > 400) return out;   // far zoomed out: nothing
+    function walk(node, key, ts, tw, th, twd) {
+      if (!node || ts > n || ts + th < s || tw > e || tw + twd < w) return;
+      if (node === 1) { out.push({ k: key, lat: ts + th / 2, lng: tw + twd / 2 }); return; }
+      if (!Array.isArray(node)) return;
+      for (var i = 0; i < 4; i++) walk(node[i], key + "-" + i, i >= 2 ? ts + th / 2 : ts, i % 2 ? tw + twd / 2 : tw, th / 2, twd / 2);
+    }
+    for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+      var k = y + "_" + x;
+      if (tIndex.t[k]) walk(tIndex.t[k], k, y * BL, x * BW, BL, BW);
+    }
+    return out;
+  }
+  function loadBox(s, w, n, e) {
+    if (!tIndex) return;
+    var cLat = (s + n) / 2, cLng = (w + e) / 2;
+    var todo = leavesIn(s, w, n, e).filter(function (t) { return !tState[t.k]; });
+    todo.sort(function (a, b) { return Math.abs(a.lat - cLat) + Math.abs(a.lng - cLng) / 2 - (Math.abs(b.lat - cLat) + Math.abs(b.lng - cLng) / 2); });
+    todo = todo.slice(0, MAX_TILE_LOADS);
+    if (!todo.length) { if (!tQueue && placesState !== "ready") placesChanged(); return; }
+    tQueue += todo.length;
+    var got = false;
+    todo.forEach(function (t) {
+      tState[t.k] = "loading";
+      fetch("./places/" + t.k + ".json")
+        .then(function (r) { if (!r.ok) throw new Error("tile " + r.status); return r.json(); })
+        .then(function (list) { addPlaces(list); tState[t.k] = "done"; got = true; })
+        .catch(function () { tState[t.k] = "failed"; setTimeout(function () { if (tState[t.k] === "failed") delete tState[t.k]; }, 60000); })
+        .then(function () { if (--tQueue === 0 && (got || placesState !== "ready")) placesChanged(); });
+    });
+  }
+  function loadView() {
+    if (!tIndex || !pMap) return;
+    try {
+      if (pMap.getZoom() < 9) { var c = pMap.getCenter(); loadBox(c.lat - 0.1, c.lng - 0.2, c.lat + 0.1, c.lng + 0.2); return; }
+      var b = pMap.getBounds().pad(0.25);
+      loadBox(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+    } catch (e) {}
+  }
+  // A spot that may be outside the loaded tiles (where-sheet, rally badge): load ~1 km around it.
+  function ensurePlaces(lat, lng) {
+    if (!tIndex || typeof lat !== "number" || typeof lng !== "number") return;
+    loadBox(lat - 0.012, lng - 0.024, lat + 0.012, lng + 0.024);
+  }
+  function loadPlaces() {
+    if (placesState !== "idle") return;
+    placesState = "loading";
+    fetch("./places/index.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("no tile index"); return r.json(); })
+      .then(function (ix) {
+        if (!ix || !ix.t || !Array.isArray(ix.b)) throw new Error("bad tile index");
+        tIndex = ix;
+        if (pMap) { pMap.on("moveend", U.debounce(loadView, 400)); loadView(); }
+      })
+      .catch(loadFullPlaces);
   }
   function nearestPlace(lat, lng, maxM) {
     var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), best = null, bestD = maxM;
@@ -283,6 +354,7 @@
     init: function (opts) {
       onChange = opts.onChange || onChange;
       var map = opts.map;
+      if (!pMap && map) { pMap = map; if (tIndex) { map.on("moveend", U.debounce(loadView, 400)); loadView(); } }
       var debounced = U.debounce(function () { fetchViewport(map); }, 600);
       var closedReady = loadClosed();
       var extrasReady = closedReady.then(loadExtras);
@@ -308,6 +380,7 @@
     // Named bars within maxM metres, nearest first: [{ bar, d }]. Search is the 3x3 grid (~1 km).
     // opts.places: also restaurants/cafés/fast food (after the bars, marked place:true), up to opts.maxPlaces.
     nearby: function (lat, lng, maxM, max, opts) {
+      if (opts && opts.places) ensurePlaces(lat, lng);
       var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), out = [], pl = [];
       for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
         var k = (gy + dy) + "_" + (gx + dx), cell = grid[k];
@@ -334,6 +407,7 @@
     nearestSpot: nearestSpot,
     placeId: placeId,
     placesReady: function () { return placesState === "ready"; },
+    ensurePlaces: ensurePlaces,
     byId: function (id) { return bars[id] || placesById[id] || null; },
     inBounds: function (b, max) {
       var out = [];

@@ -47,6 +47,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/bars.json
           if [ -f docs/places.json ]; then git add docs/places.json; fi
+          if [ -d docs/places ]; then git add docs/places; fi
           if git diff --cached --quiet; then
             echo "bars.json and places.json unchanged"
             exit 0
