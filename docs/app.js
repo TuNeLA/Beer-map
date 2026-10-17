@@ -2297,6 +2297,21 @@
   function joinLink(code) { return location.origin + location.pathname + "?join=" + encodeURIComponent(code); }
   function friendsNowText() { var f = friendsDrinking(); return f ? " · " + t("friendsNow", f) : ""; }
 
+  // Group order: the group you chat with most comes first (owner wish). Local score per group:
+  // open chat +1, send +3, halves every 5 days. Ties keep the server order.
+  var GACT_KEY = "olnu.gact", GACT_HALF = 5 * 864e5;
+  function gactScore(rec) { return rec ? rec.s * Math.pow(0.5, (Date.now() - rec.t) / GACT_HALF) : 0; }
+  window.olnuGroupBump = function (id, w) {
+    if (!id) return;
+    var all = U.ls.getJSON(GACT_KEY, {}) || {}, k = String(id);
+    all[k] = { s: gactScore(all[k]) + (w || 1), t: Date.now() };
+    U.ls.setJSON(GACT_KEY, all);
+  };
+  function sortGroupsByChat(gs) {
+    var all = U.ls.getJSON(GACT_KEY, {}) || {};
+    return gs.map(function (g, i) { return { g: g, i: i, s: gactScore(all[String(g.id)]) }; })
+      .sort(function (a, b) { return b.s - a.s || a.i - b.i; }).map(function (x) { return x.g; });
+  }
   function showGroups() {
     if (!LIVE) {
       openSheet(t("groups"), function (body) { body.appendChild(el("div", { class: "info", text: t("soonInfo") })); });
@@ -2325,7 +2340,7 @@
           if (r.error) { list.appendChild(el("li", { class: "muted", text: t("fail") })); return; }
           var gs = r.data || [];
           if (!gs.length) { list.appendChild(el("li", { class: "muted", text: t("noGroups") })); return; }
-          gs.forEach(function (g) { list.appendChild(groupItem(g)); });
+          sortGroupsByChat(gs).forEach(function (g) { list.appendChild(groupItem(g)); });
         });
       });
     });

@@ -389,6 +389,7 @@
   function chatOn() { return v7 === true && !off.group_msgs && !off.post_group_msg; }
   function openChat(g) {
     if (!chatOn() || !g || !g.id) return;
+    try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 1); } catch (e) {}
     var el = A.el;
     chatColAssigned = {}; chatColUsed = {};
     A.openSheet(t("chatTitle", g.name || ""), function (body) {
@@ -624,6 +625,7 @@
         var text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
         if (!text || text.length > 140) { A.toast(t("chatInvalid"), { err: true }); return; }
         sending = true; sendBtn.disabled = true;
+        try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
         call("post_group_msg", { p_group_id: g.id, p_body: text }).then(function (r) {
           sending = false; sendBtn.disabled = false;
           if (r.error) {
