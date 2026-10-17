@@ -297,16 +297,24 @@
 
   /* ---------- Group chat (J) ---------- */
   // Bright colours that read well on the dark chat background. Gold is kept for "me".
-  var CHAT_COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#a78bfa", "#22d3ee", "#fb923c", "#f87171", "#a3e635", "#34d399", "#c084fc", "#38bdf8", "#fda4af"];
+  var CHAT_COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#a78bfa", "#22d3ee", "#fb923c", "#f87171", "#a3e635", "#34d399", "#c084fc", "#38bdf8", "#e879f9"];
+  // Colours are unique inside one chat (up to 12 people): start at the name's hash, skip colours in use.
+  var chatColAssigned = {}, chatColUsed = {};
   function chatColor(name) {
-    var h = 0, s = String(name).toLowerCase();
-    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-    return CHAT_COLORS[Math.abs(h) % CHAT_COLORS.length];
+    var key = String(name).toLowerCase();
+    if (chatColAssigned[key]) return chatColAssigned[key];
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+    var n = CHAT_COLORS.length, ix = Math.abs(h) % n;
+    for (var k = 0; k < n && chatColUsed[CHAT_COLORS[ix]]; k++) ix = (ix + 1) % n;
+    chatColUsed[CHAT_COLORS[ix]] = 1;
+    return (chatColAssigned[key] = CHAT_COLORS[ix]);
   }
   function chatOn() { return v7 === true && !off.group_msgs && !off.post_group_msg; }
   function openChat(g) {
     if (!chatOn() || !g || !g.id) return;
     var el = A.el;
+    chatColAssigned = {}; chatColUsed = {};
     A.openSheet(t("chatTitle", g.name || ""), function (body) {
       var list = el("ul", { class: "chat-list", "aria-live": "polite" });
       var inp = el("input", { class: "inp chat-inp", id: "chat-inp", maxlength: "140", enterkeyhint: "send", autocomplete: "off",
