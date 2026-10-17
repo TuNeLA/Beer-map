@@ -140,7 +140,12 @@
   function nightDateLabel(key) {
     var d = Date.parse(key + "T12:00:00Z"); if (!isFinite(d)) return key;
     try {
-      return new Intl.DateTimeFormat(I.lang === "en" ? "en-GB" : "sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(d - 86400e3));
+      // The key is the date the night ENDS (next 05:00). Label the night by the evening it started, and say
+      // "kväll" so a night past midnight never reads as the next day: "fredag kväll, 16 oktober".
+      var start = new Date(d - 86400e3), en = I.lang === "en";
+      var wd = new Intl.DateTimeFormat(en ? "en-GB" : "sv-SE", { weekday: "long", timeZone: "UTC" }).format(start);
+      var dm = new Intl.DateTimeFormat(en ? "en-GB" : "sv-SE", { day: "numeric", month: "long", timeZone: "UTC" }).format(start);
+      return wd + (en ? " night, " : " kväll, ") + dm;
     } catch (e) { return key; }
   }
   function summaryOf(l) {
@@ -171,11 +176,11 @@
     });
     c.textBaseline = "alphabetic";
     c.fillStyle = "#f5a623"; c.font = '64px "Black Ops One", Impact, sans-serif'; c.textAlign = "left";
-    c.fillText("ÖL NU", 90, 150);
+    c.fillText("ÖL NU", 90, 150, W - 180);
     c.fillStyle = "#ffe08a"; c.font = '112px "Black Ops One", Impact, sans-serif';
-    c.fillText(t("nightHead"), 90, 280);
+    c.fillText(t("nightHead"), 90, 280, W - 180);
     c.fillStyle = "#9aa3a0"; c.font = '40px "Share Tech Mono", monospace';
-    c.fillText(nightDateLabel(s.key).toUpperCase(), 94, 340);
+    c.fillText(nightDateLabel(s.key).toUpperCase(), 94, 340, W - 184);
     // Big number
     c.textAlign = "center"; c.fillStyle = "#ffc24d"; c.font = '330px "Black Ops One", Impact, sans-serif';
     c.fillText(String(s.beers), W / 2 - 90, 690);
@@ -189,20 +194,23 @@
       c.fillStyle = "rgba(16,24,38,.92)"; c.fillRect(bx, by, bw, 170);
       c.strokeStyle = "rgba(245,166,35,.45)"; c.lineWidth = 3; c.strokeRect(bx, by, bw, 170);
       c.fillStyle = "#9aa3a0"; c.font = '30px "Share Tech Mono", monospace'; c.textAlign = "center";
-      c.fillText(String(st[0]).toUpperCase(), bx + bw / 2, by + 55);
-      c.fillStyle = "#ece6d6"; c.font = (st[1].length > 6 ? "700 38px" : "700 64px") + ' "Chakra Petch", sans-serif';
-      c.fillText(st[1], bx + bw / 2, by + 135);
+      c.fillText(String(st[0]).toUpperCase(), bx + bw / 2, by + 55, bw - 24);
+      // Step the font down until the value fits its box ("🔥 HOT STREAK" used to run out of it).
+      var fs = st[1].length > 6 ? 38 : 64;
+      c.fillStyle = "#ece6d6"; c.font = "700 " + fs + 'px "Chakra Petch", sans-serif';
+      while (fs > 22 && c.measureText(st[1]).width > bw - 24) { fs -= 2; c.font = "700 " + fs + 'px "Chakra Petch", sans-serif'; }
+      c.fillText(st[1], bx + bw / 2, by + 135, bw - 24);
     });
     // Badges + title
     c.textAlign = "center";
     if (s.badges.length) {
       c.fillStyle = "#9aa3a0"; c.font = '32px "Share Tech Mono", monospace';
-      c.fillText(t("nightBadges").toUpperCase(), W / 2, 1010);
-      c.font = "80px sans-serif"; c.fillText(s.badges.slice(0, 8).join(" "), W / 2, 1100);
+      c.fillText(t("nightBadges").toUpperCase(), W / 2, 1010, W - 180);
+      c.font = "80px sans-serif"; c.fillText(s.badges.slice(0, 8).join(" "), W / 2, 1100, W - 180);
     }
-    if (s.title) { c.fillStyle = "#ffe08a"; c.font = '56px "Black Ops One", Impact, sans-serif'; c.fillText("🎖️ " + s.title, W / 2, s.badges.length ? 1200 : 1080); }
-    c.fillStyle = "#6f7d4f"; c.font = '30px "Share Tech Mono", monospace';
-    c.fillText("💧 " + t("care"), W / 2, H - 80);
+    if (s.title) { c.fillStyle = "#ffe08a"; c.font = '56px "Black Ops One", Impact, sans-serif'; c.fillText("🎖️ " + s.title, W / 2, s.badges.length ? 1200 : 1080, W - 180); }
+    c.fillStyle = "#9aa66e"; c.font = '30px "Share Tech Mono", monospace';
+    c.fillText("💧 " + t("care"), W / 2, H - 80, W - 180);
   }
   function showNight(l) {
     var s = summaryOf(l);

@@ -3,10 +3,10 @@
 /* Group view: medal row under each member, tap = uniform */
 .st-tap{cursor:pointer}
 .st-tap:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-.st-medals{display:flex;flex-wrap:wrap;align-items:center;gap:2px;min-height:0;margin-top:2px;font-size:15px;line-height:1.2}
+.st-medals{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-height:0;margin-top:4px;line-height:1}
 .st-medals:empty{display:none}
 .md-pip{position:relative;display:inline-block}
-.md-pip sub{font-family:var(--hud);font-size:9px;color:var(--gold);margin-left:-2px;vertical-align:-2px}
+.md-pip sub{font-family:var(--hud);font-size:11px;color:var(--gold);margin-left:-2px;vertical-align:-2px}
 .md-more{font-family:var(--hud);font-size:11px;color:var(--muted);margin-left:4px}
 .cm-tap{cursor:pointer;text-decoration:underline dotted rgba(255,224,138,.5);text-underline-offset:3px}
 
@@ -14,24 +14,24 @@
 .uni-box{position:relative;padding:14px 12px 12px;background:
   linear-gradient(180deg,rgba(111,125,79,.28),rgba(16,24,38,.95) 70%),var(--night);
   border:1px solid var(--line);border-top:3px solid var(--olive);text-align:center;margin-top:4px}
-.uni-name{font-family:var(--hud);font-size:13px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;overflow-wrap:anywhere}
-.uni-chev{font-size:18px;color:var(--gold);letter-spacing:4px;margin-top:4px;text-shadow:0 0 10px rgba(255,224,138,.5)}
+.uni-name{font-family:var(--body);font-weight:600;font-size:13px;color:var(--muted);letter-spacing:1px;overflow-wrap:anywhere}
+.uni-chev{font-size:16px;color:var(--gold);letter-spacing:4px;margin-top:4px;text-shadow:0 0 10px rgba(255,224,138,.5)}
 .uni-rank{font-family:var(--display);font-size:clamp(22px,7vw,30px);line-height:1.1;color:var(--gold);margin:4px 0 2px;overflow-wrap:anywhere;
   text-shadow:0 2px 0 rgba(0,0,0,.5)}
-.uni-sub{font-family:var(--hud);font-size:12px;color:var(--amber-2)}
+.uni-sub{font-family:var(--body);font-weight:600;font-size:13px;color:var(--amber-2)}
 .uni-box .rank-bar{margin:10px auto 6px;max-width:320px}
 .uni-next{font-size:13px;color:var(--muted)}
-.uni-ribbon{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:12px;padding:10px 6px 6px;
-  border-top:1px dashed var(--line);font-size:24px;line-height:1.2}
+.uni-ribbon{display:flex;flex-wrap:wrap;justify-content:center;gap:3px 3px;max-width:calc(4 * 46px + 9px);margin:12px auto 0;padding:10px 0 6px;
+  border-top:1px dashed var(--line);line-height:1}
 .uni-ribbon .md-pip sub{font-size:11px}
 .uni-ribbon .muted{font-size:13px}
 
 .medal-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .medal{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:8px 10px;
   background:var(--night);border:1px solid var(--line-soft);opacity:.55;min-width:0}
-.medal .md-e{grid-row:1 / span 2;font-size:26px;filter:grayscale(1)}
-.medal .md-n{font-weight:700;font-size:13.5px;overflow-wrap:anywhere}
-.medal .md-d{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.medal .md-e{grid-row:1 / span 2;font-size:28px;filter:grayscale(1)}
+.medal .md-n{font-weight:700;font-size:13px;overflow-wrap:anywhere}
+.medal .md-d{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .medal.on{opacity:1;border-color:var(--line);border-left:3px solid var(--gold)}
 .medal.on .md-e{filter:none}
 .medal.on .md-n{color:var(--gold)}
@@ -49,10 +49,10 @@
 .mx-icon{font-size:44px;line-height:1}
 .mx-title{font-family:var(--display);font-size:28px;color:var(--gold);letter-spacing:1.5px;margin-top:6px}
 .mx-ranks{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;margin:10px 0 4px}
-.mx-old{font-family:var(--hud);font-size:13px;color:var(--muted);text-decoration:line-through}
+.mx-old{font-family:var(--body);font-weight:600;font-size:13px;color:var(--muted);text-decoration:line-through}
 .mx-arrow{color:var(--amber)}
-.mx-new{font-family:var(--display);font-size:22px;color:var(--amber-2);overflow-wrap:anywhere}
-.mx-sub{font-family:var(--hud);font-size:12px;color:var(--muted)}
+.mx-new{font-family:var(--display);font-size:20px;color:var(--amber-2);overflow-wrap:anywhere}
+.mx-sub{font-family:var(--body);font-weight:600;font-size:13px;color:var(--muted)}
 .mx-line{margin:12px 0 14px;font-size:16px;line-height:1.4;color:var(--text)}
 .mx-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .mx-btns .btn{flex:1 1 120px}
@@ -62,3 +62,21 @@
 @keyframes mxIn{from{opacity:0}to{opacity:1}}
 @keyframes mxPromo{50%{box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 46px rgba(255,224,138,.7)}}
 @media (prefers-reduced-motion: reduce){.mx-pop,.mx-level .mx-card{animation:none}}
+
+/* ---------- Design pass 2: ribbon rack (medals.js ribbonBg) instead of an emoji row ---------- */
+.rb{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;width:26px;height:9px;padding:0;border:0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25),0 1px 1px rgba(0,0,0,.5);vertical-align:middle}
+.rb i,.rb b{font-style:normal;font:700 8px/1 var(--hud);color:#ffe08a;text-shadow:0 0 2px #000,0 0 1px #000;letter-spacing:-1px}
+.uni-ribbon .rb{width:46px;height:15px;cursor:pointer}
+.uni-ribbon .rb i,.uni-ribbon .rb b{font-size:11px}
+.uni-ribbon .rb:active{transform:scale(.94)}
+.uni-ribbon .rb:focus-visible{outline:2px solid var(--amber-2);outline-offset:2px}
+/* bigger hit area than the 15 px ribbon, without spreading the rack */
+.uni-ribbon .rb::after{content:"";position:absolute;inset:-14px -1px}
+.medal .md-e{display:flex;flex-direction:column;align-items:center;gap:0}
+.medal .rb-hang{width:22px;height:10px;clip-path:polygon(0 0,100% 0,100% 100%,50% 70%,0 100%)}
+.medal .md-em{line-height:1}
+.medal.md-hl{animation:mdhl 1.2s ease-out}
+@keyframes mdhl{0%,40%{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(255,224,138,.6)}}
+.md-more{font-family:var(--hud);font-size:11px;color:var(--muted);margin-left:2px}
+.st-medals .rb{width:22px;height:8px}

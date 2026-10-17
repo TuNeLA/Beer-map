@@ -185,13 +185,13 @@
   var HEAT_KEY = "olnu.heat";
   var heatOn = U.ls.get(HEAT_KEY, "1") !== "0";
   var heat = null;
-  var HEAT_R_M = 120, HEAT_MIN_PX = 24, HEAT_MAX_PX = 60, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
+  var HEAT_R_M = 170, HEAT_MIN_PX = 34, HEAT_MAX_PX = 80, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
   function heatRadiusPx(z, lat) {
     var mpp = 156543.03 * Math.cos((lat || 0) * Math.PI / 180) / Math.pow(2, z);
     return Math.max(HEAT_MIN_PX, Math.min(HEAT_MAX_PX, HEAT_R_M / Math.max(1e-6, mpp)));
   }
   // Fade the glow when zoomed in close (markers + labels carry the detail there). Continuous: no jump.
-  function heatOpacity(z) { return z <= 15 ? 0.85 : z >= 17.5 ? 0.35 : 0.85 - (z - 15) / 2.5 * 0.5; }
+  function heatOpacity(z) { return z <= 15.5 ? 1 : z >= 18 ? 0.45 : 1 - (z - 15.5) / 2.5 * 0.55; }
   // Softer colour curve when zoomed out, so small towns still glow next to a big one (Strava-style per-view scale).
   function heatGamma(z) { return z <= 11 ? 0.5 : z >= 14 ? 1 : 0.5 + (z - 11) / 3 * 0.5; }
   // CSS cubic-bezier(0,0,0.25,1) = Leaflet's zoom transition. Returns eased progress for t in 0..1.
@@ -287,8 +287,8 @@
   }
   if (typeof L.heatLayer === "function") {
     heat = L.heatLayer([], {
-      radius: 25, blur: 30, minOpacity: 0.25,
-      gradient: { 0.1: "rgba(60,25,0,0)", 0.3: "#a85a08", 0.5: "#f5a623", 0.68: "#ff7a1a", 0.85: "#ff3b3b", 1.0: "#fff6e0" }
+      radius: 25, blur: 30, minOpacity: 0.42,
+      gradient: { 0.05: "rgba(90,35,0,0)", 0.22: "#c2650a", 0.42: "#f5a623", 0.62: "#ff7a1a", 0.82: "#ff3b3b", 1.0: "#fff6e0" }
     });
     heat._cellOrigin = L.latLng(LUDVIKA[0], LUDVIKA[1]);
   }
@@ -340,6 +340,20 @@
     if (!heatOn && map.hasLayer(heat)) map.removeLayer(heat);
     if (!heatOn) return;
     heat.setLatLngs(heatData());
+  }
+  // "🔥 Värme" → icon + screen-reader word. Re-wraps when another module sets textContent again.
+  function iconChip(b) {
+    if (!b) return;
+    function wrap() {
+      if (b.querySelector(".mc-i")) return;
+      var tx = b.textContent.trim(), i = tx.indexOf(" ");
+      if (i < 0) return;
+      var w = tx.slice(i + 1);
+      b.innerHTML = '<span class="mc-i" aria-hidden="true">' + U.esc(tx.slice(0, i)) + '</span><span class="mc-t">' + U.esc(w) + "</span>";
+      if (!b.title) b.title = w;
+    }
+    wrap();
+    if (window.MutationObserver) new MutationObserver(wrap).observe(b, { childList: true, characterData: true, subtree: true });
   }
   function applyHeatBtn() {
     var b = $("btn-heat");
@@ -420,8 +434,10 @@
   function skalCount(b) { return Math.max(0, b.skal_count | 0); }
   function skalBtn(b, small) {
     var done = !!b.i_skaled;
-    return '<button type="button" class="skal-btn' + (small ? " small" : "") + '" data-skal="' + U.esc(String(b.id)) + '"' +
-      (done ? " disabled" : "") + ">" + U.esc(done ? t("skaled", skalCount(b)) : t("skal", skalCount(b))) + "</button>";
+    // Quiet outline and no "(0)" until someone has skålat; amber once there are skåls.
+    var n = skalCount(b);
+    return '<button type="button" class="skal-btn' + (small ? " small" : "") + (n > 0 ? " has" : "") + '" data-skal="' + U.esc(String(b.id)) + '"' +
+      (done ? " disabled" : "") + ">" + U.esc(done ? t("skaled", n) : n > 0 ? t("skal", n) : t("skalDone")) + "</button>";
   }
   function otherLine(b) {
     var oc = b.other_count | 0; if (!oc) return "";
@@ -454,13 +470,29 @@
     return (c.rallies.length ? 4000 : 0) + (friendHere(c.beers) || c.cis.some(function (x) { return x.is_friend || x.is_mine; }) ? 3000 : 0) +
       (c.beers.length ? 1000 + Math.min(500, c.beers.length * 10) : 0) + (c.cis.length ? 200 + c.cis.length : 0) + maxLevel(c.beers) * 100;
   }
+  // Design pass 2 (declutter): module badges (👑 king, 🏰 takeover, queue) are read here and redrawn as small
+  // fixed slots on the marker, only at zoom ≥ 16. The takeover group name is never on the map (popup only).
+  var tplBox = document.createElement("div");
+  function pickBadges(html, out) {
+    if (!html) return "";
+    tplBox.innerHTML = html;
+    tplBox.querySelectorAll(".bi-king, .bm-king").forEach(function (x) { out.king = true; x.remove(); });
+    tplBox.querySelectorAll(".bi-flag, .bm-flag").forEach(function (x) { out.flag = true; if (x.classList.contains("mine")) out.flagMine = true; x.remove(); });
+    if (out.z < LABEL_ZOOM) tplBox.querySelectorAll(".bm-q, .bm-crowd").forEach(function (x) { x.remove(); });
+    var r = tplBox.innerHTML; tplBox.innerHTML = ""; return r;
+  }
   function compositeIcon(c) {
-    var bar = c.bar, z = map.getZoom(), list = c.beers, h = '<div class="cm-in">';
-    h += bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + mods("barIcoHTML", bar) + "</div>" :
-      '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + mods("barIcoHTML", bar) + "</div>";
+    var bar = c.bar, z = map.getZoom(), list = c.beers, h = '<div class="cm-in">', bx = { z: z };
+    var ico = pickBadges(mods("barIcoHTML", bar), bx);
+    h += bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + ico + "</div>" :
+      '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
       h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar",
-        label: mods("barBadgeHTML", bar, list, z) });
+        label: pickBadges(mods("barBadgeHTML", bar, list, z), bx) });
+    }
+    if (z >= LABEL_ZOOM) {
+      if (bx.king) h += '<span class="cm-b cm-king" aria-hidden="true">👑</span>';
+      if (bx.flag) h += '<span class="cm-b cm-flag' + (bx.flagMine ? " mine" : "") + '" aria-hidden="true">🏰</span>';
     }
     if (c.rallies.length) {
       var yes = 0, me = false;
@@ -468,10 +500,13 @@
       h += '<span class="cm-rally' + (me ? " me" : "") + '" title="' + U.esc(t("cmRallyAria", yes)) + '">🪖<b>' + yes + "</b>" + (c.rallies.length > 1 ? '<i class="cm-dot"></i>' : "") + "</span>";
     }
     // Check-in badge: always on a bar without drinkers; next to a people pill only when zoomed in (less clutter).
-    if (c.cis.length && (!list.length || z >= LABEL_ZOOM)) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";
+    // Check-in count: zoom ≥ 16 only (below it the bar icon is just "lit", not a number).
+    if (c.cis.length && z >= LABEL_ZOOM) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";
     if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";
     h += "</div>";
-    return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : ""),
+    var quiet = !list.length && !c.rallies.length && !c.cis.length && z < LABEL_ZOOM;
+    return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : "") +
+        (quiet ? " cm-quiet" : "") + (!list.length && c.cis.length ? " cm-lit" : ""),
       iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -20] });
   }
   // Check-ins per bar id (from the poll), rally badges per bar id (js/rally.js).
@@ -688,20 +723,36 @@
   /* Bar name labels: zoom ≥ 16 only; a label that would cover a higher-priority label or another marker hides. */
   var labelTimer = 0;
   function labelsSoon() { clearTimeout(labelTimer); labelTimer = setTimeout(placeLabels, 60); }
+  // Design pass 2: one collision pass for every badge (🪖, 👑, 🏰, 🚪, crowd tag, queue) and, at zoom ≥ 16, the
+  // name labels. Highest-priority marker first; a badge or label that would touch a kept one, or another marker's
+  // icon / pill, is dropped. Icons and people pills themselves are never hidden.
+  var BADGES = ".cm-rally, .cm-b, .cm-ci, .bm-crowd, .bm-q";
+  function badgeRank(x) {
+    var c = x.classList;
+    return c.contains("cm-rally") ? 6 : c.contains("cm-king") ? 5 : c.contains("cm-ci") ? 4 : c.contains("cm-flag") ? 3 : c.contains("bm-crowd") ? 2 : 1;
+  }
   function placeLabels() {
     var on = map.getZoom() >= LABEL_ZOOM, cont = map.getContainer();
     cont.classList.toggle("cm-labels", on);
-    if (!on) return;
     var icons = Array.prototype.slice.call(cont.querySelectorAll(".leaflet-marker-icon"));
-    var obstacles = [], labels = [];
+    var obstacles = [], labels = [], badges = [];
     icons.forEach(function (ic) {
-      ic.querySelectorAll(".bar-ico, .pill, .rl-pin, .cm-rally").forEach(function (x) { obstacles.push({ ic: ic, r: x.getBoundingClientRect() }); });
+      var p = +(ic.getAttribute("data-prio") || 0);
+      ic.querySelectorAll(".bar-ico, .pill, .rl-pin").forEach(function (x) { obstacles.push({ ic: ic, r: x.getBoundingClientRect() }); });
+      ic.querySelectorAll(BADGES).forEach(function (x) { x.classList.remove("lbl-hide"); badges.push({ ic: ic, el: x, p: p * 10 + badgeRank(x) }); });
       var lb = ic.querySelector(".cm-lbl");
-      if (lb) { lb.classList.remove("lbl-hide"); labels.push({ ic: ic, el: lb, p: +(ic.getAttribute("data-prio") || 0) }); }
+      if (lb) { lb.classList.remove("lbl-hide"); if (on) labels.push({ ic: ic, el: lb, p: p }); }
     });
+    badges.sort(function (a, b) { return b.p - a.p; });
     labels.sort(function (a, b) { return b.p - a.p; });
     var kept = [], W = cont.clientWidth, H = cont.clientHeight, cr = cont.getBoundingClientRect();
     var hit = function (a, b) { return a.left < b.right + 2 && a.right > b.left - 2 && a.top < b.bottom + 1 && a.bottom > b.top - 1; };
+    badges.forEach(function (x) {
+      var r = x.el.getBoundingClientRect(); if (!r.width) return;
+      var bad = kept.some(function (k) { return hit(r, k); }) || obstacles.some(function (o) { return o.ic !== x.ic && hit(r, o.r); });
+      if (bad) x.el.classList.add("lbl-hide"); else kept.push(r);
+    });
+    if (!on) return;
     labels.forEach(function (x) {
       var r = x.el.getBoundingClientRect();
       if (r.right < cr.left || r.left > cr.left + W || r.bottom < cr.top || r.top > cr.top + H) return;   // off screen: keep, costs nothing
@@ -1223,22 +1274,43 @@
       try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
       if (!mine) n += oc;
     }
-    var st = $("my-streak");
-    if (n > 0) {
-      var l = U.level(n);
-      st.hidden = false;
-      st.className = "my-streak" + lvlClass(l);
-      var mlv = lvOf(n), mtag = mlv ? ' ' + mlv.emoji + ' <span class="ms-tag ms-lv" style="--lv:' + U.esc(mlv.color) + '">' + U.esc(lvName(mlv, "me")) + "</span>" : null;
-      st.innerHTML = '<span class="ms-k">' + U.esc(t("tonight")) + ':</span> <b>' + n + "</b>" +
-        (mtag || (l === 2 ? ' 🚁 <span class="ms-tag">' + U.esc(t("medevac")) + "</span>" : l === 1 ? ' 🔥 <span class="ms-tag">' + U.esc(t("hot")) + "</span>" : " 🍺")) +
-        (mine ? ' <span class="ms-skal">· ' + U.esc(t("skalN", skalCount(mine))) + "</span>" : "");
-    } else st.hidden = true;
-    // v9 HUD chips (title, ghost, taxi, come here). Built by the modules; clicks go to mods("hudClick").
+    // Design pass 2: ONE compact "Ikväll" pill ("🍺 6 Nu brinner byn ▾"). Tap = small panel with all HUD chips.
+    // Closed, only the most urgent chip (🚑 a friend at 10+, or 🚕 Taxi at 10+) shows next to the pill.
+    var st = $("my-streak"), head = "";
     var hx = $("hud-x"), chips = LIVE ? mods("hudChipsHTML", { mine: mine, n: n }) : "";
     var ci = LIVE ? myCheckin() : null;
-    if (ci) chips += '<button type="button" class="hx-chip hx-ci" data-hx="checkin" aria-label="' + U.esc(t("ciChip", ci.name)) + '">📍 ' + U.esc(ci.name) + "</button>";
-    if (hx.getAttribute("data-html") !== chips) { hx.innerHTML = chips; hx.setAttribute("data-html", chips); }
-    hx.hidden = !chips;
+    if (ci) chips += '<button type="button" class="hx-chip hx-ci" data-hx="checkin" aria-label="' + U.esc(t("ciChip", ci.name)) + '">🚪 ' + U.esc(ci.name) + "</button>";
+    if (n > 0) {
+      var l = U.level(n), mlv = lvOf(n);
+      var emo = mlv ? mlv.emoji : l === 2 ? "🚁" : l === 1 ? "🔥" : "🍺";
+      var tag = mlv ? lvName(mlv, "me") : l === 2 ? t("medevac") : l === 1 ? t("hot") : "";
+      st.className = "my-streak" + lvlClass(l);
+      st.innerHTML = '<span class="sr-only">' + U.esc(t("tonight")) + ": </span>" +
+        '<span class="ms-e" aria-hidden="true">' + U.esc(emo) + "</span><b>" + n + "</b>" +
+        (tag ? '<span class="ms-tag' + (mlv ? " ms-lv" : "") + '"' + (mlv ? ' style="--lv:' + U.esc(mlv.color) + '"' : "") + ">" + U.esc(tag) + "</span>" : "") +
+        '<span class="ms-chev" aria-hidden="true">▾</span>';
+      head = '<div class="hx-head">' + U.esc(t("tonight")) + ": <b>" + n + "</b>" + (tag ? " · " + U.esc(emo + " " + tag) : "") +
+        (mine ? " · " + U.esc(t("skalN", skalCount(mine))) : "") + "</div>";
+    } else if (chips) {
+      st.className = "my-streak";
+      st.innerHTML = '<span class="ms-e" aria-hidden="true">🍺</span><span class="ms-k">' + U.esc(t("tonight")) + '</span><span class="ms-chev" aria-hidden="true">▾</span>';
+    }
+    st.hidden = !(n > 0 || chips);
+    var html = chips ? head + chips : "";
+    if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
+    hx.hidden = !html;
+    // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
+    var urgent = hx.querySelector(".af-chip-med") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
+    hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
+    if (urgent) urgent.classList.add("hx-urgent");
+    if (st.hidden) hudPanel(false);
+  }
+  // The Ikväll panel (open/close). Closes on outside tap, Escape, map move, and after a chip action.
+  function hudPanel(open) {
+    var box = document.querySelector(".hud-left"), st = $("my-streak");
+    if (!box) return;
+    box.classList.toggle("open", !!open);
+    st.setAttribute("aria-expanded", String(!!open));
   }
   function applyStaticText() {
     $("beer-label").textContent = t("beer");
@@ -1567,6 +1639,16 @@
     if (!m || !m.lastTap) return 0;
     return Math.max(0, m.lastTap + U.COOLDOWN_MS - Date.now());
   }
+  // Ready again: the foam spills over the rim once (not on page load, not with reduced motion).
+  var cdWasOn = false;
+  function pintSpill(btnEl) {
+    var wrap = btnEl.parentNode;
+    if (window.FX && window.FX.reduced && window.FX.reduced()) return;
+    wrap.classList.remove("spill"); btnEl.classList.remove("ready-pop");
+    void wrap.offsetWidth;
+    wrap.classList.add("spill"); btnEl.classList.add("ready-pop");
+    setTimeout(function () { wrap.classList.remove("spill"); btnEl.classList.remove("ready-pop"); }, 1200);
+  }
   function tickCooldown() {
     var left = cooldownLeft(), btnEl = $("btn-beer"), ring = $("cd-ring");
     var on = left > 0;
@@ -1589,6 +1671,8 @@
       btnEl.setAttribute("aria-label", t("nextIn") + " " + U.mmss(left));
       // Server wait may be longer than the local fallback (old server): clamp the ring to 0..1.
       ring.style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, left / U.COOLDOWN_MS)));
+      // Design pass 2: the button fills like a pint (14 % → 92 %), foam head on top, bubbles in the beer.
+      btnEl.style.setProperty("--fill", (14 + 78 * (1 - Math.min(1, left / U.COOLDOWN_MS))).toFixed(1) + "%");
       if (!cdTimer) cdTimer = setInterval(tickCooldown, 1000);
     } else {
       if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
@@ -1597,7 +1681,10 @@
       $("beer-sub").textContent = t("beerSub");
       btnEl.removeAttribute("aria-label");
       ring.style.strokeDashoffset = String(RING_LEN);
+      if (cdWasOn) pintSpill(btnEl);
     }
+    cdWasOn = on;
+    btnEl.parentNode.classList.toggle("cd", on);
     fitBeerLabel();
   }
   $("cd-ring").style.strokeDasharray = String(RING_LEN);
@@ -2085,10 +2172,13 @@
       el("div", { class: "gname", text: g.name }),
       el("div", { class: "gsub", html: U.esc(t("code")) + " " + U.esc(g.code) + " · " + t("drinkingOf", g.active_count | 0, g.member_count | 0) })
     ]);
-    var wrap = el("div", {}, [el("div", { style: "display:flex;align-items:center;gap:10px" }, [
-      main,
-      btn(t("show"), "btn-small", function () { showCode(g, false); }),
-      btn(t("leave"), "btn-small btn-danger", function () {
+    // Design pass 2: the name gets the full row; "Visa kod" below it; "Lämna" is a quiet text button at the
+    // bottom of the card (after the module buttons), behind the same confirm. Never next to a common button.
+    var leave = el("button", { type: "button", class: "g-leave", text: t("leave") });
+    var wrap = el("div", {}, [main, el("div", { class: "g-acts" }, [
+      btn(t("show"), "btn-small", function () { showCode(g, false); })
+    ])]);
+    leave.addEventListener("click", function () {
         if (wrap.querySelector(".confirm")) return;
         var box = el("div", { class: "confirm" }, [
           el("p", { text: t("leaveQ", g.name) }),
@@ -2103,11 +2193,12 @@
           ])
         ]);
         wrap.appendChild(box);
-      })
-    ])]);
+        box.scrollIntoView({ block: "nearest" });
+    });
     li.appendChild(wrap);
     li.style.display = "block";
     mods("groupItem", g, wrap, main);   // chat button + tap for group status
+    wrap.appendChild(el("div", { class: "g-foot" }, [leave]));
     return li;
   }
   function showCreate() {
@@ -3101,9 +3192,30 @@
     mods("init", appApi());
     $("hud-x").addEventListener("click", function (e) {
       var b = e.target.closest("[data-hx]"); if (!b || b.disabled) return;
+      setTimeout(function () { hudPanel(false); }, 0);
       if (b.getAttribute("data-hx") === "checkin") { var ci = myCheckin(); if (ci) flyTo(ci.lat, ci.lng, 17, null); return; }
       mods("hudClick", b.getAttribute("data-hx"), b);
     });
+    // Design pass 2: the Ikväll pill opens the panel.
+    (function () {
+      var st = $("my-streak"), box = document.querySelector(".hud-left");
+      st.setAttribute("role", "button"); st.setAttribute("tabindex", "0");
+      st.setAttribute("aria-controls", "hud-x"); st.setAttribute("aria-expanded", "false");
+      function toggle() { hudPanel(!box.classList.contains("open")); }
+      st.addEventListener("click", toggle);
+      st.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      document.addEventListener("pointerdown", function (e) { if (box.classList.contains("open") && !box.contains(e.target)) hudPanel(false); }, true);
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && box.classList.contains("open")) { hudPanel(false); st.focus(); } });
+      map.on("movestart", function () { hudPanel(false); });
+    })();
+    // Right-edge map chips are icons only; the words stay for screen readers (social.js re-sets the ghost text).
+    iconChip($("btn-heat")); iconChip($("btn-ghostpins"));
+    // A splash on a chip inside the closed panel lands on the pill instead of the screen corner.
+    if (window.FX && window.FX.splash && !window.FX.splash.__d2) {
+      var sp = window.FX.splash;
+      window.FX.splash = function (a, k) { if (a && !a.getClientRects().length) a = $("my-streak"); return sp(a, k); };
+      window.FX.splash.__d2 = 1;
+    }
     applyStaticText();
     applyOnline();
     // Bars load after the first poll: then also re-check the busiest bar in the chaos banner (no toast).

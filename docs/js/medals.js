@@ -200,12 +200,65 @@
     return Object.keys(m || {}).map(function (id) { return { m: info(id), count: m[id].count, at: m[id].at }; })
       .sort(function (a, b) { return a.m.i - b.m.i; });
   }
-  function medalRowHTML(m, max) {
+  /* ---------- Ribbons (design pass 2): each medal is a striped service ribbon; colour = family, stripe pattern = medal ---------- */
+  var FAM = [
+    // [ids, edge, field, stripe]
+    [["m1", "m10", "m50", "m100", "m250", "m500", "m1000"], "#5a3608", "#f5a623", "#fffaf0"],                       // tjänst (beer count)
+    [["n5", "n25", "n100"], "#141d3d", "#34497f", "#c9d1e0"],                                                     // nights
+    [["b5", "b15", "b40", "krogrunda", "stammis", "kospanare", "erovrare", "tipsare", "runda"], "#2e381b", "#6f7d4f", "#ffc24d"], // bars
+    [["sg10", "sg100", "sr10", "sr100"], "#4d0a12", "#b3121b", "#ffe08a"],                                       // skål
+    [["inryckt", "alltid", "trumslag", "pluton", "kompani", "radio", "signal", "liga", "fortrupp"], "#0c3a22", "#1fa45c", "#ece6d6"], // group + call-outs
+    [["hemvarn", "komhem", "vatten"], "#0b2f55", "#4aa3ff", "#ffffff"],                                         // care
+    [["dagsljus", "uggla", "tisdag", "valborg", "midsommar", "lucia", "nyar", "faltresa"], "#003f73", "#1f6fb8", "#fecb00"], // days (Swedish blue/yellow)
+    [["kung"], "#3a1556", "#6b2d8f", "#ffe08a"],                                                                // royal
+    [["uppdrag", "uppdrag3", "detektiv", "spion", "orakel", "bingo", "sommelier"], "#1b1208", "#ff7a1a", "#1b1208"], // games
+    [["sidospar", "spoke"], "#3b2a52", "#8a6bb3", "#d9b8ff"],                                                     // other + ghost
+    [["het", "medevac"], "#5c0a0a", "#ff3b3b", "#ffffff"]                                                       // "varit med om"
+  ];
+  var FALLBACK = [["#2b2b2b", "#9aa3a0", "#ffc24d"], ["#3d1f00", "#c77a0e", "#ece6d6"], ["#10303a", "#2f8a9e", "#ffe08a"]];
+  var famOf = {};
+  FAM.forEach(function (f) { f[0].forEach(function (id, i) { famOf[id] = { c: [f[1], f[2], f[3]], v: i }; }); });
+  function hashId(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+  // Stripe patterns (left half, mirrored): [from %, to %, colour index 0 edge / 1 field / 2 stripe].
+  var PAT = [
+    [[0, 9, 0], [44, 50, 2]],
+    [[0, 9, 0], [33, 39, 2]],
+    [[0, 6, 0], [6, 10, 2], [40, 50, 2]],
+    [[0, 9, 0], [26, 31, 2], [42, 50, 0]],
+    [[0, 12, 2], [12, 17, 0], [45, 50, 2]],
+    [[0, 9, 0], [20, 25, 2], [30, 35, 0], [45, 50, 2]],
+    [[0, 9, 0], [36, 50, 2], [42, 50, 0]],
+    [[0, 4, 2], [4, 12, 0], [30, 36, 2], [46, 50, 0]],
+    [[0, 9, 0], [16, 22, 2], [38, 50, 0], [44, 50, 2]]
+  ];
+  function ribbonBg(id) {
+    var f = famOf[id] || { c: FALLBACK[hashId(id) % FALLBACK.length], v: hashId(id) };
+    var pat = PAT[f.v % PAT.length], c = f.c, stops = [];
+    function add(a, b, col) { stops.push(col + " " + a + "% " + b + "%"); }
+    var edge = pat.slice().sort(function (a, b) { return a[0] - b[0]; }), at = 0;
+    // left half
+    edge.forEach(function (p) { if (p[0] > at) add(at, p[0], c[1]); add(p[0], p[1], c[p[2]]); at = Math.max(at, p[1]); });
+    if (at < 50) add(at, 50, c[1]);
+    // mirrored right half
+    var right = [];
+    edge.forEach(function (p) { right.push([100 - p[1], 100 - p[0], p[2]]); });
+    right.sort(function (a, b) { return a[0] - b[0]; });
+    at = 50;
+    right.forEach(function (p) { var a = Math.max(p[0], 50); if (a > at) add(at, a, c[1]); if (p[1] > a) add(a, p[1], c[p[2]]); at = Math.max(at, p[1]); });
+    if (at < 100) add(at, 100, c[1]);
+    return "linear-gradient(90deg," + stops.join(",") + ")";
+  }
+  function ribbonHTML(x, tap) {
+    var n = x.count | 0, mark = n > 4 ? "<b>×" + n + "</b>" : n > 1 ? "<i>" + new Array(n).join("★") + "</i>" : "";
+    var tag = tap ? "button" : "span";
+    return "<" + tag + (tap ? ' type="button" data-md="' + esc(x.m.id) + '"' : "") + ' class="rb" title="' + esc(x.m.name + (n > 1 ? " ×" + n : "")) +
+      '" aria-label="' + esc(x.m.name + (n > 1 ? " ×" + n : "")) + '" style="background:' + ribbonBg(x.m.id) + '">' + mark + "</" + tag + ">";
+  }
+  // Group rows: a one-row rack (max 8). Uniform: the full rack, ribbons are buttons that jump to the medal card.
+  function medalRowHTML(m, max, tap) {
     var list = sortedEarned(m), shown = list.slice(0, max || 8), more = list.length - shown.length;
     if (!list.length) return "";
-    return shown.map(function (x) {
-      return '<span class="md-pip" title="' + esc(x.m.name) + '">' + x.m.e + (x.count > 1 ? "<sub>" + x.count + "</sub>" : "") + "</span>";
-    }).join("") + (more > 0 ? '<span class="md-more">+' + more + "</span>" : "");
+    return shown.map(function (x) { return ribbonHTML(x, tap); }).join("") + (more > 0 ? '<span class="md-more">+' + more + "</span>" : "");
   }
   // o: {name, isMe, total (lifetime beers or null), medals {id:{count,at}}, back: fn|null}
   function showUniform(o) {
@@ -227,15 +280,23 @@
           '<div class="uni-next">' + esc(r.next && r.nextAt ? L(Math.max(0, r.nextAt - total) + " öl kvar till " + r.next, Math.max(0, r.nextAt - total) + " beers left to " + r.next) : L("Högsta grad. Ölguden själv.", "Highest rank.")) + "</div>";
       }
       var m = o.medals || {}, earned = sortedEarned(m);
-      h += '<div class="uni-ribbon" aria-label="' + esc(L("Medaljer", "Medals")) + '">' + (earned.length ? medalRowHTML(m, 99) : '<span class="muted">' + esc(L("Inga medaljer än. Uniformen är ren och fin.", "No medals yet.")) + "</span>") + "</div>";
+      h += '<div class="uni-ribbon" role="group" aria-label="' + esc(L("Medaljer", "Medals")) + '">' + (earned.length ? medalRowHTML(m, 99, true) : '<span class="muted">' + esc(L("Inga medaljer än. Uniformen är ren och fin.", "No medals yet.")) + "</span>") + "</div>";
       box.innerHTML = h;
+      // Tap a ribbon → its medal card (with the emoji and the story) below.
+      box.addEventListener("click", function (e) {
+        var b = e.target.closest && e.target.closest("[data-md]"); if (!b) return;
+        var card = body.querySelector('.medal[data-md="' + b.getAttribute("data-md").replace(/["\\]/g, "") + '"]'); if (!card) return;
+        card.scrollIntoView({ block: "center", behavior: window.FX && window.FX.reduced && window.FX.reduced() ? "auto" : "smooth" });
+        card.classList.remove("md-hl"); void card.offsetWidth; card.classList.add("md-hl");
+      });
 
       var visible = CAT.filter(function (c) { return !c[6] || m[c[0]]; });
       body.appendChild(el("h3", { text: L(earned.length + " av " + visible.length + " medaljer", earned.length + " of " + visible.length + " medals") }));
       var grid = el("ul", { class: "medal-grid" });
       earned.forEach(function (x) {
-        grid.appendChild(el("li", { class: "medal on" + (x.m.secret ? " soft" : "") }, [
-          el("span", { class: "md-e", "aria-hidden": "true", text: x.m.e }),
+        var me = el("span", { class: "md-e", "aria-hidden": "true" }, [el("span", { class: "rb rb-hang", style: "background:" + ribbonBg(x.m.id) }), el("span", { class: "md-em", text: x.m.e })]);
+        grid.appendChild(el("li", { class: "medal on" + (x.m.secret ? " soft" : ""), "data-md": x.m.id }, [
+          me,
           el("span", { class: "md-n", text: x.m.name + (x.count > 1 ? " ×" + x.count : "") }),
           el("span", { class: "md-d", text: x.m.line })
         ]));
@@ -482,7 +543,7 @@
   /* ---------- Public ---------- */
   window.MEDALS = {
     CAT: CAT, info: info, on: on, award: award, claim: claim, showMine: showMine, showUniform: showUniform,
-    memberMedals: memberMedals, openMember: openMember, medalRowHTML: medalRowHTML,
+    memberMedals: memberMedals, openMember: openMember, medalRowHTML: medalRowHTML, ribbonBg: ribbonBg,
     levelUp: levelUp, calmDown: calmDown, waterTaken: waterTaken, noteBeer: noteBeer,
     LEVEL_LINES: LEVEL_LINES, CALM_LINES: CALM_LINES,
     mine: function () { return mine; },
