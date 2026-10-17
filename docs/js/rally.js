@@ -7,7 +7,7 @@
   var A = null;
   var state = "unknown";          // "unknown" | "on" | "off"
   var rallies = [];               // newest first (my_rallies)
-  var HIDE_KEY = "olnu.rallyHidden";
+  var HIDE_KEY = "olnu.rallyHidden", ANS_KEY = "olnu.rallyAnsweredAt", FLAG_MS = 60 * 60 * 1000;
   var loading = false;
   function $(id) { return document.getElementById(id); }
 
@@ -97,7 +97,17 @@
         window.FX.vibrate(ans === "yes" ? [30, 40, 30] : 20);
       }
       renderBanner(); refreshOpenSheet();
-      if (!quiet && ans === "yes" && r && openId == null && isFinite(r.lat) && r.lat != null) openRally(r);
+      // After an answer the banner goes away. The flag stays on the map (1 h after the answer).
+      if (!quiet && r) {
+        hide(id); renderBanner();
+        var marks = U.ls.getJSON(ANS_KEY, {}) || {}; marks[String(id)] = Date.now(); U.ls.setJSON(ANS_KEY, marks);
+        drawFlags();
+        var w = whereOf(r);
+        if (w && ans !== "no") {
+          if (openId == null) { A.closeSheet(); A.map.flyTo([w.lat, w.lng], 16, { duration: 1 }); }
+          A.toast(t("rallyFlagHint"), { ms: 6000 });
+        }
+      }
       setTimeout(load, 800);   // fresh yes_names
       return true;
     });
@@ -132,17 +142,18 @@
       });
       body.appendChild(row);
     }
-    if (isFinite(r.lat) && isFinite(r.lng) && r.lat != null && r.lng != null) {
+    var wh = whereOf(r);
+    if (wh) {
       // Walking directions in the phone's own map app (Apple Maps on iPhone, Google Maps elsewhere).
       if (!r.is_mine) {
-        var go = el("a", { class: "btn btn-block rl-route" + (r.my_answer === "yes" ? " btn-green" : ""), href: dirUrl(r),
+        var go = el("a", { class: "btn btn-block rl-route" + (r.my_answer === "yes" ? " btn-green" : ""), href: dirUrl(wh),
           target: "_blank", rel: "noopener noreferrer", text: t("rallyRoute") });
         body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [go]));
         var dist = el("p", { class: "muted rl-dist", text: "" });
         body.appendChild(dist);
-        distTo(r, function (txt) { dist.textContent = txt; });
+        distTo(wh, function (txt) { dist.textContent = txt; });
       }
-      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyShowMap"), "btn-block", function () { showFlag(r); })]));
+      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyShowMap"), "btn-block", function () { showFlag(r, wh); })]));
     }
     if (r.is_mine) {
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyClose"), "btn-danger btn-block", function () {
@@ -169,17 +180,42 @@
       }, function () {}, { maximumAge: 300000, timeout: 8000, enableHighAccuracy: false });
     } catch (e) {}
   }
+  // Where is the call-out? Its own coords, else a known bar/place whose name matches the place text
+  // (nearest one to the map centre, within 60 km). Returns {lat, lng} or null.
+  var placeCache = {};
+  function whereOf(r) {
+    if (r.lat != null && r.lng != null && isFinite(r.lat) && isFinite(r.lng)) return { lat: +r.lat, lng: +r.lng };
+    var name = String(r.place || "").trim().toLowerCase();
+    if (name.length < 3 || !window.BARS || !window.BARS.inBounds || !window.L) return null;
+    if (placeCache[name] !== undefined) return placeCache[name];
+    var c = A.map.getCenter(), best = null, bestD = 60000;
+    var all = window.BARS.inBounds(L.latLngBounds([[c.lat - 0.6, c.lng - 1.2], [c.lat + 0.6, c.lng + 1.2]]), 5000);
+    all.forEach(function (b) {
+      var n = String(b.name || "").toLowerCase(); if (!n) return;
+      if (n === name || n.indexOf(name) === 0 || name.indexOf(n) === 0 || n.indexOf(" " + name) >= 0) {
+        var d = U.haversine(c.lat, c.lng, b.lat, b.lng);
+        if (d < bestD) { bestD = d; best = { lat: b.lat, lng: b.lng }; }
+      }
+    });
+    placeCache[name] = best;
+    return best;
+  }
   // Every active call-out with a place stays on the map as a flag: "🪖 Ström · 3 på väg" (+ ✅ if I come).
   var flagsLayer = null;
   function drawFlags() {
     if (!A || !A.map || !window.L) return;
     if (!flagsLayer) flagsLayer = L.layerGroup().addTo(A.map);
     flagsLayer.clearLayers();
+    var marks = U.ls.getJSON(ANS_KEY, {}) || {}, nowMs = Date.now();
     rallies.forEach(function (r) {
-      if (r.lat == null || r.lng == null || !isFinite(r.lat) || !isFinite(r.lng)) return;
+      var w = whereOf(r); if (!w) return;
+      // Answered "no": no flag. Answered yes/maybe: flag for 1 h after the answer. Not answered: while active.
+      if (r.my_answer === "no") return;
+      var at = marks[String(r.id)];
+      if (at && nowMs - at > FLAG_MS && !r.is_mine) return;
       var who = r.is_mine ? t("you") : (r.name || t("someone"));
       var me = r.my_answer === "yes" ? " ✅" : r.my_answer === "maybe" ? " 🤔" : "";
-      var m = L.marker([+r.lat, +r.lng], { keyboard: false, zIndexOffset: 3500,
+      var m = L.marker([w.lat, w.lng], { keyboard: false, zIndexOffset: 3500,
         icon: L.divIcon({ className: "", iconSize: [0, 0], iconAnchor: [0, 0],
           html: '<div class="rl-flag rl-flag-live' + (r.my_answer === "yes" ? " me" : "") + '"><span>🪖</span><b>' +
             esc(who + (r.place ? " · " + r.place : "")) + "</b><i>" + esc(t("rallyOnWay", r.yes | 0)) + me + "</i></div>" }) });
@@ -190,14 +226,15 @@
   function openRally(r) {
     A.openSheet(t("rallyTitle"), function (body) { openId = r.id; openBody = body; fillDetail(body, r); });
   }
-  function showFlag(r) {
+  function showFlag(r, w) {
+    w = w || whereOf(r); if (!w) return;
     A.closeSheet();
     if (flagLayer) A.map.removeLayer(flagLayer);
-    flagLayer = L.marker([+r.lat, +r.lng], { keyboard: false, zIndexOffset: 4000,
+    flagLayer = L.marker([w.lat, w.lng], { keyboard: false, zIndexOffset: 4000,
       icon: L.divIcon({ className: "", iconSize: [0, 0], iconAnchor: [0, 0],
         html: '<div class="rl-flag"><span>🪖</span><b>' + esc(r.place || r.body || t("rallyTitle")) + "</b></div>" }) }).addTo(A.map);
     flagLayer.on("click", function () { if (flagLayer) { A.map.removeLayer(flagLayer); flagLayer = null; } });
-    A.map.flyTo([+r.lat, +r.lng], 16, { duration: 1 });
+    A.map.flyTo([w.lat, w.lng], 16, { duration: 1 });
   }
 
   /* ---------- Create form ---------- */
@@ -234,8 +271,12 @@
       var pr = el("div", { class: "chips" });
       var other = el("input", { class: "inp rl-inp", maxlength: "60", autocomplete: "off", placeholder: t("rallyPlacePh"), "aria-label": t("rallyPlace") });
       other.hidden = true;
-      var opts = [];
+      var loc = el("input", { type: "checkbox", id: "rally-loc" });
+      var opts = [], spot = null, cen = A.lastLoc && A.lastLoc() || A.map.getCenter();
       if (bar) opts.push(["bar", t("rallyBarX", bar), bar]);
+      // Bars near me (or the map centre): picking one sends its exact spot, so everyone gets the route.
+      var near = window.BARS && window.BARS.nearby ? window.BARS.nearby(cen.lat, cen.lng, 3000, 6) : [];
+      near.forEach(function (x) { if (x.bar.name !== bar) opts.push(["spot", "🍺 " + x.bar.name, x.bar.name, x.bar]); });
       opts.push(["home", t("rallyHome"), t("rallyHomeVal")]);
       opts.push(["other", t("rallyOther"), null]);
       opts.forEach(function (o, i) {
@@ -246,13 +287,16 @@
           c.setAttribute("aria-pressed", String(on));
           other.hidden = !(on && o[0] === "other");
           place = on ? o[2] : null;
+          spot = on && o[3] ? o[3] : null;
+          if (o[0] === "bar" && on && mine) spot = { lat: mine.lat, lng: mine.lng };
+          // "Hemma hos mig" needs my position, else nobody can find the way.
+          if (o[0] === "home") { loc.checked = on; useLoc = on; }
           if (!other.hidden) setTimeout(function () { other.focus(); }, 30);
         });
         pr.appendChild(c);
       });
       body.appendChild(pr);
       body.appendChild(other);
-      var loc = el("input", { type: "checkbox", id: "rally-loc" });
       loc.addEventListener("change", function () { useLoc = loc.checked; });
       body.appendChild(el("label", { class: "age-row rl-loc", for: "rally-loc" }, [loc, el("span", { text: t("rallyUseLoc") })]));
       var go = A.btn(t("rallySend"), "btn-amber btn-block", function () {
@@ -266,6 +310,7 @@
         posP.then(function (pos) {
           var params = { p_group_id: gid, p_body: text || t("rallyDefault"), p_place: pl || null };
           if (pos) { params.p_lat = pos.lat; params.p_lng = pos.lng; }
+          else if (spot && isFinite(spot.lat)) { params.p_lat = +(+spot.lat).toFixed(5); params.p_lng = +(+spot.lng).toFixed(5); }
           return call("create_rally", params).then(function (res) {
             sending = false; go.disabled = false;
             if (res.error) {
