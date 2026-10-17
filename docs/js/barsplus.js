@@ -387,6 +387,7 @@
             (same ? '<span class="bp-same">' + esc(t("bpSame")) + "</span>" : "") + (emo[k] || "🍺") + " " + esc(names[k] || k) + "</button>";
         }).join("") + '</div><div class="bp-st-bar"><span></span></div>';
       strip.hidden = false;
+      try { document.documentElement.style.setProperty("--bp-strip-h", (strip.offsetHeight + 18) + "px"); } catch (e) {}
       stripLeft = 12000; stripLast = Date.now();
       var bar = strip.querySelector(".bp-st-bar span");
       if (stripTimer) clearInterval(stripTimer);

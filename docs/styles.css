@@ -914,3 +914,14 @@ body:has(#sheet:not([hidden])) .tk-track,body:has(#sheet:not([hidden])) .chaos{a
 .cm.cm-quiet .bar-ico svg{width:9px;height:9px}
 .cm.cm-lit .bar-ico{border-color:var(--green);box-shadow:0 0 6px rgba(61,220,132,.55)}
 .leaflet-heatmap-layer{opacity:1}
+
+/* Small ÅNGRA button: a round ↩️ just left of the ÖL! button, 10 s after a beer. */
+.undo-fab{position:fixed;z-index:1460;left:calc(50% - 84px);bottom:calc(var(--dock-h,212px) - 60px);width:48px;height:48px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;color:#fff;
+  background:rgba(10,15,28,.92);border:2px solid var(--amber);box-shadow:0 0 12px rgba(245,166,35,.5);animation:undoPop .2s ease-out}
+.undo-fab:active{transform:scale(.92)}
+.undo-fab:disabled{opacity:.6}
+@keyframes undoPop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+
+/* toasts-over-strip: while the beer-type strip is open, toasts sit above it so the chips stay tappable. */
+body:has(.bp-strip:not([hidden])) .toasts{bottom:calc(var(--dock-h,212px) + var(--bp-strip-h,190px)) !important}

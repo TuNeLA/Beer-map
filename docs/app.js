@@ -1907,8 +1907,12 @@
     clearUndo();
     var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
-    undoEl = toast(text, { id: "undo", ms: 0, keep: true, cls: "undo" + (cls ? " " + cls : ""),
-      action: { label: "↩️ " + t("undoBtn"), stay: true, fn: function (b) { doUndo(b); } } });
+    // The level message is a normal short toast; ÅNGRA is a small ↩️ button next to ÖL! (owner: the big
+    // red toast covered the beer-type strip).
+    toast(text, { cls: cls || "", ms: 5000 });
+    undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), text: "↩️",
+      onclick: function () { doUndo(undoEl); } });
+    document.body.appendChild(undoEl);
     // The ÅNGRA toast stays 10 s only (owner: it was in the way). The group push still waits for the full window.
     undoMiniTimer = setTimeout(function () { if (undoEl) { undoEl.remove(); undoEl = null; } }, UNDO_SHOW_MS);
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
@@ -1917,11 +1921,11 @@
   function doUndo(button) {
     if (undoing) return;
     undoing = true;
-    if (button) { button.disabled = true; button.textContent = t("undoBusy"); }
+    if (button) { button.disabled = true; button.textContent = button.classList.contains("undo-fab") ? "⏳" : t("undoBusy"); }
     rpc("undo_beer").then(function (r) {
       undoing = false;
       if (r.error) {
-        if (button) { button.disabled = false; button.textContent = "↩️ " + t("undoBtn"); }
+        if (button) { button.disabled = false; button.textContent = button.classList.contains("undo-fab") ? "↩️" : "↩️ " + t("undoBtn"); }
         toast(t("undoFail"), { err: true });
         return;
       }
