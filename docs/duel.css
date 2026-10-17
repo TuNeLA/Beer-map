@@ -1,0 +1,125 @@
+/* Öl Nu v23: ⚔️ Gruppduellen (js/duel.js) + 💡 Önska en feature (js/wish.js).
+   Theme variables from styles.css only. Tuned for a 360 px phone. */
+
+/* ---------- HUD chips ---------- */
+.hx-chip.du-chip{color:var(--gold)}
+.hx-chip.du-chip.du-c-in,.hx-chip.du-chip.du-c-pick{color:var(--on-amber);background:var(--amber);border-color:var(--amber);font-weight:700}
+.hx-chip.du-chip.du-c-win{color:var(--gold);border-color:var(--gold)}
+.hx-chip.ws-hchip{color:var(--muted);font-size:12px}
+
+/* ---------- Group list button ---------- */
+.du-gi{margin-top:6px}
+.du-gbtn{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}
+.du-gl{font-weight:700;white-space:nowrap}
+.du-gs{font-family:var(--hud);font-size:12px;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+/* ---------- Duel sheet ---------- */
+.du{font-size:14px;min-width:0}
+.du-intro{font-size:13px;color:var(--muted);line-height:1.4;margin:0 0 10px}
+.du-none{font-size:15px;color:var(--text);padding:10px 2px;margin:0 0 6px}
+.du-h{margin:16px 0 6px;font-family:var(--display);font-weight:400;letter-spacing:.02em;color:var(--amber-2);font-size:18px;line-height:1.2}
+.du-note{font-size:12.5px;color:var(--muted);line-height:1.4;margin:6px 0}
+.du-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.du-row>.btn{flex:1 1 auto;min-width:0}
+.du-card{border:1px solid var(--line);background:linear-gradient(180deg,var(--night-2),rgba(16,24,38,.9));padding:11px 12px;margin:0 0 12px;position:relative}
+.du-card.du-pending{border-style:dashed}
+.du-card.du-pick{border-color:var(--amber);background:rgba(245,166,35,.08)}
+.du-card.du-done.du-w-us{border-color:var(--gold);box-shadow:0 0 0 1px rgba(255,224,138,.25) inset}
+.du-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;font-weight:700}
+.du-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.du-name.us{color:var(--green)}
+.du-name.them{color:var(--fire);text-align:right}
+.du-x{font-size:18px}
+.du-call{font-weight:700;color:var(--gold);margin:8px 0 2px;line-height:1.35}
+.du-score{display:flex;justify-content:center;align-items:baseline;gap:12px;margin:8px 0 4px;font-family:var(--display);font-variant-numeric:tabular-nums}
+.du-big{font-size:44px;line-height:1}
+.du-big.us{color:var(--green)}
+.du-big.them{color:var(--fire)}
+.du-dash{font-size:28px;color:var(--muted)}
+.du-tug{position:relative;height:14px;margin:6px 4px 10px;background:linear-gradient(90deg,rgba(255,122,26,.35),rgba(255,122,26,.6));border:1px solid var(--line-soft);overflow:visible}
+.du-tug-us{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width .8s ease}
+.du-tug-mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--foam);opacity:.7}
+.du-tug-knot{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:18px;line-height:1;transition:left .8s ease;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.du-line{font-size:13.5px;color:var(--gold);line-height:1.4;margin:6px 0 8px;font-style:italic}
+.du-stat{display:grid;grid-template-columns:3.2em 1fr 3.2em;align-items:center;gap:6px;padding:5px 0;border-top:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+.du-stat .du-k{text-align:center;color:var(--muted);font-size:12.5px}
+.du-n{font-family:var(--hud);font-weight:400;font-size:17px}
+.du-n.us{color:var(--green)}
+.du-n.them{color:var(--fire);text-align:right}
+.du-stat.du-spirit .du-n{font-size:15px;opacity:.9}
+.du-foot{font-family:var(--hud);font-size:12px;color:var(--amber-2);margin:8px 0 0;line-height:1.4}
+.du-pickinfo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:13px;color:var(--text)}
+.du-lock{font-family:var(--hud);font-size:12px;color:var(--muted)}
+.du-result{text-align:center;margin:8px 0}
+.du-medal{font-size:48px;line-height:1.1}
+.du-w-us .du-medal{animation:du-pop .7s ease-out}
+.du-rt{font-family:var(--display);font-size:20px;color:var(--gold);margin-top:4px;overflow-wrap:anywhere}
+.du-rs{font-family:var(--hud);font-size:14px;color:var(--text);margin-top:2px}
+@keyframes du-pop{0%{transform:scale(.3) rotate(-20deg);opacity:0}70%{transform:scale(1.15) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+
+/* League */
+.du-league{border:1px solid var(--line-soft);background:var(--night);padding:8px 10px;margin:0 0 12px}
+.du-league .du-h{margin-top:4px}
+.du-ltab{list-style:none;margin:0;padding:0}
+.du-lrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.du-ln{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.du-ls{font-family:var(--hud);font-variant-numeric:tabular-nums}
+.du-lst{font-size:12px;color:var(--muted);white-space:nowrap}
+.du-l-us .du-lst{color:var(--green)}
+.du-l-them .du-lst{color:var(--fire)}
+
+/* Challenge */
+.du-ch{margin-top:6px;padding-top:4px;border-top:1px solid var(--line-soft)}
+.du-ch>.btn-block{margin-top:10px}
+.du-qrwrap{text-align:center}
+.du-qr{display:inline-block;background:#fff;padding:10px;margin:6px auto}
+.du-qr img,.du-qr canvas{display:block;max-width:100%;height:auto}
+.du-qrnote{font-size:13.5px;color:var(--text);margin:6px 0}
+.du-tok{font-family:var(--hud);font-size:20px;letter-spacing:.12em;color:var(--amber-2);margin:6px 0}
+.du-typerow{flex-wrap:nowrap}
+.du-typerow .inp{flex:1 1 auto;min-width:0;font-family:var(--hud);letter-spacing:.1em;text-transform:uppercase}
+.du-typerow .btn{flex:0 0 auto}
+.du-near{margin:4px 0}
+.du-nrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+.du-nn{display:flex;flex-direction:column;min-width:0}
+.du-nn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.du-nn .du-note{margin:2px 0 0}
+.du-open{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13.5px;cursor:pointer}
+.du-open input,.ws-name input{width:20px;height:20px;accent-color:var(--amber);flex:0 0 auto}
+
+/* Deep link sheet */
+.du-link{text-align:center}
+.du-linkhero{font-size:56px;line-height:1.1;margin:4px 0}
+.du-link .du-go{margin-top:8px}
+.du-gst{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-soft);text-align:left}
+
+/* ---------- Önska en feature ---------- */
+.ws{font-size:14px;min-width:0}
+.ws-intro{font-size:13.5px;color:var(--muted);line-height:1.45;margin:0 0 8px}
+.ws-l{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+.ws-ta{width:100%;box-sizing:border-box;resize:vertical;min-height:78px;font-family:var(--body)}
+.ws-cnt{display:block;text-align:right;font-family:var(--hud);font-size:11px;color:var(--muted);margin:2px 0}
+.ws-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px}
+.ws-chip{min-height:38px;padding:0 11px;border:1px solid var(--line);background:var(--night-3);color:var(--text);font-family:var(--body);font-weight:600;font-size:13px;cursor:pointer}
+.ws-chip.on{background:var(--amber);border-color:var(--amber);color:var(--on-amber)}
+.ws-name{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13.5px;cursor:pointer;margin-bottom:4px}
+.ws-send{margin-top:6px}
+.ws-left{font-size:12px;color:var(--muted);margin:6px 0 0;min-height:1em}
+.ws-h{margin:16px 0 6px;font-family:var(--display);font-weight:400;color:var(--amber-2);font-size:18px}
+.ws-list{list-style:none;margin:0;padding:0}
+.ws-item{border-bottom:1px solid var(--line-soft);padding:9px 0}
+.ws-item.mine .ws-body{color:var(--gold)}
+.ws-body{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.ws-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.ws-meta{font-size:11.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-vote{flex:0 0 auto;min-height:36px;padding:0 10px;border:1px solid var(--line);background:transparent;color:var(--text);font-family:var(--body);font-weight:600;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.ws-vote.on{background:var(--green-d);border-color:var(--green);color:#fff}
+.ws-vote:disabled{opacity:.6}
+.ws-muted{color:var(--muted);font-size:13px;padding:6px 0}
+.ws-topfoot{margin-top:18px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.ws-entry-set{margin-top:4px}
+
+@media (prefers-reduced-motion: reduce){
+  .du-tug-us,.du-tug-knot{transition:none}
+  .du-w-us .du-medal{animation:none}
+}
