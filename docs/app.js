@@ -2243,6 +2243,8 @@
             if (r.error) { toast(errMsg(r.error), { err: true }); return; }
             var g = parseData(r.data);
             toast(t("joined", g.name || "")); refresh();
+            // In the browser: show how to put the app on the home screen first (the groups are there after).
+            if (!U.isStandalone()) { showInstallGuide(); return; }
             showGroups();
             notifPromptOnce();
           });
@@ -2478,7 +2480,7 @@
         if (LIVE && storedAuth() && !movedState) {
           // Step 1: put the account in the URL (iOS may keep it as the start URL) and on the clipboard
           // (the home-screen app asks for it). The move finishes when this page comes back (finishExport).
-          steps.setAttribute("start", "2"); steps.hidden = true;
+          steps.setAttribute("start", "2");   // the steps stay visible: a new friend must see them at once
           var box = el("div", { class: "flytt-step" });
           box.appendChild(el("p", { html: "1. " + t("flyttIos1") }));
           var prep = btn(t("flyttPrep"), "btn-amber btn-block", function () {
@@ -2643,13 +2645,13 @@
   /* ---------- Install hint ---------- */
   var deferredPrompt = null;
   function showInstallBanner(kind) {
-    if (U.isStandalone() || U.ls.get("olnu.installSeen", "") === "1") return;
+    if (U.isStandalone() || Date.now() - (+U.ls.get("olnu.installSeen", "0") || 0) < 864e5) return;
     var b = $("install-banner"), go = $("install-go");
     if (kind === "ios") { $("install-text").textContent = t("iosInstall"); go.hidden = true; }
     else { $("install-text").textContent = t("installAndroid"); go.textContent = t("install"); go.hidden = false; }
     b.hidden = false;
   }
-  function hideInstallBanner() { $("install-banner").hidden = true; U.ls.set("olnu.installSeen", "1"); }
+  function hideInstallBanner() { $("install-banner").hidden = true; U.ls.set("olnu.installSeen", String(Date.now())); }
   $("install-close").addEventListener("click", hideInstallBanner);
   $("install-go").addEventListener("click", function () {
     if (!deferredPrompt) { hideInstallBanner(); return; }
@@ -3261,8 +3263,8 @@
     // Ask for notifications at start (not during a join link). The phone's own question only
     // appears after a tap on "Ja", because browsers need a user gesture.
     if (!joinCode) Promise.all([ready, intro]).then(function () {
-      if (!U.isStandalone() && (invited || inAppBrowser() || U.ls.get("olnu.guideSeen", "") !== "1")) {
-        U.ls.set("olnu.guideSeen", "1");
+      if (!U.isStandalone() && (invited || inAppBrowser() || Date.now() - (+U.ls.get("olnu.guideSeen", "0") || 0) > 864e5)) {
+        U.ls.set("olnu.guideSeen", String(Date.now()));
         setTimeout(showInstallGuide, 900);
       } else setTimeout(function () {
         // v9: a deep-linked chat or last night's summary goes first; the notification question waits for next time.
