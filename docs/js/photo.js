@@ -80,8 +80,15 @@
         rq.onupgradeneeded = function () { try { rq.result.createObjectStore("p"); } catch (e) {} };
         rq.onsuccess = function () {
           db = rq.result;
-          // Old sessions: clear the store once per page load (photos end at 05:00 anyway).
-          try { db.transaction("p", "readwrite").objectStore("p").clear(); } catch (e) {}
+          // Photo bytes never change for an id: keep them across starts (saves egress), drop entries older than 7 days.
+          try {
+            var old = Date.now() - 7 * 86400e3, cur = db.transaction("p", "readwrite").objectStore("p").openCursor();
+            cur.onsuccess = function () {
+              var c = cur.result; if (!c) return;
+              var v = c.value; if (!v || typeof v.s !== "number" || v.s < old) c.delete();
+              c.continue();
+            };
+          } catch (e) {}
           res(db);
         };
         rq.onerror = function () { res(null); };
@@ -92,13 +99,13 @@
     return openDb().then(function (d) {
       if (!d) return null;
       return new Promise(function (res) {
-        try { var r = d.transaction("p").objectStore("p").get(String(id)); r.onsuccess = function () { res(r.result && r.result.s === SESSION ? r.result.b : null); }; r.onerror = function () { res(null); }; }
+        try { var r = d.transaction("p").objectStore("p").get(String(id)); r.onsuccess = function () { res(r.result && typeof r.result.s === "number" && r.result.b ? r.result.b : null); }; r.onerror = function () { res(null); }; }
         catch (e) { res(null); }
       });
     });
   }
   function dbPut(id, blob) {
-    openDb().then(function (d) { if (!d) return; try { d.transaction("p", "readwrite").objectStore("p").put({ s: SESSION, b: blob }, String(id)); } catch (e) {} });
+    openDb().then(function (d) { if (!d) return; try { d.transaction("p", "readwrite").objectStore("p").put({ s: Date.now(), b: blob }, String(id)); } catch (e) {} });
   }
   function remember(id, blob) {
     id = String(id);
@@ -165,6 +172,7 @@
         x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
         x.drawImage(src, 0, 0, w, h);
         return toBlob(c, q).then(function (b) {
+          c.width = c.height = 0;   // review: free this round's pixels now (up to 12 rounds)
           tries++;
           if (!b) throw new Error("encode");
           if (b.size <= TARGET || tries >= 12) {
@@ -177,7 +185,7 @@
           return round();
         });
       }
-      return round();
+      return round().catch(function (e) { try { if (src.close) src.close(); } catch (x) {} throw e; });
     });
   }
   function blobB64(blob) {

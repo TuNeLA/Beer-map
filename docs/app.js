@@ -137,10 +137,10 @@
   } else {
     var ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
     L.tileLayer(ESRI + "World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-      maxNativeZoom: 16, maxZoom: 19,
+      maxNativeZoom: 16, maxZoom: 19, keepBuffer: 1,
       attribution: 'Tiles &copy; <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
     }).addTo(map);
-    L.tileLayer(ESRI + "World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19, opacity: 0.85 }).addTo(map);
+    L.tileLayer(ESRI + "World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19, opacity: 0.85, keepBuffer: 1 }).addTo(map);
   }
   // Dock height as a CSS var, so the ⓘ map-sources button sits just above the dock (the Sluta dricka row comes and goes).
   (function () {
@@ -864,8 +864,11 @@
     redrawing = true;
     barLayer.clearLayers(); plainBarMarkers = {};
     redrawing = wasRedrawing;
+    plainBox = null;
     if (map.getZoom() < BAR_ZOOM) { labelsSoon(); return; }
-    var list = window.BARS.inBounds(map.getBounds().pad(0.15), MAX_PLAIN_BARS + 50);
+    var padded = map.getBounds().pad(0.15), list = window.BARS.inBounds(padded, MAX_PLAIN_BARS + 50);
+    // Review: remember what was drawn, so a small pan inside the padded box does not rebuild every marker.
+    if (list.length < MAX_PLAIN_BARS + 50) { plainBox = padded; plainKey = plainStateKey(); }
     var n = 0;
     for (var i = 0; i < list.length && n < MAX_PLAIN_BARS; i++) {
       var bar = list[i];
@@ -875,6 +878,12 @@
     }
     if (!wasRedrawing && keep && keep.charAt(0) === "p") reopenPopup(keep);
     labelsSoon();
+  }
+  // Plain bar icons depend on the zoom only through BAR_ZOOM and LABEL_ZOOM: same key + view inside the drawn box = no rebuild.
+  var plainBox = null, plainKey = "";
+  function plainStateKey() { var z = map.getZoom(); return (z >= BAR_ZOOM ? 1 : 0) + "|" + (z >= LABEL_ZOOM ? 1 : 0); }
+  function plainFresh() {
+    try { return !!plainBox && plainKey === plainStateKey() && plainBox.contains(map.getBounds()); } catch (e) { return false; }
   }
   /* Bar name labels: zoom ≥ 16 only; a label that would cover a higher-priority label or another marker hides. */
   var labelTimer = 0;
@@ -939,9 +948,9 @@
   map.on("zoomend", function () {
     // Band 2 (zoom 16+): bar badges get the small Lugnt/Livligt/Packat tag.
     var z = map.getZoom(), band = z >= 16 ? 2 : z >= HOT_ZOOM ? 1 : 0;
-    if (band !== lastZoomBand) { lastZoomBand = band; render(); } else renderPlainBars();
+    if (band !== lastZoomBand) { lastZoomBand = band; render(); } else if (!plainFresh()) renderPlainBars();
   });
-  map.on("moveend", U.debounce(renderPlainBars, 150));
+  map.on("moveend", U.debounce(function () { if (!plainFresh()) renderPlainBars(); }, 150));
   lastZoomBand = map.getZoom() >= 16 ? 2 : map.getZoom() >= HOT_ZOOM ? 1 : 0;
 
   /* ---------- Ticker + streak alerts ---------- */
@@ -1003,7 +1012,7 @@
   }
   /* Smooth news belt: one constant speed, never restarts. New headlines are queued and join at the
      end of the belt; items that have left on the left side are removed. */
-  var TICK_PX_S = 55, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false;
+  var TICK_PX_S = 55, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false, tickMeasureAt = 0;
   function tickPiece() {
     var track = $("ticker-track"), frag = document.createDocumentFragment();
     if (!tickKickDone) {
@@ -1028,11 +1037,15 @@
     var dt = tickLast ? Math.min(0.1, (ts - tickLast) / 1000) : 0;
     tickLast = ts;
     tickOff += TICK_PX_S * dt;
-    var first = track.firstChild, guard = 0;
-    while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
-      tickOff -= first.offsetWidth; track.removeChild(first); first = track.firstChild;
+    // Layout reads (offsetWidth / scrollWidth) only ~4 times a second, not every frame.
+    if (!tickMeasureAt || ts - tickMeasureAt >= 250 || ts < tickMeasureAt) {
+      tickMeasureAt = ts;
+      var first = track.firstChild, guard = 0;
+      while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
+        tickOff -= first.offsetWidth; track.removeChild(first); first = track.firstChild;
+      }
+      tickFill();
     }
-    tickFill();
     track.style.transform = "translate3d(" + (-tickOff).toFixed(2) + "px,0,0)";
     tickRaf = requestAnimationFrame(tickFrame);
   }
@@ -1703,11 +1716,31 @@
   }, 400));
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") {
+      memRestore();
       if (flyttOnVisible()) return;   // back from the new app: the account moved, do not poll with the old token
       lastTouch = Date.now(); startPoll(); refresh(); tickCooldown();
     }
-    else { flyttHiddenAt = Date.now(); stopPoll(); }
+    else { flyttHiddenAt = Date.now(); stopPoll(); memShed(); }
   });
+
+  // Review (memory): while the page is hidden (camera / gallery open, app switch) drop what is cheap to rebuild:
+  // the map tile images and the heat canvas. Android kills hidden tabs by their memory use.
+  var shedTiles = [], shedHeat = false;
+  function memShed() {
+    try {
+      if (shedTiles.length) return;
+      map.eachLayer(function (l) { if (l instanceof L.TileLayer) shedTiles.push(l); });
+      shedTiles.forEach(function (l) { map.removeLayer(l); });
+      if (heat && map.hasLayer(heat)) { map.removeLayer(heat); shedHeat = true; }
+    } catch (e) {}
+  }
+  function memRestore() {
+    try {
+      var list = shedTiles; shedTiles = [];
+      list.forEach(function (l) { if (!map.hasLayer(l)) l.addTo(map); });
+      if (shedHeat) { shedHeat = false; renderHeat(); }
+    } catch (e) {}
+  }
 
   /* ---------- Offline banner ---------- */
   function applyOnline() {

@@ -243,6 +243,7 @@
           ks.forEach(function (k) { localStorage.removeItem(k); });
         } catch (e) {}
         try { sessionStorage.clear(); } catch (e) {}
+        try { if (window.indexedDB) indexedDB.deleteDatabase("olnu-photos"); } catch (e) {}
         setTimeout(function () { location.replace(location.pathname); }, 1200);
       });
     });

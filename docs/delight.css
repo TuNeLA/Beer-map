@@ -2,6 +2,7 @@
 
 /* ---------- stage for map events (above the map, below the HUD) ---------- */
 .dl-stage{position:fixed;inset:0;z-index:980;pointer-events:none;overflow:hidden;contain:strict}
+.dl-stage:empty{display:none}   /* review: no full-screen layer (~10 MB on a 2.75x phone) between events */
 .dl-ev{position:absolute;left:0;top:0;pointer-events:none}
 .dl-ev.dl-full{inset:0}
 .dl-spr{display:inline-flex;align-items:flex-end;line-height:1;white-space:nowrap;filter:drop-shadow(0 4px 6px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none}

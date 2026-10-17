@@ -1,0 +1,349 @@
+/* ==========================================================================
+   Öl Nu: design pass 3 "premium HUD" (2026-10-18). Loaded LAST, so it wins on equal specificity.
+   Research: scratchpad/design-research.md. Rules:
+   - One primary action (ÖL!). Amber = action/you, green = live, red = alarm. Everything else is quiet glass.
+   - Stencil (Black Ops One) only for the brand, ÖL! and big numbers. Long text uses Chakra Petch.
+   - One radius scale, one spacing scale, one motion curve. No new flashing. Reduced motion = no decorative motion.
+   ========================================================================== */
+:root{
+  /* surfaces: base → raised → overlay (Apple "elevated" is lighter) */
+  --s0:#0a0f1c; --s1:#121a2a; --s2:#172134; --s3:#1f2a40;
+  --glass:rgba(14,20,33,.74); --glass-strong:rgba(14,20,33,.9);
+  --hair:rgba(255,255,255,.09); --hair-2:rgba(255,255,255,.14);
+  --text:#eef0ec; --text-2:#c4cbc8; --muted:#a3aca8;
+  /* radius + spacing */
+  --r-xs:8px; --r-s:10px; --r-m:14px; --r-l:20px; --r-pill:999px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+  /* type: 6 steps (body never below 13px) */
+  --fs-xs:12px; --fs-s:13px; --fs-m:16px; --fs-l:20px; --fs-xl:28px; --fs-hero:44px;
+  /* depth */
+  --sh-1:0 1px 2px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.3);
+  --sh-2:0 2px 6px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.45);
+  /* motion */
+  --ease:cubic-bezier(.2,.8,.2,1); --ease-spring:cubic-bezier(.34,1.4,.5,1);
+  --d-1:.12s; --d-2:.22s; --d-3:.36s;
+  --blur:saturate(150%) blur(14px);
+}
+
+/* ---------- HUD overlay: keep faint scanlines + vignette, drop the busy 64px grid ---------- */
+.hud-overlay{background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px),
+    radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.42) 100%)}
+.hud-overlay::after{opacity:.5}
+
+/* ---------- Glass chrome (shared look for everything that floats on the map) ---------- */
+.icon-btn,.locate-btn,.map-chip,.hx-chip,.hud-left .my-streak,.side-btn,.seg,.live-count,.ticker,.attrib-btn,.other-btn{
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+
+/* Top bar */
+.topbar{gap:var(--sp-2);padding-top:calc(var(--sat) + 8px)}
+.brand-name{font-size:26px;letter-spacing:.5px;text-shadow:0 0 14px rgba(245,166,35,.28)}
+.live-count{background:var(--glass);border:1px solid var(--hair);border-radius:var(--r-pill);padding:0 14px;height:40px;
+  display:flex;align-items:center;font-size:var(--fs-s);white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset;color:var(--text-2)}
+.live-count b{font-family:var(--body);font-weight:700;font-size:var(--fs-m);color:var(--amber-2);margin-right:2px;font-variant-numeric:tabular-nums}
+.icon-btn{width:44px;height:44px;border-radius:var(--r-m);clip-path:none;background:var(--glass);border:1px solid var(--hair);color:var(--text);
+  transition:transform var(--d-1) var(--ease),background var(--d-2)}
+.icon-btn:active{transform:scale(.92);background:var(--s3)}
+.icon-btn-small{border-radius:var(--r-s)}
+
+/* Ticker: readable sans, quieter frame, soft LIVE dot */
+.ticker{height:32px;border-radius:var(--r-s);background:var(--glass);border:1px solid var(--hair);overflow:hidden}
+.ticker.hud-panel::before,.ticker.hud-panel::after{display:none}
+.tk-live{font-family:var(--body);font-weight:700;font-size:var(--fs-xs);letter-spacing:.12em;background:rgba(179,18,27,.92);padding:0 10px}
+.tk-live::before{animation:livePulse 2s ease-in-out infinite}
+@keyframes livePulse{50%{opacity:.35}}
+.tk-track{font-family:var(--body);font-weight:600;font-size:var(--fs-s);letter-spacing:.01em}
+.tk-sep{color:rgba(255,255,255,.22)}
+
+/* Kaos / rally banners: one rounded card, no hard borders */
+.chaos,.rally{border-radius:var(--r-m);overflow:hidden;box-shadow:var(--sh-2)}
+.chaos-show{border-radius:0}
+.rally.hud-panel::before,.rally.hud-panel::after{display:none}
+.rally .rl-txt{line-height:1.3}
+
+/* HUD row: "Ikväll" pill + one urgent chip */
+.hud-left .my-streak{border-radius:var(--r-pill);background:var(--glass);border:1px solid var(--hair);padding:0 14px 0 12px;
+  transition:transform var(--d-1) var(--ease),border-color var(--d-2)}
+.hud-left .my-streak.hot{border-color:rgba(255,122,26,.55)}
+.my-streak b{font-family:var(--body);font-weight:700;font-variant-numeric:tabular-nums}
+.my-streak .ms-tag{text-decoration:none;color:var(--text)}
+.hx-chip{border-radius:var(--r-pill);clip-path:none;background:var(--glass);border:1px solid var(--hair);color:var(--text);padding:0 14px}
+.hx-chip.af-chip-med,.hx-chip.hx-urgent{border-color:rgba(255,59,59,.65);background:rgba(90,14,20,.78);color:#fff}
+.hx-taxi{color:var(--on-amber);background:var(--gold);border-color:var(--gold)}
+.hx-come{color:var(--on-green);background:var(--green);border-color:var(--green)}
+.hud-left.open .hud-x{border-radius:var(--r-l);background:rgba(18,26,42,.96);border:1px solid var(--hair-2);padding:var(--sp-3);gap:var(--sp-2);
+  box-shadow:var(--sh-2);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.hud-left.open .hx-chip{border-radius:var(--r-s);min-height:44px}
+
+/* Right edge map tools: quiet round glass; amber only when ON */
+#btn-heat,#btn-ghostpins,.map-chip{border-radius:var(--r-pill);clip-path:none;background:var(--glass);border:1px solid var(--hair);color:var(--text-2);box-shadow:var(--sh-1)}
+.map-chip[aria-pressed="true"]{background:linear-gradient(135deg,var(--amber-2),var(--fire));border-color:transparent;color:var(--on-amber);box-shadow:0 0 0 3px rgba(245,166,35,.22),var(--sh-1)}
+.locate-btn{border-radius:var(--r-pill);clip-path:none;background:var(--glass);border:1px solid var(--hair);box-shadow:var(--sh-1);
+  transition:transform var(--d-1) var(--ease)}
+.locate-btn:active{transform:scale(.92)}
+.attrib-btn{background:var(--glass);border:1px solid var(--hair);color:var(--text-2);opacity:.75}
+.attrib-pop{border-radius:var(--r-m)}
+
+/* ---------- Dock: ÖL! is the hero, the rest steps back ---------- */
+.dock{gap:var(--sp-1);padding-top:22px;background:linear-gradient(0deg,rgba(8,12,22,.97) 0%,rgba(8,12,22,.86) 58%,rgba(8,12,22,0) 100%)}
+.side-btn{min-height:56px;min-width:76px;border-radius:var(--r-m);background:var(--glass);border:1px solid var(--hair);gap:3px;
+  transition:transform var(--d-1) var(--ease),background var(--d-2)}
+.side-btn:active{transform:scale(.94);background:var(--s3)}
+.side-label{font-size:var(--fs-s);font-weight:600;color:var(--text)}
+.badge-green{border-radius:var(--r-pill);top:-7px;right:-7px;font-weight:700;box-shadow:0 0 0 2px var(--s0)}
+.beer-btn{border-width:3px;transition:transform var(--d-1) var(--ease),filter var(--d-2);
+  box-shadow:0 0 0 4px rgba(8,12,22,.92),0 0 0 5px rgba(255,194,77,.25),0 14px 36px rgba(245,166,35,.35),inset 0 -6px 0 rgba(0,0,0,.16),inset 0 2px 0 rgba(255,255,255,.35)}
+.beer-btn:active{transform:scale(.93)}
+.beer-sub{font-size:var(--fs-xs);font-weight:700;opacity:.8}
+.cd-track{stroke:rgba(245,166,35,.14);stroke-dasharray:none;stroke-width:3}
+/* ANNAT: a calm satellite button (still a 44+ target), not a second glowing hero */
+.other-btn{background:var(--glass-strong);border:1.5px solid rgba(217,184,255,.55);color:#efe4ff;
+  box-shadow:0 0 0 2px rgba(8,12,22,.9),var(--sh-1);transition:transform var(--d-1) var(--ease)}
+.other-btn .ol-t{font-weight:700;letter-spacing:.06em;font-size:10.5px}
+.ocd-track{stroke:rgba(217,184,255,.12)}
+/* Exakt / Område: one compact glass segmented control */
+.seg{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--glass);padding:3px;gap:2px}
+.seg button{min-height:44px;border-radius:var(--r-s);font-size:var(--fs-s);color:var(--muted);transition:background var(--d-2),color var(--d-2)}
+.seg button+button{border-top:0}
+.seg button[aria-checked="true"]{background:rgba(245,166,35,.16);color:var(--amber-2);box-shadow:inset 0 0 0 1px rgba(245,166,35,.55)}
+.prec-hint{font-size:var(--fs-xs);font-weight:500;color:var(--muted);opacity:.9}
+.dock-top .btn{border-radius:var(--r-pill)}
+
+/* ---------- Toasts: rounded glass, one at a time in focus ---------- */
+.toast{border-radius:var(--r-m);border-width:1px;border-left-width:1px;background:rgba(12,17,29,.94);font-size:15px;line-height:1.35;
+  padding:12px 14px;box-shadow:inset 3px 0 0 var(--amber),var(--sh-2);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  animation:toastIn var(--d-3) var(--ease-spring)}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
+.toast .btn{border-radius:var(--r-s);flex:0 0 auto}
+.toast.med{background:linear-gradient(135deg,#b3121b,#7d0c14);border-color:rgba(255,255,255,.5);box-shadow:0 0 0 1px rgba(255,59,59,.4),0 10px 30px rgba(179,18,27,.45)}
+.toast.med .btn,.toast.chaos-toast .btn{background:rgba(0,0,0,.28);border-color:rgba(255,255,255,.4);color:#fff}
+.toast.promo{box-shadow:inset 3px 0 0 var(--gold),0 0 0 1px rgba(255,224,138,.35),var(--sh-2)}
+.toast.hot{box-shadow:inset 3px 0 0 var(--fire),0 0 0 1px rgba(255,122,26,.35),var(--sh-2)}
+.toast.err{box-shadow:inset 3px 0 0 var(--red),var(--sh-2)}
+/* Two alarms at once: the older one shrinks to one quiet line behind the newest (iOS-style stack). */
+.toasts>.toast:not(:last-child){font-size:var(--fs-s);padding:8px 12px;opacity:.82;transform:scale(.95);margin-bottom:-6px;max-width:400px}
+.toasts>.toast:not(:last-child)>span{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+/* The "Dagens order" caption waits while a toast talks (fewer things at once). */
+body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
+.dl-cap{border-radius:var(--r-m);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.dl-cap-h{font-family:var(--body);font-weight:700;font-size:var(--fs-xs);letter-spacing:.1em}
+
+/* ---------- Map pins: one clean disc + count; clusters get a halo ---------- */
+.pill{font-family:var(--body);font-weight:700;font-variant-numeric:tabular-nums;height:24px;border-radius:12px;padding:0 8px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.45)}
+.pill .pn{font-size:var(--fs-s);font-weight:700}
+.pill.p-cl{min-width:30px;height:30px;border-radius:15px;font-size:var(--fs-s);
+  box-shadow:0 0 0 4px rgba(245,166,35,.16),0 0 0 1px rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.45)}
+.cm .bar-ico{box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.5)}
+.cm-in{transition:transform var(--d-2) var(--ease-spring)}
+.rl-pin{border-radius:var(--r-s)}
+.rl-flag{border-radius:var(--r-s)}
+
+/* ---------- Leaflet popups (bar card on the map) ---------- */
+.leaflet-popup-content-wrapper{border-radius:var(--r-l) !important;box-shadow:var(--sh-2) !important}
+
+/* ---------- Bottom sheet: one premium surface ---------- */
+.backdrop{background:rgba(2,4,10,.62);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fadeIn var(--d-2) var(--ease)}
+@keyframes fadeIn{from{opacity:0}}
+.sheet{background:var(--s1);background-image:none;border:0;border-top:1px solid var(--hair-2);border-radius:var(--r-l) var(--r-l) 0 0;
+  box-shadow:0 -12px 48px rgba(0,0,0,.6);animation:sheetIn var(--d-3) var(--ease)}
+@keyframes sheetIn{from{transform:translateY(40px);opacity:0}}
+.sheet::before,.sheet::after{display:none}
+.sheet-grip{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);margin:8px auto 4px}
+.sheet-head{border-bottom:1px solid var(--hair);padding:6px 0 12px;margin-bottom:var(--sp-3)}
+.sheet-head h2{font-family:var(--body);font-weight:700;font-size:var(--fs-l);line-height:1.2;letter-spacing:.06em;color:var(--amber-2)}
+.sheet-head .icon-btn{width:40px;height:40px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);border:0;color:var(--text-2);position:relative}
+.sheet-head .icon-btn::after{content:"";position:absolute;inset:-4px}
+.sheet-body{font-size:var(--fs-m);line-height:1.45}
+.sheet-body h3{font-size:var(--fs-xs);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+.sheet-body h3::before{content:"";display:inline-block;width:10px;height:2px;margin:0 8px 3px 0;background:var(--amber);vertical-align:middle}
+.sheet-body p{color:var(--text-2)}
+.muted{color:var(--muted)}
+
+/* Buttons: rounded, calm; filled colour only for the main action of a sheet */
+.btn{border-radius:var(--r-m);clip-path:none;background:var(--s3);border:1px solid var(--hair);color:var(--text);
+  transition:transform var(--d-1) var(--ease),background var(--d-2),box-shadow var(--d-2)}
+.btn:active{transform:scale(.97)}
+.btn-amber{background:linear-gradient(180deg,var(--amber-2),var(--amber));border-color:transparent;color:var(--on-amber);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(245,166,35,.22)}
+.btn-green{background:linear-gradient(180deg,#5be89a,var(--green));border-color:transparent;color:var(--on-green)}
+.btn-danger{background:transparent;border-color:rgba(255,59,59,.6);color:#ff8a80}
+.btn-ghost{background:var(--glass)}
+.btn-small{border-radius:var(--r-s)}
+.btn:disabled,.intro .btn-block:disabled{background:rgba(255,255,255,.05);border:1px solid var(--hair);color:var(--muted)}
+.inp,input.inp,textarea.inp{border-radius:var(--r-m) !important;background:var(--s0);border:1px solid var(--hair-2);color:var(--text);font-family:var(--body);font-size:var(--fs-m)}
+.inp:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.22)}
+.switch{border-radius:var(--r-pill);border:0;background:rgba(255,255,255,.14);transition:background var(--d-2)}
+.switch::after{border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4);transition:left var(--d-2) var(--ease-spring)}
+.switch[aria-checked="true"]{background:var(--green-d)}
+.tabs{border:0;border-radius:var(--r-m);background:rgba(255,255,255,.06);padding:3px;gap:2px;margin:4px 0 14px}
+.tabs button{border-radius:var(--r-s);min-height:40px;position:relative;color:var(--muted);transition:background var(--d-2),color var(--d-2)}
+.tabs button::after{content:"";position:absolute;inset:-2px 0}
+.tabs button+button{border-left:0}
+.tabs button[aria-selected="true"]{background:var(--s3);color:var(--amber-2);box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(245,166,35,.4)}
+.tabs.t4 button{font-size:var(--fs-xs)}
+
+/* ---------- 🏆 Topplista: a clean ranked list ---------- */
+.toplist{gap:0;background:var(--s2);border-radius:var(--r-m);overflow:hidden;border:1px solid var(--hair)}
+.toplist>li+li .top-row{border-top:1px solid var(--hair)}
+.top-row{background:transparent;border:0;border-left:0;border-radius:0;min-height:60px;padding:8px 14px;gap:12px;transition:background var(--d-2)}
+.top-row:active{background:var(--s3);transform:none}
+.top-rank{font-family:var(--body);font-weight:700;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);
+  background:rgba(255,255,255,.06);color:var(--muted);font-variant-numeric:tabular-nums}
+.toplist li:nth-child(1) .top-rank{background:linear-gradient(180deg,#ffe9a8,#e6b54a);color:#2b1d00}
+.toplist li:nth-child(2) .top-rank{background:linear-gradient(180deg,#e9edf2,#a9b2bd);color:#1a1f26}
+.toplist li:nth-child(3) .top-rank{background:linear-gradient(180deg,#f0b68a,#b8703f);color:#2a1406}
+.top-name{font-size:var(--fs-m);color:var(--text)}
+.top-row.friend .top-name{color:var(--green)}
+.top-row.mine .top-name{color:var(--amber-2)}
+.top-n{font-family:var(--body);font-weight:700;font-size:var(--fs-l);font-variant-numeric:tabular-nums;color:var(--amber-2)}
+
+/* ---------- Groups list ---------- */
+.glist{gap:var(--sp-2)}
+.gitem{background:var(--s2);border:1px solid var(--hair);border-left:1px solid var(--hair);border-radius:var(--r-m);padding:var(--sp-4)}
+.glist .gcard{padding:14px 16px;min-height:68px;transition:transform var(--d-1) var(--ease),background var(--d-2)}
+.glist .gcard:active{transform:scale(.985);filter:none;background:var(--s3)}
+.glist .gcard::before{content:"";flex:0 0 auto;width:40px;height:40px;border-radius:12px;
+  background:radial-gradient(circle at 35% 30%,rgba(255,194,77,.35),rgba(245,166,35,.08));box-shadow:inset 0 0 0 1px rgba(245,166,35,.35)}
+.glist .gcard:has(.gcard-live)::before{background:radial-gradient(circle at 35% 30%,rgba(61,220,132,.45),rgba(61,220,132,.08));box-shadow:inset 0 0 0 1px rgba(61,220,132,.5)}
+.gitem .gname{font-size:17px;font-weight:700;color:var(--text)}
+.gitem .gsub{font-weight:500;color:var(--muted);margin-top:2px}
+.gcard-live{color:var(--green)}
+.gcard-go{font-size:24px;color:rgba(255,255,255,.35)}
+.g-back{color:var(--amber-2);min-height:44px;padding:0 4px 8px;font-size:var(--fs-m)}
+.namebar strong{color:var(--text)}
+
+/* ---------- Group page: header + a 2-column grid of action tiles ---------- */
+.gitem:not(.gcard)>div{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);align-items:stretch}
+.gitem:not(.gcard)>div>*{min-width:0;margin:0 !important}
+.gitem:not(.gcard)>div>.gmain,.gitem:not(.gcard)>div>.chief-gi,.gitem:not(.gcard)>div>.g-foot,.gitem:not(.gcard)>div>.confirm,
+.gitem:not(.gcard)>div>:not(.row):not(.g-acts):not([class$="-gi"]){grid-column:1 / -1}
+.gitem:not(.gcard)>div>.gmain{padding:0 0 var(--sp-2)}
+.gitem:not(.gcard)>div>.gmain .gname{font-size:var(--fs-l)}
+.gitem:not(.gcard)>div>.row,.gitem:not(.gcard)>div>.g-acts,.gitem:not(.gcard)>div>[class$="-gi"]:not(.chief-gi){display:flex}
+.gitem:not(.gcard)>div>.row>.btn,.gitem:not(.gcard)>div>.g-acts>.btn,.gitem:not(.gcard)>div>[class$="-gi"]>.btn{
+  width:100%;min-height:56px;border-radius:var(--r-m);background:var(--s3);justify-content:flex-start;text-align:left;padding:0 14px;font-size:15px}
+/* the chat is the most used: full width, highlighted */
+.gitem:not(.gcard)>div>.g-acts+.row{grid-column:1 / -1}
+.gitem:not(.gcard)>div>.g-acts+.row>.btn{background:linear-gradient(180deg,rgba(245,166,35,.22),rgba(245,166,35,.12));border-color:rgba(245,166,35,.45);color:var(--amber-2);justify-content:center}
+.chief-gi{border:1px solid rgba(245,166,35,.3);border-left:1px solid rgba(245,166,35,.3);border-radius:var(--r-m);background:rgba(245,166,35,.06);padding:10px 12px}
+.chief-name{font-size:var(--fs-m)}
+.chief-hand,.chief-rq{border-radius:var(--r-s)}
+.g-foot{justify-content:center;margin-top:var(--sp-2) !important}
+.g-leave{color:#ff8a80;text-decoration:none;opacity:.85}
+.confirm{border-radius:var(--r-m)}
+
+/* ---------- Chat: bubbles, not boxes ---------- */
+.chat-list{background:transparent;border:0;padding:4px 0;gap:var(--sp-2)}
+.chat-msg{border:0;border-radius:18px 18px 18px 6px;background:var(--s3);padding:8px 12px 9px;max-width:82%}
+.chat-msg.me{border:0;border-radius:18px 18px 6px 18px;background:linear-gradient(180deg,rgba(245,166,35,.24),rgba(245,166,35,.16))}
+.cm-head{font-size:var(--fs-xs);gap:6px;margin-bottom:2px}
+.cm-name{text-decoration:none !important}
+.cm-time{font-family:var(--body);font-weight:500;color:var(--muted)}
+.cm-body{font-size:var(--fs-m);line-height:1.4;color:var(--text)}
+.cm-like,.cm-react{border-radius:var(--r-pill)}
+.cm-picker{border-radius:var(--r-pill);background:var(--s2);border:1px solid var(--hair-2)}
+.chat-input{align-items:center;gap:var(--sp-2);margin-top:var(--sp-3)}
+.chat-input .inp{border-radius:22px !important;min-height:44px;padding:0 16px}
+.chat-input .btn{border-radius:var(--r-pill);min-height:44px}
+.chat-input .btn:not(.btn-amber){width:44px;padding:0;display:grid;place-items:center}
+.chat-keep{border-radius:var(--r-m);border-color:var(--hair) !important;background:var(--s2)}
+
+/* ---------- Call-out stacks (v22, rally.js) ---------- */
+.rl-head{border-radius:var(--r-m);background:var(--s2);border:1px solid var(--hair);border-left:3px solid var(--green)}
+.rl-msg{border-radius:var(--r-s);border-left-width:3px;background:rgba(255,255,255,.05)}
+.rl-msg-x{border-radius:var(--r-s);min-height:44px;min-width:44px}
+.rl-group-item{border-radius:var(--r-m)}
+.rl-eta{border-radius:var(--r-s)}
+
+/* ---------- Gruppchef banner + report (chief.css) ---------- */
+.chief-banner{border-radius:var(--r-m);overflow:hidden;border:1px solid var(--hair-2);border-left:1px solid var(--hair-2);
+  background:rgba(18,26,42,.94);box-shadow:inset 3px 0 0 var(--amber),var(--sh-2);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.cb-cd{font-family:var(--body);font-weight:700}
+.cb-go{border-radius:0}
+.cr-head{border-radius:var(--r-m)}
+.cr-cell{border-radius:var(--r-m);background:var(--s2);border:1px solid var(--hair)}
+.cr-cap small,.cb-cd{font-variant-numeric:tabular-nums}
+
+/* ---------- Intro ---------- */
+.intro{background:rgba(2,4,10,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.intro-card{border-radius:24px;background:var(--s1);border:1px solid var(--hair-2);box-shadow:var(--sh-2);padding:20px;animation:sheetIn var(--d-3) var(--ease)}
+.intro-card.hud-panel::before,.intro-card.hud-panel::after{display:none}
+.intro-lang-b{border-radius:var(--r-s);border-color:var(--hair-2)}
+.intro-lang-b[aria-pressed="true"]{border-color:transparent}
+.intro-steps li{border-radius:var(--r-m);background:var(--s2);border:1px solid var(--hair);border-left:1px solid var(--hair)}
+.intro-tag{font-size:15px;color:var(--text-2)}
+.intro .btn-block:not(:disabled){background:linear-gradient(180deg,var(--amber-2),var(--amber));color:var(--on-amber);border-color:transparent}
+.intro-h{font-family:var(--body);font-weight:700;letter-spacing:.04em}
+.intro-priv{color:var(--muted)}
+
+/* ---------- Badges / medals cards (rounded to match) ---------- */
+.badge{border-radius:var(--r-m)}
+.info{border-radius:var(--r-m)}
+
+/* ---------- Focus: visible, same everywhere ---------- */
+:focus-visible{outline:2px solid var(--amber-2);outline-offset:2px}
+
+/* ---------- Reduced motion: no decorative motion, keep feedback ---------- */
+@media (prefers-reduced-motion: reduce){
+  .hud-overlay::after{animation:none;display:none}
+  .tk-live::before,.toast,.sheet,.backdrop,.intro-card,.hud-left.open .hud-x{animation:none !important}
+  .cm-in,.switch::after,.btn,.icon-btn,.side-btn,.beer-btn{transition:none}
+}
+
+/* ---------- Pass 3b: fixes after the first screenshots ---------- */
+/* level colour: a small dot, not a link-like underline */
+.ms-tag.ms-lv{box-shadow:none}
+.ms-tag.ms-lv::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lv,var(--amber));margin:0 6px 1px 0;vertical-align:middle}
+/* group page: no card-in-a-sheet; header, chat, code pill, then even tiles */
+.gitem:not(.gcard){background:transparent;border:0;padding:0}
+.gitem:not(.gcard)>div>.gmain{order:-3}
+.gitem:not(.gcard)>div>.g-acts+.row{order:-2}
+.gitem:not(.gcard)>div>.g-acts{order:-1;grid-column:1 / -1;justify-content:flex-start}
+.gitem:not(.gcard)>div>.g-acts>.btn{width:auto;min-height:44px;border-radius:var(--r-pill);background:rgba(255,255,255,.06);padding:0 16px;font-size:var(--fs-s)}
+.gitem:not(.gcard)>div>.chief-gi{order:8}
+.gitem:not(.gcard)>div>.g-foot{order:9}
+.gitem:not(.gcard)>div>.confirm{order:10}
+/* "Vad dricker stan?" segmented control matches .tabs */
+.bp-seg{border:0;border-radius:var(--r-m);background:rgba(255,255,255,.06);padding:3px;gap:2px}
+.bp-seg button{font-family:var(--body);font-weight:600;font-size:var(--fs-s);letter-spacing:.02em;text-transform:none;border-radius:var(--r-s);min-height:40px}
+.bp-seg button+button{border-left:0}
+.bp-seg button[aria-selected="true"]{background:var(--s3);color:var(--amber-2);box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(245,166,35,.4)}
+/* chat tools: round, same family as Skicka */
+.chat-input .ph-btn,.chat-input .af-mic{width:44px;height:44px;min-height:44px;border-radius:50%;border:1px solid var(--hair);background:var(--s3);font-size:18px;display:grid;place-items:center;padding:0;flex:0 0 auto}
+.chat-input .inp{flex:1 1 auto}
+.gitem:not(.gcard)>div>.g-acts>.btn{flex:0 0 auto}
+/* group avatar: a beer glyph in a soft tile (green when friends are out) */
+.glist .gcard::before{content:"🍺";display:grid;place-items:center;font-size:20px}
+.glist .gcard:has(.gcard-live)::before{content:"🍻"}
+
+/* ---------- Bar sheet (Leaflet popup in sheet mode) = same surface as .sheet ---------- */
+.olnu-sheet .leaflet-popup-content-wrapper{border-radius:var(--r-l) var(--r-l) 0 0 !important;border:0;border-top:1px solid var(--hair-2);background:var(--s1);
+  box-shadow:0 -12px 48px rgba(0,0,0,.6) !important}
+.olnu-sheet::before,.olnu-sheet::after{display:none}
+.leaflet-popup.olnu-sheet{animation:sheetIn var(--d-3) var(--ease)}
+.olnu-sheet .leaflet-popup-content-wrapper::before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);margin:8px auto 0}
+.olnu-sheet a.leaflet-popup-close-button{top:14px;width:40px;height:40px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);border:0;color:var(--text-2);font-size:22px}
+.olnu-sheet a.leaflet-popup-close-button::after{content:"";position:absolute;inset:-4px}
+.pp-title{font-family:var(--body);font-weight:700;letter-spacing:.01em;color:var(--text)}
+.bs-head .pp-title{font-size:22px}
+.ci-btn,.pp-act .eta-go,.pp-act .pa-kommer,.skal-btn{clip-path:none;border-radius:var(--r-m)}
+.ci-btn{background:linear-gradient(180deg,#5be89a,var(--green));border-color:transparent;color:var(--on-green)}
+.pp-folds{gap:var(--sp-2)}
+.pp-folds .pp-fold{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2);overflow:hidden}
+.pp-folds .pp-fold[open]{border-color:var(--hair-2)}
+.pf-n{font-family:var(--body);font-weight:700;border:0;border-radius:var(--r-pill);background:rgba(245,166,35,.14);font-variant-numeric:tabular-nums}
+.pf-chev{color:var(--muted)}
+.cr-row{border-radius:var(--r-s)}
+.skal-btn.small{border-radius:var(--r-pill)}
+.pp-care1{color:#a9d8ff}
+/* Groups sheet: one filled CTA (Skapa grupp); "Gå med" becomes the secondary */
+.sheet-body .glist~.row .btn-green{background:var(--s3);color:var(--green);border:1px solid rgba(61,220,132,.45)}
+/* narrow phones: keep one line everywhere */
+.live-count{display:block;line-height:38px;overflow:hidden;text-overflow:ellipsis}
+.beer-sub{white-space:nowrap}
+.seg button{white-space:nowrap;padding:0 10px}
+@media (max-width:374px){
+  .seg button{min-width:0;font-size:var(--fs-xs);padding:0 8px}
+  .beer-sub{font-size:10.5px}
+  .brand-name{font-size:24px}
+}

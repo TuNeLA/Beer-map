@@ -430,7 +430,7 @@
       body.appendChild(el("div", { class: "chat-input" }, [inp, sendBtn]));
       var note = el("p", { class: "muted chat-note", text: t("chatNote") });
       body.appendChild(note);
-      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+      inp.addEventListener("keydown", function (e) { lastNewAt = Date.now(); if (e.key === "Enter") go(); });
       function alive() { return document.body.contains(list); }
       // 0029: "💾 Spara chatten efter kl 05" (group setting). Hidden on an old server (RPC missing).
       var keepOn = false;
@@ -615,6 +615,7 @@
           var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
           var firstPage = lastId === 0;
           rows.forEach(function (m) { add(m); if (m.id > lastId) lastId = m.id; });
+          if (rows.length) lastNewAt = Date.now();
           if (firstPage && rows.length) { oldestId = rows[0].id; if (rows.length >= 100) showOlder(true); }
           if (!list.children.length) list.appendChild(el("li", { class: "muted chat-empty", text: t("chatEmpty") }));
           if (rows.length && (nearBottom || rows.length === list.children.length)) list.scrollTop = list.scrollHeight;
@@ -641,7 +642,14 @@
       }
       var tick = 0;
       // New messages every 3 s while the chat is open; reactions every 9 s, ranks every 30 s.
-      timer = setInterval(function () { load(); ++tick; if (tick % 3 === 0) loadLikes(); if (tick % 10 === 0) loadStats(); }, 3000);
+      // Review: quiet chat (nothing new and no typing for 60 s) -> new messages every 9 s instead of every 3 s.
+      var lastNewAt = Date.now();
+      timer = setInterval(function () {
+        ++tick;
+        if (Date.now() - lastNewAt < 60000 || tick % 3 === 0) load();
+        if (tick % 3 === 0) loadLikes();
+        if (tick % 10 === 0) loadStats();
+      }, 3000);
       load(); loadStats(); setTimeout(loadLikes, 600);
     });
   }

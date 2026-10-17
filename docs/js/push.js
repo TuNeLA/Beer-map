@@ -81,8 +81,14 @@
         });
       }
       if (!sub) return;
-      var k = keysOf(sub);
-      return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth });
+      var k = keysOf(sub), stamp = "", uid = "";
+      try { uid = localStorage.getItem("olnu.uid") || ""; stamp = uid + "|" + sub.endpoint; } catch (e) {}
+      var last = null;
+      try { last = JSON.parse(localStorage.getItem("olnu.pushSaved") || "null"); } catch (e) {}
+      if (uid && last && last.s === stamp && Date.now() - (last.t || 0) < 12 * 3600e3) return;   // review: same row, saved recently
+      return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth }).then(function (r) {
+        if (r && !r.error && uid) { try { localStorage.setItem("olnu.pushSaved", JSON.stringify({ s: stamp, t: Date.now() })); } catch (e) {} }
+      });
     }).catch(function () {});
   }
   // Save the approximate area (server rounds to ~1 km) so "KAOS I STAN" pushes reach people nearby.
