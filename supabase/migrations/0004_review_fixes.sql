@@ -1,4 +1,4 @@
--- Öl Nu: review fixes. Additive. Safe to run again. Run after 0003_shots.sql.
+-- Öl Nu: review fixes. Additive. Safe to run again. Run after 0003_beer_cooldown.sql.
 -- 1. save_push_subscription: only accept https push endpoints. The notify-group function
 --    POSTs to every saved endpoint, so a fake endpoint (http://..., internal hosts) must not be stored.
 --    Same name, same parameters, same return type, same error code as before.
