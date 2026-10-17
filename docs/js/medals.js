@@ -57,6 +57,11 @@
     ["faltresa", "🚂", "Fältresa", "Öl i en helt annan trakt. Nästan utlandstjänst.", "Ta en öl i en annan trakt (~50 km bort).", 1],
     ["sidospar", "🥃", "Sidospår", "Du tog nåt annat än öl. Ölguden förlåter.", "Logga en annan drink.", 1],
     ["spoke", "👻", "Spökpatrullen", "Du drack i hemlighet. Ingen vet. Utom vi.", "Drick en öl i spökläge.", 1],
+    // v12 KROGARNA (0014)
+    ["kospanare", "🚶", "Köspanaren", "Fem kö-rapporter. Dörrvakten har sett dig med kikare.", "Rapportera kön på en krog 5 gånger."],
+    ["sommelier", "⭐", "Ölsommelieren", "Fem olika ölsorter. Du säger ”fruktiga toner” nu. Förlåt oss.", "Välj 5 olika ölsorter efter ÖL!."],
+    ["erovrare", "🏰", "Erövraren", "Din grupp tog över en krog. Flaggan vajar i Dalarna!", "Ta över en krog med din grupp (flest incheckade).", 1],
+    ["tipsare", "📣", "Kunskapsspridaren", "Tre krogtips. Du är gruppens egen nöjesguide.", "Tipsa gruppen om en krog 3 gånger."],
     // "Varit med om": hidden until earned, caring text, never a goal.
     ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Drick vatten och ta det lugnt nästa gång.", "", 1, 1],
     ["medevac", "🚁", "Varit med om: medevac", "Du har varit med om en medevac-kväll. Vi är glada att du kom hem. Ta det lugnt. 💧", "", 1, 1]

@@ -351,3 +351,114 @@ Migration `supabase/migrations/0013_owner_stats.sql` (also in `setup.sql`). Need
   - More than 20 fails in the last hour → raise `rate_limited` (for every key).
 - Night = the 05:00 Europe/Stockholm boundary (`olnu_next_expiry`). History comes from `medal_nights` / `medal_checkins` (0012), `beer_events` (~10 days), `week_beers`, `owner_hours`. Skål, reactions and chat rows go away with the night, so the 7 d numbers for them are a lower bound.
 - New key: `insert into public.owner_keys (key_hash) values (encode(extensions.digest('<key>', 'sha256'), 'hex'));` (run in the SQL editor; never commit the key).
+
+## v12 KROGARNA (omgång 1; additive)
+Migration `supabase/migrations/0014_bars_plus.sql` (also in `setup.sql`). Needs 0001–0013. Client module `docs/js/barsplus.js` (`window.BARSPLUS`, called through `mods()`) + `docs/barsplus.css`. A missing RPC (old database) = feature off: no v12 UI at all (the client checks `bar_status` first), no error.
+
+### Tables (RLS on, no policies, no client access; rows are never removed, every read filters on time)
+- `bar_queue(id, bar_id, user_id, queue 'none'|'short'|'long', entry null|'free'|'low'|'high', bar_lat, bar_lng, created_at, expires_at = now()+30 min)`
+- `bar_offers(id, bar_id, bar_name, user_id, body 1–60, bar_lat, bar_lng, created_at, expires_at = next 05:00)`, `bar_offer_votes(offer_id, user_id, vote -1|0|1, updated_at)`
+- `beer_types(user_id, night, n, type, lat, lng (rounded 0.01), created_at, updated_at)`, pk (user_id, night, n). Types: lager pilsner ipa apa stout vete ale sour alkfri annan.
+- `group_flags(group_id pk, show_on_map bool default false, updated_at, updated_by)`
+- `bar_takeovers(id, group_id, bar_id, bar_name, night, n, created_at, notified)`, unique (group_id, bar_id, night)
+- `bar_tips(id, user_id, group_id, bar_id, bar_name, body, msg_id, created_at, notified)`
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `report_queue` | `p_bar_id, p_bar_name, p_bar_lat, p_bar_lng, p_lat, p_lng, p_queue text, p_entry text default null` | jsonb `{ok, wait_seconds, queue, entry, reports}` | `invalid_queue`, `invalid_entry`, `invalid_bar`, `outside_sweden`, `too_far` |
+| `add_offer` | `p_bar_id, p_bar_name, p_bar_lat, p_bar_lng, p_lat, p_lng, p_body` | jsonb `{ok, id, is_new}` | `invalid_offer`, `offer_blocked`, `slow_down`, `invalid_bar`, `outside_sweden`, `too_far` |
+| `vote_offer` | `p_offer_id bigint, p_vote int` (1, -1, 0 = take back) | jsonb `{up, down, mine, hidden}` | `invalid_vote`, `offer_not_found`, `own_offer` |
+| `bar_status` | – | setof `(bar_id, queue, queue_at, queue_n, entry, offers jsonb, owner_name, owner_n, owner_mine, owner_named)` | – |
+| `note_takeover` | `p_bar_id text` | jsonb `{ok, is_new}` | – |
+| `set_beer_type` | `p_type text` | jsonb `{ok, type, n}` | `invalid_type`, `no_beer` |
+| `beer_type_stats` | `p_lat float8 default null, p_lng float8 default null` | setof `(scope 'town'/'sweden', period 'night'/'week', type, n)` | – |
+| `my_group_flags` | – | setof `(group_id, show_on_map, can_edit)` | – |
+| `set_group_show` | `p_group_id uuid, p_on bool` | jsonb `{show_on_map}` | `not_member`, `not_admin` |
+| `send_tip` | `p_group_id uuid, p_bar_id, p_bar_name, p_body text default null` | jsonb `{ok, wait_seconds, id, msg_id}` | `not_member`, `invalid_bar`, `invalid_msg` |
+
+Rules:
+- **Kö-rapport**: caller within 300 m of the bar position (server check with p_lat/p_lng, else `too_far`). 1 report per user per bar per 10 min → `ok=false` + `wait_seconds`. A report lives 30 min. Shown queue = the answer with most live reports; tie → newest report. Same rule for `entry` (non-null reports only). UI: "🚶 Kort kö · rapporterat 12 min sen (3 rapporter)" + a coloured dot / 🚶 on the bar marker.
+- **Kvällens erbjudande** — LEGAL (Alkohollagen 7 kap., Konsumentverket): user-written and passive. Shown ONLY inside the bar popup (collapsed section, header "🍻 Rapporterat erbjudande", muted line "Användarnas egna tips. Drick lagom."). NO push, NO ticker line, NO toast that appears by itself, NO marker dot, NO medal. Neutral wording only. Server: body cleaned, 3–60 chars; links, e-mails, 7+ digit numbers (phone) and a bad-word list → `offer_blocked`. Caller within 300 m. Max 2 new offers per user per night (`slow_down`). Same text twice at a bar tonight → the old id (`is_new=false`). `bar_status.offers` = max 3, best first (`up - down`, then newest): `[{id, body, up, down, my_vote, is_mine, at}]`; an offer with 3 or more 👎 than 👍 is hidden. Own offer cannot be voted (`own_offer`).
+- **Ölsorter**: after an accepted ÖL! the client shows a 4 s bottom strip with type chips (pauses while touched; last choice first as "Samma igen?"). A tap calls `set_beer_type` for the caller's newest beer tonight (works in ghost mode; changing again is fine). `beer_type_stats`: anonymous counts; town = within 20 km of the given point; week = Monday 00:00 Europe/Stockholm → now. Shown as "🍺 Vad dricker stan?" in the 🏆 sheet.
+- **Ta över krogen**: tonight's candidate bars = bars with live check-ins or "Kung av baren" taps tonight (they carry the bar position). A user is at ONE bar: the newest of his live check-in and his live precise beer within 75 m of a candidate bar. Owner = the group with most such members at the bar, minimum 2; tie → the group that got there first. `owner_name` = group name when the group opted in (`group_flags.show_on_map`) or the caller is a member, else null ("🏰 En grupp äger …"). Group setting "🏰 Visa vår grupp på kartan" (default off) in the group list; only the creator may change it (if the creator left: the oldest member) → `not_admin`. When `bar_status` says the caller's group owns a bar, the client calls `note_takeover` once per bar per night (localStorage `olnu.takeNoted`) and, when `is_new`, `notify-group {event:"takeover", bar_id}`. Ticker kinds `takeover` (changes, imp 2), `queueLong`, `queueNone` (via `NEWS` hooks `newsTemplates` / `newsCands`).
+- **Krogtips**: `send_tip` posts "📣 <namn> tipsar: Kom till <bar>! <text>" in the group chat (counts as a chat message). Text optional, max 40, same link/phone/bad-word filter (`invalid_msg`). 1 tip per 5 min per user → `ok=false` + `wait_seconds`. Then `notify-group {event:"tip", tip_id}`.
+- **Medals** (ids stable; `olnu_medal_eval_bars`, merged in `olnu_medal_store`, same return type): `kospanare` Köspanaren (5 queue reports), `sommelier` Ölsommelieren (5 different types, not "annan"), `erovrare` Erövraren (your group took over a bar after you joined; stacks per bar and night), `tipsare` Kunskapsspridaren (3 tips). No offer medal (legal).
+
+### Edge function `notify-group` — new body events
+| body | who gets it | limit | payload |
+|---|---|---|---|
+| `{event:"tip", tip_id}` | other members of the tip's group | the tip row must be the caller's, < 5 min old, not pushed (atomic `bar_tips.notified` claim); else reason `no_tip` | title 1 of 15 lines, e.g. "📣 {namn} tipsar: Kom till {bar}!"; body `”<text>” · Tryck för att se baren.` or "Tryck för att se baren på kartan."; url `/?bar=<bar_id>`; tag `olnu-tip-<id>` |
+| `{event:"takeover", bar_id}` | other members of the caller's group that owns the bar | `bar_takeovers` row of tonight, < 10 min old, not pushed (atomic `notified` claim) → max 1 per bar per group per night; else `already_sent` | title 1 of 15 lines, e.g. "🏰 Ni har tagit över {bar}!"; body "Tryck för att se kartan. Håll krogen!"; url `/?bar=<bar_id>`; tag `olnu-takeover-<group>-<bar>` |
+
+### Deep link
+- `?bar=<bars.json id>`: fly to that bar and open its popup (waits up to ~12 s for bars to load). Removed from the URL at once.
+
+## v13 PRIVACY & POLL (server)
+Migration `supabase/migrations/0015_privacy_poll.sql` (applied on the server 2026-10-17; also appended to `setup.sql`). Needs 0001–0013 (0014 optional). Additive: no old RPC, parameter or field changed shape. All new RPCs: authenticated only, `not_authenticated` without a session. A missing RPC (old database, PGRST202) = use the old calls.
+
+### Privacy rules (server-enforced, also in the old `live_beers`)
+- **Known** = the caller's own pin and pins of users who share a group with the caller. Known pins: exact `lat/lng`, numeric stable `id`, exact `created_at`, `friend_name`.
+- **Stranger** pins:
+  - precise pin within 75 m of an active bar in `bars_lite` → shown ON the bar point (`snap:"bar"`, `bar_id` set, `precise:true`);
+  - other precise pin → the ~550 m grid point (lat rounded to 0.005, lng to 0.01; `snap:"area"`, `precise:false`);
+  - "Bara område" pin → its own grid point (`snap:"area"`).
+  - `created_at` floored to 15 min. In `poll_v2` the `id` is an opaque string `"p" + 15 hex` that changes every 10 min (`ids_until`). The old `live_beers` keeps numeric ids (old apps need them), but its positions/precise/created_at follow the rules above.
+- The box filter uses the SHOWN position, so a tiny box cannot locate a stranger more exactly than the snap.
+- `bars_lite(id, name, lat, lng, type, active)` = docs/bars.json + bars-extra.json (Sweden only; bars-closed.json → `active=false`). 1217 rows imported. After a bars.json refresh, re-import (upsert on id) and run `select public.olnu_resnap();` (re-snaps live pins and recent heat rows). Bars that only come from Overpass are unknown to the server → those strangers show as `area`.
+- **Heat** (`heat_points`, `poll_v2.heat`, `ghost_points`): precise beer within 75 m of a bar → bar point; other precise beer → ~55 m cell; a ~55 m cell with fewer than 3 beers → its ~550 m grid point; "Bara område" → grid. Undone beers and ghost beers never appear. (Old 0010 ~10 m cells are gone.)
+
+### RPCs
+| name | params | returns | errors |
+|---|---|---|---|
+| `poll_v2` | `p_min_lat, p_min_lng, p_max_lat, p_max_lng float8, p_since timestamptz default null, p_heat bool default false` | json (below) | `invalid_bbox` (any null/NaN/Infinity) |
+| `post_beer_v2` | `p_lat, p_lng float8, p_precise bool, p_hidden bool default false` | jsonb = `post_beer` fields + `hidden bool, undo_until timestamptz\|null, undos_left int` | `outside_sweden` |
+| `undo_beer` | – | jsonb `{ok, beer_count, reason, undos_left, lat?, lng?, hidden?}` | – (refusals are `ok:false`) |
+| `skal_v2` | `p_pin text` | json `{skal_count, already}` (same as `skal`) | `beer_not_found`, `own_beer` |
+| `react_v2` | `p_pin text, p_emoji text` | json `{counts, mine}` (same as `react`) | `invalid_emoji`, `beer_not_found`, `own_beer` |
+
+### poll_v2 → one json per poll (replaces live_beers + live_others + live_checkins + beer_reactions + friend_totals + my_rallies + heat_points + my_stats)
+```
+{ v:1, server_time, full:true, ids_until,          // stranger ids change at ids_until (10-min steps)
+  bbox:[minLat,minLng,maxLat,maxLng],               // the box used: yours + 15 % margin (≥ 0.005°/0.01°), clamped to Sweden
+  pins:[ { id,                                       // number (me / group-mate) or "p…" string (stranger) — treat as an opaque key: String(id)
+           lat, lng, snap:"exact"|"area"|"bar", bar_id?, precise?, beer_count,
+           other_count?, other_kind?, created_at,
+           is_mine?, is_friend?, friend_name?,       // friend_name = shared-group display name
+           skal_count?, i_skaled?, rx?:{"🔥":n,…}, my_rx?:["🔥",…],
+           total? } ],                               // lifetime beers, me / group-mates only
+  capped:bool, pins_in_view:int,                     // strangers in the box; max 1500 returned, nearest the box centre first
+  live_total:int,                                    // all live visible pins in Sweden ("N dricker i Sverige")
+  me:{ id?, beer_count, other_count, other_kind, lat, lng, precise, hidden, ghost, expires_at, beer_at,
+       wait_seconds, undo_until|null, undos_left, total, week, title, next_title, next_at },
+  checkins:[ {bar_id, bar_name, lat, lng, name, is_mine, is_friend, created_at} ],  // mine + group-mates anywhere, others in the box; stranger created_at floored to 15 min
+  rallies:[ …same rows as my_rallies… ],
+  heat: null | [[lat,lng,w],…] }                     // only when p_heat=true; box + 50 %, max 3000 cells
+```
+- Fields that are null / false / 0 / empty are LEFT OUT of `pins` rows (compat rule: missing = empty). Own pin and group-mates are always included, also outside the box. Ghost (hidden) pins are never in `pins`; the owner sees the state in `me.hidden/me.ghost`.
+- Pins only exist when `beer_count ≥ 1` or `other_count ≥ 1` and not stopped.
+- `p_since` is accepted but ignored in this version (`full:true` = always the full view).
+
+### post_beer_v2 (Spökläge on the server)
+- `p_hidden=false` → exactly `post_beer` (+ the 3 new fields).
+- `p_hidden=true` → the beer counts (cooldown, beer_count, milestone, week_beers, medal_nights/medals, titles, owner stats) but the pin is hidden at once (`stopped`, `ghost=true`), stored on the ~550 m grid only, and NO heat point is written. A later visible beer shows the pin again. `p_precise` is ignored when hidden.
+- `undo_until` = `beer_at + 2 min` when accepted, else null.
+
+### undo_beer
+- Takes back the caller's latest beer if it was accepted < 2 min ago (`beer_at`). Max 3 undos per night (per pin row).
+- `reason` when `ok:false`: `no_beer` (no beer tonight), `too_late` (≥ 2 min, or already undone), `limit` (3 used). Nothing changes then.
+- On success: `beer_count - 1`; `beer_at` back to the previous beer (so the 10 min cooldown is the old one; after undoing the first beer of the night there is no cooldown); position/precision/visibility/ghost back to before that beer (not if another drink moved the pin after it); first beer of the night undone → pin hidden (unless it has other drinks); its heat point flagged undone; week total, tonight's medal-night count, owner hour count and a "Kung av baren" tap made after the beer go down by 1. Earned medals are never taken back. Skåls/reactions on the pin stay.
+- Old `post_beer` also feeds undo (a trigger stores the previous state), so undo works after either post RPC.
+
+### skal_v2 / react_v2
+- `p_pin` = the `id` from `poll_v2` as a string: numeric ids work only for the caller's own pin and group-mates (`own_beer` for own); `"p…"` ids work for the current and the previous 10-min step, else `beer_not_found` (re-poll and retry once).
+
+### Client must
+1. Poll with `poll_v2(view bounds, null, heatOn)` instead of the 6 RPCs; fall back to the old calls when it is missing. Ask heat at most every 60 s (send `p_heat=false` in between and keep the last heat).
+2. Key pins by `String(id)`. Stranger ids rotate every 10 min: do not fire "new streak"/"new pin" toasts just because an id changed — compare by (`bar_id` or lat/lng) + `beer_count`, or skip such toasts for strangers.
+3. Use `skal_v2` / `react_v2` with `String(pin.id)`; on `beer_not_found` re-poll once.
+4. Count people per bar with `bar_id` (server-computed for every precise pin, 75 m); stranger pins sit exactly on the bar point. Pins with `snap:"area"` never belong to a bar.
+5. Spökläge: call `post_beer_v2(..., p_hidden:true)` — do NOT call `stop_beer` after it, do not call `notify-group` or `record_bar`.
+6. Undo: after an accepted beer show "ÅNGRA" until `undo_until`; call `undo_beer()`, then re-poll. Call `notify-group` only after the undo window has passed (or the toast closed without undo), so an undone milestone sends no push.
+7. Header count from `live_total`; HUD/cooldown from `me` (`wait_seconds`, `undo_until`, `undos_left`, `hidden`, `ghost`, title fields).
+8. DST: the server 05:00 logic (`olnu_next_expiry`, `olnu_night_of`) is DST-correct (tested 2026-10-24/25 and 2027-03-27/28). The client should use `expires_at` from the server instead of computing 05:00 itself (`U.next5am` is wrong across DST, review P3-1).

@@ -119,22 +119,22 @@ t("fill leaves unknown placeholders", () => {
 });
 
 // ---- v7 SOCIAL ----
-t("titles: ladder, exact strings, next", () => {
-  assert.equal(m.TITLES.length, 13);
-  assert.deepEqual(m.titleFor(0), { title: "Rekryt", at: 0, next_title: "Menig Mjöd", next_at: 5 });
-  assert.equal(m.titleFor(4).title, "Rekryt");
+t("titles: ladder (v11, 36 steps), exact strings, next", () => {
+  assert.equal(m.TITLES.length, 36);
+  assert.deepEqual(m.titleFor(0), { title: "Rekryt", at: 0, next_title: "Mönstrad Mellanöl", next_at: 3 });
+  assert.equal(m.titleFor(2).title, "Rekryt");
   assert.equal(m.titleFor(5).title, "Menig Mjöd");
-  assert.equal(m.titleFor(149).title, "Major Malt");
-  assert.equal(m.titleFor(150).title, "Öl-veteranen");
-  assert.deepEqual(m.titleFor(1000), { title: "Ölguden", at: 1000, next_title: null, next_at: null });
+  assert.equal(m.titleFor(89).title, "Ryttmästare Humle");
+  assert.equal(m.titleFor(90).title, "Major Malt från Smedjebacken");
+  assert.deepEqual(m.titleFor(1500), { title: "Ölguden", at: 1500, next_title: null, next_at: null });
   assert.equal(m.titleFor(99999).title, "Ölguden");
   assert.equal(m.titleFor(-3).title, "Rekryt");
   assert.equal(m.titleFor(NaN).title, "Rekryt");
   for (let i = 1; i < m.TITLES.length; i++) assert.ok(m.TITLES[i][0] > m.TITLES[i - 1][0]);
 });
 
-t("titles match migration 0007 olnu_titles()", () => {
-  const sql = readFileSync(join(here, "../migrations/0007_social.sql"), "utf8");
+t("titles match migration 0012 olnu_titles()", () => {
+  const sql = readFileSync(join(here, "../migrations/0012_medals.sql"), "utf8");
   const pairs = [...sql.matchAll(/\((\d+), '([^']+)'\)/g)].map((x) => [Number(x[1]), x[2]]);
   assert.deepEqual(pairs, m.TITLES);
 });
@@ -281,6 +281,35 @@ t("checkin lines: enough, all filled, rate 10 min", () => {
     assert.ok(q.body && q.url === "/" && q.tag === "olnu-checkin-7");
   }
   assert.ok(m.checkinPayload(0, "A", "", 1).title.includes("baren"));
+});
+
+// ---- v12 KROGARNA ----
+t("tip lines: 15, all with {namn} and {bar}", () => {
+  assert.equal(m.TIP_LINES.length, 15);
+  assert.equal(new Set(m.TIP_LINES).size, 15);
+  m.TIP_LINES.forEach((l) => { assert.ok(l.includes("{namn}") && l.includes("{bar}"), l); });
+});
+t("tipPayload: url, tag, body, no placeholders", () => {
+  for (let i = 0; i < 20; i++) {
+    const p = m.tipPayload(i, "Anton", "Pitchers", i % 2 ? "fullt ös" : null, "node/123", 7);
+    assert.ok(!/[{}]/.test(p.title), p.title);
+    assert.ok(p.title.includes("Anton") && p.title.includes("Pitchers"));
+    assert.equal(p.url, "/?bar=node%2F123");
+    assert.equal(p.tag, "olnu-tip-7");
+    if (i % 2) assert.ok(p.body.includes("fullt ös")); else assert.ok(!p.body.includes("”"));
+  }
+  assert.ok(m.tipPayload(-3, "A", "", "x".repeat(99), "1", 1).body.length < 80);
+});
+t("takeover lines: 15, payload filled", () => {
+  assert.equal(m.TAKEOVER_LINES.length, 15);
+  assert.equal(new Set(m.TAKEOVER_LINES).size, 15);
+  for (let i = 0; i < 15; i++) {
+    const p = m.takeoverPayload(i, "Grabbarna", "La Parma", "n1", "g-1");
+    assert.ok(!/[{}]/.test(p.title), p.title);
+    assert.ok(p.title.includes("La Parma"));
+    assert.equal(p.url, "/?bar=n1");
+    assert.equal(p.tag, "olnu-takeover-g-1-n1");
+  }
 });
 
 console.log(`\n${passed} tests passed`);

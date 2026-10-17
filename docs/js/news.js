@@ -82,7 +82,9 @@
     ctx = ctx || {};
     beers = beers || [];
     var now = ctx.now || new Date(), prev = ctx.prev || [];
-    var tpl = (t("news") || []).concat(moreTemplates()), byKind = {};
+    var bp = window.BARSPLUS, bpTpl = [];
+    try { bpTpl = bp && bp.newsTemplates ? bp.newsTemplates() || [] : []; } catch (e) { bpTpl = []; }
+    var tpl = (t("news") || []).concat(moreTemplates()).concat(bpTpl), byKind = {};
     tpl.forEach(function (x) {
       if (!x || typeof x.k !== "string" || typeof x.f !== "function") return;
       (byKind[x.k] = byKind[x.k] || []).push(x.f);
@@ -195,6 +197,11 @@
       .filter(function (x) { return x.k >= 2; })
       .sort(function (a, b) { return b.k - a.k; }).slice(0, 2)
       .forEach(function (x) { add("checkinCrowd", { bar: x.bar, k: x.k }, 1); });
+
+    // v12 KROGARNA (js/barsplus.js): takeovers, queues, offers. Candidates {k, d, imp, cls}.
+    try {
+      (bp && bp.newsCands ? bp.newsCands(ctx) || [] : []).forEach(function (x) { if (x && x.k) add(x.k, x.d, x.imp, x.cls); });
+    } catch (e) {}
 
     // Bars with 2+ people.
     bars.sort(function (a, b) { return b.beers.length - a.beers.length; }).slice(0, 2).forEach(function (a) {

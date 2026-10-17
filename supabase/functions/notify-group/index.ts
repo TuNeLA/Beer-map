@@ -11,6 +11,7 @@
 // Body events (v7 SOCIAL): {event:"comehere"|"sos"|"msg", ...}, plus "home"/"pause" from v6.
 // Body events (v9 INKALLELSE): {event:"rally"|"rally_yes", rally_id}.
 // Body events (v10 CHECKA IN): {event:"checkin", bar?} -> "📍 {namn} har anlänt till {bar}".
+// Body events (v12 KROGARNA): {event:"tip", tip_id} -> krogtips, {event:"takeover", bar_id} -> "🏰 Ni har tagit över {bar}!".
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -510,6 +511,64 @@ export function rallyYesPayload(idx: number, namn: string, yes: number, rallyId:
     url: `/?rally=${rallyId}`,
     tag: `olnu-rally-${rallyId}-yes`,
     rally_id: rallyId,
+  };
+}
+
+
+// ---- v12 KROGARNA: bar tips + takeovers ----
+export const TIP_LINES: string[] = [
+  "📣 {namn} tipsar: Kom till {bar}!",
+  "🍻 {namn} har spanat: {bar} är stället ikväll!",
+  "📡 Underrättelse från {namn}: läget är bra på {bar}.",
+  "🪖 {namn} beordrar: samling på {bar}!",
+  "🦌 {namn} har hittat bästa betet. Det är {bar}.",
+  "🎯 {namn} pekar ut målet: {bar}.",
+  "📯 {namn} blåser i luren. Alla till {bar}!",
+  "🗺️ Krogtips från {namn}: {bar}. Lita på kartan.",
+  "🔥 {namn} säger att det brinner på {bar}. Positivt menat.",
+  "🚕 {namn} tycker du ska ta taxin till {bar}. Nu.",
+  "🕵️ Hemligt tips från {namn}: {bar}. Sprid det inte (sprid det).",
+  "🐻 Björnen {namn} har lämnat idet för {bar}. Följ spåren.",
+  "📻 Ronny & Ragge-radion rapporterar via {namn}: {bar} är grejen!",
+  "🛎️ Pling! {namn} har ett tips: {bar}.",
+  "🍺 {namn} har provsmakat {bar}. Betyg: kom hit.",
+];
+export function tipPayload(idx: number, namn: string, bar: string, body: string | null | undefined, barId: string, tipId: number) {
+  const b = cleanBarName(bar) || "baren";
+  // deno-lint-ignore no-control-regex
+  const extra = typeof body === "string" ? body.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 40) : "";
+  return {
+    title: fill(TIP_LINES[wrapIdx(idx, TIP_LINES.length)], { namn, bar: b }),
+    body: extra ? `”${extra}” · Tryck för att se baren.` : "Tryck för att se baren på kartan.",
+    url: `/?bar=${encodeURIComponent(barId)}`,
+    tag: `olnu-tip-${tipId}`,
+  };
+}
+export const TAKEOVER_LINES: string[] = [
+  "🏰 Ni har tagit över {bar}!",
+  "🚩 Flaggan är hissad! {grupp} äger {bar} ikväll.",
+  "👑 {bar} är ert. Kungariket {grupp} växer.",
+  "🪖 Uppdrag slutfört: {grupp} har intagit {bar}.",
+  "🏴 {bar} har fallit. {grupp} håller positionen.",
+  "🎺 Fanfar! {grupp} styr {bar} just nu.",
+  "🛡️ {bar} är säkrat av {grupp}. Försvara det!",
+  "🐴 Dalahästen nickar: {bar} tillhör {grupp} ikväll.",
+  "⚔️ Krogen är erövrad! {grupp} äger {bar}.",
+  "📡 Spaning bekräftar: {grupp} har flest man på {bar}.",
+  "🏰 Borgen {bar} är er. Glöm inte att skåla för segern.",
+  "🍻 {grupp} äger {bar}. Ronny och Ragge hade varit stolta.",
+  "🚁 Luftlandsättning lyckad. {bar} är {grupp}s.",
+  "🗺️ Nytt territorium: {bar}. Kartan är ändrad.",
+  "🔥 {bar} är ert ikväll. Håll ställningarna (och drick vatten).",
+];
+export function takeoverPayload(idx: number, grupp: string, bar: string, barId: string, groupId: string) {
+  const b = cleanBarName(bar) || "krogen";
+  const g = cleanBarName(grupp) || "Ni";
+  return {
+    title: fill(TAKEOVER_LINES[wrapIdx(idx, TAKEOVER_LINES.length)], { grupp: g, bar: b }),
+    body: "Tryck för att se kartan. Håll krogen!",
+    url: `/?bar=${encodeURIComponent(barId)}`,
+    tag: `olnu-takeover-${groupId}-${barId}`.slice(0, 120),
   };
 }
 
@@ -1016,6 +1075,64 @@ async function statusPush(admin: Admin, uid: string, kind: "home" | "pause") {
   return { ...r, status: jobs.length };
 }
 
+// ---- v12 KROGARNA ----
+// {event:"tip", tip_id}: "📣 Anton tipsar: Kom till Pitchers!" to the other members of the tip's group.
+// The tip row (send_tip RPC) must be the caller's, < 5 min old and not pushed yet (atomic claim).
+// The RPC already limits tips to 1 per 5 min per user.
+async function tipPush(admin: Admin, uid: string, b: Body) {
+  const tid = parseRallyId(b.tip_id);
+  if (tid === null) return { ...NONE, reason: "no_tip" };
+  const { data: claimed, error } = await admin
+    .from("bar_tips").update({ notified: true })
+    .eq("id", tid).eq("user_id", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id, group_id, bar_id, bar_name, body");
+  if (error) throw error;
+  const tip = claimed && claimed[0];
+  if (!tip) return { ...NONE, reason: "no_tip" };
+  const mates = await mateNames(admin, uid, tip.group_id as string);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const idx = Math.floor(Math.random() * TIP_LINES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(tipPayload(idx, mates.get(s.user_id) ?? "En vän", tip.bar_name as string,
+      tip.body as string | null, tip.bar_id as string, tip.id as number)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+
+// {event:"takeover", bar_id}: "🏰 Ni har tagit över La Parma!" to the other members of the caller's group
+// that owns the bar tonight. Needs a bar_takeovers row (note_takeover RPC) of tonight, < 10 min old,
+// not pushed yet: so max 1 push per bar per group per night (atomic claim of `notified`).
+async function takeoverPush(admin: Admin, uid: string, b: Body) {
+  const barId = typeof b.bar_id === "string" ? b.bar_id.trim().slice(0, 80) : "";
+  if (!barId) return { ...NONE, reason: "no_takeover" };
+  const { data: mine, error: mErr } = await admin.from("group_members").select("group_id").eq("user_id", uid);
+  if (mErr) throw mErr;
+  const gids = (mine ?? []).map((m: { group_id: string }) => m.group_id);
+  if (gids.length === 0) return { ...NONE, reason: "no_group" };
+  const { data: claimed, error } = await admin
+    .from("bar_takeovers").update({ notified: true })
+    .eq("bar_id", barId).in("group_id", gids).eq("notified", false)
+    .gt("night", new Date().toISOString())
+    .gt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+    .select("id, group_id, bar_id, bar_name");
+  if (error) throw error;
+  if (!claimed || claimed.length === 0) return { ...NONE, reason: "already_sent" };
+  let sent = 0, failed = 0;
+  for (const t of claimed) {
+    const mates = await mateNames(admin, uid, t.group_id as string);
+    if (mates.size === 0) continue;
+    const { data: g } = await admin.from("groups").select("name").eq("id", t.group_id).maybeSingle();
+    const idx = Math.floor(Math.random() * TAKEOVER_LINES.length);
+    const payload = JSON.stringify(takeoverPayload(idx, (g?.name as string) ?? "", (t.bar_name as string) ?? "",
+      t.bar_id as string, t.group_id as string));
+    const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({ sub: s, payload }));
+    if (jobs.length) { const r = await sendAll(admin, jobs, 1800); sent += r.sent; failed += r.failed; }
+  }
+  return { sent, failed };
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1070,6 +1187,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "rally") return json(await rallyPush(admin, uid, body));
     if (event === "rally_yes") return json(await rallyYesPush(admin, uid, body));
     if (event === "checkin") return json(await checkinPush(admin, uid, body));
+    if (event === "tip") return json(await tipPush(admin, uid, body));
+    if (event === "takeover") return json(await takeoverPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

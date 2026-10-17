@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -1560,6 +1560,7 @@
       });
       body.appendChild(tabs); body.appendChild(list); body.appendChild(note);
       draw();
+      mods("topSheet", body);   // v12: "Vad dricker stan?"
     });
   }
   $("btn-top").addEventListener("click", showTop);
@@ -1856,9 +1857,10 @@
   var invited = params.has("invite");
   var chatId = params.get("chat"), sosAt = params.get("sos");   // v9 push links
   var rallyId = params.get("rally"), rallyAns = params.get("answer");
+  var barLink = params.get("bar");   // v12 krogtips / takeover push: open that bar
   if (focusId) pendingFocus = focusId;
-  if (joinCode || focusId || invited || chatId || sosAt || rallyId || rallyAns) {
-    params.delete("join"); params.delete("focus"); params.delete("invite"); params.delete("chat"); params.delete("sos");
+  if (joinCode || focusId || invited || chatId || sosAt || rallyId || rallyAns || barLink) {
+    params.delete("join"); params.delete("focus"); params.delete("invite"); params.delete("chat"); params.delete("sos"); params.delete("bar");
     params.delete("rally"); params.delete("answer");   // a reload must not answer again
     var qs = params.toString();
     try { history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash); } catch (e) {}
@@ -2360,6 +2362,29 @@
     if (chatId) Promise.all([ready, intro]).then(function () { if (LIVE) mods("openChatLink", chatId); });
     if (rallyId && !chatId) Promise.all([ready, intro]).then(function () { if (LIVE) mods("openLink", rallyId, rallyAns); });
     if (sosAt) mods("showSosLink", sosAt);
+    if (barLink && !chatId && !rallyId) Promise.all([ready, intro]).then(function () { openBarById(barLink, 0); });
+  }
+  // v12: fly to a bar (bars.json id) and open its popup. Bars load async: retry for ~12 s.
+  function openBarById(id, tries) {
+    var bar = window.BARS.byId(String(id));
+    if (!bar) { if (tries < 24) setTimeout(function () { openBarById(id, tries + 1); }, 500); return; }
+    openBar(bar);
+  }
+  function openBar(bar) {
+    if (!bar || !isFinite(bar.lat) || !isFinite(bar.lng)) return;
+    if (!$("sheet").hidden) closeSheet();
+    var opened = false, id = String(bar.id);
+    var open = function () {
+      if (opened) return; opened = true;
+      var m = plainBarMarkers[id] || null;
+      if (!m) hotLayer.eachLayer(function (x) { if (x.options.olnuKey === "h" + id) m = x; });
+      if (m && m.getPopup()) { m.openPopup(); return; }
+      var agg = window.BARS.assign(beers).perBar[id];
+      L.popup({ offset: L.point(0, -10) }).setLatLng([bar.lat, bar.lng]).setContent(barPopup(bar, agg ? agg.beers : [])).openOn(map);
+    };
+    map.once("moveend", function () { setTimeout(open, 250); });
+    map.flyTo([bar.lat, bar.lng], Math.max(map.getZoom(), 17), { duration: 0.9 });
+    setTimeout(open, 2200);
   }
   // v9: what js/social.js and js/extras.js may use. Getters for state that changes.
   function appApi() {
@@ -2371,7 +2396,7 @@
       authed: function () { return authed; }, client: function () { return client; }, prec: function () { return prec; },
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, showGroups: showGroups,
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
-      checkins: function () { return checkins; }, myCheckin: myCheckin,
+      checkins: function () { return checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return lastLoc; },
       setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },
       sheetOpen: function () { return !$("sheet").hidden; },
       // functions.invoke that always resolves to {data, error} (never rejects, max RPC_TIMEOUT_MS).
