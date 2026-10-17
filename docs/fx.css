@@ -1,0 +1,168 @@
+/* Öl Nu — visual effects for js/fx.js: HOT STREAK fire, MEDEVAC lights, ambient edge glow, small beer effects.
+   Only transform/opacity are animated on big layers (compositor only). MEDEVAC: soft pulses ≤ 2 Hz, no white strobe (WCAG 2.3.1). */
+
+/* ---------- takeover frame ---------- */
+.fx-tk .fx-layer{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.fx-tk .to-core{z-index:2}
+.fx-tk.tk-hot .to-core::before{content:"";position:absolute;z-index:-1;left:50%;top:50%;width:150%;height:170%;transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side,rgba(8,3,0,.62),rgba(8,3,0,.35) 60%,transparent);pointer-events:none}
+.fx-tk .to-strobe{display:none}
+.fx-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.fx-tk.out{opacity:0;transition:opacity .25s}
+
+/* HOT backgrounds: lighter than before, so the burning map shows through. */
+.fx-tk.tk-hot{background:radial-gradient(ellipse at 50% 100%,rgba(255,96,12,.42),rgba(48,10,0,.5) 55%,rgba(10,4,2,.74))}
+.fx-tk.fxv-inferno{background:radial-gradient(ellipse at 50% 90%,rgba(255,110,20,.3),rgba(60,14,0,.32) 60%,rgba(12,4,0,.6))}
+.fx-tk.fxv-lava{background:radial-gradient(ellipse at 50% 55%,rgba(120,20,0,.55),rgba(14,4,2,.86) 70%)}
+.fx-tk.fxv-fireball{background:radial-gradient(ellipse at 50% 85%,rgba(255,120,30,.38),rgba(40,8,0,.52) 60%,rgba(8,3,0,.72))}
+.fx-tk.fxv-tornado{background:radial-gradient(ellipse at 50% 60%,rgba(80,16,0,.4),rgba(10,4,2,.78) 75%)}
+
+/* glowing, flickering screen edges */
+.fx-edges i{position:absolute;will-change:opacity;animation:fxflick 1.3s ease-in-out infinite}
+.fx-edges .e-b{left:0;right:0;bottom:0;height:46vh;background:linear-gradient(to top,rgba(255,120,24,.9),rgba(255,70,0,.45) 35%,transparent)}
+.fx-edges .e-l{left:0;top:0;bottom:0;width:24vw;background:linear-gradient(to right,rgba(255,90,10,.7),transparent);animation-duration:1.7s;animation-delay:-.4s}
+.fx-edges .e-r{right:0;top:0;bottom:0;width:24vw;background:linear-gradient(to left,rgba(255,90,10,.7),transparent);animation-duration:1.5s;animation-delay:-.9s}
+.fx-edges .e-t{left:0;right:0;top:0;height:20vh;background:linear-gradient(to bottom,rgba(255,80,0,.45),transparent);animation-duration:2.1s}
+.fx-edges.soft i{opacity:.7}
+@keyframes fxflick{0%,100%{opacity:.62}18%{opacity:.95}33%{opacity:.7}52%{opacity:1}70%{opacity:.58}86%{opacity:.88}}
+
+/* inferno: warm haze + map heat shimmer */
+.fx-heat{position:absolute;left:-5%;right:-5%;bottom:-5%;height:70vh;background:linear-gradient(to top,rgba(255,90,0,.35),transparent);
+  transform-origin:50% 100%;animation:fxhaze .9s ease-in-out infinite alternate;will-change:transform}
+@keyframes fxhaze{from{transform:scaleY(.92) skewX(-1.5deg)}to{transform:scaleY(1.06) skewX(1.5deg)}}
+html.fx-shimmer #map{animation:fxshimmer .42s ease-in-out infinite alternate;will-change:transform}
+@keyframes fxshimmer{0%{transform:scale(1.01) skewX(-.35deg) translateY(1px)}100%{transform:scale(1.016) skewX(.35deg) translateY(-2px)}}
+
+/* fireball / lava: screen shake + shockwave */
+.fx-tk.fx-shake{animation:toin .22s ease-out,fxshake .6s cubic-bezier(.36,.07,.19,.97)}
+html.fx-shaking #map{animation:fxshake .6s cubic-bezier(.36,.07,.19,.97)}
+@keyframes fxshake{
+  10%,90%{transform:translate3d(-2px,1px,0)} 20%,80%{transform:translate3d(5px,-3px,0)}
+  30%,50%,70%{transform:translate3d(-9px,4px,0)} 40%,60%{transform:translate3d(9px,-4px,0)}}
+.fx-shock{position:absolute;width:0;height:0}
+.fx-shock i{position:absolute;left:-65vmax;top:-65vmax;width:130vmax;height:130vmax;border-radius:50%;
+  background:radial-gradient(circle,transparent 58%,rgba(255,214,120,.95) 64%,rgba(255,120,20,.55) 67%,transparent 71%);
+  transform:scale(.02);opacity:1;animation:fxshock .95s cubic-bezier(.15,.7,.3,1) forwards;will-change:transform,opacity}
+.fx-shock i:nth-child(2){animation-delay:.16s;animation-duration:1.15s}
+.fx-shock i.core{background:radial-gradient(circle,rgba(255,240,190,.95),rgba(255,140,30,.7) 22%,rgba(255,60,0,.25) 45%,transparent 65%);
+  animation:fxcore .7s ease-out forwards}
+@keyframes fxshock{to{transform:scale(1);opacity:0}}
+@keyframes fxcore{0%{transform:scale(.02);opacity:1}40%{opacity:.9}100%{transform:scale(.55);opacity:0}}
+
+/* burning title letters */
+.fxv-burn .to-title .bw{white-space:nowrap}
+.fxv-burn .to-title .bl{display:inline-block;color:#4a3b31;text-shadow:none;
+  animation:fxcatch .55s ease-out both,fxlick .22s ease-in-out infinite alternate;
+  animation-delay:calc(.5s + var(--i) * .12s),calc(1.05s + var(--i) * .12s)}
+@keyframes fxcatch{
+  0%{color:#4a3b31;text-shadow:none;transform:translateY(0)}
+  35%{color:#fff;text-shadow:0 0 26px #ffd27a,0 0 60px #ff7a1a;transform:translateY(-6px) scale(1.12)}
+  100%{color:var(--gold);text-shadow:0 0 16px rgba(255,122,26,.95),0 -8px 22px rgba(255,70,0,.85),0 4px 0 #6b1d00;transform:none}}
+@keyframes fxlick{
+  from{color:var(--gold);text-shadow:0 0 16px rgba(255,122,26,.95),0 -8px 22px rgba(255,70,0,.85),0 4px 0 #6b1d00}
+  to{color:#fff2c4;text-shadow:0 0 22px rgba(255,160,40,1),0 -14px 28px rgba(255,90,0,.9),0 4px 0 #6b1d00}}
+
+/* lava cracks */
+.fx-lava,.fx-lava svg{position:absolute;inset:0;width:100%;height:100%}
+.fx-lava path{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:var(--len);stroke-dashoffset:var(--len);
+  animation:fxcrack 1.3s cubic-bezier(.3,.6,.4,1) forwards}
+.fx-lava .lg{stroke:rgba(255,80,0,.55);stroke-width:10}
+.fx-lava .lc{stroke:#ffd36b;stroke-width:2.5}
+@keyframes fxcrack{to{stroke-dashoffset:0}}
+
+/* ---------- MEDEVAC ---------- */
+.fx-tk.tk-medevac{background:radial-gradient(ellipse at center,rgba(40,10,30,.7),rgba(6,10,22,.9) 70%)}
+.fx-tk.tk-medevac .to-core{background:rgba(6,10,20,.84);border:1px solid rgba(255,255,255,.16);border-radius:16px;
+  padding:18px 18px 14px;margin:0 12px;max-width:min(540px,94vw);box-shadow:0 12px 48px rgba(0,0,0,.65)}
+.fx-tk.tk-medevac .to-icon{font-size:64px}
+/* soft side glows: red left, blue right, 1 Hz each, opposite phase (2 changes / s in total) */
+.fx-glow2 i{position:absolute;top:0;bottom:0;width:48vw;opacity:.15;animation:fxpulse 1s ease-in-out infinite;will-change:opacity}
+.fx-glow2 .g-r{left:0;background:linear-gradient(to right,rgba(255,30,40,.85),rgba(255,30,40,.25) 45%,transparent)}
+.fx-glow2 .g-b{right:0;background:linear-gradient(to left,rgba(30,90,255,.9),rgba(30,90,255,.25) 45%,transparent);animation-delay:-.5s}
+.fx-glow2.low i{animation-name:fxpulselow}
+@keyframes fxpulse{0%,100%{opacity:.12}50%{opacity:.95}}
+@keyframes fxpulselow{0%,100%{opacity:.08}50%{opacity:.55}}
+/* light bar on top */
+.fx-lbar{position:absolute;left:0;right:0;top:var(--sat,0px);height:22px;display:flex;gap:4px;padding:0 4px}
+.fx-lbar i{flex:1;border-radius:0 0 6px 6px;opacity:.25;animation:fxpulse 1s ease-in-out infinite;will-change:opacity}
+.fx-lbar .r{background:#ff2a2a;box-shadow:0 0 24px 8px rgba(255,40,40,.75)}
+.fx-lbar .b{background:#2a6bff;box-shadow:0 0 24px 8px rgba(40,100,255,.8);animation-delay:-.5s}
+/* rotating beacons */
+.fx-beacon{position:absolute;top:0;width:0;height:0}
+.fx-beacon.r{left:0}.fx-beacon.b{right:0}
+.fx-beacon i{position:absolute;left:-85vmax;top:-85vmax;width:170vmax;height:170vmax;border-radius:50%;will-change:transform;
+  -webkit-mask-image:radial-gradient(circle,#000 10%,rgba(0,0,0,.75) 32%,transparent 66%);mask-image:radial-gradient(circle,#000 10%,rgba(0,0,0,.75) 32%,transparent 66%);
+  animation:fxspin 2.4s linear infinite}
+/* 4 beams, one turn per 2.4 s: a beam passes any point 1.67 times per second */
+.fx-beacon.r i{background:repeating-conic-gradient(rgba(255,40,40,.9) 0deg,rgba(255,40,40,.3) 20deg,transparent 36deg 90deg)}
+.fx-beacon.b i{background:repeating-conic-gradient(rgba(40,110,255,.95) 0deg,rgba(40,110,255,.3) 20deg,transparent 36deg 90deg);animation-direction:reverse}
+.fx-beacon::after{content:"";position:absolute;left:-34px;top:-34px;width:68px;height:68px;border-radius:50%}
+.fx-beacon.r::after{background:radial-gradient(circle,#fff,rgba(255,50,50,.9) 30%,transparent 70%)}
+.fx-beacon.b::after{background:radial-gradient(circle,#fff,rgba(50,110,255,.9) 30%,transparent 70%)}
+@keyframes fxspin{to{transform:rotate(360deg)}}
+/* searchlight */
+.fx-search i{position:absolute;left:0;top:0;width:76vmin;height:76vmin;margin:-38vmin 0 0 -38vmin;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,248,215,.45),rgba(255,248,215,.2) 42%,transparent 68%);
+  animation:fxsearch 4.2s ease-in-out infinite alternate;will-change:transform}
+@keyframes fxsearch{
+  0%{transform:translate(12vw,30vh)} 30%{transform:translate(78vw,22vh)} 60%{transform:translate(30vw,70vh)} 100%{transform:translate(86vw,62vh)}}
+/* emergency stripes */
+.fx-stripes{position:absolute;left:0;right:0;height:26px;overflow:hidden;opacity:.9}
+.fx-stripes.t{top:var(--sat,0px)}.fx-stripes.b{bottom:var(--sab,0px)}
+.fx-stripes i{position:absolute;top:0;bottom:0;left:-57px;right:0;
+  background:repeating-linear-gradient(45deg,#ff2a2a 0 20px,#f2f2f2 20px 40px);animation:fxslide .8s linear infinite;will-change:transform}
+.fx-stripes.b i{background:repeating-linear-gradient(-45deg,#2a6bff 0 20px,#f2f2f2 20px 40px);animation-direction:reverse}
+@keyframes fxslide{to{transform:translateX(56.57px)}}
+/* helicopter crossing */
+.fx-heli{position:absolute;left:0;top:18%;font-size:72px;line-height:1;animation:fxheli 2.8s linear forwards;will-change:transform;filter:drop-shadow(0 0 10px #000)}
+.fx-heli span{display:inline-block;animation:fxbob .5s ease-in-out infinite alternate}
+.fx-heli.rtl{animation-name:fxhelir}
+.fx-heli.rtl span{transform:scaleX(-1);animation-name:fxbobr}
+@keyframes fxheli{from{transform:translateX(-140px)}to{transform:translateX(calc(100vw + 40px))}}
+@keyframes fxhelir{from{transform:translateX(calc(100vw + 40px))}to{transform:translateX(-140px)}}
+@keyframes fxbob{from{transform:translateY(-4px) rotate(-3deg)}to{transform:translateY(4px) rotate(2deg)}}
+@keyframes fxbobr{from{transform:scaleX(-1) translateY(-4px) rotate(-3deg)}to{transform:scaleX(-1) translateY(4px) rotate(2deg)}}
+
+/* reduced motion: calm, static */
+.fx-still-glow{position:absolute;inset:0}
+.tk-hot .fx-still-glow{box-shadow:inset 0 0 120px 30px rgba(255,100,20,.55)}
+.tk-medevac .fx-still-glow{background:linear-gradient(to right,rgba(255,40,40,.35),transparent 30%,transparent 70%,rgba(40,100,255,.4))}
+.fx-tk.still .to-icon,.fx-tk.still .to-title,.fx-tk.still .fx-layer *{animation:none !important}
+
+/* ---------- ambient: over the map, under HUD (999) and dock (1000) ---------- */
+.fx-amb{position:fixed;inset:0;z-index:990;pointer-events:none;overflow:hidden;animation:fxambin 1.4s ease-out}
+.fx-amb.out{opacity:0;transition:opacity 1.5s ease}
+@keyframes fxambin{from{opacity:0}}
+.fx-amb i{position:absolute;will-change:opacity}
+.amb-hot .a-b{left:0;right:0;bottom:0;height:34vh;background:linear-gradient(to top,rgba(255,100,20,.55),rgba(255,60,0,.2) 45%,transparent);animation:fxflick 2.3s ease-in-out infinite}
+.amb-hot .a-l{left:0;top:0;bottom:0;width:13vw;background:linear-gradient(to right,rgba(255,90,10,.42),transparent);animation:fxflick 2.9s ease-in-out infinite -.7s}
+.amb-hot .a-r{right:0;top:0;bottom:0;width:13vw;background:linear-gradient(to left,rgba(255,90,10,.42),transparent);animation:fxflick 2.6s ease-in-out infinite -1.3s}
+.amb-hot .a-t{left:0;right:0;top:0;height:12vh;background:linear-gradient(to bottom,rgba(255,80,0,.28),transparent);animation:fxflick 3.1s ease-in-out infinite -.2s}
+.amb-hot b{position:absolute;bottom:-8px;width:5px;height:5px;border-radius:50%;background:radial-gradient(circle,#fff1c2,#ff8a1a 60%,transparent);
+  box-shadow:0 0 8px 2px rgba(255,122,26,.8);opacity:0;animation:fxember var(--d,5s) linear infinite;will-change:transform,opacity}
+@keyframes fxember{0%{transform:translate(0,0);opacity:0}10%{opacity:1}70%{opacity:.8}100%{transform:translate(var(--w,0),-72vh);opacity:0}}
+.amb-med .a-l{left:0;top:0;bottom:0;width:14vw;background:linear-gradient(to right,rgba(255,30,40,.62),transparent);opacity:.2;animation:fxambp 1.6s ease-in-out infinite}
+.amb-med .a-r{right:0;top:0;bottom:0;width:14vw;background:linear-gradient(to left,rgba(40,100,255,.68),transparent);opacity:.2;animation:fxambp 1.6s ease-in-out infinite -.8s}
+.amb-med .a-sweep{left:0;top:0;width:60vw;height:14vh;background:radial-gradient(ellipse at 50% 0,rgba(255,40,60,.4),rgba(60,90,255,.25) 45%,transparent 70%);
+  animation:fxsweep 5s ease-in-out infinite alternate;will-change:transform}
+@keyframes fxambp{0%,100%{opacity:.15}50%{opacity:.85}}
+@keyframes fxsweep{from{transform:translateX(-30vw)}to{transform:translateX(70vw)}}
+.fx-amb.still i{animation:none;opacity:.6}
+.fx-amb.still .a-sweep{display:none}
+
+/* page hidden: pause everything */
+.fx-hidden .fx-amb,.fx-hidden .fx-amb *,.fx-hidden .fx-tk *{animation-play-state:paused !important}
+
+/* ---------- small beer effects (< 1 s) ---------- */
+.fx-bub span{position:absolute;top:-24px;border-radius:50%;border:1.5px solid #fffaf0;box-shadow:0 0 6px rgba(255,236,190,.7);
+  background:radial-gradient(circle at 32% 30%,#fff,rgba(255,236,190,.55) 45%,rgba(255,200,90,.25));
+  opacity:0;animation:fxbub .85s cubic-bezier(.3,.6,.5,1) forwards}
+@keyframes fxbub{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}15%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--sw)),calc(-50% + var(--rise))) scale(1.05);opacity:0}}
+.fx-clink .mugs{position:absolute;left:0;top:-74px;font-size:42px;line-height:1;opacity:0;animation:fxmugs .85s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes fxmugs{0%{transform:translate(-50%,-50%) scale(.2) rotate(-25deg);opacity:0}30%{transform:translate(-50%,-50%) scale(1.15) rotate(8deg);opacity:1}
+  55%{transform:translate(-50%,-50%) scale(1) rotate(-5deg);opacity:1}100%{transform:translate(-50%,-80%) scale(1) rotate(0);opacity:0}}
+.fx-clink i{position:absolute;left:-2px;top:-83px;width:4px;height:18px;border-radius:2px;background:linear-gradient(#fff,var(--gold,#ffe08a));
+  box-shadow:0 0 8px rgba(255,224,138,.9);opacity:0;animation:fxray .55s .18s ease-out forwards}
+@keyframes fxray{0%{transform:rotate(var(--a)) translateY(-18px) scaleY(.2);opacity:0}30%{opacity:1}
+  100%{transform:rotate(var(--a)) translateY(-56px) scaleY(1);opacity:0}}

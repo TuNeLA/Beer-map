@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Öl Nu FX test</title>
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./fx.css">
+<style>
+  /* Fake map so the effects have something to burn. */
+  #map{background:
+    linear-gradient(rgba(120,160,200,.07) 1px,transparent 1px) 0 0/40px 40px,
+    linear-gradient(90deg,rgba(120,160,200,.07) 1px,transparent 1px) 0 0/40px 40px,
+    radial-gradient(circle at 30% 40%,#1b2a3f,#0b0f18 60%)}
+  #map::before{content:"";position:absolute;left:10%;top:30%;width:70%;height:6px;background:#2b3a52;transform:rotate(-12deg);box-shadow:0 120px 0 #2b3a52,40px 240px 0 #2b3a52}
+  .pad{position:fixed;z-index:1001;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;max-height:58vh;overflow:auto;
+    background:rgba(10,15,28,.86);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--hud);font-size:13px}
+  .pad h2{margin:6px 0 4px;font-size:12px;color:var(--amber);letter-spacing:.08em}
+  .pad button{margin:3px 3px 3px 0;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#18233a;color:var(--text);font-family:var(--hud)}
+  .pad label{display:inline-flex;gap:6px;align-items:center;margin-right:12px}
+  .pad .st{color:var(--muted);margin-top:6px}
+  .demo-streak{top:auto !important;bottom:220px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="hud-left" style="top:auto;bottom:230px"><div id="my-streak" class="my-streak" hidden></div></div>
+<div class="pad" id="pad">
+  <h2>HOT STREAK (5)</h2><div id="hot"></div>
+  <h2>MEDEVAC (10)</h2><div id="med"></div>
+  <h2>AMBIENT</h2>
+  <div>
+    <button data-amb="1">Hot 20 s</button><button data-amb="2">Medevac 20 s</button>
+    <button data-amb="1" data-ms="180000">Hot 3 min</button><button data-amb="2" data-ms="300000">Medevac 5 min</button>
+    <button data-amb="0">Stop</button>
+  </div>
+  <h2>NORMAL BEER</h2><div id="beer"></div>
+  <h2>APP OPEN (#my-streak watch)</h2>
+  <div><button data-st="0">0 beers</button><button data-st="1">HOT</button><button data-st="2">MEDEVAC</button><button id="clr">Clear fxReached</button></div>
+  <div><label><input type="checkbox" id="taxi" checked> Taxi buttons on MEDEVAC</label><label><input type="checkbox" id="after"> Ambient after takeover</label></div>
+  <div class="st" id="st"></div>
+</div>
+<div class="dock">
+  <div class="dock-row" style="justify-content:center">
+    <div class="beer-wrap"><button id="btn-beer" class="beer-btn" type="button"><span class="beer-label">ÖL!</span><span class="beer-sub">tryck</span></button></div>
+  </div>
+</div>
+
+<script src="./js/util.js"></script>
+<script src="./js/fx.js"></script>
+<script>
+(function () {
+  "use strict";
+  var FX = window.FX, $ = function (id) { return document.getElementById(id); };
+  var TAXI = '<div class="taxi-row"><a class="to-taxi" href="#" onclick="return false">🚕 Taxi Ludvika</a><a class="to-taxi taxi-uber" href="#" onclick="return false">Uber</a></div>';
+  function btn(parent, label, fn) {
+    var b = document.createElement("button"); b.type = "button"; b.textContent = label;
+    b.addEventListener("click", function (e) { e.stopPropagation(); FX.unlock(); fn(); });
+    parent.appendChild(b);
+  }
+  function hot(v) {
+    var r = FX.takeover(1, { title: "HOT STREAK", sub: "5 öl ikväll. Du brinner!", hint: "Tryck för att stänga", variant: v, noAmbient: !$("after").checked });
+    $("st").textContent = "HOT variant: " + r;
+  }
+  function med(v) {
+    var x = $("taxi").checked;
+    var r = FX.takeover(2, { title: "MEDEVAC", sub: "10 öl. Drick vatten och ta en taxi hem.", hint: "Tryck för att stänga",
+      extraHTML: x ? TAXI : "", ms: x ? 7000 : 0, variant: v, noAmbient: !$("after").checked });
+    $("st").textContent = "MEDEVAC variant: " + r;
+  }
+  FX.variants[1].forEach(function (v) { btn($("hot"), v, function () { hot(v); }); });
+  btn($("hot"), "random", function () { hot(); });
+  FX.variants[2].forEach(function (v) { btn($("med"), v, function () { med(v); }); });
+  btn($("med"), "random", function () { med(); });
+  FX.variants.beer.forEach(function (v) { btn($("beer"), v, function () { FX.splash($("btn-beer"), v); }); });
+  btn($("beer"), "random", function () { FX.splash($("btn-beer")); });
+  $("btn-beer").addEventListener("click", function () { FX.unlock(); FX.splash($("btn-beer")); });
+  document.querySelectorAll("[data-amb]").forEach(function (b) {
+    b.addEventListener("click", function () { FX.ambient(+b.getAttribute("data-amb"), +(b.getAttribute("data-ms") || 20000)); });
+  });
+  document.querySelectorAll("[data-st]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var l = +b.getAttribute("data-st"), st = $("my-streak");
+      st.hidden = !l;
+      st.className = "my-streak" + (l === 2 ? " medevac" : l === 1 ? " hot" : "");
+      st.innerHTML = l ? "Ikväll: <b>" + (l === 2 ? 10 : 5) + "</b> " + (l === 2 ? "🚁" : "🔥") : "";
+    });
+  });
+  $("clr").addEventListener("click", function () { localStorage.removeItem("olnu.fxReached"); $("st").textContent = "fxReached cleared"; });
+})();
+</script>
+</body>
+</html>
