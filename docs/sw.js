@@ -1,5 +1,5 @@
 /* Öl Nu service worker. */
-var VERSION = "olnu-2da7529813";
+var VERSION = "olnu-52c0f3c9c9";
 // Shell files that index.html does not name. The local scripts and stylesheets (with their ?v=<file hash>)
 // are read from index.html itself at install, so the precache uses the same URLs as the page (no double download).
 // app.js forceUpdate() also reads this list.
