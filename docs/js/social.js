@@ -624,7 +624,8 @@
       function go() {
         if (sending) return;
         var text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
-        if (!text || text.length > 140) { A.toast(t("chatInvalid"), { err: true }); return; }
+        if (!text) return;   // QA #17: blank message → nothing, no error toast
+        if (text.length > 140) { A.toast(t("chatInvalid"), { err: true }); return; }
         sending = true; sendBtn.disabled = true;
         try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
         call("post_group_msg", { p_group_id: g.id, p_body: text }).then(function (r) {
@@ -654,7 +655,7 @@
     });
   }
   function openChatLink(id) {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""))) return;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""))) { A.toast(t("linkGone"), { id: "link", urgent: true, ms: 5000 }); return; }
     statsReady.then(function () {
       if (!chatOn()) return;
       A.withName(function () {
@@ -733,7 +734,35 @@
     var ghost = window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn();
     return v7 === true && !!A.myBeer() && !ghost;
   }
+  // QA #5: "Kom hit!" pings the whole group, so ask first (inline, like SOS). No browser dialogs.
+  I.add({ sv: { comeQ: "Skicka till gruppen?", comeYes: "Ja" }, en: { comeQ: "Send to the group?", comeYes: "Yes" } });
   function comeHere(button) {
+    if (comeLeft() > 0) { A.toast(t("comeWait", Math.ceil(comeLeft() / 60000))); return; }
+    if (!A.myBeer()) { A.toast(t("comeNoBeer"), { err: true }); return; }
+    var el = A.el;
+    function ask(onNo, onYes) {
+      var box = el("div", { class: "confirm come-confirm" }, [
+        el("p", { html: "<b>" + esc(t("comeQ")) + "</b>" }),
+        el("div", { class: "row" }, [
+          A.btn(t("cancel"), "btn-small come-no", function () { onNo(box); }),
+          A.btn(t("comeYes"), "btn-small btn-green come-yes", function () { onYes(box); })
+        ])
+      ]);
+      return box;
+    }
+    var row = button && button.closest && !button.closest("#hud-x") ? button.parentNode : null;
+    if (row && row.parentNode) {
+      // Groups sheet: the question opens under the button, in the same sheet.
+      if (row.parentNode.querySelector(".come-confirm")) return;
+      row.parentNode.insertBefore(ask(function (b) { b.remove(); }, function (b) { b.remove(); comeSend(button); }), row.nextSibling);
+      return;
+    }
+    // Ikväll panel (it closes on tap): the same question in a small sheet.
+    A.openSheet(t("comeHere"), function (body) {
+      body.appendChild(ask(function () { A.closeSheet(); }, function () { A.closeSheet(); comeSend(null); }));
+    });
+  }
+  function comeSend(button) {
     if (comeLeft() > 0) { A.toast(t("comeWait", Math.ceil(comeLeft() / 60000))); return; }
     var mine = A.myBeer();
     if (!mine) { A.toast(t("comeNoBeer"), { err: true }); return; }
@@ -802,7 +831,7 @@
   var sosMarker = null;
   function showSosLink(s) {
     var p = String(s || "").split(","), la = parseFloat(p[0]), ln = parseFloat(p[1]);
-    if (!isFinite(la) || !isFinite(ln) || !A.inSweden(la, ln)) return;
+    if (!isFinite(la) || !isFinite(ln) || !A.inSweden(la, ln)) { A.toast(t("linkGone"), { id: "link", urgent: true, ms: 5000 }); return; }
     var show = function () {
       if (sosMarker) A.map.removeLayer(sosMarker);
       sosMarker = L.marker([la, ln], { zIndexOffset: 5000, keyboard: false, title: t("sosHere"),

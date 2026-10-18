@@ -990,9 +990,16 @@
     } catch (e) {}
     var rl = [];
     try { rl = window.RALLY && window.RALLY.list ? window.RALLY.list() : []; } catch (e) { rl = []; }
-    return { center: chaosCenter(), now: new Date(), prev: newsPrev, titles: titles,
+    return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles,
       others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins,
       home: groupRows, rallies: rl, myName: getName() || null, myTitle: me.title || null, myMedals: medals.slice(0, 3) };
+  }
+  // QA #11: before the first GPS fix (location allowed, first 15 s) the ticker has no centre, so it does not
+  // name the start-view town. showMe() rebuilds the queued headlines when the fix arrives.
+  var newsNoCenter = false, newsBootAt = Date.now();
+  function newsCenter() {
+    if (!lastLoc && !myBeer() && U.ls.get("olnu.locOk", "") === "1" && Date.now() - newsBootAt < 15000) { newsNoCenter = true; return null; }
+    return chaosCenter();
   }
   // LIVE ticker = funny TV news feed (js/news.js). New headlines after each poll (or language change), not on map moves.
   var tickerKey = "", newsDirty = true, newsPrev = [];
@@ -1430,7 +1437,7 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = LIVE ? t("live", liveTotal != null ? liveTotal : beerOnly().length | 0) : t("soonLive");
+    $("live-count").innerHTML = LIVE ? t("live", liveTotal != null ? liveTotal : lastPollAt ? beerOnly().length | 0 : "–")   /* QA #18: "–" before the first poll */ : t("soonLive");
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
@@ -1449,6 +1456,8 @@
     var hx = $("hud-x"), chips = LIVE ? mods("hudChipsHTML", { mine: mine, n: n }) : "";
     var ci = LIVE ? myCheckin() : null;
     if (ci) chips += '<button type="button" class="hx-chip hx-ci" data-hx="checkin" aria-label="' + U.esc(t("ciChip", ci.name)) + '">🚪 ' + U.esc(ci.name) + "</button>";
+    // Owner: "I came home and had no idea where to tap." A clear chip while your pin is on the map.
+    if (LIVE && myBeer()) chips += '<button type="button" class="hx-chip hx-home" data-hx="home">🏠 ' + U.esc(t("stopHome")) + "</button>";
     if (n > 0) {
       var l = U.level(n), mlv = lvOf(n);
       var emo = mlv ? mlv.emoji : l === 2 ? "🚁" : l === 1 ? "🔥" : "🍺";
@@ -1672,6 +1681,7 @@
       skalAlert();
       toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
+      setTimeout(flushBeerQueue, 600);   // QA #19: an offline beer goes now
       mods("onPollData", dv2);
       mods("onPoll", beers);
     }).catch(function (e) {
@@ -1757,7 +1767,7 @@
     var id = pendingFocus; pendingFocus = null;
     var b = null;
     for (var i = 0; i < beers.length; i++) if (String(beers[i].id) === String(id)) b = beers[i];
-    if (!b) return;
+    if (!b) { toast(t("linkGone"), { id: "link", urgent: true, ms: 5000 }); return; }
     map.setView([b.lat, b.lng], 16, { animate: false });
     setTimeout(function () {
       var m = markerById[b.id];
@@ -1921,6 +1931,7 @@
     lastLoc = { lat: lat, lng: lng };
     if (PUSH_ON && authed) window.PUSH.setLocation(rpc, lat, lng);
     if (chaosRes) evalChaos(false);
+    if (newsNoCenter) { newsNoCenter = false; try { if (tickerKey) renderTickerItemsOnly(); } catch (e) {} }
     meLayer.clearLayers();
     if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
     L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
@@ -2141,16 +2152,43 @@
   // A poll says the undo window is over (or undone on another phone): drop the button.
   function undoSync(me) { if (undoEl && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
 
-  $("btn-beer").addEventListener("click", function () {
+  $("btn-beer").addEventListener("click", function () { beerTap(null); });
+  // QA #19: offline ÖL! → keep it (max 1, max 20 min old) and send it after the next good poll.
+  I.add({ sv: { beerQueued: "📡 Ingen täckning – ölen skickas när du är online igen" }, en: { beerQueued: "📡 No signal – the beer is sent when you are back online" } });
+  var BEERQ_KEY = "olnu.beerQueue", BEERQ_MAX_MS = 20 * 60 * 1000;
+  function beerQueued() {
+    var q = U.ls.getJSON(BEERQ_KEY, null);
+    return q && q.at && Date.now() - (+q.at) < BEERQ_MAX_MS && isFinite(q.lat) && isFinite(q.lng) ? q : null;
+  }
+  function queueBeer() {
+    if (beerQueued()) { toast(t("beerQueued"), { id: "off", ms: 6000 }); return; }
+    setBusy(true);
+    getPosition().then(askWhere).then(function (spot) {
+      if (!spot) { toast(t("whereCancel"), { id: "where" }); return; }
+      U.ls.setJSON(BEERQ_KEY, { at: Date.now(), lat: spot.lat, lng: spot.lng, precise: !!spot.precise, home: !!spot.home });
+      toast(t("beerQueued"), { id: "off", ms: 6000 });
+      window.FX.vibrate(20);
+    }, locError).catch(function () {}).then(function () { setBusy(false); });
+  }
+  function flushBeerQueue() {
+    var q = U.ls.getJSON(BEERQ_KEY, null);
+    if (!q) return;
+    if (!beerQueued()) { U.ls.del(BEERQ_KEY); return; }
+    if (!LIVE || !authed || busy || navigator.onLine === false) return;   // the next poll tries again
+    U.ls.del(BEERQ_KEY);
+    if (cooldownLeft() > 0) return;   // a beer in the last 10 min wins (the server's rule)
+    beerTap({ lat: +q.lat, lng: +q.lng, precise: !!q.precise, home: !!q.home });
+  }
+  function beerTap(queued) {
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (busy || cooldownLeft() > 0) return;
-    if (navigator.onLine === false) { toast(t("offline"), { err: true, id: "off" }); return; }
+    if (navigator.onLine === false) { if (!queued) queueBeer(); return; }
     if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
     window.FX.unlock();
     window.FX.splash($("btn-beer"));
     window.FX.vibrate(20);
     setBusy(true);
-    getPosition().then(askWhere).then(function (spot) {
+    (queued ? Promise.resolve(queued) : getPosition().then(askWhere)).then(function (spot) {
       if (!spot) { toast(t("whereCancel"), { id: "where" }); return; }
       var ghost = !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
       var before = U.drinks(meState || myBeer() || {});
@@ -2196,7 +2234,7 @@
         });
     }, locError).catch(function () { toast(t("postFail"), { err: true }); })
       .then(function () { setBusy(false); tickCooldown(); updateCounts(); });
-  });
+  }
   // Push to the group. Fully silent: no push keys, no function deployed, network error → nothing happens.
   function notifyGroup() {
     if (!PUSH_ON || !client || !client.functions) return;
@@ -2468,8 +2506,13 @@
         var inp = el("input", { class: "inp code-inp", id: "code-inp", maxlength: "6", autocapitalize: "characters",
           autocomplete: "off", autocorrect: "off", spellcheck: "false", enterkeyhint: "go", value: U.cleanCode(code) });
         inp.addEventListener("input", function () {
+          var raw = String(inp.value || "").replace(/\s+/g, "").toUpperCase();
           var c = U.cleanCode(inp.value); if (c !== inp.value) inp.value = c;
+          // QA #14: a typed character was dropped (O, 0, I, 1 or a symbol): say why, under the field.
+          if (raw.length > c.length && c.length < 6) codeHint.hidden = false;
         });
+        var codeHint = el("p", { class: "muted code-hint", hidden: "", "aria-live": "polite",
+          text: I.lang === "en" ? "Codes have no O, 0, I or 1." : "Koder har inte O, 0, I eller 1." });
         var go = function () {
           var c = U.cleanCode(inp.value);
           if (c.length !== 6) { toast(t("codeNeeded"), { err: true }); return; }
@@ -2486,6 +2529,7 @@
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
         body.appendChild(el("label", { class: "fld", for: "code-inp", text: t("joinCode") }));
         body.appendChild(inp);
+        body.appendChild(codeHint);
         body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [
           btn(t("cancel"), "", showGroups), btn(t("join"), "btn-green", go)
         ]));
@@ -2925,6 +2969,8 @@
   }
 
   /* ---------- Deep links ---------- */
+  // QA #15: one short toast for a link whose target is gone (social.js uses it too). Rank 2 (urgent), so poll news does not push it out.
+  I.add({ sv: { linkGone: "🔗 Hittade inte den länken – den har nog gått ut" }, en: { linkGone: "🔗 Could not find that link – it has probably expired" } });
   var params = new URLSearchParams(location.search);
   var joinCode = params.get("join");
   var focusId = params.get("focus");
@@ -2933,12 +2979,26 @@
   var rallyId = params.get("rally"), rallyAns = params.get("answer");
   var barLink = params.get("bar");   // v12 krogtips / takeover push: open that bar
   if (focusId) pendingFocus = focusId;
-  if (joinCode || focusId || invited || chatId || sosAt || rallyId || rallyAns || barLink) {
+  if (["join", "focus", "chat", "sos", "bar", "rally"].some(function (k) { return params.has(k); }) || invited || rallyAns) {   // QA #15: also an empty ?join=
     params.delete("join"); params.delete("focus"); params.delete("invite"); params.delete("chat"); params.delete("sos"); params.delete("bar");
     params.delete("rally"); params.delete("answer");   // a reload must not answer again
     var qs = params.toString();
     try { history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash); } catch (e) {}
   }
+
+  // QA #20: "Uppdatera nu" reloads to ?v=<time>; drop it from the address bar after load.
+  (function () {
+    function stripV() {
+      try {
+        var ps = new URLSearchParams(location.search);
+        if (!ps.has("v")) return;
+        ps.delete("v");
+        var q = ps.toString();
+        history.replaceState(history.state, "", location.pathname + (q ? "?" + q : "") + location.hash);
+      } catch (e) {}
+    }
+    if (document.readyState === "complete") stripV(); else window.addEventListener("load", stripV);
+  })();
 
   /* ---------- Auth + start ---------- */
   // Anonymous sign-in. Retries 3 times (1 s, 3 s, 6 s), then shows a clear message with a retry button.
@@ -3434,6 +3494,7 @@
       var b = e.target.closest("[data-hx]"); if (!b || b.disabled) return;
       setTimeout(function () { hudPanel(false); }, 0);
       if (b.getAttribute("data-hx") === "checkin") { var ci = myCheckin(); if (ci) flyTo(ci.lat, ci.lng, 17, null); return; }
+      if (b.getAttribute("data-hx") === "home") { showStopSheet(); return; }
       mods("hudClick", b.getAttribute("data-hx"), b);
     });
     // Design pass 2: the Ikväll pill opens the panel.
@@ -3552,7 +3613,7 @@
   // v12: fly to a bar (bars.json id) and open its popup. Bars load async: retry for ~12 s.
   function openBarById(id, tries) {
     var bar = window.BARS.byId(String(id));
-    if (!bar) { if (tries < 24) setTimeout(function () { openBarById(id, tries + 1); }, 500); return; }
+    if (!bar) { if (tries < 24) setTimeout(function () { openBarById(id, tries + 1); }, 500); else toast(t("linkGone"), { id: "link", urgent: true, ms: 5000 }); return; }
     openBar(bar);
   }
   function openBar(bar) {

@@ -387,6 +387,9 @@
     var h = hourNow(now), tk = h >= 5 && h < 20 ? "t1" : h >= 20 && h < 23 ? "t2" : h >= 23 || h < 1 ? "t3" : h < 3 ? "t4" : "t5";
     add(tk, { hh: ("0" + h).slice(-2) }, 0);
 
+    // QA #11: the local town for lines that name a place ("stan" when unknown); a stranger's own town wins.
+    var here = (c && townAt(c.lat, c.lng)) || "stan";
+    cand.forEach(function (x) { if (x.d && x.d.here == null) x.d.here = x.d.stad && x.d.stad !== t("newsTown") ? x.d.stad : here; });
     // Turn candidates into texts. One random template per candidate. Drop duplicates.
     var seen = {}, items = [];
     cand.forEach(function (x) {

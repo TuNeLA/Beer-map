@@ -21,8 +21,35 @@
      Ludvika Taxi stays as the built-in default if the data file is missing. Uber everywhere. */
   var TAXI = { name: "Ludvika Taxi", tel: "+4624013900", text: "0240-139 00", lat: 60.1496, lng: 15.1878 };
   var UBER = "https://m.uber.com/ul/?action=setPickup";
+  // QA #7: my GPS first (A.center() is lastLoc → own pin → map centre). Abroad: no Swedish number.
+  I.add({ sv: { taxiSearch: "🔎 Sök taxi här" }, en: { taxiSearch: "🔎 Find a taxi here" } });
+  // Rough outline of Sweden [lat, lng]: keeps Copenhagen, Oslo, Narvik, Åland, Turku and Tornio outside.
+  var SE_POLY = [[55.33, 12.8], [55.3, 14.4], [56.0, 16.0], [56.9, 18.4], [58.1, 19.5], [59.6, 19.2], [60.6, 18.6], [61.5, 17.8],
+    [62.5, 18.2], [63.5, 20.3], [64.3, 21.7], [65.3, 22.8], [65.84, 24.145], [66.8, 23.95], [67.2, 23.6], [67.95, 23.6], [68.44, 22.49],
+    [69.06, 20.55], [68.43, 18.12], [67.1, 16.3], [66.0, 14.6], [64.5, 13.95], [63.3, 12.0], [62.3, 12.3], [61.0, 12.65], [59.9, 11.95],
+    [59.1, 11.3], [58.9, 11.0], [57.7, 11.5], [56.6, 12.6], [56.3, 12.4], [56.0, 12.66], [55.6, 12.85]];
+  function inSE(lat, lng) {
+    var inside = false;
+    for (var i = 0, j = SE_POLY.length - 1; i < SE_POLY.length; j = i++) {
+      var a = SE_POLY[i], b = SE_POLY[j];
+      if ((a[0] > lat) !== (b[0] > lat) && lng < (b[1] - a[1]) * (lat - a[0]) / (b[0] - a[0]) + a[1]) inside = !inside;
+    }
+    return inside;
+  }
+  function taxiPos() {
+    var c = null;
+    try { c = (A.lastLoc && A.lastLoc()) || A.center(); } catch (e) { c = null; }
+    return c && isFinite(c.lat) && isFinite(c.lng) ? c : null;
+  }
+  // Abroad: a Google Maps "taxi" search at my position (else null).
+  function taxiAway() {
+    var c = taxiPos();
+    if (!c || inSE(c.lat, c.lng)) return null;
+    return "https://www.google.com/maps/search/taxi/@" + (+c.lat).toFixed(5) + "," + (+c.lng).toFixed(5) + ",14z";
+  }
   function taxiFor() {
-    var c = A.center(), data = window.TAXI_DATA;
+    var c = taxiPos(), data = window.TAXI_DATA;
+    if (c && !inSE(c.lat, c.lng)) return null;
     if (!data || !data.towns || !c) return !c || U.haversine(c.lat, c.lng, TAXI.lat, TAXI.lng) <= 60000 ? TAXI : null;
     var best = null, bestD = 40000;
     data.towns.forEach(function (x) {
@@ -32,8 +59,9 @@
     return best || data.fallback || null;
   }
   function taxiHTML(cls) {
-    var tx = taxiFor();
+    var tx = taxiFor(), away = taxiAway();
     return '<div class="taxi-row">' +
+      (away ? '<a class="' + cls + ' taxi-search" href="' + esc(away) + '" target="_blank" rel="noopener noreferrer">' + esc(t("taxiSearch")) + "</a>" : "") +
       (tx ? '<a class="' + cls + ' taxi-local" href="tel:' + esc(tx.tel) + '">🚕 ' + esc(tx.name) +
         ' <span class="taxi-num">' + esc(tx.text) + "</span></a>" : "") +
       '<a class="' + cls + ' taxi-uber" href="' + UBER + '" target="_blank" rel="noopener noreferrer">' + esc(t("taxiUber")) + "</a></div>";
@@ -273,7 +301,7 @@
     if (otherBusy) return;
     var left = otherLeft();
     if (left > 0) { A.toast(t("otherWait", U.mmss(left))); return; }
-    if (navigator.onLine === false) { A.toast(t("offline"), { err: true }); return; }
+    // QA #19: offline is fine here; postOther() keeps the drink until we are online.
     var kinds = t("kinds") || {};
     A.openSheet(t("otherTitle"), function (body) {
       body.appendChild(A.el("p", { class: "muted", text: t("otherInfo") }));
@@ -295,13 +323,38 @@
     r.push(i); if (r.length > Math.min(8, list.length - 1)) r.shift();
     return list[i];
   }
-  function postOther(kind) {
+  // QA #19: offline ANNAT → keep it (max 1, max 20 min old) and send it after the next good poll.
+  I.add({ sv: { otherQueued: "📡 Ingen täckning – drinken skickas när du är online igen" }, en: { otherQueued: "📡 No signal – the drink is sent when you are back online" } });
+  var OTHERQ_KEY = "olnu.otherQueue", OTHERQ_MAX_MS = 20 * 60 * 1000;
+  function otherQueued() {
+    var q = U.ls.getJSON(OTHERQ_KEY, null);
+    return q && q.at && q.kind && Date.now() - (+q.at) < OTHERQ_MAX_MS && isFinite(q.lat) && isFinite(q.lng) ? q : null;
+  }
+  function queueOther(kind) {
+    if (otherQueued()) { A.toast(t("otherQueued"), { ms: 6000 }); return; }
+    A.getPosition().then(function (pos) {
+      U.ls.setJSON(OTHERQ_KEY, { at: Date.now(), kind: kind, lat: pos.coords.latitude, lng: pos.coords.longitude });
+      A.toast(t("otherQueued"), { ms: 6000 });
+      window.FX.vibrate(20);
+    }, A.locError);
+  }
+  function flushOtherQueue() {
+    var q = U.ls.getJSON(OTHERQ_KEY, null);
+    if (!q) return;
+    if (!otherQueued()) { U.ls.del(OTHERQ_KEY); return; }
+    if (otherBusy || !A.authed() || navigator.onLine === false) return;   // the next poll tries again
+    U.ls.del(OTHERQ_KEY);
+    if (otherLeft() > 0) return;   // a drink in the last 10 min wins (the server's rule)
+    postOther(q.kind, { coords: { latitude: +q.lat, longitude: +q.lng } });
+  }
+  function postOther(kind, fixedPos) {
     if (otherBusy) return;
+    if (!fixedPos && navigator.onLine === false) { queueOther(kind); return; }
     if (!A.authed()) { A.toast(t("connecting")); return; }
     otherBusy = true; applyOther();
     window.FX.unlock(); window.FX.vibrate(20);
     var kinds = t("kinds") || {};
-    A.getPosition().then(function (pos) {
+    (fixedPos ? Promise.resolve(fixedPos) : A.getPosition()).then(function (pos) {
       var prm = { p_kind: kind, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: A.prec() === "exact" };
       // post_other_v2 knows grogg/bubbel (0022). Old server: fall back to post_other ("annat" for the new kinds).
       return A.rpc("post_other_v2", prm).then(function (r) {
@@ -331,7 +384,10 @@
         var big = I.lang !== "en" && window.DRINK_LINES ? window.DRINK_LINES[kind] : null;
         var byKind = big && big.length ? big : (t("otherToastsKind") || {})[kind];
         var line = byKind && byKind.length ? pickFresh(kind, byKind) : pick(t("otherToasts"));
-        A.toast(line.replace(/\{d\}/g, name), { cls: "hot" });
+        // QA #11: {stad} = the town where the drink was posted ("stan" when unknown).
+        var stadHere = "stan";
+        try { var cty = window.CITIES && window.CITIES.nearest(pos.coords.latitude, pos.coords.longitude); if (cty && cty.name) stadHere = cty.name; } catch (e) {}
+        A.toast(line.replace(/\{d\}/g, name).replace(/\{stad\}/g, stadHere), { cls: "hot" });
         window.FX.sound.clink(); window.FX.vibrate([30, 40, 30]);
         var l = getLog(); l.others = Math.max((l.others | 0) + 1, d.other_count | 0); saveLog(l);
         award("side");
@@ -398,6 +454,7 @@
     },
     onAuthed: function () { if (MED()) MED().onAuthed(); },
     onPoll: function (beers) {
+      setTimeout(flushOtherQueue, 900);   // QA #19: an offline drink goes now
       if (MED()) MED().onPoll();
       var mine = A.myBeer(); if (!mine) return;
       var l = getLog(), sk = Math.max(0, mine.skal_count | 0);

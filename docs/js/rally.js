@@ -608,17 +608,19 @@
       body.appendChild(pr);
       body.appendChild(other);
       loc.addEventListener("change", function () { useLoc = loc.checked; });
+      // QA #10: position known → send it by default (the user can still untick it).
+      if ((A.lastLoc && A.lastLoc()) || mine) { loc.checked = true; useLoc = true; }
       body.appendChild(el("label", { class: "age-row rl-loc", for: "rally-loc" }, [loc, el("span", { text: t("rallyUseLoc") })]));
       var go = A.btn(t("rallySend"), "btn-amber btn-block", function () {
         if (sending) return;
         var text = String(inp.value || "").trim(), pl = !other.hidden ? String(other.value || "").trim() : place;
         if (text.length > 100 || (pl && pl.length > 60)) { A.toast(t("rallyInvalid"), { err: true }); return; }
         sending = true; go.disabled = true;
-        var posP = useLoc ? A.getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }).then(function (p) {
+        var posP = useLoc && !(spot && isFinite(spot.lat)) ? A.getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }).then(function (p) {
           return { lat: Math.round(p.coords.latitude * 1e5) / 1e5, lng: Math.round(p.coords.longitude * 1e5) / 1e5 };
         }, function (err) { A.locError(err); return null; }) : Promise.resolve(null);
         posP.then(function (pos) {
-          var params = { p_group_id: gid, p_body: text || t("rallyDefault"), p_place: pl || null };
+          var params = { p_group_id: gid, p_body: text || t("rallyPh"), p_place: pl || null };
           if (pos) { params.p_lat = pos.lat; params.p_lng = pos.lng; }
           else if (spot && isFinite(spot.lat)) { params.p_lat = +(+spot.lat).toFixed(5); params.p_lng = +(+spot.lng).toFixed(5); }
           return call("create_rally", params).then(function (res) {
