@@ -438,3 +438,14 @@ t("eta recipients: only mates at the target, plus the rally creator", () => {
 });
 
 console.log(`\n${passed} tests passed`);
+
+// v22 GRUPPCHEF
+{
+  let n = 0;
+  const p = m.statusReqPayload(3, "Anton", "Kapsylkommandot", 42);
+  assert.equal(p.url, "/?status=42"); assert.equal(p.tag, "olnu-status-42");
+  assert.ok(p.title.includes("Anton") && p.body.includes("10 min"));
+  assert.ok(m.STATUS_LINES.length >= 15 && new Set(m.STATUS_LINES).size === m.STATUS_LINES.length);
+  for (let i = -3; i < 40; i++) { assert.ok(m.statusReqPayload(i, "A", "B", 1).title.length > 3); n++; }
+  console.log("ok - status_req payload", n);
+}
