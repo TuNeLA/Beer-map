@@ -1012,22 +1012,417 @@
       if (r.error) return null;
       var d = A.parseData(r.data); if (view && view.g.id === gid) view.paper = d; return d;
     });
-    got.then(function (d) {
+    // v24 Kvällens förlopp (0032). Missing RPC / error -> null -> the classic paper.
+    var gotS = got.then(function (d) {
+      if (view && view.g.id === gid && view.storyDone) return view.story;
+      var ev = d && d.evening ? String(d.evening).slice(0, 10) : null;
+      return call("group_night_story", { p_group_id: gid, p_night: ev }).then(function (r) {
+        var st = r.error ? null : A.parseData(r.data);
+        if (view && view.g.id === gid) { view.story = st; view.storyDone = true; }
+        return st;
+      }, function () { return null; });
+    });
+    Promise.all([got, gotS]).then(function (x) {
+      var d = x[0], st = x[1];
       if (!alive() || view.tab !== "tidning") return;
       box.innerHTML = "";
-      if (!d) { box.appendChild(el("p", { class: "gg-note", text: T("fail") })); return; }
-      if (!d.ready) { box.appendChild(el("p", { class: "gg-note gg-big", text: (C.paper || {}).none || "" })); return; }
-      var seenP = U.ls.getJSON(PAPER_KEY, {}) || {}; seenP[gid] = poll ? poll.last_night : d.night; U.ls.setJSON(PAPER_KEY, seenP); A.updateCounts();
-      var model = paperModel(d, view.g);
-      drawPaper(model).then(function (cv) {
+      if (!d && !st) { box.appendChild(el("p", { class: "gg-note", text: T("fail") })); return; }
+      if (!(d && d.ready) && !(st && st.ready)) { box.appendChild(el("p", { class: "gg-note gg-big", text: (C.paper || {}).none || "" })); return; }
+      var seenP = U.ls.getJSON(PAPER_KEY, {}) || {}; seenP[gid] = poll ? poll.last_night : (d || st).night; U.ls.setJSON(PAPER_KEY, seenP); A.updateCounts();
+      var base = d || { night: st.night, town: st.town, group_name: st.group_name, members: [] };
+      var model = paperModel(base, view.g);
+      var sm = st && st.ready ? storyModel(st, base, view.g, model) : null;
+      (sm ? drawStory(sm) : drawPaper(model)).then(function (cv) {
         if (!alive()) return;
-        var img = el("img", { class: "gg-pimg", alt: model.big + ". " + model.small.join(". "), src: cv.toDataURL("image/png") });
+        var m = sm || model;
+        var img = el("img", { class: "gg-pimg", alt: m.alt || (model.big + ". " + model.small.join(". ")), src: cv.toDataURL("image/png") });
         box.appendChild(img);
         var row = el("div", { class: "gg-row" });
-        if (navigator.share && navigator.canShare) row.appendChild(bt(T("pShare"), "btn-amber", function () { sharePaper(cv, model); }));
+        if (navigator.share && navigator.canShare) row.appendChild(bt(T("pShare"), "btn-amber", function () { sharePaper(cv, m); }));
         row.appendChild(bt(T("pSave"), "btn-small", function () { downloadPaper(cv); }));
         box.appendChild(row);
       });
+    });
+  }
+
+  /* ---------- 📰 v24: Kvällens förlopp (story model + tall paper) ---------- */
+  function tms(iso) { var t = Date.parse(iso); return isNaN(t) ? 0 : t; }
+  function joinNames(list) {
+    list = (list || []).filter(Boolean);
+    if (list.length <= 1) return list.join("");
+    if (list.length > 3) return list.slice(0, 3).join(", ") + " +" + (list.length - 3);
+    return list.slice(0, -1).join(", ") + " & " + list[list.length - 1];
+  }
+  function storyModel(s, d, g, pm) {
+    var ST = C.story || {}, LN = ST.line || {}, BG = ST.big || {};
+    var r = rng("story:" + g.id + ":" + s.night), used = {};
+    var group = s.group_name || pm.group || g.name || "Gänget";
+    var town = s.town || (d && d.town) || townName(myPos().lat, myPos().lng) || "Ludvika";
+    function shuffled(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); for (var j = n - 1; j > 0; j--) { var k = Math.floor(r() * (j + 1)); var t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+    function draw(list, v) {
+      list = list || [];
+      var o = shuffled(list.length);
+      for (var i = 0; i < o.length; i++) {
+        var t = fill(list[o[i]], v);
+        if (!used[t.toUpperCase()] && !/\{\w+\}/.test(t)) { used[t.toUpperCase()] = 1; return t.charAt(0).toUpperCase() + t.slice(1); }
+      }
+      return null;
+    }
+    var members = s.members || [], arr = s.arrivals || [], ral = s.rallies || [], dr = s.drinks || {};
+    var ev = [];
+    function add(at, type, v, pri, time) { if (!at) return; ev.push({ at: tms(at), time: time || hhmm(at), type: type, v: v, pri: pri + r() * 0.5 }); }
+    // Opener: first drink or first check-in of the night
+    var open = null;
+    members.forEach(function (m) {
+      [m.first_at, m.first_ci].forEach(function (t) { if (t && (!open || tms(t) < tms(open.at))) open = { at: t, name: m.name }; });
+    });
+    if (open) add(open.at, "open", { name: open.name }, 9);
+    var bars = {};
+    arr.forEach(function (a, i) {
+      bars[a.bar_id || a.bar] = 1;
+      var v = { bar: a.bar, n: a.n, names: joinNames(a.names), name: (a.names || [])[0], from: a.from_bar || "", other: a.met_group || a.met_n, group: group };
+      if (a.from_bar && (a.met_group || (a.met_n | 0) >= 2)) add(a.at, a.met_group ? "meetGroup" : "meet", v, 9);
+      else if (a.from_bar) add(a.at, a.n >= 2 ? "move" : "moveSolo", v, a.n >= 2 ? 8 : 5);
+      else if (a.met_group || ((a.met_n | 0) >= 2 && a.n >= 2)) add(a.at, a.met_group ? "meetGroup" : "meet", v, 8);
+      else add(a.at, a.n >= 2 ? "arriveGroup" : "arriveSolo", v, a.n >= 2 ? (i === 0 ? 8 : 7) : 4);
+    });
+    ral.forEach(function (x) {
+      var yes = (x.yes_names || []).filter(function (n) { return n !== x.by; });
+      var v = { by: x.by || T("someone"), place: x.place || "krogen", yes: yes.length, names: joinNames(yes) };
+      add(x.at, yes.length ? "rally" : "rallyQuiet", v, yes.length ? 8 : 5);
+      var e = (x.etas || [])[0];
+      if (e && e.eta_at) add(new Date(tms(e.eta_at) - (e.minutes | 0) * 60000).toISOString(), "eta", { name: e.name, min: e.minutes, place: v.place }, 3);
+    });
+    var pk = dr.peak;
+    if (pk && (pk.n | 0) >= 3) {
+      var h = +pk.h, h2 = ("0" + ((h + 1) % 24)).slice(-2);
+      add(pk.at, "peak", { n: pk.n }, 8, pk.h + ":00–" + h2 + ":00");
+    }
+    (s.status || []).forEach(function (x) {
+      if ((x.needed | 0) < 1) return;
+      add(x.at, "status", { by: x.by || T("someone"), answered: x.answered | 0, needed: x.needed | 0,
+        fast: x.fastest ? x.fastest.name : (x.by || ""), sec: x.fastest ? x.fastest.sec : "?" }, 6);
+    });
+    (s.duels || []).forEach(function (x) {
+      var type = x.winner === "us" ? "duelWin" : x.winner === "them" ? "duelLoss" : x.winner === "draw" ? "duelDraw" : "duelOn";
+      add(x.at, type, { opp: x.opp || "?", us: x.us | 0, them: x.them | 0, group: group }, 9);
+    });
+    var ph = (s.photos || []).slice().sort(function (a, b) { return tms(a.at) - tms(b.at); })[0];
+    if (ph) add(ph.at, "photo", { name: ph.by }, 3);
+    if (dr.last_at && (dr.total | 0) >= 3) add(dr.last_at, "lastDrink", {}, 5);
+    var homes = members.filter(function (m) { return m.home_at; }).sort(function (a, b) { return tms(a.home_at) - tms(b.home_at); });
+    if (homes.length) add(homes[0].home_at, "home", { name: homes[0].name }, 4);
+
+    var picked = ev.slice().sort(function (a, b) { return b.pri - a.pri || a.at - b.at; }).slice(0, 10);
+    picked.sort(function (a, b) { return a.at - b.at; });
+    var timeline = [];
+    picked.forEach(function (e) { var t = draw(LN[e.type], e.v); if (t) timeline.push({ time: e.time, text: t, pri: e.pri }); });
+
+    // Quotes: the most-reacted chat texts, else the quote book
+    var quotes = [];
+    var top = ((s.chat || {}).top || []).filter(function (q) { return q.body && q.body.length >= 2 && q.body.length <= 120; });
+    top.filter(function (q) { return (q.reacts | 0) > 0; }).concat(top.filter(function (q) { return !(q.reacts | 0); })).forEach(function (q) {
+      if (quotes.length < 2) quotes.push({ body: q.body, who: q.name, reacts: q.reacts | 0 });
+    });
+    if (!quotes.length) ((d && d.quotes) || []).slice(0, 1).forEach(function (q) { quotes.push({ body: q.body, who: q.who }); });
+
+    var photos = (s.photos || []).slice(0, 4);
+    if (timeline.length < 2 || timeline.length + photos.length + quotes.length < 4) return null;   // thin night -> classic paper
+
+    // Headline from the strongest event
+    var cands = [];
+    function cand(kind, w, v) { cands.push({ kind: kind, w: w + r() * 2, v: v }); }
+    arr.forEach(function (a, i) { if (i > 0 && (a.met_group || (a.met_n | 0) >= 2)) cand("meet", 10, { bar: a.bar, group: group, other: a.met_group || a.met_n }); });
+    (s.duels || []).forEach(function (x) {
+      var v = { opp: x.opp || "?", us: x.us | 0, them: x.them | 0, group: group };
+      if (x.winner === "us") cand("duelWin", 14, v); else if (x.winner === "them") cand("duelLoss", 9, v); else if (x.winner === "draw") cand("duelDraw", 8, v);
+    });
+    var nb = Object.keys(bars).length;
+    if (nb >= 2) cand("bars", 5 + nb, { n: nb, group: group, town: town });
+    if (pk && (pk.n | 0) >= 6) cand("peak", 6 + (pk.n | 0) / 2, { n: pk.n, time: pk.h + ":00", group: group });
+    ral.forEach(function (x) {
+      var yes = (x.yes_names || []).filter(function (n) { return n !== x.by; }).length;
+      if (yes >= 2) cand("rally", 7 + yes, { by: x.by, yes: yes, place: x.place || "krogen" });
+    });
+    (s.status || []).forEach(function (x) {
+      if ((x.needed | 0) >= 2 && (x.answered | 0) >= 1) cand("status", 5, { by: x.by, answered: x.answered, needed: x.needed, fast: x.fastest ? x.fastest.name : x.by, sec: x.fastest ? x.fastest.sec : "?" });
+    });
+    if ((dr.total | 0) >= 10) cand("total", 5 + (dr.total | 0) / 10, { total: dr.total, group: group, town: town });
+    if ((s.photos_n | 0) >= 3) cand("photos", 4 + (s.photos_n | 0) / 2, { n: s.photos_n, town: town });
+    var outN = members.filter(function (m) { return m.out; }).length;
+    if (outN >= 4) cand("crowd", 4 + outN / 2, { n: outN, town: town, group: group });
+    cands.sort(function (a, b) { return b.w - a.w; });
+    var big = null;
+    for (var i = 0; i < cands.length && !big; i++) big = draw(BG[cands[i].kind], cands[i].v);
+    big = (big || pm.big).toUpperCase();
+
+    // Stats
+    var SL = ST.stats || {};
+    var stats = [
+      { n: dr.total | 0, l: SL.drinks || "DRYCKER" }, { n: nb, l: SL.bars || "KROGAR" }, { n: (s.skal || {}).total | 0, l: SL.skal || "SKÅL" },
+      { n: ral.length, l: SL.rallies || "INKALLNINGAR" }, { n: s.photos_n | 0, l: SL.photos || "BILDER" }
+    ];
+    // Awards
+    var AW = ST.awards || {}, WH = ST.why || {}, awards = [];
+    function best(f, min) { var b = null; members.forEach(function (m) { var v = f(m); if (v != null && v >= min && (!b || v > b.v)) b = { m: m, v: v }; }); return b; }
+    var gen = {};
+    ral.forEach(function (x) { if (x.by) gen[x.by] = (gen[x.by] || 0) + 1; });
+    (s.status || []).forEach(function (x) { if (x.by) gen[x.by] = (gen[x.by] || 0) + 1; });
+    var gk = Object.keys(gen).sort(function (a, b) { return gen[b] - gen[a]; })[0];
+    if (gk) awards.push({ title: AW.general, name: gk, why: fill(WH.general, { n: gen[gk] }) });
+    var late = best(function (m) { return m.last_at ? tms(m.last_at) : null; }, 1);
+    if (late && members.filter(function (m) { return m.last_at; }).length >= 2) awards.push({ title: AW.late, name: late.m.name, why: fill(WH.late, { time: hhmm(late.m.last_at) }) });
+    var th = best(function (m) { return m.drinks | 0; }, 2);
+    if (th) awards.push({ title: AW.thirsty, name: th.m.name, why: fill(WH.thirsty, { n: th.v }) });
+    if ((s.skal || {}).top) awards.push({ title: AW.skal, name: s.skal.top.name, why: fill(WH.skal, { n: s.skal.top.n }) });
+    var bb = best(function (m) { return m.bars | 0; }, 2);
+    if (bb) awards.push({ title: AW.bars, name: bb.m.name, why: fill(WH.bars, { n: bb.v }) });
+    var pc = {}; (s.photos || []).forEach(function (p) { if (p.by) pc[p.by] = (pc[p.by] || 0) + 1; });
+    var pk2 = Object.keys(pc).sort(function (a, b) { return pc[b] - pc[a]; })[0];
+    if (pk2) awards.push({ title: AW.photo, name: pk2, why: fill(WH.photo, { n: pc[pk2] }) });
+    var fs = (s.status || []).filter(function (x) { return x.fastest; }).sort(function (a, b) { return a.fastest.sec - b.fastest.sec; })[0];
+    if (fs) awards.push({ title: AW.fast, name: fs.fastest.name, why: fill(WH.fast, { sec: fs.fastest.sec }) });
+
+    var H = ST.heads || {};
+    return {
+      story: true, masthead: pm.masthead, date: pm.date, price: pm.price, slogan: pm.slogan, kicker: pm.kicker, footer: pm.footer, group: group,
+      big: big, sub: pm.small[0] || "", heads: H,
+      photo: photos[0] ? { id: photos[0].id, cap: fill(ST.caption || "{by} {time}", { by: photos[0].by, time: hhmm(photos[0].at) }) + (photos[0].caption ? " – " + photos[0].caption : "") } : null,
+      strip: photos.slice(1, 4).map(function (p) { return { id: p.id, cap: p.by + " " + hhmm(p.at) }; }),
+      timeline: timeline, quotes: quotes, stats: stats, awards: awards.slice(0, 4),
+      voice: (s.voice_n | 0) > 0 ? fill(ST.voice, { n: s.voice_n }) : "",
+      alt: big + ". " + timeline.map(function (x) { return x.time + " " + x.text; }).join(". ")
+    };
+  }
+  function storyImg(id) {
+    var P = window.PHOTO;
+    var first = P && P._url ? Promise.resolve().then(function () { return P._url(id); }) : Promise.reject(new Error("no"));
+    var job = first.catch(function () {
+      return call("night_story_photo", { p_photo_id: +id }).then(function (r) {
+        if (r.error) throw new Error("photo");
+        var x = A.parseData(r.data), bin = atob(x.b64), a = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+        return URL.createObjectURL(new Blob([a], { type: x.mime || "image/jpeg" }));
+      });
+    }).then(function (url) {
+      return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = url; });
+    }).catch(function () { return null; });
+    return Promise.race([job, new Promise(function (res) { setTimeout(function () { res(null); }, 6000); })]);
+  }
+  function coverImg(ctx, im, x, y, w, h) {
+    var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+    if (!iw || !ih) return;
+    var sc = Math.max(w / iw, h / ih), sw = w / sc, sh = h / sc;
+    ctx.drawImage(im, (iw - sw) / 2, (ih - sh) * 0.35, sw, sh, x, y, w, h);
+  }
+  function clampLines(ctx, text, maxW, max) {
+    var l = wrapLines(ctx, text, maxW);
+    if (l.length > max) {
+      l = l.slice(0, max); var last = l[max - 1];
+      while (last.length > 1 && ctx.measureText(last + "…").width > maxW) last = last.slice(0, -1);
+      l[max - 1] = last.replace(/[\s,.;:–-]+$/, "") + "…";
+    }
+    return l;
+  }
+  function star(ctx, cx, cy, R, r0) {
+    ctx.beginPath();
+    for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r0 : R; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fill();
+  }
+  // Draws the whole tall page; returns the content height. Same code for the measure pass and the real pass.
+  function paintStory(ctx, m, imgs, H) {
+    var W = 1080, X = 40, CW = W - 80;
+    var DISP = '"Black Ops One", Impact, "Arial Black", sans-serif', BODY = '"Chakra Petch", "Arial Narrow", Arial, sans-serif';
+    var Y = "#ffd60a", K = "#111", RED = "#e10600";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = Y; ctx.fillRect(0, 0, W, H);
+    // Masthead
+    ctx.fillStyle = K; ctx.fillRect(0, 0, W, 210);
+    ctx.fillStyle = RED; ctx.fillRect(0, 210, W, 14);
+    var mh = fitText(ctx, m.masthead, "{s}px " + DISP, W - 80, 150, 120, 48, 1);
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = mh.size + "px " + DISP;
+    ctx.fillText(mh.lines.join(" "), W / 2, 40 + mh.size * 0.95, W - 60);
+    ctx.font = "600 30px " + BODY; ctx.fillStyle = Y; ctx.fillText(m.slogan, W / 2, 196, W - 80);
+    ctx.fillStyle = K; ctx.textAlign = "left"; ctx.font = "700 32px " + BODY;
+    ctx.fillText(m.date.charAt(0).toUpperCase() + m.date.slice(1), 44, 284, 700);
+    ctx.textAlign = "right"; ctx.fillText(m.price, W - 44, 284, 320);
+    ctx.fillRect(44, 304, W - 88, 5);
+    // Kicker + headline
+    ctx.save(); ctx.translate(44, 330); ctx.rotate(-0.04);
+    ctx.fillStyle = RED; ctx.fillRect(0, 0, 300, 82);
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "62px " + DISP; ctx.fillText(m.kicker, 150, 64, 280);
+    ctx.restore();
+    var bh = fitText(ctx, m.big, "{s}px " + DISP, W - 100, m.compact ? 220 : 280, 120, 52, 1.02);
+    ctx.fillStyle = K; ctx.textAlign = "left"; ctx.font = bh.size + "px " + DISP;
+    var y = 440 + bh.size * 0.9;
+    bh.lines.forEach(function (l) { ctx.fillText(l, 50, y, W - 100); y += bh.size * 1.02; });
+    y -= bh.size * 0.55;
+    if (m.sub) {
+      ctx.font = "700 36px " + BODY;
+      var sl = clampLines(ctx, m.sub, W - 160, 2);
+      ctx.fillStyle = RED; ctx.fillRect(50, y + 12, 24, 24); ctx.fillStyle = K;
+      sl.forEach(function (l, i) { ctx.fillText(l, 92, y + 36 + i * 42, W - 150); });
+      y += 24 + sl.length * 42;
+    }
+    y += 18;
+    // Front photo
+    var main = m.photo && imgs[m.photo.id];
+    if (main) {
+      var ph = m.compact ? 400 : 500;
+      ctx.fillStyle = K; ctx.fillRect(X + 10, y + 10, CW, ph);
+      coverImg(ctx, main, X, y, CW, ph);
+      ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.strokeRect(X, y, CW, ph);
+      ctx.fillStyle = "rgba(17,17,17,.82)"; ctx.fillRect(X, y + ph - 60, CW, 60);
+      ctx.fillStyle = Y; ctx.font = "700 28px " + BODY; ctx.textAlign = "left";
+      ctx.fillText(clampLines(ctx, m.photo.cap, CW - 40, 1)[0], X + 20, y + ph - 20, CW - 40);
+      y += ph + 34;
+    }
+    function head(text) {
+      ctx.fillStyle = K; ctx.fillRect(X, y, CW, 62);
+      ctx.fillStyle = Y; ctx.font = "44px " + DISP; ctx.textAlign = "left"; ctx.fillText(text, X + 22, y + 47, CW - 40);
+      ctx.fillStyle = RED; ctx.fillRect(X + CW - 90, y + 18, 70, 26);
+      y += 62;
+    }
+    // Timeline
+    if (m.timeline.length) {
+      head(m.heads.timeline || "KVÄLLENS FÖRLOPP");
+      y += 22;
+      var top = y, rows = [];
+      m.timeline.forEach(function (t) {
+        ctx.font = "700 33px " + BODY;
+        var ls = clampLines(ctx, t.text, 770, 2);
+        rows.push({ y: y, t: t, ls: ls });
+        y += ls.length * 40 + 14;
+      });
+      ctx.fillStyle = K; ctx.fillRect(231, top + 10, 4, Math.max(0, rows[rows.length - 1].y - top));
+      rows.forEach(function (rw) {
+        var tl = rw.t.time, wide = tl.length > 5;
+        ctx.textAlign = "right"; ctx.fillStyle = RED; ctx.font = (wide ? "26px " : "36px ") + DISP;
+        ctx.fillText(tl, 210, rw.y + 32, 170);
+        ctx.fillStyle = K; ctx.beginPath(); ctx.arc(233, rw.y + 20, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = Y; ctx.beginPath(); ctx.arc(233, rw.y + 20, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.textAlign = "left"; ctx.fillStyle = K; ctx.font = "700 33px " + BODY;
+        rw.ls.forEach(function (l, i) { ctx.fillText(l, 262, rw.y + 32 + i * 40, 780); });
+      });
+      y += 10;
+    }
+    // Photo strip
+    var strip = (m.strip || []).filter(function (p) { return imgs[p.id]; });
+    var stripSide = strip.length && !m.noStrip && m.quotes.length && (m.awards || []).length;
+    if (strip.length && !m.noStrip && !stripSide) {
+      var gap = 20, sw = (CW - gap * 2) / 3, sh = 230;
+      strip.forEach(function (p, i) {
+        var sx = X + i * (sw + gap);
+        ctx.fillStyle = K; ctx.fillRect(sx + 7, y + 7, sw, sh);
+        coverImg(ctx, imgs[p.id], sx, y, sw, sh);
+        ctx.lineWidth = 5; ctx.strokeStyle = K; ctx.strokeRect(sx, y, sw, sh);
+        ctx.fillStyle = "rgba(17,17,17,.8)"; ctx.fillRect(sx, y + sh - 40, sw, 40);
+        ctx.fillStyle = Y; ctx.font = "700 22px " + BODY; ctx.textAlign = "left"; ctx.fillText(p.cap, sx + 12, y + sh - 13, sw - 24);
+      });
+      y += sh + 36;
+    }
+    // CITAT (left) + medals (right); a column takes the full width when the other is empty
+    var qs = m.quotes.slice(0, m.oneQuote ? 1 : 2), aws = m.awards || [];
+    var qW = qs.length ? (aws.length ? 620 : CW) : 0, colX = qs.length ? X + qW + 24 : X, colW = CW - (qs.length ? qW + 24 : 0);
+    var qy = y, ay = y;
+    if (qs.length) {
+      var qlines = [], qh = 96;
+      ctx.font = "italic 600 34px " + BODY;
+      qs.forEach(function (q) { var ls = clampLines(ctx, "”" + q.body + "”", qW - 60, 3); qlines.push({ ls: ls, who: "– " + (q.who || "?") }); qh += ls.length * 40 + 48; });
+      ctx.fillStyle = "#fff"; ctx.fillRect(X, y, qW, qh);
+      ctx.lineWidth = 6; ctx.strokeStyle = K; ctx.strokeRect(X, y, qW, qh);
+      ctx.fillStyle = RED; ctx.fillRect(X - 6, y - 6, 190, 58);
+      ctx.fillStyle = "#fff"; ctx.font = "42px " + DISP; ctx.textAlign = "left"; ctx.fillText(m.heads.quotes || "CITAT", X + 14, y + 40);
+      ctx.fillStyle = "rgba(225,6,0,.12)"; ctx.font = "200px " + DISP; ctx.textAlign = "right"; ctx.fillText("”", X + qW - 16, y + 170);
+      var cy = y + 100;
+      qlines.forEach(function (q) {
+        ctx.fillStyle = K; ctx.textAlign = "left"; ctx.font = "italic 600 34px " + BODY;
+        q.ls.forEach(function (l, i) { ctx.fillText(l, X + 30, cy + i * 40, qW - 60); });
+        cy += q.ls.length * 40;
+        ctx.font = "700 26px " + BODY; ctx.fillStyle = RED; ctx.textAlign = "right"; ctx.fillText(q.who, X + qW - 30, cy + 4, qW - 60);
+        cy += 48;
+      });
+      qy = y + qh;
+      if (stripSide) {
+        var tg = 12, tw = (qW - tg * (strip.length - 1)) / strip.length, th = Math.min(150, tw * 0.75);
+        qy += 22;
+        strip.forEach(function (p, i) {
+          var sx = X + i * (tw + tg);
+          ctx.fillStyle = K; ctx.fillRect(sx + 6, qy + 6, tw, th);
+          coverImg(ctx, imgs[p.id], sx, qy, tw, th);
+          ctx.lineWidth = 5; ctx.strokeStyle = K; ctx.strokeRect(sx, qy, tw, th);
+          ctx.fillStyle = "rgba(17,17,17,.8)"; ctx.fillRect(sx, qy + th - 34, tw, 34);
+          ctx.fillStyle = Y; ctx.font = "700 20px " + BODY; ctx.textAlign = "left"; ctx.fillText(p.cap, sx + 10, qy + th - 11, tw - 20);
+        });
+        qy += th;
+      }
+    }
+    if (aws.length) {
+      var wide = !qs.length;
+      ctx.fillStyle = K; ctx.fillRect(colX, ay, colW, 52);
+      ctx.fillStyle = Y; ctx.font = "32px " + DISP; ctx.textAlign = "left"; ctx.fillText(m.heads.awards || "MEDALJREGN", colX + 16, ay + 38, colW - 30);
+      ay += 62;
+      var per = wide ? 2 : 1, cw = colW / per;
+      aws.forEach(function (a, i) {
+        var ax = colX + (i % per) * cw, rowY = ay + Math.floor(i / per) * 90;
+        ctx.fillStyle = RED; ctx.beginPath(); ctx.moveTo(ax + 18, rowY); ctx.lineTo(ax + 30, rowY + 22); ctx.lineTo(ax + 46, rowY + 22); ctx.lineTo(ax + 58, rowY); ctx.fill();
+        ctx.fillStyle = K; ctx.beginPath(); ctx.arc(ax + 38, rowY + 52, 32, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = Y; star(ctx, ax + 38, rowY + 52, 22, 9);
+        ctx.textAlign = "left"; ctx.fillStyle = K; ctx.font = "700 20px " + BODY; ctx.fillText(a.title, ax + 84, rowY + 22, cw - 92);
+        ctx.font = "32px " + DISP; ctx.fillStyle = RED; ctx.fillText(a.name || "?", ax + 84, rowY + 56, cw - 92);
+        ctx.font = "600 20px " + BODY; ctx.fillStyle = K; ctx.fillText(a.why || "", ax + 84, rowY + 82, cw - 92);
+      });
+      ay += Math.ceil(aws.length / per) * 90;
+    }
+    y = Math.max(qy, ay) + 26;
+    // Stats row
+    var st = m.stats, bw = (CW - 4 * 16) / 5;
+    st.forEach(function (x, i) {
+      var bx = X + i * (bw + 16);
+      ctx.fillStyle = K; ctx.fillRect(bx, y, bw, 130);
+      ctx.fillStyle = Y; ctx.font = "60px " + DISP; ctx.textAlign = "center"; ctx.fillText(String(x.n), bx + bw / 2, y + 72, bw - 16);
+      ctx.fillStyle = "#fff"; ctx.font = "700 20px " + BODY; ctx.fillText(x.l, bx + bw / 2, y + 110, bw - 12);
+    });
+    y += 130;
+    if (m.voice) { ctx.fillStyle = K; ctx.font = "600 26px " + BODY; ctx.textAlign = "left"; ctx.fillText(m.voice, X, y + 34, CW); y += 44; }
+    y += 20;
+    // Footer (at the bottom of the page)
+    var fy = Math.max(y, H - 86);
+    ctx.fillStyle = K; ctx.fillRect(0, fy, W, 86);
+    ctx.fillStyle = Y; ctx.textAlign = "left"; ctx.font = "600 28px " + BODY;
+    ctx.fillText(m.footer, 40, fy + 52, W - 300);
+    ctx.textAlign = "right"; ctx.font = "34px " + DISP; ctx.fillText("ÖL NU 🍺", W - 40, fy + 54, 240);
+    return y + 86;
+  }
+  function drawStory(m) {
+    var W = 1080, MAXH = 2400, MINH = 1350;
+    var ready = (document.fonts && document.fonts.load) ? Promise.all([
+      document.fonts.load('100px "Black Ops One"'), document.fonts.load('700 40px "Chakra Petch"'), document.fonts.load('italic 600 34px "Chakra Petch"')
+    ]).catch(function () {}) : Promise.resolve();
+    var ids = (m.photo ? [m.photo.id] : []).concat((m.strip || []).map(function (p) { return p.id; }));
+    var imgs = {};
+    var loads = Promise.all(ids.map(function (id) { return storyImg(id).then(function (im) { if (im) imgs[id] = im; }); }));
+    return Promise.all([Promise.race([ready, new Promise(function (res) { setTimeout(res, 1500); })]), loads]).then(function () {
+      if (m.photo && !imgs[m.photo.id]) {   // front photo gone: promote a strip photo
+        var alt = (m.strip || []).filter(function (p) { return imgs[p.id]; })[0];
+        if (alt) { m.photo = { id: alt.id, cap: alt.cap }; m.strip = m.strip.filter(function (p) { return p !== alt; }); }
+      }
+      var probe = document.createElement("canvas"); probe.width = W; probe.height = 10;
+      var pc = probe.getContext("2d");
+      var h = paintStory(pc, m, imgs, 10), guard = 0;
+      // Too tall: shrink step by step (timeline 8, one quote, compact photo, strip, timeline 6, 3 medals, timeline 5)
+      function cut(n) { if (m.timeline.length <= n) return false; var lo = 0; m.timeline.forEach(function (t, i) { if (t.pri < m.timeline[lo].pri) lo = i; }); m.timeline.splice(lo, 1); return true; }
+      var steps = [function () { return cut(8); }, function () { if (!m.sub) return false; m.sub = ""; return true; },
+        function () { if (m.compact) return false; m.compact = true; return true; }, function () { return cut(7); },
+        function () { if (m.oneQuote || m.quotes.length < 2) return false; m.oneQuote = true; return true; },
+        function () { if (m.noStrip || !(m.strip || []).length) return false; m.noStrip = true; return true; },
+        function () { return cut(6); }, function () { if (m.awards.length <= 3) return false; m.awards = m.awards.slice(0, 3); return true; },
+        function () { return cut(5); }, function () { if (!m.voice) return false; m.voice = ""; return true; }];
+      while (h > MAXH && guard < steps.length) { if (steps[guard]()) h = paintStory(pc, m, imgs, 10); else guard++; }
+      m.alt = m.big + ". " + m.timeline.map(function (x) { return x.time + " " + x.text; }).join(". ");
+      var cv = document.createElement("canvas"); cv.width = W; cv.height = Math.max(MINH, Math.min(MAXH + 200, Math.ceil(h)));
+      paintStory(cv.getContext("2d"), m, imgs, cv.height);
+      return cv;
     });
   }
   function hhmm(iso) { return iso ? U.timeHM(iso) : ""; }
@@ -1222,7 +1617,7 @@
     state: function () { return state; },
     data: function () { return poll; },
     openGang: openGang, chatPick: chatPick, openKebab: openKebabSheet,
-    _paperModel: paperModel, _drawPaper: drawPaper, _settlePlan: settlePlan,
+    _paperModel: paperModel, _drawPaper: drawPaper, _storyModel: storyModel, _drawStory: drawStory, _settlePlan: settlePlan,
     init: function (api) {
       A = api;
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });

@@ -374,6 +374,347 @@
         "Nästa nummer: när ni hittar på nåt nytt"
       ],
       none: "Ingen tidning idag. Gänget var int’ ute igår – Kvällsposten tar ledigt."
+    },
+
+    // 📰 Morgontidningen v24: KVÄLLENS FÖRLOPP (group_night_story, migration 0032).
+    // Every list has at least 15 lines; one paper never shows the same line twice.
+    // Placeholders: {name} {n} {bar} {from} {by} {place} {yes} {names} {opp} {us} {them} {min} {other}
+    //   {answered} {needed} {fast} {sec} {group} {town} {total} {bars}
+    story: {
+      heads: { timeline: "KVÄLLENS FÖRLOPP", quotes: "CITAT", photos: "BILDBEVIS", awards: "MEDALJREGN", stats: "KVÄLLEN I SIFFROR" },
+      stats: { drinks: "DRYCKER", bars: "KROGAR", skal: "SKÅL", rallies: "INKALLNINGAR", photos: "BILDER" },
+      awards: {
+        general: "KVÄLLENS GENERAL", late: "LÄNGST UTE", thirsty: "TÖRSTIGAST", skal: "SKÅLMÄSTARE",
+        bars: "STIGFINNAREN", photo: "KRIGSFOTOGRAFEN", fast: "SNABBAST TILL FRONTEN"
+      },
+      why: {
+        general: "{n} order till truppen", late: "sista ölen {time}", lateHome: "hemma först {time}", thirsty: "{n} drycker",
+        skal: "{n} skål", bars: "{n} krogar", photo: "{n} bildbevis", fast: "svarade på {sec} s"
+      },
+      caption: "BILDBEVIS: {by} kl. {time}",
+      voice: "{n} röstmeddelanden avlyssnade av redaktionen",
+      // Big headline per strongest event of the night
+      big: {
+        meet: [
+          "{group} DROG TILL {bar} – MÖTTE ANDRA GÄNGET",
+          "FRONTERNA MÖTTES PÅ {bar}",
+          "TVÅ GÄNG, EN KROG: {bar} I GUNGNING",
+          "ALLIANS BILDAD PÅ {bar}",
+          "HISTORISKT TOPPMÖTE PÅ {bar}",
+          "{bar} BLEV SAMLINGSPLATS FÖR HALVA STAN",
+          "GÄNGEN FÖRENADE – {bar} FICK ÖS",
+          "TRUPPEN ANSLÖT MÄ ANDRA GÄNGET PÅ {bar}",
+          "FREDSAVTAL SKRIVET PÅ {bar}",
+          "STORMÖTE PÅ {bar} – ALLA VA DÄR",
+          "{group} OCH ANDRA GÄNGET – NU Ä DÄ EN ARMÉ",
+          "KNÖKFULLT PÅ {bar}: GÄNGEN SLOG IHOP SIG",
+          "{bar} INTOGS FRÅN TVÅ HÅLL",
+          "FÖRSTÄRKNINGEN KOM – OCH DÄ VA ETT HELT GÄNG",
+          "ÖVERRASKNING PÅ {bar}: GÄNGET FICK SÄLLSKAP"
+        ],
+        bars: [
+          "{group} ERÖVRADE {n} KROGAR – SÅGS ÖVERALLT",
+          "{n} KROGAR PÅ EN KVÄLL – {group} PÅ TURNÉ",
+          "OFFENSIVEN RULLADE: {n} KROGAR INTAGNA",
+          "TRUPPEN MARSCHERADE GENOM {n} KROGAR",
+          "{group} SÅGS PÅ {n} STÄLLEN – SAMTIDIGT?",
+          "KARTAN RÖD AV {group}: {n} KROGAR",
+          "FÄLTTÅGET: {n} KROGAR, NOLL RETRÄTT",
+          "{n} KROGAR SENARE – GÄNGET STÅR FORTFARANDE",
+          "BLIXTKRIG I {town}: {n} KROGAR PÅ EN NATT",
+          "{group} PÅ ROADTRIP – {n} KROGAR AVBOCKADE",
+          "INGEN KROG VA SÄKER: {n} BESÖKTA",
+          "STRATEGERNA RYSTE: {n} KROGAR PÅ RAD",
+          "{n} KROGAR – GÄNGET KAN INT' STÅ STILL",
+          "VANDRINGSPOKALEN TILL {group}: {n} KROGAR",
+          "KROGRUNDAN SOM BLEV ETT FÄLTTÅG – {n} STOPP"
+        ],
+        peak: [
+          "FULLT ÖS I SKYTTEGRAVEN: {n} I TIMMEN",
+          "{n} DRYCKER PÅ EN TIMME – BAREN SKAKADE",
+          "KULMEN KL. {time}: {n} I TIMMEN",
+          "TIMMEN SOM GICK TILL HISTORIEN – {n} ST",
+          "{group} SATTE TEMPOREKORD: {n} PÅ EN TIMME",
+          "BARTENDERN SVETTADES: {n} I TIMMEN",
+          "KRANARNA GLÖDDE – {n} PÅ EN TIMME",
+          "ANFALLET KL. {time}: {n} DRYCKER",
+          "{n} I TIMMEN – EXPERTER MÅLLÖSA",
+          "TOPPTIMMEN: {n} GLAS, NOLL PAUS",
+          "ÖLFRONTEN BRÖTS IGENOM KL. {time}",
+          "{group} I HÖGVARV: {n} PÅ 60 MINUTER",
+          "SKYTTEGRAVEN KOKADE – {n} I TIMMEN",
+          "MAXFART KL. {time}: {n} I TIMMEN",
+          "TEMPOT SOM FICK STAN ATT HÅLLA ANDAN – {n}/H"
+        ],
+        rally: [
+          "FÖRSTÄRKNING TILLKALLADES – {yes} SVARADE",
+          "{by} BLÅSTE TILL SAMLING – {yes} KOM",
+          "INKALLELSEN SOM FUNKADE: {yes} PÅ VÄG",
+          "{yes} MAN SVARADE PÅ {by}S ROP",
+          "GENERALEN {by} KALLADE – TRUPPEN LYDDE",
+          "LARMET GICK – {yes} RYCKTE UT",
+          "{by} RINGDE I KLOCKAN – {yes} KOM SPRINGANDE",
+          "MOBILISERING! {yes} SVARADE JA",
+          "SAMLING VID {place}: {yes} I LEDET",
+          "{by}S INKALLELSE BLEV SUCCÉ",
+          "TRUPPEN STRÖMMADE TILL {place}",
+          "{yes} SOLDATER SVARADE PÅ ORDERN",
+          "ORDER FRÅN {by}: ”KOM!” – OCH DÄ GJORDE DOM",
+          "FÖRSTÄRKNINGEN ANLÄNDE TILL {place}",
+          "{by} SAMLADE GÄNGET – {yes} SA JA"
+        ],
+        duelWin: [
+          "SEGER! {group} BESEGRADE {opp} {us}–{them}",
+          "{opp} KROSSADE – {us} MOT {them}",
+          "DUELLEN AVGJORD: {group} VANN",
+          "{group} TOG HEM DUELLEN MOT {opp}",
+          "TRIUMF! {us}–{them} MOT {opp}",
+          "{opp} FICK GÅ HEM MÄ SVANSEN MELLAN BENEN",
+          "GULDET TILL {group} – {opp} SLAGNA",
+          "{group} VANN KRIGET MOT {opp}",
+          "{opp} BÖJDE SIG: {us}–{them}",
+          "SEGERPARAD! {group} SLOG {opp}",
+          "MEDALJEN HEM – {opp} BESEGRADE",
+          "{us}–{them}: {group} ÄGDE DUELLEN",
+          "{opp} UTMANADE – OCH FÖRLORADE",
+          "SEGER I NATT, BAKIS I MORRN – VÄRT DÄ",
+          "DUELLKUNGARNA: {group} FÖRE {opp}"
+        ],
+        duelLoss: [
+          "NEDERLAG MOT {opp} – {us}–{them}",
+          "{opp} VANN DUELLEN – REVANSCH KRÄVS",
+          "{group} FÖLL MOT {opp}",
+          "SORGENS NATT: {us}–{them} MOT {opp}",
+          "{opp} TOG SEGERN – GÄNGET SAMLAR SIG",
+          "RETRÄTT! {opp} VANN {them}–{us}",
+          "{opp} STARKAST I NATT",
+          "DUELLEN FÖRLORAD – MEN INTE ÄRAN",
+          "{opp} VANN – ”NÄSTA GÅNG”, LOVAR {group}",
+          "NEDERLAGET SOM SVED: {us}–{them}",
+          "{group} SLOGS TAPPERT – {opp} VANN ÄNDÅ",
+          "REVANSCHLUSTEN VÄCKT EFTER {us}–{them}",
+          "{opp} 1, {group} 0 – OCH EN HELVETES KVÄLL",
+          "SILVER TILL {group} – {opp} TOG GULDET",
+          "KRIGSRÅD INKALLAT EFTER FÖRLUST MOT {opp}"
+        ],
+        duelDraw: [
+          "OAVGJORT MOT {opp} – {us}–{them}",
+          "DÖDLÄGE! {group} OCH {opp} LIKA",
+          "INGEN VANN – ALLA DRACK",
+          "{us}–{them}: FRONTEN STOD STILL",
+          "VAPENVILA MÄ {opp}",
+          "LIKA STARKA: {group} OCH {opp}",
+          "DUELLEN SLUTADE JÄMNT",
+          "STÄLLNINGSKRIG MOT {opp} – OAVGJORT",
+          "{opp} OCH {group} DELAR PÅ ÄRAN",
+          "OAVGJORT – OMMATCH KRÄVS",
+          "EXAKT LIKA! {us}–{them}",
+          "PATT MOT {opp}",
+          "INGEN KUNDE KNÄCKA NÅN – {us}–{them}",
+          "FREDEN RÄDDAD: OAVGJORT",
+          "{group} MOT {opp}: DÖTT LÖPP"
+        ],
+        status: [
+          "GENERALEN KRÄVDE LÄGESRAPPORT – {answered} AV {needed} SVARADE",
+          "LÄGESRAPPORT: {answered}/{needed} VID LIV",
+          "{by} RÄKNADE TRUPPEN – {answered} SVARADE",
+          "ORDER FRÅN HÖGKVARTERET: RAPPORTERA!",
+          "TRUPPEN RAPPORTERADE – {fast} SNABBAST",
+          "{fast} SVARADE PÅ {sec} SEKUNDER",
+          "UPPROP! {answered} AV {needed} RAPPORTERADE",
+          "HÖGKVARTERET NÖJT: TRUPPEN VID LIV",
+          "{by} HÖLL KOLL PÅ ALLA – NÄSTAN",
+          "BILDBEVIS INKRÄVDA – OCH LEVERERADE",
+          "LÄGET? ”BRA”, SVARADE {answered}",
+          "GENERALENS NATT: {by} HADE KOLL",
+          "RAPPORT FRÅN FRONTEN: {answered} SVARADE",
+          "{fast} VANN RAPPORTRACET",
+          "KONTROLL AV TRUPPEN: GODKÄND"
+        ],
+        total: [
+          "{total} DRYCKER – {group} TÖMDE STAN",
+          "REKORDKVÄLL: {total} DRYCKER",
+          "{group} DRACK {total} – BRYGGERIET JUBLAR",
+          "{total} GLAS SENARE – GÄNGET LEVER",
+          "KRANARNA SINADE: {total} DRYCKER",
+          "{total} DRYCKER I {town} – EXPERTER CHOCKADE",
+          "SIFFRAN SOM FICK STAN ATT HICKA: {total}",
+          "{group} SATTE {total} PÅ TAVLAN",
+          "{total} SKÅL MOT TAKET",
+          "{total} STYCKEN – OCH INGEN SPILLDES",
+          "PRODUKTIONEN STEG: {total} DRYCKER",
+          "LEVERANS: {total} DRYCKER TILL FRONTEN",
+          "{total} DRYCKER – BAREN BAD OM NÅD",
+          "RÄKNEVERKET GLÖDDE: {total}",
+          "EN KVÄLL, {total} DRYCKER, NOLL ÅNGER"
+        ],
+        photos: [
+          "BILDERNA SOM SKAKAR {town}",
+          "{n} BILDBEVIS FRÅN FRONTEN",
+          "SE BILDERNA – GÄNGET AVSLÖJAT",
+          "KAMERAN GICK VARM: {n} BILDER",
+          "FOTOBEVIS: SÅ VAR KVÄLLEN",
+          "{n} BILDER SOM ALDRIG FÅR LÄMNA GRUPPEN",
+          "BILDREPORTAGE INIFRÅN SKYTTEGRAVEN",
+          "EXKLUSIVT: BILDERNA FRÅN NATTEN",
+          "PAPARAZZI I GÄNGET – {n} BILDER",
+          "BEVISEN ÄR SÄKRADE",
+          "NATTENS FOTOALBUM: {n} BILDER",
+          "SMILE! {n} BILDER TAGNA",
+          "BILDERNA DOM INT' VILL ATT DU SER",
+          "REDAKTIONEN HAR BILDERNA",
+          "FOTOGRAFERNA VA I TJÄNST HELA NATTEN"
+        ],
+        crowd: [
+          "{n} I GÄNGET UTE – {town} SKAKADE",
+          "{group} INTOG {town} MÄ {n} MAN",
+          "LARM I {town}: HELA GÄNGET UTE",
+          "{n} SOLDATER PÅ STAN",
+          "FULL MÖNSTRING: {n} UTE I NATT",
+          "{town} BELÄGRAT AV {n} MAN",
+          "{group} RYCKTE UT MÄ {n} MAN",
+          "{n} UTE – ALLA I TJÄNST",
+          "TRUPPEN KOMPLETT: {n} PÅ PLATS",
+          "{n} MAN STARK – {group} I {town}",
+          "{town} FICK BESÖK AV HELA {group}",
+          "STYRKEDEMONSTRATION: {n} UTE",
+          "ARMÉN VAKNADE: {n} PÅ STAN",
+          "{n} I LEDET – KVÄLLEN KUNDE BÖRJA",
+          "GÄNGET I FULL STYRKA: {n} MAN"
+        ]
+      },
+      // Timeline lines (time is drawn in front of each line)
+      line: {
+        open: [
+          "{name} öppnade kvällen", "{name} sköt startskottet", "{name} tände stubinen", "{name} va först i skyttegraven",
+          "{name} bröt tystnaden", "{name} drog igång festligheterna", "{name} gick över startlinjen", "{name} blåste reveljen",
+          "{name} rapporterade först till tjänst", "{name} öppnade fronten", "{name} tog första klunken", "{name} va först på plats – som vanligt",
+          "{name} startade motorn", "{name} hissade flaggan", "Kvällen började – {name} va först"
+        ],
+        arriveGroup: [
+          "{n} vänner anslöt på {bar}", "{n} man samlades på {bar}", "Truppen ({n} st) intog {bar}", "{names} dök upp på {bar}",
+          "{n} soldater ryckte in på {bar}", "{bar} fick besök av {n} från gänget", "{n} i gänget tog plats på {bar}",
+          "{names} slog läger på {bar}", "Patrullen ({n} man) landade på {bar}", "{n} stycken tog {bar} i besittning",
+          "{bar} bemannades av {n} man", "{names} checkade in på {bar}", "{n} vänner hittade hem till {bar}",
+          "Förtrupp på {n} man nådde {bar}", "{n} kamrater samlades vid {bar}"
+        ],
+        arriveSolo: [
+          "{name} dök upp på {bar}", "{name} spanade in {bar}", "{name} rekade {bar} ensam", "{name} smög in på {bar}",
+          "{name} checkade in på {bar}", "{name} tog posten på {bar}", "{name} höll ställningarna på {bar}",
+          "{name} landade på {bar}", "Ensamvargen {name} intog {bar}", "{name} ryckte ut till {bar}",
+          "{name} rapporterade från {bar}", "{name} gick in bakom linjerna på {bar}", "{name} säkrade {bar}",
+          "{name} tittade förbi {bar}", "{name} spejade från {bar}"
+        ],
+        move: [
+          "Truppen drog till {bar}", "Gänget förflyttade sig till {bar}", "Marsch! Från {from} till {bar}", "Truppen ryckte fram till {bar}",
+          "{n} man bytte front till {bar}", "Avancemang: {bar} nästa", "Gänget lämnade {from} – sikte på {bar}",
+          "Taktisk förflyttning till {bar}", "Flytt! {names} drog vidare till {bar}", "Ny front öppnad på {bar}",
+          "Truppen omgrupperade på {bar}", "Kolonnen rullade vidare till {bar}", "Ut från {from}, in på {bar}",
+          "{n} soldater marscherade till {bar}", "Hela styrkan flyttade till {bar}"
+        ],
+        moveSolo: [
+          "{name} smet vidare till {bar}", "{name} drog från {from} till {bar}", "{name} bytte till {bar}",
+          "{name} rekognoscerade {bar}", "{name} gick på egen hand till {bar}", "{name} hoppade vidare till {bar}",
+          "{name} lämnade {from} – nu på {bar}", "{name} spanade vidare på {bar}", "{name} flankerade till {bar}",
+          "{name} tog genvägen till {bar}", "{name} förflyttade sig till {bar}", "{name} letade nya marker på {bar}",
+          "{name} försvann – och dök upp på {bar}", "{name} avancerade till {bar}", "{name} drog sig mot {bar}"
+        ],
+        meet: [
+          "Truppen drog till {bar} och anslöt med andra gänget", "På {bar} väntade andra gänget", "Två gäng, en front: {bar}",
+          "Gänget mötte förstärkning på {bar}", "{bar}: allians med andra gänget", "Truppen slog ihop sig med andra gänget på {bar}",
+          "Andra gänget anslöt på {bar}", "Stormöte på {bar} – {other} st till på plats", "{bar} blev mötesplats för två gäng",
+          "Fronterna möttes på {bar}", "Truppen fick sällskap på {bar}", "Gänget drog till {bar} – där va redan fullt",
+          "Allierade styrkor sågs på {bar}", "Kontakt med andra gänget på {bar}", "Gängen förenades på {bar}"
+        ],
+        meetGroup: [
+          "Truppen drog till {bar} och mötte {other}", "{other} väntade på {bar}", "Möte mä {other} på {bar}",
+          "Toppmöte mä {other} på {bar}", "{bar}: {other} i sikte", "Truppen stötte på {other} på {bar}",
+          "Fiendekontakt! {other} på {bar}", "{other} och gänget delade {bar}", "Skål mä {other} på {bar}",
+          "Duellanterna {other} sågs på {bar}", "{bar} – gänget och {other} sida vid sida", "Gänget hälsade på {other} på {bar}",
+          "{other} anslöt på {bar}", "Fredssamtal mä {other} på {bar}", "Gänget och {other} intog {bar} ihop"
+        ],
+        rally: [
+          "Förstärkning tillkallades – {yes} svarade", "{by} blåste till samling – {yes} kom", "Inkallelse till {place}: {yes} sa ja",
+          "{by} skickade order – {yes} lydde", "Larmet gick – {yes} ryckte ut", "{by} kallade på truppen: {yes} svarade",
+          "Mobilisering mot {place} – {yes} på väg", "SOS från {by}: {yes} svarade ja", "{by} ringde i klockan – {yes} kom",
+          "Order: alla till {place}! {yes} lydde", "{by} bad om förstärkning – fick {yes}", "Samlingssignal från {by}: {yes} svar",
+          "Inkallelse! {names} svarade", "{yes} soldater hörsammade {by}", "Förstärkning begärd vid {place} – {yes} kom"
+        ],
+        rallyQuiet: [
+          "{by} kallade in förstärkning – tystnad i luren", "{by} ropade på hjälp – ingen svarade", "Inkallelse till {place} – eko",
+          "{by} blåste i luren – bara syrsor svarade", "{by} begärde förstärkning – fick vänta", "Ensam inkallelse från {by}",
+          "{by} skickade order – truppen sov", "Larm från {by} – ingen ryckte ut", "{by} väntade vid {place} – länge",
+          "{by} kallade – mobilerna låg i fickan", "Ingen hörde {by}s rop", "{by}: ”kom hit!” – tystnad",
+          "Signal från {by} – inget svar från fronten", "{by} försökte mobilisera – resultat: noll", "{by} bjöd in till {place} – ingen nappade"
+        ],
+        eta: [
+          "{name}: ”{min} min” – på väg till fronten", "{name} lovade att va där om {min} min", "{name} rapporterade {min} min kvar",
+          "{name} i full galopp, {min} min bort", "{name} på marsch – ETA {min} min", "{name}: ”{min} minuter, typ”",
+          "{name} kastade sig ut – {min} min", "{name} sprang mot {place}, {min} min", "{name} skickade ETA: {min} min",
+          "{name} på ingång om {min} min", "{name} anmälde {min} min till kontakt", "{name} drog på sig kängorna – {min} min",
+          "{name} i rörelse, {min} min kvar", "{name} lovade {min} min – höll dä?", "{name} på väg: {min} min till {place}"
+        ],
+        peak: [
+          "Fullt ös i skyttegraven: {n} i timmen", "Kulmen: {n} drycker på en timme", "{n} i timmen – baren skakade",
+          "Topptempo: {n} drycker", "Bartendern svettades: {n} i timmen", "Anfallet: {n} drycker på en timme",
+          "Kranarna glödde – {n} i timmen", "Högvarv i truppen: {n} drycker", "{n} på en timme – rekord?",
+          "Maxfart: {n} i timmen", "Skyttegraven kokade: {n} drycker", "Timmen alla minns: {n} st",
+          "Ölfronten bröts igenom: {n} i timmen", "Stormanfall: {n} drycker", "Truppen i högform: {n} i timmen"
+        ],
+        status: [
+          "Generalen {by} krävde lägesrapport – {answered} av {needed} svarade", "Lägesrapport: {answered}/{needed} vid liv",
+          "{by} räknade truppen – {answered} svarade", "Upprop från {by}: {answered} rapporterade", "Bildbevis inkrävt – {answered} levererade",
+          "Högkvarteret ville veta läget: {answered} svar", "{by} kollade läget – {fast} snabbast", "{fast} svarade på {sec} s",
+          "Rapportorder: {answered} av {needed} i tid", "Kontroll av truppen – {answered} svarade", "{by}: ”Läget?” – {answered} svarade",
+          "Lägesrapport inkallad av {by}", "Truppen rapporterade: {answered}/{needed}", "Generalens upprop: {fast} först",
+          "{by} höll mönstring – {answered} närvarande"
+        ],
+        duelWin: [
+          "Duellen mot {opp} vunnen: {us}–{them}", "Seger mot {opp}! {us}–{them}", "{opp} besegrade, {us}–{them}",
+          "Triumf över {opp}", "{opp} slogs ut: {us}–{them}", "Duell: gänget {us}, {opp} {them} – seger",
+          "Medalj hem mot {opp}", "{opp} böjde sig", "Segern säkrad mot {opp}", "{opp} fick stryk: {us}–{them}",
+          "Duellen avgjord – gänget vann", "Krigslycka mot {opp}: {us}–{them}", "Guld i duellen mot {opp}",
+          "{opp} utmanade och förlorade", "{us} mot {them} – seger"
+        ],
+        duelLoss: [
+          "Duellen mot {opp} förlorad: {us}–{them}", "{opp} vann: {them}–{us}", "Nederlag mot {opp}",
+          "{opp} drog det längsta strået", "Retreat mot {opp}: {us}–{them}", "{opp} starkast i natt",
+          "Duell: {opp} tog segern", "Förlust mot {opp} – revansch planeras", "{opp} vann med {them}–{us}",
+          "Tappert men förlorat mot {opp}", "Silver i duellen mot {opp}", "{opp} höll längst",
+          "Duellen sved: {us}–{them}", "{opp} tog skalpen", "Revanschlust efter {opp}-duellen"
+        ],
+        duelDraw: [
+          "Duellen mot {opp}: oavgjort {us}–{them}", "Dödläge mot {opp}", "Lika mot {opp}: {us}–{them}",
+          "Vapenvila mä {opp}", "Ingen vann duellen mot {opp}", "Patt mot {opp}", "Jämnt mot {opp}: {us}–{them}",
+          "Ställningskrig mot {opp}", "Oavgjort – ommatch mot {opp}?", "{opp} och gänget lika starka",
+          "Fronten stod still mot {opp}", "Delad ära mä {opp}", "{us}–{them} mot {opp}, ingen vinnare",
+          "Duellen slutade jämnt", "Död lopp mot {opp}"
+        ],
+        duelOn: [
+          "Duell startad mot {opp}", "{opp} utmanade – gänget antog", "Krigsförklaring mot {opp}", "Duellen mot {opp} drog igång",
+          "Gänget mot {opp}: fight!", "Handsken kastad mot {opp}", "Duell i gång mot {opp}", "{opp} i sikte – duell!",
+          "Utmaning antagen: {opp}", "Svärden drogs mot {opp}", "Strid mot {opp} startad", "Duellbanan öppnad mot {opp}",
+          "{opp} vs gänget – start", "Kamp mot {opp} inledd", "Gänget gick i duell mot {opp}"
+        ],
+        photo: [
+          "{name} skickade bildbevis", "{name} dokumenterade fronten", "Bildbevis från {name}", "{name} knäppte en bild",
+          "{name} rapporterade mä foto", "Kameran i tjänst: {name}", "{name} säkrade bevisen", "Krigsfotograf {name} slog till",
+          "{name} delade en bild", "{name} fångade ögonblicket", "Fotobevis från {name}", "{name} skickade hem en bild",
+          "{name} tog en bild för eftervärlden", "Bild från fronten – av {name}", "{name} höll kameran redo"
+        ],
+        lastDrink: [
+          "Sista ölen registrerades", "Kranarna stängdes – sista drycken", "Sista klunken togs", "Sista ordern levererad",
+          "Sista glaset tömdes", "Sista skottet avlossat", "Fronten tystnade – sista drycken", "Sista rundan avslutad",
+          "Kvällens sista registrerades", "Eld upphör – sista drycken", "Sista droppen", "Sista påfyllningen",
+          "Nedräkningen klar: sista drycken", "Sista ölen i boken", "Sista kapsylen föll"
+        ],
+        home: [
+          "{name} retirerade först", "{name} tog täcket", "{name} drog sig hem", "{name} lämnade fronten",
+          "{name} marscherade hem", "{name} sa hej då", "{name} hittade hem", "{name} gick till förläggningen",
+          "{name} lämnade slagfältet", "{name} kröp till kojs", "{name} tog nattbussen hem", "{name} avmönstrade för natten",
+          "{name} drog sig tillbaka", "{name} vinkade adjö", "{name} va först i säng"
+        ]
+      }
     }
   };
 })();

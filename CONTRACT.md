@@ -873,3 +873,30 @@ Rules:
 ### Frontend
 - **wish.js**: entry "💡 Önska en feature" in ⚙️ (`settingsSheet`), at the bottom of the 🏆 sheet (`topSheet`), and a small "💡 Önska" chip in the HUD Ikväll panel (`hudChipsHTML`/`hudClick` `data-hx="wish"`; `HUD_ALWAYS` in wish.js — with it the Ikväll pill also shows at 0 drinks). Sheet: textarea (counter /500), category chips, "Visa mitt namn", send, "🔥 Mest önskat" (top 30, "👍 Jag vill också · n" toggle, status badge). 20 thank-you toasts (dalmål, never twice in a row).
 - **duel.js**: group row button (`groupItem`) "⚔️ Utmana grupp" / "⚔️ Dueller" + summary. Sheet per group: pick cards (member of both), duel table when 3+ live/done duels, one card per duel (score, tug-of-war bar, 42 commentary lines (start/lead/behind/tied/big) — rivalry only, never "drink more/faster", drinks/members/Truppanda rows, time left, wins), pending answer/cancel, winner card with 🥇. Challenge: "⚔️ Visa utmaningskod" (QR + code + copy/share), type a code (8 = duel token → accept sheet, 6 = group code → challenge), "📍 Grupper nära er ikväll" + "Låt grupper nära oss utmana oss". HUD chip (`data-hx="duel"`): incoming › pick side › winner card › live score. Toasts once per event (`olnu.duelSeen`). `duel_poll` on auth and with the app poll (max every 30 s; every 15 s while the sheet shows a live duel). Deep link `?duel=TOKEN` is read and removed by duel.js; it opens the accept sheet after sign-in and the intro.
+
+## v24 KVÄLLENS FÖRLOPP (Morgontidningen story; additive)
+Migration `supabase/migrations/0032_night_story.sql` (applied on the server 2026-10-18 as `0032_night_story`; also appended to `setup.sql`). Needs 0001–0031. Read only: no new tables, two new indexes (`crew_tracks (night, bar_id, at)`, `duel_log (kind, user_id, at)`). Client: `docs/js/gang.js` (`renderPaper`, `storyModel`, `drawStory`) + texts in `docs/js/gang-content.js` (`GANG_CONTENT.story`). A missing RPC (old database, PGRST202) or a thin night = the classic 1080×1350 paper from `gang_paper`.
+
+### RPCs (authenticated only, SECURITY DEFINER, members only via `olnu_uid()`)
+| name | params | returns | errors |
+|---|---|---|---|
+| `group_night_story` | `p_group_id uuid, p_night date default null` (= the evening date, `olnu_evening`; null = the night that ended last; a later date is capped to tonight) | jsonb (below) | `not_member`, `not_authenticated` |
+| `night_story_photo` | `p_photo_id bigint` | jsonb `{id, mime, w, h, b64}` — a group photo from the last two nights while its bytes are still there (also after 05:00) | `photo_not_found`, `not_member` |
+
+`group_night_story` json (night = 05:00–05:00 Europe/Stockholm, same rule as `olnu_next_expiry`): `{v:1, night (05:00 end), evening, from, to, group_name, town, ready (drinks or check-ins),
+members:[{k, name, is_me, drinks, first_at, last_at, hours:[{h:"22", n}], checkins, bars, first_ci, skal_given, skal_got, home_at, out}],
+checkins:[{at, k, name, bar, bar_id, from_bar}] (crew_tracks 'ci', one row per bar change, max 80),
+arrivals:[{at, last_at, bar, bar_id, n, names[], ks[], from_bar (most common previous bar = a move), first, met_n (other app users checked in at the bar −60/+30 min, count only), met_group (name of a duel opponent group with a member there, or null)}] (check-ins at the same bar within 30 min merged; max 30),
+rallies:[{id, at, by, by_k, place, body, yes, yes_names[], maybe, no, etas:[{name, minutes, eta_at, arrived_at}]}] (max 12; NOTE: yes/yes_names include the creator's automatic yes — the client removes `by`),
+drinks:{total, hours:[{h, at, n}], peak:{h, at, n}|null, first_at, last_at} (from `duel_log` drink deltas, undo = −1, floored at 0; member `drinks` = max(log, medal_nights beers+others)),
+skal:{total, top:{name, n}|null}, status:[{at, by, needed, answered, fastest:{name, sec}|null}] (0030),
+duels:[{at, opp, status, winner us|them|draw|null, us, them}] (0031, accepted duels ending this night),
+chat:{texts (count of text rows), top:[{name, body, at, reacts, emoji}]} (max 6, most reactions = active `group_msg_reacts` + liked `group_msg_likes`; no 📷 photo rows, no 📣 tips; only current members),
+photos:[{id, by, at, w, h, reacts, caption, status (lägesrapport photo)}] (max 4 by reactions then newest; only rows with bytes, expired included), photos_n, voice_n}`. Never user ids.
+
+### Frontend
+- The 📰 tab calls `gang_paper` and then `group_night_story` with `p_night = gang_paper.evening`. Story paper: masthead "<TOWN> KVÄLLSPOST" (black/yellow/red, Black Ops One), EXTRA kicker, headline from the strongest event (duel win > meeting another group > rally > peak hour > bars > status > total > photos > crowd; else the classic headline), the top photo as front image (cover crop + "BILDBEVIS: <namn> kl. HH:MM – caption"), "KVÄLLENS FÖRLOPP" timeline (open, arrivals, moves, meets, rally/ETA, peak hour "22:00–23:00", status, duels, first photo, last drink, first home; max 10, trimmed by priority), CITAT box (1–2 chat quotes, else Citatboken), photo strip (up to 3), MEDALJREGN (Kvällens general, Längst ute, Törstigast, Skålmästare, Stigfinnaren, Krigsfotografen, Snabbast till fronten; max 4), stats row (drycker, krogar, skål, inkallningar, bilder), voice-count line.
+- Canvas 1080 wide, height grows to fit (min 1350, aim ≤ 2400; shrink order: timeline 8 → no sub line → compact photo → timeline 7 → one quote → no strip → timeline 6 → 3 medals → timeline 5 → no voice line).
+- Photos: `PHOTO._url(id)` first (cache / `group_photo`), then `night_story_photo`; drawn from blob URLs so the canvas is never tainted (`toBlob`, share and save keep working). A photo that fails to load is skipped (a strip photo takes the front spot).
+- Texts: `GANG_CONTENT.story.big` (11 kinds) and `.line` (19 kinds), ≥ 15 dalmål/military variants each; seeded per group + night; a paper never shows the same line twice.
+- Thin night (< 2 timeline lines, or timeline + photos + quotes < 4) → classic paper.
