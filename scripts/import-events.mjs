@@ -217,9 +217,42 @@ function feedPos(feed, ev, bars) {
   if (ev.geo) return { lat: ev.geo.lat, lng: ev.geo.lng, place: feed.place || ev.location };
   return null;
 }
+// Owner-entered repeating events ("Pubquiz på Pitchers varannan torsdag 19:00"):
+// {"type":"recurring","id":"pitchers-quiz","title":…,"bar_id":…,"first":"2026-10-22","time":"19:00","every_weeks":2,"kind":"quiz","hours":3,"until"?:"2027-06-30"}
+// Makes every date in the next 15 days (days_ahead), so a season end shows at most one wrong date. Times are Europe/Stockholm (summer/winter time handled).
+function stockholmToUtc(dateStr, timeStr) {
+  const [y, mo, d] = dateStr.split("-").map(Number), [h, mi] = timeStr.split(":").map(Number);
+  let guess = Date.UTC(y, mo - 1, d, h, mi);
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })
+      .formatToParts(new Date(guess)).reduce((o, x) => (o[x.type] = x.value, o), {});
+    const shown = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute);
+    guess += Date.UTC(y, mo - 1, d, h, mi) - shown;
+  }
+  return guess;
+}
+function recurring(feed, bars) {
+  const out = [], b = feed.bar_id ? bars.get(String(feed.bar_id)) : null;
+  const lat = b ? b.lat : +feed.lat, lng = b ? b.lng : +feed.lng;
+  if (!feed.first || !feed.time || !feed.title || !isFinite(lat) || !isFinite(lng)) { log("recurring: bad entry", feed.id); return out; }
+  const step = Math.max(1, +feed.every_weeks || 1) * 7, horizon = Date.now() + (+feed.days_ahead || 15) * 864e5, until = feed.until ? Date.parse(feed.until + "T23:59:59Z") : Infinity;
+  const day0 = new Date(feed.first + "T12:00:00Z");
+  for (let k = 0; k < 400; k++) {
+    const day = new Date(day0.getTime() + k * step * 864e5), ds = day.toISOString().slice(0, 10);
+    const st = stockholmToUtc(ds, feed.time);
+    if (st > horizon || st > until) break;
+    if (st < Date.now() - 6 * 3600e3) continue;
+    out.push({ source: "recurring", source_id: (feed.id || feed.title) + ":" + ds, title: String(feed.title).slice(0, 80), starts_at: new Date(st).toISOString(),
+      ends_at: new Date(st + (+feed.hours || 3) * 3600e3).toISOString(), url: feed.link || null, place: String(feed.place || (b && b.name) || "").slice(0, 60) || null,
+      lat, lng, kind: feed.kind || null });
+  }
+  log("recurring", feed.id, out.length);
+  return out;
+}
 async function feeds(list, bars) {
   const rows = [];
   for (const feed of list) {
+    if (feed && feed.type === "recurring") { rows.push(...recurring(feed, bars)); continue; }
     if (!feed || !feed.url || /facebook\.com|fb\.me|instagram\.com/i.test(feed.url)) { if (feed && feed.url) log("skip (Meta terms):", feed.url); continue; }
     try {
       const url = new URL(feed.url);

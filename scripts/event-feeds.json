@@ -1,1 +1,14 @@
-[]
+[
+ {
+  "type": "recurring",
+  "id": "pitchers-ludvika-quiz",
+  "title": "🧠 Pubquiz på Pitchers",
+  "bar_id": "n3472634175",
+  "place": "Pitchers Ludvika",
+  "first": "2026-10-22",
+  "time": "19:00",
+  "every_weeks": 2,
+  "hours": 3,
+  "kind": "quiz"
+ }
+]
