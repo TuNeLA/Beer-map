@@ -91,7 +91,7 @@
   // notify-group events "friend" / "find" exist only from the merged function (scratchpad near-ef/index.ts).
   // An older function treats an unknown event as the after-beer call (milestone push before the undo window),
   // so this stays false until that function is deployed (patch 05-push-on.py flips it).
-  var PUSH_EVENTS = false;
+  var PUSH_EVENTS = true;
   function push(body) { try { if (PUSH_EVENTS && A.PUSH_ON && A.invoke) A.invoke("notify-group", body); } catch (e) {} }
   function name() { try { return A.getName() || null; } catch (e) { return null; } }
   function demonym(town) { try { return town && window.HOMETOWN && window.HOMETOWN.label ? window.HOMETOWN.label(town) : ""; } catch (e) { return ""; } }

@@ -19,6 +19,8 @@
 // Body events (v22 GRUPPCHEF): {event:"status_req", req_id} -> "📸 Lägesrapport! {namn} vill se läget – 10 min" to the group.
 // Body events (v27 SKÅLTIMMEN): {event:"skal_hour", hour_id} -> "🍻 SKÅLTIMMEN! 3 min – visa din dricka!" to the group;
 //   {event:"film", group_id, night} -> "Filmen är framkallad! 📸" to the group (engångskameran, 10:00).
+// Body events (NÄRA, 0045/0047): {event:"friend", friend_id} -> "🤝 {namn} vill bli din vän", {event:"find", req_id} ->
+//   "🧭 {namn} letar efter dig i vimlet!" (one recipient each; atomic notified claims).
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1809,6 +1811,65 @@ async function filmPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 4 * 3600) : NONE;
 }
 
+// ---- NÄRA: friend request + "Hitta kompisen" (migrations 0045 / 0047) ----
+const FRIENDREQ_LINES = [
+  "🤝 {namn} vill bli din vän", "🤝 {namn} skickar en vänförfrågan", "🤝 Ny kamrat på ingång: {namn}",
+  "🤝 {namn} vill värva dig till sin trupp", "🤝 {namn} föreslår en allians", "🤝 {namn} vill ha dig i vänlistan",
+];
+const FIND_LINES = [
+  "🧭 {namn} letar efter dig i vimlet!", "🧭 {namn} söker din position, soldat", "🧭 Spaning: {namn} vill hitta dig",
+  "🧭 {namn} ä vilse i folkhavet och letar efter dig", "🧭 {namn} har kompassen fram – var ä du?", "🧭 {namn} vill hitta dig. Svara nu!",
+  "🧭 Radion sprakar: {namn} söker kontakt", "🧭 {namn} försöker hitta dig i trängseln",
+];
+async function nameOf(admin: Admin, uid: string, groupId?: string | null): Promise<string> {
+  if (groupId) {
+    const { data } = await admin.from("group_members").select("display_name").eq("group_id", groupId).eq("user_id", uid).maybeSingle();
+    if (data?.display_name) return data.display_name as string;
+  }
+  const { data: un } = await admin.from("user_names").select("name").eq("user_id", uid).maybeSingle();
+  if (un?.name) return un.name as string;
+  const { data: gm } = await admin.from("group_members").select("display_name").eq("user_id", uid).order("display_name").limit(1);
+  return (gm && gm[0]?.display_name as string) || "En kompis";
+}
+async function friendPush(admin: Admin, uid: string, b: Body) {
+  const fid = parseRallyId((b as Record<string, unknown>).friend_id);
+  if (fid === null) return { ...NONE, reason: "no_friend" };
+  const { data: claimed, error } = await admin
+    .from("friendships").update({ notified: true })
+    .eq("id", fid).eq("requester", uid).eq("status", "pending").eq("notified", false)
+    .gt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id, a, b");
+  if (error) throw error;
+  const f = claimed && claimed[0];
+  if (!f) return { ...NONE, reason: "no_friend" };
+  if (!(await rateClaim(admin, uid, "friend", 20))) return { ...NONE, reason: "slow_down" };
+  const to = (f.a === uid ? f.b : f.a) as string;
+  const namn = cleanBarName(await nameOf(admin, uid)) || "En kompis";
+  const line = FRIENDREQ_LINES[Math.floor(Math.random() * FRIENDREQ_LINES.length)];
+  const payload = JSON.stringify({ title: fill(line, { namn }), body: "Tryck för att svara.", url: "/?friends=1", tag: `olnu-friend-${fid}` });
+  const jobs = (await subsOf(admin, [to])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
+}
+async function findPush(admin: Admin, uid: string, b: Body) {
+  const rid = parseRallyId(b.req_id);
+  if (rid === null) return { ...NONE, reason: "no_find" };
+  const { data: claimed, error } = await admin
+    .from("find_reqs").update({ notified: true })
+    .eq("id", rid).eq("from_uid", uid).eq("notified", false).in("status", ["pending", "auto"])
+    .gt("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+    .select("id, to_uid, group_id, status");
+  if (error) throw error;
+  const r = claimed && claimed[0];
+  if (!r) return { ...NONE, reason: "no_find" };
+  if (!(await rateClaim(admin, uid, "find", 30))) return { ...NONE, reason: "slow_down" };
+  const namn = cleanBarName(await nameOf(admin, uid, r.group_id as string | null)) || "En kompis";
+  const line = FIND_LINES[Math.floor(Math.random() * FIND_LINES.length)];
+  const body = r.status === "auto" ? "Tryck och öppna kompassen så hittar ni varann." : "Tryck för att svara – frågan gäller i 5 min.";
+  const payload = JSON.stringify({ title: fill(line, { namn }), body, url: `/?find=${rid}`, tag: `olnu-find-${rid}` });
+  const jobs = (await subsOf(admin, [r.to_uid as string])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 300) : NONE;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1872,6 +1933,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "skal_hour") return json(await skalHourPush(admin, uid, body));
     if (event === "film") return json(await filmPush(admin, uid, body));
     if (event === "helg_remind") return json(await helgRemindPush(admin, uid));
+    if (event === "friend") return json(await friendPush(admin, uid, body));
+    if (event === "find") return json(await findPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };
