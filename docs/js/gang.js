@@ -1040,6 +1040,7 @@
         var row = el("div", { class: "gg-row" });
         if (navigator.share && navigator.canShare) row.appendChild(bt(T("pShare"), "btn-amber", function () { sharePaper(cv, m); }));
         row.appendChild(bt(T("pSave"), "btn-small", function () { downloadPaper(cv); }));
+        try { if (window.KODEN) window.KODEN.button(row); } catch (e) {}
         box.appendChild(row);
       });
     });

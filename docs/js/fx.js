@@ -19,10 +19,11 @@
   }
   // iPhone: Safari has no navigator.vibrate. Documented workaround (iOS 17.4+/18): clicking the label of a hidden
   // <input type="checkbox" switch> inside a user gesture gives one system haptic tick. iOS only, guarded, silent.
-  var iosSw = null;
+  var iosSw = null, iosOverlayAt = 0;
   function iosTick() {
     try {
       if (!U.isIOS || !U.isIOS()) return;
+      if (Date.now() - iosOverlayAt < 600) return;   // the finger already toggled a real switch overlay: one tick is enough
       if (navigator.userActivation && !navigator.userActivation.isActive) return;   // only inside a tap
       if (!iosSw) {
         iosSw = document.createElement("label");
@@ -36,6 +37,30 @@
       iosSw.click();
     } catch (e) {}
   }
+
+  // iOS 26.5+ ignores programmatic switch clicks. A transparent <input type=checkbox switch> on top of a button gets
+  // the real tap (trusted click → native haptic); the click bubbles on to the button, so its handler still runs.
+  // iOS only; a disabled button disables its overlay; scrolls that start on it still scroll (touch-action).
+  // Only on buttons whose click handlers do not call preventDefault() (that would undo the switch toggle):
+  // ÖL! and ANNAT. Other taps keep the programmatic tick (works up to iOS 26.4).
+  function hapticTrigger(el) {
+    try {
+      if (!el || !U.isIOS || !U.isIOS() || el.querySelector("[data-haptic]")) return;
+      var inp = document.createElement("input");
+      inp.type = "checkbox"; inp.setAttribute("switch", ""); inp.setAttribute("data-haptic", ""); inp.setAttribute("aria-hidden", "true"); inp.tabIndex = -1;
+      inp.style.cssText = "position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;clip-path:inset(0 round 999px);touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent;z-index:1";
+      if (getComputedStyle(el).position === "static") el.style.position = "relative";
+      inp.disabled = !!el.disabled;
+      inp.addEventListener("click", function () { iosOverlayAt = Date.now(); setTimeout(function () { inp.checked = false; }, 0); });
+      el.appendChild(inp);
+      if (window.MutationObserver) new MutationObserver(function () { inp.disabled = !!el.disabled; }).observe(el, { attributes: true, attributeFilter: ["disabled"] });
+    } catch (e) {}
+  }
+  (function hapticAuto() {
+    if (!U.isIOS || !U.isIOS()) return;
+    var go = function () { ["btn-beer", "btn-other"].forEach(function (id) { hapticTrigger(document.getElementById(id)); }); };
+    if (document.body) go(); else document.addEventListener("DOMContentLoaded", go);
+  })();
 
   // Call inside a user tap. Makes (or wakes) the audio context.
   function unlock() {
@@ -692,7 +717,7 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch); else watch();
 
-  window.FX = { vibrate: vibrate, unlock: unlock, sound: sound, splash: splash, takeover: takeover, levelPop: levelPop,
+  window.FX = { hapticTrigger: hapticTrigger, vibrate: vibrate, unlock: unlock, sound: sound, splash: splash, takeover: takeover, levelPop: levelPop,
     muted: muted, setMuted: setMuted, reduced: reduced, say: say,
     ambient: ambient, ambientStop: ambientStop,
     variants: { 1: HOT_LIST.slice(), 2: MED_LIST.slice(), beer: ["foam", "bubbles", "clink"] } };

@@ -1,0 +1,6 @@
+/* Öl Nu v27 — Kvällskoden (js/koden.js) */
+.kd-box{margin:10px 0 4px;padding:12px;border-radius:var(--r-m,14px);background:var(--s2,#172134);border:1px solid rgba(232,184,74,.35)}
+.kd-code{font-size:20px;line-height:1.5;letter-spacing:.02em;word-break:break-word;user-select:all;-webkit-user-select:all;text-align:center}
+.kd-note{font-size:12px;text-align:center;margin-top:4px}
+.kd-row{justify-content:center;margin-top:8px;gap:8px}
+.kd-tk{white-space:nowrap}

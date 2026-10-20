@@ -1,0 +1,37 @@
+/* Öl Nu v27 — Helgstreak (js/helg.js) */
+.hs-me{display:flex;gap:14px;align-items:center;background:var(--s2,#172134);border:1px solid var(--hair,rgba(255,255,255,.09));border-radius:var(--r-m,14px);padding:12px}
+.hs-me.hs-risk{border-color:rgba(255,138,80,.55)}
+.hs-me.hs-ok{border-color:rgba(61,220,132,.45)}
+.hs-big{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.hs-big b{font-size:44px;line-height:1;color:var(--amber-2,#ffc35a);font-variant-numeric:tabular-nums}
+.hs-big span{font-size:12px;line-height:1.2;color:var(--text-2,#c4cbc8)}
+.hs-side{min-width:0;flex:1}
+.hs-dots{display:flex;gap:4px}
+.hs-dot{width:20px;height:20px;border-radius:6px;background:rgba(255,255,255,.07);display:grid;place-items:center;font-size:11px;flex:0 0 auto}
+.hs-out,.hs-now_out{background:linear-gradient(180deg,#ffb53a,#f08a1c)}
+.hs-frozen{background:rgba(120,190,255,.25)}
+.hs-miss{background:rgba(255,255,255,.04)}
+.hs-none{background:transparent;border:1px dashed rgba(255,255,255,.08)}
+.hs-now{background:transparent;border:2px solid rgba(255,181,58,.7)}
+.hs-passes{margin-top:6px;font-size:16px}
+.hs-passes small{font-size:12px;color:var(--text-2,#c4cbc8)}
+.hs-pass.used{filter:grayscale(1);opacity:.3}
+.hs-best{font-size:12px;margin-top:2px}
+.hs-line{margin:8px 2px 0;font-size:14px;line-height:1.4}
+.hs-h4{margin:14px 0 6px;font-size:14px}
+.hs-groups{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hs-grow{display:flex;align-items:center;gap:10px;background:var(--s2,#172134);border:1px solid var(--hair,rgba(255,255,255,.09));border-radius:var(--r-m,14px);padding:8px 10px}
+.hs-gn{flex:1;min-width:0}
+.hs-gn b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-gn small{color:var(--muted,#a3aca8);font-size:12px}
+.hs-grow .hs-dots{gap:3px}
+.hs-grow .hs-dot{width:12px;height:12px;border-radius:4px;font-size:0}
+.hs-gs{text-align:center;flex:0 0 auto}
+.hs-gs b{display:block;font-size:20px;color:var(--amber-2,#ffc35a)}
+.hs-gs small{font-size:11px;color:var(--muted,#a3aca8)}
+.hs-how{margin-top:10px;font-size:13px;color:var(--text-2,#c4cbc8)}
+.hs-how summary{cursor:pointer;min-height:44px;display:flex;align-items:center}
+.hs-gline{display:block;width:100%;text-align:left;background:rgba(255,181,58,.06);border:1px solid rgba(255,181,58,.22);border-radius:var(--r-m,14px);
+  padding:10px 12px;min-height:44px;color:var(--text,#eef0ec);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.hs-gline b{color:var(--amber-2,#ffc35a)}
+@media (max-width:374px){.hs-dot{width:16px;height:16px}.hs-big b{font-size:36px}.hs-grow .hs-dots{display:none}}

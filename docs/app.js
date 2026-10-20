@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.MERITER, window.FORFEST, window.NEAR].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -599,6 +599,7 @@
     var own = take(".bp-own"), qEl = popBox.querySelector(".bp-q"), qCls = qEl ? (qEl.className.match(/q-\w+/) || [""])[0] : "", qTxt = qEl ? qEl.textContent : "";
     var bp = take(".bp"), ofN = (bp.match(/class="bp-of"/g) || []).length;
     var king = take(".pp-king"), stam = take(".af-stam");
+    var evLine = take(".ev-line");   // v26: "🎤 Pubquiz 20:00 · Vi går!" / golden horse, right under the title
     var info = take(".pp-info, .pp-links, .af-qr, .gg-pop") + popBox.innerHTML.trim();
     popBox.innerHTML = "";
     var hasKing = /pp-king"/.test(king) || /class="pp-king"/.test(king);
@@ -611,6 +612,7 @@
       (dance ? "<span>🕺</span>" : "") + (qEl ? '<span class="bs-q ' + U.esc(qCls) + '" title="' + U.esc(qTxt) + '">🚶</span>' : "");
     if (icons) h += '<div class="bs-icons" aria-hidden="true">' + icons + "</div>";
     h += "</div>";
+    if (evLine) h += evLine;
     // Call-outs (rally.js rows): compact, route link as 🧭, shouting toned down.
     var rl = "", nRl = 0;
     try { rl = id && window.RALLY && window.RALLY.barSectionHTML ? window.RALLY.barSectionHTML(id) : ""; } catch (e) { rl = ""; }

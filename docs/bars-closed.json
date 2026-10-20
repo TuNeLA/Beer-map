@@ -1,3 +1,11 @@
 [
-  { "id": "n1471185136", "name": "Solo", "note": "Nattklubb i Ludvika, stängd sedan länge (rapporterat av ägaren 2026-10-17)" }
+  {"id":"n1471185136","name":"Solo","note":"Nattklubb i Ludvika, stängd sedan länge (rapporterat av ägaren 2026-10-17)"},
+  {"id":"n11360925580","name":"The Bishops Arms","note":"Dubblett av w1092638243 (The Bishops Arms, 1 m) — clean-bars 2026-10-20"},
+  {"id":"n2293728903","name":"Breeze bar & nightclub","note":"Dubblett av w1093128514 (Breeze bar & nightclub, 7 m) — clean-bars 2026-10-20"},
+  {"id":"n8415344232","name":"Irish Embassy","note":"Dubblett av n1632019592 (Irish Embassy, 20 m) — clean-bars 2026-10-20"},
+  {"id":"n9846285868","name":"Debaser Pontonen","note":"Dubblett av n6863422794 (Debaser, 7 m) — clean-bars 2026-10-20"},
+  {"id":"n1211022409","name":"Replik","note":"Dubblett av n1211022007 (Replik, 24 m) — clean-bars 2026-10-20"},
+  {"id":"n874275166","name":"Bishops Arms","note":"Dubblett av n13432995234 (The Bishops Arms, 8 m) — clean-bars 2026-10-20"},
+  {"id":"n6063629632","name":"Lofsdalen Skybar","note":"Dubblett av w550448209 (Lofsdalen Skybar - Club 1125, 5 m) — clean-bars 2026-10-20"},
+  {"id":"n2466676052","name":"Lilla London","note":"Finns inte längre i bars.json — clean-bars 2026-10-20"}
 ]

@@ -937,6 +937,27 @@ export function statusReqPayload(idx: number, namn: string, groupName: string, r
   };
 }
 
+// ---- v27 HELGSTREAK: Friday 17:00 reminder (gentle; a check-in is enough) ----
+export const HELG_LINES = [
+  "🗓️ Fredag! Din helgstreak på {n} {veckor} vill gärna leva vidare",
+  "🔥 Helgstreaken ({n} {veckor}) hänger på en tråd, soldat",
+  "📯 Helgen ä här. Din streak på {n} {veckor} väntar på dig",
+  "🪖 Rapport från högkvarteret: streaken ({n} {veckor}) behöver en helgkväll",
+  "🌙 {n} {veckor} i rad! En incheckning i helgen räddar dem",
+  "🧊 Inga frysbiljetter kvar. Streaken på {n} {veckor} hänger på helgen",
+  "🫡 Fredag kl fem. Streaken ({n} {veckor}) står i givakt och väntar",
+  "📍 En liten incheckning fre–sön så lever streaken ({n} {veckor})",
+];
+export function helgRemindPayload(idx: number, streak: number, week: string) {
+  const n = Math.max(1, Math.floor(streak) || 1);
+  return {
+    title: fill(HELG_LINES[wrapIdx(idx, HELG_LINES.length)], { n: String(n), veckor: n === 1 ? "vecka" : "veckor" }),
+    body: "En öl eller en incheckning fre–sön räcker. Vila ä oxå bra – ingen press.",
+    url: "/?helg=1",
+    tag: `olnu-helg-${week}`,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1663,6 +1684,25 @@ async function statusReqPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
 }
 
+// ---- v27 HELGSTREAK ----
+// {event:"helg_remind"}: group-mates of the caller whose weekend streak would break (streak > 0, no freeze pass
+// left, not out yet this week). Friday 17:00-23:59 Europe/Stockholm only; max 1 per recipient per week (claimed in
+// push_sent kind 'helg' by the SQL function helg_remind_targets). Reason when nobody: no_target.
+async function helgRemindPush(admin: Admin, uid: string) {
+  const { data, error } = await admin.rpc("helg_remind_targets", { p_caller: uid });
+  if (error) throw error;
+  const rows = (Array.isArray(data) ? data : []) as { user_id: string; streak: number }[];
+  if (rows.length === 0) return { ...NONE, reason: "no_target" };
+  const streakOf = new Map(rows.map((r) => [r.user_id, Number(r.streak) || 1]));
+  const week = new Date().toISOString().slice(0, 10);
+  const idx = Math.floor(Math.random() * HELG_LINES.length);
+  const jobs = (await subsOf(admin, [...streakOf.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(helgRemindPayload(idx, streakOf.get(s.user_id) ?? 1, week)),
+  }));
+  return jobs.length ? { ...(await sendAll(admin, jobs, 6 * 3600)), recipients: rows.length } : { ...NONE, recipients: rows.length };
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1723,6 +1763,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "voice") return json(await voicePush(admin, uid, body));
     if (event === "eta") return json(await etaPush(admin, uid, body));
     if (event === "status_req") return json(await statusReqPush(admin, uid, body));
+    if (event === "helg_remind") return json(await helgRemindPush(admin, uid));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

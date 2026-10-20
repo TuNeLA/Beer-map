@@ -766,7 +766,7 @@
   /* ---------- hooks (app.js mods()) ---------- */
   window.DELIGHT = {
     // debug / tests
-    events: EV, slot: slot, run: runEvent, gud: showGud, foam: foam, clink: clink, sunrise: function () { sunrise(true); },
+    events: EV, slot: slot, run: runEvent, caption: caption, gud: showGud, foam: foam, clink: clink, sunrise: function () { sunrise(true); },
     greet: function () { return greet(true); }, rollCap: rollCap, openCaps: openCaps, empty: function () { checkEmpty([], true); },
     init: function (api) {
       A = api;
