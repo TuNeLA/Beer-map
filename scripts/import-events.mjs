@@ -250,7 +250,7 @@ async function feeds(list, bars) {
 async function rpc(name, body) {
   const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const r = await fetch(url.replace(/\/$/, "") + "/rest/v1/rpc/" + name, {
-    method: "POST", headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+    method: "POST", headers: Object.assign({ apikey: key, "Content-Type": "application/json" }, /^eyJ/.test(key) ? { Authorization: "Bearer " + key } : {}), body: JSON.stringify(body || {}) });
   const t = await r.text();
   if (!r.ok) throw new Error(name + " " + r.status + " " + t.slice(0, 300));
   return t ? JSON.parse(t) : null;
