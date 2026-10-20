@@ -513,7 +513,9 @@
       ctx.input.appendChild(input);
     }
     // The first list call also checks the server: a missing RPC = no 📷 button at all.
-    timer = setInterval(function () { poll(); }, 6000);
+    // review2: quiet chat (social.js window.OLNU_CHAT_AT older than 60 s) -> every 18 s.
+    var qTick = 0;
+    timer = setInterval(function () { qTick++; if (Date.now() - (window.OLNU_CHAT_AT || 0) < 60000 || qTick % 3 === 0) poll(); }, 6000);
     setTimeout(poll, 200);
     ctx.btnFor = function () { return btn; };
   }
@@ -531,7 +533,7 @@
     setTimeout(function () {
       try { if (window.SOCIAL && window.SOCIAL.openChatLink) window.SOCIAL.openChatLink(p.g); } catch (e) {}
       toast(L("📷 Telefonen startade om appen medan kameran var öppen. Ta bilden först, välj den sen från Galleriet med 📷.",
-        "📷 The phone restarted the app while the camera was open. Take the photo first, then pick it from the Gallery with 📷."), { ms: 9000 });
+        "📷 The phone restarted the app while the camera was open. Take the photo first, then pick it from the Gallery with 📷."), { ms: 9000, urgent: true });
     }, 1200);
   }
   window.PHOTO = { init: init, onAuthed: onAuthed, chatOpen: chatOpen, _shrink: shrink, _viewer: viewer, _url: photoUrl, _remember: remember };   // _url/_remember: chief.js

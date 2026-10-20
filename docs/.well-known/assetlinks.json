@@ -1,6 +1,20 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "se.olnu.app",
+      "sha256_cert_fingerprints": [
+        "CF:C2:1C:C9:95:6C:57:B7:CA:A2:3B:4D:11:88:0B:D7:88:2B:13:03:C5:BC:A3:5A:31:C3:78:CC:F3:90:04:AD"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "se.tunela.olnu",

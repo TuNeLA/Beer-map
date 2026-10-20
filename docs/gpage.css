@@ -1,0 +1,10 @@
+/* review2: group page folds (js/gpage.js). The tiles stay direct children of the card grid (polish.css). */
+.gitem:not(.gcard)>div>.g-sec-h{grid-column:1 / -1;display:flex;align-items:center;gap:8px;width:100%;min-height:48px;margin:6px 0 0 !important;
+  padding:0 14px;border:1px solid var(--hair,rgba(255,255,255,.1));border-radius:var(--r-m,12px);background:rgba(255,255,255,.035);
+  color:var(--text,#e8ecf5);font:inherit;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
+.gitem:not(.gcard)>div>.g-sec-h[aria-expanded="true"]{background:transparent;border-color:transparent;padding-left:4px}
+.g-sec-h .g-sec-t{flex:1}
+.g-sec-h .g-sec-n{color:var(--muted,#9aa3b5);font-weight:600;font-size:13px}
+.g-sec-h .g-sec-c{color:var(--amber-2,#ffc861);font-size:14px;width:14px;text-align:center}
+.gitem:not(.gcard)>div>.g-sec-h[hidden],.gitem:not(.gcard)>div>.g-fold-off{display:none !important}
+.g-sec-h:focus-visible{outline:2px solid var(--amber,#f5a623);outline-offset:2px}

@@ -1228,3 +1228,54 @@ Rules:
 - **Engångskameran**: `film_poll` on auth / app poll (≥ 45 s). Camera sheet = plastic camera: brand line, viewfinder with corner marks, green LCD frame counter, 10 film frames, red shutter → file input (`capture=environment`) → `PHOTO._shrink` → `film_shoot` at once (no preview), white flash (off with reduced motion), 12 click lines. Developed roll → banner "Filmen är framkallad! 📸" (once per roll, `olnu.filmSeen` / `olnu.filmHidden`) → film-strip gallery (sprocket holes, edge print "12A ▸ ÖL NU 400", name + time, 8 reaction chips, tap = viewer with 💾 Spara). Earlier rolls listed in the camera sheet.
 - **Morgontidningen** (gang.js, patch `03-gang-paper.py`): after `group_night_story`, `FILM.addToStory(gid, evening, story)` sets `story.camera_photos` (+ `story.film`) from `film_story`; `storyModel` puts camera photos first (ids `"film:<id>"`, caption "engångskameran") for the front photo and the strip; `storyImg` loads them with `FILM._url`. Before 10:00 the paper uses the chat photos as before.
 - **DB size**: film ≤ 60 × ~120 KB ≈ 7 MB per group per night, kept 7 days → up to ~50 MB per group that shoots the full roll every night (30-day keep: ~210 MB). Skål ≤ 4 × members × 120 KB per night, gone at 12:00. On the 500 MB free plan, watch `pg_total_relation_size('snap_photos')`; the next step would be Supabase Storage for the bytes.
+
+## review2 (2026-10-20) — limits, poll lanes, group page folds
+- Migration `0093_review2_abuse_limits.sql` (live). Same signatures and return shapes; new error `slow_down` where noted.
+  - `create_group`: max 6 new groups per user per 24 h → `slow_down`.
+  - `film_shoot`: max 30 film shots per user per night across all groups → `film_empty` (was only 10 per group).
+  - `find_request`: max 3 requests to the same person per 30 min → `slow_down`.
+  - `friend_request`: a request re-opened within 24 h of the last change keeps `notified = true` (no second push).
+  - `owner_db_stats`: search_path `pg_catalog, public`.
+- Client poll lanes (app.js): `onPoll` goes to every module each poll, EXCEPT the slow lane (MERITER, FILM, CEREMONY,
+  HELG, PASSPORT, GOLDEN, EVENTS, HOMETOWN, KODEN): at most once per 60 s, all in the same wave. A new module that shows
+  slow-changing data should join the slow lane. Hidden tab = no poll at all. Quiet chat (60 s without a new message or
+  typing, `window.OLNU_CHAT_AT`) = slower photo / voice / reaction polls.
+- Lazy start: `<script type="text/x-lazy">` and `<link rel="x-lazy-css">` load after the load event, or at once on the
+  first `openSheet()` (`window.OLNU_LAZY_NOW()`). A module that reads a lazy content file must read the global on use
+  (not at eval) and must not toast before it is there (see games.js / gang.js).
+- Group page (js/gpage.js, LAST in mods): module tiles are sorted into folds by their wrapper class
+  (`sk-gi, fm-gi, nr-tile, ff-gi, cr-gi` → Kvällen; `gm-gi, gg-gi, du-gi` → Spel; `cer-gi, hs-gline` → Dagen efter;
+  unknown → Mer). Chat, gruppchef card, rally cards and any tile with a `.live`/`.new` child stay on top.
+  A new module tile: give its wrapper a `<x>-gi` class and add it to BY_CLASS in gpage.js.
+- Bottom banners: one at a time (skåltimme > gruppchef > film roll), CSS in skal.css.
+
+## v26 LÄNKKORT + EGEN DOMÄN + PLAY-APP (additive)
+### Link cards (migration 0060, edge function `card`, docs/js/cards.js)
+- Shared links go to `<SUPABASE_URL>/functions/v1/card?t=<kind>&id=<id>[&l=en]` (override: `OLNU_CONFIG.CARD_URL`).
+  Crawlers (UA regex: WhatsApp, facebookexternalhit/Facebot = Messenger + iMessage, Twitterbot, Telegram, Slack, Discord, …)
+  get HTML with og:/twitter: tags; everybody else gets **302** to the app link at once. `&img=1` = 1200×630 PNG
+  (resvg-wasm + Black Ops One / Chakra Petch from jsDelivr, black/yellow tabloid style); on render failure 302 to `docs/og-image.png`.
+  Supabase rewrites text/html to text/plain on *.supabase.co, which is why people never see the page.
+- Kinds: `invite` (no id) · `join` (group code) · `duelinv` (duel token) · `group` / `rally` / `duel` / `paper` (10-char share token).
+- `share_card(p_kind, p_group_id, p_ref bigint default null)` → `{token, expires_at, kind}`; member only; ref = rally id / duel id
+  of that group; reuses a live token of the same caller; 40 new per hour; expiry group 30 d, rally +12 h, duel ends+1 d, paper 3 d.
+- `card_public(p_kind, p_id, p_ip)` (service_role only) → only safe data: group name, member / out-now counts (ghost pins not
+  counted), bar name, rally sender FIRST name, yes/maybe counts, duel names + drinks, paper people + drinks; `go` = app query
+  (`join=CODE`, `duel=TOKEN`, `chat=<gid>`, `rally=<id>`, `invite=1`). Rate limit: 60/min per IP bucket (4096 fixed rows) +
+  1500/min global (table `card_rl`). Sequential ids are never accepted as card ids.
+- Edge env: `OLNU_APP_URL` (default https://tunela.github.io/Beer-map/docs/). verify_jwt = false. Read-only except hit counter + rl.
+- Client `window.CARDS` (mods: init): `url, prep, link, inviteUrl, joinUrl, duelInvUrl, withLink, rallyRow, duelRow`.
+  Group-code + invite sheets share/copy the card URL (QR codes keep the plain app link). Rally sheet: "📤 Dela inkallelsen".
+  Duel card (active/done): "📤 Dela ställningen". Morgontidningen: share text gets the paper card link.
+  Tokens are made when the sheet renders (navigator.share must run inside the tap). Missing RPC = plain links, no button breaks.
+- Static fallback: og:/twitter: tags + `docs/og-image.png` in docs/index.html and the root index.html.
+### Own domain (prepared, OFF): `10-domain-switch.py <root> <domain>`, `docs/js/bridge.js`, scratchpad/domain-plan.md
+- Pages source becomes `main /docs` (+ docs/CNAME, docs/.nojekyll, docs/docs/index.html for old links).
+- `OLNU_CONFIG.APP_ORIGIN` + `BRIDGE_URL`: first start on the new origin with no account → once to
+  `https://tunela.github.io/olnu-flytt.html` (repo TuNeLA/tunela.github.io) → back with `#flytt=<code>` (normal flytt import)
+  or `#bridge=none`. The old origin is then locked like a flytt export (olnu.auth removed without signOut, olnu.moved=1).
+### Android (Play) app
+- TWA `se.olnu.app` (Bubblewrap, notification delegation on, minSdk 24). `docs/.well-known/assetlinks.json` lists se.olnu.app
+  (upload key) + se.tunela.olnu (old test key). Android reads it at the DOMAIN ROOT → needs the TuNeLA/tunela.github.io repo
+  until the own domain. Add Google's Play app signing SHA-256 with `04-assetlinks.py <root> <sha256>`.
+- Public privacy policy for Play: `docs/integritet.html`.

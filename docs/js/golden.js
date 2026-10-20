@@ -124,6 +124,7 @@
     var b = null; try { b = window.BARS.byId(st.bar_id); } catch (e) {}
     if (A.openBar) A.openBar(b || { id: st.bar_id, name: st.bar_name, lat: st.lat, lng: st.lng, type: "bar" });
   }
+  function zoomVis() { if (!marker) return; var el = marker.getElement(); if (el) el.style.display = A.map.getZoom() >= 11 ? "" : "none"; }
   function draw() {
     if (!A || !A.map || !window.L) return;
     var want = !off && st && st.state === "live" && isFinite(st.lat);
@@ -135,8 +136,9 @@
     marker = window.L.marker(ll, { icon: icon, pane: "goldhorse", keyboard: false, zIndexOffset: 1200, title: two("head") });
     marker.on("click", openHorse);
     marker.addTo(A.map);
-    var z = function () { if (!marker) return; var el = marker.getElement(); if (el) el.style.display = A.map.getZoom() >= 11 ? "" : "none"; };
-    A.map.on("zoomend", z); z();
+    var z = zoomVis;
+    if (!draw._z) { draw._z = true; A.map.on("zoomend", function () { if (marker) zoomVis(); }); }   // review2: one listener
+    z();
   }
 
   function section() {

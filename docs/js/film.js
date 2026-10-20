@@ -176,7 +176,7 @@
       return d;
     });
   }
-  var fileInp = null;
+  var fileInp = null, camG = null;
   function pickFile(cb) {
     if (!fileInp) {
       fileInp = document.createElement("input");
@@ -185,15 +185,18 @@
       document.body.appendChild(fileInp);
       fileInp.addEventListener("change", function () {
         var f = fileInp.files && fileInp.files[0], fn = fileInp._cb;
+        try { localStorage.removeItem("olnu.fmPick"); } catch (e) {}
         if (!f || !fn) return;
         if (f.type && !/^image\//.test(f.type)) { A.toast(errText("invalid_photo"), { err: true }); return; }
         fn(f);
       });
     }
     fileInp._cb = cb; fileInp.value = "";
+    try { if (camG && camG.id) localStorage.setItem("olnu.fmPick", JSON.stringify({ g: camG.id, n: camG.name || "", t: Date.now() })); } catch (e) {}   // review2
     fileInp.click();
   }
   function openCam(g) {
+    camG = g;
     A.openSheet(L("📸 Engångskamera", "📸 Disposable camera"), function (body) {
       var root = el("div", { class: "fm-sheet" });
       body.appendChild(root);
@@ -425,7 +428,11 @@
       A = api;
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
     },
-    onAuthed: function () { load(true); var id = linkFromUrl(); if (id) openFilmLink(id); },
+    onAuthed: function () {
+      load(true); var id = linkFromUrl(); if (id) { openFilmLink(id); return; }
+      var p = null; try { p = JSON.parse(localStorage.getItem("olnu.fmPick") || "null"); localStorage.removeItem("olnu.fmPick"); } catch (e) {}
+      if (p && p.g && Date.now() - (p.t || 0) < 5 * 60e3) { setTimeout(function () { openCam({ id: String(p.g), name: String(p.n || "") }); }, 800); setTimeout(function () { A.toast(L('📷 Telefonen startade om appen medan kameran var öppen. Försök igen – eller ta bilden först och välj den sen.', '📷 The phone restarted the app while the camera was open. Try again – or take the photo first and pick it after.'), { ms: 8000, urgent: true }); }, 1500); }
+    },
     onReadyShow: function () { var id = linkFromUrl(); if (id) { openFilmLink(id); return "film"; } return ""; },
     onPoll: function () { load(false); },
     applyText: function () { render(); },

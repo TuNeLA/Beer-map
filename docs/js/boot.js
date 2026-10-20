@@ -44,12 +44,24 @@
   /* ---------- 2. Lazy content files ---------- */
   var done;
   window.OLNU_LAZY = new Promise(function (r) { done = r; });
+  window.OLNU_LAZY_NOW = function () {   // review2: openSheet() calls it; never before the load event
+    if (document.readyState === "complete") startLazy(); else window.addEventListener("load", function () { setTimeout(startLazy, 0); });
+    return window.OLNU_LAZY;
+  };
   var started = false;
   function startLazy() {
     if (started) return;
     started = true;
+    // review2: sheet-only stylesheets (<link rel="x-lazy-css" data-boot>) load here too (forfest.css stays on demand).
+    Array.prototype.forEach.call(document.querySelectorAll('link[rel="x-lazy-css"][data-boot][href]'), function (n) {
+      var href = n.getAttribute("href");
+      if (document.querySelector('link[rel="stylesheet"][href="' + href + '"]')) return;
+      var l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l);
+    });
     var list = Array.prototype.slice.call(document.querySelectorAll('script[type="text/x-lazy"][src]'))
-      .map(function (n) { return n.getAttribute("src"); });
+      .map(function (n) { return n.getAttribute("src"); })
+      // review2: a module may have loaded its lazy file on demand already (forfest.js): do not run it twice
+      .filter(function (src) { return !document.querySelector('script[src="' + src + '"]:not([type="text/x-lazy"])'); });
     // Order is kept (async = false); a missing file does not stop the others.
     Promise.all(list.map(function (src) { return loadScript(src).catch(function () {}); }))
       .then(function () {

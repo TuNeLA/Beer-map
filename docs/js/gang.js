@@ -8,7 +8,8 @@
   "use strict";
   var U = window.U, I = window.I18N, esc = U.esc;
   var A = null;
-  var C = window.GANG_CONTENT || {};
+  // review2: GANG_CONTENT is a lazy file now; read the global on every use.
+  var C = typeof Proxy === "function" ? new Proxy({}, { get: function (o, k) { return (window.GANG_CONTENT || {})[k]; } }) : (window.GANG_CONTENT || {});
   var off = {};
   var state = "unknown";            // gang_poll: "unknown" | "on" | "missing"
   var poll = null, pollAt = 0, busy = false, again = false, POLL_MS = 45000, firstPoll = true;
@@ -209,6 +210,10 @@
   /* ---------- Poll ---------- */
   function load(force) {
     if (!A || !A.LIVE || !A.authed() || state === "missing") return Promise.resolve();
+    if (!window.GANG_CONTENT && window.OLNU_LAZY) {   // review2: texts not loaded yet: poll when they are (no empty toasts)
+      if (!load._lw) { load._lw = true; try { window.OLNU_LAZY_NOW(); } catch (e) {} window.OLNU_LAZY.then(function () { load(true); }); }
+      return Promise.resolve();
+    }
     if (busy) { if (force) again = true; return Promise.resolve(); }
     if (!force && Date.now() - pollAt < POLL_MS) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
@@ -1042,7 +1047,8 @@
         var img = el("img", { class: "gg-pimg", alt: m.alt || (model.big + ". " + model.small.join(". ")), src: cv.toDataURL("image/png") });
         box.appendChild(img);
         var row = el("div", { class: "gg-row" });
-        if (navigator.share && navigator.canShare) row.appendChild(bt(T("pShare"), "btn-amber", function () { sharePaper(cv, m); }));
+        if (navigator.share && navigator.canShare) row.appendChild(bt(T("pShare"), "btn-amber", function () { sharePaper(cv, m, gid); }));
+        if (window.CARDS) window.CARDS.prep("paper", gid);
         row.appendChild(bt(T("pSave"), "btn-small", function () { downloadPaper(cv); }));
         try { if (window.KODEN) window.KODEN.button(row); } catch (e) {}
         box.appendChild(row);
@@ -1556,12 +1562,12 @@
     });
   }
   function paperBlob(cv) { return new Promise(function (res) { if (cv.toBlob) cv.toBlob(function (b) { res(b); }, "image/png"); else res(null); }); }
-  function sharePaper(cv, m) {
+  function sharePaper(cv, m, gid) {
     paperBlob(cv).then(function (b) {
       if (!b) { downloadPaper(cv); return; }
       var file = new File([b], "kvallsposten.png", { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: m.masthead, text: m.big }).then(function () { A.toast(T("pShared")); }, function () {});
+        navigator.share({ files: [file], title: m.masthead, text: window.CARDS && gid ? window.CARDS.withLink("paper", gid, m.big) : m.big }).then(function () { A.toast(T("pShared")); }, function () {});
       } else downloadPaper(cv);
     });
   }

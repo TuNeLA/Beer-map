@@ -200,7 +200,7 @@
   window.PASSPORT = {
     data: function () { return data; }, open: openSheet, refresh: function () { return load(true); }, _placeOf: placeOf,
     init: function (api) { A = api; },
-    onAuthed: function () { setTimeout(function () { load(true); }, 8000); },
+    onAuthed: function () { setTimeout(function () { load(false); }, 8000); },   // review2: the first poll has loaded it already
     onPoll: function () { load(false); },
     topSheet: function (body) {
       if (!A || !A.LIVE || off) return;

@@ -7,7 +7,8 @@
   "use strict";
   var U = window.U, I = window.I18N, esc = U.esc;
   var A = null;
-  var C = window.GAMES_CONTENT || {};
+  // review2: GAMES_CONTENT is a lazy file now; read the global on every use.
+  var C = typeof Proxy === "function" ? new Proxy({}, { get: function (o, k) { return (window.GAMES_CONTENT || {})[k]; } }) : (window.GAMES_CONTENT || {});
   var off = {};                 // rpc name -> true when missing on this server
   var state = "unknown";        // game_poll: "unknown" | "on" | "missing"
   var poll = null, pollAt = 0, busy = false, again = false, POLL_MS = 45000, forcedAt = 0;
@@ -305,6 +306,10 @@
   /* ---------- Poll ---------- */
   function load(force) {
     if (!A || !A.LIVE || !A.authed() || state === "missing") return Promise.resolve();
+    if (!window.GAMES_CONTENT && window.OLNU_LAZY) {   // review2: texts not loaded yet: poll when they are (no empty toasts)
+      if (!load._lw) { load._lw = true; try { window.OLNU_LAZY_NOW(); } catch (e) {} window.OLNU_LAZY.then(function () { load(true); }); }
+      return Promise.resolve();
+    }
     if (busy) { if (force) again = true; return Promise.resolve(); }
     if (!force && Date.now() - pollAt < POLL_MS) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
