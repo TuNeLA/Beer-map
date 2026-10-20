@@ -40,6 +40,8 @@
     ["status", "📸", 5, "Svara på lägesrapporten i tid", "Answer the status report in time", "Max 3 per natt.", "Max 3 a night."],
     ["checkin", "📍", 3, "Checka in på en krog", "Check in at a bar", "1 per krog, max 6 per natt.", "1 per bar, max 6 a night."],
     ["game", "🎲", 3, "Vinna i Lek (uppdrag, bingo, orakel)", "Win in Games (mission, bingo, oracle)", "Max 3 per natt.", "Max 3 a night."],
+    ["party_win", "👑", 3, "Vinna ett partyspel", "Win a party game", "Max 3 per natt.", "Max 3 a night."],
+    ["party", "🎲", 2, "Spela ett partyspel (3+ spelare)", "Play a party game (3+ players)", "Max 3 spel per natt.", "Max 3 games a night."],
     ["photo", "📷", 2, "Bild i gruppchatten", "Photo in the group chat", "Max 5 per natt.", "Max 5 a night."],
     ["skal_give", "🍻", 1, "Ge en skål", "Give a skål", "Max 10 per natt.", "Max 10 a night."],
     ["skal_get", "🥂", 1, "Få en skål", "Get a skål", "Max 10 per natt.", "Max 10 a night."],
@@ -220,6 +222,30 @@
       "🎲 Leken ger meriter. Vem visste?",
       "🎲 Taktiskt geni. Nästan.",
       "🎲 Spelet ä vunnet. Truppen applåderar."
+    ],
+    party: [
+      "🎲 Partyspel avklarat. Truppen leker, truppen lever.",
+      "🎲 Ett spel i rummet. Generalen gillar lagövningar.",
+      "🎲 Lekstuga godkänd av högkvarteret.",
+      "🕵️ Imposter eller int', du var med. Merit!",
+      "🎩 Lapparna ä dragna. Meriten ä din.",
+      "🔥 Östra lägret överlevde kvällen. Du med.",
+      "🎲 Övning i samarbete och lögner. Godkänd.",
+      "🐑 Flocken tackar för insatsen.",
+      "🔮 Spelat och klart. Siarna ser fler meriter.",
+      "🎲 Ett spel till i krigsdagboken."
+    ],
+    party_win: [
+      "👑 Seger i partyspelet! Medaljen ä på väg.",
+      "👑 Vinnare! Truppen bugar.",
+      "🕵️ Du lurade dom allihop. Snyggt, soldat.",
+      "👑 Segern ä din. Bjud på en runda, kanske?",
+      "🔥 Sista man i lägret. Legend.",
+      "🎩 Hattens mästare! Ingen slår dig i kväll.",
+      "👑 Vinst! Generalen skriver ditt namn i boken.",
+      "🔮 Tankeläsare! Du såg det komma.",
+      "🐑 Flockledare. Alla följde dig.",
+      "👑 Triumf vid bordet. Dalarna minns."
     ],
     drink: [
       "🍺 En dryck. Det ger en merit – resten får du med truppen.",

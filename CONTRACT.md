@@ -1295,3 +1295,46 @@ Rules:
 - ⚙️: a "👥 Kompisar & pass" heading before Ölpasset + Vänner; the duplicate "Önska en feature" heading is hidden.
 - Tokens: use polish.css tokens (`--s1..s3`, `--hair`, `--r-*`, `--sp-*`, `--fs-*`). Mono (`--hud`) only for clocks and codes;
   stencil (`--display`) only for brand, ÖL! and big numbers. Accent cards = 1px hairline + `box-shadow: inset 3px 0 0 <accent>`, radius `--r-m`.
+
+## PARTYSPEL (🎲 live party rooms: every player on their own phone, the host phone = the big screen; additive)
+Migrations `0070_party_rooms.sql` (tables + helpers), `0071_party_logic.sql` (the state machine), `0072_party_rpcs.sql` (client RPCs + meriter trigger), applied on the server 2026-10-20 under the same names. Needs 0001 (`olnu_uid`, `group_members`), 0017 (`olnu_night_of`), 0036 (`olnu_mer_add`). No migration contains a row-removing statement. Client: `docs/js/party.js` (`window.PARTY`, defer, ~10 KB, in `mods()` after FORFEST), `docs/js/party-ui.js` (`window.PARTY_UI`) + `docs/js/party-content.js` (`window.PARTY_CONTENT`) as `type="text/x-lazy"`, `docs/party.css` as `rel="x-lazy-css"` (party.js loads all three on the first open). A missing RPC (old database, PGRST202) = the tile hides.
+
+### Sync (decision)
+RPC polling: `party_state(room, v)` every 1.2 s, only while the overlay is open and the page visible; an unchanged room answers `{same:true, v, host_away}` (a few bytes). Realtime `postgres_changes` cannot work (RLS, no policies). Realtime BROADCAST would only be a "poke" (the payload can never hold secrets, so every phone must still call `party_state`), adds a websocket per phone and a second failure path in bad bar wifi; polling alone gives ≤ 1.2 s lag and is simpler, so no Realtime is used.
+
+### Tables (RLS on, no policies, no client access; service_role has all; rows are never removed, reads filter on time)
+`party_rooms(id, code A–Z×4 (no I/O), host, group_id, game, phase, round, step, game_no, opts, pub (public state), sec (secret state, never returned whole), v, started_at, created_at, updated_at, expires_at = created + 3 h, closed)` · `party_players(room_id, user_id, k = md5 key, name, is_host, status in|out|wait|tv|left, in_game, ord, score, wins, out_round, joined_at, seen_at)` · `party_inputs(room_id, game_no, rk, user_id, val)` (one input per step, upsert until the step closes) · `party_results(room_id, game_no, user_id, game, won, night, players)` (meriter event) · `party_limits(user_id, kind, win_start, n)`. The 0016c erase sweep moves `user_id` like every uuid column.
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `party_create` | `p_group_id uuid default null, p_name text default null (group display name), p_game text default 'imposter'` | view | `invalid_game`, `not_member`, `invalid_name`, `slow_down` (15/h), `busy`. Closes the caller's other open hosted room. |
+| `party_join` | `p_code text, p_name text default null` | view (in the lobby/after a game `status in`, mid-game `wait`; same name → "Namn 2") | `room_not_found`, `invalid_name`, `room_full` (16), `slow_down` (30 / 10 min) |
+| `party_state` | `p_room uuid, p_v int default 0` | view, or `{same, v, host_away}`, or `{closed, expired}`; marks seen (max 1 write / 10 s) | `room_not_found`, `not_in_room` |
+| `party_act` | `p_room uuid, p_act text, p_val text default null, p_data jsonb default null` | view (`{left}` / `{closed}` for leave/close) | `not_host`, `not_now`, `not_your_turn`, `invalid_vote`, `invalid_answer`, `own_answer`, `invalid_member`, `invalid_game`, `invalid_content`, `too_few`, `room_closed`, `slow_down` (150/min) |
+| `party_group` | `p_group_id uuid` | `{room:{id, code, game, phase, n, host_name, is_in, is_host, expires_at}|null}` (newest open room of the group) | `not_member` |
+| `party_mine` | – | `{room:{id, code, game, phase, is_host, group_id}|null}` (after a reload) | – |
+
+View = `{v, now, id, code, game, phase, round, step, game_no, opts, expires_at, group_id, closed, host_k, host_name, host_away, me:{k, name, is_host, status, in_game, score, wins, can_host}, players:[{k, name, is_host, status, in_game, score, wins, is_me, done, need, on}], pub, priv}`. `priv` holds ONLY the caller's secret: `mine` (own input this step), Imposter `{imp, word | hint, imp_n}`, Vågen psychic `target`, Hatten `my_slip`. Hatten slips come out one at a time (`pub.slips` cut to `step` in `reveal`). Votes are never returned with the voter (`tally.votes` = shuffled target names, for the slow reveal).
+
+Host moves (`can_host` = host, or anyone when the host was not seen for 45 s / left): `start` (`p_data {game, opts, list[]}`: the content strings, the SERVER picks word/imposters/target), `next` (force the step), `tovote`, `accept` (approve a near-miss imposter guess), `all` (show all slips), `lobby`, `game` (p_val), `kick` (p_val k), `close` (host only). Anyone: `leave` (the host role moves to the most recently seen player). Inputs: `ready`, `done` (turn player / psychic), `vote` (k), `answer` (k or text 60 / 30), `best` (slip index, not own), `slide` (0–100), `guess` (text). A step closes by itself when every needed player has sent its input.
+
+### Games (phases)
+- **imposter** (min 3; 2 imposters need 5): `roles` (ready) → `clue` (turn order, 1–3 rounds; later cycles 1 round) → `vote` → `result` (`tally, out_k, out_imp, after`) → `guess` (caught imposter: one guess; Levenshtein ≤ 1, ≤ 2 for 9+ letters; host may `accept`) → `guessed` → `end` (`win imp|crew, word, imps, winners`). Tie: no one out (elimination on → new cycle, else imposter wins). Elimination mode: a voted-out crew member is `out` (waiting screen) and the game goes on while imposters < crew. Score: crew +1, imposter +2.
+- **survivor** "Östra lägret" (min 3): `challenge` (prompt) → `vote` → `result` (most votes out, tie = lot) → … two left → `final` (jury = voted-out players vote between the finalists) → `end`. Winner +3, runner-up +1.
+- **hatten** "Namn i hatten" (min 3; 3–15 rounds; prompts `w|` name a player or `t|` write): `write` → `reveal` (one slip per `next`) → `score` (w: everyone who named the top name +1) or `vote` (t: best answer, not own) → `score` (+1 per vote to the author, authors shown) → … → `end`.
+- **flocken** (Herd Mentality): `write` (one answer, 30) → `score` (groups by normalised answer; the single biggest group of 2+ gets +1; exactly one lone answer = 🐄 kossan, who cannot win) → … → `end`.
+- **vagen** (Wavelength): `clue` (the psychic sees `target` 5–95 and says a clue, `done`) → `guess` (everyone else `slide`) → `score` (≤4 → 4 p, ≤9 → 3, ≤16 → 2, ≤25 → 1; the psychic gets the round average) → next psychic → `end`.
+
+### Meriter (CONTRACT v26 ledger; trigger `olnu_zz_mer_party` on `party_results`)
+| kind | action | pts | cap per night |
+|---|---|---|---|
+| `party` | a finished party game with 3+ players that ran ≥ 60 s | 2 | 3 games (6) |
+| `party_win` | won that game | 3 | 3 wins (9) |
+meriter.js `ACTS` + `LINES` have both kinds (party-patches 04).
+
+### Frontend
+- Ways in: group page tile "🎲 Partyspel" (`groupItem`, row `.pt-gi`, `data-gsec="spel"` for the review2 folds; when the group has an open room it turns into "🎲 Partyspel pågår · KOD" with class `live`, so the folds keep it on top), "🎲 Partyspel" in both Lek sheets (`PARTY.lekButton`), the join link / QR `?party=CODE` (read at script start, opened after the intro), a "Du ä med i partyrum X · Tillbaka" toast after a reload (`party_mine`).
+- Overlay `#pt` (z-index 2150, like `#ff`); opens only after the beer-type strip (`OLNU_STRIP.after`), closes the open sheet, Android back closes it (the room lives on). Screen Wake Lock while a room is open.
+- Host phone = big screen (code + QR + players + game picker + options in the lobby; whose turn, progress, slow vote reveal ≥ 1.1 s per vote, results, scoreboard). "🤫 Min lapp" flips the host to their private view (card, vote) and back. Option "📺 Min lur ä bara storskärmen" (host does not play). Players: big buttons, one-hand; voted-out players get "UTSLAGEN"/"JURYN" screens with rotating dalmål lines; mid-game joiners "I RESERVEN".
+- Content (`party-content.js`): 15 Imposter categories × 42 words with vague hints (Länder, Städer i Sverige, Mat, Kändisar, Filmer, Varumärken, Djur, Dalarna, Öl & drinkar, Sport, Yrken, Saker hemma, Platser, Musik, Lumpen & militärt), 42 Östra lägret challenges, 90 Namn i hatten prompts (50 w, 40 t, `{namn}` = a random player), 63 Flocken questions, 50 Vågen scales, ~130 status lines. No repeats in one browser session (`sessionStorage olnu.partyUsed`); only ADD at the end of a list. Prefs in `localStorage olnu.party`.
