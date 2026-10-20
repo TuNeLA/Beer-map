@@ -332,6 +332,7 @@
       }
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [A.btn(t("rallyShowMap"), "btn-block", function () { showFlag(c, wh); })]));
     }
+    if (window.CARDS) window.CARDS.rallyRow(body, c);
   }
   function closeOne(r) {
     call("close_rally", { p_rally_id: +r.id }).then(function (res) {

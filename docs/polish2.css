@@ -1,0 +1,136 @@
+/* ==========================================================================
+   Öl Nu: design pass 4 (design3, 2026-10-20). Loaded LAST (after polish.css).
+   One job: make the ~15 feature modules look like ONE app, on the polish.css tokens.
+   - Group page: sections (Ikväll · Spel & kul · Dagen efter · Gruppen · Mer…), one primary (Chatt).
+   - 🏆: top-level tabs (js/polish2.js). Sub-tabs stay as the quiet segmented control.
+   - Tiles, cards, kickers and sub-labels: one radius, one surface, one sans. Mono only for clocks/codes.
+   - Map: at most one banner talks at a time.
+   ========================================================================== */
+
+/* ---------- shared card + kicker (used by many modules) ---------- */
+.ev-box,.gh-box,.bd-box,.af-league,.bp-stats,.mer-board,.hs-top,.gg-topsec{border-top:0;padding-top:0}
+.ev-row,.bd-optin,.nr-tile,.hs-gline,.chief-gi,.chief-gi.chief-gi{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2)}
+.ev-row{overflow:hidden;padding:10px 12px;gap:10px;align-items:center}
+.ev-row+.ev-row{margin-top:var(--sp-2)}
+.ev-row.ev-pending{border-style:dashed}
+.ev-time{font-family:var(--body);font-weight:700;font-variant-numeric:tabular-nums;font-size:var(--fs-m)}
+.bd-optin{border-style:solid;padding:6px 12px}
+/* kickers / sub-labels: Chakra Petch, not mono (polish rule: mono only for clocks and codes) */
+.pp-skal,.cer-gs,.sk-gs,.fm-gs,.gg-gs,.gm-gs,.cer-kick,.cer-card-f,.sk-cap small,.af-ssmall,.af-ksub,.bp-of-h,.bp-q,.eta-q,.gm-st,.gm-pd,.md-more,.cr-cap small,.ht-tag{
+  font-family:var(--body);font-weight:600;letter-spacing:.01em}
+.cer-kick,.bp-of-h,.af-ssmall{letter-spacing:.1em}
+.cr-cap small,.sk-cap small,.gm-st,.gm-pd{font-variant-numeric:tabular-nums}
+/* tiny text: never below 12 px (Apple: 7:1 for small text) */
+.ht-tag,.role-b,.sk-cap,.af-ksub,.bp-of-h,.md-more,.gm-st,.gm-pd,.gm-gs,.eta-q{font-size:12px !important}
+.ht-tag{color:var(--muted)}
+/* long text never in the stencil face */
+.sk-b-txt b,.fm-b-txt b{font-family:var(--body);font-weight:700;font-size:15px;letter-spacing:.01em;text-transform:none}
+
+/* ---------- Group page: sections ---------- */
+.gitem:not(.gcard)>div.gp{row-gap:var(--sp-2)}
+.gitem:not(.gcard)>div.gp>.gmain{order:-3}
+.gitem:not(.gcard)>div.gp>.g-foot{order:60}
+.gitem:not(.gcard)>div.gp>.confirm{order:61}
+.gitem:not(.gcard)>div.gp>[data-gp="0"]{grid-column:1 / -1}
+.gitem:not(.gcard)>div.gp>[data-gp="0"]>.btn{min-height:56px;font-size:var(--fs-m);font-weight:700}
+.gp-h{grid-column:1 / -1;margin:var(--sp-4) 0 0 !important;font-size:var(--fs-xs);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;gap:8px}
+.gp-h::before{content:"";width:10px;height:2px;background:var(--amber)}
+.gp-h[hidden]{display:none}
+.gitem:not(.gcard)>div.gp>[data-gp="5"]{display:none !important}
+.gitem:not(.gcard)>div.gp.gp-open>[data-gp="5"]{display:flex !important}
+.gp-more{grid-column:1 / -1;min-height:44px;margin-top:var(--sp-2) !important;border-radius:var(--r-m);border:1px dashed var(--hair-2);background:transparent;
+  color:var(--text-2);font:600 var(--fs-s) var(--body);letter-spacing:.02em;cursor:pointer}
+.gp-more[hidden]{display:none}
+.gp-more:active{background:var(--s2)}
+/* every tile: same surface, two lines (label + quiet status), no overflow at 360 px */
+.gitem:not(.gcard)>div.gp>[class$="-gi"]:not(.chief-gi)>.btn,.gitem:not(.gcard)>div.gp>.row>.btn,.gitem:not(.gcard)>div.gp>.g-acts>.btn{min-height:60px !important;border-radius:var(--r-m) !important;background:var(--s3) !important;
+  border:1px solid var(--hair) !important;color:var(--text);box-shadow:none;padding:8px 12px !important;font-size:15px;font-weight:700;
+  display:flex !important;flex-direction:column;align-items:flex-start !important;justify-content:center !important;gap:2px;line-height:1.2;text-align:left;min-width:0}
+.gitem:not(.gcard)>div.gp>[class$="-gi"]:not(.chief-gi)>.btn>*{max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gitem:not(.gcard)>div.gp>[class$="-gi"]>.btn>[class$="-gl"]{font-weight:700;font-size:15px;color:var(--text)}
+.gitem:not(.gcard)>div.gp>[class$="-gi"]>.btn>[class$="-gs"]{font-size:var(--fs-xs);color:var(--amber-2);font-family:var(--body);font-weight:600}
+.gitem:not(.gcard)>div.gp>[data-gp="0"]>.btn{align-items:center !important;flex-direction:row;background:linear-gradient(180deg,rgba(245,166,35,.24),rgba(245,166,35,.12)) !important;
+  border-color:rgba(245,166,35,.5) !important;color:var(--amber-2)}
+.gitem:not(.gcard)>div.gp>.g-acts{display:flex;grid-column:auto}
+.gitem:not(.gcard)>div.gp>[data-gp-wide]{grid-column:1 / -1}
+.gitem:not(.gcard)>div.gp>.g-acts>.btn{width:100%;flex:1 1 auto;font-size:15px;flex-direction:row;align-items:center !important;justify-content:flex-start !important}
+.gitem:not(.gcard)>div.gp>.g-acts>.btn::before{content:"🎟️";margin-right:6px}
+/* "something is happening" = amber hairline; the only filled tile is a LIVE skåltimme */
+.gitem:not(.gcard)>div.gp .cer-gbtn.cer-hot,.gitem:not(.gcard)>div.gp .fm-gbtn.new{border-color:rgba(245,166,35,.6) !important;box-shadow:inset 0 0 0 1px rgba(245,166,35,.25) !important}
+.gitem:not(.gcard)>div.gp>.sk-gi>.btn.sk-gbtn.live{background:linear-gradient(160deg,var(--amber-2),var(--amber)) !important;border-color:transparent !important}
+.gitem:not(.gcard)>div.gp>.sk-gi>.btn.sk-gbtn.live>*{color:var(--on-amber) !important}
+.fm-gbtn .fm-gs{color:var(--amber-2)}
+/* full-width info rows: one look */
+.gitem:not(.gcard)>div.gp>.nr-tile,.gitem:not(.gcard)>div.gp>.hs-gline,.gitem:not(.gcard)>div.gp>.chief-gi,.gitem:not(.gcard)>div.gp>.rl-group-item{grid-column:1 / -1;min-height:56px;padding:10px 14px;margin:0 !important;border-left-width:1px}
+.gitem:not(.gcard)>div.gp>.hs-gline{font-size:15px;line-height:1.35}
+.gitem:not(.gcard)>div.gp>.chief-gi{display:flex;align-items:center}
+.gitem:not(.gcard)>div.gp>.nr-tile .btn{min-height:40px;border-radius:var(--r-pill);padding:0 14px;font-size:var(--fs-s)}
+.gitem:not(.gcard)>div.gp>.rl-gi-yes{grid-column:1 / -1}
+.gitem:not(.gcard)>div.gp>.rl-group-item{border-radius:var(--r-m);border:1px solid rgba(61,220,132,.45);background:rgba(61,220,132,.08);text-align:left;color:var(--text);font-size:15px}
+
+/* ---------- 🏆 sheet: top-level tabs ---------- */
+.tt-bar{position:sticky;top:-1px;z-index:3;display:flex;gap:2px;margin:-4px 0 14px;padding:4px 0 0;background:var(--s1);border-bottom:1px solid var(--hair);
+  overflow-x:auto;scrollbar-width:none}
+.tt-bar::-webkit-scrollbar{display:none}
+.tt-bar button{flex:1 0 auto;min-height:44px;padding:0 10px;border:0;background:transparent;color:var(--muted);font:700 var(--fs-s) var(--body);letter-spacing:.02em;
+  border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:color var(--d-2),border-color var(--d-2)}
+.tt-bar button[aria-selected="true"]{color:var(--amber-2);border-bottom-color:var(--amber)}
+.tt-bar button[hidden]{display:none}
+#sheet-body[data-tt="top"]>[data-tt]:not([data-tt="top"]):not([data-tt="all"]),
+#sheet-body[data-tt="mer"]>[data-tt]:not([data-tt="mer"]):not([data-tt="all"]),
+#sheet-body[data-tt="streak"]>[data-tt]:not([data-tt="streak"]):not([data-tt="all"]),
+#sheet-body[data-tt="ev"]>[data-tt]:not([data-tt="ev"]):not([data-tt="all"]),
+#sheet-body[data-tt="pass"]>[data-tt]:not([data-tt="pass"]):not([data-tt="all"]){display:none !important}
+/* the first heading in a tab sits right under the bar */
+#sheet-body[data-tt]>[data-tt]>h3:first-child{margin-top:4px}
+#sheet-body[data-tt]>.ws-topfoot{margin-top:var(--sp-5)}
+/* the sheet keeps one height while you switch tabs (no jumping) */
+.sheet:has(#sheet-body[data-tt]){min-height:86vh;min-height:86dvh}
+/* Pass tab: the entry becomes a card */
+#sheet-body[data-tt="pass"]>.ps-toprow .btn{min-height:88px;border-radius:var(--r-l);background:var(--s2);font-size:var(--fs-l)}
+@media (max-width:374px){ .tt-bar button{padding:0 8px;font-size:var(--fs-xs)} }
+
+/* ---------- ⚙️ ---------- */
+.p2-hide{display:none}
+#sheet-body>.row>.btn-small.btn-block{min-height:44px;font-size:14px}
+
+/* ---------- Chat: lighter head, smaller keep box ---------- */
+/* the keep switch is one quiet line (the long hint is still read out via aria-describedby) */
+.chat-keep{padding:4px 12px !important;min-height:44px;display:flex;align-items:center}
+.chat-keep .chat-keep-l{font-size:var(--fs-s);min-height:40px;display:flex;align-items:center;gap:10px}
+.chat-keep .chat-keep-i{display:none}
+.chat-keep:has(.chat-keep-cb:checked){flex-direction:column;align-items:flex-start}
+.chat-keep:has(.chat-keep-cb:checked) .chat-keep-i{display:block;font-size:var(--fs-xs);margin:0 0 6px}
+.cm-head .role-b{padding:1px 6px;border-radius:var(--r-pill)}
+
+/* ---------- Map: one banner at a time ---------- */
+body:has(#sk-banner:not([hidden])) .dl-cap,body:has(#fm-banner:not([hidden])) .dl-cap{opacity:0 !important;pointer-events:none}
+.sk-banner,.fm-banner{border-radius:var(--r-m);box-shadow:var(--sh-2)}
+.sk-banner>.sk-cd{font-family:var(--body);font-weight:700;font-variant-numeric:tabular-nums}
+@media (max-width:374px){ .sk-b-sub,.fm-b-sub{display:none} }
+
+/* ---------- Friends: code input readable ---------- */
+.nr-add-row .inp{letter-spacing:.06em;font-family:var(--body)}
+.nr-add-row .inp::placeholder{text-transform:none;letter-spacing:0;color:var(--muted)}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){ .tt-bar button,.gp-more{transition:none} }
+
+/* ---------- Accent cards: the old square "border-left:3px" boxes become rounded cards with an inset accent ---------- */
+.bp-own,.bp-sb,.eta-me,.gg-warn,.gg-card,.gm-card,.gm-m,.medal.on,.cr-alone,.nr-in .nr-req,.cr-head,.nr-tile{border-radius:var(--r-m);border:1px solid var(--hair);border-left-width:1px}
+.bp-own,.gg-card,.gm-card,.medal.on{box-shadow:inset 3px 0 0 var(--gold)}
+.bp-sb,.gm-m,.cr-head{box-shadow:inset 3px 0 0 var(--amber)}
+.eta-me,.nr-in .nr-req{box-shadow:inset 3px 0 0 var(--green)}
+.gg-warn{box-shadow:inset 3px 0 0 var(--fire)}
+.cr-alone{box-shadow:inset 3px 0 0 var(--water)}
+.bp-sb,.gm-m{background:var(--s2)}
+.eta-row{font-family:var(--body);font-weight:600;border-radius:var(--r-s)}
+
+/* ---------- Skål/film banners: sit ABOVE the dock (they covered ANNAT), push toasts up, never over the strip ---------- */
+.sk-banner,.fm-banner{bottom:calc(var(--dock-h,180px) + 24px)}
+body.chief-on .sk-banner,body.sk-on .fm-banner,body.chief-on:not(.sk-on) .fm-banner{bottom:calc(var(--dock-h,180px) + 88px)}
+body.chief-on.sk-on .fm-banner{bottom:calc(var(--dock-h,180px) + 152px)}
+body:has(#sk-banner:not([hidden])):not(.barsheet-open):not(:has(.bp-strip:not([hidden]))) .toasts,
+body:has(#fm-banner:not([hidden])):not(.barsheet-open):not(:has(.bp-strip:not([hidden]))) .toasts{bottom:calc(var(--dock-h,180px) + 100px) !important}
+body:has(.bp-strip:not([hidden])) .sk-banner,body:has(.bp-strip:not([hidden])) .fm-banner{visibility:hidden}

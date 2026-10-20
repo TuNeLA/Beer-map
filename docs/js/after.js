@@ -643,7 +643,8 @@
         if (rows(r).length) list.scrollTop = list.scrollHeight;
       });
     }
-    timer = setInterval(load, 10000);
+    var vTick = 0;   // review2: quiet chat -> voices every 30 s
+    timer = setInterval(function () { vTick++; if (Date.now() - (window.OLNU_CHAT_AT || 0) < 60000 || vTick % 3 === 0) load(); }, 10000);
     setTimeout(load, 300);
     // Hold-to-record mic button (max 5 s).
     var mic = null;

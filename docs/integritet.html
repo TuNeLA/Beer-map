@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integritet · Öl Nu</title>
+<meta name="description" content="Integritetspolicy för Öl Nu: vad appen sparar, vem som ser det, hur länge och hur du raderar det.">
+<meta name="theme-color" content="#0a0f1c">
+<meta name="color-scheme" content="dark">
+<style>
+  :root{--bg:#0a0f1c;--card:#121a2e;--text:#e8ecf5;--muted:#9aa6c0;--yel:#ffd60a}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:720px;margin:0 auto;padding:24px 16px 48px}
+  h1{color:var(--yel);font-size:26px;margin:0 0 4px}
+  h2{color:var(--yel);font-size:18px;margin:28px 0 8px}
+  section{background:var(--card);border-radius:12px;padding:4px 16px 12px;margin-top:20px}
+  .muted{color:var(--muted);font-size:14px}
+  a{color:var(--yel)}
+  li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>🔒 Integritet – Öl Nu</h1>
+<p class="muted">Gäller webbappen och Android-appen (samma app). Senast ändrad: 2026-10-20. <a href="#en">English below</a>.</p>
+
+<section lang="sv">
+<h2>Vem står bakom?</h2>
+<p>Öl Nu drivs av en privatperson i Ludvika, Sverige (Anton Larsson). Kontakt: skriv ett ärende på <a href="https://github.com/TuNeLA/Beer-map/issues" rel="noopener">github.com/TuNeLA/Beer-map</a>.</p>
+<h2>Vad sparas på servern?</h2>
+<ul>
+<li>Ett anonymt konto-id. Ingen e-post, inget telefonnummer, inget lösenord.</li>
+<li>Ditt visningsnamn – bara när du skapar eller går med i en grupp. Bara dina grupper ser det.</li>
+<li>Dina öl och andra drycker: antal, tid och plats (exakt eller ett område på ~500 m, du väljer).</li>
+<li>Incheckningar (krog och tid), gruppchatt (text, bilder och röstklipp), inkallelser, kö-rapporter, tips, önskemål och omröstningar.</li>
+<li>Notiser: din push-adress och ett område på ~1 km (bara om du slår på notiser).</li>
+<li>Fakta för medaljer och statistik: drycker per vecka och kväll, vilka krogar, ett område på ~50 km.</li>
+<li>Anonyma värmepunkter (utan konto-id).</li>
+<li>Länkkort: när en delad länk öppnas ser servern din IP-adress för att stoppa missbruk. Den sparas inte, bara en räknare per minut.</li>
+</ul>
+<h2>Vem ser vad?</h2>
+<ul>
+<li>Din grupp: ditt namn, din exakta pin, dina drycker, din incheckning och chatten.</li>
+<li>Alla andra: bara krogen du är på eller ett område på ~500 m. Inget namn.</li>
+<li>Delade länkar visar bara gruppens namn och antal (t.ex. "3 ute nu"). En delad inkallelse visar också avsändarens förnamn.</li>
+<li>👻 Spökläge: dina drycker räknas men ingen ser din pin. 🏠 Hemzon: nära ditt hem visas bara ett område.</li>
+</ul>
+<h2>Hur länge?</h2>
+<ul>
+<li>Pins, incheckningar och inkallelser försvinner från kartan kl 05:00. Chatten kan sparas av gruppen.</li>
+<li>Medaljer och statistik sparas så länge kontot finns. Anonyma värmepunkter: ungefär 10 dagar.</li>
+</ul>
+<h2>Det gör vi inte</h2>
+<ul>
+<li>Ingen reklam. Ingen spårning. Vi säljer ingen data.</li>
+<li>Tjänster som används: Supabase (databasen i EU, Paris), GitHub Pages (webbplatsen), Esri/Carto (kartbilder – de ser din IP-adress), Google/Apple/Mozilla push-tjänster (notiser).</li>
+</ul>
+<h2>Radera</h2>
+<p>I appen: ⚙️ Inställningar → "🗑️ Radera allt om mig". Du lämnar dina grupper, notiserna stängs av och allt som är kopplat till dig blir anonymt. Sedan rensas telefonen. Kan du inte öppna appen? Skriv ett ärende på GitHub med din gruppkod, så hjälper vi dig.</p>
+<p>🔞 Appen är för dig som är 18 år eller äldre. Drick lagom.</p>
+</section>
+
+<section lang="en" id="en">
+<h2>Who runs it?</h2>
+<p>Öl Nu is run by a private person in Ludvika, Sweden (Anton Larsson). Contact: open an issue on <a href="https://github.com/TuNeLA/Beer-map/issues" rel="noopener">github.com/TuNeLA/Beer-map</a>.</p>
+<h2>What is stored on the server?</h2>
+<ul>
+<li>An anonymous account id. No e-mail, no phone number, no password.</li>
+<li>Your display name – only when you create or join a group. Only your groups see it.</li>
+<li>Your beers and other drinks: count, time and place (exact or a ~500 m area, you choose).</li>
+<li>Check-ins (bar and time), group chat (text, photos and voice clips), call-outs, queue reports, tips, wishes and votes.</li>
+<li>Notifications: your push address and a ~1 km area (only if you turn notifications on).</li>
+<li>Facts for medals and stats: drinks per week and night, which bars, a ~50 km region.</li>
+<li>Anonymous heat points (no account id).</li>
+<li>Link cards: when a shared link is opened, the server sees the IP address to stop abuse. It is not stored, only a per-minute counter.</li>
+</ul>
+<h2>Who sees what?</h2>
+<ul>
+<li>Your group: your name, your exact pin, your drinks, your check-in and the chat.</li>
+<li>Everybody else: only the bar you are at or a ~500 m area. No name.</li>
+<li>Shared links show only the group name and counts (e.g. "3 out now"). A shared call-out also shows the sender's first name.</li>
+<li>👻 Ghost mode: your drinks count but nobody sees your pin. 🏠 Home zone: near your home only an area shows.</li>
+</ul>
+<h2>For how long?</h2>
+<ul>
+<li>Pins, check-ins and call-outs leave the map at 05:00. A group can keep its chat.</li>
+<li>Medals and stats are kept as long as the account exists. Anonymous heat points: about 10 days.</li>
+</ul>
+<h2>What we do not do</h2>
+<ul>
+<li>No ads. No tracking. We do not sell data.</li>
+<li>Services used: Supabase (database in the EU, Paris), GitHub Pages (website), Esri/Carto (map images – they see your IP address), Google/Apple/Mozilla push services (notifications).</li>
+</ul>
+<h2>Delete</h2>
+<p>In the app: ⚙️ Settings → "🗑️ Delete everything about me". You leave your groups, notifications turn off and everything linked to you becomes anonymous. Then the phone is cleared. Cannot open the app? Open an issue on GitHub with your group code and we will help.</p>
+<p>🔞 The app is for people who are 18 or older. Drink responsibly.</p>
+</section>
+</main>
+</body>
+</html>

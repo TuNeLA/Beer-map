@@ -164,3 +164,7 @@ body.chief-on:not(.sk-on) .fm-banner{bottom:calc(var(--sab,0px) + 214px)}
   .fm-flashfx{animation:none;display:none}
   .fm-shutter{transition:none}
 }
+
+/* review2: one bottom banner at a time (skåltimme > gruppchef > film roll); never two on the same spot */
+body.sk-on .chief-banner,body.sk-on .fm-banner,body.chief-on .fm-banner{display:none !important}
+body.chief-on .sk-banner,body.sk-on .fm-banner{bottom:calc(var(--sab,0px) + 150px)}

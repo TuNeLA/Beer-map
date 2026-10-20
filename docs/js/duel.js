@@ -359,6 +359,7 @@
     if (foot.length) c.appendChild(el("p", { class: "du-foot", text: foot.join(" · ") }));
     if (d.both && d.pick && d.status === "active") c.appendChild(pickInfo(d));
     if (d.status === "active") c.appendChild(el("p", { class: "du-note", text: T("spiritNote") }));
+    if (window.CARDS && (d.status === "active" || d.status === "done")) c.appendChild(window.CARDS.duelRow(d));
     return c;
   }
   function pickCard(d) {
@@ -487,7 +488,7 @@
     call("duel_invite", { p_group_id: view.g.id }).then(function (r) {
       if (r.error) { A.toast(errText(r.error), { err: true }); if (fail) fail(); return; }
       if (done) done();
-      var d = A.parseData(r.data), link = inviteLink(d.token);
+      var d = A.parseData(r.data), link = inviteLink(d.token), cardLink = (window.CARDS && window.CARDS.duelInvUrl(d.token)) || link;
       wrap.textContent = "";
       wrap.appendChild(el("h3", { class: "du-h", text: T("qrHead") }));
       var qr = el("div", { class: "qr du-qr", "aria-hidden": "true" });
@@ -499,9 +500,9 @@
       wrap.appendChild(el("p", { class: "du-qrnote", text: T("qrNote") }));
       wrap.appendChild(el("div", { class: "du-tok", text: F(T("qrCode"), d.token) }));
       wrap.appendChild(el("p", { class: "du-note", text: F(T("qrExp"), hm(d.expires_at)) }));
-      var row = el("div", { class: "du-row" }, [bt(T("copyLink"), "btn-small", function () { A.copyText(link); })]);
+      var row = el("div", { class: "du-row" }, [bt(T("copyLink"), "btn-small", function () { A.copyText(cardLink); })]);
       if (navigator.share) row.appendChild(bt(T("share"), "btn-small", function () {
-        navigator.share({ title: "Öl Nu", text: F(T("shareText"), d.group_name || view.g.name), url: link }).catch(function () {});
+        navigator.share({ title: "Öl Nu", text: F(T("shareText"), d.group_name || view.g.name), url: cardLink }).catch(function () {});
       }));
       wrap.appendChild(row);
     });

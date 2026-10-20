@@ -44,8 +44,8 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM].forEach(function (m) {
-      if (!m || typeof m[fn] !== "function") return;
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS].forEach(function (m) {
+      if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
     return out;
@@ -53,6 +53,7 @@
   // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
   // Used for levels, chaos, heat, counts, top lists and news numbers. The real rows stay in "beers".
   var drinkViews = null;
+  var modsSkip = null, slowLaneAt = 0, SLOW_LANE_MS = 60000;   // review2: shared slow lane (see onPoll)
   function beerOnly() {
     if (drinkViews) return drinkViews;
     drinkViews = beers.filter(function (b) { return U.drinks(b) >= 1; }).map(function (b) {
@@ -1685,7 +1686,11 @@
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
       setTimeout(flushBeerQueue, 600);   // QA #19: an offline beer goes now
       mods("onPollData", dv2);
-      mods("onPoll", beers);
+      // review2: shared slow lane. Slow-changing modules get onPoll once per 60 s, in the same wave.
+      var slowDue = Date.now() - slowLaneAt >= SLOW_LANE_MS - 3000;
+      if (slowDue) slowLaneAt = Date.now();
+      else modsSkip = [window.MERITER, window.FILM, window.CEREMONY, window.HELG, window.PASSPORT, window.GOLDEN, window.EVENTS, window.HOMETOWN, window.KODEN];
+      try { mods("onPoll", beers); } finally { modsSkip = null; }
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") {
         // Export pending and the server stopped taking our token: the new app has taken the account over.
@@ -2279,6 +2284,7 @@
   function sheetLocked() { return !!(sheetCur && sheetCur.lock && !$("sheet").hidden); }
   function openSheet(title, build, opts) {
     opts = opts || {};
+    try { if (window.OLNU_LAZY_NOW) window.OLNU_LAZY_NOW(); } catch (e) {}   // review2: lazy texts + sheet CSS now
     if (!opts.now && (sheetLocked() || busy)) { sheetQueue.push([title, build, opts]); return false; }
     // Beer-type strip up: a sheet the user did not just tap for waits until the strip closes.
     if (!opts.now && stripUp() && Date.now() - lastTapOut > 1200) { sheetQueue.push([title, build, opts]); stripAfter(drainSheets); return false; }
@@ -2551,11 +2557,11 @@
         else qr.remove();
       } catch (e) { qr.remove(); }
       var row = el("div", { class: "row", style: "margin-top:8px" }, [
-        btn(t("copy"), "", function () { copyText(link); })
+        btn(t("copy"), "", function () { copyText((window.CARDS && window.CARDS.joinUrl(g.code)) || link); })
       ]);
       if (navigator.share) {
         row.appendChild(btn(t("share"), "btn-amber", function () {
-          navigator.share({ title: "Öl Nu", text: t("shareText", g.name), url: link }).catch(function () {});
+          navigator.share({ title: "Öl Nu", text: t("shareText", g.name), url: (window.CARDS && window.CARDS.joinUrl(g.code)) || link }).catch(function () {});
         }));
       }
       body.appendChild(row);
@@ -2720,10 +2726,10 @@
         else qr.remove();
       } catch (e) { qr.remove(); }
       body.appendChild(el("p", { class: "muted", style: "text-align:center;word-break:break-all", text: link }));
-      var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "", function () { copyText(t("inviteShare") + " " + link); })]);
+      var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "", function () { copyText(t("inviteShare") + " " + ((window.CARDS && window.CARDS.inviteUrl()) || link)); })]);
       if (navigator.share) {
         row.appendChild(btn("📲 " + t("share"), "btn-amber", function () {
-          navigator.share({ title: "Öl Nu", text: t("inviteShare"), url: link }).catch(function () {});
+          navigator.share({ title: "Öl Nu", text: t("inviteShare"), url: (window.CARDS && window.CARDS.inviteUrl()) || link }).catch(function () {});
         }));
       }
       body.appendChild(row);

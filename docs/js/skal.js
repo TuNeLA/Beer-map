@@ -137,7 +137,9 @@
   /* ---------- Poll ---------- */
   function load(force) {
     if (!A || !A.LIVE || !A.authed() || state === "missing") return Promise.resolve();
-    if (busy || (!force && Date.now() - pollAt < 20000)) return Promise.resolve();
+    // review2: 20 s while a skåltimme is live or the sheet is open, else 40 s.
+    var gapMs = view || hours.some(function (h) { return lateLeft(h) > 0; }) ? 20000 : 40000;
+    if (busy || (!force && Date.now() - pollAt < gapMs)) return Promise.resolve();
     if (document.visibilityState === "hidden" && !force) return Promise.resolve();
     busy = true; pollAt = Date.now();
     return call("skal_poll").then(function (r) {
@@ -248,12 +250,14 @@
       document.body.appendChild(fileInp);
       fileInp.addEventListener("change", function () {
         var f = fileInp.files && fileInp.files[0], hh = fileInp._hour;
+        try { localStorage.removeItem("olnu.skPick"); } catch (e) {}
         if (!f || !hh) return;
         if (f.type && !/^image\//.test(f.type)) { A.toast(errText("invalid_photo"), { err: true }); return; }
         preview(hh, f);
       });
     }
     fileInp._hour = h; fileInp.value = "";
+    try { localStorage.setItem("olnu.skPick", JSON.stringify({ id: h.id, t: Date.now() })); } catch (e) {}   // review2: discard restore
     fileInp.click();
   }
   function preview(h, file) {
@@ -587,7 +591,12 @@
       A = api;
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
     },
-    onAuthed: function () { load(true); var id = linkFromUrl(); if (id) openSkalLink(id); },
+    onAuthed: function () {
+      load(true); var id = linkFromUrl(); if (id) { openSkalLink(id); return; }
+      // review2: the tab was killed while the camera was open -> back to the skåltimme
+      var p = null; try { p = JSON.parse(localStorage.getItem("olnu.skPick") || "null"); localStorage.removeItem("olnu.skPick"); } catch (e) {}
+      if (p && p.id && Date.now() - (p.t || 0) < 5 * 60e3) { openSkalLink(String(p.id)); setTimeout(function () { A.toast(L('📷 Telefonen startade om appen medan kameran var öppen. Försök igen – eller ta bilden först och välj den sen.', '📷 The phone restarted the app while the camera was open. Try again – or take the photo first and pick it after.'), { ms: 8000, urgent: true }); }, 1500); }
+    },
     onReadyShow: function () { var id = linkFromUrl(); if (id) { openSkalLink(id); return "skal"; } return ""; },
     onPoll: function () { load(false); },
     applyText: function () { bannerSub = {}; render(); },

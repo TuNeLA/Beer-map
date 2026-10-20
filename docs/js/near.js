@@ -21,7 +21,7 @@
   var U = window.U, I = window.I18N, esc = U.esc;
   var A = null, off = {}, P = null, pollAt = 0, pollBusy = false, firstPoll = true;
   var SEEN_SQ = "olnu.squadSeen", SEEN_FR = "olnu.friendSeen", SEEN_FIND = "olnu.findSeen", LAST_SQ = "olnu.squadLast";
-  var POLL_MS = 30000, POLL_FAST_MS = 10000, PING_MS = 6000;
+  var POLL_MS = 60000, POLL_FAST_MS = 10000, PING_MS = 6000;   // review2: idle 60 s (was 30 s)
   var CODES = ["friend_not_found", "own_code", "not_member", "invalid_member", "slow_down", "friend_limit", "friend_req_not_found",
     "invalid_target", "no_find", "find_req_not_found", "outside_sweden", "code_generation_failed", "not_authenticated"];
   var squadCache = {};   // group id -> {at, d}
