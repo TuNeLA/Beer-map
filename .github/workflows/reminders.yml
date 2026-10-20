@@ -1,0 +1,38 @@
+name: Reminders (invites)
+
+# v28 INBJUDNINGAR: "⏰ Om 1 timme" pushes. The project has no pg_cron, so GitHub Actions calls the edge function
+# notify-group every 10 min with {event:"invite_due"} and the service key in the x-olnu-cron header. The function
+# claims due invites (start in 50–70 min, not reminded yet) with one UPDATE, so a double run never sends twice.
+# Uses the existing repo secrets SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (same as events.yml). GitHub may delay
+# scheduled runs by a few minutes; the app sends the same reminder as a fallback when a participant has it open.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/remind-invites.mjs
+            docs/config.js
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Send due invite reminders
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/remind-invites.mjs

@@ -148,10 +148,49 @@
   }
   function loadReports() { call("owner_bar_reports", { p_key: key() }).then(function (r) { if (r && r.d) drawReports(r.d); }); }
 
+  /* ---------- ➕ place suggestions (0082) ---------- */
+  var plStatus = "pending";
+  var PL_T = { bar: "🍺 bar", pub: "🍻 pub", restaurant: "🍽️ restaurang", cafe: "☕ café", nightclub: "🕺 nattklubb", other: "📍 annat" };
+  function drawPlaces(d) {
+    var box = $("xPl"); if (!box) return;
+    box.textContent = "";
+    var c = d.counts || {};
+    $("xPlCount").textContent = "· " + (c.pending || 0) + " väntar, " + (c.ok || 0) + " godkända";
+    var f = el("div", "wf");
+    [["pending", "Väntar"], ["ok", "Godkända"], ["rejected", "Avvisade"], ["all", "Alla"]].forEach(function (s) {
+      var b = el("button", "btn ghost" + (s[0] === plStatus ? " on" : ""), s[1]); b.type = "button";
+      b.addEventListener("click", function () { plStatus = s[0]; loadPlaces(); });
+      f.appendChild(b);
+    });
+    box.appendChild(f);
+    var list = el("ol", "wl");
+    (d.places || []).forEach(function (p) {
+      var li = el("li");
+      li.appendChild(el("div", "x-ev-h", p.name + " · " + (PL_T[p.type] || p.type) + (p.town ? " · " + p.town : "")));
+      li.appendChild(el("div", "x-sub", new Date(p.created_at).toLocaleString("sv-SE") + " · " + p.status + " · id " + p.bar_id + " · " + (+p.lat).toFixed(5) + ", " + (+p.lng).toFixed(5) +
+        " · användaren har föreslagit " + (p.by_n || 1)));
+      if (p.note) li.appendChild(el("div", "x-note", "”" + p.note + "”"));
+      if ((p.near || []).length) li.appendChild(el("div", "x-sub", "⚠️ Nära: " + p.near.map(function (n) { return n.name + " (" + n.m + " m)"; }).join(", ")));
+      var row = el("div", "x-acts");
+      var a = el("a", "btn ghost", "🗺️ OSM"); a.href = "https://www.openstreetmap.org/?mlat=" + p.lat + "&mlon=" + p.lng + "#map=19/" + p.lat + "/" + p.lng; a.target = "_blank"; a.rel = "noopener"; row.appendChild(a);
+      [["ok", "✅ Godkänn"], ["rejected", "🙈 Avvisa"], ["pending", "⏳ Väntar"]].forEach(function (x) {
+        if (x[0] === p.status) return;
+        var b = el("button", "btn ghost", x[1]); b.type = "button";
+        b.addEventListener("click", function () { b.disabled = true; call("owner_set_place", { p_key: key(), p_id: p.id, p_status: x[0] }).then(function () { loadPlaces(); }); });
+        row.appendChild(b);
+      });
+      li.appendChild(row); list.appendChild(li);
+    });
+    if (!(d.places || []).length) box.appendChild(el("p", "note", "Inga förslag här."));
+    box.appendChild(list);
+    $("pPl").hidden = false;
+  }
+  function loadPlaces() { call("owner_places", { p_key: key(), p_status: plStatus }).then(function (r) { if (r && r.d) drawPlaces(r.d); }); }
+
   function refresh() {
     if (!key() || !$("main") || $("main").hidden) return;
     call("owner_db_stats", { p_key: key() }).then(function (r) { if (r && r.d) drawDb(r.d); });
-    loadEvents(); loadReports();
+    loadEvents(); loadReports(); loadPlaces();
   }
   function start() {
     var main = $("main"); if (!main) return;

@@ -286,10 +286,13 @@
     });
   }
   function codeLink(code) { return location.origin + location.pathname + "?friend=" + encodeURIComponent(code); }
-  function openFriends() {
-    if (!A || !A.LIVE) return;
+  function openFriends(into) {
+    if (into && into.nodeType !== 1) into = null;   // a click event from A.btn
+    if (!A || !A.LIVE) return false;
+    if (!into && window.INVITE && window.INVITE.openFriendsTab && window.INVITE.openFriendsTab()) return true;
+    var built = false;
     A.withName(function () {
-      A.openSheet(L("👥 Vänner & 🧭 Hitta", "👥 Friends & 🧭 Find"), function (body) {
+      var build = function (body) {
         var el = A.el;
         var inBox = el("div", { class: "nr-in" }), listBox = el("ul", { class: "nr-flist" }), outBox = el("div", { class: "nr-out muted" });
         body.appendChild(inBox);
@@ -345,6 +348,7 @@
             var fr = d.friends || [];
             if (!fr.length) listBox.appendChild(el("li", { class: "muted", text: L("Inga vänner än. Dela din kod nedan, eller lägg till nån från en grupp.", "No friends yet. Share your code below.") }));
             fr.forEach(function (f) { listBox.appendChild(friendRow(f, load)); });
+            try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, fr, load, friendRow); } catch (e) {}
             if ((d.outgoing || []).length) {
               outBox.appendChild(el("p", { text: L("⏳ Väntar på svar: ", "⏳ Waiting: ") }));
               d.outgoing.forEach(function (f) {
@@ -392,8 +396,11 @@
           mine.appendChild(row);
         }
         load();
-      });
+      };
+      if (into) { build(into); built = true; return; }
+      A.openSheet(L("👥 Vänner & 🧭 Hitta", "👥 Friends & 🧭 Find"), build);
     });
+    return built;
   }
   function drawShare(box) {
     var el = A.el;
@@ -775,7 +782,7 @@
   /* ---------- Public hooks ---------- */
   window.NEAR = {
     _texts: T, newsTemplates: newsTemplates, newsCands: newsCands, memberPanel: memberPanel,
-    openFriends: openFriends, openFinder: openFinder, _celebrate: celebrate, _poll: function () { return P; },
+    openFriends: function () { return openFriends(); }, buildFriends: function (box) { return openFriends(box); }, openFinder: openFinder, _celebrate: celebrate, _poll: function () { return P; },
     init: function (api) { A = api; hookNews(); },
     onAuthed: function () {
       hookNews();

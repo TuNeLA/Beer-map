@@ -208,6 +208,8 @@ self.addEventListener("notificationclick", function (e) {
     if (!/[?&]rally=/.test(raw)) raw = "/?rally=" + encodeURIComponent(data.rally_id);
     raw += (raw.indexOf("?") >= 0 ? "&" : "?") + "answer=" + e.action;
   }
+  // v28: invite buttons → "/?inv=<id>&ans=yes|no" (app.js routeOpen → invite.js answers it).
+  if ((e.action === "yes" || e.action === "no" || e.action === "maybe") && /[?&]inv=/.test(raw) && !/[?&]ans=/.test(raw)) raw += "&ans=" + e.action;
   // Payload urls like "/?focus=12" are resolved against the scope so they work under a sub-path.
   var target;
   try {
