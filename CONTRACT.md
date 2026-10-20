@@ -284,6 +284,7 @@ Tap a bar on the map → "📍 Checka in". Group-mates get "📍 Anton har anlä
 Migration `supabase/migrations/0012_medals.sql` (also in `setup.sql`). Needs 0001–0011 first. A missing RPC (old database) = feature off: the app falls back to the old local badges sheet, no error.
 
 ### Ranks (36 steps)
+**Superseded by v26 MERITER (0036): ranks are earned by meriter, 42 steps — see "v26 MERITER" at the end.**
 Lifetime beers → title. `olnu_titles()` (SQL), `TITLES` in `notify-group` and `docs/js/social.js` are identical (same function names and return types as v7; `my_stats` unchanged). v25 (0035, 2026-10-20): titles with place names were renamed (same thresholds and order); the table below is the current list:
 
 | from | title | from | title | from | title |
@@ -942,3 +943,67 @@ Migrations `0033_home_town.sql`, `0034_roles_remove.sql`, `0035_titles_no_places
 - 🏆 boards: "· Ludvikabo" after a shown name.
 - Removed user: `my_removals` (chief.js poll, max every 5 min) → toast "🚪 Du ä utplockad ur {grupp} …" with "👥 Grupper".
 - 📍 Hemstad (hometown.js): ⚙️ row under the name field (hook `settingsName` in app.js) → searchable list (52 taxi towns + CITIES + more, each with its demonym) or free text; one gentle toast after the next level-up ("📍 Var är du mest baserad?"), only once (`olnu.homeAsked`), after the BEFORDRAN popup and never while the beer-type strip is up (`OLNU_STRIP`). Demonym map in `HOMETOWN.DEMONYM` (e.g. Ludvikabo, Smedjebackare, Grängesbergare, Grangärdebo, Borlängebo, Faluguing, Stockholmare, Göteborgare, Malmöbo, Kirunabo); unknown → "från {stad}" (English "from {town}").
+
+## v26 MERITER (ranks earned by meriter, not by total beers; additive)
+Owner decision 2026-10-20, web and app alike. Migrations `0036_meriter.sql` (ledger, triggers, ladder, RPCs), `0036_meriter_b_rpcs.sql` (poll_v2 / my_wrapped patched in place), `0036_meriter_c_backfill.sql` (history backfill) — applied on the server 2026-10-20 under the same names; appended to `setup.sql`. No migration contains a row-removing statement. notify-group **v18** (TITLES + rank value only). Client: `docs/js/meriter.js` (`window.MERITER`, in the `mods()` list), `docs/meriter.css`, `docs/js/social.js`, `docs/js/medals.js`, `docs/js/extras.js`. A missing RPC (old database, PGRST202) = that part hides; ranks then fall back to lifetime drinks.
+
+### Meriter per action (one table; same numbers in 0036, meriter.js `ACTS`)
+Night = 05:00–05:00 Europe/Stockholm. Caps are points per user, night and kind.
+| kind | action | pts | cap per night |
+|---|---|---|---|
+| `squad` | Natt med truppen: a drink or check-in within 150 m of a group-mate's pin, check-in or crew track point tonight (both get it) | 10 | 1× (10) |
+| `duel_win` | member of the winning duel side who drank in the duel | 15 | per duel |
+| `duel` | counted duel member with any duel activity (drink, check-in, skål, photo) | 5 | per duel |
+| `rally_yes` | ✅ Kommer on someone else's call-out | 5 | 3 (15) |
+| `arrive` | ETA "framme" for that call-out, or a check-in within 150 m of it, within 2 h | 5 | 3 (15) |
+| `callout` | own call-out with answers from ≥ 2 others, or a "Kom hit!" push that went out (`push_sent` comehere) | 5 | 2 (10) |
+| `buddy` | "Jag kollar" on a friend at 10+ (`medevac_checks`) | 5 | 2 (10) |
+| `home` | "Jag är hemma" (`after_nights.home_at` / `medal_nights.home`) | 5 | 1× (5) |
+| `status` | lägesrapport answered in time | 5 | 3 (15) |
+| `checkin` | check-in at a bar (1 per bar) | 3 | 6 bars (18) |
+| `game` | Lek: mission done, bingo line you ticked, Dagens orakel | 3 | 3 (9) |
+| `photo` | chat photo (not a lägesrapport photo) | 2 | 5 (10) |
+| `skal_give` / `skal_get` | skål given / received | 1 | 10 each |
+| `drink` | every accepted drink (undo + re-drink pays once) | 1 | no cap |
+A social night (squad, 2 bars, a call-out, skål, home, a photo) gives ~40–60; drinking alone ~6–12.
+
+### Server
+- Tables (RLS on, no policies, service_role only): `meriter_log(id, user_id, night, kind, ref, pts, bf, created_at)` unique (user_id, night, kind, ref) — append only, filled by AFTER triggers `olnu_zz_mer_*` on beers, checkins, skals, rally_answers, etas, push_sent, medevac_checks, after_nights, medal_nights, status_answers, chat_photos, duels, game_missions, game_bingo_cards, game_oracles (every trigger catches its own errors); `meriter_totals(user_id, total)` kept by an insert trigger. Helper `olnu_mer_add(uid, night, kind, ref, pts, cap)` (advisory lock per user). The 0016 erase sweep moves both tables' uuids.
+- `olnu_titles()` = the 42-step meriter ladder below; `olnu_meriter(uid)`, `olnu_rank_of(m)` → (idx, title, at, next_title, next_at, n).
+| name | params | returns | errors |
+|---|---|---|---|
+| `my_stats` | – | v7 fields (`total` = lifetime drinks, `week`), `title/next_title/next_at` by meriter, + `meriter, rank, ranks, rank_at, tonight_meriter` | – |
+| `poll_v2` | unchanged | `me` = my_stats (so the new fields too); `pins[].meriter` for me / group-mates | as before |
+| `my_meriter` | `p_after_id bigint default 0` | jsonb `{meriter, title, rank, ranks, rank_at, next_title, next_at, tonight, week, last_id, events:[{id, kind, pts, at}]}` — events only when `p_after_id > 0` (id > after, newest 40, oldest first, never backfill rows) | `not_authenticated` |
+| `group_status_v3` | `p_group_id uuid` | group_status_v2 columns + `meriter int, rank int` | `not_member` |
+| `meriter_board` | `p_scope 'group'\|'town' default 'group', p_group_id uuid, p_lat, p_lng float8, p_period 'tonight'\|'week'\|'all' default 'week', p_km default 20` | setof `(rank, name, meriter, title, is_me, home_town)` top 20 + the caller. Group: members' display names. Town: users with a night place / live pin / check-in within p_km in 30 days; names only with board opt-in (as `local_board`). Shares the board rate limit (`slow_down`). | `not_member`, `invalid_period`, `invalid_scope`, `outside_sweden`, `slow_down` |
+| `my_wrapped` | unchanged | `title` by meriter + `meriter` | – |
+- **Backfill** (0036c): per night from medal_nights (drinks), week_beers (rest of the lifetime drinks), medal_checkins (bars, squad = mate at the same bar), crew_tracks / tonight's pins and check-ins (squad within 150 m), after_nights (skål, home), medal_counts (skål before v16), rallies / rally_answers / etas, push_sent comehere, medevac_checks, status_answers, chat_photos, game_*; same caps. Rows `bf = true`, dated ≥ 4 h back. The rank each user holds was claimed in `push_sent` (`title:<titel>`) → no false level-up push. 2026-10-20: 41 users; before (lifetime drinks, 0035 ladder) 32 Rekryt, 2 Vicekorpral Kapsyl, 2 Korpral Korkskruv, 4 Skumsergeant, 1 Furir Flaskhals; after (meriter) 19 Rekryt, 2 Mönstrad Mellanöl, 3 Menig Mjöd, 8 Vicekorpral Kapsyl, 2 Korpral Korkskruv, 3 Översergeant Sejdel, 3 Furir Flaskhals, 1 Fanjunkare Flasköppnare (max 101).
+- **notify-group v18**: `TITLES` = the ladder below; the rank value is `meriter_totals.total`; the level-up push fires only when the meriter of the last 3 h crossed the rank start (`reachedNow`), still once per title per user ever.
+
+### Ranks (42 steps by meriter; `olnu_titles()`, notify-group `TITLES`, `docs/js/social.js TITLES` identical)
+| from | title | from | title | from | title |
+|---|---|---|---|---|---|
+| 0 | Rekryt | 255 | Kommendörkapten Krus | 1640 | Baron av Bryggstugan |
+| 5 | Mönstrad Mellanöl | 300 | Ryttmästare Humle | 1830 | Hertig av Humlefältet |
+| 10 | Menig Mjöd | 350 | Major Mäsk | 2040 | Ärkehertig av Ölkranen |
+| 18 | Vicekorpral Kapsyl | 410 | Överstelöjtnant Ölstop | 2270 | Kung Kapsyl den Store |
+| 28 | Korpral Korkskruv | 475 | Överste Ölkorv | 2520 | Ölkejsaren |
+| 40 | Skumsergeant | 550 | Brigadgeneral Bärs | 2800 | Bryggerilegenden |
+| 52 | Översergeant Sejdel | 630 | Flottiljamiral Flaskpost | 3100 | Halvguden vid Jäskaret |
+| 66 | Furir Flaskhals | 720 | Generalmajor Gambrinus | 3450 | Myten i Mässen |
+| 82 | Överfurir Fatkran | 820 | Generallöjtnant Guldskum | 3850 | Legenden vid Långbordet |
+| 100 | Fanjunkare Flasköppnare | 930 | General Gyllenbärs | 4300 | Sagofiguren i Skyttegraven |
+| 125 | Fänrik Fatöl | 1050 | Amiral Ankarstout | 4800 | Oraklet i Ölstugan |
+| 150 | Löjtnant Lager | 1180 | Fältmarskalk Fradga | 5400 | Överbefälhavare Öl |
+| 180 | Premiärlöjtnant Pilsner | 1320 | Storamiral Skumtopp | 6200 | Generalissimus Glaset |
+| 215 | Kapten Kaggen | 1470 | Riksmarskalk Rundtur | 7000 | Ölguden |
+New in v26: Översergeant Sejdel, Kommendörkapten Krus, Flottiljamiral Flaskpost, Amiral Ankarstout, Storamiral Skumtopp, Generalissimus Glaset. First social night ≈ rank 4–7; Brigadgeneral ≈ 2 months, Ölguden ≈ 1½ years of active weekends.
+
+### Client
+- Ladder key `olnu.ladder` = `"13"`: the first rank that changed with this update shows the quiet toast "Armén har fått nya grader!" once, never a BEFORDRAN. A real promotion (meriter grew and the title changed, from `my_stats`/`poll_v2.me` or `my_meriter`) shows the BEFORDRAN popup ("Nästa: X vid N meriter"); it still waits for the beer-type strip (`OLNU_STRIP`).
+- `meriter.js`: `my_meriter(after)` with the app poll (max every 20 s), ~2.5 s after a beer / home / chat and ~3 s after skål / call-out / check-in / photo taps. First call per phone (`olnu.merLast` missing) = no toasts. New events → ONE batched toast "+14 meriter · <line of the biggest kind> (📍 +3 🍺 +1)", ≥ 10 dalmål/military lines per kind (`MERITER.LINES`, "ä" for dialect "é", the last 6 per kind not repeated), waiting for a free slot in the app toast queue.
+- Rank chip (Ikväll panel): "🎖️ <rank> · N meriter" + progress bar; "⭐ +N meriter ikväll" chip → "Hur får jag meriter?" sheet (rank, bar, every action with points and cap). Also from the uniform ("❓ Hur får jag meriter?") and the 🏆 board.
+- Uniform: "Grad N/42 · M meriter · D drycker totalt", bar and "X meriter kvar till …" by meriter.
+- Member list (`group_status_v3`, fallback v2 → v1; an empty v3 answer counts as missing): "🎖️ <rank> · N meriter". Chat names: "🎖️ <rank> <name> · N meriter". Friend pins: rank by `pins[].meriter`.
+- 🏆: "🎖️ Meriter" board before the town boards — 👥 Gruppen (group chips when several) / 🏙️ <stad>, Ikväll / Veckan / Totalt.

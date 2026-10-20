@@ -38,19 +38,19 @@
   }
   function codeOf(err) { return U.errCode(err); }
 
-  /* ---------- Titles (v11, 36 steps; same ladder as SQL olnu_titles() in 0012 and notify-group TITLES) ---------- */
-  var TITLES = [[0, "Rekryt"], [3, "Mönstrad Mellanöl"], [5, "Menig Mjöd"], [7, "Vicekorpral Kapsyl"],
-    [10, "Korpral Korkskruv"], [13, "Skumsergeant"], [17, "Furir Flaskhals"],
-    [22, "Överfurir Fatkran"], [28, "Fanjunkare Flasköppnare"], [35, "Fänrik Fatöl"],
-    [43, "Löjtnant Lager"], [52, "Premiärlöjtnant Pilsner"], [62, "Kapten Kaggen"],
-    [75, "Ryttmästare Humle"], [90, "Major Mäsk"], [110, "Överstelöjtnant Ölstop"],
-    [130, "Överste Ölkorv"], [155, "Brigadgeneral Bärs"], [180, "Generalmajor Gambrinus"],
-    [210, "Generallöjtnant Guldskum"], [245, "General Gyllenbärs"], [285, "Fältmarskalk Fradga"],
-    [330, "Riksmarskalk Rundtur"], [380, "Baron av Bryggstugan"], [430, "Hertig av Humlefältet"],
-    [490, "Ärkehertig av Ölkranen"], [560, "Kung Kapsyl den Store"], [640, "Ölkejsaren"],
-    [730, "Bryggerilegenden"], [830, "Halvguden vid Jäskaret"], [920, "Myten i Mässen"],
-    [1000, "Legenden vid Långbordet"], [1100, "Sagofiguren i Skyttegraven"], [1200, "Oraklet i Ölstugan"],
-    [1300, "Överbefälhavare Öl"], [1500, "Ölguden"]];
+  /* ---------- Titles (v26, 42 steps by MERITER; same ladder as SQL olnu_titles() in 0036 and notify-group TITLES) ---------- */
+  var TITLES = [[0, "Rekryt"], [5, "Mönstrad Mellanöl"], [10, "Menig Mjöd"], [18, "Vicekorpral Kapsyl"],
+    [28, "Korpral Korkskruv"], [40, "Skumsergeant"], [52, "Översergeant Sejdel"], [66, "Furir Flaskhals"],
+    [82, "Överfurir Fatkran"], [100, "Fanjunkare Flasköppnare"], [125, "Fänrik Fatöl"], [150, "Löjtnant Lager"],
+    [180, "Premiärlöjtnant Pilsner"], [215, "Kapten Kaggen"], [255, "Kommendörkapten Krus"], [300, "Ryttmästare Humle"],
+    [350, "Major Mäsk"], [410, "Överstelöjtnant Ölstop"], [475, "Överste Ölkorv"], [550, "Brigadgeneral Bärs"],
+    [630, "Flottiljamiral Flaskpost"], [720, "Generalmajor Gambrinus"], [820, "Generallöjtnant Guldskum"],
+    [930, "General Gyllenbärs"], [1050, "Amiral Ankarstout"], [1180, "Fältmarskalk Fradga"],
+    [1320, "Storamiral Skumtopp"], [1470, "Riksmarskalk Rundtur"], [1640, "Baron av Bryggstugan"],
+    [1830, "Hertig av Humlefältet"], [2040, "Ärkehertig av Ölkranen"], [2270, "Kung Kapsyl den Store"],
+    [2520, "Ölkejsaren"], [2800, "Bryggerilegenden"], [3100, "Halvguden vid Jäskaret"], [3450, "Myten i Mässen"],
+    [3850, "Legenden vid Långbordet"], [4300, "Sagofiguren i Skyttegraven"], [4800, "Oraklet i Ölstugan"],
+    [5400, "Överbefälhavare Öl"], [6200, "Generalissimus Glaset"], [7000, "Ölguden"]];
   function titleFor(total) {
     total = Math.max(0, total | 0);
     var i = 0; while (i + 1 < TITLES.length && total >= TITLES[i + 1][0]) i++;
@@ -60,7 +60,8 @@
 
   var stats = null, statsAt = 0, statsDone = null;
   var statsReady = new Promise(function (r) { statsDone = r; });
-  var TITLE_KEY = "olnu.title", TOTAL_KEY = "olnu.titleTotal", LADDER_KEY = "olnu.ladder";
+  var TITLE_KEY = "olnu.title", TOTAL_KEY = "olnu.titleTotal", LADDER_KEY = "olnu.ladder", MER_KEY = "olnu.titleMer";
+  var LADDER = "13";   // v26 (0036): ranks by meriter = a new ladder version (0035 was "12")
   function loadStats() {
     if (!A || !A.authed() || off.my_stats) { if (statsDone) statsDone(); return Promise.resolve(); }
     statsAt = Date.now();
@@ -70,23 +71,47 @@
     }).then(function () { if (statsDone) { statsDone(); statsDone = null; } });
   }
   // v13: poll_v2 "me" carries the my_stats fields, so no extra call is needed.
+  // v26: the rank comes from MERITER (d.meriter, title/next_* by meriter on the server). An old server
+  // without meriter keeps the old behaviour (title from the server, rank by lifetime drinks).
   function applyStats(d) {
     {
       v7 = true;
-      var total = Math.max(0, d.total | 0), tf = titleFor(total);
-      stats = { total: total, week: d.week | 0, title: d.title || tf.title,
-        next: d.next_title !== undefined ? d.next_title : tf.next, nextAt: d.next_at !== undefined ? d.next_at : tf.nextAt };
-      var before = U.ls.get(TITLE_KEY, ""), beforeTotal = U.ls.get(TOTAL_KEY, "");
-      // v25 (0035): ranks without place names = a new ladder version, so a renamed rank is a quiet toast, not a BEFORDRAN.
-      var ladderNew = U.ls.get(LADDER_KEY, "") !== "12";
-      U.ls.set(TITLE_KEY, stats.title); U.ls.set(TOTAL_KEY, String(total)); U.ls.set(LADDER_KEY, "12");
-      A.updateCounts();
-      // v11: a real promotion = more beers than last time AND a new title. A title that changed only
-      // because the ladder changed (app update) gets a quiet "new ranks" toast instead.
-      var grew = beforeTotal !== "" && total > (+beforeTotal || 0);
-      if (before && before !== stats.title && (grew || !ladderNew)) promoted(stats.title, before, total);
-      else if (ladderNew && before && before !== stats.title) A.toast(t("ladderNew", stats.title), { cls: "promo", ms: 6500 });
+      var total = Math.max(0, d.total | 0), hasM = d.meriter != null;
+      var rv = hasM ? Math.max(0, d.meriter | 0) : total, tf = titleFor(rv);
+      stats = { total: total, week: d.week | 0, meriter: hasM ? rv : (stats && stats.meriter != null ? stats.meriter : null),
+        title: d.title || tf.title,
+        next: d.next_title !== undefined ? d.next_title : tf.next, nextAt: d.next_at !== undefined ? d.next_at : tf.nextAt,
+        tonight: d.tonight_meriter != null ? d.tonight_meriter | 0 : (stats ? stats.tonight | 0 : 0) };
+      if (!hasM && stats.meriter != null) {   // keep the meriter rank when a reply without meriter comes in
+        var tm = titleFor(stats.meriter); stats.title = tm.title; stats.next = tm.next; stats.nextAt = tm.nextAt;
+      }
+      rankCheck(hasM || stats.meriter != null);
     }
+  }
+  // MERITER (js/meriter.js) hands over my_meriter answers: same rank check, no extra call.
+  function applyMeriter(d) {
+    if (!d || d.meriter == null) return;
+    var m = Math.max(0, d.meriter | 0), tf = titleFor(m);
+    if (!stats) stats = { total: 0, week: 0 };
+    stats.meriter = m; stats.title = d.title || tf.title;
+    stats.next = d.next_title !== undefined ? d.next_title : tf.next; stats.nextAt = d.next_at !== undefined ? d.next_at : tf.nextAt;
+    if (d.tonight != null) stats.tonight = d.tonight | 0;
+    rankCheck(true);
+  }
+  function rankCheck(merOn) {
+    var rv = stats.meriter != null ? stats.meriter : stats.total;
+    var before = U.ls.get(TITLE_KEY, ""), beforeV = U.ls.get(merOn ? MER_KEY : TOTAL_KEY, "");
+    var ladderNew = merOn ? U.ls.get(LADDER_KEY, "") !== LADDER : U.ls.get(LADDER_KEY, "") !== "12" && U.ls.get(LADDER_KEY, "") !== LADDER;
+    U.ls.set(TITLE_KEY, stats.title); U.ls.set(TOTAL_KEY, String(stats.total));
+    if (merOn) { U.ls.set(MER_KEY, String(rv)); U.ls.set(LADDER_KEY, LADDER); }
+    else if (U.ls.get(LADDER_KEY, "") !== LADDER) U.ls.set(LADDER_KEY, "12");
+    A.updateCounts();
+    // A real promotion = more meriter than last time AND a new title. A title that changed only because
+    // the ladder changed (this update: ranks by meriter) gets one quiet "new ranks" toast instead.
+    var grew = beforeV !== "" && rv > (+beforeV || 0);
+    if (!before || before === stats.title) return;
+    if (!ladderNew && grew) promoted(stats.title, before, rv);
+    else if (ladderNew) A.toast(t("ladderNew", stats.title), { cls: "promo", ms: 6500 });
   }
   function promoted(title, oldTitle, total) {
     try { if (window.HOMETOWN && window.HOMETOWN.afterLevelUp) window.HOMETOWN.afterLevelUp(); } catch (e) {}   // v25: one gentle 📍 prompt
@@ -101,11 +126,18 @@
   }
   function titleProgress() {
     if (!stats) return "";
+    if (stats.meriter != null) {
+      return stats.next && stats.nextAt ? (I.lang === "en" ? Math.max(0, stats.nextAt - stats.meriter) + " merits left to " + stats.next
+        : Math.max(0, stats.nextAt - stats.meriter) + " meriter kvar till " + stats.next) : t("titleMax");
+    }
     return stats.next && stats.nextAt ? t("titleNext", Math.max(0, stats.nextAt - stats.total), stats.next) : t("titleMax");
   }
 
   // Friends' lifetime totals (beer id -> total). Strangers are never returned by the server.
   var totals = {}, totalsAt = 0, totalsIds = "";
+  var mers = {};             // v26: pin id -> meriter (me / group-mates; poll_v2 pins[].meriter)
+  // Rank value of a pin: meriter when the server sends it, else lifetime drinks (old server).
+  function rankVal(id) { return mers[id] != null ? mers[id] : totals[id]; }
   var pollData = false;   // true while poll_v2 delivers stats, reactions and totals
   function loadTotals(force) {
     if (pollData) return;
@@ -122,7 +154,7 @@
   }
   function titlesByBeer() {
     var out = {};
-    A.beers().forEach(function (b) { if (b.friend_name && totals[b.id] != null) out[b.id] = titleFor(totals[b.id]).title; });
+    A.beers().forEach(function (b) { if (b.friend_name && rankVal(b.id) != null) out[b.id] = titleFor(rankVal(b.id)).title; });
     return out;
   }
 
@@ -404,7 +436,9 @@
       function statOf(m) { return m.is_me ? meStat : stats[m.name || ""] || null; }
       function headText(m) {
         var s = statOf(m), nm = m.name || (m.is_me ? t("you") : t("someone"));
-        return s ? t("chatWho", titleFor(s.total).title, nm) : nm;
+        if (!s) return nm;
+        var rv = s.meriter != null ? s.meriter : s.total;
+        return t("chatWho", titleFor(rv).title, nm) + (s.meriter != null ? " · " + s.meriter + (I.lang === "en" ? " merits" : " meriter") : "");
       }
       function beersText(m) {
         var s = statOf(m); if (!s) return "";
@@ -423,7 +457,8 @@
           if (r.error || !alive()) return;
           stats = {}; meStat = null;
           (r.data || []).forEach(function (x) {
-            var s = { beers: Math.max(0, x.beers | 0), others: Math.max(0, x.others | 0), total: Math.max(0, x.total | 0), row: x };
+            var s = { beers: Math.max(0, x.beers | 0), others: Math.max(0, x.others | 0), total: Math.max(0, x.total | 0), row: x,
+              meriter: x.meriter != null ? Math.max(0, x.meriter | 0) : null };
             if (x.is_me) meStat = s;
             if (x.name) stats[x.name] = s;
           });
@@ -521,7 +556,7 @@
         heads.push(hd); paintTags(hd);
         if (medalsOn() && (m.name || m.is_me)) {
           nmEl.classList.add("cm-tap"); nmEl.setAttribute("role", "button"); nmEl.setAttribute("tabindex", "0");
-          var openU = function () { var s = statOf(m); window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null }, function () { openChat(g); }); };
+          var openU = function () { var s = statOf(m); window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null, meriter: s ? s.meriter : null }, function () { openChat(g); }); };
           nmEl.addEventListener("click", openU);
           nmEl.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openU(); } });
         }
@@ -681,6 +716,13 @@
   function statusOn() { return A.othersOn() && !off.group_status; }
   // v25 (0034): group_status_v2 adds member key, roles (👑/🎖️/🎗️), home town and can_remove. Old server → group_status.
   function groupStatus(gid) {
+    // v26: group_status_v3 = v2 + meriter + rank; older servers fall back to v2, then v1.
+    // A member always sees at least one row (self): an empty answer is treated like a missing RPC.
+    if (!off.group_status_v3) return call("group_status_v3", { p_group_id: gid }).then(function (r) {
+      if (r.error && r.off) return groupStatus(gid);
+      if (!r.error && !(Array.isArray(r.data) && r.data.length)) { off.group_status_v3 = true; return groupStatus(gid); }
+      return r;
+    });
     if (off.group_status_v2) return call("group_status", { p_group_id: gid });
     return call("group_status_v2", { p_group_id: gid }).then(function (r) {
       return r.error && r.off ? call("group_status", { p_group_id: gid }) : r;
@@ -718,14 +760,14 @@
           var beers = Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), others = 0, parts = [];   // v14: all drinks count, total only
           if (beers) parts.push(beers + " 🍺");
           if (others) parts.push(others + " 🥃 " + (kinds[m.other_kind] || kinds.annat || ""));
-          var tf = titleFor(m.total | 0);
+          var hasM = m.meriter != null, tf = titleFor(hasM ? m.meriter | 0 : m.total | 0);
           var medEl = el("span", { class: "st-medals", "aria-hidden": "true" });
           var tags = tagEls(m);
           var row = el("li", { class: "st-row" + (m.is_me ? " me" : "") }, [
             el("span", { class: "st-dot" + (m.live ? " on" : ""), title: m.live ? t("statusLive") : "", "aria-label": m.live ? t("statusLive") : "" }),
             el("span", { class: "st-main" }, [
               el("span", { class: "st-name", text: (m.is_me ? t("you") + " · " : "") + (m.name || t("someone")) }),
-              el("span", { class: "st-title", text: "🎖️ " + tf.title }),
+              el("span", { class: "st-title", text: "🎖️ " + tf.title + (hasM ? " · " + (m.meriter | 0) + (I.lang === "en" ? " merits" : " meriter") : "") }),
               tags.length ? el("span", { class: "st-roles" }, tags) : null,
               medEl
             ]),
@@ -887,7 +929,7 @@
 
   /* ---------- Public hooks (called from app.js through mods()) ---------- */
   window.SOCIAL = {
-    titleFor: titleFor, TITLES: TITLES, titlesByBeer: titlesByBeer, sosBlock: function (c) { sosBlock(c); },
+    titleFor: titleFor, TITLES: TITLES, titlesByBeer: titlesByBeer, sosBlock: function (c) { sosBlock(c); }, applyMeriter: applyMeriter,
     stats: function () { return stats; }, titleProgress: titleProgress, hasTitle: function () { return !!stats; },
     leagueOn: function () { return v7 === true && !off.group_league; },
     drawLeague: drawLeague, openChat: openChat,
@@ -921,10 +963,11 @@
       if (!d || !Array.isArray(d.pins)) { pollData = false; return; }
       pollData = true;
       if (d.me && d.me.title !== undefined) { statsAt = Date.now(); applyStats(d.me); if (statsDone) { statsDone(); statsDone = null; } }
-      var m = {}, tm = {};
+      var m = {}, tm = {}, mm = {};
       d.pins.forEach(function (p) {
         var key = String(p.id);
         if (p.total != null) tm[key] = Math.max(0, p.total | 0);
+        if (p.meriter != null) mm[key] = Math.max(0, p.meriter | 0);
         if (!p.rx && !p.my_rx) return;
         var o = {}, mine = Array.isArray(p.my_rx) ? p.my_rx : [];
         RX.forEach(function (e) {
@@ -933,7 +976,7 @@
         });
         m[key] = o;
       });
-      rx = m; totals = tm; totalsAt = Date.now();
+      rx = m; totals = tm; mers = mm; totalsAt = Date.now();
       updateOpenRx();
     },
     // v14: no calls here; the first poll brings the stats (poll_v2 "me"), or onPoll loads them (old server).
@@ -956,7 +999,14 @@
     },
     hudChipsHTML: function (ctx) {
       var h = "";
-      if (stats) h += '<button type="button" class="hx-chip hx-title" data-hx="badges">' + esc(t("titleHud", stats.title, stats.total)) + "</button>";
+      if (stats && stats.meriter != null) {
+        // v26: rank chip = title + meriter total + progress bar to the next rank.
+        var T = TITLES, at = 0; T.forEach(function (x) { if (stats.meriter >= x[0]) at = x[0]; });
+        var pc = stats.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (stats.meriter - at) / Math.max(1, stats.nextAt - at)))) : 100;
+        h += '<button type="button" class="hx-chip hx-title hx-title-m" data-hx="badges" aria-label="' + esc(stats.title + " · " + stats.meriter + " meriter. " + titleProgress()) + '">' +
+          esc("🎖️ " + stats.title + " · " + stats.meriter + (I.lang === "en" ? " merits" : " meriter")) +
+          '<span class="mer-bar" aria-hidden="true"><span style="width:' + pc + '%"></span></span></button>';
+      } else if (stats) h += '<button type="button" class="hx-chip hx-title" data-hx="badges">' + esc(t("titleHud", stats.title, stats.total)) + "</button>";
       if (comeOn()) h += comeBtn("hx-chip hx-come");
       return h;
     },
@@ -965,7 +1015,7 @@
     },
     beerTitleHTML: function (b) {
       if (v7 !== true) return "";
-      if (b.friend_name && totals[b.id] != null) return '<div class="pp-rank">🎖️ ' + esc(titleFor(totals[b.id]).title) + "</div>";
+      if (b.friend_name && rankVal(b.id) != null) return '<div class="pp-rank">🎖️ ' + esc(titleFor(rankVal(b.id)).title) + (mers[b.id] != null ? " · " + mers[b.id] + (I.lang === "en" ? " merits" : " meriter") : "") + "</div>";
       if (b.is_mine && stats) return '<div class="pp-rank">🎖️ ' + esc(stats.title) + "</div>";
       return "";
     },

@@ -6,7 +6,7 @@
 //  B) KAOS I STAN: when the area around the caller's beer is wild (>= 10 live beers or >= 3 on
 //     HOT STREAK within 5 km), push to subscribers whose saved area is within 10 km, at most once
 //     per subscriber per night (push_sent). Anonymous counts only: no names, no exact places.
-//  C) LEVEL-UP (v7): when the caller's lifetime beers reach a new title, push to group-mates once
+//  C) LEVEL-UP (v7; v26 by meriter): when the caller's meriter reach a new title, push to group-mates once
 //     per title ever.
 // v17: "beers" above = all drinks (beer_count + other_count); week_beers counts other drinks too.
 //     Clients also call it (no body) after an accepted other drink. SOS accepts world positions.
@@ -254,22 +254,29 @@ export function fill(tpl: string, vars: Record<string, string | number>): string
 
 // ---- v7 SOCIAL ----
 
-/** Title ladder by lifetime beers (v11, 36 steps). Same list in migration 0012 (olnu_titles),
+/** Rank ladder by MERITER (v26, 42 steps). Same list in migration 0036 (olnu_titles),
  *  docs/js/social.js TITLES and CONTRACT.md. */
 export const TITLES: [number, string][] = [
-  [0, "Rekryt"], [3, "Mönstrad Mellanöl"], [5, "Menig Mjöd"], [7, "Vicekorpral Kapsyl"],
-  [10, "Korpral Korkskruv"], [13, "Skumsergeant"], [17, "Furir Flaskhals"],
-  [22, "Överfurir Fatkran"], [28, "Fanjunkare Flasköppnare"], [35, "Fänrik Fatöl"],
-  [43, "Löjtnant Lager"], [52, "Premiärlöjtnant Pilsner"], [62, "Kapten Kaggen"],
-  [75, "Ryttmästare Humle"], [90, "Major Mäsk"], [110, "Överstelöjtnant Ölstop"],
-  [130, "Överste Ölkorv"], [155, "Brigadgeneral Bärs"], [180, "Generalmajor Gambrinus"],
-  [210, "Generallöjtnant Guldskum"], [245, "General Gyllenbärs"], [285, "Fältmarskalk Fradga"],
-  [330, "Riksmarskalk Rundtur"], [380, "Baron av Bryggstugan"], [430, "Hertig av Humlefältet"],
-  [490, "Ärkehertig av Ölkranen"], [560, "Kung Kapsyl den Store"], [640, "Ölkejsaren"],
-  [730, "Bryggerilegenden"], [830, "Halvguden vid Jäskaret"], [920, "Myten i Mässen"],
-  [1000, "Legenden vid Långbordet"], [1100, "Sagofiguren i Skyttegraven"], [1200, "Oraklet i Ölstugan"],
-  [1300, "Överbefälhavare Öl"], [1500, "Ölguden"],
+  [0, "Rekryt"], [5, "Mönstrad Mellanöl"], [10, "Menig Mjöd"], [18, "Vicekorpral Kapsyl"],
+  [28, "Korpral Korkskruv"], [40, "Skumsergeant"], [52, "Översergeant Sejdel"], [66, "Furir Flaskhals"],
+  [82, "Överfurir Fatkran"], [100, "Fanjunkare Flasköppnare"], [125, "Fänrik Fatöl"], [150, "Löjtnant Lager"],
+  [180, "Premiärlöjtnant Pilsner"], [215, "Kapten Kaggen"], [255, "Kommendörkapten Krus"], [300, "Ryttmästare Humle"],
+  [350, "Major Mäsk"], [410, "Överstelöjtnant Ölstop"], [475, "Överste Ölkorv"], [550, "Brigadgeneral Bärs"],
+  [630, "Flottiljamiral Flaskpost"], [720, "Generalmajor Gambrinus"], [820, "Generallöjtnant Guldskum"],
+  [930, "General Gyllenbärs"], [1050, "Amiral Ankarstout"], [1180, "Fältmarskalk Fradga"],
+  [1320, "Storamiral Skumtopp"], [1470, "Riksmarskalk Rundtur"], [1640, "Baron av Bryggstugan"],
+  [1830, "Hertig av Humlefältet"], [2040, "Ärkehertig av Ölkranen"], [2270, "Kung Kapsyl den Store"],
+  [2520, "Ölkejsaren"], [2800, "Bryggerilegenden"], [3100, "Halvguden vid Jäskaret"], [3450, "Myten i Mässen"],
+  [3850, "Legenden vid Långbordet"], [4300, "Sagofiguren i Skyttegraven"], [4800, "Oraklet i Ölstugan"],
+  [5400, "Överbefälhavare Öl"], [6200, "Generalissimus Glaset"], [7000, "Ölguden"],
 ];
+
+/** v26: a rank counts as "reached just now" when the meriter of the last LEVELUP_WINDOW_H hours crossed
+ *  its start (total - recent < at <= total). Older ranks (and the backfill, dated >= 4 h back) never push. */
+export const LEVELUP_WINDOW_H = 3;
+export function reachedNow(total: number, recent: number, at: number): boolean {
+  return at > 0 && total >= at && total - Math.max(0, recent) < at;
+}
 
 export function titleFor(total: number) {
   const t = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
@@ -1188,19 +1195,28 @@ async function rateClaim(admin: Admin, uid: string, kind: string, windowSec: num
   return !!claimed && claimed.length > 0;
 }
 
+/** v26: the rank value is MERITER (migration 0036 meriter_totals), no longer lifetime beers. */
 async function lifetimeTotal(admin: Admin, uid: string): Promise<number> {
-  const { data, error } = await admin.from("week_beers").select("n").eq("user_id", uid);
+  const { data, error } = await admin.from("meriter_totals").select("total").eq("user_id", uid).maybeSingle();
   if (error) throw error;
-  return ((data ?? []) as { n: number }[]).reduce((a, r) => a + (r.n ?? 0), 0);
+  return Math.max(0, ((data as { total: number } | null)?.total) ?? 0);
+}
+
+/** Meriter earned in the last LEVELUP_WINDOW_H hours (live ledger rows only). */
+async function recentMeriter(admin: Admin, uid: string): Promise<number> {
+  const since = new Date(Date.now() - LEVELUP_WINDOW_H * 3600 * 1000).toISOString();
+  const { data, error } = await admin.from("meriter_log").select("pts").eq("user_id", uid).eq("bf", false).gt("created_at", since);
+  if (error) throw error;
+  return ((data ?? []) as { pts: number }[]).reduce((a, r) => a + (r.pts ?? 0), 0);
 }
 
 /** Once per title per user, ever (push_sent kind 'title:<title>', night 2100-01-01). */
 async function levelUpJobs(admin: Admin, uid: string, beerId: number, total: number): Promise<Job[]> {
   const t = titleFor(total);
   if (t.at <= 0) return [];
-  // Only a rank reached just now (this beer or the one before). Users whose rank name changed
-  // with the v11 ladder, but who did not just pass a step, get no push.
-  if (total - t.at > 1) return [];
+  // Only a rank reached just now (v26: by meriter of the last few hours). Users whose rank changed
+  // with the new ladder (backfill), but who did not just pass a step, get no push.
+  if (!reachedNow(total, await recentMeriter(admin, uid), t.at)) return [];
   const mates = await mateNames(admin, uid);
   if (mates.size === 0) return [];
   const { data: claimed, error } = await admin
@@ -1728,7 +1744,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const jobs: Job[] = [];
     let friendCount = 0;
 
-    // Lifetime beers -> title (migration 0007). Missing table -> no title, pushes still work.
+    // Meriter -> title (v26, migration 0036). Missing table -> no title, pushes still work.
     let total = -1;
     try {
       total = await lifetimeTotal(admin, uid);

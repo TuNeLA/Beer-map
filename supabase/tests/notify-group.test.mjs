@@ -128,27 +128,36 @@ t("fill leaves unknown placeholders", () => {
 });
 
 // ---- v7 SOCIAL ----
-t("titles: ladder (v11, 36 steps), exact strings, next", () => {
-  assert.equal(m.TITLES.length, 36);
-  assert.deepEqual(m.titleFor(0), { title: "Rekryt", at: 0, next_title: "Mönstrad Mellanöl", next_at: 3 });
-  assert.equal(m.titleFor(2).title, "Rekryt");
-  assert.equal(m.titleFor(5).title, "Menig Mjöd");
-  assert.equal(m.titleFor(89).title, "Ryttmästare Humle");
-  assert.equal(m.titleFor(90).title, "Major Mäsk");
+t("titles: ladder (v26, 42 steps by meriter), exact strings, next", () => {
+  assert.equal(m.TITLES.length, 42);
+  assert.deepEqual(m.titleFor(0), { title: "Rekryt", at: 0, next_title: "Mönstrad Mellanöl", next_at: 5 });
+  assert.equal(m.titleFor(4).title, "Rekryt");
+  assert.equal(m.titleFor(10).title, "Menig Mjöd");
+  assert.equal(m.titleFor(39).title, "Korpral Korkskruv");
+  assert.equal(m.titleFor(40).title, "Skumsergeant");
   for (const [, x] of m.TITLES) assert.ok(!/från|Dalarna|Dala|Ludvika|Väsman|Grängesberg|Säfsnäs|Smedjebacken|Grangärde|Humlegården/.test(x), "no place: " + x);
-  assert.deepEqual(m.titleFor(1500), { title: "Ölguden", at: 1500, next_title: null, next_at: null });
+  assert.deepEqual(m.titleFor(7000), { title: "Ölguden", at: 7000, next_title: null, next_at: null });
   assert.equal(m.titleFor(99999).title, "Ölguden");
   assert.equal(m.titleFor(-3).title, "Rekryt");
   assert.equal(m.titleFor(NaN).title, "Rekryt");
   for (let i = 1; i < m.TITLES.length; i++) assert.ok(m.TITLES[i][0] > m.TITLES[i - 1][0]);
 });
 
-t("titles match migration 0035 olnu_titles() and docs/js/social.js", () => {
-  const sql = readFileSync(join(here, "../migrations/0035_titles_no_places.sql"), "utf8");
+t("titles match migration 0036 olnu_titles() and docs/js/social.js", () => {
+  const sql = readFileSync(join(here, "../migrations/0036_meriter.sql"), "utf8");
   const pairs = [...sql.matchAll(/\((\d+), '([^']+)'\)/g)].map((x) => [Number(x[1]), x[2]]);
   assert.deepEqual(pairs, m.TITLES);
   const js = readFileSync(join(here, "../../docs/js/social.js"), "utf8").split("var TITLES = ")[1].split(";")[0];
   assert.deepEqual(JSON.parse(js), m.TITLES);
+});
+
+t("level-up only for a rank reached in the window", () => {
+  assert.equal(m.reachedNow(45, 10, 40), true);     // 35 → 45 crosses 40
+  assert.equal(m.reachedNow(45, 4, 40), false);     // 41 → 45: reached earlier
+  assert.equal(m.reachedNow(40, 1, 40), true);
+  assert.equal(m.reachedNow(39, 39, 40), false);    // not there yet
+  assert.equal(m.reachedNow(5, 5, 0), false);       // Rekryt never pushes
+  assert.equal(m.reachedNow(120, 0, 100), false);   // backfill (no live rows) never pushes
 });
 
 t("friend lines with {titel}: level 1 and 5 have some, level 10 has none", () => {

@@ -193,7 +193,7 @@
     for (var i = 0; i < T.length; i++) if (T[i][1] === title) return i + 1;
     return 0;
   }
-  function chevrons(n) { return n >= 30 ? "★★★★" : n >= 22 ? "★★★" : n >= 15 ? "★★" : n >= 8 ? "★" : n >= 4 ? "︽︽" : "︽"; }
+  function chevrons(n) { return n >= 35 ? "★★★★" : n >= 26 ? "★★★" : n >= 18 ? "★★" : n >= 10 ? "★" : n >= 5 ? "︽︽" : "︽"; }
 
   /* ---------- Uniform sheet ---------- */
   function sortedEarned(m) {
@@ -260,12 +260,14 @@
     if (!list.length) return "";
     return shown.map(function (x) { return ribbonHTML(x, tap); }).join("") + (more > 0 ? '<span class="md-more">+' + more + "</span>" : "");
   }
-  // o: {name, isMe, total (lifetime beers or null), medals {id:{count,at}}, back: fn|null}
+  // o: {name, isMe, total (lifetime beers or null), meriter (v26, or null on an old server), medals {id:{count,at}}, back: fn|null}
   function showUniform(o) {
     var el = A.el;
     A.openSheet(o.isMe ? L("🎖️ Min uniform", "🎖️ My uniform") : L("🎖️ Uniform", "🎖️ Uniform"), function (body) {
       if (o.back) body.appendChild(el("div", { class: "row", style: "margin-bottom:6px" }, [A.btn(A.t("back"), "btn-small", o.back)]));
-      var total = o.total == null ? null : Math.max(0, o.total | 0);
+      // v26: the rank is earned by meriter; an old server without meriter shows the old drink-based rank.
+      var hasM = o.meriter != null;
+      var total = hasM ? Math.max(0, o.meriter | 0) : o.total == null ? null : Math.max(0, o.total | 0);
       var box = el("div", { class: "uni-box" });
       body.appendChild(box);
       var name = o.name || (o.isMe ? A.t("you") : A.t("someone"));
@@ -275,15 +277,19 @@
         var pct = r.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (total - start) / Math.max(1, r.nextAt - start)))) : 100;
         h += '<div class="uni-chev" aria-hidden="true">' + chevrons(idx) + "</div>" +
           '<div class="uni-rank">' + esc(r.title) + "</div>" +
-          '<div class="uni-sub">' + esc(L("Grad ", "Rank ") + idx + "/" + ((window.SOCIAL && window.SOCIAL.TITLES) || []).length + " · " + total + L(" öl totalt", " beers total")) + "</div>" +
+          '<div class="uni-sub">' + esc(L("Grad ", "Rank ") + idx + "/" + ((window.SOCIAL && window.SOCIAL.TITLES) || []).length + " · " + total +
+            (hasM ? L(" meriter", " merits") + (o.total != null ? L(" · " + (o.total | 0) + " drycker totalt", " · " + (o.total | 0) + " drinks total") : "") : L(" öl totalt", " beers total"))) + "</div>" +
           '<div class="rank-bar"><span style="width:' + pct + '%"></span></div>' +
-          '<div class="uni-next">' + esc(r.next && r.nextAt ? L(Math.max(0, r.nextAt - total) + " öl kvar till " + r.next, Math.max(0, r.nextAt - total) + " beers left to " + r.next) : L("Högsta grad. Ölguden själv.", "Highest rank.")) + "</div>";
+          '<div class="uni-next">' + esc(r.next && r.nextAt ? (hasM ? L(Math.max(0, r.nextAt - total) + " meriter kvar till " + r.next, Math.max(0, r.nextAt - total) + " merits left to " + r.next)
+            : L(Math.max(0, r.nextAt - total) + " öl kvar till " + r.next, Math.max(0, r.nextAt - total) + " beers left to " + r.next)) : L("Högsta grad. Ölguden själv.", "Highest rank.")) + "</div>" +
+          (o.isMe && window.MERITER ? '<div class="uni-how"><button type="button" class="btn btn-small mer-how" data-merhow="1">' + esc(L("❓ Hur får jag meriter?", "❓ How do I earn merits?")) + "</button></div>" : "");
       }
       var m = o.medals || {}, earned = sortedEarned(m);
       h += '<div class="uni-ribbon" role="group" aria-label="' + esc(L("Medaljer", "Medals")) + '">' + (earned.length ? medalRowHTML(m, 99, true) : '<span class="muted">' + esc(L("Inga medaljer än. Uniformen är ren och fin.", "No medals yet.")) + "</span>") + "</div>";
       box.innerHTML = h;
       // Tap a ribbon → its medal card (with the emoji and the story) below.
       box.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest("[data-merhow]")) { try { window.MERITER.explain(); } catch (x) {} return; }
         var b = e.target.closest && e.target.closest("[data-md]"); if (!b) return;
         var card = body.querySelector('.medal[data-md="' + b.getAttribute("data-md").replace(/["\\]/g, "") + '"]'); if (!card) return;
         card.scrollIntoView({ block: "center", behavior: window.FX && window.FX.reduced && window.FX.reduced() ? "auto" : "smooth" });
@@ -316,7 +322,7 @@
   function showMine() {
     if (!A || !A.LIVE || !A.authed() || off.my_medals) { if (window.EXTRAS && window.EXTRAS.showBadgesLegacy) window.EXTRAS.showBadgesLegacy(); return; }
     var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats();
-    var me = { name: A.getName() || A.t("you"), isMe: true, total: st ? st.total : null, medals: mine || {} };
+    var me = { name: A.getName() || A.t("you"), isMe: true, total: st ? st.total : null, meriter: st && st.meriter != null ? st.meriter : null, medals: mine || {} };
     showUniform(me);
     award(null, true).then(function () {
       return loadMine();
@@ -346,7 +352,8 @@
     });
   }
   function openMember(g, m, back) {
-    var who = { name: m.name, isMe: !!m.is_me, total: m.total != null ? m.total : null, medals: {}, back: back || null };
+    var who = { name: m.name, isMe: !!m.is_me, total: m.total != null ? m.total : null, meriter: m.meriter != null ? m.meriter : null, medals: {}, back: back || null };
+    if (who.isMe && who.meriter == null) { var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats(); if (st && st.meriter != null) who.meriter = st.meriter; }
     if (who.isMe && mine) who.medals = mine;
     memberMedals(g.id).then(function (v) {
       if (v) who.medals = who.isMe ? (mine && Object.keys(mine).length >= Object.keys(v.me).length ? mine : v.me) : (v.byName[m.name || ""] || {});
@@ -455,7 +462,7 @@
       title: L("BEFORDRAN!", "PROMOTED!"),
       html: '<div class="mx-ranks">' + (oldTitle ? '<span class="mx-old">' + esc(oldTitle) + '</span><span class="mx-arrow" aria-hidden="true">➜</span>' : "") +
         '<span class="mx-new">' + esc(newTitle) + "</span></div>" +
-        (r.next && r.nextAt ? '<div class="mx-sub">' + esc(L("Nästa: " + r.next + " vid " + r.nextAt + " öl", "Next: " + r.next + " at " + r.nextAt)) + "</div>" : ""),
+        (r.next && r.nextAt ? '<div class="mx-sub">' + esc(L("Nästa: " + r.next + " vid " + r.nextAt + " meriter", "Next: " + r.next + " at " + r.nextAt + " merits")) + "</div>" : ""),
       line: line,
       ok: L("Givakt! 🫡", "Salute! 🫡"),
       buttons: [{ label: L("🎖️ Uniform", "🎖️ Uniform"), fn: showMine }],

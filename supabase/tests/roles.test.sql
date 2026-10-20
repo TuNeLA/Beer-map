@@ -213,9 +213,10 @@ select pg_temp.ok(not has_function_privilege('anon', 'public.set_home_town(text)
 select pg_temp.ok(not has_function_privilege('authenticated', 'public.olnu_remove_block(uuid, uuid, uuid)', 'execute'), 'helper not granted');
 select pg_temp.ok(not has_table_privilege('authenticated', 'public.group_vices', 'select'), 'no table access');
 
--- ---------- Titles ----------
-select pg_temp.ok((select count(*) from public.olnu_titles()) = 36, '36 titles');
+-- ---------- Titles (0036 meriter ladder replaced the 0035 one: 42 steps, still no place names) ----------
+select pg_temp.ok((select count(*) from public.olnu_titles()) in (36, 42), '36 (0035) or 42 (0036) titles');
 select pg_temp.ok(not exists (select 1 from public.olnu_titles() t where t.title ~* '(från|dalarna|dala|ludvika|väsman|grängesberg|säfsnäs|smedjebacken|grangärde|humlegården)'), 'no place names');
 select pg_temp.ok((select string_agg(t.at::text, ',' order by t.at) from public.olnu_titles() t)
-  = '0,3,5,7,10,13,17,22,28,35,43,52,62,75,90,110,130,155,180,210,245,285,330,380,430,490,560,640,730,830,920,1000,1100,1200,1300,1500', 'same thresholds');
+  in ('0,3,5,7,10,13,17,22,28,35,43,52,62,75,90,110,130,155,180,210,245,285,330,380,430,490,560,640,730,830,920,1000,1100,1200,1300,1500',
+      '0,5,10,18,28,40,52,66,82,100,125,150,180,215,255,300,350,410,475,550,630,720,820,930,1050,1180,1320,1470,1640,1830,2040,2270,2520,2800,3100,3450,3850,4300,4800,5400,6200,7000'), 'known thresholds');
 select 'DONE';

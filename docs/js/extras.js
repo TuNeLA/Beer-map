@@ -141,9 +141,10 @@
       var el = A.el, have = U.ls.getJSON(BADGE_KEY, {}) || {};
       var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats();
       if (st) {
-        var pct = st.nextAt ? Math.max(0, Math.min(100, Math.round(100 * st.total / st.nextAt))) : 100;
+        var rv = st.meriter != null ? st.meriter : st.total;   // v26: ranks by meriter
+        var pct = st.nextAt ? Math.max(0, Math.min(100, Math.round(100 * rv / st.nextAt))) : 100;
         body.appendChild(el("div", { class: "rank-box" }, [
-          el("div", { class: "rank-title", text: t("titleHud", st.title, st.total) }),
+          el("div", { class: "rank-title", text: st.meriter != null ? "🎖️ " + st.title + " · " + st.meriter + (window.I18N.lang === "en" ? " merits" : " meriter") : t("titleHud", st.title, st.total) }),
           el("div", { class: "rank-bar" }, [el("span", { style: "width:" + pct + "%" })]),
           el("div", { class: "muted", text: window.SOCIAL.titleProgress() })
         ]));

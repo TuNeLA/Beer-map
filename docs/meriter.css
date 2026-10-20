@@ -1,0 +1,29 @@
+/* Öl Nu v26 MERITER (js/meriter.js, social.js rank chip, medals.js uniform). */
+.mer-bar{display:block;height:5px;min-width:56px;flex:1 1 56px;background:var(--night-3);border:1px solid var(--line-soft);border-radius:3px;overflow:hidden}
+.mer-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--gold));transition:width .6s ease}
+.mer-bar-big{height:9px;max-width:320px;margin:8px auto 6px}
+.hx-title-m{gap:8px}
+.hx-title-m .mer-bar{max-width:72px;min-width:40px;margin-right:2px}
+.hud-left.open .hx-title-m .mer-bar{max-width:120px;margin-left:auto}
+.hx-mer .mer-q{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);font-size:11px;margin-left:4px;color:var(--muted)}
+.mer-toast{border-left:3px solid var(--gold)}
+.mer-toast.mer-big{border-left-color:var(--amber);font-weight:600}
+
+.mer-ex .mer-me{text-align:center;margin:4px 0 12px}
+.mer-rank{font-family:var(--display);font-size:22px;color:var(--amber-2);letter-spacing:.5px}
+.mer-sub,.mer-next{font-size:13px;color:var(--muted)}
+.mer-lead{margin:8px 0 10px;font-size:14px}
+.mer-list{list-style:none;margin:0;padding:0}
+.mer-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line-soft)}
+.mer-e{font-size:20px;width:28px;text-align:center;flex:none}
+.mer-main{display:flex;flex-direction:column;flex:1;min-width:0}
+.mer-name{font-weight:600;font-size:14px}
+.mer-cap{font-size:12px;color:var(--muted)}
+.mer-pts{font-family:var(--display);font-size:18px;color:var(--gold);flex:none;min-width:40px;text-align:right}
+.mer-care{margin-top:10px;font-size:12px}
+
+.mer-board{margin-top:16px}
+.mer-board .mer-groups button{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mer-note{font-size:12px}
+.uni-how{margin-top:8px}
+@media (prefers-reduced-motion: reduce){.mer-bar span{transition:none}}
