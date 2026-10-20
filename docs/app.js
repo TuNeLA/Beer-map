@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.MERITER].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.MERITER, window.FORFEST, window.NEAR].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -1478,7 +1478,7 @@
     if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
     hx.hidden = !html;
     // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
-    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
+    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
     hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
     if (urgent) urgent.classList.add("hx-urgent");
     if (st.hidden) hudPanel(false);
@@ -3589,6 +3589,8 @@
     try { map.closePopup(); } catch (err) {}
     if (!$("sheet").hidden) closeSheet();
     var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos"), st = q.get("status");
+    var nfi = q.get("find"), nfr = q.get("friend");
+    if (nfi || nfr || q.get("friends")) { if (LIVE) mods("openNearLink", nfi || "list", nfr); return; }
     if (st) { if (LIVE) mods("openStatusLink", st); }
     else if (c) { if (LIVE) mods("openChatLink", c); }
     else if (r) { if (LIVE) mods("openLink", r, q.get("answer")); }
