@@ -1279,3 +1279,19 @@ Rules:
   (upload key) + se.tunela.olnu (old test key). Android reads it at the DOMAIN ROOT → needs the TuNeLA/tunela.github.io repo
   until the own domain. Add Google's Play app signing SHA-256 with `04-assetlinks.py <root> <sha256>`.
 - Public privacy policy for Play: `docs/integritet.html`.
+
+## Design pass 4: polish2 (group sections, 🏆 tabs)
+- Files: `docs/polish2.css` (loaded LAST, after polish.css) and `docs/js/polish2.js` (`window.POLISH2`, no app.js hook, no RPC).
+  It watches `#sheet-body` with a MutationObserver. The DOM order is NOT changed; it only sets attributes, inline `order` and adds heads.
+- **Group page** (`.gitem:not(.gcard) > div` gets class `gp`): every child gets `data-gp` = section and an inline CSS `order`.
+  Sections: 0 = Chatt (primary, full width) · 1 Ikväll (Kalla in, call-outs, Skåltimmen, Engångskamera, Nätter tillsammans)
+  · 2 Spel & kul (Lek, Förfest) · 3 Dagen efter (Gänget, Ceremoni) · 4 Gruppen (Truppen, Visa kod, Gruppchef, Helgstreak, and any UNKNOWN tile)
+  · 5 Mer… fold (Spotify Jam, Utmana grupp; open state in `olnu.gpMore`).
+  Heads are `.gp-h[data-s]`, the fold button is `.gp-more`. **A new tile:** give it a class ending in `-gi` (one `.btn` inside, with
+  `.<x>-gl` label + optional `.<x>-gs` status) and add one line to `sectOf()` in polish2.js; otherwise it lands in "Gruppen".
+- **🏆 sheet**: a `.tt-bar` (Topplistor · Meriter · Streak · Event · Pass) is put first in `#sheet-body`; each top-level child gets
+  `data-tt` (top/mer/streak/ev/pass/all) and `#sheet-body[data-tt]` shows one tab (choice kept in `olnu.ttab`). Tabs without content hide.
+  A new `topSheet` section: add its class to `ttOf()`; unknown sections show under Topplistor.
+- ⚙️: a "👥 Kompisar & pass" heading before Ölpasset + Vänner; the duplicate "Önska en feature" heading is hidden.
+- Tokens: use polish.css tokens (`--s1..s3`, `--hair`, `--r-*`, `--sp-*`, `--fs-*`). Mono (`--hud`) only for clocks and codes;
+  stencil (`--display`) only for brand, ÖL! and big numbers. Accent cards = 1px hairline + `box-shadow: inset 3px 0 0 <accent>`, radius `--r-m`.
