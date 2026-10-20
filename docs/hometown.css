@@ -1,0 +1,34 @@
+/* Öl Nu v25 — 📍 Hemstad (js/hometown.js) + 👑/🎖️/🎗️ role badges and member actions (js/chief.js, js/social.js). */
+.ht-inp{width:100%;margin:8px 0 4px}
+.ht-prev{min-height:18px;margin:2px 0 6px;font-size:var(--fs-xs,12px)}
+.ht-list{display:flex;flex-wrap:wrap;gap:6px;max-height:42vh;overflow-y:auto;padding:2px 0 8px}
+.ht-chip{min-height:40px}
+.ht-chip[aria-selected="true"]{border-color:var(--amber,#f5a623);color:var(--amber-2,#ffc24d)}
+.ht-dem{color:var(--muted,#9aa3a0);font-size:11px}
+.ht-none{width:100%}
+.ht-btns{gap:8px;margin-top:6px}
+.ht-set{margin:8px 0 2px}
+.ht-set-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:44px}
+.ht-set-v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Demonym label after a name (member list, chat, boards, group page) */
+.ht-tag{font-size:11px;font-weight:400;color:var(--muted,#9aa3a0);white-space:nowrap}
+.cm-tags{display:inline-flex;align-items:center;gap:4px;margin-left:4px;min-width:0;overflow:hidden}
+
+/* Role badges */
+.role-b{display:inline-block;font-size:11px;line-height:1.3;padding:0 5px;border:1px solid currentColor;border-radius:3px;white-space:nowrap;font-weight:700}
+.role-b.owner{color:var(--gold,#ffe08a)}
+.role-b.chief{color:var(--amber-2,#ffc24d)}
+.role-b.vice{color:#7fd6c2}
+.role-b.acting{color:#ff9e6b}
+.st-roles{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.chief-roles{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:var(--fs-xs,12px);color:var(--muted,#9aa3a0);margin:2px 0 4px}
+.chief-roles b{color:var(--text,#ece6d6);font-weight:600}
+
+/* Member actions (Medlemmar list) */
+.st-act{list-style:none;margin:-2px 0 8px;padding:8px;border:1px solid var(--line-soft,#2a3550);border-left:3px solid var(--amber,#f5a623);background:rgba(245,166,35,.05)}
+.st-act .row{display:flex;flex-wrap:wrap;gap:6px}
+.st-act .btn{min-height:44px}
+.st-act .confirm{margin-top:8px}
+.st-act .confirm .row{margin-top:6px}
+.st-act-note{margin:6px 0 0;font-size:var(--fs-xs,12px)}

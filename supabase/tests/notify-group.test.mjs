@@ -134,7 +134,8 @@ t("titles: ladder (v11, 36 steps), exact strings, next", () => {
   assert.equal(m.titleFor(2).title, "Rekryt");
   assert.equal(m.titleFor(5).title, "Menig Mjöd");
   assert.equal(m.titleFor(89).title, "Ryttmästare Humle");
-  assert.equal(m.titleFor(90).title, "Major Malt från Smedjebacken");
+  assert.equal(m.titleFor(90).title, "Major Mäsk");
+  for (const [, x] of m.TITLES) assert.ok(!/från|Dalarna|Dala|Ludvika|Väsman|Grängesberg|Säfsnäs|Smedjebacken|Grangärde|Humlegården/.test(x), "no place: " + x);
   assert.deepEqual(m.titleFor(1500), { title: "Ölguden", at: 1500, next_title: null, next_at: null });
   assert.equal(m.titleFor(99999).title, "Ölguden");
   assert.equal(m.titleFor(-3).title, "Rekryt");
@@ -142,10 +143,12 @@ t("titles: ladder (v11, 36 steps), exact strings, next", () => {
   for (let i = 1; i < m.TITLES.length; i++) assert.ok(m.TITLES[i][0] > m.TITLES[i - 1][0]);
 });
 
-t("titles match migration 0012 olnu_titles()", () => {
-  const sql = readFileSync(join(here, "../migrations/0012_medals.sql"), "utf8");
+t("titles match migration 0035 olnu_titles() and docs/js/social.js", () => {
+  const sql = readFileSync(join(here, "../migrations/0035_titles_no_places.sql"), "utf8");
   const pairs = [...sql.matchAll(/\((\d+), '([^']+)'\)/g)].map((x) => [Number(x[1]), x[2]]);
   assert.deepEqual(pairs, m.TITLES);
+  const js = readFileSync(join(here, "../../docs/js/social.js"), "utf8").split("var TITLES = ")[1].split(";")[0];
+  assert.deepEqual(JSON.parse(js), m.TITLES);
 });
 
 t("friend lines with {titel}: level 1 and 5 have some, level 10 has none", () => {

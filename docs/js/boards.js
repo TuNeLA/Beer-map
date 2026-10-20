@@ -120,6 +120,21 @@
       return { rows: cache[key].rows };
     });
   }
+  // v25 (0033): local_board_v2 / wall_of_fame_v2 add home_town (only when the name is shown). Old server → v1.
+  var v2off = {};
+  function cached2(key, n2, n1, params) {
+    if (v2off[n2]) return cached(key, n1, params);
+    var c = cache[key];
+    if (c && Date.now() - c.at < CACHE_MS) return Promise.resolve({ rows: c.rows });
+    if (!A || !A.LIVE || off) return cached(key, n1, params);
+    return A.rpc(n2, params).then(function (r) {
+      if (r && r.error && U.missing(r.error)) { v2off[n2] = true; return cached(key, n1, params); }
+      if (!r || r.error) return { error: (r && r.error) || { message: "error" } };
+      cache[key] = { at: Date.now(), rows: rows(r) };
+      return { rows: cache[key].rows };
+    });
+  }
+  function homeOf(x) { try { return x && x.name && x.home_town && window.HOMETOWN ? window.HOMETOWN.label(x.home_town) : ""; } catch (e) { return ""; } }
   function keyOf(kind, p) { return kind + ":" + p.lat.toFixed(2) + ":" + p.lng.toFixed(2); }
   function loadOptin() {
     if (optin) return Promise.resolve(optin);
@@ -211,7 +226,7 @@
       list.innerHTML = "";
       list.appendChild(el("li", { class: "muted top-empty", text: "…" }));
       var my = tab;
-      cached(keyOf("b" + my, p), "local_board", { p_lat: p.lat, p_lng: p.lng, p_km: 20, p_period: my }).then(function (r) {
+      cached2(keyOf("b" + my, p), "local_board_v2", "local_board", { p_lat: p.lat, p_lng: p.lng, p_km: 20, p_period: my }).then(function (r) {
         if (!document.body.contains(list) || my !== tab) return;
         list.innerHTML = "";
         if (r.off) { sec.remove(); return; }
@@ -229,7 +244,8 @@
           var sub = my === "week" ? nn + (nn === 1 ? T("nights1") : T("nightsN")) : "";
           list.appendChild(el("li", {}, [el("div", { class: "top-row bd-row" + (x.is_me ? " mine" : "") + (x.name ? "" : " bd-anon") }, [
             el("span", { class: "top-rank", text: rank ? String(rank).padStart(2, "0") : "–" }),
-            el("span", { class: "top-main" }, [el("span", { class: "top-name", text: nameOf(x) }),
+            el("span", { class: "top-main" }, [el("span", { class: "top-name" }, [document.createTextNode(nameOf(x)),
+                homeOf(x) ? el("span", { class: "ht-tag", text: " · " + homeOf(x) }) : null]),
               sub ? el("span", { class: "top-sub", text: sub }) : null]),
             el("span", { class: "top-n", text: n + T("drinks") })
           ])]));
@@ -251,7 +267,7 @@
     function draw() {
       list.innerHTML = "";
       list.appendChild(el("li", { class: "muted top-empty", text: "…" }));
-      cached(keyOf("w", p), "wall_of_fame", { p_lat: p.lat, p_lng: p.lng, p_km: 20 }).then(function (r) {
+      cached2(keyOf("w", p), "wall_of_fame_v2", "wall_of_fame", { p_lat: p.lat, p_lng: p.lng, p_km: 20 }).then(function (r) {
         if (!document.body.contains(list)) return;
         list.innerHTML = "";
         if (r.off) { sec.remove(); return; }
@@ -268,7 +284,7 @@
           any = true;
           var unit = sv() ? c[3] : c[4];
           var me = mine[k];
-          var sub = nameOf(x) + " · " + unit + (me ? " · " + T("you2") + (me.value | 0) : "");
+          var sub = nameOf(x) + (homeOf(x) ? " (" + homeOf(x) + ")" : "") + " · " + unit + (me ? " · " + T("you2") + (me.value | 0) : "");
           list.appendChild(el("li", {}, [el("div", { class: "top-row bd-wrow" + (x.is_me ? " mine" : "") + (x.name ? "" : " bd-anon") }, [
             el("span", { class: "top-rank bd-ico", text: c[0] }),
             el("span", { class: "top-main" }, [

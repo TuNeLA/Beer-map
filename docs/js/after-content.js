@@ -184,7 +184,7 @@
     "🎁 {topType} var din trogna vapendragare den här perioden.",
     "🎁 {nights} kvällar ute, {total} öl. Och lika många glas vatten, hoppas vi.",
     "🎁 Minnesvärt datum: {bestNight}. Du vet vad du gjorde. Vi med.",
-    "🎖️ Grad {rank}. Int' illa för en soldat från Dalarna.",
+    "🎖️ Grad {rank}. Int' illa för en vanlig fotsoldat.",
     "🎁 Din stamkrog: {favBar}. Stolen där har nästan ditt namn på sig.",
     "🎁 {topType} i topp. Du ä en vanemänniska, och det ä fint.",
     "🎁 {nights} utekvällar. Soffan har skrivit ett argt brev.",

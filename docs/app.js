@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -2817,6 +2817,7 @@
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") saveName(); });
       body.appendChild(el("p", { class: "muted", text: t("nameHint") }));
       body.appendChild(el("div", { style: "display:flex;gap:8px" }, [inp, btn(t("save"), "btn-amber", saveName)]));
+      mods("settingsName", body);   // v25: 📍 Hemstad (js/hometown.js), next to the name
 
       body.appendChild(el("h3", { text: t("language") }));
       var seg = el("div", { class: "seg", role: "radiogroup", style: "flex-direction:row;width:max-content" });

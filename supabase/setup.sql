@@ -13287,3 +13287,744 @@ begin
     execute 'grant execute on function public.group_night_story(uuid, date), public.night_story_photo(bigint) to authenticated';
   end if;
 end $$;
+
+-- ===========================================================================
+-- 0033_home_town.sql
+-- ===========================================================================
+-- 0033 v25 HEMSTAD ("Var är du mest baserad?"). Client: docs/js/hometown.js (window.HOMETOWN) + docs/hometown.css.
+-- Each user may set one home town (free text 1-30 chars, letters/digits/space and . , ' ’ ( ) & / -).
+-- The client turns it into a demonym label ("Ludvikabo", "Smedjebackare", fallback "från {stad}").
+-- The town is shown only where the user's name is shown already:
+--   * group_status_v2 / chief_state (members of a shared group; 0034),
+--   * local_board_v2 / wall_of_fame_v2 (only when the board name is shown, i.e. the user opted in).
+-- Additive only. Old RPCs keep their shape (RETURNS TABLE functions cannot grow, so the boards get _v2 twins).
+-- RLS on, no policies. All RPCs: SECURITY DEFINER, search_path public, olnu_uid(), EXECUTE for authenticated only.
+-- "Radera allt om mig" (0016c generic uuid sweep) moves user_home.user_id to a fresh id, so the town detaches.
+-- Safe to run again.
+
+create table if not exists public.user_home (
+  user_id    uuid primary key,
+  town       text null,
+  updated_at timestamptz not null default now(),
+  changes    int not null default 0
+);
+alter table public.user_home enable row level security;
+revoke all on table public.user_home from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on table public.user_home from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on table public.user_home from authenticated';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    execute 'grant all on table public.user_home to service_role';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Helpers (internal, no grants)
+-- ---------------------------------------------------------------------------
+-- Clean a town: control chars -> space, collapse spaces, trim. Returns '' for empty, null when invalid.
+create or replace function public.olnu_clean_town(p text)
+returns text language plpgsql immutable set search_path = public as $$
+declare
+  v text := btrim(regexp_replace(regexp_replace(coalesce(p, ''), '[\x00-\x1F\x7F]', ' ', 'g'), '\s+', ' ', 'g'));
+begin
+  if v = '' then return ''; end if;
+  if char_length(v) > 30 then return null; end if;
+  if v !~ '^[[:alpha:][:digit:] .,''’()&/-]+$' then return null; end if;
+  if v !~ '[[:alpha:]]' then return null; end if;
+  return v;
+end; $$;
+
+create or replace function public.olnu_home_town(p_uid uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select h.town from public.user_home h where h.user_id = p_uid;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- RPCs
+-- ---------------------------------------------------------------------------
+-- set_home_town(p_town) -> jsonb {town}. '' or null clears it. Errors: invalid_town, slow_down (1 per 3 s, 40 per day).
+create or replace function public.set_home_town(p_town text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_town text := public.olnu_clean_town(p_town);
+  h      public.user_home;
+begin
+  if v_town is null then raise exception 'invalid_town'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_home:' || v_uid::text, 0));
+  select * into h from public.user_home x where x.user_id = v_uid;
+  if found then
+    if h.updated_at > now() - interval '3 seconds' then raise exception 'slow_down'; end if;
+    if h.updated_at > now() - interval '1 day' and h.changes >= 40 then raise exception 'slow_down'; end if;
+    update public.user_home x
+       set town = nullif(v_town, ''), updated_at = now(),
+           changes = case when x.updated_at > now() - interval '1 day' then x.changes + 1 else 1 end
+     where x.user_id = v_uid;
+  else
+    insert into public.user_home (user_id, town, updated_at, changes) values (v_uid, nullif(v_town, ''), now(), 1);
+  end if;
+  return jsonb_build_object('town', nullif(v_town, ''));
+end; $$;
+
+-- my_home_town() -> jsonb {town}
+create or replace function public.my_home_town()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  return jsonb_build_object('town', public.olnu_home_town(v_uid));
+end; $$;
+
+-- local_board_v2: local_board (0023) + home_town at the end (null when the name is hidden).
+create or replace function public.local_board_v2(p_lat double precision, p_lng double precision, p_km double precision default 20, p_period text default 'tonight')
+returns table(rank integer, name text, total integer, nights integer, is_me boolean, home_town text)
+language plpgsql security definer set search_path = public as $function$
+#variable_conflict use_column
+declare
+  v_uid    uuid := public.olnu_uid();
+  v_period text := lower(btrim(coalesce(p_period, 'tonight')));
+  v_km     float8 := least(50, greatest(5, coalesce(nullif(p_km, 'NaN'::float8), 20)));
+  v_lat    float8;
+  v_lng    float8;
+  v_dlat   float8;
+  v_week   date := public.olnu_week_start(now());
+begin
+  if not public.olnu_world_ok(p_lat, p_lng) then
+    raise exception 'outside_sweden';
+  end if;
+  if v_period not in ('tonight', 'week') then
+    raise exception 'invalid_period';
+  end if;
+  perform public.olnu_board_rl(v_uid);
+  v_lat := round(p_lat::numeric, 2)::float8;
+  v_lng := round(p_lng::numeric, 2)::float8;
+  v_dlat := v_km / 111.0;
+
+  return query
+  with src as (
+    select b.user_id as uid, (b.beer_count + coalesce(b.other_count, 0))::int as d, 1 as nn
+      from public.beers b
+     where v_period = 'tonight'
+       and b.expires_at > now() and not coalesce(b.ghost, false)
+       and b.beer_count + coalesce(b.other_count, 0) > 0
+       and b.lat between v_lat - v_dlat and v_lat + v_dlat
+       and public.olnu_dist_m(v_lat, v_lng, b.lat, b.lng) <= v_km * 1000
+    union all
+    select n.user_id, sum(n.drinks)::int, count(*)::int
+      from public.board_nights n
+     where v_period = 'week'
+       and n.drinks > 0
+       and public.olnu_evening(n.night) >= v_week
+       and n.lat between v_lat - v_dlat and v_lat + v_dlat
+       and public.olnu_dist_m(v_lat, v_lng, n.lat, n.lng) <= v_km * 1000
+     group by n.user_id
+  ),
+  ranked as (
+    select s.uid, s.d, s.nn,
+           rank() over (order by s.d desc, s.nn desc)::int as rk,
+           row_number() over (order by s.d desc, s.nn desc, s.uid)::int as rn
+      from src s
+  ),
+  named as (
+    select r.*, public.olnu_board_name(r.uid) as nm from ranked r where r.rn <= 10 or r.uid = v_uid
+  )
+  select x.rk, x.nm, x.d, x.nn, x.uid = v_uid,
+         case when x.nm is not null then public.olnu_home_town(x.uid) end
+    from named x
+   order by x.rn;
+end; $function$;
+
+-- wall_of_fame_v2: wall_of_fame (0023) + home_town at the end (null when the name is hidden).
+create or replace function public.wall_of_fame_v2(p_lat double precision, p_lng double precision, p_km double precision default 20)
+returns table(category text, name text, value integer, is_me boolean, top boolean, home_town text)
+language plpgsql security definer set search_path = public as $function$
+#variable_conflict use_column
+declare
+  v_uid  uuid := public.olnu_uid();
+  v_km   float8 := least(50, greatest(5, coalesce(nullif(p_km, 'NaN'::float8), 20)));
+  v_lat  float8;
+  v_lng  float8;
+  v_dlat float8;
+begin
+  if not public.olnu_world_ok(p_lat, p_lng) then
+    raise exception 'outside_sweden';
+  end if;
+  perform public.olnu_board_rl(v_uid);
+  v_lat := round(p_lat::numeric, 2)::float8;
+  v_lng := round(p_lng::numeric, 2)::float8;
+  v_dlat := v_km / 111.0;
+
+  return query
+  with nights as (
+    select n.user_id as uid, n.night, n.drinks, n.updated_at
+      from public.board_nights n
+     where n.drinks > 0
+       and n.lat between v_lat - v_dlat and v_lat + v_dlat
+       and public.olnu_dist_m(v_lat, v_lng, n.lat, n.lng) <= v_km * 1000
+  ),
+  bars as (
+    select x.bar_id from (
+      select bl.id as bar_id, bl.lat, bl.lng from public.bars_lite bl
+       where bl.lat between v_lat - v_dlat and v_lat + v_dlat
+      union
+      select bb.bar_id, bb.lat, bb.lng from public.board_bars bb
+       where bb.lat between v_lat - v_dlat and v_lat + v_dlat
+         and not exists (select 1 from public.bars_lite b2 where b2.id = bb.bar_id)
+    ) x
+     where public.olnu_dist_m(v_lat, v_lng, x.lat, x.lng) <= v_km * 1000
+  ),
+  visits as (
+    select c.user_id as uid, c.bar_id, c.night from public.medal_checkins c join bars on bars.bar_id = c.bar_id
+  ),
+  vals as (
+    select 'best_night'::text as cat, x.uid, x.drinks::int as v, x.updated_at as at
+      from (select distinct on (ni.uid) ni.uid, ni.drinks, ni.updated_at
+              from nights ni order by ni.uid, ni.drinks desc, ni.updated_at) x
+    union all
+    select 'nights', ni.uid, count(*)::int, max(ni.night) from nights ni group by ni.uid
+    union all
+    select 'bars', vi.uid, count(distinct vi.bar_id)::int, max(vi.night) from visits vi group by vi.uid
+    union all
+    select 'stammis', s.uid, max(s.k)::int, max(s.last) from (
+      select vi.uid, vi.bar_id, count(distinct vi.night) as k, max(vi.night) as last
+        from visits vi group by vi.uid, vi.bar_id) s group by s.uid
+    union all
+    select 'skal', ni.uid, sum(coalesce(an.skal_given, 0))::int, max(ni.night)
+      from nights ni join public.after_nights an on an.user_id = ni.uid and an.night = ni.night
+     group by ni.uid
+    union all
+    select 'home', ni.uid,
+           count(*) filter (where coalesce(mn.home, false) or an.home_at is not null)::int, max(ni.night)
+      from nights ni
+      left join public.medal_nights mn on mn.user_id = ni.uid and mn.night = ni.night
+      left join public.after_nights an on an.user_id = ni.uid and an.night = ni.night
+     group by ni.uid
+  ),
+  ranked as (
+    select va.cat, va.uid, va.v,
+           row_number() over (partition by va.cat order by va.v desc, va.at asc nulls last, va.uid) as rn
+      from vals va where va.v > 0
+  ),
+  named as (
+    select r.*, public.olnu_board_name(r.uid) as nm from ranked r where r.rn = 1 or r.uid = v_uid
+  )
+  select x.cat, x.nm, x.v, x.uid = v_uid, x.rn = 1,
+         case when x.nm is not null then public.olnu_home_town(x.uid) end
+    from named x
+   order by array_position(array['best_night', 'nights', 'bars', 'stammis', 'skal', 'home'], x.cat), x.rn;
+end; $function$;
+
+-- ---------------------------------------------------------------------------
+-- Grants: helpers nobody, RPCs authenticated only
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_helpers text := 'public.olnu_clean_town(text), public.olnu_home_town(uuid)';
+  v_rpcs text := 'public.set_home_town(text), public.my_home_town(), '
+    || 'public.local_board_v2(double precision, double precision, double precision, text), '
+    || 'public.wall_of_fame_v2(double precision, double precision, double precision)';
+begin
+  execute 'revoke all on function ' || v_helpers || ' from public';
+  execute 'revoke all on function ' || v_rpcs || ' from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function ' || v_helpers || ' from anon';
+    execute 'revoke all on function ' || v_rpcs || ' from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function ' || v_helpers || ' from authenticated';
+    execute 'grant execute on function ' || v_rpcs || ' to authenticated';
+  end if;
+end $$;
+
+-- ===========================================================================
+-- 0034_roles_remove.sql
+-- ===========================================================================
+-- 0034 v25 ROLLER: 👑 ÄGARE + 🎖️ GRUPPCHEF + 🎗️ VICE GRUPPCHEFER + "🚪 Ta bort ur gruppen".
+-- Client: docs/js/chief.js (roles, appoint, group page) + docs/js/social.js (Medlemmar list actions).
+-- Needs 0001-0033 (leave_group, group_members, groups, 0030 chief tables/helpers, 0033 olnu_home_town).
+--
+-- Roles (owner decision 2026-10-20, enforced here):
+--   * OWNER ("ägare") = groups.created_by while a member. Never moved, never removable.
+--     If the owner is not a member (left, or erased), the gruppchef holds the owner powers ("owner powers").
+--   * GRUPPCHEF = 0030 olnu_chief_of(). Only owner powers can change it (set_chief).
+--   * VICE GRUPPCHEFER: any number. Only owner powers add/clear a vice (set_vice). A vice is valid only while
+--     the same membership lasts (group_vices.member_since = group_members.joined_at), so leaving and joining
+--     again never brings the role back.
+--   * Lägesrapport: chief OR any vice (request_status); limits stay per group (1 per 20 min, 6 per night).
+--   * Acting chief: when the chief has shown no sign of life for 12 h (olnu_seen_at), the vice who was
+--     appointed first and was seen in the last 12 h is "acting" (chief_state.acting_k). Vices already have
+--     every chief power except removing vices/the chief, so "acting" is shown in the app only.
+--   * remove_member: owner powers remove anyone but themselves and the owner; chief and vices remove plain
+--     members only (a vice never removes the chief or another vice; the chief never removes a vice).
+--     Nobody removes themselves (use Lämna). 20 removals per hour per remover.
+--
+-- How a member row is freed: rows in group_members mean "is a member" everywhere (about 60 queries), so the
+-- row must really go. The only existing code that frees a row is leave_group(), which acts on olnu_uid().
+-- remove_member() writes an archive row (group_members_removed), then runs leave_group() for the target
+-- by switching the transaction-local JWT claim to the target for that ONE call and switching it back at
+-- once (verified). The group itself never goes away there: the remover is still a member.
+-- This file has no row-removing statements. Additive: old RPCs keep their names, params and json fields.
+-- RLS on, no policies. All RPCs: SECURITY DEFINER, search_path public, olnu_uid(), EXECUTE for authenticated only.
+-- Safe to run again.
+
+-- ---------------------------------------------------------------------------
+-- Tables
+-- ---------------------------------------------------------------------------
+create table if not exists public.group_vices (
+  group_id     uuid not null,
+  user_id      uuid not null,
+  member_since timestamptz not null,           -- group_members.joined_at when appointed
+  active       boolean not null default true,
+  set_by       uuid null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
+create table if not exists public.group_members_removed (
+  id           bigserial primary key,
+  group_id     uuid not null,
+  user_id      uuid not null,
+  display_name text null,
+  joined_at    timestamptz null,
+  group_name   text null,
+  removed_by   uuid null,
+  removed_at   timestamptz not null default now(),
+  seen         boolean not null default false
+);
+create index if not exists gmr_by_idx   on public.group_members_removed (removed_by, removed_at desc);
+create index if not exists gmr_user_idx on public.group_members_removed (user_id, removed_at desc);
+
+create table if not exists public.user_seen (
+  user_id uuid primary key,
+  seen_at timestamptz not null default now()
+);
+
+alter table public.group_vices           enable row level security;
+alter table public.group_members_removed enable row level security;
+alter table public.user_seen             enable row level security;
+revoke all on table public.group_vices, public.group_members_removed, public.user_seen from public;
+revoke all on sequence public.group_members_removed_id_seq from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on table public.group_vices, public.group_members_removed, public.user_seen from anon';
+    execute 'revoke all on sequence public.group_members_removed_id_seq from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on table public.group_vices, public.group_members_removed, public.user_seen from authenticated';
+    execute 'revoke all on sequence public.group_members_removed_id_seq from authenticated';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    execute 'grant all on table public.group_vices, public.group_members_removed, public.user_seen to service_role';
+    execute 'grant all on sequence public.group_members_removed_id_seq to service_role';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Helpers (internal, no grants)
+-- ---------------------------------------------------------------------------
+-- The owner while a member, else null.
+create or replace function public.olnu_owner_of(p_group uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select g.created_by from public.groups g
+    join public.group_members m on m.group_id = g.id and m.user_id = g.created_by
+   where g.id = p_group;
+$$;
+
+-- Owner powers: the owner, or the chief when the owner is not a member.
+create or replace function public.olnu_owner_powers(p_group uuid, p_uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_uid is not null and public.olnu_chief_member(p_group, p_uid)
+     and coalesce(public.olnu_owner_of(p_group), public.olnu_chief_of(p_group)) = p_uid;
+$$;
+
+create or replace function public.olnu_is_vice(p_group uuid, p_uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.group_vices v
+      join public.group_members m on m.group_id = v.group_id and m.user_id = v.user_id and m.joined_at = v.member_since
+     where v.group_id = p_group and v.user_id = p_uid and v.active);
+$$;
+
+-- Last sign of life: app open (mark_seen), a drink, a chat message, joining, being made chief.
+create or replace function public.olnu_seen_at(p_group uuid, p_uid uuid)
+returns timestamptz language sql stable security definer set search_path = public as $$
+  select greatest(
+    (select s.seen_at from public.user_seen s where s.user_id = p_uid),
+    (select b.updated_at from public.beers b where b.user_id = p_uid),
+    (select max(gm.created_at) from public.group_msgs gm where gm.user_id = p_uid and gm.created_at > now() - interval '13 hours'),
+    (select m.joined_at from public.group_members m where m.group_id = p_group and m.user_id = p_uid),
+    (select c.updated_at from public.group_chiefs c where c.group_id = p_group and c.user_id = p_uid));
+$$;
+
+create or replace function public.olnu_chief_idle(p_group uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(public.olnu_seen_at(p_group, public.olnu_chief_of(p_group)) < now() - interval '12 hours', true);
+$$;
+
+-- The acting vice (or null): chief idle 12 h → the vice appointed first who was seen in the last 12 h.
+create or replace function public.olnu_acting_vice(p_group uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select v.user_id from public.group_vices v
+    join public.group_members m on m.group_id = v.group_id and m.user_id = v.user_id and m.joined_at = v.member_since
+   where v.group_id = p_group and v.active and public.olnu_chief_idle(p_group)
+     and v.user_id is distinct from public.olnu_chief_of(p_group)
+     and coalesce(public.olnu_seen_at(p_group, v.user_id) >= now() - interval '12 hours', false)
+   order by v.updated_at, v.user_id
+   limit 1;
+$$;
+
+-- Why p_actor may NOT remove p_target from p_group (null = allowed).
+create or replace function public.olnu_remove_block(p_group uuid, p_actor uuid, p_target uuid)
+returns text language plpgsql stable security definer set search_path = public as $$
+declare
+  v_owner uuid := (select g.created_by from public.groups g where g.id = p_group);
+  v_chief uuid := public.olnu_chief_of(p_group);
+begin
+  if p_actor is null or not public.olnu_chief_member(p_group, p_actor) then return 'not_member'; end if;
+  if p_target is null or not public.olnu_chief_member(p_group, p_target) then return 'not_member'; end if;
+  if p_target = p_actor then return 'cannot_remove_self'; end if;
+  if v_owner is not null and p_target = v_owner then return 'cannot_remove_creator'; end if;
+  if public.olnu_owner_powers(p_group, p_actor) then return null; end if;
+  if p_actor = v_chief or public.olnu_is_vice(p_group, p_actor) then
+    if p_target = v_chief or public.olnu_is_vice(p_group, p_target) then return 'not_allowed'; end if;
+    return null;
+  end if;
+  return 'not_allowed';
+end; $$;
+
+-- Chief block of a group for p_uid (0030 fields unchanged + new fields at the end).
+create or replace function public.olnu_chief_json(p_group uuid, p_uid uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with c as (select public.olnu_chief_of(p_group) as uid),
+  o as (select public.olnu_owner_of(p_group) as uid),
+  act as (select public.olnu_acting_vice(p_group) as uid),
+  pw as (select public.olnu_owner_powers(p_group, p_uid) as yes),
+  last as (
+    select r.* from public.status_reqs r where r.group_id = p_group order by r.created_at desc, r.id desc limit 1
+  ), tonight as (
+    select count(*)::int as n from public.status_reqs r where r.group_id = p_group and r.created_at >= public.olnu_chief_from()
+  ), mem as (
+    select m.user_id, m.display_name, m.joined_at, public.olnu_is_vice(p_group, m.user_id) as vice
+      from public.group_members m where m.group_id = p_group
+  )
+  select jsonb_build_object(
+    'group_id', p_group,
+    'chief_k', (select public.olnu_chief_k(p_group, c.uid) from c),
+    'chief_name', (select public.olnu_chief_name(p_group, c.uid) from c),
+    'is_chief', (select c.uid = p_uid from c),
+    'is_creator', exists (select 1 from public.groups g where g.id = p_group and g.created_by = p_uid),
+    'can_hand', (select yes from pw),
+    'members', coalesce((select jsonb_agg(jsonb_build_object(
+        'k', public.olnu_chief_k(p_group, m.user_id), 'name', m.display_name,
+        'is_me', m.user_id = p_uid, 'is_chief', m.user_id = (select uid from c),
+        'is_owner', m.user_id = (select uid from o), 'is_vice', m.vice,
+        'is_acting', m.user_id = (select uid from act),
+        'home_town', public.olnu_home_town(m.user_id),
+        'can_remove', public.olnu_remove_block(p_group, p_uid, m.user_id) is null)
+        order by m.joined_at, m.display_name)
+        from mem m), '[]'::jsonb),
+    'used', (select n from tonight),
+    'max', 6,
+    'next_at', greatest(now(), coalesce((select l.created_at + interval '20 minutes' from last l), now())),
+    'req', (select public.olnu_status_json(l, p_uid) from last l where l.created_at > now() - interval '2 hours'),
+    -- v25 (0034)
+    'my_k', public.olnu_chief_k(p_group, p_uid),
+    'owner_k', (select public.olnu_chief_k(p_group, o.uid) from o where o.uid is not null),
+    'owner_name', (select public.olnu_chief_name(p_group, o.uid) from o),
+    'is_owner', (select o.uid = p_uid from o),
+    'is_vice', public.olnu_is_vice(p_group, p_uid),
+    'owner_powers', (select yes from pw),
+    'can_vice', (select yes from pw),
+    'can_req', (select c.uid = p_uid from c) or public.olnu_is_vice(p_group, p_uid),
+    'can_remove', exists (select 1 from mem m where public.olnu_remove_block(p_group, p_uid, m.user_id) is null),
+    'vices', coalesce((select jsonb_agg(jsonb_build_object('k', public.olnu_chief_k(p_group, m.user_id), 'name', m.display_name,
+        'is_me', m.user_id = p_uid) order by m.joined_at) from mem m where m.vice), '[]'::jsonb),
+    'chief_idle', public.olnu_chief_idle(p_group),
+    'acting_k', (select public.olnu_chief_k(p_group, a.uid) from act a where a.uid is not null),
+    'acting_name', (select public.olnu_chief_name(p_group, a.uid) from act a),
+    'is_acting', (select a.uid = p_uid from act a),
+    'chief_home', (select public.olnu_home_town(c.uid) from c),
+    'owner_home', (select public.olnu_home_town(o.uid) from o));
+$$;
+
+-- ---------------------------------------------------------------------------
+-- RPCs
+-- ---------------------------------------------------------------------------
+
+-- set_chief(p_group_id, p_k) -> chief_state. v25: owner powers only. Errors: not_member, not_allowed, invalid_member.
+create or replace function public.set_chief(p_group_id uuid, p_k text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_new uuid;
+begin
+  if not public.olnu_chief_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_chief:' || p_group_id::text, 0));
+  if not public.olnu_owner_powers(p_group_id, v_uid) then raise exception 'not_allowed'; end if;
+  select m.user_id into v_new from public.group_members m
+   where m.group_id = p_group_id and public.olnu_chief_k(p_group_id, m.user_id) = p_k limit 1;
+  if v_new is null then raise exception 'invalid_member'; end if;
+  insert into public.group_chiefs (group_id, user_id, set_by, updated_at)
+  values (p_group_id, v_new, v_uid, now())
+  on conflict (group_id) do update set user_id = excluded.user_id, set_by = excluded.set_by, updated_at = now();
+  -- The new chief is no longer a vice.
+  update public.group_vices v set active = false, updated_at = now(), set_by = v_uid
+   where v.group_id = p_group_id and v.user_id = v_new and v.active;
+  return public.olnu_chief_json(p_group_id, v_uid);
+end; $$;
+
+-- set_vice(p_group_id, p_k, p_on default true) -> chief_state. Owner powers only.
+-- The owner and the chief cannot be vice. Errors: not_member, not_allowed, invalid_member.
+create or replace function public.set_vice(p_group_id uuid, p_k text, p_on boolean default true)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  m     public.group_members;
+begin
+  if not public.olnu_chief_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_chief:' || p_group_id::text, 0));
+  if not public.olnu_owner_powers(p_group_id, v_uid) then raise exception 'not_allowed'; end if;
+  select * into m from public.group_members x
+   where x.group_id = p_group_id and public.olnu_chief_k(p_group_id, x.user_id) = p_k limit 1;
+  if not found then raise exception 'invalid_member'; end if;
+  if coalesce(p_on, true) then
+    if m.user_id = public.olnu_chief_of(p_group_id)
+       or m.user_id is not distinct from (select g.created_by from public.groups g where g.id = p_group_id) then
+      raise exception 'invalid_member';
+    end if;
+    insert into public.group_vices (group_id, user_id, member_since, active, set_by, created_at, updated_at)
+    values (p_group_id, m.user_id, m.joined_at, true, v_uid, now(), now())
+    on conflict (group_id, user_id) do update
+      set member_since = excluded.member_since, set_by = excluded.set_by,
+          updated_at = case when public.group_vices.active and public.group_vices.member_since = excluded.member_since
+                            then public.group_vices.updated_at else now() end,
+          active = true;
+  else
+    update public.group_vices v set active = false, updated_at = now(), set_by = v_uid
+     where v.group_id = p_group_id and v.user_id = m.user_id and v.active;
+  end if;
+  return public.olnu_chief_json(p_group_id, v_uid);
+end; $$;
+
+-- request_status(p_group_id): v25 the chief OR any vice. Same limits per group as 0030.
+create or replace function public.request_status(p_group_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  r public.status_reqs;
+begin
+  if not public.olnu_chief_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_status:' || p_group_id::text, 0));
+  if public.olnu_chief_of(p_group_id) is distinct from v_uid and not public.olnu_is_vice(p_group_id, v_uid) then
+    raise exception 'not_chief';
+  end if;
+  if exists (select 1 from public.status_reqs x where x.group_id = p_group_id and x.created_at > now() - interval '20 minutes') then
+    raise exception 'status_slow';
+  end if;
+  if (select count(*) from public.status_reqs x where x.group_id = p_group_id and x.created_at >= public.olnu_chief_from()) >= 6 then
+    raise exception 'status_limit';
+  end if;
+  insert into public.status_reqs (group_id, user_id, night, created_at, ends_at)
+  values (p_group_id, v_uid, public.olnu_night_of(now()), now(), now() + interval '10 minutes')
+  returning * into r;
+  return public.olnu_status_json(r, v_uid);
+end; $$;
+
+-- remove_member(p_group_id, p_user_id) -> jsonb {ok, name, group_name, state (chief_state)}.
+-- p_user_id = the member key k (chief_state / group_status_v2), or the user's uuid as text.
+-- Errors: not_member (caller or target), not_allowed, cannot_remove_creator, cannot_remove_self, slow_down (20/h).
+create or replace function public.remove_member(p_group_id uuid, p_user_id text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid    uuid := public.olnu_uid();
+  v_target uuid;
+  v_block  text;
+  v_chief  uuid;
+  v_owner  uuid;
+  v_sub    text;
+  v_claims text;
+  v_cl     jsonb;
+  m        public.group_members;
+  v_gname  text;
+begin
+  if not public.olnu_chief_member(p_group_id, v_uid) then raise exception 'not_member'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('olnu_chief:' || p_group_id::text, 0));
+  select * into m from public.group_members x
+   where x.group_id = p_group_id
+     and (public.olnu_chief_k(p_group_id, x.user_id) = btrim(coalesce(p_user_id, ''))
+          or x.user_id::text = lower(btrim(coalesce(p_user_id, ''))))
+   limit 1;
+  if not found then raise exception 'not_member'; end if;
+  v_target := m.user_id;
+  v_block := public.olnu_remove_block(p_group_id, v_uid, v_target);
+  if v_block is not null then raise exception '%', v_block; end if;
+  if (select count(*) from public.group_members_removed r where r.removed_by = v_uid and r.removed_at > now() - interval '1 hour') >= 20 then
+    raise exception 'slow_down';
+  end if;
+
+  v_chief := public.olnu_chief_of(p_group_id);
+  v_owner := (select g.created_by from public.groups g where g.id = p_group_id);
+  select g.name into v_gname from public.groups g where g.id = p_group_id;
+
+  -- Archive first.
+  insert into public.group_members_removed (group_id, user_id, display_name, joined_at, group_name, removed_by)
+  values (p_group_id, v_target, m.display_name, m.joined_at, v_gname, v_uid);
+  -- Roles go with the membership.
+  update public.group_vices v set active = false, updated_at = now(), set_by = v_uid
+   where v.group_id = p_group_id and v.user_id = v_target and v.active;
+  if v_target = v_chief then
+    insert into public.group_chiefs (group_id, user_id, set_by, updated_at)
+    values (p_group_id, coalesce(public.olnu_owner_of(p_group_id), v_uid), v_uid, now())
+    on conflict (group_id) do update set user_id = excluded.user_id, set_by = excluded.set_by, updated_at = now();
+  end if;
+
+  -- Free the membership row with the existing leave_group(), run as the target for this one call.
+  v_sub := current_setting('request.jwt.claim.sub', true);
+  v_claims := current_setting('request.jwt.claims', true);
+  begin
+    v_cl := coalesce(nullif(v_claims, '')::jsonb, '{}'::jsonb);
+  exception when others then
+    v_cl := '{}'::jsonb;
+  end;
+  perform set_config('request.jwt.claim.sub', v_target::text, true);
+  perform set_config('request.jwt.claims', jsonb_set(v_cl, '{sub}', to_jsonb(v_target::text), true)::text, true);
+  perform public.leave_group(p_group_id);
+  perform set_config('request.jwt.claim.sub', coalesce(v_sub, ''), true);
+  perform set_config('request.jwt.claims', coalesce(v_claims, ''), true);
+  if public.olnu_uid() is distinct from v_uid then raise exception 'internal_error'; end if;
+  if public.olnu_chief_member(p_group_id, v_target) then raise exception 'internal_error'; end if;
+
+  return jsonb_build_object('ok', true, 'name', m.display_name, 'group_name', v_gname,
+    'state', public.olnu_chief_json(p_group_id, v_uid));
+end; $$;
+
+-- my_removals() -> jsonb [{group_name, at}] removals of the caller not shown yet (last 14 days); marks them shown.
+create or replace function public.my_removals()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+  v_out jsonb;
+begin
+  select coalesce(jsonb_agg(jsonb_build_object('group_name', r.group_name, 'at', r.removed_at) order by r.removed_at), '[]'::jsonb)
+    into v_out
+    from public.group_members_removed r
+   where r.user_id = v_uid and not r.seen and r.removed_at > now() - interval '14 days'
+     and not public.olnu_chief_member(r.group_id, v_uid);
+  update public.group_members_removed r set seen = true where r.user_id = v_uid and not r.seen;
+  return v_out;
+end; $$;
+
+-- mark_seen() -> void. The app calls it when it is open (chief.js, max every 5 min). Used for the 12 h rule.
+create or replace function public.mark_seen()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := public.olnu_uid();
+begin
+  insert into public.user_seen (user_id, seen_at) values (v_uid, now())
+  on conflict (user_id) do update set seen_at = now() where public.user_seen.seen_at < now() - interval '60 seconds';
+end; $$;
+
+-- group_status_v2(p_group_id): group_status (v8/v14) + member key, roles, home town and "may I remove".
+create or replace function public.group_status_v2(p_group_id uuid)
+returns table(name text, beers integer, others integer, other_kind text, live boolean, total integer, is_me boolean,
+              k text, is_owner boolean, is_chief boolean, is_vice boolean, is_acting boolean, home_town text,
+              can_remove boolean, joined_at timestamptz)
+language plpgsql stable security definer set search_path = public as $function$
+declare
+  v_uid   uuid := public.olnu_uid();
+  v_chief uuid;
+  v_owner uuid;
+  v_act   uuid;
+begin
+  if not exists (select 1 from public.group_members m where m.group_id = p_group_id and m.user_id = v_uid) then
+    raise exception 'not_member';
+  end if;
+  v_chief := public.olnu_chief_of(p_group_id);
+  v_owner := public.olnu_owner_of(p_group_id);
+  v_act := public.olnu_acting_vice(p_group_id);
+  return query
+  select gm.display_name,
+         coalesce(case when b.expires_at > now() then b.beer_count end, 0)::int,
+         coalesce(case when b.expires_at > now() then b.other_count end, 0)::int,
+         case when b.expires_at > now() then b.other_kind end,
+         coalesce(b.expires_at > now() and not b.stopped, false),
+         public.olnu_lifetime(gm.user_id),
+         (gm.user_id = v_uid),
+         public.olnu_chief_k(p_group_id, gm.user_id),
+         coalesce(gm.user_id = v_owner, false),
+         coalesce(gm.user_id = v_chief, false),
+         public.olnu_is_vice(p_group_id, gm.user_id),
+         coalesce(gm.user_id = v_act, false),
+         public.olnu_home_town(gm.user_id),
+         public.olnu_remove_block(p_group_id, v_uid, gm.user_id) is null,
+         gm.joined_at
+    from public.group_members gm
+    left join public.beers b on b.user_id = gm.user_id
+   where gm.group_id = p_group_id
+   order by 2 desc, 3 desc, 1;
+end; $function$;
+
+-- ---------------------------------------------------------------------------
+-- Grants: helpers nobody, RPCs authenticated only
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_helpers text := 'public.olnu_owner_of(uuid), public.olnu_owner_powers(uuid, uuid), public.olnu_is_vice(uuid, uuid), '
+    || 'public.olnu_seen_at(uuid, uuid), public.olnu_chief_idle(uuid), public.olnu_acting_vice(uuid), '
+    || 'public.olnu_remove_block(uuid, uuid, uuid), public.olnu_chief_json(uuid, uuid)';
+  v_rpcs text := 'public.set_chief(uuid, text), public.set_vice(uuid, text, boolean), public.request_status(uuid), '
+    || 'public.remove_member(uuid, text), public.my_removals(), public.mark_seen(), public.group_status_v2(uuid)';
+begin
+  execute 'revoke all on function ' || v_helpers || ' from public';
+  execute 'revoke all on function ' || v_rpcs || ' from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function ' || v_helpers || ' from anon';
+    execute 'revoke all on function ' || v_rpcs || ' from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function ' || v_helpers || ' from authenticated';
+    execute 'grant execute on function ' || v_rpcs || ' to authenticated';
+  end if;
+end $$;
+
+-- ===========================================================================
+-- 0035_titles_no_places.sql
+-- ===========================================================================
+-- 0035 v25 RANKS WITHOUT PLACE NAMES (owner decision 2026-10-20).
+-- Same 36 thresholds, same order, same function name and return type as 0012. Only titles that named a
+-- place (or a region) are new. Identical lists: docs/js/social.js TITLES, notify-group TITLES, CONTRACT.md.
+-- my_stats / poll_v2.me / level-up push read olnu_titles(), so they follow at once. The level-up push only
+-- fires when the rank was reached just now (total - rank_start <= 1), so the renaming itself sends no pushes.
+-- Safe to run again.
+create or replace function public.olnu_titles()
+returns table(at integer, title text)
+language sql immutable set search_path = public as $$
+  select * from (values
+    (0, 'Rekryt'), (3, 'Mönstrad Mellanöl'), (5, 'Menig Mjöd'), (7, 'Vicekorpral Kapsyl'),
+    (10, 'Korpral Korkskruv'), (13, 'Skumsergeant'), (17, 'Furir Flaskhals'),
+    (22, 'Överfurir Fatkran'), (28, 'Fanjunkare Flasköppnare'), (35, 'Fänrik Fatöl'),
+    (43, 'Löjtnant Lager'), (52, 'Premiärlöjtnant Pilsner'), (62, 'Kapten Kaggen'),
+    (75, 'Ryttmästare Humle'), (90, 'Major Mäsk'), (110, 'Överstelöjtnant Ölstop'),
+    (130, 'Överste Ölkorv'), (155, 'Brigadgeneral Bärs'), (180, 'Generalmajor Gambrinus'),
+    (210, 'Generallöjtnant Guldskum'), (245, 'General Gyllenbärs'), (285, 'Fältmarskalk Fradga'),
+    (330, 'Riksmarskalk Rundtur'), (380, 'Baron av Bryggstugan'), (430, 'Hertig av Humlefältet'),
+    (490, 'Ärkehertig av Ölkranen'), (560, 'Kung Kapsyl den Store'), (640, 'Ölkejsaren'),
+    (730, 'Bryggerilegenden'), (830, 'Halvguden vid Jäskaret'), (920, 'Myten i Mässen'),
+    (1000, 'Legenden vid Långbordet'), (1100, 'Sagofiguren i Skyttegraven'), (1200, 'Oraklet i Ölstugan'),
+    (1300, 'Överbefälhavare Öl'), (1500, 'Ölguden')
+  ) as t(at, title);
+$$;
+revoke all on function public.olnu_titles() from public;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.olnu_titles() from anon';
+  end if;
+end $$;

@@ -18,7 +18,8 @@
   var chiefCache = {};                              // group id → {at, d}
   var HIDE_KEY = "olnu.chiefHidden", SEEN_KEY = "olnu.chiefSeen";
   var CODES = ["not_member", "not_chief", "not_allowed", "invalid_member", "status_slow", "status_limit", "status_not_found",
-    "status_closed", "status_answered", "invalid_photo", "invalid_msg", "not_authenticated"];
+    "status_closed", "status_answered", "invalid_photo", "invalid_msg", "cannot_remove_creator", "cannot_remove_self",
+    "slow_down", "not_authenticated"];
 
   /* ---------- Texts (dalmål, ä for é) ---------- */
   function sv() { return !I || I.lang !== "en"; }
@@ -61,8 +62,11 @@
   };
   var ERR = {
     not_member: ["Du ä int' med i gruppen.", "You are not in this group."],
-    not_chief: ["Bara gruppchefen kan begära lägesrapport.", "Only the chief can ask for a status report."],
-    not_allowed: ["Bara gruppchefen eller den som skapade gruppen kan lämna över.", "Only the chief or the group creator can hand it on."],
+    not_chief: ["Bara gruppchefen och vice gruppchefer kan begära lägesrapport.", "Only the chief and vice chiefs can ask for a status report."],
+    not_allowed: ["Det får du int'. Bara 👑 ägaren styr roller, och bara ägaren kan plocka ut chefen eller en vice.", "Not allowed. Only the 👑 owner sets roles and can remove the chief or a vice."],
+    cannot_remove_creator: ["👑 Ägaren kan ingen plocka ut. Det ä ju hens grupp.", "Nobody can remove the 👑 owner."],
+    cannot_remove_self: ["Du kan int' plocka ut dig själv. Använd Lämna i stället.", "You cannot remove yourself. Use Leave."],
+    slow_down: ["Lugn nu. Max 20 utplockningar i timmen.", "Easy. Max 20 removals per hour."],
     invalid_member: ["Den personen ä int' med i gruppen längre.", "That person left the group."],
     status_slow: ["Lugn, chefen. Max en lägesrapport per 20 min.", "Easy, chief. Max one report per 20 min."],
     status_limit: ["Max 6 lägesrapporter per kväll. Låt truppen ha kul.", "Max 6 status reports per night."],
@@ -117,8 +121,34 @@
     return null;
   }
 
+  /* ---------- v25: "seen" ping (12 h acting-vice rule) + "you were removed" notice ---------- */
+  var seenAt = 0, removedAt = 0;
+  var REMOVED = [
+    "🚪 Du ä utplockad ur {grupp}. Har du koden kan du gå med igen.",
+    "🚪 {grupp} har skickat hem dig från fronten. Koden tar dig tillbaka, om de vill.",
+    "🚪 Avmönstrad ur {grupp}. Ingen fara – fråga efter koden om det va' ett misstag."];
+  function pingSeen() {
+    if (!A || !A.LIVE || !A.authed() || document.visibilityState === "hidden") return;
+    var now = Date.now();
+    if (now - seenAt > 5 * 60000) { seenAt = now; call("mark_seen"); }
+    if (now - removedAt > 5 * 60000) {
+      removedAt = now;
+      call("my_removals").then(function (r) {
+        if (r.error) return;
+        var list = A.parseData(r.data);
+        if (!Array.isArray(list) || !list.length) return;
+        list.forEach(function (x) {
+          A.toast(sv() ? fill(pick("rm", REMOVED), { grupp: x.group_name || "gruppen" }) : "🚪 You were removed from " + (x.group_name || "a group") + ". Rejoin with the code.", { ms: 9000, urgent: true,
+            action: { label: L("👥 Grupper", "👥 Groups"), fn: function () { try { A.showGroups(); } catch (e) {} } } });
+        });
+        try { A.updateCounts(); } catch (e) {}
+      });
+    }
+  }
+
   /* ---------- Poll ---------- */
   function load(force) {
+    pingSeen();
     if (!A || !A.LIVE || !A.authed() || state === "missing") return Promise.resolve();
     if (busy || (!force && Date.now() - pollAt < 20000)) return Promise.resolve();
     if (document.visibilityState === "hidden" && !force) return Promise.resolve();
@@ -416,16 +446,43 @@
     wrap.appendChild(box2);
     chiefState(g.id).then(function (d) { if (d) fillGroup(box2, g, d); else box2.remove(); });
   }
+  /* ---------- v25 roles: badges, group page, member actions ---------- */
+  function homeLbl(t) { try { return t && window.HOMETOWN ? window.HOMETOWN.label(t) : ""; } catch (e) { return ""; } }
+  // Role badges of a member row (chief_state members[] or group_status_v2 rows).
+  function badges(m) {
+    var out = [];
+    if (!m) return out;
+    if (m.is_owner) out.push({ c: "owner", t: L("👑 Ägare", "👑 Owner") });
+    if (m.is_chief) out.push({ c: "chief", t: L("🎖️ Chef", "🎖️ Chief") });
+    if (m.is_vice) out.push({ c: "vice", t: L("🎗️ Vice", "🎗️ Vice") });
+    if (m.is_acting) out.push({ c: "acting", t: L("🎗️ Tjänstgörande chef", "🎗️ Acting chief") });
+    return out;
+  }
+  function badgeEls(m) { return badges(m).map(function (b) { return el("span", { class: "role-b " + b.c, text: b.t }); }); }
+  function nm(m) { return m.is_me ? L("Du", "You") : (m.name || L("Någon", "Someone")); }
   function fillGroup(box2, g, d) {
     box2.innerHTML = "";
+    var mem = d.members || [];
+    var chief = null; mem.forEach(function (m) { if (m.is_chief) chief = m; });
+    var chiefHome = homeLbl(d.chief_home);
     var top = el("div", { class: "chief-line" }, [
       el("span", { class: "chief-badge", text: "🎖️" }),
-      el("span", { class: "chief-name", text: L("Gruppchef: ", "Chief: ") + (d.is_chief ? L("Du", "You") : (d.chief_name || "?")) })
+      el("span", { class: "chief-name", text: L("Gruppchef: ", "Chief: ") + (d.is_chief ? L("Du", "You") : (d.chief_name || "?")) }),
+      chiefHome ? el("span", { class: "ht-tag", text: chiefHome }) : null
     ]);
-    if (d.can_hand && (d.members || []).length > 1) {
-      top.appendChild(el("button", { type: "button", class: "chief-hand", text: L("Lämna över", "Hand over"), onclick: function () { handSheet(g, d); } }));
+    if (d.can_hand && mem.length > 1) {
+      top.appendChild(el("button", { type: "button", class: "chief-hand", text: L("Roller", "Roles"), onclick: function () { handSheet(g, d); } }));
     }
     box2.appendChild(top);
+    // 👑 owner + 🎗️ vices (v25 fields; an old server sends none and this line stays away)
+    var parts = [];
+    if (d.owner_name && !(chief && chief.is_owner)) parts.push(el("span", {}, [document.createTextNode(L("👑 Ägare: ", "👑 Owner: ")), el("b", { text: d.is_owner ? L("Du", "You") : d.owner_name })]));
+    else if (d.owner_name) parts.push(el("span", {}, [document.createTextNode(L("👑 Ägare + chef", "👑 Owner + chief"))]));
+    var vices = d.vices || [];
+    if (vices.length) parts.push(el("span", {}, [document.createTextNode(L("🎗️ Vice: ", "🎗️ Vice: ")), el("b", { text: vices.map(nm).join(", ") })]));
+    if (d.acting_name) parts.push(el("span", { class: "chief-acting" }, [document.createTextNode(L("🎗️ ", "🎗️ ")), el("b", { text: d.is_acting ? L("Du", "You") : d.acting_name }),
+      document.createTextNode(L(" tjänstgör som chef (chefen har varit borta 12 h)", " is acting chief (chief away 12 h)"))]));
+    if (parts.length) box2.appendChild(el("div", { class: "chief-roles" }, parts));
     var rq = d.req;
     if (rq) {
       var live = !rq.done && msLeft(rq) > 0;
@@ -436,7 +493,7 @@
       box2.appendChild(line);
       if (live && !rq.mine && !rq.by_me) box2.appendChild(A.btn(L("📸 Skicka min rapport", "📸 Send my report"), "btn-small btn-amber btn-block", function () { shoot(rq); }));
     }
-    if (d.is_chief) {
+    if (d.can_req != null ? d.can_req : d.is_chief) {
       var wait = Date.parse(d.next_at) - now(), used = d.used | 0, max = d.max | 0 || 6;
       var label = used >= max ? L("📸 Max " + max + " rapporter ikväll", "📸 Max " + max + " reports tonight")
         : wait > 1000 ? L("📸 Nästa lägesrapport om " + Math.ceil(wait / 60000) + " min", "📸 Next report in " + Math.ceil(wait / 60000) + " min")
@@ -444,7 +501,8 @@
       var b = A.btn(label, "btn-small btn-block chief-req" + (used >= max || wait > 1000 ? "" : " btn-amber"), function () { request(g, b, box2); });
       b.disabled = used >= max || wait > 1000;
       box2.appendChild(b);
-      box2.appendChild(el("p", { class: "chief-help muted", text: L("Alla får en push och 10 min att skicka ett foto. " + used + "/" + max + " ikväll.", "Everyone gets a push and 10 min to send a photo. " + used + "/" + max + " tonight.") }));
+      box2.appendChild(el("p", { class: "chief-help muted", text: L("Alla får en push och 10 min att skicka ett foto. " + used + "/" + max + " ikväll" + (d.is_vice ? " (delas med chefen)." : "."),
+        "Everyone gets a push and 10 min to send a photo. " + used + "/" + max + " tonight.") }));
     }
   }
   function request(g, b, box2) {
@@ -463,29 +521,114 @@
       openReport(d.id);
     });
   }
+  // Owner only (owner powers): choose the chief and the vices.
   function handSheet(g, d) {
-    A.openSheet(L("🎖️ Ny gruppchef", "🎖️ New chief"), function (body) {
-      body.appendChild(el("p", { class: "muted", text: L("Vem tar befälet i " + g.name + "? Chefen kan begära lägesrapporter.", "Who takes command of " + g.name + "? The chief can ask for status reports.") }));
-      var list = el("div", { class: "chips chief-pick" });
-      (d.members || []).forEach(function (m) {
-        var c = el("button", { type: "button", class: "chip-btn", "aria-pressed": String(!!m.is_chief), text: (m.is_chief ? "🎖️ " : "") + (m.is_me ? L("Du", "You") + " (" + m.name + ")" : m.name) });
-        c.addEventListener("click", function () {
-          if (m.is_chief) return;
-          list.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
-          call("set_chief", { p_group_id: g.id, p_k: m.k }).then(function (r) {
-            list.querySelectorAll("button").forEach(function (x) { x.disabled = false; });
-            if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
-            var nd = A.parseData(r.data);
-            chiefCache[g.id] = { at: Date.now(), d: nd };
-            A.toast(L("🎖️ " + (m.is_me ? "Du" : m.name) + " ä ny gruppchef. Givakt!", "🎖️ " + (m.is_me ? "You are" : m.name + " is") + " the new chief."), { cls: "skal" });
-            A.closeSheet();
-            try { A.showGroups(); } catch (e) {}
+    A.openSheet(L("👑 Roller", "👑 Roles"), function (body) {
+      var cur = d;
+      function draw() {
+        body.innerHTML = "";
+        body.appendChild(el("p", { class: "muted", text: L("Du ä 👑 ägare i " + g.name + ". Bara du kan välja chef och vice. Chefen och vice kan begära lägesrapport och plocka ut vanliga medlemmar.",
+          "You are the 👑 owner of " + g.name + ". Only you pick the chief and the vices.") }));
+        body.appendChild(el("h3", { text: L("🎖️ Gruppchef", "🎖️ Chief") }));
+        var list = el("div", { class: "chips chief-pick" });
+        (cur.members || []).forEach(function (m) {
+          var c = el("button", { type: "button", class: "chip-btn", "aria-pressed": String(!!m.is_chief), text: (m.is_chief ? "🎖️ " : "") + (m.is_me ? L("Du", "You") + " (" + m.name + ")" : m.name) });
+          c.addEventListener("click", function () {
+            if (m.is_chief) return;
+            body.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+            call("set_chief", { p_group_id: g.id, p_k: m.k }).then(function (r) {
+              body.querySelectorAll("button").forEach(function (x) { x.disabled = false; });
+              if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
+              cur = A.parseData(r.data); chiefCache[g.id] = { at: Date.now(), d: cur };
+              A.toast(L("🎖️ " + (m.is_me ? "Du" : m.name) + " ä ny gruppchef. Givakt!", "🎖️ " + (m.is_me ? "You are" : m.name + " is") + " the new chief."), { cls: "skal" });
+              draw();
+            });
           });
+          list.appendChild(c);
         });
-        list.appendChild(c);
-      });
-      body.appendChild(list);
+        body.appendChild(list);
+        if (cur.vices === undefined) return;   // old server: no vices
+        body.appendChild(el("h3", { text: L("🎗️ Vice gruppchefer", "🎗️ Vice chiefs") }));
+        var vl = el("div", { class: "chips chief-pick" });
+        (cur.members || []).forEach(function (m) {
+          if (m.is_owner || m.is_chief) return;
+          var c = el("button", { type: "button", class: "chip-btn", "aria-pressed": String(!!m.is_vice), text: (m.is_vice ? "🎗️ " : "＋ ") + (m.is_me ? L("Du", "You") : m.name) });
+          c.addEventListener("click", function () { setVice(g, m, !m.is_vice, function (nd) { if (nd) { cur = nd; draw(); } }); });
+          vl.appendChild(c);
+        });
+        if (!vl.children.length) vl.appendChild(el("p", { class: "muted", text: L("Bjud in fler först.", "Invite more people first.") }));
+        body.appendChild(vl);
+        body.appendChild(A.btn(L("Klar", "Done"), "btn-block", function () { A.closeSheet(); try { A.showGroups(); } catch (e) {} }));
+      }
+      draw();
     });
+  }
+  function setVice(g, m, on, done) {
+    call("set_vice", { p_group_id: g.id, p_k: m.k, p_on: on }).then(function (r) {
+      if (r.error) { A.toast(r.off ? errText("error") : errText(codeOf(r.error)), { err: true }); if (done) done(null); return; }
+      var nd = A.parseData(r.data); chiefCache[g.id] = { at: Date.now(), d: nd };
+      A.toast(on ? L("🎗️ " + nm(m) + " ä vice gruppchef. Givakt!", "🎗️ " + nm(m) + " is now vice chief.")
+        : L("🎗️ " + nm(m) + " ä int' vice längre.", "🎗️ " + nm(m) + " is no longer vice."), { cls: "skal" });
+      try { window.FX.vibrate(15); } catch (e) {}
+      if (done) done(nd);
+    });
+  }
+  var REMOVE_OK = ["🚪 {namn} ä utplockad ur {grupp}. Ordning i leden.", "🚪 {namn} har lämnat {grupp}. Avmönstrad.",
+    "🚪 Klart. {namn} ä int' med i {grupp} längre."];
+  // Action panel for one member row in the "Medlemmar" list (social.js). rows = all group_status_v2 rows.
+  // Returns an element, or null when the caller has no action for that member.
+  function memberPanel(g, m, rows, onDone, onUniform) {
+    if (!m || !m.k || m.is_me) return null;
+    var me = null, ownerIn = false;
+    (rows || []).forEach(function (x) { if (x.is_me) me = x; if (x.is_owner) ownerIn = true; });
+    var powers = !!(me && (me.is_owner || (!ownerIn && me.is_chief)));
+    var acts = [];
+    if (powers && !m.is_chief) acts.push(A.btn(L("🎖️ Gör till chef", "🎖️ Make chief"), "btn-small", function () { doChief(); }));
+    if (powers && !m.is_owner && !m.is_chief) {
+      acts.push(A.btn(m.is_vice ? L("🎗️ Ta bort vice", "🎗️ Remove vice") : L("🎗️ Gör till vice", "🎗️ Make vice"), "btn-small", function () {
+        setVice(g, m, !m.is_vice, function (nd) { if (nd) { delete chiefCache[g.id]; if (onDone) onDone(); } });
+      }));
+    }
+    if (m.can_remove) acts.push(A.btn(L("🚪 Ta bort ur gruppen", "🚪 Remove from group"), "btn-small btn-danger", function () { ask(); }));
+    if (!acts.length) return null;
+    var box = el("li", { class: "st-act" });
+    var row = el("div", { class: "row" });
+    if (onUniform) row.appendChild(A.btn(L("🎖️ Uniform", "🎖️ Uniform"), "btn-small", onUniform));
+    acts.forEach(function (b) { row.appendChild(b); });
+    box.appendChild(row);
+    function doChief() {
+      row.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+      call("set_chief", { p_group_id: g.id, p_k: m.k }).then(function (r) {
+        row.querySelectorAll("button").forEach(function (x) { x.disabled = false; });
+        if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
+        delete chiefCache[g.id];
+        A.toast(L("🎖️ " + nm(m) + " ä ny gruppchef. Givakt!", "🎖️ " + nm(m) + " is the new chief."), { cls: "skal" });
+        if (onDone) onDone();
+      });
+    }
+    function ask() {
+      if (box.querySelector(".confirm")) return;
+      var yes = A.btn(L("🚪 Ja, ut", "🚪 Yes, remove"), "btn-small btn-danger st-rm-yes", function () {
+        yes.disabled = true;
+        call("remove_member", { p_group_id: g.id, p_user_id: m.k }).then(function (r) {
+          yes.disabled = false;
+          if (r.error) { A.toast(r.off ? errText("error") : errText(codeOf(r.error)), { err: true }); return; }
+          var d = A.parseData(r.data);
+          if (d.state) chiefCache[g.id] = { at: Date.now(), d: d.state }; else delete chiefCache[g.id];
+          A.toast(sv() ? fill(pick("rmok", REMOVE_OK), { namn: d.name || m.name || "Någon", grupp: d.group_name || g.name || "gruppen" })
+            : "🚪 " + (d.name || m.name) + " was removed from " + (d.group_name || g.name) + ".", { cls: "skal", ms: 5000 });
+          try { window.FX.vibrate([20, 40, 20]); } catch (e) {}
+          if (onDone) onDone();
+        });
+      });
+      var c = el("div", { class: "confirm" }, [
+        el("p", {}, [el("b", { text: L("Säker? " + (m.name || "Personen") + " åker ut ur " + (g.name || "gruppen"), "Sure? " + (m.name || "This person") + " leaves " + (g.name || "the group")) })]),
+        el("p", { class: "muted st-act-note", text: L("Hen kan bara komma tillbaka med gruppkoden.", "They can only come back with the group code.") }),
+        el("div", { class: "row" }, [A.btn(L("Avbryt", "Cancel"), "btn-small", function () { c.remove(); }), yes])
+      ]);
+      box.appendChild(c);
+    }
+    return box;
   }
 
   /* ---------- Deep link ?status=<id> ---------- */
@@ -511,6 +654,7 @@
     state: function () { return state; },
     data: function () { return reqs.slice(); },
     openReport: openReport, openStatusLink: openStatusLink,
+    badges: badges, memberPanel: memberPanel, invalidate: function (gid) { delete chiefCache[gid]; },
     _texts: T,
     init: function (api) {
       A = api;

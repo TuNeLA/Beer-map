@@ -284,21 +284,21 @@ Tap a bar on the map → "📍 Checka in". Group-mates get "📍 Anton har anlä
 Migration `supabase/migrations/0012_medals.sql` (also in `setup.sql`). Needs 0001–0011 first. A missing RPC (old database) = feature off: the app falls back to the old local badges sheet, no error.
 
 ### Ranks (36 steps)
-Lifetime beers → title. `olnu_titles()` (SQL), `TITLES` in `notify-group` and `docs/js/social.js` are identical (same function names and return types as v7; `my_stats` unchanged):
+Lifetime beers → title. `olnu_titles()` (SQL), `TITLES` in `notify-group` and `docs/js/social.js` are identical (same function names and return types as v7; `my_stats` unchanged). v25 (0035, 2026-10-20): titles with place names were renamed (same thresholds and order); the table below is the current list:
 
 | from | title | from | title | from | title |
 |---|---|---|---|---|---|
 | 0 | Rekryt | 52 | Premiärlöjtnant Pilsner | 330 | Riksmarskalk Rundtur |
 | 3 | Mönstrad Mellanöl | 62 | Kapten Kaggen | 380 | Baron av Bryggstugan |
-| 5 | Menig Mjöd | 75 | Ryttmästare Humle | 430 | Hertig av Humlegården |
-| 7 | Vicekorpral Kapsyl | 90 | Major Malt från Smedjebacken | 490 | Ärkehertig av Ölkranen |
-| 10 | Kapsylkorpral från Grangärde | 110 | Överstelöjtnant Ölstop | 560 | Kung Kapsyl av Dalarna |
+| 5 | Menig Mjöd | 75 | Ryttmästare Humle | 430 | Hertig av Humlefältet |
+| 7 | Vicekorpral Kapsyl | 90 | Major Mäsk | 490 | Ärkehertig av Ölkranen |
+| 10 | Korpral Korkskruv | 110 | Överstelöjtnant Ölstop | 560 | Kung Kapsyl den Store |
 | 13 | Skumsergeant | 130 | Överste Ölkorv | 640 | Ölkejsaren |
 | 17 | Furir Flaskhals | 155 | Brigadgeneral Bärs | 730 | Bryggerilegenden |
-| 22 | Överfurir Fatkran | 180 | Generalmajor Gambrinus | 830 | Halvguden från Väsman |
-| 28 | Fanjunkare Flasköppnare | 210 | Generallöjtnant Guldskum | 920 | Myten från Grängesberg |
-| 35 | Fänrik Fatöl | 245 | General Dalabärs | 1000 | Legenden från Ludvika |
-| 43 | Löjtnant Lager | 285 | Fältmarskalk Fradga | 1100 | Sagofiguren från Säfsnäs |
+| 22 | Överfurir Fatkran | 180 | Generalmajor Gambrinus | 830 | Halvguden vid Jäskaret |
+| 28 | Fanjunkare Flasköppnare | 210 | Generallöjtnant Guldskum | 920 | Myten i Mässen |
+| 35 | Fänrik Fatöl | 245 | General Gyllenbärs | 1000 | Legenden vid Långbordet |
+| 43 | Löjtnant Lager | 285 | Fältmarskalk Fradga | 1100 | Sagofiguren i Skyttegraven |
 | | | | | 1200 | Oraklet i Ölstugan |
 | | | | | 1300 | Överbefälhavare Öl |
 | | | | | 1500 | Ölguden |
@@ -900,3 +900,45 @@ photos:[{id, by, at, w, h, reacts, caption, status (lägesrapport photo)}] (max 
 - Photos: `PHOTO._url(id)` first (cache / `group_photo`), then `night_story_photo`; drawn from blob URLs so the canvas is never tainted (`toBlob`, share and save keep working). A photo that fails to load is skipped (a strip photo takes the front spot).
 - Texts: `GANG_CONTENT.story.big` (11 kinds) and `.line` (19 kinds), ≥ 15 dalmål/military variants each; seeded per group + night; a paper never shows the same line twice.
 - Thin night (< 2 timeline lines, or timeline + photos + quotes < 4) → classic paper.
+
+## v25 ROLLER + TA BORT MEDLEM + HEMSTAD + GRADER UTAN ORTNAMN (additive)
+Migrations `0033_home_town.sql`, `0034_roles_remove.sql`, `0035_titles_no_places.sql` (applied on the server 2026-10-20 under the same names; also appended to `setup.sql`). Needs 0001–0032. No migration contains a row-removing statement. Client: `docs/js/chief.js` (roles, group page, member actions), `docs/js/social.js` (Medlemmar list, chat names), `docs/js/hometown.js` (`window.HOMETOWN`, through `mods()`), `docs/js/boards.js`, `docs/hometown.css`. A missing RPC (old database, PGRST202) = that part hides (old RPCs are used).
+
+### Roles (owner decision 2026-10-20, enforced on the server)
+- **👑 Ägare** = `groups.created_by` while a member. Never moved, never removable. When the owner is not a member (left / erased), the gruppchef holds the owner powers.
+- **🎖️ Gruppchef** = 0030 `olnu_chief_of`. Only owner powers can change it (`set_chief`; before v25 the chief could too).
+- **🎗️ Vice gruppchef**: any number. Only owner powers add / clear a vice (`set_vice`). The owner and the chief cannot be vice; a new chief stops being vice. A vice role belongs to one membership (`member_since = joined_at`): leaving / being removed and joining again = plain member.
+- **Lägesrapport**: the chief or any vice (`request_status`); limits per group as before (1 per 20 min, 6 per night).
+- **Acting chief**: when the chief shows no sign of life for 12 h (`mark_seen` app ping, a drink, a chat message, joining, being made chief), the vice appointed first who was seen in the last 12 h is acting (`acting_k`). Shown in the app; vices already have the chief's powers except removing the chief / vices.
+- **Ta bort medlem**: owner powers remove anyone except themselves and the owner. The chief and vices remove plain members only (a vice never removes the chief or another vice; the chief never removes a vice). Nobody removes themselves (Lämna). 20 removals per remover per hour. A removed chief → the chief role goes back to the owner; a removed vice loses the role. The removed user can rejoin only with the code.
+- **How the row goes**: `remove_member` writes an archive row (`group_members_removed`), then runs the existing `leave_group()` for the target by switching the transaction-local JWT claim (`request.jwt.claims` / `request.jwt.claim.sub`) to the target for that one call and back (checked; any error rolls back). So every "row exists = member" query stays right.
+
+### Tables (RLS on, no policies, no client access; service_role has all; the 0016c erase sweep moves their uuids)
+`group_vices(group_id, user_id, member_since, active, set_by, created_at, updated_at)` pk (group_id, user_id) · `group_members_removed(id, group_id, user_id, display_name, joined_at, group_name, removed_by, removed_at, seen)` · `user_seen(user_id pk, seen_at)` · `user_home(user_id pk, town, updated_at, changes)`.
+
+### RPCs (authenticated only; `not_authenticated` without a session)
+| name | params | returns | errors |
+|---|---|---|---|
+| `remove_member` | `p_group_id uuid, p_user_id text` (the member key `k` from chief_state / group_status_v2, or a uuid string) | jsonb `{ok, name, group_name, state}` (`state` = chief_state) | `not_member` (caller or target), `not_allowed`, `cannot_remove_creator`, `cannot_remove_self`, `slow_down` |
+| `set_vice` | `p_group_id uuid, p_k text, p_on bool default true` | chief_state | `not_member`, `not_allowed`, `invalid_member` |
+| `set_chief` | unchanged params | chief_state | `not_allowed` now = not owner powers |
+| `request_status` | unchanged | unchanged | `not_chief` = neither chief nor vice |
+| `group_status_v2` | `p_group_id uuid` | setof group_status columns + `k, is_owner, is_chief, is_vice, is_acting, home_town, can_remove, joined_at` | `not_member` |
+| `my_removals` | – | jsonb `[{group_name, at}]` not shown before (14 days); marks them shown | – |
+| `mark_seen` | – | void (max one write per 60 s) | – |
+| `set_home_town` | `p_town text` ('' clears) | jsonb `{town}` | `invalid_town` (1–30 chars; letters, digits, space, `. , ' ’ ( ) & / -`; needs a letter), `slow_down` (1 per 3 s, 40 per day) |
+| `my_home_town` | – | jsonb `{town}` | – |
+| `local_board_v2` / `wall_of_fame_v2` | as v1 | v1 columns + `home_town` (null when the name is hidden) | as v1 |
+- `chief_state` json gets new fields at the end: `my_k, owner_k, owner_name, is_owner, is_vice, owner_powers, can_vice, can_req, can_remove, vices[{k,name,is_me}], chief_idle, acting_k, acting_name, is_acting, chief_home, owner_home`; `members[]` get `is_owner, is_vice, is_acting, home_town, can_remove`. `can_hand` = owner powers (old apps show "Lämna över" only to the owner).
+- `group_msgs` (RETURNS TABLE) cannot grow: chat names get roles and home town from `group_status_v2` (by name, like the rank).
+
+### Ranks (0035)
+`olnu_titles()`, notify-group `TITLES` (function v17) and `docs/js/social.js TITLES` renamed every title with a place name (same 36 thresholds, same order; table in v11 above). The client ladder key `olnu.ladder` is now `"12"`, so a renamed rank shows the quiet "Armén har fått nya grader!" toast, not a BEFORDRAN. The level-up push only fires for a rank reached just now, so the renaming sends no pushes.
+
+### Frontend
+- Group page (chief.js `groupItem`): "🎖️ Gruppchef: X <demonym>", "👑 Ägare: Y · 🎗️ Vice: A, B", acting line; "Roller" (owner powers) → sheet with chief chips and vice toggles; "📸 Begär lägesrapport" for chief and vices.
+- Medlemmar (social.js `showStatus`, `group_status_v2`): badges 👑 Ägare / 🎖️ Chef / 🎗️ Vice (+ Tjänstgörande chef) and the demonym. Tap a member → action row (🎖️ Uniform, owner: 🎖️ Gör till chef, 🎗️ Gör till vice / Ta bort vice; anyone allowed: 🚪 Ta bort ur gruppen → inline "Säker? {namn} åker ut ur {grupp}" → toast). No actions → the uniform opens as before.
+- Chat names: rank + name, then small role badges and the demonym.
+- 🏆 boards: "· Ludvikabo" after a shown name.
+- Removed user: `my_removals` (chief.js poll, max every 5 min) → toast "🚪 Du ä utplockad ur {grupp} …" with "👥 Grupper".
+- 📍 Hemstad (hometown.js): ⚙️ row under the name field (hook `settingsName` in app.js) → searchable list (52 taxi towns + CITIES + more, each with its demonym) or free text; one gentle toast after the next level-up ("📍 Var är du mest baserad?"), only once (`olnu.homeAsked`), after the BEFORDRAN popup and never while the beer-type strip is up (`OLNU_STRIP`). Demonym map in `HOMETOWN.DEMONYM` (e.g. Ludvikabo, Smedjebackare, Grängesbergare, Grangärdebo, Borlängebo, Faluguing, Stockholmare, Göteborgare, Malmöbo, Kirunabo); unknown → "från {stad}" (English "from {town}").

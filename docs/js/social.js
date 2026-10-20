@@ -40,16 +40,16 @@
 
   /* ---------- Titles (v11, 36 steps; same ladder as SQL olnu_titles() in 0012 and notify-group TITLES) ---------- */
   var TITLES = [[0, "Rekryt"], [3, "Mönstrad Mellanöl"], [5, "Menig Mjöd"], [7, "Vicekorpral Kapsyl"],
-    [10, "Kapsylkorpral från Grangärde"], [13, "Skumsergeant"], [17, "Furir Flaskhals"],
+    [10, "Korpral Korkskruv"], [13, "Skumsergeant"], [17, "Furir Flaskhals"],
     [22, "Överfurir Fatkran"], [28, "Fanjunkare Flasköppnare"], [35, "Fänrik Fatöl"],
     [43, "Löjtnant Lager"], [52, "Premiärlöjtnant Pilsner"], [62, "Kapten Kaggen"],
-    [75, "Ryttmästare Humle"], [90, "Major Malt från Smedjebacken"], [110, "Överstelöjtnant Ölstop"],
+    [75, "Ryttmästare Humle"], [90, "Major Mäsk"], [110, "Överstelöjtnant Ölstop"],
     [130, "Överste Ölkorv"], [155, "Brigadgeneral Bärs"], [180, "Generalmajor Gambrinus"],
-    [210, "Generallöjtnant Guldskum"], [245, "General Dalabärs"], [285, "Fältmarskalk Fradga"],
-    [330, "Riksmarskalk Rundtur"], [380, "Baron av Bryggstugan"], [430, "Hertig av Humlegården"],
-    [490, "Ärkehertig av Ölkranen"], [560, "Kung Kapsyl av Dalarna"], [640, "Ölkejsaren"],
-    [730, "Bryggerilegenden"], [830, "Halvguden från Väsman"], [920, "Myten från Grängesberg"],
-    [1000, "Legenden från Ludvika"], [1100, "Sagofiguren från Säfsnäs"], [1200, "Oraklet i Ölstugan"],
+    [210, "Generallöjtnant Guldskum"], [245, "General Gyllenbärs"], [285, "Fältmarskalk Fradga"],
+    [330, "Riksmarskalk Rundtur"], [380, "Baron av Bryggstugan"], [430, "Hertig av Humlefältet"],
+    [490, "Ärkehertig av Ölkranen"], [560, "Kung Kapsyl den Store"], [640, "Ölkejsaren"],
+    [730, "Bryggerilegenden"], [830, "Halvguden vid Jäskaret"], [920, "Myten i Mässen"],
+    [1000, "Legenden vid Långbordet"], [1100, "Sagofiguren i Skyttegraven"], [1200, "Oraklet i Ölstugan"],
     [1300, "Överbefälhavare Öl"], [1500, "Ölguden"]];
   function titleFor(total) {
     total = Math.max(0, total | 0);
@@ -77,8 +77,9 @@
       stats = { total: total, week: d.week | 0, title: d.title || tf.title,
         next: d.next_title !== undefined ? d.next_title : tf.next, nextAt: d.next_at !== undefined ? d.next_at : tf.nextAt };
       var before = U.ls.get(TITLE_KEY, ""), beforeTotal = U.ls.get(TOTAL_KEY, "");
-      var ladderNew = U.ls.get(LADDER_KEY, "") !== "11";
-      U.ls.set(TITLE_KEY, stats.title); U.ls.set(TOTAL_KEY, String(total)); U.ls.set(LADDER_KEY, "11");
+      // v25 (0035): ranks without place names = a new ladder version, so a renamed rank is a quiet toast, not a BEFORDRAN.
+      var ladderNew = U.ls.get(LADDER_KEY, "") !== "12";
+      U.ls.set(TITLE_KEY, stats.title); U.ls.set(TOTAL_KEY, String(total)); U.ls.set(LADDER_KEY, "12");
       A.updateCounts();
       // v11: a real promotion = more beers than last time AND a new title. A title that changed only
       // because the ladder changed (app update) gets a quiet "new ranks" toast instead.
@@ -88,6 +89,7 @@
     }
   }
   function promoted(title, oldTitle, total) {
+    try { if (window.HOMETOWN && window.HOMETOWN.afterLevelUp) window.HOMETOWN.afterLevelUp(); } catch (e) {}   // v25: one gentle 📍 prompt
     if (window.MEDALS && window.MEDALS.levelUp) {
       window.MEDALS.levelUp(oldTitle, title, total);
       setTimeout(function () { window.FX.splash(document.querySelector(".hx-title")); }, 2700);
@@ -408,16 +410,20 @@
         var s = statOf(m); if (!s) return "";
         return (s.beers + s.others) + " 🍺";   // v14: all drinks, total only
       }
+      function paintTags(h) {
+        var s = statOf(h.m); h.tag.innerHTML = "";
+        if (s && s.row) tagEls(s.row).forEach(function (x) { h.tag.appendChild(x); });
+      }
       function paintHeads() {
-        heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.textContent = beersText(h.m); });
+        heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.textContent = beersText(h.m); paintTags(h); });
       }
       function loadStats() {
         if (!statusOn() || !alive()) return;
-        call("group_status", { p_group_id: g.id }).then(function (r) {
+        groupStatus(g.id).then(function (r) {
           if (r.error || !alive()) return;
           stats = {}; meStat = null;
           (r.data || []).forEach(function (x) {
-            var s = { beers: Math.max(0, x.beers | 0), others: Math.max(0, x.others | 0), total: Math.max(0, x.total | 0) };
+            var s = { beers: Math.max(0, x.beers | 0), others: Math.max(0, x.others | 0), total: Math.max(0, x.total | 0), row: x };
             if (x.is_me) meStat = s;
             if (x.name) stats[x.name] = s;
           });
@@ -510,7 +516,9 @@
         seen[m.id] = 1;
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
         var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", text: beersText(m) });
-        heads.push({ m: m, name: nmEl, n: nEl });
+        var tagEl = el("span", { class: "cm-tags" });   // v25: 👑/🎖️/🎗️ + "Ludvikabo", small, after the rank + name
+        var hd = { m: m, name: nmEl, n: nEl, tag: tagEl };
+        heads.push(hd); paintTags(hd);
         if (medalsOn() && (m.name || m.is_me)) {
           nmEl.classList.add("cm-tap"); nmEl.setAttribute("role", "button"); nmEl.setAttribute("tabindex", "0");
           var openU = function () { var s = statOf(m); window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null }, function () { openChat(g); }); };
@@ -521,7 +529,7 @@
         var col = m.is_me ? null : chatColor(m.name || "");
         if (col) nmEl.style.color = col;
         list.insertBefore(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "", "data-at": String(m.created_at || ""), "data-mid": String(m.id) }, [
-          el("div", { class: "cm-head" }, [nmEl, nEl,
+          el("div", { class: "cm-head" }, [nmEl, tagEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") }),
           jamLink(m.body) ? el("a", { class: "btn btn-block jam-btn", href: jamLink(m.body), target: "_blank", rel: "noopener noreferrer", text: t("jamJoin") }) : null,
@@ -671,6 +679,22 @@
   /* ---------- Group status (v8, P) ---------- */
   function medalsOn() { return !!(window.MEDALS && window.MEDALS.on()); }
   function statusOn() { return A.othersOn() && !off.group_status; }
+  // v25 (0034): group_status_v2 adds member key, roles (👑/🎖️/🎗️), home town and can_remove. Old server → group_status.
+  function groupStatus(gid) {
+    if (off.group_status_v2) return call("group_status", { p_group_id: gid });
+    return call("group_status_v2", { p_group_id: gid }).then(function (r) {
+      return r.error && r.off ? call("group_status", { p_group_id: gid }) : r;
+    });
+  }
+  function homeLbl(t) { try { return t && window.HOMETOWN ? window.HOMETOWN.label(t) : ""; } catch (e) { return ""; } }
+  // Small role badges + demonym label for a member row (empty on an old server).
+  function tagEls(m) {
+    var el = A.el, out = [];
+    try { if (window.CHIEF && window.CHIEF.badges) window.CHIEF.badges(m).forEach(function (b) { out.push(el("span", { class: "role-b " + b.c, text: b.t })); }); } catch (e) {}
+    var h = homeLbl(m && m.home_town);
+    if (h) out.push(el("span", { class: "ht-tag", text: h }));
+    return out;
+  }
   function showStatus(g) {
     var el = A.el;
     A.openSheet(g.name || "", function (body) {
@@ -680,7 +704,7 @@
       body.appendChild(list);
       if (chatOn()) body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [A.btn(t("chat"), "btn-amber btn-block", function () { openChat(g); })]));
       list.appendChild(el("li", { class: "muted", text: "…" }));
-      call("group_status", { p_group_id: g.id }).then(function (r) {
+      groupStatus(g.id).then(function (r) {
         if (!document.body.contains(list)) return;
         list.innerHTML = "";
         if (r.error) {
@@ -688,19 +712,21 @@
           list.appendChild(el("li", { class: "muted", text: codeOf(r.error) === "not_member" ? t("chatNotMember") : t("statusFail") }));
           return;
         }
-        var kinds = t("kindLow") || {}, rowsByName = {}, meRow = null;
+        var kinds = t("kindLow") || {}, rowsByName = {}, meRow = null, all = r.data || [], openPanel = null;
         var tot = function (m) { return Math.max(0, m.beers | 0) + Math.max(0, m.others | 0); };
-        (r.data || []).slice().sort(function (a, b) { return tot(b) - tot(a); }).forEach(function (m) {
+        all.slice().sort(function (a, b) { return tot(b) - tot(a); }).forEach(function (m) {
           var beers = Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), others = 0, parts = [];   // v14: all drinks count, total only
           if (beers) parts.push(beers + " 🍺");
           if (others) parts.push(others + " 🥃 " + (kinds[m.other_kind] || kinds.annat || ""));
           var tf = titleFor(m.total | 0);
           var medEl = el("span", { class: "st-medals", "aria-hidden": "true" });
+          var tags = tagEls(m);
           var row = el("li", { class: "st-row" + (m.is_me ? " me" : "") }, [
             el("span", { class: "st-dot" + (m.live ? " on" : ""), title: m.live ? t("statusLive") : "", "aria-label": m.live ? t("statusLive") : "" }),
             el("span", { class: "st-main" }, [
               el("span", { class: "st-name", text: (m.is_me ? t("you") + " · " : "") + (m.name || t("someone")) }),
               el("span", { class: "st-title", text: "🎖️ " + tf.title }),
+              tags.length ? el("span", { class: "st-roles" }, tags) : null,
               medEl
             ]),
             el("span", { class: "st-n", text: parts.length ? parts.join(" · ") : t("statusNone") })
@@ -708,12 +734,24 @@
           list.appendChild(row);
           try { if (window.AFTER && window.AFTER.statusRow) window.AFTER.statusRow(g, m, row); } catch (e) {}   // v16: 🏠 home tonight
           if (m.is_me) meRow = medEl; else if (m.name) (rowsByName[m.name] = rowsByName[m.name] || []).push(medEl);
-          if (medalsOn()) {
+          var openU = medalsOn() ? function () { window.MEDALS.openMember(g, m, function () { showStatus(g); }); } : null;
+          // v25: tap a member → actions (👑 owner: chief/vice; owner/chief/vice: 🚪 remove), else the uniform as before.
+          var panelFor = function () {
+            try { return window.CHIEF && window.CHIEF.memberPanel ? window.CHIEF.memberPanel(g, m, all, function () { showStatus(g); }, openU) : null; } catch (e) { return null; }
+          };
+          var hasActs = !m.is_me && !!m.k && (m.can_remove || all.some(function (x) { return x.is_me && (x.is_owner || x.is_chief); }));
+          var tap = function () {
+            if (openPanel && openPanel.row === row) { openPanel.el.remove(); openPanel = null; return; }
+            if (openPanel) { openPanel.el.remove(); openPanel = null; }
+            var p = hasActs ? panelFor() : null;
+            if (p) { row.parentNode.insertBefore(p, row.nextSibling); openPanel = { row: row, el: p }; return; }
+            if (openU) openU();
+          };
+          if (openU || hasActs) {
             row.classList.add("st-tap"); row.setAttribute("role", "button"); row.setAttribute("tabindex", "0");
-            row.setAttribute("aria-label", (m.name || t("someone")) + " — " + t("uniform"));
-            var openU = function () { window.MEDALS.openMember(g, m, function () { showStatus(g); }); };
-            row.addEventListener("click", openU);
-            row.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openU(); } });
+            row.setAttribute("aria-label", (m.name || t("someone")) + " — " + (hasActs ? (I.lang === "en" ? "actions" : "åtgärder") : t("uniform")));
+            row.addEventListener("click", tap);
+            row.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(); } });
           }
         });
         if (medalsOn()) window.MEDALS.memberMedals(g.id).then(function (v) {
