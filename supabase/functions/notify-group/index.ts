@@ -17,6 +17,8 @@
 // Body events (v16 EFTERÅT): {event:"medevac_check", check_id} -> "🚑 Lisa kollar på Oskar", {event:"voice", voice_id} -> röstskål.
 // Body events (v18 ETA): {event:"eta", eta_id} -> "🪖 Anton ä på marsch mot Pitchers. ETA 7 min." to mates already there.
 // Body events (v22 GRUPPCHEF): {event:"status_req", req_id} -> "📸 Lägesrapport! {namn} vill se läget – 10 min" to the group.
+// Body events (v27 SKÅLTIMMEN): {event:"skal_hour", hour_id} -> "🍻 SKÅLTIMMEN! 3 min – visa din dricka!" to the group;
+//   {event:"film", group_id, night} -> "Filmen är framkallad! 📸" to the group (engångskameran, 10:00).
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -958,6 +960,56 @@ export function helgRemindPayload(idx: number, streak: number, week: string) {
   };
 }
 
+// ---- v27 SKÅLTIMMEN + ENGÅNGSKAMERAN ----
+export const SKAL_HOUR_TITLE = "🍻 SKÅLTIMMEN! 3 min – visa din dricka!";
+export const SKAL_HOUR_BODIES: string[] = [
+  "Glaset i kameran, nu! · {grupp}",
+  "Alla trupper: visa vad ni dricker · {grupp}",
+  "Klockan tickar. Bildbevis på drickan · {grupp}",
+  "Skål-larm! Höj glaset och fota · {grupp}",
+  "Ingen fusk – det som står på bordet nu · {grupp}",
+  "{namn} drog i skålsnöret · {grupp}",
+  "Dricka fram, kamera upp, 3 min · {grupp}",
+  "Radion: skåltimme, över! · {grupp}",
+  "Truppen samlas runt glasen · {grupp}",
+  "Visa din dricka, sen ser du dom andras · {grupp}",
+  "Plutonen höjer glasen – var ä du? · {grupp}",
+  "Ett glas, ett foto, en legend · {grupp}",
+  "Spaningsorder: vad dricker du just nu? · {grupp}",
+  "Glöm int' – först fota, sen skåla · {grupp}",
+  "Skålgeneralen kallar! 3 minuter · {grupp}",
+];
+export function skalHourPayload(idx: number, namn: string, groupName: string, hourId: number) {
+  return {
+    title: SKAL_HOUR_TITLE,
+    body: fill(SKAL_HOUR_BODIES[wrapIdx(idx, SKAL_HOUR_BODIES.length)],
+      { namn: cleanBarName(namn) || "Slumpen", grupp: cleanBarName(groupName) || "gruppen" }),
+    url: `/?skal=${hourId}`,
+    tag: `olnu-skal-${hourId}`,
+  };
+}
+export const FILM_TITLE = "Filmen är framkallad! 📸";
+export const FILM_BODIES: string[] = [
+  "{n} bilder från igår väntar · {grupp}",
+  "Mörkrummet ä klart. {n} bilder · {grupp}",
+  "Gårdagens bevis ä framkallade · {grupp}",
+  "Kom och se vad ni gjorde i natt · {grupp}",
+  "Fotolabbet har jobbat hela natten · {grupp}",
+  "{n} bilder. Ingen kan förneka nåt nu · {grupp}",
+  "Rullen ä tillbaka från framkallningen · {grupp}",
+  "Engångskameran har talat · {grupp}",
+  "Gårdagen i bilder – reagera nu · {grupp}",
+  "Dags att minnas (eller glömma) · {grupp}",
+];
+export function filmPayload(idx: number, groupName: string, n: number, groupId: string) {
+  return {
+    title: FILM_TITLE,
+    body: fill(FILM_BODIES[wrapIdx(idx, FILM_BODIES.length)], { n: Math.max(1, n | 0), grupp: cleanBarName(groupName) || "gruppen" }),
+    url: `/?film=${groupId}`,
+    tag: `olnu-film-${groupId}`,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1703,6 +1755,60 @@ async function helgRemindPush(admin: Admin, uid: string) {
   return jobs.length ? { ...(await sendAll(admin, jobs, 6 * 3600)), recipients: rows.length } : { ...NONE, recipients: rows.length };
 }
 
+// ---- v27 SKÅLTIMMEN ----
+// {event:"skal_hour", hour_id}: the skåltimme to every other member of that ONE group. The skal_hours row must be
+// fired by the caller (the starter, or the member whose poll fired the random one), < 3 min old and not pushed
+// (atomic `notified` claim). Reasons: no_hour, no_group.
+async function skalHourPush(admin: Admin, uid: string, b: Body) {
+  const hid = parseRallyId(b.hour_id);
+  if (hid === null) return { ...NONE, reason: "no_hour" };
+  const { data: claimed, error } = await admin
+    .from("skal_hours").update({ notified: true })
+    .eq("id", hid).eq("fired_by", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString())
+    .select("id, group_id, started_by, auto");
+  if (error) throw error;
+  const h = claimed && claimed[0];
+  if (!h) return { ...NONE, reason: "no_hour" };
+  const gid = h.group_id as string;
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const idx = Math.floor(Math.random() * SKAL_HOUR_BODIES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(skalHourPayload(idx, h.auto ? "Slumpen" : (mates.get(s.user_id) ?? "Gruppchefen"),
+      (g?.name as string) ?? "", hid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 180) : NONE;
+}
+
+// {event:"film", group_id, night}: "Filmen är framkallad!" to every other member. The film_rolls row must be
+// claimed by the caller (film_poll), < 10 min ago, not pushed (atomic `notified` claim). Reasons: no_roll, no_group.
+async function filmPush(admin: Admin, uid: string, b: Body) {
+  const gid = typeof b.group_id === "string" && /^[0-9a-f-]{36}$/i.test(b.group_id) ? b.group_id : "";
+  const night = typeof b.night === "string" && b.night.length <= 40 && !isNaN(Date.parse(b.night)) ? new Date(b.night).toISOString() : "";
+  if (!gid || !night) return { ...NONE, reason: "no_roll" };
+  const { data: claimed, error } = await admin
+    .from("film_rolls").update({ notified: true })
+    .eq("group_id", gid).eq("night", night).eq("claimed_by", uid).eq("notified", false)
+    .gt("claimed_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+    .select("group_id");
+  if (error) throw error;
+  if (!claimed || !claimed[0]) return { ...NONE, reason: "no_roll" };
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const { count } = await admin.from("snap_photos").select("id", { count: "exact", head: true })
+    .eq("group_id", gid).eq("kind", "film").eq("night", night);
+  const idx = Math.floor(Math.random() * FILM_BODIES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(filmPayload(idx, (g?.name as string) ?? "", count ?? 0, gid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 4 * 3600) : NONE;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1763,6 +1869,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "voice") return json(await voicePush(admin, uid, body));
     if (event === "eta") return json(await etaPush(admin, uid, body));
     if (event === "status_req") return json(await statusReqPush(admin, uid, body));
+    if (event === "skal_hour") return json(await skalHourPush(admin, uid, body));
+    if (event === "film") return json(await filmPush(admin, uid, body));
     if (event === "helg_remind") return json(await helgRemindPush(admin, uid));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.

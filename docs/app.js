@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM].forEach(function (m) {
       if (!m || typeof m[fn] !== "function") return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -3593,7 +3593,10 @@
     var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos"), st = q.get("status");
     var nfi = q.get("find"), nfr = q.get("friend");
     if (nfi || nfr || q.get("friends")) { if (LIVE) mods("openNearLink", nfi || "list", nfr); return; }
-    if (st) { if (LIVE) mods("openStatusLink", st); }
+    var sk = q.get("skal"), fm = q.get("film");
+    if (sk) { if (LIVE) mods("openSkalLink", sk); }
+    else if (fm) { if (LIVE) mods("openFilmLink", fm); }
+    else if (st) { if (LIVE) mods("openStatusLink", st); }
     else if (c) { if (LIVE) mods("openChatLink", c); }
     else if (r) { if (LIVE) mods("openLink", r, q.get("answer")); }
     else if (b) openBarById(b, 0);
