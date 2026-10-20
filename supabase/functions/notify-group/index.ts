@@ -17,6 +17,10 @@
 // Body events (v16 EFTERÅT): {event:"medevac_check", check_id} -> "🚑 Lisa kollar på Oskar", {event:"voice", voice_id} -> röstskål.
 // Body events (v18 ETA): {event:"eta", eta_id} -> "🪖 Anton ä på marsch mot Pitchers. ETA 7 min." to mates already there.
 // Body events (v22 GRUPPCHEF): {event:"status_req", req_id} -> "📸 Lägesrapport! {namn} vill se läget – 10 min" to the group.
+// Body events (v27 SKÅLTIMMEN): {event:"skal_hour", hour_id} -> "🍻 SKÅLTIMMEN! 3 min – visa din dricka!" to the group;
+//   {event:"film", group_id, night} -> "Filmen är framkallad! 📸" to the group (engångskameran, 10:00).
+// Body events (NÄRA, 0045/0047): {event:"friend", friend_id} -> "🤝 {namn} vill bli din vän", {event:"find", req_id} ->
+//   "🧭 {namn} letar efter dig i vimlet!" (one recipient each; atomic notified claims).
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -937,6 +941,77 @@ export function statusReqPayload(idx: number, namn: string, groupName: string, r
   };
 }
 
+// ---- v27 HELGSTREAK: Friday 17:00 reminder (gentle; a check-in is enough) ----
+export const HELG_LINES = [
+  "🗓️ Fredag! Din helgstreak på {n} {veckor} vill gärna leva vidare",
+  "🔥 Helgstreaken ({n} {veckor}) hänger på en tråd, soldat",
+  "📯 Helgen ä här. Din streak på {n} {veckor} väntar på dig",
+  "🪖 Rapport från högkvarteret: streaken ({n} {veckor}) behöver en helgkväll",
+  "🌙 {n} {veckor} i rad! En incheckning i helgen räddar dem",
+  "🧊 Inga frysbiljetter kvar. Streaken på {n} {veckor} hänger på helgen",
+  "🫡 Fredag kl fem. Streaken ({n} {veckor}) står i givakt och väntar",
+  "📍 En liten incheckning fre–sön så lever streaken ({n} {veckor})",
+];
+export function helgRemindPayload(idx: number, streak: number, week: string) {
+  const n = Math.max(1, Math.floor(streak) || 1);
+  return {
+    title: fill(HELG_LINES[wrapIdx(idx, HELG_LINES.length)], { n: String(n), veckor: n === 1 ? "vecka" : "veckor" }),
+    body: "En öl eller en incheckning fre–sön räcker. Vila ä oxå bra – ingen press.",
+    url: "/?helg=1",
+    tag: `olnu-helg-${week}`,
+  };
+}
+
+// ---- v27 SKÅLTIMMEN + ENGÅNGSKAMERAN ----
+export const SKAL_HOUR_TITLE = "🍻 SKÅLTIMMEN! 3 min – visa din dricka!";
+export const SKAL_HOUR_BODIES: string[] = [
+  "Glaset i kameran, nu! · {grupp}",
+  "Alla trupper: visa vad ni dricker · {grupp}",
+  "Klockan tickar. Bildbevis på drickan · {grupp}",
+  "Skål-larm! Höj glaset och fota · {grupp}",
+  "Ingen fusk – det som står på bordet nu · {grupp}",
+  "{namn} drog i skålsnöret · {grupp}",
+  "Dricka fram, kamera upp, 3 min · {grupp}",
+  "Radion: skåltimme, över! · {grupp}",
+  "Truppen samlas runt glasen · {grupp}",
+  "Visa din dricka, sen ser du dom andras · {grupp}",
+  "Plutonen höjer glasen – var ä du? · {grupp}",
+  "Ett glas, ett foto, en legend · {grupp}",
+  "Spaningsorder: vad dricker du just nu? · {grupp}",
+  "Glöm int' – först fota, sen skåla · {grupp}",
+  "Skålgeneralen kallar! 3 minuter · {grupp}",
+];
+export function skalHourPayload(idx: number, namn: string, groupName: string, hourId: number) {
+  return {
+    title: SKAL_HOUR_TITLE,
+    body: fill(SKAL_HOUR_BODIES[wrapIdx(idx, SKAL_HOUR_BODIES.length)],
+      { namn: cleanBarName(namn) || "Slumpen", grupp: cleanBarName(groupName) || "gruppen" }),
+    url: `/?skal=${hourId}`,
+    tag: `olnu-skal-${hourId}`,
+  };
+}
+export const FILM_TITLE = "Filmen är framkallad! 📸";
+export const FILM_BODIES: string[] = [
+  "{n} bilder från igår väntar · {grupp}",
+  "Mörkrummet ä klart. {n} bilder · {grupp}",
+  "Gårdagens bevis ä framkallade · {grupp}",
+  "Kom och se vad ni gjorde i natt · {grupp}",
+  "Fotolabbet har jobbat hela natten · {grupp}",
+  "{n} bilder. Ingen kan förneka nåt nu · {grupp}",
+  "Rullen ä tillbaka från framkallningen · {grupp}",
+  "Engångskameran har talat · {grupp}",
+  "Gårdagen i bilder – reagera nu · {grupp}",
+  "Dags att minnas (eller glömma) · {grupp}",
+];
+export function filmPayload(idx: number, groupName: string, n: number, groupId: string) {
+  return {
+    title: FILM_TITLE,
+    body: fill(FILM_BODIES[wrapIdx(idx, FILM_BODIES.length)], { n: Math.max(1, n | 0), grupp: cleanBarName(groupName) || "gruppen" }),
+    url: `/?film=${groupId}`,
+    tag: `olnu-film-${groupId}`,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1663,6 +1738,138 @@ async function statusReqPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
 }
 
+// ---- v27 HELGSTREAK ----
+// {event:"helg_remind"}: group-mates of the caller whose weekend streak would break (streak > 0, no freeze pass
+// left, not out yet this week). Friday 17:00-23:59 Europe/Stockholm only; max 1 per recipient per week (claimed in
+// push_sent kind 'helg' by the SQL function helg_remind_targets). Reason when nobody: no_target.
+async function helgRemindPush(admin: Admin, uid: string) {
+  const { data, error } = await admin.rpc("helg_remind_targets", { p_caller: uid });
+  if (error) throw error;
+  const rows = (Array.isArray(data) ? data : []) as { user_id: string; streak: number }[];
+  if (rows.length === 0) return { ...NONE, reason: "no_target" };
+  const streakOf = new Map(rows.map((r) => [r.user_id, Number(r.streak) || 1]));
+  const week = new Date().toISOString().slice(0, 10);
+  const idx = Math.floor(Math.random() * HELG_LINES.length);
+  const jobs = (await subsOf(admin, [...streakOf.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(helgRemindPayload(idx, streakOf.get(s.user_id) ?? 1, week)),
+  }));
+  return jobs.length ? { ...(await sendAll(admin, jobs, 6 * 3600)), recipients: rows.length } : { ...NONE, recipients: rows.length };
+}
+
+// ---- v27 SKÅLTIMMEN ----
+// {event:"skal_hour", hour_id}: the skåltimme to every other member of that ONE group. The skal_hours row must be
+// fired by the caller (the starter, or the member whose poll fired the random one), < 3 min old and not pushed
+// (atomic `notified` claim). Reasons: no_hour, no_group.
+async function skalHourPush(admin: Admin, uid: string, b: Body) {
+  const hid = parseRallyId(b.hour_id);
+  if (hid === null) return { ...NONE, reason: "no_hour" };
+  const { data: claimed, error } = await admin
+    .from("skal_hours").update({ notified: true })
+    .eq("id", hid).eq("fired_by", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString())
+    .select("id, group_id, started_by, auto");
+  if (error) throw error;
+  const h = claimed && claimed[0];
+  if (!h) return { ...NONE, reason: "no_hour" };
+  const gid = h.group_id as string;
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const idx = Math.floor(Math.random() * SKAL_HOUR_BODIES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(skalHourPayload(idx, h.auto ? "Slumpen" : (mates.get(s.user_id) ?? "Gruppchefen"),
+      (g?.name as string) ?? "", hid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 180) : NONE;
+}
+
+// {event:"film", group_id, night}: "Filmen är framkallad!" to every other member. The film_rolls row must be
+// claimed by the caller (film_poll), < 10 min ago, not pushed (atomic `notified` claim). Reasons: no_roll, no_group.
+async function filmPush(admin: Admin, uid: string, b: Body) {
+  const gid = typeof b.group_id === "string" && /^[0-9a-f-]{36}$/i.test(b.group_id) ? b.group_id : "";
+  const night = typeof b.night === "string" && b.night.length <= 40 && !isNaN(Date.parse(b.night)) ? new Date(b.night).toISOString() : "";
+  if (!gid || !night) return { ...NONE, reason: "no_roll" };
+  const { data: claimed, error } = await admin
+    .from("film_rolls").update({ notified: true })
+    .eq("group_id", gid).eq("night", night).eq("claimed_by", uid).eq("notified", false)
+    .gt("claimed_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+    .select("group_id");
+  if (error) throw error;
+  if (!claimed || !claimed[0]) return { ...NONE, reason: "no_roll" };
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const { count } = await admin.from("snap_photos").select("id", { count: "exact", head: true })
+    .eq("group_id", gid).eq("kind", "film").eq("night", night);
+  const idx = Math.floor(Math.random() * FILM_BODIES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(filmPayload(idx, (g?.name as string) ?? "", count ?? 0, gid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 4 * 3600) : NONE;
+}
+
+// ---- NÄRA: friend request + "Hitta kompisen" (migrations 0045 / 0047) ----
+const FRIENDREQ_LINES = [
+  "🤝 {namn} vill bli din vän", "🤝 {namn} skickar en vänförfrågan", "🤝 Ny kamrat på ingång: {namn}",
+  "🤝 {namn} vill värva dig till sin trupp", "🤝 {namn} föreslår en allians", "🤝 {namn} vill ha dig i vänlistan",
+];
+const FIND_LINES = [
+  "🧭 {namn} letar efter dig i vimlet!", "🧭 {namn} söker din position, soldat", "🧭 Spaning: {namn} vill hitta dig",
+  "🧭 {namn} ä vilse i folkhavet och letar efter dig", "🧭 {namn} har kompassen fram – var ä du?", "🧭 {namn} vill hitta dig. Svara nu!",
+  "🧭 Radion sprakar: {namn} söker kontakt", "🧭 {namn} försöker hitta dig i trängseln",
+];
+async function nameOf(admin: Admin, uid: string, groupId?: string | null): Promise<string> {
+  if (groupId) {
+    const { data } = await admin.from("group_members").select("display_name").eq("group_id", groupId).eq("user_id", uid).maybeSingle();
+    if (data?.display_name) return data.display_name as string;
+  }
+  const { data: un } = await admin.from("user_names").select("name").eq("user_id", uid).maybeSingle();
+  if (un?.name) return un.name as string;
+  const { data: gm } = await admin.from("group_members").select("display_name").eq("user_id", uid).order("display_name").limit(1);
+  return (gm && gm[0]?.display_name as string) || "En kompis";
+}
+async function friendPush(admin: Admin, uid: string, b: Body) {
+  const fid = parseRallyId((b as Record<string, unknown>).friend_id);
+  if (fid === null) return { ...NONE, reason: "no_friend" };
+  const { data: claimed, error } = await admin
+    .from("friendships").update({ notified: true })
+    .eq("id", fid).eq("requester", uid).eq("status", "pending").eq("notified", false)
+    .gt("updated_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+    .select("id, a, b");
+  if (error) throw error;
+  const f = claimed && claimed[0];
+  if (!f) return { ...NONE, reason: "no_friend" };
+  if (!(await rateClaim(admin, uid, "friend", 20))) return { ...NONE, reason: "slow_down" };
+  const to = (f.a === uid ? f.b : f.a) as string;
+  const namn = cleanBarName(await nameOf(admin, uid)) || "En kompis";
+  const line = FRIENDREQ_LINES[Math.floor(Math.random() * FRIENDREQ_LINES.length)];
+  const payload = JSON.stringify({ title: fill(line, { namn }), body: "Tryck för att svara.", url: "/?friends=1", tag: `olnu-friend-${fid}` });
+  const jobs = (await subsOf(admin, [to])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
+}
+async function findPush(admin: Admin, uid: string, b: Body) {
+  const rid = parseRallyId(b.req_id);
+  if (rid === null) return { ...NONE, reason: "no_find" };
+  const { data: claimed, error } = await admin
+    .from("find_reqs").update({ notified: true })
+    .eq("id", rid).eq("from_uid", uid).eq("notified", false).in("status", ["pending", "auto"])
+    .gt("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+    .select("id, to_uid, group_id, status");
+  if (error) throw error;
+  const r = claimed && claimed[0];
+  if (!r) return { ...NONE, reason: "no_find" };
+  if (!(await rateClaim(admin, uid, "find", 30))) return { ...NONE, reason: "slow_down" };
+  const namn = cleanBarName(await nameOf(admin, uid, r.group_id as string | null)) || "En kompis";
+  const line = FIND_LINES[Math.floor(Math.random() * FIND_LINES.length)];
+  const body = r.status === "auto" ? "Tryck och öppna kompassen så hittar ni varann." : "Tryck för att svara – frågan gäller i 5 min.";
+  const payload = JSON.stringify({ title: fill(line, { namn }), body, url: `/?find=${rid}`, tag: `olnu-find-${rid}` });
+  const jobs = (await subsOf(admin, [r.to_uid as string])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 300) : NONE;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1723,6 +1930,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "voice") return json(await voicePush(admin, uid, body));
     if (event === "eta") return json(await etaPush(admin, uid, body));
     if (event === "status_req") return json(await statusReqPush(admin, uid, body));
+    if (event === "skal_hour") return json(await skalHourPush(admin, uid, body));
+    if (event === "film") return json(await filmPush(admin, uid, body));
+    if (event === "helg_remind") return json(await helgRemindPush(admin, uid));
+    if (event === "friend") return json(await friendPush(admin, uid, body));
+    if (event === "find") return json(await findPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

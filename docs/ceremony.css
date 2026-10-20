@@ -1,0 +1,40 @@
+/* Öl Nu v27 — Medaljceremonin (js/ceremony.js) */
+.gitem .cer-gi>.cer-gbtn,.cer-gbtn{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;text-align:left}
+.cer-gs{max-width:100%}
+.cer-gl{font-weight:700;white-space:nowrap}
+.cer-gs{font-family:var(--hud);font-size:var(--fs-xs,12px);color:var(--amber-2,#ffc35a);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cer-gbtn.cer-hot{box-shadow:inset 0 0 0 1px rgba(255,196,64,.55)}
+.hx-chip.cer-chip{color:var(--on-amber,#241300);background:var(--gold,#e8b84a);border-color:var(--gold,#e8b84a);font-weight:700}
+
+.cer-head{text-align:center;padding:4px 0 10px}
+.cer-kick{font-family:var(--hud);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted,#a3aca8)}
+.cer-gname{font-size:20px;font-weight:700;margin:2px 0}
+.cer-phase{font-size:13px;color:var(--amber-2,#ffc35a)}
+.cer-note{background:var(--s2,#172134);border:1px solid var(--hair,rgba(255,255,255,.09));border-radius:var(--r-m,14px);padding:12px 14px;line-height:1.45}
+.cer-prog{text-align:center;margin:0 0 8px;font-size:14px}
+.cer-prog b{color:var(--gold,#e8b84a);font-variant-numeric:tabular-nums}
+.cer-cats{display:flex;flex-direction:column;gap:8px}
+.cer-cat{background:var(--s2,#172134);border:1px solid var(--hair,rgba(255,255,255,.09));border-radius:var(--r-m,14px);padding:10px 12px}
+.cer-cat.cer-voted{border-color:rgba(232,184,74,.45)}
+.cer-ct{display:flex;align-items:center;gap:10px}
+.cer-ce{font-size:26px;line-height:1;width:34px;text-align:center;flex:0 0 auto}
+.cer-ct b{display:block;font-size:15px}
+.cer-ct small{display:block;color:var(--muted,#a3aca8);font-size:12.5px;line-height:1.35}
+.cer-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:44px}
+.cer-pick{border-radius:var(--r-pill,999px)}
+.cer-pick.on{background:var(--gold,#e8b84a);border-color:var(--gold,#e8b84a);color:#241300}
+.cer-who{margin-top:10px;font-size:13px}
+.cer-fine{font-size:12px}
+.cer-win.cer-me{border-color:var(--gold,#e8b84a);background:linear-gradient(180deg,rgba(232,184,74,.14),rgba(232,184,74,.04))}
+
+/* ceremony card: a medal certificate */
+.cer-card{position:relative;margin:0 0 10px;padding:16px 14px 14px;text-align:center;border-radius:var(--r-l,20px);
+  background:radial-gradient(circle at 50% 0,rgba(232,184,74,.25),transparent 60%),linear-gradient(180deg,#2a2412,#151208);
+  border:2px solid var(--gold,#e8b84a);box-shadow:0 0 0 4px rgba(232,184,74,.12),0 10px 30px rgba(0,0,0,.45)}
+.cer-card-k{font-family:var(--hud);font-size:11px;letter-spacing:.28em;color:var(--gold,#e8b84a)}
+.cer-card-m{font-size:44px;line-height:1.2;margin:6px 0;animation:cerShine 2.4s ease-in-out 2}
+.cer-card-t{font-weight:700;font-size:16px}
+.cer-card-l{margin-top:6px;font-size:13.5px;color:var(--text-2,#c4cbc8);line-height:1.4}
+.cer-card-f{margin-top:8px;font-family:var(--hud);font-size:11px;color:var(--muted,#a3aca8);letter-spacing:.08em}
+@keyframes cerShine{0%,100%{transform:scale(1);filter:none}50%{transform:scale(1.08);filter:drop-shadow(0 0 8px rgba(232,184,74,.7))}}
+@media (prefers-reduced-motion: reduce){.cer-card-m{animation:none}}

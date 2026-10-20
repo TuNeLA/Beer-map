@@ -779,9 +779,12 @@
           var openU = medalsOn() ? function () { window.MEDALS.openMember(g, m, function () { showStatus(g); }); } : null;
           // v25: tap a member → actions (👑 owner: chief/vice; owner/chief/vice: 🚪 remove), else the uniform as before.
           var panelFor = function () {
-            try { return window.CHIEF && window.CHIEF.memberPanel ? window.CHIEF.memberPanel(g, m, all, function () { showStatus(g); }, openU) : null; } catch (e) { return null; }
+            var p = null;
+            try { p = window.CHIEF && window.CHIEF.memberPanel ? window.CHIEF.memberPanel(g, m, all, function () { showStatus(g); }, openU) : null; } catch (e) { p = null; }
+            try { if (window.NEAR && window.NEAR.memberPanel) p = window.NEAR.memberPanel(g, m, p, openU); } catch (e) {}   // v26: ➕ Lägg till vän, 🧭 Hitta
+            return p;
           };
-          var hasActs = !m.is_me && !!m.k && (m.can_remove || all.some(function (x) { return x.is_me && (x.is_owner || x.is_chief); }));
+          var hasActs = !m.is_me && !!m.k && (m.can_remove || all.some(function (x) { return x.is_me && (x.is_owner || x.is_chief); }) || !!window.NEAR);
           var tap = function () {
             if (openPanel && openPanel.row === row) { openPanel.el.remove(); openPanel = null; return; }
             if (openPanel) { openPanel.el.remove(); openPanel = null; }

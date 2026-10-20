@@ -1,0 +1,35 @@
+name: Events (import)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/import-events.mjs'
+      - 'scripts/event-feeds.json'
+      - '.github/workflows/events.yml'
+  schedule:
+    - cron: '23 9 * * *'    # every day 09:23 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: events
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Import events (Ticketmaster + iCal / JSON-LD feeds)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TICKETMASTER_KEY: ${{ secrets.TICKETMASTER_KEY }}
+        run: node scripts/import-events.mjs

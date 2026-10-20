@@ -1,0 +1,75 @@
+/* Öl Nu v26 — Vänner, Truppen samlad, Hitta kompisen (js/near.js). No flashing: the arrow turns smoothly,
+   confetti falls once (no blinking), all motion off with prefers-reduced-motion. */
+
+/* Friends sheet */
+.nr-in .nr-req{margin:0 0 10px;padding:8px 10px;border:1px solid var(--line,#33415c);border-left:3px solid var(--green,#3ddc84);background:rgba(61,220,132,.06)}
+.nr-in .nr-req p{margin:0 0 6px}
+.nr-flist{list-style:none;margin:0 0 8px;padding:0}
+.nr-frow{display:flex;align-items:center;gap:8px;min-height:52px;padding:4px 0;border-bottom:1px solid var(--line-soft,rgba(255,255,255,.1))}
+.nr-frow .st-dot{flex:0 0 auto}
+.nr-fmain{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.nr-fmain b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nr-fmain small{font-size:var(--fs-xs,11px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nr-frow .btn{flex:0 0 auto;min-width:44px;min-height:44px}
+.nr-flist .confirm{list-style:none;padding:8px 0}
+.nr-out{margin:4px 0 10px;font-size:var(--fs-s,13px)}
+.nr-out p{margin:0 0 4px}
+.nr-pend{display:inline-flex;align-items:center;gap:4px;margin:0 8px 4px 0}
+.nr-add-row{display:flex;gap:8px;align-items:stretch}
+.nr-add-row .inp{flex:1 1 auto;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-family:var(--hud,monospace)}
+.nr-add-row .btn{flex:0 0 auto}
+.nr-hint{font-size:var(--fs-xs,11px);margin:4px 0 8px}
+.nr-mine{margin-top:12px}
+.nr-code{letter-spacing:.18em}
+.nr-share{margin-top:12px}
+.nr-share .toggle-row span{min-width:0}
+.nr-priv{font-size:var(--fs-xs,11px);margin-top:12px}
+
+/* Group page tile */
+.nr-tile{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:6px 10px;
+  border:1px solid var(--line-soft,#2a3550);border-left:3px solid var(--olive,#6f7d4f);border-radius:var(--r-m,10px);background:rgba(111,125,79,.08)}
+.nr-tile-t{display:flex;flex-direction:column;min-width:0}
+.nr-tile-t small{font-size:var(--fs-xs,11px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nr-tile .btn{flex:0 0 auto}
+.nr-pick{display:flex;flex-wrap:wrap;gap:8px}
+
+/* HUD chip */
+.nr-chip.hx-urgent{border-color:var(--amber,#f5a623);color:var(--amber-2,#ffc24d)}
+
+/* Finder */
+.nr-finder{display:flex;flex-direction:column;align-items:center;gap:6px}
+.nr-dial{position:relative;width:min(220px,62vw);aspect-ratio:1;margin:4px auto 2px}
+.nr-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--line,rgba(245,166,35,.28));
+  background:radial-gradient(circle,rgba(245,166,35,.08) 0,rgba(10,15,28,.6) 70%)}
+.nr-dial.live .nr-ring{border-color:var(--amber,#f5a623)}
+.nr-n{position:absolute;left:50%;top:50%;width:100%;height:100%;margin:-50% 0 0 -50%;text-align:center;
+  font:700 14px/1 var(--hud,monospace);color:var(--muted,#9aa3a0);padding-top:6px;transition:transform .3s linear}
+.nr-arrow{position:absolute;inset:14%;transition:transform .35s ease-out;opacity:.25}
+.nr-arrow.on{opacity:1}
+.nr-arrow-head{position:absolute;left:50%;top:0;width:0;height:0;margin-left:-26px;
+  border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:90px solid var(--amber,#f5a623);
+  filter:drop-shadow(0 0 8px rgba(245,166,35,.45))}
+.nr-arrow-head::after{content:"";position:absolute;left:-7px;top:86px;width:14px;height:44px;background:var(--amber-d,#c77a0e)}
+.nr-dist{font:700 var(--fs-hero,44px)/1 var(--display,Impact,sans-serif);color:var(--text,#ece6d6);font-variant-numeric:tabular-nums}
+.nr-hot{min-height:24px;font:700 var(--fs-l,20px)/1.2 var(--body,sans-serif)}
+.nr-hot.warm{color:var(--fire,#ff7a1a)}
+.nr-hot.cold{color:var(--water,#4aa3ff)}
+.nr-hot.here{color:var(--green,#3ddc84)}
+.nr-status{text-align:center;margin:2px 0}
+.nr-mini{position:relative;width:100%;height:200px;border:1px solid var(--line,#33415c)}
+.nr-mini[hidden]{display:none}
+.nr-mini-n{position:absolute;z-index:500;right:8px;top:6px;font:700 13px/1 var(--hud,monospace);color:var(--amber-2,#ffc24d);
+  background:rgba(10,15,28,.8);padding:4px 6px;pointer-events:none}
+.nr-mini-cap{position:absolute;z-index:500;left:0;right:0;bottom:0;font-size:var(--fs-xs,11px);padding:3px 6px;
+  background:rgba(10,15,28,.82);color:var(--muted,#9aa3a0);pointer-events:none}
+
+/* Truppen samlad: confetti falls once */
+.near-confetti{position:fixed;inset:0;z-index:1200;pointer-events:none;overflow:hidden}
+.near-confetti i{position:absolute;top:-16px;width:9px;height:14px;opacity:.95;animation-name:nr-fall;animation-timing-function:cubic-bezier(.3,.6,.6,1);animation-fill-mode:both}
+@keyframes nr-fall{from{transform:translate(0,0) rotate(0)}to{transform:translate(var(--dx,0),105vh) rotate(var(--rot,360deg));opacity:.85}}
+.near-sq-toast{font-weight:700}
+
+@media (prefers-reduced-motion: reduce){
+  .near-confetti{display:none}
+  .nr-arrow,.nr-n{transition:none}
+}

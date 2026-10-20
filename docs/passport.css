@@ -1,0 +1,44 @@
+/* Öl Nu v27 — Ölpasset (js/passport.js): passport cover, ink stamps, mini map */
+.ps-entry{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
+.ps-entry small{font-size:12px;color:var(--muted,#a3aca8);font-weight:500}
+.ps-cover{position:relative;text-align:center;border-radius:14px;padding:16px 12px 12px;color:#e9cf8a;
+  background:radial-gradient(circle at 50% 20%,rgba(255,255,255,.06),transparent 60%),linear-gradient(160deg,#4a1420,#2a0b12);
+  border:1px solid rgba(233,207,138,.35);box-shadow:inset 0 0 0 4px rgba(0,0,0,.18),0 8px 24px rgba(0,0,0,.4)}
+.ps-crest{font-size:34px;line-height:1;filter:sepia(1) saturate(2) hue-rotate(-10deg)}
+.ps-ct{font-family:var(--hud);font-size:22px;letter-spacing:.32em;margin-top:4px}
+.ps-cs{font-size:10px;letter-spacing:.18em;opacity:.8}
+.ps-holder{margin-top:8px;font-size:15px;font-weight:700;color:#f6e7bf}
+.ps-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px}
+.ps-stats span{display:flex;flex-direction:column;font-size:11px;letter-spacing:.04em;opacity:.9}
+.ps-stats b{font-size:20px;color:#fff3cf;font-variant-numeric:tabular-nums}
+.ps-map{height:230px;margin-top:10px;border-radius:14px;overflow:hidden;border:1px solid var(--hair,rgba(255,255,255,.09));background:#1b1f27}
+.ps-pin span{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);color:var(--ink);
+  background:rgba(245,236,214,.92);font:700 13px/1 var(--hud,monospace);transform:rotate(var(--rot));box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.ps-h{margin:14px 0 6px;font-size:14px}
+.ps-miles{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+.ps-mile{border:1px dashed rgba(255,255,255,.18);border-radius:12px;padding:8px 6px;text-align:center;opacity:.55}
+.ps-mile.ok{opacity:1;border:1px solid rgba(232,184,74,.6);background:rgba(232,184,74,.08)}
+.ps-mile .ps-me{display:block;font-size:22px}
+.ps-mile:not(.ok) .ps-me{filter:grayscale(1)}
+.ps-mile b{display:block;font-size:12px;line-height:1.2}
+.ps-mile small{font-size:11px;color:var(--muted,#a3aca8)}
+.ps-flags{margin-top:10px;font-size:13px;color:var(--text-2,#c4cbc8)}
+/* passport page: paper + ink stamps */
+.ps-page{display:flex;flex-wrap:wrap;gap:10px 8px;justify-content:center;padding:14px 8px;border-radius:12px;
+  background:repeating-linear-gradient(0deg,rgba(120,100,60,.06) 0 1px,transparent 1px 22px),linear-gradient(180deg,#f3ead5,#e8dcc0);
+  box-shadow:inset 0 0 30px rgba(120,90,40,.25)}
+.ps-stamp{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:92px;max-width:150px;min-height:70px;padding:8px 10px;
+  color:var(--ink);border:2.5px solid var(--ink);transform:rotate(var(--rot));opacity:.86;mix-blend-mode:multiply;filter:url(#ps-ink);
+  font-family:var(--hud,monospace);text-align:center;line-height:1.1}
+.ps-stamp.ps-circ,.ps-stamp.ps-oval{border-radius:50%}
+.ps-stamp.ps-circ{width:96px;height:96px;min-width:0;padding:6px}
+.ps-stamp.ps-dbl{border-style:double;border-width:5px;border-radius:6px}
+.ps-stamp.ps-rect{border-radius:4px}
+.ps-stamp.ps-hex{border-radius:18px 4px 18px 4px}
+.ps-top{font-size:9px;letter-spacing:.2em;border-bottom:1px solid var(--ink);padding-bottom:2px;margin-bottom:3px}
+.ps-name{font-size:12px;font-weight:700;letter-spacing:.04em;word-break:break-word}
+.ps-date{font-size:9.5px;margin-top:3px;letter-spacing:.06em}
+.ps-n{position:absolute;right:-6px;top:-8px;font-size:11px;font-weight:700;background:#f3ead5;border:1.5px solid var(--ink);border-radius:999px;padding:0 5px}
+.ps-town .ps-name{font-size:13px}
+.ps-empty{background:var(--s2,#172134);border-radius:14px;padding:14px;margin-top:10px}
+.ps-more,.ps-fine{font-size:12px;margin-top:8px}

@@ -1018,8 +1018,12 @@
       var ev = d && d.evening ? String(d.evening).slice(0, 10) : null;
       return call("group_night_story", { p_group_id: gid, p_night: ev }).then(function (r) {
         var st = r.error ? null : A.parseData(r.data);
-        if (view && view.g.id === gid) { view.story = st; view.storyDone = true; }
-        return st;
+        // v27: Engångskameran photos (film_story) join the story; no FILM / old server = the story as before.
+        var F = window.FILM;
+        return (F && F.addToStory ? F.addToStory(gid, ev, st) : Promise.resolve(st)).then(function (s2) {
+          if (view && view.g.id === gid) { view.story = s2; view.storyDone = true; }
+          return s2;
+        });
       }, function () { return null; });
     });
     Promise.all([got, gotS]).then(function (x) {
@@ -1040,6 +1044,7 @@
         var row = el("div", { class: "gg-row" });
         if (navigator.share && navigator.canShare) row.appendChild(bt(T("pShare"), "btn-amber", function () { sharePaper(cv, m); }));
         row.appendChild(bt(T("pSave"), "btn-small", function () { downloadPaper(cv); }));
+        try { if (window.KODEN) window.KODEN.button(row); } catch (e) {}
         box.appendChild(row);
       });
     });
@@ -1126,7 +1131,9 @@
     });
     if (!quotes.length) ((d && d.quotes) || []).slice(0, 1).forEach(function (q) { quotes.push({ body: q.body, who: q.who }); });
 
-    var photos = (s.photos || []).slice(0, 4);
+    // v27: developed Engångskameran photos first (front photo + strip), then the chat photos.
+    var cam = (s.camera_photos || []).map(function (p) { return { id: "film:" + p.id, by: p.by, at: p.at, w: p.w, h: p.h, reacts: p.reacts, caption: lang() === "en" ? "disposable camera" : "engångskameran" }; });
+    var photos = cam.concat(s.photos || []).slice(0, 4);
     if (timeline.length < 2 || timeline.length + photos.length + quotes.length < 4) return null;   // thin night -> classic paper
 
     // Headline from the strongest event
@@ -1196,8 +1203,11 @@
   }
   function storyImg(id) {
     var P = window.PHOTO;
-    var first = P && P._url ? Promise.resolve().then(function () { return P._url(id); }) : Promise.reject(new Error("no"));
+    var F = window.FILM, isFilm = String(id).indexOf("film:") === 0;
+    var first = isFilm ? (F && F._url ? Promise.resolve().then(function () { return F._url(String(id).slice(5)); }) : Promise.reject(new Error("no")))
+      : P && P._url ? Promise.resolve().then(function () { return P._url(id); }) : Promise.reject(new Error("no"));
     var job = first.catch(function () {
+      if (isFilm) throw new Error("photo");
       return call("night_story_photo", { p_photo_id: +id }).then(function (r) {
         if (r.error) throw new Error("photo");
         var x = A.parseData(r.data), bin = atob(x.b64), a = new Uint8Array(bin.length);

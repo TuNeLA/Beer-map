@@ -1,0 +1,295 @@
+{
+ "generated_at": "2026-10-20T18:00:41.966Z",
+ "counts": {
+  "bars": 1213,
+  "extra": 4,
+  "places": 18779,
+  "duplicates": 7,
+  "closed": 0,
+  "stale": 35,
+  "positions": 0,
+  "server": 1,
+  "places_dupes": 42,
+  "new_closed": 8
+ },
+ "duplicates": [
+  {
+   "drop": "n11360925580",
+   "drop_name": "The Bishops Arms",
+   "keep": "w1092638243",
+   "keep_name": "The Bishops Arms",
+   "m": 1
+  },
+  {
+   "drop": "n2293728903",
+   "drop_name": "Breeze bar & nightclub",
+   "keep": "w1093128514",
+   "keep_name": "Breeze bar & nightclub",
+   "m": 7
+  },
+  {
+   "drop": "n8415344232",
+   "drop_name": "Irish Embassy",
+   "keep": "n1632019592",
+   "keep_name": "Irish Embassy",
+   "m": 20
+  },
+  {
+   "drop": "n9846285868",
+   "drop_name": "Debaser Pontonen",
+   "keep": "n6863422794",
+   "keep_name": "Debaser",
+   "m": 7
+  },
+  {
+   "drop": "n1211022409",
+   "drop_name": "Replik",
+   "keep": "n1211022007",
+   "keep_name": "Replik",
+   "m": 24
+  },
+  {
+   "drop": "n874275166",
+   "drop_name": "Bishops Arms",
+   "keep": "n13432995234",
+   "keep_name": "The Bishops Arms",
+   "m": 8
+  },
+  {
+   "drop": "n6063629632",
+   "drop_name": "Lofsdalen Skybar",
+   "keep": "w550448209",
+   "keep_name": "Lofsdalen Skybar - Club 1125",
+   "m": 5
+  }
+ ],
+ "closed": [],
+ "stale": [
+  {
+   "id": "n2930977802",
+   "name": "Strandpaviljongen",
+   "why": "last edit 2014-06-24, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2293728903",
+   "name": "Breeze bar & nightclub",
+   "why": "last edit 2013-05-06, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1828994958",
+   "name": "Lilla Krogen",
+   "why": "last edit 2012-07-17, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2333350873",
+   "name": "Norje Havskrog",
+   "why": "last edit 2013-06-05, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1067357934",
+   "name": "Sandra",
+   "why": "last edit 2010-12-27, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1859797260",
+   "name": "Kate's Palace",
+   "why": "last edit 2012-08-10, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1859797483",
+   "name": "Saloon Cheyenne",
+   "why": "last edit 2012-08-10, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2304036049",
+   "name": "Sigges loge",
+   "why": "last edit 2013-05-14, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2271417380",
+   "name": "Bongo bar",
+   "why": "last edit 2013-04-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2271417357",
+   "name": "Insikten",
+   "why": "last edit 2013-04-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2765652773",
+   "name": "Kungälv's Pizzeria & Pub",
+   "why": "last edit 2014-04-03, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n3198815340",
+   "name": "Sportlife",
+   "why": "last edit 2014-11-21, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1801974812",
+   "name": "Strand",
+   "why": "last edit 2012-06-25, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1801974798",
+   "name": "Meze 12",
+   "why": "last edit 2012-06-25, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2350621633",
+   "name": "Oliver Twist",
+   "why": "last edit 2013-06-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2350621701",
+   "name": "Babyl House",
+   "why": "last edit 2013-06-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2342037542",
+   "name": "Side Bar",
+   "why": "last edit 2013-06-12, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n499946560",
+   "name": "Hjorten",
+   "why": "last edit 2009-09-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n490131316",
+   "name": "Älta Träffen",
+   "why": "last edit 2009-09-08, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n462630509",
+   "name": "Södra Bar",
+   "why": "last edit 2009-08-12, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1165830993",
+   "name": "Down Town Pub Och Restaurang",
+   "why": "last edit 2011-02-21, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1149515957",
+   "name": "Nöjesfabriken",
+   "why": "last edit 2011-02-12, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2120229673",
+   "name": "Runby Puben",
+   "why": "last edit 2013-01-20, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1376772298",
+   "name": "Corner",
+   "why": "last edit 2011-07-28, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2271645711",
+   "name": "Rajjens Bowling & Pub",
+   "why": "last edit 2013-04-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2271645710",
+   "name": "Ritz",
+   "why": "last edit 2013-04-18, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2380214683",
+   "name": null,
+   "why": "last edit 2013-07-10, version 1, tags: amenity,source"
+  },
+  {
+   "id": "n1201532147",
+   "name": "Köpmangården",
+   "why": "last edit 2011-03-14, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n912285648",
+   "name": null,
+   "why": "last edit 2010-09-14, version 1, tags: amenity"
+  },
+  {
+   "id": "n1417528245",
+   "name": "Gustavs Pub & Kök",
+   "why": "last edit 2011-08-29, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n2991512402",
+   "name": null,
+   "why": "last edit 2014-08-01, version 1, tags: amenity"
+  },
+  {
+   "id": "n2997098166",
+   "name": null,
+   "why": "last edit 2014-08-05, version 1, tags: amenity"
+  },
+  {
+   "id": "n2997098165",
+   "name": null,
+   "why": "last edit 2014-08-05, version 1, tags: amenity"
+  },
+  {
+   "id": "n626384113",
+   "name": "Statt",
+   "why": "last edit 2010-02-02, version 1, tags: amenity,name"
+  },
+  {
+   "id": "n1295332317",
+   "name": "Lotus",
+   "why": "last edit 2011-05-21, version 1, tags: amenity,name"
+  }
+ ],
+ "positions": [],
+ "server": [
+  {
+   "id": "n2466676052",
+   "name": "Lilla London",
+   "why": "on the server, not in bars.json / bars-extra.json"
+  }
+ ],
+ "places_dupes": 42,
+ "new_closed": [
+  {
+   "id": "n11360925580",
+   "name": "The Bishops Arms",
+   "note": "Dubblett av w1092638243 (The Bishops Arms, 1 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n2293728903",
+   "name": "Breeze bar & nightclub",
+   "note": "Dubblett av w1093128514 (Breeze bar & nightclub, 7 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n8415344232",
+   "name": "Irish Embassy",
+   "note": "Dubblett av n1632019592 (Irish Embassy, 20 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n9846285868",
+   "name": "Debaser Pontonen",
+   "note": "Dubblett av n6863422794 (Debaser, 7 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n1211022409",
+   "name": "Replik",
+   "note": "Dubblett av n1211022007 (Replik, 24 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n874275166",
+   "name": "Bishops Arms",
+   "note": "Dubblett av n13432995234 (The Bishops Arms, 8 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n6063629632",
+   "name": "Lofsdalen Skybar",
+   "note": "Dubblett av w550448209 (Lofsdalen Skybar - Club 1125, 5 m) — clean-bars 2026-10-20"
+  },
+  {
+   "id": "n2466676052",
+   "name": "Lilla London",
+   "note": "Finns inte längre i bars.json — clean-bars 2026-10-20"
+  }
+ ]
+}

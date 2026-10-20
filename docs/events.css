@@ -1,0 +1,55 @@
+/* Öl Nu v26 — 📅 events (js/events.js), 🚩 bar reports, 🐴 golden horse (js/golden.js), delight-more drops. */
+.ev-box,.gh-box{margin-top:16px;border-top:1px solid var(--line);padding-top:6px}
+.ev-h{margin:8px 0 4px}
+.ev-tabs button[aria-selected="true"]{color:var(--amber-2);background:rgba(245,166,35,.1)}
+.ev-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ev-row{display:flex;align-items:stretch;gap:6px;border:1px solid var(--line-soft);background:var(--night-2)}
+.ev-row.ev-pending{border-style:dashed;opacity:.85}
+.ev-main{flex:1;min-width:0;display:flex;gap:10px;align-items:center;text-align:left;border:0;background:transparent;padding:8px 10px;min-height:var(--tap);cursor:pointer}
+.ev-time{font-family:var(--hud);color:var(--amber-2);font-size:var(--fs-m);min-width:46px}
+.ev-txt{display:flex;flex-direction:column;min-width:0}
+.ev-txt b{font-weight:700;overflow-wrap:anywhere}
+.ev-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ev-acts{display:flex;align-items:center;gap:4px;padding-right:6px}
+.ev-link{display:inline-flex;align-items:center;justify-content:center;min-width:var(--tap);min-height:var(--tap);text-decoration:none}
+.ev-go{white-space:nowrap}
+.ev-note{font-size:12px;line-height:1.4;margin:6px 0}
+.ev-tip{margin-top:8px}
+.ev-l{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+.ev-kinds{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.ev-kinds .chip{min-height:36px;padding:4px 10px;font-size:12px;background:transparent;color:var(--text);border-color:var(--line);cursor:pointer}
+.ev-kinds .chip[aria-pressed="true"]{color:var(--on-amber);background:var(--amber);border-color:var(--amber)}
+.ev-legal{font-size:11px;line-height:1.4}
+.ev-rep-bar{font-weight:700;margin:4px 0 8px}
+/* bar sheet: one short line under the header (app.js lifts .ev-line next to the title) */
+.ev-line{display:flex;align-items:center;gap:8px;justify-content:space-between;margin:6px 0 2px;padding:6px 8px;border:1px solid rgba(255,224,138,.35);background:rgba(255,224,138,.06)}
+.ev-l-t{font-weight:600;font-size:var(--fs-s);overflow-wrap:anywhere}
+.ev-rep{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.gh-line{border-color:rgba(255,213,79,.7);background:linear-gradient(90deg,rgba(255,213,79,.18),rgba(255,213,79,.04))}
+/* golden horse pin: soft glow, 0.5 Hz (well below 2 Hz), no flashing */
+.gh-pin{background:none;border:0}
+.gh-pin .gh-svg{position:absolute;inset:0;display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+.gh-pin .gh-svg svg{width:100%;height:100%}
+.gh-pin .gh-glow{position:absolute;left:50%;top:50%;width:70px;height:70px;margin:-35px 0 0 -35px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,224,138,.55),rgba(255,224,138,0) 70%);animation:ghGlow 2s ease-in-out infinite}
+@keyframes ghGlow{50%{transform:scale(1.18);opacity:.6}}
+.gh-state{margin:4px 0;line-height:1.4}
+.gh-s-live{color:var(--gold);font-weight:700}
+.gh-badges{font-size:12px;margin:2px 0 8px}
+.gh-badge{color:var(--gold)}
+.gh-chip{color:var(--on-amber);background:linear-gradient(90deg,#ffe08a,#f2c23c);border-color:#f2c23c}
+.gh-win{position:fixed;inset:0;z-index:1300;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--scrim)}
+.gh-win-card{max-width:360px;width:100%;text-align:center;padding:18px 16px;border:2px solid #f2c23c;background:linear-gradient(180deg,#1d1606,#0a0f1c)}
+.gh-win-horse{width:160px;height:128px;margin:0 auto;animation:ghIn .9s cubic-bezier(.2,1.4,.4,1) both}
+.gh-win-horse svg{width:100%;height:100%}
+@keyframes ghIn{from{transform:translateY(30px) scale(.6) rotate(-8deg);opacity:0}}
+.gh-win-h{font-family:var(--display);font-size:var(--fs-l);color:var(--gold);margin-top:6px}
+.gh-win-t{margin:8px 0}
+.gh-win-m{font-size:12px;color:var(--muted);margin-bottom:12px}
+.dl2-drops{position:fixed;inset:0;z-index:900;pointer-events:none;overflow:hidden}
+.dl2-drops i{position:absolute;top:-30px;font-style:normal;font-size:22px;animation:dl2Drop 2.2s linear both}
+@keyframes dl2Drop{to{transform:translateY(110vh);opacity:.4}}
+@media (prefers-reduced-motion: reduce){
+  .gh-pin .gh-glow,.gh-win-horse,.dl2-drops i{animation:none}
+}
+.gh-still .gh-glow,.gh-still .gh-win-horse{animation:none}

@@ -180,6 +180,22 @@ ol.wl li.st-klar .wb{color:var(--green)}
       <p class="note">Sorterad på röster, sedan datum. Status syns för användarna ("Dold" gömmer önskan för alla utom den som skrev den). I SQL: <code>select * from owner_wishes_v;</code></p>
     </section>
 
+    <section class="panel" id="pDb" hidden>
+      <h2>💾 Databas <span>· gratisplan 500 MB DB, 5 GB egress / mån</span></h2>
+      <div id="xDb"></div>
+    </section>
+
+    <section class="panel" id="pEv" hidden>
+      <h2>📅 Event <span id="xEvCount"></span></h2>
+      <div id="xEv"></div>
+      <p class="note">Användarnas tips syns bara för den som skrev dem tills du godkänner. Importerade event (Ticketmaster, iCal, JSON-LD) är godkända direkt; dölj dem här vid behov.</p>
+    </section>
+
+    <section class="panel" id="pRep" hidden>
+      <h2>🚩 Barrapporter <span id="xRepCount"></span></h2>
+      <div id="xRep"></div>
+    </section>
+
     <p class="note">Bara summor. Inga namn, inga exakta platser, inga användar-id. Skål, reaktioner och chatt försvinner när en natt tar slut, så 7 d-siffrorna kan vara för låga. Uppdateras var 60:e sekund när sidan syns.</p>
     <button class="btn ghost" id="logout" type="button">Glöm nyckeln</button>
   </main>
@@ -538,5 +554,6 @@ ol.wl li.st-klar .wb{color:var(--green)}
   if (key) fetchStats(); else showLogin("");
 })();
 </script>
+<script src="./stats-extra.js"></script>
 </body>
 </html>

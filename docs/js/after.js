@@ -385,6 +385,7 @@
       fontsReady().then(function () {
         try { drawBakis(cv, d, head, tip); } catch (e) {}
         shareRow(cv, row, "olnu-bakis.png", head + " " + tip);
+        try { if (window.KODEN) window.KODEN.button(row); } catch (e) {}
       });
     });
   }
