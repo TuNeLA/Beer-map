@@ -419,6 +419,8 @@
       return out.concat(pl.slice(0, opts && opts.maxPlaces != null ? opts.maxPlaces : 4));
     },
     nearestSpot: nearestSpot,
+    nearestNamed: nearestNamed,
+    addUser: function (b) { if (!b || bars[b.id]) return !!(b && bars[b.id]); addExtra(b); var ok = !!bars[b.id]; if (ok) onChange(); return ok; },
     placeId: placeId,
     placesReady: function () { return placesState === "ready"; },
     ensurePlaces: ensurePlaces,

@@ -33,6 +33,7 @@
     ["duel_win", "⚔️", 15, "Vinna en gruppduell", "Win a group duel", "Varje medlem som drack i duellen.", "Every member who drank in the duel."],
     ["duel", "🛡️", 5, "Vara med i en duell", "Take part in a duel", "Per duell.", "Per duel."],
     ["rally_yes", "✅", 5, "Svara ✅ Kommer på en inkallelse", "Answer ✅ Coming to a call-out", "Max 3 per natt.", "Max 3 a night."],
+    ["invite_show", "📨", 3, "Säga ✅ Kommer på en inbjudan och dyka upp (±2 h)", "Say ✅ Coming to an invite and show up (±2 h)", "Max 2 per natt.", "Max 2 a night."],
     ["arrive", "🏃", 5, "Komma fram dit (ETA eller incheckning inom 2 h)", "Actually arrive (ETA or check-in within 2 h)", "Max 3 per natt.", "Max 3 a night."],
     ["callout", "📯", 5, "Kom hit! eller en inkallelse med 2+ svar", "Come here! or a call-out with 2+ answers", "Max 2 per natt.", "Max 2 a night."],
     ["buddy", "🚑", 5, "Kolla läget med en kompis på 10+", "Check on a friend at 10+", "Max 2 per natt.", "Max 2 a night."],
@@ -234,6 +235,18 @@
       "🐑 Flocken tackar för insatsen.",
       "🔮 Spelat och klart. Siarna ser fler meriter.",
       "🎲 Ett spel till i krigsdagboken."
+    ],
+    invite_show: [
+      "📨 Du sa ja och du kom. Pålitlig soldat!",
+      "📨 Inbjudan hedrad. Generalen noterar.",
+      "📨 Ordet hållet – du dök upp. Merit!",
+      "📨 Ja betyder ja. Du ä på plats.",
+      "📨 Anmäld och närvarande. Så ska dä se ut.",
+      "📨 Uppställd i tid. Truppen tackar.",
+      "📨 Du kom som du lovade. Skål på dig!",
+      "📨 Närvaro bekräftad. Dalregementet ä stolt.",
+      "📨 Inbjudan + incheckning = merit. Matematik.",
+      "📨 Där sa du ja, och där står du. Snyggt."
     ],
     party_win: [
       "👑 Seger i partyspelet! Medaljen ä på väg.",

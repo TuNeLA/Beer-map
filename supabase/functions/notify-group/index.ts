@@ -21,6 +21,8 @@
 //   {event:"film", group_id, night} -> "Filmen är framkallad! 📸" to the group (engångskameran, 10:00).
 // Body events (NÄRA, 0045/0047): {event:"friend", friend_id} -> "🤝 {namn} vill bli din vän", {event:"find", req_id} ->
 //   "🧭 {namn} letar efter dig i vimlet!" (one recipient each; atomic notified claims).
+// Body events (v28 INBJUDNINGAR, 0080/0081): {event:"invite"|"invite_yes"|"invite_due", invite_id}; cron {event:"invite_due"}
+//   with header x-olnu-cron: <service key> (see cronDue).
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1016,7 +1018,7 @@ export function filmPayload(idx: number, groupName: string, n: number, groupId: 
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-olnu-cron",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -1870,6 +1872,132 @@ async function findPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 300) : NONE;
 }
 
+// ---- v28 INBJUDNINGAR (0080/0081): {event:"invite"|"invite_yes"|"invite_due", invite_id} + the cron ----
+// invite     : the caller's new invitees (atomic notified claim) -> "📨 TuNe har bjudit in dig: Pubquiz på Pitchers, tors 22/10 19:00"
+// invite_yes : the creator, max 1 per 10 min per invite (yes_push_at claim); later yeses ride along in the next one
+// invite_due : "⏰ Om 1 timme: Pubquiz på Pitchers – 3 kommer" to yes + maybe, once per invite (reminded_at claim)
+// Cron: GitHub Actions (.github/workflows/reminders.yml, every 10 min) POSTs {event:"invite_due"} with the public anon
+// JWT (gateway verify_jwt) and header x-olnu-cron: <service key>. The key is checked by calling the service-role-only
+// RPC invite_due_claim with it (apikey header only; Bearer only for a legacy JWT key). Wrong key -> 403, nothing sent.
+const INV_TZ = "Europe/Stockholm";
+const INV_DAYS = ["sön", "mån", "tis", "ons", "tors", "fre", "lör"];
+function invParts(ms: number) {
+  const p: Record<string, string> = {};
+  for (const x of new Intl.DateTimeFormat("sv-SE", { timeZone: INV_TZ, year: "numeric", month: "numeric", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ms))) p[x.type] = x.value;
+  return { y: +p.year, m: +p.month, d: +p.day, hm: `${p.hour}:${p.minute}` };
+}
+/** "ikväll 19:00" (same evening), else "tors 22/10 19:00" (Europe/Stockholm). */
+export function invWhen(iso: string, nowMs = Date.now()): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const a = invParts(t), eve = invParts(t - 5 * 3600e3), now = invParts(nowMs - 5 * 3600e3);
+  if (eve.y === now.y && eve.m === now.m && eve.d === now.d && t > nowMs - 6 * 3600e3) return `ikväll ${a.hm}`;
+  const wd = INV_DAYS[new Date(Date.UTC(a.y, a.m - 1, a.d)).getUTCDay()];
+  return `${wd} ${a.d}/${a.m} ${a.hm}`;
+}
+export const INVITE_LINES: string[] = [
+  "📨 {namn} har bjudit in dig: {titel}, {nar}",
+  "📨 {namn} har bjudit in dig: {titel}, {nar}",
+  "📨 Inbjudan från {namn}: {titel}, {nar}",
+  "📨 {namn} vill ha med dig: {titel}, {nar}",
+  "📨 Order från {namn}: {titel}, {nar}. Uppställning!",
+  "📨 {namn} kallar dig till {titel}, {nar}",
+];
+export function invYesTitle(names: string[], titel: string): string {
+  const n = names.filter(Boolean);
+  const who = n.length <= 1 ? (n[0] || "Någon") : n.length === 2 ? `${n[0]} och ${n[1]}` : `${n[0]}, ${n[1]} +${n.length - 2}`;
+  return `✅ ${who} kommer på ${titel}`;
+}
+function invTtl(startsAt: string): number {
+  const s = (Date.parse(startsAt) - Date.now()) / 1000;
+  return Math.max(900, Math.min(86400, Number.isFinite(s) ? Math.round(s) : 3600));
+}
+async function invIsIn(admin: Admin, id: number, uid: string): Promise<boolean> {
+  const { data } = await admin.from("invite_people").select("user_id").eq("invite_id", id).eq("user_id", uid).limit(1);
+  return !!(data && data.length);
+}
+async function invitePush(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.invite_id);
+  if (id === null) return { ...NONE, reason: "no_invite" };
+  const { data, error } = await admin.rpc("invite_push_claim", { p_id: id, p_uid: uid });
+  if (error) throw error;
+  const d = data as { title: string; place?: string; starts_at: string; from_name: string; to: string[] } | null;
+  if (!d || !Array.isArray(d.to) || !d.to.length) return { ...NONE, reason: "no_invite" };
+  const namn = cleanBarName(d.from_name) || "En kompis";
+  const titel = cleanBarName(d.title) || "Öl";
+  const line = INVITE_LINES[Math.floor(Math.random() * INVITE_LINES.length)];
+  const payload = JSON.stringify({ title: fill(line, { namn, titel, nar: invWhen(d.starts_at) }),
+    body: "Svara: ✅ Kommer · 🤔 Kanske · ❌ Kan inte", url: `/?inv=${id}`, tag: `olnu-inv-${id}`,
+    actions: [{ action: "yes", title: "✅ Kommer" }, { action: "no", title: "❌ Kan inte" }] });
+  const jobs = (await subsOf(admin, d.to)).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, invTtl(d.starts_at)) : NONE;
+}
+async function inviteYesSend(admin: Admin, id: number) {
+  const { data, error } = await admin.rpc("invite_yes_claim", { p_id: id });
+  if (error) throw error;
+  const d = data as { title: string; starts_at: string; creator: string; names: string[]; yes: number } | null;
+  if (!d || !d.creator || !(d.names || []).length) return { ...NONE, reason: "batched" };
+  const titel = cleanBarName(d.title) || "Öl";
+  const payload = JSON.stringify({ title: invYesTitle((d.names || []).map((x) => cleanBarName(x)), titel),
+    body: `${d.yes} kommer totalt · ${invWhen(d.starts_at)}`, url: `/?inv=${id}`, tag: `olnu-inv-yes-${id}` });
+  const jobs = (await subsOf(admin, [d.creator])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, invTtl(d.starts_at)) : NONE;
+}
+async function inviteYesPush(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.invite_id);
+  if (id === null || !(await invIsIn(admin, id, uid))) return { ...NONE, reason: "no_invite" };
+  return await inviteYesSend(admin, id);
+}
+type DueRow = { id: number; title: string; place?: string; starts_at: string; yes: number; maybe: number; to: string[] };
+async function dueSend(admin: Admin, rows: DueRow[]) {
+  const jobs: Job[] = [];
+  for (const r of rows || []) {
+    if (!r || !Array.isArray(r.to) || !r.to.length) continue;
+    const titel = cleanBarName(r.title) || "Öl";
+    const payload = JSON.stringify({ title: `⏰ Om 1 timme: ${titel} – ${r.yes} kommer`,
+      body: `${invWhen(r.starts_at)}${r.maybe ? ` · ${r.maybe} kanske` : ""}. Tryck för vägen dit.`,
+      url: `/?inv=${r.id}`, tag: `olnu-inv-due-${r.id}` });
+    for (const s of await subsOf(admin, r.to)) jobs.push({ sub: s, payload });
+  }
+  return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
+}
+async function inviteDuePush(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.invite_id);
+  if (id === null) return { ...NONE, reason: "no_invite" };
+  const { data, error } = await admin.rpc("invite_due_claim", { p_id: id, p_uid: uid });
+  if (error) throw error;
+  const rows = (data || []) as DueRow[];
+  if (!rows.length) return { ...NONE, reason: "not_due" };
+  return await dueSend(admin, rows);
+}
+async function keyRpc(key: string, name: string, body: unknown) {
+  const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
+  if (/^eyJ/.test(key)) headers.Authorization = "Bearer " + key;
+  const r = await fetch(SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/rpc/" + name, { method: "POST", headers, body: JSON.stringify(body ?? {}) });
+  let data: unknown = null;
+  try { data = await r.json(); } catch (_e) { data = null; }
+  return { ok: r.ok, status: r.status, data };
+}
+async function cronDue(key: string): Promise<Response> {
+  if (key.length < 20 || key.length > 4096) return json({ error: "forbidden" }, 403);
+  const claim = await keyRpc(key, "invite_due_claim", {});
+  if (!claim.ok) return json({ error: "forbidden" }, 403);
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const rows = (Array.isArray(claim.data) ? claim.data : []) as DueRow[];
+  const due = rows.length ? await dueSend(admin, rows) : NONE;
+  let yesSent = 0;
+  const pend = await keyRpc(key, "invite_yes_due", {});
+  if (pend.ok && Array.isArray(pend.data)) {
+    for (const x of pend.data.slice(0, 50)) {
+      const id = parseRallyId(typeof x === "object" && x ? (x as Record<string, unknown>).invite_yes_due ?? x : x);
+      if (id === null) continue;
+      try { yesSent += (await inviteYesSend(admin, id)).sent || 0; } catch (e) { console.error("yes flush failed", e); }
+    }
+  }
+  return json({ ok: true, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent });
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1882,6 +2010,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!vapidReady || !SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       return json({ error: "server_not_configured" }, 500);
     }
+    // v28: the reminder cron (service key in x-olnu-cron, checked against a service-role-only RPC).
+    const cronKey = req.headers.get("x-olnu-cron") ?? "";
+    if (cronKey) return await cronDue(cronKey);
 
     // 1. Who is calling? Use the forwarded user JWT.
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -1935,6 +2066,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "helg_remind") return json(await helgRemindPush(admin, uid));
     if (event === "friend") return json(await friendPush(admin, uid, body));
     if (event === "find") return json(await findPush(admin, uid, body));
+    if (event === "invite") return json(await invitePush(admin, uid, body));
+    if (event === "invite_yes") return json(await inviteYesPush(admin, uid, body));
+    if (event === "invite_due") return json(await inviteDuePush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

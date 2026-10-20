@@ -182,6 +182,7 @@
     li.appendChild(main);
     var acts = A.el("span", { class: "ev-acts" });
     if (!e.pending) acts.appendChild(A.btn(two("go"), "btn-small ev-go", function (ev) { goFor(e, ev.currentTarget); }));
+    try { var ib = window.INVITE && window.INVITE.evButton && window.INVITE.evButton(e); if (ib) acts.appendChild(ib); } catch (x) {}
     if (e.url) acts.appendChild(A.el("a", { class: "ev-link", href: e.url, target: "_blank", rel: "noopener nofollow", text: "🌐", title: two("open"), "aria-label": two("open") }));
     li.appendChild(acts);
     return li;
@@ -304,7 +305,8 @@
     var h = "", evs = off.ev ? [] : forBar(bar.id).slice(0, 2);
     evs.forEach(function (e) {
       h += '<div class="ev-line"><span class="ev-l-t">' + esc((KIND[e.kind] || "📅") + " " + e.title + " " + hhmm(e.starts_at)) + "</span>" +
-        '<button type="button" class="btn btn-small ev-go" data-evgo="' + esc(String(e.id)) + '">' + esc(two("go")) + "</button></div>";
+        '<button type="button" class="btn btn-small ev-go" data-evgo="' + esc(String(e.id)) + '">' + esc(two("go")) + "</button>" +
+        (window.INVITE ? '<button type="button" class="btn btn-small inv-ev" data-invev="' + esc(String(e.id)) + '" aria-label="' + esc(L("Bjud in", "Invite")) + '">📨</button>' : "") + "</div>";
     });
     if (!off.rep && A && A.LIVE && !/^pl_/.test(String(bar.id))) {
       h += '<div class="pp-info ev-rep"><button type="button" class="btn btn-small" data-evrep="' + esc(String(bar.id)) + '">' + esc(two("rep")) + "</button>" +

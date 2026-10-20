@@ -155,6 +155,7 @@
     return !!(h && isFinite(lat) && isFinite(lng) && U.haversine(lat, lng, h.lat, h.lng) <= (h.r || HOME_R));
   }
   function homeBlock(body) {
+    if (window.HOMEZONE && window.HOMEZONE.ready) return;   // v28: ⚙️ "🏠 Hemzon" under the name (js/homezone.js)
     var el = A.el;
     body.appendChild(el("h3", { text: t("homeH") }));
     body.appendChild(el("p", { class: "muted", style: "margin-top:0", text: t("homeInfo") }));

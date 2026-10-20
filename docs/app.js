@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.INVITE].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -1481,7 +1481,7 @@
     if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
     hx.hidden = !html;
     // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
-    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
+    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || hx.querySelector(".inv-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
     hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
     if (urgent) urgent.classList.add("hx-urgent");
     if (st.hidden) hudPanel(false);
@@ -3598,6 +3598,8 @@
     if (!$("sheet").hidden) closeSheet();
     var c = q.get("chat"), r = q.get("rally"), b = q.get("bar"), f = q.get("focus"), so = q.get("sos"), st = q.get("status");
     var nfi = q.get("find"), nfr = q.get("friend");
+    var inv = q.get("inv");   // v28 invite push (?invite=1 is the old app-share link)
+    if (inv) { if (LIVE) mods("openInviteLink", inv, q.get("ans")); return; }
     if (nfi || nfr || q.get("friends")) { if (LIVE) mods("openNearLink", nfi || "list", nfr); return; }
     var sk = q.get("skal"), fm = q.get("film");
     if (sk) { if (LIVE) mods("openSkalLink", sk); }
