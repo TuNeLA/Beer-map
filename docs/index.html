@@ -77,6 +77,8 @@
 <link rel="x-lazy-css" data-boot="1" href="./helg.css?v=4dff4b0154">
 <link rel="x-lazy-css" data-boot="1" href="./passport.css?v=198d1857cf">
 <link rel="x-lazy-css" data-boot="1" href="./koden.css?v=399071a597">
+<!-- rel="x-lazy-css": not loaded at start; js/party.js adds it on the first open. -->
+<link rel="x-lazy-css" href="./party.css">
 <link rel="stylesheet" href="./polish.css?v=0f497293c1">
 <link rel="stylesheet" href="./polish2.css?v=42e3bed922">
 </head>
@@ -230,6 +232,9 @@
 <script defer src="./js/koden.js?v=60e3283522"></script>
 <script defer src="./js/cards.js?v=17aacd9b7e"></script>
 <script defer src="./js/polish2.js?v=0a9cee81ab"></script>
+<script type="text/x-lazy" src="./js/party-content.js"></script>
+<script type="text/x-lazy" src="./js/party-ui.js"></script>
+<script defer src="./js/party.js"></script>
 <script defer src="./app.js?v=ea616ebdc1"></script>
 </body>
 </html>
