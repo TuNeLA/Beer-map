@@ -1,0 +1,628 @@
+{
+"_doc": "Arena name (as stats.swehockey.se / TheSportsDB write it) → position. Built 2026-10-21 from OpenStreetMap (Nominatim, © OSM contributors, ODbL); unknown arenas fall back to the town in the team/arena name.",
+"ABB Arena Nord": {
+"lat": 59.62631,
+"lng": 16.5287
+},
+"Allhallen": {
+"lat": 59.32371,
+"lng": 17.74022
+},
+"Arena Grosvad": {
+"lat": 58.71517,
+"lng": 15.80469
+},
+"Arena Jernvallen": {
+"lat": 60.60871,
+"lng": 16.77302
+},
+"Askims Ishall": {
+"lat": 57.59012,
+"lng": 11.94586
+},
+"Avicii Arena": {
+"lat": 59.29362,
+"lng": 18.08321
+},
+"Axelent Arena": {
+"lat": 57.18048,
+"lng": 14.04512
+},
+"Behrn Arena": {
+"lat": 59.26628,
+"lng": 15.22339
+},
+"Billingehov": {
+"lat": 58.41376,
+"lng": 13.84595
+},
+"Bjästa Ishall": {
+"lat": 63.20598,
+"lng": 18.49778
+},
+"Björbo Ishall": {
+"lat": 60.45925,
+"lng": 14.71343,
+"note": "Björbo"
+},
+"Björknäs Ishall": {
+"lat": 59.31147,
+"lng": 18.24132
+},
+"Björkängshallen": {
+"lat": 59.24075,
+"lng": 18.00721
+},
+"Bollnäs Ishall": {
+"lat": 61.34238,
+"lng": 16.34312
+},
+"Borlänge Ishall": {
+"lat": 60.46808,
+"lng": 15.44258
+},
+"Borås Ishall": {
+"lat": 57.73396,
+"lng": 12.93003
+},
+"Brandcode Center": {
+"lat": 62.41236,
+"lng": 17.34701
+},
+"Brätte Ishall": {
+"lat": 58.36602,
+"lng": 12.3263
+},
+"Bålsta Ishall": {
+"lat": 59.56583,
+"lng": 17.52626
+},
+"Catena Arena": {
+"lat": 56.22586,
+"lng": 12.84484
+},
+"DIÖ Ishall": {
+"lat": 56.63861,
+"lng": 14.21838
+},
+"Dackehallen": {
+"lat": 56.53037,
+"lng": 14.98248
+},
+"Ekhallen": {
+"lat": 59.3264,
+"lng": 18.39559
+},
+"Elite Sängar Arena": {
+"lat": 59.41828,
+"lng": 16.09257
+},
+"FD Maskin Arena": {
+"lat": 62.46854,
+"lng": 17.14675
+},
+"Fagerliden": {
+"lat": 60.01255,
+"lng": 15.78483
+},
+"Farsta Ishall": {
+"lat": 59.24064,
+"lng": 18.07952
+},
+"Fridhemshallen": {
+"lat": 58.38003,
+"lng": 11.93816
+},
+"Gislerinken": {
+"lat": 57.29439,
+"lng": 13.5338
+},
+"Gnesta Ishall": {
+"lat": 59.03547,
+"lng": 17.3214
+},
+"Gränshallen": {
+"lat": 59.8796,
+"lng": 12.28404
+},
+"HIVE Arena": {
+"lat": 65.82802,
+"lng": 21.67448
+},
+"Halmstad Arena": {
+"lat": 56.67445,
+"lng": 12.88834
+},
+"Hammarö Ishall": {
+"lat": 59.32549,
+"lng": 13.48471
+},
+"Hatstore Arena": {
+"lat": 56.6682,
+"lng": 16.34756
+},
+"Helmia Arena": {
+"lat": 59.84239,
+"lng": 13.16213
+},
+"Hemse Ishall": {
+"lat": 57.24074,
+"lng": 18.38308
+},
+"Himmelstalundshallen": {
+"lat": 58.58775,
+"lng": 16.14012
+},
+"Hovet, Johanneshov": {
+"lat": 59.29493,
+"lng": 18.08188
+},
+"Husby Ishall": {
+"lat": 59.41061,
+"lng": 17.92057
+},
+"Husqvarna Garden": {
+"lat": 57.78705,
+"lng": 14.23235
+},
+"Hägglunds Arena": {
+"lat": 63.28388,
+"lng": 18.72497
+},
+"Högslättens Ishall": {
+"lat": 62.63771,
+"lng": 17.96715
+},
+"ICA Maxi Arena": {
+"lat": 57.60672,
+"lng": 18.28153
+},
+"Isbjörnen": {
+"lat": 59.32734,
+"lng": 17.91643
+},
+"Isborgen": {
+"lat": 67.13694,
+"lng": 20.66862
+},
+"Ishuset": {
+"lat": 57.69616,
+"lng": 11.99841
+},
+"Jonstorps Ishall": {
+"lat": 56.23013,
+"lng": 12.67597
+},
+"Järfälla Ishall": {
+"lat": 59.41832,
+"lng": 17.8236
+},
+"Järna Ishall": {
+"lat": 59.09619,
+"lng": 17.5585
+},
+"Kallhälls Ishall": {
+"lat": 59.4604,
+"lng": 17.82326
+},
+"Kastbergshallen": {
+"lat": 62.52039,
+"lng": 15.67351
+},
+"Kasthallen": {
+"lat": 60.68503,
+"lng": 17.24489
+},
+"Kirsebergs Ishall": {
+"lat": 55.60612,
+"lng": 13.03654
+},
+"Klanghallen": {
+"lat": 63.08528,
+"lng": 14.82736
+},
+"Kopparhallen": {
+"lat": 64.71361,
+"lng": 21.16115
+},
+"Kristianstads Ishall": {
+"lat": 56.04452,
+"lng": 14.16908
+},
+"KvB Hallen": {
+"lat": 56.13603,
+"lng": 12.93429
+},
+"Kvibergs Parks is- och sporthall": {
+"lat": 57.73664,
+"lng": 12.03402
+},
+"Kärrtorps IP": {
+"lat": 59.28587,
+"lng": 18.12309
+},
+"Kållereds Ishall": {
+"lat": 57.61157,
+"lng": 12.07458
+},
+"Latbergshallen": {
+"lat": 62.92693,
+"lng": 17.74463
+},
+"Lejonhallen": {
+"lat": 57.11944,
+"lng": 12.28155
+},
+"Liljas Arena": {
+"lat": 56.73811,
+"lng": 15.91236
+},
+"Lionshov Ishall": {
+"lat": 58.92475,
+"lng": 11.26595
+},
+"Lunds Ishall": {
+"lat": 55.6968,
+"lng": 13.17928
+},
+"Lödöseborg": {
+"lat": 58.02949,
+"lng": 12.15307
+},
+"Löfbergs Arena": {
+"lat": 59.40754,
+"lng": 13.50069
+},
+"Malmö Arena": {
+"lat": 55.56439,
+"lng": 12.97633
+},
+"Malmö Isstadion": {
+"lat": 55.5825,
+"lng": 12.99114
+},
+"Malungs Ishall": {
+"lat": 60.68132,
+"lng": 13.73074
+},
+"Marconihallen": {
+"lat": 57.65806,
+"lng": 11.92054
+},
+"Mariehus Arena": {
+"lat": 58.7052,
+"lng": 13.83895
+},
+"Modin & Zetterberg Hallen": {
+"lat": 62.26829,
+"lng": 17.3671
+},
+"Monitor ERP Arena": {
+"lat": 60.69131,
+"lng": 17.13234
+},
+"Munkfors Arena": {
+"lat": 59.84077,
+"lng": 13.56425
+},
+"NEH Hallen": {
+"lat": 59.51788,
+"lng": 15.01686
+},
+"Nacka Ishall": {
+"lat": 59.3113,
+"lng": 18.15626
+},
+"NickBack Arena": {
+"lat": 60.63808,
+"lng": 17.00908
+},
+"Niphallen": {
+"lat": 63.16758,
+"lng": 17.29928
+},
+"Nittorps Ishall": {
+"lat": 57.547,
+"lng": 13.49394
+},
+"Nobelhallen": {
+"lat": 59.33648,
+"lng": 14.52031
+},
+"Nolhaga Ishall": {
+"lat": 57.93143,
+"lng": 12.52178
+},
+"Norvalla Ishall": {
+"lat": 59.40305,
+"lng": 13.18559
+},
+"Nynäshallen": {
+"lat": 60.67884,
+"lng": 17.13381
+},
+"Oasen": {
+"lat": 60.35283,
+"lng": 15.74443
+},
+"Odenrinken": {
+"lat": 58.16396,
+"lng": 13.57158
+},
+"Osby Ishall": {
+"lat": 56.379,
+"lng": 13.98302
+},
+"Ovakohallen": {
+"lat": 60.14123,
+"lng": 15.42953
+},
+"PART Arena": {
+"lat": 65.8541,
+"lng": 23.1788
+},
+"Pinbackshallen": {
+"lat": 59.61681,
+"lng": 17.85796
+},
+"Profilgruppen Ishall": {
+"lat": 57.17169,
+"lng": 15.35356
+},
+"Rafnahallen": {
+"lat": 63.54193,
+"lng": 16.46211
+},
+"Rosenbergs ishall": {
+"lat": 58.41341,
+"lng": 14.17098
+},
+"Råsshallen": {
+"lat": 59.70867,
+"lng": 15.11506
+},
+"SCA Arena": {
+"lat": 62.5062,
+"lng": 17.34946
+},
+"Saab Arena": {
+"lat": 58.41739,
+"lng": 15.63555
+},
+"Sagahallen": {
+"lat": 64.61853,
+"lng": 16.6785
+},
+"Sannerudshallen": {
+"lat": 59.49817,
+"lng": 13.30986
+},
+"Scandinavium": {
+"lat": 57.69932,
+"lng": 11.98767
+},
+"Scaniarinken": {
+"lat": 59.18942,
+"lng": 17.5705
+},
+"Segeltorpshallen": {
+"lat": 59.26843,
+"lng": 17.92924
+},
+"Skara Ishall": {
+"lat": 58.38722,
+"lng": 13.45688
+},
+"Skellefteå Kraft Arena": {
+"lat": 64.76153,
+"lng": 20.96726
+},
+"Skogshallen": {
+"lat": 66.32595,
+"lng": 22.83313
+},
+"Skogsvallen": {
+"lat": 65.59926,
+"lng": 22.16199
+},
+"Slättbergshallen": {
+"lat": 58.27866,
+"lng": 12.29916
+},
+"Smedjehov": {
+"lat": 57.69285,
+"lng": 14.11446
+},
+"Smehallen": {
+"lat": 59.37337,
+"lng": 16.5486
+},
+"Snells Arena": {
+"lat": 67.21143,
+"lng": 23.35528
+},
+"Soft Center Arena": {
+"lat": 56.24815,
+"lng": 15.2767
+},
+"Somashallen": {
+"lat": 59.12944,
+"lng": 12.90037
+},
+"Sparbanken Arena, Arvika": {
+"lat": 59.6514,
+"lng": 12.62166
+},
+"Sparbankshallen": {
+"lat": 57.09939,
+"lng": 12.26356
+},
+"Stallet Norrköping": {
+"lat": 58.59466,
+"lng": 16.17981
+},
+"Stenungsund Arena": {
+"lat": 58.05584,
+"lng": 11.82675
+},
+"Stora Hallen": {
+"lat": 58.77511,
+"lng": 16.57768
+},
+"Storegårdshallen": {
+"lat": 57.66797,
+"lng": 14.9811
+},
+"Stortorpshallen": {
+"lat": 59.23527,
+"lng": 18.1316
+},
+"Sunderby Ishall": {
+"lat": 65.66007,
+"lng": 21.94872
+},
+"Swetex Arena": {
+"lat": 59.62166,
+"lng": 16.22845
+},
+"Sydnärkehallen": {
+"lat": 59.0621,
+"lng": 15.10448
+},
+"Sävsjö Ishall": {
+"lat": 57.3928,
+"lng": 14.67778
+},
+"Söderslättshallen": {
+"lat": 55.38669,
+"lng": 13.15664
+},
+"Sölveshov": {
+"lat": 56.05186,
+"lng": 14.56868
+},
+"Talavidshallen": {
+"lat": 56.9884,
+"lng": 14.30035
+},
+"Tegera Arena": {
+"lat": 60.735,
+"lng": 14.98638
+},
+"Tibro Ishall": {
+"lat": 58.41341,
+"lng": 14.17098
+},
+"Tjörns Ishall": {
+"lat": 57.9434,
+"lng": 11.57436
+},
+"Tuve Ishall": {
+"lat": 57.74895,
+"lng": 11.91388
+},
+"Tyresö Ishall": {
+"lat": 59.24811,
+"lng": 18.22559
+},
+"Ungdomshallen": {
+"lat": 62.41261,
+"lng": 17.34872
+},
+"Vadstena Ishall": {
+"lat": 58.4417,
+"lng": 14.88734
+},
+"Valhall": {
+"lat": 59.78695,
+"lng": 17.46361
+},
+"Vallentuna Ishall": {
+"lat": 59.53411,
+"lng": 18.09508
+},
+"Vallhamra Ishall": {
+"lat": 57.72397,
+"lng": 12.07983
+},
+"Varbergs Ishall": {
+"lat": 57.11832,
+"lng": 12.2809
+},
+"Vegahallen": {
+"lat": 60.35376,
+"lng": 17.50687
+},
+"Vida Arena": {
+"lat": 56.8797,
+"lng": 14.77277
+},
+"Vindelns Ishall": {
+"lat": 64.20772,
+"lng": 19.72419
+},
+"Visby Ishall": {
+"lat": 57.62624,
+"lng": 18.32961
+},
+"Visionite Arena": {
+"lat": 63.81524,
+"lng": 20.24191
+},
+"Vättlehallen": {
+"lat": 57.79396,
+"lng": 12.30931
+},
+"Wasahallen": {
+"lat": 59.34034,
+"lng": 18.05124
+},
+"Ängevi Ishall": {
+"lat": 59.52586,
+"lng": 13.47188
+},
+"Åby Ishall": {
+"lat": 57.64613,
+"lng": 12.00002
+},
+"Åkers Ishall": {
+"lat": 59.25538,
+"lng": 17.10794
+},
+"Åmåls Ishall": {
+"lat": 59.06102,
+"lng": 12.69356
+},
+"Åse & Viste Arena": {
+"lat": 58.32871,
+"lng": 12.68544
+},
+"Öckerö Ishall": {
+"lat": 57.71667,
+"lng": 11.64317
+},
+"Österåker Sportcentrum": {
+"lat": 59.4888,
+"lng": 18.30329
+},
+"Hitachi Arena": {
+"lat": 60.1512,
+"lng": 15.20877,
+"note": "Ludvika (f.d. ABB-hallen)"
+},
+"Wibe Arena": {
+"lat": 61.00698,
+"lng": 14.53086,
+"note": "Mora (f.d. Jalas Arena)"
+},
+"Railone Arena": {
+"lat": 61.11227,
+"lng": 14.6447,
+"note": "Orsa Ishall"
+},
+"Domnarvsvallen": {
+"lat": 60.49473,
+"lng": 15.43377,
+"note": "Borlänge (IK Brage)"
+}
+}

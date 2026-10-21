@@ -1,0 +1,44 @@
+{
+ "_doc": "Öl Nu sport import (scripts/import-sport.mjs). Edit freely; every block can be turned off with \"on\": false. Times are Europe/Stockholm. Team ids: thesportsdb.com/api/v1/json/123/searchteams.php?t=<name>.",
+ "town_km": 40,
+ "swehockey": {
+  "days": 14,
+  "leagues": "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean|SDHL|NDHL)",
+  "skip": "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior|Dam(Ettan|Tvåan|Trean))",
+  "tv_teams": "^(Leksands IF|Mora IK)$",
+  "tv_leagues": "^(SHL|HockeyAllsvenskan)",
+  "tv_area": { "lat": 60.6, "lng": 15.0, "km": 200, "_doc": "Leksand / Mora away games show as 📺 TV matches for everyone within 200 km of mid-Dalarna" }
+ },
+ "thesportsdb": {
+  "days": 14,
+  "league_days": 7,
+  "leagues": [
+   { "id": 4347, "name": "Allsvenskan" },
+   { "id": 4403, "name": "Superettan" },
+   { "id": 4674, "name": "Ettan Norra" }
+  ],
+  "local_teams": [136118],
+  "tv_teams": [
+   { "id": 133916, "name": "Sverige", "type": "national" },
+   { "id": 136822, "name": "Sverige (dam)", "type": "national" },
+   { "id": 133602, "name": "Liverpool", "type": "club" },
+   { "id": 133604, "name": "Arsenal", "type": "club" },
+   { "id": 133612, "name": "Manchester United", "type": "club" },
+   { "id": 133613, "name": "Manchester City", "type": "club" },
+   { "id": 133610, "name": "Chelsea", "type": "club" },
+   { "id": 133616, "name": "Tottenham", "type": "club" },
+   { "id": 134777, "name": "Newcastle", "type": "club" },
+   { "id": 133738, "name": "Real Madrid", "type": "club" },
+   { "id": 133739, "name": "Barcelona", "type": "club" }
+  ]
+ },
+ "football_data": {
+  "_doc": "Needs the GitHub secret FOOTBALL_DATA_KEY (free plan). When it works, the club TV picks above come from here instead (full PL + CL lists).",
+  "competitions": ["PL", "CL", "WC", "EC"],
+  "all_matches": ["WC", "EC"],
+  "big": "(Liverpool|Arsenal|Man United|Manchester United|Man City|Manchester City|Chelsea|Tottenham|Newcastle|Real Madrid|Barça|Barcelona|Bayern|Juventus|Milan|Inter|PSG|Paris|Dortmund)"
+ },
+ "tv_manual": [
+  { "_doc": "Example (past, ignored): add Tre Kronor or other big games by hand", "id": "exempel", "title": "Tre Kronor – Finland", "starts_at": "2026-05-01T18:20:00+02:00", "sport": "hockey", "league": "Landskamp" }
+ ]
+}

@@ -1597,3 +1597,63 @@ editing), stats.html (`stats-areas.js`), this section. Data: `docs/buildings/*` 
 - Tables `bar_areas` (never removed: status + `superseded_at`) and `bar_area_trusted`; RLS on, no grants. anon may run only the two owner
   list / set functions (owner key, like owner_places).
 
+## ⚽🏒 SPORT + 📅 EVENT-KNAPPEN (matches, 📺 TV matches, "Visar sport" pubs, one Event button; additive)
+Migrations `0100_sport_events.sql`, `0101_bar_sport.sql` (applied on the server 2026-10-21 under the same names). No row-removing statements.
+Client: `docs/js/evsheet.js` (`window.EVSHEET`), `docs/js/sport.js` (`window.SPORT`), `docs/sport.css`, `docs/stats-sport.js` (stats.html).
+Importer: `scripts/import-sport.mjs` (called by `scripts/import-events.mjs`), `scripts/sport-feeds.json` (config), `scripts/sport-venues.json`
+(arena → position, from OSM Nominatim). Research: scratchpad `sport-research.md`. A missing RPC (old database, PGRST202) = that part hides / falls back.
+
+### Server
+`bar_events` gets `sport` (hockey | fotboll), `league`, `home`, `away`, `tv boolean default false`, `tv_lat`, `tv_lng`, `tv_km`.
+A **TV match** is a town-less row: `tv = true`, `lat`/`lng` NULL (optional area `tv_lat`/`tv_lng`/`tv_km` = regional, e.g. Leksand for Dalarna).
+The old `events_near` never returns TV rows (its box filter skips NULL positions), so old clients are unchanged.
+New tables: `bar_sport_votes(bar_id, user_id, yes boolean|null, bar_lat, bar_lng, created_at, updated_at)` pk (bar_id, user_id);
+`bar_sport_owner(bar_id pk, shows boolean|null, bar_lat, bar_lng, set_at)`. RLS on, no policies, no client access.
+**A bar shows sport** when the owner says so (`shows` true/false), else when it has ≥ 1 👍 and more 👍 than 👎.
+| name | params | returns | errors |
+|---|---|---|---|
+| `events_near2` | `p_lat, p_lng, p_days default 7` (1–14) | jsonb `{v:1, server_time, events:[{id, title, kind, starts_at, ends_at, bar_id, place, lat, lng, town, url, source, is_mine, pending, km, sport, league, home, away, tv}]}` — local rows like `events_near` (+ own pending) and TV rows (no area, or the caller inside the area); max 150 by time | `outside_sweden`, no session → 42501 |
+| `import_sport_events` | `p_rows jsonb` (≤ 2000 × `{source, source_id, title, starts_at, ends_at?, url?, place?, lat?, lng?, sport?, league?, home?, away?, tv?, tv_lat?, tv_lng?, tv_km?}`) | `{inserted, updated, skipped}` — **service_role only**, upsert on (source, source_id), kind = `sport`, status `ok` (hidden stays hidden); non-TV rows need a valid position | `invalid_rows` |
+| `vote_bar_sport` | `p_bar_id, p_yes boolean` (null = take the vote back) | `{ok, bar_id, yes, no, owner, shows, mine}` | `not_authenticated`, `invalid_bar` (not an active bars_lite row), `slow_down` (1 change / 3 s, 30 / 24 h) |
+| `bar_sport_near` | `p_lat, p_lng` | `{bars:[{bar_id, name, lat, lng, yes, no, owner, shows, mine, km}]}` — ~30 km, bars with a vote or an owner decision, shows first then distance, max 200 | `outside_sweden` |
+| `owner_sport_bars` | `p_key` | `{generated_at, bars:[… + last_at]}` (last 300 active) | 403 `forbidden`, `rate_limited` |
+| `owner_set_bar_sport` | `p_key, p_bar_id, p_shows boolean` (null = back to the votes) | `{ok, …state}` | `invalid_bar`, 403 |
+| `owner_find_bars` | `p_key, p_q` (2–40 chars) | `{bars:[{bar_id, name, type, town, lat, lng, …state}]}` max 20 | 403 |
+
+### Importer (`scripts/import-sport.mjs`, same daily "Events (import)" workflow)
+- **stats.swehockey.se** `GamesByDate/<day>/ByTime/null` × 14 days (1.5 s apart): SHL, HockeyAllsvenskan, Hockeyettan, HockeyTvåan, HockeyTrean, SDHL, NDHL
+  (no youth, preseason, district teams). Source `swehockey`, id `swh:<game id>:<day>`, url = the league page, ends = start + 2.5 h.
+  Leksands IF / Mora IK SHL / HockeyAllsvenskan games also give a regional TV row (`tv_teams`, `tv_leagues`, `tv_area` 60.6, 15.0, 200 km).
+- **TheSportsDB** (free key `123`, or secret `THESPORTSDB_KEY`): next matches of local teams (IK Brage) and TV teams (Sverige, Sverige dam,
+  big PL clubs, Real Madrid, Barcelona) → TV rows; Allsvenskan / Superettan / Ettan Norra per day for 7 days (free key: max 3 rows per call).
+  2.1 s between calls, waits 61 s after a 429.
+- **football-data.org** (secret `FOOTBALL_DATA_KEY`, optional): PL, CL, VM, EM for 10 days in one call → TV rows (PL/CL with a big club, all
+  VM/EM, every Sweden game); when it works, TheSportsDB club TV picks are skipped. Attribution line in the 📅 sheet footer.
+- `tv_manual` entries in sport-feeds.json (Tre Kronor etc.). Local rows only within 40 km of an app town (`import_event_towns`).
+- `node scripts/import-events.mjs --dry` prints the sport rows too; `--no-sport` skips them.
+- Positions: `sport-venues.json` (arena name → lat/lng) → else the town in the team / arena name → else skipped.
+
+### Client
+- **📅 button** `#btn-evs` (js/evsheet.js creates it right after `#btn-taxi`): round 44 px, same right column, under 🔥 (👻) and 🚕
+  (`top: sat + 212 px`, + 46 px with the ghost chip); hidden like 📍/🚕 while a bar sheet is open; badge = events tonight (not pending).
+- **📅 Event sheet**: sticky filter bar — `.ds-seg` Ikväll / I morgon / Helgen (coming Fri–Sun) / 7 dagar, and `.ds-chip` Alla / 🎤 Quiz (quiz,
+  karaoke) / 🎸 Live (live, standup) / ⚽ Fotboll / 🏒 Hockey / 📺 På TV / 🎉 Fest (party, dj); the type chip is remembered (`olnu.evsFilter`).
+  Cards (`.ds-card.evs-row`) by time, then distance: icon, title, league · place · km, time (stencil), countdown ("om 36 min", "om 2 tim",
+  "i morgon", "pågår nu"). Actions: **📍 Visa** (open the bar sheet, else fly), **📨 Bjud in** (`INVITE.openCreate({event})`),
+  **🪖 Vi går!** (`EVENTS.go` = create_rally + notify-group rally). TV cards: "📺 Ikväll på TV: …" and "📺 Matchen visas på: Pitchers, …"
+  (`SPORT.pubs`, owner-flagged first); 📍/📨/🪖 use the nearest sports pub (no pub → 🪖 "framför TV:n" without a position, no 📨).
+  A TV row that is also a local row (same teams ± 15 min) is shown once. "➕ Tipsa om ett event" (`EVENTS.tip`). Dalmål empty states.
+  Old database (no `events_near2`) → `EVENTS._load` rows (no TV).
+- **Bar sheet** (js/sport.js `barPopupHTML`): shows-sport bars get "📺 Visar sport · 👍 n 👎" lifted under the title (class `.ev-line`);
+  other bars get "📺 Visar dom sport här?" 👍 / 👎 in the ℹ️ Info fold. Tap = vote, tap the pressed one = take it back; 1.5 s client
+  debounce + server limits. Not for `pl_` places or non-drink places. `bar_sport_near` at sign-in, max every 10 min, and when 📅 opens.
+- **stats.html** "📺 Sportkrogar": voted bars (👍/👎, owner state), ✅ Visar sport / 🚫 Visar inte / ↩️ Efter röster, and a name search
+  to flag a bar nobody voted on.
+
+### Owner setup (optional keys; the importer works without them)
+1. football-data.org (full Premier League / Champions League / VM / EM lists): https://www.football-data.org/client/register → name + e-mail →
+   the API token comes by e-mail. GitHub → repo → Settings → Secrets and variables → Actions → New repository secret
+   `FOOTBALL_DATA_KEY` = the token. (Terms: keep the key out of the repo; the app shows "Football data provided by the Football-Data.org API".)
+2. TheSportsDB premium (only if the free 3-rows cap is a problem): https://www.thesportsdb.com/pricing ($9/month) → the key on your profile →
+   secret `THESPORTSDB_KEY`.
+3. Actions → "Events (import)" → Run workflow. Edit `scripts/sport-feeds.json` for teams / TV picks; add arenas to `sport-venues.json`.
