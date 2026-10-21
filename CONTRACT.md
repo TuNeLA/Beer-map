@@ -1401,3 +1401,24 @@ meriter.js `ACTS` + 10 `LINES`.
 - Attribution in the ⓘ popover (`#attrib-pop`): Klassisk = the raster layers' text; MapLibre styles = "OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"; Mapbox = "© Mapbox © OpenStreetMap Improve this map". The popover opens by itself for 5 s when a GL style starts (not while the beer-type strip is up) and closes on map move (OSMF guideline: collapsed "i" is OK after that).
 - sw.js: `tiles.openfreemap.org` in `TILE_HOST`; `/styles/*` and `/planet` (TileJSON) network first (4 s) with the cached copy offline; sprites, glyphs, vector tiles cache first like raster tiles (`TILE_MAX` 300 entries + new `TILE_BYTES` 40 MB cap, size in `x-olnu-size`). Mapbox requests are not cached.
 - Mapbox token: the URL restriction must be the ORIGIN `https://tunela.github.io` (a path such as `/Beer-map` fails: GL JS fetches tiles from a worker that sends only the origin as Referer → 403 on tiles, while the style request passes).
+
+## Design system: ds.css + js/ds.js (design5)
+- Files: `docs/ds.css` (the LAST stylesheet; `js/ds.js` puts any later sheet CSS and injected `<style>` in front of it) and
+  `docs/js/ds.js` (`window.DS`, deferred after polish2.js, no app.js hook, no RPC). New UI uses the `--ds-*` tokens and `.ds-*` classes.
+- **Tokens.** Spacing `--ds-1..6` = 4/8/12/16/24/32. Type `--ds-fs-12/14/16/18/22/28` with `--ds-lh-*` 16/20/24/24/28/32, weights 400/600/700,
+  `--ds-sans` (Chakra Petch) for all text; `--ds-stencil` (Black Ops One) only for the logo, ÖL!, big numbers and short sheet titles.
+  Colour `--ds-bg #0a0f1c`, `--ds-sheet #121a2a`, `--ds-card #19233a`, `--ds-raised #222e48`, `--ds-border`, `--ds-text`, `--ds-text-2`, `--ds-muted`,
+  `--ds-amber` (action/you), `--ds-green` (live/ok), `--ds-red` (alarm), `--ds-blue` (info); text variants `--ds-*-t` and inks `--ds-on-*`
+  are ≥ 4.5:1 on every surface. Radius `--ds-r-1/2/3` = 12/16/20 + `--ds-r-pill`. Depth `--ds-sh-1/2/sticky`. Motion `--ds-ease`, `--ds-t-1/2/3`
+  (0 ms with prefers-reduced-motion). The old names (`--s0..s3`, `--hair`, `--r-*`, `--sp-*`, `--fs-*`, `--night*`) now point at these.
+- **Components.** `.ds-section` (`.ds-section-h` + `.ds-list`), `.ds-list`/`.ds-row` (56–64 px rows with dividers; `.ds-row-i` icon,
+  `.ds-row-t` title + `small`, `.ds-row-v` value, `.ds-chev`), `.ds-btn` + `-primary/-secondary/-ghost/-danger` (48 px; = `.btn`, `.btn-amber`,
+  `.btn-ghost`, `.btn-danger`), `.ds-seg` (= `.tabs`, `.seg`, `.bp-seg` in sheets), `.ds-toggle-row` (= `.toggle-row` + `.switch`; the whole row
+  taps the switch), `.ds-card`, `.ds-chip`, `.ds-badge`, `.ds-empty`. Sheet rhythm: title · sections 24 px apart · 8 px between items · 16 px sides.
+- **Sticky tabs.** `.inv-tabs` (Grupper | Vänner) and `.tt-bar` (🏆) are sticky at the top of `#sheet-body` on a solid sheet background
+  (z-index 20); `#sheet-body.ds-scrolled` adds the shadow. A new sticky bar: put it first in `#sheet-body`, `top:calc(-1 * var(--ds-4))`.
+- **⚙️ sections.** After the settings sheet is built, ds.js MOVES (never rebuilds) its blocks into `section.ds-section[data-ds]`:
+  profil · vanner · stat · notis · integ · karta · skoj · om · mer. Each block becomes `.ds-item` in a `.ds-list`; a block with a field, a
+  segmented control or the Wrapped chips is `.ds-blk` and shows its old h3 as the label. **A new settingsSheet block:** append an `h3` + your
+  `.row`/`.toggle-row` as before; it is placed by `secOf()` (class/text rules) or by the h3 text (`headSec()`), else in "Mer". Add one line to
+  `secOf()` for a precise place. Descendant selectors keep working; `#sheet-body > X` selectors for settings blocks do not.

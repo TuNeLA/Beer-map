@@ -1,0 +1,382 @@
+/* ==========================================================================
+   Öl Nu design system (design5, 2026-10-21). ONE file, loaded LAST (js/ds.js keeps it last when the
+   lazy sheet CSS files are added later). It maps the tokens and the shared components onto the class
+   names the modules already use, so no module has to change.
+   Identity: dark navy, amber = action/you, green = live/ok, red = alarm, blue = info. Military/Dalarna
+   flavour lives in the stencil face (logo, ÖL!, big numbers, short sheet titles) and the amber kickers.
+
+   TOKENS
+     spacing  --ds-1..6        4 8 12 16 24 32 (8-pt scale)
+     type     --ds-fs-12..28   12/16 14/20 16/24 18/24 22/28 28/32 · weights 400/600/700
+     colour   --ds-bg --ds-sheet --ds-card --ds-raised --ds-border --ds-text --ds-text-2 --ds-muted
+              --ds-amber --ds-green --ds-red --ds-blue (+ --ds-on-* ink for each fill)
+     radius   --ds-r-1 12 · --ds-r-2 16 · --ds-r-3 20 · --ds-r-pill
+     depth    --ds-sh-1 --ds-sh-2 --ds-sh-sticky
+     motion   --ds-ease --ds-t-1 120ms --ds-t-2 200ms --ds-t-3 320ms (0 with reduced motion)
+   COMPONENTS (class = what new code uses; the selector list after it = existing markup it styles)
+     .ds-section .ds-list .ds-row .ds-btn(-primary/-secondary/-ghost/-danger) .ds-seg .ds-toggle-row
+     .ds-card .ds-chip .ds-badge .ds-empty
+   SHEET RHYTHM: title · sections 24 px apart · 8 px between items · 16 px side padding · nothing touches.
+   ========================================================================== */
+
+:root{
+  /* spacing */
+  --ds-1:4px; --ds-2:8px; --ds-3:12px; --ds-4:16px; --ds-5:24px; --ds-6:32px;
+  /* type */
+  --ds-fs-12:12px; --ds-fs-14:14px; --ds-fs-16:16px; --ds-fs-18:18px; --ds-fs-22:22px; --ds-fs-28:28px;
+  --ds-lh-12:16px; --ds-lh-14:20px; --ds-lh-16:24px; --ds-lh-18:24px; --ds-lh-22:28px; --ds-lh-28:32px;
+  --ds-sans:"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-stencil:"Black Ops One", "Impact", system-ui, sans-serif;
+  /* colour (every text colour below is ≥ 4.5:1 on every surface; table in the design5 report) */
+  --ds-bg:#0a0f1c; --ds-sheet:#121a2a; --ds-card:#19233a; --ds-raised:#222e48;
+  --ds-border:rgba(255,255,255,.1); --ds-border-2:rgba(255,255,255,.16);
+  --ds-text:#eef0ec; --ds-text-2:#c9d0cd; --ds-muted:#a7b0ac;
+  --ds-amber:#f5a623; --ds-amber-t:#ffc24d; --ds-on-amber:#241300; --ds-amber-soft:rgba(245,166,35,.14);
+  --ds-green:#3ddc84; --ds-green-t:#4fe08f; --ds-on-green:#00260f; --ds-green-soft:rgba(61,220,132,.12);
+  --ds-red:#c8202a; --ds-red-t:#ff7b73; --ds-on-red:#ffffff; --ds-red-soft:rgba(255,59,59,.12);
+  --ds-blue:#4aa3ff; --ds-blue-t:#8cc6ff; --ds-on-blue:#001a33; --ds-blue-soft:rgba(74,163,255,.1);
+  /* radius */
+  --ds-r-1:12px; --ds-r-2:16px; --ds-r-3:20px; --ds-r-pill:999px;
+  /* depth */
+  --ds-sh-1:0 1px 2px rgba(0,0,0,.45),0 4px 12px rgba(0,0,0,.28);
+  --ds-sh-2:0 2px 6px rgba(0,0,0,.45),0 14px 36px rgba(0,0,0,.45);
+  --ds-sh-sticky:0 10px 14px -10px rgba(0,0,0,.75);
+  /* motion */
+  --ds-ease:cubic-bezier(.2,.8,.2,1); --ds-t-1:120ms; --ds-t-2:200ms; --ds-t-3:320ms;
+
+  /* the old token names now point at the system (polish.css + modules follow automatically) */
+  --night:var(--ds-bg); --night-2:var(--ds-sheet); --night-3:var(--ds-raised);
+  --s0:var(--ds-bg); --s1:var(--ds-sheet); --s2:var(--ds-card); --s3:var(--ds-raised);
+  --hair:var(--ds-border); --hair-2:var(--ds-border-2); --line-soft:var(--ds-border);
+  --text:var(--ds-text); --text-2:var(--ds-text-2); --muted:var(--ds-muted);
+  --amber-2:var(--ds-amber-t); --on-amber:var(--ds-on-amber); --on-green:var(--ds-on-green); --fire:var(--ds-amber); --water:var(--ds-blue);
+  --r-xs:var(--ds-r-1); --r-s:var(--ds-r-1); --r-m:var(--ds-r-2); --r-l:var(--ds-r-3);
+  --sp-1:var(--ds-1); --sp-2:var(--ds-2); --sp-3:var(--ds-3); --sp-4:var(--ds-4); --sp-5:var(--ds-5); --sp-6:var(--ds-6);
+  --fs-xs:var(--ds-fs-12); --fs-s:var(--ds-fs-14); --fs-m:var(--ds-fs-16); --fs-l:var(--ds-fs-22); --fs-xl:var(--ds-fs-28);
+  --ease:var(--ds-ease); --d-1:var(--ds-t-1); --d-2:var(--ds-t-2); --d-3:var(--ds-t-3);
+  --sh-1:var(--ds-sh-1); --sh-2:var(--ds-sh-2); --tap:44px;
+}
+@media (prefers-reduced-motion: reduce){ :root{ --ds-t-1:0ms; --ds-t-2:0ms; --ds-t-3:0ms; --d-1:0ms; --d-2:0ms; --d-3:0ms } }
+
+/* ---------- Type ---------- */
+body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialiased}
+.sheet-body{font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text)}
+:where(.sheet-body) p{font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);color:var(--ds-text-2);margin:var(--ds-2) 0}
+.sheet-body .muted,.muted{color:var(--ds-muted)}
+:where(.sheet-body) :is(p.muted,small.muted){font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+:where(.sheet-body) small{font-size:var(--ds-fs-12);line-height:var(--ds-lh-12)}
+.sheet-body b,.sheet-body strong{font-weight:700}
+/* Stencil: brand, ÖL!, big numbers, short sheet titles (js/ds.js marks a title as short) */
+.brand-name,.beer-btn .beer-t,.code-big,.nr-dist,.cer-cd,.sk-cd-big{font-family:var(--ds-stencil);font-weight:400}
+.sheet-head h2{font-family:var(--ds-sans);font-weight:700;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.04em;color:var(--ds-amber-t);
+  text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-head h2.ds-stencil-s{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.05em}
+.sheet-head h2.ds-stencil{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-22);line-height:var(--ds-lh-22);letter-spacing:.06em}
+
+/* ---------- Sheet shell: one surface, 16 px sides, title, then content ---------- */
+.sheet{background:var(--ds-sheet);padding:0 calc(var(--sar) + var(--ds-4)) calc(var(--sab) + var(--ds-4)) calc(var(--sal) + var(--ds-4));
+  border-radius:var(--ds-r-3) var(--ds-r-3) 0 0;border-top:1px solid var(--ds-border-2)}
+.sheet-grip{width:36px;height:5px;margin:8px auto 4px;background:rgba(255,255,255,.2)}
+.sheet-head{min-height:56px;padding:4px 0 12px;margin:0;gap:var(--ds-3);border-bottom:1px solid var(--ds-border)}
+.sheet-head .icon-btn{width:44px;height:44px;flex:0 0 auto}
+.sheet-body{padding-top:var(--ds-4);padding-bottom:var(--ds-2);scroll-padding-top:72px}
+/* section headers: one look in every sheet */
+.sheet-body h3{font-family:var(--ds-sans);font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ds-muted);margin:var(--ds-5) 0 var(--ds-2)}
+.sheet-body h3::before{content:"";display:inline-block;width:10px;height:2px;margin:0 8px 3px 0;background:var(--ds-amber);vertical-align:middle}
+.sheet-body>h3:first-child,.sheet-body>[data-tt]>h3:first-child,.inv-pane>h3:first-child,.ds-section:first-child>.ds-section-h{margin-top:0}
+/* 🏆 tabs: the 2nd, 3rd … section of the SAME tab gets the 24 px section gap (polish2 sets 4 px on every first heading) */
+#sheet-body[data-tt]>[data-tt="top"]~[data-tt="top"]>h3:first-child,#sheet-body[data-tt]>[data-tt="mer"]~[data-tt="mer"]>h3:first-child,
+#sheet-body[data-tt]>[data-tt="streak"]~[data-tt="streak"]>h3:first-child,#sheet-body[data-tt]>[data-tt="ev"]~[data-tt="ev"]>h3:first-child,
+#sheet-body[data-tt]>[data-tt="pass"]~[data-tt="pass"]>h3:first-child{margin-top:var(--ds-5)}
+/* default rhythm: 8 px between stacked items. :where() = zero specificity, so a module's own spacing still wins */
+:where(#sheet-body,.inv-pane,[role=tabpanel],.nr-in,.ds-stack)>*+*{margin-top:var(--ds-2)}
+:where(#sheet-body,.inv-pane)>:where(.row,.btn,.toggle-row,.info,.seg,.tabs,div)+:where(h3){margin-top:var(--ds-5)}
+
+/* ---------- Sticky segmented tabs (owner screenshot 1) ---------- */
+/* Solid sheet-coloured bar, above every row, pinned at the very top of the scroll area; the list starts below it.
+   A soft shadow appears when the list is scrolled under it (js/ds.js sets .ds-scrolled). */
+.inv-tabs,.tt-bar{position:sticky;top:calc(-1 * var(--ds-4));z-index:20;isolation:isolate}   /* Chromium measures sticky top inside the 16 px body padding */
+.sheet .tabs.inv-tabs{display:flex;flex-direction:row;gap:4px;margin:calc(-1 * var(--ds-4)) 0 var(--ds-3);padding:var(--ds-3) 4px;
+  background:var(--ds-sheet);border:0;border-radius:0;box-shadow:none;transition:box-shadow var(--ds-t-2)}
+.sheet .tabs.inv-tabs::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:var(--ds-3);bottom:var(--ds-3);
+  border-radius:var(--ds-r-1);background:var(--ds-bg);box-shadow:inset 0 0 0 1px var(--ds-border)}
+.sheet .tabs.inv-tabs>button{flex:1 1 0;min-height:44px;margin:4px 0;padding:0 var(--ds-3)}
+.tt-bar{margin:calc(-1 * var(--ds-4)) 0 var(--ds-4);padding:var(--ds-1) 0 0;background:var(--ds-sheet);transition:box-shadow var(--ds-t-2)}
+.tt-bar button{min-height:48px;font:700 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted)}
+.sheet .ds-scrolled .tabs.inv-tabs,.ds-scrolled>.tt-bar{box-shadow:var(--ds-sh-sticky)}
+.inv-pane{position:relative;z-index:0}
+.inv-pane>:first-child{margin-top:0}
+
+/* ---------- .ds-seg (segmented control) = .tabs .seg .bp-seg .inv-ans in sheets ---------- */
+.ds-seg,.sheet .tabs,.sheet .seg:not(.bm-seg),.bp-seg,.leaflet-popup .tabs{display:flex;flex-direction:row;gap:4px;padding:4px;border:0;border-radius:var(--ds-r-1);
+  background:var(--ds-bg);box-shadow:inset 0 0 0 1px var(--ds-border);width:auto}
+.ds-seg>button,.sheet .tabs>button,.sheet .seg:not(.bm-seg)>button,.bp-seg>button,.leaflet-popup .tabs>button{flex:1 1 0;min-width:0;min-height:44px;padding:0 var(--ds-2);border:0 !important;
+  border-radius:10px;background:transparent;color:var(--ds-muted);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);letter-spacing:0;text-transform:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:none;transition:background var(--ds-t-2),color var(--ds-t-2)}
+.ds-seg>button[aria-selected="true"],.ds-seg>button[aria-checked="true"],.sheet .tabs>button[aria-selected="true"],.sheet .seg:not(.bm-seg)>button[aria-checked="true"],
+.bp-seg>button[aria-selected="true"],.leaflet-popup .tabs>button[aria-selected="true"]{background:var(--ds-raised);color:var(--ds-amber-t);
+  box-shadow:0 1px 3px rgba(0,0,0,.45),inset 0 0 0 1px rgba(245,166,35,.45)}
+.sheet .seg:not(.bm-seg)>button[aria-checked="true"]::before{content:none}
+.sheet .tabs.t4>button{font-size:var(--ds-fs-12)}
+.sheet .tabs+.tabs{margin-top:var(--ds-2)}
+
+/* ---------- .ds-btn = .btn ---------- */
+/* shape + colour at class level (same scope polish.css had); size + type at zero specificity so a module's own button class still wins */
+.ds-btn,.btn{border-radius:var(--ds-r-1);clip-path:none;border:1px solid var(--ds-border-2);background:var(--ds-raised);color:var(--ds-text);font-family:var(--ds-sans);
+  letter-spacing:0;box-shadow:none;transition:transform var(--ds-t-1) var(--ds-ease),background var(--ds-t-2),border-color var(--ds-t-2)}
+:where(.ds-btn,.btn){min-height:48px;padding:0 var(--ds-4);font-weight:600;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
+.ds-btn:active,.btn:active{transform:scale(.97);background:#2a3756}
+.btn-block,.ds-btn-block{width:100%}
+.btn-small{min-height:44px;border-radius:var(--ds-r-1);font-size:var(--ds-fs-14)}
+:where(.btn-small){padding:0 var(--ds-3);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.ds-btn-primary,.btn-amber{background:linear-gradient(180deg,var(--ds-amber-t),var(--ds-amber));border-color:transparent;color:var(--ds-on-amber);font-weight:700;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 16px rgba(245,166,35,.2)}
+.ds-btn-primary:active,.btn-amber:active{background:var(--ds-amber)}
+.btn-green{background:var(--ds-green);border-color:transparent;color:var(--ds-on-green);font-weight:700}
+.ds-btn-secondary{background:var(--ds-raised)}
+.ds-btn-ghost,.btn-ghost{background:transparent;border-color:var(--ds-border-2);color:var(--ds-text)}
+.ds-btn-danger,.btn-danger{background:transparent;border-color:rgba(255,123,115,.55);color:var(--ds-red-t)}
+.btn:disabled,.ds-btn:disabled{background:rgba(255,255,255,.05);border:1px solid var(--ds-border);color:var(--ds-muted);cursor:not-allowed;transform:none;box-shadow:none}
+/* filled colour only for ONE main action per sheet: a second green "Gå med" becomes the secondary */
+.sheet-body .glist~.row .btn-green{background:var(--ds-raised);color:var(--ds-green-t);border:1px solid rgba(61,220,132,.45)}
+.sheet-body .row{gap:var(--ds-2)}
+
+/* ---------- inputs ---------- */
+.inp,input.inp,textarea.inp,select.inp{border-radius:var(--ds-r-1) !important;background:var(--ds-bg);border:1px solid var(--ds-border-2);color:var(--ds-text)}
+:where(.inp){min-height:48px;font:400 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);padding:0 var(--ds-4)}
+:where(textarea.inp){padding:var(--ds-3) var(--ds-4)}
+select.inp{min-height:48px;width:100%}
+.inp::placeholder{color:var(--ds-muted);opacity:1}
+label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-text-2);margin:var(--ds-4) 0 var(--ds-2)}
+
+/* ---------- .ds-toggle-row = .toggle-row + .switch ---------- */
+.ds-toggle-row,.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:var(--ds-3);min-height:56px;cursor:pointer}
+.ds-toggle-row>span,.toggle-row>span{flex:1 1 auto;min-width:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text)}
+.switch{width:52px;height:32px;flex:0 0 auto;border:0;border-radius:var(--ds-r-pill);background:rgba(255,255,255,.16);position:relative}
+.switch::after{top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.switch[aria-checked="true"]{background:#1f9d57}
+.switch[aria-checked="true"]::after{left:23px;background:#fff}
+.switch::before{content:"";position:absolute;inset:-8px -4px}
+
+/* ---------- .ds-card = info cards from many modules ---------- */
+.ds-card,.ev-row,.bd-optin,.nr-tile,.hs-gline,.gitem.gcard,.confirm,.nr-in .nr-req,.cr-head,.gg-card,.gm-card,.bp-own,.bp-sb,.eta-me,.cr-alone,.chief-gi,.inv-note,.pl-warn{
+  border-radius:var(--ds-r-2);border:1px solid var(--ds-border);background:var(--ds-card);border-left-width:1px;border-style:solid}
+.ds-card{padding:var(--ds-3) var(--ds-4)}
+.bd-optin{padding:var(--ds-1) var(--ds-4) var(--ds-3)}
+.bd-optin .bd-note{margin:0;font-size:var(--ds-fs-14)}
+.info{border-radius:var(--ds-r-2);padding:var(--ds-3) var(--ds-4);background:var(--ds-blue-soft);border:1px solid rgba(74,163,255,.32);color:var(--ds-text-2);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.confirm{border-color:rgba(255,123,115,.5);background:var(--ds-red-soft);padding:var(--ds-3) var(--ds-4)}
+.inv-note{box-shadow:inset 3px 0 0 var(--ds-amber);padding:var(--ds-2) var(--ds-3)}
+.pl-warn{border-color:rgba(245,166,35,.5);background:var(--ds-amber-soft);padding:var(--ds-3) var(--ds-4)}
+
+/* ---------- .ds-chip / .ds-badge ---------- */
+:where(.ds-chip,.sheet .chip,.chip-btn,.inv-pk-groups .chip,.ht-chip){min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 var(--ds-3);border-radius:var(--ds-r-pill);
+  border:1px solid var(--ds-border-2);background:var(--ds-raised);color:var(--ds-text);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans)}
+.chip-btn,.inv-pk-groups .chip,button.ds-chip,.ht-chip{min-height:44px;cursor:pointer}
+:where(.chip-btn,.inv-pk-groups .chip,.ds-chip)[aria-pressed="true"]{background:var(--ds-amber-soft);border-color:var(--ds-amber);color:var(--ds-amber-t)}
+.ds-badge,.bm-b,.badge-green,.pf-n,.gp-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--ds-r-pill);
+  font:700 var(--ds-fs-12)/1 var(--ds-sans);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.bm-b{background:var(--ds-blue-soft);color:var(--ds-blue-t);text-transform:uppercase;margin-left:var(--ds-2)}
+.badge-green{background:var(--ds-green);color:var(--ds-on-green)}
+
+/* ---------- .ds-empty ---------- */
+.ds-empty,.sheet-body li.muted:only-child,.sheet-body .empty{display:block;text-align:center;padding:var(--ds-5) var(--ds-4);color:var(--ds-muted);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);
+  border:1px dashed var(--ds-border-2);border-radius:var(--ds-r-2);list-style:none}
+
+/* ---------- .ds-list / .ds-row (56–64 px rows with dividers) ---------- */
+.ds-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);overflow:hidden}
+.ds-list>*{margin:0 !important}
+.ds-list>*+*{border-top:1px solid var(--ds-border)}
+.ds-row{display:flex;align-items:center;gap:var(--ds-3);min-height:56px;padding:var(--ds-2) var(--ds-4);width:100%;background:transparent;border:0;border-radius:0;color:var(--ds-text);
+  text-align:left;font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans)}
+.ds-row-i{flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--ds-raised);font-size:var(--ds-fs-18)}
+.ds-row-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.ds-row-t small{color:var(--ds-muted);font-weight:400;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.ds-row-v{flex:0 0 auto;color:var(--ds-muted);font-weight:400;font-size:var(--ds-fs-14)}
+.ds-chev::after{content:"›";flex:0 0 auto;margin-left:auto;padding-left:var(--ds-2);color:var(--ds-muted);font:400 24px/1 var(--ds-sans)}
+
+/* ---------- .ds-section ---------- */
+.ds-section{margin:0}
+:where(#sheet-body)>.ds-section+.ds-section{margin-top:var(--ds-5)}
+.ds-section-h{display:flex;align-items:center;gap:var(--ds-2);margin:0 0 var(--ds-2) !important;padding:0 var(--ds-1)}
+.ds-section-h::before{display:none !important}
+.ds-section-h .ds-sec-i{font-size:var(--ds-fs-14);letter-spacing:0}
+
+/* ==========================================================================
+   ⚙️ SETTINGS (owner screenshot 2). js/ds.js moves the blocks into sections:
+   #sheet-body.ds-set > section.ds-section > h3.ds-section-h + div.ds-list > div.ds-item (one row each)
+   ========================================================================== */
+#sheet-body.ds-set>h3{display:none}
+.ds-set .ds-item:not(:has(>:not([hidden]):not(.ds-hide))){display:none}
+.ds-set .ds-item-l::before{display:none !important}
+.ds-set h3.ds-item-l{margin:0 !important}
+.ds-set .ds-item{position:relative;padding:0;min-height:56px;display:flex;flex-direction:column;justify-content:center}
+.ds-set .ds-item .ds-hide{display:none !important}
+.ds-set .ds-item>*{margin:0 !important}
+/* nav rows: every button in a row looks like a list row with a chevron */
+.ds-set .ds-item>.row,.ds-set .ds-item>.sos-block-w{display:flex;flex-direction:column;gap:0;margin:0 !important}
+.ds-set .ds-item>.row>.btn,.ds-set .ds-item>.btn,.ds-set .ds-item>div>.sos-block>.btn{display:block;width:100%;min-height:56px;margin:0;padding:var(--ds-2) 44px var(--ds-2) var(--ds-4);border:0;border-radius:0;
+  background:transparent;box-shadow:none;color:var(--ds-text);justify-content:flex-start;text-align:left;font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);position:relative}
+.ds-set .ds-item>.row>.btn+.btn{border-top:1px solid var(--ds-border)}
+.ds-set .ds-item>.row>.btn::after,.ds-set .ds-item>.btn::after,.ds-set .ds-item>div>.sos-block>.btn::after{content:"›";position:absolute;right:var(--ds-4);top:50%;transform:translateY(-52%);
+  color:var(--ds-muted);font:400 24px/1 var(--ds-sans)}
+.ds-set .ds-item>.row>.btn:active,.ds-set .ds-item>.btn:active,.ds-set .ds-item>div>.sos-block>.btn:active{transform:none;background:rgba(255,255,255,.05)}
+/* the one accent row (invite) and the danger rows */
+.ds-set .ds-item>.row>.btn-amber{color:var(--ds-amber-t);background:transparent}
+.ds-set .ds-item>.row>.btn-danger,.ds-set .ds-item>div>.sos-block>.btn-danger{color:var(--ds-red-t)}
+.ds-set .ds-item.ds-danger{order:90}
+/* two-line rows (Ölpasset: title + subtitle) */
+.ds-set .ds-item>.row>.ps-entry{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-height:64px}
+.ds-set .ds-item>.row>.ps-entry small{font:400 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted)}
+/* toggles */
+.ds-set .ds-item>.toggle-row,.ds-set .ds-item>.bd-optin{padding:var(--ds-2) var(--ds-4);min-height:56px;border:0;background:transparent;border-radius:0}
+.ds-set .ds-item>.bd-optin{padding:0}
+.ds-set .ds-item>.bd-optin>.toggle-row{padding:var(--ds-2) var(--ds-4);min-height:56px}
+.ds-set .ds-item>.bd-optin>.bd-note{padding:0 var(--ds-4) var(--ds-3);margin:-4px 0 0 !important}
+.ds-set .ds-item>.toggle-row>span.muted{font-size:var(--ds-fs-14);color:var(--ds-muted)}
+.ds-set .ds-item>.toggle-row>.btn{flex:0 0 auto}
+/* labelled blocks (name, språk, Öl Wrapped, kartstil) */
+.ds-set .ds-item.ds-blk{padding:var(--ds-3) var(--ds-4);gap:var(--ds-2)}
+.ds-set .ds-item.ds-blk>*+*{margin-top:var(--ds-2) !important}
+.ds-set .ds-item-l{font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-text-2);letter-spacing:0;text-transform:none}
+.ds-set .ds-item.ds-blk>.row{flex-direction:row;flex-wrap:wrap;gap:var(--ds-2)}
+.ds-set .ds-item.ds-blk>.row>.btn{width:auto;flex:1 1 auto;min-height:44px;padding:0 var(--ds-3);border:1px solid var(--ds-border-2);border-radius:var(--ds-r-pill);background:var(--ds-raised);
+  justify-content:center;font-size:var(--ds-fs-14)}
+.ds-set .ds-item.ds-blk>.row>.btn::after{content:none}
+.ds-set .ds-item.ds-blk>.seg:not(.bm-seg){align-self:flex-start;width:auto !important}
+.ds-set .ds-item.ds-blk>.seg:not(.bm-seg)>button{min-width:72px}
+/* name field: input + Spara on one line */
+.ds-set .ds-item.ds-blk>div:has(#set-name){display:flex;gap:var(--ds-2)}
+.ds-set .ds-item.ds-blk>div:has(#set-name)>.btn{flex:0 0 auto;min-width:88px}
+/* hemstad row */
+.ds-set .ds-item>.ht-set{padding:var(--ds-2) var(--ds-4)}
+.ds-set .ht-set-row{min-height:48px;gap:var(--ds-2)}
+.ds-set .ht-set-l{color:var(--ds-text);font-weight:600}
+.ds-set .ht-set-v{color:var(--ds-muted);font-weight:400;text-align:right}
+.ds-set .ht-set-b{min-height:40px;border-radius:var(--ds-r-pill);padding:0 var(--ds-4)}
+/* hints under a row */
+.ds-set .ds-item>p,.ds-set .ds-item-hint{padding:0 var(--ds-4) var(--ds-3);margin:-4px 0 0 !important;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);color:var(--ds-muted)}
+.ds-set .ds-item.ds-blk>p{padding:0;margin:0 !important}
+.ds-set .ds-item>.info{margin:0 var(--ds-4) var(--ds-3) !important}
+.ds-set .ds-item>.sos-block-w,.ds-set .ds-item>div:has(>.sos-block){padding:0}
+/* version row */
+.ds-set .ds-item.ds-ver>.toggle-row{padding:var(--ds-2) var(--ds-3) var(--ds-2) var(--ds-4)}
+/* Kartstil: a radio list with a check mark (the unfinished 2×2 grid is gone) */
+.sheet .seg.bm-seg{display:flex;flex-direction:column;flex-wrap:nowrap;width:100%;gap:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.sheet .seg.bm-seg>button{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-start;gap:var(--ds-2);min-height:52px;width:100%;padding:0 var(--ds-4);border:0;border-radius:0;
+  background:transparent;color:var(--ds-text);font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);text-align:left;box-shadow:none !important;position:relative}
+.sheet .seg.bm-seg>button+button{border-top:1px solid var(--ds-border)}
+.bm-seg>button::before{content:none !important}
+.sheet .seg.bm-seg>button[aria-checked="true"]{color:var(--ds-amber-t);background:transparent}
+.bm-seg>button[aria-checked="true"]::after{content:"✓";position:absolute;right:var(--ds-4);top:50%;transform:translateY(-50%);font:700 18px/1 var(--ds-sans);color:var(--ds-amber-t)}
+.ds-set .ds-item.ds-karta{padding:0}
+.ds-set .ds-item.ds-karta>.ds-item-l{display:none}
+.ds-set .ds-item.ds-karta>p{padding:var(--ds-2) var(--ds-4) var(--ds-3);margin:0 !important;border-top:1px solid var(--ds-border)}
+
+/* ==========================================================================
+   Lists that already exist
+   ========================================================================== */
+/* friends (Vänner tab, ⚙️ Vänner): 64 px rows, round 44 px actions, quiet dividers */
+.nr-flist{background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);overflow:hidden;margin:0;padding:0}
+.nr-frow{min-height:64px;padding:var(--ds-2) var(--ds-2) var(--ds-2) var(--ds-4);gap:var(--ds-3);border-bottom:0}
+.nr-frow+.nr-frow{border-top:1px solid var(--ds-border)}
+.nr-fmain b{font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);color:var(--ds-text)}
+.nr-fmain small,.inv-fg{font:400 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted);white-space:normal}
+.inv-fg{font-size:var(--ds-fs-12);line-height:var(--ds-lh-12)}
+.nr-frow .btn{flex:0 0 auto;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:var(--ds-r-1);background:var(--ds-raised);border:1px solid var(--ds-border);font-size:18px}
+.nr-frow .btn.btn-ghost{background:transparent;color:var(--ds-muted)}
+.nr-frow .st-dot{width:10px;height:10px}
+.nr-flist .confirm{margin:var(--ds-2) var(--ds-3) !important}
+.nr-add-row{gap:var(--ds-2)}
+.nr-add-row .btn{min-width:96px}
+/* invite picker */
+.inv-pk{border-top:0;padding-top:0;margin-top:var(--ds-4)}
+.inv-pk-list{border:1px solid var(--ds-border);border-radius:var(--ds-r-2);background:var(--ds-card)}
+.inv-pk-row label{min-height:56px;padding:var(--ds-2) var(--ds-4)}
+.inv-pk-row+.inv-pk-row{border-top:1px solid var(--ds-border)}
+.inv-pk-main small{font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);color:var(--ds-muted)}
+.inv-pk-n{font:700 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans)}
+.inv-pk-groups{gap:var(--ds-2);margin:var(--ds-2) 0}
+.inv-ppl{font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);padding:var(--ds-2) 0}
+.inv-cd{font-family:var(--ds-sans);font-weight:700;font-variant-numeric:tabular-nums}
+.inv-route{min-height:44px}
+/* groups list cards */
+.glist{gap:var(--ds-2)}
+.glist .gcard{min-height:72px;padding:var(--ds-3) var(--ds-4);border-radius:var(--ds-r-2)}
+.gcard-go{color:var(--ds-muted)}
+/* toplist rows */
+.toplist{border-radius:var(--ds-r-2);background:var(--ds-card)}
+.top-row{min-height:60px;padding:var(--ds-2) var(--ds-4)}
+/* member list / status rows */
+.st-row{min-height:56px;padding:var(--ds-2) 0;gap:var(--ds-3)}
+.st-row+.st-row{border-top:1px solid var(--ds-border)}
+/* chat */
+.cm-name.cm-tap{display:inline-block;padding:14px 10px;margin:-14px -10px}
+.chat-input{position:sticky;bottom:0;background:var(--ds-sheet);padding-top:var(--ds-2);z-index:2}
+
+/* ==========================================================================
+   Group page (polish2 sections) — same rhythm: 24 px before a section, 8 px between tiles
+   ========================================================================== */
+.gitem:not(.gcard)>div.gp{row-gap:var(--ds-2);column-gap:var(--ds-2)}
+.gp-h{margin:var(--ds-5) 0 0 !important;font-size:var(--ds-fs-12);letter-spacing:.1em;padding:0 var(--ds-1)}
+.gitem:not(.gcard)>div.gp>[class$="-gi"]:not(.chief-gi)>.btn,.gitem:not(.gcard)>div.gp>.row>.btn,.gitem:not(.gcard)>div.gp>.g-acts>.btn{border-radius:var(--ds-r-2) !important;background:var(--ds-card) !important}
+.gitem:not(.gcard)>div.gp>[class$="-gi"]>.btn>[class$="-gs"]{font-size:var(--ds-fs-12) !important;line-height:var(--ds-lh-12)}
+.gp-more{min-height:48px;border-radius:var(--ds-r-2)}
+.g-back{min-height:44px;display:inline-flex;align-items:center}
+
+/* ==========================================================================
+   Map chrome, HUD, toasts and banners
+   ========================================================================== */
+.sheet-head .icon-btn,.olnu-sheet a.leaflet-popup-close-button{width:44px !important;height:44px !important}
+.leaflet-container a.leaflet-popup-close-button{display:grid;place-items:center}
+.hx-chip,.hud-left.open .hx-chip{min-height:44px;border-radius:var(--ds-r-1);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans)}
+/* Ikväll panel: quiet tiles; colour only says what it means (green = come/live, red = alarm) */
+.hud-left.open .hx-x{gap:var(--ds-2);padding:var(--ds-3);border-radius:var(--ds-r-3)}
+.hud-left.open .hx-chip:not(.hx-urgent):not(.af-chip-med):not(.hx-come){background:var(--ds-card);border:1px solid var(--ds-border);color:var(--ds-text)}
+.hud-left.open .dl-cap-chip::after{content:attr(title);margin-left:6px;overflow:hidden;text-overflow:ellipsis}
+.hud-left.open .hx-taxi{box-shadow:inset 3px 0 0 var(--gold)}
+.rally .rl-txt{min-height:44px}
+.rally .rl-x{min-width:44px}
+.rl-txt,.pp-rl-txt{min-height:44px}
+.toast{border-radius:var(--ds-r-2);font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);padding:var(--ds-3) var(--ds-4);gap:var(--ds-3)}
+.toast .btn,.toasts .btn{height:auto !important;min-height:44px !important;border-radius:var(--ds-r-1);font-size:var(--ds-fs-14)}
+.gitem:not(.gcard)>div.gp>.nr-tile .btn,.nr-tile .btn{min-height:44px !important}
+.banner{border-radius:var(--ds-r-2);padding:var(--ds-2) var(--ds-2) var(--ds-2) var(--ds-4);gap:var(--ds-2);background:var(--ds-card);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2)}
+.btn-small.btn-small{min-height:44px}
+.af-qr{display:inline-flex;align-items:center;min-height:44px;font-size:var(--ds-fs-14)}
+.select-tap,select{min-height:44px}
+.inv-pk-groups .chip{min-height:44px}
+/* text never under 12 px (sheets, popups, HUD) */
+.af-ksub,.bp-of-h,.bp-of-note,.bp-lbl,.bp-same,.bp-gflag-t .muted,.eta-q,.cer-card-k,.cer-card-f,.cr-tl,.cr-dep-st,.dl-boot-h,.ws-cnt,.ws-meta,.ev-legal,.gm-st,.gm-gchip,.gm-gs,
+.gm-stw,.gm-pd,.gm-sqw,.gg-cnt,.gg-ov span,.gg-dm,.hs-gs small,.ht-dem,.ht-tag,.role-b,.inv-pk-main small,.lp-note,.inv-legend,.md-more,.hx-mer .mer-q,.ps-cs,
+.ps-stats span,.ps-mile small,.ps-top,.ps-date,.ps-n,.chip,.prec-hint,.tk-kick,.cm-head,.st-title,.flytt-link,.dl-sign,.dl-cap-more,.dl-gud-h,.dl-gud-x,.dl-rv-r,.fm-r small,
+.nr-hint,.nr-priv,.nr-tile-t small,.nr-mini-cap,.inv-from,.pp-crowd,.cm-ci,.bm-crowd,.bm-name,.cm-ci b,.beer-sub,.other-btn .ol-t{font-size:12px !important}
+.beer-sub{letter-spacing:0}
+.other-btn .ol-t{letter-spacing:.02em}
+.tk-sep{color:rgba(255,255,255,.6)}
+#sheet-body[data-tt="pass"]>.ps-toprow .btn{min-height:72px;padding:var(--ds-3) var(--ds-4);justify-content:center;font-size:var(--ds-fs-18);border-radius:var(--ds-r-2)}
+
+/* ==========================================================================
+   Module sheets: one radius, one surface, one sans (no per-module accent soup)
+   ========================================================================== */
+.ev-row,.cr-cell,.pp-folds .pp-fold,.chief-gi,.nr-tile,.hs-gline{border-radius:var(--ds-r-2)}
+.ev-row+.ev-row{margin-top:var(--ds-2)}
+.pp-folds{gap:var(--ds-2)}
+.ps-entry{gap:2px}
+.mer-board,.hs-top,.ev-box,.gh-box,.bd-box{margin-top:0}
+/* the old square "border-left:3px" accents become a quiet inset line in the system colours */
+.gg-warn{box-shadow:inset 3px 0 0 var(--ds-amber)}
+.cr-alone{box-shadow:inset 3px 0 0 var(--ds-blue)}
+
+/* focus: visible and the same everywhere */
+:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+
+@media (max-width:374px){
+  .inv-tabs button,.tt-bar button{font-size:var(--ds-fs-14);padding:0 var(--ds-2)}
+  .sheet .tabs>button{font-size:var(--ds-fs-12)}
+  .ds-set .ds-item>.row>.btn,.ds-set .ds-item>.btn{font-size:var(--ds-fs-16)}
+}
+@media (prefers-reduced-motion: reduce){
+  .ds-btn,.btn,.inv-tabs,.tt-bar,.switch::after,.sheet .tabs>button,.ds-seg>button{transition:none !important}
+}
