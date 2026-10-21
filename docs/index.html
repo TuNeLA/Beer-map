@@ -77,6 +77,8 @@
 <link rel="x-lazy-css" data-boot="1" href="./helg.css?v=4dff4b0154">
 <link rel="x-lazy-css" data-boot="1" href="./passport.css?v=198d1857cf">
 <link rel="x-lazy-css" data-boot="1" href="./koden.css?v=399071a597">
+<!-- rel="x-lazy-css": not loaded at start; js/delight.js adds it with js/olglas.js on the first shake. -->
+<link rel="x-lazy-css" href="./olglas.css">
 <!-- rel="x-lazy-css": not loaded at start; js/party.js adds it on the first open. -->
 <link rel="x-lazy-css" href="./party.css?v=2a8e449c39">
 <link rel="stylesheet" href="./invite.css?v=47e330af0a">
@@ -222,6 +224,8 @@
 <script defer src="./js/film.js?v=68fc72d301"></script>
 <script defer src="./js/events.js?v=53df6ea1f9"></script>
 <script defer src="./js/golden.js?v=3f5793cedc"></script>
+<!-- type="text/x-lazy" data-demand: only loaded on demand (js/delight.js: first shake / Testa ölglaset). -->
+<script type="text/x-lazy" data-demand="1" src="./js/olglas.js"></script>
 <script defer src="./js/delight-more-content.js?v=7e0b6bf4c9"></script>
 <script defer src="./js/delight-more.js?v=b7ebbd10e1"></script>
 <script defer src="./js/near.js?v=4a028027d4"></script>

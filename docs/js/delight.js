@@ -531,7 +531,63 @@
     caption({ head: en() ? "🔒 CLASSIFIED" : "🔒 HEMLIGSTÄMPLAT", text: pick(list), cls: "dl-cap-secret", now: true, ms: 7000 });
   }
   // Shake → foam. iPhone needs a permission asked from a tap (settings). Android/desktop: on unless switched off.
-  var motion = { on: false, hits: [], last: 0, lx: null };
+  // ÖLGLASET (js/olglas.js, loaded on demand): this is the ONE shake detector. ~3 peaks in 1 s open the glass, every later
+  // peak fills it more. iPhone: motion + orientation permission asked once from a tap (⚙️ toggle sheet / "Testa ölglaset").
+  var motion = { on: false, hits: [], last: 0, lx: null, seen: false, pk: 0 };
+  var ogLoading = null, OG_PERM = "olnu.og.perm";
+  function og() { return window.OLGLAS || null; }
+  function ogLoad() {
+    if (og()) return Promise.resolve(og());
+    if (ogLoading) return ogLoading;
+    var pickAttr = function (sel, re, at) { var n = [].filter.call(document.querySelectorAll(sel), function (x) { return re.test(x.getAttribute(at) || ""); })[0]; return n ? n.getAttribute(at) : null; };
+    var href = pickAttr('link[rel="x-lazy-css"]', /olglas\.css/, "href") || "./olglas.css";
+    if (!document.querySelector('link[rel="stylesheet"][href="' + href + '"]')) { var l = mk("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
+    var src = pickAttr('script[type="text/x-lazy"]', /olglas\.js/, "src") || "./js/olglas.js";
+    ogLoading = new Promise(function (res, rej) {
+      var s = mk("script"); s.src = src; s.async = true;
+      s.onload = function () { if (og()) res(og()); else rej(new Error("olglas empty")); };
+      s.onerror = function () { s.remove(); rej(new Error("olglas load")); };
+      document.head.appendChild(s);
+    }).then(function (G) { ogLoading = null; return G; }, function (e) { ogLoading = null; throw e; });
+    return ogLoading;
+  }
+  function glass(o) {
+    o = o || {}; o.api = A;
+    return ogLoad().then(function (G) { G.open(o); return G; }, function () { foam(); return null; });
+  }
+  function needPerm() {
+    var DM = window.DeviceMotionEvent, DO = window.DeviceOrientationEvent;
+    return !!((DM && typeof DM.requestPermission === "function") || (DO && typeof DO.requestPermission === "function"));
+  }
+  // Call inside a tap. Both requests start in the same gesture (iOS shows one "Motion & Orientation" prompt).
+  function askPerm() {
+    var DM = window.DeviceMotionEvent, DO = window.DeviceOrientationEvent, ps = [];
+    try { if (DM && typeof DM.requestPermission === "function") ps.push(DM.requestPermission()); } catch (e) { ps.push(Promise.reject(e)); }
+    try { if (DO && typeof DO.requestPermission === "function") ps.push(DO.requestPermission()); } catch (e) { ps.push(Promise.reject(e)); }
+    return Promise.all(ps).then(function (r) { var ok = r.every(function (s) { return s === "granted"; }); lsPut(OG_PERM, ok ? "1" : "0"); return ok; },
+      function () { lsPut(OG_PERM, "0"); return false; });
+  }
+  function hookGlassPress() {
+    // No motion sensors (desktop, or no events yet): long-press ÖL! 0.7 s = fill the glass. The click that follows is
+    // swallowed, so a long-press never logs a beer. During the cooldown the 3 s secret (hookLongPress) keeps the button.
+    var tm = null, sx = 0, sy = 0, eatUntil = 0;
+    function onBtn(e) { var b = $("btn-beer"); return !!(b && e.target && e.target.closest && e.target.closest("#btn-beer")); }
+    function cancel() { if (tm) { clearTimeout(tm); tm = null; } }
+    document.addEventListener("pointerdown", function (e) {
+      cancel();
+      var b = $("btn-beer");
+      if (!onBtn(e) || motion.seen || !shakeWanted() || b.disabled || b.classList.contains("cooldown")) return;
+      sx = e.clientX; sy = e.clientY;
+      tm = setTimeout(function () { tm = null; eatUntil = Date.now() + 1500; buzz(20); glass({ level: 0.5 }); }, 700);
+    }, true);
+    document.addEventListener("pointermove", function (e) { if (tm && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 16) cancel(); }, true);
+    document.addEventListener("pointerup", cancel, true);
+    document.addEventListener("pointercancel", cancel, true);
+    document.addEventListener("click", function (e) {
+      if (Date.now() < eatUntil && onBtn(e)) { eatUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+    document.addEventListener("contextmenu", function (e) { if (onBtn(e) && (tm || Date.now() < eatUntil)) e.preventDefault(); }, true);
+  }
   function shakeWanted() {
     var v = lsStr(KEY.shake, "");
     if (U.isIOS && U.isIOS()) return v === "1";
@@ -540,11 +596,17 @@
   function onMotion(e) {
     var a = e.accelerationIncludingGravity || e.acceleration; if (!a || a.x == null) return;
     var now = Date.now(), cur = { x: a.x || 0, y: a.y || 0, z: a.z || 0 };
+    motion.seen = true;   // this phone has motion sensors (no long-press fallback)
     if (motion.lx) {
       var d = Math.abs(cur.x - motion.lx.x) + Math.abs(cur.y - motion.lx.y) + Math.abs(cur.z - motion.lx.z);
       if (d > 32) {
-        motion.hits = motion.hits.filter(function (t) { return now - t < 900; }); motion.hits.push(now);
-        if (motion.hits.length >= 3 && now - motion.last > 15000) { motion.last = now; motion.hits = []; foam(); }
+        if (now - motion.pk < 110) { motion.lx = cur; return; }   // one swing = one peak
+        motion.pk = now;
+        var G = og();
+        if (G && G.isOpen()) { G.peak(1); motion.lx = cur; return; }   // the glass ticks the haptic itself
+        buzz(12);
+        motion.hits = motion.hits.filter(function (t) { return now - t < 1000; }); motion.hits.push(now);
+        if (motion.hits.length >= 3 && now - motion.last > 3000 && (!G || Date.now() - G.closedAt() > 2500)) { motion.last = now; motion.hits = []; glass({ level: 0.4 }); }
       }
     }
     motion.lx = cur;
@@ -555,14 +617,27 @@
     else if (!want && motion.on) { window.removeEventListener("devicemotion", onMotion); motion.on = false; motion.lx = null; }
   }
   function askShake(btnEl) {
-    var DM = window.DeviceMotionEvent;
     var turnOn = function () { lsPut(KEY.shake, "1"); motionSync(); if (A) A.toast(txt((C().shake || {}).on)[0] || "📳"); setShakeBtn(btnEl); };
+    var denied = function () { if (A) A.toast(txt((C().shake || {}).denied)[0] || "📳", { err: true }); };
     if (shakeWanted()) { lsPut(KEY.shake, "0"); motionSync(); setShakeBtn(btnEl); return; }
-    if (DM && typeof DM.requestPermission === "function") {
-      DM.requestPermission().then(function (s) {
-        if (s === "granted") turnOn(); else if (A) A.toast(txt((C().shake || {}).denied)[0] || "📳", { err: true });
-      }, function () { if (A) A.toast(txt((C().shake || {}).denied)[0] || "📳", { err: true }); });
-    } else turnOn();
+    if (!needPerm() || lsStr(OG_PERM, "") === "1") { turnOn(); return; }
+    // iPhone: a friendly sheet first; its button is the tap that asks the system once.
+    var sh = C().shake || {};
+    A.openSheet(txt(sh.askT)[0] || "📳", function (body) {
+      body.appendChild(A.el("p", { text: txt(sh.ask)[0] || "" }));
+      body.appendChild(A.el("div", { class: "row", style: "flex-wrap:wrap;gap:8px" }, [
+        A.btn(txt(sh.askOk)[0] || "OK", "btn-amber", function () {
+          askPerm().then(function (ok) { A.closeSheet(); if (ok) turnOn(); else denied(); });
+        }),
+        A.btn(txt(sh.askNo)[0] || "–", "btn-small", function () { A.closeSheet(); })
+      ]));
+    }, { now: true });
+  }
+  function testGlass() {
+    A.closeSheet();
+    var go = function () { setTimeout(function () { glass({ level: 0.55 }); }, 120); };
+    if (needPerm() && lsStr(OG_PERM, "") !== "1") askPerm().then(function (ok) { if (ok) { lsPut(KEY.shake, "1"); motionSync(); } go(); });
+    else go();
   }
   function setShakeBtn(b) {
     if (!b) return;
@@ -730,7 +805,7 @@
     later(function () {
       if (FORCE === "gud") showGud();
       else if (FORCE === "secret") secret();
-      else if (FORCE === "shake") foam();
+      else if (FORCE === "shake") glass({ level: 0.5 });
       else if (FORCE === "skal") clink(null);
       else if (FORCE === "sunrise") sunrise(true);
       else if (FORCE === "empty") checkEmpty([], true);
@@ -766,12 +841,12 @@
   /* ---------- hooks (app.js mods()) ---------- */
   window.DELIGHT = {
     // debug / tests
-    events: EV, slot: slot, run: runEvent, caption: caption, gud: showGud, foam: foam, clink: clink, sunrise: function () { sunrise(true); },
+    events: EV, slot: slot, run: runEvent, caption: caption, gud: showGud, foam: foam, glass: glass, clink: clink, sunrise: function () { sunrise(true); },
     greet: function () { return greet(true); }, rollCap: rollCap, openCaps: openCaps, empty: function () { checkEmpty([], true); },
     init: function (api) {
       A = api;
       try { bootShow(); } catch (e) {}
-      hookLogo(); hookLongPress(); hookChat();
+      hookLogo(); hookLongPress(); hookChat(); hookGlassPress();
       later(hookTicker, 0);
       // news-more.js may load lazily after start (js/boot.js): add the empty-state ticker lines when it arrives.
       document.addEventListener("olnu:lazy", function () { try { hookTicker(); } catch (e) {} });
@@ -806,6 +881,7 @@
       setShakeBtn(shBtn);
       var row = [A.btn(fill(ui("capBtn"), { n: capCount(st), m: m }), "btn-small", function () { A.closeSheet(); setTimeout(openCaps, 50); }), evBtn];
       if ("DeviceMotionEvent" in window) row.push(shBtn);
+      row.push(A.btn(txt((C().shake || {}).test)[0] || "🍺", "btn-small", testGlass));   // ÖLGLASET: works without sensors too
       body.appendChild(A.el("div", { class: "row", style: "flex-wrap:wrap;gap:8px" }, row));
     },
     applyText: function () {}

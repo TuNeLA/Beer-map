@@ -1,0 +1,27 @@
+/* Öl Nu — Ölglaset (js/olglas.js). Loaded on demand (<link rel="x-lazy-css"> without data-boot). Full-screen canvas over the
+   map; z-index under the takeover (3000), over sheets (1600) and toasts (2000). Never shown while the beer-type strip is up. */
+.og{position:fixed;inset:0;z-index:2900;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  animation:ogIn .35s ease-out both}
+.og.og-out{animation:ogOut .25s ease-in both;pointer-events:none}
+.og-cv{position:absolute;left:0;top:0;display:block}
+.og-x,.og-snd{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);width:48px;height:48px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.35);background:rgba(20,14,8,.55);color:#fffaf0;font-size:20px;line-height:1;display:grid;place-items:center;cursor:pointer;
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.og-x{right:12px}
+.og-snd{right:68px;font-size:18px}
+.og-x:focus-visible,.og-snd:focus-visible{outline:2px solid var(--amber-2,#ffc24d);outline-offset:2px}
+.og-hint{position:absolute;left:16px;right:136px;top:calc(env(safe-area-inset-top,0px) + 14px);padding:8px 12px;border-radius:12px;
+  background:rgba(20,14,8,.85);color:#fffaf0;font-size:13px;line-height:18px;transition:opacity .8s ease}
+.og-hint.og-hint-off{opacity:0}
+/* hold 1 s anywhere = close: a slow ring fill at the bottom (no flashing) */
+.og-hold{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:56px;height:56px;margin-left:-28px;border-radius:50%;
+  opacity:0;transition:opacity .2s;background:conic-gradient(#fffaf0 var(--p,0%),rgba(255,255,255,.18) 0);
+  -webkit-mask:radial-gradient(circle,transparent 21px,#000 22px);mask:radial-gradient(circle,transparent 21px,#000 22px)}
+.og-hold.og-holding{opacity:.9;animation:ogHold 1s linear forwards}
+@property --p{syntax:"<percentage>";inherits:false;initial-value:0%}
+@keyframes ogHold{from{--p:0%}to{--p:100%}}
+@keyframes ogIn{from{opacity:0}to{opacity:1}}
+@keyframes ogOut{to{opacity:0}}
+.og.og-red,.og.og-red.og-out{animation:none}
+.og.og-red .og-hold.og-holding{animation:none;--p:100%}
+@media (prefers-reduced-motion: reduce){.og,.og.og-out,.og-hold.og-holding{animation:none}.og-hint{transition:none}}

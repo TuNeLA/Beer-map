@@ -58,7 +58,7 @@
       if (document.querySelector('link[rel="stylesheet"][href="' + href + '"]')) return;
       var l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l);
     });
-    var list = Array.prototype.slice.call(document.querySelectorAll('script[type="text/x-lazy"][src]'))
+    var list = Array.prototype.slice.call(document.querySelectorAll('script[type="text/x-lazy"][src]:not([data-demand])'))   // data-demand: loaded by its module only
       .map(function (n) { return n.getAttribute("src"); })
       // review2: a module may have loaded its lazy file on demand already (forfest.js): do not run it twice
       .filter(function (src) { return !document.querySelector('script[src="' + src + '"]:not([type="text/x-lazy"])'); });

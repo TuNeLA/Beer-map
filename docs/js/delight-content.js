@@ -351,8 +351,14 @@ window.DELIGHT_CONTENT = {
     sv: ["🫧 Skakad, int' rörd.", "🫧 Du skakade telefonen. Skummet tackar.", "🫧 Skumlarm! Någon skakar i {stad}.",
          "🫧 Shaken, not stirred – på dalmål.", "🫧 Telefonen ä nu väl blandad.", "🫧 Ölguden kände en jordbävning. Det var du."],
     en: ["🫧 Shaken, not stirred.", "🫧 You shook the phone. The foam says thanks."],
-    setting: { sv: "📳 Skaka telefonen = skum", en: "📳 Shake phone = foam" },
-    on: { sv: "📳 Skak-skämtet ä på. Skaka!", en: "📳 Shake joke on. Shake it!" },
+    setting: { sv: "📳 Skaka = fyll glaset", en: "📳 Shake = fill the glass" },
+    on: { sv: "📳 Ölglaset ä på. Skaka telefonen så fylls den!", en: "📳 Beer glass on. Shake the phone to fill it!" },
+    test: { sv: "🍺 Testa ölglaset", en: "🍺 Try the beer glass" },
+    askT: { sv: "📳 Ölglaset", en: "📳 Beer glass" },
+    ask: { sv: "Skaka telefonen så fylls skärmen med öl. Luta den mot munnen så dricker du upp den. Telefonen behöver få känna rörelse – vi frågar en gång. Ingenting sparas och ingenting skickas.",
+           en: "Shake the phone and the screen fills with beer. Tip it to your mouth to drink it. The phone needs motion access – we ask once. Nothing is saved or sent." },
+    askOk: { sv: "📳 Tillåt rörelse", en: "📳 Allow motion" },
+    askNo: { sv: "Inte nu", en: "Not now" },
     denied: { sv: "📳 Telefonen sa nej till rörelse. Okej då.", en: "📳 Motion access denied." }
   },
   skal: {

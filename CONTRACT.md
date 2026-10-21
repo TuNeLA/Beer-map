@@ -1422,3 +1422,26 @@ meriter.js `ACTS` + 10 `LINES`.
   segmented control or the Wrapped chips is `.ds-blk` and shows its old h3 as the label. **A new settingsSheet block:** append an `h3` + your
   `.row`/`.toggle-row` as before; it is placed by `secOf()` (class/text rules) or by the h3 text (`headSec()`), else in "Mer". Add one line to
   `secOf()` for a precise place. Descendant selectors keep working; `#sheet-body > X` selectors for settings blocks do not.
+
+## 📳 ÖLGLASET (shake → fill the screen with beer, tilt → drink it; client only, no migrations)
+- **Files.** `docs/js/olglas.js` (window.OLGLAS) + `docs/olglas.css`. index.html names them `<script type="text/x-lazy" data-demand>` and
+  `<link rel="x-lazy-css">`: never fetched at start, and boot.js skips `data-demand` scripts at idle. delight.js loads both on demand.
+- **One shake detector.** It stays in delight.js (devicemotion, Σ|Δa| > 32, one peak per 110 ms). 3 peaks within 1 s → `OLGLAS.open()`
+  (3 s gap after a close); while open each peak → `OLGLAS.peak()` (+8.5 % beer, more foam, haptic tick). If olglas.js cannot load, the
+  old foam joke runs. Setting `olnu.dl.shake` ("📳 Skaka = fyll glaset: På/Av", default on; iPhone: on after the permission).
+- **Permissions.** iPhone: `DeviceMotionEvent.requestPermission()` + `DeviceOrientationEvent.requestPermission()` in the same tap, once,
+  from the ⚙️ toggle (friendly sheet) or "🍺 Testa ölglaset". Result in `olnu.og.perm` ("1"/"0").
+- **Glass.** One full-screen canvas (`.og`, z-index 2900: over sheets/toasts, under takeovers). DPR ≤ 2; on close the canvas is set to 0×0
+  and removed. Gravity from deviceorientation (β/γ, screen.orientation aware), else accelerationIncludingGravity. Surface = level line
+  for the wanted area (polygon clip + bisection), 24-point damped spring wave, bubbles, foam head, overflow + drips when full, edge highlight.
+  rAF only while something moves. Reduced motion: no slosh/bubbles, level jumps.
+- **Drink.** Top edge tipped past vertical towards the face (≥ ~20°, β > ~110° in portrait, screen facing down): the beer slides to the
+  top edge and drains at 6–38 %/s by tilt, "glugg" particles, gulp sound only with 🔊 in the overlay (`olnu.og.snd`, default off, never when muted).
+  Empty → dalmål toast (34 sv / 8 en lines) with **"🍺 Logga som öl?" = `#btn-beer.click()`**: the normal ÖL! path with all its rules and the
+  10-min limit (in cooldown: a wait toast). Nothing is logged by itself. No medals / meriter.
+- **Never over the strip.** `open()` waits with `OLNU_STRIP.after()`; if the strip comes up while open, the glass closes.
+- **Closes on** ✕, hold 1 s anywhere, Esc, page hidden, 90 s idle, strip, empty.
+- **No sensors.** Long-press ÖL! 0.7 s (outside the cooldown, only before any motion event was seen; the click after it is swallowed) or
+  ⚙️ "Testa ölglaset". Drag up = drink, drag sideways / ←→ = tilt, ↑↓ = pitch (drink), S/space = shake.
+- **Public.** `OLGLAS = { open({level, api}), close(why), isOpen(), peak(k), state(), closedAt(), lines }`; `DELIGHT.glass(opts)`; event
+  `olglas:close` on document (`detail.why`: x | hold | esc | hidden | idle | strip | empty).
