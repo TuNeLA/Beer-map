@@ -10,6 +10,8 @@
 // iMessage, Telegram, Slack, Discord, X ...) read the og: tags. The page also has meta refresh + JS as a backup.
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (set by the platform), OLNU_APP_URL (optional secret, the app
 // link; set it when the app moves to its own domain, no redeploy needed).
+// v3 (join, 2026-10-21): &by=<inviter first name> on invite/join links is passed on to the app link (the welcome
+// card says "TuNe har bjudit in dig till TPM") and starts the preview title. Letters, digits, space . _ - only, max 24.
 import { initWasm, Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 import { cardSvg } from "./svg.ts";
 import { buildCard } from "./copy.ts";
@@ -133,7 +135,8 @@ Deno.serve(async (req: Request) => {
   } else d = { ok: false, why: "limited" };
   const card = buildCard(d, en, k + id);
   const go = card.go && /^[a-z]+=[A-Za-z0-9-]{1,40}$/.test(card.go) ? card.go : "";
-  const to = APP + (go ? "?" + go : "");
+  const by = (k === "join" || k === "invite") ? (url.searchParams.get("by") || "").replace(/[^\p{L}\p{N} ._-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24) : "";
+  const to = APP + (go ? "?" + go : "") + (go && by ? "&by=" + encodeURIComponent(by) : "");
 
   if (wantImg) {
     const ckey = qs + "|" + card.title + "|" + card.desc;
@@ -159,6 +162,7 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 302, headers: { Location: to, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
   }
   const img = self + "&img=1&v=" + (card.title.length + card.desc.length).toString(36) + (d && d.ok ? (Number(d.out ?? d.yes ?? d.us ?? 0) % 97).toString(36) : "x");
+  if (by && d && d.ok) card.title = (en ? by + " invites you · " : by + " bjuder in dig · ") + card.title;
   const html = page(card.title, card.desc, img, self, to, en);
   return new Response(req.method === "HEAD" ? null : html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=120", "X-Robots-Tag": "noindex" },

@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.INVITE, window.BASEMAP].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.BASEMAP].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -2413,7 +2413,7 @@
         body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [
           btn(t("create"), "btn-amber", showCreate), btn(t("join"), "btn-green", function () { showJoin(""); })
         ]));
-        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("📲 " + t("inviteBtn"), "btn-block", showInvite)]));
+        if (!window.JOIN) body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("📲 " + t("inviteBtn"), "btn-block", showInvite)]));   // join.js: ➕ per group + Vänner tab
         mods("groupsSheet", body);   // "Kom hit!"
         list.appendChild(el("li", { class: "muted", text: "…" }));
         rpc("my_groups").then(function (r) {
@@ -2438,6 +2438,7 @@
       ]),
       el("span", { class: "gcard-go", "aria-hidden": "true", text: "›" })
     ]);
+    mods("groupCard", g, li);   // join.js: ➕ Bjud in
     var open = function () { showGroupPage(g); };
     li.addEventListener("click", open);
     li.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
@@ -2531,7 +2532,7 @@
             var g = parseData(r.data);
             toast(t("joined", g.name || "")); refresh();
             // In the browser: show how to put the app on the home screen first (the groups are there after).
-            if (!U.isStandalone()) { showInstallGuide(); return; }
+            if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled())) { showInstallGuide(); return; }
             showGroups();
             notifPromptOnce();
           });
@@ -2548,6 +2549,7 @@
     });
   }
   function showCode(g, isNew) {
+    if (window.JOIN && window.JOIN.openGroup) { window.JOIN.openGroup(g, isNew); return; }   // join.js: one invite sheet
     openSheet(g.name, function (body) {
       var link = joinLink(g.code);
       body.appendChild(el("p", { class: "muted", text: t("joinCode") }));
@@ -2718,6 +2720,7 @@
   /* ---------- Invite friends + install guide ---------- */
   function inviteLink() { return location.origin + location.pathname + "?invite=1"; }
   function showInvite() {
+    if (window.JOIN && window.JOIN.openApp) { window.JOIN.openApp(); return; }   // join.js: one invite sheet
     openSheet(t("inviteTitle"), function (body) {
       var link = inviteLink();
       body.appendChild(el("p", { text: t("inviteText") }));
@@ -3548,7 +3551,10 @@
       var moved = sessionStorage.getItem("olnu.flyttOk");
       if (moved) { sessionStorage.removeItem("olnu.flyttOk"); toast(t("flyttOk", moved === "-" ? "" : moved), { ms: 6000, cls: "skal" }); }
     } catch (e) {}
-    var intro = introDone() ? (ageOk() ? Promise.resolve() : showAgeOnce()) : showIntro(false);
+    // join.js: an invite link shows the welcome/install card first; the intro waits until it is closed.
+    var intro = (window.JOIN && window.JOIN.gate ? window.JOIN.gate() : Promise.resolve()).then(function () {
+      return introDone() ? (ageOk() ? undefined : showAgeOnce()) : showIntro(false);
+    });
     // Returning user who allowed location before: center on them quietly.
     if (introDone() && U.ls.get("olnu.locOk", "") === "1") locate({ quiet: true });
     else if (introDone() && navigator.permissions && navigator.permissions.query) {
@@ -3563,7 +3569,7 @@
       makeClient();   // normally made in flyttBoot already
       ready = client ? signIn() : Promise.resolve(toast(t("authFail"), { err: true, ms: 0, id: "auth" }));
     }
-    if (joinCode) {
+    if (joinCode && !(window.JOIN && window.JOIN.joined(joinCode))) {
       var c = U.cleanCode(joinCode);
       Promise.all([ready, intro]).then(function () {
         if (LIVE) showJoin(c); else toast(t("soonToast"), { id: "soon" });
@@ -3572,7 +3578,7 @@
     // Ask for notifications at start (not during a join link). The phone's own question only
     // appears after a tap on "Ja", because browsers need a user gesture.
     if (!joinCode) Promise.all([ready, intro]).then(function () {
-      if (!U.isStandalone() && (invited || inAppBrowser() || Date.now() - (+U.ls.get("olnu.guideSeen", "0") || 0) > 864e5)) {
+      if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled()) && (invited || inAppBrowser() || Date.now() - (+U.ls.get("olnu.guideSeen", "0") || 0) > 864e5)) {
         U.ls.set("olnu.guideSeen", String(Date.now()));
         setTimeout(showInstallGuide, 900);
       } else setTimeout(function () {
@@ -3665,6 +3671,7 @@
       checkins: function () { return checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return lastLoc; },
       setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },
       sheetOpen: function () { return !$("sheet").hidden; },
+      prepareExport: prepareExport, flyttLink: flyttLink, copyFlytt: copyFlytt, hasAccount: function () { return !!storedAuth() && !movedState; },   // join.js (iOS one tap)
       // functions.invoke that always resolves to {data, error} (never rejects, max RPC_TIMEOUT_MS).
       invoke: function (name, body) {
         if (!client || !client.functions) return Promise.resolve({ data: null, error: { message: "no_client" } });

@@ -1,0 +1,101 @@
+/* Öl Nu — ➕ Bjud in + 📲 welcome/install card (js/join.js). Uses the ds.css tokens and components. */
+
+/* ---------- full-screen welcome card ---------- */
+.jn-wel{position:fixed;inset:0;z-index:2700;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:radial-gradient(120% 70% at 50% 0%,rgba(245,166,35,.16),transparent 60%),var(--ds-bg);
+  padding:calc(env(safe-area-inset-top,0px) + var(--ds-5)) var(--ds-4) calc(env(safe-area-inset-bottom,0px) + 96px);
+  font-family:var(--ds-sans);color:var(--ds-text)}
+body.jn-on{overflow:hidden}
+body.jn-on #install-banner{display:none !important}
+.jn-card{max-width:440px;margin:0 auto;display:flex;flex-direction:column;align-items:stretch;gap:var(--ds-3);text-align:center}
+.jn-kick{align-self:center;font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);font-weight:700;letter-spacing:.14em;color:var(--ds-amber-t);
+  padding:var(--ds-1) var(--ds-3);border:1px solid rgba(245,166,35,.45);border-radius:var(--ds-r-pill)}
+.jn-big{font-size:64px;line-height:1.1;margin-top:var(--ds-2)}
+.jn-h{margin:0;font-family:var(--ds-stencil);font-weight:400;font-size:34px;line-height:40px;letter-spacing:.02em;color:var(--ds-text)}
+.jn-sub{margin:0;font-size:var(--ds-fs-22);line-height:var(--ds-lh-22);font-weight:700;color:var(--ds-text)}
+.jn-mem{margin:0;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.jn-mem[hidden],.jn-stat[hidden]{display:none}
+.jn-namebox{text-align:left;margin-top:var(--ds-2)}
+.jn-namebox .fld{display:block;margin-bottom:var(--ds-1);font-weight:600;color:var(--ds-text-2)}
+.jn-name{width:100%;min-height:56px;font-size:var(--ds-fs-18) !important}
+.jn-need{animation:jn-nudge .5s var(--ds-ease) 1}
+@keyframes jn-nudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.jn-act{display:flex;flex-direction:column;gap:var(--ds-3);margin-top:var(--ds-2)}
+.jn-btn{min-height:64px !important;font-size:var(--ds-fs-18) !important;font-weight:700 !important;border-radius:var(--ds-r-2) !important;width:100%}
+.jn-install,.jn-iosprep,.jn-iacopy{min-height:72px !important;font-size:20px !important;box-shadow:0 8px 28px rgba(245,166,35,.28)}
+a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.jn-then{margin:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text-2)}
+.jn-okline{color:var(--ds-green-t);font-weight:700}
+.jn-wait{margin:var(--ds-4) 0;font-size:var(--ds-fs-18);font-weight:700;color:var(--ds-amber-t);animation:jn-pulse 1.6s ease-in-out infinite}
+@keyframes jn-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.jn-stat{margin:0;padding:var(--ds-2) var(--ds-3);border-radius:var(--ds-r-1);background:var(--ds-card);font-weight:600;font-size:var(--ds-fs-16)}
+.jn-stat.ok{color:var(--ds-green-t);background:var(--ds-green-soft)}
+.jn-stat.err{color:var(--ds-red-t);background:var(--ds-red-soft)}
+.jn-done-h{margin:0;font-size:var(--ds-fs-22);line-height:var(--ds-lh-22);font-weight:700;color:var(--ds-green-t)}
+.jn-skip{align-self:center;margin-top:var(--ds-3);min-height:44px;padding:0 var(--ds-3);background:none;border:0;color:var(--ds-muted);
+  font:600 var(--ds-fs-14) var(--ds-sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.jn-18{margin:0;font-size:var(--ds-fs-12)}
+
+/* steps with small drawn pictures */
+.jn-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--ds-2);text-align:left}
+.jn-steps.jn-dim{opacity:.55}
+.jn-step{display:flex;gap:var(--ds-3);align-items:flex-start;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);padding:var(--ds-3)}
+.jn-step-n{flex:0 0 32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber);color:var(--ds-on-amber);font-weight:700}
+.jn-step-b{flex:1;min-width:0}
+.jn-step-b p{margin:4px 0 0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
+.jn-pic{margin-top:var(--ds-2);border-radius:10px;background:#f2f3f5;color:#1d2433;font:600 13px/1.2 system-ui,-apple-system,sans-serif;overflow:hidden}
+.jn-pic .jn-pic-hot{background:#ffd60a;color:#241300;border-radius:8px;box-shadow:0 0 0 2px #f5a623}
+.jn-pic-bar{display:flex;align-items:center;gap:8px;padding:8px 10px}
+.jn-pic-bar .jn-pic-url{flex:1;min-width:0;background:#fff;border-radius:16px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#556}
+.jn-pic-bar .jn-pic-hot{padding:4px 10px;font-size:16px}
+.jn-pic-menu{display:flex;flex-direction:column;padding:4px}
+.jn-pic-menu span{padding:7px 10px}
+.jn-pic-dlg{padding:10px 12px}
+.jn-pic-dlg>div{display:flex;justify-content:flex-end;gap:14px;margin-top:8px}
+.jn-pic-dlg span{padding:4px 10px}
+
+/* iOS: arrow at Safari's button (⋯ bottom right on iOS 26, Dela in the middle before). ≤ 1 Hz, still with reduced motion. */
+.jn-arrow{position:fixed;z-index:2710;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);left:50%;margin-left:-22px;width:44px;height:44px;
+  display:grid;place-items:center;font-size:36px;color:var(--ds-amber);text-shadow:0 2px 12px rgba(0,0,0,.7);pointer-events:none;
+  animation:jn-bob 1.2s ease-in-out infinite}
+.jn-arrow.jn-arrow-r{left:auto;right:18px;margin-left:0}
+@keyframes jn-bob{0%,100%{transform:translateY(-10px)}50%{transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){ .jn-arrow,.jn-wait,.jn-need{animation:none} }
+
+/* QR */
+.jn-qr-wrap{display:flex;justify-content:center}
+.jn-qr{background:#fff;padding:12px;border-radius:var(--ds-r-2);line-height:0;margin:0 !important}
+.jn-qr img,.jn-qr canvas{display:block;max-width:min(232px,62vw);height:auto !important}
+
+/* ---------- invite sheet ---------- */
+.jn-inv{display:flex;flex-direction:column;gap:var(--ds-2)}
+.jn-to{margin:0 0 var(--ds-2);text-align:center;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);font-weight:700;color:var(--ds-text);overflow-wrap:anywhere}
+.jn-inv .jn-new{margin-bottom:var(--ds-2);box-shadow:inset 3px 0 0 var(--ds-green)}
+.jn-qr-cap{margin:0 0 var(--ds-2);text-align:center;font-size:var(--ds-fs-14)}
+.jn-share{min-height:64px !important}
+.jn-copy{min-height:56px !important}
+.jn-how{margin:var(--ds-2) 0 0;padding:var(--ds-3);border-radius:var(--ds-r-1);background:var(--ds-amber-soft);color:var(--ds-text);
+  font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);font-weight:600;text-align:center}
+.jn-code{align-self:center;margin-top:var(--ds-2);min-height:44px;display:inline-flex;align-items:center;gap:6px;background:none;border:1px dashed var(--ds-border-2);
+  border-radius:var(--ds-r-pill);padding:0 var(--ds-3);color:var(--ds-text);font:400 var(--ds-fs-14) var(--ds-sans);cursor:pointer}
+.jn-code-v{font-family:var(--hud,ui-monospace,monospace);letter-spacing:.12em;font-size:var(--ds-fs-16)}
+.jn-code-help{margin:0;text-align:center;font-size:var(--ds-fs-12)}
+
+/* ---------- group page tile: primary, full width, right under 💬 Chatt (polish2: section 0) ---------- */
+.gitem:not(.gcard)>div.gp>.jn-gtile,.jn-gtile{grid-column:1 / -1;display:flex}
+.gitem:not(.gcard)>div.gp>.jn-gtile>.btn.jn-big-btn{width:100%;min-height:60px !important;border-radius:var(--ds-r-2) !important;
+  background:var(--ds-amber) !important;border:0 !important;color:var(--ds-on-amber) !important;font-size:var(--ds-fs-18) !important;font-weight:700;
+  display:flex !important;align-items:center !important;justify-content:center !important;box-shadow:var(--ds-sh-1)}
+.jn-gtile>.btn.jn-big-btn{width:100%;min-height:60px}
+.jn-gl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- Grupper list card: small "➕ Bjud in" ---------- */
+.gitem.gcard{align-items:center}
+.jn-cardbtn{flex:0 0 auto;min-height:44px;min-width:44px;padding:0 var(--ds-3);margin-left:auto;border-radius:var(--ds-r-pill);border:1px solid rgba(245,166,35,.55);
+  background:var(--ds-amber-soft);color:var(--ds-amber-t);font:700 var(--ds-fs-14) var(--ds-sans);cursor:pointer;white-space:nowrap}
+@media (max-width:400px){ .jn-cardbtn{padding:0;width:44px;font-size:18px} .jn-cardbtn .jn-cb-t{display:none} }
+.jn-cardbtn:active{background:rgba(245,166,35,.28)}
+.gitem.gcard .jn-cardbtn+.gcard-go{margin-left:var(--ds-2)}
+
+/* ---------- Vänner tab ---------- */
+.inv-pane>.jn-app{margin:0 0 var(--ds-4)}

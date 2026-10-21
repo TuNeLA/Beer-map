@@ -24,6 +24,7 @@
     var k = c.classList;
     if (k.contains("gmain") || k.contains("gp-h") || k.contains("gp-more")) return null;
     if (k.contains("g-foot") || k.contains("confirm")) return null;
+    if (k.contains("jn-gtile")) return [0, 2];      // ➕ Bjud in (join.js): primary, under Chatt
     if (k.contains("row")) {
       if (c.querySelector(".jam-host")) return [5, 1];
       var tx = c.textContent || "";
