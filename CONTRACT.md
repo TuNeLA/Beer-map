@@ -1657,3 +1657,31 @@ New tables: `bar_sport_votes(bar_id, user_id, yes boolean|null, bar_lat, bar_lng
 2. TheSportsDB premium (only if the free 3-rows cap is a problem): https://www.thesportsdb.com/pricing ($9/month) → the key on your profile →
    secret `THESPORTSDB_KEY`.
 3. Actions → "Events (import)" → Run workflow. Edit `scripts/sport-feeds.json` for teams / TV picks; add arenas to `sport-venues.json`.
+
+## 🗺️ KARTSTIL 3 (clean labels, Ludvika looks, zoom perf)
+Client only, no migrations. Files: `docs/js/basemap.js` (replaced, same hooks; patch map3 02), patches map3 01 (app.js heat), 03 (this).
+This section adds to KARTSTIL 2; the rest still holds.
+- **Clean labels, every style.** Street names stay. Hidden: road number shields (E16, 50, 66, W 620 …), exit numbers, intersection
+  boxes, level crossings, one-way arrows, house/block numbers, gates, golf holes, POI / transit / airport labels (regex `CLUTTER`).
+  Mapbox classic styles: by layer id on `style.load`. Mapbox Standard: there is no config switch for shields alone
+  (`showRoadLabels` also hides the names), so the layers are hidden inside the `basemap` import via `map.style.getFragmentStyle("basemap")`
+  (NOT public GL JS API, tested on 3.32.0; any error = the shields just stay). Re-applied after every `setConfig` / `setStyle`.
+  Standard keeps `showLandmarkIcons` + `showLandmarkIconLabels` (big landmarks only). MapLibre styles: any `*shield*` layer is dropped too.
+- **Ludvika looks** (tuned over 60.150, 15.187 at zoom 13–17): `LIST[].cfg` = Standard colour config (`colorWater`, `colorGreenspace`,
+  `colorLand`, `colorRoads`, `colorTrunks`, `colorMotorways`, `colorPlaceLabels`, `colorRoadLabels`); `LIST[].look` = small changes in the
+  import: `water` (flat deep-blue water, `water-depth` off: at dusk/night the import darkens water to near black), `amber`
+  (primary + secondary/tertiary streets amber, wrapped around the import's own `roads` / `bridge-roads` line-color), `ambient`
+  (a brighter ambient light through `map.setLights`, so dusk/night are not too dark; `setLights(null)` = the import's own).
+  Looks on Skymning, Dag, Natt, Gryning (water only). Blek / Grå / Satellit: clutter removal only. The import's values are saved
+  before the first change and put back for a variant without a look.
+- **⭐ Rekommenderad** badge (sv) / ⭐ Recommended (en) on `TIP` = `mb-dusk` (Skymning). **Klassisk stays `DEFAULT`** until the owner says otherwise.
+- **Zoom perf.**
+  - Mapbox: `fadeDuration 0` (no label fade frames after each zoom step), `antialias false`, `projection "mercator"` (like Leaflet;
+    Standard defaults to the globe), `crossSourceCollisions false`, `performanceMetricsCollection false`, `pixelRatio ≤ 2`.
+    MapLibre: `fadeDuration 0`, `antialias false`.
+  - Bridges (`fixBridge`, both mapbox-gl-leaflet 0.0.16 and maplibre-gl-leaflet 0.1.4): the plugins `jumpTo()` the GL map on every
+    Leaflet `zoom` event; the one that ends an animated (wheel / double-tap / button) zoom is now skipped (zoomend + transitionend sync
+    right after), and a pinch / flyTo gets max one `jumpTo` per animation frame.
+  - Heat (app.js `_drawFrame`): the canvas is drawn at fewer pixels and CSS-scaled up (the glow is blurred, it looks the same):
+    still ≤ ~520k px (phone 412×915 = full size), zoom-animation and pinch frames ≤ ~160k px and ≤ ½ size, then one full draw at zoomend.
+- Test hook: `BASEMAP._clean()` → `{shields, visible, amber, water, lights}`. Tests: scratchpad `map3-test.js`, `map3-perf.js`, `map3-shots.js`.

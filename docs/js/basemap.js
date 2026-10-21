@@ -44,18 +44,34 @@
   var STD = "mapbox://styles/mapbox/standard";
   // Standard: our own POIs are the bars, so Mapbox POI + transit labels are off; 3D buildings + landmarks on
   // (under Leaflet there is no pitch, so they show as shaded footprints seen from above); trees/facades off (GPU).
-  function stdCfg(preset, theme) {
-    return { lightPreset: preset, theme: theme || "default", showPointOfInterestLabels: false, showTransitLabels: false,
-      showPedestrianRoads: true, show3dObjects: true, show3dBuildings: true, show3dLandmarks: true, show3dTrees: false, show3dFacades: false };
+  // map3: big landmarks keep their icon + name (showLandmarkIcons); shields, exit numbers, house numbers etc. are hidden in clean().
+  function stdCfg(preset, theme, colors) {
+    var c = { lightPreset: preset, theme: theme || "default", showPointOfInterestLabels: false, showTransitLabels: false,
+      showPedestrianRoads: true, show3dObjects: true, show3dBuildings: true, show3dLandmarks: true, show3dTrees: false, show3dFacades: false,
+      showLandmarkIcons: true, showLandmarkIconLabels: true };
+    for (var k in colors || {}) c[k] = colors[k];
+    return c;
   }
+  // map3 "Ludvika looks": tuned over Ludvika centre at zoom 13–17 (map3-ludvika.png). Colours go through the Standard config;
+  // look = small changes in the basemap import: water = flat deep blue (no depth darkening), amber = main streets
+  // [primary, secondary/tertiary], ambient = a brighter ambient light so dusk/night are not too dark.
+  var LOOK_DUSK = { water: 1, amber: ["#f5a623", "#d9a56a"], ambient: { intensity: 0.32, color: "hsl(235, 30%, 55%)" } };
+  var LOOK_DAY = { amber: ["#f7b955", "#f9cf8a"] };
+  var LOOK_NIGHT = { water: 1, amber: ["#e8992a", "#9a7650"], ambient: { intensity: 0.35, color: "hsl(225, 35%, 45%)" } };
   var LIST = [
-    { id: "mb-dusk", light: 1, mb: STD, cfg: stdCfg("dusk"), chip: ["#4b3f6b", "#f0a35e"], sv: "Mapbox Skymning", en: "Mapbox Dusk" },
-    { id: "mb-day", light: 1, mb: STD, cfg: stdCfg("day"), chip: ["#eef0ea", "#f2b45a"], sv: "Mapbox Dag", en: "Mapbox Day" },
-    { id: "mb-dawn", light: 1, mb: STD, cfg: stdCfg("dawn"), chip: ["#cdb9cf", "#f3ae86"], sv: "Mapbox Gryning", en: "Mapbox Dawn" },
-    { id: "mb-night", mb: STD, cfg: stdCfg("night"), chip: ["#1c2742", "#f5a623"], sv: "Mapbox Natt", en: "Mapbox Night" },
+    { id: "mb-dusk", light: 1, mb: STD, look: LOOK_DUSK, cfg: stdCfg("dusk", "", { colorWater: "#2a78ee", colorGreenspace: "#5aa868", colorLand: "#6a6790",
+      colorMotorways: "#ffb347", colorTrunks: "#f5a623", colorRoads: "#b3aed0", colorPlaceLabels: "#fff6e6", colorRoadLabels: "#efe8fa" }),
+      chip: ["#5b567a", "#f5a623"], sv: "Mapbox Skymning", en: "Mapbox Dusk" },
+    { id: "mb-day", light: 1, mb: STD, look: LOOK_DAY, cfg: stdCfg("day", "", { colorWater: "#3f7fd6", colorGreenspace: "#acd69a", colorMotorways: "#f5a623",
+      colorTrunks: "#f7b955", colorRoads: "#ffffff", colorPlaceLabels: "#2f2a44", colorRoadLabels: "#55506a" }),
+      chip: ["#eef0ea", "#f2b45a"], sv: "Mapbox Dag", en: "Mapbox Day" },
+    { id: "mb-dawn", light: 1, mb: STD, look: { water: 1 }, cfg: stdCfg("dawn", "", { colorWater: "#3f7fd6" }), chip: ["#cdb9cf", "#f3ae86"], sv: "Mapbox Gryning", en: "Mapbox Dawn" },
+    { id: "mb-night", mb: STD, look: LOOK_NIGHT, cfg: stdCfg("night", "", { colorWater: "#2f6fd8", colorGreenspace: "#5f9e68", colorLand: "#4a5678",
+      colorMotorways: "#ffb340", colorTrunks: "#f5a623", colorRoads: "#7d8bb0", colorPlaceLabels: "#efe4c8", colorRoadLabels: "#b8c0d6" }),
+      chip: ["#1c2742", "#f5a623"], sv: "Mapbox Natt", en: "Mapbox Night" },
     { id: "mb-faded", light: 1, mb: STD, cfg: stdCfg("day", "faded"), chip: ["#e9e6df", "#c4bba8"], sv: "Mapbox Blek", en: "Mapbox Faded" },
     { id: "mb-mono", light: 1, mb: STD, cfg: stdCfg("day", "monochrome"), chip: ["#dcdcdc", "#8c8c8c"], sv: "Mapbox Grå", en: "Mapbox Mono" },
-    { id: "mb-sat", mb: "mapbox://styles/mapbox/standard-satellite", cfg: { lightPreset: "day", showPointOfInterestLabels: false, showTransitLabels: false },
+    { id: "mb-sat", mb: "mapbox://styles/mapbox/standard-satellite", cfg: { lightPreset: "day", showPointOfInterestLabels: false, showTransitLabels: false, showLandmarkIcons: true },
       chip: ["#33452a", "#c8b17f"], sv: "Satellit", en: "Satellite" },
     { id: "mb-streets", light: 1, mb: "mapbox://styles/mapbox/streets-v12", chip: ["#f2efe9", "#f9b25f"], sv: "Gator", en: "Streets" },
     { id: "mb-outdoors", light: 1, mb: "mapbox://styles/mapbox/outdoors-v12", chip: ["#e4ead2", "#6f9e52"], sv: "Friluft", en: "Outdoors" },
@@ -100,12 +116,12 @@
 
   function sv() { return !I || I.lang !== "en"; }
   var S = {
-    sv: { title: "🗺️ Kartstil", tip: "Tips", free: "gratis", mbx: "Mapbox",
+    sv: { title: "🗺️ Kartstil", tip: "⭐ Rekommenderad", free: "gratis", mbx: "Mapbox",
       info: "Välj karta. Pins, värme och krogar ä som vanligt. Mapbox-kartorna och 3D-husen drar lite mer batteri på äldre lurar.",
       fail: "🗺️ Kartan vägrade starta här. Kör Klassisk så länge.",
       on: ["🗺️ Ny karta i drift. Spaningsläge: på.", "🗺️ Kartan bytt. Samma krogar, snyggare gator.", "🗺️ Klart! Ny terräng, samma uppdrag.",
         "🗺️ Kartan ä laddad. Säg till om nåt ser konstigt ut!", "🗺️ Ny karta. Krogarna lyser som förut.", "🗺️ Bytt! Spanarn ser allt nu."] },
-    en: { title: "🗺️ Map style", tip: "Tip", free: "free", mbx: "Mapbox",
+    en: { title: "🗺️ Map style", tip: "⭐ Recommended", free: "free", mbx: "Mapbox",
       info: "Pick a map. Pins, heat and bars stay the same. The Mapbox maps and 3D houses use a bit more battery on older phones.",
       fail: "🗺️ The map would not start here. Using Classic for now.",
       on: ["🗺️ New map deployed. Recon mode: on.", "🗺️ Map switched. Same bars, nicer streets.", "🗺️ Done! New terrain, same mission.",
@@ -134,7 +150,7 @@
   };
 
   /* ---------- Recolour OpenFreeMap liberty ---------- */
-  var DROP = /^(natural_earth|poi_|highway-shield|road_shield|road_area_pattern|building-3d|airport|road_one_way|tunnel_.*hatching|park_outline)/;
+  var DROP = /^(natural_earth|poi_|highway-shield|road_shield|.*shield|road_area_pattern|building-3d|airport|road_one_way|tunnel_.*hatching|park_outline)/;
   function roadRole(id) {
     if (/rail/.test(id)) return "rail";
     if (/path_pedestrian/.test(id)) return "path";
@@ -226,7 +242,7 @@
 
   // Light OpenFreeMap styles (positron, bright): original colours; POIs, shields, one-way arrows, the shaded relief
   // and 3D extrusion dropped (our bars are the POIs; no pitch under Leaflet); Swedish names first; houses from z13.
-  var DROP_LIGHT = /^(poi_|highway-shield|road_shield|road_oneway|building-3d|airport)/;
+  var DROP_LIGHT = /^(poi_|highway-shield|road_shield|.*shield|road_oneway|building-3d|airport)/;
   function tweak(base, lang) {
     var out = JSON.parse(JSON.stringify(base));
     delete out.sources.ne2_shaded;
@@ -237,6 +253,25 @@
       return l;
     });
     return out;
+  }
+
+  /* ---------- map3 perf: the Leaflet ↔ GL bridges ----------
+     Both plugins jumpTo() the GL map on EVERY Leaflet "zoom" event (meant for pinch). That also runs at the end of each
+     animated wheel / double-tap zoom, right before their own zoomend + transitionend syncs (= 2–3 full GL frames per step).
+     Now: the "zoom" that ends an animated zoom is skipped (zoomend + transitionend sync right after it); a pinch or a
+     flyTo (no zoomanim) gets at most one jumpTo per animation frame. */
+  function fixBridge(K) {
+    var P = K && K.prototype; if (!P || P._olnuFixed || !P._pinchZoom || !P._animateZoom || !P._zoomEnd) return;
+    P._olnuFixed = true;
+    var pinch = P._pinchZoom, anim = P._animateZoom, end = P._zoomEnd;
+    P._animateZoom = function (e) { this._olnuAnim = true; return anim.call(this, e); };
+    P._zoomEnd = function () { this._olnuAnim = false; return end.apply(this, arguments); };
+    P._pinchZoom = function (e) {
+      var self = this;
+      if (this._olnuAnim) { this._olnuAnim = false; return; }
+      if (this._olnuRaf) return;
+      this._olnuRaf = requestAnimationFrame(function () { self._olnuRaf = 0; if (self._map && self._glMap) pinch.call(self, e); });
+    };
   }
 
   /* ---------- Loading ---------- */
@@ -255,7 +290,7 @@
     }
     libP = (window.maplibregl ? Promise.resolve() : addScript(ML_JS))
       .then(function () { return window.L && window.L.maplibreGL ? null : addScript(PLUG_JS); })
-      .then(function () { if (!window.maplibregl || !window.L.maplibreGL) throw new Error("no_lib"); });
+      .then(function () { if (!window.maplibregl || !window.L.maplibreGL) throw new Error("no_lib"); fixBridge(window.L.MaplibreGL); });
     libP.catch(function () { libP = null; });
     return libP;
   }
@@ -342,7 +377,7 @@
     return {
       style: style, interactive: false, padding: 0.12, updateInterval: 32,
       pixelRatio: Math.min(window.devicePixelRatio || 1, 2),   // less GPU memory on 3× phones; still crisp
-      maxTileCacheSize: 60, fadeDuration: 120, refreshExpiredTiles: false, attributionControl: false
+      maxTileCacheSize: 60, fadeDuration: 0, antialias: false, refreshExpiredTiles: false, attributionControl: false
     };
   }
   function hookGL(layer) {
@@ -400,7 +435,7 @@
     }
     mbP = (window.mapboxgl ? Promise.resolve() : addScript(MB_JS))
       .then(function () { return window.L.mapboxGL ? null : addScript(MBL_JS); })
-      .then(function () { if (!window.mapboxgl || !window.L.mapboxGL) throw new Error("no_mb_lib"); });
+      .then(function () { if (!window.mapboxgl || !window.L.mapboxGL) throw new Error("no_mb_lib"); fixBridge(window.L.MapboxGL); });
     mbP.catch(function () { mbP = null; });
     return mbP;
   }
@@ -432,19 +467,70 @@
     if (mb) { try { if (map.hasLayer(mb)) map.removeLayer(mb); } catch (e) {} }
     logo(false);
   }
-  // Classic Mapbox styles (streets, outdoors, …) have their own POI labels: hide them, our bars are the POIs.
-  function hidePois(m) {
+  /* ---------- map3: a clean map (no road number shields, exit numbers, house numbers, one-way arrows, POI/transit icons) ----------
+     Street NAMES stay. Classic Mapbox styles: the layers are hidden by id. Standard (an import): there is no config switch
+     for shields alone (showRoadLabels also hides the names), so the layers are hidden inside the "basemap" import
+     (style.getFragmentStyle — not public API; any error = the map just keeps them). Big landmarks keep their icon. */
+  var CLUTTER = /shield|road-number|road-intersection|level-crossing|oneway-arrow|building-number-label|block-number-label|turning-feature|incident-|gate-label|golf-hole|^crosswalks|^poi-label|^transit-label|^airport-label/;
+  var lookSaved = null, lookErr = "";   // the import's own paint values / lights, kept so another Standard variant can put them back
+  function frag(m) { try { return m.style && m.style.getFragmentStyle ? m.style.getFragmentStyle("basemap") || null : null; } catch (e) { return null; } }
+  function clean(m) {
+    var n = 0, fr = frag(m);
     try {
-      (m.getStyle().layers || []).forEach(function (l) {
-        if (/^(poi-label|transit-label|airport-label)/.test(l.id)) m.setLayoutProperty(l.id, "visibility", "none");
+      if (fr && fr._layers) Object.keys(fr._layers).forEach(function (id) {
+        if (CLUTTER.test(id)) { try { fr.setLayoutProperty(id, "visibility", "none"); n++; } catch (e) {} }
+      });
+      else (m.getStyle().layers || []).forEach(function (l) {
+        if (CLUTTER.test(l.id)) { m.setLayoutProperty(l.id, "visibility", "none"); n++; }
       });
     } catch (e) {}
+    return n;
+  }
+  function amberExpr(o, a) {
+    var w = function (x) { return ["match", ["get", "class"], ["primary", "primary_link"], a[0], ["secondary", "secondary_link", "tertiary", "tertiary_link"], a[1], x]; };
+    // A zoom "step" must stay the outermost expression: wrap each of its outputs.
+    if (Array.isArray(o) && o[0] === "step") return o.map(function (x, i) { return i >= 2 && i % 2 === 0 ? w(x) : x; });
+    if (Array.isArray(o) && /^interpolate/.test(o[0])) return o.map(function (x, i) { return i >= 4 && i % 2 === 0 ? w(x) : x; });
+    return w(o);
+  }
+  function look(m, st) {
+    var fr = frag(m); if (!fr || !fr._layers) return;
+    var L0 = st.look || {};
+    try {
+      if (!lookSaved) {
+        lookSaved = { paint: {}, lights: null };
+        ["roads", "bridge-roads", "water"].forEach(function (id) {
+          var l = fr._layers[id], p = id === "water" ? "fill-color" : "line-color", o = {};
+          if (l) { o[p] = fr.getPaintProperty(id, p); lookSaved.paint[id] = o; }
+        });
+      }
+      ["roads", "bridge-roads"].forEach(function (id) {
+        var o = lookSaved.paint[id]; if (!o || o["line-color"] == null) return;
+        fr.setPaintProperty(id, "line-color", L0.amber ? amberExpr(o["line-color"], L0.amber) : o["line-color"]);
+      });
+      if (lookSaved.paint.water) fr.setPaintProperty("water", "fill-color", L0.water ? ["config", "colorWater"] : lookSaved.paint.water["fill-color"]);
+      if (fr._layers["water-depth"]) fr.setLayoutProperty("water-depth", "visibility", L0.water ? "none" : "visible");
+      // Lights: the import's lights with a brighter ambient; null = back to the import's own.
+      if (L0.ambient) {
+        m.setLights(null);
+        var base = m.getLights() || [];
+        m.setLights(base.map(function (l) { return l.type === "ambient" ? { id: l.id, type: l.type, properties: Object.assign({}, l.properties, L0.ambient) } : l; }));
+      } else if (lookSaved.lit) m.setLights(null);
+      lookSaved.lit = !!L0.ambient;
+    } catch (e) { lookErr = String(e && e.message || e); try { console.warn("olnu basemap look", lookErr); } catch (x) {} }
+  }
+  function mbStyled(m) {
+    var s = BY[cur]; if (!s || !s.mb) return;
+    clean(m);
+    if (s.cfg && s.mb === STD) look(m, s);
+    m.triggerRepaint();
   }
   function mbSetStyle(st) {
     var m = mb.getMapboxMap();
     if (mbUrl === st.mb && st.cfg) {   // same Standard style: only the config changes (no new style download)
-      try { m.setConfig("basemap", st.cfg); return; } catch (e) {}
+      try { m.setConfig("basemap", st.cfg); mbStyled(m); return; } catch (e) {}
     }
+    lookSaved = null;
     mbUrl = st.mb; mbStyleBusy = true;
     var o = { diff: false }; if (st.cfg) o.config = { basemap: st.cfg };
     m.setStyle(st.mb, o);
@@ -459,18 +545,21 @@
       document.documentElement.setAttribute("data-basemap", name);
       if (!mb) {
         mbUrl = st.mb;
+        // map3 perf: no label fade (each fade = extra full GL frames after every zoom step), no MSAA, Mercator like
+        // Leaflet (Standard defaults to the globe), no cross-source label collision pass.
         var opts = { accessToken: token, style: st.mb, interactive: false, padding: 0.12, attributionControl: false,
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 120 };
+          pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 0, antialias: false, projection: "mercator",
+          crossSourceCollisions: false, performanceMetricsCollection: false };
         if (st.cfg) opts.config = { basemap: st.cfg };
         mb = window.L.mapboxGL(opts);
         mb.addTo(map); mbLoads++;
         var m = mb.getMapboxMap();
         m.on("load", function () { mbLoaded = true; if (isMb(cur)) { rastersOn(false); attrOnLoad(); } });
         m.on("style.load", function () {
-          mbStyleBusy = false;
+          mbStyleBusy = false; lookSaved = null;
           var s = BY[cur]; if (!s || !s.mb) return;
-          if (!s.cfg) hidePois(m);
-          else if (s.mb === mbUrl) { try { m.setConfig("basemap", s.cfg); } catch (e) {} }
+          if (s.cfg && s.mb === mbUrl) { try { m.setConfig("basemap", s.cfg); } catch (e) {} }
+          mbStyled(m);
         });
         m.on("error", function (e) {
           if (!e || e.sourceId || e.tile) return;   // a missing tile (e.g. terrain DEM) is not fatal
@@ -543,7 +632,7 @@
         ".sheet .seg.bm-seg.bm-grid>button[aria-checked=true]::after{right:8px;font-size:14px}" +
         ".bm-chip{flex:0 0 22px;width:22px;height:22px;border-radius:6px;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset}" +
         ".bm-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:14px}" +
-        ".bm-seg .bm-b{position:absolute;top:-7px;right:6px;font:700 10px/14px var(--ds-sans,sans-serif);padding:0 5px;border-radius:7px;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);text-transform:uppercase}";
+        ".bm-seg .bm-b{position:absolute;top:-7px;right:6px;font:700 10px/14px var(--ds-sans,sans-serif);padding:0 5px;border-radius:7px;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);white-space:nowrap}";
       document.head.appendChild(st);
     }
     body.appendChild(el("h3", { text: T("title") }));
@@ -563,6 +652,24 @@
     loaded: function () { return isMb(cur) ? mbLoaded && !mbStyleBusy : !!(gl && glLoaded); },
     mapbox: function () { return mb; },
     mapboxLoads: function () { return mbLoads; },
+    // Test hook (map3): visibility of the shield / clutter layers and the look in the current Mapbox style.
+    _clean: function () {
+      if (!mb || !isMb(cur)) return null;
+      var m = mb.getMapboxMap(), fr = frag(m), out = { shields: [], visible: [], amber: false, water: null, lights: false };
+      try {
+        var ids = fr && fr._layers ? Object.keys(fr._layers) : (m.getStyle().layers || []).map(function (l) { return l.id; });
+        ids.forEach(function (id) {
+          if (!CLUTTER.test(id)) return;
+          var v = fr ? fr.getLayoutProperty(id, "visibility") : m.getLayoutProperty(id, "visibility");
+          if (/shield|road-number/.test(id)) out.shields.push(id + "=" + v);
+          if (v !== "none") out.visible.push(id);
+        });
+        if (fr && fr._layers.roads) out.amber = /primary/.test(JSON.stringify(fr.getPaintProperty("roads", "line-color")).slice(0, 80));
+        if (fr && fr._layers["water-depth"]) out.water = fr.getLayoutProperty("water-depth", "visibility");
+        out.lights = !!(lookSaved && lookSaved.lit); if (lookErr) out.lookErr = lookErr;
+      } catch (e) { out.err = e.message; }
+      return out;
+    },
     layer: function () { return gl; },
     token: function () { return token; },
     tokenReady: fetchToken,

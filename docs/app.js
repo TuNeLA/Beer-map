@@ -257,11 +257,16 @@
     // proj(latlng) → container point of the frame; z = (fractional) zoom of the frame; normZ: zoom for the colour scale.
     HP._drawFrame = function (proj, z, lat, norm) {
       var m = this._map; if (!m || !this._heat) return;
-      var R = heatRadiusPx(z, lat);
-      if (!this._rNow || Math.abs(R - this._rNow) > 0.2) { this._heat.radius(R * 0.5, R * 0.5); this._rNow = R; }
-      var size = m.getSize(), r = this._heat._r, g = Math.max(2, r / 2), cells = {}, list = [];
-      if (this._canvas.width !== size.x) this._canvas.width = this._heat._width = size.x;
-      if (this._canvas.height !== size.y) this._canvas.height = this._heat._height = size.y;
+      var R = heatRadiusPx(z, lat), size = m.getSize();
+      // map3: canvas pixels per CSS px (getImageData/putImageData of the whole canvas is the cost of every heat frame).
+      var lo = norm != null || !!this._lo, hs = Math.min(lo ? 0.5 : 1, Math.sqrt((lo ? 160000 : 520000) / Math.max(1, size.x * size.y)));
+      hs = Math.max(0.2, Math.round(hs * 20) / 20);
+      if (!this._rNow || Math.abs(R * hs - this._rNow) > 0.2) { this._heat.radius(R * 0.5 * hs, R * 0.5 * hs); this._rNow = R * hs; }
+      var r = R, g = Math.max(2, r / 2), cells = {}, list = [], cw = Math.round(size.x * hs), ch = Math.round(size.y * hs);
+      if (this._canvas.width !== cw) this._canvas.width = this._heat._width = cw;
+      if (this._canvas.height !== ch) this._canvas.height = this._heat._height = ch;
+      if (this._canvas.style.width !== size.x + "px") { this._canvas.style.width = size.x + "px"; this._canvas.style.height = size.y + "px"; }
+      this._hs = hs;
       L.DomUtil.setTransform(this._canvas, m.containerPointToLayerPoint([0, 0]), 1);
       var ll = this._latlngs || [], i, p, w, k, c;
       for (i = 0; i < ll.length; i++) {
@@ -279,7 +284,7 @@
       if (peak == null) { peak = 0; for (i = 0; i < list.length; i++) if (list[i][2] > peak) peak = list[i][2]; }
       peak = Math.max(HEAT_FLOOR, peak);
       var gam = heatGamma(z), data = [];
-      for (i = 0; i < list.length; i++) data.push([Math.round(list[i][0]), Math.round(list[i][1]), Math.min(1, Math.pow(list[i][2] / peak, gam) / 0.6)]);
+      for (i = 0; i < list.length; i++) data.push([Math.round(list[i][0] * hs), Math.round(list[i][1] * hs), Math.min(1, Math.pow(list[i][2] / peak, gam) / 0.6)]);
       this._heat.max(1);
       this._heat.data(data).draw(this.options.minOpacity);
       this._canvas.style.opacity = String(heatOpacity(z));
@@ -307,6 +312,7 @@
     HP._animateZoom = function (e) {
       var m = this._map, self = this; if (!m || !this._heat) return;
       if (this._anim) cancelAnimationFrame(this._anim.raf);
+      this._lo = false;
       var z0 = m.getZoom(), z1 = e.zoom, S = m.getZoomScale(z1, z0), pane = m._getMapPanePos(), lat = e.center.lat;
       var p0 = function (x) { return m.latLngToContainerPoint(x); };
       var p1 = function (x) { return m._latLngToNewLayerPoint(x, z1, e.center).add(pane); };
@@ -339,9 +345,11 @@
     if (!heat || !map.hasLayer(heat) || map._animatingZoom || heat._anim || heatPinchRaf) return;
     heatPinchRaf = requestAnimationFrame(function () {
       heatPinchRaf = 0;
-      if (!map._animatingZoom && !heat._anim && map.hasLayer(heat)) heat._redraw();
+      if (!map._animatingZoom && !heat._anim && map.hasLayer(heat)) { heat._lo = true; heat._redraw(); }
     });
   });
+  // map3: after a pinch (low-resolution frames) one full-resolution draw.
+  map.on("zoomend", function () { if (heat && heat._lo) { heat._lo = false; if (map.hasLayer(heat) && !heat._anim) heat._redraw(); } });
   // Where a pin is drawn: on its bar's point when it belongs to a bar (same rule as the markers), else its own spot.
   function pinSpot(b) {
     if (b.snap === "area" || !b.precise) return [b.lat, b.lng];
