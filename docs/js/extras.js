@@ -420,6 +420,7 @@
       if (MED()) MED().init(api);
       getLog();   // roll over to a new night if needed (keeps last night for the summary)
       $("btn-other").addEventListener("click", pickOther);
+      var tb = $("btn-taxi"); if (tb) tb.addEventListener("click", function () { try { if (window.FX && FX.haptic) FX.haptic(10); } catch (e) {} showTaxi(); });
       $("ocd-ring").style.strokeDasharray = String(OTHER_RING);
       document.addEventListener("visibilitychange", function () { if (!document.hidden) applyOther(); });
     },
@@ -490,7 +491,7 @@
         h += '<button type="button" class="hx-chip hx-badges" data-hx="badges" aria-label="' + esc(t("badgesBtn")) + '">🎖️</button>';
       }
       if (ghostOn()) h += '<span class="hx-chip hx-ghost" role="img" aria-label="' + esc(t("ghostHud")) + '" title="' + esc(t("ghostHud")) + '">👻</span>';
-      if ((ctx && ctx.n | 0) >= 5) h += '<button type="button" class="hx-chip hx-taxi" data-hx="taxi">' + esc(t("taxi")) + "</button>";
+      h += '<button type="button" class="hx-chip hx-taxi" data-hx="taxi">' + esc(t("taxi")) + "</button>";
       return h;
     },
     hudClick: function (action) {

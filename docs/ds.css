@@ -380,3 +380,8 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 @media (prefers-reduced-motion: reduce){
   .ds-btn,.btn,.inv-tabs,.tt-bar,.switch::after,.sheet .tabs>button,.ds-seg>button{transition:none !important}
 }
+
+/* 🚕 Always-there taxi button, right above 📍 (owner: "I need to find a taxi button"). */
+#btn-taxi.locate-btn{bottom:auto !important;top:calc(var(--sat) + 158px + var(--chaos-h,0px) + var(--rally-h,0px)) !important;right:calc(var(--sar) + 10px)}
+body.ghost-chip-on #btn-taxi.locate-btn{top:calc(var(--sat) + 204px + var(--chaos-h,0px) + var(--rally-h,0px)) !important}
+#btn-taxi span{font-size:22px;line-height:1}

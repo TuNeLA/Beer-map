@@ -46,7 +46,7 @@
     ["photo", "📷", 2, "Bild i gruppchatten", "Photo in the group chat", "Max 5 per natt.", "Max 5 a night."],
     ["skal_give", "🍻", 1, "Ge en skål", "Give a skål", "Max 10 per natt.", "Max 10 a night."],
     ["skal_get", "🥂", 1, "Få en skål", "Get a skål", "Max 10 per natt.", "Max 10 a night."],
-    ["drink", "🍺", 1, "En dryck", "A drink", "Inget tak. Men det ä int' där meriterna finns.", "No cap. But that is not where the points are."]
+    ["drink", "🍺", 5, "En dryck", "A drink", "Inget tak. Varje öl ger 5.", "No cap. Every drink gives 5."]
   ];
   var ACT = {};
   ACTS.forEach(function (a) { ACT[a[0]] = a; });
