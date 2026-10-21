@@ -1427,21 +1427,26 @@ meriter.js `ACTS` + 10 `LINES`.
 - **Files.** `docs/js/olglas.js` (window.OLGLAS) + `docs/olglas.css`. index.html names them `<script type="text/x-lazy" data-demand>` and
   `<link rel="x-lazy-css">`: never fetched at start, and boot.js skips `data-demand` scripts at idle. delight.js loads both on demand.
 - **One shake detector.** It stays in delight.js (devicemotion, Σ|Δa| > 32, one peak per 110 ms). 3 peaks within 1 s → `OLGLAS.open()`
-  (3 s gap after a close); while open each peak → `OLGLAS.peak()` (+8.5 % beer, more foam, haptic tick). If olglas.js cannot load, the
+  (3 s gap after a close); while open each peak → `OLGLAS.peak()` (+14 % beer up to the brim 0.97, more foam, haptic tick; 6–8 shakes = full). If olglas.js cannot load, the
   old foam joke runs. Setting `olnu.dl.shake` ("📳 Skaka = fyll glaset: På/Av", default on; iPhone: on after the permission).
 - **Permissions.** iPhone: `DeviceMotionEvent.requestPermission()` + `DeviceOrientationEvent.requestPermission()` in the same tap, once,
   from the ⚙️ toggle (friendly sheet) or "🍺 Testa ölglaset". Result in `olnu.og.perm` ("1"/"0").
 - **Glass.** One full-screen canvas (`.og`, z-index 2900: over sheets/toasts, under takeovers). DPR ≤ 2; on close the canvas is set to 0×0
-  and removed. Gravity from deviceorientation (β/γ, screen.orientation aware), else accelerationIncludingGravity. Surface = level line
-  for the wanted area (polygon clip + bisection), 24-point damped spring wave, bubbles, foam head, overflow + drips when full, edge highlight.
-  rAF only while something moves. Reduced motion: no slosh/bubbles, level jumps.
-- **Drink.** Top edge tipped past vertical towards the face (≥ ~20°, β > ~110° in portrait, screen facing down): the beer slides to the
-  top edge and drains at 6–38 %/s by tilt, "glugg" particles, gulp sound only with 🔊 in the overlay (`olnu.og.snd`, default off, never when muted).
+  and removed. Gravity from deviceorientation (β/γ, screen.orientation aware), else accelerationIncludingGravity.
+- **REAL GLASS (pour):** the screen's top edge (current orientation) is the open rim, the other 3 edges are walls. The beer is a constant
+  volume A; the surface is always ⟂ gravity, its offset solved every frame (closed-form box ∩ half-space volume + bisection). If the level
+  would stand above the lowest rim point, it runs out there (weir: dA/dt ∝ head^1.5, faster with more tilt, max 1.3/s) until A = what the
+  tipped glass holds: half glass ≈ 66° (portrait), full ≈ 15°, upside down empties in < 1 s. Pour = tongue + foam on the wet rim, drops,
+  streaks to the rim, gentle buzz. 24-point spring wave sloshes; a crest at the rim splashes over. Foam head on the tilted surface;
+  above the rim it runs over (band + drips there). rAF only while something moves. Reduced motion: no wave/particle motion, level + pour work.
+- **Drink.** Not a special mode: with the screen facing down the glass gets depth (1.5·H), so tipping the top towards the face (β > ~95°
+  full, ~125° half) makes the beer run over the whole top edge, "glugg" particles, gulp sound only with 🔊 in the overlay (`olnu.og.snd`, default off, never when muted).
   Empty → dalmål toast (34 sv / 8 en lines) with **"🍺 Logga som öl?" = `#btn-beer.click()`**: the normal ÖL! path with all its rules and the
   10-min limit (in cooldown: a wait toast). Nothing is logged by itself. No medals / meriter.
 - **Never over the strip.** `open()` waits with `OLNU_STRIP.after()`; if the strip comes up while open, the glass closes.
 - **Closes on** ✕, hold 1 s anywhere, Esc, page hidden, 90 s idle, strip, empty.
 - **No sensors.** Long-press ÖL! 0.7 s (outside the cooldown, only before any motion event was seen; the click after it is swallowed) or
-  ⚙️ "Testa ölglaset". Drag up = drink, drag sideways / ←→ = tilt, ↑↓ = pitch (drink), S/space = shake.
-- **Public.** `OLGLAS = { open({level, api}), close(why), isOpen(), peak(k), state(), closedAt(), lines }`; `DELIGHT.glass(opts)`; event
+  ⚙️ "Testa ölglaset". Drag / arrow keys turn the simulated gravity: sideways / ←→ = roll, up / ↑↓ = tip towards the face, S/space = shake.
+- **Public.** `OLGLAS = { open({level, api}), close(why), isOpen(), peak(k), state(), closedAt(), lines, _state() }` (`_state` = test hook:
+  A, ang, tAng, nz, spill rate/s, cap, head, margin, visible area, rim, over); `DELIGHT.glass(opts)`; event
   `olglas:close` on document (`detail.why`: x | hold | esc | hidden | idle | strip | empty).
