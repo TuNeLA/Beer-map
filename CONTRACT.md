@@ -1685,3 +1685,48 @@ This section adds to KARTSTIL 2; the rest still holds.
   - Heat (app.js `_drawFrame`): the canvas is drawn at fewer pixels and CSS-scaled up (the glow is blurred, it looks the same):
     still ≤ ~520k px (phone 412×915 = full size), zoom-animation and pinch frames ≤ ~160k px and ≤ ½ size, then one full draw at zoomend.
 - Test hook: `BASEMAP._clean()` → `{shields, visible, amber, water, lights}`. Tests: scratchpad `map3-test.js`, `map3-perf.js`, `map3-shots.js`.
+
+## 🏟️ ARENOR · matchpins, glöd och incheckning (arenas on the map + 🎟️ tickets; additive)
+
+Owner asks: "Does it show up on the map, like this sports arena will have this hockey match coming up?" + the whole arena lights up,
+tickets, and arenas are real check-in places.
+
+- **Data**
+  - `docs/arenas.json` = `{ v, src, n, a: [{ id, name, lat, lng, osm, k, s?, alias?, at, g }] }` from `scripts/arena-outlines.mjs`
+    (weekly in `buildings.yml`, OSM editing API "map" call per arena, 1 at a time, 1.5 s apart, rolling 60-day refresh). Outline =
+    a leisure=stadium/ice_rink/sports_centre area or a building, name match first (`k`: name | leisure | building | centre | near);
+    a sports park > 15 000 m² loses to its hall building. `g` = outer rings `[[lng, lat]…]` or null. id = `a-<slug of the venue>`
+    (stable). Two venue names on one spot → one arena (`alias`). Source list = `scripts/sport-venues.json` (9 wrong geocodes removed).
+  - Server: `bars_lite` rows with `type = 'arena'` and the same ids (migration **0106**, made by `scripts/arena-places-sql.py`
+    — re-run it in the SQL editor when the arena list grows, then `select public.olnu_resnap();`). A bars_lite re-import from
+    bars.json must keep the `a-…` rows active.
+  - **0105**: `bar_events.ticket_url`; `import_sport_events` takes an optional `ticket_url` (https only); `events_near2` returns
+    a NEW field `ticket_url` (= ticket_url, else `url` for source ticketmaster / tickster). `olnu_near_bar`: an arena catches pins
+    within **110 m** (bars 75 m, restaurants 40 m; bars/arenas before restaurants, then nearest — unchanged order).
+- **Check-in places**: `js/bars.js` loads arenas.json into BARS (type "arena", `arena: true`, no name dedupe — the arena is the place;
+  small bars inside are not added). `BARS.arenas()`, `BARS.onArenas(fn)`. Check-in (`check_in` with the arena id), the where-sheet,
+  pins (server snap → `bar_id`), crowd counts, heat, squad, passport, meriter and the morning paper treat an arena like a bar.
+  app.js draws NO bar marker for an arena (plain or composite); `appApi.barPopup(bar)` gives the normal bar sheet HTML.
+- **Map** (`docs/js/arenapin.js`, `window.ARENAPIN`, mods hooks init, onAuthed, onPoll, barPopupHTML, barIcoHTML, applyText):
+  - Matches = EVSHEET's cached events_near2 rows (`EVSHEET._cache()`, no second fetch): local, not tv, `sport` hockey | fotboll,
+    from 7 days before the start to 2.5 h after it, at an arena ≤ 400 m away (or same name ≤ 3 km). Town-only rows get no pin.
+  - Glow: pane `arenaglow` z 410 (above base maps, barlit 380 and heat 400; under every marker pane), SVG, a wide faint halo + the
+    outline. 🏒 icy blue `#9be0ff` / ⚽ grass green `#7ff08a`. Week = soft, match day = stronger, live = 0.5 Hz pulse; zoom ≤ 13
+    wider halo + ≥ 2.5 px outline. Tap the glow = tap the chip.
+  - Chip: pane `arenapins` z 580 (under bars 590). Tail on the outline's top edge. "🏒 tor 19:00" / "ikväll 19:00" / "om 45 min" /
+    "🔴 PÅGÅR" (ring 0.6 Hz), count badge when more matches, "· 🍺 N" = pins + check-ins there. Zoom ≥ 12 with a match, ≥ 11 with
+    people, ≥ 13 a quiet 🏟️ chip (check-ins work every day). Reduced motion: no pulse / ring.
+  - Tap → the normal bar sheet (Checka in, Jag ä på väg, Folk här …) with the match table on top (class `ev-line ap-sec`): time,
+    day, countdown, home – away, league · place, 🎟️ Biljett (only with a ticket_url), 📨 Bjud in (INVITE.openCreate), 🪖 Vi går!
+    (EVENTS.go), "🍺 Närmaste krog: <bar> (x m)" (BARS, ≤ 3 km), "📺 Visas på: …" (SPORT.pubs ≤ 5 km).
+  - Other events: quiz / live / karaoke / standup / DJ / party at a known bar → tiny 🎤 / 🎸 / … badge on that bar's icon
+    (`barIcoHTML`, class `bi-ev`) on the event day only (the bar sheet already had the "🎤 Pubquiz 20:00 · Vi går!" line, events.js).
+    Same events with a place but no bar / arena → a small amber chip on the event day (zoom ≥ 13) → small sheet 🎟️ / 📨 / 🪖.
+- **🎟️ Tickets**: `scripts/sport-tickets.json` = ONE verified link per home club (`hockey` / `fotboll` → `{url, via}`), checked
+  2026-10-22 (fetched, HTTP 200; axs.com / tmtickets.se / ebiljett.nu block robots → the link on the club's own site). Clubs not
+  listed get no button (e.g. Ludvika HF: pay at the door). Sellers do not allow scraping, so links are per club, not per match.
+  `scripts/import-tickster.mjs` (optional secret **TICKSTER_KEY**, request a key at developer.tickster.com → "Request API key";
+  Event dump API, one call a day, `TICKSTER_DUMP_VERSION` default 0.4): exact match shop links (± 45 min, ≤ 3 km, away team
+  name) + other Tickster events ≤ 25 km from an app town → `import_events` rows (source `tickster`, url = shop link).
+  📅 Event sheet rows get a 🎟️ Biljett button (`.evs-tk`) when `ticket_url` is set.
+- Tests: scratchpad `arena-pw.js` (Klassisk + Skymning, Hitachi Arena mock rows).

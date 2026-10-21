@@ -14,7 +14,7 @@ var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfre
 // 🗺️ Kartstil beta: OpenFreeMap style + TileJSON change weekly (network first); vector tiles are bigger than PNGs (byte cap).
 var TILE_META = /^\/(styles\/[^/]+|planet)\/?$/, TILE_BYTES = 40 * 1024 * 1024;
 var TILE_MAX = 300, TILE_MAX_AGE = 14 * 86400e3, NAV_TIMEOUT_MS = 4000;
-var DATA_RE = /\/(bars(-extra|-closed)?\.json|places\.json|places\/[^/]+\.json|buildings\/[^/]+\.json)$/;
+var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|places\.json|places\/[^/]+\.json|buildings\/[^/]+\.json)$/;
 
 function shellFromIndex(html) {
   var out = [], re = /<(?:script|link)\b[^>]*?\s(?:src|href)="(\.\/[^"]+?\.(?:js|css)(?:\?[^"]*)?)"/g, m;

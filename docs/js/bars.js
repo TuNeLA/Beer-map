@@ -347,6 +347,27 @@
     return best ? { spot: best, d: bestD } : null;
   }
 
+  /* ---------- 🏟️ Arenas (docs/arenas.json, scripts/arena-outlines.mjs; CONTRACT "ARENOR") ----------
+     Check-in places of type "arena" (server: bars_lite, migration 0106, same ids). No name dedupe against bars:
+     the arena is the place (small bars inside it are not added). js/arenapin.js draws them (glow + chip). */
+  var arenaList = [], arenaState = "idle", onArenaFns = [];
+  function loadArenas() {
+    if (arenaState !== "idle") return Promise.resolve();
+    arenaState = "loading";
+    return fetch("./arenas.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("no arenas.json"); return r.json(); })
+      .then(function (doc) {
+        (doc && Array.isArray(doc.a) ? doc.a : []).forEach(function (x) {
+          if (!x || typeof x.id !== "string" || typeof x.lat !== "number" || typeof x.lng !== "number" || closed[x.id] || bars[x.id]) return;
+          var b = { id: x.id, name: x.name, lat: x.lat, lng: x.lng, type: "arena", arena: true, osm: x.osm || null, s: x.s || null, g: Array.isArray(x.g) ? x.g : null };
+          arenaList.push(b); insertBar(b);
+        });
+        arenaState = "ready"; onChange();
+        onArenaFns.forEach(function (f) { try { f(); } catch (e) {} });
+      })
+      .catch(function () { arenaState = "failed"; /* optional */ });
+  }
+
   window.BARS = {
     // Where is this beer? → { kind: "at"|"near"|"town"|"unknown", name }
     //  at:   precise pin within 75 m of a named bar or restaurant
@@ -372,6 +393,7 @@
       var debounced = U.debounce(function () { fetchViewport(map); }, 600);
       var closedReady = loadClosed();
       var extrasReady = closedReady.then(loadExtras);
+      closedReady.then(loadArenas);
       fetch("./bars.json", { cache: "no-cache" })
         .then(function (r) { if (!r.ok) throw new Error("no bars.json"); return r.json(); })
         .then(function (list) { return closedReady.then(function () { return list; }); })
@@ -419,6 +441,8 @@
       return out.concat(pl.slice(0, opts && opts.maxPlaces != null ? opts.maxPlaces : 4));
     },
     nearestSpot: nearestSpot,
+    arenas: function () { return arenaList; },
+    onArenas: function (f) { onArenaFns.push(f); if (arenaState === "ready") f(); },
     nearestNamed: nearestNamed,
     addUser: function (b) { if (!b || bars[b.id]) return !!(b && bars[b.id]); addExtra(b); var ok = !!bars[b.id]; if (ok) onChange(); return ok; },
     placeId: placeId,

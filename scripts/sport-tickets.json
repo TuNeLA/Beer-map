@@ -1,0 +1,152 @@
+{
+ "_doc": "Öl Nu ticket links (scripts/import-sport.mjs → bar_events.ticket_url, migration 0105). Key = the HOME team as stats.swehockey.se / TheSportsDB write it. ONE link per club (club ticket page or the seller's list of the club's matches): the sellers (Tickster, ebiljett/AXS, Ticketmaster) do not allow scraping, so there is no per-match link unless a Tickster API key (TICKSTER_KEY) gives the exact match (see CONTRACT). Checked 2026-10-22: every URL was fetched (HTTP 200) or, where the seller blocks robots (403: axs.com, tmtickets.se, ebiljett.nu), it is the link on the club's own official site. Clubs not listed (e.g. Ludvika HF: pay at the door) get no 🎟️ button. Never add a URL you have not opened yourself.",
+ "checked": "2026-10-22",
+ "hockey": {
+  "Leksands IF": {
+   "url": "https://www.leksandsif.se/biljetter",
+   "via": "tickster"
+  },
+  "Mora IK": {
+   "url": "https://www.moraik.se/biljetter",
+   "via": "tickster"
+  },
+  "Brynäs IF": {
+   "url": "https://www.brynas.se/biljett",
+   "via": "tickster"
+  },
+  "Luleå HF": {
+   "url": "https://www.luleahockey.se/biljetter",
+   "via": "tickster"
+  },
+  "Skellefteå AIK": {
+   "url": "https://www.skellefteaaik.se/biljetter",
+   "via": "ebiljett"
+  },
+  "IF Björklöven": {
+   "url": "https://www.bjorkloven.com/biljetter",
+   "via": "tickster"
+  },
+  "Timrå IK": {
+   "url": "https://www.timraik.se/biljetter",
+   "via": "tickster"
+  },
+  "Djurgårdens IF": {
+   "url": "https://www.axs.com/se/teams/251396/djurgarden-hockey-tickets",
+   "via": "axs"
+  },
+  "Örebro HK": {
+   "url": "https://www.orebrohockey.se/biljetter",
+   "via": "club"
+  },
+  "Färjestad BK": {
+   "url": "https://www.farjestadbk.se/biljetter",
+   "via": "tickster"
+  },
+  "HV 71": {
+   "url": "https://www.hv71.se/biljetter",
+   "via": "tickster"
+  },
+  "Frölunda HC": {
+   "url": "https://fhc.tmtickets.se/Events",
+   "via": "ticketmaster"
+  },
+  "Växjö Lakers HC": {
+   "url": "https://www.vaxjolakers.se/biljetter",
+   "via": "tickster"
+  },
+  "Rögle BK": {
+   "url": "https://www.roglebk.se/biljetter",
+   "via": "tickster"
+  },
+  "IF Malmö Redhawks": {
+   "url": "https://redhawks.tmtickets.se/Events",
+   "via": "ticketmaster"
+  },
+  "MoDo Hockey": {
+   "url": "https://www.modohockey.se/biljetter",
+   "via": "tickster"
+  },
+  "Västerås IK": {
+   "url": "https://www.vik.se/biljetter",
+   "via": "tickster"
+  },
+  "AIK": {
+   "url": "https://www.axs.com/se/teams/1120206/aik-hockey-tickets",
+   "via": "axs"
+  },
+  "BIK Karlskoga": {
+   "url": "https://www.bikkarlskoga.se/biljetter",
+   "via": "tickster"
+  },
+  "Kalmar HC": {
+   "url": "https://kalmarhc.se/biljetter",
+   "via": "tickster"
+  },
+  "Visby/Roma HK": {
+   "url": "https://visbyroma.ticketco.shop/",
+   "via": "ticketco"
+  }
+ },
+ "fotboll": {
+  "Brage": {
+   "url": "https://ikbrage.ebiljett.nu/",
+   "via": "ebiljett"
+  },
+  "Sirius": {
+   "url": "https://www.siriusfotboll.se/matchdag/biljetter/",
+   "via": "ebiljett"
+  },
+  "Västerås": {
+   "url": "https://www.vskfotboll.nu/matchdag/biljetter/",
+   "via": "ebiljett"
+  },
+  "AIK": {
+   "url": "https://www.aikfotboll.se/biljetter",
+   "via": "club"
+  },
+  "Djurgården": {
+   "url": "https://www.dif.se/biljetter",
+   "via": "axs"
+  },
+  "Örebro": {
+   "url": "https://oskfotboll.ebiljett.nu/",
+   "via": "ebiljett"
+  },
+  "Elfsborg": {
+   "url": "https://elfsborg.ebiljett.nu/List/Events",
+   "via": "ebiljett"
+  },
+  "Kalmar": {
+   "url": "https://kalmarff.se/biljetter/",
+   "via": "ebiljett"
+  },
+  "Östersund": {
+   "url": "https://ostersundsfk.se/biljetter/",
+   "via": "ebiljett"
+  },
+  "Malmö FF": {
+   "url": "https://www.mff.se/biljett/",
+   "via": "ebiljett"
+  },
+  "IFK Göteborg": {
+   "url": "https://ifkgoteborg.se/biljetter-2/",
+   "via": "ebiljett"
+  },
+  "Norrköping": {
+   "url": "https://www.ifknorrkoping.se/biljetter",
+   "via": "ebiljett"
+  },
+  "Halmstad": {
+   "url": "https://www.hbk.se/biljetter",
+   "via": "ebiljett"
+  },
+  "Degerfors": {
+   "url": "https://degerforsif.ebiljett.nu/",
+   "via": "ebiljett"
+  },
+  "GAIS": {
+   "url": "https://gais.ebiljett.nu/",
+   "via": "ebiljett"
+  }
+ }
+}

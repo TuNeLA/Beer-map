@@ -25,7 +25,7 @@
     times: [["tonight", "Ikväll", "Tonight"], ["tomorrow", "I morgon", "Tomorrow"], ["weekend", "Helgen", "Weekend"], ["week", "7 dagar", "7 days"]],
     types: [["all", "Alla", "All"], ["quiz", "🎤 Quiz", "🎤 Quiz"], ["live", "🎸 Live", "🎸 Live"], ["fotboll", "⚽ Fotboll", "⚽ Football"],
       ["hockey", "🏒 Hockey", "🏒 Hockey"], ["tv", "📺 På TV", "📺 On TV"], ["fest", "🎉 Fest", "🎉 Party"]],
-    show: ["📍 Visa", "📍 Show"], inv: ["📨 Bjud in", "📨 Invite"], go: ["🪖 Vi går!", "🪖 We're going!"],
+    show: ["📍 Visa", "📍 Show"], ticket: ["🎟️ Biljett", "🎟️ Tickets"], inv: ["📨 Bjud in", "📨 Invite"], go: ["🪖 Vi går!", "🪖 We're going!"],
     tip: ["➕ Tipsa om ett event", "➕ Add an event"],
     tvHead: ["📺 Ikväll på TV:", "📺 Tonight on TV:"], tvHeadDay: ["📺 På TV:", "📺 On TV:"],
     tvPubs: ["📺 Matchen visas på: {list}", "📺 Showing at: {list}"],
@@ -277,6 +277,8 @@
     var pub = tv ? pubs[0] || null : null;
     var target = tv ? (pub ? atPub(e, pub) : null) : e;
     acts.appendChild(A.btn(two("show"), "ds-btn ds-btn-secondary evs-show", function () { show(e, pub); }));
+    // 🎟️ (migration 0105: club ticket page / exact Tickster match / a ticket seller's own event link)
+    if (e.ticket_url && /^https:\/\//.test(e.ticket_url)) acts.appendChild(A.el("a", { class: "ds-btn ds-btn-secondary evs-tk", href: e.ticket_url, target: "_blank", rel: "noopener nofollow", text: two("ticket") }));
     if (!e.pending && window.INVITE && window.INVITE.openCreate && (!tv || pub)) {
       acts.appendChild(A.btn(two("inv"), "ds-btn ds-btn-secondary evs-inv", function () {
         try { window.INVITE.openCreate({ event: target, bar: pub ? pub.bar || { id: pub.id, name: pub.name, lat: pub.lat, lng: pub.lng } : undefined }); } catch (x) {}

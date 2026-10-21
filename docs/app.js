@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -860,6 +860,7 @@
     Object.keys(cib).forEach(function (id) { var bar = window.BARS.byId(id); if (bar) get(id, bar).cis = cib[id]; });
     Object.keys(comp).forEach(function (id) {
       var c = comp[id];
+      if (c.bar && c.bar.arena) return;   // 🏟️ js/arenapin.js draws arenas (glow + chip with the crowd)
       hotBarIds[id] = true; compIds[id] = true;
       var m = addComposite(c, hotLayer, "hotbars");
       c.beers.forEach(function (b) { markerById[b.id] = m; });
@@ -885,7 +886,7 @@
     var n = 0;
     for (var i = 0; i < list.length && n < MAX_PLAIN_BARS; i++) {
       var bar = list[i];
-      if (hotBarIds[bar.id]) continue;
+      if (hotBarIds[bar.id] || bar.arena) continue;   // 🏟️ arenas: js/arenapin.js
       n++;
       plainBarMarkers[bar.id] = addComposite({ bar: bar, beers: [], rallies: [], cis: [] }, barLayer, "bars");
     }
@@ -3679,6 +3680,8 @@
       checkins: function () { return checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return lastLoc; },
       setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },
       sheetOpen: function () { return !$("sheet").hidden; },
+      // 🏟️ js/arenapin.js: the normal bar sheet HTML for a spot without a marker (people there from the poll)
+      barPopup: function (bar) { var agg = window.BARS.assign(beers).perBar[String(bar.id)]; ciBarById[String(bar.id)] = bar; return barPopup(bar, agg ? agg.beers : []); },
       prepareExport: prepareExport, flyttLink: flyttLink, copyFlytt: copyFlytt, hasAccount: function () { return !!storedAuth() && !movedState; },   // join.js (iOS one tap)
       // functions.invoke that always resolves to {data, error} (never rejects, max RPC_TIMEOUT_MS).
       invoke: function (name, body) {

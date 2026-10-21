@@ -173,21 +173,9 @@
 "lat": 62.63771,
 "lng": 17.96715
 },
-"ICA Maxi Arena": {
-"lat": 57.60672,
-"lng": 18.28153
-},
-"Isbjörnen": {
-"lat": 59.32734,
-"lng": 17.91643
-},
 "Isborgen": {
 "lat": 67.13694,
 "lng": 20.66862
-},
-"Ishuset": {
-"lat": 57.69616,
-"lng": 11.99841
 },
 "Jonstorps Ishall": {
 "lat": 56.23013,
@@ -248,10 +236,6 @@
 "Latbergshallen": {
 "lat": 62.92693,
 "lng": 17.74463
-},
-"Lejonhallen": {
-"lat": 57.11944,
-"lng": 12.28155
 },
 "Liljas Arena": {
 "lat": 56.73811,
@@ -341,10 +325,6 @@
 "lat": 60.67884,
 "lng": 17.13381
 },
-"Oasen": {
-"lat": 60.35283,
-"lng": 15.74443
-},
 "Odenrinken": {
 "lat": 58.16396,
 "lng": 13.57158
@@ -372,10 +352,6 @@
 "Rafnahallen": {
 "lat": 63.54193,
 "lng": 16.46211
-},
-"Rosenbergs ishall": {
-"lat": 58.41341,
-"lng": 14.17098
 },
 "Råsshallen": {
 "lat": 59.70867,
@@ -421,10 +397,6 @@
 "lat": 66.32595,
 "lng": 22.83313
 },
-"Skogsvallen": {
-"lat": 65.59926,
-"lng": 22.16199
-},
 "Slättbergshallen": {
 "lat": 58.27866,
 "lng": 12.29916
@@ -452,10 +424,6 @@
 "Sparbanken Arena, Arvika": {
 "lat": 59.6514,
 "lng": 12.62166
-},
-"Sparbankshallen": {
-"lat": 57.09939,
-"lng": 12.26356
 },
 "Stallet Norrköping": {
 "lat": 58.59466,
@@ -572,10 +540,6 @@
 "Vättlehallen": {
 "lat": 57.79396,
 "lng": 12.30931
-},
-"Wasahallen": {
-"lat": 59.34034,
-"lng": 18.05124
 },
 "Ängevi Ishall": {
 "lat": 59.52586,

@@ -17,6 +17,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { ticketFor } from "./import-tickster.mjs";   // 🎟️ exact match links (optional TICKSTER_KEY)
 
 const here = dirname(fileURLToPath(import.meta.url));
 const UA = "OlNu-events/1.0 (+https://github.com/TuNeLA/Beer-map; daily match import)";
@@ -250,8 +251,15 @@ export function manualRows(list, now) {
   return out;
 }
 
+/* ---------- 🎟️ tickets (scripts/sport-tickets.json: one verified link per home club) ---------- */
+export function clubTicket(tickets, row) {
+  const list = tickets && tickets[row.sport]; if (!list || !row.home) return null;
+  const hit = list[row.home] || Object.entries(list).find(([k]) => norm(k) === norm(row.home))?.[1];
+  return hit && /^https:\/\//.test(hit.url || "") ? hit.url : null;
+}
+
 /* ---------- all ---------- */
-export async function sportRows({ towns, log, now }) {
+export async function sportRows({ towns, log, now, tickster }) {
   now = now || Date.now();
   const cfg = JSON.parse(await readFile(resolve(here, "sport-feeds.json"), "utf8").catch(() => "{}"));
   const venues = JSON.parse(await readFile(resolve(here, "sport-venues.json"), "utf8").catch(() => "{}"));
@@ -266,6 +274,15 @@ export async function sportRows({ towns, log, now }) {
   const near = towns && towns.length ? rows.filter((r) => r.tv || towns.some((t) => km(t, r) <= (+cfg.town_km || 40))) : rows;
   const seen = new Set();
   const out = near.filter((r) => (seen.has(r.source_id) ? false : seen.add(r.source_id)));
+  // 🎟️ local matches: the exact Tickster match first, else the home club's ticket page. TV rows never get one.
+  const tickets = JSON.parse(await readFile(resolve(here, "sport-tickets.json"), "utf8").catch(() => "{}"));
+  let nt = 0, nx = 0;
+  for (const r of out) {
+    if (r.tv) continue;
+    const exact = ticketFor(r, tickster), t = exact || clubTicket(tickets, r);
+    if (t) { r.ticket_url = t; nt++; if (exact) nx++; }
+  }
+  log("sport tickets:", nt, "matches (" + nx + " exact Tickster links)");
   log("sport rows:", out.length, "(local", out.filter((r) => !r.tv).length + ", tv " + out.filter((r) => r.tv).length + ")");
   return out;
 }

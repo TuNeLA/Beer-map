@@ -16,6 +16,8 @@ on:
     paths:
       - 'scripts/bar-buildings.mjs'
       - 'scripts/lit-clip.mjs'
+      - 'scripts/arena-outlines.mjs'
+      - 'scripts/sport-venues.json'
       - '.github/workflows/buildings.yml'
   schedule:
     - cron: '41 5 * * 2'   # every Tuesday 05:41 UTC (the day after bars.yml)
@@ -51,11 +53,17 @@ jobs:
           EXTRA=""; [ "${{ github.event.inputs.places }}" = "yes" ] && EXTRA="--places"
           node scripts/bar-buildings.mjs --region "$REGION" --max 700 $EXTRA
 
+      # 🏟️ Arena outlines (docs/arenas.json) for the arenas in scripts/sport-venues.json: same OSM API rules, max 200 calls,
+      # an arena checked < 60 days ago keeps its outline. A failure keeps the old file.
+      - name: Find the outline of every arena
+        continue-on-error: true
+        run: node scripts/arena-outlines.mjs --max 200 --refresh-days 60
+
       - name: Commit docs/buildings if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/buildings scripts/bar-buildings-state.json
+          git add docs/buildings scripts/bar-buildings-state.json docs/arenas.json
           if git diff --cached --quiet; then
             echo "buildings unchanged"
             exit 0

@@ -16,7 +16,8 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { sportRows } from "./import-sport.mjs";   // ⚽🏒 matches (CONTRACT "SPORT")
+import { sportRows } from "./import-sport.mjs";
+import { ticksterDump, ticksterRows } from "./import-tickster.mjs";   // 🎟️ Tickster (optional TICKSTER_KEY)   // ⚽🏒 matches (CONTRACT "SPORT")
 
 const here = dirname(fileURLToPath(import.meta.url));
 const UA = "OlNu-events/1.0 (+https://github.com/TuNeLA/Beer-map; daily event import)";
@@ -302,10 +303,12 @@ async function main() {
   if (process.env.TICKETMASTER_KEY && towns.length) rows.push(...await ticketmaster(process.env.TICKETMASTER_KEY, towns));
   else log("ticketmaster skipped (no TICKETMASTER_KEY or no towns)");
   rows.push(...await feeds(Array.isArray(list) ? list : [], await barsIndex()));
+  const tix = await ticksterDump(process.env.TICKSTER_KEY, log);
   log("rows:", rows.length);
   let sport = [];
-  if (!process.argv.includes("--no-sport")) { try { sport = await sportRows({ towns, log }); } catch (e) { log("sport:", String(e.message || e)); } }
-  if (dry) { console.log(JSON.stringify(rows.slice(0, 50), null, 1)); console.log("[events] sport sample (tv + first local):\n" + JSON.stringify(sport.filter((r) => r.tv).slice(0, 40).concat(sport.filter((r) => !r.tv).slice(0, 40)), null, 1)); return; }
+  if (!process.argv.includes("--no-sport")) { try { sport = await sportRows({ towns, log, tickster: tix }); } catch (e) { log("sport:", String(e.message || e)); } }
+  if (tix) { const used = new Set(sport.map((r) => r.ticket_url).filter(Boolean)), tr = ticksterRows(tix, towns, used); rows.push(...tr); log("tickster rows:", tr.length); }
+  if (dry) { console.log("[events] 🎟️ local matches with a ticket link:\n" + JSON.stringify(sport.filter((r) => r.ticket_url).slice(0, 12), null, 1)); console.log(JSON.stringify(rows.slice(0, 50), null, 1)); console.log("[events] sport sample (tv + first local):\n" + JSON.stringify(sport.filter((r) => r.tv).slice(0, 40).concat(sport.filter((r) => !r.tv).slice(0, 40)), null, 1)); return; }
   for (let i = 0; i < sport.length; i += 500) {
     try { log("import sport:", JSON.stringify(await rpc("import_sport_events", { p_rows: sport.slice(i, i + 500) }))); }
     catch (e) { log("import sport failed:", e.message); break; }   // old database without 0100: the other events still go in

@@ -37,4 +37,5 @@ jobs:
           TICKETMASTER_KEY: ${{ secrets.TICKETMASTER_KEY }}
           FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}   # optional (football-data.org free plan): full PL / CL / VM / EM lists
           THESPORTSDB_KEY: ${{ secrets.THESPORTSDB_KEY }}       # optional (premium); without it the free key "123" is used
+          TICKSTER_KEY: ${{ secrets.TICKSTER_KEY }}             # optional (developer.tickster.com API key): exact match tickets + Tickster events
         run: node scripts/import-events.mjs
