@@ -618,6 +618,7 @@
       });
       box.appendChild(seg);
     }
+    try { if (window.EVCHAT && window.EVCHAT.inviteBox) window.EVCHAT.inviteBox(box, j); } catch (e) {}
     // People
     var groups = [["yes", L("✅ Kommer", "✅ Coming")], ["maybe", L("🤔 Kanske", "🤔 Maybe")], ["none", L("⏳ Int' svarat", "⏳ No answer")], ["no", L("❌ Kan int'", "❌ Can't")]];
     groups.forEach(function (g) {

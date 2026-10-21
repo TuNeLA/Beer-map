@@ -1,0 +1,33 @@
+/* Öl Nu v29 — 💬 EVENTCHATT (js/evchat.js). Uses the ds.css tokens; no animation. */
+.evc-sec { margin: 0 0 var(--ds-4, 16px); }
+.evc-sec[hidden], .evc-inv[hidden], .evc-lock[hidden] { display: none; }
+.evc-h { margin: 0 0 var(--ds-2, 8px); font-size: var(--ds-fs-14, 14px); color: var(--ds-text-2, #c9d2e3); }
+.evc-list { list-style: none; margin: 0; padding: 0; border-radius: var(--ds-r-1, 12px); background: var(--ds-card, #19233a); overflow: hidden; }
+.evc-row { display: flex; align-items: center; gap: var(--ds-3, 12px); min-height: 56px; padding: var(--ds-2, 8px) var(--ds-4, 16px); cursor: pointer; }
+.evc-row + .evc-row { border-top: 1px solid var(--ds-border, rgba(255,255,255,.08)); }
+.evc-row:focus-visible { outline: 2px solid var(--ds-amber, #f5b301); outline-offset: -2px; }
+.evc-row-i { font-size: 20px; flex: none; }
+.evc-row-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.evc-row-t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ds-fs-16, 16px); }
+.evc-row-t small { color: var(--ds-text-2, #c9d2e3); font-size: var(--ds-fs-12, 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evc-row-v { flex: none; display: flex; align-items: center; gap: var(--ds-2, 8px); }
+.evc-old { opacity: .72; }
+.evc-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 6px;
+  border-radius: var(--ds-r-pill, 999px); background: var(--ds-red, #e5484d); color: #fff; font-size: 12px; font-weight: 700; line-height: 1; vertical-align: middle; }
+.evc-inv { margin: var(--ds-3, 12px) 0; }
+.evc-big { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: var(--ds-fs-18, 18px); }
+.evc-big-s { display: block; font-size: var(--ds-fs-12, 12px); font-weight: 400; opacity: .9; }
+.evc-head { margin: 0 0 var(--ds-2, 8px); padding: var(--ds-2, 8px) var(--ds-3, 12px); border-radius: var(--ds-r-1, 12px); background: var(--ds-card, #19233a); }
+.evc-line { display: flex; justify-content: space-between; gap: var(--ds-2, 8px); align-items: baseline; }
+.evc-st { color: var(--ds-amber-t, #f5b301); font-size: var(--ds-fs-14, 14px); white-space: nowrap; }
+.evc-acts { display: flex; align-items: center; justify-content: space-between; gap: var(--ds-2, 8px); margin-top: var(--ds-2, 8px); }
+.evc-n { font-size: var(--ds-fs-12, 12px); }
+.evc-lock { margin-top: var(--ds-2, 8px); padding: var(--ds-3, 12px); border-radius: var(--ds-r-1, 12px); background: var(--ds-raised, #222e48); text-align: center; }
+.evc-lock-t { margin: 0 0 var(--ds-2, 8px); }
+.evc-lock-s { margin: 0; font-size: var(--ds-fs-12, 12px); }
+.evc-join { display: flex; gap: var(--ds-2, 8px); justify-content: center; }
+.evc-join .btn { flex: 1; }
+.chat-list .evc-sys { list-style: none; display: flex; flex-direction: column; align-items: center; gap: 2px; margin: var(--ds-2, 8px) auto; max-width: 92%;
+  padding: 6px 14px; border-radius: var(--ds-r-2, 16px); background: var(--ds-raised, #222e48); color: var(--ds-text-2, #c9d2e3);
+  font-size: var(--ds-fs-14, 14px); text-align: center; }
+.evc-sys-t { font-size: 12px; color: var(--ds-muted, #8d99b3); }
