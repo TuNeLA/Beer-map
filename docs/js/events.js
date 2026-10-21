@@ -274,6 +274,7 @@
     if (!A || off.rep) return;
     A.openSheet(two("repTitle"), function (body) {
       body.appendChild(A.el("p", { class: "ev-rep-bar", text: "🍺 " + (bar.name || "?") }));
+      try { if (window.BAREA && window.BAREA.reportHook) window.BAREA.reportHook(body, bar); } catch (e) {}   // ✏️ Rita krogens yta
       var kind = "", chips = A.el("div", { class: "ev-kinds" });
       T.repKinds.forEach(function (k) {
         chips.appendChild(A.el("button", { type: "button", class: "chip ev-rk", "aria-pressed": "false", text: L(k[1], k[2]), onclick: function (ev) {

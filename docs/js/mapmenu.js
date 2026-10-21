@@ -33,6 +33,7 @@
     if (!t || !t.closest) return true;
     if (t.closest(".leaflet-marker-icon, .leaflet-marker-pane, .leaflet-popup, .leaflet-control, .leaflet-interactive, button, a, input, select, textarea, label")) return true;
     if (document.body.classList.contains("barsheet-open")) return true;
+    if (document.body.classList.contains("ba-edit")) return true;   // ✏️ BAREA editor: taps place corners
     try { if (A.sheetOpen && A.sheetOpen()) return true; } catch (e) {}
     return false;
   }

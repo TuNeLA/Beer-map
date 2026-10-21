@@ -11,7 +11,11 @@
      a friend (or you) there = green outline. Reduced motion = no pulse. Restaurants / cafés (places) light up only
      when someone is there (as their markers).
    - Tap a building = a tap on that bar's marker (same bar sheet); no marker drawn → app openBar(bar).
-   - Zoom ≥ 16: the plain bar icon on a lit building shrinks to a small badge (class bl-has + #map.bl-z16). */
+   - Zoom ≥ 16: the plain bar icon on a lit building shrinks to a small badge (class bl-has + #map.bl-z16).
+   - BAREA (CONTRACT "BAREA · krogens yta"): a big house lights up only near the bar (tiles carry the clipped part, props.lit);
+     the full house comes as an extra feature {bldg:1, of:[ids]} and is drawn as a faint dashed outline (not tappable) while one
+     of its spots is lit. A drawn area from window.BAREA.areas() (approved, or my own pending = dashed) REPLACES the automatic
+     part for that bar (same looks, same tap). BARLIT.redraw(), BARLIT.edges(lat, lng, m), BARLIT.house(id) serve the editor. */
 (function () {
   "use strict";
   var U = window.U, L = window.L;
@@ -28,6 +32,7 @@
     ".leaflet-barlit-pane path.bl-live,.leaflet-barlit-pane path.bl-hot{animation:bl-pulse 2.5s ease-in-out infinite}" +
     "@keyframes bl-pulse{0%,100%{fill-opacity:.32;stroke-opacity:.85}50%{fill-opacity:.5;stroke-opacity:1}}" +
     "@media (prefers-reduced-motion:reduce){.leaflet-barlit-pane path.bl{animation:none !important;transition:none}}" +
+    ".leaflet-barlit-pane path.bl-house{transition:none}" +
     "#map.bl-z16 .cm.bl-has:not(.cm-hot) .bar-ico{transform:scale(.6);transform-origin:50% 50%}" +
     "#map.bl-z16 .cm.bl-has.cm-hot .bar-ico{transform:scale(.75);transform-origin:50% 50%}";
 
@@ -91,6 +96,7 @@
       if (!k) break;
       order.splice(order.indexOf(k), 1);
       (tiles[k].feats || []).forEach(function (o) { o.layers.forEach(dropLayer); });
+      (tiles[k].outl || []).forEach(function (o) { if (o.layer) group.removeLayer(o.layer); });
       delete tiles[k];
     }
   }
@@ -108,12 +114,14 @@
     var t = tiles[k];
     (fc && fc.features || []).forEach(function (f) {
       var p = f.properties || {}, ll = f.geometry && toLatLngs(f.geometry);
+      if (ll && p.bldg && Array.isArray(p.of)) { (t.outl || (t.outl = [])).push({ f: f, ids: p.of, ll: ll, layer: null }); return; }   // BAREA: the full house
       if (!ll || !p.bar_id) return;
       var ids = [p.bar_id].concat(Array.isArray(p.also) ? p.also : []);
       var o = { f: f, ids: ids, layers: [] };
       t.feats.push(o);
       draw(o, ll);
     });
+    drawOutlines(t);
     refreshMarkers();
     if (window.BASEMAP && window.BASEMAP.setExtraAttribution && t.feats.length) {
       window.BASEMAP.setExtraAttribution('Hus: &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, ' +
@@ -124,7 +132,7 @@
   function pickId(o) {
     var best = null, bestN = -1;
     o.ids.forEach(function (id) {
-      var c = canon(id), b = barOf(c); if (!b) return;
+      var c = canon(id), b = barOf(c); if (!b || manual(c)) return;   // BAREA: a drawn area replaces the automatic part
       var n = state[c] ? state[c].n + (state[c].friend ? 100 : 0) : (b.place ? -1 : 0);
       if (n > bestN) { bestN = n; best = c; }
     });
@@ -133,6 +141,8 @@
   function draw(o, ll) {
     var id = pickId(o);
     if (!id) return;
+    // BAREA: one automatic part per bar (a bar listed twice nearby must not light two blobs)
+    if ((o.f.properties || {}).lit === "part" && (byBar[id] || []).some(function (l) { return !l._blMan; })) return;
     var b = barOf(id), st = state[id];
     if (b && b.place && !(st && st.n)) return;   // a restaurant lights up only when someone is there
     var lk = looks(st);
@@ -144,13 +154,67 @@
     o.layers.push(pl);
     (byBar[id] || (byBar[id] = [])).push(pl);
   }
+  /* ---------- BAREA: faint house outline + drawn bar areas ---------- */
+  function manual(id) { try { return window.BAREA && window.BAREA.areaFor ? window.BAREA.areaFor(id) : null; } catch (e) { return null; } }
+  function drawOutlines(t) {
+    (t.outl || []).forEach(function (o) {
+      if (o.layer) { group.removeLayer(o.layer); o.layer = null; }
+      if (!o.ids.some(function (id) { return byBar[canon(id)]; })) return;
+      o.layer = L.polygon(o.ll, { pane: "barlit", renderer: renderer, color: "#f5a623", weight: 1, opacity: 0.5, dashArray: "2 5", fill: false,
+        interactive: false, className: "bl-house" });
+      o.layer.addTo(group); o.layer.bringToBack();
+    });
+  }
+  var manLayers = [];
+  function drawManual() {
+    manLayers.forEach(dropLayer); manLayers = [];
+    var list = []; try { list = window.BAREA && window.BAREA.areas ? window.BAREA.areas() || [] : []; } catch (e) {}
+    list.forEach(function (a) {
+      var id = canon(a.bar_id), b = barOf(id), st = state[id];
+      if (!b || !a.ll || a.ll.length < 3) return;
+      if (b.place && !(st && st.n) && !a.mine) return;   // a restaurant lights up only when someone is there
+      var lk = looks(st);
+      var pl = L.polygon(a.ll, { pane: "barlit", renderer: renderer, color: lk.color, weight: lk.weight, opacity: 0.95, fillColor: lk.fillColor,
+        fillOpacity: lk.fillOpacity, className: lk.cls + " bl-man" + (a.pending ? " bl-pend" : ""), dashArray: a.pending ? "6 5" : null,
+        bubblingMouseEvents: false, interactive: true });
+      pl._blId = id; pl._blIds = [id]; pl._blMan = true;
+      pl.on("click", onTap);
+      pl.addTo(group); manLayers.push(pl);
+      (byBar[id] || (byBar[id] = [])).push(pl);
+    });
+  }
+  // rings ([[lat, lng]…]) of every loaded house near a point (editor snapping)
+  function edges(lat, lng, m) {
+    var dLat = (m || 80) / 111195, dLng = dLat / Math.max(0.2, Math.cos(lat * Math.PI / 180)), out = [];
+    var near = function (r) { return r.some(function (p) { return Math.abs(p[0] - lat) < dLat && Math.abs(p[1] - lng) < dLng; }); };
+    var add = function (ll) { (Array.isArray(ll[0][0][0]) ? ll : [ll]).forEach(function (poly) { poly.forEach(function (r) { if (near(r)) out.push(r); }); }); };
+    Object.keys(tiles).forEach(function (k) {
+      var t = tiles[k]; if (t.state !== "done") return;
+      (t.outl || []).forEach(function (o) { add(o.ll); });
+      t.feats.forEach(function (o) { if ((o.f.properties || {}).lit !== "part") { var g = o.f.geometry && toLatLngs(o.f.geometry); if (g) add(g); } });
+    });
+    return out;
+  }
+  // the full house of a spot (latlngs as Leaflet takes them) or null
+  function house(id) {
+    id = canon(id); var hit = null;
+    Object.keys(tiles).forEach(function (k) {
+      var t = tiles[k]; if (hit || t.state !== "done") return;
+      (t.outl || []).forEach(function (o) { if (!hit && o.ids.some(function (x) { return canon(x) === id; })) hit = o.ll; });
+      t.feats.forEach(function (o) { if (!hit && (o.f.properties || {}).lit !== "part" && o.ids.some(function (x) { return canon(x) === id; })) hit = toLatLngs(o.f.geometry); });
+    });
+    return hit;
+  }
   function redrawAll() {
+    Object.keys(tiles).forEach(function (k) { (tiles[k].feats || []).forEach(function (o) { o.layers.forEach(dropLayer); o.layers = []; }); });   // all off first
+    drawManual();
     Object.keys(tiles).forEach(function (k) {
       var t = tiles[k]; if (t.state !== "done") return;
       t.feats.forEach(function (o) {
         o.layers.forEach(dropLayer); o.layers = [];
         var g = o.f.geometry && toLatLngs(o.f.geometry); if (g) draw(o, g);
       });
+      drawOutlines(t);
     });
     refreshMarkers();
   }
@@ -237,6 +301,6 @@
     },
     _layers: function (id) { return byBar[canon(id)] || []; },
     _state: function () { return state; },
-    open: open, update: update
+    open: open, update: update, redraw: function () { if (map) redrawAll(); }, edges: edges, house: house
   };
 })();

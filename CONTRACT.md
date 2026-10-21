@@ -1546,3 +1546,54 @@ config.js (comment), this section. This section replaces the style list and the 
   no marker → `api.openBar(bar)`. At zoom ≥ 16 a plain bar icon on a lit house shrinks to a badge (`#map.bl-z16 .cm.bl-has`).
 - Credit "Hus: © OpenStreetMap, Microsoft (ODbL)" in the ⓘ popover once a building tile is drawn.
 - Perf (test, headless 412×915): 2000 synthetic polygons added in ~110–160 ms; a real view holds < 60.
+
+## ✏️ BAREA · krogens yta (only the bar's part of the house lights up)
+Migration `0095_bar_areas.sql` (applied 2026-10-21). New files: `scripts/lit-clip.mjs`, `docs/js/barea.js` (`window.BAREA`, in `mods()`:
+`init`, `onAuthed`), `docs/stats-areas.js`. Patches barea 01–09: bar-buildings.mjs, buildings.yml (also runs on lit-clip.mjs), barlit.js,
+index.html (`js/barea.js`), app.js (`window.BAREA` after BARLIT in `mods()`), events.js (🚩 sheet hook), mapmenu.js (no long-press while
+editing), stats.html (`stats-areas.js`), this section. Data: `docs/buildings/*` and `scripts/bar-buildings-state.json` rebuilt with
+`--rebuild` (no network). This section changes the "Data / Tiles / Client" bullets of KARTSTIL 2's lit buildings; the rest still holds.
+
+### Automatic: only the part near the bar (build time)
+- `litPart()` in `scripts/lit-clip.mjs`: a house < 600 m² stays whole. A bigger one is clipped to building ∩ disk around the bar point
+  (the nearest wall point when the point lies outside the house, e.g. `near` / `ms-near` matches). Radius adaptive 10–14 m (0.25 m steps)
+  until ≈ 260 m² is lit (deep inside: r 10 = 314 m²; at a wall ≈ 13 m). If the part would be ≥ 75 % of the house, the house stays whole.
+  Exact disk ∩ polygon clip (concave, holes, several parts stay apart), the cut side is a smooth arc (one point per ≤ 12°).
+  Dalarna + all of Sweden (2171 spots): 1121 whole, ~1025 clipped, clipped area p5/p50/p95 ≈ 205 / 264 / 313 m².
+- Tiles: a small house = one feature as before + `lit: "whole"`. A big house = ONE outline feature `{bldg: 1, of: [spot ids], k}`
+  (no `bar_id`, so older clients skip it) + per spot (spots ≤ 5 m apart share one) a feature with the clipped geometry and
+  `{bar_id, also?, k, lit: "part", m2, b}` (lit / full m²). Old clients draw the small part as the lit house (compatible).
+- `node scripts/bar-buildings.mjs --rebuild` = rewrite docs/buildings from the state's cached geometry, no OSM / Microsoft call, no pruning.
+- Fix: places (`pl_…`) are no longer pruned from the state on a run without `--places` (the 2026-10-21 Actions run had removed all 961;
+  they were restored from the previous state).
+
+### Client (barlit.js)
+- The full house is drawn as a faint dashed amber outline (weight 1, opacity .5, no fill, not tappable, `path.bl-house`, behind the lit
+  part) while one of its spots is lit. Same pane / z-order, zoom ≥ 15, lazy tiles, state colours, pulse rules and tap → bar sheet.
+- One automatic part per bar (first wins). A drawn area from `BAREA.areas()` replaces the automatic part of that bar (`pickId` skips it):
+  same looks + `bl-man`, my own pending one dashed (`bl-pend`). `BARLIT.redraw()`, `BARLIT.edges(lat, lng, m)` (house rings near a point),
+  `BARLIT.house(id)` (the spot's full house) serve the editor.
+
+### ✏️ Rita krogens yta (barea.js)
+- Entry: bar sheet → "🚩 Fel plats / stängt?" → first row "✏️ Rita krogens yta" (amber card). No new map button.
+- Editor: map flies to zoom 19; body class `ba-edit` hides the dock (ÖL!), marker / popup panes, ⓘ and locate; lit houses dim and stop
+  taking taps; mapmenu long-press is off. Bottom panel (ds.css buttons, ≥ 52 px): hint + live "n hörn · m²", "↶ Ångra", "🗑️ Rensa",
+  "✕ Avbryt", "✅ Klar" (≥ 3 corners). Tap = corner, drag a 44 px handle = move it, Escape = cancel. House outline white dashed as a guide.
+  Snap: a corner within 1.5 m of a house corner (preferred) or wall goes onto it. Checks (client + server): 3–40 corners, each ≤ 60 m from
+  the bar, edges may not cross, 20–3000 m².
+- `submit_bar_area(p_bar_id, p_polygon [[lng, lat]…])` → `{id, bar_id, status pending|ok, auto, area_m2, polygon}`; errors `unknown_bar`,
+  `invalid_area`, `too_far`, `area_size`, `self_cross`, `slow_down` (10 per user per 24 h). The bar position comes from `bars_lite`
+  (active) or a `pl_<lat·1e5>_<lng·1e5>` id. A user's newer pending drawing of a bar supersedes their older one.
+- `bar_areas_in(p_s, p_w, p_n, p_e)` (box ≤ 0.5° × 1°) → approved, not superseded areas whose bar is in the box + my own pending ones
+  (`{id, bar_id, polygon, area_m2, status, mine}`). barea.js asks per building tile (0.05° × 0.1°) at zoom ≥ 15, max 4 per pass, cache 10 min.
+
+### Owner (stats.html → stats-areas.js, owner key)
+- Panel "✏️ Krogytor" after 🚩 Barrapporter: Väntar / Godkända / Avvisade / Alla, each with a 240 px mini map (OSM z19 tiles; drawn = amber,
+  automatic part = blue, house = white dashed, bar = red dot), "✅ Godkänn / 🙈 Avvisa / ⏳ Väntar" → `owner_set_bar_area(p_key, p_id, p_status)`.
+  Approving supersedes the bar's earlier approved area. `owner_bar_areas(p_key, p_status)` → `{counts, trusted, areas[]}`.
+- Auto-approve the owner's own drawings: "📱 Den här mobilen är min" calls `owner_trust_me(p_key, p_on default true)` WITH the app session
+  of that browser (same origin, `localStorage["olnu.auth"]`), adds that account to `bar_area_trusted` and approves its pending areas;
+  later drawings from it are `ok` at once (`auto = true`). `p_on = false` switches it off.
+- Tables `bar_areas` (never removed: status + `superseded_at`) and `bar_area_trusted`; RLS on, no grants. anon may run only the two owner
+  list / set functions (owner key, like owner_places).
+

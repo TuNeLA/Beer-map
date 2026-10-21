@@ -30,6 +30,11 @@
 //   <ty>_<tx>.json    = GeoJSON FeatureCollection; Feature.properties = { bar_id, also? (more spot ids in the same
 //                        building), k: self|in|area|near }; Polygon / MultiPolygon, rings simplified (0.4 m) and
 //                        rounded to 6 decimals. A feature goes into the tile of its spot.
+//                      BAREA (CONTRACT "BAREA · krogens yta"): a building < 600 m² is lit whole (props.lit = "whole").
+//                      A bigger one gets ONE outline feature { bldg: 1, of: [spot ids], k } (no bar_id: old clients skip
+//                      it; barlit.js draws it as a faint outline) + per spot the lit part near the spot
+//                      (props.lit = "part", m2 = lit area, b = full area): building ∩ a 10–14 m disk (scripts/lit-clip.mjs).
+//   --rebuild      only rewrite docs/buildings from the state file (no OSM / Microsoft calls, nothing pruned)
 // State (not served): scripts/bar-buildings-state.json = { "<bar_id>": { at, lat, lng, k, g } } (g = geometry or null).
 //
 // Usage:
@@ -44,6 +49,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { gunzipSync } from "node:zlib";
+import { litPart } from "./lit-clip.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DOCS = resolve(here, "../docs");
@@ -326,7 +332,7 @@ async function loadSpots() {
 /* ---------- output ---------- */
 export async function writeTiles(state, outDir) {
   await mkdir(outDir, { recursive: true });
-  const byGeom = new Map();   // same building for several spots → one feature
+  const byGeom = new Map();   // same building for several spots → one feature (or one outline + a lit part per spot)
   for (const [id, s] of Object.entries(state)) {
     if (!s || !s.g) continue;
     const key = JSON.stringify(s.g);
@@ -337,14 +343,36 @@ export async function writeTiles(state, outDir) {
   for (const { ids, s } of byGeom.values()) {
     ids.sort();
     const k = Math.floor(s.lat / TILE_LAT) + "_" + Math.floor(s.lng / TILE_LNG);
-    const props = { bar_id: ids[0], k: s.k }; if (ids.length > 1) props.also = ids.slice(1);
-    const geometry = s.g.length === 1 ? { type: "Polygon", coordinates: s.g[0] } : { type: "MultiPolygon", coordinates: s.g };
-    (tiles.get(k) || tiles.set(k, []).get(k)).push({ type: "Feature", properties: props, geometry });
+    const geom = (g) => (g.length === 1 ? { type: "Polygon", coordinates: g[0] } : { type: "MultiPolygon", coordinates: g });
+    const push = (f) => (tiles.get(k) || tiles.set(k, []).get(k)).push(f);
+    // BAREA: only the part near each spot lights up (whole building when it is small)
+    const parts = ids.map((id) => ({ id, lp: state[id] && litPart(s.g, state[id].lat, state[id].lng) }));
+    if (parts.every((p) => !p.lp || p.lp.k === "whole")) {
+      const props = { bar_id: ids[0], k: s.k, lit: "whole" }; if (ids.length > 1) props.also = ids.slice(1);
+      push({ type: "Feature", properties: props, geometry: geom(s.g) });
+      continue;
+    }
+    push({ type: "Feature", properties: { bldg: 1, of: ids, k: s.k }, geometry: geom(s.g) });
+    const groups = [];   // spots <= 5 m apart (one bar listed twice, a bar + its OSM place) share one lit part
+    for (const { id, lp } of parts) {
+      const at = state[id];
+      const same = groups.find((q) => q.at && at && Math.hypot((q.at.lat - at.lat) * 111195, (q.at.lng - at.lng) * 111195 * Math.cos(at.lat * RAD)) <= 5);
+      if (same) { same.ids.push(id); continue; }
+      const g = !lp || lp.k === "whole" ? s.g : lp.polys.map((rings) => rings.map((r) => r.map((p) => [r6(p[0]), r6(p[1])])));
+      groups.push({ ids: [id], g, lp, at });
+    }
+    for (const { ids: li, g, lp } of groups) {
+      const props = { bar_id: li[0], k: s.k, lit: lp && lp.k === "part" ? "part" : "whole" };
+      if (li.length > 1) props.also = li.slice(1);
+      if (props.lit === "part") { props.m2 = Math.round(lp.area); props.b = Math.round(lp.full); }
+      push({ type: "Feature", properties: props, geometry: geom(g) });
+    }
   }
   const keep = new Set(["index.json"]), t = {};
   let n = 0;
   for (const [k, feats] of [...tiles.entries()].sort()) {
-    feats.sort((a, b) => (a.properties.bar_id < b.properties.bar_id ? -1 : 1));
+    const fk = (f) => (f.properties.bar_id || "") + "|" + (f.properties.of || []).join(",");
+    feats.sort((a, b) => (fk(a) < fk(b) ? -1 : fk(a) > fk(b) ? 1 : 0));
     keep.add(k + ".json"); t[k] = feats.length; n += feats.length;
     await writeFile(join(outDir, k + ".json"), JSON.stringify({ type: "FeatureCollection", features: feats }));
   }
@@ -359,9 +387,15 @@ async function main() {
   if (box.length !== 4 || box.some((v) => !isFinite(v))) throw new Error("bad --region");
   const [S, W, N, E] = box;
   const state = await readJSON(STATE, {});
+  if (opt("--rebuild")) {   // BAREA: re-cut the lit parts from the cached geometry, no network, nothing pruned
+    const r = await writeTiles(state, OUT);
+    console.log(`Rebuilt ${r.features} features in ${r.tiles} tiles from ${STATE} (no network)`);
+    return;
+  }
   const spots = await loadSpots();
   const ids = new Set(spots.map((s) => s.id));
-  for (const id of Object.keys(state)) if (!ids.has(id)) delete state[id];   // gone from the lists (closed, removed)
+  // gone from the lists (closed, removed); places (pl_…) only count as gone on a --places run
+  for (const id of Object.keys(state)) if (!ids.has(id) && !(/^pl_/.test(id) && !opt("--places"))) delete state[id];
   const old = Date.now() - REFRESH_DAYS * 86400e3;
   const due = spots.filter((s) => s.lat >= S && s.lat <= N && s.lng >= W && s.lng <= E &&
     (!state[s.id] || state[s.id].at < old || Math.abs(state[s.id].lat - s.lat) > 1e-4 || Math.abs(state[s.id].lng - s.lng) > 1e-4));

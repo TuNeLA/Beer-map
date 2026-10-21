@@ -15,6 +15,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/bar-buildings.mjs'
+      - 'scripts/lit-clip.mjs'
       - '.github/workflows/buildings.yml'
   schedule:
     - cron: '41 5 * * 2'   # every Tuesday 05:41 UTC (the day after bars.yml)
