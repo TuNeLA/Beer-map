@@ -21,7 +21,7 @@ jobs:
           # index.html is left out of the hash: it is stamped below, and HTML is always fetched fresh.
           # Data (bars.json, places.json, docs/places/ tiles) is left out too: the weekly data update must not
           # make every phone download the whole app again (the service worker refreshes data on its own).
-          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path 'docs/places/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
+          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path 'docs/places/*' ! -path 'docs/buildings/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
           sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
           # Give every local script and stylesheet a ?v=<hash of that file> so a new page can never run with old
           # cached code, and an unchanged file keeps its URL (the service worker copies it, no new download).

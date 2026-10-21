@@ -1493,3 +1493,56 @@ Files: `docs/js/join.js` (`window.JOIN`, defer, loaded right BEFORE app.js so it
 - **Desktop**: QR of the same plain link ("Skanna koden med kameran").
 - localStorage: `olnu.jn.pending`, `olnu.jn.done` (codes only).
 
+## 🗺️ KARTSTIL 2 (many map styles + lit bar buildings)
+Migration `0094_public_config.sql` (applied 2026-10-21). Files: `docs/js/basemap.js` (rewritten, same `window.BASEMAP` hooks), new
+`docs/js/barlit.js` (`window.BARLIT`, in `mods()`: `init`, `onPoll`), `scripts/bar-buildings.mjs`, `scripts/bar-buildings-state.json`,
+`docs/buildings/*.json`, `.github/workflows/buildings.yml`. Patches map2 01–06: index.html (`js/barlit.js`), app.js (`window.BARLIT` after
+BASEMAP in `mods()`), sw.js (`buildings/*.json` in `DATA_RE`), stamp-version.yml (`docs/buildings/*` is data, not part of the app hash),
+config.js (comment), this section. This section replaces the style list and the "Mapbox natt" bullet of KARTSTIL BETA; the rest still holds.
+
+### Mapbox token (why it is in the database)
+- GitHub push protection flags the Mapbox PUBLIC token (`pk.…`) as a secret (false positive) and blocks the push, so it is NOT in any repo file.
+- Table `app_public_config(key pk, value, updated_at)` (RLS on, no grants; key allow list `mapbox_token`, value must start with `pk.`) and
+  RPC **`public_config()` → `{v, mapbox_token}`**, executable by **anon** and authenticated (basemap.js asks before sign-in, with the anon key).
+  The value is set by hand: `insert into public.app_public_config (key, value) values ('mapbox_token','pk.…') on conflict (key) do update set value = excluded.value, updated_at = now();`
+- basemap.js: `CFG.MAPBOX_TOKEN` if set, else the cached `localStorage["olnu.mbToken"]`, refreshed once per page life (4 s after start, or at once
+  when a Mapbox style is stored but no token is cached). An empty answer removes the cache. No token → the Mapbox rows are hidden and a stored
+  Mapbox style falls back to Klassisk silently.
+- The token's URL restriction must be the ORIGIN `https://tunela.github.io` (on 2026-10-21 it was still a path: style requests pass, tiles from
+  the GL worker get 403 → the app falls back to Klassisk; the tests fake the full Referer).
+
+### Styles (⚙️ "🗺️ Kartstil", best first; `olnu.mapStyle` value in brackets; old value `mapbox` = `mb-night`)
+- Mapbox (only with a token): Skymning `mb-dusk` (**Tips** badge), Dag `mb-day`, Gryning `mb-dawn`, Natt `mb-night`, Blek `mb-faded`
+  (theme faded), Grå `mb-mono` (theme monochrome), Satellit `mb-sat` (standard-satellite), Gator `mb-streets` (streets-v12), Friluft
+  `mb-outdoors`, Ljus `mb-light`, Mörk `mb-dark`, Navi dag `mb-navday`, Navi natt `mb-navnight`.
+- Free: Ljus (gratis) `positron`, Färgglad `bright` (OpenFreeMap, original colours via `tweak()`: POIs/shields/one-way/relief/3D dropped,
+  Swedish names, houses from z13), Natt / Grafit / Neon (recoloured liberty, as before), **Klassisk** `classic` (still the default for
+  everyone: `DEFAULT` in basemap.js; `TIP` = the badge).
+- UI: a 2-column grid (`.bm-seg.bm-grid`, ds.js still files it under "Karta"), group labels Mapbox / Gratis, a colour chip per style.
+- Standard config: `lightPreset`, `theme`, POI + transit labels off, `show3dObjects/Buildings/Landmarks` on (seen from above: no pitch
+  under Leaflet), trees and facades off. Classic Mapbox styles: `poi-label*`, `transit-label*`, `airport-label*` hidden on `style.load`.
+- **One Mapbox map object per page life (= one billed map load)**: Standard → Standard = `setConfig("basemap", …)`; another Mapbox style =
+  `setStyle(url, {diff:false, config})`; a free style or Klassisk only detaches it. `BASEMAP.mapboxLoads()` counts the objects (test: 1 for
+  all 19 styles). `BASEMAP.loaded()` is false while a new Mapbox style downloads.
+- Event `basemap:change` (`detail.style`) on document after every switch. `BASEMAP.setExtraAttribution(html)` adds a credit to the ⓘ popover.
+
+### 🏠 Lit bar buildings (works on EVERY style, Klassisk too)
+- **Data:** `scripts/bar-buildings.mjs` finds the building of every spot in bars.json + bars-extra.json + approved `place_suggestions`
+  (service key in Actions; `--places` adds places.json restaurants/cafés): the spot's own OSM way if it is a building → the smallest OSM
+  building that contains it → the OSM amenity area itself (≤ 4000 m²) → the nearest OSM building within 15 m → **Microsoft Global ML
+  Building Footprints** (ODbL; many Swedish town centres, Ludvika included, have few OSM buildings) with the same contain / 15 m rules.
+  OSM API `map.json` per ~330 m cell (+40 m), one request at a time ≥ 1.5 s apart, User-Agent, 429/509 back-off, a too-big cell is split.
+  Rolling refresh: new / moved spots + spots older than 28 days, max 700 calls per run (`.github/workflows/buildings.yml`, Tuesdays 05:41 UTC
+  and on dispatch with `region` / `places` inputs). State in `scripts/bar-buildings-state.json` (not served).
+- **Tiles:** `docs/buildings/index.json` = `{v, d:[0.05,0.1], n, t:{"<floor(lat/0.05)>_<floor(lng/0.1)>": count}}`, tile files = GeoJSON
+  FeatureCollection, `properties {bar_id, also?: [more spot ids in the same house], k: self|in|area|near|ms-in|ms-near}`, rings simplified
+  (0.4 m) and rounded to 6 decimals.
+- **Client (barlit.js):** pane `barlit` z 380 (above tilePane 200 / every GL base map, under the heat overlayPane 400 and the bars 590 /
+  markers 600 / hotbars 650 panes), SVG renderer. Below zoom 15 the group is off the map and no tile is fetched; at ≥ 15 the tiles of the view
+  (+25 %) load (max 8 new per pass, max 30 kept). Look: amber fill 25 % + amber outline with a soft glow; from the poll (`BARS.assign` + check-ins,
+  same ids as the markers): quiet = soft amber, 1–4 people = brighter + pulse (2.5 s = 0.4 Hz), ≥ 5 = orange/red + pulse, a friend or you =
+  green outline. Reduced motion: no pulse. Places (restaurants) light up only while someone is there.
+- **Tap** a building = `click()` on that bar's marker (same bar sheet, same folds); a house with several spots picks the one nearest the tap;
+  no marker → `api.openBar(bar)`. At zoom ≥ 16 a plain bar icon on a lit house shrinks to a badge (`#map.bl-z16 .cm.bl-has`).
+- Credit "Hus: © OpenStreetMap, Microsoft (ODbL)" in the ⓘ popover once a building tile is drawn.
+- Perf (test, headless 412×915): 2000 synthetic polygons added in ~110–160 ms; a real view holds < 60.

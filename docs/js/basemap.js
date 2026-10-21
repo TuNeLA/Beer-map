@@ -1,29 +1,33 @@
-/* Öl Nu — 🗺️ KARTSTIL (beta): an opt-in vector basemap under the Leaflet map (CONTRACT "KARTSTIL BETA").
+/* Öl Nu — 🗺️ KARTSTIL: many map styles under the Leaflet map (CONTRACT "KARTSTIL BETA" + "KARTSTIL 2").
    window.BASEMAP. app.js calls BASEMAP.early(map, rasterLayers) right after the raster tiles are made, and the
    mods() hooks init, settingsSheet and applyText. Markers, clusters, heat, popups and panes are NOT touched:
    the GL canvas sits in Leaflet's tilePane (z 200), under the heat canvas (overlayPane, z 400) and the markers.
-   - Classic (default) = the old CARTO/Esri raster layers. Nothing extra loads for Classic users.
-   - Natt / Grafit / Neon = OpenFreeMap "liberty" (OpenMapTiles schema), recoloured here in code.
-     maplibre-gl (UMD) + @maplibre/maplibre-gl-leaflet load LAZILY from jsDelivr (exact versions) only then.
-   - The choice lives in localStorage "olnu.mapStyle" (classic|natt|grafit|neon). A switch applies live.
+   - Klassisk (default) = the old CARTO/Esri raster layers. Nothing extra loads for Klassisk users.
+   - Mapbox styles (Standard dag/skymning/gryning/natt, Blek, Grå, Satellit, Streets, Outdoors, Light, Dark,
+     Navigation dag/natt): mapbox-gl v3 + mapbox-gl-leaflet, lazy. ONE Mapbox map object per page life (one billed
+     map load): a switch between Mapbox styles is setConfig (same Standard style) or setStyle (other style);
+     switching to a free style only detaches it, switching back re-attaches the same object.
+     The token: CFG.MAPBOX_TOKEN, else the public_config() RPC (anon), cached in localStorage "olnu.mbToken".
+     (GitHub push protection blocks the pk.* token in git, so it lives in the database.) No token = no Mapbox rows.
+   - Free styles (OpenFreeMap, MapLibre GL, lazy): Ljus (positron), Färgglad (bright), and the recoloured dark
+     "liberty" variants Natt / Grafit / Neon.
+   - The choice lives in localStorage "olnu.mapStyle". A switch applies live. Old value "mapbox" = "mb-night".
    - The raster layers stay on the map until the GL map has loaded (no blank map), then they are removed.
-     Any failure (no WebGL, script or style not loading, context lost) = back to Classic for this session.
-   - Memory: while the page is hidden (camera, app switch) the GL layer is removed (its WebGL context is
-     released) and it comes back when the page is visible again (same idea as app.js memShed).
-   - Attribution: OpenFreeMap © OpenMapTiles © OpenStreetMap contributors in the ⓘ popover. It opens by
-     itself for 5 s when a GL style starts, and closes on map move (OSMF attribution guideline). */
+     Any failure (no WebGL, script or style not loading, context lost, Mapbox 401/403) = Klassisk for this page life.
+   - Memory: while the page is hidden the MapLibre layer is removed (WebGL context released) and comes back when
+     visible (same idea as app.js memShed). The Mapbox object is kept (re-creating it would bill a new map load).
+   - Attribution in the ⓘ popover; it opens by itself for 5 s when a GL style starts and closes on map move.
+     Mapbox styles also show the Mapbox logo above the ⓘ button (Mapbox terms). */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
-  var KEY = "olnu.mapStyle", DEFAULT = "classic";
+  var KEY = "olnu.mapStyle", DEFAULT = "classic", TIP = "mb-dusk", TOKEN_KEY = "olnu.mbToken";
   var ML_VER = "5.24.0", PLUG_VER = "0.1.4";
   var ML_JS = "https://cdn.jsdelivr.net/npm/maplibre-gl@" + ML_VER + "/dist/maplibre-gl.js";
   var ML_CSS = "https://cdn.jsdelivr.net/npm/maplibre-gl@" + ML_VER + "/dist/maplibre-gl.css";
   var PLUG_JS = "https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@" + PLUG_VER + "/leaflet-maplibre-gl.js";
-  var STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
-  // "Mapbox natt (beta)": Mapbox GL JS v3 + Standard style (night) through the old mapbox-gl-leaflet bridge.
-  // Only offered when config.js has MAPBOX_TOKEN. One Mapbox map object per page life (= one billed map load):
-  // switching away only detaches it, switching back re-attaches the same object.
+  var OFM = "https://tiles.openfreemap.org/styles/";
+  var STYLE_URL = OFM + "liberty";
   var MB_VER = "3.32.0", MBL_VER = "0.0.16";
   var MB_JS = "https://cdn.jsdelivr.net/npm/mapbox-gl@" + MB_VER + "/dist/mapbox-gl.js";
   var MB_CSS = "https://cdn.jsdelivr.net/npm/mapbox-gl@" + MB_VER + "/dist/mapbox-gl.css";
@@ -31,33 +35,84 @@
   var ATTR_MB = '&copy; <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener">Mapbox</a> ' +
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ' +
     '<a href="https://www.mapbox.com/map-feedback/" target="_blank" rel="noopener"><strong>Improve this map</strong></a>';
-  var MB_CONFIG = { lightPreset: "night", showPointOfInterestLabels: false, showTransitLabels: false, showPedestrianRoads: true,
-    show3dObjects: false, colorMotorways: "#f5a623", colorTrunks: "#c77a0e", colorRoads: "#2b3550", colorWater: "#06182c",
-    colorPlaceLabels: "#ffd28a", colorBuildingHighlight: "#f5a623" };
   var CFG = window.OLNU_CONFIG || {};
   var ATTR_GL = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
     '&copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' +
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 
+  /* ---------- The style list (best first). chip = [land, accent] for the little preview swatch. ---------- */
+  var STD = "mapbox://styles/mapbox/standard";
+  // Standard: our own POIs are the bars, so Mapbox POI + transit labels are off; 3D buildings + landmarks on
+  // (under Leaflet there is no pitch, so they show as shaded footprints seen from above); trees/facades off (GPU).
+  function stdCfg(preset, theme) {
+    return { lightPreset: preset, theme: theme || "default", showPointOfInterestLabels: false, showTransitLabels: false,
+      showPedestrianRoads: true, show3dObjects: true, show3dBuildings: true, show3dLandmarks: true, show3dTrees: false, show3dFacades: false };
+  }
+  var LIST = [
+    { id: "mb-dusk", light: 1, mb: STD, cfg: stdCfg("dusk"), chip: ["#4b3f6b", "#f0a35e"], sv: "Mapbox Skymning", en: "Mapbox Dusk" },
+    { id: "mb-day", light: 1, mb: STD, cfg: stdCfg("day"), chip: ["#eef0ea", "#f2b45a"], sv: "Mapbox Dag", en: "Mapbox Day" },
+    { id: "mb-dawn", light: 1, mb: STD, cfg: stdCfg("dawn"), chip: ["#cdb9cf", "#f3ae86"], sv: "Mapbox Gryning", en: "Mapbox Dawn" },
+    { id: "mb-night", mb: STD, cfg: stdCfg("night"), chip: ["#1c2742", "#f5a623"], sv: "Mapbox Natt", en: "Mapbox Night" },
+    { id: "mb-faded", light: 1, mb: STD, cfg: stdCfg("day", "faded"), chip: ["#e9e6df", "#c4bba8"], sv: "Mapbox Blek", en: "Mapbox Faded" },
+    { id: "mb-mono", light: 1, mb: STD, cfg: stdCfg("day", "monochrome"), chip: ["#dcdcdc", "#8c8c8c"], sv: "Mapbox Grå", en: "Mapbox Mono" },
+    { id: "mb-sat", mb: "mapbox://styles/mapbox/standard-satellite", cfg: { lightPreset: "day", showPointOfInterestLabels: false, showTransitLabels: false },
+      chip: ["#33452a", "#c8b17f"], sv: "Satellit", en: "Satellite" },
+    { id: "mb-streets", light: 1, mb: "mapbox://styles/mapbox/streets-v12", chip: ["#f2efe9", "#f9b25f"], sv: "Gator", en: "Streets" },
+    { id: "mb-outdoors", light: 1, mb: "mapbox://styles/mapbox/outdoors-v12", chip: ["#e4ead2", "#6f9e52"], sv: "Friluft", en: "Outdoors" },
+    { id: "mb-light", light: 1, mb: "mapbox://styles/mapbox/light-v11", chip: ["#f4f4f2", "#d4d4d4"], sv: "Ljus", en: "Light" },
+    { id: "mb-dark", mb: "mapbox://styles/mapbox/dark-v11", chip: ["#343332", "#5c5c5c"], sv: "Mörk", en: "Dark" },
+    { id: "mb-navday", light: 1, mb: "mapbox://styles/mapbox/navigation-day-v1", chip: ["#f1f0ed", "#4f86d4"], sv: "Navi dag", en: "Navigation day" },
+    { id: "mb-navnight", mb: "mapbox://styles/mapbox/navigation-night-v1", chip: ["#1a2433", "#3d6fb8"], sv: "Navi natt", en: "Navigation night" },
+    { id: "positron", light: 1, ofm: "positron", chip: ["#f2f3f0", "#d0d0d0"], sv: "Ljus (gratis)", en: "Light (free)" },
+    { id: "bright", light: 1, ofm: "bright", chip: ["#f8f4f0", "#f7b955"], sv: "Färgglad", en: "Bright" },
+    { id: "natt", ofm: "liberty", pal: "natt", chip: ["#0a1020", "#e8992a"], sv: "Natt", en: "Night" },
+    { id: "grafit", ofm: "liberty", pal: "grafit", chip: ["#111214", "#d4ad6c"], sv: "Grafit", en: "Graphite" },
+    { id: "neon", ofm: "liberty", pal: "neon", chip: ["#0b0818", "#ff4fd8"], sv: "Neon", en: "Neon" },
+    { id: "classic", chip: ["#22252b", "#e6e0d2"], sv: "Klassisk", en: "Classic" }
+  ];
+  var BY = {}; LIST.forEach(function (s) { BY[s.id] = s; });
+  var ALIAS = { mapbox: "mb-night" };
+
   var A = null, map = null, rasters = [], classicAttr = "";
   var gl = null, glLoaded = false, cur = "classic", failed = false, hiddenOff = false;
-  var mb = null, mbLoaded = false, mbP = null, mbFailed = false, logoEl = null;
-  var libP = null, baseP = null, attrTimer = 0, lastToast = -1;
+  var mb = null, mbLoaded = false, mbP = null, mbFailed = false, logoEl = null, mbUrl = "", mbLoads = 0, mbStyleBusy = false;
+  var libP = null, baseP = {}, attrTimer = 0, lastToast = -1;
+
+  /* ---------- Mapbox token: config.js, else the database (public_config RPC), cached per phone ---------- */
+  var token = CFG.MAPBOX_TOKEN || U.ls.get(TOKEN_KEY, "") || "", tokenP = null;
+  if (!/^pk\./.test(token)) token = "";
+  function fetchToken() {
+    if (tokenP) return tokenP;
+    if (CFG.MAPBOX_TOKEN || !CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY || !window.fetch) { tokenP = Promise.resolve(token); return tokenP; }
+    tokenP = fetch(CFG.SUPABASE_URL + "/rest/v1/rpc/public_config", { method: "POST", credentials: "omit",
+      headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + CFG.SUPABASE_ANON_KEY, "Content-Type": "application/json" }, body: "{}" })
+      .then(function (r) { if (!r.ok) throw new Error("cfg " + r.status); return r.json(); })
+      .then(function (d) {
+        var t = d && typeof d === "object" && !Array.isArray(d) && typeof d.mapbox_token === "string" && /^pk\.[\w.-]{20,}$/.test(d.mapbox_token) ? d.mapbox_token : "";
+        if (t) { token = t; U.ls.set(TOKEN_KEY, t); }
+        else if (d && typeof d === "object" && !Array.isArray(d) && "mapbox_token" in d) { token = ""; U.ls.del(TOKEN_KEY); }   // removed on the server
+        return token;
+      })
+      .catch(function () { return token; });   // offline / old server: keep the cached one
+    return tokenP;
+  }
+  function variants() { return LIST.filter(function (s) { return !s.mb || token; }).map(function (s) { return s.id; }); }
 
   function sv() { return !I || I.lang !== "en"; }
   var S = {
-    sv: { title: "🗺️ Kartstil", classic: "Klassisk", natt: "Natt", grafit: "Grafit", neon: "Neon", mapbox: "Mapbox natt", beta: "beta",
-      info: "Beta: en ny, skarpare karta med vektorlinjer. Pins, värme och krogar ä som vanligt. Drar mer batteri på äldre lurar.",
-      fail: "🗺️ Nya kartan vägrade starta här. Kör Klassisk så länge.",
-      on: ["🗺️ Nattkartan ä laddad. Säg till om nåt ser konstigt ut!", "🗺️ Ny karta i drift. Spaningsläge: på.",
-        "🗺️ Kartan bytt. Samma krogar, snyggare gator.", "🗺️ Klart! Vägarna glöder som en fredag."] },
-    en: { title: "🗺️ Map style", classic: "Classic", natt: "Night", grafit: "Graphite", neon: "Neon", mapbox: "Mapbox night", beta: "beta",
-      info: "Beta: a new, sharper vector map. Pins, heat and bars stay the same. Uses more battery on older phones.",
-      fail: "🗺️ The new map would not start here. Using Classic for now.",
-      on: ["🗺️ Night map loaded. Tell us if something looks odd!", "🗺️ New map deployed. Recon mode: on.",
-        "🗺️ Map switched. Same bars, nicer streets.", "🗺️ Done! The roads glow like a Friday."] }
+    sv: { title: "🗺️ Kartstil", tip: "Tips", free: "gratis", mbx: "Mapbox",
+      info: "Välj karta. Pins, värme och krogar ä som vanligt. Mapbox-kartorna och 3D-husen drar lite mer batteri på äldre lurar.",
+      fail: "🗺️ Kartan vägrade starta här. Kör Klassisk så länge.",
+      on: ["🗺️ Ny karta i drift. Spaningsläge: på.", "🗺️ Kartan bytt. Samma krogar, snyggare gator.", "🗺️ Klart! Ny terräng, samma uppdrag.",
+        "🗺️ Kartan ä laddad. Säg till om nåt ser konstigt ut!", "🗺️ Ny karta. Krogarna lyser som förut.", "🗺️ Bytt! Spanarn ser allt nu."] },
+    en: { title: "🗺️ Map style", tip: "Tip", free: "free", mbx: "Mapbox",
+      info: "Pick a map. Pins, heat and bars stay the same. The Mapbox maps and 3D houses use a bit more battery on older phones.",
+      fail: "🗺️ The map would not start here. Using Classic for now.",
+      on: ["🗺️ New map deployed. Recon mode: on.", "🗺️ Map switched. Same bars, nicer streets.", "🗺️ Done! New terrain, same mission.",
+        "🗺️ Map loaded. Tell us if something looks odd!", "🗺️ New map. The bars glow like before.", "🗺️ Switched! Recon sees everything now."] }
   };
   function T(k) { return (sv() ? S.sv : S.en)[k]; }
+  function nameOf(id) { var s = BY[id]; return s ? (sv() ? s.sv : s.en) : id; }
 
   /* ---------- Palettes ---------- */
   var P = {
@@ -77,8 +132,6 @@
       glow: "#ff4fd8", glowOp: 0.28, rail: "#251d44", aero: "#130f26", border: "#4a2f7a",
       text: "#f2e9ff", textSub: "#b9a8e0", halo: "#05030c", roadText: "#8f86c0", majorText: "#ff9de9" }
   };
-  var VARIANTS = ["classic", "natt", "grafit", "neon"];
-  if (CFG.MAPBOX_TOKEN) VARIANTS.push("mapbox");
 
   /* ---------- Recolour OpenFreeMap liberty ---------- */
   var DROP = /^(natural_earth|poi_|highway-shield|road_shield|road_area_pattern|building-3d|airport|road_one_way|tunnel_.*hatching|park_outline)/;
@@ -171,6 +224,21 @@
     return out;
   }
 
+  // Light OpenFreeMap styles (positron, bright): original colours; POIs, shields, one-way arrows, the shaded relief
+  // and 3D extrusion dropped (our bars are the POIs; no pitch under Leaflet); Swedish names first; houses from z13.
+  var DROP_LIGHT = /^(poi_|highway-shield|road_shield|road_oneway|building-3d|airport)/;
+  function tweak(base, lang) {
+    var out = JSON.parse(JSON.stringify(base));
+    delete out.sources.ne2_shaded;
+    out.layers = out.layers.filter(function (l) { return !DROP_LIGHT.test(l.id) && l.source !== "ne2_shaded"; }).map(function (l) {
+      var lay = l.layout || {};
+      if (lay["text-field"]) lay["text-field"] = fixNames(lay["text-field"], lang);
+      if (l.id === "building" || l.id === "building-top") { l.minzoom = 13; delete l.maxzoom; }
+      return l;
+    });
+    return out;
+  }
+
   /* ---------- Loading ---------- */
   function addScript(src) {
     return new Promise(function (res, rej) {
@@ -191,11 +259,12 @@
     libP.catch(function () { libP = null; });
     return libP;
   }
-  function loadBase() {
-    if (baseP) return baseP;
-    baseP = fetch(STYLE_URL, { credentials: "omit" }).then(function (r) { if (!r.ok) throw new Error("style " + r.status); return r.json(); });
-    baseP.catch(function () { baseP = null; });
-    return baseP;
+  function loadBase(name) {
+    var url = OFM + (name || "liberty");
+    if (baseP[url]) return baseP[url];
+    var p = baseP[url] = fetch(url, { credentials: "omit" }).then(function (r) { if (!r.ok) throw new Error("style " + r.status); return r.json(); });
+    p.catch(function () { delete baseP[url]; });
+    return p;
   }
   var glOk = null;
   function webglOk() {
@@ -207,20 +276,31 @@
     } catch (e) { glOk = false; }
     return glOk;
   }
+  function isMb(id) { return !!(BY[id] && BY[id].mb); }
 
   /* ---------- Attribution (ⓘ popover) ---------- */
+  var extraAttr = "";   // e.g. js/barlit.js: building outlines (OSM, Microsoft)
   function setAttr(showIt) {
     var pop = document.getElementById("attrib-pop"), btn = document.getElementById("btn-attrib");
     if (!pop) return;
-    pop.innerHTML = cur === "classic" ? classicAttr : cur === "mapbox" ? ATTR_MB : ATTR_GL;   // static strings only
+    // Only our own credit span changes: other modules add their own parts to the popover (invite.js map legend).
+    creditEl(pop).innerHTML = (cur === "classic" ? classicAttr : isMb(cur) ? ATTR_MB : ATTR_GL) + (extraAttr ? " | " + extraAttr : "");   // static strings only
     if (showIt && !(window.OLNU_STRIP && window.OLNU_STRIP.up && window.OLNU_STRIP.up())) {
       clearTimeout(attrTimer);
       pop.hidden = false; if (btn) btn.setAttribute("aria-expanded", "true");
       attrTimer = setTimeout(function () { pop.hidden = true; if (btn) btn.setAttribute("aria-expanded", "false"); }, 5000);
     }
   }
-
-  // The credit opens by itself once the new map is on screen (then 5 s, or until the map moves).
+  // The credit text lives in span.bm-credit (made in early(): app.js has just put the raster credit into the popover).
+  function creditEl(pop) {
+    var c = pop.querySelector(".bm-credit");
+    if (!c) {
+      c = document.createElement("span"); c.className = "bm-credit";
+      while (pop.firstChild) c.appendChild(pop.firstChild);
+      pop.insertBefore(c, pop.firstChild);
+    }
+    return c;
+  }
   var showOnLoad = false;
   function attrOnLoad() { var s0 = showOnLoad; showOnLoad = false; setAttr(s0); }
 
@@ -240,8 +320,24 @@
     failed = true; dropGL(); mbOff(); cur = "classic"; rastersOn(true); setAttr(false);
     document.documentElement.removeAttribute("data-basemap");
     if (A && A.toast && userAsked) A.toast(T("fail"));
+    emit();
   }
   var userAsked = false, applySeq = 0, curLang = "";
+  // Light styles: the HUD vignette (polish.css) is made fainter so the map is not darkened at the edges.
+  function lightAttr() {
+    var de = document.documentElement, on = !!(BY[cur] && BY[cur].light);
+    if (on) de.setAttribute("data-bm-light", ""); else de.removeAttribute("data-bm-light");
+    if (on && !document.getElementById("bm-light-css")) {
+      var st = document.createElement("style"); st.id = "bm-light-css";
+      st.textContent = "html[data-bm-light] .hud-overlay{background:radial-gradient(ellipse at center,transparent 66%,rgba(0,0,0,.16) 100%)}";
+      document.head.appendChild(st);
+    }
+  }
+  function emit() { lightAttr(); try { document.dispatchEvent(new CustomEvent("basemap:change", { detail: { style: cur } })); } catch (e) {} }
+  function toastOn(why) {
+    if (why !== "user" || !A || !A.toast) return;
+    var o = T("on"), i; do { i = Math.floor(Math.random() * o.length); } while (o.length > 1 && i === lastToast); lastToast = i; A.toast(o[i]);
+  }
   function glOpts(style) {
     return {
       style: style, interactive: false, padding: 0.12, updateInterval: 32,
@@ -259,39 +355,43 @@
       m.getCanvas().addEventListener("webglcontextlost", function () { if (gl === layer && !document.hidden) fallback("context_lost"); });
     } catch (e) {}
   }
+  function norm(name) { name = ALIAS[name] || name; return variants().indexOf(name) >= 0 ? name : null; }
   function apply(name, why) {
     var seq = ++applySeq;
-    if (VARIANTS.indexOf(name) < 0) name = DEFAULT;
+    name = norm(name) || DEFAULT;
     if (name === "classic" || failed) {
       cur = "classic"; rastersOn(true); dropGL(); mbOff(); setAttr(false);
       document.documentElement.removeAttribute("data-basemap");
+      emit();
       return Promise.resolve("classic");
     }
     if (!webglOk()) { fallback("no_webgl"); return Promise.resolve("classic"); }
-    if (name === "mapbox") return applyMb(seq, why);
+    if (isMb(name)) return applyMb(name, seq, why);
     mbOff();
-    var lang = curLang = sv() ? "sv" : "en";
-    return Promise.all([loadLib(), loadBase()]).then(function (r) {
+    var st = BY[name], lang = curLang = sv() ? "sv" : "en";
+    return Promise.all([loadLib(), loadBase(st.ofm)]).then(function (r) {
       if (seq !== applySeq) return cur;
-      var style = recolor(r[1], name, lang);
+      var style = st.pal ? recolor(r[1], st.pal, lang) : tweak(r[1], lang);
       cur = name;
       document.documentElement.setAttribute("data-basemap", name);
       if (gl && gl.getMaplibreMap()) {
         gl.options.style = style;
         gl.getMaplibreMap().setStyle(style);
+        if (!map.hasLayer(gl) && !document.hidden) { gl.addTo(map); hookGL(gl); }
       } else {
         rastersOn(true);   // the old map stays until the GL map has drawn
         gl = window.L.maplibreGL(glOpts(style));
         if (!document.hidden) { gl.addTo(map); hookGL(gl); } else hiddenOff = true;
       }
+      if (glLoaded) rastersOn(false);
       showOnLoad = why === "user" || why === "start";
       if (glLoaded) attrOnLoad(); else setAttr(false);
-      if (why === "user" && A && A.toast) { var o = T("on"), i; do { i = Math.floor(Math.random() * o.length); } while (o.length > 1 && i === lastToast); lastToast = i; A.toast(o[i]); }
+      toastOn(why); emit();
       return name;
     }).catch(function (e) { if (seq === applySeq) fallback(e && e.message || "error"); return "classic"; });
   }
 
-  /* ---------- Mapbox natt ---------- */
+  /* ---------- Mapbox ---------- */
   function loadMb() {
     if (mbP) return mbP;
     if (!document.querySelector('link[data-basemap-mb]')) {
@@ -322,7 +422,6 @@
     }
     if (logoEl) { logoEl.hidden = !on; if (on) placeLogo(); }
   }
-  // Just above the ⓘ button (clear of the ANNAT button and the dock), follows the dock height.
   function placeLogo() {
     var b = document.getElementById("btn-attrib"); if (!logoEl || !b) return;
     var r = b.getBoundingClientRect(); if (!r.height) return;
@@ -333,94 +432,161 @@
     if (mb) { try { if (map.hasLayer(mb)) map.removeLayer(mb); } catch (e) {} }
     logo(false);
   }
-  function applyMb(seq, why) {
+  // Classic Mapbox styles (streets, outdoors, …) have their own POI labels: hide them, our bars are the POIs.
+  function hidePois(m) {
+    try {
+      (m.getStyle().layers || []).forEach(function (l) {
+        if (/^(poi-label|transit-label|airport-label)/.test(l.id)) m.setLayoutProperty(l.id, "visibility", "none");
+      });
+    } catch (e) {}
+  }
+  function mbSetStyle(st) {
+    var m = mb.getMapboxMap();
+    if (mbUrl === st.mb && st.cfg) {   // same Standard style: only the config changes (no new style download)
+      try { m.setConfig("basemap", st.cfg); return; } catch (e) {}
+    }
+    mbUrl = st.mb; mbStyleBusy = true;
+    var o = { diff: false }; if (st.cfg) o.config = { basemap: st.cfg };
+    m.setStyle(st.mb, o);
+  }
+  function applyMb(name, seq, why) {
     if (mbFailed) { fallback("mapbox_failed"); return Promise.resolve("classic"); }
+    var st = BY[name];
     return loadMb().then(function () {
       if (seq !== applySeq) return cur;
-      dropGL(); cur = "mapbox";
+      dropGL(); cur = name;
       if (!mbLoaded) rastersOn(true);   // the old map stays until Mapbox has drawn
-      document.documentElement.setAttribute("data-basemap", "mapbox");
+      document.documentElement.setAttribute("data-basemap", name);
       if (!mb) {
-        mb = window.L.mapboxGL({ accessToken: CFG.MAPBOX_TOKEN, style: "mapbox://styles/mapbox/standard",
-          config: { basemap: MB_CONFIG }, interactive: false, padding: 0.12, attributionControl: false,
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 120 });
-        mb.addTo(map);
+        mbUrl = st.mb;
+        var opts = { accessToken: token, style: st.mb, interactive: false, padding: 0.12, attributionControl: false,
+          pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 120 };
+        if (st.cfg) opts.config = { basemap: st.cfg };
+        mb = window.L.mapboxGL(opts);
+        mb.addTo(map); mbLoads++;
         var m = mb.getMapboxMap();
-        m.on("load", function () { mbLoaded = true; if (cur === "mapbox") { rastersOn(false); attrOnLoad(); } });
+        m.on("load", function () { mbLoaded = true; if (isMb(cur)) { rastersOn(false); attrOnLoad(); } });
+        m.on("style.load", function () {
+          mbStyleBusy = false;
+          var s = BY[cur]; if (!s || !s.mb) return;
+          if (!s.cfg) hidePois(m);
+          else if (s.mb === mbUrl) { try { m.setConfig("basemap", s.cfg); } catch (e) {} }
+        });
         m.on("error", function (e) {
           if (!e || e.sourceId || e.tile) return;   // a missing tile (e.g. terrain DEM) is not fatal
-          var st = e.error && e.error.status;
-          if ((st === 401 || st === 403) && !mbLoaded) { mbFailed = true; if (cur === "mapbox") fallback("mapbox_" + st); }
+          var code = e.error && e.error.status;
+          if ((code === 401 || code === 403) && !mbLoaded) { mbFailed = true; if (isMb(cur)) fallback("mapbox_" + code); }
         });
       } else {
         if (!map.hasLayer(mb)) mb.addTo(map);
+        mbSetStyle(st);
         if (mbLoaded) rastersOn(false);
       }
       logo(true);
       showOnLoad = why === "user" || why === "start";
       if (mbLoaded) attrOnLoad(); else setAttr(false);
-      if (why === "user" && A && A.toast) A.toast(T("on")[0]);
-      return "mapbox";
+      toastOn(why); emit();
+      return name;
     }).catch(function (e) { if (seq === applySeq) fallback(e && e.message || "mb_error"); return "classic"; });
   }
 
-  // Page hidden (camera, gallery, app switch): release the WebGL context. Visible again: rebuild from the kept style.
+  // Page hidden (camera, gallery, app switch): release the MapLibre WebGL context. Visible again: rebuild it.
   document.addEventListener("visibilitychange", function () {
     if (!map) return;
     if (document.hidden) {
       if (gl && map.hasLayer(gl)) { try { map.removeLayer(gl); } catch (e) {} hiddenOff = true; glLoaded = false; }
     } else if (hiddenOff) {
       hiddenOff = false;
-      if (gl && cur !== "classic") { try { gl.addTo(map); hookGL(gl); } catch (e) { fallback("restore"); } }
+      if (gl && cur !== "classic" && !isMb(cur)) { try { gl.addTo(map); hookGL(gl); } catch (e) { fallback("restore"); } }
     }
   });
 
-  function choice() { var v = U.ls.get(KEY, DEFAULT); return VARIANTS.indexOf(v) >= 0 ? v : DEFAULT; }
+  function stored() { var v = U.ls.get(KEY, DEFAULT); return ALIAS[v] || v; }
+  function choice() { return norm(stored()) || DEFAULT; }
 
-  function settingsBlock(body) {
-    var el = A.el;
-    if (!document.getElementById("bm-css")) {
-      var st = document.createElement("style"); st.id = "bm-css";
-      st.textContent = ".bm-seg{flex-direction:row;flex-wrap:wrap;width:100%}.bm-seg button{flex:1 1 40%;min-width:0}.bm-seg button[data-bm=mapbox]{flex-basis:100%}" +
-        ".bm-seg button+button{border-top:0}.bm-seg .bm-b{font-size:var(--fs-xs,11px);opacity:.75;margin-left:4px;text-transform:uppercase}";
-      document.head.appendChild(st);
-    }
-    body.appendChild(el("h3", { text: T("title") }));
-    var seg = el("div", { class: "seg bm-seg", role: "radiogroup", "aria-label": T("title") });
-    var now = choice();
-    VARIANTS.forEach(function (v) {
+  var sheetSeg = null;
+  function fillSeg(seg) {
+    var el = A.el, now = choice();
+    while (seg.firstChild) seg.removeChild(seg.firstChild);
+    var lastGroup = "";
+    variants().forEach(function (v) {
+      var st = BY[v], grp = st.mb ? "mb" : "free";
+      if (grp !== lastGroup) {
+        lastGroup = grp;
+        seg.appendChild(el("div", { class: "bm-gh", "aria-hidden": "true", text: grp === "mb" ? T("mbx") : (sv() ? "Gratis" : "Free") }));
+      }
       var b = el("button", { type: "button", role: "radio", "aria-checked": String(now === v), "data-bm": v });
-      b.appendChild(document.createTextNode(T(v)));
-      if (v !== "classic") b.appendChild(el("span", { class: "bm-b", text: T("beta") }));
+      var chip = el("span", { class: "bm-chip", "aria-hidden": "true" });
+      chip.style.background = "linear-gradient(135deg," + st.chip[0] + " 0 58%," + st.chip[1] + " 58% 100%)";
+      b.appendChild(chip);
+      b.appendChild(el("span", { class: "bm-n", text: nameOf(v) }));
+      if (v === TIP) b.appendChild(el("span", { class: "bm-b", text: T("tip") }));
       b.addEventListener("click", function () {
         U.ls.set(KEY, v); failed = false; userAsked = true;
-        Array.prototype.forEach.call(seg.children, function (x) { x.setAttribute("aria-checked", String(x === b)); });
+        Array.prototype.forEach.call(seg.querySelectorAll("[data-bm]"), function (x) { x.setAttribute("aria-checked", String(x === b)); });
         apply(v, "user");
       });
       seg.appendChild(b);
     });
+  }
+  function settingsBlock(body) {
+    var el = A.el;
+    if (!document.getElementById("bm-css")) {
+      var st = document.createElement("style"); st.id = "bm-css";
+      // 2 columns of small rows with a colour swatch. Selectors carry .bm-grid so they win over ds.css' list rules.
+      st.textContent =
+        ".sheet .seg.bm-seg.bm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px 12px 8px;flex-direction:unset}" +
+        ".sheet .seg.bm-seg.bm-grid>.bm-gh{grid-column:1/-1;font:600 12px/16px var(--ds-sans,sans-serif);letter-spacing:.06em;text-transform:uppercase;color:var(--ds-muted,#8b93a7);padding:8px 2px 0}" +
+        ".sheet .seg.bm-seg.bm-grid>button{min-height:48px;padding:0 8px;gap:8px;border:1px solid var(--ds-border,#2a3550) !important;border-radius:12px;font-size:14px;line-height:18px;background:var(--ds-card,#19233a)}" +
+        ".sheet .seg.bm-seg.bm-grid>button+button{border-top:1px solid var(--ds-border,#2a3550)}" +
+        ".sheet .seg.bm-seg.bm-grid>button[aria-checked=true]{border-color:var(--ds-amber,#f5a623) !important;box-shadow:0 0 0 1px var(--ds-amber,#f5a623) inset !important}" +
+        ".sheet .seg.bm-seg.bm-grid>button[aria-checked=true]::after{right:8px;font-size:14px}" +
+        ".bm-chip{flex:0 0 22px;width:22px;height:22px;border-radius:6px;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset}" +
+        ".bm-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:14px}" +
+        ".bm-seg .bm-b{position:absolute;top:-7px;right:6px;font:700 10px/14px var(--ds-sans,sans-serif);padding:0 5px;border-radius:7px;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);text-transform:uppercase}";
+      document.head.appendChild(st);
+    }
+    body.appendChild(el("h3", { text: T("title") }));
+    var seg = sheetSeg = el("div", { class: "seg bm-seg bm-grid", role: "radiogroup", "aria-label": T("title") });
+    fillSeg(seg);
     body.appendChild(seg);
     body.appendChild(el("p", { class: "muted", style: "margin-top:6px", text: T("info") }));
+    // The token arrived while the sheet is open: add the Mapbox rows.
+    if (!token) fetchToken().then(function () { if (token && sheetSeg === seg && seg.isConnected) fillSeg(seg); });
   }
 
   window.BASEMAP = {
-    VARIANTS: VARIANTS, PALETTES: P, recolor: recolor,
+    LIST: LIST, PALETTES: P, recolor: recolor, tweak: tweak,
+    get VARIANTS() { return variants(); },
     current: function () { return cur; },
-    loaded: function () { return cur === "mapbox" ? mbLoaded : !!(gl && glLoaded); },
+    isMapbox: function () { return isMb(cur); },
+    loaded: function () { return isMb(cur) ? mbLoaded && !mbStyleBusy : !!(gl && glLoaded); },
     mapbox: function () { return mb; },
+    mapboxLoads: function () { return mbLoads; },
     layer: function () { return gl; },
-    // Called by app.js right after the raster layers exist (before init). Starts the beta map at once when chosen.
+    token: function () { return token; },
+    tokenReady: fetchToken,
+    // Extra credit text for the ⓘ popover (static HTML from our own modules only).
+    setExtraAttribution: function (html) { extraAttr = html || ""; setAttr(false); },
+    // Called by app.js right after the raster layers exist (before init). Starts the chosen map at once.
     early: function (m, list) {
       map = m; rasters = (list || []).slice();
       var parts = [];
       rasters.forEach(function (l) { var a = l.getAttribution && l.getAttribution(); if (a && parts.indexOf(a) < 0) parts.push(a); });
       classicAttr = parts.join(" | ");
-      var v = choice();
-      if (v !== "classic") apply(v, "start");
+      var pop = document.getElementById("attrib-pop"); if (pop) creditEl(pop);
+      var v = stored();
+      if (BY[v] && BY[v].mb && !token) {
+        // A Mapbox style but no token on this phone yet (first visit, cleared storage): ask the database first.
+        fetchToken().then(function () { if (stored() === v) apply(v, "start"); });
+      } else {
+        if (v !== "classic") apply(v, "start");
+        if (!CFG.MAPBOX_TOKEN) setTimeout(fetchToken, 4000);   // refresh the cached token once per page life
+      }
     },
     set: function (v) { U.ls.set(KEY, v); failed = false; return apply(v, "api"); },
     init: function (api) { A = api; if (!map && api && api.map) { map = api.map; } },
     settingsSheet: function (body) { if (A && map) settingsBlock(body); },
-    applyText: function () { if (cur !== "classic" && cur !== "mapbox" && gl && curLang !== (sv() ? "sv" : "en")) apply(cur, "lang"); }
+    applyText: function () { if (cur !== "classic" && !isMb(cur) && gl && curLang !== (sv() ? "sv" : "en")) apply(cur, "lang"); }
   };
 })();

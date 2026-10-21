@@ -1,0 +1,64 @@
+name: Bar buildings (OpenStreetMap + Microsoft footprints)
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'dalarna | sweden | s,w,n,e'
+        required: false
+        default: 'sweden'
+      places:
+        description: 'Also restaurants / cafés from places.json (many calls: use a small region)'
+        required: false
+        default: 'no'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/bar-buildings.mjs'
+      - '.github/workflows/buildings.yml'
+  schedule:
+    - cron: '41 5 * * 2'   # every Tuesday 05:41 UTC (the day after bars.yml)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: buildings
+  cancel-in-progress: false
+
+jobs:
+  buildings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # OSM API usage policy: one request at a time, 1.5 s apart, a clear User-Agent, and a rolling refresh
+      # (new spots + spots older than 28 days, max 700 calls per run).
+      - name: Find the building of every bar
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          REGION="${{ github.event.inputs.region }}"; [ -n "$REGION" ] || REGION=sweden
+          EXTRA=""; [ "${{ github.event.inputs.places }}" = "yes" ] && EXTRA="--places"
+          node scripts/bar-buildings.mjs --region "$REGION" --max 700 $EXTRA
+
+      - name: Commit docs/buildings if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/buildings scripts/bar-buildings-state.json
+          if git diff --cached --quiet; then
+            echo "buildings unchanged"
+            exit 0
+          fi
+          git commit -m "Update bar buildings [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
