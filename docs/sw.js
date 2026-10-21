@@ -10,7 +10,9 @@ var SHELL = [
 var CDN_CACHE = "olnu-cdn", DATA_CACHE = "olnu-data", TILE_CACHE = "olnu-tiles";
 var KEEP = [CDN_CACHE, DATA_CACHE, TILE_CACHE, "olnu-pending"];   // olnu-pending: notificationclick parks the target there
 var CDN_HOSTS = ["cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"];
-var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com)$/;
+var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfreemap\.org)$/;
+// 🗺️ Kartstil beta: OpenFreeMap style + TileJSON change weekly (network first); vector tiles are bigger than PNGs (byte cap).
+var TILE_META = /^\/(styles\/[^/]+|planet)\/?$/, TILE_BYTES = 40 * 1024 * 1024;
 var TILE_MAX = 300, TILE_MAX_AGE = 14 * 86400e3, NAV_TIMEOUT_MS = 4000;
 var DATA_RE = /\/(bars(-extra|-closed)?\.json|places\.json|places\/[^/]+\.json)$/;
 
@@ -131,7 +133,13 @@ function trimTiles() {
   return caches.open(TILE_CACHE).then(function (c) {
     return c.keys().then(function (keys) {
       var extra = keys.length - TILE_MAX;
-      return extra > 0 ? Promise.all(keys.slice(0, extra).map(function (k) { return c.delete(k); })) : null;
+      var drop = extra > 0 ? keys.slice(0, extra) : [], rest = extra > 0 ? keys.slice(extra) : keys;
+      // Byte cap: newest first, keep until TILE_BYTES (size from x-olnu-size; older entries without it count 20 kB).
+      return Promise.all(rest.map(function (k) { return c.match(k).then(function (r) { return r ? +r.headers.get("x-olnu-size") || 20480 : 0; }); })).then(function (sz) {
+        var sum = 0;
+        for (var i = rest.length - 1; i >= 0; i--) { sum += sz[i]; if (sum > TILE_BYTES) drop.push(rest[i]); }
+        return drop.length ? Promise.all(drop.map(function (k) { return c.delete(k); })) : null;
+      });
     });
   }).catch(function () {});
 }
@@ -147,7 +155,7 @@ function tileFirst(req, e) {
           var type = res.headers.get("content-type") || "image/png";
           keep(e, res.clone().blob().then(function (b) {
             return c.delete(url).then(function () {
-              return c.put(url, new Response(b, { status: 200, headers: { "Content-Type": type, "x-olnu-at": String(Date.now()) } }));
+              return c.put(url, new Response(b, { status: 200, headers: { "Content-Type": type, "x-olnu-at": String(Date.now()), "x-olnu-size": String(b.size) } }));
             });
           }).then(function () { if (++tilePuts % 20 === 0) return trimTiles(); }).catch(function () {}));
         }
@@ -159,12 +167,29 @@ function tileFirst(req, e) {
   }).catch(function () { return fetch(req); });
 }
 
+// Basemap style / TileJSON: network first (4 s), the cached copy when offline or slow.
+function tileMetaFirst(req, e) {
+  var url = req.url;
+  return caches.open(TILE_CACHE).then(function (c) {
+    var net = fetch(new Request(url, { mode: "cors", credentials: "omit" })).then(function (res) {
+      if (res && res.ok) keep(e, c.put(url, res.clone()).catch(function () {}));
+      return res;
+    });
+    var slow = new Promise(function (resolve) { setTimeout(function () { c.match(url).then(function (h) { if (h) resolve(h); }); }, NAV_TIMEOUT_MS); });
+    var first = net.then(function (res) { return res && res.ok ? res : c.match(url).then(function (h) { return h || res; }); },
+      function () { return c.match(url).then(function (h) { return h || Response.error(); }); });
+    keep(e, net.catch(function () {}));
+    return Promise.race([first, slow]);
+  }).catch(function () { return fetch(req); });
+}
+
 self.addEventListener("fetch", function (e) {
   var req = e.request;
   if (req.method !== "GET") return;
   var url = new URL(req.url);
   var sameOrigin = url.origin === self.location.origin;
   if (!sameOrigin) {
+    if (url.hostname === "tiles.openfreemap.org" && TILE_META.test(url.pathname)) { e.respondWith(tileMetaFirst(req, e)); return; }
     if (TILE_HOST.test(url.hostname)) { e.respondWith(tileFirst(req, e)); return; }
     if (CDN_HOSTS.indexOf(url.hostname) >= 0) { e.respondWith(cdnFirst(req)); return; }
     return;   // Supabase, Overpass and anything else: browser default.
