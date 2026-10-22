@@ -251,7 +251,7 @@
     var li = el("li", { class: "nr-frow" + (f.out ? " out" : "") }, [
       el("span", { class: "st-dot" + (f.out ? " on" : ""), "aria-hidden": "true" }),
       el("span", { class: "nr-fmain" }, [el("b", { text: f.name || L("Okänd kamrat", "Unknown") }), el("small", { class: "muted", text: sub.join(" · ") })]),
-      off.find_request ? null : A.btn("🧭", "btn-small nr-find-b", function () { openFinder(f.key, f.name); }),
+      off.find_request ? null : A.btn("🧭", "btn-small nr-find-b", function () { whereIs(f.key, f.name); }),
       A.btn("✕", "btn-small btn-ghost nr-rm-b", function () { askRemove(); })
     ]);
     li.querySelector(".nr-find-b") && li.querySelector(".nr-find-b").setAttribute("aria-label", L("Hitta ", "Find ") + (f.name || ""));
@@ -443,7 +443,7 @@
       sendRequest({ p_group_id: g.id, p_k: m.k }, function (d) { add.disabled = false; if (d) add.textContent = d.status === "accepted" ? L("✅ Vänner", "✅ Friends") : L("⏳ Skickad", "⏳ Sent"); });
     });
     row.appendChild(add);
-    if (!off.find_request) row.appendChild(A.btn(L("🧭 Hitta", "🧭 Find"), "btn-small nr-findm", function () { openFinder("g" + g.id + ":" + m.k, m.name); }));
+    if (!off.find_request) row.appendChild(A.btn(L("🧭 Hitta", "🧭 Find"), "btn-small nr-findm", function () { whereIs("g" + g.id + ":" + m.k, m.name); }));
     return box;
   }
 
@@ -483,7 +483,7 @@
         var rows = r.error ? [] : (r.data || []).filter(function (m) { return !m.is_me && m.k; });
         if (!rows.length) { list.appendChild(el("p", { class: "muted", text: r.error ? errText("error") : L("Ingen annan i gruppen än.", "Nobody else in the group yet.") })); return; }
         rows.sort(function (a, b) { return (b.live ? 1 : 0) - (a.live ? 1 : 0); }).forEach(function (m) {
-          list.appendChild(A.btn((m.live ? "🟢 " : "") + (m.name || "?"), "btn-small nr-pick-b", function () { openFinder("g" + g.id + ":" + m.k, m.name); }));
+          list.appendChild(A.btn((m.live ? "🟢 " : "") + (m.name || "?"), "btn-small nr-pick-b", function () { whereIs("g" + g.id + ":" + m.k, m.name); }));
         });
       });
     });
@@ -551,6 +551,8 @@
     var x = Math.cos(la1 * r) * Math.sin(la2 * r) - Math.sin(la1 * r) * Math.cos(la2 * r) * Math.cos((ln2 - ln1) * r);
     return (Math.atan2(y, x) / r + 360) % 360;
   }
+  // 🔍 hitta.js: a tap on 🧭 first looks for the friend's visible pin ("Var ä du?"), else opens the finder.
+  function whereIs(key, nm) { if (window.HITTA && window.HITTA.where) window.HITTA.where(key, nm); else openFinder(key, nm); }
   function openFinder(key, nm) {
     if (!A || !A.LIVE || !key) return;
     if (!navigator.geolocation) { A.toast(L("Telefonen har ingen GPS för detta.", "No GPS on this device."), { err: true }); return; }

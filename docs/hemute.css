@@ -1,0 +1,80 @@
+/* Öl Nu — ☀️ Uteväder (js/ute.js) · 📸 Krogbilder (js/barfoto.js) · 🏠 Följ mig hem (js/hemfolj.js) · 🔍 Hitta (js/hitta.js) */
+
+/* ---------- ☀️ Ikväll chip + sheet + bar pill ---------- */
+.hx-ute,.hx-walk{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.hud-left.open .hx-ute,.hud-left.open .hx-walk{grid-column:1 / -1;max-width:none}
+.hx-ute{border-color:rgba(255,210,63,.55)!important;background:linear-gradient(100deg,rgba(255,210,63,.18),rgba(245,166,35,.08))!important}
+.hx-walk{border-color:rgba(127,209,255,.55)!important;background:rgba(74,163,255,.12)!important}
+.ute-wx-h{font:700 var(--ds-fs-18,18px)/1.3 var(--ds-sans,inherit);margin:2px 0 4px}
+.ute-flavor{margin:0 0 10px}
+.ute-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ute-row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 10px;border:1px solid var(--ds-border,rgba(255,255,255,.1));border-radius:var(--ds-r-1,12px);background:var(--ds-card,#19233a)}
+.ute-n{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ute-go{flex:0 0 auto}
+.ute-src{font-size:12px;margin-top:12px}
+.ute-src a{color:var(--ds-blue-t,#8cc6ff)}
+.ev-line.ute-line{display:inline-flex;gap:8px;padding:3px 10px;margin:4px 0 0;border-radius:var(--ds-r-pill,999px);border-color:rgba(255,210,63,.35);background:rgba(255,210,63,.06);font-size:13px;width:auto;max-width:100%}
+.ev-line.ute-line.ute-good{border-color:rgba(255,210,63,.75);background:rgba(255,210,63,.16)}
+.ute-wx{color:var(--ds-muted,#a7b0ac);white-space:nowrap}
+.ute-good .ute-wx{color:#ffe08a}
+
+/* ---------- 📸 bar photo strip ---------- */
+.ev-line.bf-line{display:block;padding:6px 8px;border-color:var(--ds-border-2,rgba(255,255,255,.16));background:rgba(255,255,255,.03)}
+.ev-line.bf-line[hidden]{display:none}
+.bf-h{display:block;font-size:12px;color:var(--ds-text-2,#c9d0cd);margin-bottom:5px}
+.bf-strip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center}
+.bf-strip::-webkit-scrollbar{display:none}
+.bf-th{position:relative;flex:0 0 auto;width:58px;height:58px;padding:0;border:1px solid var(--ds-border-2,rgba(255,255,255,.16));border-radius:10px;overflow:hidden;background:#0f1626;cursor:pointer}
+.bf-th img{width:100%;height:100%;object-fit:cover;display:block}
+.bf-th.bf-pub{border-color:rgba(127,209,255,.6)}
+.bf-sh{position:absolute;inset:0;background:linear-gradient(100deg,#141d30 30%,#1f2a44 50%,#141d30 70%);background-size:300% 100%;animation:bfSh 1.6s linear infinite}
+@keyframes bfSh{from{background-position:100% 0}to{background-position:0 0}}
+.bf-b{position:absolute;right:2px;bottom:1px;font-style:normal;font-size:12px;text-shadow:0 1px 2px #000}
+.bf-more{flex:0 0 auto;font-size:13px;color:var(--ds-muted,#a7b0ac);padding:0 4px}
+.bf-view{position:fixed;inset:0;z-index:2600;background:rgba(4,7,14,.88);display:flex;align-items:center;justify-content:center;padding:16px}
+.bf-card{width:100%;max-width:440px;max-height:100%;overflow:auto;background:var(--ds-sheet,#121a2a);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));border-radius:var(--ds-r-2,16px);padding:10px;box-shadow:var(--ds-sh-2)}
+.bf-img{background:#000;border-radius:10px;overflow:hidden;display:flex;justify-content:center;min-height:120px}
+.bf-img img{max-width:100%;max-height:60vh;object-fit:contain;display:block}
+.bf-who{margin:8px 2px 2px;font-weight:700}
+.bf-note{margin:2px 2px 8px;font-size:13px}
+.bf-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bf-acts .bf-x{margin-left:auto}
+.bf-warn{flex:1 1 100%;margin:0 0 6px;font-size:13px;color:#ffe08a}
+
+/* ---------- 🏠 walk banner (walker) ---------- */
+.hf-banner{position:fixed;z-index:1004;left:calc(var(--sal,0px) + 10px);right:calc(var(--sar,0px) + 10px);bottom:calc(var(--sab,0px) + 150px);
+  display:flex;align-items:stretch;min-height:56px;border-radius:var(--r-m,14px);overflow:hidden;box-shadow:0 8px 26px #000c;
+  color:#04233a;border:1px solid #8cd8ff;background:linear-gradient(100deg,#9fe0ff,#5cc0ff 60%,#3fa3f0)}
+.hf-banner[hidden]{display:none}
+body.sk-on .hf-banner,body.chief-on .hf-banner,body.fm-on .hf-banner{bottom:calc(var(--sab,0px) + 214px)}
+body.sk-on.chief-on .hf-banner{bottom:calc(var(--sab,0px) + 278px)}
+.hf-b-txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;text-align:left;padding:5px 10px;background:none;border:0;color:inherit;cursor:pointer;font:inherit}
+.hf-b-txt b{font:400 13px/1.2 var(--display,var(--ds-stencil,inherit));letter-spacing:.03em}
+.hf-b-sub{font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hf-b-go{flex:0 0 auto;min-width:78px;padding:0 10px;border:0;border-left:2px solid rgba(4,35,58,.25);background:#04233a;color:#9fe0ff;font:700 14px var(--body,inherit);cursor:pointer}
+.hf-b-x{flex:0 0 auto;min-width:44px;border:0;background:rgba(0,0,0,.12);color:inherit;cursor:pointer;font-size:14px;font-weight:700}
+.hf-lead{margin-top:0}
+.hf-warn{padding:8px 10px;border-radius:var(--ds-r-1,12px);border:1px solid rgba(255,210,63,.4);background:rgba(255,210,63,.08);color:#ffe08a;font-size:13px}
+.hf-h{margin:12px 0 6px;font-size:15px}
+.hf-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.hf-chip.on{border-color:var(--ds-blue,#4aa3ff);background:var(--ds-blue-soft,rgba(74,163,255,.1))}
+.hf-people{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:38vh;overflow:auto}
+.hf-people label{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--ds-r-1,12px);background:var(--ds-card,#19233a);cursor:pointer;min-height:44px}
+.hf-people input{width:20px;height:20px;accent-color:var(--ds-blue,#4aa3ff)}
+.hf-nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hf-gline{margin:8px 0 0;font-size:13px}
+.hf-priv{font-size:12px}
+.hf-taxi{border-color:rgba(127,209,255,.5)}
+/* viewer: moving pin + home */
+.hf-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;background:#5cc0ff;border:3px solid #fff;box-shadow:0 0 0 3px rgba(92,192,255,.35),0 4px 10px #0009;color:#04233a}
+.hf-pin b{font:800 15px/1 var(--ds-sans,inherit)}
+.hf-pin i{position:absolute;right:-10px;bottom:-8px;font-style:normal;font-size:16px;text-shadow:0 1px 2px #000}
+.hf-pin.hf-stale{filter:grayscale(.8);opacity:.7}
+.hf-home{display:flex;align-items:center;justify-content:center;font-size:20px;text-shadow:0 1px 3px #000}
+
+/* ---------- 🔍 Hitta (group NU sheet) ---------- */
+.ht-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.ht-list li{display:grid;gap:2px}
+.ht-list small{padding-left:4px}
+
+@media (prefers-reduced-motion: reduce){.bf-sh{animation:none}}

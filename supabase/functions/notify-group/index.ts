@@ -30,6 +30,10 @@
 // v25 💬 MEDDELANDEN (0136–0138): "msg" / "dm" / "voice" in a 1:1 DM group (no group_members rows) -> ONE push to the other
 //   person, "💬 Anton: text…" / "🎙️ Anton skickade ett röstmeddelande" (dm_push_target: empty when blocked, not friends any
 //   more or muted by the receiver); 1 push per sender per thread per 20 s (push_sent kind dm:<gid>); url /?chat=<gid>.
+// v26 🏠 FÖLJ MIG HEM (0141): {event:"walk", walk_id} -> "🏠 Anton går hem – följ med på kartan" to the chosen viewers
+//   (walks.notified atomic claim, < 5 min old, live); {event:"walk_home", walk_id} -> "✅ Anton ä hemma! 🏠" to the same
+//   viewers (home_notified claim, ended 'home' < 10 min ago). Same tag olnu-walk-<id>, so "hemma" replaces "går hem". url /?walk=<id>.
+//   find: + "👀 {namn} letar efter dig" (🔍 hitta.js "Var ä du?").
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1879,6 +1883,7 @@ const FIND_LINES = [
   "🧭 {namn} letar efter dig i vimlet!", "🧭 {namn} söker din position, soldat", "🧭 Spaning: {namn} vill hitta dig",
   "🧭 {namn} ä vilse i folkhavet och letar efter dig", "🧭 {namn} har kompassen fram – var ä du?", "🧭 {namn} vill hitta dig. Svara nu!",
   "🧭 Radion sprakar: {namn} söker kontakt", "🧭 {namn} försöker hitta dig i trängseln",
+  "👀 {namn} letar efter dig", "👀 {namn} letar efter dig – var ä du?",
 ];
 async function nameOf(admin: Admin, uid: string, groupId?: string | null): Promise<string> {
   if (groupId) {
@@ -1927,6 +1932,45 @@ async function findPush(admin: Admin, uid: string, b: Body) {
   const payload = JSON.stringify({ title: fill(line, { namn }), body, url: `/?find=${rid}`, tag: `olnu-find-${rid}` });
   const jobs = (await subsOf(admin, [r.to_uid as string])).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 300) : NONE;
+}
+
+// ---- v26 🏠 FÖLJ MIG HEM (0141): {event:"walk"|"walk_home", walk_id} ----
+export const WALK_LINES: string[] = [
+  "🏠 {namn} går hem – följ med på kartan",
+  "🏠 {namn} ä på marsch hemåt. Håll koll på kartan!",
+  "🏠 Hemtransport: {namn} går nu. Du ä med som eskort.",
+  "🏠 {namn} drar hemåt – spana in kartan",
+  "🏠 Operation Hemfärd: {namn} ä på väg. Du har bevakningen.",
+  "🏠 {namn} vill att du ser till att hen kommer hem",
+];
+export const WALK_HOME_LINES: string[] = [
+  "✅ {namn} ä hemma! 🏠",
+  "✅ {namn} ä hemma. Uppdraget slutfört! 🏠",
+  "✅ {namn} har landat hemma. Bra eskortat! 🏠",
+  "✅ Hemma! {namn} ä i säkerhet. Över och ut. 🏠",
+];
+async function walkPush(admin: Admin, uid: string, b: Body, home: boolean) {
+  const wid = parseRallyId(b.walk_id);
+  if (wid === null) return { ...NONE, reason: "no_walk" };
+  const since = new Date(Date.now() - (home ? 10 : 5) * 60 * 1000).toISOString();
+  let q = admin.from("walks").update(home ? { home_notified: true } : { notified: true })
+    .eq("id", wid).eq("user_id", uid);
+  q = home
+    ? q.eq("home_notified", false).eq("end_reason", "home").gt("ended_at", since)
+    : q.eq("notified", false).is("ended_at", null).gt("started_at", since);
+  const { data: claimed, error } = await q.select("id, viewers, group_id");
+  if (error) throw error;
+  const w = claimed && claimed[0];
+  if (!w) return { ...NONE, reason: "no_walk" };
+  const to = ((w.viewers ?? []) as string[]).filter((x) => x && x !== uid).slice(0, 30);
+  if (!to.length) return { ...NONE, reason: "no_viewers" };
+  const namn = cleanBarName(await nameOf(admin, uid, w.group_id as string | null)) || "En kompis";
+  const lines = home ? WALK_HOME_LINES : WALK_LINES;
+  const line = lines[Math.floor(Math.random() * lines.length)];
+  const body = home ? "Tryck för att säga godnatt." : "Hen delar sin position tills hen ä hemma (max 2 h). Tryck för att följa.";
+  const payload = JSON.stringify({ title: fill(line, { namn }), body, url: `/?walk=${wid}`, tag: `olnu-walk-${wid}` });
+  const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, home ? 3600 : 1800) : NONE;
 }
 
 // ---- v28 INBJUDNINGAR (0080/0081): {event:"invite"|"invite_yes"|"invite_due", invite_id} + the cron ----
@@ -2168,6 +2212,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "invite_yes") return json(await inviteYesPush(admin, uid, body));
     if (event === "invite_due") return json(await inviteDuePush(admin, uid, body));
     if (event === "ev_due") return json(await evDuePush(admin, uid, body));
+    if (event === "walk") return json(await walkPush(admin, uid, body, false));
+    if (event === "walk_home") return json(await walkPush(admin, uid, body, true));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

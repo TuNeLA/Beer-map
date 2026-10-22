@@ -790,6 +790,7 @@
     var c = pos(), h = home();
     var box = el("section", { class: "rnd rnd-taxi" });
     box.appendChild(el("h3", { text: T("taxiH") }));
+    try { var hfN = window.HEMFOLJ && window.HEMFOLJ.taxiNode ? window.HEMFOLJ.taxiNode() : null; if (hfN) box.appendChild(hfN); } catch (e) {}
     if (!h) {
       box.appendChild(bt(T("taxiSave"), "btn-block", saveHome));
       box.appendChild(el("p", { class: "rnd-note", text: T("taxiSaveInfo") }));

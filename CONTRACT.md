@@ -2197,3 +2197,73 @@ title "💬 Anton: text…" (90 chars), body "🔒 Privat meddelande · tryck f�
   "🚫 Du har blockerat Lisa…" + ✅ Avblockera, or "🔒 Du kan int' skriva hit just nu."; ← back opens Vänner. My new 📷 rows send the DM push.
 - Push tap `?chat=<gid>`: social.js `openChatLink` → my_groups → `EVCHAT.openById` → `DM.openById`.
 - Polling: `my_dms` on sign-in, with the app poll (≥ 30 s; 12 s while Vänner is open), when visible; `dm_seen` every 4 s while a DM is open. No typing dots.
+
+## 📸 KROGBILDER · ☀️ UTEVÄDER · 🏠 FÖLJ MIG HEM · 🔍 HITTA KOMPIS (all-in-one items 13–17; additive)
+Migrations `0140_bar_photos.sql`, `0141_walks.sql` (applied live 2026-10-22 under the same names). No row is ever removed (UPDATE / expiry only).
+Edge function `notify-group` **v26** (merged on top of deployed v25: events `walk`, `walk_home`; two more find titles "👀 {namn} letar efter dig").
+Client: `docs/js/ute.js` (`window.UTE`), `docs/js/barfoto.js` (`window.BARFOTO`), `docs/js/hemfolj.js` (`window.HEMFOLJ`), `docs/js/hitta.js`
+(`window.HITTA`), `docs/hemute.css`, `docs/stats-barfoto.js`. Patches bgx 01–08: index.html + stats.html, app.js (mods + `?walk=`), rundan.js (taxi sheet),
+near.js + invite.js (🧭 → `HITTA.where`), gpage.js (NU strip → `HITTA.nowSheet`), notify-group source, fetch-bars.mjs + bars.json `outdoor`, this section.
+No new map buttons. A missing RPC (old server) = that part hides.
+
+### ☀️ Uteväder (client only)
+- Weather: Open-Meteo forecast API (no key; free tier = non-commercial, < 10 000 calls/day; CC BY 4.0 → "Väder: Open-Meteo.com" link in the sheet).
+  One call per ~0.1° cell per 30 min per phone (`olnu.ute.wx`), only the rounded point is sent, none 02–09 or while hidden.
+- Uteväder = precipitation 0, weather code < 51, rain probability < 50 % next 2 h, and ≥ 14 °C — or a sunny evening (code ≤ 1, daylight, after 16:00, ≥ 11 °C).
+- Uteservering = `bars.json` `outdoor: 1` (OSM `outdoor_seating` ≠ no, `beer_garden=yes`, or `amenity=biergarten`; `scripts/fetch-bars.mjs`, weekly) — 246 of 1213 bars now.
+  Curated `bars-extra.json` bars have no flag yet (add `"outdoor":1` by hand).
+- Ikväll panel: ONE calm chip `hx-ute` (11:00–02:00, ≥ 1 outdoor bar within 3 km) "☀️ Uteväder! 18° – uteserveringar nära: Pitchers +2" → sheet (weather line,
+  flavour line, nearest 8 with distance + OPPET status + 📍 Visa, attribution). Bar sheet: `.ev-line.ute-line` pill "☀️ Uteservering · Uteväder nu 18°". No push.
+
+### 📸 Krogbilder (0140)
+- Table `bar_photos(id, kind chat|film, photo_id, group_id, user_id, bar_id, bar_name, bar_lat, bar_lng, via checkin|pin, night, taken_at, w, h, public_at,
+  public_until, pub_mime, pub_bytes, reports, hidden_at, hidden_by reports|owner)` unique (kind, photo_id) · `bar_photo_reports(bp_id, user_id, reason, created_at)`.
+  RLS on, no policies, service_role only.
+- Tagging (AFTER INSERT triggers `olnu_zz_bp_chat` on chat_photos, `olnu_zz_bp_film` on snap_photos kind film): the photographer's live check-in (< 3 h),
+  else a live, visible, PRECISE pin with a drink in the last 2 h → nearest `bars_lite` within **60 m**. Never "Bara område", ghost, DM / event chats
+  (`olnu_is_temp_group`) or skåltimme photos (post-to-see rule). Lägesrapport photos are chat photos, so they tag too. A trigger error never blocks the photo.
+- Visibility: group photos only to members of the photo's own group, while the source photo is alive (chat until its expiry, film after the 10:00 reveal);
+  window 8 days. Public only when the photographer taps "🌍 Dela med alla på krogen": a copy of the bytes (≤ 160 KB) for 7 days, no name, no group;
+  every share call empties copies that ran out. 3 reports → hidden for everyone (`hidden_by reports`); the reporter never sees it again. "Radera allt om mig":
+  trigger `bar_photos_anon` ends the share and empties the copy.
+
+| name | params | returns | errors |
+|---|---|---|---|
+| `bar_photos` | `p_bar_id` | `{v, now, bar_id, group:[{key, kind, w, h, at, by, group_name, is_me, shared, can_share, public_until}], public:[{key, w, h, at, is_me, public_until}]}` (24 each) | `invalid_bar` |
+| `bar_photo` | `p_key` ("bp<id>") | `{key, mime, w, h, b64}` | `photo_not_found` (also: not allowed) |
+| `bar_photo_share` | `p_key, p_on default true` | `{key, shared, public_until?}` | `photo_not_found` (not mine / gone), `not_allowed` (owner hid it), `slow_down` (20 / 24 h) |
+| `bar_photo_report` | `p_key, p_reason default null` (≤ 40) | `{ok, hidden}` | `photo_not_found`, `own_photo`, `slow_down` (20 / 24 h) |
+| `owner_bar_photos` / `owner_bar_photo` / `owner_set_bar_photo` | `p_key, p_status public\|reported\|hidden\|all` / `p_key, p_id` / `p_key, p_id, p_status ok\|hidden` | like `owner_club_info` (anon + owner key) | PT403 `forbidden`, `invalid_status`, `photo_not_found` |
+- Client (barfoto.js): bar sheet `.ev-line.bf-line` (hidden when empty) "📸 Gänget här · 3" / "🌍 Gästernas bilder" + up to 8 thumbnails (🌍 badge); images one by one
+  (2 in flight), blob URLs per page life. Viewer: who · group · time (or "🌍 Delad av en gäst"), own photo → 🌍 share (confirm: 7 days, no name, ask the people in it) /
+  🔒 Sluta dela, public photo → 🚩 Anmäl / dölj (Olämplig · Jag ä med på bilden · Spam). stats.html → `stats-barfoto.js` panel "📸 Krogbilder" (Anmälda / Publika /
+  Dolda / Alla, 👁️ Visa, 🙈 Dölj, ✅ Visa igen).
+
+### 🏠 Följ mig hem (0141 + notify-group v26)
+- Tables `walks(id, user_id, group_id, viewers uuid[], home_lat, home_lng (3 decimals ≈ 110 m), started_at, ends_at (+2 h), ended_at, end_reason home|stop|timeout|replaced,
+  lat, lng, acc, pos_at, start_dist, notified, home_notified, msg_id)` (ONE position per walk, overwritten, cleared at the end) · `walk_views(walk_id, user_id, seen_at)`.
+| name | params | returns | errors |
+|---|---|---|---|
+| `walk_start` | `p_home_lat, p_home_lng, p_keys text[] (friend_list keys), p_group_ids uuid[], p_group_id (where ✅ is posted), p_lat, p_lng, p_acc, p_name` | mine json `{id, live, started_at, ends_at, ended_at, end_reason, group_id, group_name, n, watching, seen_by, pos_at, msg_id}` | `invalid_home`, `no_viewers`, `too_many` (30), `slow_down` (1 / 10 s, 8 / 12 h) |
+| `walk_ping` | `p_id, p_lat, p_lng, p_acc` (max every 2 s) | mine json + `ok` | `walk_not_found`, `invalid_position` |
+| `walk_end` | `p_id, p_reason home\|stop, p_line` ({n} = name, ≤ 120, no links) | mine json + `group_id`; `home` inserts "✅ {n} ä hemma! 🏠" into the walk's group chat | `walk_not_found` |
+| `walk_poll` | – | `{v, now, mine (live or ended < 10 min), watching:[{id, name, group_name, live, lat, lng, acc (only while live), pos_at, age_s, home_lat, home_lng, start_dist, started_at, ends_at, ended_at, end_reason}]}` (live or ended < 15 min); marks me as watching | – |
+- Viewers = friends + group-mates only (`olnu_inv_resolve`). Every walk RPC ends walks past 2 h (`timeout`). Erase sweep → trigger `walks_anon` ends and clears.
+- notify-group: `{event:"walk", walk_id}` → viewers, claim `notified` (caller's, live, < 5 min), title 1 of 6 ("🏠 {namn} går hem – följ med på kartan"), url `/?walk=<id>`,
+  tag `olnu-walk-<id>`, TTL 30 min. `{event:"walk_home", walk_id}` → same viewers, claim `home_notified` (ended home < 10 min), "✅ {namn} ä hemma! 🏠", same tag, TTL 1 h.
+  Reasons `no_walk`, `no_viewers`.
+- Client (hemfolj.js): entry = 🚕 Taxi hem sheet (`HEMFOLJ.taxiNode`) + group page "+" (`groupActions`, Ikväll). Needs 🏠 Hemzon (homezone.js). Picker = friend_list
+  (people + "👥 Hela <grupp>" chips; the group of the page preselected). UI says clearly: keep the app open with the screen on (a web app gets no background GPS);
+  Screen Wake Lock when available. GPS watchPosition (high accuracy) → `walk_ping` when moved ≥ 10 m or every 15 s; 2 fixes within 60–150 m (accuracy + 25) of the
+  exact home point → `walk_end('home')` + push `walk_home`. Walker banner `#hf-banner` (bottom, like the skåltimme banner; hidden while the beer-type strip is up):
+  "🏠 FÖLJ MIG HEM · 270 m kvar · 👀 1/2 · 🔆 skärmen hålls vaken" + ✅ Hemma + ✕ (tap twice). Viewers: moving pin (initial + 🚶, grey after 3 min without signal),
+  dashed line to 🏠 + faint 110 m circle, ONE toast per walk ("📍 Följ"), "✅ Lisa ä hemma!" once (`olnu.walkSeen`), calm Ikväll chip "🏠 Lisa går hem · 800 m kvar".
+  `walk_poll` on auth, app poll (≥ 60 s), every 10 s while a walk is live. `?walk=<id>` (push tap; app.js routeOpen → `mods("openWalkLink")`).
+
+### 🔍 Hitta kompis "Var ä du?" (client only, rides on 0047 + visible pins)
+- `HITTA.where(key, name)`: a group-mate's visible pin (not ghost / stopped) → close the sheet, fly there, dashed line me → friend for 30 s, toast
+  "📍 Lisa ä hä · 140 m ↗️ nordost · Pitchers" + "🧭 Kompass" (= `NEAR.openFinder`). "Bara område" pins say "ungefär" and show no metres.
+  No pin (or a friend outside groups) → `NEAR.openFinder` at once: the 0047 find request + push `find` (1 per 30 s per sender, 3 per 30 min to the same person),
+  compass arrow (DeviceOrientation / iOS permission) or north-up mini map.
+- Entry points: 🧭 on Vänner rows (invite.js / near.js), Medlemmar "🧭 Hitta", "🧭 Hitta nån" chooser, and the group page 🟢 NU strip → `HITTA.nowSheet`
+  ("🗺️ Visa alla på kartan (n)" = the old tap + "🔍 Var ä du, Lisa?" per person out, keys from `group_status_v2.k`).

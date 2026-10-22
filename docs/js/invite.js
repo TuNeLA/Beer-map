@@ -300,7 +300,7 @@
             A.el("span", { class: "nr-fmain" }, [A.el("b", { text: p.name || "?" }), A.el("small", { class: "muted", text: personSub(p) })])
           ]);
           if (p.find_key && window.NEAR && window.NEAR.openFinder) {
-            var fb = A.btn("🧭", "btn-small nr-find-b", function () { window.NEAR.openFinder(p.find_key, p.name); });
+            var fb = A.btn("🧭", "btn-small nr-find-b", function () { if (window.HITTA && window.HITTA.where) window.HITTA.where(p.find_key, p.name); else window.NEAR.openFinder(p.find_key, p.name); });
             fb.setAttribute("aria-label", L("Hitta ", "Find ") + (p.name || "")); li.appendChild(fb);
           }
         }

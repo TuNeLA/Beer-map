@@ -231,9 +231,12 @@
       paintNow(wrap, A.parseData(r.data));
     });
   }
-  function nowTap(wrap) {
+  function nowTap(wrap, g) {
     var out = (wrap.querySelector(".gpg-now") || {}).__out || [];
     if (!A || !A.map) return;
+    if (g && !wrap.__hfAll && window.HITTA && window.HITTA.nowSheet) {
+      try { if (window.HITTA.nowSheet(g, out, function () { wrap.__hfAll = true; try { nowTap(wrap, g); } finally { wrap.__hfAll = false; } })) return; } catch (e) {}
+    }
     var names = {}; out.forEach(function (p) { if (p.name) names[p.name] = 1; });
     var pts = (A.beers() || []).filter(function (b) { return (b.friend_name && names[b.friend_name]) || (b.is_mine && out.some(function (p) { return p.me; })); })
       .map(function (b) { return [b.lat, b.lng]; });
@@ -312,7 +315,7 @@
     var dots = h("button", { type: "button", class: "gpg-dots", "aria-label": T("moreAria"), text: "⋯", onclick: function () { view(wrap, "info"); } });
 
     // Nu strip
-    var now = h("button", { type: "button", class: "gpg-now", hidden: true, onclick: function () { nowTap(wrap); } });
+    var now = h("button", { type: "button", class: "gpg-now", hidden: true, onclick: function () { nowTap(wrap, g); } });
 
     // chat block
     var chat = null;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Fetch all bars/pubs/nightclubs/biergartens in Sweden from OpenStreetMap (Overpass)
-// and write docs/bars.json as [{id,name,lat,lng,type}]. Node 18+ (global fetch). Run weekly by .github/workflows/bars.yml.
+// and write docs/bars.json as [{id,name,lat,lng,type,outdoor?}]. Node 18+ (global fetch). Run weekly by .github/workflows/bars.yml.
+// outdoor: 1 = OSM outdoor_seating=* (not "no"), beer_garden=yes or a biergarten (☀️ Uteservering, js/ute.js). Missing = unknown.
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -75,7 +76,10 @@ for (const el of json.elements || []) {
   if (seen.has(id) || closed.has(id)) continue;
   seen.add(id);
   const t = el.tags || {};
-  bars.push({ id, name: t.name ?? null, lat: r5(lat), lng: r5(lng), type: t.amenity || "bar" });
+  const row = { id, name: t.name ?? null, lat: r5(lat), lng: r5(lng), type: t.amenity || "bar" };
+  const os = String(t.outdoor_seating || "").toLowerCase();
+  if ((os && os !== "no") || t.beer_garden === "yes" || t.amenity === "biergarten") row.outdoor = 1;
+  bars.push(row);
 }
 bars.sort((a, b) => a.lat - b.lat || a.lng - b.lng);
 // Safety: Sweden has thousands of bars. A tiny result means a broken query; keep the old file.
