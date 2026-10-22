@@ -2093,3 +2093,61 @@ max 8; names via olnu_friend_name), remind (my 1 h push is still coming), told}`
   Unknown bar type → pub. Sizes unchanged (24 px bar icon, 16 px quiet / place dot).
 - Emoji stay in texts, chat, toasts and the 🍺 count pills (content). New glyphs: add the name to BOLD / FILL in the generator
   (`scratchpad/icons-tools/gen.py`, reads the npm package) and rebuild icons.js.
+
+## ⚡ SMOOTH: SNABB OCH MJUK APP (speed + feel; no migration, no new button)
+- `docs/js/smooth.js` (window.SMOOTH) loads right after config.js, before every module. `docs/smooth.css` loads just before ds.css.
+- Intl cache: `new Intl.DateTimeFormat(loc, opts)` with the same arguments returns ONE shared formatter (max 200 kept);
+  `Date#toLocaleTimeString/-DateString(loc, opts)` with a time/date field use it. Same text as before, ~0 cost per call.
+- RPC fetch layer (only `POST /rest/v1/rpc/<fn>` with fn in READ = STABLE, write-free SQL functions: my_groups, group_status,
+  my_stats, my_medals, my_event_chats, group_league, city_league, bar_kings, my_meriter, my_home_town, public_config):
+  identical calls in flight share one request; an answer is reused max 3 s; any other RPC clears the reuse cache first.
+  pointerdown on #btn-groups prefetches my_groups with the app's own last RPC headers. A new READ entry must be STABLE with no writes.
+- App shell first: app.js runs `start()` via `SMOOTH.afterPaint` (next frame, max 300 ms; hidden tab: at once). Modules get
+  `init` after the first paint, never before DOMContentLoaded handlers (code must not assume init ran before DOMContentLoaded).
+- Sign-in: `refresh()` (map poll) is sent before `mods("onAuthed")`; onAuthed still runs before any poll answer.
+- Sheets: open = slide up with a spring (300 ms, `linear()` with cubic-bezier fallback). Close = `SMOOTH.sheetOut()` puts a copy
+  in a CLOSED shadow root (not queryable, inert, pointer-events none) that slides down 210 ms; #sheet itself hides at once (tests
+  and code see it closed immediately). Copy skipped for sheets > 900 elements. A new sheet in an open sheet fades in (#sheet-body.sm-swap).
+  A lone "…" placeholder in #sheet-body gets `.sm-skel` (quiet skeleton row). prefers-reduced-motion: no slide, no fade, no pulse.
+- sw.js: navigations answer from the cached index.html of this version at once when it is < 3 days old (refreshed in the
+  background); new versions still come by the sw.js update → controllerchange → reload path. Else network first (4 s) as before.
+- app.js placeLabels: class writes, then rect reads in one batch, then hides (no layout per marker). ds.js: the .ds-scrolled
+  check after a sheet change runs in the next frame (no forced layout inside the MutationObserver).
+
+## 🔐 KONTO (spara kontot med e-post · lost account · same account on every device; additive, migrations 0130 + 0131)
+- Why: users are anonymous Supabase users; the session lives only in localStorage `olnu.auth`. iPhone home-screen app and
+  Safari have separate storage, in-app browsers (Messenger, Snapchat, Instagram) too; a cleared browser loses the account.
+- `docs/js/account.js` → `window.ACCOUNT` (mods: init, onAuthed, onPoll, groupItem, settingsSheet). Loaded right before
+  app.js (it reads a Google return hash before app.js boots). E-mail + 6-digit code ONLY: never a password, no magic links.
+- ONE e-mail field, the flow decides: unsaved account on this device → `auth.updateUser({ email, data: { olnu_name } })` +
+  `verifyOtp({ type: "email_change" })` = the SAME user id becomes permanent (nothing moves). E-mail already taken →
+  automatically `signInWithOtp({ email, options: { shouldCreateUser: false } })` + `verifyOtp({ type: "email" })` = log in.
+  No account on that e-mail → soft text + "Spara det här kontot mä e-posten istället" (or, with no account on the device,
+  "Starta ett nytt konto": signInAnonymously → save). After a login: olnu.name from user_metadata.olnu_name, olnu.uid,
+  flyttAsked/intro/age18 = 1, moved keys cleared, `location.replace` (keeps ?join= / ?invite=). The left anonymous session
+  is kept in `olnu.acct.prev` on that device only.
+- "Vilket konto vill du ha kvar?" when the device's unsaved account has groups: default = the saved account, checkbox
+  "Ta mä grupperna" (default on) → `account_merge_ticket()` as the anonymous user BEFORE the code, then
+  `account_merge_claim(p_ticket)` as the saved user AFTER it (0131).
+- Entry points (`ACCOUNT.entry(container, where, {query})`): first-run intro, name sheet (askName, join.js welcome card),
+  home-screen "Ta med kontot?" card, "Din inloggning gick ut" sheet, "Kontot har flyttat" card ("🔑 Tappat ditt konto?").
+- ⚙️ "🔐 Ditt konto": unsaved → 🔐 Spara ditt konto · 🔑 Tappat ditt konto? · Logga ut (hard warning, "Spara först").
+  Saved → "Inloggad som a•••@gmail.com" · ✉️ Byt e-post (secure change: code from the new, then the old address) ·
+  🚪 Logga ut (`signOut({ scope: "local" })`, push off, fresh anonymous start).
+- Code step: masked e-mail, ONE `<input autocomplete="one-time-code" inputmode="numeric">` drawn as 6 boxes (typing, paste,
+  iOS autofill; auto-submit on the 6th digit), "📬 Öppna Gmail/Outlook/Mail" (googlegmail:// · ms-outlook:// · message:// on
+  iOS, intents on Android, none in in-app browsers), "Skicka ny kod" 60 s cooldown, "Fel e-post? Ändra", errors: wrong code,
+  expired (> 15 min), rate limit with seconds. A pending code survives a reload (`olnu.acct.pend`, 20 min).
+  Success: "✅ Kontot ä sparat" screen.
+- Google (optional, hidden): `account_config().google` AND /auth/v1/settings google on; never in in-app browsers or the iOS
+  home-screen app. linkIdentity / signInWithOAuth; the implicit return hash → `?flytt=` import (app.js stores it).
+- Nudge: one sheet, once ever (`olnu.acct.nudged`), at 3+ nights (`olnu.nights`) or in a group; never at first launch, never
+  over a sheet / intro / the beer-type strip (OLNU_STRIP.up()).
+- 0130: `app_account_flags(email_login, google_login)` + `account_config()` (anon) → `{v, email, google}`; cached 3 h
+  (`olnu.acct.cfg`). Hidden while email_login is off. `OLNU_CONFIG.ACCOUNT_EMAIL / ACCOUNT_GOOGLE = true` force on.
+- 0131: `account_merge_tickets` (audit) + `account_merge_ticket()` (anonymous caller only; sha256-stored, one use, 30 min,
+  6/h) + `account_merge_claim(p_ticket)` (permanent caller only; UPDATE group_members.user_id where not already a member,
+  groups.created_by; duplicates stay with the old anonymous id). authenticated only.
+- Flyttkod unchanged. Owner steps (dashboard): custom SMTP; templates Magic Link + Change Email Address with `{{ .Token }}`;
+  Confirm email ON; OTP expiry 900 s; URL config `https://tunela.github.io/Beer-map/docs/**`; then
+  `update public.app_account_flags set enabled = true, updated_at = now() where key = 'email_login';`

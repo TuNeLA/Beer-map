@@ -494,6 +494,7 @@
       nameInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { nameInp.blur(); } });
       nameInp.addEventListener("change", function () { if (typedName()) status(""); });
       nameBox = h("div", { class: "jn-namebox" }, [h("label", { class: "fld", for: "jn-name", text: L("Vad ska gänget kalla dig?", "What should the gang call you?") }), nameInp]);
+      if (window.ACCOUNT) window.ACCOUNT.entry(nameBox, "name", { query: ARR && ARR.kind === "join" ? "join=" + ARR.code : "invite=1" });   // 🔐 account.js
     }
     root = h("div", { id: "jn-wel", class: "jn-wel", role: "dialog", "aria-modal": "true", "aria-labelledby": "jn-h", "data-plat": plat }, [
       h("div", { class: "jn-card" }, [

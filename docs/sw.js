@@ -14,6 +14,7 @@ var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfre
 // 🗺️ Kartstil beta: OpenFreeMap style + TileJSON change weekly (network first); vector tiles are bigger than PNGs (byte cap).
 var TILE_META = /^\/(styles\/[^/]+|planet)\/?$/, TILE_BYTES = 40 * 1024 * 1024;
 var TILE_MAX = 300, TILE_MAX_AGE = 14 * 86400e3, NAV_TIMEOUT_MS = 4000;
+var SHELL_MAX_AGE = 3 * 86400e3;   // smooth: cached index.html younger than this opens the app at once
 var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json)$/;
 
 function shellFromIndex(html) {
@@ -88,6 +89,18 @@ function networkFirst(req, e) {
   });
   keep(e, net.catch(function () {}));
   return Promise.race([first, slow]);
+}
+// smooth: app shell first. The page for this version is in the VERSION cache with the same ?v= scripts, so it always
+// fits the cached code. Answer it at once and refresh it in the background (stale-while-revalidate).
+function shellFirst(req, e) {
+  return caches.open(VERSION).then(function (c) {
+    return c.match(req, { ignoreSearch: true }).then(function (hit) { return hit || c.match("./index.html"); }).then(function (hit) {
+      var at = hit ? Date.parse(hit.headers.get("date") || "") : NaN;
+      if (!hit || !(Date.now() - at < SHELL_MAX_AGE)) return networkFirst(req, e);
+      keep(e, networkFirst(req, e).catch(function () {}));   // refresh the cached page for the next start
+      return hit;
+    });
+  }).catch(function () { return networkFirst(req, e); });
 }
 // Code and styles: cache first (the URLs carry ?v=<hash>, so a new file has a new URL).
 function cacheFirst(req, cacheName) {
@@ -199,7 +212,8 @@ self.addEventListener("fetch", function (e) {
   if (DATA_RE.test(url.pathname)) { e.respondWith(staleWhileRevalidate(req, e)); return; }
   // Self-hosted fonts never change under the same name: keep them across app versions.
   if (/\/fonts\/[^/]+\.woff2$/.test(url.pathname)) { e.respondWith(cdnFirst(req)); return; }
-  if (req.mode === "navigate" || /\.html?$/.test(url.pathname) || url.pathname === scopePath) { e.respondWith(networkFirst(req, e)); return; }
+  if (req.mode === "navigate") { e.respondWith(shellFirst(req, e)); return; }
+  if (/\.html?$/.test(url.pathname) || url.pathname === scopePath) { e.respondWith(networkFirst(req, e)); return; }
   // config.js without ?v= (not stamped yet): network first, it holds the server address.
   if (/\/config\.js$/.test(url.pathname) && !url.searchParams.has("v")) { e.respondWith(networkFirst(req, e)); return; }
   e.respondWith(cacheFirst(req, VERSION));

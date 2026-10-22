@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.ACCOUNT].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -917,28 +917,36 @@
     var obstacles = [], labels = [], badges = [];
     icons.forEach(function (ic) {
       var p = +(ic.getAttribute("data-prio") || 0);
-      ic.querySelectorAll(".bar-ico, .pill, .rl-pin").forEach(function (x) { obstacles.push({ ic: ic, r: x.getBoundingClientRect() }); });
+      ic.querySelectorAll(".bar-ico, .pill, .rl-pin").forEach(function (x) { obstacles.push({ ic: ic, el: x }); });   // smooth: rect read below
       ic.querySelectorAll(BADGES).forEach(function (x) { x.classList.remove("lbl-hide"); badges.push({ ic: ic, el: x, p: p * 10 + badgeRank(x) }); });
       var lb = ic.querySelector(".cm-lbl");
       if (lb) { lb.classList.remove("lbl-hide"); if (on) labels.push({ ic: ic, el: lb, p: p }); }
     });
     badges.sort(function (a, b) { return b.p - a.p; });
     labels.sort(function (a, b) { return b.p - a.p; });
+    // smooth: reads in one batch (no write between them), hides written after.
+    obstacles.forEach(function (o) { o.r = o.el.getBoundingClientRect(); });
+    badges.forEach(function (x) { x.r = x.el.getBoundingClientRect(); });
+    var hideB = [];
     var kept = [], W = cont.clientWidth, H = cont.clientHeight, cr = cont.getBoundingClientRect();
     var hit = function (a, b) { return a.left < b.right + 2 && a.right > b.left - 2 && a.top < b.bottom + 1 && a.bottom > b.top - 1; };
     badges.forEach(function (x) {
-      var r = x.el.getBoundingClientRect(); if (!r.width) return;
+      var r = x.r; if (!r.width) return;
       var bad = kept.some(function (k) { return hit(r, k); }) || obstacles.some(function (o) { return o.ic !== x.ic && hit(r, o.r); });
-      if (bad) x.el.classList.add("lbl-hide"); else kept.push(r);
+      if (bad) hideB.push(x.el); else kept.push(r);
     });
+    hideB.forEach(function (e) { e.classList.add("lbl-hide"); });
     if (!on) return;
+    labels.forEach(function (x) { x.r = x.el.getBoundingClientRect(); });   // smooth: one layout after the badge hides
+    var hideL = [];
     labels.forEach(function (x) {
-      var r = x.el.getBoundingClientRect();
+      var r = x.r;
       if (r.right < cr.left || r.left > cr.left + W || r.bottom < cr.top || r.top > cr.top + H) return;   // off screen: keep, costs nothing
       var bad = kept.some(function (k) { return hit(r, k); }) ||
         obstacles.some(function (o) { return o.ic !== x.ic && hit(r, o.r); });
-      if (bad) x.el.classList.add("lbl-hide"); else kept.push(r);
+      if (bad) hideL.push(x.el); else kept.push(r);
     });
+    hideL.forEach(function (e) { e.classList.add("lbl-hide"); });
   }
   map.on("zoomend moveend", labelsSoon);
   // Selected marker: 1.25× and on top while its popup is open.
@@ -1843,6 +1851,7 @@
         body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn(t("reauthRetry"), "btn-green btn-block", function () { fin("retry"); closeSheet("pick"); })]));
         body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("reauthFlytt"), "btn-amber btn-block", function () { fin("flytt"); showFlyttImport(); })]));
         body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("reauthNew"), "btn-ghost btn-block", function () { fin("new"); closeSheet("pick"); })]));
+        if (window.ACCOUNT) window.ACCOUNT.entry(body, "reauth");   // 🔐 account.js
       }, { now: true, onClose: function () { fin("later"); } });
     });
     return askingAcc;
@@ -2309,6 +2318,7 @@
     return true;
   }
   function closeSheet(reason) {
+    try { if (window.SMOOTH && !$("sheet").hidden) window.SMOOTH.sheetOut(); } catch (e) {}   // smooth: slide-down copy
     $("sheet").hidden = true; $("backdrop").hidden = true; $("sheet-body").innerHTML = "";
     var cur = sheetCur; sheetCur = null;
     if (cur && cur.onClose) { try { cur.onClose(typeof reason === "string" ? reason : "cancel"); } catch (e) {} }
@@ -2351,6 +2361,7 @@
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
       body.appendChild(el("label", { class: "fld", for: "name-inp", text: t("nameHint") }));
       body.appendChild(inp);
+      if (window.ACCOUNT) window.ACCOUNT.entry(body, "name", { query: joinCode ? "join=" + U.cleanCode(joinCode) : "" });   // 🔐 account.js
       body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn(t("next"), "btn-amber btn-block", go)]));
       setTimeout(function () { inp.focus(); }, 50);
     });
@@ -3068,8 +3079,9 @@
       resumeNotify();
       if (PUSH_ON) window.PUSH.resync(rpc, CFG.VAPID_PUBLIC_KEY).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
       startPoll();
+      var firstPoll = refresh();   // smooth: pins first, the ~30 module calls after
       mods("onAuthed");
-      return refresh();
+      return firstPoll;
     }).catch(function (e) {
       var m = String((e && e.message) || "");
       if (e && e.keep) { if (m === "choice_retry") setTimeout(signIn, 300); else if (m === "choice_later") toast(t("authFail"), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } }); return; }
@@ -3247,6 +3259,7 @@
       var box = el("div");
       flyttPasteUI(box, false);
       body.appendChild(box);
+      if (window.ACCOUNT) window.ACCOUNT.entry(body, "flytt");   // 🔐 account.js
       body.appendChild(btn(t("flyttNo"), "btn-block btn-ghost intro-later", function () {
         U.ls.set("olnu.flyttAsked", "1");
         root.hidden = true; body.innerHTML = ""; body.classList.remove("flytt-card");
@@ -3331,6 +3344,7 @@
         resolve();
       }));
       body.appendChild(el("p", { class: "intro-priv", text: t("flyttStayNote") }));
+      if (window.ACCOUNT) window.ACCOUNT.entry(body, "moved");   // 🔐 account.js
       root.hidden = false;
     });
     return movedShowing;
@@ -3487,6 +3501,7 @@
         body.appendChild(go);
         body.appendChild(el("p", { class: "intro-priv", text: t("introPrivacy") }));
         if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: stepPriv }));
+        if (!again && window.ACCOUNT) window.ACCOUNT.entry(body, "intro");   // 🔐 account.js
       }
       // 🔒 Integritet inside the intro card (the intro covers the sheet layer).
       function stepPriv() {
@@ -3714,5 +3729,6 @@
     U.ls.set("olnu.notifAsked", "");                             // let the prompt box show again
     askNotifSheet();
   }
-  start();
+  // smooth: the app shell (HUD + map + first tiles) paints first, then the modules start (max 300 ms later).
+  if (window.SMOOTH && window.SMOOTH.afterPaint) window.SMOOTH.afterPaint(start); else start();
 })();

@@ -168,7 +168,8 @@
       var tm = null;
       new MutationObserver(function () { if (busy) return; clearTimeout(tm); tm = setTimeout(scan, 40); }).observe(body, { childList: true });
       body.addEventListener("scroll", function () { body.classList.toggle("ds-scrolled", body.scrollTop > 4); }, { passive: true });
-      new MutationObserver(function () { body.classList.toggle("ds-scrolled", body.scrollTop > 4); }).observe(body, { childList: true });
+      var dsRaf = 0;   // smooth: read scrollTop in the next frame (no forced layout in the middle of a sheet build)
+      new MutationObserver(function () { if (!dsRaf) dsRaf = requestAnimationFrame(function () { dsRaf = 0; body.classList.toggle("ds-scrolled", body.scrollTop > 4); }); }).observe(body, { childList: true });
       scan();
     }
     var t = document.getElementById("sheet-title");
