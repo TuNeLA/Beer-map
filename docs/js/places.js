@@ -58,13 +58,28 @@
   function rel(r, cr) { return { l: r.left - cr.left, t: r.top - cr.top, r: r.right - cr.left, b: r.bottom - cr.top }; }
   function hit(a, b) { return a.l < b.r + PAD_PX && a.r > b.l - PAD_PX && a.t < b.b + PAD_PX && a.b > b.t - PAD_PX; }
   // What the map already shows: bar / arena / people markers and visible bar labels (rects in container px) + spot ids.
+  // A bar marker may still sit at its old-zoom position (busy phone): shift its rects to the projected bar position.
+  function shiftOf(icon, cr) {
+    try {
+      var id = icon.getAttribute("data-bar"), b = id && window.BARS.byId(id); if (!b) return null;
+      var pt = map.latLngToContainerPoint([b.lat, b.lng]), r = icon.getBoundingClientRect();
+      return { x: pt.x - (r.left - cr.left + r.width / 2), y: pt.y - (r.top - cr.top + r.height / 2) };
+    } catch (e) { return null; }
+  }
   function obstacles(cont) {
-    var cr = cont.getBoundingClientRect(), out = [], ids = {};
+    var cr = cont.getBoundingClientRect(), out = [], ids = {}, shifts = new Map();
     cont.querySelectorAll(".leaflet-hotbars-pane .cm[data-bar], .leaflet-bars-pane .cm[data-bar]").forEach(function (x) { ids[x.getAttribute("data-bar")] = true; });
     cont.querySelectorAll(".leaflet-hotbars-pane .bar-ico, .leaflet-hotbars-pane .pill, .leaflet-hotbars-pane .cm-rally, .leaflet-bars-pane .bar-ico," +
       " .cm-ci:not(.lbl-hide), .cm-b:not(.lbl-hide), .bm-crowd:not(.lbl-hide), .bm-q:not(.lbl-hide), .me-dot," +
-      " .leaflet-arenapins-pane .ap-pin, .leaflet-marker-pane .pill, .leaflet-marker-pane .rl-pin, .cm-labels .cm-lbl:not(.lbl-hide)").forEach(function (x) {
-      var r = x.getBoundingClientRect(); if (r.width || r.height) out.push(rel(r, cr));
+      " .leaflet-arenapins-pane .ap-pin, .leaflet-marker-pane .pill, .leaflet-marker-pane .rl-pin, .cm-labels .cm-lbl:not(.lbl-hide), .bi-tag").forEach(function (x) {
+      var r = x.getBoundingClientRect(); if (!r.width && !r.height) return;
+      var o = rel(r, cr), ic = x.closest && x.closest(".cm[data-bar]");
+      if (ic) {
+        if (!shifts.has(ic)) shifts.set(ic, shiftOf(ic, cr));
+        var d = shifts.get(ic);
+        if (d && (Math.abs(d.x) > 1 || Math.abs(d.y) > 1)) out.push({ l: o.l + d.x, t: o.t + d.y, r: o.r + d.x, b: o.b + d.y });
+      }
+      out.push(o);   // where it is drawn now too (it may not have moved yet)
     });
     return { rects: out, ids: ids };
   }
@@ -167,12 +182,20 @@
       map.on("moveend", function () { soon(150); });
       // after a zoom other layers may still settle (CSS zoom transitions): draw now and once more when it is calm
       var late = 0;
-      map.on("zoomend", function () { soon(150); clearTimeout(late); late = setTimeout(function () { soon(0); }, 700); });
+      map.on("zoomend", function () { soon(150); clearTimeout(late); late = setTimeout(function () { soon(0); late = setTimeout(function () { soon(0); }, 1300); }, 700); });
       try { window.BARS.onPlacesReady(function () { soon(450); }); } catch (e) {}
       // app.js redraws bar markers on its own (poll, places loaded, zoom band): follow it, so dots and names avoid the new markers.
       try {
         var mo = new MutationObserver(function () { if (on() && (map.getZoom() >= MIN_Z || nmOn())) soon(120); });
         ["bars", "hotbars", "arenapins"].forEach(function (n) { var pn = map.getPane(n); if (pn) mo.observe(pn, { childList: true }); });
+        // app.js's label pass shows / hides bar names (lbl-hide) after its own timers: follow that too (net changes only)
+        var lblSig = "";
+        var mo2 = new MutationObserver(function () {
+          if (!on() || map.getZoom() < LABEL_Z) return;
+          var sg = ""; map.getContainer().querySelectorAll(".cm-labels .cm-lbl:not(.lbl-hide)").forEach(function (x) { var c = x.closest(".cm[data-bar]"); sg += (c ? c.getAttribute("data-bar") : "") + ","; });
+          if (sg !== lblSig) { lblSig = sg; soon(120); }
+        });
+        ["bars", "hotbars"].forEach(function (n) { var pn = map.getPane(n); if (pn) mo2.observe(pn, { subtree: true, attributes: true, attributeFilter: ["class"] }); });
       } catch (e) {}
       soon(1200);
     },

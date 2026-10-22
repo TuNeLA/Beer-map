@@ -1,0 +1,46 @@
+/* Öl Nu — 💬 MEDDELANDEN (js/dm.js). Uses the ds.css tokens; no animation, no blinking. */
+.dm-box { margin: 0 0 var(--ds-4, 16px); }
+.dm-box[hidden], .dm-lock[hidden], .dm-ask[hidden], .dm-tabn[hidden] { display: none; }
+.dm-h { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--ds-2, 8px); font-size: var(--ds-fs-14, 14px); color: var(--ds-text-2, #c9d0cd); }
+.dm-hn, .dm-tabn { display: inline-block; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ds-red, #c8202a); color: #fff;
+  font: 700 11px/18px var(--ds-sans, sans-serif); text-align: center; }
+.inv-tabs .dm-tabn { margin-left: 6px; vertical-align: 1px; }
+.dm-list { list-style: none; margin: 0; padding: 0; border-radius: var(--ds-r-1, 12px); background: var(--ds-card, #19233a); overflow: hidden; }
+.dm-row { display: flex; align-items: center; gap: var(--ds-3, 12px); min-height: 60px; padding: var(--ds-2, 8px) var(--ds-3, 12px); cursor: pointer; }
+.dm-row + .dm-row { border-top: 1px solid var(--ds-border, rgba(255,255,255,.1)); }
+.dm-row:focus-visible { outline: 2px solid var(--ds-amber, #f5a623); outline-offset: -2px; }
+.dm-av { flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ds-raised, #222e48); color: var(--ds-text, #eef0ec); font-weight: 700; font-size: 17px; box-shadow: inset 0 0 0 2px var(--ds-border-2, rgba(255,255,255,.16)); }
+.dm-av.out { box-shadow: inset 0 0 0 2px var(--ds-green, #3ddc84); }
+.dm-av.sm { width: 32px; height: 32px; font-size: 14px; }
+.dm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dm-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dm-top b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ds-fs-16, 16px); }
+.dm-time { flex: none; color: var(--ds-muted, #a7b0ac); font-size: var(--ds-fs-12, 12px); }
+.dm-prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-text-2, #c9d0cd); font-size: var(--ds-fs-14, 14px); }
+.dm-new .dm-prev { color: var(--ds-text, #eef0ec); font-weight: 600; }
+.dm-new .dm-time { color: var(--ds-amber-t, #ffc24d); }
+.dm-off { opacity: .6; }
+.dm-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: var(--ds-r-pill, 999px); background: var(--ds-red, #c8202a); color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
+.dm-more { margin-top: var(--ds-2, 8px); width: 100%; }
+/* 💬 on a friend row / member panel */
+.dm-fb { min-width: 40px; }
+/* chat view */
+.dm-chead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 var(--ds-2, 8px);
+  padding: var(--ds-2, 8px) var(--ds-3, 12px); border-radius: var(--ds-r-1, 12px); background: var(--ds-card, #19233a); }
+.dm-cwho { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dm-cwho > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.dm-cwho b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-cwho small { font-size: var(--ds-fs-12, 12px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-cacts { flex: none; display: flex; gap: 6px; }
+.dm-ask { margin: 0 0 var(--ds-2, 8px); padding: var(--ds-3, 12px); border-radius: var(--ds-r-1, 12px); background: var(--ds-red-soft, rgba(255,59,59,.12));
+  border: 1px solid var(--ds-red, #c8202a); }
+.dm-ask p { margin: 0 0 var(--ds-2, 8px); }
+.dm-ask .row { display: flex; gap: 8px; }
+.dm-lock { margin-top: var(--ds-2, 8px); padding: var(--ds-3, 12px); border-radius: var(--ds-r-1, 12px); background: var(--ds-raised, #222e48); text-align: center; }
+.dm-lock-t { margin: 0 0 var(--ds-2, 8px); }
+.chat-list .dm-seen { list-style: none; text-align: right; margin: -2px 6px 6px; font-size: 12px; color: var(--ds-muted, #a7b0ac); }
+.chat-list .dm-seen.on { color: var(--ds-amber-t, #ffc24d); }
+.dm-pin { margin-top: 6px; }
+.dm-ask .dm-yes { background: var(--ds-red, #c8202a); color: var(--ds-on-red, #fff); border-color: var(--ds-red, #c8202a); }

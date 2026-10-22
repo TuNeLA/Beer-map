@@ -452,7 +452,7 @@
         heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.textContent = beersText(h.m); paintTags(h); });
       }
       function loadStats() {
-        if (!statusOn() || !alive() || g.ev) return;
+        if (!statusOn() || !alive() || g.ev || g.dm) return;
         groupStatus(g.id).then(function (r) {
           if (r.error || !alive()) return;
           stats = {}; meStat = null;
@@ -546,8 +546,9 @@
       // v16: voice skål (js/after.js) adds a mic button and voice rows to this chat.
       try { if (window.AFTER && window.AFTER.chatOpen) window.AFTER.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
       try { if (window.PHOTO && window.PHOTO.chatOpen) window.PHOTO.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
-      try { if (!g.ev && window.RUNDAN && window.RUNDAN.chatOpen) window.RUNDAN.chatOpen(g, { list: list, input: inp.parentNode, alive: alive }); } catch (e) {}   // 💸 Swish cards
+      try { if (!g.ev && !g.dm && window.RUNDAN && window.RUNDAN.chatOpen) window.RUNDAN.chatOpen(g, { list: list, input: inp.parentNode, alive: alive }); } catch (e) {}   // 💸 Swish cards
       try { if (g.ev && window.EVCHAT && window.EVCHAT.chatOpen) window.EVCHAT.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}
+      try { if (g.dm && window.DM && window.DM.chatOpen) window.DM.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}   // 💬 1:1
       function add(m, anchor) {
         if (!m || seen[m.id]) return;
         seen[m.id] = 1;
@@ -557,7 +558,7 @@
         var tagEl = el("span", { class: "cm-tags" });   // v25: 👑/🎖️/🎗️ + "Ludvikabo", small, after the rank + name
         var hd = { m: m, name: nmEl, n: nEl, tag: tagEl };
         heads.push(hd); paintTags(hd);
-        if (medalsOn() && !g.ev && (m.name || m.is_me)) {
+        if (medalsOn() && !g.ev && !g.dm && (m.name || m.is_me)) {
           nmEl.classList.add("cm-tap"); nmEl.setAttribute("role", "button"); nmEl.setAttribute("tabindex", "0");
           var openU = function () { var s = statOf(m); window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null, meriter: s ? s.meriter : null }, function () { openChat(g); }); };
           nmEl.addEventListener("click", openU);
@@ -602,7 +603,7 @@
           picker.appendChild(b);
         });
         // v19 Citatboken (js/gang.js): "📖 Citat" in the same menu.
-        try { if (!g.ev && window.GANG && window.GANG.chatPick) window.GANG.chatPick(picker, g, chatMsgs[id], closePicker); } catch (x) {}
+        try { if (!g.ev && !g.dm && window.GANG && window.GANG.chatPick) window.GANG.chatPick(picker, g, chatMsgs[id], closePicker); } catch (x) {}
         li.appendChild(picker); pickerAt = Date.now();
         // Near the top of the list: show the picker under the message instead of above it.
         if (li.getBoundingClientRect().top - list.getBoundingClientRect().top < 50) { picker.style.top = "auto"; picker.style.bottom = "-44px"; }
@@ -709,7 +710,11 @@
           var g = null;
           (r.data || []).forEach(function (x) { if (x && String(x.id).toLowerCase() === String(id).toLowerCase()) g = x; });
           if (g) openChat(g);
-          else if (window.EVCHAT && window.EVCHAT.openById) window.EVCHAT.openById(id, function () { if (!r.error) A.toast(t("chatNotMember"), { err: true }); });
+          else if (window.EVCHAT && window.EVCHAT.openById) window.EVCHAT.openById(id, function () {
+            if (window.DM && window.DM.openById) window.DM.openById(id, function () { if (!r.error) A.toast(t("chatNotMember"), { err: true }); });
+            else if (!r.error) A.toast(t("chatNotMember"), { err: true });
+          });
+          else if (window.DM && window.DM.openById) window.DM.openById(id, function () { if (!r.error) A.toast(t("chatNotMember"), { err: true }); });
           else if (!r.error) A.toast(t("chatNotMember"), { err: true });
         });
       });
@@ -787,6 +792,7 @@
             var p = null;
             try { p = window.CHIEF && window.CHIEF.memberPanel ? window.CHIEF.memberPanel(g, m, all, function () { showStatus(g); }, openU) : null; } catch (e) { p = null; }
             try { if (window.NEAR && window.NEAR.memberPanel) p = window.NEAR.memberPanel(g, m, p, openU); } catch (e) {}   // v26: ➕ Lägg till vän, 🧭 Hitta
+            try { if (window.DM && window.DM.memberPanel) p = window.DM.memberPanel(g, m, p, openU); } catch (e) {}   // 💬 Skriv
             return p;
           };
           var hasActs = !m.is_me && !!m.k && (m.can_remove || all.some(function (x) { return x.is_me && (x.is_owner || x.is_chief); }) || !!window.NEAR);

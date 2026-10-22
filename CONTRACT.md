@@ -2151,3 +2151,49 @@ max 8; names via olnu_friend_name), remind (my 1 h push is still coming), told}`
 - Flyttkod unchanged. Owner steps (dashboard): custom SMTP; templates Magic Link + Change Email Address with `{{ .Token }}`;
   Confirm email ON; OTP expiry 900 s; URL config `https://tunela.github.io/Beer-map/docs/**`; then
   `update public.app_account_flags set enabled = true, updated_at = now() where key = 'email_login';`
+
+## 💬 MEDDELANDEN (1:1 private messages between friends; additive)
+Migrations `0136_dm_tables.sql`, `0137_dm_rpcs.sql`, `0138_dm_exclude.sql` (applied live 2026-10-22 under the same names). No row is ever removed.
+Edge function `notify-group` **v25** (merged on top of deployed v24). Client: `docs/js/dm.js` (`window.DM`), `docs/dm.css`; patches dm 01–06
+(index.html, app.js `mods()` after SUGGEST, social.js, invite.js, inbox.js, this section). A missing RPC (old server) = every DM part hides.
+
+### Model (same trick as the event chats)
+- A thread = a hidden `groups` row (name "💬 Direkt", `created_by` NULL, random valid code) + `dm_threads(group_id pk, a < b, created_by, created_at)`,
+  unique per pair. **Nobody is ever a `group_members` row** (BEFORE INSERT guard `olnu_dm_guard` → `group_not_found`, so the code cannot be joined),
+  so a DM is never in `my_groups`, Grupper, group pickers, `friend_list`, pins, duels, leagues, boards, squad, crew, gang or friend auto-add.
+- `olnu_chat_can` (0084) now also asks `olnu_dm_access(group, uid)`: participant + still friends (accepted friendship or a shared real group) +
+  no block either way = write; participant otherwise = read; others none. So `group_msgs`, `post_group_msg`, `react_msg`, `msg_reacts`, `like_msg`,
+  `post_photo`, `group_photos`, `group_photo`, `post_voice`, `group_voices`, `voice_audio` work unchanged. `olnu_is_temp_group` is true for DMs
+  too (names come from `olnu_friend_name`). `group_keep_history` answers `not_member` (switch hidden).
+- DM messages, photos and voice live **7 days** (BEFORE INSERT trigger `olnu_zz_dm_exp`), not until 05:00.
+- 0138: DM rows never count: `olnu_duel_photo_tg`, `olnu_mer_photo_tg` (meriter), `olnu_medal_msg_tg` (medal chat count) and `olnu_g_progress('chat')`
+  skip DM groups (re-created from the deployed versions, one line each).
+- Tables `dm_threads`, `dm_state(group_id, user_id, seen_id, seen_at, muted)`, `dm_blocks(blocker, blocked, active)` — RLS on, no policies, service_role only.
+  Note: the 0016c uuid sweep does not move DM rows (an erased user shows as "?" in old threads; the thread is read-only).
+
+### RPCs (authenticated only, SECURITY DEFINER, `olnu_uid()`)
+| name | params | returns | errors |
+|---|---|---|---|
+| `dm_open` | `p_key` (friend_list key) \| `p_group_id + p_k` (member key 0030) \| `p_pin` (map pin id), `p_name` | thread json `{group_id, name, home_town, can_write, friends, blocked_by_me, blocked_me, muted, my_seen_id, other_seen_id, other_seen_at}`; an existing thread is returned even when read-only; a new one needs friends + no block; 20 new threads / h | `invalid_target`, `not_member`, `not_friends`, `blocked`, `slow_down` |
+| `my_dms` | – | `{v, now, unread, threads:[thread json + last_id, last_body (80), last_at, last_me, unread (≤ 99), at, out]}` newest first, max 50; a thread shows when it has a live message (or I opened it < 1 h ago) | – |
+| `dm_seen` | `p_group_id, p_last_id default 0` | thread json; marks my seen id (capped at the newest message). "Sett" (`other_seen_*`) is 0/null while a block is on | `not_member` |
+| `dm_block` | `p_group_id, p_on default true` | thread json (blocks the other person; both ways closed; 10 / min) | `not_member`, `slow_down` |
+| `dm_mute` | `p_group_id, p_on default true` | thread json (no pushes to me for this thread) | `not_member` |
+| `dm_push_target(p_gid, p_uid)` | **service_role only** | `{dm:false}` \| `{dm:true, to:[uuid], name}` \| `{dm:true, to:[], reason: not_member\|dm_closed\|muted}` | – |
+
+### notify-group v25
+`msgPush` / `voicePush`: when the caller has no `group_members` row and `evchat_push_mates` is empty, `dmPush` asks `dm_push_target`. `{event:"msg"|"dm", group_id}` →
+title "💬 Anton: text…" (90 chars), body "🔒 Privat meddelande · tryck för att svara"; voice → "🎙️ Anton skickade ett röstmeddelande"; url `/?chat=<gid>`, tag
+`olnu-dm-<gid>`, TTL 1 h. Limit: 1 push per sender per thread per 20 s (`push_sent` kind `dm:<gid>`) → `slow_down`. No push when blocked, not friends or muted.
+
+### Frontend (no new map buttons)
+- Entry points: **💬** on every Vänner row (invite.js `friendsMore` → `DM.friendBtn`), **💬 Skriv** in the member panel (social.js `showStatus` →
+  `DM.memberPanel`, Grupper → group ⋯ → Medlemmar), **💬 Skriv till X** in a friend's pin popup (`beerPopupHTML`).
+- **💬 Meddelanden** box at the TOP of the Vänner tab (hidden when there are no threads): initial avatar (green ring = out now), name, time, "Du: …" / "📷 Bild",
+  red unread count; 4 rows + "Visa alla (n)". Unread joins the red count on the existing Grupper button (inbox.js `paintBadge` adds `DM.unread()`; the
+  🔔 Inkorg tab count stays inbox-only) and a small count on the Vänner tab. A toast "💬 Lisa: …" + "Svara" once per new message (< 10 min old, chat not open).
+- **The chat** = social.js `openChat({id, name, dm})`: text, 📷, 🎙️, reactions (🍻 skål). With `g.dm`: no ranks / medals / Swish / quote menu / 💾; header
+  "🔒 Privat – bara ni två" + 🔕/🔔 + 🚫 Blockera (inline confirm); "✓ Skickat" / "👀 Sett 21:04" under MY last message; blocked → the input is replaced by
+  "🚫 Du har blockerat Lisa…" + ✅ Avblockera, or "🔒 Du kan int' skriva hit just nu."; ← back opens Vänner. My new 📷 rows send the DM push.
+- Push tap `?chat=<gid>`: social.js `openChatLink` → my_groups → `EVCHAT.openById` → `DM.openById`.
+- Polling: `my_dms` on sign-in, with the app poll (≥ 30 s; 12 s while Vänner is open), when visible; `dm_seen` every 4 s while a DM is open. No typing dots.

@@ -27,6 +27,9 @@
 //   falls back to the service-role RPC evchat_push_mates (✅/🤔 participants; empty unless the sender may write).
 // v24 📅 GÅR (0127/0128): {event:"ev_due"} -> "⏰ Om 1 timme: Pubquiz" to the caller when an event they marked Går starts
 //   in 50–70 min (ev_going_due_claim, atomic reminded_at claim); the cron (x-olnu-cron) sends every due one after the invites.
+// v25 💬 MEDDELANDEN (0136–0138): "msg" / "dm" / "voice" in a 1:1 DM group (no group_members rows) -> ONE push to the other
+//   person, "💬 Anton: text…" / "🎙️ Anton skickade ett röstmeddelande" (dm_push_target: empty when blocked, not friends any
+//   more or muted by the receiver); 1 push per sender per thread per 20 s (push_sent kind dm:<gid>); url /?chat=<gid>.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1365,7 +1368,10 @@ async function msgPush(admin: Admin, uid: string, b: Body) {
   if (!isUuid(b.group_id)) return { ...NONE, reason: "bad_group" };
   const gid = b.group_id as string;
   const mates = await mateNames(admin, uid, gid); // empty when the caller is not a member
-  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  if (mates.size === 0) {
+    const d = await dmPush(admin, uid, gid, "msg"); // v25: a 1:1 DM group
+    return d ?? { ...NONE, reason: "no_group" };
+  }
   const nowIso = new Date().toISOString();
   const { data: msg, error } = await admin
     .from("group_msgs").select("id, body, created_at")
@@ -1383,6 +1389,43 @@ async function msgPush(admin: Admin, uid: string, b: Body) {
   const payload = JSON.stringify(msgPayload(namn, msg.body as string, (g?.name as string) ?? "", gid));
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
+}
+
+// ---- v25 💬 MEDDELANDEN (1:1 DM groups, 0136–0138) ----
+export const DM_RATE_SEC = 20;
+export function dmPayload(namn: string, body: string, gid: string, voice = false) {
+  const n = cleanBarName(namn) || "Nån";
+  const b = String(body || "").replace(/\s+/g, " ").trim();
+  return {
+    title: voice ? `🎙️ ${n} skickade ett röstmeddelande` : `💬 ${n}: ${b.length > 90 ? b.slice(0, 89) + "…" : b}`,
+    body: voice ? "🔒 Privat · tryck för att lyssna" : "🔒 Privat meddelande · tryck för att svara",
+    url: `/?chat=${gid}`,
+    tag: `olnu-dm-${gid}`,
+  };
+}
+/** null = not a DM group (the caller goes on as before). */
+async function dmPush(admin: Admin, uid: string, gid: string, kind: "msg" | "voice") {
+  const { data: t, error } = await admin.rpc("dm_push_target", { p_gid: gid, p_uid: uid });
+  if (error) { console.warn("dm_push_target", error.message); return null; }
+  const d = (t ?? {}) as { dm?: boolean; to?: string[]; name?: string; reason?: string };
+  if (!d.dm) return null;
+  const to = Array.isArray(d.to) ? d.to.filter(isUuid) : [];
+  if (!to.length) return { ...NONE, reason: d.reason || "dm_off" };
+  let body = "";
+  if (kind === "msg") {
+    const { data: msg, error: mErr } = await admin
+      .from("group_msgs").select("id, body")
+      .eq("group_id", gid).eq("user_id", uid).gt("expires_at", new Date().toISOString())
+      .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .order("id", { ascending: false }).limit(1).maybeSingle();
+    if (mErr) throw mErr;
+    if (!msg) return { ...NONE, reason: "no_msg" };
+    body = msg.body as string;
+  }
+  if (!(await rateClaim(admin, uid, `dm:${gid}`, DM_RATE_SEC))) return { ...NONE, reason: "slow_down" };
+  const payload = JSON.stringify(dmPayload(d.name || "Nån", body, gid, kind === "voice"));
+  const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 3600) : { ...NONE, reason: "no_subs" };
 }
 
 // ---- v9 INKALLELSE ----
@@ -1645,7 +1688,10 @@ async function voicePush(admin: Admin, uid: string, b: Body) {
   if (!v) return { ...NONE, reason: "no_voice" };
   const gid = v.group_id as string;
   const mates = await mateNames(admin, uid, gid);
-  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  if (mates.size === 0) {
+    const d = await dmPush(admin, uid, gid, "voice"); // v25: a 1:1 DM group
+    return d ?? { ...NONE, reason: "no_group" };
+  }
   if (!(await rateClaim(admin, uid, `voice:${gid}`, 120))) return { ...NONE, reason: "slow_down" };
   const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
   const idx = Math.floor(Math.random() * VOICE_LINES.length);
@@ -2103,7 +2149,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     if (event === "comehere") return json(await comeHere(admin, uid, body));
     if (event === "sos") return json(await sos(admin, uid, body));
-    if (event === "msg") return json(await msgPush(admin, uid, body));
+    if (event === "msg" || event === "dm") return json(await msgPush(admin, uid, body));
     if (event === "rally") return json(await rallyPush(admin, uid, body));
     if (event === "rally_yes") return json(await rallyYesPush(admin, uid, body));
     if (event === "checkin") return json(await checkinPush(admin, uid, body));

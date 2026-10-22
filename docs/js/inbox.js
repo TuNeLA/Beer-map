@@ -94,12 +94,13 @@
   function paintBadge() {
     var n = off ? 0 : unseen();
     var b = document.getElementById("btn-groups");
+    var nb = n; try { if (window.DM && window.DM.unread) nb += window.DM.unread() | 0; } catch (e) {}   // 💬 unread DMs join the count
     if (b) {
       var s = document.getElementById("ib-badge");
       if (!s) { s = h("span", { id: "ib-badge", class: "ib-badge", "aria-hidden": "true" }); b.appendChild(s); }
-      s.textContent = n > 9 ? "9+" : String(n); s.hidden = !n;
-      b.classList.toggle("ib-has", !!n);
-      if (n) b.setAttribute("data-ib", String(n)); else b.removeAttribute("data-ib");
+      s.textContent = nb > 9 ? "9+" : String(nb); s.hidden = !nb;
+      b.classList.toggle("ib-has", !!nb);
+      if (nb) b.setAttribute("data-ib", String(nb)); else b.removeAttribute("data-ib");
     }
     document.querySelectorAll(".ib-tabn").forEach(function (x) { x.textContent = n ? String(n > 9 ? "9+" : n) : ""; x.hidden = !n; });
   }
@@ -256,7 +257,7 @@
     onPoll: function () { load(false); },
     groupsSheet: function (body) { try { groupsSheet(body); } catch (e) { try { console.warn("olnu inbox", e); } catch (x) {} } },
     applyText: function () { paintBadge(); },
-    open: open, count: function () { return off ? 0 : unseen(); }, refresh: function () { return load(true); },
+    open: open, paint: paintBadge, count: function () { return off ? 0 : unseen(); }, refresh: function () { return load(true); },
     _items: function () { return all(); }
   };
 })();

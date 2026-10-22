@@ -307,6 +307,7 @@
         var main = li.querySelector(".nr-fmain"), gl = groupsLine(p);
         if (main && gl) main.appendChild(gl);
         var rm = li.querySelector(".nr-rm-b");
+        try { var dmb = window.DM && window.DM.friendBtn ? window.DM.friendBtn(p) : null; if (dmb) li.insertBefore(dmb, rm || null); } catch (e) {}   // 💬 Skriv
         li.insertBefore(inviteBtn(p), rm || null);
         listBox.appendChild(li);
       });
