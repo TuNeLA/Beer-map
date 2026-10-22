@@ -2460,3 +2460,14 @@ Helpers (no client access): `olnu_sug_rows2(uid) → (uid, mutual, bars, g)`, `o
 - File fallback: `olnu.fmPick` {g, n, t, gal} is set before the picker opens. If the page restarts meanwhile, the app reopens
   the camera sheet and shows "📷 Telefonen stängde appen" with "🖼️ Välj bilden från Galleriet" (no `capture` = no camera
   app) and "📸 Använd appens kamera". Gallery files older than 12 h (lastModified) are refused.
+
+### 🏷️ PIN-NIVÅER 2 (owner feedback 2026-10-22: heat in metres, my bars at every zoom; patches tiers 08–11, new docs/js/mypins.js)
+- **Heat in metres** (app.js `HEAT_M = [500, 10, 0.72, 9]`, `heatMeters(z)`): 500 m at zoom ≤ 12, halving every ~1.4 zoom steps,
+  clamped 10–500 m (z15 ≈ 112 m, z17 ≈ 41 m, z18 ≈ 25 m, z19 ≈ 15 m); it follows the map exactly. Only a 9 px floor (far out: activity
+  never vanishes, no big discs). Replaces the px clamp `HEAT_CLAMP`. Opacity 1 → 0.6 from z13 to z15, 0.6 after (was 0.18 / 0.12).
+- **Clouds in metres** (clouds.js `cloudM(z, w)`): 300 m at zoom ≤ 12, same curve, × 0.55–1 by beers, clamped 10–300 m, 9 px floor.
+- **📍 Mina ställen** (`docs/js/mypins.js`, `window.MYPINS`, mods init / onPoll): my "Jag ä på väg" target 🏃, call-outs I made or said
+  yes / maybe to 🪖, my check-in 🚪, bars with friends / group mates drinking now 👥, my "Går" events tonight 📅, the selected bar 📍.
+  tiers.js treats them like the selected bar (always full when the marker is drawn). Where no marker shows (quiet bars < z13, all
+  bars < z11 where only the count chips are, hidden town-view dots) a small labelled pin "🏃 Pitchers" in pane `mypins` (z 700, above
+  the count chips); max 8 in view, no overlaps; tap → zoom to z ≥ 16 and open the bar sheet. `MYPINS.ids()` → `{barId: why}`.

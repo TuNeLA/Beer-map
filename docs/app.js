@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.MYPINS].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -225,7 +225,9 @@
   var HEAT_KEY = "olnu.heat";
   var heatOn = U.ls.get(HEAT_KEY, "1") !== "0";
   var heat = null;
-  var HEAT_CLAMP = [36, 24, 60];   // tiers: heat radius px — min at z ≤ 12, min at z ≥ 16, max
+  // tiers 2: heat radius in metres [max m at z ≤ 12, min m, halvings per zoom step, px floor far out]
+  var HEAT_M = [500, 10, 0.72, 9];
+  function heatMeters(z) { return Math.max(HEAT_M[1], Math.min(HEAT_M[0], HEAT_M[0] * Math.pow(2, -HEAT_M[2] * Math.max(0, z - 12)))); }
   var HEAT_R_M = 170, HEAT_MIN_PX = 34, HEAT_MAX_PX = 80, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
   function heatRadiusPx(z, lat) {
     var mpp = 156543.03 * Math.cos((lat || 0) * Math.PI / 180) / Math.pow(2, z);
@@ -233,12 +235,13 @@
     // min 34 px at zoom 15+, growing to 120 px at zoom 11 and below.
     // tiers (owner: "zoomed out the circles cover half the map, zoomed in they get tiny"): metres in the middle, clamped on
     // screen — min 36 px (z ≤ 12) → 24 px (z ≥ 16), max 60 px at every zoom. Far out, near points share a cell = one blob ≤ 60 px.
-    var minPx = z <= 12 ? HEAT_CLAMP[0] : z >= 16 ? HEAT_CLAMP[1] : HEAT_CLAMP[0] - (z - 12) / 4 * (HEAT_CLAMP[0] - HEAT_CLAMP[1]);
-    return Math.max(minPx, Math.min(HEAT_CLAMP[2], HEAT_R_M / Math.max(1e-6, mpp)));
+    // tiers 2 (owner: "the minimum in metres that follows the map, 10 m up to 500 m"): metres only, a 9 px floor far out.
+    return Math.max(HEAT_M[3], heatMeters(z) / Math.max(1e-6, mpp));
   }
   // Fade the glow when zoomed in close (markers + labels carry the detail there). Continuous: no jump.
   // tiers: strong in the town view (≤ 13), fades out between zoom 13 and 15 (the pins carry the detail), a faint trace after.
-  function heatOpacity(z) { return z <= 13 ? 1 : z >= 18 ? 0.12 : z <= 15 ? 1 - (z - 13) / 2 * 0.82 : 0.18 - (z - 15) / 3 * 0.06; }
+  // tiers 2: readable at street zoom too (0.6 from zoom 15; it sits under every marker)
+  function heatOpacity(z) { return z <= 13 ? 1 : z >= 15 ? 0.6 : 1 - (z - 13) / 2 * 0.4; }
   // Softer colour curve when zoomed out, so small towns still glow next to a big one (Strava-style per-view scale).
   function heatGamma(z) { return z <= 11 ? 0.5 : z >= 14 ? 1 : 0.5 + (z - 11) / 3 * 0.5; }
   // CSS cubic-bezier(0,0,0.25,1) = Leaflet's zoom transition. Returns eased progress for t in 0..1.
@@ -963,7 +966,7 @@
   map.on("zoomend moveend", labelsSoon);
   map.on("moveend popupopen", function () { tiersNow(); labelsSoon(); });
   map.on("popupclose", function () { setTimeout(function () { tiersNow(); labelsSoon(); }, 0); });   // after cm-sel is gone
-  if (window.TIERS) window.TIERS._app = { labels: placeLabels, render: render, plain: renderPlainBars };   // tests / perf
+  if (window.TIERS) window.TIERS._app = { labels: placeLabels, render: render, plain: renderPlainBars, heatMeters: heatMeters, heatPx: heatRadiusPx };   // tests / perf
   // Selected marker: 1.25× and on top while its popup is open.
   var selMarker = null;
   map.on("popupopen", function (e) {

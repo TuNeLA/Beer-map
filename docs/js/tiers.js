@@ -130,14 +130,15 @@
     var cont0 = map.getContainer(), hi = map.getZoom() >= 16;
     if (cont0.classList.contains("tz-hi") !== hi) cont0.classList.toggle("tz-hi", hi);
     var z = map.getZoom(), size = map.getSize(), W = size.x, H = size.y, cx = W / 2, cy = H / 2, diag = Math.sqrt(cx * cx + cy * cy) || 1;
-    var cand = [], nf = 0, nd = 0, zs = hudZones(map, W, H);
+    var cand = [], nf = 0, nd = 0, zs = hudZones(map, W, H), imp = {};
+    try { imp = window.MYPINS && window.MYPINS.ids ? window.MYPINS.ids() : {}; } catch (e) { imp = {}; }   // 📍 my bars
     for (var li = 0; li < layers.length; li++) {
       var ly = layers[li]; if (!ly || !ly.eachLayer) continue;
       ly.eachLayer(function (m) {
         var ic = m.getElement && m.getElement(), c = m.options && m.options.olnuC; if (!ic || !c) return;
         var p = map.latLngToContainerPoint(m.getLatLng());
         if (p.x < -MARGIN || p.y < -MARGIN || p.x > W + MARGIN || p.y > H + MARGIN) return;   // off screen: keep its tier
-        var r = rank(c), sel = (m.isPopupOpen && m.isPopupOpen()) || ic.classList.contains("cm-sel");
+        var r = rank(c), sel = (m.isPopupOpen && m.isPopupOpen()) || ic.classList.contains("cm-sel") || !!(c.bar && imp[String(c.bar.id)]);
         var dx = p.x - cx, dy = p.y - cy, near = 1 - Math.min(1, Math.sqrt(dx * dx + dy * dy) / diag);
         cand.push({ m: m, ic: ic, x: p.x, y: p.y, sel: sel, ok: sel || (z >= r.el && !underHud(zs, p.x, p.y)), s: (sel ? 1e12 : 0) + r.s + (m._olnuTier === "f" ? 500 : 0) + near * 400 });
       });
@@ -156,6 +157,7 @@
     }
     var ms = performance.now() - t0;
     stats.n++; stats.ms += ms; stats.last = ms; if (ms > stats.max) stats.max = ms; stats.full = nf; stats.dot = nd; stats.inView = cand.length;
+    try { if (window.MYPINS && window.MYPINS.sync) window.MYPINS.sync(); } catch (e) {}
   }
   /* ---------- label + badge collision pass (replaces app.js placeLabels while TIERS is loaded; same rules) ----------
      Highest-priority marker first; a badge (🪖 👑 🏰 🚪 crowd word, queue) or a name label that would touch a kept one, or

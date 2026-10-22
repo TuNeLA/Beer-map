@@ -11,7 +11,9 @@
 (function () {
   "use strict";
   var L = window.L;
-  var FRESH_H = 24, GONE_H = 72, PAD = 0.25, COL = "200,212,234", R_MIN = 14, R_MAX = 48;   // cloud radius px, every zoom
+  var FRESH_H = 24, GONE_H = 72, PAD = 0.25, COL = "200,212,234", R_MIN = 9, R_MAX = 90, M_MIN = 10, M_MAX = 300;   // px floor, px cull margin, metres min / max
+  // metres on the map: 300 m at zoom ≤ 12 halving every ~1.4 steps (like the heat), × 0.55–1 by beers, clamped 10–300 m
+  function cloudM(z, w) { var s = Math.max(0.55, Math.min(1, 0.55 + 0.15 * Math.sqrt(w))); return Math.max(M_MIN, Math.min(M_MAX, M_MAX * Math.pow(2, -0.72 * Math.max(0, z - 12)) * s)); }
   function alphaFor(age) {
     if (age == null || !isFinite(age)) return 0.6;
     var t = (age - FRESH_H) / (GONE_H - FRESH_H);
@@ -71,7 +73,7 @@
           else list.push(cells[k] = { x: x, y: y, w: p.w, a: p.a });
         }
         for (i = 0; i < list.length; i++) {
-          var q = list[i], r = Math.max(R_MIN, Math.min(R_MAX, (45 + 22 * Math.sqrt(q.w)) / mpp));
+          var q = list[i], r = Math.max(R_MIN, cloudM(z, q.w) / mpp);
           var a = q.a * 0.55, gr = g.createRadialGradient(q.x, q.y, 0, q.x, q.y, r);
           gr.addColorStop(0, "rgba(" + COL + "," + a.toFixed(3) + ")");
           gr.addColorStop(0.45, "rgba(" + COL + "," + (a * 0.55).toFixed(3) + ")");
@@ -83,5 +85,5 @@
     });
     var inst = new Cloud(); window.CLOUDS._last = inst; return inst;   // _last: tests
   }
-  window.CLOUDS = { layer: layer, R_MIN: R_MIN, R_MAX: R_MAX, alphaFor: alphaFor, FRESH_H: FRESH_H, GONE_H: GONE_H };
+  window.CLOUDS = { layer: layer, R_MIN: R_MIN, R_MAX: R_MAX, M_MIN: M_MIN, M_MAX: M_MAX, cloudM: cloudM, alphaFor: alphaFor, FRESH_H: FRESH_H, GONE_H: GONE_H };
 })();
