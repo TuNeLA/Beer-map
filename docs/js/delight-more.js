@@ -101,7 +101,11 @@
       if (z <= 3) egg("world");
       if (z >= 18) {
         var c = A.map.getCenter();
-        if (U.haversine(c.lat, c.lng, SOLO.lat, SOLO.lng) < 120) egg("solo");
+        if (U.haversine(c.lat, c.lng, SOLO.lat, SOLO.lng) < 120) {
+          // hotfix 2026-10-22: rare — at most once per 7 days
+          var k = "olnu.eggSoloAt", t = 0; try { t = +localStorage.getItem(k) || 0; } catch (x) {}
+          if (Date.now() - t > 7 * 864e5 && egg("solo")) { try { localStorage.setItem(k, String(Date.now())); } catch (x) {} }
+        }
       }
     });
   }

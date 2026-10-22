@@ -212,13 +212,13 @@
       addLayer(m, { id: "olnu-houses-3d", type: "fill-extrusion", source: "olnu-houses", minzoom: HOUSE_Z - 1,
         paint: { "fill-extrusion-color": col, "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0, "fill-extrusion-opacity": fade,
           "fill-extrusion-vertical-gradient": true, "fill-extrusion-emissive-strength": dark ? 0.25 : 0.1 } }, std, before);
-      addLayer(m, { id: "olnu-bars-3d", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["match", ["get", "k"], ["house", "dim"], true, false],
+      addLayer(m, { id: "olnu-bars-3d", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "__off__"],   /* hotfix 2026-10-22: no whole amber bar houses (owner) */
         paint: { "fill-extrusion-color": ["match", ["get", "k"], "dim", DIM_COL, ST_COL], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0,
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, 0.96],
           "fill-extrusion-emissive-strength": ["match", ["get", "k"], "dim", dark ? 0.3 : 0.1, dark ? 0.95 : 0.55],
           "fill-extrusion-flood-light-color": "#ffb347", "fill-extrusion-flood-light-intensity": dark ? 0.5 : 0.2,
           "fill-extrusion-flood-light-ground-radius": 8, "fill-extrusion-flood-light-wall-radius": 3 } }, std, before);
-      addLayer(m, { id: "olnu-bars-cap", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "cap"],
+      addLayer(m, { id: "olnu-bars-cap", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "__off__"],   /* hotfix: cap often on the wrong building */
         paint: { "fill-extrusion-color": ST_COL, "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": ["get", "b"],
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, 1],
           "fill-extrusion-emissive-strength": 1 } }, std, before);
@@ -276,6 +276,7 @@
       var b = map.getBounds(), now = {}, next = [], list;
       list = cands.filter(function (x) { return b.contains([x.lat, x.lng]); });
       list.forEach(function (bar) {
+        if (!bar.arena) return;   // hotfix 2026-10-22: no whole-building highlight for bars (owner: only the bar's spot)
         var f = null;
         [[bar.lng, bar.lat], bar.c].forEach(function (ll) {   // the bar point, then the centre of its house
           if (f || !ll) return;
