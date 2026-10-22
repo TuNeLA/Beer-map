@@ -11,7 +11,7 @@
      a friend (or you) there = green outline. Reduced motion = no pulse. Restaurants / cafés (places) light up only
      when someone is there (as their markers).
    - Tap a building = a tap on that bar's marker (same bar sheet); no marker drawn → app openBar(bar).
-   - Zoom ≥ 16: the plain bar icon on a lit building shrinks to a small badge (class bl-has + #map.bl-z16).
+   - Zoom ≥ 16: class bl-has + #map.bl-z16 stay (hooks); the icon keeps its centred size (tiers: it used to shrink off centre).
    - BAREA (CONTRACT "BAREA · krogens yta"): a big house lights up only near the bar (tiles carry the clipped part, props.lit);
      the full house comes as an extra feature {bldg:1, of:[ids]} and is drawn as a faint dashed outline (not tappable) while one
      of its spots is lit. A drawn area from window.BAREA.areas() (approved, or my own pending = dashed) REPLACES the automatic
@@ -33,8 +33,8 @@
     "@keyframes bl-pulse{0%,100%{fill-opacity:.32;stroke-opacity:.85}50%{fill-opacity:.5;stroke-opacity:1}}" +
     "@media (prefers-reduced-motion:reduce){.leaflet-barlit-pane path.bl{animation:none !important;transition:none}}" +
     ".leaflet-barlit-pane path.bl-house{transition:none}" +
-    "#map.bl-z16 .cm.bl-has:not(.cm-hot) .bar-ico{transform:scale(.6);transform-origin:50% 50%}" +
-    "#map.bl-z16 .cm.bl-has.cm-hot .bar-ico{transform:scale(.75);transform-origin:50% 50%}";
+    // tiers: no shrink at zoom ≥ 16 any more (it dropped the centring translate → disc pushed down-right); keep the disc centred
+    "#map.bl-z16 .cm.bl-has .bar-ico{transform-origin:50% 50%}";
 
   function looks(st) {
     var n = st ? st.n : 0, fr = st && st.friend;

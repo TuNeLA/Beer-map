@@ -85,5 +85,5 @@
 .inv-legend i{flex:none;display:inline-block;width:12px;height:12px;margin-top:1px;border-radius:50%}
 .lg-pin{background:var(--amber)}
 .lg-heat{background:radial-gradient(circle,#ff5a1a 0,#ffc24d 55%,rgba(255,194,77,0) 75%)}
-.lg-ghost{border:1px dashed #c8ced9;background:rgba(200,206,217,.15)}
+.lg-ghost{border:0;background:radial-gradient(circle,rgba(200,212,234,.55) 0,rgba(200,212,234,.25) 45%,rgba(200,212,234,0) 72%)}
 @media (max-width:360px){.inv-ppl-h{min-width:80px}}

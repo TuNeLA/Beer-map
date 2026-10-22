@@ -225,16 +225,20 @@
   var HEAT_KEY = "olnu.heat";
   var heatOn = U.ls.get(HEAT_KEY, "1") !== "0";
   var heat = null;
+  var HEAT_CLAMP = [36, 24, 60];   // tiers: heat radius px — min at z ≤ 12, min at z ≥ 16, max
   var HEAT_R_M = 170, HEAT_MIN_PX = 34, HEAT_MAX_PX = 80, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
   function heatRadiusPx(z, lat) {
     var mpp = 156543.03 * Math.cos((lat || 0) * Math.PI / 180) / Math.pow(2, z);
     // Zoomed out the glow must be clearly bigger than the markers (owner: "heatmapen är helt gömd"):
     // min 34 px at zoom 15+, growing to 120 px at zoom 11 and below.
-    var minPx = z >= 15 ? HEAT_MIN_PX : z <= 11 ? 120 : HEAT_MIN_PX + (15 - z) / 4 * (120 - HEAT_MIN_PX);
-    return Math.max(minPx, Math.min(Math.max(HEAT_MAX_PX, minPx), HEAT_R_M / Math.max(1e-6, mpp)));
+    // tiers (owner: "zoomed out the circles cover half the map, zoomed in they get tiny"): metres in the middle, clamped on
+    // screen — min 36 px (z ≤ 12) → 24 px (z ≥ 16), max 60 px at every zoom. Far out, near points share a cell = one blob ≤ 60 px.
+    var minPx = z <= 12 ? HEAT_CLAMP[0] : z >= 16 ? HEAT_CLAMP[1] : HEAT_CLAMP[0] - (z - 12) / 4 * (HEAT_CLAMP[0] - HEAT_CLAMP[1]);
+    return Math.max(minPx, Math.min(HEAT_CLAMP[2], HEAT_R_M / Math.max(1e-6, mpp)));
   }
   // Fade the glow when zoomed in close (markers + labels carry the detail there). Continuous: no jump.
-  function heatOpacity(z) { return z <= 15.5 ? 1 : z >= 18 ? 0.45 : 1 - (z - 15.5) / 2.5 * 0.55; }
+  // tiers: strong in the town view (≤ 13), fades out between zoom 13 and 15 (the pins carry the detail), a faint trace after.
+  function heatOpacity(z) { return z <= 13 ? 1 : z >= 18 ? 0.12 : z <= 15 ? 1 - (z - 13) / 2 * 0.82 : 0.18 - (z - 15) / 3 * 0.06; }
   // Softer colour curve when zoomed out, so small towns still glow next to a big one (Strava-style per-view scale).
   function heatGamma(z) { return z <= 11 ? 0.5 : z >= 14 ? 1 : 0.5 + (z - 11) / 3 * 0.5; }
   // CSS cubic-bezier(0,0,0.25,1) = Leaflet's zoom transition. Returns eased progress for t in 0..1.
@@ -530,7 +534,7 @@
     tplBox.innerHTML = html;
     tplBox.querySelectorAll(".bi-king, .bm-king").forEach(function (x) { out.king = true; x.remove(); });
     tplBox.querySelectorAll(".bi-flag, .bm-flag").forEach(function (x) { out.flag = true; if (x.classList.contains("mine")) out.flagMine = true; x.remove(); });
-    if (out.z < LABEL_ZOOM) tplBox.querySelectorAll(".bm-q, .bm-crowd").forEach(function (x) { x.remove(); });
+    if (out.z < LABEL_ZOOM) tplBox.querySelectorAll(window.TIERS ? ".bm-q" : ".bm-q, .bm-crowd").forEach(function (x) { x.remove(); });
     var r = tplBox.innerHTML; tplBox.innerHTML = ""; return r;
   }
   function compositeIcon(c) {
@@ -540,7 +544,7 @@
       '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
       h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar",
-        label: pickBadges(mods("barBadgeHTML", bar, list, z), bx) });
+        label: pickBadges(mods("barBadgeHTML", bar, list, window.TIERS ? Math.max(z, LABEL_ZOOM) : z), bx) });
     }
     if (z >= LABEL_ZOOM) {
       if (bx.king) h += '<span class="cm-b cm-king" aria-hidden="true">👑</span>';
@@ -556,7 +560,8 @@
     if (c.cis.length && z >= LABEL_ZOOM) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";
     if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";
     h += "</div>";
-    var quiet = !list.length && !c.rallies.length && !c.cis.length && z < LABEL_ZOOM;
+    c.tk = { king: !!bx.king, ev: ico.indexOf("bi-ev") >= 0 };   // 🏷️ tiers: 👑 / 📅 tonight priority
+    var quiet = !list.length && !c.rallies.length && !c.cis.length && z < LABEL_ZOOM && !window.TIERS;
     return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : "") +
         (quiet ? " cm-quiet" : "") + (!list.length && c.cis.length ? " cm-lit" : ""),
       iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -20] });
@@ -830,11 +835,11 @@
   function addComposite(c, layer, pane) {
     var prio = barPrio(c);
     var m = L.marker([c.bar.lat, c.bar.lng], { icon: compositeIcon(c), pane: pane, keyboard: false,
-      zIndexOffset: 1000 + prio, olnuKey: (pane === "hotbars" ? "h" : "p") + c.bar.id, olnuPrio: prio });
+      zIndexOffset: 1000 + prio, olnuKey: (pane === "hotbars" ? "h" : "p") + c.bar.id, olnuPrio: prio, olnuC: c });
     m.bindPopup(function () { return barPopup(c.bar, c.beers); }, { pane: "popupPane", className: "olnu-bar", autoPan: !sheetMode() });
     m.on("add", function () {
       var ic = m.getElement(); if (!ic) return;
-      ic.setAttribute("data-bar", String(c.bar.id)); ic.setAttribute("data-prio", String(prio));
+      ic.setAttribute("data-bar", String(c.bar.id)); ic.setAttribute("data-prio", String(prio)); if (window.TIERS) window.TIERS.onAdd(m);
       if (!ic._olnuFold) { ic._olnuFold = true; ic.addEventListener("click", foldFromTap, true); ic.addEventListener("pointerdown", foldFromTap, true); }
     });
     m.addTo(layer);
@@ -867,7 +872,7 @@
       var m = addComposite(c, hotLayer, "hotbars");
       c.beers.forEach(function (b) { markerById[b.id] = m; });
     });
-    renderPlainBars();
+    renderPlainBars(true);
     redrawing = false;
     reopenPopup(keep);
     renderHeat();
@@ -875,28 +880,30 @@
     renderTicker();
     labelsSoon();
   }
-  function renderPlainBars() {
+  function renderPlainBars(force) {
     var wasRedrawing = redrawing, keep = openKey;
-    redrawing = true;
-    barLayer.clearLayers(); plainBarMarkers = {};
-    redrawing = wasRedrawing;
+    // 🏷️ tiers: a pan / zoom keeps the markers that stay (diff by bar id); render() (new data) rebuilds them all.
+    var reuse = !force && plainDrawnKey === plainStateKey() && map.getZoom() >= BAR_ZOOM;
+    if (!reuse) { redrawing = true; barLayer.clearLayers(); plainBarMarkers = {}; redrawing = wasRedrawing; }
+    plainDrawnKey = plainStateKey();
     plainBox = null;
-    if (map.getZoom() < BAR_ZOOM) { labelsSoon(); return; }
+    if (map.getZoom() < BAR_ZOOM) { tiersNow(); labelsSoon(); return; }
     var padded = map.getBounds().pad(0.15), list = window.BARS.inBounds(padded, MAX_PLAIN_BARS + 50);
     // Review: remember what was drawn, so a small pan inside the padded box does not rebuild every marker.
     if (list.length < MAX_PLAIN_BARS + 50) { plainBox = padded; plainKey = plainStateKey(); }
-    var n = 0;
+    var n = 0, want = {};
     for (var i = 0; i < list.length && n < MAX_PLAIN_BARS; i++) {
       var bar = list[i];
       if (hotBarIds[bar.id] || bar.arena) continue;   // 🏟️ arenas: js/arenapin.js
-      n++;
-      plainBarMarkers[bar.id] = addComposite({ bar: bar, beers: [], rallies: [], cis: [] }, barLayer, "bars");
+      n++; want[bar.id] = 1;
+      if (!plainBarMarkers[bar.id]) plainBarMarkers[bar.id] = addComposite({ bar: bar, beers: [], rallies: [], cis: [] }, barLayer, "bars");
     }
-    if (!wasRedrawing && keep && keep.charAt(0) === "p") reopenPopup(keep);
-    labelsSoon();
+    if (reuse) { redrawing = true; Object.keys(plainBarMarkers).forEach(function (id) { if (!want[id]) { barLayer.removeLayer(plainBarMarkers[id]); delete plainBarMarkers[id]; } }); redrawing = wasRedrawing; }
+    if (!wasRedrawing && keep && keep.charAt(0) === "p" && !(plainBarMarkers[keep.slice(1)] && plainBarMarkers[keep.slice(1)].isPopupOpen())) reopenPopup(keep);
+    tiersNow(); labelsSoon();
   }
   // Plain bar icons depend on the zoom only through BAR_ZOOM and LABEL_ZOOM: same key + view inside the drawn box = no rebuild.
-  var plainBox = null, plainKey = "";
+  var plainBox = null, plainKey = "", plainDrawnKey = "";
   function plainStateKey() { var z = map.getZoom(); return (z >= BAR_ZOOM ? 1 : 0) + "|" + (z >= LABEL_ZOOM ? 1 : 0); }
   function plainFresh() {
     try { return !!plainBox && plainKey === plainStateKey() && plainBox.contains(map.getBounds()); } catch (e) { return false; }
@@ -904,6 +911,8 @@
   /* Bar name labels: zoom ≥ 16 only; a label that would cover a higher-priority label or another marker hides. */
   var labelTimer = 0;
   function labelsSoon() { clearTimeout(labelTimer); labelTimer = setTimeout(placeLabels, 60); }
+  // 🏷️ tiers (js/tiers.js): full pill or small type dot per bar marker in view; class writes only, no new markers.
+  function tiersNow() { if (window.TIERS) try { window.TIERS.apply(map, [hotLayer, barLayer]); } catch (e) {} }
   // Design pass 2: one collision pass for every badge (🪖, 👑, 🏰, 🚪, crowd tag, queue) and, at zoom ≥ 16, the
   // name labels. Highest-priority marker first; a badge or label that would touch a kept one, or another marker's
   // icon / pill, is dropped. Icons and people pills themselves are never hidden.
@@ -913,16 +922,17 @@
     return c.contains("cm-rally") ? 6 : c.contains("cm-king") ? 5 : c.contains("cm-ci") ? 4 : c.contains("cm-flag") ? 3 : c.contains("bm-crowd") ? 2 : 1;
   }
   function placeLabels() {
+    if (window.TIERS && window.TIERS.labels) try { if (window.TIERS.labels(map, BADGES, badgeRank)) return; } catch (e) {}
     var on = map.getZoom() >= LABEL_ZOOM, cont = map.getContainer();
     cont.classList.toggle("cm-labels", on);
     var icons = Array.prototype.slice.call(cont.querySelectorAll(".leaflet-marker-icon"));
     var obstacles = [], labels = [], badges = [];
     icons.forEach(function (ic) {
-      var p = +(ic.getAttribute("data-prio") || 0);
-      ic.querySelectorAll(".bar-ico, .pill, .rl-pin").forEach(function (x) { obstacles.push({ ic: ic, el: x }); });   // smooth: rect read below
-      ic.querySelectorAll(BADGES).forEach(function (x) { x.classList.remove("lbl-hide"); badges.push({ ic: ic, el: x, p: p * 10 + badgeRank(x) }); });
+      var p = +(ic.getAttribute("data-prio") || 0), dot = ic.classList.contains("cm-dot");   // 🏷️ tiers: a dot = its icon only
+      ic.querySelectorAll(dot ? ".bar-ico" : ".bar-ico, .pill, .rl-pin").forEach(function (x) { obstacles.push({ ic: ic, el: x }); });   // smooth: rect read below
+      if (!dot) ic.querySelectorAll(BADGES).forEach(function (x) { x.classList.remove("lbl-hide"); badges.push({ ic: ic, el: x, p: p * 10 + badgeRank(x) }); });
       var lb = ic.querySelector(".cm-lbl");
-      if (lb) { lb.classList.remove("lbl-hide"); if (on) labels.push({ ic: ic, el: lb, p: p }); }
+      if (lb) { lb.classList.remove("lbl-hide"); if (!dot && (on || ic.classList.contains("cm-full"))) labels.push({ ic: ic, el: lb, p: p }); }
     });
     badges.sort(function (a, b) { return b.p - a.p; });
     labels.sort(function (a, b) { return b.p - a.p; });
@@ -938,7 +948,7 @@
       if (bad) hideB.push(x.el); else kept.push(r);
     });
     hideB.forEach(function (e) { e.classList.add("lbl-hide"); });
-    if (!on) return;
+    if (!labels.length) return;
     labels.forEach(function (x) { x.r = x.el.getBoundingClientRect(); });   // smooth: one layout after the badge hides
     var hideL = [];
     labels.forEach(function (x) {
@@ -951,6 +961,9 @@
     hideL.forEach(function (e) { e.classList.add("lbl-hide"); });
   }
   map.on("zoomend moveend", labelsSoon);
+  map.on("moveend popupopen", function () { tiersNow(); labelsSoon(); });
+  map.on("popupclose", function () { setTimeout(function () { tiersNow(); labelsSoon(); }, 0); });   // after cm-sel is gone
+  if (window.TIERS) window.TIERS._app = { labels: placeLabels, render: render, plain: renderPlainBars };   // tests / perf
   // Selected marker: 1.25× and on top while its popup is open.
   var selMarker = null;
   map.on("popupopen", function (e) {

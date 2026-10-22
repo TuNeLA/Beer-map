@@ -219,8 +219,9 @@
       if (!x.live || x.status !== "open" || x.my_answer === "no" || !isFinite(x.lat) || x.lat == null) return;
       var html = '<div class="inv-pin' + (x.my_answer === "yes" ? " yes" : "") + '"><span class="inv-pin-e" aria-hidden="true">📨</span>' +
         '<span class="inv-pin-t"><b>' + esc(shortTitle(x)) + "</b> " + esc(dayDiff(x.starts_at) === 0 ? hhmm(x.starts_at) : whenText(x.starts_at)) + "</span></div>";
-      var m = Lf.marker([x.lat, x.lng], { pane: "invites", keyboard: true, title: x.title,
-        icon: Lf.divIcon({ html: html, className: "inv-pin-w", iconSize: [0, 0], iconAnchor: x.bar_id ? [-10, 34] : [12, 28] }) });
+      var bar = null; try { bar = x.bar_id && window.BARS && window.BARS.byId ? window.BARS.byId(x.bar_id) : null; } catch (e) { bar = null; }   // tiers: fixed slot
+      var m = Lf.marker(bar ? [bar.lat, bar.lng] : [x.lat, x.lng], { pane: "invites", keyboard: true, title: x.title,
+        icon: Lf.divIcon({ html: html, className: "inv-pin-w", iconSize: [0, 0], iconAnchor: bar ? [-17, 40] : x.bar_id ? [-10, 34] : [12, 28] }) });
       m.on("click", function () { openInvite(x.id); });
       m.addTo(pinLayer);
     });
@@ -812,8 +813,8 @@
     d.innerHTML = "<b>" + esc(L("Kartan", "The map")) + "</b>" +
       '<span><i class="lg-pin" aria-hidden="true"></i>' + esc(L("Pins = folk som dricker just nu", "Pins = people drinking now")) + "</span>" +
       '<span><i class="lg-heat" aria-hidden="true"></i>' + esc(L("🔥 Gul–röd glöd = värme ikväll (live + kvällens spår, försvinner kl 05)", "🔥 Glow = heat tonight (live + tonight's trail, gone at 05:00)")) + "</span>" +
-      '<span><i class="lg-ghost" aria-hidden="true"></i>' + esc(L("👻 Grå streckade ringar = förra veckan, int' live (syns när dä ä lugnt, eller med 👻). En halv ring = resten ligger under en pin eller utanför skärmen.",
-        "👻 Grey dashed rings = last week (not live). Half rings = cut by the screen edge or a pin.")) + "</span>" +
+      '<span><i class="lg-ghost" aria-hidden="true"></i>' + esc(L("☁️ Grå moln = senaste dagarna, int' live (bleknar på 3 dar; syns när dä ä lugnt, eller med 👻).",
+        "☁️ Grey clouds = the last few days, not live (they fade over 3 days).")) + "</span>" +
       "<span>📨 " + esc(L("= din inbjudan (syns bara för de inbjudna)", "= your invite (only invited people see it)")) + "</span>";
     pop.appendChild(d);
   }

@@ -321,7 +321,9 @@
     if (v7 !== true || off.ghost_points) return;
     if (ghostPts && Date.now() - ghostAt < 10 * 60000) return;
     ghostAt = Date.now();
-    call("ghost_points").then(function (r) {
+    var two = !off.ghost_points2;   // ☁️ 0151: with age (fade over 3 days); old server → ghost_points
+    call(two ? "ghost_points2" : "ghost_points").then(function (r) {
+      if (two && (r.off || (!r.error && Array.isArray(r.data) && !r.data.length))) { off.ghost_points2 = true; ghostAt = 0; loadGhosts(); return; }   // missing or empty → plain ghost_points once
       if (r.error) { applyGhost(); return; }
       ghostPts = (r.data || []).filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng) && p.w > 0; }).slice(0, 3000);
       drawGhosts(); applyGhost();
@@ -329,6 +331,7 @@
   }
   function drawGhosts() {
     if (!ghostLayer) return;
+    if (ghostLayer.setPoints) { ghostLayer.setPoints(ghostPts || []); return; }   // ☁️ clouds.js
     ghostLayer.clearLayers();
     (ghostPts || []).forEach(function (p) {
       L.circleMarker([+p.lat, +p.lng], { renderer: ghostRenderer, pane: "ghosts", radius: Math.min(15, 4 + Math.sqrt(+p.w) * 2.4),
@@ -955,7 +958,7 @@
       map.getPane("ghosts").style.zIndex = 380;
       map.getPane("ghosts").style.pointerEvents = "none";
       ghostRenderer = L.canvas({ pane: "ghosts", padding: 0.3 });
-      ghostLayer = L.layerGroup();
+      ghostLayer = (window.CLOUDS && window.CLOUDS.layer(map, "ghosts")) || L.layerGroup();   // ☁️ soft clouds (js/clouds.js)
       document.getElementById("btn-ghostpins").addEventListener("click", function () {
         ghostUser = !ghostShown(); applyGhost();
       });

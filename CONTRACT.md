@@ -2330,3 +2330,44 @@ No new map buttons. A missing RPC (old server) = that part hides.
   for bars (arenas unchanged). The 2D barlit pane never shows on a Mapbox style (`html[data-bmmb]`), except in ✏️ BAREA.
 - **Closed places**: sw.js fetches `bars-closed.json` network first (a newly closed place goes at the next start).
 - Debug: `CALM._state()`, `CALM._reset()`, `CALM.fact(true)`, `MAP3D._stats().mbH`.
+
+## 🏷️ PIN-NIVÅER (Airbnb-style pin tiers + zoom rules; client only, no migration, no RPC, no new button)
+Owner-approved research items 5–6 (scratchpad research-maps.md Top 15 #3–#6). New file `docs/js/tiers.js` (`window.TIERS`, no mods hooks,
+loaded before app.js) and `docs/js/clouds.js`. Migration 0151. Patches tiers 01 (index.html), 02 (app.js), 03 (places.js), 04 (this), 05 (social.js / i18n.js / invite.js / invite.css: clouds), 06 (invite.js: 📨 slot). Adds to IKONER / SMOOTH / KARTSTIL 3–4.
+- **Two tiers, nothing removed.** Every app.js bar marker (hot + plain, same DOM elements) gets ONE class:
+  `.cm-full` = type icon 24 px + count pill "5 🍺" + crowd word (Lugnt / Livligt / Packat, now at every zoom) + name label + badges;
+  `.cm-dot` = the ICONS type glyph scaled to ~19 px (`scale(.8)`), no pill / label / badge / price tag (faded out, `visibility:hidden`).
+  A dot keeps its 44 × 44 px tap target and opens the normal bar sheet. A busy bar shown as a dot keeps its amber ring (`cm-hot`).
+- **Who is full** (`TIERS.apply`, markers in view only; off-screen markers keep their tier): the selected bar (popup / sheet open)
+  always; then friends / me / call-out here > crowd (pins × 10 + check-ins × 4) > 👑 crown > 📅 event tonight (`.bi-ev`) > rest.
+  Ties: the one that was full before, then nearer the centre (no flicker on small pans). Max `TIERS.capFor(z)` per view:
+  z ≤ 12: 6 · z13: 12 · z15: 25 · z17+: 40 (linear between). A full pill may not overlap a higher one (48 × 48 px box) → dot.
+  Eligible: people / check-ins / call-outs from zoom 11, 👑 / 📅 bars from 13, empty bars from 16 (z16 = labels, as before).
+  `c.tk = {king, ev}` is set in compositeIcon; marker option `olnuC` = the composite.
+- **Zoom rules**: heat opacity 1 up to z13, fades to 0.18 at z15 (0.12 at z18) (app.js `heatOpacity`). z ≤ 12 (`olnu-zxlo`): dots
+  hidden = only heat + the few top pills; z13: icons back, empty dots hidden; z ≥ 14 every dot; restaurant dots (places.js) z ≥ 16
+  unchanged; Mapbox POI labels stay off; 3D houses from z14 unchanged. `cm-quiet` is not used while TIERS is loaded (`cm-empty` instead).
+- **Motion**: tier changes fade / scale in 160 ms (`.cm .pill` etc. opacity + visibility, icon transform); prefers-reduced-motion: none.
+- **Performance**: tier pass = projected points only, class / z-index writes only on change (Stockholm z15, 95 markers in view:
+  ~0.7 ms, 4× CPU ~1–2 ms). Label + badge pass (`TIERS.labels`, called by app.js placeLabels; the old code is the fallback):
+  each part's box is measured once per state (select scale; icon: tier + town view) relative to the marker point (WeakMap) and
+  re-used, positions come from Leaflet's `_leaflet_pos` → a pan does no layout read (Stockholm ~2 ms, 4× ~6 ms). A dot never blocks a
+  label / badge. Plain bars are diffed by id on pan / zoom (`renderPlainBars(force)`; render() = new data still rebuilds all):
+  a pan adds only the ~10–15 bars that come into the padded box. places.js obstacles skip a dot's hidden parts.
+- **Zoom ≥ 16** (`.tz-hi` on the map container): a clear centred disc — full 32 px, dot 28 px — and fixed badge slots: 👑 top-left,
+  🎤/📅 event badge top-left on the disc, 🪖 top-right, 🚪 N left (same height), 🏰 right, count pill below, name under it.
+  📨 invite chip (invite.js) of an invite at a known bar sits on the bar's own point, up-right of the disc (anchor [-17, 40]).
+- **Heat size clamp** (app.js `heatRadiusPx`, `HEAT_CLAMP = [36, 24, 60]`): 170 m in metres, clamped on screen to min 36 px (z ≤ 12) →
+  24 px (z ≥ 16) and max 60 px at every zoom (was 120 px min at z ≤ 11 = giant discs in the country view). Far out, points in one
+  heat cell merge into one blob ≤ 60 px. The low-resolution zoom frames (map3) use the same radius. Klassisk and every GL style.
+- **barlit.js fix** (patch 07): at zoom ≥ 16 the icon on a lit house was `transform:scale(.6)`, which dropped the centring
+  translate → a 14 px disc 12 px down-right of the bar point (owner's Pitchers bug). Now no shrink; the disc stays centred.
+- **HUD zones**: a bar whose full-pill box would sit under the top bar, ticker, streak chip or the right-hand round buttons stays a dot
+  (rects read at most every 2 s / on resize). Owner: town centre "piles up under the buttons" at z14.
+- **☁️ Moln (was 👻 grey dashed rings)** — `docs/js/clouds.js` (`window.CLOUDS`): ONE canvas in the `ghosts` pane (z 380), soft radial
+  fade #c8d4ea, no outline / dashes / half rings, size = beers (45 m + 22 m × √w) clamped to 14–48 px at every zoom (closer than 24 px on screen = one cloud), a point near a bar is drawn on the bar's
+  point (under its marker). Alpha by age: 24 h → 1, 72 h → 0 (linear). Drawn on moveend / zoomend / resize only, hidden during a
+  zoom animation. Server **0151** (applied 2026-10-22): `ghost_points()` same shape, window now 1–3 days (was 1–8);
+  new `ghost_points2()` → `[{lat, lng, w, age_h}]` (beer-weighted mean age). social.js asks ghost_points2 first, an old server →
+  ghost_points (alpha 0.6). Chip "☁️ Senaste dagarna" / "☁️ Last few days", ⓘ legend "☁️ Grå moln = senaste dagarna, int' live (bleknar på 3 dar …)".
+- Test hook: `TIERS._app = {labels, render, plain}`, `TIERS.stats` / `TIERS.lstats`. Tests: scratchpad `tiers-pw.js <port> <tag> [shotsonly|noshots|perfonly]`, `tiers-pitchers.js <port> <tag>`.
