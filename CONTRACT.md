@@ -2285,3 +2285,21 @@ No new map buttons. A missing RPC (old server) = that part hides.
 - 0149 patches the deployed definitions with `olnu_tz_patch(fn, old[], new[])` (exact anchors, each must occur once,
   idempotent). A later migration that re-creates one of these RPCs must keep its test-zone line.
 - Test rule: after every live run, stop the test pins (`beers.stopped = true, expires_at = now()`, `checkins.expires_at = now()`).
+
+## 🚫 STÄNGT FÖR GOTT (crowd-closed places; migrations 0147–0148, js/gone.js, stats-gone.js; additive)
+
+- Sheet (bar, restaurant, arena) → ℹ️ Info: "🚫 Finns inte längre / Stängt för gott" → one confirm step → `report_bar_gone(p_bar_id, p_name)`.
+  2 different users (reports newer than the last owner undo), or 1 report from the owner's trusted phone (`bar_area_trusted`,
+  same as bar areas / club info) → hidden for everyone. My live report shows "✓ Du har rapporterat" + "↩️ Ta tillbaka"
+  (`report_bar_gone_withdraw`). Max 10 reports / 24 h per user (`slow_down`), unknown id → `invalid_bar` (`olnu_area_bar_pos`).
+- Tables (RLS on, no policies, no client access; rows are never removed): `bar_gone_reports` (one live report per user and place,
+  `withdrawn_at`), `bar_gone` (bar_id, name, status hidden | confirmed | undone, reason crowd | trusted | owner).
+- `bars_gone()` (authenticated) → `{ v: 1, server_time, ids: [hidden + confirmed], mine: [my live report ids] }`.
+- Client: the cached list (localStorage "olnu.goneIds") is merged into BARS at boot, before the data loads
+  (`BARS.closeIds(ids)`, same effect as docs/bars-closed.json: bars, extras, restaurants, arenas; `BARS.isClosed(id)`; `byId()` of a
+  closed id = null; pins with a closed bar_id are loose pins). Refreshed after sign-in and at most every 30 min (poll).
+  An owner "Ångra" shows the place again from the next app start. docs/bars-closed.json and the weekly data scripts are unchanged.
+- Owner (stats.html "🚫 Stängda ställen", owner key, anon may run only these two): `owner_bars_gone(p_key, p_status)` hidden |
+  pending (1 report) | confirmed | undone | all; `owner_set_bar_gone(p_key, p_bar_id, p_status)` confirmed | undone | hidden
+  (Bekräfta / Ångra / Dölj nu).
+- The server's pin snapping (olnu_near_bar) is unchanged; the client shows such pins as loose pins.

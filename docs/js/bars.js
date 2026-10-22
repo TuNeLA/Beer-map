@@ -322,6 +322,7 @@
     for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
       var cell = places[(gy + dy) + "_" + (gx + dx)]; if (!cell) continue;
       for (var i = 0; i < cell.length; i++) {
+        if (closed[cell[i].id]) continue;   // 🚫 closed for good (bars-closed.json / server)
         var d = U.haversine(lat, lng, cell[i].lat, cell[i].lng);
         if (d <= bestD) { bestD = d; best = cell[i]; }
       }
@@ -428,6 +429,7 @@
         }
         var pc = opts && opts.places ? places[k] : null;
         if (pc) for (var j = 0; j < pc.length; j++) {
+          if (closed[pc[j].id]) continue;
           var d2 = U.haversine(lat, lng, pc[j].lat, pc[j].lng);
           if (d2 <= (opts.placeM || maxM)) pl.push({ bar: pc[j], d: d2, place: true });
         }
@@ -466,7 +468,20 @@
       }
       return out;
     },
-    byId: function (id) { return bars[id] || canon(placesById[id]) || null; },
+    byId: function (id) { if (closed[String(id)]) return null; return bars[id] || canon(placesById[id]) || null; },
+    // 🚫 js/gone.js: the server's closed list (merged with bars-closed.json). Returns how many ids were new.
+    closeIds: function (ids) {
+      var n = 0;
+      (Array.isArray(ids) ? ids : []).forEach(function (id) {
+        id = String(id || ""); if (!id || closed[id]) return;
+        closed[id] = true; n++;
+        if (bars[id]) removeBar(bars[id]);
+        for (var i = arenaList.length - 1; i >= 0; i--) if (arenaList[i].id === id) arenaList.splice(i, 1);
+      });
+      if (n) { try { onChange(); } catch (e) {} }
+      return n;
+    },
+    isClosed: function (id) { return !!closed[String(id)]; },
     canonId: function (id) { var o = bars[id] || canon(placesById[id]); return o ? String(o.id) : String(id || ""); },
     inBounds: function (b, max) {
       var out = [];
@@ -481,7 +496,7 @@
       beers.forEach(function (be) {
         var bar = null;
         if (be.snap === "area" || !be.precise) bar = null;
-        else if (be.bar_id != null) bar = bars[be.bar_id] || canon(placesById[be.bar_id]) || null;
+        else if (be.bar_id != null) bar = closed[String(be.bar_id)] ? null : bars[be.bar_id] || canon(placesById[be.bar_id]) || null;
         else if (!be.snap) bar = nearestSpot(be.lat, be.lng);   // old server: no snap/bar_id fields
         if (!bar) { rest.push(be); return; }
         var a = perBar[bar.id] || (perBar[bar.id] = { bar: bar, beers: [] });
