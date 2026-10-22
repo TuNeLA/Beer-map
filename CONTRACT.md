@@ -2268,3 +2268,20 @@ No new map buttons. A missing RPC (old server) = that part hides.
 - Entry points: 🧭 on Vänner rows (invite.js / near.js), Medlemmar "🧭 Hitta", "🧭 Hitta nån" chooser, and the group page 🟢 NU strip → `HITTA.nowSheet`
   ("🗺️ Visa alla på kartan (n)" = the old tap + "🔍 Var ä du, Lisa?" per person out, keys from `group_status_v2.k`).
 - Sheet bottom: #sheet and the bar sheet (.olnu-sheet wrapper) paint their colour 120 px below themselves (second box-shadow, smooth.css), so no map shows under a sheet when Android Chrome's gesture-bar chin / safe-area inset moves or the open spring overshoots. A new bottom sheet should do the same.
+
+## Test zone (0149)
+- Live tests run in a fixed box: lat 68.25–68.45, lng 18.60–19.00 (`olnu_is_test_zone(lat, lng)`, test pin 68.35 / 18.80).
+- `olnu_is_test_user(uid)`: the user's latest pin (`beers` row, one per user) is in the box; with no pin row the
+  `checkins` row decides; else a push location in the box. Internal only (not callable by clients).
+- Public / aggregate reads hide test-zone rows unless the caller is a test user (the caller's own rows and group-mates
+  always show, so tests keep working): `olnu_pins` (poll_v2 pins, pins_in_view, capped; live_beers), `olnu_heat`
+  (poll_v2 heat, heat_points), `ghost_points`, poll_v2 `live_total` ("N dricker i världen") and `checkins`,
+  `live_others`, `live_checkins`, `olnu_takeovers` (bar_status owner + note_takeover), `bar_status` queue/offers,
+  `beer_type_stats`, `group_league` (a group with only test users), `events_near2/3` (TV list),
+  `olnu_sug_rows` (friend_suggest / friend_suggest_add), `my_inbox` (friend requests, invites), `near_poll` (friends_in).
+- Radius-based reads (local_board*, wall_of_fame*, meriter_board town, kebab_top, events_near non-TV, duel_nearby,
+  crew town, bar_sport_near, user_places) need no filter: the box is far from any town (Abisko / Björkliden lie inside
+  it, so a real user there would count as a test user).
+- 0149 patches the deployed definitions with `olnu_tz_patch(fn, old[], new[])` (exact anchors, each must occur once,
+  idempotent). A later migration that re-creates one of these RPCs must keep its test-zone line.
+- Test rule: after every live run, stop the test pins (`beers.stopped = true, expires_at = now()`, `checkins.expires_at = now()`).
