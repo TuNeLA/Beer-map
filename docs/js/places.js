@@ -70,7 +70,8 @@
   }
   function iconFor(p, lbl) {
     var nm = String(p.name || "");
-    var h = '<div class="pl-in"><span class="pl-dot" aria-hidden="true">' + (p._nm ? "🌭" : ICON[p.type] || ICON.restaurant) + "</span>" +
+    var h = '<div class="pl-in">' + (window.ICONS && !p._nm ? window.ICONS.placeDot(ICON[p.type] ? p.type : "restaurant") :
+      '<span class="pl-dot" aria-hidden="true">' + (p._nm ? "🌭" : ICON[p.type] || ICON.restaurant) + "</span>") +
       (lbl ? '<span class="pl-lbl">' + U.esc(nm) + "</span>" : "") + "</div>";
     return L.divIcon({ html: h, className: "pl-mk" + (selId === p.id ? " pl-sel" : "") + (p._nm ? " pl-nm" : ""), iconSize: [32, 32], iconAnchor: [16, 16] });
   }

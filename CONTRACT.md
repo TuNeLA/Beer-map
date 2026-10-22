@@ -2012,3 +2012,84 @@ Tables: `ev_links(token pk, invite_id, creator, created_at, expires_at, hits, jo
 ### 👋 Du kanske känner (Vänner tab, under Mina vänner)
 - Rows: initial · first name · "3 gemensamma vänner" · ➕ Lägg till (`friend_suggest_add`) · ✕ (`friend_suggest_hide`). Never a place, bar or time.
   Note line "🔒 Ni har kompisar gemensamt. Vi visar bara förnamn – aldrig var nån ä." Hidden when empty.
+
+## 📅 EVENT-ARKET 2 (Går, 👥 Vänner går, detaljvy, 📺 TV-fold, 🗺️ på kartan; additive)
+Owner: "less menus". Migrations `0127_event_going.sql`, `0128_event_going_push.sql` (applied live 2026-10-22). Edge function
+`notify-group` **v24** (v23 + `{event:"ev_due"}` + the cron's Går reminders). Client: `docs/js/evsheet.js` (rewritten, same
+`window.EVSHEET` + new hooks `hudChipsHTML`, `hudClick`, `openEvsLink`), CSS block at the end of `docs/places.css`. Patches evs2 01–04
+(files, app.js `?evs=` route, js/arenapin.js map focus, this section). Replaces the "Row actions" bullet of SPORT + 📅 EVENT-KNAPPEN
+and the time/type-chip bullets of 📅 EVENT MÅNAD; the data rules (events_near2 / events_near3, cache, fallbacks) are unchanged.
+
+### Server
+`event_going(event_id → bar_events, user_id, going, reminded_at, told_at, changes, created_at, updated_at)` pk (event_id, user_id).
+RLS on, no policies, no client access. Rows are never removed ("Går" off = `going false`; delete_my_data's uuid sweep moves user_id).
+Circle = accepted friends ∪ everyone in a shared group (`olnu_evgo_circle`, same rule as friend_list / olnu_inv_cands).
+Event state json (`olnu_evgo_json`): `{id, mine, n (circle + me going), total (everyone going), who:[{name, me}] (circle only, me first,
+max 8; names via olnu_friend_name), remind (my 1 h push is still coming), told}`. Never user ids; strangers are only a number.
+| name | params | returns | errors |
+|---|---|---|---|
+| `event_go` | `p_event_id bigint, p_on boolean default true` | event state | `event_not_found` (not `ok`, expired, or > 32 days), `slow_down` (same row < 2 s, ≥ 40 changes / 10 min), `not_authenticated` |
+| `event_go_tell` | `p_event_id` | `{ok, first}` — sets `told_at` once ("📣 Säg till gruppen?" is offered once per event and person) | – |
+| `events_going` | `p_ids bigint[] default null` (≤ 400), `p_days default 31` | `{v:1, events:[state of p_ids anybody goes to], friends:[state + event fields (title, kind, starts_at, ends_at, bar_id, place, lat, lng, town, sport, league, home, away, tv, url, source, ticket_url) of upcoming events circle members go to, max 20, by time]}` | – |
+| `ev_going_due_claim` | `p_uid uuid default null` | **service_role only**. Claims going rows whose event starts in 50–70 min (`reminded_at` null → now, one UPDATE) → `[{event_id, title, place, starts_at, tv, total, to:[uids]}]`; `p_uid` = only that person | – |
+
+### notify-group v24
+- `{event:"ev_due"}` → `ev_going_due_claim(p_uid = caller)` → the caller's own due Går events. Sent by the app once per event when it is
+  open 51–69 min before the start (fallback, like invite_due).
+- Cron (`x-olnu-cron`, `.github/workflows/reminders.yml` every 10 min, unchanged workflow): after invites + yes flush it also calls
+  `ev_going_due_claim()` with the service key and sends every due one. Response gets `ev_due`, `ev_sent`. A missing RPC = skipped.
+- Payload: title 1 of 6 ("⏰ Om 1 timme: {titel}", "⏰ T-minus 60 min: {titel}" …), body "ikväll 19:00 · Pitchers · 4 går. Tryck för
+  detaljer." (TV: "📺 på TV"), url `/?evs=<event id>`, tag `olnu-evgo-<id>`, TTL 1 h.
+
+### 📅 sheet (js/evsheet.js)
+- Sticky bar: ONE `.ds-seg.evs-time` Ikväll · Helgen · 7 dagar · Månad, each with a count `.evs-seg-n` (Månad only once 31 days are
+  loaded); ONE scroll row of `.evs-chip` type chips: "Alla N" first, then only types with events in the chosen range (+ the chosen one)
+  with a count `.evs-chip-n` (🎤 Quiz = quiz+karaoke, 🎸 Live = live+standup, ⚽, 🏒, 📺 På TV, 🎉 Fest = party+dj). `olnu.evsFilter` keeps the type.
+- Opening on an empty Ikväll jumps once (per page life) to Helgen, else 7 dagar, and says so in the summary line (3 dalmål variants).
+- `.evs-tools`: "N event" + `.evs-maptg` switch "🗺️ Visa på kartan" (disabled when nothing has a spot).
+- `.evs-friends` "👥 Vänner går": horizontal cards `.evs-frc` (initials `.evs-face` of friends, count, title, "ikväll 19:00 · Pitchers"),
+  from `events_going.friends`; hidden when empty or on an old database.
+- List: sticky day headers as before; row `.ds-card.evs-row` (tap / Enter = detail): time + countdown left, icon + title, sub line
+  (league · place · km; TV: "📺 Visas på: Lobbybaren, Pitchers +1"), friends line "(L)(OO) 5 går", and ONE `.evs-gar` toggle
+  "Går" / "✓ Går" (aria-pressed). TV matches of one day (≥ 2, not with the 📺 filter) fold into ONE `.evs-tvfold` row
+  "📺 3 matcher på TV ikväll" (other days "📺 3 matcher på TV"), tap = expand (`.evs-tvlist`).
+- Går = optimistic toggle → `event_go`. On: toast (5 variants) + "⏰ Vi pockar på dig 1 tim innan." when a reminder is coming, and once per
+  event (`olnu.evsAsked` + server `told`) the toast button "📣 Säg till gruppen?": one group → `event_go_tell` → `post_group_msg` (≤ 140
+  chars, 5 dalmål lines "📅 Jag går på Pubquiz ikväll 19:00 (Pitchers). Hänger nån mä?") + `notify-group {event:"msg"}` (normal chat
+  push limits); several groups → the detail view shows group chips + "Nä tack". Off: toast (3 variants).
+- Detail view `.evs-detail` (same sheet, slides in 24 px, no animation with reduced motion; the list is hidden, `‹ Tillbaka`): icon,
+  title, league, "Ikväll 19:00" + live countdown (30 s), 📍 place · km, TV "📺 Visas på:" pub chips (tap = bar sheet) or the no-pub hint,
+  who goes (faces + "Lisa, Oskar och du går" / "N går totalt" / 3 empty variants), big `.evs-dgar` "JAG GÅR" / "✓ JAG GÅR", reminder note,
+  then 📍 Visa · 🎟️ Biljett (ticket_url) · 📨 Bjud in (INVITE.openCreate; TV at the nearest sports pub) · 🪖 Vi går! (EVENTS.go =
+  create_rally + notify-group rally, unchanged).
+- 🗺️ Visa på kartan: the filtered events with a spot (not TV, not pending) → `EVSHEET.mapFocus()` = `{ids, n, until: +2 h}`, the sheet
+  closes, the map flies to them (max zoom 15), toast. js/arenapin.js shows them: arena chips also > 7 days ahead, the bar 🎤/🎸 badge
+  and loose chips also on other days (loose chips from zoom 11, focused sport away from an arena too, label "lör 19:00"); a loose
+  chip tap opens the 📅 detail view. ONE quiet HUD chip `data-hx="evsmap"` "📅 ✕ 4 på kartan" (in the Ikväll panel, not urgent)
+  or the switch turns it off. No new map buttons.
+- Deep link `?evs=<id>`: cold start (evsheet.js reads + strips it) or app.js routeOpen → `mods("openEvsLink", id)` → loads 31 days +
+  events_going, opens the sheet on the right range and the detail view; gone → "🔗 Hittade int' det eventet …".
+- Old database: no `event_go` → the row toggle is "🪖" and runs EVENTS.go (rally), no reminder; no `events_going` → no faces / strip;
+  no events_near2/3 → as before.
+- Tests: scratchpad `evs2-pw.js` (42 checks, screenshots `evs2-*.png`), updated copies `evs2-sport-pw.js`, `evs2-arena-pw.js`,
+  `evs2-places-pw.js` (the old row buttons moved into the detail view; segment labels are `.evs-seg-l`).
+
+## 🎨 IKONER · Phosphor-ikoner på kartan (docs/js/icons.js, no migration, no RPC, no new buttons)
+- `window.ICONS`, loaded before util.js / app.js. Phosphor Icons 2.1.1 (`@phosphor-icons/core`, MIT; text in the file header and
+  `docs/icons-LICENSE.txt`). Only the 26 glyphs in use, as ONE hidden inline sprite (`#ph-sprite`, `<symbol id="ph-NAME">` = Bold,
+  `ph-NAME-f` = Fill). No CDN, offline via the sw.js index precache. Markup: `ICONS.svg(name, cls)` → `<svg class="ic"><use href="#ph-…"/></svg>`.
+- App logo / manifest icons: unchanged (owner's choice).
+- Round map buttons (decorated by icons.js; the emoji in index.html / evsheet.js stays as the no-JS fallback): 🔥 heat `fire`, 👻 ghost `ghost`,
+  🚕 taxi `taxi`, 📅 events `calendar-dots` (badge kept), 📍 locate `crosshair`, 🏆 top `trophy`, ⚙️ settings `gear-six`, 👥 Grupper `users-three`.
+  Idle = Bold glyph. ON = Fill glyph on an amber circle (top-bar buttons: amber tile; Grupper: amber circle behind the glyph):
+  heat / ghost `aria-pressed="true"`, locate `.busy`, the rest `.ic-on` while the sheet they opened is open. Ids, sizes, positions,
+  aria-labels, badges and handlers unchanged. Heat / ghost: a MutationObserver re-swaps the `.mc-i` emoji after every textContent reset
+  (applyHeatBtn / applyGhost / iconChip); `#btn-evs` is decorated when evsheet.js adds it (body childList observer, no subtree).
+- Map markers: white Fill glyph on the type colour, white ring. app.js compositeIcon `.bar-ico` → `ICONS.barIco(bar, badges)` (classes
+  `bar-ico ic-mk ic-t-<type>`, + `place-ico` for places; every overlay kept: count pill "N 🍺", 👑, 🏰, 🚪, 🪖, labels, event badges).
+  places.js dots → `ICONS.placeDot(type)`; arenapin.js chip icon → `ICONS.disc("hockey" | "fotboll" | "arena")` (sheet texts keep 🏒 / ⚽).
+  pub beer-stein #E58A00 · bar martini #E8336F · nightclub disco-ball #7C4DFF · biergarten tree #1F9D55 · hockey hockey #2B7BE4 ·
+  fotboll soccer-ball #2B7BE4 · restaurant fork-knife #138A8A · cafe coffee #8D6346 · fast_food hamburger #C8202A · other arena flag-pennant #5B6B7F.
+  Unknown bar type → pub. Sizes unchanged (24 px bar icon, 16 px quiet / place dot).
+- Emoji stay in texts, chat, toasts and the 🍺 count pills (content). New glyphs: add the name to BOLD / FILL in the generator
+  (`scratchpad/icons-tools/gen.py`, reads the npm package) and rebuild icons.js.

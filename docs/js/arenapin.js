@@ -93,6 +93,9 @@
   /* ---------- data ---------- */
   function arenas() { try { return window.BARS && window.BARS.arenas ? window.BARS.arenas() : []; } catch (e) { return []; } }
   function rows() { try { var c = window.EVSHEET && window.EVSHEET._cache && window.EVSHEET._cache(); return c && Array.isArray(c.rows) ? c.rows : []; } catch (e) { return []; } }
+  // 📅 EVENT-ARKET 2: events chosen with "🗺️ Visa på kartan" in the Event sheet ({id: 1} or null)
+  function focusIds() { try { var f = window.EVSHEET && window.EVSHEET.mapFocus && window.EVSHEET.mapFocus(); return f && f.ids ? f.ids : null; } catch (e) { return null; } }
+  function focused(e, fi) { return !!(fi && e && e.id != null && fi[String(e.id)]); }
   function nrm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim(); }
   function sportOf(e) {
     if (e.sport === "hockey" || e.sport === "fotboll") return e.sport;
@@ -110,13 +113,13 @@
   }
   // arena id → { arena, matches: [rows, by start] } for matches from 7 days before to 2.5 h after the start
   function matchMap(now) {
-    var list = arenas(), out = {};
+    var list = arenas(), out = {}, fi = focusIds();
     if (!list.length) return out;
     rows().forEach(function (e) {
       if (!isMatch(e)) return;
       var s = Date.parse(e.starts_at); if (!isFinite(s)) return;
       var end = e.ends_at ? Date.parse(e.ends_at) : s + AFTER; if (!isFinite(end) || end < s) end = s + AFTER;
-      if (now >= end || s - now > WEEK) return;
+      if (now >= end || (s - now > WEEK && !focused(e, fi))) return;
       var a = arenaFor(e, list); if (!a) return;
       (out[a.id] || (out[a.id] = { arena: a, matches: [] })).matches.push(e);
     });
@@ -133,7 +136,8 @@
     return n;
   }
   function sportOfArena(a, mm) { var m = mm && mm.matches[0]; return (m && sportOf(m)) || a.s || null; }
-  function ico(sp) { return sp === "hockey" ? "🏒" : sp === "fotboll" ? "⚽" : "🏟️"; }
+  function ico(sp) { if (window.ICONS) return window.ICONS.disc(sp === "hockey" || sp === "fotboll" ? sp : "arena");
+    return sp === "hockey" ? "🏒" : sp === "fotboll" ? "⚽" : "🏟️"; }
 
   /* ---------- look ---------- */
   var CSS =
@@ -217,7 +221,7 @@
       if (!show) return;
       items.push({ a: a, m: m, n: n, st: st, lbl: next ? label(next, now) : "" });
     });
-    var evs = z >= EV_Z ? loosePins(now, list) : [];
+    var evs = z >= (focusIds() ? 11 : EV_Z) ? loosePins(now, list) : [];
     var key = parts0.join("|") + "#" + items.map(function (x) { return x.a.id + ":" + x.n + ":" + x.st + ":" + x.lbl + ":" + (x.m ? x.m.matches.length : 0); }).join(",") +
       "#" + evs.map(function (e) { return e.id; }).join(",");
     if (!force && key === drawKey) return;
@@ -337,7 +341,7 @@
   function evTonight(e, now) {
     if (!e || e.tv || e.pending || sportOf(e) || e.kind === "sport" || !EV_ICO[e.kind]) return false;
     var s = Date.parse(e.starts_at), end = e.ends_at ? Date.parse(e.ends_at) : s + 3 * 3600e3;
-    return isFinite(s) && now < end && eveKey(s) === eveKey(now);
+    return isFinite(s) && now < end && (eveKey(s) === eveKey(now) || focused(e, focusIds()));
   }
   function barEvents(bar) {
     if (!bar || bar.id == null || bar.arena) return [];
@@ -349,9 +353,10 @@
     });
   }
   function loosePins(now, list) {
-    var b = map.getBounds().pad(0.2), seen = {};
+    var b = map.getBounds().pad(0.2), seen = {}, fi = focusIds();
     return rows().filter(function (e) {
-      if (!evTonight(e, now) || e.lat == null || !isFinite(e.lat) || !b.contains([e.lat, e.lng])) return false;
+      var fs = focused(e, fi) && !e.tv && !e.pending && sportOf(e) && now < Date.parse(e.starts_at) + AFTER;   // focused sport away from an arena
+      if (!(evTonight(e, now) || fs) || e.lat == null || !isFinite(e.lat) || !b.contains([e.lat, e.lng])) return false;
       var bar = null; try { bar = e.bar_id != null && window.BARS.byId(e.bar_id); } catch (x) {}
       if (bar) return false;                                  // at a known bar: the badge on its icon instead
       if (arenaFor(e, list)) return false;                    // at an arena: its sheet lists it
@@ -360,7 +365,7 @@
     }).slice(0, 20);
   }
   function evMarker(e, now) {
-    var s = Date.parse(e.starts_at), live = now >= s;
+    var s = Date.parse(e.starts_at), live = now >= s, sp = sportOf(e);
     var h = '<div class="ap-pin ap-ev" role="button" aria-label="' + esc(e.title) + '"><span class="ap-i" aria-hidden="true">' + (EV_ICO[e.kind] || "📅") + "</span><span>" +
       esc(live ? two(T.live) : hhmm(s)) + "</span></div>";
     var mk = L.marker([e.lat, e.lng], { pane: "arenapins", keyboard: false, icon: L.divIcon({ html: h, className: "ap-mk", iconSize: [0, 0], iconAnchor: [0, 0] }) });
@@ -368,6 +373,7 @@
     return mk;
   }
   function evSheet(e) {
+    try { if (window.EVSHEET && window.EVSHEET.openDetail && window.EVSHEET.openDetail(e.id)) return; } catch (x) {}   // 📅 detail view (Går, 📨, 🪖)
     var s = Date.parse(e.starts_at);
     A.openSheet((EV_ICO[e.kind] || "📅") + " " + String(e.title || "").slice(0, 40), function (body) {
       body.appendChild(A.el("p", { class: "ap-k", text: [e.place, hhmm(s), cdText(e)].filter(Boolean).join(" · ") }));

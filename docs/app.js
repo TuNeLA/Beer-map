@@ -534,7 +534,7 @@
   function compositeIcon(c) {
     var bar = c.bar, z = map.getZoom(), list = c.beers, h = '<div class="cm-in">', bx = { z: z };
     var ico = pickBadges(mods("barIcoHTML", bar), bx);
-    h += bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + ico + "</div>" :
+    h += window.ICONS ? window.ICONS.barIco(bar, ico) : bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + ico + "</div>" :
       '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
       h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar",
@@ -3622,6 +3622,8 @@
     var nfi = q.get("find"), nfr = q.get("friend");
     var inv = q.get("inv");   // v28 invite push (?invite=1 is the old app-share link)
     if (inv) { if (LIVE) mods("openInviteLink", inv, q.get("ans")); return; }
+    var evs = q.get("evs");   // 📅 EVENT-ARKET 2: ⏰ reminder for an event I marked Går
+    if (evs) { if (LIVE) mods("openEvsLink", evs); return; }
     if (nfi || nfr || q.get("friends")) { if (LIVE) mods("openNearLink", nfi || "list", nfr); return; }
     var sk = q.get("skal"), fm = q.get("film");
     if (sk) { if (LIVE) mods("openSkalLink", sk); }

@@ -23,6 +23,10 @@
 //   "🧭 {namn} letar efter dig i vimlet!" (one recipient each; atomic notified claims).
 // Body events (v28 INBJUDNINGAR, 0080/0081): {event:"invite"|"invite_yes"|"invite_due", invite_id}; cron {event:"invite_due"}
 //   with header x-olnu-cron: <service key> (see cronDue).
+// v29 EVENTCHATT (0084/0085): "msg" and "voice" also work in an invite's temp group (no group_members rows): mateNames
+//   falls back to the service-role RPC evchat_push_mates (✅/🤔 participants; empty unless the sender may write).
+// v24 📅 GÅR (0127/0128): {event:"ev_due"} -> "⏰ Om 1 timme: Pubquiz" to the caller when an event they marked Går starts
+//   in 50–70 min (ev_going_due_claim, atomic reminded_at claim); the cron (x-olnu-cron) sends every due one after the invites.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1226,6 +1230,13 @@ async function mateNames(admin: Admin, uid: string, onlyGroup?: string): Promise
   const { data: mine, error } = await q;
   if (error) throw error;
   const nameFor = new Map<string, string>();
+  if ((!mine || mine.length === 0) && onlyGroup) {
+    // v29: an event chat (temp group). Recipients + the sender's name come from the invite.
+    const { data: ev, error: eErr } = await admin.rpc("evchat_push_mates", { p_gid: onlyGroup, p_uid: uid });
+    if (eErr) { console.warn("evchat_push_mates", eErr.message); return nameFor; }
+    for (const r of (ev ?? []) as { user_id: string; name: string }[]) nameFor.set(r.user_id, r.name);
+    return nameFor;
+  }
   if (!mine || mine.length === 0) return nameFor;
   const nameByGroup = new Map<string, string>();
   for (const m of mine) nameByGroup.set(m.group_id as string, m.display_name as string);
@@ -1368,7 +1379,7 @@ async function msgPush(admin: Admin, uid: string, b: Body) {
   // The sender's name is the same for every member of this one group.
   const { data: me } = await admin
     .from("group_members").select("display_name").eq("group_id", gid).eq("user_id", uid).maybeSingle();
-  const namn = (me?.display_name as string) ?? "Någon";
+  const namn = (me?.display_name as string) ?? mates.values().next().value ?? "Någon";
   const payload = JSON.stringify(msgPayload(namn, msg.body as string, (g?.name as string) ?? "", gid));
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
@@ -1971,6 +1982,38 @@ async function inviteDuePush(admin: Admin, uid: string, b: Body) {
   if (!rows.length) return { ...NONE, reason: "not_due" };
   return await dueSend(admin, rows);
 }
+// ---- v24 📅 GÅR (0127/0128): "⏰ Om 1 timme" for people who tapped Går on a 📅 event ----
+export const EVGO_TITLES: string[] = [
+  "⏰ Om 1 timme: {titel}",
+  "⏰ En timme kvar till {titel}",
+  "⏰ T-minus 60 min: {titel}",
+  "⏰ Gör dig redo – {titel} om en timme",
+  "⏰ Klockan tickar: {titel} om 1 tim",
+  "⏰ Uppställning om en timme: {titel}",
+];
+type EvDueRow = { event_id: number; title: string; place?: string | null; starts_at: string; tv?: boolean; total?: number; to: string[] };
+async function evDueSend(admin: Admin, rows: EvDueRow[]) {
+  const jobs: Job[] = [];
+  for (const r of rows || []) {
+    if (!r || !Array.isArray(r.to) || !r.to.length) continue;
+    const titel = cleanBarName(r.title) || "Event";
+    const place = r.tv ? "📺 på TV" : cleanBarName(r.place);
+    const n = Number(r.total) || 0;
+    const line = EVGO_TITLES[Math.floor(Math.random() * EVGO_TITLES.length)];
+    const payload = JSON.stringify({ title: fill(line, { titel }),
+      body: `${invWhen(r.starts_at)}${place ? ` · ${place}` : ""}${n > 1 ? ` · ${n} går` : ""}. Tryck för detaljer.`,
+      url: `/?evs=${r.event_id}`, tag: `olnu-evgo-${r.event_id}` });
+    for (const s of await subsOf(admin, r.to)) jobs.push({ sub: s, payload });
+  }
+  return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
+}
+async function evDuePush(admin: Admin, uid: string, _b: Body) {
+  const { data, error } = await admin.rpc("ev_going_due_claim", { p_uid: uid });
+  if (error) throw error;
+  const rows = (data || []) as EvDueRow[];
+  if (!rows.length) return { ...NONE, reason: "not_due" };
+  return await evDueSend(admin, rows);
+}
 async function keyRpc(key: string, name: string, body: unknown) {
   const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
   if (/^eyJ/.test(key)) headers.Authorization = "Bearer " + key;
@@ -1995,7 +2038,16 @@ async function cronDue(key: string): Promise<Response> {
       try { yesSent += (await inviteYesSend(admin, id)).sent || 0; } catch (e) { console.error("yes flush failed", e); }
     }
   }
-  return json({ ok: true, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent });
+  // v24 📅 Går reminders (a missing RPC on an old database = skipped)
+  let evDue = 0, evSent = 0;
+  try {
+    const ev = await keyRpc(key, "ev_going_due_claim", {});
+    if (ev.ok && Array.isArray(ev.data) && ev.data.length) {
+      evDue = ev.data.length;
+      evSent = (await evDueSend(admin, ev.data as EvDueRow[])).sent || 0;
+    }
+  } catch (e) { console.error("ev_due failed", e); }
+  return json({ ok: true, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -2069,6 +2121,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "invite") return json(await invitePush(admin, uid, body));
     if (event === "invite_yes") return json(await inviteYesPush(admin, uid, body));
     if (event === "invite_due") return json(await inviteDuePush(admin, uid, body));
+    if (event === "ev_due") return json(await evDuePush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };
