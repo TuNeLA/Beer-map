@@ -1,0 +1,19 @@
+/* Öl Nu — 📅 Event sheet "Månad" polish (js/evsheet.js, CONTRACT "📅 EVENT MÅNAD + 🍽️ RESTAURANGER PÅ KARTAN").
+   (The 🍽️ map dots style themselves: js/places.js injects its own small <style>.)
+   - Lighter menus: one 4-step time switch + ONE horizontal scroll row of type chips (never wraps, fades at the edge).
+   - Sticky day headers under the sticky chip bar (--evs-bar-h is measured by evsheet.js). */
+.evs-time>button{min-height:44px}
+.evs-chips{flex-wrap:nowrap;gap:6px;margin:0 calc(-1 * var(--ds-4));padding:0 var(--ds-4) 2px;scroll-padding-inline:var(--ds-4);
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)}
+.evs-chip{padding:0 12px}
+.evs-day{position:sticky;top:calc(var(--evs-bar-h, 112px) - var(--ds-4));z-index:10;display:flex;align-items:center;justify-content:space-between;gap:var(--ds-2);
+  margin:var(--ds-2) calc(-1 * var(--ds-4)) 0;padding:6px var(--ds-4);background:var(--ds-sheet);
+  font-family:var(--ds-stencil);font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);letter-spacing:.04em;color:var(--ds-amber-t);
+  border-bottom:1px solid var(--ds-border-2)}
+.evs-day:first-child{margin-top:0}
+.evs-day-now{color:var(--ds-green-t)}
+.evs-day-n{font-family:var(--ds-sans, system-ui, sans-serif);font-size:var(--ds-fs-12);font-weight:700;color:var(--ds-muted);
+  min-width:22px;height:22px;padding:0 6px;border-radius:var(--ds-r-pill);background:var(--ds-raised);display:grid;place-items:center}
+.evs-more{margin-top:var(--ds-2)}
+/* 🎟️ Biljett is an <a>: look like the other row buttons (centered, no underline) */
+.evs-acts a.ds-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}

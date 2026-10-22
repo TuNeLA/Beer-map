@@ -48,27 +48,32 @@
   function stdCfg(preset, theme, colors) {
     var c = { lightPreset: preset, theme: theme || "default", showPointOfInterestLabels: false, showTransitLabels: false,
       showPedestrianRoads: true, show3dObjects: true, show3dBuildings: true, show3dLandmarks: true, show3dTrees: false, show3dFacades: false,
-      showLandmarkIcons: true, showLandmarkIconLabels: true };
+      showLandmarkIcons: true, showLandmarkIconLabels: true,
+      // map4: js/map3d.js marks the bar's real Mapbox house (feature-state highlight) and an arena on match days (select)
+      colorBuildingHighlight: "#ffb020", colorBuildingSelect: "#8fd8ff" };
     for (var k in colors || {}) c[k] = colors[k];
     return c;
   }
   // map3 "Ludvika looks": tuned over Ludvika centre at zoom 13–17 (map3-ludvika.png). Colours go through the Standard config;
   // look = small changes in the basemap import: water = flat deep blue (no depth darkening), amber = main streets
   // [primary, secondary/tertiary], ambient = a brighter ambient light so dusk/night are not too dark.
-  var LOOK_DUSK = { water: 1, amber: ["#f5a623", "#d9a56a"], ambient: { intensity: 0.32, color: "hsl(235, 30%, 55%)" } };
-  var LOOK_DAY = { amber: ["#f7b955", "#f9cf8a"] };
-  var LOOK_NIGHT = { water: 1, amber: ["#e8992a", "#9a7650"], ambient: { intensity: 0.35, color: "hsl(225, 35%, 45%)" } };
+  // map4 (owner: "the road is too orange"): amber is kept for OUR data (bars, ÖL!, heat); the base map's main roads are
+  // cool slate a step lighter than the minor streets, and main roads are drawn at 80 % width (thin: [factor]).
+  // look.amber = [primary, secondary/tertiary] colours (name kept from map3).
+  var LOOK_DUSK = { water: 1, amber: ["#cfcae6", "#c0bbdb"], thin: 0.8, ambient: { intensity: 0.32, color: "hsl(235, 30%, 55%)" } };
+  var LOOK_DAY = { amber: ["#fdf6e8", "#ffffff"], thin: 0.85 };
+  var LOOK_NIGHT = { water: 1, amber: ["#9aa6c6", "#8b97b9"], thin: 0.8, ambient: { intensity: 0.35, color: "hsl(225, 35%, 45%)" } };
   var LIST = [
     { id: "mb-dusk", light: 1, mb: STD, look: LOOK_DUSK, cfg: stdCfg("dusk", "", { colorWater: "#2a78ee", colorGreenspace: "#5aa868", colorLand: "#6a6790",
-      colorMotorways: "#ffb347", colorTrunks: "#f5a623", colorRoads: "#b3aed0", colorPlaceLabels: "#fff6e6", colorRoadLabels: "#efe8fa" }),
-      chip: ["#5b567a", "#f5a623"], sv: "Mapbox Skymning", en: "Mapbox Dusk" },
-    { id: "mb-day", light: 1, mb: STD, look: LOOK_DAY, cfg: stdCfg("day", "", { colorWater: "#3f7fd6", colorGreenspace: "#acd69a", colorMotorways: "#f5a623",
-      colorTrunks: "#f7b955", colorRoads: "#ffffff", colorPlaceLabels: "#2f2a44", colorRoadLabels: "#55506a" }),
+      colorMotorways: "#dcd8ef", colorTrunks: "#d6d1ea", colorRoads: "#b3aed0", colorPlaceLabels: "#fff6e6", colorRoadLabels: "#efe8fa", colorBuildings: "#8b87b0" }),
+      chip: ["#5b567a", "#cfcae6"], sv: "Mapbox Skymning", en: "Mapbox Dusk" },
+    { id: "mb-day", light: 1, mb: STD, look: LOOK_DAY, cfg: stdCfg("day", "", { colorWater: "#3f7fd6", colorGreenspace: "#acd69a", colorMotorways: "#efd9ad",
+      colorTrunks: "#f6e6c6", colorRoads: "#ffffff", colorPlaceLabels: "#2f2a44", colorRoadLabels: "#55506a" }),
       chip: ["#eef0ea", "#f2b45a"], sv: "Mapbox Dag", en: "Mapbox Day" },
     { id: "mb-dawn", light: 1, mb: STD, look: { water: 1 }, cfg: stdCfg("dawn", "", { colorWater: "#3f7fd6" }), chip: ["#cdb9cf", "#f3ae86"], sv: "Mapbox Gryning", en: "Mapbox Dawn" },
     { id: "mb-night", mb: STD, look: LOOK_NIGHT, cfg: stdCfg("night", "", { colorWater: "#2f6fd8", colorGreenspace: "#5f9e68", colorLand: "#4a5678",
-      colorMotorways: "#ffb340", colorTrunks: "#f5a623", colorRoads: "#7d8bb0", colorPlaceLabels: "#efe4c8", colorRoadLabels: "#b8c0d6" }),
-      chip: ["#1c2742", "#f5a623"], sv: "Mapbox Natt", en: "Mapbox Night" },
+      colorMotorways: "#b0bbd8", colorTrunks: "#a5b0cf", colorRoads: "#7d8bb0", colorPlaceLabels: "#efe4c8", colorRoadLabels: "#b8c0d6", colorBuildings: "#55618a" }),
+      chip: ["#1c2742", "#9aa6c6"], sv: "Mapbox Natt", en: "Mapbox Night" },
     { id: "mb-faded", light: 1, mb: STD, cfg: stdCfg("day", "faded"), chip: ["#e9e6df", "#c4bba8"], sv: "Mapbox Blek", en: "Mapbox Faded" },
     { id: "mb-mono", light: 1, mb: STD, cfg: stdCfg("day", "monochrome"), chip: ["#dcdcdc", "#8c8c8c"], sv: "Mapbox Grå", en: "Mapbox Mono" },
     { id: "mb-sat", mb: "mapbox://styles/mapbox/standard-satellite", cfg: { lightPreset: "day", showPointOfInterestLabels: false, showTransitLabels: false, showLandmarkIcons: true },
@@ -255,23 +260,64 @@
     return out;
   }
 
-  /* ---------- map3 perf: the Leaflet ↔ GL bridges ----------
-     Both plugins jumpTo() the GL map on EVERY Leaflet "zoom" event (meant for pinch). That also runs at the end of each
-     animated wheel / double-tap zoom, right before their own zoomend + transitionend syncs (= 2–3 full GL frames per step).
-     Now: the "zoom" that ends an animated zoom is skipped (zoomend + transitionend sync right after it); a pinch or a
-     flyTo (no zoomanim) gets at most one jumpTo per animation frame. */
+  /* ---------- the Leaflet ↔ GL bridges (map3 perf, map4 lock-step) ----------
+     Both plugins jumpTo() the GL map on EVERY Leaflet "zoom" event (meant for pinch). map3: the one that ends an animated
+     wheel / double-tap zoom is skipped (zoomend syncs right after it).
+     map4 lock-step: markers (Leaflet DOM) and the GL canvas must show the SAME frame. Measured before (map4-drift.js):
+     during the CSS zoom animation they matched (< 1 px), but the frame right after it was 30–115 px off: zoomend reset the
+     canvas' CSS scale while GL still showed the old zoom until its own next animation frame (a visible snap back = the
+     "delayed" zoom). Pinch / flyTo / pan were 1–2 frames late (GL renders on its own rAF; map3's extra rAF added one).
+     Now every sync renders the GL map synchronously (MapLibre redraw(); Mapbox the same steps) in the same task as the
+     Leaflet DOM update: zoomend, each pinch / flyTo "zoom" event and each pan "move" (once per frame, Leaflet's own rAF).
+     The plugin's later transitionend re-sync is skipped when the GL map already matches. */
   function fixBridge(K) {
-    var P = K && K.prototype; if (!P || P._olnuFixed || !P._pinchZoom || !P._animateZoom || !P._zoomEnd) return;
+    var P = K && K.prototype; if (!P || P._olnuFixed || !P._pinchZoom || !P._animateZoom || !P._zoomEnd || !P._update || !P.getEvents) return;
     P._olnuFixed = true;
-    var pinch = P._pinchZoom, anim = P._animateZoom, end = P._zoomEnd;
+    var anim = P._animateZoom, end = P._zoomEnd, upd = P._update, tend = P._transitionEnd, evs = P.getEvents;
+    // MapLibre: map.redraw() (public). Mapbox GL v3 has no redraw(): the same steps by hand (cancel the queued frame, render now).
+    function draw(self) {
+      var g = self._glMap;
+      try {
+        if (!g || !g.style) return;
+        if (g.redraw) { g.redraw(); return; }
+        if (g._render && g.painter && !g._removed) {
+          if (g._frame && g._frame.cancel) { g._frame.cancel(); g._frame = null; }
+          g._renderNextFrame = null;
+          g._render(performance.now());
+        }
+      } catch (e) {}
+    }
+    function synced(self) {
+      var g = self._glMap, m = self._map; if (!g || !m) return true;
+      var c = m.getCenter(), gc = g.getCenter();
+      return Math.abs(g.getZoom() - (m.getZoom() - 1)) < 1e-6 && Math.abs(gc.lat - c.lat) < 1e-9 && Math.abs(gc.lng - c.lng) < 1e-9;
+    }
     P._animateZoom = function (e) { this._olnuAnim = true; return anim.call(this, e); };
-    P._zoomEnd = function () { this._olnuAnim = false; return end.apply(this, arguments); };
-    P._pinchZoom = function (e) {
-      var self = this;
-      if (this._olnuAnim) { this._olnuAnim = false; return; }
-      if (this._olnuRaf) return;
-      this._olnuRaf = requestAnimationFrame(function () { self._olnuRaf = 0; if (self._map && self._glMap) pinch.call(self, e); });
+    P._zoomEnd = function () { this._olnuAnim = false; var r = end.apply(this, arguments); draw(this); return r; };
+    P._pinchZoom = function () {
+      if (this._olnuAnim) { this._olnuAnim = false; return; }   // the "zoom" that ends an animated zoom: zoomend syncs right after
+      if (!this._map || !this._glMap) return;
+      this._glMap.jumpTo({ zoom: this._map.getZoom() - 1, center: this._map.getCenter() });
+      draw(this);
     };
+    // Pan: one GL frame per Leaflet move frame. A slow phone (a GL frame > 12 ms on average) keeps the old pace:
+    // max ~30 GL frames/s while panning (container + GL together, so the whole map lags a little, never tears).
+    P._olnuMove = function () {
+      if (!this._map || !this._glMap) return;
+      var self = this, t = performance.now();
+      if (this._olnuCost > 12 && t - (this._olnuAt || 0) < 28) {
+        if (!this._olnuTrail) this._olnuTrail = setTimeout(function () { self._olnuTrail = 0; self._olnuMove(); }, 30);
+        return;
+      }
+      this._olnuAt = t;
+      upd.call(this);
+      if (!this._zooming) { var t0 = performance.now(); draw(this); var c = performance.now() - t0; this._olnuCost = this._olnuCost ? this._olnuCost * 0.8 + c * 0.2 : c; }
+    };
+    P.getEvents = function () { var o = evs.call(this); o.move = this._olnuMove; return o; };
+    if (tend) {
+      P._transitionEnd = function (e) { if (this._zooming || !synced(this)) return tend.call(this, e); };
+      P._resize = function (e) { return tend.call(this, e); };
+    }
   }
 
   /* ---------- Loading ---------- */
@@ -493,6 +539,24 @@
     if (Array.isArray(o) && /^interpolate/.test(o[0])) return o.map(function (x, i) { return i >= 4 && i % 2 === 0 ? w(x) : x; });
     return w(o);
   }
+  function thinExpr(o, f) {
+    var w = function (x) { return ["*", x, ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary", "tertiary"], f, 1]]; };
+    if (Array.isArray(o) && o[0] === "step") return o.map(function (x, i) { return i >= 2 && i % 2 === 0 ? w(x) : x; });
+    if (Array.isArray(o) && /^interpolate/.test(o[0])) return o.map(function (x, i) { return i >= 4 && i % 2 === 0 ? w(x) : x; });
+    return typeof o === "number" || Array.isArray(o) ? w(o) : o;
+  }
+  /* map4: Mapbox's own 3D houses from zoom 14 (Leaflet; GL 13) instead of 16, fading in. The tiles carry the large
+     buildings from GL 13 and all of them from GL 16 (Mapbox Streets v8), so the big ones come first. */
+  var BLD = ["3d-building", "2d-building", "2d-building-outline", "building-underground"], BLD_Z = 13;
+  function buildingsNear(fr) {
+    BLD.forEach(function (id) {
+      var l = fr._layers[id]; if (!l) return;
+      try {
+        if (l.minzoom > BLD_Z) fr.setLayerZoomRange(id, BLD_Z, l.maxzoom || 24);
+        if (id === "3d-building") fr.setPaintProperty(id, "fill-extrusion-opacity", ["interpolate", ["linear"], ["zoom"], BLD_Z, 0, BLD_Z + 0.8, 1]);
+      } catch (e) {}
+    });
+  }
   function look(m, st) {
     var fr = frag(m); if (!fr || !fr._layers) return;
     var L0 = st.look || {};
@@ -501,13 +565,15 @@
         lookSaved = { paint: {}, lights: null };
         ["roads", "bridge-roads", "water"].forEach(function (id) {
           var l = fr._layers[id], p = id === "water" ? "fill-color" : "line-color", o = {};
-          if (l) { o[p] = fr.getPaintProperty(id, p); lookSaved.paint[id] = o; }
+          if (l) { o[p] = fr.getPaintProperty(id, p); if (p === "line-color") o["line-width"] = fr.getPaintProperty(id, "line-width"); lookSaved.paint[id] = o; }
         });
       }
       ["roads", "bridge-roads"].forEach(function (id) {
         var o = lookSaved.paint[id]; if (!o || o["line-color"] == null) return;
         fr.setPaintProperty(id, "line-color", L0.amber ? amberExpr(o["line-color"], L0.amber) : o["line-color"]);
+        if (o["line-width"] != null) fr.setPaintProperty(id, "line-width", L0.thin ? thinExpr(o["line-width"], L0.thin) : o["line-width"]);
       });
+      buildingsNear(fr);
       if (lookSaved.paint.water) fr.setPaintProperty("water", "fill-color", L0.water ? ["config", "colorWater"] : lookSaved.paint.water["fill-color"]);
       if (fr._layers["water-depth"]) fr.setLayoutProperty("water-depth", "visibility", L0.water ? "none" : "visible");
       // Lights: the import's lights with a brighter ambient; null = back to the import's own.

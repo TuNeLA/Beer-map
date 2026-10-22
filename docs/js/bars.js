@@ -20,14 +20,15 @@
 
   function gridKey(b) { return Math.floor(b.lat / GRID) + "_" + Math.floor(b.lng / GRID); }
 
+  var barsVer = 0;   // 🍽️ bumped when the bar set changes (placesInBounds twin cache)
   function insertBar(b) {
-    bars[b.id] = b;
+    bars[b.id] = b; barsVer++;
     var k = gridKey(b);
     (grid[k] || (grid[k] = [])).push(b);
   }
 
   function removeBar(b) {
-    delete bars[b.id];
+    delete bars[b.id]; barsVer++;
     var cell = grid[gridKey(b)];
     if (cell) { var i = cell.indexOf(b); if (i >= 0) cell.splice(i, 1); }
   }
@@ -448,6 +449,23 @@
     placeId: placeId,
     placesReady: function () { return placesState === "ready"; },
     ensurePlaces: ensurePlaces,
+    // 🍽️ js/places.js: loaded places inside LatLngBounds b (not a bar's twin, not closed), at most max. Empty when far out.
+    placesInBounds: function (b, max) {
+      var out = [], s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();
+      var y0 = Math.floor(s / GRID), y1 = Math.floor(n / GRID), x0 = Math.floor(w / GRID), x1 = Math.floor(e / GRID);
+      if ((y1 - y0 + 1) * (x1 - x0 + 1) > 900) return out;
+      for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+        var cell = places[y + "_" + x]; if (!cell) continue;
+        for (var i = 0; i < cell.length; i++) {
+          var o = cell[i];
+          if (o.lat < s || o.lat > n || o.lng < w || o.lng > e || closed[o.id]) continue;
+          if (o._bv !== barsVer) { o._bv = barsVer; o._twin = !!barTwin(o); }
+          if (o._twin) continue;
+          out.push(o); if (max && out.length >= max) return out;
+        }
+      }
+      return out;
+    },
     byId: function (id) { return bars[id] || canon(placesById[id]) || null; },
     canonId: function (id) { var o = bars[id] || canon(placesById[id]); return o ? String(o.id) : String(id || ""); },
     inBounds: function (b, max) {

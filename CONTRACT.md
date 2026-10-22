@@ -1730,3 +1730,108 @@ tickets, and arenas are real check-in places.
   name) + other Tickster events ≤ 25 km from an app town → `import_events` rows (source `tickster`, url = shop link).
   📅 Event sheet rows get a 🎟️ Biljett button (`.evs-tk`) when `ticket_url` is set.
 - Tests: scratchpad `arena-pw.js` (Klassisk + Skymning, Hitachi Arena mock rows).
+
+## 🏙️ KARTSTIL 4 (3D houses, calmer roads, markers locked to the map on zoom)
+Client only, no migrations. New files: `docs/js/map3d.js` (`window.MAP3D`, in `mods()` after ARENAPIN: `init`, `onPoll`),
+`scripts/town-buildings.mjs`, `docs/buildings3d/*`. Patches map4 01 (index.html, app.js mods, arenapin.js `ARENAPIN.open(id)`,
+sw.js `buildings3d/*.json` = data, stamp-version.yml), 02 (basemap.js), 03 (this). Adds to KARTSTIL 2 / 3 and BAREA / ARENOR.
+- **3D on the Mapbox styles** (map3d.js; Klassisk + the free MapLibre styles unchanged = the 2D barlit / arena glow as before):
+  - `html[data-bm3d]` while active: the `barlit` and `arenaglow` panes are hidden (not in the ✏️ BAREA editor, `body.ba-edit`).
+  - Own GeoJSON sources + `fill-extrusion` layers in the ONE Mapbox map (Standard: `slot: "middle"`, under the labels; classic
+    styles: before the first symbol layer). Re-added after every `setStyle` (`style.load`); kept across `setConfig`.
+    `olnu-houses-3d` (all houses, fade in from Leaflet zoom 13.5), `olnu-bars-3d` (bar house), `olnu-bars-cap` (bright roof slab
+    on the bar's part of a big house: BAREA lit "part" or a drawn ✏️ area), `olnu-arena-3d`, classic styles also `olnu-mb3d`
+    (Mapbox's own composite `building` layer extruded, feature-state `hl` / `sel`).
+  - Bars: house = docs/buildings (same ids / pick rules as barlit.js), ≥ 8 m (or the real house height when taller), warm amber
+    with flood light; state from `BARLIT._state()`: quiet amber, 1–4 brighter, ≥ 5 orange-red, friend / me green. Places only
+    while someone is there. No pulse in 3D (battery).
+  - Mapbox's own 3D house under a bar (point or house centre; Standard `buildings` featureset, `group: building-3d`) →
+    feature-state `highlight` (config `colorBuildingHighlight #ffb020`), our copy of that bar is left out; an arena →
+    `select` (`colorBuildingSelect #8fd8ff`). Our plain houses are left out where a Mapbox 3D house covers their centre.
+  - Arenas with a match ≤ 7 days (`ARENAPIN._matches()`): outline (arenas.json `g`) 14 m, 🏒 `#8fd8ff` / ⚽ `#5ee27a`,
+    brighter on match day / live. The chip stays.
+  - Tap: Leaflet map click → `queryRenderedFeatures` on our layers (or a highlighted Mapbox house) → `BARLIT.open(id)` /
+    `ARENAPIN.open(id)`.
+  - Leaflet has no pitch, so 3D is seen from straight above (Mapbox's perspective camera shows a little of the walls off
+    centre). A tilted view needs the phase-2 GL-only map.
+- **Houses data** `docs/buildings3d/`: `index.json = {v, d:[0.02,0.04], n, towns:{name:[s,w,n,e]}, t:{"<floor(lat/0.02)>_<floor(lng/0.04)>": n}}`,
+  tiles = FeatureCollection of Polygons `{h}` (m). `node scripts/town-buildings.mjs --town ludvika` (or `--bbox s,w,n,e --name x`):
+  OSM API map calls (1 at a time, 1.5 s apart) + Microsoft ML footprints (skipped where they overlap OSM); height from
+  `height` / `building:levels` / type, else area. Ludvika 2026-10-22: 4307 OSM + 4382 Microsoft = 7908 houses, 22 tiles, 1.7 MB
+  (≈ 60–80 KB gzipped per centre tile). By hand per new town; not in the weekly workflow.
+- **Mapbox's own 3D** (basemap.js, Standard): building layers of the `basemap` import from GL zoom 13 (Leaflet 14, was 16),
+  3D opacity fades in over 0.8 zoom (Streets v8: large houses from GL 13, all from GL 16). `colorBuildings` on Skymning / Natt.
+- **Roads** (owner: "too orange"): amber only for our own data. Skymning main roads `#cfcae6` / `#c0bbdb`, trunks `#d6d1ea`,
+  motorways `#dcd8ef`; Natt `#9aa6c6` / `#8b97b9`, `#a5b0cf`, `#b0bbd8`; Dag primary `#fdf6e8`, trunks `#f6e6c6`, motorways
+  `#efd9ad`. Motorway…tertiary drawn at 80 % (Dag 85 %) width (`look.thin`).
+- **Lock-step zoom** (fixBridge, both plugins): the GL map renders synchronously in the same task as Leaflet's DOM update
+  (MapLibre `redraw()`; Mapbox GL v3 has none → cancel its queued frame + `_render()`): at zoomend, on each pinch / flyTo
+  "zoom" and each pan "move" (a phone whose GL frame costs > 12 ms keeps ~30 GL frames/s while panning). The plugin's
+  transitionend re-sync is skipped when already in sync. Measured (scratchpad `map4-drift.js`, marker vs GL-drawn point per
+  frame): before 30–116 px on the frame after a wheel / double-tap zoom (map snapped back one frame), 5–16 px pinch, 12 px pan;
+  after ≤ 1.4 px everywhere, Mapbox and MapLibre.
+- Tests: scratchpad `map4-pw.js` (3D layers, tap, styles, shots), `map4-drift.js`.
+
+## 📅 EVENT MÅNAD + 🍽️ RESTAURANGER PÅ KARTAN (additive; migration 0111)
+
+### 🍽️ Restaurants on the map (client only: js/places.js = window.PLACEPINS, BARS.placesInBounds in js/bars.js)
+- Restaurants, cafés and fast food (docs/places.json + docs/places/ tiles, same loading as before) are drawn as small quiet
+  dots: 🍽️ restaurant, ☕ café, 🍔 fast food. Own pane "placepins" z 570 (under arena chips 580, bar markers 590, beer pins 600).
+- Zoom ≥ 16 only; names only at zoom ≥ 17. A dot that overlaps a bar / arena / people marker, a badge or a bar label is left
+  out; dots keep 30 / 24 / 20 px apart and at most 60 / 110 / 150 are drawn in view (zoom 16 / 17 / 18+). A name that touches
+  a marker, a bar label, a dot or another name is not shown. Markers are diffed by id (a pan only adds / removes changes).
+- A place that is the same venue as a bar (barTwin: similar name ≤ 60 m) is never drawn. A place with people / check-ins /
+  a call-out is drawn by app.js as a normal composite marker (as before); PLACEPINS skips it.
+- Tap → the normal bar sheet (api.barPopup: Checka in, På väg, folds, Info). Check-in uses the place id "pl_<lat*1e5>_<lng*1e5>"
+  (server bars_lite, same as before).
+- ⚙️ Karta: "🍽️ Visa restauranger" (localStorage "olnu.places", default on, "0" = off). No new map buttons.
+- Works on Klassisk and every GL style (DOM markers above the base map). Redraws on move / zoom, when tiles load, and when
+  app.js redraws its bar panes (MutationObserver).
+
+### 📅 Event sheet: Ikväll · Helgen · 7 dagar · Månad (js/evsheet.js, docs/places.css)
+- Time chips: Ikväll / Helgen / 7 dagar / Månad (30 evening-days). "I morgon" is no chip any more; every list is grouped by
+  evening-day (00–05 = the day before) under sticky day headers "Ikväll", "I morgon", "Lör 25/10" (EN "Tonight",
+  "Tomorrow", "Sat 25/10") with a row count. Rows show only the time (+ the countdown "om 2 tim" / "i morgon" / "om 5 dar").
+- Type chips: ONE horizontal scroll row (never wraps). Lists > 80 rows get "Visa fler".
+- Data: the normal fetch stays events_near2(lat, lng, 7) (sign-in, poll every 10 min; js/arenapin.js reads that cache).
+  Månad loads events_near3(lat, lng, 31) on demand (only while the sheet shows Månad). No events_near3 → events_near2 with
+  14 days; no events_near2 → events_near (7 days) as before. cache.days = the days the cache holds.
+
+### RPC (migration 0111)
+- `events_near3(p_lat float8, p_lng float8, p_days int default 31)` → `{ v: 1, server_time, days, events: [...] }`. Same rows
+  and the same event fields as events_near2, p_days 1–31 (events_near2 caps at 14), up to 400 rows (events_near2: 150).
+  Authenticated only, `outside_sweden` like events_near2. events_near2 is unchanged.
+
+### Importers (scripts/, daily GitHub Action "Events (import)")
+- Ticketmaster, iCal / JSON-LD feeds and the Tickster dump: 31 days ahead (was 14). Ticketmaster: still one call per town,
+  size 200. Recurring owner events: days_ahead default 31 (set "until" for a season end).
+- swehockey: day pages for 14 days as before; days 14–30 from the league schedule pages
+  (/ScheduleAndResults/Schedule/<groupId>, whole season per page) of the senior groups seen in those day pages.
+  sport-feeds.json "far_days": 31, "far_rotate": 3 → one third of the groups per run (by groupId), 1.5 s apart, so every
+  group is refreshed every 3 days (rows are upserted on source_id "swh:<gameId>:<day>", same id as the day pages).
+- TheSportsDB: days 31 for the eventsnext rows (no extra calls; league_days stays 7). football-data.org stays 10 days.
+
+## 📅 VISIT SWEDEN-EVENEMANG (open data importer + hand-made quiz rules; no migration, no client change)
+- `scripts/import-visitsweden.mjs` (called by ONE line in `scripts/import-events.mjs`, daily Events workflow). No key. Reads every public
+  `schema:Event` from the Visit Sweden national open API (`data.visitsweden.com/store/search?type=solr…&rdfFormat=application/ld+json`,
+  100 per page, ≈ 45 pages, 0.4 s apart). Terms: open data "utan licensrestriktioner" (spec CC-BY 4.0) → no attribution line is required;
+  we store facts + the event page link only (no texts, no images).
+- Window now − 3 h … now + 31 days. Dates: a datetime with offset; `…T20:00:00.000Z` = local wall clock (Norrtälje / Gotland exports);
+  a day only (`2026-10-24`, `T00:00`, Gotland `T12:00:00.000Z` xsd:date) needs a written time (`kl 19`, `at 18:00`, `20.00`, `8 PM`) or is
+  skipped. A season (start → end > 26 h) is expanded (15 days ahead) only by a written weekly rule ("varje onsdag", "every day", "torsdagar"), else skipped.
+- kind (import_events `kind`): quiz | karaoke | standup | dj (DJ / nattklubb / disco) | party (afterwork, pubkväll) — the 📅 "🎉 Fest"
+  filter = dj + party — | live (MusicEvent / konsert …) | other (öl-/vinprovning, other evening events at a bar). Skipped: children /
+  exhibitions / courses / sales / film / sports / church / theatre / lectures / cancelled ("INSTÄLLT") / höstlov.
+  quiz … party + tastings are kept anywhere (a loose event at the venue position); live only at a bar / restaurant or a venue named
+  pub / bar / krog … in the evening; other only at a real bar (bars.json) 16–03.
+- Bar: nearest bars.json / bars-extra.json bar ≤ 60 m (≤ 20 m when the venue has a different name), else a places.json restaurant
+  ≤ 60 m whose name is in the venue / title, else a name match ≤ 500 m. The row gets that bar's exact lat/lng, so the server's
+  `olnu_ev_bar()` attaches it. Rows: `source "visitsweden"`, `source_id "vs:<context>-<entry>"` (+ `#<UTC time>` when one entry has several dates).
+- Dedupe: no row when a Ticketmaster / Tickster row of the same run is ≤ 250 m, ± 1 h and has a similar title (≥ 50 % shared words);
+  same check inside Visit Sweden (± 15 min). Max 800 rows.
+- No ticket links: the API has no `schema:offers`; `ticket_url` stays empty (no migration).
+- `--dry` prints two samples (Stockholm / Göteborg quiz … party, and the rest). `--no-visitsweden` or env `VISITSWEDEN=0` skips it.
+  Stand-alone: `node scripts/import-visitsweden.mjs` (always dry).
+- Hand-made weekly rules in `scripts/event-feeds.json` (type `recurring`, facts only): `pitchers-borlange-quiz` (n3911317766, Wed 19:00),
+  `bishops-falun-quiz` (n5262504842, Tue, 19:00 ASSUMED), `bishops-mora-quiz` (n11094397888, Thu, 19:00 ASSUMED). Bishops Arms' terms
+  forbid crawling: never fetch their site; ask info@bishopsarms.com for the times / a feed.

@@ -8,6 +8,7 @@ on:
       - 'scripts/import-events.mjs'
       - 'scripts/event-feeds.json'
       - 'scripts/import-sport.mjs'
+      - 'scripts/import-visitsweden.mjs'
       - 'scripts/sport-feeds.json'
       - 'scripts/sport-venues.json'
       - '.github/workflows/events.yml'

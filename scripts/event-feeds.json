@@ -10,5 +10,44 @@
   "every_weeks": 2,
   "hours": 3,
   "kind": "quiz"
+ },
+ {
+  "type": "recurring",
+  "id": "pitchers-borlange-quiz",
+  "title": "🧠 Quiz på Pitcher's",
+  "bar_id": "n3911317766",
+  "place": "Pitcher's Borlänge",
+  "first": "2026-10-21",
+  "time": "19:00",
+  "every_weeks": 1,
+  "hours": 3,
+  "kind": "quiz",
+  "note": "Pitchers site: quiz 'varje onsdag klockan 19:00' (research 2026-10-22). Check monthly."
+ },
+ {
+  "type": "recurring",
+  "id": "bishops-falun-quiz",
+  "title": "🧠 Quiz på Bishops Arms",
+  "bar_id": "n5262504842",
+  "place": "The Bishops Arms Falun",
+  "first": "2026-10-27",
+  "time": "19:00",
+  "every_weeks": 1,
+  "hours": 3,
+  "kind": "quiz",
+  "note": "Day = every Tuesday (bishopsarms.com calendar, research 2026-10-22). TIME NOT CONFIRMED: 19:00 assumed. Their terms forbid crawling: facts only, never fetched by the importer."
+ },
+ {
+  "type": "recurring",
+  "id": "bishops-mora-quiz",
+  "title": "🧠 Pubquiz på Bishops Arms",
+  "bar_id": "n11094397888",
+  "place": "The Bishops Arms Mora",
+  "first": "2026-10-22",
+  "time": "19:00",
+  "every_weeks": 1,
+  "hours": 3,
+  "kind": "quiz",
+  "note": "Day = every Thursday ('BISHOPS PUBQUIZ', research 2026-10-22). TIME NOT CONFIRMED: 19:00 assumed. Facts only, never fetched."
  }
 ]

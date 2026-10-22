@@ -3,6 +3,9 @@
  "town_km": 40,
  "swehockey": {
   "days": 14,
+  "far_days": 31,
+  "far_rotate": 3,
+  "_far_doc": "Days 14–30 from league schedule pages: groups seen in the 14 day pages, split in far_rotate slots (one slot per daily run).",
   "leagues": "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean|SDHL|NDHL)",
   "skip": "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior|Dam(Ettan|Tvåan|Trean))",
   "tv_teams": "^(Leksands IF|Mora IK)$",
@@ -10,7 +13,7 @@
   "tv_area": { "lat": 60.6, "lng": 15.0, "km": 200, "_doc": "Leksand / Mora away games show as 📺 TV matches for everyone within 200 km of mid-Dalarna" }
  },
  "thesportsdb": {
-  "days": 14,
+  "days": 31,
   "league_days": 7,
   "leagues": [
    { "id": 4347, "name": "Allsvenskan" },

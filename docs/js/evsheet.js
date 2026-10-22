@@ -1,6 +1,7 @@
 /* Öl Nu — 📅 EVENT-KNAPPEN (CONTRACT "SPORT + 📅 EVENT-KNAPPEN", migrations 0100 + 0101).
    One clear way in: a small round 📅 button stacked under 🔥 and 🚕 on the right, with a badge = events tonight.
-   It opens the "📅 Event" sheet: time chips (Ikväll / I morgon / Helgen / 7 dagar) + type chips (Alla / 🎤 Quiz / 🎸 Live /
+   It opens the "📅 Event" sheet: time chips (Ikväll / Helgen / 7 dagar / Månad; CONTRACT "📅 EVENT MÅNAD": rows grouped
+   under sticky day headers "Ikväll", "I morgon", "Lör 25/10"; Månad = events_near3, 31 days, on demand) + one scroll row of type chips (Alla / 🎤 Quiz / 🎸 Live /
    ⚽ Fotboll / 🏒 Hockey / 📺 På TV / 🎉 Fest). Rows by time, then distance: icon, title, place, time, countdown ("om 2 tim").
    Row actions: 📍 Visa (fly to the place / open the bar), 📨 Bjud in (js/invite.js openCreate from the event), 🪖 Vi går!
    (js/events.js go = create_rally + notify-group rally). TV matches (town-less) show "📺 Ikväll på TV: …" and
@@ -22,7 +23,7 @@
   var T = {
     title: ["📅 Event", "📅 Events"],
     btn: ["Event", "Events"],
-    times: [["tonight", "Ikväll", "Tonight"], ["tomorrow", "I morgon", "Tomorrow"], ["weekend", "Helgen", "Weekend"], ["week", "7 dagar", "7 days"]],
+    times: [["tonight", "Ikväll", "Tonight"], ["weekend", "Helgen", "Weekend"], ["week", "7 dagar", "7 days"], ["month", "Månad", "Month"]],
     types: [["all", "Alla", "All"], ["quiz", "🎤 Quiz", "🎤 Quiz"], ["live", "🎸 Live", "🎸 Live"], ["fotboll", "⚽ Fotboll", "⚽ Football"],
       ["hockey", "🏒 Hockey", "🏒 Hockey"], ["tv", "📺 På TV", "📺 On TV"], ["fest", "🎉 Fest", "🎉 Party"]],
     show: ["📍 Visa", "📍 Show"], ticket: ["🎟️ Biljett", "🎟️ Tickets"], inv: ["📨 Bjud in", "📨 Invite"], go: ["🪖 Vi går!", "🪖 We're going!"],
@@ -45,7 +46,7 @@
       "Nä du, inga {vad} {nar}. Gå ut ändå – det ä ju så event uppstår.",
       "Radiotystnad på eventfronten {nar}. Högkvarteret väntar på din rapport."],
     emptyEn: ["Nothing here {nar}. Know of something? Add it below!"],
-    whenTxt: { tonight: ["ikväll", "tonight"], tomorrow: ["i morron", "tomorrow"], weekend: ["i helgen", "this weekend"], week: ["den här veckan", "this week"] },
+    whenTxt: { tonight: ["ikväll", "tonight"], tomorrow: ["i morron", "tomorrow"], weekend: ["i helgen", "this weekend"], week: ["den här veckan", "this week"], month: ["den närmaste månaden", "this month"] },
     whatTxt: { all: ["event", "events"], quiz: ["quiz", "quizzes"], live: ["livespelningar", "live gigs"], fotboll: ["fotbollsmatcher", "football matches"],
       hockey: ["hockeymatcher", "hockey games"], tv: ["TV-matcher", "TV matches"], fest: ["fester", "parties"] }
   };
@@ -93,6 +94,7 @@
       var toSun = (7 - today) % 7;   // days until Sunday (0 on Sunday)
       return (wd === 5 || wd === 6 || wd === 0) && dd <= toSun;
     }
+    if (t === "month") return dd <= 30;
     return dd <= 7;
   }
 
@@ -137,21 +139,35 @@
       return !local.some(function (x) { return x.home === e.home && x.away === e.away && Math.abs(Date.parse(x.starts_at) - Date.parse(e.starts_at)) < 15 * 60e3; });
     });
   }
-  function load(force) {
+  // 📅 Månad (migration 0111): 31 days from events_near3 only while the sheet shows Månad; else 7 days (events_near2).
+  var off3 = false, wantMore = 0;
+  function maxDays() { return off ? 7 : off3 ? 14 : 31; }
+  function wantDays() { return listBox && st.time === "month" ? 31 : 7; }
+  function load(force, days) {
+    days = Math.min(days || wantDays(), maxDays());
     if (!A || !A.LIVE || !A.authed || !A.authed()) return Promise.resolve(cache.rows);
     var p = where(), key = (Math.round(p.lat * 20) / 20) + "," + (Math.round(p.lng * 10) / 10);
-    if (!force && key === cache.key && Date.now() - cache.at < 120000) return Promise.resolve(cache.rows);
-    if (busy) return Promise.resolve(cache.rows);
+    if (!force && key === cache.key && (cache.days || 7) >= days && Date.now() - cache.at < 120000) return Promise.resolve(cache.rows);
+    if (busy) { wantMore = Math.max(wantMore, days); return Promise.resolve(cache.rows); }
     busy = true;
-    var done = function (rows, v2) { busy = false; cache = { at: Date.now(), key: key, rows: dedupe(rows || []), v2: v2 }; badge(); return cache.rows; };
-    if (off) return fallback().then(function (rows) { return done(rows, false); });
-    return A.rpc("events_near2", { p_lat: p.lat, p_lng: p.lng, p_days: 7 }).then(function (r) {
+    var done = function (rows, v2, d) {
+      busy = false; cache = { at: Date.now(), key: key, rows: dedupe(rows || []), v2: v2, days: d || 7 }; badge();
+      var w = Math.min(wantMore, maxDays()); wantMore = 0;
+      if (w > cache.days) setTimeout(function () { load(true, w).then(function () { if (listBox && document.body.contains(listBox)) draw(); }); }, 0);
+      return cache.rows;
+    };
+    if (off) return fallback().then(function (rows) { return done(rows, false, 7); });
+    var use3 = days > 14 && !off3, pd = use3 ? days : Math.min(days > 7 ? 14 : 7, 14);
+    return A.rpc(use3 ? "events_near3" : "events_near2", { p_lat: p.lat, p_lng: p.lng, p_days: pd }).then(function (r) {
       if (r.error) {
-        if (U.missing(r.error)) { off = true; return fallback().then(function (rows) { return done(rows, false); }); }
+        if (U.missing(r.error)) {
+          if (use3) { off3 = true; busy = false; return load(true, days); }
+          off = true; return fallback().then(function (rows) { return done(rows, false, 7); });
+        }
         busy = false; return cache.rows;
       }
       var d = A.parseData(r.data);
-      return done(Array.isArray(d.events) ? d.events : [], true);
+      return done(Array.isArray(d.events) ? d.events : [], true, pd);
     });
   }
   function fallback() {
@@ -201,7 +217,9 @@
       var seg = A.el("div", { class: "ds-seg evs-time", role: "tablist", "aria-label": L("När", "When") });
       T.times.forEach(function (t) {
         seg.appendChild(A.el("button", { type: "button", role: "tab", "data-t": t[0], "aria-selected": String(st.time === t[0]), text: L(t[1], t[2]), onclick: function () {
-          st.time = t[0]; seg.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", String(x.getAttribute("data-t") === st.time)); }); draw();
+          st.time = t[0]; shown = 80; seg.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", String(x.getAttribute("data-t") === st.time)); }); draw();
+          try { body.scrollTop = 0; } catch (x) {}
+          if (st.time === "month") load(false, 31).then(function () { if (listBox && document.body.contains(listBox)) draw(); });
         } }));
       });
       var chips = A.el("div", { class: "evs-chips", role: "group", "aria-label": L("Vad", "What") });
@@ -212,6 +230,7 @@
       });
       bar.appendChild(seg); bar.appendChild(chips);
       body.appendChild(bar);
+      requestAnimationFrame(function () { stickTop(body, bar); });
       listBox = A.el("div", { class: "evs-list", "aria-live": "polite" });
       body.appendChild(listBox);
       body.appendChild(A.btn(two("tip"), "ds-btn ds-btn-secondary btn-block evs-tip", function () {
@@ -226,13 +245,43 @@
   function draw() {
     if (!listBox) return;
     listBox.innerHTML = "";
-    var rows = sorted(cache.rows.filter(function (e) { return inTime(e, st.time) && inType(e, st.type); })).slice(0, 60);
+    var all = sorted(cache.rows.filter(function (e) { return inTime(e, st.time) && inType(e, st.type); }));
+    var rows = all.slice(0, shown);
     if (!rows.length) {
       var w = T.whenTxt[st.time], v = T.whatTxt[st.type];
       listBox.appendChild(A.el("p", { class: "ds-empty evs-empty", text: fill(sv() ? pick("empty", T.empty) : T.emptyEn[0], { nar: L(w[0], w[1]), vad: L(v[0], v[1]) }) }));
       return;
     }
-    rows.forEach(function (e) { listBox.appendChild(rowEl(e)); });
+    // Sticky day headers ("Ikväll", "I morgon", "Lör 25/10") with the number of rows that day.
+    var gk = function (e) { return eveDiff(e.starts_at) <= 0 ? "now" : eveKey(new Date(e.starts_at)); };
+    var per = {}; all.forEach(function (e) { var k = gk(e); per[k] = (per[k] || 0) + 1; });
+    var last = null;
+    rows.forEach(function (e) {
+      var k = gk(e);
+      if (k !== last) {
+        last = k;
+        var h = A.el("div", { class: "evs-day" + (k === "now" ? " evs-day-now" : ""), role: "heading", "aria-level": "3", "data-day": k });
+        h.appendChild(A.el("span", { text: headOf(eveDiff(e.starts_at), e.starts_at) }));
+        h.appendChild(A.el("b", { class: "evs-day-n", text: String(per[k] || "") }));
+        listBox.appendChild(h);
+      }
+      listBox.appendChild(rowEl(e));
+    });
+    if (all.length > rows.length) listBox.appendChild(A.btn(fill(L("Visa fler ({n} till)", "Show more ({n} more)"), { n: all.length - rows.length }),
+      "ds-btn ds-btn-secondary btn-block evs-more", function () { shown += 80; draw(); }));
+  }
+  var shown = 80;
+  var WD = [["Sön", "Mån", "Tis", "Ons", "Tor", "Fre", "Lör"], ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]];
+  function headOf(dd, iso) {
+    if (dd <= 0) return L("Ikväll", "Tonight");
+    if (dd === 1) return L("I morgon", "Tomorrow");
+    if (!iso) return "d" + dd;
+    var d = new Date(eveKey(new Date(iso)) + "T12:00:00Z");
+    return WD[sv() ? 0 : 1][d.getUTCDay()] + " " + d.getUTCDate() + "/" + (d.getUTCMonth() + 1);
+  }
+  // The sticky day headers sit right under the sticky chip bar.
+  function stickTop(body, bar) {
+    try { var h = bar.getBoundingClientRect().height; if (h) body.style.setProperty("--evs-bar-h", Math.round(h) + "px"); } catch (e) {}
   }
   function refreshPubs() { if (listBox && document.body.contains(listBox)) draw(); }
 
@@ -264,7 +313,7 @@
     if (sub.length) txt.appendChild(A.el("span", { class: "evs-sub", text: sub.join(" · ") }));
     top.appendChild(txt);
     var when = A.el("div", { class: "evs-when" });
-    when.appendChild(A.el("b", { class: "evs-hh", text: (eveDiff(e.starts_at) > 1 ? dayName(e.starts_at) + " " : "") + hhmm(e.starts_at) }));
+    when.appendChild(A.el("b", { class: "evs-hh", text: hhmm(e.starts_at) }));   // the day is in the sticky header
     when.appendChild(A.el("span", { class: "evs-cd", text: countdown(e) }));
     top.appendChild(when);
     card.appendChild(top);
@@ -315,6 +364,7 @@
     onPoll: function () { if (Date.now() - pollAt < 10 * 60000) return; pollAt = Date.now(); load(true); },
     open: open, refreshPubs: refreshPubs,
     // tests / other modules
-    _cache: function () { return cache; }, _load: load, _inTime: inTime, _countdown: countdown, T: T
+    _cache: function () { return cache; }, _load: load, _inTime: inTime, _countdown: countdown, T: T, _dayName: dayName,
+    _setTime: function (t) { st.time = t; shown = 80; draw(); }, _head: headOf
   };
 })();

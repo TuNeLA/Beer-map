@@ -13,7 +13,7 @@
 import { gunzipSync } from "node:zlib";
 
 const UA = "OlNu-events/1.0 (+https://github.com/TuNeLA/Beer-map; daily Tickster event dump)";
-const DAYS = 14;
+const DAYS = 31;   // 📅 Månad (one dump download either way)
 export const tnorm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 const km = (a, b) => Math.hypot((a.lng - b.lng) * 111.32 * Math.cos(a.lat * Math.PI / 180), (a.lat - b.lat) * 111.32);
 const GENERIC = new Set(["if", "ik", "hc", "hk", "bk", "sk", "aik", "ff", "fk", "fc", "is", "hockey", "the", "and", "och"]);

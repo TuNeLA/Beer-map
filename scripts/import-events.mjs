@@ -21,7 +21,7 @@ import { ticksterDump, ticksterRows } from "./import-tickster.mjs";   // 🎟️
 
 const here = dirname(fileURLToPath(import.meta.url));
 const UA = "OlNu-events/1.0 (+https://github.com/TuNeLA/Beer-map; daily event import)";
-const DAYS = 14;
+const DAYS = 31;   // 📅 Event "Månad" (CONTRACT "📅 EVENT MÅNAD"): one month ahead
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log("[events]", ...a);
 
@@ -190,7 +190,7 @@ async function ticketmaster(key, towns) {
   for (const t of towns) {
     const u = new URL("https://app.ticketmaster.com/discovery/v2/events.json");
     u.searchParams.set("apikey", key); u.searchParams.set("geoPoint", geohash(t.lat, t.lng)); u.searchParams.set("radius", "25"); u.searchParams.set("unit", "km");
-    u.searchParams.set("startDateTime", iso(now)); u.searchParams.set("endDateTime", iso(end)); u.searchParams.set("size", "100"); u.searchParams.set("sort", "date,asc");
+    u.searchParams.set("startDateTime", iso(now)); u.searchParams.set("endDateTime", iso(end)); u.searchParams.set("size", "200"); u.searchParams.set("sort", "date,asc");
     try {
       const r = await fetch(u, { headers: { "User-Agent": UA, Accept: "application/json" } });
       if (r.status === 429) { log("ticketmaster rate limited, stopping"); break; }
@@ -221,7 +221,7 @@ function feedPos(feed, ev, bars) {
 }
 // Owner-entered repeating events ("Pubquiz på Pitchers varannan torsdag 19:00"):
 // {"type":"recurring","id":"pitchers-quiz","title":…,"bar_id":…,"first":"2026-10-22","time":"19:00","every_weeks":2,"kind":"quiz","hours":3,"until"?:"2027-06-30"}
-// Makes every date in the next 15 days (days_ahead), so a season end shows at most one wrong date. Times are Europe/Stockholm (summer/winter time handled).
+// Makes every date in the next 31 days (days_ahead; 📅 Månad), set "until" so a season end shows no wrong dates. Times are Europe/Stockholm (summer/winter time handled).
 function stockholmToUtc(dateStr, timeStr) {
   const [y, mo, d] = dateStr.split("-").map(Number), [h, mi] = timeStr.split(":").map(Number);
   let guess = Date.UTC(y, mo - 1, d, h, mi);
@@ -237,7 +237,7 @@ function recurring(feed, bars) {
   const out = [], b = feed.bar_id ? bars.get(String(feed.bar_id)) : null;
   const lat = b ? b.lat : +feed.lat, lng = b ? b.lng : +feed.lng;
   if (!feed.first || !feed.time || !feed.title || !isFinite(lat) || !isFinite(lng)) { log("recurring: bad entry", feed.id); return out; }
-  const step = Math.max(1, +feed.every_weeks || 1) * 7, horizon = Date.now() + (+feed.days_ahead || 15) * 864e5, until = feed.until ? Date.parse(feed.until + "T23:59:59Z") : Infinity;
+  const step = Math.max(1, +feed.every_weeks || 1) * 7, horizon = Date.now() + (+feed.days_ahead || 31) * 864e5, until = feed.until ? Date.parse(feed.until + "T23:59:59Z") : Infinity;
   const day0 = new Date(feed.first + "T12:00:00Z");
   for (let k = 0; k < 400; k++) {
     const day = new Date(day0.getTime() + k * step * 864e5), ds = day.toISOString().slice(0, 10);
@@ -308,6 +308,7 @@ async function main() {
   let sport = [];
   if (!process.argv.includes("--no-sport")) { try { sport = await sportRows({ towns, log, tickster: tix }); } catch (e) { log("sport:", String(e.message || e)); } }
   if (tix) { const used = new Set(sport.map((r) => r.ticket_url).filter(Boolean)), tr = ticksterRows(tix, towns, used); rows.push(...tr); log("tickster rows:", tr.length); }
+  try { rows.push(...await (await import("./import-visitsweden.mjs")).visitSwedenRows(rows, log)); } catch (e) { log("visitsweden:", String(e.message || e)); }   // 🇸🇪 Visit Sweden (no key)
   if (dry) { console.log("[events] 🎟️ local matches with a ticket link:\n" + JSON.stringify(sport.filter((r) => r.ticket_url).slice(0, 12), null, 1)); console.log(JSON.stringify(rows.slice(0, 50), null, 1)); console.log("[events] sport sample (tv + first local):\n" + JSON.stringify(sport.filter((r) => r.tv).slice(0, 40).concat(sport.filter((r) => !r.tv).slice(0, 40)), null, 1)); return; }
   for (let i = 0; i < sport.length; i += 500) {
     try { log("import sport:", JSON.stringify(await rpc("import_sport_events", { p_rows: sport.slice(i, i + 500) }))); }

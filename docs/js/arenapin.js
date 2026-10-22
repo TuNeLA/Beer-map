@@ -408,6 +408,8 @@
     barIcoHTML: function (bar) { try { return barIcoHTML(bar); } catch (e) { return ""; } },
     applyText: function () { draw(true); },
     // tests
+    // map3d.js: a tap on the 3D arena opens the same sheet as the chip
+    open: function (id) { var a = arenas().filter(function (x) { return x.id === id; })[0]; if (a && A) openArena(a); return !!a; },
     _matches: function () { return matchMap(Date.now()); }, _label: label, _state: stateOf, _draw: draw, T: T
   };
 })();

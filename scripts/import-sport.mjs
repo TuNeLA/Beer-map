@@ -4,7 +4,7 @@
 //
 // Sources (research: CONTRACT + scratchpad/sport-research.md):
 //   1. stats.swehockey.se "Games By Date" (the Swedish Ice Hockey Association's official public stats site, no robots.txt rules):
-//      one page per day for 14 days. Senior leagues only: SHL, HockeyAllsvenskan, Hockeyettan, HockeyTvåan, HockeyTrean
+//      one page per day for 14 days, days 14–30 from the league schedule pages (far_days / far_rotate, 📅 Månad). Senior leagues only: SHL, HockeyAllsvenskan, Hockeyettan, HockeyTvåan, HockeyTrean
 //      (Ludvika HF = HockeyTrean Dalarna, Smedjebackens HC = HockeyTvåan, Borlänge HF = Hockeyettan, Mora/Leksand = HockeyAllsvenskan).
 //      Match facts only (date, time, teams, arena) + a link back. 1.5 s between pages.
 //   2. TheSportsDB v1 (free key "123" works without a secret; THESPORTSDB_KEY = premium key, optional, lifts the 3-rows cap):
@@ -117,8 +117,27 @@ export function swehockeyRows(day, games, cfg, place) {
   }
   return out;
 }
+// One league "Schedule" page (/ScheduleAndResults/Schedule/<groupId>, the whole season) → [{day, gameId, time, home, away, venue, played}]
+export function parseSwehockeySchedule(html) {
+  const out = [], body = String(html || "");
+  const start = body.search(/<td class="tdHeader">Date<\/td>/i);
+  let day = null;
+  for (const raw of (start > 0 ? body.slice(start) : body).split(/<tr[\s>]/i).slice(1)) {
+    const r = raw.split(/<\/tr>/i)[0];
+    const d = r.match(/>(\d{4}-\d{2}-\d{2})</); if (d) day = d[1];
+    const tip = r.match(/lnkTooltip"\s+title="(\d+)">\s*(\d{1,2}):(\d{2})\s*</);
+    const tm = r.match(/<td[^>]*>([^<]*[A-Za-zÅÄÖåäö][^<]*?\s-\s[^<]*[A-Za-zÅÄÖåäö][^<]*)<\/td>/);
+    if (!day || !tip || !tm) continue;
+    const teams = text(tm[1]).split(/\s+-\s+/);
+    if (teams.length !== 2 || !teams[0] || !teams[1]) continue;
+    const tds = [...r.matchAll(/<td[^>]*>([^<]*)<\/td>/gi)];
+    out.push({ day, gameId: tip[1], time: ("0" + tip[2]).slice(-2) + ":" + tip[3], home: teams[0].trim(), away: teams[1].trim(),
+      venue: (tds.length && text(tds[tds.length - 1][1])) || null, played: /\>\s*\d+\s*-\s*\d+\s*(?:\(|<)/.test(r) });
+  }
+  return out;
+}
 async function swehockey(cfg, place, log, now) {
-  const rows = [];
+  const rows = [], groups = new Map();   // groupId → group name (from the day pages)
   const days = Math.max(1, Math.min(21, +cfg.days || 14));
   for (let i = 0; i < days; i++) {
     const day = localDate(now + i * 864e5);
@@ -126,11 +145,40 @@ async function swehockey(cfg, place, log, now) {
     try {
       const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" } });
       if (!r.ok) { log("swehockey", day, r.status); if (r.status === 429 || r.status >= 500) break; continue; }
-      const got = swehockeyRows(day, parseSwehockeyDay(await r.text()), cfg, place);
+      const games = parseSwehockeyDay(await r.text());
+      for (const g of games) if (g.groupId && !groups.has(g.groupId)) groups.set(g.groupId, g.group);
+      const got = swehockeyRows(day, games, cfg, place);
       rows.push(...got);
       log("swehockey", day, got.length);
     } catch (e) { log("swehockey", day, String(e.message || e)); }
     await sleep(1500);
+  }
+  // 📅 Days 14–30: league schedule pages of the senior groups seen above, one rotation slot per run (polite).
+  const far = Math.max(days, Math.min(45, +cfg.far_days || 0));
+  if (far > days) {
+    const keep = new RegExp(cfg.leagues || "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean)", "i");
+    const skip = new RegExp(cfg.skip || "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior)", "i");
+    const rot = Math.max(1, Math.min(7, +cfg.far_rotate || 1)), slot = Math.floor(now / 864e5) % rot;
+    const from = localDate(now + days * 864e5), to = localDate(now + (far - 1) * 864e5);
+    const ids = [...groups.keys()].filter((id) => keep.test(groups.get(id)) && !skip.test(groups.get(id)) && +id % rot === slot)
+      .slice(0, Math.max(1, +cfg.far_max_groups || 40));
+    let nf = 0;
+    for (const id of ids) {
+      try {
+        const r = await fetch("https://stats.swehockey.se/ScheduleAndResults/Schedule/" + id, { headers: { "User-Agent": UA, Accept: "text/html" } });
+        if (!r.ok) { log("swehockey schedule", id, r.status); if (r.status === 429 || r.status >= 500) break; }
+        else {
+          const byDay = new Map();
+          for (const g of parseSwehockeySchedule(await r.text())) {
+            if (g.played || g.day < from || g.day > to) continue;
+            (byDay.get(g.day) || byDay.set(g.day, []).get(g.day)).push(Object.assign(g, { group: groups.get(id), groupId: id }));
+          }
+          for (const [day, list] of byDay) { const got = swehockeyRows(day, list, cfg, place); rows.push(...got); nf += got.length; }
+        }
+      } catch (e) { log("swehockey schedule", id, String(e.message || e)); }
+      await sleep(1500);
+    }
+    log("swehockey far days", from, "–", to, ":", ids.length, "of", groups.size, "groups (slot " + (slot + 1) + "/" + rot + "),", nf, "rows");
   }
   return rows;
 }
