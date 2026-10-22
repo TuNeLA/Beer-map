@@ -17,6 +17,10 @@
 /* A new sheet in an already open sheet: the content fades + rises 6 px. */
 #sheet-body.sm-swap{animation:smSwap 220ms var(--sm-in) backwards}
 @keyframes smSwap{from{opacity:0;transform:translateY(6px)}}
+/* Sheets always reach the screen bottom: the surface paints 120 px further down (off screen normally, no layout).
+   Android Chrome edge-to-edge moves the gesture-bar "chin" / safe-area inset; a lifted sheet must never show the map below it. */
+#sheet.sheet{box-shadow:0 -12px 48px rgba(0,0,0,.6),0 120px 0 0 var(--ds-sheet,#121a2a) !important}
+.leaflet-popup.olnu-sheet .leaflet-popup-content-wrapper{box-shadow:0 -12px 48px rgba(0,0,0,.6),0 120px 0 0 var(--s1,#121a2a) !important}
 /* "…" placeholder (list on its way) → quiet skeleton row (no shimmer sweep, a 1 Hz breath). */
 .sm-skel{list-style:none;color:transparent !important;min-height:52px;border-radius:12px;margin:6px 0;
   background:rgba(255,255,255,.06);animation:smBreath 1.1s ease-in-out infinite alternate}

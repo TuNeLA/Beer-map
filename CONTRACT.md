@@ -2267,3 +2267,4 @@ No new map buttons. A missing RPC (old server) = that part hides.
   compass arrow (DeviceOrientation / iOS permission) or north-up mini map.
 - Entry points: 🧭 on Vänner rows (invite.js / near.js), Medlemmar "🧭 Hitta", "🧭 Hitta nån" chooser, and the group page 🟢 NU strip → `HITTA.nowSheet`
   ("🗺️ Visa alla på kartan (n)" = the old tap + "🔍 Var ä du, Lisa?" per person out, keys from `group_status_v2.k`).
+- Sheet bottom: #sheet and the bar sheet (.olnu-sheet wrapper) paint their colour 120 px below themselves (second box-shadow, smooth.css), so no map shows under a sheet when Android Chrome's gesture-bar chin / safe-area inset moves or the open spring overshoots. A new bottom sheet should do the same.
