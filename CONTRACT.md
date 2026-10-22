@@ -1949,3 +1949,66 @@ no ticker line, no "cheapest" ranking, no medal; no new floating map buttons; no
 - ⚙️ "💰 Visa ölpriser på kartan" (`olnu.prices`, default off): "72 kr" tag on bar markers at zoom ≥ 14 (`bar_prices_in` per 0.2° × 0.4° cell,
   10 min cache).
 - stats.html → `stats-club.js`: panel "🚪 Entré-info" after ✏️ Krogytor: Väntar / Godkända / Avvisade / Alla, ✅ Godkänn / 🙈 Avvisa / ⏳ Väntar.
+
+## 👥 SOCIAL2 · gruppsidan, 🔔 Inkorg, länkar utan app, länkkort, Du kanske känner (owner-approved research items 15–19; additive)
+Migrations `0123_group_now.sql`, `0124_inbox.sql`, `0125_ev_links.sql`, `0126_friend_suggest.sql` (applied live 2026-10-22 under the same names). No row is ever removed.
+Edge function `card` **v4** (verify_jwt false, merged on top of deployed v3). notify-group unchanged (v23; the client reuses `invite_yes`, `rally_yes`, `msg`).
+Client: `docs/js/gpage.js` (`window.GPAGE`, already in app.js `mods()`), `docs/js/inbox.js` (`window.INBOX`), `docs/js/suggest.js` (`window.SUGGEST`),
+`docs/js/evlink.js` (`window.EVLINK`, loaded right after join.js), `docs/social2.css` (before ds.css). Patches social2 01–06: index.html, app.js
+(mods: INBOX, SUGGEST, EVLINK after INVITE; Gå med falls back to an event code), polish2.js (skips `gpg-*`, calls `GPAGE.sorted`, exports `sectOf`),
+invite.js (`EVLINK.inviteBox`), join.js (answer first + `?ev=`), this section. A missing RPC (old server) = that part hides.
+
+### Group page (WhatsApp/Discord pattern; polish2 stays the ONE section system)
+- **Home** (opens here): header (name › = members, **⋯** top right) · **🟢 NU** strip (`group_now`: faces, "3 ute nu · La Parma, Pitchers", "Senast: 🍺 Oskar · La Parma · 4 min";
+  tap = map flies to them) · anything LIVE (call-out cards + "✅ Kommer", a live skåltimme / new film roll / running lägesrapport = any tile with `.live/.new/.cer-hot`)
+  · **💬 chat** (last 3 messages, quick reply = `post_group_msg` + notify `msg`; "Öppna ›" = social.js openChat) · bottom bar **[ + ]** and ONE main **🍺 ÖL!**
+  (closes the sheet and taps #btn-beer, so the normal ÖL! flow and the beer-type strip run).
+- **+** = actions: polish2 sections Ikväll · Spel & kul visible; Dagen efter · Gruppen · Mer… behind ONE fold ("Mer… (n)", `olnu.gpgOpen`); ➕ Bjud in; module items.
+- **⋯** = info: 👥 Medlemmar & roller · 🔑 Kod + ➕ Bjud in · nätter tillsammans · gruppchef/roller · helgstreak · Lämna.
+- Mechanics: polish2 `sortGroup` sets `data-gp` + order (unchanged), then `GPAGE.sorted(wrap)` sets `data-gm` = home | plus | info per child; the wrapper's
+  `data-gv` picks the view (CSS). DOM order and every module listener are unchanged. 📸 Begär lägesrapport (chief) gets a mirror tile in + that taps the real button.
+- **`groupActions` hook** (for new modules, instead of a tile): `window.X.groupActions(g)` (any global module object, or push the object to `window.OLNU_GA`)
+  → `{icon, label, sub?, onClick(g, btn), sect? 1 Ikväll (default) | 2 Spel | 3 Dagen efter | 4 Gruppen, id?}` or an array. Drawn as + tiles (`.gpg-ga`).
+  A classic `-gi` tile still works too (polish2 `sectOf`); it lands in + (unknown = +).
+
+### RPCs (authenticated only, SECURITY DEFINER, `olnu_uid()`)
+| name | params | returns | errors |
+|---|---|---|---|
+| `group_now` | `p_group_id` | `{v, now, members, out:[{name, i, place, bar_id, drinks, at, me}], last:{name, kind beer\|other\|checkin, place, at, me}\|null}` — live, not stopped, not ghost; place only from a check-in or a PRECISE pin snapped to a bar | `not_member` |
+| `join_preview` | `p_code` | as 0086 + `out`, `faces` (≤ 4 first letters, people out first) | – |
+| `my_inbox` | – | `{v, now, items:[{k, type, at, …}]}` newest first, max 40: `friend {id, name, home_town}` · `inv {id, title, starts_at, place, from, group_name}` (not answered) · `rsvp {id, title, name, answer, starts_at}` (✅/🤔 to MY event, 24 h) · `status {id, group_id, group_name, from, ends_at}` (open lägesrapport, 60 min) · `rally {id, group_id, group_name, name, body, place, yes}` (not mine, not answered) · `duel {id, group_id, group_name, opp, answer_by}` (challenge to my group) | – |
+| `ev_link` | `p_id` (invite) | `{token (6 chars, group-code alphabet, never equal to a group code), expires_at = invite end}`; reuses mine; 30 new / h | `invite_not_found` (not a participant or ❌), `invite_over`, `slow_down` |
+| `ev_preview` | `p_token` | `{ok, token, title, kind, place, starts_at, ends_at, status, live, from (link maker first name), creator (first name), yes, maybe, faces, member, my_answer, id (only for participants)}` or `{ok:false, why: not_found\|slow_down}`; a wrong code is a `join_fails` row (same 8 / 10 min limit as Gå med) | – |
+| `ev_join` | `p_token, p_answer yes\|maybe\|no, p_name` | invite json (as `invite_answer`) + `push_yes`, `token`, `faces`. Adds the caller to `invite_people` (invited_by = link maker, notified = true) then runs `invite_answer`, so event chat lines, access, reminders work as for a normal invite | `invalid_answer`, `invite_not_found`, `invite_over`, `name_needed`, `too_many` (61), `slow_down` (20 joins / h, wrong codes) |
+| `friend_suggest` | – | `{v, people:[{k, name (FIRST name only), mutual}]}` max 8 — friends-of-friends (friendship or shared group with one of my friends), not me / my friends / my group-mates / pending / hidden; ranked by mutual × 2 + same bar same night (≤ 3, last 60 d) | – |
+| `friend_suggest_add` | `p_k, p_name` | `{id, status:'pending', name}` — same limits as `friend_request` (via `code`) | `invalid_target`, `friend_limit`, `slow_down` |
+| `friend_suggest_hide` | `p_k` | `{ok}` (for good) | `invalid_target` |
+Tables: `ev_links(token pk, invite_id, creator, created_at, expires_at, hits, joins)`, `friend_suggest_hidden(user_id, k, hidden_at)` (RLS on, no policies, service_role only).
+`card_public` (service_role) gets kind `ev` and `faces` on join/group (additive). Note: the 0016c uuid sweep does not move `friend_suggest_hidden` (a moved account sees hidden suggestions again).
+
+### 🔔 Inkorg (no new map button)
+- Third tab **🔔 Inkorg** in the Grupper sheet (after Grupper | Vänner; INBOX adds it in its `groupsSheet` hook; last tab kept in `olnu.ibTab`); red count on the EXISTING
+  Grupper button (`#ib-badge`, unseen = `at` after `olnu.ibSeen`). Opening the tab marks all seen; seen rows fade (no clearing).
+- Inline actions use each module's own path: friend ✅/✕ `friend_answer`; event ✅/🤔/❌ `INVITE.open(id, answer)`; call-out ✅ `RALLY.openLink(id,'yes')`, ❌ `answer_rally`;
+  📸 `CHIEF.openStatusLink(id)`; duel ⚔️ Anta / Nej `duel_answer`; a group link opened but not joined (`olnu.jn.pending`) = "👥 ✅ Gå med".
+- Poll `my_inbox` on sign-in, with the app poll (≥ 60 s; 20 s while the tab is open), when the page gets visible.
+
+### Links that work without installing (Partiful rule)
+- Group link `?join=CODE&by=` and event link `?ev=CODE&by=` (new, from "🔗 Dela länk – funkar utan appen" in the invite sheet, card URL `t=ev`).
+- Welcome card (join.js), every platform except the installed app: step 1 = see + answer: group name, faces, "2 ute nu", members / event title, time, place, faces,
+  "3 kommer" + name field + "✅ Gå med i TPM" or "✅ Jag kommer" · "🤔 Kanske". Saved on the server at once (`join_group` / `ev_join`). No auto-join any more.
+  Step 2 = "✅ Du ä med!" + the code to type ("Din kod: ABC234 · Grupper → Gå med") + the gentle install guide (Android one-tap prompt or 3 picture steps;
+  iOS "📲 Gör klart för hemskärmen" = flytt export only, then Dela → Lägg till på hemskärmen; in-app browsers: open in Safari/Chrome).
+- In the installed app (or after "Fortsätt i webbläsaren" without an answer): EVLINK opens the event sheet (✅ / 🤔 / ❌ → `ev_join`, then INVITE.open).
+- Grupper → Gå med: a 6-char code that is no group (`group_not_found`) is tried as an event code (`EVLINK.tryCode`).
+- localStorage: `olnu.ev.done` (code), `olnu.jn.pendingAt` (inbox time of a pending group link).
+
+### Link cards (`card` v4)
+- `t=ev&id=<code>[&by=]`: title "Lisa bjuder in dig · 🧠 Pubquiz på Pitchers · ikväll 20:00 · 3 kommer", desc "Lisa bjuder in. Svara direkt i mobilen – ingen app,
+  ingen inloggning.", image = tabloid card with the title, "3 KOMMER · IKVÄLL 20:00", place and up to 4 round initials; people get 302 to `?ev=CODE&by=`.
+- join/group images draw up to 4 member initials (people out first) next to "4 UTE NU · 6 I GRUPPEN". Old kinds unchanged. Share text + card URL go through
+  `navigator.share({title, text, url})` (copy fallback), the token is made when the sheet renders (iOS needs share inside the tap).
+
+### 👋 Du kanske känner (Vänner tab, under Mina vänner)
+- Rows: initial · first name · "3 gemensamma vänner" · ➕ Lägg till (`friend_suggest_add`) · ✕ (`friend_suggest_hide`). Never a place, bar or time.
+  Note line "🔒 Ni har kompisar gemensamt. Vi visar bara förnamn – aldrig var nån ä." Hidden when empty.

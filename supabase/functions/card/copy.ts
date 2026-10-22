@@ -41,6 +41,7 @@ const SV = {
   paKick: "Morgontidningen", paTitle: "Morgontidningen: {0}", paDesc: "{0} ute i natt · {1}. Läs hela tidningen i Öl Nu.",
   paDesc0: "Nattens tidning ä tryckt. Läs den i Öl Nu.", paSub: "{0} ute · {1}",
   goneTitle: "Öl Nu 🍺", goneDesc: "Länken har gått ut. Öppna kartan och se vem som ä ute.", goneHead: "Länken har gått ut",
+  evKick: "Inbjudan", evYes: "{0} kommer", evFrom: "{0} bjuder in.", evDesc: "Svara direkt i mobilen – ingen app, ingen inloggning.",
 };
 const EN: typeof SV = {
   foot: ["Tap to open · live beer map", "Tap here · no login", "Live beer map · tap and join"],
@@ -61,7 +62,23 @@ const EN: typeof SV = {
   paKick: "Morning paper", paTitle: "Morning paper: {0}", paDesc: "{0} out last night · {1}. Read the whole paper in Öl Nu.",
   paDesc0: "Last night's paper is out. Read it in Öl Nu.", paSub: "{0} out · {1}",
   goneTitle: "Öl Nu 🍺", goneDesc: "This link has expired. Open the map and see who is out.", goneHead: "Link expired",
+  evKick: "Invite", evYes: "{0} going", evFrom: "{0} invites you.", evDesc: "Answer right on your phone – no app, no login.",
 };
+// "tors 22/10 20:00" / "ikväll 20:00" in Stockholm time
+function when(iso: unknown, en: boolean): string {
+  try {
+    const d = new Date(String(iso)); if (isNaN(d.getTime())) return "";
+    const tz = "Europe/Stockholm";
+    const day = (x: Date) => x.toLocaleDateString("sv-SE", { timeZone: tz });
+    const t = d.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", timeZone: tz });
+    const now = new Date(), tom = new Date(Date.now() + 864e5);
+    if (day(d) === day(now)) return (en ? "tonight " : "ikväll ") + t;
+    if (day(d) === day(tom)) return (en ? "tomorrow " : "i morgon ") + t;
+    const wd = d.toLocaleDateString(en ? "en-GB" : "sv-SE", { weekday: "short", timeZone: tz }).replace(".", "");
+    const dm = d.toLocaleDateString("sv-SE", { day: "numeric", month: "numeric", timeZone: tz });
+    return wd + " " + dm + " " + t;
+  } catch { return ""; }
+}
 function F(s: string, ...a: unknown[]): string { return s.replace(/\{(\d)\}/g, (_, i) => String(a[+i] ?? "")); }
 
 export function buildCard(d: D, en: boolean, seed: string): Card {
@@ -74,12 +91,20 @@ export function buildCard(d: D, en: boolean, seed: string): Card {
     return { title: "Öl Nu 🍺 " + head, desc: out ? F(T.invDesc, out) : T.invDesc0, go: "invite=1",
       spec: { kicker: en ? "Live beer map" : "Live ölkarta", head, sub: out ? F(T.out, out) : "", foot } };
   }
+  if (k === "ev") {
+    const title0 = clip(d.title, 60), place = clip(d.place, 40), yes = n(d.yes), who = clip(d.from, 20);
+    const t = when(d.starts_at, en);
+    const title = title0 + (t ? " · " + t : "") + (yes ? " · " + F(T.evYes, yes) : "");
+    const desc = (who ? F(T.evFrom, who) + " " : "") + T.evDesc;
+    return { title, desc, go: String(d.go || ""),
+      spec: { kicker: T.evKick, head: title0, sub: (yes ? F(T.evYes, yes) + " · " : "") + t, note: place, foot, faces: Array.isArray(d.faces) ? d.faces : [] } };
+  }
   if (k === "join" || k === "group") {
     const out = n(d.out), mem = n(d.members);
     const title = g + " · " + (out ? F(T.out, out) : F(T.members, mem));
     const desc = F(pick(k === "join" ? T.joinDesc : T.grpDesc, seed), g) + (out && mem ? " " + F(T.members, mem) + "." : "");
     return { title, desc, go: String(d.go || ""),
-      spec: { kicker: k === "join" ? T.joinKick : T.grpKick, head: g, sub: out ? F(T.outMembers, out, mem) : F(T.members, mem), foot } };
+      spec: { kicker: k === "join" ? T.joinKick : T.grpKick, head: g, sub: out ? F(T.outMembers, out, mem) : F(T.members, mem), foot, faces: Array.isArray(d.faces) ? d.faces : [] } };
   }
   if (k === "rally") {
     const place = clip(d.place, 40), who = clip(d.sender, 20), yes = n(d.yes), maybe = n(d.maybe);

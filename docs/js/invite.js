@@ -619,6 +619,7 @@
       box.appendChild(seg);
     }
     try { if (window.EVCHAT && window.EVCHAT.inviteBox) window.EVCHAT.inviteBox(box, j); } catch (e) {}
+    try { if (window.EVLINK && window.EVLINK.inviteBox) window.EVLINK.inviteBox(box, j); } catch (e) {}   // social2
     // People
     var groups = [["yes", L("✅ Kommer", "✅ Coming")], ["maybe", L("🤔 Kanske", "🤔 Maybe")], ["none", L("⏳ Int' svarat", "⏳ No answer")], ["no", L("❌ Kan int'", "❌ Can't")]];
     groups.forEach(function (g) {

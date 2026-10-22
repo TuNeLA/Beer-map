@@ -23,6 +23,7 @@
   function sectOf(c) {
     var k = c.classList;
     if (k.contains("gmain") || k.contains("gp-h") || k.contains("gp-more")) return null;
+    if (/(^|\s)gpg-/.test(c.className || "")) return null;   // social2: gpage.js parts (Nu, chat, bar, menus)
     if (k.contains("g-foot") || k.contains("confirm")) return null;
     if (k.contains("jn-gtile")) return [0, 2];      // ➕ Bjud in (join.js): primary, under Chatt
     if (k.contains("row")) {
@@ -88,6 +89,7 @@
     label();
     m.hidden = !more;
     wrap.__gpBusy = false;
+    try { if (window.GPAGE && window.GPAGE.sorted) window.GPAGE.sorted(wrap); } catch (e) {}   // social2: + / ⋯ views
   }
   function watchGroup(wrap) {
     if (!wrap || wrap.__gpObs) return;
@@ -180,6 +182,6 @@
     new MutationObserver(function () { clearTimeout(t); t = setTimeout(scan, 0); }).observe(body, { childList: true, subtree: true });
     scan();
   }
-  window.POLISH2 = { sortGroup: sortGroup, sortTop: sortTop, setTab: setTab };
+  window.POLISH2 = { sortGroup: sortGroup, sortTop: sortTop, setTab: setTab, sectOf: sectOf };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();

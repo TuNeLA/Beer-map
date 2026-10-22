@@ -12,6 +12,8 @@
 // link; set it when the app moves to its own domain, no redeploy needed).
 // v3 (join, 2026-10-21): &by=<inviter first name> on invite/join links is passed on to the app link (the welcome
 // card says "TuNe har bjudit in dig till TPM") and starts the preview title. Letters, digits, space . _ - only, max 24.
+// v4 (social2, 2026-10-22): kind `ev` (event link code from ev_link(), 0125): title, time, place, "3 kommer", faces;
+// join/group cards draw up to 4 member initials (card_public `faces`, people out first). `by` works on ev too.
 import { initWasm, Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 import { cardSvg } from "./svg.ts";
 import { buildCard } from "./copy.ts";
@@ -27,7 +29,7 @@ const FONT_URLS = [
   "https://cdn.jsdelivr.net/npm/@expo-google-fonts/black-ops-one@0.4.1/400Regular/BlackOpsOne_400Regular.ttf",
   "https://cdn.jsdelivr.net/npm/@expo-google-fonts/chakra-petch@0.4.1/700Bold/ChakraPetch_700Bold.ttf",
 ];
-const KINDS = new Set(["invite", "join", "duelinv", "group", "rally", "duel", "paper"]);
+const KINDS = new Set(["invite", "join", "duelinv", "group", "rally", "duel", "paper", "ev"]);
 const BOT = /bot|crawl|spider|facebookexternalhit|facebot|whatsapp|telegram|slack|discord|twitter|linkedin|skype|snapchat|pinterest|vkshare|embedly|quora|outbrain|redditbot|applebot|bingpreview|google|yandex|preview|metainspector|iframely|mastodon|signal|viber|line\//i;
 
 // ---- per-instance limits and caches (the database has the real per-IP + global limit) ----
@@ -135,7 +137,7 @@ Deno.serve(async (req: Request) => {
   } else d = { ok: false, why: "limited" };
   const card = buildCard(d, en, k + id);
   const go = card.go && /^[a-z]+=[A-Za-z0-9-]{1,40}$/.test(card.go) ? card.go : "";
-  const by = (k === "join" || k === "invite") ? (url.searchParams.get("by") || "").replace(/[^\p{L}\p{N} ._-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24) : "";
+  const by = (k === "join" || k === "invite" || k === "ev") ? (url.searchParams.get("by") || "").replace(/[^\p{L}\p{N} ._-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24) : "";
   const to = APP + (go ? "?" + go : "") + (go && by ? "&by=" + encodeURIComponent(by) : "");
 
   if (wantImg) {
@@ -161,7 +163,7 @@ Deno.serve(async (req: Request) => {
   if (!isBot) {
     return new Response(null, { status: 302, headers: { Location: to, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
   }
-  const img = self + "&img=1&v=" + (card.title.length + card.desc.length).toString(36) + (d && d.ok ? (Number(d.out ?? d.yes ?? d.us ?? 0) % 97).toString(36) : "x");
+  const img = self + "&img=1&v=" + (card.title.length + card.desc.length).toString(36) + (d && d.ok ? (Number(d.out ?? d.yes ?? d.us ?? 0) % 97).toString(36) + (Array.isArray(d.faces) ? d.faces.length : 0) : "x");
   if (by && d && d.ok) card.title = (en ? by + " invites you · " : by + " bjuder in dig · ") + card.title;
   const html = page(card.title, card.desc, img, self, to, en);
   return new Response(req.method === "HEAD" ? null : html, {

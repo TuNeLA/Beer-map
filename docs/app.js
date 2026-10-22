@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO].forEach(function (m) {
+    [window.SOCIAL, window.EXTRAS, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -2537,6 +2537,11 @@
           var c = U.cleanCode(inp.value);
           if (c.length !== 6) { toast(t("codeNeeded"), { err: true }); return; }
           rpc("join_group", { p_code: c, p_display_name: getName() }).then(function (r) {
+            if (r.error && window.EVLINK && /group_not_found/.test(JSON.stringify(r.error))) {   // social2: an event code?
+              var e0 = r.error;
+              window.EVLINK.tryCode(c).then(function (ok) { if (!ok) toast(errMsg(e0), { err: true }); });
+              return;
+            }
             if (r.error) { toast(errMsg(r.error), { err: true }); return; }
             var g = parseData(r.data);
             toast(t("joined", g.name || "")); refresh();

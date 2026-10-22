@@ -1,0 +1,185 @@
+/* ==========================================================================
+   Öl Nu: social2 (2026-10-22) — group page home / + / ⋯ views (js/gpage.js), 🔔 Inkorg (js/inbox.js),
+   👋 Du kanske känner (js/suggest.js), 🔗 event links (js/evlink.js), welcome card answer step (join.js).
+   Tokens from ds.css / polish.css. No flashing, no decorative motion with reduced motion.
+   ========================================================================== */
+
+/* ---------- group page: one view at a time ---------- */
+.gitem:not(.gcard)>div.gp.gpg{position:relative}
+.gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>[data-gm]:not([data-gm~="home"]),
+.gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]>[data-gm]:not([data-gm~="plus"]),
+.gitem:not(.gcard)>div.gp.gpg[data-gv="info"]>[data-gm]:not([data-gm~="info"]){display:none !important}
+.gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]:not(.gpg-open)>[data-gpg-fold]{display:none !important}
+.gitem:not(.gcard)>div.gp.gpg.gpg-open[data-gv="plus"]>[data-gp="5"][data-gm~="plus"]{display:flex !important}
+.gitem:not(.gcard)>div.gp.gpg>.gp-more{display:none !important}
+.gitem:not(.gcard)>div.gp.gpg>[hidden]{display:none !important}
+/* home: header, Nu, live things, chat, bar */
+.gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gmain{padding-right:52px}
+.gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>[data-gm~="home"]:not(.gmain):not([class*="gpg-"]){order:-1 !important}
+.gpg-now{order:-2;grid-column:1 / -1}
+.gpg-chat{order:2;grid-column:1 / -1}
+.gpg-bar{order:90;grid-column:1 / -1}
+.gpg-ph{order:-4;grid-column:1 / -1}
+.gpg-info{order:-2;grid-column:1 / -1}
+.gpg-fold{order:58;grid-column:1 / -1}
+
+/* ⋯ top right of the header */
+.gpg-dots{position:absolute;top:-2px;right:0;width:44px;height:44px;border-radius:var(--r-pill);border:1px solid var(--hair);background:var(--s3);
+  color:var(--text);font:700 22px/1 var(--body);letter-spacing:.05em;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 6px}
+.gitem:not(.gcard)>div.gp.gpg:not([data-gv="home"])>.gpg-dots{display:none !important}
+.gpg-dots:active{background:var(--s2)}
+
+/* 🟢 NU strip */
+.gpg-now{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:10px 14px;text-align:left;cursor:pointer;color:var(--text);
+  border-radius:var(--r-m);border:1px solid rgba(61,220,132,.35);background:linear-gradient(180deg,rgba(61,220,132,.10),rgba(61,220,132,.04));font:inherit}
+.gpg-now:active{background:rgba(61,220,132,.14)}
+.gpg-now-h{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto}
+.gpg-now-h b{font:700 11px/1 var(--body);letter-spacing:.14em;color:var(--ds-green-t,#4fe08f)}
+.gpg-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);opacity:.6}
+.gpg-dot.on{background:var(--ds-green,#3ddc84);opacity:1;box-shadow:0 0 0 3px rgba(61,220,132,.2)}
+.gpg-faces{display:flex;flex:0 0 auto;padding-left:6px}
+.gpg-face{width:32px;height:32px;margin-left:-8px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--s3);color:var(--text);font:700 14px/1 var(--body);border:2px solid var(--s1);box-shadow:0 0 0 1px var(--hair-2)}
+.gpg-face.on{background:#1d4a33;color:#d9ffe9;box-shadow:0 0 0 2px var(--ds-green,#3ddc84)}
+.gpg-face.me{background:#4a3410;color:#ffe2a8;box-shadow:0 0 0 2px var(--ds-amber,#f5a623)}
+.gpg-now-main{min-width:0;flex:1 1 auto}
+.gpg-now-l{font-weight:700;font-size:15px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.gpg-now-s{font-size:var(--fs-xs);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 💬 chat block */
+.gpg-chat{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2);padding:4px 12px 12px}
+.gpg-chat-h{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;background:none;border:0;padding:0;color:var(--text);cursor:pointer;font:inherit}
+.gpg-chat-h b{font-size:var(--fs-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gpg-chat-o{color:var(--amber-2);font-weight:700;font-size:var(--fs-s)}
+.gpg-msgs{list-style:none;margin:0 0 10px;padding:0;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.gpg-msg{font-size:15px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--text-2)}
+.gpg-msg b{color:var(--text)}
+.gpg-msg.me b{color:var(--amber-2)}
+.gpg-msg small{font-size:12px;font-variant-numeric:tabular-nums}
+.gpg-empty{font-style:normal}
+.gpg-qr{display:flex;gap:8px}
+.gpg-qr .gpg-inp{flex:1 1 auto;min-width:0;min-height:44px;margin:0}
+.gpg-qr .gpg-send{flex:0 0 52px;min-height:44px;padding:0;font-size:18px}
+
+/* bottom bar: + and the ONE main action */
+.gpg-bar{position:sticky;bottom:0;z-index:3;display:flex;gap:10px;align-items:stretch;padding:12px 0 calc(4px + env(safe-area-inset-bottom,0px));margin-top:4px !important;
+  background:linear-gradient(180deg,rgba(18,26,42,0),var(--s1) 34%)}
+.gpg-plus{flex:0 0 64px;height:64px;border-radius:50%;border:1.5px solid rgba(245,166,35,.6);background:var(--s3);color:var(--amber-2);
+  font:400 34px/1 var(--body);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 3px}
+.gpg-plus:active{transform:scale(.95)}
+.gpg-beer{flex:1 1 auto;min-height:64px;border-radius:var(--r-pill) !important;background:linear-gradient(160deg,var(--amber-2),var(--amber)) !important;
+  border:0 !important;color:var(--on-amber) !important;display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;box-shadow:var(--sh-1)}
+.gpg-beer b{font-family:var(--display);font-size:24px;letter-spacing:.04em;font-weight:400}
+.gpg-beer small{font:700 12px/1.2 var(--body);letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.gpg-beer:active{transform:scale(.98)}
+
+/* + / ⋯ panel head */
+.gpg-ph{display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--hair);margin-bottom:4px !important;position:sticky;top:-1px;z-index:3;background:var(--s1)}
+.gpg-back{min-height:44px;padding:0 12px 0 0;background:none;border:0;color:var(--amber-2);font:700 var(--fs-m) var(--body);cursor:pointer}
+.gpg-ph-t{font-size:var(--fs-m);color:var(--text)}
+.gpg[data-gv="plus"] .gpg-ph-info,.gpg[data-gv="info"] .gpg-ph-plus{display:none}
+
+/* + tiles from groupActions: same look as the polish2 tiles */
+.gitem:not(.gcard)>div.gp>.gpg-ga{display:flex}
+.gitem:not(.gcard)>div.gp>.gpg-ga{grid-column:auto !important}
+/* in + / ⋯ the panel head has its own ‹ Tillbaka: hide "‹ Mina grupper" */
+#sheet-body:has(.gpg[data-gv="plus"]) > .g-back,#sheet-body:has(.gpg[data-gv="info"]) > .g-back{display:none}
+.gitem:not(.gcard)>div.gp>.gpg-ga>.btn{width:100%;min-height:60px !important;border-radius:var(--r-m) !important;background:var(--s3) !important;border:1px solid var(--hair) !important;
+  color:var(--text);box-shadow:none;padding:8px 12px !important;display:flex !important;flex-direction:column;align-items:flex-start !important;justify-content:center !important;gap:2px;
+  line-height:1.2;text-align:left;min-width:0}
+.gpg-ga .gpg-gl{font-weight:700;font-size:15px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gpg-ga .gpg-gs{font-size:var(--fs-xs);color:var(--amber-2);font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gpg-ga.off>.btn{opacity:.6}
+.gpg-fold{min-height:44px;border-radius:var(--r-m);border:1px dashed var(--hair-2);background:transparent;color:var(--text-2);font:600 var(--fs-s) var(--body);cursor:pointer;margin-top:4px !important}
+.gpg-fold[hidden]{display:none}
+/* in + the section heads sit tight */
+.gpg[data-gv="plus"]>.gp-h{margin-top:var(--sp-3) !important}
+
+/* ⋯ info rows */
+.gpg-info{display:flex;flex-direction:column;gap:8px}
+.gpg-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;padding:8px 14px;border-radius:var(--r-m);border:1px solid var(--hair);
+  background:var(--s2);color:var(--text);font:600 15px/1.3 var(--body);text-align:left;cursor:pointer;width:100%}
+.gpg-code{cursor:default}
+.gpg-code-b{background:none;border:0;color:var(--text);font:inherit;padding:0;min-height:44px;cursor:pointer;text-align:left}
+.gpg-code-v{font-family:var(--hud,monospace);letter-spacing:.12em;color:var(--amber-2)}
+.gpg-inv{flex:0 0 auto;min-height:40px}
+
+/* ---------- 🔔 Inkorg ---------- */
+#btn-groups .ib-badge{position:absolute;top:-6px;left:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--ds-red,#c8202a);color:#fff;
+  font:700 12px/20px var(--body);text-align:center;box-shadow:0 0 0 2px var(--s0)}
+#btn-groups .ib-badge[hidden]{display:none}
+.inv-tabs.ib-3 button{padding-left:6px;padding-right:6px}
+.ib-tab .ib-tabn{display:inline-block;margin-left:6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ds-red,#c8202a);color:#fff;font:700 11px/18px var(--body);vertical-align:1px}
+.ib-tab .ib-tabn[hidden]{display:none}
+.ib-head{margin:6px 0 10px !important;font-size:var(--fs-s)}
+.ib-empty{padding:28px 8px;text-align:center;color:var(--text-2);font-size:15px}
+.ib-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ib-item{display:grid;grid-template-columns:32px 1fr auto;column-gap:10px;row-gap:8px;align-items:start;padding:12px;border-radius:var(--r-m);border:1px solid var(--hair);
+  background:var(--s2);box-shadow:inset 3px 0 0 var(--amber)}
+.ib-item.ib-old{opacity:.62;box-shadow:none}
+.ib-ico{font-size:22px;line-height:28px;text-align:center}
+.ib-main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.ib-main[role="button"]{cursor:pointer}
+.ib-t{font-size:15px;line-height:1.3;color:var(--text);overflow-wrap:anywhere}
+.ib-s{font-size:var(--fs-xs);line-height:1.35;overflow-wrap:anywhere}
+.ib-ago{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:3px}
+.ib-acts{grid-column:2 / -1;display:flex;gap:8px;flex-wrap:wrap}
+.ib-acts .ib-b{min-height:40px;padding:0 14px;border-radius:var(--r-pill)}
+.ib-acts .ib-x{background:transparent;border:1px solid var(--hair-2);color:var(--text-2)}
+.ib-rsvp{box-shadow:inset 3px 0 0 var(--ds-green,#3ddc84)}
+.ib-status,.ib-rally{box-shadow:inset 3px 0 0 var(--ds-red-t,#ff7b73)}
+
+/* ---------- 👋 Du kanske känner ---------- */
+.sg-box[hidden]{display:none}
+.sg-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.sg-row{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 10px 8px 12px;border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2);
+  transition:opacity var(--d-2),transform var(--d-2)}
+.sg-row.sg-gone{opacity:0;transform:translateX(12px)}
+.sg-face{flex:0 0 36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--s3);color:var(--text);font:700 15px/1 var(--body);
+  box-shadow:0 0 0 1px var(--hair-2)}
+.sg-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.sg-main b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sg-main small{font-size:var(--fs-xs)}
+.sg-add{flex:0 0 auto;min-height:40px;border-radius:var(--r-pill);padding:0 12px}
+.sg-x{flex:0 0 40px;min-height:40px;width:40px;padding:0;border-radius:50%;background:transparent;border:1px solid var(--hair-2);color:var(--text-2)}
+.sg-note{font-size:var(--fs-xs) !important;margin-top:8px !important}
+
+/* ---------- 🔗 event link (invite sheet) + event sheet ---------- */
+.evl-box{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.evl-share{min-height:48px}
+.evl-code{background:none;border:0;padding:4px 0;color:var(--text-2);font:500 var(--fs-xs) var(--body);text-align:left;cursor:pointer}
+.evl-code b{font-family:var(--hud,monospace);letter-spacing:.12em;color:var(--amber-2)}
+.evl-card{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2);padding:14px 16px;box-shadow:inset 3px 0 0 var(--amber)}
+.evl-kick{font:700 var(--fs-xs) var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--amber-2)}
+.sheet-body .evl-title{margin:6px 0 4px;font-size:var(--fs-l);color:var(--text);letter-spacing:0;text-transform:none}
+.sheet-body .evl-title::before{display:none}
+.evl-when,.evl-who{margin:4px 0 !important;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.evl-faces{display:inline-flex;padding-left:8px}
+.evl-ans{margin-top:12px;gap:8px}
+.evl-ans .btn{flex:1 1 0;min-height:48px}
+.evl-ans .btn.on{box-shadow:0 0 0 2px var(--amber)}
+.evl-st{min-height:20px}
+
+/* ---------- welcome card (join.js): answer first ---------- */
+.jn-prev{display:flex;flex-direction:column;gap:4px;align-items:center;margin:8px 0 4px;text-align:center}
+.jn-prev[hidden],.jn-namebox[hidden]{display:none}
+.jn-ev-t{font-size:20px;line-height:1.25;color:var(--text)}
+.jn-ev-w{font-size:var(--fs-s);color:var(--text-2)}
+.jn-ev-n{display:flex;align-items:center;justify-content:center;gap:4px;font-size:var(--fs-s);color:var(--text-2);font-weight:600}
+.jn-faces{display:inline-flex;padding-left:8px}
+.jn-face{width:30px;height:30px;margin-left:-8px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--s3);color:var(--text);
+  font:700 13px/1 var(--body);border:2px solid var(--s1)}
+.jn-face.on{background:#1d4a33;color:#d9ffe9;box-shadow:0 0 0 2px var(--ds-green,#3ddc84)}
+.jn-evbtns{display:flex;gap:8px}
+.jn-evbtns .jn-btn{flex:1 1 0}
+.jn-evbtns .jn-evyes{flex:2 1 0}
+.jn-donebox{border-radius:var(--r-m);border:1px solid rgba(61,220,132,.35);background:rgba(61,220,132,.07);padding:10px 12px;margin-bottom:10px;text-align:left}
+.jn-donebox .jn-done-h{margin:0 0 4px;font-weight:700;color:var(--text)}
+.jn-code-fb{display:block;margin-top:6px;text-align:left}
+
+@media (max-width:374px){
+  .gpg-plus{flex-basis:56px;height:56px}
+  .gpg-beer{min-height:56px}
+  .gpg-beer b{font-size:21px}
+}
+@media (prefers-reduced-motion: reduce){ .sg-row,.gpg-plus,.gpg-beer{transition:none} .gpg-plus:active,.gpg-beer:active{transform:none} }

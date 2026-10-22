@@ -73,6 +73,7 @@ export interface CardSpec {
   note?: string;           // small line under sub
   foot: string;            // bottom band text
   duel?: { a: string; b: string; sa: number; sb: number; tag: string };
+  faces?: string[];        // v4: up to 4 initials drawn as round "avatars" on the right
 }
 
 export function cardSvg(c: CardSpec): string {
@@ -95,11 +96,13 @@ export function cardSvg(c: CardSpec): string {
     }
   } else {
     const head = plain(c.head).toLocaleUpperCase("sv-SE") || "ÖL NU";
-    const h = headline(head, 1100, 168, 64);
+    const fc = (c.faces || []).map((x) => plain(String(x || "")).slice(0, 1).toLocaleUpperCase("sv-SE")).filter(Boolean).slice(0, 4);
+    const W0 = fc.length ? 800 : 1100;
+    const h = headline(head, W0, 168, 64);
     const lh = h.size * 0.98;
     const sub = plain(c.sub || "").toLocaleUpperCase("sv-SE");
     const note = plain(c.note || "");
-    const subS = sub ? (fit(sub, "b", 1060, 76, 36) || 36) : 0;
+    const subS = sub ? (fit(sub, "b", W0 - 40, 76, 36) || 36) : 0;
     const noteS = note ? 34 : 0;
     const blockH = h.lines.length * lh + (sub ? subS * 1.25 : 0) + (note ? noteS * 1.4 : 0);
     let y = 150 + Math.max(10, (370 - blockH) / 2) + h.size * 0.8;
@@ -109,13 +112,20 @@ export function cardSvg(c: CardSpec): string {
     }
     if (sub) {
       y += subS * 0.25 - lh + h.size * 0.2 + subS;
-      const sw = Math.min(1104, width(sub, "b", subS) + 36);
+      const sw = Math.min(W0 + 4, width(sub, "b", subS) + 36);
       body += `<rect x="40" y="${(y - subS * 0.92).toFixed(0)}" width="${sw.toFixed(0)}" height="${(subS * 1.18).toFixed(0)}" fill="${INK}"/>`;
-      body += `<text x="58" y="${y.toFixed(0)}" font-family="${BODY}" font-weight="700" font-size="${subS}" fill="${YEL}">${esc(cut(sub, "b", subS, 1070))}</text>`;
+      body += `<text x="58" y="${y.toFixed(0)}" font-family="${BODY}" font-weight="700" font-size="${subS}" fill="${YEL}">${esc(cut(sub, "b", subS, W0 - 30))}</text>`;
     }
     if (note) {
       y += noteS * 1.6;
-      body += `<text x="48" y="${y.toFixed(0)}" font-family="${BODY}" font-weight="700" font-size="${noteS}" fill="${INK}">${esc(cut(note, "b", noteS, 1100))}</text>`;
+      body += `<text x="48" y="${y.toFixed(0)}" font-family="${BODY}" font-weight="700" font-size="${noteS}" fill="${INK}">${esc(cut(note, "b", noteS, W0))}</text>`;
+    }
+    // v4 faces: overlapping circles, right side, vertically centred in the body
+    const n = fc.length;
+    for (let i = n - 1; i >= 0; i--) {
+      const cx = 1120 - (n - 1 - i) * 74, cy = 336;
+      body += `<circle cx="${cx}" cy="${cy}" r="48" fill="${INK}" stroke="${YEL}" stroke-width="6"/>`;
+      body += `<text x="${cx}" y="${cy + 20}" text-anchor="middle" font-family="${DISP}" font-size="56" fill="${YEL}">${esc(fc[i])}</text>`;
     }
   }
   const kS = fit(kick, "b", 560, 40, 24) || 24;
