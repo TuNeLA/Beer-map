@@ -2303,3 +2303,30 @@ No new map buttons. A missing RPC (old server) = that part hides.
   pending (1 report) | confirmed | undone | all; `owner_set_bar_gone(p_key, p_bar_id, p_status)` confirmed | undone | hidden
   (Bekräfta / Ångra / Dölj nu).
 - The server's pin snapping (olnu_near_bar) is unchanged; the client shows such pins as loose pins.
+
+## 🧘 CALM · lugn start, 📜 VISSTE DU?, krogglöd på rätt hus (owner 2026-10-22; client only, no migration, no RPC, no new buttons)
+- **Start-up rule** (`docs/js/calm.js`, `window.CALM`, in app.js `mods()` after SOCIAL): nothing that pops up by itself
+  in the first 4 s; then at most ONE non-urgent automatic thing during the first 60 s, after that at most one per 45 s.
+  "Automatic" = no tap/key in the last 8 s. Urgent always shows: errors, toasts with a button, alarms (toast rank ≥ 1,
+  except a `promo` nobody tapped for), deep links (`?join=` …). Functional things (an automatic sheet waits for the 4 s
+  quiet start; a calm info toast) show and take the slot. Fun things (delight captions: greeting, 🧢 cap, map events;
+  a 👑 promo toast; the radar card) show only when the slot is free, the user is idle 2.5 s, no sheet is open and the strip is down; they
+  wait in a priority queue with a max wait (caption 5 min, map event 90 s), then are dropped.
+  Gates: app.js `openSheet` → `CALM.sheet()` (re-opens with `opts.calm`), app.js `toast` → `CALM.toast()`,
+  delight.js `caption` → `CALM.caption()`, delight.js `checkEmpty` → `CALM.radar()`.
+- **◎ INGA KONTAKTER radar card**: max once per night, never in the first 25 s, only after 20 s without taps or map moves,
+  small (≤ 250 px) under the top HUD (never over the map centre / your dot), hides after 5 s.
+- **ⓘ map sources** never open by themselves (basemap.js `attrOnLoad`); the ⓘ button and the Mapbox logo stay.
+- **📜 town cards** (zoom ≥ 16 in a town, by the user): max ONE per day. 🕯️ MINNESPLATS (Solo, Ludvika, zoom ≥ 18) max
+  once per week per place (delight-more.js leaves its `solo` egg to CALM). Otherwise a 25 % chance of a "📜 VISSTE DU?"
+  fact from `docs/js/town-facts.js` (`window.TOWN_FACTS = { <town>: { name, lat, lng, r, sv: [...], en: [...] } }`,
+  every line true and sourced in the file header; no repeat until all are seen). Add a town = add a key.
+  Storage (phone only): `olnu.calm = { night, radar, day, town, mem: {place: ms}, seen: {town: [i]} }`.
+- **3D bars on Mapbox styles** (map3d.js; owner: "missing buildings added, but not yellow; only the bar part yellow"):
+  the bar's house (docs/buildings) is drawn in the NORMAL house colour, unless Mapbox's own 3D house CONTAINS the bar
+  point (a neighbour never counts). Only the bar's part glows, as a slab on that roof: a drawn ✏️ area, else the strip of
+  the house along the wall nearest the bar point (≈ 18 × 14 m, clipped to the house), or the whole house when ≤ 300 m².
+  Bar point > 15 m from its house = only a soft ground glow under the pin (layer `olnu-bars-glow`). No Mapbox highlight
+  for bars (arenas unchanged). The 2D barlit pane never shows on a Mapbox style (`html[data-bmmb]`), except in ✏️ BAREA.
+- **Closed places**: sw.js fetches `bars-closed.json` network first (a newly closed place goes at the next start).
+- Debug: `CALM._state()`, `CALM._reset()`, `CALM.fact(true)`, `MAP3D._stats().mbH`.

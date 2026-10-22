@@ -209,6 +209,7 @@ self.addEventListener("fetch", function (e) {
   }
   var scopePath = new URL(self.registration.scope).pathname;
   if (url.pathname.indexOf(scopePath) !== 0) return;
+  if (/\/bars-closed\.json$/.test(url.pathname)) { e.respondWith(networkFirst(req, e)); return; }   // calm: a closed place goes at once
   if (DATA_RE.test(url.pathname)) { e.respondWith(staleWhileRevalidate(req, e)); return; }
   // Self-hosted fonts never change under the same name: keep them across app versions.
   if (/\/fonts\/[^/]+\.woff2$/.test(url.pathname)) { e.respondWith(cdnFirst(req)); return; }

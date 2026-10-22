@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -85,6 +85,8 @@
     // toasts also wait while a sheet is open. A newer toast replaces a waiting one of the same or lower rank.
     var rank = opts.err || opts.action ? 3 : opts.urgent || /\b(med|undo|lv-pop|chaos-toast|promo)\b/.test(opts.cls || "") ? 2 : Date.now() - lastTap < 2500 ? 1 : 0;
     el._olnuT = { opts: opts, rank: rank };
+    // calm: calm news (rank 0) and a promo line nobody tapped for (👑 king …) wait for the one automatic slot
+    if ((!rank || (rank === 2 && !opts.urgent && /\bpromo\b/.test(opts.cls || ""))) && window.CALM && window.CALM.toast(msg, opts)) return el;
     var vis = toastsVisible(), vr = vis.length ? Math.max.apply(null, vis.map(function (x) { return x._olnuT ? x._olnuT.rank : 0; })) : -1;
     if (!vis.length && (rank > 0 || !sheetIsOpen())) toastShow(el, opts);
     else if (rank >= 2 && vis.every(function (x) { return x._olnuT && x._olnuT.rank >= 2; })) {
@@ -2306,6 +2308,7 @@
     opts = opts || {};
     try { if (window.OLNU_LAZY_NOW) window.OLNU_LAZY_NOW(); } catch (e) {}   // review2: lazy texts + sheet CSS now
     if (!opts.now && (sheetLocked() || busy)) { sheetQueue.push([title, build, opts]); return false; }
+    if (window.CALM && window.CALM.sheet(title, build, opts)) return false;   // calm: an automatic sheet waits for its slot
     // Beer-type strip up: a sheet the user did not just tap for waits until the strip closes.
     if (!opts.now && stripUp() && Date.now() - lastTapOut > 1200) { sheetQueue.push([title, build, opts]); stripAfter(drainSheets); return false; }
     var prev = sheetCur; sheetCur = null;

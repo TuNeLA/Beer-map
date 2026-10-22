@@ -383,7 +383,7 @@
     return c;
   }
   var showOnLoad = false;
-  function attrOnLoad() { var s0 = showOnLoad; showOnLoad = false; setAttr(s0); }
+  function attrOnLoad() { showOnLoad = false; setAttr(false); }   // calm: never auto-open (owner 2026-10-22)
 
   /* ---------- Switching ---------- */
   function rastersOn(on) {

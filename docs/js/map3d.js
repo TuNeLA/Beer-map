@@ -8,14 +8,14 @@
      OSM height / levels / type, else from the area). Mapbox has almost no buildings in small Swedish towns (Ludvika:
      none), so these make the town look full in 3D. Fade in from zoom 13.5 (Leaflet; Mapbox's own from 14).
      A house whose centre lies in a Mapbox 3D house is left out (Mapbox's wins; no double houses). Not on Satellit.
-   - Bars: the bar's house (docs/buildings tiles, same data as barlit.js) extruded in warm amber with a soft glow
-     (flood light on Standard), ≥ 8 m; for a big house (BAREA lit "part", or a drawn ✏️ area) the whole house is a dim
-     amber and the bar's part gets a bright glowing roof slab. State from BARLIT (same ids as the markers): quiet amber,
-     1–4 people brighter, ≥ 5 orange-red, a friend / you green. Places (restaurants) only while someone is there.
-     No pulse in 3D (a GL repaint per pulse frame costs battery).
-   - Mapbox's own building under a bar (Standard: "buildings" featureset; classic styles: our extrusion of the
-     composite "building" layer) gets feature-state highlight (warm, colorBuildingHighlight) and our copy of that bar
-     is left out; an arena on match days gets select (icy blue, colorBuildingSelect).
+   - Bars (calm, owner 2026-10-22: "missing buildings added, but not yellow; only the bar part yellow"): the bar's house
+     (docs/buildings tiles, same data as barlit.js) in the NORMAL house colour, ≥ 8 m, unless Mapbox's own 3D house
+     contains the bar point (then that one is the house; a neighbour never counts). Only the bar's part glows as a roof
+     slab: a drawn ✏️ area, else the house strip along the wall nearest the point (≈ 18 × 14 m, clipped to the house), or
+     the whole house when it is ≤ 300 m². Point > 15 m from its house = only a soft ground glow (olnu-bars-glow).
+     State from BARLIT (same ids as the markers): quiet amber, 1–4 people brighter, ≥ 5 orange-red, a friend / you green.
+     Places (restaurants) only while someone is there. No pulse in 3D. The 2D barlit pane never shows on Mapbox styles.
+   - Mapbox's own building under an arena on match days gets select (icy blue, colorBuildingSelect).
    - Arenas with a match ≤ 7 days away (ARENAPIN._matches): the outline (arenas.json) extruded 14 m, 🏒 icy blue /
      ⚽ grass green, brighter on match day / live. The 🏟️ chip stays (arenapin.js).
    - Tap a lit house = the bar's sheet (BARLIT.open) / the arena sheet (ARENAPIN.open).
@@ -34,8 +34,6 @@
     "mb-navday": "#e3e1dc", "mb-navnight": "#34425c" };
   var DARKISH = { "mb-dusk": 1, "mb-night": 1, "mb-dark": 1, "mb-navnight": 1, "mb-sat": 1 };
   var ST_COL = ["match", ["get", "st"], "h", "#ff6a2b", "l", "#ffbf3a", "f", "#3ee07a", "#ffa726"];
-  // a big house with the bar in one part: the house is a darker amber, the bar's part a bright roof slab
-  var DIM_COL = ["match", ["get", "st"], "h", "#a8502a", "l", "#a9772f", "f", "#3f8f5a", "#94683a"];
   var ARENA_COL = ["match", ["get", "sp"], "fotboll", "#5ee27a", "#8fd8ff"];
 
   function bm() { return window.BASEMAP; }
@@ -122,9 +120,63 @@
       r.push(r[0].slice()); return r;
     } catch (e) { return null; }
   }
-  var barHouses = [];   // [{ id, rings, bb }] for hiding the matching plain houses
-  var hAdj = {};        // bar id -> height of the plain house it replaces (when taller)
-  var cands = [];       // bars / arenas we would draw (for the Mapbox house check)
+  // calm (owner 2026-10-22): "missing buildings added, but not yellow — like the other Mapbox buildings, only the bar part
+  // yellow". A bar house that Mapbox lacks is drawn in the normal house colour. Only the bar's own part glows: a drawn ✏️
+  // area, else a strip of the house along the wall nearest the bar point (≈ 18 m × 14 m, clipped to the house), or the
+  // whole house when it is small. The slab sits on that roof. Bar point > NEAR_M from its house = only a ground glow.
+  // Mapbox's own house replaces ours only when it CONTAINS the bar point (never a neighbour); no Mapbox highlight for bars.
+  var NEAR_M = 15, WHOLE_MAX_M2 = 300, STRIP_W = 9, STRIP_D = 14, PART_MIN_M2 = 25;
+  var barHouses = [];   // [{ id, rings (the bar's house), bb, h }] — plain houses under them are left out (no doubles)
+  var hAdj = {};        // bar id -> height of the plain house (docs/buildings3d) it replaces (when taller)
+  var mbH = {};         // bar id -> height of Mapbox's own 3D house that contains the bar point (onIdle)
+  var cands = [];       // bars / arenas (for the Mapbox house check)
+  function mDist(pt, rings, edge) {   // metres from [lng, lat] to the nearest edge of the rings (0 = inside, unless edge)
+    var kx = 111320 * Math.cos(pt[1] * RAD), ky = 110540, best = Infinity;
+    for (var q = 0; q < rings.length; q++) {
+      var r = rings[q]; if (!edge && inRing(pt, r)) return 0;
+      for (var i = 0; i + 1 < r.length; i++) {
+        var ax = (r[i][0] - pt[0]) * kx, ay = (r[i][1] - pt[1]) * ky, bx = (r[i + 1][0] - pt[0]) * kx, by = (r[i + 1][1] - pt[1]) * ky;
+        var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+        var d = Math.sqrt(Math.pow(ax + t * dx, 2) + Math.pow(ay + t * dy, 2)); if (d < best) best = d;
+      }
+    }
+    return best;
+  }
+  // The bar's part: the house ring clipped (Sutherland–Hodgman, convex clip) to a rectangle on the wall nearest the point.
+  function strip(pt, ring) {
+    var kx = 111320 * Math.cos(pt[1] * RAD), ky = 110540;
+    var R = ring.map(function (q) { return [(q[0] - pt[0]) * kx, (q[1] - pt[1]) * ky]; });
+    var best = null;
+    for (var i = 0; i + 1 < R.length; i++) {
+      var A = R[i], B = R[i + 1], dx = B[0] - A[0], dy = B[1] - A[1], l2 = dx * dx + dy * dy; if (l2 < 1) continue;
+      var t = Math.max(0, Math.min(1, -(A[0] * dx + A[1] * dy) / l2)), px = A[0] + t * dx, py = A[1] + t * dy, d = Math.sqrt(px * px + py * py);
+      if (!best || d < best.d) best = { d: d, p: [px, py], u: [dx / Math.sqrt(l2), dy / Math.sqrt(l2)] };
+    }
+    if (!best) return null;
+    var u = best.u, n = [-u[1], u[0]], p0 = best.p;
+    var test = [p0[0] + n[0] * 1.5, p0[1] + n[1] * 1.5];
+    if (!inRing(test, R)) n = [-n[0], -n[1]];   // inward normal
+    var C = [[p0[0] - u[0] * STRIP_W, p0[1] - u[1] * STRIP_W], [p0[0] + u[0] * STRIP_W, p0[1] + u[1] * STRIP_W]];
+    C.push([C[1][0] + n[0] * STRIP_D, C[1][1] + n[1] * STRIP_D], [C[0][0] + n[0] * STRIP_D, C[0][1] + n[1] * STRIP_D]);
+    if (((C[1][0] - C[0][0]) * (C[2][1] - C[0][1]) - (C[1][1] - C[0][1]) * (C[2][0] - C[0][0])) < 0) C.reverse();   // CCW
+    var out = R.slice(0, R.length - 1);
+    for (var e = 0; e < 4 && out.length; e++) {
+      var a = C[e], b = C[(e + 1) % 4], inp = out; out = [];
+      var side = function (q) { return (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]) >= 0; };
+      var cut = function (P, Q) {
+        var x1 = P[0], y1 = P[1], x2 = Q[0], y2 = Q[1], x3 = a[0], y3 = a[1], x4 = b[0], y4 = b[1];
+        var den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4); if (!den) return P;
+        var tt = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den; return [x1 + tt * (x2 - x1), y1 + tt * (y2 - y1)];
+      };
+      for (var j = 0; j < inp.length; j++) {
+        var P = inp[j], Q = inp[(j + 1) % inp.length], ip = side(P), iq = side(Q);
+        if (ip) { out.push(P); if (!iq) out.push(cut(P, Q)); } else if (iq) out.push(cut(P, Q));
+      }
+    }
+    if (out.length < 3) return null;
+    var ll = out.map(function (q) { return [pt[0] + q[0] / kx, pt[1] + q[1] / ky]; }); ll.push(ll[0].slice());
+    return ringArea(ll) >= PART_MIN_M2 ? { type: "Polygon", coordinates: [ll] } : null;
+  }
   function buildBars() {
     var feats = [], seen = {}; barHouses = []; cands = [];
     Object.keys(btiles).forEach(function (k) {
@@ -136,22 +188,29 @@
         ids.forEach(function (x) { var c = canon(x), b = barOf(c); if (!id && b && !(b.place && !people(c))) id = c; });
         if (!id || seen[id]) return;
         seen[id] = 1;
-        var st = stOf(id), man = manualRing(id), house = f.geometry, part = null;
+        var bo = barOf(id); if (!bo) return;
+        var st = stOf(id), man = manualRing(id), house = f.geometry, pt = [bo.lng, bo.lat];
         if (p.lit === "part" || man) {
           var o = outl.filter(function (q) { return q.properties.of.some(function (x) { return canon(x) === id || ids.indexOf(x) >= 0; }); })[0];
-          house = o ? o.geometry : (man ? f.geometry : f.geometry);
-          part = man ? { type: "Polygon", coordinates: [man] } : f.geometry;
+          if (o) house = o.geometry;
         }
-        var rings = outer(house); if (!rings.length) return;
-        var bo = barOf(id); if (bo) cands.push({ id: id, lat: bo.lat, lng: bo.lng, c: centre(rings[0]) });
-        if (mbHasBar[id]) return;   // Mapbox has this house in 3D: it is highlighted there instead
-        var m2 = rings.reduce(function (s, r) { return s + ringArea(r); }, 0);
+        var hr = outer(house); if (!hr.length) return;
+        var m2 = hr.reduce(function (s, r) { return s + ringArea(r); }, 0);
         var h = Math.max(BAR_MIN_H, Math.min(byArea(m2), 14), hAdj[id] || 0);
-        barHouses.push({ id: id, rings: rings, bb: bbox(rings), h: h, feat: null });
-        var hf = { type: "Feature", properties: { k: part ? "dim" : "house", id: id, st: st, h: h }, geometry: house };
-        barHouses[barHouses.length - 1].feat = hf;
-        feats.push(hf);
-        if (part) feats.push({ type: "Feature", properties: { k: "cap", id: id, st: st, b: h, h: h + CAP }, geometry: part });
+        // the house itself, in the normal colour — unless Mapbox's own 3D house contains the bar point
+        if (!mbH[id]) {
+          barHouses.push({ id: id, rings: hr, bb: bbox(hr), h: h });
+          feats.push({ type: "Feature", properties: { k: "house", id: id, st: st, h: h }, geometry: house });
+        }
+        var roof = mbH[id] || h, part = null;
+        if (man) part = { type: "Polygon", coordinates: [man] };
+        else if (mDist(pt, hr) <= NEAR_M) {
+          var ring = hr.slice().sort(function (x, y) { return mDist(pt, [x]) - mDist(pt, [y]); })[0];
+          part = ringArea(ring) <= WHOLE_MAX_M2 && mDist(pt, [ring]) === 0 ? { type: "Polygon", coordinates: [ring] } : strip(pt, ring);
+        }
+        cands.push({ id: id, lat: bo.lat, lng: bo.lng, c: part ? centre(outer(part)[0]) : pt });   // c: a point on the bar's part
+        if (part) feats.push({ type: "Feature", properties: { k: "cap", id: id, st: st, b: roof, h: roof + CAP }, geometry: part });
+        else feats.push({ type: "Feature", properties: { k: "glow", id: id, st: st }, geometry: { type: "Point", coordinates: pt } });
       });
     });
     // arenas with a match this week
@@ -163,7 +222,7 @@
       var st = "week"; try { st = window.ARENAPIN._state(m0, now); } catch (e) {}
       var lvl = st === "live" ? "live" : st === "week" ? "week" : "day";
       var rings = a.g.map(function (r) { return r; });
-      barHouses.push({ id: aid, rings: rings, bb: bbox(rings), h: ARENA_H, feat: null });
+      barHouses.push({ id: aid, rings: rings, bb: bbox(rings), h: ARENA_H });
       feats.push({ type: "Feature", properties: { k: "arena", id: aid, sp: m0.sport === "fotboll" ? "fotboll" : "hockey", lv: lvl, h: ARENA_H },
         geometry: { type: "Polygon", coordinates: rings } });
       sigs.push(aid + lvl);
@@ -213,15 +272,20 @@
         paint: { "fill-extrusion-color": col, "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0, "fill-extrusion-opacity": fade,
           "fill-extrusion-vertical-gradient": true, "fill-extrusion-emissive-strength": dark ? 0.25 : 0.1 } }, std, before);
       addLayer(m, { id: "olnu-bars-3d", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["match", ["get", "k"], ["house", "dim"], true, false],
-        paint: { "fill-extrusion-color": col,   /* owner 2026-10-22: bar houses look like every other house; only the bar part may glow */ "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0,
+        paint: { "fill-extrusion-color": col,   /* owner 2026-10-22: bar houses look like every other house; only the bar part glows */ "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0,
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, 0.96],
           "fill-extrusion-emissive-strength": dark ? 0.25 : 0.1,
           "fill-extrusion-flood-light-color": "#ffb347", "fill-extrusion-flood-light-intensity": 0,
           "fill-extrusion-flood-light-ground-radius": 8, "fill-extrusion-flood-light-wall-radius": 3 } }, std, before);
-      addLayer(m, { id: "olnu-bars-cap", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "__off__"],   /* hotfix: cap often on the wrong building */
+      addLayer(m, { id: "olnu-bars-cap", type: "fill-extrusion", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "cap"],
         paint: { "fill-extrusion-color": ST_COL, "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": ["get", "b"],
           "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, 1],
           "fill-extrusion-emissive-strength": 1 } }, std, before);
+      // calm: a bar that is not clearly in a house = a soft warm glow on the ground under its pin (no block)
+      addLayer(m, { id: "olnu-bars-glow", type: "circle", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "glow"],
+        paint: { "circle-color": ST_COL, "circle-blur": 1, "circle-pitch-alignment": "map", "circle-emissive-strength": 1,
+          "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 13, 5, 16, 26, 18, 90],
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, dark ? 0.55 : 0.4] } }, std, before);
       addLayer(m, { id: "olnu-arena-3d", type: "fill-extrusion", source: "olnu-bars3d", minzoom: 10.5, filter: ["==", ["get", "k"], "arena"],
         paint: { "fill-extrusion-color": ARENA_COL, "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0,
           "fill-extrusion-opacity": 0.95,
@@ -272,21 +336,33 @@
       // our plain houses only fill the gaps: a house whose centre lies in a Mapbox 3D house is left out (no double houses)
       var sig = all.map(function (f) { return f.id; }).sort().join(",");
       if (sig !== mbSig) { mbSig = sig; mbGrid = gridOf(all); dirtyH = true; soon(); }
-      if (!all.length) { if (mbStates.length || Object.keys(mbHasBar).length) { clearStates(m); mbHasBar = {}; dirtyB = true; soon(); } return; }
+      if (!all.length) { if (mbStates.length || Object.keys(mbHasBar).length || Object.keys(mbH).length) { clearStates(m); mbHasBar = {}; mbH = {}; dirtyB = true; soon(); } return; }
       var b = map.getBounds(), now = {}, next = [], list;
       list = cands.filter(function (x) { return b.contains([x.lat, x.lng]); });
+      var hNow = {}, inView = {};
+      list.forEach(function (x) { inView[x.id] = 1; });
+      Object.keys(mbH).forEach(function (id) { if (!inView[id]) hNow[id] = mbH[id]; });   // out of view: keep what we knew
       list.forEach(function (bar) {
-        if (!bar.arena) return;   // hotfix 2026-10-22: no whole-building highlight for bars (owner: only the bar's spot)
         var f = null;
-        [[bar.lng, bar.lat], bar.c].forEach(function (ll) {   // the bar point, then the centre of its house
-          if (f || !ll) return;
-          var p = m.project(ll);
-          f = m.queryRenderedFeatures([[p.x - 2, p.y - 2], [p.x + 2, p.y + 2]], tgt).filter(is3d)[0] || null;
-        });
+        if (!bar.arena) {
+          // calm: bars never colour Mapbox's houses. Mapbox's own 3D house is "the bar's house" only when it CONTAINS the
+          // bar point (then ours is left out and the bar's slab sits on its roof). A neighbour never counts.
+          var pp = m.project([bar.lng, bar.lat]);
+          f = m.queryRenderedFeatures([[pp.x - 1, pp.y - 1], [pp.x + 1, pp.y + 1]], tgt).filter(function (g) {
+            return is3d(g) && outer(g.geometry).some(function (r) { return inRing([bar.lng, bar.lat], r); });
+          })[0] || null;
+          var hh = f && f.properties ? +(f.properties.height || f.properties.render_height || 0) : 0;
+          if (hh > 0) hNow[bar.id] = Math.min(Math.round(hh * 10) / 10, 60);
+          return;
+        }
+        var p = m.project([bar.lng, bar.lat]);
+        f = m.queryRenderedFeatures([[p.x - 2, p.y - 2], [p.x + 2, p.y + 2]], tgt).filter(is3d)[0] || null;
+        if (!f && bar.c) { p = m.project(bar.c); f = m.queryRenderedFeatures([[p.x - 2, p.y - 2], [p.x + 2, p.y + 2]], tgt).filter(is3d)[0] || null; }
         if (!f || f.id == null) return;
         now[bar.id] = 1;
-        next.push({ f: f, id: bar.id, arena: !!bar.arena, s: bar.arena ? (std ? { select: true } : { sel: true }) : (std ? { highlight: true } : { hl: true }) });
+        next.push({ f: f, id: bar.id, arena: true, s: std ? { select: true } : { sel: true } });
       });
+      if (JSON.stringify(hNow) !== JSON.stringify(mbH)) { mbH = hNow; dirtyB = true; soon(); }
       var ns = next.map(function (x) { return x.f.id + JSON.stringify(x.s); }).sort().join(), os = mbStates.map(function (x) { return x.f.id + JSON.stringify(x.s); }).sort().join();
       if (ns !== os) {   // only on a change: a feature-state write repaints the map (and fires idle again)
         clearStates(m);
@@ -329,7 +405,7 @@
     if (!m) { setOn(false); return; }
     if (m !== hookedMap) {
       hookedMap = m;
-      m.on("style.load", function () { if (glMap() === m) { dirtyB = dirtyH = true; mbStates = []; mbHasBar = {}; mbSig = ""; mbGrid = null; setTimeout(sync, 0); } });
+      m.on("style.load", function () { if (glMap() === m) { dirtyB = dirtyH = true; mbStates = []; mbHasBar = {}; mbH = {}; mbSig = ""; mbGrid = null; setTimeout(sync, 0); } });
       m.on("idle", function () { clearTimeout(idleT); idleT = setTimeout(onIdle, 250); });
     }
     gm = m;
@@ -344,7 +420,7 @@
     var m = glMap(); if (!on || !m || !e || !e.latlng) return;
     try {
       var p = m.project([e.latlng.lng, e.latlng.lat]);
-      var hit = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: ["olnu-arena-3d", "olnu-bars-cap", "olnu-bars-3d"].filter(function (l) { return m.getLayer(l); }) })[0];
+      var hit = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: ["olnu-arena-3d", "olnu-bars-cap", "olnu-bars-3d", "olnu-bars-glow"].filter(function (l) { return m.getLayer(l); }) })[0];
       if (!hit && mbStates.length) {   // a bar / arena in Mapbox's own (highlighted) house
         var tgt = isStd(m) ? { target: { featuresetId: "buildings", importId: "basemap" } } : { layers: ["olnu-mb3d"] };
         var fs = m.queryRenderedFeatures([[p.x - 2, p.y - 2], [p.x + 2, p.y + 2]], tgt);
@@ -357,12 +433,19 @@
     } catch (x) {}
   }
 
-  var CSS = "html[data-bm3d] body:not(.ba-edit) .leaflet-barlit-pane,html[data-bm3d] .leaflet-arenaglow-pane{display:none}";
+  // calm: on a Mapbox style the 2D barlit outlines / clips never draw (at any screen position, also before 3D is ready);
+  // only the 3D bar part does. The ✏️ BAREA editor still shows them.
+  var CSS = "html[data-bm3d] body:not(.ba-edit) .leaflet-barlit-pane,html[data-bmmb] body:not(.ba-edit) .leaflet-barlit-pane,html[data-bm3d] .leaflet-arenaglow-pane{display:none}";
+  function markMb() {
+    var v = cur(), de = document.documentElement;
+    if (/^mb-/.test(v || "")) de.setAttribute("data-bmmb", ""); else de.removeAttribute("data-bmmb");
+  }
   window.MAP3D = {
     init: function (api) {
       A = api; map = api && api.map; if (!map) return;
       var st = document.createElement("style"); st.id = "map3d-css"; st.textContent = CSS; document.head.appendChild(st);
-      document.addEventListener("basemap:change", function () { setTimeout(sync, 0); });
+      markMb();
+      document.addEventListener("basemap:change", function () { markMb(); setTimeout(sync, 0); });
       map.on("zoomend moveend", U.debounce(function () { if (on) update(); }, 250));
       map.on("click", onClick);
       setInterval(function () {   // arenas change state with the clock (week → day → live)
@@ -379,9 +462,9 @@
       try {
         o.houses = m && m.getSource("olnu-houses") ? m.getSource("olnu-houses")._data.features.length : 0;
         var bf = m && m.getSource("olnu-bars3d") ? m.getSource("olnu-bars3d")._data.features : [];
-        o.bars = bf.filter(function (f) { return f.properties.k !== "arena"; }).map(function (f) { return f.properties.k + ":" + f.properties.id + ":" + f.properties.st + ":" + f.properties.h; });
+        o.bars = bf.filter(function (f) { return f.properties.k !== "arena"; }).map(function (f) { return f.properties.k + ":" + f.properties.id + ":" + f.properties.st + ":" + (f.properties.h != null ? f.properties.h : 0); });
         o.arenas = bf.filter(function (f) { return f.properties.k === "arena"; }).map(function (f) { return f.properties.id + ":" + f.properties.sp + ":" + f.properties.lv; });
-        o.layers = ["olnu-houses-3d", "olnu-bars-3d", "olnu-bars-cap", "olnu-arena-3d", "olnu-mb3d"].filter(function (l) { return m && m.getLayer(l); });
+        o.mbH = mbH; o.layers = ["olnu-houses-3d", "olnu-bars-3d", "olnu-bars-cap", "olnu-bars-glow", "olnu-arena-3d", "olnu-mb3d"].filter(function (l) { return m && m.getLayer(l); });
       } catch (e) { o.err = e.message; }
       return o;
     },

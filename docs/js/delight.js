@@ -311,6 +311,7 @@
   var capQ = [], capCur = null;
   function caption(o) {
     if (!o || !o.text) return;
+    if (window.CALM && window.CALM.caption(o, caption)) return;   // calm: start-up rule (js/calm.js)
     if (o.ev) {
       capQ = capQ.filter(function (x) { return !x.ev; });             // a new map event replaces older event captions
       if (capCur && !capCur.ev && !o.now) { clearTimeout(capCur.tm); capQ.unshift(capCur); capShow(o); return; }   // greeting etc. waits
@@ -414,13 +415,14 @@
     if (!force && (near > 0 || z < 9)) { hideEmpty(); return; }
     if (!force && blocked()) return;
     if (!force && Date.now() - emptyAt < 10 * 60000 && emptyTown === tn.name) return;
+    if (!force && window.CALM && !window.CALM.radar()) return;   // calm: once per night, only when idle on the map
     emptyAt = Date.now(); emptyTown = tn.name;
     var box = $("dl-empty");
     if (!box) { box = mk("div", "dl-empty"); box.id = "dl-empty"; box.setAttribute("role", "status"); document.body.appendChild(box); }
     var line = fill(pick(txt(C().empty)), { stad: tn.name });
     box.innerHTML = '<div class="dl-radar" aria-hidden="true"><i></i></div><div class="dl-empty-h">◎ ' + esc(ui("empty")) + " · 4 KM</div><div class=\"dl-empty-t\">" + esc(line) + "</div>";
     box.hidden = false; void box.offsetWidth; box.classList.add("dl-in");
-    clearTimeout(box._tm); box._tm = setTimeout(hideEmpty, 9000);
+    clearTimeout(box._tm); box._tm = setTimeout(hideEmpty, window.CALM ? window.CALM.radarMs : 9000);
   }
   function hideEmpty() {
     var box = $("dl-empty"); if (!box || box.hidden) return;
