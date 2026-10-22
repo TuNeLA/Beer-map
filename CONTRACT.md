@@ -1835,3 +1835,117 @@ sw.js `buildings3d/*.json` = data, stamp-version.yml), 02 (basemap.js), 03 (this
 - Hand-made weekly rules in `scripts/event-feeds.json` (type `recurring`, facts only): `pitchers-borlange-quiz` (n3911317766, Wed 19:00),
   `bishops-falun-quiz` (n5262504842, Tue, 19:00 ASSUMED), `bishops-mora-quiz` (n11094397888, Thu, 19:00 ASSUMED). Bishops Arms' terms
   forbid crawling: never fetch their site; ask info@bishopsarms.com for the times / a feed.
+
+## 💸 RUNDAN · Kvällens nota + Swisha tillbaka, 🎲 Vem bjuder?, 🚕 Taxi hem / Dela taxin (additive)
+Migrations `0116_rundan_tables.sql`, `0117_rundan_rpcs.sql`, `0118_rundan_spin_grants.sql` (live 2026-10-22; live names
+0116_rundan_tables, 0117_rundan_rpcs, 0118_rundan_spin_grants, 0118_rundan_me). Client: `docs/js/rundan.js` (`window.RUNDAN`, via `mods()`),
+`docs/rundan.css`. A missing RPC (old database, PGRST202) = all of it hides, no error. In-app only, no new push event
+(posting an expense sends the normal `notify-group {event:"msg"}`). No money passes through Öl Nu.
+
+### Tables (RLS on, no policies, no table grants; rows are never removed: cancel / reject flags)
+`rnd_swish(user_id pk, number, changes, day, day_changes)` – my own Swish number (one per user, not per group).
+`rnd_expenses(id, group_id, created_by, payer, kind round|taxi|other, what 1–40, items 0–99, total 1–50000, equal_share, msg_id → group_msgs, night, cancelled_at/by)`.
+`rnd_shares(expense_id, user_id, amount)` – what each other person owes the payer (the payer has no row; total − Σ shares = the payer's own part).
+`rnd_payments(id, group_id, from_user, to_user, amount, expense_id null, created_by, confirmed_at, rejected_at, cancelled_at)`.
+`rnd_spins(id, group_id, user_id, members uuid[], winner, fair, msg_id, night)`. All user columns are uuids (0016 erase sweep moves them).
+
+### RPCs (authenticated only; `not_authenticated` without a session; members of the group only → `not_member`)
+Member key `k` = md5(group:user:olnu-rnd) first 12 hex (never a user id). Net = Σ others' shares of what I paid − Σ my shares of
+what others paid + Σ my payments − Σ payments to me (cancelled expenses and cancelled/rejected payments do not count; all time per group).
+| name | params | returns | errors |
+|---|---|---|---|
+| `rnd_set_swish` | `p_number` ('' clears; 07xxxxxxxx, +46/0046/spaces/dashes ok) | `{number}` | `invalid_swish`, `slow_down` (10 changes per day) |
+| `rnd_me` | – | `{number}` | – |
+| `rnd_group` | `p_group_id` | `{v, server_time, night, me (k), my_swish, members:[{k,name,is_me,out,swish,paid_n,net}], expenses:[exp], payments:[{id,from,from_name,to,to_name,amount,expense_id,created_at,confirmed,rejected,from_me,to_me,can_undo,can_confirm}]}` – expenses/payments of 14 days, newest 40 | `not_member` |
+| `rnd_add` | `p_group_id, p_kind, p_payer (k or null = me), p_total, p_shares [{k, amount}] (1–20), p_items default 0, p_what default null` | `{id, msg_id, body, equal_share}` | `invalid_split` (sum > total, payer in shares, duplicates, bad amounts), `invalid_member`, `slow_down` (1 per 5 s, 30 per hour) |
+| `rnd_pay` | `p_group_id, p_to k, p_amount, p_expense_id default null, p_from k default null` | `{id}` (`again:true` = this share was already paid) | `not_yours` (from ≠ me and to ≠ me), `invalid_amount`, `expense_not_found`, `invalid_member`, `slow_down` |
+| `rnd_payment` | `p_payment_id, p_action confirm\|reject\|undo` | `{ok}` | `payment_not_found`, `not_yours`, `too_late`, `invalid_action` |
+| `rnd_cancel` | `p_expense_id` | `{ok}` (payments already made stay and count) | `expense_not_found`, `not_yours` (only writer or payer) |
+| `rnd_spin` | `p_group_id, p_keys k[] (2–20, may include me), p_fair default false, p_line default null` ({n} = name, ≤ 110) | `{id, winner, winner_name, winner_me, msg_id, body, weights:[{k,pct}]}` | `invalid_spin`, `invalid_member`, `slow_down` (1 per 6 s, 40 per night) |
+exp = `{id, msg_id, kind, what, items, total, equal_share, created_at, night, cancelled, payer, payer_name, payer_me, by_me, can_cancel, payer_swish, shares:[{k,name,is_me,amount,paid,confirmed,pay_id}]}`.
+
+Rules:
+- `rnd_add` and `rnd_spin` insert a normal `group_msgs` row (body ≤ 140, expires at the next 05:00; the keep-history trigger applies):
+  "💸 {payer} bjöd på {n} öl · {x} kr var" / "💸 {payer} bjöd på {what} · {total} kr", "🚕 {payer} tog taxin · …", "🧾 {payer} betalade {what} · …",
+  "🎲 {line with the winner's name}". Old apps show the text. The link is `rnd_expenses.msg_id` / `rnd_spins.msg_id`.
+- Swish number shown to a member = `rnd_swish` (own), else the 💸 Skuldboken number of that group (`gang_swish`). Only members of a shared group see it.
+- A payment the receiver writes (cash, `p_from` = the other one) is confirmed at once. The sender can undo within 24 h until it is confirmed.
+- 🎲 fair = weight 1 / (1 + rounds the person paid in this group in 60 days). The server picks, so every phone sees the same winner.
+
+### Client (rundan.js)
+- Group page: ONE tile `rnd-gi` "💸 Kvällens nota" (+N kr / −N kr / kvitt, ⏳ n to confirm) → polish2 section Ikväll ([1, 5]).
+  Sheet: "💸 Jag bjöd på en runda", "🎲 Vem bjuder?", "➕ Annan utgift", ⏳ Väntar på dig (✅ Fått / ❌ Fick inget), Saldo,
+  🤝 Gör upp (fewest payments: biggest debtor → biggest creditor, deterministic), my undoable payments, Senaste, 📱 Mitt Swish-nummer.
+- Add sheet: kind 🍺/🚕/🧾, "Vem betalade?", who was in (people out tonight preselected), Per person / Totalt dela lika (payer in or out) /
+  Olika belopp (+ payer's own part), items, what, preview, first-use Swish number. Send → chat opens.
+- Chat (social.js → `RUNDAN.chatOpen`): rows whose `data-mid` is an expense's msg_id get a card: share chips (✅ confirmed, ⏳ waiting),
+  for my unpaid share "📱 Swisha {payer} {x} kr" = `https://app.swish.nu/1/p/sw/?sw=<nr>&amt=<x.00>&cur=SEK&msg=<Öl Nu · what>`,
+  plus number + amount + "📋 Kopiera" + "Öppnas int' Swish? Prova här" = `swish://payment?data=<json>`, and "✅ Betalt".
+  The payer sees "Väntar på: …" and ✅ Fått / ❌ Fick inget. Both Swish links are undocumented by Swish (2026-10); the fallback is always shown.
+  `rnd_group` every 8 s while the chat is open and has 💸/🚕/🧾 rows (quiet chat: ~every 24 s).
+- 🎲 sheet: members (out tonight preselected, else all), ⚖️ Rättvis with odds, a slot reel (motion only, 3.2 s, then one 1 Hz glow ×2;
+  prefers-reduced-motion: result at once, no glow). Winner = me → "💸 Lägg in rundan". `olnu.rndFair` remembers the switch.
+- 🚕 sheet (extras.js `showTaxi` → `RUNDAN.taxiSheet`): 🏠 Taxi hem. Home = `HOMEZONE.home()` (phone only, localStorage `olnu.home`);
+  none → "🏠 Spara hemadress" opens the Hemzon sheet and comes back. With home: distance, nearest local taxi (tel:, js/taxi-data.js, ≤ 60 km),
+  "🚗 Uber hem" (`https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=…&dropoff[longitude]=…&dropoff[nickname]=Hem`),
+  "Fler taxibolag nära" fold, Bolt only within 40 km of a Bolt city (no public deep link), "🚕 Dela taxin" (= add sheet, kind taxi, total split).
+- ⚙️: "📱 Mitt Swish-nummer: … ›" (`rnd_me`).
+
+## ⏰ ÖPPETTIDER · 🍾 SYSTEMET · 💰 PRIS · 🚪 ENTRÉ · 🌭 NATTMAT (all-in-one B; additive, migrations 0119–0122)
+Migrations `0119_bar_close_reports.sql`, `0120_bar_prices.sql`, `0121_club_info.sql`, `0122_bar_extra.sql` (applied 2026-10-22). No row-removing
+statements; rows are never removed (expiry by time, `superseded_at`, status). New files: `scripts/fetch-hours.mjs`, `scripts/oh-parse.mjs`,
+`.github/workflows/hours.yml`, `docs/hours.json`, `docs/systembolaget.json`, `docs/js/oppet.js` (`window.OPPET`), `docs/js/barinfo.js`
+(`window.BARINFO`), `docs/oppet.css`, `docs/stats-club.js`. Patches aiob 01–05: index.html + app.js `mods()`, places.js (nattmat mode),
+forfest.js (Systemet line), sw.js (data cache) + stats.html, this section.
+**Owner rules**: never a BAC / promille number; prices are neutral info (Alkohollagen 2010:1622 7 kap. "särskild måttfullhet") — no push,
+no ticker line, no "cheapest" ranking, no medal; no new floating map buttons; nothing covers the beer-type strip (toasts wait for `OLNU_STRIP.after`).
+
+### Data (build time, weekly Action "Hours (OpenStreetMap)", Monday 04:47 UTC)
+- `scripts/fetch-hours.mjs` asks Overpass in 5 small queries (one big query times out on the public mirrors; mirrors: overpass-api.de,
+  maps.mail.ru, kumi). Bars / pubs / nightclubs / biergartens with `opening_hours`; nightclub `min_age` (optional query); fast food, pizza / kebab /
+  burger / korv restaurants and 7-Eleven / Pressbyrån shops with `opening_hours`; `shop=alcohol` + brand / name Systembolaget.
+- `scripts/oh-parse.mjs`: a minimal parser (npm `opening_hours` is LGPL-3.0 and ~300 kB with holiday data). Handles 24/7, day lists and ranges
+  (also wrap "Fr-Mo"), times without days, over midnight, 24:00, "10-19", several times a day, off / closed, later rule wins, ", Mo …"
+  additional rules, month rules (kept only when the build date is in them). Ignored: PH / SH, "||", "18:00+", sunrise.
+- `docs/hours.json` `{v, at, bars: {<bars.json id>: [Mo..Su]}, age: {id: min_age}, nm: [[name, lat, lng, f|r|k, [Mo..Su]]]}`; nm = open after
+  01:00 on some day. `docs/systembolaget.json` `{v, at, stores: [[name, lat, lng, [Mo..Su], guess]]}` (guess 1 = no OSM hours → the usual
+  Mon–Fri 10–19, Sat 10–15). A day = `"start-end"` minutes after that day's 00:00, `","` between parts, `""` closed, end > 1440 = after midnight.
+  Safety floors (≥ 150 bars with hours, ≥ 200 stores) keep the old files. The official Systembolaget API (api-portal.systembolaget.se) needs a key
+  and its hours field is unverified, so it is not used.
+
+### Server
+| name | params | returns | errors |
+|---|---|---|---|
+| `report_bar_close` | `p_bar_id, p_close` ('HH:MM' 16:00–06:00, 00:00–06:00 = after midnight, or 'closed') | `{ok, bar_id, close_min, closed, evening}` | `invalid_bar` (not bars_lite active / pl_ id), `invalid_time`, `slow_down` (1 / bar / 60 s, 12 / 24 h) |
+| `report_bar_price` | `p_bar_id, p_kind` (stor \| cider \| drink), `p_kr` (20–300) | `{ok, bar_id, kind, mine, price: {kr, n, at}}` | `invalid_bar`, `invalid_kind`, `invalid_price`, `slow_down` (30 / 24 h) |
+| `bar_prices_in` | `p_s, p_w, p_n, p_e` (≤ 0.5° × 1°) | `[{bar_id, kr, n, at}]` stor stark, report within 120 days, max 400 | `invalid_box` |
+| `suggest_club_info` | `p_bar_id, p_age` (18–30), `p_fee` (0–1000), `p_dress` (2–40, no links / e-mail / 7+ digits) — at least one | `{ok, id, status pending \| ok, auto}` | `invalid_bar`, `invalid_info`, `slow_down` (5 / 24 h) |
+| `bar_extra` | `p_bar_id` | `{v:1, bar_id, server_time, close: {min, closed, at, mine, n} \| null, prices: {stor\|cider\|drink: {kr, n, at}}, mine: {kind: kr}, club: {age, fee, dress, at} \| null, club_pending}` | `invalid_bar` |
+| `owner_club_info` | `p_key, p_status` (pending \| ok \| rejected \| all) | `{generated_at, counts, rows[{id, bar_id, bar_name, bar_type, age, fee, dress, status, auto, created_at, superseded, by_n, current}]}` | PT403 `forbidden` |
+| `owner_set_club_info` | `p_key, p_id, p_status` | `{ok, id, status, bar_id}` (ok supersedes the bar's older approved info) | `invalid_status`, `info_not_found`, PT403 |
+- Tables (RLS on, no policies, no grants): `bar_close_reports` (evening = `olnu_evening(olnu_night_of(now()))`, newest report of the evening wins),
+  `bar_prices` (unique bar, user, kind, Stockholm day → a new report the same day corrects; shown = median of the newest report of each of the
+  last 7 users within 120 days), `club_info` (pending → ok / rejected; the owner's trusted account from 0095 `bar_area_trusted` is ok at once).
+  Authenticated only, except the two owner functions (anon + owner key, like 0095).
+- Queue ("Kö nu: ingen / kort / lång") stays the v12 `report_queue` (300 m, 10 min per user, a report lives **30 min**; the owner's 45 min
+  wish would need a change of report_queue — not done).
+
+### Client
+- `js/oppet.js` (`OPPET`): status in Europe/Stockholm wall clock (any phone time zone), tonight's report beats OSM (`setOverride`).
+  **Closing soon**: checked in (or a precise pin at a bar) and the bar closes within 30 min → ONE toast per bar and evening (`olnu.aioClose`)
+  with the nearest bar still open ≥ 45 min (≤ 4 km) + distance + "📍 Visa"; via `OLNU_STRIP.after`. **Ikväll chip** (max one, `hx-aio`, full
+  width in the open panel): ⏰ "<bar> stänger 01:00" → nearest open bar; else 01:00–05:00 "🌭 Nattmat öppet nu: <name> · 230 m +2" → sheet with
+  the nearest 3 (📍 Visa); else on Mon–Sat in the last 2 h before closing "🍾 Systemet stänger 19:00 · 1 h 40 min kvar" → sheet (nearest store,
+  📍 / 🧭, "20 år och leg", holiday note). **Förfest** start screen: "🍾 Systemet (Ludvika, 220 m) stänger 19:00 · …" (`OPPET.forfestNode`).
+- **Nattmat on the map** (places.js, no new layer): 01:00–05:00 open late food (hours.json nm, matched by `pl_<lat·1e5>_<lng·1e5>`) shows
+  from zoom 13 (other places still 16), first in the cap, 🌭 in a bigger warm dot (`.pl-nm`).
+- `js/barinfo.js` (`BARINFO`), bar sheet: ONE `.ev-line` under the title — "🕐 Öppet till 01:00" / "⏰ Stänger om 25 min" / "🔒 Stängt · öppnar
+  16:00" / "🔒 Stängt ikväll (rapporterat)" · "🍺 72 kr" · clubs "🚪 Kö: kort · 20 år · 100 kr" (hidden when empty). ℹ️ Info fold:
+  🕐 Öppettider (today + tonight's report) + "🕐 Fel tider?" (chips Stängt ikväll / 22–03 + a time field); 💰 Pris per kind "uppdaterat 3 dar
+  sen · 3 rapporter" + "💰 Rapportera pris" (kind tabs, −5 / +5, 20–300) + "Användarnas egna uppgifter. Drick lagom."; 🚪 Kö och entré
+  (nightclubs or approved info): "Kö nu" + ingen / kort / lång (presses the BARSPLUS v12 buttons), "Åldersgräns 20 · Entré 100 kr · Klädkod: …"
+  (OSM min_age as fallback) + "✏️ Föreslå entré-info" / "⏳ Ditt förslag väntar på Generalen". `bar_extra` on popup open (cache 90 s).
+  Prices only for bar / pub / nightclub / biergarten; restaurant places show hours only when known.
+- ⚙️ "💰 Visa ölpriser på kartan" (`olnu.prices`, default off): "72 kr" tag on bar markers at zoom ≥ 14 (`bar_prices_in` per 0.2° × 0.4° cell,
+  10 min cache).
+- stats.html → `stats-club.js`: panel "🚪 Entré-info" after ✏️ Krogytor: Väntar / Godkända / Avvisade / Alla, ✅ Godkänn / 🙈 Avvisa / ⏳ Väntar.

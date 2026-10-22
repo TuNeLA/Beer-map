@@ -1,0 +1,50 @@
+name: Hours (OpenStreetMap)
+
+# ⏰ docs/hours.json (bars, club ages, 🌭 nattmat) + 🍾 docs/systembolaget.json from Overpass. Own workflow, so a slow
+# Overpass can never cost the bars.json commit of "Bars (OpenStreetMap)".
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/fetch-hours.mjs'
+      - 'scripts/oh-parse.mjs'
+      - '.github/workflows/hours.yml'
+  schedule:
+    - cron: '47 4 * * 1'   # every Monday 04:47 UTC (after the bars run)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hours
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch opening hours from Overpass
+        run: node scripts/fetch-hours.mjs
+
+      - name: Commit docs/hours.json and docs/systembolaget.json if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/hours.json docs/systembolaget.json
+          if git diff --cached --quiet; then
+            echo "hours unchanged"
+            exit 0
+          fi
+          git commit -m "Update hours.json and systembolaget.json from OpenStreetMap [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main

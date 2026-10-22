@@ -546,6 +546,7 @@
       // v16: voice skål (js/after.js) adds a mic button and voice rows to this chat.
       try { if (window.AFTER && window.AFTER.chatOpen) window.AFTER.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
       try { if (window.PHOTO && window.PHOTO.chatOpen) window.PHOTO.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
+      try { if (!g.ev && window.RUNDAN && window.RUNDAN.chatOpen) window.RUNDAN.chatOpen(g, { list: list, input: inp.parentNode, alive: alive }); } catch (e) {}   // 💸 Swish cards
       try { if (g.ev && window.EVCHAT && window.EVCHAT.chatOpen) window.EVCHAT.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}
       function add(m, anchor) {
         if (!m || seen[m.id]) return;

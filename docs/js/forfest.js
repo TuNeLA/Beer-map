@@ -355,6 +355,7 @@
       el("p", { class: "ff-tag", text: T("tag") }),
       T("svOnly") ? el("p", { class: "ff-tag ff-sv", text: T("svOnly") }) : null
     ]));
+    try { var sbN = window.OPPET && window.OPPET.forfestNode ? window.OPPET.forfestNode() : null; if (sbN) wrap.lastChild.appendChild(sbN); } catch (e) {}   // 🍾 Systemet
 
     // Players
     var ps = st.players, onN = active().length;

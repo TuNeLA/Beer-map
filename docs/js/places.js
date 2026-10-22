@@ -22,6 +22,10 @@
   function capFor(z) { return z < 17 ? 60 : z < 18 ? 110 : MAX_IN_VIEW; }
   function gapFor(z) { return z < 17 ? 30 : z < 18 ? 24 : 20; }
   var ICON = { restaurant: "🍽️", cafe: "☕", fast_food: "🍔" }, RANK = { restaurant: 0, cafe: 1, fast_food: 2 };
+  // 🌭 js/oppet.js nattmat mode (01–05): open late food from zoom 13 and first in the cap (class pl-nm). Nothing else changes.
+  var NM_Z = 13;
+  function nmOn() { try { return !!(window.OPPET && window.OPPET.nightMode()); } catch (e) { return false; } }
+  function nmOpen(p) { try { return !!(window.OPPET && window.OPPET.openLate(p)); } catch (e) { return false; } }
   function sv() { return !I || I.lang !== "en"; }
   function on() { try { return U.ls.get(KEY, "1") !== "0"; } catch (e) { return true; } }
   var lastPick = {};
@@ -66,17 +70,23 @@
   }
   function iconFor(p, lbl) {
     var nm = String(p.name || "");
-    var h = '<div class="pl-in"><span class="pl-dot" aria-hidden="true">' + (ICON[p.type] || ICON.restaurant) + "</span>" +
+    var h = '<div class="pl-in"><span class="pl-dot" aria-hidden="true">' + (p._nm ? "🌭" : ICON[p.type] || ICON.restaurant) + "</span>" +
       (lbl ? '<span class="pl-lbl">' + U.esc(nm) + "</span>" : "") + "</div>";
-    return L.divIcon({ html: h, className: "pl-mk" + (selId === p.id ? " pl-sel" : ""), iconSize: [32, 32], iconAnchor: [16, 16] });
+    return L.divIcon({ html: h, className: "pl-mk" + (selId === p.id ? " pl-sel" : "") + (p._nm ? " pl-nm" : ""), iconSize: [32, 32], iconAnchor: [16, 16] });
   }
   function draw() {
     if (!ready()) return;
     var z = map.getZoom();
-    if (!on() || z < MIN_Z) { clear(); return; }
+    var nm = nmOn();
+    if (!on() || (z < MIN_Z && !(nm && z >= NM_Z))) { clear(); return; }
     var cont = map.getContainer(), W = cont.clientWidth, H = cont.clientHeight;
     var list = window.BARS.placesInBounds(map.getBounds().pad(0.1), 900);
     list.sort(function (a, b) { return (RANK[a.type] || 0) - (RANK[b.type] || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); });
+    if (nm) {
+      list.forEach(function (p) { p._nm = nmOpen(p); });
+      list = list.filter(function (p) { return p._nm || z >= MIN_Z; });
+      list.sort(function (a, b) { return (b._nm ? 1 : 0) - (a._nm ? 1 : 0); });
+    } else list.forEach(function (p) { p._nm = false; });
     var ob = obstacles(cont), kept = [], labels = [], want = {}, n = 0, showLbl = z >= LABEL_Z;
     var CAP = capFor(z), GAP_PX = gapFor(z);
     for (var i = 0; i < list.length && n < CAP; i++) {
@@ -106,7 +116,7 @@
     Object.keys(drawn).forEach(function (id) {
       var d = drawn[id], w2 = want[id];
       if (!w2) { layer.removeLayer(d.m); delete drawn[id]; return; }
-      if (d.lbl !== w2.lbl) { d.lbl = w2.lbl; d.m.setIcon(iconFor(w2.p, w2.lbl)); }
+      if (d.lbl !== w2.lbl || d.nm !== !!w2.p._nm) { d.lbl = w2.lbl; d.nm = !!w2.p._nm; d.m.setIcon(iconFor(w2.p, w2.lbl)); }
       delete want[id];
     });
     Object.keys(want).forEach(function (id) {
@@ -115,7 +125,7 @@
       m.on("click", function () { openPlace(p); });
       m.on("add", function () { var el = m.getElement(); if (el) { el.setAttribute("data-place", String(p.id)); el.setAttribute("aria-label", String(p.name || "")); el.setAttribute("role", "button"); } });
       m.addTo(layer);
-      drawn[id] = { m: m, lbl: x.lbl };
+      drawn[id] = { m: m, lbl: x.lbl, nm: !!p._nm };
     });
   }
   function phone() { return !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches); }
@@ -160,7 +170,7 @@
       try { window.BARS.onPlacesReady(function () { soon(450); }); } catch (e) {}
       // app.js redraws bar markers on its own (poll, places loaded, zoom band): follow it, so dots and names avoid the new markers.
       try {
-        var mo = new MutationObserver(function () { if (on() && map.getZoom() >= MIN_Z) soon(120); });
+        var mo = new MutationObserver(function () { if (on() && (map.getZoom() >= MIN_Z || nmOn())) soon(120); });
         ["bars", "hotbars", "arenapins"].forEach(function (n) { var pn = map.getPane(n); if (pn) mo.observe(pn, { childList: true }); });
       } catch (e) {}
       soon(1200);

@@ -1,0 +1,48 @@
+/* Öl Nu — ⏰ öppettider, 🍾 Systemet, 💰 pris, 🚪 entré, 🌭 nattmat (js/oppet.js, js/barinfo.js, js/places.js nattmat mode) */
+/* bar sheet: the lifted line under the title */
+.bi-line{justify-content:flex-start;flex-wrap:wrap;gap:4px 6px;font-size:13px;line-height:1.3}
+.bi-line[hidden]{display:none}
+.bi-line .bi-dot{font-style:normal;opacity:.5}
+.oh-open{color:#9fe3a8}
+.oh-soon{color:#ffd38a;font-weight:600}
+.oh-shut{color:#ff9d8a}
+.bi-line .bi-pr{color:#ffe08a}
+.bi-q.q-none{color:#9fe3a8}.bi-q.q-short{color:#ffd38a}.bi-q.q-long{color:#ff9d8a}
+/* ℹ️ Info fold */
+.bi-info{display:grid;gap:10px;margin:2px 0 6px}
+.bi-sec{display:grid;gap:4px}
+.bi-h{font-weight:700;font-size:13px;letter-spacing:.02em;opacity:.9}
+.bi-r{font-size:13px;line-height:1.35}
+.bi-note{font-size:11px;opacity:.65}
+.bi-btn{justify-self:start;min-height:40px;padding:6px 12px;border-radius:12px;border:1px solid rgba(255,224,138,.45);background:rgba(255,224,138,.08);color:inherit;font:inherit;font-size:13px;cursor:pointer}
+.bi-btn:active{transform:translateY(1px)}
+.bi-qs{display:flex;gap:6px}
+.bi-qb{flex:1;min-height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:inherit;font:inherit;font-size:13px}
+.bi-qb.q-none{border-color:rgba(120,220,140,.5)}.bi-qb.q-short{border-color:rgba(255,200,90,.55)}.bi-qb.q-long{border-color:rgba(255,120,100,.55)}
+/* sheets */
+.bi-seg{margin:6px 0 10px}
+.bi-krrow{align-items:center;gap:8px;flex-wrap:nowrap}
+.bi-krrow .bi-kr{flex:1;min-width:0;font-size:22px;text-align:center;font-variant-numeric:tabular-nums}
+.bi-kr-u{opacity:.75}
+.bi-times{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.bi-times .ds-chip[aria-pressed="true"]{border-color:var(--amber,#f5a623);background:rgba(245,166,35,.18)}
+.bi-tml{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.bi-tm{max-width:140px}
+.bi-form{display:grid;gap:8px;margin:6px 0 12px}
+/* 💰 price tag on bar markers (⚙️ toggle) */
+.bar-ico .bi-tag{position:absolute;left:62%;top:-9px;white-space:nowrap;font:700 10px/1 var(--body,system-ui,sans-serif);padding:2px 4px;border-radius:7px;
+  background:rgba(10,15,28,.86);border:1px solid rgba(255,224,138,.55);color:#ffe08a;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+/* Ikväll panel / sheets */
+.hx-aio{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.hud-left.open .hx-aio{grid-column:1 / -1;max-width:none}
+.oh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;padding:10px 12px}
+.oh-row-t{display:grid;gap:2px;min-width:0}
+.oh-row-t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oh-big{font-size:16px;font-weight:600}
+.oh-src{font-size:12px}
+.ff-tag.oh-ff{margin-top:6px;opacity:.95}
+/* 🌭 nattmat mode in js/places.js: open late food is a bit bigger and warm */
+.pl-mk.pl-nm .pl-dot{width:20px;height:20px;margin:-10px 0 0 -10px;font-size:11px;opacity:1;border-color:rgba(255,190,90,.9);background:rgba(40,22,6,.85);
+  box-shadow:0 0 0 2px rgba(255,170,60,.25),0 1px 4px rgba(0,0,0,.5)}
+.pl-mk.pl-nm .pl-lbl{color:#ffd9a0}
+a.btn.oh-dir{display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:inherit}

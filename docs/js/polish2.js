@@ -36,6 +36,7 @@
     if (k.contains("rl-gi-yes")) return [1, 0];
     if (k.contains("sk-gi")) return [1, 2];
     if (k.contains("fm-gi")) return [1, 3];
+    if (k.contains("rnd-gi")) return [1, 5];        // 💸 Kvällens nota (rundan.js)
     if (k.contains("nr-tile")) return [1, 4];
     if (k.contains("gm-gi")) return [2, 1];
     if (k.contains("ff-gi")) return [2, 2];
