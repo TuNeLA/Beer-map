@@ -509,7 +509,7 @@
         if (box.children.length) { body.appendChild(A.el("h3", { text: t("safety") })); body.appendChild(box); }
       }
     },
-    settingsSheet: function (body) {
+    profileSheet: function (body) {   // 👤 Profil (was settingsSheet)
       if (!A.LIVE) return;
       var el = A.el;
       body.appendChild(el("h3", { text: t("social") }));

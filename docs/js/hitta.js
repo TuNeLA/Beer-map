@@ -94,7 +94,9 @@
           var k = keys[p.name];
           if (k) where("g" + g.id + ":" + k, p.name); else { var pin = pinOf(p.name); if (pin) where(null, p.name); }
         });
-        ul.appendChild(el("li", {}, [b, el("small", { class: "muted", text: (p.place ? "📍 " + p.place + " · " : "") + (p.at ? ago(p.at) : "") })]));
+        var li = el("li", {}, [b, el("small", { class: "muted", text: (p.place ? "📍 " + p.place + " · " : "") + (p.at ? ago(p.at) : "") })]);
+        ul.appendChild(li);
+        try { if (window.FRIENDS2 && window.FRIENDS2.nowRow) window.FRIENDS2.nowRow(g, p, li); } catch (e) {}   // friends2
       });
       body.appendChild(el("p", { class: "muted", text: L("🔒 Syns bara om kompisen delar sin pin. Annars får hen en försiktig knuff och kan välja själv.",
         "🔒 Only when your friend shares the pin. Otherwise they get a gentle ping and choose.") }));

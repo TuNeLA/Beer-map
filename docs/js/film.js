@@ -176,7 +176,7 @@
       return d;
     });
   }
-  var fileInp = null, camG = null;
+  var fileInp = null, camG = null, camRoot = null;
   function pickFile(cb) {
     if (!fileInp) {
       fileInp = document.createElement("input");
@@ -210,6 +210,7 @@
   }
   function drawCam(root, g, d) {
     root.innerHTML = "";
+    camRoot = { root: root, g: g, d: d };
     var left = d.left | 0, max = d.max | 0 || 10, used = max - left;
     var frames = el("div", { class: "fm-frames", "aria-hidden": "true" });
     for (var i = 0; i < max; i++) frames.appendChild(el("span", { class: "fm-fr" + (i < used ? " used" : "") }));
@@ -236,6 +237,7 @@
     var busy2 = false;
     shutter.addEventListener("click", function () {
       if (shutter.disabled || busy2) return;
+      if (window.FILMCAM && window.FILMCAM.open) { window.FILMCAM.open(g, d); return; }   // film2: in-app camera
       if (!window.PHOTO || !window.PHOTO._shrink) { A.toast(errText("error"), { err: true }); return; }
       pickFile(function (file) {
         busy2 = true; cam.classList.add("busy");
@@ -256,6 +258,7 @@
         }, function () { busy2 = false; cam.classList.remove("busy"); A.toast(errText("invalid_photo"), { err: true }); });
       });
     });
+    try { if (window.FILMCAM && window.FILMCAM.note) root.appendChild(window.FILMCAM.note(g)); } catch (e) {}
     if (left <= 0) root.appendChild(el("p", { class: "fm-empty", text: spick(g.id + d.night, T.empty) }));
     // Developed rolls
     var rolls = d.rolls || [];
@@ -423,13 +426,21 @@
   window.FILM = {
     state: function () { return state; },
     data: function () { return P; },
+    _shot: function (gid, x) {
+      x = x || {}; var c = stCache[gid], pg = groupOf(gid);
+      if (pg) { pg.left = x.left | 0; pg.group_n = x.group_n | 0; }
+      if (c && c.d) { c.d = Object.assign({}, c.d, { left: x.left | 0, mine: x.mine | 0, group_n: x.group_n | 0 }); c.at = Date.now(); }
+      if (camRoot && camRoot.g.id === gid && document.body.contains(camRoot.root)) drawCam(camRoot.root, camRoot.g, Object.assign({}, camRoot.d, { left: x.left | 0, mine: x.mine | 0, group_n: x.group_n | 0 }));
+    },
     openCam: openCam, openRoll: openRoll, openFilmLink: openFilmLink, addToStory: addToStory, _url: photoUrl, _texts: T,
     init: function (api) {
       A = api;
+      try { if (window.FILMCAM) window.FILMCAM.init(api); } catch (e) {}
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
     },
     onAuthed: function () {
       load(true); var id = linkFromUrl(); if (id) { openFilmLink(id); return; }
+      if (window.FILMCAM && window.FILMCAM.onAuthed) { try { window.FILMCAM.onAuthed(); } catch (e) {} return; }
       var p = null; try { p = JSON.parse(localStorage.getItem("olnu.fmPick") || "null"); localStorage.removeItem("olnu.fmPick"); } catch (e) {}
       if (p && p.g && Date.now() - (p.t || 0) < 5 * 60e3) { setTimeout(function () { openCam({ id: String(p.g), name: String(p.n || "") }); }, 800); setTimeout(function () { A.toast(L('📷 Telefonen startade om appen medan kameran var öppen. Försök igen – eller ta bilden först och välj den sen.', '📷 The phone restarted the app while the camera was open. Try again – or take the photo first and pick it after.'), { ms: 8000, urgent: true }); }, 1500); }
     },

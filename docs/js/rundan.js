@@ -850,7 +850,7 @@
 
   window.RUNDAN = {
     init: function (api) { A = api; },
-    groupItem: groupItem, chatOpen: chatOpen, taxiSheet: taxiSheet, settingsSheet: settingsSheet,
+    groupItem: groupItem, chatOpen: chatOpen, taxiSheet: taxiSheet, profileSheet: settingsSheet,   /* 👤 Profil (was settingsSheet) */
     openNota: openNota, openSpin: openSpin, openAdd: openAdd,
     _settle: settle, _swish: { https: swishHttps, app: swishApp, norm: normSwish }
   };

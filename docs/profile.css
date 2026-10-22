@@ -1,0 +1,65 @@
+/* Öl Nu — 👤 Profil | ⚙️ Inställningar (js/profile.js + app.js showSettings) and the global "no sideways scroll" rule for sheets. */
+
+/* ---------- No sideways scroll in any sheet (owner, Samsung: "I can scroll left and right in this menu") ---------- */
+#sheet-body{overflow-x:hidden;overscroll-behavior-x:none}
+#sheet-body :where(input,select,textarea,img,video,canvas,table,pre){max-width:100%}
+#sheet-body :where(p,li,label,.info){overflow-wrap:anywhere}
+/* the switch's bigger tap area (ds.css ::before inset -8px -4px) stuck 4 px out past the right edge of the sheet: grow it to the left instead */
+button.switch::before{inset:-8px 0 -8px -8px}
+/* 📅 sheet: the sticky chip bar and day headers bled 16 px past both sides (negative margins in sport.css/places.css) */
+#sheet-body .evs-bar,#sheet-body .evs-day{margin-left:0;margin-right:0;padding-left:0;padding-right:0}
+#sheet-body .evs-bar .evs-chips{margin-left:0;margin-right:0;padding-left:0;padding-right:0;scroll-padding-inline:0}
+
+/* ---------- Tabs: same sticky segmented bar as Grupper | Vänner ---------- */
+.pf-tabs{position:sticky;top:calc(-1 * var(--ds-4,16px));z-index:20;isolation:isolate}
+.sheet .tabs.pf-tabs{display:flex;flex-direction:row;gap:4px;margin:calc(-1 * var(--ds-4,16px)) 0 var(--ds-3,12px);padding:var(--ds-3,12px) 4px;
+  background:var(--ds-sheet,#121a2a);border:0;border-radius:0;box-shadow:none}
+.sheet .tabs.pf-tabs::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:var(--ds-3,12px);bottom:var(--ds-3,12px);
+  border-radius:var(--ds-r-1,12px);background:var(--ds-bg,#0a0f1c);box-shadow:inset 0 0 0 1px var(--ds-border,rgba(255,255,255,.1))}
+.sheet .tabs.pf-tabs>button{flex:1 1 0;min-width:0;min-height:44px;margin:4px 0;padding:0 var(--ds-3,12px)}
+.sheet .ds-scrolled .tabs.pf-tabs{box-shadow:var(--ds-sh-sticky,0 6px 12px rgba(0,0,0,.35))}
+
+/* ---------- Hero card ---------- */
+.pf-hero{position:relative;z-index:0;background:var(--ds-card,#19233a);border:1px solid var(--ds-border,rgba(255,255,255,.1));border-radius:var(--ds-r-2,16px);
+  padding:16px;margin:0 0 20px;display:flex;flex-direction:column;gap:12px}
+.pf-hero button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pf-top{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.pf-av{flex:0 0 auto;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);
+  font:800 26px/1 var(--ds-display,var(--ds-sans,system-ui));box-shadow:0 0 0 3px rgba(245,166,35,.22)}
+.pf-who{flex:1 1 auto;min-width:0}
+.pf-name{font:700 var(--ds-fs-22,22px)/1.2 var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-hero .pf-town{display:inline-block;margin-top:2px;font-size:var(--ds-fs-14,14px);color:var(--ds-amber-t,#ffc24d);min-height:32px;max-width:100%;overflow-wrap:anywhere}
+.pf-line{font-size:var(--ds-fs-14,14px);line-height:1.35;color:var(--ds-muted,#a7b0ac);overflow-wrap:anywhere}
+.pf-hero .pf-acct{flex:0 0 auto;align-self:flex-start;min-height:32px;padding:0 10px;border-radius:999px;font-size:var(--ds-fs-12,12px);font-weight:700;
+  background:rgba(255,122,26,.14);color:#ffb37a;border:1px solid rgba(255,122,26,.4);white-space:nowrap}
+.pf-hero .pf-acct.ok{background:var(--ds-green-soft,rgba(61,220,132,.12));color:var(--ds-green-t,#4fe08f);border-color:rgba(61,220,132,.4)}
+.pf-hero .pf-rank{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:var(--ds-r-1,12px);background:var(--ds-raised,#222e48);min-width:0}
+.pf-rank-t{font:700 var(--ds-fs-16,16px)/1.25 var(--ds-sans,system-ui);color:var(--ds-amber-t,#ffc24d);overflow-wrap:anywhere}
+.pf-rank-m,.pf-rank-n{font-size:var(--ds-fs-12,12px);line-height:1.35;color:var(--ds-muted,#a7b0ac)}
+.pf-bar{display:block;height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}
+.pf-bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--ds-amber,#f5a623),var(--ds-amber-t,#ffc24d))}
+.pf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pf-grid.pf-g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pf-hero .pf-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:68px;padding:8px 4px;border-radius:var(--ds-r-1,12px);
+  background:var(--ds-bg,#0a0f1c);border:1px solid var(--ds-border,rgba(255,255,255,.1));text-align:center;min-width:0}
+.pf-tile b{font:700 var(--ds-fs-22,22px)/1.1 var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pf-tile span{font-size:var(--ds-fs-12,12px);line-height:1.25;color:var(--ds-muted,#a7b0ac);overflow-wrap:anywhere}
+.pf-hero .pf-tile:active,.pf-hero .pf-rank:active,.pf-hero .pf-chip:active{background:rgba(255,255,255,.06)}
+.pf-hero .pf-fav{margin:0;font-size:var(--ds-fs-14,14px);color:var(--ds-text-2,#c9d0cd);overflow-wrap:anywhere}
+.pf-hero .pf-medals{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;max-width:100%}
+.pf-groups{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.pf-sub{flex:0 0 100%;font-size:var(--ds-fs-12,12px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ds-muted,#a7b0ac)}
+.pf-hero .pf-chip{min-height:36px;max-width:100%;padding:0 12px;border-radius:999px;background:var(--ds-raised,#222e48);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));
+  font-size:var(--ds-fs-14,14px);color:var(--ds-text,#eef0ec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center}
+.pf-chip.pf-more{color:var(--ds-muted,#a7b0ac)}
+/* "Låt mig hittas" block (near.js drawShare) as one Profil row */
+.ds-set .ds-item>.nr-share{padding:12px 16px 4px}
+.ds-set .ds-item>.nr-share>h3{margin:0 0 4px !important}
+.ds-set .ds-item>.nr-share>.toggle-row{min-height:52px}
+@media (prefers-reduced-motion:reduce){.pf-hero *{transition:none !important;animation:none !important}}
+/* 🔐 Konto & Swish rows inside the Profil card: account first, both with the card's inner padding */
+.ds-set .ds-item:has(>.acct-sect){order:-1}
+.ds-set .ds-item>.acct-sect{padding:12px 16px}
+.ds-set .ds-item>.acct-sect>h3{margin:0 0 4px !important}
+.ds-set .ds-item>.acct-sect .row{margin-top:8px}
+.ds-set .ds-item>.rnd-set{padding:8px 12px}

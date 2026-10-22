@@ -252,10 +252,11 @@
       el("span", { class: "st-dot" + (f.out ? " on" : ""), "aria-hidden": "true" }),
       el("span", { class: "nr-fmain" }, [el("b", { text: f.name || L("Okänd kamrat", "Unknown") }), el("small", { class: "muted", text: sub.join(" · ") })]),
       off.find_request ? null : A.btn("🧭", "btn-small nr-find-b", function () { whereIs(f.key, f.name); }),
-      A.btn("✕", "btn-small btn-ghost nr-rm-b", function () { askRemove(); })
+      A.btn(window.FRIENDS2 ? "⋯" : "✕", "btn-small btn-ghost nr-rm-b" + (window.FRIENDS2 ? " nr-more-b" : ""), function () { if (window.FRIENDS2 && window.FRIENDS2.menu) window.FRIENDS2.menu(li, f, onChange); else askRemove(); })
     ]);
     li.querySelector(".nr-find-b") && li.querySelector(".nr-find-b").setAttribute("aria-label", L("Hitta ", "Find ") + (f.name || ""));
-    li.querySelector(".nr-rm-b").setAttribute("aria-label", L("Ta bort vän ", "Remove friend ") + (f.name || ""));
+    li.querySelector(".nr-rm-b").setAttribute("aria-label", (window.FRIENDS2 ? L("Mer för ", "More for ") : L("Ta bort vän ", "Remove friend ")) + (f.name || ""));
+    try { if (window.FRIENDS2) window.FRIENDS2.decorate(li, f, onChange); } catch (e) {}   // friends2: long-press
     function askRemove() {
       if (li.nextSibling && li.nextSibling.classList && li.nextSibling.classList.contains("confirm")) return;
       var c = el("li", { class: "confirm" }, [
@@ -314,7 +315,7 @@
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
         add.appendChild(el("h3", { text: L("➕ Lägg till vän", "➕ Add a friend") }));
         add.appendChild(el("div", { class: "row nr-add-row" }, [inp, go]));
-        add.appendChild(el("p", { class: "muted nr-hint", text: L("Eller tryck på en kompis i en grupp → ➕ Lägg till vän.", "Or tap a member in a group → ➕ Add friend.") }));
+        add.appendChild(el("p", { class: "muted nr-hint", text: L("Eller öppna en grupp → ⋯ → 👥 Medlemmar → ➕ Lägg till vän.", "Or open a group → ⋯ → 👥 Members → ➕ Add friend.") }));
         body.appendChild(add);
 
         // My code + QR
@@ -442,7 +443,7 @@
       add.disabled = true;
       sendRequest({ p_group_id: g.id, p_k: m.k }, function (d) { add.disabled = false; if (d) add.textContent = d.status === "accepted" ? L("✅ Vänner", "✅ Friends") : L("⏳ Skickad", "⏳ Sent"); });
     });
-    row.appendChild(add);
+    if (!(window.FRIENDS2 && window.FRIENDS2.ownsAdd && window.FRIENDS2.ownsAdd())) row.appendChild(add);   // friends2: ➕ sits on the row
     if (!off.find_request) row.appendChild(A.btn(L("🧭 Hitta", "🧭 Find"), "btn-small nr-findm", function () { whereIs("g" + g.id + ":" + m.k, m.name); }));
     return box;
   }
@@ -793,11 +794,14 @@
     },
     onPoll: function () { hookNews(); poll(false); },
     applyText: function () {},
-    settingsSheet: function (body) {
+    profileSheet: function (body) {   // 👤 Profil (was settingsSheet) + the find-me switches
       if (!A || !A.LIVE || off.my_friends || off.near_poll) return;
+      var share = A.el("div", { class: "nr-share nr-share-pf" });
+      setTimeout(function () { if (document.body.contains(share)) drawShare(share); }, 0);
       var nIn = P && P.friends_in ? P.friends_in.length : 0;
       body.appendChild(A.el("div", { class: "row nr-set", style: "margin-bottom:10px" }, [
         A.btn(L("👥 Vänner & 🧭 Hitta", "👥 Friends & 🧭 Find") + (nIn ? " (" + nIn + L(" ny", " new") + ")" : ""), "btn-block", openFriends)]));
+      body.appendChild(share);
     },
     groupItem: function (g, wrap) { groupItem(g, wrap); },
     hudChipsHTML: function () { return chipHTML(); },

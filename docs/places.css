@@ -83,7 +83,7 @@
 /* detail view */
 .evs-in-detail>:not(.evs-detail){display:none !important}
 .evs-detail{display:flex;flex-direction:column;gap:var(--ds-3);animation:evs-in var(--ds-t-2) var(--ds-ease) both}
-@keyframes evs-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes evs-in{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.evs-detail{animation:none}}
 .evs-back{align-self:flex-start;min-height:44px;padding:0 var(--ds-2)}
 .evs-d-head{display:flex;align-items:flex-start;gap:var(--ds-3)}

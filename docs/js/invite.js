@@ -285,7 +285,7 @@
   function friendsMore(listBox, fr, reload, friendRow) {
     friends(true).then(function (d) {
       if (!d || !document.body.contains(listBox)) return;
-      var people = d.people || [];
+      var people = (d.people || []).filter(function (p) { return p.friend_id != null; });   // friends2: friends only (0154)
       if (!people.length) return;
       var byId = {}; (fr || []).forEach(function (f) { byId[String(f.id)] = f; });
       listBox.innerHTML = "";

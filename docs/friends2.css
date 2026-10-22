@@ -1,0 +1,17 @@
+/* Öl Nu — 🤝 VÄNNER 2 (js/friends2.js). Scoped to f2-* classes; no global sheet rules, no animation loops. */
+.f2-slot { display: block; margin-top: 4px; }
+.f2-slot .btn.f2-add { min-height: 36px; padding: 4px 12px; font-size: 13px; }
+.f2-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.4;
+  background: var(--ds-raised, rgba(255,255,255,.08)); color: var(--ds-text-2, #c9d0cd); }
+.f2-chip.ok { background: rgba(61,220,132,.14); color: var(--ds-green, #3ddc84); }
+.f2-nowrow .f2-slot { margin-top: 6px; }
+.nr-flist .f2-menu { list-style: none; padding: 8px 0 10px; border-bottom: 1px solid var(--line-soft, rgba(255,255,255,.1)); }
+.nr-flist .f2-menu.confirm { margin-top: 0; padding: 12px; border: 1px solid var(--red, #ff3b3b); background: rgba(255,59,59,.08); border-radius: 10px; }
+.f2-menu .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.f2-menu .btn { min-height: 44px; }
+.f2-menu .f2-q { margin: 0 0 4px; overflow-wrap: anywhere; }
+.f2-menu .f2-note { margin: 0 0 10px; font-size: 13px; overflow-wrap: anywhere; }
+.nr-frow .nr-more-b { font-weight: 700; letter-spacing: 1px; }
+.nr-frow.f2-gone { opacity: .35; transition: opacity .2s; }
+.nr-frow { -webkit-touch-callout: none; }
+@media (prefers-reduced-motion: reduce) { .nr-frow.f2-gone { transition: none; } }

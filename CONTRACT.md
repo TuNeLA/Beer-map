@@ -2371,3 +2371,92 @@ loaded before app.js) and `docs/js/clouds.js`. Migration 0151. Patches tiers 01 
   new `ghost_points2()` → `[{lat, lng, w, age_h}]` (beer-weighted mean age). social.js asks ghost_points2 first, an old server →
   ghost_points (alpha 0.6). Chip "☁️ Senaste dagarna" / "☁️ Last few days", ⓘ legend "☁️ Grå moln = senaste dagarna, int' live (bleknar på 3 dar …)".
 - Test hook: `TIERS._app = {labels, render, plain}`, `TIERS.stats` / `TIERS.lstats`. Tests: scratchpad `tiers-pw.js <port> <tag> [shotsonly|noshots|perfonly]`, `tiers-pitchers.js <port> <tag>`.
+
+## 👤 PROFIL | ⚙️ INSTÄLLNINGAR (owner 2026-10-22)
+No migration, no new RPC, no new map button. The ⚙️ button opens one sheet with two sticky tabs: **👤 Profil** (first) and **⚙️ Inställningar**.
+The tab is remembered while the app runs (`setTab` in app.js); `showSettings("p" | "s")` opens a tab, `showSettings()` the current one.
+- **Profil = everything about YOU.** Top: hero card from `js/profile.js` (hook `profileHead`): initial, name, 📍 hemstad (demonym),
+  🔐 saved/not-saved chip, rank + progress to next rank (MERITER.cur / SOCIAL.stats), tiles (drinks total, nights this year,
+  bars in Ölpasset, 🔥 weekend streak, medals, friends), stamkrog this year, medal ribbon, my groups. Reads on open, cached 60 s:
+  `my_wrapped('year', 0)`, `my_groups`, `my_friends`. Each tile opens its sheet (uniform, passport, helg, Wrapped, friends, groups).
+  Then app.js name, settingsName hooks (hemstad, hemzon), language, Göm min pin, flyttkod, and the new hook **`profileSheet(body)`**.
+- **Inställningar = how the app behaves:** invite, home-screen guide, notifications, sound, `settingsSheet` hooks (map style,
+  restaurants, price tags, fun, wishes …), intro, about/privacy/delete, version.
+- **Hook move, not copy:** these modules export `profileSheet` instead of `settingsSheet` (same function): extras (spökläge, uniform,
+  SOS), after (Wrapped, bakis), boards (topplista opt-in), passport, near (Vänner & Hitta + the 🧭 Låt mig hittas switches via
+  drawShare), rundan (Swish), account (🔐 Konto). A new module that is about the user should use `profileSheet`; an app setting `settingsSheet`.
+- ds.js sorts both tabs into sections (marker `.pf-tabs`); `.ds-keep` children (tab bar, hero) stay on top. New section
+  `konto` "🔐 Konto & Swish" (`.acct-sect`, `.rnd-set`, flyttkod). Section names in Profil: Namn & hemstad, Kompisar, Din statistik,
+  Konto & Swish, Integritet & säkerhet.
+- **No sideways scroll in sheets** (profile.css): `#sheet-body{overflow-x:hidden;overscroll-behavior-x:none}`. Real causes fixed:
+  the switch's tap area (`.switch::before` inset -4px stuck out on the right edge → Grupper/Vänner moved 4 px) now grows to the
+  left; the 📅 sticky bar/day headers/chip strip used -16 px side margins. Rule for new sheet content: no negative side margins,
+  no 100vw, long words wrap. Test: scratchpad `profile-overflow-pw.js` opens every sheet at 360 and 412 px.
+
+## 🤝 VÄNNER 2 (no auto-friends from groups, ➕ in Medlemmar, 🗑️ Ta bort vän; additive)
+Owner 2026-10-22: "Let me remove friends even if they came from a group, and stop adding group people automatically –
+give me a button to add them as a friend in the group list." Migrations `0154_friends_no_auto.sql`, `0155_group_friend_states.sql`,
+`0156_friend_suggest_mates.sql` (applied live 2026-10-22; 0155 re-applied as `0155_group_friend_states_name` with the `name` field).
+No row is ever removed. Client: `docs/js/friends2.js` (`window.FRIENDS2`, in `mods()` after DM), `docs/friends2.css`;
+patches friends2 01–07 (index.html + app.js, near.js, invite.js, social.js, hitta.js, suggest.js, this section).
+
+### Decision: a friend = an accepted `friendships` row. Sharing a group is NOT friendship any more.
+- **Backfill once (0154):** every pair sharing a real group (`group_members`; temp/DM groups have no members) with no friendship row
+  got an accepted row (`via 'group'`, `notified = true`, no push); a pending row between such a pair was accepted. Declined / removed /
+  cancelled rows were kept. Pairs with a 0149 test user were skipped. So nobody lost a friend; new group-mates are not friends.
+- Per feature:
+  | feature | rule now |
+  |---|---|
+  | Vänner tab list (invite.js `friendsMore`) | `friend_list.people` filtered to `friend_id != null` (real friends only). `friend_list` itself is unchanged (friends ∪ group-mates) because the 📨 invite picker, 🏠 Följ mig hem picker and 💬 use it as "my people". |
+  | 👋 Du kanske känner (`friend_suggest`) | NOW includes group-mates who are not friends (ranked first, `group` = one shared group name) + friends-of-friends as before. Never: friends, pending, declined < 30 d, a friendship I removed (for good), one the other removed (30 d), hidden. |
+  | 💬 DM (`olnu_dm_friends`) | unchanged: accepted friend OR a shared real group. |
+  | 🧭 Hitta / Låt mig hittas | unchanged: "Låt gruppen hitta mig" = shared group, "Låt vännerna hitta mig" = accepted friendship (`olnu_are_friends`), `f<id>` keys need an accepted friendship. |
+  | 📅 "Vänner går" (`olnu_evgo_circle`), 📨 invites (`olnu_inv_cands`), walks | unchanged circle = friends ∪ group-mates (they are group features too). |
+  | 🔔 Inkorg | unchanged: pending requests to me (group ➕ requests land here). |
+  | map pins / friend_name / Nu strip / chat / call-outs / duels / squad / crew | unchanged: group membership. |
+- **Removing a friend** (`friend_remove`, status `removed`): works for every friend, also ones from the backfill. No notice. They never come
+  back by themselves (no group rule re-adds; suggestions skip a friendship I removed). Trigger `friendships_end_share` (0154, AFTER UPDATE OF
+  status, accepted → anything else): live `find_reqs` with that `friendship_id` end (pending → cancelled, `answer_by`/`until` = now) and the
+  `find_pos` rows between the two expire, so friend-only find sharing stops at once. Group-based sharing stays while they share a group.
+
+### RPCs (authenticated only, SECURITY DEFINER, `olnu_uid()`)
+| name | params | returns | errors |
+|---|---|---|---|
+| `group_friend_states` | `p_group_id` | `{v:1, states:[{k (0030 member key), name (group display name), s: friend\|out\|in\|none}]}` every member except me | `not_authenticated`, `not_member` |
+| `friend_suggest` | – | as 0126 + `group` (text\|null) per person; group-mates ranked +6 | – |
+| `friend_suggest_add` | as 0126 | as 0126; target from `olnu_sug_rows2`; `via 'group'` for a group-mate | as 0126 |
+Helpers (no client access): `olnu_sug_rows2(uid) → (uid, mutual, bars, g)`, `olnu_friend_end_tg()`. `olnu_sug_rows` (0126) is kept, unused.
+
+### Client
+- **Medlemmar** (Grupper → group → ⋯ → 👥 Medlemmar, social.js `showStatus` → `FRIENDS2.statusRow`): under each other member's name
+  "➕ Lägg till vän" (button) / "✅ Acceptera vän" (they asked me; `friend_request` accepts at once) / "✓ Vän" / "⏳ Skickad" (chips).
+  Tap = `friend_request(p_group_id, p_k)` + notify-group `{event:"friend", friend_id}`; the click never opens the member panel.
+  The member panel (NEAR.memberPanel) no longer adds its own ➕ while FRIENDS2 is on (old server → it does, as before).
+- **🟢 NU person sheet** (hitta.js `nowSheet` → `FRIENDS2.nowRow`): the same control per person, matched by group display name.
+- **Vänner row:** ✕ became "⋯" (same `.nr-rm-b` slot, + `.nr-more-b`); ⋯ or a 550 ms long-press opens an inline row "🗑️ Ta bort vän · Stäng"
+  → confirm "Ta bort Oskar ur vänlistan?" + note (no notice, find share stops, shared groups stay) → "Avbryt" / "🗑️ Ta bort" → `friend_remove`,
+  toast (dalmål, 4 variants), the row fades and the list reloads; suggestions refresh.
+- States are cached 20 s per group; any add/remove updates every visible control with the same key.
+
+## ENGÅNGSKAMERAN 2 – in-app camera + shot queue (film2; client only, no migration)
+- Bug: film.js used `<input type=file capture>`; Android (Samsung Internet / Chrome PWA) kills the page while the camera
+  app is open, so the photo never came back. Logs showed film_state → full cold start → film_state, never film_shoot.
+- `js/filmcam.js` (window.FILMCAM, `filmcam.css`, loaded before film.js). film.js calls `FILMCAM.init(api)` from `FILM.init`
+  and `FILMCAM.onAuthed()` from `FILM.onAuthed`; the red shutter in the camera sheet calls `FILMCAM.open(g, d)`
+  (`d` = film_state). `FILM._shot(gid, x)` (x = film_shoot answer) updates counters and redraws the sheet;
+  `FILMCAM.note(g)` = "⏳ 2 bilder skickas… / ⚠️ väntar på täckning [🔁 Försök igen]" line in the sheet.
+- Viewfinder: full-screen overlay (z 1950, under toasts), getUserMedia rear camera (`olnu.fmFacing`), 🔄 flip (hidden
+  with one camera), 3:4 box, capture = centre crop of the box → `PHOTO._shrink` (chat-photo rules: ≤ 1024 px, ≤ 120 KB
+  JPEG, no EXIF). No preview: one white flash (off with reduced motion) + ~0.9 s "vevar filmen" pause. Counter
+  "7 av 10 kvar" = film_state.left − queued shots. Stream stops on close, `visibilitychange` hidden and `pagehide`,
+  restarts on return.
+- Permission: pre-prompt card (dalmål) when Permissions API says "prompt" (or unknown and never granted, `olnu.fmCamOk`).
+  "denied" still tries getUserMedia once; NotAllowedError → card with how-to + "telefonens kameraapp" / "Galleriet".
+  No getUserMedia → card with the file input. iOS home-screen apps ask again each session (WebKit does not persist it).
+- Queue: IndexedDB `olnu-film-q` store `q` ({k, gid, blob, w, h, t}); a shot is stored BEFORE upload and leaves only on
+  success or a final error (film_empty / film_full / not_member / invalid_photo → error toast). Uploads one at a time,
+  ≥ 3.3 s apart (server slow_down 3 s); network errors → backoff 5/15/40/90 s, on `online`, on visible, on app start.
+  Shots older than 20 h are dropped with an error toast (never silently).
+- File fallback: `olnu.fmPick` {g, n, t, gal} is set before the picker opens. If the page restarts meanwhile, the app reopens
+  the camera sheet and shows "📷 Telefonen stängde appen" with "🖼️ Välj bilden från Galleriet" (no `capture` = no camera
+  app) and "📸 Använd appens kamera". Gallery files older than 12 h (lastModified) are refused.

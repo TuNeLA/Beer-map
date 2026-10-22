@@ -1046,7 +1046,7 @@
       if (!A || !A.LIVE) return;
       body.appendChild(kebabBtn());
     },
-    settingsSheet: function (body) {
+    profileSheet: function (body) {   // 👤 Profil (was settingsSheet)
       if (!A || !A.LIVE || off.my_wrapped) return;
       body.appendChild(A.el("h3", { text: "🎁 Öl Wrapped" }));
       body.appendChild(A.el("div", { class: "row", style: "flex-wrap:wrap" }, [

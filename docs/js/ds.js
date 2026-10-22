@@ -30,7 +30,7 @@
   keepLast();
 
   /* ---------- 5. settings sections ---------- */
-  var SEC = [["profil", "👤", "Profil", "Profile"], ["vanner", "👥", "Kompisar & pass", "Friends & passport"], ["stat", "🎖️", "Din statistik", "Your stats"],
+  var SEC = [["profil", "👤", "Namn & hemstad", "Name & home town"], ["vanner", "👥", "Kompisar", "Friends"], ["stat", "🎖️", "Din statistik", "Your stats"], ["konto", "🔐", "Konto & Swish", "Account & Swish"],
     ["notis", "🔔", "Notiser & ljud", "Notifications & sound"], ["integ", "🔒", "Integritet & säkerhet", "Privacy & safety"], ["karta", "🗺️", "Karta", "Map"],
     ["skoj", "🎉", "Skoj & överraskningar", "Fun & surprises"], ["om", "ℹ️", "Om & hjälp", "About & help"], ["mer", "➕", "Mer", "More"]];
   function txt(n) { return (n && n.textContent || "").replace(/\s+/g, " ").trim(); }
@@ -51,9 +51,13 @@
   function secOf(n, hs) {
     var t = txt(n);
     if (has(n, "#set-name, .ht-set, .hz-set, .hz-row")) return "profil";
+    if (has(n, ".acct-sect, .rnd-set")) return "konto";
+    if (has(n, ".nr-share")) return "integ";
+    if (has(n, ".bi-switch")) return "karta";
     if (has(n, ".bm-seg")) return "karta";
     if (has(n, ".seg")) return "profil";
-    if (has(n, ".nr-set, .ps-entry")) return "vanner";
+    if (has(n, ".nr-set")) return "vanner";
+    if (has(n, ".ps-entry")) return "stat";
     if (has(n, ".bd-optin, .sos-block")) return "integ";
     if (has(n, ".ws-entry")) return "om";
     if (n.classList && n.classList.contains("toggle-row") && /uppdatera|update/i.test(t)) return "om";
@@ -62,7 +66,7 @@
     if (/göm min pin|hide my pin|spökläge|ghost/i.test(t)) return "integ";
     if (/radera|delete/i.test(t)) return "integ";
     if (/integritet|privacy/i.test(t) && has(n, ".btn")) return "integ";
-    if (/flytta|flyttkod|move|transfer/i.test(t)) return "om";
+    if (/flytta|flyttkod|move|transfer/i.test(t)) return "konto";
     if (/introduktion|intro/i.test(t)) return "om";
     if (/uniform|din kväll|your night|bakis|hangover|wrapped|månaden|month|året|year/i.test(t)) return "stat";
     if (/kapsyl|överrask|skaka|surprise|shake|bottle ?cap/i.test(t)) return "skoj";
@@ -86,17 +90,17 @@
     var first = body.querySelector(":scope > section.ds-section");
     if (after) body.insertBefore(s, after.nextSibling);
     else if (first) body.insertBefore(s, first);
-    else body.insertBefore(s, body.firstChild);
+    else { var keep = body.querySelectorAll(":scope > .ds-keep"); body.insertBefore(s, keep.length ? keep[keep.length - 1].nextSibling : body.firstChild); }
     return list;
   }
   var busy = false;
   function organizeSettings(body) {
     body = body || document.getElementById("sheet-body");
-    if (!body || busy || !body.querySelector("#set-name")) return false;
+    if (!body || busy || !body.querySelector("#set-name, .pf-tabs")) return false;
     busy = true;
     try {
       body.classList.add("ds-set");
-      var loose = [].slice.call(body.children).filter(function (c) { return !(c.tagName === "SECTION" && c.classList.contains("ds-section")); });
+      var loose = [].slice.call(body.children).filter(function (c) { return !(c.tagName === "SECTION" && c.classList.contains("ds-section")) && !c.classList.contains("ds-keep"); });
       // a heading at the very end may still wait for its content (async hook): leave it for the next pass
       while (loose.length && loose[loose.length - 1].tagName === "H3") loose.pop();
       var head = null, headUsed = false, cur = null, curSec = null, pend = [];
@@ -151,7 +155,7 @@
   function scan() {
     var body = document.getElementById("sheet-body");
     if (!body) return;
-    if (body.querySelector("#set-name")) organizeSettings(body);
+    if (body.querySelector("#set-name, .pf-tabs")) organizeSettings(body);
     else body.classList.remove("ds-set");
   }
   function title() {

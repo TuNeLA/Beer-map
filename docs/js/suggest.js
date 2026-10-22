@@ -46,7 +46,7 @@
     var hide = h("button", { type: "button", class: "btn btn-small sg-x", "aria-label": L("Dölj ", "Hide ") + (p.name || ""), text: "✕" });
     var li = h("li", { class: "sg-row" }, [
       h("span", { class: "sg-face", "aria-hidden": "true", text: (p.name || "?").charAt(0).toUpperCase() }),
-      h("span", { class: "sg-main" }, [h("b", { text: p.name || "?" }), h("small", { class: "muted", text: mutualText(p.mutual | 0) })]),
+      h("span", { class: "sg-main" }, [h("b", { text: p.name || "?" }), h("small", { class: "muted", text: p.group ? "👥 " + p.group + ((p.mutual | 0) ? " · " + mutualText(p.mutual | 0) : "") : mutualText(p.mutual | 0) })]),
       add, hide
     ]);
     add.addEventListener("click", function () {
@@ -87,7 +87,7 @@
       var ul = h("ul", { class: "sg-list" });
       list.forEach(function (p) { ul.appendChild(row(p, box)); });
       box.appendChild(ul);
-      box.appendChild(h("p", { class: "sg-note muted", text: L("🔒 Ni har kompisar gemensamt. Vi visar bara förnamn – aldrig var nån ä.", "🔒 You share friends. First names only – never where anyone is.") }));
+      box.appendChild(h("p", { class: "sg-note muted", text: L("🔒 Folk från dina grupper och kompisars kompisar. Bara förnamn – aldrig var nån ä.", "🔒 People from your groups and friends of friends. First names only – never where anyone is.") }));
     });
   }
   // The Vänner pane is built on the first tab tap (near.js). Put the box right after the friend list.

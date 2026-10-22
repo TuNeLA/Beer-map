@@ -207,7 +207,7 @@
       var row = A.el("div", { class: "row ps-toprow" }, [entryBtn()]);
       body.appendChild(row);
     },
-    settingsSheet: function (body) {
+    profileSheet: function (body) {   // 👤 Profil (was settingsSheet)
       if (!A || !A.LIVE || off) return;
       body.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [entryBtn()]));
     }

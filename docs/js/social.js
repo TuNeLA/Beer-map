@@ -788,6 +788,7 @@
           ]);
           list.appendChild(row);
           try { if (window.AFTER && window.AFTER.statusRow) window.AFTER.statusRow(g, m, row); } catch (e) {}   // v16: 🏠 home tonight
+          try { if (window.FRIENDS2 && window.FRIENDS2.statusRow) window.FRIENDS2.statusRow(g, m, row); } catch (e) {}   // friends2: ➕ Lägg till vän
           if (m.is_me) meRow = medEl; else if (m.name) (rowsByName[m.name] = rowsByName[m.name] || []).push(medEl);
           var openU = medalsOn() ? function () { window.MEDALS.openMember(g, m, function () { showStatus(g); }); } : null;
           // v25: tap a member → actions (👑 owner: chief/vice; owner/chief/vice: 🚪 remove), else the uniform as before.

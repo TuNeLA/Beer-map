@@ -315,7 +315,7 @@
       // A missing server function removes its section; when both are gone, the whole box goes.
       setTimeout(function () { if (off && document.body.contains(box)) box.remove(); }, 4000);
     },
-    settingsSheet: function (body) {
+    profileSheet: function (body) {   // 👤 Profil (was settingsSheet)
       if (!A || !A.LIVE || off || !A.authed || !A.authed()) return;
       var h = A.el("h3", { text: L("🏆 Topplistan", "🏆 Top list") });
       var row = optinRow();

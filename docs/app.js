@@ -44,7 +44,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -2853,11 +2853,31 @@
   }
 
   /* ---------- Settings ---------- */
-  function showSettings() {
-    openSheet(t("settings"), function (body) {
+  // 👤 Profil | ⚙️ Inställningar (owner 2026-10-22). Profil = everything about YOU; Inställningar = how the app behaves.
+  var setTab = "p";
+  function setTabs(body, tab) {
+    var bar = el("div", { class: "tabs pf-tabs ds-keep", role: "tablist", "aria-label": t("profile") + " / " + t("settings") });
+    [["p", "👤 " + t("profile")], ["s", "⚙️ " + t("settings")]].forEach(function (x) {
+      bar.appendChild(el("button", { type: "button", role: "tab", "data-pf": x[0], "aria-selected": String(x[0] === tab), text: x[1], onclick: function () {
+        if (x[0] === setTab) return;
+        showSettings(x[0]); try { $("sheet-body").scrollTop = 0; } catch (e) {}
+      } }));
+    });
+    body.appendChild(bar);
+  }
+  function showSettings(tab) {
+    if (tab === "p" || tab === "s") setTab = tab;
+    var tabNow = setTab;
+    openSheet(tabNow === "p" ? t("profile") : t("settings"), function (body) {
+      var tab = tabNow;
+      setTabs(body, tab);
+      if (tab === "p") mods("profileHead", body);   // js/profile.js hero card
+      if (tab === "s") {
       body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("📲 " + t("inviteBtn"), "btn-amber btn-block", showInvite)]));
       if (!U.isStandalone()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("guideTitle"), "btn-block", showInstallGuide)]));
+      }
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
+      if (tab === "p") {
       if (LIVE && myBeer()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", showStopSheet)]));
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
@@ -2880,7 +2900,9 @@
           text: l.toUpperCase(), onclick: function () { I.set(l); applyStaticText(); render(); showSettings(); } }));
       });
       body.appendChild(seg);
+      }
 
+      if (tab === "s") {
       if (PUSH_ON) {
       body.appendChild(el("h3", { text: t("notifications") }));
       var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": "false", "aria-label": t("notif") });
@@ -2908,9 +2930,10 @@
       });
       body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
 
-      mods("settingsSheet", body);   // ghost mode, badges, night summary, SOS
+      mods("settingsSheet", body);   // app behaviour: map style, restaurants, prices, fun, wishes
+      } else mods("profileSheet", body);   // about me: passport, friends + find-me, account, Swish, ghost, top list, Wrapped, SOS
 
-      if (LIVE) {
+      if (LIVE && tab === "p") {
         body.appendChild(el("h3", { text: t("flyttSection") }));
         var fr = el("div", { class: "row" });
         if (storedAuth() && !movedState) fr.appendChild(btn(t("flyttBtn"), "btn-block", showFlyttExport));
@@ -2918,12 +2941,12 @@
         body.appendChild(fr);
       }
 
+      if (tab === "p") { if (LIVE && window.PRIVACY) window.PRIVACY.homeBlock(body); return; }
       body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("showIntro"), "btn-small", function () {
         closeSheet(); showIntro(true);
       })]));
 
       if (window.PRIVACY) {
-        if (LIVE) window.PRIVACY.homeBlock(body);
         body.appendChild(el("h3", { text: t("about") }));
         body.appendChild(el("p", { text: t("privacy") }));
         body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [btn(t("privBtn"), "btn-block", function () { window.PRIVACY.showPrivacy(showSettings); })]));

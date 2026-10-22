@@ -808,7 +808,7 @@
     },
     onPoll: function () { if (nudgeCandidate()) tryNudge(); },
     groupItem: function () { if (ls(GROUP_KEY, "") !== "1") lsSet(GROUP_KEY, "1"); },
-    settingsSheet: settingsSheet,
+    profileSheet: settingsSheet,   // 👤 Profil (was settingsSheet)
     entry: entry,
     on: on, saved: saved,
     openSave: openSave, openLogin: openLogin, openChange: openChange, logout: logout,
