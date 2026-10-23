@@ -227,16 +227,19 @@
   var heat = null;
   // tiers 2: heat radius in metres [max m at z ≤ 12, min m, halvings per zoom step, px floor far out]
   var HEAT_M = [500, 10, 0.72, 9];
+  var HEAT_FLOOR_PX = [40, 46];   // tiers 3: px floor [base, max]; + 2·√(hottest cell). leaflet.heat fades to ~10 % at 0.8 R, so R 40 ≈ a 30 px visible glow
   function heatMeters(z) { return Math.max(HEAT_M[1], Math.min(HEAT_M[0], HEAT_M[0] * Math.pow(2, -HEAT_M[2] * Math.max(0, z - 12)))); }
   var HEAT_R_M = 170, HEAT_MIN_PX = 34, HEAT_MAX_PX = 80, HEAT_FLOOR = 4, HEAT_TRAIL_W = 0.3, HEAT_ANIM_MS = 250;
-  function heatRadiusPx(z, lat) {
+  function heatRadiusPx(z, lat, peak) {
     var mpp = 156543.03 * Math.cos((lat || 0) * Math.PI / 180) / Math.pow(2, z);
     // Zoomed out the glow must be clearly bigger than the markers (owner: "heatmapen är helt gömd"):
     // min 34 px at zoom 15+, growing to 120 px at zoom 11 and below.
     // tiers (owner: "zoomed out the circles cover half the map, zoomed in they get tiny"): metres in the middle, clamped on
     // screen — min 36 px (z ≤ 12) → 24 px (z ≥ 16), max 60 px at every zoom. Far out, near points share a cell = one blob ≤ 60 px.
     // tiers 2 (owner: "the minimum in metres that follows the map, 10 m up to 500 m"): metres only, a 9 px floor far out.
-    return Math.max(HEAT_M[3], heatMeters(z) / Math.max(1e-6, mpp));
+    // tiers 3 (owner: "the heat is smaller than the number 2"): floor 40–46 px (≈ 30–36 px visible), so the glow shows outside a count chip.
+    var floor = Math.min(HEAT_FLOOR_PX[1], HEAT_FLOOR_PX[0] + 2 * Math.sqrt(Math.max(0, +peak || 0)));
+    return Math.max(floor, heatMeters(z) / Math.max(1e-6, mpp));
   }
   // Fade the glow when zoomed in close (markers + labels carry the detail there). Continuous: no jump.
   // tiers: strong in the town view (≤ 13), fades out between zoom 13 and 15 (the pins carry the detail), a faint trace after.
@@ -266,7 +269,7 @@
     // proj(latlng) → container point of the frame; z = (fractional) zoom of the frame; normZ: zoom for the colour scale.
     HP._drawFrame = function (proj, z, lat, norm) {
       var m = this._map; if (!m || !this._heat) return;
-      var R = heatRadiusPx(z, lat), size = m.getSize();
+      var R = heatRadiusPx(z, lat, this._rawPeak), size = m.getSize();
       // map3: canvas pixels per CSS px (getImageData/putImageData of the whole canvas is the cost of every heat frame).
       var lo = norm != null || !!this._lo, hs = Math.min(lo ? 0.5 : 1, Math.sqrt((lo ? 160000 : 520000) / Math.max(1, size.x * size.y)));
       hs = Math.max(0.2, Math.round(hs * 20) / 20);
@@ -289,6 +292,8 @@
         if (c) { c[0] = (c[0] * c[2] + p.x * w) / (c[2] + w); c[1] = (c[1] * c[2] + p.y * w) / (c[2] + w); c[2] += w; }
         else { c = cells[k] = [p.x, p.y, w]; list.push(c); }
       }
+      var raw = 0; for (i = 0; i < list.length; i++) if (list[i][2] > raw) raw = list[i][2];
+      this._rawPeak = raw;   // tiers 3: hottest cell (drinks) of this view → heat floor of the next frame
       var peak = norm;
       if (peak == null) { peak = 0; for (i = 0; i < list.length; i++) if (list[i][2] > peak) peak = list[i][2]; }
       peak = Math.max(HEAT_FLOOR, peak);
@@ -301,7 +306,7 @@
     };
     // Hottest cell of a view (center/zoom), for a stable colour scale through a whole animation.
     HP._peakFor = function (proj, z, lat) {
-      var m = this._map, size = m.getSize(), r = heatRadiusPx(z, lat), g = Math.max(2, r / 2), cells = {}, peak = 0;
+      var m = this._map, size = m.getSize(), r = heatRadiusPx(z, lat, this._rawPeak), g = Math.max(2, r / 2), cells = {}, peak = 0;
       var ll = this._latlngs || [], o = this._cellOrigin ? proj(this._cellOrigin) : { x: 0, y: 0 };
       for (var i = 0; i < ll.length; i++) {
         var p = proj(ll[i]); if (p.x < -r || p.y < -r || p.x > size.x + r || p.y > size.y + r) continue;

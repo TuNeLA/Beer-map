@@ -2471,3 +2471,6 @@ Helpers (no client access): `olnu_sug_rows2(uid) → (uid, mutual, bars, g)`, `o
   tiers.js treats them like the selected bar (always full when the marker is drawn). Where no marker shows (quiet bars < z13, all
   bars < z11 where only the count chips are, hidden town-view dots) a small labelled pin "🏃 Pitchers" in pane `mypins` (z 700, above
   the count chips); max 8 in view, no overlaps; tap → zoom to z ≥ 16 and open the bar sheet. `MYPINS.ids()` → `{barId: why}`.
+- **Heat floor (tiers 3, patch 12)**: far out the heat radius is at least `HEAT_FLOOR_PX = [40, 46]` px (40 + 2·√ hottest cell of the
+  view, max 46; leaflet.heat shows ≈ 0.75 R, so ≈ 30–35 px of visible glow) instead of 9 px, so the red shows outside a count chip / pill (owner: "Falun, 2 people: the heat is smaller than the 2").
+  The 10–500 m curve wins where it is bigger (from about z15). In `heatRadiusPx(z, lat, peak)` only: real and simulated points alike.
