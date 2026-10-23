@@ -395,6 +395,7 @@
     var out = [];
     beerOnly().forEach(function (b) { var s = pinSpot(b); out.push([s[0], s[1], Math.max(1, U.drinks(b))]); });
     if (heatPoints) heatPoints.forEach(function (p) { out.push([p[0], p[1], p[2] * HEAT_TRAIL_W]); });
+    if (window.DEMO) try { window.DEMO.heat(out); } catch (e) {}   // 🎞️ visningsläge
     return out;
   }
   function renderHeat() {
@@ -509,6 +510,7 @@
     return '<div class="pp-other">' + U.esc(oc === 1 ? t("otherPlus", oc, k) : t("otherPlusMany", oc, k)) + "</div>";
   }
   function beerPopup(b) {
+    if (b && b._demo && window.DEMO) return window.DEMO.popup(b);   // 🎞️ visningsläge
     var h = '<div class="pp-title">' + U.esc(t("beerNo", U.drinks(b))) + "</div>" +
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
     h += levelLine(U.level(U.drinks(b)), b);
@@ -761,7 +763,8 @@
   }
   function checkinsAt(bar) {
     var id = String(bar.id);
-    return checkins.filter(function (c) { return window.BARS.canonId(c.bar_id) === window.BARS.canonId(id); });
+    return checkins.filter(function (c) { return window.BARS.canonId(c.bar_id) === window.BARS.canonId(id); })
+      .concat(window.DEMO ? window.DEMO.cisAt(bar) : []);   // 🎞️ visningsläge
   }
   // "Anton, Oskar + 2 till" (names: me + friends; strangers only as a count).
   function checkinNamesHTML(bar) {
@@ -873,6 +876,7 @@
     Object.keys(split.perBar).forEach(function (id) { var a = split.perBar[id]; get(id, a.bar).beers = a.beers; });
     Object.keys(rb).forEach(function (id) { var x = rb[id]; if (x && x.bar) get(id, x.bar).rallies = x.rallies || []; });
     Object.keys(cib).forEach(function (id) { var bar = window.BARS.byId(id); if (bar) get(id, bar).cis = cib[id]; });
+    if (window.DEMO) try { window.DEMO.bars(comp, get, z); } catch (e) {}   // 🎞️ visningsläge
     Object.keys(comp).forEach(function (id) {
       var c = comp[id];
       if (c.bar && c.bar.arena) return;   // 🏟️ js/arenapin.js draws arenas (glow + chip with the crowd)
@@ -971,6 +975,7 @@
   map.on("zoomend moveend", labelsSoon);
   map.on("moveend popupopen", function () { tiersNow(); labelsSoon(); });
   map.on("popupclose", function () { setTimeout(function () { tiersNow(); labelsSoon(); }, 0); });   // after cm-sel is gone
+  if (window.DEMO) try { window.DEMO.attach({ map: map, live: LIVE, render: render, renderHeat: renderHeat, beerIcon: beerIcon }); } catch (e) {}   // 🎞️ visningsläge
   if (window.TIERS) window.TIERS._app = { labels: placeLabels, render: render, plain: renderPlainBars, heatMeters: heatMeters, heatPx: heatRadiusPx };   // tests / perf
   // Selected marker: 1.25× and on top while its popup is open.
   var selMarker = null;
@@ -1329,6 +1334,7 @@
     });
   }
   function doSkal(button) {
+    if (window.DEMO && window.DEMO.skal(button)) return;   // 🎞️ visningsläge: never sent
     var id = button.getAttribute("data-skal"), b = beerById(id);
     if (!b || b.i_skaled || button.disabled) return;
     window.FX.unlock();
@@ -1370,7 +1376,8 @@
     root.querySelectorAll(".pp-all").forEach(function (x) {
       x.addEventListener("click", function (ev) {
         ev.preventDefault(); ev.stopPropagation();
-        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(beers).perBar[id];   // (rows, not views)
+        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(beers).perBar[id];
+        if (window.DEMO) try { agg = window.DEMO.crowd(id, agg); } catch (e) {}   // 🎞️ visningsläge   // (rows, not views)
         map.closePopup();
         if (agg && agg.beers.length) openCrowd(agg.beers, agg.bar);
       });
@@ -1482,7 +1489,7 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = LIVE ? t("live", liveTotal != null ? liveTotal : lastPollAt ? beerOnly().length | 0 : "–")   /* QA #18: "–" before the first poll */ : t("soonLive");
+    $("live-count").innerHTML = LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(liveTotal != null ? liveTotal : lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive");
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));

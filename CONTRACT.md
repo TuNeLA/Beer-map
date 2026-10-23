@@ -2474,3 +2474,34 @@ Helpers (no client access): `olnu_sug_rows2(uid) → (uid, mutual, bars, g)`, `o
 - **Heat floor (tiers 3, patch 12)**: far out the heat radius is at least `HEAT_FLOOR_PX = [40, 46]` px (40 + 2·√ hottest cell of the
   view, max 46; leaflet.heat shows ≈ 0.75 R, so ≈ 30–35 px of visible glow) instead of 9 px, so the red shows outside a count chip / pill (owner: "Falun, 2 people: the heat is smaller than the 2").
   The 10–500 m curve wins where it is bigger (from about z15). In `heatRadiusPx(z, lat, peak)` only: real and simulated points alike.
+
+## VISNINGSLÄGE (simulated big night, js/demo.js + migration 0159; client only)
+Owner decision 2026-10-23: show what Öl Nu looks like when all of Sweden is out. The app has ~15 real users (all the owner's
+friends, they know it is a proof of concept), so the simulation is ON for every user and has NO label anywhere.
+**⚠️ The owner MUST turn it OFF before any public launch or Play Store release** (kill switch below).
+- **Story** (deterministic per night, seed = Swedish night date, Swedish wall time via Intl → every phone shows the same):
+  ~100 people at 15:00, ~1000 more per hour to ~6 000 at 21:00, surge 21–01, peak ≈ 23 673 (± 120) at ~01:20–02:00, flat/rising
+  to ~02:00, then down ~20 % to 05:00, ~25 % at 07:00, 60 at 12:00 (30 → 100 between 12:00 and 15:00). Random-looking minute steps.
+  Split: Stockholm 45 %, Göteborg 25 %, Malmö 15 %, 15 % over Uppsala, Västerås, Örebro, Linköping, Norrköping, Umeå,
+  Sundsvall, Gävle, Falun, Borlänge, Karlstad, Jönköping, Helsingborg, Lund. **Never within 30 km of Ludvika or 15 km of
+  Smedjebacken** (the friends use those for real). 90 % sit at named bars from bars.json (nightclubs late, pubs early, centres
+  and a per-bar "star" factor weigh more); a slow per-bar timer (~40 min) moves people to other bars nearby, so counts rise and
+  fall. ~10 % are "between bars" (in no count). **No individual fake pins** (strangers are never single pins in Öl Nu).
+- **What shows** (fed through the normal paths, no new UI): bar people pills + tiers + crowd words (Lugnt/Livligt/Packat) +
+  bar sheet "≈ N här" / Folk här / Visa alla + 🚪 check-in counts; heat points; the world counter (real + simulated);
+  2–3 ticker lines per refill (dalmål). Below zoom 11 one cluster-style pill per town (merged when < 70 px apart).
+  Perf: only bars in view (+30–50 %) get people: top 12 (z < 12.5) / 50 (z < 14) / 90 (z ≥ 14); redraw ≤ every 20 s and when a pan
+  leaves the drawn box. A fake person is only a "Någon" row in a bar sheet's Folk här list; its 🍻 is counted locally.
+- **Never**: no RPC with a fake id, no server write, nothing in meriter / top lists / leagues / morning paper / push / real bar
+  stats / NEWS.update / onPoll / streak alerts / chaos / toasts. Real pins, friends, groups and check-ins render as before, on top.
+- **Hooks in app.js** (02-app-hooks.py, all no-ops without window.DEMO): DEMO.attach({map, live, render, renderHeat, beerIcon});
+  render() → DEMO.bars(comp, get, z); heatData() → DEMO.heat(out); updateCounts() → DEMO.counter(v); beerPopup(b) →
+  DEMO.popup(b) for b._demo; doSkal → DEMO.skal(button); checkinsAt(bar) + DEMO.cisAt(bar); "Visa alla" → DEMO.crowd(id, agg).
+  NEWS.build is wrapped by demo.js. Fake ids start with "dm".
+- **Kill switch** (no deploy): table `app_public_flags` (key 'visning', value 'on'|'off', RLS on, no client access), read by
+  `public_config()` → field `visning` (missing row = 'on'; old server without the field = on). Phones read it at start and
+  every 15 min (cached in localStorage "olnu.visning.srv").
+    off: `update public.app_public_flags set value = 'off', updated_at = now() where key = 'visning';`
+    on:  `update public.app_public_flags set value = 'on',  updated_at = now() where key = 'visning';`
+  Per-device override (tests / showing): `?visning=1` or `?visning=0` (stored in localStorage "olnu.visning"; wins over the server).
+- Tests / perf: DEMO._state(), DEMO._setNow(ms), DEMO._totalAt(ms).
