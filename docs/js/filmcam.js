@@ -317,6 +317,7 @@
   /* ---------- Viewfinder ---------- */
   function leftOf(c) { return Math.max(0, (c.d.left | 0) - pendingFor(c.g.id)); }
   function view(c) {
+    inlStop();   // one camera stream at a time (the sheet's inline viewfinder gives way to the full screen)
     var o = shell("fc-viewmode");
     cur = c;
     var max = c.d.max | 0 || 10;
@@ -502,6 +503,128 @@
     });
   }
 
+  /* ---------- Inline viewfinder (owner 2026-10-23: "show the camera directly in the sheet, no extra taps") ----------
+     FILMCAM.inline({g, d, vf, shutter, lcd, leftEl, frames, max}) puts the live camera INSIDE the sheet's .fm-vf box.
+     - Permission already given (Permissions API "granted" or our olnu.fmCamOk flag): the camera starts at once.
+     - Not yet: the box says "📸 Tryck för att slå på kameran"; a tap on the box or the red shutter asks the phone (one tap).
+     - The red shutter shoots straight from the box (flash + "vevar filmen", no preview), into the same queue as before.
+     - Denied / error / no getUserMedia: returns null or falls back to the full card flow (FILMCAM.open).
+     - One stream survives sheet redraws (film.js redraws after every upload): the <video> node moves into the new box.
+       It stops when the box leaves the page for > 1 s, when the app goes to the background, or on pagehide. */
+  var inl = { gid: null, stream: null, video: null, vf: null, ctx: null, facing: facing, busy: false, timer: null, denied: false };
+  function inlStop() {
+    if (inl.stream) { try { inl.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
+    inl.stream = null;
+    if (inl.video) { try { inl.video.srcObject = null; } catch (e) {} }
+    if (inl.vf) inl.vf.classList.remove("fm-live");
+  }
+  function inlWatch() {
+    clearInterval(inl.timer);
+    var gone = 0;
+    inl.timer = setInterval(function () {
+      if (inl.vf && inl.vf.isConnected) { gone = 0; return; }
+      if (++gone >= 2) { clearInterval(inl.timer); inl.timer = null; inlStop(); inl.vf = null; inl.ctx = null; }
+    }, 600);
+  }
+  function inlPaint() {
+    var c = inl.ctx; if (!c || !c.vf || !c.vf.isConnected) return false;
+    var left = Math.max(0, (c.d.left | 0) - pendingFor(c.g.id)), max = c.max || 10, used = max - left;
+    try { if (c.lcd) c.lcd.textContent = ("0" + left).slice(-2); } catch (e) {}
+    try { if (c.leftEl) c.leftEl.textContent = left > 0 ? left + L(" bilder kvar", " shots left") : L("Filmen ä slut", "Out of film"); } catch (e) {}
+    try { if (c.frames) Array.prototype.forEach.call(c.frames.children, function (s, i) { s.classList.toggle("used", i < used); }); } catch (e) {}
+    var full = (c.d.group_n | 0) + pendingFor(c.g.id) >= (c.d.group_max | 0 || 60);
+    if (c.shutter) c.shutter.disabled = inl.busy || left <= 0 || full;
+    return true;
+  }
+  function inlStart(c, ask) {
+    if (!hasGum() || inl.denied) return;
+    if (inl.stream && inl.gid === c.g.id) { inlAttach(c); return; }
+    var tip = c.vf.querySelector(".fm-vf-t"), sub = c.vf.querySelector(".fm-vf-s");
+    if (tip) tip.textContent = pick("starting", T.starting);
+    if (sub) sub.textContent = ask ? L("Telefonen frågar om lov – tryck Tillåt.", "The phone asks – tap Allow.") : "";
+    var want = { audio: false, video: { facingMode: { ideal: inl.facing }, width: { ideal: 1600 }, height: { ideal: 1200 } } };
+    navigator.mediaDevices.getUserMedia(want)["catch"](function (e) {
+      if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) throw e;
+      return navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+    }).then(function (s) {
+      if (!c.vf.isConnected || document.visibilityState === "hidden" || camOpen()) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+      inlStop(); inl.stream = s; inl.gid = c.g.id; lsSet(OK_KEY, "1");
+      inlAttach(c);
+    }, function (e) {
+      if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) { inl.denied = true; lsSet(OK_KEY, null); }
+      if (tip) tip.textContent = L("📷 Kameran startade int'", "📷 The camera did not start");
+      if (sub) sub.textContent = L("Tryck på den röda knappen för fler val.", "Tap the red button for more options.");
+    });
+  }
+  function inlAttach(c) {
+    if (!inl.video) {
+      inl.video = el("video", { class: "fm-video", playsinline: "", muted: "", autoplay: "", "aria-hidden": "true" });
+      inl.video.muted = true; inl.video.playsInline = true;
+    }
+    var v = inl.video;
+    c.vf.insertBefore(v, c.vf.firstChild);
+    if (v.srcObject !== inl.stream) v.srcObject = inl.stream;
+    var st = {}; try { st = inl.stream.getVideoTracks()[0].getSettings() || {}; } catch (e) {}
+    c.vf.classList.toggle("mirror", st.facingMode === "user" || (!st.facingMode && inl.facing === "user"));
+    var pl = v.play(); if (pl && pl["catch"]) pl["catch"](function () {});
+    c.vf.classList.add("fm-live");
+    inl.vf = c.vf; inlWatch();
+    if (!c.vf.querySelector(".fm-flip")) {
+      var fl = el("button", { type: "button", class: "fm-flip", "aria-label": L("Byt kamera", "Switch camera"), text: "🔄" });
+      fl.addEventListener("click", function (e) {
+        e.stopPropagation();
+        inl.facing = inl.facing === "user" ? "environment" : "user"; facing = inl.facing; lsSet(FAC_KEY, inl.facing);
+        inlStop(); inlStart(c, false);
+      });
+      c.vf.appendChild(fl);
+      try { navigator.mediaDevices.enumerateDevices().then(function (ds) { if (ds.filter(function (d) { return d.kind === "videoinput"; }).length < 2) fl.hidden = true; }, function () {}); } catch (e) {}
+    }
+    inlPaint();
+  }
+  function inlShoot(c) {
+    if (inl.busy) return;
+    if (!inl.stream || !inl.video || !inl.video.videoWidth) {
+      if (inl.denied || !hasGum()) { open(c.g, c.d); return; }   // the card flow: denied help, camera app, gallery
+      inlStart(c, true); return;
+    }
+    var shot = grab(inl.video, c.vf);
+    if (!shot) { toast(errText("invalid_photo"), { err: true }); return; }
+    inl.busy = true; inlPaint();
+    vib([15, 30, 15]);
+    if (!reduced()) { var f = el("div", { class: "fm-flashfx" }); c.vf.appendChild(f); setTimeout(function () { f.remove(); }, 400); }
+    var key = reserve(c.g);
+    var lastOne = (c.d.left | 0) - pendingFor(c.g.id) <= 0;
+    var sub = c.vf.querySelector(".fm-vf-s");
+    if (sub) sub.textContent = pick("wind", T.wind);
+    c.vf.classList.add("winding");
+    toast(lastOne ? pick("last", T.last) : pick("click", T.click), { cls: "skal", ms: 2600 });
+    shot.then(function (s) { return enqueue(c.g, s, key); }).then(null, function () { unreserve(key); toast(errText("invalid_photo"), { err: true }); });
+    setTimeout(function () { inl.busy = false; c.vf.classList.remove("winding"); if (sub) sub.textContent = ""; inlPaint(); }, reduced() ? 400 : 900);
+  }
+  function inline(c) {
+    if (!c || !c.g || !c.vf || !c.shutter) return null;
+    if (!hasGum()) return null;
+    c.max = c.max || (c.d.max | 0) || 10;
+    inl.ctx = c;
+    subs.push(inlPaint);
+    var left = (c.d.left | 0) - pendingFor(c.g.id);
+    if (left <= 0) return { shoot: function () {} };
+    var tip = c.vf.querySelector(".fm-vf-t"), sub = c.vf.querySelector(".fm-vf-s");
+    c.vf.classList.add("fm-tap");
+    c.vf.addEventListener("click", function (e) { if (e.target.closest && e.target.closest(".fm-flip")) return; if (!inl.stream) inlStart(c, true); });
+    if (inl.stream && inl.gid === c.g.id) inlAttach(c);
+    else permState().then(function (st) {
+      if (!c.vf.isConnected) return;
+      if (st === "granted" || (st !== "denied" && lsGet(OK_KEY) === "1")) inlStart(c, false);
+      else {
+        if (st === "denied") inl.denied = true;
+        if (tip) tip.textContent = L("📸 Tryck för att slå på kameran", "📸 Tap to turn on the camera");
+        if (sub) sub.textContent = L("Bilden tas här i appen. Telefonen frågar om lov en gång.", "The photo is taken here in the app. The phone asks once.");
+      }
+    });
+    return { shoot: function () { inlShoot(c); } };
+  }
+
   /* ---------- Sheet note (film.js drawCam) ---------- */
   function note(g) {
     var box = el("div", { class: "fc-note", role: "status" });
@@ -524,10 +647,10 @@
 
   /* ---------- Background / foreground ---------- */
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden") { if (camOpen() && ov._stop) ov._stop(); }
-    else { if (camOpen() && ov._start) ov._start(); flush(); }
+    if (document.visibilityState === "hidden") { if (camOpen() && ov._stop) ov._stop(); inlStop(); }
+    else { if (camOpen() && ov._start) ov._start(); else if (inl.ctx && inl.ctx.vf && inl.ctx.vf.isConnected) inlStart(inl.ctx, false); flush(); }
   });
-  window.addEventListener("pagehide", function () { stopStream(); });
+  window.addEventListener("pagehide", function () { stopStream(); inlStop(); });
   window.addEventListener("online", function () { retryNow(); });
 
   function init(api) {
@@ -543,7 +666,7 @@
   }
 
   window.FILMCAM = {
-    init: init, onAuthed: onAuthed, open: open, note: note, flush: flush, retry: retryNow, close: close,
+    init: init, onAuthed: onAuthed, open: open, inline: inline, note: note, flush: flush, retry: retryNow, close: close,
     pending: pendingFor, _pick: pickFile, _queue: qAll, _texts: T
   };
 })();

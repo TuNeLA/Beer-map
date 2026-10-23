@@ -234,9 +234,12 @@
     root.appendChild(el("p", { class: "fm-grp muted", text: L("Gänget har tagit " + (d.group_n | 0) + " bilder ikväll" + ((d.shooters | 0) ? " (" + d.shooters + " fotografer)" : "") + ".",
       "The group took " + (d.group_n | 0) + " shots tonight.") }));
     shutter.disabled = left <= 0 || (d.group_n | 0) >= (d.group_max | 0 || 60);
-    var busy2 = false;
+    var busy2 = false, inl = null;
+    // owner 2026-10-23: the live camera shows right here in the sheet's viewfinder (no extra taps)
+    try { if (window.FILMCAM && window.FILMCAM.inline) inl = window.FILMCAM.inline({ g: g, d: d, vf: vf, shutter: shutter, lcd: lcd.firstChild, leftEl: cam.querySelector(".fm-left"), frames: frames, max: max }); } catch (e) { inl = null; }
     shutter.addEventListener("click", function () {
       if (shutter.disabled || busy2) return;
+      if (inl) { inl.shoot(); return; }
       if (window.FILMCAM && window.FILMCAM.open) { window.FILMCAM.open(g, d); return; }   // film2: in-app camera
       if (!window.PHOTO || !window.PHOTO._shrink) { A.toast(errText("error"), { err: true }); return; }
       pickFile(function (file) {
