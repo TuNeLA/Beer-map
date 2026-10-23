@@ -3276,6 +3276,18 @@
     var busyNow = false;
     var go = function (text) {
       if (busyNow) return;
+      // 🔑 Återställningskod (0160): "ABCD-1234" made by the owner for a lost account → move it to this account.
+      var rc = String(text || "").trim().toUpperCase().replace(/\s+/g, "");
+      if (/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(rc) && client) {
+        busyNow = true; pb.disabled = true; gob.disabled = true;
+        client.rpc("redeem_recovery", { p_code: rc.replace(/^([A-Z0-9]{4})([A-Z0-9]{4})$/, "$1-$2") }).then(function (r) {
+          busyNow = false; pb.disabled = false; gob.disabled = false;
+          if (r.error) { toast(/same_account/.test(r.error.message || "") ? "Det här ä redan ditt konto." : "Koden funkar int' (fel eller redan använd).", { err: true, ms: 6000, id: "flytt" }); form.hidden = false; return; }
+          toast("✅ Kontot ä tillbaka! Laddar om…", { ms: 4000, id: "flytt" });
+          setTimeout(function () { location.reload(); }, 1500);
+        });
+        return;
+      }
       var p = readFlytt(text);
       if (!p) { toast(t("flyttBadFormat"), { err: true, id: "flytt" }); form.hidden = false; return; }
       busyNow = true; pb.disabled = true; gob.disabled = true;
