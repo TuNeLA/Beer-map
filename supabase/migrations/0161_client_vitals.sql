@@ -1,0 +1,4 @@
+-- 0161 (+0161b) 📈 VITALS: anonymous speed log from the app (docs/js/vitals.js) and owner panels (docs/stats-vitals.js).
+-- Applied live as two migrations: 0161_client_vitals (table client_vitals, report_vitals, owner_vitals) and
+-- 0161b_client_vitals_detail (detail jsonb column, report_vitals with detail, owner_vitals_slow).
+-- See the live definitions with: select pg_get_functiondef('public.report_vitals(jsonb)'::regprocedure);
