@@ -57,7 +57,7 @@ for (const [qi, query] of queries.entries()) {
     catch (e) { lastErr = e; console.error(String(e && e.message || e).slice(0, 120)); if (attempt < 5) await new Promise((r) => setTimeout(r, 15000 * (attempt + 1))); }
   }
   if (!got && qi === 1) { console.error("Skipping the optional min_age query."); continue; }
-  if (!got) { console.error("Giving up:", lastErr && lastErr.message); process.exit(1); }
+  if (!got) { console.log("::warning::Overpass unreachable (" + (lastErr && lastErr.message) + "): keeping last week's hours.json / systembolaget.json"); process.exit(0); }
   if (cacheFile) await writeFile(cacheFile, JSON.stringify(got)).catch(() => {});
   json.elements.push(...(got.elements || []));
   await new Promise((r) => setTimeout(r, 3000));
