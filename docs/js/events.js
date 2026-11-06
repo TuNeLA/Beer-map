@@ -360,7 +360,8 @@
     var ci = null; try { ci = A.myCheckin && A.myCheckin(); } catch (e) {}
     if (!ci) return;
     var evs = forBar(ci.bar_id || ci.id); if (!evs.length) return;
-    var seen = U.ls.getJSON(SEEN_KEY, []) || [], e = evs[0];
+    var seen = U.ls.getJSON(SEEN_KEY, []), e = evs[0];
+    if (!Array.isArray(seen)) seen = [];
     if (seen.indexOf(e.id) >= 0) return;
     seen.push(e.id); U.ls.setJSON(SEEN_KEY, seen.slice(-40));
     A.toast((KIND[e.kind] || "📅") + " " + L("Ikväll här: ", "Tonight here: ") + e.title + " " + hhmm(e.starts_at));
