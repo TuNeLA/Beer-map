@@ -46,7 +46,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.MYPINS, window.VITALS].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -786,6 +786,8 @@
     ciBarById[String(bar.id)] = bar;
     if (!authed || checkinState === "missing") return "";
     var me = myCheckin(), here = me && me.id === String(bar.id);
+    if (here) return '<div class="ci-here">' + U.esc(t("ciDone")) + '</div><button type="button" class="ci-out" data-ciout="' + U.esc(String(bar.id)) + '">' +
+      U.esc(tl("🚪 Checka ut", "🚪 Check out")) + "</button>";   // ux3: uxfix.js does the tap (check_out, 0162)
     return '<button type="button" class="ci-btn" data-ci="' + U.esc(String(bar.id)) + '"' + (here ? " disabled" : "") + ">" +
       U.esc(here ? t("ciDone") : t("ciBtn")) + "</button>";
   }
@@ -2342,6 +2344,7 @@
     if (window.CALM && window.CALM.sheet(title, build, opts)) return false;   // calm: an automatic sheet waits for its slot
     // Beer-type strip up: a sheet the user did not just tap for waits until the strip closes.
     if (!opts.now && stripUp() && Date.now() - lastTapOut > 1200) { sheetQueue.push([title, build, opts]); stripAfter(drainSheets); return false; }
+    if (window.SHEETNAV) { try { var nv = window.SHEETNAV.willOpen(title, build, opts, !$("sheet").hidden); if (nv) { title = nv[0]; build = nv[1]; opts = nv[2] || {}; } } catch (e) {} }   // ux3: back stack
     var prev = sheetCur; sheetCur = null;
     if (prev && prev.onClose) { try { prev.onClose("replaced"); } catch (e) {} }
     sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
@@ -2349,12 +2352,15 @@
     var body = $("sheet-body"); body.innerHTML = "";
     build(body);
     $("sheet").hidden = false; $("backdrop").hidden = false;
+    if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
     return true;
   }
   function closeSheet(reason) {
+    if (window.SHEETNAV) { try { if (window.SHEETNAV.willClose(reason)) return; } catch (e) {} }   // ux3: ← = one step back
     try { if (window.SMOOTH && !$("sheet").hidden) window.SMOOTH.sheetOut(); } catch (e) {}   // smooth: slide-down copy
     $("sheet").hidden = true; $("backdrop").hidden = true; $("sheet-body").innerHTML = "";
     var cur = sheetCur; sheetCur = null;
+    if (window.SHEETNAV) { try { window.SHEETNAV.didClose(); } catch (e) {} }
     if (cur && cur.onClose) { try { cur.onClose(typeof reason === "string" ? reason : "cancel"); } catch (e) {} }
     setTimeout(drainSheets, 80);
     setTimeout(toastPump, 300);   // a calm toast that waited for the sheet
@@ -2455,13 +2461,7 @@
     withName(function () {
       openSheet(t("groups"), function (body) {
         var list = el("ul", { class: "glist" });
-        body.appendChild(el("div", { class: "namebar", style: "display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:6px" }, [
-          el("div", { style: "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [
-            el("span", { class: "muted", text: t("nameLabel") + " " }),
-            el("strong", { text: getName() })
-          ]),
-          btn("✏️ " + t("rename"), "btn-small", function () { showRename(showGroups); })
-        ]));
+        // ux3: the name + "Byt namn" live in 👤 Profil only (owner 2026-11-07).
         body.appendChild(el("h3", { text: t("myGroups") + friendsNowText() }));
         body.appendChild(list);
         body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [
@@ -3651,6 +3651,8 @@
     } catch (e) {}
     // join.js: an invite link shows the welcome/install card first; the intro waits until it is closed.
     var intro = (window.JOIN && window.JOIN.gate ? window.JOIN.gate() : Promise.resolve()).then(function () {
+      return window.INSTALL1 && window.INSTALL1.gate ? window.INSTALL1.gate() : undefined;   // ux3: install first, tour in the app
+    }).then(function () {
       return introDone() ? (ageOk() ? undefined : showAgeOnce()) : showIntro(false);
     });
     // Returning user who allowed location before: center on them quietly.

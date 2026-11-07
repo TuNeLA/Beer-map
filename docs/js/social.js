@@ -469,7 +469,8 @@
         });
       }
       var sendBtn = A.btn(t("chatSend"), "btn-amber chat-send", go);
-      body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [A.btn(t("back"), "btn-small", function () { A.showGroups(); })]));
+      var topRow = el("div", { class: "row", style: "margin-bottom:8px" }, [A.btn(t("back"), "btn-small", function () { A.showGroups(); })]);
+      body.appendChild(topRow);
       body.appendChild(list);
       body.appendChild(el("div", { class: "chat-input" }, [inp, sendBtn]));
       var note = el("p", { class: "muted chat-note", text: t("chatNote") });
@@ -507,6 +508,7 @@
           });
         });
       })();
+      try { if (window.UXFIX && window.UXFIX.chatSettings) window.UXFIX.chatSettings(g, topRow, note, body.querySelector(".chat-keep")); } catch (e) {}   // ux3: ⚙️
       // Older messages: group_msgs only pages forward (id > p_after_id, ids are global), so step back in id windows.
       var oldestId = 0, olderLi = null, olderBusy = false;
       function showOlder(on) {
