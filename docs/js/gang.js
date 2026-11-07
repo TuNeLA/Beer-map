@@ -919,7 +919,7 @@
           var s = swish[t.to.k];
           if (s && s.number) {
             var row = el("div", { class: "gg-row" });
-            var a = el("a", { class: "btn btn-small btn-green", href: swishUrl(s.number, t.amount, "Öl Nu: " + view.g.name), text: T("dSwish", t.to.name) });
+            var a = el("a", { class: "btn btn-small btn-green", href: swishUrl(s.number, t.amount, "PintsNow: " + view.g.name), text: T("dSwish", t.to.name) });
             row.appendChild(a);
             row.appendChild(bt(T("dCopy"), "btn-small", function () { A.copyText(s.number); }));
             li.appendChild(row);
@@ -1409,7 +1409,7 @@
     ctx.fillStyle = K; ctx.fillRect(0, fy, W, 86);
     ctx.fillStyle = Y; ctx.textAlign = "left"; ctx.font = "600 28px " + BODY;
     ctx.fillText(m.footer, 40, fy + 52, W - 300);
-    ctx.textAlign = "right"; ctx.font = "34px " + DISP; ctx.fillText("ÖL NU 🍺", W - 40, fy + 54, 240);
+    ctx.textAlign = "right"; ctx.font = "34px " + DISP; ctx.fillText("PINTSNOW 🍺", W - 40, fy + 54, 240);
     return y + 86;
   }
   function drawStory(m) {
@@ -1559,7 +1559,7 @@
       ctx.fillStyle = "#111"; ctx.fillRect(0, H - 86, W, 86);
       ctx.fillStyle = "#ffd60a"; ctx.textAlign = "left"; ctx.font = "600 28px " + BODY;
       ctx.fillText(m.footer, 40, H - 34, W - 300);
-      ctx.textAlign = "right"; ctx.font = "34px " + DISP; ctx.fillText("ÖL NU 🍺", W - 40, H - 32, 240);
+      ctx.textAlign = "right"; ctx.font = "34px " + DISP; ctx.fillText("PINTSNOW 🍺", W - 40, H - 32, 240);
       return cv;
     });
   }

@@ -36,7 +36,7 @@
       intro: "Vilken grupp dricker mest ikväll? Alla drinkar räknas från att duellen startar till kl. 05:00.",
       qrHead: "📱 Visa den här för den andra gruppen", qrNote: "De skannar med kameran och trycker en gång. Klart!",
       qrCode: "Duellkod: {0}", qrExp: "Koden gäller till {0}.", qrNew: "⚔️ Visa utmaningskod", copyLink: "📋 Kopiera länk", share: "📤 Dela",
-      shareText: "⚔️ {0} utmanar er på duell i Öl Nu! Tryck här:",
+      shareText: "⚔️ {0} utmanar er på duell i PintsNow! Tryck här:",
       typeHead: "⌨️ Har ni en kod?", typePh: "Duellkod (8) eller gruppkod (6)", typeGo: "⚔️ Kör", typeNote: "Duellkod = ni antar direkt. Gruppkod = de får en utmaning att svara på.",
       nearHead: "📍 Grupper nära er ikväll", nearNone: "Inga öppna grupper ute nära er just nu.", nearBtn: "⚔️ Utmana", nearPos: "Slå på platsen så hittar vi grupper nära dig.",
       nearOut: "{0} ute · {1} i gruppen", openLabel: "Låt grupper nära oss utmana oss", openOn: "📍 Nu kan grupper nära er utmana er.", openOff: "🔒 Ni syns int’ längre i listan.",
@@ -71,7 +71,7 @@
       btn: "⚔️ Challenge a group", duels: "⚔️ Duels", sheet: "⚔️ Duel · {0}", vs: "{0} vs {1}",
       intro: "Which group drinks the most tonight? All drinks count from the start of the duel until 05:00.",
       qrHead: "📱 Show this to the other group", qrNote: "They scan it with the camera and tap once.", qrCode: "Duel code: {0}", qrExp: "Valid until {0}.",
-      qrNew: "⚔️ Show challenge code", copyLink: "📋 Copy link", share: "📤 Share", shareText: "⚔️ {0} challenges you to a duel in Öl Nu! Tap here:",
+      qrNew: "⚔️ Show challenge code", copyLink: "📋 Copy link", share: "📤 Share", shareText: "⚔️ {0} challenges you to a duel in PintsNow! Tap here:",
       typeHead: "⌨️ Got a code?", typePh: "Duel code (8) or group code (6)", typeGo: "⚔️ Go", typeNote: "Duel code = accept at once. Group code = they get a challenge.",
       nearHead: "📍 Groups near you tonight", nearNone: "No open groups out near you right now.", nearBtn: "⚔️ Challenge", nearPos: "Turn on location to find groups near you.",
       nearOut: "{0} out · {1} members", openLabel: "Let groups nearby challenge us", openOn: "📍 Groups nearby can now challenge you.", openOff: "🔒 You are hidden from the list.",
@@ -502,7 +502,7 @@
       wrap.appendChild(el("p", { class: "du-note", text: F(T("qrExp"), hm(d.expires_at)) }));
       var row = el("div", { class: "du-row" }, [bt(T("copyLink"), "btn-small", function () { A.copyText(cardLink); })]);
       if (navigator.share) row.appendChild(bt(T("share"), "btn-small", function () {
-        navigator.share({ title: "Öl Nu", text: F(T("shareText"), d.group_name || view.g.name), url: cardLink }).catch(function () {});
+        navigator.share({ title: "PintsNow", text: F(T("shareText"), d.group_name || view.g.name), url: cardLink }).catch(function () {});
       }));
       wrap.appendChild(row);
     });

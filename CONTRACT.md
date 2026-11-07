@@ -2950,3 +2950,40 @@ cleanup: leave, `invite_cancel`), plus social2-pw.js, strip-test.js, avatar-pw.j
 - smooth.css runs `.sheet:not([hidden]){animation:smSheetIn}`; the drag class `sn-drag` had `animation:none` only during the
   drag, so the release restarted smSheetIn: the sheet jumped ~420 px down and slid up again (300 ms) after every spring-back.
   Now the first drag move sets inline `animation:none` on #sheet until it is hidden (the next open animates again).
+
+## PINTSNOW MOVE (rename Öl Nu → PintsNow, address tunela.github.io/Beer-map/docs/ → https://pintsnow.com; 0175–0176)
+Runbook: scratchpad/move-runbook.md. Internal names stay (window.X, `olnu.*` keys, `olnu_*` SQL, cache names `olnu-*`).
+- **Config** (`docs/config.js`): `APP_ORIGIN` "https://pintsnow.com", `BRIDGE_URL` "https://tunela.github.io/olnu-flytt.html".
+  Nothing happens on any other origin (localhost tests, the old origin before the switch).
+- **Switch** = GitHub Pages source `main /docs` + custom domain pintsnow.com. GitHub then answers every
+  `tunela.github.io/Beer-map/<path>?<q>` with **301 → pintsnow.com/<path>?<q>** (the browser keeps the #hash). Old `/docs/...`
+  links: `docs/docs/index.html` + `docs/404.html` forward to `/<path>`. The old `sw.js` can never update again (script behind a redirect).
+- **Server** (0175): table `handover_tickets` (id_hash = sha256(ticket id), user_id, box = base64url(iv‖AES-GCM ciphertext),
+  src, expires_at = +30 min, taken_at, takes, done_at); RLS on, no client grants. RPCs: `handover_put(p_id, p_box, p_src)` (authenticated,
+  20/h) · `handover_take(p_id)` → `{box, u}` (anon ok; again only ≤ 2 min after the first take, max 3; else `handover_gone`) ·
+  `handover_done(p_id)` (same user; blanks box) · `handover_status(p_id)` → open|expired|taken|done|unknown · 0176 `owner_move_stats(p_key)`.
+- **Secret** = 32 random bytes, base64url (43 chars): bytes 0–15 = ticket id, 16–31 = AES key (never sent to the server).
+  Payload = the flyttkod JSON `{v:1, rt, u, name, ls, src, sa (source was standalone), os, pe (old push endpoint)}`.
+- **Old origin** `docs/flytta.html` (= user-site `olnu-flytt.html`, made by make-user-site.py): reads `olnu.auth`, refreshes the
+  access token if needed (GoTrue REST), mints a ticket, locks the old origin like a flytt export (removes `olnu.auth` without
+  signOut, `olnu.moved`, `olnu.movedTo` = "pintsnow", 7-day `olnu.moveBackup` for a safe retry only while the ticket was never
+  taken), then `→ <new>/<query>#pn=<secret>`. No ticket possible → `#flytt=<code>` (old format). `?to=` (bridge mode) only to
+  APP_ORIGIN / www (no open redirect). Frozen mode (no `?to=`) first checks that APP_ORIGIN serves `/manifest.webmanifest`.
+  Old iPhone home-screen app (standalone): no auto jump; a real `<a target=_blank>` "🚀 Öppna PintsNow i Safari" + 3 steps + copy.
+  Old push subscriptions are kept (they still deliver; a click opens the old URL → 301 → new).
+- **sw.js** (must be live on the old origin BEFORE the switch): an app navigation (scope root / index.html) whose network answer
+  is a redirect to another origin → mark `olnu-pending ./__moved`, post `olnu-moved`, answer with precached `./flytta.html`.
+  A 200 clears the mark (rollback). Other pages follow the redirect.
+- **New origin** `docs/js/handover.js` (right after config.js): first start in a browser tab with no account, no code, not
+  standalone, `olnu.bridgeTried` unset → once to BRIDGE_URL `?to=<href>`; back with `#pn=`, `#flytt=` or `#bridge=none`.
+  `HANDOVER.boot(api)` from app.js `flyttBoot` (before anonymous sign-in): `#pn=` or cookie `pn_ho` → take → decrypt →
+  `importFlytt` (same user id) → `handover_done` → reload with the original query (deep links survive). Writes `olnu.movedIn`
+  `{at, src, sa, os, via}` and `olnu.oldPush`. iPhone Safari `prepareExport("home")` also mints a ticket into cookie
+  `pn_ho` (Max-Age 1800, Path /, SameSite Lax, Secure); iOS 17+ copies cookies into the new home-screen app; `olnu.hoOwn`
+  stops Safari from taking its own ticket. Old origin: reloads on `olnu-moved` / the mark (max 2 per minute).
+- **`docs/js/pnmove.js`** (`window.PNMOVE`, mods init/onAuthed) + `docs/pnmove.css`: one-time sheet "🍺 Nytt i appen"
+  ("Öl Nu heter nu PintsNow 🍺" + 6 news rows; key `olnu.newsPn`, moves with the account; only after the intro, only if the user
+  has not tapped yet in this start, never over another sheet/card). After a move (`olnu.movedIn` not acked): "✅ Ditt konto
+  flyttade med" + 🔔 "Slå på notiser igen" (new permission per origin; then `delete_push_subscription(olnu.oldPush)`) +
+  iPhone Safari from an old icon: "📋 Gör klart för hemskärmen" + Dela steps; Android tab from an old app: install button.
+  Swedish only. Tests: scratchpad/move-test/move-pw.js (two origins, real server). Test helper seed: `olnu.newsPn` = "1".

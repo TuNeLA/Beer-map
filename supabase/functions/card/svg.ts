@@ -95,7 +95,7 @@ export function cardSvg(c: CardSpec): string {
       body += `<text x="600" y="520" text-anchor="middle" font-family="${BODY}" font-weight="700" font-size="${ts}" fill="${INK}">${esc(cut(tag, "b", ts, 1080))}</text>`;
     }
   } else {
-    const head = plain(c.head).toLocaleUpperCase("sv-SE") || "ÖL NU";
+    const head = plain(c.head).toLocaleUpperCase("sv-SE") || "PINTSNOW";
     const fc = (c.faces || []).map((x) => plain(String(x || "")).slice(0, 1).toLocaleUpperCase("sv-SE")).filter(Boolean).slice(0, 4);
     const W0 = fc.length ? 800 : 1100;
     const h = headline(head, W0, 168, 64);
@@ -134,7 +134,7 @@ export function cardSvg(c: CardSpec): string {
     `<rect width="${CARD_W}" height="${CARD_H}" fill="${YEL}"/>` +
     `<rect width="${CARD_W}" height="118" fill="${INK}"/>` +
     mug(44, 16, 86, YEL) +
-    `<text x="150" y="90" font-family="${DISP}" font-size="80" fill="${YEL}">ÖL NU</text>` +
+    `<text x="150" y="90" font-family="${DISP}" font-size="80" fill="${YEL}">PINTSNOW</text>` +
     `<rect x="${(1156 - kW).toFixed(0)}" y="30" width="${kW.toFixed(0)}" height="60" fill="${RED}"/>` +
     `<text x="${(1156 - kW / 2).toFixed(0)}" y="${(60 + kS * 0.36).toFixed(0)}" text-anchor="middle" font-family="${BODY}" font-weight="700" font-size="${kS}" fill="#ffffff">${esc(kick)}</text>` +
     stripes(118, 16) +

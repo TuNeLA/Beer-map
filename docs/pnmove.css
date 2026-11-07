@@ -1,0 +1,25 @@
+/* PintsNow — 🍺 "Nytt i appen" + move steps (js/pnmove.js, .pn-*). Uses the ds.css tokens. */
+.pn-sheet{display:flex;flex-direction:column;gap:var(--ds-5,24px)}
+.pn-hero{text-align:center;padding:var(--ds-2,8px) 0 0}
+.pn-logo{font:400 30px/34px var(--ds-stencil,Impact,sans-serif);letter-spacing:.06em;color:var(--ds-amber-t,#ffc24d)}
+.pn-title{margin:var(--ds-2,8px) 0 var(--ds-1,4px);font:700 22px/28px var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec)}
+.pn-p{margin:0;font:400 16px/24px var(--ds-sans,system-ui);color:var(--ds-text-2,#c9d0cd)}
+.pn-muted{font-size:14px;line-height:20px;color:var(--ds-muted,#a7b0ac)}
+.pn-sect{display:flex;flex-direction:column;gap:var(--ds-2,8px)}
+.pn-h{margin:0;font:700 18px/24px var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec)}
+.pn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--ds-2,8px)}
+.pn-it{display:grid;grid-template-columns:40px minmax(0,1fr);gap:var(--ds-3,12px);align-items:center;padding:var(--ds-3,12px);
+  background:var(--ds-card,#19233a);border:1px solid var(--ds-border,rgba(255,255,255,.1));border-radius:var(--ds-r-1,12px)}
+.pn-e{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber-soft,rgba(245,166,35,.14));font-size:20px}
+.pn-t{display:flex;flex-direction:column;min-width:0}
+.pn-t b{font:700 16px/24px var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec)}
+.pn-t span{font:400 14px/20px var(--ds-sans,system-ui);color:var(--ds-text-2,#c9d0cd)}
+.pn-moved{padding:var(--ds-4,16px);background:var(--ds-card,#19233a);border:1px solid var(--ds-border,rgba(255,255,255,.1));border-radius:var(--ds-r-2,16px);
+  box-shadow:inset 3px 0 0 var(--ds-green,#3ddc84)}
+.pn-moved .pn-h + .pn-p{margin-bottom:var(--ds-1,4px)}
+.pn-moved .pn-h:not(:first-child){margin-top:var(--ds-3,12px)}
+.pn-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--ds-2,8px)}
+.pn-steps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:var(--ds-3,12px);align-items:start;font:400 15px/22px var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec)}
+.pn-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font:700 14px/1 var(--ds-sans,system-ui)}
+.pn-sheet .btn{min-height:48px}
+.pn-go{margin-top:0}

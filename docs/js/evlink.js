@@ -88,7 +88,7 @@
       var u = link(t), text = (sv() ? pick("s", SHARE) : pick("se", SHARE_EN)) + " " + (inv.title || "");
       var copied = function () { A.toast(L("📋 Länken ä kopierad – klistra in den i chatten", "📋 Link copied"), { id: "evl" }); };
       if (navigator.share) {
-        try { navigator.share({ title: inv.title || "Öl Nu", text: text, url: u }).catch(function (e) { if (!e || e.name !== "AbortError") copy(text + " " + u, copied); }); return; } catch (e) {}
+        try { navigator.share({ title: inv.title || "PintsNow", text: text, url: u }).catch(function (e) { if (!e || e.name !== "AbortError") copy(text + " " + u, copied); }); return; } catch (e) {}
       }
       copy(text + " " + u, copied);
     });

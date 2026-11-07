@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a0f1c">
+<title>PintsNow – vi flyttar</title>
+<style>
+  :root{--bg:#0a0f1c;--card:#19233a;--border:rgba(255,255,255,.1);--text:#eef0ec;--text2:#c9d0cd;--muted:#a7b0ac;--amber:#f5a623;--amber-t:#ffc24d;--on-amber:#241300;--green:#3ddc84}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:16px/24px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:440px;margin:0 auto;padding:calc(40px + env(safe-area-inset-top)) 16px 32px}
+  .logo{font:900 28px/32px Impact,"Black Ops One",system-ui,sans-serif;letter-spacing:.04em;color:var(--amber-t);margin:0 0 4px}
+  h1{font-size:22px;line-height:28px;margin:0 0 8px}
+  p{margin:0 0 12px;color:var(--text2)}
+  .muted{color:var(--muted);font-size:14px;line-height:20px}
+  .btn{display:block;box-sizing:border-box;width:100%;min-height:48px;margin:12px 0 0;padding:12px 16px;border:0;border-radius:12px;background:var(--amber);color:var(--on-amber);font:700 16px/24px inherit;text-align:center;text-decoration:none;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.16)}
+  ol{margin:16px 0 0;padding:0;list-style:none;counter-reset:s}
+  ol li{counter-increment:s;position:relative;padding:12px 12px 12px 52px;margin:0 0 8px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text)}
+  ol li::before{content:counter(s);position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--amber);color:var(--on-amber);font-weight:700;display:grid;place-items:center}
+  .spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--amber);border-radius:50%;animation:r 1s linear infinite;margin:16px 0}
+  @keyframes r{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">PINTSNOW</div>
+  <h1 id="h">🚚 Flyttar ditt konto…</h1>
+  <p id="p">Öl Nu heter nu PintsNow och har en ny adress. Ditt namn och dina grupper följer med.</p>
+  <div id="spin" class="spin" aria-hidden="true"></div>
+  <div id="x"></div>
+</main>
+<script>
+/* PintsNow — 🚚 move page on the OLD origin (https://tunela.github.io). CONTRACT "PINTSNOW MOVE", migration 0175.
+   Two copies, same file:
+   - /Beer-map/docs/flytta.html in the app. After the switch, GitHub redirects the old app address to the new domain;
+     the old service worker (sw.js) sees that redirect and shows THIS page instead of the old app (also inside an old
+     home-screen app, where only same-origin code can read the old account).
+   - /olnu-flytt.html in the TuNeLA/tunela.github.io repo (not redirected). The new address sends a browser with no
+     account here once (?to=<new address>) to fetch the old account.
+   It reads the old anonymous account (localStorage "olnu.auth"), encrypts it into a one-time ticket (handover_put) and
+   goes to <new address>#pn=<secret>. The key is only in the #fragment (never sent to a server). Fallback without the
+   ticket RPC: the old #flytt=<code>. Then this origin never uses that session again (olnu.auth removed WITHOUT signOut,
+   olnu.moved set), like a normal flytt export. A 7-day backup allows a retry while the ticket was never taken.
+   Old push subscriptions are KEPT: old notifications keep working until the new address has its own. */
+(function () {
+  "use strict";
+  var APP = "https://pintsnow.com";                         // new origin (patched from docs/config.js APP_ORIGIN)
+  var SB = "https://wcdskpcevbhouvbytkhv.supabase.co", ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjZHNrcGNldmJob3V2Ynl0a2h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNjA1NTUsImV4cCI6MjEwNzczNjU1NX0.-47HqgBAL6yobVf-XKmlIw1xzII3KrpIMgX0vo56Pj8";        // Supabase URL + anon key (public)
+  var TARGETS = [APP, APP.replace("://", "://www.")];
+  var KEYS = ["lang", "prec", "intro", "age18", "locOk", "night", "checkin", "title", "badges", "ghostMode", "mute", "heat", "otherCd", "where",
+    "comeAt", "nights", "records", "kingOf", "rallyHidden", "topTab", "nightlast", "barsEver", "nightlog", "newsPn", "hemstad", "hemzon", "pushWant"];
+  var BACKUP_MS = 7 * 86400e3, TICKET_MS = 29 * 60e3;
+  var $ = function (id) { return document.getElementById(id); };
+  var ls = null; try { ls = window.localStorage; } catch (e) {}
+  var ua = navigator.userAgent || "";
+  var ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var sa = false; try { sa = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches; } catch (e) {}
+  var os = ios ? "ios" : /Android/.test(ua) ? "android" : "other";
+  function getJSON(k) { try { var v = ls.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function b64(bytes) { var t = ""; for (var i = 0; i < bytes.length; i++) t += String.fromCharCode(bytes[i]); return btoa(t).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function b64s(str) { return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function el(tag, attrs, text) { var n = document.createElement(tag); for (var k in attrs || {}) n.setAttribute(k, attrs[k]); if (text) n.textContent = text; return n; }
+  function say(h, p) { $("h").textContent = h; $("p").textContent = p; $("spin").hidden = true; }
+  function call(fn, body, bearer) {
+    var ac = typeof AbortController === "function" ? new AbortController() : null;
+    var tm = setTimeout(function () { try { ac && ac.abort(); } catch (e) {} }, 10000);
+    return fetch(SB + "/rest/v1/rpc/" + fn, { method: "POST", signal: ac ? ac.signal : undefined, headers: { "Content-Type": "application/json", apikey: ANON, Authorization: "Bearer " + (bearer || ANON) }, body: JSON.stringify(body) })
+      .then(function (r) { clearTimeout(tm); return r.text().then(function (t) { if (!r.ok) throw { status: r.status }; try { return JSON.parse(t); } catch (e) { return t; } }); },
+        function () { clearTimeout(tm); throw { status: 0 }; });
+  }
+  // Valid access token (refresh once if it runs out within 60 s). Resolves the session, null = dead session, throws on no network.
+  function fresh(auth) {
+    if (auth.expires_at && auth.expires_at * 1000 - Date.now() > 60000) return Promise.resolve(auth);
+    return fetch(SB + "/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: { "Content-Type": "application/json", apikey: ANON }, body: JSON.stringify({ refresh_token: auth.refresh_token }) })
+      .then(function (r) {
+        if (r.status >= 400 && r.status < 500) return null;
+        if (!r.ok) throw { status: r.status };
+        return r.json().then(function (j) {
+          if (!j || !j.refresh_token) return null;
+          var n = { access_token: j.access_token, refresh_token: j.refresh_token, token_type: j.token_type, expires_in: j.expires_in,
+            expires_at: j.expires_at || Math.floor(Date.now() / 1000) + (j.expires_in || 3600), user: j.user || auth.user };
+          try { ls.setItem("olnu.auth", JSON.stringify(n)); } catch (e) {}
+          return n;
+        });
+      }, function () { throw { status: 0 }; });
+  }
+  function oldPush() {
+    try {
+      if (!navigator.serviceWorker || !navigator.serviceWorker.getRegistrations) return Promise.resolve(null);
+      var work = navigator.serviceWorker.getRegistrations().then(function (regs) {
+        return Promise.all(regs.map(function (r) { return r.pushManager && r.pushManager.getSubscription ? r.pushManager.getSubscription().catch(function () { return null; }) : null; }));
+      }).then(function (subs) { for (var i = 0; i < subs.length; i++) if (subs[i] && subs[i].endpoint) return subs[i].endpoint; return null; }).catch(function () { return null; });
+      return Promise.race([work, new Promise(function (r) { setTimeout(function () { r(null); }, 1500); })]);
+    } catch (e) { return Promise.resolve(null); }
+  }
+  function payloadOf(auth, src, pe) {
+    var name = (ls.getItem("olnu.name") || "").trim() || null;
+    var p = { v: 1, rt: String(auth.refresh_token), u: auth.user && auth.user.id ? String(auth.user.id) : null, name: name, ls: {}, src: src, sa: sa ? 1 : 0, os: os, pe: pe || null };
+    KEYS.forEach(function (k) { var v = ls.getItem("olnu." + k); if (v != null && v !== "" && v.length < 1500) p.ls[k] = v; });
+    return p;
+  }
+  // The old flyttkod (no server needed). Max ~900 chars like app.js makeFlyttCode.
+  function flyttCode(p) {
+    var q = { v: 1, rt: p.rt, u: p.u, name: p.name, ls: {} }, code = b64s(JSON.stringify(q));
+    for (var k in p.ls) { q.ls[k] = p.ls[k]; var c = b64s(JSON.stringify(q)); if (c.length > 900) delete q.ls[k]; else code = c; }
+    return code;
+  }
+  function mint(p, auth, src) {
+    var sub = window.crypto && window.crypto.subtle;
+    if (!sub) return Promise.reject({ status: 0 });
+    var sec = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12)), id = b64(sec.slice(0, 16));
+    return sub.importKey("raw", sec.slice(16), { name: "AES-GCM" }, false, ["encrypt"]).then(function (key) {
+      return sub.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(JSON.stringify(p)));
+    }).then(function (ct) {
+      var box = new Uint8Array(12 + ct.byteLength); box.set(iv, 0); box.set(new Uint8Array(ct), 12);
+      return call("handover_put", { p_id: id, p_box: b64(box), p_src: src }, auth.access_token);
+    }).then(function () { return { id: id, sec: b64(sec) }; });
+  }
+  // From now on this origin never refreshes that session (refresh tokens rotate; reuse revokes the session).
+  function lock(auth, t) {
+    try {
+      ls.setItem("olnu.moveBackup", JSON.stringify({ at: Date.now(), auth: auth, id: t ? t.id : null, sec: t ? t.sec : null, tAt: Date.now() }));
+      ["olnu.auth", "olnu.auth-code-verifier", "olnu.auth-user", "olnu.uid", "olnu.flyttPending"].forEach(function (k) { ls.removeItem(k); });
+      ls.setItem("olnu.moved", String(Date.now()));
+      ls.setItem("olnu.movedTo", "pintsnow");
+      if (auth.user && auth.user.id) ls.setItem("olnu.movedU", String(auth.user.id));
+    } catch (e) {}
+  }
+  // An old iPhone home-screen app: links to another site open in Safari, which has OTHER storage. So no auto jump:
+  // the user taps a real link (opens Safari with the ticket), then adds PintsNow to the home screen from there.
+  function go(url, moved) {
+    if (!(ios && sa)) { location.replace(url); return; }
+    say(moved ? "🍺 Öl Nu heter nu PintsNow" : "🍺 PintsNow har ny adress",
+      moved ? "Ditt konto är klart att flytta. Tryck på knappen inom 30 minuter." : "Öppna PintsNow i Safari och lägg till den på hemskärmen.");
+    var x = $("x"); x.innerHTML = "";
+    var a = el("a", { class: "btn", href: url, target: "_blank", rel: "noopener" }, "🚀 Öppna PintsNow i Safari");
+    x.appendChild(a);
+    var ol = el("ol");
+    ol.appendChild(el("li", {}, "Tryck på knappen. PintsNow öppnas i Safari med ditt konto."));
+    ol.appendChild(el("li", {}, "I Safari: tryck Dela ⬆️ → Lägg till på hemskärmen → Lägg till."));
+    ol.appendChild(el("li", {}, "Öppna PintsNow från hemskärmen. Sen kan du ta bort den här gamla ikonen."));
+    x.appendChild(ol);
+    var cp = el("button", { class: "btn ghost", type: "button" }, "📋 Kopiera länken");
+    cp.onclick = function () {
+      var done = function () { cp.textContent = "✅ Kopierad – klistra in i Safari"; };
+      try { navigator.clipboard.writeText(url).then(done, function () { prompt("Kopiera länken:", url); }); } catch (e) { prompt("Kopiera länken:", url); }
+    };
+    x.appendChild(cp);
+    x.appendChild(el("p", { class: "muted", style: "margin-top:12px" }, "Länken är en engångsnyckel till ditt konto. Skicka den inte till någon."));
+  }
+  function target(raw) {
+    var to = String(raw || "");
+    for (var i = 0; i < TARGETS.length; i++) if (to === TARGETS[i] || to.indexOf(TARGETS[i] + "/") === 0) return to.split("#")[0];
+    return "";
+  }
+  if (!/^https?:\/\//.test(APP) || APP.indexOf("__") >= 0) { say("PintsNow", "Sidan är inte klar."); return; }
+  if (location.origin === APP) { location.replace("./" + location.search); return; }   // the copy on the new origin: just the app
+
+  var q = new URLSearchParams(location.search), bridge = q.has("to"), dest;
+  if (bridge) {
+    dest = target(q.get("to"));
+    if (!dest) { say("PintsNow", "Fel adress. Öppna " + APP.replace(/^https?:\/\//, "") + " istället."); var a0 = el("a", { class: "btn", href: APP + "/" }, "Öppna PintsNow"); $("x").appendChild(a0); return; }
+  } else {
+    q.delete("flytt"); q.delete("to"); q.delete("retry");
+    var qs = q.toString(); dest = APP + "/" + (qs ? "?" + qs : "");
+  }
+  var none = function () { go(bridge ? dest + "#bridge=none" : dest, false); };
+  if (!ls) { none(); return; }
+  // Opened on the old address by hand (or by the service worker): act only when the new address really runs the app.
+  // (Before the switch nothing may be moved to a domain that does not serve PintsNow yet.)
+  var live = bridge ? Promise.resolve(true) : fetch(APP + "/manifest.webmanifest", { cache: "no-store", credentials: "omit" })
+    .then(function (r) { return r.ok ? r.json().then(function (j) { return !!(j && j.start_url); }) : false; }).catch(function () { return false; });
+  live.then(function (ok) {
+    if (ok) { run(); return; }
+    say("📶 PintsNow svarar inte", "Kontot ligger kvar här. Försök igen om en stund.");
+    var b = el("button", { class: "btn", type: "button" }, "🔄 Försök igen"); b.onclick = function () { location.reload(); }; $("x").appendChild(b);
+  });
+  function run() {
+  var auth = getJSON("olnu.auth");
+  if (!(auth && auth.refresh_token)) {
+    // Already moved (or never had an account). A backup ticket that was never taken may be retried.
+    var bk = getJSON("olnu.moveBackup");
+    if (!bk || !bk.auth || !(Date.now() - bk.at < BACKUP_MS) || !bk.id) { none(); return; }
+    call("handover_status", { p_id: bk.id }).then(function (st) {
+      if (st === "open" && bk.sec && Date.now() - (bk.tAt || bk.at) < TICKET_MS) { go(dest + "#pn=" + bk.sec, true); return; }
+      if (st !== "expired") { none(); return; }
+      // Never taken and run out: the backup refresh token was never used → make a new ticket from it.
+      return fresh(bk.auth).then(function (a2) {
+        if (!a2) { none(); return; }
+        return oldPush().then(function (pe) {
+          var p = payloadOf(a2, bridge ? "bridge" : "frozen", pe);
+          return mint(p, a2, "retry").then(function (t) {
+            try { ls.setItem("olnu.moveBackup", JSON.stringify({ at: bk.at, auth: a2, id: t.id, sec: t.sec, tAt: Date.now() })); } catch (e) {}
+            go(dest + "#pn=" + t.sec, true);
+          });
+        });
+      });
+    }).catch(function () { none(); });
+    return;
+  }
+  fresh(auth).then(function (a2) {
+    if (!a2) { none(); return; }   // the session is dead on the server: nothing to move, leave it as it is
+    return oldPush().then(function (pe) {
+      var src = bridge ? "bridge" : "frozen", p = payloadOf(a2, src, pe);
+      return mint(p, a2, src).then(function (t) {
+        lock(a2, t); go(dest + "#pn=" + t.sec, true);
+      }, function () {
+        // No ticket (old server / no WebCrypto): the old flyttkod in the #fragment still works.
+        lock(a2, null); go(dest + "#flytt=" + flyttCode(p), true);
+      });
+    });
+  }, function () {
+    // No network now. Do not lock: try again on the next start.
+    say("📶 Ingen kontakt", "Ditt konto flyttas till PintsNow när du har nät igen.");
+    var b = el("button", { class: "btn", type: "button" }, "🔄 Försök igen"); b.onclick = function () { location.reload(); }; $("x").appendChild(b);
+  });
+  }
+})();
+</script>
+</body>
+</html>

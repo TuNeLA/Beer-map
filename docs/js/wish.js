@@ -16,7 +16,7 @@
   var S = {
     sv: {
       btn: "💡 Önska en feature", chip: "💡 Önska", chipAria: "Önska en ny funktion", title: "💡 Önska en feature",
-      intro: "Vad saknar du i Öl Nu? Skriv det här. Ägaren läser allt och bygger det som flest vill ha.",
+      intro: "Vad saknar du i PintsNow? Skriv det här. Ägaren läser allt och bygger det som flest vill ha.",
       label: "Din önskan", ph: "T.ex. \"Ett läge där man ser vilka krogar som har uteservering\"",
       cat: "Vad gäller det? (valfritt)", cats: { kartan: "🗺️ Kartan", grupper: "👥 Grupper", chatt: "💬 Chatt", lek: "🎲 Lek", texter: "✍️ Texter", annat: "✨ Annat" },
       showName: "Visa mitt namn ({0})", send: "💡 Skicka önskan", top: "🔥 Mest önskat", empty: "Inga önskningar än. Bli först!",
@@ -31,7 +31,7 @@
     },
     en: {
       btn: "💡 Wish for a feature", chip: "💡 Wish", chipAria: "Wish for a new feature", title: "💡 Wish for a feature",
-      intro: "What is missing in Öl Nu? Write it here. The owner reads everything and builds what most people want.",
+      intro: "What is missing in PintsNow? Write it here. The owner reads everything and builds what most people want.",
       label: "Your wish", ph: "E.g. \"Show which bars have outdoor seating\"",
       cat: "What is it about? (optional)", cats: { kartan: "🗺️ Map", grupper: "👥 Groups", chatt: "💬 Chat", lek: "🎲 Games", texter: "✍️ Texts", annat: "✨ Other" },
       showName: "Show my name ({0})", send: "💡 Send wish", top: "🔥 Most wanted", empty: "No wishes yet. Be the first!",

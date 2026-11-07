@@ -1,4 +1,7 @@
 window.OLNU_CONFIG = {
+  // 🚚 PintsNow move (CONTRACT "PINTSNOW MOVE"): the new address, and the old-origin bridge page (TuNeLA/tunela.github.io repo).
+  APP_ORIGIN: "https://pintsnow.com",
+  BRIDGE_URL: "https://tunela.github.io/olnu-flytt.html",
   SUPABASE_URL: "https://wcdskpcevbhouvbytkhv.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjZHNrcGNldmJob3V2Ynl0a2h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNjA1NTUsImV4cCI6MjEwNzczNjU1NX0.-47HqgBAL6yobVf-XKmlIw1xzII3KrpIMgX0vo56Pj8",
   // Mapbox PUBLIC token (pk.*): safe in client code. URL-restricted in the Mapbox account to the app's site

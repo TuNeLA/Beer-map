@@ -333,7 +333,7 @@ export const LEVELUP_LINES: string[] = [
 export function levelUpPayload(idx: number, namn: string, titel: string, beerId: number) {
   return {
     title: fill(LEVELUP_LINES[((idx % LEVELUP_LINES.length) + LEVELUP_LINES.length) % LEVELUP_LINES.length], { namn, titel }),
-    body: "Ny rang i Öl Nu. Skål för det! 🍻",
+    body: "Ny rang i PintsNow. Skål för det! 🍻",
     url: `/?focus=${beerId}`,
     tag: `olnu-title-${beerId}`,
   };

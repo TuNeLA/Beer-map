@@ -386,7 +386,7 @@
           } catch (e) { qr.remove(); }
           var row = el("div", { class: "row", style: "margin-top:8px" }, [A.btn(L("📋 Kopiera länk", "📋 Copy link"), "btn-small", function () { A.copyText(link); })]);
           if (navigator.share) row.appendChild(A.btn(L("Dela", "Share"), "btn-small btn-amber", function () {
-            navigator.share({ title: "Öl Nu", text: L("Bli min vän på Öl Nu 🍺", "Be my friend on Öl Nu 🍺"), url: link }).catch(function () {});
+            navigator.share({ title: "PintsNow", text: L("Bli min vän på PintsNow 🍺", "Be my friend on PintsNow 🍺"), url: link }).catch(function () {});
           }));
           row.appendChild(A.btn(L("🔄 Ny kod", "🔄 New code"), "btn-small btn-ghost", function () {
             call("my_friend_code", { p_new: true, p_name: name() }).then(function (r) {

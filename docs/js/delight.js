@@ -366,7 +366,7 @@
     var list = txt(C().boot), el = mk("div", "dl-boot");
     if (!list.length) return;
     el.id = "dl-boot"; el.setAttribute("role", "status");
-    el.innerHTML = '<div class="dl-boot-h"><span class="dl-boot-dot"></span>' + esc(ui("bootHead")) + ' · ÖL NU</div><div class="dl-boot-l"></div>';
+    el.innerHTML = '<div class="dl-boot-h"><span class="dl-boot-dot"></span>' + esc(ui("bootHead")) + ' · PINTSNOW</div><div class="dl-boot-l"></div>';
     document.body.appendChild(el);
     boot.el = el; boot.start = Date.now();
     var last = +lsStr(KEY.boot, "-1"), order = list.map(function (x, i) { return i; }).sort(function () { return Math.random() - 0.5; });

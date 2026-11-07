@@ -141,7 +141,7 @@
     if (!data) { root.innerHTML = '<p class="muted">' + esc(L("Passet gick int' att hämta.", "Could not load the passport.")) + "</p>"; return; }
     var d = data, name = (A.getName && A.getName()) || L("Hemlig agent", "Secret agent");
     var h = INK_SVG + '<div class="ps-cover"><div class="ps-crest" aria-hidden="true">🍺</div><div class="ps-ct">' +
-      esc(L("ÖLPASS", "BEER PASSPORT")) + '</div><div class="ps-cs">' + esc(L("KONUNGARIKET DALARNA · ÖL NU", "KINGDOM OF DALARNA · ÖL NU")) + "</div>" +
+      esc(L("ÖLPASS", "BEER PASSPORT")) + '</div><div class="ps-cs">' + esc(L("KONUNGARIKET DALARNA · PINTSNOW", "KINGDOM OF DALARNA · PINTSNOW")) + "</div>" +
       '<div class="ps-holder">' + esc(name) + "</div>" +
       '<div class="ps-stats"><span><b>' + d.bars.length + "</b>" + esc(L("krogar", "bars")) + "</span><span><b>" + d.towns.length + "</b>" + esc(L("städer", "towns")) +
       "</span><span><b>" + d.countries.length + "</b>" + esc(d.countries.length === 1 ? L("land", "country") : L("länder", "countries")) +

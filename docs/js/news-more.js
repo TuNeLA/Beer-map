@@ -454,7 +454,7 @@ window.SIDETRACK_MORE = [
   { k: "sidetrack", f: function (d) { return "🚨 Kvällsnytt avbryts! " + d.name + " har " + d.drink + ". Ölguden ä på väg till studion."; } },
   { k: "sidetrack", f: function (d) { return "📺 " + d.name + " och " + d.drink + ". Ölguden har bytt lösenord på wifi:t."; } },
   { k: "sidetrack", f: function (d) { return "🎖️ " + d.name + " har kvitterat ut " + d.drink + " från förrådet. Ölransonen står orörd."; } },
-  { k: "sidetrack", f: function (d) { return "📺 Öl Nu-kartan rapporterar: " + d.name + " har " + d.drink + ". Fel app, pojk."; } },
+  { k: "sidetrack", f: function (d) { return "📺 PintsNow-kartan rapporterar: " + d.name + " har " + d.drink + ". Fel app, pojk."; } },
   { k: "sidetrack", f: function (d) { return "📺 " + d.name + " tog " + d.drink + ". Ölguden har bett om en timeout."; } },
   { k: "sidetrack", f: function (d) { return "🕵️ Tipset kom anonymt: " + d.name + " har " + d.drink + ". Ölguden tackar för tipset."; } },
   { k: "sidetrack", f: function (d) { return "📺 " + d.name + " dricker " + d.drink + " och tror att ingen ser. Hela gruppen ser."; } },

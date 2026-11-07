@@ -524,7 +524,7 @@
         el("div", { class: "pt-bigcode", "aria-label": "Kod " + d.code.split("").join(" "), text: d.code }),
         el("div", { class: "pt-row" }, [
           btn("📋 Kopiera länk", "pt-small", function () { try { A.copyText(link); } catch (e) {} }),
-          navigator.share ? btn("📤 Dela", "pt-small", function () { navigator.share({ title: "Öl Nu Partyspel", text: "Hoppa in i partyrum " + d.code + " 🎲", url: link }).catch(function () {}); }) : null
+          navigator.share ? btn("📤 Dela", "pt-small", function () { navigator.share({ title: "PintsNow Partyspel", text: "Hoppa in i partyrum " + d.code + " 🎲", url: link }).catch(function () {}); }) : null
         ])
       ]), qr
     ]));

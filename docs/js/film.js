@@ -225,7 +225,7 @@
       el("div", { class: "fm-vf-s", text: spick(g.id + d.night, T.hint) })
     ]);
     var cam = el("div", { class: "fm-cam" + (left > 0 ? "" : " empty") }, [
-      el("div", { class: "fm-top" }, [el("span", { class: "fm-brand", text: "ÖL NU · ENGÅNGS 27" }), el("span", { class: "fm-flash", text: "⚡" })]),
+      el("div", { class: "fm-top" }, [el("span", { class: "fm-brand", text: "PINTSNOW · ENGÅNGS 27" }), el("span", { class: "fm-flash", text: "⚡" })]),
       vf,
       el("div", { class: "fm-bottom" }, [lcd, el("div", { class: "fm-count" }, [
         el("b", { class: "fm-left", text: left > 0 ? left + L(" bilder kvar", " shots left") : L("Filmen ä slut", "Out of film") }),
@@ -319,7 +319,7 @@
     photos.forEach(function (p, i) {
       var fr = el("div", { class: "fm-shot loading", style: "aspect-ratio:" + Math.max(1, p.w | 0) + "/" + Math.max(1, p.h | 0) }, [el("span", { class: "fm-spin", text: "🎞️" })]);
       var frame = el("figure", { class: "fm-frame" }, [
-        el("div", { class: "fm-edge", text: (i + 1) + "A ▸ ÖL NU 400" }),
+        el("div", { class: "fm-edge", text: (i + 1) + "A ▸ PINTSNOW 400" }),
         fr,
         el("figcaption", { class: "fm-cap" }, [el("b", { text: p.is_me ? L("Du", "You") : p.name }), el("small", { text: hm(p.at) })]),
         reactBar(p)

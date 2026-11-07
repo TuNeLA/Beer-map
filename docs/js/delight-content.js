@@ -263,7 +263,7 @@ window.DELIGHT_CONTENT = {
     sv: [
       "📡 Kalibrerar ölradarn…", "🍺 Kyler satelliterna…", "🛰️ Riktar in spaningssatelliten mot Dalarna…",
       "🗺️ Laddar Dalarnas krogregister…", "🌭 Söker efter korv inom 2 km…", "🫎 Kontrollerar älgläget…",
-      "🔋 Laddar moralen…", "🎖️ Putsar medaljerna…", "🪖 Spänner hakremmen…", "📻 Ropar på radion: 'Öl Nu, hör ni mig?'…",
+      "🔋 Laddar moralen…", "🎖️ Putsar medaljerna…", "🪖 Spänner hakremmen…", "📻 Ropar på radion: 'PintsNow, hör ni mig?'…",
       "🧭 Hittar norr. Hittade Grängesberg…", "🥨 Värmer upp korvgubben…", "🛡️ Startar Spökläge-skölden…",
       "🎺 Väcker spelmanslaget…", "🚂 Väntar på att malmtåget ska passera…", "🦆 Räknar änderna i Väsman…",
       "🍻 Polerar glasen…", "⚙️ Smörjer kugghjulen med rapsolja…", "🔦 Byter batteri i ficklampan…",

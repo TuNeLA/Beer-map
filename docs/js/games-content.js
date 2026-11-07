@@ -297,7 +297,7 @@ window.GAMES_CONTENT = {
       "Få gruppen att komma överens om veckans hjälte.",
       "Säg 'över och ut' när du avslutar minst tre samtal.",
       "Få nån att hitta på ett namn till en ny krog i Ludvika.",
-      "Få nån att fråga om Öl Nu-appen utan att du tar upp den.",
+      "Få nån att fråga om PintsNow-appen utan att du tar upp den.",
       "Få tre personer att säga hej då till dig innan du går hem."
     ],
     reveal: [

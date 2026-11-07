@@ -47,7 +47,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -2662,7 +2662,7 @@
       ]);
       if (navigator.share) {
         row.appendChild(btn(t("share"), "btn-amber", function () {
-          navigator.share({ title: "Öl Nu", text: t("shareText", g.name), url: (window.CARDS && window.CARDS.joinUrl(g.code)) || link }).catch(function () {});
+          navigator.share({ title: "PintsNow", text: t("shareText", g.name), url: (window.CARDS && window.CARDS.joinUrl(g.code)) || link }).catch(function () {});
         }));
       }
       body.appendChild(row);
@@ -2831,7 +2831,7 @@
       var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "", function () { copyText(t("inviteShare") + " " + ((window.CARDS && window.CARDS.inviteUrl()) || link)); })]);
       if (navigator.share) {
         row.appendChild(btn("📲 " + t("share"), "btn-amber", function () {
-          navigator.share({ title: "Öl Nu", text: t("inviteShare"), url: (window.CARDS && window.CARDS.inviteUrl()) || link }).catch(function () {});
+          navigator.share({ title: "PintsNow", text: t("inviteShare"), url: (window.CARDS && window.CARDS.inviteUrl()) || link }).catch(function () {});
         }));
       }
       body.appendChild(row);
@@ -3203,7 +3203,7 @@
   // Useful olnu.* keys that follow the account (most important first; big ones drop out to keep the code short).
   // Not moved: auth, bar caches, push state and "already asked" flags (the new app must ask again).
   var FLYTT_KEYS = ["lang", "prec", "intro", "locOk", "night", "checkin", "title", "badges", "ghostMode", "mute", "heat",
-    "otherCd", "where", "comeAt", "nights", "records", "kingOf", "rallyHidden", "topTab", "nightlast", "barsEver", "nightlog"];
+    "otherCd", "where", "comeAt", "nights", "records", "kingOf", "rallyHidden", "topTab", "nightlast", "barsEver", "nightlog", "age18", "newsPn"];
   var FLYTT_MAX = 900, FLYTT_HIDDEN_MS = 10000;
   var movedState = false, flyttHiddenAt = 0;
   function b64urlEnc(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
@@ -3390,6 +3390,8 @@
     if (!code) { toast(t("flyttNoAcc"), { err: true, id: "flytt" }); return null; }
     stopRefresh();
     U.ls.setJSON("olnu.flyttPending", { at: Date.now(), kind: kind, u: storedUid() });
+    // 🚚 iPhone: also a one-time ticket in a cookie; iOS 17+ copies cookies (not localStorage) into the new home-screen app.
+    if (kind === "home" && window.HANDOVER && window.HANDOVER.homeCookie) window.HANDOVER.homeCookie(code, storedAuth());
     return code;
   }
   // This browser lets go of the account: no signOut (it would revoke the session for the new app too).
@@ -3492,7 +3494,7 @@
       } catch (e) { qr.remove(); }
       body.appendChild(el("p", { class: "flytt-link", text: link }));
       var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttCopy"), "btn-amber", function () { copyFlytt(link); })]);
-      if (navigator.share) row.appendChild(btn("📲 " + t("share"), "", function () { navigator.share({ title: "Öl Nu", url: link }).catch(function () {}); }));
+      if (navigator.share) row.appendChild(btn("📲 " + t("share"), "", function () { navigator.share({ title: "PintsNow", url: link }).catch(function () {}); }));
       body.appendChild(row);
       body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("flyttSecret") }));
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttDone"), "btn-block", function () { closeSheet(); })]));
@@ -3521,12 +3523,16 @@
     makeClient();
     if (!client) return Promise.resolve();
     if (U.ls.get("olnu.moved", "") && storedAuth()) clearMoved();
+    // 🚚 PintsNow move (js/handover.js, 0175): #pn=<ticket> from the old address, or the pn_ho cookie Safari copied into
+    // a new iPhone home-screen app. Same user id (refresh token), before any anonymous sign-in. Then the old ?flytt= flow.
+    var hoStep = window.HANDOVER && window.HANDOVER.boot ? Promise.resolve(window.HANDOVER.boot({ importFlytt: importFlytt, storedUid: storedUid,
+      rpc: rpc, reload: reloadAfterImport, toast: toast })).catch(function () {}) : Promise.resolve();
     var code = urlFlyttCode(), p = code ? readFlytt(code) : null;
-    var step = Promise.resolve();
+    var step = hoStep;
     if (code) {
       // The source browser keeps its own code in the URL (iOS may use it as the home-screen start URL).
       var own = movedNow() && p && p.u && String(p.u) === U.ls.get("olnu.movedU", "");
-      if (!own) step = runUrlImport(p);
+      if (!own) step = hoStep.then(function () { return runUrlImport(p); });
     }
     return step.then(function () {
       if (movedNow()) return showMoved();
@@ -3605,7 +3611,7 @@
             onclick: function () { I.set(l); applyStaticText(); render(); stepAge(); } }));
         });
         body.appendChild(langRow);
-        body.appendChild(el("div", { class: "intro-brand", text: "Öl Nu" }));
+        body.appendChild(el("div", { class: "intro-brand", text: "PintsNow" }));
         body.appendChild(el("p", { class: "intro-tag", text: t("introTag") }));
         body.appendChild(steps);
         body.appendChild(el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));

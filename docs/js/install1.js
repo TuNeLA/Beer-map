@@ -1,9 +1,9 @@
 /* Öl Nu — 📲 INSTALL1: the first visit in a browser tab shows how to install on THIS device (owner 2026-11-07:
    "a QR code on the same phone is useless"). Main action = install. A small "Använd utan att installera" link in the
    corner. The app tour (intro + age check) waits until the card is closed, so the tour is shown in the app.
-     Android  beforeinstallprompt → ONE button "📲 Installera Öl Nu" (prompt() in the tap). No event yet → 3 steps with
+     Android  beforeinstallprompt → ONE button "📲 Installera PintsNow" (prompt() in the tap). No event yet → 3 steps with
               drawn pictures (Chrome ⋮ → Installera app → Installera; Samsung Internet ≡ → Lägg till sida på → Startskärm);
-              a later event switches to the button. Installed → "✅ Klart! Öppna Öl Nu från hemskärmen."
+              a later event switches to the button. Installed → "✅ Klart! Öppna PintsNow från hemskärmen."
      iOS      Dela ⬆️ (iOS 26: ⋯ → Dela) → Lägg till på hemskärmen ➕ → Lägg till, with drawn pictures.
      In-app   (Instagram, Messenger …) → open in Safari/Chrome + 📋 Kopiera länk.
      Desktop  the QR code of the app link (scan with the phone) — here it is useful.
@@ -63,12 +63,12 @@
     act.innerHTML = "";
     var k = kind();
     if (installed) {
-      act.appendChild(h("div", { class: "ui-done" }, [h("b", { text: L("✅ Klart! Öl Nu ligger på hemskärmen.", "✅ Done! Öl Nu is on your home screen.") }),
+      act.appendChild(h("div", { class: "ui-done" }, [h("b", { text: L("✅ Klart! PintsNow ligger på hemskärmen.", "✅ Done! PintsNow is on your home screen.") }),
         h("p", { text: L("Öppna appen från hemskärmen 🍺 Du kan stänga den här fliken.", "Open the app from the home screen 🍺 You can close this tab.") })]));
       return;
     }
     if (k === "android" && prompt) {
-      act.appendChild(bigBtn(L("📲 Installera Öl Nu", "📲 Install Öl Nu"), function () {
+      act.appendChild(bigBtn(L("📲 Installera PintsNow", "📲 Install PintsNow"), function () {
         var p = prompt; if (!p) return;
         try { p.prompt(); } catch (e) {}
         Promise.resolve(p.userChoice).catch(function () {}).then(function (c) {
@@ -87,12 +87,12 @@
         ol.appendChild(step(1, L("Tryck <b>≡</b> nere till höger", "Tap <b>≡</b> at the bottom right"), picBar("≡", host())));
         ol.appendChild(step(2, L("Tryck <b>Lägg till sida på</b> → <b>Startskärm</b>", "Tap <b>Add page to</b> → <b>Home screen</b>"),
           picMenu([L("Bokmärken", "Bookmarks"), L("➕ Lägg till sida på", "➕ Add page to"), L("Startskärm", "Home screen")], 2)));
-        ol.appendChild(step(3, L("Tryck <b>Lägg till</b>. Öppna sen <b>Öl Nu</b> från startskärmen 🍺", "Tap <b>Add</b>. Then open <b>Öl Nu</b> from the home screen 🍺"), picDlg(L("Lägg till på startskärmen?", "Add to home screen?"), L("Lägg till", "Add"))));
+        ol.appendChild(step(3, L("Tryck <b>Lägg till</b>. Öppna sen <b>PintsNow</b> från startskärmen 🍺", "Tap <b>Add</b>. Then open <b>PintsNow</b> from the home screen 🍺"), picDlg(L("Lägg till på startskärmen?", "Add to home screen?"), L("Lägg till", "Add"))));
       } else {
         ol.appendChild(step(1, L("Tryck <b>⋮</b> uppe till höger", "Tap <b>⋮</b> at the top right"), picBar("⋮", "🔒 " + host())));
         ol.appendChild(step(2, L("Tryck <b>Installera app</b> (eller <b>Lägg till på startskärmen</b>)", "Tap <b>Install app</b> (or <b>Add to Home screen</b>)"),
           picMenu([L("Ny flik", "New tab"), L("Bokmärken", "Bookmarks"), L("📲 Installera app", "📲 Install app")], 2)));
-        ol.appendChild(step(3, L("Tryck <b>Installera</b>. Öppna sen <b>Öl Nu</b> från startskärmen 🍺", "Tap <b>Install</b>. Then open <b>Öl Nu</b> from the home screen 🍺"), picDlg(L("Installera Öl Nu?", "Install Öl Nu?"), L("Installera", "Install"))));
+        ol.appendChild(step(3, L("Tryck <b>Installera</b>. Öppna sen <b>PintsNow</b> från startskärmen 🍺", "Tap <b>Install</b>. Then open <b>PintsNow</b> from the home screen 🍺"), picDlg(L("Installera PintsNow?", "Install PintsNow?"), L("Installera", "Install"))));
       }
       act.appendChild(ol);
     } else if (k === "ios") {
@@ -101,13 +101,13 @@
         : L("Tryck <b>Dela</b> ⬆️ nere i mitten", "Tap <b>Share</b> ⬆️ at the bottom"), v26 ? picBar("⋯", host(), "‹") : h("div", { class: "jn-pic jn-pic-bar jn-pic-ios", "aria-hidden": "true" }, [h("span", { text: "‹ ›" }), h("span", { class: "jn-pic-hot", text: "⬆️" }), h("span", { text: "📖 ⧉" })])));
       ol.appendChild(step(2, L("Scrolla ner och tryck <b>Lägg till på hemskärmen</b> ➕", "Scroll down and tap <b>Add to Home Screen</b> ➕"),
         picMenu([L("Kopiera", "Copy"), L("Lägg till bokmärke", "Add Bookmark"), L("➕ Lägg till på hemskärmen", "➕ Add to Home Screen")], 2)));
-      ol.appendChild(step(3, L("Tryck <b>Lägg till</b> uppe till höger. Öppna sen <b>Öl Nu</b> från hemskärmen 🍺", "Tap <b>Add</b> at the top right. Then open <b>Öl Nu</b> from the home screen 🍺"),
-        h("div", { class: "jn-pic jn-pic-bar", "aria-hidden": "true" }, [h("span", { text: L("Avbryt", "Cancel") }), h("span", { class: "jn-pic-url", text: "🍺 Öl Nu" }), h("span", { class: "jn-pic-hot", text: L("Lägg till", "Add") })])));
+      ol.appendChild(step(3, L("Tryck <b>Lägg till</b> uppe till höger. Öppna sen <b>PintsNow</b> från hemskärmen 🍺", "Tap <b>Add</b> at the top right. Then open <b>PintsNow</b> from the home screen 🍺"),
+        h("div", { class: "jn-pic jn-pic-bar", "aria-hidden": "true" }, [h("span", { text: L("Avbryt", "Cancel") }), h("span", { class: "jn-pic-url", text: "🍺 PintsNow" }), h("span", { class: "jn-pic-hot", text: L("Lägg till", "Add") })])));
       act.appendChild(ol);
       act.appendChild(h("div", { class: "ui-arrow" + (v26 ? " ui-arrow-r" : ""), "aria-hidden": "true", text: "⬇" }));
     } else if (k === "inapp") {
       var and = /Android/i.test(ua());
-      act.appendChild(h("p", { class: "ui-sub", text: L("Den här appen kan int' installera Öl Nu. Öppna länken i " + (and ? "Chrome" : "Safari") + ":", "This app can't install Öl Nu. Open the link in " + (and ? "Chrome" : "Safari") + ":") }));
+      act.appendChild(h("p", { class: "ui-sub", text: L("Den här appen kan int' installera PintsNow. Öppna länken i " + (and ? "Chrome" : "Safari") + ":", "This app can't install PintsNow. Open the link in " + (and ? "Chrome" : "Safari") + ":") }));
       ol.appendChild(step(1, L("Tryck <b>⋯</b> eller <b>⋮</b> uppe i hörnet", "Tap <b>⋯</b> or <b>⋮</b> in the top corner")));
       ol.appendChild(step(2, L("Välj <b>Öppna i webbläsaren</b>", "Choose <b>Open in browser</b>")));
       act.appendChild(ol);
@@ -116,7 +116,7 @@
         try { navigator.clipboard.writeText(appLink()).then(function () { b.textContent = L("📋 Kopierad!", "📋 Copied!"); }, function () {}); } catch (x) {}
       }));
     } else {
-      act.appendChild(h("p", { class: "ui-sub", text: L("Öl Nu ä gjord för mobilen. Skanna koden med mobilkameran 📷", "Öl Nu is made for your phone. Scan the code with the camera 📷") }));
+      act.appendChild(h("p", { class: "ui-sub", text: L("PintsNow ä gjord för mobilen. Skanna koden med mobilkameran 📷", "PintsNow is made for your phone. Scan the code with the camera 📷") }));
       var qb = h("div", { class: "qr ui-qr", "aria-hidden": "true" });
       act.appendChild(h("div", { class: "ui-qr-wrap" }, [qb]));
       try { if (window.QRCode) new window.QRCode(qb, { text: appLink(), width: 220, height: 220, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
@@ -132,12 +132,12 @@
   function show() {
     if (root) return;
     var k = kind();
-    root = h("div", { id: "ux-inst", class: "ui-wrap ui-" + k, role: "dialog", "aria-modal": "true", "aria-label": L("Installera Öl Nu", "Install Öl Nu") });
+    root = h("div", { id: "ux-inst", class: "ui-wrap ui-" + k, role: "dialog", "aria-modal": "true", "aria-label": L("Installera PintsNow", "Install PintsNow") });
     var skip = h("button", { type: "button", class: "ui-skip", text: L("Använd utan att installera", "Use without installing"), onclick: close });
     act = h("div", { class: "ui-act" });
     var card = h("div", { class: "ui-card" }, [
-      h("div", { class: "ui-logo", text: "Öl Nu" }),
-      h("h2", { class: "ui-h", text: k === "desktop" ? L("Öl Nu bor i mobilen", "Öl Nu lives on your phone") : L("Lägg Öl Nu på hemskärmen", "Put Öl Nu on your home screen") }),
+      h("div", { class: "ui-logo", text: "PintsNow" }),
+      h("h2", { class: "ui-h", text: k === "desktop" ? L("PintsNow bor i mobilen", "PintsNow lives on your phone") : L("Lägg PintsNow på hemskärmen", "Put PintsNow on your home screen") }),
       h("p", { class: "ui-p", text: L("Då startar den som en riktig app, och du får push när gänget drar ut. Tar 10 sekunder.", "Then it starts like a real app, and you get a push when the gang heads out. Takes 10 seconds.") }),
       act
     ]);

@@ -91,7 +91,7 @@ function page(title: string, desc: string, img: string, self: string, to: string
 <title>${t}</title>
 <meta name="description" content="${d}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Öl Nu">
+<meta property="og:site_name" content="PintsNow">
 <meta property="og:locale" content="${en ? "en_GB" : "sv_SE"}">
 <meta property="og:title" content="${t}">
 <meta property="og:description" content="${d}">

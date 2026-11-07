@@ -4,7 +4,7 @@ var VERSION = "olnu-44c82b9cfb";
 // are read from index.html itself at install, so the precache uses the same URLs as the page (no double download).
 // app.js forceUpdate() also reads this list.
 var SHELL = [
-  "./", "./index.html", "./manifest.webmanifest", "./favicon.ico",
+  "./", "./index.html", "./manifest.webmanifest", "./favicon.ico", "./flytta.html",
   "./icons/icon-192.png", "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"
 ];
 var CDN_CACHE = "olnu-cdn", DATA_CACHE = "olnu-data", TILE_CACHE = "olnu-tiles";
@@ -59,6 +59,31 @@ function fromCache(req) {
   return caches.match(req).then(function (r) { return r || Response.error(); });
 }
 
+// 🚚 PintsNow move: the app page (scope root or index.html) answered with a redirect to ANOTHER origin = the app moved.
+function appNav(req) {
+  try {
+    if (req.mode !== "navigate") return false;
+    var p = new URL(req.url).pathname, sp = new URL(self.registration.scope).pathname;
+    return p === sp || p === sp + "index.html";
+  } catch (err) { return false; }
+}
+function otherOrigin(u) { try { return new URL(u).origin !== self.location.origin; } catch (err) { return false; } }
+function isMoved() { return caches.open("olnu-pending").then(function (c) { return c.match("./__moved"); }).then(function (r) { return !!r; }).catch(function () { return false; }); }
+function setMoved(on) {
+  return isMoved().then(function (was) {
+    if (was === on) return;
+    return caches.open("olnu-pending").then(function (c) { return on ? c.put("./__moved", new Response(String(Date.now()))) : c.delete("./__moved"); }).then(function () {
+      if (!on) return;
+      return self.clients.matchAll({ type: "window" }).then(function (list) { list.forEach(function (cl) { try { cl.postMessage({ type: "olnu-moved" }); } catch (err) {} }); });
+    });
+  }).catch(function () {});
+}
+// The in-app move page (precached). Without it: follow the redirect like a normal browser.
+function movedPage(req) {
+  return caches.match("./flytta.html").then(function (r) { return r || fetch(req); });
+}
+function isMovePage(res) { return !!(res && /\/flytta\.html$/.test(res.url || "")); }
+
 // index.html: network first (no-cache), cached copy when offline or when the network is slower than NAV_TIMEOUT_MS.
 function networkFirst(req, e) {
   // no-cache: always ask the server (304 is cheap). Else the HTTP cache (max-age=600) can give an
@@ -67,10 +92,21 @@ function networkFirst(req, e) {
   try { fresh = req.mode === "navigate" ? new Request(req.url, { cache: "no-cache", credentials: "same-origin" }) : new Request(req, { cache: "no-cache" }); } catch (err) {}
   var net = fetch(fresh).then(function (res) {
     // A redirected response cannot answer a navigation: use the normal request then.
-    if (fresh !== req && res && res.redirected && req.mode === "navigate") return fetch(req);
+    if (fresh !== req && res && res.redirected && req.mode === "navigate") {
+      if (appNav(req) && otherOrigin(res.url)) return setMoved(true).then(function () { return movedPage(req); });   // 🚚 olnu-moved
+      return fetch(req);
+    }
+    if (res && res.ok && appNav(req)) keep(e, setMoved(false));
     return res;
+  }, function (err) {
+    // CORS may hide a cross-origin redirect: ask once more without following it.
+    if (!appNav(req)) throw err;
+    return fetch(new Request(req.url, { redirect: "manual", cache: "no-cache", credentials: "same-origin" })).then(function (r) {
+      if (r && r.type === "opaqueredirect") return setMoved(true).then(function () { return movedPage(req); });
+      throw err;
+    });
   }).then(function (res) {
-    if (res && res.ok) keep(e, put(VERSION, req, res.clone()));
+    if (res && res.ok && !isMovePage(res)) keep(e, put(VERSION, req, res.clone()));
     return res;
   });
   function cached() {
@@ -93,6 +129,17 @@ function networkFirst(req, e) {
 // smooth: app shell first. The page for this version is in the VERSION cache with the same ?v= scripts, so it always
 // fits the cached code. Answer it at once and refresh it in the background (stale-while-revalidate).
 function shellFirst(req, e) {
+  if (appNav(req)) {
+    // 🚚 moved: show the move page at once; the network check in the background clears the mark after a rollback.
+    return isMoved().then(function (m) {
+      if (!m) return shellFirst0(req, e);
+      keep(e, networkFirst(req, e).catch(function () {}));
+      return movedPage(req);
+    });
+  }
+  return shellFirst0(req, e);
+}
+function shellFirst0(req, e) {
   return caches.open(VERSION).then(function (c) {
     return c.match(req, { ignoreSearch: true }).then(function (hit) { return hit || c.match("./index.html"); }).then(function (hit) {
       var at = hit ? Date.parse(hit.headers.get("date") || "") : NaN;

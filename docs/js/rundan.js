@@ -8,7 +8,7 @@
    unequal splits, "Gör upp" (settle up), "paid outside the app" that the receiver confirms, Swish to settle.
    Fewest payments ("Gör upp"): greedy biggest debtor → biggest creditor (Splitwise "simplify debts"), done here in the client.
    Swish links are not documented by Swish: https://app.swish.nu/1/p/sw/?sw=…&amt=…&cur=SEK&msg=… (main) and
-   swish://payment?data=… (second; fixed 2026-11-07 to the documented form: sw=46…, no cur); the number + amount + 📋 Kopiera are always shown too. No money passes through Öl Nu.
+   swish://payment?data=… (second; fixed 2026-11-07 to the documented form: sw=46…, no cur); the number + amount + 📋 Kopiera are always shown too. No money passes through PintsNow.
    A missing RPC (old database, PGRST202) = everything hides, no error. In-app only: no push. */
 (function () {
   "use strict";

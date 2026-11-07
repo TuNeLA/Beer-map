@@ -51,7 +51,7 @@
   /* ---------- Texts (dalmål + spec-ops) ---------- */
   var T = {
     preT: ["📸 Kameran behöver lov", "📸 Linsen vill ha tillstånd", "📸 Fotografen behöver papper"],
-    pre: ["Engångskameran knäpper bilderna här inne i appen. Då behöver Öl Nu få använda kameran – telefonen frågar strax, tryck Tillåt.",
+    pre: ["Engångskameran knäpper bilderna här inne i appen. Då behöver PintsNow få använda kameran – telefonen frågar strax, tryck Tillåt.",
       "För att du int' ska bli utkastad till kameraappen (där bilderna försvinner) tar vi bilden här i appen. Telefonen frågar om lov – tryck Tillåt.",
       "Kameran öppnas bara när du själv trycker på den, och bilden går rakt in på gruppens film. Telefonen frågar strax – tryck Tillåt."],
     preSub: "🔒 Ingen ser bilderna – int' ens du – förrän kl 10. Kameran stängs när du stänger.",
@@ -67,13 +67,13 @@
     empty: "FILMEN SLUT",
     hint: ["Rikta. Andas. Knäpp.", "Ingen förhandsvisning. Som förr i tiden.", "Tummen bort från linsen, soldat.", "Tio bilder. Välj med hjärtat.",
       "Ingen ser bilden förrän kl 10 – int' ens du.", "Dalarnas modernaste engångskamera."],
-    denT: "📵 Kameran ä avstängd för Öl Nu",
+    denT: "📵 Kameran ä avstängd för PintsNow",
     den: ["Telefonen säger nej till kameran. Slå på den så här:", "Kameran ä spärrad. Så här låser du upp'n:"],
     denHow: "Android: tryck på 🔒 / ⓘ vid adressen (eller håll på app-ikonen → Appinfo) → Behörigheter → Kamera → Tillåt.\niPhone: Inställningar → Safari → Kamera → Fråga/Tillåt (hemskärmsappen frågar igen nästa gång).",
     errT: "📷 Kameran ville int' starta",
     err: ["Linsen krånglar. Prova igen – eller ta bilden med telefonens kamera.", "Kameran svarar int'. Kanske upptagen av en annan app? Stäng den och prova igen."],
     restT: "📷 Telefonen stängde appen",
-    rest: ["Telefonen stängde Öl Nu medan kameraappen va öppen, så bilden kom int' fram. Den ligger nog i Galleriet – välj den här.",
+    rest: ["Telefonen stängde PintsNow medan kameraappen va öppen, så bilden kom int' fram. Den ligger nog i Galleriet – välj den här.",
       "Mitt i knäppet la telefonen ner appen. Bilden ä int' på filmen än – men den finns nog i Galleriet."],
     restSub: "Tips: använd appens egen kamera, så händer det int' igen.",
     old: "🎞️ Den bilden ä för gammal. Engångskameran tar bara kvällens bilder.",
@@ -297,7 +297,7 @@
     cur = c;
   }
   function deniedCard(c) {
-    card(L(T.denT, "📵 The camera is blocked for Öl Nu"), [pick("den", T.den)], [
+    card(L(T.denT, "📵 The camera is blocked for PintsNow"), [pick("den", T.den)], [
       { label: L("🔁 Prova igen", "🔁 Try again"), cls: "btn-amber fc-go", fn: function () { view(c); } },
       { label: L("📷 Använd telefonens kameraapp", "📷 Use the phone's camera app"), cls: "btn-ghost fc-alt", fn: function () { close(); pickFile(c.g, false); } },
       { label: L("🖼️ Välj från Galleriet", "🖼️ Pick from the Gallery"), cls: "btn-ghost fc-gal", fn: function () { close(); pickFile(c.g, true); } },
@@ -337,7 +337,7 @@
     var flip = el("button", { type: "button", class: "fc-flip", "aria-label": L("Byt kamera", "Switch camera"), text: "🔄" });
     var shutter = el("button", { type: "button", class: "fc-shutter", "aria-label": L("Ta en bild", "Take a photo") }, [el("span", {})]);
     var body = el("div", { class: "fc-body" }, [
-      el("div", { class: "fc-top" }, [el("span", { class: "fc-brand", text: "ÖL NU · ENGÅNGS 27" }), el("span", { class: "fc-grp", text: c.g.name || "" }), x]),
+      el("div", { class: "fc-top" }, [el("span", { class: "fc-brand", text: "PINTSNOW · ENGÅNGS 27" }), el("span", { class: "fc-grp", text: c.g.name || "" }), x]),
       vf,
       el("div", { class: "fc-info" }, [el("div", { class: "fc-lcd", "aria-hidden": "true" }, [lcd]), el("div", { class: "fc-count" }, [leftT, frames])]),
       status,

@@ -4,21 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; worker-src 'self' blob:">
-<title>Öl Nu</title>
+<title>PintsNow</title>
 <meta name="description" content="Live ölkarta. Öppna länken i Safari (iPhone) eller Chrome (Android) och lägg appen på hemskärmen: Dela → Lägg till på hemskärmen.">
-<meta property="og:title" content="Öl Nu 🍺 Häng med ikväll">
+<meta property="og:title" content="PintsNow 🍺 Häng med ikväll">
 <meta property="og:description" content="Live ölkarta. Öppna i Safari (iPhone) eller Chrome (Android) → Dela → Lägg till på hemskärmen.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Öl Nu">
+<meta property="og:site_name" content="PintsNow">
 <meta property="og:locale" content="sv_SE">
 <meta property="og:url" content="https://tunela.github.io/Beer-map/docs/">
 <meta property="og:image" content="https://tunela.github.io/Beer-map/docs/og-image.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Öl Nu – live ölkarta. Häng med ikväll.">
+<meta property="og:image:alt" content="PintsNow – live ölkarta. Häng med ikväll.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Öl Nu 🍺 Häng med ikväll">
+<meta name="twitter:title" content="PintsNow 🍺 Häng med ikväll">
 <meta name="twitter:description" content="Live ölkarta för dig och kompisarna. Ingen inloggning.">
 <meta name="twitter:image" content="https://tunela.github.io/Beer-map/docs/og-image.png">
 <meta name="theme-color" content="#0a0f1c">
@@ -26,7 +26,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Öl Nu">
+<meta name="apple-mobile-web-app-title" content="PintsNow">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./favicon.ico" sizes="any">
 <link rel="icon" href="./icons/favicon-32.png" type="image/png" sizes="32x32">
@@ -106,6 +106,7 @@
 <link rel="stylesheet" href="./avatar.css?v=av2">
 <link rel="stylesheet" href="./evx.css?v=e1a7c0f001">
 <link rel="stylesheet" href="./ux3.css?v=1">
+<link rel="stylesheet" href="./pnmove.css">
 </head>
 <body>
 <div id="map" aria-label="Karta"></div>
@@ -113,7 +114,7 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-name">Öl Nu</span>
+    <span class="brand-name">PintsNow</span>
     <span id="soon-chip" class="chip chip-soon" hidden>Snart</span>
   </div>
   <div id="live-count" class="live-count" aria-live="polite">🍺 –</div>
@@ -196,11 +197,12 @@
 
 <div id="toasts" class="toasts" aria-live="assertive"></div>
 
-<div id="intro" class="intro" role="dialog" aria-modal="true" aria-label="Öl Nu" hidden>
+<div id="intro" class="intro" role="dialog" aria-modal="true" aria-label="PintsNow" hidden>
   <div id="intro-body" class="intro-card hud-panel"></div>
 </div>
 
 <script defer src="./config.js?v=d43bba7c1f"></script>
+<script defer src="./js/handover.js"></script>
 <script defer src="./js/smooth.js?v=8201961ae9"></script>
 <script defer src="./js/boot.js?v=04123d521f"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -315,6 +317,7 @@
 <script defer src="./js/install1.js?v=1"></script>
 <script defer src="./js/nightlog.js?v=e1a7c0f001"></script>
 <script defer src="./js/evgroup.js?v=e1a7c0f001"></script>
+<script defer src="./js/pnmove.js"></script>
 <script defer src="./app.js?v=d0f42c2762"></script>
 </body>
 </html>

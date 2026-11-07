@@ -87,7 +87,7 @@
   function share(text, link) {
     if (!link) return;
     try {
-      if (navigator.share) { navigator.share({ title: "Öl Nu", text: text, url: link }).catch(function () {}); return; }
+      if (navigator.share) { navigator.share({ title: "PintsNow", text: text, url: link }).catch(function () {}); return; }
     } catch (e) {}
     if (A && A.copyText) A.copyText(text + " " + link);
   }

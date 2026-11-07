@@ -680,7 +680,7 @@
     ["Vad ä folköl?", "Öl med högst 3,5 % alkohol", ["Öl som bara säljs på midsommar", "Öl utan humle", "Öl med minst 5 %"]],
     ["Vilket land kommer pilsnern ifrån?", "Tjeckien", ["Tyskland", "Belgien", "Danmark"]],
     ["Vad ä humle?", "En klätterväxt", ["En sorts jäst", "Ett korn", "En ölmätare"]],
-    ["När ä Öl Nu-natten slut och allt börjar om?", "Kl 05:00", ["Kl 03:00", "Kl 00:00", "Kl 07:00"]],
+    ["När ä PintsNow-natten slut och allt börjar om?", "Kl 05:00", ["Kl 03:00", "Kl 00:00", "Kl 07:00"]],
     ["Vad händer om du använder 👻 Spökläge?", "Din pin syns int' på kartan", ["Du får dubbla meriter", "Gänget får en push", "Ölen räknas int'"]]
   ];
   function quizBuild(g) {

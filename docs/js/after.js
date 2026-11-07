@@ -144,7 +144,7 @@
     });
     c.textBaseline = "alphabetic";
     c.fillStyle = accent; c.font = '56px "Black Ops One", Impact, sans-serif'; c.textAlign = "left";
-    c.fillText("ÖL NU", 90, 140);
+    c.fillText("PINTSNOW", 90, 140);
   }
   function hexA(hex, a) {
     var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "")); if (!m) return "rgba(245,166,35," + a + ")";
@@ -185,7 +185,7 @@
       try { if (blob && typeof File === "function") file = new File([blob], fname, { type: "image/png" }); } catch (e) { file = null; }
       var canFiles = false;
       try { canFiles = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); } catch (e) { canFiles = false; }
-      if (canFiles) row.appendChild(A.btn(L("📤 Dela bild", "📤 Share image"), "btn-amber", function () { navigator.share({ files: [file], text: text, title: "Öl Nu" }).catch(function () {}); }));
+      if (canFiles) row.appendChild(A.btn(L("📤 Dela bild", "📤 Share image"), "btn-amber", function () { navigator.share({ files: [file], text: text, title: "PintsNow" }).catch(function () {}); }));
       else if (blob) row.appendChild(A.btn(L("💾 Spara bild", "💾 Save image"), "btn-amber", function () {
         var url = URL.createObjectURL(blob), a = document.createElement("a");
         a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();

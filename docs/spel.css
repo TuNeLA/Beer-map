@@ -71,7 +71,7 @@ html.sp-on, html.sp-on body { overflow: hidden; }
 .sp-black { position: relative; background: #050608; color: #fff; border-radius: 18px; padding: 20px 18px 16px; border: 2px solid #2b2f38; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
 .sp-black p { font: 700 22px/1.3 var(--ds-sans, sans-serif); margin: 0 0 12px; }
 .sp-black small { font: 700 12px var(--ds-sans, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--ds-amber-t, #ffc24d); }
-.sp-black::after { content: "ÖL NU · SKÄMSKORT"; position: absolute; right: 14px; bottom: 14px; font: 400 10px var(--ds-stencil, Impact, sans-serif); letter-spacing: .1em; color: #6c7280; }
+.sp-black::after { content: "PINTSNOW · SKÄMSKORT"; position: absolute; right: 14px; bottom: 14px; font: 400 10px var(--ds-stencil, Impact, sans-serif); letter-spacing: .1em; color: #6c7280; }
 .sp-hand { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .sp-white { position: relative; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 56px; padding: 12px 14px; border-radius: 14px; cursor: pointer;
   background: #f7f5ef; color: #111; border: 3px solid transparent; font: 700 17px/1.3 var(--ds-sans, sans-serif); box-shadow: 0 2px 0 #c9c4b5; }

@@ -1,6 +1,6 @@
 /* Öl Nu v27 — KVÄLLSKODEN (CONTRACT "v27 MORGONEN EFTER", migration 0053_night_code.sql).
    A Wordle-style emoji line of your night, to copy into any chat:
-     "Öl Nu 18/10 🍺🍺🍺🔥 📍3 🪖1 🍻9 🏠✅"
+     "PintsNow 18/10 🍺🍺🍺🔥 📍3 🪖1 🍻9 🏠✅"
    🍺 = drinks (1–4 one each; 5+ = 🍺🍺🍺🔥; 10+ = 🍺🍺🍺🚁) · 📍 bars · 🪖 call-outs sent/answered yes ·
    🍻 skål given + got · 💧 water · 🎖️ medals · 🏠✅ "Jag är hemma" pressed (🏠❔ not).
    No place names, no towns, no times: only counts that say nothing about where you were.
@@ -18,7 +18,7 @@
     d = d || {};
     var ev = String(d.evening || "").slice(0, 10).split("-");
     var date = ev.length === 3 ? (+ev[2]) + "/" + (+ev[1]) : "";
-    var head = "Öl Nu" + (date ? " " + date : "");
+    var head = "PintsNow" + (date ? " " + date : "");
     var n = d.drinks | 0;
     if (!d.out && !n && !(d.checkins | 0) && !(d.bars | 0)) return head + " 🛋️ " + L("Vilokväll", "Night off");
     var parts = [];

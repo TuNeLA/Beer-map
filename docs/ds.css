@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Öl Nu design system (design5, 2026-10-21). ONE file, loaded LAST (js/ds.js keeps it last when the
+   PintsNow design system (design5, 2026-10-21). ONE file, loaded LAST (js/ds.js keeps it last when the
    lazy sheet CSS files are added later). It maps the tokens and the shared components onto the class
    names the modules already use, so no module has to change.
    Identity: dark navy, amber = action/you, green = live/ok, red = alarm, blue = info. Military/Dalarna

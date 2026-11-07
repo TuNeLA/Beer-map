@@ -6,7 +6,7 @@
       Links carry &by=<my name> (the card function forwards it), so the friend sees who invited them. Old "Visa kod" tile is gone.
    2. Arrival. A ?join=CODE / ?invite=1 link (also after the card 302) opened OUTSIDE the installed app shows ONE full-screen
       welcome card before anything else ("Välkommen! TuNe har bjudit in dig till TPM 🍺"), per platform:
-        android  beforeinstallprompt → ONE button "📲 Installera Öl Nu" (prompt() inside the tap). No event within 3 s →
+        android  beforeinstallprompt → ONE button "📲 Installera PintsNow" (prompt() inside the tap). No event within 3 s →
                  3 steps with pictures (a later event switches back to the button). Chrome and the installed app share
                  storage on Android (WebAPK uses the Chrome profile), so the browser joins the group itself: at once when
                  the name is known, else when typed, else the installed app finishes it (olnu.jn.pending) after asking the name.
@@ -107,15 +107,15 @@
 
   /* ---------- 1. the invite sheet (one flow for group + app) ---------- */
   var SHARE_G = [
-    "🍺 Häng med i {g} på Öl Nu! Tryck på länken:",
+    "🍺 Häng med i {g} på PintsNow! Tryck på länken:",
     "🪖 Inkallelse till {g}! Tryck här så ä du med:",
     "🍻 {g} behöver förstärkning. Gå med här:",
     "📡 {g} söker rekryter. Ett tryck så ä du inne:"
   ];
   var SHARE_A = [
-    "🍺 Kolla Öl Nu – live-ölkartan för oss. Häng med:",
-    "🪖 Rekrytering pågår! Öl Nu, ölkartan för gänget:",
-    "🍻 Se var kompisarna tar en öl just nu. Öl Nu:"
+    "🍺 Kolla PintsNow – live-ölkartan för oss. Häng med:",
+    "🪖 Rekrytering pågår! PintsNow, ölkartan för gänget:",
+    "🍻 Se var kompisarna tar en öl just nu. PintsNow:"
   ];
   function openInvite(g, isNew) {
     if (!A) return;
@@ -130,7 +130,7 @@
     A.openSheet(L("➕ Bjud in", "➕ Invite"), function (body) {
       body.classList.add("jn-sheet-body");
       var box = h("div", { class: "jn-inv" });
-      box.appendChild(h("p", { class: "jn-to", text: isG ? L("Bjud in till " + (g.name || ""), "Invite to " + (g.name || "")) : L("Bjud in en kompis till Öl Nu", "Invite a friend to Öl Nu") }));
+      box.appendChild(h("p", { class: "jn-to", text: isG ? L("Bjud in till " + (g.name || ""), "Invite to " + (g.name || "")) : L("Bjud in en kompis till PintsNow", "Invite a friend to PintsNow") }));
       if (isNew) box.appendChild(h("div", { class: "ds-card jn-new", html: "<b>🎉 " + esc(L("Gruppen " + (g.name || "") + " ä skapad!", (g.name || "") + " is ready!")) + "</b><br>" +
         esc(L("Nu fixar vi gänget. Visa koden eller skicka länken.", "Now get the gang in. Show the code or send the link.")) }));
       var qbox = h("div", { class: "qr jn-qr", id: "qr", "aria-hidden": "true" });
@@ -140,7 +140,7 @@
         var copied = function () { say(L("📋 Länken ä kopierad – klistra in den i chatten", "📋 Link copied – paste it in the chat")); };
         if (navigator.share) {
           try {
-            navigator.share({ title: "Öl Nu", text: text, url: shareUrl }).catch(function (e) {
+            navigator.share({ title: "PintsNow", text: text, url: shareUrl }).catch(function (e) {
               if (!e || e.name !== "AbortError") copy(text + " " + shareUrl, copied);
             });
             return;
@@ -187,11 +187,11 @@
       var who = BY || (evd && evd.from) || "";
       return who ? L(who + " har bjudit in dig 🍺", who + " invited you 🍺") : L("Du ä bjuden 🍺", "You're invited 🍺");
     }
-    if (inv) return BY ? L(BY + " har bjudit in dig till Öl Nu 🍺", BY + " invited you to Öl Nu 🍺") : L("Du ä inbjuden till Öl Nu 🍺", "You're invited to Öl Nu 🍺");
+    if (inv) return BY ? L(BY + " har bjudit in dig till PintsNow 🍺", BY + " invited you to PintsNow 🍺") : L("Du ä inbjuden till PintsNow 🍺", "You're invited to PintsNow 🍺");
     if (BY && g) return L(BY + " har bjudit in dig till " + g + " 🍺", BY + " invited you to " + g + " 🍺");
     if (BY) return L(BY + " har bjudit in dig till gänget 🍺", BY + " invited you to the gang 🍺");
     if (g) return L("Du ä inbjuden till " + g + " 🍺", "You're invited to " + g + " 🍺");
-    return L("Du ä inbjuden till ett gäng på Öl Nu 🍺", "You're invited to a gang on Öl Nu 🍺");
+    return L("Du ä inbjuden till ett gäng på PintsNow 🍺", "You're invited to a gang on PintsNow 🍺");
   }
   function needName() { return ARR && (ARR.kind === "join" || ARR.kind === "ev") && !myName(); }
   function typedName() {
@@ -351,7 +351,7 @@
     }));
   }
   function picDialog() {
-    return h("div", { class: "jn-pic jn-pic-dlg", "aria-hidden": "true" }, [h("b", { text: L("Installera Öl Nu?", "Install Öl Nu?") }),
+    return h("div", { class: "jn-pic jn-pic-dlg", "aria-hidden": "true" }, [h("b", { text: L("Installera PintsNow?", "Install PintsNow?") }),
       h("div", {}, [h("span", { text: L("Avbryt", "Cancel") }), h("span", { class: "jn-pic-hot", text: L("Installera", "Install") })])]);
   }
   function picIos(v26) {
@@ -373,8 +373,8 @@
     }
     var samsung = /SamsungBrowser/i.test(ua());
     if (state === "bip") {
-      act.appendChild(bigBtn(L("📲 Installera Öl Nu", "📲 Install Öl Nu"), "btn-amber ds-btn-primary jn-install", install));
-      act.appendChild(h("p", { class: "jn-then", text: L("Sen öppnar du Öl Nu från hemskärmen. Klart!", "Then open Öl Nu from your home screen. Done!") }));
+      act.appendChild(bigBtn(L("📲 Installera PintsNow", "📲 Install PintsNow"), "btn-amber ds-btn-primary jn-install", install));
+      act.appendChild(h("p", { class: "jn-then", text: L("Sen öppnar du PintsNow från hemskärmen. Klart!", "Then open PintsNow from your home screen. Done!") }));
     } else if (state === "wait") {
       act.appendChild(h("p", { class: "jn-wait", role: "status", text: L("📲 Gör i ordning appen…", "📲 Getting the app ready…") }));
     } else if (state === "dismissed" || state === "manual") {
@@ -382,11 +382,11 @@
       act.appendChild(h("ol", { class: "jn-steps" }, [
         step(1, samsung ? L("Tryck <b>≡</b> längst ner", "Tap <b>≡</b> at the bottom") : L("Tryck <b>⋮</b> uppe till höger", "Tap <b>⋮</b> at the top right"), picMenuDots(samsung)),
         step(2, samsung ? L("<b>Lägg till sida på</b> → <b>Startskärm</b>", "<b>Add page to</b> → <b>Home screen</b>") : L("Tryck <b>Installera app</b> (eller <b>Lägg till på startskärmen</b>)", "Tap <b>Install app</b> (or <b>Add to Home screen</b>)"), picMenu(samsung)),
-        step(3, L("Tryck <b>Installera</b>. Öppna sen <b>Öl Nu</b> från hemskärmen 🍺", "Tap <b>Install</b>. Then open <b>Öl Nu</b> from the home screen 🍺"), picDialog())
+        step(3, L("Tryck <b>Installera</b>. Öppna sen <b>PintsNow</b> från hemskärmen 🍺", "Tap <b>Install</b>. Then open <b>PintsNow</b> from the home screen 🍺"), picDialog())
       ]));
     } else if (state === "installed") {
       act.appendChild(h("div", { class: "jn-done" }, [h("div", { class: "jn-big", "aria-hidden": "true", text: "✅" }),
-        h("p", { class: "jn-done-h", text: L("Klart! Öl Nu ligger på hemskärmen.", "Done! Öl Nu is on your home screen.") }),
+        h("p", { class: "jn-done-h", text: L("Klart! PintsNow ligger på hemskärmen.", "Done! PintsNow is on your home screen.") }),
         h("p", { class: "jn-then", text: L("Öppna appen från hemskärmen 🍺 Du kan stänga den här fliken.", "Open the app from the home screen 🍺 You can close this tab.") })]));
     } else if (state === "ios") {
       var v26 = iosVer() >= 26 || iosVer() === 0;
@@ -405,8 +405,8 @@
         step(2, v26 ? L("<b>Dela</b> → <b>Lägg till på hemskärmen</b> ➕", "<b>Share</b> → <b>Add to Home Screen</b> ➕") : L("Scrolla ner → <b>Lägg till på hemskärmen</b> ➕", "Scroll down → <b>Add to Home Screen</b> ➕")),
         step(3, L("Låt <b>Öppna som webbapp</b> vara <b>på</b> → <b>Lägg till</b>", "Keep <b>Open as Web App</b> <b>on</b> → <b>Add</b>"))
       ]);
-      if (withGroup) ol.appendChild(step(4, ARR.kind === "ev" ? L("Öppna <b>Öl Nu</b> från hemskärmen → <b>📋 Klistra in flyttkod</b>. Då följer ditt svar med.", "Open <b>Öl Nu</b> from the home screen → <b>📋 Paste transfer code</b>. Your answer comes along.")
-        : L("Öppna <b>Öl Nu</b> från hemskärmen → <b>📋 Klistra in flyttkod</b>. Då följer gruppen med.", "Open <b>Öl Nu</b> from the home screen → <b>📋 Paste transfer code</b>. The group comes along.")));
+      if (withGroup) ol.appendChild(step(4, ARR.kind === "ev" ? L("Öppna <b>PintsNow</b> från hemskärmen → <b>📋 Klistra in flyttkod</b>. Då följer ditt svar med.", "Open <b>PintsNow</b> from the home screen → <b>📋 Paste transfer code</b>. Your answer comes along.")
+        : L("Öppna <b>PintsNow</b> från hemskärmen → <b>📋 Klistra in flyttkod</b>. Då följer gruppen med.", "Open <b>PintsNow</b> from the home screen → <b>📋 Paste transfer code</b>. The group comes along.")));
       act.appendChild(ol);
       if (!withGroup || iosPrepped) {
         var ar = h("div", { class: "jn-arrow" + (v26 ? " jn-arrow-r" : ""), "aria-hidden": "true", text: "⬇" });
@@ -430,7 +430,7 @@
       }
     } else if (state === "desktop") {
       var dl = plainLink(ARR.kind, ARR.code, BY);
-      act.appendChild(h("p", { class: "jn-then", text: L("Öl Nu ä gjord för mobilen. Skanna koden med kameran 📷", "Öl Nu is made for your phone. Scan the code with the camera 📷") }));
+      act.appendChild(h("p", { class: "jn-then", text: L("PintsNow ä gjord för mobilen. Skanna koden med kameran 📷", "PintsNow is made for your phone. Scan the code with the camera 📷") }));
       var qb = h("div", { class: "qr jn-qr", "aria-hidden": "true" });
       act.appendChild(h("div", { class: "jn-qr-wrap" }, [qb]));
       qr(qb, dl, 220);

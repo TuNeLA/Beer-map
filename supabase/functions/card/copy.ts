@@ -28,7 +28,7 @@ const SV = {
   invDesc: "Live ölkarta. {0} ute just nu. Tryck ÖL! och syns för dina kompisar – ingen inloggning.",
   invDesc0: "Live ölkarta. Tryck ÖL! och syns för dina kompisar – ingen inloggning.",
   out: "{0} ute nu", members: "{0} i gruppen", outMembers: "{0} ute nu · {1} i gruppen",
-  joinKick: "Inbjudan", joinDesc: ["Du ä inkallad till {0}. Tryck för att gå med i gruppen.", "{0} behöver förstärkning. Tryck för att gå med.", "Kom med i {0} på Öl Nu. Ett tryck, sen ä du med."],
+  joinKick: "Inbjudan", joinDesc: ["Du ä inkallad till {0}. Tryck för att gå med i gruppen.", "{0} behöver förstärkning. Tryck för att gå med.", "Kom med i {0} på PintsNow. Ett tryck, sen ä du med."],
   grpKick: "Läget", grpDesc: ["Gruppchatten för {0}. Tryck för att öppna.", "Läget i {0} just nu. Tryck för att se kartan."],
   rlKick: "Inkallelse", rlTitle: "Inkallelse: {0} – {1} på väg", rlTitleNo: "Inkallelse från {0}", rlTitleGrp: "Inkallelse: {0}",
   rlDesc: "{0} kallar in {1}. {2} kommer, {3} kanske. Tryck för att svara.", rlDescAnon: "{1} kallas in. {2} kommer, {3} kanske. Tryck för att svara.",
@@ -38,9 +38,9 @@ const SV = {
   duPend: "{0} har utmanat {1}. Väntar på svar.", duTagLive: "Pågår till 05:00", duTagDone: "Slutställning",
   diKick: "Utmaning", diTitle: "{0} utmanar er på duell", diDesc: "Vilken grupp dricker mest ikväll? Tryck för att anta. Koden gäller till {0}.",
   diSub: "Utmanar er på duell",
-  paKick: "Morgontidningen", paTitle: "Morgontidningen: {0}", paDesc: "{0} ute i natt · {1}. Läs hela tidningen i Öl Nu.",
-  paDesc0: "Nattens tidning ä tryckt. Läs den i Öl Nu.", paSub: "{0} ute · {1}",
-  goneTitle: "Öl Nu 🍺", goneDesc: "Länken har gått ut. Öppna kartan och se vem som ä ute.", goneHead: "Länken har gått ut",
+  paKick: "Morgontidningen", paTitle: "Morgontidningen: {0}", paDesc: "{0} ute i natt · {1}. Läs hela tidningen i PintsNow.",
+  paDesc0: "Nattens tidning ä tryckt. Läs den i PintsNow.", paSub: "{0} ute · {1}",
+  goneTitle: "PintsNow 🍺", goneDesc: "Länken har gått ut. Öppna kartan och se vem som ä ute.", goneHead: "Länken har gått ut",
   evKick: "Inbjudan", evYes: "{0} kommer", evFrom: "{0} bjuder in.", evDesc: "Svara direkt i mobilen – ingen app, ingen inloggning.",
 };
 const EN: typeof SV = {
@@ -49,7 +49,7 @@ const EN: typeof SV = {
   invDesc: "Live beer map. {0} out right now. Tap BEER! and your friends see you – no login.",
   invDesc0: "Live beer map. Tap BEER! and your friends see you – no login.",
   out: "{0} out now", members: "{0} in the group", outMembers: "{0} out now · {1} in the group",
-  joinKick: "Invite", joinDesc: ["You're called up to {0}. Tap to join the group.", "{0} needs backup. Tap to join.", "Join {0} on Öl Nu. One tap and you're in."],
+  joinKick: "Invite", joinDesc: ["You're called up to {0}. Tap to join the group.", "{0} needs backup. Tap to join.", "Join {0} on PintsNow. One tap and you're in."],
   grpKick: "Status", grpDesc: ["The group chat for {0}. Tap to open.", "What {0} is up to right now. Tap to see the map."],
   rlKick: "Call-out", rlTitle: "Call-out: {0} – {1} on the way", rlTitleNo: "Call-out from {0}", rlTitleGrp: "Call-out: {0}",
   rlDesc: "{0} calls up {1}. {2} coming, {3} maybe. Tap to answer.", rlDescAnon: "{1} is called up. {2} coming, {3} maybe. Tap to answer.",
@@ -59,9 +59,9 @@ const EN: typeof SV = {
   duPend: "{0} challenged {1}. Waiting for an answer.", duTagLive: "Live until 05:00", duTagDone: "Final score",
   diKick: "Challenge", diTitle: "{0} challenges you to a duel", diDesc: "Which group drinks the most tonight? Tap to accept. The code works until {0}.",
   diSub: "Challenges you to a duel",
-  paKick: "Morning paper", paTitle: "Morning paper: {0}", paDesc: "{0} out last night · {1}. Read the whole paper in Öl Nu.",
-  paDesc0: "Last night's paper is out. Read it in Öl Nu.", paSub: "{0} out · {1}",
-  goneTitle: "Öl Nu 🍺", goneDesc: "This link has expired. Open the map and see who is out.", goneHead: "Link expired",
+  paKick: "Morning paper", paTitle: "Morning paper: {0}", paDesc: "{0} out last night · {1}. Read the whole paper in PintsNow.",
+  paDesc0: "Last night's paper is out. Read it in PintsNow.", paSub: "{0} out · {1}",
+  goneTitle: "PintsNow 🍺", goneDesc: "This link has expired. Open the map and see who is out.", goneHead: "Link expired",
   evKick: "Invite", evYes: "{0} going", evFrom: "{0} invites you.", evDesc: "Answer right on your phone – no app, no login.",
 };
 // "tors 22/10 20:00" / "ikväll 20:00" in Stockholm time
@@ -88,7 +88,7 @@ export function buildCard(d: D, en: boolean, seed: string): Card {
   const g = clip(d?.group, 40), opp = clip(d?.opp, 40);
   if (k === "invite") {
     const out = n(d.out), head = pick(T.invHead, seed);
-    return { title: "Öl Nu 🍺 " + head, desc: out ? F(T.invDesc, out) : T.invDesc0, go: "invite=1",
+    return { title: "PintsNow 🍺 " + head, desc: out ? F(T.invDesc, out) : T.invDesc0, go: "invite=1",
       spec: { kicker: en ? "Live beer map" : "Live ölkarta", head, sub: out ? F(T.out, out) : "", foot } };
   }
   if (k === "ev") {

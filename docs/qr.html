@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Krog-QR · Öl Nu</title>
-<meta name="description" content="Skriv ut en QR-affisch: skanna och checka in på krogen i Öl Nu.">
+<title>Krog-QR · PintsNow</title>
+<meta name="description" content="Skriv ut en QR-affisch: skanna och checka in på krogen i PintsNow.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="./favicon.ico" sizes="any">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,7 +54,7 @@ html,body{margin:0;background:var(--night);color:var(--text);font-family:var(--b
 </head>
 <body>
 <div class="bar" id="bar">
-  <p id="hint">Skriv ut på A4 och sätt upp på krogen. Gästerna skannar och checkar in i Öl Nu (inom 300 m).</p>
+  <p id="hint">Skriv ut på A4 och sätt upp på krogen. Gästerna skannar och checkar in i PintsNow (inom 300 m).</p>
   <button class="btn" type="button" id="print">🖨️ Skriv ut</button>
   <a class="btn ghost" id="back" href="./" style="display:inline-flex;align-items:center;text-decoration:none">← Till kartan</a>
 </div>
@@ -83,7 +83,7 @@ html,body{margin:0;background:var(--night);color:var(--text);font-family:var(--b
     var sheet = el("section", "sheet");
     ["tl", "tr", "bl", "brr"].forEach(function (c) { sheet.appendChild(el("span", "br " + c)); });
     var top = el("div", "top");
-    top.appendChild(el("div", "brand", "ÖL NU"));
+    top.appendChild(el("div", "brand", "PINTSNOW"));
     top.appendChild(el("div", "op", "// OPERATION INCHECKNING //"));
     top.appendChild(el("h1", "name", name));
     sheet.appendChild(top);
@@ -91,7 +91,7 @@ html,body{margin:0;background:var(--night);color:var(--text);font-family:var(--b
     var cta = el("div", "cta");
     cta.appendChild(el("h2", null, "SKANNA & CHECKA IN"));
     var st = el("div", "steps");
-    [["1", "Skanna"], ["2", "Öppna Öl Nu"], ["3", "Du ä incheckad"]].forEach(function (s) {
+    [["1", "Skanna"], ["2", "Öppna PintsNow"], ["3", "Du ä incheckad"]].forEach(function (s) {
       var sp = el("span"); var b = el("b", null, s[0] + " "); sp.appendChild(b); sp.appendChild(document.createTextNode(s[1])); st.appendChild(sp);
     });
     cta.appendChild(st);

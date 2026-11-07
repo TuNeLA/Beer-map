@@ -206,7 +206,7 @@
     });
     c.textBaseline = "alphabetic";
     c.fillStyle = "#f5a623"; c.font = '64px "Black Ops One", Impact, sans-serif'; c.textAlign = "left";
-    c.fillText("ÖL NU", 90, 150, W - 180);
+    c.fillText("PINTSNOW", 90, 150, W - 180);
     c.fillStyle = "#ffe08a"; c.font = '112px "Black Ops One", Impact, sans-serif';
     c.fillText(t("nightHead"), 90, 280, W - 180);
     c.fillStyle = "#9aa3a0"; c.font = '40px "Share Tech Mono", monospace';
@@ -261,7 +261,7 @@
           try { if (blob && typeof File === "function") file = new File([blob], "olnu-kvall.png", { type: "image/png" }); } catch (e) { file = null; }
           var canFiles = false;
           try { canFiles = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); } catch (e) { canFiles = false; }
-          if (canFiles) row.appendChild(A.btn(t("nightShare"), "btn-amber", function () { navigator.share({ files: [file], text: text, title: "Öl Nu" }).catch(function () {}); }));
+          if (canFiles) row.appendChild(A.btn(t("nightShare"), "btn-amber", function () { navigator.share({ files: [file], text: text, title: "PintsNow" }).catch(function () {}); }));
           else if (blob) row.appendChild(A.btn(t("nightSave"), "btn-amber", function () {
             var url = URL.createObjectURL(blob), a = document.createElement("a");
             a.href = url; a.download = "olnu-kvall.png"; document.body.appendChild(a); a.click(); a.remove();
