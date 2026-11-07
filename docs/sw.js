@@ -223,26 +223,61 @@ self.addEventListener("fetch", function (e) {
 self.addEventListener("push", function (e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : "" }; }
-  var title = d.title || "🍺 Öl Nu";
+  var title = d.title || "🍺 PintsNow";
   var opts = {
     body: d.body || "",
     icon: "./icons/icon-192.png",
     badge: "./icons/badge-96.png",
     tag: d.tag || d.url || "olnu",
     requireInteraction: !!(d.requireInteraction || d.sos),
-    data: { url: d.url || "./", rally_id: d.rally_id != null ? String(d.rally_id) : null }
+    data: { url: d.url || "./", rally_id: d.rally_id != null ? String(d.rally_id) : null, at: Date.now() }
   };
-  // Rally pushes carry buttons ("✅ Jag kommer" / "❌ Kan inte").
+  // Rally/invite pushes carry buttons ("✅ Jag kommer" / "❌ Kan inte"). v27: a button may carry its own url
+  // ("💬 Svara", "🍺 Kommer!", "🍻 Skåla"); iOS shows no buttons, a plain tap still opens `url`.
   if (Array.isArray(d.actions) && d.actions.length) {
-    opts.actions = d.actions.filter(function (a) { return a && a.action && a.title; }).slice(0, 2)
-      .map(function (a) { return { action: String(a.action), title: String(a.title) }; });
+    var acts = d.actions.filter(function (a) { return a && a.action && a.title; }).slice(0, 2);
+    opts.actions = acts.map(function (a) { return { action: String(a.action), title: String(a.title) }; });
+    opts.data.acts = {};
+    acts.forEach(function (a) { if (typeof a.url === "string" && a.url.charAt(0) === "/") opts.data.acts[String(a.action)] = a.url; });
   }
-  e.waitUntil(self.registration.showNotification(title, opts));
+  // v27 🔔: fold chat pushes with the same tag into one notice ("💬 3 nya i Gänget" + the last lines). Buzz again only
+  // when the last buzz is > 60 s old, so a busy chat stays one quiet, updating notice.
+  var show = Promise.resolve().then(function () {
+    if (!d.stack || !d.stack.line || !self.registration.getNotifications) return;
+    return self.registration.getNotifications({ tag: opts.tag }).then(function (list) {
+      var old = list && list.length ? list[list.length - 1] : null, od = (old && old.data) || {};
+      var lines = (od.lines || (old ? [String(od.line || old.body || "")] : [])).concat([String(d.stack.line)]).slice(-6);
+      var n = (od.n || (old ? 1 : 0)) + 1;
+      opts.data.lines = lines; opts.data.n = n; opts.data.line = String(d.stack.line);
+      opts.data.buzz = od.buzz || 0;
+      if (n > 1 && d.stack.title) { title = String(d.stack.title).replace("{n}", n); opts.body = lines.join("\n"); }
+    }).catch(function () {});
+  }).then(function () {
+    if (d.renotify && opts.tag) {
+      var last = opts.data.buzz || 0;
+      opts.renotify = !last || Date.now() - last > 60000;
+      opts.silent = !opts.renotify;
+      if (opts.renotify) opts.data.buzz = Date.now();
+    }
+    return self.registration.showNotification(title, opts);
+  });
+  // v27: app icon badge = pushes since the app was last open (push.js clears it when the app is visible).
+  var badge = caches.open("olnu-pending").then(function (cc) {
+    return cc.match("./__badge").then(function (r) { return r ? r.text() : "0"; }).then(function (t) {
+      var c = (parseInt(t, 10) || 0) + 1;
+      return cc.put("./__badge", new Response(String(c))).then(function () {
+        if (self.navigator && self.navigator.setAppBadge) return self.navigator.setAppBadge(c);
+      });
+    });
+  }).catch(function () {});
+  e.waitUntil(Promise.all([show, badge]));
 });
 
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();
   var data = e.notification.data || {}, raw = data.url || "./";
+  // v27: a button with its own url ("💬 Svara" → chat, "🍺 Kommer!" / "🍻 Skåla" → the pin with &act=…).
+  if (e.action && data.acts && typeof data.acts[e.action] === "string") raw = data.acts[e.action];
   // Rally buttons: open the rally and answer it ("&answer=yes|no").
   if ((e.action === "yes" || e.action === "no") && (data.rally_id || /[?&]rally=/.test(raw))) {
     if (!/[?&]rally=/.test(raw)) raw = "/?rally=" + encodeURIComponent(data.rally_id);

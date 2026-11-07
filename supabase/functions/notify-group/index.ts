@@ -34,6 +34,12 @@
 //   (walks.notified atomic claim, < 5 min old, live); {event:"walk_home", walk_id} -> "✅ Anton ä hemma! 🏠" to the same
 //   viewers (home_notified claim, ended 'home' < 10 min ago). Same tag olnu-walk-<id>, so "hemma" replaces "går hem". url /?walk=<id>.
 //   find: + "👀 {namn} letar efter dig" (🔍 hitta.js "Var ä du?").
+// v27 🔔 NOTISKOLL (0190): sendAll first drops pushes the recipient turned off (push_prefs.off by kind, see pushCat),
+//   pushes in the recipient's nattro (quiet hours, Europe/Stockholm) and noisy pushes (ute/kaos/bar/kul) over the cap per
+//   night (push_rx_take, default 15). SOS, medevac-koll, Följ mig hem and "letar efter dig" always pass. Response may get
+//   `held: n`. New: {event:"coming", beer_id} -> "🏃 Anton kommer!" to the pin owner (button "🍺 Kommer!" on friend-is-out).
+//   Chat/DM/voice payloads get `renotify`, `stack` (the service worker folds them) and a "💬 Svara" button; check-in opens
+//   the bar (bars_lite) and folds per bar; msg rate 120 -> 30 s.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -385,11 +391,17 @@ export function sosPayload(namn: string, lat: number, lng: number, stamp: number
 }
 
 export function msgPayload(namn: string, body: string, groupName: string, groupId: string) {
+  // v27: one line (max 90), a "💬 Svara" button, and `stack` so the service worker folds many messages into one notice.
+  const line = `${namn}: ${shortText(body, 90)}`;
+  const g = cleanBarName(groupName);
   return {
-    title: `💬 ${namn}: ${body}`,
-    body: groupName ? `i ${groupName}` : "Nytt i gruppchatten",
+    title: `💬 ${line}`,
+    body: g ? `i ${g}` : "Nytt i gruppchatten",
     url: `/?chat=${groupId}`,
     tag: `olnu-msg-${groupId}`,
+    renotify: true,
+    stack: { title: `💬 {n} nya i ${g || "gruppchatten"}`, line },
+    actions: [{ action: "reply", title: "💬 Svara", url: `/?chat=${groupId}&reply=1` }],
   };
 }
 
@@ -404,7 +416,8 @@ export function bucketStart(nowMs: number, windowSec: number): number {
 }
 
 /** Event rate limits in seconds (push_sent kind -> window). */
-export const RATE_SEC = { comehere: 600, sos: 180, msg: 120, checkin: 600, eta: 600 } as const;
+// v27: msg 120 -> 30 s (the service worker folds a chat into one notice, so a short limit no longer spams).
+export const RATE_SEC = { comehere: 600, sos: 180, msg: 30, checkin: 600, eta: 600 } as const;
 
 // ---- v10 CHECKA IN ----
 export const CHECKIN_LINES: string[] = [
@@ -442,13 +455,15 @@ export const CHECKIN_BODY: string[] = [
   "Ska du bara sitta hemma? Kolla kartan.",
 ];
 
-export function checkinPayload(idx: number, namn: string, bar: string, stamp: number) {
+export function checkinPayload(idx: number, namn: string, bar: string, stamp: number, barId = "") {
   const b = bar || "baren";
+  // v27: a known bar (bars_lite) -> open that bar; tag per bar so friends at the same bar fold into one notice.
+  const bid = String(barId || "").slice(0, 80);
   return {
     title: fill(CHECKIN_LINES[((Math.floor(idx) % CHECKIN_LINES.length) + CHECKIN_LINES.length) % CHECKIN_LINES.length], { namn, bar: b }),
     body: CHECKIN_BODY[((Math.floor(idx) % CHECKIN_BODY.length) + CHECKIN_BODY.length) % CHECKIN_BODY.length],
-    url: "/",
-    tag: `olnu-checkin-${stamp}`,
+    url: bid ? `/?bar=${encodeURIComponent(bid)}` : "/",
+    tag: bid ? `olnu-checkin-${bid}`.slice(0, 120) : `olnu-checkin-${stamp}`,
   };
 }
 
@@ -734,6 +749,8 @@ export function voicePayload(idx: number, namn: string, groupName: string, group
     body: `i ${cleanBarName(groupName) || "gruppen"} · Tryck för att lyssna`,
     url: `/?chat=${groupId}`,
     tag: `olnu-voice-${groupId}`,
+    renotify: true,
+    stack: { title: `🎙️ {n} röstskål i ${cleanBarName(groupName) || "gruppen"}`, line: `🎙️ ${cleanBarName(namn) || "En vän"}` },
   };
 }
 
@@ -1025,6 +1042,77 @@ export function filmPayload(idx: number, groupName: string, n: number, groupId: 
   };
 }
 
+// ---- v27 🔔 NOTISKOLL (0190): kinds, nattro, cap per night, "Kommer!" ----
+/** Push kinds the user can turn off (same list as olnu_push_cats()). "safe" = always on. "" = unknown (always sent). */
+export const PUSH_CATS = ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner"] as const;
+/** Kinds that count against the cap per night (social noise; chat, plans and safety never count). */
+export const PUSH_NOISY = ["ute", "kaos", "bar", "kul"];
+export const PUSH_CAP_DEFAULT = 15;
+/** The kind of a push, from its tag (every payload has one; tags never hold user ids). */
+export function pushCat(tag: string): string {
+  const t = String(tag || "");
+  if (/^olnu-(sos|medcheck|walk|find)-/.test(t)) return "safe";
+  if (/^olnu-(msg|voice)-/.test(t)) return "chat";
+  if (/^olnu-dm-/.test(t)) return "dm";
+  if (/^olnu-(rally|inv|evgo|status|skal)-/.test(t)) return "plan";
+  if (/^olnu-kaos-/.test(t)) return "kaos";
+  if (/^olnu-(tip|takeover)-/.test(t)) return "bar";
+  if (/^olnu-(title|helg|film)-/.test(t)) return "kul";
+  if (/^olnu-friend-/.test(t)) return "vanner";
+  if (/^olnu-(come|coming|checkin|eta)-/.test(t) || /^olnu-\d+-/.test(t)) return "ute";
+  return "";
+}
+/** Hour 0–23 in Europe/Stockholm. */
+export function stockholmHour(ms: number): number {
+  try {
+    const h = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", hourCycle: "h23" }).format(new Date(ms));
+    const n = parseInt(h, 10);
+    if (n >= 0 && n <= 23) return n;
+  } catch (_e) { /* fall through */ }
+  return new Date(ms).getUTCHours();
+}
+/** Nattro from..to (whole hours, to excluded; may wrap midnight). Null/equal = off. */
+export function inQuiet(hour: number, from: number | null | undefined, to: number | null | undefined): boolean {
+  if (from == null || to == null || from === to) return false;
+  return from < to ? hour >= from && hour < to : hour >= from || hour < to;
+}
+export type PushPref = { off?: string[] | null; quiet_from?: number | null; quiet_to?: number | null; cap?: number | null };
+/** "send" | "off" (kind turned off) | "quiet" (nattro) | "cap" (noisy kind: ask the counter). */
+export function pushGate(cat: string, pref: PushPref | null | undefined, hour: number): "send" | "off" | "quiet" | "cap" {
+  if (!cat || cat === "safe") return "send";
+  if (pref && Array.isArray(pref.off) && pref.off.includes(cat)) return "off";
+  if (pref && inQuiet(hour, pref.quiet_from, pref.quiet_to)) return "quiet";
+  if (PUSH_NOISY.includes(cat) && capOf(pref) < 99) return "cap";
+  return "send";
+}
+export function capOf(pref: PushPref | null | undefined): number {
+  const c = Number(pref?.cap) || 0;
+  return c === 5 || c === 10 || c === 20 || c === 99 ? c : PUSH_CAP_DEFAULT;
+}
+/** Chat text for a title: one line, max 90 chars. */
+export function shortText(s: string, max = 90): string {
+  const b = String(s || "").replace(/\s+/g, " ").trim();
+  return b.length > max ? b.slice(0, max - 1) + "…" : b;
+}
+export const COMING_LINES: string[] = [
+  "🏃 {namn} kommer! Håll en plats.",
+  "🍺 {namn} är på väg till dig!",
+  "🚀 {namn} har lyft. Destination: du.",
+  "🪖 {namn} rycker ut. Förstärkning på väg!",
+  "🧥 {namn} tar på sig jackan. Kommer strax!",
+  "🍻 {namn} hänger på! Beställ en till.",
+];
+/** "Kommer!" from a friend-is-out push: to the pin owner only. */
+export function comingPayload(idx: number, namn: string, n: number, beerId: number) {
+  return {
+    title: fill(COMING_LINES[wrapIdx(idx, COMING_LINES.length)], { namn: cleanBarName(namn) || "En vän" }),
+    body: n > 1 ? `${n} på väg till dig nu.` : "Tryck för att se kartan.",
+    url: `/?focus=${beerId}`,
+    tag: `olnu-coming-${beerId}`,
+    renotify: true,
+  };
+}
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1123,7 +1211,14 @@ async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 
     const title = fillFriend(lines[lineFor.get(s.user_id) ?? 0], name, titel);
     return {
       sub: s,
-      payload: JSON.stringify({ title, body: FRIEND_BODY[level], url: `/?focus=${beerId}`, tag }),
+      // v27: "🍺 Kommer!" tells the friend you are coming; "🍻 Skåla" gives a skål. Not on 10 (caring tone).
+      payload: JSON.stringify({
+        title, body: FRIEND_BODY[level], url: `/?focus=${beerId}`, tag,
+        actions: level === 10 ? [] : [
+          ...(level === 1 ? [{ action: "coming", title: "🍺 Kommer!", url: `/?focus=${beerId}&act=coming` }] : []),
+          { action: "skal", title: "🍻 Skåla", url: `/?focus=${beerId}&act=skal` },
+        ],
+      }),
     };
   });
 }
@@ -1197,7 +1292,45 @@ async function kaosJobs(
   return { jobs, out, hot, chaos };
 }
 
-async function sendAll(admin: Admin, jobs: Job[], ttl = 3600) {
+/** v27 🔔 NOTISKOLL: drop jobs the recipient turned off, jobs in the recipient's nattro, and noisy jobs over the
+ *  recipient's cap per night (push_rx_take, one count per user per send). SOS/medevac/walk/find always pass.
+ *  Any error (old database without 0190) = send everything, as before. */
+async function gate(admin: Admin, jobs: Job[]): Promise<{ jobs: Job[]; held: number }> {
+  if (jobs.length === 0) return { jobs, held: 0 };
+  const cats = jobs.map((j) => {
+    try { return pushCat(String((JSON.parse(j.payload) as { tag?: string }).tag ?? "")); } catch (_e) { return ""; }
+  });
+  const uids = [...new Set(jobs.filter((_j, i) => cats[i] && cats[i] !== "safe").map((j) => j.sub.user_id))];
+  if (uids.length === 0) return { jobs, held: 0 };
+  try {
+    const prefs = new Map<string, PushPref>();
+    for (let k = 0; k < uids.length; k += 150) {   // chunks keep the GET url short (KAOS may have 500 recipients)
+      const { data, error } = await admin.from("push_prefs").select("user_id, off, quiet_from, quiet_to, cap").in("user_id", uids.slice(k, k + 150));
+      if (error) throw error;
+      for (const r of (data ?? []) as (PushPref & { user_id: string })[]) prefs.set(r.user_id, r);
+    }
+    const hour = stockholmHour(Date.now());
+    const verdict = jobs.map((j, i) => pushGate(cats[i], prefs.get(j.sub.user_id), hour));
+    const capUsers = [...new Set(jobs.filter((_j, i) => verdict[i] === "cap").map((j) => j.sub.user_id))];
+    let allowed = new Set<string>(capUsers);
+    if (capUsers.length) {
+      const { data: ok, error: capErr } = await admin.rpc("push_rx_take", {
+        p_uids: capUsers, p_caps: capUsers.map((u) => capOf(prefs.get(u))),
+      });
+      if (capErr) console.warn("push_rx_take", capErr.message);
+      else allowed = new Set(((ok ?? []) as unknown[]).map((x) => String(typeof x === "object" && x ? Object.values(x)[0] : x)));
+    }
+    const keep = jobs.filter((j, i) => verdict[i] === "send" || (verdict[i] === "cap" && allowed.has(j.sub.user_id)));
+    return { jobs: keep, held: jobs.length - keep.length };
+  } catch (e) {
+    console.warn("push gate skipped", e instanceof Error ? e.message : String(e));
+    return { jobs, held: 0 };
+  }
+}
+
+async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600) {
+  const g = await gate(admin, allJobs);
+  const jobs = g.jobs;
   const results = await Promise.allSettled(
     jobs.map((j) =>
       webpush.sendNotification(
@@ -1224,7 +1357,7 @@ async function sendAll(admin: Admin, jobs: Job[], ttl = 3600) {
     const { error } = await admin.from("push_subscriptions").delete().in("id", [...deadIds]);
     if (error) console.error("failed to delete dead subscriptions", error);
   }
-  return { sent, failed };
+  return g.held ? { sent, failed, held: g.held } : { sent, failed };
 }
 
 // ---- v7 SOCIAL helpers ----
@@ -1395,6 +1528,34 @@ async function msgPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
 }
 
+// v27 {event:"coming", beer_id}: "🍺 Kommer!" from a friend-is-out push. To the pin owner only, when the caller
+// shares a group with the owner and the pin is live. Once per caller per pin (push_sent kind coming:<beer id>).
+async function comingPush(admin: Admin, uid: string, b: Body) {
+  const bid = parseRallyId(b.beer_id);
+  if (bid === null) return { ...NONE, reason: "no_beer" };
+  const { data: beer, error } = await admin
+    .from("beers").select("id, user_id, stopped, expires_at")
+    .eq("id", bid).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (error) throw error;
+  if (!beer || beer.stopped || beer.user_id === uid) return { ...NONE, reason: "no_beer" };
+  const mates = await mateNames(admin, uid);
+  const owner = beer.user_id as string;
+  if (!mates.has(owner)) return { ...NONE, reason: "no_group" };
+  const { data: claimed, error: cErr } = await admin
+    .from("push_sent")
+    .upsert([{ user_id: uid, kind: `coming:${bid}`, night: beer.expires_at, sent_at: new Date().toISOString() }],
+      { onConflict: "user_id,kind,night", ignoreDuplicates: true })
+    .select("user_id");
+  if (cErr) throw cErr;
+  if (!claimed || claimed.length === 0) return { ...NONE, reason: "already_sent" };
+  const { count } = await admin.from("push_sent").select("user_id", { count: "exact", head: true })
+    .eq("kind", `coming:${bid}`).eq("night", beer.expires_at);
+  const idx = Math.floor(Math.random() * COMING_LINES.length);
+  const payload = JSON.stringify(comingPayload(idx, mates.get(owner) ?? "En vän", Number(count) || 1, bid));
+  const jobs = (await subsOf(admin, [owner])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : { ...NONE, reason: "no_subs" };
+}
+
 // ---- v25 💬 MEDDELANDEN (1:1 DM groups, 0136–0138) ----
 export const DM_RATE_SEC = 20;
 export function dmPayload(namn: string, body: string, gid: string, voice = false) {
@@ -1405,6 +1566,9 @@ export function dmPayload(namn: string, body: string, gid: string, voice = false
     body: voice ? "🔒 Privat · tryck för att lyssna" : "🔒 Privat meddelande · tryck för att svara",
     url: `/?chat=${gid}`,
     tag: `olnu-dm-${gid}`,
+    renotify: true,
+    stack: { title: `🔒 {n} nya från ${n}`, line: voice ? "🎙️ Röstmeddelande" : (b.length > 90 ? b.slice(0, 89) + "…" : b) },
+    actions: voice ? [] : [{ action: "reply", title: "💬 Svara", url: `/?chat=${gid}&reply=1` }],
   };
 }
 /** null = not a DM group (the caller goes on as before). */
@@ -1508,7 +1672,7 @@ async function rallyYesPush(admin: Admin, uid: string, b: Body) {
 // made in the last 5 min (the bar name comes from that row, not from the body). 1 per 10 min per sender.
 async function checkinPush(admin: Admin, uid: string, _b: Body) {
   const { data: ci, error } = await admin
-    .from("checkins").select("bar_name, created_at, expires_at")
+    .from("checkins").select("bar_id, bar_name, created_at, expires_at")
     .eq("user_id", uid).gt("expires_at", new Date().toISOString())
     .gt("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString()).maybeSingle();
   if (error) throw error;
@@ -1519,9 +1683,15 @@ async function checkinPush(admin: Admin, uid: string, _b: Body) {
   const bar = cleanBarName(ci.bar_name);
   const idx = Math.floor(Math.random() * CHECKIN_LINES.length);
   const stamp = Date.now();
+  // v27: open the bar on tap when the server knows it (bars_lite = bars.json); an unknown bar keeps url "/".
+  let barId = "";
+  try {
+    const { data: bl } = await admin.from("bars_lite").select("id").eq("id", String(ci.bar_id ?? "")).maybeSingle();
+    if (bl?.id) barId = String(bl.id);
+  } catch (_e) { barId = ""; }
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(checkinPayload(idx, mates.get(s.user_id) ?? "En vän", bar, stamp)),
+    payload: JSON.stringify(checkinPayload(idx, mates.get(s.user_id) ?? "En vän", bar, stamp, barId)),
   }));
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
@@ -2214,6 +2384,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "ev_due") return json(await evDuePush(admin, uid, body));
     if (event === "walk") return json(await walkPush(admin, uid, body, false));
     if (event === "walk_home") return json(await walkPush(admin, uid, body, true));
+    if (event === "coming") return json(await comingPush(admin, uid, body));
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

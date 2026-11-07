@@ -248,7 +248,7 @@ t("isUuid and bucketStart", () => {
   assert.equal(m.bucketStart(1_000_000, 600), 600_000);
   assert.equal(m.bucketStart(1_199_999, 600), 600_000);
   assert.equal(m.bucketStart(1_200_000, 600), 1_200_000);
-  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 120, checkin: 600, eta: 600 });
+  assert.deepEqual(m.RATE_SEC, { comehere: 600, sos: 180, msg: 30, checkin: 600, eta: 600 });   // v27: msg 30 s (folded by the SW)
 });
 
 // ---- v9 INKALLELSE ----
@@ -461,3 +461,62 @@ console.log(`\n${passed} tests passed`);
   for (let i = -3; i < 40; i++) { assert.ok(m.statusReqPayload(i, "A", "B", 1).title.length > 3); n++; }
   console.log("ok - status_req payload", n);
 }
+
+// ---- v27 🔔 NOTISKOLL ----
+t("pushCat: every tag kind maps to a kind; safety is safe", () => {
+  const c = (x) => m.pushCat(x);
+  assert.equal(c("olnu-sos-123"), "safe"); assert.equal(c("olnu-medcheck-4"), "safe");
+  assert.equal(c("olnu-walk-9"), "safe"); assert.equal(c("olnu-find-9"), "safe");
+  assert.equal(c("olnu-msg-g"), "chat"); assert.equal(c("olnu-voice-g"), "chat"); assert.equal(c("olnu-dm-g"), "dm");
+  for (const x of ["olnu-rally-1", "olnu-rally-1-yes", "olnu-inv-2", "olnu-inv-yes-2", "olnu-inv-due-2", "olnu-evgo-3", "olnu-status-4", "olnu-skal-5"]) assert.equal(c(x), "plan", x);
+  assert.equal(c("olnu-kaos-2026-11-07"), "kaos");
+  assert.equal(c("olnu-tip-1"), "bar"); assert.equal(c("olnu-takeover-g-b"), "bar");
+  for (const x of ["olnu-title-1", "olnu-helg-45", "olnu-film-g"]) assert.equal(c(x), "kul", x);
+  assert.equal(c("olnu-friend-1"), "vanner");
+  for (const x of ["olnu-12-1", "olnu-12-5", "olnu-12-10", "olnu-12-home", "olnu-12-pause", "olnu-come-12", "olnu-coming-12", "olnu-checkin-7", "olnu-eta-3"]) assert.equal(c(x), "ute", x);
+  assert.equal(c(""), ""); assert.equal(c("whatever"), "");
+  assert.deepEqual([...m.PUSH_CATS], ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner"]);
+});
+t("inQuiet: plain and wrapping windows", () => {
+  assert.equal(m.inQuiet(3, 2, 10), true); assert.equal(m.inQuiet(10, 2, 10), false); assert.equal(m.inQuiet(1, 2, 10), false);
+  assert.equal(m.inQuiet(23, 22, 8), true); assert.equal(m.inQuiet(7, 22, 8), true); assert.equal(m.inQuiet(12, 22, 8), false);
+  assert.equal(m.inQuiet(5, null, null), false); assert.equal(m.inQuiet(5, 4, 4), false);
+});
+t("stockholmHour: CET/CEST", () => {
+  assert.equal(m.stockholmHour(Date.parse("2026-01-15T12:00:00Z")), 13);
+  assert.equal(m.stockholmHour(Date.parse("2026-07-15T12:00:00Z")), 14);
+  assert.equal(m.stockholmHour(Date.parse("2026-07-15T22:30:00Z")), 0);
+});
+t("pushGate: off, quiet, cap, safe always passes", () => {
+  const p = { off: ["kaos"], quiet_from: 2, quiet_to: 10, cap: 0 };
+  assert.equal(m.pushGate("kaos", p, 20), "off");
+  assert.equal(m.pushGate("chat", p, 3), "quiet");
+  assert.equal(m.pushGate("safe", p, 3), "send");
+  assert.equal(m.pushGate("", p, 3), "send");
+  assert.equal(m.pushGate("ute", p, 20), "cap");
+  assert.equal(m.pushGate("chat", p, 20), "send");
+  assert.equal(m.pushGate("ute", { cap: 99 }, 20), "send");
+  assert.equal(m.pushGate("ute", null, 20), "cap");
+  assert.equal(m.capOf(null), 15); assert.equal(m.capOf({ cap: 5 }), 5); assert.equal(m.capOf({ cap: 7 }), 15);
+});
+t("msg/voice payloads: stack, renotify, reply button; long text cut", () => {
+  const p = m.msgPayload("Bosse", "x".repeat(200), "Gänget", "g1");
+  assert.ok(p.title.length < 110 && p.title.endsWith("…"));
+  assert.equal(p.renotify, true);
+  assert.ok(p.stack.title.includes("{n}") && p.stack.title.includes("Gänget"));
+  assert.equal(p.actions[0].action, "reply"); assert.equal(p.actions[0].url, "/?chat=g1&reply=1");
+  assert.equal(m.voicePayload(0, "Lisa", "Gänget", "g3").renotify, true);
+});
+t("checkinPayload with a known bar opens it and folds per bar", () => {
+  const q = m.checkinPayload(0, "Anton", "La Parma", 7, "n123");
+  assert.equal(q.url, "/?bar=n123"); assert.equal(q.tag, "olnu-checkin-n123");
+});
+t("comingPayload", () => {
+  for (let i = -1; i < m.COMING_LINES.length + 1; i++) {
+    const q = m.comingPayload(i, "Oskar", 1, 42);
+    assert.ok(q.title.includes("Oskar") && !/\{\w+\}/.test(q.title), q.title);
+    assert.equal(q.url, "/?focus=42"); assert.equal(q.tag, "olnu-coming-42"); assert.equal(m.pushCat(q.tag), "ute");
+  }
+  assert.equal(m.comingPayload(0, "O", 3, 1).body, "3 på väg till dig nu.");
+});
+console.log("v27 notiskoll tests ok");

@@ -2692,3 +2692,66 @@ fältjacka r4 · officersjacka r12 · generalsrock r20 · amiralsrock r25 · smo
 - Note for builders: never put an `<svg>` into a string that another module sets with `innerHTML` next to nested buttons (Chrome's
   fast HTML path then turns off and un-nests them). profileAv returns an empty slot; the SVG is painted after.
 - Test: scratchpad `avatar-pw.js` (mocked; editor, locks with mocked rank 5, save → another user sees it in the chat, Medlemmar, Vänner, NU strip).
+
+
+## 🔔 NOTISKOLL (push settings, nattro, cap per night, folded chat, push buttons; owner 2026-11-07; migration 0190 + notify-group v27)
+Migration `0190_push_prefs.sql` (applied live 2026-11-07 as `0190_push_prefs`). Two new tables, new functions, no row is ever removed.
+Client: `docs/js/push.js` (`PUSH.prefsSection`, `PUSH.clearBadge`), `docs/app.js`, `docs/js/i18n.js`, `docs/sw.js` (push + notificationclick
+only); patches notif 01–07. A missing RPC (old server) = the ⚙️ section hides; an old function ignores the new fields.
+
+### Kinds (`olnu_push_cats()` = notify-group `PUSH_CATS`; the function reads the kind from the payload `tag`, `pushCat`)
+| kind | ⚙️ label | tags |
+|---|---|---|
+| `ute` | 🍺 Vänner går ut | `olnu-<beer>-1/5/10`, `olnu-<beer>-home/pause`, `olnu-come-`, `olnu-coming-`, `olnu-checkin-`, `olnu-eta-` |
+| `chat` | 💬 Gruppchatt | `olnu-msg-`, `olnu-voice-` |
+| `dm` | 🔒 Privata meddelanden | `olnu-dm-` |
+| `plan` | 📅 Inbjudningar och inkallelser | `olnu-rally-`, `olnu-inv-` (+ `-yes-`, `-due-`), `olnu-evgo-`, `olnu-status-`, `olnu-skal-` |
+| `kaos` | 🔥 KAOS I STAN | `olnu-kaos-` |
+| `bar` | 🏰 Krogtips och övertag | `olnu-tip-`, `olnu-takeover-` |
+| `kul` | ⬆️ Befordringar, helgstreak, film | `olnu-title-`, `olnu-helg-`, `olnu-film-` |
+| `vanner` | 🤝 Vänförfrågningar | `olnu-friend-` |
+| (safe) | always on, no nattro, no cap | `olnu-sos-`, `olnu-medcheck-`, `olnu-walk-`, `olnu-find-` |
+A new push MUST use a tag prefix from this table (or add one here and in `pushCat`); an unknown tag is always sent.
+
+### Tables (RLS on, no policies)
+`push_prefs(user_id pk, off text[], quiet_from smallint|null, quiet_to smallint|null, cap smallint 0=15|5|10|20|99=no cap, updated_at)`,
+`push_rx(user_id, night = olnu_night_of(now()), n)` = noisy pushes let through tonight.
+
+### RPCs
+| name | params | returns | errors |
+|---|---|---|---|
+| `my_push_prefs` | – | `{v, off[], quiet_from, quiet_to, cap, cap_default:15, cats[], tonight}` | `not_authenticated` |
+| `set_push_prefs` | `p_off text[], p_quiet_from int, p_quiet_to int, p_cap int` | same as `my_push_prefs` | `invalid_pref` (one quiet hour without the other, hour outside 0–23, from = to, cap not 0/5/10/20/99, > 20 kinds); unknown kinds are dropped |
+| `push_rx_take` | `p_uids uuid[], p_caps int[]` | setof uuid (may get one more) | service role only |
+
+### notify-group v27 (merged on top of deployed v26)
+- `sendAll` gates every job first (`gate`): kind in `off` → dropped; Stockholm hour inside nattro (`inQuiet`, may wrap midnight) → dropped;
+  noisy kind (`ute/kaos/bar/kul`, `PUSH_NOISY`) → one `push_rx_take` count per user per send, over the cap → dropped. Safe kinds always pass.
+  Responses may get `held: n`. Any gate error (old database) = send all, as before. Claims (`notified`, `push_sent`) still happen first, so a held push is not re-sent later.
+- New `{event:"coming", beer_id}` (the "🍺 Kommer!" button): caller shares a group with the live pin's owner (else `no_group`; own/stopped/expired → `no_beer`);
+  once per caller per pin (`push_sent` kind `coming:<beer id>`, night = pin expiry; else `already_sent`); to the owner only: `COMING_LINES` title,
+  body "N på väg till dig nu." (N = callers tonight) or "Tryck för att se kartan.", url `/?focus=<beer id>`, tag `olnu-coming-<beer id>`, `renotify`.
+- Friend-is-out pushes (level 1/5) carry `actions` with their own `url`: level 1 "🍺 Kommer!" (`/?focus=<id>&act=coming`) + "🍻 Skåla"
+  (`&act=skal`); level 5 "🍻 Skåla"; level 10 none (caring tone).
+- `msg` / `voice` / `dm` payloads: `renotify: true`, `stack: {title with {n}, line}`, msg/dm a "💬 Svara" button (`/?chat=<gid>&reply=1`).
+  msg titles are one line, max 90 chars. `RATE_SEC.msg` 120 → 30 s.
+- `checkin`: when `checkins.bar_id` is in `bars_lite`, url `/?bar=<id>` and tag `olnu-checkin-<bar id>` (friends at one bar fold); else as before.
+
+### Service worker (docs/sw.js, push + notificationclick only)
+- Default title "🍺 PintsNow". `data.at`, and `data.acts` = {action: url} from `actions[].url` (only urls starting with "/").
+- `stack`: `getNotifications({tag})` → lines (last 6) and count; from the 2nd push the title is `stack.title` with `{n}` and the body the lines.
+- `renotify` hint: buzz again only when the last buzz on that tag is > 60 s old; else `silent` replace.
+- App icon badge: counter in Cache `olnu-pending` `./__badge`, +1 per push, `navigator.setAppBadge(n)`; `PUSH.clearBadge` sets 0 and
+  `clearAppBadge()` when the app is visible. iOS: Home Screen app 16.4+ with notification permission only; iOS shows no buttons.
+- notificationclick: a button with a url opens that url (rally/invite yes/no rules unchanged).
+
+### Client
+- ⚙️ Inställningar under Notiser: "🔔 Välj notiser" (8 switches), "🌙 Nattro" (Av, 23–08, 00–09, 01–10, 02–11, 03–12, 08–17), "🍺 Max per kväll"
+  (5, 10, 15 standard, 20, Obegränsat; shows "Ikväll: N st."). Each change calls `set_push_prefs`; copy in localStorage `olnu.pushPrefs`.
+  Blocked permission → info with the iPhone/Android steps (`notifBlockedHelp`).
+- `?focus=<id>&act=coming|skal` (cold start and routeOpen): after the pin is found, `coming` → notify-group `{event:"coming", beer_id}` + toast,
+  `skal` → `skalCall` + toast. Own pin / signed out → nothing. `act` and `reply` are removed from the URL.
+- routeOpen `?helg=1` → `HELG.open()` (was ignored while the app was open).
+- Soft ask at start (`startNotifAsk`): only when `my_groups` has ≥ 1 group (still max once per 3 days); the asks after a beer and after
+  creating/joining a group are unchanged. New ask texts: "🔔 Vet när gänget drar ut".
+- Test: scratchpad `notif-pw.js` (mocked; settings section, save, blocked help, act=skal/coming, helg route) + `notif-sw-test.js`.

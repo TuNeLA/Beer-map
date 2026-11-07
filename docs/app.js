@@ -19,6 +19,7 @@
   var beers = [];
   var firstLoadDone = false;
   var pendingFocus = null;
+  var pendingAct = null;   // v27 🔔 push buttons: "coming" (🍺 Kommer!) | "skal" (🍻 Skåla) for the focused pin
   var busy = false;
 
   /* ---------- RPC wrapper ---------- */
@@ -1742,6 +1743,7 @@
       skalAlert();
       toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
+      else if (pendingFocus != null) handleFocus();   // v27: a pin push tapped while the app is open (routeOpen)
       setTimeout(flushBeerQueue, 600);   // QA #19: an offline beer goes now
       mods("onPollData", dv2);
       // review2: shared slow lane. Slow-changing modules get onPoll once per 60 s, in the same wave.
@@ -1832,7 +1834,9 @@
     var id = pendingFocus; pendingFocus = null;
     var b = null;
     for (var i = 0; i < beers.length; i++) if (String(beers[i].id) === String(id)) b = beers[i];
+    var act = pendingAct; pendingAct = null;
     if (!b) { toast(t("linkGone"), { id: "link", urgent: true, ms: 5000 }); return; }
+    if (act) pushAct(act, b);
     map.setView([b.lat, b.lng], 16, { animate: false });
     setTimeout(function () {
       var m = markerById[b.id];
@@ -1841,6 +1845,29 @@
       if (!clusters.hasLayer(m)) m.openPopup(); else showBeer(b, 18);
     }, 350);
   }
+
+  // v27 🔔: a button on a friend-is-out push. "coming" → notify-group {event:"coming"} (the friend gets "🏃 Du kommer!"),
+  // "skal" → a skål on that pin. Both only for a friend's live pin; errors give one short toast.
+  function pushAct(act, b) {
+    if (!b || b.is_mine || !authed) return;
+    var who = b.friend_name || "";
+    if (act === "skal") {
+      if (b.i_skaled) { toast("🍻 Du har redan skålat med " + (who || "den här pinnen") + ".", { urgent: true }); return; }
+      skalCall(b, false).then(function (r) {
+        if (r && r.error) { toast(errMsg(r.error), { err: true }); return; }
+        window.FX.sound.beer && window.FX.sound.beer();
+        toast("🍻 Skål" + (who ? " med " + who : "") + "!", { cls: "skal", urgent: true, ms: 5000 }); refresh();
+      });
+    } else if (act === "coming" && PUSH_ON) {
+      Promise.resolve(client.functions.invoke("notify-group", { body: { event: "coming", beer_id: b.id } })).then(function (r) {
+        var d = r ? parseData(r.data) : null;
+        if (d && d.reason === "already_sent") toast("🍺 " + (who || "Kompisen") + " vet redan att du kommer.", { urgent: true });
+        else if (r && r.error) toast(t("pushActFail"), { err: true });
+        else toast("🍺 Sagt och gjort! " + (who || "Kompisen") + " vet att du kommer.", { urgent: true, ms: 5000 });
+      }, function () { toast(t("pushActFail"), { err: true }); });
+    }
+  }
+  I.add({ sv: { pushActFail: "Kunde inte skicka. Försök igen." }, en: { pushActFail: "Could not send. Try again." } });
 
   /* ---------- Error messages ---------- */
   function errMsg(e, fallback) {
@@ -2931,7 +2958,9 @@
       var row = el("div", { class: "toggle-row" }, [el("span", { text: t("notif") }), sw]);
       body.appendChild(row);
       if (iosNeedsInstall()) body.appendChild(el("div", { class: "info", text: t("iosInstall") }));
+      else if (window.PUSH.supported() && Notification.permission === "denied") body.appendChild(el("div", { class: "info", text: t("notifBlockedHelp") }));
       window.PUSH.current().then(function (sub) { sw.setAttribute("aria-checked", String(!!sub)); });
+      if (authed && window.PUSH.prefsSection) window.PUSH.prefsSection(body, rpc, toast);   // v27 🔔 välj notiser, nattro, max per kväll
       sw.addEventListener("click", function () {
         var on = sw.getAttribute("aria-checked") === "true";
         if (on) {
@@ -3079,6 +3108,8 @@
   var rallyId = params.get("rally"), rallyAns = params.get("answer");
   var barLink = params.get("bar");   // v12 krogtips / takeover push: open that bar
   if (focusId) pendingFocus = focusId;
+  if (focusId && /^(coming|skal)$/.test(params.get("act") || "")) pendingAct = params.get("act");
+  params.delete("act"); params.delete("reply");
   if (["join", "focus", "chat", "sos", "bar", "rally"].some(function (k) { return params.has(k); }) || invited || rallyAns) {   // QA #15: also an empty ?join=
     params.delete("join"); params.delete("focus"); params.delete("invite"); params.delete("chat"); params.delete("sos"); params.delete("bar");
     params.delete("rally"); params.delete("answer");   // a reload must not answer again
@@ -3714,6 +3745,7 @@
     if (inv) { if (LIVE) mods("openInviteLink", inv, q.get("ans")); return; }
     var wlk = q.get("walk");   // 🏠 Följ mig hem push (hemfolj.js)
     if (wlk) { if (LIVE) mods("openWalkLink", wlk); return; }
+    if (q.get("helg") === "1") { if (window.HELG && window.HELG.open) window.HELG.open(); return; }   // v27: 🔥 helgstreak push
     var evs = q.get("evs");   // 📅 EVENT-ARKET 2: ⏰ reminder for an event I marked Går
     if (evs) { if (LIVE) mods("openEvsLink", evs); return; }
     if (nfi || nfr || q.get("friends")) { if (LIVE) mods("openNearLink", nfi || "list", nfr); return; }
@@ -3725,7 +3757,7 @@
     else if (r) { if (LIVE) mods("openLink", r, q.get("answer")); }
     else if (b) openBarById(b, 0);
     else if (so) mods("showSosLink", so);
-    else if (f) { pendingFocus = f; refresh(); }
+    else if (f) { pendingFocus = f; pendingAct = /^(coming|skal)$/.test(q.get("act") || "") ? q.get("act") : null; refresh(); }
   }
   if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function (e) {
     var d = e.data || {};
@@ -3802,9 +3834,14 @@
     if ($("sheet") && !$("sheet").hidden) return;                // another sheet is open
     var last = +U.ls.get("olnu.notifAskAt", "0") || 0;
     if (Date.now() - last < 3 * 86400000) return;               // max once per 3 days
-    U.ls.set("olnu.notifAskAt", String(Date.now()));
-    U.ls.set("olnu.notifAsked", "");                             // let the prompt box show again
-    askNotifSheet();
+    // v27 🔔: ask only when there is someone to hear from (a group). Without one the ask comes after joining a group.
+    rpc("my_groups").then(function (r) {
+      var n = r && !r.error ? (parseData(r.data) || []).length : 0;
+      if (!n || Notification.permission !== "default" || ($("sheet") && !$("sheet").hidden)) return;
+      U.ls.set("olnu.notifAskAt", String(Date.now()));
+      U.ls.set("olnu.notifAsked", "");                           // let the prompt box show again
+      askNotifSheet();
+    });
   }
   // smooth: the app shell (HUD + map + first tiles) paints first, then the modules start (max 300 ms later).
   if (window.SMOOTH && window.SMOOTH.afterPaint) window.SMOOTH.afterPaint(start); else start();

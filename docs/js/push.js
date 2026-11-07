@@ -106,5 +106,90 @@
       });
     }).catch(function () {});
   }
-  window.PUSH = { supported: supported, current: current, enable: enable, disable: disable, resync: resync, want: want, setLocation: setLocation, urlBase64ToUint8Array: urlBase64ToUint8Array };
+  // ---- v27 🔔 NOTISKOLL ----
+  // App icon badge: the service worker counts pushes since the app was last open; clear it when the app is visible.
+  function clearBadge() {
+    if (document.hidden) return;
+    try { if (navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {}); } catch (e) {}
+    try { if (window.caches) caches.open("olnu-pending").then(function (cc) { return cc.put("./__badge", new Response("0")); }).catch(function () {}); } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", clearBadge);
+  setTimeout(clearBadge, 1200);
+  // Kinds (same as olnu_push_cats). SOS, medevac-koll, Följ mig hem and "letar efter dig" are always on.
+  var KINDS = [
+    ["ute", "🍺 Vänner går ut", "Första ölen, incheckning, Kom hit, ETA"],
+    ["chat", "💬 Gruppchatt", "Samlas i en notis per grupp"],
+    ["dm", "🔒 Privata meddelanden", ""],
+    ["plan", "📅 Inbjudningar och inkallelser", "Svar, påminnelser, lägesrapport, skåltimmen"],
+    ["vanner", "🤝 Vänförfrågningar", ""],
+    ["bar", "🏰 Krogtips och övertag", ""],
+    ["kaos", "🔥 KAOS I STAN", "Max en per kväll"],
+    ["kul", "⬆️ Befordringar, helgstreak, film", ""]
+  ];
+  var QUIET = [["", "Av"], ["23-8", "23–08"], ["0-9", "00–09"], ["1-10", "01–10"], ["2-11", "02–11"], ["3-12", "03–12"], ["8-17", "08–17 (jobbtid)"]];
+  var CAPS = [[5, "5"], [10, "10"], [0, "15 (standard)"], [20, "20"], [99, "Obegränsat"]];
+  function mk(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) { if (k === "text") n.textContent = attrs[k]; else n.setAttribute(k, attrs[k]); });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function prefsSection(body, rpc, toast) {
+    var box = mk("div", { class: "push-prefs", hidden: "" });
+    body.appendChild(box);
+    var st = null, saving = null;
+    function save() {
+      if (!st) return;
+      var q = (st.quiet || "").split("-");
+      var p = { p_off: st.off, p_quiet_from: q.length === 2 ? +q[0] : null, p_quiet_to: q.length === 2 ? +q[1] : null, p_cap: st.cap };
+      saving = rpc("set_push_prefs", p).then(function (r) {
+        if (r && r.error) { if (toast) toast("Kunde inte spara notisvalen. Försök igen.", { err: true }); return; }
+        try { localStorage.setItem("olnu.pushPrefs", JSON.stringify(st)); } catch (e) {}
+      });
+    }
+    function draw(d) {
+      st = { off: (d.off || []).slice(), quiet: d.quiet_from != null && d.quiet_to != null ? d.quiet_from + "-" + d.quiet_to : "", cap: d.cap || 0 };
+      box.innerHTML = "";
+      box.appendChild(mk("h3", { text: "🔔 Välj notiser" }));
+      KINDS.forEach(function (k) {
+        var on = st.off.indexOf(k[0]) < 0;
+        var sw = mk("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(on), "aria-label": k[1], "data-kind": k[0] });
+        var lab = mk("span", {}, [document.createTextNode(k[1])]);
+        if (k[2]) lab.appendChild(mk("small", { class: "muted", style: "display:block;font-size:13px", text: k[2] }));
+        var row = mk("div", { class: "toggle-row" }, [lab, sw]);
+        // ds.js forwards a tap on the row to the switch, so listen on the switch only.
+        sw.addEventListener("click", function () {
+          var now = sw.getAttribute("aria-checked") !== "true";
+          sw.setAttribute("aria-checked", String(now));
+          st.off = st.off.filter(function (x) { return x !== k[0]; });
+          if (!now) st.off.push(k[0]);
+          save();
+        });
+        box.appendChild(row);
+      });
+      box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:6px 0 0", text: "🆘 SOS, medevac-koll och Följ mig hem kommer alltid." }));
+      var qs = mk("select", { class: "inp", "aria-label": "Nattro", "data-pref": "quiet" });
+      QUIET.forEach(function (o) { var op = mk("option", { value: o[0], text: o[1] }); if (o[0] === st.quiet) op.selected = true; qs.appendChild(op); });
+      qs.addEventListener("change", function () { st.quiet = qs.value; save(); });
+      box.appendChild(mk("h3", { text: "🌙 Nattro" }));
+      box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:0 0 6px", text: "Inga notiser de här timmarna (svensk tid). Säkerhetsnotiser kommer ändå." }));
+      box.appendChild(qs);
+      var cs = mk("select", { class: "inp", "aria-label": "Max per kväll", "data-pref": "cap" });
+      CAPS.forEach(function (o) { var op = mk("option", { value: String(o[0]), text: o[1] }); if (o[0] === (st.cap || 0)) op.selected = true; cs.appendChild(op); });
+      cs.addEventListener("change", function () { st.cap = +cs.value || 0; save(); });
+      box.appendChild(mk("h3", { text: "🍺 Max per kväll" }));
+      box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:0 0 6px",
+        text: "Gäller vänner ute, kaos, krogar och befordringar. Chatt och planer räknas inte." + (d.tonight ? " Ikväll: " + d.tonight + " st." : "") }));
+      box.appendChild(cs);
+      box.hidden = false;
+    }
+    rpc("my_push_prefs").then(function (r) {
+      if (!r || r.error) return;                               // old database without 0190: no section
+      var d = r.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
+      if (d && typeof d === "object") draw(d);
+    }).catch(function () {});
+    return { box: box, saved: function () { return saving || Promise.resolve(); } };
+  }
+  window.PUSH = { supported: supported, current: current, enable: enable, disable: disable, resync: resync, want: want, setLocation: setLocation, urlBase64ToUint8Array: urlBase64ToUint8Array,
+    prefsSection: prefsSection, clearBadge: clearBadge };
 })();
