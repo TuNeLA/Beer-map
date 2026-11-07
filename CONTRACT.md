@@ -2603,3 +2603,42 @@ Importer: `scripts/ev-dedupe.mjs` (called by `scripts/import-events.mjs`). Patch
   the 🤕 Bakisrapporten (after.js). Sheet: night chips, 4 stat tiles (drycker, per timme, första + sista, ställen), kind chips,
   per-hour bars, the timeline (time · emoji · kind · 📍 place, 👻 ghost, check-ins in blue), legacy note.
 - Tests: scratchpad `evx-pw.js` (25 checks, `evx-*.png`), `evx-live.mjs` + `evx-live2.mjs` (55 live checks, test zone).
+
+## 🗺️ KARTSTIL 5 (bara Mapbox: Skymning + Natt, bar markers / heat / clouds in GL)
+Client only, no migrations. Owner decision 2026-11-07. New file `docs/js/glmap.js` (`window.GLBARS`, no mods hooks, loaded after map3d.js);
+`docs/js/basemap.js` replaced (same `window.BASEMAP` hooks). Patches glmap 01 (files + index.html), 02 (app.js), 03 (clouds.js, map3d.js),
+04 (this). **This section replaces the style lists, the default and the MapLibre parts of KARTSTIL BETA / 2 / 3 / 4**; the rest still holds.
+
+### Styles (⚙️ Inställningar → "🗺️ Kartstil", exactly 2 rows)
+- ⭐ **Skymning** `mb-dusk` = `DEFAULT` for everyone (badge "⭐ Chefens val"), **Natt** `mb-night` (the Ludvika-tuned dark Standard).
+- Every other stored `olnu.mapStyle` (classic, positron, bright, natt, grafit, neon, mb-day, mb-sat …) is rewritten to `mb-dusk` on start;
+  old value `mapbox` = `mb-night`. The MapLibre / OpenFreeMap code is gone (`BASEMAP.layer()` = null, no `recolor` / `tweak` / `PALETTES`).
+- **Silent fallback** `classic` (not in the picker): no token, no WebGL, the Mapbox script / style does not load, Mapbox 401/403 → the free
+  raster tiles app.js already made, for this page life. Toast only when the user tapped a style. `BASEMAP.set("classic")` = force it (tests).
+- **One Mapbox map object per page load** (= one billed web map load; free tier ≈ 50 000 / month): Skymning ↔ Natt = `setConfig` on the
+  same Standard style; never re-created on a style switch, hide / show, resume. Measured (glmap-pw.js): `BASEMAP.mapboxLoads()` = 1 and
+  1 `api.mapbox.com/map-sessions` call per app open after 5 switches + hide / show; 0 with no token. (karta3d.html is a separate page
+  with its own map.)
+
+### GL markers (js/glmap.js, while the Mapbox map is the base map; the fallback = the old DOM markers / canvases)
+- The Leaflet bar markers (hotbars / bars panes) are still made by app.js (popup, ids, `olnuC`, TIERS classes) but their panes are
+  `display:none` (`html[data-glbars]`); GLBARS mirrors them after every tier pass (`tiersNow` → `GLBARS.sync()`): the icon HTML is parsed
+  once per state (type glyph, hot / lit ring, people pill with level / friend / me / approx, crowd word, 🚶, 🏰 label, 👑, 🪖 n, 🚪 n, 📅 badge,
+  price tag, name) and drawn on a canvas as one image per state (pixel ratio 2, cached by key, pruned over 700).
+- Layers (above the Mapbox labels, under every remaining DOM marker): `olnu-clouds` (circle, blur, 10–300 m by zoom × 0.55–1 by beers,
+  9 px floor, alpha = age fade 24 → 72 h) < `olnu-heat` (heatmap: radius = `heatMeters` 10–500 m by zoom with the 40–46 px far-out floor
+  as an exponential zoom expression, per-view colour scale from the hottest cell, min weight 0.42 like leaflet.heat's minOpacity,
+  opacity 1 → 0.6 from z13 to z15) < `olnu-bar-dot` (tiers zoom rules: no dots < z12.5, empty dots from z14) < `olnu-bar-lbl` (names as
+  images; GL collision hides a name that touches another full pill box (`olnu-bar-blk`, 56 × 58 px, invisible) or a higher name) <
+  `olnu-bar-full` (full pills, priority on top, the selected bar 1.25×). GeoJSON properties cannot carry arrays into GL tiles: icon
+  offsets are an index (`oi`, `lo`) into a `match` table on the layers. GLBARS hides its bar layers while the ✏️ BAREA editor is open.
+- app.js: `renderHeat()` → `GLBARS.heat(points)` (leaflet.heat stays off the map), `placeLabels()` is skipped (GL collision), clouds.js
+  `redraw()` → `GLBARS.clouds(points)` (canvas stays empty).
+- **Tap**: Leaflet `preclick` (DOM markers above still take their own taps) → `queryRenderedFeatures` (full: its image box, dot: 44 × 44 px)
+  → `click()` on the matching part of that bar's hidden marker (pill → 🍺 Folk här, 🪖 → call-outs, 🚪 → check-ins, 👑 → stammis) = the normal
+  bar sheet. map3d.js skips a tap GLBARS used (`originalEvent._olnuGl`).
+- Still DOM over the GL map (unchanged): people pins + clusters, 📍 mypins, 🏟️ arena chips, 🍽️ restaurant dots, 📨 invite chips, me-dot,
+  demo town pills, popups / sheets. Not carried into GL: the pill glow pulses and the 🪖 pulse (static), the 160 ms tier fade, places.js
+  obstacle rects of bar markers (restaurant dots may sit next to a GL pill), delight lanterns on `.pill`.
+- Test hooks: `GLBARS.on()`, `GLBARS.stats`, `GLBARS._feats()`, `GLBARS._marker(id)`, `GLBARS._img(id)`. Tests: scratchpad `glmap-pw.js`
+  (picker, migration, loads, taps, drift < 2 px wheel + pinch, clouds, fallback, shots), `glmap-perf.js` (412 × 915, 4× CPU).

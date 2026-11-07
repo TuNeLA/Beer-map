@@ -401,6 +401,8 @@
     return out;
   }
   function renderHeat() {
+    // glmap: on the Mapbox map the heat is a GL heatmap layer (js/glmap.js); leaflet.heat stays off the map
+    if (window.GLBARS) try { if (window.GLBARS.heat(heatOn ? heatData() : null)) { if (heat && map.hasLayer(heat)) map.removeLayer(heat); return; } } catch (e) {}
     if (!heat) return;
     if (heatOn && !map.hasLayer(heat)) heat.addTo(map);
     if (!heatOn && map.hasLayer(heat)) map.removeLayer(heat);
@@ -928,7 +930,7 @@
   var labelTimer = 0;
   function labelsSoon() { clearTimeout(labelTimer); labelTimer = setTimeout(placeLabels, 60); }
   // 🏷️ tiers (js/tiers.js): full pill or small type dot per bar marker in view; class writes only, no new markers.
-  function tiersNow() { if (window.TIERS) try { window.TIERS.apply(map, [hotLayer, barLayer]); } catch (e) {} }
+  function tiersNow() { if (window.TIERS) try { window.TIERS.apply(map, [hotLayer, barLayer]); } catch (e) {} if (window.GLBARS) try { window.GLBARS.sync(); } catch (e) {} }
   // Design pass 2: one collision pass for every badge (🪖, 👑, 🏰, 🚪, crowd tag, queue) and, at zoom ≥ 16, the
   // name labels. Highest-priority marker first; a badge or label that would touch a kept one, or another marker's
   // icon / pill, is dropped. Icons and people pills themselves are never hidden.
@@ -938,6 +940,7 @@
     return c.contains("cm-rally") ? 6 : c.contains("cm-king") ? 5 : c.contains("cm-ci") ? 4 : c.contains("cm-flag") ? 3 : c.contains("bm-crowd") ? 2 : 1;
   }
   function placeLabels() {
+    if (window.GLBARS && window.GLBARS.on()) return;   // glmap: GL text collision places the names
     if (window.TIERS && window.TIERS.labels) try { if (window.TIERS.labels(map, BADGES, badgeRank)) return; } catch (e) {}
     var on = map.getZoom() >= LABEL_ZOOM, cont = map.getContainer();
     cont.classList.toggle("cm-labels", on);
@@ -980,6 +983,7 @@
   map.on("moveend popupopen", function () { tiersNow(); labelsSoon(); });
   map.on("popupclose", function () { setTimeout(function () { tiersNow(); labelsSoon(); }, 0); });   // after cm-sel is gone
   if (window.DEMO) try { window.DEMO.attach({ map: map, live: LIVE, render: render, renderHeat: renderHeat, beerIcon: beerIcon }); } catch (e) {}   // 🎞️ visningsläge
+  if (window.GLBARS) try { window.GLBARS.attach({ map: map, layers: [hotLayer, barLayer], renderHeat: renderHeat, labels: placeLabels, heatMeters: heatMeters, heatRadiusPx: heatRadiusPx }); } catch (e) {}
   if (window.TIERS) window.TIERS._app = { labels: placeLabels, render: render, plain: renderPlainBars, heatMeters: heatMeters, heatPx: heatRadiusPx };   // tests / perf
   // Selected marker: 1.25× and on top while its popup is open.
   var selMarker = null;

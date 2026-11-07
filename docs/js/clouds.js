@@ -48,11 +48,13 @@
       },
       onRemove: function (m) {
         m.off("moveend zoomend resize viewreset", this.redraw, this);
+        if (window.GLBARS) window.GLBARS.clouds(null);
         if (this._c && this._c.parentNode) this._c.parentNode.removeChild(this._c);
         this._c = null;
       },
       redraw: function () {
         var m = this._map, c = this._c; if (!m || !c) return this;
+        if (window.GLBARS && window.GLBARS.clouds(this._pts)) { if (c.width) { c.width = 0; c.height = 0; } return this; }   // glmap: a GL layer
         var size = m.getSize(), px = Math.round(size.x * PAD), py = Math.round(size.y * PAD);
         var W = size.x + 2 * px, H = size.y + 2 * py, dpr = Math.min(2, window.devicePixelRatio || 1);
         // clouds are soft: draw at ≤ 1 canvas px per CSS px (half the pixels on a 2× phone, looks the same)
