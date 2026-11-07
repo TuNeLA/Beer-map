@@ -526,7 +526,7 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds05 layout END */
-/* ds05b dock START — ANNAT beside ÖL! (8 px outside the ring, up-right, never overlapping), --pn-dock-b for the map credits. */
+/* ds05b dock START — ANNAT beside ÖL! (8 px outside the ring, up-left or up-right, never overlapping, ≥ 8 px clear of the side box), --pn-dock-b for the map credits. */
 (function () {
   "use strict";
   function $(id) { return document.getElementById(id); }
@@ -537,17 +537,35 @@
       if (row) { var r = row.getBoundingClientRect(); if (r.height) { var v = Math.round(innerHeight - r.top) + "px"; if (root.style.getPropertyValue("--pn-dock-b") !== v) root.style.setProperty("--pn-dock-b", v); } }
       if (!bw || !ow) return;
       var b = bw.getBoundingClientRect(); if (!b.width) return;
-      var ring = b.width / 2, me = (ow.offsetWidth || 52) / 2, d = ring + 8 + me, a = 50 * Math.PI / 180;   // 50° up-right
-      var cx = b.width / 2 + d * Math.cos(a), cy = b.height / 2 - d * Math.sin(a);
+      // side: +1 = up-right, -1 = up-left (--pn-annat-side, ds05c). The angle starts at 50° and rises until the button is
+      // ≥ 8 px clear of the side box on that side (Grupper / precision), so it reads as a pair with ÖL!.
+      var side = parseFloat(getComputedStyle(root).getPropertyValue("--pn-annat-side")) || 1;
+      var ring = b.width / 2, me = (ow.offsetWidth || 52) / 2, d = ring + 8 + me;
+      var box = side < 0 ? $("btn-groups") : $("prec-seg"), br = box && box.getClientRects().length ? box.getBoundingClientRect() : null;
+      var cx, cy, deg;
+      for (deg = 50; deg <= 88; deg++) {
+        var a = deg * Math.PI / 180; cx = b.width / 2 + side * d * Math.cos(a); cy = b.height / 2 - d * Math.sin(a);
+        if (!br) break;
+        var px = b.left + cx, py = b.top + cy, nx = Math.max(br.left, Math.min(px, br.right)), ny = Math.max(br.top, Math.min(py, br.bottom));
+        if (Math.hypot(px - nx, py - ny) - me >= 8) break;
+      }
       var L = Math.round(cx - me) + "px", T = Math.round(cy - me) + "px";
       if (ow.style.left !== L) ow.style.setProperty("left", L, "important");
       if (ow.style.top !== T) ow.style.setProperty("top", T, "important");
+      // map credits (wordmark + ⓘ, bottom-left): when ANNAT is on that side and in their row, the unit sits 8 px above ANNAT
+      var lg = document.querySelector(".bm-mblogo"), logo = lg && !lg.hidden && lg.getClientRects().length;
+      var unitR = (logo ? 12 + 65 + 2 + 44 : 4 + 44) + 8, owL = b.left + cx - me, owT = b.top + cy - me;
+      var dockB = row ? Math.round(innerHeight - row.getBoundingClientRect().top) + 12 : 0;
+      var credB = owL < unitR ? Math.max(dockB, Math.round(innerHeight - owT) + 8) : dockB;
+      var cv = credB + "px"; if (credB && root.style.getPropertyValue("--pn-cred-b") !== cv) root.style.setProperty("--pn-cred-b", cv);
     } catch (e) {}
   }
   function start() {
     place();
     window.addEventListener("resize", function () { setTimeout(place, 30); });
     if (window.ResizeObserver) { var ro = new ResizeObserver(function () { place(); }); [".dock", ".beer-wrap"].forEach(function (s) { var e = document.querySelector(s); if (e) ro.observe(e); }); }
+    var mt = 0;   // the Mapbox wordmark arrives / hides later (basemap.js): place again at once
+    if (window.MutationObserver) new MutationObserver(function () { clearTimeout(mt); mt = setTimeout(place, 40); }).observe(document.body, { childList: true });
     setInterval(place, 2500);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();

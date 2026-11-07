@@ -399,3 +399,11 @@ body:not(:has(.bm-mblogo:not([hidden]))) #btn-attrib{left:calc(var(--sal) + var(
   box-shadow:0 0 0 1px rgba(4,7,20,.62),0 1px 2.5px rgba(0,0,0,.5) !important}
 .pn-p.pn-s>.pn-d>svg{width:16px !important;height:16px !important;fill:#FFFAF0 !important}
 /* ds05b dock END */
+/* ds05c annat START — owner 2026-11-07: ANNAT on the LEFT side of ÖL! (up-left, 8 px outside the ring, ≥ 8 px clear of
+   the Grupper box). Placed by js/pnds.js (ds05b block, reads --pn-annat-side). */
+:root{--pn-annat-side:-1}
+/* the map credits keep clear of ANNAT: the unit sits 8 px above it when they share the bottom-left corner (--pn-cred-b) */
+.bm-mblogo{margin:0 !important;bottom:calc(var(--pn-cred-b, calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px)) + 12px) !important}
+#btn-attrib{bottom:var(--pn-cred-b, calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px)) !important}
+.attrib-pop{bottom:calc(var(--pn-cred-b, calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px)) + 48px) !important}
+/* ds05c annat END */
