@@ -132,13 +132,39 @@
       var c = m.getCenter(), gc = g.getCenter();
       return Math.abs(g.getZoom() - (m.getZoom() - 1)) < 1e-6 && Math.abs(gc.lat - c.lat) < 1e-9 && Math.abs(gc.lng - c.lng) < 1e-9;
     }
-    P._animateZoom = function (e) { this._olnuAnim = true; return anim.call(this, e); };
-    P._zoomEnd = function () { this._olnuAnim = false; var r = end.apply(this, arguments); draw(this); return r; };
+    // glfix: on a slow frame (> 250 ms, busy phone) Chrome has not yet started Leaflet's 250 ms CSS zoom transition on the DOM
+    // markers (start time still pending) when Leaflet ends the zoom; the GL map jumps to the end view at once, so people pins,
+    // restaurant dots etc. sat one frame at the OLD place (measured 44–110 px, glfix-dbg.js). Finish those transitions here.
+    function settleDom(self) {
+      try {
+        var p = self._map && self._map._mapPane; if (!p || !p.getAnimations) return;
+        p.getAnimations({ subtree: true }).forEach(function (a) {
+          var t = a.effect && a.effect.target;
+          if (t && a.transitionProperty === "transform" && t.classList && t.classList.contains("leaflet-zoom-animated") && a.playState !== "finished") a.finish();
+        });
+      } catch (e) {}
+    }
+    // glfix: the same race at the START of a zoom animation (pinch snap, wheel, double tap): the DOM markers' and the GL canvas'
+    // 250 ms transitions could start on different frames (each start time resolves on its own) → up to 40 px apart for 3 frames.
+    // After the zoomanim handlers ran (microtask), every zoom transition in the map pane gets ONE start time.
+    function syncStart(self) {
+      try {
+        var p = self._map && self._map._mapPane; if (!p || !p.getAnimations || !document.timeline) return;
+        var t = document.timeline.currentTime; if (t == null) return;
+        p.getAnimations({ subtree: true }).forEach(function (a) {   // (this flushes style: the transitions exist now)
+          var g = a.effect && a.effect.target;
+          if (g && a.transitionProperty === "transform" && g.classList && g.classList.contains("leaflet-zoom-animated") && a.playState === "running" && a.startTime == null) a.startTime = t;
+        });
+      } catch (e) {}
+    }
+    P._animateZoom = function (e) { this._olnuAnim = true; var self = this, r = anim.call(this, e); Promise.resolve().then(function () { syncStart(self); }); return r; };
+    P._zoomEnd = function () { this._olnuAnim = false; var r = end.apply(this, arguments); settleDom(this); draw(this); return r; };
     P._pinchZoom = function () {
       if (this._olnuAnim) { this._olnuAnim = false; return; }   // the "zoom" that ends an animated zoom: zoomend syncs right after
       if (!this._map || !this._glMap) return;
       this._glMap.jumpTo({ zoom: this._map.getZoom() - 1, center: this._map.getCenter() });
       draw(this);
+      var self = this; Promise.resolve().then(function () { settleDom(self); });   // glfix: after the markers moved, before paint
     };
     // Pan: one GL frame per Leaflet move frame. A slow phone (a GL frame > 12 ms on average) keeps the old pace:
     // max ~30 GL frames/s while panning (container + GL together, so the whole map lags a little, never tears).
@@ -390,7 +416,9 @@
         mbUrl = st.mb;
         // map3 perf: no label fade (each fade = extra full GL frames after every zoom step), no MSAA, Mercator like
         // Leaflet (Standard defaults to the globe), no cross-source label collision pass.
-        var opts = { accessToken: token, style: st.mb, interactive: false, padding: 0.12, attributionControl: false,
+        // glfix perf: padding 0.12 → 0.08 (the GL map renders in lock-step with every pan frame now: 1.54× → 1.35× the screen
+        // pixels in software / slow GPUs), no world copies (Mapbox perf guide).
+        var opts = { accessToken: token, style: st.mb, interactive: false, padding: 0.08, attributionControl: false, renderWorldCopies: false,
           pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 0, antialias: false, projection: "mercator",
           crossSourceCollisions: false, performanceMetricsCollection: false };
         if (st.cfg) opts.config = { basemap: st.cfg };

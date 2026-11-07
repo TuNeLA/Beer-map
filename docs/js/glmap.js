@@ -25,7 +25,7 @@
   "use strict";
   var A = null, map = null, on = false, gm = null, hooked = null, layersReady = false;
   var SRC_B = "olnu-bars", SRC_H = "olnu-heat", SRC_C = "olnu-clouds";
-  var L_DOT = "olnu-bar-dot", L_LBL = "olnu-bar-lbl", L_BLK = "olnu-bar-blk", L_FULL = "olnu-bar-full", L_HEAT = "olnu-heat", L_CLOUD = "olnu-clouds";
+  var L_PLACE = "olnu-place", L_DOTB1 = "olnu-bar-dotb1", L_DOTB2 = "olnu-bar-dotb2", L_DOT = "olnu-bar-dot", L_DOTE = "olnu-bar-dote", L_LBL = "olnu-bar-lbl", L_FULL = "olnu-bar-full", L_HEAT = "olnu-heat", L_CLOUD = "olnu-clouds";
   var R = 2, FONT = '"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   var EMPTY = { type: "FeatureCollection", features: [] };
   var stats = { syncs: 0, ms: 0, last: 0, feats: 0, imgs: 0, made: 0, taps: 0, heatPts: 0, cloudPts: 0 };
@@ -93,8 +93,15 @@
     } });
     if (sel) parts.push({ sel: sel, bb: bb });
   }
+  // mapart (js/mapart.js, window.PNPINS): the new marker art, same input / output as build() / buildLabel() below
+  function art() { return window.PNPINS && window.PNPINS.build ? window.PNPINS : null; }
+  function build(s, mode, hi, extra) {
+    var P = art();
+    if (P) { try { var r = P.build(s, mode, hi, extra); stats.made++; return { data: r.data, ox: r.ox, oy: r.oy, bottom: r.bottom, parts: r.parts }; } catch (e) {} }
+    return build0(s, mode, hi);
+  }
   // mode: "d" dot · "f" full · "x" full in the town view (z < 12.5: no disc, like .olnu-zxlo)
-  function build(s, mode, hi) {
+  function build0(s, mode, hi) {
     var ops = [], parts = [], full = mode !== "d", D = full ? (hi ? 32 : 24) : (hi ? 28 : 19.2), gs = full ? (hi ? 18 : 14) : (hi ? 15.75 : 11.2);
     if (mode !== "x") {
       var gl = glyph(s.k), ring = s.hot ? "#ffc24d" : s.lit ? "#3ddc84" : null, rad = D / 2;
@@ -137,6 +144,7 @@
             rr(g, cx0, py - 9, cw + 10, 18, 4); g.fillStyle = "rgba(10,15,28,.88)"; g.fill(); g.lineWidth = 1; g.strokeStyle = col; g.stroke();
             g.font = fC; g.textBaseline = "middle"; g.textAlign = "left"; g.fillStyle = col; g.fillText(s.cw[0], cx0 + 5, py + 0.5);
           } });
+          parts.push({ sel: ".pill", bb: [cx0, py - 9, cx0 + cw + 10, py + 9] });   // glfix: the crowd word is part of the pill tap
         }
         if (s.q) emoji(ops, parts, ".pill", px + pw + 2, top - 4, "🚶", 12);
         if (s.fl) chip(ops, parts, ".pill", 0, py, s.fl[0], { right: px - 4, col: s.fl[1] ? "#3ddc84" : "#f5a623" });
@@ -168,6 +176,8 @@
   }
   // the name under a full pill (GL text needs glyphs the Standard root style does not have: drawn as an image, same font as before)
   function buildLabel(name, hi) {
+    var P = art();
+    if (P) { try { var r = P.buildLabel(name); stats.made++; return { data: r.data, w: r.data.width / R }; } catch (e) {} }
     var f = "600 13px " + FONT, t = name, w = tw(t, f);
     while (w > 140 && t.length > 3) { t = t.slice(0, -2).replace(/\s+$/, "") + "…"; w = tw(t, f); }
     var W = Math.ceil(w) + 6, Hh = 18, cv = document.createElement("canvas"); cv.width = W * R; cv.height = Hh * R;
@@ -175,7 +185,16 @@
     g.lineJoin = "round"; g.lineWidth = 3.2; g.strokeStyle = "rgba(0,0,0,.88)"; g.strokeText(t, W / 2, Hh / 2 + 0.5);
     g.fillStyle = "#f3f0e8"; g.fillText(t, W / 2, Hh / 2 + 0.5);
     stats.made++;
-    return { data: g.getImageData(0, 0, W * R, Hh * R) };
+    return { data: g.getImageData(0, 0, W * R, Hh * R), w: W };
+  }
+  var lwCache = {};
+  function labelW(name) {   // the drawn width of a name image (CSS px), for rects()
+    if (lwCache[name]) return lwCache[name];
+    var k0 = keyOf(name, "l", 0); if (imgs[k0] && imgs[k0].w) return (lwCache[name] = imgs[k0].w);
+    var f = "600 13px " + FONT, t = name, w = tw(t, f);
+    while (w > 140 && t.length > 3) { t = t.slice(0, -2).replace(/\s+$/, "") + "…"; w = tw(t, f); }
+    if (Object.keys(lwCache).length > 2000) lwCache = {};
+    return (lwCache[name] = Math.ceil(w) + 6);
   }
   function label(m, name) {
     var k = keyOf(name, "l", 0), im = imgs[k];
@@ -196,27 +215,63 @@
     e.push(["literal", [0, 0]]);
     return offs.length ? e : ["literal", [0, 0]];
   }
-  var imgs = {}, IMG_MAX = 700;
-  function keyOf(s, mode, hi) {
-    var str = JSON.stringify(s) + mode + (hi ? 1 : 0), h = 2166136261;
+  var imgs = {}, IMG_MAX = 240;   // glfix: a full pill image is ~130 KB (pixel ratio 2) here AND in Mapbox's atlas: keep fewer unused ones
+  function keyOf(s, mode, hi, extra) {
+    // mapart P1: the name is NOT on the bar image (the label is its own image) → not in the key, so bars with the same
+    // state share one image (was one image per bar: 655 images, ~58 ms per sync)
+    var str = JSON.stringify(Object.assign({}, s, { name: 0 })) + mode + (hi ? 1 : 0) + (extra && extra.sel ? "s" : ""), h = 2166136261;
     for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
     return "gb" + (h >>> 0).toString(36) + str.length.toString(36);
   }
-  function image(m, s, mode, hi) {
-    var k = keyOf(s, mode, hi), im = imgs[k];
-    if (!im) { im = imgs[k] = build(s, mode, hi); im.k = k; }
+  function image(m, s, mode, hi, extra) {
+    var k = keyOf(s, mode, hi, extra), im = imgs[k];
+    if (!im) { im = imgs[k] = build(s, mode, hi, extra); im.k = k; }
     if (!m.hasImage(k)) m.addImage(k, im.data, { pixelRatio: R });
     return im;
   }
 
   /* ---------- layers ---------- */
   // leaflet.heat gradient, shifted down: one lone point (weight ≥ 0.42 × intensity × the 0.4 kernel peak ≈ 0.2) = amber, as before
-  var HEAT_COL = ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(90,35,0,0)", 0.02, "rgba(90,35,0,0)", 0.08, "rgba(194,101,10,0.5)",
-    0.2, "rgba(245,166,35,0.78)", 0.4, "rgba(255,122,26,0.88)", 0.68, "rgba(255,59,59,0.93)", 1, "rgba(255,246,224,0.95)"];
+  var DOT_Z = 12.5, DOTE_Z = 14;   // Leaflet zooms (tiers.js): dots from 12.5, empty dots from 14
+  // dot size: 1 → 1.2 at Leaflet z16 (GL 15), × 1.25 for the selected bar
+  var DOT_SIZE = ["interpolate", ["linear"], ["zoom"], 14.5, ["get", "sz"], 15, ["*", 1.2, ["get", "sz"]]];
+  // mapart P6: one warm hue family, a little softer at the top so pills stay readable over the hottest cells
+  var HEAT_COL = ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(90,35,0,0)", 0.02, "rgba(90,35,0,0)", 0.08, "rgba(194,101,10,0.42)",
+    0.2, "rgba(245,166,35,0.70)", 0.4, "rgba(255,122,26,0.80)", 0.68, "rgba(255,72,60,0.85)", 1, "rgba(255,236,200,0.88)"];
+  /* ---------- mapart P2: the static marker images (dots, dot badges, place dots) from one sprite sheet ---------- */
+  var spr = { ok: false, p: null, names: {} };
+  function loadSprite(m) {
+    if (spr.p || !window.fetch || !window.createImageBitmap) return;
+    var r = (window.devicePixelRatio || 1) > 2 ? 3 : 2, base = "./icons/map/sprite@" + r + "x";
+    spr.p = Promise.all([fetch(base + ".json").then(function (x) { return x.json(); }), fetch(base + ".png").then(function (x) { return x.blob(); })])
+      .then(function (a) {
+        var js = a[0];
+        return createImageBitmap(a[1]).then(function (bm) {
+          var cv = document.createElement("canvas"); cv.width = bm.width; cv.height = bm.height;
+          var g = cv.getContext("2d", { willReadFrequently: true }); g.drawImage(bm, 0, 0);
+          spr.sheet = { g: g, js: js };
+          addSprite(m); spr.ok = true; ensure(m); lastSig = ""; sync();
+        });
+      }).catch(function (e) { spr.p = null; try { console.warn("olnu glmap sprite", e && e.message); } catch (x) {} });
+  }
+  function addSprite(m) {   // (again after a style reload)
+    var sh = spr.sheet; if (!sh || !m) return;
+    Object.keys(sh.js).forEach(function (n) {
+      var e = sh.js[n]; spr.names[n] = 1;
+      try { if (!m.hasImage(n)) m.addImage(n, sh.g.getImageData(e.x, e.y, e.width, e.height), { pixelRatio: e.pixelRatio || 2 }); } catch (x) {}
+    });
+  }
+  // the dot sprite of a bar: navy disc, ring by state, category glyph (mapart tokens.typeMap)
+  function dotName(s) {
+    var P = window.PNPINS, c = P && P.cat ? P.cat(s.k) : "pub", st = (s.p || s.hot) ? "busy" : s.lit ? "lit" : "quiet", n = "dot-" + c + "-" + st;
+    return spr.names[n] ? n : spr.names["dot-pub-" + st] ? "dot-pub-" + st : "";
+  }
   function ensure(m) {
     if (!m || !m.style || !m.style._loaded) return false;
     try {
-      [SRC_C, SRC_H, SRC_B].forEach(function (id) { if (!m.getSource(id)) m.addSource(id, { type: "geojson", data: EMPTY, buffer: 64, tolerance: 0, maxzoom: 20 }); });
+      // glfix perf: points need no deeper tiles than GL 14 (Leaflet 15): deeper zooms over-zoom that tile, so a zoom-in cuts no
+      // new tiles in the worker and does not re-place every symbol per level (Mapbox: lower maxzoom for point sources)
+      [SRC_C, SRC_H, SRC_B].forEach(function (id) { if (!m.getSource(id)) m.addSource(id, { type: "geojson", data: EMPTY, buffer: 64, tolerance: 0, maxzoom: 14 }); });
       if (!m.getLayer(L_CLOUD)) m.addLayer({ id: L_CLOUD, type: "circle", source: SRC_C,
         paint: { "circle-color": "#c8d4ea", "circle-blur": 1, "circle-opacity": ["*", 0.62, ["get", "a"]], "circle-radius": 9, "circle-pitch-alignment": "map",
           "circle-emissive-strength": 1 } });
@@ -226,65 +281,152 @@
       var common = { "icon-image": ["get", "img"], "icon-anchor": "top-left", "icon-offset": offExpr(), "icon-size": ["get", "sz"],
         "icon-allow-overlap": true, "icon-padding": 0, "symbol-sort-key": ["get", "sk"], "symbol-z-order": "auto",
         "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };
-      if (!m.getLayer(L_DOT)) m.addLayer({ id: L_DOT, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 0],
-        layout: Object.assign({ "icon-ignore-placement": true }, common),
-        // tiers.js zoom rules (Leaflet zoom = GL zoom + 1): no dots under z12.5, empty ones from z14 (0.82)
-        paint: { "icon-opacity": ["step", ["zoom"], 0, 11.5, ["case", ["==", ["get", "e"], 1], 0, 1], 13, ["case", ["==", ["get", "e"], 1], 0.82, 1]], "icon-emissive-strength": 1 } });
+      // tiers.js zoom rules (Leaflet zoom = GL zoom + 1): no dots under z12.5, empty ones from z14 at 0.82. glfix: two layers with
+      // a minzoom and CONSTANT paint (was one data-driven icon-opacity): no filter / paint work below the zoom, and no
+      // per-feature paint arrays (Mapbox re-evaluated those on a light change against a stale GeoJSON tile: "feature index out of bounds")
+      loadSprite(m); if (spr.sheet) addSprite(m);
+      // mapart P2: dots = sprite images, centred on the bar point (no offset table); z ≥ 16 = icon-size 1.2 (no "hi" images).
+      // mapart P3b: EVERY bar has its dot (full ones too, under the bigger full disc): when GL collision hides a pill, the dot stays.
+      var dotLay = { "icon-image": ["get", "di"], "icon-anchor": "center", "icon-size": DOT_SIZE, "icon-allow-overlap": true, "icon-ignore-placement": true,
+        "icon-padding": 0, "symbol-sort-key": ["get", "sk"], "symbol-z-order": "auto", "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };
+      var isBar = ["<=", ["get", "t"], 1];
+      if (!m.getLayer(L_DOT)) m.addLayer({ id: L_DOT, type: "symbol", source: SRC_B, minzoom: DOT_Z - 1, filter: ["all", isBar, ["==", ["get", "e"], 0]],
+        layout: dotLay, paint: { "icon-emissive-strength": 1 } });
+      if (!m.getLayer(L_DOTE)) m.addLayer({ id: L_DOTE, type: "symbol", source: SRC_B, minzoom: DOTE_Z - 1, filter: ["all", isBar, ["==", ["get", "e"], 1]],
+        layout: dotLay, paint: { "icon-opacity": 0.82, "icon-emissive-strength": 1 } }, L_DOT);
+      // mapart P2: dot badges as 2 cheap layers (only on bars shown as a dot): friend here · crown (👑) / stammis
+      var badge = function (id, img, filt, off) { if (!m.getLayer(id)) m.addLayer({ id: id, type: "symbol", source: SRC_B, minzoom: DOT_Z - 1, filter: ["all", ["==", ["get", "t"], 0], filt],
+        layout: { "icon-image": img, "icon-anchor": "center", "icon-offset": off, "icon-size": DOT_SIZE, "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-padding": 0,
+          "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, m.getLayer(L_LBL) ? L_LBL : undefined); };
+      if (spr.sheet) {   // (only with the sprite images there; ensure() runs again when the sprite has loaded)
+      badge(L_DOTB1, "badge-friend", ["==", ["get", "bf"], 1], ["match", ["get", "bs"], 1, ["literal", [7, 7]], ["literal", [6, 6]]]);
+      badge(L_DOTB2, ["get", "b2"], ["!=", ["get", "b2"], ""], ["match", ["get", "b2"], "badge-king", ["match", ["get", "bs"], 1, ["literal", [0, -12]], ["literal", [0, -11]]],
+        ["match", ["get", "bs"], 1, ["literal", [-7, 7]], ["literal", [-6, 6]]]]);
+      }
+      // restaurant dots (places.js) in GL, UNDER every bar layer and placed last: GL collision hides one that would touch a
+      // pill or a name (same source as the bars: cross-source collisions are off in basemap.js)
+      if (!m.getLayer(L_PLACE)) m.addLayer({ id: L_PLACE, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 2],
+        layout: { "icon-image": ["get", "img"], "icon-anchor": "top-left", "icon-offset": offExpr(), "icon-allow-overlap": false, "icon-ignore-placement": false,
+          "icon-padding": 0, "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, L_DOTE);
       // names: placed after the full pills (layer above = placed first), so a name that would touch a pill or a
       // higher-priority name is left out (the old placeLabels rule); dots never block a name (they ignore placement)
       if (!m.getLayer(L_LBL)) m.addLayer({ id: L_LBL, type: "symbol", source: SRC_B, filter: ["all", ["==", ["get", "t"], 1], ["!=", ["get", "li"], ""]],
         layout: { "icon-image": ["get", "li"], "icon-anchor": "top", "icon-offset": JSON.parse(JSON.stringify(offExpr()).replace('["get","oi"]', '["get","lo"]')), "icon-allow-overlap": false, "icon-ignore-placement": false,
-          "icon-padding": 1, "symbol-sort-key": ["-", 0, ["get", "sk"]], "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" },
+          "icon-padding": 0, "symbol-sort-key": ["-", 0, ["get", "sk"]], "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" },
         paint: { "icon-emissive-strength": 1 } });
-      // the tiers.js full-pill box (disc + pill, 56 × 58 px around the point) as an invisible collision blocker: a name may
-      // not touch another bar's pill (its own name sits under its own pill, outside the box)
-      if (!m.hasImage("olnu-blk")) m.addImage("olnu-blk", { width: 56, height: 58, data: new Uint8Array(56 * 58 * 4) });
-      if (!m.getLayer(L_BLK)) m.addLayer({ id: L_BLK, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 1],
-        layout: { "icon-image": "olnu-blk", "icon-anchor": "top", "icon-offset": [0, -24], "icon-allow-overlap": true, "icon-ignore-placement": false, "icon-padding": 0 },
-        paint: { "icon-opacity": 0 } });
+      // mapart P3b: full pills collide on their REAL image box (no invisible blocker layer any more): the top layer is placed
+      // first, best priority first (sort key = −priority); a pill that would touch a placed one is hidden by GL (its dot stays).
+      // sync() already demotes those in JS at each tier pass; this is the live safety net while a zoom animates.
+      // A name (layer under it) then may not touch any pill or a better name.
       if (!m.getLayer(L_FULL)) m.addLayer({ id: L_FULL, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 1],
-        layout: Object.assign({ "icon-ignore-placement": true }, common), paint: { "icon-emissive-strength": 1 } });
+        layout: Object.assign({}, common, { "icon-allow-overlap": false, "icon-ignore-placement": false, "symbol-sort-key": ["get", "skf"] }), paint: { "icon-emissive-strength": 1 } });
       return true;
     } catch (e) { try { console.warn("olnu glmap", e && e.message); } catch (x) {} return false; }
   }
 
   /* ---------- bars ---------- */
-  var byId = {}, lastSig = "", parts = {};
+  var byId = {}, lastSig = "", parts = {}, placeFeats = [], placeTap = null, placeById = {};
+  function centred(im) {   // a dot image (canvas fallback when the sprite is not there) re-padded so the bar point is its centre
+    if (im.cen) return im.cen;
+    var W = im.data.width, H = im.data.height, ax = im.ox * R, ay = im.oy * R, hw = Math.ceil(Math.max(ax, W - ax)), hh = Math.ceil(Math.max(ay, H - ay));
+    var cv = document.createElement("canvas"); cv.width = hw * 2; cv.height = hh * 2; cv.getContext("2d").putImageData(im.data, hw - ax, hh - ay);
+    return (im.cen = cv.getContext("2d").getImageData(0, 0, hw * 2, hh * 2));
+  }
   function sync() {
     if (!on || !A) return;
     var m = gm; if (!m || !layersReady) return;
-    var t0 = performance.now(), z = map.getZoom(), hi = z >= 16, xlo = z < 12.5, feats = [], used = {}, n = 0;
+    var t0 = performance.now(), z = map.getZoom(), hi = z >= 16, xlo = z < 12.5, feats = [], used = {}, n = 0, list = [];
     byId = {}; parts = {};
     (A.layers || []).forEach(function (ly) {
       if (!ly || !ly.eachLayer) return;
       ly.eachLayer(function (mk) {
         var c = mk.options && mk.options.olnuC, io = mk.options && mk.options.icon && mk.options.icon.options; if (!c || !c.bar || !io) return;
-        var ic = mk.getElement && mk.getElement(), s = parse(io.html || "", io.className || ""), full = mk._olnuTier === "f";
-        var sel = !!(ic && ic.classList.contains("cm-sel"));
-        var mode = full ? (xlo ? "x" : "f") : "d", im = image(m, s, mode, hi);
-        used[im.k] = 1;
-        var empty = !((c.beers && c.beers.length) || (c.rallies && c.rallies.length) || (c.cis && c.cis.length));
-        var prio = (mk.options.olnuPrio || 0) + (full ? 10000 : 0) + (sel ? 1e6 : 0);
-        var lblTop = Math.max(s.p ? (hi ? 43 : 36) : (hi ? 19 : 14), Math.ceil(im.bottom) + 1, 35);
-        var id = String(c.bar.id);
-        byId[id] = mk; parts[id] = { im: im, sz: sel ? 1.25 : 1 };
-        feats.push({ type: "Feature", id: ++n, geometry: { type: "Point", coordinates: [+c.bar.lng, +c.bar.lat] },
-          properties: { id: id, t: full ? 1 : 0, img: im.k, oi: offIndex(-im.ox, -im.oy), sz: sel ? 1.25 : 1, e: empty ? 1 : 0, sk: prio,
-            li: full && s.name ? label(m, s.name).k : "", lo: offIndex(0, lblTop) } });
-        if (full && s.name) used[feats[feats.length - 1].properties.li] = 1;
+        var ic = mk.getElement && mk.getElement(), s = parse(io.html || "", io.className || "");
+        list.push({ mk: mk, c: c, s: s, full: mk._olnuTier === "f", sel: !!(ic && ic.classList.contains("cm-sel")), prio: (mk.options.olnuPrio || 0) });
       });
     });
+    // mapart P3b: walk the full pills best first; a pill whose real image box (−2 px) touches one already placed shows as a dot.
+    // The selected bar is never demoted. Only pills near the view count (off-screen ones keep their tier).
+    var size = map.getSize(), placed = [], demoted = 0;
+    list.filter(function (x) { return x.full; }).sort(function (a, b) { return (b.sel ? 1 : 0) - (a.sel ? 1 : 0) || b.prio - a.prio; }).forEach(function (x) {
+      x.im = image(m, x.s, xlo ? "x" : "f", hi, { sel: x.sel });
+      var p = map.latLngToContainerPoint([+x.c.bar.lat, +x.c.bar.lng]), k = x.sel ? 1.25 : 1, W = x.im.data.width / R, H = x.im.data.height / R;
+      if (p.x < -150 || p.y < -150 || p.x > size.x + 150 || p.y > size.y + 150) return;
+      var b = [p.x - x.im.ox * k + 2, p.y - x.im.oy * k + 2, p.x + (W - x.im.ox) * k - 2, p.y + (H - x.im.oy) * k - 2];
+      if (!x.sel && placed.some(function (q) { return b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]; })) { x.full = false; demoted++; return; }
+      placed.push(b);
+    });
+    list.forEach(function (x) {
+      var s = x.s, c = x.c, mk = x.mk, full = x.full, sel = x.sel, mode = full ? (xlo ? "x" : "f") : "d";
+      var im = full ? (x.im || image(m, s, mode, hi, { sel: sel })) : null, di = spr.ok ? dotName(s) : "";
+      if (!di) {   // no sprite (yet): the canvas dot, centred
+        var dk = keyOf(s, "d", hi), dimg = image(m, s, "d", hi); used[dimg.k] = 1; di = dk + "c";
+        if (!m.hasImage(di)) m.addImage(di, centred(dimg), { pixelRatio: R }); used[di] = 1;
+        if (!im) im = dimg;
+      } else if (!im) {   // a sprite dot (mapart: quiet Ø 18, busy Ø 20; the image box is centred on the point)
+        var dr = (s.p || s.hot) ? 10 : 9;
+        im = { k: di, ox: dr, oy: dr, bottom: dr, parts: [{ sel: ".bar-ico", bb: [-dr, -dr, dr, dr] }], data: { width: 2 * dr * R, height: 2 * dr * R } };
+      }
+      used[im.k] = 1;
+      var empty = !((c.beers && c.beers.length) || (c.rallies && c.rallies.length) || (c.cis && c.cis.length));
+      var prio = x.prio + (full ? 10000 : 0) + (sel ? 1e6 : 0), busy = !!(s.p || s.hot);
+      // the name sits 3 px under its own pill image: the pills are GL collision boxes now (mapart P3b), a name that
+      // touched its own pill box was always hidden
+      var lblTop = Math.max(s.p ? (hi ? 43 : 36) : (hi ? 19 : 14), Math.ceil(im.bottom) + 3, 35);
+      var id = String(c.bar.id);
+      byId[id] = mk; parts[id] = { im: im, sz: sel ? 1.25 : 1, ll: [+c.bar.lat, +c.bar.lng], t: full ? 1 : 0, e: empty ? 1 : 0, s: s, sel: sel, dem: x.full !== (mk._olnuTier === "f"),
+        lt: lblTop, lw: full && s.name ? labelW(s.name) : 0 };
+      var li = full && s.name ? label(m, s.name).k : "";
+      if (li) used[li] = 1;
+      feats.push({ type: "Feature", id: ++n, geometry: { type: "Point", coordinates: [+c.bar.lng, +c.bar.lat] },
+        properties: { id: id, t: full ? 1 : 0, img: full ? im.k : "", di: di, oi: full ? offIndex(-im.ox, -im.oy) : 0, sz: sel ? 1.25 : 1, e: empty ? 1 : 0, sk: prio, skf: -prio,
+          bf: s.p && s.p.f ? 1 : 0, bs: busy ? 1 : 0, b2: s.king && spr.ok && (!empty || z >= DOTE_Z) ? "badge-king" : "",
+          li: li, lo: offIndex(0, lblTop) } });
+    });
+    placeFeats.forEach(function (f) { f.id = ++n; feats.push(f); used[f.properties.img] = 1; });
+    stats.demoted = demoted;
     if (offsDirty) {   // a new offset: the layers' offset tables first (the label layer reads its own row "lo")
       offsDirty = false; lastSig = "";
-      try { var oe = offExpr(); m.setLayoutProperty(L_DOT, "icon-offset", oe); m.setLayoutProperty(L_FULL, "icon-offset", oe);
+      try { var oe = offExpr(); m.setLayoutProperty(L_FULL, "icon-offset", oe); m.setLayoutProperty(L_PLACE, "icon-offset", oe);
         m.setLayoutProperty(L_LBL, "icon-offset", JSON.parse(JSON.stringify(oe).replace('["get","oi"]', '["get","lo"]'))); } catch (e) {}
     }
-    var sig = feats.map(function (f) { var p = f.properties; return p.id + p.img + p.t + p.sz + p.e + p.li + p.lo; }).join("|");
-    if (sig !== lastSig) { lastSig = sig; try { m.getSource(SRC_B).setData({ type: "FeatureCollection", features: feats }); } catch (e) {} }
+    var sig = feats.map(function (f) { var p = f.properties; return p.id + p.img + p.di + p.t + p.sz + p.e + p.li + p.lo + p.bf + p.b2 + p.oi; }).join("|");
+    if (sig !== lastSig) {
+      lastSig = sig; try { m.getSource(SRC_B).setData({ type: "FeatureCollection", features: feats }); } catch (e) {}
+      stats.sets = (stats.sets || 0) + 1;
+      // places.js (restaurant dots) and others re-run their layout against the new GL pills
+      try { document.dispatchEvent(new CustomEvent("glbars:sync")); } catch (e) {}
+    }
     var keys = Object.keys(imgs);
-    if (keys.length > IMG_MAX) keys.forEach(function (k) { if (!used[k]) { try { if (m.hasImage(k)) m.removeImage(k); } catch (e) {} delete imgs[k]; } });
+    if (keys.length > IMG_MAX) keys.forEach(function (k) { if (!used[k] && !used[k + "c"]) { try { if (m.hasImage(k)) m.removeImage(k); if (m.hasImage(k + "c")) m.removeImage(k + "c"); } catch (e) {} delete imgs[k]; } });
     var ms = performance.now() - t0;
     stats.syncs++; stats.ms += ms; stats.last = ms; stats.feats = feats.length; stats.imgs = Object.keys(imgs).length;
+  }
+  /* ---------- restaurant dots (places.js) in GL ---------- */
+  // list = [{id, lat, lng, type, name, lbl, nm}] (what places.js decided to show); tap(id) = places.js openPlace
+  function placeImage(m, p) {
+    var P = art(), k = "pl|" + (p.nm ? "nm" : p.type) + "|" + (p.lbl ? p.name : ""), im = imgs[k];
+    if (!im && P) {
+      try {
+        var ops = P.placeOps(p.nm ? "fastfood" : p.type).ops.slice();
+        if (p.lbl && p.name) P.labelOps(String(p.name), true).ops.forEach(function (o) { var q = Object.assign({}, o); q.y = (q.y || 0) + 9; ops.push(q); });
+        var r = P.raster(ops, R); im = imgs[k] = { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), ox: r.ox, oy: r.oy, k: k };
+      } catch (e) { im = null; }
+    }
+    if (!im) return null;
+    if (!m.hasImage(k)) m.addImage(k, im.data, { pixelRatio: R });
+    return im;
+  }
+  function setPlaces(list, tap) {
+    if (!on || !gm || !layersReady) return false;
+    placeTap = tap || placeTap; placeById = {}; placeFeats = [];
+    (list || []).forEach(function (p) {
+      var im = placeImage(gm, p); if (!im) return; placeById[String(p.id)] = p;
+      placeFeats.push({ type: "Feature", geometry: { type: "Point", coordinates: [+p.lng, +p.lat] }, properties: { id: String(p.id), t: 2, img: im.k, oi: offIndex(-im.ox, -im.oy), e: 0, sz: 1 } });
+    });
+    stats.places = placeFeats.length;
+    sync();
+    return true;
   }
 
   /* ---------- heat ---------- */
@@ -317,9 +459,10 @@
       m.setPaintProperty(L_HEAT, "heatmap-weight", ["interpolate", ["linear"], ["zoom"], 10, W(0.5), 13, W(1)]);
     } catch (e) {}
   }
-  function heatData() {
+  function heatData(force) {
     var m = gm; if (!on || !m || !layersReady) return;
-    var pts = heatPts || [], sig = pts.length + ":" + (pts.length ? pts[0].join(",") + pts[pts.length - 1].join(",") : "");
+    var pts = heatPts || [], sig = pts.length + ":" + pts.map(function (p) { return p[0] + "," + p[1] + "," + p[2]; }).join(";");
+    if (sig === heatSig && !force) { heatPaint(); return; }   // glfix: the same points (every poll / pan) = no setData, no re-tiling
     var feats = pts.map(function (p) { return { type: "Feature", geometry: { type: "Point", coordinates: [+p[1], +p[0]] }, properties: { w: +p[2] || 1 } }; });
     stats.heatPts = feats.length;
     try { m.getSource(SRC_H).setData({ type: "FeatureCollection", features: feats }); heatSig = sig; } catch (e) {}
@@ -350,21 +493,32 @@
   }
 
   /* ---------- tap ---------- */
-  var synth = false;
+  var synth = false, tapAt = -1e9;
   function onPreclick(e) {
     if (!on || synth || !gm || !layersReady || !e || !e.latlng) return;
     var m = gm, z = map.getZoom();
     try {
       var p = m.project([e.latlng.lng, e.latlng.lat]), hit = null;
       var fs = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: [L_FULL] });
-      fs.forEach(function (f) { if (!hit || f.properties.sk > hit.properties.sk) hit = f; });
-      if (!hit && z >= 12.5) {
+      // glfix: only a tap on a drawn part counts (disc, pill, crowd word, badge, ±4 px); the image box's empty corners let the
+      // tap through to a dot or the map under it
+      fs.forEach(function (f) {
+        var pi0 = parts[String(f.properties.id)]; if (!pi0) return;
+        var bp0 = m.project(f.geometry.coordinates), dx0 = (p.x - bp0.x) / pi0.sz, dy0 = (p.y - bp0.y) / pi0.sz;
+        if (!pi0.im.parts.some(function (x) { return dx0 >= x.bb[0] - 4 && dx0 <= x.bb[2] + 4 && dy0 >= x.bb[1] - 4 && dy0 <= x.bb[3] + 4; })) return;
+        if (!hit || f.properties.sk > hit.properties.sk) hit = f;
+      });
+      if (!hit && z >= DOT_Z) {
         var best = 1e9;
-        m.queryRenderedFeatures([[p.x - 22, p.y - 22], [p.x + 22, p.y + 22]], { layers: [L_DOT] }).forEach(function (f) {
-          if (z < 14 && f.properties.e === 1) return;   // hidden by the zoom rule
+        m.queryRenderedFeatures([[p.x - 22, p.y - 22], [p.x + 22, p.y + 22]], { layers: [L_DOT, L_DOTE] }).forEach(function (f) {
+          if (z < DOTE_Z && f.properties.e === 1) return;   // hidden by the zoom rule
           var q = m.project(f.geometry.coordinates), d = Math.abs(q.x - p.x) + Math.abs(q.y - p.y);
           if (d < best) { best = d; hit = f; }
         });
+      }
+      if (!hit && placeTap) {   // a restaurant dot
+        var pf = m.queryRenderedFeatures([[p.x - 10, p.y - 10], [p.x + 10, p.y + 10]], { layers: [L_PLACE] })[0], pl = pf && placeById[String(pf.properties.id)];
+        if (pl) { stats.taps++; stats.lastTap = "place:" + pl.id; if (e.originalEvent) e.originalEvent._olnuGl = 1; synth = true; try { placeTap(pl); } finally { synth = false; } return; }
       }
       if (!hit) return;
       var id = String(hit.properties.id), mk = byId[id], el = mk && mk.getElement && mk.getElement(); if (!el) return;
@@ -372,10 +526,12 @@
       var bp = m.project([mk.getLatLng().lng, mk.getLatLng().lat]), pi = parts[id], dx = (p.x - bp.x) / (pi ? pi.sz : 1), dy = (p.y - bp.y) / (pi ? pi.sz : 1), sel = ".bar-ico";
       if (hit.properties.t === 1 && pi) pi.im.parts.forEach(function (x) { if (dx >= x.bb[0] - 2 && dx <= x.bb[2] + 2 && dy >= x.bb[1] - 2 && dy <= x.bb[3] + 2 && x.sel !== ".bar-ico") sel = x.sel; });
       var tgt = el.querySelector(sel) || el;
-      stats.taps++; stats.lastTap = id + sel;
+      stats.taps++; stats.lastTap = id + sel; tapAt = performance.now();
       if (e.originalEvent) e.originalEvent._olnuGl = 1;   // map3d.js: this tap is used
       synth = true;
-      try { tgt.click(); } finally { synth = false; }
+      // glfix: our own click event, flagged too: it bubbles to the map, and map3d.js (3D house tap → BARLIT.open → a 2nd click
+      // on the same marker) must skip it, else Leaflet toggles the just-opened popup closed again
+      try { var ev = new MouseEvent("click", { bubbles: true, cancelable: true, view: window }); ev._olnuGl = 1; tgt.dispatchEvent(ev); } finally { synth = false; }
     } catch (x) {}
   }
 
@@ -386,7 +542,7 @@
     on = v;
     var de = document.documentElement;
     if (v) de.setAttribute("data-glbars", ""); else de.removeAttribute("data-glbars");
-    lastSig = ""; heatPaintKey = ""; cloudLat = null;
+    lastSig = ""; heatPaintKey = ""; cloudLat = null; heatSig = "";
     try { if (A && A.renderHeat) A.renderHeat(); } catch (e) {}      // heat moves between leaflet.heat and GL
     try { var c = window.CLOUDS && window.CLOUDS._last; if (c && c._map) c.redraw(); else { cloudPts = null; cloudData(); } } catch (e) {}
     if (v) sync();
@@ -397,13 +553,13 @@
     if (!m) { layersReady = false; setOn(false); return; }
     if (m !== hooked) {
       hooked = m;
-      m.on("style.load", function () { if (glm() === m) { layersReady = false; lastSig = ""; heatPaintKey = ""; cloudLat = null; imgs = {}; setTimeout(check, 0); } });
+      m.on("style.load", function () { if (glm() === m) { layersReady = false; lastSig = ""; heatSig = ""; heatPaintKey = ""; cloudLat = null; imgs = {}; setTimeout(check, 0); } });
     }
     gm = m;
     if (!m.style || !m.style._loaded) { m.once("style.load", function () { setTimeout(check, 0); }); return; }
     layersReady = ensure(m);
     if (!layersReady) { setOn(false); return; }
-    if (on) { lastSig = ""; sync(); heatData(); cloudData(); } else setOn(true);
+    if (on) { lastSig = ""; sync(); heatData(true); cloudData(); } else setOn(true);
     editOn = !editOn; editVis();
   }
 
@@ -411,7 +567,7 @@
   function editVis() {
     var v = document.body.classList.contains("ba-edit"); if (v === editOn && layersReady) return;
     editOn = v; if (!gm || !layersReady) return;
-    [L_DOT, L_LBL, L_BLK, L_FULL].forEach(function (id) { try { gm.setLayoutProperty(id, "visibility", v ? "none" : "visible"); } catch (e) {} });
+    [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].forEach(function (id) { try { gm.setLayoutProperty(id, "visibility", v ? "none" : "visible"); } catch (e) {} });
   }
   window.GLBARS = {
     attach: function (o) {
@@ -419,6 +575,8 @@
       var st = document.createElement("style"); st.id = "glmap-css"; st.textContent = CSS; document.head.appendChild(st);
       document.addEventListener("basemap:change", function () { setTimeout(check, 0); });
       map.on("preclick", onPreclick);
+      // glfix: the selected bar (cm-sel, set by app.js after the tier pass) is full + 1.25× at once, not at the next pan
+      map.on("popupopen popupclose", function () { if (on) setTimeout(function () { lastSig = ""; sync(); }, 0); });
       map.on("moveend", function () { if (on) { heatPaint(); cloudPaint(); } });
       // ✏️ BAREA editor (body.ba-edit) hides the marker panes: the GL bar layers hide with them
       if (window.MutationObserver) new MutationObserver(editVis).observe(document.body, { attributes: true, attributeFilter: ["class"] });
@@ -431,6 +589,41 @@
     // clouds.js redraw: the snapped points {lat, lng, w, a}. true = drawn in GL (the canvas stays empty).
     clouds: function (pts) { if (!on) return false; if (pts !== cloudPts) { cloudPts = pts || null; cloudData(); } else cloudPaint(); return true; },
     stats: stats,
+    // glfix: what the GL bars cover on screen (container px), for places.js obstacles: full = its image box (disc, pill,
+    // crowd word, badges) + its name; dot = the disc. Dots hidden by the zoom rules are left out.
+    rects: function () {
+      var out = []; if (!on || !map) return out;
+      var z = map.getZoom(), size = map.getSize();
+      Object.keys(parts).forEach(function (id) {
+        var x = parts[id], im = x.im; if (!x.t && (z < DOT_Z || (x.e && z < DOTE_Z))) return;
+        var p = map.latLngToContainerPoint(x.ll); if (p.x < -120 || p.y < -120 || p.x > size.x + 120 || p.y > size.y + 120) return;
+        var k = x.sz, W = im.data.width / R, H = im.data.height / R;
+        out.push({ l: p.x - im.ox * k, t: p.y - im.oy * k, r: p.x + (W - im.ox) * k, b: p.y + (H - im.oy) * k, id: id, t1: x.t });
+        if (x.t && x.lw) out.push({ l: p.x - x.lw / 2, t: p.y + x.lt, r: p.x + x.lw / 2, b: p.y + x.lt + 18, id: id, lbl: 1 });
+      });
+      return out;
+    },
+    // test hook: every GL bar in view as the tiers tests need it
+    _view: function () {
+      if (!on || !map || !gm) return null;
+      var z = map.getZoom(), size = map.getSize(), placed = {};
+      try { gm.queryRenderedFeatures({ layers: [L_LBL] }).forEach(function (f) { placed[f.properties.id] = 1; }); } catch (e) {}
+      var out = [];
+      Object.keys(parts).forEach(function (id) {
+        var x = parts[id], p = map.latLngToContainerPoint(x.ll); if (p.x < 0 || p.y < 0 || p.x > size.x || p.y > size.y) return;
+        var ico = x.im.parts.filter(function (q) { return q.sel === ".bar-ico"; })[0], s = x.s;
+        out.push({ id: id, full: !!x.t, empty: !!x.e, sel: x.sel, x: p.x, y: p.y, n: s.p ? +s.p.n || 0 : 0, friend: !!(s.p && s.p.f), crowd: !!s.cw,
+          pill: !!(x.t && s.p), dem: !!x.dem, icoW: ico ? +((ico.bb[2] - ico.bb[0]) * x.sz).toFixed(1) : 0, lbl: !!placed[id], name: s.name,
+          shown: !!x.t || (z >= DOT_Z && (!x.e || z >= DOTE_Z)) });
+      });
+      return out;
+    },
+    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL]; },
+    // places.js: the restaurant dots it chose (GL draws them under the bars); false = GL is off (keep the DOM dots)
+    places: setPlaces,
+    // map3d.js: a map click right after a GL bar tap (same finger) is that tap, not a tap on the 3D house under it
+    tappedAt: function () { return tapAt; },
+    spriteOk: function () { return spr.ok; },
     _check: check,
     _feats: function () { try { return gm.getSource(SRC_B)._data.features.map(function (f) { return f.properties; }); } catch (e) { return []; } },
     _marker: function (id) { return byId[String(id)] || null; },

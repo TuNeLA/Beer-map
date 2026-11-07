@@ -1,0 +1,445 @@
+{
+ "cluster-44": {
+  "width": 120,
+  "height": 116,
+  "x": 0,
+  "y": 0,
+  "pixelRatio": 2
+ },
+ "cluster-38": {
+  "width": 108,
+  "height": 104,
+  "x": 122,
+  "y": 0,
+  "pixelRatio": 2
+ },
+ "person-friend": {
+  "width": 88,
+  "height": 102,
+  "x": 232,
+  "y": 0,
+  "pixelRatio": 2
+ },
+ "person-me": {
+  "width": 88,
+  "height": 102,
+  "x": 322,
+  "y": 0,
+  "pixelRatio": 2
+ },
+ "person-friend-approx": {
+  "width": 88,
+  "height": 102,
+  "x": 412,
+  "y": 0,
+  "pixelRatio": 2
+ },
+ "cluster-32": {
+  "width": 96,
+  "height": 92,
+  "x": 0,
+  "y": 118,
+  "pixelRatio": 2
+ },
+ "cluster-28": {
+  "width": 88,
+  "height": 84,
+  "x": 98,
+  "y": 118,
+  "pixelRatio": 2
+ },
+ "pill-bg-2": {
+  "width": 104,
+  "height": 72,
+  "x": 188,
+  "y": 118,
+  "pixelRatio": 2,
+  "stretchX": [
+   [
+    28,
+    76
+   ]
+  ],
+  "content": [
+   20,
+   6,
+   84,
+   66
+  ]
+ },
+ "pill-bg-0": {
+  "width": 96,
+  "height": 64,
+  "x": 294,
+  "y": 118,
+  "pixelRatio": 2,
+  "stretchX": [
+   [
+    28,
+    68
+   ]
+  ],
+  "content": [
+   20,
+   6,
+   76,
+   58
+  ]
+ },
+ "pill-bg-1": {
+  "width": 96,
+  "height": 64,
+  "x": 392,
+  "y": 118,
+  "pixelRatio": 2,
+  "stretchX": [
+   [
+    28,
+    68
+   ]
+  ],
+  "content": [
+   20,
+   6,
+   76,
+   58
+  ]
+ },
+ "badge-sel": {
+  "width": 60,
+  "height": 64,
+  "x": 0,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "arena-hockey": {
+  "width": 60,
+  "height": 64,
+  "x": 62,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "arena-fotboll": {
+  "width": 60,
+  "height": 64,
+  "x": 124,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "arena-arena": {
+  "width": 60,
+  "height": 64,
+  "x": 186,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "dot-pub-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 248,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "dot-cocktail-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 306,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "dot-nightclub-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 364,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "dot-restbar-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 422,
+  "y": 212,
+  "pixelRatio": 2
+ },
+ "dot-brewery-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 0,
+  "y": 278,
+  "pixelRatio": 2
+ },
+ "dot-sportsbar-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 58,
+  "y": 278,
+  "pixelRatio": 2
+ },
+ "dot-karaoke-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 116,
+  "y": 278,
+  "pixelRatio": 2
+ },
+ "dot-biergarten-busy": {
+  "width": 56,
+  "height": 60,
+  "x": 174,
+  "y": 278,
+  "pixelRatio": 2
+ },
+ "me-dot": {
+  "width": 56,
+  "height": 60,
+  "x": 232,
+  "y": 278,
+  "pixelRatio": 2
+ },
+ "chip-bg": {
+  "width": 76,
+  "height": 56,
+  "x": 290,
+  "y": 278,
+  "pixelRatio": 2,
+  "stretchX": [
+   [
+    24,
+    52
+   ]
+  ],
+  "content": [
+   20,
+   6,
+   56,
+   50
+  ]
+ },
+ "chip-bg-green": {
+  "width": 76,
+  "height": 56,
+  "x": 368,
+  "y": 278,
+  "pixelRatio": 2,
+  "stretchX": [
+   [
+    24,
+    52
+   ]
+  ],
+  "content": [
+   20,
+   6,
+   56,
+   50
+  ]
+ },
+ "chip-bg-orange": {
+  "width": 76,
+  "height": 56,
+  "x": 0,
+  "y": 340,
+  "pixelRatio": 2,
+  "stretchX": [
+   [
+    24,
+    52
+   ]
+  ],
+  "content": [
+   20,
+   6,
+   56,
+   50
+  ]
+ },
+ "dot-pub-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 78,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-pub-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 132,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-cocktail-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 186,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-cocktail-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 240,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-nightclub-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 294,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-nightclub-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 348,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-restbar-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 402,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-restbar-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 456,
+  "y": 340,
+  "pixelRatio": 2
+ },
+ "dot-brewery-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 0,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-brewery-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 54,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-sportsbar-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 108,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-sportsbar-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 162,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-karaoke-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 216,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-karaoke-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 270,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-biergarten-quiet": {
+  "width": 52,
+  "height": 56,
+  "x": 324,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "dot-biergarten-lit": {
+  "width": 52,
+  "height": 56,
+  "x": 378,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "badge-king-l": {
+  "width": 52,
+  "height": 52,
+  "x": 432,
+  "y": 398,
+  "pixelRatio": 2
+ },
+ "place-restaurant": {
+  "width": 44,
+  "height": 48,
+  "x": 0,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "place-cafe": {
+  "width": 44,
+  "height": 48,
+  "x": 46,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "place-fastfood": {
+  "width": 44,
+  "height": 48,
+  "x": 92,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-king": {
+  "width": 44,
+  "height": 44,
+  "x": 138,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-event": {
+  "width": 36,
+  "height": 40,
+  "x": 184,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-friend-l": {
+  "width": 32,
+  "height": 36,
+  "x": 222,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-stammis-l": {
+  "width": 32,
+  "height": 36,
+  "x": 256,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-queue": {
+  "width": 32,
+  "height": 36,
+  "x": 290,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-friend": {
+  "width": 24,
+  "height": 28,
+  "x": 324,
+  "y": 456,
+  "pixelRatio": 2
+ },
+ "badge-stammis": {
+  "width": 24,
+  "height": 28,
+  "x": 350,
+  "y": 456,
+  "pixelRatio": 2
+ }
+}

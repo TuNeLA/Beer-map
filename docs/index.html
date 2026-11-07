@@ -34,6 +34,9 @@
 <!-- Perf: connect early to the map tiles, the CDN and the server (the first map tile waits for this). -->
 <link rel="preconnect" href="https://server.arcgisonline.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
+<!-- glfix: first map sooner: the Mapbox style / tiles / glyphs host, and the GL script (same URL + version as js/basemap.js MB_VER) -->
+<link rel="preconnect" href="https://api.mapbox.com" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.32.0/dist/mapbox-gl.js" as="script" crossorigin>
 <link rel="preconnect" href="https://wcdskpcevbhouvbytkhv.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <!-- Fonts are self-hosted (docs/fonts, from Google Fonts, SIL OFL): no extra origin and no render-blocking font CSS.
@@ -290,6 +293,7 @@
 <script defer src="./js/evsheet.js?v=d9242bb570"></script>
 <script defer src="./js/arenapin.js?v=93d62aecde"></script>
 <script defer src="./js/map3d.js?v=94b71b55cb"></script>
+<script defer src="./js/mapart.js?v=1"></script>
 <script defer src="./js/glmap.js?v=0"></script>
 <script defer src="./js/places.js?v=b28cb1c281"></script>
 <script defer src="./js/oppet.js?v=06536dec3e"></script>
@@ -302,6 +306,7 @@
 <script defer src="./js/account.js?v=8f84baea0f"></script>
 <script defer src="./js/profile.js?v=4715ffb1c6"></script>
 <script defer src="./js/avatar.js?v=av2"></script>
+<script defer src="./js/avpins.js?v=1"></script>
 <script defer src="./js/gone.js?v=e061f10992"></script>
 <script defer src="./js/demo.js?v=95134d1166"></script>
 <script defer src="./js/vitals.js?v=c41b7d6222"></script>

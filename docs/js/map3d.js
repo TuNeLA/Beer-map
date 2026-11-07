@@ -419,6 +419,7 @@
   function onClick(e) {
     var m = glMap(); if (!on || !m || !e || !e.latlng) return;
     if (e.originalEvent && e.originalEvent._olnuGl) return;   // glmap: a GL bar marker took this tap
+    if (window.GLBARS && GLBARS.tappedAt && performance.now() - GLBARS.tappedAt() < 400) return;   // glfix: the same tap (else BARLIT.open toggles the sheet shut)
     try {
       var p = m.project([e.latlng.lng, e.latlng.lat]);
       var hit = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: ["olnu-arena-3d", "olnu-bars-cap", "olnu-bars-3d", "olnu-bars-glow"].filter(function (l) { return m.getLayer(l); }) })[0];

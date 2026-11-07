@@ -1644,6 +1644,8 @@
     me: function () { return me; }, on: function () { return !off; },
     chatSeen: chatSeen, statusRow: statusRow, friendRow: friendRow, faces: faces, profileAv: profileAv,
     openEditor: openEditor, forGroup: forGroup, forFriends: forFriends, repaint: repaint,
+    // avpins.js (map pins): the loaded caches {at, byName, byK, me}, friends first
+    _caches: function () { var o = []; if (friends && friends.data) o.push(friends.data); Object.keys(groups || {}).forEach(function (g) { if (groups[g] && groups[g].data) o.push(groups[g].data); }); return o; },
     init: function (api) { A = api; },
     onAuthed: function () { loadMe(true); }
   };

@@ -2643,6 +2643,51 @@ Client only, no migrations. Owner decision 2026-11-07. New file `docs/js/glmap.j
 - Test hooks: `GLBARS.on()`, `GLBARS.stats`, `GLBARS._feats()`, `GLBARS._marker(id)`, `GLBARS._img(id)`. Tests: scratchpad `glmap-pw.js`
   (picker, migration, loads, taps, drift < 2 px wheel + pinch, clouds, fallback, shots), `glmap-perf.js` (412 × 915, 4× CPU).
 
+### 🛠️ KARTSTIL 5 · glfix (owner 2026-11-07: "the map must be excellent")
+Client only, no migration. Patches glfix 01 (basemap.js bridge + perf), 02 (glmap.js + mapart.js + sprites), 03 (places.js), 04 (avatar pins: avpins.js, avatar.js,
+app.js, index.html), 05 (index.html first-load hints), 06 (this).
+- **Zoom drift (real cause)**: GL bars cannot drift from the GL map (same canvas). What drifted were the DOM overlays above it (people
+  pins, restaurant dots, 📍, arena chips): when a frame takes > 250 ms (busy phone), Chrome has not started Leaflet's 250 ms CSS zoom
+  transition on them (start time pending) when Leaflet ends the zoom, while the GL map jumps to the end view at once → one frame
+  44–884 px off. Fix: the bridge's zoomend finishes every pending `transform` transition on `.leaflet-zoom-animated` elements in the map
+  pane before it renders GL (`settleDom`). Measured right before paint (ResizeObserver probe, glfix-dbg.js, 3 wheel + 3 pinch cycles
+  at Stockholm on a machine with load 15–20): 0 frames > 2 px (max 0.9 px); before: 1–4 spikes of 27–884 px per run.
+- **GL tap**: a full pill takes the tap only on a drawn part (disc, pill, crowd word, badge, ± 4 px), not on the empty corners of its
+  image; else the dot / map under it gets it. The crowd word opens 🍺 Folk här like the pill.
+- **Dots**: two layers with a `minzoom` and constant paint (`olnu-bar-dot` from Leaflet z12.5, `olnu-bar-dote` = empty bars from z14 at
+  0.82) instead of one data-driven `icon-opacity` (that path threw Mapbox's "feature index out of bounds" after a light change).
+- **Perf**: GeoJSON sources `maxzoom 14` (deeper zooms over-zoom: no worker re-tiling / re-placement per zoom level); heat `setData`
+  only when the points change; GL canvas padding 0.12 → 0.08 (−19 % pixels); `renderWorldCopies: false`.
+- **🎨 Map art v1** (scratchpad `mapart/`, owner-approved art; `docs/js/mapart.js` = tokens + original glyphs + renderer, `window.PNPINS`,
+  loaded before glmap.js; sprites `docs/icons/map/sprite@2x|3x.png/.json`, @3x when devicePixelRatio > 2):
+  - P1: the bar image key no longer contains the name (the name is its own label image): bars with the same state share one image.
+  - P2: dots = sprite images `dot-<category>-quiet|busy|lit` (navy disc, foam / amber / green ring, foam head when busy), centred,
+    `icon-size` 1 → 1.2 from Leaflet z16 (× 1.25 selected). Two badge layers on dots: `olnu-bar-dotb1` friend (`bf`),
+    `olnu-bar-dotb2` crown (`b2` = `badge-king`; empty king bars only from z14). Stammis badge: needs the user's stamkrog id (open).
+  - P3: full pills + names drawn by `PNPINS.build / buildLabel` (same state in, same `{data, ox, oy, bottom, parts}` out; no emoji);
+    the old canvas code stays as the fallback when mapart.js is missing.
+  - P3b: full pills never overlap: at each sync the pills are walked best first and one whose real image box (−2 px) touches a
+    placed one shows as a dot (`GLBARS.stats.demoted`); the selected bar is never demoted. `olnu-bar-full` is `icon-allow-overlap: false`
+    with sort key −priority (live safety net while a zoom animates). Every bar also has its dot under the full disc. The invisible
+    blocker layer `olnu-bar-blk` is gone (the pills block the names themselves).
+  - Restaurant dots (places.js) are GL symbols (`olnu-place`, same source, `t = 2`, sprite-style slate disc + 11 px name) under all
+    bar layers, placed last (GL hides one that touches a pill / name); places.js still picks which ones (cap, gap, names) and its
+    obstacles include `GLBARS.rects()`; taps → `openPlace`. DOM dots only on the raster fallback.
+  - P6: softer heat stops (`HEAT_COL`). Layer order: clouds < heat < olnu-place < dote < dot < dotb1 < dotb2 < lbl < full.
+- **Restaurant dots step aside again**: `GLBARS.rects()` = screen boxes of every shown GL bar (image box + its name); places.js adds them
+  to its obstacles and redraws on the `glbars:sync` event (fired after each GL bar setData).
+- **First load**: `<link rel=preconnect href=https://api.mapbox.com crossorigin>` + `<link rel=preload as=script>` of mapbox-gl.js
+  (same URL / version as basemap.js `MB_VER`; change both together).
+- **👤 Characters in pins** (`docs/js/avpins.js`, `window.AVPINS`, mods init / onPoll / onAuthed): a friend's / group-mate's / my pin shows
+  the character (AVATAR.svg) as a 26 px round image at the left of the pill (green ring, gold = me). Each character is drawn ONCE into an
+  SVG data URL (cached per spec); no inline SVG in pins. Specs: `AVATAR.forFriends()` + `AVATAR.forGroup(gid)` for my groups
+  (`my_groups` max once per 10 min, only while friend pins are on the map), matched by display name; no spec = today's pin.
+  People pins are DOM (not GL), so this is plain HTML. New AVATAR hook `_caches()`.
+- Test hooks: `GLBARS.rects()`, `GLBARS._view()` (every GL bar in view: full, empty, sel, x, y, n, friend, crowd, icoW, lbl placed, shown),
+  `GLBARS._layers()`. Tests (scratchpad): glmap-pw (drift measured before paint, dot tap at z14, ✏️ BAREA hide), tiers-pw / tiers2-pw /
+  tiers3-pw / map4-pw read GL state (`_view`, layer paint, `glfix-gllib.js` heat glow = GL pixels with / without the heat layer),
+  `glfix-avpins-pw.js`, `glfix-dbg.js` (drift probe).
+
 ## 👤 AVATAR (own little character: face in a circle + shoulders; owner 2026-11-07; additive, migrations 0172 + 0200/0201 v2)
 Migration `0172_avatars.sql` (applied live 2026-11-07 as `0172_avatars`). One new table, new functions, no row is ever removed.
 Client: `docs/js/avatar.js` (`window.AVATAR`, in `mods()` after PROFIL), `docs/avatar.css`; patches avatar 01–07

@@ -47,7 +47,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
@@ -192,9 +192,14 @@
         if ((kids[i].options.streak | 0) > lvl) lvl = kids[i].options.streak | 0;
         n++;
       }
-      // Cluster: just the number. The border shows the highest streak inside.
+      // Cluster: just the number. The border shows the highest streak inside. 👤 up to 2 friend / my characters in front (js/avpins.js).
+      var clh = U.pillHTML(n, lvl, { friend: friend, mine: mine, noEmoji: true, cls: "p-cl" });
+      if ((friend || mine) && window.AVPINS && window.AVPINS.faces) {
+        var fc = window.AVPINS.faces(kids.map(function (k) { return k.options.olnuB; }), 2);
+        if (fc) clh = clh.replace(/^(<div class="pill[^"]*">)/, "$1" + fc);
+      }
       return L.divIcon({
-        html: U.pillHTML(n, lvl, { friend: friend, mine: mine, noEmoji: true, cls: "p-cl" }),
+        html: clh,
         className: "olnu-cl", iconSize: [0, 0], iconAnchor: [0, 0]
       });
     }
@@ -444,6 +449,8 @@
     var label = b.friend_name ? '<span class="bm-name">' + U.esc(b.friend_name) + "</span>" :
       b.is_mine ? '<span class="bm-name bm-me">' + U.esc(t("you")) + "</span>" : "";
     var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
+    var avi = window.AVPINS ? window.AVPINS.img(b) : "";   // 👤 the person's character in the pin (js/avpins.js)
+    if (avi) html = html.replace(/^(<div class="pill[^"]*">)/, "$1" + avi);
     return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
   }
   /* ---------- Drink levels (polish): Swedish names from js/levels-content.js (LEVELS_SV at 3/5/7/10/13/16/20).
@@ -870,7 +877,7 @@
     var split = z >= HOT_ZOOM ? window.BARS.assign(beers) : { perBar: {}, rest: beers };
     var ms = split.rest.map(function (b) {
       var l = U.level(U.drinks(b));
-      var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l, beerId: b.id,
+      var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l, beerId: b.id, olnuB: b,
         zIndexOffset: (b.is_mine ? 900 : b.friend_name ? 500 : 0) + l * 300, keyboard: false, olnuKey: "b" + b.id });
       m.bindPopup(function () { return beerPopup(b); });
       markerById[b.id] = m;

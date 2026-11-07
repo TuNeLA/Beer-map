@@ -54,7 +54,7 @@
 
   function ready() { return !!(map && layer && window.BARS && window.BARS.placesInBounds); }
   function soon(ms) { clearTimeout(timer); timer = setTimeout(draw, ms == null ? 150 : ms); }
-  function clear() { layer && layer.clearLayers(); drawn = {}; }
+  function clear() { layer && layer.clearLayers(); drawn = {}; try { if (window.GLBARS && GLBARS.on() && GLBARS.places) GLBARS.places([]); } catch (e) {} }
   function rel(r, cr) { return { l: r.left - cr.left, t: r.top - cr.top, r: r.right - cr.left, b: r.bottom - cr.top }; }
   function hit(a, b) { return a.l < b.r + PAD_PX && a.r > b.l - PAD_PX && a.t < b.b + PAD_PX && a.b > b.t - PAD_PX; }
   // What the map already shows: bar / arena / people markers and visible bar labels (rects in container px) + spot ids.
@@ -82,6 +82,8 @@
       }
       out.push(o);   // where it is drawn now too (it may not have moved yet)
     });
+    // glfix: bar markers drawn in the Mapbox GL map (glmap.js, their DOM panes are hidden): their screen boxes come from GLBARS
+    try { if (window.GLBARS && GLBARS.on() && GLBARS.rects) GLBARS.rects().forEach(function (q) { out.push({ l: q.l, t: q.t, r: q.r, b: q.b }); }); } catch (e) {}
     return { rects: out, ids: ids };
   }
   function iconFor(p, lbl) {
@@ -130,6 +132,12 @@
       var lr = { l: pt.x - w / 2, t: pt.y + 11, r: pt.x + w / 2, b: pt.y + 25 };
       if (kept.some(function (k) { return (k.x !== pt.x || k.y !== pt.y) && hit(lr, { l: k.x - 9, t: k.y - 9, r: k.x + 9, b: k.y + 9 }); })) x.lbl = false;
     });
+    // glfix / mapart: on the Mapbox map the restaurant dots are GL symbols UNDER the bar pills (glmap.js; GL collision hides
+    // one that would touch a pill or a name). The DOM markers are then removed.
+    if (window.GLBARS && GLBARS.on() && GLBARS.places) {
+      var gl = Object.keys(want).map(function (id) { var x = want[id], p = x.p; return { id: p.id, lat: p.lat, lng: p.lng, type: ICON[p.type] ? p.type : "restaurant", name: p.name || "", lbl: x.lbl, nm: !!p._nm }; });
+      if (GLBARS.places(gl, openPlace)) { Object.keys(drawn).forEach(function (id) { layer.removeLayer(drawn[id].m); delete drawn[id]; }); return; }
+    }
     Object.keys(drawn).forEach(function (id) {
       var d = drawn[id], w2 = want[id];
       if (!w2) { layer.removeLayer(d.m); delete drawn[id]; return; }
@@ -198,6 +206,8 @@
         });
         ["bars", "hotbars"].forEach(function (n) { var pn = map.getPane(n); if (pn) mo2.observe(pn, { subtree: true, attributes: true, attributeFilter: ["class"] }); });
       } catch (e) {}
+      // glfix: GL bar pills changed (glmap.js setData) → step aside again
+      document.addEventListener("glbars:sync", function () { if (on() && (map.getZoom() >= MIN_Z || nmOn())) soon(120); });
       soon(1200);
     },
     onPoll: function () { soon(400); },
