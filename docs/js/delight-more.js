@@ -152,7 +152,7 @@
       taps(".ticker", 5, 1600, "ticker");
       taps("#live-count", 4, 1500, "count");
       mapEggs(); hookChat();
-      setInterval(clockEggs, 20000); setTimeout(clockEggs, 4000);
+      U.vInterval(clockEggs, 20000); setTimeout(clockEggs, 4000);
     },
     onPoll: function () { addEvents(); }
   };

@@ -100,15 +100,15 @@
   }
 
   /* ---------- 2. 🏆 tabs ---------- */
-  var TT = [["top", L("Topplistor", "Top lists")], ["mer", L("Meriter", "Merits")], ["streak", "Streak"], ["ev", "Event"], ["pass", L("Pass", "Passport")]];
+  var TT = [["top", L("Topplistor", "Top lists")], ["mer", L("Meriter", "Merits")], ["ev", "Event"], ["pass", L("Pass", "Passport")]];
   function ttOf(c) {
     var k = c.classList;
     if (k.contains("tt-bar")) return null;
     if (k.contains("mer-board")) return "mer";
-    if (k.contains("hs-top")) return "streak";
+    if (k.contains("hs-top")) return "mer";   // ui-build: Streak lives under Meriter (one tab, not Streak + Streaks)
     if (k.contains("ev-box") || k.contains("gh-box")) return "ev";
     if (k.contains("ps-toprow")) return "pass";
-    if (k.contains("ws-topfoot")) return "all";
+    if (k.contains("ws-topfoot")) { c.hidden = true; return "all"; }   // ui-build: Önska lives in Profil
     return "top";
   }
   function sortTop(body) {

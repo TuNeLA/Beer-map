@@ -177,7 +177,7 @@
         var b = e.target && e.target.closest && e.target.closest("[data-ci], .ci-btn");
         if (b && st && st.state === "live") { setTimeout(function () { load(true); }, 3000); setTimeout(function () { load(true); }, 8000); }
       }, true);
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { load(true); },
     onPoll: function () {

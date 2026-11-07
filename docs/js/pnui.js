@@ -1,0 +1,831 @@
+/* PintsNow — 🧭 PNUI: the big UI update (agent ui-build, 2026-11-07; spec scratchpad ui-review.md Pass 1 + 2 + 2b +
+   OWNER DECISIONS, scout-report.md top items). Swedish only. window.PNUI, in app.js mods() (last). Migration 0215.
+   1. 🍺 Krogmätaren (owner choice (a), realistic glass): app.js barPopup → mods("barMeterHTML", bar, list) right under the
+      header. A tapered glass with a foam head, bubbles and a "norm" tick (the usual crowd at this bar at this time,
+      RPC bar_norm, real data only). Level shown 4 ways: fill, norm tick, arrow shape (↓ = ↑) and a word. ≥ 48 px tall
+      in the bar sheet; below 40 px the simplified glass (no bubbles, thicker outline). Hidden below 2 people.
+   2. LIVE ticker polish (owner: KEEP the row): hold a finger on it = pause, eased speed changes (window.PN_TICK_F, read
+      by app.js tickFrame), paused while a sheet is open, edge fade, readable contrast (pnui.css), reduced motion = static.
+   3. Calm main screen: Värme / Senaste dagarna / Taxi / Event go behind ONE "Mer" button (same buttons, clicked from the
+      Mer sheet); one badge on Grupper (red = waiting; "N ute" moves under the label); one banner at a time (call-out >
+      kaos); the precision hint only before the first beer; Dagens order hides on the first map move; ⚙️ becomes the
+      user's bottle cap (opens Profil). A friends strip under the Ikväll pill: caps of friends out (tap = fly there) +
+      the "Ikväll?" status chip from 16:00.
+   4. "Ikväll?" one-tap status 🍺 Ute / 🤔 Kanske / 🛋️ Hemma (ikvall_set / ikvall_status, friends + group mates).
+   5. Onboarding: "Vem går du ut med?" once for a user with no group (create the gang → share the link, or type a
+      code, or just look). The install card (js/install1.js) comes after the first beer, not before the map.
+      One quiet "Spara kontot" card in Grupper after the first group (when account.js e-mail login is on).
+      "Bjud in 1 till" card for a group where you are alone.
+   6. Profil: short (hero + Mitt + Hjälp oss bli bättre); the rest folds into "Namn, konto och mer". 💡 Önska (WISH) and
+      🐞 Rapportera fel (submit_feedback, optional tech info) live there. One optional question the morning after.
+   7. Groups polish (Pass 1): header ‹ back (SHEETNAV), no in-body back buttons, Gör nåt as one list, no fold, no per-card
+      Bjud in, no Kom hit! in Grupper, "Har du en kod? Gå med" as a text button.
+   Public: PNUI.meterHTML(n, norm, size), PNUI.openIkvall(), PNUI.openOnboard(), PNUI.openBug(), PNUI.openMorning(). */
+(function () {
+  "use strict";
+  var U = window.U;
+  var A = null, off = {}, lastPollAt = 0, lastErr = "";
+  var IC = {"caret-left":"M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z","caret-right":"M184.49,136.49l-80,80a12,12,0,0,1-17-17L159,128,87.51,56.49a12,12,0,1,1,17-17l80,80A12,12,0,0,1,184.49,136.49Z","x":"M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z","plus":"M228,128a12,12,0,0,1-12,12H140v76a12,12,0,0,1-24,0V140H40a12,12,0,0,1,0-24h76V40a12,12,0,0,1,24,0v76h76A12,12,0,0,1,228,128Z","check":"M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z","dots-three":"M144,128a16,16,0,1,1-16-16A16,16,0,0,1,144,128ZM60,112a16,16,0,1,0,16,16A16,16,0,0,0,60,112Zm136,0a16,16,0,1,0,16,16A16,16,0,0,0,196,112Z","share-network":"M176,156a43.78,43.78,0,0,0-29.09,11L106.1,140.8a44.07,44.07,0,0,0,0-25.6L146.91,89a43.83,43.83,0,1,0-13-20.17L93.09,95a44,44,0,1,0,0,65.94L133.9,187.2A44,44,0,1,0,176,156Zm0-120a20,20,0,1,1-20,20A20,20,0,0,1,176,36ZM64,148a20,20,0,1,1,20-20A20,20,0,0,1,64,148Zm112,72a20,20,0,1,1,20-20A20,20,0,0,1,176,220Z","qr-code":"M100,36H56A20,20,0,0,0,36,56v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V56A20,20,0,0,0,100,36ZM96,96H60V60H96Zm4,40H56a20,20,0,0,0-20,20v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V156A20,20,0,0,0,100,136Zm-4,60H60V160H96ZM200,36H156a20,20,0,0,0-20,20v44a20,20,0,0,0,20,20h44a20,20,0,0,0,20-20V56A20,20,0,0,0,200,36Zm-4,60H160V60h36Zm-60,76V148a12,12,0,0,1,24,0v24a12,12,0,0,1-24,0Zm84-8a12,12,0,0,1-12,12H196v32a12,12,0,0,1-12,12H148a12,12,0,0,1,0-24h24V148a12,12,0,0,1,24,0v4h12A12,12,0,0,1,220,164Z","lightbulb":"M180,232a12,12,0,0,1-12,12H88a12,12,0,0,1,0-24h80A12,12,0,0,1,180,232Zm40-128a91.51,91.51,0,0,1-35.17,72.35A12.26,12.26,0,0,0,180,186v2a20,20,0,0,1-20,20H96a20,20,0,0,1-20-20v-2a12,12,0,0,0-4.7-9.51A91.57,91.57,0,0,1,36,104.52C35.73,54.69,76,13.2,125.79,12A92,92,0,0,1,220,104Zm-24,0a68,68,0,0,0-69.65-68C89.56,36.88,59.8,67.55,60,104.38a67.71,67.71,0,0,0,26.1,53.19A35.87,35.87,0,0,1,100,184h56.1A36.13,36.13,0,0,1,170,157.49,67.68,67.68,0,0,0,196,104Zm-20.07-5.32a48.5,48.5,0,0,0-31.91-40,12,12,0,0,0-8,22.62,24.31,24.31,0,0,1,16.09,20,12,12,0,0,0,23.86-2.64Z","bug":"M140,88a16,16,0,1,1,16,16A16,16,0,0,1,140,88ZM100,72a16,16,0,1,0,16,16A16,16,0,0,0,100,72Zm120,72a91.84,91.84,0,0,1-2.34,20.64L236.81,173a12,12,0,0,1-9.62,22l-18-7.85a92,92,0,0,1-162.46,0l-18,7.85a12,12,0,1,1-9.62-22l19.15-8.36A91.84,91.84,0,0,1,36,144v-4H16a12,12,0,0,1,0-24H36v-4a91.84,91.84,0,0,1,2.34-20.64L19.19,83a12,12,0,0,1,9.62-22l18,7.85a92,92,0,0,1,162.46,0l18-7.85a12,12,0,1,1,9.62,22l-19.15,8.36A91.84,91.84,0,0,1,220,112v4h20a12,12,0,0,1,0,24H220ZM60,116H196v-4a68,68,0,0,0-136,0Zm56,94.92V140H60v4A68.1,68.1,0,0,0,116,210.92ZM196,144v-4H140v70.92A68.1,68.1,0,0,0,196,144Z","gear-six":"M128,76a52,52,0,1,0,52,52A52.06,52.06,0,0,0,128,76Zm0,80a28,28,0,1,1,28-28A28,28,0,0,1,128,156Zm113.86-49.57A12,12,0,0,0,236,98.34L208.21,82.49l-.11-31.31a12,12,0,0,0-4.25-9.12,116,116,0,0,0-38-21.41,12,12,0,0,0-9.68.89L128,37.27,99.83,21.53a12,12,0,0,0-9.7-.9,116.06,116.06,0,0,0-38,21.47,12,12,0,0,0-4.24,9.1l-.14,31.34L20,98.35a12,12,0,0,0-5.85,8.11,110.7,110.7,0,0,0,0,43.11A12,12,0,0,0,20,157.66l27.82,15.85.11,31.31a12,12,0,0,0,4.25,9.12,116,116,0,0,0,38,21.41,12,12,0,0,0,9.68-.89L128,218.73l28.14,15.74a12,12,0,0,0,9.7.9,116.06,116.06,0,0,0,38-21.47,12,12,0,0,0,4.24-9.1l.14-31.34,27.81-15.81a12,12,0,0,0,5.85-8.11A110.7,110.7,0,0,0,241.86,106.43Zm-22.63,33.18-26.88,15.28a11.94,11.94,0,0,0-4.55,4.59c-.54,1-1.11,1.93-1.7,2.88a12,12,0,0,0-1.83,6.31L184.13,199a91.83,91.83,0,0,1-21.07,11.87l-27.15-15.19a12,12,0,0,0-5.86-1.53h-.29c-1.14,0-2.3,0-3.44,0a12.08,12.08,0,0,0-6.14,1.51L93,210.82A92.27,92.27,0,0,1,71.88,199l-.11-30.24a12,12,0,0,0-1.83-6.32c-.58-.94-1.16-1.91-1.7-2.88A11.92,11.92,0,0,0,63.7,155L36.8,139.63a86.53,86.53,0,0,1,0-23.24l26.88-15.28a12,12,0,0,0,4.55-4.58c.54-1,1.11-1.94,1.7-2.89a12,12,0,0,0,1.83-6.31L71.87,57A91.83,91.83,0,0,1,92.94,45.17l27.15,15.19a11.92,11.92,0,0,0,6.15,1.52c1.14,0,2.3,0,3.44,0a12.08,12.08,0,0,0,6.14-1.51L163,45.18A92.27,92.27,0,0,1,184.12,57l.11,30.24a12,12,0,0,0,1.83,6.32c.58.94,1.16,1.91,1.7,2.88A11.92,11.92,0,0,0,192.3,101l26.9,15.33A86.53,86.53,0,0,1,219.23,139.61Z","users-three":"M164.38,181.1a52,52,0,1,0-72.76,0,75.89,75.89,0,0,0-30,28.89,12,12,0,0,0,20.78,12,53,53,0,0,1,91.22,0,12,12,0,1,0,20.78-12A75.89,75.89,0,0,0,164.38,181.1ZM100,144a28,28,0,1,1,28,28A28,28,0,0,1,100,144Zm147.21,9.59a12,12,0,0,1-16.81-2.39c-8.33-11.09-19.85-19.59-29.33-21.64a12,12,0,0,1-1.82-22.91,20,20,0,1,0-24.78-28.3,12,12,0,1,1-21-11.6,44,44,0,1,1,73.28,48.35,92.18,92.18,0,0,1,22.85,21.69A12,12,0,0,1,247.21,153.59Zm-192.28-24c-9.48,2.05-21,10.55-29.33,21.65A12,12,0,0,1,6.41,136.79,92.37,92.37,0,0,1,29.26,115.1a44,44,0,1,1,73.28-48.35,12,12,0,1,1-21,11.6,20,20,0,1,0-24.78,28.3,12,12,0,0,1-1.82,22.91Z","hand-waving":"M184.63,23.14a12,12,0,0,1,15-8A72.34,72.34,0,0,1,228.4,32a12,12,0,0,1-16.58,17.35,48.31,48.31,0,0,0-19.2-11.2A12,12,0,0,1,184.63,23.14ZM232.85,167.8A92,92,0,0,1,64.31,190l-40-69.32A32,32,0,0,1,36,77a31.72,31.72,0,0,1,7.54-3.14A32,32,0,0,1,88.65,32.45a32,32,0,0,1,53,3.55l14.53,25.17A32,32,0,0,1,206.35,68l17.31,30A91.38,91.38,0,0,1,232.85,167.8Zm-30-57.81L185.57,80a8,8,0,0,0-13.86,8h0l6.68,11.57a12,12,0,0,1-3.18,15.59,28,28,0,0,0-6.41,38.1,12,12,0,1,1-19.86,13.46,52.05,52.05,0,0,1,3.9-63.4L120.9,48A8,8,0,0,0,107,56l24.25,42a12,12,0,1,1-20.78,12L79.33,56a8,8,0,0,0-13.85,8L99,122a12,12,0,0,1-20.78,12L58.93,100.67a8,8,0,1,0-13.85,8L85.1,178a68,68,0,0,0,117.78-68ZM50.46,198a12,12,0,1,0-20.78,12,132.79,132.79,0,0,0,20,26.38,12,12,0,1,0,17.17-16.76A109.2,109.2,0,0,1,50.46,198Z","bell":"M225.29,165.93C216.61,151,212,129.57,212,104a84,84,0,0,0-168,0c0,25.58-4.59,47-13.27,61.93A20.08,20.08,0,0,0,30.66,186,19.77,19.77,0,0,0,48,196H84.18a44,44,0,0,0,87.64,0H208a19.77,19.77,0,0,0,17.31-10A20.08,20.08,0,0,0,225.29,165.93ZM128,212a20,20,0,0,1-19.6-16h39.2A20,20,0,0,1,128,212ZM54.66,172C63.51,154,68,131.14,68,104a60,60,0,0,1,120,0c0,27.13,4.48,50,13.33,68Z","beer-stein":"M216,84H204V72a44.05,44.05,0,0,0-44-44h-9.73C137.77,17.78,121.18,12,104,12,66.5,12,36,38.92,36,72V208a20,20,0,0,0,20,20H184a20,20,0,0,0,20-20v-4h12a28,28,0,0,0,28-28V112A28,28,0,0,0,216,84ZM104,36c12.85,0,25,4.62,33.44,12.67a12,12,0,0,0,8.3,3.33H160a20,20,0,0,1,19.6,16H60.28C62.72,50,81.39,36,104,36Zm76,168H60V92H180Zm40-28a4,4,0,0,1-4,4H204V108h12a4,4,0,0,1,4,4ZM108,120v56a12,12,0,0,1-24,0V120a12,12,0,0,1,24,0Zm48,0v56a12,12,0,0,1-24,0V120a12,12,0,0,1,24,0Z","receipt":"M68,100A12,12,0,0,1,80,88h96a12,12,0,0,1,0,24H80A12,12,0,0,1,68,100Zm12,52h96a12,12,0,0,0,0-24H80a12,12,0,0,0,0,24ZM236,56V208a12,12,0,0,1-17.37,10.73L192,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L128,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L64,205.42,37.37,218.73A12,12,0,0,1,20,208V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V188.58l14.63-7.31a12,12,0,0,1,10.74,0L96,194.58l26.63-13.31a12,12,0,0,1,10.74,0L160,194.58l26.63-13.31a12,12,0,0,1,10.74,0L212,188.58Z","house":"M222.14,105.85l-80-80a20,20,0,0,0-28.28,0l-80,80A19.86,19.86,0,0,0,28,120v96a12,12,0,0,0,12,12h64a12,12,0,0,0,12-12V164h24v52a12,12,0,0,0,12,12h64a12,12,0,0,0,12-12V120A19.86,19.86,0,0,0,222.14,105.85ZM204,204H164V152a12,12,0,0,0-12-12H104a12,12,0,0,0-12,12v52H52V121.65l76-76,76,76Z","fire":"M177.62,159.6a52,52,0,0,1-34,34,12.2,12.2,0,0,1-3.6.55,12,12,0,0,1-3.6-23.45,28,28,0,0,0,18.32-18.32,12,12,0,0,1,22.9,7.2ZM220,144a92,92,0,0,1-184,0c0-28.81,11.27-58.18,33.48-87.28a12,12,0,0,1,17.9-1.33L107.07,74.5,127,19.89a12,12,0,0,1,18.94-5.12C168.2,33.25,220,82.85,220,144Zm-24,0c0-41.71-30.61-78.39-52.52-99.29l-20.21,55.4a12,12,0,0,1-19.63,4.5L80.71,82.36C67,103.38,60,124.06,60,144a68,68,0,0,0,136,0Z","ghost":"M116,116a16,16,0,1,1-16-16A16,16,0,0,1,116,116Zm40-16a16,16,0,1,0,16,16A16,16,0,0,0,156,100Zm72,20v96a12,12,0,0,1-19.6,9.29L186.67,207.5l-21.74,17.79a12,12,0,0,1-15.2,0L128,207.5l-21.73,17.79a12,12,0,0,1-15.2,0L69.33,207.5,47.6,225.29A12,12,0,0,1,28,216V120a100,100,0,0,1,200,0Zm-24,0a76,76,0,0,0-152,0v70.68l9.73-8a12,12,0,0,1,15.2,0L98.67,200.5l21.73-17.79a12,12,0,0,1,15.2,0l21.73,17.79,21.74-17.79a12,12,0,0,1,15.2,0l9.73,8Z","taxi":"M240,100h-9L204.72,54.08A20,20,0,0,0,187.36,44H168.12l-11-27.43A19.9,19.9,0,0,0,138.58,4H117.42A19.9,19.9,0,0,0,98.85,16.57L87.88,44H68.64A20,20,0,0,0,51.28,54.08L25,100H16a12,12,0,0,0,0,24h4v76a20,20,0,0,0,20,20H68a20,20,0,0,0,20-20V180h80v20a20,20,0,0,0,20,20h28a20,20,0,0,0,20-20V124h4a12,12,0,0,0,0-24ZM120.12,28h15.76l6.4,16H113.72ZM71,68H185l18.28,32H52.68ZM64,196H44V180H64Zm148,0H192V180h20Zm0-40H44V124H212Z","calendar-dots":"M208,28H188V24a12,12,0,0,0-24,0v4H92V24a12,12,0,0,0-24,0v4H48A20,20,0,0,0,28,48V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V48A20,20,0,0,0,208,28ZM68,52a12,12,0,0,0,24,0h72a12,12,0,0,0,24,0h16V76H52V52ZM52,204V100H204V204Zm92-76a16,16,0,1,1-16-16A16,16,0,0,1,144,128Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,192,128ZM96,176a16,16,0,1,1-16-16A16,16,0,0,1,96,176Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,144,176Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,192,176Z","copy":"M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z","arrow-up":"M208.49,120.49a12,12,0,0,1-17,0L140,69V216a12,12,0,0,1-24,0V69L64.49,120.49a12,12,0,0,1-17-17l72-72a12,12,0,0,1,17,0l72,72A12,12,0,0,1,208.49,120.49Z","arrow-down":"M208.49,152.49l-72,72a12,12,0,0,1-17,0l-72-72a12,12,0,0,1,17-17L116,187V40a12,12,0,0,1,24,0V187l51.51-51.52a12,12,0,0,1,17,17Z","equals":"M228,160a12,12,0,0,1-12,12H40a12,12,0,0,1,0-24H216A12,12,0,0,1,228,160ZM40,108H216a12,12,0,0,0,0-24H40a12,12,0,0,0,0,24Z","check-circle":"M176.49,95.51a12,12,0,0,1,0,17l-56,56a12,12,0,0,1-17,0l-24-24a12,12,0,1,1,17-17L112,143l47.51-47.52A12,12,0,0,1,176.49,95.51ZM236,128A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128Z","clock":"M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm68-84a12,12,0,0,1-12,12H128a12,12,0,0,1-12-12V72a12,12,0,0,1,24,0v44h44A12,12,0,0,1,196,128Z","link":"M117.18,188.74a12,12,0,0,1,0,17l-5.12,5.12A58.26,58.26,0,0,1,70.6,228h0A58.62,58.62,0,0,1,29.14,127.92L63.89,93.17a58.64,58.64,0,0,1,98.56,28.11,12,12,0,1,1-23.37,5.44,34.65,34.65,0,0,0-58.22-16.58L46.11,144.89A34.62,34.62,0,0,0,70.57,204h0a34.41,34.41,0,0,0,24.49-10.14l5.11-5.12A12,12,0,0,1,117.18,188.74ZM226.83,45.17a58.65,58.65,0,0,0-82.93,0l-5.11,5.11a12,12,0,0,0,17,17l5.12-5.12a34.63,34.63,0,1,1,49,49L175.1,145.86A34.39,34.39,0,0,1,150.61,156h0a34.63,34.63,0,0,1-33.69-26.72,12,12,0,0,0-23.38,5.44A58.64,58.64,0,0,0,150.56,180h.05a58.28,58.28,0,0,0,41.47-17.17l34.75-34.75a58.62,58.62,0,0,0,0-82.91Z","user-plus":"M256,136a12,12,0,0,1-12,12h-8v8a12,12,0,0,1-24,0v-8h-8a12,12,0,0,1,0-24h8v-8a12,12,0,0,1,24,0v8h8A12,12,0,0,1,256,136Zm-54.81,56.28a12,12,0,1,1-18.38,15.44C169.12,191.42,145,172,108,172c-28.89,0-55.46,12.68-74.81,35.72a12,12,0,0,1-18.38-15.44A124.08,124.08,0,0,1,63.5,156.53a72,72,0,1,1,89,0A124,124,0,0,1,201.19,192.28ZM108,148a48,48,0,1,0-48-48A48.05,48.05,0,0,0,108,148Z","map-trifold":"M231.38,46.54a12,12,0,0,0-10.29-2.18L161.4,59.28l-60-30a12,12,0,0,0-8.28-.91l-64,16A12,12,0,0,0,20,56V200a12,12,0,0,0,14.91,11.64L94.6,196.72l60,30a12,12,0,0,0,8.28.91l64-16A12,12,0,0,0,236,200V56A12,12,0,0,0,231.38,46.54ZM108,59.42l40,20V196.58l-40-20Zm-64,6,40-10V174.63l-40,10ZM212,190.63l-40,10V81.37l40-10Z","chat-circle":"M128,20A108,108,0,0,0,31.85,177.23L21,209.66A20,20,0,0,0,46.34,235l32.43-10.81A108,108,0,1,0,128,20Zm0,192a84,84,0,0,1-42.06-11.27,12,12,0,0,0-6-1.62,12.1,12.1,0,0,0-3.8.62l-29.79,9.93,9.93-29.79a12,12,0,0,0-1-9.81A84,84,0,1,1,128,212Z","download-simple":"M228,144v64a12,12,0,0,1-12,12H40a12,12,0,0,1-12-12V144a12,12,0,0,1,24,0v52H204V144a12,12,0,0,1,24,0Zm-108.49,8.49a12,12,0,0,0,17,0l40-40a12,12,0,0,0-17-17L140,115V32a12,12,0,0,0-24,0v83L96.49,95.51a12,12,0,0,0-17,17Z","envelope-simple":"M224,44H32A12,12,0,0,0,20,56V192a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A12,12,0,0,0,224,44ZM193.15,68,128,127.72,62.85,68ZM44,188V83.28l75.89,69.57a12,12,0,0,0,16.22,0L212,83.28V188Z","shield-check":"M208,36H48A20,20,0,0,0,28,56v56c0,54.29,26.32,87.22,48.4,105.29,23.71,19.39,47.44,26,48.44,26.29a12.1,12.1,0,0,0,6.32,0c1-.28,24.73-6.9,48.44-26.29,22.08-18.07,48.4-51,48.4-105.29V56A20,20,0,0,0,208,36Zm-4,76c0,35.71-13.09,64.69-38.91,86.15A126.28,126.28,0,0,1,128,219.38a126.14,126.14,0,0,1-37.09-21.23C65.09,176.69,52,147.71,52,112V60H204ZM79.51,144.49a12,12,0,1,1,17-17L112,143l47.51-47.52a12,12,0,0,1,17,17l-56,56a12,12,0,0,1-17,0Z","couch":"M244,104V72a20,20,0,0,0-20-20H32A20,20,0,0,0,12,72v32a20,20,0,0,0-8,16v48a20,20,0,0,0,20,20h4v12a12,12,0,0,0,24,0V188H204v12a12,12,0,0,0,24,0V188h4a20,20,0,0,0,20-20V120A20,20,0,0,0,244,104Zm-24-4H208a20,20,0,0,0-20,20v4H140V76h80ZM116,76v48H68v-4a20,20,0,0,0-20-20H36V76Zm112,88H28V124H44v12a12,12,0,0,0,12,12H200a12,12,0,0,0,12-12V124h16Z","question":"M144,180a16,16,0,1,1-16-16A16,16,0,0,1,144,180Zm92-52A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128ZM128,64c-24.26,0-44,17.94-44,40v4a12,12,0,0,0,24,0v-4c0-8.82,9-16,20-16s20,7.18,20,16-9,16-20,16a12,12,0,0,0-12,12v8a12,12,0,0,0,23.73,2.56C158.31,137.88,172,122.37,172,104,172,81.94,152.26,64,128,64Z","sliders-horizontal":"M40,92H70.06a36,36,0,0,0,67.88,0H216a12,12,0,0,0,0-24H137.94a36,36,0,0,0-67.88,0H40a12,12,0,0,0,0,24Zm64-24A12,12,0,1,1,92,80,12,12,0,0,1,104,68Zm112,96H201.94a36,36,0,0,0-67.88,0H40a12,12,0,0,0,0,24h94.06a36,36,0,0,0,67.88,0H216a12,12,0,0,0,0-24Zm-48,24a12,12,0,1,1,12-12A12,12,0,0,1,168,188Z"};
+  function ic(n, cls) { return '<svg class="pn-ic' + (cls ? " " + cls : "") + '" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="' + (IC[n] || "") + '"/></svg>'; }
+  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return "&#" + c.charCodeAt(0) + ";"; }); }
+  function h(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      var v = attrs[k]; if (v == null || v === false) return;
+      if (k === "text") n.textContent = v; else if (k === "html") n.innerHTML = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function ls(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, String(v)); } catch (e) {} }
+  function reduced() { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
+  function standalone() { try { return U.isStandalone ? U.isStandalone() : false; } catch (e) { return false; } }
+  function W(n) { return window[n] || null; }
+  function safe(fn, d) { try { var v = fn(); return v === undefined ? d : v; } catch (e) { return d; } }
+  function vib(p) { try { if (window.FX && window.FX.vibrate) window.FX.vibrate(p); } catch (e) {} }
+  function call(fn, p) {
+    if (!A || !A.LIVE || off[fn]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
+    return A.rpc(fn, p || {}).then(function (r) {
+      if (r && r.error && U.missing && U.missing(r.error)) { off[fn] = true; r.off = true; }
+      return r || { data: null, error: { message: "empty" } };
+    }, function (e) { return { data: null, error: e || { message: "error" } }; });
+  }
+  function data(r) { return r && !r.error ? safe(function () { return A.parseData(r.data); }, r.data) : null; }
+  function errCode(e) { try { return U.errCode ? U.errCode(e) : ""; } catch (x) { return ""; } }
+  function toast(m, o) { try { A.toast(m, o); } catch (e) {} }
+  function sheetOpen() { var s = document.getElementById("sheet"); return !!(s && !s.hidden); }
+  function hourNow() { return new Date().getHours(); }
+  function evening() { if (ls("olnu.pnEve", "") === "1") return true; var x = hourNow(); return x >= 16 || x < 5; }   // olnu.pnEve: test hook
+  function myName() { return safe(function () { return A.getName(); }, "") || ls("olnu.name", "") || ""; }
+  window.addEventListener("error", function (e) { try { lastErr = String((e && e.message) || "").slice(0, 200); } catch (x) {} });
+
+  /* ---------- bottle caps (avatar placeholder, Pass 2 #9) ---------- */
+  // 6 colours that pass 4.5:1 with white text.
+  var CAPS = ["#b3261e", "#1d6b3a", "#1f4fa3", "#7b3fa8", "#8a5a00", "#0f6e74"];
+  function hash(s) { var x = 0; s = String(s || ""); for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return Math.abs(x); }
+  function capSVG(name, size, mine) {
+    var n = String(name || "?").trim(), ini = (n.charAt(0) || "?").toUpperCase(), c = n === "?" || /^Någon$/i.test(n) ? "#4a556e" : CAPS[hash(n) % CAPS.length];
+    var pts = [], R = 24, r = 21.6, k = 21;
+    for (var i = 0; i < k * 2; i++) { var a = Math.PI * i / k, rr = i % 2 ? r : R; pts.push((25 + rr * Math.cos(a)).toFixed(2) + "," + (25 + rr * Math.sin(a)).toFixed(2)); }
+    return '<svg class="pn-cap' + (mine ? " me" : "") + '" width="' + size + '" height="' + size + '" viewBox="0 0 50 50" aria-hidden="true">' +
+      '<polygon points="' + pts.join(" ") + '" fill="' + c + '"/><circle cx="25" cy="25" r="17" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>' +
+      '<text x="25" y="25" dy=".36em" text-anchor="middle" font-family="Chakra Petch, system-ui, sans-serif" font-weight="700" font-size="19" fill="#fff">' + esc(ini) + "</text></svg>";
+  }
+
+  /* ---------- 1. Krogmätaren ---------- */
+  var norm = {}, normAt = {}, normWait = {}, normQ = [], normT = null;
+  var AM = "#f5a623", AMT = "#ffc24d", AMD = "#c97d0c", FOAM = "#f3ecd9", EDGE = "#6b7792";
+  function wantNorm(id) {
+    if (!id || normWait[id] || (normAt[id] && Date.now() - normAt[id] < 15 * 60e3)) return;
+    normWait[id] = 1; normQ.push(id);
+    clearTimeout(normT); normT = setTimeout(flushNorm, 80);
+  }
+  function flushNorm() {
+    var ids = normQ.splice(0, 40);
+    if (!ids.length) return;
+    call("bar_norm", { p_bar_ids: ids }).then(function (r) {
+      var d = data(r), changed = false;
+      ids.forEach(function (id) {
+        delete normWait[id];
+        var v = d && d.bars && d.bars[id] && +d.bars[id].usual > 0 ? { usual: +d.bars[id].usual, nights: d.bars[id].nights | 0 } : null;
+        if (JSON.stringify(v) !== JSON.stringify(norm[id] === undefined ? null : norm[id])) changed = true;
+        norm[id] = v; normAt[id] = Date.now();
+      });
+      if (changed) repaintMeters();
+    });
+  }
+  function repaintMeters() {
+    document.querySelectorAll(".pn-meter[data-bar]").forEach(function (m) {
+      var id = m.getAttribute("data-bar"), n = +m.getAttribute("data-n") || 0;
+      var tmp = document.createElement("div"); tmp.innerHTML = meterHTML(n, norm[id], 64, id, true);
+      if (tmp.firstChild) m.parentNode.replaceChild(tmp.firstChild, m);
+    });
+  }
+  function crowdWord(n) { return n >= 8 ? "Packat" : n >= 3 ? "Livligt" : "Lugnt"; }
+  function level(n, nm) {
+    var u = nm && nm.usual > 0 ? nm.usual : null, cmp = null, arrow = null;
+    if (u) {
+      var r = n / u;
+      if (r < 0.75) { cmp = "Lugnare än vanligt"; arrow = "down"; }
+      else if (r <= 1.3) { cmp = "Som vanligt"; arrow = "eq"; }
+      else if (r <= 2) { cmp = "Mer än vanligt"; arrow = "up"; }
+      else { cmp = "Mycket mer än vanligt"; arrow = "up"; }
+    }
+    var cap = Math.max(10, u ? u * 2 : 0, n * 1.12);
+    return { n: n, word: crowdWord(n), cmp: cmp, arrow: arrow, fill: Math.max(0.1, Math.min(0.94, n / cap)), usual: u ? Math.max(0.12, Math.min(0.9, u / cap)) : null };
+  }
+  function cue(a) {
+    var p = a === "up" ? "M8 2 L14 9 H10 V14 H6 V9 H2 Z" : a === "down" ? "M8 14 L14 7 H10 V2 H6 V7 H2 Z" : "M2 5 H14 V7.5 H2 Z M2 9 H14 V11.5 H2 Z";
+    return '<svg class="pn-cue" viewBox="0 0 16 16" aria-hidden="true"><path d="' + p + '" fill="currentColor"/></svg>';
+  }
+  var gid = 0;
+  // size = glass height in px. ≥ 40 = realistic glass; < 40 = simplified (no bubbles, thicker outline).
+  function glassSVG(L, size, still) {
+    var id = "png" + (gid++), Hh = 68, Wd = 48, top = 8, bot = Hh - 4, ins = 5, simple = size < 40;
+    var y = function (f) { return bot - (bot - top - 6) * f; };
+    var xl = function (yy) { return 4 + ins * (yy - top) / (bot - top); }, xr = function (yy) { return Wd - 4 - ins * (yy - top) / (bot - top); };
+    var fy = y(L.fill), body = "M4," + top + " H" + (Wd - 4) + " L" + (Wd - 4 - ins) + "," + bot + " H" + (4 + ins) + " Z";
+    var bub = simple ? "" : [[0.35, 0.8], [0.55, 0.6], [0.7, 0.85], [0.45, 0.45], [0.62, 0.3]].filter(function (b) { return b[1] > 1 - L.fill + 0.08; }).map(function (b, i) {
+      return '<circle class="pn-bub" style="animation-delay:' + (220 + i * 90) + 'ms" cx="' + (Wd * b[0]).toFixed(1) + '" cy="' + (bot - (bot - top - 6) * (1 - b[1])).toFixed(1) + '" r="' + (i % 2 ? 1.2 : 1.6) + '" fill="' + FOAM + '" opacity=".7"/>';
+    }).join("");
+    var fw = xr(fy) - xl(fy);
+    var foam = simple ? '<rect x="0" y="' + (fy - 3).toFixed(1) + '" width="' + Wd + '" height="5" fill="' + FOAM + '"/>'
+      : '<path d="M' + (xl(fy) - 1).toFixed(1) + "," + (fy + 2).toFixed(1) + " q" + (fw * 0.12).toFixed(1) + ",-7 " + (fw * 0.24).toFixed(1) + ",-3 q" + (fw * 0.14).toFixed(1) + ",-6 " + (fw * 0.27).toFixed(1) + ",-1 q" + (fw * 0.14).toFixed(1) + ",-6 " + (fw * 0.27).toFixed(1) + ",0 q" + (fw * 0.12).toFixed(1) + ",-5 " + (fw * 0.24).toFixed(1) + ",1 v4 H" + (xl(fy) - 1).toFixed(1) + ' Z" fill="' + FOAM + '"/>';
+    var tick = "";
+    if (L.usual != null) {
+      var uy = y(L.usual).toFixed(1);
+      tick = '<path d="M' + (Wd - 1) + "," + uy + ' h7" stroke="' + FOAM + '" stroke-width="2"/>' +
+        (simple ? "" : '<text x="' + (Wd + 8) + '" y="' + (+uy + 4) + '" font-size="11" font-weight="700" fill="#c9d0cd" font-family="Chakra Petch, system-ui, sans-serif">norm</text>');
+    }
+    var vw = Wd + (L.usual != null ? (simple ? 10 : 36) : 2), w = Math.round(size * vw / Hh);
+    return '<svg class="pn-glass' + (simple ? " pn-glass-s" : "") + (still ? " still" : "") + '" width="' + w + '" height="' + size + '" viewBox="0 0 ' + vw + " " + Hh + '" aria-hidden="true">' +
+      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + AMD + '"/><stop offset=".45" stop-color="' + AMT + '"/><stop offset="1" stop-color="' + AM + '"/></linearGradient>' +
+      '<clipPath id="' + id + 'c"><path d="' + body + '"/></clipPath></defs>' +
+      '<g clip-path="url(#' + id + 'c)"><g class="pn-beer" style="--pn-rise:' + (bot - fy).toFixed(1) + 'px"><rect x="0" y="' + fy.toFixed(1) + '" width="' + Wd + '" height="' + Hh + '" fill="url(#' + id + ')"/>' + bub + foam + "</g></g>" +
+      '<path d="' + body + '" fill="none" stroke="' + EDGE + '" stroke-width="' + (simple ? 3 : 2) + '" stroke-linejoin="round"/>' +
+      (simple ? "" : '<path d="M10,' + (top + 6) + " L12," + (bot - 8) + '" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"/>') + tick + "</svg>";
+  }
+  function freshText() {
+    if (!lastPollAt) return "";
+    var m = Math.floor((Date.now() - lastPollAt) / 60000);
+    return m < 1 ? "uppdaterad nyss" : "uppdaterad " + m + " min sen";
+  }
+  function meterHTML(n, nm, size, barId, still) {
+    var L = level(n, nm);
+    var label = L.word + ", " + n + " här" + (L.cmp ? ", " + L.cmp.toLowerCase() : "");
+    return '<div class="pn-meter" role="img" aria-label="' + esc(label) + '"' + (barId ? ' data-bar="' + esc(barId) + '" data-n="' + n + '"' : "") + ">" +
+      glassSVG(L, size || 64, still) +
+      '<div class="pn-mt"><b>' + esc(L.word) + ' <span class="pn-mt-n">· ' + n + " här</span></b>" +
+      (L.cmp ? '<small class="pn-mt-cmp">' + cue(L.arrow) + esc(L.cmp) + "</small>" : '<small class="pn-mt-cmp pn-mt-none">Inget snitt än för den här krogen</small>') +
+      '<small class="pn-mt-up">' + esc(freshText()) + "</small></div></div>";
+  }
+  function barMeterHTML(bar, list) {
+    var n = (list || []).length, id = bar && bar.id != null ? String(bar.id) : null;
+    if (n < 2) return "";   // data threshold: never a meter for 0–1 people
+    if (id) wantNorm(id);
+    return meterHTML(n, id ? norm[id] : null, 64, id, false);
+  }
+
+  /* ---------- 2. LIVE ticker ---------- */
+  var tick = { f: 1, target: 1, raf: 0, hold: false };
+  window.PN_TICK_F = 1;
+  function tickTarget() {
+    var t = tick.hold || sheetOpen() ? 0 : 1;
+    if (t === tick.target) return;
+    tick.target = t;
+    if (!tick.raf) { var last = 0; tick.raf = requestAnimationFrame(function step(ts) {
+      var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016; last = ts;
+      var k = 1 - Math.pow(0.0005, dt);              // ≈ 250 ms ease to the target
+      tick.f += (tick.target - tick.f) * k;
+      if (Math.abs(tick.target - tick.f) < 0.01) tick.f = tick.target;
+      window.PN_TICK_F = tick.f;
+      tick.raf = tick.f === tick.target ? 0 : requestAnimationFrame(step);
+    }); }
+  }
+  function setupTicker() {
+    var tk = document.querySelector(".ticker");
+    if (!tk || tk.__pn) return;
+    tk.__pn = true;
+    var down = function () { tick.hold = true; tk.classList.add("pn-held"); tickTarget(); };
+    var up = function () { tick.hold = false; tk.classList.remove("pn-held"); tickTarget(); };
+    tk.addEventListener("pointerdown", down);
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (e) { tk.addEventListener(e, up); });
+    try { new MutationObserver(tickTarget).observe(document.getElementById("sheet"), { attributes: true, attributeFilter: ["hidden"] }); } catch (e) {}
+    tk.setAttribute("title", "Håll fingret på raden för att pausa");
+  }
+
+  /* ---------- 3. Calm main screen ---------- */
+  var MORE = [["btn-heat", "fire", "Värme", "Var det ä mest folk", true], ["btn-ghostpins", "ghost", "Senaste dagarna", "Var folk va förra helgen", true],
+    ["btn-taxi", "taxi", "Taxi hem", "Ring, Uber eller dela taxin", false], ["btn-evs", "calendar-dots", "Event", "Vad händer ikväll", false]];
+  function moreBtn() {
+    if (document.getElementById("btn-more")) return;
+    var b = h("button", { id: "btn-more", class: "locate-btn pn-more", type: "button", "aria-label": "Mer på kartan", title: "Mer på kartan", html: ic("dots-three") + '<i class="pn-more-dot" hidden></i>' });
+    b.addEventListener("click", openMore);
+    var loc = document.getElementById("btn-locate");
+    if (loc && loc.parentNode) loc.parentNode.insertBefore(b, loc); else document.body.appendChild(b);
+  }
+  function openMore() {
+    A.openSheet("Mer på kartan", function (body) {
+      var list = h("div", { class: "ds-list pn-list" });
+      MORE.forEach(function (m) {
+        var src = document.getElementById(m[0]);
+        if (!src || src.hasAttribute("hidden")) return;
+        var on = src.getAttribute("aria-pressed") === "true";
+        var row = h("button", { type: "button", class: "ds-row pn-row", "data-src": m[0] }, [
+          h("span", { class: "ds-row-i", html: ic(m[1]) }),
+          h("span", { class: "ds-row-t" }, [h("span", { text: m[2] }), h("small", { text: m[3] })]),
+          m[4] ? h("span", { class: "switch", role: "switch", "aria-checked": String(on), "aria-label": m[2] }) : h("span", { class: "ds-chev" })
+        ]);
+        row.addEventListener("click", function () {
+          if (m[4]) {
+            src.click();
+            setTimeout(function () { var sw = row.querySelector(".switch"); if (sw) sw.setAttribute("aria-checked", String(src.getAttribute("aria-pressed") === "true")); }, 60);
+          } else { A.closeSheet(); setTimeout(function () { src.click(); }, 60); }
+        });
+        list.appendChild(row);
+      });
+      var b2 = W("BASEMAP");
+      if (b2 && typeof b2.open === "function") {
+        var r = h("button", { type: "button", class: "ds-row pn-row" }, [h("span", { class: "ds-row-i", html: ic("map-trifold") }),
+          h("span", { class: "ds-row-t" }, [h("span", { text: "Kartstil" }), h("small", { text: "Hur kartan ser ut" })]), h("span", { class: "ds-chev" })]);
+        r.addEventListener("click", function () { try { b2.open(); } catch (e) {} });
+        list.appendChild(r);
+      }
+      body.appendChild(list);
+      body.appendChild(h("p", { class: "pn-note", text: "Tips: håll fingret på kartan för att skapa ett event eller lägga till ett ställe." }));
+    });
+  }
+  function moreDot() {   // an event badge on the hidden 📅 shows as a small dot on Mer
+    var b = document.getElementById("btn-more"), e = document.querySelector("#btn-evs .evs-badge");
+    if (b) { var d = b.querySelector(".pn-more-dot"); if (d) d.hidden = !(e && !e.hidden && (e.textContent || "0") !== "0"); }
+    var any = MORE.some(function (m) { var s = document.getElementById(m[0]); return s && !s.hasAttribute("hidden"); });
+    if (b) b.hidden = !any;
+  }
+  function groupsOut() {
+    var g = document.getElementById("btn-groups"), bd = document.getElementById("groups-badge");
+    if (!g) return;
+    var s = g.querySelector(".pn-gout");
+    if (!s) { s = h("span", { class: "pn-gout" }); var lb = document.getElementById("groups-label"); if (lb && lb.parentNode) lb.parentNode.insertBefore(s, lb.nextSibling); else g.appendChild(s); }
+    var n = bd && !bd.hidden ? +bd.textContent || 0 : 0;
+    s.textContent = n ? "● " + n + " ute" : ""; s.hidden = !n;
+  }
+  function avatarBtn() {
+    var b = document.getElementById("btn-settings");
+    if (!b) return;
+    var nm = myName() || "?", key = "c:" + nm;
+    if (b.__pnCap === key) return;
+    b.__pnCap = key;
+    b.classList.add("pn-avbtn");
+    b.innerHTML = capSVG(nm, 36, true);
+    b.setAttribute("aria-label", "Profil och inställningar");
+  }
+  function calmFlags() {
+    var night = safe(function () { return U.ls.getJSON("olnu.night", null); }, null);
+    var n = night && night.expires > Date.now() ? night.count | 0 : 0;
+    document.body.classList.toggle("pn-first", !n && !ls("olnu.pnBeer1"));
+  }
+  // The precision choice shows only the current mode; a tap on it picks the other one (same buttons, same handlers).
+  function precToggle() {
+    var seg = document.getElementById("prec-seg"); if (!seg || seg.__pn) return;
+    seg.__pn = true;
+    seg.setAttribute("aria-label", "Plats för nästa öl (tryck för att byta)");
+    seg.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-prec]"); if (!b || b.getAttribute("aria-checked") !== "true" || seg.__pnBusy) return;
+      var other = seg.querySelector('button[data-prec]:not([data-prec="' + b.getAttribute("data-prec") + '"])');
+      if (!other) return;
+      e.stopPropagation(); seg.__pnBusy = true; vib(10);
+      setTimeout(function () { other.click(); seg.__pnBusy = false; try { other.focus({ preventScroll: true }); } catch (x) {} }, 0);
+    }, true);
+  }
+  function hideGreetOnMove() {
+    try {
+      A.map.on("movestart zoomstart", function () {
+        document.querySelectorAll(".dl-cap-greet").forEach(function (c) { c.classList.add("pn-out"); setTimeout(function () { if (c.parentNode) c.remove(); }, 220); });
+      });
+    } catch (e) {}
+  }
+
+  /* ---------- friends strip (map) ---------- */
+  var ikv = { d: null, at: 0, busy: false };
+  function stripEl() {
+    var s = document.getElementById("pn-strip");
+    if (s) return s;
+    var hl = document.querySelector(".hud-left");
+    if (!hl) return null;
+    s = h("div", { id: "pn-strip", class: "pn-strip", role: "group", "aria-label": "Kompisar ikväll" });
+    hl.appendChild(s);
+    s.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      if (b.hasAttribute("data-ikv")) { openIkvall(); return; }
+      var la = +b.getAttribute("data-lat"), ln = +b.getAttribute("data-lng");
+      if (isFinite(la) && isFinite(ln) && b.hasAttribute("data-lat")) { vib(10); try { A.flyTo(la, ln, 17, b.getAttribute("data-id") ? +b.getAttribute("data-id") : null); } catch (x) {} }
+      else openIkvall();
+    });
+    return s;
+  }
+  function friendsOut() {
+    var seen = {}, out = [];
+    (safe(function () { return A.beers(); }, []) || []).forEach(function (b) {
+      var nm = b.friend_name; if (!nm || seen[nm] || !isFinite(b.lat)) return;
+      seen[nm] = 1; out.push({ name: nm, lat: b.lat, lng: b.lng, id: b.id, at: b.created_at });
+    });
+    return out;
+  }
+  var stripSig = "";
+  function paintStrip() {
+    var s = stripEl(); if (!s || !A) return;
+    var fo = friendsOut(), d = ikv.d, mine = d && d.mine, eve = evening() && A.LIVE && !off.ikvall_status;
+    var planned = d ? (d.people || []).filter(function (p) { return p.st === "ute" && !fo.some(function (f) { return f.name === p.name; }); }) : [];
+    var sig = JSON.stringify([fo.map(function (f) { return f.name; }), planned.map(function (p) { return p.name; }), mine, eve]);
+    if (sig === stripSig) return;
+    stripSig = sig;
+    s.innerHTML = "";
+    if (eve) {
+      var lab = mine === "ute" ? "🍺 Ute ikväll" : mine === "kanske" ? "🤔 Kanske" : mine === "hemma" ? "🛋️ Hemma" : "Ikväll?";
+      var cnt = d && d.counts ? (d.counts.ute | 0) : 0;
+      s.appendChild(h("button", { type: "button", class: "pn-ikv-chip" + (mine ? " set" : ""), "data-ikv": "1", "aria-label": "Ikväll? " + (mine ? lab : "Säg om du ska ut") + (cnt ? ". " + cnt + " ska ut" : "") },
+        [h("span", { text: lab }), cnt ? h("small", { text: cnt + " ska ut" }) : null]));
+    }
+    var faces = fo.slice(0, 4);
+    faces.forEach(function (f) {
+      s.appendChild(h("button", { type: "button", class: "pn-face", "data-lat": String(f.lat), "data-lng": String(f.lng), "data-id": f.id != null ? String(f.id) : null,
+        "aria-label": f.name + " ä ute. Visa på kartan", title: f.name, html: capSVG(f.name, 32) + '<i class="pn-live" aria-hidden="true"></i>' }));
+    });
+    planned.slice(0, Math.max(0, 4 - faces.length)).forEach(function (p) {
+      s.appendChild(h("button", { type: "button", class: "pn-face plan", "aria-label": p.name + " ska ut ikväll", title: p.name, html: capSVG(p.name, 32) }));
+    });
+    var more = fo.length - faces.length;
+    if (more > 0) s.appendChild(h("button", { type: "button", class: "pn-face pn-more-n", "data-ikv": "1", text: "+" + more, "aria-label": more + " till ute" }));
+    s.hidden = !s.firstChild;
+  }
+  function loadIkvall(force) {
+    if (!A || !A.LIVE || ikv.busy || off.ikvall_status || !safe(function () { return A.authed(); }, false)) return Promise.resolve(ikv.d);
+    if (!force && Date.now() - ikv.at < 120000) return Promise.resolve(ikv.d);
+    if (!force && !evening()) return Promise.resolve(ikv.d);
+    ikv.busy = true;
+    return call("ikvall_status", {}).then(function (r) {
+      ikv.busy = false; ikv.at = Date.now();
+      var d = data(r); if (d) ikv.d = d;
+      // Already out tonight (a live pin) but no status yet: say "Ute" once (friends see the pin anyway).
+      if (d && !d.mine && evening() && safe(function () { return A.myBeer(); }, null) && ls("olnu.pnAutoUte") !== String(d.night)) {
+        lsSet("olnu.pnAutoUte", String(d.night)); d.mine = "ute"; call("ikvall_set", { p_st: "ute" });
+      }
+      paintStrip(); paintIkvSheet();
+      return ikv.d;
+    });
+  }
+
+  /* ---------- 4. Ikväll? ---------- */
+  var IKV = [["ute", "🍺", "Ute", "Jag ska ut"], ["kanske", "🤔", "Kanske", "Vi får se"], ["hemma", "🛋️", "Hemma", "Inte ikväll"]];
+  var ikvBox = null;
+  function openIkvall() {
+    A.openSheet("Ikväll?", function (body) {
+      ikvBox = h("div", { class: "pn-ikv" });
+      body.appendChild(ikvBox);
+      paintIkvSheet();
+      loadIkvall(true);
+    });
+  }
+  function setIkv(st) {
+    var prev = ikv.d ? ikv.d.mine : null, nxt = prev === st ? null : st;
+    if (!ikv.d) ikv.d = { mine: null, people: [], counts: { ute: 0, kanske: 0, hemma: 0 } };
+    ikv.d.mine = nxt; stripSig = ""; paintStrip(); paintIkvSheet(); vib(15);
+    call("ikvall_set", { p_st: nxt }).then(function (r) {
+      if (r.error) {
+        ikv.d.mine = prev; stripSig = ""; paintStrip(); paintIkvSheet();
+        toast(errCode(r.error) === "slow_down" ? "Lugn, korpral. Vänta en sekund." : "Det gick int'. Försök igen.", { err: true });
+      }
+    });
+  }
+  function paintIkvSheet() {
+    if (!ikvBox || !document.body.contains(ikvBox)) { ikvBox = null; return; }
+    var d = ikv.d || { mine: null, people: [], counts: {} }, mine = d.mine;
+    ikvBox.innerHTML = "";
+    ikvBox.appendChild(h("p", { class: "pn-lead", text: "Säg till gänget och dina vänner. Det nollställs kl 05." }));
+    var seg = h("div", { class: "pn-ikv-seg", role: "radiogroup", "aria-label": "Ikväll" });
+    IKV.forEach(function (x) {
+      var b = h("button", { type: "button", role: "radio", class: "pn-ikv-b pn-" + x[0], "aria-checked": String(mine === x[0]) }, [
+        h("span", { class: "pn-ikv-e", "aria-hidden": "true", text: x[1] }), h("b", { text: x[2] }), h("small", { text: x[3] })]);
+      b.addEventListener("click", function () { setIkv(x[0]); });
+      seg.appendChild(b);
+    });
+    ikvBox.appendChild(seg);
+    if (mine === "ute" && W("SOCIAL") && W("SOCIAL").hudClick) {
+      ikvBox.appendChild(h("div", { class: "ds-card pn-ikv-next" }, [h("span", { text: "Ska gänget med? Kalla in dem till samma ställe." }),
+        h("button", { type: "button", class: "btn btn-small", text: "Kalla in gänget", onclick: function () {
+          var tmp = h("button", { type: "button" }); try { W("SOCIAL").hudClick("come", tmp); } catch (e) {} } })]));
+    }
+    var ppl = d.people || [];
+    var sec = h("section", { class: "ds-section pn-ikv-ppl" });
+    sec.appendChild(h("h3", { class: "ds-section-h", text: "Dina vänner och gänget" }));
+    if (!ppl.length) sec.appendChild(h("p", { class: "pn-empty-l", text: ikv.at ? "Ingen har sagt nåt än. Bli först, då." : "…" }));
+    IKV.forEach(function (x) {
+      var g = ppl.filter(function (p) { return p.st === x[0]; });
+      if (!g.length) return;
+      var row = h("div", { class: "pn-ikv-g" }, [h("b", { class: "pn-ikv-gh", text: x[1] + " " + x[2] + " · " + g.length })]);
+      var faces = h("div", { class: "pn-ikv-faces" });
+      g.slice(0, 24).forEach(function (p) { faces.appendChild(h("span", { class: "pn-ikv-p", html: capSVG(p.name, 28) + "<span>" + esc(p.name) + "</span>" })); });
+      row.appendChild(faces); sec.appendChild(row);
+    });
+    ikvBox.appendChild(sec);
+  }
+
+  // Group page: "🍺 2 ska ut · 🤔 1 kanske" inside the 🟢 NU card (no new tile; data per group, cached 2 min).
+  var gikv = {};
+  function groupItem(g, wrap) {
+    if (!g || !g.id || g.ev || !A || !A.LIVE || off.ikvall_status || !evening()) return;
+    wrap.__pnG = g;
+    var c = gikv[g.id];
+    if (c && Date.now() - c.at < 120000) { paintGikv(); return; }
+    gikv[g.id] = { at: Date.now(), d: c ? c.d : null };
+    call("ikvall_status", { p_group_id: g.id }).then(function (r) { var d = data(r); if (d) { gikv[g.id] = { at: Date.now(), d: d }; paintGikv(); } });
+  }
+  function paintGikv() {
+    document.querySelectorAll(".gpg > .gpg-now").forEach(function (now) {
+      var w = now.parentNode, g = w && w.__pnG, c = g && gikv[g.id];
+      var cn = c && c.d && c.d.counts, txt = "";
+      if (cn && ((cn.ute | 0) || (cn.kanske | 0))) txt = [(cn.ute | 0) ? "🍺 " + cn.ute + " ska ut" : "", (cn.kanske | 0) ? "🤔 " + cn.kanske + " kanske" : ""].filter(Boolean).join(" · ");
+      var el0 = now.querySelector(".pn-gikv");
+      if (!txt) { if (el0) el0.remove(); return; }
+      if (!el0) { el0 = h("span", { class: "pn-gikv" }); (now.querySelector(".gpg-now-main") || now).appendChild(el0); }
+      if (el0.textContent !== txt) el0.textContent = txt;
+    });
+  }
+
+  /* ---------- 5. Onboarding: Vem går du ut med? ---------- */
+  function glassArt() {
+    return '<svg class="pn-art" viewBox="0 0 160 96" aria-hidden="true"><path d="M58 18 H102 L97 84 H63 Z" fill="none" stroke="#c9d0cd" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M61 50 H99 L97 84 H63 Z" fill="#f5a623" opacity=".9"/><path d="M60 50 q6 -7 12 -3 q7 -6 13 -1 q7 -6 14 1 v5 H60 Z" fill="#f3ecd9"/>' +
+      '<g transform="translate(14 46) scale(.7)">' + capSVG("O", 50).replace(/<svg[^>]*>|<\/svg>/g, "") + '</g><g transform="translate(112 40) scale(.7)">' + capSVG("L", 50).replace(/<svg[^>]*>|<\/svg>/g, "") + "</g></svg>";
+  }
+  function genitive(n) { n = String(n || "").trim(); if (!n) return "Gänget"; return /[sxz]$/i.test(n) ? n + " gäng" : n + "s gäng"; }
+  function openOnboard() {
+    lsSet("olnu.pnOb", String(Date.now()));
+    A.openSheet("Vem går du ut med?", function (body) {
+      var box = h("div", { class: "pn-ob" });
+      body.appendChild(box);
+      function step1() {
+        box.innerHTML = "";
+        box.appendChild(h("div", { class: "pn-ob-art", html: glassArt() }));
+        box.appendChild(h("h3", { class: "pn-ob-h", text: "Kartan ä roligast med gänget" }));
+        box.appendChild(h("p", { class: "pn-lead", text: "Skapa ert gäng och skicka länken i gruppchatten. Då ser ni varandra på kartan ikväll." }));
+        box.appendChild(h("button", { type: "button", class: "btn btn-amber btn-block pn-ob-make", html: ic("users-three") + "<span>Skapa gänget</span>", onclick: step2 }));
+        box.appendChild(h("button", { type: "button", class: "btn btn-block pn-ob-code", html: ic("link") + "<span>Jag har en länk eller kod</span>", onclick: stepCode }));
+        box.appendChild(h("button", { type: "button", class: "pn-textbtn pn-ob-skip", text: "Bara kika runt", onclick: function () { A.closeSheet(); } }));
+      }
+      function step2() {
+        box.innerHTML = "";
+        box.appendChild(h("label", { class: "fld", for: "pn-ob-name", text: "Vad heter gänget?" }));
+        var inp = h("input", { class: "inp", id: "pn-ob-name", maxlength: "40", enterkeyhint: "go", value: genitive(myName()) });
+        box.appendChild(inp);
+        box.appendChild(h("p", { class: "pn-note", text: "Du kan byta namn sen." }));
+        var go = h("button", { type: "button", class: "btn btn-amber btn-block", html: ic("share-network") + "<span>Skapa och dela länken</span>" });
+        go.addEventListener("click", function () {
+          var n = String(inp.value || "").trim();
+          if (n.length < 1 || n.length > 40) { toast("Skriv ett namn på gänget.", { err: true }); return; }
+          go.disabled = true;
+          A.withName(function () {
+            call("create_group", { p_name: n, p_display_name: myName() }).then(function (r) {
+              go.disabled = false;
+              var g = data(r);
+              if (r.error || !g) { toast(safe(function () { return A.errMsg(r.error); }, "Det gick int'. Försök igen."), { err: true }); return; }
+              lsSet("olnu.pnAha", "1"); vib(15);
+              try { A.refresh(); } catch (e) {}
+              if (W("JOIN") && W("JOIN").openGroup) W("JOIN").openGroup(g, true); else A.showGroups();
+            });
+          });
+        });
+        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
+        box.appendChild(go);
+        box.appendChild(h("button", { type: "button", class: "pn-textbtn", text: "Tillbaka", onclick: step1 }));
+        setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 80);
+      }
+      function stepCode() {
+        box.innerHTML = "";
+        box.appendChild(h("label", { class: "fld", for: "pn-ob-c", text: "Klistra in länken eller skriv koden" }));
+        var inp = h("input", { class: "inp code-inp", id: "pn-ob-c", maxlength: "200", autocapitalize: "characters", autocomplete: "off", spellcheck: "false", enterkeyhint: "go", placeholder: "t.ex. ABC234" });
+        box.appendChild(inp);
+        var go = h("button", { type: "button", class: "btn btn-amber btn-block", text: "Gå med" });
+        go.addEventListener("click", function () {
+          var v = String(inp.value || ""), m = /[?&]join=([A-Za-z0-9]{6})/.exec(v), c = U.cleanCode(m ? m[1] : v);
+          if (c.length !== 6) { toast("Koden har 6 tecken.", { err: true }); return; }
+          go.disabled = true;
+          A.withName(function () {
+            call("join_group", { p_code: c, p_display_name: myName() }).then(function (r) {
+              go.disabled = false;
+              if (r.error) { toast(safe(function () { return A.errMsg(r.error); }, "Hittade int' gruppen."), { err: true }); return; }
+              var g = data(r) || {};
+              lsSet("olnu.pnAha", "1"); vib(15);
+              toast("Du ä med i " + (g.name || "gänget") + " 🎉");
+              try { A.refresh(); } catch (e) {}
+              A.showGroups();
+              // scout #3: right after joining a group = the moment to ask for the home screen (once)
+              if (!standalone() && !ls("olnu.pnInst") && W("INSTALL1") && W("INSTALL1").show) {
+                lsSet("olnu.pnInst", String(Date.now()));
+                setTimeout(function () { try { W("INSTALL1").show(); } catch (e) {} }, 1800);
+              }
+            });
+          });
+        });
+        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
+        box.appendChild(go);
+        box.appendChild(h("button", { type: "button", class: "pn-textbtn", text: "Tillbaka", onclick: step1 }));
+        setTimeout(function () { try { inp.focus(); } catch (e) {} }, 80);
+      }
+      step1();
+    });
+  }
+  function maybeOnboard() {
+    if (ls("olnu.pnOb") || !A.LIVE) return false;
+    if (W("JOIN") && W("JOIN").handled && safe(function () { return W("JOIN").handled(); }, false)) return false;
+    if (/[?&](chat|rally|sos|status|join|ev|flytt|friend|film|inv)=/.test(location.search)) return false;
+    setTimeout(function () {
+      call("my_groups", {}).then(function (r) {
+        var gs = data(r);
+        if (r.error || !Array.isArray(gs)) return;
+        if (gs.length) { lsSet("olnu.pnOb", "had"); lsSet("olnu.pnAha", "1"); return; }
+        if (sheetOpen()) { lsSet("olnu.pnOb", null); return; }   // try again next start
+        openOnboard();
+      });
+    }, 900);
+    return true;
+  }
+
+  /* ---------- install after the first beer ---------- */
+  function afterFirstBeer() {
+    var first = !ls("olnu.pnBeer1");
+    lsSet("olnu.pnBeer1", "1"); lsSet("olnu.pnAha", "1"); calmFlags();
+    if (!first || standalone() || ls("olnu.pnInst") || !W("INSTALL1") || !W("INSTALL1").show) return;
+    lsSet("olnu.pnInst", String(Date.now()));
+    var show = function () { setTimeout(function () { if (!sheetOpen()) { try { W("INSTALL1").show(); } catch (e) {} } else lsSet("olnu.pnInst", null); }, 2600); };
+    try { if (window.OLNU_STRIP && window.OLNU_STRIP.after) window.OLNU_STRIP.after(show); else show(); } catch (e) { show(); }
+  }
+
+  /* ---------- Grupper sheet: polish + nudges ---------- */
+  function groupsSheet(body) {
+    setTimeout(function () { polishGroups(body); }, 0);
+    setTimeout(function () { polishGroups(body); nudges(body); }, 900);
+  }
+  function polishGroups(body) {
+    if (!body || !document.body.contains(body)) return;
+    var pane = body.querySelector("#inv-pane-g") || body;
+    pane.querySelectorAll(":scope > .row").forEach(function (r) {
+      var join = r.querySelector(".btn-green:not(.btn-block)");
+      if (join && !join.__pn) { join.__pn = true; join.classList.add("pn-textlink"); join.textContent = "Har du en kod? Gå med"; }
+      var come = r.querySelector(".btn-block.btn-green");
+      if (come && /Kom hit/.test(come.textContent)) r.classList.add("pn-gone");
+    });
+  }
+  function nudges(body) {
+    if (!body || !document.body.contains(body) || body.querySelector(".pn-nudge")) return;
+    var pane = body.querySelector("#inv-pane-g"); if (!pane) return;
+    var cards = pane.querySelectorAll(".glist .gcard").length;
+    if (cards) { lsSet("olnu.pnAha", "1"); if (!ls("olnu.pnOb")) lsSet("olnu.pnOb", "had"); }
+    var first = pane.querySelector(".glist");
+    // a) Spara kontot (once, after the first group, when e-mail accounts are on)
+    var ac = W("ACCOUNT");
+    if (cards && !ls("olnu.pnAcct") && ac && safe(function () { return ac.on() && !ac.saved(); }, false)) {
+      lsSet("olnu.pnAcct", String(Date.now()));
+      var c = h("div", { class: "ds-card pn-nudge pn-acct" }, [h("span", { class: "pn-nudge-i", html: ic("shield-check") }),
+        h("div", { class: "pn-nudge-t" }, [h("b", { text: "Spara kontot" }), h("small", { text: "Med e-post tappar du int' gänget om du byter telefon." })]),
+        h("button", { type: "button", class: "btn btn-small", text: "Spara", onclick: function () { try { ac.openSave(); } catch (e) {} } }),
+        h("button", { type: "button", class: "pn-x", "aria-label": "Stäng", html: ic("x"), onclick: function () { c.remove(); } })]);
+      if (first) pane.insertBefore(c, first); return;
+    }
+    // b) Bjud in 1 till (a group where you are alone)
+    call("my_groups", {}).then(function (r) {
+      var gs = data(r); if (!Array.isArray(gs) || !document.body.contains(pane) || pane.querySelector(".pn-nudge")) return;
+      var solo = gs.filter(function (g) { return (g.member_count | 0) === 1 && !g.ev; })[0];
+      if (!solo || ls("olnu.pnSolo." + solo.id) === new Date().toDateString()) return;
+      var c2 = h("div", { class: "ds-card pn-nudge" }, [h("span", { class: "pn-nudge-i", html: ic("user-plus") }),
+        h("div", { class: "pn-nudge-t" }, [h("b", { text: "Bara du i " + (solo.name || "gänget") }), h("small", { text: "Ett gäng på en ä ingen fest. Bjud in 1 till." })]),
+        h("button", { type: "button", class: "btn btn-small", text: "Bjud in", onclick: function () { if (W("JOIN") && W("JOIN").openGroup) W("JOIN").openGroup(solo, false); } }),
+        h("button", { type: "button", class: "pn-x", "aria-label": "Stäng", html: ic("x"), onclick: function () { lsSet("olnu.pnSolo." + solo.id, new Date().toDateString()); c2.remove(); } })]);
+      var fl = pane.querySelector(".glist"); if (fl) pane.insertBefore(c2, fl);
+    });
+  }
+
+  /* ---------- header ‹ back (one back control) ---------- */
+  function backBtn() {
+    var head = document.querySelector("#sheet .sheet-head");
+    if (!head || document.getElementById("pn-back")) return;
+    var b = h("button", { id: "pn-back", class: "icon-btn pn-back", type: "button", "aria-label": "Tillbaka", title: "Tillbaka", html: ic("caret-left"), hidden: true });
+    b.addEventListener("click", function () {
+      var body = document.getElementById("sheet-body"); if (!body) return;
+      var sub = body.querySelector(".gpg:not([data-gv='home']) .gpg-back");
+      if (sub) { sub.click(); return; }
+      var ib = inBodyBack(body);
+      if (ib) { ib.click(); return; }
+      var sn = W("SHEETNAV");
+      if (sn && sn.back) { try { sn.back(); return; } catch (e) {} }
+      history.back();
+    });
+    head.insertBefore(b, head.firstChild);
+  }
+  // In-body back buttons of the older sheets (they all go one step back through SHEETNAV's back intent).
+  var BACK_SEL = ":scope > .g-back, :scope > .row:first-child > .btn-small:only-child";
+  function inBodyBack(body) {
+    var x = body.querySelector(":scope > .g-back");
+    if (x) return x;
+    var r = body.querySelector(":scope > .row:first-child > .btn-small:only-child, :scope > .rnd + .row > .btn-small:only-child");
+    if (r && /^‹|^←/.test((r.textContent || "").trim())) return r;
+    return null;
+  }
+  function syncBack() {
+    var b = document.getElementById("pn-back"), body = document.getElementById("sheet-body");
+    if (!b || !body) return;
+    var depth = safe(function () { return W("SHEETNAV")._levels().filter(function (k) { return /^(sheet|sub)/.test(k); }).length; }, 0) | 0;
+    var sub = !!body.querySelector(".gpg:not([data-gv='home'])");
+    var ib = inBodyBack(body);
+    if (ib) ib.classList.add("pn-gone");
+    var show = !!(sub || ib || depth > 0);
+    if (b.hidden === show) b.hidden = !show;
+    document.getElementById("sheet").classList.toggle("pn-has-back", show);
+  }
+
+  /* ---------- 6. Profil ---------- */
+  function profileSheet(body) {
+    setTimeout(function () { shapeProfil(body); }, 0);
+  }
+  function rowBtn(icon, title, sub, fn, cls) {
+    var r = h("button", { type: "button", class: "ds-row pn-row" + (cls ? " " + cls : "") }, [h("span", { class: "ds-row-i", html: ic(icon) }),
+      h("span", { class: "ds-row-t" }, [h("span", { text: title }), sub ? h("small", { text: sub }) : null]), h("span", { class: "ds-chev" })]);
+    r.addEventListener("click", fn);
+    return r;
+  }
+  function shapeProfil(body) {
+    if (!body || !document.body.contains(body) || body.querySelector(".pn-pf")) return;
+    var tabs = body.querySelector(":scope > .pf-tabs"), hero = body.querySelector(":scope > .pf-hero, :scope > .pf-card, :scope > .pf");
+    if (!hero) { var c = body.children; for (var i = 0; i < c.length; i++) if (c[i] !== tabs && c[i].querySelector && c[i].querySelector(".pf-top")) { hero = c[i]; break; } }
+    var md = safe(function () { return W("MEDALS").mine(); }, null), nMed = md ? (Array.isArray(md) ? md.length : Object.keys(md).length) : 0;
+    var ps = safe(function () { return W("PASSPORT").data(); }, null), nBars = ps && ps.bars ? (Array.isArray(ps.bars) ? ps.bars.length : ps.bars | 0) : 0;
+    var box = h("div", { class: "pn-pf" });
+    var mitt = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Mitt" })]);
+    var l1 = h("div", { class: "ds-list" });
+    if (W("MEDALS") && W("MEDALS").showMine) l1.appendChild(rowBtn("shield-check", "Min uniform", nMed ? nMed + " medaljer" : "Medaljer och grad", function () { W("MEDALS").showMine(); }));
+    if (W("PASSPORT") && W("PASSPORT").open) l1.appendChild(rowBtn("map-trifold", "Ölpasset", nBars ? nBars + " krogar" : "Krogarna du har besökt", function () { W("PASSPORT").open(); }));
+    var nl = W("NIGHTLOG"), af = W("AFTER");
+    if ((nl && nl.open) || (af && af.openWrapped)) l1.appendChild(rowBtn("clock", "Mina kvällar", "Din kväll, dagen efter, Wrapped", function () { if (nl && nl.open) nl.open(); else af.openWrapped("year", 0); }));
+    if (W("NEAR") && W("NEAR").openFriends) l1.appendChild(rowBtn("hand-waving", "Vänner", "Lägg till med länk eller QR", function () { W("NEAR").openFriends(); }));
+    mitt.appendChild(l1);
+    var help = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Hjälp oss bli bättre" })]);
+    var l2 = h("div", { class: "ds-list" });
+    if (W("WISH") && W("WISH").open) l2.appendChild(rowBtn("lightbulb", "Önska något", "Vad saknar du i appen?", function () { W("WISH").open(); }, "pn-wish"));
+    l2.appendChild(rowBtn("bug", "Rapportera fel", "Nåt som strulade?", openBug, "pn-bugrow"));
+    help.appendChild(l2);
+    box.appendChild(mitt); box.appendChild(help);
+    // The rest (name, hemstad, pin, module rows, flytt, integritet = ds.js sections) folds away behind one row.
+    var tog = h("button", { type: "button", class: "ds-row pn-row pn-fold-t ds-keep", "aria-expanded": "false" }, [h("span", { class: "ds-row-i", html: ic("sliders-horizontal") }),
+      h("span", { class: "ds-row-t" }, [h("span", { text: "Namn, konto och mer" }), h("small", { text: "Hemstad, vänner, Swish, synlighet, flytta" })]), h("span", { class: "pn-fold-c", html: ic("caret-right") })]);
+    var setOpen = function (o) { body.classList.toggle("pn-pfopen", o); tog.setAttribute("aria-expanded", String(o)); lsSet("olnu.pnFold", o ? "1" : "0"); };
+    tog.addEventListener("click", function () { setOpen(!body.classList.contains("pn-pfopen")); });
+    box.classList.add("ds-keep");
+    var wrap = h("div", { class: "pn-fold-w ds-keep" }, [tog]);
+    var after = hero ? hero.nextSibling : (tabs ? tabs.nextSibling : body.firstChild);
+    body.insertBefore(box, after);
+    body.insertBefore(wrap, box.nextSibling);
+    body.classList.add("pn-pfmode");
+    setOpen(ls("olnu.pnFold") === "1");
+    hideLang(body);
+  }
+  function hideLang(body) {   // Swedish only: no SV/EN row
+    [].forEach.call(body.querySelectorAll(".seg"), function (sg) {
+      var t = [].map.call(sg.querySelectorAll("button"), function (b) { return (b.textContent || "").trim(); }).join(",");
+      if (t === "SV,EN") { var it = sg.closest(".ds-item") || sg; it.classList.add("pn-gone"); var p = it.previousElementSibling; if (p && p.tagName === "H3") p.classList.add("pn-gone"); }
+    });
+  }
+
+  /* ---------- 🐞 Rapportera fel ---------- */
+  function meta() {
+    var v = "";
+    try { var s = [].slice.call(document.scripts).map(function (x) { return x.src || ""; }).filter(function (x) { return /app\.js/.test(x); })[0]; v = (/[?&]v=([^&]+)/.exec(s || "") || [])[1] || ""; } catch (e) {}
+    var screen = sheetOpen() ? ((document.getElementById("sheet-title") || {}).textContent || "meny") : "kartan";
+    return { v: v, ua: navigator.userAgent.slice(0, 200), screen: String(screen).slice(0, 60), err: lastErr, w: String(innerWidth), h: String(innerHeight), standalone: String(standalone()) };
+  }
+  function openBug() {
+    var m = meta();
+    A.openSheet("Rapportera fel", function (body) {
+      body.appendChild(h("label", { class: "fld", for: "pn-bug", text: "Vad hände?" }));
+      var ta = h("textarea", { class: "inp pn-ta", id: "pn-bug", rows: "4", maxlength: "1000", placeholder: "T.ex. Knappen Checka in gjorde inget på Pitchers." });
+      body.appendChild(ta);
+      var cb = h("input", { type: "checkbox", id: "pn-bug-meta", checked: true });
+      body.appendChild(h("label", { class: "pn-check", for: "pn-bug-meta" }, [cb, h("span", { text: "Skicka med teknisk info" })]));
+      body.appendChild(h("p", { class: "pn-meta", text: "Version " + (m.v || "–") + " · " + (/(Android|iPhone|iPad|Windows|Mac)[^;)]*/.exec(m.ua) || ["okänd telefon"])[0] + " · skärm: " + m.screen + (m.err ? " · senaste fel: " + m.err : "") }));
+      var go = h("button", { type: "button", class: "btn btn-amber btn-block", text: "Skicka" });
+      go.addEventListener("click", function () {
+        var t = String(ta.value || "").trim();
+        if (t.length < 3) { toast("Skriv vad som hände.", { err: true }); return; }
+        go.disabled = true;
+        call("submit_feedback", { p_kind: "bug", p_text: t, p_meta: cb.checked ? m : {} }).then(function (r) {
+          go.disabled = false;
+          if (r.error) { toast(r.off ? "Det går int' att skicka än." : errCode(r.error) === "slow_down" ? "Vänta en stund innan du skickar igen." : "Det gick int'. Försök igen.", { err: true }); return; }
+          vib(15); A.closeSheet(); toast("Tack! Felet ä rapporterat. Vi kollar på det. 🐞");
+        });
+      });
+      body.appendChild(h("div", { class: "row", style: "margin-top:16px" }, [go]));
+      setTimeout(function () { try { ta.focus(); } catch (e) {} }, 80);
+    });
+  }
+
+  /* ---------- the morning after (optional, one question) ---------- */
+  var MQ = [["kompisar", "Fler kompisar på kartan"], ["enklare", "Att det va enklare"], ["mer_att_gora", "Mer att göra"], ["inget", "Inget, det va bra"]];
+  function wasOutLastNight() {
+    var at = +ls("olnu.pnOutNight", "0") || 0;            // nightEnd() of the last night with a beer
+    return at && Date.now() > at && Date.now() - at < 10 * 3600e3;   // 05:00–15:00 the day after
+  }
+  function maybeMorning() {
+    if (!A.LIVE || !wasOutLastNight()) return false;
+    if (ls("olnu.pnMq") && Date.now() - (+ls("olnu.pnMq") || 0) < 14 * 864e5) return false;
+    if (ls("olnu.pnMqNight") === ls("olnu.pnOutNight")) return false;
+    lsSet("olnu.pnMqNight", ls("olnu.pnOutNight"));
+    setTimeout(function () { if (!sheetOpen()) openMorning(); }, 6000);
+    return true;
+  }
+  function openMorning() {
+    lsSet("olnu.pnMq", String(Date.now()));
+    A.openSheet("God morgon!", function (body) {
+      body.appendChild(h("p", { class: "pn-lead", text: "En snabb fråga, om du vill: vad saknade du igår?" }));
+      var list = h("div", { class: "pn-mq" }), picked = null, more = null;
+      MQ.forEach(function (x) {
+        var b = h("button", { type: "button", class: "ds-chip pn-mq-b", "aria-pressed": "false", text: x[1] });
+        b.addEventListener("click", function () { picked = x[0]; list.querySelectorAll("button").forEach(function (y) { y.setAttribute("aria-pressed", String(y === b)); }); send.disabled = false; });
+        list.appendChild(b);
+      });
+      body.appendChild(list);
+      body.appendChild(h("label", { class: "fld", for: "pn-mq-t", text: "Nåt annat? (valfritt)" }));
+      more = h("textarea", { class: "inp pn-ta", id: "pn-mq-t", rows: "2", maxlength: "500" });
+      body.appendChild(more);
+      var send = h("button", { type: "button", class: "btn btn-amber btn-block", text: "Skicka", disabled: true });
+      send.addEventListener("click", function () {
+        send.disabled = true;
+        call("submit_feedback", { p_kind: "morning", p_answer: picked, p_text: String(more.value || "").trim() || null, p_meta: { v: meta().v } }).then(function (r) {
+          A.closeSheet();
+          toast(r.error ? "Det gick int' att skicka. Tack ändå!" : "Tack! Det hjälper oss mycket. ☀️");
+        });
+      });
+      body.appendChild(h("div", { class: "row", style: "margin-top:16px" }, [send]));
+      body.appendChild(h("button", { type: "button", class: "pn-textbtn", text: "Hoppa över", onclick: function () { A.closeSheet(); } }));
+    });
+  }
+
+  /* ---------- settings: one home per action ---------- */
+  function settingsSheet(body) {
+    setTimeout(function () {
+      if (!body || !document.body.contains(body)) return;
+      // "📲 Bjud in" (amber, top) lives in Vänner → Lägg till vän now; the install guide moves to the end (Om appen).
+      [].slice.call(body.querySelectorAll(":scope > .row")).slice(0, 3).forEach(function (r) {
+        var b = r.querySelector(".btn"); if (!b) return;
+        if (b.classList.contains("btn-amber") && /📲/.test(b.textContent)) r.classList.add("pn-gone");
+        else if (/^🏠/.test(b.textContent.trim()) && !r.__pnMoved) { r.__pnMoved = true; body.appendChild(r); }
+      });
+      tidySettings(body);
+      setTimeout(function () { tidySettings(body); }, 400);
+    }, 0);
+  }
+  function tidySettings(body) {
+    if (!body || !document.body.contains(body)) return;
+    // Önska lives in Profil → Hjälp oss bli bättre now
+    body.querySelectorAll(".ws-entry-set, .ws-entry").forEach(function (b) { var it = b.closest(".ds-item") || b; it.classList.add("pn-gone"); });
+    body.querySelectorAll(".pn-gone").forEach(function (g) { var it = g.closest(".ds-item"); if (it && it !== g && !it.querySelector(":scope > :not(.pn-gone):not(.ds-hide):not(h3)")) it.classList.add("pn-gone"); });
+    body.querySelectorAll(":scope > section.ds-section").forEach(function (sec) {
+      var items = sec.querySelectorAll(".ds-list > .ds-item");
+      var vis = [].filter.call(items, function (i) { return !i.classList.contains("pn-gone"); });
+      sec.classList.toggle("pn-gone", items.length > 0 && !vis.length);
+    });
+  }
+
+  /* ---------- wiring ---------- */
+  var obs = null;
+  function watch() {
+    if (obs) return;
+    var t = null;
+    obs = new MutationObserver(function () { clearTimeout(t); t = setTimeout(function () {
+      syncBack(); moreDot(); groupsOut(); paintGikv();
+      // group home: the join code lives in ⋯ (Bjud in), not in the subtitle
+      document.querySelectorAll(".gpg[data-gv='home'] > .gmain .gsub").forEach(function (g) {
+        var t = g.firstChild; if (t && t.nodeType === 3 && /^Kod [A-Z0-9]{6} · /.test(t.nodeValue)) t.nodeValue = t.nodeValue.replace(/^Kod [A-Z0-9]{6} · /, "");
+      });
+      var st = document.getElementById("sheet-title");
+      if (st && /^Topplista ikväll$/.test(st.textContent || "")) st.textContent = "Topplistor";   // spec 5.9
+      var sb = document.getElementById("sheet-body");
+      if (sb) { var pf = !!sb.querySelector(":scope > .pn-pf"); sb.classList.toggle("pn-pfmode", pf); if (!pf) sb.classList.remove("pn-pfopen"); else hideLang(sb); }
+    }, 30); });
+    try {
+      obs.observe(document.getElementById("sheet-body"), { childList: true, subtree: true, attributes: true, attributeFilter: ["data-gv", "hidden"] });
+      ["groups-badge", "btn-heat", "btn-ghostpins", "btn-taxi"].forEach(function (id) { var e = document.getElementById(id); if (e) obs.observe(e, { attributes: true, childList: true, characterData: true, subtree: true }); });
+      obs.observe(document.body, { childList: true });   // #btn-evs is added later by evsheet.js
+    } catch (e) {}
+  }
+
+  window.PNUI = {
+    init: function (api) {
+      A = api;
+      document.body.classList.add("pn-calm");
+      // Install card after the "aha" (first beer / group), not before the map: until then the daily guide sheet waits too.
+      if (!ls("olnu.pnAha") && !standalone()) lsSet("olnu.guideSeen", String(Date.now()));
+      moreBtn(); backBtn(); setupTicker(); avatarBtn(); calmFlags(); hideGreetOnMove(); precToggle(); watch();
+      setTimeout(function () { moreDot(); groupsOut(); paintStrip(); }, 500);
+      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") loadIkvall(false); });
+    },
+    onAuthed: function () { loadIkvall(true); avatarBtn(); },
+    onPoll: function () { lastPollAt = Date.now(); paintStrip(); avatarBtn(); moreDot(); groupsOut(); loadIkvall(false); },
+    onBeerAccepted: function () {
+      try { var ne = A.nightEnd ? A.nightEnd() : 0; if (ne) lsSet("olnu.pnOutNight", String(ne)); } catch (e) {}
+      afterFirstBeer();
+      if (ikv.d && ikv.d.mine !== "ute" && evening() && !off.ikvall_set) { ikv.d.mine = "ute"; stripSig = ""; paintStrip(); call("ikvall_set", { p_st: "ute" }); }
+    },
+    onReadyShow: function () { return maybeOnboard() ? "pnob" : maybeMorning() ? "pnmorn" : ""; },
+    barMeterHTML: barMeterHTML,
+    groupsSheet: groupsSheet,
+    groupItem: groupItem,
+    profileSheet: profileSheet,
+    settingsSheet: settingsSheet,
+    applyText: function () { avatarBtn(); },
+    meterHTML: function (n, nm, size) { return meterHTML(n, nm, size, null, true); },
+    capSVG: capSVG, ic: ic,
+    openIkvall: openIkvall, openOnboard: openOnboard, openBug: openBug, openMorning: openMorning, openMore: openMore,
+    _ikv: function () { return ikv; }, _norm: norm
+  };
+})();

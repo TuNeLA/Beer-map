@@ -438,6 +438,7 @@
   function paintCounter() {
     var el = document.getElementById("live-count");
     if (!el || realN == null || !on()) return;
+    if (window.ZONES && window.ZONES.pill && window.ZONES.pill()) return;   // zones: the top bar shows the zone line
     var html = T("live", nf((realN | 0) + total()));
     if (html && el.innerHTML !== html) el.innerHTML = html;
   }
@@ -471,14 +472,14 @@
     // app.js: DEMO.attach({ map, live, render, renderHeat, beerIcon, real }) once, after its render functions exist
     attach: function (api) {
       A = api; wrapNews(); wasOn = on();
-      fetchFlag(); setInterval(fetchFlag, 15 * 60000);
+      fetchFlag(); U.vInterval(fetchFlag, 15 * 60000);
       A.map.on("zoomend", function () { updatePills(); });
       A.map.on("moveend", function () {
         updatePills();
         var moved = function () { var b = A.map.getBounds(); return viewKey() !== lastViewKey || (lastBox && !lastBox.contains(b)); };
         if (on() && A.map.getZoom() >= HOT_ZOOM && moved()) setTimeout(function () { if (moved() && !A.map._animatingZoom) A.render(); }, 250);
       });
-      if (!timer) timer = setInterval(tick, 1000);
+      if (!timer) timer = U.vInterval(tick, 1000);
       setTimeout(function () { if (on()) { compute(true); updatePills(true); } }, 1500);
     },
     on: on, bars: bars, heat: heat, total: total, counter: counter, cisAt: cisAt, crowd: crowd, popup: popup, skal: skal,

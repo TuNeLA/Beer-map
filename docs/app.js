@@ -26,6 +26,11 @@
   // Always resolves to {data, error}. Never rejects, never hangs longer than RPC_TIMEOUT_MS.
   function rpc(name, params) {
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
+    // ⚡ SPEED (#6) no account yet: public calls go out; a call right after a tap on a button makes the account first; others wait
+    if (publicOn && !authed && PUBLIC_RPC.indexOf(name) < 0) {
+      if (Date.now() - lastUiClick < 1500) return signIn().then(function () { return authed ? rpc(name, params) : { data: null, error: { message: "no_session", code: "no_session" } }; });
+      return Promise.resolve({ data: null, error: { message: "no_session", code: "no_session" } });
+    }
     // Account moved away (flyttkod): this browser must never use or refresh that session again.
     if (flyttGuard()) return Promise.resolve({ data: null, error: { message: "moved" } });
     return new Promise(function (resolve) {
@@ -47,8 +52,9 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
+      if (modsWave && fn === "onPoll") { modsWave.push(m); return; }   // ⚡ SPEED: runWave() calls it
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
     });
     return out;
@@ -56,7 +62,18 @@
   // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
   // Used for levels, chaos, heat, counts, top lists and news numbers. The real rows stay in "beers".
   var drinkViews = null;
-  var modsSkip = null, slowLaneAt = 0, SLOW_LANE_MS = 60000;   // review2: shared slow lane (see onPoll)
+  var modsSkip = null, slowLaneAt = 0, SLOW_LANE_MS = 60000;
+  // ⚡ SPEED: the onPoll fan-out in waves (5 modules, then the next 5 after 250 ms …): ~15 module RPCs no longer start in
+  // the same tick (they queued for 8–16 s on phones after a resume). A newer poll or a hidden page stops the old wave.
+  var modsWave = null, waveSeq = 0, WAVE_N = 5, WAVE_MS = 250;
+  function runWave(list, arg) {
+    var seq = ++waveSeq, i = 0;
+    (function step() {
+      if (seq !== waveSeq || document.hidden) return;
+      list.slice(i, i + WAVE_N).forEach(function (m) { try { m.onPoll(arg); } catch (e) { try { console.warn("olnu onPoll", e); } catch (x) {} } });
+      i += WAVE_N; if (i < list.length) setTimeout(step, WAVE_MS);
+    })();
+  }   // review2: shared slow lane (see onPoll)
   function beerOnly() {
     if (drinkViews) return drinkViews;
     drinkViews = beers.filter(function (b) { return U.drinks(b) >= 1; }).map(function (b) {
@@ -643,16 +660,18 @@
     var info = take(".pp-info, .pp-links, .af-qr, .gg-pop") + popBox.innerHTML.trim();
     popBox.innerHTML = "";
     var hasKing = /pp-king"/.test(king) || /class="pp-king"/.test(king);
-    // Header
+    // Header (ui-build: PNUI crowd meter under it; then the meta line does not repeat the count + crowd word)
+    var meter = mods("barMeterHTML", bar, list);
     var h = '<div class="bs-head"><div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
       '<div class="bs-meta">' + U.esc(barTypeLabel(bar.type)) +
-      (list.length ? ' · <b class="bs-n">' + U.esc(tl("≈ " + list.length + " här", "≈ " + list.length + " here")) + "</b>" : "") +
-      (crowd ? ' · <span class="pp-crowd-t ' + U.esc(crowdCls) + '">' + U.esc(crowd) + "</span>" : "") + "</div>";
+      (list.length && !meter ? ' · <b class="bs-n">' + U.esc(tl("≈ " + list.length + " här", "≈ " + list.length + " here")) + "</b>" : "") +
+      (crowd && !meter ? ' · <span class="pp-crowd-t ' + U.esc(crowdCls) + '">' + U.esc(crowd) + "</span>" : "") + "</div>";
     var icons = (hasKing ? '<span title="' + U.esc(tl("Kung", "King")) + '">👑</span>' : "") + (own ? '<span title="' + U.esc(tl("Övertagen", "Taken over")) + '">🏰</span>' : "") +
       (dance ? "<span>🕺</span>" : "") + (qEl ? '<span class="bs-q ' + U.esc(qCls) + '" title="' + U.esc(qTxt) + '">🚶</span>' : "");
     if (icons) h += '<div class="bs-icons" aria-hidden="true">' + icons + "</div>";
     h += "</div>";
     if (evLine) h += evLine;
+    if (meter) h += meter;
     // Call-outs (rally.js rows): compact, route link as 🧭, shouting toned down.
     var rl = "", nRl = 0;
     try { rl = id && window.RALLY && window.RALLY.barSectionHTML ? window.RALLY.barSectionHTML(id) : ""; } catch (e) { rl = ""; }
@@ -806,7 +825,7 @@
     var bar = ciBarById[button.getAttribute("data-ci")];
     if (!bar || button.disabled) return;
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
-    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
+    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (authed) doCheckin(button); }); return; }   // ⚡ the 1st action makes the account
     window.FX.unlock();
     // Spökläge: nothing goes to the server, nobody is told.
     if (window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn()) { toast(t("ciGhost"), { ms: 5000 }); return; }
@@ -1085,7 +1104,7 @@
   }
   /* Smooth news belt: one constant speed, never restarts. New headlines are queued and join at the
      end of the belt; items that have left on the left side are removed. */
-  var TICK_PX_S = 55, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false, tickMeasureAt = 0;
+  var TICK_PX_S = 46, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false, tickMeasureAt = 0;
   function tickPiece() {
     var track = $("ticker-track"), frag = document.createDocumentFragment();
     if (!tickKickDone) {
@@ -1109,7 +1128,7 @@
     var track = $("ticker-track");
     var dt = tickLast ? Math.min(0.1, (ts - tickLast) / 1000) : 0;
     tickLast = ts;
-    tickOff += TICK_PX_S * dt;
+    tickOff += TICK_PX_S * dt * (window.PN_TICK_F == null ? 1 : window.PN_TICK_F);   // ui-build: hold to pause, eased
     // Layout reads (offsetWidth / scrollWidth) only ~4 times a second, not every frame.
     if (!tickMeasureAt || ts - tickMeasureAt >= 250 || ts < tickMeasureAt) {
       tickMeasureAt = ts;
@@ -1505,7 +1524,7 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(liveTotal != null ? liveTotal : lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive");
+    $("live-count").innerHTML = (window.ZONES && window.ZONES.pill && window.ZONES.pill()) || (LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(liveTotal != null ? liveTotal : lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive"));   // 🗺️ zones: "Dalarna · 47 ute ikväll" when zoomed out
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
@@ -1758,7 +1777,9 @@
       var slowDue = Date.now() - slowLaneAt >= SLOW_LANE_MS - 3000;
       if (slowDue) slowLaneAt = Date.now();
       else modsSkip = [window.MERITER, window.FILM, window.CEREMONY, window.HELG, window.PASSPORT, window.GOLDEN, window.EVENTS, window.HOMETOWN, window.KODEN];
-      try { mods("onPoll", beers); } finally { modsSkip = null; }
+      var wave = modsWave = [];
+      try { mods("onPoll", beers); } finally { modsSkip = null; modsWave = null; }
+      runWave(wave, beers);
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") {
         // Export pending and the server stopped taking our token: the new app has taken the account over.
@@ -1803,10 +1824,20 @@
     if (document.visibilityState === "visible") {
       memRestore();
       if (flyttOnVisible()) return;   // back from the new app: the account moved, do not poll with the old token
-      lastTouch = Date.now(); startPoll(); refresh(); tickCooldown();
+      // ⚡ SPEED: the session first (one token refresh, the RPCs do not queue behind it), then ONE poll; the modules get
+      // their onPoll from that poll (they have no own visibilitychange polls any more)
+      lastTouch = Date.now(); tickCooldown();
+      if (publicOn && !authed) setTimeout(publicPoll, 300);   // ⚡ no account yet: the public poll
+      resumeSession().then(function () { if (document.visibilityState !== "visible" || movedState) return; startPoll(); refresh(); });
     }
-    else { flyttHiddenAt = Date.now(); stopPoll(); memShed(); }
+    else { flyttHiddenAt = Date.now(); stopPoll(); memShed(); clearTimeout(pubTimer); if (cdTimer) { clearInterval(cdTimer); cdTimer = null; } }
   });
+  var resumeP = null;
+  function resumeSession() {
+    if (!client || !authed || !client.auth) return Promise.resolve();
+    if (!resumeP) resumeP = Promise.race([Promise.resolve(client.auth.getSession()).catch(function () {}), wait(6000)]).then(function () { resumeP = null; });
+    return resumeP;
+  }
 
   // Review (memory): while the page is hidden (camera / gallery open, app switch) drop what is cheap to rebuild:
   // the map tile images and the heat canvas. Android kills hidden tabs by their memory use.
@@ -2291,7 +2322,7 @@
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (busy || cooldownLeft() > 0) return;
     if (navigator.onLine === false) { if (!queued) queueBeer(); return; }
-    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn(); return; }
+    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (authed) beerTap(queued); }); return; }   // ⚡ the 1st action makes the account
     window.FX.unlock();
     window.FX.splash($("btn-beer"));
     window.FX.vibrate(20);
@@ -3103,7 +3134,8 @@
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" }).then(function (reg) {
         var check = function () { if (reg && reg.update) reg.update().catch(function () {}); };
-        document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+        var lastCheck = 0;   // ⚡ SPEED: not in the resume burst, max once per 30 min
+        document.addEventListener("visibilitychange", function () { if (!document.hidden && Date.now() - lastCheck > 30 * 60000) { lastCheck = Date.now(); setTimeout(check, 8000); } });
         setInterval(check, 10 * 60 * 1000);
       }).catch(function () {});
     });
@@ -3143,6 +3175,62 @@
     if (document.readyState === "complete") stripV(); else window.addEventListener("load", stripV);
   })();
 
+  /* ---------- ⚡ SPEED (#6): no account until the first real action ---------- */
+  var SEARCH0 = String(location.search || ""), HASH0 = String(location.hash || "");
+  var PUBLIC_RPC = ["public_config", "account_config", "poll_public", "zone_counts"];
+  var publicOn = false, lastUiClick = 0, pubTimer = null, pubBusy = false;
+  function lazyStart() {
+    if (!LIVE || storedAuth() || U.ls.get("olnu.uid", "") || movedNow() || HASH0.length > 1) return false;
+    var deep = false;
+    try { new URLSearchParams(SEARCH0).forEach(function (v, k) { if (!/^(v|lang|visning|delight|hol|ref|fbclid|gclid|utm_\w+)$/.test(k)) deep = true; }); } catch (e) { deep = true; }
+    return !deep;
+  }
+  // a tap on a button / sheet / popup (not the map, not the intro / install / welcome cards) counts as a real action
+  document.addEventListener("click", function (e) {
+    var t = e.target; if (!e.isTrusted || !t || !t.closest) return;
+    if (t.closest("#intro, [id*='install'], [class*='install'], [class*='welcome']")) return;
+    if (t.closest("#map") && !t.closest(".leaflet-popup")) return;
+    lastUiClick = Date.now();
+  }, true);
+  function publicStart() { publicOn = true; publicPoll(); return Promise.resolve(); }
+  function schedulePublic() {
+    clearTimeout(pubTimer); pubTimer = null;
+    if (!publicOn || authed || document.visibilityState === "hidden") return;
+    pubTimer = setTimeout(publicPoll, idle() ? POLL_SLOW_MS : POLL_MS);
+  }
+  function publicPoll() {
+    if (!publicOn || authed || pubBusy || document.visibilityState === "hidden") return;
+    pubBusy = true;
+    var p = viewBox(); p.p_heat = !!(heat && heatOn);
+    rpc("poll_public", p).then(function (r) {
+      pubBusy = false;
+      if (!publicOn || authed) return;
+      var d = r && !r.error ? parseData(r.data) : null;
+      if (!d || !Array.isArray(d.pins)) {
+        var m = String((r && r.error && (r.error.message || r.error.code)) || "");
+        if (r && r.error && /timeout|fetch|network|load failed|abort/i.test(m)) return;   // offline / slow: the next tick tries again
+        publicOn = false; signIn(); return;   // old server (no poll_public): sign in like before
+      }
+      pollBox = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
+      beers = normPins(d.pins);
+      liveTotal = d.live_total != null ? d.live_total | 0 : null;
+      checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      if (Array.isArray(d.heat)) heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
+      drinkViews = null; lastPollAt = Date.now();
+      if (window.NEWS) window.NEWS.update(beerOnly());
+      newsDirty = true;
+      render(); try { renderHeat(); } catch (e) {}
+      evalChaos(true); toastClear("load");
+      if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
+      mods("onPublicPoll", d);
+    }).then(schedulePublic, schedulePublic);
+  }
+  map.on("moveend", U.debounce(function () {
+    if (!publicOn || authed || !pollBox || pubBusy) return;
+    var v = viewBox();
+    if (!(v.p_min_lat >= pollBox[0] && v.p_min_lng >= pollBox[1] && v.p_max_lat <= pollBox[2] && v.p_max_lng <= pollBox[3]) && Date.now() - lastPollAt > 3000) publicPoll();
+  }, 400));
+
   /* ---------- Auth + start ---------- */
   // Anonymous sign-in. Retries 3 times (1 s, 3 s, 6 s), then shows a clear message with a retry button.
   var signingIn = null;
@@ -3178,6 +3266,7 @@
     }
     signingIn = go().then(function () {
       authed = true;
+      publicOn = false; clearTimeout(pubTimer); pubTimer = null;   // ⚡ SPEED: the account exists now
       toastClear("auth");
       var uid = storedUid(); if (uid) U.ls.set("olnu.uid", uid);
       resumeNotify();
@@ -3715,7 +3804,7 @@
     var ready = Promise.resolve();
     if (LIVE) {
       makeClient();   // normally made in flyttBoot already
-      ready = client ? signIn() : Promise.resolve(toast(t("authFail"), { err: true, ms: 0, id: "auth" }));
+      ready = client ? (lazyStart() ? publicStart() : signIn()) : Promise.resolve(toast(t("authFail"), { err: true, ms: 0, id: "auth" }));
     }
     if (joinCode && !(window.JOIN && window.JOIN.joined(joinCode))) {
       var c = U.cleanCode(joinCode);
@@ -3817,6 +3906,7 @@
       render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
       beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
       authed: function () { return authed; }, client: function () { return client; }, prec: function () { return prec; },
+      noAccount: function () { return publicOn && !authed; }, ensureAccount: function () { return signIn(); },   // ⚡ SPEED #6
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, validPos: U.validPos, showGroups: showGroups,
       drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, me: function () { return meState; },
       pollV2: function () { return pollV2 === "on"; },

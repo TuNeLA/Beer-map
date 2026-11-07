@@ -124,8 +124,16 @@
       if (finder) finder.poll();
     }, function () { pollBusy = false; });
   }
-  setInterval(function () { poll(false); }, 5000);
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(true); });
+  // ⚡ SPEED (code review #9): one timeout for the next due poll (60 s, 10 s while a find is live), none while hidden
+  var nearT = 0;
+  function nearNext() {
+    clearTimeout(nearT); nearT = 0;
+    if (document.hidden) return;
+    nearT = setTimeout(function () { nearT = 0; Promise.resolve(poll(false)).then(nearNext, nearNext); }, Math.max(2000, pollMs() - (Date.now() - pollAt) + 50));
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) { clearTimeout(nearT); nearT = 0; } else nearNext(); });
+  setTimeout(nearNext, 5000);
+  /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
 
   /* ---------- 2. TRUPPEN SAMLAD ---------- */
   function placePhrase(s) {
@@ -296,6 +304,8 @@
       var build = function (body) {
         var el = A.el;
         var inBox = el("div", { class: "nr-in" }), listBox = el("ul", { class: "nr-flist" }), outBox = el("div", { class: "nr-out muted" });
+        var mine = el("div", { class: "nr-mine pn-mine" });   // ui-build: share my link first
+        body.appendChild(mine);
         body.appendChild(inBox);
         body.appendChild(el("h3", { text: L("Mina vänner", "My friends") }));
         body.appendChild(listBox);
@@ -303,7 +313,7 @@
         listBox.appendChild(el("li", { class: "muted", text: "…" }));
 
         // Add with code
-        var add = el("div", { class: "nr-add" });
+        var add = el("details", { class: "nr-add pn-codefold" });
         var inp = el("input", { class: "inp nr-code-inp", maxlength: "12", autocomplete: "off", autocapitalize: "characters", enterkeyhint: "go",
           placeholder: L("Väns kod, t.ex. K7Q2MXA", "Friend code"), "aria-label": L("Väns kod", "Friend code") });
         var go = A.btn(L("➕ Lägg till", "➕ Add"), "btn-amber", function () {
@@ -313,14 +323,11 @@
           sendRequest({ p_code: c }, function (d) { go.disabled = false; if (d) { inp.value = ""; load(); } });
         });
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
-        add.appendChild(el("h3", { text: L("➕ Lägg till vän", "➕ Add a friend") }));
+        add.appendChild(el("summary", { text: L("Har du en väns kod?", "Have a friend code?") }));
         add.appendChild(el("div", { class: "row nr-add-row" }, [inp, go]));
         add.appendChild(el("p", { class: "muted nr-hint", text: L("Eller öppna en grupp → ⋯ → 👥 Medlemmar → ➕ Lägg till vän.", "Or open a group → ⋯ → 👥 Members → ➕ Add friend.") }));
         body.appendChild(add);
 
-        // My code + QR
-        var mine = el("div", { class: "nr-mine" });
-        body.appendChild(mine);
 
         // Find-me switches
         var share = el("div", { class: "nr-share" });
@@ -367,34 +374,42 @@
             load(); poll(true);
           });
         }
-        function drawMine(code) {
+        function drawMine(code) {   // ui-build: friend link card
           mine.innerHTML = "";
-          mine.appendChild(el("h3", { text: L("📲 Min vänkod", "📲 My friend code") }));
+          mine.appendChild(el("p", { class: "pn-mine-h", text: L("Lägg till vänner med din länk", "Add friends with your link") }));
+          mine.appendChild(el("p", { class: "pn-mine-s", text: L("De trycker på länken, så blir ni vänner. Ingen kod att skriva.", "They tap the link and you are friends.") }));
           if (!code) {
-            mine.appendChild(A.btn(L("Visa min kod", "Show my code"), "btn-block", function () {
-              call("my_friend_code", { p_name: name() }).then(function (r) { if (!r.error) drawMine(A.parseData(r.data).code); });
-            }));
+            mine.appendChild(el("div", { class: "pn-mine-wait", "aria-hidden": "true" }));
+            if (!mine.__asked) { mine.__asked = true; call("my_friend_code", { p_name: name() }).then(function (r) { if (!r.error && document.body.contains(mine)) drawMine(A.parseData(r.data).code); }); }
             return;
           }
           var link = codeLink(code);
-          mine.appendChild(el("div", { class: "code-big nr-code", text: code }));
-          var qr = el("div", { class: "qr", "aria-hidden": "true" });
-          mine.appendChild(qr);
-          try {
-            if (window.QRCode) new window.QRCode(qr, { text: link, width: 168, height: 168, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M });
-            else qr.remove();
-          } catch (e) { qr.remove(); }
-          var row = el("div", { class: "row", style: "margin-top:8px" }, [A.btn(L("📋 Kopiera länk", "📋 Copy link"), "btn-small", function () { A.copyText(link); })]);
-          if (navigator.share) row.appendChild(A.btn(L("Dela", "Share"), "btn-small btn-amber", function () {
-            navigator.share({ title: "PintsNow", text: L("Bli min vän på PintsNow 🍺", "Be my friend on PintsNow 🍺"), url: link }).catch(function () {});
-          }));
-          row.appendChild(A.btn(L("🔄 Ny kod", "🔄 New code"), "btn-small btn-ghost", function () {
-            call("my_friend_code", { p_new: true, p_name: name() }).then(function (r) {
-              if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
-              drawMine(A.parseData(r.data).code); A.toast(L("Ny kod! Den gamla funkar int' längre.", "New code. The old one stops working."));
-            });
-          }));
+          var share = function () {
+            var txt = L("Bli min vän på PintsNow 🍺", "Be my friend on PintsNow 🍺");
+            if (navigator.share) navigator.share({ title: "PintsNow", text: txt, url: link }).catch(function () {});
+            else { A.copyText(link); A.toast(L("📋 Länken ä kopierad. Klistra in den i chatten.", "📋 Link copied.")); }
+          };
+          mine.appendChild(A.btn(L("Dela min vänlänk", "Share my friend link"), "btn-amber btn-block pn-mine-share", share));
+          var qrBox = el("div", { class: "pn-mine-qr", hidden: "" });
+          var row = el("div", { class: "row pn-mine-row" }, [
+            A.btn(L("Visa QR-kod", "Show QR code"), "btn-small pn-mine-qrb", function () {
+              qrBox.hidden = !qrBox.hidden; this.textContent = qrBox.hidden ? L("Visa QR-kod", "Show QR code") : L("Dölj QR-kod", "Hide QR code");
+              if (!qrBox.hidden && !qrBox.firstChild) {
+                var qr = el("div", { class: "qr", "aria-label": L("QR-kod med din vänlänk", "QR code with your friend link"), role: "img" });
+                qrBox.appendChild(qr);
+                try { if (window.QRCode) new window.QRCode(qr, { text: link, width: 180, height: 180, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
+                qrBox.appendChild(el("p", { class: "pn-mine-code" }, [document.createTextNode(L("Din kod: ", "Your code: ")), el("b", { text: code })]));
+                qrBox.appendChild(A.btn(L("Ny länk", "New link"), "btn-small btn-ghost", function () {
+                  call("my_friend_code", { p_new: true, p_name: name() }).then(function (r) {
+                    if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
+                    drawMine(A.parseData(r.data).code); A.toast(L("Ny länk! Den gamla funkar int' längre.", "New link. The old one stops working."));
+                  });
+                }));
+              }
+            }),
+            A.btn(L("Kopiera länk", "Copy link"), "btn-small", function () { A.copyText(link); A.toast(L("📋 Kopierad.", "📋 Copied.")); })]);
           mine.appendChild(row);
+          mine.appendChild(qrBox);
         }
         load();
       };

@@ -272,7 +272,7 @@
     }, 0);
   }
   // Refresh while the Vänner tab is on screen.
-  setInterval(function () { if (A && !off && paneOpen() && !document.hidden) poll(false); }, PANE_MS);
+  U.vInterval(function () { if (A && !off && paneOpen() && !document.hidden) poll(false); }, PANE_MS);
 
   /* ---------- inside the chat (social.js openChat with g.dm) ---------- */
   function chatOpen(g, ctx) {
@@ -420,7 +420,7 @@
     unread: function () { return off ? 0 : total; }, list: function () { return TH; }, _poll: poll,
     init: function (api) {
       A = api;
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") poll(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { poll(true); },
     onPoll: function () { poll(false); },

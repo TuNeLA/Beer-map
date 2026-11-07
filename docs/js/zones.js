@@ -1,0 +1,335 @@
+/* PintsNow — 🗺️ KARTZONER: kommun / län zones on the zoomed-out map (CONTRACT "KARTZONER"; owner 2026-11-07).
+   window.ZONES, app.js mods(): init, onPoll, onPublicPoll. Loaded after glmap.js. Mapbox GL only (the raster fallback has no zones).
+   - Leaflet zoom < 6.6: the 21 län · 6.6 – 10.5: the 290 kommuner (fade out 9.5 → 10.5, the bar pills / heat take over from 11).
+     Colour = people out tonight (absolute steps, same for everyone): 0 · några (1–2) · 3–9 · 10–24 · 25+; a calm static glow
+     on the border of a zone with 10+ (no pulse: no per-frame work, ≤ 2 Hz rule kept).
+   - Labels (images, like the GL bar names): län = name · "🍺 47 ute" / "🍺 några ute" / "lugnt" · "👑 Ludvika" (busiest kommun);
+     kommun (only where someone is out) = name · count · "👑 Pitchers" (busiest bar, ≥ 3 there). GL collision: busiest first.
+   - Top bar: #live-count shows the zone under the map centre ("Dalarna · 47 ute ikväll", "Sverige · …" when the whole
+     country is in view); app.js updateCounts() asks ZONES.pill(). Zoomed in = the normal world counter.
+   - Tap a zone = zoom in (län → its kommuner, kommun → its bars). A GL bar tap (glmap.js) wins.
+   - Borders: docs/zones/lan.json + kommuner.json (SCB Digitala gränser, CC0, simplified; ~65 KB gzip), fetched only the first
+     time the map is zoomed out below 10.5. Counts: RPC zone_counts (0221, cached 60 s on the server; < 3 = "några", never a
+     position), asked when zones are in view and the last answer is > 60 s old (shared poll + moveend), never while hidden. */
+(function () {
+  "use strict";
+  var A = null, map = null, gm = null, hooked = null, ready = false;
+  var Z_OFF = 10.5, Z_KOM = 6.6, Z_SWE = 5.2, K_MIN = 3, AGE_MS = 60000;
+  var SK = "olnu-zk", SL = "olnu-zl", SKL = "olnu-zk-pt", SLL = "olnu-zl-pt";
+  var L_LF = "olnu-zl-fill", L_LG = "olnu-zl-glow", L_LL = "olnu-zl-line", L_KF = "olnu-zk-fill", L_KG = "olnu-zk-glow", L_KL = "olnu-zk-line", L_KT = "olnu-zk-lbl", L_LT = "olnu-zl-lbl", L_LQ = "olnu-zl-lblq", L_LC = "olnu-zl-lblc";
+  var EMPTY = { type: "FeatureCollection", features: [] };
+  var geo = { l: null, k: null }, geoP = { l: null, k: null }, byK = {}, byL = {};
+  var counts = null, countsAt = 0, asking = false, lastPill = null, missing = false;
+  var stats = { asks: 0, labels: 0, taps: 0, loadMs: {} };
+  var FONT = '"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', R = 2;
+
+  function glm() { try { var b = window.BASEMAP; return b && b.isMapbox() && b.mapbox() ? b.mapbox().getMapboxMap() : null; } catch (e) { return null; } }
+  function zoom() { return map ? map.getZoom() : 99; }
+  function wanted() { return !!(map && glm() && zoom() < Z_OFF); }
+  function nf(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+
+  /* ---------- borders (lazy) ---------- */
+  function load(kind) {
+    if (geo[kind]) return Promise.resolve(geo[kind]);
+    if (geoP[kind]) return geoP[kind];
+    var t0 = performance.now();
+    geoP[kind] = fetch("./zones/" + (kind === "k" ? "kommuner" : "lan") + ".json").then(function (r) { if (!r.ok) throw new Error("zones " + r.status); return r.json(); })
+      .then(function (fc) {
+        geo[kind] = fc; stats.loadMs[kind] = Math.round(performance.now() - t0);
+        (fc.features || []).forEach(function (f) { var p = f.properties; f.rings = rings(f.geometry); if (kind === "k") byK[p.k] = f; else byL[p.l] = f; });
+        ensure(); paint(); cls(); pill(true);
+        return fc;
+      }).catch(function (e) { geoP[kind] = null; try { console.warn("olnu zones", e && e.message); } catch (x) {} return null; });
+    return geoP[kind];
+  }
+  function rings(g) { return !g ? [] : g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : []; }
+  function inPoly(poly, x, y) {   // poly = [outer, holes…]
+    var inside = false;
+    for (var k = 0; k < poly.length; k++) {
+      var r = poly[k], c = false;
+      for (var i = 0, j = r.length - 1; i < r.length; j = i++) {
+        var xi = r[i][0], yi = r[i][1], xj = r[j][0], yj = r[j][1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+      }
+      if (k === 0) inside = c; else if (c) inside = false;
+    }
+    return inside;
+  }
+  // SCB's simplified coast leaves some town centres (Stockholm, Göteborg harbours) just outside: try points ~1–3 km around
+  function zoneAt(kind, lat, lng) {
+    var f = zoneAt0(kind, lat, lng); if (f) return f;
+    for (var d = 0.01; d <= 0.031; d += 0.01) for (var a = 0; a < 8; a++) {
+      f = zoneAt0(kind, lat + d * Math.sin(a * 0.785), lng + 2 * d * Math.cos(a * 0.785)); if (f) return f;
+    }
+    return null;
+  }
+  function zoneAt0(kind, lat, lng) {
+    var fc = geo[kind]; if (!fc) return null;
+    for (var i = 0; i < fc.features.length; i++) {
+      var f = fc.features[i], b = f.properties.b;
+      if (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3]) continue;
+      for (var j = 0; j < f.rings.length; j++) if (inPoly(f.rings[j], lng, lat)) return f;
+    }
+    return null;
+  }
+
+  /* ---------- counts ---------- */
+  function lvl(n, some) { return n >= 25 ? 4 : n >= 10 ? 3 : n >= K_MIN ? 2 : (n > 0 || some) ? 1 : 0; }
+  function kc(code) { var c = counts && counts.kk[code]; return c || null; }
+  function lc(code) { var c = counts && counts.ll[code]; return c || null; }
+  function testZone() { try { var l = A && A.lastLoc && A.lastLoc(); return !!(l && l.lat > 68.25 && l.lat < 68.45 && l.lng > 18.6 && l.lng < 19); } catch (e) { return false; } }
+  function ask(force) {
+    if (!A || !A.rpc || asking || document.hidden || !wanted()) return;
+    if (!force && Date.now() - countsAt < AGE_MS) return;
+    asking = true; stats.asks++;
+    A.rpc("zone_counts", testZone() ? { p_test: true } : {}).then(function (r) {
+      asking = false;
+      if (!r || r.error) {
+        // old server (no 0221): borders + names only, the top bar keeps the world counter; ask again in 10 min
+        if (r && r.error && /zone_counts|PGRST202|does not exist|could not find/i.test(String(r.error.message || r.error.code || ""))) { missing = true; countsAt = Date.now() + 9 * 60000; pill(true); }
+        return;
+      }
+      missing = false;
+      var d = A.parseData ? A.parseData(r.data) : r.data;
+      if (!d || !Array.isArray(d.kommun)) return;
+      var kk = {}, ll = {};
+      d.kommun.forEach(function (x) { if (x && x.c) kk[x.c] = { n: x.n | 0, some: x.n == null, bar: x.bar || null }; });
+      (d.lan || []).forEach(function (x) { if (x && x.c) ll[x.c] = { n: x.n | 0, some: x.n == null, top: x.top || null }; });
+      counts = { kk: kk, ll: ll, total: d.total | 0, some: !!d.some && d.total == null, k: d.k || K_MIN, at: d.at };
+      countsAt = Date.now();
+      paint(); pill(true);
+    });
+  }
+
+  /* ---------- labels (canvas images; the Standard style has no glyphs for our font) ---------- */
+  var imgs = {}, mc = document.createElement("canvas").getContext("2d");
+  function tw(s, f) { mc.font = f; return mc.measureText(s).width; }
+  function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function countLine(c) { return !c ? "lugnt" : c.some || !c.n ? "🍺 några ute" : "🍺 " + nf(c.n) + " ute"; }
+  function labelImg(m, name, line2, line3, big, hot) {
+    var key = "zn|" + name + "|" + line2 + "|" + (line3 || "") + "|" + (big ? 1 : 0) + (hot ? 1 : 0);
+    if (imgs[key]) { if (!m.hasImage(imgs[key])) m.addImage(imgs[key], imgs["d|" + key], { pixelRatio: R }); return imgs[key]; }
+    var quiet = line2 === "lugnt", f1 = (quiet ? "600 11px " : "700 " + (big ? 13 : 12) + "px ") + FONT, f2 = "700 12px " + FONT, f3 = "600 11px " + FONT;
+    if (quiet) line2 = "";   // a quiet zone = its name only, small and faint (more of them fit on a phone)
+    var w = Math.ceil(Math.max(tw(name, f1), line2 ? tw(line2, f2) : 0, line3 ? tw(line3, f3) : 0)) + (quiet ? 10 : 16), h = quiet ? 20 : 6 + 16 + 15 + (line3 ? 14 : 0) + 4;
+    var cv = document.createElement("canvas"); cv.width = (w + 4) * R; cv.height = (h + 4) * R;
+    var g = cv.getContext("2d"); g.scale(R, R); g.translate(2, 2);
+    rr(g, 0, 0, w, h, quiet ? 7 : 9); g.fillStyle = quiet ? "rgba(10,15,36,.55)" : "rgba(10,15,36,.86)"; g.fill();
+    g.lineWidth = 1; g.strokeStyle = hot ? "rgba(255,194,77,.85)" : quiet ? "rgba(255,250,240,.18)" : "rgba(245,166,35,.55)"; g.stroke();
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = f1; g.fillStyle = quiet ? "rgba(255,246,229,.78)" : "#FFF6E5"; g.fillText(name, w / 2, quiet ? h / 2 + 0.5 : 6 + 8);
+    if (line2) { g.font = f2; g.fillStyle = "#FFC24D"; g.fillText(line2, w / 2, 6 + 16 + 8); }
+    if (line3) { g.font = f3; g.fillStyle = "#E9D9BA"; g.fillText(line3, w / 2, 6 + 16 + 15 + 7); }
+    var data = g.getImageData(0, 0, cv.width, cv.height), id = "zn" + (++stats.labels);
+    imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R });
+    return id;
+  }
+  function chipImg(m, name, n) {   // the whole-Sweden view: "Dalarna 🍺 8" on one line (3-line labels do not fit a phone there)
+    var t = n, key = "zc|" + name + "|" + t;
+    if (imgs[key]) { if (!m.hasImage(imgs[key])) m.addImage(imgs[key], imgs["d|" + key], { pixelRatio: R }); return imgs[key]; }
+    var f1 = "700 12px " + FONT, f2 = "700 12px " + FONT, w1 = tw(name, f1), w2 = tw("🍺 " + t, f2), w = Math.ceil(w1 + w2) + 18, h = 22;
+    var cv = document.createElement("canvas"); cv.width = (w + 4) * R; cv.height = (h + 4) * R;
+    var g = cv.getContext("2d"); g.scale(R, R); g.translate(2, 2);
+    rr(g, 0, 0, w, h, 11); g.fillStyle = "rgba(10,15,36,.88)"; g.fill(); g.lineWidth = 1; g.strokeStyle = "rgba(245,166,35,.6)"; g.stroke();
+    g.textBaseline = "middle"; g.textAlign = "left";
+    g.font = f1; g.fillStyle = "#FFF6E5"; g.fillText(name, 7, h / 2 + 0.5);
+    g.font = f2; g.fillStyle = "#FFC24D"; g.fillText("🍺 " + t, 11 + w1, h / 2 + 0.5);
+    var data = g.getImageData(0, 0, cv.width, cv.height), id = "zn" + (++stats.labels);
+    imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R });
+    return id;
+  }
+  function barName(id) { try { var b = window.BARS && window.BARS.byId && window.BARS.byId(id); return b && b.name ? String(b.name).slice(0, 22) : null; } catch (e) { return null; } }
+
+  /* ---------- layers ---------- */
+  var COL = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, "#2A3557", 1, "#C2650A", 2, "#F5A623", 3, "#FF9A1F", "#FFC24D"];
+  var ALPHA = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, 0.16, 1, 0.26, 2, 0.38, 3, 0.48, 0.58];
+  // Leaflet zoom = GL zoom + 1
+  function addL(m, spec, before) { if (m.getLayer(spec.id)) return; try { m.addLayer(spec, before && m.getLayer(before) ? before : undefined); } catch (e) { try { delete spec.slot; m.addLayer(spec); } catch (x) {} } }
+  function ensure() {
+    var m = gm = glm(); if (!m || !m.style || !m.style._loaded) return false;
+    try {
+      if (geo.l && !m.getSource(SL)) m.addSource(SL, { type: "geojson", data: geo.l, tolerance: 0.6 });
+      if (geo.k && !m.getSource(SK)) m.addSource(SK, { type: "geojson", data: geo.k, tolerance: 0.6 });
+      [SLL, SKL].forEach(function (id) { if (!m.getSource(id)) m.addSource(id, { type: "geojson", data: EMPTY, maxzoom: 10 }); });
+      // fills + borders under the Mapbox place labels (Standard slot "middle"), labels above the heat, under the bars
+      if (m.getSource(SL)) {
+        addL(m, { id: L_LF, type: "fill", source: SL, slot: "middle", maxzoom: Z_KOM - 1 + 0.3,
+          paint: { "fill-color": COL, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 2, ALPHA, Z_KOM - 1 - 0.2, ALPHA, Z_KOM - 1 + 0.2, 0], "fill-emissive-strength": 1 } });
+        addL(m, { id: L_LG, type: "line", source: SL, slot: "middle", maxzoom: Z_KOM - 1 + 0.3,
+          paint: { "line-color": "#FFB43C", "line-width": 7, "line-blur": 7, "line-emissive-strength": 1,
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], 2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.42, 0], Z_KOM - 1 - 0.2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.42, 0], Z_KOM - 1 + 0.2, 0] } });
+        addL(m, { id: L_LL, type: "line", source: SL, slot: "middle", maxzoom: Z_OFF - 1,
+          paint: { "line-color": "#FFFAF0", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.8, 6, 1.4], "line-emissive-strength": 1,
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], 2, 0.5, Z_KOM - 1, 0.5, Z_OFF - 2, 0.35, Z_OFF - 1, 0] } });
+      }
+      if (m.getSource(SK)) {
+        addL(m, { id: L_KF, type: "fill", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
+          paint: { "fill-color": COL, "fill-emissive-strength": 1,
+            "fill-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ALPHA, Z_OFF - 2, ALPHA, Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
+        addL(m, { id: L_KG, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
+          paint: { "line-color": "#FFB43C", "line-width": 6, "line-blur": 6, "line-emissive-strength": 1,
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
+        addL(m, { id: L_KL, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
+          paint: { "line-color": "#FFFAF0", "line-width": 0.7, "line-emissive-strength": 1, "line-dasharray": [2, 1.5],
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, 0.32, Z_OFF - 2, 0.32, Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
+      }
+      // labels sit just above the zone's label point (the town's people pins / 📍 chips are DOM, GL cannot dodge them)
+      var lblLay = { "icon-image": ["get", "img"], "icon-anchor": "bottom", "icon-offset": [0, -10], "icon-allow-overlap": false, "icon-ignore-placement": false, "icon-padding": 2,
+        "symbol-sort-key": ["get", "sk"], "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };
+      var above = m.getLayer("olnu-place") ? "olnu-place" : null;   // over the heat, under every GL bar layer (glmap.js)
+      // busy län first: placement goes layer by layer (top first), the sort key only orders WITHIN a tile, so quiet names
+      // get their own layer under the busy one (a quiet name never hides a busy label)
+      var lp = { "icon-emissive-strength": 1, "icon-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.25, 1, Z_KOM - 1 + 0.1, 0] };
+      addL(m, { id: L_LQ, type: "symbol", source: SLL, maxzoom: Z_KOM - 1 + 0.15, filter: ["==", ["get", "q"], 1], layout: lblLay, paint: lp }, above);
+      addL(m, { id: L_LT, type: "symbol", source: SLL, minzoom: Z_SWE - 1, maxzoom: Z_KOM - 1 + 0.15, filter: ["==", ["get", "q"], 0], layout: lblLay, paint: lp }, above);
+      addL(m, { id: L_LC, type: "symbol", source: SLL, maxzoom: Z_SWE - 1, filter: ["==", ["get", "q"], 0],
+        layout: Object.assign({}, lblLay, { "icon-image": ["get", "ci"] }), paint: { "icon-emissive-strength": 1 } }, above);
+      addL(m, { id: L_KT, type: "symbol", source: SKL, minzoom: Z_KOM - 1 - 0.1, maxzoom: Z_OFF - 1 - 0.4, layout: lblLay,
+        paint: { "icon-emissive-strength": 1, "icon-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.1, 0, Z_KOM - 1 + 0.25, 1, Z_OFF - 2, 1, Z_OFF - 1 - 0.4, 0] } }, above);
+      // glmap.js may have added its layers after ours (style reload): keep the labels under the bars
+      if (above) [L_LQ, L_LT, L_LC, L_KT].forEach(function (id) { try { if (m.getLayer(id)) m.moveLayer(id, "olnu-place"); } catch (e) {} });
+      ready = true;
+      return true;
+    } catch (e) { try { console.warn("olnu zones layers", e && e.message); } catch (x) {} return false; }
+  }
+  var sigK = "", sigL = "";
+  function paint() {
+    var m = gm; if (!ready || !m) return;
+    try {
+      if (geo.l && m.getSource(SL)) geo.l.features.forEach(function (f) { var c = lc(f.properties.l); m.setFeatureState({ source: SL, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
+      if (geo.k && m.getSource(SK)) geo.k.features.forEach(function (f) { var c = kc(f.properties.k); m.setFeatureState({ source: SK, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
+      // län labels: all 21
+      if (geo.l) {
+        var lf = geo.l.features.map(function (f) {
+          var p = f.properties, c = lc(p.l), top = c && c.top && byK[c.top] ? "👑 " + byK[c.top].properties.n : null;
+          var img = labelImg(m, p.n, countLine(c), top, true, c && c.n >= 10);
+          return { type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] }, properties: { img: img, ci: c ? chipImg(m, p.n, c.some || !c.n ? "några" : nf(c.n)) : "", sk: -(c ? (c.n || 1) : 0), l: p.l, q: c ? 0 : 1 } };
+        }), s1 = lf.map(function (f) { return f.properties.img; }).join();
+        if (s1 !== sigL) { sigL = s1; m.getSource(SLL).setData({ type: "FeatureCollection", features: lf }); }
+      }
+      // kommun labels: only where someone is out
+      if (geo.k && counts) {
+        var kf = [];
+        Object.keys(counts.kk).forEach(function (code) {
+          var f = byK[code]; if (!f) return; var p = f.properties, c = counts.kk[code], bn = c.bar ? barName(c.bar) : null;
+          kf.push({ type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] },
+            properties: { img: labelImg(m, p.n, countLine(c), bn ? "👑 " + bn : null, false, c.n >= 10), sk: -(c.n || 1), k: p.k } });
+        });
+        var s2 = kf.map(function (f) { return f.properties.img; }).join();
+        if (s2 !== sigK) { sigK = s2; m.getSource(SKL).setData({ type: "FeatureCollection", features: kf }); }
+      }
+    } catch (e) {}
+  }
+
+  /* ---------- the top bar pill ---------- */
+  function pillHTML() {
+    if (!wanted() || (!geo.l && !geo.k) || missing) return null;
+    var z = zoom(), c = map.getCenter(), name, n = null, some = false;
+    if (z < Z_SWE) { name = "Sverige"; if (counts) { n = counts.total; some = counts.some; } }
+    else if (z < Z_KOM) { var lf = zoneAt("l", c.lat, c.lng); if (!lf) return null; name = lf.properties.n; var x = lc(lf.properties.l); if (x) { n = x.n; some = x.some; } }
+    else { var kf = zoneAt("k", c.lat, c.lng); if (!kf) return null; name = kf.properties.n; var y = kc(kf.properties.k); if (y) { n = y.n; some = y.some; } }
+    var e = function (s) { return String(s).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }); };
+    if (!counts) return e(name) + " · <b>–</b> ute ikväll";
+    return e(name) + (n ? " · <b>" + nf(n) + "</b> ute ikväll" : some ? " · <b>några</b> ute ikväll" : " · lugnt ikväll");
+  }
+  var fitFor = "", fitted = null;
+  function pill(push) {
+    var h = pillHTML(); lastPill = h;
+    var el = document.getElementById("live-count"); if (!el) return;
+    el.classList.toggle("zn-pill", !!h);
+    if (h) {
+      // narrow phone: "Dalarna · 47 ute ikväll" → "Dalarna · 47 ute" → "Dalarna · 47"
+      var vs = [h, h.replace(/ ikväll$/, ""), h.replace(/ ute ikväll$/, "").replace(/ · lugnt ikväll$/, " · lugnt")];
+      if (vs.indexOf(el.innerHTML) < 0 || fitFor !== h) {
+        fitFor = h;
+        for (var i = 0; i < vs.length; i++) { el.innerHTML = vs[i]; fitted = vs[i]; if (el.scrollWidth <= el.clientWidth + 1) break; }
+      }
+    }
+    else if (push && A && A.updateCounts && el.classList) { try { A.updateCounts(); } catch (e) {} }
+  }
+
+  /* ---------- tap = zoom in ---------- */
+  function onPreclick(e) {
+    if (!ready || !gm || !e || !e.latlng || !wanted()) return;
+    var oe = e.originalEvent || {}, ll = e.latlng;
+    // glmap.js's preclick runs after ours (it attaches later) and marks a tap it used: decide after this dispatch
+    setTimeout(function () { if (!oe._olnuGl && !(window.GLBARS && GLBARS.tappedAt && performance.now() - GLBARS.tappedAt() < 400)) tapZone(ll); }, 0);
+  }
+  function tapZone(ll) {
+    var e = { latlng: ll };
+    if (!ready || !gm || !wanted()) return;
+    var z = zoom(), lay = z < Z_KOM ? L_LF : L_KF;
+    try {
+      var p = gm.project([e.latlng.lng, e.latlng.lat]), f = gm.queryRenderedFeatures([p.x, p.y], { layers: [lay] })[0];
+      var feat = f && (z < Z_KOM ? geo.l : geo.k).features.filter(function (x) { return x.id === f.id; })[0];
+      if (!feat) return;
+      var b = feat.properties.b, bounds = L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
+      var fz = map.getBoundsZoom(bounds, false, L.point(24, 24));
+      stats.taps++; stats.lastTap = feat.properties.n;
+      if (z < Z_KOM) map.flyTo(bounds.getCenter(), Math.max(Z_KOM + 0.25, Math.min(fz, 9)), { duration: 0.8 });   // into its kommuner
+      else if (fz > z + 0.3) map.flyToBounds(bounds, { padding: [12, 12], duration: 0.8 });
+      else map.flyTo(e.latlng, Math.min(13, Math.max(Z_OFF + 0.5, z + 2)), { duration: 0.8 });   // already showing the whole kommun: into its bars
+    } catch (x) {}
+  }
+
+  /* ---------- on / off ---------- */
+  function check() {
+    var m = glm();
+    if (!m) { ready = false; pill(true); return; }
+    if (m !== hooked) {
+      hooked = m;
+      m.on("style.load", function () { if (glm() === m) { ready = false; sigK = sigL = ""; imgs = {}; setTimeout(check, 0); } });
+    }
+    gm = m;
+    if (!m.style || !m.style._loaded) { m.once("style.load", function () { setTimeout(check, 0); }); return; }
+    if (wanted()) { load(zoom() < Z_KOM ? "l" : "k"); load(zoom() < Z_KOM ? "k" : "l"); }
+    if (ensure()) { paint(); ask(false); }
+    cls(); pill(true);
+  }
+  var CSS = "html[data-zones] .olnu-cl:not(:has(.pf,.pm)){display:none}";
+  function cls() {
+    var v = ready && !!map && !!glm() && zoom() < Z_OFF - 0.9 && !!(geo.l || geo.k), de = document.documentElement;
+    if (v !== de.hasAttribute("data-zones")) { if (v) de.setAttribute("data-zones", ""); else de.removeAttribute("data-zones"); }
+  }
+  function moved() {
+    cls();
+    if (!map) return;
+    if (wanted()) {
+      if (!geo.l && !geo.k) { check(); return; }
+      if (!ready) ensure();
+      ask(false);
+    }
+    pill(true);
+  }
+  // credit (SCB asks for "Källa: SCB"; CC0 needs none, we give it anyway) in the ⓘ popover, next to the map credit
+  function credit() {
+    var pop = document.getElementById("attrib-pop"); if (!pop || pop.querySelector(".zn-credit")) return;
+    var s = document.createElement("span"); s.className = "zn-credit";
+    s.innerHTML = ' | Gränser: <a href="https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/digitala-granser/" target="_blank" rel="noopener">SCB</a> (CC0)';
+    pop.appendChild(s);
+  }
+
+  window.ZONES = {
+    init: function (api) {
+      if (A) return; A = api; map = api && api.map; if (!map) return;
+      document.addEventListener("basemap:change", function () { setTimeout(check, 0); });
+      map.on("preclick", onPreclick);
+      map.on("moveend", moved);
+      map.on("zoomend", function () { cls(); pill(false); });
+      var st = document.createElement("style"); st.id = "zones-css"; st.textContent = CSS; document.head.appendChild(st);
+      setTimeout(function () { credit(); check(); }, 0);
+    },
+    onPoll: function () { if (wanted()) ask(false); },
+    onPublicPoll: function () { if (wanted()) ask(false); },
+    // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
+    pill: function () { if (!wanted() || !pillHTML()) return null; pill(false); return fitted; },
+    on: function () { return ready && wanted(); },
+    stats: stats,
+    // test hooks
+    _counts: function () { return counts; },
+    _zoneAt: function (lat, lng) { var k = zoneAt("k", lat, lng), l = zoneAt("l", lat, lng); return { k: k && k.properties.n, l: l && l.properties.n }; },
+    _layers: function () { return [L_LF, L_LG, L_LL, L_KF, L_KG, L_KL, L_KT, L_LQ, L_LT, L_LC]; },
+    _ask: function () { countsAt = 0; ask(true); },
+    _geo: function () { return { l: !!geo.l, k: !!geo.k, loadMs: stats.loadMs }; }
+  };
+})();

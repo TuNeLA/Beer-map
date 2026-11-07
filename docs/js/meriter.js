@@ -521,7 +521,7 @@
         var b = e.target && e.target.closest && e.target.closest(".skal-btn, [data-ans], .rl-ans, .rally-ans, .ci-btn, [data-ci], .af-check, .chat-send, .ph-send, .mx-btns button, [data-hx='home']");
         if (b) soon(3000);
       }, true);
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { load(true); },
     onPoll: function () { load(false); },

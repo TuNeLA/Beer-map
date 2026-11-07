@@ -148,6 +148,7 @@
   }
   function want() {
     if (standalone()) return false;
+    if (kind() !== "inapp") return false;   // ui-build: install after the first beer / group join (js/pnui.js), not before the map
     if (lsGet("olnu.intro") === "1" || lsGet(KEY)) return false;
     if (window.JOIN && window.JOIN.handled && window.JOIN.handled()) return false;
     if (/[?&](flytt|chat|sos)=/.test(location.search)) return false;

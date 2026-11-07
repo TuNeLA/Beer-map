@@ -1,0 +1,65 @@
+# ⚡ SPEED #10 — PREPARED, NOT ENABLED (GitHub only runs *.yml / *.yaml files; this one ends in .disabled).
+# Deploys the site to GitHub Pages from an Actions artifact, with the ~100 app scripts joined + minified into ONE file
+# (scripts/bundle.mjs, esbuild) and the ~40 stylesheets into one. docs/ on main stays the readable source.
+# To turn it on (owner):
+#   1. Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions" (was "Deploy from a branch").
+#      The custom domain (pintsnow.com) stays in the same Pages settings; no CNAME file is needed for Actions deploys.
+#   2. Rename this file to pages-bundle.yml (drop ".disabled") and push to main.
+#   3. Watch Actions → "Pages (bundled)" go green, then open the app and check Settings → ⓘ shows the new version.
+#   4. Roll back = set Pages Source back to "Deploy from a branch" (main, / root). Nothing in docs/ changed.
+# stamp-version.yml keeps stamping docs/ on main; this workflow stamps its own bundled copy the same way.
+name: Pages (bundled)
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "index.html", "scripts/bundle.mjs"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Copy the site (same layout as the branch deploy: / and /docs/)
+        run: |
+          mkdir -p _site
+          cp index.html .nojekyll _site/ 2>/dev/null || true
+          cp -r docs _site/docs
+      - name: Bundle + minify (esbuild)
+        run: |
+          npm install --no-save --no-package-lock esbuild@0.24.0
+          node scripts/bundle.mjs _site/docs
+      - name: Stamp the bundled copy (cache version + ?v=<hash>, like stamp-version.yml)
+        run: |
+          cd _site
+          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path 'docs/places/*' ! -path 'docs/buildings/*' ! -path 'docs/buildings3d/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
+          sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
+          for f in $(grep -oE '(src|href)="\./[^"?]+\.(js|css)' docs/index.html | sed -E 's/^(src|href)="\.\///' | sort -u); do
+            [ -f "docs/$f" ] || { echo "missing docs/$f"; exit 1; }
+            H=$(sha256sum "docs/$f" | cut -c1-10)
+            F=$(printf '%s' "$f" | sed 's/[.]/\\./g')
+            sed -i -E "s#((src|href)=\"\./$F)(\?v=[A-Za-z0-9]+)?\"#\1?v=$H\"#g" docs/index.html
+          done
+          grep -c '<script' docs/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -101,6 +101,7 @@ ol.wl li.st-klar .wb{color:var(--green)}
 .wf button{font:12px var(--hud);color:var(--muted);background:transparent;border:1px solid var(--line-soft);border-radius:14px;padding:5px 10px;cursor:pointer}
 .wf button.on{color:var(--night);background:var(--amber);border-color:var(--amber)}
 @media (min-width:560px){ .kpis{grid-template-columns:repeat(4,1fr)} .grid{grid-template-columns:repeat(3,1fr)} }
+.fb-bars{list-style:none;margin:0 0 12px;padding:0}.fb-bars li{margin:6px 0}.fb-bars li span{display:block;font-size:14px}.fb-bars li i{display:block;height:8px;border-radius:4px;background:#f5a623;margin-top:3px;min-width:4px}
 </style>
 </head>
 <body>
@@ -270,7 +271,12 @@ ol.wl li.st-klar .wb{color:var(--green)}
       });
     }
     busy = true;
-    sb.rpc("owner_stats", { p_key: key }).then(function (res) {
+    // 🧪 0223: owner_stats2 = the same, users counted WITHOUT test users; an old server → owner_stats
+    var statsFn = "owner_stats2";
+    var ask = function () { return sb.rpc(statsFn, { p_key: key }).then(function (res) {
+      if (statsFn === "owner_stats2" && res.error && /owner_stats2|PGRST202|schema cache|does not exist/i.test(String(res.error.message || res.error.code || ""))) { statsFn = "owner_stats"; return ask(); }
+      return res; }); };
+    ask().then(function (res) {
       busy = false;
       var d = res.data;
       var err = res.error || (d && d.message === "forbidden" ? d : null);
@@ -504,7 +510,7 @@ ol.wl li.st-klar .wb{color:var(--green)}
       ["Totalt", fmt(u.total)], ["Med namn", fmt(u.named)], ["Nya i dag", fmt(u.new_today)],
       ["Nya 30 d", fmt(u.new_30d)], ["Aktiva 7 d", fmt(u.active_7d)], ["Öppnat appen 7 d", fmt(u.opened_7d)],
       ["Push på", fmt(u.push)], ["Ute ikväll", fmt(u.active_tonight)]
-    ]);
+    ].concat(u.real_only ? [["Testanvändare (räknas inte)", fmt(u.test_users)], ["Tomma konton (inget gjort)", fmt(u.empty_anon)]] : []));
 
     var ol = $("lBars"); ol.textContent = "";
     var bars = Array.isArray(p.top_bars) ? p.top_bars : [];
@@ -568,5 +574,6 @@ ol.wl li.st-klar .wb{color:var(--green)}
 <script src="./stats-gone.js"></script>
 <script src="./stats-reports.js"></script>
 <script src="./stats-vitals.js"></script>
+<script src="./stats-feedback.js"></script>
 </body>
 </html>

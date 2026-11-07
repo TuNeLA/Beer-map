@@ -20,6 +20,7 @@
   var QUIET_MS = 4000, START_MS = 60000, GAP_MS = 45000, USER_MS = 8000, IDLE_MS = 2500;
   var RADAR_IDLE_MS = 20000, RADAR_AFTER_MS = 25000, FACT_P = 0.25, MEM_WEEK = 7 * 864e5, KEY = "olnu.calm";
   var t0 = Date.now(), lastUser = 0, lastMove = Date.now(), lastAuto = 0, autoN = 0, A = null, q = [], pumpIv = null, log = [];
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && q.length && !pumpIv) pumpIv = setInterval(pump, 1000); });
   var deep = false;
   try { deep = /[?&](join|j|inv|invite|i|chat|c|rally|r|bar|b|sos|focus|f|ev|e|g|dm|acct|code)=/.test(location.search); } catch (e) {}
 
@@ -66,9 +67,10 @@
     q.push({ kind: kind, prio: prio, until: now() + maxMs, run: run, what: what, at: now(), fn: !!fn });
     q.sort(function (a, b) { return b.prio - a.prio || a.at - b.at; });
     if (q.length > 12) q.length = 12;
-    if (!pumpIv) pumpIv = setInterval(pump, 1000);
+    if (!pumpIv && !document.hidden) pumpIv = setInterval(pump, 1000);
   }
   function pump() {
+    if (document.hidden) { clearInterval(pumpIv); pumpIv = null; return; }   // ⚡ SPEED: sleeps while hidden
     var t = now();
     q = q.filter(function (x) { return x.until > t; });
     if (!q.length) { clearInterval(pumpIv); pumpIv = null; return; }

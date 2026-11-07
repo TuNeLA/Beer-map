@@ -589,7 +589,7 @@
     openHour: openHour, openSkalLink: openSkalLink, _texts: T, _url: photoUrl,
     init: function (api) {
       A = api;
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () {
       load(true); var id = linkFromUrl(); if (id) { openSkalLink(id); return; }

@@ -172,8 +172,8 @@
   }
 
   window.UTE = {
-    init: function (api) { A = api; setTimeout(function () { load(false); }, 4000); setInterval(function () { chipCache.key = ""; load(false); }, 5 * 60000);
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) load(false); }); },
+    init: function (api) { A = api; setTimeout(function () { load(false); }, 4000); U.vInterval(function () { chipCache.key = ""; load(false); }, 5 * 60000);
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */ },
     onAuthed: function () { load(false); },
     onPoll: function () { load(false); },
     hudChipsHTML: function () {

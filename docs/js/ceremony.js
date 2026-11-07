@@ -303,7 +303,7 @@
     CATS: CATS, cat: cat, data: function () { return poll; }, open: openSheet, refresh: function () { return load(true); },
     init: function (api) {
       A = api; addMedals();
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { addMedals(); load(true); },
     onPoll: function () { load(false); },

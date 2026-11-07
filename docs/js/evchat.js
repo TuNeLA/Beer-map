@@ -260,8 +260,8 @@
     byInvite: byInv, _poll: poll, _state: state,
     init: function (api) {
       A = api;
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(false); });
-      setInterval(function () { if (document.querySelector(".evc-sec:not([hidden]), .evc-inv")) poll(false); }, 30000);
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
+      U.vInterval(function () { if (document.querySelector(".evc-sec:not([hidden]), .evc-inv")) poll(false); }, 30000);
     },
     onAuthed: function () { poll(true); },
     onPoll: function () { poll(false); },

@@ -615,7 +615,7 @@
     open: openDuels, openToken: openToken, _lineFor: lineFor, _lines: LINES,
     init: function (api) {
       A = api;
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { load(true).then(runLink); },
     onPoll: function () { load(false); },

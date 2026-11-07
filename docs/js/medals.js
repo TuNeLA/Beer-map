@@ -135,6 +135,9 @@
   }
 
   var lastAward = 0, awardBusy = false, awardAgain = null, SEED_KEY = "olnu.medalsSeeded";
+  // ⚡ SPEED (code review #7): award_medals was the 3rd biggest server cost (2502 calls). Own beer / check-in / home = at
+  // once; everything else (chat, skål / rally taps, the poll) only when the last award is older than ms.
+  function soft(ms) { if (Date.now() - lastAward >= ms) award(null, true); }
   function award(ev, force) {
     if (!A || !A.LIVE || !A.authed() || off.award_medals) return Promise.resolve();
     if (awardBusy) { awardAgain = ev || awardAgain || ""; return Promise.resolve(); }
@@ -502,9 +505,9 @@
       // Skål and rally answers have no hook: award a little later when those buttons are tapped.
       document.addEventListener("click", function (e) {
         var b = e.target && e.target.closest && e.target.closest(".skal-btn, [data-ans], .rl-ans, .rally-ans");
-        if (b) setTimeout(function () { award(null, true); }, 2500);
+        if (b) setTimeout(function () { soft(120000); }, 2500);
       }, true);
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) award(null); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { award(null, true); },
     onBeerAccepted: function (d, o) {
@@ -516,10 +519,10 @@
       if (!A || !A.authed()) return;
       var ci = A.myCheckin && A.myCheckin(), key = ci ? String(ci.bar_id || ci.id || "") + "|" + (ci.at || ci.created_at || ci.name || "") : "";
       if (key && key !== lastCi) { lastCi = key; award(null, true); return; }
-      if (Date.now() - lastAward > 5 * 60000) award(null, true);
+      if (Date.now() - lastAward > 10 * 60000) award(null, true);
     },
     onStopped: function (kind) { if (kind === "home") award("home", true); },
-    onChat: function () { setTimeout(function () { award(null, true); }, 800); }
+    onChat: function () { setTimeout(function () { soft(120000); }, 800); }
   };
   var lastCi = "";
 })();

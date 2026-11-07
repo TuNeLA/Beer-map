@@ -2996,3 +2996,129 @@ Runbook: scratchpad/move-runbook.md. Internal names stay (window.X, `olnu.*` key
 - **Owner (key, anon ok)**: `owner_reports(p_key, p_status)`, `owner_report_act(p_key, p_id, dismiss|hide|warn|hide_all, p_notice)`, `owner_report_photo(p_key, p_photo_id)`, `owner_mask_test(p_key, p_text)`; panel docs/stats-reports.js ("🚩 Anmälningar").
 - **Retention**: pg_cron `olnu-retention` 03:17 UTC → `olnu_retention_run()`; exact positions older than 30 days → null or ≈ 5 km grid; device model/browser → null. Runs only when `retention = 'on'`.
 - **Client**: js/safety.js (hooks via window.PRIVACY), `window.OLNU_STORE` in config.js (?app=android|ios, android-app:// referrer, Capacitor). Swedish only. Visningsläge off without a server flag. Regler before the first post (wraps supabase `client.rpc` for post RPCs). Pages: docs/radera.html, docs/regler.html, docs/integritet.html. Contact: support@pintsnow.com.
+
+## 🧭 PNUI · the big UI update (agent ui-build, owner-approved spec ui-review.md + scout report; migration 0215; additive)
+- **Files**: `docs/js/pnui.js` (`window.PNUI`, last in app.js `mods()`), `docs/pnui.css` (ds.css tokens only; ds.js moves it
+  before ds.css, so its rules win by specificity). Swedish only. Patches: scratchpad `ui-patches/01…07`.
+- **🍺 Krogmätaren** (owner choice (a), realistic glass): app.js `barPopup` → `mods("barMeterHTML", bar, list)` right under the
+  header (then the meta line drops "≈ N här" + the crowd word). Tapered glass + foam head + bubbles + "norm" tick, 64 px tall
+  (≥ 48); `< 40 px` = simplified glass (no bubbles, 3 px outline). Level shown 4 ways: fill, norm tick, arrow shape (↓ = ↑),
+  word ("Lugnare än / Som / Mer än / Mycket mer än vanligt"). Hidden below 2 people. One-shot rise 720 ms, none with reduced
+  motion. `bar_norm(p_bar_ids text[])` (≤ 40 ids) → `{v, bars: {id: {usual, nights}}}`: average different real users who had
+  logged a drink at the bar by this time of the night over the last 8 same weekdays (drink_log, no test users, no ghost/undone);
+  no entry with < 3 nights of data → the meter shows "Inget snitt än" and no tick. Client cache 15 min, batched.
+- **LIVE ticker** (owner: keep the row): 46 px/s; `window.PN_TICK_F` (0…1, eased ≈ 250 ms) multiplies the speed in app.js
+  `tickFrame` → finger on the row = pause, a sheet open = pause. Edge fade, ds text colours, reduced motion = static (scrolls).
+- **Calm main screen**: `body.pn-calm` hides `#btn-heat #btn-ghostpins #btn-taxi #btn-evs`; ONE `#btn-more` (Mer på kartan)
+  opens a list that clicks those same buttons (switch rows for Värme / Senaste dagarna), + Kartstil (BASEMAP.open). A red dot
+  on Mer when the 📅 badge shows. `#groups-badge` hidden: "● N ute" under the Grupper label (`.pn-gout`); the red inbox badge
+  stays the one badge. Call-out banner hides the kaos banner. `#prec-hint` only before the first beer (`body.pn-first`).
+  Dagens order (`.dl-cap-greet`) leaves on the first map move. `#btn-settings` shows my bottle cap (opens Profil).
+  Ikväll panel: no rank / 🧢 / Önska chip. Header `‹` (`#pn-back`) when SHEETNAV has a sheet/sub level or a gpage sub-view;
+  in-body back buttons (`.g-back`, `.gpg-back`, a first-row "‹ Tillbaka") are hidden then.
+- **Friends strip** `#pn-strip` (in `.hud-left`): the "Ikväll?" chip (16:00–05:00) + caps of friends with a pin (max 4, tap =
+  `A.flyTo`) + people who said "Ute" without a pin (dashed). Bottle caps = `PNUI.capSVG(name, size, mine)`, 6 colours ≥ 4.5:1.
+- **Ikväll?** (scout #4; no older personal status existed — `crew_mood` is a group poll): `ikvall_status(user_id pk, night, st)`
+  RLS on, no grants. `ikvall_set(p_st)` 'ute'|'kanske'|'hemma'|null (1/s) · `ikvall_status(p_group_id default null)` →
+  `{v, night, mine, counts{ute,kanske,hemma}, people[{name, st, friend, at}]}` = accepted friends + group mates, tonight only
+  (`olnu_night_of`, resets 05:00). Sheet: 3 big choices; "Ute" offers "Kalla in gänget" (SOCIAL.hudClick("come")). First ÖL!
+  (or a live pin on open) sets "Ute" once. Group page: "🍺 2 ska ut · 🤔 1 kanske" inside the 🟢 NU card (`.pn-gikv`).
+- **Onboarding** (scout #1–#3): `onReadyShow` → once (`olnu.pnOb`) for a user with no group and no deep link: sheet "Vem går du
+  ut med?" → Skapa gänget (name prefilled "Antons gäng") → `create_group` → `JOIN.openGroup(g, true)` (share link) · Jag har en
+  länk eller kod (`join_group`, a pasted ?join= link works) · Bara kika runt. js/install1.js: the first-visit card only for
+  in-app browsers; others get `INSTALL1.show()` 2.6 s after the FIRST ÖL! (`olnu.pnInst`); until the first beer / group
+  (`olnu.pnAha`) the daily install sheet waits (`olnu.guideSeen` = now). Grupper: one "Spara kontot" card after the first group
+  when `ACCOUNT.on() && !saved()` (`olnu.pnAcct`, once); "Bara du i X · Bjud in 1 till" for a 1-member group (dismiss = today).
+- **Profil** (3.7 → 1.4 screens): hero (3 stat tiles, no group chips) + "Mitt" (Min uniform, Ölpasset, Mina kvällar, Vänner) +
+  "Hjälp oss bli bättre" (💡 Önska något = WISH.open, 🐞 Rapportera fel) + one row "Namn, konto och mer" that shows the ds.js
+  sections (`#sheet-body.pn-pfmode.pn-pfopen`, remembered in `olnu.pnFold`). No SV/EN row. Inställningar: no amber "📲 Bjud in"
+  (Vänner has the link), the install row moves last, no Önska row, empty sections hide. 🏆: 4 tabs (Streak lives in Meriter),
+  second-level tabs = a chip row, title "Topplistor", no Önska footer (polish2.js).
+- **Feedback** (scout #6, #8): table `app_feedback(id, user_id, kind wish|bug|morning, body, answer, meta, created_at, status)`
+  RLS on, no grants. `submit_feedback(p_kind, p_text, p_answer, p_meta)` (10 s apart, 10/day, morning 1 per 20 h; meta keys
+  v, ua, screen, err, w, h, standalone only) · `owner_feedback(p_key)` / `owner_set_feedback(p_key, p_id, p_status)` →
+  docs/stats-feedback.js panel "💬 Feedback". 🐞 sheet: "Vad hände?" + "Skicka med teknisk info" (shown, can be turned off).
+  Morning after a night with a beer (05–15, max once per 14 days, optional): "Vad saknade du igår?" 4 chips + free text.
+- **💸 Kvällens nota v2** (js/rundan.js, owner 2026-11-07): the chat gets NO payment cards — one quiet "Öppna Kvällens nota ›"
+  line under each expense message. Own sheet: stepper Vem betalade? → Dela → Swisha → Klart, then ONE card for me: "Du ska
+  swisha 120 kr till Lisa" + one big Swish button (swishHttps, fixed link 4791bd9; number + Kopiera + swishApp fallback) +
+  ✅ Betalt (`rnd_pay` net, no expense id) · "Kolla din Swish: Olle säger att hen swishat 100 kr" ✅ Fått / Fick inget ·
+  "Du får 240 kr" (+ 💵 Fick kontant) · "✅ Du ä kvitt". Then Lägg till en utgift, Alla i gänget, Utgifter, 🎲, 📱 Swish-nummer.
+  Add flow: payer chips, numbered steps 1–3, a plain sentence ("Lisa och Kalle swishar dig 120 kr var."), "✅ Lägg till på
+  notan" → back to the nota. Fewest payments = `settle()` as before.
+- **Vänner** (scout #5): first a card "Lägg till vänner med din länk" → Dela min vänlänk (share, else copy; `?friend=CODE`) ·
+  Visa QR-kod · Kopiera länk; my code is fetched by itself; typing a code folds into "Har du en väns kod?".
+- **Test hooks**: `olnu.pnEve = "1"` forces the 16–05 evening window. Tests: scratchpad `ui-shots.js`, `ui-tests/*`.
+
+## 🗺️ KARTZONER (kommun / län zones on the zoomed-out map; owner confirmed 2026-11-07 03:52; migrations 0220–0221; additive)
+New `docs/js/zones.js` (`window.ZONES`, mods init / onPoll / onPublicPoll, loaded after glmap.js), `docs/zones/kommuner.json` +
+`lan.json`. Patches zone-patches zn01–zn05. Mapbox GL only (the raster fallback has no zones). No new button, no new HUD row.
+- **Borders**: SCB "Digitala gränser" (`shape_svenska_260225.zip`, https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/digitala-granser/),
+  licence **CC0** (no credit needed; we credit "Gränser: SCB (CC0)" in the ⓘ popover). SWEREF 99 TM → WGS84 and simplified with mapshaper
+  (scratchpad `zone-build.js`): client 250 m / 0.0005° (kommuner 211 KB = 51 KB gzip, län 46 KB = 13 KB gzip), server 50 % / 0.0005°.
+  The files load the first time the map is zoomed out below 10.5 (never at start). sw.js keeps them in the data cache (stale-while-revalidate).
+- **Zooms (Leaflet)**: < 6.6 the 21 län · 6.6–10.5 the 290 kommuner (fill + dashed border fade out 9.5 → 10.5) · ≥ 11 bars as before
+  (tiers / heat / GL pills unchanged). < 5.2 = whole Sweden: one-line chips "Dalarna 🍺 8"; quiet län = name only, small (busy labels
+  are their own layer above the quiet ones: placement is per layer, the sort key only works inside one tile).
+- **Colour** (feature-state `lv`, same steps for everyone): 0 navy 0.16 · 1–2 ("några") 0.26 · 3–9 0.38 · 10–24 0.48 · 25+ 0.58 amber;
+  10+ = a static amber glow on the border (no pulse). Fills / borders in the Standard slot "middle" (under the place names); labels
+  (canvas images) over the heat, under every GL bar layer.
+- **Labels**: län = name · "🍺 8 ute" / "🍺 några ute" · "👑 Ludvika" (busiest kommun, only when it has ≥ 3); kommun (only where
+  someone is out) = name · count · "👑 Pitchers" (busiest bar by snap_bar, ≥ 3 there). Anchored just above the label point.
+- **Top bar**: `#live-count` shows the zone under the map centre: "Sverige · 23 ute ikväll" (< 5.2), "Dalarna · 8 ute ikväll",
+  "Ludvika · 5 ute ikväll", "Smedjebacken · några ute ikväll", "Vansbro · lugnt ikväll". Too long for the pill → drops " ikväll",
+  then " ute". app.js `updateCounts()` writes `ZONES.pill()` when it is not null; demo.js does not paint over it. Class `zn-pill`
+  on the element while it shows a zone (for the HUD styles).
+- **While zones show** (`html[data-zones]`, zoom < 9.6): stranger-only count circles (`.olnu-cl` without `.pf` / `.pm`, and the demo
+  town pills) are hidden — the zone says the same; friend / me clusters, 📍 mypins and avatar pins stay.
+- **Tap** a zone = zoom in: län → centre at ≥ 6.85 (its kommuner); kommun → fit its box, or + 2 zoom (max 13) when the whole kommun is
+  already in view. A GL bar tap (glmap.js) wins (decided after the preclick dispatch).
+- **Server 0220** `olnu_zone_lan (ln, name)`, `olnu_zone_kommun (kn, ln, name)`, `olnu_zone_poly (kn, bb box, poly polygon)` — no PostGIS,
+  built-in geometry; RLS on, no grants. **0221** `olnu_kommun_of(lat, lng)` (inside, else the nearest kommun within ~3 km: SCB's simple
+  coast leaves ~7 % of bars just outside; else null), `olnu_zone_cache`, `olnu_zone_build(p_test)`, RPC **`zone_counts(p_test default
+  false)`** → `{v, at, k: 3, total, some, kommun: [{c, n?, bar?}], lan: [{c, n?, top?}]}`. anon + authenticated.
+  Privacy: counts only (never a position; the pin is put in its kommun on the server), same people as the world counter minus 👻
+  ghost pins and the test zone; 1–2 = no "n" ("några"); 👑 needs ≥ 3; empty zones are not listed. Built at most once per 60 s for
+  everyone (one builder, `pg_try_advisory_xact_lock`); `p_test` only for a test user (test zone counted, own row, 5 s).
+  The client asks only while zones are in view and the last answer is > 60 s old (onPoll / onPublicPoll / moveend), never while hidden.
+- Test hooks: `ZONES._counts()`, `_zoneAt(lat, lng)`, `_layers()`, `_geo()`, `_ask()`, `ZONES.stats`. Test: scratchpad `zones-pw.js <port> <tag>` (1 Mapbox load).
+
+## ⚡ SPEED (owner 2026-11-07; code review 2026-11-07 #3 #7 #8 #9 #13 #15 + vitals; migrations 0222–0224; patches zone-patches sp01–sp09)
+- **One poll, session first** (app.js): back from the background = `client.auth.getSession()` first (one token refresh, max 6 s),
+  THEN one `refresh()`. The onPoll fan-out runs in waves of 5 modules every 250 ms (`runWave`; a newer poll or a hidden page stops
+  the old wave). 17 modules lost their own `visibilitychange → load/poll` (ceremony, chief, crew, dm, duel, evchat, film, games,
+  gang, golden, inbox, invite, medals, meriter, near, skal, ute): onPoll after the resume poll does it. The SW update check waits
+  8 s after a resume and runs max once per 30 min.
+- **Hidden = asleep**: `U.vInterval(fn, ms)` (util.js) = an interval that stops while hidden. Used by crew (1 s / 20 s / 30 s), demo
+  (1 s, 15 min), invite (10 s, 30 s), dm (12 s), arenapin, oppet, ute, evchat, delight-more; calm.js pump stops while hidden; the ÖL!
+  cooldown ring timer stops while hidden. Not changed on purpose: hemfolj.js walk pings (safety while walking home), account.js
+  code countdown, filmcam.
+- **award_medals**: at once after own beer / check-in / 🏠 home; chat, skål / rally taps max once per 2 min; the poll max once per
+  10 min (was 5); no resume call.
+- **near.js**: no 5 s setInterval; one setTimeout for the next due poll (60 s, 10 s while a find is live), none while hidden.
+- **📱 iPhone animation pause** (`docs/js/speed.js`, `window.SPEED`): `html.anim-pause` pauses every CSS animation while the map
+  moves / zooms / pinches or anything scrolls (off 220 ms after the last move). iOS only; `localStorage olnu.animPause` "1" / "0" = force.
+- **Account at the first real action** (0222): a first visit without a deep link, without a stored session and without `olnu.uid`
+  has NO session. The map reads **`poll_public(box, p_heat)`** (anon; the stranger view of poll_v2: same olnu_pins(null) rows, hashed
+  ids, 15 min times, stranger check-ins without names, the same heat, live_total without the test zone; no me / friends / rallies).
+  The account is made by 🍺 ÖL! / 🚪 check-in (they then go on by themselves) and by any RPC that starts ≤ 1.5 s after a tap on a
+  button / sheet / popup (join a group, Grupper, Topplista, settings …). Map pans / zooms / marker taps, the intro, install and welcome
+  cards never make one; such calls get `{error: no_session}` without network. Deep links (?join, ?invite, ?chat, pushes …) sign in as
+  before. Old server (no poll_public) = sign in at once like before. API: `A.noAccount()`, `A.ensureAccount()`.
+  Not yet public (they make the account when opened): Topplista, group / profile views. Vitals are only sent with an account.
+- **Test users** (0223): scripts call `tagTestUser(sb)` (scripts/test-user-tag.js) right after `signInAnonymously()` = user_metadata
+  `{test: true}` + `mark_me_test()` (table `olnu_test_users`). `olnu_is_test_uid(uid)` = metadata OR table OR the old test-zone rule.
+  `owner_stats2(p_key)` = owner_stats with the users block counted without test users, + `test_users`, `empty_anon`, `real_only`;
+  stats.html asks it first (fallback owner_stats) and shows "Testanvändare (räknas inte)" + "Tomma konton (inget gjort)".
+- **sw.js install fails on a missing file** (index.html, the shell list, every ./js + ./css that index.html names): the half-filled
+  cache is deleted and the old worker + cache stay.
+- **Dead code**: `docs/js/bridge.js` removed (nothing loaded it; the move uses handover.js + flytta.html). The old
+  `ship-patches/10-domain-switch.py` is superseded (it would add a tag for bridge.js). **0224** marks find_cancel, group_rallies,
+  like_msg, msg_likes, my_eta DEPRECATED (comment only; the code review's list of 14 was stale: spel_*, event_group, event_story,
+  my_night_log, my_past_events are used again). 18 more functions have no caller in this branch (see 0224's header) — not marked,
+  the store-safe / trust work may add callers.
+- **Bundling** (prepared, NOT enabled): `scripts/bundle.mjs` (esbuild 0.24: each run of local deferred scripts → one minified bundle,
+  each file in try / catch like separate tags; lazy scripts minified in place; all local CSS → one file) +
+  `.github/workflows/pages-bundle.yml.disabled` (Pages from an Actions artifact; the owner sets Pages → Source "GitHub Actions" and
+  renames the file). Measured on this branch: 113 local JS requests → 13, 46 CSS → 6; JS 963 KB gzip (sum of files) → 701 KB,
+  CSS 116 KB → 71 KB; the bundled copy boots with no errors (scratchpad zone-bundle-smoke.js).

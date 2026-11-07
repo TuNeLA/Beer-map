@@ -490,7 +490,7 @@
     init: function (api) {
       A = api;
       try { if (window.FILMCAM) window.FILMCAM.init(api); } catch (e) {}
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () {
       load(true); var id = linkFromUrl(); if (id) { openFilmLink(id, linkCam); return; }

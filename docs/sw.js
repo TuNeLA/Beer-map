@@ -15,7 +15,7 @@ var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfre
 var TILE_META = /^\/(styles\/[^/]+|planet)\/?$/, TILE_BYTES = 40 * 1024 * 1024;
 var TILE_MAX = 300, TILE_MAX_AGE = 14 * 86400e3, NAV_TIMEOUT_MS = 4000;
 var SHELL_MAX_AGE = 3 * 86400e3;   // smooth: cached index.html younger than this opens the app at once
-var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json)$/;
+var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json|zones\/[^/]+\.json)$/;
 
 function shellFromIndex(html) {
   var out = [], re = /<(?:script|link)\b[^>]*?\s(?:src|href)="(\.\/[^"]+?\.(?:js|css)(?:\?[^"]*)?)"/g, m;
@@ -32,17 +32,20 @@ self.addEventListener("install", function (e) {
       return res.clone().text().then(function (html) {
         return Promise.all([c.put("./index.html", res.clone()), c.put("./", res)]).then(function () { return shellFromIndex(html); });
       });
-    }).catch(function () { return []; }).then(function (fromIndex) {
+    }).then(function (fromIndex) {   // ⚡ SPEED: no file may fail (index.html, the shell, every ./js + ./css file it names)
       var list = SHELL.filter(function (u) { return u !== "./" && u !== "./index.html"; }).concat(fromIndex);
       return Promise.all(list.map(function (u) {
         // A file with ?v=<hash> that an older version already has is the same file: copy it, do not download it again.
         var copy = /[?&]v=/.test(u) ? caches.match(u) : Promise.resolve(null);
         return copy.then(function (hit) {
           return hit ? c.put(u, hit) : c.add(new Request(u, { cache: "reload" }));
-        }).catch(function () {});
+        });
       }));
     });
-  }).then(function () { return self.skipWaiting(); }));
+  }).then(function () { return self.skipWaiting(); }, function (err) {
+    // the new version is not complete: drop it, keep the old worker + cache (install is retried on the next update check)
+    return caches.delete(VERSION).then(function () { throw err; });
+  }));
 });
 
 self.addEventListener("activate", function (e) {

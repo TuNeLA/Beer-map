@@ -404,7 +404,7 @@
       A = api; map = api && api.map; if (!map || !L) return;
       document.addEventListener("click", onDocClick, true);
       map.on("zoomend moveend", soon);
-      setInterval(function () { if (document.visibilityState !== "hidden") { evChanged(); draw(false); } }, 30000);
+      U.vInterval(function () { if (document.visibilityState !== "hidden") { evChanged(); draw(false); } }, 30000);
       try { if (window.BARS && window.BARS.onArenas) window.BARS.onArenas(function () { draw(true); }); } catch (e) {}
       setTimeout(function () { draw(true); }, 1500);
     },

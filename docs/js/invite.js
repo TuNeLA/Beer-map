@@ -251,7 +251,7 @@
     return '<button type="button" class="hx-chip inv-chip' + (urgent ? " hx-urgent" : "") + '" data-hx="inv" data-inv="' + esc(String(x.id)) + '">' + esc(chipText(x)) + "</button>";
   }
   var lastChip = "";
-  setInterval(function () { if (!A || document.hidden) return; var k = chipKey(); if (k !== lastChip) { lastChip = k; try { A.updateCounts(); } catch (e) {} } }, 30000);
+  U.vInterval(function () { if (!A || document.hidden) return; var k = chipKey(); if (k !== lastChip) { lastChip = k; try { A.updateCounts(); } catch (e) {} } }, 30000);
 
   /* ---------- 👥 friend list (friend_list: friends + group-mates) ---------- */
   function friends(force) {
@@ -848,8 +848,8 @@
       document.addEventListener("click", onDocClick, true);
       wrapNews(); setTimeout(wrapNews, 0);
       setTimeout(legend, 0);
-      document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(true); });
-      setInterval(function () { poll(false); }, 10000);
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
+      U.vInterval(function () { poll(false); }, 10000);
     },
     onAuthed: function () {
       wrapNews(); legend();

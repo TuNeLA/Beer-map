@@ -25,6 +25,14 @@
   U.debounce = function (fn, ms) {
     var t; return function () { var a = arguments, s = this; clearTimeout(t); t = setTimeout(function () { fn.apply(s, a); }, ms); };
   };
+  // ⚡ SPEED: an interval that sleeps while the app is in the background (no wake-ups, no work, no RPC there)
+  U.vInterval = function (fn, ms) {
+    var id = 0, h = { off: false, stop: function () { h.off = true; if (id) clearInterval(id); id = 0; } };
+    var start = function () { if (!id && !h.off && !document.hidden) id = setInterval(fn, ms); };
+    document.addEventListener("visibilitychange", function () { if (document.hidden) { if (id) clearInterval(id); id = 0; } else start(); });
+    start();
+    return h;
+  };
   var R = 6371000, rad = Math.PI / 180;
   U.haversine = function (lat1, lng1, lat2, lng2) {
     var dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;

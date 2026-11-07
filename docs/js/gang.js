@@ -1638,7 +1638,7 @@
     _paperModel: paperModel, _drawPaper: drawPaper, _storyModel: storyModel, _drawStory: drawStory, _settlePlan: settlePlan,
     init: function (api) {
       A = api;
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
       // Food popup button (capture: Leaflet stops click propagation inside popups).
       document.addEventListener("click", function (e) {
         var b = e.target && e.target.closest && e.target.closest("[data-gang-kebab]");

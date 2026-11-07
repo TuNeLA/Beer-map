@@ -311,7 +311,7 @@
   }
 
   window.OPPET = {
-    init: function (api) { A = api; setTimeout(load, 1500); setInterval(function () { chipCache.at = 0; modeCheck(false); }, 60000); },
+    init: function (api) { A = api; setTimeout(load, 1500); U.vInterval(function () { chipCache.at = 0; modeCheck(false); }, 60000); },
     onAuthed: function () { load(); },
     onPoll: function () { load(); chipCache.at = 0; modeCheck(false); try { checkClosing(); } catch (e) {} },
     hudChipsHTML: function () {

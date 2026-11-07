@@ -874,13 +874,13 @@
   }
 
   /* ---------- live countdowns inside the sheet ---------- */
-  setInterval(function () {
+  U.vInterval(function () {
     if (!view || !document.getElementById("cr-root")) return;
     document.querySelectorAll("[data-cr-cd]").forEach(function (x) { x.textContent = depStatus({ leave_at: x.getAttribute("data-cr-cd") }); });
     document.querySelectorAll("[data-cr-mmss]").forEach(function (x) { x.textContent = U.mmss(new Date(x.getAttribute("data-cr-mmss")).getTime() - Date.now()); });
   }, 1000);
-  setInterval(function () { if (view && A && A.sheetOpen() && document.getElementById("cr-root")) refreshView(false); }, 20000);
-  setInterval(function () { if (A && P) hud(); }, 30000);   // chip countdown
+  U.vInterval(function () { if (view && A && A.sheetOpen() && document.getElementById("cr-root")) refreshView(false); }, 20000);
+  U.vInterval(function () { if (A && P) hud(); }, 30000);   // chip countdown
 
   /* ---------- public hooks ---------- */
   window.CREW = {
@@ -892,7 +892,7 @@
         if (root) wireDance(root);
       });
       A.map.on("zoomend", function () { drawTorch(); });
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
       document.addEventListener("keydown", function (e) { if (e.key === "Escape" && RP) stopReplay(); });
     },
     applyText: function () { torchKey = ""; drawTorch(); },

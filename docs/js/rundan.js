@@ -242,84 +242,28 @@
     });
   }
 
-  /* ---------- Chat cards ---------- */
-  function cardFor(g, d, e, rerender) {
-    var box = el("div", { class: "rnd-card" + (e.cancelled ? " off" : "") });
-    if (e.cancelled) { box.appendChild(el("p", { class: "rnd-note", text: "🚫 " + T("cancelled") })); return box; }
-    var chips = el("div", { class: "rnd-chips" });
-    (e.shares || []).forEach(function (s) {
-      chips.appendChild(el("span", { class: "rnd-chip" + (s.paid ? " ok" : ""), text: (s.is_me ? TC("you") : s.name) + " " + s.amount + " kr" + (s.paid ? (s.confirmed ? " ✅" : " ⏳") : "") }));
-    });
-    box.appendChild(chips);
-    var mine = myShare(e);
-    if (mine && !mine.paid) {
-      box.appendChild(payBlock({ name: e.payer_name, swish: e.payer_swish }, mine.amount, e.what, function (b) {
-        payShare(g, e, b).then(function (ok) { if (ok) rerender(true); });
-      }));
-    } else if (mine && mine.paid) {
-      box.appendChild(el("p", { class: "rnd-note", text: mine.confirmed ? fmt(TC("conf"), e.payer_name) : fmt(TC("waitConf"), e.payer_name) }));
-    }
-    if (e.payer_me) {
-      var wait = (e.shares || []).filter(function (s) { return !s.paid; }).map(function (s) { return s.name; });
-      var pend = (e.shares || []).filter(function (s) { return s.paid && !s.confirmed && s.pay_id; });
-      if (!wait.length && !pend.length) box.appendChild(el("p", { class: "rnd-note ok", text: TC("allPaid") }));
-      else if (wait.length) box.appendChild(el("p", { class: "rnd-note", text: fmt(TC("waitFor"), nameList(wait)) }));
-      pend.forEach(function (s) {
-        box.appendChild(el("div", { class: "rnd-conf" }, [el("span", { text: fmt(T("pendLine"), s.name, s.amount) }),
-          bt(T("got"), "btn-small btn-green", function () { payment("confirm", s.pay_id, function () { rerender(true); }); }),
-          bt(T("notGot"), "btn-small", function () { payment("reject", s.pay_id, function () { rerender(true); }); })]));
-      });
-    }
-    return box;
+  /* ---------- Chat: ONE quiet line per expense (ui-build nota v2, owner 2026-11-07: no payment cards in the chat) ---------- */
+  function chatLine(g) {
+    return el("button", { type: "button", class: "rnd-qline", text: sv() ? "Öppna Kvällens nota ›" : "Open tonight's tab ›",
+      onclick: function (e) { e.stopPropagation(); openNota(g); } });
   }
   function chatOpen(g, ctx) {
     if (!on() || !g || !g.id || g.ev || !ctx || !ctx.list) return;
-    var list = ctx.list, sig = {}, timer = null, busy = false;
-    function candidates() { return list.querySelectorAll("li.chat-msg[data-mid]"); }
-    function hasCand() {
-      var c = candidates();
-      for (var i = 0; i < c.length; i++) { var b = c[i].querySelector(".cm-body"); if (b && /^(💸|🚕|🧾) /.test(b.textContent || "")) return true; }
-      return false;
-    }
-    function paint(d) {
-      if (!d) return;
-      var byMsg = {};
-      (d.expenses || []).forEach(function (e) { if (e.msg_id) byMsg[String(e.msg_id)] = e; });
-      var c = candidates();
+    var list = ctx.list;
+    function paint() {
+      var c = list.querySelectorAll("li.chat-msg[data-mid]");
       for (var i = 0; i < c.length; i++) {
-        var li = c[i], e = byMsg[li.getAttribute("data-mid")];
-        if (!e) continue;
-        var s = JSON.stringify(e);
-        if (sig[e.id] === s && li.querySelector(".rnd-card")) continue;
-        sig[e.id] = s;
-        var old = li.querySelector(".rnd-card"); if (old) old.remove();
+        var li = c[i], b = li.querySelector(".cm-body");
+        if (!b || li.querySelector(".rnd-qline") || !/^(💸|🚕|🧾) /.test(b.textContent || "")) continue;
         li.classList.add("rnd-msg");
-        var body = li.querySelector(".cm-body"), card = cardFor(g, d, e, refresh);
-        if (body && body.nextSibling) li.insertBefore(card, body.nextSibling); else li.appendChild(card);
+        if (b.nextSibling) li.insertBefore(chatLine(g), b.nextSibling); else li.appendChild(chatLine(g));
       }
     }
-    function refresh(force) {
-      if (!ctx.alive || !ctx.alive()) { clearInterval(timer); return; }
-      if (busy || document.visibilityState === "hidden") return;
-      if (!force && !hasCand()) return;
-      busy = true;
-      load(g, !!force).then(function (d) { busy = false; if (ctx.alive()) paint(d); }, function () { busy = false; });
-    }
-    // The first messages arrive a moment after open; the list changes → paint from the cache, fetch when needed.
-    var mo = null;
     try {
-      mo = new MutationObserver(function () {
-        if (!ctx.alive()) { mo.disconnect(); return; }
-        var c = cache[g.id]; if (c) paint(c.d);
-        if (hasCand() && (!c || Date.now() - c.at > 6000)) refresh(false);
-      });
+      var mo = new MutationObserver(function () { if (!ctx.alive()) { mo.disconnect(); return; } paint(); });
       mo.observe(list, { childList: true });
     } catch (e) {}
-    setTimeout(function () { refresh(false); }, 900);
-    timer = setInterval(function () {
-      var quiet = Date.now() - (window.OLNU_CHAT_AT || 0) > 60000;
-      if (!quiet || Math.random() < 0.34) refresh(true);
-    }, 8000);
+    setTimeout(paint, 300);
   }
 
   /* ---------- Group page tile ---------- */
@@ -333,100 +277,170 @@
     load(g, false).then(function (d) {
       if (!d) { if (off) tile.remove(); return; }
       var me = meOf(d), n = me.net | 0, pend = (d.payments || []).filter(function (p) { return p.can_confirm; }).length;
-      st.textContent = (n > 0 ? fmt(T("plus"), n) : n < 0 ? fmt(T("minus"), -n) : T("even")) + (pend ? " · ⏳ " + pend : "");
+      st.textContent = n < 0 ? (sv() ? "du ska swisha " + (-n) + " kr" : "you owe " + (-n) + " kr") : n > 0 ? (sv() ? "du får " + n + " kr" : "you get " + n + " kr") : T("even");
+      if (pend) st.textContent += " · ⏳ " + pend;
       if (n < 0 || pend) b.classList.add("rnd-due");
     });
   }
 
-  /* ---------- 💸 Kvällens nota sheet ---------- */
+  /* ---------- 💸 Kvällens nota sheet (ui-build nota v2) ----------
+     Flow: 1 Vem betalade? → 2 Dela → 3 Swisha → 4 Klart. The top card says exactly what *I* do now:
+     "Du ska swisha 120 kr till Lisa" + ONE big Swish button + ✅ Betalt; or "Olle säger att hen swishat 100 kr" + ✅ Fått;
+     or "Du får 240 kr"; or "✅ Du ä kvitt". Fewest payments = settle() (net per person). */
+  function capOf(name, size) { try { return window.PNUI && window.PNUI.capSVG ? window.PNUI.capSVG(name, size || 32) : ""; } catch (e) { return ""; } }
+  function stepper(at) {
+    var names = sv() ? ["Vem betalade?", "Dela", "Swisha", "Klart"] : ["Who paid?", "Split", "Swish", "Done"];
+    var ol = el("ol", { class: "rnd-steps", "aria-label": sv() ? "Så funkar notan" : "How the tab works" });
+    names.forEach(function (n, i) {
+      ol.appendChild(el("li", { class: i + 1 < at ? "done" : i + 1 === at ? "now" : "", "aria-current": i + 1 === at ? "step" : null }, [el("b", { text: i + 1 < at ? "✓" : String(i + 1) }), el("span", { text: n })]));
+    });
+    return ol;
+  }
+  function swishBig(to, amount, what) {
+    var msg = swishMsg(what), box = el("div", { class: "rnd-swbox" });
+    box.appendChild(el("a", { class: "btn btn-amber btn-block rnd-swish rnd-swbig", href: swishHttps(to.swish, amount, msg), target: "_blank", rel: "noopener noreferrer",
+      onclick: function () { haptic(12); } }, [el("span", { class: "rnd-sw-logo", "aria-hidden": "true", text: "S" }), el("span", { text: (sv() ? "Swisha " : "Swish ") + kr(amount) + " kr" })]));
+    box.appendChild(el("div", { class: "rnd-fb" }, [
+      el("span", { class: "rnd-num", text: prettyNum(to.swish) }),
+      el("button", { type: "button", class: "rnd-link", text: sv() ? "Kopiera numret" : "Copy number", onclick: function (e) { e.stopPropagation(); copy(to.swish); A.toast(sv() ? "📋 Numret ä kopierat." : "📋 Copied."); } }),
+      el("a", { class: "rnd-link", href: swishApp(to.swish, amount, msg), text: sv() ? "Öppnas int' Swish?" : "Swish didn't open?" })]));
+    return box;
+  }
   function openNota(g) {
-    A.openSheet(fmt(T("notaTitle"), g.name || ""), function (body) {
-      var root = el("div", { class: "rnd" });
+    A.openSheet(sv() ? "Kvällens nota" : "Tonight's tab", function (body) {
+      var root = el("div", { class: "rnd rnd-v2" });
       top(body);
-      body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [bt(T("back"), "btn-small", function () { A.showGroups(); })]));
+      body.appendChild(el("p", { class: "rnd-sub", text: g.name || "" }));
       body.appendChild(root);
-      root.appendChild(el("p", { class: "muted", text: "…" }));
+      root.appendChild(el("div", { class: "rnd-skel", "aria-hidden": "true" }, [el("i"), el("i"), el("i")]));
       var timer = null, last = "";
       view = { g: g, root: root };
       function alive() { return document.body.contains(root); }
+      function payTo(x, b) {
+        b.disabled = true;
+        call("rnd_pay", { p_group_id: g.id, p_to: x.to.k, p_amount: x.amount }).then(function (r) {
+          b.disabled = false;
+          if (r.error) { A.toast(errText(r.error), { err: true }); return; }
+          paidToast(x.to.name); refresh();
+        });
+      }
+      function cashFrom(x, b) {
+        b.disabled = true;
+        call("rnd_pay", { p_group_id: g.id, p_to: d0.me, p_from: x.from.k, p_amount: x.amount }).then(function (r) {
+          b.disabled = false;
+          if (r.error) { A.toast(errText(r.error), { err: true }); return; }
+          A.toast(pick(sv() ? GOT_TOASTS : ["✅ Confirmed."])); refresh();
+        });
+      }
+      var d0 = null;
       function draw(d) {
-        var s = JSON.stringify(d); if (s === last) return; last = s;
+        var s = JSON.stringify(d); if (s === last) return; last = s; d0 = d;
         root.innerHTML = "";
         if (!d) { root.appendChild(el("p", { class: "muted", text: T("errs").fail })); return; }
-        // Actions
-        root.appendChild(el("div", { class: "rnd-acts" }, [bt(T("iPaid"), "btn-amber btn-block", function () { openAdd(g, "round"); })]));
-        root.appendChild(el("div", { class: "rnd-acts two" }, [bt(T("spin"), "btn-small", function () { openSpin(g); }),
-          bt(T("other"), "btn-small", function () { openAdd(g, "other"); })]));
-        // Waiting for me (payments to confirm)
-        var pend = (d.payments || []).filter(function (p) { return p.can_confirm; });
-        if (pend.length) {
-          root.appendChild(el("h4", { class: "rnd-h", text: T("pendH") }));
-          pend.forEach(function (p) {
-            root.appendChild(el("div", { class: "rnd-conf" }, [el("span", { text: fmt(T("pendLine"), p.from_name, p.amount) }),
-              bt(T("got"), "btn-small btn-green", function () { payment("confirm", p.id, refresh); }),
-              bt(T("notGot"), "btn-small", function () { payment("reject", p.id, refresh); })]));
+        var tr = settle(d.members), myOut = tr.filter(function (x) { return x.from.is_me; }), myIn = tr.filter(function (x) { return x.to.is_me; });
+        var toConf = (d.payments || []).filter(function (p) { return p.can_confirm; });
+        var waitMine = (d.payments || []).filter(function (p) { return p.from_me && !p.confirmed && !p.rejected; });
+        var ex = (d.expenses || []).filter(function (e) { return !e.cancelled; });
+        var at = !ex.length ? 1 : myOut.length ? 3 : (toConf.length || waitMine.length || tr.length) ? 4 : 5;
+        root.appendChild(stepper(Math.min(at, 4) + (at === 5 ? 1 : 0)));
+        // --- the ONE card: what I do now ---
+        var hero = el("section", { class: "rnd-hero" + (myOut.length ? " owe" : toConf.length ? " conf" : myIn.length ? " get" : " even") });
+        if (myOut.length) {
+          myOut.forEach(function (x, i) {
+            var blk = el("div", { class: "rnd-hero-b" });
+            blk.appendChild(el("p", { class: "rnd-hero-k", text: sv() ? "Du ska swisha" : "You swish" }));
+            blk.appendChild(el("p", { class: "rnd-hero-v" }, [el("b", { text: kr(x.amount) + " kr" }), el("span", { text: (sv() ? " till " : " to ") + x.to.name })]));
+            if (x.to.swish) blk.appendChild(swishBig(x.to, x.amount, sv() ? "Kvällens nota" : "Tonight's tab"));
+            else blk.appendChild(el("p", { class: "rnd-note", text: fmt(TC("noSwish"), x.to.name) }));
+            var paidB = bt(sv() ? "✅ Betalt" : "✅ Paid", "btn-block rnd-paid", function () { payTo(x, paidB); });
+            blk.appendChild(paidB);
+            blk.appendChild(el("p", { class: "rnd-fine", text: sv() ? "Tryck Betalt när du har swishat. " + x.to.name + " bekräftar." : "Tap Paid after you swished. " + x.to.name + " confirms." }));
+            hero.appendChild(blk);
+            if (i < myOut.length - 1) hero.appendChild(el("hr", { class: "rnd-hr" }));
           });
+        } else if (toConf.length) {
+          hero.appendChild(el("p", { class: "rnd-hero-k", text: sv() ? "Kolla din Swish" : "Check your Swish" }));
+          toConf.forEach(function (p) {
+            hero.appendChild(el("div", { class: "rnd-conf2" }, [el("span", { class: "rnd-cap", html: capOf(p.from_name, 32) }),
+              el("span", { class: "rnd-conf-t" }, [el("b", { text: p.from_name }), el("small", { text: (sv() ? "säger att hen swishat " : "says they paid ") + p.amount + " kr" })]),
+              bt(sv() ? "✅ Fått" : "✅ Got it", "btn-small btn-green rnd-got", function () { payment("confirm", p.id, refresh); }),
+              bt(sv() ? "Fick inget" : "Didn't get it", "btn-small btn-ghost", function () { payment("reject", p.id, refresh); })]));
+          });
+        } else if (myIn.length) {
+          var sum = myIn.reduce(function (a, x) { return a + x.amount; }, 0);
+          hero.appendChild(el("p", { class: "rnd-hero-k", text: sv() ? "Du får" : "You get" }));
+          hero.appendChild(el("p", { class: "rnd-hero-v" }, [el("b", { text: kr(sum) + " kr" })]));
+          var ul = el("ul", { class: "rnd-in" });
+          myIn.forEach(function (x) {
+            var cb = bt(sv() ? "💵 Fick kontant" : "💵 Got cash", "btn-small btn-ghost", function () { cashFrom(x, cb); });
+            ul.appendChild(el("li", {}, [el("span", { class: "rnd-cap", html: capOf(x.from.name, 28) }), el("span", { class: "rnd-in-t", text: x.from.name + (sv() ? " ska swisha dig " : " swishes you ") + x.amount + " kr" }), cb]));
+          });
+          hero.appendChild(ul);
+          if (!d.my_swish) hero.appendChild(bt(sv() ? "📱 Spara ditt Swish-nummer" : "📱 Save your Swish number", "btn-block btn-amber", function () { openSwish(null, function () { openNota(g); }); }));
+        } else {
+          hero.appendChild(el("p", { class: "rnd-hero-k", text: ex.length ? (sv() ? "Klart" : "Done") : (sv() ? "Inga utgifter än" : "No expenses yet") }));
+          hero.appendChild(el("p", { class: "rnd-hero-v" }, [el("b", { text: ex.length ? (sv() ? "✅ Du ä kvitt" : "✅ You're even") : "🍺" })]));
+          hero.appendChild(el("p", { class: "rnd-fine", text: ex.length ? T("balNone") : (sv() ? "Bjöd du på en runda? Lägg in den, så räknar notan ut vem som ska swisha vem." : "Bought a round? Add it and the tab works out who pays who.") }));
         }
-        // Balance
-        root.appendChild(el("h4", { class: "rnd-h", text: T("balH") }));
-        var nz = (d.members || []).filter(function (m) { return (m.net | 0) !== 0; });
-        if (!nz.length) root.appendChild(el("p", { class: "rnd-note ok", text: T("balNone") }));
-        else {
-          var ul = el("ul", { class: "rnd-bal" });
-          nz.sort(function (a, b) { return b.net - a.net; }).forEach(function (m) {
-            ul.appendChild(el("li", { class: m.net > 0 ? "plus" : "minus" }, [el("span", { class: "rnd-bn", text: m.is_me ? T("me") : m.name }),
-              el("span", { class: "rnd-bv", text: m.net > 0 ? fmt(T("balPlus"), m.net) : fmt(T("balMinus"), -m.net) })]));
+        waitMine.slice(0, 3).forEach(function (p) {
+          hero.appendChild(el("div", { class: "rnd-wait" }, [el("span", { text: "⏳ " + (sv() ? "Du har swishat " + p.amount + " kr till " + p.to_name + ". Väntar på att " + p.to_name + " bekräftar." : "You paid " + p.amount + " kr to " + p.to_name + ". Waiting.") }),
+            p.can_undo ? bt(T("undo"), "btn-small btn-ghost", function () { payment("undo", p.id, refresh); }) : null]));
+        });
+        root.appendChild(hero);
+        // Waiting for me to confirm, when I also owe (the hero shows the Swish first)
+        if (myOut.length && toConf.length) {
+          var cs = el("section", { class: "ds-card rnd-card2" }, [el("b", { text: sv() ? "Kolla din Swish" : "Check your Swish" })]);
+          toConf.forEach(function (p) {
+            cs.appendChild(el("div", { class: "rnd-conf2" }, [el("span", { class: "rnd-conf-t" }, [el("b", { text: p.from_name }), el("small", { text: (sv() ? "säger att hen swishat " : "says they paid ") + p.amount + " kr" })]),
+              bt(sv() ? "✅ Fått" : "✅ Got it", "btn-small btn-green rnd-got", function () { payment("confirm", p.id, refresh); }),
+              bt(sv() ? "Fick inget" : "Didn't get it", "btn-small btn-ghost", function () { payment("reject", p.id, refresh); })]));
           });
-          root.appendChild(ul);
-          // Settle up
-          var tr = settle(d.members);
-          root.appendChild(el("h4", { class: "rnd-h", text: T("settleH") }));
-          root.appendChild(el("p", { class: "rnd-note", text: tr.length === 1 ? T("settleOne") : fmt(T("settleInfo"), tr.length) }));
-          tr.forEach(function (x) {
-            var li = el("div", { class: "rnd-tr" + (x.from.is_me || x.to.is_me ? " mine" : "") }, [
-              el("div", { class: "rnd-trl", text: (x.from.is_me ? T("me") : x.from.name) + " → " + (x.to.is_me ? T("me") : x.to.name) + " · " + x.amount + " kr" })]);
-            if (x.from.is_me) {
-              li.appendChild(payBlock(x.to, x.amount, sv() ? "Gör upp" : "Settle up", function (b) {
-                b.disabled = true;
-                call("rnd_pay", { p_group_id: g.id, p_to: x.to.k, p_amount: x.amount }).then(function (r) {
-                  b.disabled = false;
-                  if (r.error) { A.toast(errText(r.error), { err: true }); return; }
-                  paidToast(x.to.name); refresh();
-                });
-              }));
-            } else if (x.to.is_me) {
-              li.appendChild(el("div", { class: "rnd-row" }, [bt(T("cashGot"), "btn-small", function () {
-                call("rnd_pay", { p_group_id: g.id, p_to: d.me, p_from: x.from.k, p_amount: x.amount }).then(function (r) {
-                  if (r.error) { A.toast(errText(r.error), { err: true }); return; }
-                  A.toast(pick(sv() ? GOT_TOASTS : ["✅ Confirmed."])); refresh();
-                });
-              })]));
-            }
-            root.appendChild(li);
-          });
+          root.appendChild(cs);
         }
-        // My payments that can still be taken back
-        (d.payments || []).filter(function (p) { return p.can_undo && p.from_me; }).slice(0, 3).forEach(function (p) {
-          root.appendChild(el("div", { class: "rnd-conf quiet" }, [el("span", { text: "✅ " + p.amount + " kr → " + p.to_name + (p.confirmed ? "" : " ⏳") }),
-            bt(T("undo"), "btn-small btn-ghost", function () { payment("undo", p.id, refresh); })]));
-        });
-        // Recent expenses
-        root.appendChild(el("h4", { class: "rnd-h", text: T("recentH") }));
-        var ex = (d.expenses || []).slice(0, 10);
-        if (!ex.length) root.appendChild(el("p", { class: "rnd-note", text: T("recentNone") }));
-        ex.forEach(function (e) {
-          var ico = e.kind === "taxi" ? "🚕" : e.kind === "round" ? "💸" : "🧾";
-          var paid = (e.shares || []).filter(function (s) { return s.paid; }).length;
-          var row = el("div", { class: "rnd-ex" + (e.cancelled ? " off" : "") }, [
-            el("span", { class: "rnd-ext", text: ico + " " + (e.payer_me ? T("me") : e.payer_name) + " · " + (e.items ? e.items + (sv() ? " öl" : " beers") : e.what) +
-              " · " + e.total + " kr" + (e.cancelled ? " · " + T("cancelled") : " · " + paid + "/" + (e.shares || []).length + " ✅") })]);
-          if (e.can_cancel) row.appendChild(el("button", { type: "button", class: "rnd-link", text: T("cancel"), onclick: function () {
-            call("rnd_cancel", { p_expense_id: e.id }).then(function (r) { if (r.error) A.toast(errText(r.error), { err: true }); refresh(); });
-          } }));
-          root.appendChild(row);
-        });
-        // My Swish number
-        root.appendChild(swishRow(d.my_swish, function () { openNota(g); }));
+        // Add (primary when I owe nothing)
+        root.appendChild(el("div", { class: "rnd-acts" }, [bt(sv() ? "➕ Lägg till en utgift" : "➕ Add an expense", (myOut.length || toConf.length ? "" : "btn-amber ") + "btn-block rnd-addb", function () { openAdd(g, "round"); })]));
+        // Everyone
+        var nz = (d.members || []).slice().sort(function (a, b) { return (b.net | 0) - (a.net | 0); });
+        if (ex.length && nz.length) {
+          root.appendChild(el("h4", { class: "rnd-h", text: sv() ? "Alla i gänget" : "Everyone" }));
+          var bl = el("ul", { class: "rnd-bal2" });
+          nz.forEach(function (m) {
+            var n = m.net | 0;
+            bl.appendChild(el("li", { class: n > 0 ? "plus" : n < 0 ? "minus" : "zero" }, [el("span", { class: "rnd-cap", html: capOf(m.name, 28) }),
+              el("span", { class: "rnd-bn", text: m.is_me ? (sv() ? "Du" : "You") : m.name }),
+              el("span", { class: "rnd-bv", text: n > 0 ? (sv() ? "får " : "gets ") + n + " kr" : n < 0 ? (sv() ? "ska swisha " : "owes ") + (-n) + " kr" : T("even") })]));
+          });
+          root.appendChild(bl);
+          var others = tr.filter(function (x) { return !x.from.is_me && !x.to.is_me; });
+          if (others.length) root.appendChild(el("p", { class: "rnd-note rnd-others", text: (sv() ? "Övriga: " : "Others: ") + others.map(function (x) { return x.from.name + " → " + x.to.name + " " + x.amount + " kr"; }).join(" · ") }));
+        }
+        // Tonight's expenses
+        if (ex.length || (d.expenses || []).length) {
+          root.appendChild(el("h4", { class: "rnd-h", text: sv() ? "Utgifter" : "Expenses" }));
+          var el2 = el("ul", { class: "rnd-exl" });
+          (d.expenses || []).slice(0, 10).forEach(function (e) {
+            var ico = e.kind === "taxi" ? "🚕" : e.kind === "round" ? "🍺" : "🧾";
+            var paid = (e.shares || []).filter(function (x) { return x.paid; }).length, n = (e.shares || []).length;
+            var what = e.items ? e.items + (sv() ? " öl" : " beers") : (e.what || (sv() ? "en runda" : "a round"));
+            var li = el("li", { class: e.cancelled ? "off" : "" }, [el("span", { class: "rnd-exi", "aria-hidden": "true", text: ico }),
+              el("span", { class: "rnd-ext2" }, [el("b", { text: (e.payer_me ? (sv() ? "Du" : "You") : e.payer_name) + (sv() ? " betalade " : " paid ") + what }),
+                el("small", { text: e.total + " kr" + (e.cancelled ? " · " + T("cancelled") : " · " + paid + (sv() ? " av " : " of ") + n + (sv() ? " betalt" : " paid")) })])]);
+            if (e.can_cancel && !e.cancelled) li.appendChild(el("button", { type: "button", class: "rnd-link", text: T("cancel"), onclick: function () {
+              call("rnd_cancel", { p_expense_id: e.id }).then(function (r) { if (r.error) A.toast(errText(r.error), { err: true }); refresh(); });
+            } }));
+            el2.appendChild(li);
+          });
+          root.appendChild(el2);
+        }
+        // More
+        var more = el("div", { class: "ds-list rnd-more2" });
+        var spinR = el("button", { type: "button", class: "ds-row" }, [el("span", { class: "ds-row-i", text: "🎲" }), el("span", { class: "ds-row-t" }, [el("span", { text: T("spin").replace(/^🎲\s*/, "") }), el("small", { text: sv() ? "Låt slumpen välja vem som bjuder" : "Let chance pick who buys" })]), el("span", { class: "ds-chev" })]);
+        spinR.addEventListener("click", function () { openSpin(g); });
+        var swR = el("button", { type: "button", class: "ds-row" }, [el("span", { class: "ds-row-i", text: "📱" }), el("span", { class: "ds-row-t" }, [el("span", { text: sv() ? "Mitt Swish-nummer" : "My Swish number" }), el("small", { text: d.my_swish ? prettyNum(d.my_swish) : (sv() ? "Inte sparat" : "Not saved") })]), el("span", { class: "ds-chev" })]);
+        swR.addEventListener("click", function () { openSwish(d.my_swish, function () { openNota(g); }); });
+        more.appendChild(spinR); more.appendChild(swR);
+        root.appendChild(more);
+        root.appendChild(el("p", { class: "rnd-fine", text: sv() ? "Inga pengar går via PintsNow. Swish öppnas med numret och beloppet ifyllt." : "No money goes through PintsNow." }));
       }
       function refresh() { load(g, true).then(function (d) { if (alive()) draw(d); }); }
       var c = cache[g.id]; if (c) draw(c.d);
@@ -482,7 +496,6 @@
       A.openSheet(T("addTitle")[st.kind] || T("addTitle").round, function (body) {
         var root = el("div", { class: "rnd rnd-add" });
         top(body);
-        body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [bt(T("back"), "btn-small", function () { if (opt.back) opt.back(); else openNota(g); })]));
         body.appendChild(root);
         // Kind
         var kinds = el("div", { class: "rnd-seg", role: "radiogroup" });
@@ -493,19 +506,22 @@
         });
         root.appendChild(kinds);
         // Who paid
-        root.appendChild(el("label", { class: "rnd-l", for: "rnd-payer", text: T("whoPaid") }));
-        var sel = el("select", { class: "inp rnd-sel", id: "rnd-payer" });
+        // ui-build: payer = chips (one tap), numbered steps 1–3
+        root.appendChild(el("div", { class: "rnd-l rnd-stepl", "data-n": "1", text: T("whoPaid") }));
         var me = meOf(d);
-        sel.appendChild(el("option", { value: me.k, text: T("me") + " (" + (me.name || A.getName()) + ")" }));
-        (d.members || []).forEach(function (m) { if (!m.is_me) sel.appendChild(el("option", { value: m.k, text: m.name })); });
-        sel.addEventListener("change", function () { st.payer = sel.value; delete st.sel[st.payer]; if (st.payer !== d.me && st.kind !== "taxi") st.sel[d.me] = true; paintAll(); });
-        root.appendChild(sel);
+        var payers = el("div", { class: "rnd-payers", role: "radiogroup", "aria-label": T("whoPaid") });
+        [me].concat((d.members || []).filter(function (m) { return !m.is_me; })).forEach(function (m) {
+          var b = el("button", { type: "button", role: "radio", class: "rnd-pp rnd-payer", "data-k": m.k, text: m.is_me || m.k === d.me ? T("me") : m.name });
+          b.addEventListener("click", function () { st.payer = m.k; delete st.sel[st.payer]; if (st.payer !== d.me && st.kind !== "taxi") st.sel[d.me] = true; paintAll(); });
+          payers.appendChild(b);
+        });
+        root.appendChild(payers);
         // Who was in
-        var whoL = el("div", { class: "rnd-l rnd-whoh" });
+        var whoL = el("div", { class: "rnd-l rnd-whoh rnd-stepl", "data-n": "2" });
         var who = el("div", { class: "rnd-who" });
         root.appendChild(whoL); root.appendChild(who);
         // Split mode
-        root.appendChild(el("div", { class: "rnd-l", text: T("mode") }));
+        root.appendChild(el("div", { class: "rnd-l rnd-stepl", "data-n": "3", text: T("mode") }));
         var modes = el("div", { class: "rnd-seg", role: "radiogroup" });
         [["per", T("mPer")], ["tot", T("mTot")], ["uneq", T("mUneq")]].forEach(function (x) {
           var b = el("button", { type: "button", class: "rnd-segb", role: "radio", "data-m": x[0], text: x[1] });
@@ -541,7 +557,7 @@
         root.appendChild(swBox);
         var prev = el("div", { class: "rnd-prev", "aria-live": "polite" });
         root.appendChild(prev);
-        var send = bt(T("send"), "btn-amber btn-block rnd-send", go);
+        var send = bt(sv() ? "✅ Lägg till på notan" : "✅ Add to the tab", "btn-amber btn-block rnd-send", go);
         root.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [send]));
 
         function people() { return (d.members || []).filter(function (m) { return st.sel[m.k] && m.k !== st.payer; }); }
@@ -613,10 +629,18 @@
           else head = "🧾 " + fmt(sv() ? "{0} betalade {1}" : "{0} paid {1}", payerName(), what.value.trim() || (sv() ? "notan" : "the bill"));
           prev.appendChild(el("p", { class: "rnd-prevh", text: fmt(T("prev"), head, c.per != null ? fmt(T("prevPer"), c.per) : fmt(T("prevTot"), c.total)) }));
           prev.appendChild(el("p", { class: "rnd-note", text: c.shares.map(function (s) { return (s.k === d.me ? T("me") : s.name) + " " + s.amount + " kr"; }).join(" · ") }));
+          if (sv()) {   // ui-build: say it in plain words
+            var who = c.shares.map(function (s) { return s.k === d.me ? "du" : s.name; }), pn = st.payer === d.me ? "dig" : payerName();
+            var same = c.shares.every(function (s) { return s.amount === c.shares[0].amount; });
+            var line = st.payer === d.me ? nameList(who) + " swishar dig " + (same ? c.shares[0].amount + " kr" + (who.length > 1 ? " var" : "") : "") :
+              (c.shares.filter(function (s) { return s.k === d.me; })[0] ? "Du swishar " + pn + " " + c.shares.filter(function (s) { return s.k === d.me; })[0].amount + " kr" : nameList(who) + " swishar " + pn);
+            prev.appendChild(el("p", { class: "rnd-say", text: line.charAt(0).toUpperCase() + line.slice(1) + "." }));
+          }
         }
         function paintAll() {
           kinds.querySelectorAll(".rnd-segb").forEach(function (b, i) { b.setAttribute("aria-checked", String(["round", "taxi", "other"][i] === st.kind)); });
           modes.querySelectorAll(".rnd-segb").forEach(function (b) { b.setAttribute("aria-checked", String(b.getAttribute("data-m") === st.mode)); });
+          payers.querySelectorAll(".rnd-payer").forEach(function (b) { var on = b.getAttribute("data-k") === st.payer; b.setAttribute("aria-checked", String(on)); b.classList.toggle("on", on); });
           itemsWrap.hidden = st.kind !== "round";
           what.placeholder = T("whatPh")[st.kind] || "";
           swBox.hidden = !(st.payer === d.me && !d.my_swish && !(meOf(d).swish));
@@ -643,7 +667,7 @@
               A.toast(pick(sv() ? POST_TOASTS : ["💸 Saved. The gang can pay you back now."]), { ms: 4000 });
               if (cache[g.id]) cache[g.id].at = 0;
               try { A.invoke("notify-group", { event: "msg", group_id: g.id }); } catch (e) {}
-              if (window.SOCIAL && window.SOCIAL.openChat) window.SOCIAL.openChat(g); else openNota(g);
+              openNota(g);   // ui-build: back to the nota, not the chat
             });
           });
         }

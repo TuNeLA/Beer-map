@@ -976,7 +976,7 @@
         if (!b || (b.closest && b.closest(".gm"))) return;
         soon(3000);
       }, true);
-      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
+      /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
       // Our sheets: forget the view when the sheet closes.
       var close = document.getElementById("sheet-close"), bd = document.getElementById("backdrop");
       [close, bd].forEach(function (x) { if (x) x.addEventListener("click", function () { openView = null; }); });
