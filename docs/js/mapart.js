@@ -51,7 +51,7 @@
       meDot: 18, meCore: 12,
       clusterSteps: [[10, 28], [100, 32], [1000, 38], [1e9, 44]],
       personPin: 36, avatar: 28, personTail: 7,
-      placeDot: 14, placeGlyph: 9,
+      placeDot: 16, placeGlyph: 10,
       mypinH: 24, mypinR: 12, mypinTail: 6,
       arenaH: 24, arenaR: 7
     }
@@ -244,47 +244,64 @@
     return { x: px, y: py, w: w, h: h, bb: bb };
   }
 
-  /* ---------- bar marker: dot / full / town view (glmap modes "d" / "f" / "x") ---------- */
+  /* ---------- bar marker: dot / full / town view (glmap modes "d" / "f" / "x") ----------
+     mbx (owner 2026-11-07: "73 people at one place takes up a whole street … a little counter top right of the bar icon,
+     like an app notification badge"): the full marker = the type disc + ONE round count badge at its top-right (1 … 99,
+     then 99+). No people pill, no crowd word, no queue chip on the map: the bar sheet has them. Level = badge colour
+     (amber · orange · red + foam ring), a friend there = green ring + green dot, me = blue dot. Every slot is fixed:
+       👑 top-left · count top-right · 📅/🎤 bottom-left · 🪖 right · 🚪 left · 🏰 bottom-right · price under the disc (z ≥ 16 only). */
+  var BADGE = [{ b: K.amber, t: "#241300" }, { b: "#FF8A1F", t: "#1A0B00" }, { b: K.red, t: "#FFFFFF", outer: K.foam }];
+  function countText(p) {
+    var n = parseInt(p && p.n, 10) || 0, o = p && p.o ? parseInt(String(p.o).replace(/[^\d]/g, ""), 10) || 0 : 0;
+    if (!n && o) n = o;
+    return n > 99 ? "99+" : String(Math.max(1, n));
+  }
+  function countBadge(ops, parts, cx, cy, p, hi) {
+    var t = countText(p), lv = BADGE[p.l || 0] || BADGE[0], h = hi ? 19 : 17, fs = hi ? 12 : 11;
+    var w = Math.max(h, Math.ceil(tw(t, fs, 700)) + 9), x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+    if (lv.outer) rrect(ops, x - 2.5, y - 2.5, w + 5, h + 5, h / 2 + 2.5, { fill: lv.outer, sh: true });
+    rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: p.f ? K.green : K.edge, sh: !lv.outer });
+    rrect(ops, x, y, w, h, h / 2, { fill: lv.b });
+    text(ops, x + w / 2, y + h / 2, t, fs, 700, lv.t, { align: "center" });
+    if (p.m) { circle(ops, x + 1, y + h - 1, 4.5, { fill: K.edge }); circle(ops, x + 1, y + h - 1, 3.5, { fill: K.blue }); }
+    var bb = [x - 3, y - 3, x + w + 3, y + h + 3];
+    if (parts) parts.push({ sel: ".pill", bb: bb });
+    return bb;
+  }
   function barOps(s, mode, hi, extra) {
     var ops = [], parts = [], full = mode !== "d", k = cat(s.k), busy = !!(s.p || s.hot), lit = !busy && !!s.lit;
     extra = extra || {};
-    var D = full ? (hi ? S.fullHi : S.full) : (busy ? S.dotBusy : S.dotQuiet), r = D / 2, gs = full ? (hi ? S.glyphFullHi : S.glyphFull) : (busy ? S.glyphBusy : S.glyphQuiet);
-    var pillInfo = null;
-    if (mode !== "x") {
-      if (extra.sel) circle(ops, 0, 0, r + 4, { fill: "rgba(245,166,35,0.55)", sh: true });
-      // v1.1: the disc is ALWAYS navy (amber on the amber heat disappeared at z13); busy = amber ring + foam head
-      var body = K.navy;
-      disc(ops, 0, 0, r, body, { ring: busy ? K.amber : lit ? K.green : K.foam, grad: [K.navy2, K.navy] });
-      glyph(ops, k, 0, busy ? 0.5 : 0, gs, T.tint[k] || K.foam, body);
-      var king = s.king || extra.king;
-      if (busy && !king) foamCap(ops, r, full ? 1 : 2);
-      if (king) crown(ops, 0, -r + (full ? 3 : 2), full ? 15 : 12);
-      parts.push({ sel: ".bar-ico", bb: [-r, -r, r, r] });
-      var bd = full ? 14 : 10, bo = Math.round(r * 0.72);
-      if (s.p && s.p.f && !full) badge(ops, bo, bo, bd, K.green, "person", K.greenInk);
-      if (lit && !full) badge(ops, -bo, bo, bd, K.ink, "door", K.green);
+    var D = full ? (mode === "x" ? S.dotBusy + 4 : hi ? S.fullHi : S.full) : (busy ? S.dotBusy : S.dotQuiet), r = D / 2;
+    var gs = full ? (mode === "x" ? S.glyphBusy + 2 : hi ? S.glyphFullHi : S.glyphFull) : (busy ? S.glyphBusy : S.glyphQuiet);
+    if (extra.sel) circle(ops, 0, 0, r + 4, { fill: "rgba(245,166,35,0.55)", sh: true });
+    // the disc is ALWAYS navy with the type glyph (one look per place type at every zoom); busy = amber ring, lit = green
+    var body = K.navy;
+    disc(ops, 0, 0, r, body, { ring: busy ? K.amber : lit ? K.green : K.foam, grad: [K.navy2, K.navy] });
+    glyph(ops, k, 0, 0, gs, T.tint[k] || K.foam, body);
+    parts.push({ sel: ".bar-ico", bb: [-r, -r, r, r] });
+    var king = s.king || extra.king, bo = Math.round(r * 0.72);
+    if (!full) {
+      if (busy && !king) foamCap(ops, r, 2);
+      if (king) crown(ops, 0, -r + 2, 12);
+      var bd = 10;
+      if (s.p && s.p.f) badge(ops, bo, bo, bd, K.green, "person", K.greenInk);
+      if (lit) badge(ops, -bo, bo, bd, K.ink, "door", K.green);
       if (extra.stammis) badge(ops, -bo, bo, bd, K.foam, "house", K.ink, { ring: K.amber });
+      return { ops: ops, parts: parts };
     }
-    if (full) {
-      var top = mode === "x" ? -S.pillH / 2 : r + S.pillTop;
-      if (s.p) {
-        pillInfo = pill(ops, parts, 0, top, s.p, s.cw, { sel: ".pill" });
-        if (s.q) { var qx = pillInfo.x + pillInfo.w + 5, qy = pillInfo.y + 2; badge(ops, qx, qy, 14, K.ink, "hourglass", K.foam); }
-        if (s.fl) chip(ops, parts, ".pill", 0, pillInfo.y + pillInfo.h / 2, "castle", null, s.fl[1] ? K.green : K.amber, { right: pillInfo.x - 4, gcol: s.fl[1] ? K.green : K.amberHi });
-      }
-      if (mode !== "x") {
-        if (s.ev) { badge(ops, -r - 2, -r + 3, 16, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-r - 11, -r - 6, -r + 7, -r + 12] }); }
-        if (s.king) parts.push({ sel: ".cm-king", bb: [-9, -r - 9, 9, -r + 3] });
-        if (s.cf) chip(ops, parts, ".cm-flag", r + 4, s.rl ? (hi ? 6 : 8) : (hi ? -2 : 2), "castle", null, s.cf === 2 ? K.green : K.amber, { gcol: s.cf === 2 ? K.green : K.amberHi });
-        if (s.ci) chip(ops, parts, ".cm-ci", 0, hi ? 0 : 1, "door", s.ci, "rgba(61,220,132,0.9)", { right: -r - 4, gcol: K.green });
-        if (s.tg) {
-          var tW = Math.ceil(tw(s.tg, 10, 700)) + 10, tx = Math.round(-r * 0.35) - tW, ty = Math.round(-r - (s.ev ? 22 : 8));   // top-left, clear of crown + call-out
-          rrect(ops, tx - 1, ty - 1, tW + 2, S.tagH + 2, S.tagR + 1, { fill: K.edge, sh: true });
-          rrect(ops, tx, ty, tW, S.tagH, S.tagR, { fill: K.amber });
-          text(ops, tx + 5, ty + S.tagH / 2, s.tg, 10, 700, "#241300");
-        }
-      }
-      if (s.rl) chip(ops, parts, ".cm-rally", mode === "x" ? (pillInfo ? pillInfo.x + pillInfo.w + 4 : 4) : r + 4, mode === "x" ? 0 : -r + 2, "helmet", s.rl[0], s.rl[1] ? K.green : "#FF8A1F", { gcol: s.rl[1] ? K.green : "#FFB36B" });
+    if (king) { crown(ops, -r * 0.45, -r + 3, hi ? 14 : 13); parts.push({ sel: ".cm-king", bb: [-r - 4, -r - 9, 2, -r + 3] }); }
+    if (s.p) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, hi);
+    if (mode === "x") return { ops: ops, parts: parts };
+    if (s.ev) { badge(ops, -bo - 1, bo + 1, 15, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-bo - 10, bo - 8, -bo + 8, bo + 10] }); }
+    if (s.rl) chip(ops, parts, ".cm-rally", r + 4, s.p ? 6 : 0, "helmet", s.rl[0], s.rl[1] ? K.green : "#FF8A1F", { gcol: s.rl[1] ? K.green : "#FFB36B" });
+    var cf = s.cf || (s.fl ? (s.fl[1] ? 2 : 1) : 0);
+    if (cf) chip(ops, parts, ".cm-flag", r - 2, r + 2, "castle", null, cf === 2 ? K.green : K.amber, { gcol: cf === 2 ? K.green : K.amberHi });
+    if (s.ci) chip(ops, parts, ".cm-ci", 0, 0, "door", s.ci, "rgba(61,220,132,0.9)", { right: -r - 4, gcol: K.green });
+    if (s.tg && hi) {
+      var tW = Math.ceil(tw(s.tg, 10, 700)) + 10, tx = Math.round(-tW / 2), ty = Math.round(r + 3);
+      rrect(ops, tx - 1, ty - 1, tW + 2, S.tagH + 2, S.tagR + 1, { fill: K.edge, sh: true });
+      rrect(ops, tx, ty, tW, S.tagH, S.tagR, { fill: K.amber });
+      text(ops, tx + 5, ty + S.tagH / 2, s.tg, 10, 700, "#241300");
     }
     return { ops: ops, parts: parts };
   }
@@ -370,12 +387,12 @@
     return { ops: ops };
   }
   function arenaDiscOps(kind) { var ops = []; disc(ops, 0, 0, 11, "#2B6FD6", { ring: K.foam }); glyph(ops, kind, 0, 0, 13, K.foam, "#2B6FD6"); return { ops: ops }; }
+  // mbx (owner screenshot: "small grey restaurant dots look like a different style"): the SAME disc family as the bar dots
+  // (navy body, gradient, foam ring, tinted type glyph), one step smaller and a softer ring = lower rank
   function placeOps(type) {
     var ops = [], k = cat(type), r = S.placeDot / 2;
-    circle(ops, 0, 0, r + 1, { fill: K.edge, sh: true });
-    circle(ops, 0, 0, r, { fill: "rgba(255,250,240,0.85)" });
-    circle(ops, 0, 0, r - 1.5, { fill: K.slate });
-    glyph(ops, k, 0, 0, S.placeGlyph, T.tint[k] || K.foam, K.slate);
+    disc(ops, 0, 0, r, K.navy, { ring: "rgba(255,250,240,0.78)", rw: 1.5, grad: [K.navy2, K.navy] });
+    glyph(ops, k, 0, 0, S.placeGlyph, T.tint[k] || K.foam, K.navy);
     return { ops: ops };
   }
   function inviteOps(label) {
@@ -492,7 +509,50 @@
   }
   function buildLabel(name) { var x = labelOps(name), r = raster(x.ops, R2, x.bbox); return { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), canvas: r.canvas, ox: r.ox, oy: r.oy }; }
 
-  root.PNPINS = { barOps: barOps, labelOps: labelOps, meDotOps: meDotOps, clusterOps: clusterOps, personOps: personOps, strangerOps: strangerOps,
+  /* ---------- people pins + people clusters (DOM markers, mbx) ----------
+     Owner (2026-11-07): "no long pills: avatar + small badge count". A round face (the AVATAR character for me / friends,
+     a person glyph for others) with the same count badge as the bars at its top-right. Name only at zoom ≥ 16 (CSS). */
+  var PCSS =
+    ".pn-p{position:absolute;left:0;top:0;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;box-sizing:border-box;" +
+      "background:linear-gradient(#1E2B66,#152050);border:2px solid #FFFAF0;box-shadow:0 0 0 1px rgba(4,7,20,.62),0 1px 3px rgba(0,0,0,.5);display:grid;place-items:center;cursor:pointer}" +
+    ".pn-p.pn-f{width:32px;height:32px;border-color:#3DDC84}.pn-p.pn-m{width:32px;height:32px;border-color:#F5A623}" +
+    ".pn-p.pn-a{border-style:dashed}" +
+    ".pn-p>.pn-d{width:100%;height:100%;border-radius:50%;overflow:hidden;display:grid;place-items:center}" +
+    ".pn-p>.pn-d>svg{width:15px;height:15px;fill:rgba(255,250,240,.88)}.pn-p.pn-f>.pn-d>svg,.pn-p.pn-m>.pn-d>svg{width:18px;height:18px}" +
+    ".pn-p>.pn-d>img{width:100%;height:100%;display:block;border-radius:50%}" +
+    ".pn-c{position:absolute;right:-9px;top:-7px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#F5A623;color:#241300;" +
+      "font:700 11px/17px var(--body,'Chakra Petch',system-ui,sans-serif);text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 1px rgba(4,7,20,.62),0 1px 2px rgba(0,0,0,.5)}" +
+    ".pn-p.lv1 .pn-c{background:#FF8A1F;color:#1A0B00}.pn-p.lv2 .pn-c{background:#FF5A4E;color:#fff;box-shadow:0 0 0 2px #FFFAF0,0 1px 3px rgba(0,0,0,.6)}" +
+    ".pn-p.pn-f .pn-c{box-shadow:0 0 0 1.5px #3DDC84,0 1px 2px rgba(0,0,0,.5)}" +
+    ".pn-nm{position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;display:none;" +
+      "font:600 11px/1.2 var(--body,'Chakra Petch',system-ui,sans-serif);color:#FFF6E5;text-shadow:0 0 3px rgba(8,12,30,.95),0 1px 2px #000;pointer-events:none}" +
+    ".tz-hi .pn-nm{display:block}" +
+    // people cluster: one round count bubble (stack cue = a second ring), faces of friends / me in front
+    ".pn-cl{position:absolute;left:0;top:0;transform:translate(-50%,-50%);min-width:28px;height:28px;padding:0 6px;box-sizing:border-box;border-radius:14px;background:#0A0F24;" +
+      "border:2px solid #F5A623;box-shadow:3px -3px 0 -1px rgba(30,43,102,.95),3px -3px 0 0 rgba(255,250,240,.5),0 1px 3px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;gap:2px;" +
+      "font:700 12px/1 var(--body,'Chakra Petch',system-ui,sans-serif);color:#FFFAF0;font-variant-numeric:tabular-nums;cursor:pointer;white-space:nowrap}" +
+    ".pn-cl.lv1{border-color:#FF8A1F}.pn-cl.lv2{border-color:#FF5A4E}.pn-cl.pn-f{border-color:#3DDC84}" +
+    ".pn-cl>img{width:20px;height:20px;border-radius:50%;margin-left:-8px;box-shadow:0 0 0 1.5px #3DDC84}.pn-cl>img:first-child{margin-left:-4px}.pn-cl>img+b{margin-left:2px}" +
+    "@media (prefers-reduced-motion:no-preference){.pn-p,.pn-cl{transition:transform .12s ease-out}.leaflet-marker-icon:active>.pn-p,.leaflet-marker-icon:active>.pn-cl{transform:translate(-50%,-50%) scale(.92)}}";
+  var PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + GL.G.person.map(function (L) { return L.d; }).join("") + '"/></svg>';
+  function pcss() { if (typeof document === "undefined" || document.getElementById("pn-people-css")) return; var st = document.createElement("style"); st.id = "pn-people-css"; st.textContent = PCSS; (document.head || document.documentElement).appendChild(st); }
+  function hesc(x) { return String(x == null ? "" : x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function cnt(n) { n = Math.max(0, n | 0); return n > 99 ? "99+" : String(n); }
+  // o = { n, lvl, friend, mine, approx, avatar (an <img> html or ""), name, nc (no number for strangers: SAFE) }
+  function personHTML(o) {
+    pcss(); o = o || {};
+    var cls = "pn-p lv" + (o.lvl | 0) + (o.mine ? " pn-m" : o.friend ? " pn-f" : " pn-s") + (o.approx ? " pn-a" : "");
+    var face = o.avatar ? String(o.avatar) : PERSON;
+    return '<div class="' + cls + '"><span class="pn-d">' + face + "</span>" + (o.nc ? "" : '<b class="pn-c">' + cnt(o.n) + "</b>") +
+      (o.name ? '<span class="pn-nm">' + hesc(o.name) + "</span>" : "") + "</div>";
+  }
+  function clusterHTML(o) {
+    pcss(); o = o || {};
+    var cls = "pn-cl lv" + (o.lvl | 0) + (o.friend || o.mine ? " pn-f" : "");
+    return '<div class="' + cls + '">' + (o.faces || "") + "<b>" + (o.n >= 1000 ? (Math.floor(o.n / 100) / 10).toString().replace(".", ",") + "k" : cnt(o.n)) + "</b></div>";
+  }
+
+  root.PNPINS = { personHTML: personHTML, clusterHTML: clusterHTML, countText: countText, barOps: barOps, labelOps: labelOps, meDotOps: meDotOps, clusterOps: clusterOps, personOps: personOps, strangerOps: strangerOps,
     mypinOps: mypinOps, arenaOps: arenaOps, arenaDiscOps: arenaDiscOps, placeOps: placeOps, inviteOps: inviteOps, pillBgOps: pillBgOps,
     chipBgOps: chipBgOps, badgeOps: badgeOps, raster: raster, toSVG: toSVG, bboxOf: bboxOf, build: build, buildLabel: buildLabel,
     setRatio: function (r) { R2 = r; }, cat: cat, _tw: tw };

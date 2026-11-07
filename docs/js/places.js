@@ -72,7 +72,7 @@
     // 🏷️ tiers: a bar drawn as a dot (.cm-dot) counts with its icon only
     cont.querySelectorAll(".leaflet-hotbars-pane .bar-ico, .leaflet-hotbars-pane .cm:not(.cm-dot) .pill, .leaflet-hotbars-pane .cm:not(.cm-dot) .cm-rally, .leaflet-bars-pane .bar-ico," +
       " .cm:not(.cm-dot) .cm-ci:not(.lbl-hide), .cm:not(.cm-dot) .cm-b:not(.lbl-hide), .cm:not(.cm-dot) .bm-crowd:not(.lbl-hide), .cm:not(.cm-dot) .bm-q:not(.lbl-hide), .me-dot," +
-      " .leaflet-arenapins-pane .ap-pin, .leaflet-marker-pane .pill, .leaflet-marker-pane .rl-pin, .cm-labels .cm:not(.cm-dot) .cm-lbl:not(.lbl-hide), .cm.cm-full .cm-lbl:not(.lbl-hide), .cm:not(.cm-dot) .bi-tag").forEach(function (x) {
+      " .leaflet-arenapins-pane .ap-pin, .leaflet-marker-pane .pill, .leaflet-marker-pane .pn-p, .leaflet-marker-pane .pn-cl, .leaflet-marker-pane .rl-pin, .cm-labels .cm:not(.cm-dot) .cm-lbl:not(.lbl-hide), .cm.cm-full .cm-lbl:not(.lbl-hide), .cm:not(.cm-dot) .bi-tag").forEach(function (x) {
       var r = x.getBoundingClientRect(); if (!r.width && !r.height) return;
       var o = rel(r, cr), ic = x.closest && x.closest(".cm[data-bar]");
       if (ic) {

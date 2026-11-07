@@ -37,7 +37,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <!-- glfix: first map sooner: the Mapbox style / tiles / glyphs host, and the GL script (same URL + version as js/basemap.js MB_VER) -->
 <link rel="preconnect" href="https://api.mapbox.com" crossorigin>
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.32.0/dist/mapbox-gl.js" as="script" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.32.0/dist/mapbox-gl.js" as="script" crossorigin="anonymous">
 <link rel="preconnect" href="https://wcdskpcevbhouvbytkhv.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <!-- Fonts are self-hosted (docs/fonts, from Google Fonts, SIL OFL): no extra origin and no render-blocking font CSS.
@@ -54,8 +54,7 @@
 @font-face{font-family:'Chakra Petch';font-style:normal;font-weight:700;font-display:swap;src:url(./fonts/chakra-petch-700-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 @font-face{font-family:'Share Tech Mono';font-style:normal;font-weight:400;font-display:swap;src:url(./fonts/share-tech-mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 </style>
-<link rel="stylesheet" href="./vendor/leaflet-1.9.4.css?v=95ff2bab4d">
-<link rel="stylesheet" href="./vendor/markercluster-1.5.3.css?v=c4618a2a1d">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.32.0/dist/mapbox-gl.css" crossorigin="anonymous" data-basemap-mb="1">
 <link rel="stylesheet" href="./styles.css?v=38d90409af">
 <link rel="stylesheet" href="./fx.css?v=993728a7c7">
 <link rel="stylesheet" href="./medals.css?v=ffde76a9b5">
@@ -212,9 +211,9 @@
 <script defer src="./js/handover.js"></script>
 <script defer src="./js/smooth.js?v=8201961ae9"></script>
 <script defer src="./js/boot.js?v=04123d521f"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<!-- mbx: ONE Mapbox GL JS map, no Leaflet. js/mbx.js = the map API every module uses (window.L shape) -->
+<script defer src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.32.0/dist/mapbox-gl.js" crossorigin="anonymous"></script>
+<script defer src="./js/mbx.js?v=1"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="./js/icons.js?v=7d6d1b1a1e"></script>
 <script defer src="./js/tiers.js?v=cfb27ac750"></script>

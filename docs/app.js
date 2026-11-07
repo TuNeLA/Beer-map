@@ -152,6 +152,8 @@
   // Start on Ludvika. If the user allows location, we move to them (see locate()).
   map.setView(LUDVIKA, START_ZOOM);
   // Default tiles: Esri Dark Gray Canvas (no key, no watermark). With CFG.CARTO_KEY set: CARTO dark_all.
+  // mbx: these raster layers are only the start frame and the silent fallback (js/mbx.js raster engine); the map itself is
+  // the ONE Mapbox GL map js/basemap.js makes in this container. L here = js/mbx.js (no Leaflet).
   if (CFG.CARTO_KEY) {
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=" + encodeURIComponent(CFG.CARTO_KEY), {
       subdomains: "abcd", maxZoom: 19,
@@ -215,9 +217,12 @@
         var fc = window.AVPINS.faces(kids.map(function (k) { return k.options.olnuB; }), 2);
         if (fc) clh = clh.replace(/^(<div class="pill[^"]*">)/, "$1" + fc);
       }
+      // mbx: one small round count bubble (faces of friends / me in front), not a pill
+      if (window.PNPINS && window.PNPINS.clusterHTML) clh = window.PNPINS.clusterHTML({ n: n, lvl: lvl, friend: friend, mine: mine,
+        faces: (friend || mine) && window.AVPINS && window.AVPINS.faces ? window.AVPINS.faces(kids.map(function (k) { return k.options.olnuB; }), 2) : "" });
       return L.divIcon({
         html: clh,
-        className: "olnu-cl", iconSize: [0, 0], iconAnchor: [0, 0]
+        className: "olnu-cl" + (friend || mine ? " cl-f" : ""), iconSize: [0, 0], iconAnchor: [0, 0]
       });
     }
   });
@@ -468,7 +473,10 @@
     var html = U.pillHTML(n, U.level(n), { friend: !!b.friend_name, mine: !!b.is_mine, approx: !b.precise, label: label });
     var avi = window.AVPINS ? window.AVPINS.img(b) : "";   // 👤 the person's character in the pin (js/avpins.js)
     if (avi) html = html.replace(/^(<div class="pill[^"]*">)/, "$1" + avi);
-    return L.divIcon({ html: html, className: "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12] });
+    // mbx (owner: "no long pills: avatar + small badge count"): a round face + the count badge (js/mapart.js)
+    if (window.PNPINS && window.PNPINS.personHTML) html = window.PNPINS.personHTML({ n: n, lvl: U.level(n), friend: !!b.friend_name, mine: !!b.is_mine,
+      approx: !b.precise, avatar: avi, name: b.friend_name || (b.is_mine ? t("you") : ""), nc: !!b._nc });
+    return L.divIcon({ html: html, className: b.friend_name || b.is_mine ? "pp-f" : "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -18] });
   }
   /* ---------- Drink levels (polish): Swedish names from js/levels-content.js (LEVELS_SV at 3/5/7/10/13/16/20).
      Each person gets one of the 6 names per level per night (hash of night + person + level: stable, no flicker).

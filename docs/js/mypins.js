@@ -62,6 +62,7 @@
   // the bar's own marker is on screen (and not a hidden dot)?
   function shown(id) {
     if (!id || !map) return false;
+    if (window.GLBARS && GLBARS.on && GLBARS.on() && GLBARS.shown) return GLBARS.shown(id);   // mbx: GL bars
     var ic = map.getContainer().querySelector('.cm[data-bar="' + String(id).replace(/["\\]/g, "") + '"]'); if (!ic) return false;
     try { return getComputedStyle(ic).opacity > 0.3; } catch (e) { return true; }
   }
@@ -104,6 +105,7 @@
   function go(x) {
     var z = Math.max(16, map.getZoom());
     map.once("moveend", function () { setTimeout(function () {
+      if (x.id && window.GLBARS && GLBARS.on && GLBARS.on() && GLBARS.open && GLBARS.open(x.id)) return;   // mbx: GL bars
       var ic = x.id && map.getContainer().querySelector('.cm[data-bar="' + String(x.id).replace(/["\\]/g, "") + '"] .bar-ico');
       if (ic) ic.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     }, 350); });

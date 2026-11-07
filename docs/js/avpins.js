@@ -30,6 +30,7 @@
   }
   function url(p) {
     var spec = p.a || null, key = JSON.stringify([spec, p.seed || "", p.r | 0]);
+    if (!spec) return "";   // mbx / avwiz: a person without a saved character keeps the normal pin
     var u = urls[key]; if (u) return u;
     var x = av(), svg = "";
     try { svg = x.svg(spec || x.defaultSpec(p.seed || "x", p.r), { r: p.r, md: [] }); } catch (e) { return ""; }

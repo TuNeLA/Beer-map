@@ -286,7 +286,7 @@
     if (ensure()) { paint(); ask(false); }
     cls(); pill(true);
   }
-  var CSS = "html[data-zones] .olnu-cl:not(:has(.pf,.pm)){display:none}";
+  var CSS = "html[data-zones] .olnu-cl:not(:has(.pf,.pm)):not(.cl-f){display:none}";
   function cls() {
     var v = ready && !!map && !!glm() && zoom() < Z_OFF - 0.9 && !!(geo.l || geo.k), de = document.documentElement;
     if (v !== de.hasAttribute("data-zones")) { if (v) de.setAttribute("data-zones", ""); else de.removeAttribute("data-zones"); }

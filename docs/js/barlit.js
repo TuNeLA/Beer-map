@@ -234,6 +234,7 @@
     var icon = document.querySelector('.leaflet-hotbars-pane [data-bar="' + esc + '"]') || document.querySelector('.leaflet-bars-pane [data-bar="' + esc + '"]') ||
       document.querySelector('.leaflet-marker-icon[data-bar="' + esc + '"]');
     if (icon) { icon.click(); return true; }
+    if (window.GLBARS && GLBARS.on && GLBARS.on() && GLBARS.open && GLBARS.open(id)) return true;   // mbx: GL bars (virtual DOM twins)
     var b = barOf(id);
     if (b && A && A.openBar) { A.openBar(b); return true; }
     return false;

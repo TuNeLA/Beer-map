@@ -3122,3 +3122,36 @@ New `docs/js/zones.js` (`window.ZONES`, mods init / onPoll / onPublicPoll, loade
   `.github/workflows/pages-bundle.yml.disabled` (Pages from an Actions artifact; the owner sets Pages → Source "GitHub Actions" and
   renames the file). Measured on this branch: 113 local JS requests → 13, 46 CSS → 6; JS 963 KB gzip (sum of files) → 701 KB,
   CSS 116 KB → 71 KB; the bundled copy boots with no errors (scratchpad zone-bundle-smoke.js).
+
+## KARTSTIL 6 · MBX (en Mapbox-karta, ingen Leaflet)
+
+Owner 2026-11-07: "We have to move everything to Mapbox on this release." + declutter, count badge, one icon type per place.
+- Leaflet, leaflet.markercluster, leaflet.heat and mapbox-gl-leaflet are gone (index.html loads `mapbox-gl@3.32.0` + `js/mbx.js`
+  before every module). `js/mbx.js` (window.MBX + window.L) is a small Leaflet-shaped API drawn by Mapbox GL JS, so all ~45 map
+  modules keep their code: L.map, marker, divIcon, layerGroup, featureGroup, markerClusterGroup, popup, circle, circleMarker,
+  polyline, polygon, tileLayer, latLng(Bounds), point, DomUtil, DomEvent, Layer.extend, svg/canvas (no-ops), heatLayer (stub).
+  Zoom numbers stay on the old scale (app zoom = GL zoom + 1). `L.version === "mbx-1"`.
+- Engines: "gl" (the main map: js/basemap.js makes the ONE `mapboxgl.Map` in `#map` and calls `map._attachGL(gl)`; one billed
+  map load per page life; a fallback parks the GL map, coming back re-attaches the same object) and "raster" (built in: the start
+  frame before GL, the no-token / no-WebGL fallback, and the free mini maps in homezone / near / passport — no Mapbox load each).
+- DOM markers live in 0×0 Leaflet-style panes inside the GL canvas container, positioned on GL `move` (same frame as GL), only
+  when in view (+60 %). Virtual panes (`bars`, `hotbars` while glmap.js draws the bars) are never in the DOM: `map.setVirtualPane`.
+  Vector layers = GL fill / line / circle layers, one GeoJSON source per pane (`mbx-<pane>`), under every `olnu-…` layer.
+  Clusters: screen-space greedy per zoom step (≥ 0.2), no spiderfy. Popups: Leaflet DOM + classes (sheet mode unchanged).
+- Bars (glmap.js + mapart.js): full marker = navy type disc + ONE round count badge top-right (1…99, 99+), colour = level
+  (amber, orange, red + foam ring), green edge = a friend there, blue dot = me. No people pill / crowd word / queue chip on the map
+  (the sheet has them). Slots: 👑 top-left, 📅 bottom-left, 🪖 right, 🚪 left, 🏰 bottom-right, price under the disc only z ≥ 16.
+  Tap the badge = bar sheet with "🍺 Folk här" open. Name label = just under its own image (GL collision).
+- One type per place at every zoom: the dot images are drawn at run time from the same PNPINS art for EVERY type (bars, places,
+  arenas) at the phone's pixel ratio (2× / 3×). The old sprite sheet (docs/icons/map/) had 8 bar types only and fell back to the
+  beer dot (Blackstone = restaurant showed a beer zoomed out). The sheet files stay on the site but are no longer read.
+- Restaurant dots = the same disc family (navy, foam ring, tinted glyph), 16 px.
+- People pins = a round face (avatar for me / friends, person glyph for others) + the same count badge (no number for strangers:
+  SAFE `_nc`), name only z ≥ 16. People clusters = one small round count bubble with up to 2 faces (`.olnu-cl.cl-f` = has friend / me).
+- Declutter: `crossSourceCollisions: true` (our bar / zone symbols hide Mapbox labels under them); while zones show (z < 10.5)
+  the heat fades to 0.12, arena chips hide, 📍 my-place pins are icon only, call-out labels hide, Mapbox place labels 65 %.
+- `MBX.nearbyPlaces(lat, lng, { maxM, max, maxPlaces, places, waitMs })` → Promise `[{ bar, d, place }]`: bars then
+  restaurants / cafés / fast food near a spot, nearest first, from loaded data (waits for the place tiles of that spot).
+- `MBX.domStats()`, `MBX.stats` (moves, posMs, mounted, markers, clusterRuns …) for tests and vitals.
+- GLBARS: `shown(id)` (is the bar drawn in GL now), `open(id, sel)` (open its sheet like a tap). mypins.js / barlit.js use them.
+

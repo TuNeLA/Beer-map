@@ -1,6 +1,8 @@
-/* Öl Nu — 🗺️ KARTSTIL: the Mapbox map under the Leaflet map (CONTRACT "KARTSTIL 2/3" + "KARTSTIL 5 · bara Mapbox").
+/* Öl Nu — 🗺️ KARTSTIL: the ONE Mapbox GL map (CONTRACT "KARTSTIL 2/3", "KARTSTIL 5 · bara Mapbox", "KARTSTIL 6 · MBX").
    window.BASEMAP. app.js calls BASEMAP.early(map, rasterLayers) right after the raster tiles are made, and the
-   mods() hooks init, settingsSheet and applyText. The GL canvas sits in Leaflet's tilePane (z 200).
+   mods() hooks init, settingsSheet and applyText. mbx (owner 2026-11-07: "move everything to Mapbox"): no Leaflet, no
+   bridge plugin. js/mbx.js is the map API; here the mapboxgl.Map is made IN the map container and handed to it
+   (map._attachGL). The raster tiles of app.js are only the start frame / the silent fallback (mbx.js raster engine).
    - glmap (owner 2026-11-07): ONLY two styles, both Mapbox Standard: ⭐ Skymning "mb-dusk" (default for everyone) and
      Natt "mb-night" (the Ludvika-tuned dark one). Every other stored value (Klassisk, the free MapLibre styles, the
      other Mapbox styles) = Skymning. The MapLibre / OpenFreeMap code is gone.
@@ -16,10 +18,9 @@
   "use strict";
   var U = window.U, I = window.I18N;
   var KEY = "olnu.mapStyle", DEFAULT = "mb-dusk", TIP = "mb-dusk", TOKEN_KEY = "olnu.mbToken";
-  var MB_VER = "3.32.0", MBL_VER = "0.0.16";
+  var MB_VER = "3.32.0";
   var MB_JS = "https://cdn.jsdelivr.net/npm/mapbox-gl@" + MB_VER + "/dist/mapbox-gl.js";
   var MB_CSS = "https://cdn.jsdelivr.net/npm/mapbox-gl@" + MB_VER + "/dist/mapbox-gl.css";
-  var MBL_JS = "https://cdn.jsdelivr.net/npm/mapbox-gl-leaflet@" + MBL_VER + "/leaflet-mapbox-gl.js";
   var ATTR_MB = '&copy; <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener">Mapbox</a> ' +
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ' +
     '<a href="https://www.mapbox.com/map-feedback/" target="_blank" rel="noopener"><strong>Improve this map</strong></a>';
@@ -100,92 +101,6 @@
   function T(k) { return (sv() ? S.sv : S.en)[k]; }
   function nameOf(id) { var s = BY[id]; return s ? (sv() ? s.sv : s.en) : id; }
 
-  /* ---------- the Leaflet ↔ GL bridge (map3 perf, map4 lock-step) ----------
-     The plugin jumpTo() the GL map on EVERY Leaflet "zoom" event (meant for pinch). map3: the one that ends an animated
-     wheel / double-tap zoom is skipped (zoomend syncs right after it).
-     map4 lock-step: markers (Leaflet DOM) and the GL canvas must show the SAME frame. Measured before (map4-drift.js):
-     during the CSS zoom animation they matched (< 1 px), but the frame right after it was 30–115 px off: zoomend reset the
-     canvas' CSS scale while GL still showed the old zoom until its own next animation frame (a visible snap back = the
-     "delayed" zoom). Pinch / flyTo / pan were 1–2 frames late (GL renders on its own rAF; map3's extra rAF added one).
-     Now every sync renders the GL map synchronously (MapLibre redraw(); Mapbox the same steps) in the same task as the
-     Leaflet DOM update: zoomend, each pinch / flyTo "zoom" event and each pan "move" (once per frame, Leaflet's own rAF).
-     The plugin's later transitionend re-sync is skipped when the GL map already matches. */
-  function fixBridge(K) {
-    var P = K && K.prototype; if (!P || P._olnuFixed || !P._pinchZoom || !P._animateZoom || !P._zoomEnd || !P._update || !P.getEvents) return;
-    P._olnuFixed = true;
-    var anim = P._animateZoom, end = P._zoomEnd, upd = P._update, tend = P._transitionEnd, evs = P.getEvents;
-    // MapLibre: map.redraw() (public). Mapbox GL v3 has no redraw(): the same steps by hand (cancel the queued frame, render now).
-    function draw(self) {
-      var g = self._glMap;
-      try {
-        if (!g || !g.style) return;
-        if (g.redraw) { g.redraw(); return; }
-        if (g._render && g.painter && !g._removed) {
-          if (g._frame && g._frame.cancel) { g._frame.cancel(); g._frame = null; }
-          g._renderNextFrame = null;
-          g._render(performance.now());
-        }
-      } catch (e) {}
-    }
-    function synced(self) {
-      var g = self._glMap, m = self._map; if (!g || !m) return true;
-      var c = m.getCenter(), gc = g.getCenter();
-      return Math.abs(g.getZoom() - (m.getZoom() - 1)) < 1e-6 && Math.abs(gc.lat - c.lat) < 1e-9 && Math.abs(gc.lng - c.lng) < 1e-9;
-    }
-    // glfix: on a slow frame (> 250 ms, busy phone) Chrome has not yet started Leaflet's 250 ms CSS zoom transition on the DOM
-    // markers (start time still pending) when Leaflet ends the zoom; the GL map jumps to the end view at once, so people pins,
-    // restaurant dots etc. sat one frame at the OLD place (measured 44–110 px, glfix-dbg.js). Finish those transitions here.
-    function settleDom(self) {
-      try {
-        var p = self._map && self._map._mapPane; if (!p || !p.getAnimations) return;
-        p.getAnimations({ subtree: true }).forEach(function (a) {
-          var t = a.effect && a.effect.target;
-          if (t && a.transitionProperty === "transform" && t.classList && t.classList.contains("leaflet-zoom-animated") && a.playState !== "finished") a.finish();
-        });
-      } catch (e) {}
-    }
-    // glfix: the same race at the START of a zoom animation (pinch snap, wheel, double tap): the DOM markers' and the GL canvas'
-    // 250 ms transitions could start on different frames (each start time resolves on its own) → up to 40 px apart for 3 frames.
-    // After the zoomanim handlers ran (microtask), every zoom transition in the map pane gets ONE start time.
-    function syncStart(self) {
-      try {
-        var p = self._map && self._map._mapPane; if (!p || !p.getAnimations || !document.timeline) return;
-        var t = document.timeline.currentTime; if (t == null) return;
-        p.getAnimations({ subtree: true }).forEach(function (a) {   // (this flushes style: the transitions exist now)
-          var g = a.effect && a.effect.target;
-          if (g && a.transitionProperty === "transform" && g.classList && g.classList.contains("leaflet-zoom-animated") && a.playState === "running" && a.startTime == null) a.startTime = t;
-        });
-      } catch (e) {}
-    }
-    P._animateZoom = function (e) { this._olnuAnim = true; var self = this, r = anim.call(this, e); Promise.resolve().then(function () { syncStart(self); }); return r; };
-    P._zoomEnd = function () { this._olnuAnim = false; var r = end.apply(this, arguments); settleDom(this); draw(this); return r; };
-    P._pinchZoom = function () {
-      if (this._olnuAnim) { this._olnuAnim = false; return; }   // the "zoom" that ends an animated zoom: zoomend syncs right after
-      if (!this._map || !this._glMap) return;
-      this._glMap.jumpTo({ zoom: this._map.getZoom() - 1, center: this._map.getCenter() });
-      draw(this);
-      var self = this; Promise.resolve().then(function () { settleDom(self); });   // glfix: after the markers moved, before paint
-    };
-    // Pan: one GL frame per Leaflet move frame. A slow phone (a GL frame > 12 ms on average) keeps the old pace:
-    // max ~30 GL frames/s while panning (container + GL together, so the whole map lags a little, never tears).
-    P._olnuMove = function () {
-      if (!this._map || !this._glMap) return;
-      var self = this, t = performance.now();
-      if (this._olnuCost > 12 && t - (this._olnuAt || 0) < 28) {
-        if (!this._olnuTrail) this._olnuTrail = setTimeout(function () { self._olnuTrail = 0; self._olnuMove(); }, 30);
-        return;
-      }
-      this._olnuAt = t;
-      upd.call(this);
-      if (!this._zooming) { var t0 = performance.now(); draw(this); var c = performance.now() - t0; this._olnuCost = this._olnuCost ? this._olnuCost * 0.8 + c * 0.2 : c; }
-    };
-    P.getEvents = function () { var o = evs.call(this); o.move = this._olnuMove; return o; };
-    if (tend) {
-      P._transitionEnd = function (e) { if (this._zooming || !synced(this)) return tend.call(this, e); };
-      P._resize = function (e) { return tend.call(this, e); };
-    }
-  }
-
   /* ---------- Loading ---------- */
   function addScript(src) {
     return new Promise(function (res, rej) {
@@ -233,10 +148,9 @@
   function attrOnLoad() { showOnLoad = false; setAttr(false); }   // calm: never auto-open (owner 2026-10-22)
 
   /* ---------- Switching ---------- */
+  // mbx: the raster layers stay on the map object; mbx.js draws them only while no GL map has drawn (start frame, fallback)
   function rastersOn(on) {
-    rasters.forEach(function (l) {
-      try { if (on && !map.hasLayer(l)) l.addTo(map); else if (!on && map.hasLayer(l)) map.removeLayer(l); } catch (e) {}
-    });
+    rasters.forEach(function (l) { try { if (!map.hasLayer(l)) l.addTo(map); } catch (e) {} });
   }
   function fallback(why) {
     try { console.warn("olnu basemap", why); } catch (e) {}
@@ -282,9 +196,9 @@
       var ln = document.createElement("link"); ln.rel = "stylesheet"; ln.href = MB_CSS; ln.setAttribute("data-basemap-mb", "1"); ln.crossOrigin = "anonymous";
       document.head.appendChild(ln);
     }
+    // index.html loads mapbox-gl.js before js/mbx.js; this only helps when that CDN request failed once
     mbP = (window.mapboxgl ? Promise.resolve() : addScript(MB_JS))
-      .then(function () { return window.L.mapboxGL ? null : addScript(MBL_JS); })
-      .then(function () { if (!window.mapboxgl || !window.L.mapboxGL) throw new Error("no_mb_lib"); fixBridge(window.L.MapboxGL); });
+      .then(function () { if (!window.mapboxgl || !window.mapboxgl.Map) throw new Error("no_mb_lib"); });
     mbP.catch(function () { mbP = null; });
     return mbP;
   }
@@ -312,8 +226,10 @@
     logoEl.style.left = Math.round(r.left) + "px"; logoEl.style.bottom = Math.round(window.innerHeight - r.top + 8) + "px";
   }
   window.addEventListener("resize", function () { if (logoEl && !logoEl.hidden) placeLogo(); });
+  // the fallback: the GL map goes (a new one later = a new billed load, so only after a real failure), mbx.js draws the rasters
   function mbOff() {
-    if (mb) { try { if (map.hasLayer(mb)) map.removeLayer(mb); } catch (e) {} }
+    if (mb) { try { map._detachGL(false); } catch (e) {} }   // parked: a way back without a new map load
+    try { ["bars", "hotbars"].forEach(function (n) { map.setVirtualPane(n, false); }); } catch (e) {}
     logo(false);
   }
   /* ---------- map3: a clean map (no road number shields, exit numbers, house numbers, one-way arrows, POI/transit icons) ----------
@@ -360,6 +276,15 @@
       } catch (e) {}
     });
   }
+  /* mbx: zoomed out our zone labels (js/zones.js) carry the map: the Mapbox country / state / town names step back a little
+     (text 65 % until Leaflet z 10.5, where the zones end); collisions (crossSourceCollisions) hide the ones under a zone label */
+  var PLACE_LBL = /^(country-label|state-label|settlement-major-label|settlement-minor-label|settlement-subdivision-label|continent-label)$/;
+  function zoneLabels(fr) {
+    Object.keys(fr._layers).forEach(function (id) {
+      if (!PLACE_LBL.test(id)) return;
+      try { fr.setPaintProperty(id, "text-opacity", ["interpolate", ["linear"], ["zoom"], 2, 0.65, 8.8, 0.65, 9.6, 1]); } catch (e) {}
+    });
+  }
   function look(m, st) {
     var fr = frag(m); if (!fr || !fr._layers) return;
     var L0 = st.look || {};
@@ -377,6 +302,7 @@
         if (o["line-width"] != null) fr.setPaintProperty(id, "line-width", L0.thin ? thinExpr(o["line-width"], L0.thin) : o["line-width"]);
       });
       buildingsNear(fr);
+      zoneLabels(fr);
       if (lookSaved.paint.water) fr.setPaintProperty("water", "fill-color", L0.water ? ["config", "colorWater"] : lookSaved.paint.water["fill-color"]);
       if (fr._layers["water-depth"]) fr.setLayoutProperty("water-depth", "visibility", L0.water ? "none" : "visible");
       // Lights: the import's lights with a brighter ambient; null = back to the import's own.
@@ -414,17 +340,19 @@
       document.documentElement.setAttribute("data-basemap", name);
       if (!mb) {
         mbUrl = st.mb;
-        // map3 perf: no label fade (each fade = extra full GL frames after every zoom step), no MSAA, Mercator like
-        // Leaflet (Standard defaults to the globe), no cross-source label collision pass.
-        // glfix perf: padding 0.12 → 0.08 (the GL map renders in lock-step with every pan frame now: 1.54× → 1.35× the screen
-        // pixels in software / slow GPUs), no world copies (Mapbox perf guide).
-        var opts = { accessToken: token, style: st.mb, interactive: false, padding: 0.08, attributionControl: false, renderWorldCopies: false,
+        // map3 perf: no label fade, no MSAA, Mercator, no world copies. mbx: our own symbols (bars, zones) DO collide with the
+        // Mapbox labels (crossSourceCollisions on): a street / town name under a bar pill or a zone label is left out
+        // (owner screenshots 2026-11-07: "79 kr" pill over street names, zone labels on top of country names).
+        window.mapboxgl.accessToken = token;
+        var c = map.getCenter(), opts = { container: map.getContainer(), style: st.mb, center: [c.lng, c.lat], zoom: Math.max(0, map.getZoom() - 1),
+          minZoom: Math.max(0, map.getMinZoom() - 1), maxZoom: map.getMaxZoom() - 1, attributionControl: false, renderWorldCopies: false,
           pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 0, antialias: false, projection: "mercator",
-          crossSourceCollisions: false, performanceMetricsCollection: false };
+          crossSourceCollisions: true, performanceMetricsCollection: false, dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0,
+          bearingSnap: 180, clickTolerance: 4, refreshExpiredTiles: false };
         if (st.cfg) opts.config = { basemap: st.cfg };
-        mb = window.L.mapboxGL(opts);
-        mb.addTo(map); mbLoads++;
-        var m = mb.getMapboxMap();
+        var m = new window.mapboxgl.Map(opts); mbLoads++;
+        mb = { getMapboxMap: function () { return m; } };
+        map._attachGL(m);
         m.on("load", function () { mbLoaded = true; if (isMb(cur)) { rastersOn(false); attrOnLoad(); } });
         m.on("style.load", function () {
           mbStyleBusy = false; lookSaved = null;
@@ -438,7 +366,7 @@
           if ((code === 401 || code === 403) && !mbLoaded) { mbFailed = true; if (isMb(cur)) fallback("mapbox_" + code); }
         });
       } else {
-        if (!map.hasLayer(mb)) mb.addTo(map);
+        if (map.isGL && !map.isGL()) map._attachGL(mb.getMapboxMap());   // back from the fallback: the same map object
         mbSetStyle(st);
         if (mbLoaded) rastersOn(false);
       }
@@ -529,6 +457,7 @@
       return out;
     },
     layer: function () { return null; },   // the MapLibre layer is gone (glmap)
+    gl: function () { return mb ? mb.getMapboxMap() : null; },
     token: function () { return token; },
     tokenReady: fetchToken,
     // Extra credit text for the ⓘ popover (static HTML from our own modules only).
