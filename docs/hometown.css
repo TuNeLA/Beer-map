@@ -1,12 +1,36 @@
-/* Öl Nu v25 — 📍 Hemstad (js/hometown.js) + 👑/🎖️/🎗️ role badges and member actions (js/chief.js, js/social.js). */
+/* PintsNow v25 — 📍 Hemstad (js/hometown.js) + 👑/🎖️/🎗️ role badges and member actions (js/chief.js, js/social.js). */
 .ht-inp{width:100%;margin:8px 0 4px}
 .ht-prev{min-height:18px;margin:2px 0 6px;font-size:var(--fs-xs,12px)}
-.ht-list{display:flex;flex-wrap:wrap;gap:6px;max-height:42vh;overflow-y:auto;padding:2px 0 8px}
-.ht-chip{min-height:40px}
-.ht-chip[aria-selected="true"]{border-color:var(--amber,#f5a623);color:var(--amber-2,#ffc24d)}
-.ht-dem{color:var(--muted,#9aa3a0);font-size:11px}
-.ht-none{width:100%}
-.ht-btns{gap:8px;margin-top:6px}
+/* nf 2026-11-07: picker v2 (search + Nära dig + A–Ö rows). Tokens: the design agent can restyle via --ht-*. */
+.ht-sheet{--ht-row-h:52px;--ht-bg:var(--ds-card,#19233a);--ht-line:var(--ds-border,rgba(255,255,255,.1));--ht-head:var(--ds-muted,#a7b0ac);
+  --ht-accent:var(--ds-amber,#f5a623);--ht-accent-t:var(--ds-amber-t,#ffc24d);--ht-accent-soft:var(--ds-amber-soft,rgba(245,166,35,.14));
+  --ht-radius:var(--ds-r-2,16px);--ht-text:var(--ds-text,#eef0ec);--ht-muted:var(--ds-muted,#a7b0ac)}
+.ht-info{margin:0 0 var(--ds-2,8px)}
+.ht-search{position:sticky;top:0;z-index:2;background:var(--ds-sheet,#121a2a);padding:2px 0 var(--ds-2,8px)}
+.ht-search .ht-inp{margin:0}
+.ht-cur:empty{display:none}
+.ht-cur-row{display:flex;align-items:center;gap:var(--ds-2,8px);min-height:44px;margin:0 0 var(--ds-2,8px);padding:0 var(--ds-3,12px);
+  border-radius:var(--ht-radius);background:var(--ht-accent-soft);color:var(--ht-text)}
+.ht-cur-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.ht-list2{display:flex;flex-direction:column;max-height:56vh;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--ht-radius);
+  background:var(--ht-bg);padding-bottom:var(--ds-2,8px)}
+.ht-h{position:sticky;top:0;z-index:1;padding:var(--ds-2,8px) var(--ds-4,16px) 4px;background:var(--ht-bg);color:var(--ht-head);
+  font-size:var(--fs-xs,12px);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.ht-h-l{padding-top:6px;color:var(--ht-accent-t)}
+.ht-row{display:flex;align-items:center;gap:var(--ds-3,12px);min-height:var(--ht-row-h);width:100%;padding:6px var(--ds-4,16px);
+  background:transparent;border:0;border-top:1px solid var(--ht-line);color:var(--ht-text);text-align:left;font:inherit;cursor:pointer}
+.ht-h + .ht-row{border-top:0}
+.ht-row:active{background:var(--ht-accent-soft)}
+.ht-row:focus-visible{outline:2px solid var(--ht-accent);outline-offset:-2px}
+.ht-row.on{background:var(--ht-accent-soft)}
+.ht-row-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.ht-row-n{font-size:var(--fs-m,16px);line-height:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-row-d{font-size:var(--fs-xs,12px);color:var(--ht-muted);line-height:16px}
+.ht-row-k{flex:0 0 auto;font-size:var(--fs-s,14px);color:var(--ht-muted);font-variant-numeric:tabular-nums}
+.ht-row-c{flex:0 0 auto;color:var(--ht-accent-t);font-weight:700}
+.ht-ask .ht-row-n,.ht-free .ht-row-n{color:var(--ht-accent-t);font-weight:600}
+.ht-ask[disabled]{opacity:.7}
+.ht-none{padding:var(--ds-3,12px) var(--ds-4,16px);margin:0}
 .ht-set{margin:8px 0 2px}
 .ht-set-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:44px}
 .ht-set-v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

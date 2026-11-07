@@ -1,4 +1,4 @@
-// Öl Nu link card texts: card_public() data -> og:title, og:description, image spec, app query.
+// PintsNow link card texts: card_public() data -> og:title, og:description, image spec, app query.
 // Swedish (dalmål light) first, English when the link has &l=en. Only the safe fields from card_public are used.
 import type { CardSpec } from "./svg.ts";
 

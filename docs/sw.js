@@ -1,4 +1,4 @@
-/* Öl Nu service worker. */
+/* PintsNow service worker. */
 var VERSION = "olnu-44c82b9cfb";
 // Shell files that index.html does not name. The local scripts and stylesheets (with their ?v=<file hash>)
 // are read from index.html itself at install, so the precache uses the same URLs as the page (no double download).
@@ -273,11 +273,12 @@ self.addEventListener("fetch", function (e) {
 self.addEventListener("push", function (e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : "" }; }
-  var title = d.title || "🍺 PintsNow";
+  var title = d.title || "PintsNow 🍺";
+  // nf 2026-11-07: ?v=c1 = the C1 icon (navy tile, amber mug) and the white monochrome badge, never an old cached copy.
   var opts = {
     body: d.body || "",
-    icon: "./icons/icon-192.png",
-    badge: "./icons/badge-96.png",
+    icon: "./icons/icon-192.png?v=c1",
+    badge: "./icons/badge-96.png?v=c1",
     tag: d.tag || d.url || "olnu",
     requireInteraction: !!(d.requireInteraction || d.sos),
     data: { url: d.url || "./", rally_id: d.rally_id != null ? String(d.rally_id) : null, at: Date.now() }

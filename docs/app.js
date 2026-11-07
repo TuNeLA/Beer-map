@@ -52,7 +52,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.NEARPLACES].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       if (modsWave && fn === "onPoll") { modsWave.push(m); return; }   // ⚡ SPEED: runWave() calls it
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
@@ -2154,7 +2154,7 @@
   // Else it reuses the last picked bar while you stay within 150 m of where you picked it.
   // v14: ✕ / backdrop / Escape / another sheet = CANCEL (no beer). Bars first, then restaurants/cafés (🍽️).
   // 🏠 Hemzon: the beer is posted as an area unless a bar or restaurant is picked.
-  var WHERE_KEY = "olnu.where", WHERE_R = 400, WHERE_STAY = 150, WHERE_PLACE_R = 150;
+  var WHERE_KEY = "olnu.where", WHERE_R = 400, WHERE_STAY = 150, WHERE_PLACE_R = 250;
   function askWhere(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     var home = !!(window.PRIVACY && window.PRIVACY.inHome(lat, lng));
@@ -2164,7 +2164,13 @@
     if (ci && Date.now() - ci.at < CI_FRESH_MS && U.haversine(lat, lng, ci.lat, ci.lng) <= CI_STAY_M) {
       return Promise.resolve({ lat: ci.lat, lng: ci.lng, precise: prec === "exact" });
     }
-    var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6, { places: true, placeM: WHERE_PLACE_R, maxPlaces: 4 }) : [];
+    // nf 2026-11-07: wait (max 1.2 s) for the restaurant tiles around this spot. They load only for the map VIEW, so the
+    // first sheet away from the map view listed bars only ("my friend saw no restaurants"). Then 6 bars + 6 places (250 m).
+    var wait = window.BARS && window.BARS.ensurePlacesP ? window.BARS.ensurePlacesP(lat, lng, 1, 1200) : Promise.resolve();
+    return wait.then(function () { return askWhereList(lat, lng, real); });
+  }
+  function askWhereList(lat, lng, real) {
+    var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6, { places: true, placeM: WHERE_PLACE_R, maxPlaces: 6 }) : [];
     if (!list.length) return Promise.resolve(real);
     var last = U.ls.getJSON(WHERE_KEY, null), night = myNight();
     var fresh = last && last.until > Date.now();
@@ -2195,6 +2201,15 @@
         if (places.length) {
           body.appendChild(el("p", { class: "muted where-sub", text: t("wherePlaces") }));
           places.forEach(function (x, i) { row(x, i, "🍽️"); });
+        }
+        // nf 2026-11-07: "📍 Fler ställen nära" = bars AND restaurants within 1 km (js/nearplaces.js), same pick.
+        if (window.NEARPLACES && window.NEARPLACES.inline) {
+          var moreBox = el("div", { class: "where-more-box" });
+          var moreB = btn("📍 Fler ställen nära", "btn-ghost btn-block where-more", function () {
+            moreB.remove();
+            window.NEARPLACES.inline(moreBox, lat, lng, pick, list.map(function (x) { return x.bar.id; }));
+          });
+          body.appendChild(moreB); body.appendChild(moreBox);
         }
         body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn("🏠 " + t("whereNone"), "btn-ghost btn-block", function () { pick(null); })]));
       }, { now: true, lock: true, onClose: function () { if (!done) { done = true; resolve(null); } } });

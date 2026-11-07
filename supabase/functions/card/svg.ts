@@ -1,4 +1,4 @@
-// Öl Nu link card image: 1200x630 SVG in the app's black/yellow tabloid style (Morgontidningen look).
+// PintsNow link card image: 1200x630 SVG in the app's black/yellow tabloid style (Morgontidningen look).
 // Pure string building (no DOM). The function renders it to PNG with resvg-wasm and the two embedded fonts.
 // Text width is estimated from measured advance widths (widths.ts), so long group names shrink or wrap.
 import { W } from "./widths.ts";

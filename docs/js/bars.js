@@ -305,6 +305,53 @@
     if (!tIndex || typeof lat !== "number" || typeof lng !== "number") return;
     loadBox(lat - 0.012, lng - 0.024, lat + 0.012, lng + 0.024);
   }
+  // nf 2026-11-07 (NEARPLACES / "Var dricker du?"): a Promise version. Loads the tiles around a spot (km = half box size)
+  // and resolves when they are in, or after maxMs with whatever is loaded. Starts the tile index when nothing has yet.
+  function ensurePlacesP(lat, lng, km, maxMs) {
+    km = km || 1; maxMs = maxMs || 2500;
+    if (typeof lat !== "number" || typeof lng !== "number") return Promise.resolve(placesState);
+    if (placesState === "idle") loadPlaces();
+    var t0 = Date.now(), asked = false;
+    return new Promise(function (res) {
+      (function tick() {
+        if (tIndex && !asked) {
+          asked = true;
+          var dl = km / 111, dg = km / (111 * Math.max(0.2, Math.cos(lat * Math.PI / 180)));
+          loadBox(lat - dl, lng - dg, lat + dl, lng + dg);
+        }
+        var done = (asked && !tQueue) || (!tIndex && (placesState === "ready" || placesState === "failed"));
+        if (done || Date.now() - t0 > maxMs) { res(placesState); return; }
+        setTimeout(tick, 120);
+      })();
+    });
+  }
+  // Any radius (nearby() sees only the 3x3 grid ≈ 1 km): { bars: [{bar, d}], places: [{bar, d, place: true}] }, nearest
+  // first. Places that are a listed bar's twin or closed are left out.
+  function around(lat, lng, maxM) {
+    var out = { bars: [], places: [] };
+    if (typeof lat !== "number" || typeof lng !== "number" || !(maxM > 0)) return out;
+    var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID);
+    var ry = Math.min(30, Math.ceil(maxM / 1110)), rx = Math.min(60, Math.ceil(maxM / (1110 * Math.max(0.2, Math.cos(lat * Math.PI / 180)))));
+    for (var dy = -ry; dy <= ry; dy++) for (var dx = -rx; dx <= rx; dx++) {
+      var k = (gy + dy) + "_" + (gx + dx), cell = grid[k], pc = places[k], i, d;
+      if (cell) for (i = 0; i < cell.length; i++) {
+        if (!cell[i].name) continue;
+        d = U.haversine(lat, lng, cell[i].lat, cell[i].lng);
+        if (d <= maxM) out.bars.push({ bar: cell[i], d: d });
+      }
+      if (pc) for (i = 0; i < pc.length; i++) {
+        var o = pc[i];
+        if (closed[o.id] || !o.name) continue;
+        d = U.haversine(lat, lng, o.lat, o.lng);
+        if (d > maxM) continue;
+        if (o._bv !== barsVer) { o._bv = barsVer; o._twin = !!barTwin(o); }
+        if (!o._twin) out.places.push({ bar: o, d: d, place: true });
+      }
+    }
+    out.bars.sort(function (a, b) { return a.d - b.d; });
+    out.places.sort(function (a, b) { return a.d - b.d; });
+    return out;
+  }
   function loadPlaces() {
     if (placesState !== "idle") return;
     placesState = "loading";
@@ -451,6 +498,7 @@
     placeId: placeId,
     placesReady: function () { return placesState === "ready"; },
     ensurePlaces: ensurePlaces,
+    ensurePlacesP: ensurePlacesP, around: around,   // nf 2026-11-07 (NEARPLACES)
     // 🍽️ js/places.js: loaded places inside LatLngBounds b (not a bar's twin, not closed), at most max. Empty when far out.
     placesInBounds: function (b, max) {
       var out = [], s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();

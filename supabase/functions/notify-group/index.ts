@@ -1,4 +1,4 @@
-// Öl Nu — notify-group Edge Function.
+// PintsNow — notify-group Edge Function.
 // The client calls it (fire-and-forget) after an accepted beer. Old clients call it only after a
 // milestone beer (1, 5 or 10); new clients call it after EVERY accepted beer. One call does two jobs:
 //  A) FRIENDS: when the caller's beer hit a milestone, push to everyone who shares a group with
@@ -42,6 +42,11 @@
 //   `held: n`. New: {event:"coming", beer_id} -> "🏃 Anton kommer!" to the pin owner (button "🍺 Kommer!" on friend-is-out).
 //   Chat/DM/voice payloads get `renotify`, `stack` (the service worker folds them) and a "💬 Svara" button; check-in opens
 //   the bar (bars_lite) and folds per bar; msg rate 120 -> 30 s.
+// DEPLOY v28 🔕 LUGNA NOTISER (0260; owner 2026-11-07 burst). gate28 in sendAll: every payload gets a short title (who/what
+//   first, max 30, emoji last) and no generic body; hype (KAOS, takeover, tips, befordran, helg, filmstart, 1st/5th drink)
+//   only 17–05; the social kinds (ute/kaos/bar/kul/film) max 1 per 10 min and 8 per night PER RECIPIENT (push_pace_take);
+//   held ones go out as ONE digest "3 nya från vänner 🍻" (push_pace_due, flushed in later calls and the cron).
+//   Friend pushes: one tag per pin (öl 5 replaces öl 1). New texts: friendPayload28, checkinPayload28 (count at the bar), …
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1140,6 +1145,245 @@ export function comingPayload(idx: number, namn: string, n: number, beerId: numb
   };
 }
 
+// ---- v28 🔕 LUGNA NOTISER (0260) — pure block start ----
+// Owner 2026-11-07: ~8 pushes in 11 min on a Saturday at 11:27 (3 friends in a 15-member group checked in at lunch:
+// 3 check-ins + a first-beer push + a takeover, each with its own per-SENDER limit, nothing per RECIPIENT).
+// v28 adds, for every push that is not safety / chat / DM / a direct plan or friend request:
+//  1. Evening rule: "hype" pushes (KAOS, takeover, krogtips, befordran, helgstreak, filmstart, friend 1st/5th drink)
+//     only 17:00–05:00 Europe/Stockholm. In the daytime they are dropped (not saved for later).
+//  2. Pace per RECIPIENT across all those kinds: max 1 per 10 min (PACE_GAP_SEC) and max PACE_NIGHT_MAX per night
+//     (a user's own cap 5/10/20 from 0190 wins; 99 = gap 2 min, max 99). A push inside the gap is held; the next
+//     allowed push (or the flush in any later call / the cron) sends ONE digest "3 nya från vänner" with the lines.
+//  3. Short titles: key info first (who/what), max 30 chars, emoji at the end (tidyTitle), specific bodies with
+//     names / bar / count / time (no "Öppna kartan och se var." repeats: GENERIC_BODIES are removed).
+//  4. Tags: the newest replaces the older notice of the same thing (friend: one tag per pin, check-in: one per bar).
+// Other agents adding a push kind: give the payload a `tag` "olnu-<kind>-…", add the kind to pushCat (v27) and,
+// when it is hype / evening-only, to HYPE_RE below. Optional payload fields read here: `dg` (short digest line).
+export const PACE_GAP_SEC = 600;
+export const PACE_NIGHT_MAX = 8;
+export const EVENING_FROM = 17;   // hype pushes 17:00 … 05:00 (Stockholm)
+export const EVENING_TO = 5;
+export const TITLE_MAX = 30;
+/** Kinds (pushCat) that are paced. chat/dm/plan/vanner/safe/"" are never paced (direct, already folded or safety). */
+export const PACE_CATS = ["ute", "kaos", "bar", "kul", "film"];
+/** Evening-only tags: KAOS, takeover, krogtips, befordran, helgstreak, filmstart, friend 1st/5th drink ("-1"/"-5"/"-f1"/"-f5"). */
+export const HYPE_RE = /^olnu-(kaos|takeover|tip|title|helg|filmstart)-|^olnu-\d+-f?(1|5)$/;
+export function isEvening(hour: number): boolean {
+  return hour >= EVENING_FROM || hour < EVENING_TO;
+}
+export function isHype(tag: string): boolean {
+  return HYPE_RE.test(String(tag || ""));
+}
+/** "day" (hype in the daytime: drop) | "pace" (ask the counter) | "send". cat = pushCat(tag). */
+export function rule28(cat: string, tag: string, hour: number): "day" | "pace" | "send" {
+  if (!cat || !PACE_CATS.includes(cat)) return "send";
+  if (isHype(tag) && !isEvening(hour)) return "day";
+  return "pace";
+}
+export function paceOf(pref: PushPref | null | undefined): { gap: number; max: number } {
+  const c = Number(pref?.cap) || 0;
+  if (c === 99) return { gap: 120, max: 99 };
+  if (c === 5 || c === 10 || c === 20) return { gap: PACE_GAP_SEC, max: c };
+  return { gap: PACE_GAP_SEC, max: PACE_NIGHT_MAX };
+}
+// Emoji = pictographs, regional flags, keycaps, joiners and variation selectors.
+const EMO_RE = /^(?:[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}‍️⃣#*0-9](?:[‍️⃣\u{1F3FB}-\u{1F3FF}]|\p{Extended_Pictographic})*)+/u;
+const EMO_ANY = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}]/u;
+/** Leading emoji cluster ("" when none) and the rest. Digits alone are not emoji. */
+export function splitEmoji(s: string): { emoji: string; text: string } {
+  const t = String(s || "").trim();
+  const m = t.match(EMO_RE);
+  if (!m || !EMO_ANY.test(m[0])) return { emoji: "", text: t };
+  return { emoji: m[0].trim(), text: t.slice(m[0].length).trim() };
+}
+function cps(s: string): number { return [...s].length; }
+function cutCp(s: string, n: number): string { return [...s].slice(0, n).join(""); }
+/** Title: one line, key info first, max TITLE_MAX code points, ONE emoji at the END (a leading one is moved). */
+export function tidyTitle(s: string, max = TITLE_MAX): string {
+  let { emoji, text } = splitEmoji(String(s || "").replace(/\s+/g, " "));
+  const tail = text.match(/\s([\p{Extended_Pictographic}][\p{Extended_Pictographic}‍️]*)$/u);
+  if (tail) { if (!emoji) emoji = tail[1]; text = text.slice(0, tail.index).trim(); }
+  emoji = [...emoji].filter((c) => /\p{Extended_Pictographic}/u.test(c) || /[‍️]/u.test(c)).join("");
+  const first = emoji.match(/\p{Extended_Pictographic}(?:‍\p{Extended_Pictographic}|️)*/u);
+  emoji = first ? first[0] : "";
+  text = text.replace(/[!.]+$/, (m) => (m.includes("!") ? "!" : "")).trim();
+  const room = Math.max(8, max - (emoji ? 2 : 0));
+  if (cps(text) > room) {
+    let c = cutCp(text, room - 1);
+    const sp = c.lastIndexOf(" ");
+    if (sp >= room * 0.55) c = c.slice(0, sp);
+    text = c.replace(/[\s,:;–-]+$/, "") + "…";
+  }
+  return emoji ? `${text} ${emoji}` : text;
+}
+/** Bodies that say nothing (owner: "Ska du bara sitta hemma? Kolla kartan." ×3). Removed from any body. */
+export const GENERIC_BODIES: string[] = [
+  "Öppna kartan och se var.", "Tryck för att se var. Hänger du på?", "Öppna kartan. Det finns plats för en till.",
+  "Tryck för att se baren på kartan.", "Ska du bara sitta hemma? Kolla kartan.", "Tryck för att se kartan. Håll krogen!",
+  "Tryck för att se kartan.", "Tryck för att se var.", "Tryck för att se baren.",
+];
+export function tidyBody(b: string): string {
+  let s = String(b || "").replace(/Öl Nu/g, "PintsNow");
+  for (const g of GENERIC_BODIES) s = s.split(g).join("");
+  return s.replace(/\s*·\s*$/, "").replace(/^\s*·\s*/, "").replace(/\s+/g, " ").trim();
+}
+/** Final pass on every payload (all kinds, also kinds added later): short title, no generic body, cat + dg. */
+export function tidyPayload(p: Record<string, unknown>): Record<string, unknown> {
+  const tag = String(p.tag ?? "");
+  const cat = pushCat(tag);
+  const out: Record<string, unknown> = { ...p, cat: cat || "other" };
+  const rawTitle = String(p.title ?? "").replace(/Öl Nu/g, "PintsNow");
+  // Chat / DM titles are "Anton: text" lines (the text IS the info): only the emoji moves, length stays 60.
+  out.title = cat === "chat" || cat === "dm" ? tidyTitle(rawTitle, 60) : cat === "safe" ? tidyTitle(rawTitle, 40) : tidyTitle(rawTitle);
+  out.body = tidyBody(String(p.body ?? ""));
+  if (!out.dg) out.dg = splitEmoji(String(out.title)).text.replace(/\s[\p{Extended_Pictographic}].*$/u, "");
+  return out;
+}
+/** Digest of held lines ("HH:MM|text", oldest first) plus the current one. */
+export function digestPayload(lines: string[], grp: string | null | undefined): Record<string, unknown> {
+  const items = lines.map((l) => { const i = l.indexOf("|"); return i > 0 ? { t: l.slice(0, i), x: l.slice(i + 1) } : { t: "", x: l }; })
+    .filter((o) => o.x);
+  const g = cleanBarName(grp || "");
+  if (items.length <= 1) {
+    const o = items[0] || { t: "", x: "Nytt från vänner" };
+    return { title: tidyTitle(o.x), body: [o.t ? `kl ${o.t}` : "", g || "från vänner"].filter(Boolean).join(" · "), url: "/", tag: "olnu-digest", renotify: true, cat: "digest" };
+  }
+  const news = items.slice().reverse();
+  const shown = news.slice(0, 3).map((o) => o.x);
+  const more = news.length - shown.length;
+  return {
+    title: tidyTitle(g ? `${items.length} nya i ${g} 🍻` : `${items.length} nya från vänner 🍻`),
+    body: shown.join(" · ") + (more > 0 ? ` · +${more} till` : ""),
+    url: "/",
+    tag: "olnu-digest",
+    renotify: true,
+    cat: "digest",
+  };
+}
+/** Line for the digest, with the Stockholm time. */
+export function digestLine(p: Record<string, unknown>, ms: number): string {
+  return `${hhmm(ms)}|${String(p.dg || splitEmoji(String(p.title ?? "")).text).slice(0, 70)}`;
+}
+// ---- v28 texts: short title (who/what first) + a specific body ----
+function pick28(arr: string[], idx: number): string { return arr[((Math.floor(idx) % arr.length) + arr.length) % arr.length]; }
+/** Friend milestone (1st, 5th, 10th drink). bar = the pin's bar when the pin is precise (snap_bar), tid = HH:MM. */
+export function friendPayload28(level: 1 | 5 | 10, idx: number, namn: string, titel: string, beerId: number, bar: string, tid: string) {
+  const n = cleanBarName(namn) || "En vän";
+  const b = cleanBarName(bar);
+  const vid = b ? ` på ${b}` : "";
+  let title: string, bodies: string[];
+  if (level === 1) {
+    title = b ? `${n} på ${b} 🍺` : `${n} är ute 🍺`;
+    bodies = [
+      `Första ölen kl ${tid}${vid}. Hänger du på?`,
+      `${titel ? titel + " " : ""}${n} har startat kvällen kl ${tid}.`,
+      `Öl 1 kl ${tid}${vid}. Kvällen har börjat.`,
+      `${n} har lämnat soffan kl ${tid}${vid}.`,
+    ];
+  } else if (level === 5) {
+    title = `${n}: 5 öl ikväll 🔥`;
+    bodies = [`Öl nr 5 kl ${tid}${vid}. HOT STREAK.`, `${n} har tagit fem${vid}. Kurvan pekar uppåt.`, `Fem öl kl ${tid}. Nu börjar det likna nåt.`];
+  } else {
+    title = `Kolla läget med ${n} 🚁`;
+    bodies = [`${n} har druckit 10${vid}. Ring eller gå dit. Vatten och taxi hem 🚕`,
+      `Tio öl kl ${tid}${vid}. Ett samtal nu kan rädda kvällen.`];
+  }
+  return {
+    title: tidyTitle(title),
+    body: pick28(bodies, idx),
+    url: `/?focus=${beerId}`,
+    // v28: one tag per pin, so öl 5 replaces öl 1 of the same friend (pushCat: /^olnu-\d+-/ = ute; HYPE_RE: -f1 / -f5).
+    tag: `olnu-${beerId}-f${level}`,
+    dg: level === 10 ? `${n} på 10 öl` : b ? `${n} på ${b}` : `${n} är ute`,
+    actions: level === 10 ? [] : [
+      ...(level === 1 ? [{ action: "coming", title: "🍺 Kommer!", url: `/?focus=${beerId}&act=coming` }] : []),
+      { action: "skal", title: "🍻 Skåla", url: `/?focus=${beerId}&act=skal` },
+    ],
+  };
+}
+/** Check-in. here = friends of the recipient's groups checked in at that bar now (incl. the sender). */
+export function checkinPayload28(idx: number, namn: string, bar: string, stamp: number, barId: string, here: number, tid: string) {
+  const n = cleanBarName(namn) || "En vän";
+  const b = cleanBarName(bar) || "en krog";
+  const bid = String(barId || "").slice(0, 80);
+  const bodies = here >= 2
+    ? [`${here} från gänget är där nu. Hänger du på?`, `${here} vänner på ${b} just nu.`]
+    : [`Incheckad kl ${tid}. Stolen bredvid är ledig.`, `${b} kl ${tid}. Bli nummer två?`, `Checkade in kl ${tid}. Kom förbi!`];
+  return {
+    title: tidyTitle(`${n} på ${b} 📍`),
+    body: pick28(bodies, idx),
+    url: bid ? `/?bar=${encodeURIComponent(bid)}` : "/",
+    tag: bid ? `olnu-checkin-${bid}`.slice(0, 120) : `olnu-checkin-${stamp}`,
+    renotify: true,
+    stack: { title: `{n} vänner på ${b} 📍`, line: `${n} kl ${tid}` },
+    dg: `${n} på ${b}`,
+  };
+}
+export function takeoverPayload28(idx: number, grupp: string, bar: string, barId: string, groupId: string, n: number) {
+  const b = cleanBarName(bar) || "krogen";
+  const g = cleanBarName(grupp) || "Ni";
+  const bodies = [
+    `${n >= 2 ? n + " från " + g : g} på plats. Flest av alla grupper ikväll.`,
+    `${g} har flest på ${b} just nu. Håll krogen!`,
+    `Nytt territorium för ${g}. Kartan är ändrad.`,
+  ];
+  return {
+    title: tidyTitle(g === "Ni" ? `Ni äger ${b} 🏰` : `${g} äger ${b} 🏰`),
+    body: pick28(bodies, idx),
+    url: `/?bar=${encodeURIComponent(barId)}`,
+    tag: `olnu-takeover-${groupId}-${barId}`.slice(0, 120),
+    grp: g === "Ni" ? "" : g,
+    dg: `${g} äger ${b}`,
+  };
+}
+export function levelUpPayload28(idx: number, namn: string, titel: string, beerId: number, nextTitel: string | null) {
+  const n = cleanBarName(namn) || "En vän";
+  const bodies = [`Ny rang: ${titel}. Skål för det! 🍻`, `${n} är nu ${titel}.${nextTitel ? " Nästa: " + nextTitel + "." : ""}`];
+  return {
+    title: tidyTitle(`${n} befordrad 🎖️`),
+    body: pick28(bodies, idx),
+    url: `/?focus=${beerId}`,
+    tag: `olnu-title-${beerId}`,
+    dg: `${n} blev ${titel}`,
+  };
+}
+export function kaosPayload28(idx: number, stad: string, out: number, hot: number, nightIso: string) {
+  const fun = splitEmoji(fill(KAOS_LINES[wrapIdx(idx, KAOS_LINES.length)], { stad, n: out, hot })).text;
+  return {
+    title: tidyTitle(`${out} ute i ${stad} 🔥`),
+    body: `${hot > 0 ? hot + " på hot streak inom 5 km. " : "Inom 5 km just nu. "}${fun}`,
+    url: "/",
+    tag: `olnu-kaos-${nightLabel(nightIso)}`,
+    dg: `${out} ute i ${stad}`,
+  };
+}
+export function comeherePayload28(namn: string, bar: string, beerId: number) {
+  const n = cleanBarName(namn) || "En vän";
+  const b = cleanBarName(bar);
+  return {
+    title: tidyTitle(b ? `${n}: kom till ${b} 📍` : `${n}: kom hit 📍`),
+    body: b ? `${n} väntar på dig på ${b}.` : `${n} vill ha sällskap. Pinnen visar var.`,
+    url: `/?focus=${beerId}`,
+    tag: `olnu-come-${beerId}`,
+    dg: b ? `${n} vill att du kommer till ${b}` : `${n} vill att du kommer`,
+  };
+}
+export function msgPayload28(namn: string, body: string, groupName: string, groupId: string) {
+  const n = cleanBarName(namn) || "Nån";
+  const g = cleanBarName(groupName);
+  const text = shortText(body, 120);
+  return {
+    title: tidyTitle(g ? `${n} i ${g} 💬` : `${n} 💬`, 40),
+    body: text,
+    url: `/?chat=${groupId}`,
+    tag: `olnu-msg-${groupId}`,
+    renotify: true,
+    stack: { title: `{n} nya i ${g || "gruppchatten"} 💬`, line: `${n}: ${shortText(body, 90)}` },
+    actions: [{ action: "reply", title: "💬 Svara", url: `/?chat=${groupId}&reply=1` }],
+  };
+}
+// ---- v28 🔕 LUGNA NOTISER — pure block end ----
+
 // ---- pure:end ----
 
 const corsHeaders: Record<string, string> = {
@@ -1187,7 +1431,7 @@ type Job = { sub: Sub; payload: string };
 // deno-lint-ignore no-explicit-any
 type Admin = any;
 
-async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 5 | 10, titel = ""): Promise<Job[]> {
+async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 5 | 10, titel = "", bar = "", tid = ""): Promise<Job[]> {
   const { data: mine, error: mineErr } = await admin
     .from("group_members")
     .select("group_id, display_name")
@@ -1231,23 +1475,12 @@ async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 
     rememberLine(key, idx);
     lineFor.set(rid, idx);
   }
-  // Tag uses the beer id (already in the url), never the user id.
-  const tag = `olnu-${beerId}-${level}`;
-  return ((subs ?? []) as Sub[]).map((s) => {
-    const name = senderNameFor.get(s.user_id) ?? "En vän";
-    const title = fillFriend(lines[lineFor.get(s.user_id) ?? 0], name, titel);
-    return {
-      sub: s,
-      // v27: "🍺 Kommer!" tells the friend you are coming; "🍻 Skåla" gives a skål. Not on 10 (caring tone).
-      payload: JSON.stringify({
-        title, body: FRIEND_BODY[level], url: `/?focus=${beerId}`, tag,
-        actions: level === 10 ? [] : [
-          ...(level === 1 ? [{ action: "coming", title: "🍺 Kommer!", url: `/?focus=${beerId}&act=coming` }] : []),
-          { action: "skal", title: "🍻 Skåla", url: `/?focus=${beerId}&act=skal` },
-        ],
-      }),
-    };
-  });
+  // v28 (deploy): friendPayload28 (short title, specific body, one tag per pin "olnu-<beer>-f<level>", same buttons:
+  // "🍺 Kommer!" on 1, "🍻 Skåla" on 1 and 5, none on 10). The beer id is in the url and tag, never the user id.
+  return ((subs ?? []) as Sub[]).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(friendPayload28(level, lineFor.get(s.user_id) ?? 0, senderNameFor.get(s.user_id) ?? "En vän", titel, beerId, bar, tid)),
+  }));
 }
 
 async function kaosJobs(
@@ -1306,7 +1539,7 @@ async function kaosJobs(
     .filter((s) => fresh.has(s.user_id))
     .map((s) => {
       const idx = kaosLineIndex(KAOS_LINES.length, beer.expires_at, s.user_id);
-      return { sub: s, payload: JSON.stringify(kaosPayload(idx, stad, out, hot, beer.expires_at)) };
+      return { sub: s, payload: JSON.stringify(kaosPayload28(idx, stad, out, hot, beer.expires_at)) };
     });
 
   // Light cleanup of old nights (kept out of the SQL migration on purpose).
@@ -1355,8 +1588,108 @@ async function gate(admin: Admin, jobs: Job[]): Promise<{ jobs: Job[]; held: num
   }
 }
 
-async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600) {
-  const g = await gate(admin, allJobs);
+// ---- v28 🔕 LUGNA NOTISER (0260) — runtime block start ----
+// gate28 runs for EVERY push (sendAll): tidyPayload → evening rule → v27 off / nattro → pace per recipient
+// (push_pace_take, migration 0260). Errors (database without 0260) fall back to the v27 gate (cap per night).
+// paceFlush: held lines whose gap is over go out as ONE digest; runs at most every 30 s per isolate in any call
+// and in the cron. Other agents: nothing to call — a new kind only needs a tag (see pushCat / HYPE_RE).
+type PaceRow = { uid: string; verdict: string; held_n: number; held_lines: string[] | null; held_grp: string | null };
+async function gate28(admin: Admin, jobs: Job[]): Promise<{ jobs: Job[]; held: number }> {
+  if (jobs.length === 0) return { jobs, held: 0 };
+  const now = Date.now();
+  const hour = stockholmHour(now);
+  const all = jobs.map((j) => {
+    try {
+      const p = tidyPayload(JSON.parse(j.payload) as Record<string, unknown>);
+      return { sub: j.sub, p, cat: p.cat === "other" ? "" : String(p.cat) };
+    } catch (_e) {
+      return { sub: j.sub, p: null as Record<string, unknown> | null, cat: "", raw: j.payload };
+    }
+  });
+  const asJob = (t: { sub: Sub; p: Record<string, unknown> | null; raw?: string }): Job =>
+    ({ sub: t.sub, payload: t.p ? JSON.stringify(t.p) : (t.raw ?? "{}") });
+  const day = all.filter((t) => !!t.p && rule28(t.cat, String(t.p.tag ?? ""), hour) === "day").length;
+  const kept = all.filter((t) => !t.p || rule28(t.cat, String(t.p.tag ?? ""), hour) !== "day");
+  if (kept.length === 0) return { jobs: [], held: day };
+  try {
+    const uids = [...new Set(kept.filter((t) => t.cat && t.cat !== "safe").map((t) => t.sub.user_id))];
+    const prefs = new Map<string, PushPref>();
+    for (let k = 0; k < uids.length; k += 150) {
+      const { data, error } = await admin.from("push_prefs").select("user_id, off, quiet_from, quiet_to, cap").in("user_id", uids.slice(k, k + 150));
+      if (error) throw error;
+      for (const r of (data ?? []) as (PushPref & { user_id: string })[]) prefs.set(r.user_id, r);
+    }
+    const verdict = kept.map((t) => pushGate(t.cat, prefs.get(t.sub.user_id), hour));
+    const out: Job[] = [];
+    // Pace candidates per user (pushGate "cap" = the paced kinds), in job order.
+    const cand = new Map<string, { subs: Map<number, Sub>; ps: Record<string, unknown>[] }>();
+    kept.forEach((t, i) => {
+      if (verdict[i] === "send") { out.push(asJob(t)); return; }
+      if (verdict[i] !== "cap" || !t.p) return;   // off / quiet: dropped
+      let c = cand.get(t.sub.user_id);
+      if (!c) { c = { subs: new Map(), ps: [] }; cand.set(t.sub.user_id, c); }
+      c.subs.set(t.sub.id, t.sub);
+      if (!c.ps.some((p) => p.tag === t.p!.tag)) c.ps.push(t.p);
+    });
+    if (cand.size) {
+      const users = [...cand.keys()];
+      const { data, error } = await admin.rpc("push_pace_take", {
+        p_uids: users,
+        p_lines: users.map((u) => digestLine(cand.get(u)!.ps[0], now)),
+        p_grps: users.map((u) => String(cand.get(u)!.ps[0].grp ?? "") || null),
+        p_gaps: users.map((u) => paceOf(prefs.get(u)).gap),
+        p_maxes: users.map((u) => paceOf(prefs.get(u)).max),
+      });
+      if (error) throw error;
+      const rows = new Map<string, PaceRow>(((data ?? []) as PaceRow[]).map((r) => [String(r.uid), r]));
+      for (const u of users) {
+        const c = cand.get(u)!, r = rows.get(u);
+        if (!r || (r.verdict !== "send" && r.verdict !== "digest")) continue;   // hold / cap: dropped (held = saved)
+        const mine = c.ps.map((p) => digestLine(p, now));
+        const held = r.verdict === "digest" ? (r.held_lines ?? []) : [];
+        const p = held.length + mine.length > 1
+          ? digestPayload([...held, ...mine], r.held_grp || String(c.ps[0].grp ?? ""))
+          : c.ps[0];
+        for (const s of c.subs.values()) out.push({ sub: s, payload: JSON.stringify(p) });
+      }
+    }
+    return { jobs: out, held: jobs.length - out.length };
+  } catch (e) {
+    console.warn("gate28 fallback to v27", e instanceof Error ? e.message : String(e));
+    const g = await gate(admin, kept.map(asJob));
+    return { jobs: g.jobs, held: g.held + day };
+  }
+}
+let lastFlush28 = 0;
+/** Send ONE digest to users with held lines whose gap is over (push_pace_due claims them atomically). */
+async function paceFlush(admin: Admin): Promise<number> {
+  if (Date.now() - lastFlush28 < 30_000) return 0;
+  lastFlush28 = Date.now();
+  try {
+    const { data, error } = await admin.rpc("push_pace_due", { p_gap: PACE_GAP_SEC, p_limit: 25 });
+    if (error || !Array.isArray(data) || data.length === 0) return 0;
+    const rows = data as PaceRow[];
+    const hour = stockholmHour(Date.now());
+    const { data: pr } = await admin.from("push_prefs").select("user_id, off, quiet_from, quiet_to, cap").in("user_id", rows.map((r) => r.uid));
+    const quiet = new Set(((pr ?? []) as (PushPref & { user_id: string })[])
+      .filter((p) => inQuiet(hour, p.quiet_from, p.quiet_to)).map((p) => p.user_id));
+    const by = new Map(rows.filter((r) => !quiet.has(String(r.uid)) && (r.held_lines ?? []).length).map((r) => [String(r.uid), r]));
+    if (by.size === 0) return 0;
+    const jobs = (await subsOf(admin, [...by.keys()])).map((s) => {
+      const r = by.get(s.user_id)!;
+      return { sub: s, payload: JSON.stringify(digestPayload(r.held_lines ?? [], r.held_grp)) };
+    });
+    return jobs.length ? (await sendAll(admin, jobs, 1800, true)).sent : 0;
+  } catch (e) {
+    console.warn("paceFlush", e instanceof Error ? e.message : String(e));
+    return 0;
+  }
+}
+// ---- v28 🔕 LUGNA NOTISER — runtime block end ----
+
+async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600, raw = false) {
+  // v28 (deploy): gate28 (falls back to the v27 gate); raw = digest flush, already paced.
+  const g = raw ? { jobs: allJobs, held: 0 } : await gate28(admin, allJobs);
   const jobs = g.jobs;
   const results = await Promise.allSettled(
     jobs.map((j) =>
@@ -1484,7 +1817,7 @@ async function levelUpJobs(admin: Admin, uid: string, beerId: number, total: num
   const idx = Math.floor(Math.random() * LEVELUP_LINES.length);
   return (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(levelUpPayload(idx, mates.get(s.user_id) ?? "En vän", t.title, beerId)),
+    payload: JSON.stringify(levelUpPayload28(idx, mates.get(s.user_id) ?? "En vän", t.title, beerId, t.next_title)),
   }));
 }
 
@@ -1508,7 +1841,7 @@ async function comeHere(admin: Admin, uid: string, b: Body) {
   const idx = Math.floor(Math.random() * (bar ? COMEHERE_LINES : COMEHERE_NOBAR_LINES).length);
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(comeherePayload(idx, mates.get(s.user_id) ?? "En vän", bar, beer.id as number)),
+    payload: JSON.stringify(comeherePayload28(mates.get(s.user_id) ?? "En vän", bar, beer.id as number)),
   }));
   return jobs.length ? await sendAll(admin, jobs) : NONE;
 }
@@ -1550,7 +1883,7 @@ async function msgPush(admin: Admin, uid: string, b: Body) {
   const { data: me } = await admin
     .from("group_members").select("display_name").eq("group_id", gid).eq("user_id", uid).maybeSingle();
   const namn = (me?.display_name as string) ?? mates.values().next().value ?? "Någon";
-  const payload = JSON.stringify(msgPayload(namn, msg.body as string, (g?.name as string) ?? "", gid));
+  const payload = JSON.stringify(msgPayload28(namn, msg.body as string, (g?.name as string) ?? "", gid));
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 600) : NONE;
 }
@@ -1716,9 +2049,17 @@ async function checkinPush(admin: Admin, uid: string, _b: Body) {
     const { data: bl } = await admin.from("bars_lite").select("id").eq("id", String(ci.bar_id ?? "")).maybeSingle();
     if (bl?.id) barId = String(bl.id);
   } catch (_e) { barId = ""; }
+  // v28 (deploy): how many of the caller's group-mates (and the caller) are checked in at this bar now.
+  let here = 1;
+  try {
+    const { count } = await admin.from("checkins").select("user_id", { count: "exact", head: true })
+      .eq("bar_id", String(ci.bar_id ?? "")).gt("expires_at", new Date().toISOString()).in("user_id", [uid, ...mates.keys()].slice(0, 300));
+    if (typeof count === "number" && count > 0) here = count;
+  } catch (_e) { here = 1; }
+  const tid = hhmm(Date.parse(String(ci.created_at)) || stamp);
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(checkinPayload(idx, mates.get(s.user_id) ?? "En vän", bar, stamp, barId)),
+    payload: JSON.stringify(checkinPayload28(idx, mates.get(s.user_id) ?? "En vän", bar, stamp, barId, here, tid)),
   }));
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
@@ -1824,7 +2165,7 @@ async function takeoverPush(admin: Admin, uid: string, b: Body) {
     .eq("bar_id", barId).in("group_id", gids).eq("notified", false)
     .gt("night", new Date().toISOString())
     .gt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
-    .select("id, group_id, bar_id, bar_name");
+    .select("id, group_id, bar_id, bar_name, n");
   if (error) throw error;
   if (!claimed || claimed.length === 0) return { ...NONE, reason: "already_sent" };
   let sent = 0, failed = 0;
@@ -1833,8 +2174,8 @@ async function takeoverPush(admin: Admin, uid: string, b: Body) {
     if (mates.size === 0) continue;
     const { data: g } = await admin.from("groups").select("name").eq("id", t.group_id).maybeSingle();
     const idx = Math.floor(Math.random() * TAKEOVER_LINES.length);
-    const payload = JSON.stringify(takeoverPayload(idx, (g?.name as string) ?? "", (t.bar_name as string) ?? "",
-      t.bar_id as string, t.group_id as string));
+    const payload = JSON.stringify(takeoverPayload28(idx, (g?.name as string) ?? "", (t.bar_name as string) ?? "",
+      t.bar_id as string, t.group_id as string, Number(t.n) || 0));
     const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({ sub: s, payload }));
     if (jobs.length) { const r = await sendAll(admin, jobs, 1800); sent += r.sent; failed += r.failed; }
   }
@@ -2358,7 +2699,9 @@ async function cronDue(key: string): Promise<Response> {
       evSent = (await evDueSend(admin, ev.data as EvDueRow[])).sent || 0;
     }
   } catch (e) { console.error("ev_due failed", e); }
-  return json({ ok: true, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent });
+  lastFlush28 = 0;
+  const digests = await paceFlush(admin);   // v28 (deploy)
+  return json({ ok: true, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -2393,6 +2736,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    await paceFlush(admin);   // v28 (deploy): held lines -> one digest (at most every 30 s per isolate)
 
     // Light cleanup: anonymous heat events older than 10 days (ghost_points shows 1-8 days).
     if (Math.random() < 0.05) {
@@ -2442,7 +2787,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };
     const { data: beer, error: beerErr } = await admin
       .from("beers")
-      .select("id, lat, lng, beer_count, other_count, notified_level, stopped, expires_at, updated_at")
+      .select("id, lat, lng, beer_count, other_count, notified_level, stopped, expires_at, updated_at, precise, snap_bar")
       .eq("user_id", uid)
       .maybeSingle();
     if (beerErr) throw beerErr;
@@ -2484,7 +2829,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .select("id");
       if (claimErr) throw claimErr;
       if (claimed && claimed.length > 0) {
-        const fj = await friendJobs(admin, uid, claimed[0].id as number, level as 1 | 5 | 10, titel);
+        const fj = await friendJobs(admin, uid, claimed[0].id as number, level as 1 | 5 | 10, titel,
+          beer.precise ? cleanBarName(beer.snap_bar) : "", hhmm(now));
         friendCount = fj.length;
         jobs.push(...fj);
       }

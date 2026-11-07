@@ -1,0 +1,31 @@
+/* PintsNow — 📍 Ställen nära dig (js/nearplaces.js). Tokens --np-* so the design system can restyle. */
+.np-sheet,.np-inline{--np-bg:var(--ds-card,#19233a);--np-line:var(--ds-border,rgba(255,255,255,.1));--np-text:var(--ds-text,#eef0ec);
+  --np-muted:var(--ds-muted,#a7b0ac);--np-accent:var(--ds-amber,#f5a623);--np-accent-t:var(--ds-amber-t,#ffc24d);
+  --np-soft:var(--ds-amber-soft,rgba(245,166,35,.14));--np-food:var(--ds-blue-t,#8cc6ff);--np-radius:var(--ds-r-2,16px);--np-row-h:56px}
+.np-note{margin:0 0 var(--ds-2,8px)}
+.np-ask{margin:0 0 var(--ds-3,12px)}
+.np-seg{display:flex;gap:4px;padding:4px;margin:0 0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);background:var(--np-bg)}
+.np-seg-b{flex:1 1 0;min-height:40px;border:0;border-radius:var(--ds-r-pill,999px);background:transparent;color:var(--np-muted);font:inherit;font-weight:600;cursor:pointer}
+.np-seg-b.on{background:var(--np-soft);color:var(--np-accent-t)}
+.np-seg-b:focus-visible{outline:2px solid var(--np-accent);outline-offset:1px}
+.np-list{display:flex;flex-direction:column;border-radius:var(--np-radius);background:var(--np-bg);overflow:hidden}
+.np-sheet .np-list{max-height:58vh;overflow-y:auto;overscroll-behavior:contain}
+.np-row{display:flex;align-items:center;gap:var(--ds-3,12px);min-height:var(--np-row-h);width:100%;padding:6px var(--ds-4,16px);border:0;
+  border-top:1px solid var(--np-line);background:transparent;color:var(--np-text);font:inherit;text-align:left;cursor:pointer}
+.np-row:first-child{border-top:0}
+.np-row:active{background:var(--np-soft)}
+.np-row:focus-visible{outline:2px solid var(--np-accent);outline-offset:-2px}
+.np-ic{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:var(--ds-raised,#222e48);font-size:18px}
+.np-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.np-n{font-size:var(--fs-m,16px);line-height:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.np-k{font-size:var(--fs-xs,12px);line-height:16px;color:var(--np-muted)}
+.np-food .np-k{color:var(--np-food)}
+.np-d{flex:0 0 auto;font-size:var(--fs-s,14px);color:var(--np-muted);font-variant-numeric:tabular-nums}
+.np-wait{margin:0;padding:var(--ds-4,16px)}
+.np-empty{padding:var(--ds-5,24px) var(--ds-4,16px);text-align:center}
+.np-empty-t{margin:0 0 var(--ds-3,12px);font-weight:600;color:var(--np-text)}
+.np-empty-s{margin:0}
+.np-foot{padding:var(--ds-3,12px);text-align:center;border-top:1px solid var(--np-line)}
+.where-more{margin-top:10px}
+.where-more-box:empty{display:none}
+.where-more-box{margin-top:8px}

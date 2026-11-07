@@ -1,4 +1,4 @@
-// Öl Nu edge function `card` (verify_jwt = false, read-only). CONTRACT "v26 LÄNKKORT".
+// PintsNow edge function `card` (verify_jwt = false, read-only). CONTRACT "v26 LÄNKKORT".
 // GET /functions/v1/card?t=<kind>&id=<id>[&l=en]        -> link preview page (crawlers) or 302 to the app (people)
 // GET /functions/v1/card?t=<kind>&id=<id>[&l=en]&img=1  -> 1200x630 PNG (og:image), black/yellow tabloid style
 // Kinds: invite (no id) | join (group code) | duelinv (duel token) | group | rally | duel | paper (share token
