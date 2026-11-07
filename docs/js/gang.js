@@ -894,9 +894,11 @@
     return out;
   }
   function swishUrl(num, amount, msg) {
-    // Swish app link with payee, amount and message filled in (unofficial but widely used; falls back to copying the number).
-    var data = { version: 1, payee: { value: num }, amount: { value: amount }, message: { value: String(msg || "").slice(0, 50), editable: true } };
-    return "swish://payment?data=" + encodeURIComponent(JSON.stringify(data));
+    // Swish's documented app link (same as rundan.js): sw=46…, decimal point, no cur, Swish-safe %20-encoded message.
+    var v = String(num || "").replace(/\D/g, ""); if (/^07\d{8}$/.test(v)) v = "46" + v.slice(1);
+    var m = String(msg || "").replace(/[–—·•|]/g, "-").replace(/[^0-9A-Za-zÅÄÖåäöÉéÜü !?().,:;\-+'\/&]/g, "").replace(/\s+/g, " ").trim().slice(0, 50);
+    var a = +amount, as = (Math.round(a * 100) % 100 === 0) ? String(Math.round(a)) : a.toFixed(2);
+    return "https://app.swish.nu/1/p/sw/?sw=" + v + "&amt=" + as + "&msg=" + encodeURIComponent(m);
   }
   function renderDebts(pane, d) {
     var db = d.debts || {}, members = d.members || [], net = db.net || [], swish = {};

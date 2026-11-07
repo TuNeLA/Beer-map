@@ -8,7 +8,7 @@
    unequal splits, "Gör upp" (settle up), "paid outside the app" that the receiver confirms, Swish to settle.
    Fewest payments ("Gör upp"): greedy biggest debtor → biggest creditor (Splitwise "simplify debts"), done here in the client.
    Swish links are not documented by Swish: https://app.swish.nu/1/p/sw/?sw=…&amt=…&cur=SEK&msg=… (main) and
-   swish://payment?data=… (second); the number + amount + 📋 Kopiera are always shown too. No money passes through Öl Nu.
+   swish://payment?data=… (second; fixed 2026-11-07 to the documented form: sw=46…, no cur); the number + amount + 📋 Kopiera are always shown too. No money passes through Öl Nu.
    A missing RPC (old database, PGRST202) = everything hides, no error. In-app only: no push. */
 (function () {
   "use strict";
@@ -160,13 +160,17 @@
     if (v === "") return "";
     return /^07\d{8}$/.test(v) ? v : null;
   }
-  function swishMsg(what) { return ("Öl Nu · " + (what || "Rundan")).slice(0, 50); }
-  // Undocumented Swish links (research 2026-10-22, gist from Sep 2026). Decimal point, not comma.
+  // Swish's documented app link (fixed 2026-11-07, iPhone said "Länken har ett felaktigt format"):
+  // payee 46…, decimal point, NO cur/src, message %20-encoded with only Swish-safe characters, no edit = amount locked.
+  function swishSafe(m) { return String(m || "").replace(/[–—·•|]/g, "-").replace(/[^0-9A-Za-zÅÄÖåäöÉéÜü !?().,:;\-+'\/&]/g, "").replace(/\s+/g, " ").trim().slice(0, 50); }
+  function swish46(num) { var v = String(num || "").replace(/\D/g, ""); return /^07\d{8}$/.test(v) ? "46" + v.slice(1) : v; }
+  function swishMsg(what) { return swishSafe("PintsNow - " + (what || "Rundan")); }
   function swishHttps(num, amt, msg) {
-    return "https://app.swish.nu/1/p/sw/?sw=" + encodeURIComponent(num) + "&amt=" + (+amt).toFixed(2) + "&cur=SEK&msg=" + encodeURIComponent(msg);
+    var a = (+amt), as = (Math.round(a * 100) % 100 === 0) ? String(Math.round(a)) : a.toFixed(2);
+    return "https://app.swish.nu/1/p/sw/?sw=" + swish46(num) + "&amt=" + as + "&msg=" + encodeURIComponent(swishSafe(msg));
   }
   function swishApp(num, amt, msg) {
-    return "swish://payment?data=" + encodeURIComponent(JSON.stringify({ version: 1, payee: { value: num }, amount: { value: +amt }, message: { value: msg, editable: true } }));
+    return "swish://payment?data=" + encodeURIComponent(JSON.stringify({ version: 1, payee: { value: swish46(num) }, amount: { value: +amt }, message: { value: swishSafe(msg), editable: false } }));
   }
   function copy(s) { try { A.copyText(String(s)); } catch (e) {} }
   function haptic(n) { try { if (window.FX && window.FX.haptic) window.FX.haptic(n || 10); else if (window.FX && window.FX.vibrate) window.FX.vibrate(n || 10); } catch (e) {} }
