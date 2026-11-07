@@ -2549,3 +2549,57 @@ Acts (anyone in the room): `start` (`p_data {game, goal, nw, bp:[1|2 per black c
 ### Content (`spel-cards.js`, all original; ONLY ADD AT THE END of a list — the server deals by index)
 550 white answer cards, 152 black prompts (20 pick-2, blank = `___`), 90 vem, 100 aldrig, 70 hellre pairs. Tone: adult dalmål / lumpen / Öl Nu, never hateful, no private people. To retire a card, replace its text.
 
+## 📅 EN RAD PER EVENT · 📨 EVENTGRUPPEN · 📊 MIN KVÄLL (evx, owner 2026-11-07; additive)
+Migrations `0164_event_dedupe.sql`, `0165_drink_log.sql`, `0166_event_groups.sql` (applied live 2026-11-07 under the same names).
+No row-removing statement. Client: `docs/js/nightlog.js` (`window.NIGHTLOG`), `docs/js/evgroup.js` (`window.EVGROUP`), `docs/evx.css`.
+Importer: `scripts/ev-dedupe.mjs` (called by `scripts/import-events.mjs`). Patches evx 01–06. A missing RPC (old server, PGRST202) = that part hides.
+
+### 📅 One row per event (0164 + scripts/ev-dedupe.mjs, same rules on both sides)
+- Cause seen live: swehockey changed its game id (`swh:<number>:<day>` → `swh:<team slug>:<day>`), so both rows lived until expiry;
+  match rows + Tickster / Ticketmaster rows of the same game; Tickster + Visit Sweden rows of one concert.
+- Two local `ok` rows are ONE event when they start within ±45 min AND: both have teams and the first real word of home and of away
+  match (`olnu_ev_team`: "Ludvika HF" = "Ludvika Hockey Förening" = ludvika), ≤ 3 km; or one has teams and the other title has both
+  team words, ≤ 3 km; or same bar / ≤ 300 m and the titles share ≥ 50 % of the longer title's words (`olnu_ev_words`: lower case,
+  å→a…, "(Tal: …)" removed, "–" "-" "vs" "@" "på" and club words IF IK HC HF Hockey Förening … ignored, genitive s cut).
+  Never merged: pending rows, `source user`, the caller's own rows, TV rows (the client folds TV + local).
+- Read time: `events_near2` / `events_near3` keep every field, limit and error; new top field `dedupe: 1`, new event field
+  `alt_ids` (ids of the hidden twins; Går / invites on a hidden id still work server side). The kept row = teams > Ticketmaster >
+  Tickster > own feeds > Visit Sweden, then newest update; it takes the twins' ticket link (Tickster / Ticketmaster url or
+  ticket_url), bar, url, sport / league / home / away. Live 2026-11-07: 131 of 2308 upcoming local rows hidden (106 swehockey id
+  twins, 19 swehockey + Tickster, 3 Tickster + Visit Sweden, 3 Tickster + Tickster); Ludvika 31 d 44 → 42, Borlänge 94 → 85,
+  Östersund 32 → 26, Uppsala 128 → 127, Ystad / Hudiksvall unchanged (cinema halls are NOT merged).
+- Import time: before upload, a Tickster / Ticketmaster / Visit Sweden / feed row that is a match row's twin is dropped and its shop
+  link becomes the match's `ticket_url` (when it has none); twins among the other rows keep the best one. `--dry` prints the merged
+  groups. `node scripts/ev-dedupe.mjs rows.json` checks a file.
+
+### 📨 Eventgruppen (0166)
+- Every user-made event (invite + temp group, v29) is a temporary group for that night: event page (`EVGROUP.open`) with when /
+  where / who (✅ + 🤔 + creator ⭐), 💬 Chatt (the event chat), 📨 Inbjudan, and "🎉 Förfest & spel": 🎉 Förfest (forfest.js; players
+  = the event people via `olnu.ffNames`), 🎲 Partyspel (party.js), 💸 Kvällens nota + 🎲 Vem bjuder? (rundan.js). Lek-sheet games
+  (Bingo/Agent/Gissa/Sugen) stay group-only.
+- Who may play / pay = the temp group's chat WRITE access (creator + ✅ + 🤔, before open_until, not cancelled). Still no
+  `group_members` row → friend lists, duels, leagues, boards, crew, gang, chief, skål, film, my_groups are unchanged.
+- Server: `party_create` / `party_group` / `party_join`, `olnu_rnd_member` / `olnu_rnd_name` / `olnu_rnd_uid_of` / `rnd_group` accept the
+  event people (same signatures and shapes); `night_story_photo` also serves an event's photos to its people (35 days, bytes left).
+| name | params | returns | errors |
+|---|---|---|---|
+| `event_group` | `p_group_id` | `{group_id, invite_id, title, kind, place, bar_id, lat, lng, starts_at, open_until, hide_at, night, evening, past, state open\|archived\|cancelled, can_write, can_play, mine, my_answer, invited, people:[{k, name, answer, creator, is_me, out}]}` | `not_member` |
+| `my_past_events` | `p_limit default 20` (≤ 50) | `{events:[{group_id, invite_id, title, kind, place, starts_at, night, evening, mine, people, names[], drinks, photos, msgs}]}` — events I made or said ✅/🤔 to, night over, not cancelled, 365 days | – |
+| `event_story` | `p_group_id` | the `group_night_story` json (same keys; rallies / status / duels empty) for the event night and its people + `event:{…}`; drinks from drink_log, else duel_log; chat without system lines | `not_member` |
+- Ways in (no new map buttons): Grupper "📨 Kvällens event" rows open the event page; the invite sheet gets "🎉 Förfest, spel & nota";
+  the event chat header gets "🎉 Eventgruppen". After the night: "🗂️ Tidigare event (N)" fold at the bottom of Grupper and a
+  "🗂️ Tidigare event" list in 👤 Profil → `EVGROUP.recap` = who came, 4 stat tiles, the 📰 Morgontidningen (GANG._storyModel /
+  _drawStory, share / save), quotes, photos.
+
+### 📊 Min kväll (0165)
+- Before: `beers` keeps one row per person and night with counters + the LAST beer_at / other_at; duel_log keeps drink deltas
+  with a time (group members only); crew_tracks keeps check-ins. No per-drink kind or place.
+- `drink_log(id, user_id, at, night, kind beer|cider|drink|shot|vin|rom|whisky|grogg|bubbel|annat|checkin, lat, lng (3 decimals),
+  bar_id, bar_name, area (town), ghost, undone)`, RLS on, no policies, no client access. Written by triggers `olnu_zz_drink_log`
+  (beers: count up → rows, ↩️ Ångra → newest beer `undone`, grogg/bubbel rename fixes the kind) and `olnu_zz_drink_log_ci`
+  (checkins). Every beer / other / undo / check-in RPC keeps its code and shape. A log error never stops a beer.
+| `my_night_log` | `p_night timestamptz default null` (null = tonight, else the last night with data) | `{night, evening, tonight, source log\|legacy\|none, items:[{at, kind, bar, bar_id, area, ghost}], nights:[{night, evening, drinks, log}] (90 d, ≤ 40), stats:{drinks, logged, beers, others, kinds{}, first_at, last_at, per_hour, bars, checkins, hours:[{h, n}]}}` — only my rows; older nights = duel_log times (`kind unknown`) + crew_tracks check-ins + medal_nights totals | `not_authenticated` |
+- Client: ONE quiet chip "📊 Min kväll" in the Ikväll panel when I drank tonight (never urgent), a row in 👤 Profil, and a button on
+  the 🤕 Bakisrapporten (after.js). Sheet: night chips, 4 stat tiles (drycker, per timme, första + sista, ställen), kind chips,
+  per-hour bars, the timeline (time · emoji · kind · 📍 place, 👻 ghost, check-ins in blue), legacy note.
+- Tests: scratchpad `evx-pw.js` (25 checks, `evx-*.png`), `evx-live.mjs` + `evx-live2.mjs` (55 live checks, test zone).

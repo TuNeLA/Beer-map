@@ -144,6 +144,7 @@
     head.appendChild(line);
     var acts = el("div", { class: "evc-acts" });
     acts.appendChild(A.btn(L("📨 Inbjudan", "📨 Invite"), "btn-small", function () { openInvite(c.invite_id); }));
+    if (window.EVGROUP && window.EVGROUP.open) acts.appendChild(A.btn(L("🎉 Eventgruppen", "🎉 Event group"), "btn-small", function () { window.EVGROUP.open(c); }));   // evx
     acts.appendChild(el("span", { class: "evc-n muted", text: "✅ " + (c.members | 0) + " · 📨 " + (c.invited | 0) }));
     head.appendChild(acts);
     list.parentNode.insertBefore(head, list);
@@ -214,6 +215,7 @@
         '<small class="evc-big-s">' + U.esc(s === "open" ? (c.can_write ? L("Snacka mä truppen", "Talk to the crew") : L("Läs mä – svara för att skriva", "Read along – answer to write")) : statusText(c)) + "</small>" });
     b.addEventListener("click", function () { open(c); });
     wrap.appendChild(b);
+    if (window.EVGROUP && window.EVGROUP.open) wrap.appendChild(A.btn(L("🎉 Förfest, spel & nota", "🎉 Pre-party, games & tab"), "btn-small btn-block evg-invbtn", function () { window.EVGROUP.open(c); }));   // evx
   }
 
   /* ---------- Grupper: "📨 Kvällens event" ---------- */
@@ -241,7 +243,7 @@
         A.el("span", { class: "evc-row-t" }, [A.el("b", { text: c.title }), A.el("small", { text: whenLine(c) + " · " + statusText(c) + (s === "open" ? " · ✅ " + (c.members | 0) : "") })]),
         A.el("span", { class: "evc-row-v", html: badge(n) + '<span class="ds-chev" aria-hidden="true"></span>' })
       ]);
-      var go = function () { open(c); };
+      var go = function () { if (window.EVGROUP && window.EVGROUP.open) window.EVGROUP.open(c); else open(c); };   // evx: the event page
       li.addEventListener("click", go);
       li.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
       ul.appendChild(li);

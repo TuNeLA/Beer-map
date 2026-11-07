@@ -309,6 +309,11 @@ async function main() {
   if (!process.argv.includes("--no-sport")) { try { sport = await sportRows({ towns, log, tickster: tix }); } catch (e) { log("sport:", String(e.message || e)); } }
   if (tix) { const used = new Set(sport.map((r) => r.ticket_url).filter(Boolean)), tr = ticksterRows(tix, towns, used); rows.push(...tr); log("tickster rows:", tr.length); }
   try { rows.push(...await (await import("./import-visitsweden.mjs")).visitSwedenRows(rows, log)); } catch (e) { log("visitsweden:", String(e.message || e)); }   // 🇸🇪 Visit Sweden (no key)
+  try {   // 📅 one row per real event (CONTRACT "📅 EN RAD PER EVENT"): match + Tickster/Ticketmaster twins → one row
+    const dd = (await import("./ev-dedupe.mjs")).dedupeImport(sport, rows);
+    sport = dd.sport; rows.length = 0; rows.push(...dd.rows); log("dedupe:", JSON.stringify(dd.stats));
+    if (dry) console.log("[events] 📅 merged twins (sample):\n" + JSON.stringify(dd.groups.slice(0, 30), null, 1));
+  } catch (e) { log("dedupe:", String(e.message || e)); }
   if (dry) { console.log("[events] 🎟️ local matches with a ticket link:\n" + JSON.stringify(sport.filter((r) => r.ticket_url).slice(0, 12), null, 1)); console.log(JSON.stringify(rows.slice(0, 50), null, 1)); console.log("[events] sport sample (tv + first local):\n" + JSON.stringify(sport.filter((r) => r.tv).slice(0, 40).concat(sport.filter((r) => !r.tv).slice(0, 40)), null, 1)); return; }
   for (let i = 0; i < sport.length; i += 500) {
     try { log("import sport:", JSON.stringify(await rpc("import_sport_events", { p_rows: sport.slice(i, i + 500) }))); }
