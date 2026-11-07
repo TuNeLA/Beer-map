@@ -67,13 +67,15 @@
     m.on("moveend", function () { ctx = "idle"; });
   }
 
+  var hidN = 0;   // review: count hides, so an RPC that spanned the background is not reported as slow
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") hidN++; });
   /* RPC timing: wrap the shared api.rpc once */
   function wrapRpc() {
     if (!A || !A.rpc || A.rpc._vit) return;
     var orig = A.rpc;
     A.rpc = function (name, params) {
-      var s = now(), p = orig.apply(this, arguments);
-      try { p.then(function () { var d = Math.round(now() - s); if (!rpcMs[name] || d > rpcMs[name]) rpcMs[name] = d; }, function () {}); } catch (e) {}
+      var s = now(), h0 = hidN, p = orig.apply(this, arguments);
+      try { p.then(function () { if (h0 !== hidN || document.visibilityState === "hidden") return; var d = Math.round(now() - s); if (!rpcMs[name] || d > rpcMs[name]) rpcMs[name] = d; }, function () {}); } catch (e) {}
       return p;
     };
     A.rpc._vit = true;

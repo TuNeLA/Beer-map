@@ -29,10 +29,12 @@
     if (flyttGuard()) return Promise.resolve({ data: null, error: { message: "moved" } });
     return new Promise(function (resolve) {
       var done = false;
-      var tm = setTimeout(function () { done = true; resolve({ data: null, error: { message: "timeout" } }); }, RPC_TIMEOUT_MS);
+      var ac = null, tm = setTimeout(function () { done = true; try { if (ac) ac.abort(); } catch (e3) {} resolve({ data: null, error: { message: "timeout" } }); }, RPC_TIMEOUT_MS);
       var finish = function (r) { if (done) return; done = true; clearTimeout(tm); resolve(r); };
       try {
-        Promise.resolve(params ? client.rpc(name, params) : client.rpc(name))
+        var q = params ? client.rpc(name, params) : client.rpc(name);
+        try { if (q && typeof q.abortSignal === "function" && typeof AbortController === "function") { ac = new AbortController(); q = q.abortSignal(ac.signal); } } catch (e2) { ac = null; }
+        Promise.resolve(q)
           .then(function (r) { finish(r || { data: null, error: null }); }, function (e) { finish({ data: null, error: e || { message: "error" } }); });
       } catch (e) { finish({ data: null, error: e }); }
     });
@@ -1691,7 +1693,8 @@
     var wantHeat = !!(heat && heatOn && (force === "heat" || Date.now() - heatAskAt >= HEAT_MS));
     var step = pollV2 === "missing" ? Promise.resolve(null) : fetchV2(startedAt, wantHeat).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") throw e;
-      return pollV2 === "on" ? Promise.reject(e) : null;   // invalid_bbox / odd error on first try: old calls
+      if (pollV2 === "on" || /timeout|fetch|network|load failed|abort/i.test(String((e && e.message) || ""))) return Promise.reject(e);   // review: slow/offline is not "missing"
+      return null;   // invalid_bbox / odd error on first try: old calls
     });
     loadingP = step.then(function (d) {
       if (movedState) return;

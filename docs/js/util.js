@@ -10,7 +10,16 @@
     get: function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
     del: function (k) { try { localStorage.removeItem(k); } catch (e) {} },
-    getJSON: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    getJSON: function (k, d) {
+      try {
+        var v = localStorage.getItem(k); if (!v) return d;
+        var o = JSON.parse(v);
+        // review: a stale value of another shape (old app version, manual edit) must never crash the caller.
+        if (Array.isArray(d) && !Array.isArray(o)) return d;
+        if (d && typeof d === "object" && !Array.isArray(d) && (!o || typeof o !== "object" || Array.isArray(o))) return d;
+        return o;
+      } catch (e) { return d; }
+    },
     setJSON: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
   };
   U.debounce = function (fn, ms) {

@@ -81,9 +81,9 @@
     } catch (e) {}
     return o;
   }
-  function sweep() { var now = Date.now(); Object.keys(memo).forEach(function (k) { if (memo[k].until && memo[k].until < now) delete memo[k]; }); }
+  function sweep() { var now = Date.now(); Object.keys(memo).forEach(function (k) { var m = memo[k]; if (m.until ? m.until < now : now - (m.at || 0) > 8000) delete memo[k]; }); }
   function remember(k, p) {
-    var e = { p: p, until: 0 };
+    var e = { p: p, until: 0, at: Date.now() };
     memo[k] = e;
     p.then(function (res) { if (res && res.ok) e.until = Date.now() + TTL; else if (memo[k] === e) delete memo[k]; },
       function () { if (memo[k] === e) delete memo[k]; });
@@ -109,7 +109,7 @@
           sweep();
           var k = r.fn + "|" + body + "|" + (h.Authorization || h.authorization || "");
           var hit = memo[k];
-          if (hit && (!hit.until || hit.until > Date.now())) { stats.rpcShared++; return answer(hit); }
+          if (hit && (hit.until ? hit.until > Date.now() : Date.now() - (hit.at || 0) < 8000)) { stats.rpcShared++; return answer(hit); }
           var p = of.apply(this, arguments);
           remember(k, p);
           return p.then(function (res) { return res.clone(); });
