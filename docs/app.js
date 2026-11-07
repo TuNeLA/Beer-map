@@ -1539,7 +1539,7 @@
     if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
     hx.hidden = !html;
     // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
-    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || hx.querySelector(".inv-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".dl-cap-chip");
+    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || hx.querySelector(".inv-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".fm-chip") || hx.querySelector(".dl-cap-chip");   // 0195 📸 Gänget fotar ikväll
     hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
     if (urgent) urgent.classList.add("hx-urgent");
     if (st.hidden) hudPanel(false);
@@ -3751,7 +3751,7 @@
     if (nfi || nfr || q.get("friends")) { if (LIVE) mods("openNearLink", nfi || "list", nfr); return; }
     var sk = q.get("skal"), fm = q.get("film");
     if (sk) { if (LIVE) mods("openSkalLink", sk); }
-    else if (fm) { if (LIVE) mods("openFilmLink", fm); }
+    else if (fm) { if (LIVE) mods("openFilmLink", fm, q.get("cam")); }   // 0195: &cam=1 = filmstart push → the camera
     else if (st) { if (LIVE) mods("openStatusLink", st); }
     else if (c) { if (LIVE) mods("openChatLink", c); }
     else if (r) { if (LIVE) mods("openLink", r, q.get("answer")); }

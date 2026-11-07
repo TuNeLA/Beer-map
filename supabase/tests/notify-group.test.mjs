@@ -471,11 +471,25 @@ t("pushCat: every tag kind maps to a kind; safety is safe", () => {
   for (const x of ["olnu-rally-1", "olnu-rally-1-yes", "olnu-inv-2", "olnu-inv-yes-2", "olnu-inv-due-2", "olnu-evgo-3", "olnu-status-4", "olnu-skal-5"]) assert.equal(c(x), "plan", x);
   assert.equal(c("olnu-kaos-2026-11-07"), "kaos");
   assert.equal(c("olnu-tip-1"), "bar"); assert.equal(c("olnu-takeover-g-b"), "bar");
-  for (const x of ["olnu-title-1", "olnu-helg-45", "olnu-film-g"]) assert.equal(c(x), "kul", x);
+  for (const x of ["olnu-title-1", "olnu-helg-45"]) assert.equal(c(x), "kul", x);
+  for (const x of ["olnu-film-g", "olnu-filmstart-g"]) assert.equal(c(x), "film", x);   // 0195
   assert.equal(c("olnu-friend-1"), "vanner");
   for (const x of ["olnu-12-1", "olnu-12-5", "olnu-12-10", "olnu-12-home", "olnu-12-pause", "olnu-come-12", "olnu-coming-12", "olnu-checkin-7", "olnu-eta-3"]) assert.equal(c(x), "ute", x);
   assert.equal(c(""), ""); assert.equal(c("whatever"), "");
-  assert.deepEqual([...m.PUSH_CATS], ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner"]);
+  assert.deepEqual([...m.PUSH_CATS], ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film"]);
+});
+t("0195 filmStartPayload: name, group, cam link, tag; film is noisy", () => {
+  const gid = "11111111-2222-3333-4444-555555555555";
+  const p = m.filmStartPayload(0, "Lisa", "Gänget", gid);
+  assert.equal(p.title, "📸 Lisa har börjat fota med engångskameran – hoppa in!");
+  assert.ok(p.body.endsWith("· Gänget"), p.body);
+  assert.equal(p.url, "/?film=" + gid + "&cam=1"); assert.equal(p.tag, "olnu-filmstart-" + gid);
+  for (let i = 0; i < m.FILM_START_LINES.length; i++) assert.ok(/\{namn\}/.test(m.FILM_START_LINES[i]), "line " + i);
+  assert.equal(m.filmStartPayload(3, "", "", gid).title.includes("Någon"), true);
+  assert.equal(m.pushCat(p.tag), "film"); assert.ok(m.PUSH_NOISY.includes("film"));
+  assert.equal(m.pushGate("film", { off: ["film"] }, 21), "off");
+  assert.equal(m.pushGate("film", { quiet_from: 20, quiet_to: 8 }, 21), "quiet");
+  assert.equal(m.pushGate("film", { off: ["kul"] }, 21), "cap");
 });
 t("inQuiet: plain and wrapping windows", () => {
   assert.equal(m.inQuiet(3, 2, 10), true); assert.equal(m.inQuiet(10, 2, 10), false); assert.equal(m.inQuiet(1, 2, 10), false);

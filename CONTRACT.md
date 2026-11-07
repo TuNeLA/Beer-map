@@ -2871,3 +2871,37 @@ Imposter drink-brand words. Never name other games or apps in the app, the listi
 ### Tests (scratchpad)
 `games3-tests/review-pw.js` (before), `games3-tests/games3-pw.js` (52 live checks: 4 fresh users at the test zone, own group + own event,
 cleanup: leave, `invite_cancel`), plus social2-pw.js, strip-test.js, avatar-pw.js.
+
+## 📸 FILMSTART · "Gänget fotar ikväll" (owner 2026-11-07: the camera is hard to find; migration 0195 + notify-group v27; additive)
+- Research: Lapse — a group shares one roll, it develops later, so the roll start is a shared moment (TechCrunch 2021-12-20);
+  Lapse grew by friends inviting friends + the develop-later suspense (PetaPixel 2023-09-29); POV — one scan/link straight
+  into the camera, no app, a fixed number of shots per guest (pov.camera). → one tap from the map, the count of shots left
+  on the button, one social nudge when the roll starts.
+- Migration `0195_film_start.sql` (applied on the server 2026-11-07 as `0195_film_start`): table `film_starts(group_id, night,
+  started_by, created_at, notified)` pk (group_id, night), RLS on, no client access; trigger `snap_photos_film_start` (after insert,
+  kind film → insert … on conflict do nothing; errors swallowed, the shot never fails); `olnu_push_cats()` + `film`;
+  `film_poll()` v2: each `groups[]` item also has `group_name, shooters, first_name (starter's name in the group), first_me, first_at`.
+- notify-group v27 (NOT deployed yet): `{event:"film_start", group_id}` → every other member. The film_starts row must be
+  started by the caller, < 30 min old, `notified = false` (atomic claim) → one push per group per night. Title from
+  `FILM_START_LINES` (8, `{namn}`, e.g. "📸 Lisa har börjat fota med engångskameran – hoppa in!"), body from `FILM_START_BODIES`
+  (3, `{grupp}`), url `/?film=<gid>&cam=1`, tag `olnu-filmstart-<gid>`, TTL 3 h. Reasons: `no_start`, `no_group`.
+  Push kind `film` = tags `olnu-film-*` (10:00 roll, was `kul`) + `olnu-filmstart-*`; noisy (counts against the cap), obeys
+  nattro and "off".
+- Client (film.js): ONE HUD chip `.fm-chip` (`data-hx="film"`) "📸 Gänget fotar [7]" while a group of mine has film shots
+  tonight, my film is not empty, the roll is not full and the night (05:00) has not ended. It lives in the closed Ikväll row
+  (app.js urgent order: 🚑 → lägesrapport → 🧭 → inbjudan → 🚕 ≥ 10 → 📸 → 🧢); the row never wraps (the chip takes the rest of
+  the row, the pill drops its level tag). Tap = that group's camera; 2+ groups = "📸 Vem fotar ikväll?" chooser. aria-label has
+  the group name and shots left. My first shot of the night (`film_shoot` / FILMCAM queue answer `mine = 1`, `group_n ≤ 3`)
+  → `notify-group {event:"film_start"}` once per group per night per phone (`olnu.filmStartPushed`); the server decides.
+- Deep link `?film=<gid>&cam=1` → the camera (cold start: film.js `linkFromUrl`, removes `film` + `cam`; app open: routeOpen
+  passes `cam`). Plain `?film=<gid>` still opens the newest developed roll.
+- Group page: the 📸 Engångskamera tile is always on the home view (gpage.js `menuOf`: `fm-gi` → home, full width), sub
+  "🔴 Gänget fotar ikväll · 7 kvar för dig" while the group shoots tonight.
+- 🔔 Välj notiser: row "📸 Engångskameran — När gänget börjar fota, och när filmen är framkallad" only when `my_push_prefs().cats`
+  lists `film` (0195); the kul row becomes "⬆️ Befordringar och helgstreak".
+- Test: scratchpad `cam-pw.js` (mocked, 27 checks) + `cam-live.mjs` (fresh anonymous users, own group, no push).
+
+### Grip fix (sheetnav.js)
+- smooth.css runs `.sheet:not([hidden]){animation:smSheetIn}`; the drag class `sn-drag` had `animation:none` only during the
+  drag, so the release restarted smSheetIn: the sheet jumped ~420 px down and slid up again (300 ms) after every spring-back.
+  Now the first drag move sets inline `animation:none` on #sheet until it is hidden (the next open animates again).

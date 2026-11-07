@@ -19,6 +19,8 @@
 // Body events (v22 GRUPPCHEF): {event:"status_req", req_id} -> "📸 Lägesrapport! {namn} vill se läget – 10 min" to the group.
 // Body events (v27 SKÅLTIMMEN): {event:"skal_hour", hour_id} -> "🍻 SKÅLTIMMEN! 3 min – visa din dricka!" to the group;
 //   {event:"film", group_id, night} -> "Filmen är framkallad! 📸" to the group (engångskameran, 10:00).
+// 0195 📸 FILMSTART: {event:"film_start", group_id} -> "📸 Lisa har börjat fota med engångskameran – hoppa in!" to the
+//   group, once per group per night (film_starts claim). Push kind "film" (also the 10:00 roll), noisy.
 // Body events (NÄRA, 0045/0047): {event:"friend", friend_id} -> "🤝 {namn} vill bli din vän", {event:"find", req_id} ->
 //   "🧭 {namn} letar efter dig i vimlet!" (one recipient each; atomic notified claims).
 // Body events (v28 INBJUDNINGAR, 0080/0081): {event:"invite"|"invite_yes"|"invite_due", invite_id}; cron {event:"invite_due"}
@@ -1041,12 +1043,36 @@ export function filmPayload(idx: number, groupName: string, n: number, groupId: 
     tag: `olnu-film-${groupId}`,
   };
 }
+// 0195 📸 FILMSTART: the first film shot of the night in a group → the rest of the group. {namn} = the starter.
+export const FILM_START_LINES: string[] = [
+  "📸 {namn} har börjat fota med engångskameran – hoppa in!",
+  "📸 {namn} har laddat engångskameran. Ställ upp er!",
+  "📸 Klick! {namn} tog kvällens första bild.",
+  "📸 {namn} vevar filmen. Kom med på bild ikväll!",
+  "📸 Engångskameran ä igång – {namn} knäppte först.",
+  "📸 {namn} dokumenterar kvällen. Var med på rullen!",
+  "📸 Fotolabbet öppnar: {namn} har börjat knäppa.",
+  "📸 {namn} har kameran framme. Tummen bort från linsen!",
+];
+export const FILM_START_BODIES: string[] = [
+  "10 bilder var. Ingen ser nåt förrän kl 10 · {grupp}",
+  "Tryck och ta din första bild · {grupp}",
+  "Framkallas kl 10 i morron · {grupp}",
+];
+export function filmStartPayload(idx: number, namn: string, groupName: string, groupId: string) {
+  return {
+    title: fill(FILM_START_LINES[wrapIdx(idx, FILM_START_LINES.length)], { namn: cleanBarName(namn) || "Någon" }),
+    body: fill(FILM_START_BODIES[wrapIdx(idx, FILM_START_BODIES.length)], { grupp: cleanBarName(groupName) || "gruppen" }),
+    url: `/?film=${groupId}&cam=1`,
+    tag: `olnu-filmstart-${groupId}`,
+  };
+}
 
 // ---- v27 🔔 NOTISKOLL (0190): kinds, nattro, cap per night, "Kommer!" ----
 /** Push kinds the user can turn off (same list as olnu_push_cats()). "safe" = always on. "" = unknown (always sent). */
-export const PUSH_CATS = ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner"] as const;
+export const PUSH_CATS = ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film"] as const;
 /** Kinds that count against the cap per night (social noise; chat, plans and safety never count). */
-export const PUSH_NOISY = ["ute", "kaos", "bar", "kul"];
+export const PUSH_NOISY = ["ute", "kaos", "bar", "kul", "film"];
 export const PUSH_CAP_DEFAULT = 15;
 /** The kind of a push, from its tag (every payload has one; tags never hold user ids). */
 export function pushCat(tag: string): string {
@@ -1057,7 +1083,8 @@ export function pushCat(tag: string): string {
   if (/^olnu-(rally|inv|evgo|status|skal)-/.test(t)) return "plan";
   if (/^olnu-kaos-/.test(t)) return "kaos";
   if (/^olnu-(tip|takeover)-/.test(t)) return "bar";
-  if (/^olnu-(title|helg|film)-/.test(t)) return "kul";
+  if (/^olnu-(title|helg)-/.test(t)) return "kul";
+  if (/^olnu-film(start)?-/.test(t)) return "film";   // 0195
   if (/^olnu-friend-/.test(t)) return "vanner";
   if (/^olnu-(come|coming|checkin|eta)-/.test(t) || /^olnu-\d+-/.test(t)) return "ute";
   return "";
@@ -2044,6 +2071,30 @@ async function filmPush(admin: Admin, uid: string, b: Body) {
   return jobs.length ? await sendAll(admin, jobs, 4 * 3600) : NONE;
 }
 
+// 0195 {event:"film_start", group_id}: "📸 Lisa har börjat fota…" to every other member. The film_starts row (trigger on
+// the first film shot of the night) must be started by the caller, < 30 min old, not pushed (atomic claim).
+// Reasons: no_start, no_group.
+async function filmStartPush(admin: Admin, uid: string, b: Body) {
+  const gid = typeof b.group_id === "string" && /^[0-9a-f-]{36}$/i.test(b.group_id) ? b.group_id : "";
+  if (!gid) return { ...NONE, reason: "no_start" };
+  const { data: claimed, error } = await admin
+    .from("film_starts").update({ notified: true })
+    .eq("group_id", gid).eq("started_by", uid).eq("notified", false)
+    .gt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
+    .select("group_id");
+  if (error) throw error;
+  if (!claimed || !claimed[0]) return { ...NONE, reason: "no_start" };
+  const mates = await mateNames(admin, uid, gid);
+  if (mates.size === 0) return { ...NONE, reason: "no_group" };
+  const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  const idx = Math.floor(Math.random() * FILM_START_LINES.length);
+  const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
+    sub: s,
+    payload: JSON.stringify(filmStartPayload(idx, mates.get(s.user_id) ?? "", (g?.name as string) ?? "", gid)),
+  }));
+  return jobs.length ? await sendAll(admin, jobs, 3 * 3600) : NONE;
+}
+
 // ---- NÄRA: friend request + "Hitta kompisen" (migrations 0045 / 0047) ----
 const FRIENDREQ_LINES = [
   "🤝 {namn} vill bli din vän", "🤝 {namn} skickar en vänförfrågan", "🤝 Ny kamrat på ingång: {namn}",
@@ -2375,6 +2426,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "status_req") return json(await statusReqPush(admin, uid, body));
     if (event === "skal_hour") return json(await skalHourPush(admin, uid, body));
     if (event === "film") return json(await filmPush(admin, uid, body));
+    if (event === "film_start") return json(await filmStartPush(admin, uid, body));   // 0195
     if (event === "helg_remind") return json(await helgRemindPush(admin, uid));
     if (event === "friend") return json(await friendPush(admin, uid, body));
     if (event === "find") return json(await findPush(admin, uid, body));

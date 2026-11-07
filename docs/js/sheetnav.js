@@ -228,7 +228,7 @@
       if (!st || e.pointerId !== st.id) return;
       var dy = e.clientY - st.y0;
       if (!st.moved && Math.abs(dy) < 4) return;
-      if (!st.moved) { st.moved = true; s.classList.add("sn-drag"); }
+      if (!st.moved) { st.moved = true; s.classList.add("sn-drag"); s.style.animation = "none"; }   // grip-noreplay: no smSheetIn replay at release
       st.dy = dy;
       var y = dy > 0 ? dy : -Math.pow(-dy, 0.7);   // up: rubber band
       s.style.transform = "translateY(" + y + "px)";
@@ -265,6 +265,8 @@
     }
     s.addEventListener("pointerup", end);
     s.addEventListener("pointercancel", end);
+    // grip-noreplay: the next open of the sheet animates in again.
+    try { new MutationObserver(function () { if (s.hidden && s.style.animation) s.style.animation = ""; }).observe(s, { attributes: true, attributeFilter: ["hidden"] }); } catch (e) {}
   }
 
   /* ---------- Leaflet bar sheet (popup) while #sheet is closed ---------- */

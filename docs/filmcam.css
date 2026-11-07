@@ -74,3 +74,14 @@
 .fm-flip{position:absolute;top:8px;right:8px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:18px;display:none;align-items:center;justify-content:center;cursor:pointer}
 .fm-vf.fm-live .fm-flip:not([hidden]){display:flex}
 .fm-vf .fm-flashfx{z-index:4}
+/* 0195 📸 "Gänget fotar ikväll": the ONE chip next to the closed Ikväll pill (amber, not the red alarm style) */
+.hx-chip.fm-chip,.hx-chip.fm-chip.hx-urgent,.hud-left.open .hx-chip.fm-chip{gap:6px;min-width:0;padding:0 6px 0 12px;border:1px solid var(--ds-amber,#f5a623);background:rgba(36,24,6,.86);color:var(--ds-text,#eef0ec)}
+.hx-chip.fm-chip .fm-cn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hx-chip.fm-chip .fm-ck{flex:0 0 auto;min-width:26px;height:26px;padding:0 7px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font:800 13px/1 var(--ds-sans,inherit)}
+.hud-left.open .hx-chip.fm-chip{grid-column:1 / -1;max-width:none}
+/* same row as the pill: the chip takes the rest of the row (never wraps to a new row); the pill drops its level tag */
+.hud-left:not(.open) .hud-x:has(.fm-chip.hx-urgent){flex:1 1 0;min-width:0}
+.hud-left:not(.open):has(.hud-x .fm-chip.hx-urgent) .my-streak .ms-tag{display:none}
+.gitem:not(.gcard)>div>.fm-gi>.btn.fm-gbtn.fm-tonight{border-color:var(--ds-amber,#f5a623);box-shadow:inset 0 0 0 1px rgba(245,166,35,.35)}
+.gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.fm-gi{grid-column:1 / -1}
+.fm-pick{margin-bottom:var(--ds-2,8px)}

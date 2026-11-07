@@ -124,7 +124,8 @@
     ["vanner", "🤝 Vänförfrågningar", ""],
     ["bar", "🏰 Krogtips och övertag", ""],
     ["kaos", "🔥 KAOS I STAN", "Max en per kväll"],
-    ["kul", "⬆️ Befordringar, helgstreak, film", ""]
+    ["kul", "⬆️ Befordringar, helgstreak, film", ""],
+    ["film", "📸 Engångskameran", "När gänget börjar fota, och när filmen är framkallad"]   // 0195 (only when the server lists it)
   ];
   var QUIET = [["", "Av"], ["23-8", "23–08"], ["0-9", "00–09"], ["1-10", "01–10"], ["2-11", "02–11"], ["3-12", "03–12"], ["8-17", "08–17 (jobbtid)"]];
   var CAPS = [[5, "5"], [10, "10"], [0, "15 (standard)"], [20, "20"], [99, "Obegränsat"]];
@@ -151,10 +152,13 @@
       st = { off: (d.off || []).slice(), quiet: d.quiet_from != null && d.quiet_to != null ? d.quiet_from + "-" + d.quiet_to : "", cap: d.cap || 0 };
       box.innerHTML = "";
       box.appendChild(mk("h3", { text: "🔔 Välj notiser" }));
+      var hasFilm = Array.isArray(d.cats) && d.cats.indexOf("film") >= 0;   // 0195: own 📸 row, kul without film
       KINDS.forEach(function (k) {
+        if (k[0] === "film" && !hasFilm) return;
+        var lbl = k[0] === "kul" && hasFilm ? "⬆️ Befordringar och helgstreak" : k[1];
         var on = st.off.indexOf(k[0]) < 0;
-        var sw = mk("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(on), "aria-label": k[1], "data-kind": k[0] });
-        var lab = mk("span", {}, [document.createTextNode(k[1])]);
+        var sw = mk("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(on), "aria-label": lbl, "data-kind": k[0] });
+        var lab = mk("span", {}, [document.createTextNode(lbl)]);
         if (k[2]) lab.appendChild(mk("small", { class: "muted", style: "display:block;font-size:13px", text: k[2] }));
         var row = mk("div", { class: "toggle-row" }, [lab, sw]);
         // ds.js forwards a tap on the row to the switch, so listen on the switch only.
@@ -179,7 +183,8 @@
       cs.addEventListener("change", function () { st.cap = +cs.value || 0; save(); });
       box.appendChild(mk("h3", { text: "🍺 Max per kväll" }));
       box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:0 0 6px",
-        text: "Gäller vänner ute, kaos, krogar och befordringar. Chatt och planer räknas inte." + (d.tonight ? " Ikväll: " + d.tonight + " st." : "") }));
+        text: (hasFilm ? "Gäller vänner ute, kaos, krogar, befordringar och engångskameran." : "Gäller vänner ute, kaos, krogar och befordringar.") +
+          " Chatt och planer räknas inte." + (d.tonight ? " Ikväll: " + d.tonight + " st." : "") }));
       box.appendChild(cs);
       box.hidden = false;
     }

@@ -106,7 +106,7 @@
         var k = rollKey(x.group_id, x.night);
         if (x.push_mine && !once(PUSH_KEY, k) && A.PUSH_ON) A.invoke("notify-group", { event: "film", group_id: x.group_id, night: x.night });
       });
-      render();
+      render(); hud();   // 0195 📸 chip
     }, function () { busy = false; });
   }
   function fresh() {
@@ -154,7 +154,10 @@
     function paint() {
       var fr = freshOf(g.id), pg = groupOf(g.id);
       b.classList.toggle("new", !!fr);
+      var tn = !fr && pg && (pg.group_n | 0) > 0 && (pg.left | 0) > 0 && !nightOver();   // 0195
+      b.classList.toggle("fm-tonight", !!tn);
       if (fr) sub.textContent = L("🎞️ Ny film! " + fr.n + " bilder", "🎞️ New roll! " + fr.n);
+      else if (tn) sub.textContent = L("🔴 Gänget fotar ikväll · " + pg.left + " kvar för dig", "🔴 Shooting tonight · " + pg.left + " left for you");
       else if (pg) sub.textContent = pg.left > 0 ? L(pg.left + " bilder kvar", pg.left + " shots left") : L("Filmen slut · kl 10", "Out of film · 10:00");
       else sub.textContent = L("10 bilder per kväll", "10 shots per night");
     }
@@ -257,6 +260,7 @@
           var nd = Object.assign({}, d, { left: x.left | 0, mine: x.mine | 0, group_n: x.group_n | 0 });
           stCache[g.id] = { at: Date.now(), d: nd };
           var pg = groupOf(g.id); if (pg) { pg.left = x.left | 0; pg.group_n = x.group_n | 0; }
+          shotDone(g.id, x);   // 0195
           if (document.body.contains(root)) drawCam(root, g, nd);
         }, function () { busy2 = false; cam.classList.remove("busy"); A.toast(errText("invalid_photo"), { err: true }); });
       });
@@ -405,11 +409,13 @@
   }
 
   /* ---------- Deep link ?film=<group id> ---------- */
-  function openFilmLink(gid) {
+  var linkCam = "";
+  function openFilmLink(gid, cam) {
     if (!/^[0-9a-f-]{36}$/i.test(String(gid || ""))) return;
     var tries = 0;
     (function step() {
       if (!A || !A.authed()) { if (tries++ < 60) setTimeout(step, 500); return; }
+      if (cam === "1") { load(true).then(function () { var pg = groupOf(gid); openCam({ id: gid, name: pg ? gName(pg) : "" }); }); return; }   // 0195 filmstart push
       load(true).then(function () {
         var fr = ((P && P.rolls) || []).filter(function (x) { return x.group_id === gid; })[0];
         openRoll({ id: gid, name: fr ? fr.group_name : "" }, fr ? fr.night : null);
@@ -419,11 +425,55 @@
   function linkFromUrl() {
     if (linkDone) return null;
     var id = null;
-    try { id = new URLSearchParams(location.search).get("film"); } catch (e) {}
+    try { id = new URLSearchParams(location.search).get("film"); linkCam = new URLSearchParams(location.search).get("cam") || ""; } catch (e) {}
     if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return null;
     linkDone = true;
-    try { var ps = new URLSearchParams(location.search); ps.delete("film"); history.replaceState(null, "", location.pathname + (ps.toString() ? "?" + ps : "") + location.hash); } catch (e) {}
+    try { var ps = new URLSearchParams(location.search); ps.delete("film"); ps.delete("cam"); history.replaceState(null, "", location.pathname + (ps.toString() ? "?" + ps : "") + location.hash); } catch (e) {}
     return id;
+  }
+
+  /* ---------- 0195 📸 "Gänget fotar ikväll": ONE HUD chip + the film_start push ---------- */
+  var START_KEY = "olnu.filmStartPushed";
+  function nightOver() { if (!P || !P.night) return false; var e = Date.parse(P.night); return isFinite(e) && Date.now() + skew >= e; }
+  function liveGroups() {
+    if (state !== "on" || !P || nightOver()) return [];
+    return (P.groups || []).filter(function (x) { return (x.group_n | 0) > 0 && (x.left | 0) > 0 && (x.group_n | 0) < 60; })
+      .sort(function (a, b) { return (Date.parse(b.first_at) || 0) - (Date.parse(a.first_at) || 0); });
+  }
+  function gName(x) { return (x && x.group_name) || L("Gänget", "The gang"); }
+  function chipHTML() {
+    var lg = liveGroups(); if (!lg.length) return "";
+    var esc = U.esc, x = lg[0], one = lg.length === 1;
+    var txt = one ? L("Gänget fotar", "The gang shoots") : L(lg.length + " gäng fotar", lg.length + " groups shoot");   // short: the one chip slot is narrow
+    var aria = L("Engångskameran: ", "Disposable camera: ") + (one ? L(gName(x) + " fotar ikväll", gName(x) + " is shooting tonight") : L(lg.length + " gäng fotar ikväll", lg.length + " groups are shooting tonight")) + (one ? L(". Du har " + (x.left | 0) + " bilder kvar. Tryck för att fota.", ". You have " + (x.left | 0) + " shots left. Tap to shoot.")
+      : L(". Tryck för att välja grupp.", ". Tap to pick a group."));
+    return '<button type="button" class="hx-chip fm-chip" data-hx="film" aria-label="' + esc(aria) + '"><span aria-hidden="true">📸</span><span class="fm-cn" aria-hidden="true">' +
+      esc(txt) + "</span>" + (one ? '<b class="fm-ck" aria-hidden="true">' + (x.left | 0) + "</b>" : "") + "</button>";
+  }
+  function chipTap() {
+    var lg = liveGroups(); if (!lg.length) return;
+    if (lg.length === 1) { openCam({ id: lg[0].group_id, name: gName(lg[0]) }); return; }
+    A.openSheet(L("📸 Vem fotar ikväll?", "📸 Who is shooting tonight?"), function (body) {
+      lg.forEach(function (x) {
+        body.appendChild(A.btn("📸 " + gName(x) + " · " + (x.group_n | 0) + L(" bilder · ", " shots · ") + (x.left | 0) + L(" kvar för dig", " left for you"),
+          "btn-block fm-pick", function () { openCam({ id: x.group_id, name: gName(x) }); }));
+      });
+    });
+  }
+  function hud() { try { if (A && A.updateCounts) A.updateCounts(); } catch (e) {} }
+  // My first shot tonight in a group → notify-group tells the others. The server sends only when I really was first
+  // (film_starts.started_by), once per group per night; this phone asks once per group per night.
+  function startPush(gid, x) {
+    if (!A || !A.PUSH_ON || !gid || !x || (x.mine | 0) !== 1 || (x.group_n | 0) > 3) return;
+    var k = gid + "@" + String(Date.parse(x.night || (P && P.night) || "") || new Date().toDateString());
+    if (once(START_KEY, k)) return;
+    A.invoke("notify-group", { event: "film_start", group_id: gid });
+  }
+  function shotDone(gid, x) {
+    var pg = groupOf(gid);
+    if (pg && x && x.night && P && P.night && x.night !== P.night && Date.parse(x.night) !== Date.parse(P.night)) pg = null;
+    if (pg && (pg.group_n | 0) <= 1 && !pg.first_at) { pg.first_at = new Date().toISOString(); pg.first_me = true; }
+    startPush(gid, x); hud();
   }
 
   window.FILM = {
@@ -433,6 +483,7 @@
       x = x || {}; var c = stCache[gid], pg = groupOf(gid);
       if (pg) { pg.left = x.left | 0; pg.group_n = x.group_n | 0; }
       if (c && c.d) { c.d = Object.assign({}, c.d, { left: x.left | 0, mine: x.mine | 0, group_n: x.group_n | 0 }); c.at = Date.now(); }
+      shotDone(gid, x);   // 0195
       if (camRoot && camRoot.g.id === gid && document.body.contains(camRoot.root)) drawCam(camRoot.root, camRoot.g, Object.assign({}, camRoot.d, { left: x.left | 0, mine: x.mine | 0, group_n: x.group_n | 0 }));
     },
     openCam: openCam, openRoll: openRoll, openFilmLink: openFilmLink, addToStory: addToStory, _url: photoUrl, _texts: T,
@@ -442,12 +493,14 @@
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(false); });
     },
     onAuthed: function () {
-      load(true); var id = linkFromUrl(); if (id) { openFilmLink(id); return; }
+      load(true); var id = linkFromUrl(); if (id) { openFilmLink(id, linkCam); return; }
       if (window.FILMCAM && window.FILMCAM.onAuthed) { try { window.FILMCAM.onAuthed(); } catch (e) {} return; }
       var p = null; try { p = JSON.parse(localStorage.getItem("olnu.fmPick") || "null"); localStorage.removeItem("olnu.fmPick"); } catch (e) {}
       if (p && p.g && Date.now() - (p.t || 0) < 5 * 60e3) { setTimeout(function () { openCam({ id: String(p.g), name: String(p.n || "") }); }, 800); setTimeout(function () { A.toast(L('📷 Telefonen startade om appen medan kameran var öppen. Försök igen – eller ta bilden först och välj den sen.', '📷 The phone restarted the app while the camera was open. Try again – or take the photo first and pick it after.'), { ms: 8000, urgent: true }); }, 1500); }
     },
-    onReadyShow: function () { var id = linkFromUrl(); if (id) { openFilmLink(id); return "film"; } return ""; },
+    onReadyShow: function () { var id = linkFromUrl(); if (id) { openFilmLink(id, linkCam); return "film"; } return ""; },
+    hudChipsHTML: function () { return chipHTML(); },
+    hudClick: function (a) { if (a === "film") chipTap(); },
     onPoll: function () { load(false); },
     applyText: function () { render(); },
     groupItem: function (g, wrap) { groupItem(g, wrap); }
