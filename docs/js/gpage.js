@@ -83,6 +83,7 @@
     var k = c.classList;
     if (k.contains("gmain")) return "home info";
     if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots")) return "home";
+    if (k.contains("sp-gi")) return "home";   // 🎉 Spel (spel.js): one big entry on home
     if (k.contains("gpg-ph")) return "plus info";
     if (k.contains("gpg-ga") || k.contains("gpg-fold")) return "plus";
     if (k.contains("gp-more")) return "none";

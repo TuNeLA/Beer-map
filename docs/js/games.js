@@ -502,8 +502,11 @@
       var row = el("div", { class: "gm-glinks" });
       gs.forEach(function (g) { row.appendChild(A.btn("🎲 " + (g.name || ""), "btn-small", function () { openGroup(g); })); });
       box.appendChild(row);
+      if (window.SPEL && window.SPEL.lekButton) box.appendChild(window.SPEL.lekButton(gs.length === 1 ? gs[0] : null));
+      else {
       if (window.FORFEST && window.FORFEST.lekButton) box.appendChild(window.FORFEST.lekButton(gs.length === 1 ? gs[0] : null));
       if (window.PARTY && window.PARTY.lekButton) box.appendChild(window.PARTY.lekButton(gs.length === 1 ? gs[0] : null));
+      }
     });
     if (keepScroll && sb) sb.scrollTop = top;
   }
@@ -614,8 +617,11 @@
       box.appendChild(bar);
       box.appendChild(pane);
       view.pane = pane;
+      if (window.SPEL && window.SPEL.lekButton) box.appendChild(window.SPEL.lekButton(g));
+      else {
       if (window.FORFEST && window.FORFEST.lekButton) box.appendChild(window.FORFEST.lekButton(g));
       if (window.PARTY && window.PARTY.lekButton) box.appendChild(window.PARTY.lekButton(g));
+      }
       function drawPane() { if (view.data) renderTab(view, pane); }
       view.redraw = drawPane;
     });

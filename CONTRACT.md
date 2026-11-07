@@ -2516,3 +2516,36 @@ Files: `docs/js/sheetnav.js` (window.SHEETNAV), `docs/js/uxfix.js` (window.UXFIX
 - **Day separators** in every `ul.chat-list` (`li.ux-day`: Idag / Igår / "Fre 6 nov" / + year). Tap a time → full date + time for 4 s.
 - **🚪 Checka ut**: bar sheet where I am checked in shows "✅ Du ä incheckad här" + `button.ci-out[data-ciout]`. RPC `check_out()` → jsonb `{ok, bar_id, bar_name}`: sets the caller's active `checkins.expires_at = now()` (row stays). Then `olnu.checkin` is cleared and the map refreshes.
 - **First visit in a browser tab** (not standalone, intro not done, no JOIN card, no `?flytt/chat/sos`): full-screen `#ux-inst` before the intro: Android one-tap `prompt()` (beforeinstallprompt) or 3 drawn steps (Chrome ⋮ / Samsung ≡); iOS Dela → Lägg till på hemskärmen → Lägg till; in-app browsers → open in Safari/Chrome + copy link; desktop → QR. Small "Använd utan att installera" top right → `olnu.inst1`, `olnu.guideSeen` set, then the intro. app.js waits for `INSTALL1.gate()` after `JOIN.gate()`.
+
+## 🎉 SPEL · one games hub per group + 🃏 Skämskort, 👉 Vem i gänget?, 🙊 Jag har aldrig, ⚖️ Hellre eller? (additive)
+Migrations `0168_spel_rooms.sql` (tables + helpers), `0169_spel_logic.sql` (round engine + RPCs), applied live 2026-11-07 under the same names. Needs 0001 (`olnu_uid`, `group_members`) and 0070 (`olnu_party_lim`, `olnu_party_name`). No row is ever removed (rooms expire / `closed`). No push, no edge function change.
+Client: `docs/js/spel.js` (`window.SPEL`, defer, in `mods()` after PARTY), `docs/js/spel-ui.js` (`window.SPEL_UI`) + `docs/js/spel-cards.js` (`window.SPEL_CARDS`) as `type="text/x-lazy"`, `docs/spel.css` as `rel="x-lazy-css"` (spel.js loads them on the first open). A missing RPC = only the 4 new games fail softly; the hub still opens the old games.
+
+### Ways in (owner: "one clear 🎉 Spel", nothing hidden in +)
+- Group page HOME: one big amber card **🎉 SPEL** (`.sp-gi`; gpage `menuOf` → home, patch 03). Turns green "🃏 Skämskort pågår · Anna, Bo +2 ä med" while a room of the group is live (`spel_group`, also shows a live `party_group` room). Refresh every 20 s while visible.
+- `+`: one tile "🎉 Spel" (groupActions, sect 2). Lek sheets: ONE "🎉 Alla spel" button (`SPEL.lekButton`, patch 04; replaces the Förfest + Partyspel pair).
+- The old tiles `.ff-gi .pt-gi .gm-gi .du-gi` are hidden on the group page (CSS injected by spel.js); every game stays reachable from the hub.
+- API for other modules (event groups = groups): `SPEL.open(g)` hub · `SPEL.play(g, id)` straight into a game · `SPEL.games()`. `g = {id, name}`.
+- After a reload: toast "🃏 Skämskort · du ä med i ett spel · Tillbaka" (`spel_mine`).
+
+### Hub (`#sp`, z-index 2150, opens after the beer-type strip, closes the open sheet; Android back: room → hub → closed)
+Big cards (icon, name, one line, 👥 players, mode chip "📱 Allas egna lurar" / "📱 Allas lurar + 📺 en storskärm" / "📱 En lur, skicka runt" / "🌙 Hela kvällen"), recent 3 first (`olnu.spel.recent`), then by fun: Skämskort, Vem i gänget?, Jag har aldrig, Hellre eller?, Imposter, Namn i hatten, Flocken, Förfestläget, Vågen, Östra lägret, Vem bjuder?, Kvällens lekar, Gängkamp. Party games set `olnu.party.game` then `PARTY.open({group})`; Förfest `FORFEST.open`, Vem bjuder `RUNDAN.openSpin`, Lek `GAMES.openGroup`, Gängkamp `DUEL.open`. A live room of the group = a green "HOPPA IN ›" banner on top.
+
+### Round engine (one open room per group; anyone in the group joins with `spel_open`; late joiners get a hand at once)
+Tables (RLS on, no policies): `spel_rooms(id, group_id, game kort|vem|aldrig|hellre (checked in the functions), phase lobby|pick|judge|vote|result|end, round, goal, game_no, pub, sec (never returned), v, created_by, created_at, updated_at, expires_at = +3 h (bumped +2 h on join/start), closed)` · `spel_players(room_id, user_id, k = md5 key, name (group display name), status in|left, ord, score, hand int[], joined_at, seen_at)` · `spel_inputs(room_id, game_no, round, user_id, val jsonb)` (upsert until the round closes).
+| RPC | params | returns | errors |
+|---|---|---|---|
+| `spel_group` | `p_group_id` | `{room:{id, game, phase, round, n (seen 75 s), names ≤4, is_in}|null}` | `not_member` |
+| `spel_open` | `p_group_id, p_game default null` | view (creates the room; switches game in lobby/end; joins) | `not_member`, `invalid_game`, `slow_down` (60 / 10 min) |
+| `spel_state` | `p_room, p_v default 0` | view, `{same, v}` or `{closed}`; seen max every 10 s; closes a stuck round when everyone still here answered | `room_not_found`, `not_in_room` |
+| `spel_act` | `p_room, p_act, p_val, p_data` | view (`{left}` on leave) | `not_now`, `too_few`, `invalid_game`, `invalid_content`, `invalid_cards`, `invalid_vote`, `not_judge`, `room_closed`, `slow_down` (200/min) |
+| `spel_mine` | – | `{room:{id, group_id, game, phase}|null}` (running room seen in 2 h) | – |
+View = `{v, now, id, group_id, game, phase, round, goal, game_no, pub, closed, expires_at, creator_k, judge_on, me:{k, name, score, status, hand (kort, ONLY own), judge, mine (own input), can_force}, players:[{k, name, score, is_me, done, judge, on}]}`.
+Acts (anyone in the room): `start` (`p_data {game, goal, nw, bp:[1|2 per black card]}` for kort, `{game, goal, np}` for the others; min 3 for kort/vem, 2 for aldrig/hellre active players; resets scores), `next` (result → next round; poll games → end after `goal` rounds), `end`, `lobby`, `game` (p_val), `leave`; `force` (close the round early: judge/creator once 1+ answered, anyone after 75 s). Kort: `play` (`{cards:[ids]}` ⊂ own hand, count = pick), `best` (p_val answer index; judge, or anyone when the judge was not seen 40 s). Poll: `vote` (vem: a player k, not self · aldrig: y|n · hellre: a|b). A round closes by itself when every active player (seen 75 s; kort: minus the judge) has answered.
+- **kort** (Skämskort, 3–10): judge rotates by join order over active players; server deals 7 per hand from a shuffled deck (reshuffled minus held cards when empty), picks the black card; `judge` phase `pub.answers = [{i, cards}]` shuffled and anonymous (who wrote which = `sec.amap`); `best` → +1, `pub.win {i, k, name, cards, score}`; score ≥ goal (2–15, default 5) → `end`. Played cards leave the hand when the round closes; refill on the next round.
+- **vem / aldrig / hellre**: prompt index from a per-game shuffled deck kept in the room (`sec.d_<game>`, no repeats in a night). Result `pub.res`: vem `{counts:[{k,name,n}], top:[k], n}` (top +1 = "dricker"); aldrig `{yes:[{k,name}], no}` (yes +1); hellre `{a, b, drink a|b|null}` (smaller side +1; tie = nobody). Score = drinks → "Kvällens skamlista".
+- Sync: `spel_state` poll every 1.5 s while the overlay shows a room and the page is visible (+ at once on visibilitychange). Same decision as PARTYSPEL (no Realtime).
+
+### Content (`spel-cards.js`, all original; ONLY ADD AT THE END of a list — the server deals by index)
+550 white answer cards, 152 black prompts (20 pick-2, blank = `___`), 90 vem, 100 aldrig, 70 hellre pairs. Tone: adult dalmål / lumpen / Öl Nu, never hateful, no private people. To retire a card, replace its text.
+
