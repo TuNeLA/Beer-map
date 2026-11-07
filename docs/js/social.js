@@ -557,6 +557,7 @@
       function add(m, anchor) {
         if (!m || seen[m.id]) return;
         seen[m.id] = 1;
+        try { if (window.AVATAR && window.AVATAR.chatSeen) window.AVATAR.chatSeen(m, g); } catch (e) {}   // 👤 avatar next to each message group
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
         try { var sys = window.EVCHAT && window.EVCHAT.sysLi && window.EVCHAT.sysLi(m); if (sys) { list.insertBefore(sys, anchor || null); return; } } catch (e) {}
         var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", text: beersText(m) });
@@ -791,6 +792,7 @@
           list.appendChild(row);
           try { if (window.AFTER && window.AFTER.statusRow) window.AFTER.statusRow(g, m, row); } catch (e) {}   // v16: 🏠 home tonight
           try { if (window.FRIENDS2 && window.FRIENDS2.statusRow) window.FRIENDS2.statusRow(g, m, row); } catch (e) {}   // friends2: ➕ Lägg till vän
+          try { if (window.AVATAR && window.AVATAR.statusRow) window.AVATAR.statusRow(g, m, row); } catch (e) {}   // 👤 avatar
           if (m.is_me) meRow = medEl; else if (m.name) (rowsByName[m.name] = rowsByName[m.name] || []).push(medEl);
           var openU = medalsOn() ? function () { window.MEDALS.openMember(g, m, function () { showStatus(g); }); } : null;
           // v25: tap a member → actions (👑 owner: chief/vice; owner/chief/vice: 🚪 remove), else the uniform as before.

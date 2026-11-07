@@ -310,6 +310,7 @@
         var rm = li.querySelector(".nr-rm-b");
         try { var dmb = window.DM && window.DM.friendBtn ? window.DM.friendBtn(p) : null; if (dmb) li.insertBefore(dmb, rm || null); } catch (e) {}   // 💬 Skriv
         li.insertBefore(inviteBtn(p), rm || null);
+        try { if (window.AVATAR && window.AVATAR.friendRow) window.AVATAR.friendRow(p, li); } catch (e) {}   // 👤 avatar
         listBox.appendChild(li);
       });
     });

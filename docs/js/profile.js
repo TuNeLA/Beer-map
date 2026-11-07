@@ -88,7 +88,7 @@
     var hs = safe(function () { return W("HELG").data(); }, null), y = cache.year, fr = cache.friends, gs = cache.groups;
     var saved = safe(function () { return W("ACCOUNT") && W("ACCOUNT").on() ? W("ACCOUNT").saved() : null; }, null);
     var initial = (Array.from(name.trim())[0] || "?").toUpperCase();
-    var h = '<div class="pf-top"><div class="pf-av" aria-hidden="true">' + esc(initial) + "</div>" +
+    var h = '<div class="pf-top">' + (safe(function () { return W("AVATAR").profileAv(initial); }, null) || '<div class="pf-av" aria-hidden="true">' + esc(initial) + "</div>") +
       '<div class="pf-who"><div class="pf-name">' + esc(name) + "</div>" +
       '<button type="button" class="pf-town" data-pf="town">' + (dm ? "📍 " + esc(dm.label) : esc(L("📍 Välj hemstad", "📍 Pick home town"))) + "</button>" +
       '<div class="pf-line">' + esc(line()) + "</div></div>" +

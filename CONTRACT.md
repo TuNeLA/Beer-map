@@ -2642,3 +2642,53 @@ Client only, no migrations. Owner decision 2026-11-07. New file `docs/js/glmap.j
   obstacle rects of bar markers (restaurant dots may sit next to a GL pill), delight lanterns on `.pill`.
 - Test hooks: `GLBARS.on()`, `GLBARS.stats`, `GLBARS._feats()`, `GLBARS._marker(id)`, `GLBARS._img(id)`. Tests: scratchpad `glmap-pw.js`
   (picker, migration, loads, taps, drift < 2 px wheel + pinch, clouds, fallback, shots), `glmap-perf.js` (412 × 915, 4× CPU).
+
+## 👤 AVATAR (own little character: face in a circle + shoulders; owner 2026-11-07; additive, migration 0172)
+Migration `0172_avatars.sql` (applied live 2026-11-07 as `0172_avatars`). One new table, new functions, no row is ever removed.
+Client: `docs/js/avatar.js` (`window.AVATAR`, in `mods()` after PROFIL), `docs/avatar.css`; patches avatar 01–07
+(index.html, app.js, social.js, invite.js, gpage.js, profile.js, this section). A missing RPC (old server) = every avatar part hides
+(Profil shows the initial as before).
+
+### Spec (table `avatars(user_id pk, spec jsonb, updated_at)`, RLS on, no policies)
+`{v:1, sk skin 0–7, fs face 0–2, ey eyes 0–6, br brows 0–4, mt mouth 0–6, hr hair 0–10, hc hair colour 0–8, fh facial hair 0–8,
+hw headwear 0–13, gl glasses/mask 0–10, up top 0–8, uc top/cap colour 0–7, bg background 0–11, ms show medals 0/1, md [medal ids, ≤ 6]}`.
+≤ 1 KB, only these keys, integers in range (`olnu_avatar_max()`), `md` = medals the user owns (never `het`/`medevac`).
+No spec = a default character drawn from `seed` (`olnu_avatar_seed` = md5(user id + ':olnu-avatar'), 8 hex; never the id), so everyone has one.
+The art is drawn client-side (flat SVG, viewBox 100, circle clip). Military tops show a rank mark by rank; the chest shows up to 6 mini ribbons
+(same colours as the uniform, `MEDALS.ribbonBg`).
+
+### Unlocks (`olnu_avatar_locks()` = `AVATAR.LOCKS`, key "slot:index"; nothing is bought)
+`r` meriter rank index ≥ (olnu_rank_of), `m` medal owned (user_medals), `s` best weekend streak ≥ (olnu_helg_calc.best), `b` bars in the passport ≥
+(medal_checkins), `t` towns ≥ (after_nights), `e` events said yes to ≥ (invite_people yes, someone else's invite, started).
+Grönis skin r6 · stjärnögon r8 · tunga medal radio · mohikan r5 · hockeyfrilla b5 · rosa hår medal sr10 · blått hår s3 · styrmustasch r7 ·
+vikingafläta t2 · fältmössa r3 · basker r4 · hjälm r6 · headset r9 · partyhatt e1 · vikingahjälm t3 · skärmmössa r12 · tomteluva medal lucia ·
+krona medal kung · pilotglas r7 · rånarluva r5 · partymask e1 · ögonlapp medal uggla · mörkersikte r14 · monokel r17 · matchtröja medal sg10 ·
+fältjacka r4 · officersjacka r12 · generalsrock r20 · amiralsrock r25 · smoking s4 · kamouflage r3 · eld s2 · norrsken t2 · guld r15.
+
+### RPCs (authenticated only, SECURITY DEFINER, `olnu_uid()`)
+| name | params | returns | errors |
+|---|---|---|---|
+| `my_avatar` | – | `{v, spec\|null, seed, facts:{mer, r, n, title, next_title, next_at, s, b, t, e, m:[medal ids newest first]}}` | `not_authenticated` |
+| `set_my_avatar` | `p_spec jsonb` | `{ok, spec}` (cleaned) | `invalid_avatar`, `locked`, `slow_down` (1 save / 2 s) |
+| `avatars_for` | `p_group_id uuid default null` | `{v, people:[{k, name, is_me, seed, a (spec\|null), r (rank index), md:[≤ 6 ids]}]}` | `not_member`, `not_authenticated` |
+- `avatars_for(gid)`: everyone the caller may see in that chat (`olnu_chat_can` read): members, the DM pair, live senders, me; `name` = the
+  same name `group_msgs` gives (display name, or friend name in temp/DM chats), `k` = 0030 member key. `avatars_for(null)`: me (`k` 'me') +
+  accepted friends (`k` = friend_list `key`). `md` = pinned medals, else the 5 newest (hidden medals never), `[]` when `ms = 0`.
+- Helpers (no client access): `olnu_avatar_facts`, `olnu_avatar_clean`, `olnu_avatar_pub`. Note: the 0160 account merge does not move `avatars`
+  (a merged user gets the default character again).
+
+### Frontend (no new map button, no new HUD chip)
+- **Editor** = Profil hero → tap the avatar (✎). Sheet "Min avatar": big preview + 🎲 (random among unlocked items), rank line
+  ("8 av 34 specialgrejer upplåsta"), 7 wrapping chips Ansikte · Hår · Skägg · Huvud · Ansikte+ · Uniform · Bakgrund, 4-column tiles (each tile
+  = the avatar with that item), locked tile = dim + 🔒 + short need under it, tap → toast "🔒 Låses upp vid <rank> / med medaljen … / … helger i
+  rad / … krogar i Ölpasset / … orter / … event". Uniform tab: "Visa mina medaljer" switch + pick up to 6. Sticky bottom bar: ONE primary
+  "Spara" (disabled = "Sparad ✓"). Save toast in dalmål (7 lines, no repeat in a row).
+- **Shown in:** group chat, event chat and DM (social.js `add` → `AVATAR.chatSeen`): 32 px avatar left of the FIRST bubble of each sender run
+  (others only; mine stay right without one); following bubbles of the same sender hide the name line (`.av-cont`). Tap = the name tap (uniform).
+  Medlemmar rows (`statusRow`, 40 px, green ring = live), Vänner rows (`friendRow`), the group NU strip faces (`faces`), Profil hero (`profileAv`).
+  Map friend pins: not done (left for glmap).
+- Cache: per group / friends 60 s; my own avatar from `my_avatar` on sign-in. Every avatar element has `data-avk` ("me", "g|gid|k|…",
+  "g|gid|n|name", "f|key"), so a save repaints all of them at once.
+- Note for builders: never put an `<svg>` into a string that another module sets with `innerHTML` next to nested buttons (Chrome's
+  fast HTML path then turns off and un-nests them). profileAv returns an empty slot; the SVG is painted after.
+- Test: scratchpad `avatar-pw.js` (mocked; editor, locks with mocked rank 5, save → another user sees it in the chat, Medlemmar, Vänner, NU strip).

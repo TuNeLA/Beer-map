@@ -223,6 +223,7 @@
     box.appendChild(main);
     box.setAttribute("aria-label", line);
     box.__out = out;
+    try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(box, out, wrap.__g); } catch (e) {}   // 👤 avatars
   }
   function loadNow(wrap, g) {
     if (offNow || !A || !A.LIVE || !g || !g.id) { var b0 = wrap.querySelector(".gpg-now"); if (b0) b0.hidden = true; return; }
