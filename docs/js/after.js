@@ -112,7 +112,7 @@
     ["fredag13", "🐈‍⬛", "Svarta katten", "Fredag den 13:e och du gick ändå ut. Modigt.", "Var ute en fredag den 13:e.", 1],
     ["halloween", "🎃", "Pumpapatrullen", "Ute på halloween. Det mest skrämmande var kön.", "Var ute på halloween (31 okt).", 1],
     ["kraftskiva", "🦞", "Kräftkaptenen", "Kräftskiva i augusti. Hatten satt, visan satt.", "Var ute en fredag i augusti.", 1],
-    ["kompisvakt", "💚", "Kompisvakten", "Du kollade läget med en kompis på MEDEVAC. Finaste sortens soldat.", "Tryck ”🚑 Jag kollar” när en kompis behöver det.", 1]
+    ["kompisvakt", "💚", "Kompisvakten", "Du kollade läget med en kompis som behövde det. Finaste sortens soldat.", "Tryck ”🚑 Jag kollar” när en kompis behöver det.", 1]
   ];
   function addMedalNames() {
     var M = window.MEDALS; if (!M || !Array.isArray(M.CAT)) return;
@@ -254,13 +254,13 @@
 
   /* ---------- 2. "🚑 Jag kollar" ---------- */
   // Owner 2026-10-18: crew hype, not warnings. The "Jag kollar" button (buddy check) stays as a tool.
-  var MED_ASK = [
-    "🦅 {name} har gått in i legendläge! Vem i truppen hänger med hen?",
-    "🎖️ {name} ä kvällens legend. Vem går dit och gör honnör?",
-    "💚 {name} ä i legendläge. Ingen lämnas kvar – vem ä wingman?",
-    "🦅 Truppen kallar: {name} behöver en wingman. Vem tar uppdraget?",
-    "🫂 {name} skriver historia ikväll. Vem ä med i kapitlet?",
-    "⚡ {name} ä i toppform. Vem i gänget kollar in och hyllar?"
+  var MED_ASK = [   // SAFE: care, not praise (owner 2026-11-07)
+    "🚑 {name} har nått kebabläget. Vem tar vatten och ett stadigt grepp?",
+    "🚑 {name} ä på 10. Nån som kollar läget?",
+    "💚 {name} ä på 10. Ingen lämnas kvar – vem ä wingman?",
+    "🗺️ Truppen kallar: {name} behöver en kartläsare hem. Vem tar uppdraget?",
+    "🫂 {name} ä på 10. Vem går dit med ett glas vatten?",
+    "📻 Radion: {name} ä på 10. Truppen, kolla läget."
   ];
   var MED_SEEN_KEY = "olnu.afMedSeen";
   var medPins = [], checks = [], checksAt = 0, checksBusy = false, checkSeen = {};

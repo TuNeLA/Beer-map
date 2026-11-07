@@ -34,7 +34,7 @@
       "Tyst på eventfronten i {stad}. Antingen ä det lugnt, eller så har ingen berättat.",
       "Inget på schemat i {stad}. Gör ett eget: säg ”skål” högt nånstans.",
       "Spaningen hittade inga event i {stad} ikväll. Fältet ä öppet för ditt tips.",
-      "Kalendern ä tom i {stad}. Dalregementet föreslår egen pubquiz: ”vem ä törstigast?”"],
+      "Kalendern ä tom i {stad}. Dalregementet föreslår egen pubquiz: ”vem kan flest dalaord?”"],
     emptyEn: ["No events reported in {stad} tonight. Be the first to add one!"],
     tip: ["➕ Tipsa om ett event", "➕ Add an event"],
     go: ["🪖 Vi går!", "🪖 We're going!"],

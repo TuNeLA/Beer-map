@@ -1,21 +1,23 @@
-/* Öl Nu v14 — privacy & law (CONTRACT "v14 CLIENT"):
-   🔒 Integritet page, 🗑️ Radera allt om mig (RPC delete_my_data, migration 0016), 🏠 Hemzon (local only),
+/* PintsNow v14 — privacy & law (CONTRACT "v14 CLIENT", rewritten by SAFE 2026-11-07):
+   🔒 Integritet (true text: e-mail login, Swish, speed data, 30-day location retention, processors, contact),
+   🗑️ Radera mitt konto (RPC delete_my_data_v2, migration 0209; falls back to delete_my_data), 🏠 Hemzon (local only),
    plus the v14 strings (undo, sheets, worldwide, all drinks). window.PRIVACY, called by app.js.
-   Nothing here breaks the map: a missing RPC only shows a toast. */
+   window.PRIVACY also forwards init / onAuthed / settingsSheet to window.SAFETY (js/safety.js), so the app.js
+   mods() list needs no new entry. Swedish only. Nothing here breaks the map: a missing RPC only shows a toast. */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N, t = I.t, esc = U.esc;
   var A = null;
-  var REPO = "https://github.com/TuNeLA/Beer-map/issues";
+  var SUPPORT = "support@pintsnow.com", DEL_PAGE = "https://pintsnow.com/radera.html", POLICY = "https://pintsnow.com/integritet.html";
   var HOME_KEY = "olnu.home", HOME_R = 300;
 
   I.add({
     sv: {
       // Worldwide + all drinks (owner decisions G, H)
-      live: function (n) { return "<b>" + n + "</b> dricker i världen just nu"; },
+      live: function (n) { return "<b>" + n + "</b> ute i världen just nu"; },
       outsideServer: "Servern tar int' emot öl utanför Sverige än – snart!",
       tonight: "Ikväll", beerNo: function (n) { return n + " 🍺 ikväll"; },
-      lvlN: function (n) { return n >= 10 ? "Nr " + n + " ikväll. Legendläge, skål!" : "Nr " + n + " ikväll. Skål!"; },
+      lvlN: function (n) { return "Nr " + n + " ikväll. Skål!"; },
       // Undo
       undoBtn: "ÅNGRA", undoBusy: "Ångrar…",
       undoReported: function (n) { return "🍺 Nr " + n + " rapporterad"; },
@@ -39,109 +41,62 @@
       reauthText: "Appen kan inte nå ditt konto. Om du fortsätter får du ett nytt, tomt konto och tappar dina grupper och din statistik. Har du en flyttkod från en annan app/telefon? Klistra in den i stället.",
       reauthNew: "Fortsätt med nytt konto", reauthFlytt: "📥 Jag har en flyttkod", reauthRetry: "🔄 Försök igen",
       // 18+
-      ageTitle: "En sak till", ageText: "PintsNow handlar om alkohol. Appen ä bara för dig som ä 18 år eller äldre.",
-      // Privacy page
+      ageTitle: "En sak till", ageText: "PintsNow ä en app för kvällar ute med kompisar. Den ä bara för dig som ä 18 år eller äldre.",
+      // Privacy page (SAFE 2026-11-07: must be true – e-mail login, Swish, speed data, retention, processors, contact)
       privBtn: "🔒 Integritet", privTitle: "🔒 Integritet",
-      privIntro: "Kort och ärligt: det här sparar PintsNow, vem som ser det och hur länge.",
-      privWhatH: "Vad sparas på servern?",
-      privWhat: ["Ett anonymt konto-id. Ingen e-post, inget telefonnummer, inget lösenord.",
-        "Ditt namn – bara när du skapar eller går med i en grupp. Bara dina grupper ser det.",
-        "Dina öl och andra drycker: antal, tid och plats.",
-        "Incheckningar (krog och tid), gruppchatt, inkallelser, kö-rapporter, tips och ölsorter.",
+      privIntro: "Kort och ärligt: vad PintsNow sparar, varför, vem som ser det och hur länge. PintsNow drivs av en privatperson i Ludvika (Anton Larsson, TuNeLA).",
+      privWhatH: "Vad sparas?",
+      privWhat: ["Ett konto-id. Kontot ä anonymt tills du själv sparar det med e-post (frivilligt, inloggning med engångskod).",
+        "E-post – bara om du sparar kontot. Den används bara för inloggning, aldrig för reklam.",
+        "Ditt namn och din avatar, när du sätter dem eller går med i en grupp.",
+        "Ålder: bara att du ä 18+ och datumet du svarade. Inte födelseåret.",
+        "Drycker: antal, tid och plats (krogen eller ett område).",
+        "Plats: din pin, incheckningar och – bara när du startar dem – \"Följ mig hem\" och \"Hitta kompis\".",
+        "Det du skickar: chatt, bilder, röstklipp, direktmeddelanden, event, tips och önskemål.",
+        "Swish-nummer – bara om du själv lägger in det för att dela notan. Alla i gruppen ser numret.",
         "Notiser: din notis-adress och ett område på ~1 km (bara om du slår på notiser).",
-        "Fakta för medaljer och statistik: öl per vecka och kväll, vilka krogar, ett område på ~50 km.",
-        "Anonyma värmepunkter (utan konto-id)."],
+        "Snabbhetsdata: telefonmodell, webbläsare, appversion, laddtid och fel. För att hitta buggar.",
+        "Anmälningar och blockeringar som du gör, och anmälningar om dina inlägg."],
       privSeeH: "Vem ser vad?",
-      privSee: ["Din grupp: ditt namn, din exakta pin, dina öl, din incheckning och chatten.",
-        "Alla andra: bara krogen du ä på eller ett område på ~500 m. Inget namn. Tiden avrundas till 15 min och pinnen byter id var 10:e minut, så ingen kan följa dig.",
-        "👻 Spökläge: ölen räknas men ingen ser din pin.",
-        "🏠 Hemzon: öl inom 300 m från ditt hem visas bara som område (sparas bara på din telefon)."],
+      privSee: ["Dina grupper: ditt namn, din avatar, din exakta pin, hur många du loggat ikväll, din incheckning och chatten.",
+        "Alla andra: bara krogen eller ett område på ~500 m. Inget namn och inget antal. Tiden avrundas till 15 min och pinnen byter id var 10:e minut, så ingen kan följa dig.",
+        "👻 Spökläge: ingen ser din pin. 🏠 Hemzon: nära hemmet visas bara ett område (hemzonen sparas bara på telefonen).",
+        "🚫 Blockerar du nån ser ni int' varandras chatt, bilder, röstklipp eller pin."],
+      privWhyH: "Varför får vi spara det?",
+      privWhy: ["Kartan, grupperna och chatten: för att ge dig tjänsten du bett om (avtal, GDPR art. 6.1 b).",
+        "E-post, notiser, Swish-nummer, bilder och röst: bara när du själv lägger in eller skickar dem (samtycke, art. 6.1 a). Du kan ta bort dem när du vill.",
+        "Snabbhetsdata, anmälningar och blockeringar: för att appen ska fungera och vara trygg (berättigat intresse, art. 6.1 f)."],
       privLongH: "Hur länge?",
-      privLong: ["Pins, chatt, incheckningar och inkallelser försvinner från kartan kl 05:00. Raderna ligger kvar i databasen tills en automatisk städning finns (den ä int' byggd än).",
-        "Medaljer och statistik sparas så länge kontot finns.",
-        "Anonyma värmepunkter: ungefär 10 dagar."],
+      privLong: ["Pins, chatt, bilder, röstklipp och incheckningar försvinner ur appen kl 05:00 (en grupp kan välja att spara sin chatt).",
+        "Exakta platser tas bort ur databasen efter 30 dagar. Kvar blir bara ett grovt område (~5 km) för statistik och medaljer. Varför 30 dagar: \"Mina kvällar\" visar 30 dagar bakåt, och vi behöver tid att hantera anmälningar.",
+        "Telefonmodell och webbläsare tas bort efter 30 dagar.",
+        "Medaljer, meriter och kvällsstatistik finns kvar så länge kontot finns.",
+        "Raderar du kontot försvinner allt om dig direkt (se nedan)."],
+      privWhoH: "Vilka hjälper oss?",
+      privWho: ["Supabase – databas och inloggning (servrar i EU, Paris).",
+        "Mapbox – kartan. Mapbox ser din IP-adress och vilket kartområde du tittar på (USA, EU-avtal om dataöverföring).",
+        "GitHub Pages – visar själva appen och ser din IP-adress.",
+        "Google Workspace – e-posten till och från " + SUPPORT + ".",
+        "Push-tjänsterna i din telefon (Google, Apple, Mozilla) – bara om du slår på notiser. Reservkartan (Esri/Carto) och Google Fonts ser din IP-adress."],
       privNoH: "Det gör vi int'",
-      privNo: ["Ingen reklam. Ingen spårning. Vi säljer ingen data.",
-        "Kartbilder kommer från Esri och teckensnitt från Google Fonts – de ser din IP-adress när de skickar bilderna. Servern ä Supabase, appen ligger på GitHub Pages."],
+      privNo: ["Ingen reklam. Ingen spårning mellan appar. Vi säljer ingen data."],
       privDelH: "Radera",
-      privDel: "Under ⚙️ Inställningar → \"🗑️ Radera allt om mig\": du lämnar dina grupper, notiserna stängs av och allt som ä kopplat till dig blir anonymt (det går int' att koppla till dig igen). Anonyma siffror i totalerna finns kvar. Sen rensas telefonen.",
-      privAge: "🔞 Appen ä för dig som ä 18 år eller äldre. Drick lagom.",
+      privDel: "⚙️ Inställningar → \"🗑️ Radera mitt konto\": namn, avatar, e-post, chatt, bilder, röstklipp, meddelanden, Swish-nummer, platser, notiser och själva kontot raderas. Delade saker, som en grupp du skapat, blir kvar för de andra – utan dig. Har du tappat appen? Gå till pintsnow.com/radera.",
+      privAge: "🔞 PintsNow ä för dig som ä 18 år eller äldre.",
       privContactH: "Frågor?",
-      privContact: "Skriv ett ärende på GitHub:",
-      // Delete all
-      delBtn: "🗑️ Radera allt om mig",
-      delQ1: "Vill du radera allt om dig?",
-      delInfo: "Du lämnar alla grupper, notiserna stängs av, din pin försvinner och allt som ä kopplat till ditt konto blir anonymt. Din telefon rensas och appen startar om som ny.",
+      privContact: "Vill du se din data, rätta den eller klaga? Mejla " + SUPPORT + ". Du kan också klaga hos Integritetsskyddsmyndigheten (imy.se).",
+      // Delete all (v2: real deletion, 0209)
+      delBtn: "🗑️ Radera mitt konto",
+      delQ1: "Vill du radera ditt konto och allt om dig?",
+      delInfo: "Allt om dig raderas: namn, avatar, e-post, chatt, bilder, röstklipp, meddelanden, Swish-nummer, platser, notiser och kontot. Du lämnar alla grupper. Det går int' att ångra. Telefonen rensas och appen startar om som ny.",
       delYes1: "Ja, radera", delQ2: "Helt säker? Det går int' att ångra.", delYes2: "🗑️ Radera nu",
-      delBusy: "Raderar…", delDone: "🗑️ Allt om dig ä raderat. Appen startar om.",
-      delMissing: "Servern kan int' radera än. Försök igen senare.", delFail: "Det gick int' att radera. Försök igen.",
+      delBusy: "Raderar…", delDone: "🗑️ Ditt konto ä raderat. Appen startar om.",
+      delMissing: "Servern kan int' radera än. Mejla " + SUPPORT + " så raderar vi åt dig.", delFail: "Det gick int' att radera. Försök igen, eller mejla " + SUPPORT + ".",
       // Home zone
       homeH: "🏠 Min hemzon",
       homeInfo: "Öl inom 300 m från hemmet visas alltid som ungefärlig plats (om du int' väljer en krog). Sparas bara på din telefon.",
       homeSet: "📍 Sätt hemzon här", homeClear: "Ta bort hemzonen", homeSaved: "🏠 Hemzonen ä sparad.",
       homeCleared: "Hemzonen ä borttagen.", homeIsOn: "🏠 Hemzon på (300 m)", homeIsOff: "Ingen hemzon satt."
-    },
-    en: {
-      live: function (n) { return "<b>" + n + "</b> drinking in the world now"; },
-      outsideServer: "The server does not take beers outside Sweden yet – soon!",
-      tonight: "Tonight", beerNo: function (n) { return n + " 🍺 tonight"; },
-      lvlN: function (n) { return "No. " + n + " tonight. Cheers!"; },
-      undoBtn: "UNDO", undoBusy: "Undoing…",
-      undoReported: function (n) { return "🍺 No. " + n + " reported"; },
-      undoToasts: ["↩️ Beer undone. The beer god pretends he did not see.", "↩️ Rewound. That beer never happened.",
-        "↩️ Undone! The cap is back on.", "↩️ Fine, you were just holding it for a friend.",
-        "↩️ Gone. The bartender already forgot it.", "↩️ Mis-tap? No problem, soldier. Beer removed.",
-        "↩️ The time machine works. The beer is back in the fridge.", "↩️ Struck from the record. Nobody saw a thing.",
-        "↩️ Beer cancelled. The glass is full again – in theory.", "↩️ Reversed! The counter is back where it was."],
-      undoTooLate: "Too late to undo – that beer is history.",
-      undoLimit: "Max 3 undos per night. This one stays.",
-      undoNone: "There is no beer to undo.", undoFail: "Could not undo. Try again.",
-      whereCancel: "No beer reported.", wherePlaces: "🍽️ Restaurants & cafés",
-      whereArea: "📍 Area only (no bar)", whereExact: "📌 Exactly here",
-      homeNote: "🏠 Home zone: approximate spot",
-      hidePin: "🙈 Hide my pin",
-      placeTypes: { restaurant: "Restaurant", fast_food: "Fast food", cafe: "Café" },
-      reauthTitle: "Your sign-in expired",
-      reauthText: "The app cannot reach your account. If you continue you get a new, empty account and lose your groups and stats. Do you have a move code from another app/phone? Paste it instead.",
-      reauthNew: "Continue with a new account", reauthFlytt: "📥 I have a move code", reauthRetry: "🔄 Try again",
-      ageTitle: "One more thing", ageText: "PintsNow is about alcohol. The app is only for people who are 18 or older.",
-      privBtn: "🔒 Privacy", privTitle: "🔒 Privacy",
-      privIntro: "Short and honest: what PintsNow keeps, who sees it and for how long.",
-      privWhatH: "What is stored on the server?",
-      privWhat: ["An anonymous account id. No e-mail, no phone number, no password.",
-        "Your name – only when you create or join a group. Only your groups see it.",
-        "Your beers and other drinks: count, time and place.",
-        "Check-ins (bar and time), group chat, call-outs, queue reports, tips and beer types.",
-        "Notifications: your push address and a ~1 km area (only if you turn notifications on).",
-        "Facts for medals and stats: beers per week and night, which bars, a ~50 km region.",
-        "Anonymous heat points (no account id)."],
-      privSeeH: "Who sees what?",
-      privSee: ["Your group: your name, your exact pin, your beers, your check-in and the chat.",
-        "Everybody else: only the bar you are at or a ~500 m area. No name. The time is rounded to 15 min and the pin gets a new id every 10 minutes, so nobody can follow you.",
-        "👻 Ghost mode: the beer counts but nobody sees your pin.",
-        "🏠 Home zone: beers within 300 m of your home show only as an area (kept on your phone only)."],
-      privLongH: "For how long?",
-      privLong: ["Pins, chat, check-ins and call-outs leave the map at 05:00. The rows stay in the database until an automatic cleanup exists (not built yet).",
-        "Medals and stats are kept as long as the account exists.",
-        "Anonymous heat points: about 10 days."],
-      privNoH: "What we do not do",
-      privNo: ["No ads. No tracking. We do not sell data.",
-        "Map images come from Esri and fonts from Google Fonts – they see your IP address when they send them. The server is Supabase, the app is on GitHub Pages."],
-      privDelH: "Delete",
-      privDel: "In ⚙️ Settings → \"🗑️ Delete everything about me\": you leave your groups, notifications turn off and everything linked to you becomes anonymous (it can never be linked to you again). Anonymous numbers in the totals stay. Then the phone is cleared.",
-      privAge: "🔞 The app is for people who are 18 or older. Drink responsibly.",
-      privContactH: "Questions?",
-      privContact: "Open an issue on GitHub:",
-      delBtn: "🗑️ Delete everything about me",
-      delQ1: "Delete everything about you?",
-      delInfo: "You leave all groups, notifications turn off, your pin goes away and everything linked to your account becomes anonymous. Your phone is cleared and the app starts again as new.",
-      delYes1: "Yes, delete", delQ2: "Completely sure? This cannot be undone.", delYes2: "🗑️ Delete now",
-      delBusy: "Deleting…", delDone: "🗑️ Everything about you is deleted. The app restarts.",
-      delMissing: "The server cannot delete yet. Try again later.", delFail: "Could not delete. Try again.",
-      homeH: "🏠 My home zone",
-      homeInfo: "Beers within 300 m of home always show as an approximate spot (unless you pick a bar). Kept on your phone only.",
-      homeSet: "📍 Set home zone here", homeClear: "Remove home zone", homeSaved: "🏠 Home zone saved.",
-      homeCleared: "Home zone removed.", homeIsOn: "🏠 Home zone on (300 m)", homeIsOff: "No home zone set."
     }
   });
 
@@ -186,12 +141,17 @@
     body.appendChild(el("p", { text: t("privIntro") }));
     body.appendChild(el("h3", { text: t("privWhatH") })); body.appendChild(ul(t("privWhat")));
     body.appendChild(el("h3", { text: t("privSeeH") })); body.appendChild(ul(t("privSee")));
+    body.appendChild(el("h3", { text: t("privWhyH") })); body.appendChild(ul(t("privWhy")));
     body.appendChild(el("h3", { text: t("privLongH") })); body.appendChild(ul(t("privLong")));
+    body.appendChild(el("h3", { text: t("privWhoH") })); body.appendChild(ul(t("privWho")));
     body.appendChild(el("h3", { text: t("privNoH") })); body.appendChild(ul(t("privNo")));
     body.appendChild(el("h3", { text: t("privDelH") })); body.appendChild(el("p", { text: t("privDel") }));
     body.appendChild(el("p", { text: t("privAge") }));
     body.appendChild(el("h3", { text: t("privContactH") }));
-    body.appendChild(el("p", {}, [t("privContact") + " ", el("a", { href: REPO, target: "_blank", rel: "noopener noreferrer", text: "github.com/TuNeLA/Beer-map" })]));
+    body.appendChild(el("p", { text: t("privContact") }));
+    body.appendChild(el("p", {}, [el("a", { href: "mailto:" + SUPPORT, text: "✉️ " + SUPPORT }), " · ",
+      el("a", { href: POLICY, target: "_blank", rel: "noopener noreferrer", text: "pintsnow.com/integritet" }), " · ",
+      el("a", { href: DEL_PAGE, target: "_blank", rel: "noopener noreferrer", text: "pintsnow.com/radera" })]));
   }
   function showPrivacy(back) {
     A.openSheet(t("privTitle"), function (body) { fillPrivacy(body, back); }, { now: true });
@@ -227,7 +187,13 @@
     // This phone's push subscription goes first (max 3 s); the server removes all of them anyway.
     var unsub = window.PUSH && window.PUSH.supported() ? Promise.race([window.PUSH.disable(A.rpc).catch(function () {}),
       new Promise(function (r) { setTimeout(r, 3000); })]) : Promise.resolve();
-    unsub.then(function () { return A.rpc("delete_my_data"); }).then(function (r) {
+    // v2 (0209) really deletes, also the login. Old server (PGRST202) → v1 (anonymises).
+    unsub.then(function () { return A.rpc("delete_my_data_v2"); }).then(function (r) {
+      if (r.error && U.missing(r.error)) return A.rpc("delete_my_data");
+      var d = A.parseData(r.data) || {};
+      if (!r.error && d.ok === false) return { data: null, error: { message: "delete_incomplete" } };
+      return r;
+    }).then(function (r) {
       if (r.error) {
         deleting = false;
         if (button) { button.disabled = false; button.textContent = t("delYes2"); }
@@ -250,8 +216,12 @@
     });
   }
 
+  // 🛡️ js/safety.js gets its hooks through PRIVACY (already in the app.js mods() list).
+  function fw(fn, a, b) { var S = window.SAFETY; if (S && typeof S[fn] === "function") { try { return S[fn](a, b); } catch (e) { try { console.warn("olnu safety " + fn, e); } catch (x) {} } } }
   window.PRIVACY = {
-    init: function (api) { A = api; },
+    init: function (api) { A = api; fw("init", api); },
+    onAuthed: function (a) { fw("onAuthed", a); },
+    settingsSheet: function (body) { fw("settingsSheet", body); },
     showPrivacy: showPrivacy,
     fillPrivacy: function (body, back) { fillPrivacy(body, back); },
     showDelete: showDelete,

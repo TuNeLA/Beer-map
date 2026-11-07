@@ -266,6 +266,7 @@
     if (!mine || !mine.live) return;
     A.openSheet(L("🏠 Följ mig hem", "🏠 Walk me home"), function (body) {
       var el = A.el;
+      if (window.SAFETY && window.SAFETY.sos112) window.SAFETY.sos112(body);   // SAFE: 📞 Ring 112 first
       body.appendChild(el("p", { text: L("👀 " + (mine.watching | 0) + " av " + (mine.n | 0) + " tittar just nu" + (mine.group_name ? " · ✅ Hemma! skickas till " + mine.group_name : ""),
         "👀 " + (mine.watching | 0) + " of " + (mine.n | 0) + " watching") }));
       body.appendChild(el("p", { class: "hf-warn", text: L("📱 Håll appen öppen med skärmen på hela vägen. En webbapp får ingen GPS i bakgrunden – iPhone stänger av direkt, Android efter en stund.",
@@ -285,6 +286,7 @@
     var h = home();
     A.openSheet(L("🏠 Följ mig hem", "🏠 Walk me home"), function (body) {
       var el = A.el;
+      if (window.SAFETY && window.SAFETY.sos112) window.SAFETY.sos112(body);   // SAFE: 📞 Ring 112 first
       body.appendChild(el("p", { class: "hf-lead", text: L("Dina valda kompisar ser dig röra dig på kartan tills du ä hemma. Når du hemzonen skickas \"✅ Hemma!\" och delningen slutar av sig själv (max 2 timmar).",
         "The friends you pick see you move on the map until you are home. At home a \"✅ Home!\" goes out and sharing stops (max 2 hours).") }));
       if (!h) {

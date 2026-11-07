@@ -102,8 +102,9 @@
   }
   function saveLog(l) { U.ls.setJSON(LOG_KEY, l); }
 
-  var BADGES = [["first", "🍺"], ["newbar", "🗺️"], ["barhop", "🦘"], ["early", "☀️"], ["owl", "🦉"], ["hot", "🔥"], ["med", "🚁"],
-    ["survivor", "🩹"], ["home01", "🏠"], ["skalking", "🍻"], ["week", "⚔️"], ["king", "👑"], ["ghost", "👻"], ["chat", "💬"], ["side", "🥃"]];
+  // SAFE: "hot" (5), "med" (10) and "king" (most drinks) are retired – no badge for volume. Earned ones stay stored.
+  var BADGES = [["first", "🍺"], ["newbar", "🗺️"], ["barhop", "🦘"], ["early", "☀️"], ["owl", "🦉"],
+    ["survivor", "🏠"], ["home01", "🏠"], ["skalking", "🍻"], ["week", "⚔️"], ["ghost", "👻"], ["chat", "💬"], ["side", "🥃"]];
   function badgeEmoji(id) { for (var i = 0; i < BADGES.length; i++) if (BADGES[i][0] === id) return BADGES[i][1]; return "🎖️"; }
   function badgeName(id) { var m = t("badges") || {}; return (m[id] || [id])[0]; }
   function award(id) {
@@ -183,7 +184,7 @@
     return { key: l.key, beers: l.beers | 0, others: l.others | 0, bars: (l.bars || []).length, skal: l.skal | 0, best: l.best | 0,
       badges: (l.badges || []).map(badgeEmoji), title: st ? st.title : "" };
   }
-  function streakText(n) { return n >= 10 ? "🚁 MEDEVAC" : n >= 5 ? "🔥 HOT STREAK" : n > 0 ? n + " 🍺" : t("nightStreakNone"); }
+  function streakText(n) { return n > 0 ? n + " 🍺" : t("nightStreakNone"); }   // SAFE: no HOT STREAK / MEDEVAC label
   function fontsReady() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     var p = Promise.all(['64px "Black Ops One"', '40px "Share Tech Mono"', '700 40px "Chakra Petch"'].map(function (f) { return document.fonts.load(f).catch(function () {}); }));
@@ -449,8 +450,7 @@
       var h = U.hourSthlm();
       if (h >= 5 && h < 18) award("early");
       if (h >= 2 && h < 5) award("owl");
-      if (tot >= 5) award("hot");
-      if (tot >= 10) award("med");
+      // SAFE: no badge for 5 / 10 drinks any more.
       if (nights >= 3) award("week");
       if (o.ghost) { award("ghost"); toastLater(t("ghostToast"), {}, 1200); }
       A.updateCounts();
@@ -474,7 +474,7 @@
       if (n < 1) return;
       var h = U.hourSthlm();
       if (h >= 5 || h < 1) award("home01");
-      if (n >= 10) award("survivor");
+      award("survivor");   // SAFE: "Hem säkert" – any night, not after 10
     },
     // Next open after 05:00: show last night's card once.
     onReadyShow: function () {

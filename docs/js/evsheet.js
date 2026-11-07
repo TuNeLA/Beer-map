@@ -57,7 +57,7 @@
     // empty states: {vad} = the filter, {nar} = the time
     empty: ["Hä ä tyst som i en kolmila {nar}. Inga {vad} på kartan – tipsa du, så får hela Dalarna veta.",
       "Spaningen hittade inga {vad} {nar}. Antingen ä det lugnt i stan, eller så har ingen berättat.",
-      "Inga {vad} {nar}. Dalregementet föreslår egen underhållning: ”vem ä törstigast?”",
+      "Inga {vad} {nar}. Dalregementet föreslår egen underhållning: ”vem kan flest dalaord?”",
       "Kalendern ä tom {nar}. Int' ens en trubadur i sikte. Tipsa om nåt!",
       "Nä du, inga {vad} {nar}. Gå ut ändå – det ä ju så event uppstår.",
       "Radiotystnad på eventfronten {nar}. Högkvarteret väntar på din rapport."],
@@ -678,6 +678,7 @@
     var e = evById(detailId); if (!e) { closeDetail(); return; }
     var s = goState(e.id), tv = !!e.tv, pubs = tv ? pubsFor() : [], pub = tv ? pubs[0] || null : null, place = placeOf(e);
     detailEl.innerHTML = "";
+    detailEl.setAttribute("data-evid", String(e.id));   // SAFE: 🚩 Anmäl eventet (js/safety.js)
     detailEl.appendChild(A.btn(two("back"), "ds-btn ds-btn-ghost evs-back", closeDetail));
     var hd = A.el("div", { class: "evs-d-head" });
     hd.appendChild(A.el("span", { class: "evs-d-ic", "aria-hidden": "true", text: icon(e) }));

@@ -1,5 +1,5 @@
 /* Öl Nu v23 — ⚔️ GRUPPDUELLEN (CONTRACT "v23 ÖNSKELISTAN + GRUPPDUELLEN", migration 0031).
-   Group vs group: which group has the most drinks tonight (plain total since the duel started, until 05:00).
+   Group vs group: which group has the most Truppanda tonight (check-ins, skål, photos; capped per member). SAFE: score = Truppanda, drinks never count.
    Main way in: "⚔️ Utmana grupp" shows a QR code (./?duel=TOKEN). A member of another group scans it and taps once.
    Fallback: type the other group's group code (they accept or decline), or pick an opted-in group near you.
    Several duels at once (max 10 per group per night). A member of both groups picks one side per duel.
@@ -33,7 +33,7 @@
   var S = {
     sv: {
       btn: "⚔️ Utmana grupp", duels: "⚔️ Dueller", sheet: "⚔️ Duell · {0}", vs: "{0} mot {1}",
-      intro: "Vilken grupp dricker mest ikväll? Alla drinkar räknas från att duellen startar till kl. 05:00.",
+      intro: "Vilken grupp har mest Truppanda ikväll? Incheckningar, skål och bilder räknas från start till kl. 05:00. Drinkar räknas aldrig.",
       qrHead: "📱 Visa den här för den andra gruppen", qrNote: "De skannar med kameran och trycker en gång. Klart!",
       qrCode: "Duellkod: {0}", qrExp: "Koden gäller till {0}.", qrNew: "⚔️ Visa utmaningskod", copyLink: "📋 Kopiera länk", share: "📤 Dela",
       shareText: "⚔️ {0} utmanar er på duell i PintsNow! Tryck här:",
@@ -43,11 +43,11 @@
       active: "Pågår", pending: "Väntar på svar", incoming: "⚔️ {0} utmanar er!", outgoing: "⏳ Väntar på att {0} svarar…",
       accept: "⚔️ Anta", decline: "🏳️ Neka", cancel: "Ta tillbaka", accepted: "⚔️ Duellen ä igång! Mot {0}.", declined: "🏳️ Ni nekade. Fegt eller klokt? Ingen vet.",
       cancelled: "Utmaningen ä återtagen.", sent: "📯 Utmaningen ä skickad till {0}! De har 30 min på sig.",
-      drinks: "🍺 Drinkar", members: "👥 Med", spirit: "🤝 Truppanda", spiritNote: "Truppanda = incheckningar, skål och bilder. Avgör vid lika.",
+      drinks: "🍺 Drinkar", members: "👥 Med", spirit: "🤝 Truppanda", spiritNote: "Truppanda = incheckningar, skål och bilder, med tak per person. Den avgör.",
       left: "⏱️ {0} kvar", leftEnd: "slut kl. 05:00", us: "Vi", them: "De",
       won: "🎖️ SEGER! {0} vann mot {1}", lost: "🫡 {1} vann den här gången", draw: "🤝 Oavgjort mot {1}", final: "Slutställning {0}–{1}",
       medal: "🥇 Medalj till {0}! Totalt {1} 🎖️", wins: "🎖️ {0} segrar", revenge: "Revansch nästa helg? 😏",
-      pickHead: "⚔️ Du ä med i båda – vilken sida kämpar du för?", pickNote: "Dina drinkar räknas bara för den sida du väljer. Du kan byta en gång inom 10 min.",
+      pickHead: "⚔️ Du ä med i båda – vilken sida kämpar du för?", pickNote: "Din Truppanda räknas bara för den sida du väljer. Du kan byta en gång inom 10 min.",
       pickOk: "⚔️ Du kämpar för {0}!", picked: "Du kämpar för {0}", pickSwitch: "Byt sida", pickLocked: "🔒 Låst för kvällen",
       undecided: "{0} i båda grupperna har int’ valt sida", noPick: "⚠️ Välj sida! Tills dess räknas du inte.",
       league: "🏆 Duelltabell ikväll", leading: "leder", behind: "ligger under", tied: "lika", lead: "Ni leder {0} av {1} dueller",
@@ -209,7 +209,7 @@
   /* Commentary: one line per duel per 5 min, by state (start / lead / behind / tied / big). */
   function lineFor(d) {
     var L = sv() ? LINES : LINES_EN;
-    var u = nOf(d.us, "drinks"), t = nOf(d.them, "drinks");
+    var u = nOf(d.us, "spirit"), t = nOf(d.them, "spirit");
     var mins = d.accepted_at ? (Date.now() - new Date(d.accepted_at).getTime()) / 60000 : 0;
     var kind = (u + t === 0 || mins < 10) && u === t ? "start" : u === t ? "tied" : u > t ? (u - t >= 5 && u >= t * 1.5 ? "big" : "lead") : (t - u >= 5 && t >= u * 1.5 ? "bigBehind" : "behind");
     var list = L[kind] || L.tied;
@@ -311,7 +311,7 @@
     ]);
   }
   function card(d) {
-    var u = nOf(d.us, "drinks"), t = nOf(d.them, "drinks");
+    var u = nOf(d.us, "spirit"), t = nOf(d.them, "spirit");
     var c = el("section", { class: "du-card du-" + d.status + (d.winner ? " du-w-" + d.winner : "") });
     c.appendChild(el("div", { class: "du-head" }, [
       el("span", { class: "du-name us", text: nm(d.group && d.group.name) }),
@@ -348,7 +348,7 @@
       c.appendChild(bar(u, t));
       c.appendChild(el("p", { class: "du-line", text: lineFor(d) }));
     }
-    c.appendChild(statRow(T("drinks"), u, t));
+    // SAFE: no drinks row – the big score above is Truppanda
     c.appendChild(statRow(T("members"), nOf(d.us, "members"), nOf(d.them, "members")));
     c.appendChild(statRow(T("spirit"), nOf(d.us, "spirit"), nOf(d.them, "spirit"), "du-spirit"));
     var foot = [];
@@ -383,7 +383,7 @@
     var box = el("section", { class: "du-league" });
     box.appendChild(el("h3", { class: "du-h", text: T("league") }));
     var rows = list.map(function (d) {
-      var u = nOf(d.us, "drinks"), t = nOf(d.them, "drinks");
+      var u = nOf(d.us, "spirit"), t = nOf(d.them, "spirit");
       var sp = nOf(d.us, "spirit") - nOf(d.them, "spirit");
       var st = d.winner ? d.winner : u > t ? "us" : u < t ? "them" : sp > 0 ? "us" : sp < 0 ? "them" : "draw";
       return { d: d, u: u, t: t, m: u - t, st: st };
@@ -586,7 +586,7 @@
     var list = ofGroup(g.id).filter(live), sum = [];
     var act = list.filter(function (d) { return d.status === "active"; });
     if (act.length) {
-      var lead = act.filter(function (d) { return nOf(d.us, "drinks") > nOf(d.them, "drinks"); }).length;
+      var lead = act.filter(function (d) { return nOf(d.us, "spirit") > nOf(d.them, "spirit"); }).length;
       sum.push("⚔️ " + act.length + (lead ? " · " + lead + " " + T("leading") : ""));
     }
     if (list.some(function (d) { return d.incoming; })) sum.push("📯!");
@@ -604,7 +604,7 @@
     x = ds.filter(function (d) { return d.needs_pick; })[0]; if (x) return { d: x, k: "pick" };
     x = ds.filter(function (d) { return d.status === "done" && d.winner && !s["card" + d.id]; })[0]; if (x) return { d: x, k: "win" };
     x = ds.filter(function (d) { return d.status === "active"; })
-      .sort(function (a, b) { return (nOf(b.us, "drinks") + nOf(b.them, "drinks")) - (nOf(a.us, "drinks") + nOf(a.them, "drinks")); })[0];
+      .sort(function (a, b) { return (nOf(b.us, "spirit") + nOf(b.them, "spirit")) - (nOf(a.us, "spirit") + nOf(a.them, "spirit")); })[0];
     if (x) return { d: x, k: "live" };
     return null;
   }
@@ -624,7 +624,7 @@
       if (!on()) return "";
       var c = chipTarget(); if (!c) return "";
       var txt = c.k === "in" ? T("chipIn") : c.k === "pick" ? T("chipPick") : c.k === "win" ? T("chipWin")
-        : F(T("chipLive"), nOf(c.d.us, "drinks"), nOf(c.d.them, "drinks"));
+        : F(T("chipLive"), nOf(c.d.us, "spirit"), nOf(c.d.them, "spirit"));
       return '<button type="button" class="hx-chip du-chip du-c-' + c.k + '" data-hx="duel" aria-label="' + U.esc(T("chipAria")) + '">' + U.esc(txt) + "</button>";
     },
     hudClick: function (action) {

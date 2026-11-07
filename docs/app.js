@@ -523,7 +523,7 @@
   }
   function beerPopup(b) {
     if (b && b._demo && window.DEMO) return window.DEMO.popup(b);   // 🎞️ visningsläge
-    var h = '<div class="pp-title">' + U.esc(t("beerNo", U.drinks(b))) + "</div>" +
+    var h = '<div class="pp-title">' + U.esc(b._nc ? "🍺 Ute ikväll" : t("beerNo", U.drinks(b))) + "</div>" +   // SAFE: no number for strangers
       '<div class="pp-data">' + U.esc(t("since", U.timeHM(b.created_at))) + "</div>";
     h += levelLine(U.level(U.drinks(b)), b);
     if (b.is_mine) h += '<div class="pp-mine">' + U.esc(t("you")) + '</div><div class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</div>";
@@ -691,10 +691,10 @@
       if (names.length) body += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
       var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
       if (tot) body += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
-      var prow = list.slice().sort(function (a, b) { return U.drinks(b) - U.drinks(a); }).slice(0, 8);
+      var prow = list.slice().sort(crowdSort).slice(0, 8);   // SAFE: me, friends, then arrival – never by count
       body += '<ul class="pp-list">' + prow.map(function (b) {
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + U.drinks(b) + " " + lvEmoji(b) + "</span>" +
+          '<span class="pp-n">' + (b._nc ? "🍺" : U.drinks(b) + " " + lvEmoji(b)) + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
       if (list.length > 8 && id != null) body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
@@ -1401,13 +1401,13 @@
   });
 
   /* ---------- Crowd list (many people at one spot) ---------- */
-  // Me first, then friends, then most beers.
+  // Me first, then friends, then by arrival time. SAFE: never sorted by drink count.
   function crowdSort(a, b) {
     var ra = a.is_mine ? 0 : a.friend_name ? 1 : 2, rb = b.is_mine ? 0 : b.friend_name ? 1 : 2;
-    return ra - rb || U.drinks(b) - U.drinks(a) ||
-      String(a.created_at || "").localeCompare(String(b.created_at || ""));
+    return ra - rb || String(a.created_at || "").localeCompare(String(b.created_at || ""));
   }
   function crowdCountHTML(b) {
+    if (b._nc) return "🍺";   // SAFE: strangers show no number
     var n = U.drinks(b), l = U.level(n);
     return "<b>" + n + "</b> 🍺" + (l === 2 ? " 🚁" : l === 1 ? " 🔥" : "");
   }
@@ -1648,6 +1648,7 @@
     return { p_min_lat: s, p_min_lng: w, p_max_lat: n, p_max_lng: e };
   }
   function normPins(list) {
+    if (window.SAFETY && window.SAFETY.maskPins) list = window.SAFETY.maskPins(list);   // SAFE: strangers never show a number
     return (list || []).filter(function (b) { return b && isFinite(b.lat) && isFinite(b.lng) && b.id != null; }).map(function (b) {
       b.lat = +b.lat; b.lng = +b.lng;
       b.beer_count = Math.max(0, b.beer_count | 0); b.other_count = Math.max(0, b.other_count | 0); b.other_kind = b.other_kind || null;
@@ -2088,7 +2089,14 @@
   function stripAfter(fn) { if (window.OLNU_STRIP && window.OLNU_STRIP.after) window.OLNU_STRIP.after(fn); else fn(); }
   function drinkFx(total, prev, opts) {
     opts = opts || {};
-    var lv10 = lvAt(10), lv5 = lvAt(5);
+    var lv10 = lvAt(10), lv5 = lvAt(5), lv15 = lvAt(15);
+    // SAFE (owner 2026-11-07): the full-screen effect also at 15, same energy as 10. Texts = tease + care.
+    if (prev < 15 && total >= 15) {
+      var medExtra15 = mods("medevacExtraHTML");
+      stripAfter(function () { window.FX.takeover(2, lv15 ? { title: lvName(lv15, "me"), sub: lvLine(lv15), icon: lv15.emoji, color: lv15.color, gag: true, hint: t("tapClose"), extraHTML: medExtra15, ms: medExtra15 ? 7000 : 0 }
+        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra15, ms: medExtra15 ? 7000 : 0 }); });
+      return true;
+    }
     if (prev < 10 && total >= 10) {
       var medExtra = mods("medevacExtraHTML");
       stripAfter(function () { window.FX.takeover(2, lv10 ? { title: lvName(lv10, "me"), sub: lvLine(lv10), icon: lv10.emoji, color: lv10.color, gag: true, hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }
@@ -2102,7 +2110,7 @@
     }
     // Small pops: the highest level crossed (3, 7, 13, 16, 20).
     var all = lvList() || [], pop = null;
-    all.forEach(function (lv) { if (lv.at !== 5 && lv.at !== 10 && prev < lv.at && total >= lv.at && (!pop || lv.at > pop.at)) pop = lv; });
+    all.forEach(function (lv) { if (lv.at !== 5 && lv.at !== 10 && lv.at !== 15 && prev < lv.at && total >= lv.at && (!pop || lv.at > pop.at)) pop = lv; });
     if (pop) {
       if (window.FX.levelPop) window.FX.levelPop({ emoji: pop.emoji, color: pop.color, intensity: pop.intensity | 0, care: pop.at >= 13 });
       if (!opts.noToast) toast(pop.emoji + " " + lvName(pop, "me") + "! " + noLeadEmoji(lvLine(pop)), { ms: 6000, cls: "lv-pop" });
@@ -2698,11 +2706,11 @@
     if (kind === "bars") {
       var per = window.BARS.assign(beers).perBar;
       return Object.keys(per).map(function (k) { return per[k]; })
-        .sort(function (a, b) { return b.beers.length - a.beers.length || maxLevel(b.beers) - maxLevel(a.beers); })
+        .sort(function (a, b) { return b.beers.length - a.beers.length; })   // SAFE: people, never drink level
         .slice(0, 15).map(function (a) {
           var sk = 0; a.beers.forEach(function (b) { sk += skalCount(b); });
           return { name: a.bar.name || t("unnamedBar"), sub: barTypeLabel(a.bar.type) + (sk ? " · " + t("skalN", sk) : ""),
-            n: a.beers.length, icon: lvlIcon(maxLevel(a.beers)), lat: a.bar.lat, lng: a.bar.lng, z: 17,
+            n: a.beers.length, icon: "", lat: a.bar.lat, lng: a.bar.lng, z: 17,   // SAFE: no 🔥/🚁 by count
             friend: a.beers.some(function (b) { return b.friend_name; }) };
         });
     }
@@ -2740,8 +2748,11 @@
       var tabs = el("div", { class: "tabs", role: "tablist" });
       var list = el("ol", { class: "toplist" });
       var note = el("p", { class: "muted top-note" });
-      var kinds = [["bars", t("topBars")], ["cities", t("topCities")], ["streaks", t("topStreaks")]];
-      var league = !!(window.SOCIAL && window.SOCIAL.leagueOn && window.SOCIAL.leagueOn());
+      // SAFE (owner 2026-11-07): no lists that rank drinking (Städer = drinks per person, Streaks = people by drinks,
+      // Ligan = groups by drinks). Barer = how many people are at each bar.
+      var kinds = [["bars", t("topBars")]];
+      var league = false;
+      if (topTab !== "bars") topTab = "bars";
       if (league) { kinds.push(["league", t("topLeague")]); tabs.classList.add("t4"); }
       else if (topTab === "league") topTab = "bars";
       function draw() {
@@ -2949,13 +2960,7 @@
       body.appendChild(el("div", { style: "display:flex;gap:8px" }, [inp, btn(t("save"), "btn-amber", saveName)]));
       mods("settingsName", body);   // v25: 📍 Hemstad (js/hometown.js), next to the name
 
-      body.appendChild(el("h3", { text: t("language") }));
-      var seg = el("div", { class: "seg", role: "radiogroup", style: "flex-direction:row;width:max-content" });
-      ["sv", "en"].forEach(function (l) {
-        seg.appendChild(el("button", { type: "button", role: "radio", "aria-checked": String(I.lang === l), style: "min-width:72px;min-height:48px",
-          text: l.toUpperCase(), onclick: function () { I.set(l); applyStaticText(); render(); showSettings(); } }));
-      });
-      body.appendChild(seg);
+      // SAFE (owner 2026-11-07): Swedish only, no language switch.
       }
 
       if (tab === "s") {
@@ -3570,7 +3575,7 @@
         body.appendChild(el("div", { class: "intro-big", text: "🔞" }));
         body.appendChild(el("h2", { class: "intro-h", text: t("ageTitle") }));
         body.appendChild(el("p", { class: "intro-p", text: t("ageText") }));
-        body.appendChild(el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));
+        body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
         body.appendChild(go);
         if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: function () {
           body.innerHTML = "";
@@ -3605,16 +3610,11 @@
         });
         go.disabled = true;
         cb.addEventListener("change", function () { go.disabled = !cb.checked; });
-        var langRow = el("div", { class: "intro-lang" });
-        ["sv", "en"].forEach(function (l) {
-          langRow.appendChild(el("button", { type: "button", class: "intro-lang-b", "aria-pressed": String(I.lang === l), text: l.toUpperCase(),
-            onclick: function () { I.set(l); applyStaticText(); render(); stepAge(); } }));
-        });
-        body.appendChild(langRow);
+        // SAFE: Swedish only, no SV/EN buttons.
         body.appendChild(el("div", { class: "intro-brand", text: "PintsNow" }));
         body.appendChild(el("p", { class: "intro-tag", text: t("introTag") }));
         body.appendChild(steps);
-        body.appendChild(el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));
+        body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
         body.appendChild(go);
         body.appendChild(el("p", { class: "intro-priv", text: t("introPrivacy") }));
         if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: stepPriv }));

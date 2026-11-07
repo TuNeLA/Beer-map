@@ -1106,7 +1106,7 @@
       var e = (x.etas || [])[0];
       if (e && e.eta_at) add(new Date(tms(e.eta_at) - (e.minutes | 0) * 60000).toISOString(), "eta", { name: e.name, min: e.minutes, place: v.place }, 3);
     });
-    var pk = dr.peak;
+    var pk = null;   // SAFE: tempo records removed in all builds (was dr.peak)
     if (pk && (pk.n | 0) >= 3) {
       var h = +pk.h, h2 = ("0" + ((h + 1) % 24)).slice(-2);
       add(pk.at, "peak", { n: pk.n }, 8, pk.h + ":00–" + h2 + ":00");

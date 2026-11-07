@@ -195,6 +195,7 @@
     return Object.keys(ids).slice(0, 500);
   }
   function loadKings() {
+    if (window.SAFETY) return;   // SAFE: no "Kung av baren" (people ranked by drinks)
     if (v7 !== true || off.bar_kings) return;
     var wait = KINGS_MS - (Date.now() - kingsAt);
     if (wait > 0) { if (!kingsTimer) kingsTimer = setTimeout(function () { kingsTimer = null; loadKings(); }, wait); return; }

@@ -417,14 +417,14 @@
       badges: {
         first: ["Första ölen", "Din första öl i appen."], newbar: ["Ny bar", "Första ölen på en ny bar."],
         barhop: ["Barhoppare", "3 barer på en kväll."], early: ["Morgonpigg", "En öl före kl 18."],
-        owl: ["Nattuggla", "En öl efter kl 02."], hot: ["HOT STREAK", "5 öl på en kväll."],
-        med: ["MEDEVAC", "10 öl på en kväll."], survivor: ["MEDEVAC-överlevare", "Hemma efter 10 öl. Snyggt."],
+        owl: ["Nattuggla", "En öl efter kl 02."], hot: ["Pensionerad", "Delas int' ut längre."],
+        med: ["Pensionerad", "Delas int' ut längre."], survivor: ["Hem säkert", "Tryckte \"Jag är hemma\". Snyggt, soldat."],
         home01: ["Hemma före 01", "Tryckte \"Jag är hemma\" före kl 01."], skalking: ["Skålkung", "10 skål på en kväll."],
-        week: ["Veckans krigare", "Öl tre kvällar på en vecka."], king: ["Kung av baren", "Flest öl på en bar i veckan."],
+        week: ["Truppen ute", "Ute med appen tre kvällar på en vecka."], king: ["Pensionerad", "Delas int' ut längre."],
         ghost: ["Spöket", "En öl i spökläge."], chat: ["Kvittraren", "Första meddelandet i gruppchatten."],
         side: ["Sidospår", "Drack nåt annat än öl. Ölguden såg dä."]
       },
-      nightBtn: "📊 Din kväll", nightTitle: "📊 Din kväll", nightNone: "Ingen öl loggad än. Dags att börja?",
+      nightBtn: "📊 Din kväll", nightTitle: "📊 Din kväll", nightNone: "Inget loggat än. Lugn kväll eller på väg ut?",
       nightBeers: "Öl", nightBars: "Barer", nightSkal: "Skål", nightStreak: "Bästa streak", nightBadges: "Nya märken",
       nightOther: "Sidospår", nightShare: "📲 Dela", nightSave: "💾 Spara bild", nightCopy: "Kopiera text",
       nightHead: "DIN KVÄLL", nightStreakNone: "–",
@@ -482,11 +482,11 @@
       groups: "Grupper",
       lvl1: "Uppdrag startat. Skål!",
       lvlN: function (n) { return "Öl nr " + n + " ikväll"; },
-      lvl5: "🔥 HOT STREAK! Öl nr 5",
-      lvlHot: function (n) { return "🔥 Öl nr " + n + " ikväll"; },
-      lvl10: "🦅 LEGENDLÄGE! Nr 10 ikväll. Truppen hyllar dig.",
-      lvlMed: function (n) { return "🦅 Nr " + n + " ikväll. Legendläge."; },
-      tonight: "Öl ikväll", hot: "HOT STREAK", medevac: "MEDEVAC",
+      lvl5: "💧 Nr 5. Vattenbärare utsedd.",
+      lvlHot: function (n) { return "🍺 Nr " + n + " ikväll"; },
+      lvl10: "🚑 Nr 10. Sjukvårdare till plats 3!",
+      lvlMed: function (n) { return "🚑 Nr " + n + " ikväll. Vatten och en kompis nära."; },
+      tonight: "Öl ikväll", hot: "💧 Vattenpaus", medevac: "🚑 Kolla läget",   // SAFE: no label that praises a count
       locDenied: "Plats är avstängd för den här sidan.",
       locFail: "Hittade inte din plats. Gå utomhus eller försök igen.",
       outside: "PintsNow fungerar bara i Sverige just nu",
@@ -500,7 +500,7 @@
       beerNo: function (n) { return "Öl nr " + n; },
       since: function (t) { return "sedan " + t; },
       approx: "ungefärlig plats", you: "Du",
-      care: "🦅 Legend ute på äventyr · 🚕 Taxi = truppens eskort",
+      care: "🚑 Kolla läget · 🚕 Taxi = truppens eskort",
       barHere: function (n) { return "≈ " + n + " " + (n === 1 ? "person" : "personer") + " här nu"; },
       barNote: "Uppskattning från de som använder appen",
       barFriends: "Vänner här: ",
@@ -567,7 +567,7 @@
       installAndroid: "Lägg PintsNow på hemskärmen", install: "Installera",
       yes: "Ja tack", notNow: "Inte nu",
       language: "Språk", notifications: "Notiser", about: "Om PintsNow",
-      privacy: "Ingen inloggning med e-post. Servern sparar ett anonymt konto, dina öl med plats (exakt bara för din grupp), ditt namn i dina grupper och statistik för medaljer. Ingen reklam, ingen spårning, ingen försäljning. Läs mer under 🔒 Integritet.",
+      privacy: "Kontot ä anonymt tills du sparar det med e-post. Servern sparar dina drycker med plats (exakt bara för dina grupper), ditt namn, det du skickar och statistik för medaljer. Exakta platser tas bort efter 30 dagar. Ingen reklam, ingen spårning, ingen försäljning. Läs mer under 🔒 Integritet.",
       aboutMore: "Din öl syns på kartan till kl 05. 10 min mellan öl. Kartdata © OpenStreetMap-bidragsgivare.",
       soonChip: "Snart", soonBtn: "SNART", soonSub: "Startar snart",
       soonLive: "Startar snart",
@@ -590,7 +590,7 @@
       age18: "Jag är 18 år eller äldre",
       ageNeeded: "Du måste vara 18 år eller äldre.",
       introGo: "Kör!",
-      introPrivacy: "Ingen e-post, ingen reklam. Okända ser bara ungefär var du är. Läs mer under 🔒 Integritet.",
+      introPrivacy: "Ingen reklam, ingen spårning. Okända ser bara ungefär var du ä – utan namn och antal. Läs mer under 🔒 Integritet.",
       locTitle: "Tillåt plats",
       locWhy: "Vi behöver din plats för att visa kartan där du är och sätta din öl på rätt ställe.",
       locWhy2: "Din plats skickas när du trycker ÖL! eller checkar in (och ett område på ~1 km om du har notiser på). Okända ser bara krogen eller ett område på ~500 m.",
@@ -610,8 +610,8 @@
       skalGone: "Den ölen finns inte längre.",
       barSkal: function (n) { return "🍻 " + n + " skål här"; },
       sound: "Ljud", soundLabel: "Ljud när du tar en öl",
-      hotTitle: "HOT STREAK", hotSub: "Öl nr 5 ikväll. Du kör hårt!",
-      medTitle: "LEGENDLÄGE", medSub: "Nr 10 ikväll. Truppen hyllar dig.",
+      hotTitle: "VATTENBÄRAREN", hotSub: "Nr 5 ikväll. Ett glas vatten nu, la.",
+      medTitle: "SJUKVÅRDARE TILL PLATS 3", medSub: "Nr 10. Förstärkning på väg: vatten, mat och en kompis.",
       tapClose: "Tryck för att stänga",
       chaosLines: [
         "🚨 Nu ballar det ur i {stad}!",
@@ -1321,14 +1321,12 @@
       ]
     }
   };
+  // SAFE (owner 2026-11-07): Swedish only. No auto-English, a stored "en" is ignored and removed.
   var lang = "sv";
-  try { lang = localStorage.getItem("olnu.lang") || ""; } catch (e) { lang = ""; }
-  if (lang !== "sv" && lang !== "en") {
-    lang = (navigator.language || "sv").toLowerCase().indexOf("sv") === 0 ? "sv" : "en";
-  }
+  try { if (localStorage.getItem("olnu.lang") === "en") localStorage.setItem("olnu.lang", "sv"); } catch (e) {}
   window.I18N = {
     get lang() { return lang; },
-    set: function (l) { lang = l === "en" ? "en" : "sv"; try { localStorage.setItem("olnu.lang", lang); } catch (e) {} document.documentElement.lang = lang; },
+    set: function () { lang = "sv"; try { localStorage.setItem("olnu.lang", "sv"); } catch (e) {} document.documentElement.lang = "sv"; },   // SAFE: always sv
     // v14: modules can add or override strings with I18N.add({sv: {...}, en: {...}}).
     add: function (o) {
       ["sv", "en"].forEach(function (l) { if (o && o[l]) Object.keys(o[l]).forEach(function (k) { STR[l][k] = o[l][k]; }); });

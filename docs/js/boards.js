@@ -308,9 +308,9 @@
       if (!A || !A.LIVE || off || !A.authed || !A.authed()) return;
       var p = where(), town = townOf(p);
       var box = A.el("div", { class: "bd-box" });
-      box.appendChild(boardSection(p, town));
+      // SAFE (owner 2026-11-07): no drink top list and no Wall of Fame. boardSection / wallSection are kept unused.
+      void p; void town;
       box.appendChild(optinRow());
-      box.appendChild(wallSection(p, town));
       body.appendChild(box);
       // A missing server function removes its section; when both are gone, the whole box goes.
       setTimeout(function () { if (off && document.body.contains(box)) box.remove(); }, 4000);

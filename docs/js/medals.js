@@ -15,13 +15,14 @@
 
   /* ---------- Catalog: [id, emoji, name, funny line (earned), how to get it, stacks, secret] ---------- */
   var CAT = [
-    ["m1", "🍺", "Första kapsylen", "Det började här. Mamma vore stolt (typ).", "Drick din första öl i appen."],
-    ["m10", "🔟", "Tian", "Tio öl i tjänst. Du har ett rykte nu.", "10 öl totalt."],
-    ["m50", "🪙", "Femtiolappen", "Femtio öl. Kapsylerna räcker till ett halsband.", "50 öl totalt."],
-    ["m100", "💯", "Hundringen", "Hundra öl. Grangärde pratar om dig.", "100 öl totalt."],
-    ["m250", "🛢️", "Kvartstusen", "Ett helt fat, i lugna omgångar. Respekt.", "250 öl totalt."],
-    ["m500", "🏺", "Halvtusen", "500 öl. Arkeologer kommer att hitta dina kapsyler.", "500 öl totalt."],
-    ["m1000", "🏛️", "Tusenåringen", "Tusen öl. Någon borde resa ett monument.", "1000 öl totalt."],
+    // SAFE (owner 2026-11-07): the tjänst series counts skål (given + received), not drinks. Same ids, same joke names.
+    ["m1", "🍺", "Första kapsylen", "Första kvällen ute med appen. Mamma vore stolt (typ).", "Var ute en kväll med PintsNow."],
+    ["m10", "🔟", "Tian", "Tio skål i tjänst. Du har ett rykte nu.", "10 skål totalt (givna + fått)."],
+    ["m50", "🪙", "Femtiolappen", "Femtio skål. Armen ä i form.", "50 skål totalt."],
+    ["m100", "💯", "Hundringen", "Hundra skål. Grangärde pratar om dig.", "100 skål totalt."],
+    ["m250", "🛢️", "Kvartstusen", "Kvartstusen skål. Glasen klingar i hela Dalarna.", "250 skål totalt."],
+    ["m500", "🏺", "Halvtusen", "500 skål. Arkeologer kommer att hitta ekot.", "500 skål totalt."],
+    ["m1000", "🏛️", "Tusenåringen", "Tusen skål. Någon borde resa ett monument.", "1000 skål totalt."],
     ["n5", "🌙", "Nattpatrull", "Fem kvällar ute. Dörrvakterna nickar åt dig.", "Var ute 5 kvällar."],
     ["n25", "🦇", "Nattveteran", "25 kvällar. Månen hälsar på dig.", "Var ute 25 kvällar."],
     ["n100", "🌌", "Hundra nätter", "Hundra kvällar ute. En saga i sig.", "Var ute 100 kvällar."],
@@ -39,13 +40,13 @@
     ["trumslag", "📯", "Trumslagaren", "Du blåste till samling. Folket kom.", "Skicka en inkallelse."],
     ["hemvarn", "🏠", "Hemvärnet", "Du sa ”jag är hemma”. Klokt, soldat.", "Tryck ”Jag är hemma” en kväll.", 1],
     ["komhem", "🛡️", "Kom hem säkert", "Fem kvällar hem i god ordning. Finaste medaljen.", "Tryck ”Jag är hemma” 5 kvällar.", 1],
-    ["vatten", "💧", "Vattenbäraren", "Du laddade superkraften med vatten. Legend.", "Tryck ”💧 Druckit vatten” när bränsle-toasten dyker upp.", 1],
+    ["vatten", "💧", "Vattenbäraren", "Du laddade superkraften med vatten. Snyggt, soldat.", "Tryck ”💧 Druckit vatten” när bränsle-toasten dyker upp.", 1],
     ["dagsljus", "☀️", "Dagsljusdivisionen", "Öl medan solen står på himlen.", "En öl före kl 16.", 1],
     ["uggla", "🦉", "Nattugglan", "Sent ute. Ugglan nickar gillande.", "En öl mellan 01 och 05.", 1],
     ["tisdag", "🌮", "Tisdagstörst", "En helt vanlig tisdag. Eller?", "En öl en tisdag.", 1],
     ["fortrupp", "🚩", "Förtruppen", "Först ute i gruppen. Någon måste ju.", "Var först ute i din grupp en kväll.", 1],
-    ["kung", "👑", "Barkungen", "Kung av en bar en hel vecka. Kronan klär dig.", "Bli Kung av baren.", 1],
-    ["liga", "🥇", "Ligamästare", "Din grupp vann veckan. Ära åt plutonen!", "Vinn grupp-ligan en vecka.", 1],
+    ["kung", "👑", "Barkungen", "Kung av en bar en hel vecka. Kronan klär dig.", "Delas int' ut längre.", 1],
+    ["liga", "🥇", "Ligamästare", "Din grupp vann veckan. Ära åt plutonen!", "Delas int' ut längre.", 1],
     ["pluton", "🫂", "Plutonen", "Du har ett gäng. Ingen dricker ensam.", "Gå med i en grupp."],
     ["kompani", "🏰", "Kompanichef", "Din grupp har fem man eller fler.", "Skapa en grupp med 5+ medlemmar.", 1],
     ["radio", "💬", "Radiokontakt", "Första meddelandet i chatten. Över.", "Skriv i gruppchatten."],
@@ -71,7 +72,7 @@
     ["bingo", "🎱", "Bingo!", "Tre i rad. Hela gänget jublar.", "Var med när gruppen får bingo i Kvällsbingo.", 1],
     // "Varit med om": hidden until earned, caring text, never a goal.
     ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Glöden lever kvar i historierna.", "", 1, 1],
-    ["medevac", "🚁", "Varit med om: medevac", "Du har varit med om en legendkväll. Truppen minns, och du kom hem. 🫡", "", 1, 1]
+    ["medevac", "🚁", "Varit med om: lång kväll", "Du har varit med om en lång kväll. Truppen minns, och du kom hem. 🫡", "", 1, 1]
   ];
   var BY = {};
   CAT.forEach(function (c, i) { BY[c[0]] = { id: c[0], e: c[1], name: c[2], line: c[3], how: c[4], stack: !!c[5], secret: !!c[6], i: i }; });
@@ -270,6 +271,7 @@
       var total = hasM ? Math.max(0, o.meriter | 0) : o.total == null ? null : Math.max(0, o.total | 0);
       var box = el("div", { class: "uni-box" });
       body.appendChild(box);
+      if (!o.isMe && o.g && window.SAFETY && window.SAFETY.personActions) window.SAFETY.personActions(body, o.g, { name: o.name, k: o.k });   // SAFE 🚩/🚫
       var name = o.name || (o.isMe ? A.t("you") : A.t("someone"));
       var h = '<div class="uni-name">' + esc(name) + "</div>";
       if (total != null) {
@@ -352,7 +354,8 @@
     });
   }
   function openMember(g, m, back) {
-    var who = { name: m.name, isMe: !!m.is_me, total: m.total != null ? m.total : null, meriter: m.meriter != null ? m.meriter : null, medals: {}, back: back || null };
+    var who = { name: m.name, isMe: !!m.is_me, total: m.total != null ? m.total : null, meriter: m.meriter != null ? m.meriter : null, medals: {}, back: back || null,
+      g: g, k: m.k || null };   // SAFE: for 🚩 / 🚫 on the card
     if (who.isMe && who.meriter == null) { var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats(); if (st && st.meriter != null) who.meriter = st.meriter; }
     if (who.isMe && mine) who.medals = mine;
     memberMedals(g.id).then(function (v) {

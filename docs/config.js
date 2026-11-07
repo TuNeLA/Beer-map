@@ -9,3 +9,16 @@ window.OLNU_CONFIG = {
   MAPBOX_TOKEN: "",   // leave empty: basemap.js reads the pk token from the public_config() RPC (GitHub push protection blocks it in git)
   VAPID_PUBLIC_KEY: "BMtX3rVi1PuU-ytEsnt0udIaBKBWAELrLEUdCaWW54ltwFfISOPqqkN7DLVXbXsgMNfNxx6yWo8gnNuin8zRAtc"
 };
+// 🏪 SAFE: store build flag (store-compliance C). The Android TWA starts with ?app=android (and/or has an
+// android-app:// referrer); the iOS shell is Capacitor. Kept for this session so in-app links keep it.
+// Store builds hide what is web-only: the "Klassiskt" penalty pack (spel.js) and user drink deals (safety.css).
+(function () {
+  var s = false;
+  try {
+    s = !!(/[?&]app=(android|ios)\b/.test(location.search || "") || window.Capacitor || /^android-app:\/\//.test(document.referrer || "") ||
+      sessionStorage.getItem("olnu.store") === "1" || localStorage.getItem("olnu.store") === "1");
+    if (s) sessionStorage.setItem("olnu.store", "1");
+  } catch (e) {}
+  window.OLNU_STORE = s;
+  if (s) document.documentElement.classList.add("olnu-store");
+})();

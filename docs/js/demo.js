@@ -4,7 +4,7 @@
    - Deterministic per night (seed = the Swedish night date, Swedish wall time via Intl): every phone shows the same story.
    - Owner decision (2026-10-23): ON for every user, no label anywhere. Fake people look like real strangers.
      Global kill switch without a deploy: public_config().visning ("on" | "off", table app_public_flags, migration 0159).
-     Missing field (old server) = on. Per-device override for tests: ?visning=1 / ?visning=0 (localStorage "olnu.visning").
+     SAFE 2026-11-07: missing field / old server / offline = OFF. Store builds (window.OLNU_STORE) = always off. Per-device override for tests: ?visning=1 / ?visning=0 (localStorage "olnu.visning").
      ⚠️ The owner must turn it OFF before any public launch or Play Store release.
    - Nothing is ever sent to the server: no RPC writes, nothing in meriter / top lists / leagues / morning paper / push /
      real bar stats. The fake people only exist in this file and are fed to app.js through small hooks:
@@ -42,9 +42,9 @@
       history.replaceState(history.state, "", location.pathname + q + location.hash);
     } catch (e) {}
   })();
-  var srvOn = lsGet(SRV) !== "off";
+  var srvOn = lsGet(SRV) === "on";   // SAFE: default OFF until the server says "on"
   function devOverride() { var v = lsGet(KEY); return v === "1" ? true : v === "0" ? false : null; }
-  function on() { if (!A || !A.live) return false; var d = devOverride(); return d != null ? d : srvOn; }
+  function on() { if (!A || !A.live || window.OLNU_STORE) return false; var d = devOverride(); return d != null ? d : srvOn; }
   function fetchFlag() {
     var CFG = window.OLNU_CONFIG || {};
     if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY || !window.fetch) return;
@@ -52,7 +52,7 @@
       headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + CFG.SUPABASE_ANON_KEY, "Content-Type": "application/json" }, body: "{}" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (!d || typeof d !== "object" || Array.isArray(d) || !("visning" in d)) return;   // old server: keep the default (on)
+        if (!d || typeof d !== "object" || Array.isArray(d) || !("visning" in d)) { lsSet(SRV, "off"); if (srvOn) { srvOn = false; changed(); } return; }   // SAFE: no flag = off
         var v = String(d.visning || "").toLowerCase() !== "off";
         lsSet(SRV, v ? "on" : "off");
         if (v !== srvOn) { srvOn = v; changed(); }
