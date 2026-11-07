@@ -99,13 +99,13 @@
       vote: "Rösta",
       // Gissa
       guessHead: "Gissa kvällen",
-      guessTown: "Öl i {0} (2 mil runt) ikväll:",
+      guessTown: "Hur många ä ute i {0} (2 mil runt) ikväll?",
       guessBtn: "Gissa",
       guessMine: "Din gissning: {0}. Du kan ändra till 21:00.",
       guessClosed: "Gissningen stängde 21:00.",
-      guessSoFar: "Din gissning: {0} · hittills ikväll: {1}",
+      guessSoFar: "Din gissning: {0} · ute hittills ikväll: {1}",
       guessSaved: "🎲 Gissning sparad: {0}. Facit imorgon!",
-      guessPrev: "Igår gissade du {0}, det blev {1} i {2}.",
+      guessPrev: "Igår gissade du {0}, det blev {1} ute i {2}.",
       guessOracle: "🔮 Dagens orakel: {0}",
       guessCount: "{0} i gruppen har gissat ikväll.",
       guessList: "Igår: {0}",
@@ -192,7 +192,7 @@
       agentMission: "Mission: {0}",
       vote: "Vote",
       guessHead: "Guess the night",
-      guessTown: "Beers in {0} (20 km) tonight:",
+      guessTown: "People out in {0} (20 km) tonight:",
       guessBtn: "Guess",
       guessMine: "Your guess: {0}. You can change it until 21:00.",
       guessClosed: "Guessing closed at 21:00.",
@@ -234,6 +234,12 @@
     if (list.length > 1 && i === lastPick[key]) i = (i + 1) % list.length;
     lastPick[key] = i;
     return list[i];
+  }
+  // feat 2026-11-07: Gissa kvällen only when the server counts PEOPLE out (0253, guess_night_kind() = 'folk'). Before that it hides.
+  var guessOn = false, guessAsked = false;
+  function guessCheck() {
+    if (guessAsked) return; guessAsked = true;
+    call("guess_night_kind").then(function (r) { guessOn = !r.error && String(A.parseData(r.data)).replace(/\W/g, "") === "folk"; if (!guessOn && !r.off) guessAsked = false; });
   }
   function call(name, params) {
     if (!A || !A.LIVE || !A.authed() || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
@@ -417,7 +423,7 @@
         });
       }
       var o = g.oracle;
-      if (o && o.name) {
+      if (o && o.name && guessOn) {
         once("o:" + g.id, true, function () {
           var list = +o.err > 0.5 ? C.guessNight && C.guessNight.wayOff : C.guessNight && C.guessNight.winner;
           queueToast(fill(pick("oracle", list), { name: o.name, guess: o.guess, real: o.real }), { ms: 6500 });
@@ -493,8 +499,7 @@
       // Sugen (before the first beer) + Gissa kvällen
       box.appendChild(el("h3", { text: T("sugenHead") }));
       box.appendChild(sugenSeg(me, function () { renderMe(true); }));
-      box.appendChild(el("h3", { text: T("guessHead") }));
-      box.appendChild(guessBlock(me, function () { renderMe(true); }));
+      if (guessOn) { box.appendChild(el("h3", { text: T("guessHead") })); box.appendChild(guessBlock(me, function () { renderMe(true); })); }
       // Group games
       box.appendChild(el("h3", { text: T("groupsHead") }));
       var gs = (poll && poll.groups) || [];
@@ -597,7 +602,7 @@
   var EV_TABS = ["sugen", "bingo"];   // 📨 event groups (0187): only the games that fit one night with the event people
   function openGroup(g, tab) {
     if (!on() || !g || !g.id) return;
-    var tabsOf = g.evg ? EV_TABS : TABS;
+    var tabsOf = (g.evg ? EV_TABS : TABS).filter(function (k) { return k !== "gissa" || guessOn; });
     tab = tabsOf.indexOf(tab) >= 0 ? tab : (tabsOf.indexOf(U.ls.get(TAB_KEY, "")) >= 0 ? U.ls.get(TAB_KEY, "") : "sugen");
     openView = { kind: "group", g: g, tab: tab, data: null };
     var view = openView;
@@ -982,7 +987,7 @@
       [close, bd].forEach(function (x) { if (x) x.addEventListener("click", function () { openView = null; }); });
     },
     applyText: function () { flagKey = ""; drawFlags(); },
-    onAuthed: function () { load(true); },
+    onAuthed: function () { guessCheck(); load(true); },
     onPoll: function () { load(false); },
     onBeerAccepted: function () { setTimeout(function () { load(true); }, 3500); },
     onStopped: function (kind) {

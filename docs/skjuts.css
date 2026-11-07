@@ -1,0 +1,45 @@
+/* 🆘 Hämta mig · 🚗 Jag kör ikväll (js/skjuts.js). Plain CSS on the design tokens (ds.css) so the design pass can restyle it. */
+.pk{display:flex;flex-direction:column;gap:10px}
+.pk-lead{margin:0;font-size:var(--ds-fs-16,16px);line-height:1.4;color:var(--ds-text,#eef0ec)}
+.pk-muted{margin:0;font-size:var(--ds-fs-14,14px);line-height:1.4;color:var(--ds-muted,#a7b0ac)}
+.pk-h{margin:6px 0 0;font-size:var(--ds-fs-16,16px)}
+.pk-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.pk-chip{min-height:40px;padding:0 14px;border-radius:var(--ds-r-pill,999px);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));
+  background:var(--ds-card,#19233a);color:var(--ds-text,#eef0ec);font-size:var(--ds-fs-14,14px);cursor:pointer}
+.pk-chip[aria-pressed="true"]{background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);border-color:transparent;font-weight:700}
+.pk-gchip{font-weight:600}
+.pk-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pk-segb{min-height:44px;border-radius:var(--ds-r-1,12px);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));background:var(--ds-card,#19233a);color:var(--ds-text,#eef0ec);cursor:pointer}
+.pk-segb[aria-checked="true"]{border:2px solid var(--ds-amber,#f5a623);background:var(--ds-raised,#222e48);font-weight:700}
+.pk-go,.pk-stop{min-height:48px;margin-top:4px}
+.pk-priv{font-size:var(--ds-fs-12,12px)}
+.pk-ans{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.pk-ans li{padding:10px 12px;border-radius:var(--ds-r-1,12px);background:var(--ds-card,#19233a);font-size:var(--ds-fs-14,14px)}
+.pk-ans li.yes{background:var(--ds-green-soft,rgba(61,220,132,.12));color:var(--ds-green-t,#4fe08f);font-weight:700}
+.pk-ans li.pk-muted{background:none;padding:4px 0}
+.pk-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pk-row .btn{min-height:44px;margin:0;display:flex;white-space:nowrap;align-items:center;justify-content:center;text-decoration:none}
+.pk-answer .on{box-shadow:0 0 0 3px var(--ds-text,#eef0ec) inset}
+.pk-coming{margin:0;font-weight:700;color:var(--ds-green-t,#4fe08f)}
+.pk-ikv{margin-top:10px}
+.pk-ikv-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.pk-ikv-t{display:flex;flex-direction:column;gap:2px}
+.pk-ikv-t small{font-size:var(--ds-fs-12,12px);color:var(--ds-muted,#a7b0ac);line-height:1.35}
+/* group page tile + Medlemmar tag */
+.skj-gi{width:100%;grid-column:1 / -1;flex:1 1 100%;min-width:0}
+.gpg > .skj-gi.skj-gi{flex-basis:100%;max-width:none;width:100%}
+.skj-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--ds-r-2,16px);background:var(--ds-blue-soft,rgba(74,163,255,.1));
+  border:1px solid color-mix(in srgb,var(--ds-blue,#4aa3ff) 35%,transparent)}
+.skj-ic{font-size:22px}
+.skj-txt{flex:1;display:flex;flex-direction:column;min-width:0;word-break:normal;overflow-wrap:normal}
+.skj-txt b{white-space:nowrap}
+.skj-txt small{color:var(--ds-text-2,#c9d0cd);font-size:var(--ds-fs-14,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skj-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.skj-ask{min-height:40px;margin:0}
+.skj-tag{display:inline-flex;align-items:center;gap:6px;margin-left:6px;font-size:var(--ds-fs-12,12px);color:var(--ds-blue-t,#8cc6ff);font-weight:700}
+.skj-ask-s{min-height:32px;padding:0 10px;border-radius:var(--ds-r-pill,999px);border:1px solid var(--ds-blue,#4aa3ff);background:transparent;color:var(--ds-blue-t,#8cc6ff);font-size:var(--ds-fs-12,12px);cursor:pointer}
+.toast.pk-toast{border-left:4px solid var(--ds-red-t,#ff7b73)}
+/* ⏰ Hemfärd sheet (js/oppet.js) */
+.hf2{display:flex;flex-direction:column;gap:8px}
+.hf2 .btn{min-height:48px;margin:0;text-align:left;justify-content:flex-start}
+.hf2-lead{margin:0 0 4px;font-size:var(--ds-fs-16,16px);line-height:1.4}

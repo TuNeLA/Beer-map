@@ -172,6 +172,32 @@
     "hi:13": { d: JUL }, "hi:14": { r: 12 }, "hi:15": { m: "liga" }, "hi:16": { m: "vatten" },
     "fr:2": { r: 11 }, "fr:3": { r: 21 }, "fr:4": { r: 31 }, "fr:5": { r: 40 }, "fr:6": { m: "liga" }, "fr:8": { e: 3 }, "fr:9": { s: 5 }, "fr:10": { m: "n100" }
   };
+  /* v3 tiers (feat 2026-11-07, owner: "too much is unlocked; only at glasses some things are locked"): a clear free set per
+     category (all real skin tones, face shapes, natural hair colours and natural / cultural hair styles stay free) and 90 more
+     items by rank (grad 2 = 5 meriter, 3 = 10, 4 = 18, 5 = 28, 6 = 40). n:1 = new in v3: open for grandfathered users (saved an
+     avatar before v3, facts.gf from SQL 0252) and the item you already wear stays yours. Same list as SQL olnu_avatar_locks3() (0251). */
+  var LOCKS3 = {
+    "ey:11": { r: 2, n: 1 }, "ey:13": { r: 3, n: 1 }, "ey:14": { r: 4, n: 1 }, "ey:15": { r: 5, n: 1 }, "ey:16": { r: 6, n: 1 },
+    "br:11": { r: 3, n: 1 }, "br:14": { r: 4, n: 1 },
+    "ns:11": { r: 4, n: 1 },
+    "mt:11": { r: 2, n: 1 }, "mt:12": { r: 2, n: 1 }, "mt:13": { r: 3, n: 1 }, "mt:14": { r: 3, n: 1 }, "mt:15": { r: 4, n: 1 }, "mt:17": { r: 5, n: 1 }, "mt:18": { r: 4, n: 1 },
+    "ck:5": { r: 2, n: 1 }, "ck:6": { r: 3, n: 1 },
+    "fm:4": { r: 2, n: 1 }, "fm:5": { r: 3, n: 1 }, "fm:6": { r: 2, n: 1 }, "fm:7": { r: 4, n: 1 }, "fm:8": { r: 4, n: 1 }, "fm:9": { r: 5, n: 1 }, "fm:11": { r: 6, n: 1 },
+    "fp:7": { r: 4, n: 1 }, "fp:10": { r: 3, n: 1 },
+    "er:6": { r: 3, n: 1 }, "er:9": { r: 4, n: 1 }, "er:10": { r: 5, n: 1 }, "er:12": { r: 3, n: 1 },
+    "hr:18": { r: 2, n: 1 }, "hr:19": { r: 2, n: 1 }, "hr:21": { r: 3, n: 1 }, "hr:24": { r: 2, n: 1 }, "hr:25": { r: 3, n: 1 }, "hr:26": { r: 3, n: 1 }, "hr:29": { r: 4, n: 1 }, "hr:33": { r: 2, n: 1 },
+    "hc:20": { r: 3, n: 1 },
+    "fh:10": { r: 2, n: 1 }, "fh:11": { r: 2, n: 1 }, "fh:14": { r: 3, n: 1 }, "fh:15": { r: 3, n: 1 }, "fh:16": { r: 4, n: 1 }, "fh:17": { r: 4, n: 1 }, "fh:20": { r: 5, n: 1 }, "fh:22": { r: 3, n: 1 }, "fh:23": { r: 5, n: 1 }, "fh:25": { r: 6, n: 1 },
+    "hw:15": { r: 2, n: 1 }, "hw:20": { r: 2, n: 1 }, "hw:21": { r: 3, n: 1 }, "hw:22": { r: 2, n: 1 }, "hw:24": { r: 4, n: 1 }, "hw:38": { r: 3, n: 1 }, "hw:39": { r: 3, n: 1 }, "hw:40": { r: 5, n: 1 },
+    "gl:11": { r: 2, n: 1 }, "gl:12": { r: 2, n: 1 }, "gl:13": { r: 3, n: 1 }, "gl:16": { r: 4, n: 1 }, "gl:17": { r: 2, n: 1 }, "gl:18": { r: 3, n: 1 }, "gl:19": { r: 5, n: 1 }, "gl:26": { r: 2, n: 1 }, "gl:27": { r: 6, n: 1 },
+    "nk:4": { r: 2, n: 1 }, "nk:6": { r: 3, n: 1 }, "nk:7": { r: 2, n: 1 }, "nk:11": { r: 3, n: 1 },
+    "up:10": { r: 3, n: 1 }, "up:12": { r: 2, n: 1 }, "up:20": { r: 3, n: 1 },
+    "uc:8": { r: 2, n: 1 }, "uc:10": { r: 2, n: 1 }, "uc:14": { r: 2, n: 1 }, "uc:15": { r: 2, n: 1 }, "uc:17": { r: 3, n: 1 }, "uc:18": { r: 3, n: 1 }, "uc:19": { r: 3, n: 1 },
+    "bg:16": { r: 4, n: 1 }, "bg:17": { r: 2, n: 1 }, "bg:18": { r: 2, n: 1 }, "bg:21": { r: 3, n: 1 }, "bg:26": { r: 3, n: 1 }, "bg:27": { r: 4, n: 1 }, "bg:28": { r: 5, n: 1 },
+    "hi:4": { r: 2, n: 1 }, "hi:6": { r: 3, n: 1 },
+    "fr:7": { r: 4, n: 1 }
+  };
+  Object.keys(LOCKS3).forEach(function (k) { if (!LOCKS[k]) LOCKS[k] = LOCKS3[k]; });
   // Hand-picked rarity (else from the lock: r ≥ 30 → 4, r ≥ 20 → 3, rank ≥ 10 / medal / streak ≥ 3 / bars ≥ 10 → 2, other lock → 1).
   var RARE = { "sk:22": 4, "ey:20": 4, "hw:43": 4, "bg:37": 4, "fr:5": 4, "fr:10": 4, "hw:41": 3, "fh:13": 3, "up:28": 3, "gl:29": 3, "mt:21": 3, "nk:12": 3, "hi:15": 3, "fr:6": 3, "er:8": 3 };
   // Could become Premium-only later (owner's idea). NOT locked now: everyone can use them.
@@ -1038,7 +1064,15 @@
     return h.replace(/__ID__/g, "av" + (++uid));
   }
   /* ---------- People + cache ---------- */
-  var TTL = 60000;
+  var TTL = 60000, retryF = false, retryG = {};
+  function retryLoads() {   // feat: specs asked for before the session was ready
+    if (off || !A || (!retryF && !Object.keys(retryG).length)) return;
+    try { if (A.authed && !A.authed()) return; } catch (e) {}
+    var ps = [];
+    if (retryF) { retryF = false; ps.push(forFriends()); }
+    Object.keys(retryG).forEach(function (g) { delete retryG[g]; ps.push(forGroup(g)); });
+    Promise.all(ps).then(function () { try { if (A.render) A.render(); } catch (e) {} });
+  }
   function chestOf(p) {
     if (!p) return [];
     if (p.md) return p.md;
@@ -1056,7 +1090,7 @@
     return ((facts && facts.m) || []).filter(function (x) { return !HIDDEN_MEDALS[x]; }).slice(0, 5);
   }
   function mePerson() {
-    if (!me) return null;
+    if (!me || !me.spec) return null;   // v3: nothing until you create your character
     return { a: me.spec, seed: me.seed, r: me.facts ? me.facts.r : 1, md: myMedals(me.spec, me.facts), is_me: true, name: (A && A.getName && A.getName()) || "" };
   }
   function loadMe(force) {
@@ -1074,6 +1108,7 @@
     var c = { at: Date.now(), byName: {}, byK: {}, me: null };
     (list || []).forEach(function (p) {
       if (p.is_me) c.me = p;
+      if (!p.a) return;   // v3: no saved character = no character (initial / the normal map pin), never a random one
       if (p.k) c.byK[p.k] = p;
       if (p.name && !(p.is_me && c.byName[p.name])) c.byName[p.name] = p;
     });
@@ -1087,7 +1122,7 @@
     c = groups[gid] = groups[gid] || {};
     c.p = rpc("avatars_for", { p_group_id: gid }).then(function (r) {
       c.p = null;
-      if (r.error) return c.data || null;
+      if (r.error) { if (/no_session|timeout/.test(String(r.error.message || r.error.code || ""))) retryG[gid] = 1; return c.data || null; }
       c.data = index(parse(r.data).people);
       repaint();
       return c.data;
@@ -1101,7 +1136,7 @@
     friends = friends || {};
     friends.p = rpc("avatars_for", { p_group_id: null }).then(function (r) {
       friends.p = null;
-      if (r.error) return friends.data || null;
+      if (r.error) { if (/no_session|timeout/.test(String(r.error.message || r.error.code || ""))) retryF = true; return friends.data || null; }
       friends.data = index(parse(r.data).people);
       repaint();
       return friends.data;
@@ -1142,6 +1177,7 @@
     rpT = setTimeout(function () {
       rpT = 0;
       try { document.querySelectorAll(".av[data-avk]").forEach(paintEl); } catch (e) {}
+      try { if (window.AVWIZ && window.AVWIZ.sync) window.AVWIZ.sync(); } catch (e) {}   // v3: Profil card + nudge
     }, 30);
   }
   function avEl(avk, initial, cls, label) {
@@ -1237,7 +1273,24 @@
     // parser path, which then un-nests the medal ribbon buttons. The SVG is painted into the element right after.
     setTimeout(repaint, 0);
     return '<div role="button" tabindex="0" class="pf-av av av-pf" data-avk="me" data-avi="' + esc(initial || "?") + '" data-av-edit="1" aria-label="' +
-      esc(L("Ändra din avatar", "Edit your avatar")) + '"><span class="av-pf-in"></span><span class="av-pen" aria-hidden="true">✎</span></div>';
+      esc(me && !me.spec ? L("Skapa din karaktär", "Create your character") : L("Ändra din karaktär", "Edit your character")) + '"><span class="av-pf-in"></span><span class="av-pen" aria-hidden="true">✎</span></div>';
+  }
+
+  function afterSave(spec) {
+    me.spec = spec;
+    var f = me.facts || {};
+    var upd = function (x) { if (!x || !x.me) return; x.me.a = me.spec; x.me.md = myMedals(me.spec, f); if (x.me.name) x.byName[x.me.name] = x.me; if (x.me.k) x.byK[x.me.k] = x.me; };
+    Object.keys(groups).forEach(function (g) { upd(groups[g].data); });
+    if (friends) upd(friends.data);
+    repaint();
+  }
+  function saveSpec(spec) {   // avwiz.js: {ok, spec} | {ok:false, code}
+    spec = clean(spec);
+    return rpc("set_my_avatar", { p_spec: spec }).then(function (r) {
+      if (r.error) return { ok: false, code: codeOf(r.error) };
+      afterSave(parse(r.data).spec || spec);
+      return { ok: true, spec: me.spec };
+    });
   }
 
   /* ---------- Unlock checks ---------- */
@@ -1248,9 +1301,16 @@
   }
   function inWin(w, t) { var a = w.slice(0, 5), b = w.slice(6, 11); return a <= b ? t >= a && t <= b : t >= a || t <= b; }
   // All plain needs must be met; OR any one of lk.o (same as SQL olnu_avatar_lock_ok).
+  // v3: facts.gf from the server (0252). Before 0252 runs: an account that already had a saved avatar and did not make it in
+  // the new wizard (local flag olnu.avV3) counts as grandfathered, so nobody loses an item.
+  function grandfathered(f) {
+    if (f && typeof f.gf === "boolean") return f.gf;
+    return !!(me && me.spec) && !lsGet("olnu.avV3", null);
+  }
   function unlocked(lk, f) {
     if (!lk) return true;
     f = f || {};
+    if (lk.n && grandfathered(f)) return true;
     var ok = true;
     if (lk.r && (f.r | 0) < lk.r) ok = false;
     if (lk.m && (f.m || []).indexOf(lk.m) < 0) ok = false;
@@ -1362,11 +1422,12 @@
     if (ch) lsSet("olnu.avSeen", seen);
   }
   function newIn(k, f) { if (!(k in N)) return 0; var n = 0; for (var i = 0; i <= MAX[k]; i++) if (isNew(k, i, f)) n++; return n; }
-  function openEditor() {
+  function openEditor(opts) {
     if (off || !A || !A.openSheet) return;
     var go = function () {
       if (!me) { A.toast(L("Kunde int' hämta din avatar. Prova igen.", "Could not load your avatar."), { err: true }); return; }
-      A.openSheet(L("Min avatar", "My avatar"), build);
+      if (!me.spec && !(opts && opts.full) && window.AVWIZ && window.AVWIZ.open) { window.AVWIZ.open(); return; }   // v3
+      A.openSheet(L("Min karaktär", "My character"), build);
     };
     if (me) go(); else loadMe().then(go);
   }
@@ -1380,7 +1441,8 @@
     var items = 0; SLOTS.forEach(function (k) { items += MAX[k] + 1; });
     wrap.innerHTML =
       '<div class="ave-top"><div class="ave-prev" aria-live="polite"></div>' +
-      '<button type="button" class="ave-dice" aria-label="' + esc(L("Slumpa", "Randomise")) + '" title="' + esc(L("Slumpa", "Randomise")) + '">🎲</button></div>' +
+      '<button type="button" class="ave-dice" aria-label="' + esc(L("Slumpa", "Randomise")) + '" title="' + esc(L("Slumpa", "Randomise")) + '">🎲</button>' +
+      (window.AVWIZ ? '<button type="button" class="ave-wiz">' + esc(L("🧭 Steg för steg", "🧭 Step by step")) + "</button>" : "") + "</div>" +
       '<p class="ave-rank"><b>🎖️ ' + esc(f.title || rankTitle(f.r || 1)) + "</b> · " + esc(L(unl + " av " + tot + " specialgrejer upplåsta", unl + " of " + tot + " special items unlocked")) + "</p>" +
       '<div class="ave-nav"><div class="ave-tabs" role="tablist"></div><div class="ave-subs" role="tablist"></div></div><div class="ave-body"></div>' +
       '<div class="ave-bar"><button type="button" class="btn btn-amber btn-block ave-save">' + esc(L("Spara", "Save")) + "</button></div>";
@@ -1587,6 +1649,8 @@
       sec.appendChild(grid);
       return sec;
     }
+    var wz = wrap.querySelector(".ave-wiz");
+    if (wz) wz.addEventListener("click", function () { try { window.AVWIZ.open({ from: draft }); } catch (e) {} });
     wrap.querySelector(".ave-dice").addEventListener("click", function () {
       var RR = Math.random, kept = { ms: draft.ms, md: draft.md };
       var NONE = { fh: 0.45, hw: 0.5, gl: 0.6, fp: 0.82, fm: 0.6, er: 0.6, nk: 0.6, hi: 0.55, fr: 0.6, ck: 0.4 };
@@ -1616,10 +1680,8 @@
           saved = ""; paintPrev(); return;
         }
         var d = parse(r.data);
-        me.spec = d.spec || spec; saved = JSON.stringify(clean(me.spec));
-        Object.keys(groups).forEach(function (g) { var x = groups[g].data; if (x && x.me) { x.me.a = me.spec; x.me.md = myMedals(me.spec, f); } });
-        if (friends && friends.data && friends.data.me) { friends.data.me.a = me.spec; friends.data.me.md = myMedals(me.spec, f); }
-        paintPrev(); repaint();
+        afterSave(d.spec || spec); saved = JSON.stringify(clean(me.spec));
+        paintPrev();
         lastSave = pickLine(SAVE_SV, lastSave);
         A.toast(sv() ? "👤 " + SAVE_SV[lastSave] : "👤 Saved!", { ms: 3000 });
         try { if (window.FX && window.FX.vibrate) window.FX.vibrate(12); } catch (e) {}
@@ -1641,12 +1703,17 @@
   window.AVATAR = {
     svg: svg, defaultSpec: defaultSpec, LOCKS: LOCKS, MAX: MAX, NAMES: N, SLOTS: SLOTS, PREMIUM_LATER: PREMIUM_LATER,
     unlocked: unlocked, lockText: lockText, rarity: rarity, tileVB: tileVB, clean: clean,
-    me: function () { return me; }, on: function () { return !off; },
+    me: function () { return me && me.spec ? me : null; }, on: function () { return !off; },
+    // v3 (avwiz.js)
+    meRaw: function () { return me; }, loadMe: loadMe, saveSpec: saveSpec, usable: usable, lockOf: lockOf, shortLock: shortLock,
+    gf: function () { return grandfathered(me && me.facts); }, PAL: { SKIN: SKIN, HAIRC: HAIRC, TOPC: TOPC, EYEC: EYEC, BGC: BGC },
+    VB: { FACE: FACE_VB, EYE: EYE_VB, NECK: NECK_VB, HAND: HAND_VB }, rankTitle: rankTitle,
     chatSeen: chatSeen, statusRow: statusRow, friendRow: friendRow, faces: faces, profileAv: profileAv,
     openEditor: openEditor, forGroup: forGroup, forFriends: forFriends, repaint: repaint,
     // avpins.js (map pins): the loaded caches {at, byName, byK, me}, friends first
     _caches: function () { var o = []; if (friends && friends.data) o.push(friends.data); Object.keys(groups || {}).forEach(function (g) { if (groups[g] && groups[g].data) o.push(groups[g].data); }); return o; },
     init: function (api) { A = api; },
-    onAuthed: function () { loadMe(true); }
+    onAuthed: function () { loadMe(true); setTimeout(retryLoads, 0); },
+    onPoll: function () { retryLoads(); }
   };
 })();

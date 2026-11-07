@@ -68,7 +68,7 @@
     ["runda", "🗺️", "Rundvandraren", "Krogrundan gick i mål. Skorna förtjänar en medalj också.", "Gå klart en krogrunda med gruppen (minst 2 stopp själv).", 1],
     ["detektiv", "🔎", "Detektiven", "Du knäckte den hemliga agenten. Sherlock i egen hög person.", "Gissa rätt på den hemliga agenten.", 1],
     ["spion", "🕵️", "Mästerspionen", "Ingen genomskådade dig. Farligt bra.", "Var hemlig agent utan att någon gissar rätt.", 1],
-    ["orakel", "🔮", "Oraklet", "Bäst gissning på kvällens öl. Kristallkulan är polerad.", "Vinn Gissa kvällen i din grupp.", 1],
+    ["orakel", "🔮", "Oraklet", "Bäst gissning på hur många som är ute ikväll. Kristallkulan är polerad.", "Vinn Gissa kvällen i din grupp.", 1],
     ["bingo", "🎱", "Bingo!", "Tre i rad. Hela gänget jublar.", "Var med när gruppen får bingo i Kvällsbingo.", 1],
     // "Varit med om": hidden until earned, caring text, never a goal.
     ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Glöden lever kvar i historierna.", "", 1, 1],

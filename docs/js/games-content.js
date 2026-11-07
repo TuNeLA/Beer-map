@@ -367,17 +367,16 @@ window.GAMES_CONTENT = {
     ]
   },
   guessNight: {
-    prompt: [
-      "🎯 Gissa kvällen: hur många öl loggas i stan ikväll? Lämna din gissning före 21.",
-      "🎯 Underrättelseuppdrag: gissa hur många öl som loggas i stan ikväll.",
-      "🎯 Ölguden vill veta vad du tror. Hur många öl blir det i stan ikväll?",
-      "🎯 Sätt din siffra, soldat. Kvällens totala antal öl i stan, hur många?",
-      "🎯 Tippa kvällens siffra. Närmast vinner ära. Ingen behöver dricka mer för det.",
-      "🎯 Gissa kvällen! Blir det en lugn tisdag i själen eller en fredag i Dalarna?",
-      "🎯 Hur törstig ä stan ikväll? Lägg en gissning och luta dig tillbaka.",
+    prompt: [   // feat 2026-11-07 store-safe: people out, never a drink count
+      "🎯 Gissa kvällen: hur många ä ute i stan ikväll? Lämna din gissning före 21.",
+      "🎯 Underrättelseuppdrag: gissa hur många som syns ute i stan ikväll.",
+      "🎯 Sätt din siffra, soldat. Hur många ä ute i stan ikväll?",
+      "🎯 Tippa kvällens siffra. Närmast vinner ära. Bara folk räknas, inget annat.",
+      "🎯 Gissa kvällen! Blir det en lugn tisdag eller en fredag i Dalarna?",
+      "🎯 Hur levande ä stan ikväll? Lägg en gissning och luta dig tillbaka.",
       "🎯 Högkvarteret öppnar vadslagningen. Insatsen ä din heder, int' pengar.",
-      "🎯 Gissa antalet öl i stan ikväll. Statistikavdelningen väntar med pennan.",
-      "🎯 En siffra, en chans. Hur många öl loggas i stan ikväll?"
+      "🎯 Hur många kompisar och okända syns ute ikväll? Statistikavdelningen väntar med pennan.",
+      "🎯 En siffra, en chans. Hur många ä ute i stan ikväll?"
     ],
     winner: [
       "🏆 {name} gissade {guess}, det blev {real}. Det ä ju nästan trolldom.",

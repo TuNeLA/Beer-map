@@ -392,6 +392,7 @@
       seg.appendChild(b);
     });
     ikvBox.appendChild(seg);
+    try { var skj = W("SKJUTS") && W("SKJUTS").ikvNode(); if (skj) ikvBox.appendChild(skj); } catch (e) {}   // 🚗 Jag kör ikväll
     if (mine === "ute" && W("SOCIAL") && W("SOCIAL").hudClick) {
       ikvBox.appendChild(h("div", { class: "ds-card pn-ikv-next" }, [h("span", { text: "Ska gänget med? Kalla in dem till samma ställe." }),
         h("button", { type: "button", class: "btn btn-small", text: "Kalla in gänget", onclick: function () {

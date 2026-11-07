@@ -1082,10 +1082,10 @@ export const PUSH_CAP_DEFAULT = 15;
 /** The kind of a push, from its tag (every payload has one; tags never hold user ids). */
 export function pushCat(tag: string): string {
   const t = String(tag || "");
-  if (/^olnu-(sos|medcheck|walk|find)-/.test(t)) return "safe";
+  if (/^olnu-(sos|medcheck|walk|find|pickup)-/.test(t)) return "safe";   // feat 0250: 🆘 Hämta mig
   if (/^olnu-(msg|voice)-/.test(t)) return "chat";
   if (/^olnu-dm-/.test(t)) return "dm";
-  if (/^olnu-(rally|inv|evgo|status|skal)-/.test(t)) return "plan";
+  if (/^olnu-(rally|inv|evgo|status|skal|ride|close)-/.test(t)) return "plan";   // feat 0250: 🚗 Skjuts?, ⏰ stänger
   if (/^olnu-kaos-/.test(t)) return "kaos";
   if (/^olnu-(tip|takeover)-/.test(t)) return "bar";
   if (/^olnu-(title|helg)-/.test(t)) return "kul";
@@ -2666,6 +2666,69 @@ async function evDuePush(admin: Admin, uid: string, _b: Body) {
   if (!rows.length) return { ...NONE, reason: "not_due" };
   return await evDueSend(admin, rows);
 }
+// ---- feat 0250 🆘 HÄMTA MIG · 🚗 SKJUTS? · ⏰ BAREN STÄNGER ----
+// {event:"pickup", req_id}: the caller's new request (atomic notified claim, < 5 min old, live) -> the people it went to.
+//   hamta  -> "🆘 Anton: Kan nån hämta mig?" (tag olnu-pickup-<id> = kind "safe": always sent, like SOS / Följ mig hem)
+//   skjuts -> "🚗 Anton undrar: Skjuts?" to the one driver (tag olnu-ride-<id> = kind "plan": push_prefs + nattro apply)
+// {event:"pickup_yes", req_id}: the caller answered "kommer" (pickup_answers.notified claim) -> "🙋 Lisa kommer och hämtar dig!"
+// Cron: close_remind_claim() -> "⏰ Pitchers stänger om 20 min. Dags att planera hemfärden 🚕" (tag olnu-close-<bar> = "plan").
+export const CLOSE_LINES: string[] = [   // v28 style: short title, the advice in the body
+  "⏰ {bar} stänger om {min} min",
+  "⏰ {min} min kvar på {bar}",
+];
+export const CLOSE_BODIES: string[] = [
+  "Dags att planera hemfärden 🚕 Tryck för Följ mig hem, Hämta mig eller taxi.",
+  "Hur tar du dig hem? 🚕 Tryck för Följ mig hem, Hämta mig eller taxi.",
+];
+async function pickupPush(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.req_id);
+  if (id === null) return { ...NONE, reason: "no_req" };
+  const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: claimed, error } = await admin.from("pickup_reqs").update({ notified: true })
+    .eq("id", id).eq("user_id", uid).eq("notified", false).is("ended_at", null).gt("created_at", since)
+    .select("id, kind, to_users, group_id");
+  if (error) throw error;
+  const r = claimed && claimed[0];
+  if (!r) return { ...NONE, reason: "no_req" };
+  const to = ((r.to_users ?? []) as string[]).filter((x) => x && x !== uid).slice(0, 30);
+  if (!to.length) return { ...NONE, reason: "no_viewers" };
+  const namn = cleanBarName(await nameOf(admin, uid, r.group_id as string | null)) || "En kompis";
+  const payload = JSON.stringify(r.kind === "skjuts"
+    ? { title: `🚗 ${namn} undrar: Skjuts?`, body: "Du kör ikväll. Tryck för att svara.", url: `/?pickup=${id}`, tag: `olnu-ride-${id}` }
+    : { title: `🆘 ${namn}: Kan nån hämta mig?`, body: "Tryck för att se var och svara \"Jag kommer\".", url: `/?pickup=${id}`, tag: `olnu-pickup-${id}`, renotify: true });
+  const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
+}
+async function pickupYesPush(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.req_id);
+  if (id === null) return { ...NONE, reason: "no_req" };
+  const { data: claimed, error } = await admin.from("pickup_answers").update({ notified: true })
+    .eq("req_id", id).eq("user_id", uid).eq("ans", "kommer").eq("notified", false).select("req_id");
+  if (error) throw error;
+  if (!claimed || !claimed.length) return { ...NONE, reason: "already_sent" };
+  const { data: r, error: rErr } = await admin.from("pickup_reqs").select("id, user_id, kind, group_id, ended_at").eq("id", id).maybeSingle();
+  if (rErr) throw rErr;
+  if (!r || r.ended_at) return { ...NONE, reason: "no_req" };
+  const namn = cleanBarName(await nameOf(admin, uid, r.group_id as string | null)) || "En kompis";
+  const payload = JSON.stringify({ title: r.kind === "skjuts" ? `🚗 ${namn} kör dig!` : `🙋 ${namn} kommer och hämtar dig!`,
+    body: "Tryck för att se vilka som svarat.", url: `/?pickup=${id}`, tag: `olnu-pickup-${id}`, renotify: true });
+  const jobs = (await subsOf(admin, [r.user_id as string])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+type CloseRow = { to: string; bar_id: string; bar_name?: string | null; min: number };
+async function closeSend(admin: Admin, rows: CloseRow[]) {
+  const jobs: Job[] = [];
+  for (const r of rows || []) {
+    if (!r || !r.to) continue;
+    const bar = cleanBarName(r.bar_name) || "Krogen";
+    const line = CLOSE_LINES[Math.floor(Math.random() * CLOSE_LINES.length)];
+    const payload = JSON.stringify({ title: fill(line, { bar, min: Math.max(1, Number(r.min) || 1) }),
+      body: CLOSE_BODIES[Math.floor(Math.random() * CLOSE_BODIES.length)], url: "/?hemfard=1",
+      tag: `olnu-close-${String(r.bar_id || "").replace(/[^\w-]/g, "").slice(0, 40)}` });
+    for (const s of await subsOf(admin, [r.to])) jobs.push({ sub: s, payload });
+  }
+  return jobs.length ? await sendAll(admin, jobs, 1200) : NONE;
+}
 async function keyRpc(key: string, name: string, body: unknown) {
   const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
   if (/^eyJ/.test(key)) headers.Authorization = "Bearer " + key;
@@ -2701,7 +2764,13 @@ async function cronDue(key: string): Promise<Response> {
   } catch (e) { console.error("ev_due failed", e); }
   lastFlush28 = 0;
   const digests = await paceFlush(admin);   // v28 (deploy)
-  return json({ ok: true, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests });
+  // feat 0250 ⏰ Baren stänger (a missing RPC on an old database = skipped)
+  let closeSent = 0;
+  try {
+    const cr = await keyRpc(key, "close_remind_claim", {});
+    if (cr.ok && Array.isArray(cr.data) && cr.data.length) closeSent = (await closeSend(admin, cr.data as CloseRow[])).sent || 0;
+  } catch (e) { console.error("close_remind failed", e); }
+  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -2782,6 +2851,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "walk") return json(await walkPush(admin, uid, body, false));
     if (event === "walk_home") return json(await walkPush(admin, uid, body, true));
     if (event === "coming") return json(await comingPush(admin, uid, body));
+    if (event === "pickup") return json(await pickupPush(admin, uid, body));          // feat 0250
+    if (event === "pickup_yes") return json(await pickupYesPush(admin, uid, body));   // feat 0250
 
     // 2. Caller's beer. Nothing to do unless it is live and was accepted in the last 5 min.
     const nothing = { sent: 0, failed: 0, friends: 0, kaos: 0 };

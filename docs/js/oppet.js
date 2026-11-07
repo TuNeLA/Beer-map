@@ -265,29 +265,70 @@
     });
     return best;
   }
-  var TOAST_SV = [
-    "⏰ {bar} stänger om {min}. Sista beställning, soldat – drick lugnt.",
-    "⏰ Om {min} slår {bar} igen portarna. Dags att planera reträtten.",
-    "⏰ {bar} stänger om {min}. Truppen bör välja nästa läger.",
-    "⏰ Klockan tickar: {bar} stänger om {min}. Inte stressa, bara planera.",
-    "⏰ {bar} drar ner rullgardinen om {min}. Vatten nu ä aldrig fel."
+  // ⏰ feat 2026-11-07 (owner: "Baren stänger om 10/20 minuter"): two calm heads-ups, 20 and 10 min before closing, care
+  // framing, a "🏠 Hemfärd" button (Följ mig hem · Hämta mig · Taxi · Nattmat). No "nearest open bar" here any more.
+  var TOAST20 = [
+    "⏰ {bar} stänger om {min}. Dags att planera hemfärden 🚕",
+    "⏰ Om {min} stänger {bar}. Hur tar du dig hem? 🚕",
+    "⏰ {bar} stänger om {min}. Ett glas vatten nu, sen planera hemfärden 🚕"
+  ];
+  var TOAST10 = [
+    "⏰ {bar} stänger om {min}. Hemfärden – fixad? 🚕",
+    "⏰ {min} kvar på {bar}. Säg till gänget hur du tar dig hem 🚕",
+    "⏰ {bar} stänger snart ({min}). Ta det lugnt hem 🏠"
   ];
   function checkClosing() {
     if (!A || !A.LIVE) return;
-    var bar = myBar(); if (!bar || !isFinite(bar.lat)) return;
-    var st = barStatus(bar); if (!st || !st.open || st.always || !(st.closeIn > 0 && st.closeIn <= 30)) return;
-    var key = String(bar.id) + "|" + evening();
-    if (lsGet(SEEN_KEY, "") === key) return;
+    var bar = myBar();
+    try { remindSync(bar); } catch (e) {}
+    if (!bar || !isFinite(bar.lat)) return;
+    var st = barStatus(bar); if (!st || !st.open || st.always || !(st.closeIn > 0 && st.closeIn <= 20)) return;
+    var stage = st.closeIn <= 10 ? 10 : 20, base = String(bar.id) + "|" + evening(), key = base + "|" + stage, seen = lsGet(SEEN_KEY, "");
+    if (seen === key || (stage === 20 && seen === base + "|10")) return;
     lsSet(SEEN_KEY, key);
-    var nb = nearestOpenBar(bar, 45);
-    var txt = fill(sv() ? pick("close", TOAST_SV) : "⏰ {bar} closes in {min}.", { bar: bar.name || L("Krogen", "The bar"), min: dur(st.closeIn) });
-    if (nb) txt += " " + L("Närmast öppet: " + (nb.bar.name || "en krog") + ", " + distTxt(nb.d) + (nb.st.always ? "" : " (till " + nb.st.closeAt + ")") + ".",
-      "Nearest open: " + (nb.bar.name || "a bar") + ", " + distTxt(nb.d) + (nb.st.always ? "" : " (until " + nb.st.closeAt + ")") + ".");
+    var txt = fill(sv() ? pick("close" + stage, stage === 10 ? TOAST10 : TOAST20) : "⏰ {bar} closes in {min}. Time to plan the way home 🚕",
+      { bar: bar.name || L("Krogen", "The bar"), min: dur(st.closeIn) });
     var show = function () {
-      A.toast(txt, { id: "aio-close", cls: "oh-toast", ms: 9000,
-        action: nb ? { label: "📍 " + L("Visa", "Show"), fn: function () { A.openBar(nb.bar); } } : null });
+      A.toast(txt, { id: "aio-close", cls: "oh-toast", ms: 10000, action: { label: L("🏠 Hemfärd", "🏠 Way home"), fn: function () { hemfardSheet(bar); } } });
     };
     if (window.OLNU_STRIP && window.OLNU_STRIP.after) window.OLNU_STRIP.after(show); else show();
+  }
+  // 🚕 Hemfärd: the ways home in one place.
+  function hemfardSheet(bar) {
+    A.openSheet(L("🚕 Hemfärd", "🚕 Way home"), function (body) {
+      var box = document.createElement("div"); box.className = "hf2";
+      var st = bar ? barStatus(bar) : null, lead = document.createElement("p"); lead.className = "hf2-lead";
+      lead.textContent = (bar && st && st.open && !st.always ? (bar.name || "Krogen") + " stänger " + st.closeAt + ". " : "") + "Välj hur du tar dig hem. Ta det lugnt.";
+      box.appendChild(lead);
+      var add = function (label, fn) { box.appendChild(A.btn(label, "btn-block", function () { try { fn(); } catch (e) {} })); };
+      if (window.HEMFOLJ && window.HEMFOLJ.open) add("🏠 Följ mig hem – kompisarna ser dig tills du ä hemma", function () { window.HEMFOLJ.open({}); });
+      if (window.SKJUTS && window.SKJUTS.openPickup) add("🆘 Hämta mig – fråga gänget om skjuts", function () { window.SKJUTS.openPickup({}); });
+      if (window.EXTRAS && window.EXTRAS.hudClick) add("🚕 Taxi hem", function () { window.EXTRAS.hudClick("taxi"); });
+      if (nightMode()) add("🌭 Nattmat öppet nu", function () { nmSheet(); });
+      var w = document.createElement("p"); w.className = "muted"; w.textContent = "💧 Ett glas vatten innan du går ä aldrig fel.";
+      box.appendChild(w);
+      body.appendChild(box);
+    });
+  }
+  // Push heads-up (notify-group cron, owner deploys): while I am checked in at a bar with known hours, tell the server when
+  // it closes (once per bar and closing time). Push kind "plan" in notify-group = push_prefs + nattro apply.
+  var remKey = null, remOff = false;
+  function remindSync(bar) {
+    if (remOff || !A || !A.rpc) return;
+    try { if (A.authed && !A.authed()) return; } catch (e) {}
+    var ci = A.myCheckin && A.myCheckin(), st = null, k = null;
+    if (ci && bar && String(bar.id) === String(ci.id)) {
+      st = barStatus(bar);
+      if (st && st.open && !st.always && st.closeIn > 2 && st.closeIn <= 480) k = String(bar.id) + "|" + evening() + "|" + st.closeAt;
+    }
+    if (k === remKey) return;
+    if (!k) { remKey = null; if (lsGet("olnu.closeRem", "")) { lsSet("olnu.closeRem", ""); A.rpc("close_remind_clear").then(function (r) { if (r && r.error && U.missing && U.missing(r.error)) remOff = true; }); } return; }
+    remKey = k;
+    if (lsGet("olnu.closeRem", "") === k) return;
+    A.rpc("close_remind_set", { p_bar_id: String(bar.id), p_bar_name: bar.name || "", p_close_at: new Date(Date.now() + st.closeIn * 60000).toISOString() }).then(function (r) {
+      if (r && r.error) { if (U.missing && U.missing(r.error)) remOff = true; remKey = null; return; }
+      lsSet("olnu.closeRem", k);
+    });
   }
 
   /* ---------- Ikväll chip (max one) ---------- */
@@ -311,7 +352,10 @@
   }
 
   window.OPPET = {
-    init: function (api) { A = api; setTimeout(load, 1500); U.vInterval(function () { chipCache.at = 0; modeCheck(false); }, 60000); },
+    init: function (api) {
+      A = api; setTimeout(load, 1500); U.vInterval(function () { chipCache.at = 0; modeCheck(false); }, 60000);
+      try { if (/[?&]hemfard=1/.test(location.search)) setTimeout(function () { hemfardSheet(myBar()); }, 2500); } catch (e) {}   // ⏰ push tap
+    },
     onAuthed: function () { load(); },
     onPoll: function () { load(); chipCache.at = 0; modeCheck(false); try { checkClosing(); } catch (e) {} },
     hudChipsHTML: function () {
@@ -322,8 +366,7 @@
       if (action === "aio-nm") nmSheet();
       else if (action === "aio-sb") sbSheet();
       else if (action === "aio-close") {
-        var bar = myBar(), nb = bar ? nearestOpenBar(bar, 45) : null;
-        if (nb) A.openBar(nb.bar); else if (bar) A.openBar(bar);
+        hemfardSheet(myBar());   // feat: the chip opens the ways home
       }
     },
     // for js/barinfo.js, js/places.js and js/forfest.js
@@ -335,7 +378,7 @@
       if (c && c.min != null) overrides[k] = { min: c.min | 0, closed: !!c.closed, ev: evening() }; else delete overrides[k];
       chipCache.at = 0;
     },
-    nmSheet: nmSheet, sbSheet: sbSheet, distTxt: distTxt,
+    nmSheet: nmSheet, sbSheet: sbSheet, distTxt: distTxt, hemfardSheet: hemfardSheet,
     _set: function (h, sb) { if (h) { H = h; nmList = []; nmById = {}; (h.nm || []).forEach(function (x) { var o = { id: placeId(x[1], x[2]), name: x[0], lat: x[1], lng: x[2], t: x[3], w: x[4] }; nmList.push(o); nmById[o.id] = o; }); } if (sb) SB = sb.stores.map(function (x) { return { name: x[0], lat: x[1], lng: x[2], w: x[3], guess: !!x[4] }; }); loaded = true; changed(); },
     _check: checkClosing
   };
