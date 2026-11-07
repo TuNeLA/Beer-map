@@ -8,7 +8,7 @@ var SHELL = [
   "./icons/icon-192.png", "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"
 ];
 var CDN_CACHE = "olnu-cdn", DATA_CACHE = "olnu-data", TILE_CACHE = "olnu-tiles";
-var KEEP = [CDN_CACHE, DATA_CACHE, TILE_CACHE, "olnu-pending"];   // olnu-pending: notificationclick parks the target there
+var KEEP = [CDN_CACHE, DATA_CACHE, TILE_CACHE, "olnu-pending", "olnu-beta"];   // olnu-pending: notificationclick parks the target there
 var CDN_HOSTS = ["cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"];
 var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfreemap\.org)$/;
 // 🗺️ Kartstil beta: OpenFreeMap style + TileJSON change weekly (network first); vector tiles are bigger than PNGs (byte cap).
@@ -246,7 +246,176 @@ function tileMetaFirst(req, e) {
   }).catch(function () { return fetch(req); });
 }
 
-self.addEventListener("fetch", function (e) {
+/* ---------- 🧪 Betaversion: this worker is the launcher (CONTRACT "BETAKANAL", js/kanal.js) ----------
+   The page stores {ch: "beta", url: <BETA_URL>} in olnu-pending ./__kanal and posts "pn-kanal-set". While the channel is
+   "beta", every same-origin GET in this scope (not sw.js, not manifest.webmanifest) is answered with the same path from the
+   beta build: CORS fetch (GitHub Pages sends Access-Control-Allow-Origin: *), so it also works from pintsnow.com. Beta files
+   live in their own cache (olnu-beta). Supabase, map tiles and CDNs are not touched: same storage, same account.
+   Safety net: a beta page must post "pn-kanal-ok" (app.js started its modules) within KANAL_BOOT_MS ("pn-kanal-alive"
+   gives it KANAL_SLOW_MS). No ok while the page is visible = back to stable at once, the page is reloaded, and the stable
+   app shows a toast. A beta start that never answered (worker stopped meanwhile) counts as a crash: 2 crashes = stable.
+   ?kanal=stabil in a page URL forces stable. The beta build's own copy of this worker never launches (its own scope). */
+var KANAL_KEY = "./__kanal", BETA_CACHE = "olnu-beta", KANAL_BOOT_MS = 12000, KANAL_SLOW_MS = 25000;
+var kanal = null, kanalBoots = {};
+function kanalRead() {
+  return caches.open("olnu-pending").then(function (c) { return c.match(KANAL_KEY); })
+    .then(function (r) { return r ? r.json() : null; }).catch(function () { return null; })
+    .then(function (k) { kanal = k && typeof k === "object" ? k : { ch: "stable" }; return kanal; });
+}
+function kanalSave(k) {
+  kanal = k;
+  return caches.open("olnu-pending").then(function (c) { return c.put(KANAL_KEY, new Response(JSON.stringify(k), { headers: { "Content-Type": "application/json" } })); }).catch(function () {});
+}
+// Only real PintsNow hosts (https), or a local test build when this worker runs on localhost. Never this worker's own scope.
+function kanalBase(k) {
+  try {
+    if (!k || k.ch !== "beta" || !k.url) return null;
+    var u = new URL(String(k.url)), local = /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
+    var okHost = u.protocol === "https:" && /^(tunela\.github\.io|(?:[a-z0-9-]+\.)?pintsnow\.com)$/.test(u.hostname);
+    if (!okHost && !(local && /^(localhost|127\.0\.0\.1)$/.test(u.hostname))) return null;
+    var base = u.href.split("#")[0].split("?")[0]; if (base.charAt(base.length - 1) !== "/") base += "/";
+    var scope = self.registration.scope;
+    if (scope.indexOf(base) === 0 || base.indexOf(scope) === 0) return null;
+    return base;
+  } catch (err) { return null; }
+}
+function kanalStable(why, extra) {
+  var k = { ch: "stable", at: Date.now(), by: why };
+  if (extra) for (var x in extra) k[x] = extra[x];
+  kanalBoots = {};
+  return Promise.all([kanalSave(k), caches.delete(BETA_CACHE).catch(function () {})]);
+}
+// Safety net: beta did not start → stable, reload the open app pages.
+function kanalFall(why) {
+  var was = kanal && kanal.url;
+  return kanalStable(why, { fell: Date.now(), was: was || "" }).then(function () {
+    return self.clients.matchAll({ type: "window" }).then(function (list) {
+      list.forEach(function (cl) {
+        if (cl.url.indexOf(self.registration.scope) !== 0) return;
+        try { cl.postMessage({ type: "pn-kanal-fell" }); } catch (err) {}
+        try { if (cl.navigate) cl.navigate(cl.url).catch(function () {}); } catch (err) {}
+      });
+    });
+  });
+}
+function kanalWatch(id, e) {
+  var at = Date.now();
+  kanalBoots[id] = { at: at, alive: false, ok: false };
+  var p = new Promise(function (done) {
+    (function tick() {
+      var b = kanalBoots[id];
+      if (!b || b.ok) { done(); return; }
+      if (Date.now() - at < (b.alive ? KANAL_SLOW_MS : KANAL_BOOT_MS)) { setTimeout(tick, 500); return; }
+      // too slow: only a page that is still open and visible counts (a phone put away during start is not a crash)
+      (id ? self.clients.get(id) : Promise.resolve(null)).then(function (cl) {
+        if (!kanalBoots[id] || kanalBoots[id].ok) return;
+        if (id && (!cl || cl.visibilityState === "hidden")) return;
+        return kanalFall("timeout");
+      }).catch(function () {}).then(done);
+    })();
+  });
+  keep(e, p);
+}
+function kanalWrap(res, type) {
+  var h = new Headers(res.headers);
+  if (type) h.set("Content-Type", type);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
+function kanalFetch(burl, nav) {
+  return fetch(new Request(burl, { mode: "cors", credentials: "omit", cache: nav ? "no-cache" : "default" }));
+}
+// The beta page: network first (no-cache, NAV_TIMEOUT_MS), the cached copy offline. Keeps the stable manifest link.
+function kanalPage(burl, e) {
+  var net = kanalFetch(burl, true).then(function (res) {
+    if (!res || !res.ok) throw new Error("beta " + (res && res.status));
+    keep(e, caches.open(BETA_CACHE).then(function (c) { return c.put(burl, res.clone()); }).catch(function () {}));
+    return res;
+  });
+  var cached = function () { return caches.open(BETA_CACHE).then(function (c) { return c.match(burl); }); };
+  var timer, slow = new Promise(function (ok) { timer = setTimeout(function () { cached().then(function (r) { if (r) ok(r); }); }, NAV_TIMEOUT_MS); });
+  keep(e, net.catch(function () {}));
+  return Promise.race([net.then(function (r) { clearTimeout(timer); return r; }, function () { clearTimeout(timer); return cached(); }), slow]).then(function (res) {
+    if (!res) return null;
+    return res.text().then(function (html) {
+      if (!/rel="manifest"/.test(html)) html = html.replace(/<\/head>/i, '<link rel="manifest" href="./manifest.webmanifest">\n</head>');
+      return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" } });
+    });
+  });
+}
+// Other beta files: ?v=<hash> = cache first; the rest network first with the cached copy as the fallback.
+function kanalFile(burl, e) {
+  return caches.open(BETA_CACHE).then(function (c) {
+    var hashed = /[?&]v=[0-9a-f]{8,}(&|$)/.test(burl);
+    var net = function () {
+      return kanalFetch(burl, false).then(function (res) {
+        if (res && res.ok) keep(e, c.put(burl, res.clone()).catch(function () {}));
+        return res;
+      });
+    };
+    if (hashed) return c.match(burl).then(function (hit) { return hit || net(); });
+    return net().then(function (res) { return res && res.ok ? res : c.match(burl).then(function (h) { return h || res; }); },
+      function () { return c.match(burl); });
+  });
+}
+function kanalRoute(req, e, url, scopePath, route) {
+  var stable = function () {
+    var out = null;
+    try { route({ request: req, __stable: 1, respondWith: function (p) { out = p; }, waitUntil: function (p) { try { e.waitUntil(p); } catch (err) {} } }); } catch (err) {}
+    return out ? Promise.resolve(out) : fetch(req);
+  };
+  var nav = req.mode === "navigate";
+  if (nav && /[?&]kanal=stabil\b/.test(url.search)) return kanalStable("url").then(stable);
+  var rel = url.pathname.slice(scopePath.length);
+  if (rel === "sw.js" || rel === "manifest.webmanifest") return stable();
+  return (nav || !kanal ? kanalRead() : Promise.resolve(kanal)).then(function (k) {
+    var base = kanalBase(k);
+    if (!base) return stable();
+    var burl = base + rel + url.search;
+    if (nav || /\.html?$/.test(rel) || rel === "") {
+      var crash = Promise.resolve(false);
+      if (nav && appNav(req)) {
+        // the last beta start never said ok (the worker was stopped before it could check): a crash
+        if (k.pend && Date.now() - k.pend > KANAL_BOOT_MS) { k.fails = (k.fails || 0) + 1; }
+        if ((k.fails || 0) >= 2) crash = kanalFall("crash").then(function () { return true; });
+        else { k.pend = Date.now(); keep(e, kanalSave(k)); }
+      }
+      return crash.then(function (fell) {
+        if (fell) return stable();
+        return kanalPage(burl, e).then(function (res) {
+          if (!res) return stable();   // beta not reachable and not cached: the stable app (the choice stays)
+          if (nav && appNav(req)) kanalWatch(e.resultingClientId || "", e);
+          return res;
+        }, stable);
+      });
+    }
+    return kanalFile(burl, e).then(function (res) {
+      if (!res || res.status === 404 || (!res.ok && res.type !== "opaque")) return stable();
+      return kanalWrap(res);
+    }, stable);
+  });
+}
+self.addEventListener("message", function (e) {
+  var d = e.data || {}, id = e.source && e.source.id, reply = function () { try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {} };
+  var all = function (f) { for (var b in kanalBoots) if (!id || b === id || !b) kanalBoots[b][f] = true; };   // Safari may not give resultingClientId
+  if (d.type === "pn-kanal-alive") { all("alive"); reply(); return; }
+  if (d.type === "pn-kanal-ok") {
+    all("ok");
+    keep(e, kanalRead().then(function (k) {
+      if (k.ch !== "beta" || (!k.pend && !k.fails)) return;
+      k.pend = 0; k.fails = 0; if (d.sha) k.sha = String(d.sha).slice(0, 12);
+      return kanalSave(k);
+    }).then(reply, reply));
+    return;
+  }
+  if (d.type === "pn-kanal-set" && d.rec && typeof d.rec === "object") {
+    var r = d.rec, k = r.ch === "beta" ? { ch: "beta", url: String(r.url || ""), at: Date.now(), by: String(r.by || "") } : { ch: "stable", at: Date.now(), by: String(r.by || "") };
+    if (k.ch === "beta" && !kanalBase(k)) { keep(e, kanalStable("bad-url").then(function () {}, function () {})); return; }   // no reply: the page undoes
+    if (k.ch === "stable") { if (r.fell) k.fell = +r.fell || 0; if (r.fellShown) k.fellShown = +r.fellShown || 0; }
+    keep(e, (k.ch === "stable" ? kanalStable(k.by, k) : kanalSave(k).then(function () { kanalBoots = {}; return caches.delete(BETA_CACHE).catch(function () {}); })).then(reply, reply));
+  }
+});
+
+self.addEventListener("fetch", function route(e) {
   var req = e.request;
   if (req.method !== "GET") return;
   var url = new URL(req.url);
@@ -259,6 +428,7 @@ self.addEventListener("fetch", function (e) {
   }
   var scopePath = new URL(self.registration.scope).pathname;
   if (url.pathname.indexOf(scopePath) !== 0) return;
+  if (!e.__stable) { e.respondWith(kanalRoute(req, e, url, scopePath, route)); return; }   // 🧪 Betaversion launcher
   if (/\/bars-closed\.json$/.test(url.pathname)) { e.respondWith(networkFirst(req, e)); return; }   // calm: a closed place goes at once
   if (DATA_RE.test(url.pathname)) { e.respondWith(staleWhileRevalidate(req, e)); return; }
   // Self-hosted fonts never change under the same name: keep them across app versions.

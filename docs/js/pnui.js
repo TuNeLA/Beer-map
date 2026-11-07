@@ -683,6 +683,8 @@
     var v = "";
     try { var s = [].slice.call(document.scripts).map(function (x) { return x.src || ""; }).filter(function (x) { return /app\.js/.test(x); })[0]; v = (/[?&]v=([^&]+)/.exec(s || "") || [])[1] || ""; } catch (e) {}
     var screen = sheetOpen() ? ((document.getElementById("sheet-title") || {}).textContent || "meny") : "kartan";
+    var bsha = ""; try { bsha = window.KANAL && window.KANAL.sha ? window.KANAL.sha() : ""; } catch (e) {}   // 🧪 Betaversion
+    if (bsha) v = "beta " + bsha + (v ? " · " + v : "");
     return { v: v, ua: navigator.userAgent.slice(0, 200), screen: String(screen).slice(0, 60), err: lastErr, w: String(innerWidth), h: String(innerHeight), standalone: String(standalone()) };
   }
   function openBug() {
@@ -699,7 +701,7 @@
         var t = String(ta.value || "").trim();
         if (t.length < 3) { toast("Skriv vad som hände.", { err: true }); return; }
         go.disabled = true;
-        call("submit_feedback", { p_kind: "bug", p_text: t, p_meta: cb.checked ? m : {} }).then(function (r) {
+        call("submit_feedback", { p_kind: "bug", p_text: (/^beta /.test(m.v) ? "[" + m.v.split(" · ")[0] + "] " : "") + t, p_meta: cb.checked ? m : {} }).then(function (r) {
           go.disabled = false;
           if (r.error) { toast(r.off ? "Det går int' att skicka än." : errCode(r.error) === "slow_down" ? "Vänta en stund innan du skickar igen." : "Det gick int'. Försök igen.", { err: true }); return; }
           vib(15); A.closeSheet(); toast("Tack! Felet ä rapporterat. Vi kollar på det. 🐞");

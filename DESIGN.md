@@ -76,7 +76,7 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
    bubble after a change and before the first beer. Never a permanent line.
 4. **The main map stays clean.** One HUD row (my night + at most one urgent chip). Who is out lives in Grupper
    ("Ute ikväll" card) and as "● N ute" under the Grupper button. Captions ("Visste du?") are small toasts under the HUD
-   row, tap = away. Map credits (Mapbox logo + ⓘ) sit in the bottom-right corner, ANNAT on the left shoulder of ÖL!.
+   row, tap = away. Map credits, ANNAT and the rail: see "Main screen geometry".
 5. **Back navigation.** In a sheet: ‹ shows when there is a step back (sub-view, opened sheet, folded list); then ✕ hides.
    ✕ shows only on the first screen and closes everything. A full-screen overlay (games, förfest, party) opened from a
    sheet goes back to that sheet and view when it closes. Android back = ‹.
@@ -88,6 +88,26 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
    "Det här gick int' att öppna just nu." + "Uppdatera appen".
 9. **Targets ≥ 44 px** (48 where there is room). Focus ring 2 px `--ds-amber-t`, offset 2.
 10. **Status = icon + word**, never colour alone.
+
+<!-- ds05 layout START -->
+## Main screen geometry (ds05, 2026-11-07; tested by `ds-layout-pw.js` at 360 / 390 / 430 px)
+
+| Rule | Value |
+|---|---|
+| Screen edge | `--pn-edge` 12 px, left and right, on everything edge to edge (header, ticker, HUD, rail, banners, dock). |
+| Gap | `--pn-gap` 8 px between stacked floating things. |
+| Top row | Logo · status pill · 🏆 · profile. Pill and buttons are all 44 px high. Profile = my character's face, else a person icon. |
+| Row 2 | The LIVE ticker. **KAOS is inside the ticker** (red, label "KAOS", the headline, tap = Visa, ✕ = away), never a box on top. A call-out replaces the ticker in the same place. |
+| HUD row | Left, under row 2: at most one urgent chip ("Kolla till Oskar"). |
+| Right rail | Under row 2, top right: **Spökläge · Event · ⋯ Mer**, 44 px, 8 px apart. Mer holds Värme, Senaste dagarna, Taxi hem, Ställen nära dig, Kartstil. Usage data (client_vitals sheet opens, 2026-11-07): Event 10, Taxi 3, Mer 1; toggles are not logged. |
+| Banners, toasts, captions | Column left of the rail, under the HUD row. They never cover the rail. |
+| Locate | Bottom right, 12 px above the dock's right box (precision), right edges aligned (thumb reach). |
+| Dock | Grupper and precision are the same box (88 × 80). Precision = one toggle that shows the current mode (Exakt / Område); a short bubble after a change. ÖL! = viewport centre ± 1 px. |
+| ANNAT | A 50 px satellite on the upper-right edge of the ÖL! circle (one family: beer or something else). |
+| Map credits | Mapbox wordmark (65 × 20, not styled) + ⓘ (opens © Mapbox © OpenStreetMap, Improve this map) bottom-left at the map edge, quiet. Mapbox: "You may not style the Mapbox logo", the logo may move to another corner but must stay on the map, text attribution "must be legible" (https://docs.mapbox.com/help/dive-deeper/attribution/). |
+| Nested radius | Inner radius = outer − inset, or a round (pill) button. |
+| Tap targets | ≥ 44 × 44 (ⓘ: 28 px circle, 44 px tap area). |
+<!-- ds05 layout END -->
 
 ## Icons (`window.PNI`)
 

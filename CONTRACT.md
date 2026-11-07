@@ -3155,3 +3155,31 @@ Owner 2026-11-07: "We have to move everything to Mapbox on this release." + decl
 - `MBX.domStats()`, `MBX.stats` (moves, posMs, mounted, markers, clusterRuns …) for tests and vitals.
 - GLBARS: `shown(id)` (is the bar drawn in GL now), `open(id, sel)` (open its sheet like a tap). mypins.js / barlit.js use them.
 
+## 🧪 BETAKANAL · Betaversion (beta channel, owner 2026-11-07; no migration)
+Like a Chrome/Discord beta channel: the SAME installed app (same URL, same home-screen icon, same storage, same account)
+runs the code of the beta build. No other URL, no handover ticket, no "you are in the beta" screen.
+- **Config**: `OLNU_CONFIG.BETA_URL` = "https://tunela.github.io/pintsnow-beta/" (TuNeLA/pintsnow-beta, built from
+  big-update by beta/transform.py). Empty = no switch. GitHub Pages sends `Access-Control-Allow-Origin: *`, so it also
+  works from pintsnow.com.
+- **Switch**: Inställningar → Om & hjälp → "Betaversion" ("Få nya funktioner först. Kan ha buggar."; on: "Du kör beta
+  <sha>. Kan ha buggar."). On: the page checks that BETA_URL/index.html answers (with the `olnu-beta` badge), stores the
+  choice, reloads. Off: stable, beta cache deleted, reload. Hidden without a service worker, and in the beta build opened
+  at its own address.
+- **Record**: Cache Storage `olnu-pending` `./__kanal` = `{ch: "beta"|"stable", url, at, by, pend, fails, sha, fell,
+  fellShown}` (a worker has no localStorage). Page → worker message `pn-kanal-set {rec}` (answered on a MessagePort).
+- **Launcher** (`docs/sw.js` kanalRoute): channel "beta" → every same-origin GET in scope except `sw.js` and
+  `manifest.webmanifest` = the same relative path + query from BETA_URL (CORS, credentials omit), in its own cache
+  `olnu-beta` (kept on app updates, cleared on every switch). Page: network first (4 s) + cached copy; the stable
+  manifest link is added when the beta page has none. `?v=<hash>` files: cache first. Others: network first. A beta 404 /
+  network error for a file → the stable answer; beta page unreachable and not cached → the stable app (choice stays).
+  sw.js itself always stays the stable one (the launcher). Supabase, tiles, CDNs: untouched → same account.
+- **Safety net**: js/kanal.js posts `pn-kanal-alive` when it runs and `pn-kanal-ok` from `mods("init")`. No ok within
+  12 s (25 s after alive) while the page is open and visible → stable at once (`fell`), open pages are reloaded, the stable
+  app shows "Betan kunde inte starta – du kör vanliga versionen" once (`fellShown`). A beta start that never answered
+  (worker stopped) counts as a crash; 2 crashes → stable. `?kanal=stabil` in any page URL → stable (toast "Du kör vanliga
+  versionen.", the URL is cleaned).
+- **Version tag**: the beta build's own fixed "BETA <sha>" badge (`#olnu-beta`). Beta code is detected by `window.PN_BETA`
+  (beta.js) or that badge.
+- **Rapportera fel**: in beta code the text starts with "[beta <sha>] " and meta `v` = "beta <sha> · <app.js v>".
+- **Keep in the beta build**: kanal.js + the mods hook (the ok signal). The direct beta URL works as before.
+- Tests: scratchpad `beta-tests/beta-pw.js` (three local servers, live Supabase with a fresh anonymous user; WebKit not installed here).

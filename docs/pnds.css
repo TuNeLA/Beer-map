@@ -294,3 +294,91 @@ body:has(#install-banner:not([hidden])) .dl-cap{top:calc(var(--sat) + 222px + va
 /* "Nytt i appen" (pnmove.js): our icons in the round tiles */
 .pn-it>.pn-e{display:grid !important;place-items:center;color:var(--ds-amber-t)}
 .pn-it>.pn-e .pi{width:22px;height:22px}
+/* ds05 layout START — main screen geometry (coordinator measure 2026-11-07). One screen-edge token, a fixed top stack,
+   a free right rail, equal dock boxes. js/pnds.js (ds05 block) writes --pn-r2 (bottom of row 2) and --pn-ban. */
+:root{--pn-edge:12px;--pn-gap:8px;--pn-rail:44px;--pn-side-w:88px;--pn-side-h:80px}
+/* 1 · one edge: 12 px left and right on every edge-to-edge thing */
+.topbar{padding-left:calc(var(--sal) + var(--pn-edge)) !important;padding-right:calc(var(--sar) + var(--pn-edge)) !important;padding-top:calc(var(--sat) + var(--pn-gap)) !important;padding-bottom:var(--pn-gap) !important}
+.ticker,#chaos,#rally{left:calc(var(--sal) + var(--pn-edge)) !important;right:calc(var(--sar) + var(--pn-edge)) !important}
+.dock{padding-left:calc(var(--sal) + var(--pn-edge)) !important;padding-right:calc(var(--sar) + var(--pn-edge)) !important}
+/* 2 · row 2 = the LIVE ticker. KAOS is NOT a separate box any more: the ticker itself turns red with a "KAOS" label and
+   the headline (tap = Visa, ✕ = away; pnds.js ds05). A call-out (#rally) still replaces the ticker in the same place. */
+.ticker{top:calc(var(--sat) + 64px) !important}
+#chaos{display:none !important}
+#rally{top:calc(var(--sat) + 64px) !important;overflow:hidden !important;border-radius:var(--r-lg) !important}
+body:has(#rally:not([hidden])) .ticker{visibility:hidden !important}
+.rl-x,.rl-a{border-radius:0 !important}
+.ticker.pn-kaos{height:46px !important;background:var(--ds-red) !important;border-color:rgba(255,123,115,.6) !important}
+.ticker.pn-kaos .tk-live{background:rgba(0,0,0,.28) !important;font-size:0 !important}
+.ticker.pn-kaos .tk-live::after{content:"KAOS";font:700 var(--fs-12)/1 var(--ds-sans);letter-spacing:.08em;color:#fff}
+.ticker.pn-kaos .tk-viewport{visibility:hidden}
+.pn-kaos-line{display:none}
+.ticker.pn-kaos .pn-kaos-line{display:flex;position:absolute;top:0;bottom:0;right:44px;left:var(--pn-kaos-l,64px);align-items:center;gap:var(--sp-2);
+  padding:0 var(--sp-2);border:0;background:transparent;color:#fff;font:600 var(--fs-14)/18px var(--ds-sans);text-align:left;cursor:pointer;min-width:0}
+.pn-kaos-line>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.pn-kaos-line>b{flex:0 0 auto;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.pn-kaos-x{display:none}
+.ticker.pn-kaos .pn-kaos-x{display:grid;place-items:center;position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:transparent;color:#fff;cursor:pointer}
+.pn-kaos-x .pi{width:18px;height:18px}
+/* 3 · top row: one height (44) */
+#live-count{height:44px !important}
+/* 4 · HUD row (left) and the right rail (⋯, locate) start under row 2; banners / toasts / captions use the column LEFT of
+   the rail, under the HUD row, so they never cover ⋯ or locate */
+.hud-left,.hud-left.open{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap)) !important;left:calc(var(--sal) + var(--pn-edge)) !important;
+  right:calc(var(--sar) + var(--pn-edge) + var(--pn-rail) + var(--pn-gap)) !important}
+/* the right rail, top: Spökläge · Event · ⋯ Mer (one tap each, 44 px, 8 px apart). Locate is bottom right, above the dock. */
+.pn-rail{position:fixed !important;z-index:999;right:calc(var(--sar) + var(--pn-edge)) !important;width:44px;height:44px;border-radius:var(--r-pill) !important;
+  display:grid;place-items:center;background:var(--pn-float) !important;border:1px solid var(--ds-border-2);color:var(--ds-text);box-shadow:var(--ds-sh-1);cursor:pointer;padding:0}
+.pn-rail .pi{width:22px;height:22px}
+.pn-rail[aria-pressed="true"]{background:var(--ds-amber) !important;color:var(--ds-on-amber) !important;border-color:transparent}
+.pn-rail:active{transform:scale(.95)}
+.pn-rail:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.pn-rail .pn-rail-dot{position:absolute;top:4px;right:4px;width:10px;height:10px;border-radius:50%;background:var(--ds-red);box-shadow:0 0 0 2px var(--ds-bg)}
+.pn-rail .pn-rail-dot[hidden]{display:none}
+#pn-ghost{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap)) !important}
+#pn-evs{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 1 * (var(--pn-rail) + var(--pn-gap))) !important}
+#btn-more.pn-more{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 2 * (var(--pn-rail) + var(--pn-gap))) !important;right:calc(var(--sar) + var(--pn-edge)) !important}
+#btn-more .pn-more-dot{display:none !important}
+body.pn-calm #btn-locate,#btn-locate{top:auto !important;bottom:var(--pn-loc-b, calc(var(--dock-h,212px) + var(--pn-gap))) !important;right:calc(var(--sar) + var(--pn-edge)) !important}   /* 12 px above the precision box (pnds.js) */
+/* Event lives on the rail: no second Event row in Mer */
+#sheet-body .pn-row[data-src="btn-evs"]{display:none !important}
+#install-banner,.banner{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + var(--pn-rail) + var(--pn-gap)) !important;
+  left:calc(var(--sal) + var(--pn-edge)) !important;right:calc(var(--sar) + var(--pn-edge) + var(--pn-rail) + var(--pn-gap)) !important;
+  padding:var(--pn-gap) var(--pn-gap) var(--pn-gap) var(--sp-3) !important;border-radius:var(--r-lg) !important}
+.toasts{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + var(--pn-rail) + var(--pn-gap) + var(--pn-ban, 0px)) !important;
+  padding:0 calc(var(--sar) + var(--pn-edge) + var(--pn-rail) + var(--pn-gap)) 0 calc(var(--sal) + var(--pn-edge)) !important}
+.dl-cap,body:has(#install-banner:not([hidden])) .dl-cap{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + var(--pn-rail) + var(--pn-gap) + var(--pn-ban, 0px)) !important;
+  left:calc(var(--sal) + var(--pn-edge)) !important;transform:none !important;width:auto !important;right:calc(var(--sar) + var(--pn-edge) + var(--pn-rail) + var(--pn-gap)) !important;max-width:none !important}
+.dl-cap.dl-in{transform:none !important}
+/* 7 · nested radius: a button inside a 16 px box with 8 px inset is round (pill) — never a 12 px corner in a 12 px box */
+#install-close{width:44px !important;height:44px !important;border-radius:var(--r-pill) !important;flex:0 0 auto}
+#install-go{border-radius:var(--r-pill) !important}
+/* 5 · dock: the two side controls are the same box (88 × 80); ÖL! stays in the exact centre */
+.dock-row>.side-btn,.dock-row>.prec{width:min(var(--pn-side-w),100%) !important;min-width:0 !important;max-width:none !important;height:var(--pn-side-h) !important}
+.dock-row>.side-btn{padding:var(--pn-gap) !important;justify-content:center}
+.dock-row>.prec{justify-self:end}
+/* precision = ONE toggle button showing the current mode (icon + Exakt / Område); a tap switches (pnui.js); bubble on change */
+body #prec-seg{height:100% !important;padding:0 !important;gap:0 !important;border-radius:var(--r-lg) !important}
+body #prec-seg>button[aria-checked="false"]{display:none !important}
+body #prec-seg>button[aria-checked="true"]{height:100% !important;min-height:0 !important;border-radius:var(--r-lg) !important;background:transparent !important;
+  box-shadow:none !important;color:var(--ds-text) !important;font-size:0 !important;gap:var(--sp-1) !important;flex-direction:column !important}
+body #prec-seg>button[aria-checked="true"]::after{content:"" !important;display:block !important;width:auto !important;height:auto !important;opacity:1 !important;
+  background:none !important;-webkit-mask:none !important;mask:none !important;font:600 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-text) !important}
+body #prec-seg>#prec-exact[aria-checked="true"]::after{content:"Exakt" !important}
+body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Område" !important}
+body #prec-seg>button[aria-checked="true"] .pi{width:22px !important;height:22px !important;color:var(--ds-amber-t)}
+body #prec-seg>button[aria-checked="true"]::before{content:"" !important;display:none !important}
+/* 6 · ANNAT: a 50 px satellite on the upper-right edge of the ÖL! circle (one family: beer or something else). ÖL! stays centred. */
+.beer-wrap>.other-wrap{left:71px !important;top:-15px !important;right:auto !important;bottom:auto !important;z-index:4}
+@media (max-width:380px){ .beer-wrap>.other-wrap{left:61px !important;top:-17px !important} }
+/* 8 + owner F · map credits: the Mapbox wordmark (required, not styled: 65 × 20 as in Mapbox's own example) + ⓘ (opens
+   the text attribution: © Mapbox © OpenStreetMap, Improve this map) sit bottom-left at the map edge, quiet, away from our
+   buttons. ⓘ = 28 px circle you see, 44 × 44 you can tap. Rule: docs.mapbox.com/help/dive-deeper/attribution (DESIGN.md). */
+.bm-mblogo{left:calc(var(--sal) + var(--pn-edge)) !important;right:auto !important;bottom:calc(var(--dock-h,212px) + 18px) !important;width:65px !important;height:20px !important;opacity:.85}
+#btn-attrib{width:44px !important;height:44px !important;background:transparent !important;border:0 !important;opacity:.8 !important;display:grid;place-items:center;
+  left:calc(var(--sal) + var(--pn-edge) + 65px) !important;right:auto !important;bottom:calc(var(--dock-h,212px) + 6px) !important}
+#btn-attrib::before{content:"";position:absolute;left:8px;top:8px;width:28px;height:28px;border-radius:50%;background:rgba(10,15,28,.55);border:1px solid var(--ds-border);z-index:-1}
+#btn-attrib::after{display:none !important}
+#btn-attrib>span{position:relative;color:var(--ds-muted);font-size:var(--fs-14)}
+.attrib-pop{left:calc(var(--sal) + var(--pn-edge)) !important;right:auto !important;bottom:calc(var(--dock-h,212px) + 56px) !important}
+/* ds05 layout END */

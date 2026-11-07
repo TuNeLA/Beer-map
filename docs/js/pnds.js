@@ -433,3 +433,96 @@
     sheetFail: sheetFail, iconize: iconize, outCard: outCard, _ret: function () { return ret; }, _A: function () { return A; }   // _A: tests only
   };
 })();
+/* ds05 layout START — main screen geometry: --pn-r2 (bottom of row 2: ticker / kaos / call-out), --pn-ban (install
+   banner height + gap), KAOS inside the ticker, the right rail, the care chip says what to do. Styles: pnds.css ds05 block. */
+(function () {
+  "use strict";
+  function $(id) { return document.getElementById(id); }
+  function vis(e) { if (!e || e.hidden || !e.getClientRects().length) return false; var s = getComputedStyle(e); return s.display !== "none" && s.visibility !== "hidden"; }
+  var root = document.documentElement, busy = false;
+  function place() {
+    if (busy) return; busy = true;
+    try {
+      var r2 = 0;
+      [$("rally"), document.querySelector(".ticker")].forEach(function (e) { if (vis(e)) r2 = Math.max(r2, e.getBoundingClientRect().bottom); });
+      if (r2) { var v = Math.round(r2) + "px"; if (root.style.getPropertyValue("--pn-r2") !== v) root.style.setProperty("--pn-r2", v); }
+      var b = $("install-banner"), ban = vis(b) ? Math.round(b.getBoundingClientRect().height) + 8 + "px" : "0px";
+      if (root.style.getPropertyValue("--pn-ban") !== ban) root.style.setProperty("--pn-ban", ban);
+      var pr = $("prec-seg");   // locate: right side, 12 px above the dock's right box (owner: thumb reach)
+      if (vis(pr)) { var lb = Math.round(innerHeight - pr.getBoundingClientRect().top + 12) + "px"; if (root.style.getPropertyValue("--pn-loc-b") !== lb) root.style.setProperty("--pn-loc-b", lb); }
+      document.querySelectorAll(".hx-chip.af-chip-med").forEach(function (c) {
+        var t = [].filter.call(c.childNodes, function (n) { return n.nodeType === 3 && n.nodeValue.trim(); }).pop();
+        if (t && !/^\s*Kolla till /.test(t.nodeValue)) t.nodeValue = "Kolla till " + t.nodeValue.replace(/^\s*🚑\s*/, "").trim();
+      });
+    } catch (e) {}
+    busy = false;
+  }
+  // KAOS inside the LIVE ticker (owner E): app.js still runs #chaos (hidden by CSS); the ticker shows it
+  function kaos() {
+    var c = $("chaos"), tk = document.querySelector(".ticker"); if (!c || !tk) return;
+    var on = !c.hidden, ln = tk.querySelector(".pn-kaos-line");
+    if (on && !ln) {
+      ln = document.createElement("button"); ln.type = "button"; ln.className = "pn-kaos-line";
+      ln.innerHTML = "<span></span><b>Visa</b>";
+      ln.addEventListener("click", function () { var s = $("chaos-show"); if (s) s.click(); });
+      var x = document.createElement("button"); x.type = "button"; x.className = "pn-kaos-x"; x.setAttribute("aria-label", "Dölj kaos-larmet");
+      x.innerHTML = window.PNI ? window.PNI.svg("x") : "✕";
+      x.addEventListener("click", function () { var s = $("chaos-close"); if (s) s.click(); });
+      tk.appendChild(ln); tk.appendChild(x);
+    }
+    if (ln) {
+      var hd = ($("chaos-head") || {}).textContent || "", fc = ($("chaos-facts") || {}).textContent || "";
+      var txt = (hd + (fc ? " · " + fc : "")).trim();
+      if (ln.firstChild.textContent !== txt) ln.firstChild.textContent = txt;
+      ln.setAttribute("aria-label", "Kaos: " + txt + ". Visa");
+      var lv = tk.querySelector(".tk-live"); if (lv) root.style.setProperty("--pn-kaos-l", Math.round(lv.getBoundingClientRect().width) + "px");
+    }
+    tk.classList.toggle("pn-kaos", on);
+  }
+  // the right rail (owner B): Spökläge (privacy, one tap) · Event · ⋯ Mer. Usage data (client_vitals sheet opens, 2026-11-07):
+  // Event 10 reports, Taxi sheet 3, Mer 1; heat / ghost-pin / spökläge toggles are not logged → owner default order.
+  function railBtn(id, icon, label, fn) {
+    var b = $(id); if (b) return b;
+    b = document.createElement("button"); b.type = "button"; b.id = id; b.className = "pn-rail"; b.setAttribute("aria-label", label); b.title = label;
+    b.innerHTML = (window.PNI ? window.PNI.svg(icon) : "") + '<i class="pn-rail-dot" hidden></i>';
+    b.addEventListener("click", fn);
+    var more = $("btn-more"); (more && more.parentNode ? more.parentNode : document.body).insertBefore(b, more || null);
+    return b;
+  }
+  function ghostOn() { try { return localStorage.getItem("olnu.ghostMode") === "1"; } catch (e) { return false; } }
+  function rail() {
+    if (!$("btn-more")) return;
+    var g = railBtn("pn-ghost", "eye-off", "Spökläge", function () {
+      var on = !ghostOn();
+      try { localStorage.setItem("olnu.ghostMode", on ? "1" : "0"); } catch (e) {}
+      var A = window.PNDS && window.PNDS._A && window.PNDS._A();
+      try { if (A && A.updateCounts) A.updateCounts(); } catch (e) {}
+      try { if (A && A.toast) A.toast(on ? "Spökläge på: ölen räknas, men du syns int' på kartan." : "Spökläge av: du syns på kartan igen.", { ms: 3500 }); } catch (e) {}
+      paintRail();
+    });
+    var ev = $("btn-evs");
+    if (ev) railBtn("pn-evs", "calendar", "Event ikväll", function () { var e = $("btn-evs"); if (e) e.click(); });
+    paintRail();
+  }
+  function paintRail() {
+    var g = $("pn-ghost");
+    if (g) { var on = ghostOn(); g.setAttribute("aria-pressed", String(on)); g.title = on ? "Spökläge på (du syns int')" : "Spökläge av"; g.setAttribute("aria-label", g.title); }
+    var e = $("pn-evs"), b = document.querySelector("#btn-evs .evs-badge");
+    if (e) { var d = e.querySelector(".pn-rail-dot"); if (d) d.hidden = !(b && !b.hidden && (b.textContent || "0") !== "0"); }
+  }
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(function () { kaos(); rail(); place(); }, 30); }
+  function start() {
+    kaos(); rail(); place();
+    window.addEventListener("resize", soon);
+    if (window.ResizeObserver) { var ro = new ResizeObserver(soon); [".ticker", "#chaos", "#rally", "#install-banner", ".dock", "#btn-groups"].forEach(function (s) { var e = document.querySelector(s); if (e) ro.observe(e); }); }
+    if (window.MutationObserver) {
+      var mo = new MutationObserver(soon);
+      ["chaos", "rally", "install-banner", "hud-x"].forEach(function (id) { var e = $(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ["hidden", "class"], childList: true, characterData: true, subtree: id === "hud-x" || id === "chaos" }); });
+      mo.observe(document.body, { childList: true });   // #btn-evs arrives later (evsheet.js)
+    }
+    setInterval(function () { kaos(); rail(); place(); }, 2000);   // cheap safety net (layout reads only, writes only on change)
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds05 layout END */
