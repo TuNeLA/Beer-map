@@ -291,6 +291,6 @@
     init: function (api) { A = api; initDrag(); try { initPopup(); } catch (e) {} watchGv(); },
     willOpen: willOpen, didOpen: didOpen, willClose: willClose, didClose: didClose,
     back: function () { return back(false); }, sub: sub,
-    depth: function () { return levels.length; }, _levels: function () { return levels.map(function (l) { return l.kind + (l.entry ? ":" + l.entry[0] : ""); }); }
+    depth: function () { return levels.length; }, cur: function () { return cur; }, _levels: function () { return levels.map(function (l) { return l.kind + (l.entry ? ":" + l.entry[0] : ""); }); }
   };
 })();

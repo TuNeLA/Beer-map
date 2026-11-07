@@ -52,7 +52,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.NEARPLACES].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       if (modsWave && fn === "onPoll") { modsWave.push(m); return; }   // ⚡ SPEED: runWave() calls it
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
@@ -2442,7 +2442,7 @@
     sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
     $("sheet-title").textContent = title;
     var body = $("sheet-body"); body.innerHTML = "";
-    build(body);
+    try { build(body); } catch (e) { try { console.warn("olnu sheet", title, e); } catch (x) {} try { if (window.PNDS && window.PNDS.sheetFail) window.PNDS.sheetFail(body, title); } catch (x) {} }   // pnds: never an empty sheet
     $("sheet").hidden = false; $("backdrop").hidden = false;
     if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
     return true;

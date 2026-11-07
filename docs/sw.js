@@ -36,7 +36,7 @@ self.addEventListener("install", function (e) {
       var list = SHELL.filter(function (u) { return u !== "./" && u !== "./index.html"; }).concat(fromIndex);
       return Promise.all(list.map(function (u) {
         // A file with ?v=<hash> that an older version already has is the same file: copy it, do not download it again.
-        var copy = /[?&]v=/.test(u) ? caches.match(u) : Promise.resolve(null);
+        var copy = /[?&]v=[0-9a-f]{8,}(&|$)/.test(u) ? caches.match(u) : Promise.resolve(null);   // pnds: only a real content hash is "the same file"
         return copy.then(function (hit) {
           return hit ? c.put(u, hit) : c.add(new Request(u, { cache: "reload" }));
         });

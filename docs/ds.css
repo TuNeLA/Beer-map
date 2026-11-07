@@ -190,11 +190,11 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .ds-list>*+*{border-top:1px solid var(--ds-border)}
 .ds-row{display:flex;align-items:center;gap:var(--ds-3);min-height:56px;padding:var(--ds-2) var(--ds-4);width:100%;background:transparent;border:0;border-radius:0;color:var(--ds-text);
   text-align:left;font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans)}
-.ds-row-i{flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--ds-raised);font-size:var(--ds-fs-18)}
+.ds-row-i{flex:0 0 auto;width:32px;height:32px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--ds-raised);font-size:var(--ds-fs-18)}
 .ds-row-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
 .ds-row-t small{color:var(--ds-muted);font-weight:400;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
 .ds-row-v{flex:0 0 auto;color:var(--ds-muted);font-weight:400;font-size:var(--ds-fs-14)}
-.ds-chev::after{content:"›";flex:0 0 auto;margin-left:auto;padding-left:var(--ds-2);color:var(--ds-muted);font:400 24px/1 var(--ds-sans)}
+.ds-chev::after{content:"›";flex:0 0 auto;margin-left:auto;padding-left:var(--ds-2);color:var(--ds-muted);font:400 var(--fs-22)/1 var(--ds-sans)}
 
 /* ---------- .ds-section ---------- */
 .ds-section{margin:0}
@@ -220,7 +220,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
   background:transparent;box-shadow:none;color:var(--ds-text);justify-content:flex-start;text-align:left;font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);position:relative}
 .ds-set .ds-item>.row>.btn+.btn{border-top:1px solid var(--ds-border)}
 .ds-set .ds-item>.row>.btn::after,.ds-set .ds-item>.btn::after,.ds-set .ds-item>div>.sos-block>.btn::after{content:"›";position:absolute;right:var(--ds-4);top:50%;transform:translateY(-52%);
-  color:var(--ds-muted);font:400 24px/1 var(--ds-sans)}
+  color:var(--ds-muted);font:400 var(--fs-22)/1 var(--ds-sans)}
 .ds-set .ds-item>.row>.btn:active,.ds-set .ds-item>.btn:active,.ds-set .ds-item>div>.sos-block>.btn:active{transform:none;background:rgba(255,255,255,.05)}
 /* the one accent row (invite) and the danger rows */
 .ds-set .ds-item>.row>.btn-amber{color:var(--ds-amber-t);background:transparent}
@@ -269,7 +269,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .sheet .seg.bm-seg>button+button{border-top:1px solid var(--ds-border)}
 .bm-seg>button::before{content:none !important}
 .sheet .seg.bm-seg>button[aria-checked="true"]{color:var(--ds-amber-t);background:transparent}
-.bm-seg>button[aria-checked="true"]::after{content:"✓";position:absolute;right:var(--ds-4);top:50%;transform:translateY(-50%);font:700 18px/1 var(--ds-sans);color:var(--ds-amber-t)}
+.bm-seg>button[aria-checked="true"]::after{content:"✓";position:absolute;right:var(--ds-4);top:50%;transform:translateY(-50%);font:700 var(--fs-18)/1 var(--ds-sans);color:var(--ds-amber-t)}
 .ds-set .ds-item.ds-karta{padding:0}
 .ds-set .ds-item.ds-karta>.ds-item-l{display:none}
 .ds-set .ds-item.ds-karta>p{padding:var(--ds-2) var(--ds-4) var(--ds-3);margin:0 !important;border-top:1px solid var(--ds-border)}
@@ -284,7 +284,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .nr-fmain b{font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);color:var(--ds-text)}
 .nr-fmain small,.inv-fg{font:400 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted);white-space:normal}
 .inv-fg{font-size:var(--ds-fs-12);line-height:var(--ds-lh-12)}
-.nr-frow .btn{flex:0 0 auto;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:var(--ds-r-1);background:var(--ds-raised);border:1px solid var(--ds-border);font-size:18px}
+.nr-frow .btn{flex:0 0 auto;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:var(--ds-r-1);background:var(--ds-raised);border:1px solid var(--ds-border);font-size:var(--fs-18)}
 .nr-frow .btn.btn-ghost{background:transparent;color:var(--ds-muted)}
 .nr-frow .st-dot{width:10px;height:10px}
 .nr-flist .confirm{margin:var(--ds-2) var(--ds-3) !important}
@@ -384,4 +384,4 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 /* 🚕 Always-there taxi button, right above 📍 (owner: "I need to find a taxi button"). */
 #btn-taxi.locate-btn{bottom:auto !important;top:calc(var(--sat) + 158px + var(--chaos-h,0px) + var(--rally-h,0px)) !important;right:calc(var(--sar) + 10px)}
 body.ghost-chip-on #btn-taxi.locate-btn{top:calc(var(--sat) + 204px + var(--chaos-h,0px) + var(--rally-h,0px)) !important}
-#btn-taxi span{font-size:22px;line-height:1}
+#btn-taxi span{font-size:var(--fs-22);line-height:1}

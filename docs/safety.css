@@ -4,7 +4,7 @@
   background:var(--scrim,rgba(0,0,0,.6));padding:12px 12px calc(12px + var(--sab,0px))}
 .sf-ov.sf-hard{align-items:center;background:var(--night,#101216)}
 .sf-card{width:100%;max-width:440px;max-height:calc(100vh - 40px);overflow-y:auto;background:var(--night-2,#1b1e24);color:var(--text,#f3ead7);
-  border:1px solid var(--line,#33373f);border-radius:18px;padding:18px 16px 14px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  border:1px solid var(--line,#33373f);border-radius:var(--r-lg);padding:18px 16px 14px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
 .sf-card h2{margin:0 0 8px;font-size:1.25rem;line-height:1.25}
 .sf-card p{margin:0 0 10px;line-height:1.45}
 .sf-card .btn{margin-top:8px}
@@ -13,15 +13,15 @@
 .sf-rules{margin:4px 0 12px;padding-left:20px;line-height:1.45}
 .sf-rules li{margin:3px 0}
 .sf-chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
-.sf-chip{min-height:44px;padding:8px 12px;border-radius:22px;border:1px solid var(--line,#33373f);background:transparent;color:inherit;font:inherit;cursor:pointer}
+.sf-chip{min-height:44px;padding:8px 12px;border-radius:var(--r-xl);border:1px solid var(--line,#33373f);background:transparent;color:inherit;font:inherit;cursor:pointer}
 .sf-chip[aria-checked="true"]{background:var(--gold,#f2c14e);color:var(--on-amber,#1a1406);border-color:transparent;font-weight:700}
-.sf-note{width:100%;box-sizing:border-box;min-height:56px;border-radius:12px;border:1px solid var(--line,#33373f);background:var(--night-3,#24282f);color:inherit;font:inherit;padding:10px}
+.sf-note{width:100%;box-sizing:border-box;min-height:56px;border-radius:var(--r-md);border:1px solid var(--line,#33373f);background:var(--night-3,#24282f);color:inherit;font:inherit;padding:10px}
 .sf-also{display:flex;align-items:center;gap:6px;min-height:44px;margin-top:6px}
 .sf-also input{width:22px;height:22px}
 /* 🔞 age */
 .sf-age{margin:10px 0 12px}
 .sf-age-l{display:block;font-weight:700;margin-bottom:6px}
-.sf-age-sel{width:100%;min-height:48px;border-radius:12px;border:1px solid var(--line,#33373f);background:var(--night-3,#24282f);color:inherit;font:inherit;font-size:1.05rem;padding:0 12px}
+.sf-age-sel{width:100%;min-height:48px;border-radius:var(--r-md);border:1px solid var(--line,#33373f);background:var(--night-3,#24282f);color:inherit;font:inherit;font-size:1.05rem;padding:0 12px}
 .sf-age-bd{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
 .sf-age-bd[hidden]{display:none}
 .sf-age-bd .btn{margin:0;min-height:44px}

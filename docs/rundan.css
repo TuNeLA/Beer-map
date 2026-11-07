@@ -1,17 +1,17 @@
 /* Öl Nu RUNDAN (js/rundan.js): 💸 Kvällens nota, chat Swish cards, 🎲 Vem bjuder?, 🚕 Taxi hem. Theme vars from styles.css / polish.css. */
-.rnd{font-size:14px;min-width:0}
-.rnd-h{margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--hud);font-weight:400}
-.rnd-l{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);margin:12px 0 5px}
-.rnd-note{font-size:12.5px;color:var(--muted);line-height:1.4;margin:6px 0}
+.rnd{font-size:var(--fs-14);min-width:0}
+.rnd-h{margin:16px 0 6px;font-size:var(--fs-12);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--hud);font-weight:400}
+.rnd-l{display:flex;align-items:center;gap:10px;font-size:var(--fs-12);color:var(--muted);margin:12px 0 5px}
+.rnd-note{font-size:var(--fs-12);color:var(--muted);line-height:1.4;margin:6px 0}
 .rnd-note.ok{color:var(--green)}
-.rnd-link{background:none;border:0;padding:4px 2px;color:var(--amber-2);font-size:12.5px;text-decoration:underline;cursor:pointer;min-height:32px}
+.rnd-link{background:none;border:0;padding:4px 2px;color:var(--amber-2);font-size:var(--fs-12);text-decoration:underline;cursor:pointer;min-height:32px}
 .rnd-acts{display:flex;gap:8px;margin:2px 0 8px}
 .rnd-acts>.btn{flex:1 1 0;min-width:0}
 .rnd-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 
 /* Group page tile */
 .rnd-gi .rnd-gbtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
-.rnd-gs{font-family:var(--hud);font-size:12px;color:var(--muted)}
+.rnd-gs{font-family:var(--hud);font-size:var(--fs-12);color:var(--muted)}
 .rnd-gbtn.rnd-due .rnd-gs{color:var(--amber-2)}
 
 /* Balance + settle up */
@@ -27,17 +27,17 @@
 .rnd-tr.mine{box-shadow:inset 3px 0 0 var(--amber)}
 .rnd-trl{font-weight:700;color:var(--foam)}
 .rnd-conf{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0;padding:8px 10px;border:1px dashed rgba(255,224,138,.4);border-radius:var(--r-s,8px)}
-.rnd-conf>span{flex:1 1 100%;font-size:13px}
+.rnd-conf>span{flex:1 1 100%;font-size:var(--fs-14)}
 .rnd-conf.quiet{border-style:solid;border-color:var(--line-soft)}
 .rnd-conf.quiet>span{flex:1 1 auto}
-.rnd-ex{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.rnd-ex{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:var(--fs-14)}
 .rnd-ex.off .rnd-ext{text-decoration:line-through;opacity:.6}
 .rnd-ext{min-width:0;overflow-wrap:anywhere}
 
 /* Pay block (chat card + settle up) */
 .rnd-pay{margin-top:8px}
 .rnd-pay .rnd-swish{display:flex;justify-content:center;align-items:center;width:100%;text-decoration:none;font-weight:700}
-.rnd-fb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:4px;font-size:12.5px}
+.rnd-fb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:4px;font-size:var(--fs-12)}
 .rnd-num{font-family:var(--hud);color:var(--text)}
 .rnd-pay .rnd-paid{margin-top:6px;width:100%}
 
@@ -46,22 +46,22 @@
 .rnd-card{margin-top:6px;padding:8px 9px;border:1px solid var(--line-soft);border-radius:var(--r-s,8px);background:rgba(255,224,138,.05)}
 .rnd-card.off{opacity:.6}
 .rnd-chips{display:flex;flex-wrap:wrap;gap:4px}
-.rnd-chip{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--line-soft);color:var(--muted);white-space:nowrap}
+.rnd-chip{font-size:var(--fs-12);padding:3px 8px;border-radius:var(--r-pill);border:1px solid var(--line-soft);color:var(--muted);white-space:nowrap}
 .rnd-chip.ok{color:var(--green);border-color:rgba(61,220,132,.4)}
 
 /* Add sheet */
 .rnd-seg{display:flex;gap:4px;flex-wrap:wrap}
-.rnd-segb{flex:1 1 0;min-width:0;min-height:var(--tap,44px);border:1px solid var(--line-soft);background:var(--night-3);color:var(--text);border-radius:var(--r-s,8px);font-size:13px;padding:4px 6px;cursor:pointer}
+.rnd-segb{flex:1 1 0;min-width:0;min-height:var(--tap,44px);border:1px solid var(--line-soft);background:var(--night-3);color:var(--text);border-radius:var(--r-s,8px);font-size:var(--fs-14);padding:4px 6px;cursor:pointer}
 .rnd-segb[aria-checked="true"]{border-color:var(--amber);color:var(--on-amber);background:var(--amber);font-weight:700}
 .rnd-sel{width:100%}
 .rnd-who{display:flex;flex-wrap:wrap;gap:6px}
-.rnd-pp{display:inline-flex;flex-direction:column;align-items:flex-start;min-height:var(--tap,44px);padding:5px 12px;border:1px solid var(--line-soft);border-radius:var(--r-m,10px);background:var(--night-3);color:var(--text);cursor:pointer;font-size:14px;max-width:100%}
+.rnd-pp{display:inline-flex;flex-direction:column;align-items:flex-start;min-height:var(--tap,44px);padding:5px 12px;border:1px solid var(--line-soft);border-radius:var(--r-m,10px);background:var(--night-3);color:var(--text);cursor:pointer;font-size:var(--fs-14);max-width:100%}
 .rnd-pp>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
 .rnd-pp.on{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green);color:var(--foam)}
-.rnd-out{font-size:10.5px;color:var(--green);font-family:var(--hud)}
-.rnd-odds{font-size:10.5px;color:var(--amber-2);font-family:var(--hud)}
+.rnd-out{font-size:var(--fs-12);color:var(--green);font-family:var(--hud)}
+.rnd-odds{font-size:var(--fs-12);color:var(--amber-2);font-family:var(--hud)}
 .rnd-num-inp{width:100%}
-.rnd-check{display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:13.5px;min-height:36px}
+.rnd-check{display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:var(--fs-14);min-height:36px}
 .rnd-check input{width:20px;height:20px;accent-color:var(--amber)}
 .rnd-urow{display:grid;grid-template-columns:1fr 110px auto;align-items:center;gap:8px;margin:4px 0}
 .rnd-urow>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -76,13 +76,13 @@
 .rnd-win::before{top:0;background:linear-gradient(var(--night-2),transparent)}
 .rnd-win::after{bottom:0;background:linear-gradient(transparent,var(--night-2))}
 .rnd-reel{will-change:transform}
-.rnd-cell{height:56px;line-height:56px;text-align:center;font-family:var(--display);font-size:24px;color:var(--foam);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
-.rnd-reel .rnd-cell:only-child:not(.win){font-family:var(--body);font-size:14px;color:var(--muted)}
+.rnd-cell{height:56px;line-height:56px;text-align:center;font-family:var(--display);font-size:var(--fs-22);color:var(--foam);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
+.rnd-reel .rnd-cell:only-child:not(.win){font-family:var(--body);font-size:var(--fs-14);color:var(--muted)}
 .rnd-cell.win{color:var(--amber-2)}
 .rnd-stage.hit{animation:rnd-pulse 1s ease-in-out 2}
 @keyframes rnd-pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,0)}50%{box-shadow:0 0 0 6px rgba(245,166,35,.35)}}
-.rnd-line{font-size:15px;line-height:1.4;color:var(--gold);font-style:italic;margin:6px 0 8px;overflow-wrap:anywhere}
-.rnd-go{font-size:18px}
+.rnd-line{font-size:var(--fs-16);line-height:1.4;color:var(--gold);font-style:italic;margin:6px 0 8px;overflow-wrap:anywhere}
+.rnd-go{font-size:var(--fs-18)}
 @media (prefers-reduced-motion: reduce){.rnd-stage.hit{animation:none;box-shadow:0 0 0 3px rgba(245,166,35,.35)}.rnd-reel{transition:none !important}}
 
 /* 🚕 Taxi hem */
@@ -90,6 +90,6 @@
 .rnd-taxi h3{margin:6px 0}
 .rnd-taxirow{display:flex;flex-direction:column;gap:6px}
 .rnd-taxirow .btn{display:flex;justify-content:space-between;align-items:center;gap:8px;text-decoration:none}
-.rnd-taxirow .taxi-num{font-family:var(--hud);font-size:13px}
-.rnd-more summary{cursor:pointer;color:var(--amber-2);font-size:13px;padding:8px 2px;min-height:36px}
+.rnd-taxirow .taxi-num{font-family:var(--hud);font-size:var(--fs-14)}
+.rnd-more summary{cursor:pointer;color:var(--amber-2);font-size:var(--fs-14);padding:8px 2px;min-height:36px}
 .rnd-more .btn{margin-top:6px}

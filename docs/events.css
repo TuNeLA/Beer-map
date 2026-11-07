@@ -9,17 +9,17 @@
 .ev-time{font-family:var(--hud);color:var(--amber-2);font-size:var(--fs-m);min-width:46px}
 .ev-txt{display:flex;flex-direction:column;min-width:0}
 .ev-txt b{font-weight:700;overflow-wrap:anywhere}
-.ev-sub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ev-sub{font-size:var(--fs-12);color:var(--muted);overflow-wrap:anywhere}
 .ev-acts{display:flex;align-items:center;gap:4px;padding-right:6px}
 .ev-link{display:inline-flex;align-items:center;justify-content:center;min-width:var(--tap);min-height:var(--tap);text-decoration:none}
 .ev-go{white-space:nowrap}
-.ev-note{font-size:12px;line-height:1.4;margin:6px 0}
+.ev-note{font-size:var(--fs-12);line-height:1.4;margin:6px 0}
 .ev-tip{margin-top:8px}
-.ev-l{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+.ev-l{display:block;font-size:var(--fs-12);color:var(--muted);margin:10px 0 4px}
 .ev-kinds{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
-.ev-kinds .chip{min-height:36px;padding:4px 10px;font-size:12px;background:transparent;color:var(--text);border-color:var(--line);cursor:pointer}
+.ev-kinds .chip{min-height:36px;padding:4px 10px;font-size:var(--fs-12);background:transparent;color:var(--text);border-color:var(--line);cursor:pointer}
 .ev-kinds .chip[aria-pressed="true"]{color:var(--on-amber);background:var(--amber);border-color:var(--amber)}
-.ev-legal{font-size:11px;line-height:1.4}
+.ev-legal{font-size:var(--fs-12);line-height:1.4}
 .ev-rep-bar{font-weight:700;margin:4px 0 8px}
 /* bar sheet: one short line under the header (app.js lifts .ev-line next to the title) */
 .ev-line{display:flex;align-items:center;gap:8px;justify-content:space-between;margin:6px 0 2px;padding:6px 8px;border:1px solid rgba(255,224,138,.35);background:rgba(255,224,138,.06)}
@@ -35,7 +35,7 @@
 @keyframes ghGlow{50%{transform:scale(1.18);opacity:.6}}
 .gh-state{margin:4px 0;line-height:1.4}
 .gh-s-live{color:var(--gold);font-weight:700}
-.gh-badges{font-size:12px;margin:2px 0 8px}
+.gh-badges{font-size:var(--fs-12);margin:2px 0 8px}
 .gh-badge{color:var(--gold)}
 .gh-chip{color:var(--on-amber);background:linear-gradient(90deg,#ffe08a,#f2c23c);border-color:#f2c23c}
 .gh-win{position:fixed;inset:0;z-index:1300;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--scrim)}
@@ -45,9 +45,9 @@
 @keyframes ghIn{from{transform:translateY(30px) scale(.6) rotate(-8deg);opacity:0}}
 .gh-win-h{font-family:var(--display);font-size:var(--fs-l);color:var(--gold);margin-top:6px}
 .gh-win-t{margin:8px 0}
-.gh-win-m{font-size:12px;color:var(--muted);margin-bottom:12px}
+.gh-win-m{font-size:var(--fs-12);color:var(--muted);margin-bottom:12px}
 .dl2-drops{position:fixed;inset:0;z-index:900;pointer-events:none;overflow:hidden}
-.dl2-drops i{position:absolute;top:-30px;font-style:normal;font-size:22px;animation:dl2Drop 2.2s linear both}
+.dl2-drops i{position:absolute;top:-30px;font-style:normal;font-size:var(--fs-22);animation:dl2Drop 2.2s linear both}
 @keyframes dl2Drop{to{transform:translateY(110vh);opacity:.4}}
 @media (prefers-reduced-motion: reduce){
   .gh-pin .gh-glow,.gh-win-horse,.dl2-drops i{animation:none}

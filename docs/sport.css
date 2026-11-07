@@ -3,7 +3,7 @@
 /* 📅 round button: right column, under 🔥 (and 👻) and 🚕 — same size and glass as 🚕 */
 #btn-evs.locate-btn{bottom:auto !important;top:calc(var(--sat) + 212px + var(--chaos-h,0px) + var(--rally-h,0px)) !important;right:calc(var(--sar) + 10px)}
 body.ghost-chip-on #btn-evs.locate-btn{top:calc(var(--sat) + 258px + var(--chaos-h,0px) + var(--rally-h,0px)) !important}
-#btn-evs span{font-size:21px;line-height:1}
+#btn-evs span{font-size:var(--fs-22);line-height:1}
 #btn-evs[hidden]{display:none !important}
 .evs-badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:var(--ds-r-pill);display:grid;place-items:center;
   background:var(--ds-amber);color:var(--ds-on-amber);font:700 var(--ds-fs-12)/1 var(--ds-sans);box-shadow:0 0 0 2px var(--ds-bg)}
@@ -23,7 +23,7 @@ body.ghost-chip-on #btn-evs.locate-btn{top:calc(var(--sat) + 258px + var(--chaos
 .evs-row.evs-pending{border-style:dashed;opacity:.9}
 .evs-row.evs-tv{border-color:var(--ds-blue);background:linear-gradient(180deg,var(--ds-blue-soft),transparent),var(--ds-card)}
 .evs-top{display:flex;align-items:flex-start;gap:var(--ds-3)}
-.evs-ic{flex:0 0 auto;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--ds-raised);font-size:24px;line-height:1}
+.evs-ic{flex:0 0 auto;width:44px;height:44px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--ds-raised);font-size:var(--fs-22);line-height:1}
 .evs-txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
 .evs-t{font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);font-weight:700;overflow-wrap:anywhere}
 .evs-sub{font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);color:var(--ds-muted);overflow-wrap:anywhere}

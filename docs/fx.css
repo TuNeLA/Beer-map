@@ -84,7 +84,7 @@ html.fx-shaking #map{animation:fxshake .6s cubic-bezier(.36,.07,.19,.97)}
 @keyframes fxpulselow{0%,100%{opacity:.08}50%{opacity:.55}}
 /* light bar on top */
 .fx-lbar{position:absolute;left:0;right:0;top:var(--sat,0px);height:22px;display:flex;gap:4px;padding:0 4px}
-.fx-lbar i{flex:1;border-radius:0 0 6px 6px;opacity:.25;animation:fxpulse 1s ease-in-out infinite;will-change:opacity}
+.fx-lbar i{flex:1;border-radius:0 0 var(--r-sm) var(--r-sm);opacity:.25;animation:fxpulse 1s ease-in-out infinite;will-change:opacity}
 .fx-lbar .r{background:#ff2a2a;box-shadow:0 0 24px 8px rgba(255,40,40,.75)}
 .fx-lbar .b{background:#2a6bff;box-shadow:0 0 24px 8px rgba(40,100,255,.8);animation-delay:-.5s}
 /* rotating beacons */
@@ -159,10 +159,10 @@ html.fx-shaking #map{animation:fxshake .6s cubic-bezier(.36,.07,.19,.97)}
   opacity:0;animation:fxbub .85s cubic-bezier(.3,.6,.5,1) forwards}
 @keyframes fxbub{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}15%{opacity:1}
   100%{transform:translate(calc(-50% + var(--sw)),calc(-50% + var(--rise))) scale(1.05);opacity:0}}
-.fx-clink .mugs{position:absolute;left:0;top:-74px;font-size:42px;line-height:1;opacity:0;animation:fxmugs .85s cubic-bezier(.2,1.5,.4,1) forwards}
+.fx-clink .mugs{position:absolute;left:0;top:-74px;font-size:var(--fs-44);line-height:1;opacity:0;animation:fxmugs .85s cubic-bezier(.2,1.5,.4,1) forwards}
 @keyframes fxmugs{0%{transform:translate(-50%,-50%) scale(.2) rotate(-25deg);opacity:0}30%{transform:translate(-50%,-50%) scale(1.15) rotate(8deg);opacity:1}
   55%{transform:translate(-50%,-50%) scale(1) rotate(-5deg);opacity:1}100%{transform:translate(-50%,-80%) scale(1) rotate(0);opacity:0}}
-.fx-clink i{position:absolute;left:-2px;top:-83px;width:4px;height:18px;border-radius:2px;background:linear-gradient(#fff,var(--gold,#ffe08a));
+.fx-clink i{position:absolute;left:-2px;top:-83px;width:4px;height:18px;border-radius:var(--r-xs);background:linear-gradient(#fff,var(--gold,#ffe08a));
   box-shadow:0 0 8px rgba(255,224,138,.9);opacity:0;animation:fxray .55s .18s ease-out forwards}
 @keyframes fxray{0%{transform:rotate(var(--a)) translateY(-18px) scaleY(.2);opacity:0}30%{opacity:1}
   100%{transform:rotate(var(--a)) translateY(-56px) scaleY(1);opacity:0}}

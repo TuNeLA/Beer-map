@@ -22,7 +22,7 @@
 #sheet.sheet{box-shadow:0 -12px 48px rgba(0,0,0,.6),0 120px 0 0 var(--ds-sheet,#121a2a) !important}
 .leaflet-popup.olnu-sheet .leaflet-popup-content-wrapper{box-shadow:0 -12px 48px rgba(0,0,0,.6),0 120px 0 0 var(--s1,#121a2a) !important}
 /* "…" placeholder (list on its way) → quiet skeleton row (no shimmer sweep, a 1 Hz breath). */
-.sm-skel{list-style:none;color:transparent !important;min-height:52px;border-radius:12px;margin:6px 0;
+.sm-skel{list-style:none;color:transparent !important;min-height:52px;border-radius:var(--r-md);margin:6px 0;
   background:rgba(255,255,255,.06);animation:smBreath 1.1s ease-in-out infinite alternate}
 li.sm-skel{min-height:64px}
 @keyframes smBreath{from{opacity:.55}to{opacity:1}}

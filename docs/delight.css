@@ -29,10 +29,10 @@
 @keyframes dlGallop{0%,100%{transform:translateY(0) rotate(4deg)}50%{transform:translateY(-18px) rotate(-6deg)}}
 .dl-bob-ski{animation:dlSki .5s ease-in-out infinite}
 @keyframes dlSki{50%{transform:translateX(6px) rotate(-6deg)}}
-.dl-note{position:absolute;top:-22px;left:30%;font-size:22px;color:var(--gold,#ffe08a);font-weight:400;animation:dlNote 1.1s ease-out infinite}
+.dl-note{position:absolute;top:-22px;left:30%;font-size:var(--fs-22);color:var(--gold,#ffe08a);font-weight:400;animation:dlNote 1.1s ease-out infinite}
 .dl-note.dl-n2{left:62%;animation-delay:.55s}
 @keyframes dlNote{0%{transform:translateY(8px);opacity:0}30%{opacity:1}100%{transform:translateY(-26px) rotate(20deg);opacity:0}}
-.dl-sign{position:absolute;top:-16px;left:4px;font:400 11px/1 var(--hud,monospace);letter-spacing:.1em;color:#111;background:var(--amber,#f5a623);padding:3px 5px;filter:none}
+.dl-sign{position:absolute;top:-16px;left:4px;font:400 var(--fs-12)/1 var(--hud,monospace);letter-spacing:.1em;color:#111;background:var(--amber,#f5a623);padding:3px 5px;filter:none}
 
 /* satellite + scan cone */
 .dl-a-sat .dl-move{animation-duration:6s}
@@ -53,7 +53,7 @@
 .dl-beam{position:absolute;left:-18px;top:46px;width:100px;height:170px;z-index:1;opacity:0;transform-origin:50% 0;
   background:linear-gradient(180deg,rgba(127,255,127,.65),rgba(127,255,127,.05));clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);animation:dlBeam 6s linear forwards}
 @keyframes dlBeam{0%,26%{opacity:0;transform:scaleY(.2)}32%,70%{opacity:1;transform:scaleY(1)}76%,100%{opacity:0;transform:scaleY(.2)}}
-.dl-lift{position:absolute;left:18px;top:180px;font-size:26px;z-index:1;opacity:0;animation:dlLift 6s ease-in forwards}
+.dl-lift{position:absolute;left:18px;top:180px;font-size:var(--fs-28);z-index:1;opacity:0;animation:dlLift 6s ease-in forwards}
 @keyframes dlLift{0%,30%{opacity:0;transform:translateY(0) rotate(0)}36%{opacity:1}70%{opacity:1;transform:translateY(-130px) rotate(200deg)}74%,100%{opacity:0;transform:translateY(-140px) rotate(220deg)}}
 
 /* peek from an edge (bear, owl, Ölguden fishing) */
@@ -139,9 +139,9 @@
   padding:8px 12px 9px;box-shadow:0 8px 24px rgba(0,0,0,.5);
   clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
 .dl-cap.dl-in{opacity:1;transform:translate(-50%,0)}
-.dl-cap-h{font:400 10.5px/1.3 var(--hud,monospace);letter-spacing:.14em;color:var(--amber-2,#ffc24d);text-transform:uppercase;margin-bottom:3px}
-.dl-cap-t{font:600 14px/1.35 var(--body,system-ui);color:var(--text,#ece6d6)}
-.dl-cap-more{position:absolute;right:10px;top:7px;font:400 10px/1 var(--hud,monospace);letter-spacing:.12em;color:var(--green,#3ddc84)}
+.dl-cap-h{font:400 var(--fs-12)/1.3 var(--hud,monospace);letter-spacing:.14em;color:var(--amber-2,#ffc24d);text-transform:uppercase;margin-bottom:3px}
+.dl-cap-t{font:600 var(--fs-14)/1.35 var(--body,system-ui);color:var(--text,#ece6d6)}
+.dl-cap-more{position:absolute;right:10px;top:7px;font:400 var(--fs-12)/1 var(--hud,monospace);letter-spacing:.12em;color:var(--green,#3ddc84)}
 .dl-cap-rare{border-left-color:var(--gold,#ffe08a);box-shadow:0 0 0 1px rgba(255,224,138,.35),0 8px 28px rgba(255,224,138,.18)}
 .dl-cap-bonus{border-left-color:var(--green,#3ddc84)}
 .dl-cap-secret{border-left-color:#b388ff}
@@ -152,9 +152,9 @@
 /* ---------- boot lines ---------- */
 .dl-boot{position:fixed;z-index:1002;left:50%;top:calc(var(--sat,0px) + 102px);transform:translateX(-50%);width:min(calc(100vw - 32px),380px);
   background:rgba(6,10,18,.92);border:1px solid rgba(61,220,132,.35);padding:7px 10px 8px;pointer-events:none;
-  font:400 12px/1.45 var(--hud,monospace);color:#bfe9cf;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:opacity .35s ease}
+  font:400 var(--fs-12)/1.45 var(--hud,monospace);color:#bfe9cf;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:opacity .35s ease}
 .dl-boot.dl-out{opacity:0}
-.dl-boot-h{font-size:10px;letter-spacing:.18em;color:var(--green,#3ddc84);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.dl-boot-h{font-size:var(--fs-12);letter-spacing:.18em;color:var(--green,#3ddc84);margin-bottom:3px;display:flex;align-items:center;gap:6px}
 .dl-boot-dot{width:7px;height:7px;border-radius:50%;background:var(--green,#3ddc84);animation:blink 1s steps(2) infinite}
 .dl-boot-l{min-height:3.9em}
 .dl-bl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.7}
@@ -169,8 +169,8 @@
   text-align:center;pointer-events:none;opacity:0;transition:opacity .45s ease,transform .45s ease;
   background:rgba(10,15,28,.82);border:1px dashed rgba(245,166,35,.4);padding:12px 14px 13px}
 .dl-empty.dl-in{opacity:1;transform:translate(-50%,-50%) scale(1)}
-.dl-empty-h{font:400 10.5px/1.3 var(--hud,monospace);letter-spacing:.16em;color:var(--muted,#9aa3a0);margin-bottom:5px}
-.dl-empty-t{font:600 15px/1.35 var(--body,system-ui);color:var(--text,#ece6d6)}
+.dl-empty-h{font:400 var(--fs-12)/1.3 var(--hud,monospace);letter-spacing:.16em;color:var(--muted,#9aa3a0);margin-bottom:5px}
+.dl-empty-t{font:600 var(--fs-16)/1.35 var(--body,system-ui);color:var(--text,#ece6d6)}
 .dl-radar{position:absolute;left:50%;top:-26px;width:44px;height:44px;margin-left:-22px;border-radius:50%;border:1px solid rgba(61,220,132,.5);background:rgba(10,15,28,.9);overflow:hidden}
 .dl-radar i{position:absolute;left:50%;top:50%;width:50%;height:50%;transform-origin:0 0;background:linear-gradient(45deg,rgba(61,220,132,.6),transparent 70%);animation:dlSweep 2s linear infinite}
 @keyframes dlSweep{from{transform:rotate(0)}to{transform:rotate(360deg)}}
@@ -195,12 +195,12 @@
 .dl-gud-crown{transform-origin:62px 30px;animation:dlCrown 3s ease-in-out infinite}
 @keyframes dlCrown{50%{transform:rotate(8deg) translateY(-2px)}}
 .dl-gud-say{position:relative;max-width:min(calc(100vw - 32px),380px);background:var(--foam,#fffaf0);color:#1a1206;padding:12px 16px 10px;text-align:center;
-  border:2px solid var(--amber,#f5a623);border-radius:14px;animation:dlSay .4s ease-out .7s both;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  border:2px solid var(--amber,#f5a623);border-radius:var(--r-lg);animation:dlSay .4s ease-out .7s both;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .dl-gud-say::before{content:"";position:absolute;left:50%;top:-11px;margin-left:-10px;border:10px solid transparent;border-top:0;border-bottom:11px solid var(--amber,#f5a623)}
 @keyframes dlSay{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
-.dl-gud-h{font:400 11px/1.3 var(--hud,monospace);letter-spacing:.18em;color:#8a3d06;margin-bottom:4px}
-.dl-gud-t{font:700 17px/1.35 var(--body,system-ui)}
-.dl-gud-x{font:400 10px/1 var(--hud,monospace);color:#7a6a50;margin-top:8px;letter-spacing:.1em;text-transform:uppercase}
+.dl-gud-h{font:400 var(--fs-12)/1.3 var(--hud,monospace);letter-spacing:.18em;color:#8a3d06;margin-bottom:4px}
+.dl-gud-t{font:700 var(--fs-16)/1.35 var(--body,system-ui)}
+.dl-gud-x{font:400 var(--fs-12)/1 var(--hud,monospace);color:#7a6a50;margin-top:8px;letter-spacing:.1em;text-transform:uppercase}
 .brand-name.dl-wiggle{display:inline-block;animation:dlWig .35s ease-in-out}
 @keyframes dlWig{25%{transform:rotate(-6deg) scale(1.06)}75%{transform:rotate(5deg)}}
 
@@ -224,15 +224,15 @@
 
 /* ---------- skål clink in chat ---------- */
 .dl-clink{position:fixed;z-index:1700;width:0;height:0;pointer-events:none}
-.dl-mug{position:absolute;top:-24px;font-size:42px;line-height:1}
+.dl-mug{position:absolute;top:-24px;font-size:var(--fs-44);line-height:1}
 .dl-mug-l{left:-62px;transform-origin:80% 90%;animation:dlMugL 1.5s ease-out forwards}
 .dl-mug-r{left:20px;transform-origin:20% 90%;animation:dlMugR 1.5s ease-out forwards}
 @keyframes dlMugL{0%{transform:translateX(-40px) rotate(-20deg);opacity:0}30%{transform:translateX(16px) rotate(18deg);opacity:1}40%{transform:translateX(8px) rotate(10deg)}80%{opacity:1}100%{transform:translateX(0) rotate(0);opacity:0}}
 @keyframes dlMugR{0%{transform:translateX(40px) scaleX(-1) rotate(-20deg);opacity:0}30%{transform:translateX(-16px) scaleX(-1) rotate(18deg);opacity:1}40%{transform:translateX(-8px) scaleX(-1) rotate(10deg)}80%{opacity:1}100%{transform:translateX(0) scaleX(-1) rotate(0);opacity:0}}
-.dl-clink i{position:absolute;left:-2px;top:-34px;width:4px;height:14px;background:var(--gold,#ffe08a);border-radius:2px;opacity:0;
+.dl-clink i{position:absolute;left:-2px;top:-34px;width:4px;height:14px;background:var(--gold,#ffe08a);border-radius:var(--r-xs);opacity:0;
   transform:rotate(var(--a)) translateY(-6px);animation:dlSpark .6s ease-out .42s forwards}
 @keyframes dlSpark{0%{opacity:1;transform:rotate(var(--a)) translateY(-6px)}100%{opacity:0;transform:rotate(var(--a)) translateY(-34px)}}
-.dl-clink-t{position:absolute;left:0;top:26px;transform:translateX(-50%);white-space:nowrap;font:400 18px/1 var(--display,Impact);color:var(--amber-2,#ffc24d);
+.dl-clink-t{position:absolute;left:0;top:26px;transform:translateX(-50%);white-space:nowrap;font:400 var(--fs-18)/1 var(--display,Impact);color:var(--amber-2,#ffc24d);
   text-shadow:0 2px 6px rgba(0,0,0,.7);opacity:0;animation:dlCt 1.5s ease-out forwards}
 @keyframes dlCt{0%,30%{opacity:0;transform:translate(-50%,6px)}45%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
 
@@ -249,7 +249,7 @@
 @keyframes dlLantern{0%{translate:0 0;opacity:1}30%{translate:4px -30px}60%{translate:-4px -90px;opacity:.85}100%{translate:0 -220px;opacity:0}}
 
 /* ---------- Kapsylsamlingen ---------- */
-.dl-cap-chip{font-size:17px;border-color:var(--gold,#ffe08a) !important;animation:dlChip 1.6s ease-in-out 3}
+.dl-cap-chip{font-size:var(--fs-16);border-color:var(--gold,#ffe08a) !important;animation:dlChip 1.6s ease-in-out 3}
 @keyframes dlChip{50%{transform:scale(1.12) rotate(-8deg)}}
 .dl-capx{position:relative;display:inline-grid;place-items:center;width:46px;height:46px;border-radius:50%;flex:0 0 auto;
   background:
@@ -259,11 +259,11 @@
   -webkit-mask:radial-gradient(circle closest-side,#000 85%,transparent 86%),repeating-conic-gradient(#000 0 11deg,transparent 11deg 20deg);
   mask:radial-gradient(circle closest-side,#000 85%,transparent 86%),repeating-conic-gradient(#000 0 11deg,transparent 11deg 20deg)}
 .dl-capx::after{content:"";position:absolute;inset:9%;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),inset 0 2px 3px rgba(0,0,0,.35)}
-.dl-cap-m{position:relative;z-index:1;font-size:21px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+.dl-cap-m{position:relative;z-index:1;font-size:var(--fs-22);line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
 .dl-capx.dl-big{width:120px;height:120px}
-.dl-capx.dl-big .dl-cap-m{font-size:54px}
+.dl-capx.dl-big .dl-cap-m{font-size:var(--fs-44)}
 .dl-cap-none{--c1:#1b2433;--c2:#0e141f}
-.dl-cap-none .dl-cap-m{font:400 18px/1 var(--display,Impact);color:#7b8ba3;filter:none}
+.dl-cap-none .dl-cap-m{font:400 var(--fs-18)/1 var(--display,Impact);color:#7b8ba3;filter:none}
 .dl-r-r{box-shadow:inset 0 -3px 6px rgba(0,0,0,.4),0 0 0 2px rgba(129,212,250,.7),0 2px 6px rgba(0,0,0,.5)}
 .dl-r-l{box-shadow:inset 0 -3px 6px rgba(0,0,0,.4),0 0 0 2px var(--gold,#ffe08a),0 0 14px rgba(255,224,138,.6)}
 .dl-shine{position:absolute;inset:0;border-radius:50%;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.65) 50%,transparent 65%);opacity:0;animation:dlShine 2.6s ease-in-out infinite}
@@ -272,21 +272,21 @@
 .dl-reveal{display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 14px;margin-bottom:10px;border-bottom:1px solid var(--line-soft,rgba(255,255,255,.1))}
 .dl-reveal.dl-anim .dl-capx{animation:dlPop .9s cubic-bezier(.3,1.6,.5,1) both}
 @keyframes dlPop{0%{transform:scale(.2) rotate(-200deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
-.dl-rv-n{font:400 22px/1.2 var(--display,Impact);color:var(--amber-2,#ffc24d);margin-top:12px}
-.dl-rv-r{font:400 11px/1.4 var(--hud,monospace);letter-spacing:.16em;text-transform:uppercase;color:var(--muted,#9aa3a0)}
+.dl-rv-n{font:400 var(--fs-22)/1.2 var(--display,Impact);color:var(--amber-2,#ffc24d);margin-top:12px}
+.dl-rv-r{font:400 var(--fs-12)/1.4 var(--hud,monospace);letter-spacing:.16em;text-transform:uppercase;color:var(--muted,#9aa3a0)}
 .dl-rr-r{color:#81d4fa}
 .dl-rr-l{color:var(--gold,#ffe08a)}
-.dl-rv-l{font-size:14px;margin-top:4px}
+.dl-rv-l{font-size:var(--fs-14);margin-top:4px}
 .dl-cap-sum{margin-bottom:10px}
 .dl-cap-sum b{font-family:var(--hud,monospace);font-weight:400;letter-spacing:.06em}
 .dl-bar{height:6px;background:rgba(255,255,255,.08);margin:6px 0}
 .dl-bar i{display:block;height:100%;background:var(--amber,#f5a623)}
 .dl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:10px 6px}
 .dl-cell{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
-.dl-cell-n{font-size:10.5px;line-height:1.2;text-align:center;color:var(--text,#ece6d6);overflow:hidden;text-overflow:ellipsis;max-width:100%;
+.dl-cell-n{font-size:var(--fs-12);line-height:1.2;text-align:center;color:var(--text,#ece6d6);overflow:hidden;text-overflow:ellipsis;max-width:100%;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .dl-miss .dl-cell-n{color:#4c5a6e}
-.dl-spot{margin-top:14px;font-size:12px}
+.dl-spot{margin-top:14px;font-size:var(--fs-12)}
 
 /* ---------- reduced motion: nothing moves ---------- */
 @media (prefers-reduced-motion: reduce){

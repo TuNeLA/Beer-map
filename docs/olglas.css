@@ -5,13 +5,13 @@
 .og.og-out{animation:ogOut .25s ease-in both;pointer-events:none}
 .og-cv{position:absolute;left:0;top:0;display:block}
 .og-x,.og-snd{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);width:48px;height:48px;border-radius:50%;
-  border:1px solid rgba(255,255,255,.35);background:rgba(20,14,8,.55);color:#fffaf0;font-size:20px;line-height:1;display:grid;place-items:center;cursor:pointer;
+  border:1px solid rgba(255,255,255,.35);background:rgba(20,14,8,.55);color:#fffaf0;font-size:var(--fs-18);line-height:1;display:grid;place-items:center;cursor:pointer;
   -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .og-x{right:12px}
-.og-snd{right:68px;font-size:18px}
+.og-snd{right:68px;font-size:var(--fs-18)}
 .og-x:focus-visible,.og-snd:focus-visible{outline:2px solid var(--amber-2,#ffc24d);outline-offset:2px}
-.og-hint{position:absolute;left:16px;right:136px;top:calc(env(safe-area-inset-top,0px) + 14px);padding:8px 12px;border-radius:12px;
-  background:rgba(20,14,8,.85);color:#fffaf0;font-size:13px;line-height:18px;transition:opacity .8s ease}
+.og-hint{position:absolute;left:16px;right:136px;top:calc(env(safe-area-inset-top,0px) + 14px);padding:8px 12px;border-radius:var(--r-md);
+  background:rgba(20,14,8,.85);color:#fffaf0;font-size:var(--fs-14);line-height:18px;transition:opacity .8s ease}
 .og-hint.og-hint-off{opacity:0}
 /* hold 1 s anywhere = close: a slow ring fill at the bottom (no flashing) */
 .og-hold{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:56px;height:56px;margin-left:-28px;border-radius:50%;

@@ -37,7 +37,7 @@
 
 /* Top bar */
 .topbar{gap:var(--sp-2);padding-top:calc(var(--sat) + 8px)}
-.brand-name{font-size:26px;letter-spacing:.5px;text-shadow:0 0 14px rgba(245,166,35,.28)}
+.brand-name{font-size:var(--fs-28);letter-spacing:.5px;text-shadow:0 0 14px rgba(245,166,35,.28)}
 .live-count{background:var(--glass);border:1px solid var(--hair);border-radius:var(--r-pill);padding:0 14px;height:40px;
   display:flex;align-items:center;font-size:var(--fs-s);white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset;color:var(--text-2)}
 .live-count b{font-family:var(--body);font-weight:700;font-size:var(--fs-m);color:var(--amber-2);margin-right:2px;font-variant-numeric:tabular-nums}
@@ -99,7 +99,7 @@
 /* ANNAT: a calm satellite button (still a 44+ target), not a second glowing hero */
 .other-btn{background:var(--glass-strong);border:1.5px solid rgba(217,184,255,.55);color:#efe4ff;
   box-shadow:0 0 0 2px rgba(8,12,22,.9),var(--sh-1);transition:transform var(--d-1) var(--ease)}
-.other-btn .ol-t{font-weight:700;letter-spacing:.06em;font-size:10.5px}
+.other-btn .ol-t{font-weight:700;letter-spacing:.06em;font-size:var(--fs-12)}
 .ocd-track{stroke:rgba(217,184,255,.12)}
 /* Exakt / Område: one compact glass segmented control */
 .seg{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--glass);padding:3px;gap:2px}
@@ -110,7 +110,7 @@
 .dock-top .btn{border-radius:var(--r-pill)}
 
 /* ---------- Toasts: rounded glass, one at a time in focus ---------- */
-.toast{border-radius:var(--r-m);border-width:1px;border-left-width:1px;background:rgba(12,17,29,.94);font-size:15px;line-height:1.35;
+.toast{border-radius:var(--r-m);border-width:1px;border-left-width:1px;background:rgba(12,17,29,.94);font-size:var(--fs-16);line-height:1.35;
   padding:12px 14px;box-shadow:inset 3px 0 0 var(--amber),var(--sh-2);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
   animation:toastIn var(--d-3) var(--ease-spring)}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
@@ -149,7 +149,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
   box-shadow:0 -12px 48px rgba(0,0,0,.6);animation:sheetIn var(--d-3) var(--ease)}
 @keyframes sheetIn{from{transform:translateY(40px);opacity:0}}
 .sheet::before,.sheet::after{display:none}
-.sheet-grip{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);margin:8px auto 4px}
+.sheet-grip{width:40px;height:5px;border-radius:var(--r-xs);background:rgba(255,255,255,.22);margin:8px auto 4px}
 .sheet-head{border-bottom:1px solid var(--hair);padding:6px 0 12px;margin-bottom:var(--sp-3)}
 .sheet-head h2{font-family:var(--body);font-weight:700;font-size:var(--fs-l);line-height:1.2;letter-spacing:.06em;color:var(--amber-2)}
 .sheet-head .icon-btn{width:40px;height:40px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);border:0;color:var(--text-2);position:relative}
@@ -202,13 +202,13 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .gitem{background:var(--s2);border:1px solid var(--hair);border-left:1px solid var(--hair);border-radius:var(--r-m);padding:var(--sp-4)}
 .glist .gcard{padding:14px 16px;min-height:68px;transition:transform var(--d-1) var(--ease),background var(--d-2)}
 .glist .gcard:active{transform:scale(.985);filter:none;background:var(--s3)}
-.glist .gcard::before{content:"";flex:0 0 auto;width:40px;height:40px;border-radius:12px;
+.glist .gcard::before{content:"";flex:0 0 auto;width:40px;height:40px;border-radius:var(--r-md);
   background:radial-gradient(circle at 35% 30%,rgba(255,194,77,.35),rgba(245,166,35,.08));box-shadow:inset 0 0 0 1px rgba(245,166,35,.35)}
 .glist .gcard:has(.gcard-live)::before{background:radial-gradient(circle at 35% 30%,rgba(61,220,132,.45),rgba(61,220,132,.08));box-shadow:inset 0 0 0 1px rgba(61,220,132,.5)}
-.gitem .gname{font-size:17px;font-weight:700;color:var(--text)}
+.gitem .gname{font-size:var(--fs-16);font-weight:700;color:var(--text)}
 .gitem .gsub{font-weight:500;color:var(--muted);margin-top:2px}
 .gcard-live{color:var(--green)}
-.gcard-go{font-size:24px;color:rgba(255,255,255,.35)}
+.gcard-go{font-size:var(--fs-22);color:rgba(255,255,255,.35)}
 .g-back{color:var(--amber-2);min-height:44px;padding:0 4px 8px;font-size:var(--fs-m)}
 .namebar strong{color:var(--text)}
 
@@ -221,7 +221,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .gitem:not(.gcard)>div>.gmain .gname{font-size:var(--fs-l)}
 .gitem:not(.gcard)>div>.row,.gitem:not(.gcard)>div>.g-acts,.gitem:not(.gcard)>div>[class$="-gi"]:not(.chief-gi){display:flex}
 .gitem:not(.gcard)>div>.row>.btn,.gitem:not(.gcard)>div>.g-acts>.btn,.gitem:not(.gcard)>div>[class$="-gi"]>.btn{
-  width:100%;min-height:56px;border-radius:var(--r-m);background:var(--s3);justify-content:flex-start;text-align:left;padding:0 14px;font-size:15px}
+  width:100%;min-height:56px;border-radius:var(--r-m);background:var(--s3);justify-content:flex-start;text-align:left;padding:0 14px;font-size:var(--fs-16)}
 /* the chat is the most used: full width, highlighted */
 .gitem:not(.gcard)>div>.g-acts+.row{grid-column:1 / -1}
 .gitem:not(.gcard)>div>.g-acts+.row>.btn{background:linear-gradient(180deg,rgba(245,166,35,.22),rgba(245,166,35,.12));border-color:rgba(245,166,35,.45);color:var(--amber-2);justify-content:center}
@@ -234,8 +234,8 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 
 /* ---------- Chat: bubbles, not boxes ---------- */
 .chat-list{background:transparent;border:0;padding:4px 0;gap:var(--sp-2)}
-.chat-msg{border:0;border-radius:18px 18px 18px 6px;background:var(--s3);padding:8px 12px 9px;max-width:82%}
-.chat-msg.me{border:0;border-radius:18px 18px 6px 18px;background:linear-gradient(180deg,rgba(245,166,35,.24),rgba(245,166,35,.16))}
+.chat-msg{border:0;border-radius:var(--r-lg) var(--r-lg) var(--r-lg) var(--r-sm);background:var(--s3);padding:8px 12px 9px;max-width:82%}
+.chat-msg.me{border:0;border-radius:var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg);background:linear-gradient(180deg,rgba(245,166,35,.24),rgba(245,166,35,.16))}
 .cm-head{font-size:var(--fs-xs);gap:6px;margin-bottom:2px}
 .cm-name{text-decoration:none !important}
 .cm-time{font-family:var(--body);font-weight:500;color:var(--muted)}
@@ -243,7 +243,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .cm-like,.cm-react{border-radius:var(--r-pill)}
 .cm-picker{border-radius:var(--r-pill);background:var(--s2);border:1px solid var(--hair-2)}
 .chat-input{align-items:center;gap:var(--sp-2);margin-top:var(--sp-3)}
-.chat-input .inp{border-radius:22px !important;min-height:44px;padding:0 16px}
+.chat-input .inp{border-radius:var(--r-xl) !important;min-height:44px;padding:0 16px}
 .chat-input .btn{border-radius:var(--r-pill);min-height:44px}
 .chat-input .btn:not(.btn-amber){width:44px;padding:0;display:grid;place-items:center}
 .chat-keep{border-radius:var(--r-m);border-color:var(--hair) !important;background:var(--s2)}
@@ -266,12 +266,12 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 
 /* ---------- Intro ---------- */
 .intro{background:rgba(2,4,10,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.intro-card{border-radius:24px;background:var(--s1);border:1px solid var(--hair-2);box-shadow:var(--sh-2);padding:20px;animation:sheetIn var(--d-3) var(--ease)}
+.intro-card{border-radius:var(--r-xl);background:var(--s1);border:1px solid var(--hair-2);box-shadow:var(--sh-2);padding:20px;animation:sheetIn var(--d-3) var(--ease)}
 .intro-card.hud-panel::before,.intro-card.hud-panel::after{display:none}
 .intro-lang-b{border-radius:var(--r-s);border-color:var(--hair-2)}
 .intro-lang-b[aria-pressed="true"]{border-color:transparent}
 .intro-steps li{border-radius:var(--r-m);background:var(--s2);border:1px solid var(--hair);border-left:1px solid var(--hair)}
-.intro-tag{font-size:15px;color:var(--text-2)}
+.intro-tag{font-size:var(--fs-16);color:var(--text-2)}
 .intro .btn-block:not(:disabled){background:linear-gradient(180deg,var(--amber-2),var(--amber));color:var(--on-amber);border-color:transparent}
 .intro-h{font-family:var(--body);font-weight:700;letter-spacing:.04em}
 .intro-priv{color:var(--muted)}
@@ -309,11 +309,11 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .bp-seg button+button{border-left:0}
 .bp-seg button[aria-selected="true"]{background:var(--s3);color:var(--amber-2);box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(245,166,35,.4)}
 /* chat tools: round, same family as Skicka */
-.chat-input .ph-btn,.chat-input .af-mic{width:44px;height:44px;min-height:44px;border-radius:50%;border:1px solid var(--hair);background:var(--s3);font-size:18px;display:grid;place-items:center;padding:0;flex:0 0 auto}
+.chat-input .ph-btn,.chat-input .af-mic{width:44px;height:44px;min-height:44px;border-radius:50%;border:1px solid var(--hair);background:var(--s3);font-size:var(--fs-18);display:grid;place-items:center;padding:0;flex:0 0 auto}
 .chat-input .inp{flex:1 1 auto}
 .gitem:not(.gcard)>div>.g-acts>.btn{flex:0 0 auto}
 /* group avatar: a beer glyph in a soft tile (green when friends are out) */
-.glist .gcard::before{content:"🍺";display:grid;place-items:center;font-size:20px}
+.glist .gcard::before{content:"🍺";display:grid;place-items:center;font-size:var(--fs-18)}
 .glist .gcard:has(.gcard-live)::before{content:"🍻"}
 
 /* ---------- Bar sheet (Leaflet popup in sheet mode) = same surface as .sheet ---------- */
@@ -325,7 +325,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .olnu-sheet a.leaflet-popup-close-button{top:14px;width:40px;height:40px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);border:0;color:var(--text-2);font-size:22px}
 .olnu-sheet a.leaflet-popup-close-button::after{content:"";position:absolute;inset:-4px}
 .pp-title{font-family:var(--body);font-weight:700;letter-spacing:.01em;color:var(--text)}
-.bs-head .pp-title{font-size:22px}
+.bs-head .pp-title{font-size:var(--fs-22)}
 .ci-btn,.pp-act .eta-go,.pp-act .pa-kommer,.skal-btn{clip-path:none;border-radius:var(--r-m)}
 .ci-btn{background:linear-gradient(180deg,#5be89a,var(--green));border-color:transparent;color:var(--on-green)}
 .pp-folds{gap:var(--sp-2)}
@@ -344,6 +344,6 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .seg button{white-space:nowrap;padding:0 10px}
 @media (max-width:374px){
   .seg button{min-width:0;font-size:var(--fs-xs);padding:0 8px}
-  .beer-sub{font-size:10.5px}
-  .brand-name{font-size:24px}
+  .beer-sub{font-size:var(--fs-12)}
+  .brand-name{font-size:var(--fs-22)}
 }

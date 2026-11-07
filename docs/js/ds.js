@@ -21,7 +21,7 @@
     var n = ds.nextElementSibling, late = [];
     while (n) {
       // party.css / forfest.css are full-screen modes with their own look: they stay after ds.css
-      if ((n.tagName === "LINK" && n.rel === "stylesheet" && !/(party|forfest)\.css/.test(n.getAttribute("href") || "")) || n.tagName === "STYLE") late.push(n);
+      if ((n.tagName === "LINK" && n.rel === "stylesheet" && !/(party|forfest|pnds)\.css/.test(n.getAttribute("href") || "")) || n.tagName === "STYLE") late.push(n);
       n = n.nextElementSibling;
     }
     late.forEach(function (l) { ds.parentNode.insertBefore(l, ds); });

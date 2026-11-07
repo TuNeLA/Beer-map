@@ -15,7 +15,7 @@
 .np-row:first-child{border-top:0}
 .np-row:active{background:var(--np-soft)}
 .np-row:focus-visible{outline:2px solid var(--np-accent);outline-offset:-2px}
-.np-ic{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:var(--ds-raised,#222e48);font-size:18px}
+.np-ic{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;border-radius:var(--r-md);background:var(--ds-raised,#222e48);font-size:var(--fs-18)}
 .np-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
 .np-n{font-size:var(--fs-m,16px);line-height:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .np-k{font-size:var(--fs-xs,12px);line-height:16px;color:var(--np-muted)}

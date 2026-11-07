@@ -11,7 +11,7 @@ body.jn-on #install-banner{display:none !important}
 .jn-kick{align-self:center;font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);font-weight:700;letter-spacing:.14em;color:var(--ds-amber-t);
   padding:var(--ds-1) var(--ds-3);border:1px solid rgba(245,166,35,.45);border-radius:var(--ds-r-pill)}
 .jn-big{font-size:64px;line-height:1.1;margin-top:var(--ds-2)}
-.jn-h{margin:0;font-family:var(--ds-stencil);font-weight:400;font-size:34px;line-height:40px;letter-spacing:.02em;color:var(--ds-text)}
+.jn-h{margin:0;font-family:var(--ds-stencil);font-weight:400;font-size:var(--fs-34);line-height:40px;letter-spacing:.02em;color:var(--ds-text)}
 .jn-sub{margin:0;font-size:var(--ds-fs-22);line-height:var(--ds-lh-22);font-weight:700;color:var(--ds-text)}
 .jn-mem{margin:0;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
 .jn-mem[hidden],.jn-stat[hidden]{display:none}
@@ -22,7 +22,7 @@ body.jn-on #install-banner{display:none !important}
 @keyframes jn-nudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .jn-act{display:flex;flex-direction:column;gap:var(--ds-3);margin-top:var(--ds-2)}
 .jn-btn{min-height:64px !important;font-size:var(--ds-fs-18) !important;font-weight:700 !important;border-radius:var(--ds-r-2) !important;width:100%}
-.jn-install,.jn-iosprep,.jn-iacopy{min-height:72px !important;font-size:20px !important;box-shadow:0 8px 28px rgba(245,166,35,.28)}
+.jn-install,.jn-iosprep,.jn-iacopy{min-height:72px !important;font-size:var(--fs-18) !important;box-shadow:0 8px 28px rgba(245,166,35,.28)}
 a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .jn-then{margin:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text-2)}
 .jn-okline{color:var(--ds-green-t);font-weight:700}
@@ -43,11 +43,11 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 .jn-step-n{flex:0 0 32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber);color:var(--ds-on-amber);font-weight:700}
 .jn-step-b{flex:1;min-width:0}
 .jn-step-b p{margin:4px 0 0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
-.jn-pic{margin-top:var(--ds-2);border-radius:10px;background:#f2f3f5;color:#1d2433;font:600 13px/1.2 system-ui,-apple-system,sans-serif;overflow:hidden}
-.jn-pic .jn-pic-hot{background:#ffd60a;color:#241300;border-radius:8px;box-shadow:0 0 0 2px #f5a623}
+.jn-pic{margin-top:var(--ds-2);border-radius:var(--r-md);background:#f2f3f5;color:#1d2433;font:600 var(--fs-14)/1.2 system-ui,-apple-system,sans-serif;overflow:hidden}
+.jn-pic .jn-pic-hot{background:#ffd60a;color:#241300;border-radius:var(--r-sm);box-shadow:0 0 0 2px #f5a623}
 .jn-pic-bar{display:flex;align-items:center;gap:8px;padding:8px 10px}
-.jn-pic-bar .jn-pic-url{flex:1;min-width:0;background:#fff;border-radius:16px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#556}
-.jn-pic-bar .jn-pic-hot{padding:4px 10px;font-size:16px}
+.jn-pic-bar .jn-pic-url{flex:1;min-width:0;background:#fff;border-radius:var(--r-lg);padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#556}
+.jn-pic-bar .jn-pic-hot{padding:4px 10px;font-size:var(--fs-16)}
 .jn-pic-menu{display:flex;flex-direction:column;padding:4px}
 .jn-pic-menu span{padding:7px 10px}
 .jn-pic-dlg{padding:10px 12px}
@@ -56,7 +56,7 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 
 /* iOS: arrow at Safari's button (⋯ bottom right on iOS 26, Dela in the middle before). ≤ 1 Hz, still with reduced motion. */
 .jn-arrow{position:fixed;z-index:2710;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);left:50%;margin-left:-22px;width:44px;height:44px;
-  display:grid;place-items:center;font-size:36px;color:var(--ds-amber);text-shadow:0 2px 12px rgba(0,0,0,.7);pointer-events:none;
+  display:grid;place-items:center;font-size:var(--fs-34);color:var(--ds-amber);text-shadow:0 2px 12px rgba(0,0,0,.7);pointer-events:none;
   animation:jn-bob 1.2s ease-in-out infinite}
 .jn-arrow.jn-arrow-r{left:auto;right:18px;margin-left:0}
 @keyframes jn-bob{0%,100%{transform:translateY(-10px)}50%{transform:translateY(0)}}
@@ -93,7 +93,7 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 .gitem.gcard{align-items:center}
 .jn-cardbtn{flex:0 0 auto;min-height:44px;min-width:44px;padding:0 var(--ds-3);margin-left:auto;border-radius:var(--ds-r-pill);border:1px solid rgba(245,166,35,.55);
   background:var(--ds-amber-soft);color:var(--ds-amber-t);font:700 var(--ds-fs-14) var(--ds-sans);cursor:pointer;white-space:nowrap}
-@media (max-width:400px){ .jn-cardbtn{padding:0;width:44px;font-size:18px} .jn-cardbtn .jn-cb-t{display:none} }
+@media (max-width:400px){ .jn-cardbtn{padding:0;width:44px;font-size:var(--fs-18)} .jn-cardbtn .jn-cb-t{display:none} }
 .jn-cardbtn:active{background:rgba(245,166,35,.28)}
 .gitem.gcard .jn-cardbtn+.gcard-go{margin-left:var(--ds-2)}
 

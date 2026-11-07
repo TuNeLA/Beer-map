@@ -22,7 +22,7 @@ const SB_URL = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const APP = ((Deno.env.get("OLNU_APP_URL") || "https://tunela.github.io/Beer-map/docs/").replace(/\/*$/, "/"));
 const SELF = SB_URL + "/functions/v1/card";
-const STATIC_IMG = APP + "og-image.png";
+const STATIC_IMG = APP + "og-image.png?v=pn2";
 const WASM_URL = "https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm";
 // Fonts (SIL OFL) from pinned npm packages on jsDelivr; loaded once per instance. widths.ts was measured on these files.
 const FONT_URLS = [

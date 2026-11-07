@@ -1,0 +1,296 @@
+/* ==========================================================================
+   PintsNow — PNDS: one design system, last word (agent ds-site, 2026-11-07). Rules: DESIGN.md (repo root).
+   Loaded LAST (js/ds.js keeps it after ds.css). Tokens only below the token block: no new hex, px size,
+   radius or spacing outside :root.
+   ========================================================================== */
+:root{
+  /* radius scale: 4 · 8 · 12 · 16 · 24 · pill */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:24px; --r-pill:999px;
+  --ds-r-1:var(--r-md); --ds-r-2:var(--r-lg); --ds-r-3:var(--r-xl); --ds-r-pill:var(--r-pill);
+  --r-s:var(--r-md); --r-m:var(--r-lg); --r-l:var(--r-xl);
+  /* spacing scale: 2 · 4 · 8 · 12 · 16 · 24 · 32 · 48 */
+  --sp-0:2px; --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+  /* ONE type scale: 12 · 14 · 16 · 18 · 22 · 28 (+ display 34 · 44 for ÖL! / big numbers only) */
+  --fs-12:12px; --fs-14:14px; --fs-16:16px; --fs-18:18px; --fs-22:22px; --fs-28:28px; --fs-34:34px; --fs-44:44px;
+  --ds-fs-34:var(--fs-34); --ds-fs-44:var(--fs-44);
+  /* surfaces for things that float on the map: solid (no blur), same navy as the app */
+  --pn-float:rgba(10,15,28,.94); --pn-float-2:rgba(18,26,42,.97);
+  /* the solid top: status bar + header + ticker area */
+  --pn-top-bg:#0a0f1c;
+  /* row geometry */
+  --pn-row-h:56px; --pn-row-px:var(--sp-4); --pn-row-py:var(--sp-3);
+  --pn-ic:20px; --pn-ic-s:16px;
+}
+
+/* ---------- icons (js/pnicons.js) ---------- */
+.pi{width:var(--pn-ic);height:var(--pn-ic);flex:0 0 auto;vertical-align:-.2em;overflow:visible}
+.pi-lead{margin-right:var(--sp-2);width:1.15em;height:1.15em}
+.ds-row-i .pi,.ds-sec-i .pi{width:var(--pn-ic);height:var(--pn-ic);margin:0}
+.ds-sec-i .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+button .pi-lead,.btn .pi-lead{vertical-align:-.22em}
+
+/* ==========================================================================
+   1. THE TOP: solid, sharp, nothing blurred under the status bar / Dynamic Island (owner #9)
+   iOS standalone (black-translucent + viewport-fit=cover) draws the app under the status bar. iOS 26 tints and
+   blurs the status-bar area from fixed elements at the top that are not a solid colour: so the top is one
+   solid surface, and no backdrop-filter anywhere near it.
+   ========================================================================== */
+html,body{background:var(--pn-top-bg)}
+.topbar{background:var(--pn-top-bg) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  padding-bottom:var(--sp-2) !important;box-shadow:0 1px 0 var(--ds-border)}
+.topbar *,.ticker,.ticker *,.hud-left,.hud-left *,.locate-btn,.map-chip,.icon-btn,.side-btn,.seg,.live-count,.attrib-btn,.other-btn,.hx-chip,.chaos,.rally,.banner,
+.backdrop,.intro,.dl-cap,.toast{-webkit-backdrop-filter:none !important;backdrop-filter:none !important}
+.backdrop{background:rgba(2,4,10,.66) !important}
+.intro{background:rgba(2,4,10,.82) !important}
+.ticker{background:var(--pn-float) !important}
+.brand-name{font-size:var(--fs-22) !important;letter-spacing:.02em;text-shadow:none !important}
+.live-count{height:40px;font-size:var(--fs-14) !important;line-height:1 !important;padding:0 var(--sp-3) !important;gap:var(--sp-1);display:flex;align-items:center;
+  background:var(--pn-float) !important;border-radius:var(--r-pill) !important;color:var(--ds-text-2)}
+.live-count .pi{width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-muted);margin-right:var(--sp-1)}
+.live-count b{font-family:var(--ds-sans) !important;font-weight:700;font-size:var(--fs-16) !important;color:var(--ds-amber-t)}
+.topbar .icon-btn{border-radius:var(--r-pill) !important;background:var(--pn-float) !important}
+.topbar .icon-btn .pi{width:22px;height:22px}
+
+/* ==========================================================================
+   2. MAIN SCREEN: calm (owner #1, #2, #7, coordinator 2–4, 6)
+   ========================================================================== */
+/* friends strip off the map: "who is out" lives in Grupper (pnds.js card) + the "N ute" under the Grupper label */
+#pn-strip{display:none !important}
+/* the HUD row: one pill (my night) + at most one urgent chip, solid surfaces */
+.hud-left .my-streak,.hx-chip{background:var(--pn-float) !important;border-radius:var(--r-pill) !important}
+.hud-left .my-streak .pi{width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-amber-t)}
+.locate-btn,#btn-more.pn-more{background:var(--pn-float) !important;border-radius:var(--r-pill) !important}
+.locate-btn .pi{width:22px;height:22px}
+/* the dock: three columns, the two side columns are always equal → ÖL! is in the exact centre (any text, 320–430 px) */
+.dock{padding-left:calc(var(--sal) + var(--sp-3)) !important;padding-right:calc(var(--sar) + var(--sp-3)) !important;
+  background:linear-gradient(0deg,var(--pn-top-bg) 0%,rgba(10,15,28,.9) 60%,rgba(10,15,28,0) 100%) !important}
+.dock-row{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) !important;gap:var(--sp-2) !important;max-width:480px !important;margin:0 auto}
+.dock-row>.side-btn{justify-self:start;width:auto;min-width:76px;max-width:100%;border-radius:var(--r-lg) !important;background:var(--pn-float) !important;padding:var(--sp-2) var(--sp-3) !important}
+.dock-row>.side-btn .side-ico{display:grid;place-items:center;height:22px}
+.dock-row>.side-btn .side-ico .pi{width:22px;height:22px}
+.side-label{font-size:var(--fs-14) !important}
+.dock-row>.prec{justify-self:end;width:100%;max-width:124px;min-width:0;position:relative}
+/* precision: a fixed-size segmented control (both choices visible, the size never changes) */
+body #prec-seg{display:flex !important;flex-direction:column !important;width:100%;gap:2px !important;padding:3px !important;border-radius:var(--r-lg) !important;
+  background:var(--pn-float) !important;border:1px solid var(--ds-border-2) !important;box-shadow:none !important}
+body #prec-seg>button{display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-width:0 !important;min-height:44px !important;height:44px;
+  padding:0 var(--sp-1) !important;border:0 !important;border-radius:var(--r-md) !important;background:transparent !important;box-shadow:none !important;
+  color:var(--ds-muted) !important;font:600 var(--fs-12)/1.1 var(--ds-sans) !important;white-space:nowrap !important;text-align:center;overflow:hidden;text-overflow:ellipsis}
+body #prec-seg>button::before,body #prec-seg>button::after{content:none !important;display:none !important}
+body #prec-seg>button[aria-checked="true"]{background:var(--ds-raised) !important;color:var(--ds-amber-t) !important;box-shadow:inset 0 0 0 1px rgba(245,166,35,.55) !important}
+body #prec-seg>button .pi{width:14px;height:14px;margin:0}
+body #prec-seg>button:active{transform:none !important;background:rgba(255,255,255,.06) !important}
+/* the helper line is a short bubble after a change (and before the first beer), never a permanent line */
+#prec-hint{position:absolute;right:calc(var(--sar) + var(--sp-3));bottom:calc(100% - var(--sp-2));max-width:min(260px,calc(100vw - 32px));min-height:0 !important;
+  margin:0;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--pn-float-2);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2);
+  color:var(--ds-text-2) !important;font:500 var(--fs-14)/1.3 var(--ds-sans) !important;text-align:left;opacity:0;transform:translateY(4px);pointer-events:none;
+  transition:opacity var(--ds-t-2),transform var(--ds-t-2);visibility:visible !important;display:block !important;z-index:3}
+#prec-hint:empty,body.pn-calm:not(.pn-first) #prec-hint:not(.pn-show){opacity:0}
+#prec-hint.pn-show{opacity:1;transform:none}
+.dock{position:fixed}
+/* ÖL! keeps its own look; ANNAT sits on the left shoulder of the button, the map credits move to the right corner */
+.other-wrap{left:-66px !important;top:-36px !important}
+.attrib-btn{left:auto !important;right:calc(var(--sar) + var(--sp-3)) !important;bottom:calc(var(--dock-h,212px) + 6px) !important;background:var(--pn-float) !important}
+.attrib-pop{left:auto !important;right:calc(var(--sar) + var(--sp-3)) !important}
+.bm-mblogo{left:auto !important;right:calc(var(--sar) + var(--sp-3) + 36px) !important;bottom:calc(var(--dock-h,212px) + 8px) !important}
+/* "Visste du?" and the other map captions: a small toast under the HUD row, tap = next / away; never over the map centre */
+.dl-cap{top:calc(var(--sat) + 158px + var(--chaos-h,0px) + var(--rally-h,0px)) !important;bottom:auto !important;width:min(calc(100vw - 32px),400px) !important;
+  padding:var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3) !important;padding-right:40px !important;border-radius:var(--r-md) !important;clip-path:none !important;
+  background:var(--pn-float-2) !important;border:1px solid var(--ds-border-2) !important;border-left:3px solid var(--ds-amber) !important;transform:translate(-50%,-6px)}
+.dl-cap.dl-in{transform:translate(-50%,0)}
+.dl-cap-h{font:700 var(--fs-12)/1.3 var(--ds-sans) !important;letter-spacing:0 !important;text-transform:none !important;margin-bottom:2px !important;display:flex;align-items:center;gap:6px}
+.dl-cap-t{font:500 var(--fs-14)/1.35 var(--ds-sans) !important;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.dl-cap-more{display:none !important}
+.dl-cap::after{content:"";position:absolute;right:12px;top:12px;width:14px;height:14px;opacity:.7;background:currentColor;color:var(--ds-text-2);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat}
+.dl-cap-tap::after{display:none}
+
+/* ==========================================================================
+   3. SHEETS: one header rule (owner #3, #12)
+   ‹ shows when there is a step to go back to; then ✕ hides (✕ only on the first screen, it closes everything).
+   ========================================================================== */
+.sheet-head{display:grid !important;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:var(--sp-2) !important;min-height:60px !important}
+.sheet-head>#pn-back{grid-column:1}
+.sheet-head>h2{grid-column:1 / 3;text-align:left}
+#sheet.pn-has-back .sheet-head>h2{grid-column:2;text-align:center}
+.sheet-head>#sheet-close{grid-column:3}
+#sheet.pn-has-back #sheet-close{visibility:hidden;pointer-events:none}
+.sheet-head .icon-btn{border-radius:var(--r-pill) !important;background:var(--ds-raised) !important;border:0 !important}
+.sheet-head .icon-btn .pi{width:20px;height:20px}
+/* titles: sentence case, ONE size; the stencil face stays the brand voice */
+.sheet-head h2,.sheet-head h2.ds-stencil,.sheet-head h2.ds-stencil-s{font-family:var(--ds-stencil) !important;font-weight:400 !important;font-size:var(--fs-22) !important;line-height:28px !important;
+  letter-spacing:.02em !important;text-transform:none !important;color:var(--ds-amber-t) !important}
+/* section headings: sentence case 14 px, muted, no amber dash */
+.sheet-body h3,.sheet-body h3.ds-section-h{font:600 var(--fs-14)/20px var(--ds-sans) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--ds-muted) !important}
+.sheet-body h3::before{display:none !important}
+.sheet-body h3 .pi-lead,.ds-sec-i{color:var(--ds-muted)}
+/* sticky tabs: a fully solid bar, headings are never half under it */
+.sheet .tabs.inv-tabs,.tt-bar{background:var(--ds-sheet) !important}
+#sheet-body h3,#sheet-body section{scroll-margin-top:80px}
+.sheet .tabs.inv-tabs>button,.sheet .tabs>button{gap:6px;display:inline-flex !important;align-items:center;justify-content:center}
+.sheet .tabs>button .pi-lead{margin-right:0;width:18px;height:18px}
+
+/* ==========================================================================
+   4. INSTÄLLNINGAR: iOS-style grouped lists (owner #5, #11)
+   Every row: 56 px min, 12 / 16 px padding, text never touches the edge, control 16 px from the right edge.
+   ========================================================================== */
+#sheet-body.ds-set>section.ds-section+section.ds-section{margin-top:var(--sp-5) !important}
+#sheet-body.ds-set .ds-section-h{padding:0 var(--sp-4) !important;margin:0 0 var(--sp-2) !important;gap:var(--sp-2)}
+#sheet-body.ds-set .ds-list{border-radius:var(--r-lg) !important;background:var(--ds-card)}
+#sheet-body.ds-set .ds-item{min-height:var(--pn-row-h)}
+#sheet-body.ds-set .ds-item>.toggle-row,
+#sheet-body.ds-set .ds-item .push-prefs>.toggle-row,
+#sheet-body.ds-set .ds-item>.bd-optin>.toggle-row{padding:var(--pn-row-py) var(--pn-row-px) !important;min-height:var(--pn-row-h);gap:var(--sp-3)}
+#sheet-body.ds-set .toggle-row>span{font:500 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text)}
+#sheet-body.ds-set .toggle-row>span small,#sheet-body.ds-set .toggle-row>span .muted{display:block;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+#sheet-body.ds-set .ds-item>.row>.btn,#sheet-body.ds-set .ds-item>.btn,#sheet-body.ds-set .ds-item>div>.sos-block>.btn{display:flex !important;align-items:center;
+  min-height:var(--pn-row-h) !important;padding:var(--pn-row-py) 44px var(--pn-row-py) var(--pn-row-px) !important;font:500 var(--fs-16)/22px var(--ds-sans) !important}
+#sheet-body.ds-set .ds-item>.row>.btn .pi-lead,#sheet-body.ds-set .toggle-row>span .pi-lead{color:var(--ds-text-2);margin-right:var(--sp-3)}
+#sheet-body.ds-set .ds-item>.row>.btn-danger .pi-lead{color:var(--ds-red-t)}
+#sheet-body.ds-set .ds-item>p,#sheet-body.ds-set .ds-item-hint,#sheet-body.ds-set .ds-item>.info{padding:0 var(--pn-row-px) var(--pn-row-py) !important;margin:-4px 0 0 !important;
+  background:transparent !important;border:0 !important;font:400 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important}
+#sheet-body.ds-set .ds-item.ds-blk{padding:var(--pn-row-py) var(--pn-row-px) !important}
+#sheet-body.ds-set .ds-item.ds-text{padding:var(--pn-row-py) var(--pn-row-px) !important}
+#sheet-body.ds-set .ds-item.ds-text p{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);margin:0}
+#sheet-body.ds-set .ds-item.ds-karta{padding:var(--sp-2) var(--sp-3) var(--sp-3) !important}
+#sheet-body.ds-set .ds-item.ds-karta>.ds-item-hint{padding:var(--sp-2) var(--sp-1) 0 !important;margin:0 !important}
+#sheet-body.ds-set .switch{margin-left:var(--sp-2)}
+/* the notification types: behind one row "Välj notiser" (pnds.js) */
+#sheet-body.ds-set .push-prefs{padding:0 !important;margin:0 !important}
+#sheet-body.ds-set .push-prefs>h3{display:none !important}
+#sheet-body.ds-set .push-prefs>h3.pn-sub{display:block !important;padding:var(--sp-4) var(--pn-row-px) var(--sp-1) !important;margin:0 !important;border-top:1px solid var(--ds-border)}
+#sheet-body.ds-set .push-prefs>.toggle-row+.toggle-row{border-top:1px solid var(--ds-border)}
+#sheet-body.ds-set .push-prefs>p,#sheet-body.ds-set .push-prefs>p.muted{padding:0 var(--pn-row-px) var(--sp-2) !important;margin:0 !important;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+#sheet-body.ds-set .push-prefs>select{display:block;width:calc(100% - 2 * var(--pn-row-px));margin:0 var(--pn-row-px) var(--sp-3) !important;min-height:48px;border-radius:var(--r-md)}
+#sheet-body.ds-set .ds-item.pn-fold>:not(.pn-fold-row){display:none !important}
+#sheet-body.ds-set .ds-item.pn-fold.pn-open>:not(.pn-fold-row){display:block !important}
+#sheet-body.ds-set .ds-item.pn-fold.pn-open>.push-prefs{display:flex !important;flex-direction:column}
+.pn-fold-row{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:var(--pn-row-h);padding:var(--pn-row-py) var(--pn-row-px);border:0;background:transparent;
+  color:var(--ds-text);font:500 var(--fs-16)/22px var(--ds-sans);text-align:left;cursor:pointer}
+.pn-fold-row .pi-lead{color:var(--ds-text-2);margin-right:0}
+.pn-fold-row{justify-content:flex-start}
+.pn-fold-row>span{flex:0 0 auto;text-align:left}
+.pn-fold-row>span:nth-child(2){flex:1 1 auto;min-width:0}
+.pn-fold-row>small{color:var(--ds-muted);font:400 var(--fs-14)/20px var(--ds-sans)}
+.pn-fold-row>.pi-chev-right,.pn-fold-row>.pi-chev-down{color:var(--ds-muted);width:18px;height:18px}
+.pn-fold-row:active{background:rgba(255,255,255,.05)}
+/* Trygghet (safety.js): three cramped buttons → three list rows */
+#sheet-body.ds-set .sf-set{padding:0 !important;margin:0 !important}
+#sheet-body.ds-set .sf-set>h3,#sheet-body.ds-set .sf-set>.sf-line{display:none !important}
+#sheet-body.ds-set .sf-set-row{display:flex !important;flex-direction:column !important;gap:0 !important;margin:0 !important;padding:0 !important}
+#sheet-body.ds-set .sf-set-row>.btn{display:flex !important;align-items:center;width:100%;min-height:var(--pn-row-h);margin:0 !important;padding:var(--pn-row-py) 44px var(--pn-row-py) var(--pn-row-px) !important;
+  border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;color:var(--ds-text) !important;justify-content:flex-start;
+  font:500 var(--fs-16)/22px var(--ds-sans) !important;position:relative;text-decoration:none}
+#sheet-body.ds-set .sf-set-row>.btn+.btn{border-top:1px solid var(--ds-border) !important}
+#sheet-body.ds-set .sf-set-row>.btn::after{content:"›";position:absolute;right:var(--sp-4);top:50%;transform:translateY(-52%);color:var(--ds-muted);font:400 24px/1 var(--ds-sans)}
+#sheet-body.ds-set .sf-set-row>.btn .pi-lead{color:var(--ds-text-2);margin-right:var(--sp-3)}
+/* the version row */
+#sheet-body.ds-set .ds-item.ds-ver>.toggle-row{padding-right:var(--sp-3) !important}
+
+/* ==========================================================================
+   5. GROUP PAGE: calm and clearly finished (owner #4)
+   ========================================================================== */
+.gpg-dot,.gpg-dot.on{animation:none !important}
+.gpg-now{border-radius:var(--r-lg) !important}
+.gpg-now-h b{letter-spacing:.04em !important}
+.gpg>*{border-radius:var(--r-lg)}
+/* skeletons only while loading: 3 breaths max, then a still, quiet block */
+.sm-skel{animation-iteration-count:3 !important}
+.pn-skel-done{display:none !important}
+/* "Ute ikväll" card in Grupper (pnds.js) */
+.pn-out{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:64px;margin:0 0 var(--sp-4);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);
+  background:var(--ds-card);border:1px solid var(--ds-border);color:var(--ds-text);text-align:left;cursor:pointer;font:inherit}
+.pn-out:active{background:var(--ds-raised)}
+.pn-out-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pn-out-t b{font:600 var(--fs-16)/22px var(--ds-sans)}
+.pn-out-t small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn-out-faces{display:flex;flex:0 0 auto}
+.pn-out-faces>span{display:block;width:32px;height:32px;margin-left:-8px;border-radius:50%;box-shadow:0 0 0 2px var(--ds-card)}
+.pn-out-faces>span:first-child{margin-left:0}
+.pn-out-faces svg{display:block;width:32px;height:32px}
+.pn-out .pi-chev-right{color:var(--ds-muted);width:18px;height:18px}
+.pn-out-dot{width:10px;height:10px;border-radius:50%;background:var(--ds-green);flex:0 0 auto}
+.pn-out.pn-none .pn-out-dot{background:var(--ds-muted)}
+
+/* ==========================================================================
+   6. SHARED COMPONENTS: the token values everywhere (owner #8)
+   ========================================================================== */
+.btn{border-radius:var(--r-md)}
+.btn-small{border-radius:var(--r-pill)}
+.btn-block{border-radius:var(--r-md)}
+.inp,input.inp,select.inp,textarea.inp{border-radius:var(--r-md)}
+.ds-card,.gitem.gcard,.ev-row,.nr-tile,.confirm,.info,.pl-warn,.bd-optin,.chief-gi,.inv-note{border-radius:var(--r-lg)}
+.ds-row-i{border-radius:var(--r-md) !important;color:var(--ds-text-2)}
+.toast{border-radius:var(--r-md) !important}
+.sheet{border-radius:var(--r-xl) var(--r-xl) 0 0 !important}
+.leaflet-popup.olnu-sheet .leaflet-popup-content-wrapper{border-radius:var(--r-xl) var(--r-xl) 0 0}
+:where(.sheet-body) p{font-size:var(--fs-14);line-height:20px}
+
+/* ---------- full-screen game overlay: ‹ goes back to the group ---------- */
+#sp .sp-back{font-size:0 !important}
+#sp .sp-back .pi{width:22px;height:22px}
+#sp .sp-x .pi{width:20px;height:20px}
+
+/* ---------- a sheet that failed to build: a clear, finished error state ---------- */
+.pn-fail{padding:var(--sp-5) var(--sp-4);text-align:center;color:var(--ds-text-2);font:400 var(--fs-16)/24px var(--ds-sans)}
+.pn-fail .btn{margin-top:var(--sp-4)}
+
+/* the iOS "add to home screen" hint and other top banners: under the HUD row, never over it */
+.banner{top:calc(var(--sat) + 158px + var(--chaos-h,0px) + var(--rally-h,0px)) !important;border-radius:var(--r-md) !important;background:var(--pn-float-2) !important}
+@media (max-width:359px){ .dock-row>.side-btn{min-width:64px} }
+@media (prefers-reduced-motion: reduce){ #prec-hint{transition:none} }
+/* one line for transient things at the top: under the HUD row */
+.toasts{top:calc(var(--sat) + 156px + var(--chaos-h,0px) + var(--rally-h,0px)) !important}
+body:has(#install-banner:not([hidden])) .dl-cap{top:calc(var(--sat) + 222px + var(--chaos-h,0px) + var(--rally-h,0px)) !important}
+/* shorter Inställningar: a hint shows 2 lines; a tap on it shows the rest */
+#sheet-body.ds-set .ds-item-hint:not(.pn-full){display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+/* type scale for styles that modules inject from JS (spel.js group tile, basemap.js kartstil badge) */
+.sp-gs{font-size:var(--fs-14) !important;line-height:20px !important}
+.sp-gt{font-size:var(--fs-22) !important;line-height:28px !important}
+.sp-gi-go{font-size:var(--fs-28) !important}
+.bm-seg .bm-b{font-size:var(--fs-12) !important;line-height:16px !important}
+/* the bar sheet (a Leaflet popup styled as a sheet): on the type scale too */
+.olnu-sheet .leaflet-popup-content,.leaflet-popup-content{font-size:var(--fs-14);line-height:20px}
+.olnu-sheet a.leaflet-popup-close-button{font-size:var(--fs-22) !important}
+/* group page: sentence-case headings like every other sheet */
+.gpg-chat-h b{font:600 var(--fs-14)/20px var(--ds-sans) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--ds-muted) !important}
+.gpg-chat-h b .pi-lead{width:16px;height:16px}
+/* ÖL!: only the word, bigger, in the middle (owner 2026-11-07). The countdown keeps its two lines.
+   Screen readers: aria-label "Rapportera öl" (pnds.js). */
+.beer-btn:not(.cooldown) .beer-sub{display:none !important}
+.beer-btn:not(.cooldown) .beer-label{font-size:var(--fs-44) !important;line-height:1 !important;letter-spacing:.02em !important;margin:0;padding-top:.06em}
+@media (max-width:380px){ .beer-btn:not(.cooldown) .beer-label{font-size:var(--fs-34) !important} }
+/* group page: the "Kör ikväll" card is a full row like every other card */
+.gitem:not(.gcard)>div.gp.gpg>.skj-gi{grid-column:1 / -1 !important;width:100%}
+.skj-card{border-radius:var(--r-lg) !important;padding:var(--sp-3) var(--sp-4) !important;gap:var(--sp-3) !important}
+.skj-ic .pi{width:22px;height:22px;color:var(--ds-blue-t)}
+.skj-gi>.skj-card{flex:1 1 auto;width:100%;min-width:0}
+.skj-btns{margin-left:auto}
+/* the group "+" view: sentence-case group labels like the rest */
+.gp-h,.gpg-sh,.gpg-sec-h{text-transform:none !important;letter-spacing:0 !important;font:600 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important}
+.gp-h::before{display:none !important}
+/* the HUD row is ONE row: the "my night" pill shrinks (its title ends with …) before the urgent chip wraps */
+.hud-left:not(.open){flex-wrap:nowrap !important}
+.hud-left:not(.open)>.my-streak{flex:0 1 auto !important;min-width:0}
+.hud-left:not(.open)>.hud-x{flex:0 0 auto !important;max-width:46%}
+.hud-left:not(.open) .hx-urgent{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* top area, owner 2026-11-07: one top row (logo · status pill · profile), the LIVE ticker, then only ⋯ + locate on the right.
+   "My night" (the Ikväll pill) lives in Grupper / Profil; an urgent chip (medevac, call-out) still shows alone on the left. */
+.hud-left .my-streak{display:none !important}
+.hud-left:not(.open)>.hud-x{max-width:calc(100vw - 92px - var(--sal) - var(--sar)) !important}
+/* profile button: my face, or a person icon */
+#btn-settings .pn-me{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;overflow:hidden;background:var(--ds-raised);color:var(--ds-text)}
+#btn-settings .pn-me .pi{width:20px;height:20px}
+#btn-settings .pn-me svg:not(.pi){width:100%;height:100%;display:block}
+#btn-settings.pn-avbtn{padding:0}
+/* scrollbars: on touch screens no custom bar over the content (the system shows its own while you scroll); with a mouse a
+   thin bar in the gutter */
+@media (pointer:coarse){
+  #sheet,#sheet *,.olnu-sheet,.olnu-sheet *{scrollbar-width:none !important}
+  #sheet ::-webkit-scrollbar,.olnu-sheet ::-webkit-scrollbar,#sheet::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important}
+}
+@media (pointer:fine){ #sheet-body{scrollbar-gutter:stable;padding-right:var(--sp-1)} }
+/* "Nytt i appen" (pnmove.js): our icons in the round tiles */
+.pn-it>.pn-e{display:grid !important;place-items:center;color:var(--ds-amber-t)}
+.pn-it>.pn-e .pi{width:22px;height:22px}
