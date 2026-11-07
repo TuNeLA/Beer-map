@@ -382,3 +382,20 @@ body #prec-seg>button[aria-checked="true"]::before{content:"" !important;display
 #btn-attrib>span{position:relative;color:var(--ds-muted);font-size:var(--fs-14)}
 .attrib-pop{left:calc(var(--sal) + var(--pn-edge)) !important;right:auto !important;bottom:calc(var(--dock-h,212px) + 56px) !important}
 /* ds05 layout END */
+/* ds05b dock START — owner feedback on the KAOS shot (2026-11-07): ANNAT next to ÖL! (never on it), map credits as one tidy
+   unit above the dock, stranger pins in the marker family. Positions from js/pnds.js (ds05b). */
+/* ANNAT: its own round 52 px button beside ÖL!, 8 px outside the ÖL! ring, up-right (the dock is too narrow for a
+   fourth box in the row at 360–390 px without shrinking ÖL! or the side boxes under 64 px). Never over ÖL!. */
+.beer-wrap>.other-wrap{width:52px !important;height:52px !important;z-index:4;right:auto !important;bottom:auto !important}
+.beer-wrap>.other-wrap .other-btn{width:44px !important;height:44px !important}
+/* map credits: Mapbox wordmark + ⓘ in one row at the bottom-left map edge, 12 px over the dock content, 12 px edge */
+.bm-mblogo{left:calc(var(--sal) + var(--pn-edge)) !important;right:auto !important;bottom:calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px + 12px) !important}
+#btn-attrib{left:calc(var(--sal) + var(--pn-edge) + 65px + 2px) !important;right:auto !important;bottom:calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px) !important}
+body:not(:has(.bm-mblogo:not([hidden]))) #btn-attrib{left:calc(var(--sal) + var(--pn-edge) - 8px) !important}
+.attrib-pop{bottom:calc(var(--pn-dock-b, var(--dock-h,212px)) + 60px) !important}
+/* a stranger's pin (someone out who is not your friend; no number for strangers): the bar disc family — 28 px navy disc,
+   2 px foam ring, ink hairline, 16 px glyph */
+.pn-p.pn-s{width:28px !important;height:28px !important;background:linear-gradient(#1E2B66,#152050) !important;border:2px solid #FFFAF0 !important;
+  box-shadow:0 0 0 1px rgba(4,7,20,.62),0 1px 2.5px rgba(0,0,0,.5) !important}
+.pn-p.pn-s>.pn-d>svg{width:16px !important;height:16px !important;fill:#FFFAF0 !important}
+/* ds05b dock END */

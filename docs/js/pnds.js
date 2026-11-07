@@ -526,3 +526,30 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds05 layout END */
+/* ds05b dock START — ANNAT beside ÖL! (8 px outside the ring, up-right, never overlapping), --pn-dock-b for the map credits. */
+(function () {
+  "use strict";
+  function $(id) { return document.getElementById(id); }
+  var root = document.documentElement;
+  function place() {
+    try {
+      var bw = document.querySelector(".beer-wrap"), ow = document.querySelector(".beer-wrap>.other-wrap"), row = document.querySelector(".dock-row");
+      if (row) { var r = row.getBoundingClientRect(); if (r.height) { var v = Math.round(innerHeight - r.top) + "px"; if (root.style.getPropertyValue("--pn-dock-b") !== v) root.style.setProperty("--pn-dock-b", v); } }
+      if (!bw || !ow) return;
+      var b = bw.getBoundingClientRect(); if (!b.width) return;
+      var ring = b.width / 2, me = (ow.offsetWidth || 52) / 2, d = ring + 8 + me, a = 50 * Math.PI / 180;   // 50° up-right
+      var cx = b.width / 2 + d * Math.cos(a), cy = b.height / 2 - d * Math.sin(a);
+      var L = Math.round(cx - me) + "px", T = Math.round(cy - me) + "px";
+      if (ow.style.left !== L) ow.style.setProperty("left", L, "important");
+      if (ow.style.top !== T) ow.style.setProperty("top", T, "important");
+    } catch (e) {}
+  }
+  function start() {
+    place();
+    window.addEventListener("resize", function () { setTimeout(place, 30); });
+    if (window.ResizeObserver) { var ro = new ResizeObserver(function () { place(); }); [".dock", ".beer-wrap"].forEach(function (s) { var e = document.querySelector(s); if (e) ro.observe(e); }); }
+    setInterval(place, 2500);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds05b dock END */
