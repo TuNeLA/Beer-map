@@ -2805,3 +2805,69 @@ A new push MUST use a tag prefix from this table (or add one here and in `pushCa
 - Soft ask at start (`startNotifAsk`): only when `my_groups` has ≥ 1 group (still max once per 3 days); the asks after a beer and after
   creating/joining a group are unchanged. New ask texts: "🔔 Vet när gänget drar ut".
 - Test: scratchpad `notif-pw.js` (mocked; settings section, save, blocked help, act=skal/coming, helg route) + `notif-sw-test.js`.
+
+## 🎉 SPEL 3 (games3: fixes, 🧠 Gängkollen, 👑 Kungaleken, event groups, penalty packs; owner 2026-11-07; additive)
+Migrations `0185_spel_evg_quiz.sql`, `0186_spel_pen.sql`, `0187_lek_evg.sql` (applied live 2026-11-07 under the same names; same signatures and shapes as 0169).
+Client: patches games3 01–06 (spel.js, spel-ui.js, spel-cards.js, spel.css, forfest.js, party.js, party-ui.js, party-content.js,
+social.js, evgroup.js, rundan.js) + 08 (games.js).
+
+### Overlays and history (bug, patch 01)
+SHEETNAV closes a sheet with a deferred `history.go(-n)`. An overlay that pushed its own entry first was popped by it and closed at
+once (🎉 Spel, 🍻 Förfest and 🎲 Partyspel from the group page). `window.OLNU_AFTER_SHEET(fn, who)` (spel.js) closes the sheet and
+runs `fn` after the unwind has landed (popstate, else 450 ms). Every overlay that opens from a sheet must use it.
+
+### Room games (patch 02)
+- Leaving the room screen (‹ to the hub, ✕, Android back) = `spel_act leave`, so a round never waits for someone who is not looking.
+  `spel_open` puts the player back with the score. Joining a live room (group card, hub banner, chat button) = `spel_open` with NO game
+  (never switches the game). Tapping another game while people wait in the lobby asks first ("Hoppa in där" / "Byt till … för alla").
+- 📣 Kalla in gänget (lobby, normal groups): one `post_group_msg` line "🎉 {namn} startar {spel}! Hoppa in: …" + the normal chat push
+  (max 1 per room per 3 min on the phone). `SPEL.chatOpen` (social.js) adds 🎉 HOPPA IN to such rows (< 3 h old).
+- Results: staggered reveal + emoji burst (none with reduced motion). Twists: ENHÄLLIGT (Vem: all but the top person voted for them),
+  ensam om det (Jag har aldrig: 1 yes, 2+ no), 🤝 Enigt (Hellre: everyone on one side; was the bug "🍺  dricker!" with no name).
+
+### 🧠 Gängkollen (game `quiz`, 0185; group-only)
+The starter's phone builds 3–30 questions from `group_status_v3` + `group_now` (meriter, grades, all-time totals, tonight, places,
+home towns, chief, owner, newest recruit) + max 1 fixed Öl Nu fact per 3 gang questions, and sends `p_data {game:'quiz', goal, qs:
+[{q ≤ 160, o: 2–4 × ≤ 48, a}], pen}`. Answers stay in `sec.qa`; each round `pub.q = {q, o}`; vote `'0'–'3'`; result `pub.res = {a,
+picks:[{i, names}], right, wrong}`; right = +1 point. Ends after min(goal, questions). Min 2 players. Lobby rounds 5 / 8 / 12.
+
+### 👑 Kungaleken (client only, one phone)
+52 cards, 13 own rules, 10 = a random Jag har aldrig card, 7 = a category, 9 = a rhyme word. No cup to drink: K = a challenge note
+in "kungens hatt"; the 4th king does the best note. Works without a group. ‹ = previous card.
+
+### 📨 Event groups (0185 + patch 05)
+`spel_group` / `spel_open` accept the event people (`olnu_evg_member`; name = `olnu_friend_name`). The event page shows ONE 🎉 Spel card
+(+ 💸 Kvällens nota) instead of the Förfest / Partyspel tiles; the hub hides group-only games (Kvällens lekar, Gängkamp, Gängkollen).
+
+### ⚖️ Straffpaket (penalty packs; patch 06 + 0186; store-premium-plan.md 2.2)
+ONE table: `window.OLNU_PEN` in spel.js. Packs: `utm` 🎖️ Utmaning (default, no drink), `skal` 🥂 Skålstraff ("höj glaset, säg 'Skål,
+general!' och ta en skvätt av det du har. Vatten räknas."), `streck` 📏 Skamstreck (points only), `klunk` 🍺 Klassiskt (web build only:
+hidden when `window.OLNU_STORE`, `window.Capacitor`, `?app=android|ios` (remembered in `olnu.store`) or an `android-app:` referrer).
+Tokens `{k1} {k2} {d3}` (3rd person) / `{K1} {K2} {D3}` (imperative) + `{ic} {mark}`; max 2 per penalty, max 2 to give out
+(Utmaning: 3 push-ups); never shots / "botten upp" / "drick tills". API: `packs() get(id) ok(id) pref() setPref(id) fill(text, pack,
+seed) pick(pack, key, seed) store()`. Room games: the lobby picks the pack (`olnu.pack`), `spel_act start` keeps it (`sec.pen`) and every
+round's `pub.pen` carries it, so all phones show the same words (the Utmaning variant = seed round + game_no). Förfestläget: the
+"🥤 Utan dricka" switch became the same pack picker (`olnu.ff.pack`; Utmaning keeps its own varied no-drink tasks). To change a word,
+edit OLNU_PEN only.
+
+### IP (patch 06)
+Skämskort has its own look (olive "orderkort", stencil, red ORDER stamp, sand answer cards, PINTSNOW mark) – never a black prompt +
+white answer card look. Flocken's odd one out = 🥾 Kängan. Vågen → 📡 Radarn. Vem bjuder? → Vem fixar nästa?. Kungens bägare →
+Kungaleken. Retired (text replaced, index kept): 10 prompts close to well-known party-card prompts, alcohol brands, shots and snus cards,
+Imposter drink-brand words. Never name other games or apps in the app, the listing or keywords.
+
+### 🎯 Lek in event groups + store-safe missions (0187 + patch 08)
+- `olnu_g_member` also accepts event people (`olnu_evg_member`: creator + ✅ + 🤔, event open), so `game_group` / `tick_bingo` work for
+  the event's temp group (its own Kvällsbingo card). New `evg_lek(p_group_id)` → `{night, people:[{k, name, is_me, status, at, out}],
+  ticks:[{idx, name, is_me}]}` (event people only, else `not_member`). Client: the event hub shows 🎯 Kvällens lekar; the Lek sheet
+  has only 🙋 Sugen + 🎱 Bingo + "🎯 Kvällens uppdrag" (Krogrunda, Agent, Gissa stay group-only); ‹ goes back to the event page.
+- No rewards for drinking more: mission kinds `early`, `other_none`, `beer_type` are `active = false` in `game_mission_cat`
+  (missions given before stay). Kinds handed out now: checkin_bars, skal_give, skal_get, water, queue_report, home, tip, chat,
+  group_out, rally_yes.
+
+### Content (spel-cards.js; ONLY ADD AT THE END)
+707 white, 211 black (28 pick-2), 130 vem, 150 aldrig, 110 hellre. All original.
+
+### Tests (scratchpad)
+`games3-tests/review-pw.js` (before), `games3-tests/games3-pw.js` (52 live checks: 4 fresh users at the test zone, own group + own event,
+cleanup: leave, `invite_cancel`), plus social2-pw.js, strip-test.js, avatar-pw.js.

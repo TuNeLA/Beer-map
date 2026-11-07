@@ -83,8 +83,10 @@
     var t0 = setTimeout(function () { try { A.toast(T("load"), { id: "party-load", ms: 2500 }); } catch (e) {} }, 400);
     ensure().then(function () {
       clearTimeout(t0); try { A.toastClear("party-load"); } catch (e) {}
+      var go = function () { window.PARTY_UI.open(A, opts || {}); };
+      if (window.OLNU_AFTER_SHEET) { window.OLNU_AFTER_SHEET(go, "party"); return; }
       try { if (A.sheetOpen && A.sheetOpen()) A.closeSheet("party"); } catch (e) {}
-      window.PARTY_UI.open(A, opts || {});
+      go();
     }, function () {
       clearTimeout(t0);
       try { A.toast(T("fail"), { err: true, id: "party-load" }); } catch (e) {}

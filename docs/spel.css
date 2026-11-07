@@ -121,5 +121,64 @@ html.sp-on, html.sp-on body { overflow: hidden; }
 .sp-side b { font-size: 15px; }
 .sp-side.hot { background: var(--ds-amber-soft, rgba(245,166,35,.14)); border: 1px solid rgba(245,166,35,.6); }
 
+/* games3: ask-first dialog, call button, twists, results reveal, emoji burst */
+.sp-call { margin-top: 14px; width: 100%; }
+.sp-ask { position: absolute; inset: 0; z-index: 5; background: rgba(4,8,16,.72); display: flex; align-items: flex-end; justify-content: center; padding: 16px; }
+.sp-ask-c { width: 100%; max-width: 520px; border-radius: 22px; padding: 20px 16px 14px; background: var(--ds-card, #19233a); border: 1px solid rgba(255,255,255,.14); display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.sp-ask-c h3 { margin: 0 0 6px; font: 700 18px/1.3 var(--ds-sans, sans-serif); }
+.sp-ask-c .sp-big-ic { font-size: 44px; }
+.sp-twist { text-align: center; margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; background: rgba(255,90,90,.14); border: 1px solid rgba(255,90,90,.45); font: 700 15px/1.35 var(--ds-sans, sans-serif); }
+.sp-rv .sp-drink, .sp-rv .sp-win h2, .sp-rv .sp-hero h2 { animation: spPop .55s cubic-bezier(.2,1.4,.4,1) both; }
+.sp-rv .sp-brow { animation: spIn .38s ease-out both; animation-delay: calc(var(--i, 0) * 110ms + 200ms); }
+.sp-rv .sp-bar i { animation: spGrow .9s ease-out both; animation-delay: calc(var(--i, 0) * 110ms + 300ms); transform-origin: left; }
+.sp-rv .sp-twist { animation: spPop .5s .5s both; }
+@keyframes spPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes spIn { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes spGrow { from { transform: scaleX(0); } to { transform: none; } }
+.sp-burst { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+.sp-burst i { position: absolute; top: -40px; font-style: normal; animation: spFall 1.7s ease-in both; }
+@keyframes spFall { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(105vh) rotate(260deg); opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .sp-rv .sp-drink, .sp-rv .sp-win h2, .sp-rv .sp-hero h2, .sp-rv .sp-brow, .sp-rv .sp-bar i, .sp-rv .sp-twist { animation: none; } .sp-burst { display: none; } }
+
+/* games3: 🧠 Gängkollen */
+.sp-qq p { font-size: 21px; }
+.sp-qopts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.sp-qo { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; min-height: 92px; padding: 12px 12px 12px 40px; border-radius: 16px; border: 3px solid transparent; color: #fff; font: 700 17px/1.25 var(--ds-sans, sans-serif); text-align: left; cursor: pointer; }
+.sp-qo i { position: absolute; left: 12px; top: 12px; font-style: normal; font-size: 18px; opacity: .9; }
+.sp-qo small { font: 600 12px/1.3 var(--ds-sans, sans-serif); opacity: .9; }
+.sp-qo0 { background: #c2334a; } .sp-qo1 { background: #2563c9; } .sp-qo2 { background: #b8860b; } .sp-qo3 { background: #1f8a4c; }
+.sp-qo.on { border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.35); }
+.sp-qopts.res .sp-qo { cursor: default; }
+.sp-qopts.res .sp-qo.dim { opacity: .38; }
+.sp-qopts.res .sp-qo.right { border-color: #fff; box-shadow: 0 0 0 4px rgba(61,220,132,.55); }
+.sp-rv .sp-qopts.res .sp-qo.right { animation: spPop .55s .25s both; }
+/* games3: 👑 Kungens bägare */
+.sp-kbody { display: flex; flex-direction: column; align-items: stretch; }
+.sp-krules { list-style: none; padding-left: 0; } .sp-krules li { margin-bottom: 6px; }
+.sp-kcard { position: relative; align-self: center; width: min(62vw, 250px); aspect-ratio: 5 / 7; margin: 6px 0 4px; border-radius: 18px; background: #fbfaf5; border: 0; box-shadow: 0 10px 30px rgba(0,0,0,.5); cursor: pointer; font-family: Georgia, "Times New Roman", serif; }
+.sp-kcard.r { color: #c8102e; } .sp-kcard.b { color: #14161c; }
+.sp-kcard.last { box-shadow: 0 0 0 5px #ffc24d, 0 10px 30px rgba(0,0,0,.5); }
+.sp-kc-tl, .sp-kc-br { position: absolute; font: 700 30px/1 Georgia, serif; }
+.sp-kc-tl { left: 14px; top: 12px; } .sp-kc-br { right: 14px; bottom: 12px; transform: rotate(180deg); }
+.sp-kc-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 110px; }
+.sp-krule { text-align: center; font: 600 17px/1.4 var(--ds-sans, sans-serif); margin: 0 0 12px; }
+.sp-kung .sp-foot { display: flex; gap: 8px; } .sp-kung .sp-foot .sp-main { flex: 1 1 auto; } .sp-kprev { flex: 0 0 64px; font-size: 26px; }
+@media (prefers-reduced-motion: no-preference) { .sp-kung .sp-kcard { animation: spPop .35s ease-out both; } }
+
+/* games3 06: Skämskort's own look – olive military "orderkort" with an ORDER stamp + sand answer cards */
+.sp-black { background: linear-gradient(165deg, #5b6b2f, #46541f 60%, #39441a); color: #f4efd8; border: 2px dashed #c9bf8f; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.4), inset 0 0 0 5px rgba(0,0,0,.15); }
+.sp-black { padding-top: 40px; }
+.sp-black p { font-family: var(--ds-stencil, Impact, sans-serif); font-weight: 400; letter-spacing: .02em; }
+.sp-black small { color: #e7d9a0; }
+.sp-black::before { content: "ORDER"; position: absolute; right: 12px; top: 10px; padding: 2px 8px; border: 2px solid rgba(214,74,54,.85); border-radius: 4px; color: rgba(214,74,54,.9); font: 400 13px var(--ds-stencil, Impact, sans-serif); letter-spacing: .12em; transform: rotate(8deg); }
+.sp-black::after { content: "PINTSNOW · SKÄMSKORT"; color: #c9bf8f; }
+.sp-white { background: #e9dfbf; color: #2b2a17; border: 2px solid #c9b98a; border-radius: 4px; }
+.sp-white.on { background: #f5c95b; border-color: #8a6a12; }
+.sp-fill-card { background: linear-gradient(165deg, #4f5d28, #3a4619); color: #f4efd8; border: 2px solid #6f7d3c; border-radius: 6px; }
+.sp-fill { background: #e9dfbf; color: #2b2a17; }
+.sp-penline { text-align: center; margin: -2px 0 10px; font: 700 15px/1.35 var(--ds-sans, sans-serif); color: var(--ds-amber-t, #ffc24d); }
+.sp-packs { flex-wrap: wrap; } .sp-packs button { white-space: nowrap; }
+.sp-packrow { flex-wrap: wrap; gap: 8px; } .sp-packsub { margin: 4px 0 0; font-size: 13px; }
+
 @media (min-width: 640px) { .sp-body, .sp-foot { padding-left: calc(50% - 300px); padding-right: calc(50% - 300px); } }
 @media (prefers-reduced-motion: reduce) { .sp-live-dot { animation: none; } .sp-card:active { transform: none; } .sp-white.on { transform: none; } }

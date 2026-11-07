@@ -26,6 +26,9 @@
   function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function C() { return window.SPEL_CARDS || { white: [], black: [], vem: [], aldrig: [], hellre: [] }; }
+  // ⚖️ every penalty word comes from window.OLNU_PEN (spel.js); the room's pack = pub.pen (0186), else my own choice
+  function PK() { var d = st && st.d, p = d && d.pub && d.pub.pen; return window.OLNU_PEN ? window.OLNU_PEN.ok(p || window.OLNU_PEN.pref()) : "utm"; }
+  function PEN(s, pack) { var d = st && st.d; return window.OLNU_PEN ? window.OLNU_PEN.fill(s, pack || PK(), d ? (d.round | 0) + (d.game_no | 0) : 0) : String(s).replace(/\{(k1|k2|d3)\}/gi, "tar straffet").replace(/\{(ic|mark)\}/g, "🎯"); }
   function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 12); } catch (e) {} }
 
   /* ---------- the game list (hub) ---------- */
@@ -34,27 +37,30 @@
   var GAMES = [
     { id: "kort", ic: "🃏", name: "Skämskort", sub: "Fyll luckan med det sjukaste kortet du har. Domaren väljer vinnaren.", n: "3–10", mode: "own", tag: "NYTT", col: "#14161c",
       how: ["Varje runda har en domare (byts varje gång).", "Alla andra har 7 kort på sin lur och lägger det roligaste i luckan.", "Domaren ser svaren anonymt och korar vinnaren. Först till målet vinner."] },
-    { id: "vem", ic: "👉", name: "Vem i gänget?", sub: "Alla pekar ut nån i hemlighet. Flest röster dricker.", n: "3–16", mode: "own", tag: "NYTT", col: "#3b1f6b",
-      how: ["En fråga: \"Vem i gänget… somnar först?\"", "Alla röstar i hemlighet på sin lur.", "Flest röster tar en klunk. Röstningen ä hemlig, resultatet int'."] },
+    { id: "vem", ic: "👉", name: "Vem i gänget?", sub: "Alla pekar ut nån i hemlighet. Flest röster tar straffet.", n: "3–16", mode: "own", tag: "NYTT", col: "#3b1f6b",
+      how: ["En fråga: \"Vem i gänget… somnar först?\"", "Alla röstar i hemlighet på sin lur.", "Flest röster {k1}. Röstningen ä hemlig, resultatet int'."] },
     { id: "aldrig", ic: "🙊", name: "Jag har aldrig", sub: "Tryck \"Jag har\" eller \"Aldrig\". Alla ser vilka som har.", n: "2–16", mode: "own", tag: "NYTT", col: "#6b1f3b",
-      how: ["Ett påstående: \"Jag har aldrig…\"", "Alla trycker Jag har / Aldrig på sin lur.", "Alla som har tar en klunk. Ingen ljuger – vi ser er."] },
-    { id: "hellre", ic: "⚖️", name: "Hellre eller?", sub: "Välj sida. Den minsta sidan dricker.", n: "2–16", mode: "own", tag: "NYTT", col: "#1f4f6b",
-      how: ["Två val: \"Hellre A eller B?\"", "Alla väljer på sin lur.", "Den sida som ä minst tar en klunk. Lika = alla klarar sig."] },
+      how: ["Ett påstående: \"Jag har aldrig…\"", "Alla trycker Jag har / Aldrig på sin lur.", "Alla som har {k1}. Ingen ljuger – vi ser er."] },
+    { id: "hellre", ic: "⚖️", name: "Hellre eller?", sub: "Välj sida. Den minsta sidan tar straffet.", n: "2–16", mode: "own", tag: "NYTT", col: "#1f4f6b",
+      how: ["Två val: \"Hellre A eller B?\"", "Alla väljer på sin lur.", "Den sida som ä minst {k1}. Lika = alla klarar sig."] },
+    { id: "quiz", grp: 1, ic: "🧠", name: "Gängkollen", sub: "Hur bra känner ni varandra? Frågor om gängets egna meriter, öl och grader.", n: "2–16", mode: "own", tag: "NYTT", col: "#0f4c3a",
+      how: ["Frågorna byggs av gängets egen statistik: meriter, grader, öl genom tiderna, ikväll och mer.", "Alla svarar på sin lur. Snabbt – ingen väntar på dig.", "Rätt = 1 poäng. Fel = {K1}. Flest poäng vinner."] },
+    { id: "kung", ic: "👑", name: "Kungaleken", sub: "En vanlig kortlek med våra egna regler. Dra ett kort, gör vad det säger. Fjärde kungen avgör.", n: "3–12", mode: "one", tag: "NYTT", col: "#4a1a1a" },
     { id: "imposter", ic: "🕵️", name: "Imposter", sub: "Alla utom en ser det hemliga ordet. Hitta impostern!", n: "3–16", mode: "tv", party: 1, col: "#2a2f45" },
     { id: "hatten", ic: "🎩", name: "Namn i hatten", sub: "Alla svarar i hemlighet. Lapparna dras en och en.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45" },
-    { id: "flocken", ic: "🐑", name: "Flocken", sub: "Svara som de flesta. Den ensamma får kossan 🐄.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45" },
+    { id: "flocken", ic: "🐑", name: "Flocken", sub: "Svara som de flesta. Den ensamma får 🥾 Kängan.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45" },
     { id: "forfest", ic: "🍻", name: "Förfestläget", sub: "Utmaningar, kategorier, virus och order. En lur går runt.", n: "2–12", mode: "one", col: "#3d2a14" },
-    { id: "vagen", ic: "🔮", name: "Vågen", sub: "Siaren ger en ledtråd, alla drar reglaget.", n: "3–12", mode: "tv", party: 1, col: "#2a2f45" },
+    { id: "vagen", ic: "📡", name: "Radarn", sub: "Siaren ger en ledtråd, alla drar reglaget.", n: "3–12", mode: "tv", party: 1, col: "#2a2f45" },
     { id: "survivor", ic: "🔥", name: "Östra lägret", sub: "Rösta ut varandra tills juryn utser en vinnare.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45" },
-    { id: "spin", ic: "🎡", name: "Vem bjuder?", sub: "Snurran bestämmer vem som tar nästa runda.", n: "2+", mode: "one", col: "#3d2a14" },
+    { id: "spin", ic: "🎡", name: "Vem fixar nästa?", sub: "Snurran bestämmer vem som hämtar – dricka, chips eller vatten.", n: "2+", mode: "one", col: "#3d2a14" },
     { id: "lek", ic: "🎯", name: "Kvällens lekar", sub: "Uppdrag, bingo, hemlig agent och oraklet.", n: "1+", mode: "night", col: "#1f3d2a" },
-    { id: "duel", ic: "⚔️", name: "Gängkamp", sub: "Utmana ett annat gäng om kvällen.", n: "2 gäng", mode: "night", col: "#1f3d2a" }
+    { id: "duel", grp: 1, ic: "⚔️", name: "Gängkamp", sub: "Utmana ett annat gäng om kvällen.", n: "2 gäng", mode: "night", col: "#1f3d2a" }
   ];
   var MODES = {
     own: L("📱 Allas egna lurar", "📱 Everyone's phone"), tv: L("📱 Allas lurar + 📺 en storskärm", "📱 Phones + 📺 one big screen"),
     one: L("📱 En lur, skicka runt", "📱 One phone, pass it on"), night: L("🌙 Hela kvällen", "🌙 All evening")
   };
-  var ROOM_GAMES = { kort: 1, vem: 1, aldrig: 1, hellre: 1 };
+  var ROOM_GAMES = { kort: 1, vem: 1, aldrig: 1, hellre: 1, quiz: 1 };
   function game(id) { for (var i = 0; i < GAMES.length; i++) if (GAMES[i].id === id) return GAMES[i]; return null; }
   function sorted() {
     var rec = lsGet(LS_RECENT, []);
@@ -84,17 +90,29 @@
     judging: L("⚖️ {0} väljer vinnare…", "⚖️ {0} is picking the winner…"), judgeAway: L("Domaren ä borta – ni får välja.", "The judge is away – you pick."),
     roundWin: L("🏆 {0} vinner rundan!", "🏆 {0} wins the round!"), hasPts: L("{0} har {1} {2}", "{0} has {1} {2}"),
     next: L("NÄSTA RUNDA ›", "NEXT ROUND ›"), toEnd: L("SE SLUTRESULTATET ›", "SEE THE FINAL ›"),
-    won: L("{0} vann!", "{0} won!"), tieWin: L("Delad seger: {0}!", "Shared win: {0}!"), again: L("🔁 Kör igen", "🔁 Play again"), board: L("Ställning", "Scores"), shame: L("Kvällens skamlista 🍺", "Tonight's shame list 🍺"),
+    won: L("{0} vann!", "{0} won!"), tieWin: L("Delad seger: {0}!", "Shared win: {0}!"), again: L("🔁 Kör igen", "🔁 Play again"), board: L("Ställning", "Scores"), shame: L("Kvällens skamlista 📏", "Tonight's shame list 📏"),
     voted: L("✅ Röstat! Du kan ändra tills alla svarat.", "✅ Voted! You can change until everyone answered."),
-    have: L("🍺 Jag har", "🍺 I have"), never: L("😇 Aldrig", "😇 Never"), or: L("eller", "or"),
-    drinks: L("🍺 {0} dricker!", "🍺 {0} drinks!"), nobody: L("Ingen röstade. Fegisar.", "Nobody voted. Cowards."),
-    haveL: L("🍺 Har gjort det", "🍺 Have done it"), neverL: L("😇 Aldrig", "😇 Never"), cleanAll: L("Hela gänget ä oskyldigt. Misstänkt.", "The whole gang is innocent. Suspicious."),
-    tie: L("Lika! Alla klarar sig.", "A tie! Everyone is safe."), minority: L("🍺 Minsta sidan dricker", "🍺 The smaller side drinks"),
+    have: L("🙋 Jag har", "🙋 I have"), never: L("😇 Aldrig", "😇 Never"), or: L("eller", "or"),
+    drinks: L("🎯 {0} tar straffet!", "🎯 {0} takes the penalty!"), penIs: L("Straffet: {K1}.", "Penalty: {K1}."), penIs2: L("Straffet: {K2}.", "Penalty: {K2}."),
+    packH: L("Straffpaket", "Penalty pack"), nobody: L("Ingen röstade. Fegisar.", "Nobody voted. Cowards."),
+    haveL: L("🙋 Har gjort det", "🙋 Have done it"), neverL: L("😇 Aldrig", "😇 Never"), cleanAll: L("Hela gänget ä oskyldigt. Misstänkt.", "The whole gang is innocent. Suspicious."),
+    tie: L("Lika! Alla klarar sig.", "A tie! Everyone is safe."), minority: L("🎯 Minsta sidan: {k1}", "🎯 The smaller side: {k1}"),
     round: L("Runda {0}", "Round {0}"), roundOf: L("Runda {0}/{1}", "Round {0}/{1}"), stop: L("🏁 Avsluta", "🏁 End"),
     close: L("Stäng", "Close"), back: L("‹ Spel", "‹ Games"), you: L("du", "you"),
     err: { too_few: L("För få spelare här. Be gänget öppna 🎉 Spel.", "Too few players here."), slow_down: L("Lugn i stormen – vänta lite.", "Easy – wait a bit."),
       room_closed: L("Spelet ä slut. Starta ett nytt.", "The game is over. Start a new one."), not_member: L("Du ä int' med i gruppen.", "You are not in the group."),
       invalid_cards: L("Fel kort – välj igen.", "Wrong cards – pick again."), x: L("Nåt gick fel. Försök igen.", "Something went wrong. Try again.") },
+    unan: [L("🤝 Enigt! Hela gänget tycker lika – alla skålar.", "🤝 Unanimous! Everyone cheers."), L("🤝 Alla på samma sida. Skål för sammanhållningen!", "🤝 All on one side. Cheers!")],
+    allVem: L("ENHÄLLIGT! {0} {k2}! {mark}{mark}", "UNANIMOUS! {0} {k2}! {mark}{mark}"),
+    alone: L("{0} ä ensam om det! Berätta historien – eller {K2}.", "{0} is the only one! Tell the story – or {K2}."),
+    call: L("📣 Kalla in gänget", "📣 Call the gang"), called: L("📣 Skickat i chatten. Nu kommer dom!", "📣 Sent in the chat."),
+    calledWait: L("Du kallade nyss. Vänta lite.", "You just called. Wait a bit."),
+    callMsg: L("🎉 {0} startar {1}! Hoppa in: Grupper → gruppen → 🎉 Spel", "🎉 {0} starts {1}! Jump in: Groups → the group → 🎉 Games"),
+    askT: L("{0} väntar redan i {1}", "{0} already waits in {1}"), askRun: L("{0} pågår. Hoppa in – eller vänta tills spelet ä slut.", "{0} is on. Jump in – or wait until it ends."),
+    askJoin: L("HOPPA IN DÄR ›", "JUMP IN THERE ›"), askSwitch: L("Byt till {0} för alla", "Switch to {0} for everyone"), askNo: L("Avbryt", "Cancel"),
+    qFew: L("Gänget behöver lite mer historia först. Gör nåt ihop ikväll och försök igen!", "The gang needs more history first."),
+    qRight: L("✅ Rätt: {0}", "✅ Right: {0}"), qWrong: L("{mark} Fel: {0} – {K1}", "{mark} Wrong: {0} – {K1}"), qNone: L("Ingen hade rätt. Skäms, gänget!", "Nobody was right."),
+    qAll: L("Alla hade rätt! Ni känner varandra för bra.", "Everyone was right!"), qYou: L("Du hade RÄTT! +1", "You were RIGHT! +1"), qYouNo: L("Fel! {K1}.", "Wrong! {K1}."),
     load: [L("Laddar ammunition…", "Loading ammo…"), L("Blandar korten…", "Shuffling…"), L("Kallar in trupperna…", "Calling in the troops…")]
   };
   function F(s) { var a = arguments; return String(s).replace(/\{(\d)\}/g, function (m, i) { var v = a[+i + 1]; return v == null ? "" : v; }); }
@@ -104,13 +122,18 @@
     if (root && document.body.contains(root)) return root;
     root = el("div", { id: "sp", class: "sp", role: "dialog", "aria-modal": "true", "aria-label": TX.hubT, hidden: true });
     document.body.appendChild(root);
-    root.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); back(); } });
+    root.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); back(); return; }
+      if (st && st.view === "kung" && !(e.target && /INPUT|BUTTON/.test(e.target.tagName))) {
+        if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { e.preventDefault(); kungDraw(1); } else if (e.key === "ArrowLeft") { e.preventDefault(); kungDraw(-1); }
+      }
+    });
     return root;
   }
   window.addEventListener("popstate", function () {
     if (!root || root.hidden || !st) return;
     if (st.closing) { close(true); return; }
-    if (st.view === "room") { toHub(); try { history.pushState({ sp: 1 }, ""); } catch (e) {} }
+    if (st.view !== "hub") { toHub(); try { history.pushState({ sp: 1 }, ""); } catch (e) {} }
     else close(true);
   });
   document.addEventListener("visibilitychange", function () { if (st && st.view === "room" && document.visibilityState === "visible") poll(true); });
@@ -122,19 +145,26 @@
     var fresh = !st;
     st = { g: g || null, view: "hub", room: null, d: null, v: 0, sel: [], win: null, busy: false, timer: null, off: !!(opts && opts.off), live: st && st.live || null };
     if (fresh) { try { history.pushState({ sp: 1 }, ""); } catch (e) {} }
-    if (what && what.room) { enterRoom(what.room); return; }
+    if (what && what.room) { enterRoom(what.room, what.game); return; }
+    if (what && what.join) { renderHub(); launch(what.join, true, true); return; }
     if (what && typeof what === "string") { renderHub(); launch(what); return; }
     renderHub();
   }
+  // Leaving the room screen = leave the room, so a round never waits for someone who is not looking (spel_open rejoins).
+  function leaveQuiet() {
+    if (!st || !st.room || !A || !A.rpc) return;
+    try { A.rpc("spel_act", { p_room: st.room, p_act: "leave", p_val: null, p_data: null }); } catch (e) {}
+  }
   function close(fromPop) {
+    if (st && st.view === "room" && !st.closing) leaveQuiet();
     if (!fromPop && st) { try { if (history.state && history.state.sp) { st.closing = true; var s0 = st; history.back(); setTimeout(function () { if (st === s0) close(true); }, 500); return; } } catch (e) {} }
     stopPoll();
     st = null;
     if (root) { root.hidden = true; root.innerHTML = ""; }
     document.documentElement.classList.remove("sp-on");
   }
-  function back() { if (!st) return; if (st.view === "room") toHub(); else close(); }
-  function toHub() { stopPoll(); st.view = "hub"; st.room = null; st.d = null; st.v = 0; renderHub(); }
+  function back() { if (!st) return; if (st.view !== "hub") toHub(); else close(); }
+  function toHub() { if (st.view === "room") leaveQuiet(); stopPoll(); st.view = "hub"; st.room = null; st.d = null; st.v = 0; renderHub(); }
 
   function topBar(title, sub, onBack, extra) {
     return el("div", { class: "sp-top" }, [
@@ -158,6 +188,7 @@
     var s = sorted();
     var list = el("div", { class: "sp-cards", role: "list" });
     s.list.forEach(function (gm) {
+      if (st.g && st.g.evg && gm.grp) return;   // 📨 event group: Kvällens lekar + Gängkamp are group-only
       var rec = s.rec.indexOf(gm.id) >= 0;
       var b = el("button", { type: "button", class: "sp-card", role: "listitem", "data-g": gm.id, style: "--sp-c:" + gm.col, onclick: function () { launch(gm.id); } }, [
         el("span", { class: "sp-card-ic", "aria-hidden": "true", text: gm.ic }),
@@ -175,10 +206,11 @@
     // a running room of this group = a big "jump in" banner on top
     if (st.g && A && A.rpc && !st.off) A.rpc("spel_group", { p_group_id: st.g.id }).then(function (r) {
       var d = r && !r.error ? (A.parseData ? A.parseData(r.data) : r.data) : null, room = d && d.room;
+      if (st) st.liveRoom = room || null;
       if (!room || !st || st.view !== "hub" || room.phase === "lobby" && (room.n | 0) < 1) return;
       var gm = game(room.game) || {};
       liveBox.hidden = false; liveBox.innerHTML = "";
-      liveBox.appendChild(el("button", { type: "button", class: "sp-live", onclick: function () { if (room.is_in) enterRoom(room.id); else launch(room.game); } }, [
+      liveBox.appendChild(el("button", { type: "button", class: "sp-live", onclick: function () { if (room.is_in) enterRoom(room.id, room.game); else launch(room.game, true, true); } }, [
         el("span", { class: "sp-live-dot", "aria-hidden": "true" }),
         el("span", { class: "sp-live-tx" }, [el("b", { text: (gm.ic || "🎉") + " " + (gm.name || "") + " " + TX.liveT }),
           el("small", { text: (room.names || []).join(", ") })]),
@@ -188,15 +220,32 @@
     try { var f = root.querySelector(".sp-card"); if (f && !("ontouchstart" in window)) f.focus({ preventScroll: true }); } catch (e) {}
   }
 
-  function launch(id) {
+  function askFirst(gm, room) {
+    var cur = game(room.game) || {}, canSwitch = room.phase === "lobby" || room.phase === "end";
+    var who = (room.names || []).slice(0, 3).join(", ") || "Gänget";
+    var box = el("div", { class: "sp-ask", role: "alertdialog", "aria-modal": "true" });
+    var card = el("div", { class: "sp-ask-c" }, [
+      el("div", { class: "sp-big-ic", text: cur.ic || "🎉" }),
+      el("h3", { text: canSwitch ? F(TX.askT, who, cur.name || "") : F(TX.askRun, (cur.ic || "") + " " + (cur.name || "")) }),
+      el("button", { type: "button", class: "sp-main", text: TX.askJoin, onclick: function () { box.remove(); launch(room.game, true, true); } }),
+      canSwitch ? el("button", { type: "button", class: "sp-sec", text: F(TX.askSwitch, gm.ic + " " + gm.name), onclick: function () { box.remove(); launch(gm.id, true); } }) : null,
+      el("button", { type: "button", class: "sp-sec sp-ask-no", text: TX.askNo, onclick: function () { box.remove(); } })
+    ]);
+    box.appendChild(card); root.appendChild(box);
+    try { card.querySelector(".sp-main").focus(); } catch (e) {}
+  }
+  function launch(id, sure, join) {
     var gm = game(id); if (!gm || !st) return;
+    var lr = st.liveRoom;
+    if (id === "kung") { used(id); kungStart(); return; }
+    if (!sure && ROOM_GAMES[id] && lr && lr.game !== id && !lr.is_in && (lr.n | 0) > 0) { askFirst(gm, lr); return; }
     used(id);
     var g = st.g;
     if (ROOM_GAMES[id]) {
       if (!g) { A.toast(TX.noGroup, { id: "spel" }); return; }
       if (st.off) { A.toast(TX.err.x, { err: true, id: "spel" }); return; }
       loadingScreen(gm);
-      A.rpc("spel_open", { p_group_id: g.id, p_game: id }).then(function (r) {
+      A.rpc("spel_open", { p_group_id: g.id, p_game: join ? null : id }).then(function (r) {   // join = never switch the game
         if (!st) return;
         if (r && r.error) { fail(r.error); renderHub(); return; }
         var d = A.parseData ? A.parseData(r.data) : r.data;
@@ -209,7 +258,7 @@
     var go = {
       forfest: function () { window.FORFEST && window.FORFEST.open(g ? { id: g.id, name: g.name || "" } : null); },
       spin: function () { window.RUNDAN && window.RUNDAN.openSpin && window.RUNDAN.openSpin(g); },
-      lek: function () { if (!window.GAMES) return; if (g) window.GAMES.openGroup(g); else window.GAMES.openMe(); },
+      lek: function () { if (!window.GAMES) return; if (g) window.GAMES.openGroup(g.evg ? { id: g.id, name: g.name, evg: true } : g); else window.GAMES.openMe(); },
       duel: function () { window.DUEL && window.DUEL.open && window.DUEL.open(g); }
     }[id];
     if (gm.party) {
@@ -233,9 +282,9 @@
   }
 
   /* ---------- room: sync ---------- */
-  function enterRoom(id) {
+  function enterRoom(id, gid) {
     st.room = id; st.view = "room"; st.v = 0;
-    loadingScreen(game("kort"));
+    loadingScreen(game(gid) || game("kort"));
     poll(true); startPoll();
   }
   function startPoll() { stopPoll(); st.timer = setInterval(function () { poll(false); }, POLL); }
@@ -274,6 +323,7 @@
       if (st.key && d.phase !== "lobby") buzz(changed && !mine ? 18 : 0);
       st.sel = []; st.win = null; st.editing = false;
     }
+    st.reveal = changed && (d.phase === "result" || d.phase === "end");
     st.key = key; st.room = d.id; st.view = "room"; st.v = d.v; st.d = d;
     var sc = root.querySelector(".sp-body"), top = sc ? sc.scrollTop : 0;
     render();
@@ -296,8 +346,17 @@
     if (d.phase === "lobby") lobby(body, foot, gm);
     else if (d.phase === "end") endView(body, foot, gm);
     else if (d.game === "kort") kort(body, foot);
+    else if (d.game === "quiz") quiz(body, foot);
     else pollGame(body, foot);
     if (foot.childNodes.length) root.appendChild(foot);
+    if (st.reveal) { root.classList.add("sp-rv"); st.reveal = false; if (d.phase === "end" || d.game === "kort") burst(d.game === "kort" || d.game === "quiz" ? "🏆🎉⭐🃏" : "🎉🎯🥳⭐"); }
+  }
+  // emoji burst on a win / big result (motion only; nothing with prefers-reduced-motion)
+  function burst(set) {
+    try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (e) {}
+    var em = Array.from ? Array.from(set) : set.split(""), box = el("div", { class: "sp-burst", "aria-hidden": "true" });
+    for (var i = 0; i < 18; i++) box.appendChild(el("i", { style: "left:" + Math.round(Math.random() * 100) + "%;animation-delay:" + Math.round(Math.random() * 400) + "ms;font-size:" + (22 + Math.round(Math.random() * 18)) + "px", text: em[i % em.length] }));
+    root.appendChild(box); setTimeout(function () { box.remove(); }, 2200);
   }
   function people(d, opts) {
     var row = el("div", { class: "sp-people" });
@@ -313,14 +372,14 @@
   function active(d) { return (d.players || []).filter(function (p) { return p.on; }).length; }
 
   function lobby(body, foot, gm) {
-    var d = st.d, min = d.game === "kort" || d.game === "vem" ? 3 : 2, n = active(d);
+    var d = st.d, min = d.game === "kort" || d.game === "vem" ? 3 : 2, n = active(d), isQ = d.game === "quiz";
     body.appendChild(el("div", { class: "sp-hero" }, [el("div", { class: "sp-big-ic", text: gm.ic }), el("h2", { text: gm.name }), el("p", { class: "sp-muted", text: gm.sub })]));
-    body.appendChild(el("ol", { class: "sp-how" }, (gm.how || []).map(function (h) { return el("li", { text: h }); })));
+    body.appendChild(el("ol", { class: "sp-how" }, (gm.how || []).map(function (h) { return el("li", { text: PEN(h, packChoice()) }); })));
     body.appendChild(el("h3", { class: "sp-h", text: TX.here + " (" + n + ")" }));
     body.appendChild(people(d));
     // goal: points (kort) or rounds (poll games)
-    var goals = lsGet(LS_GOAL, {}), opts = d.game === "kort" ? [3, 5, 7, 10] : [8, 12, 20, 30];
-    var cur = goals[d.game] || (d.game === "kort" ? 5 : 12);
+    var goals = lsGet(LS_GOAL, {}), opts = d.game === "kort" ? [3, 5, 7, 10] : isQ ? [5, 8, 12] : [8, 12, 20, 30];
+    var cur = goals[d.game] || (d.game === "kort" ? 5 : isQ ? 8 : 12);
     var seg = el("div", { class: "sp-seg", role: "radiogroup", "aria-label": d.game === "kort" ? TX.goalK : TX.goalP });
     opts.forEach(function (o) {
       seg.appendChild(el("button", { type: "button", role: "radio", "aria-checked": String(o === cur), class: o === cur ? "on" : "", text: String(o),
@@ -328,11 +387,48 @@
     });
     body.appendChild(el("div", { class: "sp-goal" }, [el("span", { text: d.game === "kort" ? TX.goalK + " (" + TX.pts + ")" : TX.goalP }), seg]));
     if (n < min) body.appendChild(el("p", { class: "sp-warn", text: F(TX.few, min) }));
+    if (d.game !== "kort") packPicker(body);
+    if (st.g && !st.g.evg && A.rpc) body.appendChild(el("button", { type: "button", class: "sp-sec sp-call", text: TX.call, onclick: function (e) { callGang(gm, e.currentTarget); } }));
     foot.appendChild(el("button", { type: "button", class: "sp-main", disabled: n < min, text: TX.start, onclick: function (e) { e.currentTarget.disabled = true; startGame(d.game, cur); } }));
     foot.appendChild(el("button", { type: "button", class: "sp-sec", text: TX.switchG, onclick: toHub }));
   }
+  // ⚖️ Straffpaket (lobby): one segmented row; Skålstraff shows its rule text once
+  function packChoice() { return window.OLNU_PEN ? window.OLNU_PEN.pref() : "utm"; }
+  function packPicker(body) {
+    if (!window.OLNU_PEN) return;
+    var cur = packChoice(), list = window.OLNU_PEN.packs();
+    var seg = el("div", { class: "sp-seg sp-packs", role: "radiogroup", "aria-label": TX.packH });
+    list.forEach(function (p) {
+      seg.appendChild(el("button", { type: "button", role: "radio", "aria-checked": String(p.id === cur), class: p.id === cur ? "on" : "", title: p.sub,
+        text: p.ic + " " + p.name, onclick: function () { window.OLNU_PEN.setPref(p.id); if (st.view === "kung") kungRender(); else render(); } }));
+    });
+    var cp = list.filter(function (p) { return p.id === cur; })[0] || list[0];
+    body.appendChild(el("div", { class: "sp-goal sp-packrow" }, [el("span", { text: TX.packH }), seg]));
+    body.appendChild(el("p", { class: "sp-muted sp-packsub", text: cp.rule || cp.sub }));
+  }
+  function callGang(gm, btn) {
+    var key = "olnu.spel.called", m = lsGet(key, {}), id = st.d && st.d.id;
+    if (!id || !st.g) return;
+    if (m[id] && Date.now() - m[id] < 180000) { A.toast(TX.calledWait, { id: "spel" }); return; }
+    btn.disabled = true;
+    var body = F(TX.callMsg, (st.d.me && st.d.me.name) || "", gm.ic + " " + gm.name).slice(0, 140);
+    A.rpc("post_group_msg", { p_group_id: st.g.id, p_body: body }).then(function (r) {
+      if (r && r.error) { btn.disabled = false; A.toast(TX.err.x, { err: true, id: "spel" }); return; }
+      m[id] = Date.now(); lsSet(key, m);
+      try { A.invoke("notify-group", { event: "msg", group_id: st.g.id }); } catch (e) {}
+      A.toast(TX.called, { id: "spel" });
+    });
+  }
   function startGame(id, goal) {
-    var c = C(), data = { game: id, goal: goal };
+    if (id === "quiz") {
+      quizBuild(st.g).then(function (qs) {
+        if (!st) return;
+        if (!qs || qs.length < 3) { A.toast(TX.qFew, { err: true, id: "spel" }); render(); return; }
+        act("start", null, { game: "quiz", goal: goal, qs: qs, pen: packChoice() });
+      });
+      return;
+    }
+    var c = C(), data = { game: id, goal: goal, pen: packChoice() };
     if (id === "kort") { data.nw = c.white.length; data.bp = c.black.map(function (b) { return Math.min(2, Math.max(1, (String(b).match(/___/g) || []).length)); }); }
     else data.np = (c[id] || []).length;
     act("start", null, data);
@@ -425,19 +521,19 @@
     var max = Math.max.apply(null, (list || []).map(function (p) { return p.score | 0; }).concat([1]));
     (list || []).slice().sort(function (a, b) { return (b.score | 0) - (a.score | 0); }).forEach(function (p, i) {
       var medal = (p.score | 0) > 0 ? ["🥇", "🥈", "🥉"][i] || "" : "";
-      box.appendChild(el("div", { class: "sp-brow" }, [
+      box.appendChild(el("div", { class: "sp-brow", style: "--i:" + i }, [
         el("span", { class: "sp-bn", text: (medal ? medal + " " : "") + p.name }),
         el("span", { class: "sp-bar" }, [el("i", { style: "width:" + Math.round(100 * (p.score | 0) / max) + "%" })]),
-        el("b", { text: (drinks ? "🍺 " : "") + (p.score | 0) })
+        el("b", { text: (drinks ? "📏 " : "") + (p.score | 0) })
       ]));
     });
     return box;
   }
   function endView(body, foot, gm) {
-    var d = st.d, pub = d.pub || {}, board = pub.board || d.players || [], drinks = d.game !== "kort";
+    var d = st.d, pub = d.pub || {}, board = pub.board || d.players || [], drinks = d.game !== "kort" && d.game !== "quiz";
     var top = board.slice().sort(function (a, b) { return (b.score | 0) - (a.score | 0); })[0];
     var tops = top ? board.filter(function (p) { return (p.score | 0) === (top.score | 0); }).map(function (p) { return p.name; }) : [];
-    if (top && (top.score | 0) > 0) body.appendChild(el("div", { class: "sp-hero" }, [el("div", { class: "sp-big-ic", text: drinks ? "🍺" : "🏆" }),
+    if (top && (top.score | 0) > 0) body.appendChild(el("div", { class: "sp-hero" }, [el("div", { class: "sp-big-ic", text: drinks ? "📏" : "🏆" }),
       el("h2", { text: drinks ? F(L("{0} ä kvällens mest skyldiga!", "{0} is tonight's most guilty!"), tops.join(" & ")) : tops.length > 1 ? F(TX.tieWin, tops.join(" & ")) : F(TX.won, top.name) })]));
     if (d.game === "kort" && pub.win) body.appendChild(filled(pub.black, pub.win.cards || [], "winner"));
     body.appendChild(scoreboard(board, drinks));
@@ -494,28 +590,223 @@
       body.appendChild(el("div", { class: "sp-prompt small" }, [el("p", { text: pr })]));
       var counts = res.counts || [], names = counts.filter(function (c) { return (res.top || []).indexOf(c.k) >= 0; }).map(function (c) { return c.name; });
       body.appendChild(el("h2", { class: "sp-drink", text: names.length ? F(TX.drinks, names.join(" & ")) : TX.nobody }));
+      if (names.length) body.appendChild(el("p", { class: "sp-penline", text: PEN(TX.penIs) }));
       var mx = Math.max.apply(null, counts.map(function (c) { return c.n; }).concat([1]));
       var bars = el("div", { class: "sp-board" });
-      counts.forEach(function (c) { bars.appendChild(el("div", { class: "sp-brow" }, [el("span", { class: "sp-bn", text: c.name }), el("span", { class: "sp-bar" }, [el("i", { style: "width:" + Math.round(100 * c.n / mx) + "%" })]), el("b", { text: String(c.n) })])); });
+      if ((res.n | 0) >= 3 && counts.length && counts[0].n >= Math.max(2, (res.n | 0) - 1) && (counts.length < 2 || counts[1].n <= 1)) body.appendChild(el("p", { class: "sp-twist", text: PEN(F(TX.allVem, counts[0].name)) }));
+      counts.forEach(function (c, ci) { bars.appendChild(el("div", { class: "sp-brow", style: "--i:" + ci }, [el("span", { class: "sp-bn", text: c.name }), el("span", { class: "sp-bar" }, [el("i", { style: "width:" + Math.round(100 * c.n / mx) + "%" })]), el("b", { text: String(c.n) })])); });
       body.appendChild(bars);
     } else if (d.game === "aldrig") {
       body.appendChild(el("div", { class: "sp-prompt small" }, [el("p", { text: pr })]));
       var yes = res.yes || [], no = res.no || [];
       body.appendChild(el("h2", { class: "sp-drink", text: yes.length ? F(TX.drinks, yes.map(function (p) { return p.name; }).join(", ")) : TX.cleanAll }));
+      if (yes.length) body.appendChild(el("p", { class: "sp-penline", text: PEN(TX.penIs) }));
+      if (yes.length === 1 && no.length >= 2) body.appendChild(el("p", { class: "sp-twist", text: PEN(F(TX.alone, yes[0].name)) }));
       body.appendChild(el("div", { class: "sp-sides" }, [side(TX.haveL, yes, true), side(TX.neverL, no, false)]));
     } else {
       var dr = res.drink;
       var dl = dr ? (res[dr] || []).map(function (p) { return p.name; }) : [];
-      body.appendChild(el("h2", { class: "sp-drink", text: dr ? F(TX.drinks, dl.join(", ")) : TX.tie }));
-      if (dr) body.appendChild(el("p", { class: "sp-muted", style: "text-align:center;margin-top:0", text: TX.minority }));
+      if (dr && !dl.length) dr = "same";   // everyone on one side: nobody is the smaller side
+      body.appendChild(el("p", { class: "sp-kicker", text: L("Hellre…", "Would you rather…") }));
+      body.appendChild(el("h2", { class: "sp-drink", text: dr === "same" ? pick(TX.unan) : dr ? F(TX.drinks, dl.join(", ")) : TX.tie }));
+      if (dr && dr !== "same") body.appendChild(el("p", { class: "sp-penline", text: PEN(TX.minority) }));
       body.appendChild(el("div", { class: "sp-sides" }, [side(pr[0], res.a || [], dr === "a"), side(pr[1], res.b || [], dr === "b")]));
     }
     body.appendChild(scoreboard(d.pub.board || d.players, true));
     foot.appendChild(el("button", { type: "button", class: "sp-main", text: d.round >= d.goal ? TX.toEnd : TX.next, onclick: function (e) { e.currentTarget.disabled = true; act("next"); } }));
   }
   function side(title, list, hot) {
-    return el("div", { class: "sp-side" + (hot ? " hot" : "") }, [el("b", { text: title + (hot && title.indexOf("🍺") < 0 ? " 🍺" : "") }),
+    return el("div", { class: "sp-side" + (hot ? " hot" : "") }, [el("b", { text: title + (hot ? " 🎯" : "") }),
       el("span", { text: list.length ? list.map(function (p) { return p.name; }).join(", ") : "–" })]);
+  }
+
+  /* --- 🧠 Gängkollen --- */
+  var QSH = ["▲", "◆", "●", "■"];
+  function quiz(body, foot) {
+    var d = st.d, me = d.me || {}, q = d.pub.q || {}, o = q.o || [], mine = me.mine == null ? null : String(me.mine);
+    var waiting = (d.players || []).filter(function (p) { return p.on && !p.done; }).length;
+    body.appendChild(el("div", { class: "sp-prompt sp-qq" }, [el("p", { text: q.q || "?" })]));
+    if (d.phase === "vote") {
+      var g = el("div", { class: "sp-qopts" });
+      o.forEach(function (t, i) {
+        g.appendChild(el("button", { type: "button", class: "sp-qo sp-qo" + i + (mine === String(i) ? " on" : ""), "aria-pressed": String(mine === String(i)),
+          onclick: function () { buzz(10); act("vote", i); } }, [el("i", { "aria-hidden": "true", text: QSH[i] }), el("span", { text: t })]));
+      });
+      body.appendChild(g);
+      body.appendChild(el("p", { class: mine ? "sp-ok" : "sp-muted", text: mine ? TX.voted : F(TX.waitN, waiting) }));
+      body.appendChild(people(d, { done: true }));
+      if (me.can_force) foot.appendChild(el("button", { type: "button", class: "sp-sec", text: TX.force, onclick: function () { act("force"); } }));
+      return;
+    }
+    var res = d.pub.res || {}, a = res.a | 0, right = res.right || [], wrong = res.wrong || [];
+    var picks = {}; (res.picks || []).forEach(function (p) { picks[p.i] = p.names || []; });
+    var g2 = el("div", { class: "sp-qopts res" });
+    o.forEach(function (t, i) {
+      g2.appendChild(el("div", { class: "sp-qo sp-qo" + i + (i === a ? " right" : " dim"), style: "--i:" + i }, [el("i", { "aria-hidden": "true", text: i === a ? "✓" : QSH[i] }),
+        el("span", { text: t }), (picks[i] || []).length ? el("small", { text: picks[i].join(", ") }) : null]));
+    });
+    body.appendChild(g2);
+    var iWas = right.some(function (p) { return p.k === me.k; }), iVoted = mine != null;
+    if (iVoted) body.appendChild(el("h2", { class: "sp-drink", text: iWas ? TX.qYou : PEN(TX.qYouNo) }));
+    body.appendChild(el("p", { class: "sp-twist", text: !right.length ? TX.qNone : !wrong.length ? TX.qAll : PEN(F(TX.qWrong, wrong.map(function (p) { return p.name; }).join(", "))) }));
+    body.appendChild(scoreboard(d.pub.board || d.players, false));
+    foot.appendChild(el("button", { type: "button", class: "sp-main", text: d.round >= d.goal ? TX.toEnd : TX.next, onclick: function (e) { e.currentTarget.disabled = true; act("next"); } }));
+  }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function cut(s, n) { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+  // 2–4 options with the answer at a random place; null when it cannot be a fair question
+  function qOf(q, right, wrongs) {
+    var seen = {}, o = [cut(right, 48)]; seen[o[0].toLowerCase()] = 1;
+    wrongs.forEach(function (w) { w = cut(w, 48); if (o.length < 4 && w && !seen[w.toLowerCase()]) { seen[w.toLowerCase()] = 1; o.push(w); } });
+    if (o.length < 2) return null;
+    var ord = shuffle(o.map(function (x, i) { return i; }));
+    return { q: cut(q, 160), o: ord.map(function (i) { return o[i]; }), a: ord.indexOf(0) };
+  }
+  function nums(n) {   // three believable wrong numbers around n
+    n = Math.max(0, n | 0); var out = [], f = [0.5, 0.7, 1.4, 1.8, 2.5];
+    shuffle(f).forEach(function (x) { var v = Math.round(n * x + (x < 1 ? -1 : 1) * (1 + Math.random() * 2)); if (v >= 0 && v !== n && out.indexOf(String(v)) < 0 && out.length < 3) out.push(String(v)); });
+    for (var k = 1; out.length < 3; k++) if (out.indexOf(String(n + k * 3)) < 0) out.push(String(n + k * 3));
+    return out;
+  }
+  // who has the most/least of a field; null on a tie or when nobody has any
+  function topBy(m, f, low) {
+    var s = m.filter(function (x) { return x[f] != null; }).slice().sort(function (a, b) { return low ? (a[f] | 0) - (b[f] | 0) : (b[f] | 0) - (a[f] | 0); });
+    if (s.length < 2 || (s[0][f] | 0) === (s[1][f] | 0) || (!low && !(s[0][f] | 0))) return null;
+    return s[0];
+  }
+  function others(m, x) { return shuffle(m.filter(function (y) { return y !== x; }).map(function (y) { return y.name; })); }
+  var QFIX = [
+    ["Hur gammal måste man vara för att handla på Systembolaget?", "20 år", ["18 år", "21 år", "19 år"]],
+    ["Vad ä folköl?", "Öl med högst 3,5 % alkohol", ["Öl som bara säljs på midsommar", "Öl utan humle", "Öl med minst 5 %"]],
+    ["Vilket land kommer pilsnern ifrån?", "Tjeckien", ["Tyskland", "Belgien", "Danmark"]],
+    ["Vad ä humle?", "En klätterväxt", ["En sorts jäst", "Ett korn", "En ölmätare"]],
+    ["När ä Öl Nu-natten slut och allt börjar om?", "Kl 05:00", ["Kl 03:00", "Kl 00:00", "Kl 07:00"]],
+    ["Vad händer om du använder 👻 Spökläge?", "Din pin syns int' på kartan", ["Du får dubbla meriter", "Gänget får en push", "Ölen räknas int'"]]
+  ];
+  function quizBuild(g) {
+    function call(fn) { return A.rpc(fn, { p_group_id: g.id }).then(function (r) { return r && !r.error ? (A.parseData ? A.parseData(r.data) : r.data) : null; }, function () { return null; }); }
+    return call("group_status_v3").then(function (m) { return m || call("group_status_v2"); }).then(function (m) {
+      return call("group_now").then(function (now) { return makeQs(Array.isArray(m) ? m : [], now || {}); });
+    });
+  }
+  function makeQs(m, now) {
+    m = m.filter(function (x) { return x && x.name; });
+    var qs = [], add = function (q) { if (q) qs.push(q); };
+    if (m.length >= 2) {
+      var t;
+      if ((t = topBy(m, "meriter"))) add(qOf("Vem i gänget har flest meriter?", t.name, others(m, t)));
+      if ((t = topBy(m, "total"))) add(qOf("Vem har druckit flest öl genom tiderna?", t.name, others(m, t)));
+      if ((t = topBy(m, "total", true))) add(qOf("Vem har druckit MINST genom tiderna? (Skärpning!)", t.name, others(m, t)));
+      if ((t = topBy(m, "rank"))) add(qOf("Vem har högst grad i gänget?", t.name, others(m, t)));
+      if ((t = topBy(m, "rank", true))) add(qOf("Vem ä gängets menigaste menig (lägst grad)?", t.name, others(m, t)));
+      var tn = m.map(function (x) { return { name: x.name, n: (x.beers | 0) + (x.others | 0) }; });
+      if ((t = topBy(tn, "n"))) add(qOf("Vem har druckit mest ikväll?", t.name, others(tn, t)));
+      var sum = m.reduce(function (s, x) { return s + (x.total | 0); }, 0);
+      if (sum >= 3) add(qOf("Hur många öl har gänget druckit tillsammans, genom tiderna?", String(sum), nums(sum)));
+      var live = m.filter(function (x) { return x.live; }).length;
+      add(qOf("Hur många i gänget ä ute just nu?", String(live), nums(live).concat([String(m.length)])));
+      var ch = m.filter(function (x) { return x.is_chief; })[0];
+      if (ch) add(qOf("Vem ä gängets 🎖️ gruppchef?", ch.name, others(m, ch)));
+      var ow = m.filter(function (x) { return x.is_owner; })[0];
+      if (ow) add(qOf("Vem startade gänget?", ow.name, others(m, ow)));
+      var j = m.filter(function (x) { return x.joined_at; }).slice().sort(function (a, b) { return Date.parse(b.joined_at) - Date.parse(a.joined_at); });
+      if (j.length >= 3) add(qOf("Vem ä gängets nyaste rekryt?", j[0].name, others(m, j[0])));
+      var towns = m.filter(function (x) { return x.home_town; });
+      var ht = shuffle(towns.slice())[0];
+      if (ht) {
+        var tw = towns.map(function (x) { return x.home_town; }).filter(function (x) { return x !== ht.home_town; });
+        add(qOf("Vilken hemstad har " + ht.name + "?", ht.home_town, shuffle(tw.concat(["Borlänge", "Mora", "Göteborg", "Kiruna", "Ystad", "Falun"]))));
+      }
+      var r = shuffle(m.filter(function (x) { return (x.total | 0) >= 2; }))[0];
+      if (r) add(qOf("Hur många öl har " + r.name + " druckit genom tiderna?", String(r.total | 0), nums(r.total | 0)));
+      var r2 = shuffle(m.filter(function (x) { return (x.meriter | 0) >= 2 && x !== r; }))[0];
+      if (r2) add(qOf("Hur många meriter har " + r2.name + "?", String(r2.meriter | 0), nums(r2.meriter | 0)));
+      var out = (now && now.out || []).filter(function (x) { return x && x.name && x.place; });
+      if (out.length) {
+        var w = shuffle(out.slice())[0], pl = out.map(function (x) { return x.place; }).filter(function (x) { return x !== w.place; });
+        add(qOf("Var ä " + w.name + " just nu?", w.place, shuffle(pl.concat(["Hemma i soffan", "I kön till kebaben", "På Systemet", "Vilse i skogen"]))));
+        var first = out.filter(function (x) { return x.at; }).slice().sort(function (a, b) { return Date.parse(a.at) - Date.parse(b.at); });
+        if (first.length >= 2) add(qOf("Vem kom ut först ikväll?", first[0].name, others(m, m.filter(function (x) { return x.name === first[0].name; })[0])));
+      }
+    }
+    shuffle(qs);
+    // a few fixed Öl Nu facts so a small gang still gets a full game (max 1 fact per 3 gang questions, at least 3 questions)
+    var fx = shuffle(QFIX.slice()), want = Math.max(3 - qs.length, Math.min(fx.length, Math.ceil(qs.length / 3)));
+    for (var i = 0; i < want && i < fx.length; i++) { var f = qOf(fx[i][0], fx[i][1], fx[i][2]); if (f) qs.splice(Math.floor(Math.random() * (qs.length + 1)), 0, f); }
+    return qs.slice(0, 30);
+  }
+
+  /* --- 👑 Kungaleken (a plain card deck with our own rules, one phone; penalties from OLNU_PEN) --- */
+  var KR = [
+    ["A", "🎺 Fanfar", "Alla gör en fanfar, en i taget, varvet runt. Den som skrattar först {k1}."],
+    ["2", "👉 Du", "Välj nån som {k2}."],
+    ["3", "🙋 Jag", "Du {k1}. Sorry."],
+    ["4", "🧎 Golvet", "Alla rör golvet! Sist ner {k1}."],
+    ["5", "👍 Tummästare", "Du ä Tummästare. När du lägger tummen på bordkanten ska alla göra samma. Sist {k1}. Gäller tills nästa femma."],
+    ["6", "☝️ Himlen", "Alla pekar upp i taket! Sist {k1}."],
+    ["7", "📂 Kategori", "Säg en kategori. Varvet runt säger alla en sak. Den som tvekar eller upprepar {k1}."],
+    ["8", "🤝 Kompis", "Välj en kompis. Varje gång du får ett straff resten av spelet får kompisen samma."],
+    ["9", "🎤 Rim", "Säg ordet nedan. Varvet runt rimmar alla. Den som missar {k1}."],
+    ["10", "🙊 Jag har aldrig", "Läs upp påståendet. Alla som HAR gjort det {k1}."],
+    ["J", "📜 Ny regel", "Hitta på en regel som gäller resten av spelet. Den som bryter den {k1}."],
+    ["Q", "❓ Frågemästare", "Du ä Frågemästare. Den som svarar på en fråga från dig {k1}. Gäller tills nästa dam."],
+    ["K", "👑 Kungen", "Skriv en utmaning på en lapp och lägg den i kungens hatt (en mugg duger). Den som drar den fjärde kungen gör den roligaste lappen – gänget väljer."]
+  ];
+  var KCAT = ["Ölmärken", "Saker i en lumpenpackning", "Städer i Dalarna", "Dansbandslåtar", "Saker man hittar i en jackficka", "Hockeylag", "Saker på en smörgåstårta",
+    "Ord för att vara full", "Saker på en midsommarafton", "Kebabsåser", "Bilmärken", "Saker man ångrar på morgonen", "Djur i skogen", "Godis i lösvikt",
+    "Saker i en bastu", "Svenska maträtter", "Pinsamma dansmoves", "Saker man säger till en dörrvakt", "Fjällsporter", "Saker som luktar illa"];
+  var KRIM = ["Öl", "Krog", "Bastu", "Kung", "Skål", "Natt", "Dans", "Korv", "Kö", "Fest", "Snus", "Gran", "Sjö", "Tält", "Hatt"];
+  var SUIT = [["♥", "r"], ["♦", "r"], ["♣", "b"], ["♠", "b"]];
+  function kungStart() {
+    var deck = [];
+    for (var s = 0; s < 4; s++) for (var r = 0; r < 13; r++) deck.push([r, s]);
+    st.view = "kung";
+    st.kung = { deck: shuffle(deck), pos: -1, kings: 0, hist: [], extra: {} };
+    kungRender();
+  }
+  function kungDraw(dir) {
+    var k = st.kung; if (!k) return;
+    if (dir < 0) { if (k.pos > 0) { k.pos--; kungRender(); } return; }
+    if (k.pos < k.hist.length - 1) { k.pos++; kungRender(); return; }
+    if (!k.deck.length || k.kings >= 4) return;
+    var c = k.deck.pop(), extra = null;
+    if (c[0] === 12) k.kings++;
+    if (c[0] === 6) extra = pick(KCAT);
+    if (c[0] === 8) extra = pick(KRIM);
+    if (c[0] === 9) { var al = C().aldrig || []; extra = al.length ? al[Math.floor(Math.random() * al.length)] : "Jag har aldrig druckit ur en sko."; }
+    k.hist.push({ c: c, extra: extra, kings: k.kings });
+    k.pos = k.hist.length - 1;
+    buzz(14); kungRender();
+  }
+  function kungRender() {
+    var k = st.kung, h = k.hist[k.pos], gm = game("kung");
+    root.className = "sp sp-room sp-kung" + (h ? " kr-" + h.c[0] : "");
+    root.style.setProperty("--sp-c", gm.col);
+    root.innerHTML = "";
+    var left = k.deck.length, kings = h ? h.kings : k.kings;
+    root.appendChild(topBar(gm.ic + " " + gm.name, (52 - left) + "/52 · 👑 " + kings + "/4", toHub));
+    var body = el("div", { class: "sp-body sp-kbody" });
+    if (!h) {
+      body.appendChild(el("div", { class: "sp-hero" }, [el("div", { class: "sp-big-ic", text: "👑" }), el("h2", { text: gm.name }),
+        el("p", { class: "sp-muted", text: L("Ställ en mugg mitt på bordet = kungens hatt. Sitt i en ring. Lägg luren i mitten och dra ett kort i taget, varvet runt.", "Put a mug in the middle = the king's hat. Draw one card each, round the table.") })]));
+      packPicker(body);
+      body.appendChild(el("ol", { class: "sp-how sp-krules" }, KR.map(function (r) { return el("li", {}, [el("b", { text: r[0] + " " + r[1] }), " – " + PEN(r[2], packChoice())]); })));
+    } else {
+      var r = KR[h.c[0]], su = SUIT[h.c[1]], last = h.c[0] === 12 && h.kings >= 4;
+      body.appendChild(el("button", { type: "button", class: "sp-kcard " + su[1] + (last ? " last" : ""), "aria-label": r[0] + " " + su[0], onclick: function () { kungDraw(1); } }, [
+        el("span", { class: "sp-kc-tl", text: r[0] + su[0] }), el("span", { class: "sp-kc-big", text: su[0] }), el("span", { class: "sp-kc-br", text: r[0] + su[0] })]));
+      body.appendChild(el("h2", { class: "sp-drink", text: last ? L("👑 FJÄRDE KUNGEN! Gör den roligaste lappen i hatten!", "👑 THE FOURTH KING! Do the best note in the hat!") : r[1] }));
+      body.appendChild(el("p", { class: "sp-krule", text: last ? L("Spelet ä slut. Länge leve kungen!", "Game over. Long live the king!") : PEN(r[2], packChoice()) }));
+      if (h.extra && !last) body.appendChild(el("div", { class: "sp-prompt" }, [el("p", { text: h.extra })]));
+      if (st.reveal !== false && last) burst("👑🎉⭐");
+    }
+    root.appendChild(body);
+    var foot = el("div", { class: "sp-foot" });
+    var over = !k.deck.length || k.kings >= 4;
+    if (k.pos > 0) foot.appendChild(el("button", { type: "button", class: "sp-sec sp-kprev", text: "‹", "aria-label": L("Förra kortet", "Previous card"), onclick: function () { kungDraw(-1); } }));
+    foot.appendChild(over && k.pos === k.hist.length - 1 ? el("button", { type: "button", class: "sp-main", text: TX.again, onclick: function () { kungStart(); } })
+      : el("button", { type: "button", class: "sp-main", text: h ? L("DRA NÄSTA KORT ›", "NEXT CARD ›") : L("👑 DRA FÖRSTA KORTET", "👑 DRAW THE FIRST CARD"), onclick: function () { kungDraw(1); } }));
+    root.appendChild(foot);
   }
 
   window.SPEL_UI = {

@@ -594,19 +594,24 @@
 
   /* ---------- Sheet: one group's games (tabs) ---------- */
   var TABS = ["sugen", "runda", "bingo", "agent", "gissa"];
+  var EV_TABS = ["sugen", "bingo"];   // 📨 event groups (0187): only the games that fit one night with the event people
   function openGroup(g, tab) {
     if (!on() || !g || !g.id) return;
-    tab = TABS.indexOf(tab) >= 0 ? tab : (TABS.indexOf(U.ls.get(TAB_KEY, "")) >= 0 ? U.ls.get(TAB_KEY, "") : "sugen");
+    var tabsOf = g.evg ? EV_TABS : TABS;
+    tab = tabsOf.indexOf(tab) >= 0 ? tab : (tabsOf.indexOf(U.ls.get(TAB_KEY, "")) >= 0 ? U.ls.get(TAB_KEY, "") : "sugen");
     openView = { kind: "group", g: g, tab: tab, data: null };
     var view = openView;
     A.openSheet((g.name || "") + " · " + T("lek"), function (body) {
       var box = el("div", { class: "gm" });
       body.appendChild(box);
-      box.appendChild(el("div", { class: "gm-top" }, [A.btn(T("back"), "btn-small", function () { openView = null; A.showGroups(); })]));
+      box.appendChild(el("div", { class: "gm-top" }, [A.btn(T("back"), "btn-small", function () {
+        openView = null;
+        if (g.evg && window.EVGROUP && window.EVGROUP.openById) window.EVGROUP.openById(g.id); else A.showGroups();
+      }), g.evg ? A.btn("🎯 " + T("meTitle"), "btn-small", function () { openMe(); }) : null]));
       var bar = el("div", { class: "gm-tabs", role: "tablist" });
       var pane = el("div", { class: "gm-pane", role: "tabpanel" }, [el("p", { class: "muted", text: T("loading") })]);
       var names = T("tabs");
-      TABS.forEach(function (k) {
+      tabsOf.forEach(function (k) {
         bar.appendChild(el("button", { type: "button", role: "tab", class: "gm-tab", "data-t": k, "aria-selected": String(k === view.tab), text: names[k],
           onclick: function () {
             view.tab = k; U.ls.set(TAB_KEY, k);
@@ -636,7 +641,18 @@
         return;
       }
       view.data = A.parseData(r.data);
-      view.redraw();
+      if (!view.g.evg) { view.redraw(); return; }
+      // event group: names come from the event people (evg_lek), not from group_members
+      return call("evg_lek", { p_group_id: view.g.id }).then(function (r2) {
+        if (openView !== view) return;
+        var e = r2.error ? null : A.parseData(r2.data);
+        if (e) {
+          view.data.sugen = (e.people || []).filter(function (p) { return p.status; });
+          var nm = {}; (e.ticks || []).forEach(function (t) { nm[t.idx] = t; });
+          if (view.data.bingo && Array.isArray(view.data.bingo.ticks)) view.data.bingo.ticks = view.data.bingo.ticks.map(function (t) { var x = nm[t.idx]; return x ? { idx: t.idx, name: x.name, is_me: x.is_me } : t; });
+        }
+        view.redraw();
+      });
     });
   }
   function renderTab(view, pane) {

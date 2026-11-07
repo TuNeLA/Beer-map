@@ -135,7 +135,7 @@
       sec.appendChild(wrap);
       var g = { id: d.group_id, name: d.title, evg: true, member_count: people.length, active_count: people.filter(function (p) { return p.out; }).length };
       seedNames(d.group_id, people);
-      ["FORFEST", "PARTY", "RUNDAN"].forEach(function (k) {
+      (window.SPEL && window.SPEL.groupItem ? ["SPEL", "RUNDAN"] : ["FORFEST", "PARTY", "RUNDAN"]).forEach(function (k) {   // 🎉 Spel = every game in one hub
         try { var m = window[k]; if (m && m.groupItem) m.groupItem(g, wrap); } catch (e) { try { console.warn("evgroup " + k, e); } catch (x) {} }
       });
     } else if (d.state === "open" && !d.past) {

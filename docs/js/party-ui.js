@@ -25,9 +25,9 @@
       how: ["Värdens skärm visar en utmaning. Prata, övertyga, smickra.", "Rösta i hemlighet. Flest röster åker ut och blir jury.", "När två ä kvar röstar juryn fram vinnaren."] },
     hatten: { emo: "🎩", name: "Namn i hatten", sub: "Alla svarar på sin lur. Lapparna dras en och en på storskärmen.", n: "3–16 spelare", t: "10–20 min",
       how: ["Värden visar en fråga: \"Vem i gruppen…?\" eller \"Skriv ett påhittat svar\".", "Alla svarar i hemlighet på sin lur.", "Lapparna dras en och en. Rösta på bästa svaret, poäng till den som skrev."] },
-    flocken: { emo: "🐑", name: "Flocken", sub: "Svara som de flesta. Flocken får poäng, den ensamma får kossan 🐄.", n: "3–16 spelare", t: "~10 min",
-      how: ["Värden visar en fråga, t.ex. \"Bästa ölen?\"", "Alla skriver ETT svar på sin lur.", "Störst grupp får +1. Den enda som svarade annorlunda får kossan och kan int' vinna."] },
-    vagen: { emo: "🔮", name: "Vågen", sub: "Siaren ser målet på skalan och säger en ledtråd. Alla drar reglaget.", n: "3–12 spelare", t: "10–15 min",
+    flocken: { emo: "🐑", name: "Flocken", sub: "Svara som de flesta. Flocken får poäng, den ensamma får 🥾 Kängan.", n: "3–16 spelare", t: "~10 min",
+      how: ["Värden visar en fråga, t.ex. \"Bästa ölen?\"", "Alla skriver ETT svar på sin lur.", "Störst grupp får +1. Den enda som svarade annorlunda får Kängan och kan int' vinna."] },
+    vagen: { emo: "📡", name: "Radarn", sub: "Siaren ser målet på skalan och säger en ledtråd. Alla drar reglaget.", n: "3–12 spelare", t: "10–15 min",
       how: ["En siare per runda ser var målet ligger mellan två ytterligheter (Kallt–Varmt).", "Siaren säger EN ledtråd högt.", "Alla andra drar reglaget på sin lur. Närmast målet får mest poäng."] }
   };
   var ORDER = ["imposter", "survivor", "hatten", "flocken", "vagen"];
@@ -340,7 +340,7 @@
       ]));
     });
     body.appendChild(list);
-    body.appendChild(el("p", { class: "pt-fine", text: "⭐ Meriter: +2 per spel, +3 per vinst (max 3 per natt). Drick lugnt, ta vatten. 18+." }));
+    body.appendChild(el("p", { class: "pt-fine", text: "⭐ Meriter: +2 per spel, +3 per vinst (max 3 per natt). Ta vatten emellanåt. 18+." }));
     if (code) setTimeout(function () { (nameInp.value ? jb : nameInp).focus(); }, 50);
   }
   function attachView(d) {
@@ -451,7 +451,7 @@
   function endPlayer(main, d, extra) {
     var won = iWon(d);
     main.appendChild(el("div", { class: "pt-end " + (won ? "won" : "lost") }, [
-      el("div", { class: "pt-big-emo", "aria-hidden": "true", text: won ? "🏆" : "🍺" }),
+      el("div", { class: "pt-big-emo", "aria-hidden": "true", text: won ? "🏆" : "🎖️" }),
       H(won ? "DU VANN!" : "Int' den här gången"),
       P(stLine(won ? "win" : "lose", "", "end"))
     ]));
@@ -973,8 +973,8 @@
       } else {
         var mine = (pub.groups || []).filter(function (g) { return g.who.some(function (w) { return w.k === me.k; }); })[0];
         var inHerd = pub.herd === 0 && mine === (pub.groups || [])[0];
-        main.appendChild(el("div", { class: "pt-stage" }, [el("div", { class: "pt-big-emo", text: pub.cow_k === me.k ? "🐄" : inHerd ? "🐑" : "🤷" }),
-          H(pub.cow_k === me.k ? "Du fick KOSSAN!" : inHerd ? "+1! Du tänkte som flocken" : "Ingen poäng den här gången"),
+        main.appendChild(el("div", { class: "pt-stage" }, [el("div", { class: "pt-big-emo", text: pub.cow_k === me.k ? "🥾" : inHerd ? "🐑" : "🤷" }),
+          H(pub.cow_k === me.k ? "Du fick KÄNGAN!" : inHerd ? "+1! Du tänkte som flocken" : "Ingen poäng den här gången"),
           P("Dina poäng: " + me.score)]));
       }
     },
@@ -994,7 +994,7 @@
         foot.appendChild(btn(d.round >= (pub.rounds | 0) ? "🏁 Till resultatet ›" : "Nästa fråga ›", "pt-go pt-xl", function () { act("next"); }));
       } else if (d.phase === "end") {
         main.appendChild(winnerBanner(d, "FLOCKLEDARE 🐑"));
-        if (pub.cow_name) main.appendChild(P("🐄 Kossan: " + pub.cow_name + " (kossan kan int' vinna)", "pt-mute"));
+        if (pub.cow_name) main.appendChild(P("🥾 Kängan: " + pub.cow_name + " (den med Kängan kan int' vinna)", "pt-mute"));
         main.appendChild(scoreboard(d, "Slutställning"));
         endHostFoot(foot, d);
       }

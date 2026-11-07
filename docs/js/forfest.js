@@ -27,7 +27,7 @@
       who: "Vilka ä med?", whoN: "{0} med", guest: "Gästens namn", add: "+ Lägg till", guestTag: "gäst",
       group: "Grupp", noPlayers: "Bocka i minst 2 som ä med (eller lägg till gäster).",
       pick: "Välj läge", cards: "{0} kort", nodrink: "🥤 Utan dricka", nodrinkSub: "Straffen blir knäböj, armhävningar och komplimanger.",
-      fine: "Drick lugnt och ta vatten emellan. Ingen måste dricka: säg pass och gör ett annat straff. 18+.",
+      fine: "Ingen måste göra nåt: säg pass och ta ett annat straff. Ta vatten emellan. 18+.",
       loading: "Laddar korten…", loadFail: "Korten kunde int' laddas. Öppna appen med nät en gång, sen funkar dä offline.",
       next: "Nästa ›", prev: "‹", hint: "Tryck eller svep för nästa kort", back: "‹ Lägen", close: "Stäng",
       again: "🔀 Blanda om", toStart: "Till startsidan", awake: "Skärmen hålls vaken", left: "{0} kvar",
@@ -153,7 +153,7 @@
   }
   function savePrefs() {
     var pref = lsGet(LS_KEY, {});
-    pref.gid = st.gid || null; pref.nodrink = !!st.nodrink;
+    pref.gid = st.gid || null; pref.nodrink = !!st.nodrink; pref.pack = st.pack || "utm";
     pref.guests = st.players.filter(function (p) { return p.guest; }).map(function (p) { return p.name; }).slice(0, 12);
     pref.off = pref.off || {};
     pref.off[st.gid || "-"] = st.players.filter(function (p) { return !p.on; }).map(function (p) { return p.name; });
@@ -223,6 +223,10 @@
     return [ps[0] ? ps[0].name : "?", ps[1] ? ps[1].name : (ps[0] ? ps[0].name : "?")];
   }
   function pen(key) {
+    // ⚖️ the central penalty table (spel.js OLNU_PEN); Utmaning keeps the varied no-drink tasks of forfest-content.js
+    var P = window.OLNU_PEN, pk = P ? P.ok(st.pack || "utm") : (st.nodrink ? "utm" : "klunk");
+    if (pk === "utm" && C.nodrink && C.nodrink[key]) return rnd(C.nodrink[key]);
+    if (P) return P.pick(pk, key, Math.floor(Math.random() * 1000));
     var set = st.nodrink ? C.nodrink : C.drink;
     return rnd((set && set[key]) || [["tar en klunk", "ta en klunk"]]);
   }
@@ -316,10 +320,11 @@
   });
   function open(g) {
     if (window.OLNU_STRIP && window.OLNU_STRIP.up && window.OLNU_STRIP.up()) { window.OLNU_STRIP.after(function () { open(g); }); return; }
+    try { if (window.OLNU_AFTER_SHEET && A && A.sheetOpen && A.sheetOpen()) { window.OLNU_AFTER_SHEET(function () { open(g); }, "forfest"); return; } } catch (e) {}
     ensureCss();
     var pref = lsGet(LS_KEY, {});
     var gid = (g && g.id) || pref.gid || null, gname = (g && g.name) || "";
-    st = { gid: gid, gname: gname, members: namesFor(gid), players: [], nodrink: !!pref.nodrink, mode: null, playing: false,
+    st = { gid: gid, gname: gname, members: namesFor(gid), players: [], nodrink: !!pref.nodrink, pack: (window.OLNU_PEN ? window.OLNU_PEN.ok(pref.pack || window.OLNU_PEN.pref()) : "utm"), mode: null, playing: false,
       deck: [], hist: [], pos: -1, viruses: [], count: 0, lastTypes: [], named: {}, lastVirus: -99, lastKapten: -99, waterAt: {} };
     buildPlayers();
     try { if (A && A.sheetOpen && A.sheetOpen()) A.closeSheet("forfest"); } catch (e) {}
@@ -411,6 +416,20 @@
     wrap.appendChild(ms);
 
     // No-drink switch
+    if (window.OLNU_PEN) {
+      var packs = window.OLNU_PEN.packs(), cur = st.pack, pr = el("div", { class: "ff-packs", role: "radiogroup", "aria-label": "Straffpaket" });
+      packs.forEach(function (p) {
+        pr.appendChild(el("button", { type: "button", role: "radio", class: "ff-pack" + (p.id === cur ? " on" : ""), "aria-checked": String(p.id === cur),
+          onclick: function () { st.pack = p.id; st.nodrink = p.id !== "klunk"; window.OLNU_PEN.setPref(p.id); savePrefs(); renderStart(); } }, [el("b", { text: p.ic + " " + p.name }), el("small", { text: p.id === "skal" ? p.rule : p.sub })]));
+      });
+      wrap.appendChild(el("section", { class: "ff-sec" }, [el("h2", { text: "Straffpaket" }), pr]));
+      wrap.appendChild(el("p", { class: "ff-fine", text: T("fine") }));
+      root.appendChild(wrap);
+      if (!document.getElementById("ff-pack-css")) { var cs = document.createElement("style"); cs.id = "ff-pack-css";
+        cs.textContent = ".ff-packs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ff-pack{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px 12px;border-radius:14px;border:2px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:inherit;font:inherit;cursor:pointer}.ff-pack b{font-size:15px}.ff-pack small{font-size:12px;line-height:1.3;opacity:.85}.ff-pack.on{border-color:#f5a623;background:rgba(245,166,35,.16)}";
+        document.head.appendChild(cs); }
+      return;
+    }
     var cb = el("input", { type: "checkbox", class: "ff-cb", id: "ff-nodrink" });
     cb.checked = !!st.nodrink;
     cb.addEventListener("change", function () { st.nodrink = cb.checked; savePrefs(); });

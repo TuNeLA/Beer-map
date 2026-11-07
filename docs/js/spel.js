@@ -14,7 +14,7 @@
   var A = null, loading = null, cssDone = false, off = false, resumed = false;
 
   var S = {
-    sv: { tile: "SPEL", tileSub: "Skämskort, Vem i gänget?, Imposter… {0} spel. Välj och kör!",
+    sv: { tile: "SPEL", tileSub: "Skämskort, Gängkollen, Kungaleken… {0} spel. Välj och kör!",
       live: "{0} pågår", liveSub: "{0} ä med · Tryck för att hoppa in!", plus: "Spel", plusSub: "alla spelen på ett ställe",
       lek: "🎉 Alla spel", load: "Laddar spelen…", fail: "Spelen kunde int' laddas. Kolla nätet.",
       resume: "{0} · du ä med i ett spel", back: "Tillbaka" },
@@ -43,8 +43,51 @@
   function missing(err) { return !!(err && (err.code === "PGRST202" || /could not find the function/i.test(err.message || ""))); }
 
   // Short names for the live line (the full game list lives in spel-ui.js).
-  var NAMES = { kort: "🃏 Skämskort", vem: "👉 Vem i gänget?", aldrig: "🙊 Jag har aldrig", hellre: "⚖️ Hellre eller?" };
-  var N_GAMES = 13;
+  var NAMES = { kort: "🃏 Skämskort", vem: "👉 Vem i gänget?", aldrig: "🙊 Jag har aldrig", hellre: "⚖️ Hellre eller?", quiz: "🧠 Gängkollen" };
+  var N_GAMES = 15;
+
+  /* ---------- ⚖️ OLNU_PEN · the ONE penalty table for every game (store-premium-plan.md 2.2) ---------- */
+  // k1 small · k2 big · d3 give out; each = [3rd person, imperative]. Hard limits: max 2 per penalty, max 2 to give out,
+  // never shots / "botten upp" / "drick tills". Klassiskt only in the web build (never in a store build).
+  var PACKS = {
+    utm: { ic: "🎖️", mark: "🎯", name: "Utmaning", sub: "Inga drycker. Knäböj, honnörer och komplimanger.",
+      k1: [["gör 5 knäböj", "gör 5 knäböj"], ["gör honnör och säger 'Förlåt, general!'", "gör honnör och säg 'Förlåt, general!'"], ["ger en komplimang till den till vänster", "ge en komplimang till den till vänster"]],
+      k2: [["gör 10 stjärnhopp", "gör 10 stjärnhopp"], ["sjunger en strof som gänget väljer", "sjung en strof som gänget väljer"]],
+      d3: [["delar ut 3 straffarmhävningar", "dela ut 3 straffarmhävningar"]] },
+    skal: { ic: "🥂", mark: "🥂", name: "Skålstraff", sub: "Höj glaset – vatten räknas.",
+      rule: "🥂 Skålstraff: höj glaset, säg 'Skål, general!' och ta en skvätt av det du har. Vatten räknas. Läsk räknas. Ingen räknar.",
+      k1: [["tar ett Skålstraff", "ta ett Skålstraff"]], k2: [["tar ett dubbelt Skålstraff", "ta ett dubbelt Skålstraff"]], d3: [["delar ut 2 Skålstraff", "dela ut 2 Skålstraff"]] },
+    streck: { ic: "📏", mark: "📏", name: "Skamstreck", sub: "Bara poäng. Flest streck hamnar på skamlistan.",
+      k1: [["får ett skamstreck", "få ett skamstreck"]], k2: [["får två skamstreck", "få två skamstreck"]], d3: [["delar ut 2 skamstreck", "dela ut 2 skamstreck"]] },
+    klunk: { ic: "🍺", mark: "🍺", name: "Klassiskt", sub: "Ta en klunk. Drick lugnt, ta vatten.", web: 1,
+      k1: [["tar en klunk", "ta en klunk"]], k2: [["tar två klunkar", "ta två klunkar"]], d3: [["delar ut 2 klunkar", "dela ut 2 klunkar"]] }
+  };
+  var PACK_ORDER = ["utm", "skal", "streck", "klunk"];
+  function isStore() {
+    try {
+      if (window.OLNU_STORE != null) return !!window.OLNU_STORE;
+      if (window.Capacitor) return true;
+      if (/[?&]app=(android|ios)\b/.test(location.search) || /^android-app:/.test(document.referrer || "")) { try { localStorage.setItem("olnu.store", "1"); } catch (e) {} return true; }
+      return localStorage.getItem("olnu.store") === "1";
+    } catch (e) { return false; }
+  }
+  function packIds() { var st = isStore(); return PACK_ORDER.filter(function (id) { return !(st && PACKS[id].web); }); }
+  function packOk(id) { return packIds().indexOf(id) >= 0 ? id : "utm"; }
+  function packPref() { try { return packOk(JSON.parse(localStorage.getItem("olnu.pack") || "null") || "utm"); } catch (e) { return "utm"; } }
+  function setPackPref(id) { try { localStorage.setItem("olnu.pack", JSON.stringify(packOk(id))); } catch (e) {} }
+  // fill {k1} {k2} {d3} {K1} {K2} {D3} {ic} {mark} in a text; seed picks the same Utmaning variant on every phone
+  function penFill(text, pack, seed) {
+    var p = PACKS[packOk(pack)], n = seed | 0;
+    return String(text).replace(/\{(k1|k2|d3|K1|K2|D3|ic|mark)\}/g, function (m, k, at, all) {
+      if (k === "ic" || k === "mark") return p[k];
+      var list = p[k.toLowerCase()], v = list[Math.abs(n) % list.length], imp = k !== k.toLowerCase(), s = imp ? v[1] : v[0];
+      if (imp) { var before = all.slice(0, at).replace(/\s+$/, ""); if (!before || /[.?!:]$/.test(before)) s = s.charAt(0).toUpperCase() + s.slice(1); }
+      return s;
+    });
+  }
+  window.OLNU_PEN = { packs: function () { return packIds().map(function (id) { var p = PACKS[id]; return { id: id, ic: p.ic, name: p.name, sub: p.sub, rule: p.rule || null }; }); },
+    get: function (id) { return PACKS[packOk(id)]; }, ok: packOk, pref: packPref, setPref: setPackPref, fill: penFill, store: isStore,
+    pick: function (id, key, seed) { var l = PACKS[packOk(id)][key] || PACKS.utm.k1; return l[Math.abs(seed | 0) % l.length]; } };
 
   /* ---------- lazy files ---------- */
   function lazySrc(re, sel, attr) {
@@ -81,6 +124,23 @@
     return loading;
   }
 
+  /* ---------- close the open sheet, then run fn once its history unwind has landed ---------- */
+  // SHEETNAV closes a sheet with a deferred history.go(-n). An overlay that pushes its own entry before that lands gets
+  // popped (and closed) by it. Shared by forfest.js / party.js (window.OLNU_AFTER_SHEET).
+  function afterSheet(fn, who) {
+    var api = A;
+    var open = false; try { open = !!(api && api.sheetOpen && api.sheetOpen()); } catch (e) {}
+    if (!open) { fn(); return; }
+    var nav = 0; try { nav = window.SHEETNAV && window.SHEETNAV.depth ? window.SHEETNAV.depth() | 0 : 0; } catch (e) {}
+    var done = false, tm = null;
+    function go() { if (done) return; done = true; window.removeEventListener("popstate", onPop); clearTimeout(tm); setTimeout(fn, 20); }
+    function onPop() { setTimeout(go, 0); }
+    if (nav > 0) window.addEventListener("popstate", onPop);
+    try { api.closeSheet(who || "spel"); } catch (e) {}
+    if (nav > 0) tm = setTimeout(go, 450); else setTimeout(go, 0);
+  }
+  window.OLNU_AFTER_SHEET = function (fn, who) { if (!A) { fn(); return; } afterSheet(fn, who); };
+
   /* ---------- open ---------- */
   // what: null = the hub · "kort" … = straight into that game · {room:"uuid"} = back into a running room
   function go(g, what) {
@@ -89,8 +149,7 @@
     var t0 = setTimeout(function () { try { A.toast(T("load"), { id: "spel-load", ms: 2500 }); } catch (e) {} }, 400);
     ensure().then(function () {
       clearTimeout(t0); try { A.toastClear("spel-load"); } catch (e) {}
-      try { if (A.sheetOpen && A.sheetOpen()) A.closeSheet("spel"); } catch (e) {}
-      window.SPEL_UI.open(A, g && g.id ? { id: g.id, name: g.name || "" } : null, what || null, { off: off });
+      afterSheet(function () { window.SPEL_UI.open(A, g && g.id ? { id: g.id, name: g.name || "", evg: !!g.evg } : null, what || null, { off: off }); }, "spel");
     }, function () {
       clearTimeout(t0);
       try { A.toast(T("fail"), { err: true, id: "spel-load" }); } catch (e) {}
@@ -129,7 +188,9 @@
       el("span", { class: "sp-gi-go", "aria-hidden": "true", text: "›" })
     ]);
     b.addEventListener("click", function () {
-      if (row._room && row._room.is_in) go(g, { room: row._room.id }); else go(g, null);
+      if (row._room && row._room.is_in) go(g, { room: row._room.id, game: row._room.game });
+      else if (row._room && row._room.game) go(g, { join: row._room.game });   // a live room: straight in (was: the hub + one more tap)
+      else go(g, null);
     });
     row.appendChild(b);
     wrap.appendChild(row);
@@ -143,6 +204,33 @@
     var b = el("button", { type: "button", class: "btn btn-small btn-block btn-amber sp-lek", style: "margin-top:10px", text: T("lek") });
     b.addEventListener("click", function () { go(g && g.id ? g : null, null); });
     return b;
+  }
+
+  /* ---------- chat: "🎉 Anna startar 🃏 Skämskort! Hoppa in…" rows get a HOPPA IN button (social.js calls SPEL.chatOpen) ---------- */
+  var BYNAME = { "Skämskort": "kort", "Vem i gänget?": "vem", "Jag har aldrig": "aldrig", "Hellre eller?": "hellre", "Gängkollen": "quiz" };
+  function chatOpen(g, ctx) {
+    if (!g || !g.id || g.ev || g.dm || !ctx || !ctx.list) return;
+    var list = ctx.list;
+    function scan() {
+      var rows = list.querySelectorAll("li.chat-msg:not([data-spc])");
+      for (var i = 0; i < rows.length; i++) {
+        var li = rows[i], b = li.querySelector(".cm-body"), t = b ? b.textContent || "" : "";
+        li.setAttribute("data-spc", "1");
+        var m = t.match(/^🎉 .+? (?:startar|starts) \S+ (.+?)! (?:Hoppa in|Jump in)/);
+        if (!m) continue;
+        var at = Date.parse(li.getAttribute("data-at") || "") || 0;
+        if (at && Date.now() - at > 3 * 3600e3) continue;   // a room lives ≤ 3 h
+        var id = BYNAME[m[1]] || null;
+        var btn = el("button", { type: "button", class: "btn btn-small btn-amber sp-chatjoin", style: "margin-top:6px", text: "🎉 HOPPA IN ›" });
+        btn.addEventListener("click", function (id) { return function () { go(g, id ? { join: id } : null); }; }(id));
+        if (b && b.nextSibling) li.insertBefore(btn, b.nextSibling); else li.appendChild(btn);
+      }
+    }
+    scan();
+    if (window.MutationObserver) {
+      var mo = new MutationObserver(function () { if (ctx.alive && !ctx.alive()) { mo.disconnect(); return; } scan(); });
+      mo.observe(list, { childList: true });
+    }
   }
 
   /* ---------- resume after a reload ---------- */
@@ -186,6 +274,7 @@
     play: function (g, id) { go(g, id || null); },
     games: function () { return window.SPEL_UI ? window.SPEL_UI.games() : null; },
     lekButton: lekButton,
+    chatOpen: function (g, ctx) { try { chatOpen(g, ctx); } catch (e) {} },
     init: function (api) { A = api; },
     onAuthed: function () { onAuthed(); },
     groupItem: function (g, wrap) { try { groupItem(g, wrap); } catch (e) { try { console.warn("olnu spel", e); } catch (x) {} } },

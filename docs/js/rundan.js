@@ -24,7 +24,7 @@
     sv: {
       tile: "💸 Kvällens nota", tileSpin: "🎲", even: "kvitt", plus: "+{0} kr", minus: "−{0} kr",
       notaTitle: "💸 Kvällens nota · {0}", back: "‹ Tillbaka",
-      iPaid: "💸 Jag bjöd på en runda", spin: "🎲 Vem bjuder?", other: "➕ Annan utgift",
+      iPaid: "💸 Jag bjöd på en runda", spin: "🎲 Vem fixar nästa?", other: "➕ Annan utgift",
       balH: "Saldo i gruppen", balNone: "Alla ä kvitt. Rent mjöl i påsen! 🤝", balPlus: "får {0} kr", balMinus: "ska betala {0} kr",
       settleH: "🤝 Gör upp", settleInfo: "{0} betalningar räcker för att alla ska bli kvitt.", settleOne: "En betalning räcker för att alla ska bli kvitt.",
       pendH: "⏳ Väntar på dig", pendLine: "{0} säger att hen betalat {1} kr", got: "✅ Fått", notGot: "❌ Fick inget",
@@ -47,7 +47,7 @@
       card: { pay: "📱 Swisha {0} {1} kr", alt: "Öppnas int' Swish? Prova här", copy: "📋 Kopiera", paid: "✅ Betalt",
         noSwish: "{0} har int' sparat Swish-nummer. Fråga efter numret.", waitConf: "⏳ Väntar på att {0} bekräftar.", conf: "✅ {0} har fått pengarna.",
         waitFor: "Väntar på: {0}", allPaid: "✅ Alla har betalat. Snyggt jobbat, soldater!", by: "{0} betalade", you: "du" },
-      spinTitle: "🎲 Vem bjuder?", spinWho: "Vilka ä med i snurren?", fair: "⚖️ Rättvis", fairInfo: "De som bjudit minst på sistone får större chans.",
+      spinTitle: "🎲 Vem fixar nästa?", spinWho: "Vilka ä med i snurren?", fair: "⚖️ Rättvis", fairInfo: "De som bjudit minst på sistone får större chans.",
       spinGo: "🎲 SNURRA!", spinNeed: "Minst två måste vara med.", again: "🔁 Snurra igen", toChat: "💬 Till chatten", iPaidNow: "💸 Lägg in rundan",
       odds: "{0} %",
       errs: { not_member: "Du ä int' med i gruppen längre.", slow_down: "Lugna ner dig, korpral! Vänta en liten stund.",

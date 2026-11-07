@@ -552,6 +552,7 @@
       try { if (window.AFTER && window.AFTER.chatOpen) window.AFTER.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
       try { if (window.PHOTO && window.PHOTO.chatOpen) window.PHOTO.chatOpen(g, { list: list, input: inp.parentNode, alive: alive, color: chatColor }); } catch (e) {}
       try { if (!g.ev && !g.dm && window.RUNDAN && window.RUNDAN.chatOpen) window.RUNDAN.chatOpen(g, { list: list, input: inp.parentNode, alive: alive }); } catch (e) {}   // 💸 Swish cards
+      try { if (!g.ev && !g.dm && window.SPEL && window.SPEL.chatOpen) window.SPEL.chatOpen(g, { list: list, alive: alive }); } catch (e) {}   // 🎉 HOPPA IN on "Kalla in gänget" rows
       try { if (g.ev && window.EVCHAT && window.EVCHAT.chatOpen) window.EVCHAT.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}
       try { if (g.dm && window.DM && window.DM.chatOpen) window.DM.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}   // 💬 1:1
       function add(m, anchor) {

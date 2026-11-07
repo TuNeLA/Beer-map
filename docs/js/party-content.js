@@ -49,10 +49,10 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
       "Pulp Fiction|dans", "Forrest Gump|spring", "Gladiator|arena", "Mad Max|öken", "Fast & Furious|bil",
       "James Bond|agent", "Indiana Jones|piska", "Hungerspelen|pil", "Ringaren i Notre Dame|klocka" ] },
     { id: "varu", emo: "🏷️", name: "Varumärken", words: [
-      "IKEA|platt", "Volvo|säker", "Saab|flyg", "H&M|kläder", "Spotify|lyssna", "Klarna|betala", "Absolut|flaska",
+      "IKEA|platt", "Volvo|säker", "Saab|flyg", "H&M|kläder", "Spotify|lyssna", "Klarna|betala", "Vasaloppet|skidor",
       "Ericsson|telefon", "Electrolux|städa", "Marabou|godis", "Apple|frukt", "Samsung|skärm", "Nike|bock", "Adidas|ränder",
       "Coca-Cola|röd", "Pepsi|blå", "McDonald's|båge", "Burger King|krona", "Max|norrland", "Tesla|el", "Google|sök",
-      "Netflix|soffa", "Lego|kloss", "Ferrari|röd", "Rolex|tid", "Gucci|lyx", "Red Bull|vingar", "Systembolaget|monopol",
+      "Netflix|soffa", "Lego|kloss", "Ferrari|röd", "Rolex|tid", "Gucci|lyx", "Red Bull|vingar", "Clas Ohlson|prylar",
       "ICA|handla", "Coop|butik", "SJ|försenad", "Postnord|paket", "Oatly|havre", "Polarbröd|norr", "Kalles Kaviar|tub",
       "Fazer|blå", "Zalando|skrik", "Amazon|paket", "Disney|mus", "Playstation|spel", "Nintendo|rörmokare",
       "Husqvarna|klipp" ] },
@@ -73,12 +73,12 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
       "Fäbod|vall", "Lugnet|hopp", "Bjursås|berg", "Dala-Järna|by", "Sollerön|ö", "Furudal|tyst" ] },
     { id: "ol", emo: "🍺", name: "Öl & drinkar", words: [
       "Pilsner|ljus", "IPA|humle", "Stout|svart", "Lager|vanlig", "Veteöl|grumlig", "Ale|engelsk", "Folköl|svag",
-      "Mellanöl|lagom", "Starköl|stark", "Cider|äpple", "Mariestads|klassiker", "Norrlands Guld|norr", "Falcon|fågel",
-      "Spendrups|stor", "Pripps Blå|sommar", "Guinness|irländsk", "Heineken|grön", "Corona|lime", "Carlsberg|dansk",
+      "Mellanöl|lagom", "Starköl|stark", "Cider|äpple", "Julöl|kryddig", "Påsköl|gul", "Porter|rostad",
+      "Bock|stark", "Alkoholfri öl|noll", "Kölsch|tysk", "Pale ale|blek", "Mexikansk lager|lime", "Dansk pilsner|dansk",
       "Mojito|mynta", "Gin & tonic|bitter", "Margarita|salt", "Piña colada|kokos", "Cosmopolitan|rosa", "Negroni|röd",
       "Aperol Spritz|orange", "Long Island Iced Tea|allt", "Espresso Martini|kaffe", "Bloody Mary|tomat", "Snaps|visa",
-      "Glögg|varm", "Jägermeister|hjort", "Fernet|örter", "Tequila|citron", "Whisky|fat", "Rom|pirat", "Vodka|klar",
-      "Champagne|bubbel", "Rosévin|rosa", "Lättöl|nästan", "Hembränt|förbjudet", "Shot|snabb" ] },
+      "Glögg|varm", "Örtlikör|hjort", "Bitter|örter", "Tequila|citron", "Whisky|fat", "Rom|pirat", "Vodka|klar",
+      "Champagne|bubbel", "Rosévin|rosa", "Lättöl|nästan", "Mjöd|honung", "Alkoholfri drink|noll" ] },
     { id: "sport", emo: "⚽", name: "Sport", words: [
       "Fotboll|boll", "Ishockey|puck", "Bandy|dalarna", "Innebandy|klubba", "Handboll|hopp", "Basket|korg",
       "Tennis|racket", "Padel|glas", "Golf|hål", "Bowling|käglor", "Curling|sopa", "Längdskidor|spår", "Slalom|portar",
@@ -332,7 +332,7 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
       "⚖️ Luta dig tillbaka. Snart får du bestämma vem som vinner.",
       "⚖️ Juryn samlas. Ta anteckningar. Mentala.",
       "⚖️ Du åkte ut, men makten ä din i finalen.",
-      "⚖️ Juryn ä ett hårt jobb. Någon måste dricka och döma.",
+      "⚖️ Juryn ä ett hårt jobb. Någon måste sitta still och döma.",
       "⚖️ Vem har spelat snyggast? Vem har ljugit mest? Du avgör.",
       "⚖️ Juryn har ingen nåd. Bara öl.",
       "⚖️ Lyssna på finalisterna. Eller inte. Det ä din röst.",
@@ -402,7 +402,7 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
       "Triumf! Ringen ä sluten."
     ],
     lose: [
-      "Förlust. Men ni förlorade med stil.", "Ni åkte dit! Revansch nästa spel.", "Nederlag. Generalen dricker ensam i kväll.",
+      "Förlust. Men ni förlorade med stil.", "Ni åkte dit! Revansch nästa spel.", "Nederlag. Generalen äter kebab ensam i kväll.",
       "Det gick åt skogen. Bokstavligen.", "Förlust. Det var int' er dag, men det ä er natt.", "Ni blev lurade. Snyggt jobbat, fienden.",
       "Ajdå. Ta en vattenpaus och kom tillbaka starkare.", "Förlust. Skyll på ölen.", "Det där gick int' som planerat.",
       "Nederlag! Fältprästen tröstar."
@@ -417,8 +417,8 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
       "En lapp på… {n}!", "Ur hatten: {n}!", "Det står… {n}!", "Nästa lapp: {n}!", "Och den här säger… {n}!"
     ],
     cow: [
-      "🐄 {n} fick KOSSAN! Ensam ä int' stark.", "🐄 Kossan går till {n}. Tänk som flocken nästa gång!",
-      "🐄 {n} tänkte helt själv. Därför kossan.", "🐄 Muuu! {n} tar kossan."
+      "🥾 {n} fick KÄNGAN! Ensam ä int' stark.", "🥾 Kängan går till {n}. Tänk som flocken nästa gång!",
+      "🥾 {n} tänkte helt själv. Därför Kängan.", "🥾 Klampa på, {n} – Kängan ä din."
     ]
   }
 };
