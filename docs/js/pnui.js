@@ -416,6 +416,10 @@
   // Group page: "🍺 2 ska ut · 🤔 1 kanske" inside the 🟢 NU card (no new tile; data per group, cached 2 min).
   var gikv = {};
   function groupItem(g, wrap) {
+    // inst: the code leaves the group-home subtitle in the same frame (was: 30 ms after the DOM went quiet = a
+    // visible text jump on a busy first open).
+    try { var gs0 = wrap && wrap.classList.contains("gpg") ? wrap.querySelector(".gmain .gsub") : null, t0 = gs0 && gs0.firstChild;
+      if (t0 && t0.nodeType === 3 && /^Kod [A-Z0-9]{6} · /.test(t0.nodeValue)) t0.nodeValue = t0.nodeValue.replace(/^Kod [A-Z0-9]{6} · /, ""); } catch (e) {}
     if (!g || !g.id || g.ev || !A || !A.LIVE || off.ikvall_status || !evening()) return;
     wrap.__pnG = g;
     var c = gikv[g.id];

@@ -24,7 +24,12 @@
 
   /* ---------- RPC wrapper ---------- */
   // Always resolves to {data, error}. Never rejects, never hangs longer than RPC_TIMEOUT_MS.
+  // inst: WARM (js/warm.js) answers READ calls from its cache inside a render window and revalidates in the background.
   function rpc(name, params) {
+    if (window.WARM && !flyttGuard()) return window.WARM.rpc(name, params, rpcNet);
+    return rpcNet(name, params);
+  }
+  function rpcNet(name, params) {
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
     // ⚡ SPEED (#6) no account yet: public calls go out; a call right after a tap on a button makes the account first; others wait
     if (publicOn && !authed && PUBLIC_RPC.indexOf(name) < 0) {
@@ -52,7 +57,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES, window.KANAL].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES, window.KANAL, window.WARM].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       if (modsWave && fn === "onPoll") { modsWave.push(m); return; }   // ⚡ SPEED: runWave() calls it
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
@@ -2449,10 +2454,12 @@
     if (prev && prev.onClose) { try { prev.onClose("replaced"); } catch (e) {} }
     sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
     $("sheet-title").textContent = title;
+    try { if (window.WARM) window.WARM.beginSheet(title); } catch (e) {}   // inst: render window (before the old body goes)
     var body = $("sheet-body"); body.innerHTML = "";
     try { build(body); } catch (e) { try { console.warn("olnu sheet", title, e); } catch (x) {} try { if (window.PNDS && window.PNDS.sheetFail) window.PNDS.sheetFail(body, title); } catch (x) {} }   // pnds: never an empty sheet
     $("sheet").hidden = false; $("backdrop").hidden = false;
     if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
+    try { if (window.WARM) window.WARM.endSheet(body, $("sheet-title").textContent); } catch (e) {}   // inst: show it complete, in one step
     return true;
   }
   function closeSheet(reason) {
@@ -2573,16 +2580,29 @@
         rpc("my_groups").then(function (r) {
           list.innerHTML = "";
           if (r.error) { list.appendChild(el("li", { class: "muted", text: t("fail") })); return; }
-          var gs = r.data || [];
-          if (!gs.length) { list.appendChild(el("li", { class: "muted", text: t("noGroups") })); return; }
-          // Owner: "I want to see all the groups, not the options. Tap a group, then see the options."
-          // One group: show it open as before. Several: a short card per group; a tap opens that group's page.
-          if (gs.length === 1) { list.appendChild(groupItem(gs[0])); return; }
-          sortGroupsByChat(gs).forEach(function (g) { list.appendChild(groupCard(g)); });
+          fillGroups(list, r.data || []);
+          groupsList = list;
         });
       });
     });
   }
+  // inst: the list body, also used for an in-place update when warm.js brings a newer my_groups.
+  var groupsList = null;
+  function fillGroups(list, gs) {
+    if (!gs.length) { list.appendChild(el("li", { class: "muted", text: t("noGroups") })); return; }
+    // Owner: "I want to see all the groups, not the options. Tap a group, then see the options."
+    // One group: show it open as before. Several: a short card per group; a tap opens that group's page.
+    if (gs.length === 1) { list.appendChild(groupItem(gs[0])); list.__one = true; return; }
+    list.__one = false;
+    sortGroupsByChat(gs).forEach(function (g) { list.appendChild(groupCard(g)); });
+  }
+  window.addEventListener("olnu:warm", function (e) {
+    var d = e.detail || {};
+    if (d.fn !== "my_groups" || !groupsList || !groupsList.isConnected || !Array.isArray(d.data) || !window.WARM) return;
+    if (groupsList.__one || d.data.length < 2) return;   // the open single-group card holds module state: next open
+    var tmp = el("ul", { class: groupsList.className }); fillGroups(tmp, d.data);
+    window.WARM.patch(groupsList, tmp);   // only the changed values move (count, "● 3 av 5"), no list rebuild
+  });
   function groupCard(g) {
     var n = g.active_count | 0;
     var li = el("li", { class: "gitem gcard", role: "button", tabindex: "0", "aria-label": g.name }, [
@@ -3761,6 +3781,9 @@
 
   function start() {
     U.ls.del("olnu.shot");   // shots were removed; drop the old timer
+    try { if (window.WARM) window.WARM.setRaw(rpcNet); } catch (e) {}
+    // inst: a background revalidation brought new data for an open screen → the module patches it in place.
+    window.addEventListener("olnu:warm", function (e) { var d = e.detail || {}; mods("onWarm", d.fn, d.params, d.data); });
     mods("init", appApi());
     $("hud-x").addEventListener("click", function (e) {
       var b = e.target.closest("[data-hx]"); if (!b || b.disabled) return;

@@ -33,3 +33,11 @@ button,.btn,[role=button],.gcard,.top-row{touch-action:manipulation}
   .sm-bd-out{display:none}
   .sm-skel{animation:none}
 }
+
+/* inst (warm.js): a sheet body waits invisible until its data is in, then shows in one step; old-data pill (no layout). */
+#sheet-body.wm-hold,#sheet-body .wm-hold{opacity:0}
+#sheet-body.wm-in,#sheet-body .wm-in{animation:wm-in .12s ease-out}
+@keyframes wm-in{from{opacity:0}to{opacity:1}}
+#sheet>.wm-age{position:absolute;top:2px;left:50%;transform:translateX(-50%);margin:0;padding:0 8px;font-size:12px;line-height:16px;white-space:nowrap;color:var(--ds-muted,#9aa3c0);background:var(--ds-sheet,#141a33);border-radius:8px;pointer-events:none;z-index:3;transition:opacity .25s}
+#sheet>.wm-age.wm-age-out{opacity:0}
+@media (prefers-reduced-motion: reduce){#sheet-body.wm-in,#sheet-body .wm-in{animation:none}#sheet>.wm-age{transition:none}}

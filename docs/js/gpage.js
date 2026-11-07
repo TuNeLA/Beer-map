@@ -406,6 +406,31 @@
   window.GPAGE = {
     init: function (api) { A = api; },
     groupItem: function (g, wrap, main) { try { build(g, wrap, main); } catch (e) { try { console.warn("olnu gpage", e); } catch (x) {} } },
+    // inst: warm.js showed a cached group_now / group_msgs and the server now has newer data → patch the open page.
+    onWarm: function (fn, p, d) {
+      if ((fn !== "group_now" && fn !== "group_msgs") || !p || !p.p_group_id || !d) return;
+      [].slice.call(document.querySelectorAll(".gpg")).forEach(function (wrap) {
+        if (!wrap.__g || String(wrap.__g.id) !== String(p.p_group_id)) return;
+        if (fn === "group_now") {
+          // Paint into a copy, keep the chips other modules put in (Ikväll chip), then patch only what changed.
+          try {
+            var box = wrap.querySelector(".gpg-now"); if (!box || !window.WARM || !window.WARM.patch) { paintNow(wrap, d); return; }
+            var fake = document.createElement("div"), nb = box.cloneNode(false); fake.appendChild(nb); fake.__g = wrap.__g;
+            paintNow(fake, d);
+            var keep = box.querySelector(".gpg-now-main > .pn-gikv"), nm = nb.querySelector(".gpg-now-main");
+            if (keep && nm) nm.appendChild(keep.cloneNode(true));
+            window.WARM.patch(box, nb); box.__out = nb.__out; box.hidden = false;
+          } catch (e) {}
+          return;
+        }
+        var st = wrap.__chat; if (!st || !Array.isArray(d)) return;
+        var add = d.slice().sort(function (a, b) { return a.id - b.id; }).filter(function (m) { return m.id > st.lastId; });
+        if (!add.length) return;
+        add.forEach(function (m) { st.lastId = m.id; st.msgs.push(m); });
+        if (st.msgs.length > 20) st.msgs = st.msgs.slice(-20);
+        try { paintChat(wrap); } catch (e) {}
+      });
+    },
     applyText: function () {},
     sorted: sorted, view: view, menuOf: menuOf, actions: actions
   };

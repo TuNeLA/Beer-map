@@ -255,6 +255,9 @@
     },
     onAuthed: function () { load(true); },
     onPoll: function () { load(false); },
+    // inst: warm.js showed a cached my_inbox and the server has newer items → load again (served from the fresh
+    // cache, no new request) and repaint the open tab in place.
+    onWarm: function (fn) { if (fn !== "my_inbox") return; try { if (window.WARM) window.WARM.openWin(60); } catch (e) {} load(true); },
     groupsSheet: function (body) { try { groupsSheet(body); } catch (e) { try { console.warn("olnu inbox", e); } catch (x) {} } },
     applyText: function () { paintBadge(); },
     open: open, paint: paintBadge, count: function () { return off ? 0 : unseen(); }, refresh: function () { return load(true); },
