@@ -2643,7 +2643,7 @@ Client only, no migrations. Owner decision 2026-11-07. New file `docs/js/glmap.j
 - Test hooks: `GLBARS.on()`, `GLBARS.stats`, `GLBARS._feats()`, `GLBARS._marker(id)`, `GLBARS._img(id)`. Tests: scratchpad `glmap-pw.js`
   (picker, migration, loads, taps, drift < 2 px wheel + pinch, clouds, fallback, shots), `glmap-perf.js` (412 × 915, 4× CPU).
 
-## 👤 AVATAR (own little character: face in a circle + shoulders; owner 2026-11-07; additive, migration 0172)
+## 👤 AVATAR (own little character: face in a circle + shoulders; owner 2026-11-07; additive, migrations 0172 + 0200/0201 v2)
 Migration `0172_avatars.sql` (applied live 2026-11-07 as `0172_avatars`). One new table, new functions, no row is ever removed.
 Client: `docs/js/avatar.js` (`window.AVATAR`, in `mods()` after PROFIL), `docs/avatar.css`; patches avatar 01–07
 (index.html, app.js, social.js, invite.js, gpage.js, profile.js, this section). A missing RPC (old server) = every avatar part hides
@@ -2664,6 +2664,56 @@ Grönis skin r6 · stjärnögon r8 · tunga medal radio · mohikan r5 · hockeyf
 vikingafläta t2 · fältmössa r3 · basker r4 · hjälm r6 · headset r9 · partyhatt e1 · vikingahjälm t3 · skärmmössa r12 · tomteluva medal lucia ·
 krona medal kung · pilotglas r7 · rånarluva r5 · partymask e1 · ögonlapp medal uggla · mörkersikte r14 · monokel r17 · matchtröja medal sg10 ·
 fältjacka r4 · officersjacka r12 · generalsrock r20 · amiralsrock r25 · smoking s4 · kamouflage r3 · eld s2 · norrsken t2 · guld r15.
+
+### v2 (owner 2026-11-07 "many more items, everyone unique"; migrations 0200 + 0201, applied live 2026-11-07)
+- **Compat:** v1 keys keep their indexes; new items are added at the END of each list (never reorder). The v1 locks are unchanged.
+  A missing key = 0 = the v1 look. Every saved v1 spec stays valid and looks the same (only the shared polish: one highlight rim +
+  one shadow tone). An old client clamps values over its own max to 0 (shows the v1 item 0 until it updates).
+- **Spec v2:** `{v:2, …v1 keys, ec eye colour 0–11, ns nose 0–11, ck cheeks 0–6, fm marks 0–11, fp face paint 0–11, er ears/earrings 0–12,
+  nk neckwear 0–15, hi held item 0–16, fr frame 0–10, h2 second hair colour 0 | palette index + 1, ht two-tone style 0–3 (tips, roots,
+  split, streak), hx / ux / bx "egen färg" hair / top + caps / background 0 | 0xRRGGBB + 1}`. Client `clean()` sends v1 keys always and v2 keys
+  only when not 0. Ranges: `olnu_avatar_max()` = `AVATAR.MAX` (generated from avatar.js; the live test compares them).
+- **Counts (v1 → v2):** skin 8→23, face 3→8, eyes 7→22, eye colour –→12, brows 5→15, nose –→12, mouth 7→22, cheeks –→7, marks –→12,
+  face paint –→12, ears –→13, hair 11→34, hair colour 9→22 (+ two-tone + egen färg), facial hair 9→26, headwear 14→44, glasses 11→30,
+  neckwear –→16, top 9→31, top colour 8→20 (+ egen färg), background 12→39 (+ egen färg), held item –→17, frame –→11. Items 113 → 448.
+- **Lock kinds (`olnu_avatar_lock_ok` = `AVATAR.unlocked`):** v1 `r m s b t e` + `g` groups ≥ (group_members, DM/temp groups not counted),
+  `k` engångskamera shots ≥ (snap_photos kind film), `d` "MM-DD:MM-DD" date window (Europe/Stockholm, may wrap the year; facts.today),
+  `o` list of alternatives (any one is enough). All plain needs AND, then OR the alternatives. The value the user already wears is
+  never "locked" (seasonal items are kept after their window). `my_avatar` returns `v:2` and facts `g`, `k`, `today`.
+- **Seasons:** 🎃 Halloween 10-20:11-08, 🎄 jul 12-01:01-06, 🌼 midsommar 06-10:06-30, 🔥 Valborg 04-20:05-03, 🎆 nyår 12-27:01-06,
+  🕯️ Lucia 12-01:12-20, 🎓 student 05-20:06-20 (+ 04-25:05-02), ❄️ winter 11-15:03-15. The season medals (midsommar, lucia, valborg, nyar)
+  unlock their items all year.
+- **Rarity** (shown as a ◆ gem + word): hand-picked `RARE`, else from the lock (r ≥ 30 legendarisk, r ≥ 20 episk, rank ≥ 10 / medal /
+  bigger needs sällsynt, other lock ovanlig). Nothing is bought. `PREMIUM_LATER` in avatar.js lists items that COULD be Premium later
+  (egen färg, two-tone, some scenes, neon frame, guitar, mic, mirror/pixel shades, …) — not locked now.
+- **New unlocks:** skin Blåis r10 · Lavendel g3 · Zombie 🎃 · Snögubbe 🎄/lucia · Guldstaty r35; eyes Hjärtan sr10 · Snurriga krogrunda ·
+  Kryss 🎃 · Glitter e3 · Laser r30 · Kattögon 🎃/r20; eye colour Isblå s2 · Violett r8 · Röd 🎃/spoke · Guld kung; brows Snitt r6;
+  nose Clownnäsa e2 · Rudolf 🎄; mouth Vampyr 🎃 · Guldtand b15 · Tuggummi dagsljus · Jubel liga; paint Kamostreck r5 · Fältmålning r11 ·
+  Glitter e1 · Dödskalle 🎃 · Midsommarblommor 🌼/midsommar · Snöflingor 🎄/lucia · Ölskum m50; ears Dalahästar faltresa · Kapsyler m100 ·
+  Diamanter r25 · Pumpor 🎃; hair Spikes r8 · Sidorakat s2 · Rockabilly b10; hair colour Grön g2 · Lila r9 · Turkos t3 · Neonorange 🎃/r16 ·
+  Klarröd e2; beard Trollkarlsskägg r22 · Tomteskägg 🎄/lucia · Dubbelfläta t5 · Morrhår 🎃; headwear Studentmössa 🎓/r11 · Hockeyhjälm g2 ·
+  Dalahatt b3 · Midsommarkrans 🌼/midsommar · Luciakrona 🕯️/lucia · Cowboyhatt t4 · Plommonstop s3 · Kaptensmössa r16 · Sjömansmössa r7 ·
+  Stålhjälm r8 · Pälsmössa ❄️/r13 · Flyghjälm r18 · Pappkrona e1 · Ölhatt m100 · Djävulshorn 🎃 · Häxhatt 🎃 · Nyårshatt 🎆/nyar · Renhorn 🎄 ·
+  Kattöron e2 · Gloria komhem · Blå basker r15 · Generalsmössa r30; glasses Hjärtglas sg10 · Stjärnglas e3 · Ölglasögon m50 · Mässingsglas r12 ·
+  Dykmask t3 · Ögonmask spion · Partyglitter 🎆/nyar · Skyddsmask r20 · Spegelglas r10 · Pixelglas r26; neck Dalahästhänge faltresa ·
+  Supporterhalsduk g2 · Hundbrickor r6 · Kapsylhänge m10 · Medalj i band liga · Visselpipa trumslag · Ljusslinga 🎄 · Guldkedja r24;
+  top Hockeytröja e2 · Dalatröja b8 · Skinnjacka r9 · Kavaj s2 · Studentoverall g3 · Folkdräkt 🌼/midsommar · Jultröja 🎄/lucia · Skeletttröja 🎃 ·
+  Sjömanskrage r10 · Splitterkamo r8 · Pilotjacka r18 · Paraduniform r28 · Bartenderväst b20 · Varselväst hemvarn; background Rutig duk b2 ·
+  Dalahästar g1 · Midsommar 🌼/midsommar · Fjällnorrsken t5 · Stad i natt n5 · Krogen b3 · Valborgsbrasa 🔥/valborg · Halloween 🎃 · Jul 🎄/lucia ·
+  Fyrverkeri 🎆/nyar · Skärgård t3 · Konfetti e2 · Disco n25 · Kartan b15 · Rymden r33 · Ölbubblor m10; held Gitarr e3 · Korv b2 · Mikrofon signal ·
+  Engångskamera k1 · Snapsglas 🌼/midsommar/12-15:12-26 · Pumplykta 🎃 · Glögg 🎄 · Sejdel r12 · Pokal liga · Vattenglas vatten;
+  frame Silver r11 · Guld r21 · Platina r31 · Diamant r40 · Lagerkrans liga · Neon e3 · Eldring s5 · Stjärnring n100 (Gradring = free, follows the rank tier + rank badge).
+- **Art rules:** light from the top left; `cel()` = one highlight rim + one shadow tone on every big shape; feature lines 1.7; hair has back
+  (behind the shoulders), mid (braids in front of the shoulders) and front layers; a hat cuts the front hair at `HCLIP[hw]` and the back hair
+  above y 24. Small size (`.av-pic`, `.av-40`, `.av-face`, ≤ 40 px): flat shapes, face lines × 1.3, no ribbons / fine marks / frame badge.
+  All art is original: no brand logos, no team crests (the football / hockey shirts are only blue-yellow stripes), no copied characters.
+- **Editor v2:** 9 chips in one scroll row (Ansikte · Detaljer · Hår · Skägg · Huvud · Glasögon · Kläder · Hand · Bakgrund) + sub-tabs
+  (e.g. Ansikte: Hudton, Form, Ögon, Ögonfärg, Bryn, Näsa, Mun, Kinder; Kläder: Överdel, Färg, Hals, Medaljer; Bakgrund: Bakgrund, Ram).
+  Sticky nav. Tiles are drawn lazily (IntersectionObserver) and a tap only moves the selection (no full repaint). Colour rows: palette +
+  🎨 "Egen färg" (`<input type=color>`); Hår → Färg also has "Tvåfärgat hår". Each sub-tab has "🔓 Lås vid 🎲" (localStorage `olnu.avKeep`):
+  🎲 leaves those slots alone. Green "Nytt" dots on items you have not seen while usable (`olnu.avSeen`; first run counts every v1 item as seen),
+  on their sub-tab and chip. Locked tile = dim + 🔒 + short need; seasonal tiles show the season emoji; rare tiles a ◆ gem.
+- Test: scratchpad `av2-pw.js` (mocked editor, 43 checks), `av2-live.mjs` (live 0200/0201, 20 checks), `avshow/grid.js` (per-slot grids).
 
 ### RPCs (authenticated only, SECURITY DEFINER, `olnu_uid()`)
 | name | params | returns | errors |

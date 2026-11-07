@@ -79,3 +79,45 @@
 .ave-grid-sw{grid-template-columns:repeat(4,minmax(0,1fr))}
 .ave-tile.sw .ave-nm{display:block;-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;max-width:100%}
 .ave-nm{overflow-wrap:normal;word-break:normal;hyphens:auto}
+
+/* v2 editor: category chips (one scroll row) + sub-tabs, lazy tiles, rarity gem, season badge, "Nytt" dot, 🎲 keep, colour rows */
+.ave-nav{position:sticky;top:calc(-1 * var(--ds-4,16px));z-index:5;display:flex;flex-direction:column;gap:var(--ds-2,8px);padding:var(--ds-2,8px) 0;background:var(--ds-sheet,#121a2a)}
+.ave-nav .ave-tabs{position:static;flex-wrap:nowrap;overflow-x:auto;padding:0 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.ave-nav .ave-tabs::-webkit-scrollbar{display:none}
+.ave-tab{position:relative;flex:0 0 auto;scroll-snap-align:start}
+.ave-subs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:var(--ds-1,4px);scrollbar-width:none}
+.ave-subs::-webkit-scrollbar{display:none}
+.ave-subs[hidden]{display:none}
+.ave-sub{position:relative;flex:0 0 auto;min-height:32px;padding:0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);border:0;background:transparent;color:var(--ds-muted,#a7b0ac);
+  font:600 var(--ds-fs-14,14px)/1 var(--ds-sans,system-ui);cursor:pointer}
+.ave-sub.on{background:var(--ds-raised,#222e48);color:var(--ds-text,#eef0ec)}
+.ave-dot{display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--ds-green,#3ddc84);box-shadow:0 0 0 2px var(--ds-sheet,#121a2a)}
+.has-new > .ave-dot,.ave-tile.is-new > .ave-dot{display:block}
+.ave-tile.is-new > .ave-dot{top:4px;left:4px;right:auto}
+.ave-hd{display:flex;align-items:center;justify-content:space-between;gap:var(--ds-2,8px);margin:0 0 var(--ds-2,8px)}
+.ave-hd h3{margin:0}
+.ave-keep{flex:0 0 auto;min-height:32px;padding:0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);border:1px solid var(--ds-border,rgba(255,255,255,.1));background:transparent;
+  color:var(--ds-muted,#a7b0ac);font:600 var(--ds-fs-12,12px)/1 var(--ds-sans,system-ui);cursor:pointer}
+.ave-keep.on{border-color:var(--ds-amber,#f5a623);color:var(--ds-amber-t,#ffc24d);background:var(--ds-amber-soft,rgba(245,166,35,.14))}
+.ave-grid{contain:layout paint}
+.ave-tile{content-visibility:auto;contain-intrinsic-size:auto 104px}
+.ave-art:empty{background:var(--ds-raised,#222e48)}
+.ave-gem{position:absolute;top:5px;right:5px;width:9px;height:9px;transform:rotate(45deg);border-radius:2px;background:#3ddc84}
+.ave-tile.r2 .ave-gem{background:#4aa3ff}.ave-tile.r3 .ave-gem{background:#b26bff}.ave-tile.r4 .ave-gem{background:#ffc24d;box-shadow:0 0 6px #ffc24d}
+.ave-tile.locked .ave-gem{opacity:.6}
+.ave-tile.locked .ave-lk{top:auto;bottom:24px;right:auto;left:50%;transform:translateX(-50%)}
+.ave-sz{position:absolute;top:2px;left:50%;transform:translateX(-50%);font-size:12px;line-height:1}
+.ave-cols{margin:0 0 var(--ds-3,12px)}
+.ave-cols h4{margin:var(--ds-3,12px) 0 var(--ds-2,8px);font-size:var(--ds-fs-14,14px);color:var(--ds-text-2,#c9d0cd)}
+.ave-colrow{display:flex;gap:var(--ds-2,8px);overflow-x:auto;padding:4px 2px 6px;scrollbar-width:none}
+.ave-colrow::-webkit-scrollbar{display:none}
+.ave-cs{position:relative;flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);cursor:pointer;padding:0;
+  display:grid;place-items:center;font-size:13px;color:#fff;background:var(--ds-raised,#222e48)}
+.ave-cs.on{border-color:var(--ds-amber,#f5a623);box-shadow:0 0 0 2px var(--ds-sheet,#121a2a) inset}
+.ave-cs.locked{opacity:.5}
+.ave-cs.ave-none{width:auto;padding:0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);font:600 var(--ds-fs-12,12px)/1 var(--ds-sans,system-ui);color:var(--ds-text-2,#c9d0cd)}
+.ave-own{overflow:hidden;background:conic-gradient(#ff5a5a,#ffd36b,#3ddc84,#4aa3ff,#b26bff,#ff5a5a)}
+.ave-own input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.ave-grid .ave-own{width:44px;height:44px;margin:auto}
+.ave-tile:focus-visible,.ave-cs:focus-visible,.ave-sub:focus-visible,.ave-keep:focus-visible{outline:2px solid var(--ds-amber-t,#ffc24d);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.ave-nav .ave-tabs{scroll-behavior:auto}}
