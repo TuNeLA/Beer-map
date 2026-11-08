@@ -1216,7 +1216,7 @@
     // the precision bubble goes over the toasts when both show (never on top of each other)
     var tt = top("#toasts > .toast", 0), h = Math.round(innerHeight - Math.min(t, tt) + 8) + "px";
     if (R.style.getPropertyValue("--pn-hint-b") !== h) R.style.setProperty("--pn-hint-b", h);
-    var dk = document.querySelector(".dock"), db = dk && dk.getClientRects().length ? Math.round(innerHeight - dk.getBoundingClientRect().top) + "px" : "";   // the bubble lives in the dock
+    var dk = document.querySelector(".dock"), db = dk && dk.getClientRects().length ? Math.max(0, Math.round(innerHeight - dk.getBoundingClientRect().bottom)) + "px" : "";   // ds43: the bubble is absolute in the dock, whose bottom is (normally) the screen bottom
     if (db && R.style.getPropertyValue("--pn-dock-top-b") !== db) R.style.setProperty("--pn-dock-top-b", db);
   }
   var tm = 0;
@@ -1301,7 +1301,7 @@
     if (!A || !A.map || !A.map.on) { setTimeout(hook, 1500); return; }
     A.map.on("moveend", function () { clearTimeout(tm); tm = setTimeout(check, 1800); });
   }
-  document.addEventListener("pn:calm", function () { setTimeout(hook, 0); }, { once: true });
+  if (window.__pnCalm) setTimeout(hook, 0); else document.addEventListener("pn:calm", function () { setTimeout(hook, 0); }, { once: true });   // ds43: calm may have come first
   setTimeout(function () { if (!window.__pnCalm) hook(); }, 9000);
 })();
 /* ds39 ux2 END */
