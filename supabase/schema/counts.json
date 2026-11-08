@@ -1,46 +1,46 @@
 {
-  "generated_at": "2026-11-08T01:49:52.219089+00:00",
+  "generated_at": "2026-11-08T02:04:22.452743+00:00",
   "postgres": "PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
   "catalog_counts": {
-    "tables": 185,
-    "functions": 758,
-    "sequences": 60,
+    "tables": 189,
+    "functions": 781,
+    "sequences": 61,
     "views": 1,
-    "indexes": 390,
+    "indexes": 397,
     "triggers": 92,
-    "constraints": 359,
+    "constraints": 363,
     "policies": 0,
-    "rls_tables": 185,
-    "secdef_functions": 645
+    "rls_tables": 189,
+    "secdef_functions": 665
   },
   "snapshot_counts": {
-    "tables": 185,
-    "columns": 1347,
-    "functions": 758,
-    "security_definer_functions": 645,
+    "tables": 189,
+    "columns": 1378,
+    "functions": 781,
+    "security_definer_functions": 665,
     "trigger_functions": 68,
-    "sequences": 60,
+    "sequences": 61,
     "views": 1,
-    "indexes_total": 390,
-    "indexes_standalone": 194,
-    "constraints": 359,
+    "indexes_total": 397,
+    "indexes_standalone": 197,
+    "constraints": 363,
     "constraints_by_type": {
-      "p": 182,
+      "p": 186,
       "u": 14,
       "c": 139,
       "f": 23,
       "t": 1
     },
     "triggers": 92,
-    "rls_tables": 185,
+    "rls_tables": 189,
     "policies": 0,
     "extensions": 6,
     "cron_jobs": 1,
     "function_execute": {
       "public_grant": 10,
-      "anon_grant": 42,
-      "authenticated_grant": 365,
-      "service_role_only": 393
+      "anon_grant": 43,
+      "authenticated_grant": 374,
+      "service_role_only": 407
     }
   }
 }

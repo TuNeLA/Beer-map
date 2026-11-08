@@ -160,6 +160,9 @@ functions/helg_remind_targets(uuid).sql
 functions/helg_state().sql
 functions/hide_quote(bigint).sql
 functions/home_status(boolean).sql
+functions/ikvall_prompt_claim(integer).sql
+functions/ikvall_prompt_get().sql
+functions/ikvall_prompt_set(boolean).sql
 functions/ikvall_set(text).sql
 functions/ikvall_status(uuid).sql
 functions/import_event_towns().sql
@@ -178,8 +181,12 @@ functions/join_group(text,text).sql
 functions/join_preview(text).sql
 functions/kebab_place(text).sql
 functions/kebab_top(double precision,double precision,integer).sql
+functions/knuff_inbox().sql
+functions/knuff_push_claim(bigint,uuid).sql
+functions/knuff_send(bigint).sql
 functions/leave_group(uuid).sql
 functions/like_msg(bigint).sql
+functions/link_preview(text,text).sql
 functions/live_beers().sql
 functions/live_checkins().sql
 functions/live_others().sql
@@ -216,6 +223,7 @@ functions/my_night_log(timestamp with time zone).sql
 functions/my_night_report(boolean).sql
 functions/my_passport().sql
 functions/my_past_events(integer).sql
+functions/my_places().sql
 functions/my_push_prefs().sql
 functions/my_rallies().sql
 functions/my_removals().sql
@@ -428,6 +436,16 @@ functions/olnu_gh_name(uuid,uuid).sql
 functions/olnu_gone_count(text).sql
 functions/olnu_group_admin(uuid,uuid).sql
 functions/olnu_group_keeps(uuid).sql
+functions/olnu_gw_client_key().sql
+functions/olnu_gw_dalarna(text).sql
+functions/olnu_gw_mates(uuid,uuid).sql
+functions/olnu_gw_my_bars(uuid).sql
+functions/olnu_gw_name_for(uuid,uuid).sql
+functions/olnu_gw_place_medals(uuid).sql
+functions/olnu_gw_town_progress(uuid).sql
+functions/olnu_gw_walk_advance(bigint).sql
+functions/olnu_gw_walk_claim(bigint,integer).sql
+functions/olnu_gw_walk_state(gw_walk_timers).sql
 functions/olnu_heat(double precision,double precision,double precision,double precision,integer).sql
 functions/olnu_heat_cell(double precision,double precision,boolean).sql
 functions/olnu_helg_calc(uuid,timestamp with time zone).sql
@@ -755,6 +773,11 @@ functions/walk_end(bigint,text,text).sql
 functions/walk_ping(bigint,double precision,double precision,double precision).sql
 functions/walk_poll().sql
 functions/walk_start(double precision,double precision,text[],uuid[],uuid,double precision,double precision,double precision,text).sql
+functions/walk_timer_due_claim(integer).sql
+functions/walk_timer_ok(bigint).sql
+functions/walk_timer_push_claim(bigint).sql
+functions/walk_timer_set(bigint,integer).sql
+functions/walk_timer_tick().sql
 functions/wall_of_fame(double precision,double precision,double precision).sql
 functions/wall_of_fame_v2(double precision,double precision,double precision).sql
 functions/zone_counts(boolean).sql
