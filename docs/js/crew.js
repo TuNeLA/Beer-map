@@ -710,6 +710,7 @@
         icon: window.L.divIcon({ className: "cr-rp-dot", html: '<span style="--c:' + m.color + '">' + esc((m.is_me ? L("Du", "You") : m.name || "?").slice(0, 2)) + "</span>", iconSize: [28, 28], iconAnchor: [14, 14] }) });
       m.shown = false; m.nextIdx = 0;
     });
+    try { pts.forEach(function (q) { if (q.kind === "area") window.L.circle([q.lat, q.lng], { pane: "crewreplay", radius: 250, stroke: false, fillColor: mem[q.k] ? mem[q.k].color : "#ffc24d", fillOpacity: 0.16, interactive: false }).addTo(layer); }); } catch (e) {}   // bold 0382: fuzzy home stop
     var bounds = pts.map(function (q) { return [q.lat, q.lng]; });
     if (bounds.length === 1) A.map.setView(bounds[0], 15);
     else A.map.fitBounds(bounds, { paddingTopLeft: [40, 140], paddingBottomRight: [40, 230], maxZoom: 16 });
@@ -742,7 +743,7 @@
     }
     function burst(q, color) {
       var mk = window.L.marker([q.lat, q.lng], { pane: "crewreplay", interactive: false, keyboard: false,
-        icon: window.L.divIcon({ className: "cr-rp-burst", html: '<span style="--c:' + color + '">' + (q.kind === "ci" ? "📍" : "✨") + "</span>", iconSize: [36, 36], iconAnchor: [18, 18] }) }).addTo(layer);
+        icon: window.L.divIcon({ className: "cr-rp-burst", html: '<span style="--c:' + color + '">' + (q.kind === "ci" ? "📍" : q.kind === "area" ? "🏠" : "✨") + "</span>", iconSize: [36, 36], iconAnchor: [18, 18] }) }).addTo(layer);
       setTimeout(function () { try { layer.removeLayer(mk); } catch (e) {} }, 1400);
     }
     function draw(pos, live) {
