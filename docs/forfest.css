@@ -139,3 +139,11 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
   .ff,.ff-card,.ff-mode,.ff-cb,.ff-cb::after{transition:none !important}
   .ff-card.in-r,.ff-card.in-l{animation:none !important}
 }
+/* gms07 START */
+/* gm07: "Lämna spelet?" box (Stanna kvar = the one amber), "‹ Förra" with a label */
+.ff-foot .ff-prev{width:auto;padding:0 16px;border-radius:var(--r-xl);font-size:var(--fs-16)}
+.ff-ask{position:absolute;inset:0;z-index:20;background:rgba(4,8,16,.74);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.ff-ask-c{width:100%;max-width:520px;border-radius:var(--r-xl);padding:20px 16px 14px;background:#19233a;border:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:10px;text-align:center}
+.ff-ask-c h2{margin:0;font-size:var(--fs-22)} .ff-ask-c p{margin:0 0 6px;opacity:.85}
+.ff-ask-stay{min-height:52px;border-radius:var(--r-xl);border:0;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font-size:var(--fs-18);font-weight:700}
+/* gms07 END */

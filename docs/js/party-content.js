@@ -253,7 +253,7 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
     "t|Ny melodifestivallåt: skriv titeln.",
     "t|Varför ä Ludvika bäst? Ljug om du måste.",
     "t|Vad ropar man när man tappar ölen?",
-    "t|Hitta på ett nytt OS-gren för fulla.",
+    "t|Hitta på en ny OS-gren för en förfest.",
     "t|Vad står på {namn}s nummerplåt?",
     "t|Ett nytt namn på Systembolaget.",
     "t|Det bästa med att vara bakfull (ljug).",
@@ -281,29 +281,31 @@ window.PARTY_CONTENT = window.PARTY_CONTENT || {
     "En bil?", "Värsta grönsaken?", "Bästa julmaten?", "Ett yrke för en pirat?", "En sak i kylen?",
     "Bästa tiden att gå hem från krogen?", "En dalahästfärg?", "Bästa fikabrödet?", "Ett militärt fordon?",
     "Den bästa superhjälten?", "Ett ord man säger när man ä full?", "Ett fjäll?",
-    "Bästa låten att sjunga på karaoke?", "En frukt?", "Bästa tv-serien?", "Ett snapsvisans namn?",
+    "Bästa låten att sjunga på karaoke?", "En frukt?", "Bästa tv-serien?", "En snapsvisa?",
     "Bästa platsen att bo i Sverige?", "En sak man glömmer på krogen?", "Bästa hockeylaget?", "Ett fotbollslag?",
     "En kändis du vill ta en öl med?", "Bästa stället att kyssas på?", "En sak i en ryggsäck i lumpen?",
     "Det godaste på hamburgaren?", "Bästa årstiden?", "Ett spel på telefonen?", "En sak du gör bakfull?",
     "Bästa smaken på cider?", "En svensk maträtt?", "Ett instrument?", "Bästa djuret att vara?",
     "En sak som ä röd?", "Ett namn på en båt?", "Bästa flygplatsen?", "Bästa ostsorten?", "En sak på julbordet?",
     "Värsta ljudet?", "Bästa semesterorten i Sverige?", "Ett ord som rimmar på öl?", "Bästa kortspelet?",
-    "En kändis från Dalarna?", "Godaste såsen?", "Bästa öl-snacksen?"
+    "En kändis från Dalarna?", "Godaste såsen?", "Bästa öl-snacksen?",
+    "En sak man alltid glömmer hemma?", "Bästa pålägget på en smörgås?", "Ett ord som beskriver måndagar?", "Bästa godiset i lösvikt?", "En sak man hittar i en bilstol?", "Bästa stället att gå på dejt?", "Ett namn på en katt?", "En sak man gör på midsommar?", "Bästa grillkorven?", "En sak som luktar gott?", "Ett djur som vore en bra kompis?", "Den tråkigaste sporten?", "En sak man köper på en bensinmack?", "En låt alla kan texten till?", "Bästa pizzatoppingen?", "En sak man säger till en dörrvakt?", "En stad man vill flytta till?", "Bästa tecknade figuren?", "En sak man packar till fjällen?", "Bästa såsen till pommes?"
   ],
 
   /* Vågen: one player sees the target and says a clue. */
   vagen: [
-    "Kallt|Varmt", "Nykter|Asfull", "Dålig raggningsreplik|Bra raggningsreplik", "Tråkigt|Roligt", "Billigt|Dyrt",
+    "Kallt|Varmt", "Lugn kväll|Vild kväll", "Dålig raggningsreplik|Bra raggningsreplik", "Tråkigt|Roligt", "Billigt|Dyrt",
     "Mjukt|Hårt", "Överskattat|Underskattat", "Hälsosamt|Ohälsosamt", "Lätt|Svårt", "Fult|Snyggt", "Fegt|Modigt",
     "Liten|Stor", "Lugnt|Kaos", "Dåligt band|Bra band", "Smaklöst|Smakrikt", "Lantligt|Storstad", "Barnsligt|Vuxet",
     "Nyttigt|Onyttigt", "Värsta maten|Bästa maten", "Ofarligt|Livsfarligt", "Lukt: äckligt|Lukt: underbart",
     "Pinsamt|Coolt", "Gammaldags|Modernt", "Sover|Fest", "Mesig öl|Stark öl", "Taskigt jobb|Drömjobb",
-    "Kass superkraft|Grym superkraft", "Normal|Konstig", "Tyst|Högljutt", "Dalarna|Inte Dalarna",
+    "Kass superkraft|Grym superkraft", "Normal|Konstig", "Tyst|Högljutt", "Minst Dalarna|Mest Dalarna",
     "Värdelöst i lumpen|Ovärderligt i lumpen", "Dålig ursäkt|Bra ursäkt", "Romantiskt|Oromantiskt", "Snabbt|Långsamt",
     "Kändis: okänd|Kändis: superkänd", "Tjockt|Tunt", "Sött|Salt", "Vardag|Fest", "Fryser|Svettas",
-    "Dålig present|Bra present", "Söndag|Fredag", "Lätt att säga full|Svårt att säga full", "Skräpmat|Finmat",
+    "Dålig present|Bra present", "Söndag|Fredag", "Lätt att uttala|Omöjligt att uttala", "Skräpmat|Finmat",
     "Hatad|Älskad", "Vanligt namn|Ovanligt namn", "Torrt|Blött", "Mesigt djur|Farligt djur", "Låg rang|Hög rang",
-    "Dålig dansmove|Bra dansmove", "Morgonmänniska|Nattmänniska"
+    "Dålig dansmove|Bra dansmove", "Morgonmänniska|Nattmänniska",
+    "Lugn morgon|Stressig morgon", "Fin tradition|Konstig tradition", "Dålig film|Mästerverk", "Lätt att lära sig|Tar ett helt liv", "Tyst kompis|Pratig kompis", "Bra semester|Katastrofsemester", "Okej i bastun|Absolut inte i bastun", "Bra på en fest|Dåligt på en fest", "Gammal gubbe|Ung och hipp", "Lätt att förlåta|Omöjligt att förlåta", "Vardagsmat|Festmat", "Kul hobby|Tråkig hobby"
   ],
 
   /* Lines. Pick randomly, many variants. {n} = a name. */

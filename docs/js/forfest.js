@@ -29,7 +29,7 @@
       pick: "Välj läge", cards: "{0} kort", nodrink: "🥤 Utan dricka", nodrinkSub: "Straffen blir knäböj, armhävningar och komplimanger.",
       fine: "Ingen måste göra nåt: säg pass och ta ett annat straff. Ta vatten emellan. 18+.",
       loading: "Laddar korten…", loadFail: "Korten kunde int' laddas. Öppna appen med nät en gång, sen funkar dä offline.",
-      next: "Nästa ›", prev: "‹", hint: "Tryck eller svep för nästa kort", back: "‹ Lägen", close: "Stäng",
+      next: "Nästa ›", prev: "‹ Förra", hint: "Tryck eller svep för nästa kort", back: "‹ Lägen", close: "Stäng",
       again: "🔀 Blanda om", toStart: "Till startsidan", awake: "Skärmen hålls vaken", left: "{0} kvar",
       virusLeft: "{0} kort kvar", svOnly: "",
       modes: {
@@ -48,7 +48,7 @@
       pick: "Pick a mode", cards: "{0} cards", nodrink: "🥤 No drinks", nodrinkSub: "Penalties become squats, push-ups and compliments.",
       fine: "Drink slowly and have water in between. Nobody has to drink: say pass and do another penalty. 18+.",
       loading: "Loading the cards…", loadFail: "Could not load the cards. Open the app online once, then it works offline.",
-      next: "Next ›", prev: "‹", hint: "Tap or swipe for the next card", back: "‹ Modes", close: "Close",
+      next: "Next ›", prev: "‹ Back", hint: "Tap or swipe for the next card", back: "‹ Modes", close: "Close",
       again: "🔀 Shuffle again", toStart: "To the start", awake: "Screen stays on", left: "{0} left",
       virusLeft: "{0} cards left", svOnly: "The cards are in Swedish (Dalarna dialect).",
       modes: {
@@ -313,9 +313,25 @@
     });
     return root;
   }
+  // gm07: a running deck asks before it is thrown away (✕, ‹ Lägen, Android back)
+  function ffMid() { return !!(st && st.playing && st.pos >= 0); }
+  function ffAsk(onGo) {
+    if (!ffMid()) { onGo(); return; }
+    var old = root.querySelector(".ff-ask"); if (old) old.remove();
+    var box = el("div", { class: "ff-ask", role: "alertdialog", "aria-modal": "true", "aria-label": en() ? "Leave the game?" : "Lämna spelet?" });
+    var card = el("div", { class: "ff-ask-c" }, [
+      el("h2", { text: en() ? "Leave the game?" : "Lämna spelet?" }),
+      el("p", { text: en() ? "The deck starts over next time." : "Kortleken börjar om nästa gång." }),
+      el("button", { type: "button", class: "ff-ask-stay", text: en() ? "Stay" : "Stanna kvar", onclick: function () { box.remove(); } }),
+      el("button", { type: "button", class: "ff-tb ff-ask-go", text: en() ? "Leave the game" : "Lämna spelet", onclick: function () { box.remove(); onGo(); } })
+    ]);
+    box.addEventListener("click", function (e) { if (e.target === box) box.remove(); });
+    box.appendChild(card); root.appendChild(box);
+    try { card.querySelector(".ff-ask-stay").focus(); } catch (e) {}
+  }
   window.addEventListener("popstate", function () {
     if (!root || root.hidden || !st) return;
-    if (st.playing && !st.closing) { toStart(); try { history.pushState({ ff: 1 }, ""); } catch (e) {} }
+    if (st.playing && !st.closing) { try { history.pushState({ ff: 1 }, ""); } catch (e) {} var a = root.querySelector(".ff-ask"); if (a) { a.remove(); return; } ffAsk(toStart); }
     else close(true);
   });
   function open(g) {
@@ -458,10 +474,10 @@
     root.innerHTML = "";
     var info = T("modes")[st.mode];
     var top = el("div", { class: "ff-top" }, [
-      el("button", { type: "button", class: "ff-tb ff-back", text: T("back"), onclick: function () { toStart(); } }),
+      el("button", { type: "button", class: "ff-tb ff-back", text: T("back"), onclick: function () { ffAsk(toStart); } }),
       el("span", { class: "ff-tm" }, [el("span", { text: MODE_EMO[st.mode] + " " + info[0] }), el("span", { class: "ff-cnt" })]),
       el("span", { class: "ff-awake", title: T("awake"), "aria-label": T("awake"), hidden: true, text: "🔆" }),
-      el("button", { type: "button", class: "ff-tb ff-x", "aria-label": T("close"), text: "✕", onclick: function () { close(); } })
+      el("button", { type: "button", class: "ff-tb ff-x", "aria-label": T("close"), text: "✕", onclick: function () { ffAsk(function () { close(); }); } })
     ]);
     root.appendChild(top);
     root.appendChild(el("div", { class: "ff-vir", "aria-live": "polite" }));

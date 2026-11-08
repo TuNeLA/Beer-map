@@ -19,15 +19,15 @@
   try { reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
 
   var GAMES = {
-    imposter: { emo: "🕵️", name: "Imposter", sub: "Alla utom en ser det hemliga ordet. Ett ord var, högt. Hitta impostern!", n: "3–16 spelare", t: "5–10 min",
+    imposter: { emo: "🕵️", name: "Imposter", sub: "Alla utom en ser det hemliga ordet. Ett ord var, högt. Hitta impostern!", n: "3–16 spelare", t: "5–10 min", one: "Alla utom en får ett hemligt ord. Säg ett ord var om det – och rösta ut den som bluffar.",
       how: ["Alla ser ordet på sin lur, utom impostern.", "Säg ETT ord var om ordet, i tur och ordning. 1–3 varv.", "Rösta på lurarna. Åker impostern dit får hen en chans att gissa ordet och stjäla segern."] },
-    survivor: { emo: "🔥", name: "Östra lägret", sub: "Utmaning, prat, hemlig röstning. En åker ut varje runda. Juryn utser vinnaren.", n: "3–16 spelare", t: "15–25 min",
+    survivor: { emo: "🔥", name: "Östra lägret", sub: "Utmaning, prat, hemlig röstning. En åker ut varje runda. Juryn utser vinnaren.", n: "3–16 spelare", t: "15–25 min", one: "Prata, smickra, lova. Rösta ut en i taget. När två är kvar utser juryn vinnaren.",
       how: ["Värdens skärm visar en utmaning. Prata, övertyga, smickra.", "Rösta i hemlighet. Flest röster åker ut och blir jury.", "När två ä kvar röstar juryn fram vinnaren."] },
-    hatten: { emo: "🎩", name: "Namn i hatten", sub: "Alla svarar på sin lur. Lapparna dras en och en på storskärmen.", n: "3–16 spelare", t: "10–20 min",
+    hatten: { emo: "🎩", name: "Namn i hatten", sub: "Alla svarar på sin lur. Lapparna dras en och en på storskärmen.", n: "3–16 spelare", t: "10–20 min", one: "Alla svarar på frågan i hemlighet. Lapparna läses upp en i taget – rösta på det bästa svaret.",
       how: ["Värden visar en fråga: \"Vem i gruppen…?\" eller \"Skriv ett påhittat svar\".", "Alla svarar i hemlighet på sin lur.", "Lapparna dras en och en. Rösta på bästa svaret, poäng till den som skrev."] },
-    flocken: { emo: "🐑", name: "Flocken", sub: "Svara som de flesta. Flocken får poäng, den ensamma får 🥾 Kängan.", n: "3–16 spelare", t: "~10 min",
+    flocken: { emo: "🐑", name: "Flocken", sub: "Svara som de flesta. Flocken får poäng, den ensamma får 🥾 Kängan.", n: "3–16 spelare", t: "~10 min", one: "Skriv det svar du tror att DE FLESTA skriver. Den som står ensam får 🥾 Kängan.",
       how: ["Värden visar en fråga, t.ex. \"Bästa ölen?\"", "Alla skriver ETT svar på sin lur.", "Störst grupp får +1. Den enda som svarade annorlunda får Kängan och kan int' vinna."] },
-    vagen: { emo: "📡", name: "Radarn", sub: "Siaren ser målet på skalan och säger en ledtråd. Alla drar reglaget.", n: "3–12 spelare", t: "10–15 min",
+    vagen: { emo: "📡", name: "Radarn", sub: "Siaren ser målet på skalan och säger en ledtråd. Alla drar reglaget.", n: "3–12 spelare", t: "10–15 min", one: "En siare ser målet på en skala och säger en ledtråd. Alla drar reglaget dit de tror.",
       how: ["En siare per runda ser var målet ligger mellan två ytterligheter (Kallt–Varmt).", "Siaren säger EN ledtråd högt.", "Alla andra drar reglaget på sin lur. Närmast målet får mest poäng."] }
   };
   var ORDER = ["imposter", "survivor", "hatten", "flocken", "vagen"];
@@ -107,10 +107,32 @@
     if (root && document.body.contains(root)) return root;
     root = el("div", { id: "pt", class: "pt", role: "dialog", "aria-modal": "true", "aria-label": "Partyspel", hidden: true });
     document.body.appendChild(root);
-    root.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); close(); } });
+    root.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); var a = root.querySelector(".pt-ask"); if (a) a.remove(); else safeClose(); } });
     return root;
   }
-  window.addEventListener("popstate", function () { if (root && !root.hidden && !closing) close(true); });
+  window.addEventListener("popstate", function () {
+    if (!root || root.hidden || closing) return;
+    if (midGame()) { try { history.pushState({ pt: 1 }, ""); } catch (e) {} var a = root.querySelector(".pt-ask"); if (a) a.remove(); else safeClose(); return; }
+    close(true);
+  });
+  // gm04: mid-game = a running round in my room. Then ✕ / Esc / Android back ask "Lämna spelet?" first.
+  function midGame() { return !!(R && R.d && R.d.phase !== "lobby" && R.d.phase !== "end" && R.d.me && R.d.me.status !== "left"); }
+  function safeClose() {
+    if (!midGame()) { close(); return; }
+    var old = root.querySelector(".pt-ask"); if (old) old.remove();
+    var box = el("div", { class: "pt-ask", role: "alertdialog", "aria-modal": "true", "aria-label": "Lämna spelet?" });
+    var card = el("div", { class: "pt-ask-c" }, [
+      el("h2", { class: "pt-h2", text: "Lämna spelet?" }),
+      el("p", { class: "pt-p pt-mute", text: R.d.me.is_host ? "Spelet fortsätter för de andra. Nån annan blir värd." : "Spelet fortsätter för de andra. Du kan hoppa in igen med koden " + R.d.code + "." }),
+      btn("Stanna kvar", "pt-go pt-xl", function () { box.remove(); }),
+      btn("🚪 Lämna spelet", "pt-alt", function () { box.remove(); act("leave").then(function () { close(); }); })
+    ]);
+    box.addEventListener("click", function (e) { if (e.target === box) box.remove(); });
+    box.appendChild(card); root.appendChild(box);
+    try { card.querySelector(".pt-go").focus(); } catch (e) {}
+  }
+  // gm04: sessionStorage survives a reload of this tab → party.js opens the room again at once
+  function inMark(id) { try { if (id) sessionStorage.setItem("olnu.party.in", JSON.stringify({ room: id, t: Date.now() })); else sessionStorage.removeItem("olnu.party.in"); } catch (e) {} }
   var closing = false;
   function isOpen() { return !!(root && !root.hidden); }
   function open(api, opts) {
@@ -128,11 +150,17 @@
     A.rpc("party_mine").then(function (r) {
       if (!isOpen() || R) return;
       var d = r && !r.error ? A.parseData(r.data) : null;
-      if (d && d.room && (!opts.group || !d.room.group_id || d.room.group_id === opts.group.id)) attach(d.room.id);
-      else renderStart(opts.group || null, null);
+      if (d && d.room && (!opts.group || !d.room.group_id || d.room.group_id === opts.group.id)) { attach(d.room.id); return; }
+      if (!opts.group || !opts.group.id) { renderStart(null, null); return; }
+      A.rpc("party_group", { p_group_id: opts.group.id }).then(function (r2) {
+        if (!isOpen() || R) return;
+        var g2 = r2 && !r2.error ? A.parseData(r2.data) : null, rm = g2 && g2.room;
+        if (rm && rm.is_in) attach(rm.id); else renderStart(opts.group, rm && rm.code ? rm.code : null);
+      });
     });
   }
   function close(fromPop) {
+    inMark(null);
     if (!fromPop) { try { if (history.state && history.state.pt) { closing = true; history.back(); } } catch (e) {} }
     stopPoll(); lockOff(); stopAuto();
     if (rotT) { clearInterval(rotT); rotT = null; }
@@ -178,7 +206,7 @@
       R.inflight = false;
       if (r.error) {
         var c = errCode(r.error);
-        if (c === "not_in_room" || c === "room_not_found") { var g = groupOf(); R = null; stopPoll(); toast(ERR[c]); renderStart(g, null); }
+        if (c === "not_in_room" || c === "room_not_found") { var g = groupOf(); R = null; stopPoll(); inMark(null); toast(ERR[c]); renderStart(g, null); }
         else if (c === "missing") { close(); }
         else { R.net = (R.net | 0) + 1; markNet(); }
         return;
@@ -196,7 +224,7 @@
   function setView(d) {
     if (!R) return;
     var prev = R.d;
-    R.v = d.v; R.d = d;
+    R.v = d.v; R.d = d; inMark(d.id);
     if (prev && (prev.phase !== d.phase || prev.round !== d.round || prev.game_no !== d.game_no)) {
       R.lines = {};
       if (!d.me.is_host) buzz(prev.phase === "lobby" ? [40, 60, 40] : 30);
@@ -219,7 +247,7 @@
         return null;
       }
       var d = A.parseData(r.data);
-      if (d.left) { var g = groupOf(); R = null; stopPoll(); renderStart(g, null); return d; }
+      if (d.left) { var g = groupOf(); R = null; stopPoll(); inMark(null); renderStart(g, null); return d; }
       if (d.closed) { renderClosed(d); return d; }
       setView(d);
       return d;
@@ -238,8 +266,10 @@
     if (n) { try { n.focus({ preventScroll: true }); if (n.setSelectionRange && f.s != null) n.setSelectionRange(f.s, f.e); } catch (e) {} }
   }
   function frame(cls) {
+    var keepAsk = root.querySelector(".pt-ask");   // gm13: an open exit box survives a redraw while the round runs
     root.className = "pt " + (cls || "");
     root.innerHTML = "";
+    if (keepAsk && midGame()) setTimeout(function () { if (root && !root.querySelector(".pt-ask")) root.appendChild(keepAsk); }, 0);
     var body = el("div", { class: "pt-body" });
     root.appendChild(body);
     return body;
@@ -251,9 +281,9 @@
       bar.appendChild(el("span", { class: "pt-code", "aria-label": "Rumskod " + d.code, text: "🎲 " + d.code }));
       bar.appendChild(el("span", { class: "pt-tt", text: d.phase === "lobby" ? "Lobby" : g.emo + " " + g.name }));
       bar.appendChild(el("span", { class: "pt-net", hidden: true, title: "Dåligt nät", text: "📡" }));
-      bar.appendChild(btn("⋯", "pt-ib", function () { R.menu = !R.menu; render(); }, { "aria-label": "Meny" }));
+      bar.appendChild(btn("⋯ Meny", "pt-ibt", function () { R.menu = !R.menu; render(); }, { "aria-label": "Meny", "aria-expanded": String(!!R.menu) }));
     } else bar.appendChild(el("span", { class: "pt-kick", text: "🎲 Partyspel" }));
-    bar.appendChild(btn("✕", "pt-ib", function () { close(); }, { "aria-label": "Stäng" }));
+    bar.appendChild(btn("✕", "pt-ib", function () { safeClose(); }, { "aria-label": "Stäng" }));
     body.appendChild(bar);
     if (d && R.menu) {
       var m = el("div", { class: "pt-menu" });
@@ -271,7 +301,7 @@
     body.appendChild(el("div", { class: "pt-center" }, [el("div", { class: "pt-spin", "aria-hidden": "true", text: "🎲" }), el("p", { text: "Laddar rummet…" })]));
   }
   function renderClosed(d) {
-    stopPoll(); lockOff();
+    stopPoll(); lockOff(); inMark(null);
     var g = groupOf(); R = null;
     var body = frame("pt-s");
     topBar(body, null);
@@ -290,7 +320,8 @@
     topBar(body, null);
     body.appendChild(el("div", { class: "pt-hero" }, [
       el("h1", { class: "pt-h1", text: "Partyspel" }),
-      el("p", { class: "pt-tag", text: "Alla spelar på sin egen lur. Värdens lur ä storskärmen: ställ den mitt på bordet." })
+      el("p", { class: "pt-tag", text: "Alla spelar på sin egen lur. Värdens lur ä storskärmen: ställ den mitt på bordet." }),
+      GAMES[prefs().game] && !code ? el("p", { class: "pt-sub pt-chosen", text: "Valt spel: " + GAMES[prefs().game].emo + " " + GAMES[prefs().game].name + " · du kan byta i lobbyn." }) : null
     ]));
     var nameInp = el("input", { class: "pt-inp", type: "text", maxlength: "20", placeholder: "Ditt namn", "aria-label": "Ditt namn", autocomplete: "nickname", enterkeyhint: "done", "data-key": "name" });
     nameInp.value = myName();
@@ -316,7 +347,7 @@
         attachView(d);
       });
     };
-    var jb = btn(code ? "🔑 GÅ MED I " + code : "🔑 Gå med", "pt-go" + (code ? " pt-xl" : ""), join);
+    var jb = btn(code ? "🔑 GÅ MED I " + code : "🔑 Gå med", code ? "pt-go pt-xl" : "pt-alt", join);
     codeInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); join(); } });
     var create = btn("🎲 Skapa rum" + (group && group.name ? " · " + group.name : ""), code ? "pt-alt" : "pt-go pt-xl", function () {
       var n = nm(); if (!n) return;
@@ -523,8 +554,11 @@
         el("div", { class: "pt-jk", text: "Gå med: skanna eller skriv koden" }),
         el("div", { class: "pt-bigcode", "aria-label": "Kod " + d.code.split("").join(" "), text: d.code }),
         el("div", { class: "pt-row" }, [
-          btn("📋 Kopiera länk", "pt-small", function () { try { A.copyText(link); } catch (e) {} }),
-          navigator.share ? btn("📤 Dela", "pt-small", function () { navigator.share({ title: "PintsNow Partyspel", text: "Hoppa in i partyrum " + d.code + " 🎲", url: link }).catch(function () {}); }) : null
+          btn("📤 Bjud in till spelet", "pt-small pt-inv", function () {
+            var txt = "Hoppa in i partyrum " + d.code + " 🎲", copy = function () { try { A.copyText(txt + " " + link); } catch (e) {} toast("📋 Länken ä kopierad. Klistra in den i er chatt.", { id: "party-copy" }); };
+            if (navigator.share) navigator.share({ title: "PintsNow Partyspel", text: txt, url: link }).catch(function (e) { if (!e || e.name !== "AbortError") copy(); }); else copy();
+          }),
+          btn("📋 Kopiera länk", "pt-small", function () { try { A.copyText(link); } catch (e) {} toast("📋 Länken ä kopierad.", { id: "party-copy" }); })
         ])
       ]), qr
     ]));
@@ -556,7 +590,8 @@
     });
     gs.appendChild(grid);
     var g = GAMES[d.game];
-    gs.appendChild(el("p", { class: "pt-sub", text: g.sub + " " + g.t + "." }));
+    gs.appendChild(el("p", { class: "pt-one" }, [el("b", { text: "Så spelar ni: " }), g.one || g.sub]));
+    gs.appendChild(el("p", { class: "pt-sub", text: g.n + " · " + g.t }));
     gs.appendChild(optionsUI(d.game, active.length));
     main.appendChild(gs);
 
@@ -639,7 +674,8 @@
     ]));
     var how = el("ol", { class: "pt-how" });
     g.how.forEach(function (x) { how.appendChild(el("li", { text: x })); });
-    main.appendChild(el("section", { class: "pt-card g-" + d.game }, [el("h2", { class: "pt-h2", text: g.emo + " " + g.name }), el("p", { class: "pt-sub", text: g.n + " · " + g.t }), how]));
+    main.appendChild(el("section", { class: "pt-card g-" + d.game }, [el("h2", { class: "pt-h2", text: g.emo + " " + g.name }),
+      el("p", { class: "pt-one" }, [el("b", { text: "Så spelar ni: " }), g.one || g.sub]), el("p", { class: "pt-sub", text: g.n + " · " + g.t }), how]));
     var chips = el("div", { class: "pt-chips" });
     players(d).forEach(function (p) { chips.appendChild(el("span", { class: "pt-chip" + (p.is_me ? " ok" : ""), text: (p.is_host ? "👑 " : "") + p.name })); });
     main.appendChild(el("section", { class: "pt-card" }, [el("h2", { class: "pt-h2", text: "👥 " + players(d).length + " i rummet" }), chips]));
@@ -1020,7 +1056,7 @@
   G.vagen = {
     p: function (main, d) {
       var pub = d.pub || {}, pr = d.priv || {}, me = d.me;
-      var kick = el("div", { class: "pt-kick2", text: "🔮 Runda " + d.round + "/" + (pub.rounds || "?") });
+      var kick = el("div", { class: "pt-kick2", text: "📡 Runda " + d.round + "/" + (pub.rounds || "?") });
       if (d.phase === "end") { endPlayer(main, d); return; }
       if (pr.target != null) {
         main.appendChild(el("div", { class: "pt-stage" }, [kick, H("🔮 DU ÄR SIAREN")]));
@@ -1059,7 +1095,7 @@
     },
     h: function (main, d, foot) {
       var pub = d.pub || {};
-      var kick = el("div", { class: "pt-kick2", text: "🔮 VÅGEN · RUNDA " + d.round + "/" + (pub.rounds || "?") });
+      var kick = el("div", { class: "pt-kick2", text: "📡 RADARN · RUNDA " + d.round + "/" + (pub.rounds || "?") });
       if (d.phase === "clue") {
         main.appendChild(el("div", { class: "pt-stage" }, [kick, P("Siare:", "pt-mute"), el("div", { class: "pt-huge", text: pub.psy_name || "?" }), P("ser målet på sin lur och säger EN ledtråd.")]));
         main.appendChild(scale(pub, { big: true }));
