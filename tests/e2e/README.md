@@ -20,10 +20,18 @@ Logs: `tests/e2e/out/logs/` (git-ignored). Screenshots: `tests/e2e/out/`.
 |---|---|---|
 | UI (mocked Supabase) | ux3, social2, strip, av2-wizard, feat, nf, notif, cam, evx, safe, ds, ds-layout | **gating** |
 | UI, newer | ds-sheet (DESIGN.md sheet rules), autoci (auto check-in; runs when `docs/js/autoci.js` exists) | **gating** |
+| Mock cover | rpc-cover (`rpc-cover-pw.js`): opens the main screens and fails when the app calls an RPC the mock does not answer | **gating** |
 | Unit | notif-sw (`notif-sw-test.js`), `scripts/import-sport.test.mjs` | **gating** |
 | Map (Mapbox GL) | glmap, tiers2, tiers3, map4, glfix-avpins, zones, mbx | **optional**: needs secret `MAPBOX_TEST_TOKEN`, else "skip" |
 | Real server (fresh anonymous users) | beta-pw.js | **never** in CI. By hand only. Serve with `serve.py --cors` (staging by default) |
 | Probe (mocked) | speed-pw.js | not gating, by hand |
+
+## Shared mock answers
+
+`d2-helpers.js` / `ds-helpers.js` answer the old RPCs in their switch and every other main-screen RPC from
+`fixtures/rpc.js` (one calm night in Ludvika: group members, friends, a fresh film, a game lobby). A test's own
+`page.route` wins. An RPC nobody answers gets `[]` and is recorded (`unmocked(page)`); `rpc-cover-pw.js` fails on it.
+When the app starts to call a new RPC: add its answer to `fixtures/rpc.js`, in the shape its reader in `docs/js` expects.
 
 ## Supabase target (one switch)
 

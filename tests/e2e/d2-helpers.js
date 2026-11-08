@@ -1,6 +1,7 @@
 // Design review screenshots. Usage: node design-shots.js <port> [scenario...]
 const { chromium } = require("playwright");
 const SP = require("./env.js").OUT;
+const RPCF = require("./fixtures/rpc.js");
 const PORT = process.argv[2] || 8793, BASE = `http://127.0.0.1:${PORT}/`;
 const ONLY = process.argv.slice(3);
 const now = Date.now();
@@ -94,10 +95,17 @@ async function mock(page, opt = {}) {
         ...myMedals.map((x) => ({ name: "Anton", is_me: true, medal: x.medal, earned_at: iso(60), count: x.count }))]);
       case "post_beer": return J(r, { accepted: true, beer_count: opt.postN || 7, lat: MY.lat, lng: MY.lng, precise: true, expires_at: new Date(now + 6 * 3600e3).toISOString(), wait_seconds: 0 });
       case "record_bar": return J(r, {});
-      default: return J(r, []);
+      default: {   // shared answers (fixtures/rpc.js); anything else is recorded as unmocked (rpc-cover-pw.js fails on it)
+        const a = RPCF.answer(fn, body, { now });
+        if (a !== undefined) return J(r, a);
+        (page.__pnUnmocked = page.__pnUnmocked || new Set()).add(fn);
+        return J(r, []);
+      }
     }
   });
 }
+// RPC names this page asked for that neither the switch above nor fixtures/rpc.js answers (a test's own routes win first)
+const unmocked = (page) => [...(page.__pnUnmocked || [])].sort();
 
 function seed(o = {}) {
   return ({ o, SESSION }) => {
@@ -278,7 +286,7 @@ const scenarios = {
   },
 };
 
-module.exports = { ctxFor, boot, wait, clickJS, shot };
+module.exports = { ctxFor, boot, wait, clickJS, shot, unmocked };
 if (require.main === module) (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME,
     ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY, bypass: "<-loopback>,127.0.0.1,localhost" } } : {}), args: ["--ignore-certificate-errors"] });

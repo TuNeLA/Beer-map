@@ -76,6 +76,7 @@ run safe       $B safe-pw.js
 run ds         $B ds-pw.js
 run ds-layout  $B ds-layout-pw.js
 run ds-sheet   $B ds-sheet-pw.js   # sheet rules (DESIGN.md), newest copy from the design agent; gating since 2026-11-08
+run rpc-cover  $B rpc-cover-pw.js  # every RPC the main screens call must be answered by the mock (fixtures/rpc.js)
 # auto check-in (js/autoci.js): runs only when that module is in docs/ (branch 01-autoci merged)
 if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else [[ autoci =~ $FILTER ]] && RES+=("$(printf '%-16s %5s %5s  %-6s %s' autoci - - skip 'docs/js/autoci.js not merged yet')"); fi
 # --- unit (no browser) ---

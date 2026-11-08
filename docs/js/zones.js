@@ -7,7 +7,8 @@
      kommun (only where someone is out) = name · count · "👑 Pitchers" (busiest bar, ≥ 3 there). GL collision: busiest first.
    - Top bar: #live-count shows the zone under the map centre ("Dalarna · 47 ute ikväll", "Sverige · …" when the whole
      country is in view); app.js updateCounts() asks ZONES.pill(). Zoomed in = the normal world counter.
-   - Tap a zone = zoom in (län → its kommuner, kommun → its bars). A GL bar tap (glmap.js) wins.
+   - Tap a zone = zoom in (län → its kommuner, kommun → its bars). A GL bar tap (glmap.js) wins. If GL has not drawn the
+     zone layer at the tap yet, the zone is found in JS (zoneAt) from the same border files.
    - Borders: docs/zones/lan.json + kommuner.json (SCB Digitala gränser, CC0, simplified; ~65 KB gzip), fetched only the first
      time the map is zoomed out below 10.5. Counts: RPC zone_counts (0221, cached 60 s on the server; < 3 = "några", never a
      position), asked when zones are in view and the last answer is > 60 s old (shared poll + moveend), never while hidden. */
@@ -262,6 +263,9 @@
     try {
       var p = gm.project([e.latlng.lng, e.latlng.lat]), f = gm.queryRenderedFeatures([p.x, p.y], { layers: [lay] })[0];
       var feat = f && (z < Z_KOM ? geo.l : geo.k).features.filter(function (x) { return x.id === f.id; })[0];
+      // GL has not drawn this layer at the tap yet (just flown in, slow phone / CI: the kommun fill tiles for the new zoom
+      // come a moment after moveend): use the same border files in JS, so the tap still zooms in.
+      if (!feat) { feat = zoneAt(z < Z_KOM ? "l" : "k", ll.lat, ll.lng); if (feat) stats.tapJs = (stats.tapJs || 0) + 1; }
       if (!feat) return;
       var b = feat.properties.b, bounds = L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
       var fz = map.getBoundsZoom(bounds, false, L.point(24, 24));

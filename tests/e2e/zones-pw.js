@@ -89,10 +89,23 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
     for (let la = 60.0; la <= 60.42; la += 0.03) for (let ln = 14.15; ln <= 15.25; ln += 0.05) { const z = ZONES._zoneAt(la, ln), p = __map.latLngToContainerPoint([la, ln]);
       if (z.k === "Ludvika" && Math.hypot(p.x - t.x, p.y - t.y) > 60 && p.y > 330 && p.y < 1300 / 2 + 300) return { x: p.x, y: p.y, la, ln }; } return null; });
   console.log("tap point", JSON.stringify(pt2));
+  // CI (2026-11-08): right after the fly-in GL may not have drawn the kommun fill at the tap yet; the app then finds the
+  // kommun in JS (zones.js tapZone → zoneAt). Log which way it went; both must zoom in.
+  const glHit = (p) => page.evaluate((p) => { const m = BASEMAP.mapbox().getMapboxMap(); const q = m.project([p.ln, p.la]); return m.queryRenderedFeatures([q.x, q.y], { layers: ["olnu-zk-fill"] }).length; }, p);
+  console.log("GL kommun fill at the tap point before the tap:", await glHit(pt2));
   st1 = settle(); await page.mouse.click(pt2.x, pt2.y); await st1;
-  const z2 = await page.evaluate(() => ({ z: __map.getZoom(), last: ZONES.stats.lastTap }));
+  const z2 = await page.evaluate(() => ({ z: __map.getZoom(), last: ZONES.stats.lastTap, js: ZONES.stats.tapJs || 0 }));
   ok(z2.z > z1.z + 0.5 && z2.last === "Ludvika", "tap Ludvika → zoom in", z2);
   await shot("tap-ludvika");
+  // same tap when GL has drawn nothing there (forced): the JS border lookup still zooms into Ludvika
+  await view([z1.c.lat, z1.c.lng], z1.z); await H.wait(page, 800);
+  const pt3 = await page.evaluate((p) => { const q = __map.latLngToContainerPoint([p.la, p.ln]); return { x: q.x, y: q.y }; }, pt2);
+  await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(), q = m.queryRenderedFeatures;
+    m.queryRenderedFeatures = function (a, o) { if (o && o.layers && o.layers.indexOf("olnu-zk-fill") >= 0 && Array.isArray(a)) { m.queryRenderedFeatures = q; return []; } return q.apply(this, arguments); }; });
+  const js0 = await page.evaluate(() => ZONES.stats.tapJs || 0);
+  st1 = settle(); await page.mouse.click(pt3.x, pt3.y); await st1;
+  const z3 = await page.evaluate(() => ({ z: __map.getZoom(), last: ZONES.stats.lastTap, js: ZONES.stats.tapJs || 0 }));
+  ok(z3.z > z1.z + 0.5 && z3.last === "Ludvika" && z3.js === js0 + 1, "kommun not drawn yet at the tap → still zooms into Ludvika (JS lookup)", z3);
   // 6) counts are cached: moving around within 60 s asks no more; hidden = no ask
   const n0 = zc.length;
   await view([59.33, 18.06], 8); await view([57.7, 11.97], 8); await H.wait(page, 1000);
