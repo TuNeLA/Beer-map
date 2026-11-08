@@ -49,7 +49,9 @@ const SCAN = () => {
       const f = Math.round(parseFloat(cs.fontSize)); if (!FS.has(f)) o.fs[f] = (o.fs[f] || []).concat(direct.slice(0, 20)).slice(0, 2);
       if (cs.textTransform === "uppercase") o.caps.push(direct.slice(0, 24));
       if (emo.test(direct) && !el.closest(".rb, .pf-ribbons, .md-rib") && (inter || el.closest("button, h2, h3, summary, .sheet-head"))) o.emoji.push(direct.slice(0, 24) + " <" + tag + "." + String(el.className).slice(0, 30) + " in " + String((el.parentElement || {}).className).slice(0, 30) + ">");
-      if (el.closest("button, summary, .btn") && cs.textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1) o.cut.push(direct.slice(0, 24));
+      // Data names (bar / place names in toplist rows) have no length limit, so the ellipsis there is by design: not counted.
+      // UI copy (fixed button labels) must never be cut. (Found in CI 2026-11-08: "Lobbybaren (Grand Hotel Elektra)" fits with 0 px to spare at 390 px.)
+      if (el.closest("button, summary, .btn") && cs.textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1 && !el.matches(".top-name")) o.cut.push(direct.slice(0, 24));
     }
     const bg = cs.backgroundColor, box = (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") || parseFloat(cs.borderTopWidth) > 0;
     if (box) { const v = parseFloat(cs.borderTopLeftRadius); const pill = cs.borderTopLeftRadius.includes("%") || v >= r.height / 2 - 1; if (!pill && !RAD.has(Math.round(v))) o.rad[Math.round(v)] = (o.rad[Math.round(v)] || []).concat(String(el.className).slice(0, 24)).slice(0, 2); }
