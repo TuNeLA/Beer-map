@@ -188,6 +188,8 @@
       el("span", { class: "sp-gi-go", "aria-hidden": "true", text: "›" })
     ]);
     b.addEventListener("click", function () {
+      // gm12: a running 🎲 party room (and no Spel room) → straight into that room, not the game list
+      if (!row._room && row._party && row._party.code && window.PARTY) { var pr = row._party; window.PARTY.open(pr.is_in ? { room: pr.id, group: { id: g.id, name: g.name || "" } } : { code: pr.code, group: { id: g.id, name: g.name || "" } }); return; }
       if (row._room && row._room.is_in) go(g, { room: row._room.id, game: row._room.game });
       else if (row._room && row._room.game) go(g, { join: row._room.game });   // a live room: straight in (was: the hub + one more tap)
       else go(g, null);
@@ -201,7 +203,7 @@
     }, 20000);
   }
   function lekButton(g) {
-    var b = el("button", { type: "button", class: "btn btn-small btn-block btn-amber sp-lek", style: "margin-top:10px", text: T("lek") });
+    var b = el("button", { type: "button", class: "btn btn-small btn-block sp-lek", style: "margin-top:10px", text: T("lek") });
     b.addEventListener("click", function () { go(g && g.id ? g : null, null); });
     return b;
   }
@@ -237,6 +239,12 @@
   function onAuthed() {
     if (!A || A.LIVE === false || resumed) return;
     resumed = true;
+    // gm03: this tab was in a room right before a reload → straight back in (spel_state says if the room is gone)
+    var mk = null; try { mk = JSON.parse(sessionStorage.getItem("olnu.spel.in") || "null"); } catch (e) {}
+    if (mk && mk.room && Date.now() - (+mk.t || 0) < 3 * 3600e3) {
+      setTimeout(function () { if (!(window.SPEL_UI && window.SPEL_UI.isOpen && window.SPEL_UI.isOpen())) go(mk.g && mk.g.id ? mk.g : { id: null, name: "" }, { room: mk.room, game: mk.game }); }, 1200);
+      return;
+    }
     setTimeout(function () {
       A.rpc("spel_mine").then(function (r) {
         if (r && r.error) { if (missing(r.error)) off = true; return; }

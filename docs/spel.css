@@ -182,3 +182,19 @@ html.sp-on, html.sp-on body { overflow: hidden; }
 
 @media (min-width: 640px) { .sp-body, .sp-foot { padding-left: calc(50% - 300px); padding-right: calc(50% - 300px); } }
 @media (prefers-reduced-motion: reduce) { .sp-live-dot { animation: none; } .sp-card:active { transform: none; } .sp-white.on { transform: none; } }
+/* gms01 START */
+/* gm01: labelled 🏁 Avsluta (44 px target), ‹ Förra in Kungaleken, the "Så spelar ni" line, two live banners, the leave box */
+.sp-stop { height: 44px; padding: 0 12px; white-space: nowrap; }
+.sp-kprev { flex: 0 0 auto; padding: 0 14px; font-size: var(--fs-16); }
+.sp-one { margin: 8px auto 0; max-width: 34em; padding: 10px 12px; border-radius: var(--r-md); background: rgba(245,166,35,.10); border: 1px solid rgba(245,166,35,.35);
+  font-size: var(--fs-16); line-height: 1.4; color: var(--ds-text, #eef0ec); text-align: left; }
+.sp-one b { color: var(--ds-amber-t, #ffc24d); }
+.sp-livebox { display: flex; flex-direction: column; gap: 8px; }
+.sp-live.sp-live-pt { background: var(--ds-card, #19233a); color: var(--ds-text, #eef0ec); border: 1px solid var(--ds-green, #3ddc84); }
+.sp-live.sp-live-pt .sp-live-dot { background: var(--ds-green, #3ddc84); }
+.sp-leave .sp-ask-c p { margin: 0 0 6px; }
+.sp-howbox .sp-ask-c .sp-one { margin: 0 0 4px; }
+.sp-invrow { display: flex; gap: 8px; margin-top: 14px; } .sp-invrow > button { flex: 1 1 0; margin: 0; min-width: 0; padding: 0 8px; }
+.sp-cfg { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--ds-card, #19233a); font-size: var(--fs-16); }
+.sp-wait { flex: 1 1 100%; margin: 0; padding: 14px 12px; text-align: center; border-radius: var(--r-lg); background: var(--ds-card, #19233a); font: 600 var(--fs-16)/1.35 var(--ds-sans, sans-serif); color: var(--ds-text, #eef0ec); }
+/* gms01 END */

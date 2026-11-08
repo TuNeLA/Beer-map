@@ -159,6 +159,12 @@
     }
     if (resumeShown) return;
     resumeShown = true;
+    // gm04: this tab was in a room right before a reload → straight back in (party_state says if the room is gone)
+    var mk = null; try { mk = JSON.parse(sessionStorage.getItem("olnu.party.in") || "null"); } catch (e) {}
+    if (mk && mk.room && Date.now() - (+mk.t || 0) < 3 * 3600e3) {
+      setTimeout(function () { if (!(window.PARTY_UI && window.PARTY_UI.isOpen && window.PARTY_UI.isOpen())) open({ room: mk.room }); }, 1200);
+      return;
+    }
     setTimeout(function () {
       A.rpc("party_mine").then(function (r) {
         if (!r || r.error) { if (r && missing(r.error)) off = true; return; }

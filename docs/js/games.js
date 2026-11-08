@@ -609,10 +609,10 @@
     A.openSheet((g.name || "") + " · " + T("lek"), function (body) {
       var box = el("div", { class: "gm" });
       body.appendChild(box);
-      box.appendChild(el("div", { class: "gm-top" }, [A.btn(T("back"), "btn-small", function () {
+      if (g.evg) box.appendChild(el("div", { class: "gm-top" }, [A.btn(T("back"), "btn-small", function () {   // gm15: event groups only
         openView = null;
-        if (g.evg && window.EVGROUP && window.EVGROUP.openById) window.EVGROUP.openById(g.id); else A.showGroups();
-      }), g.evg ? A.btn("🎯 " + T("meTitle"), "btn-small", function () { openMe(); }) : null]));
+        if (window.EVGROUP && window.EVGROUP.openById) window.EVGROUP.openById(g.id); else A.showGroups();
+      }), A.btn("🎯 " + T("meTitle"), "btn-small", function () { openMe(); })]));
       var bar = el("div", { class: "gm-tabs", role: "tablist" });
       var pane = el("div", { class: "gm-pane", role: "tabpanel" }, [el("p", { class: "muted", text: T("loading") })]);
       var names = T("tabs");
