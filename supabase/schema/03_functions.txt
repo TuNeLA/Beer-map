@@ -1,0 +1,760 @@
+# Load order for functions (alphabetical). Each file is one CREATE OR REPLACE FUNCTION.
+# Set check_function_bodies = off before loading (like pg_dump).
+functions/accept_terms(integer).sql
+functions/account_config().sql
+functions/account_merge_claim(text).sql
+functions/account_merge_ticket().sql
+functions/add_debt(uuid,text,text,integer,text).sql
+functions/add_offer(text,text,double precision,double precision,double precision,double precision,text).sql
+functions/add_quote(uuid,text,text,bigint).sql
+functions/answer_brunch(bigint,text).sql
+functions/answer_rally(bigint,text).sql
+functions/answer_status(bigint,text,integer,integer,text).sql
+functions/avatars_for(uuid).sql
+functions/award_medals(text).sql
+functions/bar_areas_in(double precision,double precision,double precision,double precision).sql
+functions/bar_extra(text).sql
+functions/bar_kings(text[]).sql
+functions/bar_norm(text[]).sql
+functions/bar_photo(text).sql
+functions/bar_photo_report(text,text).sql
+functions/bar_photo_share(text,boolean).sql
+functions/bar_photos(text).sql
+functions/bar_prices_in(double precision,double precision,double precision,double precision).sql
+functions/bar_regulars(text).sql
+functions/bar_sport_near(double precision,double precision).sql
+functions/bar_status().sql
+functions/bars_gone().sql
+functions/beer_reactions().sql
+functions/beer_type_stats(double precision,double precision).sql
+functions/block_user(text,text,uuid,text,boolean).sql
+functions/cancel_eta(boolean).sql
+functions/card_public(text,text,text).sql
+functions/ceremony_group(uuid).sql
+functions/ceremony_poll().sql
+functions/ceremony_vote(uuid,text,text).sql
+functions/check_in(text,text,double precision,double precision).sql
+functions/check_out().sql
+functions/chief_state(uuid).sql
+functions/city_league(integer).sql
+functions/claim_medal(text).sql
+functions/claim_medevac(bigint).sql
+functions/close_brunch(bigint).sql
+functions/close_crawl(bigint).sql
+functions/close_rally(bigint).sql
+functions/close_remind_claim().sql
+functions/close_remind_clear().sql
+functions/close_remind_set(text,text,timestamp with time zone).sql
+functions/create_bar_poll(uuid,jsonb).sql
+functions/create_brunch(uuid,text,text,double precision,double precision,text).sql
+functions/create_crawl(uuid,jsonb).sql
+functions/create_group(text,text).sql
+functions/create_rally(uuid,text,text,double precision,double precision).sql
+functions/crew_bye(boolean).sql
+functions/crew_dance_bar(text).sql
+functions/crew_dance_report(text,text,double precision,double precision,double precision,double precision,integer).sql
+functions/crew_dates_close(bigint).sql
+functions/crew_dates_create(uuid,date[],text).sql
+functions/crew_dates_vote(bigint,date,text).sql
+functions/crew_dep_cancel(bigint).sql
+functions/crew_dep_join(bigint,boolean).sql
+functions/crew_dep_set(uuid,timestamp with time zone,text,text,double precision,double precision).sql
+functions/crew_group(uuid).sql
+functions/crew_mood_answer(bigint,text).sql
+functions/crew_mood_start(uuid).sql
+functions/crew_poll(double precision,double precision).sql
+functions/crew_replay(uuid).sql
+functions/crew_torch(double precision,double precision).sql
+functions/crew_torch_answer(uuid,boolean).sql
+functions/crew_torch_light(uuid,double precision,double precision).sql
+functions/crew_torch_pass(uuid,text).sql
+functions/delete_my_data().sql
+functions/delete_my_data_v2().sql
+functions/delete_push_subscription(text).sql
+functions/dm_block(uuid,boolean).sql
+functions/dm_mute(uuid,boolean).sql
+functions/dm_open(text,uuid,text,text,text).sql
+functions/dm_push_target(uuid,uuid).sql
+functions/dm_seen(uuid,bigint).sql
+functions/driver_set(boolean).sql
+functions/drivers_for(uuid).sql
+functions/duel_accept_token(text,uuid).sql
+functions/duel_answer(bigint,boolean).sql
+functions/duel_cancel(bigint).sql
+functions/duel_challenge(uuid,text,text).sql
+functions/duel_invite(uuid).sql
+functions/duel_nearby(uuid,double precision,double precision).sql
+functions/duel_pick_side(bigint,uuid).sql
+functions/duel_poll().sql
+functions/duel_set_open(uuid,boolean).sql
+functions/duel_token_info(text).sql
+functions/end_bar_poll(bigint).sql
+functions/ev_going_due_claim(uuid).sql
+functions/ev_join(text,text,text).sql
+functions/ev_link(bigint).sql
+functions/ev_preview(text).sql
+functions/evchat_push_mates(uuid,uuid).sql
+functions/event_go(bigint,boolean).sql
+functions/event_go_tell(bigint).sql
+functions/event_group(uuid).sql
+functions/event_story(uuid).sql
+functions/events_going(bigint[],integer).sql
+functions/events_near(double precision,double precision,integer).sql
+functions/events_near2(double precision,double precision,integer).sql
+functions/events_near3(double precision,double precision,integer).sql
+functions/evg_lek(uuid).sql
+functions/film_photo(bigint).sql
+functions/film_poll().sql
+functions/film_react(bigint,text).sql
+functions/film_roll(uuid,timestamp with time zone).sql
+functions/film_shoot(uuid,text,integer,integer).sql
+functions/film_state(uuid).sql
+functions/film_story(uuid,date).sql
+functions/find_answer(bigint,boolean).sql
+functions/find_cancel(bigint).sql
+functions/find_ping(text,double precision,double precision,double precision).sql
+functions/find_request(text,text).sql
+functions/find_stop().sql
+functions/friend_answer(bigint,boolean,text).sql
+functions/friend_code_info(text).sql
+functions/friend_list(text).sql
+functions/friend_remove(bigint).sql
+functions/friend_request(text,uuid,text,text).sql
+functions/friend_suggest().sql
+functions/friend_suggest_add(text,text).sql
+functions/friend_suggest_hide(text).sql
+functions/friend_totals().sql
+functions/game_group(uuid,integer).sql
+functions/game_home().sql
+functions/game_poll().sql
+functions/game_water().sql
+functions/gang_group(uuid).sql
+functions/gang_paper(uuid,timestamp with time zone).sql
+functions/gang_poll().sql
+functions/gang_quotes(uuid,bigint).sql
+functions/ghost_points().sql
+functions/ghost_points2().sql
+functions/golden_horse(double precision,double precision).sql
+functions/group_etas().sql
+functions/group_friend_states(uuid).sql
+functions/group_keep_history(uuid).sql
+functions/group_league().sql
+functions/group_msgs(uuid,bigint).sql
+functions/group_night_story(uuid,date).sql
+functions/group_now(uuid).sql
+functions/group_photo(bigint).sql
+functions/group_photos(uuid,bigint,bigint).sql
+functions/group_rallies(uuid).sql
+functions/group_status(uuid).sql
+functions/group_status_v2(uuid).sql
+functions/group_status_v3(uuid).sql
+functions/group_voices(uuid,bigint).sql
+functions/guess_night(integer,text,double precision,double precision).sql
+functions/guess_night_kind().sql
+functions/handover_done(text).sql
+functions/handover_put(text,text,text).sql
+functions/handover_status(text).sql
+functions/handover_take(text).sql
+functions/heat_points().sql
+functions/helg_remind_targets(uuid).sql
+functions/helg_state().sql
+functions/hide_quote(bigint).sql
+functions/home_status(boolean).sql
+functions/ikvall_set(text).sql
+functions/ikvall_status(uuid).sql
+functions/import_event_towns().sql
+functions/import_events(jsonb).sql
+functions/import_sport_events(jsonb).sql
+functions/invite_add(bigint,text[],uuid[],text).sql
+functions/invite_answer(bigint,text).sql
+functions/invite_cancel(bigint).sql
+functions/invite_create(text,timestamp with time zone,text[],uuid[],text,text,double precision,double precision,text,text,bigint,text,uuid,text).sql
+functions/invite_due_claim(bigint,uuid).sql
+functions/invite_get(bigint).sql
+functions/invite_push_claim(bigint,uuid).sql
+functions/invite_yes_claim(bigint).sql
+functions/invite_yes_due().sql
+functions/join_group(text,text).sql
+functions/join_preview(text).sql
+functions/kebab_place(text).sql
+functions/kebab_top(double precision,double precision,integer).sql
+functions/leave_group(uuid).sql
+functions/like_msg(bigint).sql
+functions/live_beers().sql
+functions/live_checkins().sql
+functions/live_others().sql
+functions/local_board(double precision,double precision,double precision,text).sql
+functions/local_board_v2(double precision,double precision,double precision,text).sql
+functions/mark_home().sql
+functions/mark_me_test().sql
+functions/mark_seen().sql
+functions/medevac_checks().sql
+functions/member_medals(uuid).sql
+functions/meriter_board(text,uuid,double precision,double precision,text,double precision).sql
+functions/msg_likes(uuid).sql
+functions/msg_reacts(uuid).sql
+functions/mt_close(bigint).sql
+functions/mt_start(uuid,integer).sql
+functions/mt_vote(bigint,text).sql
+functions/my_avatar().sql
+functions/my_blocks().sql
+functions/my_board_optin().sql
+functions/my_dms().sql
+functions/my_eta().sql
+functions/my_event_chats(jsonb).sql
+functions/my_friend_code(boolean,text).sql
+functions/my_friends(text).sql
+functions/my_group_flags().sql
+functions/my_groups().sql
+functions/my_home_town().sql
+functions/my_inbox().sql
+functions/my_invites().sql
+functions/my_medals().sql
+functions/my_meriter(bigint).sql
+functions/my_night_code(boolean).sql
+functions/my_night_log(timestamp with time zone).sql
+functions/my_night_report(boolean).sql
+functions/my_passport().sql
+functions/my_past_events(integer).sql
+functions/my_push_prefs().sql
+functions/my_rallies().sql
+functions/my_removals().sql
+functions/my_stats().sql
+functions/my_status().sql
+functions/my_wrapped(text,integer).sql
+functions/near_poll(text).sql
+functions/night_story_photo(bigint).sql
+functions/note_takeover(text).sql
+functions/olnu_acting_vice(uuid).sql
+functions/olnu_after_beers_tg().sql
+functions/olnu_after_checkin_tg().sql
+functions/olnu_after_skal_tg().sql
+functions/olnu_aio_close(text,uuid).sql
+functions/olnu_aio_club(text).sql
+functions/olnu_aio_club_supersede(text,bigint).sql
+functions/olnu_aio_evening().sql
+functions/olnu_aio_price(text,text).sql
+functions/olnu_are_friends(uuid,uuid).sql
+functions/olnu_area_bar_pos(text).sql
+functions/olnu_area_check(jsonb,double precision,double precision).sql
+functions/olnu_area_supersede(text,bigint).sql
+functions/olnu_avatar_clean(uuid,jsonb).sql
+functions/olnu_avatar_facts(uuid).sql
+functions/olnu_avatar_lock_ok(jsonb,jsonb).sql
+functions/olnu_avatar_locks().sql
+functions/olnu_avatar_locks3().sql
+functions/olnu_avatar_max().sql
+functions/olnu_avatar_pub(uuid).sql
+functions/olnu_avatar_seed(uuid).sql
+functions/olnu_bar_queue_now(text).sql
+functions/olnu_beer_prev_tg().sql
+functions/olnu_beer_snap_tg().sql
+functions/olnu_board_bar_tg().sql
+functions/olnu_board_beers_tg().sql
+functions/olnu_board_name(uuid).sql
+functions/olnu_board_optin_tg().sql
+functions/olnu_board_rl(uuid).sql
+functions/olnu_bp_alive(bar_photos).sql
+functions/olnu_bp_anon_tg().sql
+functions/olnu_bp_blocked(text).sql
+functions/olnu_bp_chat_tg().sql
+functions/olnu_bp_check(text,text,double precision,double precision,double precision,double precision).sql
+functions/olnu_bp_clean(text).sql
+functions/olnu_bp_film_tg().sql
+functions/olnu_bp_id(text).sql
+functions/olnu_bp_in_sweden(double precision,double precision).sql
+functions/olnu_bp_key(bigint).sql
+functions/olnu_bp_m(double precision,double precision,double precision,double precision).sql
+functions/olnu_bp_pub(bar_photos).sql
+functions/olnu_bp_tag(text,bigint,uuid,uuid,timestamp with time zone,integer,integer).sql
+functions/olnu_bp_where(uuid,timestamp with time zone).sql
+functions/olnu_card_faces(uuid).sql
+functions/olnu_card_first(text).sql
+functions/olnu_card_out(uuid).sql
+functions/olnu_card_rl(text).sql
+functions/olnu_card_token().sql
+functions/olnu_cell(double precision,double precision).sql
+functions/olnu_cer_cats().sql
+functions/olnu_cer_finish(uuid,timestamp with time zone,text).sql
+functions/olnu_cer_json(uuid,uuid,boolean).sql
+functions/olnu_cer_k(uuid,uuid).sql
+functions/olnu_cer_night(timestamp with time zone).sql
+functions/olnu_cer_now().sql
+functions/olnu_cer_out(uuid,timestamp with time zone).sql
+functions/olnu_cer_was_out(uuid,timestamp with time zone).sql
+functions/olnu_chat_can(uuid,uuid,boolean).sql
+functions/olnu_chief_from().sql
+functions/olnu_chief_idle(uuid).sql
+functions/olnu_chief_json(uuid,uuid).sql
+functions/olnu_chief_k(uuid,uuid).sql
+functions/olnu_chief_member(uuid,uuid).sql
+functions/olnu_chief_name(uuid,uuid).sql
+functions/olnu_chief_of(uuid).sql
+functions/olnu_clean_display_name(text).sql
+functions/olnu_clean_town(text).sql
+functions/olnu_crew_beer_tg().sql
+functions/olnu_crew_ci_tg().sql
+functions/olnu_crew_clean(text,integer).sql
+functions/olnu_crew_dance_json(text).sql
+functions/olnu_crew_glabel(uuid,uuid).sql
+functions/olnu_crew_group_json(uuid,uuid,boolean).sql
+functions/olnu_crew_k(uuid,uuid).sql
+functions/olnu_crew_last_night(timestamp with time zone).sql
+functions/olnu_crew_member(uuid,uuid).sql
+functions/olnu_crew_members(uuid,uuid).sql
+functions/olnu_crew_my_town(uuid,double precision,double precision).sql
+functions/olnu_crew_name(uuid,uuid).sql
+functions/olnu_crew_now().sql
+functions/olnu_crew_pres(uuid).sql
+functions/olnu_crew_replay_open(uuid).sql
+functions/olnu_crew_torch_json(bigint,uuid,boolean).sql
+functions/olnu_crew_torch_move(bigint,uuid).sql
+functions/olnu_crew_torch_tick(bigint).sql
+functions/olnu_crew_town(double precision,double precision).sql
+functions/olnu_crew_town_groups(text,double precision,double precision).sql
+functions/olnu_crew_track_add(uuid,text,text,text,double precision,double precision).sql
+functions/olnu_dist_m(double precision,double precision,double precision,double precision).sql
+functions/olnu_dl_bar_name(text).sql
+functions/olnu_dl_beers_tg().sql
+functions/olnu_dl_checkin_tg().sql
+functions/olnu_dm_access(uuid,uuid).sql
+functions/olnu_dm_blocked(uuid,uuid).sql
+functions/olnu_dm_expiry().sql
+functions/olnu_dm_friends(uuid,uuid).sql
+functions/olnu_dm_guard().sql
+functions/olnu_dm_is(uuid).sql
+functions/olnu_dm_json(uuid,uuid).sql
+functions/olnu_dm_other(uuid,uuid).sql
+functions/olnu_drink_level(integer).sql
+functions/olnu_duel_beers_tg().sql
+functions/olnu_duel_checkin_tg().sql
+functions/olnu_duel_finish(bigint).sql
+functions/olnu_duel_handle(uuid).sql
+functions/olnu_duel_json(bigint,uuid).sql
+functions/olnu_duel_open_n(uuid).sql
+functions/olnu_duel_pair(uuid,uuid).sql
+functions/olnu_duel_photo_tg().sql
+functions/olnu_duel_side(bigint,text,timestamp with time zone).sql
+functions/olnu_duel_skal_tg().sql
+functions/olnu_duel_token().sql
+functions/olnu_duel_wins(uuid).sql
+functions/olnu_easter(integer).sql
+functions/olnu_eta_arrive(uuid,text,double precision,double precision,boolean).sql
+functions/olnu_eta_beer_tg().sql
+functions/olnu_eta_checkin_tg().sql
+functions/olnu_eta_clean(text,integer).sql
+functions/olnu_eta_json(etas).sql
+functions/olnu_eta_live(etas).sql
+functions/olnu_eta_rally_ok(etas).sql
+functions/olnu_ev_bar(double precision,double precision).sql
+functions/olnu_ev_clean(text).sql
+functions/olnu_ev_dup(double precision,double precision,text,text[],text,text,double precision,double precision,text,text[],text,text).sql
+functions/olnu_ev_faces(bigint).sql
+functions/olnu_ev_kind(text,text).sql
+functions/olnu_ev_local(double precision,double precision,integer,uuid).sql
+functions/olnu_ev_near_json(double precision,double precision,integer,integer,uuid).sql
+functions/olnu_ev_public(ev_links,uuid).sql
+functions/olnu_ev_rank(text,boolean).sql
+functions/olnu_ev_team(text).sql
+functions/olnu_ev_token().sql
+functions/olnu_ev_words(text).sql
+functions/olnu_evening(timestamp with time zone).sql
+functions/olnu_event_cell_tg().sql
+functions/olnu_evg_member(uuid,uuid).sql
+functions/olnu_evg_people(uuid).sql
+functions/olnu_evg_was(uuid,uuid).sql
+functions/olnu_evgo_circle(uuid).sql
+functions/olnu_evgo_json(bigint,uuid).sql
+functions/olnu_fcode_anon_tg().sql
+functions/olnu_film_emojis().sql
+functions/olnu_film_photo_json(snap_photos,uuid).sql
+functions/olnu_film_start_trg().sql
+functions/olnu_find_allowed(uuid,uuid).sql
+functions/olnu_find_anon_tg().sql
+functions/olnu_find_key(find_reqs,uuid).sql
+functions/olnu_find_live(uuid,uuid).sql
+functions/olnu_find_name(find_reqs,uuid).sql
+functions/olnu_find_req_json(find_reqs,uuid).sql
+functions/olnu_find_resolve(text,uuid).sql
+functions/olnu_friend_anon_tg().sql
+functions/olnu_friend_end_tg().sql
+functions/olnu_friend_name(uuid).sql
+functions/olnu_friend_newcode().sql
+functions/olnu_friend_other(friendships,uuid).sql
+functions/olnu_friend_out(uuid).sql
+functions/olnu_friend_setname(uuid,text).sql
+functions/olnu_g_anonymize(uuid,uuid).sql
+functions/olnu_g_assign(uuid,timestamp with time zone,timestamp with time zone).sql
+functions/olnu_g_crawl(uuid,uuid,jsonb,timestamp with time zone).sql
+functions/olnu_g_group(uuid,uuid,timestamp with time zone,boolean,integer).sql
+functions/olnu_g_guess(uuid,integer,text,double precision,double precision,timestamp with time zone).sql
+functions/olnu_g_home(uuid,timestamp with time zone).sql
+functions/olnu_g_key(uuid,uuid).sql
+functions/olnu_g_lines(integer[]).sql
+functions/olnu_g_live(uuid,timestamp with time zone,timestamp with time zone).sql
+functions/olnu_g_me(uuid,timestamp with time zone).sql
+functions/olnu_g_member(uuid,uuid).sql
+functions/olnu_g_oracle(uuid,timestamp with time zone,timestamp with time zone).sql
+functions/olnu_g_outtonight(uuid,timestamp with time zone).sql
+functions/olnu_g_prev(timestamp with time zone).sql
+functions/olnu_g_progress(uuid,timestamp with time zone,text,timestamp with time zone).sql
+functions/olnu_g_real(timestamp with time zone,double precision,double precision).sql
+functions/olnu_g_reveal(uuid,timestamp with time zone,timestamp with time zone).sql
+functions/olnu_g_start_agent(uuid,uuid,timestamp with time zone).sql
+functions/olnu_g_sugen(uuid,text,timestamp with time zone).sql
+functions/olnu_g_tick(uuid,uuid,integer,boolean,timestamp with time zone).sql
+functions/olnu_g_vote(uuid,uuid,text,timestamp with time zone).sql
+functions/olnu_g_water(uuid,timestamp with time zone).sql
+functions/olnu_gang_brunch_json(gang_brunches,uuid).sql
+functions/olnu_gang_clean(text).sql
+functions/olnu_gang_debts_json(uuid,uuid).sql
+functions/olnu_gang_hour().sql
+functions/olnu_gang_k(uuid,uuid).sql
+functions/olnu_gang_last_night().sql
+functions/olnu_gang_member(uuid,uuid).sql
+functions/olnu_gang_mt_done(gang_mt_rounds).sql
+functions/olnu_gang_mt_json(gang_mt_rounds,uuid).sql
+functions/olnu_gang_name(uuid,uuid).sql
+functions/olnu_gang_poll_finish(bigint,uuid).sql
+functions/olnu_gang_poll_json(gang_polls,uuid).sql
+functions/olnu_gang_poll_winner(gang_polls).sql
+functions/olnu_gang_reveal(timestamp with time zone).sql
+functions/olnu_gang_rl(text).sql
+functions/olnu_gang_town(double precision,double precision).sql
+functions/olnu_gang_uid_of(uuid,text).sql
+functions/olnu_gh_checkin_tg().sql
+functions/olnu_gh_get(text).sql
+functions/olnu_gh_name(uuid,uuid).sql
+functions/olnu_gone_count(text).sql
+functions/olnu_group_admin(uuid,uuid).sql
+functions/olnu_group_keeps(uuid).sql
+functions/olnu_heat(double precision,double precision,double precision,double precision,integer).sql
+functions/olnu_heat_cell(double precision,double precision,boolean).sql
+functions/olnu_helg_calc(uuid,timestamp with time zone).sql
+functions/olnu_helg_group(uuid,timestamp with time zone).sql
+functions/olnu_helg_now().sql
+functions/olnu_helg_week(timestamp with time zone).sql
+functions/olnu_helg_weeks(uuid).sql
+functions/olnu_ho_hash(text).sql
+functions/olnu_holiday(date).sql
+functions/olnu_home_town(uuid).sql
+functions/olnu_in_se_box(double precision,double precision).sql
+functions/olnu_inv_cands(uuid).sql
+functions/olnu_inv_clean(text,integer).sql
+functions/olnu_inv_haslink(text).sql
+functions/olnu_inv_json(bigint,uuid,boolean).sql
+functions/olnu_inv_key(uuid,uuid).sql
+functions/olnu_inv_resolve(uuid,text[],uuid[]).sql
+functions/olnu_inv_show(uuid,timestamp with time zone,double precision,double precision,text).sql
+functions/olnu_is_temp_group(uuid).sql
+functions/olnu_is_test_uid(uuid).sql
+functions/olnu_is_test_user(uuid).sql
+functions/olnu_is_test_zone(double precision,double precision).sql
+functions/olnu_is_vice(uuid,uuid).sql
+functions/olnu_keep_history_ins().sql
+functions/olnu_kommun_of(double precision,double precision).sql
+functions/olnu_lifetime(uuid).sql
+functions/olnu_log_beer_event().sql
+functions/olnu_mask_text(text).sql
+functions/olnu_mask_tg().sql
+functions/olnu_medal_beers_tg().sql
+functions/olnu_medal_checkin_tg().sql
+functions/olnu_medal_eval(uuid).sql
+functions/olnu_medal_eval_after(uuid).sql
+functions/olnu_medal_eval_bars(uuid).sql
+functions/olnu_medal_eval_cer(uuid).sql
+functions/olnu_medal_eval_games(uuid).sql
+functions/olnu_medal_eval_golden(uuid).sql
+functions/olnu_medal_msg_tg().sql
+functions/olnu_medal_skal_tg().sql
+functions/olnu_medal_store(uuid).sql
+functions/olnu_mer_add(uuid,timestamp with time zone,text,text,integer,integer).sql
+functions/olnu_mer_beers_tg().sql
+functions/olnu_mer_checkins_tg().sql
+functions/olnu_mer_duel(bigint).sql
+functions/olnu_mer_duels_tg().sql
+functions/olnu_mer_etas_tg().sql
+functions/olnu_mer_games_tg().sql
+functions/olnu_mer_home_tg().sql
+functions/olnu_mer_inv_beer_tg().sql
+functions/olnu_mer_inv_ci_tg().sql
+functions/olnu_mer_medevac_tg().sql
+functions/olnu_mer_photo_tg().sql
+functions/olnu_mer_push_tg().sql
+functions/olnu_mer_rally_tg().sql
+functions/olnu_mer_skals_tg().sql
+functions/olnu_mer_squad(uuid,timestamp with time zone,double precision,double precision).sql
+functions/olnu_mer_status_tg().sql
+functions/olnu_mer_total_tg().sql
+functions/olnu_meriter(uuid).sql
+functions/olnu_move_user(uuid,uuid).sql
+functions/olnu_name_for(uuid,uuid).sql
+functions/olnu_near_bar(double precision,double precision).sql
+functions/olnu_next_expiry().sql
+functions/olnu_night_of(timestamp with time zone).sql
+functions/olnu_owner_hours_tg().sql
+functions/olnu_owner_of(uuid).sql
+functions/olnu_owner_powers(uuid,uuid).sql
+functions/olnu_owner_un(timestamp with time zone).sql
+functions/olnu_party_finish(uuid,uuid[]).sql
+functions/olnu_party_ids(uuid,text).sql
+functions/olnu_party_k(uuid,uuid).sql
+functions/olnu_party_lev(text,text).sql
+functions/olnu_party_lim(uuid,text,integer,interval).sql
+functions/olnu_party_list(jsonb,integer,integer,integer).sql
+functions/olnu_party_name(text).sql
+functions/olnu_party_need(uuid).sql
+functions/olnu_party_next(uuid,boolean).sql
+functions/olnu_party_norm(text).sql
+functions/olnu_party_people(uuid,uuid[]).sql
+functions/olnu_party_pname(uuid,uuid).sql
+functions/olnu_party_same_word(text,text).sql
+functions/olnu_party_shuffle(uuid[]).sql
+functions/olnu_party_start(uuid,jsonb).sql
+functions/olnu_party_tally(uuid,integer,text,uuid[],uuid[]).sql
+functions/olnu_party_text(text,integer).sql
+functions/olnu_party_top(uuid,uuid).sql
+functions/olnu_party_uid(uuid,text).sql
+functions/olnu_party_view(uuid,uuid).sql
+functions/olnu_photo_anon_tg().sql
+functions/olnu_photo_keep_tg().sql
+functions/olnu_pickup_mine(pickup_reqs).sql
+functions/olnu_pickup_okpos(double precision,double precision).sql
+functions/olnu_pickup_sweep().sql
+functions/olnu_pins(uuid,double precision,double precision,double precision,double precision).sql
+functions/olnu_place_slug(text).sql
+functions/olnu_push_cats().sql
+functions/olnu_push_prefs_of(uuid).sql
+functions/olnu_rally_rows(uuid,uuid).sql
+functions/olnu_rally_short_life().sql
+functions/olnu_rank_of(integer).sql
+functions/olnu_remove_block(uuid,uuid,uuid).sql
+functions/olnu_resnap().sql
+functions/olnu_resolve_pin(uuid,text).sql
+functions/olnu_retention_run(boolean).sql
+functions/olnu_rnd_clean(text).sql
+functions/olnu_rnd_exp_json(rnd_expenses,uuid).sql
+functions/olnu_rnd_k(uuid,uuid).sql
+functions/olnu_rnd_member(uuid,uuid).sql
+functions/olnu_rnd_name(uuid,uuid).sql
+functions/olnu_rnd_net(uuid,uuid).sql
+functions/olnu_rnd_paid_n(uuid,uuid).sql
+functions/olnu_rnd_swish_norm(text).sql
+functions/olnu_rnd_swish_of(uuid,uuid).sql
+functions/olnu_rnd_uid_of(uuid,text).sql
+functions/olnu_safety_hide(text,text).sql
+functions/olnu_safety_target(uuid,text,text,uuid,text).sql
+functions/olnu_seen_at(uuid,uuid).sql
+functions/olnu_share_group(uuid,uuid).sql
+functions/olnu_shares_group(uuid,uuid).sql
+functions/olnu_skal_auto(uuid,uuid).sql
+functions/olnu_skal_can(uuid,uuid).sql
+functions/olnu_skal_from().sql
+functions/olnu_skal_insert(uuid,uuid,uuid,boolean).sql
+functions/olnu_skal_json(skal_hours,uuid).sql
+functions/olnu_skal_state_json(uuid,uuid).sql
+functions/olnu_skal_win_from(timestamp with time zone).sql
+functions/olnu_skal_win_to(timestamp with time zone).sql
+functions/olnu_snap(double precision,double precision,boolean).sql
+functions/olnu_snap_anon_tg().sql
+functions/olnu_snap_decode(text,integer,integer).sql
+functions/olnu_snap_exp(text,uuid,timestamp with time zone,timestamp with time zone).sql
+functions/olnu_snap_keep_tg().sql
+functions/olnu_snap_sweep().sql
+functions/olnu_spel_active(uuid).sql
+functions/olnu_spel_auto(uuid).sql
+functions/olnu_spel_board(uuid).sql
+functions/olnu_spel_close(uuid).sql
+functions/olnu_spel_deal(uuid).sql
+functions/olnu_spel_deck(integer,integer[]).sql
+functions/olnu_spel_k(uuid,uuid).sql
+functions/olnu_spel_round(uuid).sql
+functions/olnu_spel_view(uuid,uuid).sql
+functions/olnu_sport_info(text,uuid).sql
+functions/olnu_squad_detect(uuid).sql
+functions/olnu_squad_json(squad_gatherings,uuid).sql
+functions/olnu_squad_nights(uuid).sql
+functions/olnu_squad_pres(uuid).sql
+functions/olnu_status_json(status_reqs,uuid).sql
+functions/olnu_store_on().sql
+functions/olnu_sug_k(uuid,uuid).sql
+functions/olnu_sug_rows(uuid).sql
+functions/olnu_sug_rows2(uuid).sql
+functions/olnu_swh_guard().sql
+functions/olnu_takeovers().sql
+functions/olnu_tg_access(uuid,uuid).sql
+functions/olnu_tg_ans().sql
+functions/olnu_tg_guard().sql
+functions/olnu_tg_inv_ins().sql
+functions/olnu_tg_inv_upd().sql
+functions/olnu_tg_lines(text).sql
+functions/olnu_tg_make(bigint).sql
+functions/olnu_tg_name(text,timestamp with time zone).sql
+functions/olnu_tg_night_end(timestamp with time zone).sql
+functions/olnu_tg_say(uuid,uuid,text).sql
+functions/olnu_titles().sql
+functions/olnu_town_of(double precision,double precision).sql
+functions/olnu_tz_patch(regprocedure,text[],text[]).sql
+functions/olnu_ub_hidden(uuid,uuid).sql
+functions/olnu_uid().sql
+functions/olnu_uname_anon_tg().sql
+functions/olnu_walk_anon_tg().sql
+functions/olnu_walk_mine(walks).sql
+functions/olnu_walk_name(uuid,uuid).sql
+functions/olnu_walk_sweep().sql
+functions/olnu_wd_clean(text).sql
+functions/olnu_wd_member(uuid,uuid).sql
+functions/olnu_wd_owner_ok(text).sql
+functions/olnu_wd_rl(text).sql
+functions/olnu_week_beers_tg().sql
+functions/olnu_week_start(timestamp with time zone).sql
+functions/olnu_world_ok(double precision,double precision).sql
+functions/olnu_world_pos_tg().sql
+functions/olnu_zone_build(boolean).sql
+functions/olnu_zz_mer_party_tg().sql
+functions/owner_bar_action(text,text,text).sql
+functions/owner_bar_areas(text,text).sql
+functions/owner_bar_photo(text,bigint).sql
+functions/owner_bar_photos(text,text).sql
+functions/owner_bar_reports(text).sql
+functions/owner_bars_gone(text,text).sql
+functions/owner_club_info(text,text).sql
+functions/owner_db_stats(text).sql
+functions/owner_events(text,text).sql
+functions/owner_feedback(text).sql
+functions/owner_find_bars(text,text).sql
+functions/owner_mask_test(text,text).sql
+functions/owner_move_stats(text).sql
+functions/owner_places(text,text).sql
+functions/owner_report_act(text,bigint,text,text).sql
+functions/owner_report_photo(text,bigint).sql
+functions/owner_reports(text,text).sql
+functions/owner_set_bar_area(text,bigint,text).sql
+functions/owner_set_bar_gone(text,text,text).sql
+functions/owner_set_bar_photo(text,bigint,text).sql
+functions/owner_set_bar_sport(text,text,boolean).sql
+functions/owner_set_club_info(text,bigint,text).sql
+functions/owner_set_event(text,bigint,text).sql
+functions/owner_set_feedback(text,bigint,text).sql
+functions/owner_set_place(text,bigint,text).sql
+functions/owner_set_wish(text,bigint,text).sql
+functions/owner_sport_bars(text).sql
+functions/owner_stats(text).sql
+functions/owner_stats2(text).sql
+functions/owner_trust_me(text,boolean).sql
+functions/owner_vitals(text,integer).sql
+functions/owner_vitals_slow(text,integer).sql
+functions/owner_wishes(text).sql
+functions/party_act(uuid,text,text,jsonb).sql
+functions/party_create(uuid,text,text).sql
+functions/party_group(uuid).sql
+functions/party_join(text,text).sql
+functions/party_mine().sql
+functions/party_state(uuid,integer).sql
+functions/pickup_answer(bigint,text).sql
+functions/pickup_ping(bigint,double precision,double precision,double precision).sql
+functions/pickup_poll().sql
+functions/pickup_start(double precision,double precision,double precision,text[],uuid[],integer,text).sql
+functions/pickup_stop(bigint).sql
+functions/poll_public(double precision,double precision,double precision,double precision,boolean).sql
+functions/poll_v2(double precision,double precision,double precision,double precision,timestamp with time zone,boolean).sql
+functions/post_beer(double precision,double precision,boolean).sql
+functions/post_beer_v2(double precision,double precision,boolean,boolean).sql
+functions/post_group_msg(uuid,text).sql
+functions/post_other(text,double precision,double precision,boolean).sql
+functions/post_other_v2(text,double precision,double precision,boolean).sql
+functions/post_photo(uuid,text,integer,integer,text).sql
+functions/post_voice(uuid,text,text,integer).sql
+functions/public_config().sql
+functions/push_pace_due(integer,integer).sql
+functions/push_pace_take(uuid[],text[],text[],integer[],integer[]).sql
+functions/push_rx_take(uuid[],integer[]).sql
+functions/rate_kebab(text,text,double precision,double precision,integer,text,double precision,double precision).sql
+functions/react(bigint,text).sql
+functions/react_msg(bigint,text).sql
+functions/react_v2(text,text).sql
+functions/record_bar(text,text,double precision,double precision).sql
+functions/redeem_recovery(text).sql
+functions/remove_member(uuid,text).sql
+functions/report_bar(text,text,text,text,double precision,double precision).sql
+functions/report_bar_close(text,text).sql
+functions/report_bar_gone(text,text).sql
+functions/report_bar_gone_withdraw(text).sql
+functions/report_bar_price(text,text,integer).sql
+functions/report_content(text,text,uuid,text,text,text).sql
+functions/report_queue(text,text,double precision,double precision,double precision,double precision,text,text).sql
+functions/report_vitals(jsonb).sql
+functions/request_status(uuid).sql
+functions/ride_ask(uuid,text,double precision,double precision,text).sql
+functions/rnd_add(uuid,text,text,integer,jsonb,integer,text).sql
+functions/rnd_cancel(bigint).sql
+functions/rnd_group(uuid).sql
+functions/rnd_me().sql
+functions/rnd_pay(uuid,text,integer,bigint,text).sql
+functions/rnd_payment(bigint,text).sql
+functions/rnd_set_swish(text).sql
+functions/rnd_spin(uuid,text[],boolean,text).sql
+functions/safety_state(boolean).sql
+functions/save_push_subscription(text,text,text).sql
+functions/send_tip(uuid,text,text,text).sql
+functions/set_age_ok(integer,boolean).sql
+functions/set_beer_type(text).sql
+functions/set_board_optin(boolean,text).sql
+functions/set_chief(uuid,text).sql
+functions/set_display_name(text).sql
+functions/set_eta(text,text,double precision,double precision,integer,bigint).sql
+functions/set_find_share(boolean,boolean).sql
+functions/set_group_keep_history(uuid,boolean).sql
+functions/set_group_show(uuid,boolean).sql
+functions/set_home_town(text).sql
+functions/set_my_avatar(jsonb).sql
+functions/set_push_location(double precision,double precision).sql
+functions/set_push_prefs(text[],integer,integer,integer).sql
+functions/set_sugen(text).sql
+functions/set_swish(uuid,text).sql
+functions/set_vice(uuid,text,boolean).sql
+functions/settle_debt(bigint,text).sql
+functions/share_card(text,uuid,bigint).sql
+functions/skal(bigint).sql
+functions/skal_hour(bigint).sql
+functions/skal_photo(bigint).sql
+functions/skal_poll().sql
+functions/skal_post(bigint,text,integer,integer).sql
+functions/skal_set_random(uuid,boolean).sql
+functions/skal_start(uuid).sql
+functions/skal_state(uuid).sql
+functions/skal_v2(text).sql
+functions/spel_act(uuid,text,text,jsonb).sql
+functions/spel_group(uuid).sql
+functions/spel_mine().sql
+functions/spel_open(uuid,text).sql
+functions/spel_state(uuid,integer).sql
+functions/squad_group(uuid).sql
+functions/squad_poll().sql
+functions/start_agent(uuid).sql
+functions/status_report(bigint).sql
+functions/stop_beer().sql
+functions/submit_bar_area(text,jsonb).sql
+functions/submit_event(text,timestamp with time zone,text,text,double precision,double precision,text,text).sql
+functions/submit_feedback(text,text,text,jsonb).sql
+functions/submit_wish(text,text,text).sql
+functions/suggest_club_info(text,integer,integer,text).sql
+functions/suggest_place(text,text,double precision,double precision,text).sql
+functions/tick_bingo(uuid,integer,boolean).sql
+functions/top_wishes(integer,text).sql
+functions/unblock_user(text).sql
+functions/undo_beer().sql
+functions/user_places(double precision,double precision).sql
+functions/voice_audio(bigint).sql
+functions/vote_agent(uuid,text).sql
+functions/vote_bar_poll(bigint,integer).sql
+functions/vote_bar_sport(text,boolean).sql
+functions/vote_offer(bigint,integer).sql
+functions/vote_wish(bigint).sql
+functions/walk_end(bigint,text,text).sql
+functions/walk_ping(bigint,double precision,double precision,double precision).sql
+functions/walk_poll().sql
+functions/walk_start(double precision,double precision,text[],uuid[],uuid,double precision,double precision,double precision,text).sql
+functions/wall_of_fame(double precision,double precision,double precision).sql
+functions/wall_of_fame_v2(double precision,double precision,double precision).sql
+functions/zone_counts(boolean).sql
