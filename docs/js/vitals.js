@@ -4,7 +4,9 @@
    sheet:<title>, idle), errors (count + first message), time to open each sheet (tap → content), and RPC times
    (p90-ish max per function). Sends ONE small report (report_vitals) after ≥ 2 min of use, at most every 3 h,
    when the app goes to the background or after 15 min. No name, no position: phone model, browser, app version, numbers.
-   Owner reads it in stats.html (📈 Hastighet, docs/stats-vitals.js). */
+   Owner reads it in stats.html (📈 Hastighet, docs/stats-vitals.js).
+   cln: sends ONLY when the 📊 PNLOG usage log is on for this phone (same switch: server flag beta_logging + the user's
+   choice; off / none / opted out / optin without a yes = nothing is sent). */
 (function () {
   "use strict";
   var A = null, t0 = Date.now(), sent = false, lastSend = 0;
@@ -94,7 +96,7 @@
     var n = /SamsungBrowser/.test(ua) ? "Samsung" : /CriOS|Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "?";
     return n + (m ? " " + m[1] : "");
   }
-  function ver() { var s = document.querySelector('script[src*="app.js"]'); var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return v || "?"; }
+  function ver() { var s = document.querySelector('script[src*="app.js"], script[src*="app.bundle"]'); var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return v || "?"; }
   function med(a) { if (!a.length) return 0; var b = a.slice().sort(function (x, y) { return x - y; }); return b[Math.floor(b.length / 2)]; }
   function loadMs() {
     try { var n = performance.getEntriesByType("navigation")[0]; if (n) return Math.round(n.loadEventEnd || n.domContentLoadedEventEnd || 0); } catch (e) {}
@@ -103,8 +105,11 @@
   function topObj(o, k) {
     var out = {}; Object.keys(o).sort(function (a, b) { return o[b] - o[a]; }).slice(0, k).forEach(function (x) { out[x] = Math.round(o[x]); }); return out;
   }
+  function logOn() {   // cln: pnlog's own decision (fullOn) via PNLOG.state().full; no PNLOG = no
+    try { var P = window.PNLOG; return !!(P && P.state && P.state().full); } catch (e) { return false; }
+  }
   function send(force) {
-    if (sent || !A || !A.rpc || !A.LIVE || !A.authed || !A.authed()) return;
+    if (sent || !A || !A.rpc || !A.LIVE || !A.authed || !A.authed() || !logOn()) return;
     var mins = Math.round((Date.now() - t0) / 60000);
     if (!force && mins < 2) return;
     if (Date.now() - lastSend < 3 * 3600e3) return;

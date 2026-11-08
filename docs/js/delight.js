@@ -24,7 +24,7 @@
   function en() { return !!(window.I18N && window.I18N.lang === "en"); }
   function lng() { return en() ? "en" : "sv"; }
   function ui(k) { var u = C().ui || {}; var o = u[lng()] || u.sv || {}; return o[k] != null ? o[k] : (u.sv || {})[k]; }
-  function esc(s) { return U && U.esc ? U.esc(s) : String(s).replace(/[&<>"']/g, function (c) { return "&#" + c.charCodeAt(0) + ";"; }); }
+  function esc(s) { return U.esc(s); }
   function fill(s, d) { return String(s || "").replace(/\{(\w+)\}/g, function (m, k) { return d && d[k] != null ? d[k] : m; }); }
   function pick(list, r) { if (!list || !list.length) return ""; return list[Math.floor((r ? r() : Math.random()) * list.length) % list.length]; }
   function asList(x) { return Array.isArray(x) ? x : x == null ? [] : [x]; }

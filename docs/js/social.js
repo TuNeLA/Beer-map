@@ -38,19 +38,19 @@
   }
   function codeOf(err) { return U.errCode(err); }
 
-  /* ---------- Titles (v26, 42 steps by MERITER; same ladder as SQL olnu_titles() in 0036 and notify-group TITLES) ---------- */
-  var TITLES = [[0, "Rekryt"], [5, "Mönstrad Mellanöl"], [10, "Menig Mjöd"], [18, "Vicekorpral Kapsyl"],
-    [28, "Korpral Korkskruv"], [40, "Skumsergeant"], [52, "Översergeant Sejdel"], [66, "Furir Flaskhals"],
-    [82, "Överfurir Fatkran"], [100, "Fanjunkare Flasköppnare"], [125, "Fänrik Fatöl"], [150, "Löjtnant Lager"],
-    [180, "Premiärlöjtnant Pilsner"], [215, "Kapten Kaggen"], [255, "Kommendörkapten Krus"], [300, "Ryttmästare Humle"],
-    [350, "Major Mäsk"], [410, "Överstelöjtnant Ölstop"], [475, "Överste Ölkorv"], [550, "Brigadgeneral Bärs"],
-    [630, "Flottiljamiral Flaskpost"], [720, "Generalmajor Gambrinus"], [820, "Generallöjtnant Guldskum"],
-    [930, "General Gyllenbärs"], [1050, "Amiral Ankarstout"], [1180, "Fältmarskalk Fradga"],
-    [1320, "Storamiral Skumtopp"], [1470, "Riksmarskalk Rundtur"], [1640, "Baron av Bryggstugan"],
-    [1830, "Hertig av Humlefältet"], [2040, "Ärkehertig av Ölkranen"], [2270, "Kung Kapsyl den Store"],
-    [2520, "Ölkejsaren"], [2800, "Bryggerilegenden"], [3100, "Halvguden vid Jäskaret"], [3450, "Myten i Mässen"],
-    [3850, "Legenden vid Långbordet"], [4300, "Sagofiguren i Skyttegraven"], [4800, "Oraklet i Ölstugan"],
-    [5400, "Överbefälhavare Öl"], [6200, "Generalissimus Glaset"], [7000, "Ölguden"]];
+  /* ---------- Titles (v26, 42 steps by MERITER; same ladder as SQL olnu_titles() in 0036/0345 and notify-group TITLES).
+     tx01: new names and rebalanced thresholds (0345). The own title comes from this ladder when meriter is known (see applyStats). ---------- */
+  var TITLES = [[0, "Rekryt Lättöl"], [4, "Värnpliktig Veteöl"], [8, "Menig Mellanöl"], [13, "Vicekorpral Kapsyl"],
+    [19, "Korpral Kranöl"], [26, "Skumsergeant"], [34, "Översergeant Sejdel"], [43, "Stabssergeant Sixpack"],
+    [53, "Fanjunkare Flaskhals"], [65, "Förvaltare Folköl"], [79, "Fänrik Fatöl"], [95, "Löjtnant Lager"],
+    [115, "Premiärlöjtnant Pilsner"], [135, "Kapten Kagge"], [155, "Stabskapten Stout"], [180, "Major Mikrobryggeri"],
+    [210, "Överstelöjtnant Ölback"], [245, "Överste Stor Stark"], [280, "Brigadgeneral Burköl"], [320, "Generalmajor Mörköl"],
+    [365, "Generallöjtnant IPA"], [410, "General Guldbärs"], [465, "Överbefälhavare Öl"], [520, "Fältmarskalk Humle"],
+    [585, "Riksmarskalk Malt"], [655, "Generalissimus Ale"], [725, "Ärkegeneral Ölhall"], [805, "Supergeneral Pint"],
+    [895, "Krigsherre Porter"], [985, "Kommendant Julöl"], [1085, "Imperator Påsköl"], [1190, "Stormarskalk Ölstop"],
+    [1300, "Kejsargeneral Ölmage"], [1420, "Fältherre Öltält"], [1545, "General Oktoberfest"], [1680, "Supermarskalk Pubrunda"],
+    [1820, "Överkommendant Ölglas"], [1970, "Ärkemarskalk Ölbricka"], [2130, "Krigsgud Hembrygd"], [2295, "Ölgudens Överste"],
+    [2470, "Ölgudens Livgarde"], [2650, "Ölguden"]];
   function titleFor(total) {
     total = Math.max(0, total | 0);
     var i = 0; while (i + 1 < TITLES.length && total >= TITLES[i + 1][0]) i++;
@@ -61,7 +61,8 @@
   var stats = null, statsAt = 0, statsDone = null;
   var statsReady = new Promise(function (r) { statsDone = r; });
   var TITLE_KEY = "olnu.title", TOTAL_KEY = "olnu.titleTotal", LADDER_KEY = "olnu.ladder", MER_KEY = "olnu.titleMer";
-  var LADDER = "13";   // v26 (0036): ranks by meriter = a new ladder version (0035 was "12")
+  var LADDER = "15";   // tx01: new rank names + thresholds = a new ladder version (one quiet "new ranks" toast, no false
+                       // BEFORDRAN). Every new threshold <= the old one, so a rank can only stay or go up. 13 = 0036
   function loadStats() {
     if (!A || !A.authed() || off.my_stats) { if (statsDone) statsDone(); return Promise.resolve(); }
     statsAt = Date.now();
@@ -79,8 +80,10 @@
       var total = Math.max(0, d.total | 0), hasM = d.meriter != null;
       var rv = hasM ? Math.max(0, d.meriter | 0) : total, tf = titleFor(rv);
       stats = { total: total, week: d.week | 0, meriter: hasM ? rv : (stats && stats.meriter != null ? stats.meriter : null),
-        title: d.title || tf.title,
-        next: d.next_title !== undefined ? d.next_title : tf.next, nextAt: d.next_at !== undefined ? d.next_at : tf.nextAt,
+        // tx01: with meriter the client ladder names the rank (same thresholds as the server; the names may differ
+        // for a while on release day: the server file 0345 is owner-run).
+        title: hasM ? tf.title : d.title || tf.title,
+        next: hasM ? tf.next : d.next_title !== undefined ? d.next_title : tf.next, nextAt: hasM ? tf.nextAt : d.next_at !== undefined ? d.next_at : tf.nextAt,
         tonight: d.tonight_meriter != null ? d.tonight_meriter | 0 : (stats ? stats.tonight | 0 : 0) };
       if (!hasM && stats.meriter != null) {   // keep the meriter rank when a reply without meriter comes in
         var tm = titleFor(stats.meriter); stats.title = tm.title; stats.next = tm.next; stats.nextAt = tm.nextAt;
@@ -93,8 +96,8 @@
     if (!d || d.meriter == null) return;
     var m = Math.max(0, d.meriter | 0), tf = titleFor(m);
     if (!stats) stats = { total: 0, week: 0 };
-    stats.meriter = m; stats.title = d.title || tf.title;
-    stats.next = d.next_title !== undefined ? d.next_title : tf.next; stats.nextAt = d.next_at !== undefined ? d.next_at : tf.nextAt;
+    stats.meriter = m; stats.title = tf.title;   // tx01: client ladder (see applyStats)
+    stats.next = tf.next; stats.nextAt = tf.nextAt;
     if (d.tonight != null) stats.tonight = d.tonight | 0;
     rankCheck(true);
   }

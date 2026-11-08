@@ -29,7 +29,7 @@
   /* ---------- helpers ---------- */
   function W(n) { return window[n] || null; }
   function safe(fn, d) { try { var v = fn(); return v === undefined ? d : v; } catch (e) { return d; } }
-  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return "&#" + c.charCodeAt(0) + ";"; }); }
+  function esc(s) { return U.esc(s); }
   function h(tag, attrs, kids) {
     var n = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) {
@@ -44,13 +44,7 @@
   function ls(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, String(v)); } catch (e) {} }
   function lsJ(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
-  function call(fn, p) {
-    if (!A || !A.LIVE || off[fn]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(fn, p || {}).then(function (r) {
-      if (r && r.error && U.missing && U.missing(r.error)) { off[fn] = true; r.off = true; }
-      return r || { data: null, error: { message: "empty" } };
-    }, function (e) { return { data: null, error: e || { message: "error" } }; });
-  }
+  var call = U.rpcCall(function () { return A; }, off, { safe: true });   // cln: the shared guarded RPC caller (util.js)
   function data(r) { return r && !r.error ? safe(function () { return A.parseData(r.data); }, r.data) : null; }
   function code(e) { try { return U.errCode ? U.errCode(e) : String((e && e.message) || ""); } catch (x) { return ""; } }
   function toast(m, o) { try { A.toast(m, o); } catch (e) {} }

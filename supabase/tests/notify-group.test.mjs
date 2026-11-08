@@ -476,7 +476,7 @@ t("pushCat: every tag kind maps to a kind; safety is safe", () => {
   assert.equal(c("olnu-friend-1"), "vanner");
   for (const x of ["olnu-12-1", "olnu-12-5", "olnu-12-10", "olnu-12-home", "olnu-12-pause", "olnu-come-12", "olnu-coming-12", "olnu-checkin-7", "olnu-eta-3"]) assert.equal(c(x), "ute", x);
   assert.equal(c(""), ""); assert.equal(c("whatever"), "");
-  assert.deepEqual([...m.PUSH_CATS], ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film"]);
+  assert.deepEqual([...m.PUSH_CATS], ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film", "ikvall", "gang"]);   // ntf v2: + ikvall, gang
 });
 t("0195 filmStartPayload: name, group, cam link, tag; film is noisy", () => {
   const gid = "11111111-2222-3333-4444-555555555555";

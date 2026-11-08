@@ -69,7 +69,6 @@ button{font:inherit;color:inherit}
 .tk-track{display:flex;white-space:nowrap;height:100%;align-items:center;font-family:var(--hud);font-size:13px;width:max-content;will-change:transform}
 .tk-track>span{flex:0 0 auto}
 .tk-track.moving{animation:tick 30s linear infinite}
-.tk-run{display:inline-flex;align-items:center;padding-left:12px}
 .tk-item{color:var(--amber-2)}
 .tk-item.tk-med{color:#fff;text-shadow:0 0 6px var(--red)}
 .tk-item.tk-friend{color:var(--green)}
@@ -353,7 +352,6 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 .pp-list .pp-n{font-family:var(--hud);color:var(--amber-2)}
 .pp-list .pp-ikv{font-family:inherit;font-size:var(--fs-12);color:var(--muted)}
 .pp-list .pp-skal{margin:0;font-size:var(--fs-14)}
-.my-streak .ms-skal{color:var(--gold);text-transform:none}
 .toast.skal{border-color:var(--gold);border-left-color:var(--gold);color:var(--gold)}
 
 /* ---------- v3: foam splash ---------- */
@@ -380,20 +378,9 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 .tk-medevac .to-title{color:#fff;text-shadow:0 0 18px rgba(255,59,59,.95),0 4px 0 var(--red-d)}
 .to-sub{font-family:var(--body);font-weight:600;font-size:var(--fs-16);color:var(--foam);margin-top:12px;}
 .to-hint{font-family:var(--body);font-weight:600;font-size:var(--fs-14);color:var(--muted);margin-top:22px}
-.to-flames{position:absolute;left:0;right:0;bottom:-10px;display:flex;justify-content:space-around;font-size:64px;pointer-events:none}
-.to-flames span{animation:flame var(--m-6) var(--e-std) infinite alternate;animation-delay:calc(var(--i) * -70ms);transform-origin:50% 100%;filter:drop-shadow(0 0 14px rgba(255,122,26,.9))}
-.to-heli{position:absolute;top:18%;left:-120px;font-size:72px;animation:heli 1.8s linear forwards;filter:drop-shadow(0 0 10px #000)}
-/* Strobe: 2.5 flashes per second, low contrast. */
-.to-strobe{position:absolute;inset:0;background:#fff;opacity:0;animation:strobe var(--m-6) steps(1) infinite}
-.tk-medevac .to-strobe{mix-blend-mode:overlay}
-@keyframes strobe{0%{opacity:0;background:#fff}50%{opacity:.18;background:var(--red)}}
 @keyframes toin{from{opacity:0}}
 @keyframes toicon{from{transform:scale(.2) rotate(-20deg);opacity:0}}
 @keyframes toslam{from{transform:scale(2.4);opacity:0}}
-@keyframes flame{from{transform:scaleY(.85) translateY(6px)}to{transform:scaleY(1.15) translateY(-6px)}}
-@keyframes heli{from{transform:translateX(0)}to{transform:translateX(calc(100vw + 240px))}}
-.takeover.still .to-flames span,.takeover.still .to-heli{animation:none}
-.takeover.still .to-heli{left:50%;transform:translateX(-50%)}
 
 /* ---------- v6: Kaos i stan banner (under the ticker; pushes the HUD line, Värme chip, locate and toasts down) ---------- */
 .chaos{position:fixed;z-index:1001;top:calc(var(--sat) + 100px);left:calc(var(--sal) + 10px);right:calc(var(--sar) + 10px);
@@ -470,7 +457,6 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 .hx-taxi{color:#241300;background:var(--gold);border-color:var(--gold)}
 .hx-ghost{cursor:default;font-size:var(--fs-16);padding:0 7px;color:#dfe3ea;border-color:rgba(200,206,217,.45)}
 .hx-badges{font-size:var(--fs-16);padding:0 8px}
-.my-streak .ms-other{color:#d9b8ff;text-transform:none}
 
 /* ---------- v9: ghost pins chip (grey, never looks live) ---------- */
 #btn-ghostpins{top:calc(var(--sat) + 146px + var(--chaos-h,0px))}
@@ -658,7 +644,6 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 .cr-sub{font-family:var(--body);font-weight:600;font-size:var(--fs-14);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cr-n{flex:0 0 auto;font-family:var(--hud);font-size:var(--fs-14);color:var(--amber-2);white-space:nowrap;text-align:right}
 .cr-n b{font-weight:400;font-size:var(--fs-16)}
-.cr-oc{display:block;font-size:var(--fs-14);color:#d9b8ff}
 .cr-act{flex:0 0 auto}
 .cr-act .skal-btn.small{min-height:40px;min-width:76px;font-size:var(--fs-14)}
 .cr-skal{flex:0 0 auto;font-family:var(--body);font-weight:600;font-size:var(--fs-14);color:var(--gold);min-width:76px;text-align:center}
@@ -1069,3 +1054,4 @@ body:has(#rally:not([hidden])) .chaos{top:calc(var(--sat) + 104px) !important}
 .gcard-live{color:#3ddc84}
 .gcard-go{font-size:var(--fs-28);line-height:1;color:var(--amber,#f5a623);flex:none}
 .g-back{background:none;border:0;color:var(--amber,#f5a623);font:inherit;font-weight:700;padding:6px 0 12px;cursor:pointer}
+/* cln02: dead rules removed */

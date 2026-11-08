@@ -51,6 +51,73 @@
   }
 
   var recentUsed = [];   // template ids shown lately (memory only)
+
+/* TX PICK START */
+  /* tx04: (1) no template twice in one night per phone (olnu.tkNight = {n: night key, u: {kind: [index…]}}); a kind
+     starts a new shuffled round only when all its lines were shown tonight. (2) Lines about Ludvika-area places (any kind)
+     show only near Ludvika, Dalarna filler lines only in Dalarna. (3) Store builds (OLNU_STORE) skip drink-race kinds (who
+     leads, records, beers per hour, "one more to…"). (4) Time of day / weekday / month / real weather / town joke kinds. */
+  var TK_NIGHT = "olnu.tkNight", tkNight = null;
+  function usedTonight(now) {
+    var key = nightKey(now);
+    if (!tkNight || tkNight.n !== key) {
+      var r = null; try { r = U.ls.getJSON(TK_NIGHT, null); } catch (e) { r = null; }
+      tkNight = r && r.n === key && r.u && typeof r.u === "object" ? r : { n: key, u: {} };
+    }
+    return tkNight;
+  }
+  function markShown(now, list) {
+    try {
+      var r = usedTonight(now), ch = false;
+      list.forEach(function (x) {
+        if (x.uk == null || x.ui == null) return;
+        var a = r.u[x.uk] || (r.u[x.uk] = []);
+        if (a.indexOf(x.ui) < 0) { a.push(x.ui); ch = true; }
+      });
+      if (ch) U.ls.setJSON(TK_NIGHT, r);
+    } catch (e) {}
+  }
+  var FILLER_RE = /^(random|general|total|t[1-5]|tMorning|tDay|wd[1-7]|mo\d{1,2})$/;
+  var LUDV_RE = /Ludvika|Väsman|Grangärde|Sunnansjö|Ulriksberg|Fredriksberg|Säfsnäs|Blötberget|Grängesberg|Nyhammar|Saxen|Smedjebacken|Brunnsvik/;
+  var DAL_RE = /Dalarna|dalmål|Dalälven|[Dd]alahäst|Bergslagen/;
+  var LUDV_TOWNS = { "Ludvika": 1, "Smedjebacken": 1, "Grängesberg": 1 };
+  var DAL_TOWNS = { "Ludvika": 1, "Smedjebacken": 1, "Grängesberg": 1, "Borlänge": 1, "Falun": 1, "Mora": 1, "Leksand": 1, "Rättvik": 1,
+    "Avesta": 1, "Hedemora": 1, "Säter": 1, "Vansbro": 1, "Orsa": 1, "Älvdalen": 1, "Malung": 1, "Sälen": 1, "Fagersta": 1, "Kopparberg": 1 };
+  // here = the town of the user's current position (ticker centre: own location, own pin or map centre; never the home
+  // town). Live values (names, bars, towns) are taken out first, so only the template's own words are tested.
+  function localOk(k, tx, d) {
+    if (/^townJoke_/.test(k)) return true;   // keyed by town already
+    var here = d && d.here, t = String(tx);
+    ["bar", "bar1", "bar2", "bar3", "name", "group", "stad", "town", "here", "rival", "who", "where"].forEach(function (f) {
+      var v = d && d[f]; if (v && typeof v === "string" && v.length > 1) t = t.split(v).join(" ");
+    });
+    if (LUDV_RE.test(t) && !LUDV_TOWNS[here]) return false;
+    if (FILLER_RE.test(k) && DAL_RE.test(t) && !DAL_TOWNS[here]) return false;
+    return true;
+  }
+  var STORE_SKIP = { meBehind: 1, meLead: 1, groupLeader: 1, recNew: 1, recChase: 1, recClose: 1, meRecNew: 1, meRec: 1, barRate: 1, barRateHigh: 1,
+    hotClose: 1, medClose: 1, meHotClose: 1, meMedClose: 1 };   // "one more and you hit…" lines push drinking
+  function storeSkip(k) { return !!(window.OLNU_STORE && STORE_SKIP[k]); }
+  function partsNow(now) {   // evening weekday (1 = Monday) and month: the night belongs to the evening before 05:00
+    try {
+      var d = new Date(now.getTime() - 5 * 3600e3);
+      var f = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", weekday: "short", month: "numeric" }).formatToParts(d), wd = "", mo = 0;
+      f.forEach(function (p) { if (p.type === "weekday") wd = p.value; if (p.type === "month") mo = +p.value; });
+      return { wd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(wd) + 1, mo: mo };
+    } catch (e) { var x = new Date(now.getTime() - 5 * 3600e3); return { wd: ((x.getDay() + 6) % 7) + 1, mo: x.getMonth() + 1 }; }
+  }
+  function wxKind() {   // real weather from js/ute.js (Open-Meteo, cached 30 min); null when unknown
+    try {
+      var w = window.UTE && window.UTE.current && window.UTE.current(), d = w && w.d;
+      if (!d || !isFinite(d.t)) return null;
+      var c = d.code | 0, t = Math.round(d.t);
+      var k = c >= 95 ? "storm" : (c >= 71 && c <= 77) || c === 85 || c === 86 ? "snow"
+        : (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || d.pr > 0 ? "rain" : c === 45 || c === 48 ? "fog"
+        : t <= 0 ? "freeze" : t < 10 ? "cold" : t >= 18 ? "warm" : c <= 1 ? "clear" : "mild";
+      return { k: k, t: t };
+    } catch (e) { return null; }
+  }
+  /* TX PICK END */
   var sideSeen = {}, SIDE_FRESH_MS = 40 * 60 * 1000;   // pin id -> {n: other_count, at: when it went up}
 
   /* ---------- Helpers ---------- */
@@ -208,6 +275,9 @@
     if (k >= 1 && hh >= 1 && hh < 5) add("townLate", { town: town, k: k }, 2);
     if (k >= 1 && hh >= 15 && hh < 20) add("townEarly", { town: town, k: k }, 1);
     add("townWeather", { town: town }, 0);
+    if (Math.random() < 0.3) add("townJoke_" + town, { town: town }, 0);   // tx04: local humour, only in that town
+    var wx = (hh >= 15 || hh < 5) && Math.random() < 0.4 ? wxKind() : null;   // tx04: real weather, evenings
+    if (wx) add("townWx_" + wx.k, { town: town, t: wx.t }, 0);
     var rival = null;
     Object.keys(byTown).forEach(function (tw) { if (tw !== town && (!rival || byTown[tw] > byTown[rival])) rival = tw; });
     if (rival && k >= 1) add("townCompare", { town: town, k: k, rival: rival, rk: byTown[rival] }, 2);
@@ -233,7 +303,7 @@
       (byKind[x.k] = byKind[x.k] || []).push(x.f);
     });
     var cand = [];   // {k, d, imp, cls}
-    function add(k, d, imp, cls) { if (byKind[k]) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" }); }
+    function add(k, d, imp, cls) { if (byKind[k] && !storeSkip(k)) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" }); }
     var anon = t("newsAnon") || ["?"];
 
     // Bars with 2+ people (same assignment as the map: precise pins within 75 m).
@@ -381,11 +451,17 @@
     var near = c ? beers.filter(function (b) { return U.haversine(c.lat, c.lng, b.lat, b.lng) <= NEAR_M; }) : beers;
     var hotNear = near.filter(function (b) { return U.level(b.beer_count) > 0; }).length;
     if (near.length < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
+    if (!near.length && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet");   // tx05: real line first
     if (near.length >= 1) add("forecast", { stad: stad, n: near.length, p: Math.min(99, near.length * 9 + hotNear * 10) }, 0);
     // Two random "filler" headlines every round: the biggest source of variety.
     add("random", { stad: stad }, 0); add("random", { stad: stad }, 0);
-    var h = hourNow(now), tk = h >= 5 && h < 20 ? "t1" : h >= 20 && h < 23 ? "t2" : h >= 23 || h < 1 ? "t3" : h < 3 ? "t4" : "t5";
+    // tx04: morning 05–11, day 11–17, pre-evening 17–20 (t1 was 05–20: "förfesten har börjat" at breakfast).
+    var h = hourNow(now), tk = h >= 5 && h < 11 ? "tMorning" : h >= 11 && h < 17 ? "tDay" : h >= 17 && h < 20 ? "t1" : h >= 20 && h < 23 ? "t2" : h >= 23 || h < 1 ? "t3" : h < 3 ? "t4" : "t5";
+    if (!byKind[tk]) tk = h >= 5 && h < 20 ? "t1" : tk;
     add(tk, { hh: ("0" + h).slice(-2) }, 0);
+    var pn = partsNow(now);
+    if (Math.random() < 0.5) add("wd" + pn.wd, { hh: ("0" + h).slice(-2) }, 0);
+    if (Math.random() < 0.3) add("mo" + pn.mo, {}, 0);
 
     // QA #11: the local town for lines that name a place ("stan" when unknown); a stranger's own town wins.
     var here = (c && townAt(c.lat, c.lng)) || "stan";
@@ -394,21 +470,25 @@
     var seen = {}, items = [];
     cand.forEach(function (x) {
       // Prefer templates not used in the last ~60 headlines, then texts not on screen last cycle.
-      var ids = byKind[x.k].map(function (f, i) { return { f: f, id: x.k + ":" + i }; });
+      // tx04: lines not shown tonight first, then lines not shown lately. All shown tonight = a new round for this kind.
+      var ids = byKind[x.k].map(function (f, i) { return { f: f, i: i, id: x.k + ":" + i }; });
+      var night = usedTonight(now), nu = night.u[x.k] || [];
+      if (nu.length >= ids.length) nu = night.u[x.k] = [];
       shuffle(ids);
-      ids.sort(function (a, b) { return (recentUsed.indexOf(a.id) >= 0) - (recentUsed.indexOf(b.id) >= 0); });
-      var text = "", usedId = null;
+      ids.forEach(function (o) { o.w = (nu.indexOf(o.i) >= 0 ? 2 : 0) + (recentUsed.indexOf(o.id) >= 0 ? 1 : 0); });
+      ids.sort(function (a, b) { return a.w - b.w; });
+      var text = "", usedId = null, usedIx = null;
       for (var i = 0; i < ids.length; i++) {
         var tx = "";
         try { tx = String(ids[i].f(x.d)); } catch (e) { tx = ""; }
-        if (!tx || seen[tx]) continue;
-        text = tx; usedId = ids[i].id;
+        if (!tx || seen[tx] || !localOk(x.k, tx, x.d)) continue;
+        text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;
       }
       if (!text || seen[text]) return;
       if (usedId) { recentUsed.push(usedId); if (recentUsed.length > 60) recentUsed.shift(); }
       seen[text] = true;
-      items.push({ text: text, cls: x.cls, imp: x.imp, k: x.k, d: x.d, old: prev.indexOf(text) >= 0, r: Math.random() });
+      items.push({ text: text, cls: x.cls, imp: x.imp, k: x.k, d: x.d, old: prev.indexOf(text) >= 0, r: Math.random(), uk: x.k, ui: usedIx });
     });
     // v14 mix (owner): the ticker is MOSTLY about the user's own groups.
     //  group = tk-friend / tk-me items and kinds starting with "group" or "me" → up to ~4 of 6 slots;
@@ -429,6 +509,9 @@
     out = out.map(function (x, i) { return { x: x, i: i, g: catOf(x) === "general" ? 1 : 0 }; }).sort(function (a, b) { return a.g - b.g || a.i - b.i; }).map(function (o) { return o.x; });
     var lastText = prev.length ? prev[prev.length - 1] : null;
     if (out.length > 1 && out[0].text === lastText) out.push(out.shift());
+    // tx05 (usability): in an empty town the useful real line opens the belt, the jokes come after it.
+    for (var ef = 1; ef < out.length; ef++) if (out[ef].k === "emptyFirst") { out.unshift(out.splice(ef, 1)[0]); break; }
+    markShown(now, out);   // tx04: only what is really shown counts as used tonight
     return out.map(function (x) { return { text: x.text, cls: (x.cls || "") + (catOf(x) !== "general" ? " tk-real" : ""), k: x.k }; });   // ds40 tk-real = a real event (dot)
   }
 

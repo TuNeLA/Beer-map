@@ -15,14 +15,14 @@
 
   /* ---------- Catalog: [id, emoji, name, funny line (earned), how to get it, stacks, secret] ---------- */
   var CAT = [
-    // SAFE (owner 2026-11-07): the tjänst series counts skål (given + received), not drinks. Same ids, same joke names.
+    // Store rules v2 (owner 2026-11-08, 0349): the tjänst series counts logged beers in every mode (lifetime, no per-night count).
     ["m1", "🍺", "Första kapsylen", "Första kvällen ute med appen. Mamma vore stolt (typ).", "Var ute en kväll med PintsNow."],
-    ["m10", "🔟", "Tian", "Tio skål i tjänst. Du har ett rykte nu.", "10 skål totalt (givna + fått)."],
-    ["m50", "🪙", "Femtiolappen", "Femtio skål. Armen ä i form.", "50 skål totalt."],
-    ["m100", "💯", "Hundringen", "Hundra skål. Grangärde pratar om dig.", "100 skål totalt."],
-    ["m250", "🛢️", "Kvartstusen", "Kvartstusen skål. Glasen klingar i hela Dalarna.", "250 skål totalt."],
-    ["m500", "🏺", "Halvtusen", "500 skål. Arkeologer kommer att hitta ekot.", "500 skål totalt."],
-    ["m1000", "🏛️", "Tusenåringen", "Tusen skål. Någon borde resa ett monument.", "1000 skål totalt."],
+    ["m10", "🔟", "Tian", "Tio öl i tjänst. Du har ett rykte nu.", "Logga 10 öl totalt."],
+    ["m50", "🪙", "Femtiolappen", "Femtio öl. Armen ä i form.", "Logga 50 öl totalt."],
+    ["m100", "💯", "Hundringen", "Hundra öl. Grangärde pratar om dig.", "Logga 100 öl totalt."],
+    ["m250", "🛢️", "Kvartstusen", "Kvartstusen öl. Glasen klingar i hela Dalarna.", "Logga 250 öl totalt."],
+    ["m500", "🏺", "Halvtusen", "500 öl. Arkeologer kommer att hitta kapsylerna.", "Logga 500 öl totalt."],
+    ["m1000", "🏛️", "Tusenåringen", "Tusen öl. Någon borde resa ett monument.", "Logga 1000 öl totalt."],
     ["n5", "🌙", "Nattpatrull", "Fem kvällar ute. Dörrvakterna nickar åt dig.", "Var ute 5 kvällar."],
     ["n25", "🦇", "Nattveteran", "25 kvällar. Månen hälsar på dig.", "Var ute 25 kvällar."],
     ["n100", "🌌", "Hundra nätter", "Hundra kvällar ute. En saga i sig.", "Var ute 100 kvällar."],
@@ -48,7 +48,7 @@
     ["kung", "👑", "Barkungen", "Kung av en bar en hel vecka. Kronan klär dig.", "Delas int' ut längre.", 1],
     ["liga", "🥇", "Ligamästare", "Din grupp vann veckan. Ära åt plutonen!", "Delas int' ut längre.", 1],
     ["pluton", "🫂", "Plutonen", "Du har ett gäng. Ingen dricker ensam.", "Gå med i en grupp."],
-    ["kompani", "🏰", "Kompanichef", "Din grupp har fem man eller fler.", "Skapa en grupp med 5+ medlemmar.", 1],
+    ["kompani", "⚜️", "Kompanichef", "Din grupp har fem man eller fler.", "Skapa en grupp med 5+ medlemmar.", 1],
     ["radio", "💬", "Radiokontakt", "Första meddelandet i chatten. Över.", "Skriv i gruppchatten."],
     ["signal", "📻", "Signalisten", "50 meddelanden. Radion glöder.", "Skriv 50 meddelanden i chatten."],
     ["valborg", "🪵", "Valborgsveteran", "Ute på Valborg. Brasan och du.", "Var ute på Valborg (30 april).", 1],
@@ -60,19 +60,32 @@
     ["spoke", "👻", "Spökpatrullen", "Du drack i hemlighet. Ingen vet. Utom vi.", "Drick en öl i spökläge.", 1],
     // v12 KROGARNA (0014)
     ["kospanare", "🚶", "Köspanaren", "Fem kö-rapporter. Dörrvakten har sett dig med kikare.", "Rapportera kön på en krog 5 gånger."],
-    ["sommelier", "⭐", "Ölsommelieren", "Fem olika ölsorter. Du säger ”fruktiga toner” nu. Förlåt oss.", "Välj 5 olika ölsorter efter ÖL!."],
+    ["sommelier", "⭐", "Ölsommelieren", "Fem olika ölsorter. Du säger ”fruktiga toner” nu. Förlåt oss.", "Välj 5 olika ölsorter när du loggar."],
     ["erovrare", "🏰", "Erövraren", "Din grupp tog över en krog. Flaggan vajar i Dalarna!", "Ta över en krog med din grupp (flest incheckade).", 1],
     ["tipsare", "📣", "Kunskapsspridaren", "Tre krogtips. Du är gruppens egen nöjesguide.", "Tipsa gruppen om en krog 3 gånger."],
     ["uppdrag", "🎯", "Uppdragstagaren", "Uppdrag slutfört. Högkvarteret har noterat det i liggaren.", "Slutför ett av kvällens uppdrag.", 1],
     ["uppdrag3", "🏅", "Fullt pådrag", "Tre av tre uppdrag på en kväll. Generalstaben tar av sig mössan.", "Slutför alla tre uppdrag samma kväll.", 1],
-    ["runda", "🗺️", "Rundvandraren", "Krogrundan gick i mål. Skorna förtjänar en medalj också.", "Gå klart en krogrunda med gruppen (minst 2 stopp själv).", 1],
+    ["runda", "🔁", "Rundvandraren", "Krogrundan gick i mål. Skorna förtjänar en medalj också.", "Gå klart en krogrunda med gruppen (minst 2 stopp själv).", 1],
     ["detektiv", "🔎", "Detektiven", "Du knäckte den hemliga agenten. Sherlock i egen hög person.", "Gissa rätt på den hemliga agenten.", 1],
     ["spion", "🕵️", "Mästerspionen", "Ingen genomskådade dig. Farligt bra.", "Var hemlig agent utan att någon gissar rätt.", 1],
     ["orakel", "🔮", "Oraklet", "Bäst gissning på hur många som är ute ikväll. Kristallkulan är polerad.", "Vinn Gissa kvällen i din grupp.", 1],
     ["bingo", "🎱", "Bingo!", "Tre i rad. Hela gänget jublar.", "Var med när gruppen får bingo i Kvällsbingo.", 1],
     // "Varit med om": hidden until earned, caring text, never a goal.
     ["het", "🔥", "Varit med om: het kväll", "Du har varit med om en het kväll. Glöden lever kvar i historierna.", "", 1, 1],
-    ["medevac", "🚁", "Varit med om: lång kväll", "Du har varit med om en lång kväll. Truppen minns, och du kom hem. 🫡", "", 1, 1]
+    ["medevac", "🚁", "Varit med om: lång kväll", "Du har varit med om en lång kväll. Truppen minns, och du kom hem. 🫡", "", 1, 1],
+    // tx03 (0347/0348): social, care, places and games. Nothing here counts drinks or speed.
+    ["hemmarsch", "🚶", "Hemmarschen", "Följ mig hem hela vägen till dörren. Eskorten avlöst, uppdraget slutfört.", "Gå hem med 🏠 Följ mig hem tills appen säger Hemma.", 1],
+    ["eskort", "👀", "Eskorten", "Du höll koll tills kompisen var hemma. Så gör en riktig vän.", "Följ en kompis hem med Följ mig hem tills hen ä hemma.", 1],
+    ["chauffor", "🚗", "Kvällens chaufför", "Du körde gänget. Kvällens viktigaste jobb, och du tog det.", "Slå på 🚗 Jag kör ikväll.", 1],
+    ["raddare", "🆘", "Räddaren i natten", "Nån behövde skjuts och du sa: Jag kommer. Hjälte.", "Svara Jag kommer när en kompis ber om Hämta mig.", 1],
+    ["samman", "🤝", "Sammanhållningen", "Fem kvällar ute med truppen. Ni ä ett gäng nu.", "Var ute med truppen 5 kvällar (en kompis inom 150 m).", 1],
+    ["krigsfoto", "📸", "Krigsfotografen", "25 bilder i gruppchatten. Historien ä dokumenterad.", "Skicka 25 bilder i gruppchatten."],
+    ["faltskar", "🩺", "Fältskären", "Fem gånger har du kollat läget med en kompis. Truppen ä trygg med dig.", "Kolla läget med en kompis 5 gånger."],
+    ["punktlig", "⏱️", "Punktlig soldat", "Du sa att du skulle komma, och du kom. Fem gånger.", "Kom fram dit du lovat 5 gånger (ETA, inbjudan, incheckning)."],
+    ["lekledare", "🎲", "Lekledaren", "Tio partyspel. Du ä anledningen till att alla skrattar.", "Spela 10 partyspel med 3+ spelare."],
+    ["riksturne", "🚆", "Riksturnén", "Fem olika städer. Du har sett Sverige från krogfönstret.", "Var ute i 5 olika städer."],
+    ["tuppen", "🐓", "Först i stan", "Först incheckad i stan, och fler kom efter. Du öppnade kvällen.", "Var först att checka in i din stad en kväll (och fler kommer efter).", 1],
+    ["skalrunda", "🎊", "Skålrundan", "Skål till fem olika personer på en kväll. Stans mest sociala soldat.", "Ge skål till 5 olika personer samma kväll.", 1]
   ];
   var BY = {};
   CAT.forEach(function (c, i) { BY[c[0]] = { id: c[0], e: c[1], name: c[2], line: c[3], how: c[4], stack: !!c[5], secret: !!c[6], i: i }; });
@@ -86,13 +99,7 @@
   var LEGACY = { early: "dagsljus", owl: "uggla", home01: "hemvarn", chat: "radio", side: "sidospar", ghost: "spoke", barhop: "krogrunda" };
 
   /* ---------- RPC ---------- */
-  function call(name, params) {
-    if (!A || !A.LIVE || !A.authed() || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(name, params).then(function (r) {
-      if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; }
-      return r;
-    });
-  }
+  var call = U.rpcCall(function () { return A; }, off, { authed: true });   // cln: the shared guarded RPC caller (util.js)
   function on() { return !!(A && A.LIVE && !off.my_medals && !off.award_medals); }
 
   var mine = null;   // id -> {count, at}
@@ -135,6 +142,9 @@
   }
 
   var lastAward = 0, awardBusy = false, awardAgain = null, SEED_KEY = "olnu.medalsSeeded";
+  // cln: the last award survives a reload / app open (olnu.medalsAt); no action = max once per 6 h
+  var AT_KEY = "olnu.medalsAt", CI_KEY = "olnu.medalsCi", IDLE_MS = 6 * 3600e3;
+  lastAward = +U.ls.get(AT_KEY, "0") || 0; if (lastAward > Date.now()) lastAward = 0;
   // ⚡ SPEED (code review #7): award_medals was the 3rd biggest server cost (2502 calls). Own beer / check-in / home = at
   // once; everything else (chat, skål / rally taps, the poll) only when the last award is older than ms.
   function soft(ms) { if (Date.now() - lastAward >= ms) award(null, true); }
@@ -142,7 +152,7 @@
     if (!A || !A.LIVE || !A.authed() || off.award_medals) return Promise.resolve();
     if (awardBusy) { awardAgain = ev || awardAgain || ""; return Promise.resolve(); }
     if (!force && !ev && Date.now() - lastAward < 20000) return Promise.resolve();
-    awardBusy = true; lastAward = Date.now();
+    awardBusy = true; lastAward = Date.now(); U.ls.set(AT_KEY, String(lastAward));
     // First award on this phone (right after the v11 update): old achievements get stored all at
     // once. One summary toast instead of a toast storm.
     var first = U.ls.get(SEED_KEY, "") !== "1";
@@ -209,13 +219,13 @@
     // [ids, edge, field, stripe]
     [["m1", "m10", "m50", "m100", "m250", "m500", "m1000"], "#5a3608", "#f5a623", "#fffaf0"],                       // tjänst (beer count)
     [["n5", "n25", "n100"], "#141d3d", "#34497f", "#c9d1e0"],                                                     // nights
-    [["b5", "b15", "b40", "krogrunda", "stammis", "kospanare", "erovrare", "tipsare", "runda"], "#2e381b", "#6f7d4f", "#ffc24d"], // bars
-    [["sg10", "sg100", "sr10", "sr100"], "#4d0a12", "#b3121b", "#ffe08a"],                                       // skål
-    [["inryckt", "alltid", "trumslag", "pluton", "kompani", "radio", "signal", "liga", "fortrupp"], "#0c3a22", "#1fa45c", "#ece6d6"], // group + call-outs
-    [["hemvarn", "komhem", "vatten"], "#0b2f55", "#4aa3ff", "#ffffff"],                                         // care
+    [["b5", "b15", "b40", "krogrunda", "stammis", "kospanare", "erovrare", "tipsare", "runda", "riksturne", "tuppen"], "#2e381b", "#6f7d4f", "#ffc24d"], // bars
+    [["sg10", "sg100", "sr10", "sr100", "skalrunda"], "#4d0a12", "#b3121b", "#ffe08a"],                                       // skål
+    [["inryckt", "alltid", "trumslag", "pluton", "kompani", "radio", "signal", "liga", "fortrupp", "samman", "krigsfoto", "punktlig"], "#0c3a22", "#1fa45c", "#ece6d6"], // group + call-outs
+    [["hemvarn", "komhem", "vatten", "hemmarsch", "eskort", "chauffor", "raddare", "faltskar"], "#0b2f55", "#4aa3ff", "#ffffff"],   // care (tx03 +5)                                         // care
     [["dagsljus", "uggla", "tisdag", "valborg", "midsommar", "lucia", "nyar", "faltresa"], "#003f73", "#1f6fb8", "#fecb00"], // days (Swedish blue/yellow)
     [["kung"], "#3a1556", "#6b2d8f", "#ffe08a"],                                                                // royal
-    [["uppdrag", "uppdrag3", "detektiv", "spion", "orakel", "bingo", "sommelier"], "#1b1208", "#ff7a1a", "#1b1208"], // games
+    [["uppdrag", "uppdrag3", "detektiv", "spion", "orakel", "bingo", "sommelier", "lekledare"], "#1b1208", "#ff7a1a", "#1b1208"], // games
     [["sidospar", "spoke"], "#3b2a52", "#8a6bb3", "#d9b8ff"],                                                     // other + ghost
     [["het", "medevac"], "#5c0a0a", "#ff3b3b", "#ffffff"]                                                       // "varit med om"
   ];
@@ -329,7 +339,7 @@
     var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats();
     var me = { name: A.getName() || A.t("you"), isMe: true, total: st ? st.total : null, meriter: st && st.meriter != null ? st.meriter : null, medals: mine || {} };
     showUniform(me);
-    award(null, true).then(function () {
+    (Date.now() - lastAward >= IDLE_MS ? award(null, true) : Promise.resolve()).then(function () {
       return loadMine();
     }).then(function (m) {
       if (off.my_medals) return;
@@ -509,7 +519,7 @@
       }, true);
       /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
-    onAuthed: function () { award(null, true); },
+    onAuthed: function () { soft(IDLE_MS); },
     onBeerAccepted: function (d, o) {
       if ((d.beer_count | 0) > 0) noteBeer();
       if (o && o.ghost) setTimeout(function () { claim("spoke"); }, 1200);
@@ -518,8 +528,9 @@
     onPoll: function () {
       if (!A || !A.authed()) return;
       var ci = A.myCheckin && A.myCheckin(), key = ci ? String(ci.bar_id || ci.id || "") + "|" + (ci.at || ci.created_at || ci.name || "") : "";
-      if (key && key !== lastCi) { lastCi = key; award(null, true); return; }
-      if (Date.now() - lastAward > 10 * 60000) award(null, true);
+      if (!lastCi) lastCi = U.ls.get(CI_KEY, "") || "";
+      if (key && key !== lastCi) { lastCi = key; U.ls.set(CI_KEY, key); award(null, true); return; }
+      soft(IDLE_MS);
     },
     onStopped: function (kind) { if (kind === "home") award("home", true); },
     onChat: function () { setTimeout(function () { soft(120000); }, 800); }

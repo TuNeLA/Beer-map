@@ -142,5 +142,20 @@
       (o.friend ? '<span class="pfd" aria-hidden="true"></span>' : "") +
       (o.label || "") + "</div>";
   };
+  // cln: one guarded RPC caller for the modules (each had its own copy). getA() → the app api; off = the module's own map
+  // {rpc name: true} of functions missing on this server (the module reads it too). o.authed: only with a session.
+  // o.safe: params default {}, never rejects, an empty answer becomes an error. Missing / off → {data: null, error, off: true}.
+  U.rpcCall = function (getA, off, o) {
+    o = o || {};
+    return function (name, params) {
+      var A = getA();
+      if (!A || !A.LIVE || (o.authed && !A.authed()) || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
+      if (!o.safe) return A.rpc(name, params).then(function (r) { if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; } return r; });
+      return A.rpc(name, params || {}).then(function (r) {
+        if (r && r.error && U.missing(r.error)) { off[name] = true; r.off = true; }
+        return r || { data: null, error: { message: "empty" } };
+      }, function (e) { return { data: null, error: e || { message: "error" } }; });
+    };
+  };
   window.U = U;
 })();

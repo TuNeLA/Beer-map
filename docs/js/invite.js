@@ -90,13 +90,7 @@
     for (var i = 0; i < CODES.length; i++) if (m.indexOf(CODES[i]) >= 0) return CODES[i];
     return "error";
   }
-  function call(name, params) {
-    if (!A || !A.LIVE || !A.authed() || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(name, params).then(function (r) {
-      if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; }
-      return r;
-    });
-  }
+  var call = U.rpcCall(function () { return A; }, off, { authed: true });   // cln: the shared guarded RPC caller (util.js)
   function push(body) { try { if (A.PUSH_ON && A.invoke) A.invoke("notify-group", body); } catch (e) {} }
   function myName() { try { return A.getName() || null; } catch (e) { return null; } }
   function demonym(town) { try { return town && window.HOMETOWN && window.HOMETOWN.label ? window.HOMETOWN.label(town) : ""; } catch (e) { return ""; } }

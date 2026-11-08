@@ -511,6 +511,7 @@
     clearTimeout(waitT);
     if (gateRes) { var r = gateRes; gateRes = null; r(); }
     if (joined && A && A.toast) A.toast(L("✅ Du ä med i " + (gname || "gruppen"), "✅ You're in " + (gname || "the group")), { id: "jn" });
+    if (joined) { try { document.dispatchEvent(new CustomEvent("pn:group-joined", { detail: { name: gname || "" } })); } catch (e) {} }   // ntf: calm notification ask
     else if (evAns && A && A.toast) A.toast(evAns === "yes" ? L("✅ Du ä anmäld – vi ses!", "✅ You're going – see you!") : L("🤔 Noterat: kanske.", "🤔 Noted: maybe."), { id: "jn" });
   }
   function build() {

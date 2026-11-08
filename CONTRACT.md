@@ -2659,7 +2659,7 @@ app.js, index.html), 05 (index.html first-load hints), 06 (this).
 - **Perf**: GeoJSON sources `maxzoom 14` (deeper zooms over-zoom: no worker re-tiling / re-placement per zoom level); heat `setData`
   only when the points change; GL canvas padding 0.12 → 0.08 (−19 % pixels); `renderWorldCopies: false`.
 - **🎨 Map art v1** (scratchpad `mapart/`, owner-approved art; `docs/js/mapart.js` = tokens + original glyphs + renderer, `window.PNPINS`,
-  loaded before glmap.js; sprites `docs/icons/map/sprite@2x|3x.png/.json`, @3x when devicePixelRatio > 2):
+  loaded before glmap.js; the dot images are drawn on the phone from PNPINS (mbx); the old sprite sheets `docs/icons/map/` were removed by cln01):
   - P1: the bar image key no longer contains the name (the name is its own label image): bars with the same state share one image.
   - P2: dots = sprite images `dot-<category>-quiet|busy|lit` (navy disc, foam / amber / green ring, foam head when busy), centred,
     `icon-size` 1 → 1.2 from Leaflet z16 (× 1.25 selected). Two badge layers on dots: `olnu-bar-dotb1` friend (`bf`),

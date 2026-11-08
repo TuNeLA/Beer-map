@@ -23,7 +23,7 @@
     ended: "Förfrågan ä redan avslutad.", not_found: "Förfrågan finns int' längre.", not_member: "Du ä int' med i gruppen.",
     invalid_answer: "Välj ett svar."
   };
-  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s); }
+  function esc(s) { return U.esc(s); }
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function missing(e) { var m = String((e && (e.code || "")) + " " + (e && e.message || "")); return /PGRST202|42883|does not exist|Could not find the function/i.test(m); }

@@ -15,24 +15,10 @@
 .rnd-gbtn.rnd-due .rnd-gs{color:var(--amber-2)}
 
 /* Balance + settle up */
-.rnd-bal{list-style:none;margin:0;padding:0}
-.rnd-bal li{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--line-soft);border-radius:var(--r-s,8px);margin:4px 0;background:var(--s1,rgba(255,255,255,.03))}
-.rnd-bal li.plus{box-shadow:inset 3px 0 0 var(--green)}
-.rnd-bal li.minus{box-shadow:inset 3px 0 0 var(--fire)}
 .rnd-bn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .rnd-bv{font-family:var(--hud);white-space:nowrap}
-.rnd-bal li.plus .rnd-bv{color:var(--green)}
-.rnd-bal li.minus .rnd-bv{color:#ffb27a}
 
 
-.rnd-trl{font-weight:700;color:var(--foam)}
-.rnd-conf{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0;padding:8px 10px;border:1px dashed rgba(255,224,138,.4);border-radius:var(--r-s,8px)}
-.rnd-conf>span{flex:1 1 100%;font-size:var(--fs-14)}
-.rnd-conf.quiet{border-style:solid;border-color:var(--line-soft)}
-.rnd-conf.quiet>span{flex:1 1 auto}
-.rnd-ex{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:var(--fs-14)}
-.rnd-ex.off .rnd-ext{text-decoration:line-through;opacity:.6}
-.rnd-ext{min-width:0;overflow-wrap:anywhere}
 
 /* Pay block (chat card + settle up) */
 .rnd-pay{margin-top:8px}
@@ -43,9 +29,6 @@
 
 /* Chat card */
 .chat-msg.rnd-msg .cm-body{font-weight:700;color:var(--gold)}
-.rnd-card{margin-top:6px;padding:8px 9px;border:1px solid var(--line-soft);border-radius:var(--r-s,8px);background:rgba(255,224,138,.05)}
-.rnd-card.off{opacity:.6}
-.rnd-chips{display:flex;flex-wrap:wrap;gap:4px}
 
 
 
@@ -93,3 +76,4 @@
 .rnd-taxirow .taxi-num{font-family:var(--hud);font-size:var(--fs-14)}
 .rnd-more summary{cursor:pointer;color:var(--amber-2);font-size:var(--fs-14);padding:8px 2px;min-height:36px}
 .rnd-more .btn{margin-top:6px}
+/* cln02: dead rules removed */

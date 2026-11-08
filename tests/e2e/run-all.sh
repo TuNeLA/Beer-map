@@ -70,6 +70,7 @@ run av2-wizard $B feat-av2-pw.js   # replaces av2-pw.js (old 9-chip editor; the 
 run feat       $B feat-pw.js
 run nf         $B nf-pw.js
 run notif      $B notif-pw.js
+run ntf        $B ntf-pw.js
 run cam        $B cam-pw.js
 run evx        $B evx-pw.js
 run safe       $B safe-pw.js

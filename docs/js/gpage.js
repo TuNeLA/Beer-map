@@ -27,7 +27,7 @@
     if (a.length > 1 && i === lastPick[key]) i = (i + 1) % a.length;
     lastPick[key] = i; return a[i];
   }
-  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s); }
+  function esc(s) { return U.esc(s); }
   function h(tag, attrs, kids) {
     var e = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) {

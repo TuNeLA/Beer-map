@@ -53,6 +53,12 @@
 //   {event:"knuff", knuff_id} -> "Anton knuffar dig 👋" to that friend (knuff_push_claim; kind "ute": paced, can be off).
 //   {event:"walk_check", walk_id} (walker or viewer) + cron walk_timer_due_claim: "Är du hemma? 🏠" to the walker,
 //   then "Lisa har inte svarat ⚠️" with the last position time to the chosen viewers (tags olnu-walk-*: safety, always on).
+// ntf v2 🔔 NOTISER v2 (agent ntf 2026-11-08, migration 0390): behind push_v2_flags (OFF until the release step).
+//   Priorities (last slot of the night for prio >= 60), variants per recipient (no recent repeats), k/v/prio/ts on every
+//   payload (service worker logs push.shown/open/action), fold (one updating notice per night for friends out),
+//   face (sender's avatar as the icon), image (film), in-app feed (ntf_feed) for what was not sent, auto-mute,
+//   store-safe copy (no 5th-drink push, care push without the number). Cron: Ikväll? with social proof (Fri/Sat),
+//   gang streak (Sun), win-back (once). See the ntf v2 pure + runtime blocks.
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -256,7 +262,50 @@ export const KAOS_LINES: string[] = [
   "🧨 {stad} har tänt alla smällare samtidigt. Kaos!",
   "🏃 Alla springer till krogen i {stad}. Hänger du med?",
   "🦆 Till och med änderna i {stad} har gått ut.",
+  // tx04: 24 more
+  "🎺 Generalen har blåst till samling i {stad}!",
+  "📡 Radarn över {stad} ä full. {n} pers ute!",
+  "🗺️ Kartan över {stad} lyser som en julgran!",
+  "🕺 {stad} har hittat dansskorna. {n} ute!",
+  "🎉 Folkfest i {stad}! {n} pers ute just nu.",
+  "📢 Extra nyhetssändning: {stad} ä ute!",
+  "🚀 {stad} har lyft! {n} pers på kartan.",
+  "🐺 Flocken har samlats i {stad}!",
+  "🌋 {stad} kokar! {n} pers ute.",
+  "🎆 Fyrverkeri i {stad}? Nej, bara {n} glada människor.",
+  "🥁 Trummorna går i {stad}. Hör du takten?",
+  "🗣️ Hörru {stad}! Nu händer det grejer!",
+  "🎪 Hela {stad} har gått ut samtidigt!",
+  "🏰 {stad} har intagits av glada människor!",
+  "🎶 Allsången hörs över hela {stad}!",
+  "🌟 {stad} lyser starkast på kartan just nu!",
+  "🚨 Kod röd i {stad}: rolig kväll pågår!",
+  "🛋️ Soffan känner sig ensam ikväll. {stad} ä ute.",
+  "📻 Alla kanaler i {stad}: folk ä ute!",
+  "🦉 Ugglorna i {stad} undrar vad allt ljud ä.",
+  "🫂 {n} ute i {stad}. Häng på gänget!",
+  "📸 {stad} ä sällan så här levande. Kolla kartan!",
+  "🏟️ {stad} ikväll: som en hemmamatch, fast på krogen.",
+  "🎸 Det rockar i {stad}. {n} ute!",
 ];
+
+/** tx04: town lines for the KAOS push, mixed into the pool for that town only ({stad} {n}). */
+export const KAOS_TOWN: Record<string, string[]> = {
+  "Ludvika": ["⚡ Högspänning i Ludvika! {n} pers ute.", "🌊 Väsman glittrar och Ludvika ä ute!", "🪖 Högkvarteret Ludvika har gått ut!"],
+  "Smedjebacken": ["⚒️ Smedjebacken glöder som en smedja!", "⛵ Kanalstaden ä ute! {n} pers i Smedjebacken."],
+  "Borlänge": ["🔥 Borlänge kokar som Domnarvet!", "🚦 All trafik i Borlänge går mot krogen!"],
+  "Falun": ["🎿 Lugnet i Falun? Int' ikväll!", "⛏️ Falun har grävt fram festhumöret!"],
+  "Stockholm": ["🚇 Hela Stockholm ä på väg ut!", "🏰 Gamla stan, Söder och Kungsholmen: alla ä ute!"],
+  "Göteborg": ["🎢 Göteborg kör sin egen Liseberg-åktur ikväll!", "🚋 Spårvagnarna i Göteborg ä fulla av festfolk!"],
+  "Malmö": ["🌀 Malmö vrider upp volymen som Turning Torso!", "🌉 Malmö lyser hela vägen till bron!"],
+  "Uppsala": ["🎓 Nationerna i Uppsala har vaknat!", "⛪ Uppsala siktar högre än Domkyrkan ikväll!"],
+  "Västerås": ["🥒 Gurkstaden Västerås har gått ut!", "🏢 Skrapan i Västerås ser bara folk ikväll!"],
+  "Örebro": ["🏰 Slottet i Örebro har fått sällskap!", "🍄 Svampen i Örebro ser {n} pers ute!"],
+};
+export function kaosPool(stad: string): string[] {
+  const t = KAOS_TOWN[stad];
+  return t ? KAOS_LINES.concat(t) : KAOS_LINES;
+}
 
 export const HOME_LINES: string[] = [
   "🏠 {namn} har kommit hem. Uppdraget slutfört!",
@@ -293,18 +342,17 @@ export function fill(tpl: string, vars: Record<string, string | number>): string
 /** Rank ladder by MERITER (v26, 42 steps). Same list in migration 0036 (olnu_titles),
  *  docs/js/social.js TITLES and CONTRACT.md. */
 export const TITLES: [number, string][] = [
-  [0, "Rekryt"], [5, "Mönstrad Mellanöl"], [10, "Menig Mjöd"], [18, "Vicekorpral Kapsyl"],
-  [28, "Korpral Korkskruv"], [40, "Skumsergeant"], [52, "Översergeant Sejdel"], [66, "Furir Flaskhals"],
-  [82, "Överfurir Fatkran"], [100, "Fanjunkare Flasköppnare"], [125, "Fänrik Fatöl"], [150, "Löjtnant Lager"],
-  [180, "Premiärlöjtnant Pilsner"], [215, "Kapten Kaggen"], [255, "Kommendörkapten Krus"], [300, "Ryttmästare Humle"],
-  [350, "Major Mäsk"], [410, "Överstelöjtnant Ölstop"], [475, "Överste Ölkorv"], [550, "Brigadgeneral Bärs"],
-  [630, "Flottiljamiral Flaskpost"], [720, "Generalmajor Gambrinus"], [820, "Generallöjtnant Guldskum"],
-  [930, "General Gyllenbärs"], [1050, "Amiral Ankarstout"], [1180, "Fältmarskalk Fradga"],
-  [1320, "Storamiral Skumtopp"], [1470, "Riksmarskalk Rundtur"], [1640, "Baron av Bryggstugan"],
-  [1830, "Hertig av Humlefältet"], [2040, "Ärkehertig av Ölkranen"], [2270, "Kung Kapsyl den Store"],
-  [2520, "Ölkejsaren"], [2800, "Bryggerilegenden"], [3100, "Halvguden vid Jäskaret"], [3450, "Myten i Mässen"],
-  [3850, "Legenden vid Långbordet"], [4300, "Sagofiguren i Skyttegraven"], [4800, "Oraklet i Ölstugan"],
-  [5400, "Överbefälhavare Öl"], [6200, "Generalissimus Glaset"], [7000, "Ölguden"],
+  [0, "Rekryt Lättöl"], [4, "Värnpliktig Veteöl"], [8, "Menig Mellanöl"], [13, "Vicekorpral Kapsyl"],
+  [19, "Korpral Kranöl"], [26, "Skumsergeant"], [34, "Översergeant Sejdel"], [43, "Stabssergeant Sixpack"],
+  [53, "Fanjunkare Flaskhals"], [65, "Förvaltare Folköl"], [79, "Fänrik Fatöl"], [95, "Löjtnant Lager"],
+  [115, "Premiärlöjtnant Pilsner"], [135, "Kapten Kagge"], [155, "Stabskapten Stout"], [180, "Major Mikrobryggeri"],
+  [210, "Överstelöjtnant Ölback"], [245, "Överste Stor Stark"], [280, "Brigadgeneral Burköl"], [320, "Generalmajor Mörköl"],
+  [365, "Generallöjtnant IPA"], [410, "General Guldbärs"], [465, "Överbefälhavare Öl"], [520, "Fältmarskalk Humle"],
+  [585, "Riksmarskalk Malt"], [655, "Generalissimus Ale"], [725, "Ärkegeneral Ölhall"], [805, "Supergeneral Pint"],
+  [895, "Krigsherre Porter"], [985, "Kommendant Julöl"], [1085, "Imperator Påsköl"], [1190, "Stormarskalk Ölstop"],
+  [1300, "Kejsargeneral Ölmage"], [1420, "Fältherre Öltält"], [1545, "General Oktoberfest"], [1680, "Supermarskalk Pubrunda"],
+  [1820, "Överkommendant Ölglas"], [1970, "Ärkemarskalk Ölbricka"], [2130, "Krigsgud Hembrygd"], [2295, "Ölgudens Överste"],
+  [2470, "Ölgudens Livgarde"], [2650, "Ölguden"],
 ];
 
 /** v26: a rank counts as "reached just now" when the meriter of the last LEVELUP_WINDOW_H hours crossed
@@ -1081,9 +1129,9 @@ export function filmStartPayload(idx: number, namn: string, groupName: string, g
 
 // ---- v27 🔔 NOTISKOLL (0190): kinds, nattro, cap per night, "Kommer!" ----
 /** Push kinds the user can turn off (same list as olnu_push_cats()). "safe" = always on. "" = unknown (always sent). */
-export const PUSH_CATS = ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film"] as const;
+export const PUSH_CATS = ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film", "ikvall", "gang"] as const;   // ntf v2: + ikvall, gang
 /** Kinds that count against the cap per night (social noise; chat, plans and safety never count). */
-export const PUSH_NOISY = ["ute", "kaos", "bar", "kul", "film", "ikvall"];   // gw: + ikvall
+export const PUSH_NOISY = ["ute", "kaos", "bar", "kul", "film", "ikvall", "gang"];   // gw: + ikvall; ntf v2: + gang
 export const PUSH_CAP_DEFAULT = 15;
 /** The kind of a push, from its tag (every payload has one; tags never hold user ids). */
 export function pushCat(tag: string): string {
@@ -1097,6 +1145,10 @@ export function pushCat(tag: string): string {
   if (/^olnu-(title|helg)-/.test(t)) return "kul";
   if (/^olnu-film(start)?-/.test(t)) return "film";   // 0195
   if (/^olnu-friend-/.test(t)) return "vanner";
+  if (/^olnu-(gang|winback)-/.test(t)) return "gang";   // ntf v2 (0390): gang streak + win-back
+  if (/^olnu-skal2-/.test(t)) return "ute";   // bold: Skåltimmen v2 (paced, in the 4/night budget)
+  if (/^olnu-replay-/.test(t)) return "film";   // bold: Kvällsreprisen (Bilder)
+  if (/^olnu-crown-/.test(t)) return "bar";   // bold: krog_crown (flag OFF, not sent in v1)
   if (/^olnu-ikvall-/.test(t)) return "ikvall";   // gw 0310: "Ute ikväll?" (opt-in; Fri/Sat 19-23 only, see rule28)
   if (/^olnu-(come|coming|checkin|eta|knuff)-/.test(t) || /^olnu-\d+-/.test(t)) return "ute";   // gw: + knuff
   return "";
@@ -1172,7 +1224,7 @@ export const EVENING_FROM = 17;   // hype pushes 17:00 … 05:00 (Stockholm)
 export const EVENING_TO = 5;
 export const TITLE_MAX = 30;
 /** Kinds (pushCat) that are paced. chat/dm/plan/vanner/safe/"" are never paced (direct, already folded or safety). */
-export const PACE_CATS = ["ute", "kaos", "bar", "kul", "film", "ikvall"];   // gw: + ikvall
+export const PACE_CATS = ["ute", "kaos", "bar", "kul", "film", "ikvall", "gang"];   // gw: + ikvall; ntf v2: + gang
 /** Evening-only tags: KAOS, takeover, krogtips, befordran, helgstreak, filmstart, friend 1st/5th drink ("-1"/"-5"/"-f1"/"-f5"). */
 export const HYPE_RE = /^olnu-(kaos|takeover|tip|title|helg|filmstart)-|^olnu-\d+-f?(1|5)$/;
 export function isEvening(hour: number): boolean {
@@ -1184,7 +1236,7 @@ export function isHype(tag: string): boolean {
 /** "day" (hype in the daytime: drop) | "pace" (ask the counter) | "send". cat = pushCat(tag). */
 export function rule28(cat: string, tag: string, hour: number, ms = Date.now()): "day" | "pace" | "send" {
   if (!cat || !PACE_CATS.includes(cat)) return "send";
-  if (cat === "ikvall" && !ikvallWindow(ms)) return "day";   // gw 0310: only Fri/Sat 19-23 Stockholm
+  if (cat === "ikvall" && !ikvallWindow(ms) && !ikvallWindowV2(ms)) return "day";   // gw 0310: only Fri/Sat 19-23 Stockholm; ntf v2: 17:30-
   if (isHype(tag) && !isEvening(hour)) return "day";
   return "pace";
 }
@@ -1196,6 +1248,15 @@ export function ikvallWindow(ms: number): boolean {
     const wd = p.find((x) => x.type === "weekday")?.value ?? "";
     const h = parseInt(p.find((x) => x.type === "hour")?.value ?? "-1", 10);
     return (wd === "Fri" || wd === "Sat") && h >= 19 && h < 23;
+  } catch (_e) { return false; }
+}
+/** ntf v2: the social-proof Ikväll? (Fri/Sat 17:30-20:59 Stockholm; the SQL claim has the same window). */
+export function ikvallWindowV2(ms: number): boolean {
+  try {
+    const p = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Stockholm", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ms));
+    const wd = p.find((x) => x.type === "weekday")?.value ?? "";
+    const m = parseInt(p.find((x) => x.type === "hour")?.value ?? "-1", 10) * 60 + parseInt(p.find((x) => x.type === "minute")?.value ?? "0", 10);
+    return (wd === "Fri" || wd === "Sat") && m >= 17 * 60 + 30 && m < 21 * 60;
   } catch (_e) { return false; }
 }
 export const IKVALL_LINES: string[] = ["Ute ikväll? 🍺", "Blir det ute ikväll? 🍻", "Vad blir det ikväll? 🌙"];
@@ -1391,7 +1452,8 @@ export function levelUpPayload28(idx: number, namn: string, titel: string, beerI
   };
 }
 export function kaosPayload28(idx: number, stad: string, out: number, hot: number, nightIso: string) {
-  const fun = splitEmoji(fill(KAOS_LINES[wrapIdx(idx, KAOS_LINES.length)], { stad, n: out, hot })).text;
+  const pool = kaosPool(stad);   // tx04
+  const fun = splitEmoji(fill(pool[wrapIdx(idx, pool.length)], { stad, n: out, hot })).text;
   return {
     title: tidyTitle(`${out} ute i ${stad} 🔥`),
     body: `${hot > 0 ? hot + " på hot streak inom 5 km. " : "Inom 5 km just nu. "}${fun}`,
@@ -1426,6 +1488,297 @@ export function msgPayload28(namn: string, body: string, groupName: string, grou
   };
 }
 // ---- v28 🔕 LUGNA NOTISER — pure block end ----
+
+// ---- ntf v2 🔔 NOTISER v2 (agent ntf 2026-11-08, migration 0390) — pure block start ----
+// All of this is OFF until push_v2_flags.ntf_v2 = true (release step). With the flag off, v28 runs exactly as before.
+//  1. Priorities: every kind has a priority (NTF_PRIO). The LAST slot of the night budget (4) is kept for prio >= 60
+//     (friends out, Ikväll?, events, film, plans); "Färre notiser" = max 2 per night, only prio >= 60 (push_pace_take2).
+//  2. Variants: builders give `alts` (several title/body variants with ids "ck.2"); applyVariant() picks one per
+//     recipient that is NOT in the recipient's last 8 for that kind (push_stats.recent; Duolingo KDD20: recency matters).
+//  3. Every payload gets k (kind), v (variant id), prio, ts (event time ms). The service worker logs push.shown /
+//     push.open / push.action with k + v (PNLOG) and push_seen() counts opens per kind + hour (auto-mute, send time).
+//  4. fold: friends-out and check-ins of ONE night share one updating notice ("3 vänner ute ikväll 🍻" + lines).
+//  5. face: the sender's avatar key (olnu_chief_k = md5(group:uid:olnu-chief)[0:12]); the service worker shows the
+//     avatar PNG the app cached for that key as the icon (else the app icon). No user id in any payload.
+//  6. Store-safe copy: no drink counts, no "drink more", no 5th-drink hype (dropped), the 10th is a care push without
+//     the number, skåltimmen asks for a photo of the gang (not of the drink), the personal helgstreak "at risk" push is off.
+export const NTF_PRIO: Record<string, number> = {
+  safe: 100, dm: 90, chat: 90, plan: 80, vanner: 75, ute: 70, ikvall: 70, digest: 65, film: 60, gang: 45, bar: 30, kul: 25, kaos: 15,
+};
+export const PRIO_RESERVE = 60;
+/** Kind for logging + settings: pushCat + the new v2 tags. */
+export function ntfKind(tag: string): string {
+  const t = String(tag || "");
+  if (/^olnu-digest/.test(t)) return "digest";
+  return pushCat(t) || "other";
+}
+export function prioOf(tag: string): number {
+  const t = String(tag || "");
+  if (/^olnu-\d+-f10$/.test(t)) return 85;   // care: "Kolla läget med Oskar"
+  if (/^olnu-(come|coming|knuff)-/.test(t)) return 75;   // direct to me
+  return NTF_PRIO[ntfKind(t)] ?? 50;
+}
+export type Alt = { v: string; title: string; body: string };
+/** One variant per recipient: not one of the recent ids (newest last); else the least recently used. rand in [0,1). */
+export function pickVariant(alts: Alt[], recent: string[] | null | undefined, rand: () => number = Math.random): Alt {
+  const list = (alts || []).filter((a) => a && a.v && a.title);
+  if (list.length === 0) return { v: "", title: "", body: "" };
+  const rec = Array.isArray(recent) ? recent : [];
+  const fresh = list.filter((a) => !rec.includes(a.v));
+  if (fresh.length) return fresh[Math.min(fresh.length - 1, Math.floor(rand() * fresh.length))];
+  let best = list[0], bestAt = Infinity;
+  for (const a of list) { const at = rec.lastIndexOf(a.v); if (at < bestAt) { best = a; bestAt = at; } }
+  return best;
+}
+/** Final v2 pass for one recipient: variant, k, v, prio, ts. Keeps everything else. */
+export function applyVariant(p: Record<string, unknown>, recent: string[] | null | undefined, rand: () => number = Math.random,
+  now = Date.now()): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...p };
+  const tag = String(p.tag ?? "");
+  const alts = Array.isArray(p.alts) ? (p.alts as Alt[]) : null;
+  if (alts && alts.length) {
+    const a = pickVariant(alts, recent, rand);
+    if (a.title) { out.title = tidyTitle(a.title); out.body = tidyBody(a.body); out.v = a.v; }
+  }
+  delete out.alts;
+  out.k = ntfKind(tag);
+  if (!out.v) out.v = String(out.k) + ".0";
+  out.prio = prioOf(tag);
+  if (!out.ts) out.ts = now;
+  return out;
+}
+/** Night label "2026-11-08" (the evening the night belongs to, 05:00 switch, Stockholm). */
+export function nightKey(ms: number): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date(ms - 5 * 3600e3));
+}
+function nm(x: string, d: string): string { return cleanBarName(x) || d; }
+function both(a: string[]): string {
+  const n = a.filter(Boolean);
+  return n.length <= 1 ? (n[0] || "") : `${n[0]} och ${n[1]}`;
+}
+// ---- v2 builders (Swedish, names first, max one emoji in the title, several variants each) ----
+/** Friend's first drink of the night (level 1). No count, no drink words in the title. */
+export function friendOutV2(namn: string, bar: string, tid: string, beerId: number, ms: number, face = "") {
+  const n = nm(namn, "En vän"), b = cleanBarName(bar);
+  return {
+    title: b ? `${n} på ${b} 🍺` : `${n} är ute 🍺`, body: `Sedan ${tid}. Hänger du på?`,
+    alts: [
+      { v: "fo.1", title: b ? `${n} på ${b} 🍺` : `${n} är ute 🍺`, body: `Sedan ${tid}. Hänger du på?` },
+      { v: "fo.2", title: `${n} har dragit ut`, body: b ? `${b} sedan ${tid}. Tryck Kommer! så vet ${n}.` : `Sedan ${tid}. Tryck Kommer! så vet ${n}.` },
+      { v: "fo.3", title: `${n} är ute ikväll`, body: `${b ? b + ". " : ""}Kom förbi, det finns plats.` },
+      { v: "fo.4", title: b ? `${n} har hittat till ${b}` : `${n} har startat kvällen`, body: `Kl ${tid}. Säg till om du kommer.` },
+    ],
+    url: `/?focus=${beerId}`,
+    tag: `olnu-${beerId}-f1`,
+    dg: b ? `${n} på ${b}` : `${n} är ute`,
+    face,
+    fold: { key: `ute-${nightKey(ms)}`, title: "{n} vänner ute ikväll 🍻", line: `${n}${b ? " · " + b : ""} · ${tid}` },
+    actions: [
+      { action: "coming", title: "🏃 Jag kommer", url: `/?focus=${beerId}&act=coming` },
+      { action: "skal", title: "🍻 Skål", url: `/?focus=${beerId}&act=skal` },
+    ],
+  };
+}
+/** Care push at the friend's 10th (no number shown). */
+export function friendCareV2(namn: string, beerId: number, face = "") {
+  const n = nm(namn, "Din vän");
+  return {
+    title: `Kolla läget med ${n}`, body: "Ring eller gå dit. Vatten och en taxi hem hjälper.",
+    alts: [
+      { v: "fc.1", title: `Kolla läget med ${n}`, body: "Ring eller gå dit. Vatten och en taxi hem hjälper." },
+      { v: "fc.2", title: `Hur mår ${n}?`, body: `Ett samtal nu räcker. Hjälp ${n} hem om det behövs.` },
+    ],
+    url: `/?focus=${beerId}`, tag: `olnu-${beerId}-f10`, dg: `Kolla läget med ${n}`, face,
+  };
+}
+export function checkinV2(namn: string, bar: string, barId: string, stamp: number, here: number, tid: string, ms: number, face = "") {
+  const n = nm(namn, "En vän"), b = nm(bar, "en krog");
+  const bid = String(barId || "").slice(0, 80);
+  const many = here >= 2;
+  return {
+    title: `${n} på ${b} 📍`, body: many ? `${here} från gänget är där nu.` : `Incheckad ${tid}. Stolen bredvid är ledig.`,
+    alts: many ? [
+      { v: "ck.m1", title: `${n} på ${b} 📍`, body: `${here} från gänget är där nu. Hänger du på?` },
+      { v: "ck.m2", title: `${here} från gänget på ${b}`, body: `${n} kom ${tid}. Ni är flest där just nu.` },
+      { v: "ck.m3", title: `${n} anslöt på ${b}`, body: `Nu är ni ${here}. Saknas bara du.` },
+    ] : [
+      { v: "ck.1", title: `${n} på ${b} 📍`, body: `Incheckad ${tid}. Stolen bredvid är ledig.` },
+      { v: "ck.2", title: `${n} har checkat in`, body: `${b} kl ${tid}. Bli nummer två?` },
+      { v: "ck.3", title: `${n} är på ${b}`, body: `Sedan ${tid}. Tryck för att se var.` },
+    ],
+    url: bid ? `/?bar=${encodeURIComponent(bid)}` : "/",
+    tag: bid ? `olnu-checkin-${bid}`.slice(0, 120) : `olnu-checkin-${stamp}`,
+    dg: `${n} på ${b}`, face,
+    fold: { key: `ute-${nightKey(ms)}`, title: "{n} vänner ute ikväll 🍻", line: `${n} · ${b} · ${tid}` },
+    actions: [{ action: "skal", title: "🍻 Skål", url: bid ? `/?bar=${encodeURIComponent(bid)}&act=skal` : "/" }],
+  };
+}
+/** 🍺 Ikväll? with social proof (only when >= 2 from the gang said Ute). Buttons answer at once. */
+export function ikvallProofV2(names: string[], n: number, ms: number) {
+  const ns = (names || []).map((x) => cleanBarName(x)).filter(Boolean).slice(0, 2);
+  const a = ns[0] || "Gänget";
+  let who = n > 2 && ns.length === 2 ? `${ns[0]}, ${ns[1]} +${n - 2}` : both(ns) || a;
+  if ([...`${who} ska ut ikväll`].length > TITLE_MAX) who = n > 1 ? `${a} +${n - 1}` : a;   // never a cut title
+  const day = nightKey(ms);
+  return {
+    title: `${who} ska ut ikväll`, body: "Hänger du med? Svara så ser gänget.",
+    alts: [
+      { v: "ik.1", title: `${who} ska ut ikväll`, body: "Hänger du med? Svara så ser gänget." },
+      { v: "ik.2", title: `${n} i gänget ska ut ikväll – du?`, body: `${both(ns) || a} har svarat Ute.` },
+      { v: "ik.3", title: `Ikväll? ${a} är på 🍺`, body: `${n} från gänget har sagt Ute. Du då?` },
+      { v: "ik.4", title: `${a} drar ut ikväll`, body: `${n} har svarat Ute. Ett tryck så vet de.` },
+    ],
+    url: "/?ikvall=1", tag: `olnu-ikvall-${day}`, dg: `${n} ska ut ikväll`,
+    actions: [
+      { action: "ute", title: "🍺 Jag kommer", url: "/?ikvall=1&st=ute" },
+      { action: "kanske", title: "🤔 Kanske", url: "/?ikvall=1&st=kanske" },
+    ],
+  };
+}
+/** 📸 The film is developed (the next morning). image = a generic branded picture (never a private photo). */
+export function filmV2(groupName: string, n: number, groupId: string) {
+  const g = nm(groupName, "gänget"), k = Math.max(1, n | 0);
+  return {
+    title: "Gårdagens film är framkallad 📸", body: `${k} bilder från ${g}. Vem blundade?`,
+    alts: [
+      { v: "fi.1", title: "Gårdagens film är framkallad 📸", body: `${k} bilder från ${g}. Vem blundade?` },
+      { v: "fi.2", title: `${k} nya bilder från igår 📸`, body: `Engångskameran i ${g} är framkallad.` },
+      { v: "fi.3", title: `Filmen från ${g} är klar 📸`, body: `${k} bilder. Se vem som kom med på bild.` },
+      { v: "fi.4", title: "Mörkrummet är klart 📸", body: `${k} bilder från ${g} väntar på dig.` },
+    ],
+    url: `/?film=${groupId}`, tag: `olnu-film-${groupId}`, image: "./icons/ntf-film.png?v=1",
+  };
+}
+/** 🔥 Celebration of a group that met up N weekends in a row (never a "streak at risk" push). */
+export function gangStreakV2(groupName: string, streak: number, groupId: string) {
+  const g = nm(groupName, "Gänget"), s = Math.max(3, streak | 0);
+  return {
+    title: `${g}: ${s} helger i rad 🔥`, body: "Minst tre av er har setts varje helg. Snyggt.",
+    alts: [
+      { v: "gs.1", title: `${g}: ${s} helger i rad 🔥`, body: "Minst tre av er har setts varje helg. Snyggt." },
+      { v: "gs.2", title: `Ni har setts ${s} helger i rad`, body: `${g} håller ihop. Se historiken.` },
+      { v: "gs.3", title: `${s} helger i rad för ${g} 🔥`, body: "Ni ses mer än de flesta gäng. Bra jobbat." },
+    ],
+    url: "/?helg=1", tag: `olnu-gang-${groupId}`.slice(0, 120), dg: `${g}: ${s} helger i rad`,
+  };
+}
+/** 👋 Win-back: once, only with real news from the gang. Honest: "we ask only once". */
+export function winbackV2(groupName: string, names: string[], n: number) {
+  const g = nm(groupName, "Gänget");
+  const ns = (names || []).map((x) => cleanBarName(x)).filter(Boolean).slice(0, 2);
+  const who = both(ns) || g;
+  return {
+    title: `${g} saknar dig 👋`, body: `${who} har hittat på grejer. Vi frågar bara en gång.`,
+    alts: [
+      { v: "wb.1", title: `${g} saknar dig 👋`, body: `${who} har hittat på grejer. Vi frågar bara en gång.` },
+      { v: "wb.2", title: `${who} har varit igång`, body: `${n} i ${g} har setts sen sist. Kika in? Vi frågar bara en gång.` },
+    ],
+    url: "/", tag: "olnu-winback-1", dg: `${g} saknar dig`,
+  };
+}
+/** ⏰ Event in 1 hour (📅 Går). n = people going (incl. you). */
+export function eventDueV2(titel: string, hm: string, place: string, n: number, eventId: number) {
+  const t = nm(titel, "Eventet"), p = cleanBarName(place);
+  const going = n > 1 ? `${n} går` : "";
+  return {
+    title: `${t} ${hm} ⏰`, body: [going, p, "Tryck för vägen dit."].filter(Boolean).join(" · "),
+    alts: [
+      { v: "ev.1", title: `${t} ${hm} ⏰`, body: [going, p, "Tryck för vägen dit."].filter(Boolean).join(" · ") },
+      { v: "ev.2", title: `Om en timme: ${t}`, body: [hm, p, going].filter(Boolean).join(" · ") },
+      { v: "ev.3", title: n > 1 ? `${t} – ${n} går` : `${t} snart`, body: [`Börjar ${hm}`, p].filter(Boolean).join(" · ") },
+    ],
+    url: `/?evs=${eventId}`, tag: `olnu-evgo-${eventId}`,
+  };
+}
+/** Skåltimmen without "show your drink". */
+export function skalHourV2(namn: string, groupName: string, hourId: number) {
+  const n = nm(namn, "Slumpen"), g = nm(groupName, "gruppen");
+  return {
+    title: "Skåltimmen 📸 3 min", body: `${n} startade. Ta en bild på gänget · ${g}`,
+    alts: [
+      { v: "sk.1", title: "Skåltimmen 📸 3 min", body: `${n} startade. Ta en bild på gänget · ${g}` },
+      { v: "sk.2", title: `${n} drog igång skåltimmen`, body: `3 minuter. Visa var ni är · ${g}` },
+    ],
+    url: `/?skal=${hourId}`, tag: `olnu-skal-${hourId}`,
+  };
+}
+// ---- md5 (for olnu_chief_k without a database call). Small, pure, tested against the SQL value. ----
+const MD5_S = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+const MD5_K = Array.from({ length: 64 }, (_v, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0);
+export function md5hex(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  const n = (((bytes.length + 8) >> 6) + 1) * 16;
+  const w = new Array<number>(n).fill(0);
+  for (let i = 0; i < bytes.length; i++) w[i >> 2] |= bytes[i] << ((i % 4) * 8);
+  w[bytes.length >> 2] |= 0x80 << ((bytes.length % 4) * 8);
+  w[n - 2] = (bytes.length * 8) >>> 0;
+  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  for (let o = 0; o < n; o += 16) {
+    let a = a0, b = b0, c = c0, d = d0;
+    for (let i = 0; i < 64; i++) {
+      let f: number, g: number;
+      if (i < 16) { f = (b & c) | (~b & d); g = i; }
+      else if (i < 32) { f = (d & b) | (~d & c); g = (5 * i + 1) % 16; }
+      else if (i < 48) { f = b ^ c ^ d; g = (3 * i + 5) % 16; }
+      else { f = c ^ (b | ~d); g = (7 * i) % 16; }
+      const s = MD5_S[(i >> 4) * 4 + (i % 4)];
+      const x = (a + f + MD5_K[i] + w[o + g]) | 0;
+      a = d; d = c; c = b;
+      b = (b + ((x << s) | (x >>> (32 - s)))) | 0;
+    }
+    a0 = (a0 + a) | 0; b0 = (b0 + b) | 0; c0 = (c0 + c) | 0; d0 = (d0 + d) | 0;
+  }
+  return [a0, b0, c0, d0].map((v) => Array.from({ length: 4 }, (_x, i) => ((v >>> (i * 8)) & 255).toString(16).padStart(2, "0")).join("")).join("");
+}
+/** Same as SQL olnu_chief_k(group, uid): the avatar key the app knows for a group mate. */
+export function faceKey(groupId: string, uid: string): string {
+  return isUuid(groupId) && isUuid(uid) ? md5hex(`${groupId}:${uid}:olnu-chief`).slice(0, 12) : "";
+}
+/** Feed row (in-app fallback) for a push the user did not get. */
+export function feedRow(uid: string, p: Record<string, unknown>, why: string) {
+  return { u: uid, k: String(p.k ?? ntfKind(String(p.tag ?? ""))), v: String(p.v ?? ""), t: String(p.title ?? "").slice(0, 80),
+    b: String(p.body ?? "").slice(0, 160), url: String(p.url ?? "/").slice(0, 200), why };
+}
+// ---- bold × ntf (bold PLAN.md §1.7, §3.7; flags bold_flags.bold_skal_v2 / bold_replay, OFF until release) ----
+/** 📸 Skåltimmen v2 (Fri/Sat 21:00–00:30, only to members who are out; the 90-min cap is in bold_skal_targets). */
+export function skalBoldV2(groupName: string, hourId: number) {
+  const g = nm(groupName, "Gänget");
+  return {
+    title: "Skåltimmen! Visa var ni är 📸", body: `${g}: bakkamera + selfie. Först in vinner äran.`,
+    alts: [
+      { v: "sb.1", title: "Skåltimmen! Visa var ni är 📸", body: `${g}: bakkamera + selfie. Först in vinner äran.` },
+      { v: "sb.2", title: "Skåltimmen! Var ä ni? 📸", body: `${g}: en bild, inga omtag-ångest. Klockan tickar.` },
+      { v: "sb.3", title: "Skåltimmen! Kameran fram 📸", body: `${g}: visa stället, visa fejset. 3 min.` },
+    ],
+    url: `/?skal=${hourId}`, tag: `olnu-skal2-${hourId}`, dg: `Skåltimmen i ${g}`,
+    actions: [{ action: "cam", title: "📸 Visa", url: `/?skal=${hourId}` }],
+  };
+}
+/** ▶ Kvällsreprisen (10:30 the next morning; merged into the 10:00 film push when there is one). bars = bars visited. */
+export function replayReadyV2(groupName: string, bars: number, groupId: string) {
+  const g = nm(groupName, "Gänget"), n = Math.max(0, bars | 0);
+  return {
+    title: "Gårdagens kväll som film ▶", body: `${g}: 15 sekunder, alla spår, inga hemadresser.`,
+    alts: [
+      { v: "rp.1", title: "Gårdagens kväll som film ▶", body: `${g}: 15 sekunder, alla spår, inga hemadresser.` },
+      { v: "rp.2", title: "Kvällsreprisen ä klar 📼", body: `${g}: spela, skratta, spara som video.` },
+      ...(n >= 2 ? [{ v: "rp.3", title: `Ni va på ${n} krogar igår 🎬`, body: `${g}: se filmen. 15 sekunder, alla spår.` }] : []),
+    ],
+    url: `/?replay=${groupId}`, tag: `olnu-replay-${groupId}`, dg: `Kvällsreprisen från ${g}`,
+    actions: [{ action: "play", title: "▶ Spela", url: `/?replay=${groupId}` }],
+  };
+}
+export const REPLAY_FILM_LINE = " …och kvällsreprisen ä klar ▶";
+/** The 10:00 film push + the replay line and a ▶ Spela button (one push, not two). */
+export function withReplay(p: Record<string, unknown>, groupId: string): Record<string, unknown> {
+  const acts = Array.isArray(p.actions) ? (p.actions as Record<string, unknown>[]) : [];
+  return { ...p, body: String(p.body ?? "") + REPLAY_FILM_LINE,
+    alts: Array.isArray(p.alts) ? (p.alts as Alt[]).map((a) => ({ ...a, body: a.body + REPLAY_FILM_LINE })) : p.alts,
+    actions: [...acts, { action: "play", title: "▶ Spela", url: `/?replay=${groupId}` }].slice(0, 2) };
+}
+// krog_crown (PLAN §4.7) stays OFF in v1: tag olnu-crown-* maps to kind "bar" (paced, prio 30) if it is ever sent.
+// ---- ntf v2 — pure block end ----
 
 // ---- pure:end ----
 
@@ -1520,9 +1873,14 @@ async function friendJobs(admin: Admin, uid: string, beerId: number, level: 1 | 
   }
   // v28 (deploy): friendPayload28 (short title, specific body, one tag per pin "olnu-<beer>-f<level>", same buttons:
   // "🍺 Kommer!" on 1, "🍻 Skåla" on 1 and 5, none on 10). The beer id is in the url and tag, never the user id.
+  if (V2.on && level === 5) return [];   // ntf v2 (store-safe): no "5th drink" push
+  const faces = V2.on ? await v2Faces(admin, uid, [...senderNameFor.keys()]) : new Map<string, string>();
   return ((subs ?? []) as Sub[]).map((s) => ({
     sub: s,
-    payload: JSON.stringify(friendPayload28(level, lineFor.get(s.user_id) ?? 0, senderNameFor.get(s.user_id) ?? "En vän", titel, beerId, bar, tid)),
+    payload: JSON.stringify(V2.on   // ntf v2: variants, face, fold; the 10th = a care push without the number
+      ? (level === 10 ? friendCareV2(senderNameFor.get(s.user_id) ?? "", beerId, faces.get(s.user_id) ?? "")
+        : friendOutV2(senderNameFor.get(s.user_id) ?? "", bar, tid, beerId, Date.now(), faces.get(s.user_id) ?? ""))
+      : friendPayload28(level, lineFor.get(s.user_id) ?? 0, senderNameFor.get(s.user_id) ?? "En vän", titel, beerId, bar, tid)),
   }));
 }
 
@@ -1581,7 +1939,7 @@ async function kaosJobs(
   const jobs = subs
     .filter((s) => fresh.has(s.user_id))
     .map((s) => {
-      const idx = kaosLineIndex(KAOS_LINES.length, beer.expires_at, s.user_id);
+      const idx = kaosLineIndex(kaosPool(stad).length, beer.expires_at, s.user_id);   // tx04: town lines too
       return { sub: s, payload: JSON.stringify(kaosPayload28(idx, stad, out, hot, beer.expires_at)) };
     });
 
@@ -1709,7 +2067,9 @@ async function paceFlush(admin: Admin): Promise<number> {
   if (Date.now() - lastFlush28 < 30_000) return 0;
   lastFlush28 = Date.now();
   try {
-    const { data, error } = await admin.rpc("push_pace_due", { p_gap: PACE_GAP_SEC, p_limit: 25 });
+    const { data, error } = V2.on   // ntf v2: a digest never goes past the night budget
+      ? await admin.rpc("push_pace_due2", { p_gap: PACE_GAP_SEC, p_limit: 25, p_max: PACE_NIGHT_MAX })
+      : await admin.rpc("push_pace_due", { p_gap: PACE_GAP_SEC, p_limit: 25 });
     if (error || !Array.isArray(data) || data.length === 0) return 0;
     const rows = data as PaceRow[];
     const hour = stockholmHour(Date.now());
@@ -1720,7 +2080,8 @@ async function paceFlush(admin: Admin): Promise<number> {
     if (by.size === 0) return 0;
     const jobs = (await subsOf(admin, [...by.keys()])).map((s) => {
       const r = by.get(s.user_id)!;
-      return { sub: s, payload: JSON.stringify(digestPayload(r.held_lines ?? [], r.held_grp)) };
+      const dp = digestPayload(r.held_lines ?? [], r.held_grp);
+      return { sub: s, payload: JSON.stringify(V2.on ? applyVariant(dp, null) : dp) };   // ntf v2: k/v for the log
     });
     return jobs.length ? (await sendAll(admin, jobs, 1800, true)).sent : 0;
   } catch (e) {
@@ -1730,9 +2091,224 @@ async function paceFlush(admin: Admin): Promise<number> {
 }
 // ---- v28 🔕 LUGNA NOTISER — runtime block end ----
 
+// ---- ntf v2 (0390) — runtime block start ----
+// V2.on mirrors push_v2_flags (read at most every 60 s per isolate). Everything below is a no-op while ntf_v2 is off.
+const V2 = { on: false, flags: {} as Record<string, boolean>, at: 0, bold: { skal: false, replay: false } };
+async function v2Load(admin: Admin): Promise<boolean> {
+  if (Date.now() - V2.at < 60_000) return V2.on;
+  V2.at = Date.now();
+  try {
+    const { data, error } = await admin.rpc("push_v2_flags_get");
+    if (error) throw error;
+    V2.flags = (data && typeof data === "object" ? data : {}) as Record<string, boolean>;
+    V2.on = V2.flags.ntf_v2 === true;
+  } catch (_e) { V2.flags = {}; V2.on = false; }   // database without 0390: v28 as before
+  // bold × ntf (0391): bold_flags via ntf_bold_on (false while the bold table is missing)
+  for (const [k, f] of [["skal", "bold_skal_v2"], ["replay", "bold_replay"]] as const) {
+    try { const { data, error } = await admin.rpc("ntf_bold_on", { p_key: f }); V2.bold[k] = !error && data === true; } catch (_e) { V2.bold[k] = false; }
+  }
+  return V2.on;
+}
+type V2Stat = { kind: string; recent: string[] | null; muted: boolean };
+async function v2Stats(admin: Admin, uids: string[]): Promise<Map<string, V2Stat>> {
+  const m = new Map<string, V2Stat>();
+  for (let k = 0; k < uids.length; k += 500) {
+    const { data, error } = await admin.rpc("push_stats_get", { p_uids: uids.slice(k, k + 500) });
+    if (error) throw error;
+    for (const r of (data ?? []) as (V2Stat & { uid: string })[]) m.set(`${r.uid}|${r.kind}`, r);
+  }
+  return m;
+}
+/** Shared group per recipient (the sender's first group they are in) → avatar key for the icon. */
+async function v2Faces(admin: Admin, uid: string, rids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!V2.on || !rids.length) return out;
+  try {
+    const { data: mine } = await admin.from("group_members").select("group_id").eq("user_id", uid).order("joined_at").limit(50);
+    const gids = ((mine ?? []) as { group_id: string }[]).map((r) => r.group_id);
+    if (!gids.length) return out;
+    const { data: rows } = await admin.from("group_members").select("group_id, user_id").in("group_id", gids).in("user_id", rids.slice(0, 500));
+    const rs = ((rows ?? []) as { group_id: string; user_id: string }[]).sort((a, b) => gids.indexOf(a.group_id) - gids.indexOf(b.group_id));
+    for (const r of rs) if (!out.has(r.user_id)) out.set(r.user_id, faceKey(r.group_id, uid));
+  } catch (_e) { /* no faces: app icon */ }
+  return out;
+}
+async function v2Feed(admin: Admin, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  try { await admin.rpc("ntf_feed_add", { p_rows: rows.slice(0, 2000) }); } catch (e) { console.warn("ntf_feed_add", String(e)); }
+}
+/** gate28 + v2: variant per recipient, auto-mute, priorities (push_pace_take2), feed rows for what was not sent. */
+async function gateV2(admin: Admin, jobs: Job[]): Promise<{ jobs: Job[]; held: number }> {
+  const now = Date.now();
+  const hour = stockholmHour(now);
+  const all = jobs.map((j) => {
+    try {
+      const p = tidyPayload(JSON.parse(j.payload) as Record<string, unknown>);
+      return { sub: j.sub, p, cat: p.cat === "other" ? "" : String(p.cat) };
+    } catch (_e) {
+      return { sub: j.sub, p: null as Record<string, unknown> | null, cat: "", raw: j.payload };
+    }
+  });
+  const asJob = (t: { sub: Sub; p: Record<string, unknown> | null; raw?: string }): Job =>
+    ({ sub: t.sub, payload: t.p ? JSON.stringify(t.p) : (t.raw ?? "{}") });
+  const feed: Record<string, unknown>[] = [];
+  const day = all.filter((t) => !!t.p && rule28(t.cat, String(t.p.tag ?? ""), hour, now) === "day").length;
+  let kept = all.filter((t) => !t.p || rule28(t.cat, String(t.p.tag ?? ""), hour, now) !== "day");
+  if (kept.length === 0) return { jobs: [], held: day };
+  const uids = [...new Set(kept.map((t) => t.sub.user_id))];
+  let st = new Map<string, V2Stat>();
+  try { st = await v2Stats(admin, uids); } catch (e) { console.warn("push_stats_get", String(e)); }
+  // one variant per recipient (all devices get the same text), chosen against that recipient's recent ids
+  const perUser = new Map<string, Record<string, unknown>>();
+  kept = kept.map((t) => {
+    if (!t.p) return t;
+    const key = `${t.sub.user_id}|${String(t.p.tag ?? "")}`;
+    let q = perUser.get(key);
+    if (!q) { q = applyVariant(t.p, st.get(`${t.sub.user_id}|${ntfKind(String(t.p.tag ?? ""))}`)?.recent, Math.random, now); perUser.set(key, q); }
+    return { ...t, p: q };
+  });
+  // auto-mute (kaos/bar/kul/gang never opened): to the feed, not to the phone
+  const muted = (t: { sub: Sub; p: Record<string, unknown> | null }) =>
+    !!t.p && st.get(`${t.sub.user_id}|${String(t.p.k)}`)?.muted === true && Number(t.p.prio) < PRIO_RESERVE;
+  const seenFeed = new Set<string>();
+  const toFeed = (u: string, p: Record<string, unknown>, why: string) => {
+    const k = `${u}|${String(p.tag ?? "")}`;
+    if (seenFeed.has(k)) return; seenFeed.add(k); feed.push(feedRow(u, p, why));
+  };
+  kept = kept.filter((t) => { if (muted(t)) { toFeed(t.sub.user_id, t.p!, "muted"); return false; } return true; });
+  try {
+    const pu = [...new Set(kept.filter((t) => t.cat && t.cat !== "safe").map((t) => t.sub.user_id))];
+    const prefs = new Map<string, PushPref>();
+    for (let k = 0; k < pu.length; k += 150) {
+      const { data, error } = await admin.from("push_prefs").select("user_id, off, quiet_from, quiet_to, cap").in("user_id", pu.slice(k, k + 150));
+      if (error) throw error;
+      for (const r of (data ?? []) as (PushPref & { user_id: string })[]) prefs.set(r.user_id, r);
+    }
+    const verdict = kept.map((t) => pushGate(t.cat, prefs.get(t.sub.user_id), hour));
+    const out: Job[] = [];
+    const cand = new Map<string, { subs: Map<number, Sub>; ps: Record<string, unknown>[] }>();
+    kept.forEach((t, i) => {
+      if (verdict[i] === "send") { out.push(asJob(t)); return; }
+      if (verdict[i] === "quiet" && t.p && Number(t.p.prio) >= PRIO_RESERVE) toFeed(t.sub.user_id, t.p, "quiet");
+      if (verdict[i] !== "cap" || !t.p) return;
+      let c = cand.get(t.sub.user_id);
+      if (!c) { c = { subs: new Map(), ps: [] }; cand.set(t.sub.user_id, c); }
+      c.subs.set(t.sub.id, t.sub);
+      if (!c.ps.some((p) => p.tag === t.p!.tag)) c.ps.push(t.p);
+    });
+    if (cand.size) {
+      const users = [...cand.keys()];
+      // best first: the highest priority of a user's candidates decides (and is the one shown when alone)
+      for (const u of users) cand.get(u)!.ps.sort((a, b) => Number(b.prio) - Number(a.prio));
+      const { data, error } = await admin.rpc("push_pace_take2", {
+        p_uids: users,
+        p_lines: users.map((u) => digestLine(cand.get(u)!.ps[0], now)),
+        p_grps: users.map((u) => String(cand.get(u)!.ps[0].grp ?? "") || null),
+        p_gaps: users.map((u) => paceOf(prefs.get(u)).gap),
+        p_maxes: users.map((u) => paceOf(prefs.get(u)).max),
+        p_prios: users.map((u) => Number(cand.get(u)!.ps[0].prio) || 50),
+        p_reserve: PRIO_RESERVE,
+      });
+      if (error) throw error;
+      const rows = new Map<string, PaceRow>(((data ?? []) as PaceRow[]).map((r) => [String(r.uid), r]));
+      for (const u of users) {
+        const c = cand.get(u)!, r = rows.get(u);
+        if (r && r.verdict === "cap") { for (const p of c.ps) if (Number(p.prio) >= 25) toFeed(u, p, "cap"); continue; }
+        if (!r || (r.verdict !== "send" && r.verdict !== "digest")) continue;   // hold: saved for the digest
+        const mine = c.ps.map((p) => digestLine(p, now));
+        const held = r.verdict === "digest" ? (r.held_lines ?? []) : [];
+        const p = held.length + mine.length > 1
+          ? applyVariant(digestPayload([...held, ...mine], r.held_grp || String(c.ps[0].grp ?? "")), null, Math.random, now)
+          : c.ps[0];
+        for (const s of c.subs.values()) out.push({ sub: s, payload: JSON.stringify(p) });
+      }
+    }
+    await v2Feed(admin, feed);
+    return { jobs: out, held: jobs.length - out.length };
+  } catch (e) {
+    console.warn("gateV2 fallback to v27", e instanceof Error ? e.message : String(e));
+    const g = await gate(admin, kept.map(asJob));
+    return { jobs: g.jobs, held: g.held + day };
+  }
+}
+/** One stats row per recipient + kind (not per device), for the pushes that were delivered to the push service. */
+async function v2Sent(admin: Admin, jobs: Job[]) {
+  const seen = new Set<string>(), rows: Record<string, unknown>[] = [];
+  for (const j of jobs) {
+    let p: Record<string, unknown> = {};
+    try { p = JSON.parse(j.payload); } catch (_e) { continue; }
+    const k = `${j.sub.user_id}|${String(p.k ?? "")}`;
+    if (!p.k || seen.has(k)) continue;
+    seen.add(k); rows.push({ u: j.sub.user_id, k: String(p.k), v: String(p.v ?? "") });
+  }
+  if (!rows.length) return;
+  try { await admin.rpc("push_stats_sent", { p_rows: rows }); } catch (e) { console.warn("push_stats_sent", String(e)); }
+}
+type V2Ikv = { uid: string; names: string[] | null; n_ute: number; has_sub: boolean };
+type V2Gang = { uid: string; group_id: string; group_name: string | null; streak: number; has_sub: boolean };
+type V2Win = { uid: string; group_name: string | null; names: string[] | null; n_active: number };
+/** Cron (x-olnu-cron): Ikväll? with social proof, gang streak, win-back — each behind its own flag (the SQL checks too). */
+async function v2Cron(admin: Admin, key: string) {
+  const res = { ikvall: 0, gang: 0, winback: 0, feed: 0, replay: 0 };
+  await v2Load(admin);
+  res.replay = await v2ReplayCron(admin, key);   // bold §3.7 (own flag bold_replay)
+  if (!V2.on) return res;
+  const now = Date.now();
+  const run = async (fnName: string, build: (r: Record<string, unknown>) => Record<string, unknown>, field: "ikvall" | "gang" | "winback") => {
+    try {
+      const c = await keyRpc(key, fnName, { p_limit: 500 });
+      const rows = (c.ok && Array.isArray(c.data) ? c.data : []) as Record<string, unknown>[];
+      if (!rows.length) return;
+      const withSub = rows.filter((r) => r.has_sub !== false && isUuid(r.uid));
+      const noSub = rows.filter((r) => r.has_sub === false && isUuid(r.uid));
+      const feed = noSub.map((r) => feedRow(String(r.uid), applyVariant(build(r), null, Math.random, now), "nosub"));
+      await v2Feed(admin, feed); res.feed += feed.length;
+      const byUid = new Map(withSub.map((r) => [String(r.uid), r]));
+      const jobs = (await subsOf(admin, [...byUid.keys()])).map((s) => ({ sub: s, payload: JSON.stringify(build(byUid.get(s.user_id)!)) }));
+      res[field] = jobs.length ? (await sendAll(admin, jobs, 3 * 3600)).sent || 0 : 0;
+    } catch (e) { console.error("v2 cron", fnName, e); }
+  };
+  if (V2.flags.ikvall_proof) await run("ikvall_proof_claim", (r) => { const x = r as unknown as V2Ikv; return ikvallProofV2(x.names ?? [], Number(x.n_ute) || 2, now); }, "ikvall");
+  if (V2.flags.gang_streak) await run("gang_streak_claim", (r) => { const x = r as unknown as V2Gang; return gangStreakV2(x.group_name ?? "", Number(x.streak) || 3, x.group_id); }, "gang");
+  if (V2.flags.winback) await run("winback_claim", (r) => { const x = r as unknown as V2Win; return winbackV2(x.group_name ?? "", x.names ?? [], Number(x.n_active) || 2); }, "winback");
+  return res;
+}
+/** bold §3.7 {event:"replay_ready", group_id}: the caller (a member) says the replay is ready; one push per group-night
+ *  (replay_ready_claim: >= 2 members with >= 2 bar points, after 10:30, not merged into the film push). */
+async function replayReadyPush(admin: Admin, uid: string, b: Body) {
+  if (!V2.bold.replay) return { ...NONE, reason: "off" };
+  const gid = typeof b.group_id === "string" && isUuid(b.group_id) ? b.group_id : "";
+  if (!gid) return { ...NONE, reason: "no_group" };
+  const { data, error } = await admin.rpc("replay_ready_claim", { p_group_id: gid, p_night: null, p_via: "push", p_uid: uid });
+  if (error) { console.warn("replay_ready_claim", error.message); return { ...NONE, reason: "no_claim" }; }
+  const d = (data ?? {}) as { ok?: boolean; why?: string; to?: string[]; bars?: number; group_name?: string };
+  if (!d.ok) return { ...NONE, reason: d.why || "no_claim" };
+  const to = (d.to ?? []).filter((x) => isUuid(x) && x !== uid);
+  const payload = JSON.stringify(replayReadyV2(d.group_name ?? "", Number(d.bars) || 0, gid));
+  const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 6 * 3600) : { ...NONE, reason: "no_subs" };
+}
+type V2Replay = { group_id: string; group_name: string | null; bars: number; recips: string[] | null };
+async function v2ReplayCron(admin: Admin, key: string): Promise<number> {
+  if (!V2.bold.replay) return 0;
+  try {
+    const c = await keyRpc(key, "replay_ready_due", { p_limit: 100 });
+    const rows = (c.ok && Array.isArray(c.data) ? c.data : []) as V2Replay[];
+    let sent = 0;
+    for (const r of rows.slice(0, 100)) {
+      const payload = JSON.stringify(replayReadyV2(r.group_name ?? "", Number(r.bars) || 0, r.group_id));
+      const jobs = (await subsOf(admin, (r.recips ?? []).filter(isUuid))).map((s) => ({ sub: s, payload }));
+      if (jobs.length) sent += (await sendAll(admin, jobs, 6 * 3600)).sent || 0;
+    }
+    return sent;
+  } catch (e) { console.error("replay cron", e); return 0; }
+}
+// ---- ntf v2 — runtime block end ----
+
 async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600, raw = false) {
   // v28 (deploy): gate28 (falls back to the v27 gate); raw = digest flush, already paced.
-  const g = raw ? { jobs: allJobs, held: 0 } : await gate28(admin, allJobs);
+  const v2 = V2.on;   // ntf v2 (0390): v2Load ran at the start of the request / cron
+  const g = raw ? { jobs: allJobs, held: 0 } : v2 ? await gateV2(admin, allJobs) : await gate28(admin, allJobs);
   const jobs = g.jobs;
   const results = await Promise.allSettled(
     jobs.map((j) =>
@@ -1756,6 +2332,7 @@ async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600, raw = false) {
       else console.error("push failed", code, String(r.reason));
     }
   });
+  if (v2) await v2Sent(admin, jobs.filter((_j, i) => results[i].status === "fulfilled"));   // ntf v2: sent per kind + variant
   if (deadIds.size > 0) {
     const { error } = await admin.from("push_subscriptions").delete().in("id", [...deadIds]);
     if (error) console.error("failed to delete dead subscriptions", error);
@@ -2100,9 +2677,11 @@ async function checkinPush(admin: Admin, uid: string, _b: Body) {
     if (typeof count === "number" && count > 0) here = count;
   } catch (_e) { here = 1; }
   const tid = hhmm(Date.parse(String(ci.created_at)) || stamp);
+  const faces = V2.on ? await v2Faces(admin, uid, [...mates.keys()]) : new Map<string, string>();   // ntf v2
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(checkinPayload28(idx, mates.get(s.user_id) ?? "En vän", bar, stamp, barId, here, tid)),
+    payload: JSON.stringify(V2.on ? checkinV2(mates.get(s.user_id) ?? "", bar, barId, stamp, here, tid, stamp, faces.get(s.user_id) ?? "")
+      : checkinPayload28(idx, mates.get(s.user_id) ?? "En vän", bar, stamp, barId, here, tid)),
   }));
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
@@ -2387,6 +2966,7 @@ async function statusReqPush(admin: Admin, uid: string, b: Body) {
 // left, not out yet this week). Friday 17:00-23:59 Europe/Stockholm only; max 1 per recipient per week (claimed in
 // push_sent kind 'helg' by the SQL function helg_remind_targets). Reason when nobody: no_target.
 async function helgRemindPush(admin: Admin, uid: string) {
+  if (V2.on) return { ...NONE, reason: "v2_off" };   // ntf v2: no personal "streak at risk" push (gang streak celebrates instead)
   const { data, error } = await admin.rpc("helg_remind_targets", { p_caller: uid });
   if (error) throw error;
   const rows = (Array.isArray(data) ? data : []) as { user_id: string; streak: number }[];
@@ -2420,11 +3000,26 @@ async function skalHourPush(admin: Admin, uid: string, b: Body) {
   const mates = await mateNames(admin, uid, gid);
   if (mates.size === 0) return { ...NONE, reason: "no_group" };
   const { data: g } = await admin.from("groups").select("name").eq("id", gid).maybeSingle();
+  // bold §1.7 Skåltimmen v2: {v2:true} + flag bold_skal_v2 → only bold_skal_targets (out tonight, 90-min cap), new copy.
+  if (b.v2 === true && V2.bold.skal) {
+    const { data: tg, error: tgErr } = await admin.rpc("bold_skal_targets", { p_hour_id: hid });
+    // bold spec: {v2, user_ids}. v2 false = the old push below. (A plain uuid list is accepted too.)
+    const tgo = (tg && typeof tg === "object" && !Array.isArray(tg) ? tg : { v2: true, user_ids: tg }) as { v2?: boolean; user_ids?: unknown };
+    if (!tgErr && tgo.v2 !== false) {
+      const want = new Set(((Array.isArray(tgo.user_ids) ? tgo.user_ids : []) as unknown[]).map((x) => String(typeof x === "object" && x ? Object.values(x as Record<string, unknown>)[0] : x)));
+      const to = [...mates.keys()].filter((u) => want.has(u));
+      const payload = JSON.stringify(skalBoldV2((g?.name as string) ?? "", hid));
+      const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
+      return jobs.length ? await sendAll(admin, jobs, 180) : { ...NONE, reason: "no_target" };
+    }
+    if (tgErr) console.warn("bold_skal_targets", tgErr.message);   // missing RPC: the old Skåltimme push below
+  }
   const idx = Math.floor(Math.random() * SKAL_HOUR_BODIES.length);
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(skalHourPayload(idx, h.auto ? "Slumpen" : (mates.get(s.user_id) ?? "Gruppchefen"),
-      (g?.name as string) ?? "", hid)),
+    payload: JSON.stringify(V2.on   // ntf v2 (store-safe): a photo of the gang, not of the drink
+      ? skalHourV2(h.auto ? "Slumpen" : (mates.get(s.user_id) ?? "Gruppchefen"), (g?.name as string) ?? "", hid)
+      : skalHourPayload(idx, h.auto ? "Slumpen" : (mates.get(s.user_id) ?? "Gruppchefen"), (g?.name as string) ?? "", hid)),
   }));
   return jobs.length ? await sendAll(admin, jobs, 180) : NONE;
 }
@@ -2448,9 +3043,18 @@ async function filmPush(admin: Admin, uid: string, b: Body) {
   const { count } = await admin.from("snap_photos").select("id", { count: "exact", head: true })
     .eq("group_id", gid).eq("kind", "film").eq("night", night);
   const idx = Math.floor(Math.random() * FILM_BODIES.length);
+  // bold §3.7: the replay is ready too → ONE push: the film push gets "…och kvällsreprisen ä klar ▶" + "▶ Spela".
+  let replay = false;
+  if (V2.bold.replay) {
+    try {
+      const { data: rc } = await admin.rpc("replay_ready_claim", { p_group_id: gid, p_night: null, p_via: "film", p_uid: uid });
+      replay = !!(rc && (rc as { ok?: boolean }).ok);
+    } catch (_e) { replay = false; }
+  }
+  const filmP = (p: Record<string, unknown>) => replay ? withReplay(p, gid) : p;
   const jobs = (await subsOf(admin, [...mates.keys()])).map((s) => ({
     sub: s,
-    payload: JSON.stringify(filmPayload(idx, (g?.name as string) ?? "", count ?? 0, gid)),
+    payload: JSON.stringify(filmP(V2.on ? filmV2((g?.name as string) ?? "", count ?? 0, gid) : filmPayload(idx, (g?.name as string) ?? "", count ?? 0, gid))),
   }));
   return jobs.length ? await sendAll(admin, jobs, 4 * 3600) : NONE;
 }
@@ -2695,9 +3299,11 @@ async function evDueSend(admin: Admin, rows: EvDueRow[]) {
     const place = r.tv ? "📺 på TV" : cleanBarName(r.place);
     const n = Number(r.total) || 0;
     const line = EVGO_TITLES[Math.floor(Math.random() * EVGO_TITLES.length)];
-    const payload = JSON.stringify({ title: fill(line, { titel }),
-      body: `${invWhen(r.starts_at)}${place ? ` · ${place}` : ""}${n > 1 ? ` · ${n} går` : ""}. Tryck för detaljer.`,
-      url: `/?evs=${r.event_id}`, tag: `olnu-evgo-${r.event_id}` });
+    const payload = JSON.stringify(V2.on   // ntf v2: "Hockey 19:00 ⏰" + how many go
+      ? eventDueV2(titel, invParts(Date.parse(r.starts_at)).hm, place, n, r.event_id)
+      : { title: fill(line, { titel }),
+        body: `${invWhen(r.starts_at)}${place ? ` · ${place}` : ""}${n > 1 ? ` · ${n} går` : ""}. Tryck för detaljer.`,
+        url: `/?evs=${r.event_id}`, tag: `olnu-evgo-${r.event_id}` });
     for (const s of await subsOf(admin, r.to)) jobs.push({ sub: s, payload });
   }
   return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
@@ -2869,6 +3475,7 @@ async function cronDue(key: string): Promise<Response> {
     }
   } catch (e) { console.error("ev_due failed", e); }
   const gw = await gwCron(admin, key);   // gw 0310 / 0313
+  const v2 = await v2Cron(admin, key);   // ntf v2 (0390): each kind behind its own flag
   lastFlush28 = 0;
   const digests = await paceFlush(admin);   // v28 (deploy)
   // feat 0250 ⏰ Baren stänger (a missing RPC on an old database = skipped)
@@ -2877,7 +3484,7 @@ async function cronDue(key: string): Promise<Response> {
     const cr = await keyRpc(key, "close_remind_claim", {});
     if (cr.ok && Array.isArray(cr.data) && cr.data.length) closeSent = (await closeSend(admin, cr.data as CloseRow[])).sent || 0;
   } catch (e) { console.error("close_remind failed", e); }
-  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk });
+  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk, v2 });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -2913,6 +3520,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    await v2Load(admin);   // ntf v2 (0390): flags (cached 60 s)
     await paceFlush(admin);   // v28 (deploy): held lines -> one digest (at most every 30 s per isolate)
 
     // Light cleanup: anonymous heat events older than 10 days (ghost_points shows 1-8 days).
@@ -2960,6 +3568,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "coming") return json(await comingPush(admin, uid, body));
     if (event === "knuff") return json(await gwKnuff(admin, uid, body));            // gw 0312
     if (event === "walk_check") return json(await gwWalkCheck(admin, uid, body));   // gw 0313
+    if (event === "replay_ready") return json(await replayReadyPush(admin, uid, body));   // bold §3.7 (flag bold_replay)
+    if (event === "krog_crown") return json({ ...NONE, reason: "off_v1" });   // bold §4.7: kept OFF in v1 (tag olnu-crown-* = kind bar when it comes)
     if (event === "pickup") return json(await pickupPush(admin, uid, body));          // feat 0250
     if (event === "pickup_yes") return json(await pickupYesPush(admin, uid, body));   // feat 0250
 

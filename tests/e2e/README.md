@@ -22,6 +22,7 @@ Logs: `tests/e2e/out/logs/` (git-ignored). Screenshots: `tests/e2e/out/`.
 | UI, newer | ds-sheet (DESIGN.md sheet rules), autoci (auto check-in; runs when `docs/js/autoci.js` exists) | **gating** |
 | Mock cover | rpc-cover (`rpc-cover-pw.js`): opens the main screens and fails when the app calls an RPC the mock does not answer | **gating** |
 | Unit | notif-sw (`notif-sw-test.js`), `scripts/import-sport.test.mjs` | **gating** |
+| UI, ntf v2 | ntf (`ntf-pw.js`: notification settings v2, priming, in-app feed, deep links, log drain, real sw.js push + notificationclick) | **gating** |
 | Map (Mapbox GL) | glmap, tiers2, tiers3, map4, glfix-avpins, zones, mbx | **optional**: needs secret `MAPBOX_TEST_TOKEN`, else "skip" |
 | Real server (fresh anonymous users) | beta-pw.js | **never** in CI. By hand only. Serve with `serve.py --cors` (staging by default) |
 | Probe (mocked) | speed-pw.js | not gating, by hand |

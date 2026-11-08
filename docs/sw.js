@@ -440,6 +440,32 @@ self.addEventListener("fetch", function route(e) {
   e.respondWith(cacheFirst(req, VERSION));
 });
 
+// ntf v2 (agent ntf 2026-11-08): log queue + avatar icon. The service worker has no PNLOG: push.shown / push.open /
+// push.action {k kind, v variant, a button, h Stockholm hour} wait in Cache "olnu-pending" ./__pnq (max 60) until the app
+// is visible (push.js drainLog → PNLOG + push_seen). Never skip showNotification (iOS revokes the subscription).
+function ntfHour() {
+  try { return +new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", hourCycle: "h23" }).format(new Date()); } catch (err) { return new Date().getHours(); }
+}
+function ntfLog(n, data, a) {
+  data = data || {};
+  if (!data.k) return Promise.resolve();
+  return caches.open("olnu-pending").then(function (cc) {
+    return cc.match("./__pnq").then(function (r) { return r ? r.text() : "[]"; }).then(function (t) {
+      var q = []; try { q = JSON.parse(t) || []; } catch (err) { q = []; }
+      q.push({ n: n, k: String(data.k).slice(0, 16), v: String(data.v || "").slice(0, 24), a: String(a || "").slice(0, 16), h: ntfHour(), t: Date.now() });
+      return cc.put("./__pnq", new Response(JSON.stringify(q.slice(-60))));
+    });
+  }).catch(function () {});
+}
+// The sender's avatar (push.js caches group mates' faces as PNG data URLs under ./__face/<k>); else the app icon.
+function ntfFace(d, opts) {
+  if (!d || typeof d.face !== "string" || !/^[0-9a-f]{12,16}$/.test(d.face)) return Promise.resolve();
+  return caches.open("olnu-pending").then(function (c) { return c.match("./__face/" + d.face); }).then(function (r) {
+    if (!r) return;
+    return r.text().then(function (u) { if (/^data:image\/png;base64,/.test(u) && u.length < 200000) opts.icon = u; });
+  }).catch(function () {});
+}
+
 self.addEventListener("push", function (e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : "" }; }
@@ -453,6 +479,14 @@ self.addEventListener("push", function (e) {
     requireInteraction: !!(d.requireInteraction || d.sos),
     data: { url: d.url || "./", rally_id: d.rally_id != null ? String(d.rally_id) : null, at: Date.now() }
   };
+  // ntf v2: kind + variant (log), event time, a picture for film (only our own ./icons/*.png), one updating notice per night.
+  opts.data.k = String(d.k || "").slice(0, 16); opts.data.v = String(d.v || "").slice(0, 24);
+  if (typeof d.image === "string" && /^\.\/icons\/[\w.-]+\.png(\?v=\w+)?$/.test(d.image)) opts.image = d.image;
+  if (isFinite(d.ts) && +d.ts > 0) opts.timestamp = +d.ts;
+  if (d.fold && d.fold.key && d.fold.line) {
+    opts.tag = "olnu-fold-" + String(d.fold.key).replace(/[^\w-]/g, "").slice(0, 40);
+    d.stack = { title: String(d.fold.title || "{n} nya"), line: String(d.fold.line) }; d.renotify = true;
+  }
   // Rally/invite pushes carry buttons ("✅ Jag kommer" / "❌ Kan inte"). v27: a button may carry its own url
   // ("💬 Svara", "🍺 Kommer!", "🍻 Skåla"); iOS shows no buttons, a plain tap still opens `url`.
   if (Array.isArray(d.actions) && d.actions.length) {
@@ -463,7 +497,7 @@ self.addEventListener("push", function (e) {
   }
   // v27 🔔: fold chat pushes with the same tag into one notice ("💬 3 nya i Gänget" + the last lines). Buzz again only
   // when the last buzz is > 60 s old, so a busy chat stays one quiet, updating notice.
-  var show = Promise.resolve().then(function () {
+  var show = ntfFace(d, opts).then(function () {   // ntf v2: the sender's face as the icon
     if (!d.stack || !d.stack.line || !self.registration.getNotifications) return;
     return self.registration.getNotifications({ tag: opts.tag }).then(function (list) {
       var old = list && list.length ? list[list.length - 1] : null, od = (old && old.data) || {};
@@ -472,6 +506,7 @@ self.addEventListener("push", function (e) {
       opts.data.lines = lines; opts.data.n = n; opts.data.line = String(d.stack.line);
       opts.data.buzz = od.buzz || 0;
       if (n > 1 && d.stack.title) { title = String(d.stack.title).replace("{n}", n); opts.body = lines.join("\n"); }
+      if (n > 1 && d.fold) { opts.data.url = "/"; opts.actions = []; opts.data.acts = {}; }   // ntf v2: a folded night opens the map
     }).catch(function () {});
   }).then(function () {
     if (d.renotify && opts.tag) {
@@ -480,7 +515,7 @@ self.addEventListener("push", function (e) {
       opts.silent = !opts.renotify;
       if (opts.renotify) opts.data.buzz = Date.now();
     }
-    return self.registration.showNotification(title, opts);
+    return self.registration.showNotification(title, opts).then(function () { return ntfLog("push.shown", opts.data, ""); });   // ntf v2
   });
   // v27: app icon badge = pushes since the app was last open (push.js clears it when the app is visible).
   var badge = caches.open("olnu-pending").then(function (cc) {
@@ -497,6 +532,7 @@ self.addEventListener("push", function (e) {
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();
   var data = e.notification.data || {}, raw = data.url || "./";
+  try { e.waitUntil(ntfLog(e.action ? "push.action" : "push.open", data, e.action || "")); } catch (err) {}   // ntf v2
   // v27: a button with its own url ("💬 Svara" → chat, "🍺 Kommer!" / "🍻 Skåla" → the pin with &act=…).
   if (e.action && data.acts && typeof data.acts[e.action] === "string") raw = data.acts[e.action];
   // Rally buttons: open the rally and answer it ("&answer=yes|no").
@@ -521,7 +557,7 @@ self.addEventListener("notificationclick", function (e) {
         var client = c;
         // Also park the target in the Cache API: a frozen background page reads it when it becomes visible.
         var park = caches.open("olnu-pending").then(function (cc) { return cc.put("./__pending_open", new Response(target)); }).catch(function () {});
-        return park.then(function () { return client.focus(); }).then(function (fc) {
+        return park.then(function () { return client.focus().catch(function () { return client; }); }).then(function (fc) {   // ntf v2: focus may be refused; still tell the page
           fc = fc || client;
           return new Promise(function (resolve) {
             var done = false, ch = new MessageChannel();

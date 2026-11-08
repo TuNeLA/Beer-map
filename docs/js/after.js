@@ -17,13 +17,7 @@
   function pick(a) { return a && a.length ? a[Math.floor(Math.random() * a.length)] : ""; }
   function fill(tpl, v) { return String(tpl || "").replace(/\{(\w+)\}/g, function (m, k) { return v && v[k] != null ? String(v[k]) : m; }); }
   function $(id) { return document.getElementById(id); }
-  function call(name, params) {
-    if (!A || !A.LIVE || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(name, params).then(function (r) {
-      if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; }
-      return r;
-    });
-  }
+  var call = U.rpcCall(function () { return A; }, off);   // cln: the shared guarded RPC caller (util.js)
   function codeOf(e) { return U.errCode(e); }
   function rows(r) { return r && Array.isArray(r.data) ? r.data : []; }
   function invoke(body) { try { if (A && A.PUSH_ON) A.invoke("notify-group", body); } catch (e) {} }
@@ -108,7 +102,7 @@
     ["jul", "🎄", "Julsoldaten", "Ute på julafton. Tomten tog ledigt, du tog en öl.", "Var ute på julafton.", 1],
     ["fettis", "🧁", "Semmelsoldaten", "Fettisdag i tjänst. Grädde på mustaschen.", "Var ute på fettisdagen.", 1],
     ["pask", "🐣", "Påskpatrullen", "Ute i påsk. Påskharen har sett dig.", "Var ute under påskhelgen.", 1],
-    ["advent", "⭐", "Adventsvakten", "Första advent i fält. Ett ljus tänt, en öl tagen.", "Var ute på första advent.", 1],
+    ["advent", "🌟", "Adventsvakten", "Första advent i fält. Ett ljus tänt, en öl tagen.", "Var ute på första advent.", 1],
     ["fredag13", "🐈‍⬛", "Svarta katten", "Fredag den 13:e och du gick ändå ut. Modigt.", "Var ute en fredag den 13:e.", 1],
     ["halloween", "🎃", "Pumpapatrullen", "Ute på halloween. Det mest skrämmande var kön.", "Var ute på halloween (31 okt).", 1],
     ["kraftskiva", "🦞", "Kräftkaptenen", "Kräftskiva i augusti. Hatten satt, visan satt.", "Var ute en fredag i augusti.", 1],

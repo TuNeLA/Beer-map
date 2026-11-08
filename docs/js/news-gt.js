@@ -490,3 +490,592 @@ window.NEWS_GT = [
     { k: "general", f: function () { return "📺 Kvällens tips från bartendern: säg hej, säg tack, säg skål."; } },
     { k: "general", f: function () { return "🛵 En moped har parkerats perfekt vid torget. Ingen vet hur."; } }
 ];
+/* TX NEWS START */
+/* tx (big update): more LIVE ticker lines. Data only, merged into window.NEWS_GT (news.js reads NEWS_GT).
+   Placeholders: {town} {stad} {here} {hh} {t} {n} {k} {name} {bar} {s}. A line whose placeholder has no value is skipped.
+   Kinds added by news.js: tMorning / tDay (time of day), wd1..wd7 (weekday, 1 = Monday), mo1..mo12 (month),
+   townWx_<rain|snow|storm|fog|freeze|cold|mild|warm|clear> (real weather from js/ute.js, {t} = °C),
+   townJoke_<Town> (friendly local humour, shown only in that town).
+   Rules: friendly, no politics, never mock people, never push anyone to drink more, no driving jokes. */
+(function () {
+  "use strict";
+  var T = {
+    /* ---------- empty town: a real, useful line first (usability review), jokes after ---------- */
+    emptyFirst: [
+      "📍 Ingen ute i {stad} än – bli först på kartan!",
+      "📍 Inga prickar i {stad} än. Checka in när du kommer ut, så ser gänget dig.",
+      "📍 Tomt på kartan i {stad} just nu. Fråga gänget: Ikväll?"
+    ],
+    /* ---------- time of day (Europe/Stockholm) ---------- */
+    tMorning: [
+      "☕ God morgon! Kartan ä tom och kaffet ä varmt. Precis som det ska vara.",
+      "🌅 Morgonrapport: natten ä slut, kartan ä nollställd, världen ä ny.",
+      "🥐 Frukostläge. Generalen äter gröt och läser gårdagens rapporter.",
+      "📻 Morgonradion: lugnt på alla fronter. Truppen sover ut.",
+      "🧃 Klockan {hh}. Det enda som skummar nu ä mjölken i kaffet.",
+      "🌄 Ny dag, nya planer. Ikväll kanske? Kartan väntar.",
+      "🛏️ Morgonen efter: stövlarna står i hallen, alla ä hemma. Bra jobbat.",
+      "☕ Stabsmöte kl {hh}: dagordning punkt 1, kaffe. Punkt 2, mer kaffe.",
+      "🐦 Fåglarna sjunger. Ingen annan gör det just nu.",
+      "📰 Morgontidningen: inga nyheter än. Ni har hela dagen på er."
+    ],
+    tDay: [
+      "🌤️ Mitt på dagen. Kartan tar siesta, krogarna putsar glasen.",
+      "🧺 Dagtid: tvätten snurrar, planerna för ikväll likaså.",
+      "📅 Klockan {hh}. Perfekt tid att skicka ”Ikväll?” till gänget.",
+      "🍝 Lunchrapport: alla ä mätta. Kvällen ä fortfarande ett oskrivet blad.",
+      "🗺️ Dagspaning: kartan ä lugn. Stormen kommer när solen går ner.",
+      "🧭 Eftermiddag. Spanarna kollar vilka krogar som har öppet ikväll.",
+      "☀️ Dagsljus över fältet. Truppen laddar batterierna.",
+      "📞 Klockan {hh}: rätt läge att ringa den där kompisen du int' sett på länge.",
+      "🛒 Eftermiddagsrapport: nån står i chipshyllan och funderar på livet.",
+      "🎧 Dagen rullar på. Spellistan för ikväll byggs i hemlighet."
+    ],
+    t1: [
+      "🚿 Duschrapport: finskjortan ä framme, håret ä en pågående operation.",
+      "📺 Förfest-index stiger. Grannarna har hört basen testas.",
+      "🍕 Middag före kvällen: klokaste beslutet du tar ikväll.",
+      "🗺️ Kartan vaknar. De första prickarna dyker snart upp.",
+      "👟 Skorna ä valda. Det tog bara 40 minuter.",
+      "📱 Gruppchatten har fått liv. ”Vem ä på?” har skickats fyra gånger.",
+      "🎶 Förfestens spellista: 80 % klassiker, 20 % dansband, 100 % allsång.",
+      "🧥 Prognos inför kvällen: jacka rekommenderas. Ingen kommer ta den."
+    ],
+    t2: [
+      "🚪 Krogdörrarna slås upp. Dörrvakten har kammat sig.",
+      "🎸 Trubaduren har hittat kapot. Kvällen kan börja.",
+      "📍 De första incheckningarna droppar in. Kartan ler.",
+      "🍻 Kvällen ä i gång. Vi tar det i lugn takt, som proffs.",
+      "🕺 Dansgolvet ä fortfarande blygt. Det brukar gå över.",
+      "📡 Signalspaning klockan {hh}: rörelse i stan.",
+      "🎤 Karaokelistan har fått sitt första namn. Modigt.",
+      "🧭 Truppen samlas. Den som kommer sist bjuder på dåliga skämt."
+    ],
+    t3: [
+      "🎆 Klockan {hh}: kvällen står i full blom.",
+      "🕺 Någon har lärt sig ett nytt danssteg. Ingen har lärt sig det av hen.",
+      "🎤 Allsången har nått refrängen. Alla kan refrängen.",
+      "📸 Fotorapport: det ä nu de bästa bilderna tas. Och de sämsta.",
+      "🫂 Kramindex: högt. Folk träffar folk de int' sett sen gymnasiet.",
+      "🚕 Tidiga taxibokare har redan en plan. Respekt för planerare.",
+      "🌯 Kebabradarn har börjat pipa svagt i fjärran.",
+      "💧 Halvtidsvila: ett glas vatten nu och du tackar dig själv imorn."
+    ],
+    t4: [
+      "🌯 Kebabkön har fler filosofer än universitetet.",
+      "🚕 Taxi-tetris: fyra kompisar, tre adresser, en bil. Lycka till.",
+      "🌌 Stjärnorna ä ute. De flesta andra också.",
+      "🏠 Den som går hem nu går hem som en vinnare.",
+      "📣 Sista beställningen närmar sig. Bartendern har en tung blick.",
+      "🫶 Klockan {hh}: dags att kolla att alla i gänget har en väg hem."
+    ],
+    t5: [
+      "🌅 Gryningen tittar fram. Den har hört att det var en bra kväll.",
+      "🐦 Fåglarna har börjat sjunga. De har inga ackord, men mycket hjärta.",
+      "🧹 Städpatrullen tar över stan. Gatusoparna ä nattens sanna hjältar.",
+      "🛌 Kudden har ringt. Den saknar dig.",
+      "🗺️ Kartan nollställs klockan fem. Ölguden byter lakan.",
+      "🍞 Bageriet har tänt ugnen. Doften ä en kram.",
+      "🏠 Klockan {hh}: alla borde vara hemma. Är du? Bra."
+    ],
+    /* ---------- weekday (1 = Monday) ---------- */
+    wd1: [
+      "📅 Måndag. Kartan vilar. Det gör förhoppningsvis du också.",
+      "📅 Måndagsrapport: helgens historier har blivit 30 % bättre sen i lördags.",
+      "📅 Måndag. Ölguden har ledigt och spelar Sudoku.",
+      "📅 Måndag: veckans tråkigaste dag. Ring en kompis och gör den bättre.",
+      "📅 Måndag. Truppen återhämtar sig. Generalen kallar det vila och underhåll.",
+      "📅 Måndagsläge: krogarna ä lugna, bartendrarna har äntligen tid att prata."
+    ],
+    wd2: [
+      "📅 Tisdag. Den mest underskattade dagen i veckan.",
+      "📅 Tisdagsrapport: inget händer. Eller? Kolla kartan.",
+      "📅 Tisdag. Perfekt kväll för quiz på krogen.",
+      "📅 Tisdag: den som ä ute ikväll ä ute för att det ä trevligt. Det räcker.",
+      "📅 Tisdag. Taco i halva Sverige, lugn på kartan.",
+      "📅 Tisdagsfakta: ingen har nånsin sagt ”det var en vild tisdag” utan att mena det."
+    ],
+    wd3: [
+      "📅 Onsdag. Lilla lördag enligt somliga. Lilla onsdag enligt resten.",
+      "📅 Onsdag: halva veckan avklarad. Värt en skål med vatten.",
+      "📅 Onsdag. Kartan ä halvvaken.",
+      "📅 Onsdagsrapport: helgplanerna börjar ta form i gruppchatten.",
+      "📅 Onsdag. Mitt i veckan, mitt i Sverige, mitt i ingenting. Mysigt.",
+      "📅 Onsdag. Fotbollen ä på tv och alla ä förbundskaptener."
+    ],
+    wd4: [
+      "📅 Torsdag. Lillördag, säger kartan. Kartan har rätt.",
+      "📅 Torsdag: studenter och tidiga helgfirare i rörelse.",
+      "📅 Torsdag. Helgen knackar på. Öppna lagom mycket.",
+      "📅 Torsdagsrapport: förväntan stiger. Planerna likaså.",
+      "📅 Torsdag. Den som jobbar imorn vet vad som gäller. Respekt.",
+      "📅 Torsdag. Arbetsveckans sista kurva. Håll i hatten."
+    ],
+    wd5: [
+      "📅 Fredag! Hela landet andas ut samtidigt.",
+      "📅 Fredag. Fredagsmys eller fredagsmiss? Kartan vet snart.",
+      "📅 Fredagsrapport: tacos, tv och en gruppchatt som glöder.",
+      "📅 Fredag. Veckans lönsammaste ord: ”Ses ikväll!”",
+      "📅 Fredag. Dansbanden har stämt instrumenten sen i tisdags.",
+      "📅 Fredag kväll. Det ä nu det händer. Eller i soffan. Båda ä bra."
+    ],
+    wd6: [
+      "📅 Lördag! Veckans stora kväll. Ta det lugnt och gör den lång.",
+      "📅 Lördag. Krogarna har fyllt på servetterna.",
+      "📅 Lördagsrapport: alla ä uppklädda, ingen vet var de ska.",
+      "📅 Lördag. Det ä nu legender föds. Och historier som berättas till jul.",
+      "📅 Lördag. Bartendrarna har ätit en ordentlig frukost. De vet.",
+      "📅 Lördag: kvällen ä lång. Ät, drick vatten, ha kul."
+    ],
+    wd7: [
+      "📅 Söndag. Pannkakor, filt och gårdagens bilder.",
+      "📅 Söndagsrapport: alla ä hemma, alla mår... okej.",
+      "📅 Söndag. Kartan ä lugn. Soffan ä full.",
+      "📅 Söndag: dags att skicka ”tack för igår” i gruppchatten.",
+      "📅 Söndag. Ölguden har gått på promenad i skogen.",
+      "📅 Söndag. Middag hos morsan slår allt."
+    ],
+    /* ---------- month ---------- */
+    mo1: ["❄️ Januari. Plånboken ä i vinterdvala.", "❄️ Januari: alla har lovat sig själva saker. Vi lovar inget.", "❄️ Januari. Mörkt, kallt och mysigt på krogen.", "❄️ Januari. Det ä nu man hittar årets bästa stamställe."],
+    mo2: ["🧁 Februari. Semlorna ä tillbaka och livet ä gott.", "❄️ Februari: sportlovet närmar sig. Pulkan står redo.", "💌 Februari. Alla hjärtans dag på krogen? Varför int'.", "❄️ Februari. Snön ligger. Stämningen gör det int'."],
+    mo3: ["🌱 Mars. Ljuset kommer tillbaka. Folk med.", "🌱 Mars: snön smälter, gänget tinar upp.", "🌱 Mars. Vårkänslor i luften. Och lite grus.", "🌱 Mars. Första uteserveringen? Inte än. Men snart."],
+    mo4: ["🐣 April. Påskharen har gömt nåt. Kanske ett ölunderlägg.", "🌷 April: vädret byter humör var tionde minut. Precis som dansgolvet.", "🔥 April. Valborg närmar sig. Brasorna byggs.", "🌷 April. Våren ä på riktigt nu. Nästan."],
+    mo5: ["🎓 Maj. Studentflaken ä på väg. Vinka glatt.", "☀️ Maj: uteserveringarna ä öppna. Ta med en tröja ändå.", "🌸 Maj. Allt blommar. Även snacket.", "🎓 Maj. Mössor, plakat och allsång i hela landet."],
+    mo6: ["🌼 Juni. Midsommar närmar sig. Små grodorna värmer upp.", "☀️ Juni: det ä ljust hela natten. Klockan ljuger.", "🌼 Juni. Jordgubbar, sill och sena kvällar.", "🦟 Juni. Myggen ä också ute. De ä int' inbjudna."],
+    mo7: ["🏖️ Juli. Halva Sverige har semester. Andra halvan ä avundsjuk.", "☀️ Juli: uteserveringarna ä fulla av solbrända soldater.", "🏕️ Juli. Festivaler, sjöar och en evig kväll.", "🍦 Juli. Glassen smälter fortare än planerna."],
+    mo8: ["🦞 Augusti. Kräftskivorna ä här. Hatten på!", "🌙 Augusti: mörkret kommer tillbaka. Lyktorna med.", "🦞 Augusti. Snapsvisor, papperslyktor och gamla vänner.", "🍂 Augusti. Sommaren tar sitt sista varv."],
+    mo9: ["🍂 September. Höstmörkret har börjat. Krogarna tänder ljusen.", "🍁 September: tillbaka till vardagen. Och till stamstället.", "🍄 September. Svampskogen och krogen: höstens två favoriter.", "🍂 September. Jackan ä tillbaka i garderoben på krogen."],
+    mo10: ["🎃 Oktober. Halloween närmar sig. Det läskigaste ä kön.", "🍂 Oktober: löven faller. Stämningen gör det int'.", "🌧️ Oktober. Regn ute, värme inne.", "🎃 Oktober. Pumpor, filtar och tända ljus."],
+    mo11: ["🌑 November. Mörkt ute. Ljust på krogen.", "🕯️ November: det ä nu man behöver varandra mest.", "🌑 November. Sveriges tuffaste månad. Ni klarar den tillsammans.", "🌑 November. Ljusslingorna ä uppe. Ikväll lyser gänget med."],
+    mo12: ["🎄 December. Julbord, glögg och dåliga jultröjor.", "🕯️ December: Lucia, pepparkakor och sena kvällar.", "🎆 December. Året ska avslutas med stil.", "🎄 December. Tomten ser allt. Även gruppchatten."],
+    /* ---------- real weather ({t} = °C from Open-Meteo via js/ute.js) ---------- */
+    townWx_rain: [
+      "🌧️ Regn i {town}, {t}°. Paraply eller snabba ben?",
+      "🌧️ {town}: {t}° och regn. Krogarna ä torra inomhus.",
+      "☔ Väderrapport från {town}: blött ute, varmt inne.",
+      "🌧️ {t}° och skurar i {town}. Kapuschongen ä kvällens accessoar.",
+      "🌧️ {town} duschar. Ni behövde int' ens gå hemifrån för det."
+    ],
+    townWx_snow: [
+      "❄️ Snö i {town}, {t}°. Gå försiktigt, håll i varandra.",
+      "☃️ {town}: snöfall och {t}°. Snögubbar har setts köa till krogen.",
+      "❄️ Snörapport från {town}: vitt ute, varmt inne.",
+      "❄️ Det snöar i {town}. Ta rejäla skor, int' de snygga.",
+      "🌨️ {t}° och snö i {town}. Mysfaktor: maximal."
+    ],
+    townWx_storm: [
+      "⛈️ Åska över {town}! Stanna inne och njut av ljusshowen.",
+      "⛈️ {town}: åskväder. Dansbandets trummis har fått konkurrens.",
+      "⛈️ Åskvarning i {town}. Bästa platsen just nu: inomhus med gänget."
+    ],
+    townWx_fog: [
+      "🌫️ Dimma i {town}, {t}°. Följ lyktorna till närmaste krog.",
+      "🌫️ {town} ä inbäddat i dimma. Mystiskt och mysigt.",
+      "🌫️ Dimrapport från {town}: sikten ä dålig, stämningen god."
+    ],
+    townWx_freeze: [
+      "🥶 {t}° i {town}. Mössa på, kom hem varm.",
+      "🧊 Minusgrader i {town}: {t}°. Vantarna ä kvällens hjältar.",
+      "🥶 {town}: {t}°. Det ä kallare ute än i kylen bakom disken.",
+      "🧊 Halka i {town}? {t}° säger ja. Gå som en pingvin.",
+      "🥶 {t}° i {town}. Ta taxi hem, int' en promenad i skjortan."
+    ],
+    townWx_cold: [
+      "🧥 {t}° i {town}. Jackan ä obligatorisk, även för tuffingarna.",
+      "🍂 {town}: {t}°. Höstrusk med varm stämning.",
+      "🧣 {t}° i {town}. Halsduken har fått en hedersplats.",
+      "🧥 Kylig kväll i {town}, {t}°. Garderobsvakten jublar."
+    ],
+    townWx_mild: [
+      "🌤️ {t}° i {town}. Lagom ute, lagom inne. Mycket svenskt.",
+      "🌤️ {town}: {t}° och uppehåll. Det ä nästan för bra för att vara sant.",
+      "🍃 Milt i {town}, {t}°. Ta en promenad mellan krogarna.",
+      "🌤️ {t}° i {town}. Kvällen ä som gjord för att vara ute."
+    ],
+    townWx_warm: [
+      "☀️ {t}° i {town}! Uteserveringarna har dragit fram alla stolar.",
+      "🌞 {town}: {t}° varmt. Solkräm och vatten, soldater.",
+      "☀️ Varmt i {town}, {t}°. Skuggan ä kvällens VIP-plats.",
+      "🌞 {t}° i {town}. Sommarkväll deluxe."
+    ],
+    townWx_clear: [
+      "🌌 Klart väder över {town}, {t}°. Stjärnorna kollar läget.",
+      "✨ {town}: klar himmel och {t}°. Perfekt kväll för en promenad mellan krogarna.",
+      "🌙 Klart och {t}° i {town}. Månen lyser vägen hem."
+    ],
+    /* ---------- more lines for the kinds that show every round ---------- */
+    calm: [
+      "📺 {stad} laddar upp. Ingen har gått ut än, men alla funderar.",
+      "📺 Ingen på kartan i {stad} än. Bli den första pricken ikväll?",
+      "📺 {stad}: tomt på kartan, fullt i gruppchatten.",
+      "📺 Stilla i {stad}. Bartendern har vikt 40 servetter till fina svanar.",
+      "📺 Lugn kväll i {stad}. Perfekt för ett lugnt glas och ett långt snack.",
+      "📺 I {stad} ä det så lugnt att gatlyktorna har börjat prata med varandra.",
+      "📺 Stiltje i {stad}. Kartan väntar på sin första hjälte.",
+      "📺 {stad} har inga prickar än. Nån måste ju börja.",
+      "📺 Lugnet i {stad} beskrivs som ”nästan misstänkt”.",
+      "📺 Tyst i {stad}. Dörrvakten övar på sitt bästa leende.",
+      "📺 {stad} ikväll: soffläge. Och det ä helt okej.",
+      "📺 Rapport från {stad}: radion spelar, ingen dansar. Än.",
+      "📺 {stad} sover med ena ögat öppet."
+    ],
+    forecast: [
+      "🌤️ Prognos för {stad}: {n} ute, stigande stämning mot midnatt.",
+      "📈 {stad}-index: {n} på kartan. Trenden pekar uppåt.",
+      "🌦️ Kvällsprognos {stad}: {n} ute, lokalt kraftig allsång.",
+      "📡 Radarn över {stad} visar {n} prickar. Glada prickar.",
+      "🌤️ {stad}: {n} ute. Risk för nya vänskaper {p}%.",
+      "🌈 Prognos {stad}: {n} ute, chans till kvällens bästa historia {p}%.",
+      "📈 {n} ute i {stad}. Meteorologerna kallar det ”trevligt tryck”.",
+      "🌦️ Väder i {stad}: {n} ute, spridda skratt, lätta skål."
+    ],
+    total: [
+      "📺 Riksläget: {n} prickar på kartan i Sverige just nu.",
+      "📺 Sverige ikväll: {n} ute. Från Malmö till Kiruna.",
+      "📺 {n} soldater i tjänst runt om i landet. Staben ä nöjd.",
+      "📺 Rikskartan lyser: {n} prickar. Vi ser er.",
+      "📺 Rapport från hela Sverige: {n} ute, noll tråkigt.",
+      "📺 {n} personer på kartan. Det ä som en liten stad. En trevlig stad.",
+      "📺 Landet runt: {n} ute just nu. Glöm int' jackan.",
+      "📺 {n} ute i Sverige. Kartan har inte varit så här glad sen i lördags."
+    ],
+    barReport: [
+      "📺 {k} på {bar}. Stolarna ä varma, snacket likaså.",
+      "📺 {bar}: {k} på plats. Stämningen beskrivs som ”mysig med inslag av allsång”.",
+      "📺 Live från {bar}: {k} gäster och en bartender med koll.",
+      "📺 {bar} har {k} pers. Kvällens samlingsplats?",
+      "📺 Spaning: {k} pers inne på {bar}. Dörren går i ett.",
+      "📺 {bar} rapporterar {k} gäster. Det skrattas vid bardisken.",
+      "📺 {k} på {bar} just nu. Låter som ett gäng, va?",
+      "📺 {bar}: {k} inne, musiken på, kvällen igång.",
+      "📺 Reportern på {bar} meddelar {k} gäster och en hund. Hunden ä inte bekräftad.",
+      "📺 {bar} har {k} besökare. Garderoben ä full av vinterjackor."
+    ],
+    skal: [
+      "🍻 {name} har fått {s} skål. Stamgästerna applåderar.",
+      "🍻 {s} skål till {name}. Ett leende per skål.",
+      "🍻 {name} samlar skål som andra samlar frimärken. {s} hittills.",
+      "🍻 {name}: {s} skål. Någon har gjort ett gott intryck.",
+      "🍻 Skålmätaren för {name} visar {s}. Värmen sprider sig.",
+      "🍻 {name} har fått {s} skål. Den sociala generalen har talat.",
+      "🍻 {s} skål till {name}. Truppen ser dig!"
+    ],
+    meSkal: [
+      "🍻 {s} skål till dig. Du ä kvällens värme.",
+      "🍻 Du har samlat {s} skål. Vänskap på kartan.",
+      "🍻 {s} skål! Folk gillar dig. Det har vi alltid vetat.",
+      "🍻 Du har fått {s} skål. Skicka en tillbaka?",
+      "🍻 {s} skål i din ära. Truppen ä stolt.",
+      "🍻 Skålkontot: {s}. Kärleken flödar."
+    ],
+    townWeather: [
+      "🌦️ {town} ikväll: lokalt kraftig allsång, avtagande mot natten.",
+      "🌤️ Prognos {town}: högtryck vid bardisken, svaga vindar på dansgolvet.",
+      "🌡️ {town}: stämningen 22 grader, glasen 4. Perfekt balans.",
+      "🌦️ {town}: risk för spontana kramar efter elva.",
+      "🌫️ {town} ikväll: lätt skratt-dis, god sikt mot kebaben.",
+      "🌈 {town}: efter regnet kommer gänget.",
+      "🌦️ Väderinstitutet {town}: 80 % chans för en bra historia imorn.",
+      "🌬️ {town}: frisk vind från norr. Ta jackan, glöm den int'.",
+      "🌦️ {town}: molnigt på himlen, klart i gruppchatten.",
+      "🌤️ {town} ikväll: halvklart, helkul.",
+      "🌦️ Skålprognos för {town}: spridda skål, lokalt i klungor.",
+      "🌦️ {town}: luftfuktighet hög vid dansgolvet. Ingen fara.",
+      "🌡️ Mätstationen i {town} registrerar: 100 % sällskap.",
+      "🌦️ {town}: barometern pekar på trevligt.",
+      "🌫️ {town}: dimma kring kebabkiosken efter midnatt. Hittar ändå."
+    ],
+    townQuiet: [
+      "📺 {town} ä lugnt ikväll. Perfekt läge att vara först.",
+      "🦗 {town}: syrsorna har mikrofonen.",
+      "📺 {town} vilar. Ibland behöver även en stad en soffkväll.",
+      "📺 I {town} tittar alla på samma tv-serie. Ingen erkänner det.",
+      "📡 Ingen rörelse i {town}. Spanarna tar en fika.",
+      "📺 {town} ikväll: lugnt som en söndag, fast det int' ä söndag.",
+      "🕯️ {town} har tänt ljusen och tagit fram filten.",
+      "📺 Byanytt {town}: allt lugnt. Bartendern hälsar.",
+      "📡 Kartan över {town} ä tom. Den ser lite ensam ut.",
+      "📺 {town}: lugnet före stormen? Eller bara lugnet. Båda ä fina."
+    ],
+    random: [
+      "📺 Ny forskning: den som säger ”tack” till bartendern får 12 % bättre kväll.",
+      "📺 Bartendern har lärt sig allas namn. Utom Kalles. Det ä alltid Kalle.",
+      "📺 Rapport: nån har hittat sin andra handske. Den ä tillbaka med sin partner.",
+      "📺 En pall har gått sönder. Den levde ett långt och lyckligt liv.",
+      "📺 Trubaduren har fått en önskelåt. Det var Wonderwall. Igen.",
+      "📺 Servetter: 1. Spill: 0. Bra jobbat, bordet.",
+      "📺 Garderobsnummer 42 har vunnit kvällens finaste jacka-pris.",
+      "📺 En kompis har lovat att dela upp notan rättvist. Experter ä tveksamma.",
+      "📺 Expertpanelen: bästa sällskapet ä det du redan har.",
+      "📺 Den som kommer hem i tid imorn har fått ett diplom. Det ä osynligt.",
+      "📺 Kvällens dansmove: ”den osäkra pendeln”. Testa försiktigt.",
+      "📺 Rykte: nån har ett laddat powerbank. Hen ä kvällens hjälte.",
+      "📺 Gruppchatten har nått 300 meddelanden. 290 ä ”haha”.",
+      "📺 Kvällens bästa beslut hittills: nån tog med vantar.",
+      "📺 Taxichauffören har hört alla historier. Hen skrattar ändå.",
+      "📺 Vattenkannan på bordet har fått smeknamnet ”Livräddaren”.",
+      "📺 Nån har gett en främling en komplimang. Nu ä de bästa vänner.",
+      "📺 Bartendern har fått en kram. Det ä int' standard, men uppskattat.",
+      "📺 Kortläsaren har piiipat en gång för mycket. Ingen panik.",
+      "📺 Ett ölunderlägg har fått ett telefonnummer skrivet på sig. Romantiken lever.",
+      "📺 Kvällens fråga: vem tog sista pommesbiten? Utredning pågår.",
+      "📺 Nån har tappat sin mobil. Den hittades i egen ficka. Igen.",
+      "📺 Ny trend: att gå hem tillsammans. Den har kommit för att stanna.",
+      "📺 Expertkommentar: dansgolvet döms int' efter teknik, bara efter glädje.",
+      "📺 En jacka har lämnats kvar. Den har fått asyl i garderoben.",
+      "📺 Kvällens superkraft: att komma ihåg var man ställde glaset.",
+      "📺 Bartendern har infört en ny regel: alla som ler får servett.",
+      "📺 Nån har bjudit på chips. Det ä kärlek i påsform.",
+      "📺 Senaste mätningen: 100 % av alla kramar gör kvällen bättre.",
+      "📺 Kvällens bästa citat: ”Vi tar en bild!” Klockan 23:14.",
+      "📺 Nån har sjungit fel text med full övertygelse. Ingen rättade.",
+      "📺 Dörrvakten har gett tummen upp. Det ä högsta betyget.",
+      "📺 En kompis har förklarat sina helgplaner. Ingen förstod, alla hejade.",
+      "📺 Kvällens rekord: fem selfies, en bra.",
+      "📺 Stamgästen i hörnet har fått sällskap. Han berättar om 1987.",
+      "📺 Nån har hittat en kortlek. Vändåttan ä tillbaka.",
+      "📺 Kvällens taxi-tips: boka innan du tror att du behöver.",
+      "📺 Pantburkarna ä sorterade. Miljöhjältarna ä bland oss.",
+      "📺 Ny studie: en macka före kvällen gör allt bättre. Inga undantag.",
+      "📺 Nån har frågat bartendern om hans dag. Han blev rörd."
+    ],
+    general: [
+      "📺 Kartan ser allt, men säger bara det snälla.",
+      "📺 Generalstaben påminner: ingen soldat lämnas ensam i kön.",
+      "📺 Kvällens order: var snäll mot personalen, de håller ihop allt.",
+      "📺 Från högkvarteret: telefonen laddad? Bra. Fortsätt.",
+      "📺 PintsNow-nytt: skål räknas, kompisar räknas, glas räknas int'.",
+      "📺 Kvällens tre V: vänner, vatten, vägen hem.",
+      "📺 Staben meddelar: den som kollar läget med en kompis får meriter. Och ett tack.",
+      "📺 Generalen tipsar: Följ mig hem finns för en anledning.",
+      "📺 Från redaktionen: ni ä bäst när ni ä tillsammans.",
+      "📺 PintsNow-tips: tryck ”Jag ä hemma” när du ä hemma. Gänget sover bättre då.",
+      "📺 Påminnelse från staben: den som kör ikväll ä kvällens VIP.",
+      "📺 Kvällens lösenord: ”Kom hit!” Svaret: ”Kommer!”",
+      "📺 Ölguden har skickat en hälsning: var rädda om varandra.",
+      "📺 Från högkvarteret: en bild i gruppchatten säger mer än tio ”var ä ni?”.",
+      "📺 Kvällens regel: den som bjuder på ett skämt får ett skratt tillbaka.",
+      "📺 Generalen: vi mäter kvällar i skratt, int' i glas.",
+      "📺 Staben: kebab ä ingen strategi, men en bra plan B.",
+      "📺 Kartan påminner: kvällen slutar klockan fem. Ni får gärna sluta tidigare.",
+      "📺 Från redaktionen: tack till alla bartendrar, dörrvakter och taxichaufförer.",
+      "📺 Generalen har talat: skål för de som int' kunde komma ikväll."
+    ]
+  };
+
+  /* ---------- per town: friendly local humour (landmarks, teams, dialect) ---------- */
+  var TOWNS = {
+    "Ludvika": [
+      "⚡ Ludvika bygger transformatorer åt halva världen. Ikväll transformeras soffan till krog.",
+      "🌊 Väsman ligger blank ikväll. Ludvikaborna glittrar mer.",
+      "📜 Dan Andersson skrev om skogarna kring Ludvika. Ikväll skriver ni nästa vers.",
+      "🎸 Ingen Mini-Rock ikväll, men Ludvika rockar ändå.",
+      "⚡ Högspänning i Ludvika. Och den kommer int' bara från Hitachi.",
+      "🪖 Här började PintsNow. Ludvika ä högkvarteret, och det märks.",
+      "🧭 Ludvikabo? Då vet du att ”hä” ä ett helt ord.",
+      "🌲 Från Grängesberg till Brunnsvik: hela Ludvikatrakten har vaknat.",
+      "🚂 Tåget till Ludvika ä i tid. Det ä kvällens största nyhet.",
+      "🏞️ Ludvika ikväll: sjöutsikt, skogsdoft och en krog med plats för en till.",
+      "🗣️ I Ludvika säger man ”int'” och ”ä”. Kartan har lärt sig.",
+      "🌲 Ludvika: Bergslagens pärla. Och pärlor glänser bäst i mörker."
+    ],
+    "Smedjebacken": [
+      "⛵ Strömsholms kanal börjar i Smedjebacken. Kvällen likaså.",
+      "🔥 Smedjebacken: stålet ä varmt och stämningen ännu varmare.",
+      "🌊 Barken speglar Smedjebackens gatlyktor. Romantiskt, va?",
+      "⚒️ I Smedjebacken smids planer. Ikväll: kvällsplaner.",
+      "⚒️ Smedjebacken: där smidet ä hett och snacket hetare.",
+      "📣 Smedjebacken mot Ludvika: grannfejden avgörs med skål, int' med siffror.",
+      "🧭 Kanalen leder ut i världen, men smedjebackarna stannar hemma ikväll.",
+      "🌲 Smedjebacken ikväll: liten stad, stort hjärta, full krog."
+    ],
+    "Borlänge": [
+      "🚦 Borlänge har Trafikverket. Ikväll går all trafik mot krogen.",
+      "🎙️ Jussi Björling föddes i Borlänge. Allsången ikväll ä... modigare.",
+      "⚽ Brage-snack i Borlänge. Alla ä tränare efter första halvlek.",
+      "🛍️ Kupolen har stängt. Borlänge har öppnat.",
+      "🔥 Domnarvet kokar stål, Borlänge kokar av folk.",
+      "⛷️ Romme vilar. Borlänges backar ikväll heter dansgolv.",
+      "🌊 Dalälven rinner genom Borlänge. Precis som ryktet om kvällen.",
+      "🚧 Vägarbete i Borlänge? Trafikverket säger inget. Vi säger: gå tillsammans."
+    ],
+    "Falun": [
+      "🎿 Lugnet i Falun? Int' ikväll.",
+      "🌭 Falun: falukorvens hemstad. Ikväll ä den i gott sällskap.",
+      "⛏️ Falu gruva har sett det mesta på flera hundra år. Ikväll ser den er.",
+      "🎨 Falun ikväll: allt ä rött. Rödfärgen alltså.",
+      "🏆 Hoppbackarna på Lugnet ä höga. Stämningen i Falun högre.",
+      "🏛️ Världsarv i Falun: gruvan. Ikväll: också gänget.",
+      "⛏️ Gruvfolk förr, krogfolk ikväll. Falun gräver där det står.",
+      "🟥 Falun målar stan röd. Det har de gjort i flera hundra år."
+    ],
+    "Leksand": [
+      "🏒 Leksand: hockeysnacket ä igång. Alla vet vem som borde spelat center.",
+      "🌼 Leksand utan midsommar? Ikväll funkar det ändå.",
+      "🌊 Siljan ligger stilla. Leksand gör det int'.",
+      "🏒 Leksand ikväll: tre perioder snack och en lång övertid.",
+      "🎻 Spelmännen i Leksand stämmer fiolerna. Kvällen tar takt."
+    ],
+    "Mora": [
+      "⛷️ Mora: Vasaloppets mål. Ikväll ä målet en bra kväll.",
+      "🎨 Zorn målade Mora vackert. Ikväll målar ni stan.",
+      "🏒 Mora IK-snack vid bardisken. Ingen ä opartisk.",
+      "⛷️ 90 km till Mora? Nej, bara några steg till krogen.",
+      "🐴 Mora ikväll: dalahästarna har fått sällskap."
+    ],
+    "Rättvik": [
+      "🚗 Rättvik har Classic Car Week. Ikväll står bilarna still och gänget går.",
+      "🌊 Långbryggan i Rättvik sträcker sig ut i Siljan. Kvällen sträcker sig också.",
+      "🎶 Rättvik ikväll: musik i luften, Siljan i bakgrunden."
+    ],
+    "Avesta": [
+      "🐴 Avesta har världens största dalahäst. Ikväll har stan också stora planer.",
+      "🐴 Den stora dalahästen i Avesta vaktar stan. Den ser många ute ikväll.",
+      "🌊 Dalälven forsar genom Avesta. Stämningen också."
+    ],
+    "Hedemora": [
+      "🏛️ Hedemora ä en av Dalarnas äldsta städer. Kvällen ä ung.",
+      "📜 Hedemora har stadsprivilegier sen medeltiden. Ikväll har ni kvällsprivilegier.",
+      "🌲 Hedemora ikväll: gammal stad, nya historier."
+    ],
+    "Grängesberg": [
+      "⛏️ Grängesberg: gruvstad med järn i blodet. Och glädje i rösten.",
+      "🚂 Lokmuseet i Grängesberg vilar. Gänget ä på rälsen.",
+      "⛏️ Grängesberg ikväll: djupa gruvor, höga skratt."
+    ],
+    "Stockholm": [
+      "🚇 Stockholm: tunnelbanan ä full. Alla ska åt samma håll: ut.",
+      "🏗️ Slussen byggs fortfarande om. Kvällen i Stockholm byggs snabbare.",
+      "🏰 Gamla stan ikväll: kullersten, gränder och folk som letar efter rätt gränd.",
+      "🌉 Söder eller norr? Ikväll ä hela Stockholm på samma sida.",
+      "🚢 Waxholmsbåten har lagt till. Stockholm har lagt ut.",
+      "🦌 Skansen sover. Stockholm gör det int'.",
+      "🗼 Kaknästornet ser hela Stockholm ikväll. Det ser lovande ut.",
+      "🚇 ”Nästa: Slussen.” Nästa: krogen.",
+      "🎤 Stockholm: köerna ä långa, men sällskapet ä bättre.",
+      "🏙️ Stureplan klär upp sig. Resten av Stockholm kör jeans och glatt humör.",
+      "🌊 Stockholm ä byggt på fjorton öar. Ikväll ä alla ute på samma.",
+      "⚽ Derbysnack i Stockholm. Ikväll ä alla vänner ändå.",
+      // owner 2026-11-08: posh Östermalm/Stureplan voice (the joke is on the snob himself) + Söder vs Östermalm
+      "🥂 Stureplan ikväll: ”Asså, en IPA? Neeej. Vi kör bubbel, typ.”",
+      "🧥 Östermalm rapporterar: Canada Goose-jackan har fått egen plats i garderoben på Riche.",
+      "🚘 ”SL? Asså... vad ä det, lixom?” – en Östermalmare på väg till Sturecompagniet med Uber Black.",
+      "🛥️ Strandvägen ikväll: alla pratar om pappas båt. Båten har inte sagt nåt.",
+      "⛷️ Stureplan: hälften pratar om Åre, andra hälften om Verbier. Ingen pratar om måndag.",
+      "🍾 Spy Bar-kön ä så lång att den har en egen kö-VIP-kö. Fan va nice.",
+      "🧣 Moncler-index Östermalm: 9 av 10. Den tionde ä en Ralph Lauren-tröja över axlarna.",
+      "🥂 ”Ba en öl? Asså, gött för dig.” – Östermalm, med kärlek.",
+      "🏝️ Östermalm ikväll: alla har precis kommit hem från Båstad. Det var i juli.",
+      "🍸 400 kr för en drink på Stureplan. Östermalmaren: ”Asså, det ä ju typ ett fynd.”",
+      "🛶 Djurgården ä mysigt ikväll, sägs det. Östermalmarna har kollat på kartan, typ.",
+      "🎿 Skidresa-snacket på Riche har pågått sen kl 18. Snön ä fortfarande inte här.",
+      "📸 Sturecompagniet: ”Kolla, ta en bild när jag ba håller champagnen lite random.”",
+      "🧥 Garderoben på Stureplan: 47 Canada Goose. Alla tror att den svarta ä deras.",
+      "🍾 Rosé-larm på Strandvägen! Ingen panik, det ä bara torsdag.",
+      "🚤 ”Vi tar båten till Saltsjöbaden imorn, typ?” – sagt i november. Modigt.",
+      "🧀 Östermalmshallen ä stängd. Östermalmarna har gått över till plan B: Riche.",
+      "🥂 Stureplan ikväll: sjukt mycket bubbel, sjukt lite plats.",
+      "🏙️ ”Vasastan? Asså, det ä ju typ landet.” – Östermalm, ödmjuk som alltid.",
+      "🚘 Uber Black-kö vid Stureplan. SL-bussen åker förbi och ler.",
+      "🎾 Östermalm ikväll: padelsnack vid bardisken. Ingen har vunnit, alla har ”typ vunnit”.",
+      "🧥 Ralph Lauren-tröjan knuten över axlarna. Det ä kvällens uniform på Östermalm.",
+      "🛥️ Lidingö har kommit in till stan. De parkerade bilen... asså båten.",
+      "🍾 Champagnen på Spy Bar ä så kall att den har egen stylist.",
+      "🥂 ”Neeej, jag dricker inte öl, jag provsmakar.” – Stureplan, 23:12.",
+      "🎿 Åre-snack på Riche: ”Asså nästa år kör vi heli-ski, typ.” Pappa betalar typ.",
+      "⛵ Saltsjöbaden ringde. De undrar varför alla ä på Stureplan.",
+      "💳 Östermalm: kortet blipp, kortet blipp, kortet blipp. Pappa får en notis.",
+      "🌊 Strandvägen ikväll: båtarna glittrar, Östermalmarna glittrar mer. De har kollat.",
+      "🧊 ”Isbitarna här ä från Lappland, lixom.” – nån på Sturecompagniet. Ingen kan bevisa motsatsen.",
+      "🍺 Söder ba IPA. Östermalm ba Dom Pérignon. Kebaben förenar alla.",
+      "🎸 Söder-hipsters och Östermalmare möts i kebabkön. Fred i Stockholm.",
+      "🧔 Söder: skägg och surdeg. Östermalm: väst och vinkort. Båda: sena kvällar.",
+      "🚲 Söder cyklar hem. Östermalm cyklar inte. Alla kommer hem ändå.",
+      "🍺 ”Söders bästa IPA” vs ”Östermalms bästa bubbel”. Domaren: kranen.",
+      "🏙️ Medborgarplatsen vs Stureplan. Båda säger: ”Vi ä det riktiga Stockholm.”",
+      "🍾 Östermalm har bjudit Söder på bubbel. Söder har bjudit på IPA. Historiskt fredsavtal.",
+      "😎 Östermalmaren har tagit sig till Söder. ”Asså, det ä ju typ äventyr.”",
+      "🧥 Stureplan ikväll: varmt inne, varmt ute, Moncler ändå. Det ä principen.",
+      "🥂 Fan va nice, säger hela Östermalm samtidigt. Ingen vet om vad."
+    ],
+    "Göteborg": [
+      "🎢 Liseberg har stängt karusellerna. Göteborg kör sin egen åktur.",
+      "🚋 Spårvagnen plingar. Göteborg ä på väg ut.",
+      "😄 Varning i Göteborg: vitsnivån ä hög. Skratta artigt.",
+      "🐟 Feskekörka har stängt, men Göteborg har fortfarande fiskskämten kvar.",
+      "🗿 Poseidon på Götaplatsen tittar ner på Avenyn. Han har sett det mesta.",
+      "🌧️ Göteborg: regnet ä tillbaka. Det har aldrig varit borta.",
+      "⚓ Hamnen i Göteborg ä lugn. Avenyn ä det int'.",
+      "🎶 Ullevi ä tyst ikväll. Allsången har flyttat in på krogarna.",
+      "🌉 Älvsborgsbron lyser. Göteborg också.",
+      "🔵 Blåvitt eller int', ikväll ä alla i Göteborg i samma lag.",
+      "😄 Göteborg: varför gick fisken på krogen? Den ville träffa sina polare. Förlåt."
+    ],
+    "Malmö": [
+      "🌀 Turning Torso vrider sig. Malmö vrider upp volymen.",
+      "🌉 Öresundsbron lyser. Halva Köpenhamn undrar vad Malmö håller på med.",
+      "🥙 Malmö: falafelbaren har kö. Ett gott tecken.",
+      "🗣️ Malmö ikväll: ”Tjenare mannen!” hörs från Möllan till Lilla torg.",
+      "🧖 Kallbadhuset vid Ribban ä tomt. Malmöborna värmer sig inomhus.",
+      "⚽ MFF-snack i Malmö. Alla ä förbundskaptener ikväll.",
+      "🌬️ Blåsigt i Malmö? Bara en vanlig dag i Skåne.",
+      "🌾 Skåne ä platt. Stämningen i Malmö ä det int'.",
+      "🥙 Malmöregel: falafel först, frågor sen."
+    ],
+    "Uppsala": [
+      "⛪ Domkyrkan i Uppsala ä Skandinaviens högsta kyrka. Stämningen siktar ännu högre.",
+      "🎓 Uppsala: nationerna har öppnat. Tentan får vänta till måndag.",
+      "🌊 Fyrisån flyter lugnt. Uppsala gör det int'.",
+      "🌸 Linné döpte växter i Uppsala. Ikväll döps nya smeknamn.",
+      "📚 Carolina Rediviva ä tyst. Uppsala ä det int'.",
+      "🚲 Uppsala ikväll: fler cyklar än bilar, fler skratt än cyklar.",
+      "🎶 Uppsala: nån på nationen har börjat sjunga stämma. Alla hänger på.",
+      "🌸 Ingen valborg idag, men Uppsala tränar."
+    ],
+    "Västerås": [
+      "🥒 Västerås ikväll: gurkan i mackan, gänget på krogen.",
+      "🏢 Skrapan i Västerås ser hela stan. Den ser många som ä ute.",
+      "🏒 Bandysnack i Västerås. Bollen ä orange, stämningen likaså.",
+      "⛵ Mälaren ligger stilla. Västerås ä i rörelse.",
+      "🥒 Västeråsgurkan ä känd i hela landet. Västeråsgänget blir det ikväll.",
+      "⚡ Västerås har ström i benen ikväll."
+    ],
+    "Örebro": [
+      "🏰 Örebro slott vaktar stan. Ikväll har det sällskap.",
+      "🍄 Svampen i Örebro har utsikt över allt. Den ser många ute ikväll.",
+      "🏘️ Wadköping ä lugnt. Resten av Örebro? Mindre lugnt.",
+      "🏒 Örebro: hockeysnack på högvarv. Alla vet hur powerplay ska spelas.",
+      "🦢 Svartån flyter genom Örebro. Precis som skratten.",
+      "🧭 Örebro ligger nästan mitt i Sverige. Ikväll mitt i smeten."
+    ],
+    "Gävle": [
+      "🐐 Gävle: julbocken ä kändare än de flesta artister.",
+      "🏒 Brynässnack i Gävle. Alla har en åsikt om förra matchen.",
+      "🐐 Gävle ikväll: bocken vaktar torget, gänget vaktar varandra."
+    ],
+    "Karlstad": [
+      "☀️ Karlstad: solstaden. Även när det regnar.",
+      "🏒 Färjestadsnack i Karlstad. Ingen ä neutral.",
+      "🌊 Klarälven flyter in i Karlstad. Gänget flyter in på krogen."
+    ]
+  };
+
+  function fill(s, d) {
+    var miss = false;
+    var out = String(s).replace(/\{(\w+)\}/g, function (m, k) {
+      var v = d && d[k];
+      if (v == null || v === "") { miss = true; return ""; }
+      return String(v);
+    });
+    return miss ? "" : out;
+  }
+  function tpl(k, s) { return { k: k, f: function (d) { return fill(s, d || {}); } }; }
+  var out = [];
+  Object.keys(T).forEach(function (k) { T[k].forEach(function (s) { out.push(tpl(k, s)); }); });
+  Object.keys(TOWNS).forEach(function (town) {
+    TOWNS[town].forEach(function (s) { out.push(tpl("townJoke_" + town, s)); });
+  });
+  window.NEWS_GT = (window.NEWS_GT || []).concat(out);
+  window.NEWS_TX = { towns: Object.keys(TOWNS), count: out.length };
+})();
+/* TX NEWS END */

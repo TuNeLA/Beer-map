@@ -20,7 +20,6 @@
 .nr-add-row .btn{flex:0 0 auto}
 .nr-hint{font-size:var(--fs-xs,11px);margin:4px 0 8px}
 .nr-mine{margin-top:12px}
-.nr-code{letter-spacing:.18em}
 .nr-share{margin-top:12px}
 .nr-share .toggle-row span{min-width:0}
 .nr-priv{font-size:var(--fs-xs,11px);margin-top:12px}
@@ -73,3 +72,4 @@
   .near-confetti{display:none}
   .nr-arrow,.nr-n{transition:none}
 }
+/* cln02: dead rules removed */

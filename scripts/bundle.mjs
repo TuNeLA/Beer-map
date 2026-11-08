@@ -18,7 +18,7 @@ let html = readFileSync(idxPath, "utf8");
 const strip = (u) => u.replace(/^\.\//, "").replace(/\?.*$/, "");
 
 // ---- scripts: each run of consecutive local deferred scripts → one bundle (a CDN script between them keeps its place) ----
-const reAll = /<script defer src="([^"]+)"><\/script>\n?/g;
+const reAll = /<script defer src="([^"]+)"[^>]*><\/script>\n?/g;   // cln08: any attributes (a CDN tag with crossorigin ends a run)
 const tags = []; let m;
 while ((m = reAll.exec(html))) tags.push({ all: m[0], src: m[1], local: /^\.\/[^?]+\.js(\?.*)?$/.test(m[1]) });
 const runs = []; let cur = null;
@@ -35,7 +35,9 @@ for (let i = 0; i < runs.length; i++) {
   const name = "js/app.bundle" + (runs.length > 1 ? "-" + (i + 1) : "") + ".js";
   const out = await transform(js, { loader: "js", minify: true, target: "es2017", legalComments: "none" });
   writeFileSync(join(SITE, name), out.code); outKB += out.code.length / 1024;
-  runs[i].forEach((t, k) => { html = html.replace(t.all, k === 0 ? '<script defer src="./' + name + '"></script>\n' : ""); });
+  // cln08: data-parts = the single files (js/unbundle.js loads them if this bundle fails to load)
+  const dp = runs[i].map((t) => t.src).join(",");
+  runs[i].forEach((t, k) => { html = html.replace(t.all, k === 0 ? (i === 0 ? '<script defer src="./js/unbundle.js"></script>\n' : "") + '<script defer src="./' + name + '" data-parts="' + dp + '"></script>\n' : ""); });
 }
 const parts = { length: nParts }, outJs = { code: { length: outKB * 1024 } };
 
@@ -57,7 +59,7 @@ if (cssParts.length) {
   const outCss = await transform(css, { loader: "css", minify: true });
   mkdirSync(join(SITE, "css"), { recursive: true });
   writeFileSync(join(SITE, "css/app.bundle.css"), outCss.code);
-  html = html.replace(reCss, (all, href, off) => (off === cssFirst ? '<link rel="stylesheet" href="./css/app.bundle.css">\n' : ""));
+  html = html.replace(reCss, (all, href, off) => (off === cssFirst ? '<link rel="stylesheet" href="./css/app.bundle.css" data-parts="' + cssParts.join(",") + '">\n' : ""));
 }
 writeFileSync(idxPath, html);
 console.log(JSON.stringify({ scripts: parts.length, jsRawKB: Math.round(raw / 1024), jsBundleKB: Math.round(outJs.code.length / 1024), lazyMinified: lazyN, styles: cssParts.length }));

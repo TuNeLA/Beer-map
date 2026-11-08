@@ -53,7 +53,7 @@
     return "stable";
   }
   function ver() {
-    try { var s = document.querySelector('script[src*="app.js"]'); var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return (window.PN_BETA ? String(window.PN_BETA).slice(0, 8) : v) || "?"; } catch (e) { return "?"; }
+    try { var s = document.querySelector('script[src*="app.js"], script[src*="app.bundle"]'); var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return (window.PN_BETA ? String(window.PN_BETA).slice(0, 8) : v) || "?"; } catch (e) { return "?"; }
   }
 
   /* ---------- privacy guard: no text, no ids, no e-mail, no positions in usage props ---------- */

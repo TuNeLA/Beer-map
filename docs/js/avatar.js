@@ -29,7 +29,7 @@
   var groups = {}, friends = null, svgMemo = {}, svgMemoN = 0;
   function sv() { return !I || I.lang !== "en"; }
   function L(s, e) { return sv() ? s : e; }
-  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return "&#" + c.charCodeAt(0) + ";"; }); }
+  function esc(s) { return U.esc(s); }
   function missing(err) {
     try { if (U.missing) return U.missing(err); } catch (e) {}
     var m = String((err && (err.code || "")) + " " + (err && err.message || ""));

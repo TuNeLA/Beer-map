@@ -24,13 +24,7 @@
     for (var i = 0; i < CODES.length; i++) if (m.indexOf(CODES[i]) >= 0) return CODES[i];
     return U && U.errCode ? U.errCode(e) : m;
   }
-  function call(name, params) {
-    if (!A || !A.LIVE || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(name, params).then(function (r) {
-      if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; }
-      return r;
-    });
-  }
+  var call = U.rpcCall(function () { return A; }, off);   // cln: the shared guarded RPC caller (util.js)
   function el(tag, attrs, kids) {
     if (A && A.el) return A.el(tag, attrs, kids);
     var e = document.createElement(tag);

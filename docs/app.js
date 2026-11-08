@@ -29,8 +29,64 @@
     if (window.WARM && !flyttGuard()) return window.WARM.rpc(name, params, rpcNet);
     return rpcNet(name, params);
   }
-  function rpcNet(name, params) {
+  // cln C: background polls go out together as ONE rpc_bundle2 (0297) per poll. Each caller gets its own answer.
+  var BUNDLE = ["game_poll", "gang_poll", "skal_poll", "film_poll", "ceremony_poll", "walk_poll", "my_invites", "helg_state",
+    "my_status", "my_inbox", "my_dms", "pickup_poll", "safety_state", "duel_poll", "knuff_inbox", "my_rallies", "bar_status",
+    "medevac_checks", "group_etas", "beer_reactions", "crew_poll", "near_poll", "my_meriter", "avatars_for", "ikvall_status",
+    "home_status", "friend_totals", "ghost_points2", "golden_horse"];
+  var bundleOff = false, bq = [], bqT = 0, bundleStats = { sent: 0, calls: 0, alone: 0 };
+  var lastTapAt = 0;
+  ["pointerdown", "click", "keydown"].forEach(function (ev) { document.addEventListener(ev, function () { lastTapAt = Date.now(); }, true); });
+  function bundleable(name, params) {
+    if (bundleOff || !authed || BUNDLE.indexOf(name) < 0) return false;
+    if (Date.now() - lastTapAt < 2500) return false;   // a screen the user just opened: no wait, its own request
+    if (params == null) return true;
+    if (typeof params !== "object" || Array.isArray(params)) return false;
+    return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v); });
+  }
+  function bundleGo() {
+    var list = bq; bq = []; bqT = 0;
+    var calls = [], seen = {};
+    list.forEach(function (x) { if (!seen[x.k]) { seen[x.k] = 1; calls.push({ k: x.k, n: x.n, a: x.p || {} }); } });
+    var alone = function (xs) { xs.forEach(function (x) { bundleStats.alone++; rpcNet(x.n, x.p, true).then(x.res); }); };
+    if (calls.length < 2) { alone(list); return; }
+    bundleStats.sent++; bundleStats.calls += list.length;
+    rpcNet("rpc_bundle2", { p_calls: calls }, true).then(function (r) {
+      var e = r && r.error, d = r && !e ? parseData(r.data) : null;
+      if (e && /PGRST202|could not find the function|does not exist|\b404\b/i.test(String((e.code || "") + " " + (e.message || "")))) bundleOff = true;
+      if (!d || typeof d !== "object" || Array.isArray(d) || !d[calls[0].k]) { if (!e) bundleOff = true; alone(list); return; }
+      var used = {};
+      list.forEach(function (x) {
+        var it = d[x.k];
+        if (!it || (it.e && it.e.code === "not_bundled")) { alone([x]); return; }
+        if (it.e) { x.res({ data: null, error: { message: String(it.e.message || "error"), code: it.e.code || "" } }); return; }
+        var v = it.d === undefined ? null : it.d;
+        if (used[x.k] && v && typeof v === "object") { try { v = JSON.parse(JSON.stringify(v)); } catch (x2) {} }
+        used[x.k] = 1;
+        x.res({ data: v, error: null, status: 200 });
+      });
+    });
+  }
+  // cln D: a group this account is not (any more) a member of: no more calls for it in this page life
+  var notMember = {};
+  function rpcNet(name, params, noBundle) {
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
+    var gid = params && params.p_group_id;
+    if (gid && notMember[gid]) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });
+    if (!noBundle && bundleable(name, params)) return new Promise(function (res) {
+      bq.push({ n: name, p: params, k: name + "|" + JSON.stringify(params || {}), res: res });
+      if (bq.length >= 24) { clearTimeout(bqT); bundleGo(); }
+      else if (!bqT) bqT = setTimeout(bundleGo, 1500);   // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll
+    });
+    if (gid) return rpcNet1(name, params).then(function (r) {
+      if (r && r.error && /\bnot_member\b/.test(String(r.error.message || ""))) {
+        if (!notMember[gid]) { notMember[gid] = 1; try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {} }
+      }
+      return r;
+    });
+    return rpcNet1(name, params);
+  }
+  function rpcNet1(name, params) {
     // ⚡ SPEED (#6) no account yet: public calls go out; a call right after a tap on a button makes the account first; others wait
     if (publicOn && !authed && PUBLIC_RPC.indexOf(name) < 0) {
       if (Date.now() - lastUiClick < 1500) return signIn().then(function () { return authed ? rpc(name, params) : { data: null, error: { message: "no_session", code: "no_session" } }; });
@@ -2426,7 +2482,7 @@
           mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
           if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
           if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
-            setTimeout(function () { askNotifSheet(); }, 2200);
+            /* ux review: no notification ask on a beer tap. Calm moments only: after a group join, app start with a group. */
           }
           if (isFinite(d.lat) && isFinite(d.lng) && !ghost) {
             map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
@@ -2747,7 +2803,8 @@
             // In the browser: show how to put the app on the home screen first (the groups are there after).
             if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled())) { showInstallGuide(); return; }
             showGroups();
-            notifPromptOnce();
+            document.dispatchEvent(new CustomEvent("pn:group-joined", { detail: { name: g.name || "" } }));   // ntf: calm ask (push.js prime); old push.js: the box
+            if (!(window.PUSH && window.PUSH.prime)) notifPromptOnce();
           });
         };
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
@@ -2908,6 +2965,13 @@
       return res;
     }).catch(function (e) { toast(errMsg(e), { err: true }); return "error"; });
   }
+  // ux review (ntf): ask at a calm moment with ONE line of value (PUSH.prime card), never over the ÖL! confirmation.
+  // Old push.js without prime: the sheet as before.
+  function calmNotifAsk(groupName) {
+    if ($("sheet") && !$("sheet").hidden) return;
+    if (window.PUSH && window.PUSH.prime) { window.PUSH.prime({ rpc: rpc, key: CFG.VAPID_PUBLIC_KEY, group: groupName || "" }); return; }
+    askNotifSheet();
+  }
   function askNotifSheet() {
     if (U.ls.get("olnu.notifAsked", "") === "1") return;
     openSheet(t("notifAskTitle"), function (body) {
@@ -2915,6 +2979,7 @@
       notifPromptOnce(body);
     });
   }
+  function inAsk() { var h = $("sheet-title"); return !!(h && $("sheet") && !$("sheet").hidden && h.textContent === t("notifAskTitle")); }
   function notifPromptOnce(container) {
     if (!PUSH_ON || !window.PUSH.supported()) return;
     if (U.ls.get("olnu.notifAsked", "") === "1") return;
@@ -2926,8 +2991,8 @@
     } else {
       box.appendChild(el("p", { html: "<b>" + U.esc(t("notif")) + "?</b>" }));
       box.appendChild(el("div", { class: "row" }, [
-        btn(t("notNow"), "btn-small", function () { box.remove(); }),
-        btn(t("yes"), "btn-small btn-green", function () { box.remove(); enableNotifs(); })
+        btn(t("notNow"), "btn-small", function () { box.remove(); if (inAsk()) closeSheet(); }),   // ux: "Inte nu" closes the ask sheet
+        btn(t("yes"), "btn-small btn-green", function () { box.remove(); if (inAsk()) closeSheet(); enableNotifs(); })
       ]));
     }
     (container || $("sheet-body")).appendChild(box);
@@ -3983,7 +4048,7 @@
   // v9: what js/social.js and js/extras.js may use. Getters for state that changes.
   function appApi() {
     return {
-      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, toast: toast, toastClear: toastClear,
+      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, toast: toast, toastClear: toastClear,
       openSheet: openSheet, closeSheet: closeSheet, el: el, btn: btn, errMsg: errMsg, flyTo: flyTo, refresh: refresh,
       render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
       beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
@@ -4025,7 +4090,7 @@
       if (!n || Notification.permission !== "default" || ($("sheet") && !$("sheet").hidden)) return;
       U.ls.set("olnu.notifAskAt", String(Date.now()));
       U.ls.set("olnu.notifAsked", "");                           // let the prompt box show again
-      askNotifSheet();
+      calmNotifAsk();   // ux (ntf): the calm card
     });
   }
   // smooth: the app shell (HUD + map + first tiles) paints first, then the modules start (max 300 ms later).

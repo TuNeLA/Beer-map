@@ -1,4 +1,4 @@
-# ⚡ SPEED #10 — PREPARED, NOT ENABLED (GitHub only runs *.yml / *.yaml files; this one ends in .disabled).
+# ⚡ SPEED #10 — ENABLED by cln09, but the build job only runs when the repo variable PAGES_BUNDLE = on (owner step 2).
 # Deploys the site to GitHub Pages from an Actions artifact, with the ~100 app scripts joined + minified into ONE file
 # (scripts/bundle.mjs, esbuild) and the ~40 stylesheets into one. docs/ on main stays the readable source.
 # To turn it on (owner):
@@ -23,6 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
+    if: ${{ vars.PAGES_BUNDLE == 'on' }}   # cln09: off until the owner sets the repo variable (and Pages Source = Actions)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

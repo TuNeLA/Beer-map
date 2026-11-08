@@ -1,7 +1,7 @@
 /* PintsNow — 🌙 GW (js/gw.js). Design-system tokens only (docs/pnds.css + ds.css); motion tokens ds10. */
 
 /* rows / switch rows inside sheets */
-.gw-row .ds-row-i .pni,.gw-row .ds-row-i svg{width:20px;height:20px}
+.gw-row .ds-row-i svg{width:20px;height:20px}
 .gw-sw{justify-content:space-between}
 .gw-sw .switch{pointer-events:none;margin-left:var(--ds-2)}
 .gw-sw-sub{display:block}
@@ -82,3 +82,4 @@
 
 @media (prefers-reduced-motion: reduce){.gw-ov-c{animation:none}.gw-pl-bar i{transition:none}}
 .gw-album-new{width:8px;height:8px;border-radius:50%;background:var(--ds-amber);flex:0 0 auto}
+/* cln02: dead rules removed */

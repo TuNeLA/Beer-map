@@ -201,6 +201,7 @@
       list.appendChild(b);
     });
     body.appendChild(list);
+    launchSync();
     if (!st.g) body.appendChild(el("p", { class: "sp-note", text: TX.noGroup }));
     root.appendChild(body);
     // a running room of this group = a big "jump in" banner on top
@@ -269,7 +270,27 @@
     setTimeout(function () { try { if (go) go(); } catch (e) {} }, 380);
   }
   // ds19: "Nytt" = launched in the last 14 days AND not opened yet on this phone (a badge on every game means nothing)
+  // cln: the dates live on the server (0294 game_launch_dates); these are the fallback until it answers / offline
   var PN_LAUNCH = { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" };
+  var LS_LAUNCH = "olnu.spLaunch", launchAsked = false;
+  function launchMerge(g) {
+    var ch = false;
+    if (g && typeof g === "object" && !Array.isArray(g)) Object.keys(g).forEach(function (k) {
+      if (/^[a-z][a-z0-9_]{0,23}$/.test(k) && /^\d{4}-\d\d-\d\d$/.test(String(g[k])) && PN_LAUNCH[k] !== g[k]) { PN_LAUNCH[k] = g[k]; ch = true; }
+    });
+    return ch;
+  }
+  launchMerge((lsGet(LS_LAUNCH, null) || {}).games);
+  function launchSync() {   // at most once per app start and once per 6 h; a failed answer keeps what we have
+    if (launchAsked || !A || !A.rpc || !A.LIVE) return; launchAsked = true;
+    var c = lsGet(LS_LAUNCH, null); if (c && Date.now() - (c.at || 0) < 6 * 3600e3) return;
+    A.rpc("game_launch_dates", {}).then(function (r) {
+      var d = r && !r.error ? (A.parseData ? A.parseData(r.data) : r.data) : null;
+      if (!d || !d.games || typeof d.games !== "object" || Array.isArray(d.games)) return;
+      lsSet(LS_LAUNCH, { at: Date.now(), games: d.games });
+      if (launchMerge(d.games) && st && st.view === "hub") renderHub();
+    }, function () {});
+  }
   function pnSeen() { try { return JSON.parse(localStorage.getItem("olnu.spSeen") || "{}") || {}; } catch (e) { return {}; } }
   function pnNew(gm) { var d = Date.parse(PN_LAUNCH[gm.id] || ""); return isFinite(d) && Date.now() - d < 14 * 864e5 && !pnSeen()[gm.id]; }
   document.addEventListener("click", function (e) {

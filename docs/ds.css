@@ -67,7 +67,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 :where(.sheet-body) small{font-size:var(--ds-fs-12);line-height:var(--ds-lh-12)}
 .sheet-body b,.sheet-body strong{font-weight:700}
 /* Stencil: brand, ÖL!, big numbers, short sheet titles (js/ds.js marks a title as short) */
-.brand-name,.beer-btn .beer-t,.code-big,.nr-dist{font-family:var(--ds-stencil);font-weight:400}
+.brand-name,.code-big,.nr-dist{font-family:var(--ds-stencil);font-weight:400}
 .sheet-head h2{font-family:var(--ds-sans);font-weight:700;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.04em;color:var(--ds-amber-t);
   text-transform:none;min-width:0;overflow:hidden;white-space:normal;overflow-wrap:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .sheet-head h2.ds-stencil-s{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.05em}
@@ -90,7 +90,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 #sheet-body[data-tt]>[data-tt="streak"]~[data-tt="streak"]>h3:first-child,#sheet-body[data-tt]>[data-tt="ev"]~[data-tt="ev"]>h3:first-child,
 #sheet-body[data-tt]>[data-tt="pass"]~[data-tt="pass"]>h3:first-child{margin-top:var(--ds-5)}
 /* default rhythm: 8 px between stacked items. :where() = zero specificity, so a module's own spacing still wins */
-:where(#sheet-body,.inv-pane,[role=tabpanel],.nr-in,.ds-stack)>*+*{margin-top:var(--ds-2)}
+:where(#sheet-body,.inv-pane,[role=tabpanel],.nr-in)>*+*{margin-top:var(--ds-2)}
 :where(#sheet-body,.inv-pane)>:where(.row,.btn,.toggle-row,.info,.seg,.tabs,div)+:where(h3){margin-top:var(--ds-5)}
 
 /* ---------- Sticky segmented tabs (owner screenshot 1) ---------- */
@@ -171,7 +171,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .pl-warn{border-color:rgba(245,166,35,.5);background:var(--ds-amber-soft);padding:var(--ds-3) var(--ds-4)}
 
 /* ---------- .ds-chip / .ds-badge ---------- */
-:where(.ds-chip,.sheet .chip,.chip-btn,.inv-pk-groups .chip,.ht-chip){min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 var(--ds-3);border-radius:var(--ds-r-pill);
+:where(.ds-chip,.sheet .chip,.chip-btn,.inv-pk-groups .chip){min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 var(--ds-3);border-radius:var(--ds-r-pill);
   border:1px solid var(--ds-border-2);background:var(--ds-raised);color:var(--ds-text);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans)}
 .chip-btn,.inv-pk-groups .chip,button.ds-chip{min-height:44px;cursor:pointer}
 :where(.chip-btn,.inv-pk-groups .chip,.ds-chip)[aria-pressed="true"]{background:var(--ds-amber-soft);border-color:var(--ds-amber);color:var(--ds-amber-t)}
@@ -215,7 +215,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .ds-set .ds-item .ds-hide{display:none !important}
 .ds-set .ds-item>*{margin:0 !important}
 /* nav rows: every button in a row looks like a list row with a chevron */
-.ds-set .ds-item>.row,.ds-set .ds-item>.sos-block-w{display:flex;flex-direction:column;gap:0;margin:0 !important}
+.ds-set .ds-item>.row{display:flex;flex-direction:column;gap:0;margin:0 !important}
 .ds-set .ds-item>.row>.btn,.ds-set .ds-item>.btn,.ds-set .ds-item>div>.sos-block>.btn{display:block;width:100%;min-height:56px;margin:0;padding:var(--ds-2) 44px var(--ds-2) var(--ds-4);border:0;border-radius:0;
   background:transparent;box-shadow:none;color:var(--ds-text);justify-content:flex-start;text-align:left;font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);position:relative}
 .ds-set .ds-item>.row>.btn+.btn{border-top:1px solid var(--ds-border)}
@@ -259,7 +259,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .ds-set .ds-item>p,.ds-set .ds-item-hint{padding:0 var(--ds-4) var(--ds-3);margin:-4px 0 0 !important;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);color:var(--ds-muted)}
 .ds-set .ds-item.ds-blk>p{padding:0;margin:0 !important}
 .ds-set .ds-item>.info{margin:0 var(--ds-4) var(--ds-3) !important}
-.ds-set .ds-item>.sos-block-w,.ds-set .ds-item>div:has(>.sos-block){padding:0}
+.ds-set .ds-item>div:has(>.sos-block){padding:0}
 /* version row */
 .ds-set .ds-item.ds-ver>.toggle-row{padding:var(--ds-2) var(--ds-3) var(--ds-2) var(--ds-4)}
 /* Kartstil: a radio list with a check mark (the unfinished 2×2 grid is gone) */
@@ -382,3 +382,4 @@ select{min-height:44px}
 #btn-taxi.locate-btn{bottom:auto !important;top:calc(var(--sat) + 158px + var(--chaos-h,0px) + var(--rally-h,0px)) !important;right:calc(var(--sar) + 10px)}
 body.ghost-chip-on #btn-taxi.locate-btn{top:calc(var(--sat) + 204px + var(--chaos-h,0px) + var(--rally-h,0px)) !important}
 #btn-taxi span{font-size:var(--fs-22);line-height:1}
+/* cln02: dead rules removed */

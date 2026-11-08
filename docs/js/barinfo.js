@@ -38,10 +38,7 @@
     for (var i = 0; i < CODES.length; i++) if (m.indexOf(CODES[i]) >= 0) return CODES[i];
     return "error";
   }
-  function call(name, params) {
-    if (!A || !A.LIVE || !A.authed() || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(name, params).then(function (r) { if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; } return r; });
-  }
+  var call = U.rpcCall(function () { return A; }, off, { authed: true });   // cln: the shared guarded RPC caller (util.js)
   function isDrink(bar) { return !!(bar && DRINK[bar.type] && !bar.place); }
   function isClub(bar) { return !!(bar && bar.type === "nightclub"); }
   function qState(id) {

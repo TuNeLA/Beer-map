@@ -46,13 +46,21 @@
     ["photo", "📷", 2, "Bild i gruppchatten", "Photo in the group chat", "Max 5 per natt.", "Max 5 a night."],
     ["skal_give", "🍻", 1, "Ge en skål", "Give a skål", "Max 10 per natt.", "Max 10 a night."],
     ["skal_get", "🥂", 1, "Få en skål", "Get a skål", "Max 10 per natt.", "Max 10 a night."],
-    ["drink", "🍺", 0, "En dryck", "A drink", "Ger inga meriter. Vi räknar kvällar och kompisar, inte glas.", "No points."]
+    ["drink", "🍺", 5, "En öl (eller annan dryck)", "A beer (or other drink)", "Per öl.", "Per beer."]
   ];
   var ACT = {};
   ACTS.forEach(function (a) { ACT[a[0]] = a; });
 
   /* ---------- Reason lines (dalmål + military; "ä" for dialect "é"). Keep list ORDER, add at the end. ---------- */
   var LINES = {
+    // 0345: points an earlier action could not give (one rank per action) are paid out at the next action.
+    carry: [
+      "⭐ Innestående meriter från förra uppdraget. Nu ä de dina.",
+      "⭐ Kvartermästaren har räknat klart. Resten av meriterna ä utbetalda.",
+      "⭐ En befordran i taget, soldat. Här kommer resten.",
+      "⭐ Staben har stämplat papperen. Sparade meriter levererade.",
+      "⭐ Meriter i reserv har ryckt in."
+    ],
     squad: [
       "🪖 Truppen ä samlad. Generalstaben gråter av lycka.",
       "🪖 Natt med truppen! Ingen soldat dricker ensam i kväll.",
@@ -261,14 +269,14 @@
       "👑 Triumf vid bordet. Dalarna minns."
     ],
     drink: [
-      "🍺 En dryck. Det ger en merit – resten får du med truppen.",
-      "🍺 +1. Vill du ha fler: checka in och samla gänget.",
+      "🍺 Noterat i liggaren. Störst meriter finns bland vännerna.",
+      "🍺 Inskrivet. Checka in på krogen så hittar gänget dig.",
       "🍺 Noterat. Öl ä bra, kamrater ä bättre.",
-      "🍺 En merit för glaset. Tio för truppen.",
-      "🍺 Bokfört. Drick vatten mellan varven, soldat.",
-      "🍺 Liten merit. Stora meriter finns bland vännerna.",
-      "🍺 Ölen räknas, lite grann.",
-      "🍺 +1 i loggen. Skåla med nån för mer.",
+      "🍺 Bokfört. Truppen ger mer än glaset.",
+      "🍺 Bokfört. Vatten mellan varven, soldat.",
+      "🍺 Registrerat. Glöm int' maten.",
+      "🍺 Kvartermästaren nickar. Lugnt tempo, soldat.",
+      "🍺 Loggat. Skåla med nån, det ger också.",
       "🍺 Kvartermästaren noterar en dryck.",
       "🍺 Glaset ä bokfört. Ta det lugnt, dä."
     ]
@@ -363,6 +371,18 @@
   }
 
   /* ---------- "Hur får jag meriter?" ---------- */
+  // tx02: points per drink and the nightly cap come from the server (my_meriter drink_pts / drink_cap: 0346, 0349).
+  // Unknown (old server) = 5 per drink, no cap, like the server before 0346.
+  function drinkPts() { var v = state && state.drink_pts; return v != null && isFinite(v) ? Math.max(0, v | 0) : 5; }
+  function drinkCap() { var v = state && state.drink_cap; return v != null && isFinite(v) && v > 0 ? v | 0 : 0; }
+  function capOf(a, dp) {
+    if (a[0] === "drink") {
+      var cap = drinkCap();
+      return cap ? L("Per öl, de första " + cap + " varje kväll. Sen räknas kvällen i skål och kompisar.", "Per beer, the first " + cap + " each night.")
+        : L("Per öl. Kvällar och kompisar ger mer.", "Per beer. Nights and friends give more.");
+    }
+    return sv() ? a[5] : a[6];
+  }
   function explain() {
     if (!A) return;
     var el = A.el;
@@ -375,11 +395,14 @@
           esc(L("Grad ", "Rank ") + c.idx + "/" + c.n + " · " + c.m + L(" meriter", " merits") + (c.tonight ? L(" · +" + c.tonight + " ikväll", " · +" + c.tonight + " tonight") : "")) +
           "</div>" + barHTML(c, "mer-bar-big") + '<div class="mer-next">' + esc(nextText(c)) + "</div></div>";
       }
-      h += '<p class="mer-lead">' + esc(L("Graderna tjänas in med meriter. Mest får du när truppen ä ute tillsammans – en öl ger bara 1.",
-        "Ranks are earned with merits. You get the most when the squad is out together – a beer gives only 1.")) + "</p>";
+      var dp = drinkPts(), cap = drinkCap();   // tx02: what the server gives per drink right now (my_meriter)
+      h += '<p class="mer-lead">' + esc(L("Graderna tjänas in med meriter. Varje öl räknas" + (cap ? " (de första " + cap + " varje kväll)" : "") +
+        ", men mest får du när truppen ä ute tillsammans, när du checkar in och när du ser efter dina kompisar.",
+        "Ranks are earned with merits. Every beer counts" + (cap ? " (the first " + cap + " each night)" : "") +
+        ", but you get the most when the squad is out together, when you check in and when you look after your friends.")) + "</p>";
       h += '<ul class="mer-list">' + ACTS.map(function (a) {
         return '<li class="mer-row"><span class="mer-e" aria-hidden="true">' + a[1] + '</span><span class="mer-main"><span class="mer-name">' +
-          esc(sv() ? a[3] : a[4]) + '</span><span class="mer-cap">' + esc(sv() ? a[5] : a[6]) + '</span></span><span class="mer-pts">+' + a[2] + "</span></li>";
+          esc(sv() ? a[3] : a[4]) + '</span><span class="mer-cap">' + esc(capOf(a, dp)) + '</span></span><span class="mer-pts">+' + (a[0] === "drink" ? dp : a[2]) + "</span></li>";
       }).join("") + "</ul>";
       h += '<p class="muted mer-care">' + esc(L("Natten räknas 05–05. Drick lagom, ta vatten och kom hem säkert – det ger också meriter.",
         "The night runs 05–05. Drink sensibly, have water and get home safe – that earns merits too.")) + "</p>";
@@ -389,6 +412,11 @@
   }
 
   /* ---------- 🏆 Meriter board ---------- */
+  // tx01: the rank name from the client ladder (same thresholds as the server), the server title as the fallback.
+  function boardTitle(x) {
+    try { if (x.meriter != null && window.SOCIAL && window.SOCIAL.titleFor) return window.SOCIAL.titleFor(x.meriter | 0).title; } catch (e) {}
+    return x.title;
+  }
   var bScope = lsGet("olnu.merScope", "group") === "town" ? "town" : "group";
   var bPeriod = (function () { var p = lsGet("olnu.merPeriod", "week"); return p === "tonight" || p === "all" ? p : "week"; })();
   var bGroup = lsGet("olnu.merGroup", "");
@@ -471,7 +499,7 @@
             list.appendChild(el("li", {}, [el("div", { class: "top-row" + (x.is_me ? " mine" : "") }, [
               el("span", { class: "top-rank", text: String(x.rank | 0).padStart(2, "0") }),
               el("span", { class: "top-main" }, [el("span", { class: "top-name", text: nm + (ht ? " · " + ht : "") }),
-                el("span", { class: "top-sub", text: "🎖️ " + (x.title || "") })]),
+                el("span", { class: "top-sub", text: "🎖️ " + (boardTitle(x) || "") })]),
               el("span", { class: "top-n", text: (x.meriter | 0) + L(" m", " m") })
             ])]));
           });

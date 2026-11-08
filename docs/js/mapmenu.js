@@ -21,10 +21,7 @@
   var OK = ["➕ Tack! Stället syns för dig nu och för alla när generalen godkänt.", "➕ Inrapporterat till kartografen. Väntar på godkännande.",
     "➕ Ny plätt på kartan – för dig direkt, för alla efter godkännande.", "➕ Spaningen mottagen. Lantmäteriet i Ludvika granskar."];
 
-  function call(name, params) {
-    if (!A || !A.LIVE || !A.authed() || off[name]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
-    return A.rpc(name, params).then(function (r) { if (r.error && U.missing(r.error)) { off[name] = true; r.off = true; } return r; });
-  }
+  var call = U.rpcCall(function () { return A; }, off, { authed: true });   // cln: the shared guarded RPC caller (util.js)
 
   /* ---------- long-press ---------- */
   var pts = {}, tm = null, start = null, swallowUntil = 0;
