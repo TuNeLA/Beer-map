@@ -56,7 +56,7 @@
     function add(n) { n = clean(n); if (n && !seen[n.toLowerCase()]) { seen[n.toLowerCase()] = 1; out.push(n); } }
     TOWNS.forEach(add);
     try { (window.CITIES && window.CITIES.list || []).forEach(function (c) { add(c.name); }); } catch (e) {}
-    try { (window.TAXI_DATA && window.TAXI_DATA.towns || []).forEach(function (c) { add(c.town); }); } catch (e) {}
+    try { (window.TAXI_DATA && window.TAXI_DATA.towns || []).concat(window.TAXI_DATA && window.TAXI_DATA.places || []).forEach(function (c) { add(c.town); }); } catch (e) {}   // bold bd09: + places
     return out;
   }
   function clean(s) { return String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -122,7 +122,8 @@
   function xyOf(n) {
     if (XY[n]) return XY[n];
     try { var c = (window.CITIES && window.CITIES.list || []).filter(function (x) { return x.name === n; })[0]; if (c) return [c.lat, c.lng]; } catch (e) {}
-    try { var t = (window.TAXI_DATA && window.TAXI_DATA.towns || []).filter(function (x) { return x.town === n; })[0]; if (t && isFinite(t.lat)) return [t.lat, t.lng]; } catch (e) {}
+    try { var t = (window.TAXI_DATA && window.TAXI_DATA.towns || []).concat(window.TAXI_DATA && window.TAXI_DATA.places || []).filter(function (x) { return x.town === n; })[0];   // bold bd09: + places
+    if (t && isFinite(t.lat)) return [t.lat, t.lng]; } catch (e) {}
     return null;
   }
   function kmTxt(m) { var k = m / 1000; return k < 10 ? (Math.round(k * 10) / 10).toString().replace(".", ",") + " km" : Math.round(k) + " km"; }

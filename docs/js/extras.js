@@ -250,6 +250,7 @@
       if (!s.beers && !s.others) { body.appendChild(el("p", { class: "muted", text: t("nightNone") })); return; }
       var cv = el("canvas", { class: "night-card", width: "1080", height: "1350", role: "img", "aria-label": t("nightText", s) });
       body.appendChild(cv);
+      try { if (window.BOLD_KROG) window.BOLD_KROG.nightLine(body); } catch (e) {}   // bold: Kvällens krog
       var row = el("div", { class: "row", style: "margin-top:10px" });
       body.appendChild(row);
       var text = t("nightText", s);

@@ -430,6 +430,7 @@
     statusRow: statusRow,
     ikvNode: ikvNode,
     openPickup: openPickup, setDriver: setDriver, driving: driving,
+    loadDrivers: loadDrivers, rideAsk: rideAsk,   // bold: Hem-läge sober-friend row
     // tests
     _poll: function () { return P; }, _force: function () { return poll(true); }
   };

@@ -295,6 +295,7 @@
   }
   // 🚕 Hemfärd: the ways home in one place.
   function hemfardSheet(bar) {
+    if (window.BOLD_HEM && window.BOLD_HEM.open({ bar: bar, via: "hemfard" })) return;   // bold: Hem-läge
     A.openSheet(L("🚕 Hemfärd", "🚕 Way home"), function (body) {
       var box = document.createElement("div"); box.className = "hf2";
       var st = bar ? barStatus(bar) : null, lead = document.createElement("p"); lead.className = "hf2-lead";

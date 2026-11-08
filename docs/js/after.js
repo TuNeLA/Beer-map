@@ -379,7 +379,9 @@
       fontsReady().then(function () {
         try { drawBakis(cv, d, head, tip); } catch (e) {}
         shareRow(cv, row, "olnu-bakis.png", head + " " + tip);
+        try { if (window.BOLD_REPLAY) window.BOLD_REPLAY.morningButton(row); } catch (e) {}   // bold: Kvällsrepris 2.0
         try { if (window.NIGHTLOG) window.NIGHTLOG.button(row); } catch (e) {}   // evx: 📊 Min kväll
+        try { if (window.BOLD_KROG) window.BOLD_KROG.nightLine(row.parentNode); } catch (e) {}   // bold: Kvällens krog
         try { if (window.KODEN) window.KODEN.button(row); } catch (e) {}
       });
     });

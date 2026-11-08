@@ -675,6 +675,7 @@
   }
   var COLORS = ["#ffc24d", "#3ddc84", "#4aa3ff", "#ff7a1a", "#d9b8ff", "#ff5c8a", "#9aa66e", "#fffaf0"];
   function startReplay(gid) {
+    if (window.BOLD_REPLAY && window.BOLD_REPLAY.start(gid)) return;   // bold: Kvällsrepris 2.0
     call("crew_replay", { p_group_id: gid }).then(function (r) {
       if (r.error) return err(r);
       var d = r.data || {};

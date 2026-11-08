@@ -1,5 +1,5 @@
 /* PintsNow service worker. */
-var VERSION = "olnu-44c82b9cfb-mbx1";
+var VERSION = "olnu-c22549b873-lx";
 // Shell files that index.html does not name. The local scripts and stylesheets (with their ?v=<file hash>)
 // are read from index.html itself at install, so the precache uses the same URLs as the page (no double download).
 // app.js forceUpdate() also reads this list.
@@ -466,6 +466,26 @@ function ntfFace(d, opts) {
   }).catch(function () {});
 }
 
+// 📊 PNLOG (lgx): count pushes / clicks / closes per kind for the app log (js/pnlog-hooks.js reads + clears it).
+// kind = the NAME of the first url parameter (rally, inv, chat …) or the tag prefix; never a value, never text.
+function pnKind(d) { var m = String(d && d.url || "").match(/[?&]([a-z_]{2,12})=/); if (m) return m[1]; var t = String(d && d.tag || "").match(/^[a-z_]{2,12}/); return t ? t[0] : "other"; }
+function pnNtf(w, k, a) {
+  return caches.open("olnu-pending").then(function (c) {
+    return c.match("./__pnlog_ntf").then(function (r) { return r ? r.json() : {}; }).catch(function () { return {}; }).then(function (j) {
+      j = j && typeof j === "object" ? j : {};
+      var o = j[w] = j[w] || {};
+      if (o[k] || Object.keys(o).length < 30) o[k] = (o[k] || 0) + 1;
+      if (a) { var x = j.act = j.act || {}; x[a] = (x[a] || 0) + 1; }
+      if (w === "clk") j.lastClk = { k: k, at: Date.now() };
+      return c.put("./__pnlog_ntf", new Response(JSON.stringify(j), { headers: { "Content-Type": "application/json" } }));
+    });
+  }).catch(function () {});
+}
+self.addEventListener("notificationclose", function (e) {
+  var n = e.notification || {};
+  keep(e, pnNtf("x", pnKind({ url: n.data && n.data.url, tag: n.tag })));
+});
+
 self.addEventListener("push", function (e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : "" }; }
@@ -526,12 +546,13 @@ self.addEventListener("push", function (e) {
       });
     });
   }).catch(function () {});
-  e.waitUntil(Promise.all([show, badge]));
+  e.waitUntil(Promise.all([show, badge, pnNtf("rx", pnKind(d))]));
 });
 
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();
   var data = e.notification.data || {}, raw = data.url || "./";
+  keep(e, pnNtf("clk", pnKind({ url: raw, tag: e.notification.tag }), e.action ? String(e.action).replace(/[^a-z_]/g, "").slice(0, 12) : ""));
   try { e.waitUntil(ntfLog(e.action ? "push.action" : "push.open", data, e.action || "")); } catch (err) {}   // ntf v2
   // v27: a button with its own url ("💬 Svara" → chat, "🍺 Kommer!" / "🍻 Skåla" → the pin with &act=…).
   if (e.action && data.acts && typeof data.acts[e.action] === "string") raw = data.acts[e.action];

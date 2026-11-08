@@ -74,7 +74,8 @@
   function ic(n) { try { return window.PNI ? window.PNI.svg(n, "pi-lead") : ""; } catch (e) { return ""; } }
   function row(on) {
     var s = sha();
-    var sub = on && running() && s ? "Du kör beta " + s + ". Kan ha buggar." : "Få nya funktioner först. Kan ha buggar.";
+    var sub = on && running() && s ? "Du kör beta " + s + ". Kan ha buggar. I betan loggar vi allt för att förbättra appen (se Integritet)." :
+      "Få nya funktioner först. Kan ha buggar. Beta = vi loggar allt för att förbättra appen: vad du trycker på, menyer, fel, telefontyp och (om du tillåtit platsen) position max 1 gång/min. 30 dagar.";
     var label = document.createElement("span");
     label.innerHTML = ic("sparkle");
     label.appendChild(document.createTextNode("Betaversion"));
@@ -114,7 +115,7 @@
       if (!/id="olnu-beta"/.test(html)) throw new Error("not a beta");
       return setRec({ ch: "beta", url: BETA, at: Date.now(), by: "user" }).then(function (saved) {
         if (!saved) { undo("Det gick inte att slå på betan. Uppdatera appen och försök igen."); return writeRec({ ch: "stable", at: Date.now() }); }
-        toast("Startar betan…", { ms: 3000 });
+        toast("Startar betan… I betan loggar vi allt för att förbättra appen (stäng av i Inställningar → Integritet).", { ms: 4000 });
         setTimeout(function () { location.reload(); }, 600);
       });
     }).catch(function () { clearTimeout(tm); undo("Betan går inte att nå just nu. Försök igen senare."); });

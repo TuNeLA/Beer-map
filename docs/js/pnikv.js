@@ -70,6 +70,7 @@
     });
     menu.appendChild(seg);
     var list = el("div", "pn-ikm-list");
+    try { if (W("BOLD") && W("BOLD").menuRows) W("BOLD").menuRows(row, close).forEach(function (x) { list.appendChild(x); }); } catch (x) {}   // bold: Hem-läge, Skål!
     if (W("SKJUTS") && W("SKJUTS").setDriver) {
       var sw = '<span class="switch" aria-hidden="true" aria-checked="' + drv + '"></span>';
       var dr = row("taxi", "Jag kör ikväll", drv ? "Gänget ser att du kör" : "Visa gänget att du kör", function (e) {

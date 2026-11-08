@@ -1,0 +1,277 @@
+/* PintsNow — 📸 SKÅLTIMMEN v2 (agent bold, owner OK 2026-11-08, flag bold_skal_v2, migration 0384). window.BOLD_SKAL.
+   Extends js/skal.js (BeReal for the group) — skal.js still does the hour, the banner, the send (skal_post) and the sheet:
+   - Copy: "Skåltimmen! 3 min – visa var ni är" (not "visa din dricka"; store rule 1.4.3).
+   - Camera: an in-app camera instead of <input capture> (Android kills the page in the camera app). Back camera first,
+     then the front camera by itself after 1.2 s (web apps can not open two cameras at once: WebKit bug 238492, Android
+     the same). The two become ONE photo: the back photo with the selfie as an inset top-left (like BeReal), then the
+     normal skal.js preview (Skicka / Ta om / Avbryt) and skal_post. "Bara en bild" skips the selfie. No getUserMedia /
+     denied → skal.js's own file picker (return false).
+   - Collage the same night (BeReal reveal; the Engångskamera develops at 10:00, Skåltimmen does not wait): on top of the
+     hour sheet, once I posted and ≥ 1 photo is in: up to 9 tiles, name + "+0:21", 🥇 first in, "sen +7 min" on late
+     posts. "Spara collage" (Web Share with the file, else a download).
+   - Group mode (chief / owner / vice): Av · Helg (fre + lör, 21:00–00:30) · Varje kväll instead of the old 🎲 switch.
+     New groups start on Helg (server). One "Slå på Skåltimmen i helgen?" toast per evening to a chief whose group is Av.
+   - Tick: on Fri/Sat 20:00–00:40 the app calls bold_skal_tick() at most once a minute (the server plans one secret
+     moment per Helg group and fires it only when ≥ 2 members are active tonight). skal_poll().fired then makes this phone
+     send the push, exactly like the old random mode.
+   Public: BOLD_SKAL = { shoot(h, preview), collage(body, h, photoUrl), modeRow(root, g, d, oldSwitchRow), alert(), _compose(a, b) }. */
+(function () {
+  "use strict";
+  var U = window.U;
+  var KEY = "bold_skal_v2", A = null, tickAt = 0, tickBusy = false, off = false, asked = {};
+  var ASK_KEY = "olnu.bskAsk";
+  function W(n) { return window[n] || null; }
+  function on() { try { return !!(W("BOLD") && W("BOLD").on(KEY)); } catch (e) { return false; } }
+  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s); }
+  function ic(n, c) { try { return W("PNI") ? W("PNI").svg(n, c || "") : ""; } catch (e) { return ""; } }
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function vib(p) { try { if (W("FX")) W("FX").vibrate(p); } catch (e) {} }
+  function log(n, p) { try { if (W("PNLOG") && W("PNLOG").event) W("PNLOG").event("bsk." + n, p || {}); } catch (e) {} }
+  function wall() {
+    try { if (W("OPPET") && W("OPPET").wall) return W("OPPET").wall(Date.now()); } catch (e) {}
+    var d = new Date(); return { dow: (d.getDay() + 6) % 7, min: d.getHours() * 60 + d.getMinutes() };
+  }
+  // Fri/Sat evening 20:00–00:40 (dow: 0 = Mon … 4 = Fri, 5 = Sat, 6 = Sun)
+  function helgWindow() { var w = wall(); return ((w.dow === 4 || w.dow === 5) && w.min >= 20 * 60) || ((w.dow === 5 || w.dow === 6) && w.min < 40); }
+  function secTxt(s) { s = Math.max(0, s | 0); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
+
+  /* ---------- copy ---------- */
+  function alert() { return on() ? "Skåltimmen! 3 min – visa var ni är" : null; }
+
+  /* ---------- camera: back, then front, one photo ---------- */
+  function hasCam() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
+  function stopStream(s) { try { (s && s.getTracks() || []).forEach(function (t) { t.stop(); }); } catch (e) {} }
+  function getCam(facing) {
+    return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 1280 } } });
+  }
+  function grab(video, maxSide) {
+    var vw = video.videoWidth, vh = video.videoHeight; if (!vw || !vh) return null;
+    var k = Math.min(1, maxSide / Math.max(vw, vh)), c = document.createElement("canvas");
+    c.width = Math.round(vw * k); c.height = Math.round(vh * k);
+    c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+    return c;
+  }
+  // back (canvas) + front (canvas or null) → one JPEG blob, ≤ 1280 px, 4:5 crop of the back photo, selfie inset top-left.
+  function compose(back, front) {
+    var W0 = 1080, H0 = 1350, c = document.createElement("canvas"); c.width = W0; c.height = H0;
+    var x = c.getContext("2d"); x.fillStyle = "#000"; x.fillRect(0, 0, W0, H0);
+    cover(x, back, 0, 0, W0, H0);
+    if (front) {
+      var iw = Math.round(W0 * 0.3), ih = Math.round(iw * 4 / 3), m = 28, r = 24;
+      x.save(); rrect(x, m - 5, m - 5, iw + 10, ih + 10, r + 4); x.fillStyle = "#000"; x.fill(); x.restore();
+      x.save(); rrect(x, m, m, iw, ih, r); x.clip();
+      x.translate(m + iw, m); x.scale(-1, 1);   // mirror the selfie, as people expect
+      cover(x, front, 0, 0, iw, ih); x.restore();
+    }
+    return new Promise(function (res, rej) { c.toBlob(function (b) { if (b) res(b); else rej(new Error("blob")); }, "image/jpeg", 0.88); });
+  }
+  function cover(x, src, dx, dy, dw, dh) {
+    var sw = src.width, sh = src.height, k = Math.max(dw / sw, dh / sh), w = dw / k, h = dh / k;
+    x.drawImage(src, (sw - w) / 2, (sh - h) / 2, w, h, dx, dy, dw, dh);
+  }
+  function rrect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+
+  var NOCAM = "olnu.bskNoCam";
+  function noCam() { try { return sessionStorage.getItem(NOCAM) === "1"; } catch (e) { return false; } }
+  // preview(h, file) = skal.js preview; fallback() = skal.js's own file picker (used when the camera fails).
+  function shoot(h, preview, fallback) {
+    if (!on() || !hasCam() || noCam() || typeof preview !== "function" || !h) return false;
+    fallback = typeof fallback === "function" ? fallback : function () {};
+    var ov = el("div", "bsk-cam"), video = el("video", "bsk-v"), stream = null, back = null, step = 1, done = false, auto = 0;
+    ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", "Skåltimmen-kamera");
+    video.setAttribute("playsinline", ""); video.muted = true; video.autoplay = true;
+    var cd = el("b", "bsk-cd sk-cd"); cd.setAttribute("data-skcd", String(Date.parse(h.ends_at)));
+    var top = el("div", "bsk-top", '<span class="bsk-pill">' + ic("camera", "") + "<span>Skåltimmen · " + esc(h.group_name || "") + "</span></span>");
+    top.appendChild(cd);
+    var inset = el("div", "bsk-inset"), lab = el("p", "bsk-lab", "1/2 · Bakkameran: visa var ni är");
+    var shut = el("button", "bsk-shut"); shut.type = "button"; shut.setAttribute("aria-label", "Ta bilden");
+    var one = el("button", "bsk-one", "Bara en bild"); one.type = "button";
+    var x = el("button", "bsk-x", ic("x", "")); x.type = "button"; x.setAttribute("aria-label", "Stäng kameran");
+    var flash = el("div", "bsk-flash");
+    ov.appendChild(video); ov.appendChild(top); ov.appendChild(inset); ov.appendChild(lab); ov.appendChild(shut); ov.appendChild(one); ov.appendChild(x); ov.appendChild(flash);
+    document.body.appendChild(ov);
+    function close() { if (done) return; done = true; clearTimeout(auto); stopStream(stream); ov.remove(); document.removeEventListener("visibilitychange", onVis); }
+    function onVis() { if (document.hidden) { stopStream(stream); stream = null; } else if (!done) start(step === 1 ? "environment" : "user"); }
+    function start(facing) {
+      stopStream(stream); stream = null;
+      return getCam(facing).then(function (s) {
+        if (done) { stopStream(s); return; }
+        stream = s; video.srcObject = s; video.classList.toggle("bsk-mirror", facing === "user");
+        return video.play().catch(function () {});
+      });
+    }
+    function finish(front) {
+      var b = back; close();
+      compose(b, front).then(function (blob) { log("shot", { front: !!front }); preview(h, blob); }, function () { fallback(); });
+    }
+    function snap() {
+      if (done || !stream || !video.videoWidth) return;
+      var c = grab(video, 1280); if (!c) return;
+      flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on"); vib(30);
+      if (step === 1) {
+        back = c; step = 2; one.hidden = true;
+        inset.style.backgroundImage = "url(" + c.toDataURL("image/jpeg", 0.6) + ")"; inset.classList.add("got");
+        lab.textContent = "2/2 · Selfie! Vänd mot dig…";
+        start("user").then(function () { auto = setTimeout(snap, 1200); }, function () { finish(null); });
+      } else finish(c);
+    }
+    shut.addEventListener("click", function () { clearTimeout(auto); snap(); });
+    one.addEventListener("click", function () { if (step !== 1) return; var c = grab(video, 1280); if (c) { back = c; finish(null); } });
+    x.addEventListener("click", function () { close(); log("cancel"); });
+    document.addEventListener("visibilitychange", onVis);
+    start("environment").then(null, function () {
+      // denied / no camera → skal.js's own file picker
+      close(); log("nocam");
+      try { sessionStorage.setItem(NOCAM, "1"); } catch (e) {}
+      fallback();
+    });
+    return true;
+  }
+
+  /* ---------- collage (same night) ---------- */
+  function loadImg(u) { return new Promise(function (res) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = u; }); }
+  var colCache = {};   // skal.js redraws the hour sheet every 5 s: keep the same collage while nothing changed
+  function collage(body, h, photoUrl) {
+    if (!on() || !body || !h || !h.mine || typeof photoUrl !== "function") return;
+    var posts = (h.posts || []).filter(function (p) { return p.photo_id; }).slice(0, 9);
+    if (!posts.length) return;
+    var sig = posts.map(function (p) { return p.photo_id + (p.in_time ? "t" : "l"); }).join(","), cc = colCache[h.id];
+    if (cc && cc.sig === sig) { body.insertBefore(cc.box, body.children[1] || null); return; }
+    var box = el("div", "bsk-col"), cv = el("canvas", "bsk-cv"); cv.width = 1080; cv.height = 1350;
+    cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "Skålcollage: " + posts.map(function (p) { return p.is_me ? "du" : p.name; }).join(", "));
+    box.appendChild(cv);
+    var row = el("div", "bsk-row"); box.appendChild(row);
+    body.insertBefore(box, body.children[1] || null);
+    colCache[h.id] = { sig: sig, box: box };
+    Promise.all(posts.map(function (p) { return Promise.resolve(photoUrl(p.photo_id)).then(loadImg, function () { return null; }); })).then(function (imgs) {
+      draw(cv, posts, imgs, h);
+      cv.toBlob(function (b) {
+        if (!b) return;
+        var f = null; try { f = new File([b], "skaltimmen.jpg", { type: "image/jpeg" }); } catch (e) {}
+        var canShare = !!(f && navigator.canShare && navigator.canShare({ files: [f] }));
+        var s = el("button", "btn btn-amber bsk-save", ic(canShare ? "share" : "download", "") + "<span>" + (canShare ? "Dela collage" : "Spara collage") + "</span>"); s.type = "button";
+        s.addEventListener("click", function () {
+          log("save", { share: canShare });
+          if (canShare) { navigator.share({ files: [f], title: "Skåltimmen" }).catch(function () {}); return; }
+          var u = URL.createObjectURL(b), a = document.createElement("a"); a.href = u; a.download = "skaltimmen.jpg"; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+        });
+        row.appendChild(s);
+      }, "image/jpeg", 0.88);
+    });
+  }
+  function draw(cv, posts, imgs, h) {
+    var x = cv.getContext("2d"), n = posts.length, cols = n === 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols);
+    var pad = 16, head = 120, cw = (1080 - pad * (cols + 1)) / cols, ch = (1350 - head - pad * (rows + 1)) / rows;
+    x.fillStyle = "#0a0f1c"; x.fillRect(0, 0, 1080, 1350);
+    x.fillStyle = "#ffc24d"; x.font = "56px 'Black Ops One', Impact, sans-serif"; x.textBaseline = "middle";
+    x.fillText("Skåltimmen", pad + 8, 52);
+    x.fillStyle = "#c9d0cd"; x.font = "600 30px 'Chakra Petch', sans-serif";
+    var inT = posts.filter(function (p) { return p.in_time; }).length;
+    x.fillText((h.group_name || "") + " · " + inT + "/" + (h.needed | 0 || posts.length) + " i tid", pad + 8, 100);
+    posts.forEach(function (p, i) {
+      var c = i % cols, r = Math.floor(i / cols), px = pad + c * (cw + pad), py = head + pad + r * (ch + pad);
+      x.save(); rrect(x, px, py, cw, ch, 20); x.clip();
+      x.fillStyle = "#19233a"; x.fillRect(px, py, cw, ch);
+      if (imgs[i]) cover(x, imgs[i], px, py, cw, ch);
+      var g = x.createLinearGradient(0, py + ch - 90, 0, py + ch); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.8)");
+      x.fillStyle = g; x.fillRect(px, py + ch - 90, cw, 90);
+      var name = (p.in_time && p.rank === 1 ? "🥇 " : "") + (p.is_me ? "Du" : (p.name || "?"));
+      x.fillStyle = "#eef0ec"; x.font = "700 " + (cols === 3 ? 26 : 32) + "px 'Chakra Petch', sans-serif"; x.fillText(name, px + 14, py + ch - 30, cw - 120);
+      x.textAlign = "right"; x.fillStyle = "#c9d0cd"; x.font = "600 " + (cols === 3 ? 22 : 26) + "px 'Chakra Petch', sans-serif";
+      x.fillText("+" + secTxt(p.sec), px + cw - 14, py + ch - 30); x.textAlign = "left";
+      if (!p.in_time) {
+        var t = "sen +" + Math.max(1, Math.round(((p.sec | 0) - 180) / 60)) + " min";
+        x.font = "700 24px 'Chakra Petch', sans-serif"; var tw = x.measureText(t).width + 20;
+        x.fillStyle = "#c8202a"; rrect(x, px + 12, py + 12, tw, 36, 8); x.fill(); x.fillStyle = "#fff"; x.fillText(t, px + 22, py + 31);
+      }
+      x.restore();
+    });
+  }
+
+  /* ---------- group mode: Av · Helg · Varje kväll ---------- */
+  var MODES = [["off", "Av"], ["helg", "Helg"], ["alla", "Varje kväll"]];
+  var HELP = { off: "Ingen slumpad skåltimme. Chefen blåser själv.", helg: "En hemlig tid fre + lör 21–00:30. Bara när minst två i gänget ä ute.",
+    alla: "En hemlig tid varje kväll 20–01. Ingen vet när – int' ens chefen." };
+  function modeRow(root, g, d, oldRow) {
+    if (!on() || !A || !root || !g) return false;
+    var box = el("div", "bsk-mode"), help = el("p", "bsk-mode-h muted"), seg = el("div", "ds-seg bsk-seg");
+    seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", "Slumpad skåltimme");
+    box.appendChild(el("b", "bsk-mode-t", "Slumpad skåltimme")); box.appendChild(seg); box.appendChild(help);
+    root.appendChild(box);
+    function paint(m, can) {
+      seg.innerHTML = "";
+      MODES.forEach(function (x) {
+        var b = el("button", "bsk-seg-b", esc(x[1])); b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(m === x[0]));
+        b.disabled = !can;
+        b.addEventListener("click", function () { if (m === x[0]) return; set(x[0]); });
+        seg.appendChild(b);
+      });
+      help.textContent = HELP[m] || "" + (can ? "" : "");
+      if (!can) help.textContent += " Bara chefen, ägaren och vice kan ändra.";
+    }
+    function set(m) {
+      seg.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+      A.rpc("bold_skal_mode_set", { p_group_id: g.id, p_mode: m }).then(function (r) {
+        if (r.error) { A.toast("Det gick int' att ändra just nu.", { err: true }); load(); return; }
+        var x = A.parseData(r.data) || {}; paint(x.mode, true);
+        A.toast(x.mode === "helg" ? "🎲 Skåltimmen kommer i helgen. Ingen vet när!" : x.mode === "alla" ? "🎲 Skåltimmen kan komma vilken kväll som helst." : "🎲 Slumpen ä avstängd.", { cls: "skal", ms: 4500 });
+        log("mode", { m: x.mode });
+      });
+    }
+    function load() {
+      A.rpc("bold_skal_mode_get", { p_group_id: g.id }).then(function (r) {
+        if (r.error) { box.remove(); if (oldRow) root.appendChild(oldRow); return; }
+        var x = A.parseData(r.data) || {};
+        if (!x.on) { box.remove(); if (oldRow) root.appendChild(oldRow); return; }
+        paint(x.mode, !!x.can_set);
+      });
+    }
+    paint(d && d.random_on ? "alla" : "off", false); load();
+    return true;
+  }
+
+  /* ---------- the chief's once-an-evening question ---------- */
+  function askChief() {
+    var w = wall(); if (!(w.dow === 4 || w.dow === 5) || w.min < 17 * 60) return;
+    var day = new Date(Date.now() - 6 * 3600e3).toDateString();
+    try { if (localStorage.getItem(ASK_KEY) === day) return; } catch (e) {}
+    A.rpc("my_groups").then(function (r) {
+      var gs = (r && !r.error && Array.isArray(r.data) ? r.data : []).filter(function (g) { return g && g.id && !g.dm && !g.ev && !g.evg; }).slice(0, 5);
+      (function next(i) {
+        if (i >= gs.length) return;
+        var g = gs[i]; if (asked[g.id]) return next(i + 1); asked[g.id] = 1;
+        A.rpc("bold_skal_mode_get", { p_group_id: g.id }).then(function (q) {
+          var x = q && !q.error ? A.parseData(q.data) || {} : {};
+          if (!x.on || !x.can_set || x.mode !== "off" || x.stored) return next(i + 1);
+          try { localStorage.setItem(ASK_KEY, day); } catch (e) {}
+          A.toast("🎲 Slå på Skåltimmen i helgen för " + (g.name || "gänget") + "? En hemlig tid, alla visar var dom ä.", { ms: 12000, cls: "skal",
+            action: { label: "Ja", fn: function () { A.rpc("bold_skal_mode_set", { p_group_id: g.id, p_mode: "helg" }).then(function (s) {
+              if (!s.error) A.toast("🎲 Klart! Skåltimmen kommer i helgen.", { cls: "skal", ms: 4000 }); }); } } });
+        });
+      })(0);
+    });
+  }
+
+  /* ---------- tick ---------- */
+  function tick() {
+    if (off || tickBusy || !A || !A.LIVE || !helgWindow() || Date.now() - tickAt < 60e3 || document.hidden) return;
+    try { if (A.authed && !A.authed()) return; } catch (e) {}
+    tickBusy = true; tickAt = Date.now();
+    A.rpc("bold_skal_tick").then(function (r) {
+      tickBusy = false;
+      if (r && r.error) { if (U.missing && U.missing(r.error)) off = true; return; }
+      var d = A.parseData(r && r.data) || {};
+      if (d.fired && d.fired.length) log("fired", { n: d.fired.length });
+    }, function () { tickBusy = false; });
+  }
+
+  var feat = {
+    key: KEY,
+    init: function (api) { A = api; },
+    onAuthed: function () { tick(); setTimeout(askChief, 8000); },
+    onPoll: function () { tick(); }
+  };
+  window.BOLD_SKAL = { shoot: shoot, collage: collage, modeRow: modeRow, alert: alert, _compose: compose, _draw: draw };
+  if (W("BOLD")) W("BOLD").add(feat);
+})();

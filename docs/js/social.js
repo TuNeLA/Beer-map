@@ -199,6 +199,7 @@
   }
   function loadKings() {
     if (window.SAFETY) return;   // SAFE: no "Kung av baren" (people ranked by drinks)
+    if (window.BOLD && window.BOLD.on("bold_krog")) { if (Object.keys(kings).length || Object.keys(kingsKnown).length) { kings = {}; kingsKnown = {}; A.render(); } return; }   // bold: Kvällens krog replaces the weekly crown
     if (v7 !== true || off.bar_kings) return;
     var wait = KINGS_MS - (Date.now() - kingsAt);
     if (wait > 0) { if (!kingsTimer) kingsTimer = setTimeout(function () { kingsTimer = null; loadKings(); }, wait); return; }

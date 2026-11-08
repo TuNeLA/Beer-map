@@ -53,16 +53,20 @@
 <h2>📊 Användning och position (under betan)</h2>
 <p>Under betan, innan appen finns i App Store och Google Play, sparar vi mer för att göra appen bättre. Vi gör det öppet, och du kan stänga av det.</p>
 <ul>
-<li><b>Användning:</b> vilka knappar du trycker på (knappens namn i koden, aldrig text du skriver), vilka menyer du öppnar, fel i appen, hur snabb appen ä (laddtid, hur länge en meny tar att öppna) och appversion. Inga namn, inga meddelanden, ingen position.</li>
-<li><b>Positionslogg:</b> din position högst en gång i minuten <i>medan appen ä öppen</i> (aldrig i bakgrunden, aldrig om du int' redan har gett appen tillgång till platsen), och när du checkar in, checkar ut eller loggar en dryck. Vi jämför det med vad automatisk incheckning gjorde, så att den blir rätt oftare. Inte i spökläge. I din hemzon sparas ingen position.</li>
-<li><b>Varför:</b> berättigat intresse (GDPR art. 6.1 f): att appen fungerar och att incheckningen blir rätt. Ingen reklam, ingen profil, ingen delning med andra företag.</li>
+<li><b>Användning:</b> vilka knappar du trycker på (knappens namn i koden, aldrig text du skriver), vilka menyer och flikar du öppnar och hur länge, hur du stänger dem och hur långt du scrollar, vilka funktioner och spel du använder (start, slut, antal spelare), steg i guider (t.ex. din karaktär), delningar och kopierade länkar (bara vilken sorts länk), sökningar (bara antal tecken), ändrade inställningar, notiser (kom fram, öppnad, bortsvept – bara vilken sort) och installation. Inga namn, inga meddelanden, inga koder.</li>
+<li><b>Kartan:</b> zoom, panorering och vad du trycker på (krog, pin, kluster). En gång i minuten vilket område kartan visar, avrundat till ca 1 km – inte i spökläge och aldrig nära ditt hem.</li>
+<li><b>Teknik och fel (skickas alltid, också om du stänger av användning):</b> fel i appen, appversion, system och webbläsare (med version), nät (typ, hastighet, när du är offline, misslyckade anrop) och hur snabb appen är (laddtid, hack när kartan rör sig, hur snabbt en knapp svarar). Om användning är på skickas också telefonmodell, minne, processor, skärm, språk och tidszon, och dina senaste knapptryck före ett fel. Ingen position.</li>
+<li><b>Batteri:</b> batterinivå när du öppnar och stänger appen (bara om användning är på), så vi ser om appen drar för mycket ström.</li>
+<li><b>Före konto:</b> öppnas appen via en inbjudan eller första gången räknar vi bara antal per dag (inget konto, ingen IP, inget id).</li>
+<li><b>Positionslogg:</b> din position högst en gång i minuten <i>medan appen är öppen</i> (aldrig i bakgrunden, aldrig om du inte redan har gett appen tillgång till platsen), och när du checkar in, checkar ut eller loggar en dryck. Vi jämför det med vad automatisk incheckning gjorde, så att den blir rätt oftare. Inte i spökläge. I din hemzon sparas ingen position.</li>
+<li><b>Varför:</b> berättigat intresse (GDPR art. 6.1 f): att appen fungerar, går snabbt och att incheckningen blir rätt. Ingen reklam, ingen profil, ingen delning med andra företag.</li>
 <li><b>Hur länge:</b> 30 dagar. Sen töms raderna automatiskt varje natt; kvar blir bara antal per dag utan konto-id.</li>
 <li><b>Vem ser det:</b> bara vi (PintsNow). Det lagras hos Supabase i EU.</li>
-<li><b>Stäng av:</b> ⚙️ Inställningar → Integritet → "Hjälp till att förbättra appen" och "Spara position för bättre incheckning". Stänger du av positionen tar vi bort din sparade positionslogg direkt. Felrapporter (fel i appen, utan position) skickas alltid.</li>
-<li><b>Första gången</b> positionsloggen startar visar appen en kort ruta om det.</li>
-<li>När appen kommer till App Store och Google Play blir detta frivilligt (du får en fråga). Bara felrapporter skickas utan fråga.</li>
+<li><b>Stäng av:</b> ⚙️ Inställningar → Integritet → "Hjälp till att förbättra appen" och "Spara position för bättre incheckning". Stänger du av positionen tar vi bort din sparade positionslogg direkt.</li>
+<li><b>Första gången</b> visar appen en kort ruta om loggningen, med en knapp som stänger av positionsloggen direkt.</li>
+<li>När appen kommer till App Store och Google Play tar vi bort den här loggningen ur appen: då skickas bara felrapporter. Bara den som själv slår på 🧪 Betaversion loggas som nu.</li>
 </ul>
-<p lang="en"><em>Beta logging: until the store launch the app logs which buttons you tap (button id, never your text), screens, errors, speed and app version, and – while the app is open – your position at most once a minute plus check-ins/outs, to improve automatic check-in. Legitimate interest (GDPR 6.1 f), first party only, kept 30 days, both can be turned off in Settings → Integritet (turning off the position log removes what was saved). Error reports (no position) are always sent.</em></p>
+<p lang="en"><em>Beta logging: until the store launch the app logs which buttons you tap (button id, never your text), screens and tabs and how long, how you close them and scroll depth, features and games used, guide steps, shares (link type only), search (length only), settings changes, notifications (delivered / opened / dismissed, type only), install prompts, map use (zoom, pans, taps, and once a minute the map area rounded to ~1 km, never in ghost mode or near home), battery level at open and close, and – while the app is open – your position at most once a minute plus check-ins/outs, to improve automatic check-in. Always sent (also when usage is off): errors, app version, OS and browser, network (type, speed, offline, failed requests) and speed (load time, frame drops, tap delay); with usage on also device model, memory, CPU, screen, language, time zone and the last taps before an error. Before an account exists only daily counts are kept. Legitimate interest (GDPR 6.1 f), first party only, kept 30 days, can be turned off in Settings → Integritet (turning off the position log removes what was saved).</em></p>
 </section>
 
 <h2>Vem ser vad?</h2>
@@ -80,7 +84,11 @@
 <li><b>GitHub Pages</b> – visar själva appen och ser din IP-adress.</li>
 <li><b>Google Workspace</b> – e-posten till och från support@pintsnow.com.</li>
 <li>Push-tjänsterna i din telefon (Google, Apple, Mozilla) – bara om du slår på notiser.</li>
-<li>Reservkartan (Esri/Carto) och Google Fonts ser din IP-adress när de skickar bilder och typsnitt.</li>
+<li>Reservkartan (Esri/Carto, OpenFreeMap) och Google Fonts ser din IP-adress när de skickar kartbilder och typsnitt.</li>
+<li><b>jsDelivr</b> och <b>cdnjs (Cloudflare)</b> – skickar delar av appens kod (kartan, databasen, QR-koden). Ser din IP-adress.</li>
+<li><b>Open-Meteo</b> – vädret (☀️ Uteväder). Får din position avrundad till ca 10 km och din IP-adress.</li>
+<li><b>OpenStreetMap / Overpass</b> (overpass-api.de, overpass.kumi.systems) – krogar som saknas i vår lista. Får kartområdet du tittar på och din IP-adress.</li>
+<li>Länkar du själv trycker på (Swish, Uber, Bolt, Spotify, Google/Apple Maps, Wikipedia m.fl.) öppnar deras egna sidor.</li>
 </ul>
 
 <h2>Det gör vi inte</h2>

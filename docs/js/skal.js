@@ -37,6 +37,7 @@
     return a[idx];
   }
   var ALERT = "Skåltimmen! 3 min – visa din dricka!";
+  function skAlert() { try { return (window.BOLD_SKAL && window.BOLD_SKAL.alert()) || ALERT; } catch (e) { return ALERT; } }   // bold: "visa var ni är"
   var T = {
     sub: ["Glaset i kameran, soldat!", "Höj glaset och tryck av.", "Visa vad som står på bordet. Inget fusk.",
       "Klockan tickar. Bildbevis på drickan!", "Plutonen höjer glasen – var ä du?", "Dricka fram, kamera upp.",
@@ -166,7 +167,7 @@
           fx(true);
           // The banner says it on the map; over an open sheet (banner hidden behind it) a toast says it once.
           var sheetUp = false; try { sheetUp = A.sheetOpen(); } catch (e) {}
-          if (sheetUp) A.toast("🍻 " + ALERT + " · " + (h.group_name || ""), { ms: 9000, urgent: true, cls: "sk-toast",
+          if (sheetUp) A.toast("🍻 " + skAlert() + " · " + (h.group_name || ""), { ms: 9000, urgent: true, cls: "sk-toast",
             action: { label: L("📸 Visa", "📸 Show"), fn: function () { shoot(byId(h.id) || h); } } });
         });
       }
@@ -202,7 +203,7 @@
     if (h && show) {
       if (!bannerSub[h.id]) bannerSub[h.id] = sv() ? spick("s" + h.id, T.sub) : spick("s" + h.id, T.subEn);
       b.setAttribute("data-id", String(h.id));
-      b.innerHTML = '<button type="button" class="sk-b-txt" data-open="1"><b>🍻 ' + esc(L(ALERT, "CHEERS HOUR! 3 min – show your drink!")) + "</b>" +
+      b.innerHTML = '<button type="button" class="sk-b-txt" data-open="1"><b>🍻 ' + esc(L(skAlert(), "CHEERS HOUR! 3 min – show your drink!")) + "</b>" +
         '<span class="sk-b-sub">' + esc(bannerSub[h.id] + " · " + (h.group_name || "")) + "</span></button>" +
         '<b class="sk-cd" data-skcd="' + esc(String(Date.parse(h.ends_at))) + '">' + U.mmss(msLeft(h)) + "</b>" +
         '<button type="button" class="sk-b-go" data-shoot="1">' + esc(L("📸 Visa", "📸 Show")) + "</button>" +
@@ -242,6 +243,7 @@
   var fileInp = null;
   function shoot(h) {
     if (!h) return;
+    if (!shoot.__b && window.BOLD_SKAL && window.BOLD_SKAL.shoot(h, preview, function () { shoot.__b = 1; try { shoot(h); } finally { shoot.__b = 0; } })) return;   // bold: in-app camera
     if (!window.PHOTO || !window.PHOTO._shrink) { A.toast(errText("error"), { err: true }); return; }
     if (!fileInp) {
       fileInp = document.createElement("input");
@@ -436,6 +438,7 @@
     } else if (missing.length) {
       body.appendChild(el("p", { class: "sk-l muted", text: L("Väntar på: ", "Waiting for: ") + missing.map(who).join(", ") }));
     }
+    try { if (window.BOLD_SKAL) window.BOLD_SKAL.collage(body, h, photoUrl); } catch (e) {}   // bold: same-night collage
     body.appendChild(el("p", { class: "sk-note muted", text: L("Bilderna syns bara i gruppen och försvinner kl 12 dan efter. Ingen straffas för en missad skål.",
       "Photos stay in the group and vanish at noon the day after.") }));
     if (scr) scr.scrollTop = sc;
@@ -536,8 +539,8 @@
         load(true);
       });
     });
-    root.appendChild(rnd);
-    if (!d.can_start) root.appendChild(el("p", { class: "sk-help muted", text: d.random_on ? L("🎲 Slumpen ä på i den här gruppen.", "🎲 Random mode is on.") : L("🎲 Slumpen ä av.", "🎲 Random mode is off.") }));
+    var bsk = !!(window.BOLD_SKAL && window.BOLD_SKAL.modeRow(root, g, d, rnd)); if (!bsk) root.appendChild(rnd);   // bold: Av · Helg · Varje kväll
+    if (!d.can_start && !bsk) root.appendChild(el("p", { class: "sk-help muted", text: d.random_on ? L("🎲 Slumpen ä på i den här gruppen.", "🎲 Random mode is on.") : L("🎲 Slumpen ä av.", "🎲 Random mode is off.") }));
   }
   function start(g, b, root) {
     if (b.disabled) return;

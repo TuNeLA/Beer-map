@@ -1,0 +1,296 @@
+/* PintsNow — 📼 KVÄLLSREPRIS 2.0 (agent bold, owner OK 2026-11-08, flag bold_replay, migrations 0382 + 0385). window.BOLD_REPLAY.
+   The group's night as a 15-second film the morning after (05:00–18:00, like crew.js): glowing trails between bars, fuzzy
+   "🏠 Förfest / Hemma" circles (never a pin), bars lighting up, photo pops, a clock, and an end card. "Spara som video"
+   records the canvas (MediaRecorder: MP4 on iPhone 14.3+ / new Chrome, else WebM) and opens the share sheet; without
+   MediaRecorder "Spara bild" saves the end card. "Ta bort mig" hides my trail for this night (bold_replay_hide_me).
+   Data: crew_replay (SAFE points only, server side: bars exact, the rest on a 500 m grid, nothing near start/end homes, no
+   ghost nights) + bold_replay_photos (who + when, no place: the pop sits on that person's safe position at that time).
+   Map: ONE Mapbox Static Images call per group-night (dark style, with Mapbox's own logo/attribution), cached; no token →
+   a plain dark background. Its own canvas (not the live map), so the film can be recorded.
+   Ways in: crew.js "▶️ Spela upp kvällen" (start(gid)), the morning Bakisrapporten button (morningButton(row)).
+   Public: BOLD_REPLAY = { start(gid) → true when shown, morningButton(row), close(), _play(data, photos) (tests) }. */
+(function () {
+  "use strict";
+  var U = window.U;
+  var KEY = "bold_replay", A = null, P = null;
+  var NIGHT_MS = 13000, END_MS = 2000, TOTAL = NIGHT_MS + END_MS, W0 = 360, H0 = 640, SC = 2;
+  var COLORS = ["#ffc24d", "#3ddc84", "#4aa3ff", "#ff7a1a", "#d9b8ff", "#ff5c8a", "#9aa66e", "#fffaf0"];
+  function W(n) { return window[n] || null; }
+  function on() { try { return !!(W("BOLD") && W("BOLD").on(KEY)); } catch (e) { return false; } }
+  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s); }
+  function ic(n, c) { try { return W("PNI") ? W("PNI").svg(n, c || "") : ""; } catch (e) { return ""; } }
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function log(n, p) { try { if (W("PNLOG") && W("PNLOG").event) W("PNLOG").event("brp." + n, p || {}); } catch (e) {} }
+  function reduced() { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
+  function hm(ms) { try { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit" }).format(new Date(ms)); } catch (e) { var d = new Date(ms); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); } }
+  function dayLabel(ev) {
+    try { var d = new Date(ev + "T12:00:00"); return ["sön", "mån", "tis", "ons", "tors", "fre", "lör"][d.getDay()] + " " + d.getDate() + " " + ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"][d.getMonth()]; } catch (e) { return ""; }
+  }
+
+  /* ---------- projection (Web Mercator, 512 px tiles like Mapbox) ---------- */
+  function wx(lng, ws) { return (lng + 180) / 360 * ws; }
+  function wy(lat, ws) { var s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * ws; }
+  function ylat(y, ws) { var n = Math.PI - 2 * Math.PI * y / ws; return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
+  function view(pts) {
+    var la0 = 90, la1 = -90, ln0 = 180, ln1 = -180;
+    pts.forEach(function (p) { var pad = p.kind === "area" ? 0.003 : 0; la0 = Math.min(la0, p.lat - pad); la1 = Math.max(la1, p.lat + pad); ln0 = Math.min(ln0, p.lng - pad * 2); ln1 = Math.max(ln1, p.lng + pad * 2); });
+    var boxW = W0 - 48, boxH = H0 - 120 - 90, z = 16;
+    for (; z > 9; z -= 0.25) {
+      var ws = 512 * Math.pow(2, z);
+      if (wx(ln1, ws) - wx(ln0, ws) <= boxW && wy(la0, ws) - wy(la1, ws) <= boxH) break;
+    }
+    z = Math.round(z * 100) / 100;
+    var wsz = 512 * Math.pow(2, z), cx = (wx(ln0, wsz) + wx(ln1, wsz)) / 2, cyBox = (wy(la0, wsz) + wy(la1, wsz)) / 2;
+    var cy = cyBox + (H0 / 2 - (120 + boxH / 2));   // the content box sits between the header and the controls
+    return { z: z, ws: wsz, cx: cx, cy: cy, lat: ylat(cy, wsz), lng: cx / wsz * 360 - 180 };
+  }
+  function proj(v, lat, lng) { return [W0 / 2 + wx(lng, v.ws) - v.cx, H0 / 2 + wy(lat, v.ws) - v.cy]; }
+  function mPerPx(v, lat) { return 40075016.7 * Math.cos(lat * Math.PI / 180) / v.ws; }
+
+  /* ---------- background ---------- */
+  function token() { try { return (window.OLNU_CONFIG && window.OLNU_CONFIG.MAPBOX_TOKEN) || U.ls.get("olnu.mbToken", "") || ""; } catch (e) { return ""; } }
+  function bgUrl(v) {
+    var t = token(); if (!/^pk\./.test(t)) return "";
+    return "https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/" + v.lng.toFixed(5) + "," + v.lat.toFixed(5) + "," + v.z + "/" + W0 + "x" + H0 + "@2x?access_token=" + encodeURIComponent(t);
+  }
+  function loadBg(url) {
+    if (!url) return Promise.resolve(null);
+    var get = function () { return fetch(url, { mode: "cors", credentials: "omit" }).then(function (r) { if (!r.ok) throw new Error("bg " + r.status); return r.blob(); }); };
+    var p = (window.caches ? caches.open("olnu-bold").then(function (c) {
+      return c.match(url).then(function (hit) { return hit ? hit.blob() : get().then(function (b) { try { c.put(url, new Response(b)); } catch (e) {} return b; }); });
+    }) : get());
+    return p.then(function (b) {
+      return new Promise(function (res) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = URL.createObjectURL(b); });
+    }).catch(function () { return null; });
+  }
+
+  /* ---------- the film model ---------- */
+  function model(d, photos) {
+    var mem = {}, order = [];
+    (d.members || []).forEach(function (m, i) { mem[m.k] = { k: m.k, name: m.is_me ? "Du" : (m.name || "?"), me: !!m.is_me, color: COLORS[i % COLORS.length], pts: [] }; order.push(m.k); });
+    var pts = (d.points || []).map(function (x) { return { k: x.k, t: Date.parse(x.at), lat: +x.lat, lng: +x.lng, bar: x.bar_name, kind: x.kind }; })
+      .filter(function (x) { return mem[x.k] && isFinite(x.lat) && isFinite(x.lng) && isFinite(x.t); }).sort(function (a, b) { return a.t - b.t; });
+    pts.forEach(function (x) { mem[x.k].pts.push(x); });
+    order = order.filter(function (k) { return mem[k].pts.length; });
+    // time warp: gaps over 45 min shrink to 4 min of film time
+    var times = pts.map(function (x) { return x.t; }), t0 = times[0] - 5 * 60e3, t1 = times[times.length - 1] + 5 * 60e3, cuts = [], vt = 0, prev = t0;
+    times.concat([t1]).forEach(function (t) { var g = t - prev; if (g > 45 * 60e3) cuts.push({ at: prev, real: g, vis: 4 * 60e3 }); vt += g > 45 * 60e3 ? 4 * 60e3 : g; prev = t; });
+    function toVis(t) { var v = t - t0; cuts.forEach(function (c) { if (t > c.at) v -= Math.min(t - c.at, c.real) - Math.min(t - c.at, c.real) * c.vis / c.real; }); return v; }
+    function toReal(vis) {   // inverse (monotonic): binary search
+      var a = t0, b = t1; for (var i = 0; i < 40; i++) { var m = (a + b) / 2; if (toVis(m) < vis) a = m; else b = m; } return (a + b) / 2;
+    }
+    var bars = {}; pts.forEach(function (x) { if (x.kind !== "area" && x.bar) { var key = x.bar; if (!bars[key] || bars[key].t > x.t) bars[key] = { name: x.bar, lat: x.lat, lng: x.lng, t: x.t }; } });
+    var ph = (photos || []).map(function (p) { return { k: p.k, t: Date.parse(p.at), kind: p.kind }; }).filter(function (p) { return mem[p.k] && isFinite(p.t) && p.t >= t0 && p.t <= t1; });
+    var vtot = Math.max(1, toVis(t1));
+    return { d: d, mem: mem, order: order, pts: pts, t0: t0, t1: t1, vtot: vtot, toReal: toReal, bars: bars, photos: ph };
+  }
+  function posAt(m, t) {
+    var a = m.pts, i = -1;
+    for (var j = 0; j < a.length; j++) if (a[j].t <= t) i = j; else break;
+    if (i < 0) return null;
+    if (i === a.length - 1) return { lat: a[i].lat, lng: a[i].lng, i: i, end: t > a[i].t + 20 * 60e3 };
+    var b = a[i + 1], ms = Math.max(a[i].t, b.t - 15 * 60e3);
+    if (t < ms) return { lat: a[i].lat, lng: a[i].lng, i: i };
+    var f = (t - ms) / Math.max(1, b.t - ms);
+    return { lat: a[i].lat + (b.lat - a[i].lat) * f, lng: a[i].lng + (b.lng - a[i].lng) * f, i: i };
+  }
+
+  /* ---------- drawing ---------- */
+  function draw(cx, M, v, bg, ms) {
+    var night = Math.min(1, ms / NIGHT_MS), t = M.toReal(night * M.vtot), red = reduced();
+    cx.setTransform(SC, 0, 0, SC, 0, 0);
+    cx.fillStyle = "#0a0f1c"; cx.fillRect(0, 0, W0, H0);
+    if (bg) { cx.globalAlpha = 0.9; cx.drawImage(bg, 0, 0, W0, H0); cx.globalAlpha = 1; }
+    else { cx.strokeStyle = "rgba(255,255,255,.04)"; cx.lineWidth = 1; for (var g = 0; g < W0; g += 40) { cx.beginPath(); cx.moveTo(g, 0); cx.lineTo(g, H0); cx.stroke(); } for (g = 0; g < H0; g += 40) { cx.beginPath(); cx.moveTo(0, g); cx.lineTo(W0, g); cx.stroke(); } }
+    var grd = cx.createLinearGradient(0, 0, 0, H0); grd.addColorStop(0, "rgba(10,15,28,.85)"); grd.addColorStop(0.18, "rgba(10,15,28,.15)"); grd.addColorStop(0.72, "rgba(10,15,28,.15)"); grd.addColorStop(1, "rgba(10,15,28,.9)");
+    cx.fillStyle = grd; cx.fillRect(0, 0, W0, H0);
+    // fuzzy home areas (soft circles, never a pin)
+    M.order.forEach(function (k) {
+      var m = M.mem[k];
+      m.pts.forEach(function (p) {
+        if (p.kind !== "area" || p.t > t) return;
+        var xy = proj(v, p.lat, p.lng), r = 250 / mPerPx(v, p.lat);
+        var rg = cx.createRadialGradient(xy[0], xy[1], 0, xy[0], xy[1], r); rg.addColorStop(0, hexA(m.color, 0.28)); rg.addColorStop(1, hexA(m.color, 0));
+        cx.fillStyle = rg; cx.beginPath(); cx.arc(xy[0], xy[1], r, 0, Math.PI * 2); cx.fill();
+        cx.font = "600 11px 'Chakra Petch', sans-serif"; cx.fillStyle = "rgba(238,240,236,.85)"; cx.textAlign = "center"; cx.fillText(p.bar || "🏠", xy[0], xy[1] - r - 4); cx.textAlign = "left";
+      });
+    });
+    // trails
+    M.order.forEach(function (k) {
+      var m = M.mem[k], s = posAt(m, t); if (!s) return;
+      var path = m.pts.slice(0, s.i + 1).map(function (p) { return proj(v, p.lat, p.lng); }); path.push(proj(v, s.lat, s.lng));
+      if (path.length < 2) return;
+      [[8, 0.35, 14], [3, 1, 0]].forEach(function (L) {
+        cx.save(); cx.strokeStyle = L[1] < 1 ? hexA(m.color, L[1]) : lighten(m.color); cx.lineWidth = L[0]; cx.lineCap = "round"; cx.lineJoin = "round";
+        if (L[2] && !red) { cx.shadowColor = m.color; cx.shadowBlur = L[2]; }
+        cx.beginPath(); cx.moveTo(path[0][0], path[0][1]); for (var i = 1; i < path.length; i++) cx.lineTo(path[i][0], path[i][1]); cx.stroke(); cx.restore();
+      });
+    });
+    // bars (light up when someone first arrives)
+    Object.keys(M.bars).forEach(function (key) {
+      var b = M.bars[key]; if (b.t > t) return;
+      var xy = proj(v, b.lat, b.lng), age = (t - b.t) / 60e3, pop = red ? 1 : Math.min(1, 0.6 + age / 10);
+      cx.fillStyle = "#222e48"; cx.strokeStyle = "#ffc24d"; cx.lineWidth = 2;
+      cx.beginPath(); cx.arc(xy[0], xy[1], 9 * pop, 0, Math.PI * 2); cx.fill(); cx.stroke();
+      cx.font = "600 11px 'Chakra Petch', sans-serif"; cx.fillStyle = "#eef0ec"; cx.shadowColor = "#000"; cx.shadowBlur = 3;
+      cx.fillText(b.name.length > 22 ? b.name.slice(0, 21) + "…" : b.name, xy[0] + 12, xy[1] + 4); cx.shadowBlur = 0;
+    });
+    // people
+    M.order.forEach(function (k) {
+      var m = M.mem[k], s = posAt(m, t); if (!s || s.end) return;
+      var xy = proj(v, s.lat, s.lng);
+      cx.fillStyle = "#0a0f1c"; cx.strokeStyle = m.color; cx.lineWidth = 3; cx.beginPath(); cx.arc(xy[0], xy[1], 10, 0, Math.PI * 2); cx.fill(); cx.stroke();
+      cx.font = "700 9px 'Chakra Petch', sans-serif"; cx.fillStyle = "#eef0ec"; cx.textAlign = "center"; cx.fillText(m.name.slice(0, 2), xy[0], xy[1] + 3); cx.textAlign = "left";
+    });
+    // photo pops (on that person's safe position)
+    M.photos.forEach(function (p) {
+      var age = (t - p.t) / 60e3; if (age < 0 || age > 25) return;
+      var s = posAt(M.mem[p.k], p.t); if (!s) return;
+      var xy = proj(v, s.lat, s.lng), k = red ? 1 : Math.max(0, 1 - age / 25), sz = 14 + 10 * k;
+      cx.globalAlpha = Math.max(0.15, k); cx.font = sz + "px sans-serif"; cx.textAlign = "center"; cx.fillText("📸", xy[0] + 12, xy[1] - 12); cx.textAlign = "left"; cx.globalAlpha = 1;
+    });
+    // header
+    cx.fillStyle = "#ffc24d"; cx.font = "22px 'Black Ops One', Impact, sans-serif"; cx.fillText("Kvällsrepris", 16, 40);
+    cx.fillStyle = "#c9d0cd"; cx.font = "600 13px 'Chakra Petch', sans-serif"; cx.fillText((M.d.group_name ? M.d.group_name + " · " : "") + dayLabel(M.d.evening), 16, 62);
+    cx.fillStyle = "#eef0ec"; cx.font = "26px 'Black Ops One', Impact, sans-serif"; cx.textAlign = "right"; cx.fillText(hm(t), W0 - 16, 96); cx.textAlign = "left";   // under the ✕
+    // legend
+    var lx = 16, ly = H0 - 50; cx.font = "600 12px 'Chakra Petch', sans-serif";
+    M.order.slice(0, 6).forEach(function (k) { var m = M.mem[k], w = cx.measureText(m.name).width; if (lx + w + 24 > W0 - 16) { lx = 16; ly += 18; }
+      cx.fillStyle = m.color; cx.beginPath(); cx.arc(lx + 5, ly - 4, 5, 0, Math.PI * 2); cx.fill(); cx.fillStyle = "#eef0ec"; cx.fillText(m.name, lx + 14, ly); lx += w + 26; });
+    cx.fillStyle = "rgba(238,240,236,.55)"; cx.font = "600 10px 'Chakra Petch', sans-serif"; cx.fillText("PintsNow · bara gruppen · aldrig hemadresser", 16, H0 - 20);
+    // end card
+    if (ms > NIGHT_MS) {
+      var a = Math.min(1, (ms - NIGHT_MS) / 500); cx.fillStyle = "rgba(10,15,28," + (0.82 * a) + ")"; cx.fillRect(0, 0, W0, H0);
+      cx.globalAlpha = a; var sm = M.d.summary || {}, lines = [];
+      lines.push((sm.bars | 0) + ((sm.bars | 0) === 1 ? " krog" : " krogar") + " · " + (sm.members_out | 0) + ((sm.members_out | 0) === 1 ? " kompis" : " kompisar"));
+      if (M.photos.length) lines.push(M.photos.length + (M.photos.length === 1 ? " bild" : " bilder"));
+      var kr = null; try { kr = W("BOLD_KROG") && W("BOLD_KROG").data(); } catch (e) {}
+      if (kr && kr.last && kr.last.name) lines.push("👑 Kvällens krog: " + kr.last.name);
+      cx.textAlign = "center"; cx.fillStyle = "#ffc24d"; cx.font = "34px 'Black Ops One', Impact, sans-serif"; cx.fillText("Vilken kväll.", W0 / 2, H0 / 2 - 50);
+      cx.fillStyle = "#eef0ec"; cx.font = "700 17px 'Chakra Petch', sans-serif";
+      lines.forEach(function (l, i) { cx.fillText(l, W0 / 2, H0 / 2 + i * 28); });
+      cx.fillStyle = "#c9d0cd"; cx.font = "600 12px 'Chakra Petch', sans-serif"; cx.fillText("PintsNow", W0 / 2, H0 / 2 + lines.length * 28 + 24);
+      cx.textAlign = "left"; cx.globalAlpha = 1;
+    }
+  }
+  function hexA(h, a) { var n = parseInt(h.slice(1), 16); return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")"; }
+  function lighten(h) { var n = parseInt(h.slice(1), 16), f = function (c) { return Math.round(c + (255 - c) * 0.55); }; return "rgb(" + f(n >> 16 & 255) + "," + f(n >> 8 & 255) + "," + f(n & 255) + ")"; }
+
+  /* ---------- player ---------- */
+  function close() {
+    if (!P) return;
+    cancelAnimationFrame(P.raf); try { if (P.rec && P.rec.state !== "inactive") P.rec.stop(); } catch (e) {}
+    P.ov.remove(); document.body.classList.remove("brp-on"); P = null;
+  }
+  function recType() {
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return "";
+    var c = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    for (var i = 0; i < c.length; i++) { try { if (MediaRecorder.isTypeSupported(c[i])) return c[i]; } catch (e) {} }
+    return "";
+  }
+  function saveBlob(b, name) {
+    var f = null; try { f = new File([b], name, { type: b.type }); } catch (e) {}
+    if (f && navigator.canShare && navigator.canShare({ files: [f] })) return navigator.share({ files: [f], title: "Kvällsrepris" }).catch(function () {});
+    var u = URL.createObjectURL(b), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 5000);
+  }
+  function play(d, photos, gid) {
+    close();
+    var M = model(d, photos); if (!M.order.length) { A.toast("📼 Inga spår från gruppen igår. Ingen film att visa."); return; }
+    var v = view(M.pts);
+    var ov = el("div", "brp-ov"); ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", "Kvällsrepris");
+    var cv = el("canvas", "brp-cv"); cv.width = W0 * SC; cv.height = H0 * SC; cv.setAttribute("role", "img");
+    cv.setAttribute("aria-label", "Kvällsrepris: " + M.order.map(function (k) { return M.mem[k].name; }).join(", "));
+    var x = el("button", "brp-x", ic("x", "")); x.type = "button"; x.setAttribute("aria-label", "Stäng");
+    var ctl = el("div", "brp-ctl"), pp = el("button", "brp-pp", ic("pause", "") + "<span>Paus</span>"), sl = el("input", "brp-sl");
+    pp.type = "button"; sl.type = "range"; sl.min = "0"; sl.max = "1000"; sl.value = "0"; sl.setAttribute("aria-label", "Tid i filmen");
+    var rt = recType(), save = el("button", "brp-save btn btn-amber", ic(rt ? "download" : "image", "") + "<span>" + (rt ? "Spara som video" : "Spara bild") + "</span>"); save.type = "button";
+    var hide = el("button", "brp-hide", "Ta bort mig från reprisen"); hide.type = "button";
+    var row = el("div", "brp-row"); row.appendChild(pp); row.appendChild(sl);
+    ctl.appendChild(row); ctl.appendChild(save); ctl.appendChild(hide);
+    ov.appendChild(cv); ov.appendChild(x); ov.appendChild(ctl);
+    document.body.appendChild(ov); document.body.classList.add("brp-on");
+    var cx = cv.getContext("2d");
+    P = { ov: ov, raf: 0, ms: 0, playing: true, last: performance.now(), bg: null, rec: null, M: M, v: v };
+    loadBg(bgUrl(v)).then(function (img) { if (P && P.ov === ov) { P.bg = img; draw(cx, M, v, img, P.ms); } });
+    function frame(now) {
+      if (!P || P.ov !== ov) return;
+      if (P.playing) { P.ms = Math.min(TOTAL, P.ms + (now - P.last)); sl.value = String(Math.round(P.ms / TOTAL * 1000)); }
+      P.last = now; draw(cx, M, v, P.bg, P.ms);
+      if (P.ms >= TOTAL && P.playing && !P.rec) { P.playing = false; setPP(); }
+      P.raf = requestAnimationFrame(frame);
+    }
+    function setPP() { pp.innerHTML = ic(P.playing ? "pause" : "play", "") + "<span>" + (P.playing ? "Paus" : (P.ms >= TOTAL ? "Igen" : "Spela")) + "</span>"; }
+    pp.addEventListener("click", function () { if (!P || P.rec) return; if (P.ms >= TOTAL) P.ms = 0; P.playing = !P.playing; P.last = performance.now(); setPP(); });
+    sl.addEventListener("input", function () { if (!P || P.rec) return; P.ms = (+sl.value || 0) / 1000 * TOTAL; P.playing = false; setPP(); });
+    x.addEventListener("click", close);
+    hide.addEventListener("click", function () {
+      if (!gid) return; hide.disabled = true;
+      A.rpc("bold_replay_hide_me", { p_group_id: gid, p_on: true }).then(function (r) {
+        if (r.error) { hide.disabled = false; A.toast("Det gick int' just nu. Prova igen.", { err: true }); return; }
+        log("hide"); A.toast("👻 Du syns int' i gruppens repris från igår."); close(); start(gid);
+      });
+    });
+    save.addEventListener("click", function () {
+      if (!P || P.rec) return;
+      if (!rt) { P.ms = TOTAL; draw(cx, M, v, P.bg, TOTAL); cv.toBlob(function (b) { if (b) saveBlob(b, "kvallsrepris.png"); }, "image/png"); log("save", { k: "png" }); return; }
+      var chunks = [], st = cv.captureStream(30), rec;
+      try { rec = new MediaRecorder(st, { mimeType: rt, videoBitsPerSecond: 4e6 }); } catch (e) { A.toast("Video gick int' att spela in här.", { err: true }); return; }
+      P.rec = rec; save.disabled = true; save.querySelector("span").textContent = "Spelar in… 15 s"; pp.disabled = true; sl.disabled = true;
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = function () {
+        var b = new Blob(chunks, { type: rt.split(";")[0] });
+        if (P && P.ov === ov) { P.rec = null; save.disabled = false; save.querySelector("span").textContent = "Spara som video"; pp.disabled = false; sl.disabled = false; setPP(); }
+        try { window.__brpLast = b; } catch (e) {}
+        log("save", { k: rt.split(";")[0], kb: Math.round(b.size / 1024) });
+        saveBlob(b, "kvallsrepris." + (/mp4/.test(rt) ? "mp4" : "webm"));
+      };
+      P.ms = 0; P.playing = true; P.last = performance.now(); setPP(); rec.start(500);
+      setTimeout(function () { try { if (rec.state !== "inactive") rec.stop(); } catch (e) {} }, TOTAL + 400);
+    });
+    P.raf = requestAnimationFrame(frame);
+    log("play", { n: M.order.length, pts: M.pts.length, ph: M.photos.length });
+  }
+  function start(gid) {
+    if (!on() || !A || !gid) return false;
+    Promise.all([A.rpc("crew_replay", { p_group_id: gid }), A.rpc("bold_replay_photos", { p_group_id: gid })]).then(function (rs) {
+      var r = rs[0], d = r && !r.error ? A.parseData(r.data) || {} : null;
+      if (!d) { A.toast("Det gick int' att hämta reprisen.", { err: true }); return; }
+      if (!d.available) { A.toast(d.empty ? "📼 Inga spår från gruppen igår. Ingen film att visa." : "📼 Reprisen öppnar 05:00 dagen efter och ä öppen till 18:00."); return; }
+      var ph = rs[1] && !rs[1].error ? (A.parseData(rs[1].data) || {}).photos || [] : [];
+      try { A.closeSheet(); } catch (e) {}
+      setTimeout(function () { play(d, ph, gid); }, 200);
+    });
+    return true;
+  }
+  // The morning card: "▶ Spela gårdagens kväll" for the first group that has a replay.
+  function morningButton(row) {
+    if (!on() || !A || !row) return;
+    A.rpc("my_groups").then(function (r) {
+      var gs = (r && !r.error && Array.isArray(r.data) ? r.data : []).filter(function (g) { return g && g.id && !g.dm; }).slice(0, 4);
+      (function next(i) {
+        if (i >= gs.length) return;
+        A.rpc("crew_replay", { p_group_id: gs[i].id }).then(function (q) {
+          var d = q && !q.error ? A.parseData(q.data) || {} : {};
+          if (!d.available) return next(i + 1);
+          if (!document.body.contains(row)) return;
+          var b = el("button", "btn btn-amber brp-morning", ic("play", "") + "<span>Spela gårdagens kväll</span>"); b.type = "button";
+          b.addEventListener("click", function () { start(gs[i].id); });
+          row.insertBefore(b, row.firstChild);
+        });
+      })(0);
+    });
+  }
+  // Push tap (replay_ready): ?replay=<group id> → the film after sign-in.
+  var linkGid = null;
+  try { var q = new URLSearchParams(location.search).get("replay"); if (q && /^[0-9a-f-]{36}$/i.test(q)) linkGid = q; } catch (e) {}
+  function openLink() {
+    if (!linkGid || !on()) return; var g = linkGid; linkGid = null;
+    try { var ps = new URLSearchParams(location.search); ps.delete("replay"); history.replaceState(history.state, "", location.pathname + (ps.toString() ? "?" + ps : "") + location.hash); } catch (e) {}
+    start(g);
+  }
+  var feat = { key: KEY, init: function (api) { A = api; }, onAuthed: function () { setTimeout(openLink, 1500); },
+    onFlags: function () { if (!on()) close(); else setTimeout(openLink, 500); } };
+  window.BOLD_REPLAY = { start: start, morningButton: morningButton, close: close, _play: function (d, ph, gid) { play(d, ph, gid); }, _model: model, _view: view };
+  if (W("BOLD")) W("BOLD").add(feat);
+})();

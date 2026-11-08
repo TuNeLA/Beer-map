@@ -10,12 +10,16 @@
       Not in ghost mode; inside the home zone only "home" (no coordinates). One short notice the first time.
    Server flag pn_log_flags.beta_logging: on (beta: A + B on by default) | optin (store: only errors unless the user says yes
    on one screen) | off (errors only) | none. Store builds (OLNU_STORE) act as optin.
-   Public: window.PNLOG = { event(name, props), loc(kind, data), flush(), state(), settingsSheet, init, onAuthed, _cfg }. */
+   Public: window.PNLOG = { event(name, props), loc(kind, data), flush(), state(), settingsSheet, init, onAuthed, _cfg }.
+   LX (2026-11-08): every event has a class (evCls()): err | KEEP (diagnostics: device, crash, network, speed) | USE (usage) |
+   HEAVY (high-volume usage: taps, sub-views, map camera, auto check-in evaluations). Mode on = all; optin = err + KEEP, and
+   USE + HEAVY only after "Ja"; lite = err + KEEP; off = err only; none = nothing. Server flag heavy = off drops HEAVY.
+   js/pnlog-hooks.js (window.PNLOG_HOOKS) adds the outside hooks; it gets the app api from init(). */
 (function () {
   "use strict";
   var CFG = window.OLNU_CONFIG || {};
-  var K_EV = "olnu.logEv", K_LOC = "olnu.logLoc", K_NOTE = "olnu.logNote", K_CONS = "olnu.logCons", K_MODE = "olnu.logMode";
-  var FLUSH_MS = 60e3, MAX_BATCH = 200, MAX_Q = 400, MAX_L = 60, FIX_MS = 55e3, OWN_FIX_MS = 60e3;
+  var K_EV = "olnu.logEv", K_LOC = "olnu.logLoc", K_NOTE = "olnu.logNote", K_CONS = "olnu.logCons", K_MODE = "olnu.logMode", K_HEAVY = "olnu.logHeavy";
+  var FLUSH_MS = 60e3, MAX_BATCH = 280, MAX_Q = 1500, MAX_L = 60, FIX_MS = 55e3, OWN_FIX_MS = 60e3;
   var A = null, T0 = Date.now(), sess = rnd(), sq = 0, Q = [], L = [], dropped = 0, dead = false;
   var selfMs = 0, sent = 0, lastFlush = 0, flushing = false, lastDown = 0, lastFixAt = 0, lastFix = null, errSeen = {};
   var rpcAgg = {}, longN = 0, longMs = 0, cls = 0, lcp = 0, hiddenAt = 0, visStart = Date.now(), screen = "map", sheetAt = 0, mapAt = 0;
@@ -23,8 +27,21 @@
   var TITLES = /*PNLOG_TITLES*/["Byt namn", "Chefens val", "Din inloggning gick ut", "Ditt namn (anropssignal)", "Eventet", "Flytta konto", "God morgon!", "Grupper", "Gå med", "Ikväll?", "Kvällens uppdrag", "Lägg PintsNow på hemskärmen", "Mer på kartan", "Min karaktär", "Mina ställen", "PintsNow", "Profil", "Rapportera erbjudande", "Rapportera fel", "Rita krogrunda", "Skapa grupp", "Sluta dricka", "Topplista ikväll", "Truppen", "Var dricker du? 🍺", "Vem går du ut med?", "Vilken grupp delar taxin?", "gruppen", "☀️ Uteväder", "⚔️ Duell · {0}", "⚔️ {0} utmanar er!", "✉️ Byt e-post", "✏️ Entré-info", "➕ Bjud in", "➕ Lägg till ställe här", "🆘 Hämta mig", "🌅 Kom alla hem?", "🌭 Nattmat öppet nu", "🌯 Kebabtoppen", "🌯 Öppet nu", "🍻 Skåltimmen", "🍾 Systemet", "🎁 Öl Wrapped · …", "🎉 Förfestläget", "🎉 Skoj & överraskningar", "🎖️ Hur får jag meriter?", "🎖️ Medaljceremonin", "🎖️ Min uniform", "🎖️ Uniform", "🎖️ …", "🎞️ Engångskameran", "🎲 Vem fixar nästa?", "🎵 Spotify Jam – du ä DJ:n", "🏠 Följ mig hem", "🏠 Hemzon", "👑 Roller", "👥 Vänner & 🧭 Hitta", "💰 Rapportera pris", "📊 Din kväll", "📊 Min kväll", "📋 Lägesrapport", "📍 Din hemstad", "📍 Kom hit!", "📍 Ställen nära dig", "📣 Tipsa gruppen", "📥 Jag har en flyttkod", "📨 Bjud in", "📨 Bjud in fler", "📨 Inbjudan", "📨 Skapa event här", "📰 Kvällens tidning", "📱 Mitt Swish-nummer", "📲 Bjud in vänner", "📸 Engångskamera", "📸 Vem fotar ikväll?", "🔐 Spara kontot", "🔑 Logga in", "🔒 Integritet", "🔔 Vet när gänget drar ut", "🔥 Helgstreak", "🕐 När stänger dom ikväll?", "🗂️ Tidigare event", "🗑️ Radera mitt konto", "🗺️ …", "🚑 Kompisvakt", "🚕 Dela taxin", "🚕 Hemfärd", "🚕 Ta dig hem säkert", "🚪 Logga ut", "🛂 Ölpasset", "🟢 Ute nu i ", "🤕 Bakisrapporten", "🤝 Bli vänner?", "🥃 Sidospår", "🧢 Kapsylsamlingen", "🧭 Hitta ", "🧭 Hitta kompisen", "🧭 Vem vill du hitta?", "🪖 Inkallelse", "Hjälp till?"]/*END*/;   // known sheet titles (exact) and title prefixes ("…" at the end), made by the patch script
 
   function rnd() { var s = ""; for (var i = 0; i < 10; i++) s += "abcdefghijkmnpqrstuvwxyz23456789".charAt(Math.floor(Math.random() * 32)); return s; }
-  function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  var LSC = {};   // LX: our switches are read for every event → a memory copy (no storage read in the tap path)
+  function own(k) { return k.indexOf("olnu.log") === 0; }
+  function ls(k) {
+    if (own(k) && Object.prototype.hasOwnProperty.call(LSC, k)) return LSC[k];
+    var v = null; try { v = localStorage.getItem(k); } catch (e) {}
+    if (own(k)) LSC[k] = v;
+    return v;
+  }
+  function lsSet(k, v) {
+    v = v == null ? null : String(v);
+    if (own(k) && Object.prototype.hasOwnProperty.call(LSC, k) && LSC[k] === v) return;   // no write when nothing changed
+    LSC[k] = v;
+    try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {}
+  }
+  window.addEventListener("storage", function (e) { if (e.key == null) LSC = {}; else if (own(e.key)) delete LSC[e.key]; });
   function pnow() { return window.performance && performance.now ? performance.now() : Date.now(); }
   function store() {   // config.js sets OLNU_STORE (big-update); the live app (main) may not have it yet: same test as safety.js
     if (window.OLNU_STORE != null) return !!window.OLNU_STORE;
@@ -35,18 +52,41 @@
     if (store() && m === "on") m = "optin";
     return m;
   }
-  function cons() { return ls(K_CONS) === "1"; }
+  var betaC = null;
+  function isBeta() { if (betaC === null || betaC === false && document.readyState === "loading") { try { betaC = !!(window.PN_BETA || document.getElementById("olnu-beta")); } catch (e) { betaC = false; } } return betaC; }
+  function cons() { return ls(K_CONS) === "1" || isBeta(); }
   function fullOn() {   // usage events
-    var m = mode(); if (m === "none" || m === "off") return false;
+    var m = mode(); if (m !== "on" && m !== "optin") return false;
     if (ls(K_EV) === "0") return false;
     return m === "on" || cons();
   }
   function locOn() {
-    var m = mode(); if (m === "none" || m === "off") return false;
+    var m = mode(); if (m !== "on" && m !== "optin") return false;
     if (ls(K_LOC) === "0") return false;
+    if (!locAllowed()) return false;
     return m === "on" || cons();
   }
+  function locAllowed() {   // LX: the user said yes to location in the app and the browser still allows it
+    var ok = false; try { ok = localStorage.getItem("olnu.locOk") === "1"; } catch (e) {}
+    if (!ok) return false;
+    return permOk || permState === "na";
+  }
   function errOn() { return mode() !== "none"; }
+  function keepOn() { var m = mode(); return m === "on" || m === "optin" || m === "lite"; }   // diagnostics, also when usage is off
+  function heavyOn() { return fullOn() && ls(K_HEAVY) !== "0"; }
+  // LX classes. KEEP = crash / error context / device / network / speed (no usage, no position). HEAVY = high volume usage.
+  var KEEP_RE = /^(crash\.|dev$|dev\.|net\.|sw\.|perf\.(boot|load|fcp|lcp|cls|long|map|rpc|self|inp|ft|mem)$)/;
+  var HEAVY_RE = /^(tap$|tap\.|sheet\.view$|map\.cam$|perf\.sheet$|set\.ls$|ac\.eval$)/;
+  function evCls(n) { return n.indexOf("err.") === 0 ? "err" : KEEP_RE.test(n) ? "keep" : HEAVY_RE.test(n) ? "heavy" : "use"; }
+  function allowed(c) { return c === "err" ? errOn() : c === "keep" ? keepOn() : c === "heavy" ? heavyOn() : fullOn(); }
+  var crumbs = [];   // the last 10 actions (screen:key) → bc on errors (only when usage logging is on)
+  function crumb(x) { crumbs.push([x, pnow()]); if (crumbs.length > 10) crumbs.shift(); }
+  function crumbStr() {   // oldest → newest, "screen:key~seconds before the error"
+    var s = "", now = pnow();
+    for (var i = crumbs.length - 1; i >= 0; i--) { var n = crumbs[i][0] + "~" + Math.min(999, Math.round((now - crumbs[i][1]) / 1000)) + (s ? ">" + s : ""); if (n.length > 140) break; s = n; }
+    return s;
+  }
+  function H(fn) { try { var h = window.PNLOG_HOOKS; return h && h[fn] ? h[fn].apply(null, [].slice.call(arguments, 1)) : null; } catch (e) { return null; } }
   function ch() {
     if (store()) return "store";
     try { if (window.PN_BETA || document.getElementById("olnu-beta")) return "beta"; } catch (e) {}
@@ -70,7 +110,7 @@
       var v = p[k];
       if (typeof v === "number") { if (isFinite(v)) { o[k] = Math.round(v * 100) / 100; n++; } }
       else if (typeof v === "boolean") { o[k] = v; n++; }
-      else if (typeof v === "string") { o[k] = scrub(v, k === "m" ? 140 : 64); n++; }
+      else if (typeof v === "string") { o[k] = k === "c" && /^[A-Z0-9_]{1,10}$/i.test(v) ? v : scrub(v, k === "m" || k === "bc" ? 140 : 64); n++; }   // c = error code (42883, PGRST202): keep digits
     });
     return o;
   }
@@ -78,12 +118,11 @@
   /* ---------- queue ---------- */
   function push(name, p, force) {
     if (dead) return;
-    var isErr = name.indexOf("err.") === 0;
-    if (!(isErr ? errOn() : fullOn()) && !force) return;
+    if (!allowed(evCls(name)) && !force) return;
     var t = pnow();
     Q.push({ at: Date.now(), n: name, p: clean(p) });
     if (Q.length > MAX_Q) {   // memory cap: drop the oldest taps first, then the oldest of anything
-      var i = 0; while (i < Q.length && Q[i].n !== "tap") i++;
+      var i = 0; while (i < Q.length && evCls(Q[i].n) !== "heavy") i++;
       Q.splice(i < Q.length ? i : 0, 1); dropped++;
     }
     if (Q.length >= MAX_BATCH) soon();
@@ -148,7 +187,7 @@
   function flush(beacon) {
     if (dead || flushing && !beacon) return Promise.resolve(false);
     var t = pnow();
-    if (!beacon && Date.now() - lastSum > 600e3) { rpcSummary(); lastSum = Date.now(); }   // RPC timings: every 10 min + at hide
+    if (!beacon && Date.now() - lastSum > 600e3) { rpcSummary(); H("summary", false); lastSum = Date.now(); }   // RPC timings + hook summaries: every 10 min + at hide
     if (!Q.length && !L.length) return Promise.resolve(false);
     var tok = token();
     if (!tok || !CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return Promise.resolve(false);   // no account yet: keep the events (capped)
@@ -167,6 +206,7 @@
     return fetch(url, opt).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       flushing = false;
       if (d && d.mode) { lsSet(K_MODE, d.mode); if (d.mode === "none") { dead = true; Q = []; L = []; } }
+      if (d && d.heavy != null) lsSet(K_HEAVY, d.heavy === false || d.heavy === "off" ? "0" : null);
       if (d && d.ok === false && d.reason === "too_soon") { Q = x.evs.concat(Q).slice(-MAX_Q); L = x.locs.concat(L).slice(-240); }
       return !!d;
     }, function () { flushing = false; Q = x.evs.concat(Q).slice(-MAX_Q); L = x.locs.concat(L).slice(-240); return false; });
@@ -179,7 +219,8 @@
     if (cls) push("perf.cls", { v: Math.round(cls * 1000) / 1000 });
     if (lcp) { push("perf.lcp", { v: Math.round(lcp) }); lcp = 0; }
     if (longN) { push("perf.long", { v: Math.round(longMs), n: longN }); longN = 0; longMs = 0; }
-    push("perf.self", { v: Math.round(selfMs * 10) / 10 });
+    H("summary", true);
+    push("perf.self", { v: Math.round(selfMs * 10) / 10, pct: Math.round(selfMs / Math.max(1000, pnow()) * 1e4) / 100 });
     rpcSummary();
     flush(true);
   }
@@ -210,7 +251,7 @@
     var t = pnow();
     try {
       var el = e.target && e.target.closest ? e.target.closest("button, a, [role=button], [role=switch], [role=tab], .pill, input, select, label, [data-pn], [data-act], [data-hx]") : null;
-      if (el) push("tap", { s: screen, k: keyOf(el) });
+      if (el) { var tk = keyOf(el); push("tap", { s: screen, k: tk }); crumb(screen + ":" + tk); }
     } catch (x) {}
     selfMs += pnow() - t;
   }, { capture: true, passive: true });
@@ -239,21 +280,30 @@
   function watchSheet() {
     var sh = document.getElementById("sheet"), ti = document.getElementById("sheet-title");
     if (!sh || sh._pnlog) return; sh._pnlog = 1;
-    var open = false, cur = "";
+    var open = false, cur = "", scrAt = Date.now();
+    var closeP = function (s) {
+      var p = { s: s, sec: Math.round((Date.now() - sheetAt) / 1000) }, x = H("closeInfo", Date.now() - sheetAt);
+      if (x) for (var k in x) p[k] = x[k];
+      return p;
+    };
     var check = function () {
       var isOpen = !sh.hidden;
       var key = isOpen ? titleKey(ti && ti.textContent) : "";
       if (isOpen && (!open || key !== cur)) {
-        if (open) push("sheet.close", { s: cur, sec: Math.round((Date.now() - sheetAt) / 1000) });
-        open = true; cur = key; sheetAt = Date.now(); screen = key;
+        if (open) push("sheet.close", closeP(cur));
+        var fr = screen, dw = Math.round((Date.now() - scrAt) / 1000);
+        open = true; cur = key; sheetAt = Date.now(); screen = key; scrAt = Date.now();
+        crumb(">" + key);
         var ms = lastDown && pnow() - lastDown < 3000 ? Math.round(pnow() - lastDown) : null;
-        var bk = bodyKey(), p = { s: key }; if (bk) p.k = bk; if (ms != null) { p.ms = ms; }
+        var bk = bodyKey(), p = { s: key, fr: fr, dw: dw }; if (bk) p.k = bk; if (ms != null) { p.ms = ms; }
         push("sheet.open", p);
+        H("onSheet", true, key);
         if (ms != null) push("perf.sheet", { s: key, v: ms });
         if (/Integritet/.test(ti && ti.textContent || "")) setTimeout(privBlock, 0);
       } else if (!isOpen && open) {
-        push("sheet.close", { s: cur, sec: Math.round((Date.now() - sheetAt) / 1000) });
-        open = false; cur = ""; screen = "map";
+        push("sheet.close", closeP(cur));
+        open = false; cur = ""; screen = "map"; scrAt = Date.now();
+        H("onSheet", false, "");
       }
     };
     new MutationObserver(check).observe(sh, { attributes: true, attributeFilter: ["hidden"] });
@@ -265,14 +315,17 @@
     var m = mode();
     if (m === "none") return null;
     if (m === "off") return ["Felrapporter (fel i appen, appversion, ingen position) sparas i 30 dagar för att hitta buggar."];
+    var tech = "Felrapporter och teknisk data: fel i appen, appversion, system och webbläsare, nät (fel, typ, hastighet) och hur snabb appen ä. Ingen position, inga texter, inga namn.";
+    if (m === "lite") return [tech + " Sparas i 30 dagar för att hitta buggar."];
     var pre = m === "on" ? "Under betan, om du int' stänger av det: " : "Bara om du har sagt ja: ";
-    return [pre + "vad du trycker på, vilka menyer du öppnar, fel och hur snabb appen ä. Inga texter, inga namn.",
+    return [pre + "vad du trycker på, vilka menyer och flikar du öppnar och hur länge, hur du använder kartan (zoom, och vilket område du tittar på – avrundat till ca 1 km, aldrig nära hemmet), vilka funktioner och spel du använder, notiser, installation, telefonmodell, minne, skärm och batterinivå. Inga texter, inga namn.",
       pre + "din position max 1 gång/min när appen ä öppen, och dina in- och utcheckningar – för att göra automatisk incheckning bättre. Inte i spökläge, inte i hemzonen.",
+      "Alltid (också om du stänger av): " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Vid ett fel skickas dina senaste knapptryck med, bara om användning ä på.",
       "Sparas i 30 dagar, sen tas det bort. Bara vi (PintsNow) ser det. Inga andra företag.",
-      "Stäng av i ⚙️ Inställningar → Integritet. Stänger du av positionen tar vi bort det sparade. Felrapporter (utan position) skickas alltid."];
+      "Stäng av i ⚙️ Inställningar → Integritet. Stänger du av positionen tar vi bort det sparade."];
   }
-  function privBlock() {
-    var b = document.getElementById("sheet-body"); if (!b || b.querySelector(".pnlog-priv") || !A || !A.el) return;
+  function privBlock(into) {
+    var b = into && into.nodeType ? into : document.getElementById("sheet-body"); if (!b || b.querySelector(".pnlog-priv") || !A || !A.el) return;
     var items = privText(); if (!items) return;
     var box = A.el("div", { class: "pnlog-priv" }, [A.el("h3", { text: "📊 Användning och position" }),
       A.el("ul", { class: "priv-list" }, items.map(function (x) { return A.el("li", { text: x }); }))]);
@@ -284,7 +337,11 @@
   function errOnce(name, p) {
     var k = name + (p.m || "") + (p.f || "");
     errSeen[k] = (errSeen[k] || 0) + 1;
-    if (errSeen[k] <= 3) push(name, p);
+    if (errSeen[k] <= 3) {
+      p.s = screen; p.age = Math.round(pnow() / 1000);
+      if (fullOn() && crumbs.length) p.bc = crumbStr();
+      push(name, p); H("onErr", name);
+    }
   }
   window.addEventListener("error", function (e) {
     if (!e || e.target && e.target !== window && e.target.tagName) return;   // a broken image etc. is not an app error
@@ -296,7 +353,15 @@
   });
 
   /* ---------- RPCs: wrap the supabase client once (never runs a request twice) ---------- */
-  var FEATURE = /^(post_|check_in|check_out|join_|ev_join|ev_preview|create_|skal|react|set_|add_|report_|send_|rally|invite|stop_beer|undo|guess_|vote|pickup|skjuts|delete_my|account_|film_|party_|spel_)/;
+  // LX: every RPC that is NOT a read / poll / ping is an action → "rpc" event (previews stay: invite funnel)
+  var READ = /^(live_|my_|poll|heat_|zone_|near_|ghost_points|friend_suggest$|rnd_me$|gang_paper|kebab_place|user_places|avatars_|beer_reactions|beer_type_stats|friend_totals|friend_list|friend_code_info|member_medals|group_(msgs|now|status|status_v2|status_v3|league|photos|voices|friend_states|night_story)$|events_(near|going)$|city_league|kebab_top|top_wishes|bars_gone|bar_(areas_in|extra|kings|norm|photos|prices_in|regulars|sport_near|status)$|safety_state|report_queue|award_medals|medevac_checks|meriter_board|msg_reacts|home_status|request_status|suggest_club_info|user_places|voice_audio|drivers_for|ikvall_(status|prompt_get)$|knuff_inbox|invite_get|duel_(poll|nearby|token_info)$|(game|gang|spel|party|crew|rnd|squad|event|ceremony)_group$|.*_(poll|state|mine|ping|tick)$|mark_seen|dm_seen|record_bar|report_vitals|note_takeover|pnlog_)/;
+  var RL = [];
+  function actArg(p) {   // a short enum argument of the call (act / reason / answer …), never free text
+    if (!p) return "";
+    var ks = ["p_act", "p_reason", "p_kind", "p_answer", "p_ans", "p_mode", "p_status", "p_game", "p_event", "p_type", "p_on"];
+    for (var i = 0; i < ks.length; i++) { var v = p[ks[i]]; if (typeof v === "boolean") return v ? "on" : "off"; if (typeof v === "string" && /^[a-z][a-z0-9_-]{0,15}$/.test(v)) return v; }
+    return "";
+  }
   function wrapClient() {
     var c = null; try { c = A && A.client ? A.client() : null; } catch (e) {}
     if (!c || typeof c.rpc !== "function" || c.rpc._pnlog) return;
@@ -322,7 +387,14 @@
     var d = null; try { d = !err && A && A.parseData ? A.parseData(r.data) : null; } catch (e) {}
     var ok = !err && !(d && d.ok === false);
     if (err) errOnce("err.rpc", { fn: fn, c: String(err.code || err.message || "error").slice(0, 40) });
-    if (FEATURE.test(fn) && !/(_mine|_state|_status|_poll|_list|_get|_feed|_group)$/.test(fn)) push("rpc", { fn: fn, ok: ok, ms: Math.round(ms) });
+    if (!READ.test(fn)) {
+      var rp = { fn: fn, ok: ok, ms: Math.round(ms) }, aa = actArg(params);
+      if (aa) rp.a = aa;
+      if (fn === "check_in") rp.src = acSrc && Date.now() - acSrc.at < 8000 ? acSrc.s : "hand";
+      if (!ok) rp.r = String(err ? err.code || "error" : d && (d.reason || d.error || d.code) || "no").slice(0, 24);
+      push("rpc", rp); crumb("rpc:" + fn + (ok ? "" : "!"));
+    }
+    for (var li = 0; li < RL.length; li++) { try { RL[li](fn, params || {}, d, ok, ms); } catch (x) {} }
     if (!ok) return;
     params = params || {};
     if (fn === "check_in") locRow("ci", withFix({ b: params.p_bar_id, d: { src: autoSrc() } }));
@@ -351,12 +423,12 @@
     if (atHome(la, ln)) { locRow("fix", { d: { home: 1, src: src } }); return; }
     locRow("fix", { la: la, ln: ln, a: acc, d: { src: src } });
   }
-  var permOk = false, ownT = 0, asking = false;
+  var permOk = false, permState = "", ownT = 0, asking = false;
   function perm() {
     try {
-      if (!navigator.permissions || !navigator.permissions.query) return;
-      navigator.permissions.query({ name: "geolocation" }).then(function (p) { permOk = p.state === "granted"; p.onchange = function () { permOk = p.state === "granted"; }; }, function () {});
-    } catch (e) {}
+      if (!navigator.permissions || !navigator.permissions.query) { permState = "na"; return; }
+      navigator.permissions.query({ name: "geolocation" }).then(function (p) { permState = p.state; permOk = p.state === "granted"; p.onchange = function () { permState = p.state; permOk = p.state === "granted"; }; }, function () { permState = "na"; });
+    } catch (e) { permState = "na"; }
   }
   function ownSampler() {   // main (no autoci): one reading per minute while visible, only if already allowed
     if (ownT) return;
@@ -394,29 +466,64 @@
   /* ---------- notice (beta: info only) and the one-screen ask (store / optin) ---------- */
   var noted = false;
   function noticeOnce() {
-    if (noted || ls(K_NOTE) === "1" || mode() !== "on" || !A || !A.toast) return;
-    noted = true;
+    if (mode() !== "on" || !A || !A.toast || !fullOn() && !locOn()) return;
+    var kind = locOn() ? "loc" : "use";
+    if (kind === "loc" ? ls(K_NOTE) === "1" : ls(K_NOTE) === "1" || ls("olnu.logNoteUse") === "1") return;
+    if (noted === kind) return;
+    noted = kind;
     // wait for a calm moment: no sheet, no toast, no tap for 20 s (never on top of the ÖL! strip, a takeover or a question)
     var calmT = setInterval(function () {
       if (document.hidden || (A.sheetOpen && A.sheetOpen()) || pnow() - lastDown < 20000) return;
       var tb = document.getElementById("toasts"); if (tb && tb.children.length) return;
       if (document.querySelector(".takeover:not([hidden]), .mx-pop, .bt-strip:not([hidden]), #intro:not([hidden])")) return;
-      clearInterval(calmT); showNote();
+      clearInterval(calmT); showNote(kind);
     }, 5000);
   }
-  function showNote() {
-    if (ls(K_NOTE) === "1") return;
-    lsSet(K_NOTE, "1");
-    (function () {
-      try {
-        A.toast("Under betan sparar vi din position under kvällen för att förbättra incheckningen (30 dagar). Stäng av i Inställningar.",
-          { id: "pnlog-note", ms: 12000, cls: "pnlog-note", action: { label: "Ändra", fn: function () { var b = document.getElementById("btn-settings"); if (b) b.click(); } } });
-      } catch (e) {}
-      push("log.notice", {});
-    })();
+  function forgetLoc() {   // position log off + the saved rows emptied on the server (same as the switch in Inställningar)
+    lsSet(K_LOC, "0"); L = [];
+    var tok = token();
+    if (tok && CFG.SUPABASE_URL) {
+      try { fetch(CFG.SUPABASE_URL + "/rest/v1/rpc/pnlog_forget_loc", { method: "POST", credentials: "omit", headers: { "Content-Type": "application/json", apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + tok }, body: "{}" }).catch(function () {}); } catch (e) {}
+    }
+  }
+  function noteCard(text, label, fn, ms) {
+    var old = document.getElementById("pnlog-note"); if (old) old.remove();
+    var c = document.createElement("div"); c.id = "pnlog-note"; c.className = "pnlog-note"; c.setAttribute("role", "status");
+    c.style.cssText = "position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top, 0px) + 64px);z-index:2500;max-width:520px;margin:0 auto;" +
+      "background:var(--panel, #16202e);color:var(--text, #fff);border:1px solid var(--line-soft, #2a3a4f);border-radius:12px;padding:10px 12px;" +
+      "font-size:14px;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:8px";
+    var t = document.createElement("span"); t.textContent = text; c.appendChild(t);
+    var row = document.createElement("div"); row.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
+    var b1 = document.createElement("button"); b1.type = "button"; b1.className = "btn btn-small btn-amber pnlog-note-off"; b1.textContent = label;
+    var b2 = document.createElement("button"); b2.type = "button"; b2.className = "btn btn-small pnlog-note-ok"; b2.textContent = "OK";
+    b1.onclick = function () { c.remove(); fn(); }; b2.onclick = function () { c.remove(); };
+    row.appendChild(b1); row.appendChild(b2); c.appendChild(row);
+    document.body.appendChild(c);
+    setTimeout(function () { if (c.parentNode) c.remove(); }, ms || 12000);
+  }
+  function showNote(kind) {
+    kind = kind || (locOn() ? "loc" : "use");
+    if (ls(K_NOTE) === "1" || kind === "use" && ls("olnu.logNoteUse") === "1") return;
+    lsSet("olnu.logNoteUse", "1");
+    if (kind === "loc") lsSet(K_NOTE, "1");
+    // own card, NOT a toast: a toast with a button has the top rank in the app's toast queue and would hold back
+    // "Utcheckad …" and other answers for 15 s (found by the ac test)
+    try {
+      if (kind === "loc") {
+        noteCard("Under betan sparar vi din position (max 1 gång/min när appen är öppen) och vad du trycker på – i 30 dagar, för att göra appen och incheckningen bättre. Inga texter, inga namn. Mer i Inställningar → Integritet.",
+          "Stäng av position", function () {
+            forgetLoc(); push("log.notice_off", {});
+            try { A.toast("Av. Vi sparar inte din position, och det sparade är borttaget.", { id: "pnlog-set", ms: 3500 }); } catch (e) {}
+          }, 15000);
+      } else {
+        noteCard("Under betan sparar vi vad du trycker på och hur appen används (inga texter, inga namn, 30 dagar). Stäng av i Inställningar → Integritet.",
+          "Ändra", function () { var b = document.getElementById("btn-settings"); if (b) b.click(); }, 12000);
+      }
+    } catch (e) {}
+    push("log.notice", { k: kind });
   }
   function askOnce() {
-    if (mode() !== "optin" || ls(K_CONS) != null || !A || !A.openSheet || !A.authed || !A.authed()) return;
+    if (mode() !== "optin" || ls(K_CONS) != null || isBeta() || !A || !A.openSheet || !A.authed || !A.authed()) return;
     if (A.sheetOpen && A.sheetOpen()) return;
     if (pnow() - lastDown < 10000) return;
     var tb = document.getElementById("toasts"); if (tb && tb.children.length) return;
@@ -429,11 +536,11 @@
       body.classList.add("pnlog-ask");
       body.appendChild(el("p", { text: "Vill du hjälpa oss göra appen bättre? Då sparar vi:" }));
       var ul = el("ul", { class: "pnlog-list" });
-      ["Vad du trycker på i appen och hur snabb den är. Inga texter, inga namn.",
+      ["Vad du trycker på, vilka menyer du öppnar, hur du använder kartan och funktionerna, och hur snabb appen är. Inga texter, inga namn.",
         "Din position under kvällen (max 1 gång/min när appen är öppen) och dina in- och utcheckningar. Så kan vi göra automatisk incheckning bättre."]
         .forEach(function (t) { ul.appendChild(el("li", { text: t })); });
       body.appendChild(ul);
-      body.appendChild(el("p", { class: "muted", text: "Vi sparar det i 30 dagar. Ingen annan ser det. Du kan ändra dig när du vill i Inställningar." }));
+      body.appendChild(el("p", { class: "muted", text: "Vi sparar det i 30 dagar. Ingen annan ser det. Du kan ändra dig när du vill i Inställningar. Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid." }));
       var yes = el("button", { type: "button", class: "btn btn-amber btn-block pnlog-yes", text: "Ja, hjälp till" });
       var no = el("button", { type: "button", class: "btn btn-block pnlog-no", text: "Nej tack" });
       yes.addEventListener("click", function () { setCons(true); A.closeSheet(); A.toast("Tack! Du kan ändra det i Inställningar.", { id: "pnlog-ask", ms: 3000 }); });
@@ -468,12 +575,13 @@
     var evNow = m === "on" ? ls(K_EV) !== "0" : cons() && ls(K_EV) !== "0";
     var locNow = m === "on" ? ls(K_LOC) !== "0" : cons() && ls(K_LOC) !== "0";
     if (m === "off") { body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vi sparar bara felrapporter (utan position) just nu." })); return; }
+    if (m === "lite") { body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vi sparar bara felrapporter och teknisk data (system, nät, hastighet – utan position) just nu." })); return; }
     body.appendChild(swRow("Hjälp till att förbättra appen", evNow, "bulb", function (v) {
       lsSet(K_EV, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
-      if (!v) { Q = Q.filter(function (e) { return e.n.indexOf("err.") === 0; }); }
+      if (!v) { Q = Q.filter(function (e) { var c = evCls(e.n); return c === "err" || c === "keep"; }); }
       A.toast(v ? "Tack! Vi sparar hur appen används (inga texter, inga namn)." : "Av. Vi sparar bara felrapporter.", { id: "pnlog-set", ms: 3000 });
     }));
-    body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vad du trycker på och hur snabb appen är. Inga texter, inga namn. Sparas 30 dagar. Felrapporter (utan position) skickas alltid." }));
+    body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vad du trycker på, menyer, kartan (område avrundat ~1 km), funktioner och hur snabb appen är. Inga texter, inga namn. Sparas 30 dagar. Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid." }));
     body.appendChild(swRow("Spara position för bättre incheckning", locNow, "pin", function (v) {
       lsSet(K_LOC, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
       if (!v) {
@@ -514,18 +622,26 @@
 
   window.PNLOG = {
     init: function (api) {
-      A = api; wrapClient(); watchSheet(); opened(); mapReady();
+      A = api; wrapClient(); watchSheet(); opened(); mapReady(); perm();
+      H("init", api);
+      setTimeout(noticeOnce, 4000);   // first run: the notice also when no position is kept yet
       if (document.readyState === "complete") perfBoot(); else window.addEventListener("load", function () { setTimeout(perfBoot, 0); });
       if (!hookAutoci()) { setTimeout(hookAutoci, 3000); ownSampler(); }
       var tries = 0, askT = setInterval(function () { if (++tries > 20 || ls(K_CONS) != null || mode() !== "optin") { if (tries > 1 || mode() !== "optin") clearInterval(askT); return; } askOnce(); }, 20000);
     },
-    onAuthed: function () { wrapClient(); perm(); },
+    onAuthed: function () { wrapClient(); perm(); H("onAuthed"); },
     onPoll: function () { wrapClient(); },
     settingsSheet: settingsSheet,
     event: event,
     loc: function (kind, x) { try { if (/^(fix|eval|ask|answer|auto_in|auto_out|ci|co|beer|notice)$/.test(kind)) locRow(kind, x); } catch (e) {} },
     flush: function () { return flush(false); },
-    state: function () { return { q: Q.length, l: L.length, sent: sent, selfMs: Math.round(selfMs * 10) / 10, mode: mode(), full: fullOn(), loc: locOn(), sess: sess, screen: screen, dead: dead }; },
+    state: function () { return { q: Q.length, l: L.length, sent: sent, selfMs: Math.round(selfMs * 10) / 10, mode: mode(), full: fullOn(), loc: locOn(), keep: keepOn(), heavy: heavyOn(), authed: !!token(), sess: sess, screen: screen, dead: dead }; },
+    cls: evCls, allowed: function (c) { try { return allowed(c); } catch (e) { return false; } },
+    onRpc: function (fn) { if (typeof fn === "function" && RL.indexOf(fn) < 0) RL.push(fn); },
+    screen: function () { return screen; }, crumbs: function () { return crumbStr(); },
+    _key: keyOf, _bodyKey: bodyKey, _hide: hidePos, _privInto: function (b) { try { privBlock(b); } catch (e) {} }, _locAllowed: function () { return locAllowed(); }, _seen: function (fn, params, r, ms) { try { seen(fn, params, r, ms || 1); } catch (e) {} },
+    _self: function (ms) { if (ms > 0 && ms < 1000) selfMs += ms; },
+    _lsDirty: function (k) { delete LSC[k]; },
     _cfg: function (o) { if (o && o.fixMs != null) FIX_MS = o.fixMs; if (o && o.titles) TITLES = o.titles; return { FIX_MS: FIX_MS }; },
     _ask: function () { showAsk(); },
     _bye: bye,
