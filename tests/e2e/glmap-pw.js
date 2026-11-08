@@ -66,12 +66,14 @@ async function tapBar(page, wantFull) {
       // glfix: a dot under another bar's full pill image is not a fair dot tap
       if (!wantFull && GLBARS.rects && GLBARS.rects().some((r) => r.t1 && r.id !== p.id && x >= r.l && x <= r.r && y >= r.t && y <= r.b)) continue;
       const im = GLBARS._img(p.id); const pill = wantFull && im && im.parts.find((x) => x.sel === ".pill");
-      return { id: p.id, x: Math.round(x + (pill ? (pill.bb[0] + pill.bb[2]) / 2 : 0)), y: Math.round(y + (pill ? (pill.bb[1] + pill.bb[3]) / 2 : 0)), pill: !!pill };
+      const c = mk.options && mk.options.olnuC, name = (c && c.bar && c.bar.name) || (c && c.name) || "";
+      return { id: p.id, name, x: Math.round(x + (pill ? (pill.bb[0] + pill.bb[2]) / 2 : 0)), y: Math.round(y + (pill ? (pill.bb[1] + pill.bb[3]) / 2 : 0)), pill: !!pill };
     }
     return null;
   }, wantFull);
   if (!pt) return { pt: null };
   await page.evaluate(() => { window.__pe = []; if (!window.__peOn) { window.__peOn = 1; __map.on("popupopen popupclose", (e) => __pe.push(e.type + "@" + Math.round(performance.now()) + ":" + (new Error().stack.split("\n").slice(3, 16).map((l) => l.replace(/^\s*at /, "").replace(/https:\/\/[^ ]*\/(js\/)?/, "").replace(/\?v=\w+/, "").slice(0, 60)).join(" > ")))); window.addEventListener("popstate", () => __pe.push("popstate@" + Math.round(performance.now()))); } });
+  await page.evaluate(() => { try { GLBARS.stats.lastTap = ""; } catch (e) {} });   // a stale value from the last tap must not count
   await page.touchscreen.tap(pt.x, pt.y);
   await page.waitForFunction(() => !!document.querySelector(".olnu-sheet .bs, .leaflet-popup .bs"), null, { timeout: 6000 }).catch(() => {});   // glfix: busy machine
   await wait(page, 600);
@@ -108,7 +110,10 @@ async function tapBar(page, wantFull) {
   // until a dot that no other pill covers is on screen
   let t2 = { pt: null };
   for (const [ll, z] of [[LUD, 14], [LUD, 15], [STH, 15], [STH, 14]]) { await view(page, ll, z); t2 = await tapBar(page, false); if (t2.pt) break; } console.log("tap dot", JSON.stringify(t2));
-  ok(t2.pt && t2.sheet && t2.title && t2.tap && t2.tap.indexOf(t2.pt.id) === 0, "tap on a GL dot opens THAT bar's sheet (" + t2.title + ", " + (t2.tap || "") + ")");
+  // ds30+: a DOM chip on the same spot (my pin / friends' chip at my check-in bar) may take the tap first; then GLBARS.stats.lastTap
+  // stays empty. Either way the sheet must be THAT bar's (a different bar's sheet = real bug).
+  ok(t2.pt && t2.sheet && t2.title && ((t2.tap && t2.tap.indexOf(t2.pt.id) === 0) || (!t2.tap && !!t2.pt.name && t2.title === t2.pt.name)),
+    "tap on a GL dot opens THAT bar's sheet (" + t2.title + ", want " + (t2.pt && (t2.pt.name || t2.pt.id)) + ", GL tap " + (t2.tap || "-") + ")");
   if (process.env.TAPONLY) { await closeCounted(ctx, page, "glmap-taponly"); await b.close(); return; }
   // 3. alignment during wheel + pinch zoom
   const cdp = await ctx.newCDPSession(page);

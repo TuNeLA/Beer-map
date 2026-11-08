@@ -47,6 +47,7 @@ const ok = (c, n, x) => { if (c) { pass++; console.log("PASS", n); } else { fail
     const cnt = {}; let bundles = 0, bnames = [];
     page.on("request", (q) => { const m = q.url().match(/rpc\/(\w+)/); if (m) cnt[m[1]] = (cnt[m[1]] || 0) + 1; });
     if (live) await page.route(/rpc\/rpc_bundle2/, (r) => { bundles++; const b = JSON.parse(r.request().postData() || "{}"); bnames = bnames.concat((b.p_calls || []).map((c) => c.n)); const o = {}; (b.p_calls || []).forEach((c) => { o[c.k] = c.n === "gang_poll" ? { e: { message: "slow_down", code: "P0001" } } : { d: /^(my_rallies|bar_status|medevac_checks|group_etas|beer_reactions|home_status|friend_totals|ghost_points2)$/.test(c.n) ? [] : { v: 1, n: c.n } }; }); r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(o) }); });
+    else await page.route(/rpc\/rpc_bundle2/, (r) => r.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "PGRST202", message: "Could not find the function public.rpc_bundle2" }) }));   // old server
     await boot(page, { clean: true }); await wait(page, 4000);
     const res = await page.evaluate(async () => { const A = window.__api; const a = await Promise.all([A.rpc("game_poll"), A.rpc("gang_poll"), A.rpc("my_dms", {}), A.rpc("my_groups", {})]); return { a: a.map((r) => ({ d: r.data, e: r.error && r.error.message })), st: A.bundleStats && A.bundleStats() }; });
     const alone = BN.filter((n) => cnt[n]).map((n) => n + ":" + cnt[n]);

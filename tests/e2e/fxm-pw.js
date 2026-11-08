@@ -58,8 +58,8 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     await p.evaluate(() => window.PNDS._A().toast("Ett långt meddelande som måste få plats på två rader utan att klippas av vid kanten", { ms: 8000, urgent: true })); await wait(p, 700);
     const R = {}; for (const [k, s] of [["annat", "#other-wrap"], ["loc", "#btn-locate"], ["attr", "#btn-attrib"], ["hint", "#prec-hint"], ["toast", "#toasts > .toast:last-child"], ["rail", "#btn-more"]]) R[k] = await rect(p, s);
     const hintCut = await p.evaluate(() => { const e = document.getElementById("prec-hint"); return e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1; });
-    ok(R.hint && !hit(R.hint, R.annat) && !hit(R.hint, R.loc) && !hit(R.hint, R.attr) && !hintCut, w + ": precision bubble clear of ANNAT / locate / ⓘ, text not cut");
-    ok(R.toast && !hit(R.toast, R.annat) && !hit(R.toast, R.loc) && !hit(R.toast, R.attr) && !hit(R.toast, R.hint), w + ": toast clear of ANNAT / locate / ⓘ / bubble");
+    ok(R.hint && !hit(R.hint, R.annat) && !hit(R.hint, R.loc) && !hit(R.hint, R.attr) && !hintCut, w + ": precision bubble clear of ANNAT / locate / ⓘ, text not cut " + JSON.stringify({ hint: R.hint, annat: R.annat, loc: R.loc, attr: R.attr, hintCut }));
+    ok(R.toast && !hit(R.toast, R.annat) && !hit(R.toast, R.loc) && !hit(R.toast, R.attr) && !hit(R.toast, R.hint), w + ": toast clear of ANNAT / locate / ⓘ / bubble " + JSON.stringify({ toast: R.toast, annat: R.annat, loc: R.loc, attr: R.attr, hint: R.hint }));
     if (w === 390) await p.screenshot({ path: SP + "fxm-shots/t-main-bubble-toast-390.png" });
     // ---------- 2. Ikväll chip ----------
     await p.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
@@ -196,7 +196,9 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     await p.evaluate(() => window.PNSTART && window.PNSTART.calm()); await wait(p, 300);
     await p.evaluate(() => { document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()); window.__map.setView([59.3326, 18.0649], 15, { animate: false }); }); await wait(p, 3500);
     const nd = await p.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "));
-    ok(/Ingen data här ikväll/.test(nd), "no crowd data in view (Stockholm) → 'Ingen data här ikväll än' (" + nd.slice(0, 90) + ")");
+    const ndWhy = /Ingen data här ikväll/.test(nd) ? "" : JSON.stringify(await p.evaluate(() => { const A = window.PNDS && window.PNDS._A && window.PNDS._A(), m = window.__map;
+      return { z: m.getZoom(), sheet: !document.getElementById("sheet").hidden, live: !!(A && A.LIVE), beers: A && A.beers ? (A.beers() || []).filter((x) => m.getBounds().contains([x.lat, x.lng])).length : null, calm: window.__pnCalm, cs: window.CALM && window.CALM._state ? window.CALM._state() : null }; }));
+    ok(/Ingen data här ikväll/.test(nd), "no crowd data in view (Stockholm) → 'Ingen data här ikväll än' (" + nd.slice(0, 90) + ") " + ndWhy.slice(0, 600));
     await p.screenshot({ path: SP + "fxm-shots/t-nodata-sthlm-390.png" });
     // ds41: at zone zoom (html[data-zones]) people pins + clusters are not drawn (friends are in the zone pills)
     const zh = await p.evaluate(() => { const pins = [...document.querySelectorAll(".leaflet-marker-icon:has(>.pn-p), .olnu-cl")]; const vis0 = pins.filter((e) => getComputedStyle(e).display !== "none").length;

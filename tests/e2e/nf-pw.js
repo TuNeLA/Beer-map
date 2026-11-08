@@ -76,7 +76,8 @@ async function openHt(page) {
       ok("no permission: picker does not ask by itself", after === before, { before, after });
       ok("no permission: one '📍 Visa städer nära mig' button", await page.evaluate(() => document.querySelectorAll(".ht-ask").length === 1));
       const firstA = await page.evaluate(() => { const r = [...document.querySelectorAll(".ht-list2 > *")]; const i = r.findIndex((x) => x.classList.contains("ht-h-l")); return r[i].textContent + ":" + r[i + 1].querySelector(".ht-row-n").textContent; });
-      ok("A–Ö list starts at A (Arboga), not Ludvika", firstA === "A:Arboga", firstA);
+      const wantA = await page.evaluate(() => "A:" + window.CITIES.list.map((c) => c.name).filter((n) => /^A/.test(n)).sort((a, b) => a.localeCompare(b, "sv"))[0]);
+      ok("A–Ö list starts at the first A town (" + wantA + "), not Ludvika", firstA === wantA, { firstA, wantA });
       await noToasts(page); await page.screenshot({ path: SHOT + "hometown-no-location-390.png" });
       await ctx.close();
     }

@@ -51,6 +51,28 @@ function fakeJwt() {
 const SESSION = { access_token: fakeJwt(), token_type: "bearer", expires_in: 86400, expires_at: Math.floor(now / 1000) + 86400, refresh_token: "rt-fake",
   user: { id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", aud: "authenticated", role: "authenticated", is_anonymous: true, app_metadata: {}, user_metadata: {}, created_at: iso(9999) } };
 
+// rpc_bundle2 (app.js bundleGo): send each inner call from the page to /rest/v1/rpc/<name>, so it goes through the same
+// routes as a single call (a test's own page.route wins, then the switch below, then fixtures/rpc.js).
+async function bundleViaPage(page, r, body) {
+  const url = r.request().url(), base = url.slice(0, url.indexOf("/rpc/") + 5), h = r.request().headers();
+  const calls = (body && body.p_calls) || [];
+  let out = null;
+  try {
+    out = await page.evaluate(async ({ base, calls, auth, key }) => {
+      const o = {};
+      await Promise.all(calls.map(async (c) => {
+        try {
+          const res = await fetch(base + c.n, { method: "POST", headers: { "content-type": "application/json", apikey: key, authorization: auth }, body: JSON.stringify(c.a || {}) });
+          const t = await res.text(); let d = null; try { d = t ? JSON.parse(t) : null; } catch (e) { d = t; }
+          o[c.k] = res.ok ? { d } : { e: { code: (d && d.code) || String(res.status), message: (d && d.message) || "error" } };
+        } catch (e) { o[c.k] = { e: { code: "not_bundled", message: "not_bundled" } }; }
+      }));
+      return o;
+    }, { base, calls, auth: h.authorization || "", key: h.apikey || "" });
+  } catch (e) { out = null; }
+  if (!out) { out = {}; calls.forEach((c) => { out[c.k] = { e: { code: "not_bundled", message: "not_bundled" } }; }); }
+  return J(r, out);
+}
 async function mock(page, opt = {}) {
   await page.route(/\/auth\/v1\//, (r) => {
     const u = r.request().url();
@@ -61,6 +83,7 @@ async function mock(page, opt = {}) {
   await page.route(/rest\/v1\/rpc\/(\w+)/, (r) => {
     const fn = r.request().url().match(/rpc\/(\w+)/)[1];
     let body = {}; try { body = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
+    if (fn === "rpc_bundle2") return bundleViaPage(page, r, body);
     switch (fn) {
       case "live_beers": return J(r, opt.empty ? [] : beers);
       case "live_others": return J(r, opt.empty ? [] : others);
