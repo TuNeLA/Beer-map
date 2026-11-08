@@ -1,0 +1,116 @@
+name: tests
+
+# Gating tests: UI e2e (mocked Supabase, no live writes), unit tests, and a schema load test.
+# Map tests need the secret MAPBOX_TEST_TOKEN. Without it they are skipped (not failed).
+# Live-server tests (beta-pw.js etc.) never run here: they create real users.
+
+on:
+  push:
+    branches: [big-update]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: e2e (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ui-1
+            filter: '^(ux3|social2|strip|av2-wizard)$'
+          - name: ui-2
+            filter: '^(feat|nf|notif|cam)$'
+          - name: ui-3
+            filter: '^(evx|safe|ds|ds-layout|ds-sheet|notif-sw)$'
+          - name: map
+            filter: '^(glmap|tiers2|tiers3|map4|glfix-avpins|zones|mbx)$'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Serve docs/ on port 8793 (map) and 8871 (UI)
+        run: |
+          nohup python3 -m http.server --bind 127.0.0.1 --directory docs 8793 > /tmp/http-8793.log 2>&1 &
+          nohup python3 -m http.server --bind 127.0.0.1 --directory docs 8871 > /tmp/http-8871.log 2>&1 &
+          for p in 8793 8871; do
+            for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
+          done
+      - name: Run tests
+        env:
+          MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}
+          TO: '900'
+        run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs-${{ matrix.name }}
+          path: tests/e2e/out/logs/
+          retention-days: 14
+          if-no-files-found: warn
+
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tests/e2e/notif-sw-test.js .
+      - run: node scripts/import-sport.test.mjs
+
+  schema:
+    name: schema loads (supabase/schema -> empty Postgres 17)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build bundle (schema + fake auth stub + seed)
+        run: node supabase/staging/apply.mjs --local-stub --seed --out /tmp/apply.sql
+      - name: Apply in one transaction
+        run: psql "$PGURL" -X -q -v ON_ERROR_STOP=1 -1 -f /tmp/apply.sql
+      - name: Counts must equal supabase/schema/counts.json
+        run: |
+          psql "$PGURL" -X -At -f supabase/staging/verify.sql > /tmp/verify.json
+          cat /tmp/verify.json
+          node -e '
+            const v = JSON.parse(require("fs").readFileSync("/tmp/verify.json","utf8"));
+            const c = require("./supabase/schema/counts.json").catalog_counts;
+            const keys = ["tables","functions","sequences","views","indexes","triggers","constraints","rls_tables","policies","secdef_functions"];
+            const bad = keys.filter(k => Number(v[k]) !== Number(c[k]));
+            if (bad.length) { console.error("MISMATCH", bad.map(k => k + ": live " + c[k] + " vs loaded " + v[k])); process.exit(1); }
+            console.log("all counts match");'
+      - name: Smoke test core RPCs as a seeded user
+        run: |
+          psql "$PGURL" -X -At -v ON_ERROR_STOP=1 -f supabase/staging/smoke.sql | tee /tmp/smoke.txt
+          if grep -E '^[a-z0-9_]+\|f\|' /tmp/smoke.txt; then echo "smoke check failed"; exit 1; fi

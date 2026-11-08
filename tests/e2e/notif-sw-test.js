@@ -1,0 +1,59 @@
+// 🔔 sw.js push/notificationclick unit test in a fake worker scope. Usage: node notif-sw-test.js <site-dir>
+const fs = require("fs"), vm = require("vm");
+const src = fs.readFileSync((process.argv[2] || "notif-site") + "/docs/sw.js", "utf8");
+let pass = 0, fail = 0;
+const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : JSON.stringify(i)); c ? pass++ : fail++; };
+const L = {}, shown = [], badges = [], opened = [];
+const store = {};
+const caches = { open: async () => ({ match: async (k) => (k in store ? { text: async () => store[k] } : undefined), put: async (k, r) => { store[k] = await r.text(); }, delete: async (k) => delete store[k] }), keys: async () => [], delete: async () => true, match: async () => undefined };
+const notifs = [];
+const self = {
+  addEventListener: (t, f) => { L[t] = f; },
+  registration: {
+    scope: "https://pintsnow.example/",
+    showNotification: async (title, opts) => { const i = notifs.findIndex((n) => n.tag === opts.tag); const n = { title, ...opts, close() { const j = notifs.indexOf(n); if (j >= 0) notifs.splice(j, 1); } }; if (i >= 0) notifs[i] = n; else notifs.push(n); shown.push(n); },
+    getNotifications: async (o) => notifs.filter((n) => !o || !o.tag || n.tag === o.tag),
+  },
+  navigator: { setAppBadge: async (n) => badges.push(n) },
+  clients: { matchAll: async () => [], openWindow: async (u) => opened.push(u) },
+  skipWaiting: () => {}, location: { origin: "https://pintsnow.example" },
+};
+const ctx = { self, caches, Response: class { constructor(b) { this.b = String(b); } async text() { return this.b; } }, URL, Promise, setTimeout, clearTimeout, console, fetch: async () => ({}), Date, JSON, Math, MessageChannel: class { constructor() { this.port1 = {}; this.port2 = {}; } } };
+vm.createContext(ctx); vm.runInContext(src, ctx);
+const fire = async (t, ev) => { let w = []; ev.waitUntil = (p) => w.push(p); L[t](ev); await Promise.all(w); };
+const push = (d) => fire("push", { data: { json: () => d, text: () => JSON.stringify(d) } });
+(async () => {
+  const P = (b) => ({ title: "💬 Bosse: " + b, body: "i Gänget", url: "/?chat=g1", tag: "olnu-msg-g1", renotify: true,
+    stack: { title: "💬 {n} nya i Gänget", line: "Bosse: " + b }, actions: [{ action: "reply", title: "💬 Svara", url: "/?chat=g1&reply=1" }] });
+  await push(P("hej"));
+  ok("1st chat push: own title, renotify (buzz)", shown[0].title === "💬 Bosse: hej" && shown[0].renotify === true && !shown[0].silent, shown[0]);
+  ok("1st: reply button kept, url map in data", shown[0].actions[0].action === "reply" && shown[0].data.acts.reply === "/?chat=g1&reply=1", shown[0].data);
+  await push(P("kommer ni?"));
+  await push(P("La Parma!"));
+  const n3 = shown[2];
+  ok("3rd chat push folds: '💬 3 nya i Gänget'", n3.title === "💬 3 nya i Gänget", n3.title);
+  ok("folded body has the 3 lines", n3.body.split("\n").length === 3 && /La Parma!$/.test(n3.body), n3.body);
+  ok("2nd/3rd within 60 s are silent replaces", shown[1].silent === true && shown[1].renotify === false && n3.silent === true, [shown[1].silent, n3.silent]);
+  ok("one notice on screen for the chat", notifs.filter((n) => n.tag === "olnu-msg-g1").length === 1);
+  ok("badge counts 1,2,3", JSON.stringify(badges) === "[1,2,3]", badges);
+  ok("PintsNow default title", (await push({ body: "x" }), shown[3].title === "PintsNow 🍺"   /* suite: v28 (6bdae73) short title, who/what first */), shown[3].title);
+  // button with its own url
+  await fire("notificationclick", { action: "reply", notification: { data: n3.data, close() {} } });
+  ok("'💬 Svara' opens chat with reply=1", opened[0] === "https://pintsnow.example/?chat=g1&reply=1", opened);
+  await push({ title: "🍺 Oskar är ute", body: "x", url: "/?focus=12", tag: "olnu-12-1", actions: [{ action: "coming", title: "🍺 Kommer!", url: "/?focus=12&act=coming" }, { action: "skal", title: "🍻 Skåla", url: "/?focus=12&act=skal" }] });
+  const fo = shown[shown.length - 1];
+  await fire("notificationclick", { action: "coming", notification: { data: fo.data, close() {} } });
+  await fire("notificationclick", { action: "", notification: { data: fo.data, close() {} } });
+  ok("'🍺 Kommer!' opens &act=coming; plain tap opens the pin", opened[1] === "https://pintsnow.example/?focus=12&act=coming" && opened[2] === "https://pintsnow.example/?focus=12", opened);
+  // old behaviour: rally yes / invite answer
+  await push({ title: "🪖 x", url: "/?rally=5", tag: "olnu-rally-5", rally_id: 5, actions: [{ action: "yes", title: "✅" }, { action: "no", title: "❌" }] });
+  await fire("notificationclick", { action: "yes", notification: { data: shown[shown.length - 1].data, close() {} } });
+  ok("rally yes unchanged", opened[3] === "https://pintsnow.example/?rally=5&answer=yes", opened[3]);
+  await push({ title: "inv", url: "/?inv=9", tag: "olnu-inv-9", actions: [{ action: "yes", title: "✅ Kommer" }, { action: "no", title: "❌" }] });
+  await fire("notificationclick", { action: "no", notification: { data: shown[shown.length - 1].data, close() {} } });
+  ok("invite no unchanged", opened[4] === "https://pintsnow.example/?inv=9&ans=no", opened[4]);
+  ok("a bad button url is ignored", (await push({ title: "t", url: "/?x=1", tag: "olnu-x", actions: [{ action: "a", title: "A", url: "https://evil.example/" }] }), !shown[shown.length - 1].data.acts.a));
+  ok("SOS keeps requireInteraction", (await push({ title: "🆘", url: "/?sos=1,2", tag: "olnu-sos-1", sos: true }), shown[shown.length - 1].requireInteraction === true));
+  console.log(`\n${pass} PASS, ${fail} FAIL`);
+  process.exit(fail ? 1 : 0);
+})();

@@ -1,0 +1,17 @@
+{
+  "name": "pintsnow",
+  "private": true,
+  "description": "PintsNow dev tooling (tests, schema snapshot). The app itself is plain files in docs/.",
+  "scripts": {
+    "test:e2e": "bash tests/e2e/run-all.sh 8793 8871",
+    "test:unit": "node tests/e2e/notif-sw-test.js . && node scripts/import-sport.test.mjs",
+    "schema:snapshot": "node scripts/schema-snapshot.mjs",
+    "staging:bundle": "node supabase/staging/apply.mjs --seed --out supabase/staging/out/apply.sql"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
