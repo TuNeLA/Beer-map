@@ -322,7 +322,9 @@
 
   /* ---------- hooks into other modules' DOM (no edits in their files) ---------- */
   // The chat head may carry a rank before the name ("🎖️ Korpral Korkskruv Lisa"): the last word is the name.
-  function authorOf(li) { var n = li && li.querySelector(".cm-name"); var x = n ? String(n.textContent || "").trim() : ""; return /^🎖️/.test(x) ? x.split(/\s+/).pop() : x; }
+  // group_status_v3 adds the merits after it ("🎖️ Skumsergeant Oskar · 40 meriter", social.js headText): drop that first,
+  // else the menu says "Blockera meriter" and a block leaves the rows on screen.
+  function authorOf(li) { var n = li && li.querySelector(".cm-name"); var x = n ? String(n.textContent || "").trim().replace(/\s+·\s+\d+\s+(meriter|merits)$/, "") : ""; return /^🎖️/.test(x) ? x.split(/\s+/).pop() : x; }
   // Chat long-press menu (social.js .cm-picker): add 🚩 / 🚫 for other people's messages and photos.
   function onPicker(pk) {
     if (pk.__sf) return; pk.__sf = 1;

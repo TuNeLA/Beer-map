@@ -67,8 +67,11 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok("home: chat preview 3 msgs", (await page.$$(".gpg-msgs .gpg-msg")).length === 3);
     ok("home: bar (+ and 🍺)", await vis(page, ".gpg-plus") && await vis(page, ".gpg-beer"));
     ok("home: ⋯", await vis(page, ".gpg-dots"));
-    const homeTiles = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => { const r = e.getBoundingClientRect(); return r.height > 0 && getComputedStyle(e).display !== "none"; }).map((e) => e.className.split(" ")[0]));
-    ok("home: only header, Nu, chat, bar (+ ⋯)", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi)$/.test(c)), homeTiles);
+    // gpage.js menuOf(): home = header, Nu, chat, bar, ⋯, 🎉 Spel, 📸 kamera + anything LIVE right now (a tile with .live / .new /
+    // .cer-hot, e.g. 🚗 "Kör ikväll" when a member drives tonight: skjuts.js). Everything else lives behind + / ⋯.
+    const homeTiles = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => { const r = e.getBoundingClientRect(); return r.height > 0 && getComputedStyle(e).display !== "none"; })
+      .map((e) => e.className.split(" ")[0] + (e.querySelector(".live, .new, .cer-hot") || e.classList.contains("rl-group-item") ? ":live" : "")));
+    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi)$|:live$/.test(c)), homeTiles);
     ok("home: old 💬 Chatt button gone", !(await page.evaluate(() => [...document.querySelectorAll(".gpg > .row")].some((r) => /💬/.test(r.textContent) && r.getBoundingClientRect().height > 0))));
     await shot(page, "group-home");
     // quick reply

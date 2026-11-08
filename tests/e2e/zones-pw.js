@@ -93,8 +93,13 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   // kommun in JS (zones.js tapZone → zoneAt). Log which way it went; both must zoom in.
   const glHit = (p) => page.evaluate((p) => { const m = BASEMAP.mapbox().getMapboxMap(); const q = m.project([p.ln, p.la]); return m.queryRenderedFeatures([q.x, q.y], { layers: ["olnu-zk-fill"] }).length; }, p);
   console.log("GL kommun fill at the tap point before the tap:", await glHit(pt2));
+  // how far the tap gets: map preclick events (__pc), zones.js onPreclick calls (pre), last skip reason (skip), what is under the finger
+  await page.evaluate(() => { window.__pc = 0; if (!window.__pcOn) { window.__pcOn = 1; __map.on("preclick", () => window.__pc++); } });
+  const under = await page.evaluate((p) => { const out = []; for (let e = document.elementFromPoint(p.x, p.y); e && out.length < 5; e = e.parentElement) out.push(e.tagName + "." + String(e.className).slice(0, 40) + (e.id ? "#" + e.id : "") + (e.children.length ? "" : " '" + (e.textContent || "").slice(0, 30) + "'")); return out.join(" < "); }, pt2);
+  const pre0 = await page.evaluate(() => ZONES.stats.pre || 0);
   st1 = settle(); await page.mouse.click(pt2.x, pt2.y); await st1;
-  const z2 = await page.evaluate(() => ({ z: __map.getZoom(), last: ZONES.stats.lastTap, js: ZONES.stats.tapJs || 0 }));
+  const z2 = await page.evaluate((pre0) => ({ z: __map.getZoom(), last: ZONES.stats.lastTap, js: ZONES.stats.tapJs || 0, pc: window.__pc, pre: (ZONES.stats.pre || 0) - pre0, skip: ZONES.stats.skip || null }), pre0);
+  z2.under = under;
   ok(z2.z > z1.z + 0.5 && z2.last === "Ludvika", "tap Ludvika → zoom in", z2);
   await shot("tap-ludvika");
   // same tap when GL has drawn nothing there (forced): the JS border lookup still zooms into Ludvika

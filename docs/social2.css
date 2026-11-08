@@ -44,7 +44,7 @@
 .gpg-face.me{background:#4a3410;color:#ffe2a8;box-shadow:0 0 0 2px var(--ds-amber,#f5a623)}
 .gpg-now-main{min-width:0;flex:1 1 auto}
 .gpg-now-l{font-weight:700;font-size:var(--fs-16);line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.gpg-now-s{font-size:var(--fs-xs);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gpg-now-s{font-size:var(--fs-xs);margin-top:2px;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}   /* DESIGN.md 10: wraps to 2 lines, never cut on one line */
 
 /* 💬 chat block */
 .gpg-chat{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2);padding:4px 12px 12px}

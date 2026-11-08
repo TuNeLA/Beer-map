@@ -120,18 +120,24 @@ async function safetyMocks(page, st, calls) {
     // long-press a message from Oskar
     // The app cancels a long-press when the list scrolls (by design). On a slow CI machine the list can still be
     // auto-scrolling when we press, so: wait until it is still, then press; try up to 3 times.
-    let li = null, box = null, pick = null; const tries = [];
-    for (let t = 0; t < 3 && !pick; t++) {
-      await page.evaluate(() => { window.__scrolls = 0; const l = document.querySelector(".chat-list, .chat-msgs, #chat-list") || document.querySelector(".chat-msg") && document.querySelector(".chat-msg").parentElement; if (l && !l.__sc) { l.__sc = 1; l.addEventListener("scroll", () => window.__scrolls++); } });
-      await page.waitForFunction(() => { const m = document.querySelector('.chat-msg[data-mid="2"]'); if (!m) return false; const y = m.getBoundingClientRect().top; const ok = window.__lastY === y; window.__lastY = y; return ok; }, null, { timeout: 5000, polling: 300 }).catch(() => {});
-      li = await page.$('.chat-msg:not(.me)[data-mid="2"] .cm-body');
-      box = li && await li.boundingBox();
-      if (box) { await page.mouse.move(box.x + 30, box.y + box.height / 2); await page.mouse.down(); await wait(page, 700); await page.mouse.up(); }
-      await wait(page, 400);
-      pick = await page.evaluate(() => { const p = document.querySelector(".cm-picker"); return p ? [...p.querySelectorAll("button")].map((b) => b.textContent) : null; });
-      tries.push(await page.evaluate((b) => ({ scrolls: window.__scrolls, hit: b ? (document.elementFromPoint(b.x + 30, b.y + b.height / 2) || {}).className : null, picker: !!document.querySelector(".cm-picker") }), box));
-    }
-    console.log("long-press tries", JSON.stringify(tries));
+    // long-press = the chat's own menu. Shared by both presses below (msg 2 and msg 4): the message is scrolled into view first.
+    const longPress = async (mid) => {
+      let li = null, box = null, pick = null; const tries = [];
+      for (let t = 0; t < 3 && !pick; t++) {
+        await page.evaluate(() => { document.querySelectorAll(".toast").forEach((x) => x.remove()); window.__scrolls = 0; const l = document.querySelector(".chat-list, .chat-msgs, #chat-list") || document.querySelector(".chat-msg") && document.querySelector(".chat-msg").parentElement; if (l && !l.__sc) { l.__sc = 1; l.addEventListener("scroll", () => window.__scrolls++); } });
+        await page.evaluate((mid) => { const m = document.querySelector('.chat-msg[data-mid="' + mid + '"]'); if (m) m.scrollIntoView({ block: "center" }); }, mid);
+        await page.waitForFunction((mid) => { const m = document.querySelector('.chat-msg[data-mid="' + mid + '"]'); if (!m) return false; const y = m.getBoundingClientRect().top; const ok = window.__lastY === y; window.__lastY = y; return ok; }, mid, { timeout: 5000, polling: 300 }).catch(() => {});
+        li = await page.$('.chat-msg:not(.me)[data-mid="' + mid + '"] .cm-body');
+        box = li && await li.boundingBox();
+        if (box) { await page.mouse.move(box.x + 30, box.y + box.height / 2); await page.mouse.down(); await wait(page, 700); await page.mouse.up(); }
+        await wait(page, 400);
+        pick = await page.evaluate(() => { const p = document.querySelector(".cm-picker"); return p ? [...p.querySelectorAll("button")].map((b) => b.textContent) : null; });
+        tries.push(await page.evaluate((b) => ({ scrolls: window.__scrolls, hit: b ? (document.elementFromPoint(b.x + 30, b.y + b.height / 2) || {}).className : null, picker: !!document.querySelector(".cm-picker") }), box));
+      }
+      console.log("long-press tries msg " + mid, JSON.stringify(tries));
+      return { li, box, pick };
+    };
+    let { li, box, pick } = await longPress("2");
     if (!pick) console.log("long-press debug", JSON.stringify({ li: !!li, box, msgs: await page.evaluate(() => [...document.querySelectorAll(".chat-msg")].map((m) => (m.dataset.mid || "?") + (m.classList.contains("me") ? "me" : "")).join(",")), sheet: await page.evaluate(() => { const s = document.getElementById("sheet"); return s && !s.hidden ? s.textContent.slice(0, 120) : null; }), ov: await page.evaluate(() => { const o = document.querySelector(".sf-ov"); return o ? o.textContent.slice(0, 120) : null; }) }));
     ok("long-press menu has 🚩 and 🚫", pick && pick.includes("🚩") && pick.includes("🚫"), pick);
     await shot(page, "chat-menu");
@@ -144,13 +150,13 @@ async function safetyMocks(page, st, calls) {
     const rep = calls.find((c) => c[0] === "report_content");
     ok("🚩 → report_content(msg, 2, hat)", rep && rep[1].p_kind === "msg" && rep[1].p_ref === "2" && rep[1].p_reason === "hat", rep);
     // block from another message
-    const li2 = await page.$('.chat-msg:not(.me)[data-mid="4"] .cm-body'), b2 = li2 && await li2.boundingBox();
-    if (b2) { await page.mouse.move(b2.x + 30, b2.y + b2.height / 2); await page.mouse.down(); await wait(page, 700); await page.mouse.up(); }
-    await wait(page, 300);
+    await longPress("4");
     await page.evaluate(() => { const b = [...document.querySelectorAll(".cm-picker button")].find((x) => x.textContent === "🚫"); if (b) b.click(); });
     await wait(page, 400);
     await shot(page, "block-sheet");
-    await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /^(🚫 )?Blockera$/.test(x.textContent.trim())); b.click(); });
+    const blkBtn = await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /^(🚫 )?Blockera$/.test(x.textContent.trim())); if (b) b.click(); return !!b; });
+    if (!blkBtn) console.log("block sheet debug", JSON.stringify(await page.evaluate(() => ({ ov: (document.querySelector(".sf-ov") || {}).textContent || null, picker: !!document.querySelector(".cm-picker"),
+      msgs: [...document.querySelectorAll(".chat-msg")].map((m) => (m.dataset.mid || "?") + (m.classList.contains("me") ? "me" : "")).join(",") }))));
     await wait(page, 1500);
     const blk = calls.find((c) => c[0] === "block_user");
     const left = await page.evaluate(() => [...document.querySelectorAll(".chat-msg:not(.me) .cm-name")].map((x) => x.textContent));

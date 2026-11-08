@@ -290,30 +290,39 @@
   }
 
   /* ---------- tap = zoom in ---------- */
+  // stats.pre / stats.skip: how far the last tap got (e2e zones-pw.js logs them; a dead tap names its reason)
   function onPreclick(e) {
-    if (!ready || !gm || !e || !e.latlng || !wanted()) return;
+    stats.pre = (stats.pre || 0) + 1;
+    // not "ready" here: right after a fly-in the layers can be in a re-paint (ready off for a moment); tapZone() then
+    // finds the zone in JS. Only the GL map and the zoom decide if zones take taps.
+    if (!e || !e.latlng || !wanted()) { stats.skip = "off"; return; }
     var oe = e.originalEvent || {}, ll = e.latlng;
     // glmap.js's preclick runs after ours (it attaches later) and marks a tap it used: decide after this dispatch
-    setTimeout(function () { if (!oe._olnuGl && !(window.GLBARS && GLBARS.tappedAt && performance.now() - GLBARS.tappedAt() < 400)) tapZone(ll); }, 0);
+    setTimeout(function () {
+      if (oe._olnuGl || (window.GLBARS && GLBARS.tappedAt && performance.now() - GLBARS.tappedAt() < 400)) { stats.skip = "gl-bar"; return; }
+      tapZone(ll);
+    }, 0);
   }
   function tapZone(ll) {
     var e = { latlng: ll };
-    if (!ready || !gm || !wanted()) return;
+    if (!wanted()) { stats.skip = "off"; return; }
     var z = zoom(), lay = z < Z_KOM ? L_LF : L_KF;
     try {
-      var p = gm.project([e.latlng.lng, e.latlng.lat]), f = gm.queryRenderedFeatures([p.x, p.y], { layers: [lay] })[0];
-      var feat = f && (z < Z_KOM ? geo.l : geo.k).features.filter(function (x) { return x.id === f.id; })[0];
+      var f = null;
+      if (ready && gm && gm.getLayer(lay)) { var p = gm.project([e.latlng.lng, e.latlng.lat]); f = gm.queryRenderedFeatures([p.x, p.y], { layers: [lay] })[0]; }
+      var feat = f && (z < Z_KOM ? geo.l : geo.k) && (z < Z_KOM ? geo.l : geo.k).features.filter(function (x) { return x.id === f.id; })[0];
       // GL has not drawn this layer at the tap yet (just flown in, slow phone / CI: the kommun fill tiles for the new zoom
       // come a moment after moveend): use the same border files in JS, so the tap still zooms in.
       if (!feat) { feat = zoneAt(z < Z_KOM ? "l" : "k", ll.lat, ll.lng); if (feat) stats.tapJs = (stats.tapJs || 0) + 1; }
-      if (!feat) return;
+      if (!feat) { stats.skip = "no-zone"; return; }
+      stats.skip = null;
       var b = feat.properties.b, bounds = L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
       var fz = map.getBoundsZoom(bounds, false, L.point(24, 24));
       stats.taps++; stats.lastTap = feat.properties.n;
       if (z < Z_KOM) map.flyTo(bounds.getCenter(), Math.max(Z_KOM + 0.25, Math.min(fz, 9)), { duration: 0.8 });   // into its kommuner
       else if (fz > z + 0.3) map.flyToBounds(bounds, { padding: [12, 12], duration: 0.8 });
       else map.flyTo(e.latlng, Math.min(13, Math.max(Z_OFF + 0.5, z + 2)), { duration: 0.8 });   // already showing the whole kommun: into its bars
-    } catch (x) {}
+    } catch (x) { stats.skip = "err: " + String(x && x.message || x).slice(0, 80); }
   }
 
   /* ---------- on / off ---------- */
