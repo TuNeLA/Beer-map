@@ -106,39 +106,78 @@
   var imgs = {}, mc = document.createElement("canvas").getContext("2d");
   function tw(s, f) { mc.font = f; return mc.measureText(s).width; }
   function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
-  function countLine(c) { return !c ? "lugnt" : c.some || !c.n ? "🍺 några ute" : "🍺 " + nf(c.n) + " ute"; }
-  function labelImg(m, name, line2, line3, big, hot) {
-    var key = "zn|" + name + "|" + line2 + "|" + (line3 || "") + "|" + (big ? 1 : 0) + (hot ? 1 : 0);
+  /* ds41 zonefr START — owner 2026-11-08 (7-zone-overlap.jpg): a friend pin + a group badge on the kommun centroid covered the
+     zone pill. Now no people marker is drawn over the zones (CSS: html[data-zones] hides people pins + clusters); the friends
+     are IN the pill instead: a row of up to 3 green initial discs + "Oskar" / "Oskar +2" (the clearest at city zoom: Snap Map
+     and Zenly show friends as faces, never on top of a place name). The 🍺 / 👑 emoji are our glyphs now (PNGLYPHS pub /
+     crown). Every pill is sized to its text: never cut. */
+  function countLine(c) { return !c ? "lugnt" : c.some || !c.n ? "några ute" : nf(c.n) + " ute"; }
+  function gl(g, name, x, y, s, col) {   // a PNGLYPHS glyph (24 grid) with its top-left at x, y
+    try { var G = window.PNGLYPHS && window.PNGLYPHS.G[name]; if (!G) return; g.save(); g.translate(x, y); g.scale(s / 24, s / 24);
+      G.forEach(function (L) { if (L.k === "b") return; g.fillStyle = col; g.fill(new Path2D(L.d)); }); g.restore(); } catch (e) {}
+  }
+  function frText(fr) { return !fr || !fr.length ? "" : fr[0] + (fr.length > 1 ? " +" + (fr.length - 1) : ""); }
+  function labelImg(m, name, line2, line3, big, hot, fr) {
+    var ft = frText(fr), key = "zn|" + name + "|" + line2 + "|" + (line3 || "") + "|" + (big ? 1 : 0) + (hot ? 1 : 0) + "|" + (fr ? fr.slice(0, 3).join(",") + ft : "");
     if (imgs[key]) { if (!m.hasImage(imgs[key])) m.addImage(imgs[key], imgs["d|" + key], { pixelRatio: R }); return imgs[key]; }
-    var quiet = line2 === "lugnt", f1 = (quiet ? "600 11px " : "700 " + (big ? 13 : 12) + "px ") + FONT, f2 = "700 12px " + FONT, f3 = "600 11px " + FONT;
-    if (quiet) line2 = "";   // a quiet zone = its name only, small and faint (more of them fit on a phone)
-    var w = Math.ceil(Math.max(tw(name, f1), line2 ? tw(line2, f2) : 0, line3 ? tw(line3, f3) : 0)) + (quiet ? 10 : 16), h = quiet ? 20 : 6 + 16 + 15 + (line3 ? 14 : 0) + 4;
+    var quiet = line2 === "lugnt" && !ft, f1 = (quiet ? "600 11px " : "700 " + (big ? 13 : 12) + "px ") + FONT, f2 = "700 12px " + FONT, f3 = "600 11px " + FONT, f4 = "700 12px " + FONT;
+    if (line2 === "lugnt") line2 = quiet ? "" : "lugnt";
+    var GW = 14, nd = fr ? Math.min(3, fr.length) : 0, dW = nd ? 16 + (nd - 1) * 10 + 4 : 0;
+    var w2 = line2 ? tw(line2, f2) + (line2 !== "lugnt" ? GW + 3 : 0) : 0, w3 = line3 ? tw(line3, f3) + GW + 3 : 0, w4 = ft ? dW + tw(ft, f4) : 0;
+    var w = Math.ceil(Math.max(tw(name, f1), w2, w3, w4)) + (quiet ? 10 : 16), h = quiet ? 20 : 6 + 16 + 15 + (line3 ? 14 : 0) + (ft ? 20 : 0) + 4;
     var cv = document.createElement("canvas"); cv.width = (w + 4) * R; cv.height = (h + 4) * R;
     var g = cv.getContext("2d"); g.scale(R, R); g.translate(2, 2);
-    rr(g, 0, 0, w, h, quiet ? 7 : 9); g.fillStyle = quiet ? "rgba(10,15,36,.55)" : "rgba(10,15,36,.86)"; g.fill();
-    g.lineWidth = 1; g.strokeStyle = hot ? "rgba(255,194,77,.85)" : quiet ? "rgba(255,250,240,.18)" : "rgba(245,166,35,.55)"; g.stroke();
-    g.textAlign = "center"; g.textBaseline = "middle";
-    g.font = f1; g.fillStyle = quiet ? "rgba(255,246,229,.78)" : "#FFF6E5"; g.fillText(name, w / 2, quiet ? h / 2 + 0.5 : 6 + 8);
-    if (line2) { g.font = f2; g.fillStyle = "#FFC24D"; g.fillText(line2, w / 2, 6 + 16 + 8); }
-    if (line3) { g.font = f3; g.fillStyle = "#E9D9BA"; g.fillText(line3, w / 2, 6 + 16 + 15 + 7); }
+    rr(g, 0, 0, w, h, quiet ? 7 : 9); g.fillStyle = quiet ? "rgba(10,15,36,.55)" : "rgba(10,15,36,.9)"; g.fill();
+    g.lineWidth = 1; g.strokeStyle = ft ? "rgba(61,220,132,.9)" : hot ? "rgba(255,194,77,.85)" : quiet ? "rgba(255,250,240,.18)" : "rgba(245,166,35,.55)"; g.stroke();
+    g.textBaseline = "middle";
+    g.textAlign = "center"; g.font = f1; g.fillStyle = quiet ? "rgba(255,246,229,.78)" : "#FFF6E5"; g.fillText(name, w / 2, quiet ? h / 2 + 0.5 : 6 + 8);
+    var y = 6 + 16;
+    if (line2) {
+      g.font = f2; g.fillStyle = line2 === "lugnt" ? "#E9D9BA" : "#FFC24D"; g.textAlign = "left";
+      var x2 = (w - w2) / 2; if (line2 !== "lugnt") { gl(g, "pub", x2, y + 1, GW, "#FFC24D"); x2 += GW + 3; } g.fillText(line2, x2, y + 8); y += 15;
+    }
+    if (line3) { g.font = f3; g.fillStyle = "#E9D9BA"; g.textAlign = "left"; var x3 = (w - w3) / 2; gl(g, "crown", x3, y + 1, GW - 2, "#FFC24D"); g.fillText(line3, x3 + GW + 3, y + 7); y += 14; }
+    if (ft) {   // the friends row: initial discs + "Oskar +2"
+      var x4 = (w - w4) / 2, cy = y + 10;
+      for (var i = nd - 1; i >= 0; i--) {
+        var cx = x4 + 8 + i * 10; g.beginPath(); g.arc(cx, cy, 8, 0, 6.2832); g.fillStyle = "#3DDC84"; g.fill();
+        g.beginPath(); g.arc(cx, cy, 6.5, 0, 6.2832); g.fillStyle = "#0A0F24"; g.fill();
+        g.font = "700 9px " + FONT; g.textAlign = "center"; g.fillStyle = "#3DDC84"; g.fillText(String(fr[i] || "?").charAt(0).toUpperCase(), cx, cy + 0.5);
+      }
+      g.font = f4; g.textAlign = "left"; g.fillStyle = "#3DDC84"; g.fillText(ft, x4 + dW, cy + 0.5);
+    }
     var data = g.getImageData(0, 0, cv.width, cv.height), id = "zn" + (++stats.labels);
     imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R });
     return id;
   }
-  function chipImg(m, name, n) {   // the whole-Sweden view: "Dalarna 🍺 8" on one line (3-line labels do not fit a phone there)
-    var t = n, key = "zc|" + name + "|" + t;
+  function chipImg(m, name, n, fr) {   // the whole-Sweden view: "Dalarna [glyph] 8" on one line (+ a green friend dot + count)
+    var t = n, nf0 = fr ? fr.length : 0, key = "zc|" + name + "|" + t + "|" + nf0;
     if (imgs[key]) { if (!m.hasImage(imgs[key])) m.addImage(imgs[key], imgs["d|" + key], { pixelRatio: R }); return imgs[key]; }
-    var f1 = "700 12px " + FONT, f2 = "700 12px " + FONT, w1 = tw(name, f1), w2 = tw("🍺 " + t, f2), w = Math.ceil(w1 + w2) + 18, h = 22;
+    var f1 = "700 12px " + FONT, f2 = "700 12px " + FONT, w1 = tw(name, f1), w2 = 12 + 3 + tw(t, f2), wf = nf0 ? 8 + 14 + 3 + tw(String(nf0), f2) : 0, w = Math.ceil(w1 + w2 + wf) + 18, h = 22;
     var cv = document.createElement("canvas"); cv.width = (w + 4) * R; cv.height = (h + 4) * R;
     var g = cv.getContext("2d"); g.scale(R, R); g.translate(2, 2);
-    rr(g, 0, 0, w, h, 11); g.fillStyle = "rgba(10,15,36,.88)"; g.fill(); g.lineWidth = 1; g.strokeStyle = "rgba(245,166,35,.6)"; g.stroke();
+    rr(g, 0, 0, w, h, 11); g.fillStyle = "rgba(10,15,36,.9)"; g.fill(); g.lineWidth = 1; g.strokeStyle = nf0 ? "rgba(61,220,132,.9)" : "rgba(245,166,35,.6)"; g.stroke();
     g.textBaseline = "middle"; g.textAlign = "left";
     g.font = f1; g.fillStyle = "#FFF6E5"; g.fillText(name, 7, h / 2 + 0.5);
-    g.font = f2; g.fillStyle = "#FFC24D"; g.fillText("🍺 " + t, 11 + w1, h / 2 + 0.5);
+    gl(g, "pub", 11 + w1, h / 2 - 6, 12, "#FFC24D"); g.font = f2; g.fillStyle = "#FFC24D"; g.fillText(t, 11 + w1 + 15, h / 2 + 0.5);
+    if (nf0) { var xf = 11 + w1 + w2 + 8; g.beginPath(); g.arc(xf + 7, h / 2, 7, 0, 6.2832); g.fillStyle = "#3DDC84"; g.fill(); gl(g, "person", xf + 2, h / 2 - 5, 10, "#00260F");
+      g.fillStyle = "#3DDC84"; g.fillText(String(nf0), xf + 17, h / 2 + 0.5); }
     var data = g.getImageData(0, 0, cv.width, cv.height), id = "zn" + (++stats.labels);
     imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R });
     return id;
   }
+  // friends (and me) per zone code, from the pins the app has (friend rows only: strangers are never named)
+  function friendsBy(kind) {
+    var out = {};
+    try { (A && A.beers ? A.beers() : []).forEach(function (b) {
+      if (!(b.friend_name || b.is_mine) || !isFinite(b.lat)) return;
+      var f = zoneAt(kind, +b.lat, +b.lng); if (!f) return; var c = kind === "k" ? f.properties.k : f.properties.l;
+      var nm = b.is_mine ? "Du" : String(b.friend_name).split(" ")[0]; (out[c] = out[c] || []); if (out[c].indexOf(nm) < 0) out[c].push(nm);
+    }); } catch (e) {}
+    Object.keys(out).forEach(function (c) { out[c].sort(function (a, b) { return a === "Du" ? 1 : b === "Du" ? -1 : 0; }); });
+    return out;
+  }
+  /* ds41 zonefr END */
   function barName(id) { try { var b = window.BARS && window.BARS.byId && window.BARS.byId(id); return b && b.name ? String(b.name).slice(0, 22) : null; } catch (e) { return null; } }
 
   /* ---------- layers ---------- */
@@ -196,25 +235,26 @@
   var sigK = "", sigL = "";
   function paint() {
     var m = gm; if (!ready || !m) return;
+    var frK = geo.k ? friendsBy("k") : {}, frL = geo.l ? friendsBy("l") : {};   // ds41: friends in the pill
     try {
       if (geo.l && m.getSource(SL)) geo.l.features.forEach(function (f) { var c = lc(f.properties.l); m.setFeatureState({ source: SL, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
       if (geo.k && m.getSource(SK)) geo.k.features.forEach(function (f) { var c = kc(f.properties.k); m.setFeatureState({ source: SK, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
       // län labels: all 21
       if (geo.l) {
         var lf = geo.l.features.map(function (f) {
-          var p = f.properties, c = lc(p.l), top = c && c.top && byK[c.top] ? "👑 " + byK[c.top].properties.n : null;
-          var img = labelImg(m, p.n, countLine(c), top, true, c && c.n >= 10);
-          return { type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] }, properties: { img: img, ci: c ? chipImg(m, p.n, c.some || !c.n ? "några" : nf(c.n)) : "", sk: -(c ? (c.n || 1) : 0), l: p.l, q: c ? 0 : 1 } };
+          var p = f.properties, c = lc(p.l), top = c && c.top && byK[c.top] ? byK[c.top].properties.n : null;
+          var img = labelImg(m, p.n, countLine(c), top, true, c && c.n >= 10, frL[p.l]);
+          return { type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] }, properties: { img: img, ci: c ? chipImg(m, p.n, c.some || !c.n ? "några" : nf(c.n), frL[p.l]) : "", sk: -(c ? (c.n || 1) : 0), l: p.l, q: c ? 0 : 1 } };
         }), s1 = lf.map(function (f) { return f.properties.img; }).join();
         if (s1 !== sigL) { sigL = s1; m.getSource(SLL).setData({ type: "FeatureCollection", features: lf }); }
       }
       // kommun labels: only where someone is out
       if (geo.k && counts) {
         var kf = [];
-        Object.keys(counts.kk).forEach(function (code) {
-          var f = byK[code]; if (!f) return; var p = f.properties, c = counts.kk[code], bn = c.bar ? barName(c.bar) : null;
+        Object.keys(counts.kk).concat(Object.keys(frK).filter(function (k) { return !counts.kk[k]; })).forEach(function (code) {
+          var f = byK[code]; if (!f) return; var p = f.properties, c = counts.kk[code] || { n: 0, some: true }, bn = c.bar ? barName(c.bar) : null;
           kf.push({ type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] },
-            properties: { img: labelImg(m, p.n, countLine(c), bn ? "👑 " + bn : null, false, c.n >= 10), sk: -(c.n || 1), k: p.k } });
+            properties: { img: labelImg(m, p.n, countLine(c), bn || null, false, c.n >= 10, frK[p.k]), sk: -(c.n || 1) - (frK[p.k] ? 1000 : 0), k: p.k } });
         });
         var s2 = kf.map(function (f) { return f.properties.img; }).join();
         if (s2 !== sigK) { sigK = s2; m.getSource(SKL).setData({ type: "FeatureCollection", features: kf }); }
@@ -290,7 +330,8 @@
     if (ensure()) { paint(); ask(false); }
     cls(); pill(true);
   }
-  var CSS = "html[data-zones] .olnu-cl:not(:has(.pf,.pm)):not(.cl-f){display:none}";
+  // ds41: no people marker over the zones: pins + clusters hide while zones show (friends are in the pills)
+  var CSS = "html[data-zones] .olnu-cl,html[data-zones] .leaflet-marker-icon:has(>.pn-p),html[data-zones] .leaflet-marker-icon:has(>.pn-cl){display:none}";
   function cls() {
     var v = ready && !!map && !!glm() && zoom() < Z_OFF - 0.9 && !!(geo.l || geo.k), de = document.documentElement;
     if (v !== de.hasAttribute("data-zones")) { if (v) de.setAttribute("data-zones", ""); else de.removeAttribute("data-zones"); }
@@ -323,7 +364,7 @@
       var st = document.createElement("style"); st.id = "zones-css"; st.textContent = CSS; document.head.appendChild(st);
       setTimeout(function () { credit(); check(); }, 0);
     },
-    onPoll: function () { if (wanted()) ask(false); },
+    onPoll: function () { if (wanted()) { ask(false); paint(); } },   // ds41: friends move → the pills follow
     onPublicPoll: function () { if (wanted()) ask(false); },
     // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
     pill: function () { if (!wanted() || !pillHTML()) return null; pill(false); return fitted; },

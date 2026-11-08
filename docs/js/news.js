@@ -425,9 +425,11 @@
     [gen, grp, town].forEach(function (list) { while (out.length < MAX_ITEMS && list.length) out.push(list.shift()); });
     out = out.slice(0, MAX_ITEMS);
     shuffle(out);
+    // ds40: real events (the gang, the town) first, the jokes after (a stable sort keeps the shuffle inside each part)
+    out = out.map(function (x, i) { return { x: x, i: i, g: catOf(x) === "general" ? 1 : 0 }; }).sort(function (a, b) { return a.g - b.g || a.i - b.i; }).map(function (o) { return o.x; });
     var lastText = prev.length ? prev[prev.length - 1] : null;
     if (out.length > 1 && out[0].text === lastText) out.push(out.shift());
-    return out.map(function (x) { return { text: x.text, cls: x.cls, k: x.k }; });
+    return out.map(function (x) { return { text: x.text, cls: (x.cls || "") + (catOf(x) !== "general" ? " tk-real" : ""), k: x.k }; });   // ds40 tk-real = a real event (dot)
   }
 
   window.NEWS = { build: build, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,

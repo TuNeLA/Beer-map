@@ -271,6 +271,18 @@
     if (parts) parts.push({ sel: ".pill", bb: bb });
     return bb;
   }
+  // ds31: friends here → ONE chip under the disc: green friend badge + their night total(s) + a beer glyph. Ink body, green ring.
+  function ftChip(ops, parts, cy, t) {
+    t = String(t).slice(0, 14);
+    var h = 20, tw_ = Math.ceil(tw(t, 12, 700)), w = 2 + 16 + 4 + tw_ + 3 + 12 + 7, x = Math.round(-w / 2), y = Math.round(cy - h / 2);
+    rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: K.edge, sh: true });
+    rrect(ops, x, y, w, h, h / 2, { fill: K.ink });
+    rrect(ops, x + 1, y + 1, w - 2, h - 2, h / 2 - 1, { fill: "none", stroke: K.green, sw: 2 });
+    badge(ops, x + 2 + 8, y + h / 2, 16, K.green, "person", K.greenInk);
+    text(ops, x + 2 + 16 + 4, y + h / 2, t, 12, 700, K.foam);
+    glyph(ops, "pub", x + 2 + 16 + 4 + tw_ + 3 + 6, y + h / 2, 12, K.amberHi, K.ink);
+    parts.push({ sel: ".pill", bb: [x - 1, y - 1, x + w + 1, y + h + 1] });   // tap = Folk här (the friends' rows)
+  }
   function barOps(s, mode, hi, extra) {
     var ops = [], parts = [], full = mode !== "d", k = cat(s.k), busy = !!(s.p || s.hot), lit = !busy && !!s.lit;
     extra = extra || {};
@@ -295,6 +307,7 @@
     if (king) { crown(ops, -r * 0.45, -r + 3, hi ? 14 : 13); parts.push({ sel: ".cm-king", bb: [-r - 4, -r - 9, 2, -r + 3] }); }
     if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, hi);
     else if (s.p && s.p.f) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
+    if (s.p && s.p.ft) ftChip(ops, parts, Math.round(r + 3 + (s.tg && hi && mode !== "x" ? S.tagH + 3 : 0) + 10), s.p.ft);   // ds31
     if (mode === "x") return { ops: ops, parts: parts };
     if (s.ev) { badge(ops, -bo - 1, bo + 1, 15, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-bo - 10, bo - 8, -bo + 8, bo + 10] }); }
     if (s.rl) chip(ops, parts, ".cm-rally", r + 4, s.p ? 6 : 0, "helmet", s.rl[0], s.rl[1] ? K.green : "#FF8A1F", { gcol: s.rl[1] ? K.green : "#FFB36B" });

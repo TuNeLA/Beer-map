@@ -46,7 +46,7 @@
     if (pill) {
       var pc = pill.className;
       s.p = { l: /\bp2\b/.test(pc) ? 2 : /\bp1\b/.test(pc) ? 1 : 0, f: /\bpf\b/.test(pc), m: /\bpm\b/.test(pc), a: /\bpa\b/.test(pc),
-        n: txt(pill.querySelector(".pn")), e: !!pill.querySelector(".pe"), o: txt(pill.querySelector(".po")), u: !!pill.querySelector(".pe-ppl"), q: /\bpq\b/.test(pc) };   // gw: pq = < 3 people
+        n: txt(pill.querySelector(".pn")), e: !!pill.querySelector(".pe"), o: txt(pill.querySelector(".po")), u: !!pill.querySelector(".pe-ppl"), q: /\bpq\b/.test(pc), ft: txt(pill.querySelector(".pft")) };   // ds31 friends' totals   // gw: pq = < 3 people
       var cr = pill.querySelector(".bm-crowd"); if (cr) s.cw = [txt(cr), (/\bc(\d)\b/.exec(cr.className) || [0, 2])[1]];
       if (pill.querySelector(".bm-q")) s.q = 1;
       var fl = pill.querySelector(".bm-flag"); if (fl) s.fl = [txt(fl), /\bmine\b/.test(fl.className) ? 1 : 0];
@@ -331,6 +331,7 @@
       // A name (layer under it) then may not touch any pill or a better name.
       if (!m.getLayer(L_FULL)) m.addLayer({ id: L_FULL, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 1],
         layout: Object.assign({}, common, { "icon-allow-overlap": false, "icon-ignore-placement": false, "symbol-sort-key": ["get", "skf"] }), paint: { "icon-emissive-strength": 1 } });
+      clEnsure(m);   // ds30: dot bars cluster when zoomed out
       return true;
     } catch (e) { try { console.warn("olnu glmap", e && e.message); } catch (x) {} return false; }
   }
@@ -401,6 +402,7 @@
       try { var oe = offExpr(); m.setLayoutProperty(L_FULL, "icon-offset", oe); m.setLayoutProperty(L_PLACE, "icon-offset", oe);
         m.setLayoutProperty(L_LBL, "icon-offset", JSON.parse(JSON.stringify(oe).replace('["get","oi"]', '["get","lo"]'))); } catch (e) {}
     }
+    feats = clSplit(m, feats);   // ds30
     var sig = feats.map(function (f) { var p = f.properties; return p.id + p.img + p.di + p.t + p.sz + p.e + p.li + p.lo + p.bf + p.b2 + p.oi; }).join("|");
     if (sig !== lastSig) {
       lastSig = sig; try { m.getSource(SRC_B).setData({ type: "FeatureCollection", features: feats }); } catch (e) {}
@@ -503,6 +505,112 @@
     cloudLat = null; cloudPaint();
   }
 
+  /* ds30 barcl START — owner 2026-11-08: "zoomed out only some bars show; zoom in and more come". Bars that are a DOT (not a
+     full pill) now go into a Mapbox GL cluster source (supercluster in the map's worker: no per-frame JS, they move with the
+     map in the same frame). Zoomed out they merge into ONE marker per area: navy capsule + foam ring + bar glyph + count, a
+     second capsule behind it (stack cue, like the people cluster). Busy bar inside = amber ring, friend inside = green dot.
+     Full pills (friends / people / check-ins / call-outs: tiers.js priority) stay out of it, always on top.
+     Tap a cluster = zoom in to where it splits (getClusterExpansionZoom). From Leaflet z15 (GL 14) every bar is its own dot
+     again. The dot / badge layers are clones of the old ones on the cluster source (same images, same rules). */
+  var SRC_CL = "olnu-bars-cl", L_CL = "olnu-bar-cl", L_CDOT = "olnu-bar-cdot", L_CDOTE = "olnu-bar-cdote", L_CB1 = "olnu-bar-cdotb1", L_CB2 = "olnu-bar-cdotb2";
+  var CL_IDS = [L_CDOTE, L_CDOT, L_CB1, L_CB2, L_CL];
+  var CL_MAXZ = 13, CL_MINZ = 9, CL_R = 52;   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
+  var cl = { on: false, sig: "", feats: [], seen: null, seenAt: 0, hooked: null, made: 0 };
+  function clOps(n, busy, friend) {
+    var T = window.PNTOKENS, K = T.col, ops = [], t = n > 999 ? (Math.floor(n / 100) / 10).toString().replace(".", ",") + "k" : String(n);
+    var px = 13, h = 26, g = 14, tw0 = window.PNPINS && window.PNPINS._tw ? Math.ceil(window.PNPINS._tw(t, px, 700)) : t.length * 8;
+    var w = Math.max(h + 8, 7 + g + 3 + tw0 + 9), x = Math.round(-w / 2), y = -h / 2, ring = busy ? K.amber : K.foam;
+    // stack cue: one capsule behind, up-right (the same cue as the people cluster)
+    ops.push({ o: "rr", x: x + 3 - 1, y: y - 3 - 1, w: w + 2, h: h + 2, r: h / 2 + 1, fill: K.edge, sh: true });
+    ops.push({ o: "rr", x: x + 3, y: y - 3, w: w, h: h, r: h / 2, fill: "rgba(255,250,240,0.5)" });
+    ops.push({ o: "rr", x: x + 3 + 2, y: y - 3 + 2, w: w - 4, h: h - 4, r: h / 2 - 2, fill: K.navy });
+    // the front capsule: ink hairline, ring, navy body, bar glyph + the count
+    ops.push({ o: "rr", x: x - 1, y: y - 1, w: w + 2, h: h + 2, r: h / 2 + 1, fill: K.edge, sh: true });
+    ops.push({ o: "rr", x: x, y: y, w: w, h: h, r: h / 2, fill: ring });
+    ops.push({ o: "rr", x: x + 2, y: y + 2, w: w - 4, h: h - 4, r: h / 2 - 2, fill: K.navy2 });
+    ops.push({ o: "g", n: "pub", x: x + 7, y: -g / 2, s: g, fg: T.tint.pub, bg: K.navy2 });
+    ops.push({ o: "t", x: x + 7 + g + 3, y: 0, t: t, px: px, wt: 700, fill: K.foam });
+    if (friend) {   // a friend at a bar inside: the green friend badge, top-right (same badge as on a dot)
+      var bx = x + w - 3, by = y + 1;
+      ops.push({ o: "c", x: bx, y: by, r: 8, fill: K.edge }); ops.push({ o: "c", x: bx, y: by, r: 7, fill: K.foam });
+      ops.push({ o: "c", x: bx, y: by, r: 5.5, fill: K.green }); ops.push({ o: "g", n: "person", x: bx - 4.5, y: by - 4.5, s: 9, fg: K.greenInk, bg: K.green });
+    }
+    return ops;
+  }
+  function clImage(m, id) {
+    var q = /^pncl-(\d+)-([01])([01])$/.exec(id || ""), P = window.PNPINS; if (!q || !P || !P.raster || m.hasImage(id)) return;
+    try {
+      var ops = clOps(+q[1], q[2] === "1", q[3] === "1"), b = P.bboxOf(ops), e = Math.ceil(Math.max(-b[0], -b[1], b[2], b[3]));
+      var r = P.raster(ops, R, [-e, -e, e, e]);   // square and centred on the point
+      m.addImage(id, r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), { pixelRatio: R }); cl.made++;
+    } catch (x) {}
+  }
+  function clEnsure(m) {
+    try {
+      if (cl.hooked !== m) { cl.hooked = m; m.on("styleimagemissing", function (e) { if (e && /^pncl-/.test(e.id)) clImage(m, e.id); }); }
+      if (!m.getSource(SRC_CL)) {
+        m.addSource(SRC_CL, { type: "geojson", data: EMPTY, cluster: true, clusterRadius: CL_R, clusterMaxZoom: CL_MAXZ, clusterMinPoints: 2, maxzoom: 15,
+          buffer: 64, tolerance: 0, clusterProperties: { f: ["+", ["get", "bf"]], b: ["+", ["get", "bs"]] } });
+        cl.sig = "";
+      }
+      var byL = {}; ((m.getStyle() || {}).layers || []).forEach(function (l) { byL[l.id] = l; });
+      var un = ["!", ["has", "point_count"]];
+      var clone = function (src, id) {   // the old dot / badge layer, on the cluster source, single points only
+        var o = byL[src]; if (!o || m.getLayer(id)) return;
+        var c = JSON.parse(JSON.stringify(o)); c.id = id; c.source = SRC_CL; c.minzoom = CL_MINZ; delete c.maxzoom; delete c.slot;
+        c.filter = o.filter ? ["all", un, o.filter] : un;
+        m.addLayer(c, m.getLayer(L_LBL) ? L_LBL : undefined);
+      };
+      clone(L_DOTE, L_CDOTE); clone(L_DOT, L_CDOT); clone(L_DOTB1, L_CB1); clone(L_DOTB2, L_CB2);
+      if (!m.getLayer(L_CL)) m.addLayer({ id: L_CL, type: "symbol", source: SRC_CL, minzoom: CL_MINZ, filter: ["has", "point_count"],
+        layout: { "icon-image": ["concat", "pncl-", ["to-string", ["get", "point_count"]], "-", ["case", [">", ["get", "b"], 0], "1", "0"], ["case", [">", ["get", "f"], 0], "1", "0"]],
+          "icon-anchor": "center", "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-padding": 0, "symbol-sort-key": ["get", "point_count"],
+          "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, m.getLayer(L_LBL) ? L_LBL : undefined);
+      cl.on = !!(m.getSource(SRC_CL) && m.getLayer(L_CL) && m.getLayer(L_CDOT));
+    } catch (e) { cl.on = false; try { console.warn("olnu glmap cl", e && e.message); } catch (x) {} }
+    return cl.on;
+  }
+  // sync(): the dot bars (t 0) leave the main source for the cluster source; full pills + places stay (their collisions)
+  function clSplit(m, feats) {
+    if (!cl.on || !m.getSource(SRC_CL)) return feats;
+    var keep = [], dots = [];
+    feats.forEach(function (f) { (f.properties.t === 0 ? dots : keep).push(f); });
+    var sig = dots.map(function (f) { var p = f.properties; return p.id + p.di + p.e + p.bf + p.bs + p.b2 + p.sz + f.geometry.coordinates[0] + "," + f.geometry.coordinates[1]; }).join("|");
+    if (sig !== cl.sig) { cl.sig = sig; cl.feats = dots; cl.seenAt = 0; try { m.getSource(SRC_CL).setData({ type: "FeatureCollection", features: dots }); } catch (e) {} stats.clSets = (stats.clSets || 0) + 1; }
+    stats.clDots = dots.length;
+    return keep;
+  }
+  // which dot bars are drawn on their own right now (not inside a cluster, not thinned out): cached 250 ms
+  function clShown(id) {
+    if (!cl.on || !gm) return false;
+    if (!cl.seen || performance.now() - cl.seenAt > 250) {
+      cl.seen = {}; cl.seenAt = performance.now();
+      try { gm.queryRenderedFeatures({ layers: [L_CDOT, L_CDOTE] }).forEach(function (f) { cl.seen[String(f.properties.id)] = 1; }); } catch (e) {}
+    }
+    return !!cl.seen[String(id)];
+  }
+  function clTap(m, p, e) {
+    var best = null, bd = 1e9;
+    try {
+      m.queryRenderedFeatures([[p.x - 24, p.y - 24], [p.x + 24, p.y + 24]], { layers: [L_CL] }).forEach(function (f) {
+        var q = m.project(f.geometry.coordinates), d = Math.abs(q.x - p.x) + Math.abs(q.y - p.y); if (d < bd) { bd = d; best = f; }
+      });
+    } catch (x) { return false; }
+    if (!best) return false;
+    var c = best.geometry.coordinates.slice(), n = best.properties.point_count, src = m.getSource(SRC_CL), done = false;
+    var go = function (err, ez) {
+      if (done) return; done = true;
+      var z = m.getZoom(), to = Math.min(Math.max(isFinite(ez) && !err ? ez + 0.3 : z + 2, z + 1), CL_MAXZ + 1.5);
+      var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+      m.easeTo({ center: c, zoom: to, duration: still ? 0 : 420 });
+    };
+    try { var pr = src.getClusterExpansionZoom(best.properties.cluster_id, go); if (pr && pr.then) pr.then(function (z) { go(null, z); }, function () { go(1); }); } catch (x) { go(1); }
+    setTimeout(function () { go(1); }, 600);   // no answer from the worker: zoom in 2 steps
+    stats.taps++; stats.lastTap = "cluster:" + n; tapAt = performance.now();
+    if (e.originalEvent) e.originalEvent._olnuGl = 1;
+    return true;
+  }
+  /* ds30 barcl END */
   /* ---------- tap ---------- */
   var synth = false, tapAt = -1e9;
   function onPreclick(e) {
@@ -519,10 +627,11 @@
         if (!pi0.im.parts.some(function (x) { return dx0 >= x.bb[0] - 4 && dx0 <= x.bb[2] + 4 && dy0 >= x.bb[1] - 4 && dy0 <= x.bb[3] + 4; })) return;
         if (!hit || f.properties.sk > hit.properties.sk) hit = f;
       });
-      if (!hit && z >= DOT_Z) {
+      if (!hit && cl.on && clTap(m, p, e)) return;   // ds30
+      if (!hit && (z >= DOT_Z || cl.on)) {
         var best = 1e9;
-        m.queryRenderedFeatures([[p.x - 22, p.y - 22], [p.x + 22, p.y + 22]], { layers: [L_DOT, L_DOTE] }).forEach(function (f) {
-          if (z < DOTE_Z && f.properties.e === 1) return;   // hidden by the zoom rule
+        m.queryRenderedFeatures([[p.x - 22, p.y - 22], [p.x + 22, p.y + 22]], { layers: cl.on ? [L_DOT, L_DOTE, L_CDOT, L_CDOTE] : [L_DOT, L_DOTE] }).forEach(function (f) {
+          if (z < DOTE_Z && f.properties.e === 1 && f.source !== SRC_CL) return;   // hidden by the zoom rule
           var q = m.project(f.geometry.coordinates), d = Math.abs(q.x - p.x) + Math.abs(q.y - p.y);
           if (d < best) { best = d; hit = f; }
         });
@@ -584,7 +693,7 @@
   function editVis() {
     var v = document.body.classList.contains("ba-edit"); if (v === editOn && layersReady) return;
     editOn = v; if (!gm || !layersReady) return;
-    [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].forEach(function (id) { try { gm.setLayoutProperty(id, "visibility", v ? "none" : "visible"); } catch (e) {} });
+    [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(CL_IDS).forEach(function (id) { try { gm.setLayoutProperty(id, "visibility", v ? "none" : "visible"); } catch (e) {} });
   }
   /* ---------- mbx: 🆘 Hämta mig / 🚗 Skjuts? requests on the map (js/skjuts.js data; coordinator request 2026-11-07) ----------
      A live request sent TO me that has a position = one small DOM pin above everything (pane "pickup", z 720), at every zoom
@@ -651,7 +760,7 @@
       var out = []; if (!on || !map) return out;
       var z = map.getZoom(), size = map.getSize();
       Object.keys(parts).forEach(function (id) {
-        var x = parts[id], im = x.im; if (!x.t && (z < DOT_Z || (x.e && z < DOTE_Z))) return;
+        var x = parts[id], im = x.im; if (!x.t && (cl.on ? !clShown(id) : (z < DOT_Z || (x.e && z < DOTE_Z)))) return;
         var p = map.latLngToContainerPoint(x.ll); if (p.x < -120 || p.y < -120 || p.x > size.x + 120 || p.y > size.y + 120) return;
         var k = x.sz, W = im.data.width / R, H = im.data.height / R;
         out.push({ l: p.x - im.ox * k, t: p.y - im.oy * k, r: p.x + (W - im.ox) * k, b: p.y + (H - im.oy) * k, id: id, t1: x.t });
@@ -670,11 +779,12 @@
         var ico = x.im.parts.filter(function (q) { return q.sel === ".bar-ico"; })[0], s = x.s;
         out.push({ id: id, full: !!x.t, empty: !!x.e, sel: x.sel, x: p.x, y: p.y, n: s.p ? +s.p.n || 0 : 0, friend: !!(s.p && s.p.f), crowd: !!s.cw,
           pill: !!(x.t && s.p), dem: !!x.dem, icoW: ico ? +((ico.bb[2] - ico.bb[0]) * x.sz).toFixed(1) : 0, lbl: !!placed[id], name: s.name,
-          shown: !!x.t || (z >= DOT_Z && (!x.e || z >= DOTE_Z)) });
+          shown: !!x.t || (cl.on ? clShown(id) : (z >= DOT_Z && (!x.e || z >= DOTE_Z))) });
       });
       return out;
     },
-    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL]; },
+    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(cl.on ? CL_IDS : []); },
+    _cl: function () { return { on: cl.on, dots: cl.feats.length, made: cl.made, maxz: CL_MAXZ + 1, src: SRC_CL, layer: L_CL }; },   // ds30 tests
     // places.js: the restaurant dots it chose (GL draws them under the bars); false = GL is off (keep the DOM dots)
     places: setPlaces,
     // map3d.js: a map click right after a GL bar tap (same finger) is that tap, not a tap on the 3D house under it
@@ -682,7 +792,7 @@
     // mbx: is this bar drawn in GL right now (full, or a dot the zoom rules show)? (mypins.js: else it draws its own chip)
     shown: function (id) {
       var x = parts[String(id)]; if (!on || !x || !map) return false;
-      var z = map.getZoom(); if (!x.t && (z < DOT_Z || (x.e && z < DOTE_Z))) return false;
+      var z = map.getZoom(); if (!x.t && (cl.on ? !clShown(id) : (z < DOT_Z || (x.e && z < DOTE_Z)))) return false;
       var p = map.latLngToContainerPoint(x.ll), s = map.getSize(); return p.x >= -20 && p.y >= -20 && p.x <= s.x + 20 && p.y <= s.y + 20;
     },
     // mbx: open a bar's sheet the way a tap on it does (mypins / barlit used to click the DOM marker, which is virtual now)
@@ -695,7 +805,7 @@
     },
     spriteOk: function () { return spr.ok; },
     _check: check,
-    _feats: function () { try { return gm.getSource(SRC_B)._data.features.map(function (f) { return f.properties; }); } catch (e) { return []; } },
+    _feats: function () { try { return gm.getSource(SRC_B)._data.features.concat(cl.feats).map(function (f) { return f.properties; }); } catch (e) { return []; } },
     _marker: function (id) { return byId[String(id)] || null; },
     _img: function (id) { var x = parts[String(id)]; return x ? { k: x.im.k, ox: x.im.ox, oy: x.im.oy, bottom: x.im.bottom, parts: x.im.parts } : null; }
   };

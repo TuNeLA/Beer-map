@@ -290,13 +290,15 @@
     A.openSheet(L("🏠 Följ mig hem", "🏠 Walk me home"), function (body) {
       var el = A.el;
       if (window.SAFETY && window.SAFETY.sos112) window.SAFETY.sos112(body);   // SAFE: 📞 Ring 112 first
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent || "")) body.appendChild(el("p", { class: "hf-warn hf-ios", text: L("iPhone: håll skärmen på och appen öppen hela vägen. När skärmen låser sig stannar GPS:en, och kompisarna ser dig int' röra dig.",
+        "iPhone: keep the screen on and the app open. When the screen locks, GPS stops.") }));   // ds42 (ux3): the web limit, said up front
       body.appendChild(el("p", { class: "hf-lead", text: L("Dina valda kompisar ser dig röra dig på kartan tills du ä hemma. Når du hemzonen skickas \"✅ Hemma!\" och delningen slutar av sig själv (max 2 timmar).",
         "The friends you pick see you move on the map until you are home. At home a \"✅ Home!\" goes out and sharing stops (max 2 hours).") }));
       if (!h) {
         body.appendChild(el("p", { class: "hf-warn", text: L("🏠 Du har ingen hemadress sparad än. Den behövs för att veta när du ä framme (sparas bara på telefonen).",
           "🏠 No home saved yet. It is needed to know when you arrive (kept on this phone).") }));
         body.appendChild(el("div", { class: "row" }, [A.btn(L("🏠 Spara hemadress", "🏠 Save home"), "btn-amber btn-block", function () {
-          if (window.HOMEZONE && window.HOMEZONE.open) window.HOMEZONE.open(); })]));
+          if (window.HOMEZONE && window.HOMEZONE.open) window.HOMEZONE.open({ then: function () { openStart(opts); } }); })]));   // ds39: back to Följ mig hem
         return;
       }
       body.appendChild(el("p", { class: "hf-warn", text: L("📱 Håll appen öppen med skärmen på hela vägen hem. En webbapp får ingen GPS i bakgrunden (iPhone stänger av direkt, Android efter en stund)." +

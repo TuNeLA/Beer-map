@@ -514,6 +514,12 @@
   function lvTag(b) { var lv = lvOf(U.drinks(b)); return lv ? { lv: lv, name: lvName(lv, personKey(b)) } : null; }
   // pf01: a friend's / my row in "Folk här" = the NIGHT TOTAL (all drinks tonight, wherever they were logged), never a count
   // per bar. Owner: "15 at home, then 2 at the bar – at the bar it should still show his total". Strangers: no number (SAFE).
+  // ds31: friends at this bar → their night totals on the map marker (GL art reads .pft); strangers never (SAFE: friend rows only)
+  function friendTotHTML(list) {
+    var a = list.filter(function (b) { return b.friend_name && !b.is_mine && !b._nc; }).map(function (b) { return U.drinks(b); })
+      .filter(function (n) { return n > 0; }).sort(function (x, y) { return y - x; });
+    return a.length ? '<span class="pft" aria-hidden="true">' + a.slice(0, 2).join(" · ") + (a.length > 2 ? " +" + (a.length - 2) : "") + "</span>" : "";
+  }
   function nightTotalHTML(b) {
     var n = U.drinks(b), e = lvEmoji(b);
     return '<span class="pp-tot" aria-label="' + U.esc(n + (n === 1 ? " dricka" : " drycker") + " ikväll") + '">' + n + " 🍺" +
@@ -603,7 +609,7 @@
       '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
       h += U.pillHTML(list.length, maxLevel(list), { people: true, friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar" + (list.length < 3 ? " pq" : ""),   // gw: count from 3, below "Lugnt"
-        label: pickBadges(mods("barBadgeHTML", bar, list, window.TIERS ? Math.max(z, LABEL_ZOOM) : z), bx) });
+        label: friendTotHTML(list) + pickBadges(mods("barBadgeHTML", bar, list, window.TIERS ? Math.max(z, LABEL_ZOOM) : z), bx) });
     }
     if (z >= LABEL_ZOOM) {
       if (bx.king) h += '<span class="cm-b cm-king" aria-hidden="true">👑</span>';
@@ -2236,6 +2242,24 @@
       }, { now: true, lock: true, onClose: function () { if (!done) { done = true; resolve(null); } } });
     });
   }
+  // ds42 (ux3): no GPS → the location toast offers "Räkna ölen ändå". Checked in = the pin at your bar; else NO pin (p_hidden,
+  // the spökläge path: the drink counts for you and your group). The point sent then is only a stand-in inside Sweden (your
+  // last known spot, your home zone or Stockholm) and is never shown (hidden). Not offered on an old server (no post_beer_v2).
+  function noGpsSpot(err) {
+    return new Promise(function (resolve) {
+      var done = false, fin = function (v) { if (!done) { done = true; resolve(v); } };
+      if (postV2 === "missing") { locError(err); fin({ _skip: true }); return; }
+      var ci = myCheckin();
+      var msg = err && err.code === 1 ? t("locDenied") : err && err.code === 3 ? t("locTimeout") : t("locFail");
+      toast(msg + (ci ? " Räkna den på " + ci.name + "?" : " Räkna ölen ändå, utan pin på kartan?"), { err: true, id: "loc", ms: 9000,
+        action: { label: ci ? "Ja, på " + String(ci.name).slice(0, 18) : "Räkna ölen ändå", fn: function () {
+          if (ci) fin({ lat: +ci.lat, lng: +ci.lng, precise: true, _bar: ci.id });
+          else { var h = U.ls.getJSON("olnu.home", null), p = lastLoc || (h && isFinite(h.lat) ? h : null) || { lat: 59.3326, lng: 18.0649 };
+            fin({ lat: +p.lat, lng: +p.lng, precise: false, _nopin: true }); }
+        } } });
+      setTimeout(function () { fin({ _skip: true }); }, 9500);
+    });
+  }
   /* ---------- Post: post_beer_v2 (v13) with fallback to post_beer ---------- */
   var postV2 = "unknown";   // "unknown" | "on" | "missing"
   function postBeer(spot, ghost) {
@@ -2363,9 +2387,9 @@
     window.FX.splash($("btn-beer"));
     window.FX.vibrate(20);
     setBusy(true);
-    (queued ? Promise.resolve(queued) : getPosition().then(askWhere)).then(function (spot) {
-      if (!spot) { toast(t("whereCancel"), { id: "where" }); return; }
-      var ghost = !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
+    (queued ? Promise.resolve(queued) : getPosition().then(askWhere, noGpsSpot)).then(function (spot) {
+      if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
+      var ghost = !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
       var before = U.drinks(meState || myBeer() || {});
       return postBeer(spot, ghost)
         .then(function (res) {

@@ -276,6 +276,131 @@ Rules:
 - A segment label is never cut: the count sits under the label.
 <!-- ds19 robust END -->
 
+<!-- ds30 barcl START -->
+## Bar clusters on the map (ds30)
+
+- Zoomed out (Leaflet z ≤ 14), the bars that are a dot merge into ONE marker per area: a navy capsule with a foam ring, the
+  bar glyph and the count, and a second capsule behind it (stack cue, as on the people cluster). Tap = zoom in until it splits.
+- From Leaflet z15 every bar is its own dot again (the old dot rules). Full pills (friends, people, check-ins, call-outs) are
+  never in a cluster: they stay on top.
+- A busy bar inside = amber ring. A friend at a bar inside = the green friend dot, top-right.
+- Built with a Mapbox GL GeoJSON cluster source (supercluster in the map worker): no DOM markers, no per-frame JS, so the
+  clusters move with the map in the same frame. Code: `js/glmap.js` "ds30 barcl".
+<!-- ds30 barcl END -->
+
+<!-- ds31 friendtot START -->
+## Friends at a bar, on the map (ds31)
+
+- A bar with friends shows ONE small chip under its disc: green friend badge + the friend's night total + a beer glyph
+  ("15"). Two friends: "15 · 7". More: "15 · 7 +2". Tap = the bar sheet at "Folk här".
+- The number is the night total (all drinks tonight, wherever logged), the same as in "Folk här".
+- Strangers never get a number (store rule). Only friend pins carry a count from the server.
+<!-- ds31 friendtot END -->
+
+<!-- ds32 annat START -->
+## ANNAT (ds32)
+
+- 50 px round button, lilac ring (lilac = other drinks, also on the map), navy body. Our glyph `mixed` (wine glass +
+  cocktail) 20 px over the word "Annat" 12/14 px. The word fits inside the circle.
+- Secondary to ÖL!: no fill colour, smaller, up-left of ÖL! (owner position, ds05c). The 10-min wait ring goes around it.
+<!-- ds32 annat END -->
+
+<!-- ds33 toasts START -->
+## Toasts and bubbles at the bottom (ds33)
+
+- Every bottom message (toasts, the precision bubble) starts 8 px above the highest of ANNAT, locate, the Mapbox logo / ⓘ
+  and the bottom banners. Measured (`--pn-toast-b`, js/pnds.js "ds33"), not a constant.
+- The precision bubble sits on the right, over locate. Text wraps (2 lines); it is never cut and never under a button.
+- ⓘ map credits (ds34): the 28 px dark disc is the icon box itself, centred in the 44 px tap area. Only the "i" shows on it.
+<!-- ds33 toasts END -->
+
+<!-- ds35 ikvall START -->
+## Ikväll chip (ds35)
+
+- Top-left under the LIVE ticker, FIRST in the HUD row: my status tonight as icon + word (Ute / Kanske / Hemma, or "Ikväll?")
+  + a chevron. 🚗 / walk icons when I drive or Följ mig hem is on. 44 px high.
+- Tap = a small menu under it: Ute · Kanske · Hemma (the one segmented control), Jag kör ikväll (switch), Följ mig hem,
+  Hämta mig, Vilka ska ut? It reuses pnui (status), skjuts (driving, Hämta mig) and hemfolj (Följ mig hem).
+- The urgent chip ("Kolla till …") follows it in the same row; the row and the menu never reach the right rail.
+- Placement: the leading edge of the map's chip row (Google Maps chips under the search bar; Apple HIG: controls in the
+  corners, the map stays clear).
+<!-- ds35 ikvall END -->
+
+<!-- ds36 aclist START -->
+## Auto check-in, dense areas (ds36)
+
+- 3+ bars where you could be: a short list toast "Var ä du? Välj krogen." with the 3 nearest (name · metres), then
+  "Någon annanstans" (opens Ställen nära dig) and "Inte på krogen" (no question about these bars for 30 min).
+- 2 bars: "A eller B?" as before. All thresholds are unchanged (js/autoci.js).
+<!-- ds36 aclist END -->
+
+<!-- ds37 start START -->
+## Start (ds37)
+
+- First frame = the splash: solid `--ds-bg` (= manifest `background_color`), the app icon and the wordmark, centred. It is
+  in `index.html` (inline style), so it paints before any script.
+- It fades (280 ms, opacity) when the map has painted and the fonts are ready, at the latest 2.6 s after start. It never
+  waits for data, it never blocks a tap (pointer-events: none), and with reduced motion it just goes.
+- Heavy work that the user does not see waits for `pn:calm` (1.2 s after the splash): e.g. the style copy for the sheet
+  close slide (smooth.js). Chrome that arrives after the splash fades in once (200 ms).
+<!-- ds37 start END -->
+
+<!-- ds38 autohome START -->
+## Auto hemma (ds38)
+
+- After a night out (a check-in or a drink tonight), 10 min inside the home zone (2+ GPS readings, accuracy ≤ 50 m):
+  checked out of the bar, Ikväll = Hemma, Följ mig hem ends with the normal "Hemma ✓". Once per night.
+- One calm toast: "Välkommen hem 🏠 — vi satte dig som Hemma" + Ångra (the check-in and the old status come back).
+- The home point stays on the phone (home zone, `olnu.home`). The log gets only a distance bucket, never a coordinate.
+- Setting: Karta – incheckning → "Sätt mig som hemma automatiskt" (on by default once a home is set), or "Ställ in hem".
+- Nothing without a home, in spökläge, or before any activity tonight. Web: only while the app is open.
+<!-- ds38 autohome END -->
+
+<!-- ds39 ux2 START -->
+## Usability test fixes (ds39, ux2/REVIEW.md)
+
+- Safety in reach: Följ mig hem + Hämta mig are in the Ikväll chip menu and in "⋯ Mer på kartan" ("Säker hem").
+- ONE home zone (homezone.js) for Följ mig hem, the drink privacy and Auto hemma. The sheet has an address search, a pin at
+  once (the map centre until you tap or search), "Använd nuvarande plats". After Spara you go back to where you came from.
+- Never colour only on the map: MEDEVAC = dashed white ring; my own dot = a target (blue core, white ring, outer ring).
+  Crowd = the word (Lugnt / Livligt / Packat) + the 3-bar meter.
+- Labels inside round buttons (ÖL!, Annat) use px sizes: 130 % system text never spills out of the circle.
+- Every tappable map chip has a ≥ 44 px hit area (invisible padding).
+- No data in view: one quiet caption "Ingen data här ikväll än" (once per area), not an empty map.
+<!-- ds39 ux2 END -->
+
+<!-- ds40 ux START -->
+## Calm messages (ds40, ux/REVIEW.md)
+
+- A sheet or a full-screen dialog is open → toasts show at the TOP (never over a shutter or a primary button); fun cards
+  (Visste du?, captions) wait and come one at a time when the sheet is closed and the map has been still for 1.5 s.
+- Start: the splash is the ONE intro. No "Systemstart" card. KAOS in the ticker and fun cards wait 5 s after the splash.
+- LIVE ticker: real events (the gang, the town) first, with a small green dot; jokes after, without a dot.
+- Precision shows its state: "Exakt plats · På" / "Exakt plats · Av". ANNAT keeps its sheet title "Sidospår" (owner).
+- After ÖL!: an amber chip "Öl #N registrerad · syns för gänget" for 2.2 s above the dock.
+- Auto check-in samples GPS only after the user said yes to location in the app (`olnu.locOk`).
+<!-- ds40 ux END -->
+
+<!-- ds41 zonefr START -->
+## Zones and friends (ds41)
+
+- No marker ever covers a zone pill. While the zones show, people pins and clusters are hidden; the friends (and you) are in
+  the pill: green initial discs + "Oskar +2" (the Sweden chips: a green friend count). Snap Map / Zenly do the same at city
+  zoom: faces with the place, never on top of the place name.
+- The zone pills use our glyphs (beer, crown), no emoji. Every pill is sized to its text: never cut.
+<!-- ds41 zonefr END -->
+
+<!-- ds42 ux3 START -->
+## Synlighet and ÖL! without GPS (ds42, ux3/REVIEW.md)
+
+- The rail eye button = "Synlighet": Alla · Bara vänner · Spöke (one segmented control in a small menu, the current state on
+  the button icon, one line of explanation under it). "Bara vänner" shows only when the server has migration 0340.
+- ÖL! without a location: the error toast offers "Räkna ölen ändå". Checked in = the pin is at your bar; else no pin (the
+  drink counts for you and your group).
+- Följ mig hem on iPhone says it up front: keep the screen on (iPhone stops GPS when it locks).
+- The splash shows "Laddar PintsNow…" before any script runs.
+<!-- ds42 ux3 END -->
+
 ## Icons, not emoji (ds12)
 
 - In UI chrome (buttons, tabs, headings, labels, banners, overlays) an emoji becomes a PNI icon, or goes when no icon fits.

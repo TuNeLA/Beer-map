@@ -152,22 +152,26 @@
   function buildCSS() {
     if (sheetCSS || cssBusy || typeof CSSStyleSheet !== "function" || !("adoptedStyleSheets" in Document.prototype)) return;
     cssBusy = true;
-    try {
-      var txt = [];
-      Array.prototype.forEach.call(document.styleSheets, function (s) {
-        try { var r = s.cssRules; for (var i = 0; i < r.length; i++) txt.push(r[i].cssText); } catch (e) {}
-      });
-      var cs = new CSSStyleSheet();
-      cs.replaceSync(txt.join("\n").replace(/@import[^;]+;/g, ""));
-      sheetCSS = cs;
-    } catch (e) { sheetCSS = null; }
-    cssBusy = false;
+    // ds37: in slices of ≤ 8 ms per idle period (was ONE ~330 ms long task on a phone), then an async parse
+    var list = Array.prototype.slice.call(document.styleSheets), txt = [], i = 0, v0 = cssVer;
+    var step = function () {
+      var t = performance.now();
+      while (i < list.length && performance.now() - t < 8) { try { var r = list[i].cssRules; for (var j = 0; j < r.length; j++) txt.push(r[j].cssText); } catch (e) {} i++; }
+      if (i < list.length) { idle(step, 3000); return; }
+      try {
+        var cs = new CSSStyleSheet(), src = txt.join("\n").replace(/@import[^;]+;/g, ""), ok = function () { cssBusy = false; if (v0 === cssVer) sheetCSS = cs; else buildCSS(); };
+        if (cs.replace) cs.replace(src).then(ok, function () { cssBusy = false; }); else { cs.replaceSync(src); ok(); }
+      } catch (e) { sheetCSS = null; cssBusy = false; }
+    };
+    step();
   }
   function idle(fn, ms) {
     if (W.requestIdleCallback) W.requestIdleCallback(fn, { timeout: ms || 4000 }); else setTimeout(fn, 1200);
   }
   var cssVer = 0;
-  function cssLater() { var v = ++cssVer; sheetCSS = null; idle(function () { if (v === cssVer) buildCSS(); }); }
+  // ds37: never during start (it was the biggest long task of the first 2 s): after "pn:calm" (js/pnds.js), then idle
+  function afterCalm(fn) { if (W.__pnCalm) fn(); else { document.addEventListener("pn:calm", function () { fn(); }, { once: true }); setTimeout(fn, 9000); } }
+  function cssLater() { var v = ++cssVer; sheetCSS = null; afterCalm(function () { idle(function () { if (v === cssVer) buildCSS(); }, 6000); }); }
   var MAX_NODES = 900;
   // Call BEFORE #sheet is hidden and its body emptied (app.js closeSheet).
   function sheetOut() {
@@ -206,7 +210,7 @@
       setTimeout(gone, 400);
     } catch (e) {}
   }
-  idle(buildCSS, 2500);   // ds10: the style copy exists before the first close, so the first close slides too
+  afterCalm(function () { idle(buildCSS, 6000); });   // ds37   // ds10: the style copy exists before the first close, so the first close slides too
   function watchSheet() {
     var sh = document.getElementById("sheet"), body = document.getElementById("sheet-body"), title = document.getElementById("sheet-title");
     if (!sh || !body || !W.MutationObserver) return;

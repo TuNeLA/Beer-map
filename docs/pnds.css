@@ -810,3 +810,161 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .evs-seg-l{white-space:nowrap !important;overflow:visible !important;text-overflow:clip !important}
 .sp-body.sp-center .pn-sp-fail{display:flex;flex-direction:column;gap:var(--ds-2);width:100%;max-width:320px;margin-top:var(--ds-4)}
 /* ds19 robust END */
+/* ds31 friendtot START — friends' night totals on a bar marker. GL draws it in the marker image (mapart ftChip); this is the
+   same chip for the DOM fallback map (no Mapbox): under the bar disc, green ring, never for strangers. */
+.cm .pill .pft{position:absolute;left:50%;top:calc(100% + 4px);transform:translateX(-50%);display:flex;align-items:center;gap:var(--sp-1);
+  height:20px;padding:0 var(--sp-2) 0 var(--sp-1);border-radius:var(--r-pill);background:#0A0F24;border:2px solid var(--ds-green);color:#FFFAF0;
+  font:700 var(--fs-12)/16px var(--ds-sans);white-space:nowrap;box-sizing:border-box}
+.cm .pill .pft::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--ds-green)}
+.cm.cm-dot .pill .pft{display:none}
+/* ds31 friendtot END */
+/* ds32 annat START — ANNAT: a 50 px lilac-ringed button (the 10-min ring around it in a 60 px box), our "mixed" glyph 20 px over
+   the word "Annat" 12/14: the word sits inside the circle (chord at its bottom edge ≈ 37 px > 33 px word). Lilac = other drinks
+   (same as on the map). Secondary to ÖL!: navy body, no fill colour. */
+.beer-wrap>.other-wrap{width:60px !important;height:60px !important}
+.beer-wrap>.other-wrap .other-btn{width:50px !important;height:50px !important;padding:0 !important;gap:0 !important;border-radius:50% !important;
+  background:var(--pn-float-2) !important;border:2px solid var(--pn-lilac,#D9B8FF) !important;color:var(--ds-text) !important;
+  box-shadow:var(--ds-sh-1),inset 0 0 0 1px rgba(217,184,255,.18) !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important}
+#btn-other .other-label{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:-1px;width:auto !important;height:auto !important}
+#btn-other .ol-e{display:block;line-height:0;color:var(--pn-lilac,#D9B8FF)}
+#btn-other .ol-e svg{width:20px !important;height:20px !important}
+#btn-other .ol-t{font:600 var(--fs-12)/13px var(--ds-sans) !important;letter-spacing:0 !important;color:var(--ds-text);white-space:nowrap}
+#btn-other.cooldown .ol-t{font:700 var(--fs-12)/14px var(--ds-sans) !important;font-variant-numeric:tabular-nums;color:var(--pn-lilac,#D9B8FF)}
+#btn-other:active{transform:scale(.96)}
+.beer-wrap>.other-wrap .ocd-track{stroke:rgba(217,184,255,.16) !important}
+/* ds32 annat END */
+/* ds33 toasts START — every bottom message keeps clear of ANNAT, locate, the map credits and the bottom banners
+   (--pn-toast-b, measured in js/pnds.js "ds33"). Toast text wraps; it is never cut. */
+.toasts{bottom:var(--pn-toast-b, var(--pn-ban-b, calc(var(--dock-h,212px) + 54px))) !important}
+.toast>span{white-space:normal;overflow-wrap:anywhere;min-width:0}
+/* the precision bubble (absolute in the dock, the dock's offset subtracted): right side over locate (it belongs to the precision box), above the measured line, 2 lines max */
+#prec-hint{position:absolute !important;top:auto !important;left:auto !important;bottom:calc(var(--pn-hint-b, var(--pn-toast-b, var(--pn-ban-b, 260px))) - var(--pn-dock-top-b, 152px)) !important;
+  right:calc(var(--sar,0px) + var(--pn-edge,12px)) !important;max-width:min(300px,calc(100vw - 2 * var(--pn-edge,12px))) !important;white-space:normal !important;
+  overflow:visible !important;text-overflow:clip !important;z-index:1001 !important}
+/* ds33 toasts END */
+/* ds34 attrib START — the ⓘ map-credits button: the dark disc IS the icon's box (28 px, centred in the 44 px tap area by grid),
+   so disc and "i" can never drift apart (6-main.jpg: the old ::before disc sat off-centre on Android). The icon's own ring is
+   off (the disc is the ring); only the "i" shows. Mapbox: the credits stay visible and tappable. */
+#btn-attrib::before{display:none !important}
+#btn-attrib{display:grid !important;place-items:center !important;padding:0 !important;line-height:0 !important;font-size:0 !important}
+#btn-attrib>span{position:static !important;display:grid !important;place-items:center !important;width:28px !important;height:28px !important;margin:0 !important;
+  border-radius:50% !important;background:rgba(10,15,28,.72) !important;border:1px solid var(--ds-border-2, rgba(255,255,255,.18)) !important;box-sizing:border-box !important;
+  color:var(--ds-text-2, #c9d0cd) !important;font:700 var(--fs-14)/1 var(--ds-sans) !important}
+#btn-attrib>span>svg{width:22px !important;height:22px !important;display:block !important;margin:0 !important}
+#btn-attrib>span>svg circle:first-of-type{display:none}
+#btn-attrib[aria-expanded="true"]>span{color:var(--ds-amber-t) !important;border-color:var(--ds-amber) !important}
+/* ds34 attrib END */
+/* ds35 ikvall START — the "Ikväll" status chip: first in the HUD row (top-left under LIVE), 44 px, icon + word + chevron.
+   The urgent chip ("Kolla till …") follows it in the same row; the row never reaches the right rail. Menu = a popover under it. */
+.hud-left>#pn-ikv2{order:-1;flex:0 0 auto;display:inline-flex;align-items:center;gap:var(--sp-1);height:44px;padding:0 var(--sp-2) 0 var(--sp-3);
+  border-radius:var(--r-pill);background:var(--pn-float) !important;border:1px solid var(--ds-border-2);color:var(--ds-text);box-shadow:var(--ds-sh-1);
+  font:600 var(--fs-14)/20px var(--ds-sans);white-space:nowrap;cursor:pointer;pointer-events:auto}
+.hud-left>#pn-ikv2[hidden]{display:none !important}
+#pn-ikv2 .pn-ikv2-i{width:20px;height:20px;color:var(--ds-muted)}
+#pn-ikv2.pn-ikv2-ute{border-color:rgba(61,220,132,.55)}
+#pn-ikv2.pn-ikv2-ute .pn-ikv2-i{color:var(--ds-green)}
+#pn-ikv2.pn-ikv2-kanske .pn-ikv2-i{color:var(--ds-amber-t)}
+#pn-ikv2.pn-ikv2-hemma .pn-ikv2-i{color:var(--ds-blue)}
+#pn-ikv2 .pn-ikv2-x{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ds-raised);color:var(--ds-text-2)}
+#pn-ikv2 .pn-ikv2-x svg{width:14px;height:14px}
+#pn-ikv2 .pn-ikv2-c{width:16px;height:16px;color:var(--ds-muted)}
+#pn-ikv2[aria-expanded="true"] .pn-ikv2-c{transform:rotate(180deg)}
+#pn-ikv2:active{transform:scale(.96)}
+#pn-ikv2:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.hud-left:has(>#pn-ikv2:not([hidden]))>.hud-x{max-width:calc(100vw - var(--sal,0px) - var(--sar,0px) - 2 * var(--pn-edge,12px) - var(--pn-rail,44px) - 8px - 8px - 118px) !important;min-width:0}
+.pn-ikm{position:fixed;z-index:1500;max-width:calc(100vw - 24px);box-sizing:border-box;padding:var(--sp-3);border-radius:var(--r-lg);
+  background:var(--ds-sheet);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2);color:var(--ds-text);
+  animation:pnIkmIn var(--m-4,200ms) var(--e-in,cubic-bezier(.05,.7,.1,1)) backwards}
+.pn-ikm.pn-out{animation:pnIkmOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards}
+@keyframes pnIkmIn{from{opacity:0;transform:translateY(-6px)}}
+@keyframes pnIkmOut{to{opacity:0;transform:translateY(-6px)}}
+.pn-ikm-h{margin:0 0 var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.pn-ikm .pn-ikm-seg{margin:0 0 var(--sp-2) !important}
+.pn-ikm .pn-ikm-seg>button{min-width:0 !important;flex:1 1 0 !important;padding:0 var(--sp-1) !important}
+.pn-ikm .pn-ikm-seg>button svg{width:18px;height:18px}
+.pn-ikm-list{display:flex;flex-direction:column;border-radius:var(--r-md);background:var(--ds-card);overflow:hidden}
+.pn-ikm-row{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:var(--sp-2) var(--sp-3);border:0;background:transparent;color:inherit;text-align:left;width:100%;cursor:pointer;font:inherit}
+.pn-ikm-row+.pn-ikm-row{border-top:1px solid var(--ds-border)}
+.pn-ikm-row:active{background:var(--ds-raised)}
+.pn-ikm-row:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
+.pn-ikm-i{width:20px;height:20px;flex:0 0 auto;color:var(--ds-text-2)}
+.pn-ikm-l{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.pn-ikm-l b{font:600 var(--fs-16)/22px var(--ds-sans)}
+.pn-ikm-l small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.pn-ikm-c{width:16px;height:16px;flex:0 0 auto;color:var(--ds-muted)}
+.pn-ikm-sw .switch{pointer-events:none}
+@media (prefers-reduced-motion:reduce){.pn-ikm,.pn-ikm.pn-out{animation:none}#pn-ikv2 .pn-ikv2-c{transition:none}}
+body.barsheet-open #pn-ikv2,body.ba-edit #pn-ikv2{visibility:hidden}
+/* ds35 ikvall END */
+/* ds36 aclist START — the auto check-in list toast (3+ bars close): one column, rows 48 px (name left, metres right), then
+   "Någon annanstans" and "Inte på krogen" side by side (equal width, ghost). */
+.toast.ac-list{flex-direction:column !important;align-items:stretch !important;gap:var(--sp-2) !important}
+.toast.ac-list>span{font:600 var(--fs-16)/22px var(--ds-sans)}
+.toast.ac-list .ac-li{display:flex !important;align-items:center;gap:var(--sp-2);width:100%;min-height:48px !important;justify-content:flex-start !important;
+  background:var(--ds-raised) !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;border-radius:var(--r-md) !important;padding:0 var(--sp-3) !important}
+.toast.ac-list .ac-li svg{width:18px;height:18px;color:var(--ds-amber-t);flex:0 0 auto}
+.toast.ac-list .ac-ln{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;font:600 var(--fs-16)/22px var(--ds-sans)}
+.toast.ac-list .ac-lm{flex:0 0 auto;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);font-variant-numeric:tabular-nums}
+.toast.ac-list .ac-else,.toast.ac-list .ac-no{width:calc(50% - var(--sp-1));min-height:44px !important;display:inline-flex !important;align-items:center;justify-content:center;gap:var(--sp-1)}
+.toast.ac-list .ac-else svg,.toast.ac-list .ac-no svg{width:16px;height:16px}
+.toast.ac-list{flex-wrap:wrap !important;flex-direction:row !important}
+.toast.ac-list>span,.toast.ac-list .ac-li{flex:1 0 100% !important}
+/* ds36 aclist END */
+/* ds37 start START — calm start: the splash fades into the map (js "ds37"); chrome that arrives later fades in once, opacity
+   only (never a transform: map markers are not touched here). */
+#pn-splash.pn-out{opacity:0}
+.pn-rail,#pn-ikv2,.hud-left .hx-chip,.ticker .pn-kaos-line,.ticker .pn-kaos-x,.bm-mblogo,#btn-attrib,#other-wrap:not([hidden]){animation:pnArrive var(--m-4,200ms) var(--e-in,cubic-bezier(.05,.7,.1,1)) backwards}
+@keyframes pnArrive{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){#pn-splash{transition:none !important}.pn-rail,#pn-ikv2,.hud-left .hx-chip,.ticker .pn-kaos-line,.ticker .pn-kaos-x,.bm-mblogo,#btn-attrib,#other-wrap:not([hidden]){animation:none}}
+/* ds37 start END */
+/* ds39 ux2 START — usability test fixes (ux2/REVIEW.md): not colour only, 130 % text, ≥ 44 px map hit areas, hemzon search. */
+/* not colour only: MEDEVAC (red) gets a dashed white ring as a shape cue; my own dot = a target (never like a bar pin) */
+.pill.p2{outline:2px dashed #FFFAF0;outline-offset:2px}
+.me-dot{width:18px !important;height:18px !important;background:#4aa3ff !important;border:3px solid #fff !important;
+  box-shadow:0 0 0 2px rgba(10,15,28,.9),0 0 0 4px #fff,0 0 0 9px rgba(74,163,255,.28),0 2px 6px #000a !important}
+/* 130 % text size: the labels inside the round buttons keep their px size (the circle does not grow) */
+.beer-btn:not(.cooldown) .beer-label{font-size:44px !important;-webkit-text-size-adjust:none;text-size-adjust:none}
+@media (max-width:380px){ .beer-btn:not(.cooldown) .beer-label{font-size:34px !important} }
+.beer-btn.cooldown .beer-label{font-size:28px !important}
+#btn-other .ol-t{font-size:12px !important}
+#btn-other .ol-e svg{width:20px !important;height:20px !important}
+.beer-btn,#btn-other{-webkit-text-size-adjust:none;text-size-adjust:none;overflow:hidden}
+/* map chips: an invisible ≥ 44 px hit area around small tappable markers (arena chips, my places, people) */
+.ap-pin,.mp-pin{position:relative}
+.ap-pin::after,.mp-pin::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%);border-radius:var(--r-md)}
+/* hemzon: address search row */
+.hz-search{display:flex !important;gap:var(--sp-2);margin:0 0 var(--sp-2) !important}
+.hz-search .hz-q{flex:1 1 auto;min-width:0;height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);border:1px solid var(--ds-border-2);background:var(--ds-bg);color:var(--ds-text);font:400 var(--fs-16)/22px var(--ds-sans)}
+.hz-search .hz-qb{flex:0 0 auto;min-height:44px !important}
+/* Säker hem in Mer på kartan */
+.pn-safe-h{margin:var(--sp-5) 0 var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+/* ds39 ux2 END */
+/* ds40 ux START — toasts over a sheet / dialog go to the top; fun cards wait; the start shows one thing at a time. */
+body.pn-modal-on .toasts{top:calc(var(--sat,0px) + var(--sp-2)) !important;bottom:auto !important;justify-content:flex-start !important;z-index:2600 !important}
+body.pn-modal-on #dl-cap,html.pn-settle #dl-cap{visibility:hidden !important}
+html.pn-settle .ticker .pn-kaos-line,html.pn-settle .ticker .pn-kaos-x{display:none !important}
+html.pn-settle .ticker.pn-kaos .tk-viewport{visibility:visible !important;opacity:1 !important}
+#dl-boot{display:none !important}   /* the splash is the start (ds37) */
+/* LIVE ticker: a real event has a small green dot (jokes have none) */
+.tk-item.tk-real::before{content:"";display:inline-block;width:6px;height:6px;margin:0 6px 0 0;border-radius:50%;background:var(--ds-green);vertical-align:.2em}
+/* precision: the state in words — "Exakt plats" + På / Av */
+body #prec-seg>#prec-exact[aria-checked="true"]::after{content:"Exakt plats\A På" !important;white-space:pre-line !important;text-align:center;line-height:18px !important}
+body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av" !important;white-space:pre-line !important;text-align:center;line-height:18px !important;color:var(--ds-muted) !important}
+/* ÖL! confirmation chip */
+.pn-beerok{position:fixed;z-index:1995;left:50%;bottom:var(--pn-hint-b, var(--pn-toast-b, 260px));transform:translateX(-50%);display:flex;align-items:center;gap:var(--sp-2);
+  min-height:44px;padding:0 var(--sp-4) 0 var(--sp-3);border-radius:var(--r-pill);background:var(--ds-amber);color:var(--ds-on-amber,#241300);box-shadow:var(--ds-sh-2);
+  font:700 var(--fs-16)/22px var(--ds-sans);white-space:nowrap;pointer-events:none;animation:pnBeerOk 2.2s var(--e-std,ease) forwards}
+.pn-beerok small{font:600 var(--fs-14)/20px var(--ds-sans);opacity:.85}
+.pn-beerok svg{width:20px;height:20px}
+@keyframes pnBeerOk{0%{opacity:0}8%{opacity:1}85%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.pn-beerok{animation:pnBeerOkR 2.2s linear forwards}@keyframes pnBeerOkR{0%,90%{opacity:1}100%{opacity:0}}}
+/* ds40 ux END */
+/* ds42 ux3 START — Synlighet menu (same popover as the Ikväll menu) + the iPhone note in Följ mig hem. */
+.pn-vis .pn-vis-seg{margin:0 0 var(--sp-2) !important}
+.pn-vis .pn-vis-seg>button{min-width:0 !important;flex:1 1 0 !important;padding:0 var(--sp-1) !important;font-size:var(--fs-14) !important}
+.pn-vis .pn-vis-seg>button svg{width:18px;height:18px}
+.pn-vis-note{margin:0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text-2)}
+#pn-ghost[data-vis="vanner"]{background:var(--ds-raised) !important;color:var(--ds-green) !important;border-color:rgba(61,220,132,.6) !important}
+#pn-ghost[data-vis="alla"]{background:var(--pn-float) !important;color:var(--ds-text) !important}
+.hf-ios{border-left:3px solid var(--ds-amber);padding-left:var(--sp-2)}
+/* ds42 ux3 END */

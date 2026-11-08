@@ -72,7 +72,7 @@
       return st.perm;
     }, function () { st.perm = "unknown"; return st.perm; });
   }
-  function want() { return ready() && !document.hidden && st.perm === "granted"; }
+  function want() { return ready() && !document.hidden && st.perm === "granted" && U.ls.get("olnu.locOk", "") === "1"; }   // ds40: only after the user said yes in the app
   // Visible-only sampler: ONE getCurrentPosition per minute (not a permanent watchPosition: in Chromium a running watch makes
   // other getCurrentPosition calls, e.g. the ÖL! tap, wait for the next fix — up to their 12 s timeout). GPS is on only briefly.
   function startWatch() {
@@ -175,6 +175,7 @@
     var bar = run.spot.bar;
     if (run.clear && on() && !area() && barLike(bar) && A.getName && A.getName()) { checkIn(bar, true); return; }
     var C = v.C.filter(function (s) { return !snoozed(sid(s)); });
+    if (!run.clear && C.length >= 3) { chooseList(C.slice(0, 3)); return; }   // ds36: dense area → a short list
     if (!run.clear && C.length >= 2) { choose(C[0].bar, C[1].bar); return; }
     suggest(run.clear ? bar : (C[0] || run.spot).bar, false);
   }
@@ -214,6 +215,28 @@
     addBtn(t, ic("check") + esc(short(a.name)), "btn-amber ac-pick", function () { checkIn(a, false); });
     addBtn(t, ic("check") + esc(short(b.name)), "btn-amber ac-pick", function () { checkIn(b, false); });
     snoozeOnClose(t, [String(a.id), String(b.id)]);
+  }
+  // ds36: 3+ bars in reach (Stockholm): "Var ä du?" + the 3 nearest (name · m) + Någon annanstans + Inte på krogen.
+  // All picks are equal (no amber primary); a pick = the same check-in as a tap. Closed without a pick = 30 min snooze (as before).
+  function chooseList(C) {
+    var ids = C.map(function (s) { return String(s.bar.id); });
+    emit("decide", { act: "list", b: ids.join(",") });
+    var t = toastEl("Var ä du? Välj krogen.", "ac-sug", 30000);
+    if (!t) return;
+    t.classList.add("ac-list");
+    C.forEach(function (s) {
+      var m = Math.max(5, Math.round(s.d / 5) * 5);
+      addBtn(t, ic("pin") + '<span class="ac-ln">' + esc(short(s.bar.name)) + '</span><span class="ac-lm">' + m + " m</span>", "ac-pick ac-li", function () { checkIn(s.bar, false); });
+    });
+    addBtn(t, ic("search") + "Någon annanstans", "btn-ghost ac-else", function () {
+      emit("answer", { ans: "else", ids: ids.join(",") });
+      try { if (window.NEARPLACES && window.NEARPLACES.open) window.NEARPLACES.open(); } catch (e) {}
+    });
+    addBtn(t, ic("x") + "Inte på krogen", "btn-ghost ac-no", function () {
+      ids.forEach(function (id) { st.snooze[id] = now() + SNOOZE_MS; });
+      emit("answer", { ans: "no", ids: ids.join(",") });
+    });
+    snoozeOnClose(t, ids);
   }
   function esc(s) { return U.esc(s); }
   function checkIn(bar, auto) {
@@ -303,6 +326,7 @@
     });
     body.appendChild(el("div", { class: "row ac-set" }, [b]));
     body.appendChild(el("p", { class: "muted ac-hint", text: "Efter 5 min på samma krog, när appen ä öppen. Av: du får en fråga." }));
+    try { if (window.AUTOHOME && window.AUTOHOME.settingsRows) window.AUTOHOME.settingsRows(body, el); } catch (e) {}   // ds38 Auto hemma
   }
 
   window.AUTOCI = {

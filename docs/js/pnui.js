@@ -234,6 +234,7 @@
         list.appendChild(r);
       }
       body.appendChild(list);
+      try { var sh = W("PNIKV") && W("PNIKV").safeRows ? W("PNIKV").safeRows() : null; if (sh) body.appendChild(sh); } catch (e) {}   // ds39 Säker hem
       body.appendChild(h("p", { class: "pn-note", text: "Tips: håll fingret på kartan för att skapa ett event eller lägga till ett ställe." }));
     });
   }
@@ -828,6 +829,7 @@
     onAuthed: function () { loadIkvall(true); avatarBtn(); },
     onPoll: function () { lastPollAt = Date.now(); paintStrip(); avatarBtn(); moreDot(); groupsOut(); loadIkvall(false); },
     onBeerAccepted: function () {
+      try { if (window.PNDS_BEEROK) window.PNDS_BEEROK(); } catch (e) {}   // ds40: "Öl #N registrerad"
       try { var ne = A.nightEnd ? A.nightEnd() : 0; if (ne) lsSet("olnu.pnOutNight", String(ne)); } catch (e) {}
       afterFirstBeer();
       if (ikv.d && ikv.d.mine !== "ute" && evening() && !off.ikvall_set) { ikv.d.mine = "ute"; stripSig = ""; paintStrip(); call("ikvall_set", { p_st: "ute" }); }
@@ -841,7 +843,7 @@
     applyText: function () { avatarBtn(); },
     meterHTML: function (n, nm, size) { return meterHTML(n, nm, size, null, true); },
     capSVG: capSVG, ic: ic,
-    openIkvall: openIkvall, openOnboard: openOnboard, openBug: openBug, openMorning: openMorning, openMore: openMore,
+    openIkvall: openIkvall, setIkv: setIkv, openOnboard: openOnboard, openBug: openBug, openMorning: openMorning, openMore: openMore,
     _ikv: function () { return ikv.d && !ikv.d.mine && (ikv.d.people || []).length ? { d: Object.assign({}, ikv.d, { people: [] }), at: ikv.at, busy: ikv.busy } : ikv; },   // gw: no names before your answer
     _ikvRaw: function () { return ikv; }, _norm: norm
   };

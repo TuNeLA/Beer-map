@@ -506,7 +506,7 @@
   }
   function paintRail() {
     var g = $("pn-ghost");
-    if (g) { var on = ghostOn(); g.setAttribute("aria-pressed", String(on)); g.title = on ? "Spökläge på (du syns int')" : "Spökläge av"; g.setAttribute("aria-label", g.title); }
+    if (g && !g.hasAttribute("data-vis")) { var on = ghostOn(); g.setAttribute("aria-pressed", String(on)); g.title = on ? "Spökläge på (du syns int')" : "Spökläge av"; g.setAttribute("aria-label", g.title); }
     var e = $("pn-evs"), b = document.querySelector("#btn-evs .evs-badge");
     if (e) { var d = e.querySelector(".pn-rail-dot"); if (d) d.hidden = !(b && !b.hidden && (b.textContent || "0") !== "0"); }
   }
@@ -1050,7 +1050,7 @@
     ".toast .btn", "#sheet-body .rnd-check > span"].join(",");
   var KEEP = ".chat-list, .gpg-msgs, .cm-body, .sp-card-ic, .ff-me, .kind-grid, .kb-e, .pn-kaos-line, .tk-track, .rb, .uni-ribbon, .pf-ribbons, .leaflet-marker-pane, .mapboxgl-marker, input, textarea";
   var EXTRA = { "🎙️": "mic", "🎙": "mic", "🎤": "mic", "🚌": "bus", "📼": "history", "🤔": "help", "🏟️": "trophy", "🏟": "trophy", "👀": "eye", "📡": "locate",
-    "🗓️": "calendar", "👋": "hand", "🔆": "sun", "🚑": "sos", "🥳": "sparkle", "😎": "user", "🎂": "", "⚖️": "", "📏": "", "🥾": "" };
+    "🗓️": "calendar", "👋": "hand", "🔆": "sun", "🚑": "sos", "🥳": "sparkle", "😎": "user", "🎂": "", "⚖️": "", "📏": "", "🥾": "", "🥃": "mixed" };
   var DOTS = { "🟢": "on", "🔴": "red", "🟡": "amber", "⚪": "off", "⚫": "off" };
   var CHR = { "✕": "x", "×": "x", "⋯": "dots", "i": "info" };
   var EMO = /(?:\p{Extended_Pictographic}(?:️|⃣|[\u{1F3FB}-\u{1F3FF}]|‍\p{Extended_Pictographic}️?)*|[\u{1F7E0}-\u{1F7EB}])️?/gu;
@@ -1192,3 +1192,165 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds18 motion END */
+/* ds33 toasts START — owner 2026-11-08 (6-main.jpg): the precision bubble "Exakt plats räknas till barer i närheten" covered
+   ANNAT and locate, and ANNAT cut its text. ALL bottom messages (toasts, the precision bubble) now start 8 px above the
+   highest of: ANNAT, locate, the Mapbox logo / ⓘ, and any bottom banner (Följ mig hem, Skåltimmen, film). The same measure
+   as ds11 (--pn-ban-b), plus the banners. Sets --pn-toast-b on :root. */
+(function () {
+  "use strict";
+  var DOCK = "#other-wrap, .locate-btn, .bm-mblogo, #btn-attrib, .attrib-btn", BAN = "#hf-banner, #sk-banner, #fm-banner, .hf-banner, .sk-banner, .fm-banner";
+  function top(sel, min) {
+    var t = Infinity;
+    document.querySelectorAll(sel).forEach(function (e) {
+      if (e.hidden || !e.getClientRects().length || e.closest("[hidden]")) return;
+      var s = getComputedStyle(e); if (s.display === "none" || s.visibility === "hidden" || +s.opacity === 0) return;
+      var r = e.getBoundingClientRect(); if (r.height && r.top > innerHeight * min) t = Math.min(t, r.top);
+    });
+    return t;
+  }
+  function place() {
+    var t = Math.min(top(DOCK, 0.45), top(BAN, 0.35));
+    if (t === Infinity) return;
+    var v = Math.round(innerHeight - t + 8) + "px", R = document.documentElement;
+    if (R.style.getPropertyValue("--pn-toast-b") !== v) R.style.setProperty("--pn-toast-b", v);
+    // the precision bubble goes over the toasts when both show (never on top of each other)
+    var tt = top("#toasts > .toast", 0), h = Math.round(innerHeight - Math.min(t, tt) + 8) + "px";
+    if (R.style.getPropertyValue("--pn-hint-b") !== h) R.style.setProperty("--pn-hint-b", h);
+    var dk = document.querySelector(".dock"), db = dk && dk.getClientRects().length ? Math.round(innerHeight - dk.getBoundingClientRect().top) + "px" : "";   // the bubble lives in the dock
+    if (db && R.style.getPropertyValue("--pn-dock-top-b") !== db) R.style.setProperty("--pn-dock-top-b", db);
+  }
+  var tm = 0;
+  // debounced to one measure per 120 ms (layout reads only, a write only on change)
+  function soon() { clearTimeout(tm); tm = setTimeout(place, 120); }
+  function start() {
+    soon();
+    addEventListener("resize", soon); addEventListener("orientationchange", soon);
+    if (window.MutationObserver) {
+      new MutationObserver(soon).observe(document.body, { childList: true, attributes: true, attributeFilter: ["class"] });
+      var ow = document.getElementById("other-wrap"); if (ow) new MutationObserver(soon).observe(ow, { attributes: true, attributeFilter: ["hidden", "style"] });
+      var ts = document.getElementById("toasts"); if (ts) new MutationObserver(function () { soon(); setTimeout(soon, 260); }).observe(ts, { childList: true });   // a new toast: measure (and after its 200 ms entry)
+      var ph = document.getElementById("prec-hint"); if (ph) new MutationObserver(soon).observe(ph, { attributes: true, attributeFilter: ["class"] });
+    }
+    setInterval(soon, 2000);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  window.PNDS_TOASTB = place;
+})();
+/* ds33 toasts END */
+/* ds37 start START — owner 2026-11-08: "start-up feels not smooth". A calm start (PWA splash practice: the first frame is the
+   same colour as the manifest background_color, then ONE fade into the app; web.dev "Web app manifest"):
+   1. #pn-splash (in index.html, solid --ds-bg, the app icon + wordmark) covers the chrome while ~80 modules restyle it
+      (emoji → icons, rail, ANNAT, KAOS line, fonts). It never waits for data: it goes when the map has painted (Mapbox loaded
+      or the first raster tiles) and the fonts are ready, at the latest 2.6 s after navigation (live data: map ready median
+      1.58 s, max 3.1 s). Fade 280 ms (opacity only), none with reduced motion. Pointer events pass through it all the time.
+   2. "pn:calm" fires 1.2 s after the splash is gone (or at 6 s): heavy non-visible work waits for it (smooth.js style copy).
+   3. Chrome that arrives later (rail, chips, KAOS line) fades in once (200 ms) instead of popping (CSS ds37).
+   window.__pnSplashGone = ms after navigation; window.__pnCalm = true after pn:calm. */
+(function () {
+  "use strict";
+  var W = window, sp = document.getElementById("pn-splash"), gone = false, t0 = performance.now(), CAP = 2600;
+  function calm() { if (W.__pnCalm) return; W.__pnCalm = true; try { document.dispatchEvent(new Event("pn:calm")); } catch (e) {} }
+  function mapPainted() {
+    try {
+      var B = W.BASEMAP;
+      if (B && B.isMapbox && B.isMapbox() && B.mapbox && B.mapbox()) { var m = B.mapbox().getMapboxMap(); if (m && (m.loaded() || (m.isStyleLoaded && m.isStyleLoaded() && m.areTilesLoaded()))) return true; }
+    } catch (e) {}
+    var n = 0; document.querySelectorAll("#map img.leaflet-tile").forEach(function (i) { if (i.complete && i.naturalWidth) n++; });
+    return n >= 4;
+  }
+  function fontsOk() { try { return !document.fonts || document.fonts.status === "loaded"; } catch (e) { return true; } }
+  function hide() {
+    if (gone) return; gone = true; W.__pnSplashGone = Math.round(performance.now());
+    document.documentElement.classList.remove("pn-booting");
+    if (sp) {
+      var still = W.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+      sp.classList.add("pn-out");
+      setTimeout(function () { if (sp && sp.parentNode) sp.parentNode.removeChild(sp); }, still ? 0 : 320);
+    }
+    setTimeout(calm, 1200);
+  }
+  function check() {
+    if (gone) return;
+    if (performance.now() >= CAP || (mapPainted() && fontsOk())) { hide(); return; }
+    setTimeout(check, 60);
+  }
+  if (!sp) { document.documentElement.classList.remove("pn-booting"); setTimeout(calm, 1500); } else check();
+  setTimeout(calm, Math.max(0, 6000 - t0));
+  W.PNSTART = { hide: hide, calm: calm };
+})();
+/* ds37 start END */
+/* ds39 ux2 START — "Ingen data här ikväll än": when the map shows a town (zoom ≥ 13) and nobody is out in view, one quiet
+   caption says so (usability test: in Stockholm "find a calm bar" failed silently: no data looked like nothing). Once per
+   area (~5 km) per session, never while a sheet is open, a calm toast (the toast queue decides when). */
+(function () {
+  "use strict";
+  var seen = {}, tm = 0;
+  function check() {
+    try {
+      var A = window.PNDS && window.PNDS._A && window.PNDS._A(); if (!A || !A.map || !A.LIVE || !A.beers) return;
+      var s = document.getElementById("sheet"); if (s && !s.hidden) return;
+      var m = A.map, z = m.getZoom(); if (z < 13) return;
+      var c = m.getCenter(), k = Math.round(c.lat * 20) + ":" + Math.round(c.lng * 10); if (seen[k]) return;
+      var b = m.getBounds(), any = (A.beers() || []).some(function (x) { return isFinite(x.lat) && b.contains([x.lat, x.lng]); });
+      seen[k] = 1;
+      if (!any) A.toast("Ingen data här ikväll än: ingen har tryckt ÖL! i närheten. Bli först!", { id: "pn-nodata", ms: 5000, cls: "pn-nodata" });
+    } catch (e) {}
+  }
+  function hook() {
+    var A = window.PNDS && window.PNDS._A && window.PNDS._A();
+    if (!A || !A.map || !A.map.on) { setTimeout(hook, 1500); return; }
+    A.map.on("moveend", function () { clearTimeout(tm); tm = setTimeout(check, 1800); });
+  }
+  document.addEventListener("pn:calm", function () { setTimeout(hook, 0); }, { once: true });
+  setTimeout(function () { if (!window.__pnCalm) hook(); }, 9000);
+})();
+/* ds39 ux2 END */
+/* ds40 ux START — (1) body.pn-modal-on while a sheet or a full-screen dialog is open (toasts go to the top, CSS);
+   (2) fun cards (DELIGHT.caption: Visste du?, greetings) wait while a sheet / dialog is open and during the start, then come
+   one at a time when the map has been still for 1.5 s; (3) html.pn-settle for 5 s after the splash (KAOS line and cards wait);
+   (4) PNDS_BEEROK(): the "Öl #N registrerad" chip after an accepted ÖL!. */
+(function () {
+  "use strict";
+  var R = document.documentElement, q = [], still = 0, lastMove = Date.now(), wrapped = false;
+  function modal() {
+    var s = document.getElementById("sheet"); if (s && !s.hidden) return true;
+    var d = document.querySelectorAll('[aria-modal="true"]');
+    for (var i = 0; i < d.length; i++) { var e = d[i]; if (e.id === "sheet" || e.id === "pn-splash" || e.hidden || !e.getClientRects().length) continue; var cs = getComputedStyle(e); if (cs.display !== "none" && cs.visibility !== "hidden") return true; }
+    return false;
+  }
+  function busy() { return modal() || R.classList.contains("pn-settle") || R.classList.contains("pn-booting") || !!document.getElementById("pn-splash"); }
+  function tick() {
+    var m = modal(); if (document.body.classList.contains("pn-modal-on") !== m) document.body.classList.toggle("pn-modal-on", m);
+    if (m) lastMove = Date.now();
+    if (!q.length || busy() || Date.now() - lastMove < 1500) return;
+    var cap = document.getElementById("dl-cap"); if (cap && cap.classList.contains("dl-in")) return;   // one at a time
+    var o = q.shift(); try { orig(o); } catch (e) {}
+  }
+  var orig = null;
+  function wrap() {
+    var D = window.DELIGHT; if (wrapped || !D || typeof D.caption !== "function") return; wrapped = true;
+    orig = D.caption.bind(D);
+    D.caption = function (o) { if (!o) return; if (busy() || q.length) { if (q.length < 3) q.push(o); return; } return orig(o); };
+  }
+  function start() {
+    wrap(); setTimeout(wrap, 2000);
+    try { var A = window.PNDS && window.PNDS._A && window.PNDS._A(); if (A && A.map && A.map.on) A.map.on("movestart move", function () { lastMove = Date.now(); }); } catch (e) {}
+    setInterval(tick, 400);
+    var settle = function () { R.classList.add("pn-settle"); setTimeout(function () { R.classList.remove("pn-settle"); }, 5000); };
+    if (window.__pnSplashGone) { if (performance.now() - window.__pnSplashGone < 5000) settle(); }
+    else { var w = setInterval(function () { if (window.__pnSplashGone || !document.getElementById("pn-splash")) { clearInterval(w); settle(); } }, 100); setTimeout(function () { clearInterval(w); }, 8000); }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  window.PNDS_BEEROK = function () {
+    try {
+      var n = 0; try { var nt = JSON.parse(localStorage.getItem("olnu.night") || "null"); n = nt ? nt.count | 0 : 0; } catch (e) {}
+      var ghost = false; try { ghost = localStorage.getItem("olnu.ghostMode") === "1"; } catch (e) {}
+      var old = document.querySelector(".pn-beerok"); if (old) old.remove();
+      var c = document.createElement("div"); c.className = "pn-beerok"; c.setAttribute("role", "status");
+      c.innerHTML = (window.PNI ? window.PNI.svg("check", "") : "") + "<span>" + (n ? "Öl #" + n + " registrerad" : "Öl registrerad") + "</span><small>" + (ghost ? "spökläge" : "syns för gänget") + "</small>";
+      document.body.appendChild(c); setTimeout(function () { c.remove(); }, 2300);
+    } catch (e) {}
+  };
+  window.PNDS_UX40 = { busy: busy, queue: function () { return q.length; } };
+})();
+/* ds40 ux END */

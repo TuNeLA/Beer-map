@@ -19,13 +19,29 @@
     var b = A.btn(label() + " ›", "btn-block hz-row", function () { open(); });
     body.appendChild(A.el("div", { class: "row hz-set", style: "margin-top:8px" }, [b]));
   }
-  function open() {
-    var h = home(), st = { lat: h ? h.lat : null, lng: h ? h.lng : null, r: h ? h.r || R0 : R0 }, mini = null, circ = null, dot = null;
+  function open(opts) {
+    opts = opts || {};   // ds39: opts.then = where to go after Spara (Följ mig hem, Auto hemma): no dead end
+    var h = home(), picked = false, st = { lat: h ? h.lat : null, lng: h ? h.lng : null, r: h ? h.r || R0 : R0 }, mini = null, circ = null, dot = null;
     A.openSheet(L("🏠 Hemzon", "🏠 Home zone"), function (body) {
       var el = A.el;
       body.appendChild(el("p", { class: "muted", style: "margin-top:0", text: L("En öl inom hemzonen visas alltid som ungefärlig plats (som ”Bara område”), så ingen ser exakt var du bor. Väljer du en krog gäller krogen. Sparas bara på din telefon.",
         "A drink inside the zone always shows as an approximate area, so nobody sees where you live. Picking a bar uses the bar. Kept on this phone only.") }));
       var mapEl = el("div", { class: "hz-map", role: "img", "aria-label": L("Karta över hemzonen", "Home zone map") });
+      // ds39: address search (OpenStreetMap Nominatim, only when you search; the answer stays on the phone)
+      var q = el("input", { type: "search", class: "hz-q", placeholder: L("Sök adress, t.ex. Storgatan 5 Ludvika", "Search address"), "aria-label": L("Sök adress", "Search address"), enterkeyhint: "search" });
+      var qb = A.btn(L("Sök", "Search"), "btn-small hz-qb", function () { find(); });
+      var find = function () {
+        var s = String(q.value || "").trim(); if (s.length < 3) return;
+        qb.disabled = true;
+        fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=se&accept-language=sv&q=" + encodeURIComponent(s))
+          .then(function (r) { return r.json(); }).then(function (j) {
+            qb.disabled = false; var x = j && j[0];
+            if (!x) { A.toast(L("Hittade int' adressen. Prova med ort.", "Address not found."), { err: true }); return; }
+            picked = true; setPt(+(+x.lat).toFixed(5), +(+x.lon).toFixed(5), true);
+          }, function () { qb.disabled = false; A.toast(L("Sökningen gick int'. Tryck på kartan i stället.", "Search failed."), { err: true }); });
+      };
+      q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); find(); } });
+      body.appendChild(el("div", { class: "row hz-search" }, [q, qb]));
       body.appendChild(mapEl);
       var hint = el("p", { class: "muted hz-hint", text: L("👆 Tryck på kartan där du bor – eller använd din plats.", "👆 Tap the map where you live – or use your location.") });
       body.appendChild(hint);
@@ -48,6 +64,7 @@
         U.ls.setJSON(KEY, { lat: st.lat, lng: st.lng, r: st.r, at: Date.now() });
         A.toast(L("🏠 Hemzonen ä sparad (" + st.r + " m). Hemma ä du bara ett område.", "🏠 Home zone saved (" + st.r + " m)."));
         A.closeSheet();
+        if (typeof opts.then === "function") setTimeout(function () { try { opts.then(); } catch (e) {} }, 320);   // ds39
       });
       var clr = A.btn(L("Ta bort hemzonen", "Remove home zone"), "btn-small btn-ghost", function () {
         U.ls.del(KEY); A.toast(L("Hemzonen ä borttagen.", "Home zone removed.")); A.closeSheet();
@@ -75,8 +92,14 @@
           window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19 }).addTo(mini);
           var c = st.lat != null ? [st.lat, st.lng] : (function () { try { var l = A.lastLoc && A.lastLoc(); if (l && isFinite(l.lat)) return [l.lat, l.lng]; } catch (e) {} var m = A.map.getCenter(); return [m.lat, m.lng]; })();
           mini.setView(c, 15);
-          mini.on("click", function (e) { setPt(+e.latlng.lat.toFixed(5), +e.latlng.lng.toFixed(5), false); });
+          mini.on("click", function (e) { picked = true; setPt(+e.latlng.lat.toFixed(5), +e.latlng.lng.toFixed(5), false); });
           draw(true);
+          if (st.lat == null) {   // ds39: a pin at once (the map centre) that follows the map until you tap or search
+            var c0 = mini.getCenter(); setPt(+c0.lat.toFixed(5), +c0.lng.toFixed(5), false);
+            hint.textContent = L("Flytta kartan eller tryck där du bor. Pinnen = ditt hem.", "Move the map or tap where you live.");
+            mini.on("moveend", function () { if (picked) return; var c = mini.getCenter(); setPt(+c.lat.toFixed(5), +c.lng.toFixed(5), false);
+              hint.textContent = L("Flytta kartan eller tryck där du bor. Pinnen = ditt hem.", "Move the map or tap where you live."); });
+          }
           setTimeout(function () { try { mini.invalidateSize(); } catch (e) {} }, 80);
         } catch (e) { mapEl.remove(); }
       }, 60);
