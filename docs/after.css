@@ -7,12 +7,12 @@
 .af-hol-e{position:absolute;right:-6px;top:-4px;z-index:3;min-width:30px;height:30px;padding:0 5px;display:grid;place-items:center;font-size:var(--fs-16);line-height:1;
   background:var(--night-2);border:2px solid var(--af-hol,var(--amber));border-radius:var(--r-lg);pointer-events:none;white-space:nowrap;
   box-shadow:0 0 10px var(--af-hol,var(--amber))}
-@media (prefers-reduced-motion:no-preference){.af-hol-e{animation:af-bob 3.2s ease-in-out infinite}}
+@media (prefers-reduced-motion:no-preference){.af-hol-e{animation:af-bob 3.2s var(--e-std) infinite}}
 @keyframes af-bob{50%{transform:translateY(-3px)}}
 
 /* HUD chip (max one): 🚑 buddy check / 🌯 kebab */
 .af-chip-med{border-color:var(--red) !important;color:#fff !important;background:rgba(179,18,27,.55) !important}
-@media (prefers-reduced-motion:no-preference){.af-chip-med{animation:af-pulse 1.6s ease-in-out infinite}}
+@media (prefers-reduced-motion:no-preference){.af-chip-med{animation:af-pulse 1.6s var(--e-std) infinite}}
 @keyframes af-pulse{50%{box-shadow:0 0 0 4px rgba(255,59,59,.25)}}
 
 /* 1. Kom hem säkert */
@@ -37,7 +37,7 @@
 .af-sn{align-self:flex-end;font-family:var(--hud);font-size:var(--fs-12);color:var(--muted)}
 .af-se{font-size:var(--fs-44);line-height:1.1}
 .af-sbig{font-family:var(--display);font-size:clamp(26px,9vw,44px);color:#ecd9ff;line-height:1.1;margin:6px 0 2px;overflow-wrap:anywhere}
-.af-ssmall{font-family:var(--hud);text-transform:uppercase;color:var(--muted);font-size:var(--fs-14);letter-spacing:.06em}
+.af-ssmall{font-family:var(--hud);text-transform:none;color:var(--muted);font-size:var(--fs-14);letter-spacing:.06em}
 .af-sline{margin:12px 0 4px;font-size:var(--fs-16)}
 .af-sextra{font-family:var(--hud);font-size:var(--fs-12);color:var(--gold)}
 .af-dots{display:flex;justify-content:center;gap:6px;margin:6px 0}

@@ -34,7 +34,7 @@
 .fc-wind{position:absolute;z-index:4;inset:0;display:none;align-items:flex-end;justify-content:center;padding-bottom:18px;background:rgba(0,0,0,.82);pointer-events:none}
 .fc-wind span{font:700 var(--fs-14) var(--hud);letter-spacing:.18em;color:#e8930f}
 .fc-ov.winding .fc-wind{display:flex}
-.fc-flashfx{position:absolute;z-index:5;inset:0;background:#fff;pointer-events:none;animation:fcFlash .26s ease-out forwards}
+.fc-flashfx{position:absolute;z-index:5;inset:0;background:#fff;pointer-events:none;animation:fcFlash var(--m-5) var(--e-in) forwards}
 @keyframes fcFlash{0%{opacity:1}100%{opacity:0}}
 .fc-ov.empty .fc-video{filter:grayscale(1) brightness(.35)}
 .fc-info{flex:0 0 auto;display:flex;align-items:center;gap:10px}
@@ -51,7 +51,7 @@
 .fc-flip.one,.fc-flip[hidden]{visibility:hidden}
 .fc-sp{width:56px}
 .fc-shutter{width:86px;height:86px;border-radius:50%;border:5px solid #0a0e16;cursor:pointer;
-  background:radial-gradient(circle at 35% 30%,#ff8a7a,#d7261e 60%,#8f1210);box-shadow:0 5px 0 #0a0e16,0 0 0 3px rgba(255,255,255,.18);transition:transform .08s}
+  background:radial-gradient(circle at 35% 30%,#ff8a7a,#d7261e 60%,#8f1210);box-shadow:0 5px 0 #0a0e16,0 0 0 3px rgba(255,255,255,.18);transition:transform var(--m-2),opacity var(--m-2)}
 .fc-shutter:active{transform:translateY(4px);box-shadow:0 1px 0 #0a0e16,0 0 0 3px rgba(255,255,255,.18)}
 .fc-shutter:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
 .fc-pend,.fc-note{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;min-height:20px;font-size:var(--fs-14);color:#cfd8e8;text-align:center}
@@ -70,14 +70,14 @@
 .fm-vf.fm-live .fm-vf-t,.fm-vf.fm-live .fm-vf-s:empty{display:none}
 .fm-vf.fm-live .fm-vf-s{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);padding:3px 10px;border-radius:var(--r-pill);background:rgba(0,0,0,.55);color:#fff;font-size:var(--fs-12);z-index:2}
 .fm-vf .fm-c{z-index:2}
-.fm-vf.winding .fm-video{filter:brightness(.25);transition:filter .15s}
+.fm-vf.winding .fm-video{filter:brightness(.25);transition:filter var(--m-3)}
 .fm-flip{position:absolute;top:8px;right:8px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:var(--fs-18);display:none;align-items:center;justify-content:center;cursor:pointer}
 .fm-vf.fm-live .fm-flip:not([hidden]){display:flex}
 .fm-vf .fm-flashfx{z-index:4}
 /* 0195 📸 "Gänget fotar ikväll": the ONE chip next to the closed Ikväll pill (amber, not the red alarm style) */
 .hx-chip.fm-chip,.hx-chip.fm-chip.hx-urgent,.hud-left.open .hx-chip.fm-chip{gap:6px;min-width:0;padding:0 6px 0 12px;border:1px solid var(--ds-amber,#f5a623);background:rgba(36,24,6,.86);color:var(--ds-text,#eef0ec)}
 .hx-chip.fm-chip .fm-cn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hx-chip.fm-chip .fm-ck{flex:0 0 auto;min-width:26px;height:26px;padding:0 7px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font:800 var(--fs-14)/1 var(--ds-sans,inherit)}
+.hx-chip.fm-chip .fm-ck{flex:0 0 auto;min-width:26px;height:26px;padding:0 7px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font:700 var(--fs-14)/1 var(--ds-sans,inherit)}
 .hud-left.open .hx-chip.fm-chip{grid-column:1 / -1;max-width:none}
 /* same row as the pill: the chip takes the rest of the row (never wraps to a new row); the pill drops its level tag */
 .hud-left:not(.open) .hud-x:has(.fm-chip.hx-urgent){flex:1 1 0;min-width:0}

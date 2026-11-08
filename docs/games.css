@@ -27,7 +27,7 @@
 .gm-m.done .gm-m-t{color:#c9ffd9}
 .gm-m-p{display:flex;align-items:center;gap:8px;margin-top:6px}
 .gm-bar{flex:1 1 auto;height:6px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
-.gm-bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width .3s}
+.gm-bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width var(--m-5)}
 .gm-m.done .gm-bar>span{background:var(--green)}
 .gm-m-n{font-family:var(--hud);font-size:var(--fs-12);color:var(--amber-2);flex:0 0 auto}
 .gm-water{margin-top:7px;min-height:36px;border-color:#4aa3ff;color:#cfe6ff}
@@ -121,7 +121,7 @@
   font-size:var(--fs-14);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gm-vb:disabled{opacity:.6}
 .gm-secret{border:1px dashed var(--gold);background:repeating-linear-gradient(135deg,rgba(255,224,138,.05) 0 8px,transparent 8px 16px);padding:10px;margin:8px 0}
-.gm-sec-h{font-family:var(--display);color:var(--gold);font-size:var(--fs-16);letter-spacing:.5px;text-transform:uppercase}
+.gm-sec-h{font-family:var(--display);color:var(--gold);font-size:var(--fs-16);letter-spacing:.5px;text-transform:none}
 .gm-sec-m{margin-top:6px;font-size:var(--fs-16);font-weight:700;line-height:1.35}
 .gm-pts{color:var(--gold)}
 

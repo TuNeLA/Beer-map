@@ -766,7 +766,7 @@
       ".acct-check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;padding:6px 2px;cursor:pointer}",
       ".acct-check input{width:22px;height:22px;flex:0 0 auto;accent-color:var(--amber,#f5a623)}",
       ".acct-done{align-items:center;text-align:center}.acct-big{font-size:52px;line-height:1.1}",
-      ".acct-done-h{font:800 22px/1.2 var(--display,inherit);color:var(--text,#fff);margin:2px 0 4px}"
+      ".acct-done-h{font:700 22px/1.2 var(--display,inherit);color:var(--text,#fff);margin:2px 0 4px}"
     ].join("\n");
     document.head.appendChild(s);
   }

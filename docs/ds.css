@@ -69,7 +69,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 /* Stencil: brand, ÖL!, big numbers, short sheet titles (js/ds.js marks a title as short) */
 .brand-name,.beer-btn .beer-t,.code-big,.nr-dist,.cer-cd,.sk-cd-big{font-family:var(--ds-stencil);font-weight:400}
 .sheet-head h2{font-family:var(--ds-sans);font-weight:700;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.04em;color:var(--ds-amber-t);
-  text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  text-transform:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sheet-head h2.ds-stencil-s{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.05em}
 .sheet-head h2.ds-stencil{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-22);line-height:var(--ds-lh-22);letter-spacing:.06em}
 
@@ -81,7 +81,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 .sheet-head .icon-btn{width:44px;height:44px;flex:0 0 auto}
 .sheet-body{padding-top:var(--ds-4);padding-bottom:var(--ds-2);scroll-padding-top:72px}
 /* section headers: one look in every sheet */
-.sheet-body h3{font-family:var(--ds-sans);font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+.sheet-body h3{font-family:var(--ds-sans);font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);font-weight:700;letter-spacing:.1em;text-transform:none;
   color:var(--ds-muted);margin:var(--ds-5) 0 var(--ds-2)}
 .sheet-body h3::before{content:"";display:inline-block;width:10px;height:2px;margin:0 8px 3px 0;background:var(--ds-amber);vertical-align:middle}
 .sheet-body>h3:first-child,.sheet-body>[data-tt]>h3:first-child,.inv-pane>h3:first-child,.ds-section:first-child>.ds-section-h{margin-top:0}
@@ -177,7 +177,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 :where(.chip-btn,.inv-pk-groups .chip,.ds-chip)[aria-pressed="true"]{background:var(--ds-amber-soft);border-color:var(--ds-amber);color:var(--ds-amber-t)}
 .ds-badge,.bm-b,.badge-green,.pf-n,.gp-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--ds-r-pill);
   font:700 var(--ds-fs-12)/1 var(--ds-sans);letter-spacing:.04em;font-variant-numeric:tabular-nums}
-.bm-b{background:var(--ds-blue-soft);color:var(--ds-blue-t);text-transform:uppercase;margin-left:var(--ds-2)}
+.bm-b{background:var(--ds-blue-soft);color:var(--ds-blue-t);text-transform:none;margin-left:var(--ds-2)}
 .badge-green{background:var(--ds-green);color:var(--ds-on-green)}
 
 /* ---------- .ds-empty ---------- */

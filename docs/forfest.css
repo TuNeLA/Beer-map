@@ -3,7 +3,7 @@
 
 html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff{position:fixed;inset:0;z-index:2150;display:flex;flex-direction:column;color:#fff;font-family:var(--body);
-  background:#0d1322;transition:background-color .35s ease;-webkit-user-select:none;user-select:none;
+  background:#0d1322;transition:background-color var(--m-5) var(--e-std);-webkit-user-select:none;user-select:none;
   padding:calc(var(--sat) + 8px) calc(var(--sar) + 16px) calc(var(--sab) + 12px) calc(var(--sal) + 16px)}
 .ff[hidden]{display:none !important}
 .ff button{font-family:var(--body);cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -48,7 +48,7 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff-mh{padding:0 2px}
 .ff-mode{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:104px;padding:14px 14px 14px 12px;border-radius:var(--r-xl);border:0;
   text-align:left;color:#fff;overflow:hidden;box-shadow:0 10px 28px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.25);
-  transition:transform .15s ease}
+  transition:transform var(--m-3) var(--e-std),opacity var(--m-3) var(--e-std)}
 .ff-mode:active{transform:scale(.98)}
 .ff-mode:disabled{opacity:.5;cursor:default}
 .ff-mode.m-u{background:linear-gradient(135deg,#ff9a3c 0%,#e8562a 55%,#b8323f 100%)}
@@ -70,8 +70,8 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff-go{font-size:var(--fs-28);line-height:1;opacity:.8;flex:0 0 auto}
 
 .ff-sw{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 12px;border-radius:var(--r-lg);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer}
-.ff-cb{position:relative;appearance:none;-webkit-appearance:none;flex:0 0 auto;width:48px;height:28px;border-radius:var(--r-lg);background:rgba(255,255,255,.2);margin:0;cursor:pointer;transition:background .2s}
-.ff-cb::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}
+.ff-cb{position:relative;appearance:none;-webkit-appearance:none;flex:0 0 auto;width:48px;height:28px;border-radius:var(--r-lg);background:rgba(255,255,255,.2);margin:0;cursor:pointer;transition:background var(--m-4)}
+.ff-cb::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform var(--m-4),opacity var(--m-4)}
 .ff-cb:checked{background:var(--green)}
 .ff-cb:checked::after{transform:translateX(20px)}
 .ff-swt{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -94,12 +94,12 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff-stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:10px 0;touch-action:pan-y;cursor:pointer}
 .ff-card{width:100%;max-width:520px;max-height:100%;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:26px 22px 24px;border-radius:var(--r-xl);
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);box-shadow:0 18px 50px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.25);
-  transition:transform .2s ease;will-change:transform}
-.ff-card.in-r{animation:ffInR .24s ease both}
-.ff-card.in-l{animation:ffInL .24s ease both}
+  transition:transform var(--m-4) var(--e-std),opacity var(--m-4) var(--e-std);will-change:transform}
+.ff-card.in-r{animation:ffInR var(--m-4) var(--e-std) both}
+.ff-card.in-l{animation:ffInL var(--m-4) var(--e-std) both}
 @keyframes ffInR{from{opacity:0;transform:translateX(40px) rotate(1.5deg)}to{opacity:1;transform:none}}
 @keyframes ffInL{from{opacity:0;transform:translateX(-40px) rotate(-1.5deg)}to{opacity:1;transform:none}}
-.ff-type{align-self:flex-start;font-size:var(--fs-s);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.25)}
+.ff-type{align-self:flex-start;font-size:var(--fs-s);font-weight:700;letter-spacing:.08em;text-transform:none;padding:6px 12px;border-radius:var(--r-pill);background:rgba(0,0,0,.25)}
 .ff-text{margin:0;font-size:clamp(25px,7.4vw,36px);line-height:1.22;font-weight:700;letter-spacing:-.005em;overflow-wrap:anywhere;text-wrap:pretty}
 .ff-text.long{font-size:clamp(22px,6.2vw,30px)}
 .ff-rule{margin:0;font-size:clamp(17px,4.8vw,21px);line-height:1.35;font-weight:600;color:rgba(255,255,255,.92);border-top:1px solid rgba(255,255,255,.25);padding-top:12px}

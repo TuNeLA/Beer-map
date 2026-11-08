@@ -1,6 +1,6 @@
 /* Öl Nu v26 MERITER (js/meriter.js, social.js rank chip, medals.js uniform). */
 .mer-bar{display:block;height:5px;min-width:56px;flex:1 1 56px;background:var(--night-3);border:1px solid var(--line-soft);border-radius:var(--r-xs);overflow:hidden}
-.mer-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--gold));transition:width .6s ease}
+.mer-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--gold));transition:width var(--m-6) var(--e-std)}
 .mer-bar-big{height:9px;max-width:320px;margin:8px auto 6px}
 .hx-title-m{gap:8px}
 .hx-title-m .mer-bar{max-width:72px;min-width:40px;margin-right:2px}

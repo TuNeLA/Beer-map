@@ -8,7 +8,7 @@
 .avw-dots i{flex:1 1 0;max-width:22px;height:4px;border-radius:var(--r-xs);background:var(--avw-bd)}
 .avw-dots i.done{background:color-mix(in srgb,var(--avw-acc) 55%,transparent)}
 .avw-dots i.on{background:var(--avw-acc)}
-.avw-n{margin:0;font-size:var(--ds-fs-12,12px);color:var(--avw-muted);letter-spacing:.04em;text-transform:uppercase}
+.avw-n{margin:0;font-size:var(--ds-fs-12,12px);color:var(--avw-muted);letter-spacing:.04em;text-transform:none}
 .avw-n:empty{display:none}
 .avw h3.avw-t{margin:2px 0 0;padding:0;border:0;font-size:var(--ds-fs-22,22px);line-height:1.2;text-transform:none;letter-spacing:0;color:var(--avw-text);font-weight:700}
 .avw h3.avw-t::before,.avw h3.avw-t::after{content:none;display:none}
@@ -52,13 +52,13 @@
 .avw-base small{font-size:var(--fs-12);color:var(--avw-muted);line-height:1.2}
 .avw-done{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding-top:6px}
 .avw-done-art{width:176px;height:176px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 4px var(--avw-acc),var(--ds-sh-2,0 14px 36px rgba(0,0,0,.45));
-  animation:avw-pop .55s cubic-bezier(.2,1.4,.4,1) both}
+  animation:avw-pop var(--m-6) cubic-bezier(.2,1.4,.4,1) both}
 .avw-done-art svg{width:100%;height:100%;display:block}
 .avw-done-l{margin:6px 0 0;font-size:var(--ds-fs-22,22px);font-weight:700;color:var(--avw-text)}
 .avw-done-b{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:6px}
 .avw-conf{position:absolute;left:50%;top:90px;width:0;height:0;pointer-events:none}
 .avw-conf i{position:absolute;width:8px;height:12px;border-radius:var(--r-xs);background:var(--avw-acc);opacity:0;
-  animation:avw-burst .9s cubic-bezier(.1,.7,.3,1) calc(var(--i) * 12ms) both;transform:rotate(calc(var(--i) * 20deg)) translateY(0)}
+  animation:avw-burst .9s cubic-bezier(.1,.7,.3,1) calc(var(--i) * var(--m-1)) both;transform:rotate(calc(var(--i) * 20deg)) translateY(0)}
 .avw-conf i:nth-child(3n){background:var(--ds-green,#3ddc84)}.avw-conf i:nth-child(3n+1){background:var(--ds-blue,#4aa3ff)}
 @keyframes avw-pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @keyframes avw-burst{0%{opacity:1;transform:rotate(calc(var(--i) * 20deg)) translateY(0)}100%{opacity:0;transform:rotate(calc(var(--i) * 20deg)) translateY(-130px)}}

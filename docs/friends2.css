@@ -12,6 +12,6 @@
 .f2-menu .f2-q { margin: 0 0 4px; overflow-wrap: anywhere; }
 .f2-menu .f2-note { margin: 0 0 10px; font-size: var(--fs-14); overflow-wrap: anywhere; }
 .nr-frow .nr-more-b { font-weight: 700; letter-spacing: 1px; }
-.nr-frow.f2-gone { opacity: .35; transition: opacity .2s; }
+.nr-frow.f2-gone { opacity: .35; transition: opacity var(--m-4); }
 .nr-frow { -webkit-touch-callout: none; }
 @media (prefers-reduced-motion: reduce) { .nr-frow.f2-gone { transition: none; } }

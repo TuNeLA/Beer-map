@@ -37,9 +37,9 @@
 .du-big.them{color:var(--fire)}
 .du-dash{font-size:var(--fs-28);color:var(--muted)}
 .du-tug{position:relative;height:14px;margin:6px 4px 10px;background:linear-gradient(90deg,rgba(255,122,26,.35),rgba(255,122,26,.6));border:1px solid var(--line-soft);overflow:visible}
-.du-tug-us{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width .8s ease}
+.du-tug-us{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width .8s var(--e-std)}
 .du-tug-mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--foam);opacity:.7}
-.du-tug-knot{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:var(--fs-18);line-height:1;transition:left .8s ease;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.du-tug-knot{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:var(--fs-18);line-height:1;transition:left .8s var(--e-std);filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 .du-line{font-size:var(--fs-14);color:var(--gold);line-height:1.4;margin:6px 0 8px;font-style:italic}
 .du-stat{display:grid;grid-template-columns:3.2em 1fr 3.2em;align-items:center;gap:6px;padding:5px 0;border-top:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
 .du-stat .du-k{text-align:center;color:var(--muted);font-size:var(--fs-12)}
@@ -52,7 +52,7 @@
 .du-lock{font-family:var(--hud);font-size:var(--fs-12);color:var(--muted)}
 .du-result{text-align:center;margin:8px 0}
 .du-medal{font-size:var(--fs-44);line-height:1.1}
-.du-w-us .du-medal{animation:du-pop .7s ease-out}
+.du-w-us .du-medal{animation:du-pop .7s var(--e-in)}
 .du-rt{font-family:var(--display);font-size:var(--fs-18);color:var(--gold);margin-top:4px;overflow-wrap:anywhere}
 .du-rs{font-family:var(--hud);font-size:var(--fs-14);color:var(--text);margin-top:2px}
 @keyframes du-pop{0%{transform:scale(.3) rotate(-20deg);opacity:0}70%{transform:scale(1.15) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
@@ -77,7 +77,7 @@
 .du-qrnote{font-size:var(--fs-14);color:var(--text);margin:6px 0}
 .du-tok{font-family:var(--hud);font-size:var(--fs-18);letter-spacing:.12em;color:var(--amber-2);margin:6px 0}
 .du-typerow{flex-wrap:nowrap}
-.du-typerow .inp{flex:1 1 auto;min-width:0;font-family:var(--hud);letter-spacing:.1em;text-transform:uppercase}
+.du-typerow .inp{flex:1 1 auto;min-width:0;font-family:var(--hud);letter-spacing:.1em;text-transform:none}
 .du-typerow .btn{flex:0 0 auto}
 .du-near{margin:4px 0}
 .du-nrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-soft)}

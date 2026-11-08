@@ -49,7 +49,7 @@
       "transition:transform .15s ease,opacity .15s ease}" +
     ".pl-mk:hover .pl-dot,.pl-mk.pl-sel .pl-dot{opacity:1;transform:scale(1.25);border-color:var(--amber,#f5a623)}" +
     ".pl-lbl{position:absolute;left:50%;top:calc(50% + 11px);transform:translateX(-50%);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" +
-      "font:500 11px/1.2 var(--body,system-ui,sans-serif);color:rgba(236,232,220,.9);text-shadow:0 1px 2px #000,0 0 3px #000;pointer-events:none}" +
+      "font:400 11px/1.2 var(--body,system-ui,sans-serif);color:rgba(236,232,220,.9);text-shadow:0 1px 2px #000,0 0 3px #000;pointer-events:none}" +
     "@media (prefers-reduced-motion:reduce){.pl-dot{transition:none}}";
 
   function ready() { return !!(map && layer && window.BARS && window.BARS.placesInBounds); }

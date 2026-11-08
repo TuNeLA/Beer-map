@@ -200,12 +200,13 @@
       var cb = c.querySelector(".sheet-body"); if (cb && top) cb.scrollTop = top;
       stats.ghost++;
       var a = host.animate ? host.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(" + Math.min(r.height, 520) * 0.6 + "px)", opacity: 0 }],
-        { duration: 210, easing: "cubic-bezier(.3,0,.8,.15)", fill: "forwards" }) : null;
+        { duration: 200, easing: "cubic-bezier(.3,0,.8,.15)", fill: "forwards" }) : null;
       var gone = function () { host.remove(); };
       if (a) a.onfinish = gone;
       setTimeout(gone, 400);
     } catch (e) {}
   }
+  idle(buildCSS, 2500);   // ds10: the style copy exists before the first close, so the first close slides too
   function watchSheet() {
     var sh = document.getElementById("sheet"), body = document.getElementById("sheet-body"), title = document.getElementById("sheet-title");
     if (!sh || !body || !W.MutationObserver) return;

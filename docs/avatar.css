@@ -43,7 +43,7 @@
 .ave-tab{min-height:36px;padding:0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);border:1px solid var(--ds-border,rgba(255,255,255,.1));background:var(--ds-card,#19233a);
   color:var(--ds-text-2,#c9d0cd);font:600 var(--ds-fs-14,14px)/1 var(--ds-sans,system-ui);cursor:pointer}
 .ave-tab.on{background:var(--ds-amber-soft,rgba(245,166,35,.14));border-color:var(--ds-amber,#f5a623);color:var(--ds-amber-t,#ffc24d)}
-.ave-body{display:flex;flex-direction:column;gap:var(--ds-5,24px);min-height:320px;animation:ave-in var(--ds-t-1,120ms) ease-out}
+.ave-body{display:flex;flex-direction:column;gap:var(--ds-5,24px);min-height:320px;animation:ave-in var(--ds-t-1,var(--m-2)) var(--e-in)}
 @keyframes ave-in{from{opacity:.4}to{opacity:1}}
 .ave-sec h3{margin:0 0 var(--ds-2,8px)}
 .ave-note{margin:0 0 var(--ds-2,8px);font-size:var(--ds-fs-14,14px)}
@@ -75,7 +75,7 @@
 .ave-save[disabled]{opacity:.55}
 @media (prefers-reduced-motion:reduce){.ave-body{animation:none}.ave-tile:active,.ave-dice:active,.pf-av.av-pf:active{transform:none}}
 .pf-av.av-pf .av-pf-in{display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;display:grid;place-items:center}
-.pf-av.av-pf.av-ph .av-pf-in{background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font:800 26px/1 var(--ds-sans,system-ui)}
+.pf-av.av-pf.av-ph .av-pf-in{background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font:700 26px/1 var(--ds-sans,system-ui)}
 .ave-grid-sw{grid-template-columns:repeat(4,minmax(0,1fr))}
 .ave-tile.sw .ave-nm{display:block;-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;max-width:100%}
 .ave-nm{overflow-wrap:normal;word-break:normal;hyphens:auto}

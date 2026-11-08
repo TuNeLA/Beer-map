@@ -167,7 +167,7 @@
     ".ba-dock{position:fixed;z-index:1100;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;background:var(--ds-sheet,#121a2a);" +
     "border-top:1px solid var(--ds-border-2,rgba(255,255,255,.16));border-radius:var(--ds-r-3,20px) var(--ds-r-3,20px) 0 0;box-shadow:var(--ds-sh-2);" +
     "padding:var(--ds-3,12px) calc(var(--sar,0px) + var(--ds-4,16px)) calc(var(--sab,0px) + var(--ds-4,16px)) calc(var(--sal,0px) + var(--ds-4,16px))}" +
-    ".ba-dock .ba-k{font-size:var(--ds-fs-12,12px);line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--ds-amber-t,#ffc24d);font-weight:700;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+    ".ba-dock .ba-k{font-size:var(--ds-fs-12,12px);line-height:16px;letter-spacing:.08em;text-transform:none;color:var(--ds-amber-t,#ffc24d);font-weight:700;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
     ".ba-dock .ba-h{font-size:var(--ds-fs-14,14px);line-height:20px;color:var(--ds-text-2,#c9d0cd);margin:0 0 var(--ds-3,12px);min-height:40px}" +
     ".ba-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--ds-2,8px);margin-bottom:var(--ds-2,8px)}" +
     ".ba-row .btn,.ba-dock .ba-ok{min-height:52px;font-size:var(--ds-fs-16,16px)}" +

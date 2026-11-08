@@ -112,7 +112,7 @@
     if (y && y.fav_bar_name) h += '<p class="pf-fav">🪑 ' + esc(L("Stamkrog i år: ", "Regular bar this year: ")) + "<b>" + esc(y.fav_bar_name) + "</b>" +
       (y.fav_bar_nights ? " · " + (y.fav_bar_nights | 0) + L(" kvällar", " nights") : "") + "</p>";
     if (md && nMed) {
-      var row = safe(function () { return W("MEDALS").medalRowHTML(md, 7, true); }, "");
+      var row = safe(function () { return W("MEDALS").medalRowHTML(md, 7, false); }, "");
       if (row) h += '<button type="button" class="pf-medals" data-pf="medals" aria-label="' + esc(L("Mina medaljer", "My medals")) + '">' + row + "</button>";
     }
     if (gs && gs.length) {

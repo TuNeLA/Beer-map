@@ -14,7 +14,7 @@
   var A = null, loading = null, cssDone = false, off = false, resumed = false;
 
   var S = {
-    sv: { tile: "SPEL", tileSub: "Skämskort, Gängkollen, Kungaleken… {0} spel. Välj och kör!",
+    sv: { tile: "Spel", tileSub: "Skämskort, Gängkollen, Kungaleken… {0} spel. Välj och kör!",
       live: "{0} pågår", liveSub: "{0} ä med · Tryck för att hoppa in!", plus: "Spel", plusSub: "alla spelen på ett ställe",
       lek: "🎉 Alla spel", load: "Laddar spelen…", fail: "Spelen kunde int' laddas. Kolla nätet.",
       resume: "{0} · du ä med i ett spel", back: "Tillbaka" },

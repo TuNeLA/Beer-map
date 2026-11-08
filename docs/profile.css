@@ -25,7 +25,7 @@ button.switch::before{inset:-8px 0 -8px -8px}
 .pf-hero button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .pf-top{display:flex;align-items:flex-start;gap:12px;min-width:0}
 .pf-av{flex:0 0 auto;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);
-  font:800 var(--fs-28)/1 var(--ds-display,var(--ds-sans,system-ui));box-shadow:0 0 0 3px rgba(245,166,35,.22)}
+  font:700 var(--fs-28)/1 var(--ds-display,var(--ds-sans,system-ui));box-shadow:0 0 0 3px rgba(245,166,35,.22)}
 .pf-who{flex:1 1 auto;min-width:0}
 .pf-name{font:700 var(--ds-fs-22,22px)/1.2 var(--ds-sans,system-ui);color:var(--ds-text,#eef0ec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pf-hero .pf-town{display:inline-block;margin-top:2px;font-size:var(--ds-fs-14,14px);color:var(--ds-amber-t,#ffc24d);min-height:32px;max-width:100%;overflow-wrap:anywhere}
@@ -48,7 +48,7 @@ button.switch::before{inset:-8px 0 -8px -8px}
 .pf-hero .pf-fav{margin:0;font-size:var(--ds-fs-14,14px);color:var(--ds-text-2,#c9d0cd);overflow-wrap:anywhere}
 .pf-hero .pf-medals{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;max-width:100%}
 .pf-groups{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
-.pf-sub{flex:0 0 100%;font-size:var(--ds-fs-12,12px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ds-muted,#a7b0ac)}
+.pf-sub{flex:0 0 100%;font-size:var(--ds-fs-12,12px);font-weight:700;letter-spacing:.08em;text-transform:none;color:var(--ds-muted,#a7b0ac)}
 .pf-hero .pf-chip{min-height:36px;max-width:100%;padding:0 12px;border-radius:var(--r-pill);background:var(--ds-raised,#222e48);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));
   font-size:var(--ds-fs-14,14px);color:var(--ds-text,#eef0ec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center}
 .pf-chip.pf-more{color:var(--ds-muted,#a7b0ac)}

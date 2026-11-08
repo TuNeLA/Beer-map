@@ -38,7 +38,7 @@
 
 /* ---------- day separators + full time ---------- */
 .chat-list>li.ux-day{list-style:none;display:flex;align-items:center;gap:10px;margin:6px 0 2px;padding:0;border:0;background:transparent;
-  color:var(--ds-muted,#a7b0ac);font:700 var(--fs-12)/16px var(--ds-sans,inherit);letter-spacing:.08em;text-transform:uppercase}
+  color:var(--ds-muted,#a7b0ac);font:700 var(--fs-12)/16px var(--ds-sans,inherit);letter-spacing:.08em;text-transform:none}
 .chat-list>li.ux-day::before,.chat-list>li.ux-day::after{content:"";flex:1 1 auto;height:1px;background:var(--ds-border,rgba(255,255,255,.1))}
 .chat-list>li.ux-day>span{flex:0 0 auto;padding:2px 10px;border-radius:var(--r-pill);background:var(--ds-card,#19233a)}
 .cm-time.ux-tap{cursor:pointer}
@@ -64,7 +64,7 @@
 .ui-sub{margin:10px 0 0;text-align:center;font-size:var(--fs-14);line-height:1.4;color:var(--ds-text-2,#c9d0cd)}
 .ui-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .ui-step{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:var(--ds-r-2,16px);background:var(--ds-card,#19233a);border:1px solid var(--ds-border,rgba(255,255,255,.1))}
-.ui-n{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font-weight:800}
+.ui-n{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font-weight:700}
 .ui-st{flex:1 1 auto;min-width:0}
 .ui-st>p{margin:3px 0 0;font-size:var(--fs-16);line-height:1.4;color:var(--ds-text,#eef0ec)}
 .ui-qr-wrap{display:flex;justify-content:center;margin-top:12px}
@@ -72,7 +72,7 @@
 .ui-done{padding:16px;border-radius:var(--ds-r-2,16px);background:rgba(61,220,132,.12);border:1px solid rgba(61,220,132,.45);text-align:center}
 .ui-done b{display:block;font-size:var(--fs-16);color:#3ddc84}
 .ui-done p{margin:6px 0 0;color:var(--ds-text-2,#c9d0cd)}
-.ui-arrow{position:fixed;left:50%;bottom:calc(var(--sab,0px) + 6px);transform:translateX(-50%);font-size:var(--fs-34);color:var(--ds-amber,#f5a623);animation:uiBob 1.2s ease-in-out infinite}
+.ui-arrow{position:fixed;left:50%;bottom:calc(var(--sab,0px) + 6px);transform:translateX(-50%);font-size:var(--fs-34);color:var(--ds-amber,#f5a623);animation:uiBob 1.2s var(--e-std) infinite}
 .ui-arrow.ui-arrow-r{left:auto;right:18px;transform:none}
 @keyframes uiBob{50%{translate:0 8px}}
 @media (prefers-reduced-motion: reduce){.ui-arrow{animation:none}}

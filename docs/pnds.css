@@ -83,7 +83,7 @@ body #prec-seg>button:active{transform:none !important;background:rgba(255,255,2
 /* the helper line is a short bubble after a change (and before the first beer), never a permanent line */
 #prec-hint{position:absolute;right:calc(var(--sar) + var(--sp-3));bottom:calc(100% - var(--sp-2));max-width:min(260px,calc(100vw - 32px));min-height:0 !important;
   margin:0;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--pn-float-2);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2);
-  color:var(--ds-text-2) !important;font:500 var(--fs-14)/1.3 var(--ds-sans) !important;text-align:left;opacity:0;transform:translateY(4px);pointer-events:none;
+  color:var(--ds-text-2) !important;font:400 var(--fs-14)/1.3 var(--ds-sans) !important;text-align:left;opacity:0;transform:translateY(4px);pointer-events:none;
   transition:opacity var(--ds-t-2),transform var(--ds-t-2);visibility:visible !important;display:block !important;z-index:3}
 #prec-hint:empty,body.pn-calm:not(.pn-first) #prec-hint:not(.pn-show){opacity:0}
 #prec-hint.pn-show{opacity:1;transform:none}
@@ -99,7 +99,7 @@ body #prec-seg>button:active{transform:none !important;background:rgba(255,255,2
   background:var(--pn-float-2) !important;border:1px solid var(--ds-border-2) !important;border-left:3px solid var(--ds-amber) !important;transform:translate(-50%,-6px)}
 .dl-cap.dl-in{transform:translate(-50%,0)}
 .dl-cap-h{font:700 var(--fs-12)/1.3 var(--ds-sans) !important;letter-spacing:0 !important;text-transform:none !important;margin-bottom:2px !important;display:flex;align-items:center;gap:6px}
-.dl-cap-t{font:500 var(--fs-14)/1.35 var(--ds-sans) !important;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.dl-cap-t{font:400 var(--fs-14)/1.35 var(--ds-sans) !important;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .dl-cap-more{display:none !important}
 .dl-cap::after{content:"";position:absolute;right:12px;top:12px;width:14px;height:14px;opacity:.7;background:currentColor;color:var(--ds-text-2);
   -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center/contain no-repeat;
@@ -142,10 +142,10 @@ body #prec-seg>button:active{transform:none !important;background:rgba(255,255,2
 #sheet-body.ds-set .ds-item>.toggle-row,
 #sheet-body.ds-set .ds-item .push-prefs>.toggle-row,
 #sheet-body.ds-set .ds-item>.bd-optin>.toggle-row{padding:var(--pn-row-py) var(--pn-row-px) !important;min-height:var(--pn-row-h);gap:var(--sp-3)}
-#sheet-body.ds-set .toggle-row>span{font:500 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text)}
+#sheet-body.ds-set .toggle-row>span{font:400 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text)}
 #sheet-body.ds-set .toggle-row>span small,#sheet-body.ds-set .toggle-row>span .muted{display:block;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
 #sheet-body.ds-set .ds-item>.row>.btn,#sheet-body.ds-set .ds-item>.btn,#sheet-body.ds-set .ds-item>div>.sos-block>.btn{display:flex !important;align-items:center;
-  min-height:var(--pn-row-h) !important;padding:var(--pn-row-py) 44px var(--pn-row-py) var(--pn-row-px) !important;font:500 var(--fs-16)/22px var(--ds-sans) !important}
+  min-height:var(--pn-row-h) !important;padding:var(--pn-row-py) 44px var(--pn-row-py) var(--pn-row-px) !important;font:400 var(--fs-16)/22px var(--ds-sans) !important}
 #sheet-body.ds-set .ds-item>.row>.btn .pi-lead,#sheet-body.ds-set .toggle-row>span .pi-lead{color:var(--ds-text-2);margin-right:var(--sp-3)}
 #sheet-body.ds-set .ds-item>.row>.btn-danger .pi-lead{color:var(--ds-red-t)}
 #sheet-body.ds-set .ds-item>p,#sheet-body.ds-set .ds-item-hint,#sheet-body.ds-set .ds-item>.info{padding:0 var(--pn-row-px) var(--pn-row-py) !important;margin:-4px 0 0 !important;
@@ -167,7 +167,7 @@ body #prec-seg>button:active{transform:none !important;background:rgba(255,255,2
 #sheet-body.ds-set .ds-item.pn-fold.pn-open>:not(.pn-fold-row){display:block !important}
 #sheet-body.ds-set .ds-item.pn-fold.pn-open>.push-prefs{display:flex !important;flex-direction:column}
 .pn-fold-row{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:var(--pn-row-h);padding:var(--pn-row-py) var(--pn-row-px);border:0;background:transparent;
-  color:var(--ds-text);font:500 var(--fs-16)/22px var(--ds-sans);text-align:left;cursor:pointer}
+  color:var(--ds-text);font:400 var(--fs-16)/22px var(--ds-sans);text-align:left;cursor:pointer}
 .pn-fold-row .pi-lead{color:var(--ds-text-2);margin-right:0}
 .pn-fold-row{justify-content:flex-start}
 .pn-fold-row>span{flex:0 0 auto;text-align:left}
@@ -181,7 +181,7 @@ body #prec-seg>button:active{transform:none !important;background:rgba(255,255,2
 #sheet-body.ds-set .sf-set-row{display:flex !important;flex-direction:column !important;gap:0 !important;margin:0 !important;padding:0 !important}
 #sheet-body.ds-set .sf-set-row>.btn{display:flex !important;align-items:center;width:100%;min-height:var(--pn-row-h);margin:0 !important;padding:var(--pn-row-py) 44px var(--pn-row-py) var(--pn-row-px) !important;
   border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;color:var(--ds-text) !important;justify-content:flex-start;
-  font:500 var(--fs-16)/22px var(--ds-sans) !important;position:relative;text-decoration:none}
+  font:400 var(--fs-16)/22px var(--ds-sans) !important;position:relative;text-decoration:none}
 #sheet-body.ds-set .sf-set-row>.btn+.btn{border-top:1px solid var(--ds-border) !important}
 #sheet-body.ds-set .sf-set-row>.btn::after{content:"›";position:absolute;right:var(--sp-4);top:50%;transform:translateY(-52%);color:var(--ds-muted);font:400 24px/1 var(--ds-sans)}
 #sheet-body.ds-set .sf-set-row>.btn .pi-lead{color:var(--ds-text-2);margin-right:var(--sp-3)}
@@ -579,3 +579,138 @@ details.pn-codefold[open]>summary::after{transform:rotate(90deg) !important}
 .pn-bs7 .pp-sec-mer .pp-info .btn{min-height:48px;border-radius:var(--ds-r-1) !important;white-space:normal;font:600 var(--ds-fs-14)/20px var(--ds-sans) !important}
 .pn-bs7 .pp-sec-mer svg{width:20px;height:20px;flex:0 0 auto}
 /* ds07 bar END */
+/* ds08 screens START — Inställningar, Profil, Grupper, gruppens sida, övriga fönster (design review). */
+/* Nytt i appen: p.pn-p is a paragraph there, not the map person pin (.pn-p, mapart.js): the pin box (26 px, x −13) is undone */
+#sheet p.pn-p{position:static !important;left:auto !important;top:auto !important;transform:none !important;width:auto !important;height:auto !important;
+  border:0 !important;border-radius:0 !important;background:none !important;box-shadow:none !important;display:block !important;overflow:visible !important}
+/* Inställningar: a 2-line hint shows 2 whole lines (no padding inside the clip box) */
+#sheet-body.ds-set .ds-item>.ds-item-hint:not(.pn-full),#sheet-body.ds-set .ds-item>p.ds-item-hint:not(.pn-full){padding-bottom:0 !important;margin:-4px var(--ds-4) var(--ds-3) !important;padding-left:0 !important;padding-right:0 !important;border-radius:0 !important}
+/* Om & hjälp text on the same x as all other text */
+#sheet-body.ds-set .ds-item.ds-text{padding:var(--ds-3) var(--ds-4) !important}
+#sheet-body.ds-set .ds-item.ds-text>p{margin:0 !important;padding:0 !important}
+/* version row: 16 px like every row */
+#sheet-body.ds-set .ds-ver>.toggle-row{padding:var(--ds-2) var(--ds-4) !important}
+/* Kartstil: block padding 12 / 16, swatch radius 4, badge without caps, radius 8 */
+#sheet-body.ds-set .ds-karta .bm-seg{padding:var(--ds-3) var(--ds-4) !important}
+#sheet-body.ds-set .bm-chip{border-radius:4px !important}
+.bm-b{text-transform:none !important;border-radius:8px !important;letter-spacing:0 !important;font:600 var(--ds-fs-12)/16px var(--ds-sans) !important;height:auto !important;min-height:20px}
+.bm-seg .bm-n{line-height:20px !important}
+/* on / off rows made into switches (js "ds08"): label left, switch right */
+#sheet-body.ds-set .pn-swb{display:flex !important;align-items:center;gap:var(--ds-3);justify-content:space-between !important;text-align:left}
+#sheet-body.ds-set .pn-swb>.pn-sw-l{flex:1 1 auto;min-width:0}
+#sheet-body.ds-set .pn-swb>.switch{pointer-events:none;margin-left:var(--ds-2)}
+#sheet-body.ds-set .pn-swb::after{display:none !important}
+/* danger last, in its own group */
+#sheet-body.ds-set .pn-danger-sec{margin-top:var(--ds-5)}
+#sheet-body.ds-set svg[data-pn8]{width:20px;height:20px;margin-right:var(--ds-3);vertical-align:-4px;flex:0 0 auto}
+/* Profil: one hero card, no boxes with own corners inside; numbers Black Ops One 28; avatar letter 28 / 700 */
+.pf-hero .pf-av.av-pf.av-ph .av-pf-in,.pf-hero .pf-av{font:700 var(--ds-fs-28)/32px var(--ds-sans) !important}
+.pf-hero .pf-name{font:700 var(--ds-fs-22)/28px var(--ds-sans) !important}
+.pf-hero .pf-line{line-height:20px !important}
+.pf-hero .pf-town{min-height:44px !important;display:inline-flex !important;align-items:center}
+.pf-hero .pf-acct{min-height:44px !important;border-radius:var(--ds-r-pill)}
+.pf-hero .pf-rank,.pf-hero .pf-tile{border-radius:0 !important;background:transparent !important;padding:var(--ds-2) 0 !important}
+.pf-hero .pf-rank-m,.pf-hero .pf-rank-n{font-size:var(--ds-fs-14) !important;line-height:20px !important}
+.pf-hero .pf-tile b{font:400 var(--ds-fs-28)/32px var(--ds-stencil) !important;letter-spacing:0}
+.pf-hero .pf-tile span{font-size:var(--ds-fs-14) !important;line-height:20px !important}
+.pf-hero .pf-medals{min-height:44px;width:100%;padding:var(--ds-2) 0 !important;gap:var(--ds-1) !important}
+.pf-hero .pf-medals .rb{pointer-events:none}
+/* "Skapa din karaktär": token colour, 1 px solid border, help text 14 */
+button.avw-cta.avw-cta.avw-cta{background:var(--ds-raised) !important;border:1px solid var(--ds-border-2) !important;padding:var(--ds-3) var(--ds-4) !important;min-height:56px}
+.avw-cta .avw-cta-t small{font-size:var(--ds-fs-14) !important;line-height:20px !important}
+.avw-cta .avw-cta-go{font-size:16px !important;line-height:16px;color:transparent !important;overflow:hidden;width:16px;height:16px;flex:0 0 16px;background:var(--ds-muted);-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+/* "Namn, konto och mer": a card like the lists above it */
+.pn-fold-w>.pn-fold-t{background:var(--ds-card) !important;border:1px solid var(--ds-border) !important;border-radius:var(--ds-r-2) !important;min-height:56px}
+/* Grupper: one row style (title 600 16/24, sub 14/20 grey), cap letters 18, "Mina grupper" heading at the same x as all headings */
+.glist .gcard .gname,.glist .gcard b{font-weight:600 !important}
+.glist .gcard small,.glist .gcard .gsub,.glist .gcard .gp-sub{font-size:var(--ds-fs-14) !important;line-height:20px !important;font-weight:400 !important}
+#inv-pane-g>h3{padding-left:0 !important;margin-left:0 !important}
+.pn-out-faces text,.pn-cap text{font-size:18px !important}
+.drinking .on,.gcard .on{color:var(--ds-green-t)}
+/* Gruppens sida */
+.gpg-dots{border-radius:var(--ds-r-pill) !important;padding:0 !important;display:grid !important;place-items:center !important;font-size:0 !important}
+.gpg-dots svg,.gpg-send svg,.gpg-plus svg{width:22px;height:22px}
+.gpg-plus{display:grid !important;place-items:center !important}
+.gpg-now{padding:var(--ds-3) var(--ds-4) !important}
+.gpg-now-h b{text-transform:none !important;letter-spacing:0 !important;font:600 var(--ds-fs-14)/20px var(--ds-sans) !important;color:var(--ds-text-2) !important}
+.gpg-now-h b:has(+ *),.gpg-dot.on+b{color:var(--ds-green-t) !important}
+.gpg-chat{padding:var(--ds-3) var(--ds-4) !important}
+.gpg-chat-o{display:inline-flex !important;align-items:center;gap:var(--ds-1);min-height:44px;font-weight:600 !important}
+.gpg-chat-o::after{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+.gpg-beer b{font-weight:400 !important}
+.gpg-beer small{text-transform:none !important;letter-spacing:0 !important;font:600 var(--ds-fs-12)/16px var(--ds-sans) !important}
+.fm-gbtn .fm-gs,.fm-gbtn.new .fm-gs{color:var(--ds-muted) !important;font-size:var(--ds-fs-14) !important;line-height:20px !important;font-weight:400 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg>.fm-gi>.btn.fm-gbtn{padding:0 !important;background:transparent !important;border:0 !important;box-shadow:none !important;min-height:44px}
+/* Spel on the group page: an ordinary card (ÖL! is the one main button) */
+#sheet .sp-gi:not(.sp-live) .sp-gbtn{background:var(--ds-card) !important;color:var(--ds-text) !important;border:1px solid var(--ds-border) !important;box-shadow:none !important;padding:var(--ds-3) var(--ds-4) !important}
+#sheet .sp-gi .sp-gt{font:400 var(--ds-fs-22)/28px var(--ds-stencil) !important;letter-spacing:0 !important;color:var(--ds-amber-t)}
+#sheet .sp-gi:not(.sp-live) .sp-gs{color:var(--ds-muted) !important;font:400 var(--ds-fs-14)/20px var(--ds-sans) !important;opacity:1 !important}
+/* övriga: headings without caps (Din hemstad) */
+#sheet h3,#sheet h4,#sheet .ht-h,#sheet .hs-h{text-transform:none !important;letter-spacing:0 !important}
+/* ds08 screens END */
+/* ds09 fonts START — two faces only: Chakra Petch 400 / 600 / 700 and Black Ops One 400 (DESIGN.md "Type").
+   No fake bold or italic (a weight the file does not have stays as drawn), no CSS uppercase. --hud was Share Tech Mono. */
+:root{--hud:"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif}
+html,body{font-synthesis:none}
+*,*::before,*::after{font-synthesis:none}
+.hud,[class*="hud"],.pf-n,.tk-track,.ticker{font-variant-numeric:tabular-nums}
+/* ds09 fonts END */
+/* ds10 motion START — motion tokens (design review "Rörelse"; Material 3 / Fluent 2 / Apple HIG). DESIGN.md "Motion".
+   in = --e-in, out = --e-out and one step shorter (300 in, 200 out). Only transform and opacity move. */
+:root{
+  --m-1:50ms;--m-2:100ms;--m-3:150ms;--m-4:200ms;--m-5:300ms;--m-6:450ms;
+  --e-std:cubic-bezier(.2,0,0,1);--e-in:cubic-bezier(.05,.7,.1,1);--e-out:cubic-bezier(.3,0,.8,.15);--e-lin:linear;
+  --e-spring:cubic-bezier(.2,1.2,.4,1);
+  /* old names → the new tokens (one set of numbers in the app) */
+  --ds-t-1:var(--m-2);--ds-t-2:var(--m-4);--ds-t-3:var(--m-5);--ds-ease:var(--e-std);--ease:var(--e-std);
+  --sm-out:var(--e-out);--sm-t-in:var(--m-5)
+}
+@supports (animation-timing-function:linear(0,1)){
+  /* spring: damping 0.9, stiffness 700 (Material "default spatial"), ~3 % overshoot, sampled into 21 stops */
+  :root{--e-spring:linear(0,.084,.26,.45,.62,.76,.866,.938,.984,1.01,1.024,1.029,1.028,1.024,1.018,1.012,1.007,1.004,1.002,1.001,1)}
+}
+/* ONE press: scale .96 in --m-2 (ÖL! has its own squash, js "ds10") */
+:is(button,.btn,[role=button],a.ds-row,.gcard,summary){transition-property:transform,opacity,background-color,border-color,color,box-shadow;transition-duration:var(--m-2);transition-timing-function:var(--e-std)}
+:is(button,.btn,[role=button],a.ds-row,.gcard):active:not(:disabled):not(.beer-btn):not(.switch):not([role=switch]){transform:scale(.96)}
+summary:active{transform:none}
+/* toast: in 200 --e-in, out 150 --e-out */
+.toast:not([hidden]){animation:pnToastIn var(--m-4) var(--e-in) backwards}
+.toast.pn-out{animation:pnToastOut var(--m-3) var(--e-out) forwards}
+@keyframes pnToastIn{from{opacity:0;transform:translateY(8px)}}
+@keyframes pnToastOut{to{opacity:0;transform:translateY(8px)}}
+/* warm.js (instant screens): the one content fade uses the tokens */
+#sheet-body.wm-in,#sheet-body .wm-in{animation-duration:var(--m-3) !important;animation-timing-function:var(--e-in) !important}
+#sheet>.wm-age{transition-duration:var(--m-4) !important;transition-timing-function:var(--e-std) !important}
+/* sub-screen: shared axis X (js runs it as a Web Animation; these classes are for other code that wants the same move) */
+#sheet-body.pn-ax-in{animation:pnAxIn var(--m-5) var(--e-in) backwards}
+#sheet-body.pn-ax-back{animation:pnAxBack var(--m-5) var(--e-in) backwards}
+#sheet-body.wm-hold.pn-ax-in,#sheet-body.wm-hold.pn-ax-back{animation-name:pnAxInT}
+@keyframes pnAxIn{from{opacity:0;transform:translateX(24px)}}
+@keyframes pnAxBack{from{opacity:0;transform:translateX(-24px)}}
+@keyframes pnAxInT{from{transform:translateX(24px)}}
+/* tab / segment: a sliding marker (js) + the new pane fades through (out 90, in 210) */
+.pn-seg-mark{position:absolute;z-index:0;border-radius:8px;background:var(--ds-raised);pointer-events:none;transition:transform var(--m-4) var(--e-std),width var(--m-4) var(--e-std)}
+.pn-ft{animation:pnFadeThrough 300ms var(--e-std) backwards}
+@keyframes pnFadeThrough{0%{opacity:0}30%{opacity:0}100%{opacity:1}}
+/* ÖL! squash + spring + foam */
+#btn-beer.pn-squash{transform:scale(.92) !important;transition:transform var(--m-2) var(--e-std) !important}
+#btn-beer.pn-spring{transition:transform var(--m-5) var(--e-spring) !important}
+.pn-foam{position:fixed;width:10px;height:10px;border-radius:50%;background:#fff6e0;box-shadow:0 0 0 1px rgba(245,166,35,.5);pointer-events:none;z-index:2000;
+  animation:pnFoam 400ms var(--e-out) forwards}
+@keyframes pnFoam{from{transform:translate(-50%,-50%) scale(.6);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.1);opacity:0}}
+/* DOM people pins pop in once (bars are GL layers) */
+.pn-p.pn-pop{animation:pnPinPop var(--m-5) var(--e-spring) backwards}
+@keyframes pnPinPop{from{transform:translate(-50%,-50%) scale(.4);opacity:0}}
+/* bar sheet: slides down on close (js ghost) */
+.pn-bs-ghost{position:fixed !important;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;z-index:1499;pointer-events:none;animation:pnSheetOut var(--m-4) var(--e-out) forwards}
+@keyframes pnSheetOut{to{transform:translateY(60%);opacity:0}}
+/* LIVE ticker: tap = stop / go; a stopped ticker shows a pause mark */
+.pn-tk-stop::after{content:"";position:absolute;right:8px;top:50%;width:12px;height:12px;margin-top:-6px;border-left:3px solid currentColor;border-right:3px solid currentColor;box-sizing:border-box;opacity:.7}
+/* reduced motion: no movement; colour and opacity changes stay ≤ 100 ms; loops stop */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:1ms !important;animation-delay:0ms !important;animation-iteration-count:1 !important;
+    transition-property:opacity,color,background-color,border-color !important;transition-duration:var(--m-2) !important;scroll-behavior:auto !important}
+  :is(button,.btn,[role=button],a.ds-row,.gcard):active{transform:none !important}
+  .pn-foam,.pn-bs-ghost{display:none !important}
+}
+/* ds10 motion END */

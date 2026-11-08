@@ -67,7 +67,7 @@ body.sk-on.chief-on .hf-banner{bottom:calc(var(--sab,0px) + 278px)}
 .hf-taxi{border-color:rgba(127,209,255,.5)}
 /* viewer: moving pin + home */
 .hf-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;background:#5cc0ff;border:3px solid #fff;box-shadow:0 0 0 3px rgba(92,192,255,.35),0 4px 10px #0009;color:#04233a}
-.hf-pin b{font:800 var(--fs-16)/1 var(--ds-sans,inherit)}
+.hf-pin b{font:700 var(--fs-16)/1 var(--ds-sans,inherit)}
 .hf-pin i{position:absolute;right:-10px;bottom:-8px;font-style:normal;font-size:var(--fs-16);text-shadow:0 1px 2px #000}
 .hf-pin.hf-stale{filter:grayscale(.8);opacity:.7}
 .hf-home{display:flex;align-items:center;justify-content:center;font-size:var(--fs-18);text-shadow:0 1px 3px #000}

@@ -33,7 +33,7 @@
 .gitem:not(.gcard)>div.gp>.confirm{order:61}
 .gitem:not(.gcard)>div.gp>[data-gp="0"]{grid-column:1 / -1}
 .gitem:not(.gcard)>div.gp>[data-gp="0"]>.btn{min-height:56px;font-size:var(--fs-m);font-weight:700}
-.gp-h{grid-column:1 / -1;margin:var(--sp-4) 0 0 !important;font-size:var(--fs-xs);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+.gp-h{grid-column:1 / -1;margin:var(--sp-4) 0 0 !important;font-size:var(--fs-xs);font-weight:700;letter-spacing:.12em;text-transform:none;color:var(--muted);
   display:flex;align-items:center;gap:8px}
 .gp-h::before{content:"";width:10px;height:2px;background:var(--amber)}
 .gp-h[hidden]{display:none}

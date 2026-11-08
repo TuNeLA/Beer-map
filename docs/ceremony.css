@@ -7,7 +7,7 @@
 .hx-chip.cer-chip{color:var(--on-amber,#241300);background:var(--gold,#e8b84a);border-color:var(--gold,#e8b84a);font-weight:700}
 
 .cer-head{text-align:center;padding:4px 0 10px}
-.cer-kick{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.12em;text-transform:uppercase;color:var(--muted,#a3aca8)}
+.cer-kick{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.12em;text-transform:none;color:var(--muted,#a3aca8)}
 .cer-gname{font-size:var(--fs-18);font-weight:700;margin:2px 0}
 .cer-phase{font-size:var(--fs-14);color:var(--amber-2,#ffc35a)}
 .cer-note{background:var(--s2,#172134);border:1px solid var(--hair,rgba(255,255,255,.09));border-radius:var(--r-m,14px);padding:12px 14px;line-height:1.45}
@@ -32,7 +32,7 @@
   background:radial-gradient(circle at 50% 0,rgba(232,184,74,.25),transparent 60%),linear-gradient(180deg,#2a2412,#151208);
   border:2px solid var(--gold,#e8b84a);box-shadow:0 0 0 4px rgba(232,184,74,.12),0 10px 30px rgba(0,0,0,.45)}
 .cer-card-k{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.28em;color:var(--gold,#e8b84a)}
-.cer-card-m{font-size:var(--fs-44);line-height:1.2;margin:6px 0;animation:cerShine 2.4s ease-in-out 2}
+.cer-card-m{font-size:var(--fs-44);line-height:1.2;margin:6px 0;animation:cerShine 2.4s var(--e-std) 2}
 .cer-card-t{font-weight:700;font-size:var(--fs-16)}
 .cer-card-l{margin-top:6px;font-size:var(--fs-14);color:var(--text-2,#c4cbc8);line-height:1.4}
 .cer-card-f{margin-top:8px;font-family:var(--hud);font-size:var(--fs-12);color:var(--muted,#a3aca8);letter-spacing:.08em}

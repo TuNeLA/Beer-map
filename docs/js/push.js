@@ -123,7 +123,7 @@
     ["plan", "📅 Inbjudningar och inkallelser", "Svar, påminnelser, lägesrapport, skåltimmen"],
     ["vanner", "🤝 Vänförfrågningar", ""],
     ["bar", "🏰 Krogtips och övertag", ""],
-    ["kaos", "🔥 KAOS I STAN", "Max en per kväll"],
+    ["kaos", "🔥 Kaos i stan", "Max en per kväll"],
     ["kul", "⬆️ Befordringar, helgstreak, film", ""],
     ["film", "📸 Engångskameran", "När gänget börjar fota, och när filmen är framkallad"]   // 0195 (only when the server lists it)
   ];

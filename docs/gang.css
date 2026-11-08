@@ -13,7 +13,7 @@
 .gg{font-size:var(--fs-14);min-width:0}
 .gg-top{display:flex;margin-bottom:6px}
 .gg-h{margin:10px 0 6px;font-family:var(--display);font-weight:400;letter-spacing:.02em;color:var(--amber-2);font-size:var(--fs-18);line-height:1.2;overflow-wrap:anywhere}
-.gg-h4{margin:14px 0 6px;font-size:var(--fs-14);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--hud);font-weight:400}
+.gg-h4{margin:14px 0 6px;font-size:var(--fs-14);text-transform:none;letter-spacing:.06em;color:var(--muted);font-family:var(--hud);font-weight:400}
 .gg-note{font-size:var(--fs-12);color:var(--muted);line-height:1.4;margin:6px 0}
 .gg-note.gg-big{font-size:var(--fs-16);color:var(--text);padding:14px 4px}
 .gg-line{font-size:var(--fs-14);color:var(--gold);line-height:1.4;margin:6px 0;font-style:italic}
@@ -72,7 +72,7 @@
 .gg-res li{display:grid;grid-template-columns:minmax(0,9em) 1fr auto;align-items:center;gap:8px}
 .gg-rn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gg-rbar,.gg-obar{height:10px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
-.gg-rbar>span,.gg-obar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width .3s}
+.gg-rbar>span,.gg-obar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width var(--m-5)}
 .gg-res li.win .gg-rbar>span{background:var(--gold)}
 .gg-res li.win .gg-rn{color:var(--gold)}
 .gg-rv{font-family:var(--hud);color:var(--amber-2);min-width:1.5em;text-align:right}
@@ -110,7 +110,7 @@
 
 /* ---------- Kebab ---------- */
 .gg-stars{display:flex;gap:4px}
-.gg-star{flex:1 1 0;min-height:52px;font-size:var(--fs-28);border:1px solid var(--line-soft);background:var(--night);cursor:pointer;filter:grayscale(1);opacity:.45;transition:transform .12s}
+.gg-star{flex:1 1 0;min-height:52px;font-size:var(--fs-28);border:1px solid var(--line-soft);background:var(--night);cursor:pointer;filter:grayscale(1);opacity:.45;transition:transform var(--m-2),opacity var(--m-2)}
 .gg-star.on{filter:none;opacity:1;border-color:var(--amber);background:rgba(245,166,35,.12)}
 .gg-star:active{transform:scale(1.15)}
 .gg-klist{list-style:none;margin:0;padding:0}

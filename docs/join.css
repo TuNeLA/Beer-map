@@ -18,7 +18,7 @@ body.jn-on #install-banner{display:none !important}
 .jn-namebox{text-align:left;margin-top:var(--ds-2)}
 .jn-namebox .fld{display:block;margin-bottom:var(--ds-1);font-weight:600;color:var(--ds-text-2)}
 .jn-name{width:100%;min-height:56px;font-size:var(--ds-fs-18) !important}
-.jn-need{animation:jn-nudge .5s var(--ds-ease) 1}
+.jn-need{animation:jn-nudge var(--m-6) var(--ds-ease) 1}
 @keyframes jn-nudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .jn-act{display:flex;flex-direction:column;gap:var(--ds-3);margin-top:var(--ds-2)}
 .jn-btn{min-height:64px !important;font-size:var(--ds-fs-18) !important;font-weight:700 !important;border-radius:var(--ds-r-2) !important;width:100%}
@@ -26,7 +26,7 @@ body.jn-on #install-banner{display:none !important}
 a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .jn-then{margin:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text-2)}
 .jn-okline{color:var(--ds-green-t);font-weight:700}
-.jn-wait{margin:var(--ds-4) 0;font-size:var(--ds-fs-18);font-weight:700;color:var(--ds-amber-t);animation:jn-pulse 1.6s ease-in-out infinite}
+.jn-wait{margin:var(--ds-4) 0;font-size:var(--ds-fs-18);font-weight:700;color:var(--ds-amber-t);animation:jn-pulse 1.6s var(--e-std) infinite}
 @keyframes jn-pulse{0%,100%{opacity:1}50%{opacity:.45}}
 .jn-stat{margin:0;padding:var(--ds-2) var(--ds-3);border-radius:var(--ds-r-1);background:var(--ds-card);font-weight:600;font-size:var(--ds-fs-16)}
 .jn-stat.ok{color:var(--ds-green-t);background:var(--ds-green-soft)}
@@ -57,7 +57,7 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 /* iOS: arrow at Safari's button (⋯ bottom right on iOS 26, Dela in the middle before). ≤ 1 Hz, still with reduced motion. */
 .jn-arrow{position:fixed;z-index:2710;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);left:50%;margin-left:-22px;width:44px;height:44px;
   display:grid;place-items:center;font-size:var(--fs-34);color:var(--ds-amber);text-shadow:0 2px 12px rgba(0,0,0,.7);pointer-events:none;
-  animation:jn-bob 1.2s ease-in-out infinite}
+  animation:jn-bob 1.2s var(--e-std) infinite}
 .jn-arrow.jn-arrow-r{left:auto;right:18px;margin-left:0}
 @keyframes jn-bob{0%,100%{transform:translateY(-10px)}50%{transform:translateY(0)}}
 @media (prefers-reduced-motion: reduce){ .jn-arrow,.jn-wait,.jn-need{animation:none} }

@@ -11,7 +11,7 @@
 .bp-ent-l{color:var(--text)}
 .bp-ofs{margin:6px 8px 2px}
 .bp-of{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-.bp-of-h{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.bp-of-h{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.06em;text-transform:none;color:var(--muted);margin-bottom:2px}
 .bp-of-note{font-size:var(--fs-12);color:var(--muted);margin-top:3px}
 .bp-of-t{flex:1 1 auto;min-width:0;font-size:var(--fs-14);color:var(--foam);overflow-wrap:anywhere}
 .bp-of-v{display:flex;gap:4px;flex:0 0 auto}
@@ -57,25 +57,25 @@
 /* ---------- Beer type strip (after ÖL!) ---------- */
 .bp-strip{position:fixed;z-index:1450;left:50%;transform:translateX(-50%);bottom:calc(var(--dock-h,212px) + 8px);
   width:min(520px,calc(100% - 24px));padding:8px 8px 0;background:rgba(16,24,38,.97);border:1px solid var(--amber);box-shadow:0 10px 30px #000a;
-  animation:bpUp .18s ease-out}
+  animation:bpUp var(--m-4) var(--e-in)}
 @keyframes bpUp{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 .bp-st-head{display:flex;align-items:center;justify-content:space-between;font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.06em;
-  text-transform:uppercase;color:var(--amber-2);margin-bottom:6px}
+  text-transform:none;color:var(--amber-2);margin-bottom:6px}
 .bp-st-x{width:32px;height:28px;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:var(--fs-14)}
 .bp-st-chips{display:flex;flex-wrap:wrap;gap:5px}
 .bp-tc{flex:1 1 auto;min-height:36px;padding:0 8px;border:1px solid var(--line);background:var(--night-3);color:var(--text);font-weight:700;font-size:var(--fs-12);
   cursor:pointer;white-space:nowrap;position:relative}
 .bp-tc.same{border-color:var(--amber);background:var(--amber);color:#241300}
-.bp-same{display:block;font-family:var(--hud);font-weight:400;font-size:var(--fs-12);letter-spacing:.06em;text-transform:uppercase;line-height:1;margin-top:3px}
+.bp-same{display:block;font-family:var(--hud);font-weight:400;font-size:var(--fs-12);letter-spacing:.06em;text-transform:none;line-height:1;margin-top:3px}
 .bp-tc:active{transform:scale(.96)}
 .bp-st-bar{height:3px;margin:8px -8px 0;background:rgba(255,255,255,.06)}
-.bp-st-bar span{display:block;height:100%;width:100%;background:var(--amber);transition:width .1s linear}
+.bp-st-bar span{display:block;height:100%;width:100%;background:var(--amber);transition:width var(--m-2) linear}
 @media (prefers-reduced-motion: reduce){.bp-strip{animation:none}.bp-st-bar span{transition:none}}
 
 /* ---------- "Vad dricker stan?" ---------- */
 .bp-stats{margin-top:6px}
 .bp-seg{display:flex;border:1px solid var(--line);background:var(--night);margin-bottom:8px}
-.bp-seg button{flex:1;min-height:38px;border:0;background:transparent;color:var(--muted);font-family:var(--hud);font-size:var(--fs-12);text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
+.bp-seg button{flex:1;min-height:38px;border:0;background:transparent;color:var(--muted);font-family:var(--hud);font-size:var(--fs-12);text-transform:none;letter-spacing:.08em;cursor:pointer}
 .bp-seg button+button{border-left:1px solid var(--line)}
 .bp-seg button[aria-selected="true"]{background:var(--amber);color:#241300}
 .bp-sb{padding:8px 10px;margin-bottom:8px;background:var(--night);border:1px solid var(--line-soft);border-left:3px solid var(--amber)}

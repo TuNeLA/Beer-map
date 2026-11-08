@@ -56,9 +56,9 @@
     none: [["Ingen ute än. Bli först, pojk!", "Nobody out yet. Be the first!"], ["Tyst i leden. Nån måste börja.", "All quiet. Someone has to start."],
       ["Kasernen sover. Väck den mä en öl.", "The barracks sleep. Wake them with a beer."], ["Inga soldater i fält ikväll – än.", "No troops in the field tonight – yet."],
       ["Lugnt läge. Dä ä du som bestämmer när dä smäller.", "Calm. You decide when it kicks off."]],
-    beer: ["🍺 ÖL!", "🍺 ÖL!"], beerSub: [["jag ä ute", "I'm out"], ["syns för gänget", "the gang sees you"], ["anmäl dig i fält", "report for duty"]],
+    beer: ["🍺 ÖL!", "🍺 ÖL!"], beerSub: [["jag ä ute", "I'm out"], ["syns för gänget", "the gang sees you"], ["säg till gänget", "tell the gang"]],
     plus: ["＋", "＋"], plusAria: ["Mer att göra", "More to do"], moreAria: ["Info om gruppen", "Group info"],
-    chatH: ["💬 Chatten", "💬 Chat"], chatOpen: ["Öppna ›", "Open ›"], chatPh: ["Skriv till gänget…", "Message the gang…"],
+    chatH: ["💬 Chatten", "💬 Chat"], chatOpen: ["Öppna", "Open"], chatPh: ["Skriv till gänget…", "Message the gang…"],
     chatEmpty: [["Tyst i radion. Säg nåt!", "Radio silence. Say something!"], ["Ingen har sagt nåt än ikväll.", "Nobody said anything yet tonight."]],
     send: ["Skicka", "Send"], you: ["Du", "You"],
     back: ["‹ Tillbaka", "‹ Back"], plusH: ["➕ Gör nåt", "➕ Do something"], infoH: ["ℹ️ Om gruppen", "ℹ️ About the group"],
@@ -208,7 +208,7 @@
     box.hidden = false; box.innerHTML = "";
     var out = (d && d.out) || [];
     var places = []; out.forEach(function (p) { var b = barName(p); if (b && places.indexOf(b) < 0) places.push(b); });
-    var head = h("div", { class: "gpg-now-h" }, [h("span", { class: "gpg-dot" + (out.length ? " on" : ""), "aria-hidden": "true" }), h("b", { text: L("NU", "NOW") })]);
+    var head = h("div", { class: "gpg-now-h" }, [h("span", { class: "gpg-dot" + (out.length ? " on" : ""), "aria-hidden": "true" }), h("b", { text: L("Nu", "Now") })]);
     var faces = h("div", { class: "gpg-faces" }, faceEls(out, "on"));
     var line = out.length
       ? T("out1").replace("{n}", out.length) + (places.length ? " · " + places.slice(0, 2).join(", ") + (places.length > 2 ? " +" + (places.length - 2) : "") : "")

@@ -37,7 +37,7 @@
 .sf-person{margin-top:10px;gap:8px}
 /* 📞 Ring 112 always first */
 .sf-112{margin:0 0 10px}
-.sf-112-btn{display:flex;align-items:center;justify-content:center;min-height:52px;font-weight:800;font-size:1.1rem;text-decoration:none}
+.sf-112-btn{display:flex;align-items:center;justify-content:center;min-height:52px;font-weight:700;font-size:1.1rem;text-decoration:none}
 .sf-112-note{margin:6px 0 0;text-align:center;font-weight:700;color:var(--muted,#a9a297)}
 /* ⚙️ */
 .sf-set .sf-line{font-weight:700}
@@ -47,4 +47,4 @@
 .sf-blist li{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;border-bottom:1px solid var(--line-soft,#2a2e35)}
 /* 🏪 store build: user-written drink deals are web only (store-compliance B6) */
 html.olnu-store .bp-of, html.olnu-store [data-bpa="offer"]{display:none !important}
-@media (prefers-reduced-motion: no-preference){.sf-ov{animation:sfIn .18s ease-out}@keyframes sfIn{from{opacity:0}to{opacity:1}}}
+@media (prefers-reduced-motion: no-preference){.sf-ov{animation:sfIn var(--m-4) var(--e-in)}@keyframes sfIn{from{opacity:0}to{opacity:1}}}

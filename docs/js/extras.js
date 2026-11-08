@@ -187,7 +187,7 @@
   function streakText(n) { return n > 0 ? n + " 🍺" : t("nightStreakNone"); }   // SAFE: no HOT STREAK / MEDEVAC label
   function fontsReady() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
-    var p = Promise.all(['64px "Black Ops One"', '40px "Share Tech Mono"', '700 40px "Chakra Petch"'].map(function (f) { return document.fonts.load(f).catch(function () {}); }));
+    var p = Promise.all(['64px "Black Ops One"', '600 40px "Chakra Petch"', '700 40px "Chakra Petch"'].map(function (f) { return document.fonts.load(f).catch(function () {}); }));
     return Promise.race([p, new Promise(function (r) { setTimeout(r, 1500); })]);
   }
   function drawCard(cv, s) {
@@ -210,7 +210,7 @@
     c.fillText("PINTSNOW", 90, 150, W - 180);
     c.fillStyle = "#ffe08a"; c.font = '112px "Black Ops One", Impact, sans-serif';
     c.fillText(t("nightHead"), 90, 280, W - 180);
-    c.fillStyle = "#9aa3a0"; c.font = '40px "Share Tech Mono", monospace';
+    c.fillStyle = "#9aa3a0"; c.font = '600 40px "Chakra Petch", sans-serif';
     c.fillText(nightDateLabel(s.key).toUpperCase(), 94, 340, W - 184);
     // Big number
     c.textAlign = "center"; c.fillStyle = "#ffc24d"; c.font = '330px "Black Ops One", Impact, sans-serif';
@@ -224,7 +224,7 @@
       var bx = 90 + i * (bw + 24), by = 760;
       c.fillStyle = "rgba(16,24,38,.92)"; c.fillRect(bx, by, bw, 170);
       c.strokeStyle = "rgba(245,166,35,.45)"; c.lineWidth = 3; c.strokeRect(bx, by, bw, 170);
-      c.fillStyle = "#9aa3a0"; c.font = '30px "Share Tech Mono", monospace'; c.textAlign = "center";
+      c.fillStyle = "#9aa3a0"; c.font = '600 30px "Chakra Petch", sans-serif'; c.textAlign = "center";
       c.fillText(String(st[0]).toUpperCase(), bx + bw / 2, by + 55, bw - 24);
       // Step the font down until the value fits its box ("🔥 HOT STREAK" used to run out of it).
       var fs = st[1].length > 6 ? 38 : 64;
@@ -235,12 +235,12 @@
     // Badges + title
     c.textAlign = "center";
     if (s.badges.length) {
-      c.fillStyle = "#9aa3a0"; c.font = '32px "Share Tech Mono", monospace';
+      c.fillStyle = "#9aa3a0"; c.font = '600 32px "Chakra Petch", sans-serif';
       c.fillText(t("nightBadges").toUpperCase(), W / 2, 1010, W - 180);
       c.font = "80px sans-serif"; c.fillText(s.badges.slice(0, 8).join(" "), W / 2, 1100, W - 180);
     }
     if (s.title) { c.fillStyle = "#ffe08a"; c.font = '56px "Black Ops One", Impact, sans-serif'; c.fillText("🎖️ " + s.title, W / 2, s.badges.length ? 1200 : 1080, W - 180); }
-    c.fillStyle = "#9aa66e"; c.font = '30px "Share Tech Mono", monospace';
+    c.fillStyle = "#9aa66e"; c.font = '600 30px "Chakra Petch", sans-serif';
     c.fillText("💧 " + t("care"), W / 2, H - 80, W - 180);
   }
   function showNight(l) {

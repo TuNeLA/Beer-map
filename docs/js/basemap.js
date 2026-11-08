@@ -87,7 +87,7 @@
 
   function sv() { return !I || I.lang !== "en"; }
   var S = {
-    sv: { title: "🗺️ Kartstil", tip: "⭐ Chefens val",
+    sv: { title: "🗺️ Kartstil", tip: "Chefens val",
       info: "Skymning ä chefens favorit, Natt ä för mörka kvällar. Krogar, värme och pins ä som vanligt.",
       fail: "🗺️ Kartan vägrade starta här. Kör reservkartan så länge.",
       on: ["🗺️ Ny karta i drift. Spaningsläge: på.", "🗺️ Kartan bytt. Samma krogar, nytt ljus.", "🗺️ Klart! Ny terräng, samma uppdrag.",

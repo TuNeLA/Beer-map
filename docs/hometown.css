@@ -15,7 +15,7 @@
 .ht-list2{display:flex;flex-direction:column;max-height:56vh;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--ht-radius);
   background:var(--ht-bg);padding-bottom:var(--ds-2,8px)}
 .ht-h{position:sticky;top:0;z-index:1;padding:var(--ds-2,8px) var(--ds-4,16px) 4px;background:var(--ht-bg);color:var(--ht-head);
-  font-size:var(--fs-xs,12px);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  font-size:var(--fs-xs,12px);font-weight:700;letter-spacing:.06em;text-transform:none}
 .ht-h-l{padding-top:6px;color:var(--ht-accent-t)}
 .ht-row{display:flex;align-items:center;gap:var(--ds-3,12px);min-height:var(--ht-row-h);width:100%;padding:6px var(--ds-4,16px);
   background:transparent;border:0;border-top:1px solid var(--ht-line);color:var(--ht-text);text-align:left;font:inherit;cursor:pointer}

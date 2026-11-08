@@ -150,6 +150,63 @@ New: `.pn-bs7`, `.pn-bs-hero`, `.pn-bs-fr`, `.pn-bs-photos`, `.pn-bs-h`, `.pn-bs
 Removed folds: `ci`, `stam`, `info` (their content is in "Mer" or "Info").
 <!-- ds07 bar END -->
 
+<!-- ds08 screens START -->
+## Screens after the sheet rules (ds08)
+
+- On / off is always a switch. Never "Namn: På" in the text.
+- "Radera mitt konto" is alone in the last group.
+- Every row in a list has an icon (20 px), or no row in that list has one.
+- A hint under a row shows at most 2 whole lines. Long text goes on the page behind the row.
+- Big numbers (Profil tiles): Black Ops One 28/32.
+- Medal ribbons are art, not buttons. The whole ribbon row is ONE 44 px button (opens the medals).
+- Group page: ÖL! is the only amber block. Spel is an ordinary card. Icons, not characters: dots, send, plus, chev-right.
+- No CSS uppercase: "Nu", "Spel", "Kaos i stan", "Chefens val".
+- A green number means "out now". 0 is never green.
+- `.pn-p` is the map person pin. A paragraph with that class must reset the pin box (ds08 does this for "Nytt i appen").
+<!-- ds08 screens END -->
+
+<!-- ds09 fonts START -->
+## Type (ds09)
+
+- Two faces. **Chakra Petch** 400 / 600 / 700 for all text. **Black Ops One** 400 for titles, the logo, ÖL! and big numbers.
+- No other weight. 500 shows as 400 and 800 / 900 show as 700, so the code says 400 / 700. `font-synthesis: none` everywhere:
+  the browser never draws a fake bold (Black Ops One 700 was a fake bold).
+- No third face. Share Tech Mono is gone (`--hud` is Chakra Petch with tabular numbers). Share images (canvas) use Chakra Petch 600.
+- No CSS uppercase. Write the text as it should read, in sentence case.
+<!-- ds09 fonts END -->
+
+<!-- ds10 motion START -->
+## Motion (ds10)
+
+Tokens (`docs/pnds.css` "ds10 motion"; Material 3 / Fluent 2 / Apple HIG):
+
+| Token | Value | Use |
+|---|---|---|
+| `--m-1` | 50 ms | colour on press, focus ring |
+| `--m-2` | 100 ms | press scale |
+| `--m-3` | 150 ms | small things go out (toast, menu) |
+| `--m-4` | 200 ms | tab change, switch, fade, sheet close |
+| `--m-5` | 300 ms | sheet open, sub-screen |
+| `--m-6` | 450 ms | full screen (takeover, rank up) |
+| `--e-std` | cubic-bezier(.2,0,0,1) | moves on screen |
+| `--e-in` | cubic-bezier(.05,.7,.1,1) | comes in |
+| `--e-out` | cubic-bezier(.3,0,.8,.15) | goes out |
+| `--e-spring` | linear(…) ~3 % overshoot | sheet, ÖL! |
+| `--e-lin` | linear | meters, countdown, ticker |
+
+Rules:
+
+1. In = `--e-in`; out = `--e-out` and one step shorter (300 in, 200 out).
+2. Move only `transform` and `opacity`. Never `transition: all`.
+3. No endless loop: 3 cycles, then still. Only spinners and loading skeletons loop while they load.
+4. One press: scale .96 in `--m-2`. ÖL!: .92 in 100 ms, spring back 300 ms, foam (7 bubbles, 400 ms), the count ticks up.
+5. Sub-screen: shared axis X (24 px + fade, 300 ms; back = from the left). Tabs: marker slides 200 ms; the new pane fades through.
+6. Sheets: open 300 ms spring; close 200 ms down (`--e-out`), backdrop fades. The bar sheet too.
+7. Toast: in 200 ms, out 150 ms. People pins pop in once (300 ms spring). Bars are map layers.
+8. LIVE ticker: tap = stop / go, hold = pause. With reduced motion it is a still list you scroll.
+9. Reduced motion: nothing moves; colour and opacity changes stay ≤ 100 ms; no loops.
+<!-- ds10 motion END -->
+
 ## Icons (`window.PNI`)
 
 Our own set, drawn for PintsNow on a 24 px grid: stroke 2, round caps and joins, no fill (small dots filled),

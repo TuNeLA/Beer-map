@@ -750,3 +750,246 @@
   window.PNDS.barSheet = barSheet;
 })();
 /* ds07 bar END */
+/* ds08 screens START — Inställningar: on/off rows become switches ("Överraskningar på kartan: På" → label + switch), "Radera
+   mitt konto" in its own group last, every row in a list gets an icon. Gruppens sida: characters → our icons (⋯ dots, ➤ send,
+   ＋ plus). All idempotent; runs after each repaint of #sheet (no element is renamed or rebuilt: hooks stay). */
+(function () {
+  "use strict";
+  function ico(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  var ONOFF = /^\s*(.+?):\s*(På|Av)\s*$/;
+  function settings(b) {
+    if (!b.classList.contains("ds-set")) return;
+    // a) "Label: På / Av" buttons → label + switch (the button still does the toggle; delight.js rewrites its text → redone)
+    b.querySelectorAll(".ds-item button.btn").forEach(function (x) {
+      if (x.querySelector(".pn-sw-l")) {
+        var lab = x.querySelector(".pn-sw-l"), sw = x.querySelector(".switch");
+        if (sw && x.getAttribute("aria-checked") !== sw.getAttribute("aria-checked")) sw.setAttribute("aria-checked", x.getAttribute("aria-checked"));
+        return lab;
+      }
+      var m = (x.textContent || "").match(ONOFF); if (!m) return;
+      var on = m[2] === "På", svg = x.querySelector("svg");
+      x.textContent = "";
+      if (svg) x.appendChild(svg);
+      var l = document.createElement("span"); l.className = "pn-sw-l"; l.textContent = m[1].trim(); x.appendChild(l);
+      var s = document.createElement("span"); s.className = "switch"; s.setAttribute("aria-hidden", "true"); s.setAttribute("aria-checked", String(on)); x.appendChild(s);
+      x.classList.add("pn-swb"); x.setAttribute("role", "switch"); x.setAttribute("aria-checked", String(on));
+    });
+    // b) danger in its own group, last
+    var dz = b.querySelector(":scope > section.ds-section .ds-item.ds-danger");
+    if (dz) {
+      var sec = b.querySelector(":scope > section.pn-danger-sec");
+      if (!sec) { sec = document.createElement("section"); sec.className = "ds-section pn-danger-sec"; var l2 = document.createElement("div"); l2.className = "ds-list"; sec.appendChild(l2); }
+      if (dz.parentNode !== sec.firstChild) sec.firstChild.appendChild(dz);
+      if (sec.parentNode !== b || b.lastElementChild !== sec) b.appendChild(sec);
+    }
+    // c) icon on every row: rows without one get a fitting icon
+    var MAP = [[/^Ljud/, "speaker"], [/^Visa introduktionen/, "help"], [/^Uppdatera/, "refresh"]];
+    b.querySelectorAll(".ds-item .toggle-row > span:first-child, .ds-item > .row > button.btn").forEach(function (x) {
+      if (x.querySelector("svg") || x.closest(".push-prefs")) return;
+      var t = (x.textContent || "").trim();
+      for (var i = 0; i < MAP.length; i++) if (MAP[i][0].test(t)) { var s = ico(MAP[i][1]); if (s) x.insertAdjacentHTML("afterbegin", s.replace("<svg ", '<svg data-pn8="1" ')); break; }
+    });
+  }
+  function gpage(b) {
+    var d = b.querySelector(".gpg-dots"); if (d && !d.querySelector("svg")) { var s1 = ico("dots"); if (s1) d.innerHTML = s1; }
+    var sd = b.querySelector(".gpg-send"); if (sd && !sd.querySelector("svg") && /➤/.test(sd.textContent)) { var s2 = ico("send"); if (s2) sd.innerHTML = s2; }
+    var p = b.querySelector(".gpg-plus"); if (p && !p.querySelector("svg")) { var s3 = ico("plus"); if (s3) p.innerHTML = s3; }
+  }
+  function run() {
+    var b = document.getElementById("sheet-body"); if (!b) return;
+    try { settings(b); } catch (e) {}
+    try { gpage(b); } catch (e) {}
+  }
+  var t = 0, busy = false;
+  function soon() { if (busy) return; clearTimeout(t); t = setTimeout(function () { busy = true; run(); setTimeout(function () { busy = false; }, 0); }, 60); }
+  function start() {
+    var s = document.getElementById("sheet"); if (!s) return;
+    new MutationObserver(soon).observe(s, { childList: true, subtree: true, characterData: true });
+    soon();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds08 screens END */
+/* ds10 motion START — (1) endless loops stop after 3 cycles (spinners / loading skeletons excepted), on every element incl. map
+   pins, without touching their code (Web Animations API); (2) ÖL! squash + spring + foam + count ticks up; (3) sub-screens slide
+   on the X axis; (4) tab / segment marker slides, new pane fades through; (5) DOM people pins pop in once; (6) bar sheet slides
+   down on close; (7) toast leaves in 150 ms; (8) LIVE ticker: tap = stop / go. Reduced motion: none of it. */
+(function () {
+  "use strict";
+  var W = window;
+  function reduced() { try { return !!(W.matchMedia && W.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } }
+  /* 1. loops: 3 cycles, then still */
+  var LOOP_OK = /spin|load|skel|shim|busy|wait|breath|rot|smBreath/i;
+  function stopLoops() {
+    if (!document.getAnimations || document.hidden) return;
+    try {
+      document.getAnimations().forEach(function (a) {
+        var ef = a.effect; if (!ef || !ef.getTiming) return;
+        var t = ef.getTiming(); if (t.iterations !== Infinity) return;
+        var name = a.animationName || "", tg = ef.target;
+        if (LOOP_OK.test(name) || (tg && tg.closest && tg.closest(".busy, [aria-busy=true], .sm-skel, .spinner"))) return;
+        ef.updateTiming({ iterations: 3 });
+      });
+    } catch (e) {}
+  }
+  setInterval(stopLoops, 1500);
+  document.addEventListener("visibilitychange", stopLoops);
+  /* 2. ÖL! press */
+  function foam(btn) {
+    if (reduced()) return;
+    var r = btn.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.3;
+    for (var i = 0; i < 7; i++) {
+      var f = document.createElement("i"), a = -Math.PI / 2 + (i - 3) * 0.38, d = 46 + (i % 3) * 14;
+      f.className = "pn-foam"; f.setAttribute("aria-hidden", "true");
+      f.style.left = cx + "px"; f.style.top = cy + "px";
+      f.style.setProperty("--dx", Math.round(Math.cos(a) * d) + "px"); f.style.setProperty("--dy", Math.round(Math.sin(a) * d) + "px");
+      document.body.appendChild(f);
+      setTimeout(function (x) { return function () { x.remove(); }; }(f), 460);
+    }
+  }
+  function beer() {
+    var b = document.getElementById("btn-beer"); if (!b || b._pn10) return; b._pn10 = true;
+    b.addEventListener("pointerdown", function () { if (reduced() || b.disabled) return; b.classList.remove("pn-spring"); b.classList.add("pn-squash"); });
+    var up = function () { if (!b.classList.contains("pn-squash")) return; b.classList.remove("pn-squash"); b.classList.add("pn-spring"); setTimeout(function () { b.classList.remove("pn-spring"); }, 320); };
+    b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("pointerleave", up);
+    b.addEventListener("click", function () { if (!b.disabled) foam(b); });
+  }
+  /* count ticks up: any number node in .pn-tick-n / the HUD out-count, when it grows */
+  function tickNum(el, from, to) {
+    if (reduced() || !(to > from) || to - from > 500) return;
+    var t0 = 0, dur = 300;
+    el._pnTick = true;
+    function f(ts) { if (!t0) t0 = ts; var k = Math.min(1, (ts - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = String(Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(f); else el._pnTick = false; }
+    requestAnimationFrame(f);
+  }
+  function watchCounts() {
+    document.querySelectorAll("#hud-count b, #hud-n, .hud-ute b, .ute-n, .pn-tick-n").forEach(function (el) {
+      if (el._pn10) return; el._pn10 = true; var last = parseInt(el.textContent, 10);
+      new MutationObserver(function () {
+        if (el._pnTick) return;
+        var v = parseInt(el.textContent, 10);
+        if (isFinite(v) && isFinite(last) && v > last) tickNum(el, last, v);
+        last = v;
+      }).observe(el, { childList: true, characterData: true, subtree: true });
+    });
+  }
+  /* 3. sub-screens: shared axis X */
+  function axis() {
+    var s = document.getElementById("sheet"), b = document.getElementById("sheet-body"); if (!s || !b || s._pn10) return; s._pn10 = true;
+    var back = s.classList.contains("pn-has-back"), title = (document.getElementById("sheet-title") || {}).textContent;
+    new MutationObserver(function () {
+      var nb = s.classList.contains("pn-has-back"), nt = (document.getElementById("sheet-title") || {}).textContent;
+      if (s.hidden) { back = nb; title = nt; return; }
+      if ((nt !== title || nb !== back) && !reduced() && !(b._pnAx && b._pnAx.playState === "running")) {
+        // Web Animation (other code resets #sheet-body's class list while it opens a page); while warm.js holds the body
+        // invisible (.wm-hold) only the slide runs, so its one fade-in stays in charge of opacity.
+        var dir = nb && !back ? 1 : !nb && back ? -1 : nb && back && nt !== title ? 1 : 0;
+        if (dir && b.animate) {
+          var hold = b.classList.contains("wm-hold"), x = (24 * dir) + "px";
+          b._pnAx = b.animate(hold ? [{ transform: "translateX(" + x + ")" }, { transform: "none" }] : [{ transform: "translateX(" + x + ")", opacity: 0 }, { transform: "none", opacity: 1 }],
+            { duration: 300, easing: "cubic-bezier(.05,.7,.1,1)" });
+          b._pnAx.id = dir > 0 ? "pn-ax-in" : "pn-ax-back";
+        }
+      }
+      back = nb; title = nt;
+    }).observe(s, { attributes: true, attributeFilter: ["class", "hidden"], subtree: true, childList: true, characterData: true });
+  }
+  /* 4. segmented control: marker slides from the old item to the new one; the pane below fades through */
+  var SEG = ".tabs, .seg, .bp-seg, .tt-bar, .np-tabs, .np-seg, .pk-seg, .pn-ikv-seg, .pf-tabs, .inv-tabs";
+  document.addEventListener("pointerdown", function (e) {
+    if (reduced()) return;
+    var it = e.target.closest && e.target.closest("button, [role=tab]"), bar = it && it.parentElement && it.parentElement.closest(SEG);
+    if (!bar || it.parentElement !== bar) return;
+    var old = bar.querySelector(':scope > [aria-selected="true"], :scope > .on, :scope > .active, :scope > [aria-pressed="true"]');
+    if (!old || old === it) return;
+    var br = bar.getBoundingClientRect(), o = old.getBoundingClientRect(), n = it.getBoundingClientRect();
+    var m = document.createElement("i"); m.className = "pn-seg-mark"; m.setAttribute("aria-hidden", "true");
+    if (getComputedStyle(bar).position === "static") bar.style.position = "relative";
+    m.style.cssText = "left:0;top:" + (o.top - br.top) + "px;height:" + o.height + "px;width:" + o.width + "px;transform:translateX(" + (o.left - br.left) + "px)";
+    bar.insertBefore(m, bar.firstChild);
+    requestAnimationFrame(function () { m.style.width = n.width + "px"; m.style.transform = "translateX(" + (n.left - br.left) + "px)"; });
+    setTimeout(function () { m.remove(); }, 260);
+    var body = document.getElementById("sheet-body");
+    setTimeout(function () { if (body && bar.closest("#sheet")) { var p = bar.nextElementSibling; if (p) { p.classList.remove("pn-ft"); void p.offsetWidth; p.classList.add("pn-ft"); setTimeout(function () { p.classList.remove("pn-ft"); }, 320); } } }, 30);
+  }, true);
+  /* 5. people pins pop in once per person position (re-renders of the same pin do not pop) */
+  var seenPin = {};
+  function pinKey(p) { var mk = p.closest(".leaflet-marker-icon, .mapboxgl-marker, .bm-mk") || p.parentElement; return (p.className.replace(/\bpn-pop\b/, "") + "|" + (p.textContent || "")).slice(0, 80) + "|" + (mk && mk.getAttribute("data-k") || ""); }
+  function pins(nodes) {
+    if (reduced()) return;
+    nodes.forEach(function (n) {
+      if (n.nodeType !== 1) return;
+      var list = n.classList && n.classList.contains("pn-p") ? [n] : n.querySelectorAll ? [].slice.call(n.querySelectorAll(".pn-p")) : [];
+      list.forEach(function (p) { var k = pinKey(p); if (seenPin[k]) return; seenPin[k] = 1; p.classList.add("pn-pop"); setTimeout(function () { p.classList.remove("pn-pop"); }, 360); });
+    });
+  }
+  /* 6. bar sheet: a copy slides down when it closes */
+  function barOpen(e) {
+    var r = e.popup && e.popup.getElement && e.popup.getElement(); if (!r || !r.classList.contains("olnu-sheet")) return;
+    var w = r.querySelector(".leaflet-popup-content-wrapper"), c = r.querySelector(".leaflet-popup-content");
+    if (!w || !c) return;
+    var ws = getComputedStyle(w), cs = getComputedStyle(c);
+    r._pnGhost = { w: "background:" + ws.background + ";border-radius:" + ws.borderRadius + ";border-top:" + ws.borderTop + ";padding-bottom:" + ws.paddingBottom,
+      c: "margin:" + cs.margin + ";padding-bottom:" + cs.paddingBottom + ";max-height:" + cs.maxHeight + ";overflow:hidden", top: c.scrollTop };
+  }
+  function ghost(r) {
+    if (reduced() || !r._pnGhost || !r.querySelector(".bs")) return;
+    var g = r.cloneNode(true);
+    g.className = "pn-bs-ghost"; g.removeAttribute("id"); g.setAttribute("aria-hidden", "true");
+    try { g.inert = true; } catch (e) {}
+    g.querySelectorAll("[id]").forEach(function (x) { x.removeAttribute("id"); });
+    var w = g.querySelector(".leaflet-popup-content-wrapper"), c = g.querySelector(".leaflet-popup-content");
+    if (w) { w.className = ""; w.style.cssText = r._pnGhost.w; }
+    if (c) { c.className = ""; c.style.cssText = r._pnGhost.c; }
+    g.querySelectorAll(".leaflet-popup-close-button, .leaflet-popup-tip-container").forEach(function (x) { x.remove(); });
+    document.body.appendChild(g);
+    if (c) c.scrollTop = r._pnGhost.top;
+    setTimeout(function () { g.remove(); }, 260);
+  }
+  /* 7. toast out: when a toast is removed / hidden, a copy fades down in 150 ms */
+  function toastOut(t) {
+    if (reduced() || !t.classList || !t.classList.contains("toast") || !t.textContent) return;
+    var r = t.getBoundingClientRect && t._pnRect; if (!r) return;
+    var g = t.cloneNode(true); g.removeAttribute("id"); g.classList.add("pn-out"); g.setAttribute("aria-hidden", "true");
+    g.style.cssText += ";position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;margin:0;pointer-events:none";
+    document.body.appendChild(g); setTimeout(function () { g.remove(); }, 200);
+  }
+  function noteToasts() { document.querySelectorAll(".toast").forEach(function (t) { try { var r = t.getBoundingClientRect(); if (r.width) t._pnRect = { left: r.left, top: r.top, width: r.width }; } catch (e) {} }); }
+  /* 8. LIVE ticker: a short tap stops it (readable), the next tap starts it; hold-to-pause (pnui) still works */
+  function ticker() {
+    var tk = document.querySelector("#ticker, .ticker"); if (!tk || tk._pn10) return; tk._pn10 = true;
+    var down = 0, stop = false;
+    tk.addEventListener("pointerdown", function () { down = Date.now(); });
+    tk.addEventListener("pointerup", function (e) {
+      if (Date.now() - down > 300 || (e.target.closest && e.target.closest("a, button"))) return;
+      stop = !stop; tk.classList.toggle("pn-tk-stop", stop); tk.setAttribute("aria-label", stop ? "Nyheter (stoppad, tryck för att fortsätta)" : "Nyheter (tryck för att stoppa)");
+      var f = function () { if (stop) { W.PN_TICK_F = 0; requestAnimationFrame(f); } };
+      if (stop) f(); else W.PN_TICK_F = 1;
+    });
+  }
+  function start() {
+    beer(); axis(); ticker(); watchCounts();
+    if (W.MutationObserver) {
+      var t = 0;
+      new MutationObserver(function (ms) {
+        var add = [];
+        ms.forEach(function (m) {
+          m.addedNodes.forEach(function (n) { add.push(n); });
+          m.removedNodes.forEach(function (n) {
+            if (n.nodeType !== 1) return;
+            if (n.classList.contains("olnu-sheet")) ghost(n);
+            if (n.classList.contains("toast")) toastOut(n);
+          });
+          if (m.type === "attributes" && m.target.classList && m.target.classList.contains("toast") && m.target.hidden) toastOut(m.target);
+        });
+        if (add.length) pins(add);
+        clearTimeout(t); t = setTimeout(function () { noteToasts(); beer(); ticker(); watchCounts(); }, 200);
+      }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+    }
+    var hook = function () { var m = W.__map; if (!m || !m.on) return false; if (!m._pn10) { m._pn10 = true; m.on("popupopen", barOpen); } return true; };
+    if (!hook()) { var iv = setInterval(function () { if (hook()) clearInterval(iv); }, 500); }
+    stopLoops();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds10 motion END */

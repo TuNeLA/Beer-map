@@ -127,7 +127,7 @@
   /* ---------- Shared: canvas card + share row ---------- */
   function fontsReady() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
-    var p = Promise.all(['64px "Black Ops One"', '40px "Share Tech Mono"', '700 40px "Chakra Petch"'].map(function (f) { return document.fonts.load(f).catch(function () {}); }));
+    var p = Promise.all(['64px "Black Ops One"', '600 40px "Chakra Petch"', '700 40px "Chakra Petch"'].map(function (f) { return document.fonts.load(f).catch(function () {}); }));
     return Promise.race([p, new Promise(function (r) { setTimeout(r, 1500); })]);
   }
   function cardBase(c, W, H, accent) {
@@ -171,7 +171,7 @@
       var bx = 90 + i * (bw + 24);
       c.fillStyle = "rgba(16,24,38,.92)"; c.fillRect(bx, y, bw, 170);
       c.strokeStyle = hexA(accent, 0.45); c.lineWidth = 3; c.strokeRect(bx, y, bw, 170);
-      c.fillStyle = "#9aa3a0"; c.font = '28px "Share Tech Mono", monospace'; c.textAlign = "center";
+      c.fillStyle = "#9aa3a0"; c.font = '600 28px "Chakra Petch", sans-serif'; c.textAlign = "center";
       c.fillText(String(st[0]).toUpperCase(), bx + bw / 2, y + 52);
       c.fillStyle = "#ece6d6"; c.font = (String(st[1]).length > 6 ? "700 36px" : "700 62px") + ' "Chakra Petch", sans-serif';
       c.fillText(String(st[1]), bx + bw / 2, y + 132);
@@ -359,7 +359,7 @@
     c.fillStyle = "#cfefff"; c.font = '100px "Black Ops One", Impact, sans-serif'; c.textAlign = "left";
     c.fillText(L("BAKIS-", "HANGOVER"), 90, 270);
     c.fillText(L("RAPPORTEN", "REPORT"), 90, 375);
-    c.fillStyle = "#9aa3a0"; c.font = '38px "Share Tech Mono", monospace';
+    c.fillStyle = "#9aa3a0"; c.font = '600 38px "Chakra Petch", sans-serif';
     c.fillText(dateLabel(d.evening).toUpperCase(), 94, 435);
     var v = bakisVars(d);
     statBoxes(c, W, 500, [[L("Öl", "Beers"), String(v.beers)], [L("Krogar", "Bars"), String(v.bars)], [L("Skål", "Cheers"), String(v.skal)]], acc);
@@ -368,7 +368,7 @@
     var n = wrapText(c, head, 90, 960, W - 180, 52, 3);
     c.fillStyle = "#3ddc84"; c.font = '36px "Chakra Petch", sans-serif';
     wrapText(c, tip, 90, 960 + n * 52 + 40, W - 180, 48, 3);
-    c.fillStyle = "#6f7d4f"; c.font = '30px "Share Tech Mono", monospace'; c.textAlign = "center";
+    c.fillStyle = "#6f7d4f"; c.font = '600 30px "Chakra Petch", sans-serif'; c.textAlign = "center";
     c.fillText("💧 " + L("Drick vatten. Ta det lugnt idag.", "Drink water. Take it easy today."), W / 2, H - 80);
   }
   function showBakis(d, missing) {
@@ -482,20 +482,20 @@
     cardBase(c, W, H, acc);
     c.fillStyle = "#ecd9ff"; c.font = '96px "Black Ops One", Impact, sans-serif'; c.textAlign = "left";
     c.fillText("ÖL WRAPPED", 90, 270);
-    c.fillStyle = "#9aa3a0"; c.font = '40px "Share Tech Mono", monospace';
+    c.fillStyle = "#9aa3a0"; c.font = '600 40px "Chakra Petch", sans-serif';
     c.fillText(String(w.per).toUpperCase(), 94, 335);
     var y = 420;
     w.cards.forEach(function (k) {
       c.fillStyle = "rgba(16,24,38,.92)"; c.fillRect(90, y, W - 180, 150);
       c.strokeStyle = hexA(acc, 0.45); c.lineWidth = 3; c.strokeRect(90, y, W - 180, 150);
       c.font = "72px sans-serif"; c.textAlign = "left"; c.fillStyle = "#fff"; c.fillText(k.e, 115, y + 100);
-      c.fillStyle = "#9aa3a0"; c.font = '28px "Share Tech Mono", monospace'; c.fillText(String(k.small).toUpperCase(), 220, y + 52);
+      c.fillStyle = "#9aa3a0"; c.font = '600 28px "Chakra Petch", sans-serif'; c.fillText(String(k.small).toUpperCase(), 220, y + 52);
       c.fillStyle = "#ece6d6"; c.font = '700 50px "Chakra Petch", sans-serif';
       var t = String(k.big); while (c.measureText(t).width > W - 340 && t.length > 4) t = t.slice(0, -2);
       c.fillText(t, 220, y + 115);
       y += 172;
     });
-    c.fillStyle = "#6f7d4f"; c.font = '30px "Share Tech Mono", monospace'; c.textAlign = "center";
+    c.fillStyle = "#6f7d4f"; c.font = '600 30px "Chakra Petch", sans-serif'; c.textAlign = "center";
     c.fillText("💧 " + L("Lagom ä ett fint svenskt ord.", "Moderation is a fine word."), W / 2, H - 80);
   }
   function openWrapped(kind, offset) {
