@@ -23,6 +23,8 @@ jobs:
     name: e2e (${{ matrix.name }})
     runs-on: ubuntu-24.04
     timeout-minutes: 50
+    env:
+      TZ: Europe/Stockholm   # tests were written for Swedish time (nights, "ikväll"); UTC breaks some
     strategy:
       fail-fast: false
       matrix:

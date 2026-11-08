@@ -1,0 +1,133 @@
+{
+ "v": 1,
+ "to": "2026-11-06T04:00:00+00:00",
+ "chat": {
+  "top": [
+   {
+    "at": "2026-11-05T22:21:49.521498+00:00",
+    "body": "🎲 AntT bjuder på nästa runda!",
+    "name": "AntT",
+    "emoji": null,
+    "reacts": 0
+   },
+   {
+    "at": "2026-11-05T22:21:49.672713+00:00",
+    "body": "💸 BeaT bjöd på 2 öl · 100 kr var",
+    "name": "BeaT",
+    "emoji": null,
+    "reacts": 0
+   },
+   {
+    "at": "2026-11-05T22:21:50.856591+00:00",
+    "body": "Nu kör vi! Pitchers sen?",
+    "name": "AntT",
+    "emoji": null,
+    "reacts": 0
+   }
+  ],
+  "texts": 3
+ },
+ "from": "2026-11-05T04:00:00+00:00",
+ "skal": {
+  "top": null,
+  "total": 0
+ },
+ "town": null,
+ "duels": [],
+ "event": {
+  "kind": "party",
+  "place": null,
+  "title": "🎉 Förfest hos Ant",
+  "bar_id": null,
+  "group_id": "11111111-2222-3333-4444-555555555555",
+  "invite_id": 16,
+  "starts_at": "2026-11-05T22:00:00+00:00"
+ },
+ "night": "2026-11-06T04:00:00+00:00",
+ "ready": true,
+ "drinks": {
+  "peak": {
+   "h": "23",
+   "n": 2,
+   "at": "2026-11-05T22:00:00+00:00"
+  },
+  "hours": [
+   {
+    "h": "23",
+    "n": 2,
+    "at": "2026-11-05T22:00:00+00:00"
+   }
+  ],
+  "total": 2,
+  "last_at": "2026-11-05T22:21:51.871221+00:00",
+  "first_at": "2026-11-05T22:21:51.17642+00:00"
+ },
+ "photos": [
+  {
+   "h": 240,
+   "w": 320,
+   "at": "2026-11-07T00:21:50.69665+00:00",
+   "by": "BeaT",
+   "id": 41,
+   "reacts": 0,
+   "status": false,
+   "caption": "Skål från förfesten"
+  }
+ ],
+ "status": [],
+ "evening": "2026-11-05",
+ "members": [
+  {
+   "k": "1f8615bc22e3",
+   "out": true,
+   "bars": 0,
+   "name": "AntT",
+   "hours": [
+    {
+     "h": "23",
+     "n": 1
+    }
+   ],
+   "is_me": false,
+   "answer": "yes",
+   "drinks": 1,
+   "creator": true,
+   "home_at": null,
+   "last_at": "2026-11-05T22:21:51.17642+00:00",
+   "checkins": 0,
+   "first_at": "2026-11-05T22:21:51.17642+00:00",
+   "first_ci": null,
+   "skal_got": 0,
+   "skal_given": 0
+  },
+  {
+   "k": "5c21f5956c2b",
+   "out": true,
+   "bars": 0,
+   "name": "BeaT",
+   "hours": [
+    {
+     "h": "23",
+     "n": 1
+    }
+   ],
+   "is_me": true,
+   "answer": "yes",
+   "drinks": 1,
+   "creator": false,
+   "home_at": null,
+   "last_at": "2026-11-05T22:21:51.871221+00:00",
+   "checkins": 0,
+   "first_at": "2026-11-05T22:21:51.871221+00:00",
+   "first_ci": null,
+   "skal_got": 0,
+   "skal_given": 0
+  }
+ ],
+ "rallies": [],
+ "voice_n": 0,
+ "arrivals": [],
+ "checkins": [],
+ "photos_n": 1,
+ "group_name": "🎉 Förfest hos Ant"
+}

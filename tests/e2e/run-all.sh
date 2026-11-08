@@ -35,6 +35,8 @@ run() {   # name port file [args…]
     [ $p = 0 ] && [ $fl = 0 ] && fl=1 && note="no PASS lines"
     echo "$(date +%T) $n try$try pass=$p fail=$fl rc=$rc $note ($(( $(date +%s)-t0 ))s)" | tee -a $LOG/summary.txt
     if [ $fl = 0 ]; then [ $try = 2 ] && st="flaky" || st="ok"; break; fi
+    # show why (CI logs are easier to read than the artifact): FAIL lines + last lines of the log
+    { grep -E '^FAIL' $LOG/$n.$try.log | cut -c1-400 | head -20; [ $rc != 0 ] && tail -n 15 $LOG/$n.$try.log; } | sed "s/^/    [$n] /"
     st="FAIL"
   done
   if [ "$st" = FAIL ] && [ "${SPEC:-0}" = 1 ]; then st="spec"; note="${note:-target spec, not gating}"
@@ -76,4 +78,7 @@ printf '%-16s %5s %5s  %-6s %s\n' TEST PASS FAIL STATUS NOTE
 printf '%s\n' "${RES[@]}"
 echo "tests failing: $TOTALFAIL"
 { echo "SUMMARY HEAD $HEAD"; printf '%s\n' "${RES[@]}"; echo "tests failing: $TOTALFAIL"; } >> $LOG/summary.txt
+if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+  { echo '```'; printf '%-16s %5s %5s  %-6s %s\n' TEST PASS FAIL STATUS NOTE; printf '%s\n' "${RES[@]}"; echo "tests failing: $TOTALFAIL"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+fi
 [ $TOTALFAIL = 0 ]

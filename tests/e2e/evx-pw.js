@@ -38,7 +38,7 @@ const CHAT = { group_id: TG, invite_id: 16, title: "🎉 Förfest hos Anton", na
   starts_at: new Date(now + 90 * 60e3).toISOString(), open_until: new Date(now + 13 * 3600e3).toISOString(), hide_at: new Date(now + 9 * 864e5).toISOString(),
   state: "open", can_write: true, my_answer: "yes", mine: true, members: 3, invited: 4, last_id: 9, unread: 2 };
 let STORY = null;
-try { STORY = JSON.parse(fs.readFileSync(SP + "evx-live-story.json", "utf8")); } catch (e) {}
+try { STORY = JSON.parse(fs.readFileSync(require("./env.js").FIX + "evx-story.json", "utf8")); } catch (e) {}
 if (!STORY) STORY = { ready: false, members: [], photos: [], chat: { top: [] }, drinks: {}, event: { title: "x" } };
 // make the real (thin) live story richer for the screenshot, same shape
 STORY = Object.assign({}, STORY, {
