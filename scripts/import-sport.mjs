@@ -94,28 +94,56 @@ export function parseSwehockeyDay(html) {
   }
   return out;
 }
-export function swehockeyRows(day, games, cfg, place) {
-  const keep = new RegExp(cfg.leagues || "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean)", "i");
-  const skip = new RegExp(cfg.skip || "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior)", "i");
+const SWH_KEEP = "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean)";
+const SWH_SKIP = "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior|Dam(Ettan|Tvåan|Trean)|Hockey(Ettan|Tvåan|Trean)\\s+Dam)";
+export const swhFilters = (cfg) => ({ keep: new RegExp((cfg && cfg.leagues) || SWH_KEEP, "i"), skip: new RegExp((cfg && cfg.skip) || SWH_SKIP, "i") });
+// ONE stable id for both paths (day pages have no game id, schedule pages do): team slug + local date.
+// "Leksands IF:2 – Hällefors IK/ÖHK:2" → "swh:leksandsif2halleforsikohk2:2026-12-05". A moved game gets a new id; swh_retire hides the old one.
+export function swhId(home, away, day) { return "swh:" + norm(home + "-" + away).replace(/ /g, "") + ":" + day; }
+// "00:00" = no start time on the page (placeholder, seen live: Frösö IK – Näldens IF, Leksands IF:2 – Hällefors …). Never a real start.
+export const swhTimeKnown = (t) => /^\d{2}:\d{2}$/.test(t || "") && t !== "00:00";
+// Women's games (SDHL, NDHL, "… Dam …"): league label and title say "Dam" so nobody takes them for the men's team.
+export const swhWomen = (group) => /^(SDHL|NDHL)\b|\bDam\b/i.test(group || "");
+// seen (optional Set): every id this run would write for the day, also rows without a position (for swh_retire).
+export function swehockeyRows(day, games, cfg, place, seen) {
+  const { keep, skip } = swhFilters(cfg);
+  const tvr = cfg.tv_teams ? new RegExp(cfg.tv_teams, "i") : null;
+  const tvl = new RegExp(cfg.tv_leagues || "^(SHL|HockeyAllsvenskan)", "i");
   const out = [];
   for (const g of games) {
-    if (!keep.test(g.group) || skip.test(g.group)) continue;
+    if (!keep.test(g.group) || skip.test(g.group) || !swhTimeKnown(g.time)) continue;
+    const women = swhWomen(g.group);
+    let league = g.group.replace(/,\s*Region\s+\S+$/i, "");
+    if (women && !/\bDam\b/i.test(league)) league += " Dam";
+    league = league.slice(0, 40);
+    const sid = swhId(g.home, g.away, day), isTv = !!(tvr && cfg.tv_area && tvl.test(g.group) && (tvr.test(g.home) || tvr.test(g.away)));
+    if (seen) { seen.add(sid); if (isTv) seen.add("tv:" + sid); }
     const st = stockholm(day, g.time), p = place(g.venue, g.home);
-    const league = g.group.replace(/,\s*Region\s+\S+$/i, "").slice(0, 40);
-    const sid = (g.gameId || norm(g.home + "-" + g.away).replace(/ /g, "")) + ":" + day;
-    const base = { source: "swehockey", source_id: "swh:" + sid, title: cut(g.home + " – " + g.away, 80), starts_at: new Date(st).toISOString(),
+    const base = { source: "swehockey", source_id: sid, title: cut(g.home + " – " + g.away, women ? 74 : 80) + (women ? " (dam)" : ""), starts_at: new Date(st).toISOString(),
       ends_at: new Date(st + 150 * 60e3).toISOString(), url: "https://stats.swehockey.se/ScheduleAndResults/Schedule/" + g.groupId,
       sport: "hockey", league, home: cut(g.home, 60), away: cut(g.away, 60), kind: "sport" };
     if (p) out.push(Object.assign({}, base, { place: p.place, lat: p.lat, lng: p.lng, tv: false }));
     // Regional "TV match": e.g. Leksand / Mora games for everyone in Dalarna (ends up town-less, with an area)
-    const tvr = cfg.tv_teams ? new RegExp(cfg.tv_teams, "i") : null;
-    const tvl = new RegExp(cfg.tv_leagues || "^(SHL|HockeyAllsvenskan)", "i");
-    if (tvr && tvl.test(g.group) && (tvr.test(g.home) || tvr.test(g.away)) && cfg.tv_area) {
-      out.push(Object.assign({}, base, { source: "tv", source_id: "tv:swh:" + sid, place: null, lat: null, lng: null, tv: true,
+    if (isTv) {
+      out.push(Object.assign({}, base, { source: "tv", source_id: "tv:" + sid, place: null, lat: null, lng: null, tv: true,
         tv_lat: cfg.tv_area.lat, tv_lng: cfg.tv_area.lng, tv_km: cfg.tv_area.km || 200 }));
     }
   }
   return out;
+}
+// 🧹 A day page that loaded (HTTP 200) with ≥ 1 parsed game is the full truth for that day → retire the rest (moved / cancelled).
+// An outage, an error page or a changed layout (0 games parsed) never retires anything.
+export function retirePlan(day, status, games, seen) {
+  return status === 200 && Array.isArray(games) && games.length >= 1 ? { day, seen: [...seen].sort() } : null;
+}
+// Calls swh_retire (migration 0291) per day. rpc(name, body) is import-events.mjs's caller. Stops at the first error (old database).
+export async function retireSwehockey(rpc, plan, log) {
+  let n = 0;
+  for (const p of plan || []) {
+    try { const r = await rpc("swh_retire", { p_day: p.day, p_seen: p.seen }); log("swh_retire", p.day, JSON.stringify(r)); n++; }
+    catch (e) { log("swh_retire failed:", String(e.message || e)); break; }
+  }
+  return n;
 }
 // One league "Schedule" page (/ScheduleAndResults/Schedule/<groupId>, the whole season) → [{day, gameId, time, home, away, venue, played}]
 export function parseSwehockeySchedule(html) {
@@ -136,7 +164,7 @@ export function parseSwehockeySchedule(html) {
   }
   return out;
 }
-async function swehockey(cfg, place, log, now) {
+async function swehockey(cfg, place, log, now, retire) {
   const rows = [], groups = new Map();   // groupId → group name (from the day pages)
   const days = Math.max(1, Math.min(21, +cfg.days || 14));
   for (let i = 0; i < days; i++) {
@@ -145,19 +173,20 @@ async function swehockey(cfg, place, log, now) {
     try {
       const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" } });
       if (!r.ok) { log("swehockey", day, r.status); if (r.status === 429 || r.status >= 500) break; continue; }
-      const games = parseSwehockeyDay(await r.text());
+      const games = parseSwehockeyDay(await r.text()), seen = new Set();
       for (const g of games) if (g.groupId && !groups.has(g.groupId)) groups.set(g.groupId, g.group);
-      const got = swehockeyRows(day, games, cfg, place);
+      const got = swehockeyRows(day, games, cfg, place, seen);
       rows.push(...got);
-      log("swehockey", day, got.length);
+      const plan = retirePlan(day, r.status, games, seen);
+      if (plan && retire) retire.push(plan);
+      log("swehockey", day, got.length, plan ? "" : "(no retire: " + games.length + " games parsed)");
     } catch (e) { log("swehockey", day, String(e.message || e)); }
     await sleep(1500);
   }
   // 📅 Days 14–30: league schedule pages of the senior groups seen above, one rotation slot per run (polite).
   const far = Math.max(days, Math.min(45, +cfg.far_days || 0));
   if (far > days) {
-    const keep = new RegExp(cfg.leagues || "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean)", "i");
-    const skip = new RegExp(cfg.skip || "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior)", "i");
+    const { keep, skip } = swhFilters(cfg);
     const rot = Math.max(1, Math.min(7, +cfg.far_rotate || 1)), slot = Math.floor(now / 864e5) % rot;
     const from = localDate(now + days * 864e5), to = localDate(now + (far - 1) * 864e5);
     const ids = [...groups.keys()].filter((id) => keep.test(groups.get(id)) && !skip.test(groups.get(id)) && +id % rot === slot)
@@ -312,8 +341,8 @@ export async function sportRows({ towns, log, now, tickster }) {
   const cfg = JSON.parse(await readFile(resolve(here, "sport-feeds.json"), "utf8").catch(() => "{}"));
   const venues = JSON.parse(await readFile(resolve(here, "sport-venues.json"), "utf8").catch(() => "{}"));
   const place = placer(venues, towns && towns.length ? towns : cfg.fallback_towns || []);
-  const rows = [];
-  if (cfg.swehockey && cfg.swehockey.on !== false) rows.push(...await swehockey(cfg.swehockey, place, log, now));
+  const rows = [], retire = [];
+  if (cfg.swehockey && cfg.swehockey.on !== false) rows.push(...await swehockey(cfg.swehockey, place, log, now, retire));
   const fd = cfg.football_data && cfg.football_data.on !== false ? await footballData(cfg.football_data, log, now) : null;
   if (fd) rows.push(...fd);
   if (cfg.thesportsdb && cfg.thesportsdb.on !== false) rows.push(...await thesportsdb(cfg.thesportsdb, place, log, now, !!fd));
@@ -332,5 +361,6 @@ export async function sportRows({ towns, log, now, tickster }) {
   }
   log("sport tickets:", nt, "matches (" + nx + " exact Tickster links)");
   log("sport rows:", out.length, "(local", out.filter((r) => !r.tv).length + ", tv " + out.filter((r) => r.tv).length + ")");
+  out.retire = retire;   // 🧹 [{day, seen}] for swh_retire — import-events.mjs calls it after a good import
   return out;
 }

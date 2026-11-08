@@ -16,7 +16,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { sportRows } from "./import-sport.mjs";
+import { sportRows, retireSwehockey } from "./import-sport.mjs";
 import { ticksterDump, ticksterRows } from "./import-tickster.mjs";   // 🎟️ Tickster (optional TICKSTER_KEY)   // ⚽🏒 matches (CONTRACT "SPORT")
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -305,8 +305,8 @@ async function main() {
   rows.push(...await feeds(Array.isArray(list) ? list : [], await barsIndex()));
   const tix = await ticksterDump(process.env.TICKSTER_KEY, log);
   log("rows:", rows.length);
-  let sport = [];
-  if (!process.argv.includes("--no-sport")) { try { sport = await sportRows({ towns, log, tickster: tix }); } catch (e) { log("sport:", String(e.message || e)); } }
+  let sport = [], retire = [];
+  if (!process.argv.includes("--no-sport")) { try { sport = await sportRows({ towns, log, tickster: tix }); retire = sport.retire || []; } catch (e) { log("sport:", String(e.message || e)); } }
   if (tix) { const used = new Set(sport.map((r) => r.ticket_url).filter(Boolean)), tr = ticksterRows(tix, towns, used); rows.push(...tr); log("tickster rows:", tr.length); }
   try { rows.push(...await (await import("./import-visitsweden.mjs")).visitSwedenRows(rows, log)); } catch (e) { log("visitsweden:", String(e.message || e)); }   // 🇸🇪 Visit Sweden (no key)
   try {   // 📅 one row per real event (CONTRACT "📅 EN RAD PER EVENT"): match + Tickster/Ticketmaster twins → one row
@@ -314,11 +314,15 @@ async function main() {
     sport = dd.sport; rows.length = 0; rows.push(...dd.rows); log("dedupe:", JSON.stringify(dd.stats));
     if (dry) console.log("[events] 📅 merged twins (sample):\n" + JSON.stringify(dd.groups.slice(0, 30), null, 1));
   } catch (e) { log("dedupe:", String(e.message || e)); }
+  if (dry) console.log("[events] 🧹 swh_retire plan (days, ids seen):", JSON.stringify(retire.map((p) => [p.day, p.seen.length])));
   if (dry) { console.log("[events] 🎟️ local matches with a ticket link:\n" + JSON.stringify(sport.filter((r) => r.ticket_url).slice(0, 12), null, 1)); console.log(JSON.stringify(rows.slice(0, 50), null, 1)); console.log("[events] sport sample (tv + first local):\n" + JSON.stringify(sport.filter((r) => r.tv).slice(0, 40).concat(sport.filter((r) => !r.tv).slice(0, 40)), null, 1)); return; }
+  let sportOk = true;
   for (let i = 0; i < sport.length; i += 500) {
     try { log("import sport:", JSON.stringify(await rpc("import_sport_events", { p_rows: sport.slice(i, i + 500) }))); }
-    catch (e) { log("import sport failed:", e.message); break; }   // old database without 0100: the other events still go in
+    catch (e) { sportOk = false; log("import sport failed:", e.message); break; }   // old database without 0100: the other events still go in
   }
+  // 🧹 moved / cancelled hockey games (migration 0291): only after ALL sport rows went in, so a failed import never hides games.
+  if (sportOk && retire.length) await retireSwehockey(rpc, retire, log);
   for (let i = 0; i < rows.length; i += 500) log("import:", JSON.stringify(await rpc("import_events", { p_rows: rows.slice(i, i + 500) })));
 }
 

@@ -7,7 +7,8 @@
   "far_rotate": 3,
   "_far_doc": "Days 14–30 from league schedule pages: groups seen in the 14 day pages, split in far_rotate slots (one slot per daily run).",
   "leagues": "^(SHL|HockeyAllsvenskan|Hockeyettan|HockeyTvåan|HockeyTrean|SDHL|NDHL)",
-  "skip": "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior|Dam(Ettan|Tvåan|Trean))",
+  "skip": "(U\\d|TV-?pucken|Preseason|Träning|Distrikt|Junior|Dam(Ettan|Tvåan|Trean)|Hockey(Ettan|Tvåan|Trean)\\s+Dam)",
+  "_skip_doc": "Women: only SDHL / NDHL are kept (title gets \"(dam)\", league \"… Dam\"). Lower women's leagues are skipped in both spellings: DamEttan … and HockeyTvåan Dam ….",
   "tv_teams": "^(Leksands IF|Mora IK)$",
   "tv_leagues": "^(SHL|HockeyAllsvenskan)",
   "tv_area": { "lat": 60.6, "lng": 15.0, "km": 200, "_doc": "Leksand / Mora away games show as 📺 TV matches for everyone within 200 km of mid-Dalarna" }
