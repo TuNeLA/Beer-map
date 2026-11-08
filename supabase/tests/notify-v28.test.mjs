@@ -80,8 +80,8 @@ t("tidyPayload keeps chat titles long (the text is the info) and names no 'Öl N
   const q = m.tidyPayload({ title: "🍺 Öl Nu", body: "", tag: "x" });
   assert.equal(q.title, "PintsNow 🍺");
 });
-t("paceOf: default 10 min / 8 per night, user caps win", () => {
-  assert.deepEqual(m.paceOf(null), { gap: 600, max: 8 });
+t("paceOf: default 10 min / 4 per night (gw), user caps win", () => {
+  assert.deepEqual(m.paceOf(null), { gap: 600, max: 4 });
   assert.deepEqual(m.paceOf({ cap: 5 }), { gap: 600, max: 5 });
   assert.deepEqual(m.paceOf({ cap: 99 }), { gap: 120, max: 99 });
 });

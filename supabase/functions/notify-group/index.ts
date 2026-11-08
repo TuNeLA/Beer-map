@@ -44,9 +44,15 @@
 //   the bar (bars_lite) and folds per bar; msg rate 120 -> 30 s.
 // DEPLOY v28 🔕 LUGNA NOTISER (0260; owner 2026-11-07 burst). gate28 in sendAll: every payload gets a short title (who/what
 //   first, max 30, emoji last) and no generic body; hype (KAOS, takeover, tips, befordran, helg, filmstart, 1st/5th drink)
-//   only 17–05; the social kinds (ute/kaos/bar/kul/film) max 1 per 10 min and 8 per night PER RECIPIENT (push_pace_take);
+//   only 17–05; the social kinds (ute/kaos/bar/kul/film) max 1 per 10 min and 4 per night (gw; was 8) PER RECIPIENT (push_pace_take);
 //   held ones go out as ONE digest "3 nya från vänner 🍻" (push_pace_due, flushed in later calls and the cron).
 //   Friend pushes: one tag per pin (öl 5 replaces öl 1). New texts: friendPayload28, checkinPayload28 (count at the bar), …
+// gw (agent gw 2026-11-08, migrations 0310-0313; KONKURRENTER.md): v28 budget 8 -> 4 per night (PACE_NIGHT_MAX).
+//   Kind "ikvall" (tag olnu-ikvall-<night>): "Ute ikväll?" Fri/Sat ~20:00 to opted-in users (cron: ikvall_prompt_claim);
+//   own evening rule: only Fri/Sat 19-23 Stockholm (else dropped), nattro respected, counted in the pace / budget.
+//   {event:"knuff", knuff_id} -> "Anton knuffar dig 👋" to that friend (knuff_push_claim; kind "ute": paced, can be off).
+//   {event:"walk_check", walk_id} (walker or viewer) + cron walk_timer_due_claim: "Är du hemma? 🏠" to the walker,
+//   then "Lisa har inte svarat ⚠️" with the last position time to the chosen viewers (tags olnu-walk-*: safety, always on).
 // Keep this in ONE file (the deploy tool uploads files directly; no import map).
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -1077,7 +1083,7 @@ export function filmStartPayload(idx: number, namn: string, groupName: string, g
 /** Push kinds the user can turn off (same list as olnu_push_cats()). "safe" = always on. "" = unknown (always sent). */
 export const PUSH_CATS = ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film"] as const;
 /** Kinds that count against the cap per night (social noise; chat, plans and safety never count). */
-export const PUSH_NOISY = ["ute", "kaos", "bar", "kul", "film"];
+export const PUSH_NOISY = ["ute", "kaos", "bar", "kul", "film", "ikvall"];   // gw: + ikvall
 export const PUSH_CAP_DEFAULT = 15;
 /** The kind of a push, from its tag (every payload has one; tags never hold user ids). */
 export function pushCat(tag: string): string {
@@ -1091,7 +1097,8 @@ export function pushCat(tag: string): string {
   if (/^olnu-(title|helg)-/.test(t)) return "kul";
   if (/^olnu-film(start)?-/.test(t)) return "film";   // 0195
   if (/^olnu-friend-/.test(t)) return "vanner";
-  if (/^olnu-(come|coming|checkin|eta)-/.test(t) || /^olnu-\d+-/.test(t)) return "ute";
+  if (/^olnu-ikvall-/.test(t)) return "ikvall";   // gw 0310: "Ute ikväll?" (opt-in; Fri/Sat 19-23 only, see rule28)
+  if (/^olnu-(come|coming|checkin|eta|knuff)-/.test(t) || /^olnu-\d+-/.test(t)) return "ute";   // gw: + knuff
   return "";
 }
 /** Hour 0–23 in Europe/Stockholm. */
@@ -1160,12 +1167,12 @@ export function comingPayload(idx: number, namn: string, n: number, beerId: numb
 // Other agents adding a push kind: give the payload a `tag` "olnu-<kind>-…", add the kind to pushCat (v27) and,
 // when it is hype / evening-only, to HYPE_RE below. Optional payload fields read here: `dg` (short digest line).
 export const PACE_GAP_SEC = 600;
-export const PACE_NIGHT_MAX = 8;
+export const PACE_NIGHT_MAX = 4;   // gw (KONKURRENTER.md risk 4): was 8. A user's own cap 5/10/20/99 (0190) still wins.
 export const EVENING_FROM = 17;   // hype pushes 17:00 … 05:00 (Stockholm)
 export const EVENING_TO = 5;
 export const TITLE_MAX = 30;
 /** Kinds (pushCat) that are paced. chat/dm/plan/vanner/safe/"" are never paced (direct, already folded or safety). */
-export const PACE_CATS = ["ute", "kaos", "bar", "kul", "film"];
+export const PACE_CATS = ["ute", "kaos", "bar", "kul", "film", "ikvall"];   // gw: + ikvall
 /** Evening-only tags: KAOS, takeover, krogtips, befordran, helgstreak, filmstart, friend 1st/5th drink ("-1"/"-5"/"-f1"/"-f5"). */
 export const HYPE_RE = /^olnu-(kaos|takeover|tip|title|helg|filmstart)-|^olnu-\d+-f?(1|5)$/;
 export function isEvening(hour: number): boolean {
@@ -1175,10 +1182,46 @@ export function isHype(tag: string): boolean {
   return HYPE_RE.test(String(tag || ""));
 }
 /** "day" (hype in the daytime: drop) | "pace" (ask the counter) | "send". cat = pushCat(tag). */
-export function rule28(cat: string, tag: string, hour: number): "day" | "pace" | "send" {
+export function rule28(cat: string, tag: string, hour: number, ms = Date.now()): "day" | "pace" | "send" {
   if (!cat || !PACE_CATS.includes(cat)) return "send";
+  if (cat === "ikvall" && !ikvallWindow(ms)) return "day";   // gw 0310: only Fri/Sat 19-23 Stockholm
   if (isHype(tag) && !isEvening(hour)) return "day";
   return "pace";
+}
+// ---- gw (0310-0313): pure texts + the "Ute ikväll?" window ----
+/** Fri or Sat, 19:00-22:59 Europe/Stockholm. */
+export function ikvallWindow(ms: number): boolean {
+  try {
+    const p = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Stockholm", weekday: "short", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ms));
+    const wd = p.find((x) => x.type === "weekday")?.value ?? "";
+    const h = parseInt(p.find((x) => x.type === "hour")?.value ?? "-1", 10);
+    return (wd === "Fri" || wd === "Sat") && h >= 19 && h < 23;
+  } catch (_e) { return false; }
+}
+export const IKVALL_LINES: string[] = ["Ute ikväll? 🍺", "Blir det ute ikväll? 🍻", "Vad blir det ikväll? 🌙"];
+/** "Ute ikväll?" (no counts: you see the gang's answers after you answer). */
+export function ikvallPayload(idx: number, ms: number) {
+  const d = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+  return { title: IKVALL_LINES[((Math.floor(idx) % IKVALL_LINES.length) + IKVALL_LINES.length) % IKVALL_LINES.length],
+    body: "Svara Ute, Kanske eller Hemma. Då ser du vilka som ska ut.", url: "/?ikvall=1", tag: `olnu-ikvall-${d}`, dg: "Ute ikväll?" };
+}
+/** 👋 Knuff from a friend. */
+export function knuffPayload(namn: string, id: number) {
+  const n = cleanBarName(namn) || "En kompis";
+  return { title: `${n} knuffar dig 👋`, body: "Tryck för att se var gänget är.", url: "/", tag: `olnu-knuff-${id}`, dg: `${n} knuffade dig` };
+}
+/** Följ mig hem timer: to the walker when the time is up. */
+export function walkRemindPayload(walkId: number) {
+  return { title: "Är du hemma? 🏠", body: "Svara inom 30 sekunder. Annars får dina vänner ett larm.", url: `/?walk=${walkId}&chk=1`,
+    tag: `olnu-walk-chk-${walkId}`, renotify: true };
+}
+/** Följ mig hem timer: to the viewers 30 s after an unanswered reminder. dueMs / lastMs: ms or NaN. */
+export function walkAlertPayload(namn: string, walkId: number, dueMs: number, lastMs: number) {
+  const n = cleanBarName(namn) || "Din kompis";
+  const due = Number.isFinite(dueMs) ? ` kl ${hhmm(dueMs)}` : "";
+  const last = Number.isFinite(lastMs) ? `Senaste plats kl ${hhmm(lastMs)}. ` : "";
+  return { title: `${n} har inte svarat ⚠️`, body: `Skulle höra av sig${due}. ${last}Ring ${n}. Vid fara: ring 112.`,
+    url: `/?walk=${walkId}&alert=1`, tag: `olnu-walk-alert-${walkId}`, renotify: true };
 }
 export function paceOf(pref: PushPref | null | undefined): { gap: number; max: number } {
   const c = Number(pref?.cap) || 0;
@@ -2737,6 +2780,69 @@ async function keyRpc(key: string, name: string, body: unknown) {
   try { data = await r.json(); } catch (_e) { data = null; }
   return { ok: r.ok, status: r.status, data };
 }
+// ---- gw (0310-0313) runtime ----
+type GwWalkRow = { walk_id: number; stage: string; user_id: string; viewers: string[] | null; name: string | null;
+  due_at: string | null; last_lat: number | null; last_lng: number | null; last_at: string | null };
+async function gwWalkSend(admin: Admin, rows: GwWalkRow[]) {
+  const jobs: Job[] = [];
+  for (const r of rows.slice(0, 100)) {
+    const id = Number(r.walk_id);
+    if (!Number.isFinite(id)) continue;
+    if (r.stage === "remind") {
+      const payload = JSON.stringify(walkRemindPayload(id));
+      for (const s of await subsOf(admin, [r.user_id])) jobs.push({ sub: s, payload });
+    } else if (r.stage === "alert") {
+      const to = ((r.viewers ?? []) as string[]).filter((x) => isUuid(x) && x !== r.user_id).slice(0, 30);
+      const payload = JSON.stringify(walkAlertPayload(r.name || "", id, Date.parse(String(r.due_at)), Date.parse(String(r.last_at))));
+      for (const s of await subsOf(admin, to)) jobs.push({ sub: s, payload });
+    }
+  }
+  return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
+}
+/** {event:"walk_check", walk_id}: the caller (walker or viewer) saw a stage move in walk_timer_tick. */
+async function gwWalkCheck(admin: Admin, uid: string, b: Body) {
+  const wid = parseRallyId(b.walk_id);
+  if (wid === null) return { ...NONE, reason: "no_walk" };
+  const { data: w, error } = await admin.from("walks").select("user_id, viewers").eq("id", wid).maybeSingle();
+  if (error) throw error;
+  if (!w || (w.user_id !== uid && !((w.viewers ?? []) as string[]).includes(uid))) return { ...NONE, reason: "no_walk" };
+  const { data, error: cErr } = await admin.rpc("walk_timer_push_claim", { p_walk_id: wid });
+  if (cErr) { console.warn("walk_timer_push_claim", cErr.message); return { ...NONE, reason: "no_timer" }; }
+  const rows = (Array.isArray(data) ? data : []) as GwWalkRow[];
+  return rows.length ? await gwWalkSend(admin, rows) : { ...NONE, reason: "nothing_due" };
+}
+/** {event:"knuff", knuff_id}: one push per knuff (knuff_push_claim checks the sender and the 5 min window). */
+async function gwKnuff(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.knuff_id);
+  if (id === null) return { ...NONE, reason: "no_knuff" };
+  const { data, error } = await admin.rpc("knuff_push_claim", { p_id: id, p_from: uid });
+  if (error) { console.warn("knuff_push_claim", error.message); return { ...NONE, reason: "no_knuff" }; }
+  const d = (data ?? {}) as { ok?: boolean; to?: string; name?: string };
+  if (!d.ok || !isUuid(d.to)) return { ...NONE, reason: "already_sent" };
+  const payload = JSON.stringify(knuffPayload(d.name || "", id));
+  const jobs = (await subsOf(admin, [d.to])).map((s) => ({ sub: s, payload }));
+  return jobs.length ? await sendAll(admin, jobs, 900) : { ...NONE, reason: "no_subs" };
+}
+/** Cron: "Ute ikväll?" (ikvall_prompt_claim returns users only inside Fri/Sat 20:00-22:29) + due walk timers. */
+async function gwCron(admin: Admin, key: string) {
+  let ikvall = 0, walk = 0;
+  try {
+    const c = await keyRpc(key, "ikvall_prompt_claim", { p_limit: 500 });
+    const uids = (Array.isArray(c.data) ? c.data : []).map((x) => typeof x === "string" ? x : (x && typeof x === "object" ? String(Object.values(x as Record<string, unknown>)[0] ?? "") : ""))
+      .filter(isUuid);
+    if (c.ok && uids.length) {
+      const now = Date.now();
+      const jobs = (await subsOf(admin, uids)).map((s) => ({ sub: s, payload: JSON.stringify(ikvallPayload(Math.floor(Math.random() * IKVALL_LINES.length), now)) }));
+      ikvall = jobs.length ? (await sendAll(admin, jobs, 3600)).sent || 0 : 0;
+    }
+  } catch (e) { console.error("gw ikvall cron failed", e); }
+  try {
+    const w = await keyRpc(key, "walk_timer_due_claim", { p_limit: 50 });
+    if (w.ok && Array.isArray(w.data) && w.data.length) walk = (await gwWalkSend(admin, w.data as GwWalkRow[])).sent || 0;
+  } catch (e) { console.error("gw walk cron failed", e); }
+  return { ikvall, walk };
+}
+
 async function cronDue(key: string): Promise<Response> {
   if (key.length < 20 || key.length > 4096) return json({ error: "forbidden" }, 403);
   const claim = await keyRpc(key, "invite_due_claim", {});
@@ -2762,6 +2868,7 @@ async function cronDue(key: string): Promise<Response> {
       evSent = (await evDueSend(admin, ev.data as EvDueRow[])).sent || 0;
     }
   } catch (e) { console.error("ev_due failed", e); }
+  const gw = await gwCron(admin, key);   // gw 0310 / 0313
   lastFlush28 = 0;
   const digests = await paceFlush(admin);   // v28 (deploy)
   // feat 0250 ⏰ Baren stänger (a missing RPC on an old database = skipped)
@@ -2770,7 +2877,7 @@ async function cronDue(key: string): Promise<Response> {
     const cr = await keyRpc(key, "close_remind_claim", {});
     if (cr.ok && Array.isArray(cr.data) && cr.data.length) closeSent = (await closeSend(admin, cr.data as CloseRow[])).sent || 0;
   } catch (e) { console.error("close_remind failed", e); }
-  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests });
+  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -2851,6 +2958,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "walk") return json(await walkPush(admin, uid, body, false));
     if (event === "walk_home") return json(await walkPush(admin, uid, body, true));
     if (event === "coming") return json(await comingPush(admin, uid, body));
+    if (event === "knuff") return json(await gwKnuff(admin, uid, body));            // gw 0312
+    if (event === "walk_check") return json(await gwWalkCheck(admin, uid, body));   // gw 0313
     if (event === "pickup") return json(await pickupPush(admin, uid, body));          // feat 0250
     if (event === "pickup_yes") return json(await pickupYesPush(admin, uid, body));   // feat 0250
 

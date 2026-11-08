@@ -171,7 +171,7 @@
   var state = "", bip = null, waitT = null, gname = "", members = 0;
   var joined = false, joining = false, handledFlag = false, iosPrepped = false;
   // social2: answer first. evd = ev_preview data, evAns = my answer on this card ("yes" | "maybe" | "").
-  var evd = null, evAns = "", faces = [], outNow = 0, prevEl = null;
+  var evd = null, evAns = "", faces = [], outNow = 0, prevEl = null, whoLine = "";   // gw: whoLine = first names (link_preview)
   var gateRes = null, gate = Promise.resolve();
   var CARD_ON = !!ARR && plat !== "standalone";
 
@@ -209,6 +209,12 @@
   function tryJoin() {
     if (!joinable() || joined || joining) return;
     var n = typedName(); if (!n) return;
+    if (noAcct()) {   // gw: the tap makes the account, then joins
+      joining = true; status(L("⏳ Ett ögonblick…", "⏳ One moment…"));
+      A.ensureAccount().then(function () { joining = false; if (A.authed && A.authed()) tryJoin(); else status(L("Kunde int' gå med. Försök igen.", "Could not join. Try again."), "err"); },
+        function () { joining = false; status(L("Kunde int' gå med. Försök igen.", "Could not join. Try again."), "err"); });
+      return;
+    }
     if (!A || !A.LIVE || !A.authed || !A.authed()) { lsSet("olnu.jn.pending", ARR.code); return; }
     joining = true;
     status(L("⏳ Skriver in dig i " + (gname || "gruppen") + "…", "⏳ Adding you to " + (gname || "the group") + "…"));
@@ -269,11 +275,38 @@
     } else if (ARR.kind === "join" && (faces.length || outNow)) {
       prevEl.appendChild(h("span", { class: "jn-ev-n" }, [fs, document.createTextNode(outNow ? L(" 🍺 " + outNow + " ute nu", " 🍺 " + outNow + " out now") : "")]));
     }
+    if (whoLine) prevEl.appendChild(h("span", { class: "jn-who", text: whoLine }));   // gw
     prevEl.hidden = !prevEl.firstChild;
   }
+  // gw: link_preview (anon; js/gw.js) fills the card before any account exists: first names, counts, the event.
+  function applyPreview(d) {
+    if (!d || !root || !ARR) return;
+    if (!d.ok) {
+      if (d.why === "not_found") status(ARR.kind === "ev" ? L("🤷 Länken funkar int' längre. Be om en ny.", "🤷 This link doesn't work any more.") : L("🤷 Koden funkar int'. Be om en ny länk.", "🤷 That code doesn't work."), "err");
+      return;
+    }
+    var nm = (d.faces || []).map(function (f) { return f && f.n; }).filter(Boolean), who = window.GW && window.GW.whoText ? window.GW.whoText : function (x) { return x.join(", "); };
+    if (d.kind === "join" && ARR.kind === "join") {
+      gname = d.name || gname; members = d.members | 0; outNow = d.ute | 0; faces = nm.slice(0, 4);
+      if (memEl && members) { memEl.textContent = L("👥 " + members + " i gänget redan", "👥 " + members + " in the gang already"); memEl.hidden = false; }
+      whoLine = nm.length ? L("I gänget: ", "In the gang: ") + who(nm, members) : "";
+    } else if (d.kind === "ev" && ARR.kind === "ev") {
+      evd = Object.assign({}, evd || {}, d); faces = nm.slice(0, 4);
+      whoLine = nm.length ? who(nm, d.yes | 0) + L(" hänger med", " are in") : "";
+    } else return;
+    if (subEl) subEl.textContent = subText();
+    paintPrev(); renderAct();
+  }
+  function noAcct() { return !!(A && A.LIVE && A.noAccount && A.noAccount() && A.ensureAccount); }   // gw
   function evJoin(a, b) {
     var n = typedName();
     if (!n) { nameHint(); return; }
+    if (noAcct()) {   // gw: the tap makes the account, then answers
+      if (b) b.disabled = true; status(L("⏳ Ett ögonblick…", "⏳ One moment…"));
+      A.ensureAccount().then(function () { if (b) b.disabled = false; if (A.authed && A.authed()) evJoin(a, b); else status(L("Kunde int' svara. Försök igen.", "Could not answer. Try again."), "err"); },
+        function () { if (b) b.disabled = false; status(L("Kunde int' svara. Försök igen.", "Could not answer. Try again."), "err"); });
+      return;
+    }
     if (!A || !A.LIVE || !A.authed || !A.authed()) { status(L("⏳ Laddar… försök igen om en sekund.", "⏳ Loading… try again in a second.")); return; }
     if (b) b.disabled = true;
     status(L("⏳ Svarar…", "⏳ Answering…"));
@@ -300,9 +333,9 @@
   }
   // Step 1: answer (name only). Step 2 (renderAct below): the gentle install guide.
   function renderAnswer() {
-    var ready = A && A.LIVE && A.authed && A.authed();
+    var ready = A && A.LIVE && ((A.authed && A.authed()) || noAcct());   // gw: no account yet = ready (the tap makes it)
     if (ARR.kind === "join") {
-      var jb = bigBtn(ready ? L("✅ Gå med i " + (gname || "gänget"), "✅ Join " + (gname || "the gang")) : L("⏳ Laddar…", "⏳ Loading…"), "btn-amber ds-btn-primary jn-joinbtn", function () {
+      var jb = bigBtn(ready ? L("Jag hänger med", "I'm in") : L("⏳ Laddar…", "⏳ Loading…"), "btn-amber ds-btn-primary jn-joinbtn", function () {
         if (needName() && !typedName()) { nameHint(); return; }
         tryJoin();
       });
@@ -311,7 +344,7 @@
       act.appendChild(h("p", { class: "jn-then", text: L("Funkar direkt här i webbläsaren. Appen kan du fixa sen.", "Works right here in the browser. Get the app later.") }));
     } else {
       var row = h("div", { class: "jn-evbtns" });
-      var yb = bigBtn(ready ? L("✅ Jag kommer", "✅ I'm going") : L("⏳ Laddar…", "⏳ Loading…"), "btn-green ds-btn-primary jn-evyes", function () { evJoin("yes", yb); });
+      var yb = bigBtn(ready ? L("Jag hänger med", "I'm going") : L("⏳ Laddar…", "⏳ Loading…"), "btn-green ds-btn-primary jn-evyes", function () { evJoin("yes", yb); });
       var mb = bigBtn(L("🤔 Kanske", "🤔 Maybe"), "ds-btn-secondary jn-evmaybe", function () { evJoin("maybe", mb); });
       yb.disabled = mb.disabled = !ready;
       row.appendChild(yb); row.appendChild(mb);
@@ -557,6 +590,7 @@
       if (A.authed && A.authed()) onAuthed();
     },
     onAuthed: onAuthed,
+    applyPreview: applyPreview, cardOn: function () { return !!root; }, arr: function () { return ARR ? { kind: ARR.kind, code: ARR.code } : null; },   // gw
     applyText: function () {},
     gate: function () { return gate; },
     joined: function (code) { return !!code && joined && ARR && ARR.code === U.cleanCode(code); },

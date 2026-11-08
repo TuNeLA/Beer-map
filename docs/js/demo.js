@@ -3,6 +3,8 @@
    then a slow fall until 05:00. Stockholm 45 %, Göteborg 25 %, Malmö 15 %, 14 smaller towns 15 %. NEVER Ludvika / Smedjebacken.
    - Deterministic per night (seed = the Swedish night date, Swedish wall time via Intl): every phone shows the same story.
    - Owner decision (2026-10-23): ON for every user, no label anywhere. Fake people look like real strangers.
+     gw 2026-11-08 (KONKURRENTER.md risk 1, store rules): when ON, a fixed "Demo" chip on the map (js/gw.js) and
+     "Demo · påhittad person" in a fake person's card. Default OFF (server flag 'off', no flag = off).
      Global kill switch without a deploy: public_config().visning ("on" | "off", table app_public_flags, migration 0159).
      SAFE 2026-11-07: missing field / old server / offline = OFF. Store builds (window.OLNU_STORE) = always off. Per-device override for tests: ?visning=1 / ?visning=0 (localStorage "olnu.visning").
      ⚠️ The owner must turn it OFF before any public launch or Play Store release.
@@ -317,7 +319,8 @@
       for (var i = 0; i < all.length; i++) if (n >= all[i].at && (!best || all[i].at > best.at)) best = all[i];
       lv = best && best.names && best.names.length ? best.emoji + " " + best.names[mix(b._ps, best.at) % best.names.length] : lv;
     }
-    return '<div class="pp-title">' + esc(T("beerNo", n)) + "</div>" +
+    return '<div class="pp-demo">Demo · påhittad person</div>' +   // gw: simulated data is always labelled
+      '<div class="pp-title">' + esc(T("beerNo", n)) + "</div>" +
       '<div class="pp-data">' + esc(T("since", window.U ? window.U.timeHM(b.created_at) : "")) + "</div>" +
       (lv ? '<div class="pp-level">' + esc(lv) + "</div>" : "") +
       '<button type="button" class="skal-btn' + (sk > 0 ? " has" : "") + '" data-skal="' + esc(b.id) + '"' + (done ? " disabled" : "") + ">" +

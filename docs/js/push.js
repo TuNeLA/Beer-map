@@ -128,7 +128,7 @@
     ["film", "📸 Engångskameran", "När gänget börjar fota, och när filmen är framkallad"]   // 0195 (only when the server lists it)
   ];
   var QUIET = [["", "Av"], ["23-8", "23–08"], ["0-9", "00–09"], ["1-10", "01–10"], ["2-11", "02–11"], ["3-12", "03–12"], ["8-17", "08–17 (jobbtid)"]];
-  var CAPS = [[5, "5"], [10, "10"], [0, "15 (standard)"], [20, "20"], [99, "Obegränsat"]];
+  var CAPS = [[0, "4 (standard)"], [5, "5"], [10, "10"], [20, "20"], [99, "Obegränsat"]];   // gw: v28 default 4 per night
   function mk(tag, attrs, kids) {
     var n = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) { if (k === "text") n.textContent = attrs[k]; else n.setAttribute(k, attrs[k]); });

@@ -1,0 +1,501 @@
+/* PintsNow — 🌙 GW: the best ideas from the competitor research (KONKURRENTER.md §6, agent gw, 2026-11-08). window.GW,
+   LAST in app.js mods(). Swedish only. Store-safe: nothing here ranks or rewards amounts of drinking; care framing.
+   Migrations 0310–0315, notify-group "gw" (owner deploys). Every RPC may be missing (old server) → that part hides.
+   1. "Ute ikväll?" (BeReal / Locket): opt-in switch in the Ikväll? sheet ("Fråga mig fre + lör kl 20", ikvall_prompt_*);
+      the sheet hides the gang's answers until you answer (pnui.js asks GW.ikvLocked / GW.ikvLockNode / GW.ikvSummary).
+      A push tap opens the sheet (?ikvall=1).
+   2. Invite / event link preview WITHOUT an account (Partiful): GW.lazyLink() lets app.js start in public mode on a
+      ?join= / ?ev= link while the welcome card is up; link_preview (anon) fills the card (JOIN.applyPreview) with first
+      names and counts; "Jag hänger med" makes the account (join.js).
+   3. Honest crowd labels: the count shows from 3 people; below "Lugnt" (app.js pill class "pq", mapart / glmap, pnui meter).
+   4. Friend pin sheet: "På Pitchers i 1 h" / "Ute i 1 h 20 min" + 👋 Knuff (knuff_send, 1 per pair per 30 min; push
+      {event:"knuff"}; in-app toast via knuff_inbox on the poll). Battery level: NOT possible on the web for most phones
+      (the Battery Status API is Chrome-only on Android and hidden from other sites' users; iPhone has none) — skipped.
+   5. Följ mig hem: optional "Hör av mig när jag är hemma" timer (walk_timer_*): picked in the start sheet (Av / 20 / 40 /
+      60 min) and changeable in the walk sheet. Time up → "Är du hemma?" (overlay + push to the walker) → 30 s → the chosen
+      friends get an alert with the last position. 📞 112 stays first everywhere. hemfolj.js calls GW.walkTimerNode,
+      GW.walkStarted, GW.walkHome.
+   6. Gänget fotar: the morning after (10:00), a small album card on the group page "Gårdagens bilder är framkallade 📸"
+      with 4 thumbnails (FILM.data / film_roll / FILM._url) → the roll.
+   7. Place badges (pl_ny, pl_stad, pl_dalarna in MEDALS.CAT) + "Mina ställen" (my_places) in Profil (pnui.js Mitt list).
+   8. Demo label: when the simulation (demo.js) is on, a fixed "Demo" chip on the map.
+   Hooks (app.js mods): init, onAuthed, onPoll, beerPopupHTML, groupItem. Public: see window.GW at the bottom. */
+(function () {
+  "use strict";
+  var U = window.U;
+  var A = null, off = {}, inited = false;
+  var Q0 = String(location.search || "");   // read at load: app.js strips ?join= / ?ev= from the URL before it starts
+
+  /* ---------- helpers ---------- */
+  function W(n) { return window[n] || null; }
+  function safe(fn, d) { try { var v = fn(); return v === undefined ? d : v; } catch (e) { return d; } }
+  function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return "&#" + c.charCodeAt(0) + ";"; }); }
+  function h(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      var v = attrs[k]; if (v == null || v === false) return;
+      if (k === "text") n.textContent = v; else if (k === "html") n.innerHTML = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function ic(name, cls) { var P = W("PNI"); return P && P.has && P.has(name) ? P.svg(name, cls || "") : ""; }
+  function ls(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, String(v)); } catch (e) {} }
+  function lsJ(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  function call(fn, p) {
+    if (!A || !A.LIVE || off[fn]) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
+    return A.rpc(fn, p || {}).then(function (r) {
+      if (r && r.error && U.missing && U.missing(r.error)) { off[fn] = true; r.off = true; }
+      return r || { data: null, error: { message: "empty" } };
+    }, function (e) { return { data: null, error: e || { message: "error" } }; });
+  }
+  function data(r) { return r && !r.error ? safe(function () { return A.parseData(r.data); }, r.data) : null; }
+  function code(e) { try { return U.errCode ? U.errCode(e) : String((e && e.message) || ""); } catch (x) { return ""; } }
+  function toast(m, o) { try { A.toast(m, o); } catch (e) {} }
+  function authed() { return !!(A && A.LIVE && safe(function () { return A.authed(); }, false)); }
+  function push(body) { try { if (A.PUSH_ON && A.invoke) A.invoke("notify-group", body); } catch (e) {} }
+  function hm(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }); }
+  function dur(ms) {
+    var m = Math.max(1, Math.round(ms / 60000));
+    if (m < 60) return m + " min";
+    var hh = Math.floor(m / 60), mm = m % 60;
+    return hh + " h" + (mm >= 5 ? " " + (Math.round(mm / 5) * 5) + " min" : "");
+  }
+  function sheetOpen() { var s = document.getElementById("sheet"); return !!(s && !s.hidden); }
+  function seg(label, opts, cur, onPick) {   // DESIGN.md sheet rule 14: ONE segmented control
+    var s = h("div", { class: "ds-seg gw-seg", role: "radiogroup", "aria-label": label });
+    opts.forEach(function (o) {
+      var b = h("button", { type: "button", role: "radio", "aria-checked": String(o[0] === cur), text: o[1] });
+      b.addEventListener("click", function () {
+        s.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-checked", String(x === b)); });
+        onPick(o[0]);
+      });
+      s.appendChild(b);
+    });
+    return s;
+  }
+  function row(icon, title, sub, fn, cls) {   // DESIGN.md sheet rule 7: row 56 px, icon, title, sub, ONE chevron
+    var r = h(fn ? "button" : "div", { type: fn ? "button" : null, class: "ds-row gw-row" + (cls ? " " + cls : "") }, [
+      h("span", { class: "ds-row-i", "aria-hidden": "true", html: ic(icon) }),
+      h("span", { class: "ds-row-t" }, [h("span", { text: title }), sub ? h("small", { text: sub }) : null]),
+      fn ? h("span", { class: "ds-chev", "aria-hidden": "true" }) : null]);
+    if (fn) r.addEventListener("click", fn);
+    return r;
+  }
+  function swRow(title, sub, on, onToggle) {   // switch row: the whole row toggles (ds08: on / off is always a switch)
+    var sw = h("span", { class: "switch", role: "switch", "aria-checked": String(!!on), "aria-label": title });
+    var r = h("button", { type: "button", class: "ds-row gw-sw" }, [h("span", { class: "ds-row-t" }, [h("span", { text: title }), sub ? h("small", { class: "gw-sw-sub", text: sub }) : null]), sw]);
+    r.addEventListener("click", function () { var nv = sw.getAttribute("aria-checked") !== "true"; sw.setAttribute("aria-checked", String(nv)); onToggle(nv, sw, r); });
+    return r;
+  }
+
+  /* ---------- 1. "Ute ikväll?" ---------- */
+  var ikvP = { on: null, at: 0 };
+  function pushOk() { try { return "Notification" in window && Notification.permission === "granted"; } catch (e) { return false; } }
+  function ikvPromptNode() {
+    if (!authed() || off.ikvall_prompt_get) return null;
+    var sec = h("section", { class: "ds-section gw-ikvp" }, [h("h3", { class: "ds-section-h", text: "Varje helg" })]);
+    var sub = pushOk() ? "En notis fre och lör kl 20: Ute ikväll?" : "Kräver notiser. Slå på dem i Inställningar.";
+    var list = h("div", { class: "ds-list" });
+    var r = swRow("Fråga mig fre + lör kl 20", sub, ikvP.on === true, function (nv, sw) {
+      call("ikvall_prompt_set", { p_on: nv }).then(function (res) {
+        if (res.error) { sw.setAttribute("aria-checked", String(!nv)); toast(code(res.error) === "slow_down" ? "Lugn, en sekund." : "Det gick int'. Försök igen.", { err: true }); return; }
+        ikvP.on = nv; ikvP.at = Date.now();
+        toast(nv ? "Klart. Vi frågar fre och lör kl 20." : "Okej. Ingen fråga på helgen.");
+      });
+    });
+    list.appendChild(r); sec.appendChild(list);
+    if (ikvP.on === null || Date.now() - ikvP.at > 600000) {
+      call("ikvall_prompt_get").then(function (res) {
+        var d = data(res); if (!d) { if (res.off) sec.remove(); return; }
+        ikvP.on = !!d.on; ikvP.at = Date.now();
+        var sw = r.querySelector(".switch"); if (sw) sw.setAttribute("aria-checked", String(ikvP.on));
+      });
+    }
+    return sec;
+  }
+  function ikvLocked(d) { return !d || !d.mine; }
+  function ikvSummary(d) {
+    var c = (d && d.counts) || {}, p = [];
+    if (c.ute | 0) p.push((c.ute | 0) + " ute"); if (c.kanske | 0) p.push((c.kanske | 0) + " kanske"); if (c.hemma | 0) p.push((c.hemma | 0) + " hemma");
+    return p.join(" · ");
+  }
+  // Before you answer: blurred placeholder caps + "Svara för att se". The real names are not in the DOM.
+  function ikvLockNode(d) {
+    var n = ((d && d.people) || []).length;
+    var faces = h("div", { class: "gw-ikv-blur", "aria-hidden": "true" });
+    for (var i = 0; i < Math.max(3, Math.min(6, n)); i++) faces.appendChild(h("span", { class: "gw-ikv-ph" }));
+    return h("section", { class: "ds-section gw-ikv-lock" }, [
+      h("h3", { class: "ds-section-h", text: "Dina vänner och gänget" }),
+      h("div", { class: "ds-card gw-ikv-lockc" }, [faces,
+        h("p", { class: "gw-ikv-lockt" }, [h("b", { text: "Svara för att se" }), h("span", { text: n ? (n === 1 ? "1 har svarat ikväll." : n + " har svarat ikväll.") : "Bli först att svara ikväll." })])])]);
+  }
+
+  /* ---------- 2. Link preview without an account ---------- */
+  var linkDone = false, linkTries = 0;
+  function lazyLink() {   // app.js lazyStart: a ?join= / ?ev= visit with the welcome card up may start without an account
+    try { return !!document.getElementById("jn-wel") && !!(W("JOIN") && W("JOIN").applyPreview); } catch (e) { return false; }
+  }
+  function linkPreview() {
+    if (linkDone || !A || !A.LIVE || !lazyLink()) return;
+    var ar = safe(function () { return W("JOIN").arr(); }, null), q = null, kind = "", c = "";   // join.js read the link at load
+    if (ar && (ar.kind === "join" || ar.kind === "ev")) { kind = ar.kind; c = String(ar.code || ""); }
+    else { try { q = new URLSearchParams(Q0); } catch (e) { return; } kind = q.get("join") ? "join" : q.get("ev") ? "ev" : ""; c = kind ? String(q.get(kind) || "") : ""; }
+    c = c.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+    if (!kind || c.length !== 6) return;
+    linkDone = true;
+    A.rpc("link_preview", { p_kind: kind, p_code: c }).then(function (r) {
+      // The app has no client / session state yet (init runs before the start): try again shortly.
+      var em = String((r && r.error && (r.error.message || r.error.code)) || "");
+      if (r && r.error && /no_client|no_session|timeout|fetch|network/i.test(em) && ++linkTries < 10) { linkDone = false; setTimeout(linkPreview, 500); return; }
+      var d = data(r);
+      // Old server (no link_preview) or rate-limited: make the account now, as before (join_preview / ev_preview then fill the card).
+      if (!d || typeof d !== "object" || Array.isArray(d) || (!d.ok && d.why !== "not_found")) {
+        if (A.noAccount && safe(function () { return A.noAccount(); }, false) && A.ensureAccount) A.ensureAccount();
+        return;
+      }
+      try { W("JOIN").applyPreview(d); } catch (e) {}
+    });
+  }
+  function whoText(names, total) {
+    names = (names || []).filter(Boolean);
+    if (!names.length) return "";
+    var more = Math.max(0, (total | 0) - names.slice(0, 3).length);
+    if (names.length === 1 && !more) return names[0];
+    if (!more && names.length <= 3) return names.slice(0, -1).join(", ") + " och " + names[names.length - 1];
+    return names.slice(0, 3).join(", ") + (more ? " och " + more + " till" : "");
+  }
+
+  /* ---------- 4. Friend pin: "här i 1 h" + 👋 Knuff ---------- */
+  function friendSince(b) {
+    var ci = (safe(function () { return A.checkins(); }, []) || []).filter(function (c) { return c && c.is_friend && c.name === b.friend_name && c.created_at; })[0];
+    if (ci) { var t = Date.parse(ci.created_at); if (isFinite(t)) return "På " + ci.bar_name + " i " + dur(Date.now() - t); }
+    var t0 = Date.parse(b.created_at); if (isFinite(t0)) return "Ute i " + dur(Date.now() - t0);
+    return "";
+  }
+  function beerPopupHTML(b) {
+    if (!b || b._demo || b.is_mine || !b.friend_name || !authed() || off.knuff_send) return "";
+    var since = friendSince(b);
+    return '<div class="gw-fr">' + (since ? '<span class="gw-fr-t">' + ic("clock") + "<span>" + esc(since) + "</span></span>" : "") +
+      '<button type="button" class="btn btn-small gw-knuff" data-gw-knuff="' + esc(String(b.id)) + '" data-gw-name="' + esc(b.friend_name) + '">' +
+      ic("hand") + "<span>Knuffa " + esc(b.friend_name) + "</span></button></div>";
+  }
+  var knuffBusy = false;
+  function knuff(btn) {
+    if (knuffBusy) return;
+    var id = +btn.getAttribute("data-gw-knuff"), nm = btn.getAttribute("data-gw-name") || "";
+    if (!id) return;
+    knuffBusy = true; btn.disabled = true;
+    call("knuff_send", { p_beer_id: id }).then(function (r) {
+      knuffBusy = false;
+      var d = data(r);
+      if (r.error) { btn.disabled = false; var c = code(r.error); toast(c === "not_friends" ? "Ni måste vara vänner eller i samma gäng." : c === "beer_not_found" ? nm + " är inte ute längre." : "Det gick int'. Försök igen.", { err: true }); return; }
+      if (d && d.ok === false) {
+        btn.disabled = false;
+        toast("Du knuffade " + nm + " nyss. Vänta " + dur((d.wait_s | 0) * 1000) + ".", { urgent: true });
+        return;
+      }
+      if (d && d.id) push({ event: "knuff", knuff_id: +d.id });
+      btn.classList.add("gw-sent"); var s = btn.querySelector("span"); if (s) s.textContent = "Knuff skickad";
+      try { if (W("FX") && W("FX").vibrate) W("FX").vibrate(15); } catch (e) {}
+    });
+  }
+  var inboxAt = 0;
+  function knuffInbox() {
+    var hr = new Date().getHours();   // evening only (16-05) and max every 2 min: the push is the main path, this is the in-app fallback
+    if (!authed() || off.knuff_inbox || document.hidden || Date.now() - inboxAt < 120000 || (hr < 16 && hr >= 5 && ls("olnu.pnEve", "") !== "1")) return;
+    inboxAt = Date.now();
+    call("knuff_inbox").then(function (r) {
+      var d = data(r); if (!Array.isArray(d) || !d.length) return;
+      var names = []; d.forEach(function (k) { if (k.name && names.indexOf(k.name) < 0) names.push(k.name); });
+      toast((names.length ? whoText(names, names.length) : "En kompis") + " knuffar dig 👋", { ms: 6000, urgent: true });
+    });
+  }
+
+  /* ---------- 5. Följ mig hem: "Hör av mig när jag är hemma" ---------- */
+  var wt = { pick: 0, mine: null, alerts: [], at: 0, busy: false, timer: null, ov: null, seenAlert: lsJ("olnu.gwAlertSeen") || {} };
+  var MINS = [[0, "Av"], [20, "20 min"], [40, "40 min"], [60, "60 min"]];
+  function walkTimerNode(mine) {
+    if (!authed() || off.walk_timer_set) return null;
+    var live = mine && mine.live;
+    var sec = h("section", { class: "ds-section gw-wt" }, [h("h3", { class: "ds-section-h", text: "Hör av mig när jag är hemma" })]);
+    var cur = live && wt.mine && String(wt.mine.walk_id) === String(mine.id) ? wt.mine : null;
+    var note = h("p", { class: "gw-wt-note", text: "" });
+    function paint() {
+      if (cur && cur.due_at) note.textContent = "Larm kl " + hm(cur.due_at) + " om du inte svarar. Välj igen för att ändra.";
+      else note.textContent = live ? "Inget larm. Välj en tid om du vill." : "Inte hemma i tid? Då frågar vi dig. Inget svar på 30 s: dina valda vänner får ett larm med din senaste plats.";
+    }
+    var s = seg("Larm om jag inte hört av mig", MINS, cur ? (MINS.some(function (m) { return m[0] === cur.minutes; }) ? cur.minutes : -1) : (live ? 0 : wt.pick), function (m) {
+      if (!live) { wt.pick = m; return; }
+      if (!m) { if (cur) call("walk_timer_ok", { p_walk_id: mine.id }).then(function () { cur = null; wt.mine = null; paint(); toast("Larmet är av."); }); return; }
+      call("walk_timer_set", { p_walk_id: mine.id, p_minutes: m }).then(function (r) {
+        var d = data(r); if (r.error || !d) { toast("Det gick int'. Försök igen.", { err: true }); return; }
+        cur = wt.mine = d; paint(); schedule(); toast("Larm kl " + hm(d.due_at) + ".");
+      });
+    });
+    sec.appendChild(s); sec.appendChild(note); paint();
+    if (!live) wt.pick = 0;
+    return sec;
+  }
+  function walkStarted(m) {
+    if (!m || !m.id || !wt.pick) return;
+    var mins = wt.pick; wt.pick = 0;
+    call("walk_timer_set", { p_walk_id: m.id, p_minutes: mins }).then(function (r) {
+      var d = data(r); if (r.error || !d) { toast("Larmet gick int' att sätta. Följ mig hem är på ändå.", { err: true }); return; }
+      wt.mine = d; schedule();
+      toast("Larm kl " + hm(d.due_at) + " om du inte hört av dig.", { ms: 5000 });
+    });
+  }
+  function walkHome(id) {
+    if (!id || !wt.mine || String(wt.mine.walk_id) !== String(id)) return;
+    call("walk_timer_ok", { p_walk_id: +id }).then(function () { wt.mine = null; closeOv(); schedule(); });
+  }
+  function watchingLive() { return safe(function () { var P = W("HEMFOLJ")._poll(); return (P && P.watching || []).some(function (w) { return w.live; }); }, false); }
+  function needTick() { return !!(wt.mine || watchingLive() || (wt.alerts || []).some(function (a) { return !a.ok_at; })); }
+  function schedule() {
+    clearTimeout(wt.timer); wt.timer = null;
+    if (!needTick() || document.hidden) return;
+    var ms = 15000;
+    if (wt.mine && wt.mine.due_at && !wt.mine.reminded_at) { var left = Date.parse(wt.mine.due_at) - Date.now(); if (left > 0) ms = Math.min(ms, left + 500); }
+    if (wt.mine && wt.mine.reminded_at && !wt.mine.alert_at) ms = 5000;
+    wt.timer = setTimeout(function () { tick(true); }, Math.max(1000, ms));
+  }
+  function tick(force) {
+    if (!authed() || off.walk_timer_tick || wt.busy) return;
+    if (!force && Date.now() - wt.at < 60000) return;
+    wt.busy = true; wt.at = Date.now();
+    call("walk_timer_tick").then(function (r) {
+      wt.busy = false;
+      var d = data(r); if (!d || typeof d !== "object" || Array.isArray(d)) { schedule(); return; }
+      wt.mine = d.mine || null; wt.alerts = Array.isArray(d.alerts) ? d.alerts : [];
+      (Array.isArray(d.push) ? d.push : []).forEach(function (id) { push({ event: "walk_check", walk_id: +id }); });
+      paintMine(); paintAlerts(); schedule();
+    });
+  }
+  function closeOv() { if (wt.ov) { wt.ov.remove(); wt.ov = null; } }
+  function sos112() { return h("a", { class: "btn ds-btn ds-btn-block gw-112", href: "tel:112", html: ic("phone") + "<span>Ring 112</span>" }); }
+  // Walker: "Är du hemma?" with a 30 s count-down (server decides; this only shows it).
+  function paintMine() {
+    var m = wt.mine;
+    if (!m || !m.reminded_at || m.alert_at) { if (!m || m.alert_at) closeOv(); if (m && m.alert_at) alertSentOv(m); return; }
+    if (wt.ov && wt.ov.getAttribute("data-k") === "chk") { cnt(); return; }
+    closeOv();
+    var left = h("b", { class: "gw-ov-n", text: "30" });
+    var ov = h("div", { class: "gw-ov", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "gw-ov-h", "data-k": "chk" }, [
+      h("div", { class: "gw-ov-c" }, [
+        sos112(),
+        h("h2", { id: "gw-ov-h", class: "gw-ov-h", text: "Är du hemma?" }),
+        h("p", { class: "gw-ov-p" }, ["Svara inom ", left, " s. Annars får dina vänner ett larm med din senaste plats."]),
+        h("button", { type: "button", class: "btn ds-btn ds-btn-primary btn-amber ds-btn-block gw-ov-home", html: ic("home") + "<span>Ja, jag är hemma</span>", onclick: function () {
+          var id = m.walk_id; closeOv();
+          try { if (W("HEMFOLJ") && W("HEMFOLJ")._arrive && W("HEMFOLJ")._mine() && W("HEMFOLJ")._mine().live) W("HEMFOLJ")._arrive(false); } catch (e) {}
+          call("walk_timer_ok", { p_walk_id: id }).then(function () { wt.mine = null; schedule(); toast("Skönt. Ingen får något larm."); });
+        } }),
+        h("button", { type: "button", class: "btn ds-btn ds-btn-block gw-ov-more", html: ic("clock") + "<span>Allt OK, 15 min till</span>", onclick: function () {
+          var id = m.walk_id; closeOv();
+          call("walk_timer_set", { p_walk_id: id, p_minutes: 15 }).then(function (r) { var d = data(r); if (d) { wt.mine = d; toast("Nytt larm kl " + hm(d.due_at) + "."); } schedule(); });
+        } })])]);
+    document.body.appendChild(ov); wt.ov = ov;
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+    function cnt() {
+      var mm = wt.mine; if (!mm || !mm.reminded_at) return;
+      var s = Math.max(0, Math.ceil((Date.parse(mm.reminded_at) + 30000 - (Date.now() + skew(mm))) / 1000));
+      var el = wt.ov && wt.ov.querySelector(".gw-ov-n"); if (el) el.textContent = String(s);
+      if (wt.ov && s > 0) setTimeout(cnt, 1000);
+      else if (wt.ov && s === 0) setTimeout(function () { tick(true); }, 1200);
+    }
+    cnt();
+    try { ov.querySelector(".gw-ov-home").focus(); } catch (e) {}
+  }
+  function skew(m) { var s = Date.parse(m && m.now); return isFinite(s) && wt.at ? s - wt.at : 0; }
+  function alertSentOv(m) {
+    var k = "me" + m.walk_id;
+    if (wt.seenAlert[k]) return;
+    wt.seenAlert[k] = Date.now(); lsSet("olnu.gwAlertSeen", JSON.stringify(wt.seenAlert));
+    toast("Dina vänner har fått ett larm. Säg att du är OK i Följ mig hem.", { ms: 9000, urgent: true });
+  }
+  // Viewer: one dialog per alert (plus a quiet line when the walker answered later).
+  function paintAlerts() {
+    (wt.alerts || []).forEach(function (a) {
+      var k = "a" + a.walk_id + "@" + a.alert_at;
+      if (a.ok_at) { var k2 = k + "ok"; if (!wt.seenAlert[k2] && wt.seenAlert[k]) { wt.seenAlert[k2] = Date.now(); lsSet("olnu.gwAlertSeen", JSON.stringify(wt.seenAlert)); toast((a.name || "Din kompis") + " har svarat: allt OK.", { ms: 7000 }); } return; }
+      if (wt.seenAlert[k]) return;
+      wt.seenAlert[k] = Date.now(); lsSet("olnu.gwAlertSeen", JSON.stringify(wt.seenAlert));
+      openAlert(a);
+    });
+  }
+  function openAlert(a) {
+    var nm = a.name || "Din kompis";
+    A.openSheet(nm + " har inte svarat", function (body) {
+      body.appendChild(sos112());
+      var sec = h("section", { class: "ds-section gw-al" }, [
+        h("div", { class: "ds-card gw-al-c" }, [h("p", { class: "gw-al-p", text: nm + " skulle höra av sig senast kl " + hm(a.due_at) + " och har inte svarat." }),
+          h("p", { class: "gw-al-p muted", text: a.last_at ? "Senaste plats kl " + hm(a.last_at) + "." : "Ingen plats än." })])]);
+      body.appendChild(sec);
+      var list = h("div", { class: "ds-list gw-al-l" });
+      if (isFinite(a.last_lat) && a.last_lat != null) list.appendChild(row("pin", "Visa senaste plats", "På kartan", function () { A.closeSheet(); try { A.flyTo(+a.last_lat, +a.last_lng, 17); } catch (e) {} }));
+      list.appendChild(row("chat", "Skriv till " + nm, "Gruppchatten eller ett DM", function () { A.closeSheet(); try { A.showGroups(); } catch (e) {} }));
+      body.appendChild(h("section", { class: "ds-section" }, [list]));
+      body.appendChild(h("p", { class: "muted gw-al-n", text: "Ring " + nm + " först. Vid fara: ring 112." }));
+    }, { now: true });
+  }
+
+  /* ---------- 6. Gänget fotar: the album card the morning after ---------- */
+  var albumCache = {};
+  function freshRoll(gid) {
+    var P = safe(function () { return W("FILM").data(); }, null), out = null;
+    ((P && P.rolls) || []).forEach(function (x) { if (!out && x.group_id === gid && (x.n | 0) > 0) out = x; });
+    return out;
+  }
+  function groupItem(g, wrap) {
+    if (!g || !g.id || !wrap || !wrap.classList || !wrap.classList.contains("gpg") || !W("FILM") || !authed()) return;
+    var x = freshRoll(g.id); if (!x) return;
+    var old = wrap.querySelector(":scope > .gw-album"); if (old) old.remove();
+    var thumbs = h("div", { class: "gw-al-th", "aria-hidden": "true" });
+    for (var i = 0; i < Math.min(4, x.n | 0); i++) thumbs.appendChild(h("span", { class: "gw-al-ph" }));
+    var card = h("button", { type: "button", class: "ds-card gw-album", "aria-label": "Gårdagens bilder är framkallade. " + x.n + " bilder. Öppna filmen." }, [
+      h("span", { class: "gw-album-t" }, [h("b", { text: "Gårdagens bilder är framkallade 📸" }), h("small", { text: (x.n | 0) + " bilder från " + (x.group_name || g.name || "gänget") })]),
+      thumbs, h("span", { class: "new gw-album-new", "aria-hidden": "true" }), h("span", { class: "ds-chev", "aria-hidden": "true" })]);   // .new = "hot": gpage.js keeps it on the page
+    card.addEventListener("click", function () { try { W("FILM").openRoll({ id: g.id, name: g.name }, x.night); } catch (e) {} });
+    var anchor = wrap.querySelector(":scope > .gpg-now") || wrap.firstElementChild;
+    if (anchor && anchor.nextSibling) wrap.insertBefore(card, anchor.nextSibling); else wrap.appendChild(card);
+    var key = g.id + "@" + x.night, c = albumCache[key];
+    var fill = function (ids) {
+      var ph = thumbs.querySelectorAll(".gw-al-ph");
+      ids.slice(0, ph.length).forEach(function (id, j) {
+        var pu = safe(function () { return W("FILM")._url(id); }, null);
+        if (!pu || typeof pu.then !== "function") return;
+        pu.then(function (u) {
+          if (!u || !ph[j]) return; ph[j].appendChild(h("img", { src: u, alt: "", loading: "lazy", draggable: "false" })); ph[j].classList.add("on");
+        }, function () {});
+      });
+    };
+    if (c) { fill(c); return; }
+    call("film_roll", { p_group_id: g.id, p_night: x.night }).then(function (r) {
+      var d = data(r); if (!d || !d.developed) return;
+      albumCache[key] = (d.photos || []).map(function (p) { return p.id; }).slice(0, 4);
+      fill(albumCache[key]);
+    });
+  }
+
+  /* ---------- 7. Place medals + "Mina ställen" ---------- */
+  var MEDALS7 = [
+    ["pl_ny", "🚪", "Ny krog", "Ett nytt ställe på kartan. Upptäckaren i dig vaknar.", "Besök en krog du inte varit på förut. Räknas en gång per krog.", 1],
+    ["pl_stad", "🏙️", "Hela stan", "Du har varit på varje krog i en stad. Lokalkännedom deluxe.", "Besök alla krogar i en stad (minst 2).", 1],
+    ["pl_dalarna", "🧭", "Utforskat Dalarna", "Tre städer i Dalarna. Dalahästen nickar.", "Besök krogar i 3 olika städer i Dalarna."]
+  ];
+  function addMedals() {
+    var M = W("MEDALS"); if (!M || !M.CAT) return;
+    MEDALS7.forEach(function (c) { if (!M.CAT.some(function (x) { return x[0] === c[0]; })) M.CAT.push(c); });
+  }
+  var places = { d: null, at: 0 };
+  function loadPlaces(force) {
+    if (!authed() || off.my_places) return Promise.resolve(places.d);
+    if (!force && places.d && Date.now() - places.at < 120000) return Promise.resolve(places.d);
+    return call("my_places").then(function (r) { var d = data(r); if (d) { places.d = d; places.at = Date.now(); } return places.d; });
+  }
+  function placesSub(d) {
+    if (!d) return "Krogar och städer du har besökt";
+    var b = d.bars_n | 0, t = d.towns_n | 0;
+    return b ? b + (b === 1 ? " krog" : " krogar") + " · " + t + (t === 1 ? " stad" : " städer") : "Inga krogar än. Checka in nästa gång!";
+  }
+  function placesRow(rowBtn) {   // pnui.js Mitt list (same row factory as its other rows)
+    if (!authed() || off.my_places) return null;
+    var r = rowBtn("beer-stein", "Mina ställen", placesSub(places.d), openPlaces, "gw-places-row");
+    loadPlaces(false).then(function (d) { var s = r.querySelector("small"); if (s && d) s.textContent = placesSub(d); });
+    return r;
+  }
+  function openPlaces() {
+    A.openSheet("Mina ställen", function (body) {
+      var box = h("div", { class: "gw-pl" }, [h("p", { class: "muted", text: "Hämtar…" })]);
+      body.appendChild(box);
+      loadPlaces(true).then(function (d) {
+        if (!document.body.contains(box)) return;
+        box.innerHTML = "";
+        if (!d) { box.appendChild(h("p", { class: "muted", text: "Det gick int' att hämta just nu." })); return; }
+        var dn = Math.min(d.dalarna_n | 0, d.dalarna_goal | 0 || 3), goal = d.dalarna_goal | 0 || 3;
+        box.appendChild(h("div", { class: "gw-pl-tiles" }, [
+          h("div", { class: "ds-card gw-pl-tile" }, [h("b", { text: String(d.bars_n | 0) }), h("small", { text: (d.bars_n | 0) === 1 ? "krog" : "krogar" })]),
+          h("div", { class: "ds-card gw-pl-tile" }, [h("b", { text: String(d.towns_n | 0) }), h("small", { text: (d.towns_n | 0) === 1 ? "stad" : "städer" })])]));
+        var dal = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Utforskat Dalarna" }),
+          h("div", { class: "ds-card gw-pl-goal" }, [
+            h("div", { class: "gw-pl-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(goal), "aria-valuenow": String(dn), "aria-label": dn + " av " + goal + " städer i Dalarna" },
+              [h("i", { style: "width:" + Math.round(100 * dn / goal) + "%" })]),
+            h("small", { text: dn >= goal ? "Klart! Märket är ditt." : dn + " av " + goal + " städer i Dalarna" })])]);
+        box.appendChild(dal);
+        var towns = d.towns || [];
+        if (towns.length) {
+          var tl = h("div", { class: "ds-list" });
+          towns.forEach(function (t) {
+            var sub = t.total ? (t.visited | 0) + " av " + (t.total | 0) + " krogar" + (t.all ? " · alla!" : "") : "Besökt";
+            tl.appendChild(row(t.all ? "check" : "pin", t.town, sub, null, t.all ? "gw-pl-all" : ""));
+          });
+          box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Städer" }), tl]));
+        }
+        var bars = (d.bars || []).filter(function (b) { return b.name; });
+        if (bars.length) {
+          var bl = h("div", { class: "ds-list" });
+          bars.slice(0, 40).forEach(function (b) {
+            bl.appendChild(row("beer", b.name, (b.town || "") + (b.first ? (b.town ? " · " : "") + "första gången " + new Date(b.first).toLocaleDateString("sv-SE", { day: "numeric", month: "short" }) : ""),
+              isFinite(b.lat) && b.lat != null ? function () { A.closeSheet(); try { A.flyTo(+b.lat, +b.lng, 17); } catch (e) {} } : null));
+          });
+          box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Krogar" }), bl]));
+        } else box.appendChild(h("p", { class: "muted", text: "Checka in på en krog så hamnar den här." }));
+        if (W("PASSPORT") && W("PASSPORT").open) {
+          box.appendChild(h("section", { class: "ds-section" }, [h("div", { class: "ds-list" }, [row("map", "Visa på kartan", "Ölpasset med alla stämplar", function () { W("PASSPORT").open(); })])]));
+        }
+      });
+    });
+  }
+
+  /* ---------- 8. Demo label ---------- */
+  var demoEl = null;
+  function demoTick() {
+    var on = safe(function () { return !!(W("DEMO") && W("DEMO").on()); }, false);
+    document.documentElement.classList.toggle("gw-demo-on", on);
+    if (on && !demoEl) {
+      demoEl = h("div", { class: "gw-demo", role: "note", "aria-label": "Demo: folket på kartan är påhittat", title: "Folket på kartan är påhittat" }, [h("b", { text: "Demo" }), h("span", { text: "påhittat folk" })]);
+      document.body.appendChild(demoEl);
+    }
+    if (demoEl) demoEl.hidden = !on;
+  }
+
+  /* ---------- deep links (push taps) ---------- */
+  function links() {
+    var q, q0; try { q = new URLSearchParams(location.search); q0 = new URLSearchParams(Q0); } catch (e) { return; }
+    if (links.done) return; links.done = true;
+    var did = false;
+    if (q0.get("ikvall") === "1") { q.delete("ikvall"); did = true; setTimeout(function () { try { W("PNUI").openIkvall(); } catch (e) {} }, 700); }
+    if (q0.has("chk") || q0.has("alert")) { q.delete("chk"); q.delete("alert"); did = true; tick(true); }
+    if (did) { var s = q.toString(); try { history.replaceState(history.state, "", location.pathname + (s ? "?" + s : "") + location.hash); } catch (e) {} }
+  }
+
+  window.GW = {
+    init: function (api) {
+      A = api;
+      if (inited) return; inited = true;
+      addMedals();
+      document.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest && e.target.closest("[data-gw-knuff]");
+        if (b) { e.preventDefault(); e.stopPropagation(); knuff(b); }
+      }, true);
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) { tick(false); schedule(); } else { clearTimeout(wt.timer); wt.timer = null; } });
+      setInterval(demoTick, 5000); setTimeout(demoTick, 800);
+      if (A.noAccount && safe(function () { return A.noAccount(); }, false)) setTimeout(linkPreview, 0);
+      else setTimeout(linkPreview, 400);
+    },
+    onAuthed: function () { addMedals(); tick(true); links(); setTimeout(knuffInbox, 4000); },
+    onPoll: function () { if (needTick()) tick(false); knuffInbox(); },   // no timer / watched walk = no extra server call
+    beerPopupHTML: beerPopupHTML,
+    groupItem: function (g, wrap) { try { groupItem(g, wrap); } catch (e) {} },
+    // public (pnui.js, hemfolj.js, join.js, app.js)
+    ikvPromptNode: ikvPromptNode, ikvLocked: ikvLocked, ikvLockNode: ikvLockNode, ikvSummary: ikvSummary,
+    lazyLink: lazyLink, whoText: whoText,
+    walkTimerNode: walkTimerNode, walkStarted: walkStarted, walkHome: walkHome,
+    placesRow: placesRow, openPlaces: openPlaces,
+    // tests
+    _A: function () { return A; }, _inbox: function () { inboxAt = 0; knuffInbox(); }, _wt: function () { return wt; }, _tick: function () { tick(true); }, _places: function () { return places; }, _demo: demoTick
+  };
+})();

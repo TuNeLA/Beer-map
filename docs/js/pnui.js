@@ -163,7 +163,7 @@
   }
   function barMeterHTML(bar, list) {
     var n = (list || []).length, id = bar && bar.id != null ? String(bar.id) : null;
-    if (n < 2) return "";   // data threshold: never a meter for 0–1 people
+    if (n < 3) return "";   // gw: honest crowd labels — the count from 3 people (was 2); below, the header says "Lugnt"
     if (id) wantNorm(id);
     return meterHTML(n, id ? norm[id] : null, 64, id, false);
   }
@@ -317,7 +317,7 @@
   function paintStrip() {
     var s = stripEl(); if (!s || !A) return;
     var fo = friendsOut(), d = ikv.d, mine = d && d.mine, eve = evening() && A.LIVE && !off.ikvall_status;
-    var planned = d ? (d.people || []).filter(function (p) { return p.st === "ute" && !fo.some(function (f) { return f.name === p.name; }); }) : [];
+    var planned = d && d.mine ? (d.people || []).filter(function (p) { return p.st === "ute" && !fo.some(function (f) { return f.name === p.name; }); }) : [];   // gw: after your answer
     var sig = JSON.stringify([fo.map(function (f) { return f.name; }), planned.map(function (p) { return p.name; }), mine, eve]);
     if (sig === stripSig) return;
     stripSig = sig;
@@ -398,6 +398,13 @@
         h("button", { type: "button", class: "btn btn-small", text: "Kalla in gänget", onclick: function () {
           var tmp = h("button", { type: "button" }); try { W("SOCIAL").hudClick("come", tmp); } catch (e) {} } })]));
     }
+    var gw = W("GW");   // gw: answer to see (BeReal): the names come only after your own answer
+    if (gw && gw.ikvLocked && gw.ikvLocked(d)) {
+      ikvBox.appendChild(gw.ikvLockNode(d));
+      try { var gp0 = gw.ikvPromptNode(); if (gp0) ikvBox.appendChild(gp0); } catch (e) {}
+      return;
+    }
+    try { var gsum = gw && gw.ikvSummary ? gw.ikvSummary(d) : ""; if (gsum) ikvBox.appendChild(h("p", { class: "gw-ikv-sum", text: gsum })); } catch (e) {}
     var ppl = d.people || [];
     var sec = h("section", { class: "ds-section pn-ikv-ppl" });
     sec.appendChild(h("h3", { class: "ds-section-h", text: "Dina vänner och gänget" }));
@@ -411,6 +418,7 @@
       row.appendChild(faces); sec.appendChild(row);
     });
     ikvBox.appendChild(sec);
+    try { var gp1 = gw && gw.ikvPromptNode ? gw.ikvPromptNode() : null; if (gp1) ikvBox.appendChild(gp1); } catch (e) {}   // gw 0310
   }
 
   // Group page: "🍺 2 ska ut · 🤔 1 kanske" inside the 🟢 NU card (no new tile; data per group, cached 2 min).
@@ -651,6 +659,7 @@
     var l1 = h("div", { class: "ds-list" });
     if (W("MEDALS") && W("MEDALS").showMine) l1.appendChild(rowBtn("shield-check", "Min uniform", nMed ? nMed + " medaljer" : "Medaljer och grad", function () { W("MEDALS").showMine(); }));
     if (W("PASSPORT") && W("PASSPORT").open) l1.appendChild(rowBtn("map-trifold", "Ölpasset", nBars ? nBars + " krogar" : "Krogarna du har besökt", function () { W("PASSPORT").open(); }));
+    try { var gwr = W("GW") && W("GW").placesRow ? W("GW").placesRow(rowBtn) : null; if (gwr) l1.appendChild(gwr); } catch (e) {}   // gw: Mina ställen
     var nl = W("NIGHTLOG"), af = W("AFTER");
     if ((nl && nl.open) || (af && af.openWrapped)) l1.appendChild(rowBtn("clock", "Mina kvällar", "Din kväll, dagen efter, Wrapped", function () { if (nl && nl.open) nl.open(); else af.openWrapped("year", 0); }));
     if (W("NEAR") && W("NEAR").openFriends) l1.appendChild(rowBtn("hand-waving", "Vänner", "Lägg till med länk eller QR", function () { W("NEAR").openFriends(); }));
@@ -833,6 +842,7 @@
     meterHTML: function (n, nm, size) { return meterHTML(n, nm, size, null, true); },
     capSVG: capSVG, ic: ic,
     openIkvall: openIkvall, openOnboard: openOnboard, openBug: openBug, openMorning: openMorning, openMore: openMore,
-    _ikv: function () { return ikv; }, _norm: norm
+    _ikv: function () { return ikv.d && !ikv.d.mine && (ikv.d.people || []).length ? { d: Object.assign({}, ikv.d, { people: [] }), at: ikv.at, busy: ikv.busy } : ikv; },   // gw: no names before your answer
+    _ikvRaw: function () { return ikv; }, _norm: norm
   };
 })();

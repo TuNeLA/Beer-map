@@ -57,7 +57,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES, window.KANAL, window.WARM, window.AUTOCI].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES, window.KANAL, window.WARM, window.AUTOCI, window.GW].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       if (modsWave && fn === "onPoll") { modsWave.push(m); return; }   // ⚡ SPEED: runWave() calls it
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
@@ -595,7 +595,7 @@
     h += window.ICONS ? window.ICONS.barIco(bar, ico) : bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + ico + "</div>" :
       '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
-      h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar",
+      h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar" + (list.length < 3 ? " pq" : ""),   // gw: count from 3, below "Lugnt"
         label: pickBadges(mods("barBadgeHTML", bar, list, window.TIERS ? Math.max(z, LABEL_ZOOM) : z), bx) });
     }
     if (z >= LABEL_ZOOM) {
@@ -609,7 +609,7 @@
     }
     // Check-in badge: always on a bar without drinkers; next to a people pill only when zoomed in (less clutter).
     // Check-in count: zoom ≥ 16 only (below it the bar icon is just "lit", not a number).
-    if (c.cis.length && z >= LABEL_ZOOM) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";
+    if (c.cis.length >= 3 && z >= LABEL_ZOOM) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";   // gw: no check-in number below 3 (the green 'lit' ring stays)
     if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";
     h += "</div>";
     c.tk = { king: !!bx.king, ev: ico.indexOf("bi-ev") >= 0 };   // 🏷️ tiers: 👑 / 📅 tonight priority
@@ -677,7 +677,7 @@
     var meter = mods("barMeterHTML", bar, list);
     var h = '<div class="bs-head"><div class="pp-title">' + U.esc(bar.name || t("unnamedBar")) + "</div>" +
       '<div class="bs-meta">' + U.esc(barTypeLabel(bar.type)) +
-      (list.length && !meter ? ' · <b class="bs-n">' + U.esc(tl("≈ " + list.length + " här", "≈ " + list.length + " here")) + "</b>" : "") +
+      (list.length >= 3 && !meter ? ' · <b class="bs-n">' + U.esc(tl("≈ " + list.length + " här", "≈ " + list.length + " here")) + "</b>" : "") +
       (crowd && !meter ? ' · <span class="pp-crowd-t ' + U.esc(crowdCls) + '">' + U.esc(crowd) + "</span>" : "") + "</div>";
     var icons = (hasKing ? '<span title="' + U.esc(tl("Kung", "King")) + '">👑</span>' : "") + (own ? '<span title="' + U.esc(tl("Övertagen", "Taken over")) + '">🏰</span>' : "") +
       (dance ? "<span>🕺</span>" : "") + (qEl ? '<span class="bs-q ' + U.esc(qCls) + '" title="' + U.esc(qTxt) + '">🚶</span>' : "");
@@ -731,7 +731,7 @@
       }).join("") + "</ul>";
       if (list.length > 8 && id != null) body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
       body += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
-      h += fold("here", tl("🍺 Folk här", "🍺 People here"), list.length, body, "pp-sec-here", isOpen("here"));
+      h += fold("here", tl("🍺 Folk här", "🍺 People here"), list.length >= 3 ? list.length : 0, body, "pp-sec-here", isOpen("here"));   // gw: count from 3
     }
     h += fold("bp", tl("📋 Kö · erbjudanden · tips", "📋 Queue · offers · tips"), ofN, bp, "pp-sec-bp", isOpen("bp"));
     var ci = checkinNamesHTML(bar);
@@ -3221,12 +3221,14 @@
 
   /* ---------- ⚡ SPEED (#6): no account until the first real action ---------- */
   var SEARCH0 = String(location.search || ""), HASH0 = String(location.hash || "");
-  var PUBLIC_RPC = ["public_config", "account_config", "poll_public", "zone_counts"];
+  var PUBLIC_RPC = ["public_config", "account_config", "poll_public", "zone_counts", "link_preview"];   // gw: + link_preview (anon)
   var publicOn = false, lastUiClick = 0, pubTimer = null, pubBusy = false;
   function lazyStart() {
     if (!LIVE || storedAuth() || U.ls.get("olnu.uid", "") || movedNow() || HASH0.length > 1) return false;
     var deep = false;
-    try { new URLSearchParams(SEARCH0).forEach(function (v, k) { if (!/^(v|lang|visning|delight|hol|ref|fbclid|gclid|utm_\w+)$/.test(k)) deep = true; }); } catch (e) { deep = true; }
+    // gw: an invite / event link with the welcome card up stays account-free until "Jag hänger med" (link_preview, js/gw.js)
+    var gwLink = !!(window.GW && window.GW.lazyLink && window.GW.lazyLink());
+    try { new URLSearchParams(SEARCH0).forEach(function (v, k) { if (!/^(v|lang|visning|delight|hol|ref|fbclid|gclid|utm_\w+)$/.test(k) && !(gwLink && /^(join|ev|by)$/.test(k))) deep = true; }); } catch (e) { deep = true; }
     return !deep;
   }
   // a tap on a button / sheet / popup (not the map, not the intro / install / welcome cards) counts as a real action

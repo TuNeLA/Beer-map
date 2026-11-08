@@ -1,0 +1,84 @@
+/* PintsNow — 🌙 GW (js/gw.js). Design-system tokens only (docs/pnds.css + ds.css); motion tokens ds10. */
+
+/* rows / switch rows inside sheets */
+.gw-row .ds-row-i .pni,.gw-row .ds-row-i svg{width:20px;height:20px}
+.gw-sw{justify-content:space-between}
+.gw-sw .switch{pointer-events:none;margin-left:var(--ds-2)}
+.gw-sw-sub{display:block}
+.gw-seg{margin:0}
+
+/* 1. Ikväll? — answer to see */
+.gw-ikv-sum{margin:var(--ds-3) 0 0;font:700 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);color:var(--ds-green-t)}
+.gw-ikv-lockc{display:flex;align-items:center;gap:var(--ds-3)}
+.gw-ikv-blur{display:flex;flex:0 0 auto;filter:blur(2.5px);opacity:.9}
+.gw-ikv-ph{width:28px;height:28px;border-radius:50%;margin-left:-8px;background:#b3261e;border:2px solid var(--ds-card)}
+.gw-ikv-ph:nth-child(3n+2){background:#1d6b3a}.gw-ikv-ph:nth-child(3n+3){background:#1f4fa3}
+.gw-ikv-ph:first-child{margin-left:0}
+.gw-ikv-lockt{margin:0;display:flex;flex-direction:column;min-width:0}
+.gw-ikv-lockt b{font:700 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);color:var(--ds-text)}
+.gw-ikv-lockt span{font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);color:var(--ds-muted)}
+.gw-ikvp{margin-top:var(--ds-5)}
+
+/* 3. honest crowd: below 3 people the bar pill says "Lugnt" (DOM fallback; GL draws it in mapart / glmap) */
+.pill.pq .pn,.pill.pq .pe,.pill.pq .po,.pill.pq .bm-crowd{display:none}
+.pill.pq::before{content:"Lugnt";font-weight:600;font-size:12px;color:var(--ds-muted)}
+
+/* 4. friend pin sheet */
+.gw-fr{display:flex;flex-direction:column;gap:var(--ds-2);margin:var(--ds-2) 0}
+.gw-fr-t{display:flex;align-items:center;gap:var(--ds-2);color:var(--ds-muted);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.gw-fr-t svg{width:16px;height:16px;flex:0 0 auto}
+.gw-knuff{display:inline-flex;align-items:center;justify-content:center;gap:var(--ds-2);min-height:44px;width:100%}
+.gw-knuff svg{width:20px;height:20px}
+.gw-knuff.gw-sent{color:var(--ds-green-t);border-color:var(--ds-green)}
+
+/* 5. Följ mig hem timer: the "Är du hemma?" overlay */
+.gw-wt{margin-top:var(--ds-4)}
+.gw-wt-note{margin:var(--ds-2) 0 0;color:var(--ds-muted);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.gw-ov{position:fixed;inset:0;z-index:3000;display:flex;align-items:flex-end;justify-content:center;background:rgba(4,7,14,.72);
+  padding:var(--ds-4) var(--ds-4) calc(var(--ds-4) + env(safe-area-inset-bottom,0px))}
+.gw-ov-c{width:100%;max-width:520px;display:flex;flex-direction:column;gap:var(--ds-3);padding:var(--ds-5) var(--ds-4);background:var(--ds-sheet,var(--ds-card));
+  border:1px solid var(--ds-border-2);border-radius:var(--ds-r-3);box-shadow:var(--ds-sh-2);animation:gwUp var(--m-5,300ms) var(--e-in,ease-out) backwards}
+.gw-ov-h{margin:var(--ds-2) 0 0;font:400 var(--ds-fs-28)/var(--ds-lh-28) var(--ds-stencil);color:var(--ds-amber-t)}
+.gw-ov-p{margin:0;color:var(--ds-text-2,var(--ds-text));font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
+.gw-ov-n{font-variant-numeric:tabular-nums;color:var(--ds-amber-t)}
+.gw-ov .btn{display:flex;align-items:center;justify-content:center;gap:var(--ds-2)}
+.gw-ov .btn svg,.gw-112 svg{width:20px;height:20px}
+.gw-112{display:flex;align-items:center;justify-content:center;gap:var(--ds-2);text-decoration:none;background:var(--ds-red-soft);color:var(--ds-red-t);border-color:var(--ds-red)}
+.gw-al{margin-top:var(--ds-4)}
+.gw-al-p{margin:0 0 var(--ds-1)}
+.gw-al-n{margin-top:var(--ds-3)}
+@keyframes gwUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+
+/* 6. album card on the group page */
+.gw-album{display:flex;align-items:center;gap:var(--ds-3);width:100%;min-height:72px;margin:var(--ds-3) 0;padding:var(--ds-3) var(--ds-4);text-align:left;color:var(--ds-text);cursor:pointer}
+.gw-album-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.gw-album-t b{font:700 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans)}
+.gw-album-t small{color:var(--ds-muted);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.gw-al-th{display:flex;flex:0 0 auto}
+.gw-al-ph{width:40px;height:40px;border-radius:var(--ds-r-1);margin-left:-12px;overflow:hidden;background:var(--ds-raised);border:2px solid var(--ds-card);
+  transform:rotate(-4deg)}
+.gw-al-ph:nth-child(2n){transform:rotate(5deg)}
+.gw-al-ph:first-child{margin-left:0}
+.gw-al-ph img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* 7. Mina ställen */
+.gw-pl-tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--ds-2)}
+.gw-pl-tile{display:flex;flex-direction:column;align-items:flex-start}
+.gw-pl-tile b{font:400 28px/32px var(--ds-stencil);color:var(--ds-amber-t)}
+.gw-pl-tile small{color:var(--ds-muted);font-size:var(--ds-fs-14)}
+.gw-pl .ds-section{margin-top:var(--ds-5)}
+.gw-pl-goal{display:flex;flex-direction:column;gap:var(--ds-2)}
+.gw-pl-goal small{color:var(--ds-muted);font-size:var(--ds-fs-14)}
+.gw-pl-bar{height:8px;border-radius:var(--ds-r-pill);background:var(--ds-raised);overflow:hidden}
+.gw-pl-bar i{display:block;height:100%;background:var(--ds-amber);border-radius:inherit;transition:width var(--m-5,300ms) var(--e-std,ease)}
+.gw-pl-all .ds-row-i{color:var(--ds-green-t)}
+
+/* 8. Demo label (only while the simulation is on) */
+.gw-demo{position:fixed;z-index:1100;right:12px;top:calc(env(safe-area-inset-top,0px) + 262px);display:flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:var(--ds-r-pill);background:rgba(10,15,28,.92);border:1px solid var(--ds-amber);color:var(--ds-text);font:600 12px/16px var(--ds-sans);pointer-events:none}
+.gw-demo b{color:var(--ds-amber-t);font-weight:700}
+.gw-demo[hidden]{display:none}
+.pp-demo{margin:2px 0 6px;color:var(--ds-amber-t);font-size:var(--ds-fs-12);font-weight:600}
+
+@media (prefers-reduced-motion: reduce){.gw-ov-c{animation:none}.gw-pl-bar i{transition:none}}
+.gw-album-new{width:8px;height:8px;border-radius:50%;background:var(--ds-amber);flex:0 0 auto}

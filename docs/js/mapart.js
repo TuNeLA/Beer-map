@@ -290,7 +290,8 @@
       return { ops: ops, parts: parts };
     }
     if (king) { crown(ops, -r * 0.45, -r + 3, hi ? 14 : 13); parts.push({ sel: ".cm-king", bb: [-r - 4, -r - 9, 2, -r + 3] }); }
-    if (s.p) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, hi);
+    if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, hi);
+    else if (s.p && s.p.f) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
     if (mode === "x") return { ops: ops, parts: parts };
     if (s.ev) { badge(ops, -bo - 1, bo + 1, 15, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-bo - 10, bo - 8, -bo + 8, bo + 10] }); }
     if (s.rl) chip(ops, parts, ".cm-rally", r + 4, s.p ? 6 : 0, "helmet", s.rl[0], s.rl[1] ? K.green : "#FF8A1F", { gcol: s.rl[1] ? K.green : "#FFB36B" });

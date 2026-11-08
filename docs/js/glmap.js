@@ -46,7 +46,7 @@
     if (pill) {
       var pc = pill.className;
       s.p = { l: /\bp2\b/.test(pc) ? 2 : /\bp1\b/.test(pc) ? 1 : 0, f: /\bpf\b/.test(pc), m: /\bpm\b/.test(pc), a: /\bpa\b/.test(pc),
-        n: txt(pill.querySelector(".pn")), e: !!pill.querySelector(".pe"), o: txt(pill.querySelector(".po")) };
+        n: txt(pill.querySelector(".pn")), e: !!pill.querySelector(".pe"), o: txt(pill.querySelector(".po")), q: /\bpq\b/.test(pc) };   // gw: pq = < 3 people
       var cr = pill.querySelector(".bm-crowd"); if (cr) s.cw = [txt(cr), (/\bc(\d)\b/.exec(cr.className) || [0, 2])[1]];
       if (pill.querySelector(".bm-q")) s.q = 1;
       var fl = pill.querySelector(".bm-flag"); if (fl) s.fl = [txt(fl), /\bmine\b/.test(fl.className) ? 1 : 0];
@@ -118,7 +118,8 @@
     if (full) {
       if (s.p) {
         var p = s.p, py = hi ? 30 : 23, fB = "700 13px " + FONT, segs = [];
-        if (p.n && p.n !== "0") { segs.push([p.n, p.m ? "#ffe08a" : "#ffc24d"]); if (p.e) segs.push([" 🍺", "#fff"]); if (p.o) segs.push([" " + p.o, "#d9b8ff"]); }
+        if (p.q) segs.push(["Lugnt", "#cfc6b4"]);   // gw: honest crowd, no count below 3
+        else if (p.n && p.n !== "0") { segs.push([p.n, p.m ? "#ffe08a" : "#ffc24d"]); if (p.e) segs.push([" 🍺", "#fff"]); if (p.o) segs.push([" " + p.o, "#d9b8ff"]); }
         else if (p.o) segs.push([p.o.replace(/^·\s*/, ""), "#d9b8ff"]);
         else segs.push([p.n || "0", "#ffc24d"]);
         var tws = segs.map(function (x) { return tw(x[0], fB); }), tot = tws.reduce(function (a, b) { return a + b; }, 0);

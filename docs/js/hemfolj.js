@@ -214,6 +214,7 @@
       if (mine) mine._ending = false;
       if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
       push({ event: "walk_home", walk_id: id });
+      try { if (window.GW && window.GW.walkHome) window.GW.walkHome(id); } catch (e) {}   // gw 0313
       onMine(A.parseData(r.data));
       A.toast((sv() ? pick("hme", T.homeMe) : "✅ Home! Well marched.") + (auto ? "" : ""), { cls: "skal", ms: 6000 });
       try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (e) {}
@@ -273,6 +274,7 @@
         "📱 Keep the app open with the screen on. A web app gets no GPS in the background.") }));
       body.appendChild(el("p", { class: "muted", text: L("Slutar av sig själv när du ä hemma, eller efter 2 timmar (" + new Date(mine.ends_at).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }) + ").",
         "Ends by itself at home or after 2 hours.") }));
+      try { var gwt2 = window.GW && window.GW.walkTimerNode ? window.GW.walkTimerNode(mine) : null; if (gwt2) body.appendChild(gwt2); } catch (e) {}   // gw 0313
       body.appendChild(el("div", { class: "row" }, [A.btn(L("✅ Jag ä hemma", "✅ I'm home"), "btn-amber btn-block", function () { A.closeSheet(); arrive(false); })]));
       body.appendChild(el("div", { class: "row", style: "margin-top:6px" }, [A.btn(L("🏁 Avsluta delningen", "🏁 Stop sharing"), "btn-block", function () { A.closeSheet(); stopWalk(); })]));
     });
@@ -306,6 +308,7 @@
       go.disabled = true;
       var gLine = el("p", { class: "muted hf-gline", text: "" });
       body.appendChild(gLine);
+      try { var gwt = window.GW && window.GW.walkTimerNode ? window.GW.walkTimerNode(null) : null; if (gwt) body.appendChild(gwt); } catch (e) {}   // gw 0313
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [go]));
       body.appendChild(el("p", { class: "muted hf-priv", text: L("🔒 Bara de du väljer ser dig. Hemmet visas ungefär (±100 m). Ingen historik sparas – positionen raderas när du ä hemma.",
         "🔒 Only the people you pick. Home is shown roughly (±100 m). No history is kept.") }));
@@ -364,6 +367,7 @@
             var m = A.parseData(r.data);
             A.closeSheet();
             onMine(m);
+            try { if (window.GW && window.GW.walkStarted) window.GW.walkStarted(m); } catch (e) {}   // gw 0313
             if (track && c) { track.fix = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, at: Date.now() }; track.sent = { lat: c.latitude, lng: c.longitude }; track.sentAt = Date.now(); }
             push({ event: "walk", walk_id: m.id });
             A.toast(sv() ? fill(pick("s", T.start), { n: m.n | 0 }) : "🏠 Walk home started – " + (m.n | 0) + " following.", { cls: "skal", ms: 6000 });
