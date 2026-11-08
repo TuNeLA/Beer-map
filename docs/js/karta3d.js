@@ -17,7 +17,7 @@
   ];
   bars.forEach(function (b) {
     var el = document.createElement("div"); el.className = "k3-mk";
-    el.innerHTML = U.pillHTML(b.n, b.lvl, { cls: "p-bar" }) + '<span class="k3-name"></span>';
+    el.innerHTML = U.pillHTML(b.n, b.lvl, { cls: "p-bar", people: true }) + '<span class="k3-name"></span>';
     el.querySelector(".k3-name").textContent = b.name;
     new mapboxgl.Marker({ element: el, anchor: "center" }).setLngLat(b.ll).addTo(map);
   });

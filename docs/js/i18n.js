@@ -1341,12 +1341,12 @@
   // Polish 2026-10-17: one marker per bar (popup sections), levels, haptics.
   window.I18N.add({
     sv: {
-      secRally: "🪖 Inkallelser", secHere: function (n) { return "🍺 Folk här nu (" + n + ")"; }, secCi: "🚪 Incheckade",
+      secRally: "🪖 Inkallelser", secHere: function (n) { return "👥 Folk här nu (" + n + ")"; }, secCi: "🚪 Incheckade",
       cmRallyAria: function (n) { return "Inkallelse här, " + n + " på väg"; },
       lvWater: "Legendläge.", lvCareToast: "⚡ Superkraft laddad. 🚕 Eskorten finns när truppen vill.", lvTaxiBtn: "🚕 Taxi"
     },
     en: {
-      secRally: "🪖 Call-outs", secHere: function (n) { return "🍺 Here now (" + n + ")"; }, secCi: "🚪 Checked in",
+      secRally: "🪖 Call-outs", secHere: function (n) { return "👥 Here now (" + n + ")"; }, secCi: "🚪 Checked in",
       cmRallyAria: function (n) { return "Call-out here, " + n + " on the way"; },
       lvWater: "Legend mode.", lvCareToast: "⚡ Superpower charged. 🚕 The escort is ready when the squad is.", lvTaxiBtn: "🚕 Taxi"
     }

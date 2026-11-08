@@ -155,6 +155,7 @@
     ".ap-pin::before{content:'';position:absolute;left:50%;bottom:-6px;width:8px;height:8px;margin-left:-4px;background:inherit;border:inherit;border-top:0;border-left:0;transform:rotate(45deg);border-radius:0 0 2px 0}" +
     ".ap-pin .ap-i{font-size:14px;line-height:1}" +
     ".ap-pin .ap-c{color:var(--ds-amber-t,#ffc24d);font-weight:700}" +
+    ".ap-pin .ap-c .ap-ppl{width:13px;height:13px;vertical-align:-2px}" +
     ".ap-pin .ap-n{position:absolute;right:-7px;top:-8px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--ap-c,#8fd8ff);" +
       "color:#03121c;font:700 11px/17px var(--ds-sans,system-ui,sans-serif);text-align:center;box-shadow:0 0 0 1.5px #0a0f1c;font-style:normal}" +
     ".ap-hockey{--ap-c:#8fd8ff}.ap-fotboll{--ap-c:#6fe07a}.ap-none{--ap-c:rgba(238,240,236,.35)}" +
@@ -239,12 +240,13 @@
     });
     evs.forEach(function (e) { pinLayer.addLayer(evMarker(e, now)); });
   }
+  function pplIco() { try { return window.PNI && window.PNI.has("users") ? window.PNI.svg("users", "ap-ppl") + " " : "👥 "; } catch (e) { return "👥 "; } }
   function pinMarker(x, sp) {
     var a = x.a, cls = "ap-pin ap-" + (sp || "none") + (x.m ? " ap-" + (x.st === "soon" ? "today" : x.st) : x.n ? "" : " ap-quiet");
     var h = '<div class="' + cls + '" role="button" aria-label="' + esc(a.name + (x.lbl ? " – " + x.lbl : "")) + '">' +
       '<span class="ap-i" aria-hidden="true">' + ico(sp) + "</span>";
     if (x.lbl) h += "<span>" + esc(x.lbl) + "</span>";
-    if (x.n) h += '<span class="ap-c">' + (x.lbl ? "· " : "") + "🍺 " + x.n + "</span>";
+    if (x.n) h += '<span class="ap-c">' + (x.lbl ? "· " : "") + pplIco() + x.n + "</span>";   // pf01: people here = people glyph
     if (x.m && x.m.matches.length > 1) h += '<i class="ap-n" aria-hidden="true">' + x.m.matches.length + "</i>";
     h += "</div>";
     var mk = L.marker(x.m || x.n ? topOf(a) : [a.lat, a.lng], { pane: "arenapins", keyboard: false, riseOnHover: true,

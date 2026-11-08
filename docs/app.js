@@ -57,7 +57,7 @@
   // v9: hooks into js/social.js + js/extras.js. Returns the joined HTML of string results. A broken module never breaks the app.
   function mods(fn, a, b, c) {
     var out = "";
-    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES, window.KANAL, window.WARM, window.AUTOCI, window.GW, window.PNLOG].forEach(function (m) {
+    [window.SOCIAL, window.CALM, window.EXTRAS, window.GONE, window.PLACEPINS, window.RALLY, window.BARSPLUS, window.PRIVACY, window.GAMES, window.AFTER, window.BOARDS, window.DELIGHT, window.GANG, window.PHOTO, window.CREW, window.CHIEF, window.DUEL, window.WISH, window.HOMETOWN, window.CEREMONY, window.HELG, window.PASSPORT, window.KODEN, window.MERITER, window.FORFEST, window.PARTY, window.SPEL, window.NEAR, window.EVENTS, window.GOLDEN, window.DELIGHT_MORE, window.SKAL, window.FILM, window.GPAGE, window.CARDS, window.MAPMENU, window.HOMEZONE, window.EVCHAT, window.JOIN, window.INVITE, window.INBOX, window.SUGGEST, window.DM, window.FRIENDS2, window.EVLINK, window.BASEMAP, window.BARLIT, window.SPORT, window.EVSHEET, window.BAREA, window.ARENAPIN, window.MAP3D, window.RUNDAN, window.OPPET, window.BARINFO, window.UTE, window.BARFOTO, window.HEMFOLJ, window.SKJUTS, window.HITTA, window.ACCOUNT, window.PROFIL, window.AVATAR, window.AVWIZ, window.AVPINS, window.MYPINS, window.VITALS, window.SHEETNAV, window.UXFIX, window.EVGROUP, window.NIGHTLOG, window.PNMOVE, window.ZONES, window.SPEED, window.PNUI, window.PNDS, window.NEARPLACES, window.KANAL, window.WARM, window.AUTOCI, window.PINFOLJ, window.GW, window.PNLOG].forEach(function (m) {
       if (!m || typeof m[fn] !== "function" || (modsSkip && modsSkip.indexOf(m) >= 0)) return;
       if (modsWave && fn === "onPoll") { modsWave.push(m); return; }   // ⚡ SPEED: runWave() calls it
       try { var r = m[fn](a, b, c); if (typeof r === "string") out += r; } catch (e) { try { console.warn("olnu " + fn, e); } catch (x) {} }
@@ -512,6 +512,13 @@
   function noLeadEmoji(s) { return String(s || "").replace(/^[^0-9A-Za-zÅÄÖåäöÉé"'(]+/, ""); }
   // "🔥 Het på gröten" for a pin (null below level 3 or in English).
   function lvTag(b) { var lv = lvOf(U.drinks(b)); return lv ? { lv: lv, name: lvName(lv, personKey(b)) } : null; }
+  // pf01: a friend's / my row in "Folk här" = the NIGHT TOTAL (all drinks tonight, wherever they were logged), never a count
+  // per bar. Owner: "15 at home, then 2 at the bar – at the bar it should still show his total". Strangers: no number (SAFE).
+  function nightTotalHTML(b) {
+    var n = U.drinks(b), e = lvEmoji(b);
+    return '<span class="pp-tot" aria-label="' + U.esc(n + (n === 1 ? " dricka" : " drycker") + " ikväll") + '">' + n + " 🍺" +
+      '<small class="pp-ikv"> ikväll</small>' + (e && e !== "🍺" ? " " + e : "") + "</span>";
+  }
   function lvEmoji(b) {
     var x = lvTag(b); if (x) return x.lv.emoji;
     var l = U.level(U.drinks(b)); return l === 2 ? "🚁" : l === 1 ? "🔥" : "🍺";
@@ -595,7 +602,7 @@
     h += window.ICONS ? window.ICONS.barIco(bar, ico) : bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + ico + "</div>" :
       '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
-      h += U.pillHTML(list.length, maxLevel(list), { friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar" + (list.length < 3 ? " pq" : ""),   // gw: count from 3, below "Lugnt"
+      h += U.pillHTML(list.length, maxLevel(list), { people: true, friend: friendHere(list), mine: list.some(function (b) { return b.is_mine; }), cls: "p-bar" + (list.length < 3 ? " pq" : ""),   // gw: count from 3, below "Lugnt"
         label: pickBadges(mods("barBadgeHTML", bar, list, window.TIERS ? Math.max(z, LABEL_ZOOM) : z), bx) });
     }
     if (z >= LABEL_ZOOM) {
@@ -726,12 +733,12 @@
       var prow = list.slice().sort(crowdSort).slice(0, 8);   // SAFE: me, friends, then arrival – never by count
       body += '<ul class="pp-list">' + prow.map(function (b) {
         return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + (b._nc ? "🍺" : U.drinks(b) + " " + lvEmoji(b)) + "</span>" +
+          '<span class="pp-n">' + (b._nc ? "🍺" : b.friend_name || b.is_mine ? nightTotalHTML(b) : U.drinks(b) + " " + lvEmoji(b)) + "</span>" +
           (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
       }).join("") + "</ul>";
       if (list.length > 8 && id != null) body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
       body += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
-      h += fold("here", tl("🍺 Folk här", "🍺 People here"), list.length >= 3 ? list.length : 0, body, "pp-sec-here", isOpen("here"));   // gw: count from 3
+      h += fold("here", tl("👥 Folk här", "👥 People here"), list.length >= 3 ? list.length : 0, body, "pp-sec-here", isOpen("here"));   // gw: count from 3
     }
     h += fold("bp", tl("📋 Kö · erbjudanden · tips", "📋 Queue · offers · tips"), ofN, bp, "pp-sec-bp", isOpen("bp"));
     var ci = checkinNamesHTML(bar);

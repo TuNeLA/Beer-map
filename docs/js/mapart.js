@@ -257,12 +257,15 @@
     return n > 99 ? "99+" : String(Math.max(1, n));
   }
   function countBadge(ops, parts, cx, cy, p, hi) {
-    var t = countText(p), lv = BADGE[p.l || 0] || BADGE[0], h = hi ? 19 : 17, fs = hi ? 12 : 11;
-    var w = Math.max(h, Math.ceil(tw(t, fs, 700)) + 9), x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+    // pf01: the badge counts PEOPLE at the bar → a small people glyph before the number (never read as "drinks")
+    // The left edge stays where it was (top-right of the disc); the badge grows to the right only (owner: "no long pills").
+    var t = countText(p), lv = BADGE[p.l || 0] || BADGE[0], h = hi ? 19 : 17, fs = hi ? 12 : 11, gw = hi ? 9 : 8, tws = Math.ceil(tw(t, fs, 700));
+    var w0 = Math.max(h, tws + 9), w = Math.max(h, tws + gw + 7), x = Math.round(cx - w0 / 2), y = Math.round(cy - h / 2), cx0 = x + (w - (gw + 1 + tws)) / 2;
     if (lv.outer) rrect(ops, x - 2.5, y - 2.5, w + 5, h + 5, h / 2 + 2.5, { fill: lv.outer, sh: true });
     rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: p.f ? K.green : K.edge, sh: !lv.outer });
     rrect(ops, x, y, w, h, h / 2, { fill: lv.b });
-    text(ops, x + w / 2, y + h / 2, t, fs, 700, lv.t, { align: "center" });
+    glyph(ops, "people", cx0 + gw / 2, y + h / 2, gw, lv.t, lv.b);
+    text(ops, cx0 + gw + 1, y + h / 2, t, fs, 700, lv.t);
     if (p.m) { circle(ops, x + 1, y + h - 1, 4.5, { fill: K.edge }); circle(ops, x + 1, y + h - 1, 3.5, { fill: K.blue }); }
     var bb = [x - 3, y - 3, x + w + 3, y + h + 3];
     if (parts) parts.push({ sel: ".pill", bb: bb });

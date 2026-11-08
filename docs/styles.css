@@ -212,6 +212,9 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
   font-family:var(--hud);font-size:13px;line-height:1;border:1.5px solid var(--amber);box-shadow:0 2px 8px #000a;cursor:pointer}
 .pill .pn{font-size:13px;color:var(--amber-2)}
 .pill .pe{font-size:13px}
+/* pf01: bar markers count PEOPLE (people glyph, never the beer glyph) */
+.pill .pe-ppl{display:inline-flex;align-items:center}
+.pill .pe-ppl .pi{width:14px;height:14px;margin-left:2px;vertical-align:-2px}
 .pill.p-bar{background:rgba(24,18,6,.95)}
 .pill.p-cl{min-width:26px;justify-content:center;height:26px;border-radius:13px;font-size:13px}
 .pill.p-cl .pn{font-size:13px}
@@ -348,6 +351,7 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 .pp-list .pp-who.f{color:var(--green);font-weight:700}
 .pp-list .pp-who.m{color:var(--gold);font-weight:700}
 .pp-list .pp-n{font-family:var(--hud);color:var(--amber-2)}
+.pp-list .pp-ikv{font-family:inherit;font-size:var(--fs-12);color:var(--muted)}
 .pp-list .pp-skal{margin:0;font-size:var(--fs-14)}
 .my-streak .ms-skal{color:var(--gold);text-transform:none}
 .toast.skal{border-color:var(--gold);border-left-color:var(--gold);color:var(--gold)}

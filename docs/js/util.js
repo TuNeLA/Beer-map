@@ -127,7 +127,11 @@
     lvl = lvl === 2 ? 2 : lvl === 1 ? 1 : 0;
     var cls = "pill p" + lvl + (o.friend ? " pf" : "") + (o.mine ? " pm" : "") + (o.approx ? " pa" : "") + (o.cls ? " " + o.cls : "");
     n = Math.max(0, n | 0);
-    var body = '<span class="pn">' + n + "</span>" + (o.noEmoji ? "" : '<span class="pe" aria-hidden="true">🍺</span>');
+    // pf01: o.people = a count of PEOPLE (bar markers): a people glyph, never the beer glyph (owner: "2 🍺" at a bar was read
+    // as "he has drunk 2"). The number is the same; .pe-ppl tells the GL art (glmap / mapart) to draw people too.
+    var ppl = o.people ? (window.PNI && window.PNI.has && window.PNI.has("users") ? window.PNI.svg("users", "pe-ic") : "👥") : "";
+    var body = '<span class="pn">' + n + "</span>" + (o.noEmoji ? "" : o.people ? '<span class="pe pe-ppl" aria-hidden="true">' + ppl + "</span>" :
+      '<span class="pe" aria-hidden="true">🍺</span>');
     // v9: other drinks (sidospår). "2 🍺 · 1 🥃", or "🥃 1" when there is no beer.
     var oc = Math.max(0, o.other | 0);
     if (oc && !o.noEmoji) {
