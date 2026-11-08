@@ -1,9 +1,11 @@
 #!/bin/bash
-# PintsNow canonical regression suite. Runs every test ONE AT A TIME (shared machine), mocked server only (no live writes).
+# PintsNow canonical regression suite. Runs every test ONE AT A TIME (shared machine). Server calls are mocked; anything
+# not mocked goes to the STAGING project (PN_TARGET=staging, default), never to live.
 # usage: bash run-all.sh <port-A, e.g. 8793> <port-B, e.g. 8871> [name-filter-regex]
 #   port A: map tests (map3-lib: page served as tunela.github.io/Beer-map/, real Mapbox tiles, mocked Supabase)
 #   port B: UI tests (d2-helpers / ds-helpers: mocked Supabase)
-# Both ports must serve <repo>/docs (python3 -m http.server --directory docs <port>).
+# Both ports must serve <repo>/docs with tests/e2e/serve.py (PN_TARGET=staging python3 tests/e2e/serve.py <port> docs).
+# PN_TARGET=staging (default) | live: which Supabase project the served config.js points at. run-all.sh checks it.
 # A test that fails is run once more; the 2nd run decides. "flaky" = failed once, passed on the rerun.
 # Logs: tests/e2e/out/logs/<name>.<try>.log (or $TEST_OUT/logs)   Summary: .../logs/summary.txt   Exit code: 0 = all pass, 1 = any fail.
 # Map tests need a Mapbox token in env MAPBOX_TEST_TOKEN. Without it they are SKIPPED (status "skip", not a fail).
@@ -15,6 +17,14 @@ A=${1:-8793}; B=${2:-8871}; FILTER=${3:-.}; REPO=${REPO:-$(cd "$D/../.." && pwd)
 OUT=${TEST_OUT:-$D/out}; LOG=$OUT/logs; mkdir -p $LOG
 for p in $A $B; do
   curl -s -o /dev/null -m 10 http://127.0.0.1:$p/index.html || { echo "server on port $p is down"; exit 2; }
+done
+# Supabase target (one switch): PN_TARGET=staging (default) | live. tests/e2e/serve.py serves config.js for that target.
+# The served config.js must point at the same project, else stop (a plain http.server serves the live config).
+TARGET=${PN_TARGET:-staging}
+case $TARGET in staging) REF=vdtmzsxajpvzwwbhnfmr;; live) REF=wcdskpcevbhouvbytkhv;; *) echo "PN_TARGET must be staging or live"; exit 2;; esac
+for p in $A $B; do
+  curl -s -m 10 http://127.0.0.1:$p/config.js | grep -q "SUPABASE_URL: *\"https://$REF\.supabase\.co\"" || {
+    echo "port $p does not serve config.js for PN_TARGET=$TARGET ($REF). Serve docs with: PN_TARGET=$TARGET python3 tests/e2e/serve.py $p docs"; exit 2; }
 done
 HEAD=$(git -C $REPO log -1 --format='%h %ci' 2>/dev/null)
 RES=(); TOTALFAIL=0; START=$(date +%s)
@@ -43,7 +53,7 @@ run() {   # name port file [args…]
   elif [ "$st" = FAIL ]; then TOTALFAIL=$((TOTALFAIL+1)); fi
   RES+=("$(printf '%-16s %5s %5s  %-6s %s' $n $p $fl $st "$note")")
 }
-echo "=== suite start $(date '+%F %T')  HEAD $HEAD  ports $A/$B" | tee -a $LOG/summary.txt
+echo "=== suite start $(date '+%F %T')  HEAD $HEAD  ports $A/$B  supabase $TARGET" | tee -a $LOG/summary.txt
 # --- map (Mapbox GL, mocked Supabase). OPTIONAL: need MAPBOX_TEST_TOKEN, else skipped ---
 NEEDS_MAPBOX=1 run glmap      $A glmap-pw.js mbx
 NEEDS_MAPBOX=1 run tiers2     $A tiers2-pw.js mbx

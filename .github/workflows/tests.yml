@@ -2,7 +2,8 @@ name: tests
 
 # Gating tests: UI e2e (mocked Supabase, no live writes), unit tests, and a schema load test.
 # Map tests need the secret MAPBOX_TEST_TOKEN. Without it they are skipped (not failed).
-# Live-server tests (beta-pw.js etc.) never run here: they create real users.
+# Supabase target: staging (pintsnow-staging). tests/e2e/serve.py rewrites the served config.js; run-all.sh checks it.
+# Live-server tests (beta-pw.js) never run here.
 
 on:
   push:
@@ -46,16 +47,19 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Serve docs/ on port 8793 (map) and 8871 (UI)
+      - name: Serve docs/ on port 8793 (map) and 8871 (UI), Supabase target = staging
+        env:
+          PN_TARGET: staging   # serve.py serves config.js pointed at pintsnow-staging (the file in git is not changed)
         run: |
-          nohup python3 -m http.server --bind 127.0.0.1 --directory docs 8793 > /tmp/http-8793.log 2>&1 &
-          nohup python3 -m http.server --bind 127.0.0.1 --directory docs 8871 > /tmp/http-8871.log 2>&1 &
+          nohup python3 tests/e2e/serve.py 8793 docs > /tmp/http-8793.log 2>&1 &
+          nohup python3 tests/e2e/serve.py 8871 docs > /tmp/http-8871.log 2>&1 &
           for p in 8793 8871; do
             for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
           done
       - name: Run tests
         env:
-          MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}
+          MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}   # real Mapbox for the map tests (matrix "map"); empty = skipped
+          PN_TARGET: staging   # run-all.sh stops if the served config.js does not point at this target
           TO: '900'
         run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
       - name: Upload logs
