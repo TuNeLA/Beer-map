@@ -19,7 +19,7 @@ const shot = (page, n) => page.evaluate(() => document.querySelectorAll(".toast"
 const SPECS = { anton: { v: 1, sk: 2, fs: 0, ey: 1, br: 1, mt: 0, hr: 2, hc: 1, fh: 1, hw: 0, gl: 0, up: 0, uc: 0, bg: 1 }, oskar: { v: 1, sk: 1, fs: 2, ey: 2, br: 4, mt: 1, hr: 4, hc: 3, fh: 5, hw: 7, gl: 0, up: 4, uc: 0, bg: 8 }, lisa: null };
 const SEEDS = { anton: "5e3a91c2", oskar: "0b77aa10", lisa: "c4d2e9f1" };
 const MED = { anton: ["kung", "m10", "radio"], oskar: ["m100", "b5", "sg10", "kung"], lisa: ["m1"] };
-const FACTS = { mer: 30, r: 5, n: 42, title: "Korpral Korkskruv", next_title: "Skumsergeant", next_at: 40, s: 1, b: 2, t: 1, e: 0, m: ["kung", "m10", "radio", "het", "m1"] };
+const FACTS = { mer: 30, r: 5, n: 42, title: "Korpral Korkskruv", next_title: "Skumsergeant", next_at: 40, s: 1, b: 2, t: 1, e: 0, m: ["kung", "m10", "radio", "het", "m1"], today: "11-07" };   // today: the server date (avatar.js today()); pinned so seasonal locks do not move
 const LOCKS = { "hw:7": { r: 6 }, "hw:11": { r: 12 }, "up:5": { r: 12 } };
 const saves = [];
 const person = (u, me, k) => ({ k, name: u === "anton" ? "Anton" : u === "oskar" ? "Oskar" : "Lisa", is_me: me === u, seed: SEEDS[u], a: SPECS[u],

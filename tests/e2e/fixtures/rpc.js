@@ -95,6 +95,9 @@ function build(now) {
     pnlog_ingest: () => ({ ok: true }),                                                       // pnlog.js (telemetry)
     public_config: () => ({ v: 3, support: "support@pintsnow.com", visning: "off", terms_ver: 1, store_mode: "off", mapbox_token: null }),
     account_config: () => ({ v: 1 }),
+    my_visibility: () => ({ v: 1, friends_only: false }),                                   // pnvis.js (Alla · Bara vänner · Spöke)
+    // spel-ui.js launchSync(): same dates as its PN_LAUNCH fallback, so "Nytt" does not change with the mock
+    game_launch_dates: () => ({ v: 1, games: { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" } }),
   };
 }
 
@@ -106,11 +109,25 @@ const EMPTY = new Set(["my_rallies", "live_others", "ghost_points", "ghost_point
   // strip-test.js and speed-pw.js answer poll_v2 themselves (the new path). Do not answer it here without moving those tests.
   "poll_v2"]);
 
+// rpc_bundle2 (app.js bundleGo, 0297): body { p_calls: [{ k, n, a }] } → { <k>: { d: <answer> } | { e: { code, message } } }.
+// Each inner call is answered from this table; a name this table does not know gets { e: { code: "not_bundled" } }, so the app
+// sends that call alone (and the helpers / the test's own route answer it). d2-helpers / ds-helpers answer rpc_bundle2 before
+// this (they send each inner call through the page routes, so a test's own route wins); this one is for other callers.
+function bundle(body, ctx) {
+  const o = {};
+  ((body && body.p_calls) || []).forEach((c) => {
+    const a = c && c.n && c.n !== "rpc_bundle2" ? answer(c.n, c.a || {}, ctx) : undefined;
+    o[c.k] = a === undefined ? { e: { code: "not_bundled", message: "not_bundled" } } : { d: a };
+  });
+  return o;
+}
+
 function answer(fn, body, ctx) {
+  if (fn === "rpc_bundle2") return bundle(body, ctx);
   const t = (ctx && ctx.now) || Date.now();
   const f = build(t)[fn];
   if (f) return f(body || {});
   if (EMPTY.has(fn)) return [];
   return undefined;
 }
-module.exports = { answer, EMPTY, GID, GID2, ME_K, names: () => Object.keys(build(Date.now())).concat([...EMPTY]) };
+module.exports = { answer, EMPTY, GID, GID2, ME_K, names: () => Object.keys(build(Date.now())).concat([...EMPTY], ["rpc_bundle2"]) };

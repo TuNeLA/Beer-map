@@ -80,10 +80,25 @@ run ds-sheet   $B ds-sheet-pw.js   # sheet rules (DESIGN.md), newest copy from t
 run rpc-cover  $B rpc-cover-pw.js  # every RPC the main screens call must be answered by the mock (fixtures/rpc.js)
 # auto check-in (js/autoci.js): runs only when that module is in docs/ (branch 01-autoci merged)
 if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else [[ autoci =~ $FILTER ]] && RES+=("$(printf '%-16s %5s %5s  %-6s %s' autoci - - skip 'docs/js/autoci.js not merged yet')"); fi
+# --- ported agent tests (2026-11-09; were only in agent scratchpads). Mocked Supabase, Leaflet fallback (no Mapbox) ---
+run fxm        $B fxm-pw.js        # map fixes ds31–ds42: ANNAT, ⓘ, Ikväll chip, auto check-in list, Auto hemma, Synlighet, calm start
+run pf         $B pf-pw.js         # pin follow (pinfolj.js) + people count / "Folk här" night totals
+run lg         $B lg-pw.js         # PNLOG usage + position log, consent, owner panel (stats.html), lx part (lgx-part.js)
+run cln        $B cln-pw.js        # clean-up: vitals only with the log on, Nytt dates, rpc_bundle2, not_member, medals throttle
+run txtfit     $B txtfit-pw.js     # every rank / KAOS / LIVE text fits at 390 px
+run ds-motion  $B ds-motion-pw.js  # ds10 motion rules
+run gw         $B gw-pw.js         # competitor-research build (gw.js): Ute ikväll?, previews, honest crowd, Följ mig hem timer
+run inst       $B inst-pw.js       # screens show at once (no layout shift / late inserts) with slow RPCs (inst-mocks.js)
+# --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
+run ds-motion-wk $B ds-motion-pw.js wk
+run ds-layout-wk $B ds-layout-pw.js wk
 # --- unit (no browser) ---
 [[ notif-sw =~ $FILTER ]] && { (cd $D && timeout 120 node notif-sw-test.js $REPO > $LOG/notif-sw.1.log 2>&1); rc=$?
   p=$(grep -c '^PASS' $LOG/notif-sw.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/notif-sw.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1
   [ $fl != 0 ] && TOTALFAIL=$((TOTALFAIL+1)); RES+=("$(printf '%-16s %5s %5s  %-6s' notif-sw $p $fl $([ $fl = 0 ] && echo ok || echo FAIL))"); }
+[[ local-lines =~ $FILTER ]] && { (cd $D && timeout 300 node local-lines-test.js "$REPO/docs/js" > $LOG/local-lines.1.log 2>&1); rc=$?
+  p=$(grep -c '^PASS' $LOG/local-lines.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/local-lines.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1
+  [ $fl != 0 ] && TOTALFAIL=$((TOTALFAIL+1)); RES+=("$(printf '%-16s %5s %5s  %-6s' local-lines $p $fl $([ $fl = 0 ] && echo ok || echo FAIL))"); }
 echo
 echo "SUMMARY  HEAD $HEAD  $(( ($(date +%s)-START)/60 )) min"
 printf '%-16s %5s %5s  %-6s %s\n' TEST PASS FAIL STATUS NOTE
