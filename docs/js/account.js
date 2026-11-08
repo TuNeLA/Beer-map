@@ -760,7 +760,7 @@
       ".acct-cell.on{border-color:var(--amber,#f5a623);box-shadow:0 0 0 3px rgba(245,166,35,.22)}",
       ".acct-code{position:absolute;inset:0;width:100%;height:100%;opacity:.01;color:transparent;caret-color:transparent;background:transparent;border:0;font-size:16px;letter-spacing:1em;padding:0 8px;box-sizing:border-box}",
       ".acct-otp.bad .acct-cell{border-color:var(--red,#ff6b6b)}",
-      "@media (prefers-reduced-motion:no-preference){.acct-otp.bad{animation:acct-shake .35s ease-in-out 1}}",
+      "@media (prefers-reduced-motion:no-preference){.acct-otp.bad{animation:acct-shake .35s cubic-bezier(.2,0,0,1) 1}}",
       "@keyframes acct-shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}",
       ".acct-mailapp{display:flex;align-items:center;justify-content:center;text-decoration:none}",
       ".acct-check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;padding:6px 2px;cursor:pointer}",

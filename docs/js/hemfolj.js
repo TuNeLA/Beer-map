@@ -248,7 +248,7 @@
   function confirmStop(b) {
     if (b.getAttribute("data-sure") === "1") { stopWalk(); return; }
     b.setAttribute("data-sure", "1"); b.textContent = L("Avsluta?", "End?");
-    setTimeout(function () { if (b && b.isConnected) { b.removeAttribute("data-sure"); b.textContent = "✕"; } }, 4000);
+    setTimeout(function () { if (b && b.isConnected) { b.removeAttribute("data-sure"); b.innerHTML = (window.PNI ? window.PNI.svg("x", "") : "") || "✕"; } }, 4000);
   }
   function banner() {
     if (!A) return;
@@ -256,11 +256,12 @@
     b.hidden = !show; document.body.classList.toggle("hf-on", show);
     if (!show) return;
     var h = home(), f = track && track.fix, d = h && f ? U.haversine(f.lat, f.lng, h.lat, h.lng) : null;
-    var sub = (d != null ? dist(d) + L(" kvar", " left") : L("📡 Söker GPS…", "📡 Getting GPS…")) + " · 👀 " + (mine.watching | 0) + "/" + (mine.n | 0) +
-      " · " + (track && track.lock ? L("🔆 skärmen hålls vaken", "🔆 screen kept on") : L("📱 håll appen öppen", "📱 keep the app open"));
-    var html = '<button type="button" class="hf-b-txt" data-open="1"><b>🏠 ' + esc(L("FÖLJ MIG HEM", "WALK ME HOME")) + '</b><span class="hf-b-sub">' + esc(sub) + "</span></button>" +
-      '<button type="button" class="hf-b-go" data-home="1">' + esc(L("✅ Hemma", "✅ Home")) + "</button>" +
-      '<button type="button" class="hf-b-x" data-stop="1" aria-label="' + esc(L("Avsluta", "End")) + '">✕</button>';
+    var sub = (d != null ? dist(d) + L(" kvar", " left") : L("Söker GPS…", "Getting GPS…")) + " · " + (mine.watching | 0) + "/" + (mine.n | 0) + L(" tittar", " watching") +
+      " · " + (track && track.lock ? L("skärmen hålls vaken", "screen kept on") : L("håll appen öppen", "keep the app open"));
+    var pi = function (n, c) { try { return window.PNI ? window.PNI.svg(n, c || "") : ""; } catch (e) { return ""; } };   // ds11: our icons, sentence case
+    var html = '<button type="button" class="hf-b-txt" data-open="1"><b>' + pi("home") + esc(L("Följ mig hem", "Walk me home")) + '</b><span class="hf-b-sub">' + esc(sub) + "</span></button>" +
+      '<button type="button" class="hf-b-go" data-home="1">' + pi("check") + esc(L("Hemma", "Home")) + "</button>" +
+      '<button type="button" class="hf-b-x" data-stop="1" aria-label="' + esc(L("Avsluta", "End")) + '">' + (pi("x") || "✕") + "</button>";
     if (b.getAttribute("data-html") !== html && !b.querySelector('[data-sure="1"]')) { b.innerHTML = html; b.setAttribute("data-html", html); }
   }
   function walkSheet() {
@@ -409,8 +410,8 @@
     groupActions: function (g) {
       if (!A || !A.LIVE || off || !g || !g.id || g.dm) return null;
       var on = mine && mine.live;
-      return { id: "hf-ga", icon: "🏠", label: on ? L("Följ mig hem: på", "Walk me home: on") : L("Följ mig hem", "Walk me home"),
-        sub: on ? L("👀 " + (mine.watching | 0) + " följer", (mine.watching | 0) + " watching") : L("Kompisarna ser dig tills du ä hemma", "Friends see you until you're home"), sect: 1,
+      return { id: "hf-ga", icon: "🏠", label: L("Följ mig hem", "Walk me home"),
+        sub: on ? L("På · " + (mine.watching | 0) + " följer", "On · " + (mine.watching | 0) + " watching") : L("Kompisarna ser dig tills du ä hemma", "Friends see you until you're home"), sect: 1,
         onClick: function () { openStart({ group: g }); } };
     },
     taxiNode: function () {

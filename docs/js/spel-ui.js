@@ -193,7 +193,7 @@
       var b = el("button", { type: "button", class: "sp-card", role: "listitem", "data-g": gm.id, style: "--sp-c:" + gm.col, onclick: function () { launch(gm.id); } }, [
         el("span", { class: "sp-card-ic", "aria-hidden": "true", text: gm.ic }),
         el("span", { class: "sp-card-tx" }, [
-          el("span", { class: "sp-card-h" }, [el("b", { text: gm.name }), gm.tag ? el("em", { class: "sp-tag", text: gm.tag }) : null, rec ? el("em", { class: "sp-tag sp-rec", text: TX.recent }) : null]),
+          el("span", { class: "sp-card-h" }, [el("b", { text: gm.name }), gm.tag && pnNew(gm) ? el("em", { class: "sp-tag", text: "Nytt" }) : null, rec ? el("em", { class: "sp-tag sp-rec", text: TX.recent }) : null]),
           el("span", { class: "sp-card-s", text: gm.sub }),
           el("span", { class: "sp-card-m" }, [el("span", { text: "👥 " + gm.n }), el("span", { text: MODES[gm.mode] })])
         ])
@@ -268,11 +268,28 @@
     close();
     setTimeout(function () { try { if (go) go(); } catch (e) {} }, 380);
   }
+  // ds19: "Nytt" = launched in the last 14 days AND not opened yet on this phone (a badge on every game means nothing)
+  var PN_LAUNCH = { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" };
+  function pnSeen() { try { return JSON.parse(localStorage.getItem("olnu.spSeen") || "{}") || {}; } catch (e) { return {}; } }
+  function pnNew(gm) { var d = Date.parse(PN_LAUNCH[gm.id] || ""); return isFinite(d) && Date.now() - d < 14 * 864e5 && !pnSeen()[gm.id]; }
+  document.addEventListener("click", function (e) {
+    var c = e.target && e.target.closest && e.target.closest(".sp-card[data-g]"); if (!c) return;
+    try { var s = pnSeen(); s[c.getAttribute("data-g")] = 1; localStorage.setItem("olnu.spSeen", JSON.stringify(s)); } catch (x) {}
+  }, true);
   function loadingScreen(gm) {
     root.className = "sp sp-room";
     root.innerHTML = "";
     root.appendChild(topBar(gm.ic + " " + gm.name, "", toHub));
-    root.appendChild(el("div", { class: "sp-body sp-center" }, [el("div", { class: "sp-big-ic", text: gm.ic }), el("p", { class: "sp-muted", text: pick(TX.load) })]));
+    var box = el("div", { class: "sp-body sp-center" }, [el("div", { class: "sp-big-ic", text: gm.ic }), el("p", { class: "sp-muted", text: pick(TX.load) })]);
+    root.appendChild(box);
+    // ds19: no answer in 12 s → say so, with a way on (retry) and a way out (back to the games)
+    setTimeout(function () {
+      if (!root || !box.isConnected || root.lastChild !== box) return;
+      var p = box.querySelector(".sp-muted"); if (p) p.textContent = L("Spelet svarar int'. Kolla nätet och försök igen.", "The game does not answer. Check the network and try again.");
+      box.appendChild(el("div", { class: "pn-sp-fail" }, [
+        el("button", { type: "button", class: "sp-main", text: L("Försök igen", "Try again"), onclick: function () { if (st && st.room) { loadingScreen(gm); poll(true); } else toHub(); } }),
+        el("button", { type: "button", class: "sp-sec", text: L("Tillbaka", "Back"), onclick: function () { toHub(); } })]));
+    }, 12000);
   }
   function fail(err) {
     var m = String(err && err.message || err || "");
@@ -805,7 +822,7 @@
     var over = !k.deck.length || k.kings >= 4;
     if (k.pos > 0) foot.appendChild(el("button", { type: "button", class: "sp-sec sp-kprev", text: "‹", "aria-label": L("Förra kortet", "Previous card"), onclick: function () { kungDraw(-1); } }));
     foot.appendChild(over && k.pos === k.hist.length - 1 ? el("button", { type: "button", class: "sp-main", text: TX.again, onclick: function () { kungStart(); } })
-      : el("button", { type: "button", class: "sp-main", text: h ? L("DRA NÄSTA KORT ›", "NEXT CARD ›") : L("👑 DRA FÖRSTA KORTET", "👑 DRAW THE FIRST CARD"), onclick: function () { kungDraw(1); } }));
+      : el("button", { type: "button", class: "sp-main", text: h ? L("Dra nästa kort", "Next card") : L("👑 Dra första kortet", "👑 Draw the first card"), onclick: function () { kungDraw(1); } }));
     root.appendChild(foot);
   }
 

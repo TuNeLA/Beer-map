@@ -252,7 +252,7 @@
       bar.appendChild(el("span", { class: "pt-tt", text: d.phase === "lobby" ? "Lobby" : g.emo + " " + g.name }));
       bar.appendChild(el("span", { class: "pt-net", hidden: true, title: "Dåligt nät", text: "📡" }));
       bar.appendChild(btn("⋯", "pt-ib", function () { R.menu = !R.menu; render(); }, { "aria-label": "Meny" }));
-    } else bar.appendChild(el("span", { class: "pt-kick", text: "🎲 PARTYSPEL" }));
+    } else bar.appendChild(el("span", { class: "pt-kick", text: "🎲 Partyspel" }));
     bar.appendChild(btn("✕", "pt-ib", function () { close(); }, { "aria-label": "Stäng" }));
     body.appendChild(bar);
     if (d && R.menu) {
@@ -289,7 +289,7 @@
     var body = frame("pt-s");
     topBar(body, null);
     body.appendChild(el("div", { class: "pt-hero" }, [
-      el("h1", { class: "pt-h1", text: "PARTYSPEL" }),
+      el("h1", { class: "pt-h1", text: "Partyspel" }),
       el("p", { class: "pt-tag", text: "Alla spelar på sin egen lur. Värdens lur ä storskärmen: ställ den mitt på bordet." })
     ]));
     var nameInp = el("input", { class: "pt-inp", type: "text", maxlength: "20", placeholder: "Ditt namn", "aria-label": "Ditt namn", autocomplete: "nickname", enterkeyhint: "done", "data-key": "name" });
@@ -318,7 +318,7 @@
     };
     var jb = btn(code ? "🔑 GÅ MED I " + code : "🔑 Gå med", "pt-go" + (code ? " pt-xl" : ""), join);
     codeInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); join(); } });
-    var create = btn("🎲 SKAPA RUM" + (group && group.name ? " · " + group.name : ""), code ? "pt-alt" : "pt-go pt-xl", function () {
+    var create = btn("🎲 Skapa rum" + (group && group.name ? " · " + group.name : ""), code ? "pt-alt" : "pt-go pt-xl", function () {
       var n = nm(); if (!n) return;
       create.disabled = true;
       A.rpc("party_create", { p_group_id: group && group.id ? group.id : null, p_name: n, p_game: prefs().game || "imposter" }).then(function (r) {

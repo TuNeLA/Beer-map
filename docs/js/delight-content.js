@@ -445,13 +445,13 @@ window.DELIGHT_CONTENT = {
 
   /* ---------- UI strings ---------- */
   ui: {
-    sv: { sector: "SEKTOR", contact: "KONTAKT", rarity: { c: "Vanlig", r: "Sällsynt", l: "Legendarisk" },
+    sv: { sector: "sektor", contact: "Kontakt", rarity: { c: "Vanlig", r: "Sällsynt", l: "Legendarisk" },
           capTitle: "🧢 Kapsylsamlingen", capNew: "🧢 Dagens kapsyl!", capOpen: "Öppna", capOf: "{n} av {m} kapsyler",
           capHint: "En kapsyl per dag – bara för att du tittar in. Sällsynt minst var tionde dag.",
           capPity: "Sällsynt garanterad om {n} dagar", capMissing: "???", capChip: "Ny kapsyl väntar", capWait: "Dagens kapsyl har kommit! Tryck för att öppna. (Finns också under 🍺 Ikväll ▾.)",
           spotted: "🔭 Spaningslogg: {n} av {m} händelser sedda", settings: "🎉 Skoj & överraskningar",
           events: "🗺️ Överraskningar på kartan", eventsOn: "På", eventsOff: "Av", capBtn: "🧢 Kapsylsamlingen ({n}/{m})",
-          bootHead: "SYSTEMSTART", empty: "INGA KONTAKTER", close: "Stäng", greetHead: "DAGENS ORDER" },
+          bootHead: "Systemstart", empty: "Inga kontakter", close: "Stäng", greetHead: "Dagens order" },
     en: { sector: "SECTOR", contact: "CONTACT", rarity: { c: "Common", r: "Rare", l: "Legendary" },
           capTitle: "🧢 Bottle caps", capNew: "🧢 Today's cap!", capOpen: "Open", capOf: "{n} of {m} caps",
           capHint: "One cap per day – just for checking in. Rare at least every 10th day.",

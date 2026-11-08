@@ -36,7 +36,7 @@
     used.push(idx); mem[key] = used.slice(-Math.min(12, a.length - 1)); U.ls.setJSON(LINE_KEY, mem);
     return a[idx];
   }
-  var ALERT = "SKÅLTIMMEN! 3 min – visa din dricka!";
+  var ALERT = "Skåltimmen! 3 min – visa din dricka!";
   var T = {
     sub: ["Glaset i kameran, soldat!", "Höj glaset och tryck av.", "Visa vad som står på bordet. Inget fusk.",
       "Klockan tickar. Bildbevis på drickan!", "Plutonen höjer glasen – var ä du?", "Dricka fram, kamera upp.",
@@ -270,7 +270,7 @@
     var cancel = el("button", { type: "button", class: "btn btn-small ph-cancel", text: L("Avbryt", "Cancel") });
     send.disabled = true;
     o.appendChild(el("div", { class: "ph-card sk-card" }, [
-      el("h3", { class: "sk-title" }, [document.createTextNode(L("🍻 SKÅLTIMMEN ", "🍻 CHEERS HOUR ")), cd]),
+      el("h3", { class: "sk-title" }, [document.createTextNode(L("🍻 Skåltimmen ", "🍻 Cheers hour ")), cd]),
       el("div", { class: "ph-prev-box sk-prevbox" }, [img, wait]),
       el("p", { class: "ph-priv", text: msLeft(h) > 0 ? L("🔒 Bara gruppen ser bilden – och bara dom som själva har postat.", "🔒 Only group members who posted see it.")
         : L("⏰ Klockan har gått. Bilden räknas som sen (inga meriter).", "⏰ Time is up. It counts as late.") }),
@@ -385,7 +385,7 @@
     var inTime = posts.filter(function (p) { return p.in_time; }), late = posts.filter(function (p) { return !p.in_time; });
     body.appendChild(el("div", { class: "sk-hero" + (live ? " live" : " done") }, [
       el("div", { class: "sk-hero-k", text: headOf(h) }),
-      el("div", { class: "sk-hero-t", text: live ? L("SKÅLTIMMEN!", "CHEERS HOUR!") : spick("r" + h.id, T.resHead) }),
+      el("div", { class: "sk-hero-t", text: live ? L("Skåltimmen!", "Cheers hour!") : spick("r" + h.id, T.resHead) }),
       live ? el("div", { class: "sk-hero-cd" }, [el("b", { class: "sk-cd", "data-skcd": String(Date.parse(h.ends_at)), text: U.mmss(msLeft(h)) })])
         : el("div", { class: "sk-hero-s", text: (h.group_name || "") + " · " + U.timeHM(h.created_at) }),
       el("div", { class: "sk-hero-n", text: (h.posted | 0) + "/" + (h.needed | 0) + L(" i tid", " in time") })
@@ -492,7 +492,7 @@
     root.innerHTML = "";
     root.appendChild(el("div", { class: "sk-hero idle" }, [
       el("div", { class: "sk-hero-k", text: g.name || "" }),
-      el("div", { class: "sk-hero-t", text: L("SKÅLTIMMEN!", "CHEERS HOUR!") }),
+      el("div", { class: "sk-hero-t", text: L("Skåltimmen!", "Cheers hour!") }),
       el("div", { class: "sk-hero-s", text: L("Alla får en push och 3 minuter att visa sin dricka. Man ser dom andras glas först när man har postat sitt eget.",
         "Everyone gets a push and 3 minutes to show their drink. You see the others only after you post.") })
     ]));
@@ -506,7 +506,7 @@
       var wait = Date.parse(d.next_at) - now(), used = d.used | 0, max = d.max | 0 || 4;
       var label = used >= max ? L("🍻 Max " + max + " skåltimmar ikväll", "🍻 Max " + max + " tonight")
         : wait > 1000 ? L("🍻 Nästa skåltimme om " + Math.ceil(wait / 60000) + " min", "🍻 Next in " + Math.ceil(wait / 60000) + " min")
-        : L("🍻 SKÅLTIMMEN! Larma truppen", "🍻 CHEERS HOUR! Alert the squad");
+        : L("🍻 Skåltimmen! Larma truppen", "🍻 Cheers hour! Alert the squad");
       var go = A.btn(label, "btn-block sk-start" + (used >= max || wait > 1000 ? "" : " ready"), function () { start(g, go, root); });
       go.disabled = used >= max || wait > 1000;
       root.appendChild(go);

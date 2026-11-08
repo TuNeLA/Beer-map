@@ -717,3 +717,96 @@ summary:active{transform:none}
   .pn-foam,.pn-bs-ghost{display:none !important}
 }
 /* ds10 motion END */
+/* ds11 banners START — the bottom banners (Följ mig hem, Skåltimmen, film) never cover ANNAT, locate or the Mapbox credits:
+   their base is measured (js "ds11": 8 px above the highest dock item), stacking steps stay 64 px. Text may wrap to 2 lines. */
+:root{--pn-ban-b:calc(var(--dock-h,180px) + 24px)}
+.hf-banner,.sk-banner,.fm-banner{bottom:var(--pn-ban-b) !important;left:calc(var(--sal,0px) + 12px) !important;right:calc(var(--sar,0px) + 12px) !important}
+body.chief-on .sk-banner,body.sk-on .fm-banner,body.chief-on:not(.sk-on) .fm-banner,
+body.sk-on .hf-banner,body.chief-on .hf-banner,body.fm-on .hf-banner{bottom:calc(var(--pn-ban-b) + 64px) !important}
+body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--pn-ban-b) + 128px) !important}
+.hf-b-txt{padding:var(--ds-2) var(--ds-3) !important;gap:2px}
+.hf-b-txt b{display:flex;align-items:center;gap:var(--ds-2);font:400 var(--ds-fs-16)/20px var(--ds-stencil) !important;letter-spacing:0 !important}
+.hf-b-txt b svg{width:20px;height:20px;flex:0 0 auto}
+.hf-b-sub{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;font:600 var(--ds-fs-12)/16px var(--ds-sans) !important;opacity:1 !important}
+.hf-b-go{display:flex !important;align-items:center;gap:var(--ds-1);font:600 var(--ds-fs-14)/20px var(--ds-sans) !important}
+.hf-b-go svg{width:18px;height:18px}
+.hf-b-x{display:grid !important;place-items:center}
+.hf-b-x svg{width:20px;height:20px}
+/* ds11 banners END */
+/* ds12 icons START — size of the icons that replace emoji / characters (js "ds12 icons") */
+#btn-other .ol-e svg{width:22px;height:22px;display:block;margin:0 auto}
+#install-close svg,#btn-attrib svg,.pt .pt-ib svg,.ff .ff-x svg,.pt .pt-kx svg,.gpg-dots svg,#sheet-body .nr-frow .btn svg{width:20px;height:20px}
+#btn-attrib>span{display:grid;place-items:center}
+#btn-attrib svg{width:18px;height:18px}
+.pi-in{width:1.1em;height:1.1em;vertical-align:-.18em;margin:0 .15em}
+.cr-tabs .cr-te svg,.af-mic svg{width:22px;height:22px}
+.af-mic{display:grid !important;place-items:center}
+.pn-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:var(--ds-2);vertical-align:0;background:var(--ds-muted)}
+.pn-dot-on{background:var(--ds-green)}.pn-dot-red{background:var(--ds-red-t)}.pn-dot-amber{background:var(--ds-amber)}
+/* ds12 icons END */
+/* ds14 back START — in-content back buttons hide while the header ‹ shows (js "ds14 back") */
+#sheet-body .pn-dupback,#sheet-body .pn-dupback-row{display:none !important}
+/* ds14 back END */
+/* ds15 seg START — the last choice controls join the ONE segmented control (sheet rule 14): Gänget + Lek tabs (were underline
+   tabs), Lek "Sugen! / Kanske / Ikväll inte" (3 buttons), Truppen icon tabs, Kungaleken / Skämskort choices (amber fill),
+   Kartstil (chips). Track --ds-bg + 1 px border, radius 12, items 44, radius 8, selected --ds-raised + amber text.
+   5+ items scroll sideways inside the track (no squeeze, no cut label). A control with ONE option is not shown. */
+:is(.gg-tabs,.gm-tabs,.gm-seg,.cr-tabs,.sp-seg,.bm-seg.bm-grid){display:flex !important;flex-direction:row !important;flex-wrap:nowrap !important;gap:4px !important;padding:4px !important;
+  border:0 !important;border-radius:var(--r-md) !important;background:var(--ds-bg) !important;box-shadow:inset 0 0 0 1px var(--ds-border) !important;
+  overflow-x:auto !important;overflow-y:hidden !important;scrollbar-width:none;margin:0 0 var(--ds-3) !important;grid-template-columns:none !important}
+:is(.gg-tabs,.gm-tabs,.gm-seg,.cr-tabs,.sp-seg,.bm-seg.bm-grid)::-webkit-scrollbar{display:none}
+:is(.gg-tabs,.gm-tabs,.gm-seg,.cr-tabs,.sp-seg,.bm-seg.bm-grid)>button{flex:1 0 auto !important;min-width:64px !important;min-height:44px !important;height:auto !important;margin:0 !important;
+  padding:0 var(--ds-3) !important;border:0 !important;border-radius:var(--r-sm) !important;background:transparent !important;color:var(--ds-muted) !important;
+  font:600 var(--fs-14)/20px var(--ds-sans) !important;box-shadow:none !important;text-transform:none !important;letter-spacing:0 !important;
+  display:inline-flex !important;align-items:center;justify-content:center;gap:6px;white-space:nowrap !important;outline:0}
+:is(.gg-tabs,.gm-tabs,.gm-seg,.cr-tabs,.sp-seg,.bm-seg.bm-grid)>button:is([aria-selected="true"],[aria-checked="true"],[aria-pressed="true"],.on,.active,.sel){
+  background:var(--ds-raised) !important;color:var(--ds-amber-t) !important;box-shadow:0 1px 2px rgba(0,0,0,.4) !important}
+:is(.gg-tabs,.gm-tabs,.gm-seg,.cr-tabs,.sp-seg)>button::after,:is(.gg-tabs,.gm-tabs,.cr-tabs)>button::before{display:none !important}
+/* Lek "Sugen!": 3 equal parts, no scroll */
+.gm-seg>button{flex:1 1 0 !important;min-width:0 !important}
+/* Truppen: icon over the word, one row */
+.cr-tabs>button{flex-direction:column !important;gap:2px !important;min-height:56px !important;font-size:var(--fs-12) !important;line-height:16px !important}
+.cr-tabs>button .cr-te{font-size:20px;line-height:1}
+/* Kungaleken / Skämskort choices: 2 per row max → wrap into two rows of the same control */
+.sp-seg.sp-packs{flex-wrap:wrap !important;overflow:visible !important}
+.sp-seg.sp-packs>button{flex:1 1 calc(50% - 4px) !important}
+/* Kartstil: swatch + name inside the item */
+.bm-seg.bm-grid>button{flex:1 1 0 !important;justify-content:flex-start !important;padding:0 var(--ds-3) !important}
+.bm-seg.bm-grid>.bm-gh{display:none !important}
+/* Topplistor: ONE tab ("Barer") = no control */
+#sheet-body .tabs:not(.pf-tabs):not(.inv-tabs):not(:has(>button:nth-child(2))){display:none !important}
+/* ds15 seg END */
+/* ds16 primary START — ONE amber primary per screen (sheet rule 8), never a green primary.
+   Party lobby: "Skapa rum" is the primary; "Gå med" (code card) is secondary until a code is typed (then party-ui swaps them).
+   Avatar wizard: "Hoppa över" is a quiet button; amber only for Nästa / Spara. */
+.pt-body:has(.pt-xl) .pt-row .pt-go{background:var(--ds-raised) !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;box-shadow:none !important}
+.avw-next.pn-skip{background:transparent !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;box-shadow:none !important}
+/* ds16 primary END */
+/* ds17 switch START — the switch sits at the right end of the "+" tile row */
+#sheet-body .pn-ga-swb{position:relative;padding-right:76px !important}
+#sheet-body .pn-ga-swb::after{display:none !important}
+#sheet-body .pn-ga-swb>.pn-ga-sw{position:absolute;right:var(--ds-4);top:50%;margin-top:-16px;pointer-events:none}
+/* ds17 switch END */
+/* ds18 motion START — motion leftovers (audit): only transform and opacity move.
+   Switch knob: transform (was left). Progress bars: scaleX from the left (js maps the inline width to --pn-p).
+   Tab marker: transform only; the selected item is transparent while the marker slides. Bar sheet opens with the spring.
+   Loading shimmers: an opacity breath (was background-position). */
+.switch::after{left:3px !important;transition:transform var(--m-4) var(--e-std),background-color var(--m-4) var(--e-std) !important}
+.switch[aria-checked="true"]::after{left:3px !important;transform:translateX(20px)}
+:is(.bp-st-bar span,.du-tug-us,.gm-bar>span,.gg-rbar>span,.gg-obar>span,.gw-pl-bar i,.mer-bar span,.pt-bt i){width:100% !important;transform-origin:left center;
+  transform:scaleX(var(--pn-p,1));transition:transform var(--m-5) var(--e-std) !important}
+.pn-seg-mark{transition:transform var(--m-4) var(--e-std) !important}
+.pn-seg-anim>:not(.pn-seg-mark){position:relative;z-index:1}
+.pn-seg-anim>:is([aria-selected="true"],.on,.active,[aria-pressed="true"],[aria-checked="true"]){background:transparent !important;box-shadow:none !important}
+.leaflet-popup.olnu-sheet{animation:none !important}
+.leaflet-popup.olnu-sheet .leaflet-popup-content-wrapper{animation:smSheetIn var(--m-5) var(--e-spring) backwards}
+.bf-sh{background:#1a2338 !important;animation:pnBreath 1.1s var(--e-std) infinite alternate !important}
+.ph-frame.loading{background:var(--night-3,#1f2a44) !important;animation:pnBreath 1.1s var(--e-std) infinite alternate !important}
+@keyframes pnBreath{from{opacity:.55}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.leaflet-popup.olnu-sheet .leaflet-popup-content-wrapper{animation:none}}
+/* ds18 motion END */
+/* ds19 robust START — event segment: the label sits over its count, never cut ("7 dag…"); game loading timeout card. */
+.evs-time>button{flex-direction:column !important;gap:2px !important;padding:4px 2px !important;min-height:52px !important}
+.evs-seg-l{white-space:nowrap !important;overflow:visible !important;text-overflow:clip !important}
+.sp-body.sp-center .pn-sp-fail{display:flex;flex-direction:column;gap:var(--ds-2);width:100%;max-width:320px;margin-top:var(--ds-4)}
+/* ds19 robust END */

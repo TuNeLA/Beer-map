@@ -2384,7 +2384,9 @@
           lastAcceptAt = Date.now();
           if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
           // v17 server: d.drinks = total drinks tonight (beers + others). Older server: beers + others we know.
-          var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow(), l = U.level(total);
+          var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow();
+          if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
+          var l = U.level(total);
           if (meState) { meState.beer_count = d.beer_count | 0; meState.undo_until = d.undo_until || null; }
           var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
           var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");

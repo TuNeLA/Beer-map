@@ -37,7 +37,7 @@
 .gw-ov{position:fixed;inset:0;z-index:3000;display:flex;align-items:flex-end;justify-content:center;background:rgba(4,7,14,.72);
   padding:var(--ds-4) var(--ds-4) calc(var(--ds-4) + env(safe-area-inset-bottom,0px))}
 .gw-ov-c{width:100%;max-width:520px;display:flex;flex-direction:column;gap:var(--ds-3);padding:var(--ds-5) var(--ds-4);background:var(--ds-sheet,var(--ds-card));
-  border:1px solid var(--ds-border-2);border-radius:var(--ds-r-3);box-shadow:var(--ds-sh-2);animation:gwUp var(--m-5,300ms) var(--e-in,ease-out) backwards}
+  border:1px solid var(--ds-border-2);border-radius:var(--ds-r-3);box-shadow:var(--ds-sh-2);animation:gwUp var(--m-5) var(--e-in) backwards}
 .gw-ov-h{margin:var(--ds-2) 0 0;font:400 var(--ds-fs-28)/var(--ds-lh-28) var(--ds-stencil);color:var(--ds-amber-t)}
 .gw-ov-p{margin:0;color:var(--ds-text-2,var(--ds-text));font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
 .gw-ov-n{font-variant-numeric:tabular-nums;color:var(--ds-amber-t)}
@@ -70,7 +70,7 @@
 .gw-pl-goal{display:flex;flex-direction:column;gap:var(--ds-2)}
 .gw-pl-goal small{color:var(--ds-muted);font-size:var(--ds-fs-14)}
 .gw-pl-bar{height:8px;border-radius:var(--ds-r-pill);background:var(--ds-raised);overflow:hidden}
-.gw-pl-bar i{display:block;height:100%;background:var(--ds-amber);border-radius:inherit;transition:width var(--m-5,300ms) var(--e-std,ease)}
+.gw-pl-bar i{display:block;height:100%;background:var(--ds-amber);border-radius:inherit;transition:width var(--m-5) var(--e-std)}
 .gw-pl-all .ds-row-i{color:var(--ds-green-t)}
 
 /* 8. Demo label (only while the simulation is on) */

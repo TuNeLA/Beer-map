@@ -412,7 +412,7 @@
         try { navigator.clipboard.readText().then(function (x) { if (jamLink(x)) inp.value = jamLink(x); else A.toast(t("jamBad"), { err: true }); }, function () {}); } catch (e) {}
       });
       body.appendChild(el("div", { style: "display:flex;gap:8px" }, [inp, paste]));
-      body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [A.btn(t("jamShare"), "btn-green btn-block", function () {
+      body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [A.btn(t("jamShare"), "btn-amber btn-block", function () {
         var link = jamLink(inp.value);
         if (!link) { A.toast(t("jamBad"), { err: true }); return; }
         var text = t("jamMsg", link);

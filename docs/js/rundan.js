@@ -48,7 +48,7 @@
         noSwish: "{0} har int' sparat Swish-nummer. Fråga efter numret.", waitConf: "⏳ Väntar på att {0} bekräftar.", conf: "✅ {0} har fått pengarna.",
         waitFor: "Väntar på: {0}", allPaid: "✅ Alla har betalat. Snyggt jobbat, soldater!", by: "{0} betalade", you: "du" },
       spinTitle: "🎲 Vem fixar nästa?", spinWho: "Vilka ä med i snurren?", fair: "⚖️ Rättvis", fairInfo: "De som bjudit minst på sistone får större chans.",
-      spinGo: "🎲 SNURRA!", spinNeed: "Minst två måste vara med.", again: "🔁 Snurra igen", toChat: "💬 Till chatten", iPaidNow: "💸 Lägg in rundan",
+      spinGo: "🎲 Snurra!", spinNeed: "Minst två måste vara med.", again: "🔁 Snurra igen", toChat: "💬 Till chatten", iPaidNow: "💸 Lägg in rundan",
       odds: "{0} %",
       errs: { not_member: "Du ä int' med i gruppen längre.", slow_down: "Lugna ner dig, korpral! Vänta en liten stund.",
         invalid_split: "Det där gick int' ihop. Kolla beloppen.", invalid_member: "Någon har lämnat gruppen. Ladda om.",

@@ -92,7 +92,7 @@
     var pane = h("div", { class: "avw-pane" });
     var back = h("button", { type: "button", class: "btn avw-back", text: "‹ Tillbaka" });
     var dice = h("button", { type: "button", class: "btn avw-dice", "aria-label": "Slumpa det här steget", html: '<span aria-hidden="true">🎲</span> Slumpa' });
-    var next = h("button", { type: "button", class: "btn btn-amber avw-next", text: "Nästa ›" });
+    var next = h("button", { type: "button", class: "btn btn-amber avw-next", text: "Nästa" });
     var bar = h("div", { class: "avw-bar" }, [back, dice, next]);
     wrap.appendChild(h("div", { class: "avw-top" }, [dots, stepTxt, title, sub, prev]));
     wrap.appendChild(pane); wrap.appendChild(bar);
@@ -114,7 +114,8 @@
       dice.hidden = s.id === "done";
       next.hidden = s.id === "done";
       next.disabled = s.id === "base" && !st.base && !st.had && !st.touchedBase;
-      next.textContent = st.i === n - 1 ? (st.saving ? "Sparar…" : "Spara ✓") : s.id === "base" && !st.base ? "Hoppa över ›" : "Nästa ›";
+      next.textContent = st.i === n - 1 ? (st.saving ? "Sparar…" : "Spara") : s.id === "base" && !st.base ? "Hoppa över" : "Nästa";
+      next.classList.toggle("pn-skip", s.id === "base" && !st.base && st.i !== n - 1);   // ds16: skip is never the amber primary
       if (s.id === "base") next.disabled = false;
       prev.hidden = s.id === "base" || s.id === "done";
       pane.innerHTML = "";

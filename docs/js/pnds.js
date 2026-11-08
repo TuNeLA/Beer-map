@@ -187,9 +187,9 @@
     var sk = W("SKJUTS"); if (!sk || typeof sk.driving !== "function") return;
     var on = safe(function () { return sk.driving(); }, false);
     document.querySelectorAll('#sheet-body [data-ga="pk-drv"] .btn').forEach(function (b) {
-      var gl = b.querySelector(".gpg-gl"), gs = b.querySelector(".gpg-gs"), want = on ? "Jag kör ikväll: på" : "Jag kör ikväll";
+      var gl = b.querySelector(".gpg-gl"), gs = b.querySelector(".gpg-gs"), want = "Jag kör ikväll";
       if (gl && txt(gl) !== want) gl.innerHTML = ic("taxi", "pi-lead") + want;
-      if (gs) { var ws = on ? "Tryck för att stänga av" : "Visa gänget att du kör"; if (txt(gs) !== ws) gs.textContent = ws; }
+      if (gs) { var ws = on ? "Gänget ser att du kör" : "Visa gänget att du kör"; if (txt(gs) !== ws) gs.textContent = ws; }
     });
   }
   document.addEventListener("click", function (e) {
@@ -885,6 +885,7 @@
         // invisible (.wm-hold) only the slide runs, so its one fade-in stays in charge of opacity.
         var dir = nb && !back ? 1 : !nb && back ? -1 : nb && back && nt !== title ? 1 : 0;
         if (dir && b.animate) {
+          b.classList.remove("sm-swap");   // ds18: one animation per element (smooth.js content fade off)
           var hold = b.classList.contains("wm-hold"), x = (24 * dir) + "px";
           b._pnAx = b.animate(hold ? [{ transform: "translateX(" + x + ")" }, { transform: "none" }] : [{ transform: "translateX(" + x + ")", opacity: 0 }, { transform: "none", opacity: 1 }],
             { duration: 300, easing: "cubic-bezier(.05,.7,.1,1)" });
@@ -894,23 +895,31 @@
       back = nb; title = nt;
     }).observe(s, { attributes: true, attributeFilter: ["class", "hidden"], subtree: true, childList: true, characterData: true });
   }
-  /* 4. segmented control: marker slides from the old item to the new one; the pane below fades through */
-  var SEG = ".tabs, .seg, .bp-seg, .tt-bar, .np-tabs, .np-seg, .pk-seg, .pn-ikv-seg, .pf-tabs, .inv-tabs";
+  /* 4. segmented control: marker slides from the old item to the new one; the pane below fades through.
+     ds18: the marker finds the bar again after the tap (Grupper rebuilds its tabs), scales instead of animating width. */
+  var SEG = ".tabs, .seg, .bp-seg, .tt-bar, .np-tabs, .np-seg, .pk-seg, .pn-ikv-seg, .pf-tabs, .inv-tabs, .gg-tabs, .gm-tabs, .gm-seg, .cr-tabs, .sp-seg, .bm-seg";
   document.addEventListener("pointerdown", function (e) {
     if (reduced()) return;
     var it = e.target.closest && e.target.closest("button, [role=tab]"), bar = it && it.parentElement && it.parentElement.closest(SEG);
     if (!bar || it.parentElement !== bar) return;
-    var old = bar.querySelector(':scope > [aria-selected="true"], :scope > .on, :scope > .active, :scope > [aria-pressed="true"]');
+    var old = bar.querySelector(':scope > [aria-selected="true"], :scope > .on, :scope > .active, :scope > [aria-pressed="true"], :scope > [aria-checked="true"]');
     if (!old || old === it) return;
-    var br = bar.getBoundingClientRect(), o = old.getBoundingClientRect(), n = it.getBoundingClientRect();
-    var m = document.createElement("i"); m.className = "pn-seg-mark"; m.setAttribute("aria-hidden", "true");
-    if (getComputedStyle(bar).position === "static") bar.style.position = "relative";
-    m.style.cssText = "left:0;top:" + (o.top - br.top) + "px;height:" + o.height + "px;width:" + o.width + "px;transform:translateX(" + (o.left - br.left) + "px)";
-    bar.insertBefore(m, bar.firstChild);
-    requestAnimationFrame(function () { m.style.width = n.width + "px"; m.style.transform = "translateX(" + (n.left - br.left) + "px)"; });
-    setTimeout(function () { m.remove(); }, 260);
-    var body = document.getElementById("sheet-body");
-    setTimeout(function () { if (body && bar.closest("#sheet")) { var p = bar.nextElementSibling; if (p) { p.classList.remove("pn-ft"); void p.offsetWidth; p.classList.add("pn-ft"); setTimeout(function () { p.classList.remove("pn-ft"); }, 320); } } }, 30);
+    var o = old.getBoundingClientRect(), idx = [].indexOf.call(bar.children, it), cls = "." + bar.className.trim().split(/\s+/).join(".");
+    var go = function () {
+      var b2 = bar.isConnected ? bar : document.querySelector("#sheet " + cls); if (!b2) return;
+      var n2 = b2.children[idx]; if (!n2 || !n2.getClientRects().length) return;
+      var br = b2.getBoundingClientRect(), n = n2.getBoundingClientRect();
+      var m = document.createElement("i"); m.className = "pn-seg-mark"; m.setAttribute("aria-hidden", "true");
+      if (getComputedStyle(b2).position === "static") b2.style.position = "relative";
+      m.style.cssText = "left:0;top:" + (n.top - br.top) + "px;height:" + n.height + "px;width:" + n.width + "px;transform-origin:0 0;transform:translateX(" + (o.left - br.left + b2.scrollLeft) + "px) scaleX(" + (o.width / Math.max(1, n.width)).toFixed(3) + ")";
+      b2.insertBefore(m, b2.firstChild); b2.classList.add("pn-seg-anim");
+      requestAnimationFrame(function () { requestAnimationFrame(function () { m.style.transform = "translateX(" + (n.left - br.left + b2.scrollLeft) + "px)"; }); });
+      setTimeout(function () { m.remove(); b2.classList.remove("pn-seg-anim"); }, 260);
+      if (b2.closest("#sheet")) { var p = b2.nextElementSibling; if (p) { p.classList.remove("pn-ft"); void p.offsetWidth; p.classList.add("pn-ft"); setTimeout(function () { p.classList.remove("pn-ft"); }, 320); } }
+    };
+    var once = function () { document.removeEventListener("click", once, true); setTimeout(go, 0); };
+    document.addEventListener("click", once, true);
+    setTimeout(function () { document.removeEventListener("click", once, true); }, 1500);
   }, true);
   /* 5. people pins pop in once per person position (re-renders of the same pin do not pop) */
   var seenPin = {};
@@ -993,3 +1002,193 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds10 motion END */
+/* ds11 banners START — the bottom banner column starts 8 px above the highest dock item (ANNAT moves with ds05b, the credits
+   and locate can change), so a banner never covers ANNAT, locate or the Mapbox logo / (i). Sets --pn-ban-b on :root. */
+(function () {
+  "use strict";
+  var SEL = "#other-wrap, .locate-btn, .bm-mblogo, #btn-attrib, .attrib-btn";
+  function place() {
+    var top = Infinity;
+    document.querySelectorAll(SEL).forEach(function (e) {
+      if (!e.getClientRects().length || e.closest("[hidden]")) return;
+      var r = e.getBoundingClientRect(); if (r.height && r.top > innerHeight * 0.45) top = Math.min(top, r.top);
+    });
+    if (top === Infinity) return;
+    var v = Math.round(innerHeight - top + 8) + "px";
+    if (document.documentElement.style.getPropertyValue("--pn-ban-b") !== v) document.documentElement.style.setProperty("--pn-ban-b", v);
+  }
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(place, 80); }
+  function start() {
+    place();
+    addEventListener("resize", soon); addEventListener("orientationchange", soon);
+    if (window.MutationObserver) {
+      var watch = function (id) { var e = document.getElementById(id); if (e) new MutationObserver(soon).observe(e, { attributes: true, attributeFilter: ["hidden", "style", "class"] }); };
+      ["hf-banner", "sk-banner", "fm-banner", "other-wrap"].forEach(watch);
+      new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) for (var j = 0; j < ms[i].addedNodes.length; j++) { var n = ms[i].addedNodes[j]; if (n.nodeType === 1 && (n.id === "hf-banner" || n.id === "sk-banner" || n.id === "fm-banner")) { watch(n.id); soon(); } } })
+        .observe(document.body, { childList: true });
+      new MutationObserver(soon).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    }
+    setTimeout(place, 1500); setTimeout(place, 4000);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds11 banners END */
+/* ds12 icons START — emoji and characters used as UI icons → our icons (DESIGN "Emoji are not UI icons"), also outside
+   #sheet: the party lobby, förfest, Truppen tabs, chat composer, intro, invite page, Bjud in fields, Följ mig hem list,
+   map controls. Every emoji in these elements becomes a PNI icon, or goes when no icon fits (the word says it).
+   Characters ✕ ⋯ i alone in a button become x / dots / info. Kept (art, not chrome): game cards, drink picker, chat,
+   KAOS lines, medal ribbons, map pins. Idempotent; runs after every repaint (body observer, debounced). */
+(function () {
+  "use strict";
+  var SEL = ["#btn-other .ol-e", "#install-close", "#btn-attrib > span",
+    ".pt .pt-top button", ".pt h2", ".pt .pt-kick", ".pt button.pt-b", ".pt .pt-kx",
+    ".ff .ff-x", ".ff .ff-pack b", ".ff .ff-pack small", ".sp .sp-seg > button", ".sp .sp-main", ".sp-card-m > span",
+    "#intro .intro-privlink", "#intro .sf-age-l", ".jn-kick", ".jn-card button",
+    ".af-mic", ".cr-tabs .cr-te", ".hf-nm", ".hf-people button", "#sheet-body label > span", "#sheet-body .inv-pk-main > small",
+    "#sheet-body .np-ic", "#sheet-body .nr-frow .btn", "#sheet-body .rl-loc > span", ".gpg-dots", "#sheet-body .evs-detail button", "#sheet-body .cr button", "#sheet-body .cr summary",
+    ".toast .btn", "#sheet-body .rnd-check > span"].join(",");
+  var KEEP = ".chat-list, .gpg-msgs, .cm-body, .sp-card-ic, .ff-me, .kind-grid, .kb-e, .pn-kaos-line, .tk-track, .rb, .uni-ribbon, .pf-ribbons, .leaflet-marker-pane, .mapboxgl-marker, input, textarea";
+  var EXTRA = { "🎙️": "mic", "🎙": "mic", "🎤": "mic", "🚌": "bus", "📼": "history", "🤔": "help", "🏟️": "trophy", "🏟": "trophy", "👀": "eye", "📡": "locate",
+    "🗓️": "calendar", "👋": "hand", "🔆": "sun", "🚑": "sos", "🥳": "sparkle", "😎": "user", "🎂": "", "⚖️": "", "📏": "", "🥾": "" };
+  var DOTS = { "🟢": "on", "🔴": "red", "🟡": "amber", "⚪": "off", "⚫": "off" };
+  var CHR = { "✕": "x", "×": "x", "⋯": "dots", "i": "info" };
+  var EMO = /(?:\p{Extended_Pictographic}(?:️|⃣|[\u{1F3FB}-\u{1F3FF}]|‍\p{Extended_Pictographic}️?)*|[\u{1F7E0}-\u{1F7EB}])️?/gu;
+  function nameFor(e) {
+    var P = window.PNI; if (!P) return null;
+    var k = e.replace(/[\u{1F3FB}-\u{1F3FF}]/gu, ""), k2 = k.replace(/️/g, "");
+    if (k in EXTRA) return EXTRA[k]; if (k2 in EXTRA) return EXTRA[k2];
+    return P.EMOJI[k] || P.EMOJI[k2] || "";
+  }
+  function svgNode(n, cls) { var t = document.createElement("span"); t.innerHTML = window.PNI.svg(n, cls || "pi-lead"); return t.firstChild; }
+  function fixEl(el) {
+    if (!window.PNI || el.closest(KEEP)) return;
+    // a lone character icon
+    var tx = el.textContent.trim();
+    if (CHR[tx] && !el.querySelector("svg") && el.children.length <= 1 && (el.tagName === "BUTTON" || el.tagName === "SPAN")) {
+      if (tx === "i" && !el.closest("#btn-attrib")) return;
+      el.textContent = ""; el.appendChild(svgNode(CHR[tx], "")); return;
+    }
+    var tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), list = [], c;
+    while ((c = tw.nextNode())) { if (c.parentNode.closest("svg") || c.parentNode.closest(KEEP)) continue; EMO.lastIndex = 0; if (EMO.test(c.nodeValue)) list.push(c); }
+    list.forEach(function (t) {
+      var v = t.nodeValue, out = document.createDocumentFragment(), at = 0, m;
+      EMO.lastIndex = 0;
+      while ((m = EMO.exec(v))) {
+        var before = v.slice(at, m.index); if (before) out.appendChild(document.createTextNode(before));
+        var k = m[0].replace(/️/g, ""), put = false;
+        if (DOTS[k]) { var d = document.createElement("i"); d.className = "pn-dot pn-dot-" + DOTS[k]; d.setAttribute("aria-hidden", "true"); out.appendChild(d); put = true; }
+        else { var nm = nameFor(m[0]); if (nm) { out.appendChild(svgNode(nm, at === 0 && !before ? "pi-lead" : "pi-in")); put = true; } }
+        at = m.index + m[0].length;
+        if (v.charAt(at) === " " && (!put || DOTS[k])) at++;   // a dropped emoji or a dot: no extra space
+      }
+      var rest = v.slice(at); if (rest) out.appendChild(document.createTextNode(rest));
+      t.parentNode.replaceChild(out, t);
+    });
+  }
+  function run(root) { (root || document).querySelectorAll(SEL).forEach(fixEl); }
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(function () { try { run(); } catch (e) {} }, 50); }
+  function start() {
+    run();
+    if (window.MutationObserver) new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length; i++) { var n = ms[i].target; if (n.nodeType === 3) n = n.parentNode; if (n && n.closest && n.closest("svg, .leaflet-marker-pane, .mapboxgl-marker, .tk-track")) continue; soon(); return; }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds12 icons END */
+/* ds14 back START — ONE back button per screen: the header ‹ (sheet rule 3). The in-content "← Tillbaka" / "← Grupper" /
+   "‹ Tillbaka" rows of the chat, Gänget, Lek and event detail hide while the header ‹ shows. Event detail had no header ‹:
+   it now registers as a SHEETNAV sub-view, so the header ‹ (and Android back) runs its old in-content back. */
+(function () {
+  "use strict";
+  var BACKTXT = /^(←|‹)\s*(Tillbaka|Grupper|Back)\b/;
+  var SEL = "#sheet-body .ux-chat-top > .btn, #sheet-body .gg-top > .btn, #sheet-body .gm-top > .btn, #sheet-body .evs-detail > .btn, #sheet-body .evs-detail > .row > .btn";
+  function vis(e) { return e && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden"; }
+  function run() {
+    var s = document.getElementById("sheet"), body = document.getElementById("sheet-body"); if (!s || s.hidden || !body) return;
+    // event detail → a sub level (once per detail element)
+    var det = body.querySelector(".evs-detail");
+    if (det && !det._pnSub && window.SHEETNAV && window.SHEETNAV.sub) {
+      var ib = [].filter.call(det.querySelectorAll(".btn"), function (b) { return BACKTXT.test((b.textContent || "").trim()); })[0];
+      if (ib) {
+        det._pnSub = true;
+        var done = window.SHEETNAV.sub(function () { if (ib.isConnected) ib.click(); });
+        var mo = new MutationObserver(function () { if (!det.isConnected) { mo.disconnect(); try { done(); } catch (e) {} } });
+        mo.observe(body, { childList: true, subtree: true });
+      }
+    }
+    var head = vis(document.getElementById("pn-back")) || s.classList.contains("pn-has-back") || !!(det && det._pnSub);
+    body.querySelectorAll(SEL).forEach(function (b) {
+      if (!BACKTXT.test((b.textContent || "").trim())) return;
+      b.classList.toggle("pn-dupback", head);
+      var row = b.parentElement;
+      if (row && /\b(ux-chat-top|gg-top|gm-top|row)\b/.test(row.className)) {
+        var other = [].some.call(row.children, function (c) { return c !== b && vis(c); });
+        row.classList.toggle("pn-dupback-row", head && !other);
+      }
+    });
+  }
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(run, 40); }
+  function start() {
+    var s = document.getElementById("sheet"); if (!s || !window.MutationObserver) return;
+    new MutationObserver(soon).observe(s, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds14 back END */
+/* ds17 switch START — "Jag kör ikväll" in the group + menu is an on/off setting: a switch on the tile (role=switch,
+   aria-checked), the label never says ": på". State = SKJUTS.driving(); refreshed after every repaint and after a tap. */
+(function () {
+  "use strict";
+  function on() { try { return !!(window.SKJUTS && window.SKJUTS.driving && window.SKJUTS.driving()); } catch (e) { return false; } }
+  function run() {
+    var v = String(on());
+    document.querySelectorAll('#sheet-body [data-ga="pk-drv"] .btn').forEach(function (b) {
+      var sw = b.querySelector(":scope > .pn-ga-sw");
+      if (!sw) { sw = document.createElement("span"); sw.className = "switch pn-ga-sw"; sw.setAttribute("aria-hidden", "true"); b.appendChild(sw); b.classList.add("pn-ga-swb"); b.setAttribute("role", "switch"); }
+      if (sw.getAttribute("aria-checked") !== v) sw.setAttribute("aria-checked", v);
+      if (b.getAttribute("aria-checked") !== v) b.setAttribute("aria-checked", v);
+    });
+  }
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(run, 60); }
+  function start() {
+    var s = document.getElementById("sheet"); if (!s || !window.MutationObserver) return;
+    new MutationObserver(soon).observe(s, { childList: true, subtree: true });
+    document.addEventListener("click", function (e) {
+      if (!e.target || !e.target.closest || !e.target.closest('[data-ga="pk-drv"]')) return;
+      var n = 0, iv = setInterval(function () { run(); if (++n > 16) clearInterval(iv); }, 300);
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds17 switch END */
+/* ds18 motion START — progress bars move with transform: the inline width a module sets ("62%") becomes --pn-p (0.62);
+   CSS draws the bar at full width and scales it from the left. Modules keep writing style.width; nothing else changes. */
+(function () {
+  "use strict";
+  var SEL = ".bp-st-bar span, .du-tug-us, .gm-bar > span, .gg-rbar > span, .gg-obar > span, .gw-pl-bar i, .mer-bar span, .pt-bt i";
+  function sync(e) {
+    var w = e.style.width; if (!w) return;
+    var m = /^(-?[\d.]+)%$/.exec(w.trim()); if (!m) return;
+    var v = String(Math.max(0, Math.min(1, +m[1] / 100)));
+    if (e.style.getPropertyValue("--pn-p") !== v) e.style.setProperty("--pn-p", v);
+  }
+  function scan(root) { (root && root.querySelectorAll ? root : document).querySelectorAll(SEL).forEach(sync); }
+  function start() {
+    scan(document);
+    if (!window.MutationObserver) return;
+    new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length; i++) {
+        var m = ms[i];
+        if (m.type === "attributes") { if (m.target.matches && m.target.matches(SEL)) sync(m.target); }
+        else for (var j = 0; j < m.addedNodes.length; j++) { var n = m.addedNodes[j]; if (n.nodeType === 1) { if (n.matches(SEL)) sync(n); scan(n); } }
+      }
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds18 motion END */

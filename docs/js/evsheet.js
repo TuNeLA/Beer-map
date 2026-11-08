@@ -38,7 +38,7 @@
     types: [["all", "Alla", "All"], ["quiz", "🎤 Quiz", "🎤 Quiz"], ["live", "🎸 Live", "🎸 Live"], ["fotboll", "⚽ Fotboll", "⚽ Football"],
       ["hockey", "🏒 Hockey", "🏒 Hockey"], ["tv", "📺 På TV", "📺 On TV"], ["fest", "🎉 Fest", "🎉 Party"]],
     show: ["📍 Visa", "📍 Show"], ticket: ["🎟️ Biljett", "🎟️ Tickets"], inv: ["📨 Bjud in", "📨 Invite"], go: ["🪖 Vi går!", "🪖 We're going!"],
-    gar: ["Går", "Going"], garOn: ["✓ Går", "✓ Going"], garBig: ["JAG GÅR", "I'M GOING"], garBigOn: ["✓ JAG GÅR", "✓ I'M GOING"],
+    gar: ["Går", "Going"], garOn: ["✓ Går", "✓ Going"], garBig: ["Jag går", "I'm going"], garBigOn: ["✓ Jag går", "✓ I'm going"],
     back: ["‹ Tillbaka", "‹ Back"], mapTg: ["🗺️ Visa på kartan", "🗺️ Show on map"],
     tip: ["➕ Tipsa om ett event", "➕ Add an event"],
     friends: ["👥 Vänner går", "👥 Friends going"],

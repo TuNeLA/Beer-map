@@ -291,7 +291,7 @@
   }
   function paneDep(p, g) {
     var board = el("div", { class: "cr-board" });
-    board.appendChild(el("div", { class: "cr-board-h", html: "<span>" + esc(L("AVGÅNGAR", "DEPARTURES")) + "</span><span>" + esc(L("TRUPPEN", "SQUAD")) + "</span>" }));
+    board.appendChild(el("div", { class: "cr-board-h", html: "<span>" + esc(L("Avgångar", "Departures")) + "</span><span>" + esc(L("Truppen", "Squad")) + "</span>" }));
     var deps = g.deps || [];
     if (!deps.length) board.appendChild(el("div", { class: "cr-board-empty", text: T("depNone") }));
     deps.forEach(function (d) {

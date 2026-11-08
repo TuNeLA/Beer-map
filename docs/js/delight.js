@@ -280,8 +280,8 @@
     return true;
   }
   function headOf(key, tn) {
-    var ev = EV[key] || {}, tier = ev.t === "r" ? (en() ? "RARE · " : "SÄLLSYNT · ") : "";
-    return "⚠ " + tier + ui("contact") + " · " + ui("sector") + " " + String(tn.name).toUpperCase();
+    var ev = EV[key] || {}, tier = ev.t === "r" ? (en() ? "Rare · " : "Sällsynt · ") : "";
+    return "⚠ " + tier + ui("contact") + " · " + ui("sector") + " " + String(tn.name);
   }
   function eventsOff() { return lsStr(KEY.off, "") === "1"; }
   function blocked() {
@@ -366,7 +366,7 @@
     var list = txt(C().boot), el = mk("div", "dl-boot");
     if (!list.length) return;
     el.id = "dl-boot"; el.setAttribute("role", "status");
-    el.innerHTML = '<div class="dl-boot-h"><span class="dl-boot-dot"></span>' + esc(ui("bootHead")) + ' · PINTSNOW</div><div class="dl-boot-l"></div>';
+    el.innerHTML = '<div class="dl-boot-h"><span class="dl-boot-dot"></span>' + esc(ui("bootHead")) + ' · PintsNow</div><div class="dl-boot-l"></div>';
     document.body.appendChild(el);
     boot.el = el; boot.start = Date.now();
     var last = +lsStr(KEY.boot, "-1"), order = list.map(function (x, i) { return i; }).sort(function () { return Math.random() - 0.5; });
@@ -420,7 +420,7 @@
     var box = $("dl-empty");
     if (!box) { box = mk("div", "dl-empty"); box.id = "dl-empty"; box.setAttribute("role", "status"); document.body.appendChild(box); }
     var line = fill(pick(txt(C().empty)), { stad: tn.name });
-    box.innerHTML = '<div class="dl-radar" aria-hidden="true"><i></i></div><div class="dl-empty-h">◎ ' + esc(ui("empty")) + " · 4 KM</div><div class=\"dl-empty-t\">" + esc(line) + "</div>";
+    box.innerHTML = '<div class="dl-radar" aria-hidden="true"><i></i></div><div class="dl-empty-h">◎ ' + esc(ui("empty")) + " · 4 km</div><div class=\"dl-empty-t\">" + esc(line) + "</div>";
     box.hidden = false; void box.offsetWidth; box.classList.add("dl-in");
     clearTimeout(box._tm); box._tm = setTimeout(hideEmpty, window.CALM ? window.CALM.radarMs : 9000);
   }
@@ -701,7 +701,7 @@
   }
 
   /* ---------- 5. Moods: greeting + sunrise ---------- */
-  var DAYN = { sv: ["", "MÅNDAG", "TISDAG", "ONSDAG", "TORSDAG", "FREDAG", "LÖRDAG", "SÖNDAG"], en: ["", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] };
+  var DAYN = { sv: ["", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag", "söndag"], en: ["", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] };
   function greet(force) {
     var s = sthlm(), e = evening(s), dk = dayKey(s);
     if (!force && lsStr(KEY.greet, "") === dk) return false;
@@ -710,7 +710,7 @@
     var line = pick(list); if (!line) return false;
     if (s.h >= 1 && s.h < 5) line += txt(G.late)[0] || "";
     var nm = ""; try { nm = A && A.getName ? A.getName() : ""; } catch (x) {}
-    caption({ head: "📋 " + ui("greetHead") + " · " + DAYN[lng()][e.dow] + (nm ? " · " + nm.toUpperCase() : ""), text: line, cls: "dl-cap-greet", ms: 6500 });
+    caption({ head: "📋 " + ui("greetHead") + " · " + DAYN[lng()][e.dow] + (nm ? " · " + nm : ""), text: line, cls: "dl-cap-greet", ms: 6500 });
     return true;
   }
   function sunrise(force) {

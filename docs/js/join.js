@@ -344,7 +344,7 @@
       act.appendChild(h("p", { class: "jn-then", text: L("Funkar direkt här i webbläsaren. Appen kan du fixa sen.", "Works right here in the browser. Get the app later.") }));
     } else {
       var row = h("div", { class: "jn-evbtns" });
-      var yb = bigBtn(ready ? L("Jag hänger med", "I'm going") : L("⏳ Laddar…", "⏳ Loading…"), "btn-green ds-btn-primary jn-evyes", function () { evJoin("yes", yb); });
+      var yb = bigBtn(ready ? L("Jag hänger med", "I'm going") : L("⏳ Laddar…", "⏳ Loading…"), "btn-amber ds-btn-primary jn-evyes", function () { evJoin("yes", yb); });
       var mb = bigBtn(L("🤔 Kanske", "🤔 Maybe"), "ds-btn-secondary jn-evmaybe", function () { evJoin("maybe", mb); });
       yb.disabled = mb.disabled = !ready;
       row.appendChild(yb); row.appendChild(mb);
@@ -531,7 +531,7 @@
     }
     root = h("div", { id: "jn-wel", class: "jn-wel", role: "dialog", "aria-modal": "true", "aria-labelledby": "jn-h", "data-plat": plat }, [
       h("div", { class: "jn-card" }, [
-        h("div", { class: "jn-kick", text: L("📨 INBJUDAN", "📨 INVITE") }),
+        h("div", { class: "jn-kick", text: L("📨 Inbjudan", "📨 Invite") }),
         h("div", { class: "jn-big", "aria-hidden": "true", text: "🍺" }),
         h("h2", { class: "jn-h", id: "jn-h", text: L("Välkommen!", "Welcome!") }),
         subEl, (prevEl = h("div", { class: "jn-prev", hidden: true })), memEl, nameBox, act, statEl,

@@ -207,6 +207,85 @@ Rules:
 9. Reduced motion: nothing moves; colour and opacity changes stay ≤ 100 ms; no loops.
 <!-- ds10 motion END -->
 
+<!-- ds11 banners START -->
+## Banners on the map (ds11)
+
+- Bottom banners (Följ mig hem, Skåltimmen, film) start 8 px above the highest dock item (ANNAT, locate, Mapbox logo / ⓘ).
+  The base is measured (`--pn-ban-b`), not a constant, because ANNAT moves. Banners stack upwards in 64 px steps.
+- A banner never covers ANNAT, locate or the map credits (licence). Its text may wrap to 2 lines; it is never cut.
+<!-- ds11 banners END -->
+
+<!-- ds12 icons START -->
+<!-- ds13 case START -->
+## Sentence case (ds13)
+
+- Text is written as it reads: sentence case. No ALL-CAPS words in buttons, titles, kickers, badges or captions
+  (Partyspel, Skapa rum, Jag går, Inbjudan, Följ mig hem, Skåltimmen!, Snurra!, Truppen, Annat, Dagens order, Nytt).
+- Short code words that are always capitals stay: LIVE, KAOS, SOS, QR, ÖL!.
+<!-- ds13 case END -->
+
+<!-- ds14 back START -->
+## One back button (ds14)
+
+- A sub-screen has ONE back: the header ‹ (16 px from the edge). No "← Tillbaka" row in the content.
+- An in-place detail view (event detail) registers as a SHEETNAV sub-view, so the header ‹ and Android back go one step back.
+<!-- ds14 back END -->
+
+<!-- ds15 seg START -->
+## One segmented control, everywhere (ds15)
+
+- Every choice between 2+ options uses the ONE segmented control: tabs, filters, Lek "Sugen!", Truppen tabs, Kungaleken packs,
+  Kartstil. No underline tabs, no amber-filled chips, no outlined option buttons.
+- 5+ options: the items keep their size and the track scrolls sideways. 2-per-row choices wrap into two rows of the same control.
+- A control with ONE option is not shown (the title says it).
+<!-- ds15 seg END -->
+
+<!-- ds16 primary START -->
+## One primary (ds16)
+
+- One filled amber button per screen: the action that moves forward. Green is a status colour, never a primary button.
+- "Skip" (Hoppa över) is never the primary. A second action next to the primary is secondary (raised or ghost).
+<!-- ds16 primary END -->
+
+<!-- ds17 switch START -->
+## Settings in menus (ds17)
+
+- An on/off setting in a menu ("Jag kör ikväll") is a row with a switch. The label never says ": på".
+- A row that opens a sheet ("Följ mig hem") shows its state in the sub-line ("På · 2 följer"), not as a switch.
+<!-- ds17 switch END -->
+
+<!-- ds18 motion START -->
+## Motion, leftovers (ds18)
+
+- Switch knob moves with `transform`. Progress bars: full width, `transform: scaleX()` from the left (a module still writes
+  `style.width = "62%"`; pnds maps it to `--pn-p`). Loading shimmers: opacity breath.
+- Tab marker: scales and slides with `transform`; it finds the bar again when a tap rebuilds it (Grupper).
+- Sub-screen push: one animation on `#sheet-body` (the axis slide; the smooth.js content fade is skipped then).
+- The bar sheet opens with `--e-spring` like the other sheets.
+- Never a transform transition on map markers (`[role=button]` pins: audit 01).
+- Known left: the ÖL! cooldown bubbles animate `background-position` (the clip box is the moving element itself); they stop
+  after 3 cycles. Map-marker easings (mapart, glmap, arenapin, barlit, places, tiers) are map code, not changed here.
+<!-- ds18 motion END -->
+
+<!-- ds19 robust START -->
+## Robust states (ds19)
+
+- No "0" where a count is unknown: after an empty server answer the toast counts from the local count + 1.
+- A loading screen never waits forever: after 12 s it says so, with "Försök igen" (primary) and "Tillbaka".
+- A badge must mean something: "Nytt" shows on a game for 14 days after its launch, and only until you open it once.
+- A segment label is never cut: the count sits under the label.
+<!-- ds19 robust END -->
+
+## Icons, not emoji (ds12)
+
+- In UI chrome (buttons, tabs, headings, labels, banners, overlays) an emoji becomes a PNI icon, or goes when no icon fits.
+  The rule covers the overlays outside the sheet too: party lobby, förfest, Truppen tabs, chat composer, intro, invite page.
+- Characters are not icons: ✕ → `x`, ⋯ → `dots`, the letter i → `info`, › → `chev-right`.
+- Coloured dots (🟢) become `.pn-dot` (green = out now).
+- Emoji stay as art: game cards, the drink picker, chat text, KAOS lines, medal ribbons, map pins.
+- New PNI icons: `mic`, `bus`.
+<!-- ds12 icons END -->
+
 ## Icons (`window.PNI`)
 
 Our own set, drawn for PintsNow on a 24 px grid: stroke 2, round caps and joins, no fill (small dots filled),

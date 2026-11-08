@@ -423,7 +423,7 @@
       var on = driving(), live = mineLive() && mineLive().kind === "hamta";
       var out = [{ id: "pk-ga", icon: "🆘", label: live ? "Hämta mig: skickad" : "Hämta mig", sub: live ? "Se vem som kommer" : "Kan nån hämta mig?", sect: 1,
         onClick: function () { openPickup({ group: g }); } }];
-      if (!g.ev && !g.evg) out.push({ id: "pk-drv", icon: "🚗", label: on ? "Jag kör ikväll: på" : "Jag kör ikväll", sub: on ? "Tryck för att stänga av" : "Visa gänget att du kör", sect: 1,
+      if (!g.ev && !g.evg) out.push({ id: "pk-drv", icon: "🚗", label: "Jag kör ikväll", sub: on ? "Gänget ser att du kör" : "Visa gänget att du kör", sect: 1,
         onClick: function (gg, b) { setDriver(!driving(), b); } });
       return out;
     },

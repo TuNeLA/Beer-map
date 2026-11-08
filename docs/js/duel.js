@@ -430,7 +430,7 @@
       });
     };
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
-    box.appendChild(el("div", { class: "du-row du-typerow" }, [inp, bt(T("typeGo"), "btn-green", go)]));
+    box.appendChild(el("div", { class: "du-row du-typerow" }, [inp, bt(T("typeGo"), "btn-ghost", go)]));
     box.appendChild(el("p", { class: "du-note", text: T("typeNote") }));
     // Nearby
     box.appendChild(el("h3", { class: "du-h", text: T("nearHead") }));

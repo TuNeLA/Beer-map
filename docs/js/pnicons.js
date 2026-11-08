@@ -83,6 +83,8 @@
     "mail": ["r 3 5.5 18 13 2", "M3.5 7l8.5 6.5L20.5 7"],
     "camera": ["M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z", "c 12 13.5 3.5"],
     "image": ["r 3 4 18 16 2", "c 9 9.5 1.8", "M21 16l-5-5L5 20"],
+    "mic": ["r 9 3 6 11 3", "M5.5 11a6.5 6.5 0 0 0 13 0", "M12 17.5V21", "M8.5 21h7"],   // ds12
+    "bus": ["r 4.5 3.5 15 14 2.5", "M4.5 11h15", "M7.5 17.5V20", "M16.5 17.5V20", "C8 14.3 1.1", "C16 14.3 1.1", "M9 6.5h6"],   // ds12
     "speaker": ["M4 9.5h3.5L12 5.5v13l-4.5-4H4z", "M15.5 9a4 4 0 0 1 0 6", "M18 6.5a7.5 7.5 0 0 1 0 11"],
     "vibrate": ["r 8 3.5 8 17 2", "M4 8v8", "M20 8v8", "M11 17.5h2"],
     "phone": ["r 7 2.5 10 19 2.5", "M11 18.5h2"],
@@ -104,7 +106,7 @@
     "🍺": "beer", "🍻": "cheers", "🥃": "drink", "🍷": "drink", "🥂": "cheers", "🍹": "drink", "🍸": "drink", "🍾": "drink",
     "👥": "users", "👤": "user", "🫂": "users", "🤝": "user-plus", "➕": "plus", "＋": "plus", "👋": "hand",
     "⚙️": "gear", "⚙": "gear", "🔔": "bell", "🔕": "bell-off", "📣": "megaphone", "📢": "megaphone", "📨": "mail", "✉️": "mail", "📧": "mail", "📬": "inbox", "📥": "inbox", "📪": "inbox", "📭": "inbox",
-    "💬": "chat", "🗨️": "chat", "📸": "camera", "📷": "camera", "🖼️": "image", "🔊": "speaker", "🔈": "speaker", "📳": "vibrate", "📲": "phone", "📱": "phone",
+    "💬": "chat", "🗨️": "chat", "📸": "camera", "📷": "camera", "🖼️": "image", "🎙️": "mic", "🎙": "mic", "🚌": "bus", "🔊": "speaker", "🔈": "speaker", "📳": "vibrate", "📲": "phone", "📱": "phone",
     "🏆": "trophy", "🎖️": "medal", "🎖": "medal", "🏅": "medal", "🥇": "medal", "⭐": "star", "🌟": "star", "👑": "crown", "🧢": "cap", "🎉": "sparkle", "✨": "sparkle", "🎁": "sparkle",
     "🎲": "game", "🃏": "game", "🎮": "game", "🎟️": "ticket", "🎫": "ticket", "📅": "calendar", "🗓️": "calendar", "📆": "calendar", "📺": "tv", "⚽": "tv", "🏒": "tv",
     "🗺️": "map", "🗺": "map", "📍": "pin", "📌": "pin", "🧭": "compass", "🌍": "globe", "🌎": "globe", "🌐": "globe", "🚕": "taxi", "🚖": "taxi", "🚗": "taxi", "🏃": "walk", "🚶": "walk", "🚪": "door",

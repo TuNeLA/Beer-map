@@ -349,7 +349,7 @@
                 el("p", {}, [el("b", { text: "🤝 " + (f.name || L("Någon", "Someone")) }), document.createTextNode(dem ? " · " + dem : ""),
                   el("span", { class: "muted", text: L(" vill bli din vän", " wants to be your friend") })]),
                 el("div", { class: "row" }, [
-                  A.btn(L("✅ Acceptera", "✅ Accept"), "btn-small btn-green", function () { answer(f, true); }),
+                  A.btn(L("✅ Acceptera", "✅ Accept"), "btn-small", function () { answer(f, true); }),
                   A.btn(L("Nej tack", "No thanks"), "btn-small", function () { answer(f, false); })])
               ]));
             });
