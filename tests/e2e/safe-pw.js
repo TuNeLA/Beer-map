@@ -92,6 +92,8 @@ async function safetyMocks(page, st, calls) {
   // ---------- 3. existing user (old 18+ box): asked once; Regler before first post; chat 🚩 / 🚫 ----------
   {
     const { ctx, page } = await ctxFor(browser, { width: 412, height: 915 }, {});
+    await ctx.tracing.start({ screenshots: true, snapshots: true });   // saved only when this part fails (CI debug)
+    const failAtStart = fail;
     page.on("pageerror", (e) => errs.push("3:" + e.message));
     const calls = [], st = { age_ok: null, terms_ver: null };
     await safetyMocks(page, st, calls);
@@ -116,11 +118,20 @@ async function safetyMocks(page, st, calls) {
     await page.evaluate(() => document.querySelector(".sf-accept").click()); await wait(page, 1500);
     ok("Jag godkänner → accept_terms, then the message goes", calls.some((c) => c[0] === "accept_terms") && calls.some((c) => c[0] === "post_group_msg" && c[1].p_body === "Skål på er!"));
     // long-press a message from Oskar
-    const li = await page.$('.chat-msg:not(.me)[data-mid="2"] .cm-body');
-    const box = li && await li.boundingBox();
-    if (box) { await page.mouse.move(box.x + 30, box.y + box.height / 2); await page.mouse.down(); await wait(page, 700); await page.mouse.up(); }
-    await wait(page, 400);
-    const pick = await page.evaluate(() => { const p = document.querySelector(".cm-picker"); return p ? [...p.querySelectorAll("button")].map((b) => b.textContent) : null; });
+    // The app cancels a long-press when the list scrolls (by design). On a slow CI machine the list can still be
+    // auto-scrolling when we press, so: wait until it is still, then press; try up to 3 times.
+    let li = null, box = null, pick = null; const tries = [];
+    for (let t = 0; t < 3 && !pick; t++) {
+      await page.evaluate(() => { window.__scrolls = 0; const l = document.querySelector(".chat-list, .chat-msgs, #chat-list") || document.querySelector(".chat-msg") && document.querySelector(".chat-msg").parentElement; if (l && !l.__sc) { l.__sc = 1; l.addEventListener("scroll", () => window.__scrolls++); } });
+      await page.waitForFunction(() => { const m = document.querySelector('.chat-msg[data-mid="2"]'); if (!m) return false; const y = m.getBoundingClientRect().top; const ok = window.__lastY === y; window.__lastY = y; return ok; }, null, { timeout: 5000, polling: 300 }).catch(() => {});
+      li = await page.$('.chat-msg:not(.me)[data-mid="2"] .cm-body');
+      box = li && await li.boundingBox();
+      if (box) { await page.mouse.move(box.x + 30, box.y + box.height / 2); await page.mouse.down(); await wait(page, 700); await page.mouse.up(); }
+      await wait(page, 400);
+      pick = await page.evaluate(() => { const p = document.querySelector(".cm-picker"); return p ? [...p.querySelectorAll("button")].map((b) => b.textContent) : null; });
+      tries.push(await page.evaluate((b) => ({ scrolls: window.__scrolls, hit: b ? (document.elementFromPoint(b.x + 30, b.y + b.height / 2) || {}).className : null, picker: !!document.querySelector(".cm-picker") }), box));
+    }
+    console.log("long-press tries", JSON.stringify(tries));
     if (!pick) console.log("long-press debug", JSON.stringify({ li: !!li, box, msgs: await page.evaluate(() => [...document.querySelectorAll(".chat-msg")].map((m) => (m.dataset.mid || "?") + (m.classList.contains("me") ? "me" : "")).join(",")), sheet: await page.evaluate(() => { const s = document.getElementById("sheet"); return s && !s.hidden ? s.textContent.slice(0, 120) : null; }), ov: await page.evaluate(() => { const o = document.querySelector(".sf-ov"); return o ? o.textContent.slice(0, 120) : null; }) }));
     ok("long-press menu has 🚩 and 🚫", pick && pick.includes("🚩") && pick.includes("🚫"), pick);
     await shot(page, "chat-menu");
@@ -155,6 +166,8 @@ async function safetyMocks(page, st, calls) {
     await wait(page, 1200);
     const blk2 = calls.filter((c) => c[0] === "block_user")[1];
     ok("card block uses the member key", blk2 && blk2[1].p_kind === "person" && blk2[1].p_k === "aaaaaaaaaaaa" && blk2[1].p_group === GID, blk2);
+    if (fail > failAtStart) { require("fs").mkdirSync(SP + "traces", { recursive: true }); await ctx.tracing.stop({ path: SP + "traces/safe-chat.zip" }); console.log("trace " + SP + "traces/safe-chat.zip"); }
+    else await ctx.tracing.stop();
     await ctx.close();
   }
   // ---------- 4. map, top list, settings, SOS, delete, effects ----------

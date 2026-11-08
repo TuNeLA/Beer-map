@@ -4,7 +4,10 @@ const { chromium } = require("playwright");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8871, TAG = process.argv[3] || "after", ONLY = process.argv.slice(4);
 const BASE = `http://127.0.0.1:${PORT}/`;
-const now = Date.now();
+// Clock-independent: the page and the mocks share one fixed evening clock (Fri 22:30 Swedish time) that then ticks normally.
+const FIX = Date.parse("2026-11-06T21:30:00Z"), T0 = Date.now();
+const vnow = () => FIX + (Date.now() - T0);
+const now = FIX;
 const iso = (m) => new Date(now - m * 60e3).toISOString();
 const results = [];
 const ok = (name, cond, info) => { results.push([cond ? "PASS" : "FAIL", name, info || ""]); console.log(cond ? "PASS" : "FAIL", name, info === undefined ? "" : typeof info === "string" ? info : JSON.stringify(info)); };
@@ -59,10 +62,11 @@ const SESSION = { access_token: fakeJwt(), token_type: "bearer", expires_in: 864
   user: { id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", aud: "authenticated", role: "authenticated", is_anonymous: true, app_metadata: {}, user_metadata: {}, created_at: iso(9999) } };
 
 async function setup(browser, o = {}) {
-  const ctx = await browser.newContext({ viewport: o.vp || { width: 390, height: 844 }, deviceScaleFactor: 2, locale: "sv-SE", isMobile: true, hasTouch: true,
+  const ctx = await browser.newContext({ viewport: o.vp || { width: 390, height: 844 }, deviceScaleFactor: 2, locale: "sv-SE", timezoneId: "Europe/Stockholm", isMobile: true, hasTouch: true,
     geolocation: { latitude: 60.1500, longitude: 15.1868 }, permissions: ["geolocation"], ignoreHTTPSErrors: true,
     userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36" });
-  const ls = Object.assign({ "olnu.intro": "1", "olnu.age18": "1", "olnu.locOk": "1", "olnu.notifAsked": "1", "olnu.notifAskAt": String(Date.now()),
+  await ctx.clock.install({ time: vnow() });   // page Date = the same fixed evening (time still flows)
+  const ls = Object.assign({ "olnu.intro": "1", "olnu.age18": "1", "olnu.locOk": "1", "olnu.notifAsked": "1", "olnu.notifAskAt": String(vnow()),
     "olnu.guideSeen": "9999999999999", "olnu.installSeen": "1", "olnu.name": "Anton", "olnu.lang": o.lang || "sv", "olnu.prec": "exact", "olnu.heat": o.heat === false ? "0" : "1",
     "olnu.medalsSeeded": "1", "olnu.medalsMigrated": "1" }, o.ls || {});
   await ctx.addInitScript((ls) => {
@@ -101,23 +105,24 @@ async function setup(browser, o = {}) {
     pins: o.pins || pins(), rallies: o.rallies === false ? [] : rallies() };
   page.__st = st;
   await page.route(/\/auth\/v1\//, (r) => { const u = r.request().url(); return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(/\/user/.test(u) ? SESSION.user : SESSION) }); });
+  await page.route(/api\.open-meteo\.com/, (r) => r.abort());   // weather is not part of this test (no network in tests)
   await page.route(/functions\/v1\//, (r) => r.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
   await page.route(/rest\/v1\/rpc\/(\w+)/, (r) => {
     const fn = r.request().url().match(/rpc\/(\w+)/)[1];
     let body = {}; try { body = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
-    calls.push({ fn, body, t: Date.now() });
+    calls.push({ fn, body, t: vnow() });
     const j = (b) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
     switch (fn) {
       case "poll_v2": {
         const ps = st.pins.slice();
         const mine = ps.find((p) => p.is_mine); if (mine) mine.beer_count = st.me.beer_count;
-        return j({ v: 1, server_time: new Date().toISOString(), full: true, ids_until: new Date(Date.now() + 6e5).toISOString(),
+        return j({ v: 1, server_time: new Date(vnow()).toISOString(), full: true, ids_until: new Date(vnow() + 6e5).toISOString(),
           bbox: [body.p_min_lat - 0.01, body.p_min_lng - 0.01, body.p_max_lat + 0.01, body.p_max_lng + 0.01], pins: ps.filter((p) => !p.is_mine || st.me.beer_count > 0), capped: false, pins_in_view: ps.length,
           live_total: 211, me: st.me, checkins, rallies: st.rallies, heat: body.p_heat ? (o.heatPts || heat()) : null });
       }
       case "post_beer_v2": case "post_beer": {
         st.me.beer_count++; st.me.wait_seconds = 0;
-        const until = new Date(Date.now() + 120e3).toISOString();
+        const until = new Date(vnow() + 120e3).toISOString();
         st.me.undo_until = until;
         return j({ accepted: true, wait_seconds: 0, id: 77, lat: body.p_lat, lng: body.p_lng, beer_count: st.me.beer_count, is_new: false, expires_at: st.me.expires_at, milestone: null, hidden: false, undo_until: until, undos_left: 3 });
       }
@@ -143,7 +148,7 @@ async function setup(browser, o = {}) {
   return { ctx, page, errors, calls, st };
 }
 const shot2 = (page, name) => page.screenshot({ path: SP + "ui-testshots/strip-" + TAG + "-" + name + ".png" }).then(() => console.log("shot", SP + "strip-" + TAG + "-" + name + ".png"));
-const CI = { "olnu.checkin": JSON.stringify({ id: "n3472634175", name: "Pitchers", lat: 60.14997, lng: 15.18679, at: Date.now() - 600e3, until: Date.now() + 5 * 3600e3 }) };
+const CI = { "olnu.checkin": JSON.stringify({ id: "n3472634175", name: "Pitchers", lat: 60.14997, lng: 15.18679, at: vnow() - 600e3, until: vnow() + 5 * 3600e3 }) };
 // State of the strip and anything on top of it.
 const stripState = (page) => page.evaluate(() => {
   const s = document.querySelector(".bp-strip");
@@ -156,9 +161,11 @@ const stripState = (page) => page.evaluate(() => {
     takeover: !!document.querySelector(".takeover"), mxPop: !!document.querySelector(".mx-pop"), sheet: !document.getElementById("sheet").hidden,
     calm: /TA DET LUGNT|Okej, okej/.test(document.body.innerText), toasts };
 });
+// Ranking / encouragement words that must not follow a 10th drink (care framing). Care words are fine.
+const RANKING = /rekord|vinnare|vinner|leder|ledningen|topplista|toppen|\betta\b|\bbäst|kung|drottning|mästare|en till|en runda till|kör på|fortsätt|full rulle|ös på|heja|bra jobbat|grattis|snyggt|\bmer!|starkt|legend/i;
 const S2 = {
   async third(browser) {
-    const { ctx, page, errors, calls } = await setup(browser, { meN: 2, heat: false, rallies: false, ls: Object.assign({ "olnu.beerTimes": JSON.stringify([Date.now() - 20 * 60e3, Date.now() - 10 * 60e3]) }, CI) });
+    const { ctx, page, errors, calls } = await setup(browser, { meN: 2, heat: false, rallies: false, ls: Object.assign({ "olnu.beerTimes": JSON.stringify([vnow() - 20 * 60e3, vnow() - 10 * 60e3]) }, CI) });
     await page.evaluate(() => document.getElementById("btn-beer").click());
     const seen = [];
     for (let i = 0; i < 10; i++) { await page.waitForTimeout(500); seen.push(await stripState(page)); }
@@ -207,14 +214,16 @@ const S2 = {
     await page.waitForTimeout(1500);
     const tk = await page.evaluate(() => { const t = document.querySelector(".takeover"); return t ? { title: t.querySelector(".to-title").textContent, sub: t.querySelector(".to-sub").textContent } : null; });
     console.log("takeover 10", JSON.stringify(tk));
-    ok("10: hype takeover (no warning words)", tk && !/vatten nu|gå hem|lugnt|räcker|ambulans|medevac/i.test(tk.title + tk.sub), tk);
+    // Store-safe rule (owner decision, tease + care): at 10 the takeover is a CARE text. Care words (vatten, mat, taxi, kompis)
+    // are allowed; ranking / encouragement words are not.
+    ok("10: care takeover (no ranking / encouragement words)", tk && tk.title && tk.sub && !RANKING.test(tk.title + " " + tk.sub), tk);
     await shot2(page, "tenth-takeover");
     await page.waitForFunction(() => !document.querySelector(".takeover"), null, { timeout: 12000 });
     await page.waitForTimeout(1200);
     const b = await stripState(page);
     const hud = await page.textContent("#my-streak");
     console.log("hud", hud, JSON.stringify(b));
-    ok("10: strip after takeover, tappable; no warning toast", b.vis && b.tappable && !b.toasts.some((x) => /Drick vatten|Ta ett stort glas|skjuts hem|Ta det lugnt/.test(x.t)), b);
+    ok("10: strip after takeover, tappable; no ranking / encouragement toast", b.vis && b.tappable && !b.toasts.some((x) => RANKING.test(x.t)), b);
     await shot2(page, "tenth-strip");
     ok("tenth: no page errors", errors.length === 0, errors.slice(0, 3).join(" | "));
     await ctx.close();

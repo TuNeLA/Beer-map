@@ -32,7 +32,7 @@ jobs:
           - name: ui-1
             filter: '^(ux3|social2|strip|av2-wizard)$'
           - name: ui-2
-            filter: '^(feat|nf|notif|cam)$'
+            filter: '^(feat|nf|notif|cam|autoci)$'
           - name: ui-3
             filter: '^(evx|safe|ds|ds-layout|ds-sheet|notif-sw)$'
           - name: map
@@ -63,7 +63,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-logs-${{ matrix.name }}
-          path: tests/e2e/out/logs/
+          path: |
+            tests/e2e/out/logs/
+            tests/e2e/out/traces/
           retention-days: 14
           if-no-files-found: warn
 

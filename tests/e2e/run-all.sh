@@ -65,9 +65,9 @@ run evx        $B evx-pw.js
 run safe       $B safe-pw.js
 run ds         $B ds-pw.js
 run ds-layout  $B ds-layout-pw.js
-# SPEC (not gating): sheet rules (DESIGN.md, 14 rules). fee76a5 (sheet system) brought it from 42 to 14 fails; the 14 left need triage by the design owner.
-# Make it gating (move it above this line) when ds06-ds10 are merged.
-SPEC=1 run ds-sheet $B ds-sheet-pw.js
+run ds-sheet   $B ds-sheet-pw.js   # sheet rules (DESIGN.md), newest copy from the design agent; gating since 2026-11-08
+# auto check-in (js/autoci.js): runs only when that module is in docs/ (branch 01-autoci merged)
+if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else [[ autoci =~ $FILTER ]] && RES+=("$(printf '%-16s %5s %5s  %-6s %s' autoci - - skip 'docs/js/autoci.js not merged yet')"); fi
 # --- unit (no browser) ---
 [[ notif-sw =~ $FILTER ]] && { (cd $D && timeout 120 node notif-sw-test.js $REPO > $LOG/notif-sw.1.log 2>&1); rc=$?
   p=$(grep -c '^PASS' $LOG/notif-sw.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/notif-sw.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1

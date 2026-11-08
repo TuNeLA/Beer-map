@@ -18,7 +18,7 @@ Logs: `tests/e2e/out/logs/` (git-ignored). Screenshots: `tests/e2e/out/`.
 | Group | Tests | In CI |
 |---|---|---|
 | UI (mocked Supabase) | ux3, social2, strip, av2-wizard, feat, nf, notif, cam, evx, safe, ds, ds-layout | **gating** |
-| Spec (not gating) | ds-sheet (DESIGN.md sheet rules, open work) | runs, never fails the build |
+| UI, newer | ds-sheet (DESIGN.md sheet rules), autoci (auto check-in; runs when `docs/js/autoci.js` exists) | **gating** |
 | Unit | notif-sw (`notif-sw-test.js`), `scripts/import-sport.test.mjs` | **gating** |
 | Map (Mapbox GL) | glmap, tiers2, tiers3, map4, glfix-avpins, zones, mbx | **optional**: needs secret `MAPBOX_TEST_TOKEN`, else "skip" |
 | Live (real Supabase, real users) | beta-pw.js, speed-pw.js | **never** in CI. Run by hand only |
