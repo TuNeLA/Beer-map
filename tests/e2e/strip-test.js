@@ -222,7 +222,7 @@ const S2 = {
 };
 (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME,
-    proxy: { server: process.env.HTTPS_PROXY || "http://127.0.0.1:9", bypass: "<-loopback>,127.0.0.1,localhost" }, args: ["--ignore-certificate-errors"] });
+    ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY, bypass: "<-loopback>,127.0.0.1,localhost" } } : {}), args: ["--ignore-certificate-errors"] });
   for (const [k, fn] of Object.entries(S2)) {
     if (ONLY.length && !ONLY.includes(k)) continue;
     try { await fn(browser); } catch (e) { ok("SCENARIO " + k + " threw", false, String(e && e.stack || e).slice(0, 500)); }

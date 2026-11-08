@@ -121,6 +121,7 @@ async function safetyMocks(page, st, calls) {
     if (box) { await page.mouse.move(box.x + 30, box.y + box.height / 2); await page.mouse.down(); await wait(page, 700); await page.mouse.up(); }
     await wait(page, 400);
     const pick = await page.evaluate(() => { const p = document.querySelector(".cm-picker"); return p ? [...p.querySelectorAll("button")].map((b) => b.textContent) : null; });
+    if (!pick) console.log("long-press debug", JSON.stringify({ li: !!li, box, msgs: await page.evaluate(() => [...document.querySelectorAll(".chat-msg")].map((m) => (m.dataset.mid || "?") + (m.classList.contains("me") ? "me" : "")).join(",")), sheet: await page.evaluate(() => { const s = document.getElementById("sheet"); return s && !s.hidden ? s.textContent.slice(0, 120) : null; }), ov: await page.evaluate(() => { const o = document.querySelector(".sf-ov"); return o ? o.textContent.slice(0, 120) : null; }) }));
     ok("long-press menu has 🚩 and 🚫", pick && pick.includes("🚩") && pick.includes("🚫"), pick);
     await shot(page, "chat-menu");
     await page.evaluate(() => { const b = [...document.querySelectorAll(".cm-picker button")].find((x) => x.textContent === "🚩"); if (b) b.click(); });
