@@ -774,7 +774,7 @@
         }
         var kinds = t("kindLow") || {}, rowsByName = {}, meRow = null, all = r.data || [], openPanel = null;
         var tot = function (m) { return Math.max(0, m.beers | 0) + Math.max(0, m.others | 0); };
-        all.slice().sort(function (a, b) { return tot(b) - tot(a); }).forEach(function (m) {
+        all.slice().forEach(function (m) {   // 0292: server order = meriter, most first
           var beers = Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), others = 0, parts = [];   // v14: all drinks count, total only
           if (beers) parts.push(beers + " 🍺");
           if (others) parts.push(others + " 🥃 " + (kinds[m.other_kind] || kinds.annat || ""));
