@@ -19,8 +19,8 @@
   var A = null, T0 = Date.now(), sess = rnd(), sq = 0, Q = [], L = [], dropped = 0, dead = false;
   var selfMs = 0, sent = 0, lastFlush = 0, flushing = false, lastDown = 0, lastFixAt = 0, lastFix = null, errSeen = {};
   var rpcAgg = {}, longN = 0, longMs = 0, cls = 0, lcp = 0, hiddenAt = 0, visStart = Date.now(), screen = "map", sheetAt = 0, mapAt = 0;
-  var OPTS = { flushMs: FLUSH_MS };
-  var TITLES = /*PNLOG_TITLES*/["Byt namn", "Din inloggning gick ut", "Ditt namn (anropssignal)", "Flytta konto", "Grupper", "Gå med", "Kvällens uppdrag", "Lägg Öl Nu på hemskärmen", "Profil", "Rapportera erbjudande", "Rita krogrunda", "Skapa grupp", "Sluta dricka", "Topplista ikväll", "Truppen", "Var dricker du? 🍺", "Vilken grupp delar taxin?", "gruppen", "Öl Nu", "☀️ Uteväder", "⚔️ Duell · {0}", "⚔️ {0} utmanar er!", "✉️ Byt e-post", "✏️ Entré-info", "➕ Bjud in", "➕ Lägg till ställe här", "⭐ Rekommenderad", "🌅 Kom alla hem?", "🌭 Nattmat öppet nu", "🌯 Kebabtoppen", "🌯 Öppet nu", "🍻 Skåltimmen", "🍾 Systemet", "🎁 Öl Wrapped · …", "🎉 Förfestläget", "🎉 Skoj & överraskningar", "🎖️ Hur får jag meriter?", "🎖️ Medaljceremonin", "🎖️ Min uniform", "🎖️ Uniform", "🎖️ …", "🎞️ Engångskameran", "🎲 Vem bjuder?", "🎵 Spotify Jam – du ä DJ:n", "🏠 Följ mig hem", "🏠 Hemzon", "👑 Roller", "👥 Vänner & 🧭 Hitta", "💰 Rapportera pris", "💸 Kvällens nota · {0}", "📊 Din kväll", "📋 Lägesrapport", "📍 Kom hit!", "📍 Var är du mest baserad?", "📣 Tipsa gruppen", "📥 Jag har en flyttkod", "📨 Bjud in", "📨 Bjud in fler", "📨 Inbjudan", "📨 Skapa event här", "📱 Mitt Swish-nummer", "📲 Bjud in vänner", "📸 Engångskamera", "🔐 Spara kontot", "🔑 Logga in", "🔒 Integritet", "🔔 Missa inte kaoset", "🔥 Helgstreak", "🕐 När stänger dom ikväll?", "🗑️ Radera allt om mig", "🗺️ …", "🚑 Kompisvakt", "🚕 Dela taxin", "🚕 Ta dig hem säkert", "🚪 Logga ut", "🛂 Ölpasset", "🟢 Ute nu i ", "🤕 Bakisrapporten", "🤝 Bli vänner?", "🥃 Sidospår", "🧢 Kapsylsamlingen", "🧭 Hitta ", "🧭 Hitta kompisen", "🧭 Vem vill du hitta?", "🪖 Inkallelse", "Hjälp till?"]/*END*/;   // known sheet titles (exact) and title prefixes ("…" at the end), made by the patch script
+  var OPTS = { flushMs: FLUSH_MS }, lastSum = Date.now();
+  var TITLES = /*PNLOG_TITLES*/["Byt namn", "Chefens val", "Din inloggning gick ut", "Ditt namn (anropssignal)", "Eventet", "Flytta konto", "God morgon!", "Grupper", "Gå med", "Ikväll?", "Kvällens uppdrag", "Lägg PintsNow på hemskärmen", "Mer på kartan", "Min karaktär", "Mina ställen", "PintsNow", "Profil", "Rapportera erbjudande", "Rapportera fel", "Rita krogrunda", "Skapa grupp", "Sluta dricka", "Topplista ikväll", "Truppen", "Var dricker du? 🍺", "Vem går du ut med?", "Vilken grupp delar taxin?", "gruppen", "☀️ Uteväder", "⚔️ Duell · {0}", "⚔️ {0} utmanar er!", "✉️ Byt e-post", "✏️ Entré-info", "➕ Bjud in", "➕ Lägg till ställe här", "🆘 Hämta mig", "🌅 Kom alla hem?", "🌭 Nattmat öppet nu", "🌯 Kebabtoppen", "🌯 Öppet nu", "🍻 Skåltimmen", "🍾 Systemet", "🎁 Öl Wrapped · …", "🎉 Förfestläget", "🎉 Skoj & överraskningar", "🎖️ Hur får jag meriter?", "🎖️ Medaljceremonin", "🎖️ Min uniform", "🎖️ Uniform", "🎖️ …", "🎞️ Engångskameran", "🎲 Vem fixar nästa?", "🎵 Spotify Jam – du ä DJ:n", "🏠 Följ mig hem", "🏠 Hemzon", "👑 Roller", "👥 Vänner & 🧭 Hitta", "💰 Rapportera pris", "📊 Din kväll", "📊 Min kväll", "📋 Lägesrapport", "📍 Din hemstad", "📍 Kom hit!", "📍 Ställen nära dig", "📣 Tipsa gruppen", "📥 Jag har en flyttkod", "📨 Bjud in", "📨 Bjud in fler", "📨 Inbjudan", "📨 Skapa event här", "📰 Kvällens tidning", "📱 Mitt Swish-nummer", "📲 Bjud in vänner", "📸 Engångskamera", "📸 Vem fotar ikväll?", "🔐 Spara kontot", "🔑 Logga in", "🔒 Integritet", "🔔 Vet när gänget drar ut", "🔥 Helgstreak", "🕐 När stänger dom ikväll?", "🗂️ Tidigare event", "🗑️ Radera mitt konto", "🗺️ …", "🚑 Kompisvakt", "🚕 Dela taxin", "🚕 Hemfärd", "🚕 Ta dig hem säkert", "🚪 Logga ut", "🛂 Ölpasset", "🟢 Ute nu i ", "🤕 Bakisrapporten", "🤝 Bli vänner?", "🥃 Sidospår", "🧢 Kapsylsamlingen", "🧭 Hitta ", "🧭 Hitta kompisen", "🧭 Vem vill du hitta?", "🪖 Inkallelse", "Hjälp till?"]/*END*/;   // known sheet titles (exact) and title prefixes ("…" at the end), made by the patch script
 
   function rnd() { var s = ""; for (var i = 0; i < 10; i++) s += "abcdefghijkmnpqrstuvwxyz23456789".charAt(Math.floor(Math.random() * 32)); return s; }
   function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -148,7 +148,7 @@
   function flush(beacon) {
     if (dead || flushing && !beacon) return Promise.resolve(false);
     var t = pnow();
-    if (!beacon) rpcSummary();
+    if (!beacon && Date.now() - lastSum > 600e3) { rpcSummary(); lastSum = Date.now(); }   // RPC timings: every 10 min + at hide
     if (!Q.length && !L.length) return Promise.resolve(false);
     var tok = token();
     if (!tok || !CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return Promise.resolve(false);   // no account yet: keep the events (capped)
@@ -322,7 +322,7 @@
     var d = null; try { d = !err && A && A.parseData ? A.parseData(r.data) : null; } catch (e) {}
     var ok = !err && !(d && d.ok === false);
     if (err) errOnce("err.rpc", { fn: fn, c: String(err.code || err.message || "error").slice(0, 40) });
-    if (FEATURE.test(fn)) push("rpc", { fn: fn, ok: ok, ms: Math.round(ms) });
+    if (FEATURE.test(fn) && !/(_mine|_state|_status|_poll|_list|_get|_feed|_group)$/.test(fn)) push("rpc", { fn: fn, ok: ok, ms: Math.round(ms) });
     if (!ok) return;
     params = params || {};
     if (fn === "check_in") locRow("ci", withFix({ b: params.p_bar_id, d: { src: autoSrc() } }));

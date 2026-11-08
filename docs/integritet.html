@@ -43,9 +43,27 @@
 <tr><td>Swish-nummer – bara om du lägger in det för att dela notan</td><td>Samtycke (6.1 a). Alla i gruppen ser numret</td><td>Tills du tar bort det eller raderar kontot</td></tr>
 <tr><td>Notis-adress och ett område på ~1 km (bara om du slår på notiser)</td><td>Samtycke (6.1 a)</td><td>Tills du stänger av notiser; området tas bort efter 30 dagar</td></tr>
 <tr><td>Snabbhetsdata: telefonmodell, webbläsare, appversion, laddtid, fel</td><td>Hitta buggar (6.1 f)</td><td>Modell och webbläsare tas bort efter 30 dagar</td></tr>
+<tr><td>Användning: vad du trycker på (knappens namn, aldrig text), vilka menyer du öppnar, fel och hur snabb appen ä, appversion</td><td>Förbättra appen och hitta buggar (6.1 f). Du kan stänga av det</td><td>30 dagar; sen finns bara antal per dag kvar (utan konto-id)</td></tr>
+<tr><td>Positionslogg (under betan): din position max 1 gång/min när appen ä öppen, och dina in- och utcheckningar</td><td>Göra automatisk incheckning bättre (6.1 f). Du kan stänga av det</td><td>30 dagar. Stänger du av det tas det sparade bort direkt</td></tr>
 <tr><td>Anmälningar och blockeringar</td><td>Trygghet och moderering (6.1 f)</td><td>Så länge de behövs</td></tr>
 </table>
 <p class="muted">Varför 30 dagar för platser? "Mina kvällar" visar 30 dagar bakåt, och vi behöver tid att hantera anmälningar. Längre än så behövs inte. Städningen körs automatiskt varje natt.</p>
+
+<section id="pnlog">
+<h2>📊 Användning och position (under betan)</h2>
+<p>Under betan, innan appen finns i App Store och Google Play, sparar vi mer för att göra appen bättre. Vi gör det öppet, och du kan stänga av det.</p>
+<ul>
+<li><b>Användning:</b> vilka knappar du trycker på (knappens namn i koden, aldrig text du skriver), vilka menyer du öppnar, fel i appen, hur snabb appen ä (laddtid, hur länge en meny tar att öppna) och appversion. Inga namn, inga meddelanden, ingen position.</li>
+<li><b>Positionslogg:</b> din position högst en gång i minuten <i>medan appen ä öppen</i> (aldrig i bakgrunden, aldrig om du int' redan har gett appen tillgång till platsen), och när du checkar in, checkar ut eller loggar en dryck. Vi jämför det med vad automatisk incheckning gjorde, så att den blir rätt oftare. Inte i spökläge. I din hemzon sparas ingen position.</li>
+<li><b>Varför:</b> berättigat intresse (GDPR art. 6.1 f): att appen fungerar och att incheckningen blir rätt. Ingen reklam, ingen profil, ingen delning med andra företag.</li>
+<li><b>Hur länge:</b> 30 dagar. Sen töms raderna automatiskt varje natt; kvar blir bara antal per dag utan konto-id.</li>
+<li><b>Vem ser det:</b> bara vi (PintsNow). Det lagras hos Supabase i EU.</li>
+<li><b>Stäng av:</b> ⚙️ Inställningar → Integritet → "Hjälp till att förbättra appen" och "Spara position för bättre incheckning". Stänger du av positionen tar vi bort din sparade positionslogg direkt. Felrapporter (fel i appen, utan position) skickas alltid.</li>
+<li><b>Första gången</b> positionsloggen startar visar appen en kort ruta om det.</li>
+<li>När appen kommer till App Store och Google Play blir detta frivilligt (du får en fråga). Bara felrapporter skickas utan fråga.</li>
+</ul>
+<p lang="en"><em>Beta logging: until the store launch the app logs which buttons you tap (button id, never your text), screens, errors, speed and app version, and – while the app is open – your position at most once a minute plus check-ins/outs, to improve automatic check-in. Legitimate interest (GDPR 6.1 f), first party only, kept 30 days, both can be turned off in Settings → Integritet (turning off the position log removes what was saved). Error reports (no position) are always sent.</em></p>
+</section>
 
 <h2>Vem ser vad?</h2>
 <ul>
@@ -80,7 +98,7 @@
 
 <section lang="en">
 <h2>In English (summary for app review)</h2>
-<p>Controller: Anton Larsson (TuNeLA), Ludvika, Sweden, <a href="mailto:support@pintsnow.com">support@pintsnow.com</a>. We store: an account id (anonymous unless you save it with an e-mail one-time-code login), name, avatar, an 18+ yes/no flag (not the birth year), drink count and time, location (pin, check-ins, optional walk-home and find-a-friend), chat/photos/voice/direct messages you send, an optional Swish number for splitting a bill (visible to your group), a push address with a ~1 km area if you enable notifications, speed data (device model, browser, load time, errors), and reports/blocks. Exact locations are reduced to a ~5 km area after 30 days; device model and browser are removed after 30 days. Processors: Supabase (EU), Mapbox (US, EU safeguards), GitHub Pages, Google Workspace (e-mail). No ads, no cross-app tracking, no selling of data. Delete in the app (Settings → Radera mitt konto) or at <a href="./radera.html">pintsnow.com/radera</a>.</p>
+<p>Controller: Anton Larsson (TuNeLA), Ludvika, Sweden, <a href="mailto:support@pintsnow.com">support@pintsnow.com</a>. We store: an account id (anonymous unless you save it with an e-mail one-time-code login), name, avatar, an 18+ yes/no flag (not the birth year), drink count and time, location (pin, check-ins, optional walk-home and find-a-friend), chat/photos/voice/direct messages you send, an optional Swish number for splitting a bill (visible to your group), a push address with a ~1 km area if you enable notifications, speed data (device model, browser, load time, errors), and reports/blocks. During the beta: usage events (button ids, screens, errors, speed) and, while the app is open, position at most once a minute plus check-ins, kept 30 days, can be turned off. Exact locations are reduced to a ~5 km area after 30 days; device model and browser are removed after 30 days. Processors: Supabase (EU), Mapbox (US, EU safeguards), GitHub Pages, Google Workspace (e-mail). No ads, no cross-app tracking, no selling of data. Delete in the app (Settings → Radera mitt konto) or at <a href="./radera.html">pintsnow.com/radera</a>.</p>
 </section>
 </main>
 </body>

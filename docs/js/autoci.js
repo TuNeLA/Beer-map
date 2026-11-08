@@ -33,6 +33,10 @@
   var BARLIKE = { pub: 1, bar: 1, nightclub: 1, biergarten: 1 };
   var skew = 0;
   function now() { return Date.now() + skew; }
+  // 📊 event API for PNLOG (docs/js/pnlog.js): listen(fn(type, data)). Read-only: a listener never changes a decision.
+  var subs = [];
+  function emit(type, x) { for (var i = 0; i < subs.length; i++) { try { subs[i](type, x); } catch (e) {} } }
+  function spotsOut(list) { return (list || []).slice(0, 5).map(function (s) { return { id: sid(s), m: Math.round(s.d), bl: barLike(s.bar) ? 1 : 0, pl: s.place ? 1 : 0 }; }); }
 
   var st = { watching: false, timer: 0, asking: false, perm: "unknown", last: null, lastUsed: 0, run: null, far: null, sw: null,
     snooze: {}, prevCi: null, selfOut: null, hiddenAt: 0, resumed: false, busy: false, readings: 0 };
@@ -109,6 +113,7 @@
     st.last = r;
     if (r.t - st.lastUsed < THROTTLE_MS) return;
     st.lastUsed = r.t; st.readings++;
+    emit("fix", { lat: r.lat, lng: r.lng, acc: r.acc });
     evaluate(r);
   }
   function spots(r) {
@@ -156,6 +161,7 @@
   function inLogic(r, list) {
     if (myCi()) return;
     var v = classify(r, list);
+    emit("eval", { mode: "in", acc: r.acc, spots: spotsOut(list), win: v.win ? sid(v.win) : null, n: st.run ? st.run.n : 0, clear: !!v.win });
     if (!v.C.length) { st.run = null; return; }
     var run = st.run, has = run && v.C.some(function (s) { return sid(s) === run.id; });
     if (!has) run = st.run = { id: sid(v.C[0]), spot: v.C[0], t0: r.t, n: 0, clear: true, asked: false };
@@ -192,16 +198,18 @@
     new MutationObserver(function (ms, mo) {
       if (t.isConnected) { shown = true; return; }
       if (!shown) return;
-      mo.disconnect(); if (!picked) ids.forEach(function (id) { st.snooze[id] = now() + SNOOZE_MS; });
+      mo.disconnect(); if (!picked) { ids.forEach(function (id) { st.snooze[id] = now() + SNOOZE_MS; }); emit("answer", { ans: "ignored", ids: ids.join(",") }); }
     }).observe(document.getElementById("toasts") || document.body, { childList: true });
   }
   function suggest(bar, swap) {
+    emit("decide", { act: swap ? "switch" : "suggest", b: String(bar.id) });
     var n = short(bar.name), t = toastEl(swap ? "Bytt till " + n + "?" : "Är du på " + n + "?", "ac-sug");
     addBtn(t, ic("check") + "Checka in", "btn-amber ac-yes", function () { checkIn(bar, false); });
     snoozeOnClose(t, [String(bar.id)]);
     return t;
   }
   function choose(a, b) {
+    emit("decide", { act: "choose", b: String(a.id), b2: String(b.id) });
     var t = toastEl(short(a.name) + " eller " + short(b.name) + "?", "ac-sug");
     addBtn(t, ic("check") + esc(short(a.name)), "btn-amber ac-pick", function () { checkIn(a, false); });
     addBtn(t, ic("check") + esc(short(b.name)), "btn-amber ac-pick", function () { checkIn(b, false); });
@@ -210,6 +218,7 @@
   function esc(s) { return U.esc(s); }
   function checkIn(bar, auto) {
     if (!ready() || ghost()) return;
+    emit(auto ? "decide" : "answer", auto ? { act: "auto", b: String(bar.id) } : { ans: "accepted", b: String(bar.id) });
     var go = function () {
       var name = String(bar.name || "Krogen").replace(/\s+/g, " ").trim().slice(0, 60);
       A.rpc("check_in", { p_bar_id: String(bar.id), p_bar_name: name, p_lat: bar.lat, p_lng: bar.lng }).then(function (r) {
@@ -247,6 +256,7 @@
     spots(r).then(function (list) {
       st.busy = false;
       var v = classify(r, list), w = v.win;
+      emit("eval", { mode: "out", acc: r.acc, spots: spotsOut(list), win: w ? sid(w) : null, n: f.n, clear: !!w });
       if (w && sid(w) !== String(me.id) && !snoozed(sid(w))) {
         var s = st.sw;
         if (!s || s.id !== sid(w)) s = st.sw = { id: sid(w), t0: r.t, n: 0, bar: w.bar };
@@ -258,6 +268,7 @@
   }
   function checkOut(me, why) {
     if (!me || !A.rpc) return;
+    emit("decide", { act: "checkout", why: why, b: String(me.id) });
     st.selfOut = String(me.id); st.far = null; st.sw = null;
     A.rpc("check_out").then(function (r) {
       if (r && r.error) { st.selfOut = null; return; }
@@ -300,6 +311,7 @@
     onPoll: function () { if (!A) return; handOut(); if (!st.watching) permCheck().then(sync); closingCheck(); },
     settingsSheet: settingsSheet,
     on: on, setOn: setOn,
+    listen: function (fn) { if (typeof fn === "function") subs.push(fn); return function () { subs = subs.filter(function (x) { return x !== fn; }); }; },
     state: function () { return { watching: st.watching, perm: st.perm, run: st.run ? { id: st.run.id, n: st.run.n, clear: st.run.clear, asked: st.run.asked } : null,
       far: st.far, sw: st.sw ? { id: st.sw.id, n: st.sw.n, asked: !!st.sw.askedAt } : null, readings: st.readings, last: st.last }; },
     _tick: tick,
