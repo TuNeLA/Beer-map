@@ -46,7 +46,7 @@
     ".leaflet-popup a.af-qr", "#sheet-body .gpg-ph-t", "#sheet-body .bp-sb-h > span", "#sheet-body .pk-ikv-t > b", "#sheet-body .pk-h", "#sheet-body .np-h", "#sheet-body .ht-h", "#sheet-body .pn-it > .pn-e"].join(",");
   // fun copy / user text / game art: emoji stay
   var KEEP = ".chat-list, .gpg-msgs, .cm-body, .cm-text, .dm-list, .dm-msg, .tk-track, .takeover, .mx-pop, .og, .kind-grid, .no-pi, .sp-cards, .sp-card, .sp-room, " +
-    ".rx, .pp-rx, .react, .reactions, .emoji, .ev-react, .bm-b, .pf-av, .av-wiz, .avatar, input, textarea, select, [contenteditable], .sk-, .ff-cards, .pt-cards";
+    ".pn-gikv, .rx, .pp-rx, .react, .reactions, .emoji, .ev-react, .bm-b, .pf-av, .av-wiz, .avatar, input, textarea, select, [contenteditable], .sk-, .ff-cards, .pt-cards";
   var EXTRA = { "🤔": "help", "🛋️": "home", "🛋": "home", "💧": "drink", "🎯": "locate", "🧪": "sparkle", "🔙": "chev-left", "🙋": "hand", "🫡": "hand", "🏁": "flag", "🎤": "speaker",
     "📞": "phone", "☎️": "phone", "✋": "hand", "⏹️": "x", "⏹": "x", "🚑": "sos", "🪖": "medal", "🪩": "sparkle", "🖨️": "qr", "🗣️": "megaphone", "🧾": "receipt", "☕": "drink", "🍔": "food", "🍟": "food", "🥙": "food", "🍜": "food", "🍣": "food", "🥗": "food", "🧁": "food", "🍦": "food", "📊": "clock", "🧑‍🎨": "user", "👆": "hand", "📈": "clock" };
   function iconFor(e) {
@@ -571,3 +571,182 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds05b dock END */
+/* ds06 sheets START — one amber primary per sheet (the first visible one stays; the others look secondary); emoji out of chrome labels. */
+(function () {
+  "use strict";
+  function one() {
+    var b = document.getElementById("sheet-body"), s = document.getElementById("sheet");
+    if (!b || !s || s.hidden) return;
+    var am = [].filter.call(b.querySelectorAll(".btn-amber:not(.pn-demote), .ds-btn-primary:not(.pn-demote)"), function (x) { return x.getClientRects().length; });
+    am.slice(1).forEach(function (x) { x.classList.add("pn-demote"); });
+  }
+  // emoji inside chrome labels (not only leading): headings, buttons, summaries, tab labels lose them (pnds iconize does the
+  // leading one; this does the rest). Fun copy / chat / game art keep theirs (same KEEP list as pnds iconize).
+  var EMO = /(?:\p{Extended_Pictographic}(?:\uFE0F|\u20E3|[\u{1F3FB}-\u{1F3FF}]|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s?/gu;
+  var KEEP = ".chat-list, .gpg-msgs, .cm-body, .dm-list, .tk-track, .takeover, .mx-pop, .sp-cards, .kind-grid, .rx, .reactions, input, textarea, [contenteditable], .no-pi";
+  function scrub(root) {
+    if (!root) return;
+    root.querySelectorAll("h2, h3, h4, button, summary, [role=button], .bm-b, .pp-sec-h, .gpg-now-s, .pn-gikv").forEach(function (el) {
+      if (el.closest(KEEP)) return;
+      var tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), c;
+      while ((c = tw.nextNode())) {
+        if (c.parentNode && c.parentNode.closest && c.parentNode.closest(KEEP + ", .pf-ribbons, .md-rib, svg")) continue;
+        if (!EMO.test(c.nodeValue)) { EMO.lastIndex = 0; continue; }
+        EMO.lastIndex = 0;
+        var v = c.nodeValue.replace(EMO, "").replace(/\s{2,}/g, " ").replace(/·\s*·/g, "·");
+        if (v.trim()) c.nodeValue = v;
+      }
+      EMO.lastIndex = 0;
+    });
+  }
+  var t = 0;
+  function soon() { clearTimeout(t); t = setTimeout(function () { one(); scrub(document.getElementById("sheet")); var p = document.querySelector(".leaflet-popup"); if (p) scrub(p); }, 120); }
+  function start() {
+    var b = document.getElementById("sheet"); if (!b || !window.MutationObserver) return;
+    new MutationObserver(soon).observe(b, { childList: true, subtree: true, characterData: true });
+    var pp = document.querySelector(".leaflet-popup-pane, #map"); if (pp) new MutationObserver(soon).observe(pp, { childList: true, subtree: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds06 sheets END */
+/* ds07 bar START — Krogkortet (design review "Förslag: nytt krogkort"). app.js barPopup passes its finished HTML through
+   PNDS.barSheet(html, bar, list). Order: header (title + "Pub · Öppet till 01:00") → hero (crowd meter + friends here) →
+   other lines (events, call-outs) → ONE action row (Checka in amber + På väg ghost, equal width; checked in = Checka ut, På väg
+   hidden) → photos 72 × 72 → Folk här → "Info" grouped list (hours/price, uteservering, sport, Kö och erbjudanden) → "Mer"
+   (Bjud in hit, Incheckade, Stammis & kung, öppettider/pris reports, dansgolv, QR-affisch, fel plats, finns inte längre).
+   Every module element is MOVED, never rebuilt: modules repaint their own element in place (outerHTML), so it stays put.
+   Kept for tests / other code: .bs, .bs-head, .pp-title, .pp-act, .pp-folds, details.pp-fold[data-fold=here|bp|rally],
+   all data-* hooks. New: .pn-bs7, .pn-bs-hero, .pn-bs-fr, .pn-bs-photos, .pn-bs-h, .pn-bs-info, details[data-fold=mer]. */
+(function () {
+  "use strict";
+  var EMO = /(?:\p{Extended_Pictographic}(?:️|⃣|[\u{1F3FB}-\u{1F3FF}]|‍\p{Extended_Pictographic}️?)*)\s?/gu;
+  function noEmo(s) { return String(s || "").replace(EMO, "").replace(/\s{2,}/g, " ").trim(); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function ico(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  function foldsOpen() { try { return JSON.parse(sessionStorage.getItem("olnu.folds") || "{}") || {}; } catch (e) { return {}; } }
+  function mk(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function kid(p, sel) { if (!p) return null; for (var i = 0; i < p.children.length; i++) if (p.children[i].matches(sel)) return p.children[i]; return null; }
+  function who(n) {
+    if (n.length === 1) return n[0] + " är här";
+    if (n.length === 2) return n[0] + " och " + n[1] + " är här";
+    return n[0] + ", " + n[1] + " och " + (n.length - 2) + " till är här";
+  }
+  function bodyOf(d) { var b = d && kid(d, ".pf-body"); return b ? [].slice.call(b.childNodes) : []; }
+  function sec(cls, title, nodes) {
+    var s = mk("div", "pn-bs-sec " + cls, "<h4>" + esc(title) + "</h4>");
+    nodes.forEach(function (n) { s.appendChild(n); });
+    return s;
+  }
+  function barSheet(html, bar, list) {
+    try {
+      var t = document.createElement("template"); t.innerHTML = html;
+      var bs = t.content.firstElementChild;
+      if (!bs || !bs.classList.contains("bs") || bs.classList.contains("pn-bs7")) return html;
+      bs.classList.add("pn-bs7");
+      var kids = [].slice.call(bs.children), head = kid(bs, ".bs-head");
+      // header: subtitle "Pub · Öppet till 01:00" (hours from OPPET, the same source as the info line)
+      var meta = head && kid(head, ".bs-meta");
+      if (meta && bar && window.OPPET && window.OPPET.barStatus) {
+        try {
+          var st = window.OPPET.barStatus(bar), lb = st && window.OPPET.label(st);
+          if (lb && lb.t) { var oh = mk("span", "pn-bs-oh " + (lb.cls || "")); oh.textContent = noEmo(lb.t); meta.appendChild(document.createTextNode(" · ")); meta.appendChild(oh); }
+        } catch (e) {}
+      }
+      // hero: crowd meter + friends here (+ the small king / queue marks)
+      var hero = mk("div", "pn-bs-hero"), meter = kid(bs, ".pn-meter");
+      if (meter) hero.appendChild(meter);
+      var names = [];
+      (list || []).forEach(function (b) { var n = b && b.friend_name ? String(b.friend_name).trim() : ""; if (n && names.indexOf(n) < 0) names.push(n); });
+      if (names.length) {
+        hero.appendChild(mk("div", "pn-bs-fr", '<span class="pn-bs-avs" aria-hidden="true">' +
+          names.slice(0, 3).map(function (n) { return '<i class="pn-bs-av">' + esc(n.charAt(0).toUpperCase()) + "</i>"; }).join("") +
+          '</span><span class="pn-bs-frt">' + esc(who(names)) + "</span>"));
+      }
+      var icons = head && kid(head, ".bs-icons");
+      if (icons) hero.appendChild(icons);
+      if (hero.children.length && head) head.after(hero);
+      // lines: invite → Mer; hours/price, uteservering, sport → Info; photos → own row; the rest stays under the hero
+      var info = mk("div", "pn-bs-info"), mer = [], photos = null, inv = null;
+      kids.forEach(function (k) {
+        if (!k.classList.contains("ev-line") && !k.classList.contains("sp-tag")) return;
+        if (k.classList.contains("inv-line")) {
+          if (k.classList.contains("solo")) inv = k;
+          else { var b = k.querySelector(".inv-here"); if (b) { inv = mk("div", "ev-line inv-line solo pn-bs-inv"); inv.appendChild(b.cloneNode(true)); } }
+          if (inv === k) k.remove();
+          return;
+        }
+        if (k.matches(".bi-line, .ute-line, .sp-tag")) { info.appendChild(k); return; }
+        if (k.classList.contains("bf-line")) { photos = k; k.remove(); }
+      });
+      var fd = function (key) { return bs.querySelector('details.pp-fold[data-fold="' + key + '"]'); };
+      var fInfo = fd("info"), fCi = fd("ci"), fStam = fd("stam"), fBp = fd("bp");
+      var merOpen = !!foldsOpen().mer || [fInfo, fCi, fStam].some(function (d) { return d && d.hasAttribute("open"); });
+      var infoNodes = bodyOf(fInfo), pick = function (sel) { var out = []; infoNodes = infoNodes.filter(function (n) { if (n.nodeType === 1 && n.matches(sel)) { out.push(n); return false; } return true; }); return out; };
+      pick(".sp-tag").forEach(function (n) { info.appendChild(n); });
+      if (fBp) {
+        var h = fBp.querySelector("summary .pp-sec-h");
+        if (h) h.textContent = "Kö och erbjudanden";
+        info.appendChild(fBp);
+      }
+      if (inv) mer.push(inv);
+      if (fCi) { var n = fCi.querySelector(".pf-n"); mer.push(sec("pn-bs-ci", "Incheckade" + (n && n.textContent.trim() ? " · " + n.textContent.trim() : ""), bodyOf(fCi))); fCi.remove(); }
+      if (fStam) { mer.push(sec("pn-bs-stam", "Stammis & kung", bodyOf(fStam))); fStam.remove(); }
+      mer = mer.concat(pick(".bi-info"), pick(".cr-dance"), pick(".af-qr"), pick(".pp-info"), pick(".gone-sec"), infoNodes);
+      if (fInfo) fInfo.remove();
+      // photos right under the action row
+      var act = kid(bs, ".pp-act");
+      if (act) {
+        act.classList.add("pn-bs-act");
+        if (act.querySelector(".ci-out")) { act.classList.add("pn-bs-in"); var eta = act.querySelector(".pp-sec-eta"); if (eta) eta.classList.add("pn-bs-hide"); }
+      }
+      if (photos) { photos.classList.add("pn-bs-photos"); var at = act || (hero.parentNode ? hero : head); if (at) at.after(photos); else bs.prepend(photos); }
+      // Folk här (+ call-outs) stay in .pp-folds; then "Info"; then "Mer" last
+      var folds = kid(bs, ".pp-folds");
+      if (!folds) { folds = mk("div", "pp-folds"); bs.appendChild(folds); }
+      var tail = folds;
+      if (info.children.length) {
+        var ih = mk("h3", "pn-bs-h", "Info"); tail.after(ih); ih.after(info); tail = info;
+      }
+      if (mer.length) {
+        var md = mk("details", "pp-fold pp-sec pp-sec-mer");
+        md.setAttribute("data-fold", "mer"); if (merOpen) md.setAttribute("open", "");
+        md.innerHTML = '<summary><span class="pp-sec-h">Mer</span><span class="pn-bs-sub">Stammis, bjud in, QR</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
+        var body = mk("div", "pf-body"); mer.forEach(function (x) { body.appendChild(x); }); md.appendChild(body);
+        var wrap = mk("div", "pp-folds pn-bs-folds2"); wrap.appendChild(md); tail.after(wrap);
+      }
+      if (!folds.children.length) folds.remove();
+      return bs.outerHTML;
+    } catch (e) { return html; }
+  }
+  // Live tweaks after modules repaint their parts: sport vote buttons say Ja / Nej (+ count) instead of 👍 / 👎; the weather value
+  // next to the sun icon loses its weather emoji (one sun, not two).
+  function fix(root) {
+    root.querySelectorAll(".pn-bs7 .ute-wx").forEach(function (w) { var v = noEmo(w.textContent); if (v && w.textContent !== v) w.textContent = v; });
+    root.querySelectorAll(".pn-bs7 .sp-b[data-spvote]").forEach(function (b) {
+      var c = (b.textContent.match(/\d+/) || [""])[0], want = (b.getAttribute("data-spvote") === "1" ? "Ja" : "Nej") + (c ? " " + c : "");
+      if (b.textContent !== want) b.textContent = want;
+    });
+  }
+  function onOpen(e) {
+    var root = e.popup && e.popup.getElement && e.popup.getElement();
+    if (!root || !root.querySelector(".pn-bs7")) return;
+    root.classList.add("pn-bs7-root");
+    var x = root.querySelector(".leaflet-popup-close-button");
+    if (x && !x.querySelector("svg")) { x.innerHTML = ico("x") || "×"; x.setAttribute("aria-label", "Stäng"); x.setAttribute("title", "Stäng"); }
+    fix(root);
+    if (!root._pnBs7) {
+      var tm = 0;
+      root._pnBs7 = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { fix(root); }, 30); });
+      root._pnBs7.observe(root, { childList: true, subtree: true });
+    }
+  }
+  function hook() {
+    var m = window.__map; if (!m || !m.on) return false;
+    if (!m._pnBs7) { m._pnBs7 = true; m.on("popupopen", onOpen); }
+    return true;
+  }
+  if (!hook()) { var iv = setInterval(function () { if (hook()) clearInterval(iv); }, 400); }
+  window.PNDS = window.PNDS || {};
+  window.PNDS.barSheet = barSheet;
+})();
+/* ds07 bar END */

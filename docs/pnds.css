@@ -407,3 +407,175 @@ body:not(:has(.bm-mblogo:not([hidden]))) #btn-attrib{left:calc(var(--sal) + var(
 #btn-attrib{bottom:var(--pn-cred-b, calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px)) !important}
 .attrib-pop{bottom:calc(var(--pn-cred-b, calc(var(--pn-dock-b, var(--dock-h,212px)) + 12px)) + 48px) !important}
 /* ds05c annat END */
+/* ds06 sheets START — ONE sheet system (design review "Fönster-regler", 2026-11-07). Rules: DESIGN.md "Sheet rules". */
+:root{--pn-sheet-x:16px;--pn-row-h:56px;--pn-chev:16px;--pn-btn-h:48px;
+  --pn-chev-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l7 7-7 7'/%3E%3C/svg%3E")}
+/* 1 · header: 44 | title | 44, 16 px sides, ≥ 60 px, 12 px under the grip. ✕ right cell, round 44, icon x, --ds-raised.
+   ‹ left cell only on sub-screens (then the title is centred and ✕ hides). Title: Black Ops One 22/28 amber, sentence
+   case, no icon. Subtitle 14 grey. */
+.sheet-head{grid-template-columns:44px minmax(0,1fr) 44px !important;column-gap:var(--sp-2) !important;min-height:60px !important;padding:var(--sp-3) 0 var(--sp-3) !important;margin:0 !important}
+.sheet-head>#pn-back{margin:0 !important;width:44px !important;height:44px !important;border-radius:var(--r-pill) !important;background:var(--ds-raised) !important;justify-self:start}
+.sheet-head>#sheet-close{justify-self:end;width:44px !important;height:44px !important}
+.sheet-head h2 .pi,.sheet-head h2 .pi-lead{display:none !important}
+.pn-subtitle{display:block;margin:-8px 0 var(--sp-3);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);text-align:left}
+/* 2 · spacing: 24 between sections, 8 between items; section heading 14 grey + 8 under; 16 px sides */
+.sheet-body h3,.sheet-body h3.ds-section-h,.sheet-body .ds-section-h{margin:var(--sp-5) 0 var(--sp-2) !important;padding:0 !important}
+.sheet-body>h3:first-child,.sheet-body>.ds-section:first-child>.ds-section-h,.inv-pane>h3:first-child{margin-top:0 !important}
+#sheet-body.ds-set .ds-section-h{padding:0 !important}
+.sheet-body h3 .pi,.sheet-body h3 .pi-lead,.ds-sec-i{display:none !important}
+/* 3 · ONE card: --ds-card, radius 16, padding 12/16, 1 px border. No card in a card. */
+.ds-card,.gitem.gcard,.ev-row,.nr-tile,.confirm,.bd-optin,.chief-gi,.inv-note,.pl-warn,.pn-out,.gpg-now,.skj-card,
+.gitem:not(.gcard)>div.gp.gpg>.gpg-chat,.gitem:not(.gcard)>div.gp.gpg>.fm-gi,.pn-meter,.pf-hero,.ux-cset,.pk-ikv,.jn-app{
+  background:var(--ds-card) !important;border:1px solid var(--ds-border) !important;border-radius:var(--r-lg) !important;padding:var(--sp-3) var(--sp-4) !important;box-shadow:none !important}
+:is(.ds-card,.pf-hero) :is(.ds-card,.pf-hero,.pf-rank,.pf-tile){background:transparent !important;border:0 !important;border-radius:0 !important;padding:0 !important;box-shadow:none !important}
+.info{border-radius:var(--r-lg) !important;padding:var(--sp-3) var(--sp-4) !important}
+/* 4 · ONE list row: ≥ 56 px, padding 12/16, icon 20, title 16/600, sub 14 grey, one chevron (chev-right 16 grey, 16 px from
+   the right). Lists are grouped (one card, 1 px dividers). */
+.ds-row,.pn-row,.pn-fold-row,#sheet-body.ds-set .ds-item>.row>.btn,#sheet-body.ds-set .sf-set-row>.btn,#sheet-body.ds-set .ds-item>.toggle-row,
+#sheet-body.ds-set .push-prefs>.toggle-row,.pn-bs-row>summary,.pp-fold>summary{
+  min-height:var(--pn-row-h) !important;padding:var(--sp-3) var(--sp-4) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important;gap:var(--sp-3) !important}
+.ds-row-t>span:first-child,#sheet-body.ds-set .toggle-row>span{font-weight:600 !important}
+.ds-row-t small,.ds-row small{font:400 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important}
+.ds-row-i{width:20px !important;height:20px !important;background:transparent !important;border-radius:0 !important;color:var(--ds-text-2)}
+.ds-row-i .pi,.ds-row-i .pn-ic,.pn-row .ds-row-i .pn-ic{width:20px !important;height:20px !important}
+/* the one chevron: every "›" text chevron becomes the chev-right icon (16 px, grey, 16 px from the right) */
+.ds-chev::after,#sheet-body.ds-set .ds-item>.row>.btn::after,#sheet-body.ds-set .ds-item>.btn::after,#sheet-body.ds-set .ds-item>div>.sos-block>.btn::after,
+#sheet-body.ds-set .sf-set-row>.btn::after,details.pn-codefold>summary::after{
+  content:"" !important;width:var(--pn-chev) !important;height:var(--pn-chev) !important;background:var(--ds-muted) !important;font-size:0 !important;
+  -webkit-mask:var(--pn-chev-img) center/contain no-repeat !important;mask:var(--pn-chev-img) center/contain no-repeat !important;transform:translateY(-50%) !important}
+.ds-chev::after{position:static !important;transform:none !important;margin-left:auto;padding:0 !important;display:block}
+#sheet-body.ds-set .ds-item>.row>.btn::after,#sheet-body.ds-set .ds-item>.btn::after,#sheet-body.ds-set .sf-set-row>.btn::after{right:var(--sp-4) !important}
+details.pn-codefold>summary::after{transform:none !important}
+details.pn-codefold[open]>summary::after{transform:rotate(90deg) !important}
+.pn-fold-row>.pi-chev-right,.pn-fold-row>.pi-chev-down,.pn-out .pi-chev-right,.pn-row .pi-chev-right{width:var(--pn-chev) !important;height:var(--pn-chev) !important;color:var(--ds-muted) !important}
+.pn-fold-row>span:last-child .pi{width:var(--pn-chev) !important;height:var(--pn-chev) !important;color:var(--ds-muted) !important}
+/* 5 · ONE segmented control for every choice of 2–4 (tabs, filters, map style, Ikväll?, Hämta mig minutes, top lists) */
+.sheet .tabs,.sheet .tabs.inv-tabs,.sheet .seg:not(.bm-seg),.bp-seg,.tt-bar,#sheet-body[data-tt] .tabs:not(.tt-bar),.np-tabs,.np-seg,.pk-seg,.pn-ikv-seg,.pf-tabs{
+  display:flex !important;flex-direction:row !important;gap:4px !important;padding:4px !important;border:0 !important;border-radius:var(--r-md) !important;
+  background:var(--ds-bg) !important;box-shadow:inset 0 0 0 1px var(--ds-border) !important;overflow:visible !important;flex-wrap:nowrap !important}
+.sheet .tabs.inv-tabs::before{display:none !important}
+:is(.sheet .tabs,.sheet .seg:not(.bm-seg),.bp-seg,.tt-bar,#sheet-body[data-tt] .tabs,.np-tabs,.np-seg,.pk-seg,.pn-ikv-seg,.pf-tabs)>button{
+  flex:1 1 0 !important;min-width:0 !important;min-height:44px !important;height:auto;margin:0 !important;padding:0 var(--sp-2) !important;border:0 !important;border-radius:var(--r-sm) !important;
+  background:transparent !important;color:var(--ds-muted) !important;font:600 var(--fs-14)/20px var(--ds-sans) !important;box-shadow:none !important;
+  text-transform:none !important;letter-spacing:0 !important;display:inline-flex !important;align-items:center;justify-content:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(.sheet .tabs,.sheet .seg:not(.bm-seg),.bp-seg,.tt-bar,#sheet-body[data-tt] .tabs,.np-tabs,.np-seg,.pk-seg,.pn-ikv-seg,.pf-tabs)>button:is([aria-selected="true"],[aria-checked="true"],[aria-pressed="true"],.on,.active,.sel){
+  background:var(--ds-raised) !important;color:var(--ds-amber-t) !important;box-shadow:0 1px 2px rgba(0,0,0,.4) !important}
+.tt-bar button::after,.tt-bar button::before{display:none !important}
+/* Ikväll? keeps its big choice faces inside the same control */
+.pn-ikv-seg>button{flex-direction:column !important;min-height:72px !important;white-space:normal}
+/* 6 · buttons: 48 px, radius 12; small 44; max 2 per row, equal width; ONE amber per sheet (pnds.js demotes extra ones) */
+.sheet .btn,.leaflet-popup .btn{min-height:var(--pn-btn-h);border-radius:var(--r-md) !important}
+.sheet .btn-small,.leaflet-popup .btn-small{min-height:44px;border-radius:var(--r-md) !important}
+.sheet-body>.row,.sheet-body .ds-card>.row,.inv-pane>.row{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.sheet-body>.row>.btn,.sheet-body .ds-card>.row>.btn,.inv-pane>.row>.btn{flex:1 1 calc(50% - 4px);min-width:0}
+.btn.pn-demote{background:var(--ds-raised) !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;box-shadow:none !important}
+/* 7 · bottom: 16 px + the home indicator; the sheet reaches the screen bottom */
+.sheet{padding-bottom:calc(var(--sab) + var(--sp-4)) !important}
+.sheet-body{padding-bottom:var(--sp-4) !important}
+/* 8 · chips: 32 (not tappable) or 44 (tappable) */
+:where(.sheet) .chip:not(button){min-height:32px}
+/* 9 · tap targets ≥ 44 in every sheet (buttons and button-rows; a switch's target is its whole row) */
+#sheet-body button:not(.switch):not(.chat-list button),#sheet-body [role=button]:not(.chat-list *){min-height:44px}
+#sheet-body button:not(.switch):not(.chat-list button){min-width:44px}
+.gitem:not(.gcard)>div.gp.gpg>.gmain{min-height:44px;display:flex;flex-direction:column;justify-content:center}
+/* 10 · sentence case: no CSS uppercase anywhere in a sheet */
+#sheet *,.leaflet-popup *{text-transform:none !important}
+/* 11 · no cut labels: a place name may take 2 lines */
+.np-n{white-space:normal !important;display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-overflow:clip !important}
+/* 12 · badges on the radius scale */
+.bm-seg .bm-b{border-radius:var(--r-sm) !important;letter-spacing:0 !important}
+/* ds06 sheets END */
+/* ds07 bar START — Krogkortet (design review): sheet rules 1–14 on the bar sheet. Structure: js/pnds.js "ds07 bar". */
+/* frame: ✕ 16 px from the edge, round 44, icon x on --ds-raised, centred in a 60 px header row; bottom 16 + home indicator */
+.olnu-sheet.pn-bs7-root .leaflet-popup-content{margin:12px calc(var(--sar) + 16px) 0 calc(var(--sal) + 16px) !important;padding-bottom:16px !important}
+.olnu-sheet.pn-bs7-root a.leaflet-popup-close-button{top:33px !important;z-index:5 !important;right:calc(var(--sar) + 16px) !important;width:44px !important;height:44px !important;
+  border-radius:var(--ds-r-pill) !important;background:var(--ds-raised) !important;border:0 !important;color:var(--ds-text) !important;display:grid !important;place-items:center !important;padding:0 !important}
+.olnu-sheet.pn-bs7-root a.leaflet-popup-close-button svg{width:20px;height:20px}
+/* header: title Black Ops One 22/28 amber, sentence case; subtitle 14 grey */
+.pn-bs7 .bs-head{display:flex !important;flex-direction:column;justify-content:center;align-items:flex-start !important;text-align:left !important;min-height:60px;padding:0 52px 0 0 !important;margin:0 0 var(--ds-3) !important}
+.pn-bs7 .bs-head .pp-title{font-family:var(--ds-stencil) !important;font-weight:400 !important;font-size:var(--ds-fs-22) !important;line-height:28px !important;
+  color:var(--ds-amber-t) !important;letter-spacing:0 !important;text-transform:none !important;white-space:normal;overflow-wrap:anywhere}
+.pn-bs7 .bs-head .bs-meta{font-size:var(--ds-fs-14) !important;line-height:20px !important;color:var(--ds-muted) !important;font-weight:400 !important;margin:2px 0 0 !important}
+.pn-bs7 .bs-head .pn-bs-oh.oh-soon{color:var(--ds-amber-t)}
+/* the header stays while the sheet scrolls (content no longer slides under ✕) */
+.pn-bs7 .bs-head{position:sticky;top:0;z-index:2;background:var(--s1,var(--ds-sheet));margin-top:-12px !important;padding-top:12px !important;min-height:72px}
+/* hero: ONE card = crowd meter + friends here */
+.pn-bs7 .pn-bs-hero{background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);padding:var(--ds-3) var(--ds-4);margin:0 0 var(--ds-3)}
+.pn-bs7 .pn-bs-hero>.pn-meter{background:none !important;border:0 !important;border-radius:0 !important;padding:0 !important;margin:0 !important;box-shadow:none !important}
+.pn-bs7 .pn-bs-fr{display:flex;align-items:center;gap:var(--ds-3);min-height:44px;margin-top:var(--ds-2);padding-top:var(--ds-2);border-top:1px solid var(--ds-border)}
+.pn-bs7 .pn-bs-hero>.pn-bs-fr:first-child{margin-top:0;padding-top:0;border-top:0}
+.pn-bs7 .pn-bs-avs{display:flex;flex:0 0 auto}
+.pn-bs7 .pn-bs-av{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ds-raised);border:2px solid var(--ds-card);color:var(--ds-text);
+  font:600 var(--ds-fs-14)/20px var(--ds-sans);font-style:normal}
+.pn-bs7 .pn-bs-av+.pn-bs-av{margin-left:-8px}
+.pn-bs7 .pn-bs-frt{font:600 var(--ds-fs-16)/24px var(--ds-sans);color:var(--ds-text)}
+.pn-bs7 .pn-bs-hero>.bs-icons{display:flex;gap:var(--ds-2);margin-top:var(--ds-2);font-size:var(--ds-fs-16);line-height:24px}
+/* other lines (events, call-outs) under the hero: plain rows, no pill */
+.pn-bs7>.ev-line{margin:0 0 var(--ds-3) !important}
+.pn-bs7>.inv-line .inv-here{display:none !important}
+/* ONE action row: primary amber + ghost, equal width, 48 / radius 12 */
+.pn-bs7 .pp-act.pn-bs-act{display:grid !important;grid-template-columns:1fr 1fr;gap:var(--ds-2);margin:0 0 var(--ds-3) !important;align-items:start}
+.pn-bs7 .pn-bs-act>.pp-sec-eta:not([hidden]):not(.pn-bs-hide),.pn-bs7 .pn-bs-act .eta{display:contents !important}
+.pn-bs7 .pn-bs-act>.pp-sec-eta>.pp-sec-h,.pn-bs7 .pn-bs-act>.pn-bs-hide{display:none !important}
+.pn-bs7 .pn-bs-act>.ci-here,.pn-bs7 .pn-bs-act>.ci-out,.pn-bs7 .pn-bs-act>.pa-kommer,.pn-bs7 .pn-bs-act .eta>:not(.eta-go){grid-column:1 / -1}
+.pn-bs7 .pn-bs-act:not(:has(>.pp-sec-eta:not([hidden]):not(.pn-bs-hide))) .ci-btn,.pn-bs7 .pn-bs-act:not(:has(.ci-btn, .ci-out)) .eta-go{grid-column:1 / -1}
+.pn-bs7 .pn-bs-act .ci-btn,.pn-bs7 .pn-bs-act .ci-out,.pn-bs7 .pn-bs-act .eta-go,.pn-bs7 .pn-bs-act .pa-kommer{min-height:48px !important;height:auto !important;width:100% !important;margin:0 !important;
+  border-radius:var(--ds-r-1) !important;padding:0 var(--ds-3) !important;display:flex !important;align-items:center;justify-content:center;gap:var(--ds-2);
+  font:600 var(--ds-fs-16)/24px var(--ds-sans) !important;white-space:normal;text-align:center;clip-path:none !important;box-shadow:none !important}
+.pn-bs7 .pn-bs-act .ci-btn,.pn-bs7 .pn-bs-act .ci-out{background:var(--ds-amber) !important;color:var(--ds-on-amber) !important;border:0 !important;font-weight:700 !important}
+.pn-bs7 .pn-bs-act .ci-btn:disabled{opacity:.6}
+.pn-bs7 .pn-bs-act .eta-go,.pn-bs7 .pn-bs-act .pa-kommer{background:transparent !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important}
+.pn-bs7 .pn-bs-act .eta-go[aria-expanded=true]{background:var(--ds-raised) !important}
+.pn-bs7 .pn-bs-act .ci-here{display:flex;align-items:center;gap:var(--ds-2);min-height:24px;font:600 var(--ds-fs-16)/24px var(--ds-sans);color:var(--ds-green-t)}
+.pn-bs7 .pn-bs-act svg{width:20px;height:20px;flex:0 0 auto}
+/* photos: one row, 72 × 72, radius 12, swipe */
+.pn-bs7 .pn-bs-photos{display:block !important;margin:0 0 var(--ds-3) !important;padding:0 !important;background:none !important;border:0 !important}
+.pn-bs7 .pn-bs-photos .bf-h{display:block;font:600 var(--ds-fs-14)/20px var(--ds-sans);color:var(--ds-muted);margin:0 0 var(--ds-2)}
+.pn-bs7 .pn-bs-photos .bf-strip{gap:var(--ds-2);margin:0 calc(-1 * var(--ds-4));padding:0 var(--ds-4);scroll-snap-type:x proximity}
+.pn-bs7 .pn-bs-photos .bf-th{width:72px !important;height:72px !important;border-radius:var(--ds-r-1) !important;scroll-snap-align:start}
+.pn-bs7>.pp-care1{margin:0 0 var(--ds-3) !important;font:600 var(--ds-fs-14)/20px var(--ds-sans)}
+/* folds = full-width rows (no 2-column tiles, no cut label) */
+.pn-bs7 .pp-folds{display:flex !important;flex-direction:column;gap:var(--ds-2) !important;margin:0 0 var(--ds-3) !important}
+.pn-bs7 .pp-folds .pp-fold{grid-column:auto !important;border-radius:var(--ds-r-2) !important;background:var(--ds-card) !important;border:1px solid var(--ds-border) !important}
+.pn-bs7 .pp-fold>summary{min-height:56px !important;padding:var(--ds-3) var(--ds-4) !important;gap:var(--ds-3) !important;display:flex !important;align-items:center}
+.pn-bs7 .pp-fold .pp-sec-h{font:600 var(--ds-fs-16)/24px var(--ds-sans) !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;flex:1 1 auto;text-transform:none !important;color:var(--ds-text) !important}
+.pn-bs7 .pp-fold .pf-n{background:var(--ds-raised) !important;color:var(--ds-text) !important;border-radius:var(--ds-r-pill);min-width:24px;padding:0 var(--ds-2);font:600 var(--ds-fs-14)/24px var(--ds-sans);text-align:center}
+.pn-bs7 .pp-fold .pn-bs-sub{font:400 var(--ds-fs-14)/20px var(--ds-sans);color:var(--ds-muted);flex:0 1 auto;text-align:right}
+.pn-bs7 .pp-folds .pf-body{padding:0 var(--ds-4) var(--ds-4) !important}
+/* Info: ONE grouped list, rows 56, hairline between, no pills */
+.pn-bs7 .pn-bs-h{font:600 var(--ds-fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important;margin:var(--ds-5) 0 var(--ds-2) !important;text-transform:none !important;letter-spacing:0 !important}
+.pn-bs7 .pn-bs-info{background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);overflow:hidden;margin:0 0 var(--ds-3)}
+.pn-bs7 .pn-bs-info>*{margin:0 !important;border:0 !important;border-radius:0 !important;background:none !important;box-shadow:none !important}
+.pn-bs7 .pn-bs-info>*+*,.pn-bs7 .pn-bs-info .bi-line>span+span{border-top:1px solid var(--ds-border) !important}
+.pn-bs7 .pn-bs-info>[hidden]{display:none !important}
+.pn-bs7 .pn-bs-info>[hidden]+*{border-top:0 !important}
+.pn-bs7 .pn-bs-info .bi-line:not([hidden]){display:block !important;padding:0 !important}
+.pn-bs7 .pn-bs-info .bi-line .bi-dot{display:none}
+.pn-bs7 .pn-bs-info .bi-line>span,.pn-bs7 .pn-bs-info .ute-line,.pn-bs7 .pn-bs-info .sp-tag{display:flex !important;align-items:center;gap:var(--ds-3);min-height:56px;padding:var(--ds-2) var(--ds-4) !important;
+  font:600 var(--ds-fs-16)/24px var(--ds-sans) !important;color:var(--ds-text) !important;white-space:normal}
+.pn-bs7 .pn-bs-info .bi-line .bi-pr::before{content:"Stor stark";flex:1 1 auto;order:-1}
+.pn-bs7 .pn-bs-info .bi-line .bi-pr>svg{order:-2}
+.pn-bs7 .pn-bs-info .ute-line .ute-tag{display:flex;align-items:center;gap:var(--ds-3);flex:1 1 auto;padding:0 !important;border:0 !important;background:none !important;font:inherit;color:inherit;height:auto !important}
+.pn-bs7 .pn-bs-info .ute-line .ute-wx{font:400 var(--ds-fs-16)/24px var(--ds-sans);color:var(--ds-muted)}
+.pn-bs7 .pn-bs-info .sp-tag .sp-l{display:flex;align-items:center;gap:var(--ds-3);flex:1 1 auto}
+.pn-bs7 .pn-bs-info .sp-tag .sp-v{display:flex;gap:var(--ds-2)}
+.pn-bs7 .pn-bs-info .sp-tag .sp-b{min-width:56px;min-height:44px;border-radius:var(--ds-r-1) !important;font:600 var(--ds-fs-14)/20px var(--ds-sans) !important;padding:0 var(--ds-3) !important}
+.pn-bs7 .pn-bs-info svg{width:20px;height:20px;flex:0 0 auto;color:var(--ds-muted)}
+.pn-bs7 .pn-bs-info>.pp-fold>summary{border-radius:0 !important}
+.pn-bs7 .pn-bs-info>.pp-fold .pf-body{padding:0 var(--ds-4) var(--ds-4) !important}
+.pn-bs7 .bp-more>summary{display:flex;align-items:center;gap:var(--ds-2);min-height:48px;padding:0 var(--ds-3);border-radius:var(--ds-r-1);border:1px solid var(--ds-border-2);font:600 var(--ds-fs-16)/24px var(--ds-sans);list-style:none}
+.pn-bs7 .bp-more>summary::-webkit-details-marker{display:none}
+/* Mer: last row; rare things inside, each a short section */
+.pn-bs7 .pn-bs-folds2{margin:0 !important}
+.pn-bs7 .pp-sec-mer .pf-body{display:flex;flex-direction:column;gap:var(--ds-4)}
+.pn-bs7 .pp-sec-mer .pf-body>*{margin:0 !important}
+.pn-bs7 .pn-bs-sec h4{font:600 var(--ds-fs-14)/20px var(--ds-sans);color:var(--ds-muted);margin:0 0 var(--ds-2);text-transform:none;letter-spacing:0}
+.pn-bs7 .pn-bs-sec.pn-bs-stam:not(:has(.pp-king, .bp-own, .af-stam:not(:empty))){display:none}
+.pn-bs7 .pp-sec-mer .inv-line{display:block !important;padding:0 !important;background:none !important;border:0 !important}
+.pn-bs7 .pp-sec-mer .inv-line .ev-l-t:empty{display:none}
+.pn-bs7 .pp-sec-mer .inv-here,.pn-bs7 .pp-sec-mer .af-qr,.pn-bs7 .pp-sec-mer .gone-sec .btn{display:flex !important;align-items:center;justify-content:center;gap:var(--ds-2);width:100%;min-height:48px;
+  border-radius:var(--ds-r-1) !important;background:transparent !important;border:1px solid var(--ds-border-2) !important;color:var(--ds-text) !important;font:600 var(--ds-fs-16)/24px var(--ds-sans) !important;text-decoration:none;padding:0 var(--ds-3) !important}
+.pn-bs7 .pp-sec-mer .pp-info{display:grid !important;grid-template-columns:1fr 1fr;gap:var(--ds-2)}
+.pn-bs7 .pp-sec-mer .pp-info .btn{min-height:48px;border-radius:var(--ds-r-1) !important;white-space:normal;font:600 var(--ds-fs-14)/20px var(--ds-sans) !important}
+.pn-bs7 .pp-sec-mer svg{width:20px;height:20px;flex:0 0 auto}
+/* ds07 bar END */

@@ -738,7 +738,8 @@
     h += fold("ci", tl("🚪 Incheckade", "🚪 Checked in"), id != null ? checkinsAt(bar).length : 0, ci, "pp-sec-ci", isOpen("ci"));
     h += fold("stam", tl("🎖️ Stammis & kung", "🎖️ Regulars & king"), 0, own + king + stam, "pp-sec-stam", isOpen("stam"));
     h += fold("info", tl("ℹ️ Info", "ℹ️ Info"), 0, info, "pp-sec-info", isOpen("info"));
-    return '<div class="bs">' + h0 + (h ? '<div class="pp-folds">' + h + "</div>" : "") + "</div>";
+    var bsH = '<div class="bs">' + h0 + (h ? '<div class="pp-folds">' + h + "</div>" : "") + "</div>";
+    return window.PNDS && window.PNDS.barSheet ? window.PNDS.barSheet(bsH, bar, list) : bsH;   // ds07: Krogkortet layout
   }
   // Phones: the bar popup's element is moved out of the map into a fixed bottom sheet. It stays a Leaflet popup
   // (popupopen hooks, e.popup.update(), closePopup and a tap on the map all keep working).

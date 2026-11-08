@@ -109,6 +109,47 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
 | Tap targets | ≥ 44 × 44 (ⓘ: 28 px circle, 44 px tap area). |
 <!-- ds05 layout END -->
 
+<!-- ds06 sheets START -->
+## Sheet rules (ds06, from the design review 2026-11-07; tested by `ds-sheet-pw.js`)
+
+1. **Header:** grid 44 px | title | 44 px, 16 px sides, at least 60 px high, 12 px under the grip.
+2. **✕** in the right cell, 16 px from the sheet edge, round 44 px, icon `x`, background `--ds-raised`. Never the character ×.
+3. **‹** in the left cell only on sub-screens. Then the title is centred and ✕ hides.
+4. **Title:** one style. Black Ops One 22/28, amber, sentence case. No icon in the title. Subtitle 14 px grey under it.
+5. **Spacing:** 24 px between sections, 8 px between items. Section heading 14 px grey, 8 px under it, no icon.
+6. **One card:** `--ds-card`, radius 16, padding 12/16, 1 px `--ds-border`. No card in a card.
+7. **Rows:** at least 56 px, padding 12/16, icon 20 px, title 16/600, sub 14 grey, ONE chevron (`chev-right` 16 px grey, 16 px from the right).
+8. **Buttons:** 48 px (small 44), radius 12. At most 2 in a row, equal width. ONE amber per sheet.
+9. **Go-further things are rows with a chevron,** not buttons in a grid.
+10. **No cut label.** Write shorter. At most 2 lines.
+11. **Same height for the same thing:** row 56, button 48, chip 32 (not tappable) or 44 (tappable).
+12. **Bottom:** 16 px + the safe area (home indicator). The sheet reaches the screen bottom.
+13. **Two heights:** half (~50 %) and large (~92 %), like Apple's detents.
+14. **ONE segmented control** for every choice between 2–4 things (tabs, filters, map style, Ikväll?, minutes): track `--ds-bg` radius 12, padding 4, items 44 px radius 8, selected `--ds-raised` + amber text.
+<!-- ds06 sheets END -->
+
+<!-- ds07 bar START -->
+## Krogkortet (bar sheet, ds07)
+
+The bar sheet follows the sheet rules. Order, top to bottom:
+
+1. Header: bar name (Black Ops One 22/28 amber), subtitle "Pub · Öppet till 01:00" (14 grey), ✕ 16 px from the edge.
+2. Hero card: crowd meter, then friends here ("Lisa och Ida är här", initials 28 px).
+3. Event and call-out lines (only when there are some).
+4. One action row: **Checka in** (amber) + **På väg** (ghost), equal width, 48 px, radius 12.
+   Checked in: status line + **Checka ut** (amber, full width). På väg is hidden.
+5. Photos: one row, 72 × 72, radius 12, swipe.
+6. Folk här (row, count badge).
+7. "Info": one grouped list, rows 56: hours / Stor stark price, Uteservering, Sport (Ja / Nej), Kö och erbjudanden (row).
+8. "Mer" (row, last): Bjud in hit, Incheckade, Stammis & kung, hours/price reports, dansgolv, QR-affisch, Fel plats, Finns inte längre.
+
+Code: `app.js` barPopup passes its HTML through `PNDS.barSheet(html, bar, list)` (js/pnds.js "ds07 bar").
+Module parts are moved, never rebuilt, so module repaints (outerHTML in place) keep working.
+Kept hooks: `.bs`, `.bs-head`, `.pp-title`, `.pp-act`, `.pp-folds`, `details.pp-fold[data-fold=here|bp|rally]`, all `data-*`.
+New: `.pn-bs7`, `.pn-bs-hero`, `.pn-bs-fr`, `.pn-bs-photos`, `.pn-bs-h`, `.pn-bs-info`, `details[data-fold=mer]`.
+Removed folds: `ci`, `stam`, `info` (their content is in "Mer" or "Info").
+<!-- ds07 bar END -->
+
 ## Icons (`window.PNI`)
 
 Our own set, drawn for PintsNow on a 24 px grid: stroke 2, round caps and joins, no fill (small dots filled),
