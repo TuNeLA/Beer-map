@@ -36,7 +36,9 @@ jobs:
           - name: ui-2
             filter: '^(feat|nf|notif|autoci)$'
           - name: ui-3
-            filter: '^(cam|ntf)$'
+            filter: '^(cam)$'
+          - name: ntf
+            filter: '^(ntf)$'   # notifications v2: 9 app boots + a real sw.js run (own shard, ~5 min)
           - name: ui-4
             filter: '^(evx|safe|ds|ds-layout|notif-sw)$'
           - name: ui-5
