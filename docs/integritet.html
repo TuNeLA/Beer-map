@@ -38,6 +38,22 @@
 <li>Anonyma värmepunkter (utan konto-id).</li>
 <li>Länkkort: när en delad länk öppnas ser servern din IP-adress för att stoppa missbruk. Den sparas inte, bara en räknare per minut.</li>
 </ul>
+<section id="pnlog">
+<h2>📊 Användning och position (under betan)</h2>
+<p>Under betan, innan appen finns i App Store och Google Play, sparar vi mer för att göra appen bättre. Vi gör det öppet, och du kan stänga av det.</p>
+<ul>
+<li><b>Användning:</b> vilka knappar du trycker på (knappens namn i koden, aldrig text du skriver), vilka menyer du öppnar, fel i appen, hur snabb appen ä (laddtid, hur länge en meny tar att öppna) och appversion. Inga namn, inga meddelanden, ingen position.</li>
+<li><b>Positionslogg:</b> din position högst en gång i minuten <i>medan appen ä öppen</i> (aldrig i bakgrunden, aldrig om du int' redan har gett appen tillgång till platsen), och när du checkar in, checkar ut eller loggar en dryck. Vi jämför det med vad automatisk incheckning gjorde, så att den blir rätt oftare. Inte i spökläge. I din hemzon sparas ingen position.</li>
+<li><b>Varför:</b> berättigat intresse (GDPR art. 6.1 f): att appen fungerar och att incheckningen blir rätt. Ingen reklam, ingen profil, ingen delning med andra företag.</li>
+<li><b>Hur länge:</b> 30 dagar. Sen töms raderna automatiskt varje natt; kvar blir bara antal per dag utan konto-id.</li>
+<li><b>Vem ser det:</b> bara vi (PintsNow). Det lagras hos Supabase i EU.</li>
+<li><b>Stäng av:</b> ⚙️ Inställningar → Integritet → "Hjälp till att förbättra appen" och "Spara position för bättre incheckning". Stänger du av positionen tar vi bort din sparade positionslogg direkt. Felrapporter (fel i appen, utan position) skickas alltid.</li>
+<li><b>Första gången</b> positionsloggen startar visar appen en kort ruta om det.</li>
+<li>När appen kommer till App Store och Google Play blir detta frivilligt (du får en fråga). Bara felrapporter skickas utan fråga.</li>
+</ul>
+<p lang="en"><em>Beta logging: until the store launch the app logs which buttons you tap (button id, never your text), screens, errors, speed and app version, and – while the app is open – your position at most once a minute plus check-ins/outs, to improve automatic check-in. Legitimate interest (GDPR 6.1 f), first party only, kept 30 days, both can be turned off in Settings → Integritet (turning off the position log removes what was saved). Error reports (no position) are always sent.</em></p>
+</section>
+
 <h2>Vem ser vad?</h2>
 <ul>
 <li>Din grupp: ditt namn, din exakta pin, dina drycker, din incheckning och chatten.</li>
