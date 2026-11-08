@@ -7,7 +7,7 @@
 .rnd-link{background:none;border:0;padding:4px 2px;color:var(--amber-2);font-size:var(--fs-12);text-decoration:underline;cursor:pointer;min-height:32px}
 .rnd-acts{display:flex;gap:8px;margin:2px 0 8px}
 .rnd-acts>.btn{flex:1 1 0;min-width:0}
-.rnd-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+
 
 /* Group page tile */
 .rnd-gi .rnd-gbtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
@@ -23,8 +23,8 @@
 .rnd-bv{font-family:var(--hud);white-space:nowrap}
 .rnd-bal li.plus .rnd-bv{color:var(--green)}
 .rnd-bal li.minus .rnd-bv{color:#ffb27a}
-.rnd-tr{padding:9px 10px;border:1px solid var(--line-soft);border-radius:var(--r-m,10px);margin:6px 0}
-.rnd-tr.mine{box-shadow:inset 3px 0 0 var(--amber)}
+
+
 .rnd-trl{font-weight:700;color:var(--foam)}
 .rnd-conf{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0;padding:8px 10px;border:1px dashed rgba(255,224,138,.4);border-radius:var(--r-s,8px)}
 .rnd-conf>span{flex:1 1 100%;font-size:var(--fs-14)}
@@ -46,14 +46,14 @@
 .rnd-card{margin-top:6px;padding:8px 9px;border:1px solid var(--line-soft);border-radius:var(--r-s,8px);background:rgba(255,224,138,.05)}
 .rnd-card.off{opacity:.6}
 .rnd-chips{display:flex;flex-wrap:wrap;gap:4px}
-.rnd-chip{font-size:var(--fs-12);padding:3px 8px;border-radius:var(--r-pill);border:1px solid var(--line-soft);color:var(--muted);white-space:nowrap}
-.rnd-chip.ok{color:var(--green);border-color:rgba(61,220,132,.4)}
+
+
 
 /* Add sheet */
 .rnd-seg{display:flex;gap:4px;flex-wrap:wrap}
 .rnd-segb{flex:1 1 0;min-width:0;min-height:var(--tap,44px);border:1px solid var(--line-soft);background:var(--night-3);color:var(--text);border-radius:var(--r-s,8px);font-size:var(--fs-14);padding:4px 6px;cursor:pointer}
 .rnd-segb[aria-checked="true"]{border-color:var(--amber);color:var(--on-amber);background:var(--amber);font-weight:700}
-.rnd-sel{width:100%}
+
 .rnd-who{display:flex;flex-wrap:wrap;gap:6px}
 .rnd-pp{display:inline-flex;flex-direction:column;align-items:flex-start;min-height:var(--tap,44px);padding:5px 12px;border:1px solid var(--line-soft);border-radius:var(--r-m,10px);background:var(--night-3);color:var(--text);cursor:pointer;font-size:var(--fs-14);max-width:100%}
 .rnd-pp>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}

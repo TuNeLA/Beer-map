@@ -16,7 +16,7 @@
   min-width:22px;height:22px;padding:0 6px;border-radius:var(--ds-r-pill);background:var(--ds-raised);display:grid;place-items:center}
 .evs-more{margin-top:var(--ds-2)}
 /* 🎟️ Biljett is an <a>: look like the other row buttons (centered, no underline) */
-.evs-acts a.ds-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+
 /* ===== 📅 EVENT-ARKET 2 (js/evsheet.js; CONTRACT "📅 EVENT-ARKET 2"): less menus — one segment, counted type chips,
    👥 Vänner går, one Går toggle per row, TV fold, detail view, 🗺️ map toggle. ds tokens only. ===== */
 .evs-time>button{display:flex;align-items:center;justify-content:center;gap:4px;padding:0 4px}

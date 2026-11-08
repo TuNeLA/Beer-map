@@ -382,7 +382,7 @@
       jamShare: "📣 Dela med gruppen", jamBad: "Det där ä int' en Spotify-länk, pojk.", jamDone: "🎵 Jam delad! Nu får gruppen välja låtar.",
       jamMsg: function (l) { return "🎵 Jag har startat en Jam – hoppa in: " + l; }, jamJoin: "🎵 Gå med i Jam",
       chatLike: "Gilla",
-      chatPh: "Skriv nåt kul… (max 140)", chatSend: "Skicka",
+      chatPh: "Skriv nåt kul…", chatSend: "Skicka",
       chatEmpty: "Tyst i leden. Skriv första meddelandet!", chatNote: "Meddelandena försvinner kl 05.",
       chatNotMember: "Du ä int' med i den gruppen.", chatInvalid: "Meddelandet måste ha 1–140 tecken.",
       chatSlow: "Lugn i stormen! Max 10 meddelanden på 20 sekunder.", chatFail: "Kunde inte skicka. Försök igen.",

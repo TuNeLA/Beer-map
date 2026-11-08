@@ -1,6 +1,6 @@
 /* PintsNow v25 — 📍 Hemstad (js/hometown.js) + 👑/🎖️/🎗️ role badges and member actions (js/chief.js, js/social.js). */
 .ht-inp{width:100%;margin:8px 0 4px}
-.ht-prev{min-height:18px;margin:2px 0 6px;font-size:var(--fs-xs,12px)}
+
 /* nf 2026-11-07: picker v2 (search + Nära dig + A–Ö rows). Tokens: the design agent can restyle via --ht-*. */
 .ht-sheet{--ht-row-h:52px;--ht-bg:var(--ds-card,#19233a);--ht-line:var(--ds-border,rgba(255,255,255,.1));--ht-head:var(--ds-muted,#a7b0ac);
   --ht-accent:var(--ds-amber,#f5a623);--ht-accent-t:var(--ds-amber-t,#ffc24d);--ht-accent-soft:var(--ds-amber-soft,rgba(245,166,35,.14));

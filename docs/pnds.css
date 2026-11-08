@@ -673,6 +673,9 @@ html,body{font-synthesis:none}
 :is(button,.btn,[role=button],a.ds-row,.gcard,summary){transition-property:transform,opacity,background-color,border-color,color,box-shadow;transition-duration:var(--m-2);transition-timing-function:var(--e-std)}
 :is(button,.btn,[role=button],a.ds-row,.gcard):active:not(:disabled):not(.beer-btn):not(.switch):not([role=switch]){transform:scale(.96)}
 summary:active{transform:none}
+/* audit-01: map markers are placed with an inline transform on every frame: never transition transform (it made DOM pins lag
+   behind the GL map during zoom, glmap-pw drift up to 110 px). Their colour / opacity changes keep the press timing. */
+.leaflet-marker-icon[role=button],.mapboxgl-marker[role=button]{transition-property:opacity,background-color,border-color,color,box-shadow}
 /* toast: in 200 --e-in, out 150 --e-out */
 .toast:not([hidden]){animation:pnToastIn var(--m-4) var(--e-in) backwards}
 .toast.pn-out{animation:pnToastOut var(--m-3) var(--e-out) forwards}

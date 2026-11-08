@@ -5,7 +5,7 @@
 /* --- cards (pre-prompt, denied, error, restart) --- */
 .fc-card{width:100%;max-width:400px;max-height:100%;overflow:auto;padding:20px 18px 16px;border-radius:var(--r-xl);text-align:center;color:#f4f7ff;
   background:linear-gradient(170deg,#22314c,#111a2a 55%,#0b111c);border:3px solid #0a0e16;box-shadow:0 0 0 1px rgba(120,190,255,.25),0 18px 40px rgba(0,0,0,.6)}
-.fc-card-ico{font-size:var(--fs-44);line-height:1;margin-bottom:6px}
+
 .fc-card-t{margin:0 0 10px;font:400 var(--fs-22)/1.15 var(--display);letter-spacing:.03em;color:var(--gold,#ffe08a)}
 .fc-card-p{margin:0 0 10px;font-size:var(--fs-16);line-height:1.4;color:#e6ecf7}
 .fc-card-sub{margin:0 0 14px;font-size:var(--fs-12);line-height:1.4;color:#9fb0c9;white-space:pre-line;text-align:left;background:rgba(0,0,0,.22);border-radius:var(--r-md);padding:8px 10px}

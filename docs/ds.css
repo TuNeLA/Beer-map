@@ -67,9 +67,9 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 :where(.sheet-body) small{font-size:var(--ds-fs-12);line-height:var(--ds-lh-12)}
 .sheet-body b,.sheet-body strong{font-weight:700}
 /* Stencil: brand, ÖL!, big numbers, short sheet titles (js/ds.js marks a title as short) */
-.brand-name,.beer-btn .beer-t,.code-big,.nr-dist,.cer-cd,.sk-cd-big{font-family:var(--ds-stencil);font-weight:400}
+.brand-name,.beer-btn .beer-t,.code-big,.nr-dist{font-family:var(--ds-stencil);font-weight:400}
 .sheet-head h2{font-family:var(--ds-sans);font-weight:700;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.04em;color:var(--ds-amber-t);
-  text-transform:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  text-transform:none;min-width:0;overflow:hidden;white-space:normal;overflow-wrap:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .sheet-head h2.ds-stencil-s{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);letter-spacing:.05em}
 .sheet-head h2.ds-stencil{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-22);line-height:var(--ds-lh-22);letter-spacing:.06em}
 
@@ -112,7 +112,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 .ds-seg,.sheet .tabs,.sheet .seg:not(.bm-seg),.bp-seg,.leaflet-popup .tabs{display:flex;flex-direction:row;gap:4px;padding:4px;border:0;border-radius:var(--ds-r-1);
   background:var(--ds-bg);box-shadow:inset 0 0 0 1px var(--ds-border);width:auto}
 .ds-seg>button,.sheet .tabs>button,.sheet .seg:not(.bm-seg)>button,.bp-seg>button,.leaflet-popup .tabs>button{flex:1 1 0;min-width:0;min-height:44px;padding:0 var(--ds-2);border:0 !important;
-  border-radius:10px;background:transparent;color:var(--ds-muted);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);letter-spacing:0;text-transform:none;
+  border-radius:var(--r-sm);background:transparent;color:var(--ds-muted);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);letter-spacing:0;text-transform:none;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:none;transition:background var(--ds-t-2),color var(--ds-t-2)}
 .ds-seg>button[aria-selected="true"],.ds-seg>button[aria-checked="true"],.sheet .tabs>button[aria-selected="true"],.sheet .seg:not(.bm-seg)>button[aria-checked="true"],
 .bp-seg>button[aria-selected="true"],.leaflet-popup .tabs>button[aria-selected="true"]{background:var(--ds-raised);color:var(--ds-amber-t);
@@ -136,7 +136,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 .btn-green{background:var(--ds-green);border-color:transparent;color:var(--ds-on-green);font-weight:700}
 .ds-btn-secondary{background:var(--ds-raised)}
 .ds-btn-ghost,.btn-ghost{background:transparent;border-color:var(--ds-border-2);color:var(--ds-text)}
-.ds-btn-danger,.btn-danger{background:transparent;border-color:rgba(255,123,115,.55);color:var(--ds-red-t)}
+.btn-danger{background:transparent;border-color:rgba(255,123,115,.55);color:var(--ds-red-t)}
 .btn:disabled,.ds-btn:disabled{background:rgba(255,255,255,.05);border:1px solid var(--ds-border);color:var(--ds-muted);cursor:not-allowed;transform:none;box-shadow:none}
 /* filled colour only for ONE main action per sheet: a second green "Gå med" becomes the secondary */
 .sheet-body .glist~.row .btn-green{background:var(--ds-raised);color:var(--ds-green-t);border:1px solid rgba(61,220,132,.45)}
@@ -151,8 +151,8 @@ select.inp{min-height:48px;width:100%}
 label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-text-2);margin:var(--ds-4) 0 var(--ds-2)}
 
 /* ---------- .ds-toggle-row = .toggle-row + .switch ---------- */
-.ds-toggle-row,.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:var(--ds-3);min-height:56px;cursor:pointer}
-.ds-toggle-row>span,.toggle-row>span{flex:1 1 auto;min-width:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:var(--ds-3);min-height:56px;cursor:pointer}
+.toggle-row>span{flex:1 1 auto;min-width:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text)}
 .switch{width:52px;height:32px;flex:0 0 auto;border:0;border-radius:var(--ds-r-pill);background:rgba(255,255,255,.16);position:relative}
 .switch::after{top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4)}
 .switch[aria-checked="true"]{background:#1f9d57}
@@ -173,9 +173,9 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 /* ---------- .ds-chip / .ds-badge ---------- */
 :where(.ds-chip,.sheet .chip,.chip-btn,.inv-pk-groups .chip,.ht-chip){min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 var(--ds-3);border-radius:var(--ds-r-pill);
   border:1px solid var(--ds-border-2);background:var(--ds-raised);color:var(--ds-text);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans)}
-.chip-btn,.inv-pk-groups .chip,button.ds-chip,.ht-chip{min-height:44px;cursor:pointer}
+.chip-btn,.inv-pk-groups .chip,button.ds-chip{min-height:44px;cursor:pointer}
 :where(.chip-btn,.inv-pk-groups .chip,.ds-chip)[aria-pressed="true"]{background:var(--ds-amber-soft);border-color:var(--ds-amber);color:var(--ds-amber-t)}
-.ds-badge,.bm-b,.badge-green,.pf-n,.gp-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--ds-r-pill);
+.bm-b,.badge-green,.pf-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--ds-r-pill);
   font:700 var(--ds-fs-12)/1 var(--ds-sans);letter-spacing:.04em;font-variant-numeric:tabular-nums}
 .bm-b{background:var(--ds-blue-soft);color:var(--ds-blue-t);text-transform:none;margin-left:var(--ds-2)}
 .badge-green{background:var(--ds-green);color:var(--ds-on-green)}
@@ -193,7 +193,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .ds-row-i{flex:0 0 auto;width:32px;height:32px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--ds-raised);font-size:var(--ds-fs-18)}
 .ds-row-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
 .ds-row-t small{color:var(--ds-muted);font-weight:400;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
-.ds-row-v{flex:0 0 auto;color:var(--ds-muted);font-weight:400;font-size:var(--ds-fs-14)}
+
 .ds-chev::after{content:"›";flex:0 0 auto;margin-left:auto;padding-left:var(--ds-2);color:var(--ds-muted);font:400 var(--fs-22)/1 var(--ds-sans)}
 
 /* ---------- .ds-section ---------- */
@@ -332,7 +332,7 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .leaflet-container a.leaflet-popup-close-button{display:grid;place-items:center}
 .hx-chip,.hud-left.open .hx-chip{min-height:44px;border-radius:var(--ds-r-1);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans)}
 /* Ikväll panel: quiet tiles; colour only says what it means (green = come/live, red = alarm) */
-.hud-left.open .hx-x{gap:var(--ds-2);padding:var(--ds-3);border-radius:var(--ds-r-3)}
+
 .hud-left.open .hx-chip:not(.hx-urgent):not(.af-chip-med):not(.hx-come){background:var(--ds-card);border:1px solid var(--ds-border);color:var(--ds-text)}
 .hud-left.open .dl-cap-chip::after{content:attr(title);margin-left:6px;overflow:hidden;text-overflow:ellipsis}
 .hud-left.open .hx-taxi{box-shadow:inset 3px 0 0 var(--gold)}
@@ -345,13 +345,10 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .banner{border-radius:var(--ds-r-2);padding:var(--ds-2) var(--ds-2) var(--ds-2) var(--ds-4);gap:var(--ds-2);background:var(--ds-card);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2)}
 .btn-small.btn-small{min-height:44px}
 .af-qr{display:inline-flex;align-items:center;min-height:44px;font-size:var(--ds-fs-14)}
-.select-tap,select{min-height:44px}
+select{min-height:44px}
 .inv-pk-groups .chip{min-height:44px}
 /* text never under 12 px (sheets, popups, HUD) */
-.af-ksub,.bp-of-h,.bp-of-note,.bp-lbl,.bp-same,.bp-gflag-t .muted,.eta-q,.cer-card-k,.cer-card-f,.cr-tl,.cr-dep-st,.dl-boot-h,.ws-cnt,.ws-meta,.ev-legal,.gm-st,.gm-gchip,.gm-gs,
-.gm-stw,.gm-pd,.gm-sqw,.gg-cnt,.gg-ov span,.gg-dm,.hs-gs small,.ht-dem,.ht-tag,.role-b,.inv-pk-main small,.lp-note,.inv-legend,.md-more,.hx-mer .mer-q,.ps-cs,
-.ps-stats span,.ps-mile small,.ps-top,.ps-date,.ps-n,.chip,.prec-hint,.tk-kick,.cm-head,.st-title,.flytt-link,.dl-sign,.dl-cap-more,.dl-gud-h,.dl-gud-x,.dl-rv-r,.fm-r small,
-.nr-hint,.nr-priv,.nr-tile-t small,.nr-mini-cap,.inv-from,.pp-crowd,.cm-ci,.bm-crowd,.bm-name,.cm-ci b,.beer-sub,.other-btn .ol-t{font-size:12px !important}
+.af-ksub,.bp-of-h,.bp-of-note,.bp-lbl,.bp-same,.bp-gflag-t .muted,.eta-q,.cer-card-k,.cer-card-f,.cr-tl,.cr-dep-st,.dl-boot-h,.ws-cnt,.ws-meta,.ev-legal,.gm-st,.gm-gchip,.gm-gs,.gm-stw,.gm-pd,.gm-sqw,.gg-cnt,.gg-ov span,.gg-dm,.hs-gs small,.ht-tag,.role-b,.inv-pk-main small,.lp-note,.inv-legend,.md-more,.hx-mer .mer-q,.ps-cs,.ps-stats span,.ps-mile small,.ps-top,.ps-date,.ps-n,.chip,.prec-hint,.tk-kick,.cm-head,.st-title,.flytt-link,.dl-sign,.dl-cap-more,.dl-gud-h,.dl-gud-x,.dl-rv-r,.fm-r small,.nr-hint,.nr-priv,.nr-tile-t small,.nr-mini-cap,.inv-from,.pp-crowd,.cm-ci,.bm-crowd,.bm-name,.cm-ci b,.beer-sub,.other-btn .ol-t{font-size:12px !important}
 .beer-sub{letter-spacing:0}
 .other-btn .ol-t{letter-spacing:.02em}
 .tk-sep{color:rgba(255,255,255,.6)}

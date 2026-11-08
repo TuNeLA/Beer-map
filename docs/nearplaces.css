@@ -13,6 +13,8 @@
 .np-row{display:flex;align-items:center;gap:var(--ds-3,12px);min-height:var(--np-row-h);width:100%;padding:6px var(--ds-4,16px);border:0;
   border-top:1px solid var(--np-line);background:transparent;color:var(--np-text);font:inherit;text-align:left;cursor:pointer}
 .np-row:first-child{border-top:0}
+/* audit-02: rows never shrink in the scrolling list and keep the 56 px row height (DESIGN sheet rule 7 / 11) */
+#sheet-body .np-list>.np-row.np-row{flex-shrink:0;min-height:var(--np-row-h)}
 .np-row:active{background:var(--np-soft)}
 .np-row:focus-visible{outline:2px solid var(--np-accent);outline-offset:-2px}
 .np-ic{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;border-radius:var(--r-md);background:var(--ds-raised,#222e48);font-size:var(--fs-18)}

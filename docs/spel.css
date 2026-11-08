@@ -64,7 +64,7 @@ html.sp-on, html.sp-on body { overflow: hidden; }
 .sp-pp b { font-size: var(--fs-14); color: var(--ds-amber-t, #ffc24d); }
 .sp-goal { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; font-size: var(--fs-14); color: var(--ds-text-2, #c9d0cd); }
 .sp-seg { display: flex; gap: 4px; padding: 4px; border-radius: var(--r-md); background: var(--ds-card, #19233a); }
-.sp-seg button { min-width: 44px; min-height: 40px; border: 0; border-radius: var(--r-sm); background: transparent; color: inherit; font: 700 var(--fs-16) var(--ds-sans, sans-serif); cursor: pointer; }
+.sp-seg button { min-width: 44px; min-height: 44px; border: 0; border-radius: var(--r-sm); background: transparent; color: inherit; font: 700 var(--fs-16) var(--ds-sans, sans-serif); cursor: pointer; }
 .sp-seg button.on { background: var(--ds-amber, #f5a623); color: var(--ds-on-amber, #241300); }
 
 /* Skämskort cards: black prompt, white answers (our own look) */

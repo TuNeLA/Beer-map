@@ -35,7 +35,10 @@
 .skj-txt b{white-space:nowrap}
 .skj-txt small{color:var(--ds-text-2,#c9d0cd);font-size:var(--ds-fs-14,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .skj-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.skj-ask{min-height:40px;margin:0}
+.skj-ask{min-height:44px;margin:0}
+/* audit-11: the text keeps 140 px; named buttons wrap below it */
+.skj-card{flex-wrap:wrap}
+.skj-card>.skj-txt{flex:1 1 140px}
 .skj-tag{display:inline-flex;align-items:center;gap:6px;margin-left:6px;font-size:var(--ds-fs-12,12px);color:var(--ds-blue-t,#8cc6ff);font-weight:700}
 .skj-ask-s{min-height:32px;padding:0 10px;border-radius:var(--ds-r-pill,999px);border:1px solid var(--ds-blue,#4aa3ff);background:transparent;color:var(--ds-blue-t,#8cc6ff);font-size:var(--ds-fs-12,12px);cursor:pointer}
 .toast.pk-toast{border-left:4px solid var(--ds-red-t,#ff7b73)}

@@ -159,7 +159,7 @@
         var on = st.off.indexOf(k[0]) < 0;
         var sw = mk("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(on), "aria-label": lbl, "data-kind": k[0] });
         var lab = mk("span", {}, [document.createTextNode(lbl)]);
-        if (k[2]) lab.appendChild(mk("small", { class: "muted", style: "display:block;font-size:13px", text: k[2] }));
+        if (k[2]) lab.appendChild(mk("small", { class: "muted", style: "display:block;font-size:var(--fs-14)", text: k[2] }));
         var row = mk("div", { class: "toggle-row" }, [lab, sw]);
         // ds.js forwards a tap on the row to the switch, so listen on the switch only.
         sw.addEventListener("click", function () {
@@ -171,18 +171,18 @@
         });
         box.appendChild(row);
       });
-      box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:6px 0 0", text: "🆘 SOS, medevac-koll och Följ mig hem kommer alltid." }));
+      box.appendChild(mk("p", { class: "muted", style: "font-size:var(--fs-14);margin:6px 0 0", text: "🆘 SOS, medevac-koll och Följ mig hem kommer alltid." }));
       var qs = mk("select", { class: "inp", "aria-label": "Nattro", "data-pref": "quiet" });
       QUIET.forEach(function (o) { var op = mk("option", { value: o[0], text: o[1] }); if (o[0] === st.quiet) op.selected = true; qs.appendChild(op); });
       qs.addEventListener("change", function () { st.quiet = qs.value; save(); });
       box.appendChild(mk("h3", { text: "🌙 Nattro" }));
-      box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:0 0 6px", text: "Inga notiser de här timmarna (svensk tid). Säkerhetsnotiser kommer ändå." }));
+      box.appendChild(mk("p", { class: "muted", style: "font-size:var(--fs-14);margin:0 0 6px", text: "Inga notiser de här timmarna (svensk tid). Säkerhetsnotiser kommer ändå." }));
       box.appendChild(qs);
       var cs = mk("select", { class: "inp", "aria-label": "Max per kväll", "data-pref": "cap" });
       CAPS.forEach(function (o) { var op = mk("option", { value: String(o[0]), text: o[1] }); if (o[0] === (st.cap || 0)) op.selected = true; cs.appendChild(op); });
       cs.addEventListener("change", function () { st.cap = +cs.value || 0; save(); });
       box.appendChild(mk("h3", { text: "🍺 Max per kväll" }));
-      box.appendChild(mk("p", { class: "muted", style: "font-size:13px;margin:0 0 6px",
+      box.appendChild(mk("p", { class: "muted", style: "font-size:var(--fs-14);margin:0 0 6px",
         text: (hasFilm ? "Gäller vänner ute, kaos, krogar, befordringar och engångskameran." : "Gäller vänner ute, kaos, krogar och befordringar.") +
           " Chatt och planer räknas inte." + (d.tonight ? " Ikväll: " + d.tonight + " st." : "") }));
       box.appendChild(cs);

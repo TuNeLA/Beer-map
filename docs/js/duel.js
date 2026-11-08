@@ -37,7 +37,7 @@
       qrHead: "📱 Visa den här för den andra gruppen", qrNote: "De skannar med kameran och trycker en gång. Klart!",
       qrCode: "Duellkod: {0}", qrExp: "Koden gäller till {0}.", qrNew: "⚔️ Visa utmaningskod", copyLink: "📋 Kopiera länk", share: "📤 Dela",
       shareText: "⚔️ {0} utmanar er på duell i PintsNow! Tryck här:",
-      typeHead: "⌨️ Har ni en kod?", typePh: "Duellkod (8) eller gruppkod (6)", typeGo: "⚔️ Kör", typeNote: "Duellkod = ni antar direkt. Gruppkod = de får en utmaning att svara på.",
+      typeHead: "⌨️ Har ni en kod?", typePh: "Duell- eller gruppkod", typeGo: "⚔️ Kör", typeNote: "Duellkod = ni antar direkt. Gruppkod = de får en utmaning att svara på.",
       nearHead: "📍 Grupper nära er ikväll", nearNone: "Inga öppna grupper ute nära er just nu.", nearBtn: "⚔️ Utmana", nearPos: "Slå på platsen så hittar vi grupper nära dig.",
       nearOut: "{0} ute · {1} i gruppen", openLabel: "Låt grupper nära oss utmana oss", openOn: "📍 Nu kan grupper nära er utmana er.", openOff: "🔒 Ni syns int’ längre i listan.",
       active: "Pågår", pending: "Väntar på svar", incoming: "⚔️ {0} utmanar er!", outgoing: "⏳ Väntar på att {0} svarar…",

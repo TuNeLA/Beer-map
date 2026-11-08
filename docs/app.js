@@ -3099,7 +3099,7 @@
       var ver = el("span", { class: "muted", text: t("version") + " …" });
       if (window.caches && caches.keys) {
         caches.keys().then(function (ks) {
-          var k = ks.filter(function (x) { return x.indexOf("olnu-") === 0; })[0];
+          var k = ks.filter(function (x) { return /^olnu-[0-9a-f]{8,}/.test(x); })[0];   // audit-03: not olnu-pending/-cdn/-data/-tiles/-beta
           ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : "–");
         }).catch(function () { ver.textContent = t("version") + " –"; });
       } else { ver.textContent = t("version") + " –"; }

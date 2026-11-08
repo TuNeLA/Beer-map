@@ -38,7 +38,7 @@
   var CSS = ".gone-sec{margin-top:10px;display:flex;flex-direction:column;gap:6px}" +
     ".gone-sec .gone-ask{margin:0;font-size:14px;line-height:1.35}" +
     ".gone-sec .gone-row{display:flex;gap:8px;flex-wrap:wrap}" +
-    ".gone-sec .gone-mine{margin:0;font-size:13px;opacity:.85}";
+    ".gone-sec .gone-mine{margin:0;font-size:var(--fs-14);opacity:.85}";
 
   function apply(ids) { try { if (window.BARS && window.BARS.closeIds) return window.BARS.closeIds(ids); } catch (e) {} return 0; }
   function loadMine() { (lsGet(MINE, []) || []).forEach(function (id) { mine[id] = true; }); }

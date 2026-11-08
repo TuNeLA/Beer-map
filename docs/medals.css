@@ -5,8 +5,8 @@
 .st-tap:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .st-medals{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-height:0;margin-top:4px;line-height:1}
 .st-medals:empty{display:none}
-.md-pip{position:relative;display:inline-block}
-.md-pip sub{font-family:var(--hud);font-size:var(--fs-12);color:var(--gold);margin-left:-2px;vertical-align:-2px}
+
+
 .md-more{font-family:var(--hud);font-size:var(--fs-12);color:var(--muted);margin-left:4px}
 .cm-tap{cursor:pointer;text-decoration:underline dotted rgba(255,224,138,.5);text-underline-offset:3px}
 
@@ -23,7 +23,7 @@
 .uni-next{font-size:var(--fs-14);color:var(--muted)}
 .uni-ribbon{display:flex;flex-wrap:wrap;justify-content:center;gap:3px 3px;max-width:calc(4 * 46px + 9px);margin:12px auto 0;padding:10px 0 6px;
   border-top:1px dashed var(--line);line-height:1}
-.uni-ribbon .md-pip sub{font-size:var(--fs-12)}
+
 .uni-ribbon .muted{font-size:var(--fs-14)}
 
 .medal-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
@@ -57,8 +57,8 @@
 .mx-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .mx-btns .btn{flex:1 1 120px}
 .mx-level .mx-card{animation:mxPromo 1.2s var(--e-std) 2}
-.mx-calm .mx-card{border-top-color:var(--green);box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 24px rgba(61,220,132,.2)}
-.mx-calm .mx-title{color:var(--green)}
+
+
 @keyframes mxIn{from{opacity:0}to{opacity:1}}
 @keyframes mxPromo{50%{box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 46px rgba(255,224,138,.7)}}
 @media (prefers-reduced-motion: reduce){.mx-pop,.mx-level .mx-card{animation:none}}

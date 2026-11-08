@@ -101,7 +101,7 @@
   }
   function newsSection(body) {
     var hero = h("section", "pn-hero");
-    hero.appendChild(h("div", "pn-logo", "PINTSNOW"));
+    hero.appendChild(h("div", "pn-logo", "PintsNow"));
     hero.appendChild(h("h2", "pn-title", "Öl Nu heter nu PintsNow 🍺"));
     hero.appendChild(h("p", "pn-p", onNew() ? "Samma app, samma konto, samma gäng. Ny adress: " + host() + "."
       : app() ? "Samma app, samma konto, samma gäng. Snart flyttar vi till " + host() + " – ditt konto följer med av sig självt." : "Samma app, samma konto, samma gäng."));
@@ -138,7 +138,7 @@
     if (m) ack();
     A.openSheet(m && !news ? "🚚 Välkommen till PintsNow" : "🍺 Nytt i appen", function (outer) {
       var body = h("div", "pn-sheet"); outer.appendChild(body);
-      if (news) newsSection(body); else if (m) { var hh = h("section", "pn-hero"); hh.appendChild(h("div", "pn-logo", "PINTSNOW")); body.appendChild(hh); }
+      if (news) newsSection(body); else if (m) { var hh = h("section", "pn-hero"); hh.appendChild(h("div", "pn-logo", "PintsNow")); body.appendChild(hh); }
       if (m) moveSection(body, m);
       body.appendChild(A.btn("Kör! 🍻", "btn-block pn-go", function () { A.closeSheet(); }));
     });

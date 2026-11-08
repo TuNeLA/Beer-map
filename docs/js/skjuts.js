@@ -359,7 +359,7 @@
         h("span", { class: "skj-txt" }, [h("b", { text: "Kör ikväll" }), h("small", { text: list.map(function (d) { return d.is_me ? "du" : d.name; }).join(", ") })])]);
       var btns = h("span", { class: "skj-btns" });
       list.filter(function (d) { return !d.is_me; }).slice(0, 3).forEach(function (d) {
-        btns.appendChild(h("button", { type: "button", class: "btn btn-small skj-ask", text: list.length > 2 ? "Skjuts? " + d.name.split(" ")[0] : "Skjuts?", "aria-label": "Fråga " + d.name + " om skjuts",
+        btns.appendChild(h("button", { type: "button", class: "btn btn-small skj-ask", text: list.filter(function (x) { return !x.is_me; }).length > 1 ? "Skjuts? " + d.name.split(" ")[0] : "Skjuts?", "aria-label": "Fråga " + d.name + " om skjuts",
           onclick: function (e) { e.stopPropagation(); rideAsk(g, d, e.currentTarget); } }));
       });
       row.appendChild(btns);
