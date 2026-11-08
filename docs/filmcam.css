@@ -85,3 +85,72 @@
 .gitem:not(.gcard)>div>.fm-gi>.btn.fm-gbtn.fm-tonight{border-color:var(--ds-amber,#f5a623);box-shadow:inset 0 0 0 1px rgba(245,166,35,.35)}
 .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.fm-gi{grid-column:1 / -1}
 .fm-pick{margin-bottom:var(--ds-2,8px)}
+/* cm FILMRULLAR START */
+/* cm: film card + picker in the camera sheet, film line + save card in the album (film.js cm block). Tokens only. */
+.fm-ic{display:inline-flex;flex:0 0 auto;width:20px;height:20px}
+.fm-ic svg{width:100%;height:100%}
+.fm-film{max-width:380px;margin:0 auto var(--sp-5,24px);padding:var(--sp-3,12px) var(--sp-4,16px);border-radius:var(--r-lg);background:var(--ds-card,#19233a);border:1px solid var(--ds-border,rgba(255,255,255,.1))}
+.fm-film-row{display:flex;align-items:center;gap:var(--sp-3,12px);min-height:44px}
+.fm-film-ic{color:var(--ds-amber-t,#ffc24d)}
+.fm-film-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.fm-film-t small{font-size:var(--fs-12);line-height:16px;color:var(--ds-muted,#a7b0ac)}
+.fm-film-n{font-size:var(--fs-16);line-height:22px;font-weight:600;color:var(--ds-text,#eef0ec)}
+.fm-film-s{font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2,#c9d0cd)}
+.fm-film-b{flex:0 0 auto;min-height:44px;white-space:nowrap}
+.fm-film.locked .fm-film-ic{color:var(--ds-muted,#a7b0ac)}
+.fm-pick{margin-top:var(--sp-3,12px)}
+.fm-pick[hidden]{display:none}
+.fm-pick-h{margin:0 0 var(--sp-1,4px);font-size:var(--fs-14);line-height:20px;font-weight:600;color:var(--ds-muted,#a7b0ac)}
+.fm-pick-p{margin:0 0 var(--sp-3,12px);font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2,#c9d0cd)}
+/* the ONE segmented control, 2 per row: track --ds-bg r12 p4, items r8, selected --ds-raised + amber text */
+.fm-stocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-1,4px);padding:var(--sp-1,4px);border-radius:var(--r-md);background:var(--ds-bg,#0a0f1c)}
+.fm-st{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-1,4px);min-height:44px;padding:var(--sp-1,4px) var(--sp-1,4px) var(--sp-2,8px);border:0;border-radius:var(--r-sm);
+  background:transparent;color:var(--ds-text,#eef0ec);text-align:left;font:inherit;cursor:pointer;transition:background-color var(--m-2,120ms) var(--e-std,ease)}
+.fm-st[aria-checked="true"]{background:var(--ds-raised,#222e48)}
+.fm-st[aria-checked="true"] .fm-st-t b{color:var(--ds-amber-t,#ffc24d)}
+.fm-st:focus-visible{outline:2px solid var(--ds-amber-t,#ffc24d);outline-offset:2px}
+.fm-st-pv{display:block;width:100%;height:auto;aspect-ratio:4/3;border-radius:var(--r-xs);background:var(--ds-card,#19233a)}
+.fm-st-t{display:flex;flex-direction:column;padding:0 var(--sp-1,4px)}
+.fm-st-t b{font-size:var(--fs-14);line-height:20px;font-weight:600}
+.fm-st-t small{font-size:var(--fs-12);line-height:16px;color:var(--ds-muted,#a7b0ac);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.fm-st-ok{position:absolute;top:var(--sp-2,8px);right:var(--sp-2,8px);width:24px;height:24px;padding:3px;border-radius:var(--r-pill);background:var(--ds-amber,#f5a623);color:var(--ds-bg,#0a0f1c);opacity:0;transform:scale(.8);
+  transition:opacity var(--m-2,120ms) var(--e-std,ease),transform var(--m-2,120ms) var(--e-std,ease)}
+.fm-st[aria-checked="true"] .fm-st-ok{opacity:1;transform:none}
+.fm-pick-btns{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2,8px);margin-top:var(--sp-3,12px)}
+.fm-pick-btns .btn{min-height:48px;margin:0}
+.fm-roll-f{color:var(--ds-muted,#a7b0ac);font-weight:400}
+.fm-dev-f{display:flex;align-items:center;justify-content:center;gap:var(--sp-2,8px);margin-top:var(--sp-1,4px);font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2,#c9d0cd)}
+.fm-dev-fi{width:16px;height:16px;color:var(--ds-amber-t,#ffc24d)}
+.fm-save{margin:var(--sp-3,12px) 0 var(--sp-5,24px);padding:var(--sp-3,12px) var(--sp-4,16px);border-radius:var(--r-lg);background:var(--ds-card,#19233a);border:1px solid var(--ds-border,rgba(255,255,255,.1));
+  scroll-margin-top:var(--sp-4,16px);transition:border-color var(--m-4,200ms) var(--e-std,ease)}
+.fm-save.focus{border-color:var(--ds-amber,#f5a623)}
+.fm-save-t{margin:0 0 var(--sp-3,12px);font-size:var(--fs-16);line-height:22px;font-weight:600;color:var(--ds-text,#eef0ec)}
+.fm-save .btn{display:flex;align-items:center;justify-content:center;gap:var(--sp-2,8px);min-height:48px;margin:0}
+.fm-save .btn+.btn{margin-top:var(--sp-2,8px)}
+.fm-save .btn[hidden]{display:none}
+.fm-save-s{margin:var(--sp-2,8px) 0 0;font-size:var(--fs-14);line-height:20px;color:var(--ds-muted,#a7b0ac)}
+.fm-save-s:empty{display:none}
+/* camera rules (once before the first shot) + the report / remove mini sheets */
+.fc-rules{position:fixed;inset:0;z-index:3000;display:flex;align-items:flex-end;justify-content:center;background:rgba(4,7,12,.72);padding:0 0 var(--sab,0px)}
+.fc-r-card{width:100%;max-width:560px;max-height:92dvh;overflow:auto;padding:var(--sp-5,24px) var(--sp-4,16px) calc(var(--sp-4,16px) + var(--sab,0px));border-radius:var(--r-xl) var(--r-xl) 0 0;
+  background:var(--ds-sheet,#121a2a);color:var(--ds-text,#eef0ec);box-shadow:var(--ds-sh-2,0 8px 24px rgba(0,0,0,.4))}
+.fc-r-t{margin:0 0 var(--sp-4,16px);font:400 var(--fs-22)/28px var(--display);color:var(--ds-amber-t,#ffc24d)}
+.fc-r-list{list-style:none;margin:0 0 var(--sp-5,24px);padding:0;display:flex;flex-direction:column;gap:var(--sp-3,12px)}
+.fc-r-list li{display:flex;align-items:flex-start;gap:var(--sp-3,12px);font-size:var(--fs-16);line-height:22px}
+.fc-r-ic{flex:0 0 auto;width:20px;height:20px;margin-top:1px;color:var(--ds-amber-t,#ffc24d)}
+.fc-r-ic svg{width:100%;height:100%}
+.fc-r-btns{display:flex;flex-direction:column;gap:var(--sp-2,8px)}
+.fc-r-btns .btn{min-height:48px;margin:0}
+.fm-mini-p{margin:-8px 0 var(--sp-4,16px);font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2,#c9d0cd)}
+.fm-v-act{flex:0 0 var(--tap,48px);min-height:var(--tap,48px);display:flex;align-items:center;justify-content:center;padding:0}
+.fm-frame[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.fc-r-card{animation:fcRUp var(--m-4,200ms) var(--e-std,ease)}@keyframes fcRUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}}
+/* FILMCAM.capture (Skåltimmen) overlay: reuses the fc-ov viewfinder */
+.fc-cap-l{flex:1 1 auto;min-width:0;font-size:var(--fs-16);line-height:22px;font-weight:600;color:var(--ds-text,#eef0ec)}
+.fc-cap-s{min-height:20px;margin:var(--sp-2,8px) 0;text-align:center;font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2,#c9d0cd)}
+.fc-cap-one{min-height:44px}
+.fc-cap-one[hidden]{visibility:hidden;display:inline-flex}
+/* while the camera is open: other toasts wait (filmcam.js); the camera's own toasts sit at the top, away from the shutter */
+body.fm-camon .toasts{top:calc(var(--sat,0px) + 8px) !important;bottom:auto !important}
+@media (prefers-reduced-motion:reduce){.fm-st,.fm-st-ok,.fm-save{transition:none}}
+/* cm FILMRULLAR END */

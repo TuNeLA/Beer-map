@@ -33,7 +33,7 @@
     (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return n;
   }
-  function toast(m, o) { try { A.toast(m, o); } catch (e) {} }
+  function toast(m, o) { o = Object.assign({}, o || {}); o.cls = ((o.cls || "") + " fm-own").trim(); try { A.toast(m, o); } catch (e) {} }   // cm: the camera's own
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function reduced() { try { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
@@ -411,7 +411,8 @@
     } catch (e) {}
     shutter.addEventListener("click", function () {
       if (shutter.disabled || !stream || !video.videoWidth) return;
-      var shot = grab(video, vf);
+      if (!rulesOk()) { rulesCard(c.g, paint); return; }   // cm
+      var shot = grab(video, vf, c.g.id);
       if (!shot) { status.textContent = errText("invalid_photo"); return; }
       winding = true; paint();
       vib([15, 30, 15]);
@@ -427,7 +428,7 @@
     start();
   }
   // Capture what the viewfinder shows (center crop to its aspect), long side ≤ 1600, then the chat-photo rules (PHOTO._shrink).
-  function grab(v, box) {
+  function grab(v, box, gid) {   // cm: + gid (the group's film)
     try {
       var vw = v.videoWidth, vh = v.videoHeight;
       if (!vw || !vh) return null;
@@ -439,6 +440,8 @@
       var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
       var cx = cv.getContext("2d");
       cx.drawImage(v, sx, sy, sw, sh, 0, 0, w, h);
+      var fx = window.FILMFX;   // cm: the night's film, on the copy that goes up (the original never leaves the phone)
+      if (fx && fx.develop) return fx.develop(cv, fx.rollOf(gid), { at: Date.now() }).then(function (s) { cv.width = cv.height = 0; return s; });
       return new Promise(function (res, rej) {
         cv.toBlob(function (b) {
           cv.width = cv.height = 0;   // free the pixels now
@@ -453,6 +456,7 @@
   /* ---------- File fallback (with the restart path) ---------- */
   var fileInp = null;
   function pickFile(g, gallery) {
+    if (!rulesOk()) { rulesCard(g, function () { pickFile(g, gallery); }); return; }   // cm
     if (!fileInp) {
       fileInp = document.createElement("input");
       fileInp.type = "file"; fileInp.accept = "image/*";
@@ -466,6 +470,7 @@
         if (fileInp._gal && f.lastModified && Date.now() - f.lastModified > 12 * 3600e3) { toast(L(T.old, "🎞️ That photo is too old. Tonight's photos only."), { err: true, ms: 6000 }); return; }
         toast(L("📸 Framkallar… nä, skickar bara.", "📸 Saving the shot…"), { ms: 2500 });
         (window.PHOTO && window.PHOTO._shrink ? window.PHOTO._shrink(f) : Promise.reject(new Error("no")))
+          .then(function (s) { var fx = window.FILMFX; return fx && fx.develop ? fx.develop(s, fx.rollOf(gg.id), { at: f.lastModified || Date.now() }) : s; })   // cm
           .then(function (s) { return enqueue(gg, s); }, function () { toast(errText("invalid_photo"), { err: true }); });
       });
     }
@@ -499,7 +504,7 @@
     if (!A) return;
     A.rpc("film_state", { p_group_id: g.id }).then(function (r) {
       var d = r && !r.error ? (A.parseData ? A.parseData(r.data) : r.data) : null;
-      open(g, d || { left: 10, max: 10 });
+      open(g, d && typeof d === "object" && typeof d.left === "number" ? d : { left: 10, max: 10 });   // cm: unknown count = a full roll (ux2)
     });
   }
 
@@ -583,11 +588,12 @@
   }
   function inlShoot(c) {
     if (inl.busy) return;
+    if (!rulesOk()) { rulesCard(c.g, inlPaint); return; }   // cm: the rules BEFORE the first shot
     if (!inl.stream || !inl.video || !inl.video.videoWidth) {
       if (inl.denied || !hasGum()) { open(c.g, c.d); return; }   // the card flow: denied help, camera app, gallery
       inlStart(c, true); return;
     }
-    var shot = grab(inl.video, c.vf);
+    var shot = grab(inl.video, c.vf, c.g.id);
     if (!shot) { toast(errText("invalid_photo"), { err: true }); return; }
     inl.busy = true; inlPaint();
     vib([15, 30, 15]);
@@ -645,6 +651,210 @@
     return box;
   }
 
+  /* cm KAMERAREGLER START */
+  /* ---------- cm: camera rules ONCE before the first shot + other toasts wait while the camera is open ----------
+     ux2 review: the rules dialog came AFTER the first photo (the SAFETY terms gate sits on the film_shoot upload), and a
+     red friend alert toast covered the shutter.
+     - rulesOk() / rulesCard(g, done): the first tap on a shutter (sheet, full screen or the camera-app fallback) shows a short
+       card: who sees the photos, developed tomorrow, remove / report, no GPS. "Jag förstår" saves olnu.fmRules = 1 (never
+       again on this phone), then SAFETY.ensureTerms() (PintsNow's rules, only if not accepted yet). No photo is taken by
+       that tap: the next tap shoots (no surprise frame).
+     - While the camera is open (the camera sheet or the full-screen viewfinder) a toast that is not the camera's own
+       waits in a small queue and shows when the camera closes. The camera's own toasts carry the class fm-own and sit at
+       the top, away from the shutter (filmcam.css). */
+  var RULES_KEY = "olnu.fmRules";
+  function rulesOk() { return lsGet(RULES_KEY) === "1"; }
+  var rulesOv = null;
+  function rulesCard(g, done) {
+    if (rulesOv) return;
+    var ico = function (n) { var s = el("span", { class: "fc-r-ic", "aria-hidden": "true" }); try { if (window.PNI) s.innerHTML = window.PNI.svg(n); } catch (e) {} return s; };
+    var at = "10";
+    try { var dd = cur && cur.d && cur.d.develop_at ? new Date(cur.d.develop_at) : null; if (dd && !isNaN(dd)) at = String(dd.getHours()); } catch (e) {}
+    var rows = [
+      ["users", L("Bara gänget ser bilderna. Ingen annan.", "Only the group sees the photos. Nobody else.")],
+      ["clock", L("Ingen ser dem – inte ens du – förrän i morgon kl " + at + ".", "Nobody sees them – not even you – until " + at + ":00 tomorrow.")],
+      ["flag", L("Fel bild? Den som tog den kan ta bort den. Alla i gänget kan anmäla den.", "A bad photo? The one who took it can remove it. Everyone can report it.")],
+      ["lock", L("Bilden sparas utan plats (GPS) och försvinner efter 7 dagar.", "No location (GPS) is saved. Photos go after 7 days.")]
+    ];
+    var ok = el("button", { type: "button", class: "btn btn-amber btn-block fc-r-ok", text: L("Jag förstår", "I understand") });
+    var more = el("button", { type: "button", class: "btn btn-ghost btn-block fc-r-more", text: L("Läs alla regler", "Read all rules") });
+    var box = el("div", { class: "fc-r-card", role: "dialog", "aria-modal": "true", "aria-labelledby": "fc-r-t" }, [
+      el("h2", { class: "fc-r-t", id: "fc-r-t", text: L("Så funkar engångskameran", "How the camera works") }),
+      el("ul", { class: "fc-r-list" }, rows.map(function (r) { return el("li", {}, [ico(r[0]), el("span", { text: r[1] })]); })),
+      el("div", { class: "fc-r-btns" }, [ok, more])
+    ]);
+    rulesOv = el("div", { class: "fc-rules" }, [box]);
+    document.body.appendChild(rulesOv);
+    try { ok.focus(); } catch (e) {}
+    function shut() { if (rulesOv) { rulesOv.remove(); rulesOv = null; } }
+    ok.addEventListener("click", function () {
+      lsSet(RULES_KEY, "1"); shut();
+      var S = window.SAFETY, p = S && S.ensureTerms ? S.ensureTerms() : Promise.resolve(true);
+      Promise.resolve(p).then(function (yes) {
+        if (yes === false) return;
+        toast(L("📸 Klart! Tryck på knappen för att fota.", "📸 Ready! Tap the button to shoot."), { ms: 2600 });
+        try { if (done) done(); } catch (e) {}
+      }, function () {});
+    });
+    more.addEventListener("click", function () { try { if (window.SAFETY && window.SAFETY.showRules) window.SAFETY.showRules(); } catch (e) {} });
+    rulesOv.addEventListener("click", function (e) { if (e.target === rulesOv) shut(); });
+    rulesOv.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.stopPropagation(); shut(); } });
+  }
+  // ---- toasts wait while the camera is open ----
+  function camShown() {
+    if (camOpen()) return true;
+    var s = document.getElementById("sheet");
+    return !!(s && !s.hidden && s.querySelector("#sheet-body .fm-cam"));
+  }
+  var held = [], holdT = null;
+  function holdTick() {
+    var on = camShown();
+    document.body.classList.toggle("fm-camon", on);
+    if (on || !held.length) { if (!on && !held.length) { clearInterval(holdT); holdT = null; } return; }
+    var box = document.getElementById("toasts"); if (!box) { held = []; return; }
+    if (box.querySelector(".toast")) return;   // one at a time, like the app's own queue
+    var x = held.shift();
+    x.el._fmHeld = 1; box.appendChild(x.el);
+    setTimeout(function () { x.el.remove(); }, Math.max(2500, x.ms || 3800));
+  }
+  function holdStart() { if (!holdT) holdT = setInterval(holdTick, 500); holdTick(); }
+  (function watchToasts() {
+    var box = document.getElementById("toasts");
+    if (!box || !window.MutationObserver) { if (document.readyState !== "complete") setTimeout(watchToasts, 500); return; }
+    new MutationObserver(function (ms) {
+      if (!camShown()) return;
+      ms.forEach(function (m) {
+        Array.prototype.forEach.call(m.addedNodes, function (n) {
+          if (!n.classList || !n.classList.contains("toast") || n._fmHeld || n.classList.contains("fm-own") || n.getAttribute("data-keep")) return;
+          var o = n._olnuT && n._olnuT.opts; n.remove();
+          held.push({ el: n, ms: o && o.ms }); if (held.length > 3) held.shift();
+          holdStart();
+        });
+      });
+    }).observe(box, { childList: true });
+  })();
+  document.addEventListener("click", function () { setTimeout(function () { if (camShown()) holdStart(); else document.body.classList.remove("fm-camon"); }, 50); }, true);
+
+  /* ---------- Public: FILMCAM.capture(opts) → Promise<{blob, w, h, film, facing, second}> (for Skåltimmen, bold-skal.js) ----------
+     Opens the in-app full-screen camera, takes ONE photo (back camera first), and with opts.second a 2nd photo from the
+     other camera (phones cannot run both cameras at once: back, then front). No preview, like the camera.
+     opts: facing "environment" (default) | "user" · second: false · maxPx: 1024 · film: a FILMFX id (null = raw, the
+           default) · useRoll: false (true = the photo ALSO goes on the group's roll and spends a shot; needs opts.g {id, name}
+           and the camera rules) · label / label2: the line over the viewfinder ("1/2 · Bakkameran: visa var ni är") ·
+           sub: a small line under it (a countdown text the caller updates with the returned handle is not needed:
+           pass opts.onOpen(handle) and call handle.setLabel(text) / handle.close()).
+     Result: blob = image/jpeg, long side ≤ maxPx, ≤ 158 kB, no EXIF/GPS; second = {blob, w, h, facing} or null (front
+     camera failed or opts.second false). Errors (reject): Error("cancel") (closed), Error("busy") (already open),
+     Error("film_empty") (useRoll and no shots left). No getUserMedia / camera blocked → the phone's file picker (one photo). */
+  var capOv = null;
+  function toJpeg(cv, max) {
+    var F = window.FILMFX;
+    if (F && F.toJpeg) return F.toJpeg(cv, max);
+    return new Promise(function (res, rej) { cv.toBlob(function (b) { b ? res({ blob: b, w: cv.width, h: cv.height }) : rej(new Error("encode")); }, "image/jpeg", 0.82); });
+  }
+  function capFrame(v, box, o) {
+    var vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return null;
+    var ar = box.clientWidth && box.clientHeight ? box.clientWidth / box.clientHeight : 3 / 4, sw = vw, sh = vh;
+    if (vw / vh > ar) sw = Math.round(vh * ar); else sh = Math.round(vw / ar);
+    var k = Math.min(1, 1600 / Math.max(sw, sh)), cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(sw * k)); cv.height = Math.max(1, Math.round(sh * k));
+    var x = cv.getContext("2d");
+    if (o.mirror) { x.translate(cv.width, 0); x.scale(-1, 1); }
+    x.drawImage(v, Math.round((vw - sw) / 2), Math.round((vh - sh) / 2), sw, sh, 0, 0, cv.width, cv.height);
+    return cv;
+  }
+  function capDone(cv, o, facing) {
+    var F = window.FILMFX, max = o.maxPx || 1024;
+    var p = o.film && F && F.develop ? F.develop(cv, o.film, { at: Date.now(), quiet: true, max: max }) : toJpeg(cv, max);
+    return p.then(function (r) { cv.width = cv.height = 0; return { blob: r.blob, w: r.w, h: r.h, film: o.film && F && F.has(o.film) ? o.film : null, facing: facing }; });
+  }
+  function capFile(o) {
+    return new Promise(function (res, rej) {
+      var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.setAttribute("capture", o.facing === "user" ? "user" : "environment");
+      inp.className = "sk-file fc-file"; inp.style.display = "none"; document.body.appendChild(inp);
+      inp.addEventListener("change", function () {
+        var f = inp.files && inp.files[0]; inp.remove();
+        if (!f) { rej(new Error("cancel")); return; }
+        (window.PHOTO && window.PHOTO._shrink ? window.PHOTO._shrink(f) : Promise.reject(new Error("no_photo")))
+          .then(function (s) { var F = window.FILMFX; return o.film && F && F.develop ? F.develop(s, o.film, { at: f.lastModified || Date.now(), quiet: true }) : s; })
+          .then(function (s) { res({ blob: s.blob, w: s.w, h: s.h, film: o.film || null, facing: o.facing || "environment", second: null }); }, rej);
+      });
+      inp.click();
+    });
+  }
+  function capture(opts) {
+    var o = Object.assign({ facing: "environment", second: false, maxPx: 1024, film: null, useRoll: false }, opts || {});
+    if (capOv || camOpen()) return Promise.reject(new Error("busy"));
+    if (o.useRoll && o.g && o.g.id && (o.left != null && o.left <= 0)) return Promise.reject(new Error("film_empty"));
+    if (o.useRoll && !rulesOk()) return new Promise(function (res, rej) { rulesCard(o.g, function () { capture(opts).then(res, rej); }); });
+    if (!hasGum()) return capFile(o);
+    inlStop();
+    return new Promise(function (res, rej) {
+      var st = null, facing0 = o.facing === "user" ? "user" : "environment", facingNow = facing0, step = 1, first = null, alive = true;
+      var video = el("video", { class: "fc-video", playsinline: "", muted: "", autoplay: "", "aria-hidden": "true" }); video.muted = true; video.playsInline = true;
+      var lab = el("div", { class: "fc-cap-l", "aria-live": "polite", text: o.label || "" });
+      var sub = el("div", { class: "fc-cap-s", text: o.sub || "" });
+      var vf = el("div", { class: "fc-vf fc-cap-vf" }, [video]);
+      var x = el("button", { type: "button", class: "fc-x", "aria-label": L("Stäng kameran", "Close the camera"), text: "✕" });
+      var shutter = el("button", { type: "button", class: "fc-shutter", "aria-label": L("Ta en bild", "Take a photo"), disabled: "" }, [el("span", {})]);
+      var only = o.second ? el("button", { type: "button", class: "btn btn-ghost btn-small fc-cap-one", text: L("Bara en bild", "Only one photo"), hidden: "" }) : null;
+      capOv = el("div", { class: "fc-ov fc-viewmode fc-cap", role: "dialog", "aria-modal": "true", "aria-label": L("Kamera", "Camera") }, [
+        el("div", { class: "fc-body" }, [el("div", { class: "fc-top" }, [lab, x]), vf, sub, el("div", { class: "fc-ctrl" }, [el("span", { class: "fc-sp" }), shutter, only || el("span", { class: "fc-sp" })])])]);
+      document.body.appendChild(capOv);
+      function stop() { if (st) { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} } st = null; }
+      function end(err, val) { if (!alive) return; alive = false; stop(); if (capOv) { capOv.remove(); capOv = null; } document.removeEventListener("visibilitychange", vis); err ? rej(err) : res(val); }
+      function vis() { if (document.visibilityState === "hidden") { stop(); shutter.disabled = true; } else if (alive) start(facingNow); }
+      document.addEventListener("visibilitychange", vis);
+      function start(f) {
+        stop(); shutter.disabled = true;
+        navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: f }, width: { ideal: 1600 }, height: { ideal: 1200 } } })["catch"](function (e) {
+          if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) throw e;
+          return navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+        }).then(function (s) {
+          if (!alive) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+          st = s; lsSet(OK_KEY, "1"); video.srcObject = s;
+          var set = {}; try { set = s.getVideoTracks()[0].getSettings() || {}; } catch (e) {}
+          vf.classList.toggle("mirror", set.facingMode === "user" || (!set.facingMode && f === "user"));
+          var pl = video.play(); if (pl && pl["catch"]) pl["catch"](function () {});
+          var go = function () { shutter.disabled = false; }; if (video.readyState >= 2) go(); else video.addEventListener("loadeddata", go, { once: true });
+        }, function (e) {
+          if (step === 2 && first) { end(null, Object.assign(first, { second: null })); return; }   // front camera failed: the back photo only
+          if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) lsSet(OK_KEY, null);
+          end(null); capFile(o).then(res, rej);
+        });
+      }
+      x.addEventListener("click", function () { if (step === 2 && first) end(null, Object.assign(first, { second: null })); else end(new Error("cancel")); });
+      if (only) only.addEventListener("click", function () { if (first) end(null, Object.assign(first, { second: null })); });
+      shutter.addEventListener("click", function () {
+        if (shutter.disabled) return;
+        var cv = capFrame(video, vf, { mirror: false });
+        if (!cv) return;
+        shutter.disabled = true; vib([15, 30, 15]);
+        if (!reduced()) { var fl = el("div", { class: "fc-flashfx" }); vf.appendChild(fl); setTimeout(function () { fl.remove(); }, 260); }
+        var fNow = facingNow;
+        var done = capDone(cv, o, fNow);
+        if (o.useRoll && o.g && o.g.id && step === 1) {   // the same photo also goes on the roll (spends a shot)
+          var key = reserve(o.g);
+          done.then(function (r) { return enqueue(o.g, { blob: r.blob, w: r.w, h: r.h }, key); }).then(null, function () { unreserve(key); });
+        }
+        if (step === 1 && o.second) {
+          step = 2;
+          done.then(function (r) { first = r; if (only) only.hidden = false; });
+          lab.textContent = o.label2 || L("2/2 · Selfie!", "2/2 · Selfie!"); sub.textContent = L("Vänd mot dig…", "Turning to you…");
+          facingNow = facingNow === "user" ? "environment" : "user";
+          setTimeout(function () { if (alive) { start(facingNow); sub.textContent = o.sub2 || ""; } }, 250);
+          return;
+        }
+        done.then(function (r) {
+          if (step === 2) { var a = first || r; end(null, Object.assign({}, a, { second: first ? { blob: r.blob, w: r.w, h: r.h, facing: r.facing } : null })); }
+          else end(null, Object.assign(r, { second: null }));
+        }, function (e) { end(e || new Error("encode")); });
+      });
+      try { if (o.onOpen) o.onOpen({ setLabel: function (t) { lab.textContent = t; }, setSub: function (t) { sub.textContent = t; }, close: function () { end(new Error("cancel")); } }); } catch (e) {}
+      start(facing0);
+    });
+  }
+  /* cm KAMERAREGLER END */
   /* ---------- Background / foreground ---------- */
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") { if (camOpen() && ov._stop) ov._stop(); inlStop(); }
@@ -666,7 +876,8 @@
   }
 
   window.FILMCAM = {
-    init: init, onAuthed: onAuthed, open: open, inline: inline, note: note, flush: flush, retry: retryNow, close: close,
+    init: init, onAuthed: onAuthed, open: open, inline: inline, capture: capture, rulesOk: rulesOk,   // cm: capture (Skåltimmen)
+    note: note, flush: flush, retry: retryNow, close: close,
     pending: pendingFor, _pick: pickFile, _queue: qAll, _texts: T
   };
 })();

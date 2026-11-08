@@ -175,7 +175,7 @@
     if (!force && c && Date.now() - c.at < 15000) return Promise.resolve(c.d);
     return call("film_state", { p_group_id: gid }).then(function (r) {
       if (r.error) return null;
-      var d = A.parseData(r.data); stCache[gid] = { at: Date.now(), d: d };
+      var d = normState(A.parseData(r.data)); stCache[gid] = { at: Date.now(), d: d };   // cm: unknown count ≠ 0 (ux2)
       return d;
     });
   }
@@ -200,6 +200,7 @@
   }
   function openCam(g) {
     camG = g;
+    try { stockOf(g.id, true); } catch (e) {}   // cm: the film, in parallel with film_state
     A.openSheet(L("📸 Engångskamera", "📸 Disposable camera"), function (body) {
       var root = el("div", { class: "fm-sheet" });
       body.appendChild(root);
@@ -232,6 +233,7 @@
         frames]), shutter])
     ]);
     root.appendChild(cam);
+    try { filmRow(root, g, d, cam); } catch (e) {}   // cm
     root.appendChild(el("p", { class: "fm-dev", text: L("🔒 Ingen ser bilderna – int' ens du – förrän kl 10:00 i morron. Då framkallas filmen.",
       "🔒 Nobody sees the photos – not even you – until 10:00 tomorrow.") }));
     root.appendChild(el("p", { class: "fm-grp muted", text: L("Gänget har tagit " + (d.group_n | 0) + " bilder ikväll" + ((d.shooters | 0) ? " (" + d.shooters + " fotografer)" : "") + ".",
@@ -315,6 +317,7 @@
         ((d.gone | 0) ? " · " + fill(L(T.gone, "{n} expired."), { n: d.gone }) : "") })
     ]));
     if (!photos.length) { root.appendChild(el("p", { class: "muted", text: L("Alla bilder har gått ut.", "All photos expired.") })); return; }
+    var cmSave = function () { try { saveCard(root, g, d); } catch (e) {} };   // cm: after the strip (needs the frame edges)
     var strip = el("div", { class: "fm-strip" });
     photos.forEach(function (p, i) {
       var fr = el("div", { class: "fm-shot loading", style: "aspect-ratio:" + Math.max(1, p.w | 0) + "/" + Math.max(1, p.h | 0) }, [el("span", { class: "fm-spin", text: "🎞️" })]);
@@ -329,6 +332,7 @@
       lazy(fr, p.id);
     });
     root.appendChild(strip);
+    cmSave();
     if (d.expires_at) root.appendChild(el("p", { class: "fm-note muted", text: L("Filmen försvinner ", "The roll expires ") + dayLbl(String(new Date(d.expires_at).toISOString())) + "." }));
   }
   function reactBar(p) {
@@ -365,7 +369,7 @@
     if (!io) io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { io.unobserve(e.target); if (e.target._go) e.target._go(); } }); }, { rootMargin: "300px" });
     fr._go = go; io.observe(fr);
   }
-  var urls = {}, loading = {};
+  var urls = {}, loading = {}, blobs = {};   // cm: blobs = EXIF-stripped bytes (Spara alla)
   function photoUrl(id) {
     id = String(id);
     if (urls[id]) return Promise.resolve(urls[id]);
@@ -375,7 +379,9 @@
       if (r.error) throw new Error(codeOf(r.error));
       var x = A.parseData(r.data), bin = atob(x.b64), a = new Uint8Array(bin.length);
       for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-      urls[id] = URL.createObjectURL(new Blob([a], { type: x.mime || "image/jpeg" }));
+      try { if (window.FILMFX) a = window.FILMFX.stripJpeg(a); } catch (e) {}   // cm
+      blobs[id] = new Blob([a], { type: x.mime || "image/jpeg" });
+      urls[id] = URL.createObjectURL(blobs[id]);
       return urls[id];
     }, function (e) { delete loading[id]; throw e; });
     return loading[id];
@@ -392,10 +398,306 @@
     document.addEventListener("keydown", k);
     x.addEventListener("click", close);
     o.addEventListener("click", function (e) { if (e.target === o || e.target.classList.contains("ph-stage")) close(); });
+    try { viewerSave(save, id, close); } catch (e) {}   // cm
     photoUrl(id).then(function (u) { img.src = u; save.href = u; }, function () { close(); A.toast(errText("photo_not_found"), { err: true }); });
     document.body.appendChild(o);
   }
 
+  /* cm FILMRULLAR START */
+  /* ---------- cm: Filmrullar (one film per group per night, FILMFX) + "Spara alla" (migration 0345) ----------
+     - Camera sheet: a "Film ikväll" card under the camera. "Byt film" opens the picker (6 films, small previews made
+       from the live camera frame, or a sample scene when the camera is off). ONE amber: "Ladda <film>". Locked after the
+       first photo of the night (server: film_locked).
+     - Album: the film name under the title and on the frame edges; the save card "Bilderna från igår är framkallade 📸 –
+       vill du spara dem?" + "Spara alla". All photos are fetched first (share needs the tap), then: iPhone = share sheet
+       ("Spara N bilder" → Bilder, 10 per tap), Android = downloads (Download/ → Galleriet), computer = one ZIP.
+       Only what film_save_list returns (alive, author still in the group, nobody blocked either way, not hidden).
+     - Deep link ?film=<gid>&cam=save (push hook for the 10:00 "Filmen är framkallad" push) → album, save card in focus.
+     - pnlog: cam.film_set {film}, cam.save {count, method}. */
+  var stocks = {}, wantSave = null, SAVED_KEY = "olnu.filmSaved";
+  // ux2 review: "Filmen slut · 00" with 0 photos. The camera read d.left | 0 from an answer that had no counter (a test
+  // mock answered [] ; an old or broken answer can do the same) → 0 → "out of film". A missing count is UNKNOWN, not 0
+  // (DESIGN ds19): show the full roll (max − mine, else 10) and let the server say film_empty if it is really empty.
+  function normState(d) {
+    if (!d || typeof d !== "object" || Array.isArray(d)) d = {};
+    var num = function (v) { return typeof v === "number" && isFinite(v); };
+    var max = num(d.max) && d.max > 0 ? d.max | 0 : 10, o = Object.assign({}, d, { max: max });
+    if (!num(d.left)) { o.left = num(d.mine) ? Math.max(0, max - (d.mine | 0)) : max; o.unknown = true; }
+    if (!num(d.group_max) || d.group_max <= 0) o.group_max = 60;
+    if (!num(d.group_n)) o.group_n = 0;
+    if (!Array.isArray(d.rolls)) o.rolls = [];
+    return o;
+  }
+  function FX() { return window.FILMFX || null; }
+  function filmName(id) { var F = FX(); return F ? F.name(id || F.DEFAULT) : "PintsNow 400"; }
+  function plog(n, p) { try { if (window.PNLOG) window.PNLOG.event(n, p || {}); } catch (e) {} }
+  function icon(n, cls) { var s = el("span", { class: "fm-ic " + (cls || ""), "aria-hidden": "true" }); try { if (window.PNI && window.PNI.has(n)) s.innerHTML = window.PNI.svg(n); } catch (e) {} return s; }
+  var stockP = {};
+  function stockOf(gid, force) {
+    var c = stocks[gid];
+    if (!force && c && Date.now() - c.at < 15000) return Promise.resolve(c.d);
+    if (!force && stockP[gid]) return stockP[gid];
+    return (stockP[gid] = call("film_stock", { p_group_id: gid }).then(function (r) {
+      if (r.error) return null;
+      var d = A.parseData(r.data) || {}; stocks[gid] = { at: Date.now(), d: d };
+      try { if (FX()) FX().setRoll(gid, d.film); } catch (e) {}
+      return d;
+    }).then(function (d) { stockP[gid] = null; return d; }, function () { stockP[gid] = null; return null; }));
+  }
+  function nightFilm(st, night) {
+    var t = Date.parse(night), n = (st && st.nights) || [];
+    for (var i = 0; i < n.length; i++) if (Date.parse(n[i].night) === t) return n[i].film;
+    return null;
+  }
+  function filmRow(root, g, d, cam) {
+    var F = FX(); if (!F) return;
+    var box = el("section", { class: "fm-film", "aria-label": L("Film ikväll", "Tonight's film") });
+    var nm = el("b", { class: "fm-film-n", text: filmName(F.rollOf(g.id)) });
+    var sub = el("span", { class: "fm-film-s", text: L("Laddar…", "Loading…") });
+    var btn = el("button", { type: "button", class: "btn btn-ghost btn-small fm-film-b", hidden: "" }, [document.createTextNode(L("Byt film", "Change film"))]);
+    box.appendChild(el("div", { class: "fm-film-row" }, [icon("film", "fm-film-ic"), el("div", { class: "fm-film-t" }, [el("small", { text: L("Film ikväll", "Tonight's film") }), nm, sub]), btn]));
+    var panel = el("div", { class: "fm-pick", hidden: "" });
+    box.appendChild(panel);
+    root.insertBefore(box, cam.nextSibling);
+    var brand = cam.querySelector(".fm-brand");
+    function paint(st) {
+      var film = st && F.has(st.film) ? st.film : F.DEFAULT;
+      F.setRoll(g.id, film);
+      nm.textContent = filmName(film);
+      if (brand) brand.textContent = "PintsNow · " + filmName(film);
+      var locked = !st || !!st.locked || (d.group_n | 0) > 0;
+      sub.textContent = !st ? F.line(film) : locked ? L("Låst. Gänget har börjat fota.", "Locked. The group has started.") : (st.film ? F.line(film) : L("Standard. Byt innan första bilden.", "Default. Change it before the first photo."));
+      btn.hidden = locked || off.film_set_stock;
+      box.classList.toggle("locked", locked); box.setAttribute("data-st", st ? "ok" : "wait");
+      // Developed rolls in this sheet: add the film name.
+      try {
+        var rs = d.rolls || [], bs = root.querySelectorAll(".fm-roll-btn");
+        rs.forEach(function (x, i) { var b = bs[i]; if (!b || b._fm) return; b._fm = 1; b.appendChild(el("span", { class: "fm-roll-f", text: " · " + filmName(nightFilm(st, x.night) || F.DEFAULT) })); });
+      } catch (e) {}
+    }
+    btn.addEventListener("click", function () { if (panel.hidden) openPicker(); else panel.hidden = true; });
+    function openPicker() {
+      var st = (stocks[g.id] || {}).d || {}, cur = F.has(st.film) ? st.film : F.DEFAULT, sel = cur;
+      panel.innerHTML = ""; panel.hidden = false;
+      panel.appendChild(el("h3", { class: "fm-pick-h", text: L("Välj kvällens film", "Pick tonight's film") }));
+      panel.appendChild(el("p", { class: "fm-pick-p", text: L("En film för hela gänget. Ingen ser resultatet förrän bilderna är framkallade.", "One film for the whole group. Nobody sees the result until the photos are developed.") }));
+      var grid = el("div", { class: "fm-stocks", role: "radiogroup", "aria-label": L("Filmer", "Films") });
+      var vid = root.querySelector(".fm-vf video"), src = null;
+      try { if (vid && vid.videoWidth) { src = document.createElement("canvas"); var k = 320 / Math.max(vid.videoWidth, vid.videoHeight); src.width = Math.round(vid.videoWidth * k); src.height = Math.round(vid.videoHeight * k); src.getContext("2d").drawImage(vid, 0, 0, src.width, src.height); } } catch (e) { src = null; }
+      if (!src) src = F.sample(320, 240, "kvall");
+      var items = [];
+      F.STOCKS.forEach(function (s, i) {
+        var cv = null;
+        try { cv = F.render(src, s.id, { max: 320, seed: 7 + i * 3, at: Date.now() }); cv.className = "fm-st-pv"; cv.setAttribute("aria-hidden", "true"); } catch (e) { cv = el("span", { class: "fm-st-pv" }); }
+        var b = el("button", { type: "button", class: "fm-st", role: "radio", "data-film": s.id, "aria-checked": String(s.id === sel) }, [cv,
+          el("span", { class: "fm-st-t" }, [el("b", { text: filmName(s.id) }), el("small", { text: F.line(s.id) })]), icon("check", "fm-st-ok")]);
+        b.addEventListener("click", function () { sel = s.id; items.forEach(function (x) { x.setAttribute("aria-checked", String(x.getAttribute("data-film") === sel)); }); go.textContent = L("Ladda ", "Load ") + filmName(sel); });
+        items.push(b); grid.appendChild(b);
+      });
+      panel.appendChild(grid);
+      var go = el("button", { type: "button", class: "btn btn-amber btn-block fm-pick-go", text: L("Ladda ", "Load ") + filmName(sel) });
+      var no = el("button", { type: "button", class: "btn btn-ghost btn-block fm-pick-no", text: L("Avbryt", "Cancel") });
+      panel.appendChild(el("div", { class: "fm-pick-btns" }, [go, no]));
+      no.addEventListener("click", function () { panel.hidden = true; });
+      go.addEventListener("click", function () {
+        if (go.disabled) return;
+        if (sel === ((stocks[g.id] || {}).d || {}).film) { panel.hidden = true; return; }
+        go.disabled = true;
+        call("film_set_stock", { p_group_id: g.id, p_film: sel }).then(function (r) {
+          go.disabled = false;
+          if (r.error) {
+            var c = codeOf(r.error), m = String((r.error && r.error.message) || "");
+            if (/film_locked/.test(m)) A.toast(L("Någon hann ta första bilden. Filmen är låst för ikväll.", "Someone took the first photo. The film is locked."), { err: true, cls: "fm-own" });
+            else A.toast(errText(c), { err: true, cls: "fm-own" });
+            stockOf(g.id, true).then(paint); panel.hidden = true; return;
+          }
+          var x = A.parseData(r.data) || {};
+          var st2 = Object.assign({}, (stocks[g.id] || {}).d || {}, { film: x.film || sel, locked: false });
+          stocks[g.id] = { at: Date.now(), d: st2 };
+          plog("cam.film_set", { film: st2.film });
+          fx(15); panel.hidden = true; paint(st2);
+          A.toast(L("Filmen är laddad: ", "Film loaded: ") + filmName(st2.film), { ms: 2600, cls: "fm-own" });
+        });
+      });
+      try { panel.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+    }
+    paint(null);
+    stockOf(g.id).then(function (st) { if (box.isConnected) paint(st); });   // openCam asked already (parallel to film_state)
+  }
+
+  // ---- Album: film name + save card ----
+  function savedList() { return list(SAVED_KEY); }
+  function rollFilm(root, g, d) {
+    var F = FX(), sub = root.querySelector(".fm-dev-s");
+    var line2 = el("div", { class: "fm-dev-f" }, [icon("film", "fm-dev-fi"), el("span", { class: "fm-dev-fn", text: filmName(F ? F.DEFAULT : "") })]);
+    if (sub) sub.parentNode.insertBefore(line2, sub.nextSibling);
+    return function (film) {
+      var n = filmName(film || (F && F.DEFAULT));
+      line2.lastChild.textContent = L("Film: ", "Film: ") + n;
+      root.querySelectorAll(".fm-edge").forEach(function (e, i) { e.textContent = (i + 1) + "A ▸ " + n; });
+    };
+  }
+  // Public: FILM.albumExtra(fn) → unregister(). fn(ctx) runs each time a developed album draws; ctx = { slot (a <div> near
+  // the top of the album, under the save card), g {id, name}, night, evening, photos [{id, name, is_me, at, w, h}],
+  // url(id) → Promise<blob URL>, blob(id) → Promise<Blob> }. A module that loads before film.js pushes fn into
+  // window.FILM_EXTRAS (same effect). A failing fn never breaks the album.
+  var extras = window.FILM_EXTRAS = window.FILM_EXTRAS || [];
+  function albumExtra(fn) { if (typeof fn === "function" && extras.indexOf(fn) < 0) extras.push(fn); return function () { var i = extras.indexOf(fn); if (i >= 0) extras.splice(i, 1); }; }
+  function runExtras(root, g, d) {
+    if (!extras.length) return;
+    var head = root.querySelector(".fm-dev-head"), slot = el("div", { class: "fm-extra" });
+    root.insertBefore(slot, head ? head.nextSibling : root.firstChild);
+    var ctx = { slot: slot, g: { id: g.id, name: g.name || "" }, night: d.night, evening: d.evening, photos: (d.photos || []).map(function (p) { return { id: p.id, name: p.name, is_me: !!p.is_me, at: p.at, w: p.w, h: p.h }; }),
+      url: function (id) { return photoUrl(id); }, blob: function (id) { return photoBlob(id); } };
+    extras.slice().forEach(function (fn) { try { fn(ctx); } catch (e) {} });
+  }
+  function saveCard(root, g, d) {
+    try { runExtras(root, g, d); } catch (e) {}
+    var setFilm = rollFilm(root, g, d), F = FX();
+    var rep = list(REP_KEY), frames = root.querySelectorAll(".fm-frame");
+    (d.photos || []).forEach(function (p, i) { meta[String(p.id)] = { p: p, fr: frames[i] || null, g: g }; if (rep.indexOf(String(p.id)) >= 0 && frames[i]) frames[i].hidden = true; });
+    var photos = (d.photos || []).filter(function (p) { return rep.indexOf(String(p.id)) < 0; }); if (!photos.length || !F) return;
+    var key = rollKey(g.id, d.night), done = has(SAVED_KEY, key);
+    var card = el("section", { class: "fm-save" + (done ? " done" : ""), id: "fm-save", "aria-label": L("Spara bilderna", "Save the photos") });
+    var t = el("p", { class: "fm-save-t", text: done ? L("Du har sparat bilderna från den här kvällen.", "You saved the photos from this night.") : L("Bilderna från igår är framkallade 📸 – vill du spara dem?", "Last night's photos are developed 📸 – do you want to save them?") });
+    var main = el("button", { type: "button", class: "btn btn-block fm-save-all " + (done ? "btn-ghost" : "btn-amber"), disabled: "" }, [icon("download"), el("span", { class: "fm-save-l", text: L("Förbereder bilderna…", "Getting the photos ready…") })]);
+    var alt = el("button", { type: "button", class: "btn btn-ghost btn-block fm-save-alt", hidden: "" });
+    var hint = el("p", { class: "fm-save-s", text: "" });
+    card.appendChild(t); card.appendChild(main); card.appendChild(alt); card.appendChild(hint);
+    var head = root.querySelector(".fm-dev-head");
+    root.insertBefore(card, head ? head.nextSibling : root.firstChild);
+    var files = [], rest = null, evening = d.evening, gname = g.name || "";
+    function lbl(s) { main.lastChild.textContent = s; }
+    function method() { return F.saveMethod(files.slice(0, 2).map(function (f) { return new File([f.blob], f.name, { type: "image/jpeg" }); })); }
+    function ready() {
+      if (!files.length) { lbl(L("Inga bilder att spara", "No photos to save")); main.disabled = true; return; }
+      var m = method(), n = rest ? rest.length : files.length;
+      main.disabled = false;
+      if (rest && rest.length) lbl(L("Spara nästa " + Math.min(F.SHARE_MAX, n) + " (" + (files.length - n + 1) + "–" + Math.min(files.length, files.length - n + F.SHARE_MAX) + ")", "Save the next " + Math.min(F.SHARE_MAX, n)));
+      else lbl((done ? L("Spara igen", "Save again") : L("Spara alla", "Save all")) + " (" + files.length + ")");
+      hint.textContent = m === "share" ? L("Välj ”Spara " + Math.min(F.SHARE_MAX, n) + " bilder” så hamnar de i Bilder." + (n > F.SHARE_MAX ? " Max " + F.SHARE_MAX + " åt gången." : ""), "Pick “Save images” to put them in Photos.")
+        : m === "files" ? L("Bilderna laddas ner. De syns i Galleriet (mappen Download).", "The photos download. They show in your Gallery (Download folder).")
+        : L("Laddas ner som en ZIP-fil.", "Downloads as one ZIP file.");
+      var canAlt = F.canShareFiles(files.slice(0, 1).map(function (f) { return new File([f.blob], f.name, { type: "image/jpeg" }); }));
+      alt.hidden = !(m === "files" && canAlt);
+      alt.innerHTML = ""; alt.appendChild(icon("share")); alt.appendChild(el("span", { text: L("Dela till en app istället", "Share to an app instead") }));
+    }
+    function run(m) {
+      var list2 = rest && rest.length ? rest : files;
+      main.disabled = true;
+      F.save(list2, m, "PintsNow_" + String(evening || "").slice(0, 10) + ".zip").then(function (r) {
+        main.disabled = false;
+        if (r.method === "cancel") { ready(); return; }
+        plog("cam.save", { count: r.n, method: r.method });
+        rest = r.rest && r.rest.length ? r.rest : null;
+        if (!rest) { once(SAVED_KEY, key); done = true; card.classList.add("done"); main.classList.remove("btn-amber"); main.classList.add("btn-ghost");
+          t.textContent = L("Klart! " + files.length + " bilder sparade.", "Done! " + files.length + " photos saved."); fx(20); }
+        ready();
+      }, function (e) {
+        main.disabled = false;
+        plog("cam.save", { count: 0, method: "fail", err: String((e && e.name) || "error").slice(0, 24) });
+        A.toast(L("Det gick int' att spara. Prova igen – eller spara en bild i taget.", "Could not save. Try again, or save one photo at a time."), { err: true, ms: 6000 });
+        ready();
+      });
+    }
+    main.addEventListener("click", function () { if (!main.disabled) run(rest && rest.length ? "share" : method()); });
+    alt.addEventListener("click", function () { run("share"); });
+    // Which photos may be saved (server: alive, still a member, not blocked, not hidden), then fetch them all.
+    call("film_save_list", { p_group_id: g.id, p_night: d.night }).then(function (r) {
+      var x = r && !r.error ? (A.parseData(r.data) || {}) : null;
+      if (x) { setFilm(x.film); evening = x.evening || evening; gname = x.group_name || gname; }
+      else { stockOf(g.id).then(function (st) { setFilm(nightFilm(st, d.night)); }); }
+      var ok = {}; ((x && x.photos) || photos).forEach(function (p) { ok[String(p.id)] = 1; });
+      var todo = photos.filter(function (p) { return ok[String(p.id)]; }), got = 0, slots = [];
+      if (!todo.length) { ready(); return; }
+      var q = todo.slice(), live = 0;
+      function next() {
+        while (live < 3 && q.length) {
+          (function (p, i) {
+            live++;
+            photoBlob(p.id).then(function (b) {   // bytes are EXIF-stripped in photoUrl (FILMFX.stripJpeg)
+              var nm = F.fileName(evening, gname, i + 1);
+              slots[i] = { name: nm, blob: b, id: p.id }; names[String(p.id)] = nm;
+            }, function () {}).then(function () {
+              live--; got++;
+              if (got < todo.length) { lbl(L("Förbereder bilderna… ", "Getting the photos ready… ") + got + "/" + todo.length); next(); }
+              else { files = slots.filter(Boolean); ready(); }
+            });
+          })(q.shift(), todo.length - q.length - 1);
+        }
+      }
+      next();
+    });
+    if (wantSave === g.id) {
+      wantSave = null;
+      setTimeout(function () { try { card.scrollIntoView({ block: "start", behavior: "smooth" }); card.classList.add("focus"); } catch (e) {} }, 300);
+    }
+  }
+  var names = {}, meta = {}, REP_KEY = "olnu.filmRep";
+  // Viewer: "Ta bort" (my own photo, for everyone) or "Anmäl" (someone else's: hidden for me at once, for all at 2 reports).
+  function viewerActions(bar, id, closeV) {
+    var m = meta[String(id)]; if (!m) return;
+    var mine = !!m.p.is_me;
+    var b = el("button", { type: "button", class: "btn btn-ghost fm-v-act " + (mine ? "fm-v-rm" : "fm-v-rep"), "aria-label": mine ? L("Ta bort bilden", "Remove the photo") : L("Anmäl bilden", "Report the photo") }, [icon(mine ? "trash" : "flag")]);
+    bar.insertBefore(b, bar.firstChild);
+    b.addEventListener("click", function () { mine ? askRemove(id, closeV) : askReport(id, closeV); });
+  }
+  function miniSheet(title, text, rows) {
+    var ov = el("div", { class: "fc-rules fm-mini" }), card = el("div", { class: "fc-r-card", role: "dialog", "aria-modal": "true", "aria-label": title });
+    card.appendChild(el("h2", { class: "fc-r-t", text: title }));
+    if (text) card.appendChild(el("p", { class: "fm-mini-p", text: text }));
+    var btns = el("div", { class: "fc-r-btns" });
+    rows.forEach(function (r) { var x = el("button", { type: "button", class: "btn btn-block " + (r.cls || "btn-ghost"), text: r.label }); x.addEventListener("click", function () { ov.remove(); if (r.fn) r.fn(); }); btns.appendChild(x); });
+    card.appendChild(btns); ov.appendChild(card);
+    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    return ov;
+  }
+  function gone(id, closeV) {
+    var m = meta[String(id)]; if (m && m.fr) m.fr.hidden = true;
+    try { closeV(); } catch (e) {}
+  }
+  function askRemove(id, closeV) {
+    miniSheet(L("Ta bort bilden?", "Remove the photo?"), L("Den försvinner för hela gänget. Det går int' att ångra.", "It goes for the whole group. You cannot undo this."), [
+      { label: L("Ta bort för alla", "Remove for everyone"), cls: "btn-danger", fn: function () {
+        call("film_remove", { p_photo_id: +id }).then(function (r) {
+          if (r.error) { A.toast(errText(codeOf(r.error)), { err: true, cls: "fm-own" }); return; }
+          plog("cam.remove", {}); gone(id, closeV); A.toast(L("Bilden är borttagen.", "The photo is removed."), { cls: "fm-own" });
+        });
+      } },
+      { label: L("Avbryt", "Cancel") }]);
+  }
+  function askReport(id, closeV) {
+    var send = function (why) {
+      call("film_report", { p_photo_id: +id, p_reason: why }).then(function (r) {
+        if (r.error) { A.toast(errText(codeOf(r.error)), { err: true, cls: "fm-own" }); return; }
+        once(REP_KEY, String(id)); plog("cam.report", { reason: why });
+        gone(id, closeV); A.toast(L("Tack. Bilden är dold för dig. Vi tittar på den.", "Thanks. The photo is hidden for you."), { cls: "fm-own", ms: 5000 });
+      });
+    };
+    miniSheet(L("Anmäl bilden", "Report the photo"), L("Vad är fel? Den du anmäler får int' veta att det var du.", "What is wrong? The person does not learn it was you."), [
+      { label: L("Naket eller sexuellt", "Nude or sexual"), fn: function () { send("sex"); } },
+      { label: L("Hot eller kränkning", "Threat or abuse"), fn: function () { send("hot"); } },
+      { label: L("Någon under 18", "Someone under 18"), fn: function () { send("minor"); } },
+      { label: L("Personen vill int' vara med", "The person does not want to be in it"), fn: function () { send("annat"); } },
+      { label: L("Avbryt", "Cancel") }]);
+  }
+  function photoBlob(id) { id = String(id); return blobs[id] ? Promise.resolve(blobs[id]) : photoUrl(id).then(function () { return blobs[id]; }); }
+  // Viewer: one photo. iPhone: the share sheet ("Spara bild" → Bilder). Else a download with the PintsNow name.
+  function viewerSave(save, id, closeV) {
+    try { if (save.parentNode) viewerActions(save.parentNode, id, closeV); } catch (e) {}
+    save.download = names[String(id)] || ("PintsNow_" + id + ".jpg");
+    save.addEventListener("click", function (e) {
+      var F = FX(), b = blobs[String(id)]; if (!F || !b) return;
+      e.preventDefault();
+      // No await before share(): iOS needs the tap. The bytes were stripped when the photo loaded.
+      var f = { name: save.download, blob: b }, m = F.saveMethod([new File([b], f.name, { type: "image/jpeg" })]);
+      F.save([f], m === "zip" ? "files" : m).then(function (r) { if (r && r.method !== "cancel") plog("cam.save", { count: 1, method: r.method === "files" ? "single" : r.method }); }, function () {
+        A.toast(L("Det gick int' att spara bilden.", "Could not save the photo."), { err: true });
+      });
+    });
+  }
+  /* cm FILMRULLAR END */
   /* ---------- Morgontidningen helper (gang.js) ---------- */
   function addToStory(gid, evening, st) {
     if (!st || !A || off.film_story) return Promise.resolve(st);
@@ -415,6 +717,7 @@
     var tries = 0;
     (function step() {
       if (!A || !A.authed()) { if (tries++ < 60) setTimeout(step, 500); return; }
+      if (cam === "save") wantSave = gid;   // cm: ?film=<gid>&cam=save (10:00 push) → album + save card
       if (cam === "1") { load(true).then(function () { var pg = groupOf(gid); openCam({ id: gid, name: pg ? gName(pg) : "" }); }); return; }   // 0195 filmstart push
       load(true).then(function () {
         var fr = ((P && P.rolls) || []).filter(function (x) { return x.group_id === gid; })[0];
@@ -486,7 +789,8 @@
       shotDone(gid, x);   // 0195
       if (camRoot && camRoot.g.id === gid && document.body.contains(camRoot.root)) drawCam(camRoot.root, camRoot.g, Object.assign({}, camRoot.d, { left: x.left | 0, mine: x.mine | 0, group_n: x.group_n | 0 }));
     },
-    openCam: openCam, openRoll: openRoll, openFilmLink: openFilmLink, addToStory: addToStory, _url: photoUrl, _texts: T,
+    openCam: openCam, openRoll: openRoll, albumExtra: albumExtra,   // cm: albumExtra (Kvällsrepris tile)
+    openFilmLink: openFilmLink, addToStory: addToStory, _url: photoUrl, _texts: T,
     init: function (api) {
       A = api;
       try { if (window.FILMCAM) window.FILMCAM.init(api); } catch (e) {}
