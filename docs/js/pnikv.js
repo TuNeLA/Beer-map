@@ -104,7 +104,7 @@
   }
   function close() {
     if (!menu) return;
-    var m = menu; menu = null; m.classList.add("pn-out"); setTimeout(function () { m.remove(); }, 160);
+    var m = menu; menu = null; m.classList.add("pn-ikm-out"); setTimeout(function () { m.remove(); }, 160);   // own class: .pn-out is the "N ute nu" card style (it made the menu jump while closing)
     if (chip) chip.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", outside, true); document.removeEventListener("keydown", esc); removeEventListener("resize", place);
   }

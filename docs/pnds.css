@@ -875,7 +875,7 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .pn-ikm{position:fixed;z-index:1500;max-width:calc(100vw - 24px);box-sizing:border-box;padding:var(--sp-3);border-radius:var(--r-lg);
   background:var(--ds-sheet);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2);color:var(--ds-text);
   animation:pnIkmIn var(--m-4,200ms) var(--e-in,cubic-bezier(.05,.7,.1,1)) backwards}
-.pn-ikm.pn-out{animation:pnIkmOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards}
+.pn-ikm.pn-ikm-out{animation:pnIkmOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards}
 @keyframes pnIkmIn{from{opacity:0;transform:translateY(-6px)}}
 @keyframes pnIkmOut{to{opacity:0;transform:translateY(-6px)}}
 .pn-ikm-h{margin:0 0 var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
