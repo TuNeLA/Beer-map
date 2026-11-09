@@ -555,6 +555,17 @@ Följ mig hem, Skåltimmen …). No ÖL! on the group page: ÖL! lives on the ma
   then the error and the button works again.
 <!-- ds59 join END -->
 
+<!-- ds60 polish START -->
+## Group / join polish (ds60)
+
+- Grupper always shows group cards; a group opens on its own page (no "Skapa grupp / Har du en kod?" under it).
+- The group code is on the group page, under "Bjud in" (tap = copy).
+- Invite card: the preview and the count keep their space (no jump); the count is asked again every 20 s; two clear
+  buttons: "Jag hänger med" (primary) and "Bara titta på kartan" (secondary).
+- Hämta mig always offers the group you came from; "inga vänner" only when there are no groups and no people.
+- Ikväll? is a radio: tapping your answer keeps it; "Ta bort mitt svar" clears it.
+<!-- ds60 polish END -->
+
 ## Icons (`window.PNI`)
 
 Our own set, drawn for PintsNow on a 24 px grid: stroke 2, round caps and joins, no fill (small dots filled),

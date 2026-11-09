@@ -1226,3 +1226,15 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #sheet .gpg .chief-line{flex-wrap:wrap}
 #sheet-body .st-row.me>.av{cursor:pointer}
 /* ds58 nav END */
+/* ds60 polish START — code on the group page, invite card keeps its space, Ikväll clear */
+#sheet .gitem:not(.gcard)>div.gp.gpg>.pn-gp-code{position:absolute;top:48px;right:0;z-index:1;display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);
+  border:0;background:none;color:var(--ds-text-2);font:400 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
+#sheet .gpg>.pn-gp-code b{font:700 var(--fs-14)/20px var(--ds-sans);letter-spacing:.06em;color:var(--ds-text)}
+#sheet .gpg:not([data-gv="home"])>.pn-gp-code{display:none !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gmain{min-height:92px !important}
+.jn-join .jn-prev,.jn-join .jn-prev[hidden]{display:block !important;min-height:72px}
+.jn-join .jn-mem,.jn-join .jn-mem[hidden]{display:block !important;min-height:20px}
+.jn-wel .jn-skip.ds-btn-secondary{display:block;width:100%;min-height:48px;margin-top:var(--sp-2);border-radius:var(--r-md);border:1px solid var(--ds-border);background:var(--ds-raised);
+  color:var(--ds-text);font:600 var(--fs-16)/22px var(--ds-sans);text-decoration:none}
+#sheet-body .pn-ikv-clear{display:block;margin:var(--sp-2) auto 0;min-height:44px}
+/* ds60 polish END */

@@ -83,7 +83,7 @@
   function menuOf(c) {
     var k = c.classList;
     if (k.contains("gmain")) return "home info";
-    if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots") || k.contains("pn-gp-inv")) return "home";
+    if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots") || k.contains("pn-gp-inv") || k.contains("pn-gp-code")) return "home";
     if (k.contains("pn-gp-mem")) return "home";   // ds58: Gänget ikväll
     if (k.contains("sp-gi")) return "home";   // 🎉 Spel (spel.js): one big entry on home
     if (k.contains("fm-gi")) return "home";   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
@@ -357,6 +357,11 @@
 
     // ⋯ (info) top right of the header
     // ds52: inviting is a labelled button (was ⋯); the info view is the row "Om gruppen" (same .gpg-dots hook)
+    // ds60: the code on the main screen, under Bjud in (tap = copy)
+    var codeV = g.code ? (U.cleanCode ? U.cleanCode(g.code) : g.code) : "";
+    var codeB = codeV ? h("button", { type: "button", class: "pn-gp-code", "aria-label": L("Kopiera gruppkoden ", "Copy the group code ") + codeV,
+      onclick: function () { copy(codeV, function () { if (A) A.toast(L("Koden " + codeV + " ä kopierad", "Code " + codeV + " copied"), { id: "gpg" }); }); } },
+      [h("span", { class: "muted", text: L("Kod ", "Code ") }), h("b", { text: codeV })]) : null;
     var invB = h("button", { type: "button", class: "pn-gp-inv", "aria-label": L("Bjud in till ", "Invite to ") + (g.name || L("gruppen", "the group")),
       onclick: function () { if (window.JOIN && window.JOIN.openGroup) window.JOIN.openGroup(g, false); else view(wrap, "info"); } },
       [h("span", { class: "pn-gp-ii", "aria-hidden": "true", html: ic("user-plus") }), h("span", { text: L("Bjud in", "Invite") })]);
@@ -426,7 +431,7 @@
     var memS = h("button", { type: "button", class: "pn-gp-mem", hidden: true, "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [
       h("span", { class: "pn-gp-mem-h" }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
       h("span", { class: "pn-gp-mem-l" })]);
-    [invB, dots, now, chat, bar, ph, info, fold].forEach(function (x) { if (x) wrap.appendChild(x); });
+    [invB, codeB, dots, now, chat, bar, ph, info, fold].forEach(function (x) { if (x) wrap.appendChild(x); });
     wrap.insertBefore(memS, chat || bar); loadMem(wrap, g, memS);
 
     // module actions (groupActions) as + tiles

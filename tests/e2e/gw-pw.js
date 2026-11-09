@@ -114,12 +114,19 @@ async function open(browser, o = {}) {
       const txt = await page.textContent("#jn-wel").catch(() => "");
       ok(kind + " 2 link_preview called", called("link_preview", (b) => b.p_kind === kind));
       ok(kind + " 2 no account before the tap", auth.length === 0 && !called(kind === "join" ? "join_preview" : "ev_preview"), auth);
-      ok(kind + " 2 card shows who + count", kind === "join" ? /I gänget: Anton, Lisa, Oskar och 2 till/.test(txt) && /2 ute nu/.test(txt) && /5 i gänget/.test(txt)
-        : /Pubquiz/.test(txt) && /Lisa, Ida och Anton hänger med/.test(txt) && /3 kommer/.test(txt), txt);
+      ok(kind + " 2 card shows who + count", kind === "join" ? !/I gänget: Anton/.test(txt) && /2 ute nu/.test(txt) && /5 i gänget/.test(txt)   // ds59: names only after 18+
+        : /Pubquiz/.test(txt) && !/Lisa, Ida och Anton hänger med/.test(txt) && /3 kommer/.test(txt), txt);   // ds59: names only after 18+
       const btn = kind === "join" ? ".jn-joinbtn" : ".jn-evyes";
       ok(kind + " 2 big 'Jag hänger med', enabled", await page.evaluate((s) => { const b = document.querySelector(s); return !!b && /Jag hänger med/.test(b.textContent) && !b.disabled; }, btn));
       await shot(page, "gw-2-" + (kind === "join" ? "invite" : "event") + "-noaccount");
-      await page.fill("#jn-name", "Nisse"); await page.click(btn); await wait(page, 2500);
+      await page.fill("#jn-name", "Nisse"); await page.click(btn); await wait(page, 600);
+      if (kind === "join") {   // ds59: 18+ before the join; the names show once 18+ is known
+        ok("join 2 18+ asked before the join (no join_group yet)", await page.evaluate(() => !!document.querySelector(".jn-age")) && !called("join_group", () => true));
+        await page.selectOption("#sf-age-year", "1990"); await wait(page, 300);
+        ok("join 2 names show after 18+", /I gänget: Anton, Lisa, Oskar och 2 till/.test(await page.textContent("#jn-wel")));
+        await page.click(".jn-age-go");
+      }
+      await wait(page, 2500);
       ok(kind + " 2 the tap made the account and answered", auth.length > 0 && (kind === "join" ? called("join_group", (b) => b.p_display_name === "Nisse") : called("ev_join", (b) => b.p_name === "Nisse")), { auth: auth.length });
       await shot(page, "gw-2-" + (kind === "join" ? "invite" : "event") + "-done");
       ok(kind + " 2 no page errors", errs.length === 0, errs);
