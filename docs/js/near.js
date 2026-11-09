@@ -249,7 +249,7 @@
     var dem = demonym(f.home_town);
     var sub = [];
     if (dem) sub.push(dem);
-    sub.push(f.out ? L("🍺 ute ikväll", "🍺 out tonight") + (f.town ? " " + L("i ", "in ") + f.town : "") : L("🌙 int' ute", "🌙 not out"));
+    sub.push(f.out ? L("Ute ikväll", "Out tonight") + (f.town ? " " + L("i ", "in ") + f.town : "") : L("Int' ute", "Not out"));   // ds55: status = dot / ring + word
     var li = el("li", { class: "nr-frow" + (f.out ? " out" : "") }, [
       el("span", { class: "st-dot" + (f.out ? " on" : ""), "aria-hidden": "true" }),
       el("span", { class: "nr-fmain" }, [el("b", { text: f.name || L("Okänd kamrat", "Unknown") }), el("small", { class: "muted", text: sub.join(" · ") })]),
@@ -259,6 +259,7 @@
     li.querySelector(".nr-find-b") && li.querySelector(".nr-find-b").setAttribute("aria-label", L("Hitta ", "Find ") + (f.name || ""));
     li.querySelector(".nr-rm-b").setAttribute("aria-label", (window.FRIENDS2 ? L("Mer för ", "More for ") : L("Ta bort vän ", "Remove friend ")) + (f.name || ""));
     try { if (window.FRIENDS2) window.FRIENDS2.decorate(li, f, onChange); } catch (e) {}   // friends2: long-press
+    try { if (window.AVATAR && window.AVATAR.friendRow) window.AVATAR.friendRow(f, li); } catch (e) {}   // ds55: own character (initial when none)
     function askRemove() {
       if (li.nextSibling && li.nextSibling.classList && li.nextSibling.classList.contains("confirm")) return;
       var c = el("li", { class: "confirm" }, [

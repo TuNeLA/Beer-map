@@ -38,12 +38,13 @@
   function chatSettings(g, topRow, note, keepBox) {
     if (!topRow || !note || g.ev || g.dm) return;
     var panel = h("div", { class: "ux-cset", hidden: "", role: "region", "aria-label": L("Chattinställningar", "Chat settings") });
-    panel.appendChild(h("div", { class: "ux-cset-h" }, [h("b", { text: L("⚙️ Chattinställningar", "⚙️ Chat settings") })]));
+    panel.appendChild(h("div", { class: "ux-cset-h" }, [h("b", { text: L("Chattinställningar", "Chat settings") })]));
     if (keepBox) panel.appendChild(keepBox);
     note.classList.add("ux-cset-note");
     panel.appendChild(note);
     var done = null;
-    var cog = h("button", { type: "button", class: "btn btn-small ux-cog", "aria-label": L("Chattinställningar", "Chat settings"), "aria-expanded": "false", text: "⚙️" });
+    var cog = h("button", { type: "button", class: "btn btn-small ux-cog", "aria-label": L("Chattinställningar", "Chat settings"), "aria-expanded": "false", title: L("Chattinställningar", "Chat settings") });
+    cog.innerHTML = window.PNI ? window.PNI.svg("gear") : "⚙️";   // ds54: the redrawn gear, a 44 px round button
     function show(on) {
       panel.hidden = !on; cog.setAttribute("aria-expanded", String(on)); cog.classList.toggle("on", on);
       if (on && window.SHEETNAV) done = window.SHEETNAV.sub(function () { done = null; show(false); });

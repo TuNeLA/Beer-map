@@ -442,22 +442,19 @@
       // Rank + beers now per member (from group_status). Every chat row shows "🎖️ Sergeant Skum Oskar · 4 🍺".
       var stats = {}, meStat = null, heads = [];
       function statOf(m) { return m.is_me ? meStat : stats[m.name || ""] || null; }
-      function headText(m) {
-        var s = statOf(m), nm = m.name || (m.is_me ? t("you") : t("someone"));
-        if (!s) return nm;
-        var rv = s.meriter != null ? s.meriter : s.total;
-        return t("chatWho", titleFor(rv).title, nm) + (s.meriter != null ? " · " + s.meriter + (I.lang === "en" ? " merits" : " meriter") : "");
-      }
+      // ds54: ONE name everywhere = the server's display name (group nickname, else account name). No rank in the bubble.
+      function headText(m) { return m.name || (m.is_me ? t("you") : t("someone")); }
       function beersText(m) {
         var s = statOf(m); if (!s) return "";
-        return (s.beers + s.others) + " 🍺";   // v14: all drinks, total only
+        var n = s.beers + s.others; return n > 0 ? String(n) : "";   // v14: all drinks, total only; ds54: none when 0
       }
+      function beersHTML(m) { var x = beersText(m); return x ? "<b>" + x + "</b>" + (window.PNI ? window.PNI.svg("beer") : "") : ""; }
       function paintTags(h) {
         var s = statOf(h.m); h.tag.innerHTML = "";
         if (s && s.row) tagEls(s.row).forEach(function (x) { h.tag.appendChild(x); });
       }
       function paintHeads() {
-        heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.textContent = beersText(h.m); paintTags(h); });
+        heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.innerHTML = beersHTML(h.m); h.n.setAttribute("aria-label", beersText(h.m) ? beersText(h.m) + " öl ikväll" : ""); paintTags(h); });
       }
       function loadStats() {
         if (!statusOn() || !alive() || g.ev || g.dm) return;
@@ -566,7 +563,7 @@
         try { if (window.AVATAR && window.AVATAR.chatSeen) window.AVATAR.chatSeen(m, g); } catch (e) {}   // 👤 avatar next to each message group
         var empty = list.querySelector(".chat-empty"); if (empty) empty.remove();
         try { var sys = window.EVCHAT && window.EVCHAT.sysLi && window.EVCHAT.sysLi(m); if (sys) { list.insertBefore(sys, anchor || null); return; } } catch (e) {}
-        var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", text: beersText(m) });
+        var nmEl = el("span", { class: "cm-name", text: headText(m) }), nEl = el("span", { class: "cm-beers", html: beersHTML(m) });
         var tagEl = el("span", { class: "cm-tags" });   // v25: 👑/🎖️/🎗️ + "Ludvikabo", small, after the rank + name
         var hd = { m: m, name: nmEl, n: nEl, tag: tagEl };
         heads.push(hd); paintTags(hd);
@@ -579,7 +576,8 @@
         // Each person gets their own colour (same name = same colour every time). Me = gold (CSS).
         var col = m.is_me ? null : chatColor(m.name || "");
         if (col) nmEl.style.color = col;
-        list.insertBefore(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "", "data-at": String(m.created_at || ""), "data-mid": String(m.id) }, [
+        list.insertBefore(el("li", { class: "chat-msg" + (m.is_me ? " me" : ""), style: col ? "border-left-color:" + col + ";--cm-c:" + col : "", "data-at": String(m.created_at || ""), "data-mid": String(m.id),
+          "data-who": m.is_me ? "me" : "n:" + (m.name || "") }, [
           el("div", { class: "cm-head" }, [nmEl, tagEl, nEl,
             el("span", { class: "cm-time", text: U.timeHM(m.created_at) })]),
           el("div", { class: "cm-body", text: String(m.body || "") }),
@@ -777,6 +775,7 @@
           return;
         }
         var kinds = t("kindLow") || {}, rowsByName = {}, meRow = null, all = r.data || [], openPanel = null;
+        if (!all.length) list.appendChild(el("li", { class: "muted st-empty", text: I.lang === "en" ? "No members to show right now. Try again in a moment." : "Inga medlemmar att visa just nu. Försök igen om en stund." }));   // ds53
         var tot = function (m) { return Math.max(0, m.beers | 0) + Math.max(0, m.others | 0); };
         all.slice().forEach(function (m) {   // 0292: server order = meriter, most first
           var beers = Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), others = 0, parts = [];   // v14: all drinks count, total only
@@ -788,12 +787,14 @@
           var row = el("li", { class: "st-row" + (m.is_me ? " me" : "") }, [
             el("span", { class: "st-dot" + (m.live ? " on" : ""), title: m.live ? t("statusLive") : "", "aria-label": m.live ? t("statusLive") : "" }),
             el("span", { class: "st-main" }, [
-              el("span", { class: "st-name", text: (m.is_me ? t("you") + " · " : "") + (m.name || t("someone")) }),
-              el("span", { class: "st-title", text: "🎖️ " + tf.title + (hasM ? " · " + (m.meriter | 0) + (I.lang === "en" ? " merits" : " meriter") : "") }),
+              el("span", { class: "st-name" }, [el("span", { class: "st-nm", text: m.name || t("someone") }), m.is_me ? el("i", { class: "st-me", text: t("you") }) : null]),   // ds53
+              el("span", { class: "st-title", text: tf.title + (hasM ? " · " + (m.meriter | 0) + (I.lang === "en" ? " merits" : " meriter") : "") }),
               tags.length ? el("span", { class: "st-roles" }, tags) : null,
               medEl
             ]),
-            el("span", { class: "st-n", text: parts.length ? parts.join(" · ") : t("statusNone") })
+            // ds53: the night count with our beer glyph, or a grey "Inga öl" (0 is never coloured)
+            el("span", { class: "st-n" + (beers ? " has" : ""), "aria-label": beers ? beers + (I.lang === "en" ? " drinks tonight" : " öl ikväll") : t("statusNone"),
+              html: beers ? "<b>" + beers + "</b>" + (window.PNI ? window.PNI.svg("beer") : "") : U.esc(I.lang === "en" ? "No drinks" : "Inga öl") })
           ]);
           list.appendChild(row);
           try { if (window.AFTER && window.AFTER.statusRow) window.AFTER.statusRow(g, m, row); } catch (e) {}   // v16: 🏠 home tonight

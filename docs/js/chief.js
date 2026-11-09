@@ -467,7 +467,7 @@
     var chiefHome = homeLbl(d.chief_home);
     var top = el("div", { class: "chief-line" }, [
       el("span", { class: "chief-badge", text: "🎖️" }),
-      el("span", { class: "chief-name", text: L("Gruppchef: ", "Chief: ") + (d.is_chief ? L("Du", "You") : (d.chief_name || "?")) }),
+      el("span", { class: "chief-name", text: L("Gruppchef: ", "Chief: ") + (d.is_chief ? L("Du", "You") : (d.chief_name || L("ingen än", "none yet"))) }),
       chiefHome ? el("span", { class: "ht-tag", text: chiefHome }) : null
     ]);
     if (d.can_hand && mem.length > 1) {

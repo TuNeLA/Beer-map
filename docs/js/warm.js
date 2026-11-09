@@ -36,6 +36,8 @@
     award_medals: 1, public_config: 1, spel_group: 1, crew_dance_bar: 1, bar_photos: 1, city_league: 1, record_bar: 1, beer_reactions: 1, friend_totals: 1,
     my_rallies: 1, safety_state: 1, pickup_poll: 1, vitals_log: 1, log_vitals: 1, my_push_state: 1
   };
+  // ds59: writes that the read-like name rule (…_group) would miss: they always make the cache dirty
+  var WRITES = { join_group: 1, create_group: 1, leave_group: 1, rename_group: 1, kick_member: 1, set_display_name: 1, friend_remove: 1, friend_answer: 1, dm_open: 1 };
   var READLIKE = /^(my_|live_|heat|ghost|poll|events_|guess_|golden|bars?_)|(_poll|_state|_status|_near\d*|_get|_preview|_list|_for|_mine|_checks|_etas|_group|_places|_passport|_kind|_in|_feed|_top|_league|_stats)$/;
   var lastGesture = 0;
   ["pointerdown", "keydown"].forEach(function (ev) { document.addEventListener(ev, function (e) { if (e.isTrusted) lastGesture = now(); }, { capture: true, passive: true }); });
@@ -44,6 +46,9 @@
   var stats = { hit: 0, miss: 0, net: 0, reval: 0, changed: 0, dirty: 0, pre: 0, hold: 0, holdMs: 0, dirtyBy: {} };
   var mem = null, recipes = null, inflight = {}, uid = null, uidAt = 0, winUntil = 0, curTrig = null, saveT = 0;
   var oldServed = 0;
+  // ds52: these screens patch themselves when the fresh answer comes (gpage.onWarm, app.js my_groups): after a write they
+  // may show the cached answer at once (4 s after the write) and always re-fetch it.
+  var STALE_OK = { group_now: 1, group_msgs: 1, avatars_for: 1 }, dirtyAt = 0;   // not my_groups: a left / new group must show at once
 
   function now() { return Date.now(); }
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -99,7 +104,7 @@
     var e = load()[k]; if (!e || e.dirty || now() - e.at >= MAX_MS || e.n !== night(now())) return null;
     try { return { data: JSON.parse(e.s), age: now() - e.at }; } catch (x) { return null; }
   }
-  function dirtyAll() { load(); Object.keys(mem).forEach(function (k) { mem[k].dirty = 1; }); stats.dirty++; }
+  function dirtyAll() { load(); Object.keys(mem).forEach(function (k) { mem[k].dirty = 1; }); stats.dirty++; dirtyAt = now(); }
   function clear() { mem = {}; inflight = {}; lsSet(LS_D, null); }
 
   /* ---------- recipes (the READ calls one tap made) ---------- */
@@ -158,19 +163,19 @@
     if (!READ[fn]) {
       // A write the USER made (a tap or a key in the last 2.5 s) makes the cache dirty. Background polls and the
       // read-like calls a screen makes while it opens do not (they never change what these screens show).
-      if (!QUIET[fn] && now() - lastGesture < 2500 && !READLIKE.test(fn)) { dirtyAll(); stats.dirtyBy[fn] = (stats.dirtyBy[fn] || 0) + 1; }
+      if (!QUIET[fn] && (WRITES[fn] || (now() - lastGesture < 2500 && !READLIKE.test(fn)))) { dirtyAll(); stats.dirtyBy[fn] = (stats.dirtyBy[fn] || 0) + 1; }
       return raw(fn, params);
     }
     var k = keyOf(fn, params);
     if (!k) return raw(fn, params);
     if (inWin()) record(fn, params);
     var e = load()[k], t = now();
-    var usable = e && !e.dirty && t - e.at < MAX_MS && e.n === night(t);
+    var usable = e && (!e.dirty || (STALE_OK[fn] && t - dirtyAt > 4000)) && t - e.at < MAX_MS && e.n === night(t);
     if (usable && inWin()) {
       stats.hit++;
       e.served = 1;
       if (t - e.at > OLD_MS && inWin()) { oldServed = Math.max(oldServed, t - e.at); oldKeys[k] = 1; }
-      if (t - e.at > FRESH_MS && !inflight[k]) { stats.reval++; network(fn, params, raw, k); }
+      if ((e.dirty || t - e.at > FRESH_MS) && !inflight[k]) { stats.reval++; network(fn, params, raw, k); }
       var d; try { d = JSON.parse(e.s); } catch (x) { d = null; }
       return Promise.resolve({ data: d, error: null, status: 200, warm: t - e.at });
     }

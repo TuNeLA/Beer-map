@@ -1321,25 +1321,33 @@
   function decorateChat() {
     chat.t = 0;
     var list = document.querySelector("#sheet-body .chat-list"); if (!list || !chat.g) return;
-    var prev = null, gid = chat.g.id;
+    // ds54: runs like iMessage: name on the first bubble (CSS), the avatar on the LAST bubble of a run.
+    var gid = chat.g.id, runs = [], cur = null;
     for (var li = list.firstElementChild; li; li = li.nextElementSibling) {
       var info = li.classList.contains("chat-msg") ? chat.msgs[li.getAttribute("data-mid") || ""] : null;
-      if (!info) { if (!li.classList.contains("chat-older-li")) prev = null; continue; }
+      if (!info) { if (!li.classList.contains("chat-older-li") && !li.classList.contains("ux-day")) cur = null; else if (li.classList.contains("ux-day")) cur = null; continue; }
       var who = info.me ? "\u0001me" : info.name || "\u0001?";
-      var cont = prev === who;
-      prev = who;
-      if (info.me) { li.classList.add("av-mine"); continue; }
-      li.classList.add("av-on");
-      li.classList.toggle("av-cont", cont);
-      var pic = li.querySelector(":scope > .av-pic");
-      if (cont) { if (pic) pic.remove(); continue; }
-      if (!pic) {
-        var nm = info.name || L("Någon", "Someone");
-        pic = avEl(info.name ? "g|" + gid + "|n|" + info.name : "none", nm, "av-pic", nm);
-        pic.setAttribute("role", "button"); pic.setAttribute("tabindex", "-1");
-        li.insertBefore(pic, li.firstChild);
-      }
+      if (!cur || cur.who !== who) { cur = { who: who, me: info.me, info: info, els: [] }; runs.push(cur); }
+      cur.els.push(li);
     }
+    runs.forEach(function (r) {
+      var n = r.els.length;
+      r.els.forEach(function (li, i) {
+        li.classList.toggle("av-cont", i > 0);
+        li.classList.toggle("av-first", i === 0);
+        li.classList.toggle("av-last", i === n - 1);
+        if (r.me) { li.classList.add("av-mine"); return; }
+        li.classList.add("av-on");
+        var pic = li.querySelector(":scope > .av-pic");
+        if (i < n - 1) { if (pic) pic.remove(); return; }
+        if (!pic) {
+          var nm = r.info.name || L("Någon", "Someone");
+          pic = avEl(r.info.name ? "g|" + gid + "|n|" + r.info.name : "none", nm, "av-pic", nm);
+          pic.setAttribute("role", "button"); pic.setAttribute("tabindex", "-1");
+          li.insertBefore(pic, li.firstChild);
+        }
+      });
+    });
   }
   document.addEventListener("click", function (e) {
     var t = e.target && e.target.closest ? e.target.closest(".av-pic") : null;

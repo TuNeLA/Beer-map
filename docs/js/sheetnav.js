@@ -78,6 +78,8 @@
         return null;
       }
     }
+    // ds58: a finished form (name, create, join) is not a screen to go back to: the next sheet replaces it
+    if (cur && FORMS.test(String(cur[0] || ""))) { cur = null; return null; }
     if (cur) {
       var w = gvWrap(), b = sbody();
       levels.push({ kind: "sheet", entry: cur, gv: w ? w.getAttribute("data-gv") : null, scroll: b ? b.scrollTop : 0 });
@@ -86,6 +88,7 @@
     return null;
   }
   var pendingRestore = null;
+  var FORMS = /^(Ditt namn( \(anropssignal\))?|Your name( \(callsign\))?|Byt namn|Change name|Skapa grupp|Create group|Gå med|Join)$/;   // ds58
   // The same sheet again = same title AND the same build code (a refresh). Same title, other code = a new view
   // (the group page and its member list are both called by the group's name).
   function src(f) { try { return f.__snSrc || (f.__snSrc = String(f)); } catch (e) { return ""; } }

@@ -968,3 +968,261 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #pn-ghost[data-vis="alla"]{background:var(--pn-float) !important;color:var(--ds-text) !important}
 .hf-ios{border-left:3px solid var(--ds-amber);padding-left:var(--sp-2)}
 /* ds42 ux3 END */
+/* ds51 bar START — Krogkortet: friend rows (own character, night total, Chatta + Skål), the ✕ in the right cell, icon votes */
+.pn-bs7-root .leaflet-popup-close-button{display:grid !important;place-items:center;width:44px !important;height:44px !important;border-radius:var(--r-pill) !important;
+  background:var(--ds-raised) !important;color:var(--ds-text) !important;font-size:0 !important;line-height:0 !important;overflow:hidden}
+.pn-bs7-root .leaflet-popup-close-button svg{width:20px;height:20px}
+.pn-bs7 .pn-bs-frs{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--ds-border)}
+.pn-bs7 .pn-bs-hero>.pn-bs-frs:first-child{margin-top:0;padding-top:0;border-top:0}
+.pn-bs7 .pn-bs-fr2{display:flex;align-items:center;gap:var(--sp-3);min-height:48px}
+.pn-bs7 .pn-bs-fav{width:40px;height:40px;font:600 var(--fs-16)/1 var(--ds-sans);color:var(--ds-text)}
+.pn-bs7 .pn-bs-ft{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
+.pn-bs7 .pn-bs-ft>b{font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn-bs7 .pn-bs-fs{display:flex;align-items:center;gap:var(--sp-1);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.pn-bs7 .pn-bs-fs .pi{width:16px;height:16px;color:var(--ds-amber-t)}
+.pn-bs7 .pn-bs-fn{font-weight:700;color:var(--ds-text);font-variant-numeric:tabular-nums}
+.pn-bs7 .pn-bs-fb{position:relative;display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;padding:0 !important;margin:0 !important;border-radius:var(--r-pill) !important;
+  border:0 !important;background:var(--ds-raised) !important;color:var(--ds-text) !important;font-size:0 !important;min-width:0 !important;box-shadow:none !important}
+.pn-bs7 .pn-bs-fb .pi{width:20px;height:20px}
+.pn-bs7 .pn-bs-skal.on,.pn-bs7 .pn-bs-skal:disabled{color:var(--ds-amber-t) !important;opacity:1 !important}
+.pn-bs7 .pn-bs-sk{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 var(--sp-1);border-radius:var(--r-pill);background:var(--ds-amber);color:#1a1300;
+  font:700 var(--fs-12)/18px var(--ds-sans);font-style:normal;text-align:center}
+.pn-bs7 .pn-bs-more{margin:0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.pn-bs7 .pn-bs-info .sp-tag .sp-b.pn-bs-vote{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);min-width:56px}
+.pn-bs7 .pn-bs-info .sp-tag .sp-b.pn-bs-vote .pi{width:20px;height:20px}
+.pn-bs7 .pn-bs-info .sp-tag .sp-b.pn-bs-vote[aria-pressed="true"]{color:var(--ds-amber-t) !important;border-color:var(--ds-amber-t) !important}
+.pn-bs7 .bi-line>span>.pi-lead,.pn-bs7 .pn-bs-info .ev-line>.pi-lead{width:20px;height:20px;flex:0 0 20px;color:var(--ds-text-2)}
+/* ds51 bar END */
+/* ds52 group START — accent tokens, the group page (Bjud in, Ikväll, tinted icon tiles), scroll fade under the sheet header */
+:root{
+  /* Accent = WHAT a thing is (a tile's identity). Amber stays THE action colour; green stays "out now". Each accent ≥ 4.5:1 on --ds-card. */
+  --pn-acc-live:#3ddc84; --pn-acc-live-bg:rgba(61,220,132,.16);
+  --pn-acc-chat:#6cb2ff; --pn-acc-chat-bg:rgba(108,178,255,.16);
+  --pn-acc-games:#c79bff; --pn-acc-games-bg:rgba(199,155,255,.16);
+  --pn-acc-cam:#3fd8c6; --pn-acc-cam-bg:rgba(63,216,198,.15);
+  --pn-acc-skal:#ffc24d; --pn-acc-skal-bg:rgba(255,194,77,.16);
+  --pn-acc-event:#ff8ccf; --pn-acc-event-bg:rgba(255,140,207,.15);
+  --pn-acc-safe:#ff8a80; --pn-acc-safe-bg:rgba(255,138,128,.15);
+  --pn-acc-money:#b5e66a; --pn-acc-money-bg:rgba(181,230,106,.15);
+  --pn-acc-group:#c9d0cd; --pn-acc-group-bg:var(--ds-raised);
+}
+.pn-acc-live{--acc:var(--pn-acc-live);--acc-bg:var(--pn-acc-live-bg)}
+.pn-acc-chat{--acc:var(--pn-acc-chat);--acc-bg:var(--pn-acc-chat-bg)}
+.pn-acc-games{--acc:var(--pn-acc-games);--acc-bg:var(--pn-acc-games-bg)}
+.pn-acc-cam{--acc:var(--pn-acc-cam);--acc-bg:var(--pn-acc-cam-bg)}
+.pn-acc-skal{--acc:var(--pn-acc-skal);--acc-bg:var(--pn-acc-skal-bg)}
+.pn-acc-event{--acc:var(--pn-acc-event);--acc-bg:var(--pn-acc-event-bg)}
+.pn-acc-safe{--acc:var(--pn-acc-safe);--acc-bg:var(--pn-acc-safe-bg)}
+.pn-acc-money{--acc:var(--pn-acc-money);--acc-bg:var(--pn-acc-money-bg)}
+.pn-acc-group{--acc:var(--pn-acc-group);--acc-bg:var(--pn-acc-group-bg)}
+/* the icon tile: 40 px, radius 12, tinted, icon 24 in the accent */
+.pn-gp-ti{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:var(--r-md);background:var(--acc-bg,var(--ds-raised));color:var(--acc,var(--ds-text-2))}
+.pn-gp-ti .pi{width:24px;height:24px}
+.pn-gp-tx{display:flex;flex-direction:column;min-width:0;flex:1 1 auto;text-align:left}
+.pn-gp-tx>b{font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.pn-gp-tx>small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn-gp-chev{display:grid;place-items:center;color:var(--ds-muted)}
+.pn-gp-chev .pi{width:16px;height:16px}
+
+/* Bjud in: a tonal amber button in the status row (not filled: the ONE primary rule) */
+#sheet .gpg>.pn-gp-inv{position:absolute;top:0;right:0;z-index:1;display:inline-flex;align-items:center;gap:var(--sp-2);height:44px;padding:0 var(--sp-4) 0 var(--sp-3);
+  border-radius:var(--r-pill);border:1px solid rgba(255,194,77,.45);background:rgba(245,166,35,.14);color:var(--ds-amber-t);font:600 var(--fs-16)/1 var(--ds-sans);cursor:pointer}
+#sheet .gpg>.pn-gp-inv .pi{width:20px;height:20px}
+#sheet .gpg>.pn-gp-inv:active{transform:scale(.96)}
+#sheet .gpg:not([data-gv="home"])>.pn-gp-inv{display:none !important}
+#sheet .gpg[data-gv="home"]>.gmain{padding-right:140px}
+
+/* Om gruppen: an ordinary row on the page (was the ⋯ circle) */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gpg-dots.pn-gp-about{position:static !important;order:80 !important;grid-column:1 / -1;display:flex !important;align-items:center;gap:var(--sp-3);
+  width:100% !important;height:auto !important;min-height:64px;padding:var(--sp-3) var(--sp-4) !important;border-radius:var(--r-lg) !important;border:1px solid var(--ds-border) !important;
+  background:var(--ds-card) !important;color:var(--ds-text) !important;font-size:inherit !important;place-items:initial !important}
+#sheet .gpg-dots.pn-gp-about svg{width:24px;height:24px}
+#sheet .gpg-dots.pn-gp-about .pn-gp-chev svg{width:16px;height:16px}
+
+/* Ikväll: the one bottom button (no ÖL! here) */
+#sheet .gpg[data-gv="home"]>.gpg-bar{display:block !important}
+#sheet .gpg-plus.pn-gp-ikv{display:flex !important;align-items:center;gap:var(--sp-3);width:100%;height:auto !important;min-height:64px;flex:none !important;padding:var(--sp-3) var(--sp-4) !important;
+  border-radius:var(--r-lg) !important;border:1px solid rgba(61,220,132,.35) !important;background:var(--ds-raised) !important;color:var(--ds-text) !important;
+  box-shadow:var(--ds-sh-1) !important;place-items:initial !important;cursor:pointer}
+#sheet .gpg-plus.pn-gp-ikv .pn-gp-ti svg{width:24px;height:24px}
+#sheet .gpg-plus.pn-gp-ikv .pn-gp-chev svg{width:16px;height:16px}
+#sheet .gpg-plus.pn-gp-ikv:active{transform:scale(.98)}
+
+/* order on the page: status · Nu · Chatten · Spel · Engångskamera · Om gruppen · Ikväll */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gpg-chat{order:-1 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.sp-gi{order:1 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.fm-gi{order:2 !important}
+
+/* Chatten: blue tile + a normal title; "Öppna" neutral like every other row action */
+#sheet .gpg-chat-h{justify-content:flex-start !important;gap:var(--sp-3)}
+#sheet .gpg-chat-h>b{flex:1 1 auto;text-align:left;font:600 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text) !important}
+#sheet .gpg-chat-h>b .pi-lead{display:none}
+#sheet .gpg-chat-o{color:var(--ds-muted) !important;font:400 var(--fs-14)/20px var(--ds-sans) !important}
+
+/* Spel: purple tile, normal title (no lone yellow), short sub, one chevron */
+#sheet .sp-gi .sp-gbtn{display:flex !important;align-items:center;gap:var(--sp-3);text-align:left;min-height:64px}
+#sheet .sp-gi:not(.sp-live) .sp-gi-ic{display:grid !important;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:var(--r-md);background:var(--pn-acc-games-bg);color:var(--pn-acc-games);font-size:0 !important}
+#sheet .sp-gi .sp-gi-ic svg{width:24px !important;height:24px !important}
+#sheet .sp-gi .sp-gi-tx{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
+#sheet .sp-gi .sp-gt{font:600 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text) !important}
+#sheet .sp-gi:not(.sp-live) .sp-gs{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sheet .sp-gi .sp-gi-go{font-size:var(--fs-16) !important;line-height:16px;width:16px;height:16px;flex:0 0 16px;color:transparent !important;overflow:hidden;position:relative}
+#sheet .sp-gi .sp-gi-go::after{content:"";position:absolute;inset:0;display:block;width:16px;height:16px;background:var(--ds-muted);-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+
+/* Engångskamera: teal tile (the icon lives in the label: placed into the tile) */
+#sheet .gitem:not(.gcard)>div.gp.gpg>.fm-gi>.btn.fm-gbtn{position:relative;display:flex !important;flex-direction:column;align-items:flex-start;justify-content:center;
+  padding:0 var(--sp-5) 0 52px !important;min-height:48px;text-align:left}
+#sheet .gpg>.fm-gi>.fm-gbtn::before{content:"";position:absolute;left:0;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:var(--r-md);background:var(--pn-acc-cam-bg)}
+#sheet .gpg>.fm-gi>.fm-gbtn::after{content:"";position:absolute;right:0;top:50%;width:16px;height:16px;margin-top:-8px;background:var(--ds-muted);-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+#sheet .gpg>.fm-gi .fm-gl{font:600 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text) !important}
+#sheet .gpg>.fm-gi .fm-gl>.pi{position:absolute;left:8px;top:50%;width:24px !important;height:24px !important;margin:-12px 0 0 !important;color:var(--pn-acc-cam)}
+#sheet .gpg>.fm-gi .fm-gs{font:400 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important}
+
+/* Nu: the out-now card says it in green (dot + ring), the name of the place stays text */
+#sheet .gpg-now .gpg-face.on{box-shadow:0 0 0 2px var(--pn-acc-live)}
+
+/* the + list (Ikväll): each action keeps its own accent on its icon */
+#sheet .gpg[data-gv="plus"] .pi-lead{color:var(--ds-text-2)}
+#sheet .gpg[data-gv="plus"]>.sk-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.row .pi-medal{color:var(--pn-acc-skal)}
+#sheet .gpg[data-gv="plus"]>[data-ga="spel"] .pi-lead,#sheet .gpg[data-gv="plus"]>.gg-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.cr-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.cer-gi .pi-lead{color:var(--pn-acc-games)}
+#sheet .gpg[data-gv="plus"]>[data-ga="gpg-ev"] .pi-lead{color:var(--pn-acc-event)}
+#sheet .gpg[data-gv="plus"]>[data-ga="hf-ga"] .pi-lead{color:var(--pn-acc-cam)}
+#sheet .gpg[data-gv="plus"]>[data-ga="pk-ga"] .pi-lead{color:var(--pn-acc-safe)}
+#sheet .gpg[data-gv="plus"]>[data-ga="pk-drv"] .pi-lead{color:var(--pn-acc-chat)}
+#sheet .gpg[data-gv="plus"]>.rnd-gi .pi-lead{color:var(--pn-acc-money)}
+/* + / ⋯ view head: a plain heading (no card, no icon) — the header ‹ is the way back */
+#sheet .gitem:not(.gcard)>div.gp.gpg>.gpg-ph{background:none !important;border:0 !important;padding:0 !important;min-height:0 !important;box-shadow:none !important}
+#sheet .gpg-ph .gpg-ph-t{font:600 var(--fs-18)/24px var(--ds-sans) !important;color:var(--ds-text) !important}
+#sheet .gpg-ph .gpg-ph-t .pi{display:none}
+#sheet .gpg[data-gv="plus"]>.gpg-ph{display:none !important}   /* the first section heading already says "Ikväll" */
+#sheet .gpg-dots.pn-gp-about *{letter-spacing:0 !important}
+#sheet .sp-gi .sp-gi-go{align-self:center !important;margin:0 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg>.fm-gi{padding:var(--sp-3) var(--sp-4) !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg>.fm-gi>.btn.fm-gbtn{min-height:40px !important}
+
+/* the sticky Ikväll bar never covers what scrolls into view (focus, the chat input) */
+#sheet-body:has(.gpg[data-gv="home"]){scroll-padding-bottom:96px}
+/* scroll: the body fades out under the header line instead of being cut by it (iOS scroll edge) */
+#sheet.pn-scrolled #sheet-body{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 16px);mask-image:linear-gradient(to bottom,transparent 0,#000 16px)}
+/* ds52 group END */
+/* ds53 members START — Medlemmar: one grouped list, avatar 40 with room, neutral role pills, grey status */
+#sheet-body .st-list{gap:0 !important;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--r-lg);overflow:hidden;padding:0 !important}
+#sheet-body .st-list>li.muted{padding:var(--sp-3) var(--sp-4)}
+#sheet-body .st-row{display:grid !important;grid-template-columns:40px minmax(0,1fr) auto;column-gap:var(--sp-3);row-gap:0 !important;align-items:start;min-height:64px;
+  padding:var(--sp-3) var(--sp-4) !important;margin:0 !important;background:transparent !important;border:0 !important;border-radius:0 !important;box-shadow:none !important}
+#sheet-body .st-list>li+li{border-top:1px solid var(--ds-border) !important}
+#sheet-body .st-row.me{background:rgba(245,166,35,.06) !important}
+#sheet-body .st-row>.st-dot{display:none !important}
+#sheet-body .st-row>.av{grid-column:1;grid-row:1 / span 3;margin:0 !important;width:40px;height:40px}
+#sheet-body .st-row:not(.av-row)::before{content:"";grid-column:1;width:40px;height:40px;border-radius:50%;background:var(--ds-raised)}
+#sheet-body .st-row>.av.av-live{box-shadow:0 0 0 2px var(--pn-acc-live,#3ddc84)}
+#sheet-body .st-row>.st-main{grid-column:2;display:flex;flex-direction:column;gap:var(--sp-1);min-width:0}
+#sheet-body .st-row>.st-n{grid-column:3;grid-row:1;align-self:start;display:inline-flex;align-items:center;gap:var(--sp-1);min-height:22px;max-width:none;
+  font:400 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important;white-space:nowrap;text-align:right}
+#sheet-body .st-row>.st-n.has{color:var(--ds-text) !important}
+#sheet-body .st-row>.st-n.has b{font:700 var(--fs-16)/22px var(--ds-sans);font-variant-numeric:tabular-nums}
+#sheet-body .st-row>.st-n .pi{width:18px;height:18px;color:var(--ds-amber-t)}
+#sheet-body .st-row>:not(.av):not(.st-main):not(.st-n):not(.st-dot){grid-column:2 / -1}
+#sheet-body .st-row .st-name{display:flex;align-items:center;gap:var(--sp-2);min-width:0;font:600 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text) !important}
+#sheet-body .st-row .st-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sheet-body .st-row .st-me{flex:0 0 auto;font:600 var(--fs-12)/16px var(--ds-sans);font-style:normal;padding:2px var(--sp-2);border-radius:var(--r-pill);background:rgba(245,166,35,.16);color:var(--ds-amber-t)}
+#sheet-body .st-row .st-title{font:400 var(--fs-14)/20px var(--ds-sans) !important;color:var(--ds-muted) !important}
+#sheet-body .st-row .st-title .pi{display:none}
+#sheet-body .st-row .st-roles{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1) var(--sp-2);margin:0}
+#sheet-body .st-row .role-b{display:inline-flex;align-items:center;gap:var(--sp-1);padding:2px var(--sp-2) !important;border:0 !important;border-radius:var(--r-pill) !important;
+  background:var(--ds-raised);color:var(--ds-text-2) !important;font:600 var(--fs-12)/16px var(--ds-sans) !important}
+#sheet-body .st-row .role-b .pi{width:14px;height:14px;color:var(--ds-amber-t)}
+#sheet-body .st-row .ht-tag{font:400 var(--fs-12)/16px var(--ds-sans) !important;color:var(--ds-muted) !important}
+#sheet-body .st-row .st-medals{margin-top:var(--sp-1)}
+#sheet-body .st-row .f2-slot{margin-top:var(--sp-1)}
+#sheet-body .st-row .f2-slot .btn.f2-add{min-height:44px;padding:0 var(--sp-3) !important;border:0 !important;background:transparent !important;box-shadow:none !important;
+  color:var(--ds-amber-t) !important;font:600 var(--fs-14)/20px var(--ds-sans) !important;margin-left:calc(-1 * var(--sp-3))}
+#sheet-body .st-row .f2-chip{font:600 var(--fs-12)/16px var(--ds-sans);padding:2px var(--sp-2)}
+#sheet-body .st-row .af-home,#sheet-body .st-row .skj-tag{font:400 var(--fs-12)/16px var(--ds-sans) !important;color:var(--ds-muted)}
+#sheet-body .st-list>.st-act{padding:var(--sp-2) var(--sp-4) var(--sp-3) 68px !important;background:transparent !important;border-left:0 !important}
+/* ds53 members END */
+/* ds54 chat START — bubbles in runs (name first, avatar last), time inside, one name, round gear */
+#sheet-body .chat-list{gap:2px !important}
+#sheet-body .chat-list>.chat-msg{max-width:80%;padding:var(--sp-2) var(--sp-3) !important;border:0 !important;border-radius:var(--r-lg) !important;
+  background:var(--ds-raised) !important;color:var(--ds-text)}
+#sheet-body .chat-list>.chat-msg.me{background:rgba(245,166,35,.18) !important}
+#sheet-body .chat-list>.chat-msg.av-first{margin-top:var(--sp-3) !important}
+#sheet-body .chat-list>.chat-msg.av-cont{margin-top:0 !important}
+/* inner corners of a run: the side the bubbles hang from */
+#sheet-body .chat-list>.chat-msg.av-on:not(.av-last){border-bottom-left-radius:var(--r-xs) !important}
+#sheet-body .chat-list>.chat-msg.av-on.av-cont{border-top-left-radius:var(--r-xs) !important}
+#sheet-body .chat-list>.chat-msg.me:not(.av-last){border-bottom-right-radius:var(--r-xs) !important}
+#sheet-body .chat-list>.chat-msg.me.av-cont{border-top-right-radius:var(--r-xs) !important}
+/* avatar: 32 px, bottom of the last bubble; every bubble of others keeps the 40 px lane */
+#sheet-body .chat-list>.chat-msg.av-on{margin-left:40px !important}
+#sheet-body .chat-list>.chat-msg.av-on>.av-pic{top:auto !important;bottom:0;left:-40px;width:32px;height:32px;font:600 var(--fs-14)/1 var(--ds-sans)}
+/* the head: name (their colour) + tonight's count, first bubble only; my bubbles have no head */
+#sheet-body .chat-msg .cm-head{display:flex;align-items:center;gap:var(--sp-2);margin:0 0 2px;font:600 var(--fs-14)/20px var(--ds-sans) !important}
+#sheet-body .chat-msg .cm-name{font:600 var(--fs-14)/20px var(--ds-sans) !important;color:var(--cm-c,var(--ds-text-2))}
+#sheet-body .chat-msg .cm-name .pi,#sheet-body .chat-msg .cm-tags{display:none !important}
+#sheet-body .chat-msg .cm-beers{display:inline-flex;align-items:center;gap:2px;font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+#sheet-body .chat-msg .cm-beers:empty{display:none}
+#sheet-body .chat-msg .cm-beers .pi{width:14px;height:14px;color:var(--ds-amber-t)}
+#sheet-body .chat-msg.av-cont .cm-name,#sheet-body .chat-msg.av-cont .cm-beers{display:none !important}
+#sheet-body .chat-msg.me .cm-name,#sheet-body .chat-msg.me .cm-beers{display:none !important}
+#sheet-body .chat-msg.me .cm-head,#sheet-body .chat-msg.av-cont .cm-head{margin:0;height:0}
+/* time: small, inside the bubble, bottom right (the body leaves room for it on its last line) */
+#sheet-body .chat-msg{position:relative}
+#sheet-body .chat-msg .cm-time{position:absolute;right:var(--sp-3);bottom:6px;margin:0 !important;font:400 var(--fs-12)/16px var(--ds-sans) !important;color:var(--ds-muted) !important}
+#sheet-body .chat-msg .cm-body::after{content:"";display:inline-block;width:40px;height:1px}
+#sheet-body .chat-msg .cm-body{font:400 var(--fs-16)/22px var(--ds-sans)}
+/* chat settings: one round gear, right */
+#sheet-body .row.ux-chat-top{justify-content:flex-end;margin:0 0 var(--sp-2) !important;min-height:0}
+#sheet-body .row.ux-chat-top>.ux-cog{display:grid;place-items:center;width:44px;height:44px;min-width:44px;padding:0 !important;border-radius:var(--r-pill) !important;
+  background:var(--ds-raised) !important;border:0 !important;color:var(--ds-text-2) !important;flex:0 0 44px}
+#sheet-body .row.ux-chat-top>.ux-cog .pi{width:22px;height:22px}
+#sheet-body .row.ux-chat-top>.ux-cog.on{color:var(--ds-amber-t) !important;box-shadow:inset 0 0 0 1px var(--ds-amber-t)}
+/* ds54 chat END */
+/* ds55 back START — ‹ left and ✕ right on every sub-screen (title centred between them) */
+#sheet.pn-has-back #sheet-close{visibility:visible !important;pointer-events:auto !important}
+#sheet.pn-has-back .sheet-head>h2{grid-column:2;text-align:center}
+#sheet-body .nr-frow.av-row>.av{width:40px;height:40px;margin-right:0}
+#sheet-body .nr-frow.out .nr-fmain small{color:var(--ds-green)}
+/* ds55 back END */
+/* ds56 emoji START */
+#sheet-body .pn-e46{width:20px;height:20px;flex:0 0 20px;vertical-align:-4px;margin-right:var(--sp-2);color:var(--ds-amber-t)}
+#sheet-body .nr-priv .pn-e46,#sheet-body .jn-qr-cap .pn-e46{width:16px;height:16px;vertical-align:-3px;color:var(--ds-muted)}
+#sheet-body .chief-badge .pn-e46{margin:0}
+/* ds56 emoji END */
+/* ds57 social START */
+#sheet-body .pn-un-list{margin-bottom:var(--sp-5)}
+#sheet-body .pn-un-row .pn-un-av{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-16)/1 var(--ds-sans)}
+#sheet-body .pn-un-row .pn-un-av svg{width:40px;height:40px}
+#sheet-body .pn-un-row.live .pn-un-av{box-shadow:0 0 0 2px var(--pn-acc-live,#3ddc84)}
+#sheet-body .pn-un-row small{display:flex;align-items:center;gap:var(--sp-1)}
+#sheet-body .pn-un-row small .pi{width:16px;height:16px;color:var(--ds-amber-t)}
+#sheet-body .pn-un-row small b{color:var(--ds-text)}
+#sheet-body .pn-un-ikvl .ds-row-i{color:var(--pn-acc-live,#3ddc84)}
+#sheet-body .jn-code{margin:var(--sp-1) auto var(--sp-3) !important}
+/* the Grupper card never cuts who is out: 2 lines (sheet rule 10) */
+#sheet-body .pn-out .pn-out-t small{white-space:normal !important;text-overflow:clip !important;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* ds57 social END */
+/* ds58 nav START — Gänget ikväll strip; info cards full width */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.pn-gp-mem{order:-1 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gpg-chat{order:0 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg>.pn-gp-mem{grid-column:1 / -1;display:flex;flex-direction:column;gap:var(--sp-2);width:100%;padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);border:1px solid var(--ds-border);background:var(--ds-card);color:var(--ds-text);text-align:left;cursor:pointer}
+#sheet .gpg>.pn-gp-mem[hidden]{display:none !important}
+#sheet .pn-gp-mem-h{display:flex;align-items:center;justify-content:space-between;min-height:24px}
+#sheet .pn-gp-mem-h>b{font:600 var(--fs-16)/22px var(--ds-sans)}
+#sheet .pn-gp-mem-l{display:flex;gap:var(--sp-3);overflow-x:auto;scrollbar-width:none;padding:2px 2px var(--sp-1)}
+#sheet .pn-gp-mem-l::-webkit-scrollbar{display:none}
+#sheet .pn-gp-mi{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 52px;min-width:0}
+#sheet .pn-gp-mi>.gpg-face{width:40px !important;height:40px !important;margin:0 !important;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--ds-raised);
+  font:600 var(--fs-16)/1 var(--ds-sans);color:var(--ds-text);border:0 !important}
+#sheet .pn-gp-mi>.gpg-face.on{box-shadow:0 0 0 2px var(--pn-acc-live,#3ddc84)}
+#sheet .pn-gp-mi>.gpg-face.me{box-shadow:0 0 0 2px var(--ds-amber)}
+#sheet .pn-gp-mn{max-width:52px;font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sheet .pn-gp-mc{display:inline-flex;align-items:center;gap:2px;font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+#sheet .pn-gp-mc.has{color:var(--ds-text)}
+#sheet .pn-gp-mc .pi{width:14px;height:14px;color:var(--ds-amber-t)}
+#sheet .gitem:not(.gcard)>div.gp.gpg>.chief-gi,#sheet .gitem:not(.gcard)>div.gp.gpg>.nr-tile,#sheet .gitem:not(.gcard)>div.gp.gpg>.hs-gline{grid-column:1 / -1 !important;width:100%}
+#sheet .gpg .chief-roles{display:flex;flex-direction:column;gap:var(--sp-1)}
+#sheet .gpg .chief-line{flex-wrap:wrap}
+#sheet-body .st-row.me>.av{cursor:pointer}
+/* ds58 nav END */

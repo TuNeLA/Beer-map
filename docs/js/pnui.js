@@ -497,7 +497,7 @@
         box.appendChild(inp);
         var go = h("button", { type: "button", class: "btn btn-amber btn-block", text: "Gå med" });
         go.addEventListener("click", function () {
-          var v = String(inp.value || ""), m = /[?&]join=([A-Za-z0-9]{6})/.exec(v), c = U.cleanCode(m ? m[1] : v);
+          var v = String(inp.value || ""), c = U.codeFrom ? U.codeFrom(v) : U.cleanCode(v);   // ds59: link or code
           if (c.length !== 6) { toast("Koden har 6 tecken.", { err: true }); return; }
           go.disabled = true;
           A.withName(function () {

@@ -14,11 +14,11 @@
   var A = null, loading = null, cssDone = false, off = false, resumed = false;
 
   var S = {
-    sv: { tile: "Spel", tileSub: "Skämskort, Gängkollen, Kungaleken… {0} spel. Välj och kör!",
+    sv: { tile: "Spel", tileSub: "{0} spel · Skämskort, Kungaleken…",
       live: "{0} pågår", liveSub: "{0} ä med · Tryck för att hoppa in!", plus: "Spel", plusSub: "alla spelen på ett ställe",
       lek: "🎉 Alla spel", load: "Laddar spelen…", fail: "Spelen kunde int' laddas. Kolla nätet.",
       resume: "{0} · du ä med i ett spel", back: "Tillbaka" },
-    en: { tile: "GAMES", tileSub: "Shame Cards, Who in the gang?, Imposter… {0} games. Pick one!",
+    en: { tile: "Games", tileSub: "{0} games · Shame Cards, King's game…",
       live: "{0} is on", liveSub: "{0} in · Tap to jump in!", plus: "Games", plusSub: "every game in one place",
       lek: "🎉 All games", load: "Loading the games…", fail: "Could not load the games. Check the network.",
       resume: "{0} · you are in a game", back: "Back" }

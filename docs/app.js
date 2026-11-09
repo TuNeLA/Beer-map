@@ -930,6 +930,14 @@
         if (d.ok === false) { reset(); toast(t("ciWait", Math.max(1, d.wait_seconds | 0))); return; }
         U.ls.setJSON(CI_KEY, { id: String(bar.id), name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: nightEnd() });
         button.textContent = t("ciDone");
+        try {   // ds51: the checked-in state at once (status + Checka ut), not a dead "Du ä incheckad här" button
+          var ciTmp = document.createElement("div"), ciPar = button.parentNode; ciTmp.innerHTML = checkinBtnHTML(bar);
+          if (ciPar && ciTmp.querySelector(".ci-out")) {
+            while (ciTmp.firstChild) ciPar.insertBefore(ciTmp.firstChild, button);
+            button.remove(); ciPar.classList.add("pn-bs-in");
+            var ciEta = ciPar.querySelector(".pp-sec-eta"); if (ciEta) ciEta.classList.add("pn-bs-hide");
+          }
+        } catch (e) {}
         var lines = t("ciToasts") || [];
         toast(lines.length ? lines[Math.floor(Math.random() * lines.length)](d.bar_name || name) : t("ciDone"), { ms: 5000, cls: "skal" });
         window.FX.sound.clink(); window.FX.vibrate([18, 40, 18, 40, 60]);
@@ -2762,7 +2770,7 @@
           rpc("create_group", { p_name: n, p_display_name: getName() }).then(function (r) {
             if (r.error || !r.data) { toast(errMsg(r.error), { err: true }); return; }
             var g = parseData(r.data);
-            toast(t("created")); refresh(); showCode(g, true);
+            refresh(); showGroups(); showGroupPage(g); showCode(g, true);   // ds57: ‹ from the invite = the new group; no toast (the invite card says it, a toast covered the QR)
           });
         };
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
@@ -2775,13 +2783,22 @@
       });
     });
   }
+  // ds59: after a good join, open the new group with its full row from a fresh my_groups
+  function openJoined(g) {
+    if (!g || !g.id) return;
+    rpc("my_groups", {}).then(function (r) {
+      var gs = r && !r.error ? parseData(r.data) : null, x = Array.isArray(gs) ? gs.filter(function (y) { return String(y.id) === String(g.id); })[0] : null;
+      if (x && Array.isArray(gs) && gs.length > 1) showGroupPage(x);
+    });
+  }
   function showJoin(code) {
     withName(function () {
       openSheet(t("join"), function (body) {
-        var inp = el("input", { class: "inp code-inp", id: "code-inp", maxlength: "6", autocapitalize: "characters",
+        var inp = el("input", { class: "inp code-inp", id: "code-inp", maxlength: "200", autocapitalize: "characters", placeholder: "t.ex. ABC234",   // ds59: a link fits
           autocomplete: "off", autocorrect: "off", spellcheck: "false", enterkeyhint: "go", value: U.cleanCode(code) });
         inp.addEventListener("input", function () {
           var raw = String(inp.value || "").replace(/\s+/g, "").toUpperCase();
+          if (/[\/:=?&]/.test(inp.value)) return;   // ds59: a pasted link stays as it is (the code is read on Gå med)
           var c = U.cleanCode(inp.value); if (c !== inp.value) inp.value = c;
           // QA #14: a typed character was dropped (O, 0, I, 1 or a symbol): say why, under the field.
           if (raw.length > c.length && c.length < 6) codeHint.hidden = false;
@@ -2789,7 +2806,7 @@
         var codeHint = el("p", { class: "muted code-hint", hidden: "", "aria-live": "polite",
           text: I.lang === "en" ? "Codes have no O, 0, I or 1." : "Koder har inte O, 0, I eller 1." });
         var go = function () {
-          var c = U.cleanCode(inp.value);
+          var c = U.codeFrom ? U.codeFrom(inp.value) : U.cleanCode(inp.value);   // ds59
           if (c.length !== 6) { toast(t("codeNeeded"), { err: true }); return; }
           rpc("join_group", { p_code: c, p_display_name: getName() }).then(function (r) {
             if (r.error && window.EVLINK && /group_not_found/.test(JSON.stringify(r.error))) {   // social2: an event code?
@@ -2801,8 +2818,8 @@
             var g = parseData(r.data);
             toast(t("joined", g.name || "")); refresh();
             // In the browser: show how to put the app on the home screen first (the groups are there after).
-            if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled())) { showInstallGuide(); return; }
-            showGroups();
+            showGroups(); openJoined(g);   // ds59: fresh list (the join made the cache dirty) + the new group
+            if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled())) toast(I.lang === "en" ? "Tip: put PintsNow on your home screen." : "Tips: lägg PintsNow på hemskärmen.", { ms: 9000, id: "inst", action: { label: I.lang === "en" ? "Show how" : "Visa hur", fn: function () { showInstallGuide(); } } });   // ds59: group first, install later
             document.dispatchEvent(new CustomEvent("pn:group-joined", { detail: { name: g.name || "" } }));   // ntf: calm ask (push.js prime); old push.js: the box
             if (!(window.PUSH && window.PUSH.prime)) notifPromptOnce();
           });
@@ -3956,7 +3973,13 @@
     if (joinCode && !(window.JOIN && window.JOIN.joined(joinCode))) {
       var c = U.cleanCode(joinCode);
       Promise.all([ready, intro]).then(function () {
-        if (LIVE) showJoin(c); else toast(t("soonToast"), { id: "soon" });
+        if (window.JOIN && (window.JOIN.joined(joinCode) || window.JOIN.handled())) return;   // ds59: the welcome card has it
+        if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
+        rpc("my_groups", {}).then(function (r) {   // ds59: already a member → no "Gå med" form again
+          var gs = r && !r.error ? parseData(r.data) : null;
+          if (Array.isArray(gs) && gs.some(function (x) { return U.cleanCode(x.code) === c; })) return;
+          showJoin(c);
+        });
       });
     }
     // Ask for notifications at start (not during a join link). The phone's own question only

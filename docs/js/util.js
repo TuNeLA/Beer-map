@@ -94,6 +94,18 @@
   U.cleanCode = function (s) {
     return String(s || "").toUpperCase().split("").filter(function (c) { return U.CODE_ALPHABET.indexOf(c) >= 0; }).join("").slice(0, 6);
   };
+  // ds59: the group code from what a person pastes or types: a link (join= / id= / code= / last path part) or a code with spaces
+  U.codeFrom = function (s) {
+    var v = String(s || "").trim();
+    var m = /[?&#](?:join|id|code|c)=([A-Za-z0-9]{6})(?![A-Za-z0-9])/i.exec(v);
+    if (m) return U.cleanCode(m[1]);
+    if (/[\/:=?&]/.test(v)) {
+      var p = /\/([A-Za-z0-9]{6})\/?(?:[?#].*)?$/.exec(v); if (p) return U.cleanCode(p[1]);
+      var w = v.match(/\b[A-Za-z0-9]{6}\b/g) || []; for (var i = w.length - 1; i >= 0; i--) { var c = U.cleanCode(w[i]); if (c.length === 6 && c === w[i].toUpperCase()) return c; }
+      return "";
+    }
+    return U.cleanCode(v.replace(/\s+/g, ""));
+  };
   U.errCode = function (err) {
     var m = (err && (err.message || err.details || err.hint || String(err))) || "";
     var codes = ["outside_sweden", "invalid_name", "group_not_found", "not_authenticated", "invalid_subscription", "code_generation_failed", "own_beer", "beer_not_found",

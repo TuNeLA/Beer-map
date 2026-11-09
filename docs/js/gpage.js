@@ -39,6 +39,7 @@
     (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return e;
   }
+  function ic(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }   // ds52
   function hm(iso) {
     var d = new Date(iso); if (isNaN(d)) return "";
     return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
@@ -61,7 +62,7 @@
     chatH: ["💬 Chatten", "💬 Chat"], chatOpen: ["Öppna", "Open"], chatPh: ["Skriv till gänget…", "Message the gang…"],
     chatEmpty: [["Tyst i radion. Säg nåt!", "Radio silence. Say something!"], ["Ingen har sagt nåt än ikväll.", "Nobody said anything yet tonight."]],
     send: ["Skicka", "Send"], you: ["Du", "You"],
-    back: ["‹ Tillbaka", "‹ Back"], plusH: ["➕ Gör nåt", "➕ Do something"], infoH: ["ℹ️ Om gruppen", "ℹ️ About the group"],
+    back: ["‹ Tillbaka", "‹ Back"], plusH: ["Ikväll", "Tonight"], infoH: ["Om gruppen", "About the group"],
     fold: ["Mer… ", "More… "], foldLess: ["Mindre ▴", "Less ▴"],
     members: ["👥 Medlemmar & roller", "👥 Members & roles"], code: ["🔑 Kod", "🔑 Code"], copied: ["📋 Koden ä kopierad", "📋 Code copied"],
     invite: ["➕ Bjud in", "➕ Invite"], status: ["📸 Begär lägesrapport", "📸 Ask for a status report"], statusSub: ["gruppchefen", "the chief"],
@@ -82,7 +83,8 @@
   function menuOf(c) {
     var k = c.classList;
     if (k.contains("gmain")) return "home info";
-    if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots")) return "home";
+    if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots") || k.contains("pn-gp-inv")) return "home";
+    if (k.contains("pn-gp-mem")) return "home";   // ds58: Gänget ikväll
     if (k.contains("sp-gi")) return "home";   // 🎉 Spel (spel.js): one big entry on home
     if (k.contains("fm-gi")) return "home";   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
     if (k.contains("gpg-ph")) return "plus info";
@@ -224,7 +226,46 @@
     box.appendChild(main);
     box.setAttribute("aria-label", line);
     box.__out = out;
+    // ds52: ONE source for "who is out": the status line follows group_now too
+    try {
+      var gs = wrap.querySelector(".gmain .gsub"), g0 = wrap.__g;
+      if (gs && g0 && A && A.t) { var nh = U.esc(A.t("code")) + " " + U.esc(g0.code || "") + " · " + A.t("drinkingOf", out.length, g0.member_count | 0); if (gs.innerHTML !== nh) gs.innerHTML = nh; }
+    } catch (e) {}
     try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(box, out, wrap.__g); } catch (e) {}   // 👤 avatars
+  }
+  // ds58: the members strip (group_status_v3, then v2; same as Medlemmar). Live first, then most drinks, then the server order.
+  function loadMem(wrap, g, box) {
+    if (!A || !A.rpc || !A.LIVE || !g || !g.id || !box) return;
+    // no pop-in: paint from the instant-screen cache at once; a late first answer (after the page showed) waits for the next open
+    var t0 = Date.now(), holding = function () { var sb = document.getElementById("sheet-body"); return Date.now() - t0 < 400 && !!(sb && sb.classList.contains("wm-hold")); };
+    var paint = function (data) {
+        var rows = data.map(function (m, i) { return { name: m.name || "", me: !!m.is_me, n: Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), live: !!m.live, ix: i }; })
+          .sort(function (a, b) { return (b.live - a.live) || (b.n - a.n) || (a.ix - b.ix); }).slice(0, 12);
+        var sig = JSON.stringify(rows); if (box.__sig === sig && !box.hidden) return; box.__sig = sig;   // same answer = no repaint (no pop-in)
+        var l = box.querySelector(".pn-gp-mem-l"); l.innerHTML = "";
+        rows.forEach(function (p) {
+          l.appendChild(h("span", { class: "pn-gp-mi" + (p.live ? " on" : "") + (p.me ? " me" : "") }, [
+            h("span", { class: "gpg-face" + (p.live ? " on" : "") + (p.me ? " me" : ""), text: (p.name || "?").charAt(0).toUpperCase() }),
+            h("small", { class: "pn-gp-mn", text: p.me ? L("Du", "You") : p.name }),
+            h("small", { class: "pn-gp-mc" + (p.n ? " has" : ""), html: p.n ? "<b>" + p.n + "</b>" + ic("beer") : L("–", "–"), "aria-label": p.n ? p.n + L(" öl ikväll", " drinks tonight") : L("inga öl", "none") })]));
+        });
+        try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(l, rows, g); } catch (e) {}
+        box.hidden = !rows.length;
+        // ds58: someone new in the group while the page is open → one calm toast per name
+        var names = data.map(function (m) { return m.name || ""; });
+        if (wrap.__memNames && A && A.toast) names.forEach(function (n) { if (n && wrap.__memNames.indexOf(n) < 0) A.toast(n + L(" gick med i gruppen", " joined the group"), { id: "gpg-join-" + n, ms: 4000 }); });
+        wrap.__memNames = names;
+    };
+    try { var c0 = window.WARM && window.WARM.get ? window.WARM.get("group_status_v3", { p_group_id: g.id }) : null; if (c0 && Array.isArray(c0.data) && c0.data.length) paint(c0.data); } catch (e) {}
+    var go = function (fn) {
+      A.rpc(fn, { p_group_id: g.id }).then(function (r) {
+        if (!document.body.contains(wrap)) return;
+        if (r.error || !Array.isArray(r.data) || !r.data.length) { if (fn === "group_status_v3") go("group_status_v2"); return; }
+        if (box.hidden && !holding()) { try { if (window.WARM && window.WARM.prefetch) window.WARM.prefetch(fn, { p_group_id: g.id }); } catch (e) {} return; }   // late first answer: cached for the next open
+        paint(r.data);
+      });
+    };
+    go("group_status_v3");
   }
   function loadNow(wrap, g) {
     if (offNow || !A || !A.LIVE || !g || !g.id) { var b0 = wrap.querySelector(".gpg-now"); if (b0) b0.hidden = true; return; }
@@ -315,7 +356,15 @@
     wrap.setAttribute("data-gv", "home");
 
     // ⋯ (info) top right of the header
-    var dots = h("button", { type: "button", class: "gpg-dots", "aria-label": T("moreAria"), text: "⋯", onclick: function () { view(wrap, "info"); } });
+    // ds52: inviting is a labelled button (was ⋯); the info view is the row "Om gruppen" (same .gpg-dots hook)
+    var invB = h("button", { type: "button", class: "pn-gp-inv", "aria-label": L("Bjud in till ", "Invite to ") + (g.name || L("gruppen", "the group")),
+      onclick: function () { if (window.JOIN && window.JOIN.openGroup) window.JOIN.openGroup(g, false); else view(wrap, "info"); } },
+      [h("span", { class: "pn-gp-ii", "aria-hidden": "true", html: ic("user-plus") }), h("span", { text: L("Bjud in", "Invite") })]);
+    var dots = h("button", { type: "button", class: "gpg-dots pn-gp-row pn-gp-about", "aria-label": T("moreAria"), onclick: function () { view(wrap, "info"); } }, [
+      h("span", { class: "pn-gp-ti pn-acc-group", "aria-hidden": "true", html: ic("users") }),
+      h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Om gruppen", "About the group") }),
+        h("small", { text: L((g.member_count | 0) + " medlemmar · kod · gruppchef", (g.member_count | 0) + " members · code · chief") })]),
+      h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]);
 
     // Nu strip
     var now = h("button", { type: "button", class: "gpg-now", hidden: true, onclick: function () { nowTap(wrap, g); } });
@@ -328,7 +377,8 @@
       sb.addEventListener("click", function () { send(wrap, g, inp, sb); });
       inp.addEventListener("keydown", function (e) { window.OLNU_CHAT_AT = Date.now(); if (e.key === "Enter") send(wrap, g, inp, sb); });
       chat = h("div", { class: "gpg-chat" }, [
-        h("button", { type: "button", class: "gpg-chat-h", onclick: function () { openChat(g); } }, [h("b", { text: T("chatH") }), h("span", { class: "gpg-chat-o", text: T("chatOpen") })]),
+        h("button", { type: "button", class: "gpg-chat-h", onclick: function () { openChat(g); } }, [h("span", { class: "pn-gp-ti pn-acc-chat", "aria-hidden": "true", html: ic("chat") }),
+          h("b", { text: L("Chatten", "Chat") }), h("span", { class: "gpg-chat-o", text: T("chatOpen") })]),
         h("ul", { class: "gpg-msgs", role: "button", tabindex: "0", "aria-label": T("chatH"), onclick: function () { openChat(g); } }),
         h("div", { class: "gpg-qr" }, [inp, sb])
       ]);
@@ -336,9 +386,13 @@
     }
 
     // bottom bar: + and the ONE main action
-    var plus = h("button", { type: "button", class: "gpg-plus", "aria-label": T("plusAria"), onclick: function () { view(wrap, "plus"); } }, [h("span", { "aria-hidden": "true", text: "+" })]);
-    var beer = h("button", { type: "button", class: "btn gpg-beer", onclick: beerTap }, [h("b", { text: T("beer") }), h("small", { text: T("beerSub") })]);
-    var bar = h("div", { class: "gpg-bar" }, [plus, beer]);
+    // ds52: no ÖL! here (it lives on the map). ONE labelled button for tonight's actions.
+    var plus = h("button", { type: "button", class: "gpg-plus pn-gp-ikv", "aria-label": L("Ikväll: Jag kör, Följ mig hem, Skåltimmen och mer", "Tonight: driving, follow me home, cheers hour and more"),
+      onclick: function () { view(wrap, "plus"); } }, [
+      h("span", { class: "pn-gp-ti pn-acc-live", "aria-hidden": "true", html: ic("moon") }),
+      h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Ikväll", "Tonight") }), h("small", { text: L("Jag kör, Följ mig hem, Skåltimmen…", "Driving, follow me home, cheers hour…") })]),
+      h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-up") })]);
+    var bar = h("div", { class: "gpg-bar" }, [plus]);
 
     // + / ⋯ panel head
     var ph = h("div", { class: "gpg-ph" }, [
@@ -368,7 +422,12 @@
     } });
     try { if (localStorage.getItem("olnu.gpgOpen") === "1") { wrap.classList.add("gpg-open"); fold.setAttribute("aria-expanded", "true"); } } catch (e) {}
 
-    [dots, now, chat, bar, ph, info, fold].forEach(function (x) { if (x) wrap.appendChild(x); });
+    // ds58: Gänget ikväll: every member's face + tonight's count (tap = Medlemmar)
+    var memS = h("button", { type: "button", class: "pn-gp-mem", hidden: true, "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [
+      h("span", { class: "pn-gp-mem-h" }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
+      h("span", { class: "pn-gp-mem-l" })]);
+    [invB, dots, now, chat, bar, ph, info, fold].forEach(function (x) { if (x) wrap.appendChild(x); });
+    wrap.insertBefore(memS, chat || bar); loadMem(wrap, g, memS);
 
     // module actions (groupActions) as + tiles
     actions(g).forEach(function (x, i) {
@@ -389,7 +448,7 @@
       if (wrap.getAttribute("data-gv") !== "home") return;
       tick++;
       if (chat) loadChat(wrap, g);
-      if (tick % 3 === 0) loadNow(wrap, g);
+      if (tick % 3 === 0) { loadNow(wrap, g); var ms0 = wrap.querySelector(":scope > .pn-gp-mem"); if (ms0) loadMem(wrap, g, ms0); }   // ds58: live members
     }, 10000);
     // Tiles change inside (a skåltimme goes live, the chief tile fills in): re-check hot / proxies, debounced.
     if (window.MutationObserver) {

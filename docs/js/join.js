@@ -135,7 +135,8 @@
         esc(L("Nu fixar vi gänget. Visa koden eller skicka länken.", "Now get the gang in. Show the code or send the link.")) }));
       var qbox = h("div", { class: "qr jn-qr", id: "qr", "aria-hidden": "true" });
       box.appendChild(h("div", { class: "jn-qr-wrap" }, [qbox]));
-      box.appendChild(h("p", { class: "jn-qr-cap muted", text: L("📷 Kompisen bredvid dig? Låt hen skanna koden.", "📷 Friend next to you? Let them scan it.") }));
+      var capEl = h("p", { class: "jn-qr-cap muted", text: L("📷 Kompisen bredvid dig? Låt hen skanna koden.", "📷 Friend next to you? Let them scan it.") });
+      box.appendChild(capEl);
       var share = bigBtn(L("📤 Dela länk", "📤 Share link"), "btn-amber ds-btn-primary jn-share", function () {
         var copied = function () { say(L("📋 Länken ä kopierad – klistra in den i chatten", "📋 Link copied – paste it in the chat")); };
         if (navigator.share) {
@@ -156,8 +157,8 @@
       if (isG) {
         var cb = h("button", { type: "button", class: "jn-code", "aria-label": L("Kopiera koden ", "Copy the code ") + code, onclick: function () {
           copy(code, function () { say(L("📋 Koden ä kopierad", "📋 Code copied")); });
-        } }, [h("span", { class: "muted", text: L("Länken krånglar? Koden: ", "Link not working? Code: ") }), h("b", { class: "jn-code-v", text: code })]);
-        box.appendChild(cb);
+        } }, [h("span", { class: "muted", text: L("Gruppkod ", "Group code ") }), h("b", { class: "jn-code-v", text: code })]);
+        box.insertBefore(cb, capEl.nextSibling);   // ds57: the code as text right under the QR
         box.appendChild(h("p", { class: "jn-code-help muted", text: L("Grupper → Gå med → skriv koden.", "Groups → Join → type the code.") }));
       }
       body.appendChild(box);
@@ -219,8 +220,18 @@
     joining = true;
     status(L("⏳ Skriver in dig i " + (gname || "gruppen") + "…", "⏳ Adding you to " + (gname || "the group") + "…"));
     A.rpc("join_group", { p_code: ARR.code, p_display_name: n }).then(function (r) {
+      if (r.error && !/group_not_found/.test(JSON.stringify(r.error)) && !tryJoin.__fixing) {   // ds59: member already? else retry once
+        tryJoin.__fixing = true;
+        return A.rpc("my_groups", {}).then(function (q) {
+          var gs = q && !q.error ? A.parseData(q.data) : null, mine = Array.isArray(gs) ? gs.filter(function (x) { return U.cleanCode(x.code) === ARR.code; })[0] : null;
+          if (mine) { joining = false; tryJoin.__fixing = false; joined = true; gname = mine.name || gname; lsSet("olnu.jn.done", ARR.code); lsSet("olnu.jn.pending", null); status(""); try { A.refresh(); } catch (e) {} renderAct(); return; }
+          setTimeout(function () { joining = false; tryJoin(); }, 1500);
+        });
+      }
+      tryJoin.__fixing = false;
       joining = false;
       if (r.error) {
+        try { act.querySelectorAll(".jn-joinbtn").forEach(function (b) { b.disabled = false; }); } catch (e) {}   // ds59: never a dead button
         var m = A.errMsg ? A.errMsg(r.error) : "";
         status(/group_not_found/.test(JSON.stringify(r.error)) ? L("🤷 Koden funkar int'. Be om en ny länk.", "🤷 That code doesn't work. Ask for a new link.") : (m || L("Kunde int' gå med. Försök igen.", "Could not join. Try again.")), "err");
         return;
@@ -275,7 +286,7 @@
     } else if (ARR.kind === "join" && (faces.length || outNow)) {
       prevEl.appendChild(h("span", { class: "jn-ev-n" }, [fs, document.createTextNode(outNow ? L(" 🍺 " + outNow + " ute nu", " 🍺 " + outNow + " out now") : "")]));
     }
-    if (whoLine) prevEl.appendChild(h("span", { class: "jn-who", text: whoLine }));   // gw
+    if (whoLine && adult()) prevEl.appendChild(h("span", { class: "jn-who", text: whoLine }));   // gw; ds59: names only after 18+
     prevEl.hidden = !prevEl.firstChild;
   }
   // gw: link_preview (anon; js/gw.js) fills the card before any account exists: first names, counts, the event.
@@ -331,12 +342,25 @@
     if (ARR.kind === "ev") return !!evAns;
     return true;
   }
+  // ds59: the 18+ answer on this phone (safety.js writes olnu.age18 when the year says 18+)
+  function adult() { try { return localStorage.getItem("olnu.age18") === "1"; } catch (e) { return false; } }
+  function askAge(btn, then) {
+    if (act.querySelector(".jn-age")) return;
+    var cb = h("input", { type: "checkbox", hidden: true });
+    var go = bigBtn(L("Fortsätt", "Continue"), "btn-amber ds-btn-primary jn-age-go", function () { if (!cb.checked) return; box.remove(); btn.hidden = false; try { paintPrev(); } catch (e) {} then(); });
+    go.disabled = true;
+    cb.addEventListener("change", function () { go.disabled = !cb.checked; if (cb.checked) { try { paintPrev(); } catch (e) {} } });   // names show once 18+ is known
+    var box = h("div", { class: "jn-age" }, [window.SAFETY.ageWidget(cb), go]);
+    btn.hidden = true;
+    act.insertBefore(box, btn);
+  }
   // Step 1: answer (name only). Step 2 (renderAct below): the gentle install guide.
   function renderAnswer() {
     var ready = A && A.LIVE && ((A.authed && A.authed()) || noAcct());   // gw: no account yet = ready (the tap makes it)
     if (ARR.kind === "join") {
       var jb = bigBtn(ready ? L("Jag hänger med", "I'm in") : L("⏳ Laddar…", "⏳ Loading…"), "btn-amber ds-btn-primary jn-joinbtn", function () {
         if (needName() && !typedName()) { nameHint(); return; }
+        if (!adult() && window.SAFETY && window.SAFETY.ageWidget) { askAge(jb, tryJoin); return; }   // ds59: 18+ before the join
         tryJoin();
       });
       jb.disabled = !ready || joining;

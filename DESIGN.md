@@ -77,8 +77,8 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
 4. **The main map stays clean.** One HUD row (my night + at most one urgent chip). Who is out lives in Grupper
    ("Ute ikväll" card) and as "● N ute" under the Grupper button. Captions ("Visste du?") are small toasts under the HUD
    row, tap = away. Map credits, ANNAT and the rail: see "Main screen geometry".
-5. **Back navigation.** In a sheet: ‹ shows when there is a step back (sub-view, opened sheet, folded list); then ✕ hides.
-   ✕ shows only on the first screen and closes everything. A full-screen overlay (games, förfest, party) opened from a
+5. **Back navigation.** In a sheet: ‹ shows when there is a step back (sub-view, opened sheet, folded list); ✕ stays on
+   the right and closes everything (ds55, owner 2026-11-08). A full-screen overlay (games, förfest, party) opened from a
    sheet goes back to that sheet and view when it closes. Android back = ‹.
 6. **One primary action per screen** (amber filled). Everything else is a row, a ghost button or a text button.
 7. **Grouped lists (Inställningar, Profil, Mer).** Section heading 14 px muted, then a `--ds-card` list with `--r-lg`.
@@ -114,7 +114,7 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
 
 1. **Header:** grid 44 px | title | 44 px, 16 px sides, at least 60 px high, 12 px under the grip.
 2. **✕** in the right cell, 16 px from the sheet edge, round 44 px, icon `x`, background `--ds-raised`. Never the character ×.
-3. **‹** in the left cell only on sub-screens. Then the title is centred and ✕ hides.
+3. **‹** in the left cell only on sub-screens. Then the title is centred between ‹ and ✕ (ds55: ✕ stays).
 4. **Title:** one style. Black Ops One 22/28, amber, sentence case. No icon in the title. Subtitle 14 px grey under it.
 5. **Spacing:** 24 px between sections, 8 px between items. Section heading 14 px grey, 8 px under it, no icon.
 6. **One card:** `--ds-card`, radius 16, padding 12/16, 1 px `--ds-border`. No card in a card.
@@ -421,6 +421,139 @@ Rules:
 - Emoji stay as art: game cards, the drink picker, chat text, KAOS lines, medal ribbons, map pins.
 - New PNI icons: `mic`, `bus`.
 <!-- ds12 icons END -->
+
+<!-- ds50 icons START -->
+## Icons, 2026-11-08 (ds50)
+
+- `gear` is drawn again: 8 flat teeth, round base, round hole (r 3), stroke 2. It is the icon for Inställningar and
+  Chattinställningar. Checked at 16 / 20 / 24 / 40 px.
+- New: `thumb-up`, `thumb-down` (the sport vote on the bar sheet; the button says "Ja" / "Nej" to screen readers).
+- Set review at 20 / 24 / 40 px (contact sheets `fxg-shots/icons-before.png`, `icons-after.png`): `beer` (mug, foam,
+  two lines; the chevrons inside were noise at 16–20 px), `drink` (tumbler + straw), `coins` (a coin in front of a coin),
+  `megaphone` (cleaner cone) are redrawn. The rest keep stroke 2, round caps / joins, live area 2…22, radius 1–3.5.
+- Emoji map additions: 👍 👎, 🪖 / 🎗️ → `medal`, every clock face → `clock`.
+<!-- ds50 icons END -->
+
+<!-- ds51 bar START -->
+## Krogkortet, friends here (ds51)
+
+- Each friend here is ONE row (max 3, then "+ N till här"): own character 40 px (no saved character = the initial),
+  name 16/600, "1 [beer] ikväll" 14 grey (the night total, friends only), then two 44 px round buttons:
+  **Chatta** (opens the 1:1 chat through the pin) and **Skål** (the app's skål; amber + count after).
+- Strangers never get a count. The row needs a friend pin (`friend_name`).
+- The ✕ is the popup close button: 44 px round, `--ds-raised`, icon `x`. The popup code watches the popup pane, never
+  `window.__map` (that only exists in the tests; the hook never ran in the app before ds51).
+- Info rows: a leading emoji becomes the PNI icon (🕐 → `clock`, 🍺 → `beer`). Sport vote: `thumb-up` / `thumb-down` + count.
+<!-- ds51 bar END -->
+
+<!-- ds52 group START -->
+## Accent colours + the group page (ds52, 2026-11-08)
+
+Accent tokens (`docs/pnds.css` "ds52 group"). An accent says WHAT a thing is. It goes on a 40 px icon tile
+(`.pn-gp-ti.pn-acc-*`: radius 12, tinted background, icon 24 in the accent) or on a list icon. Never on body text,
+never as a filled button. Amber is still THE action colour (one filled amber per screen); green is still "out now".
+
+| Token | Value | Use |
+|---|---|---|
+| `--pn-acc-live` | `#3ddc84` | Out now, Ikväll, the Nu card |
+| `--pn-acc-chat` | `#6cb2ff` | Chatten, Jag kör |
+| `--pn-acc-games` | `#c79bff` | Spel, Gänget, Truppen |
+| `--pn-acc-cam` | `#3fd8c6` | Engångskamera, Följ mig hem |
+| `--pn-acc-skal` | `#ffc24d` | Skåltimmen, Kalla in |
+| `--pn-acc-event` | `#ff8ccf` | Event |
+| `--pn-acc-safe` | `#ff8a80` | Hämta mig, safety |
+| `--pn-acc-money` | `#b5e66a` | Kvällens nota |
+
+Each has a `-bg` (≈16 % tint). Every accent is ≥ 4.5:1 on `--ds-card`.
+
+Group page (home), top to bottom: "1 av 15 dricker nu" + **Bjud in** (tonal amber pill, person-plus, opens the invite) ·
+Nu card (green) · Chatten (blue tile, "Öppna" grey) · Spel (purple tile, "15 spel · Skämskort, Kungaleken…") ·
+Engångskamera (teal) · Om gruppen (row: members, code, chief, leave) · **Ikväll** (one labelled bottom button: Jag kör,
+Följ mig hem, Skåltimmen …). No ÖL! on the group page: ÖL! lives on the map.
+- A sheet body that scrolls fades out (16 px) under the header line; nothing looks cut by it.
+- Instant group page: after a write, the calls that patch their screen (group_now, group_msgs, avatars_for)
+  show the cached answer 4 s after the write and re-fetch it at once (warm.js `STALE_OK`).
+<!-- ds52 group END -->
+
+<!-- ds53 members START -->
+## Medlemmar (ds53)
+
+- ONE grouped list (card, radius 16, 1 px dividers). No coloured left border.
+- Row: padding 12 / 16, avatar 40 (green ring = out now) | name 16/600 (+ "Du" pill) · rank · meriter 14 grey ·
+  role pills (Ägare, Chef: neutral, `--ds-raised`, 12/600) and home town 12 grey · medal ribbons | right: tonight's
+  count "2 [beer]" or "Inga öl" in grey. Order = the server (meriter, most first).
+- "Lägg till vän" is a text button (44 px tap height). "✓ Vän" is a small chip.
+<!-- ds53 members END -->
+
+<!-- ds54 chat START -->
+## Chat (ds54)
+
+- **One name rule:** a person is called by the group nickname (`group_members.display_name`), else the account name
+  (temp groups, DMs). Chat, chat preview, Medlemmar, the Nu card and avatars all use the name the server sends. No rank
+  in the bubble (tap the name → the uniform shows rank and meriter).
+- Runs (iMessage / WhatsApp): the name (their colour, 14/600) + tonight's "3 [beer]" on the FIRST bubble; the avatar
+  (32 px, bottom-aligned) on the LAST bubble; 2 px between bubbles of a run, 12 px between runs; inner corners 4 px.
+  My bubbles: right, amber tint, no name. A person with no saved character shows the initial (never a random face).
+- Time: 12 px grey inside the bubble, bottom right.
+- Chat settings: one round 44 px button with the `gear` icon, right side.
+<!-- ds54 chat END -->
+
+<!-- ds55 back START -->
+## ‹ and ✕ together (ds55, owner 2026-11-08 — replaces "then ✕ hides" in rule 5 and sheet rule 3)
+
+- A sub-screen shows BOTH: ‹ in the left cell (one step back, Android back = ‹) and ✕ in the right cell (closes the
+  sheet). The title is centred between them. The first screen shows ✕ only.
+- Why: the owner, in Vänner: "there is a back button but no X". The 2026-11-07 problem ("✕ throws me out of all the
+  groups") came from ✕ being the only way out; ‹ is always there now.
+- Vänner rows: own character 40 px (green ring = out), status word "Ute ikväll" / "Int' ute" (no emoji).
+<!-- ds55 back END -->
+
+<!-- ds56 emoji START -->
+## Emoji sweep, social screens (ds56)
+
+- Group info, Medlemmar, Vänner, the invite sheet: 🎖️ / 🪖 → `medal`, 🔒 → `lock`, 📷 → `camera`, ✅ → `check`,
+  🚗 → `taxi` (a leading emoji in the label becomes the icon; an emoji with no icon is dropped).
+- Kept as emoji: chat text and reactions, game card art, the LIVE ticker, toasts (fun copy).
+<!-- ds56 emoji END -->
+
+<!-- ds57 social START -->
+## Who is out, invite (ds57, usability round 2)
+
+- **"Ute" = out now.** The Grupper card "N vänner ute nu" opens **Ute nu** (who, tonight's count, tap = the pin on the
+  map) and then "Ska ut ikväll". Ikväll? (Ute / Kanske / Hemma) is the last row, optional, never a lock.
+- **One source for "who is out":** the pins (live_beers / group_now). The group status line "N av M dricker nu"
+  follows group_now, the same data as the Nu card.
+- **Every list has an empty state** (Medlemmar: "Inga medlemmar att visa just nu …"; Ute nu: "Ingen av dina vänner är ute just nu.").
+- **Invite after "Skapa grupp":** ‹ goes to the new group. The code is text under the QR ("Gruppkod ABC234", tap = copy).
+<!-- ds57 social END -->
+
+<!-- ds58 nav START -->
+## One stack rule + the gang on the group page (ds58, usability round 1)
+
+- **‹ = the previous real screen, never a finished form.** Ditt namn, Byt namn, Skapa grupp and Gå med are forms: the sheet
+  that opens after them replaces them in the stack (`sheetnav.js FORMS`). Example: Skapa grupp → invite → ‹ = the new group.
+- **Gänget ikväll** (group page, under Nu): every member's face 40 px (green ring = out, amber = me), name 12 px and
+  tonight's count "3 [beer]" (or "–"). Live first, then most drinks. Tap = Medlemmar. Same data as Medlemmar.
+- Info cards (Gruppchef, Nätter tillsammans, streak) span the full width; roles stack. No raw "?" ("ingen än").
+- Tap your own avatar (Medlemmar, Gänget ikväll) = the character editor.
+- The open group page follows the group: the strip reloads with the Nu card (30 s); a new member gives one toast "Cissi gick med i gruppen".
+<!-- ds58 nav END -->
+
+<!-- ds59 join START -->
+## Joining a group (ds59, night-3 sim)
+
+- ONE join form everywhere: "Klistra in länken eller skriv koden" (placeholder "t.ex. ABC234"). A pasted invite link
+  works (`U.codeFrom`: join= / id= / code= / the last path part).
+- After a good join, Grupper is fresh and the new group opens. Writes on groups (join, create, leave, rename, kick,
+  name) always make the instant-screen cache dirty (`warm.js WRITES`): a screen never shows a group you left or misses one you joined.
+- "Nytt i appen / Öl Nu heter nu PintsNow" shows only to people who used the app before; never to a brand-new user.
+- A link join never shows a second "Gå med" form: the welcome card handles the link, and a member is never asked again.
+- After a join: the group first; the home-screen tip is a toast with "Visa hur".
+- 18+ first: "Jag hänger med" asks the birth year (when this phone has no 18+ answer) BEFORE the join; member names on
+  the invite card show only after 18+.
+- A failed join never leaves a dead button: my_groups is asked first (already a member = success), one automatic retry,
+  then the error and the button works again.
+<!-- ds59 join END -->
 
 ## Icons (`window.PNI`)
 

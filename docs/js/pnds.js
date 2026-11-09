@@ -291,7 +291,7 @@
   function outPeople() {
     var seen = {}, out = [];
     (safe(function () { return A.beers(); }, []) || []).forEach(function (b) {
-      var nm = b && b.friend_name; if (!nm || seen[nm]) return; seen[nm] = 1; out.push({ name: nm, live: true });
+      var nm = b && b.friend_name; if (!nm || seen[nm]) return; seen[nm] = 1; out.push({ name: nm, live: true, n: b.beer_count | 0, lat: b.lat, lng: b.lng });   // ds57: + count, pin
     });
     var ik = safe(function () { return W("PNUI")._ikv().d; }, null);
     var plan = [];
@@ -318,7 +318,10 @@
       all.length ? faces : null,
       h("span", { html: ic("chev-right") })
     ]);
-    b.addEventListener("click", function () { try { W("PNUI").openIkvall(); } catch (e) {} });
+    b.addEventListener("click", function () {
+      if (all.length && window.PNDS && window.PNDS.outSheet && window.PNDS.outSheet(o)) return;   // ds57: who is out (Ikväll? optional, last row)
+      try { W("PNUI").openIkvall(); } catch (e) {}
+    });
     return b;
   }
   function paintOut(body) {
@@ -637,6 +640,58 @@
     nodes.forEach(function (n) { s.appendChild(n); });
     return s;
   }
+  // ds51: one row per friend here: own character, night total, Chatta + Skål. Max 3 rows, then "+ N till".
+  function friendRows(list) {
+    var by = {}, order = [];
+    (list || []).forEach(function (b) {
+      var n = b && !b.is_mine && b.friend_name ? String(b.friend_name).trim() : ""; if (!n) return;
+      var o = by[n];
+      if (!o) { by[n] = b; order.push(n); }
+      else if ((b.beer_count | 0) > (o.beer_count | 0) || Date.parse(b.created_at || 0) > Date.parse(o.created_at || 0)) by[n] = b;
+    });
+    if (!order.length) return null;
+    order.sort(function (a, c) { return (by[c].beer_count | 0) - (by[a].beer_count | 0); });
+    var box = mk("div", "pn-bs-frs");
+    order.slice(0, 3).forEach(function (n) {
+      var b = by[n], k = b.beer_count | 0, id = esc(String(b.id)), done = !!b.i_skaled, sk = Math.max(0, b.skal_count | 0);
+      var sub = k > 0 ? '<span class="pn-bs-fn">' + k + "</span>" + ico("beer") + "<span>ikväll</span>" : "<span>Här nu</span>";
+      box.appendChild(mk("div", "pn-bs-fr2", '<span class="av av-40 pn-bs-fav av-ph" data-pnav="' + esc(n) + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + "</span>" +
+        '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="' + esc(k > 0 ? k + " öl ikväll" : "Här nu") + '">' + sub + "</small></span>" +
+        '<button type="button" class="pn-bs-fb pn-bs-chat" data-dmpin="' + id + '" data-dmname="' + esc(n) + '" aria-label="Chatta med ' + esc(n) + '" title="Chatta">' + ico("chat") + "</button>" +
+        '<button type="button" class="skal-btn pn-bs-fb pn-bs-skal' + (done ? " on" : "") + '" data-skal="' + id + '"' + (done ? " disabled" : "") +
+        ' aria-label="' + esc((done ? "Du har skålat med " : "Skåla med ") + n) + '" title="Skål">' + ico("cheers") + (sk ? '<i class="pn-bs-sk">' + sk + "</i>" : "") + "</button>"));
+    });
+    if (order.length > 3) box.appendChild(mk("p", "pn-bs-more", esc("+ " + (order.length - 3) + " till här")));
+    return box;
+  }
+  // ds51: paint the friends' own characters (no saved character = the initial stays, as everywhere)
+  function paintFav(root) {
+    var AV = window.AVATAR; if (!AV || !AV.svg || !AV._caches) return;
+    var els = root.querySelectorAll(".pn-bs-fav[data-pnav]"); if (!els.length) return;
+    var cs = []; try { cs = AV._caches() || []; } catch (e) {}
+    var me = null; try { me = AV.me && AV.me(); } catch (e) {}
+    els.forEach(function (el) {
+      var n = el.getAttribute("data-pnav"), p = null;
+      for (var i = 0; i < cs.length && !p; i++) { var x = cs[i] && cs[i].byName && cs[i].byName[n]; if (x && x.a && !x.is_me) p = x; }
+      var sig = p ? JSON.stringify([p.a, p.r, p.md]) : "";
+      if (!p || el.__pnSig === sig) return;
+      try { el.innerHTML = AV.svg(p.a, { r: p.r, md: p.md, small: true }); el.__pnSig = sig; el.classList.remove("av-ph"); } catch (e) {}
+    });
+    if (!root.__pnAvAsked && AV.forFriends) { root.__pnAvAsked = 1; try { AV.forFriends().then(function () { if (root.isConnected) paintFav(root); }); } catch (e) {} }
+  }
+  // ds51: leading emoji on an info row → our icon (barinfo.js / oppet.js write "🕐 Öppet till 01:00", "🍺 72 kr")
+  var EMO1 = /^\s*((?:\p{Extended_Pictographic})(?:\uFE0F|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s*/u;
+  function infoIcons(root) {
+    var P = window.PNI; if (!P) return;
+    root.querySelectorAll(".pn-bs7 .bi-line>span, .pn-bs7 .pn-bs-info .ev-line, .pn-bs7 .pn-bs-info .sp-l, .pn-bs7 .pn-bs-hero .ev-line").forEach(function (el) {
+      var t = el.firstChild; while (t && t.nodeType === 3 && !t.nodeValue.trim()) t = t.nextSibling;
+      if (!t || t.nodeType !== 3) return;
+      var m = EMO1.exec(t.nodeValue); if (!m) return;
+      var k = m[1].replace(/\uFE0F/g, ""), n = P.EMOJI[m[1]] || P.EMOJI[k];
+      t.nodeValue = t.nodeValue.slice(m[0].length);
+      if (n) { var s = document.createElement("span"); s.innerHTML = P.svg(n, "pi-lead"); el.insertBefore(s.firstChild, t); }
+    });
+  }
   function barSheet(html, bar, list) {
     try {
       var t = document.createElement("template"); t.innerHTML = html;
@@ -655,9 +710,10 @@
       // hero: crowd meter + friends here (+ the small king / queue marks)
       var hero = mk("div", "pn-bs-hero"), meter = kid(bs, ".pn-meter");
       if (meter) hero.appendChild(meter);
-      var names = [];
+      var names = [], frs = friendRows(list);
       (list || []).forEach(function (b) { var n = b && b.friend_name ? String(b.friend_name).trim() : ""; if (n && names.indexOf(n) < 0) names.push(n); });
-      if (names.length) {
+      if (frs) hero.appendChild(frs);
+      else if (names.length) {
         hero.appendChild(mk("div", "pn-bs-fr", '<span class="pn-bs-avs" aria-hidden="true">' +
           names.slice(0, 3).map(function (n) { return '<i class="pn-bs-av">' + esc(n.charAt(0).toUpperCase()) + "</i>"; }).join("") +
           '</span><span class="pn-bs-frt">' + esc(who(names)) + "</span>"));
@@ -723,9 +779,18 @@
   function fix(root) {
     root.querySelectorAll(".pn-bs7 .ute-wx").forEach(function (w) { var v = noEmo(w.textContent); if (v && w.textContent !== v) w.textContent = v; });
     root.querySelectorAll(".pn-bs7 .sp-b[data-spvote]").forEach(function (b) {
-      var c = (b.textContent.match(/\d+/) || [""])[0], want = (b.getAttribute("data-spvote") === "1" ? "Ja" : "Nej") + (c ? " " + c : "");
-      if (b.textContent !== want) b.textContent = want;
+      var c = (b.textContent.match(/\d+/) || [""])[0], up = b.getAttribute("data-spvote") === "1", sig = (up ? "u" : "d") + c;
+      if (b.__pnv === sig && b.querySelector("svg")) return;
+      b.__pnv = sig; b.innerHTML = ico(up ? "thumb-up" : "thumb-down") + (c ? '<span class="pn-bs-vc">' + c + "</span>" : "");
+      b.classList.add("pn-bs-vote");
     });
+    // the skål button: app.js writes "🍻 Skålat (n)" into it after a skål → back to the icon + count
+    root.querySelectorAll(".pn-bs7 .pn-bs-skal").forEach(function (b) {
+      if (b.querySelector("svg")) return;
+      var c = (b.textContent.match(/\d+/) || [""])[0];
+      b.innerHTML = ico("cheers") + (c && c !== "0" ? '<i class="pn-bs-sk">' + c + "</i>" : ""); b.classList.add("on");
+    });
+    infoIcons(root); paintFav(root);
   }
   function onOpen(e) {
     var root = e.popup && e.popup.getElement && e.popup.getElement();
@@ -741,8 +806,18 @@
     }
   }
   function hook() {
-    var m = window.__map; if (!m || !m.on) return false;
-    if (!m._pnBs7) { m._pnBs7 = true; m.on("popupopen", onOpen); }
+    // ds51: watch the popup pane (Leaflet and the mbx shim both have it). window.__map exists only in the tests.
+    var pane = document.querySelector(".leaflet-popup-pane"); if (!pane || !window.MutationObserver) return false;
+    if (pane._pnBs7) return true;
+    pane._pnBs7 = true;
+    // In sheet mode app.js moves the open bar popup to <body>: watch both places.
+    var q = 0, go = function () {
+      q = 0;
+      document.querySelectorAll(".leaflet-popup-pane .leaflet-popup, body > .leaflet-popup").forEach(function (p) { onOpen({ popup: { getElement: function () { return p; } } }); });
+    };
+    var mo = new MutationObserver(function () { if (!q) { q = 1; (window.requestAnimationFrame || setTimeout)(go); } });
+    mo.observe(pane, { childList: true, subtree: true }); mo.observe(document.body, { childList: true });
+    go();
     return true;
   }
   if (!hook()) { var iv = setInterval(function () { if (hook()) clearInterval(iv); }, 400); }
@@ -1354,3 +1429,114 @@
   window.PNDS_UX40 = { busy: busy, queue: function () { return q.length; } };
 })();
 /* ds40 ux END */
+/* ds52 group START — the sheet body fades out under the header once it scrolls (nothing looks cut by the line) */
+(function () {
+  "use strict";
+  var q = 0;
+  function sync() {
+    q = 0;
+    var s = document.getElementById("sheet"), b = document.getElementById("sheet-body"); if (!s || !b) return;
+    var on = b.scrollTop > 2;
+    if (s.classList.contains("pn-scrolled") !== on) s.classList.toggle("pn-scrolled", on);
+  }
+  document.addEventListener("scroll", function (e) {
+    if (e.target && e.target.id === "sheet-body" && !q) { q = 1; (window.requestAnimationFrame || setTimeout)(sync); }
+  }, true);
+  if (window.MutationObserver) {
+    var start = function () { var s = document.getElementById("sheet"); if (s) new MutationObserver(function () { if (!q) { q = 1; setTimeout(sync, 0); } }).observe(s, { attributes: true, attributeFilter: ["hidden"] }); };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  }
+})();
+/* ds52 group END */
+/* ds56 emoji START — leading emoji → PNI icon in the social screens' labels (chat text / game art keep emoji) */
+(function () {
+  "use strict";
+  var SEL = ["#sheet-body .chief-badge", "#sheet-body .nr-tile-t", "#sheet-body .nr-tile-t > b", "#sheet-body .nr-priv", "#sheet-body .jn-qr-cap", "#sheet-body .st-row .af-home",
+    "#sheet-body .st-row .skj-tag > span", "#sheet-body .gpg .chief-line > b", "#sheet-body .ux-cset-h b"].join(",");
+  var RE; try { RE = /^(\s*)((?:\p{Extended_Pictographic})(?:️|‍\p{Extended_Pictographic}️?)*)\s*/u; } catch (e) { RE = null; }
+  var EXTRA = { "🪖": "medal", "🎖": "medal", "🚗": "taxi", "✅": "check", "📷": "camera", "🔒": "lock" };
+  function one(el) {
+    var P = window.PNI; if (!P || !RE || el.__pn46 === el.textContent) return;
+    var t = el.firstChild; while (t && t.nodeType === 3 && !t.nodeValue.trim()) t = t.nextSibling;
+    if (t && t.nodeType === 3) {
+      var m = RE.exec(t.nodeValue);
+      if (m) {
+        var k = m[2].replace(/️/g, ""), n = P.EMOJI[m[2]] || P.EMOJI[k] || EXTRA[k] || null;
+        t.nodeValue = t.nodeValue.slice(m[0].length);
+        if (n) { var s = document.createElement("span"); s.innerHTML = P.svg(n, "pi-lead pn-e46"); el.insertBefore(s.firstChild, t); }
+      }
+    }
+    el.__pn46 = el.textContent;
+  }
+  var q = 0;
+  function run() { q = 0; try { document.querySelectorAll(SEL).forEach(one); } catch (e) {} }
+  function start() {
+    var s = document.getElementById("sheet"); if (!s || !window.MutationObserver) return;
+    new MutationObserver(function () { if (!q) { q = 1; (window.requestAnimationFrame || setTimeout)(run); } }).observe(s, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds56 emoji END */
+/* ds57 social START — "Ute nu" sheet (who is out) */
+(function () {
+  "use strict";
+  var A = null, P = window.PNDS = window.PNDS || {};
+  var init0 = P.init; P.init = function (api) { A = api; return init0 ? init0.apply(this, arguments) : undefined; };
+  function ic(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }
+  function h(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      var v = attrs[k]; if (v == null || v === false) return;
+      if (k === "text") n.textContent = v; else if (k === "html") n.innerHTML = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v); else n.setAttribute(k, v === true ? "" : v);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function face(name) {
+    // the friend's own character when one is saved (AVATAR caches, by name), else the cap, else the initial
+    var AV = window.AVATAR, s = "";
+    try { (AV && AV._caches ? AV._caches() : []).some(function (c) { var p = c && c.byName && c.byName[name]; if (p && p.a && !p.is_me) { s = AV.svg(p.a, { r: p.r, md: p.md, small: true }); return true; } return false; }); } catch (e) {}
+    var cap = window.PNUI && window.PNUI.capSVG; if (!s && cap) s = cap(name, 40);
+    return h("span", { class: "pn-un-av", "aria-hidden": "true", html: s || String(name || "?").charAt(0).toUpperCase() });
+  }
+  // 1. Ute nu: who is out, from the same pins as the map (friends only get counts)
+  P.outSheet = function (o) {
+    if (!A || !A.openSheet || !o) return false;
+    A.openSheet("Ute nu", function (body) {
+      var sec = function (title, list, live) {
+        if (!list.length) return;
+        body.appendChild(h("h3", { class: "ds-section-h pn-un-h", text: title }));
+        var ul = h("div", { class: "ds-list pn-un-list" });
+        list.forEach(function (p) {
+          var sub = live ? (p.n > 0 ? '<b>' + p.n + "</b>" + ic("beer") + "<span>ikväll</span>" : "<span>Ute nu</span>") : "<span>Ska ut ikväll</span>";
+          var row = h("button", { type: "button", class: "ds-row pn-row pn-un-row" + (live ? " live" : ""), "aria-label": p.name + (live ? (p.n > 0 ? ", " + p.n + " öl ikväll" : ", ute nu") : ", ska ut ikväll") }, [
+            face(p.name), h("span", { class: "ds-row-t" }, [h("span", { text: p.name }), h("small", { html: sub })]), live && p.lat != null ? h("span", { class: "ds-chev" }) : null]);
+          if (live && p.lat != null) row.addEventListener("click", function () { try { A.closeSheet(); A.map.flyTo([p.lat, p.lng], 16, { duration: 0.8 }); } catch (e) {} });
+          ul.appendChild(row);
+        });
+        body.appendChild(ul);
+      };
+      sec("Ute nu", o.live, true);
+      sec("Ska ut ikväll", o.plan, false);
+      if (!o.live.length && !o.plan.length) body.appendChild(h("p", { class: "muted pn-un-empty", text: "Ingen av dina vänner är ute just nu." }));
+      var ik = h("button", { type: "button", class: "ds-row pn-row pn-un-ikv" }, [h("span", { class: "ds-row-i", html: ic("moon") }),
+        h("span", { class: "ds-row-t" }, [h("span", { text: "Ikväll?" }), h("small", { text: o.mine ? "Du har svarat. Ändra här." : "Säg om du ska ut (valfritt)" })]), h("span", { class: "ds-chev" })]);
+      ik.addEventListener("click", function () { try { window.PNUI.openIkvall(); } catch (e) {} });
+      body.appendChild(h("div", { class: "ds-list pn-un-list pn-un-ikvl" }, [ik]));
+    });
+    return true;
+  };
+})();
+/* ds57 social END */
+/* ds58 nav START — my own avatar (Medlemmar, Gänget ikväll) opens the character editor */
+(function () {
+  "use strict";
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest("#sheet-body .st-row.me > .av, #sheet-body .pn-gp-mi.me > .gpg-face") : null;
+    if (!t || !window.AVATAR || !window.AVATAR.openEditor) return;
+    e.preventDefault(); e.stopPropagation();
+    try { window.AVATAR.openEditor(); } catch (x) {}
+  }, true);
+})();
+/* ds58 nav END */

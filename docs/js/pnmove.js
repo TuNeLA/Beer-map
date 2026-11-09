@@ -12,6 +12,9 @@
   "use strict";
   var U = window.U, A = null, shown = false, bip = null, tries = 0;
   var NEWS = "olnu.newsPn", MOVED = "olnu.movedIn", OLDPUSH = "olnu.oldPush";
+  // ds59: "Öl Nu heter nu PintsNow" is news only for people who used the app BEFORE this page load (brand-new = never)
+  var WAS_USER = (function () { try { return localStorage.getItem("olnu.intro") === "1"; } catch (e) { return false; } })();
+  if (!WAS_USER) { try { if (!localStorage.getItem(NEWS)) localStorage.setItem(NEWS, "1"); } catch (e) {} }
   var touched = false;   // the user already tapped / typed in this start: do not interrupt, show it at the next start
   try {
     window.addEventListener("beforeinstallprompt", function (e) { bip = e; });
