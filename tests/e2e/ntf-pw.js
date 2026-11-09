@@ -170,6 +170,9 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
           self.registration.showNotification = (title, opts) => { const a = self.__shown, i = a.findIndex((n) => n.tag === opts.tag);
             const n = { title, ...opts, close() {} }; if (i >= 0) a[i] = n; else a.push(n); return Promise.resolve(); };
           self.registration.getNotifications = (o) => Promise.resolve(self.__shown.filter((n) => !o || !o.tag || n.tag === o.tag));
+          // CI headless: the Badging API inside a service worker can take the renderer down. Record it instead.
+          self.__badge = [];
+          try { Object.defineProperty(self.navigator, "setAppBadge", { configurable: true, value: (n) => { self.__badge.push(n); return Promise.resolve(); } }); } catch (e) {}
           self.__fire = (ev) => new Promise((res) => {
             const w = [], orig = ev.waitUntil ? ev.waitUntil.bind(ev) : null;
             Object.defineProperty(ev, "waitUntil", { value: (p) => { w.push(Promise.resolve(p).catch(() => {})); try { if (orig) orig(p); } catch (e) {} } });
@@ -197,7 +200,8 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
           return self.__fire(ev);
         });
         r.clicked = c === true;
-        r.q = (await step("queue", () => caches.open("olnu-pending").then((cc) => cc.match("./__pnq")).then((x) => x ? x.text() : "[]").then((t) => JSON.parse(t)))) || [];
+        r.q = await step("queue", () => caches.open("olnu-pending").then((cc) => cc.match("./__pnq")).then((x) => x ? x.text() : "[]").then((t) => JSON.parse(t)));
+        if (!Array.isArray(r.q)) r.q = [];
         ok("F: two friends in one night = ONE notice '2 vänner ute ikväll 🍻'", r.fold && r.fold.length === 1 && r.fold[0].t === "2 vänner ute ikväll 🍻" && r.fold[0].u === "/", r);
         ok("F: Ikväll? shows the buttons 🍺 Jag kommer / 🤔 Kanske", JSON.stringify(r.acts) === '["🍺 Jag kommer","🤔 Kanske"]', r.acts);
         ok("F: SW queued push.shown + push.action", r.q && r.q.some((x) => x.n === "push.shown") && r.q.some((x) => x.n === "push.action" && x.a === "ute"), r.q);
