@@ -194,13 +194,14 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     await p.evaluate(() => { document.documentElement.style.fontSize = ""; });
     // no data in view → one caption
     await p.evaluate(() => window.PNSTART && window.PNSTART.calm()); await wait(p, 300);
-    await p.evaluate(() => { document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()); window.__map.setView([59.3326, 18.0649], 15, { animate: false }); }); await wait(p, 3500);
+    await p.evaluate(() => { document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()); window.PNDS._A().map.setView([59.3326, 18.0649], 15, { animate: false }); /* the app map: window.__map = the last L.map made (the Hemzon mini map here) */ }); await wait(p, 3500);
     const nd = await p.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "));
-    const ndWhy = /Ingen data här ikväll/.test(nd) ? "" : JSON.stringify(await p.evaluate(() => { const A = window.PNDS && window.PNDS._A && window.PNDS._A(), m = window.__map;
+    const ndWhy = /Ingen data här ikväll/.test(nd) ? "" : JSON.stringify(await p.evaluate(() => { const A = window.PNDS && window.PNDS._A && window.PNDS._A(), m = A.map;
       return { z: m.getZoom(), sheet: !document.getElementById("sheet").hidden, live: !!(A && A.LIVE), beers: A && A.beers ? (A.beers() || []).filter((x) => m.getBounds().contains([x.lat, x.lng])).length : null, calm: window.__pnCalm, cs: window.CALM && window.CALM._state ? window.CALM._state() : null }; }));
     ok(/Ingen data här ikväll/.test(nd), "no crowd data in view (Stockholm) → 'Ingen data här ikväll än' (" + nd.slice(0, 90) + ") " + ndWhy.slice(0, 600));
     await p.screenshot({ path: SP + "fxm-shots/t-nodata-sthlm-390.png" });
     // ds41: at zone zoom (html[data-zones]) people pins + clusters are not drawn (friends are in the zone pills)
+    await p.evaluate(() => window.PNDS._A().map.setView([60.1505, 15.1872], 15, { animate: false })); await wait(p, 2500);   // back where the friends are
     const zh = await p.evaluate(() => { const pins = [...document.querySelectorAll(".leaflet-marker-icon:has(>.pn-p), .olnu-cl")]; const vis0 = pins.filter((e) => getComputedStyle(e).display !== "none").length;
       document.documentElement.setAttribute("data-zones", ""); const vis1 = pins.filter((e) => getComputedStyle(e).display !== "none").length; document.documentElement.removeAttribute("data-zones"); return { n: pins.length, vis0, vis1 }; });
     ok(zh.n > 0 && zh.vis0 > 0 && zh.vis1 === 0, "zone zoom: no people pin / cluster is drawn over the zone pills " + JSON.stringify(zh));
