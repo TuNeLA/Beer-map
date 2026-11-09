@@ -28,7 +28,7 @@ const PIT = [60.14997, 15.18679];
   await page.evaluate((ll) => { const A = PNDS._A(); A.map.setView(ll, 19, { animate: false }); }, PIT);
   await settle(4000);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast, .dl-cap").forEach((t) => t.remove()));
-  await page.screenshot({ path: SP + "barzoom-" + TAG + "-z18.png" });
+  await page.screenshot({ path: SP + "logs/barzoom-" + TAG + "-z18.png" });
   const d = await page.evaluate((ll) => {
     const g = BASEMAP.mapbox().getMapboxMap(), p = g.project([ll[1], ll[0]]), out = { z: g.getZoom() };
     const ours = (g.getStyle().layers || []).map((l) => l.id).filter((id) => /^(olnu-|mbx-)/.test(id));
@@ -59,7 +59,7 @@ const PIT = [60.14997, 15.18679];
   await page.evaluate(() => { const A = PNDS._A(); A.map.setView([60.15, 15.19], 8, { animate: false }); });
   await settle(4000);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast, .dl-cap").forEach((t) => t.remove()));
-  await page.screenshot({ path: SP + "barzoom-" + TAG + "-z8.png" });
+  await page.screenshot({ path: SP + "logs/barzoom-" + TAG + "-z8.png" });
   const k = await page.evaluate(() => { const g = BASEMAP.mapbox().getMapboxMap(), id = "olnu-zk-line"; if (!g.getLayer(id)) return { none: 1 };
     return { dash: g.getPaintProperty(id, "line-dasharray") || null, n: g.queryRenderedFeatures({ layers: [id] }).length }; });
   console.log("KOMMUN", JSON.stringify(k));
