@@ -63,6 +63,7 @@
       b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(m === k)); b.setAttribute("data-st", k);
       b.addEventListener("click", function (e) {
         e.stopPropagation();
+        if (m === k) return;   // ds60: tapping the current answer keeps it (Ikväll? sheet has "Ta bort mitt svar")
         var P = W("PNUI"); if (P && P.setIkv) P.setIkv(k); else if (P && P.openIkvall) { close(); P.openIkvall(); return; }
         sig = ""; paint();
       });

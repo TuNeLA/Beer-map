@@ -2692,7 +2692,7 @@
     if (!gs.length) { list.appendChild(el("li", { class: "muted", text: t("noGroups") })); return; }
     // Owner: "I want to see all the groups, not the options. Tap a group, then see the options."
     // One group: show it open as before. Several: a short card per group; a tap opens that group's page.
-    if (gs.length === 1) { list.appendChild(groupItem(gs[0])); list.__one = true; return; }
+    // ds60: always cards; a group opens on its own page (no create / join rows under an open group)
     list.__one = false;
     sortGroupsByChat(gs).forEach(function (g) { list.appendChild(groupCard(g)); });
   }

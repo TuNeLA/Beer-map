@@ -98,7 +98,7 @@ const dock = (page) => page.evaluate(() => {
       await page.waitForSelector(".glist .gcard", { timeout: 15000 }).catch(() => {});
       await page.evaluate(() => document.querySelector(".glist .gcard").click()); await wait(page, 1600); await noToasts(page);
       const g2 = await page.evaluate(() => ({ title: document.getElementById("sheet-title").textContent, x: getComputedStyle(document.getElementById("sheet-close")).visibility, back: !document.getElementById("pn-back").hidden }));
-      ok(g2.title === "Ludvika Lager" && g2.x === "hidden" && g2.back, "group page (sub-screen): ‹ shows, ✕ hides", g2);
+      ok(g2.title === "Ludvika Lager" && g2.x === "visible" && g2.back, "group page (sub-screen): ‹ and ✕ both show (ds55)", g2);
       await page.waitForSelector(".sp-gbtn", { timeout: 15000 }).catch(() => {});
       await page.evaluate(() => document.querySelector(".sp-gbtn").click()); await page.waitForSelector("#sp .sp-back", { timeout: 15000 }).catch(() => {}); await wait(page, 800);
       const hub = await page.evaluate(() => { const b = document.querySelector("#sp .sp-back"); return { open: !!(document.getElementById("sp") && !document.getElementById("sp").hidden), lab: b && b.getAttribute("aria-label"), icon: !!(b && b.querySelector(".pi-chev-left")) }; });

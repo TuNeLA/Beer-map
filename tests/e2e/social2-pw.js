@@ -65,13 +65,14 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok("home: Nu strip", await vis(page, ".gpg-now") && /3 ute nu/.test(await page.textContent(".gpg-now")) && /La Parma/.test(await page.textContent(".gpg-now")), await page.textContent(".gpg-now"));
     ok("home: faces 3", (await page.$$(".gpg-now .gpg-face")).length === 3);
     ok("home: chat preview 3 msgs", (await page.$$(".gpg-msgs .gpg-msg")).length === 3);
-    ok("home: bar (+ and 🍺)", await vis(page, ".gpg-plus") && await vis(page, ".gpg-beer"));
-    ok("home: ⋯", await vis(page, ".gpg-dots"));
+    ok("home: [ds52] bar = labelled Ikväll, no 🍺", await vis(page, ".gpg-plus") && /Ikväll/.test(await page.textContent(".gpg-plus")) && !(await vis(page, ".gpg-beer")));
+    ok("home: [ds52] Bjud in button + [ds60] group code on the page", await vis(page, ".pn-gp-inv") && /Bjud in/.test(await page.textContent(".pn-gp-inv")) && /ABC234/.test(await page.textContent(".pn-gp-code")));
+    ok("home: [ds52] Om gruppen row (.gpg-dots)", await vis(page, ".gpg-dots") && /Om gruppen/.test(await page.textContent(".gpg-dots")));
     // gpage.js menuOf(): home = header, Nu, chat, bar, ⋯, 🎉 Spel, 📸 kamera + anything LIVE right now (a tile with .live / .new /
     // .cer-hot, e.g. 🚗 "Kör ikväll" when a member drives tonight: skjuts.js). Everything else lives behind + / ⋯.
     const homeTiles = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => { const r = e.getBoundingClientRect(); return r.height > 0 && getComputedStyle(e).display !== "none"; })
       .map((e) => e.className.split(" ")[0] + (e.querySelector(".live, .new, .cer-hot") || e.classList.contains("rl-group-item") ? ":live" : "")));
-    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi)$|:live$/.test(c)), homeTiles);
+    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi|pn-gp-inv|pn-gp-code|pn-gp-mem)$|:live$/.test(c)), homeTiles);
     ok("home: old 💬 Chatt button gone", !(await page.evaluate(() => [...document.querySelectorAll(".gpg > .row")].some((r) => /💬/.test(r.textContent) && r.getBoundingClientRect().height > 0))));
     await shot(page, "group-home");
     // quick reply
@@ -98,9 +99,9 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok("⋯: no game tiles", !infoVis.some((t) => /Lek|Förfest|Kalla in/.test(t)), infoVis);
     await shot(page, "info");
     await page.click("#pn-back"); await wait(page, 300);
-    // 🍺 main action
-    await page.click(".gpg-beer"); await wait(page, 1500);
-    ok("🍺 closes the sheet", await page.evaluate(() => document.getElementById("sheet").hidden || !/Ludvika/.test(document.getElementById("sheet-title").textContent)));
+    // ds52: no 🍺 on the group page (ÖL! lives on the map): Bjud in opens the invite instead
+    await page.click(".pn-gp-inv"); await wait(page, 1200);
+    ok("[ds52] Bjud in → invite sheet", /Bjud in/.test(await page.textContent("#sheet-title")));
     await page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c && !document.getElementById("sheet").hidden) c.click(); document.querySelectorAll(".bp-strip").forEach((s) => s.hidden = true); });
     await wait(page, 600);
     // ---------- inbox ----------
@@ -147,7 +148,11 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok(kind + ": preview", kind === "join" ? /2 ute nu/.test(txt) && (await page.$$(".jn-face")).length === 4 : /Pubquiz/.test(txt) && /3 kommer/.test(txt), txt);
     await shot(page, "welcome-" + kind);
     await page.fill("#jn-name", "Nisse");
-    if (kind === "join") await page.click(".jn-joinbtn"); else await page.click(".jn-evyes");
+    if (kind === "join") {
+      await page.click(".jn-joinbtn"); await wait(page, 500);
+      ok("join: [ds59] 18+ asked BEFORE the join", await vis(page, ".jn-age") && !calls.some((c) => c[0] === "join_group"));
+      await page.selectOption("#sf-age-year", "1990"); await wait(page, 300); await page.click(".jn-age-go");
+    } else await page.click(".jn-evyes");
     await wait(page, 1500);
     const t2 = await page.textContent("#jn-wel");
     ok(kind + ": answered → done box + code + install guide", /Din kod/.test(t2) && (kind === "join" ? /ABC234/.test(t2) : /QWE234/.test(t2)) && /(⋮|Installera|hemskärmen)/.test(t2), t2);

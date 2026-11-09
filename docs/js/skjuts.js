@@ -154,7 +154,7 @@
         return Object.keys(set).length;
       }
       function refresh() {
-        var k = n(); go.disabled = !k;
+        var k = n() || groups.filter(function (g) { return sel["g:" + g.id]; }).length; go.disabled = !k;   // ds60: a picked group counts even before its people load
         go.textContent = k ? "🆘 Skicka – " + k + (k === 1 ? " får" : " får") + " frågan" : "🆘 Välj minst en";
         pick.querySelectorAll("[data-sel]").forEach(function (b) { b.setAttribute("aria-pressed", String(!!sel[b.getAttribute("data-sel")])); });
       }
@@ -162,7 +162,9 @@
         pick.innerHTML = "";
         var d = data(r); if (!d) { pick.appendChild(h("p", { class: "pk-muted", text: "Kunde int' hämta dina kompisar." })); return; }
         people = d.people || []; groups = d.groups || [];
-        if (!people.length) { pick.appendChild(h("p", { class: "pk-muted", text: "Du har inga vänner eller gruppkompisar än. Gå med i en grupp först." })); return; }
+        // ds60: the group you came from is always there; a group with people is never "inga vänner"
+        if (opts.group && opts.group.id && !groups.some(function (x) { return String(x.id) === String(opts.group.id); })) groups.unshift({ id: opts.group.id, name: opts.group.name || "Gruppen" });
+        if (!people.length && !groups.length) { pick.appendChild(h("p", { class: "pk-muted", text: "Du har inga vänner eller gruppkompisar än. Gå med i en grupp först." })); return; }
         if (groups.length) {
           var gr = h("div", { class: "pk-chips" });
           groups.forEach(function (g) { gr.appendChild(h("button", { type: "button", class: "pk-chip pk-gchip", "data-sel": "g:" + g.id, "aria-pressed": "false", text: "👥 " + g.name,

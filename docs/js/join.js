@@ -244,7 +244,11 @@
       renderAct();
     });
   }
+  // ds60: the member count is asked again while the card is open (people join right now)
+  var prevT = 0;
+  function previewLater() { clearTimeout(prevT); prevT = setTimeout(function () { if (root && !joined && document.visibilityState !== "hidden") { preview(); } }, 20000); }
   function preview() {
+    previewLater();
     if (!ARR || ARR.kind !== "join" || !A || !A.LIVE || joined) return;
     A.rpc("join_preview", { p_code: ARR.code }).then(function (r) {
       if (r.error) return;
@@ -554,13 +558,13 @@
       nameBox = h("div", { class: "jn-namebox" }, [h("label", { class: "fld", for: "jn-name", text: L("Vad ska gänget kalla dig?", "What should the gang call you?") }), nameInp]);
       if (window.ACCOUNT) window.ACCOUNT.entry(nameBox, "name", { query: ARR && ARR.kind === "join" ? "join=" + ARR.code : "invite=1" });   // 🔐 account.js
     }
-    root = h("div", { id: "jn-wel", class: "jn-wel", role: "dialog", "aria-modal": "true", "aria-labelledby": "jn-h", "data-plat": plat }, [
+    root = h("div", { id: "jn-wel", class: "jn-wel" + (ARR && ARR.kind === "join" ? " jn-join" : "") /* ds60: keeps the preview space */, role: "dialog", "aria-modal": "true", "aria-labelledby": "jn-h", "data-plat": plat }, [
       h("div", { class: "jn-card" }, [
         h("div", { class: "jn-kick", text: L("📨 Inbjudan", "📨 Invite") }),
         h("div", { class: "jn-big", "aria-hidden": "true", text: "🍺" }),
         h("h2", { class: "jn-h", id: "jn-h", text: L("Välkommen!", "Welcome!") }),
         subEl, (prevEl = h("div", { class: "jn-prev", hidden: true })), memEl, nameBox, act, statEl,
-        h("button", { type: "button", class: "jn-skip", text: L("Fortsätt i webbläsaren", "Continue in the browser"), onclick: close }),
+        h("button", { type: "button", class: "jn-skip ds-btn-secondary", text: L("Bara titta på kartan", "Just look at the map"), onclick: close }),
         h("p", { class: "jn-18 muted", text: L("🔞 Bara för dig som fyllt 18.", "🔞 18+ only.") })
       ])
     ]);

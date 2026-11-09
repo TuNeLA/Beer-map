@@ -383,10 +383,11 @@
     IKV.forEach(function (x) {
       var b = h("button", { type: "button", role: "radio", class: "pn-ikv-b pn-" + x[0], "aria-checked": String(mine === x[0]) }, [
         h("span", { class: "pn-ikv-e", "aria-hidden": "true", text: x[1] }), h("b", { text: x[2] }), h("small", { text: x[3] })]);
-      b.addEventListener("click", function () { setIkv(x[0]); });
+      b.addEventListener("click", function () { if (mine !== x[0]) setIkv(x[0]); });   // ds60: a radio: the current answer stays
       seg.appendChild(b);
     });
     ikvBox.appendChild(seg);
+    if (mine) ikvBox.appendChild(h("button", { type: "button", class: "pn-textbtn pn-ikv-clear", text: "Ta bort mitt svar", onclick: function () { setIkv(mine); } }));   // ds60: explicit
     try { var skj = W("SKJUTS") && W("SKJUTS").ikvNode(); if (skj) ikvBox.appendChild(skj); } catch (e) {}   // 🚗 Jag kör ikväll
     if (mine === "ute" && W("SOCIAL") && W("SOCIAL").hudClick) {
       ikvBox.appendChild(h("div", { class: "ds-card pn-ikv-next" }, [h("span", { text: "Ska gänget med? Kalla in dem till samma ställe." }),
