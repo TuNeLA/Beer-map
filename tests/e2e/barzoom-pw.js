@@ -55,6 +55,15 @@ const PIT = [60.14997, 15.18679];
   ok(Array.isArray(d.glowNearCap) && d.glowNearCap.length === 0, "no ground glow next to a lit building part (" + JSON.stringify(d.glowNearCap) + ")");
   ok(shapes.length === 0, "no 2D barlit / arenaglow shapes (dashed house outlines) on the Mapbox map (" + JSON.stringify(shapes) + ")");
   ok(typeof d.heatNow === "number" ? d.heatNow < 0.05 : true, "heat is off at z18 (" + d.heatNow + ")");
+  // kommun view over Ludvika / Dalarna (Leaflet z8): clear solid kommun borders, home kommun stronger
+  await page.evaluate(() => { const A = PNDS._A(); A.map.setView([60.15, 15.19], 8, { animate: false }); });
+  await settle(4000);
+  await page.evaluate(() => document.querySelectorAll("#toasts .toast, .dl-cap").forEach((t) => t.remove()));
+  await page.screenshot({ path: SP + "barzoom-" + TAG + "-z8.png" });
+  const k = await page.evaluate(() => { const g = BASEMAP.mapbox().getMapboxMap(), id = "olnu-zk-line"; if (!g.getLayer(id)) return { none: 1 };
+    return { dash: g.getPaintProperty(id, "line-dasharray") || null, n: g.queryRenderedFeatures({ layers: [id] }).length }; });
+  console.log("KOMMUN", JSON.stringify(k));
+  ok(k && !k.none && !k.dash && k.n > 3, "kommun view: solid kommun borders drawn (" + JSON.stringify(k) + ")");
   ok(errs.length === 0, "no page errors " + JSON.stringify(errs.slice(0, 3)));
   await closeCounted(ctx, page, "barzoom-" + TAG);
   console.log("RESULT pass " + pass + " fail " + fail);
