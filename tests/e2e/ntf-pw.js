@@ -5,17 +5,19 @@
 // D) push tap while the app is open: ?ikvall=1&st=ute answers + opens Ikväll?, ?hemfard=1 opens Hemfärd.
 // E) log drain: the service worker queue → PNLOG.event push.open/push.action + push_seen().
 // G) ux: live counter, 'Av' when push is off. H) ux: the ask is calm (not over ÖL!).
-// F) REAL service worker: PushEvent + NotificationEvent (notificationclick) dispatched inside sw.js → fold of one night,
+// F) the REAL sw.js push + notificationclick handlers, run inside the service worker with hand-made events → fold of one night,
 //    the button deep link reaches the open page (postMessage) and answers Ikväll?.
 const H0 = require("./d2-helpers.js"), { boot, wait } = H0;
 // a busy CI box: long navigation timeouts (the default 30 s fails under load)
-const ctxFor = async (...a) => { const r = await H0.ctxFor(...a); r.ctx.setDefaultNavigationTimeout(150000); r.ctx.setDefaultTimeout(90000); return r; };
+const ctxFor = async (...a) => { const r = await H0.ctxFor(...a); r.ctx.setDefaultNavigationTimeout(90000); r.ctx.setDefaultTimeout(30000); return r; };
 const { chromium } = require("playwright");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8871, BASE = `http://127.0.0.1:${PORT}/`;
 const J = (r, b) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
 let pass = 0, fail = 0;
-const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : (i === undefined ? "" : JSON.stringify(i).slice(0, 300))); c ? pass++ : fail++; };
+const T0 = Date.now(); let SEC = "";
+const ok = (n, c, i) => { const sec = (n.match(/^(\w+):/) || [])[1] || ""; if (sec !== SEC) { SEC = sec; console.log("time", sec, Math.round((Date.now() - T0) / 1000) + "s"); }
+  console.log(c ? "PASS" : "FAIL", n, c ? "" : (i === undefined ? "" : JSON.stringify(i).slice(0, 300))); c ? pass++ : fail++; };
 const PREFS = { v: 1, off: [], quiet_from: null, quiet_to: null, cap: 0, cap_default: 15, tonight: 2, mode: "normal", auto_muted: ["kaos"], v2: true,
   cats: ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film", "ikvall", "gang"] };
 const FEED = { v: 1, items: [
@@ -139,36 +141,74 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
       ok("E: queue emptied", await page.evaluate(() => caches.open("olnu-pending").then((c) => c.match("./__pnq")).then((r) => r.text()).then((t) => t === "[]")));
       await ctx.close();
     }
-    { // F) real service worker: PushEvent + notificationclick
+    { // F) real sw.js: push + notificationclick handlers run inside the service worker (events built by hand, so no OS
+      //    notification server is needed: CI headless has none and showNotification can hang there).
       const log = []; const { ctx, page } = await ctxFor(browser, vp); await extra(ctx, page, log);
-      await ctx.grantPermissions(["notifications"], { origin: BASE.replace(/\/$/, "") });
       await boot(page);
-      await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
-      for (let i = 0; i < 20 && !ctx.serviceWorkers().length; i++) await wait(page, 500);
-      const sw = ctx.serviceWorkers()[0];
-      ok("F: service worker running", !!sw);
+      page.on("crash", () => console.log("NOTE page crashed"));
+      await page.evaluate(() => Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(r, 15000))]).then(() => true));
+      for (let i = 0; i < 30 && !(await page.evaluate(() => !!navigator.serviceWorker.controller)); i++) await wait(page, 500);
+      // the ACTIVE worker: an old (redundant) worker in ctx.serviceWorkers() never answers evaluate()
+      const race = (p, ms, v) => Promise.race([p, new Promise((r) => setTimeout(() => r(v), ms))]);
+      let sw = null, seen = [];
+      for (let i = 0; i < 20 && !sw; i++) {
+        for (const w of ctx.serviceWorkers().slice().reverse()) {
+          const st = await race(w.evaluate(() => self.serviceWorker ? self.serviceWorker.state : (self.registration.active ? "active?" : "none")).catch((e) => "err"), 4000, "timeout");
+          seen.push(st);
+          if (st === "activated" || st === "active?") { sw = w; break; }
+        }
+        if (!sw) await wait(page, 500);
+      }
+      ok("F: service worker running (active)", !!sw, { workers: ctx.serviceWorkers().length, seen: seen.slice(-6) });
       if (sw) {
-        const r = await sw.evaluate(async () => {
-          const fire = (ev) => new Promise((res) => { const w = []; ev.waitUntil = ((o) => (p) => { w.push(p); try { o.call(ev, p); } catch (e) {} })(ev.waitUntil); self.dispatchEvent(ev); setTimeout(() => Promise.all(w).then(res, res), 50); });
-          const P = (n, b, id) => JSON.stringify({ title: n + " på " + b + " 🍺", body: "Sedan 21:04.", url: "/?focus=" + id, tag: "olnu-" + id + "-f1", k: "ute", v: "fo.1",
-            fold: { key: "ute-2026-11-07", title: "{n} vänner ute ikväll 🍻", line: n + " · " + b }, actions: [{ action: "coming", title: "🏃 Jag kommer", url: "/?focus=" + id + "&act=coming" }] });
-          let made = true;
-          try { await fire(new PushEvent("push", { data: P("Lisa", "Pitchers", 71) })); await fire(new PushEvent("push", { data: P("Oskar", "Tegera", 72) })); } catch (e) { made = "nopush:" + e.message; }
-          const fold = (await self.registration.getNotifications({ tag: "olnu-fold-ute-2026-11-07" })).map((n) => ({ t: n.title, b: n.body, u: n.data && n.data.url }));
-          await fire(new PushEvent("push", { data: JSON.stringify({ title: "Bosse och Cecilia ska ut ikväll", body: "x", url: "/?ikvall=1", tag: "olnu-ikvall-t", k: "ikvall", v: "ik.1",
-            actions: [{ action: "ute", title: "🍺 Jag kommer", url: "/?ikvall=1&st=ute" }, { action: "kanske", title: "🤔 Kanske", url: "/?ikvall=1&st=kanske" }] }) }));
-          const ik = (await self.registration.getNotifications({ tag: "olnu-ikvall-t" }))[0];
-          let clicked = false;
-          if (ik) { await fire(new NotificationEvent("notificationclick", { notification: ik, action: "ute" })); clicked = true; }
-          const q = await caches.open("olnu-pending").then((c) => c.match("./__pnq")).then((x) => x ? x.text() : "[]");
-          return { made, fold, clicked, acts: ik ? ik.actions.map((a) => a.title) : [], q: JSON.parse(q) };
-        }).catch((e) => ({ err: e.message }));
+        // step by step (each bounded), so a CI failure says WHICH step: stub → push → push → push → click → queue
+        const step = async (name, fn, arg) => { const v = await race(sw.evaluate(fn, arg).catch((e) => ({ err: e.message })), 15000, { err: "timeout" });
+          if (v && v.err) console.log("NOTE F step", name, v.err); return v; };
+        await step("stub", () => {
+          self.__shown = [];
+          // record notifications instead of asking the OS (the same API the handlers use; CI headless has no notification server)
+          self.registration.showNotification = (title, opts) => { const a = self.__shown, i = a.findIndex((n) => n.tag === opts.tag);
+            const n = { title, ...opts, close() {} }; if (i >= 0) a[i] = n; else a.push(n); return Promise.resolve(); };
+          self.registration.getNotifications = (o) => Promise.resolve(self.__shown.filter((n) => !o || !o.tag || n.tag === o.tag));
+          // CI headless: the Badging API inside a service worker can take the renderer down. Record it instead.
+          self.__badge = [];
+          try { Object.defineProperty(self.navigator, "setAppBadge", { configurable: true, value: (n) => { self.__badge.push(n); return Promise.resolve(); } }); } catch (e) {}
+          self.__fire = (ev) => new Promise((res) => {
+            const w = [], orig = ev.waitUntil ? ev.waitUntil.bind(ev) : null;
+            Object.defineProperty(ev, "waitUntil", { value: (p) => { w.push(Promise.resolve(p).catch(() => {})); try { if (orig) orig(p); } catch (e) {} } });
+            self.dispatchEvent(ev);
+            Promise.race([Promise.all(w), new Promise((t) => setTimeout(t, 8000))]).then(() => res(true));
+          });
+          return true;
+        });
+        const pushIn = (d) => step("push " + d.tag, (x) => self.__fire(new PushEvent("push", { data: x })).then(() => true), JSON.stringify(d));
+        const P = (n, b, id) => ({ title: n + " på " + b + " 🍺", body: "Sedan 21:04.", url: "/?focus=" + id, tag: "olnu-" + id + "-f1", k: "ute", v: "fo.1",
+          fold: { key: "ute-2026-11-07", title: "{n} vänner ute ikväll 🍻", line: n + " · " + b }, actions: [{ action: "coming", title: "🏃 Jag kommer", url: "/?focus=" + id + "&act=coming" }] });
+        await pushIn(P("Lisa", "Pitchers", 71)); await pushIn(P("Oskar", "Tegera", 72));
+        await pushIn({ title: "Bosse och Cecilia ska ut ikväll", body: "x", url: "/?ikvall=1", tag: "olnu-ikvall-t", k: "ikvall", v: "ik.1",
+          actions: [{ action: "ute", title: "🍺 Jag kommer", url: "/?ikvall=1&st=ute" }, { action: "kanske", title: "🤔 Kanske", url: "/?ikvall=1&st=kanske" }] });
+        const r = (await step("read", () => {
+          const a = self.__shown || [], ik = a.find((n) => n.tag === "olnu-ikvall-t");
+          return { fold: a.filter((n) => n.tag === "olnu-fold-ute-2026-11-07").map((n) => ({ t: n.title, b: n.body, u: n.data && n.data.url })),
+            acts: ik ? ik.actions.map((x) => x.title) : [], has: !!ik };
+        })) || {};
+        const c = await step("click", () => {
+          const ik = (self.__shown || []).find((n) => n.tag === "olnu-ikvall-t");
+          if (!ik) return false;
+          const ev = new ExtendableEvent("notificationclick");
+          Object.defineProperty(ev, "notification", { value: ik }); Object.defineProperty(ev, "action", { value: "ute" });
+          return self.__fire(ev);
+        });
+        r.clicked = c === true;
+        r.q = await step("queue", () => caches.open("olnu-pending").then((cc) => cc.match("./__pnq")).then((x) => x ? x.text() : "[]").then((t) => JSON.parse(t)));
+        if (!Array.isArray(r.q)) r.q = [];
         ok("F: two friends in one night = ONE notice '2 vänner ute ikväll 🍻'", r.fold && r.fold.length === 1 && r.fold[0].t === "2 vänner ute ikväll 🍻" && r.fold[0].u === "/", r);
         ok("F: Ikväll? shows the buttons 🍺 Jag kommer / 🤔 Kanske", JSON.stringify(r.acts) === '["🍺 Jag kommer","🤔 Kanske"]', r.acts);
         ok("F: SW queued push.shown + push.action", r.q && r.q.some((x) => x.n === "push.shown") && r.q.some((x) => x.n === "push.action" && x.a === "ute"), r.q);
-        await wait(page, 3500);
+        for (let i = 0; i < 16 && !log.some((x) => x[0] === "ikvall_set"); i++) await wait(page, 500);
         const iv = log.filter((x) => x[0] === "ikvall_set").pop();
         ok("F: notificationclick 'ute' → the open page answers Ikväll? (ikvall_set ute)", r.clicked && iv && iv[1].p_st === "ute", log.map((x) => x[0]));
+        await wait(page, 800);
         ok("F: … and shows the Ikväll? sheet", /Ikväll/.test(await sheetTitle(page)), await sheetTitle(page));
       }
       await ctx.close();
@@ -218,6 +258,6 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
     }
   } catch (e) { console.log("FAIL exception", e.message); fail++; }
   await browser.close();
-  console.log(`\n${pass} PASS, ${fail} FAIL`);
+  console.log(`\n${pass} PASS, ${fail} FAIL (${Math.round((Date.now() - T0) / 1000)} s)`);
   process.exit(fail ? 1 : 0);
 })();
