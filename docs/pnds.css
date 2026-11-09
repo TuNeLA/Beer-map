@@ -825,7 +825,7 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .beer-wrap>.other-wrap .other-btn{width:50px !important;height:50px !important;padding:0 !important;gap:0 !important;border-radius:50% !important;
   background:var(--pn-float-2) !important;border:2px solid var(--pn-lilac,#D9B8FF) !important;color:var(--ds-text) !important;
   box-shadow:var(--ds-sh-1),inset 0 0 0 1px rgba(217,184,255,.18) !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important}
-#btn-other .other-label{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:-1px;width:auto !important;height:auto !important}
+#btn-other .other-label{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:-3px;width:auto !important;height:auto !important}
 #btn-other .ol-e{display:block;line-height:0;color:var(--pn-lilac,#D9B8FF)}
 #btn-other .ol-e svg{width:20px !important;height:20px !important}
 #btn-other .ol-t{font:600 var(--fs-12)/13px var(--ds-sans) !important;letter-spacing:0 !important;color:var(--ds-text);white-space:nowrap}
@@ -838,7 +838,7 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .toasts{bottom:var(--pn-toast-b, var(--pn-ban-b, calc(var(--dock-h,212px) + 54px))) !important}
 .toast>span{white-space:normal;overflow-wrap:anywhere;min-width:0}
 /* the precision bubble (absolute in the dock, the dock's offset subtracted): right side over locate (it belongs to the precision box), above the measured line, 2 lines max */
-#prec-hint{position:absolute !important;top:auto !important;left:auto !important;bottom:calc(var(--pn-hint-b, var(--pn-toast-b, var(--pn-ban-b, 260px))) - var(--pn-dock-top-b, 152px)) !important;
+#prec-hint{position:absolute !important;top:auto !important;left:auto !important;bottom:calc(var(--pn-hint-b, var(--pn-toast-b, var(--pn-ban-b, 260px))) - var(--pn-dock-top-b, 0px)) !important;
   right:calc(var(--sar,0px) + var(--pn-edge,12px)) !important;max-width:min(300px,calc(100vw - 2 * var(--pn-edge,12px))) !important;white-space:normal !important;
   overflow:visible !important;text-overflow:clip !important;z-index:1001 !important}
 /* ds33 toasts END */
