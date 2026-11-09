@@ -212,7 +212,7 @@
             "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
         addL(m, { id: L_KL, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
           paint: { "line-color": ["case", ["boolean", ["feature-state", "home"], false], "#FFC24D", "#FFFAF0"], "line-emissive-strength": 1,   /* ds44: clear solid borders, home kommun stronger */
-            "line-width": ["case", ["boolean", ["feature-state", "home"], false], ["interpolate", ["linear"], ["zoom"], 5.6, 1.8, 9, 2.6], ["interpolate", ["linear"], ["zoom"], 5.6, 0.9, 9, 1.4]],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 5.6, ["case", ["boolean", ["feature-state", "home"], false], 1.8, 0.9], 9, ["case", ["boolean", ["feature-state", "home"], false], 2.6, 1.4]],
             "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", ["boolean", ["feature-state", "home"], false], 0.95, 0.6], Z_OFF - 2, ["case", ["boolean", ["feature-state", "home"], false], 0.9, 0.55], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
       }
       // labels sit just above the zone's label point (the town's people pins / 📍 chips are DOM, GL cannot dodge them)
