@@ -185,11 +185,11 @@ async function routes(page, me) {
         mid: li.getAttribute("data-mid"), pic: !!li.querySelector(":scope > .av-pic svg"), cont: li.classList.contains("av-cont"), mine: li.classList.contains("av-mine"),
         html: (li.querySelector(":scope > .av-pic") || {}).innerHTML || "" })));
       const m = (id) => rows.find((x) => x.mid === String(id)) || {};
-      ok("Anton's message group has his saved avatar (beret + field jacket)", m(4).pic && /#1d4d2b/.test(m(4).html) && /#59613a/.test(m(4).html), m(4));
-      ok("Anton's 2nd message continues the group (no 2nd avatar)", m(5).cont && !m(5).pic, m(5));
-      ok("Oskar: 1 avatar for 2 messages", m(2).pic && m(3).cont && !m(3).pic);
+      ok("Anton's message group has his saved avatar on its last bubble (beret + field jacket)", m(5).pic && /#1d4d2b/.test(m(5).html) && /#59613a/.test(m(5).html), m(5));
+      ok("Anton's 1st message starts the group (no avatar; ds54: avatar on the last bubble)", !m(4).cont && !m(4).pic && m(5).cont, m(4));
+      ok("Oskar: 1 avatar for 2 messages (on the last)", !m(2).pic && m(3).cont && m(3).pic);
       ok("my own (Lisa) messages have no avatar", m(1).mine && !m(1).pic && m(6).mine);
-      ok("chat avatar is 32 px, left of the bubble", await page.evaluate(() => { const p = document.querySelector('.chat-msg[data-mid="4"] > .av-pic'), li = p.parentNode; const a = p.getBoundingClientRect(), b = li.getBoundingClientRect(); return Math.round(a.width) === 32 && a.right <= b.left + 1; }));
+      ok("chat avatar is 32 px, left of the bubble", await page.evaluate(() => { const p = document.querySelector('.chat-msg[data-mid="5"] > .av-pic'), li = p.parentNode; const a = p.getBoundingClientRect(), b = li.getBoundingClientRect(); return Math.round(a.width) === 32 && a.right <= b.left + 1; }));
       await page.evaluate(() => { const l = document.querySelector(".chat-list"); if (l) l.scrollTop = 0; });
       await shot(page, "chat");
       // C: group page NU strip, ⋯ → Medlemmar, Vänner tab
