@@ -74,3 +74,25 @@ button.avw-cta.avw-cta{display:flex;align-items:center;gap:12px;width:100%;margi
 .avw-cta-go{font-size:var(--fs-22);color:var(--ds-amber-t,#ffc24d)}
 .pf-av.av-new{outline:2px dashed var(--ds-amber,#f5a623);outline-offset:2px}
 .ave-wiz{margin-left:6px;min-height:36px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));background:var(--ds-card,#19233a);color:var(--ds-text,#eef0ec);font-size:var(--ds-fs-14,14px);cursor:pointer}
+/* avt02 avwiz START */
+/* live preview at real size: map pin 26 px, chat 40 px (owner: "live preview at map pin size") */
+.avw-prevs{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-top:6px}
+.avw-prevs .avw-prev{margin-top:0}
+.avw-pin{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:56px}
+.avw-pin[hidden]{display:none}
+.avw-pin>span{display:block;border-radius:50%;overflow:hidden;background:#1c2742}
+.avw-pin>span svg{width:100%;height:100%;display:block}
+.avw-pin-map{width:26px;height:26px;box-shadow:0 0 0 2px var(--ds-green,#3ddc84),0 1px 4px rgba(0,0,0,.6)}
+.avw-pin-chat{width:40px;height:40px}
+.avw-pin small{font-size:var(--ds-fs-12,12px);color:var(--avw-muted);white-space:nowrap}
+/* quick jump row = the one segmented control, scrolls sideways (DESIGN.md ds15) */
+.avw-quick{width:100%;max-width:100%;overflow-x:auto;scrollbar-width:none;margin:0 0 6px;box-sizing:border-box}
+.avw-quick::-webkit-scrollbar{display:none}
+.avw-quick[hidden]{display:none}
+.avw-quick>button{flex:0 0 auto;min-width:72px}
+/* quick path: "Slumpa resten" + "Klar nu" (ghost buttons, the amber Nästa stays the one primary) */
+.avw-bar{flex-wrap:wrap}
+.avw-bar2{flex:1 0 100%;display:flex;gap:8px}
+.avw-bar2[hidden]{display:none}
+.avw-bar2 .btn{flex:1 1 0;min-height:44px;margin:0;background:transparent;box-shadow:inset 0 0 0 1px var(--avw-bd)}
+/* avt02 avwiz END */

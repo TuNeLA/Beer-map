@@ -9,6 +9,7 @@
    - People pins are Leaflet DOM markers above the GL map (KARTSTIL 5), so this is plain HTML; nothing in GL. */
 (function () {
   "use strict";
+  var PIN_VB = "12 8 76 76";   // avt03: head + shoulders fill the 26 px pin
   var A = null, urls = {}, nUrls = 0, groupsAt = 0, gids = [], want = false, redrawT = 0, sig = "", loadAt = 0;
   var CSS = ".pill>.bm-av{width:26px;height:26px;border-radius:50%;margin:0 1px 0 -10px;flex:0 0 26px;display:block;" +
     "box-shadow:0 0 0 2px var(--green,#3ddc84),0 1px 4px rgba(0,0,0,.6);background:#1c2742}" +
@@ -33,7 +34,7 @@
     if (!spec) return "";   // mbx / avwiz: a person without a saved character keeps the normal pin
     var u = urls[key]; if (u) return u;
     var x = av(), svg = "";
-    try { svg = x.svg(spec || x.defaultSpec(p.seed || "x", p.r), { r: p.r, md: [] }); } catch (e) { return ""; }
+    try { svg = x.svg(spec || x.defaultSpec(p.seed || "x", p.r), { r: p.r, md: [], small: true, vb: PIN_VB }); } catch (e) { return ""; }   // avt03: small style, head zoom
     if (!svg) return "";
     if (nUrls > 300) { urls = {}; nUrls = 0; }
     u = urls[key] = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); nUrls++;

@@ -59,7 +59,7 @@
 
   /* ---------- Catalog: names [sv, en] per slot. Index = the value in the spec. NEVER reorder; add at the end. ---------- */
   var N = {
-    sk: [["Ljus", "Light"], ["Ljus 2", "Light 2"], ["Mellan", "Medium"], ["Mellan 2", "Medium 2"], ["Mörk", "Dark"], ["Mörk 2", "Dark 2"], ["Mörkast", "Deep"], ["Grönis", "Greenie"],
+    sk: [["Ljus", "Light"], ["Ljus 2", "Light 2"], ["Mellan", "Medium"], ["Mellanbrun", "Medium brown"], ["Mörk", "Dark"], ["Mörk 2", "Dark 2"], ["Mörkast", "Deep"], ["Grönis", "Greenie"],
       ["Porslin", "Porcelain"], ["Rosig", "Rosy"], ["Beige", "Beige"], ["Gyllene", "Golden"], ["Oliv", "Olive"], ["Solbränd", "Tan"], ["Kola", "Caramel"], ["Kastanj", "Chestnut"], ["Espresso", "Espresso"], ["Ebenholts", "Ebony"],
       ["Blåis", "Bluey"], ["Lavendel", "Lavender"], ["Zombie", "Zombie"], ["Snögubbe", "Snowman"], ["Guldstaty", "Gold statue"]],
     fs: [["Rund", "Round"], ["Oval", "Oval"], ["Kantig", "Square"], ["Hjärta", "Heart"], ["Lång", "Long"], ["Bred", "Wide"], ["Markerad", "Angular"], ["Mjuk", "Soft"]],
@@ -127,7 +127,7 @@
     ht: [["Toppar", "Tips"], ["Rötter", "Roots"], ["Delat", "Split"], ["Slinga", "Streak"]]
   };
   var SLOTS = ["sk", "fs", "ey", "ec", "br", "ns", "mt", "ck", "fm", "fp", "er", "hr", "hc", "fh", "hw", "gl", "nk", "up", "uc", "bg", "hi", "fr"];
-  var MAX = { ms: 1, hx: 16777216, ux: 16777216, bx: 16777216, h2: HAIRC.length, ht: N.ht.length - 1 };
+  var MAX = { ms: 1, nl: 1, hx: 16777216, ux: 16777216, bx: 16777216, h2: HAIRC.length, ht: N.ht.length - 1 };
   SLOTS.forEach(function (k) { MAX[k] = N[k].length - 1; });
   var V1KEYS = ["sk", "fs", "ey", "br", "mt", "hr", "hc", "fh", "hw", "gl", "up", "uc", "bg"];
   var V1MAX = { sk: 7, fs: 2, ey: 6, br: 4, mt: 6, hr: 10, hc: 8, fh: 8, hw: 13, gl: 10, up: 8, uc: 7, bg: 11 };
@@ -206,6 +206,94 @@
   var SEASON = {}; SEASON[HALLO] = "🎃"; SEASON[JUL] = "🎄"; SEASON[MIDS] = "🌼"; SEASON[VALB] = "🔥"; SEASON[NYAR] = "🎆";
   SEASON["12-01:12-20"] = "🕯️"; SEASON["05-20:06-20"] = "🎓"; SEASON["11-15:03-15"] = "❄️";
   var HIDDEN_MEDALS = { het: 1, medevac: 1 };
+  /* avt01 fit START */
+  /* ---------- v4 fit + catalog clean-up (avt 2026-11-08; owner: "a billion skin colours — do we need that many?",
+     "is each item unique enough?", "hair must never stick out through a hat"). Research: Unicode emoji use 5 Fitzpatrick-based
+     tones + yellow, Mii 6 → 10, Google's Monk Skin Tone scale 10. So: 10 real skin tones, evenly spaced in CIE Lab (min ΔE 8.4,
+     light → deep, warm + golden undertones), plus the 6 fun reward tones. Hair colours: 12 natural + 7 fun.
+     - RETIRED = items that looked the same as another item in the pixel audit (pair diff at 40 / 120 px). They are hidden in
+       the editor and drawn as the kept item. A saved spec keeps its number (the server list is unchanged); the next save
+       writes the kept number. Every target is free or has the same lock, so a save never fails with "locked".
+     - ORDER = display order (skin light → deep, natural hair colours first).
+     - Hats: every hat has a fit type. Cover hats (HCLIP) cut ALL hair (back, mid, front) at the brim line, band hats
+       (crowns, wreaths, ears, horns, headset, halo) cut hair at HAIRTOP, and tall parts (bun, mohawk crest, space buns) are
+       dropped under any hat ("hat hair"). The balaclava hides hair, ears, earrings and beard. Checked for every hair × hat ×
+       face shape by avt-tools/clip.js (hair pixels above the line = 0, bald band under the brim = 0).
+     - nl (neckwear layer): 0 = Utanpå (over the top, default), 1 = Instoppad (under the top, only the neck part shows). Only for
+       NKL items. Needs SQL 0397 (olnu_avatar_max nl:1); an old server says invalid_avatar → saved without nl. */
+  var RETIRED = {
+    sk: { 0: 9, 1: 10, 2: 11, 5: 15, 6: 16, 12: 3, 14: 4 },
+    hc: { 13: 2, 15: 0, 20: 6 },
+    hr: { 11: 2, 25: 6, 33: 22 },
+    br: { 10: 1 },
+    fh: { 15: 4 },
+    gl: { 17: 12 }
+  };
+  var ORDER = {
+    sk: [8, 9, 10, 11, 3, 13, 4, 15, 16, 17, 7, 18, 19, 20, 21, 22],
+    hc: [0, 1, 2, 12, 4, 11, 3, 9, 10, 5, 14, 6, 7, 8, 16, 17, 18, 19, 21],
+    hr: [0, 1, 2, 19, 21, 3, 32, 4, 27, 9, 28, 29, 10, 12, 23, 22, 13, 5, 14, 7, 20, 15, 30, 17, 16, 26, 6, 18, 8, 24, 31]
+  };
+  var NKL = { 1: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 12: 1, 15: 1 };   // neckwear that can go under the top
+  var HAIRTOP = 15;
+  function isRetired(k, i) { return !!(RETIRED[k] && RETIRED[k][i] != null); }
+  function visible(k) {
+    var out = [], seen = {}, max = MAX[k];
+    (ORDER[k] || []).forEach(function (i) { if (i <= max && !seen[i] && !isRetired(k, i)) { seen[i] = 1; out.push(i); } });
+    for (var i = 0; i <= max; i++) if (!seen[i] && !isRetired(k, i)) out.push(i);
+    return out;
+  }
+  function migrate(s) {   // in place: retired item → the kept item (also h2 = hair colour index + 1)
+    if (!s) return s;
+    Object.keys(RETIRED).forEach(function (k) { var v = s[k]; if (typeof v === "number" && RETIRED[k][v] != null) s[k] = RETIRED[k][v]; });
+    if (s.h2 && RETIRED.hc[(s.h2 | 0) - 1] != null) s.h2 = RETIRED.hc[(s.h2 | 0) - 1] + 1;
+    if (s.nl && !NKL[s.nk | 0]) delete s.nl;
+    return s;
+  }
+  function labOf(hex) {
+    var n = parseInt(String(hex).slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map(function (x) { x /= 255; return x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92; });
+    var X = (c[0] * 0.4124 + c[1] * 0.3576 + c[2] * 0.1805) / 0.95047, Y = c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722, Z = (c[0] * 0.0193 + c[1] * 0.1192 + c[2] * 0.9505) / 1.08883;
+    var f = function (t) { return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; };
+    return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
+  }
+  function colDist(a, b) { var x = labOf(a), y = labOf(b); return Math.sqrt(Math.pow(x[0] - y[0], 2) + Math.pow(x[1] - y[1], 2) + Math.pow(x[2] - y[2], 2)); }
+  // the background colour around the shoulders (for top / background contrast)
+  var BGMAIN = ["#f5a623", "#1fa45c", "#2f6fb8", "#c8202a", "#6b2d8f", "#1d8a8a", "#34497f", "#d9578f", "#5b6338", "#ff7a1a", "#0b1638", "#f5c542", "#8fc4f5", "#ff9a5a", "#7fd6b8", "#2b2f36",
+    "", "", "", "#f7f3ea", "", "#2f6fb8", "#5cae4e", "#1b2a44", "#161d3e", "#4a2a18", "#2c5a3a", "#3f86c6", "#fbfdff", "#ff7a1a", "#4a1f5a", "#174f38", "#1d2550", "#2f7ac0", "#1d2550", "#2a0f4a", "#efe6d2", "#1a0f3a", "#e8a020"];
+  function bgMain(s) { var x = hexOf(s.bx); return BGMAIN[s.bg | 0] || x || ({ 16: "#f5a623", 17: "#2f6fb8", 18: "#c8202a", 20: "#c8202a" })[s.bg | 0] || "#f5a623"; }
+  function contrastOk(s) { var t = topMain(migrate(JSON.parse(JSON.stringify(s)))); return !t || colDist(t, bgMain(s)) >= 24; }
+  /* "Slumpa" that makes nice looks (owner: "nice combos, not random clashes"): natural colours most of the time, calm faces,
+     few extras at once, the top always stands out from the background, beard and brows follow the hair colour. only = one slot
+     (the wizard step) or null = everything not kept. keepK = slots the 🎲 must not change. */
+  var CALM = { ey: [0, 1, 2, 5, 7, 8, 9, 10, 3], mt: [0, 1, 2, 3, 4, 7, 8, 13], br: [1, 2, 4, 5, 6, 12, 14], ns: [0, 1, 2, 3, 4, 5, 6, 7, 8] };
+  var EXTRA_P = { fh: 0.4, hw: 0.35, gl: 0.3, nk: 0.22, er: 0.2, fm: 0.15, fp: 0.06, hi: 0.35, fr: 0.25, ck: 0.5 };
+  var REAL_SK = [8, 9, 10, 11, 3, 13, 4, 15, 16, 17], NAT_HC = [0, 1, 2, 12, 4, 11, 3, 9, 10, 5, 14, 6];
+  function nice(draft, f, only, keepK) {
+    var RR = Math.random, d = draft;
+    function can(k, i) { return usable(k, i, f) && !isRetired(k, i); }
+    function pick(k, pool) { var ok = (pool || visible(k)).filter(function (i) { return i <= MAX[k] && can(k, i); }); return ok.length ? ok[Math.floor(RR() * ok.length)] : (d[k] | 0); }
+    function want(k) { return (!only || only === k) && !(keepK && keepK[k]); }
+    if (want("sk")) d.sk = RR() < 0.9 ? pick("sk", REAL_SK) : pick("sk");
+    if (want("fs")) d.fs = pick("fs");
+    if (want("hr")) d.hr = pick("hr");
+    if (want("hc") || only === "hr") { d.hc = RR() < 0.85 ? pick("hc", NAT_HC) : pick("hc"); delete d.hx; if (!only && RR() < 0.1) { d.h2 = 1 + pick("hc", [7, 8, 16, 17, 18, 19, 21]); d.ht = Math.floor(RR() * 4); } else if (!only) { delete d.h2; delete d.ht; } }
+    ["ey", "mt", "br", "ns"].forEach(function (k) { if (want(k)) d[k] = RR() < 0.85 ? pick(k, CALM[k]) : pick(k); });
+    if (want("ec")) d.ec = RR() < 0.5 ? 0 : pick("ec", [1, 2, 3, 4, 5, 6, 7]);
+    Object.keys(EXTRA_P).forEach(function (k) { if (want(k)) d[k] = RR() < (only === k ? 0.85 : EXTRA_P[k]) ? pick(k, visible(k).filter(function (i) { return i > 0 || k === "ck"; })) : (k === "ck" ? 0 : 0); });
+    if (!only && d.hw && d.gl && RR() < 0.6) d.gl = 0;   // not everything at once
+    if (want("up")) d.up = pick("up");
+    if (want("uc") || only === "up") { d.uc = pick("uc"); delete d.ux; }
+    if (want("bg")) { d.bg = pick("bg"); delete d.bx; }
+    // the top must stand out from the background: change what the user did not just pick
+    for (var n = 0; n < 24 && (!only || only === "up" || only === "uc" || only === "bg") && !contrastOk(d); n++) {
+      var byBg = only === "bg" || (keepK && keepK.uc) || (n >= 4 && only !== "uc" && only !== "up");   // a fixed-colour top: change the background
+      if (byBg) { if (keepK && keepK.bg) break; d.bg = pick("bg"); delete d.bx; } else { d.uc = pick("uc"); delete d.ux; }
+    }
+    if (d.gl === 6) d.hw = 0;
+    migrate(d);
+    return d;
+  }
+  /* avt01 fit END */
 
   /* ---------- Small helpers ---------- */
   function shade(hex, f) {   // f < 0 darker, f > 0 lighter
@@ -265,6 +353,7 @@
     if (R2() < 0.15) s.er = 1 + p2(3);
     if (R2() < 0.12) s.ck = [2, 4][p2(2)];
     if (R2() < 0.1) s.nk = [1, 4][p2(2)];
+    for (var cb = 0; cb < 8 && !contrastOk(s); cb++) s.bg = (s.bg + 3) % 8;   // avt01
     return s;
   }
 
@@ -316,7 +405,7 @@
     function both(fn) { return fn(42, -1) + fn(58, 1); }
     function iris(x, y, r, dx, dy) {   // coloured iris + pupil + catchlight
       dx = dx || 0; dy = dy || 0;
-      if (!ec) return C(f2(x + dx), f2(y + dy), r, d) + C(f2(x + dx + r * 0.36), f2(y + dy - r * 0.36), f2(r * 0.3), "#fff");
+      if (!ec) return (lum(skin) < 0.3 ? C(f2(x + dx), f2(y + dy), f2(r + 0.8), mix(skin, "#fbfaf7", 0.6)) : "") + C(f2(x + dx), f2(y + dy), r, d) + C(f2(x + dx + r * 0.36), f2(y + dy - r * 0.36), f2(r * 0.3), "#fff");
       return C(f2(x + dx), f2(y + dy), r, ic) + C(f2(x + dx), f2(y + dy), f2(r * 0.52), shade(ic, -0.7)) + C(f2(x + dx + r * 0.38), f2(y + dy - r * 0.38), f2(r * 0.3), "#fff");
     }
     function almond(x, y, w, h, r, dx, dy, lid) {   // white almond, clipped iris, top lash line; lid = how far the lid comes down (0..1)
@@ -516,15 +605,15 @@
   function hairStyle(hr) {
     var b, f, l;
     switch (hr) {
-      case 1: return { f: BUZZ, o: 0.9 };
+      case 1: return { f: BUZZ, o: 0.6 };
       case 2: return { f: SIDEPART, l: "M56,30.2 C55,26 54.6,23 55,20.4" };
       case 3: return { f: SIDEPART + "M33,32 C33,14 52,8 66,16 C60,17 55,22 53,29 C46,31 39,32 33,32Z", l: "M40,22 C46,16 54,14 60,15" };
       case 4: return { f: "M29,44 L30,30 L34,32 L36,21 L41,27 L45,17 L49,25 L54,16 L57,25 L62,19 L63,28 L68,25 L68,34 L71,44 C66,35 60,31 50,31 C40,31 34,35 29,44Z" };
       case 5: return { b: LONGB, f: SIDEPART };
-      case 6: return { f: dC(50, 15, 7.5) + SIDEPART, l: "M46,12.4 C48,10.6 52,10.6 54,12.6" };
+      case 6: return { t: dC(50, 15, 7.5), f: SIDEPART, tl: "M46,12.4 C48,10.6 52,10.6 54,12.6" };
       case 7: return { b: dC(50, 38, 25) + dC(28, 52, 7) + dC(72, 52, 7), f: circles([[33, 34, 6.2], [38, 27, 6.2], [45, 23, 6.2], [52, 22, 6.2], [59, 24, 6.2], [65, 29, 6.2], [69, 36, 6.2], [31, 41, 6.2], [70, 43, 6.2]]), l: "M40,28 C44,25 48,25 50,27 M54,25 C58,24 62,26 63,29" };
       case 8: return { b: "M66,30 C82,30 84,54 76,70 C72,60 70,46 63,40Z", f: SIDEPART, x: [68, 31, 3] };
-      case 9: return { f: "M44.5,34 L46,8 L48.5,13 L50,6 L51.5,13 L54,8 L55.5,34Z", z: "M30,44 C30,30 40,24 50,24 C60,24 70,30 70,44 C66,37 60,34 50,34 C40,34 34,37 30,44Z" };
+      case 9: return { t: "M44.5,34 L46,8 L48.5,13 L50,6 L51.5,13 L54,8 L55.5,34Z", z: "M30,44 C30,30 40,24 50,24 C60,24 70,30 70,44 C66,37 60,34 50,34 C40,34 34,37 30,44Z" };
       case 10: return { b: "M31,44 L29,70 C36,76 64,76 71,70 L69,44Z", f: SIDEPART };
       case 11: return { f: "M29.5,45 C27.5,27 38,19.5 51,19.5 C63,19.5 72.5,27 70.5,44 L69,44 C68.5,37 66,33 62,31.5 C56,33.5 48,37.5 38,39.5 C35,40 33,42 31.5,45Z", l: "M60,24 C54,27 46,31 40,35 M64,27 C60,30 56,32 52,34" };
       case 12: return { b: "M27,42 C26,24 38,18 50,18 C62,18 74,24 73,42 L74,60 C74,63.5 71,64.5 67,63.5 L33,63.5 C29,64.5 26,63.5 26,60Z",
@@ -533,14 +622,15 @@
       case 14: return { b: "M26,40 C24,20 40,15 50,15 C60,15 76,20 74,40 C78,46 74,50 77,56 C80,62 75,66 78,72 C80,77 74,80 70,78 L62,74 L62,52 L38,52 L38,74 L30,78 C26,80 20,77 22,72 C25,66 20,62 23,56 C26,50 22,46 26,40Z",
         f: circles([[32.6, 35, 6.6], [38.4, 27.4, 6.6], [45.6, 23, 6.6], [54.4, 23, 6.6], [61.6, 27.4, 6.6], [67.4, 35, 6.6], [30, 43, 5], [70, 43, 5]]), l: "M36,30 C39,28 41,28 43,30 M52,25 C55,24 58,25 59,27 M28,52 C30,55 28,58 30,61 M72,52 C70,55 72,58 70,61" };
       case 15: var ab = [dC(50, 37, 26)]; for (var ai = 0; ai < 16; ai++) { var aa = ai * Math.PI / 8; ab.push(dC(f2(50 + 25.5 * Math.cos(aa)), f2(37 + 25.5 * Math.sin(aa)), 5.2)); }
-        return { b: ab.join(""), f: BUZZ, l: "M27,30 C28,27 30,26 31,27 M70,26 C72,26 73,28 72,30 M38,14 C40,13 42,13 43,14 M58,13 C60,13 61,14 62,15 M24,44 C24,42 26,41 27,42 M75,42 C76,43 76,45 75,46 M46,18 C47,17 49,17 50,18 M30,20 C31,19 33,19 34,20 M66,19 C67,18 69,18 70,19" };
+        var hb2 = [dC(50, 40, 23)]; for (var aj = 0; aj < 16; aj++) { var a2 = aj * Math.PI / 8; hb2.push(dC(f2(50 + 22.5 * Math.cos(a2)), f2(40 + 22.5 * Math.sin(a2)), 4.6)); }
+        return { hat: { b: hb2.join("") }, b: ab.join(""), f: BUZZ, l: "M27,30 C28,27 30,26 31,27 M70,26 C72,26 73,28 72,30 M38,14 C40,13 42,13 43,14 M58,13 C60,13 61,14 62,15 M24,44 C24,42 26,41 27,42 M75,42 C76,43 76,45 75,46 M46,18 C47,17 49,17 50,18 M30,20 C31,19 33,19 34,20 M66,19 C67,18 69,18 70,19" };
       case 16: var b1 = braid(29.4, 50, 28.6, 88, 10, 3.6), b2 = braid(70.6, 50, 71.4, 88, 10, 3.6);
         return { f: MIDPART, m: b1.d + b2.d, ml: b1.l + b2.l, b: dC(50, 40, 22), x2: [[28.6, 91]] .concat([[71.4, 91]]) };
       case 17: var lb = dC(50, 38, 22); [22.4, 27.4, 32.4, 62.6, 67.6, 72.6].forEach(function (x, i) { lb += dR(x, 30 + (i % 3) * 2, 5, 44 - (i % 2) * 6, 2.5); });
         return { b: lb, f: "M29.5,45 C27.5,27 38,19 50,19 C62,19 72.5,27 70.5,45 L68,44 C66,36 60,32 50,32 C40,32 34,36 32,44Z" + dR(37, 27, 4.6, 11, 2.3) + dR(44.4, 26, 4.6, 10, 2.3) + dR(51.6, 26, 4.6, 10, 2.3) + dR(58.6, 27, 4.6, 11, 2.3),
         l: "M38,31 L41,31 M45.4,30 L48.4,30 M52.6,30 L55.6,30 M59.6,31 L62.6,31 M40,22 L42,25 M48,20.6 L49,24 M56,21 L55,24.4 M63,24 L61,26.6" };
-      case 18: return { f: MIDPART + dC(32.6, 22.4, 7) + dC(67.4, 22.4, 7), l: "M29,21 C30,18 34,17.6 36,20 M64,20 C66,17.6 70,18 71,21" };
-      case 19: return { f: SLICK, l: "M38,25 C44,22 56,22 62,25 M35.6,29 C44,26 56,26 64.4,29" };
+      case 18: return { f: MIDPART, t: dC(32.6, 22.4, 7) + dC(67.4, 22.4, 7), tl: "M29,21 C30,18 34,17.6 36,20 M64,20 C66,17.6 70,18 71,21" };
+      case 19: return { f: SLICK, l: "M35.6,29 C44,26 56,26 64.4,29", sh: "M40,24.4 C45,21.6 55,21.6 60,24.4" };
       case 20: var pts = [], cs; for (var i = 0; i <= 10; i++) { var a = Math.PI * (1.08 + 0.84 * i / 10); pts.push([f2(50 + 20.4 * Math.cos(a)), f2(40 + 17.6 * Math.sin(a)), 4]); }
         pts.push([50, 22.4, 4.4], [42, 24, 4.4], [58, 24, 4.4]);
         return { f: BUZZ + circles(pts) };
@@ -550,12 +640,12 @@
       case 23: return { b: "M26.5,42 C25,22 38,17 50,17 C62,17 75,22 73.5,42 C75,48 72,52 75,57 C77,62 73,66 70,66 L30,66 C27,66 23,62 25,57 C28,52 25,48 26.5,42Z",
         f: "M29,48 C27,28 38,19.5 50.5,19.5 C63,19.5 73,28 71,48 L68.5,48 C68,40 65,35 60,33 C54,36 48,34 42,37 C37,39.5 33.5,42 31.5,48Z" + "M31.5,46 C29,52 32,56 29.5,61 L27,60 C29,55 26.5,51 28.8,46Z", l: "M44,25 C50,22 58,24 62,28 M27.4,50 C29,53 27.6,56 28.6,58" };
       case 24: return { f: SLICK, b: "M47,22 C50,10 60,6 66,10 C74,16 72,32 76,46 C78,54 74,62 70,64 C71,52 66,40 62,30 C59,24 54,22 50,24Z", l: "M38,25 C44,22 56,22 62,25", x: [50, 20.4, 2.2] };
-      case 25: return { f: SLICK + dC(50, 16.4, 6), l: "M38,25 C44,22 56,22 62,25 M46.4,14.6 C48.4,12.6 51.6,12.6 53.6,14.6", x: [50, 21.6, 1.8] };
+      case 25: return { f: SLICK, t: dC(50, 16.4, 6), l: "M38,25 C44,22 56,22 62,25", tl: "M46.4,14.6 C48.4,12.6 51.6,12.6 53.6,14.6", tx: [50, 21.6, 1.8] };
       case 26: var b3 = braid(70.4, 50, 73.4, 88, 10, 3.6); return { f: SIDEPART, b: dC(50, 39, 21.5), m: b3.d, ml: b3.l, x2: [[73.4, 91.2]] };
       case 27: return { f: "M29,45 L27,32 L33,34 L31,22 L38,28 L38,15 L44,24 L48,11 L51,23 L56,12 L58,25 L64,15 L64,28 L71,22 L68,34 L74,32 L71,45 C66,35 60,31.5 50,31.5 C40,31.5 34,35 29,45Z" };
       case 28: return { z: "M30,44 C30,30 36,24 44,22.4 L45,33 C38,34 33,37 30,44Z", f: "M38,22 C46,17.5 62,17.5 69,24 C73.5,30 73,44 70.5,58 L67.4,57 C68,48 67,41 64,37.5 C58,36 50,36.5 44,33 C41,30 39,26 38,22Z", l: "M46,24 C54,22 62,24 66,30 M50,30 C56,30 62,32 65,36" };
       case 29: return { b: dC(50, 37, 21), f: "M29.5,44 C28,26 39,18.5 51,18.5 C63,18.5 72,26 70.5,44 L70,52 C68,50 66,46 63,44 C58,42 52,42 46,40 C40,38 36,36 34,36 C32.5,38 31.5,41 31,44Z", l: "M36,27 C46,26 58,30 66,40 M42,22 C52,22 62,28 68,36" };
-      case 30: return { f: SLICK, l: "M36.6,32 C37,26 41,22 46,20.4 M42.4,31 C42.6,25 45.6,21.4 48.6,19.8 M48.6,30.6 L49.6,19.4 M54.6,30.8 C55,25 53.6,21.4 51.6,19.6 M60.4,31.6 C60.4,26 58,22 54,20.2 M65,33.6 C65,28 62.4,23.6 58,21" };
+      case 30: return { f: SLICK, ld: "M36.6,32 C37,26 41,22 46,20.4 M42.4,31 C42.6,25 45.6,21.4 48.6,19.8 M48.6,30.6 L49.6,19.4 M54.6,30.8 C55,25 53.6,21.4 51.6,19.6 M60.4,31.6 C60.4,26 58,22 54,20.2 M65,33.6 C65,28 62.4,23.6 58,21" };
       case 31: return { f: "M29.5,47 C28.5,40 29.5,35 32,32 L34,33 C32.5,37 32,42 32.5,47Z" + mir("M29.5,47 C28.5,40 29.5,35 32,32 L34,33 C32.5,37 32,42 32.5,47Z"), l2: "M44,27.4 C46,25.4 50,24.8 53,25.8 M42,30.4 C46,28 52,27.6 58,29" };
       case 32: return { f: "M30,45 C28,30 34,23 40,21 C38,15 44,9 54,9 C64,9 70,14 68,21 C71,25 72,33 70,45 C68,38 65,34 61,33 C54,32 44,32 38,33 C34,35 31.5,39 30,45Z", l: "M42,20 C44,14 52,12 58,14 C62,15.4 64,18 63,21 M38,26 C46,22 58,22 64,26" };
       case 33: return { b: "M27,42 C26,22 38,17 50,17 C62,17 74,22 73,42 L74.5,64 C70,67 30,67 25.5,64Z",
@@ -625,21 +715,21 @@
 
   /* ---------- Headwear. HCLIP = hats that hide the top of the hair: y where the front hair is cut (back hair is cut at 24). ---------- */
   var HCLIP = { 1: 33.5, 2: 33.5, 3: 33.5, 4: 33.5, 5: 33.5, 6: 33.5, 7: 37, 10: 33.5, 11: 33.5, 12: 33.5,
-    14: 33.5, 15: 33.5, 16: 37, 17: 32, 21: 34, 22: 31, 23: 31, 24: 33, 25: 33, 26: 33, 27: 32, 28: 37, 29: 33, 30: 46, 32: 33.5, 34: 33.5, 38: 33.5, 39: 33, 40: 37, 42: 33.5, 43: 33.5 };
+    14: 33.5, 15: 33.5, 16: 37, 17: 32, 21: 34, 22: 31, 23: 31, 24: 33, 25: 33, 26: 33, 27: 32, 28: 37, 29: 33, 30: 31.5, 32: 33.5, 34: 33.5, 38: 33.5, 39: 33, 40: 35, 42: 33.5, 43: 33.5 };   // avt01
   function hatSVG(h, s) {
     var c = hexOf(s.ux) || TOPC[s.uc], dk = shade(c, -0.3), K = function (d, f, o) { return cel(d, f, o); };
     var CAPD = "M29,36 C29,19 40,14.5 50,14.5 C60,14.5 71,19 71,36Z";
     switch (h) {
       case 1: return K(CAPD, c) + P("M27,36 C40,32.6 62,32.6 84,38 C72,41.6 40,40.4 27,38.6Z", dk) + C(50, 15, 1.6, dk) + S("M50,15 L50,35", dk, 0.7, ' opacity=".5"');
       case 2: return K(CAPD, c) + P("M24.6,32.4 C18,32 16,36.6 21,38.4 L31,37Z", dk) + C(50, 15, 1.6, dk) + R(44, 30, 12, 4, 2, dk);
-      case 3: return K("M28,36 C28,17 40,12 50,12 C60,12 72,17 72,36Z", c) + K(dR(26.6, 31, 46.8, 8.4, 4), dk, { w: [1, 0.8], v: [0.6, 0.6] }) + S("M34,33 L34,38 M40,33 L40,38 M46,33 L46,38 M52,33 L52,38 M58,33 L58,38 M64,33 L64,38", shade(c, -0.45), 1, ' opacity=".6"') + K(dC(50, 11, 4.4), "#eef0ec", { w: [1, 0.8], v: [0.6, 0.6] });
+      case 3: return K("M28,36 C28,17 40,12 50,12 C60,12 72,17 72,36Z", c) + K(dR(26.6, 31, 46.8, 8.4, 4), dk, { w: [1, 0.8], v: [0.6, 0.6] }) + S("M34,33 L34,38 M40,33 L40,38 M46,33 L46,38 M52,33 L52,38 M58,33 L58,38 M64,33 L64,38", shade(c, -0.45), 1, ' opacity=".6"');   // avt01: no pompom (that is the bobble hat)
       case 4: return K("M32.4,33 C33,17.4 67,17.4 67.6,33Z", "#c9b78a") + K("M23,36.6 C29,30 71,30 77,36.6 C70,39.4 30,39.4 23,36.6Z", "#b09d6c", { w: [1, 1], v: [0.6, 0.6] }) + R(32.6, 29.6, 34.8, 3.4, 0, "#6f5d34");
       case 5: return K("M29.4,36 L31.6,19.4 C40,17 60,17 68.4,19.4 L70.6,36Z", "#59613a") + P("M28,35 C40,32.6 60,32.6 73,35 L74,39 C60,37 40,37 27,39Z", "#3f4527") + R(46, 24, 8, 5, 1, "#2a2f1a") + C(50, 26.5, 1.2, "#ffc24d");
       case 6: return K("M27.6,35 C22,22 44,13 63,17.4 C76,20.6 78,30 71,35 C60,31.6 40,31.6 27.6,35Z", "#1d4d2b") + R(27, 32.6, 45, 3.6, 1.8, "#13361e") + C(39, 27, 2.6, "#ffc24d") + C(39, 27, 1.1, "#c8202a");
       case 7: return K("M26.6,40 C25.6,19 40,12 50,12 C60,12 74.4,19 73.4,40 L70,41.6 C66,35 34,35 30,41.6Z", "#4f5a33") + C(38, 24, 3, "#3a4224") + C(58, 20, 2.4, "#6b7442") + C(64, 31, 2.6, "#3a4224") + C(46, 32, 2, "#6b7442") + S("M30,41 C32,56 36,62 42,66 M70,41 C68,56 64,62 58,66", "#2a2f1a", 1.2);
       case 8: return S("M29,46 C27,18 73,18 71,46", "#22252b", 3) + K(dR(24, 40, 8, 12, 3.4), "#22252b") + K(dR(68, 40, 8, 12, 3.4), "#22252b") + S("M28,52 C28,60 34,62 42,59", "#22252b", 1.6) + C(42.6, 58.8, 1.8, "#c8202a");
-      case 9: return '<g transform="rotate(14 50 26)">' + K("M39,27 L50,2 L61,27Z", "#ff5c93") + P("M42,20 L58,20 L56,15 L44,15Z", "#ffc24d") + P("M46,10 L54,10 L52.6,6.6 L47.4,6.6Z", "#4aa3ff") + C(50, 2.6, 3, "#ffc24d") + "</g>";
-      case 10: return K("M27,38 C26,19 40,13 50,13 C60,13 74,19 73,38Z", "#8a8f99") + R(26, 33, 48, 5.6, 2.6, "#6b4426") + K("M27,30 C16,28 12,16 16,8 C19,16 23,20 30,22Z", "#f2ead6") + K("M73,30 C84,28 88,16 84,8 C81,16 77,20 70,22Z", "#f2ead6") + S("M50,13 L50,33", "#6f747d", 1.6) + C(36, 35.8, 0.9, "#ffc24d") + C(64, 35.8, 0.9, "#ffc24d");
+      case 9: return '<g transform="translate(0 3) rotate(14 50 26)">' + K("M39,27 L50,2 L61,27Z", "#ff5c93") + P("M42,20 L58,20 L56,15 L44,15Z", "#ffc24d") + P("M46,10 L54,10 L52.6,6.6 L47.4,6.6Z", "#4aa3ff") + C(50, 2.6, 3, "#ffc24d") + "</g>";
+      case 10: return K("M27,38 C26,19 40,13 50,13 C60,13 74,19 73,38Z", "#8a8f99") + R(26, 33, 48, 5.6, 2.6, "#6b4426") + K("M27.6,30 C19,28.4 16.6,20.6 21.4,14.4 C23,19.4 25.4,21.4 30.4,22.4Z", "#f2ead6") + K("M72.4,30 C81,28.4 83.4,20.6 78.6,14.4 C77,19.4 74.6,21.4 69.6,22.4Z", "#f2ead6") + S("M50,13 L50,33", "#6f747d", 1.6) + C(36, 35.8, 0.9, "#ffc24d") + C(64, 35.8, 0.9, "#ffc24d");
       case 11: return K("M24,31 C24,17 76,17 76,31 L70,35 L30,35Z", "#2f3b26") + R(29, 30, 42, 5.6, 0, "#1a2214") + P("M29,35 C38,33 62,33 71,35 C66,40 34,40 29,35Z", "#0f0f0f") + P(star(50, 26, 3.4), "#ffc24d") + S("M30,35.2 L70,35.2", "#ffc24d", 0.8);
       case 12: return K("M28,36 C29,17 50,8 72,13 C82,16 84,26 81,33 C77,25 71,22 66,24 C70,28 72,32 72,36Z", "#c8202a") + K(dR(26, 31.6, 48, 7.2, 3.6), "#f4f4f2", { w: [1, 0.8], v: [0.6, 0.6] }) + K(dC(81, 33.6, 4), "#f4f4f2", { w: [1, 0.8], v: [0.6, 0.6] });
       case 13: return P("M31,32 L30.4,15 L38.4,23.4 L44,11 L50,21.4 L56,11 L61.6,23.4 L69.6,15 L69,32Z", "#f5c542", ' stroke="#a86a00" stroke-width=".8"') + R(31, 28, 38, 4.6, 0, "#e0a92a") + C(50, 30.3, 1.6, "#c8202a") + C(40, 30.3, 1.3, "#2f6fb8") + C(60, 30.3, 1.3, "#1fa45c") + C(44, 11, 1.2, "#fff6cc") + C(56, 11, 1.2, "#fff6cc");
@@ -663,18 +753,18 @@
       case 21: return K("M28,38 C27,22 38,15 50,15 C62,15 73,22 72,38 C64,34 36,34 28,38Z", c) + K("M28.6,35.6 L19.6,38.4 L22.4,43.6 L30,38.4Z", dk, { w: [0.8, 0.8], v: [0.5, 0.5] }) + K("M28.6,36 L22,31.6 L19.6,35.8 L27.6,38.6Z", c, { w: [0.8, 0.8], v: [0.5, 0.5] }) +
         [[38, 22], [50, 19], [62, 22], [44, 28], [56, 28], [33, 30], [67, 30]].map(function (q) { return C(q[0], q[1], 1, "#fff", ' opacity=".8"') + C(q[0] + 1.6, q[1] + 1, 0.5, "#fff", ' opacity=".6"'); }).join("");
       case 22: return K("M31,30 C31,17 40,13.5 50,13.5 C60,13.5 69,17 69,30Z", c) + K(dR(30, 24.6, 40, 7.4, 3.4), dk, { w: [1, 0.8], v: [0.6, 0.6] }) + S("M36,26 L36,31 M42,26 L42,31 M48,26 L48,31 M54,26 L54,31 M60,26 L60,31 M66,26 L66,31", shade(c, -0.45), 0.8, ' opacity=".55"');
-      case 23: var cb = "#8a5a2b"; return '<g transform="translate(0 -3)">' + K("M35,30 C34,18 39,12 44,13 C47,14 49,16.4 50,16.4 C51,16.4 53,14 56,13 C61,12 66,18 65,30Z", cb) + K("M14,25 C18,33 34,33.6 50,33 C66,33.6 82,33 86,25 C84,35 68,38.4 50,38 C32,38.4 16,35 14,25Z", shade(cb, -0.12), { w: [1, 1], v: [0.6, 0.6] }) + R(35, 27, 30, 3.4, 0, "#3b2618") + C(39, 28.7, 0.9, "#c9ced6") + "</g>";
+      case 23: var cb = "#8a5a2b"; return '<g transform="translate(0 -3)">' + K("M35,33.4 C34,18 39,12 44,13 C47,14 49,16.4 50,16.4 C51,16.4 53,14 56,13 C61,12 66,18 65,33.4Z", cb) + K("M14,25 C18,30.2 34,30.4 50,30.2 C66,30.4 82,30.2 86,25 C84,35 68,38.4 50,38 C32,38.4 16,35 14,25Z", shade(cb, -0.12), { w: [1, 1], v: [0.6, 0.6] }) + R(35, 27, 30, 3.4, 0, "#3b2618") + C(39, 28.7, 0.9, "#c9ced6") + "</g>";
       case 24: return K("M33,31 C32,20 38,15 44,15.5 L50,18.4 L56,15.5 C62,15 68,20 67,31Z", "#5a5e66") + K("M21,33 C30,28.6 70,28.6 79,33 C73,37.4 27,37.4 21,33Z", "#4a4e56", { w: [1, 0.8], v: [0.6, 0.6] }) + R(33, 27, 34, 3.6, 0, "#1d1d22") + S("M60,27.4 L60,30.2", "#c8202a", 1.4);
       case 25: return K("M33,32 C33,18 41,13 50,13 C59,13 67,18 67,32Z", "#1b1b1f", { hk: 0.2 }) + K("M27,32.4 C35,29.2 65,29.2 73,32.4 C70,35.6 30,35.6 27,32.4Z", "#121215", { w: [1, 0.8], v: [0.6, 0.6], hk: 0.2 }) + R(33, 28.4, 34, 3.2, 0, "#3a3a40");
-      case 26: return K("M24,27.6 C24,18.6 76,18.6 76,27.6 L70.6,32 L29.4,32Z", "#f7f6f1", { k: 0.1 }) + R(29.4, 29, 41.2, 5.6, 0, "#15161a") + P("M29,34.4 C38,32.4 62,32.4 71,34.4 C66,39.6 34,39.6 29,34.4Z", "#0d0e10") + S("M31,33.6 C40,31.2 60,31.2 69,33.6", "#e9b93a", 0.9) +
+      case 26: return K("M24,27.6 C24,18.6 76,18.6 76,27.6 L70.6,32 L29.4,32Z", "#f7f6f1", { k: 0.1 }) + R(29.4, 29, 41.2, 5.6, 0, "#1d2b53") + P("M29,34.4 C38,32.4 62,32.4 71,34.4 C66,39.6 34,39.6 29,34.4Z", "#0d0e10") + S("M31.6,36 C40,38.6 60,38.6 68.4,36", "#e9b93a", 1.6) + S("M31,33.6 C40,31.2 60,31.2 69,33.6", "#e9b93a", 0.9) +
         P("M50,22.4 L50,28.6 M47.6,24 L52.4,24", "#e9b93a") + S("M50,22.4 L50,28.6 M47.8,24 L52.2,24 M46.8,26.6 Q50,30 53.2,26.6", "#e9b93a", 0.9) + S("M33,30.4 Q50,37.4 67,30.4", "#e9b93a", 0.6, ' opacity=".7"');
-      case 27: return K("M30,33 C30,21 70,21 70,33Z", "#f7f6f1", { k: 0.1 }) + K(dR(27.6, 29.4, 44.8, 5.2, 2.6), "#ebe9e1", { w: [0.8, 0.8], v: [0.5, 0.5], k: 0.1 }) + S("M30,30.2 C40,27.6 60,27.6 70,30.2", "#d4d1c6", 0.6);
-      case 28: var hc = "#5f6650"; return K("M25,41 C24,21 37,12.5 50,12.5 C63,12.5 76,21 75,41 C70,37.5 30,37.5 25,41Z", hc, { hk: 0.22 }) + S("M25.4,40.6 C30,37 70,37 74.6,40.6", shade(hc, -0.3), 1.2) + S("M28,41 C30,55 36,61 43,63.4 M72,41 C70,55 64,61 57,63.4", "#3b3a2a", 1.1) + C(50, 16, 0.9, shade(hc, -0.3));
+      case 27: return K("M34,32 C33,21 40,17.6 50,17.6 C60,17.6 67,21 66,32Z", "#f7f6f1", { k: 0.1 }) + K("M27,34 C26.4,28 30,25.6 34,27.6 C42,30.6 58,30.6 66,27.6 C70,25.6 73.6,28 73,34 C64,37.4 36,37.4 27,34Z", "#ebe9e1", { w: [0.8, 0.8], v: [0.5, 0.5], k: 0.1 }) + S("M28.4,31.4 C38,34.6 62,34.6 71.6,31.4", "#d4d1c6", 0.7);
+      case 28: var hc = "#7d848c"; return K("M25,41 C24,21 37,12.5 50,12.5 C63,12.5 76,21 75,41 C70,37.5 30,37.5 25,41Z", hc, { hk: 0.3 }) + K("M19.6,45 C21,40.6 25,38.4 30,38 L70,38 C75,38.4 79,40.6 80.4,45 C72,41.6 28,41.6 19.6,45Z", shade(hc, -0.12), { w: [1, 0.8], v: [0.6, 0.6] }) + S("M25.4,40.6 C30,37 70,37 74.6,40.6", shade(hc, -0.3), 1.2) + S("M28,41 C30,55 36,61 43,63.4 M72,41 C70,55 64,61 57,63.4", "#3b3a2a", 1.1) + C(50, 16, 0.9, shade(hc, -0.3));
       case 29: var fur = "#6b5a48"; return K("M29,32 C29,18 71,18 71,32Z", "#3a3f4a") + K(dR(25.6, 26.6, 48.8, 8.4, 4.2), fur, { w: [1, 0.8], v: [0.6, 0.6], hk: 0.22 }) + K("M25,33 L33,33 L33.4,52 C31.4,56.4 26.4,56.4 25,52Z", fur, { w: [1, 0.8], v: [0.6, 0.6] }) + K(mir("M25,33 L33,33 L33.4,52 C31.4,56.4 26.4,56.4 25,52Z"), fur, { w: [1, 0.8], v: [0.6, 0.6] }) +
         S("M28,28.4 L29,30.4 M33,28 L34,30 M38,28 L39,30 M43,28 L44,30 M48,28 L49,30 M53,28 L54,30 M58,28 L59,30 M63,28 L64,30 M68,28.4 L69,30.4", shade(fur, -0.3), 0.6) + C(50, 30.8, 1.8, "#e9b93a");
       case 30: var lt = "#6b4426"; return K("M27,46 C25,22 38,14 50,14 C62,14 75,22 73,46 L68.5,46 C68,36 62,31 50,31 C38,31 32,36 31.5,46Z", lt) + S("M50,14.4 L50,31", shade(lt, -0.3), 0.8) + S("M28.6,49 C30,57 36,61 43,62", "#3b2618", 1.1) +
         R(28, 24, 44, 3.6, 1.6, "#2a1a10") + K(dC(42, 26, 5), "#b07a2a", { w: [0.8, 0.8], v: [0.5, 0.5] }) + K(dC(58, 26, 5), "#b07a2a", { w: [0.8, 0.8], v: [0.5, 0.5] }) + C(42, 26, 3.4, "#7fb6c8") + C(58, 26, 3.4, "#7fb6c8") + C(40.8, 24.8, 1, "#fff", ' opacity=".7"') + C(56.8, 24.8, 1, "#fff", ' opacity=".7"');
-      case 31: var pc = s.uc === 3 || s.uc === 8 ? "#4aa3ff" : "#f2c230"; return K("M31,33 L31,20 L37,26 L43,18 L50,25 L57,18 L63,26 L69,20 L69,33Z", pc, { w: [0.8, 0.8], v: [0.5, 0.5] }) + S("M31,30 L69,30", shade(pc, -0.25), 0.7) + C(43, 18.6, 1, "#ff5c93") + C(57, 18.6, 1, "#3ddc84");
+      case 31: var pc = "#ff8fc4"; return K("M31,33 L31,20 L37,26 L43,18 L50,25 L57,18 L63,26 L69,20 L69,33Z", pc, { w: [0.8, 0.8], v: [0.5, 0.5] }) + R(31, 27.4, 38, 3, 0, "#4aa3ff") + [35, 41, 47, 53, 59, 65].map(function (x, i) { return C(x, 23.6 + (i % 2) * 1.6, 1, "#fff", ' opacity=".9"'); }).join("") + C(43, 18.6, 1.2, "#ffd36b") + C(57, 18.6, 1.2, "#3ddc84") + C(31, 20, 1, "#4aa3ff") + C(69, 20, 1, "#4aa3ff");
       case 32: var can = "#cfd5dc"; return K("M29,36 C29,19 40,14.5 50,14.5 C60,14.5 71,19 71,36Z", "#f2c230") + P("M27,36 C40,33 60,33 73,36 L73,38.6 C60,35.6 40,35.6 27,38.6Z", "#d9a81e") +
         K(dR(19, 16, 10, 15, 2), can) + K(dR(71, 16, 10, 15, 2), can) + R(19, 20, 10, 5, 0, "#c8202a") + R(71, 20, 10, 5, 0, "#2f6fb8") + S("M24,30 C23,46 30,57 44,58.4 M76,30 C77,46 70,57 56,58.4", "#fbfaf7", 1.1) + S("M24,30 C23,46 30,57 44,58.4 M76,30 C77,46 70,57 56,58.4", "#f5a623", 0.5, ' stroke-dasharray="1.2 1.6"');
       case 33: var dv = "#d8262f"; return S("M28.4,34 C34,25.6 66,25.6 71.6,34", "#1d1d22", 1.6) + K("M33.6,28.6 C29.6,22 29.4,15.6 32.4,9.6 C34.4,15.6 37.6,20 41,24.6Z", dv, { w: [0.8, 0.6], v: [0.5, 0.5], hk: 0.25 }) + K(mir("M33.6,28.6 C29.6,22 29.4,15.6 32.4,9.6 C34.4,15.6 37.6,20 41,24.6Z"), dv, { w: [0.8, 0.6], v: [0.5, 0.5], hk: 0.25 });
@@ -686,10 +776,10 @@
         [[32.4, 27], [33, 32], [67.6, 27], [67, 32], [34, 22.6], [66, 22.6]].map(function (q) { return C(q[0], q[1], 0.6, shade(c, -0.45)); }).join("") + C(50, 15.2, 1.6, dk);
       case 39: var st = "#e6c97a"; return K("M35,31 C35,19 41,15 50,15 C59,15 65,19 65,31Z", st) + K("M12,33 C22,26.6 78,26.6 88,33 C78,39.6 22,39.6 12,33Z", shade(st, -0.06), { w: [1, 0.8], v: [0.6, 0.6] }) + R(35, 26, 30, 4, 0, "#c8202a") +
         S("M38,19 L62,19 M36,23 L64,23 M18,32 C30,29.6 70,29.6 82,32 M20,35.4 C32,37.4 68,37.4 80,35.4", shade(st, -0.2), 0.5, ' opacity=".7"');
-      case 40: return K("M26,44 C25,20 38,12.5 50,12.5 C62,12.5 75,20 74,44 C72,38 66,35 50,35 C34,35 28,38 26,44Z", c, { hk: 0.3 }) + R(40, 15, 20, 3, 1.5, dk) + R(36, 20, 4, 6, 2, dk) + R(60, 20, 4, 6, 2, dk) + S("M28,45 C30,56 36,61 43,62.6 M72,45 C70,56 64,61 57,62.6", "#22252b", 1.1) + E(40, 24, 6, 3, "#fff", ' opacity=".18"');
+      case 40: return K("M26,44 C25,20 38,12.5 50,12.5 C62,12.5 75,20 74,44 C72,38 66,35 50,35 C34,35 28,38 26,44Z", c, { hk: 0.3 }) + R(40, 15, 20, 3, 1.5, dk) + R(26, 27.6, 48, 3, 1.2, "#22252b") + '<rect x="33" y="22.6" width="34" height="10" rx="5" fill="#ff8a1f" stroke="#eef0ec" stroke-width="1.4"/>' + S("M37,25.6 L44,25.6", "#fff", 1.1, ' opacity=".7"') + S("M28,45 C30,56 36,61 43,62.6 M72,45 C70,56 64,61 57,62.6", "#22252b", 1.1);
       case 41: var g = nid(); return "<defs>" + rgrad(g, 50, 12, 18, [[0, "#fff6cc", 0.55], [1, "#fff6cc", 0]]) + "</defs>" + E(50, 12, 18, 7, "url(#" + g + ")") + '<ellipse cx="50" cy="12" rx="13" ry="3.6" fill="none" stroke="#ffd76b" stroke-width="2.4"/><ellipse cx="50" cy="11.4" rx="13" ry="3.6" fill="none" stroke="#fff6cc" stroke-width=".7" opacity=".8"/>';
       case 42: return K("M27.6,35 C22,22 44,13 63,17.4 C76,20.6 78,30 71,35 C60,31.6 40,31.6 27.6,35Z", "#4a90d9") + R(27, 32.6, 45, 3.6, 1.8, "#2f6aa8") + C(39, 27, 2.6, "#d9dee6") + C(39, 27, 1.2, "#4a90d9");
-      case 43: return K("M24,31 C24,17 76,17 76,31 L70,35 L30,35Z", "#22301f") + R(29, 30, 42, 5.6, 0, "#141c10") + P("M29,35 C38,33 62,33 71,35 C66,40 34,40 29,35Z", "#0f0f0f") +
+      case 43: return K("M24,31 C24,17 76,17 76,31 L70,35 L30,35Z", "#22301f") + R(29, 30, 42, 5.6, 0, "#141c10") + P("M29,35 C38,33 62,33 71,35 C66,40 34,40 29,35Z", "#d9a62a") +
         S("M31,36 C36,38.6 44,39.2 50,39.2 C56,39.2 64,38.6 69,36", "#e9b93a", 1.2, ' stroke-dasharray="1.6 1"') + P(star(50, 25.6, 4.2), "#ffc24d") + C(50, 25.6, 1.4, "#2f6fb8") + S("M30,30.4 L70,30.4", "#e9b93a", 1.1) + S("M33,27 Q36,23.6 39,26 M67,27 Q64,23.6 61,26", "#e9b93a", 0.8);
       default: return "";
     }
@@ -728,7 +818,7 @@
       case 24: return rimC(42, 46, 5.8, "#e9b93a", 2.2, "rgba(255,120,190,.45)") + rimC(58, 46, 5.8, "#e9b93a", 2.2, "rgba(255,120,190,.45)") + P(star(34.6, 39.6, 3, 0.4), "#ffd76b") + P(star(65.4, 39.6, 3, 0.4), "#ffd76b") + C(37, 52, 0.7, "#fff") + C(63.4, 51.6, 0.6, "#fff") + S("M47.8,45.6 Q50,44.2 52.2,45.6", "#e9b93a", 1.6);
       case 25: var gm = "#4f5a33"; return cel("M31.6,40 C32,35.4 68,35.4 68.4,40 L69.4,54 C66.4,64.4 58,68.6 50,68.6 C42,68.6 33.6,64.4 30.6,54Z", gm) + C(42, 45.6, 5, "#1b1d16") + C(58, 45.6, 5, "#1b1d16") + C(42, 45.6, 3.8, "#6fa3a8", ' opacity=".7"') + C(58, 45.6, 3.8, "#6fa3a8", ' opacity=".7"') +
         cel(dC(50, 60, 5.6), "#3a4224", { w: [1, 0.8], v: [0.6, 0.6] }) + C(50, 60, 3.4, "#2a2f1a") + S("M47.6,58.6 L52.4,58.6 M47.6,61.4 L52.4,61.4", "#5f6650", 0.6) + S("M31,42 L26.4,40 M69,42 L73.6,40", "#2a2f1a", 1.4);
-      case 26: var hm = "M36.6,48 L47.4,48 C47.4,51.6 45,53.2 42,53.2 C39,53.2 36.6,51.6 36.6,48Z"; return P(hm, lens, ' stroke="#b8902a" stroke-width="1"') + P(mir(hm), lens, ' stroke="#b8902a" stroke-width="1"') + S("M47.4,48.6 Q50,47.4 52.6,48.6 M36.6,48.4 L31,46 M63.4,48.4 L69,46", "#b8902a", 0.9) + S("M31,46 C30,54 32,60 36,64 M69,46 C70,54 68,60 64,64", "#b8902a", 0.4, ' opacity=".8"');
+      case 26: var hm = "M36.6,48 L47.4,48 C47.4,51.6 45,53.2 42,53.2 C39,53.2 36.6,51.6 36.6,48Z"; return P(hm, "rgba(255,240,200,.28)", ' stroke="#8a5a1a" stroke-width="1.7"') + P(mir(hm), "rgba(255,240,200,.28)", ' stroke="#8a5a1a" stroke-width="1.7"') + S("M47.4,48.6 Q50,47.4 52.6,48.6 M36.6,48.4 L31,46 M63.4,48.4 L69,46", "#8a5a1a", 1.2) + S("M31,46 C30,54 32,60 36,64 M69,46 C70,54 68,60 64,64", "#b8902a", 0.4, ' opacity=".8"');
       case 27: return rimC(42, 46, 5.2, "#3b2618", 1.4, "#1d2430") + rimC(58, 46, 5.2, "#3b2618", 1.4, "#1d2430") + P("M36.8,42.4 L32,41.6 L31.4,49 L37,49.6Z", "#5a3a1f") + P("M63.2,42.4 L68,41.6 L68.6,49 L63,49.6Z", "#5a3a1f") + S("M47.2,45.4 Q50,44 52.8,45.4", "#3b2618", 1.4) + C(40.4, 44.4, 1, "#8fd3ff", ' opacity=".55"') + C(56.4, 44.4, 1, "#8fd3ff", ' opacity=".55"');
       case 28: var mg = nid(); return "<defs>" + grad(mg, 35, 41, 65, 52, [[0, "#ffd36b"], [0.35, "#ff7ab6"], [0.7, "#6fb6ff"], [1, "#3ddc84"]]) + "</defs>" + P("M35,43 C35,41.4 48,41.4 48,43 C48,48 46,51.4 41.6,51.4 C37.2,51.4 35,48 35,43Z", "url(#" + mg + ")", ' stroke="#c9ced6" stroke-width="1"') + P("M52,43 C52,41.4 65,41.4 65,43 C65,48 62.8,51.4 58.4,51.4 C54,51.4 52,48 52,43Z", "url(#" + mg + ")", ' stroke="#c9ced6" stroke-width="1"') + S("M48,43 L52,43 M35,43 L31,42.4 M65,43 L69,42.4", "#c9ced6", 1) + S("M37.4,44 L41,43.6 M54.4,44 L58,43.6", "#fff", 0.9, ' opacity=".8"');
       case 29: var px = "#0d0d0f"; return R(32, 42, 36, 2.4, 0, px) + R(34.4, 44.4, 12, 2.4, 0, px) + R(53.6, 44.4, 12, 2.4, 0, px) + R(36.8, 46.8, 7.2, 2.4, 0, px) + R(56, 46.8, 7.2, 2.4, 0, px) + R(36.8, 44.4, 2.4, 2.4, 0, "#fff") + R(56, 44.4, 2.4, 2.4, 0, "#fff") + R(39.2, 46.8, 2.4, 2.4, 0, "#fff", ' opacity=".6"') + R(58.4, 46.8, 2.4, 2.4, 0, "#fff", ' opacity=".6"');
@@ -820,7 +910,7 @@
       h = T(base) + P("M42,75 L50,92 L58,75Z", "#eef0ec") + P("M48.4,78 L51.6,78 L52.6,90 L50,93 L47.4,90Z", u === 7 ? "#111" : "#3f2a14");
       h += P("M38,75 L50,94 L46,100 L33,79Z", shade(base, 0.12)) + P("M62,75 L50,94 L54,100 L67,79Z", shade(base, 0.12));
       h += C(50, 96, 1, GOLD);
-      h += '<rect x="16" y="79" width="13" height="4" rx="2" transform="rotate(-18 22 81)" fill="' + (u === 5 ? shade(base, 0.2) : GOLD) + '"/><rect x="71" y="79" width="13" height="4" rx="2" transform="rotate(18 78 81)" fill="' + (u === 5 ? shade(base, 0.2) : GOLD) + '"/>';
+      h += '<rect x="18" y="81.4" width="13" height="4" rx="2" transform="rotate(-18 24 83.4)" fill="' + (u === 5 ? shade(base, 0.2) : GOLD) + '"/><rect x="69" y="81.4" width="13" height="4" rx="2" transform="rotate(18 76 83.4)" fill="' + (u === 5 ? shade(base, 0.2) : GOLD) + '"/>';
       if (u === 6) h += S("M62,80 C70,90 76,92 84,88", GOLD, 1.3) + S("M38,78 L42,84 M62,78 L58,84", GOLD, 1.6);
       if (u === 7) h += S("M8,96 L20,96 M80,96 L92,96", GOLD, 1.5);
       h += rankMark(r, u === 5 ? 20 : 19, 81);
@@ -850,7 +940,7 @@
     } else if (u === 15) {   // blazer
       h = T(col) + P("M42,75 L50,92 L58,75Z", "#f7f6f1") + P("M38,75 L50,95 L46,100 L33,79Z", shade(col, -0.14)) + P("M62,75 L50,95 L54,100 L67,79Z", shade(col, -0.14)) + C(50, 97, 0.9, shade(col, -0.4)) + R(66, 86, 8, 1.6, 0.6, shade(col, -0.25));
     } else if (u === 16) {   // polo
-      h = T(col) + P("M38.6,75 L46,80 L43.4,84 L36,77Z", shade(col, 0.15)) + P("M61.4,75 L54,80 L56.6,84 L64,77Z", shade(col, 0.15)) + R(48.2, 78, 3.6, 10, 1, dk) + C(50, 81, 0.6, "#f4f2ec") + C(50, 85, 0.6, "#f4f2ec");
+      var pk = lt ? shade(col, -0.35) : "#f4f2ec"; h = T(col) + P("M38,74.6 L47.6,80.6 L43,86 L34.6,77.4Z", pk) + P("M62,74.6 L52.4,80.6 L57,86 L65.4,77.4Z", pk) + R(47.6, 78, 4.8, 11, 1, pk) + C(50, 81, 0.6, "#f4f2ec") + C(50, 85, 0.6, "#f4f2ec");
     } else if (u === 17) {   // tank top (bare shoulders)
       h = cel(SHOULDERS, skin, { w: [2.6, 1.6], v: [1, 1] }) + cel("M28,100 L31,79.4 C35,78 37.4,76.6 39,75.4 C42,83 58,83 61,75.4 C62.6,76.6 65,78 69,79.4 L72,100Z", col, { w: [1.6, 1.2], v: [0.8, 0.8] }) + S("M32,80 L28.6,100 M68,80 L71.4,100", dk, 0.7, ' opacity=".5"');
     } else if (u === 18) {   // breton stripes
@@ -891,7 +981,7 @@
     } else if (u === 28) {   // dress uniform: white cross belts, gold buttons, red piping
       var du = "#14223f";
       h = T(du) + P("M40.6,75 L50,79.4 L59.4,75 L59.4,78.8 L50,83 L40.6,78.8Z", "#b3242c") + S("M28,80 L64,100 M72,80 L36,100", "#f4f2ec", 2.6) + C(50, 86, 1.1, GOLD) + C(50, 91, 1.1, GOLD) + C(50, 96, 1.1, GOLD) +
-        '<rect x="16" y="79" width="13" height="4" rx="2" transform="rotate(-18 22 81)" fill="' + GOLD + '"/><rect x="71" y="79" width="13" height="4" rx="2" transform="rotate(18 78 81)" fill="' + GOLD + '"/>' + S("M16,84 L28,84", "#b3242c", 0.8) + rankMark(r, 19, 81);
+        '<rect x="18" y="81.4" width="13" height="4" rx="2" transform="rotate(-18 24 83.4)" fill="' + GOLD + '"/><rect x="69" y="81.4" width="13" height="4" rx="2" transform="rotate(18 76 83.4)" fill="' + GOLD + '"/>' + S("M18,86.4 L30,86.4", "#b3242c", 0.8) + rankMark(r, 19, 81);
     } else if (u === 29) {   // bartender vest
       h = T("#f4f2ec") + cel("M24,100 L26,82 C30,80 36,78 40,76.4 L50,94 L60,76.4 C64,78 70,80 74,82 L76,100Z", "#1d1d22", { w: [1.4, 1], v: [0.6, 0.6], hk: 0.14 }) + C(50, 97, 0.8, "#c9ced6") + R(30, 88, 7, 1.4, 0.6, "#3a3a40") + R(63, 88, 7, 1.4, 0.6, "#3a3a40") +
         P("M50,79 L45.6,76.6 L45.6,81.4Z", "#c8202a") + P("M50,79 L54.4,76.6 L54.4,81.4Z", "#c8202a") + C(50, 79, 0.9, "#7a0f16") + S("M40.6,76 L44,79.4 M59.4,76 L56,79.4", "#d9d6cc", 0.6);
@@ -1018,50 +1108,80 @@
     }
   }
 
-  /* svg(spec, {r rank, md medal ids, vb viewBox, small}) → SVG string */
-  function svg(spec, o) {
+  /* svg(spec, {r rank, md medal ids, vb viewBox, small}) → SVG string. layers(spec, o) → [[name, svg part]] (avt01: the
+     fit / clip tests render one layer at a time). Layer order: bg · hairB · neck · (nk tucked) · top · nk · hairM · ears ·
+     head · earring · face · beard · foam · hairF · glasses · hat · held · frame. */
+  var NECK = "M42.6,61 C42.6,58.2 44.8,56 47.6,56 L52.4,56 C55.2,56 57.4,58.2 57.4,61 L57.4,82 L42.6,82Z";   // avt01: no round bottom (no notch at the collar)
+  // hats follow the head like the hair; the square head gets a 10 % wider hat (its top corners poked out beside narrow crowns)
+  var HATT = HAIRT.slice(); HATT[2] = [1.1, 1, 46];
+  var OLDFIT = false;   // test only (avt-tools before/after): the fit rules before avt01
+  function layers(spec, o) {
     o = o || {};
     var s = {}; Object.keys(MAX).forEach(function (k) { s[k] = clamp(spec, k); });
     if (!spec || spec.ms == null) s.ms = 1;
+    migrate(s);
     var small = !!o.small, md = s.ms ? (o.md || []) : [];
-    var key = JSON.stringify([s, md, o.r | 0, o.vb || "", small]);
-    var memo = svgMemo[key]; if (memo) return memo.replace(/__ID__/g, "av" + (++uid));
     ID = "__ID__"; CN = 0; LITE = small; SWK = small ? 1.3 : 1;
     var defs = [], skin = SKIN[s.sk], sh = shade(skin, -0.14), F = hairFills(s, defs), hcol = F.base;
     var browCol = s.hr === 0 && s.hc < 3 && !s.hx ? "#3b2618" : shade(hcol, -0.1);
-    var clipY = HCLIP[s.hw], vb = o.vb || "0 0 100 100", hs = hairStyle(s.hr);
-    var ht = tf(HAIRT[s.fs]), jt = tf(JAWT[s.fs]);
-    var h = '<svg viewBox="' + vb + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
-      '<defs><clipPath id="' + ID + 'c"><circle cx="50" cy="50" r="50"/></clipPath>' +
-      (clipY ? '<clipPath id="' + ID + 'h"><rect x="0" y="' + clipY + '" width="100" height="70"/></clipPath><clipPath id="' + ID + 'hb"><rect x="0" y="24" width="100" height="80"/></clipPath>' : "") + "</defs>" +
-      '<g clip-path="url(#' + ID + 'c)">' + bgSVG(s.bg, s);
-    if (hs.b) h += "<g" + ht + (clipY ? ' clip-path="url(#' + ID + 'hb)"' : "") + ">" + hairPart(hs.b, F) + "</g>";
-    // neck: skin shadow tone, darker under the chin
-    h += P(dR(42.6, 56, 14.8, 22, 5), sh) + (LITE ? "" : P("M42.6,60 C46,64.6 54,64.6 57.4,60 L57.4,65 C54,68 46,68 42.6,65Z", shade(skin, -0.24), ' opacity=".7"'));
-    h += topSVG(s, o.r | 0, md, skin);
-    h += neckSVG(s.nk, s);
-    if (hs.m) h += "<g" + ht + ">" + hairPart(hs.m, F) + (hs.ml ? S(hs.ml, F.dk, 0.7, ' opacity=".7"') : "") + (hs.x2 ? hs.x2.map(function (q) { return C(q[0], q[1], 1.8, "#c8202a"); }).join("") : "") + "</g>";
-    h += earsSVG(s.fs, skin, s.er);
-    var head = HEAD[s.fs] || HEAD[0];
-    h += cel(head, skin, { w: [2.4, 1.6], v: [1.1, 1.1], k: 0.12, hk: 0.12 });
-    h += earringsSVG(s.er, s.fs);
-    h += cheeksSVG(s.ck, skin) + marksSVG(s.fm, skin) + paintSVG(s.fp) + noseSVG(s.ns, skin);
-    h += eyesSVG(s.ey, s.ec, skin) + browsSVG(s.br, browCol) + mouthSVG(s.mt, skin);
-    var fhc = shade(hcol, s.hc === 6 && !s.hx ? -0.05 : 0);
-    var fhs = facialHair(s.fh, fhc); if (fhs) h += "<g" + jt + ">" + fhs + "</g>";
-    if (s.fp === 11) h += foamSVG();
-    if (hs.f || hs.z || hs.l || hs.l2) {
-      var hf = (hs.z ? P(hs.z, F.b, ' opacity=".35"') : "") + hairPart(hs.f, F, hs.o) + (hs.l && !LITE ? S(hs.l, F.dk, 0.8, ' opacity=".55"') : "") + (hs.l2 ? S(hs.l2, F.b, 1) : "") + (hs.x ? C(hs.x[0], hs.x[1], hs.x[2], shade(hcol, 0.25)) : "");
-      h += "<g" + ht + (clipY ? ' clip-path="url(#' + ID + 'h)"' : "") + ">" + hf + "</g>";
+    var mask = s.gl === 6 && !OLDFIT, lim = HCLIP[s.hw] || (s.hw && !OLDFIT ? HAIRTOP : 0), hs = hairStyle(s.hr);
+    if (OLDFIT) { hs = Object.assign({}, hs); if (hs.t) { hs.f = (hs.f || "") + hs.t; delete hs.t; } }
+    if (s.hw && !OLDFIT) { hs = Object.assign({}, hs, hs.hat || {}); delete hs.t; delete hs.tl; delete hs.tx; }
+    var ht = tf(HAIRT[s.fs]), jt = tf(JAWT[s.fs]), cut = lim ? ' clip-path="url(#' + ID + 'h)"' : "", cutB = OLDFIT ? (lim ? ' clip-path="url(#' + ID + 'hb)"' : "") : cut, cutM = OLDFIT ? "" : cut;
+    var out = [], add = function (n, x) { if (x) out.push([n, x]); };
+    add("bg", bgSVG(s.bg, s));
+    if (hs.b && !mask) add("hairB", "<g" + ht + cutB + ">" + hairPart(hs.b, F) + "</g>");
+    add("neck", P(OLDFIT ? dR(42.6, 56, 14.8, 22, 5) : NECK, sh) + (LITE ? "" : P("M42.6,60 C46,64.6 54,64.6 57.4,60 L57.4,65 C54,68 46,68 42.6,65Z", shade(skin, -0.24), ' opacity=".7"')));
+    var tuck = !!(s.nl && NKL[s.nk]);
+    add("top", OLDFIT ? topSVG(s, o.r | 0, md, skin) : '<g clip-path="url(#' + ID + 't)">' + topSVG(s, o.r | 0, md, skin) + "</g>");   // avt01: nothing sticks out of the body outline
+    // Instoppad: the part under the clothes is hidden, only the part around the neck shows (clipped above the collar)
+    add("nk", tuck ? '<g clip-path="url(#' + ID + 'n)">' + neckSVG(s.nk, s) + "</g>" : neckSVG(s.nk, s));
+    if (hs.m && !mask) add("hairM", "<g" + ht + cutM + ">" + hairPart(hs.m, F) + (hs.ml ? S(hs.ml, F.dk, 0.7, ' opacity=".7"') : "") + (hs.x2 ? hs.x2.map(function (q) { return C(q[0], q[1], 1.8, "#c8202a"); }).join("") : "") + "</g>");
+    if (!mask) add("ears", earsSVG(s.fs, skin, s.er));
+    add("head", cel(HEAD[s.fs] || HEAD[0], skin, { w: [2.4, 1.6], v: [1.1, 1.1], k: 0.12, hk: 0.12 }));
+    if (!mask) add("earring", earringsSVG(s.er, s.fs));
+    add("face", cheeksSVG(s.ck, skin) + marksSVG(s.fm, skin) + paintSVG(s.fp) + noseSVG(s.ns, skin) + eyesSVG(s.ey, s.ec, skin) + browsSVG(s.br, browCol) + mouthSVG(s.mt, skin));
+    var fhs = mask ? "" : facialHair(s.fh, shade(hcol, s.hc === 6 && !s.hx ? -0.05 : 0)); if (fhs) add("beard", "<g" + jt + ">" + fhs + "</g>");
+    if (s.fp === 11 && !mask) add("foam", foamSVG());
+    if (!mask && (hs.f || hs.t || hs.z || hs.l || hs.l2 || hs.ld)) {
+      var lc = lum(hcol) < 0.25 ? shade(hcol, 0.34) : shade(hcol, -0.36);
+      var hf = (hs.z ? P(hs.z, F.b, ' opacity=".35"') : "") + hairPart(hs.f, F, hs.o) + hairPart(hs.t, F) + (hs.tl && !LITE ? S(hs.tl, F.dk, 0.8, ' opacity=".55"') : "") +
+        (hs.l && !LITE ? S(hs.l, F.dk, 0.8, ' opacity=".55"') : "") + (hs.l2 ? S(hs.l2, F.b, 1) : "") + (hs.ld ? S(hs.ld, lc, LITE ? 1.5 : 1.1) : "") +
+        (hs.sh ? S(hs.sh, shade(hcol, lum(hcol) < 0.25 ? 0.42 : 0.5), LITE ? 1.7 : 1.3, ' opacity=".9"') : "") +
+        (hs.x ? C(hs.x[0], hs.x[1], hs.x[2], shade(hcol, 0.25)) : "") + (hs.tx ? C(hs.tx[0], hs.tx[1], hs.tx[2], shade(hcol, 0.25)) : "");
+      add("hairF", "<g" + ht + cut + ">" + hf + "</g>");
     }
-    h += glassesSVG(s.gl);
-    h += "<g" + ht + ">" + hatSVG(s.hw, s) + "</g>";
-    h += heldSVG(s.hi, s, skin);
-    h += frameSVG(s.fr, o.r | 0);
-    h += "</g>" + (defs.length ? "<defs>" + defs.join("") + "</defs>" : "") + "</svg>";
+    // avt01: glasses go over the hat brim (a low brim cut the frames); the balaclava stays under the hat
+    var gfirst = OLDFIT || s.gl === 6;
+    if (gfirst) add("glasses", glassesSVG(s.gl));
+    add("hat", "<g" + (OLDFIT ? ht : tf(HATT[s.fs])) + ">" + hatSVG(s.hw, s) + "</g>");
+    if (!gfirst) add("glasses", glassesSVG(s.gl));
+    add("held", heldSVG(s.hi, s, skin));
+    add("frame", frameSVG(s.fr, o.r | 0));
+    var head = '<defs><clipPath id="' + ID + 'c"><circle cx="50" cy="50" r="50"/></clipPath><clipPath id="' + ID + 't"><path d="' + SHOULDERS + '"/><rect x="27" y="62" width="46" height="20"/></clipPath><clipPath id="' + ID + 'n"><path d="M33,60 L67,60 L67,77.2 Q50,80.6 33,77.2Z"/></clipPath>' +
+      (lim ? '<clipPath id="' + ID + 'h"><rect x="-30" y="' + lim + '" width="160" height="160"/></clipPath><clipPath id="' + ID + 'hb"><rect x="-30" y="24" width="160" height="160"/></clipPath>' : "") + "</defs>";
+    return { parts: out, head: head, defs: defs.length ? "<defs>" + defs.join("") + "</defs>" : "", s: s };
+  }
+  function svg(spec, o) {
+    o = o || {};
+    var s0 = {}; Object.keys(MAX).forEach(function (k) { s0[k] = clamp(spec, k); });
+    if (!spec || spec.ms == null) s0.ms = 1;
+    migrate(s0);
+    var md0 = s0.ms ? (o.md || []) : [];
+    var key = JSON.stringify([s0, md0, o.r | 0, o.vb || "", !!o.small]);
+    var memo = svgMemo[key]; if (memo) return memo.replace(/__ID__/g, "av" + (++uid));
+    var L = layers(spec, o), vb = o.vb || "0 0 100 100";
+    var h = '<svg viewBox="' + vb + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' + L.head +
+      '<g clip-path="url(#' + ID + 'c)">' + L.parts.map(function (p) { return p[1]; }).join("") + "</g>" + L.defs + "</svg>";
     if (svgMemoN > 1500) { svgMemo = {}; svgMemoN = 0; }
     svgMemo[key] = h; svgMemoN++;
     return h.replace(/__ID__/g, "av" + (++uid));
+  }
+  // test hook (avt-tools): each layer as its own SVG, same clip + defs, transparent background
+  function layerSVGs(spec, o) {
+    var L = layers(spec, o || {}), vb = (o && o.vb) || "0 0 100 100", r = {}, n = ++uid;
+    L.parts.forEach(function (p) { r[p[0]] = ('<svg viewBox="' + vb + '" xmlns="http://www.w3.org/2000/svg">' + L.head + '<g clip-path="url(#' + ID + 'c)">' + p[1] + "</g>" + L.defs + "</svg>").replace(/__ID__/g, "lt" + n); });
+    return r;
   }
   /* ---------- People + cache ---------- */
   var TTL = 60000, retryF = false, retryG = {};
@@ -1284,9 +1404,16 @@
     if (friends) upd(friends.data);
     repaint();
   }
+  function setSpec(spec) {   // avt01: nl needs SQL 0397; an old server answers invalid_avatar → save again without nl
+    return rpc("set_my_avatar", { p_spec: spec }).then(function (r) {
+      if (!r.error || !spec.nl || codeOf(r.error) !== "invalid_avatar") return r;
+      var s2 = JSON.parse(JSON.stringify(spec)); delete s2.nl;
+      return rpc("set_my_avatar", { p_spec: s2 }).then(function (r2) { if (!r2.error) r2.noNl = true; return r2; });
+    });
+  }
   function saveSpec(spec) {   // avwiz.js: {ok, spec} | {ok:false, code}
     spec = clean(spec);
-    return rpc("set_my_avatar", { p_spec: spec }).then(function (r) {
+    return setSpec(spec).then(function (r) {
       if (r.error) return { ok: false, code: codeOf(r.error) };
       afterSave(parse(r.data).spec || spec);
       return { ok: true, spec: me.spec };
@@ -1391,6 +1518,14 @@
     ["hand", "Hand", "Hand", [["hi", "Håller i", "Holding", HAND_VB]]],
     ["bg", "Bakgrund", "Background", [["bg", "Bakgrund", "Background"], ["fr", "Ram", "Frame"]]]
   ];
+  // avt07: ONE row of parts (was categories + a second row of sub-tabs). Each part = its own tab with one sub (sub row hidden).
+  TABS = (function () {
+    var out = [], one = { beard: 1, head: 1, acc: 1, hand: 1 }, REN = { hc: ["Hårfärg", "Hair colour"], uc: ["Klädfärg", "Clothes colour"] };
+    TABS.forEach(function (t) { t[3].forEach(function (sd) { var nm = one[t[0]] ? [t[1], t[2]] : REN[sd[0]] || [sd[1], sd[2]]; out.push([t[0] + "-" + sd[0], nm[0], nm[1], [sd]]); }); });
+    return out;
+  })();
+  // avt07: the rank name from the client ladder (social.js, ladder 15) like Profil; the server's facts.title can be an old name
+  function myTitle(f) { try { if (f && f.mer != null && window.SOCIAL && window.SOCIAL.titleFor) return window.SOCIAL.titleFor(f.mer | 0).title; } catch (e) {} return (f && f.title) || rankTitle((f && f.r) || 1); }
   var COLOR_OF = { hc: ["hx", HAIRC], uc: ["ux", TOPC] };   // palette slot → its "egen färg" key
   var KEEP_LINK = { hc: ["hx", "h2", "ht"], uc: ["ux"], bg: ["bx"] };
   function tileVB(k) { for (var i = 0; i < TABS.length; i++) for (var j = 0; j < TABS[i][3].length; j++) if (TABS[i][3][j][0] === k) return TABS[i][3][j][3] && TABS[i][3][j][3] !== "sw" ? TABS[i][3][j][3] : ""; return ""; }
@@ -1414,7 +1549,7 @@
     lsSet("olnu.avSeen", seen);
     return seen;
   }
-  function isNew(k, i, f) { if (!LOCKS[k + ":" + i] && (k in V1MAX)) return false; if (!usable(k, i, f)) return false; var a = seenLoad().s[k]; return !a || a.indexOf(i) < 0; }
+  function isNew(k, i, f) { if (isRetired(k, i)) return false; if (!LOCKS[k + ":" + i] && (k in V1MAX)) return false; if (!usable(k, i, f)) return false; var a = seenLoad().s[k]; return !a || a.indexOf(i) < 0; }
   function markSeen(k, f) {
     if (!(k in N)) return;
     var a = seenLoad().s[k] = seenLoad().s[k] || [], ch = false;
@@ -1433,21 +1568,21 @@
   }
   function build(body) {
     var f = me.facts || {}, saved = me.spec ? JSON.stringify(clean(me.spec)) : "";
-    var draft = JSON.parse(JSON.stringify(me.spec || defaultSpec(me.seed, f.r)));
+    var draft = migrate(JSON.parse(JSON.stringify(me.spec || defaultSpec(me.seed, f.r))));
     if (draft.ms == null) draft.ms = 1;
     var wrap = document.createElement("div"); wrap.className = "ave";
     var unl = 0, tot = 0;
-    Object.keys(LOCKS).forEach(function (k) { tot++; if (unlocked(LOCKS[k], f)) unl++; });
+    Object.keys(LOCKS).forEach(function (k) { var kk = k.split(":"); if (isRetired(kk[0], +kk[1])) return; tot++; if (unlocked(LOCKS[k], f)) unl++; });
     var items = 0; SLOTS.forEach(function (k) { items += MAX[k] + 1; });
     wrap.innerHTML =
-      '<div class="ave-top"><div class="ave-prev" aria-live="polite"></div>' +
-      '<button type="button" class="ave-dice" aria-label="' + esc(L("Slumpa", "Randomise")) + '" title="' + esc(L("Slumpa", "Randomise")) + '">🎲</button>' +
-      (window.AVWIZ ? '<button type="button" class="ave-wiz">' + esc(L("🧭 Steg för steg", "🧭 Step by step")) + "</button>" : "") + "</div>" +
-      '<p class="ave-rank"><b>🎖️ ' + esc(f.title || rankTitle(f.r || 1)) + "</b> · " + esc(L(unl + " av " + tot + " specialgrejer upplåsta", unl + " of " + tot + " special items unlocked")) + "</p>" +
+      '<div class="ave-top"><div class="ave-prev" aria-live="polite"></div></div>' +   // avt07: actions in one row under the preview
+      '<div class="ave-acts"><button type="button" class="btn ave-dice">' + ic("game") + esc(L("Slumpa", "Randomise")) + "</button>" +
+      (window.AVWIZ ? '<button type="button" class="btn ave-wiz">' + ic("compass") + esc(L("Steg för steg", "Step by step")) + "</button>" : "") + "</div>" +
+      '<p class="ave-rank"><b>🎖️ ' + esc(myTitle(f)) + "</b> · " + esc(L(unl + " av " + tot + " specialgrejer upplåsta", unl + " of " + tot + " special items unlocked")) + "</p>" +
       '<div class="ave-nav"><div class="ave-tabs" role="tablist"></div><div class="ave-subs" role="tablist"></div></div><div class="ave-body"></div>' +
       '<div class="ave-bar"><button type="button" class="btn btn-amber btn-block ave-save">' + esc(L("Spara", "Save")) + "</button></div>";
     body.appendChild(wrap);
-    var prev = wrap.querySelector(".ave-prev"), tabs = wrap.querySelector(".ave-tabs"), subs = wrap.querySelector(".ave-subs"), pane = wrap.querySelector(".ave-body"), save = wrap.querySelector(".ave-save");
+    var bar = wrap.querySelector(".ave-bar"), prev = wrap.querySelector(".ave-prev"), tabs = wrap.querySelector(".ave-tabs"), subs = wrap.querySelector(".ave-subs"), pane = wrap.querySelector(".ave-body"), save = wrap.querySelector(".ave-save");
     function md() { return draft.ms === 0 ? [] : draft.md && draft.md.length ? draft.md : myMedals(null, f); }
     var pvT = 0;
     function paintPrev() {
@@ -1456,10 +1591,11 @@
         pvT = 0;
         prev.innerHTML = svg(draft, { r: f.r, md: md() });
         var dirty = JSON.stringify(clean(draft)) !== saved;
-        save.disabled = !dirty;
+        save.disabled = !dirty; bar.hidden = !dirty;   // avt07: the Spara bar shows only when there is something to save
         save.textContent = dirty ? L("Spara", "Save") : L("Sparad ✓", "Saved ✓");
       });
     }
+    function ic(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, "ave-ic") : ""; } catch (e) { return ""; } }
     function tabDef() { for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === edTab) return TABS[i]; return TABS[0]; }
     function subDef() { var t = tabDef(), k = edSub[t[0]]; for (var j = 0; j < t[3].length; j++) if (t[3][j][0] === k) return t[3][j]; return t[3][0]; }
     TABS.forEach(function (t) {
@@ -1524,7 +1660,7 @@
         var grid = b.parentNode;
         grid.querySelectorAll(".ave-tile.on").forEach(function (x) { x.classList.remove("on"); x.setAttribute("aria-pressed", "false"); });
         b.classList.add("on"); b.setAttribute("aria-pressed", "true");
-        if (mode === "sw" || k === "hr" || k === "up" || k === "bg" && i === 16) paintPane(true);   // colours / styles change other tiles' art
+        if (mode === "sw" || k === "hr" || k === "up" || k === "nk" || k === "bg" && i === 16) paintPane(true);   // colours / styles change other tiles' art
       });
       if (mode !== "sw") { if (io) io.observe(b); else fill(b); }
       return b;
@@ -1534,8 +1670,8 @@
       var pal = k === "hc" ? HAIRC : k === "uc" ? TOPC : null, ck = COLOR_OF[k] ? COLOR_OF[k][0] : "bx", cur = hexOf(draft[ck]);
       if (title) { var h = document.createElement("h4"); h.textContent = title; sec.appendChild(h); }
       var row = document.createElement("div"); row.className = "ave-colrow";
-      (pal || []).forEach(function (c, i) {
-        var lk = lockOf(k, i), ok = usable(k, i, f), b = document.createElement("button");
+      (pal ? visible(k) : []).forEach(function (i) {
+        var c = pal[i], lk = lockOf(k, i), ok = usable(k, i, f), b = document.createElement("button");
         b.type = "button"; b.className = "ave-cs" + (!cur && (draft[k] | 0) === i ? " on" : "") + (ok ? "" : " locked");
         b.style.background = c; b.setAttribute("aria-label", N[k][i][sv() ? 0 : 1] + (ok ? "" : " — " + lockText(lk)));
         if (!ok) b.textContent = "🔒";
@@ -1568,7 +1704,7 @@
       pane.innerHTML = "";
       var sec = document.createElement("section"); sec.className = "ave-sec";
       var hd = document.createElement("div"); hd.className = "ave-hd";
-      var h = document.createElement("h3"); h.textContent = (sv() ? sd[1] : sd[2]) + (k in N ? " · " + (MAX[k] + 1) : ""); hd.appendChild(h);
+      var h = document.createElement("h3"); h.textContent = (sv() ? sd[1] : sd[2]) + (k in N ? " · " + visible(k).length : ""); hd.appendChild(h);
       if (k !== "md") hd.appendChild(keepBtn(k === "md" ? "ms" : k));
       sec.appendChild(hd);
       if (k === "md") { pane.appendChild(medalSec()); if (keepScroll) body.scrollTop = st; return; }
@@ -1577,8 +1713,9 @@
       }
       if (k === "hr") sec.appendChild(swatchRow("hc"));
       if (k === "up") sec.appendChild(swatchRow("uc"));
+      if (k === "nk") sec.appendChild(layerSeg());
       var grid = document.createElement("div"); grid.className = "ave-grid" + (sd[3] === "sw" ? " ave-grid-sw" : "");
-      for (var i = 0; i <= MAX[k]; i++) grid.appendChild(tile(k, i, sd[3] || ""));
+      visible(k).forEach(function (i) { grid.appendChild(tile(k, i, sd[3] || "")); });
       if (k === "hc" || k === "uc") grid.appendChild(customBtn(COLOR_OF[k][0], hexOf(draft[COLOR_OF[k][0]]) || COLOR_OF[k][1][draft[k] | 0], !!draft[COLOR_OF[k][0]]));
       sec.appendChild(grid);
       if (k === "hc") sec.appendChild(twoTone());
@@ -1587,14 +1724,27 @@
       if (keepScroll) body.scrollTop = st;
       markSeen(k, f);
     }
+    function layerSeg() {   // avt01: Utanpå / Instoppad for scarves and chains (DESIGN.md: the one segmented control)
+      var box = document.createElement("div"); box.className = "ave-layer";
+      if (!NKL[draft.nk | 0]) { box.hidden = true; return box; }
+      var seg = document.createElement("div"); seg.className = "ds-seg ave-seg"; seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", L("Hur bärs den?", "How is it worn?"));
+      [[0, L("Utanpå", "Over")], [1, L("Instoppad", "Tucked in")]].forEach(function (o) {
+        var on = (draft.nl | 0) === o[0], b = document.createElement("button");
+        b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", on ? "true" : "false"); b.setAttribute("data-nl", o[0]); b.textContent = o[1];
+        b.addEventListener("click", function () { if (o[0]) draft.nl = 1; else delete draft.nl; paintPrev(); paintPane(true); });
+        seg.appendChild(b);
+      });
+      box.appendChild(seg);
+      return box;
+    }
     function twoTone() {
       var sec = document.createElement("div"); sec.className = "ave-cols";
       var h = document.createElement("h4"); h.textContent = L("Tvåfärgat hår", "Two-tone hair"); sec.appendChild(h);
       var row = document.createElement("div"); row.className = "ave-colrow";
       var off0 = document.createElement("button"); off0.type = "button"; off0.className = "ave-cs ave-none" + (!draft.h2 ? " on" : ""); off0.textContent = L("Av", "Off");
       off0.addEventListener("click", function () { delete draft.h2; delete draft.ht; paintPrev(); paintPane(true); }); row.appendChild(off0);
-      HAIRC.forEach(function (c, i) {
-        var lk = lockOf("hc", i), ok = usable("hc", i, f), b = document.createElement("button");
+      visible("hc").forEach(function (i) {
+        var c = HAIRC[i], lk = lockOf("hc", i), ok = usable("hc", i, f), b = document.createElement("button");
         b.type = "button"; b.className = "ave-cs" + ((draft.h2 | 0) === i + 1 ? " on" : "") + (ok ? "" : " locked"); b.style.background = c;
         b.setAttribute("aria-label", L("Andra färg: ", "Second colour: ") + N.hc[i][sv() ? 0 : 1]); if (!ok) b.textContent = "🔒";
         b.addEventListener("click", function () { if (!ok) { A.toast("🔒 " + lockText(lk), { ms: 3800, id: "ave-lock" }); return; } draft.h2 = i + 1; paintPrev(); paintPane(true); });
@@ -1653,16 +1803,8 @@
     if (wz) wz.addEventListener("click", function () { try { window.AVWIZ.open({ from: draft }); } catch (e) {} });
     wrap.querySelector(".ave-dice").addEventListener("click", function () {
       var RR = Math.random, kept = { ms: draft.ms, md: draft.md };
-      var NONE = { fh: 0.45, hw: 0.5, gl: 0.6, fp: 0.82, fm: 0.6, er: 0.6, nk: 0.6, hi: 0.55, fr: 0.6, ck: 0.4 };
-      SLOTS.forEach(function (k) {
-        if (keep[k]) return;
-        if (NONE[k] && RR() < NONE[k]) { draft[k] = 0; return; }
-        var okI = []; for (var i = 0; i <= MAX[k]; i++) if (usable(k, i, f)) okI.push(i);
-        draft[k] = okI[Math.floor(RR() * okI.length)];
-      });
-      if (!keep.hc) { delete draft.hx; delete draft.ht; if (RR() < 0.15) { draft.h2 = 1 + Math.floor(RR() * 7); draft.ht = Math.floor(RR() * 4); } else delete draft.h2; }
-      if (!keep.uc) delete draft.ux;
-      if (!keep.bg) { delete draft.bx; if (draft.bg === 16) draft.bx = valOf(["#f5a623", "#1fa45c", "#2f6fb8", "#d9578f"][Math.floor(RR() * 4)]); }
+      nice(draft, f, null, keep);   // avt01: nice looks, the top stands out from the background
+      if (draft.bg === 16 && !draft.bx) draft.bx = valOf(["#f5a623", "#1fa45c", "#2f6fb8", "#d9578f"][Math.floor(RR() * 4)]);
       draft.ms = kept.ms; if (kept.md) draft.md = kept.md;
       paintPrev(); paintPane(true);
       lastDice = pickLine(DICE_SV, lastDice);
@@ -1673,7 +1815,7 @@
       if (save.disabled) return;
       save.disabled = true; save.textContent = "…";
       var spec = clean(draft);
-      rpc("set_my_avatar", { p_spec: spec }).then(function (r) {
+      setSpec(spec).then(function (r) {
         if (r.error) {
           var c = codeOf(r.error);
           A.toast(c === "locked" ? L("Dä där ä låst än. Samla fler meriter!", "That item is still locked.") : c === "slow_down" ? L("Lugna dä, prova igen om en sekund.", "Slow down, try again.") : L("Kunde int' spara. Prova igen.", "Could not save. Try again."), { err: true });
@@ -1683,13 +1825,14 @@
         afterSave(d.spec || spec); saved = JSON.stringify(clean(me.spec));
         paintPrev();
         lastSave = pickLine(SAVE_SV, lastSave);
-        A.toast(sv() ? "👤 " + SAVE_SV[lastSave] : "👤 Saved!", { ms: 3000 });
+        A.toast(r.noNl ? L("👤 Sparat utanpå. Instoppad kommer i nästa uppdatering.", "👤 Saved as over. Tucked in comes in the next update.") : sv() ? "👤 " + SAVE_SV[lastSave] : "👤 Saved!", { ms: r.noNl ? 4200 : 3000 });   // avt01
         try { if (window.FX && window.FX.vibrate) window.FX.vibrate(12); } catch (e) {}
       });
     });
     paintTabs(); paintPane(); paintPrev();
   }
   function clean(d) {   // v1 keys always (old clients), v2 keys only when set (small spec)
+    d = migrate(JSON.parse(JSON.stringify(d || {})));   // avt01: retired items → kept items
     var o = { v: 2 };
     V1KEYS.forEach(function (k) { o[k] = clamp(d, k); });
     Object.keys(MAX).forEach(function (k) { if (V1KEYS.indexOf(k) < 0 && k !== "ms") { var v = clamp(d, k); if (v) o[k] = v; } });
@@ -1706,6 +1849,7 @@
     me: function () { return me && me.spec ? me : null; }, on: function () { return !off; },
     // v3 (avwiz.js)
     meRaw: function () { return me; }, loadMe: loadMe, saveSpec: saveSpec, usable: usable, lockOf: lockOf, shortLock: shortLock,
+    visible: visible, migrate: migrate, nice: nice, isRetired: isRetired, RETIRED: RETIRED, ORDER: ORDER, NKL: NKL, HCLIP: HCLIP, HAIRTOP: HAIRTOP, contrastOk: contrastOk, _layers: layerSVGs, _oldFit: function (v) { OLDFIT = !!v; svgMemo = {}; },
     gf: function () { return grandfathered(me && me.facts); }, PAL: { SKIN: SKIN, HAIRC: HAIRC, TOPC: TOPC, EYEC: EYEC, BGC: BGC },
     VB: { FACE: FACE_VB, EYE: EYE_VB, NECK: NECK_VB, HAND: HAND_VB }, rankTitle: rankTitle,
     chatSeen: chatSeen, statusRow: statusRow, friendRow: friendRow, faces: faces, profileAv: profileAv,

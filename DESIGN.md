@@ -401,6 +401,17 @@ Rules:
 - The splash shows "Laddar PintsNow…" before any script runs.
 <!-- ds42 ux3 END -->
 
+<!-- avt avatar START -->
+## Avatar v4 (avt)
+
+- **Skin:** 10 real tones, evenly spaced (CIE Lab, min ΔE 8.4), light → deep, plus 6 fun reward tones. **Hair colour:** 12 natural + 7 fun. Natural first.
+- **No near-twins.** An item that looks like another item at 40 px is retired (hidden, drawn as the kept item; the saved number stays). Never reorder the catalog; add at the end.
+- **Hats own the hair line.** Cover hats cut all hair at the brim (HCLIP), band hats at HAIRTOP, tall parts (bun, crest, space buns) go away under any hat. Glasses sit over the brim; the balaclava hides hair, ears and beard.
+- **Clothes stay in the body.** Tops are clipped to shoulders + collar zone. Neckwear: Utanpå (default) or Instoppad (only the neck part shows) for scarves and chains (`nl`).
+- **Checks:** avt-tools/clip.js (every hair × hat × face shape) and fit.js (every top × face, top × neckwear × layer, top × beard, frame crop) must report 0 fails.
+- **Small sizes** (chat, pins) use the small style; pins zoom on the head (viewBox 12 8 76 76).
+<!-- avt avatar END -->
+
 ## Icons, not emoji (ds12)
 
 - In UI chrome (buttons, tabs, headings, labels, banners, overlays) an emoji becomes a PNI icon, or goes when no icon fits.

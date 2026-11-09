@@ -32,9 +32,9 @@
 
   /* ---------- presets (free items only) ---------- */
   var BASES = [
-    { id: "fem", t: "Feminin", s: "Långt hår, fransar", spec: { v: 2, sk: 1, fs: 1, ey: 9, br: 5, mt: 8, hr: 5, hc: 2, fh: 0, hw: 0, gl: 0, up: 18, uc: 13, bg: 7, ck: 2, er: 2, ms: 1 } },
-    { id: "masc", t: "Maskulin", s: "Kort hår, skäggstubb", spec: { v: 2, sk: 2, fs: 2, ey: 0, br: 6, mt: 0, hr: 2, hc: 1, fh: 1, hw: 0, gl: 0, up: 1, uc: 0, bg: 2, ns: 4, ms: 1 } },
-    { id: "neu", t: "Spelar ingen roll", s: "Mitt emellan", spec: { v: 2, sk: 3, fs: 0, ey: 1, br: 1, mt: 1, hr: 4, hc: 2, fh: 0, hw: 0, gl: 0, up: 0, uc: 2, bg: 1, ms: 1 } }
+    { id: "fem", t: "Feminin", s: "Långt hår, fransar", spec: { v: 2, sk: 10, fs: 1, ey: 9, br: 5, mt: 8, hr: 5, hc: 2, fh: 0, hw: 0, gl: 0, up: 18, uc: 13, bg: 5, ck: 2, er: 2, ms: 1 } },
+    { id: "masc", t: "Maskulin", s: "Kort hår, skäggstubb", spec: { v: 2, sk: 11, fs: 2, ey: 0, br: 6, mt: 0, hr: 2, hc: 1, fh: 1, hw: 0, gl: 0, up: 1, uc: 0, bg: 0, ns: 4, ms: 1 } },
+    { id: "neu", t: "Spelar ingen roll", s: "Mitt emellan", spec: { v: 2, sk: 3, fs: 0, ey: 1, br: 1, mt: 1, hr: 4, hc: 2, fh: 0, hw: 0, gl: 0, up: 0, uc: 2, bg: 6, ms: 1 } }
   ];
   // Which tiles come first after each start (nothing is hidden).
   var PRIO = {
@@ -45,8 +45,8 @@
   var STEPS = [
     { id: "base", t: "Välj en start", s: "Bara en start. Allt går att blanda fritt efteråt." },
     { k: "sk", t: "Hudton", sw: true },
+    { k: "hr", t: "Frisyr", col: "hc", colT: "Hårfärg" },   // avt02: hair right after skin (quick path)
     { k: "fs", t: "Ansiktsform", vb: "FACE" },
-    { k: "hr", t: "Frisyr", col: "hc", colT: "Hårfärg" },
     { k: "ey", t: "Ögon", vb: "FACE", col: "ec", colT: "Ögonfärg" },
     { k: "br", t: "Ögonbryn", vb: "FACE" },
     { k: "mt", t: "Mun", vb: "FACE" },
@@ -59,6 +59,7 @@
     { id: "done", t: "Klar!" }
   ];
   var NONE_P = { fh: 0.5, gl: 0.6, hw: 0.5 };
+  var QUICK = { sk: "Hud", fs: "Form", hr: "Hår", ey: "Ögon", br: "Bryn", mt: "Mun", fh: "Skägg", up: "Kläder", gl: "Glasögon", hw: "Huvud", hi: "Hand", bg: "Bakgrund" };
   var PICK_LINES = ["Snyggt val!", "Den sitter.", "Klockrent.", "Ja, dä ä du.", "Stilpoäng!"];
 
   /* ---------- the wizard ---------- */
@@ -78,8 +79,9 @@
   function svgOf(spec, vb) { var av = AV(); try { return av.svg(spec, { r: facts().r, md: [], vb: vb || "" }); } catch (e) { return ""; } }
   function ordered(k, base) {
     var av = AV(), max = av.MAX[k], p = (base && PRIO[base] && PRIO[base][k]) || [], out = [], seen = {};
-    p.forEach(function (i) { if (i <= max && !seen[i]) { seen[i] = 1; out.push(i); } });
-    for (var i = 0; i <= max; i++) if (!seen[i]) out.push(i);
+    var vis = av.visible ? av.visible(k) : null; if (!vis) { vis = []; for (var j = 0; j <= max; j++) vis.push(j); }
+    p.forEach(function (i) { if (i <= max && !seen[i] && vis.indexOf(i) >= 0) { seen[i] = 1; out.push(i); } });   // avt02
+    vis.forEach(function (i) { if (!seen[i]) out.push(i); });
     return out;
   }
   function build(body, st) {
@@ -89,18 +91,25 @@
     STEPS.forEach(function (_, i) { if (i < STEPS.length - 1) dots.appendChild(h("i")); });
     var stepTxt = h("p", { class: "avw-n" }), title = h("h3", { class: "avw-t" }), sub = h("p", { class: "avw-s" });
     var prev = h("div", { class: "avw-prev", "aria-hidden": "true" });
+    var pin = h("div", { class: "avw-pin", "aria-hidden": "true" });   // avt02: how it looks on the map and in the chat
+    var quick = h("div", { class: "ds-seg avw-quick", role: "tablist", "aria-label": "Hoppa till" });
     var pane = h("div", { class: "avw-pane" });
     var back = h("button", { type: "button", class: "btn avw-back", text: "‹ Tillbaka" });
     var dice = h("button", { type: "button", class: "btn avw-dice", "aria-label": "Slumpa det här steget", html: '<span aria-hidden="true">🎲</span> Slumpa' });
     var next = h("button", { type: "button", class: "btn btn-amber avw-next", text: "Nästa" });
     var bar = h("div", { class: "avw-bar" }, [back, dice, next]);
-    wrap.appendChild(h("div", { class: "avw-top" }, [dots, stepTxt, title, sub, prev]));
+    var rest = h("button", { type: "button", class: "btn avw-rest", html: '<span aria-hidden="true">🎲</span> Slumpa resten' });   // avt02
+    var doneNow = h("button", { type: "button", class: "btn avw-donenow", text: "Klar nu" });
+    var bar2 = h("div", { class: "avw-bar2" }, [rest, doneNow]); bar.insertBefore(bar2, bar.firstChild);
+    wrap.appendChild(h("div", { class: "avw-top" }, [dots, quick, stepTxt, title, sub, h("div", { class: "avw-prevs" }, [prev, pin])]));
     wrap.appendChild(pane); wrap.appendChild(bar);
     body.appendChild(wrap);
 
     function step() { return STEPS[st.i]; }
     function paintPrev(pop) {
       prev.innerHTML = svgOf(st.draft);
+      var small = ""; try { small = AV().svg(st.draft, { r: facts().r, md: [], small: true }); } catch (e) {}
+      pin.innerHTML = '<span class="avw-pin-map">' + small + '</span><span class="avw-pin-chat">' + small + '</span><small>Kartan · chatten</small>';
       if (pop && !reduced() && prev.animate) try { prev.animate([{ transform: "scale(.94)" }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }); } catch (e) {}
     }
     function paint() {
@@ -113,15 +122,28 @@
       back.hidden = s.id === "done" || st.i === 0;
       dice.hidden = s.id === "done";
       next.hidden = s.id === "done";
+      bar2.hidden = s.id === "done" || s.id === "base" || st.i === n - 1; doneNow.disabled = !!st.saving;   // avt02
       next.disabled = s.id === "base" && !st.base && !st.had && !st.touchedBase;
       next.textContent = st.i === n - 1 ? (st.saving ? "Sparar…" : "Spara") : s.id === "base" && !st.base ? "Hoppa över" : "Nästa";
       next.classList.toggle("pn-skip", s.id === "base" && !st.base && st.i !== n - 1);   // ds16: skip is never the amber primary
       if (s.id === "base") next.disabled = false;
-      prev.hidden = s.id === "base" || s.id === "done";
+      prev.hidden = s.id === "base" || s.id === "done"; pin.hidden = prev.hidden;
+      paintQuick();
       pane.innerHTML = "";
       if (s.id === "base") paintBase(); else if (s.id === "done") paintDone(); else paintSlot(s);
       paintPrev(false);
       try { var sb = document.getElementById("sheet-body"); if (sb) sb.scrollTop = 0; } catch (e) {}
+    }
+    function paintQuick() {   // avt02: jump straight to a part (shown after the start step)
+      quick.innerHTML = ""; quick.hidden = st.i === 0 || step().id === "done";
+      if (quick.hidden) return;
+      STEPS.forEach(function (s2, i) {
+        if (!s2.k) return;
+        var on = i === st.i, b = h("button", { type: "button", role: "tab", "aria-selected": String(on), "data-i": String(i), text: QUICK[s2.k] || s2.t });
+        b.addEventListener("click", function () { st.i = i; paint(); });
+        quick.appendChild(b);
+      });
+      try { var onB = quick.querySelector('[aria-selected="true"]'); if (onB && onB.scrollIntoView) onB.scrollIntoView({ block: "nearest", inline: "center" }); } catch (e) {}
     }
     function paintBase() {
       var g = h("div", { class: "avw-bases", role: "radiogroup", "aria-label": "Välj en start" });
@@ -155,6 +177,7 @@
         b.classList.add("on"); b.setAttribute("aria-pressed", "true");
         paintPrev(true);
         try { if (window.FX && window.FX.vibrate) window.FX.vibrate(8); } catch (e) {}
+        if (k === "sk" && !locked) setTimeout(function () { if (cur === st && step().k === "sk") { st.i++; paint(); } }, reduced() ? 0 : 280);   // avt02: one tap = next step
       });
       return b;
     }
@@ -162,8 +185,8 @@
       var pal = ck === "hc" ? av.PAL.HAIRC : ck === "ec" ? av.PAL.EYEC : av.PAL.TOPC;
       var sec = h("div", { class: "avw-cols" }, [h("h4", { text: ttl })]);
       var row = h("div", { class: "avw-colrow", role: "radiogroup", "aria-label": ttl });
-      pal.forEach(function (c, i) {
-        var ok = av.usable(ck, i, facts()); if (!ok) return;
+      (av.visible ? av.visible(ck) : pal.map(function (_, j) { return j; })).forEach(function (i) {   // avt02: natural colours first, no retired
+        var c = pal[i], ok = av.usable(ck, i, facts()); if (!ok) return;
         var on = (st.draft[ck] | 0) === i;
         var b = h("button", { type: "button", role: "radio", "aria-checked": String(on), class: "avw-c" + (on ? " on" : ""), style: "background:" + c, "aria-label": av.NAMES[ck][i][0] });
         b.addEventListener("click", function () {
@@ -232,6 +255,12 @@
       });
     }
     back.addEventListener("click", function () { if (st.i > 0) { st.i--; paint(); } });
+    doneNow.addEventListener("click", function () { save(); });   // avt02: finish from any step
+    rest.addEventListener("click", function () {   // avt02: nice looks for every later step, then you can press Klar nu
+      STEPS.forEach(function (s2, i) { if (i > st.i && s2.k && av.nice) { av.nice(st.draft, f, s2.k); if (s2.col) av.nice(st.draft, f, s2.col); } });
+      paintPrev(true);
+      A.toast("🎲 Resten slumpad. Tryck Klar nu eller titta igenom.", { ms: 2200, id: "avw-dice" });
+    });
     next.addEventListener("click", function () {
       var n = STEPS.length - 1;
       if (st.i === n - 1) { save(); return; }
@@ -241,6 +270,7 @@
       var s = step();
       if (s.id === "base") { var b = BASES[Math.floor(Math.random() * BASES.length)]; var c = pane.querySelector('[data-b="' + b.id + '"]'); if (c) c.click(); return; }
       var k = s.k, ok = [];
+      if (av.nice) { av.nice(st.draft, f, k); if (s.col) av.nice(st.draft, f, s.col); paint(); paintPrev(true); A.toast("🎲 " + PICK_LINES[Math.floor(Math.random() * PICK_LINES.length)], { ms: 1600, id: "avw-dice" }); return; }   // avt02
       for (var i = 0; i <= av.MAX[k]; i++) if (av.usable(k, i, f)) ok.push(i);
       st.draft[k] = NONE_P[k] && Math.random() < NONE_P[k] ? 0 : ok[Math.floor(Math.random() * ok.length)];
       if (s.col) {

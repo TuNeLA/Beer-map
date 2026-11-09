@@ -83,13 +83,13 @@ async function routes(page, me) {
       await page.evaluate(() => document.querySelector(".pf-av.av-pf").click());
       await page.waitForSelector(".ave-prev svg", { timeout: 5000 }).catch(() => {});
       ok("editor opens with a big preview", await page.evaluate(() => { const e = document.querySelector(".ave-prev"); return !!(e && e.querySelector("svg") && e.getBoundingClientRect().width >= 160); }));
-      ok("9 category chips", await page.evaluate(() => document.querySelectorAll(".ave-tab").length === 9));
-      ok("Ansikte has 8 sub-tabs", await page.evaluate(() => document.querySelectorAll(".ave-sub").length === 8));
+      ok("one row of 23 parts", await page.evaluate(() => document.querySelectorAll(".ave-tab").length === 23));
+      ok("no second tab row", await page.evaluate(() => { const s = document.querySelector(".ave-subs"); return !s || getComputedStyle(s).display === "none"; }));
       ok("Nytt dots on new items", await page.evaluate(() => document.querySelectorAll(".ave-tab.has-new").length >= 5));
       ok("no sideways overflow", await page.evaluate(() => { const b = document.getElementById("sheet-body"); return b.scrollWidth <= b.clientWidth + 1; }));
       await shot(page, "editor-face");
       // Hår
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Hår").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Frisyr").click());
       await wait(page, 300);
       const hair = await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].map((t) => [t.classList.contains("locked"), t.getAttribute("aria-label")]));
       ok("Hår: mohawk unlocked at rank 5, mullet locked (5 krogar)", hair.some((x) => /Mohikan/.test(x[1]) && !x[0]) && hair.some((x) => /Hockeyfrilla.*Låses upp vid 5 krogar/.test(x[1]) && x[0]), hair.filter((x) => x[0]));
@@ -115,13 +115,13 @@ async function routes(page, me) {
       ok("beret selected", await page.evaluate(() => { const t = [...document.querySelectorAll(".ave-tile")].find((x) => /^Basker/.test(x.getAttribute("aria-label"))); return t.classList.contains("on"); }));
       await shot(page, "editor-head");
       // Uniform
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Kläder").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Överdel").click());
       await wait(page, 300);
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       await wait(page, 200);
       ok("tops 31 + colour row with egen färg", await page.evaluate(() => document.querySelectorAll(".ave-tile").length === 31 && !!document.querySelector(".ave-colrow .ave-own input[type=color]")));
       ok("officer jacket locked (Löjtnant)", await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Officersjacka/.test(t.getAttribute("aria-label"))).classList.contains("locked")));
-      await page.evaluate(() => [...document.querySelectorAll(".ave-sub")].find((b) => /Medaljer/.test(b.textContent)).click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => /Medaljer/.test(b.textContent)).click());
       await wait(page, 200);
       ok("hidden medal 'het' not offered", await page.evaluate(() => ![...document.querySelectorAll(".ave-md")].some((b) => /Het/i.test(b.textContent)) && document.querySelectorAll(".ave-md").length === 4));
       await page.evaluate(() => [...document.querySelectorAll(".ave-md")].find((b) => /Barkungen/.test(b.textContent)).click());
@@ -136,8 +136,8 @@ async function routes(page, me) {
       // set the wanted look again (dice changed it)
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Huvud").click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Basker/.test(t.getAttribute("aria-label"))).click());
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Kläder").click());
-      await page.evaluate(() => [...document.querySelectorAll(".ave-sub")].find((b) => /Överdel/.test(b.textContent)).click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Överdel").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => /Överdel/.test(b.textContent)).click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       // v2: held item pint, frame rank ring; lock "Hand" against dice
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Hand").click());
@@ -150,7 +150,7 @@ async function routes(page, me) {
       ok("dice kept the held pint", await page.evaluate(() => { const t = [...document.querySelectorAll(".ave-tile")].find((x) => /^Stor stark/.test(x.getAttribute("aria-label"))); return t && t.classList.contains("on"); }));
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Huvud").click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Basker/.test(t.getAttribute("aria-label"))).click());
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Kläder").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Överdel").click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       await wait(page, 300);
       await shot(page, "editor-v2");

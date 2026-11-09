@@ -114,11 +114,9 @@ async function openGroup(page) {
       await wait(page, 900);
       ok("preset tap goes on to Hudton", await page.evaluate(() => /Hudton/.test(document.querySelector(".avw-t").textContent)));
       ok("step text 'Steg 2 av 13'", await page.evaluate(() => /Steg 2 av 13/.test(document.querySelector(".avw-n").textContent)), await page.evaluate(() => document.querySelector(".avw-n").textContent));
-      ok("all 17 real skin tones are free", await page.evaluate(() => document.querySelectorAll(".avw-grid-sw .avw-tile:not(.locked)").length >= 17));
+      ok("all 10 real skin tones are free, light → deep", await page.evaluate(() => [...document.querySelectorAll(".avw-grid-sw .avw-tile:not(.locked)")].slice(0, 10).map((t) => t.getAttribute("data-i")).join() === "8,9,10,11,3,13,4,15,16,17"));
       await shot(page, "03-wiz-hudton");
-      await page.evaluate(() => document.querySelector(".avw-next").click()); await wait(page, 300);   // Ansiktsform
-      await shot(page, "04-wiz-ansikte");
-      await page.evaluate(() => document.querySelector(".avw-next").click()); await wait(page, 400);   // Frisyr
+      await page.evaluate(() => document.querySelector(".avw-next").click()); await wait(page, 400);   // Frisyr (avt: hair right after skin)
       ok("Frisyr: long hair first after Feminin", await page.evaluate(() => document.querySelector(".avw-grid .avw-tile").getAttribute("data-i") === "5"));
       ok("Frisyr: hair colour row", await page.evaluate(() => document.querySelectorAll(".avw-colrow .avw-c").length >= 10));
       ok("Frisyr: locked teasers shown (rank 1)", await page.evaluate(() => /Låses upp senare/.test((document.querySelector(".avw-lh") || {}).textContent || "") && document.querySelectorAll(".avw-grid-lock .avw-tile.locked").length > 0));
@@ -128,6 +126,8 @@ async function openGroup(page) {
       await page.evaluate(() => document.querySelector('.avw-colrow .avw-c:nth-child(4)').click()); await wait(page, 200);
       await page.evaluate(() => window.scrollTo(0, 0));
       await shot(page, "05-wiz-frisyr");
+      await page.evaluate(() => document.querySelector(".avw-next").click()); await wait(page, 300);   // Ansiktsform (avt)
+      await shot(page, "04-wiz-ansikte");
       await page.evaluate(() => document.querySelector(".avw-next").click()); await wait(page, 300);   // Ögon
       await shot(page, "06-wiz-ogon");
       for (let i = 0; i < 4; i++) { await page.evaluate(() => document.querySelector(".avw-next").click()); await wait(page, 250); }   // Bryn, Mun, Skägg, Kläder
