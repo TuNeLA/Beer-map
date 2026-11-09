@@ -401,6 +401,18 @@ Rules:
 - The splash shows "Laddar PintsNow…" before any script runs.
 <!-- ds42 ux3 END -->
 
+<!-- ds44 credits START -->
+## Zoomed in, zoomed out, credits (ds44)
+
+- Zoomed in on a bar: the lit building part is the ONLY highlight. A soft ground glow only when the bar has no building
+  (and never next to a lit part). No heat blob from Leaflet z17.5. No 2D dashed house outlines on the Mapbox map.
+- Bar clusters: one capsule (no stack cue behind it).
+- Kommun view (zoom 6.6–10.5): every kommun border is a clear thin solid line; kommuner with people out get a soft heat
+  fill; the home kommun (home zone, else my last position) has a stronger amber outline.
+- Map credits: the Mapbox wordmark just above the Grupper box, a plain ⓘ next to it (no disc). A logo-only tap for the text
+  attribution needs Mapbox's approval, so the ⓘ stays (docs.mapbox.com/help/dive-deeper/attribution).
+<!-- ds44 credits END -->
+
 ## Icons, not emoji (ds12)
 
 - In UI chrome (buttons, tabs, headings, labels, banners, overlays) an emoji becomes a PNI icon, or goes when no icon fits.

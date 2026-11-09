@@ -1354,3 +1354,36 @@
   window.PNDS_UX40 = { busy: busy, queue: function () { return q.length; } };
 })();
 /* ds40 ux END */
+/* ds44 credits START — the map credits row: Mapbox wordmark 8 px above the Grupper box, left edges aligned; the ⓘ right after
+   it in the same row. Its tap box is 44 px, narrowed (min 24 px, WCAG 2.2 AA) when ANNAT is right there, so it never covers
+   ANNAT. If even 24 px does not fit, the ⓘ goes on top of the wordmark (left aligned). Sets --pn-logo-l/-b, --pn-i-l/-b/-w. */
+(function () {
+  "use strict";
+  var R = document.documentElement, tm = 0;
+  function set(k, v) { if (R.style.getPropertyValue(k) !== v) R.style.setProperty(k, v); }
+  function rectOf(sel) { var e = document.querySelector(sel); if (!e || e.hidden || !e.getClientRects().length) return null; var r = e.getBoundingClientRect(); return r.width ? r : null; }
+  function place() {
+    var g = rectOf("#btn-groups"); if (!g) return;
+    var lg = document.querySelector(".bm-mblogo"), logo = lg && !lg.hidden && lg.getClientRects().length;
+    var a = rectOf("#other-wrap:not([hidden])");
+    var L0 = Math.round(g.left), bot = Math.round(innerHeight - g.top + 8), rowT = innerHeight - bot - 20, rowB = innerHeight - bot;
+    set("--pn-logo-l", L0 + "px"); set("--pn-logo-b", bot + "px");
+    var ix = logo ? L0 + 65 + 2 : L0 - 10, w = 44;
+    var hitsA = a && a.top < rowB + 12 && a.bottom > rowT - 12;   // ANNAT in the row's band (the ⓘ box is 44 high)
+    if (hitsA) w = Math.max(0, Math.min(44, Math.floor(a.left - 2 - ix)));
+    if (hitsA && w < 24) {   // no room: the ⓘ sits on top of the wordmark row
+      set("--pn-i-l", (L0 - 12) + "px"); set("--pn-i-w", "44px"); set("--pn-i-b", (bot + 20) + "px");
+    } else {
+      set("--pn-i-l", ix + "px"); set("--pn-i-w", w + "px"); set("--pn-i-b", (bot - 12) + "px");   // 44 high, centred on the 20 px row
+    }
+  }
+  function soon() { clearTimeout(tm); tm = setTimeout(place, 80); }
+  function start() {
+    place(); addEventListener("resize", soon);
+    if (window.MutationObserver) new MutationObserver(soon).observe(document.body, { childList: true });
+    if (window.ResizeObserver) { var ro = new ResizeObserver(soon); [".dock", "#other-wrap"].forEach(function (s) { var e = document.querySelector(s); if (e) ro.observe(e); }); }
+    setInterval(place, 2500);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds44 credits END */

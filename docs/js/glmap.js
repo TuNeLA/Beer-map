@@ -285,7 +285,7 @@
           "circle-emissive-strength": 1 } });
       if (!m.getLayer(L_HEAT)) m.addLayer({ id: L_HEAT, type: "heatmap", source: SRC_H,
         paint: { "heatmap-color": HEAT_COL, "heatmap-radius": 40, "heatmap-intensity": 1.25, "heatmap-weight": 1,
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 12, 1, 14, 0.6] } });
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 12, 1, 14, 0.6, 15.5, 0.45, 16.5, 0] } });   // ds44: no heat blob over the lit houses (Leaflet ≥ 17.5)
       var common = { "icon-image": ["get", "img"], "icon-anchor": "top-left", "icon-offset": offExpr(), "icon-size": ["get", "sz"],
         "icon-allow-overlap": true, "icon-padding": 0, "symbol-sort-key": ["get", "sk"], "symbol-z-order": "auto",
         "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };
@@ -520,10 +520,7 @@
     var T = window.PNTOKENS, K = T.col, ops = [], t = n > 999 ? (Math.floor(n / 100) / 10).toString().replace(".", ",") + "k" : String(n);
     var px = 13, h = 26, g = 14, tw0 = window.PNPINS && window.PNPINS._tw ? Math.ceil(window.PNPINS._tw(t, px, 700)) : t.length * 8;
     var w = Math.max(h + 8, 7 + g + 3 + tw0 + 9), x = Math.round(-w / 2), y = -h / 2, ring = busy ? K.amber : K.foam;
-    // stack cue: one capsule behind, up-right (the same cue as the people cluster)
-    ops.push({ o: "rr", x: x + 3 - 1, y: y - 3 - 1, w: w + 2, h: h + 2, r: h / 2 + 1, fill: K.edge, sh: true });
-    ops.push({ o: "rr", x: x + 3, y: y - 3, w: w, h: h, r: h / 2, fill: "rgba(255,250,240,0.5)" });
-    ops.push({ o: "rr", x: x + 3 + 2, y: y - 3 + 2, w: w - 4, h: h - 4, r: h / 2 - 2, fill: K.navy });
+    // ds44: no stack cue (owner: it read as a ghost pill behind the cluster) — one capsule
     // the front capsule: ink hairline, ring, navy body, bar glyph + the count
     ops.push({ o: "rr", x: x - 1, y: y - 1, w: w + 2, h: h + 2, r: h / 2 + 1, fill: K.edge, sh: true });
     ops.push({ o: "rr", x: x, y: y, w: w, h: h, r: h / 2, fill: ring });
