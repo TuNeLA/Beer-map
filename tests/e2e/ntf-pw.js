@@ -145,10 +145,21 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
       //    notification server is needed: CI headless has none and showNotification can hang there).
       const log = []; const { ctx, page } = await ctxFor(browser, vp); await extra(ctx, page, log);
       await boot(page);
+      page.on("crash", () => console.log("NOTE page crashed"));
       await page.evaluate(() => Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(r, 15000))]).then(() => true));
-      for (let i = 0; i < 30 && !ctx.serviceWorkers().length; i++) await wait(page, 500);
-      const sw = ctx.serviceWorkers()[0];
-      ok("F: service worker running", !!sw);
+      for (let i = 0; i < 30 && !(await page.evaluate(() => !!navigator.serviceWorker.controller)); i++) await wait(page, 500);
+      // the ACTIVE worker: an old (redundant) worker in ctx.serviceWorkers() never answers evaluate()
+      const race = (p, ms, v) => Promise.race([p, new Promise((r) => setTimeout(() => r(v), ms))]);
+      let sw = null, seen = [];
+      for (let i = 0; i < 20 && !sw; i++) {
+        for (const w of ctx.serviceWorkers().slice().reverse()) {
+          const st = await race(w.evaluate(() => self.serviceWorker ? self.serviceWorker.state : (self.registration.active ? "active?" : "none")).catch((e) => "err"), 4000, "timeout");
+          seen.push(st);
+          if (st === "activated" || st === "active?") { sw = w; break; }
+        }
+        if (!sw) await wait(page, 500);
+      }
+      ok("F: service worker running (active)", !!sw, { workers: ctx.serviceWorkers().length, seen: seen.slice(-6) });
       if (sw) {
         const r = await Promise.race([sw.evaluate(async () => {
           const shown = [];
@@ -174,7 +185,7 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
           if (ik) await fire("notificationclick", { notification: ik, action: "ute" });
           const q = await caches.open("olnu-pending").then((c) => c.match("./__pnq")).then((x) => x ? x.text() : "[]");
           return { fold, clicked: !!ik, acts: ik ? ik.actions.map((a) => a.title) : [], q: JSON.parse(q) };
-        }), new Promise((res) => setTimeout(() => res({ err: "sw.evaluate timeout 60 s" }), 60000))]).catch((e) => ({ err: e.message }));
+        }), new Promise((res) => setTimeout(() => res({ err: "sw.evaluate timeout 40 s" }), 40000))]).catch((e) => ({ err: e.message }));
         ok("F: two friends in one night = ONE notice '2 vänner ute ikväll 🍻'", r.fold && r.fold.length === 1 && r.fold[0].t === "2 vänner ute ikväll 🍻" && r.fold[0].u === "/", r);
         ok("F: Ikväll? shows the buttons 🍺 Jag kommer / 🤔 Kanske", JSON.stringify(r.acts) === '["🍺 Jag kommer","🤔 Kanske"]', r.acts);
         ok("F: SW queued push.shown + push.action", r.q && r.q.some((x) => x.n === "push.shown") && r.q.some((x) => x.n === "push.action" && x.a === "ute"), r.q);
