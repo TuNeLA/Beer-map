@@ -64,7 +64,10 @@ const beers = [P(PIT, 2, "Ida"), P(PIT, 3), P(PIT, 1)];
     for (const z of [17, 18, 19]) {
       await view(PIT, z); let h = await heatAt();
       if (h && !h.a0) { await wait(page, 2500); h = await heatAt(); } console.log("HEAT", sn, JSON.stringify(h)); await shot(sn + "-pitchers-z" + z);
-      ok(h && h.m >= 10 && h.m <= 45 && h.op >= 0.5 && (h.gl ? h.a0 > 25 && h.aHalf > 8 && Math.abs(h.glR - h.px) <= Math.max(2, h.px * 0.08) : h.a0 > 60 && h.aHalf > 20), sn + " z" + z + ": heat glow ≈ " + (h && h.m) + " m around Pitchers (" + (h && h.px) + " px), opacity " + (h && h.op) + ", alpha centre / half radius / 1.6× radius " + (h && [h.a0, h.aHalf, h.aOut].join(" / ")));
+      // ds44 (owner 2026-11-09, fb3/8: "I don't like the circle"): zoomed in on a bar the lit house is the only highlight: on the
+      // Mapbox map the heat blob is gone from z17 (the raster fallback, without lit houses, keeps its glow)
+      if (h && h.gl) ok(h.a0 <= 2 && h.aHalf <= 2, sn + " z" + z + ": no heat circle over the lit house (alpha centre / half radius " + [h.a0, h.aHalf].join(" / ") + ")");
+      else ok(h && h.m >= 10 && h.m <= 45 && h.op >= 0.5 && (h.gl ? h.a0 > 25 && h.aHalf > 8 && Math.abs(h.glR - h.px) <= Math.max(2, h.px * 0.08) : h.a0 > 60 && h.aHalf > 20), sn + " z" + z + ": heat glow ≈ " + (h && h.m) + " m around Pitchers (" + (h && h.px) + " px), opacity " + (h && h.op) + ", alpha centre / half radius / 1.6× radius " + (h && [h.a0, h.aHalf, h.aOut].join(" / ")));
     }
     await view([60.1496, 15.1878], 12); await shot(sn + "-ludvika-z12");
     if (st === "mb-dusk") {

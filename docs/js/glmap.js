@@ -285,7 +285,7 @@
           "circle-emissive-strength": 1 } });
       if (!m.getLayer(L_HEAT)) m.addLayer({ id: L_HEAT, type: "heatmap", source: SRC_H,
         paint: { "heatmap-color": HEAT_COL, "heatmap-radius": 40, "heatmap-intensity": 1.25, "heatmap-weight": 1,
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 12, 1, 14, 0.6, 15.5, 0.45, 16.5, 0] } });   // ds44: no heat blob over the lit houses (Leaflet ≥ 17.5)
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 12, 1, 14, 0.6, 15, 0.45, 16, 0] } });   // ds44: no heat blob over the lit houses (Leaflet ≥ 17)
       var common = { "icon-image": ["get", "img"], "icon-anchor": "top-left", "icon-offset": offExpr(), "icon-size": ["get", "sz"],
         "icon-allow-overlap": true, "icon-padding": 0, "symbol-sort-key": ["get", "sk"], "symbol-z-order": "auto",
         "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };

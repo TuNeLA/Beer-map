@@ -58,6 +58,8 @@ const PIT = [60.14997, 15.18679];
   // kommun view over Ludvika / Dalarna (Leaflet z8): clear solid kommun borders, home kommun stronger
   await page.evaluate(() => { const A = PNDS._A(); A.map.setView([60.15, 15.19], 8, { animate: false }); });
   await settle(4000);
+  await page.waitForFunction(() => { const g = BASEMAP.mapbox().getMapboxMap(); return g.getLayer("olnu-zk-line") && g.queryRenderedFeatures({ layers: ["olnu-zk-line"] }).length > 3; }, null, { timeout: 25000 }).catch(() => console.log("no kommun layer yet"));
+  await settle(1500);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast, .dl-cap").forEach((t) => t.remove()));
   await page.screenshot({ path: SP + "logs/barzoom-" + TAG + "-z8.png" });
   const k = await page.evaluate(() => { const g = BASEMAP.mapbox().getMapboxMap(), id = "olnu-zk-line"; if (!g.getLayer(id)) return { none: 1 };
