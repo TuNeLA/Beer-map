@@ -980,4 +980,6 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #btn-attrib>span>svg{width:18px !important;height:18px !important;filter:drop-shadow(0 0 2px rgba(8,12,30,.9))}
 #btn-attrib>span>svg circle:first-of-type{display:inline !important}
 .attrib-pop{left:calc(var(--sal,0px) + var(--pn-edge,12px)) !important;right:auto !important;bottom:calc(var(--pn-logo-b, 170px) + 28px) !important}
+/* the precision box: "Exakt plats" never wraps to 3 lines on a narrow box (it did on the Mapbox build: "Exakt / plats / På") */
+body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;font-size:13px !important;line-height:17px !important;letter-spacing:0 !important}
 /* ds44 credits END */
