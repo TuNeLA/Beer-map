@@ -1082,7 +1082,14 @@
   });
 
   /* shapes: GL (one GeoJSON source + fill / line / circle layers per pane) or SVG (raster engine) */
-  function Shapes(m) { this.m = m; this.byPane = {}; this.all = {}; this.dirty = {}; this.ready = false; this.t = 0; }
+  function Shapes(m) {
+    this.m = m; this.byPane = {}; this.all = {}; this.dirty = {}; this.ready = false; this.t = 0;
+    // ds44: a pane that CSS hides (map3d: the 2D barlit / arenaglow panes on the Mapbox map) draws nothing in GL either;
+    // the flags that switch those rules redraw every pane
+    var self = this, again = function () { for (var p in self.byPane) self.dirty[p] = 1; self.mark(Object.keys(self.byPane)[0] || "overlayPane"); };
+    try { new MutationObserver(again).observe(D.documentElement, { attributes: true, attributeFilter: ["data-bm3d", "data-bmmb"] }); } catch (e) {}
+    try { var ob = function () { if (D.body) new MutationObserver(again).observe(D.body, { attributes: true, attributeFilter: ["class"] }); }; if (D.body) ob(); else D.addEventListener("DOMContentLoaded", ob); } catch (e) {}
+  }
   Shapes.prototype = {
     add: function (s) { var p = s.options.pane || "overlayPane"; s._spane = p; (this.byPane[p] = this.byPane[p] || {})[stamp(s)] = s; this.all[stamp(s)] = s; this.change(s); },
     remove: function (s) { var p = s._spane; if (this.byPane[p]) delete this.byPane[p][stamp(s)]; delete this.all[stamp(s)]; this.mark(p); },
@@ -1095,6 +1102,7 @@
       var m = this.m;
       for (var p in this.dirty) { delete this.dirty[p]; if (m._gl) this.glPane(p); else this.svgPane(p); }
     },
+    hidden: function (p) { var el = this.m.getPane(p); try { return !!(el && getComputedStyle(el).display === "none"); } catch (e) { return false; } },   // ds44
     paneZ: function (p) { var el = this.m.getPane(p), z = el ? +(el.style.zIndex || DEF_PANES[p] || 400) : 400; return z; },
     feats: function (p) {
       var o = this.byPane[p] || {}, out = [], i = 0;
@@ -1123,7 +1131,7 @@
     ids: function (p) { var b = "mbx-" + p.replace(/[^\w-]/g, ""); return { src: b, fill: b + "-fill", line: b + "-line", pt: b + "-pt" }; },
     glPane: function (p) {
       var gl = this.m._gl; if (!gl || !this.ready) return;
-      var id = this.ids(p), data = { type: "FeatureCollection", features: this.feats(p) };
+      var id = this.ids(p), data = { type: "FeatureCollection", features: this.hidden(p) ? [] : this.feats(p) };   // ds44: hidden pane = nothing
       try {
         if (this.dashDirty) { this.dashDirty = false; var de = this.dashExpr(), ls0 = this.layers || {}; for (var q in ls0) if (gl.getLayer(ls0[q].line)) gl.setPaintProperty(ls0[q].line, "line-dasharray", de); }
         var src = gl.getSource(id.src);

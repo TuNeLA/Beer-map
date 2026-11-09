@@ -59,6 +59,7 @@ NEEDS_MAPBOX=1 run glmap      $A glmap-pw.js mbx
 NEEDS_MAPBOX=1 run tiers2     $A tiers2-pw.js mbx
 NEEDS_MAPBOX=1 run tiers3     $A tiers3-pw.js mbx
 NEEDS_MAPBOX=1 run map4       $A map4-pw.js mbx
+NEEDS_MAPBOX=1 run barzoom    $A barzoom-pw.js   # ds44: no glow circle over a lit house, no dashed house outlines, no heat at z18
 NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx

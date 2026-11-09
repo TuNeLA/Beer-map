@@ -1226,3 +1226,18 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #sheet .gpg .chief-line{flex-wrap:wrap}
 #sheet-body .st-row.me>.av{cursor:pointer}
 /* ds58 nav END */
+/* ds44 credits START — owner 2026-11-09: the Mapbox wordmark sits just above the Grupper box (bottom-left, over the dock), the
+   ⓘ is a plain small info glyph right next to it in the same row (no dark ball). Mapbox rules (docs.mapbox.com/help/dive-deeper/
+   attribution): the logo may move but stays on the map and is not restyled; the text attribution must be on the map or behind
+   the built-in (i) button — a logo-only tap is a "custom approach" that Mapbox must approve, so the ⓘ stays. Positions come from
+   js/pnds.js "ds44" (--pn-logo-l/-b, --pn-i-l/-b/-w); the toast safe area (ds33) measures these elements, so it follows. */
+.bm-mblogo{left:var(--pn-logo-l, calc(var(--sal,0px) + var(--pn-edge,12px))) !important;right:auto !important;bottom:var(--pn-logo-b, calc(var(--pn-dock-b, 160px) + 8px)) !important}
+#btn-attrib{left:var(--pn-i-l, calc(var(--sal,0px) + 81px)) !important;right:auto !important;bottom:var(--pn-i-b, calc(var(--pn-dock-b, 160px) - 4px)) !important;
+  width:var(--pn-i-w, 44px) !important;height:44px !important;opacity:.9 !important}
+#btn-attrib>span{width:20px !important;height:20px !important;background:transparent !important;border:0 !important;border-radius:0 !important;box-shadow:none !important}
+#btn-attrib>span>svg{width:18px !important;height:18px !important;filter:drop-shadow(0 0 2px rgba(8,12,30,.9))}
+#btn-attrib>span>svg circle:first-of-type{display:inline !important}
+.attrib-pop{left:calc(var(--sal,0px) + var(--pn-edge,12px)) !important;right:auto !important;bottom:calc(var(--pn-logo-b, 170px) + 28px) !important}
+/* the precision box: "Exakt plats" never wraps to 3 lines on a narrow box (it did on the Mapbox build: "Exakt / plats / På") */
+body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;font-size:13px !important;line-height:17px !important;letter-spacing:0 !important}
+/* ds44 credits END */

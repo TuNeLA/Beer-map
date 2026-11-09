@@ -183,6 +183,7 @@
   /* ---------- layers ---------- */
   var COL = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, "#2A3557", 1, "#C2650A", 2, "#F5A623", 3, "#FF9A1F", "#FFC24D"];
   var ALPHA = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, 0.16, 1, 0.26, 2, 0.38, 3, 0.48, 0.58];
+  var ALPHA_K = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, 0, 1, 0.2, 2, 0.3, 3, 0.4, 0.5];   // ds44: kommun = the soft heat only
   // Leaflet zoom = GL zoom + 1
   function addL(m, spec, before) { if (m.getLayer(spec.id)) return; try { m.addLayer(spec, before && m.getLayer(before) ? before : undefined); } catch (e) { try { delete spec.slot; m.addLayer(spec); } catch (x) {} } }
   function ensure() {
@@ -204,14 +205,15 @@
       }
       if (m.getSource(SK)) {
         addL(m, { id: L_KF, type: "fill", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
-          paint: { "fill-color": COL, "fill-emissive-strength": 1,
-            "fill-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ALPHA, Z_OFF - 2, ALPHA, Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
+          paint: { "fill-color": COL, "fill-emissive-strength": 1,   /* ds44: a kommun with nobody out has no fill */
+            "fill-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ALPHA_K, Z_OFF - 2, ALPHA_K, Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
         addL(m, { id: L_KG, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
           paint: { "line-color": "#FFB43C", "line-width": 6, "line-blur": 6, "line-emissive-strength": 1,
             "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
         addL(m, { id: L_KL, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
-          paint: { "line-color": "#FFFAF0", "line-width": 0.7, "line-emissive-strength": 1, "line-dasharray": [2, 1.5],
-            "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, 0.32, Z_OFF - 2, 0.32, Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
+          paint: { "line-color": ["case", ["boolean", ["feature-state", "home"], false], "#FFC24D", "#FFFAF0"], "line-emissive-strength": 1,   /* ds44: clear solid borders, home kommun stronger */
+            "line-width": ["interpolate", ["linear"], ["zoom"], 5.6, ["case", ["boolean", ["feature-state", "home"], false], 1.8, 0.9], 9, ["case", ["boolean", ["feature-state", "home"], false], 2.6, 1.4]],
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", ["boolean", ["feature-state", "home"], false], 0.95, 0.6], Z_OFF - 2, ["case", ["boolean", ["feature-state", "home"], false], 0.9, 0.55], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
       }
       // labels sit just above the zone's label point (the town's people pins / 📍 chips are DOM, GL cannot dodge them)
       var lblLay = { "icon-image": ["get", "img"], "icon-anchor": "bottom", "icon-offset": [0, -10], "icon-allow-overlap": false, "icon-ignore-placement": false, "icon-padding": 2,
@@ -238,7 +240,8 @@
     var frK = geo.k ? friendsBy("k") : {}, frL = geo.l ? friendsBy("l") : {};   // ds41: friends in the pill
     try {
       if (geo.l && m.getSource(SL)) geo.l.features.forEach(function (f) { var c = lc(f.properties.l); m.setFeatureState({ source: SL, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
-      if (geo.k && m.getSource(SK)) geo.k.features.forEach(function (f) { var c = kc(f.properties.k); m.setFeatureState({ source: SK, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
+      var hk = null; try { var hh = window.U && window.U.ls ? window.U.ls.getJSON("olnu.home", null) : null, ll = hh && isFinite(hh.lat) ? hh : (A && A.lastLoc ? A.lastLoc() : null); if (ll && geo.k) hk = zoneAt0("k", +ll.lat, +ll.lng); } catch (e) {}   // ds44: home kommun
+      if (geo.k && m.getSource(SK)) geo.k.features.forEach(function (f) { var c = kc(f.properties.k); m.setFeatureState({ source: SK, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some), home: f === hk }); });
       // län labels: all 21
       if (geo.l) {
         var lf = geo.l.features.map(function (f) {

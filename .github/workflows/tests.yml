@@ -65,7 +65,7 @@ jobs:
           - name: map-1
             filter: '^(glmap|tiers2)$'
           - name: map-2
-            filter: '^(tiers3|map4)$'
+            filter: '^(tiers3|map4|barzoom)$'
           - name: map-3
             filter: '^(glfix-avpins|zones|mbx)$'
     steps:

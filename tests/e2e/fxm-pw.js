@@ -50,9 +50,12 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     });
     ok(an && an.maxD <= an.R && an.fit && /Annat/.test(an.txt), w + ": ANNAT label 'Annat' inside the circle (corner at " + (an && an.maxD) + " ≤ " + (an && an.R) + ")");
     ok(an && /pi-mixed/.test(an.cls) && an.w === 50, w + ": ANNAT 50 px with the new 'mixed' glyph (" + (an && an.cls) + ")");
-    const at = await p.evaluate(() => { const b = document.getElementById("btn-attrib"), s = b && b.querySelector(":scope>span"); if (!b || !s) return null; const r = b.getBoundingClientRect(), q = s.getBoundingClientRect();
-      return { dx: +Math.abs(r.left + r.width / 2 - (q.left + q.width / 2)).toFixed(2), dy: +Math.abs(r.top + r.height / 2 - (q.top + q.height / 2)).toFixed(2), d: Math.round(q.width), bg: getComputedStyle(s).backgroundColor, before: getComputedStyle(b, "::before").display, tap: Math.round(r.width) }; });
-    ok(at && at.dx <= 0.5 && at.dy <= 0.5 && at.d === 28 && at.before === "none" && at.tap >= 44, w + ": ⓘ disc centred on the icon (" + JSON.stringify(at) + ")");
+    const at = await p.evaluate(() => { const b = document.getElementById("btn-attrib"), s = b && b.querySelector(":scope>span"), g = document.getElementById("btn-groups"), o = document.getElementById("other-wrap"); if (!b || !s || !g) return null;
+      const r = b.getBoundingClientRect(), q = s.getBoundingClientRect(), gr = g.getBoundingClientRect(), orr = o && !o.hidden ? o.getBoundingClientRect() : null;
+      return { dx: +Math.abs(r.left + r.width / 2 - (q.left + q.width / 2)).toFixed(2), dy: +Math.abs(r.top + r.height / 2 - (q.top + q.height / 2)).toFixed(2), bg: getComputedStyle(s).backgroundColor,
+        tap: Math.round(r.width), aboveG: Math.round(gr.top - (r.top + r.height / 2)), leftG: Math.round(r.left - gr.left),
+        annat: orr ? !(r.right <= orr.left + 0.5 || r.left >= orr.right - 0.5 || r.bottom <= orr.top + 0.5 || r.top >= orr.bottom - 0.5) : false }; });
+    ok(at && at.dx <= 0.5 && at.dy <= 0.5 && /rgba\(0, 0, 0, 0\)|transparent/.test(at.bg) && at.tap >= 24 && !at.annat && at.aboveG > 0 && at.aboveG <= 60, w + ": ⓘ = plain info glyph (no disc) in the credits row just above Grupper, ≥ 24 px tap, never over ANNAT (" + JSON.stringify(at) + ")");
     // precision bubble + a long toast
     await p.evaluate(() => { const b = document.querySelector('#prec-seg [aria-checked="true"]'); if (b) b.click(); }); await wait(p, 500);
     await p.evaluate(() => window.PNDS._A().toast("Ett långt meddelande som måste få plats på två rader utan att klippas av vid kanten", { ms: 8000, urgent: true })); await wait(p, 700);

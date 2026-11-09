@@ -213,6 +213,13 @@
         else feats.push({ type: "Feature", properties: { k: "glow", id: id, st: st }, geometry: { type: "Point", coordinates: pt } });
       });
     });
+    // ds44 (owner: "I don't like the circle"): no ground glow next to a lit building part (another entry of the same place)
+    var caps = feats.filter(function (f) { return f.properties.k === "cap"; }).map(function (f) { return centre(outer(f.geometry)[0]); });
+    feats = feats.filter(function (f) {
+      if (f.properties.k !== "glow") return true;
+      var q = f.geometry.coordinates;
+      return !caps.some(function (c) { return Math.hypot((q[0] - c[0]) * 111320 * Math.cos(q[1] * RAD), (q[1] - c[1]) * 110540) < 30; });
+    });
     // arenas with a match this week
     var mm = {}, now = Date.now(); try { mm = (window.ARENAPIN && window.ARENAPIN._matches && window.ARENAPIN._matches()) || {}; } catch (e) {}
     var sigs = [];
@@ -284,8 +291,8 @@
       // calm: a bar that is not clearly in a house = a soft warm glow on the ground under its pin (no block)
       addLayer(m, { id: "olnu-bars-glow", type: "circle", source: "olnu-bars3d", minzoom: HOUSE_Z - 1.5, filter: ["==", ["get", "k"], "glow"],
         paint: { "circle-color": ST_COL, "circle-blur": 1, "circle-pitch-alignment": "map", "circle-emissive-strength": 1,
-          "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 13, 5, 16, 26, 18, 90],
-          "circle-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, dark ? 0.55 : 0.4] } }, std, before);
+          "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 13, 4, 16, 16, 18, 44],   /* ds44: the fallback glow is subtle */
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], HOUSE_Z - 1.5, 0, HOUSE_Z - 0.7, dark ? 0.3 : 0.22] } }, std, before);
       addLayer(m, { id: "olnu-arena-3d", type: "fill-extrusion", source: "olnu-bars3d", minzoom: 10.5, filter: ["==", ["get", "k"], "arena"],
         paint: { "fill-extrusion-color": ARENA_COL, "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0,
           "fill-extrusion-opacity": 0.95,
