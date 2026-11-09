@@ -1241,3 +1241,58 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 /* the precision box: "Exakt plats" never wraps to 3 lines on a narrow box (it did on the Mapbox build: "Exakt / plats / På") */
 body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;font-size:13px !important;line-height:17px !important;letter-spacing:0 !important}
 /* ds44 credits END */
+/* ds20 settings START — Inställningar: 5 groups + folds (js "ds20 settings"). One text column: icon 20 at x 16, text at x 48 in
+   every row (flex buttons had icon margin + gap = 24). Hints 1 line in the Inställningar tab (tap = whole text). */
+#sheet-body.ds-set :is(.ds-item>.row>.btn,.ds-item>.btn,.sf-set-row>.btn,.pn-swb)>svg.pi:first-child{margin:0 !important;flex:0 0 auto}
+#sheet-body.ds-set :is(.toggle-row>span:first-child,.pn-fold-row>span:first-child)>svg.pi:first-child{margin:0 var(--sp-3) 0 0 !important;vertical-align:-4px}
+#sheet-body.ds-set .pn-fold-row>span:first-child{display:inline-flex;width:20px}
+#sheet-body.ds-set .pn-fold-row>span:first-child>svg.pi{margin:0 !important}
+#sheet-body.ds-set .ds-item>.row>.btn-small{justify-content:flex-start !important}
+#sheet-body.ds-set .ds-ver>.toggle-row>svg.pn-ver-i{flex:0 0 20px;width:20px;height:20px;margin:0 !important;color:var(--ds-text-2)}
+#sheet-body.ds-set .ds-ver>.toggle-row>svg.pn-ver-i+span{flex:1 1 auto}
+#sheet-body.pn-s20 .ds-item-hint:not(.pn-full):not(.info){-webkit-line-clamp:1 !important}
+#sheet-body.pn-s20 .ds-item.ds-karta>.ds-item-hint:not(.pn-full){-webkit-line-clamp:1 !important}
+#sheet-body.ds-set .ds-item.ds-karta>.ds-item-hint{margin:0 !important;padding:var(--sp-2) var(--sp-1) 0 !important}
+/* the fold row: like "Välj notiser" (56 px, icon 20, title 16/600, sub 14 grey on one line, chevron 16 grey) */
+.pn-f20{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:var(--pn-row-h,56px);padding:var(--sp-3) var(--sp-4);border:0;border-radius:0;
+  background:transparent;color:var(--ds-text);text-align:left;cursor:pointer;font:600 var(--fs-16)/22px var(--ds-sans)}
+.pn-f20:active{background:rgba(255,255,255,.05)}
+.pn-f20:focus-visible{outline:2px solid var(--ds-amber);outline-offset:-2px}
+.pn-f20-i{flex:0 0 20px;display:inline-flex;color:var(--ds-text-2)}
+.pn-f20-i .pi{width:20px;height:20px;margin:0}
+.pn-f20-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.pn-f20-t>small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn-f20-c{flex:0 0 auto;display:inline-flex;color:var(--ds-muted)}
+.pn-f20-c .pi{width:var(--pn-chev,16px);height:var(--pn-chev,16px);margin:0}
+#sheet-body.ds-set .ds-section:not(.pn-f20-open)>.ds-list>.pn-f20-in{display:none !important}
+#sheet-body.ds-set .ds-section.pn-f20-open>.ds-list>.pn-f20-in{animation:pnF20In var(--m-4) var(--e-in) both}
+@keyframes pnF20In{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){#sheet-body.ds-set .ds-section.pn-f20-open>.ds-list>.pn-f20-in{animation:none}}
+/* Profil | Inställningar: ONE segmented control (no second box from profile.css ::before; not glued to the header line) */
+/* the old profile.css ::before (a 2nd outlined box, placed for 12 px padding) becomes a plain strip in the sheet colour behind
+   the bar: no 2nd outline; the bar stays 16 px under the header line, also when it sticks (the strip hides rows scrolling under) */
+.sheet .tabs.pf-tabs{margin:0 0 var(--sp-3) !important;top:0 !important}
+.sheet .tabs.pf-tabs::before{content:"" !important;display:block !important;position:absolute !important;left:0 !important;right:0 !important;
+  top:-16px !important;bottom:auto !important;height:28px !important;border-radius:0 !important;background:linear-gradient(var(--ds-sheet,#121a2a),var(--ds-sheet,#121a2a)) top/100% 16px no-repeat,radial-gradient(circle at 100% 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left bottom/12px 12px no-repeat,radial-gradient(circle at 0 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right bottom/12px 12px no-repeat !important;box-shadow:none !important;z-index:-1 !important}
+#sheet-body.pn-p20 .ds-item-hint:not(.pn-full):not(.info){-webkit-line-clamp:1 !important}
+/* ds20 settings END */
+/* ds21 motion START — leftovers: only transform and opacity move.
+   ÖL! cooldown: the bubbles are 3 layers inside a clip box (.pn-cdbub, height = beer level); each layer moves up with
+   transform (seamless: the distance is one tile). Duel tug knot: a full-width carrier moves with translateX. */
+.beer-btn>.pn-cdbub{position:absolute;z-index:1;left:0;right:0;bottom:0;height:max(0px,calc(var(--fill,0%) - 7px));overflow:hidden;pointer-events:none;display:none}
+.beer-btn.cooldown>.pn-cdbub{display:block}
+.pn-cdbub>i{position:absolute;left:0;right:0;top:0;bottom:-64px;background-repeat:repeat;will-change:transform;animation:pnCdBub var(--pn-cdbub-t,2.6s) var(--e-lin) infinite}
+.pn-cdbub>i:nth-child(1){background-image:radial-gradient(circle,rgba(255,248,225,.8) 0 1.3px,transparent 2px);background-size:19px 26px;background-position:3px 0;--pn-cdbub-y:-52px}
+.pn-cdbub>i:nth-child(2){background-image:radial-gradient(circle,rgba(255,248,225,.55) 0 1px,transparent 1.6px);background-size:13px 17px;background-position:9px 5px;--pn-cdbub-y:-34px}
+.pn-cdbub>i:nth-child(3){background-image:radial-gradient(circle,rgba(255,248,225,.65) 0 1.7px,transparent 2.4px);background-size:29px 37px;background-position:15px 11px;--pn-cdbub-y:-37px;--pn-cdbub-t:3.7s}
+@keyframes pnCdBub{to{transform:translate3d(0,var(--pn-cdbub-y),0)}}
+.du-tug-kw{position:absolute;inset:0;pointer-events:none;transition:transform .8s var(--e-std)}
+.du-tug-kw>.du-tug-knot{left:0 !important}
+@media (prefers-reduced-motion: reduce){.pn-cdbub>i{animation:none}.du-tug-kw{transition:none}}
+/* Truppen "Vart?" place chips: the chosen one is secondary (tonal); "Sätt avgång" is the one amber primary */
+/* ds21 motion END */
+/* ds23 labels START — a label in a button wraps to max 2 lines, never cut with "…" (DESIGN.md). Grupper "Ute ikväll" card
+   sub line, group page "Senast: …", ds20 fold sub lines. */
+.pn-out-t small,.gpg-now-s,.pn-f20-t>small{white-space:normal !important;text-overflow:clip !important;overflow:hidden !important;
+  display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
+/* ds23 labels END */

@@ -29,7 +29,7 @@
 
   var CSS = ".leaflet-barlit-pane path.bl{stroke-linejoin:round;transition:fill-opacity .4s,stroke-width .4s}" +
     ".leaflet-barlit-pane svg{filter:drop-shadow(0 0 3px rgba(245,166,35,.55))}" +
-    ".leaflet-barlit-pane path.bl-live,.leaflet-barlit-pane path.bl-hot{animation:bl-pulse 2.5s ease-in-out infinite}" +
+    ".leaflet-barlit-pane path.bl-live,.leaflet-barlit-pane path.bl-hot{animation:bl-pulse 2.5s var(--e-std) infinite}" +
     "@keyframes bl-pulse{0%,100%{fill-opacity:.32;stroke-opacity:.85}50%{fill-opacity:.5;stroke-opacity:1}}" +
     "@media (prefers-reduced-motion:reduce){.leaflet-barlit-pane path.bl{animation:none !important;transition:none}}" +
     ".leaflet-barlit-pane path.bl-house{transition:none}" +

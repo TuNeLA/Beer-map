@@ -39,7 +39,7 @@
 .du-tug{position:relative;height:14px;margin:6px 4px 10px;background:linear-gradient(90deg,rgba(255,122,26,.35),rgba(255,122,26,.6));border:1px solid var(--line-soft);overflow:visible}
 .du-tug-us{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width .8s var(--e-std)}
 .du-tug-mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--foam);opacity:.7}
-.du-tug-knot{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:var(--fs-18);line-height:1;transition:left .8s var(--e-std);filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.du-tug-knot{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:var(--fs-18);line-height:1;left:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 .du-line{font-size:var(--fs-14);color:var(--gold);line-height:1.4;margin:6px 0 8px;font-style:italic}
 .du-stat{display:grid;grid-template-columns:3.2em 1fr 3.2em;align-items:center;gap:6px;padding:5px 0;border-top:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
 .du-stat .du-k{text-align:center;color:var(--muted);font-size:var(--fs-12)}
@@ -120,6 +120,6 @@
 .ws-entry-set{margin-top:4px}
 
 @media (prefers-reduced-motion: reduce){
-  .du-tug-us,.du-tug-knot{transition:none}
+  .du-tug-us,.du-tug-knot,.du-tug-kw{transition:none}
   .du-w-us .du-medal{animation:none}
 }

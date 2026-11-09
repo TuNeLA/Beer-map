@@ -46,7 +46,7 @@
     ".pl-in{position:relative;width:32px;height:32px}" +
     ".pl-dot{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;display:grid;place-items:center;" +
       "background:rgba(10,15,28,.74);border:1px solid rgba(232,226,210,.42);box-shadow:0 1px 3px rgba(0,0,0,.45);font-size:9px;line-height:1;opacity:.78;" +
-      "transition:transform .15s ease,opacity .15s ease}" +
+      "transition:transform .15s var(--e-std),opacity .15s var(--e-std)}" +
     ".pl-mk:hover .pl-dot,.pl-mk.pl-sel .pl-dot{opacity:1;transform:scale(1.25);border-color:var(--amber,#f5a623)}" +
     ".pl-lbl{position:absolute;left:50%;top:calc(50% + 11px);transform:translateX(-50%);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" +
       "font:400 11px/1.2 var(--body,system-ui,sans-serif);color:rgba(236,232,220,.9);text-shadow:0 1px 2px #000,0 0 3px #000;pointer-events:none}" +

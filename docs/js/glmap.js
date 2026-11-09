@@ -703,7 +703,7 @@
     ".pk-pin b{overflow:hidden;text-overflow:ellipsis}.pk-pin .pk-i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#FF5A4E;font-size:12px}" +
     ".pk-pin.pk-sk{border-color:#4AA3FF}.pk-pin.pk-sk::after{border-top-color:#4AA3FF}.pk-pin.pk-sk .pk-i{background:#2B6FD6}" +
     ".pk-pin .pk-r{position:absolute;left:14px;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,90,78,.7);opacity:0;pointer-events:none}" +
-    "@media (prefers-reduced-motion:no-preference){.pk-pin:not(.pk-sk) .pk-r{animation:pkRing 1.8s ease-out infinite}}" +
+    "@media (prefers-reduced-motion:no-preference){.pk-pin:not(.pk-sk) .pk-r{animation:pkRing 1.8s var(--e-std) infinite}}" +
     "@keyframes pkRing{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.9)}}";
   function pkRows() {
     try { var P = window.SKJUTS && window.SKJUTS._poll && window.SKJUTS._poll(); return P && P.incoming ? P.incoming.filter(function (x) { return x && x.live && x.lat != null && isFinite(+x.lat) && isFinite(+x.lng) && x.my_ans !== "kan_inte"; }) : []; }

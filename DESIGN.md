@@ -263,8 +263,7 @@ Rules:
 - Sub-screen push: one animation on `#sheet-body` (the axis slide; the smooth.js content fade is skipped then).
 - The bar sheet opens with `--e-spring` like the other sheets.
 - Never a transform transition on map markers (`[role=button]` pins: audit 01).
-- Known left: the ÖL! cooldown bubbles animate `background-position` (the clip box is the moving element itself); they stop
-  after 3 cycles. Map-marker easings (mapart, glmap, arenapin, barlit, places, tiers) are map code, not changed here.
+- The ÖL! cooldown bubbles and the map-marker easings: done in ds21.
 <!-- ds18 motion END -->
 
 <!-- ds19 robust START -->
@@ -423,6 +422,52 @@ Rules:
 - Map credits: the Mapbox wordmark just above the Grupper box, a plain ⓘ next to it (no disc). A logo-only tap for the text
   attribution needs Mapbox's approval, so the ⓘ stays (docs.mapbox.com/help/dive-deeper/attribution).
 <!-- ds44 credits END -->
+
+<!-- ds20 settings START -->
+## Inställningar groups (ds20)
+
+Research: Apple HIG "Settings" (few settings, rare ones out of the way), Android settings guidelines (most used on top,
+10–15 rows per screen, "Advanced" fold only for 3+ rows, its sub line names them), Snapchat / Life360 (location and
+safety in their own group; blocked users under privacy).
+
+| Group (key) | Rows, in order |
+|---|---|
+| Karta (`karta`) | Kartstil · Visa ölpriser på kartan · Visa restauranger |
+| Plats & incheckning (`plats`) | Pinnen följer med dig · Checka in automatiskt |
+| Notiser & ljud (`notis`) | Notiser om vänner och kaos · Välj notiser (fold) · Ljud |
+| Integritet & säkerhet (`integ`) | Integritet · Hjälp till att förbättra appen · Spara position · Trygghet (fold: Regler, Blockerade, Kontakt) |
+| Om appen (`om`) | Betaversion · Lägg PintsNow på hemskärmen · Version / Uppdatera nu · Mer (fold: intro, Skoj & överraskningar, about text) |
+| (own group, last) | Radera mitt konto |
+
+- A new settings row: give its module block a class and add one line to `place()` in `docs/js/pnds.js` "ds20 settings".
+  A row ds20 does not know stays in the group ds.js gives it.
+- A fold is one row (icon, title, sub line with the names inside, chevron). It opens in place; back (‹ / Android) closes it.
+- One text column: icon 20 px at x 16, text at x 48 in every row. A row without an icon gets one.
+- Hints under a row: 1 line; tap shows all.
+<!-- ds20 settings END -->
+
+<!-- ds21 motion START -->
+## Motion, last leftovers (ds21)
+
+- ÖL! cooldown bubbles: a clip box `.pn-cdbub` (height = beer level, `overflow: hidden`) holds 3 layers; each layer moves
+  up with `transform` by one tile, so the loop has no jump. No `background-position` animation is left.
+- Duel tug knot: a full-width carrier `.du-tug-kw` moves with `translateX(pct%)`; the knot is at its left edge.
+- Map-marker easings (mapart, glmap, arenapin, barlit, places, tiers) use `var(--e-std)`. Only the easing changed:
+  no property was added, and still never a transform transition on a marker element.
+- A chosen chip (Truppen "Vart?", time chips) is tonal: amber-soft fill, amber border and text. Filled amber is only the
+  one primary button.
+- Reduced motion: bubbles still, knot jumps.
+<!-- ds21 motion END -->
+
+<!-- ds22 sheets START -->
+## Sheets: scroll, header taps, log out, version (ds22)
+
+- A sheet that opens fresh (new title, or the sheet was closed) starts at the top. Back (‹ / Android) keeps its old place.
+- A tap on a header icon while a sheet is open: the sheet closes and the icon's sheet opens. One tap, not two.
+- "Logga ut" is a row in Profil → Konto & Swish for every account. An account without e-mail gets the warning first
+  and, when e-mail accounts are on, "Lägg till e-post först".
+- Inställningar → Version shows the build (beta: the commit; else the app.js build hash), never "–".
+<!-- ds22 sheets END -->
 
 ## Icons, not emoji (ds12)
 

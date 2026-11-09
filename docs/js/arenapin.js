@@ -142,8 +142,8 @@
   /* ---------- look ---------- */
   var CSS =
     ".leaflet-arenaglow-pane path.ap-g{stroke-linejoin:round;stroke-linecap:round;transition:fill-opacity .4s,stroke-opacity .4s}" +
-    ".leaflet-arenaglow-pane path.ap-g-live{animation:ap-glow 2s ease-in-out infinite}" +
-    ".leaflet-arenaglow-pane path.ap-h-live{animation:ap-halo 2s ease-in-out infinite}" +
+    ".leaflet-arenaglow-pane path.ap-g-live{animation:ap-glow 2s var(--e-std) infinite}" +
+    ".leaflet-arenaglow-pane path.ap-h-live{animation:ap-halo 2s var(--e-std) infinite}" +
     "@keyframes ap-glow{0%,100%{fill-opacity:.3;stroke-opacity:.85}50%{fill-opacity:.5;stroke-opacity:1}}" +
     "@keyframes ap-halo{0%,100%{stroke-opacity:.22}50%{stroke-opacity:.42}}" +
     ".ap-mk{background:none;border:0}" +
@@ -160,7 +160,7 @@
       "color:#03121c;font:700 11px/17px var(--ds-sans,system-ui,sans-serif);text-align:center;box-shadow:0 0 0 1.5px #0a0f1c;font-style:normal}" +
     ".ap-hockey{--ap-c:#8fd8ff}.ap-fotboll{--ap-c:#6fe07a}.ap-none{--ap-c:rgba(238,240,236,.35)}" +
     ".ap-pin.ap-today{background:rgba(12,20,36,.96);box-shadow:0 1px 2px rgba(0,0,0,.55),0 3px 12px rgba(0,0,0,.45),0 0 10px var(--ap-c)}" +
-    ".ap-pin.ap-live{border-color:#ff5a52;box-shadow:0 1px 2px rgba(0,0,0,.55),0 0 0 0 rgba(255,90,82,.6);animation:ap-ring 1.6s ease-out infinite}" +
+    ".ap-pin.ap-live{border-color:#ff5a52;box-shadow:0 1px 2px rgba(0,0,0,.55),0 0 0 0 rgba(255,90,82,.6);animation:ap-ring 1.6s var(--e-std) infinite}" +
     "@keyframes ap-ring{0%{box-shadow:0 1px 2px rgba(0,0,0,.55),0 0 0 0 rgba(255,90,82,.55)}100%{box-shadow:0 1px 2px rgba(0,0,0,.55),0 0 0 9px rgba(255,90,82,0)}}" +
     ".ap-pin.ap-quiet{height:22px;padding:0 5px;opacity:.82;font-size:11px;gap:3px;transform:translate(-50%,-50%)}" +
     ".ap-pin.ap-quiet::before{display:none}" +

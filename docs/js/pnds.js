@@ -301,7 +301,7 @@
   function names(list) {
     var n = list.map(function (p) { return p.name; });
     if (n.length <= 2) return n.join(" och ");
-    return n.slice(0, 2).join(", ") + " och " + (n.length - 2) + " till";
+    return n.slice(0, 2).join(", ") + " +" + (n.length - 2);   // ds23: short, fits one line at 360 px
   }
   function outCard() {
     var o = outPeople(), all = o.live.concat(o.plan), cap = W("PNUI") && W("PNUI").capSVG;
@@ -432,6 +432,7 @@
     onPoll: function () { fixChrome(); var t = $("sheet-title"); if (sheetOpen() && t && /^Grupper$/.test(txt(t))) paintOut(); },
     groupsSheet: function (body) { [60, 700].forEach(function (ms) { setTimeout(function () { if (body && body.isConnected) paintOut(body); }, ms); }); },
     settingsSheet: settingsSheet,
+    _tidy: tidySettings,   // ds20: run at once on the tab switch
     profileSheet: function (body) { [150, 900].forEach(function (ms) { setTimeout(function () { if (body && body.isConnected) iconize(body); }, ms); }); },
     sheetFail: sheetFail, iconize: iconize, outCard: outCard, _ret: function () { return ret; }, _A: function () { return A; }   // _A: tests only
   };
@@ -1574,3 +1575,294 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds44 credits END */
+/* ds20 settings START — Inställningar (tab Inställningar) in 5 groups, most used first (iOS Settings / Android settings
+   guidelines / Snapchat, Strava, Life360): Karta · Plats & incheckning · Notiser & ljud · Integritet & säkerhet · Om appen, then
+   "Radera mitt konto" (ds08, own group, last). Rare rows fold behind one row (Android "Advanced": ≥ 3 rows, the sub line names
+   them): Trygghet (Regler, Blockerade, Kontakt) and Mer (intro, Skoj & överraskningar, the about text). Hints: 1 line (tap = all).
+   Only moves the .ds-item rows that ds.js made (no row is rebuilt: every listener, id and class stays). Section keys stay
+   (karta, notis, integ, om) + one new key "plats". Idempotent: a pass that finds the right order changes nothing. */
+(function () {
+  "use strict";
+  var W = window;
+  function $(id) { return document.getElementById(id); }
+  function ic(n, c) { try { return W.PNI && W.PNI.has(n) ? W.PNI.svg(n, c) : ""; } catch (e) { return ""; } }
+  function txt(n) { return (n && n.textContent || "").replace(/\s+/g, " ").trim(); }
+  function has(n, s) { try { return !!(n.matches && n.matches(s)) || !!n.querySelector(s); } catch (e) { return false; } }
+  function reduced() { try { return W.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
+  var ORDER = ["karta", "plats", "notis", "konto", "integ", "om", "mer"];
+  var HEAD = { karta: "Karta", plats: "Plats & incheckning", notis: "Notiser & ljud", integ: "Integritet & säkerhet", om: "Om appen" };
+  function sTab(b) { var t = b.querySelector(':scope > .pf-tabs [data-pf="s"]'); return !!t && t.getAttribute("aria-selected") === "true"; }
+  /* where a row goes: [section, rank, fold] (null = stays where ds.js put it, rank 50) */
+  function place(it, from) {
+    var t = txt(it);
+    if (it.classList.contains("pn-f20-row")) return [from, it.getAttribute("data-f") === "mer" ? 80 : 60, ""];
+    if (has(it, ".bm-seg")) return ["karta", 10, ""];
+    if (has(it, ".bi-switch")) return ["karta", 20, ""];
+    if (has(it, ".pl-switch, .pl-row")) return ["karta", 30, ""];
+    if (has(it, ".pf-set, .pf-row")) return ["plats", 10, ""];
+    if (has(it, ".ac-set, .ac-row")) return ["plats", 20, ""];
+    if (has(it, ".ah-set, .ah-row")) return ["plats", 30, ""];   // Ställ in hem (autohome.js)
+    if (has(it, ".sf-set")) return ["integ", 90, "trygg"];
+    if (from === "integ" && !has(it, ".pnlog-set, .sos-block, .bd-optin") && /^(integritet|privacy)\b/i.test(t)) return ["integ", 10, ""];
+    if (has(it, ".pnlog-set")) return ["integ", 20, ""];   // both switches, in their own order (förbättra, position)
+    if (has(it, ".pn-kanal")) return ["om", 10, ""];
+    if (/hemskärm|home screen/i.test(t) && from === "om") return ["om", 20, ""];
+    if (it.classList.contains("ds-ver")) return ["om", 30, ""];
+    if (from === "skoj") return ["om", 92, "mer"];
+    if (from === "om" && /introduktion|intro/i.test(t)) return ["om", 91, "mer"];
+    if (from === "om" && it.classList.contains("ds-text")) return ["om", 93, "mer"];
+    return null;
+  }
+  function section(body, key) {
+    var s = body.querySelector(':scope > section.ds-section[data-ds="' + key + '"]');
+    if (s) return s;
+    s = document.createElement("section"); s.className = "ds-section"; s.setAttribute("data-ds", key);
+    var h = document.createElement("h3"); h.className = "ds-section-h"; h.textContent = HEAD[key] || key;
+    var l = document.createElement("div"); l.className = "ds-list";
+    s.appendChild(h); s.appendChild(l); body.appendChild(s);
+    return s;
+  }
+  function head(s, key) {
+    var h = s.querySelector(":scope > h3.ds-section-h"); if (!h || !HEAD[key]) return;
+    var tn = [].filter.call(h.childNodes, function (c) { return c.nodeType === 3; }).pop();
+    if (tn) { if (tn.nodeValue !== HEAD[key]) tn.nodeValue = HEAD[key]; } else h.appendChild(document.createTextNode(HEAD[key]));
+  }
+  var FOLD = {
+    trygg: { icon: "shield", title: "Trygghet", sub: function (items) {
+      var p = []; items.forEach(function (it) { [].forEach.call(it.querySelectorAll(".sf-set-row > .btn"), function (b) { var x = txt(b); if (x) p.push(x); }); });
+      return p.map(function (x, i) { return i ? x.toLowerCase() : x; }).join(", "); } },
+    mer: { icon: "dots", title: "Mer", sub: function (items) {
+      var p = [];
+      items.forEach(function (it) { var t = txt(it);
+        if (/introduktion/i.test(t)) p.push("introduktionen");
+        if (/kapsyl/i.test(t)) p.push("kapsylsamlingen");
+        if (/överrask/i.test(t)) p.push("överraskningar");
+        if (/skaka/i.test(t)) p.push("skaka");
+        if (/ölglaset/i.test(t)) p.push("ölglaset");
+        if (it.classList.contains("ds-text")) p.push("om kartan"); });
+      var s = p.slice(0, 2).join(", ") + (p.length > 2 ? " +" + (p.length - 2) : ""); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; } }
+  };
+  function foldRow(list, key) {
+    var it = list.querySelector(':scope > .pn-f20-row[data-f="' + key + '"]');
+    if (it) return it;
+    var f = FOLD[key];
+    it = document.createElement("div"); it.className = "ds-item pn-f20-row"; it.setAttribute("data-f", key);
+    var b = document.createElement("button"); b.type = "button"; b.className = "pn-f20"; b.setAttribute("aria-expanded", "false");
+    b.innerHTML = '<span class="pn-f20-i" aria-hidden="true">' + ic(f.icon) + '</span><span class="pn-f20-t"><span></span><small></small></span><span class="pn-f20-c" aria-hidden="true">' + ic("chev-right") + "</span>";
+    b.querySelector(".pn-f20-t > span").textContent = f.title;
+    it.appendChild(b);
+    var undo = null;
+    var set = function (open) {
+      var sec = it.closest("section.ds-section"); if (!sec) return;
+      sec.classList.toggle("pn-f20-open", open); sec.setAttribute("data-f20", open ? key : "");
+      b.setAttribute("aria-expanded", String(open));
+      b.querySelector(".pn-f20-c").innerHTML = ic(open ? "chev-down" : "chev-right");
+    };
+    b.addEventListener("click", function () {
+      var sec = it.closest("section.ds-section"), open = !(sec && sec.classList.contains("pn-f20-open"));
+      set(open);
+      var sn = W.SHEETNAV;   // Android back / ‹ closes the fold first (like "Välj notiser")
+      if (open && sn && sn.sub) undo = sn.sub(function () { undo = null; set(false); });
+      else if (!open && undo) { var u = undo; undo = null; try { u(); } catch (e) {} }
+      if (open) setTimeout(function () {
+        var body = $("sheet-body"), last = sec && [].slice.call(sec.querySelectorAll(".pn-f20-in")).pop(); if (!body || !last) return;
+        var br = body.getBoundingClientRect(), lr = last.getBoundingClientRect();
+        if (lr.bottom > br.bottom - 8) try { it.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" }); } catch (e) {}
+      }, 30);
+    });
+    return it;
+  }
+  var busy = false;
+  function pass() {
+    var body = $("sheet-body");
+    if (!body || busy) return;
+    if (!body.classList.contains("ds-set") || !sTab(body)) { body.classList.remove("pn-s20"); if (body.classList.contains("ds-set") && body.classList.contains("pn-pfmode")) profil(body); else body.classList.remove("pn-p20"); return; }
+    busy = true;
+    try {
+      body.classList.add("pn-s20");
+      // 1. every row to its section, with its rank
+      var want = {}, folds = {};
+      [].slice.call(body.querySelectorAll(":scope > section.ds-section:not(.pn-danger-sec) > .ds-list > .ds-item:not(.ds-danger)")).forEach(function (it, i) {
+        var from = it.closest("section").getAttribute("data-ds") || "mer";
+        if (!it.hasAttribute("data-f20o")) it.setAttribute("data-f20o", from);   // where ds.js put it first (skoj, om …)
+        var p = place(it, it.getAttribute("data-f20o")) || [from, 50, ""];
+        // "Bjud in" (amber) lives in Vänner → Lägg till vän (pnui hides it, but can be too late): never in Inställningar
+        if (!it.classList.contains("pn-gone") && has(it, ".btn-amber") && /bjud in|invite/i.test(txt(it))) it.classList.add("pn-gone");
+        // a row whose only content is hidden (pnui hides "Bjud in" this way, sometimes too late) is gone, every time
+        if (!it.classList.contains("pn-gone") && !it.classList.contains("pn-f20-row") && it.children.length && !it.querySelector(":scope > :not(.pn-gone):not(.ds-hide):not(h3)")) it.classList.add("pn-gone");
+        if (it.classList.contains("pn-gone") && !p[2]) p = [from, 99, ""];
+        (want[p[0]] = want[p[0]] || []).push({ it: it, r: p[1], i: i, f: p[2] });
+        if (p[2] && !it.classList.contains("pn-gone")) (folds[p[0] + "|" + p[2]] = folds[p[0] + "|" + p[2]] || []).push(it);
+        it.classList.toggle("pn-f20-in", !!p[2]);
+      });
+      // 2. a fold needs 3+ rows behind it (Android "Advanced"); else its rows just show. The sub line names what is inside.
+      var nrows = function (it) { return Math.max(1, it.querySelectorAll(".sf-set-row > .btn, :scope > .row > .btn").length); };
+      Object.keys(want).forEach(function (sk) {
+        Object.keys(FOLD).forEach(function (fk) {
+          var items = folds[sk + "|" + fk] || [], n = items.reduce(function (a, it) { return a + nrows(it); }, 0);
+          var exs = want[sk].filter(function (o) { return o.it.classList.contains("pn-f20-row") && o.it.getAttribute("data-f") === fk; }), ex = exs.length ? exs[0].it : null;
+          exs.slice(1).forEach(function (o) { want[sk] = want[sk].filter(function (x) { return x !== o; }); o.it.remove(); });   // one per group
+          if (n < 3) {
+            want[sk].forEach(function (o) { if (o.f === fk) { o.f = ""; o.it.classList.remove("pn-f20-in"); } });
+            if (ex) { want[sk] = want[sk].filter(function (o) { return o.it !== ex; }); ex.remove(); }
+            return;
+          }
+          var row = ex || foldRow(section(body, sk).querySelector(".ds-list"), fk);
+          if (!ex) want[sk].push({ it: row, r: fk === "mer" ? 80 : 60, i: -1, f: "" });
+          var sub = FOLD[fk].sub(items), sm = row.querySelector(".pn-f20-t > small");
+          if (sm.textContent !== sub) sm.textContent = sub;
+        });
+      });
+      // 3. sections in ORDER (after the tabs), rows in rank order; nothing moves when it is already right
+      var keys = Object.keys(want).sort(function (a, b) {
+        var x = ORDER.indexOf(a), y = ORDER.indexOf(b); return (x < 0 ? 60 : x) - (y < 0 ? 60 : y);
+      });
+      var keeps = body.querySelectorAll(":scope > .ds-keep"), prev = keeps.length ? keeps[keeps.length - 1] : null;
+      keys.forEach(function (k) {
+        var s = section(body, k), list = s.querySelector(":scope > .ds-list");
+        head(s, k);
+        want[k].sort(function (a, b) { return a.r - b.r || a.i - b.i; }).forEach(function (o, n) {
+          var cur = list.children[n];
+          if (cur !== o.it) list.insertBefore(o.it, cur || null);
+        });
+        var ref = prev ? prev.nextElementSibling : body.firstElementChild;
+        if (ref !== s) body.insertBefore(s, ref);
+        prev = s;
+      });
+      // a section with only gone rows hides; one with no rows at all goes
+      [].forEach.call(body.querySelectorAll(":scope > section.ds-section:not(.pn-danger-sec)"), function (s) {
+        var all = s.querySelectorAll(":scope > .ds-list > .ds-item"), vis = s.querySelectorAll(":scope > .ds-list > .ds-item:not(.pn-gone)");
+        if (all.length && !vis.length && !s.classList.contains("pn-gone")) s.classList.add("pn-gone");
+      });
+      // empty sections (all rows moved away) go
+      [].forEach.call(body.querySelectorAll(":scope > section.ds-section:not(.pn-danger-sec)"), function (s) {
+        if (!s.querySelector(":scope > .ds-list > .ds-item")) s.remove();
+      });
+      // danger group stays last (made here in the same shape as ds08, so it does not jump after the first paint)
+      var dzi = body.querySelector(":scope > section.ds-section:not(.pn-danger-sec) > .ds-list > .ds-item.ds-danger");
+      if (dzi) {
+        var dsec = body.querySelector(":scope > section.pn-danger-sec");
+        if (!dsec) { dsec = document.createElement("section"); dsec.className = "ds-section pn-danger-sec"; var dl = document.createElement("div"); dl.className = "ds-list"; dsec.appendChild(dl); body.appendChild(dsec); }
+        dsec.firstChild.appendChild(dzi);
+      }
+      var dz = body.querySelector(":scope > section.pn-danger-sec");
+      if (dz && body.lastElementChild !== dz) body.appendChild(dz);
+      // 4. a row without an icon gets one, so all text starts on one line (x = 48)
+      var nt = body.querySelector(':scope > section[data-ds="notis"] .ds-item:not(.pn-fold) > .toggle-row > span:first-child');
+      if (nt && !nt.querySelector("svg") && /notis|notif/i.test(txt(nt))) nt.insertAdjacentHTML("afterbegin", ic("bell", "pi-lead"));
+      var fr = body.querySelector(".pn-fold-row > span:first-child");
+      if (fr && !fr.querySelector(".pi-sliders")) fr.innerHTML = ic("sliders", "pi-lead");
+      var vr = body.querySelector(".ds-ver > .toggle-row");   // beside the text span: app.js sets that span's textContent later
+      if (vr && !vr.querySelector(":scope > svg.pi")) vr.insertAdjacentHTML("afterbegin", ic("info", "pi-lead pn-ver-i"));
+    } catch (e) { try { console.warn("ds20 settings", e); } catch (x) {} }
+    busy = false;
+  }
+  /* Profil tab, "Namn, konto och mer": rows that only repeat a "Mitt" row go (same screen: Ölpasset, Vänner & Hitta, Visa
+     kvällen), the group "Integritet & säkerhet" is called "Synlighet & säkerhet" there, hints 1 line. */
+  function profil(body) {
+    if (!body.classList.contains("pn-pfmode")) return;
+    busy = true;
+    try {
+      body.classList.add("pn-p20");
+      var mitt = body.querySelector(".pn-pf");
+      if (mitt) [].forEach.call(body.querySelectorAll(":scope > section.ds-section > .ds-list > .ds-item:not(.pn-gone)"), function (it) {
+        var t = txt(it);
+        var dup = (has(it, ".nr-set") && mitt.querySelector(".pn-row") && /Vänner/.test(txt(mitt))) ||
+          (has(it, ".ps-entry") && /Ölpasset/.test(txt(mitt))) || (/Visa kvällen/.test(t) && !has(it, ".pnlog-set") && /Mina kvällar/.test(txt(mitt)));
+        if (dup) it.classList.add("pn-gone", "pn-p20-dup");
+      });
+      [].forEach.call(body.querySelectorAll(":scope > section.ds-section:not(.pn-danger-sec)"), function (s) {
+        var vis = s.querySelectorAll(":scope > .ds-list > .ds-item:not(.pn-gone)").length;
+        if (s.querySelector(":scope > .ds-list > .ds-item") && !vis && !s.classList.contains("pn-gone")) s.classList.add("pn-gone");
+        if (s.getAttribute("data-ds") === "integ") { var h = s.querySelector(":scope > h3"), tn = h && [].filter.call(h.childNodes, function (c) { return c.nodeType === 3; }).pop(); if (tn && tn.nodeValue !== "Synlighet & säkerhet") tn.nodeValue = "Synlighet & säkerhet"; }
+      });
+    } catch (e) {}
+    busy = false;
+  }
+  // the fold opens below the fold line: bring it up under the tabs (smooth; at once with reduced motion)
+  document.addEventListener("click", function (e) {
+    var tog = e.target && e.target.closest && e.target.closest("#sheet-body .pn-fold-t");
+    if (!tog) return;
+    var raf2 = W.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+    raf2(function () { raf2(function () {
+      var body = $("sheet-body"); if (!body || !body.classList.contains("pn-pfopen")) return;
+      var tabs = body.querySelector(":scope > .pf-tabs"), off = tabs ? tabs.getBoundingClientRect().height : 0;
+      var y = body.scrollTop + tog.getBoundingClientRect().top - body.getBoundingClientRect().top - off - 12;
+      try { body.scrollTo({ top: Math.max(0, y), behavior: reduced() ? "auto" : "smooth" }); } catch (x) { body.scrollTop = Math.max(0, y); }
+    }); });
+  });
+  var raf = 0;
+  /* the tab switch: organize in the same task, before the first paint (no raw list, no jump: CLS was 1.6) */
+  function loose(b) { for (var c = b.firstElementChild; c; c = c.nextElementSibling) if (!(c.tagName === "SECTION" && c.classList.contains("ds-section")) && !c.classList.contains("ds-keep")) return true; return false; }
+  function now() {
+    var b = $("sheet-body");
+    if (b && sTab(b) && (b.classList.contains("pn-pfmode") || b.classList.contains("pn-p20"))) b.classList.remove("pn-pfmode", "pn-p20");   // Profil-only classes: the tab was empty for 0.5 s
+    if (b && !sTab(b) && b.classList.contains("pn-s20")) b.classList.remove("pn-s20");
+    if (busy || !b || !sTab(b) || !loose(b)) return soon();
+    try { if (W.DS && W.DS.organizeSettings) W.DS.organizeSettings(b); } catch (e) {}
+    try { if (W.PNDS._tidy) W.PNDS._tidy(b); } catch (e) {}
+    pass();
+  }
+  function soon() { if (busy || raf) return; raf = (W.requestAnimationFrame || setTimeout)(function () { raf = 0; pass(); }); }
+  function start() {
+    var body = $("sheet-body"); if (!body || !W.MutationObserver) return;
+    new MutationObserver(now).observe(body, { childList: true, subtree: true });
+    soon();
+  }
+  W.PNDS.settings20 = pass;
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds20 settings END */
+/* ds22 sheets START — usability review (ux3): (1) a header icon (trophy, avatar …) works with one tap while a sheet is open:
+   the open sheet closes and the icon's sheet opens; (2) "Logga ut" in Profil → Konto for every account (the e-mail account
+   feature can be off: then the row still shows; account.js warns that an account without e-mail cannot come back). */
+(function () {
+  "use strict";
+  var W = window;
+  function $(id) { return document.getElementById(id); }
+  function ic(n, c) { try { return W.PNI && W.PNI.has(n) ? W.PNI.svg(n, c) : ""; } catch (e) { return ""; } }
+  /* 1. header tap goes through */
+  var pass = false;
+  function hdrBtn(x, y) {
+    var els = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+    for (var i = 0; i < els.length; i++) { var b = els[i].closest && els[i].closest(".topbar button"); if (b && !b.disabled) return b; }
+    return null;
+  }
+  document.addEventListener("click", function (e) {
+    if (pass || !e.isTrusted) return;
+    var sh = $("sheet"); if (!sh || sh.hidden) return;
+    var t = e.target; if (t && t.closest && t.closest("#sheet")) return;
+    var b = hdrBtn(e.clientX, e.clientY); if (!b) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    // close (like ✕) and open in the SAME task: sheetnav then reuses the history entry (a later open races its unwind
+    // and could go back past the app)
+    var x = $("sheet-close");
+    pass = true; try { if (x) x.click(); b.click(); } finally { pass = false; }
+  }, true);
+  /* 2. Logga ut row in Konto (Profil tab) */
+  function logoutRow() {
+    var body = $("sheet-body"), A = W.ACCOUNT;
+    if (!body || !A || !A.logout || !body.classList.contains("pn-pfmode") || body.querySelector(".acct-logout, .pn-logout")) return;
+    try { var a = JSON.parse(localStorage.getItem("olnu.auth") || "null"); if (!a || !a.refresh_token) return; } catch (e) { return; }
+    var sec = body.querySelector(':scope > section.ds-section[data-ds="konto"]');
+    if (!sec) {
+      sec = document.createElement("section"); sec.className = "ds-section"; sec.setAttribute("data-ds", "konto");
+      var h = document.createElement("h3"); h.className = "ds-section-h"; h.textContent = "Konto & Swish";
+      var l = document.createElement("div"); l.className = "ds-list"; sec.appendChild(h); sec.appendChild(l);
+      body.insertBefore(sec, body.querySelector(':scope > section.ds-section[data-ds="integ"], :scope > section.ds-section[data-ds="mer"], :scope > section.pn-danger-sec'));
+    }
+    var it = document.createElement("div"); it.className = "ds-item pn-logout-it";
+    var row = document.createElement("div"); row.className = "row";
+    var b = document.createElement("button"); b.type = "button"; b.className = "btn btn-block pn-logout";
+    b.innerHTML = ic("door", "pi-lead"); b.appendChild(document.createTextNode("Logga ut"));
+    b.addEventListener("click", function () { A.logout(); });
+    row.appendChild(b); it.appendChild(row); sec.querySelector(".ds-list").appendChild(it);
+  }
+  var t = 0;
+  function start() {
+    var body = $("sheet-body"); if (!body || !W.MutationObserver) return;
+    new MutationObserver(function () { clearTimeout(t); t = setTimeout(logoutRow, 60); }).observe(body, { childList: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* ds22 sheets END */

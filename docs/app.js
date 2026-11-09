@@ -2551,11 +2551,13 @@
     var prev = sheetCur; sheetCur = null;
     if (prev && prev.onClose) { try { prev.onClose("replaced"); } catch (e) {} }
     sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
+    var fresh = $("sheet").hidden || $("sheet-title").textContent !== title;   // ds22: a new sheet starts at the top
     $("sheet-title").textContent = title;
     try { if (window.WARM) window.WARM.beginSheet(title); } catch (e) {}   // inst: render window (before the old body goes)
-    var body = $("sheet-body"); body.innerHTML = "";
+    var body = $("sheet-body"); body.innerHTML = ""; if (fresh) body.scrollTop = 0;
     try { build(body); } catch (e) { try { console.warn("olnu sheet", title, e); } catch (x) {} try { if (window.PNDS && window.PNDS.sheetFail) window.PNDS.sheetFail(body, title); } catch (x) {} }   // pnds: never an empty sheet
     $("sheet").hidden = false; $("backdrop").hidden = false;
+    if (fresh) body.scrollTop = 0;   // ds22: again once shown (a hidden scroller ignores scrollTop and keeps its old place)
     if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
     try { if (window.WARM) window.WARM.endSheet(body, $("sheet-title").textContent); } catch (e) {}   // inst: show it complete, in one step
     return true;
@@ -3215,11 +3217,16 @@
       if (window.caches && caches.keys) {
         caches.keys().then(function (ks) {
           var k = ks.filter(function (x) { return /^olnu-[0-9a-f]{8,}/.test(x); })[0];   // audit-03: not olnu-pending/-cdn/-data/-tiles/-beta
-          ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : "–");
-        }).catch(function () { ver.textContent = t("version") + " –"; });
-      } else { ver.textContent = t("version") + " –"; }
+          ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : buildVer());
+        }).catch(function () { ver.textContent = t("version") + " " + buildVer(); });
+      } else { ver.textContent = t("version") + " " + buildVer(); }
       body.appendChild(el("div", { class: "toggle-row", style: "margin-top:10px" }, [ver, btn(t("updateNow"), "btn-small", forceUpdate)]));
     });
+  }
+  function buildVer() {   // ds22: the build, when no service-worker cache name tells it (beta: the commit)
+    try { if (window.KANAL && window.KANAL.sha && window.KANAL.sha()) return "beta " + window.KANAL.sha(); } catch (e) {}
+    var s = [].map.call(document.scripts, function (x) { return x.getAttribute("src") || ""; }).filter(function (x) { return /(^|\/)app\.js\?v=/.test(x); })[0];
+    var m = /[?&]v=([^&]+)/.exec(s || ""); return m ? m[1] : "–";
   }
   function forceUpdate() {
     toast(t("updating"));

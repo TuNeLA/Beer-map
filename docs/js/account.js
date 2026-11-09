@@ -146,7 +146,7 @@
       logoutUnsaved: "⚠️ Kontot ä INT sparat. Loggar du ut ä grupper, medaljer å historik borta för alltid – ingen kan få tillbaka dem.",
       logoutGo: "🚪 Logga ut",
       logoutAnyway: "Logga ut ändå",
-      logoutSaveFirst: "🔐 Spara kontot först",
+      logoutSaveFirst: "🔐 Lägg till e-post först",
       cancel: "Avbryt",
       nudgeTitle: ["🔐 Säkra kontot, soldat", "🔐 Dags att säkra basen", "🔐 Int tappa bort dig nu"],
       nudgeNights: "Du har {0} kvällar i loggen. ",

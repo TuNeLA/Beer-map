@@ -862,10 +862,7 @@ body:has(#sheet:not([hidden])) .tk-track,body:has(#sheet:not([hidden])) .chaos{a
     radial-gradient(circle at 35% 30%,#2b2213,#0e0a04 75%);
   background-origin:border-box;background-repeat:no-repeat;
   box-shadow:0 0 0 3px rgba(10,15,28,.9),0 8px 24px rgba(245,166,35,.2),inset 0 0 0 1px rgba(255,255,255,.07),inset 0 -8px 16px rgba(0,0,0,.28)}
-.beer-btn.cooldown::before{content:"";position:absolute;z-index:1;left:0;right:0;bottom:0;height:max(0px,calc(var(--fill,0%) - 7px));pointer-events:none;
-  background-image:radial-gradient(circle,rgba(255,248,225,.8) 0 1.3px,transparent 2px),radial-gradient(circle,rgba(255,248,225,.55) 0 1px,transparent 1.6px),radial-gradient(circle,rgba(255,248,225,.65) 0 1.7px,transparent 2.4px);
-  background-size:19px 26px,13px 17px,29px 37px;background-position:3px 0,9px 5px,15px 11px;animation:pintbub 2.6s linear infinite}
-@keyframes pintbub{to{background-position:3px -52px,9px -34px,15px -26px}}
+/* cooldown bubbles: .pn-cdbub in the button (pnds.css "ds21 motion"), they move with transform */
 .beer-btn.cooldown .beer-label{font-family:var(--hud);font-size:var(--fs-xl);color:#fff8e6;background:rgba(12,8,2,.58);padding:2px 7px 1px;border:1px solid rgba(255,224,138,.35);line-height:1.05}
 .beer-btn.cooldown .beer-sub{order:-1;margin:0 0 3px;padding:1px 5px;color:var(--foam);background:rgba(12,8,2,.58);opacity:1}
 .beer-wrap.cd .cd-ring{opacity:0}

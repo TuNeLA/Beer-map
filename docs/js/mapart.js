@@ -550,7 +550,7 @@
       "font:700 12px/1 var(--body,'Chakra Petch',system-ui,sans-serif);color:#FFFAF0;font-variant-numeric:tabular-nums;cursor:pointer;white-space:nowrap}" +
     ".pn-cl.lv1{border-color:#FF8A1F}.pn-cl.lv2{border-color:#FF5A4E}.pn-cl.pn-f{border-color:#3DDC84}" +
     ".pn-cl>img{width:20px;height:20px;border-radius:50%;margin-left:-8px;box-shadow:0 0 0 1.5px #3DDC84}.pn-cl>img:first-child{margin-left:-4px}.pn-cl>img+b{margin-left:2px}" +
-    "@media (prefers-reduced-motion:no-preference){.pn-p,.pn-cl{transition:transform .12s ease-out}.leaflet-marker-icon:active>.pn-p,.leaflet-marker-icon:active>.pn-cl{transform:translate(-50%,-50%) scale(.92)}}";
+    "@media (prefers-reduced-motion:no-preference){.pn-p,.pn-cl{transition:transform .12s var(--e-std)}.leaflet-marker-icon:active>.pn-p,.leaflet-marker-icon:active>.pn-cl{transform:translate(-50%,-50%) scale(.92)}}";
   var PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + GL.G.person.map(function (L) { return L.d; }).join("") + '"/></svg>';
   function pcss() { if (typeof document === "undefined" || document.getElementById("pn-people-css")) return; var st = document.createElement("style"); st.id = "pn-people-css"; st.textContent = PCSS; (document.head || document.documentElement).appendChild(st); }
   function hesc(x) { return String(x == null ? "" : x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }

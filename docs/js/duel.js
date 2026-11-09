@@ -301,8 +301,9 @@
     var pct = Math.round(Math.max(0.04, Math.min(0.96, share)) * 1000) / 10;
     var wrap = el("div", { class: "du-tug", role: "img", "aria-label": u + " – " + t });
     var a = el("div", { class: "du-tug-us" }); a.style.width = pct + "%";
-    var knot = el("div", { class: "du-tug-knot", text: "🪢" }); knot.style.left = pct + "%";
-    wrap.appendChild(a); wrap.appendChild(el("div", { class: "du-tug-mid" })); wrap.appendChild(knot);
+    var knot = el("div", { class: "du-tug-knot", text: "🪢" });
+    var kw = el("div", { class: "du-tug-kw" }, [knot]); kw.style.transform = "translateX(" + pct + "%)";   // ds21: transform, not left
+    wrap.appendChild(a); wrap.appendChild(el("div", { class: "du-tug-mid" })); wrap.appendChild(kw);
     return wrap;
   }
   function statRow(label, u, t, cls) {
