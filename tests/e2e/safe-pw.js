@@ -265,8 +265,8 @@ async function safetyMocks(page, st, calls) {
       const md = window.MEDALS && window.MEDALS.CAT ? window.MEDALS.CAT.find((c) => c[0] === "m1000") : null;
       return { mer: m && m[2], medal: md && md.join(" ") };
     });
-    ok("meriter: a drink gives 0", dm.mer === 0 || dm.mer === undefined, dm);
-    ok("medal m1000 counts skål (joke kept)", !dm.medal || /Tusen skål\. Någon borde resa ett monument\./.test(dm.medal), dm);
+    ok("meriter: a drink gives points (owner 2026-11-08: beers count, nightly cap on the server)", dm.mer === undefined || dm.mer > 0, dm);
+    ok("medal m1000 = 1000 beers in total (owner 2026-11-08: lifetime beer medals stay)", !dm.medal || /1000 öl/.test(dm.medal), dm);
     await ctx.close();
   }
   // ---------- 6. store build (?app=android): no Klassiskt pack, no drink deals; Visningsläge off without flag ----------
