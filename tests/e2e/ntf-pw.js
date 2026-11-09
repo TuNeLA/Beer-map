@@ -161,31 +161,43 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
       }
       ok("F: service worker running (active)", !!sw, { workers: ctx.serviceWorkers().length, seen: seen.slice(-6) });
       if (sw) {
-        const r = await Promise.race([sw.evaluate(async () => {
-          const shown = [];
-          // record notifications instead of asking the OS (same API the handlers use)
-          self.registration.showNotification = (title, opts) => { const i = shown.findIndex((n) => n.tag === opts.tag);
-            const n = { title, ...opts, close() {} }; if (i >= 0) shown[i] = n; else shown.push(n); return Promise.resolve(); };
-          self.registration.getNotifications = (o) => Promise.resolve(shown.filter((n) => !o || !o.tag || n.tag === o.tag));
-          const fire = (type, props) => new Promise((res) => {
-            const w = [], ev = new Event(type);
-            Object.defineProperty(ev, "waitUntil", { value: (p) => { w.push(Promise.resolve(p).catch(() => {})); } });
-            for (const k in props) Object.defineProperty(ev, k, { value: props[k] });
+        // step by step (each bounded), so a CI failure says WHICH step: stub → push → push → push → click → queue
+        const step = async (name, fn, arg) => { const v = await race(sw.evaluate(fn, arg).catch((e) => ({ err: e.message })), 15000, { err: "timeout" });
+          if (v && v.err) console.log("NOTE F step", name, v.err); return v; };
+        await step("stub", () => {
+          self.__shown = [];
+          // record notifications instead of asking the OS (the same API the handlers use; CI headless has no notification server)
+          self.registration.showNotification = (title, opts) => { const a = self.__shown, i = a.findIndex((n) => n.tag === opts.tag);
+            const n = { title, ...opts, close() {} }; if (i >= 0) a[i] = n; else a.push(n); return Promise.resolve(); };
+          self.registration.getNotifications = (o) => Promise.resolve(self.__shown.filter((n) => !o || !o.tag || n.tag === o.tag));
+          self.__fire = (ev) => new Promise((res) => {
+            const w = [], orig = ev.waitUntil ? ev.waitUntil.bind(ev) : null;
+            Object.defineProperty(ev, "waitUntil", { value: (p) => { w.push(Promise.resolve(p).catch(() => {})); try { if (orig) orig(p); } catch (e) {} } });
             self.dispatchEvent(ev);
-            Promise.race([Promise.all(w), new Promise((t) => setTimeout(t, 8000))]).then(res);
+            Promise.race([Promise.all(w), new Promise((t) => setTimeout(t, 8000))]).then(() => res(true));
           });
-          const push = (d) => fire("push", { data: { json: () => d, text: () => JSON.stringify(d) } });
-          const P = (n, b, id) => ({ title: n + " på " + b + " 🍺", body: "Sedan 21:04.", url: "/?focus=" + id, tag: "olnu-" + id + "-f1", k: "ute", v: "fo.1",
-            fold: { key: "ute-2026-11-07", title: "{n} vänner ute ikväll 🍻", line: n + " · " + b }, actions: [{ action: "coming", title: "🏃 Jag kommer", url: "/?focus=" + id + "&act=coming" }] });
-          await push(P("Lisa", "Pitchers", 71)); await push(P("Oskar", "Tegera", 72));
-          const fold = shown.filter((n) => n.tag === "olnu-fold-ute-2026-11-07").map((n) => ({ t: n.title, b: n.body, u: n.data && n.data.url }));
-          await push({ title: "Bosse och Cecilia ska ut ikväll", body: "x", url: "/?ikvall=1", tag: "olnu-ikvall-t", k: "ikvall", v: "ik.1",
-            actions: [{ action: "ute", title: "🍺 Jag kommer", url: "/?ikvall=1&st=ute" }, { action: "kanske", title: "🤔 Kanske", url: "/?ikvall=1&st=kanske" }] });
-          const ik = shown.find((n) => n.tag === "olnu-ikvall-t");
-          if (ik) await fire("notificationclick", { notification: ik, action: "ute" });
-          const q = await caches.open("olnu-pending").then((c) => c.match("./__pnq")).then((x) => x ? x.text() : "[]");
-          return { fold, clicked: !!ik, acts: ik ? ik.actions.map((a) => a.title) : [], q: JSON.parse(q) };
-        }), new Promise((res) => setTimeout(() => res({ err: "sw.evaluate timeout 40 s" }), 40000))]).catch((e) => ({ err: e.message }));
+          return true;
+        });
+        const pushIn = (d) => step("push " + d.tag, (x) => self.__fire(new PushEvent("push", { data: x })).then(() => true), JSON.stringify(d));
+        const P = (n, b, id) => ({ title: n + " på " + b + " 🍺", body: "Sedan 21:04.", url: "/?focus=" + id, tag: "olnu-" + id + "-f1", k: "ute", v: "fo.1",
+          fold: { key: "ute-2026-11-07", title: "{n} vänner ute ikväll 🍻", line: n + " · " + b }, actions: [{ action: "coming", title: "🏃 Jag kommer", url: "/?focus=" + id + "&act=coming" }] });
+        await pushIn(P("Lisa", "Pitchers", 71)); await pushIn(P("Oskar", "Tegera", 72));
+        await pushIn({ title: "Bosse och Cecilia ska ut ikväll", body: "x", url: "/?ikvall=1", tag: "olnu-ikvall-t", k: "ikvall", v: "ik.1",
+          actions: [{ action: "ute", title: "🍺 Jag kommer", url: "/?ikvall=1&st=ute" }, { action: "kanske", title: "🤔 Kanske", url: "/?ikvall=1&st=kanske" }] });
+        const r = (await step("read", () => {
+          const a = self.__shown || [], ik = a.find((n) => n.tag === "olnu-ikvall-t");
+          return { fold: a.filter((n) => n.tag === "olnu-fold-ute-2026-11-07").map((n) => ({ t: n.title, b: n.body, u: n.data && n.data.url })),
+            acts: ik ? ik.actions.map((x) => x.title) : [], has: !!ik };
+        })) || {};
+        const c = await step("click", () => {
+          const ik = (self.__shown || []).find((n) => n.tag === "olnu-ikvall-t");
+          if (!ik) return false;
+          const ev = new ExtendableEvent("notificationclick");
+          Object.defineProperty(ev, "notification", { value: ik }); Object.defineProperty(ev, "action", { value: "ute" });
+          return self.__fire(ev);
+        });
+        r.clicked = c === true;
+        r.q = (await step("queue", () => caches.open("olnu-pending").then((cc) => cc.match("./__pnq")).then((x) => x ? x.text() : "[]").then((t) => JSON.parse(t)))) || [];
         ok("F: two friends in one night = ONE notice '2 vänner ute ikväll 🍻'", r.fold && r.fold.length === 1 && r.fold[0].t === "2 vänner ute ikväll 🍻" && r.fold[0].u === "/", r);
         ok("F: Ikväll? shows the buttons 🍺 Jag kommer / 🤔 Kanske", JSON.stringify(r.acts) === '["🍺 Jag kommer","🤔 Kanske"]', r.acts);
         ok("F: SW queued push.shown + push.action", r.q && r.q.some((x) => x.n === "push.shown") && r.q.some((x) => x.n === "push.action" && x.a === "ute"), r.q);
