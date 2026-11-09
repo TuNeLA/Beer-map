@@ -197,7 +197,7 @@ async function routes(page, me) {
       await page.evaluate(() => window.A_closeSheet ? 0 : document.getElementById("btn-groups").click());
       await wait(page, 1200);
       if (await page.$(".glist .gcard")) { await page.click(".glist .gcard >> nth=0"); await wait(page, 1500); }
-      const fc = await page.evaluate(() => [...document.querySelectorAll(".gpg-face")].map((f) => !!f.querySelector("svg")));
+      const fc = await page.evaluate(() => [...document.querySelectorAll(".gpg-now .gpg-face")].map((f) => !!f.querySelector("svg")));
       ok("NU strip faces are avatars", fc.length === 2 && fc.every(Boolean), fc);
       await shot(page, "group-now");
       await page.click(".gpg-dots").catch(() => {}); await wait(page, 500);
