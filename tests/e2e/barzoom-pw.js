@@ -11,11 +11,15 @@ const PORT = process.argv[2], TAG = process.argv[3] || "t";
 let pass = 0, fail = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); c ? pass++ : fail++; };
 const wait = (p, ms) => p.waitForTimeout(ms);
 const PIT = [60.14997, 15.18679];
+const ZC = { v: 1, at: new Date().toISOString(), k: 3, total: 23, some: true,
+  kommun: [{ c: "0180", n: 15 }, { c: "2061" }, { c: "2080" }, { c: "2085", n: 5, bar: "n3472634175" }, { c: "1480", n: 3 }],
+  lan: [{ c: "01", n: 15, top: "0180" }, { c: "14", n: 3, top: "1480" }, { c: "20", n: 8, top: "2085" }] };   // (copied from zones-pw.js)
 (async () => {
   if (!TOKEN) { console.log("SKIP no MAPBOX_TEST_TOKEN"); return; }
   const b = await chromium.launch(launchOpts([]));
   const { ctx, page } = await H.ctxFor(b, { width: 390, height: 844 }, {});
   await page.route(/rest\/v1\/rpc\/public_config/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ v: 1, mapbox_token: TOKEN }) }));
+  await page.route(/rest\/v1\/rpc\/zone_counts/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ZC) }));
   await page.route(/^https:\/\/tunela\.github\.io\/Beer-map\//, async (r) => {
     const u = new URL(r.request().url()); let p = u.pathname.replace(/^\/Beer-map\//, "/"); if (p === "/") p = "/index.html";
     const res = await fetch("http://127.0.0.1:" + PORT + p + u.search);
@@ -58,6 +62,7 @@ const PIT = [60.14997, 15.18679];
   // kommun view over Ludvika / Dalarna (Leaflet z8): clear solid kommun borders, home kommun stronger
   await page.evaluate(() => { const A = PNDS._A(); A.map.setView([60.15, 15.19], 8, { animate: false }); });
   await settle(4000);
+  await page.waitForFunction(() => window.ZONES && ZONES._geo && ZONES._geo().k, null, { timeout: 30000 }).catch(() => console.log("kommun borders late"));
   await page.waitForFunction(() => { const g = BASEMAP.mapbox().getMapboxMap(); return g.getLayer("olnu-zk-line") && g.queryRenderedFeatures({ layers: ["olnu-zk-line"] }).length > 3; }, null, { timeout: 25000 }).catch(() => console.log("no kommun layer yet"));
   await settle(1500);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast, .dl-cap").forEach((t) => t.remove()));
