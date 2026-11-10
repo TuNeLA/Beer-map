@@ -12,7 +12,7 @@
 
 /* HUD chip (max one): 🚑 buddy check / 🌯 kebab */
 .af-chip-med{border-color:var(--red) !important;color:#fff !important;background:rgba(179,18,27,.55) !important}
-@media (prefers-reduced-motion:no-preference){.af-chip-med{animation:af-pulse 1.6s var(--e-std) infinite}}
+@media (prefers-reduced-motion:no-preference){.af-chip-med{animation:af-pulse 1.6s var(--e-std) 3}}   /* lane:after R1-11: 3 pulses, then still (ds10) */
 @keyframes af-pulse{50%{box-shadow:0 0 0 4px rgba(255,59,59,.25)}}
 
 /* 1. Kom hem säkert */

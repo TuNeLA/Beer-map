@@ -294,13 +294,30 @@
         var k = String(b.id);
         if (seen[k] || checkFor(b.id)) return;
         seen[k] = now; dirty = true;
-        A.toast(fill(pick(MED_ASK), { name: b.friend_name }), { cls: "med", ms: 12000,
-          action: { label: L("🚑 Jag kollar", "🚑 I'll check"), fn: function () { claim(b); } } });
-        window.FX && window.FX.vibrate && window.FX.vibrate([40, 60, 40]);
+        medCaption(b);   // lane:after R1-11: no red card (it covered the map and repeated over sheets); chip + one calm caption
       });
       Object.keys(seen).forEach(function (k) { if (now - seen[k] > 2 * 86400000) { delete seen[k]; dirty = true; } });
       if (dirty) U.ls.setJSON(MED_SEEN_KEY, seen);
       A.updateCounts();
+    });
+  }
+  // lane:after R1-11: the HUD chip "Kolla till …" is THE signal. One small caption once per pin (the seen map above), only
+  // when no sheet or overlay is open (ds40); tap = the Kompisvakt sheet. Otherwise nothing: the chip stays.
+  function medCaption(b) {
+    if (!b || A.sheetOpen() || document.documentElement.classList.contains("a2-on")) return;
+    var D = window.DELIGHT, R2 = window.AFTER_R2, txt = R2 ? R2.t("after.med.cap", { name: b.friend_name }) : fill(MED_ASK[1], { name: b.friend_name });
+    if (D && D.caption) D.caption({ text: txt, cls: "af-med-cap", ms: 6000, onTap: function () { openMedSheet(b); } });
+  }
+  function openMedSheet(m) {
+    if (!m) return;
+    A.openSheet(L("🚑 Kompisvakt", "🚑 Buddy check"), function (body) {
+      body.appendChild(A.el("p", { class: "af-lead", text: fill(pick(MED_ASK), { name: m.friend_name }) }));
+      body.appendChild(A.el("p", { class: "muted", text: L("Gå dit, ta ett snack, bjud på vatten. Den som trycker först har koll. Gruppen får veta.", "Go there, talk, bring water. First to tap owns it.") }));
+      body.appendChild(A.el("div", { class: "row", style: "margin-top:10px" }, [
+        A.btn(L("🚑 Jag kollar", "🚑 I'll check"), "btn-green btn-block", function () { A.closeSheet(); claim(m); })]));
+      body.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [
+        A.btn(L("📍 Visa på kartan", "📍 Show on map"), "btn-block", function () { A.closeSheet(); A.flyTo(m.lat, m.lng, 17, m.id); })]));
+      if (window.EXTRAS && window.EXTRAS.taxiHTML) body.appendChild(A.el("div", { html: window.EXTRAS.taxiHTML("btn btn-small taxi-btn") }));
     });
   }
   function openMed() {
@@ -383,6 +400,7 @@
         try { if (window.NIGHTLOG) window.NIGHTLOG.button(row); } catch (e) {}   // evx: 📊 Min kväll
         try { if (window.BOLD_KROG) window.BOLD_KROG.nightLine(row.parentNode); } catch (e) {}   // bold: Kvällens krog
         try { if (window.KODEN) window.KODEN.button(row); } catch (e) {}
+        try { if (window.AFTER2 && !window.AFTER2.off()) row.appendChild(A.btn((window.AFTER_R2 ? window.AFTER_R2.t("after.r2.title") : "Kvällsrapporten"), "btn-small", function () { A.closeSheet(); setTimeout(function () { window.AFTER2.open(null, null); }, 250); })); } catch (e) {}   // lane:after A2
       });
     });
   }
@@ -394,6 +412,24 @@
     ]);
   }
   function morning() {
+    var A2 = window.AFTER2;
+    if (A2 && !A2.off() && A && A.LIVE && A.authed()) {
+      return A2.morning().then(function (ok) { return ok ? morningMissing() : morningBakis(); }, function () { return morningBakis(); });
+    }
+    return morningBakis();
+  }
+  // lane:after A2: the report replaced the Bakis sheet this morning; the safety box "Kom alla hem?" still shows once a day
+  function morningMissing() {
+    var s = sthlm(), key = ymd(s.y, s.m, s.d);
+    if (s.h >= 15 || U.ls.get(BAKIS_KEY, "") === key) return Promise.resolve(true);
+    return missingMates().then(function (miss) {
+      if (!miss || !miss.length || U.ls.get(BAKIS_KEY, "") === key) return true;
+      U.ls.set(BAKIS_KEY, key);
+      whenSheetFree(function () { showMissing(miss); }, 10 * 60000);
+      return true;
+    });
+  }
+  function morningBakis() {
     if (!A || !A.LIVE || !A.authed()) return Promise.resolve(false);
     var s = sthlm();
     if (s.h < 5 || s.h >= 15) return Promise.resolve(false);
@@ -965,8 +1001,11 @@
   window.AFTER = {
     holidayOf: holidayOf, openNow: openNow, openWrapped: openWrapped, showKebab: showKebab, newsTemplates: newsTemplates, newsCands: newsCands,
     chatOpen: chatOpen, statusRow: statusRow,
+    openBakis: function () { openBakis(); },
     init: function (api) {
       A = api;
+      try { if (window.AFTER2) window.AFTER2.init(api); } catch (e) {}   // lane:after A2 (AFTER2 / MOMENTS ride on our app.js hooks)
+      try { if (window.MOMENTS) window.MOMENTS.init(api); } catch (e) {}
       addMedalNames();
       applyHoliday();
       setInterval(applyHoliday, 10 * 60000);
@@ -989,6 +1028,8 @@
       });
     },
     onAuthed: function () {
+      try { if (window.AFTER2) window.AFTER2.onAuthed(); } catch (e) {}
+      try { if (window.MOMENTS) window.MOMENTS.onAuthed(); } catch (e) {}
       loadLeague(false).then(function () { A.renderTicker(); });
       loadChecks(true);
       if (pendingCi) setTimeout(runPendingCheckin, 600);
@@ -996,13 +1037,14 @@
     },
     onReadyShow: function () {
       // Morning card is async; it waits for any other sheet (Din kväll) and never stacks on top of it.
-      var s = sthlm();
-      if (!A.LIVE || s.h < 5 || s.h >= 15 || U.ls.get(BAKIS_KEY, "") === ymd(s.y, s.m, s.d)) return "";
+      var s = sthlm(), a2 = window.AFTER2 && !window.AFTER2.off();
+      if (!A.LIVE || s.h < 5 || s.h >= (a2 ? 18 : 15) || (!a2 && U.ls.get(BAKIS_KEY, "") === ymd(s.y, s.m, s.d))) return "";
       morning();
       return "1";
     },
     onPoll: function (beers) {
       scanMedevac(beers);
+      try { if (window.MOMENTS) window.MOMENTS.onPoll(beers); } catch (e) {}
       if (Date.now() - leagueAt > 30 * 60000) loadLeague(false);
       if (homeCache && Date.now() - homeAt > 60000) homeCache = null;
     },
@@ -1010,24 +1052,18 @@
     hudChipsHTML: function (ctx) {
       if (!A || !A.LIVE) return "";
       var m = openMed();
-      if (m) return '<button type="button" class="hx-chip af-chip-med" data-hx="afmed" aria-label="' + esc(fill(MED_ASK[0], { name: m.friend_name })) + '">🚑 ' + esc(m.friend_name) + "</button>";
+      // lane:after: the Ikväll panel shows every chip; the closed pill picks the urgent one (app.js), so 🚑 stays first
+      var a2 = window.AFTER2 && window.AFTER2.chipHTML ? window.AFTER2.chipHTML() : "";   // A2: Kvällsrapporten ä klar
+      var mo = window.MOMENTS && window.MOMENTS.chipHTML ? window.MOMENTS.chipHTML() : "";   // GM7: a moment card
+      if (m) return '<button type="button" class="hx-chip af-chip-med" data-hx="afmed" aria-label="' + esc(fill(MED_ASK[0], { name: m.friend_name })) + '">🚑 ' + esc(m.friend_name) + "</button>" + a2 + mo;
+      if (a2 || mo) return a2 + mo;
       if (lateNight() && (ctx && ctx.n | 0) >= 1) return '<button type="button" class="hx-chip af-chip-kebab" data-hx="afkebab" aria-label="' + esc(L("Öppet nu: mat nära dig", "Open now: food nearby")) + '">🌯 ' + esc(L("Mat nu", "Food now")) + '</button>';
       return "";
     },
     hudClick: function (action) {
       if (action === "afkebab") showKebab();
-      else if (action === "afmed") {
-        var m = openMed(); if (!m) return;
-        A.openSheet(L("🚑 Kompisvakt", "🚑 Buddy check"), function (body) {
-          body.appendChild(A.el("p", { class: "af-lead", text: fill(pick(MED_ASK), { name: m.friend_name }) }));
-          body.appendChild(A.el("p", { class: "muted", text: L("Gå dit, ta ett snack, bjud på vatten. Den som trycker först har koll. Gruppen får veta.", "Go there, talk, bring water. First to tap owns it.") }));
-          body.appendChild(A.el("div", { class: "row", style: "margin-top:10px" }, [
-            A.btn(L("🚑 Jag kollar", "🚑 I'll check"), "btn-green btn-block", function () { A.closeSheet(); claim(m); })]));
-          body.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [
-            A.btn(L("📍 Visa på kartan", "📍 Show on map"), "btn-block", function () { A.closeSheet(); A.flyTo(m.lat, m.lng, 17, m.id); })]));
-          if (window.EXTRAS && window.EXTRAS.taxiHTML) body.appendChild(A.el("div", { html: window.EXTRAS.taxiHTML("btn btn-small taxi-btn") }));
-        });
-      }
+      else if (action === "a2") { if (window.AFTER2) window.AFTER2.hudClick(); }
+      else if (action === "afmed") openMedSheet(openMed());
     },
     beerPopupHTML: function (b) { return medPopupHTML(b); },
     medevacExtraHTML: function () { return ""; },
@@ -1053,6 +1089,8 @@
       ]));
       if (!off.my_night_report) body.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [
         A.btn(L("🤕 Senaste bakisrapporten", "🤕 Last hangover report"), "btn-small", openBakis)]));
+      if (window.AFTER2 && !window.AFTER2.off()) body.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [   // lane:after A2
+        A.btn(window.AFTER_R2 ? window.AFTER_R2.t("after.r2.title") : "Kvällsrapporten", "btn-small", function () { A.closeSheet(); setTimeout(function () { window.AFTER2.open(null, null); }, 250); })]));
     }
   };
 })();

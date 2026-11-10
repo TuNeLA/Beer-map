@@ -69,6 +69,8 @@ jobs:
             filter: '^(inst)$'
           - name: ui1
             filter: '^(ui1)$'
+          - name: after
+            filter: '^(after2|moments)$'
           - name: misc
             filter: '^(misc)$'
           - name: webkit
