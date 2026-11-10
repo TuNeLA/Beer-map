@@ -133,7 +133,8 @@ const unmocked = (page) => [...(page.__pnUnmocked || [])].sort();
 function seed(o = {}) {
   return ({ o, SESSION }) => {
     if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", "1");
-    if (o.clean) return;
+    // lane main S5: a fresh phone now meets "Installera appen" first; tests of other things start at the intro ({install: true} = keep the guide)
+    if (o.clean) { if (!o.install) localStorage.setItem("olnu.inst1", JSON.stringify({ n: 2, how: "test" })); return; }
     const S = (k, v) => localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
     S("olnu.name", "Anton"); S("olnu.age18", "1"); S("olnu.intro", "1"); S("olnu.newsPn", "1"); S("olnu.locOk", "1"); S("olnu.notifAsked", "1"); S("olnu.notifAskAt", String(Date.now()));
     S("olnu.guideSeen", String(Date.now())); S("olnu.installSeen", "1"); S("olnu.lang", o.lang || "sv");

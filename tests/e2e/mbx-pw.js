@@ -18,7 +18,7 @@ async function view(page, ll, z) { await page.evaluate(([ll, z]) => { __map.clos
   const b = await chromium.launch(launchOpts());
   const { ctx, page, errs } = await ghPage(b, PORT, { style: "mb-dusk" });
   await settle(page, 2500);
-  await page.addStyleTag({ content: "#toasts{display:none !important}" }).catch(() => {});
+  await page.addStyleTag({ content: "#toasts,#pnlog-note{display:none !important}" }).catch(() => {});   // lane main R1-03: the beta note is a caption in the toast column now (it can sit on a tapped badge)
 
   // ---------- 1. engine ----------
   const eng = await page.evaluate(() => ({
