@@ -109,6 +109,8 @@ function build(now) {
     dm_mute: (b) => Object.assign(dmThread(b && b.p_group_id, now), { muted: !!(b && b.p_on) }),   // dm.js toggleMute()
     msg_reacts: () => [],                                                                     // social.js loadLikes() (no reactions)
     my_night_report: () => null,   // after.js boot check (no report yet)
+    my_account_deletion: () => ({ v: 1, pending: false, now: new Date(now).toISOString() }),   // misc-mod.js X4 (0402): no deletion asked
+    my_founder: () => ({ v: 1, founder: true, premium: true, final: false, cutoff: null, since: iso(60 * 24 * 20) }),   // misc-mod.js F4 (0401): before launch
     film_stock: () => ({ film: "kvall", locked: false, set_by: null }),   // film.js / filmfx.js (film for tonight; default Kvällsljus 400)                                   // pnvis.js (Alla · Bara vänner · Spöke)
     // spel-ui.js launchSync(): same dates as its PN_LAUNCH fallback, so "Nytt" does not change with the mock
     game_launch_dates: () => ({ v: 1, games: { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" } }),

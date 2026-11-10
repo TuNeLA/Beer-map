@@ -1,0 +1,49 @@
+/* PintsNow — misc lane (js/misc-mod.js): Radera kontot with 7 days to undo, Grundare badge, block-the-photographer
+   confirm. Tokens only (DESIGN.md). Own overlay z 3210: above the film report sheet (.fc-rules 3000) and safety (3200). */
+
+/* ---------- Radera kontot (sheet body) ---------- */
+.mm-del{display:flex;flex-direction:column;gap:var(--sp-2)}
+.mm-del-lead{margin:0;font-size:var(--fs-16);line-height:22px;color:var(--ds-text)}
+.mm-del-list{margin:0;padding:var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) + var(--sp-4));background:var(--ds-card);
+  border:1px solid var(--ds-border);border-radius:var(--r-lg);color:var(--ds-text-2);font-size:var(--fs-14);line-height:20px}
+.mm-del-list li+li{margin-top:var(--sp-1)}
+.mm-del-step{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)}
+.mm-del-step .btn,.mm-del .mm-del-undo{border-radius:var(--r-md);margin:0}   /* height: the app-wide sheet button rule (pnds.css) */
+.mm-del-q{margin:0;font-size:var(--fs-16);line-height:22px;font-weight:700;color:var(--ds-red-t)}
+.mm-del-two{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.mm-del-two .btn{width:100%;min-width:0}
+.mm-del-now{align-self:center;min-height:44px;margin-top:var(--sp-2);padding:0 var(--sp-4);border:0;background:transparent;
+  color:var(--ds-muted);font:inherit;font-size:var(--fs-14);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.mm-del-now:focus-visible,.mm-del-row:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.mm-del-state{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);background:var(--ds-card);
+  border:1px solid var(--ds-border);border-radius:var(--r-lg);margin-bottom:var(--sp-2)}
+.mm-del-ic{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;border-radius:var(--r-md);background:var(--ds-red-soft);color:var(--ds-red-t)}
+.mm-del-ic .pi{width:var(--pn-ic);height:var(--pn-ic)}
+.mm-del-st{display:flex;flex-direction:column;gap:var(--sp-0);min-width:0}
+.mm-del-st b{font-size:var(--fs-16);line-height:22px;color:var(--ds-text)}
+.mm-del-st small{font-size:var(--fs-14);line-height:20px;color:var(--ds-muted)}
+
+/* ---------- the settings row (MISC.deleteAccountRow) ---------- */
+.mm-del-row .mm-del-i{color:var(--ds-red-t)}
+.mm-del-row .mm-del-rt{font-size:var(--fs-16);font-weight:600;color:var(--ds-red-t)}
+.mm-del-row .mm-del-sub[hidden]{display:none}
+.mm-del-row.mm-pending .mm-del-sub{color:var(--ds-amber-t)}
+
+/* ---------- Grundare badge (MISC.founderBadge) ---------- */
+.mm-founder{display:inline-flex;align-items:center;gap:var(--sp-1);height:24px;padding:0 var(--sp-2);border-radius:var(--r-pill);
+  background:var(--ds-amber-soft);color:var(--ds-amber-t);font-size:var(--fs-12);line-height:16px;font-weight:700;vertical-align:middle;white-space:nowrap}
+.mm-founder[hidden]{display:none}
+.mm-founder .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+
+/* ---------- block the photographer: own confirm overlay ---------- */
+.fm-mini .btn.mm-film-block{color:var(--ds-red-t)}   /* an action, not a report reason */
+.mm-ov{position:fixed;inset:0;z-index:3210;display:flex;align-items:flex-end;justify-content:center;background:rgba(2,4,10,.66);
+  padding:var(--sp-3) var(--sp-3) calc(var(--sp-3) + var(--sab,0px))}
+.mm-card{width:100%;max-width:440px;background:var(--ds-sheet);color:var(--ds-text);border:1px solid var(--ds-border);border-radius:var(--r-xl);
+  padding:var(--sp-5) var(--sp-4) var(--sp-4);box-shadow:var(--ds-sh-2)}
+.mm-card-t{margin:0 0 var(--sp-2);font-size:var(--fs-18);line-height:24px;font-weight:700}
+.mm-card-p{margin:0 0 var(--sp-4);font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2)}
+.mm-card-btns{display:flex;flex-direction:column;gap:var(--sp-2)}
+.mm-card-btns .btn{min-height:48px;margin:0;border-radius:var(--r-md)}
+@media (prefers-reduced-motion:no-preference){.mm-card{animation:mmUp 200ms ease-out}}
+@keyframes mmUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}

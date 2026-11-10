@@ -679,8 +679,10 @@
       { label: L("Naket eller sexuellt", "Nude or sexual"), fn: function () { send("sex"); } },
       { label: L("Hot eller kränkning", "Threat or abuse"), fn: function () { send("hot"); } },
       { label: L("Någon under 18", "Someone under 18"), fn: function () { send("minor"); } },
-      { label: L("Personen vill int' vara med", "The person does not want to be in it"), fn: function () { send("annat"); } },
-      { label: L("Avbryt", "Cancel") }]);
+      { label: L("Personen vill int' vara med", "The person does not want to be in it"), fn: function () { send("annat"); } }]
+      // misc X5: block the person who took it (js/misc-mod.js, film_block 0400); old build = no row
+      .concat(window.MISC && window.MISC.filmReportRow ? [window.MISC.filmReportRow(id, function () { gone(id, closeV); })] : [])
+      .concat([{ label: L("Avbryt", "Cancel") }]));
   }
   function photoBlob(id) { id = String(id); return blobs[id] ? Promise.resolve(blobs[id]) : photoUrl(id).then(function () { return blobs[id]; }); }
   // Viewer: one photo. iPhone: the share sheet ("Spara bild" → Bilder). Else a download with the PintsNow name.
