@@ -113,3 +113,6 @@
 .rd-pin-pk .pi{background:var(--ds-green)}
 .rd-chip .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
 .toast.rd-toast{border-left:4px solid var(--ds-amber)}
+/* inside the sheet: the sheet's own p / button rules are more specific; keep the ride rhythm (8 px) and 48 px buttons */
+#sheet-body .rd p{margin:0}
+#sheet-body .rd .btn:not(.btn-small){min-height:48px;height:auto;box-sizing:border-box}

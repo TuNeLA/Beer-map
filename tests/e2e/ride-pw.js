@@ -87,6 +87,10 @@ async function page(browser, srv, who, w, o) {
     const a = srv.rpc(fn, b, who); return a === undefined ? r.fallback() : J(r, a);
   });
   await page.route(/functions\/v1\/notify-group/, (r) => { let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {} srv.push.push([who, b]); return J(r, { sent: 1 }); });
+  await page.addInitScript(() => {   // every toast text, also the ones shown while the app boots
+    window.__toasts = []; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.classList && n.classList.contains("toast")) window.__toasts.push(n.textContent); })))
+      .observe(document, { childList: true, subtree: true });
+  });
   await boot(page);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
   return { ctx, page };
@@ -142,13 +146,14 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     /* ---------- 2 + 3 offer card and the RACE (drivers Oskar + Nisse) ---------- */
     const D1 = await page(browser, srv, "D1", 390, { delay: 300 }), D2 = await page(browser, srv, "D2", 390, { delay: 300 });
     await force(D1.page); await force(D2.page); await wait(D1.page, 600);
-    const toast = await D1.page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent).join(" | "));
-    ok("F1-2 driver gets an in-app alert 'Lisa behöver skjuts · Pitchers'", /Lisa behöver skjuts · Pitchers/.test(toast), toast);
+    const toast = await D1.page.evaluate(() => (window.__toasts || []).join(" | "));
+    const PL = req[2].p_place || "?";
+    ok("F1-2 driver gets an in-app alert 'Lisa behöver skjuts · <place>'", toast.indexOf("Lisa behöver skjuts · " + PL) >= 0, { toast, PL });
     ok("F1-2 driver HUD chip 'Lisa behöver skjuts'", await D1.page.evaluate(() => /Lisa behöver skjuts/.test(window.SKJUTS.hudChipsHTML())));
     await openId(D1.page, ride1.id); await openId(D2.page, ride1.id); await wait(D1.page, 800);
     s = await S(D1.page);
     ok("F1-2 push tap (?pickup=id → hudClick pk-in) opens the offer: name, place, pax, km, note, [Kan int'] [Jag tar den]",
-      s.title === "Skjuts?" && /Lisa behöver skjuts/.test(s.text) && /Från Pitchers · 2 pers · 1,2 km/.test(s.text) && /vid kebaben/.test(s.text)
+      s.title === "Skjuts?" && /Lisa behöver skjuts/.test(s.text) && s.text.indexOf("Från " + PL + " · 2 pers · 1,2 km") >= 0 && /vid kebaben/.test(s.text)
       && s.btns.some((b) => b.t === "Jag tar den" && /btn-amber/.test(b.c)) && s.btns.some((b) => b.t === "Kan int'"), s);
     const two = s.btns.filter((b) => /rd-take|rd-decline/.test(b.c));
     ok("F1-2 the two answers side by side, same width, ≥ 48 px", two.length === 2 && Math.abs(two[0].w - two[1].w) <= 1 && two.every((b) => b.h >= 48), two);
@@ -188,7 +193,7 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     ok("F1-4 rider card: 'Oskar ä på väg', car + 'Kolla att det ä rätt bil', ETA 'ca 3 min · 1,2 km', 4 steps", /Oskar ä på väg/.test(s.text) && /Röd Volvo V70 · ABC 123/.test(s.text)
       && /Kolla att det ä rätt bil/.test(s.text) && /ca 3 min · 1,2 km/.test(s.text) && /Tagen/.test(s.text) && /På väg/.test(s.text) && /Framme/.test(s.text) && /Klar/.test(s.text), s.text.slice(0, 300));
     ok("F1-4 rider sees the driver's live pin on the map (only while live)", await R.page.evaluate(() => !!document.querySelector(".rd-pin-car")));
-    ok("F1-4 rider toast 'Oskar tar dig!'", srv.calls.length > 0 && await R.page.evaluate(() => /Oskar tar dig/.test([...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent).join(" ")) || !!localStorage.getItem("olnu.rdSeen")));
+    ok("F1-4 rider toast 'Oskar tar dig!'", await R.page.evaluate(() => /Oskar tar dig! Spänn fast dig\./.test((window.__toasts || []).join(" | "))));
     await tap(R.page, "^Kommer ut nu$"); await wait(R.page, 600);
     ok("F1-4 1-tap chat: 'Kommer ut nu' → ride_msg and shows in the thread", srv.calls.some((c) => c[0] === "ride_msg" && c[2].p_text === "Kommer ut nu") && /Kommer ut nu/.test((await R.page.evaluate(() => (document.querySelector("#sheet-body .rd-msgs") || {}).textContent || ""))));
     await shots(R.page, "4-rider-live", async () => { await R.page.evaluate((i) => window.RIDE.openId(i), ride1.id); });
@@ -240,9 +245,9 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
 
     /* ---------- drink rule + Android button url ---------- */
     const r4 = srv.mk({ rider: "R", to: ["D1", "D2"] }); srv.drinking.D2 = true;
-    await D2.page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
+    await D2.page.evaluate(() => { window.__toasts = []; });
     await force(D2.page); await wait(D2.page, 400);
-    const t2 = await D2.page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent).join(" | "));
+    const t2 = await D2.page.evaluate(() => (window.__toasts || []).join(" | "));
     await openId(D2.page, r4.id); await wait(D2.page, 600);
     s = await S(D2.page);
     ok("F1 drink rule: a driver who pressed ÖL! tonight gets no alert, the card says 'Kör int' bil' and has NO take button", !/behöver skjuts/.test(t2) && /Du har tryckt ÖL! ikväll\. Kör int' bil\./.test(s.text)

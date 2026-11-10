@@ -338,6 +338,7 @@
     return c.p;
   }
   function rideAsk(g, d, btn) {
+    if (RD()) { openPickup({ group: g }); return; }   // lane ride: with ride v2 every ask goes to all drivers (Hem-läge row too)
     if (btn) btn.disabled = true;
     fix(5000).then(function (p) {
       return call("ride_ask", { p_group_id: g.id, p_k: d.k, p_lat: p ? p.lat : null, p_lng: p ? p.lng : null, p_name: myName() });
