@@ -43,6 +43,10 @@
     } catch (e) { return ""; }
   }
   var KEMO = { quiz: "🧠", live: "🎸", dj: "🎧", karaoke: "🎤", sport: "⚽", standup: "🎭", party: "🎉" };
+  // social-a G3: list + head icons are PNI (no emoji in chrome); titles never say the place twice
+  var KICO = { quiz: "bulb", live: "mic", dj: "speaker", karaoke: "mic", sport: "tv", standup: "mic", party: "sparkle" };
+  function kic(kind, def) { var n = KICO[kind] || def || "calendar"; try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  function ctitle(t, place) { try { if (window.INVITE && window.INVITE.cleanTitle) return window.INVITE.cleanTitle(t, place); } catch (e) {} return String(t || ""); }
 
   var TX = {
     note: [["Eventgruppen ä tillfällig: den syns int' i vänlistor, dueller eller ligor. Efteråt sparas kvällen under 🗂️ Tidigare event.",
@@ -95,9 +99,9 @@
     var st = d.state === "cancelled" ? L("🚫 Inställt", "🚫 Cancelled") : d.past ? L("🗄️ Över", "🗄️ Over") : d.state === "archived" ? L("🗄️ Arkiverad", "🗄️ Archived") : "";
     // head card
     root.appendChild(el("div", { class: "ds-card evg-head" }, [
-      el("span", { class: "evg-ico", "aria-hidden": "true", text: KEMO[d.kind] || "📨" }),
+      el("span", { class: "evg-ico sa-evg-ico", "aria-hidden": "true", html: kic(d.kind, "mail") }),
       el("div", { class: "evg-ht" }, [
-        el("b", { text: d.title }),
+        el("b", { text: ctitle(d.title, d.place) }),
         el("small", { text: dayOf(d.starts_at) + " " + hm(d.starts_at) + (d.place ? " · " + d.place : "") + (st ? " · " + st : "") }),
         el("small", { class: "evg-cnt", text: "✅ " + yes + (maybe ? " · 🤔 " + maybe : "") + " · 📨 " + (d.invited | 0) })
       ])
@@ -162,11 +166,18 @@
       past = (A.parseData(r.data) || {}).events || []; pastAt = Date.now(); return past;
     });
   }
+  // social-a G2/G3: one row in ONE list (no card in a card): PNI kind tile · title (place once) · "fre 6/11 · 3 pers · 12 drycker" · chevron
+  function pastSub(e) {
+    var a = [dayOf(e.starts_at), (e.people | 0) + L(" pers", " ppl")];
+    if (e.drinks | 0) a.push((e.drinks | 0) + L(" drycker", " drinks"));
+    if (e.photos | 0) a.push((e.photos | 0) + L(" bilder", " photos"));
+    return a.join(" · ");
+  }
   function pastRow(e, back) {
-    var li = el("li", { class: "evg-prow", role: "button", tabindex: "0", "aria-label": e.title }, [
-      el("span", { class: "evg-pi", "aria-hidden": "true", text: KEMO[e.kind] || "🗂️" }),
-      el("span", { class: "evg-pt" }, [el("b", { text: e.title }),
-        el("small", { text: dayOf(e.starts_at) + " · 👥 " + (e.people | 0) + ((e.drinks | 0) ? " · 🍺 " + e.drinks : "") + ((e.photos | 0) ? " · 📷 " + e.photos : "") })]),
+    var t = ctitle(e.title, e.place);
+    var li = el("li", { class: "evg-prow sa-prow", role: "button", tabindex: "0", "aria-label": t }, [
+      el("span", { class: "evg-pi sa-prow-i", "aria-hidden": "true", html: kic(e.kind, "history") }),
+      el("span", { class: "evg-pt" }, [el("b", { text: t }), el("small", { text: pastSub(e) })]),
       el("span", { class: "ds-chev", "aria-hidden": "true" })
     ]);
     var go = function () { recap(e.group_id, back); };
@@ -180,13 +191,14 @@
     loadPast(false).then(function (list) {
       if (!document.body.contains(sec) || !list || !list.length) return;
       sec.hidden = false;
-      var ul = el("ul", { class: "evg-plist" });
+      var ul = el("ul", { class: "evg-plist sa-plist" });
       list.slice(0, max || 20).forEach(function (e) { ul.appendChild(pastRow(e, back)); });
       if (folded) {
-        var det = el("details", { class: "evg-fold" }, [el("summary", { text: L("🗂️ Tidigare event", "🗂️ Past events") + " (" + list.length + ")" }), ul]);
+        var sum = el("summary", { class: "sa-pfold-s" }, [el("span", { class: "sa-pfold-i", "aria-hidden": "true", html: kic(null, "history") }), el("span", { text: L("Tidigare event", "Past events") + " (" + list.length + ")" })]);
+        var det = el("details", { class: "evg-fold sa-pfold" }, [sum, ul]);
         sec.appendChild(det);
       } else {
-        sec.appendChild(el("h3", { text: L("🗂️ Tidigare event", "🗂️ Past events") }));
+        sec.appendChild(el("h3", { class: "ds-section-h sa-past-h", text: L("Tidigare event", "Past events") }));
         sec.appendChild(ul);
         if (list.length > (max || 20)) sec.appendChild(el("div", { class: "row" }, [A.btn(L("Visa alla", "Show all"), "btn-small", function () { allPast(); })]));
       }
@@ -194,7 +206,7 @@
     return sec;
   }
   function allPast() {
-    A.openSheet(L("🗂️ Tidigare event", "🗂️ Past events"), function (body) {
+    A.openSheet(L("Tidigare event", "Past events"), function (body) {
       var sec = pastBox(body, 50, allPast, false);
       loadPast(false).then(function (l) { if (!l || !l.length) { sec.hidden = false; sec.appendChild(el("p", { class: "muted", text: tx("pastEmpty") })); } });
     }, { now: true });
@@ -231,8 +243,8 @@
   function drawRecap(root, gid, s) {
     var ev = s.event || {}, mem = s.members || [], dr = s.drinks || {}, chat = s.chat || {};
     root.appendChild(el("div", { class: "ds-card evg-head" }, [
-      el("span", { class: "evg-ico", "aria-hidden": "true", text: KEMO[ev.kind] || "📰" }),
-      el("div", { class: "evg-ht" }, [el("b", { text: ev.title || s.group_name }),
+      el("span", { class: "evg-ico sa-evg-ico", "aria-hidden": "true", html: kic(ev.kind, "history") }),
+      el("div", { class: "evg-ht" }, [el("b", { text: ctitle(ev.title || s.group_name, ev.place) }),
         el("small", { text: dayOf(ev.starts_at) + " " + hm(ev.starts_at) + (ev.place ? " · " + ev.place : "") })])
     ]));
     var bars = {}; (s.arrivals || []).forEach(function (a) { bars[a.bar_id || a.bar] = 1; });
@@ -323,11 +335,31 @@
     onAuthed: function () { loadPast(true); },
     groupsSheet: function (body) {
       if (!A || !A.LIVE || off.my_past_events) return;
-      pastBox(body, 20, function () { A.showGroups(); }, true);
+      // social-a: only under the Grupper tab (INVITE wrapped the sheet into panes before this hook ran)
+      pastBox(body.querySelector("#inv-pane-g") || body, 20, function () { A.showGroups(); }, true);
     },
+    // social-a G2: Profil gets ONE row "Tidigare event" in the "Mitt" list (pnui.js builds it at +0 ms), not a loose
+    // section that ds.js would wrap as a card inside "Kompisar". The row opens the list sheet.
     profileSheet: function (body) {
       if (!A || !A.LIVE || off.my_past_events) return;
-      pastBox(body, 5, null, false);
+      loadPast(false).then(function (list) {
+        if (!list || !list.length) return;
+        var tries = 0;
+        (function put() {
+          if (!document.body.contains(body)) return;
+          var mitt = body.querySelector(":scope > .pn-pf .ds-list");
+          if (!mitt) { if (++tries < 40) setTimeout(put, 50); return; }
+          if (mitt.querySelector(".sa-pastrow")) return;
+          var r = el("button", { type: "button", class: "ds-row pn-row sa-pastrow" }, [
+            el("span", { class: "ds-row-i", "aria-hidden": "true", html: kic(null, "history") }),
+            el("span", { class: "ds-row-t" }, [el("span", { text: L("Tidigare event", "Past events") }),
+              el("small", { text: list.length + L(list.length === 1 ? " event" : " event", list.length === 1 ? " event" : " events") + " · " + L("senast ", "last ") + dayOf(list[0].starts_at) })]),
+            el("span", { class: "ds-chev", "aria-hidden": "true" })]);
+          r.addEventListener("click", function () { allPast(); });
+          var fr = [].filter.call(mitt.children, function (c) { return /Vänner|Friends/.test(c.textContent || ""); })[0];
+          mitt.insertBefore(r, fr || null);
+        })();
+      });
     }
   };
 })();

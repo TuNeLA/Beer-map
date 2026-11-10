@@ -72,7 +72,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     // .cer-hot, e.g. 🚗 "Kör ikväll" when a member drives tonight: skjuts.js). Everything else lives behind + / ⋯.
     const homeTiles = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => { const r = e.getBoundingClientRect(); return r.height > 0 && getComputedStyle(e).display !== "none"; })
       .map((e) => e.className.split(" ")[0] + (e.querySelector(".live, .new, .cer-hot") || e.classList.contains("rl-group-item") ? ":live" : "")));
-    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi|pn-gp-inv|pn-gp-code|pn-gp-mem)$|:live$/.test(c)), homeTiles);
+    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi|pn-gp-inv|pn-gp-code|pn-gp-mem|sa-gk)$|:live$/.test(c)), homeTiles);
     ok("home: old 💬 Chatt button gone", !(await page.evaluate(() => [...document.querySelectorAll(".gpg > .row")].some((r) => /💬/.test(r.textContent) && r.getBoundingClientRect().height > 0))));
     await shot(page, "group-home");
     // quick reply

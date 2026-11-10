@@ -187,7 +187,7 @@ async function routes(page, calls, o) {
       const { ctx, page } = await ctxFor(browser, VP); const calls = [];
       await routes(page, calls); await boot(page);
       await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 1500);
-      const pr = await page.evaluate(() => ({ nl: [...document.querySelectorAll("#sheet-body h3")].some((h) => /Min kväll/.test(h.textContent)), past: document.querySelectorAll(".evg-past:not([hidden]) .evg-prow").length }));
+      const pr = await page.evaluate(() => ({ nl: [...document.querySelectorAll("#sheet-body h3")].some((h) => /Min kväll/.test(h.textContent)), past: (() => { const r = [...document.querySelectorAll("#sheet-body .pn-pf .ds-row")].find((x) => /Tidigare event/.test(x.textContent)); const m = r && /(\d+) event/.exec(r.textContent); return m ? +m[1] : document.querySelectorAll(".evg-past:not([hidden]) .evg-prow").length; })() }));   // social-a G2: one row in Profil → Mitt
       ok("👤 Profil: 📊 Min kväll row + 🗂️ Tidigare event (2)", pr.nl && pr.past === 2, pr);
       await page.evaluate(() => { const h = [...document.querySelectorAll("#sheet-body h3")].find((x) => /Min kväll/.test(x.textContent)); if (h) { const b = document.querySelector("#sheet-body"); b.scrollTop += h.getBoundingClientRect().top - b.getBoundingClientRect().top - 20; } }); await wait(page, 300);
       await shot(page, "13-profil");
