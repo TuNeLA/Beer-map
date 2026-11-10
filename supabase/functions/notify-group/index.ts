@@ -3495,6 +3495,26 @@ async function afterQueueSend(admin: Admin, by: string | null): Promise<number> 
     return jobs.length ? (await sendAll(admin, jobs, 3 * 3600)).sent || 0 : 0;
   } catch (e) { console.error("after queue", e); return 0; }
 }
+// ---- sec X7 crash alert (0435) ----
+// Owner-only: crash_alert_claim (service role) decides (flag, > N users in 1 h, 3 h cooldown) and returns ONE uid.
+async function crashAlertCron(admin: Admin, key: string): Promise<number> {
+  try {
+    const c = await keyRpc(key, "crash_alert_claim", {});
+    const r = (c.ok && c.data && typeof c.data === "object" && !Array.isArray(c.data) ? c.data : null) as
+      { send?: boolean; owner?: string; users?: number; top?: string | null } | null;
+    if (!r || r.send !== true || !isUuid(r.owner)) return 0;
+    const n = Math.max(0, Number(r.users) || 0);
+    const top = typeof r.top === "string" && r.top ? " Vanligast: " + cutCp(r.top, 60) : "";
+    const payload = JSON.stringify({
+      title: "⚠️ PintsNow: " + n + " kraschar senaste timmen",
+      body: cutCp(n + " olika användare fick fel." + top, 160),
+      url: "/stats.html", tag: "olnu-crash-alert",
+    });
+    const jobs = (await subsOf(admin, [r.owner])).map((s) => ({ sub: s, payload }));
+    return jobs.length ? (await sendAll(admin, jobs, 3600, true)).sent || 0 : 0;   // raw: owner-only, not paced
+  } catch (e) { console.error("crash alert", e); return 0; }
+}
+
 async function cronDue(key: string): Promise<Response> {
   if (key.length < 20 || key.length > 4096) return json({ error: "forbidden" }, 403);
   const claim = await keyRpc(key, "invite_due_claim", {});
@@ -3524,6 +3544,7 @@ async function cronDue(key: string): Promise<Response> {
   const v2 = await v2Cron(admin, key);   // ntf v2 (0390): each kind behind its own flag
   const afterQ = await afterQueueSend(admin, null);   // lane-after-0450
   lastFlush28 = 0;
+  const crash = await crashAlertCron(admin, key);   // sec X7 (0435)
   const digests = await paceFlush(admin);   // v28 (deploy)
   // feat 0250 ⏰ Baren stänger (a missing RPC on an old database = skipped)
   let closeSent = 0;
@@ -3531,7 +3552,7 @@ async function cronDue(key: string): Promise<Response> {
     const cr = await keyRpc(key, "close_remind_claim", {});
     if (cr.ok && Array.isArray(cr.data) && cr.data.length) closeSent = (await closeSend(admin, cr.data as CloseRow[])).sent || 0;
   } catch (e) { console.error("close_remind failed", e); }
-  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk, v2, after_q: afterQ });
+  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk, v2, after_q: afterQ, crash_alert: crash });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {

@@ -54,6 +54,8 @@
   function setMode(m) {
     var A = api(), prev = mode(); if (m === prev) return;
     if (m === "spoke") ls("olnu.ghostMode", "1"); else ls("olnu.ghostMode", "0");
+    // sec X3 H-2: Spöke also takes the pin (stop_beer) and the check-in (check_out) off the server, else friends still see them.
+    if (m === "spoke" && A && A.rpc && A.LIVE) { try { A.rpc("stop_beer").then(function () { try { if (A.refresh) A.refresh(); } catch (e) {} }); A.rpc("check_out"); } catch (e) {} }
     if (m !== "spoke") ls(KEY, m);
     if (srv && A && A.rpc) A.rpc("set_visibility", { p_friends_only: m === "vanner" }).then(function (r) {
       if (r && r.error) { ls(KEY, prev === "vanner" ? "vanner" : "alla"); paint(); try { A.toast("Det gick int' att ändra. Försök igen.", { err: true }); } catch (e) {} }

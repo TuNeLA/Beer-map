@@ -520,6 +520,7 @@
       sw.addEventListener("click", function () {
         var on = sw.getAttribute("aria-checked") !== "true";
         U.ls.set(GHOST_KEY, on ? "1" : "0"); sw.setAttribute("aria-checked", String(on)); A.updateCounts();
+        if (on && A.rpc && A.LIVE) { try { A.rpc("stop_beer").then(function () { A.refresh(); }); A.rpc("check_out"); } catch (e) {} }   // sec X3 H-2
       });
       body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("ghostMode") }), sw]));
       body.appendChild(el("p", { class: "muted", style: "margin-top:0", text: t("ghostModeInfo") }));
