@@ -75,6 +75,8 @@ jobs:
             filter: '^(after2|moments)$'
           - name: misc
             filter: '^(misc)$'
+          - name: main
+            filter: '^(main)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
