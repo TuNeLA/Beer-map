@@ -346,7 +346,7 @@
         window.mapboxgl.accessToken = token;
         var c = map.getCenter(), opts = { container: map.getContainer(), style: st.mb, center: [c.lng, c.lat], zoom: Math.max(0, map.getZoom() - 1),
           minZoom: Math.max(0, map.getMinZoom() - 1), maxZoom: map.getMaxZoom() - 1, attributionControl: false, renderWorldCopies: false,
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 0, antialias: false, projection: "mercator",
+          pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 180, antialias: false,   /* map M2: symbols fade (clusters split / merge, pills), no pop */ projection: "mercator",
           crossSourceCollisions: true, performanceMetricsCollection: false, dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0,
           bearingSnap: 180, clickTolerance: 4, refreshExpiredTiles: false };
         if (st.cfg) opts.config = { basemap: st.cfg };
@@ -419,11 +419,17 @@
         ".sheet .seg.bm-seg.bm-grid>button[aria-checked=true]::after{right:8px;font-size:14px}" +
         ".bm-chip{flex:0 0 22px;width:22px;height:22px;border-radius:6px;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset}" +
         ".bm-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:14px}" +
-        ".bm-seg .bm-b{position:absolute;top:-7px;right:6px;font:700 10px/14px var(--ds-sans,sans-serif);padding:0 5px;border-radius:7px;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);white-space:nowrap}";
+        ".bm-seg .bm-b{position:absolute;top:-7px;right:6px;font:700 10px/14px var(--ds-sans,sans-serif);padding:0 5px;border-radius:7px;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);white-space:nowrap}" +
+        // map R1-16: 2–4 styles = the ONE segmented control (ds-seg); the tip badge is a 12 px token pill inside the item
+        ".ds-seg.bm-seg2>button{gap:var(--sp-2)}" +
+        ".bm-seg2 .bm-chip{flex:0 0 18px;width:18px;height:18px;border-radius:var(--r-xs)}" +
+        ".bm-seg2 .bm-n{flex:0 1 auto;padding:0}" +
+        ".bm-seg2 .bm-b{flex:0 0 auto;font:600 var(--fs-12)/16px var(--ds-sans,sans-serif);padding:0 var(--sp-1);border-radius:var(--r-xs);background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);white-space:nowrap}";
       document.head.appendChild(st);
     }
     body.appendChild(el("h3", { text: T("title") }));
-    var seg = sheetSeg = el("div", { class: "seg bm-seg bm-grid", role: "radiogroup", "aria-label": T("title") });
+    var few = variants().length <= 4;   // map R1-16: the segmented control for 2–4 styles (today: Skymning · Natt)
+    var seg = sheetSeg = el("div", { class: few ? "ds-seg bm-seg2" : "seg bm-seg bm-grid", role: "radiogroup", "aria-label": T("title") });
     fillSeg(seg);
     body.appendChild(seg);
     body.appendChild(el("p", { class: "muted", style: "margin-top:6px", text: T("info") }));

@@ -21,9 +21,12 @@
     ".mp-pin{position:absolute;left:0;bottom:0;transform:translate(-50%,0);display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 5px;" +
       "border-radius:12px;background:rgba(16,22,36,.95);border:1.5px solid var(--amber,#f5a623);color:#fff6e0;white-space:nowrap;" +
       "font:700 11px/1.25 var(--body,system-ui,sans-serif);box-shadow:0 2px 6px rgba(0,0,0,.55);cursor:pointer;max-width:150px}" +
-    ".mp-pin::after{content:\"\";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--amber,#f5a623);border-bottom:0}" +
+    // map 25: the tail is ::before (pnds.css uses ::after as the invisible 44 px hit box: a tail there became a chip-wide band)
+    ".mp-pin::before{content:\"\";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--amber,#f5a623);border-bottom:0;pointer-events:none}" +
+    ".mp-pin::after{border:0}" +
     ".mp-pin b{overflow:hidden;text-overflow:ellipsis;font-weight:700}" +
-    ".mp-pin.mp-friends{border-color:var(--green,#3ddc84)}.mp-pin.mp-friends::after{border-top-color:var(--green,#3ddc84)}" +
+    ".mp-pin.mp-friends{border-color:var(--green,#3ddc84)}.mp-pin.mp-friends::before{border-top-color:var(--green,#3ddc84)}" +
+    ".leaflet-marker-icon.mp-under{visibility:hidden !important;pointer-events:none !important}" +   /* map 25: people under a my-pin chip */
     ".mp-more{font-style:normal;font-weight:700;color:var(--amber-2,#ffd27a);margin-left:2px}" +
     ".mp-dot{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--amber,#f5a623);border:1.5px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.6)}";
   function sv() { return !window.I18N || window.I18N.lang !== "en"; }
@@ -101,9 +104,25 @@
       mk.on("click", function () { go(x); });
       mk.addTo(layer); drawn[k] = { m: mk, key: x.why + "|" + x.name + "|" + x.more + "|" + x.whys };
     });
+    later(60);   // map 25 (after the people markers of this move)
     // map M3: the zone labels step aside from these chips: tell zones.js when the chips changed
     var sig = Object.keys(drawn).map(function (k) { var d = drawn[k], ll = d.m.getLatLng(); return k + d.key + ll.lat.toFixed(5) + ll.lng.toFixed(5); }).join("|");
     if (sig !== lastSig) { lastSig = sig; try { if (window.ZONES && ZONES.relabel) ZONES.relabel(); } catch (e) {} }
+  }
+  // map 25: a people pin / cluster under a my-pin chip shows the same people: it hides behind the chip (one pill per bar)
+  var unT = 0, unT2 = 0, unT3 = 0;
+  // new / re-used people markers get their place one GL frame later: check again a bit after
+  function later(ms) { clearTimeout(unT); clearTimeout(unT2); clearTimeout(unT3); unT = setTimeout(unstack, ms); unT2 = setTimeout(unstack, 450); unT3 = setTimeout(unstack, 1200); }
+  function unstack() {
+    try {
+      var chips = [].map.call(document.querySelectorAll(".leaflet-mypins-pane .mp-pin"), function (e) { return e.getBoundingClientRect(); }).filter(function (r) { return r.width > 0; });
+      [].forEach.call(document.querySelectorAll(".leaflet-marker-icon.mp-under"), function (e) { e.classList.remove("mp-under"); });
+      if (!chips.length) return;
+      [].forEach.call(document.querySelectorAll(".leaflet-marker-icon > .pn-cl, .leaflet-marker-icon > .pn-p"), function (e) {
+        var r = e.getBoundingClientRect(); if (!r.width) return;
+        if (chips.some(function (c) { return r.left < c.right + 4 && r.right > c.left - 4 && r.top < c.bottom + 10 && r.bottom > c.top - 10; })) e.parentNode.classList.add("mp-under");
+      });
+    } catch (e) {}
   }
   function icon(x) { return window.L.divIcon({ html: label(x), className: "mp-w", iconSize: [0, 0], iconAnchor: [0, 10] }); }
   function go(x) {
@@ -123,6 +142,8 @@
       var st = document.createElement("style"); st.id = "mypins-css"; st.textContent = CSS; document.head.appendChild(st);
       layer = window.L.layerGroup().addTo(map);
       map.on("moveend zoomend popupopen popupclose", soon);
+      setInterval(function () { if (!document.hidden && Object.keys(drawn).length) unstack(); }, 1500);   // map 25: slow safety pass (not per frame)
+      if (window.MutationObserver) new MutationObserver(function () { later(80); }).observe(map.getContainer(), { childList: true, subtree: true });   // map 25
       soon();
     },
     onPoll: function () { soon(); },
