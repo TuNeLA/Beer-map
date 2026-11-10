@@ -232,7 +232,16 @@
     var args = {}; if (gid) args.p_group_id = gid; if (night) args.p_night = night;
     return A.rpc("after_report2", args).then(function (r) {
       if (r.error) { if (missing(r.error)) off = true; return null; }
-      var d = A.parseData(r.data); cache[key] = { at: Date.now(), d: d }; return d;
+      var d = A.parseData(r.data);
+      // GM7: the night's moments (bets → Oraklet + a card, missions, the agent) from moments_report (0451)
+      var M = window.MOMENTS;
+      if (d && !d.empty && d.group && d.group.id && M && M.reportData) {
+        return M.reportData(d.group.id, d.night).then(function (rs) {
+          if (rs && rs.length) { d.moments = rs; d.bets = rs.filter(function (x) { return (x.kind === "vad" || x.kind === "halvtid") && x.answer; }); }
+          cache[key] = { at: Date.now(), d: d }; return d;
+        }, function () { cache[key] = { at: Date.now(), d: d }; return d; });
+      }
+      cache[key] = { at: Date.now(), d: d }; return d;
     }, function () { return null; });
   }
   // the gang's report: 2+ people, and I was in it (a ghost night: I see the gang, never myself, with a note)

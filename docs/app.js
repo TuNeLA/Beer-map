@@ -1662,7 +1662,7 @@
     if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
     hx.hidden = !html;
     // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
-    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || hx.querySelector(".inv-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".fm-chip") || hx.querySelector(".dl-cap-chip");   // 0195 📸 Gänget fotar ikväll
+    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || hx.querySelector(".inv-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".fm-chip") || hx.querySelector(".mo-chip") || hx.querySelector(".dl-cap-chip") || hx.querySelector(".a2-chip");   // lane:after: GM7 moment chip, A2 report chip   // 0195 📸 Gänget fotar ikväll
     hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
     if (urgent) urgent.classList.add("hx-urgent");
     if (st.hidden) hudPanel(false);

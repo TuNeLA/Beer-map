@@ -106,6 +106,7 @@
     ["fredag13", "🐈‍⬛", "Svarta katten", "Fredag den 13:e och du gick ändå ut. Modigt.", "Var ute en fredag den 13:e.", 1],
     ["halloween", "🎃", "Pumpapatrullen", "Ute på halloween. Det mest skrämmande var kön.", "Var ute på halloween (31 okt).", 1],
     ["kraftskiva", "🦞", "Kräftkaptenen", "Kräftskiva i augusti. Hatten satt, visan satt.", "Var ute en fredag i augusti.", 1],
+    ["oraklet", "🔮", "Oraklet", "Såg framtiden i Kvällens vad. Fråga hen om allt nu.", "Tippa rätt i Kvällens vad eller Halvtid.", 1],   // lane:after GM7 (0452)
     ["kompisvakt", "💚", "Kompisvakten", "Du kollade läget med en kompis som behövde det. Finaste sortens soldat.", "Tryck ”🚑 Jag kollar” när en kompis behöver det.", 1]
   ];
   function addMedalNames() {
@@ -1060,9 +1061,10 @@
       if (lateNight() && (ctx && ctx.n | 0) >= 1) return '<button type="button" class="hx-chip af-chip-kebab" data-hx="afkebab" aria-label="' + esc(L("Öppet nu: mat nära dig", "Open now: food nearby")) + '">🌯 ' + esc(L("Mat nu", "Food now")) + '</button>';
       return "";
     },
-    hudClick: function (action) {
+    hudClick: function (action, el) {
       if (action === "afkebab") showKebab();
       else if (action === "a2") { if (window.AFTER2) window.AFTER2.hudClick(); }
+      else if (action === "mom") { if (window.MOMENTS) window.MOMENTS.hudClick(el); }   // lane:after GM7
       else if (action === "afmed") openMedSheet(openMed());
     },
     beerPopupHTML: function (b) { return medPopupHTML(b); },
