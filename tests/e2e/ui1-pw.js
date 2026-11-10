@@ -282,12 +282,20 @@ function noJump(fr, w0, h0, moveMax) {
       await wait(page, 450);
       const r0 = await page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; }, sel);
       if (!r0) { ok(false, "B6 " + name + " opens", null); continue; }
-      await shot(page, "B6-" + name.replace(/\W+/g, "") + "-0-open");
       const p = boxFrames(page, sel, 400);
-      await page.mouse.click(200, Math.round(HT[390] * 0.55));
-      await wait(page, 40); await shot(page, "B6-" + name.replace(/\W+/g, "") + "-1-mid");
+      await page.keyboard.press("Escape");   // the same close() as a tap outside, without tapping something on the map
       const fr = await p;
-      await shot(page, "B6-" + name.replace(/\W+/g, "") + "-2-end");
+      // 3 frames of the close animation for the report: open again, keep the element, pause its animation at 0 / 50 / 100 %
+      await wait(page, 300);
+      if (btn === "PNVIS") await page.evaluate(() => window.PNVIS.open()); else await page.click(btn).catch(() => {});
+      await wait(page, 450);
+      await page.evaluate((sel) => { const e = document.querySelector(sel); if (e) e.remove = function () { window.__ui1Kept = this; }; }, sel);
+      await page.keyboard.press("Escape"); await wait(page, 20);
+      for (const [k, f] of [["0-start", 0], ["1-mid", 0.5], ["2-end", 1]]) {
+        await page.evaluate(([sel, f]) => { const e = document.querySelector(sel); if (!e) return; e.getAnimations().forEach((a) => { a.pause(); const d = a.effect.getComputedTiming().duration || 150; a.currentTime = d * f; }); }, [sel, f]);
+        await shot(page, "B6-" + name.replace(/\W+/g, "") + "-" + k);
+      }
+      await page.evaluate((sel) => { const e = document.querySelector(sel); if (e) { delete e.remove; e.remove(); } }, sel);
       const j = noJump(fr, r0.w, r0.h, 10);
       ok(j.ok, "B6 " + name + " closes without a jump (" + fr.length + " frames, " + (fr[0] && fr[0].cls) + ")", { r0, j, f: fr.slice(0, 3) });
       await wait(page, 300);
