@@ -87,7 +87,8 @@
     if (k.contains("pn-gp-mem")) return "home";   // ds58: Gänget ikväll
     if (k.contains("sp-gi")) return "home";   // 🎉 Spel (spel.js): one big entry on home
     if (k.contains("fm-gi")) return "home";
-    if (k.contains("sa-gk")) return "home";   // social-a: ⚔️ Gängkamp (GM5 moved it out of the Spel list)   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
+    if (k.contains("sa-gk")) return "home";
+    if (k.contains("a2-gcard")) return "home";   // social-a: after lane Kvällsrapporten row (under Nu)   // social-a: ⚔️ Gängkamp (GM5 moved it out of the Spel list)   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
     if (k.contains("gpg-ph")) return "plus info";
     if (k.contains("gpg-ga") || k.contains("gpg-fold")) return "plus";
     if (k.contains("gp-more")) return "none";
@@ -505,7 +506,9 @@
       h("span", { class: "pn-gp-mem-h" }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
       h("span", { class: "pn-gp-mem-l" })]);
     var gk = gkOn() ? gkRow(g) : null;   // social-a: ⚔️ Gängkamp on the page
-    [invB, codeB, dots, now, chat, bar, ph, info, fold, gk].forEach(function (x) { if (x) wrap.appendChild(x); });
+    // social-a (after lane): the Kvällsrapporten row right under the Nu block (AFTER2.groupCard returns a row or null)
+    var a2 = null; try { a2 = window.AFTER2 && window.AFTER2.groupCard ? window.AFTER2.groupCard(g) : null; } catch (e) { a2 = null; }
+    [invB, codeB, dots, now, a2, chat, bar, ph, info, fold, gk].forEach(function (x) { if (x) wrap.appendChild(x); });
     wrap.insertBefore(memS, chat || bar); loadMem(wrap, g, memS);
 
     // module actions (groupActions) as + tiles

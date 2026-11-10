@@ -1348,6 +1348,10 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
     radial-gradient(circle at 100% 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left bottom/12px 12px no-repeat,
     radial-gradient(circle at 0 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right bottom/12px 12px no-repeat}
 /* lane:ui1 END */
+/* lane:social-b */
+/* R1-41: the Profil rank bar is a progress bar, not a slider: no white knob at its end (pnui.css .pf-bar>span::after) */
+#sheet-body .pf-hero .pf-bar>span::after{content:none;display:none}
+/* lane:social-b END */
 /* lane:social-a START — G1–G5, Gängkamp, R1-04/09/22/23/24, DM header (10 Nov). New rules only; no old line changed. */
 :root{--sa-users-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8.5' r='3.5'/%3E%3Cpath d='M2.5 20a6.5 6.5 0 0 1 13 0'/%3E%3Cpath d='M15.5 5.3a3.3 3.3 0 0 1 0 6.4'/%3E%3Cpath d='M17.5 14.2a6 6 0 0 1 4 5.8'/%3E%3C/svg%3E");
   --sa-edit-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19l1-4.2L15.8 5a2.1 2.1 0 0 1 3 3L9 17.8z'/%3E%3Cpath d='M14 6.8l3.2 3.2'/%3E%3C/svg%3E");
@@ -1511,9 +1515,14 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
 .chat-keep .switch.chat-keep-cb{width:52px;height:32px;flex:0 0 52px;accent-color:auto}
 .chat-keep:has(.chat-keep-cb[aria-checked="true"]) .chat-keep-i{display:block;font-size:var(--fs-14);line-height:20px;margin:0 0 var(--sp-2)}
 #sheet-body .ib-list>.sa-ib{margin:0}
+/* follow-up batch (wave2-social-a +1): founder badge next to the name, chat report entry, Kvällsrapporten row, tonal suggest */
+.pf-hero .pf-name.sa-pf-name{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2)}
+.chat-list .cm-picker .sa-cm-rep{display:grid;place-items:center;color:var(--ds-text-2)}
+.chat-list .cm-picker .sa-cm-rep .pi{width:20px;height:20px}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.a2-gcard{grid-column:1 / -1}
+#sheet .gpg:not([data-gv="home"])>.a2-gcard{display:none !important}
+#sheet-body .sg-row .sa-sg-add{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-pill) !important;
+  background:var(--ds-amber-soft) !important;border:1px solid var(--ds-amber) !important;color:var(--ds-amber-t) !important;box-shadow:none !important;font:600 var(--fs-14)/1 var(--ds-sans)}
+#sheet-body .sg-row .sa-sg-add .pi{width:16px;height:16px}
+#sheet-body .sg-row .sg-x{min-width:44px;min-height:44px;width:44px}
 /* lane:social-a END */
-
-/* lane:social-b */
-/* R1-41: the Profil rank bar is a progress bar, not a slider: no white knob at its end (pnui.css .pf-bar>span::after) */
-#sheet-body .pf-hero .pf-bar>span::after{content:none;display:none}
-/* lane:social-b END */

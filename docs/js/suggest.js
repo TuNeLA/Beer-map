@@ -42,7 +42,9 @@
     });
   }
   function row(p, box) {
-    var add = h("button", { type: "button", class: "btn btn-small btn-amber sg-add", text: L("➕ Lägg till", "➕ Add") });
+    // social-a R1: tonal "Lägg till" (one filled amber per screen, ds16), PNI plus, no ➕
+    var add = h("button", { type: "button", class: "btn btn-small sg-add sa-sg-add", text: L("Lägg till", "Add") });
+    try { if (window.PNI && window.PNI.has("plus")) add.insertAdjacentHTML("afterbegin", window.PNI.svg("plus")); } catch (e) {}
     var hide = h("button", { type: "button", class: "btn btn-small sg-x", "aria-label": L("Dölj ", "Hide ") + (p.name || ""), text: "✕" });
     var li = h("li", { class: "sg-row" }, [
       h("span", { class: "sg-face", "aria-hidden": "true", text: (p.name || "?").charAt(0).toUpperCase() }),

@@ -139,9 +139,12 @@ async function safetyMocks(page, st, calls) {
     };
     let { li, box, pick } = await longPress("2");
     if (!pick) console.log("long-press debug", JSON.stringify({ li: !!li, box, msgs: await page.evaluate(() => [...document.querySelectorAll(".chat-msg")].map((m) => (m.dataset.mid || "?") + (m.classList.contains("me") ? "me" : "")).join(",")), sheet: await page.evaluate(() => { const s = document.getElementById("sheet"); return s && !s.hidden ? s.textContent.slice(0, 120) : null; }), ov: await page.evaluate(() => { const o = document.querySelector(".sf-ov"); return o ? o.textContent.slice(0, 120) : null; }) }));
-    ok("long-press menu has 🚩 and 🚫", pick && pick.includes("🚩") && pick.includes("🚫"), pick);
+    // social-a (misc X5): ONE "Anmäl eller blockera" entry (PNI flag) = MISC.reportMenu → the 🚩 / 🚫 action menu
+    const hasRep = await page.evaluate(() => !!document.querySelector(".cm-picker .sa-cm-rep svg"));
+    ok("long-press menu has the Anmäl / blockera entry", !!pick && hasRep, pick);
     await shot(page, "chat-menu");
-    await page.evaluate(() => { const b = [...document.querySelectorAll(".cm-picker button")].find((x) => x.textContent === "🚩"); if (b) b.click(); });
+    await page.evaluate(() => { const b = document.querySelector(".cm-picker .sa-cm-rep"); if (b) b.click(); }); await wait(page, 400);
+    await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /Anmäl/.test(x.textContent)); if (b) b.click(); });
     await wait(page, 500);
     await shot(page, "report-sheet");
     await page.evaluate(() => { document.querySelector('.sf-chip[data-r="hat"]').click(); });
@@ -151,7 +154,8 @@ async function safetyMocks(page, st, calls) {
     ok("🚩 → report_content(msg, 2, hat)", rep && rep[1].p_kind === "msg" && rep[1].p_ref === "2" && rep[1].p_reason === "hat", rep);
     // block from another message
     await longPress("4");
-    await page.evaluate(() => { const b = [...document.querySelectorAll(".cm-picker button")].find((x) => x.textContent === "🚫"); if (b) b.click(); });
+    await page.evaluate(() => { const b = document.querySelector(".cm-picker .sa-cm-rep"); if (b) b.click(); }); await wait(page, 400);
+    await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /Blockera/.test(x.textContent)); if (b) b.click(); });
     await wait(page, 400);
     await shot(page, "block-sheet");
     const blkBtn = await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /^(🚫 )?Blockera$/.test(x.textContent.trim())); if (b) b.click(); return !!b; });

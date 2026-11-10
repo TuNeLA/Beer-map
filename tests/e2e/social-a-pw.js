@@ -19,7 +19,7 @@ const EVENTS = [{ id: 901, kind: "quiz", title: "Pubquiz på Pitchers", place: "
   km: 0.2, going: 1, source: "user", is_mine: false, pending: false, town: "Ludvika", url: null, tv: false, sport: null, league: null, home: null, away: null, ticket_url: null }];
 
 async function server(page, rec) {
-  await page.route(/rest\/v1\/rpc\/(my_friends|my_friend_code|friend_request|my_inbox|my_past_events|my_dms|group_keep_history|set_group_keep_history|group_now|group_msgs|events_near2|events_near3|events_near)\b/, (r) => {
+  await page.route(/rest\/v1\/rpc\/(my_friends|my_friend_code|friend_request|my_inbox|my_past_events|my_dms|my_founder|friend_suggest|group_keep_history|set_group_keep_history|group_now|group_msgs|events_near2|events_near3|events_near)\b/, (r) => {
     const fn = r.request().url().match(/rpc\/(\w+)/)[1];
     let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
     const isDm = b.p_group_id === DM;
@@ -33,6 +33,8 @@ async function server(page, rec) {
         { k: "rally:77", type: "rally", id: 77, group_id: RPCF.GID || "11111111-2222-3333-4444-555555555555", group_name: "Ludvika Lager", name: "Oskar", body: "Alla till La Parma!", place: "La Parma", yes: 2, at: iso(6) },
         { k: "inv:9", type: "inv", id: 9, title: "🧠 Pubquiz på Pitchers på Pitchers", starts_at: at(3), place: "Pitchers", from: "Lisa", group_name: null, at: iso(30) }] });
       case "my_past_events": return J(r, PAST);
+      case "my_founder": return J(r, { v: 1, founder: true, premium: true, final: true, cutoff: iso(-60 * 24 * 30), since: iso(60 * 24 * 20) });   // owner set the cutoff
+      case "friend_suggest": return J(r, { v: 1, people: [{ k: "0123456789abcdef", name: "Maja", mutual: 3 }] });
       case "my_dms": return J(r, { v: 1, now: new Date().toISOString(), unread: 0, threads: [Object.assign(RPCF.dmThread(DM), { last_id: 501, last_body: "Tjena!", last_at: iso(30), last_me: false, unread: 0, at: iso(30), out: true })] });
       case "group_keep_history": case "set_group_keep_history": case "group_now":
         if (isDm) return J(r, NOT_MEMBER, 400);
@@ -93,6 +95,10 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
       return { sh: cs.boxShadow, bl: cs.borderLeftWidth, emo: /\p{Extended_Pictographic}/u.test(r.textContent), svg: !!r.querySelector(".sa-ib-ti svg"), yesBg: getComputedStyle(r.querySelector("button")).backgroundColor }; });
     ok(`[${w}] R1-09 Vänner request row: no stripe, PNI tile, no emoji`, !!req && req.sh === "none" && req.bl === "1px" && req.svg && !req.emo, req);
 
+    const sg = await page.evaluate(() => { const b = document.querySelector("#inv-pane-f .sg-row .sg-add"); if (!b) return null; const cs = getComputedStyle(b);
+      return { bg: cs.backgroundColor, bgi: cs.backgroundImage, emo: /\p{Extended_Pictographic}/u.test(b.textContent), svg: !!b.querySelector("svg"), h: Math.round(b.getBoundingClientRect().height) }; });
+    ok(`[${w}] R1 suggested friends: "Lägg till" is tonal (not filled amber), PNI plus, ≥ 44 px`, !!sg && !/rgb\(245, 166, 35\)|rgb\(255, 194, 77\)/.test(sg.bg + " " + sg.bgi) && !sg.emo && sg.svg && sg.h >= 44, sg);
+
     // ---------- R1-09 Inkorg ----------
     await tab(page, "i"); await wait(page, 1500);
     const ib = await page.evaluate(() => [...document.querySelectorAll("#sheet-body .ib-item")].map((li) => {
@@ -117,11 +123,16 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
     ok(`[${w}] G3 Grupper Tidigare event: only under Grupper, no emoji, no "på X på X"`, !!gp && gp.inPane && gp.n === 3 && !gp.emo && !gp.titles.some((t) => /på (\S+) på \1/.test(t)), gp);
 
     // ---------- group page: G4 colour, Gängkamp, R1-23, R1-24 ----------
+    await page.evaluate(() => { window.AFTER2 = window.AFTER2 || {}; window.AFTER2.__gc0 = window.AFTER2.groupCard; window.AFTER2.groupCard = function (g) { window.__a2g = g; const b = document.createElement("button"); b.type = "button"; b.className = "a2-gcard"; b.textContent = "Kvällsrapporten · fre 7 nov"; return b; }; });
     await page.evaluate(() => { window.__gk = []; if (window.GAMES) { const f = window.GAMES.openGangkamp; window.GAMES.openGangkamp = function (g) { window.__gk.push(g); }; window.GAMES.__gk0 = f; } });
     await page.evaluate(() => { const c = [...document.querySelectorAll(".gcard")].find((x) => /Ludvika Lager/.test(x.textContent)); if (c) c.click(); });
     await page.waitForSelector(".gpg", { timeout: 15000 }).catch(() => {}); await wait(page, 2200);
     const pg = await page.evaluate(() => { const g = document.querySelector(".gpg"); const m = g && g.querySelector(":scope > .gmain"); return { cls: g && g.className, bg: m ? getComputedStyle(m).backgroundImage : "" }; });
     ok(`[${w}] G4 group page has its colour (option A: a header band in the group colour)`, /sa-gpc-a/.test(pg.cls || "") && /sa-gpcol-\d/.test(pg.cls || "") && /gradient/.test(pg.bg), pg);
+    const a2 = await page.evaluate(() => { const c = document.querySelector(".gpg > .a2-gcard"), n = document.querySelector(".gpg > .gpg-now"), m = document.querySelector(".gpg > .pn-gp-mem");
+      if (!c) return null; const r = c.getBoundingClientRect(), rn = n && n.getBoundingClientRect(), rm = m && !m.hidden ? m.getBoundingClientRect() : null;
+      return { vis: r.height > 0, afterNu: !!rn && r.top >= rn.bottom - 1, beforeMem: !rm || r.bottom <= rm.top + 1, gid: window.__a2g && window.__a2g.id, w: Math.round(r.width), ww: Math.round(document.querySelector(".gpg").getBoundingClientRect().width) }; });
+    ok(`[${w}] after lane: AFTER2.groupCard(g) row sits right under the Nu block, full width`, !!a2 && a2.vis && a2.afterNu && a2.beforeMem && a2.gid === "11111111-2222-3333-4444-555555555555" && a2.w >= a2.ww - 2, a2);
     const gk = await page.evaluate(() => { const b = document.querySelector(".gpg > .sa-gk"); if (!b) return null; const r = b.getBoundingClientRect(); b.click(); return { h: Math.round(r.height), vis: r.height > 0, svg: !!b.querySelector("svg"), t: b.textContent }; });
     await wait(page, 300);
     const gkArg = await page.evaluate(() => window.__gk && window.__gk[0]);
@@ -155,6 +166,17 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
       await page.evaluate(() => { const s = document.querySelector(".chat-keep .chat-keep-cb"); s.click(); }); await wait(page, 800);
       ok(`[${w}] R1-22 the switch saves (aria-checked true)`, await page.evaluate(() => document.querySelector(".chat-keep .chat-keep-cb").getAttribute("aria-checked") === "true"));
     }
+    const rp = await page.evaluate(async () => {
+      const li = [...document.querySelectorAll(".chat-list .chat-msg:not(.me)")].find((x) => x.getAttribute("data-mid")); if (!li) return null;
+      li.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); await new Promise((r) => setTimeout(r, 300));
+      const pk = li.querySelector(".cm-picker"); if (!pk) return { picker: false };
+      const b = pk.querySelector(".sa-cm-rep"), emo = [...pk.querySelectorAll("button")].filter((x) => /🚩|🚫/.test(x.textContent)).length;
+      if (b) b.click(); await new Promise((r) => setTimeout(r, 400));
+      const ov = [...document.querySelectorAll(".sf-ov button")].map((x) => x.textContent.trim());
+      const cancel = [...document.querySelectorAll(".sf-ov button")].find((x) => /Avbryt/.test(x.textContent)); if (cancel) cancel.click();
+      return { picker: true, rep: !!(b && b.querySelector("svg")), emo, ov };
+    });
+    ok(`[${w}] misc X5: the chat menu has ONE Anmäl/blockera entry (PNI flag) → MISC.reportMenu (Anmäl + Blockera)`, !!rp && rp.rep && rp.emo === 0 && rp.ov.some((t) => /Anmäl/.test(t)) && rp.ov.some((t) => /Blockera/.test(t)), rp);
     await close(page); await wait(page, 600);
 
     // ---------- DM header not cut ----------
@@ -193,6 +215,9 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
         p = { w: Math.round(b.width), h: Math.round(b.height), dist: Math.round(Math.hypot(cx, cy)), r: Math.round(a.width / 2), ang: Math.round(Math.atan2(cy, cx) * 180 / Math.PI), fs: cs.color, glyph: getComputedStyle(pen, "::before").maskImage || getComputedStyle(pen, "::before").webkitMaskImage }; }
       return { empty, nested, kompisar, past: pastRow ? pastRow.textContent : null, evInFold, fade: fade ? { c: fade.content, h: fade.height, bg: fade.backgroundImage } : null, pen: p };
     });
+    const fb = await page.evaluate(() => { const n = document.querySelector("#sheet-body .pf-name"); const b = n && n.querySelector(".mm-founder"); if (!b) return null; const r = b.getBoundingClientRect(), rn = n.getBoundingClientRect();
+      return { hidden: b.hidden, vis: r.width > 0, inRow: Math.abs((r.top + r.height / 2) - (rn.top + rn.height / 2)) < 16, t: b.textContent.trim() }; });
+    ok(`[${w}] misc F4: "Grundare" badge next to the name in the Profil hero (cutoff set)`, !!fb && !fb.hidden && fb.vis && fb.inRow && /Grundare/.test(fb.t), fb);
     ok(`[${w}] G2 Profil: no empty section (Kompisar)`, pf.empty.length === 0 && !pf.kompisar, pf.empty);
     ok(`[${w}] G2 Profil: no card inside a card`, pf.nested.length === 0, pf.nested);
     ok(`[${w}] G2 Profil: Tidigare event = one row in Mitt (not a card in Kompisar)`, !!pf.past && /3 event/.test(pf.past) && !pf.evInFold, pf);
