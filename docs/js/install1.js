@@ -1,22 +1,49 @@
-/* Öl Nu — 📲 INSTALL1: the first visit in a browser tab shows how to install on THIS device (owner 2026-11-07:
-   "a QR code on the same phone is useless"). Main action = install. A small "Använd utan att installera" link in the
-   corner. The app tour (intro + age check) waits until the card is closed, so the tour is shown in the app.
-     Android  beforeinstallprompt → ONE button "📲 Installera PintsNow" (prompt() in the tap). No event yet → 3 steps with
-              drawn pictures (Chrome ⋮ → Installera app → Installera; Samsung Internet ≡ → Lägg till sida på → Startskärm);
-              a later event switches to the button. Installed → "✅ Klart! Öppna PintsNow från hemskärmen."
-     iOS      Dela ⬆️ (iOS 26: ⋯ → Dela) → Lägg till på hemskärmen ➕ → Lägg till, with drawn pictures.
-     In-app   (Instagram, Messenger …) → open in Safari/Chrome + 📋 Kopiera länk.
-     Desktop  the QR code of the app link (scan with the phone) — here it is useful.
-   Shown once per browser, only when: not standalone, intro not done, no join/invite card (JOIN.handled), no ?flytt=.
-   app.js waits for INSTALL1.gate() after JOIN.gate() (patch ux3/01). Uses join.css .jn-pic pictures + ux3.css.
-   localStorage: olnu.inst1 (time the card was closed). Public: window.INSTALL1 = { gate, kind, show }. */
+/* PintsNow — "Installera appen" (S5, lane main, 2026-11-10; owner: "the install guide FIRST, on iPhone AND Android, before
+   any beer, with a small 'Fortsätt utan att installera' link; shown once more on the 2nd night if they continued").
+   ONE rule for the whole install flow (was 4 paths: this card for in-app browsers only, pnui after the 1st beer / a group
+   join, a daily sheet and a top banner):
+     1st open   (not installed, intro not done, no invite card / deep link, a phone) → this guide BEFORE the intro
+     2nd night  (they tapped "Fortsätt utan att installera", and it is a later night, 05:00 → 05:00) → the guide once more
+     then       never by itself; Inställningar → "Lägg PintsNow på hemskärmen" stays for anyone who wants it.
+   iPhone   Dela → Lägg till på hemskärmen → Lägg till (iOS 26: ⋯ → Dela first) + one line: push only works when installed.
+   Android  beforeinstallprompt → ONE primary "Installera appen" (prompt() in the tap); no event yet → ⋮ → Installera app
+            → Installera (Samsung Internet: ≡ → Lägg till sida på → Startskärm); a later event switches to the button.
+   In-app   (Instagram, Messenger …) → open in Safari/Chrome + Kopiera länk. Desktop (only via show()): the QR code.
+   app.js waits for INSTALL1.gate() after JOIN.gate(), so the intro (age, location) runs inside the installed app.
+   localStorage olnu.inst1 = {n: times shown, k: night key, how: open|skip|done}. An old timestamp value = shown, no re-show.
+   While the flow owns the device (owns()), pnui's later prompts, the daily install sheet and the top banner stay quiet.
+   Copy: DIALEKT keys "inst.*" (sv-neutral pack registered here). Styles: pnds.css "lane:main" (.mn-inst-*), tokens only.
+   Public: window.INSTALL1 = { gate, kind, show, owns, state, _close }. */
 (function () {
   "use strict";
-  var U = window.U, I = window.I18N;
+  var U = window.U;
   var KEY = "olnu.inst1";
-  var prompt = null, installed = false, root = null, act = null, resolveGate = null;
-  function sv() { return !I || I.lang !== "en"; }
-  function L(s, e) { return sv() ? s : e; }
+  var prompt = null, installed = false, root = null, act = null, resolveGate = null, cur = null;
+  var P = {
+    "inst.title": "Installera appen",
+    "inst.lead": "Då startar PintsNow som en riktig app, och du får notiser när gänget drar ut. Tar 10 sekunder.",
+    "inst.lead2": "Andra kvällen! På hemskärmen startar appen snabbare, och du missar inga notiser.",
+    "inst.ios1": "Tryck på {i} Dela", "inst.ios1s": "Nere i mitten av Safari",
+    "inst.ios1n": "Tryck på {i} nere till höger", "inst.ios1ns": "Sen på Dela",
+    "inst.ios2": "Välj {i} Lägg till på hemskärmen", "inst.ios2s": "Scrolla ner i listan om du int' ser den",
+    "inst.ios3": "Tryck Lägg till", "inst.ios3s": "Öppna sen PintsNow från hemskärmen",
+    "inst.iospush": "På iPhone kommer notiser bara när appen ligger på hemskärmen.",
+    "inst.and1": "Tryck på {i} uppe till höger", "inst.and1s": "Menyn i Chrome",
+    "inst.and2": "Välj {i} Installera app", "inst.and2s": "Eller Lägg till på startskärmen",
+    "inst.and3": "Tryck Installera", "inst.and3s": "Öppna sen PintsNow från startskärmen",
+    "inst.sam1": "Tryck på {i} nere till höger", "inst.sam1s": "Menyn i Samsung Internet",
+    "inst.sam2": "Välj {i} Lägg till sida på", "inst.sam2s": "Sen Startskärm",
+    "inst.sam3": "Tryck Lägg till", "inst.sam3s": "Öppna sen PintsNow från startskärmen",
+    "inst.btn": "Installera appen", "inst.btns": "Ett tryck, sen ligger den på startskärmen.",
+    "inst.done": "Klart! PintsNow ligger på hemskärmen.", "inst.dones": "Öppna appen därifrån. Du kan stänga den här fliken.",
+    "inst.inapp": "Den här appen kan int' installera PintsNow. Öppna länken i {b}:",
+    "inst.inapp1": "Tryck på {i} uppe i hörnet", "inst.inapp2": "Välj Öppna i webbläsaren",
+    "inst.copy": "Kopiera länk", "inst.copied": "Kopierad!",
+    "inst.desk": "PintsNow bor i mobilen", "inst.deskp": "Skanna koden med mobilkameran. Funkar på iPhone och Android.",
+    "inst.skip": "Fortsätt utan att installera"
+  };
+  try { if (window.DIALEKT && window.DIALEKT.register) window.DIALEKT.register("sv-neutral", P); } catch (e) {}
+  function T(k, v) { try { if (window.DIALEKT && window.DIALEKT.t) return window.DIALEKT.t(k, v || {}, P[k]); } catch (e) {} return String(P[k] || k).replace(/\{(\w+)\}/g, function (m, n) { return v && v[n] != null ? v[n] : ""; }); }
   function ua() { return navigator.userAgent || ""; }
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -30,9 +57,19 @@
     if (/Mobi/i.test(ua())) return "android";
     return "desktop";
   }
+  function nightKey() {   // the app's night: 05:00 → 05:00 (Stockholm), same as fx.js
+    try { if (U && U.next5am) return U.next5am().toISOString().slice(0, 10); } catch (e) {}
+    return new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
+  }
+  function state() {
+    var v = lsGet(KEY); if (!v) return null;
+    try { var o = JSON.parse(v); if (o && typeof o === "object") return o; } catch (e) {}
+    return { n: 2, how: "old" };   // the old value (a timestamp): shown before, never again by itself
+  }
+  function save(o) { lsSet(KEY, JSON.stringify(o)); }
   function appLink() { return location.origin + location.pathname; }
   window.addEventListener("beforeinstallprompt", function (e) { try { e.preventDefault(); } catch (x) {} prompt = e; if (root) render(); });
-  window.addEventListener("appinstalled", function () { installed = true; prompt = null; if (root) render(); });
+  window.addEventListener("appinstalled", function () { installed = true; prompt = null; mark("done"); if (root) render(); });
 
   function h(tag, attrs, kids) {
     var n = document.createElement(tag);
@@ -43,120 +80,110 @@
     (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return n;
   }
-  function step(n, html, pic) { return h("li", { class: "ui-step" }, [h("span", { class: "ui-n", text: String(n) }), h("div", { class: "ui-st" }, [h("p", { html: html }), pic || null])]); }
-  // Drawn pictures (no images to load). Same look as join.js.
-  function picBar(hot, url, left) {
-    return h("div", { class: "jn-pic jn-pic-bar", "aria-hidden": "true" }, [left ? h("span", { text: left }) : null, h("span", { class: "jn-pic-url", text: url }), h("span", { class: "jn-pic-hot", text: hot })]);
+  var MENU = '<svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>';   // Samsung Internet ≡ (a picture of the phone's button)
+  var PLUSSQ = '<svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M12 8.5v7M8.5 12h7"/></svg>';   // iOS "Lägg till på hemskärmen"
+  function ic(name, cls) { if (name === "menu") return MENU; if (name === "plussq") return PLUSSQ; try { return window.PNI ? window.PNI.svg(name, cls || "") : ""; } catch (e) { return ""; } }
+  // "Tryck på {i} Dela" → text + an icon tile that looks like the phone's own button
+  function withIcon(key, icon, iconCls) {
+    var parts = T(key, { i: "\u0001", b: "" }).split("\u0001"), b = h("b", { class: "mn-inst-st" });
+    b.appendChild(document.createTextNode(parts[0] || ""));
+    if (parts.length > 1 && icon) { b.appendChild(h("span", { class: "mn-inst-key" + (iconCls ? " " + iconCls : ""), "aria-hidden": "true", html: ic(icon) })); b.appendChild(document.createTextNode(parts.slice(1).join(""))); }
+    return b;
   }
-  function picMenu(rows, hotIx) {
-    return h("div", { class: "jn-pic jn-pic-menu", "aria-hidden": "true" }, rows.map(function (t, i) { return h("span", { class: i === hotIx ? "jn-pic-hot" : "", text: t }); }));
+  function step(n, key, icon, sub, iconCls) {
+    return h("li", { class: "mn-inst-step" }, [h("span", { class: "mn-inst-n", "aria-hidden": "true", text: String(n) }),
+      h("span", { class: "mn-inst-tx" }, [withIcon(key, icon, iconCls), sub ? h("small", { text: T(sub) }) : null])]);
   }
-  function picDlg(title, ok) {
-    return h("div", { class: "jn-pic jn-pic-dlg", "aria-hidden": "true" }, [h("b", { text: title }),
-      h("div", {}, [h("span", { text: L("Avbryt", "Cancel") }), h("span", { class: "jn-pic-hot", text: ok })])]);
-  }
-  function host() { return location.host || "tunela.github.io"; }
-  function bigBtn(text, fn) { return h("button", { type: "button", class: "btn btn-amber btn-block ds-btn ds-btn-primary ui-big", text: text, onclick: fn }); }
+  function steps(list) { var ol = h("ol", { class: "mn-inst-steps" }); list.forEach(function (s, i) { ol.appendChild(step(i + 1, s[0], s[1], s[2], s[3])); }); return ol; }
+  function primary(text, fn) { return h("button", { type: "button", class: "ds-btn ds-btn-primary ds-btn-block mn-inst-go", text: text, onclick: fn }); }
 
   function render() {
     if (!act) return;
     act.innerHTML = "";
     var k = kind();
+    if (root) root.className = "mn-inst mn-inst-" + k;
     if (installed) {
-      act.appendChild(h("div", { class: "ui-done" }, [h("b", { text: L("✅ Klart! PintsNow ligger på hemskärmen.", "✅ Done! PintsNow is on your home screen.") }),
-        h("p", { text: L("Öppna appen från hemskärmen 🍺 Du kan stänga den här fliken.", "Open the app from the home screen 🍺 You can close this tab.") })]));
+      act.appendChild(h("div", { class: "mn-inst-done", role: "status" }, [h("span", { class: "mn-inst-done-i", html: ic("check") }),
+        h("span", { class: "mn-inst-tx" }, [h("b", { text: T("inst.done") }), h("small", { text: T("inst.dones") })])]));
       return;
     }
     if (k === "android" && prompt) {
-      act.appendChild(bigBtn(L("📲 Installera PintsNow", "📲 Install PintsNow"), function () {
+      act.appendChild(primary(T("inst.btn"), function () {
         var p = prompt; if (!p) return;
         try { p.prompt(); } catch (e) {}
         Promise.resolve(p.userChoice).catch(function () {}).then(function (c) {
           prompt = null;
-          if (c && c.outcome === "accepted") installed = true;
+          if (c && c.outcome === "accepted") { installed = true; mark("done"); }
           render();
         });
       }));
-      act.appendChild(h("p", { class: "ui-sub muted", text: L("Ett tryck. Sen ligger den på hemskärmen som en vanlig app.", "One tap. Then it sits on your home screen like a normal app.") }));
+      act.appendChild(h("p", { class: "mn-inst-sub", text: T("inst.btns") }));
       return;
     }
-    var ol = h("ol", { class: "ui-steps" });
     if (k === "android") {
-      var sam = /SamsungBrowser/i.test(ua());
-      if (sam) {
-        ol.appendChild(step(1, L("Tryck <b>≡</b> nere till höger", "Tap <b>≡</b> at the bottom right"), picBar("≡", host())));
-        ol.appendChild(step(2, L("Tryck <b>Lägg till sida på</b> → <b>Startskärm</b>", "Tap <b>Add page to</b> → <b>Home screen</b>"),
-          picMenu([L("Bokmärken", "Bookmarks"), L("➕ Lägg till sida på", "➕ Add page to"), L("Startskärm", "Home screen")], 2)));
-        ol.appendChild(step(3, L("Tryck <b>Lägg till</b>. Öppna sen <b>PintsNow</b> från startskärmen 🍺", "Tap <b>Add</b>. Then open <b>PintsNow</b> from the home screen 🍺"), picDlg(L("Lägg till på startskärmen?", "Add to home screen?"), L("Lägg till", "Add"))));
-      } else {
-        ol.appendChild(step(1, L("Tryck <b>⋮</b> uppe till höger", "Tap <b>⋮</b> at the top right"), picBar("⋮", "🔒 " + host())));
-        ol.appendChild(step(2, L("Tryck <b>Installera app</b> (eller <b>Lägg till på startskärmen</b>)", "Tap <b>Install app</b> (or <b>Add to Home screen</b>)"),
-          picMenu([L("Ny flik", "New tab"), L("Bokmärken", "Bookmarks"), L("📲 Installera app", "📲 Install app")], 2)));
-        ol.appendChild(step(3, L("Tryck <b>Installera</b>. Öppna sen <b>PintsNow</b> från startskärmen 🍺", "Tap <b>Install</b>. Then open <b>PintsNow</b> from the home screen 🍺"), picDlg(L("Installera PintsNow?", "Install PintsNow?"), L("Installera", "Install"))));
-      }
-      act.appendChild(ol);
+      act.appendChild(/SamsungBrowser/i.test(ua())
+        ? steps([["inst.sam1", "menu", "inst.sam1s"], ["inst.sam2", "plus", "inst.sam2s"], ["inst.sam3", null, "inst.sam3s"]])
+        : steps([["inst.and1", "dots", "inst.and1s", "mn-inst-key-v"], ["inst.and2", "download", "inst.and2s"], ["inst.and3", null, "inst.and3s"]]));
     } else if (k === "ios") {
       var v26 = /OS 26_|Version\/26/.test(ua());
-      ol.appendChild(step(1, v26 ? L("Tryck <b>⋯</b> nere till höger, sen <b>Dela</b> ⬆️", "Tap <b>⋯</b> at the bottom right, then <b>Share</b> ⬆️")
-        : L("Tryck <b>Dela</b> ⬆️ nere i mitten", "Tap <b>Share</b> ⬆️ at the bottom"), v26 ? picBar("⋯", host(), "‹") : h("div", { class: "jn-pic jn-pic-bar jn-pic-ios", "aria-hidden": "true" }, [h("span", { text: "‹ ›" }), h("span", { class: "jn-pic-hot", text: "⬆️" }), h("span", { text: "📖 ⧉" })])));
-      ol.appendChild(step(2, L("Scrolla ner och tryck <b>Lägg till på hemskärmen</b> ➕", "Scroll down and tap <b>Add to Home Screen</b> ➕"),
-        picMenu([L("Kopiera", "Copy"), L("Lägg till bokmärke", "Add Bookmark"), L("➕ Lägg till på hemskärmen", "➕ Add to Home Screen")], 2)));
-      ol.appendChild(step(3, L("Tryck <b>Lägg till</b> uppe till höger. Öppna sen <b>PintsNow</b> från hemskärmen 🍺", "Tap <b>Add</b> at the top right. Then open <b>PintsNow</b> from the home screen 🍺"),
-        h("div", { class: "jn-pic jn-pic-bar", "aria-hidden": "true" }, [h("span", { text: L("Avbryt", "Cancel") }), h("span", { class: "jn-pic-url", text: "🍺 PintsNow" }), h("span", { class: "jn-pic-hot", text: L("Lägg till", "Add") })])));
-      act.appendChild(ol);
-      act.appendChild(h("div", { class: "ui-arrow" + (v26 ? " ui-arrow-r" : ""), "aria-hidden": "true", text: "⬇" }));
+      act.appendChild(steps([v26 ? ["inst.ios1n", "dots", "inst.ios1ns"] : ["inst.ios1", "share", "inst.ios1s"], ["inst.ios2", "plussq", "inst.ios2s"], ["inst.ios3", null, "inst.ios3s"]]));
+      act.appendChild(h("p", { class: "mn-inst-push" }, [h("span", { class: "mn-inst-push-i", "aria-hidden": "true", html: ic("bell") }), h("span", { text: T("inst.iospush") })]));
+      if (root && !root.querySelector(".mn-inst-arrow")) root.appendChild(h("span", { class: "mn-inst-arrow" + (v26 ? " mn-inst-arrow-r" : ""), "aria-hidden": "true", html: ic("chev-down") }));
     } else if (k === "inapp") {
       var and = /Android/i.test(ua());
-      act.appendChild(h("p", { class: "ui-sub", text: L("Den här appen kan int' installera PintsNow. Öppna länken i " + (and ? "Chrome" : "Safari") + ":", "This app can't install PintsNow. Open the link in " + (and ? "Chrome" : "Safari") + ":") }));
-      ol.appendChild(step(1, L("Tryck <b>⋯</b> eller <b>⋮</b> uppe i hörnet", "Tap <b>⋯</b> or <b>⋮</b> in the top corner")));
-      ol.appendChild(step(2, L("Välj <b>Öppna i webbläsaren</b>", "Choose <b>Open in browser</b>")));
-      act.appendChild(ol);
-      act.appendChild(bigBtn(L("📋 Kopiera länk", "📋 Copy link"), function (e) {
+      act.appendChild(h("p", { class: "mn-inst-sub", text: T("inst.inapp", { b: and ? "Chrome" : "Safari" }) }));
+      act.appendChild(steps([["inst.inapp1", "dots", null], ["inst.inapp2", null, null]]));
+      act.appendChild(primary(T("inst.copy"), function (e) {
         var b = e.currentTarget;
-        try { navigator.clipboard.writeText(appLink()).then(function () { b.textContent = L("📋 Kopierad!", "📋 Copied!"); }, function () {}); } catch (x) {}
+        try { navigator.clipboard.writeText(appLink()).then(function () { b.textContent = T("inst.copied"); }, function () {}); } catch (x) {}
       }));
     } else {
-      act.appendChild(h("p", { class: "ui-sub", text: L("PintsNow ä gjord för mobilen. Skanna koden med mobilkameran 📷", "PintsNow is made for your phone. Scan the code with the camera 📷") }));
-      var qb = h("div", { class: "qr ui-qr", "aria-hidden": "true" });
-      act.appendChild(h("div", { class: "ui-qr-wrap" }, [qb]));
-      try { if (window.QRCode) new window.QRCode(qb, { text: appLink(), width: 220, height: 220, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
-      act.appendChild(h("p", { class: "ui-sub muted", text: L("Funkar på iPhone och Android.", "Works on iPhone and Android.") }));
+      var qb = h("div", { class: "mn-inst-qr", "aria-hidden": "true" });
+      act.appendChild(h("div", { class: "mn-inst-qrw" }, [qb]));
+      try { if (window.QRCode) new window.QRCode(qb, { text: appLink(), width: 200, height: 200, colorDark: "#0a0f1c", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
     }
   }
+  function mark(how) { var s = state() || { n: 1 }; s.how = how; s.at = Date.now(); if (!s.k) s.k = nightKey(); save(s); }
   function close() {
-    lsSet(KEY, String(Date.now()));
-    lsSet("olnu.guideSeen", String(Date.now()));   // the install sheet does not come right after
-    if (root) { root.remove(); root = null; act = null; }
+    mark(installed ? "done" : "skip");
+    lsSet("olnu.guideSeen", String(Date.now()));   // the old install sheet does not come right after
+    if (root) { var r0 = root; root = null; act = null; r0.classList.add("mn-inst-out"); setTimeout(function () { r0.remove(); }, 160); }
     var r = resolveGate; resolveGate = null; if (r) r();
   }
   function show() {
     if (root) return;
-    var k = kind();
-    root = h("div", { id: "ux-inst", class: "ui-wrap ui-" + k, role: "dialog", "aria-modal": "true", "aria-label": L("Installera PintsNow", "Install PintsNow") });
-    var skip = h("button", { type: "button", class: "ui-skip", text: L("Använd utan att installera", "Use without installing"), onclick: close });
-    act = h("div", { class: "ui-act" });
-    var card = h("div", { class: "ui-card" }, [
-      h("div", { class: "ui-logo", text: "PintsNow" }),
-      h("h2", { class: "ui-h", text: k === "desktop" ? L("PintsNow bor i mobilen", "PintsNow lives on your phone") : L("Lägg PintsNow på hemskärmen", "Put PintsNow on your home screen") }),
-      h("p", { class: "ui-p", text: L("Då startar den som en riktig app, och du får push när gänget drar ut. Tar 10 sekunder.", "Then it starts like a real app, and you get a push when the gang heads out. Takes 10 seconds.") }),
-      act
+    var k = kind(), s = state(), n = (s && s.n ? s.n | 0 : 0) + 1;
+    cur = { n: n, k: nightKey(), how: "open", at: Date.now() }; save(cur);
+    // the flow owns the install prompts now: pnui (after the 1st beer / a join), the top banner, the daily sheet wait
+    lsSet("olnu.pnInst", String(Date.now())); lsSet("olnu.installSeen", String(Date.now())); lsSet("olnu.guideSeen", String(Date.now()));
+    try { if (window.PNPROMPT && window.PNPROMPT.mark) window.PNPROMPT.mark("install"); } catch (e) {}
+    root = h("div", { id: "ux-inst", class: "mn-inst mn-inst-" + k, role: "dialog", "aria-modal": "true", "aria-labelledby": "mn-inst-h" });
+    act = h("div", { class: "mn-inst-act" });
+    var col = h("div", { class: "mn-inst-col" }, [
+      h("img", { class: "mn-inst-icon", src: "./icons/icon-192.png", alt: "", width: "64", height: "64" }),
+      h("h2", { class: "mn-inst-h", id: "mn-inst-h", text: k === "desktop" ? T("inst.desk") : T("inst.title") }),
+      h("p", { class: "mn-inst-p", text: k === "desktop" ? T("inst.deskp") : n > 1 ? T("inst.lead2") : T("inst.lead") }),
+      act,
+      h("button", { type: "button", class: "mn-inst-skip", text: T("inst.skip"), onclick: close })
     ]);
-    root.appendChild(skip); root.appendChild(card);
+    root.appendChild(col);
     document.body.appendChild(root);
     try { var ib = document.getElementById("install-banner"); if (ib) ib.hidden = true; } catch (e) {}
     render();
   }
   function want() {
     if (standalone()) return false;
-    if (kind() !== "inapp") return false;   // ui-build: install after the first beer / group join (js/pnui.js), not before the map
-    if (lsGet("olnu.intro") === "1" || lsGet(KEY)) return false;
-    if (window.JOIN && window.JOIN.handled && window.JOIN.handled()) return false;
+    var k = kind(); if (k === "desktop") return false;
+    if (window.JOIN && window.JOIN.handled && window.JOIN.handled()) return false;   // the invite card has its own install step
     if (/[?&](flytt|chat|sos)=/.test(location.search)) return false;
-    return true;
+    var s = state();
+    if (!s) return lsGet("olnu.intro") !== "1";   // the first open (a returning user keeps the after-the-aha prompt)
+    return (s.n | 0) === 1 && s.how === "skip" && !!s.k && s.k !== nightKey();   // once more, on a later night
   }
   function gate() {
     if (!want()) return Promise.resolve();
     return new Promise(function (r) { resolveGate = r; show(); });
   }
-  window.INSTALL1 = { gate: gate, kind: kind, show: show, _close: close };
+  function owns() { return !!state() && !standalone(); }
+  window.INSTALL1 = { gate: gate, kind: kind, show: show, owns: owns, state: state, want: want, _close: close, _night: nightKey };
 })();

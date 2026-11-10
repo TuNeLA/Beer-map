@@ -508,7 +508,36 @@
     if (ev) railBtn("pn-evs", "calendar", "Event ikväll", function () { var e = $("btn-evs"); if (e) e.click(); });
     paintRail();
   }
+  // lane main (R1 first-time user #6): a short word under each rail button for the first 3 nights a NEW user opens the app
+  // (night = 05:00 → 05:00). A user from before (intro done, no list yet) never gets them. The button stays 44 × 44; the label
+  // is a child span below it, and pnds.css "lane:main" spaces the rail out while body.mn-rail-lbl is set.
+  var RN = "olnu.railNights", RAIL_N = 3, railOn = null;
+  function railNight() { try { if (window.U && window.U.next5am) return window.U.next5am().toISOString().slice(0, 10); } catch (e) {} return new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10); }
+  function railLabelsOn() {
+    if (railOn !== null) return railOn;
+    var l = null; try { l = JSON.parse(localStorage.getItem(RN) || "null"); } catch (e) { l = null; }
+    if (!Array.isArray(l)) { var old = false; try { old = localStorage.getItem("olnu.intro") === "1"; } catch (e) {} l = old ? ["-", "-", "-", "-"] : []; }
+    var k = railNight(); if (l.indexOf(k) < 0 && l.length <= RAIL_N) l.push(k);
+    try { localStorage.setItem(RN, JSON.stringify(l.slice(0, RAIL_N + 1))); } catch (e) {}
+    railOn = l.length <= RAIL_N;
+    return railOn;
+  }
+  function railWord(id) {
+    if (id === "pn-ghost") { try { if (window.PNVIS && window.PNVIS.label) return window.PNVIS.label(); } catch (e) {} return "Synlig"; }
+    return id === "pn-evs" ? "Event" : "Mer";
+  }
+  function railLabels() {
+    var on = railLabelsOn();
+    document.body.classList.toggle("mn-rail-lbl", on);
+    if (!on) return;
+    ["pn-ghost", "pn-evs", "btn-more"].forEach(function (id) {
+      var b = $(id); if (!b) return;
+      var l = b.querySelector(".mn-rail-l"); if (!l) { l = document.createElement("span"); l.className = "mn-rail-l"; l.setAttribute("aria-hidden", "true"); b.appendChild(l); }
+      var w = railWord(id); if (l.textContent !== w) l.textContent = w;
+    });
+  }
   function paintRail() {
+    try { railLabels(); } catch (e) {}
     var g = $("pn-ghost");
     if (g && !g.hasAttribute("data-vis")) { var on = ghostOn(); g.setAttribute("aria-pressed", String(on)); g.title = on ? "Spökläge på (du syns int')" : "Spökläge av"; g.setAttribute("aria-label", g.title); }
     var e = $("pn-evs"), b = document.querySelector("#btn-evs .evs-badge");

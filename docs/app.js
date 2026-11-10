@@ -3268,6 +3268,7 @@
   var deferredPrompt = null;
   function showInstallBanner(kind) {
     if (U.isStandalone() || Date.now() - (+U.ls.get("olnu.installSeen", "0") || 0) < 864e5) return;
+    if (window.INSTALL1 && window.INSTALL1.owns && window.INSTALL1.owns()) return;   // S5: no top banner once the install guide has shown
     var b = $("install-banner"), go = $("install-go");
     if (kind === "ios") { $("install-text").textContent = t("iosInstall"); go.hidden = true; }
     else { $("install-text").textContent = t("installAndroid"); go.textContent = t("install"); go.hidden = false; }
@@ -3998,7 +3999,7 @@
     // Ask for notifications at start (not during a join link). The phone's own question only
     // appears after a tap on "Ja", because browsers need a user gesture.
     if (!joinCode) Promise.all([ready, intro]).then(function () {
-      if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled()) && (invited || inAppBrowser() || Date.now() - (+U.ls.get("olnu.guideSeen", "0") || 0) > 864e5)) {
+      if (!U.isStandalone() && !(window.JOIN && window.JOIN.handled()) && !(window.INSTALL1 && window.INSTALL1.owns && window.INSTALL1.owns()) && (invited || inAppBrowser() || Date.now() - (+U.ls.get("olnu.guideSeen", "0") || 0) > 864e5)) {   // S5: the install guide (js/install1.js) owns the prompts once it has shown
         U.ls.set("olnu.guideSeen", String(Date.now()));
         setTimeout(showInstallGuide, 900);
       } else setTimeout(function () {

@@ -147,29 +147,30 @@ const noToasts = (page) => page.evaluate(() => document.querySelectorAll(".toast
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errs.push(e.message));
     await page.goto(BASE); await wait(page, 3500);
-    const r = await page.evaluate(() => ({ card: !!document.getElementById("ux-inst"), intro: !document.getElementById("intro").hidden, steps: document.querySelectorAll(".ui-steps .ui-step").length,
-      qr: !!document.querySelector("#ux-inst .ui-qr"), txt: (document.getElementById("ux-inst") || {}).textContent || "", skip: !!document.querySelector(".ui-skip") }));
-    ok(!r.card && r.intro, k + ": [ui-build] no install card before the map, the tour comes first", r);
-    // [ui-build] the card now comes after the first ÖL! (PNUI → INSTALL1.show()); test the card itself the same way
-    await page.evaluate(() => { document.getElementById("intro").hidden = true; window.INSTALL1.show(); }); await wait(page, 500);
-    Object.assign(r, await page.evaluate(() => ({ card: !!document.getElementById("ux-inst"), steps: document.querySelectorAll(".ui-steps .ui-step").length,
-      qr: !!document.querySelector("#ux-inst .ui-qr"), txt: (document.getElementById("ux-inst") || {}).textContent || "", skip: !!document.querySelector(".ui-skip") })));
-    ok(r.card && r.skip, k + ": [ui-build] INSTALL1.show() → the card with 'Använd utan att installera'", r);
+    const r = await page.evaluate(() => ({ card: !!document.getElementById("ux-inst"), intro: !document.getElementById("intro").hidden, steps: document.querySelectorAll("#ux-inst .mn-inst-step").length,
+      qr: !!document.querySelector("#ux-inst .mn-inst-qr"), txt: (document.getElementById("ux-inst") || {}).textContent || "", skip: !!document.querySelector(".mn-inst-skip") }));
+    // lane main S5 (owner 10 Nov): on a phone the install guide is the FIRST thing (before the tour); a desktop gets the tour
+    if (mob) ok(r.card && !r.intro, k + ": [S5] the install guide first, the tour waits", r);
+    else ok(!r.card && r.intro, k + ": [S5] desktop: no install guide, the tour comes first", r);
+    if (!r.card) { await page.evaluate(() => { document.getElementById("intro").hidden = true; window.INSTALL1.show(); }); await wait(page, 500); }
+    Object.assign(r, await page.evaluate(() => ({ card: !!document.getElementById("ux-inst"), steps: document.querySelectorAll("#ux-inst .mn-inst-step").length,
+      qr: !!document.querySelector("#ux-inst .mn-inst-qr"), txt: (document.getElementById("ux-inst") || {}).textContent || "", skip: !!document.querySelector(".mn-inst-skip") })));
+    ok(r.card && r.skip && /Fortsätt utan att installera/.test(r.txt), k + ": [S5] the guide with 'Fortsätt utan att installera'", r);
     if (k === "android") ok(r.steps === 3 && !r.qr && /Installera app/.test(r.txt), "android: 3 install steps, no QR", r);
     if (k === "ios") ok(r.steps === 3 && !r.qr && /Lägg till på hemskärmen/.test(r.txt), "ios: Dela → Lägg till på hemskärmen steps, no QR", r);
     if (k === "desktop") ok(r.qr, "desktop: QR code", r);
     await shot(page, "8-install-" + k);
     if (k === "android") {
       await page.evaluate(() => { const e = new Event("beforeinstallprompt"); e.prompt = () => { window.__prompted = 1; }; e.userChoice = Promise.resolve({ outcome: "accepted" }); window.dispatchEvent(e); }); await wait(page, 300);
-      const b = await page.evaluate(() => { const x = document.querySelector("#ux-inst .ui-big"); return x ? x.textContent : null; });
-      ok(/Installera (Öl Nu|PintsNow)/.test(b || ""), "android: install event → one-tap button", b);
+      const b = await page.evaluate(() => { const x = document.querySelector("#ux-inst .mn-inst-go"); return x ? x.textContent : null; });
+      ok(/Installera (Öl Nu|PintsNow|appen)/.test(b || ""), "android: install event → one-tap button", b);
       await shot(page, "9-install-android-onetap");
-      await page.click("#ux-inst .ui-big"); await wait(page, 400);
+      await page.click("#ux-inst .mn-inst-go"); await wait(page, 400);
       ok(await page.evaluate(() => window.__prompted === 1 && /Klart/.test(document.getElementById("ux-inst").textContent)), "tap → prompt() → Klart");
     }
-    await page.click(".ui-skip"); await wait(page, 800);
+    await page.click(".mn-inst-skip"); await wait(page, 800);
     const after = await page.evaluate(() => ({ card: !!document.getElementById("ux-inst") }));
-    ok(!after.card, k + ": [ui-build] 'Använd utan att installera' → the card closes", after);
+    ok(!after.card, k + ": [S5] 'Fortsätt utan att installera' → the card closes", after);
     await ctx.close();
   }
   { // [ui-build] an in-app browser (storage is lost there) still gets the card first

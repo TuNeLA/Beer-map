@@ -475,8 +475,8 @@
     var calmT = setInterval(function () {
       if (document.hidden || (A.sheetOpen && A.sheetOpen()) || pnow() - lastDown < 20000) return;
       var tb = document.getElementById("toasts"); if (tb && tb.children.length) return;
-      if (document.querySelector(".takeover:not([hidden]), .mx-pop, .bt-strip:not([hidden]), #intro:not([hidden])")) return;
-      clearInterval(calmT); showNote(kind);
+      if (document.querySelector(".takeover:not([hidden]), .mx-pop, .bt-strip:not([hidden]), #intro:not([hidden]), #ux-inst")) return;
+      clearInterval(calmT); showNote(locOn() ? "loc" : "use");   // R1-03: the kind that applies NOW (after the location answer), one note per phone
     }, 5000);
   }
   function forgetLoc() {   // position log off + the saved rows emptied on the server (same as the switch in Inställningar)
@@ -486,38 +486,42 @@
       try { fetch(CFG.SUPABASE_URL + "/rest/v1/rpc/pnlog_forget_loc", { method: "POST", credentials: "omit", headers: { "Content-Type": "application/json", apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + tok }, body: "{}" }).catch(function () {}); } catch (e) {}
     }
   }
+  // R1-03 (lane main): a quiet caption in the toast column (under the HUD row, left of the rail), not a card over the top.
+  // "OK" = the small primary; the opt-out is a text button. Styles: pnds.css "lane:main" (.mn-note), tokens only.
+  var NOTE_P = {
+    "lognote.loc": "Under betan sparar vi din position (max 1 gång/min) och vad du trycker på, i 30 dagar. Inga texter, inga namn. Ändra i Inställningar.",
+    "lognote.use": "Under betan sparar vi vad du trycker på och, när plats är på, din position. 30 dagar, inga texter, inga namn. Ändra i Inställningar.",
+    "lognote.offLoc": "Stäng av position", "lognote.offUse": "Ändra", "lognote.ok": "OK"
+  };
+  function NT(k) { try { var D = window.DIALEKT; if (D && D.t) { if (!NT.reg && D.register) { D.register("sv-neutral", NOTE_P); NT.reg = 1; } return D.t(k, {}, NOTE_P[k]); } } catch (e) {} return NOTE_P[k]; }
   function noteCard(text, label, fn, ms) {
     var old = document.getElementById("pnlog-note"); if (old) old.remove();
-    var c = document.createElement("div"); c.id = "pnlog-note"; c.className = "pnlog-note"; c.setAttribute("role", "status");
-    c.style.cssText = "position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top, 0px) + 64px);z-index:2500;max-width:520px;margin:0 auto;" +
-      "background:var(--panel, #16202e);color:var(--text, #fff);border:1px solid var(--line-soft, #2a3a4f);border-radius:12px;padding:10px 12px;" +
-      "font-size:14px;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:8px";
-    var t = document.createElement("span"); t.textContent = text; c.appendChild(t);
-    var row = document.createElement("div"); row.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
-    var b1 = document.createElement("button"); b1.type = "button"; b1.className = "btn btn-small btn-amber pnlog-note-off"; b1.textContent = label;
-    var b2 = document.createElement("button"); b2.type = "button"; b2.className = "btn btn-small pnlog-note-ok"; b2.textContent = "OK";
-    b1.onclick = function () { c.remove(); fn(); }; b2.onclick = function () { c.remove(); };
+    var c = document.createElement("div"); c.id = "pnlog-note"; c.className = "pnlog-note mn-note"; c.setAttribute("role", "status");
+    var t = document.createElement("p"); t.className = "mn-note-t"; t.textContent = text; c.appendChild(t);
+    var row = document.createElement("div"); row.className = "mn-note-row";
+    var b1 = document.createElement("button"); b1.type = "button"; b1.className = "mn-note-off pnlog-note-off"; b1.textContent = label;
+    var b2 = document.createElement("button"); b2.type = "button"; b2.className = "mn-note-ok pnlog-note-ok"; b2.textContent = NT("lognote.ok");
+    var gone = function () { if (!c.parentNode) return; c.classList.add("mn-note-out"); setTimeout(function () { c.remove(); }, 160); };
+    b1.onclick = function () { gone(); fn(); }; b2.onclick = gone;
     row.appendChild(b1); row.appendChild(b2); c.appendChild(row);
     document.body.appendChild(c);
-    setTimeout(function () { if (c.parentNode) c.remove(); }, ms || 12000);
+    setTimeout(gone, ms || 12000);
   }
   function showNote(kind) {
     kind = kind || (locOn() ? "loc" : "use");
     if (ls(K_NOTE) === "1" || kind === "use" && ls("olnu.logNoteUse") === "1") return;
     lsSet("olnu.logNoteUse", "1");
-    if (kind === "loc") lsSet(K_NOTE, "1");
-    // own card, NOT a toast: a toast with a button has the top rank in the app's toast queue and would hold back
+    lsSet(K_NOTE, "1");   // R1-03: the use text names the position too → never a 2nd note when location turns on later
+    // own element, NOT a toast: a toast with a button has the top rank in the app's toast queue and would hold back
     // "Utcheckad …" and other answers for 15 s (found by the ac test)
     try {
       if (kind === "loc") {
-        noteCard("Under betan sparar vi din position (max 1 gång/min när appen är öppen) och vad du trycker på – i 30 dagar, för att göra appen och incheckningen bättre. Inga texter, inga namn. Mer i Inställningar → Integritet.",
-          "Stäng av position", function () {
+        noteCard(NT("lognote.loc"), NT("lognote.offLoc"), function () {
             forgetLoc(); push("log.notice_off", {});
             try { A.toast("Av. Vi sparar inte din position, och det sparade är borttaget.", { id: "pnlog-set", ms: 3500 }); } catch (e) {}
           }, 15000);
       } else {
-        noteCard("Under betan sparar vi vad du trycker på och hur appen används (inga texter, inga namn, 30 dagar). Stäng av i Inställningar → Integritet.",
-          "Ändra", function () { var b = document.getElementById("btn-settings"); if (b) b.click(); }, 12000);
+        noteCard(NT("lognote.use"), NT("lognote.offUse"), function () { var b = document.getElementById("btn-settings"); if (b) b.click(); }, 12000);
       }
     } catch (e) {}
     push("log.notice", { k: kind });
@@ -644,6 +648,7 @@
     _lsDirty: function (k) { delete LSC[k]; },
     _cfg: function (o) { if (o && o.fixMs != null) FIX_MS = o.fixMs; if (o && o.titles) TITLES = o.titles; return { FIX_MS: FIX_MS }; },
     _ask: function () { showAsk(); },
+    _note: function (k) { showNote(k); },
     _bye: bye,
     _fix: fix
   };
