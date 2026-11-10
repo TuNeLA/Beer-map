@@ -21,10 +21,10 @@
   var GAMES = {
     imposter: { emo: "🕵️", name: "Imposter", sub: "Alla utom en ser det hemliga ordet. Ett ord var, högt. Hitta impostern!", n: "3–16 spelare", t: "5–10 min", one: "Alla utom en får ett hemligt ord. Säg ett ord var om det – och rösta ut den som bluffar.",
       how: ["Alla ser ordet på sin lur, utom impostern.", "Säg ETT ord var om ordet, i tur och ordning. 1–3 varv.", "Rösta på lurarna. Åker impostern dit får hen en chans att gissa ordet och stjäla segern."] },
-    survivor: { emo: "🔥", name: "Östra lägret", sub: "Utmaning, prat, hemlig röstning. En åker ut varje runda. Juryn utser vinnaren.", n: "3–16 spelare", t: "15–25 min", one: "Prata, smickra, lova. Rösta ut en i taget. När två är kvar utser juryn vinnaren.",
-      how: ["Värdens skärm visar en utmaning. Prata, övertyga, smickra.", "Rösta i hemlighet. Flest röster åker ut och blir jury.", "När två ä kvar röstar juryn fram vinnaren."] },
-    hatten: { emo: "🎩", name: "Namn i hatten", sub: "Alla svarar på sin lur. Lapparna dras en och en på storskärmen.", n: "3–16 spelare", t: "10–20 min", one: "Alla svarar på frågan i hemlighet. Lapparna läses upp en i taget – rösta på det bästa svaret.",
-      how: ["Värden visar en fråga: \"Vem i gruppen…?\" eller \"Skriv ett påhittat svar\".", "Alla svarar i hemlighet på sin lur.", "Lapparna dras en och en. Rösta på bästa svaret, poäng till den som skrev."] },
+    survivor: { emo: "🔥", name: "Östra lägret", sub: "Rösta ut en i taget. Juryn korar vinnaren.", n: "3–16 spelare", t: "15–25 min", one: "Snacka, lova, rösta ut. Sista två: juryn väljer.",
+      how: ["Snacka och lova.", "Hemlig röst: en åker ut.", "Sista två: juryn väljer."] },
+    hatten: { emo: "🎩", name: "Namn i hatten", sub: "Alla skriver ett påhittat svar på sin lur. Lapparna dras en och en på storskärmen.", n: "3–16 spelare", t: "10–20 min", one: "Alla skriver ett påhittat svar i hemlighet. Lapparna dras en i taget – rösta på det bästa.",
+      how: ["Storskärmen visar en fråga.", "Alla skriver ett påhittat svar på sin lur.", "Lapparna dras en och en. Rösta på bästa svaret, poäng till den som skrev."] },
     flocken: { emo: "🐑", name: "Flocken", sub: "Svara som de flesta. Flocken får poäng, den ensamma får 🥾 Kängan.", n: "3–16 spelare", t: "~10 min", one: "Skriv det svar du tror att DE FLESTA skriver. Den som står ensam får 🥾 Kängan.",
       how: ["Värden visar en fråga, t.ex. \"Bästa ölen?\"", "Alla skriver ETT svar på sin lur.", "Störst grupp får +1. Den enda som svarade annorlunda får Kängan och kan int' vinna."] },
     vagen: { emo: "📡", name: "Radarn", sub: "Siaren ser målet på skalan och säger en ledtråd. Alla drar reglaget.", n: "3–12 spelare", t: "10–15 min", one: "En siare ser målet på en skala och säger en ledtråd. Alla drar reglaget dit de tror.",
@@ -38,7 +38,8 @@
     not_host: "Bara värden kan göra dä.", room_full: "Rummet ä fullt (16).", room_closed: "Rummet ä stängt.",
     own_answer: "Du kan int' rösta på ditt eget svar!", invalid_vote: "Den rösten går int'.", invalid_answer: "Skriv ett svar först.",
     not_in_room: "Du ä int' med i rummet längre.", not_member: "Du ä int' med i gruppen.", invalid_content: "Innehållet kunde int' laddas.",
-    not_your_turn: "Int' din tur än.", busy: "Prova igen."
+    not_your_turn: "Int' din tur än.", busy: "Prova igen.",
+    room_exists: "Gänget har redan ett rum igång. Hoppa in med koden i stället."
   };
 
   /* ---------- helpers ---------- */
@@ -225,6 +226,11 @@
     if (!R) return;
     var prev = R.d;
     R.v = d.v; R.d = d; inMark(d.id);
+    // GM1: the host left / went quiet and I am the next one (0072 leave, 0440 quiet host) → my phone is the big screen now
+    if (prev && prev.id === d.id && prev.me && !prev.me.is_host && d.me && d.me.is_host) {
+      R.peek = false; buzz([30, 50, 30]);
+      toast("👑 Du ä värd nu. Din lur ä storskärmen – ställ den mitt på bordet.", { id: "party-host", ms: 6000 });
+    }
     if (prev && (prev.phase !== d.phase || prev.round !== d.round || prev.game_no !== d.game_no)) {
       R.lines = {};
       if (!d.me.is_host) buzz(prev.phase === "lobby" ? [40, 60, 40] : 30);
@@ -269,7 +275,7 @@
     var keepAsk = root.querySelector(".pt-ask");   // gm13: an open exit box survives a redraw while the round runs
     root.className = "pt " + (cls || "");
     root.innerHTML = "";
-    if (keepAsk && midGame()) setTimeout(function () { if (root && !root.querySelector(".pt-ask")) root.appendChild(keepAsk); }, 0);
+    if (keepAsk && (midGame() || keepAsk.classList.contains("pt-closeask"))) setTimeout(function () { if (root && !root.querySelector(".pt-ask")) root.appendChild(keepAsk); }, 0);   // GM3: the close box survives a redraw too
     var body = el("div", { class: "pt-body" });
     root.appendChild(body);
     return body;
@@ -288,11 +294,27 @@
     if (d && R.menu) {
       var m = el("div", { class: "pt-menu" });
       if (d.me.can_host && d.phase !== "lobby") m.appendChild(btn("↩️ Avbryt spelet, till lobbyn", "", function () { R.menu = false; act("lobby"); }));
-      if (d.me.is_host) m.appendChild(btn("🛑 Stäng rummet för alla", "pt-warn", function () { R.menu = false; act("close"); }));
+      if (d.me.is_host) m.appendChild(btn("🛑 Stäng rummet för alla", "pt-warn", function () { R.menu = false; render(); askClose(); }));
       m.appendChild(btn("🚪 Lämna rummet", "", function () { R.menu = false; act("leave"); }));
       m.appendChild(btn("Stäng menyn", "pt-ghost", function () { R.menu = false; render(); }));
       body.appendChild(m);
     }
+  }
+  // GM3: "Stäng rummet för alla" ends the game for every phone → ask first (same box as "Lämna spelet?")
+  function askClose() {
+    if (!R || !R.d || !root) return;
+    var old = root.querySelector(".pt-ask"); if (old) old.remove();
+    var n = players(R.d).length;
+    var box = el("div", { class: "pt-ask pt-closeask", role: "alertdialog", "aria-modal": "true", "aria-label": "Stäng rummet för alla?" });
+    var card = el("div", { class: "pt-ask-c" }, [
+      el("h2", { class: "pt-h2", text: "Stäng rummet för alla?" }),
+      el("p", { class: "pt-p pt-mute", text: n > 1 ? "Spelet tar slut för alla " + n + " i rummet. Ingen kan hoppa in igen." : "Rummet stängs. Ingen kan hoppa in igen." }),
+      btn("Stanna kvar", "pt-go pt-xl", function () { box.remove(); }),
+      btn("🛑 Stäng för alla", "pt-warn pt-closego", function () { box.remove(); act("close"); })
+    ]);
+    box.addEventListener("click", function (e) { if (e.target === box) box.remove(); });
+    box.appendChild(card); root.appendChild(box);
+    try { card.querySelector(".pt-go").focus(); } catch (e) {}
   }
   function markNet() { var n = root && root.querySelector(".pt-net"); if (n) n.hidden = !(R && R.net >= 3); }
   function renderLoading() {
@@ -349,18 +371,31 @@
     };
     var jb = btn(code ? "🔑 GÅ MED I " + code : "🔑 Gå med", code ? "pt-go pt-xl" : "pt-alt", join);
     codeInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); join(); } });
+    var groupRoom = !!(code && group && group.id);   // GM1: the group already has a room → join it (no second room)
     var create = btn("🎲 Skapa rum" + (group && group.name ? " · " + group.name : ""), code ? "pt-alt" : "pt-go pt-xl", function () {
       var n = nm(); if (!n) return;
       create.disabled = true;
       A.rpc("party_create", { p_group_id: group && group.id ? group.id : null, p_name: n, p_game: prefs().game || "imposter" }).then(function (r) {
         create.disabled = false;
-        if (r.error) { toast(ERR[errCode(r.error)] || "Gick int' att skapa rummet.", { err: true, id: "party-err" }); return; }
+        if (r.error) {
+          var ec = errCode(r.error);
+          toast(ERR[ec] || "Gick int' att skapa rummet.", { err: true, id: "party-err" });
+          if (ec === "room_exists" && group && group.id) (function look(n) {   // 0440: show the group room's code to join
+            A.rpc("party_group", { p_group_id: group.id }).then(function (r2) {
+              var g2 = r2 && !r2.error ? A.parseData(r2.data) : null, rm = g2 && g2.room;
+              if (rm && rm.code) { if (!R && isOpen()) renderStart(group, rm.code); }
+              else if (r2 && r2.warm != null && !n) setTimeout(function () { look(1); }, 900);   // warm.js served an old answer: ask the server
+            });
+          })(0);
+          return;
+        }
         attachView(A.parseData(r.data));
       });
     });
     body.appendChild(nameRow);
     var joinSec = el("section", { class: "pt-card" }, [el("h2", { class: "pt-h2", text: "🔑 Har du en kod?" }), el("div", { class: "pt-row" }, [codeInp, jb])]);
-    if (code) { body.appendChild(joinSec); body.appendChild(el("p", { class: "pt-or", text: "eller" })); body.appendChild(create); }
+    if (groupRoom) { body.appendChild(joinSec); body.appendChild(el("p", { class: "pt-sub pt-oneroom", text: "Gänget har redan ett rum igång. Hoppa in!" })); }
+    else if (code) { body.appendChild(joinSec); body.appendChild(el("p", { class: "pt-or", text: "eller" })); body.appendChild(create); }
     else { body.appendChild(create); body.appendChild(el("p", { class: "pt-sub", text: "Du blir värd. Kompisarna går med med koden eller QR-koden." })); body.appendChild(joinSec); }
     var list = el("section", { class: "pt-games", "aria-label": "Spelen" });
     ORDER.forEach(function (k) {
@@ -627,7 +662,7 @@
       box.appendChild(chipOpt("Utslagning (längre spel)", "elim", [false, true], !!p.elim, function (v) { return v ? "På" : "Av"; }));
     } else if (game === "hatten") {
       box.appendChild(chipOpt("Rundor", "hrounds", [3, 5, 7, 10], (p.hrounds | 0) || 5));
-      box.appendChild(chipOpt("Frågor", "hmix", ["mix", "w", "t"], p.hmix || "mix", function (v) { return v === "w" ? "Vem i gruppen" : v === "t" ? "Påhittat svar" : "Blandat"; }));
+      // GM5: only written answers (owner "Namn i hatten = text only"); the "Frågor" choice (Vem i gruppen / Blandat) is gone
     } else if (game === "flocken") {
       box.appendChild(chipOpt("Rundor", "frounds", [5, 7, 10], (p.frounds | 0) || 7));
     } else if (game === "vagen") {
@@ -649,7 +684,7 @@
     } else if (game === "survivor") {
       data.list = pick("survivor", C.survivor || [], 15);
     } else if (game === "hatten") {
-      var n = (p.hrounds | 0) || 5, mix = p.hmix || "mix", all = C.hatten || [];
+      var n = (p.hrounds | 0) || 5, mix = "t", all = C.hatten || [];   // GM5: written answers only
       var w = pick("hatten-w", all.filter(function (x) { return x.slice(0, 2) === "w|"; }), n);
       var t = pick("hatten-t", all.filter(function (x) { return x.slice(0, 2) === "t|"; }), n);
       var out = [];

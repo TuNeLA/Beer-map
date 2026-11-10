@@ -55,6 +55,8 @@ jobs:
             filter: '^(cln)$'
           - name: dm
             filter: '^(dm)$'
+          - name: games2
+            filter: '^(games2)$'
           - name: txtfit
             filter: '^(txtfit)$'
           - name: ds-motion
