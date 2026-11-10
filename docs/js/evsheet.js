@@ -496,11 +496,13 @@
     c.toggleAttribute("data-fr", max > 1 && x < max - 1);
   }
   // the chosen chip is fully in view (scrollLeft only: the sheet itself never moves)
-  function chipInView(c) {
+  function chipInView(c, again) {
     var b = c && c.querySelector('[aria-pressed="true"]'); if (!b) return;
-    var l = b.offsetLeft - c.offsetLeft, r = l + b.offsetWidth, pad = 28;
-    if (l - pad < c.scrollLeft) c.scrollLeft = Math.max(0, l - pad);
-    else if (r + pad > c.scrollLeft + c.clientWidth) c.scrollLeft = r + pad - c.clientWidth;
+    var cr = c.getBoundingClientRect(), br = b.getBoundingClientRect(), pad = 28;
+    if (!cr.width) { if (!again) requestAnimationFrame(function () { chipInView(c, true); }); return; }   // not laid out yet (sheet opening)
+    if (br.left - cr.left < pad) c.scrollLeft = Math.max(0, c.scrollLeft + br.left - cr.left - pad);
+    else if (br.right - cr.right > -pad) c.scrollLeft = c.scrollLeft + br.right - cr.right + pad;
+    chipFades(c);
   }
   function filtered() { return sorted(cache.rows.filter(function (e) { return inTime(e, st.time) && inType(e, st.type); })); }
   function drawTools(all) {
