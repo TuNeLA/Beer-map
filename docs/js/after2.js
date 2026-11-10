@@ -66,6 +66,7 @@
       return { k: String(p.k || i), name: String(p.name || "").trim() || T("after.r2.anon"), me: !!p.is_me, i: i,
         first: ts(p.first_at), last: ts(p.last_at), home: ts(p.home_at), said: ts(p.said_at), saidUte: !!p.said_ute,
         place: p.first_place || "", bars: p.bars | 0, skal: p.skal | 0, driver: !!p.driver, out: p.out !== false && ts(p.first_at) != null,
+        rides: p.driver ? Math.max(0, p.rides | 0) : 0, thanks: Math.max(0, p.thanks | 0),   // followups: ride_awards (0453); never for drinking (server: driver = not drank)
         right: right[String(p.k)] | 0, aw: null };
     });
   }
@@ -80,9 +81,12 @@
       return b ? b.p : null;
     }
     function give(p, id, icon, v) { p.aw = { id: id, icon: icon, v: v || {} }; }
+    // followups (ride → after): a driver who drove people home tonight (Hämta mig, ride_awards) is Kvällens chaufför first
+    ps.filter(function (p) { return p.driver && p.rides > 0; }).forEach(function (p) { give(p, "chauf", "taxi", { n: p.rides, t: p.thanks }); });
     var firstP = best(out, function (p) { return -p.first; });
     var homes = out.filter(function (p) { return p.home != null; });
     var lastP = homes.length ? best(homes, function (p) { return p.home; }) : best(out, function (p) { return p.last; });
+    if (firstP && firstP.aw) firstP = null;   // "Först ute" stays true: no Kapten that night rather than a wrong one
     if (firstP && lastP && firstP === lastP && out.length >= 2) give(firstP, "jarn", "medal", { a: hm(firstP.first), b: hm(firstP.home || firstP.last) });
     else {
       if (firstP) give(firstP, "kapten", "flag", { t: hm(firstP.first), place: firstP.place });
@@ -108,6 +112,7 @@
       a.fact = id === "kapten" ? T(v.place ? "after.aw.kapten.fact" : "after.aw.kapten.fact0", v)
         : id === "sist" ? T(v.real ? "after.aw.sist.fact" : "after.aw.sist.fact0", v)
         : id === "spoke" ? T(v.t ? "after.aw.spoke.fact" : "after.aw.spoke.fact0", v)
+        : id === "chauf" && v.n ? T(v.n === 1 ? "after.aw.chauf.fact1" : "after.aw.chauf.factN", v) + (v.t ? T("after.aw.chauf.tack", v) : "")
         : T("after.aw." + id + ".fact", v);
       a.line = T("after.aw." + id + ".line", { _seed: p.i });
     });
@@ -213,8 +218,10 @@
       punch: m.km >= 0.1 ? T("after.r2.num.line", { km: dec1(m.km) }) : T("after.r2.num.line0") });
     var sist = ps.filter(function (p) { return p.aw.id === "sist"; })[0];
     if (sist) c.push(hero(sist));
+    var ride = ps.filter(function (p) { return p.aw.id === "chauf" && p.aw.v.n; })[0];   // followups: the ride driver always gets a card
+    if (ride) c.push(hero(ride));
     var spoke = ps.filter(function (p) { return p.aw.id === "spoke"; })[0];
-    var other = spoke || ps.filter(function (p) { return /^(hopp|orakel|chauf|skal)$/.test(p.aw.id); })[0];
+    var other = spoke || ps.filter(function (p) { return p !== ride && /^(hopp|orakel|chauf|skal)$/.test(p.aw.id); })[0];
     if (other) c.push(hero(other));
     if (window.MOMENTS && window.MOMENTS.reportCards) { try { (window.MOMENTS.reportCards(m) || []).forEach(function (x) { if (x) c.push(x); }); } catch (e) {} }
     if (m.cmp) c.push({ type: "cmp", kick: T("after.r2.cmp.kick"), sub: T("after.r2.cmp.sub", { date: m.cmp.date }), lines: m.cmp.lines, icon: "history" });

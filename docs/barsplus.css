@@ -18,8 +18,8 @@
 .bp-v{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);min-width:56px;min-height:44px;padding:0 var(--sp-2);
   border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}   /* ui1 B7: no square box */
 .bp-v .pi{width:20px;height:20px}
-.bp-v.up.on{border-color:var(--green);color:var(--green);background:rgba(61,220,132,.12)}
-.bp-v.dn.on{border-color:var(--red);color:#ffb3b3;background:rgba(255,59,59,.12)}
+.bp-v.up.on{border-color:var(--green);color:var(--green);background:var(--ds-green-soft)}
+.bp-v.dn.on{border-color:var(--red);color:#ffb3b3;background:var(--ds-red-soft)}
 .bp-v:disabled{opacity:.5;cursor:default}
 /* ui1 B7 (owner 10 Nov): no inner dropdown, no square box. The buttons sit straight in the open "Kö och erbjudanden" row,
    app style (DESIGN.md sheet rules 8 + 11): 44 px, radius 12, raised, 1 px border; status = coloured dot + word; a chosen
@@ -48,11 +48,11 @@
 
 /* ---------- Markers ---------- */
 .bi-flag,.bm-flag{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-3px);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;
-  font-family:var(--hud);font-size:11px;line-height:1;padding:3px 5px;background:rgba(10,15,28,.94);color:var(--gold);border:1px solid var(--gold);
+  font-family:var(--hud);font-size:11px;line-height:1;padding:3px 5px;background:var(--pn-float);color:var(--gold);border:1px solid var(--gold);
   box-shadow:0 2px 6px #000a;pointer-events:none}
 .bi-flag.mine,.bm-flag.mine{color:var(--green);border-color:var(--green)}
 .bm-flag{transform:translate(-50%,-6px)}
-.bi-q{position:absolute;right:-4px;bottom:-3px;width:9px;height:9px;border-radius:50%;border:1.5px solid #0a0f1c;background:var(--amber-2)}
+.bi-q{position:absolute;right:-4px;bottom:-3px;width:9px;height:9px;border-radius:50%;border:1.5px solid var(--ds-bg);background:var(--amber-2)}
 .bi-q.q-none{background:var(--green)}
 .bi-q.q-long{background:var(--red)}
 .bm-q{position:absolute;right:-11px;top:-12px;font-size:var(--fs-12);line-height:1;filter:drop-shadow(0 1px 2px #000);pointer-events:none}
@@ -68,7 +68,7 @@
 .bp-st-chips{display:flex;flex-wrap:wrap;gap:5px}
 .bp-tc{flex:1 1 auto;min-height:36px;padding:0 8px;border:1px solid var(--line);background:var(--night-3);color:var(--text);font-weight:700;font-size:var(--fs-12);
   cursor:pointer;white-space:nowrap;position:relative}
-.bp-tc.same{border-color:var(--amber);background:var(--amber);color:#241300}
+.bp-tc.same{border-color:var(--amber);background:var(--amber);color:var(--ds-on-amber)}
 .bp-same{display:block;font-family:var(--hud);font-weight:400;font-size:var(--fs-12);letter-spacing:.06em;text-transform:none;line-height:1;margin-top:3px}
 .bp-tc:active{transform:scale(.96)}
 .bp-st-bar{height:3px;margin:8px -8px 0;background:rgba(255,255,255,.06)}
@@ -80,7 +80,7 @@
 .bp-seg{display:flex;border:1px solid var(--line);background:var(--night);margin-bottom:8px}
 .bp-seg button{flex:1;min-height:38px;border:0;background:transparent;color:var(--muted);font-family:var(--hud);font-size:var(--fs-12);text-transform:none;letter-spacing:.08em;cursor:pointer}
 .bp-seg button+button{border-left:1px solid var(--line)}
-.bp-seg button[aria-selected="true"]{background:var(--amber);color:#241300}
+.bp-seg button[aria-selected="true"]{background:var(--amber);color:var(--ds-on-amber)}
 .bp-sb{padding:8px 10px;margin-bottom:8px;background:var(--night);border:1px solid var(--line-soft);border-left:3px solid var(--amber)}
 .bp-sb-h{display:flex;justify-content:space-between;gap:8px;font-weight:700;margin-bottom:4px;font-size:var(--fs-14)}
 .bp-sb-h .muted{font-weight:400;font-family:var(--hud);font-size:var(--fs-12)}
@@ -126,7 +126,7 @@
 .eta-acts{display:flex;gap:6px}
 .eta-acts>button{flex:1 1 0;min-height:44px}
 .eta-here,.eta-x{padding:0 8px;border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
-.eta-here{border-color:var(--green);color:#c9ffd9;background:rgba(61,220,132,.12)}
+.eta-here{border-color:var(--green);color:#c9ffd9;background:var(--ds-green-soft)}
 .eta-x{color:#ffb3b3}
 .rl-eta-list{font-family:var(--hud);font-size:var(--fs-12);color:var(--amber-2);margin:6px 0}
 .rl-eta{margin:8px 0;padding:8px;border:1px solid var(--ds-border);border-radius:var(--r-md);background:rgba(10,15,28,.45)}

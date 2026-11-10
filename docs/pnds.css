@@ -395,9 +395,9 @@ body:not(:has(.bm-mblogo:not([hidden]))) #btn-attrib{left:calc(var(--sal) + var(
 .attrib-pop{bottom:calc(var(--pn-dock-b, var(--dock-h,212px)) + 60px) !important}
 /* a stranger's pin (someone out who is not your friend; no number for strangers): the bar disc family — 28 px navy disc,
    2 px foam ring, ink hairline, 16 px glyph */
-.pn-p.pn-s{width:28px !important;height:28px !important;background:linear-gradient(#1E2B66,#152050) !important;border:2px solid #FFFAF0 !important;
+.pn-p.pn-s{width:28px !important;height:28px !important;background:linear-gradient(#1E2B66,#152050) !important;border:2px solid var(--foam) !important;
   box-shadow:0 0 0 1px rgba(4,7,20,.62),0 1px 2.5px rgba(0,0,0,.5) !important}
-.pn-p.pn-s>.pn-d>svg{width:16px !important;height:16px !important;fill:#FFFAF0 !important}
+.pn-p.pn-s>.pn-d>svg{width:16px !important;height:16px !important;fill:var(--foam) !important}
 /* ds05b dock END */
 /* ds05c annat START — owner 2026-11-07: ANNAT on the LEFT side of ÖL! (up-left, 8 px outside the ring, ≥ 8 px clear of
    the Grupper box). Placed by js/pnds.js (ds05b block, reads --pn-annat-side). */
@@ -813,7 +813,7 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 /* ds31 friendtot START — friends' night totals on a bar marker. GL draws it in the marker image (mapart ftChip); this is the
    same chip for the DOM fallback map (no Mapbox): under the bar disc, green ring, never for strangers. */
 .cm .pill .pft{position:absolute;left:50%;top:calc(100% + 4px);transform:translateX(-50%);display:flex;align-items:center;gap:var(--sp-1);
-  height:20px;padding:0 var(--sp-2) 0 var(--sp-1);border-radius:var(--r-pill);background:#0A0F24;border:2px solid var(--ds-green);color:#FFFAF0;
+  height:20px;padding:0 var(--sp-2) 0 var(--sp-1);border-radius:var(--r-pill);background:#0A0F24;border:2px solid var(--ds-green);color:var(--foam);
   font:700 var(--fs-12)/16px var(--ds-sans);white-space:nowrap;box-sizing:border-box}
 .cm .pill .pft::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--ds-green)}
 .cm.cm-dot .pill .pft{display:none}
@@ -919,8 +919,8 @@ body.barsheet-open #pn-ikv2,body.ba-edit #pn-ikv2{visibility:hidden}
 /* ds37 start END */
 /* ds39 ux2 START — usability test fixes (ux2/REVIEW.md): not colour only, 130 % text, ≥ 44 px map hit areas, hemzon search. */
 /* not colour only: MEDEVAC (red) gets a dashed white ring as a shape cue; my own dot = a target (never like a bar pin) */
-.pill.p2{outline:2px dashed #FFFAF0;outline-offset:2px}
-.me-dot{width:18px !important;height:18px !important;background:#4aa3ff !important;border:3px solid #fff !important;
+.pill.p2{outline:2px dashed var(--foam);outline-offset:2px}
+.me-dot{width:18px !important;height:18px !important;background:var(--ds-blue) !important;border:3px solid #fff !important;
   box-shadow:0 0 0 2px rgba(10,15,28,.9),0 0 0 4px #fff,0 0 0 9px rgba(74,163,255,.28),0 2px 6px #000a !important}
 /* 130 % text size: the labels inside the round buttons keep their px size (the circle does not grow) */
 .beer-btn:not(.cooldown) .beer-label{font-size:44px !important;-webkit-text-size-adjust:none;text-size-adjust:none}
@@ -1026,7 +1026,7 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 
 /* Bjud in: a tonal amber button in the status row (not filled: the ONE primary rule) */
 #sheet .gpg>.pn-gp-inv{position:absolute;top:0;right:0;z-index:1;display:inline-flex;align-items:center;gap:var(--sp-2);height:44px;padding:0 var(--sp-4) 0 var(--sp-3);
-  border-radius:var(--r-pill);border:1px solid rgba(255,194,77,.45);background:rgba(245,166,35,.14);color:var(--ds-amber-t);font:600 var(--fs-16)/1 var(--ds-sans);cursor:pointer}
+  border-radius:var(--r-pill);border:1px solid rgba(255,194,77,.45);background:var(--ds-amber-soft);color:var(--ds-amber-t);font:600 var(--fs-16)/1 var(--ds-sans);cursor:pointer}
 #sheet .gpg>.pn-gp-inv .pi{width:20px;height:20px}
 #sheet .gpg>.pn-gp-inv:active{transform:scale(.96)}
 #sheet .gpg:not([data-gv="home"])>.pn-gp-inv{display:none !important}
@@ -1655,3 +1655,16 @@ body.mn-lask .beer-btn:not(.cooldown):not(.soon) .beer-label::after{content:attr
 #sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.mo-gcard.mo-room{order:1 !important}   /* polish2 writes an inline order on every tile; the room row goes with Spel (order 1) */
 #sheet .gpg:not([data-gv="home"])>.mo-gcard{display:none !important}
 /* lane:social-a END */
+/* lane:followups START — R1-42 tab fade, R1-48 Topplistor boxes (10 Nov). New rules only; no old line changed. */
+/* R1-42 sticky tabs (Grupper | Vänner | Inkorg, Topplistor): the B11 strip above the bar stays, and the bar now ends in a
+   16 px fade (rows fade out under it, never cut hard) — the same fade as the Profil bar (social-a G2). */
+.sheet .tabs.inv-tabs::after,#sheet-body>.tt-bar::after{height:auto;bottom:calc(-1 * var(--sp-4));
+  background:linear-gradient(var(--ds-sheet),var(--ds-sheet)) left top/100% var(--sp-4) no-repeat,
+    radial-gradient(circle at 100% 100%,transparent calc(var(--sp-3) - .5px),var(--ds-sheet) var(--sp-3)) left top var(--sp-4)/var(--sp-3) var(--sp-3) no-repeat,
+    radial-gradient(circle at 0 100%,transparent calc(var(--sp-3) - .5px),var(--ds-sheet) var(--sp-3)) right top var(--sp-4)/var(--sp-3) var(--sp-3) no-repeat,
+    linear-gradient(var(--ds-sheet),transparent) left bottom/100% var(--sp-4) no-repeat}
+/* R1-48 Topplistor: "Vad dricker stan?" blocks are plain rounded cards (no amber stripe); the opt-in wrapper has no
+   amber hairline on top (the card inside is the only box) */
+#sheet-body .bp-stats .bp-sb{box-shadow:none;border-radius:var(--r-lg)}
+#sheet-body>.bd-box{border-top:0}
+/* lane:followups END */

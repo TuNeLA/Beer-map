@@ -6,7 +6,7 @@
 .oh-open{color:#9fe3a8}
 .oh-soon{color:#ffd38a;font-weight:600}
 .oh-shut{color:#ff9d8a}
-.bi-line .bi-pr{color:#ffe08a}
+.bi-line .bi-pr{color:var(--gold)}
 .bi-q.q-none{color:#9fe3a8}.bi-q.q-short{color:#ffd38a}.bi-q.q-long{color:#ff9d8a}
 /* ℹ️ Info fold */
 .bi-info{display:grid;gap:10px;margin:2px 0 6px}
@@ -31,7 +31,7 @@
 .bi-form{display:grid;gap:8px;margin:6px 0 12px}
 /* 💰 price tag on bar markers (⚙️ toggle) */
 .bar-ico .bi-tag{position:absolute;left:62%;top:-9px;white-space:nowrap;font:700 10px/1 var(--body,system-ui,sans-serif);padding:2px 4px;border-radius:7px;
-  background:rgba(10,15,28,.86);border:1px solid rgba(255,224,138,.55);color:#ffe08a;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  background:rgba(10,15,28,.86);border:1px solid rgba(255,224,138,.55);color:var(--gold);pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.5)}
 /* Ikväll panel / sheets */
 .hx-aio{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .hud-left.open .hx-aio{grid-column:1 / -1;max-width:none}
