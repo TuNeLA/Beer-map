@@ -64,15 +64,20 @@
     if (!A || !A.LIVE || off) return Promise.resolve({ data: null, error: { message: "off" }, off: true });
     return A.rpc(name, params).then(function (r) { if (r.error && U.missing(r.error)) { off = true; r.off = true; } return r; });
   }
+  // ui1 fix (10 Nov): a load already on the way (the 8 s onAuthed load, a poll) is SHARED with the sheet. Before, the sheet got
+  // the old `data` (null at first) at once and showed "Passet gick int' att hämta" while the answer was still coming.
+  var loadP = null;
   function load(force) {
-    if (!A || !A.LIVE || off || busy || !A.authed()) return Promise.resolve(data);
+    if (!A || !A.LIVE || off || !A.authed()) return Promise.resolve(data);
+    if (busy && loadP) return loadP;
     if (!force && Date.now() - at < 30 * 60000) return Promise.resolve(data);
     busy = true; at = Date.now();
-    return call("my_passport").then(function (r) {
-      busy = false;
+    loadP = call("my_passport").then(function (r) {
+      busy = false; loadP = null;
       if (!r.error) { data = model(A.parseData(r.data)); miles(); }
       return data;
-    });
+    }, function () { busy = false; loadP = null; return data; });   // a thrown error never leaves busy on
+    return loadP;
   }
   function model(d) {
     var bars = (d.bars || []).map(function (b) { var p = placeOf(b); b.country = p.country; b.ptown = b.town || p.town; b.se = p.se; return b; });

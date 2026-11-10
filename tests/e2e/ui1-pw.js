@@ -344,6 +344,20 @@ function noJump(fr, w0, h0, moveMax) {
     await ctx.close();
   }
 
+  // ================= B5 Ölpasset opens while a passport load is on the way (the 8 s onAuthed / poll load) =================
+  {
+    const { ctx, page } = await setup(browser, 390);
+    const PB = { v: 1, nights_n: 2, towns: [{ town: "Ludvika", nights: 2, first: "2026-10-02", last: "2026-11-07" }], bars: [
+      { id: "n3472634175", name: "Pitchers", lat: 60.14997, lng: 15.18679, town: "Ludvika", in_se: true, nights: 2, first: "2026-10-02", last: "2026-11-07" }] };
+    await page.route(/rest\/v1\/rpc\/my_passport/, async (r) => { await new Promise((x) => setTimeout(x, 2500)); J(r, PB); });
+    await page.evaluate(() => { window.PASSPORT.refresh(); window.PASSPORT.open(); });   // a load is on the way when the sheet opens
+    await wait(page, 4500);
+    const ps = await page.evaluate(() => { const r = document.getElementById("ps-root"); return { cover: !!(r && r.querySelector(".ps-cover")), map: !!document.getElementById("ps-map"), fail: !!(r && /gick int/.test(r.textContent)), bars: (window.PASSPORT.data() || { bars: [] }).bars.length }; });
+    ok(ps.cover && ps.map && !ps.fail && ps.bars === 1, "B5 Ölpasset opened during a slow passport load shows the passport + map (no 'gick int' att hämta')", ps);
+    await shot(page, "B5-passport-slowload-390");
+    await ctx.close();
+  }
+
   // ================= B12 precision bubble =================
   for (const w of W3) {
     const first = () => { try { if (!sessionStorage.getItem("ui1b12")) { sessionStorage.setItem("ui1b12", 1); localStorage.removeItem("olnu.night"); localStorage.removeItem("olnu.pnBeer1"); } } catch (e) {} };
