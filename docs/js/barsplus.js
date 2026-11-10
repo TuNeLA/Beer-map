@@ -131,6 +131,7 @@
     var names = t("bpQueueNames") || {};
     return t("bpQueueLine", names[s.queue] || s.queue, t("bpAgo", minsAgo(s.queue_at)), s.queue_n | 0);
   }
+  function pni(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }   // ui1 B7
   function offerHTML(o) {
     var mv = o.my_vote | 0, mine = !!o.is_mine;
     return '<div class="bp-of"><span class="bp-of-t">' + esc(o.body) + "</span>" +
@@ -169,22 +170,23 @@
         '<div class="bp-of-note">' + esc(t("bpOfferNote")) + "</div></div>";
     }
     if (authed) {
-      var qn = t("bpQueueNames") || {}, en = t("bpEntryShort") || {}, qe = t("bpQueueEmoji") || {}, sel = entrySel[id] || "";
-      body += '<div class="bp-lbl">' + esc(t("bpEntryQ")) + "</div>" +
+      var qn = t("bpQueueNames") || {}, en = t("bpEntryShort") || {}, sel = entrySel[id] || "", sv = !I || I.lang !== "en";
+      // ui1 B7 (owner): the "Kö och erbjudanden" row opens straight onto these buttons (no 2nd dropdown, no square box).
+      // Status = coloured dot + word; icons are PNI (no emoji in chrome).
+      body += '<div class="bp-lbl">' + esc(t("bpQueueQ")) + "</div>" +
+        '<div class="bp-row bp-qs">' + ["none", "short", "long"].map(function (q) {
+          return '<button type="button" class="bp-qb q-' + q + '" data-bpq="' + q + '"><i class="bp-qd" aria-hidden="true"></i>' + esc(qn[q] || q) + "</button>";
+        }).join("") + "</div>" +
+        '<div class="bp-lbl">' + esc(t("bpEntryQ")) + "</div>" +
         '<div class="bp-row bp-ent">' + ["free", "low", "high"].map(function (e) {
           return '<button type="button" class="bp-chip' + (sel === e ? " on" : "") + '" data-bpe="' + e + '" aria-pressed="' + (sel === e) + '">' + esc(en[e] || e) + "</button>";
         }).join("") + "</div>" +
-        '<div class="bp-lbl">' + esc(t("bpQueueQ")) + "</div>" +
-        '<div class="bp-row bp-qs">' + ["none", "short", "long"].map(function (q) {
-          return '<button type="button" class="bp-qb q-' + q + '" data-bpq="' + q + '">' + (qe[q] || "") + " " + esc(qn[q] || q) + "</button>";
-        }).join("") + "</div>" +
         '<div class="bp-row bp-acts">' +
-          (off.add_offer ? "" : '<button type="button" class="bp-act" data-bpa="offer">' + esc(t("bpOfferAdd")) + "</button>") +
-          (off.send_tip ? "" : '<button type="button" class="bp-act" data-bpa="tip">' + esc(t("bpTipBtn")) + "</button>") +
+          (off.add_offer ? "" : '<button type="button" class="bp-act" data-bpa="offer">' + pni("plus") + "<span>" + esc(sv ? "Erbjudande" : "Offer") + "</span></button>") +
+          (off.send_tip ? "" : '<button type="button" class="bp-act" data-bpa="tip">' + pni("megaphone") + "<span>" + esc(sv ? "Tipsa gruppen" : "Tip your group") + "</span></button>") +
         "</div>";
     }
-    h += '<details class="bp-more"' + (openMore[id] ? " open" : "") + "><summary>" +
-      esc(offers.length ? t("bpMoreN", offers.length) : t("bpMore")) + "</summary>" + body + "</details>";
+    h += '<div class="bp-body">' + body + "</div>";
     return '<div class="bp" data-bp="' + esc(id) + '">' + h + "</div>";
   }
 

@@ -134,7 +134,11 @@
     }, { onClose: killMap });
     load(true).then(function () { render(); });
   }
-  function killMap() { if (mini) { try { mini.remove(); } catch (e) {} mini = null; } }
+  function killMap() {
+    if (miniIO) { try { miniIO.disconnect(); } catch (e) {} miniIO = null; }
+    if (mini) { try { mini.remove(); } catch (e) {} mini = null; }
+    miniEngine = null; miniPins = 0;
+  }
   function render() {
     var root = document.getElementById("ps-root"); if (!root) return;
     killMap();
@@ -151,7 +155,7 @@
       root.innerHTML = h; return;
     }
     var geo = d.bars.filter(function (b) { return b.lat != null && b.lng != null; });
-    if (geo.length && window.L) h += '<div class="ps-map" id="ps-map" role="img" aria-label="' + esc(L("Karta med dina stämplar", "Map of your stamps")) + '"></div>';
+    if (geo.length && (window.L || window.mapboxgl)) h += '<div class="ps-map" id="ps-map" role="img" aria-label="' + esc(L("Karta med dina stämplar", "Map of your stamps")) + '"></div>';
     h += '<h4 class="ps-h">' + esc(L("Visum", "Visas")) + '</h4><div class="ps-miles">' + MILES.map(function (m) {
       var ok = reached(m, d);
       return '<div class="ps-mile' + (ok ? " ok" : "") + '"><span class="ps-me" aria-hidden="true">' + m[2] + "</span><b>" + esc(L(m[3], m[4])) + "</b><small>" +
@@ -168,23 +172,88 @@
     h += '<p class="ps-fine muted">' + esc(L("Stämplar från incheckningar och öl vid en krog. Bara du ser ditt pass. Länder utomlands ä en grov gissning.",
       "Stamps come from check-ins and drinks at a bar. Only you see your passport. Countries abroad are a rough guess.")) + "</p>";
     root.innerHTML = h;
-    if (geo.length && window.L) setTimeout(function () { drawMap(geo); }, 60);
+    if (geo.length) setTimeout(function () { drawMap(geo); }, 60);
+  }
+  /* ui1 B5 (owner): the Ölpasset map looks like the main map: the same Mapbox Standard style + basemap config (BASEMAP.LIST,
+     the user's Skymning / Natt) and the main map's bar discs (mapart.js PNPINS). Non-interactive, made only when the box is in
+     view, removed when the sheet closes. It costs 1 Mapbox map load per open (the Static Images API has no Standard style).
+     No Mapbox on this phone (no token / WebGL, or the main map fell back) = the free raster map, with the same disc pins. */
+  var miniIO = null, miniEngine = null, miniPins = 0, pinCache = {};
+  function pinImg(b) {
+    var k = "pub";
+    try { var bb = window.BARS && window.BARS.byId && window.BARS.byId(b.id); if (bb && bb.type) k = bb.type; } catch (e) {}
+    if (pinCache[k]) return pinCache[k];
+    var P = window.PNPINS, svg = "";
+    try { if (P && P.barOps && P.toSVG) svg = P.toSVG(P.barOps({ k: k }, "x").ops); } catch (e) { svg = ""; }
+    var m = /width="(\d+)" height="(\d+)"/.exec(svg);
+    pinCache[k] = svg ? { src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg), w: m ? +m[1] : 30, h: m ? +m[2] : 30 } : null;
+    return pinCache[k];
+  }
+  function pinEl(b) {
+    var p = pinImg(b), el = document.createElement("div");
+    el.className = "ps-pin ps-pin-pni"; el.setAttribute("aria-hidden", "true");
+    if (p) { var im = document.createElement("img"); im.src = p.src; im.width = p.w; im.height = p.h; im.alt = ""; im.decoding = "async"; el.appendChild(im); }
+    return el;
+  }
+  function glStyle() {
+    var B = window.BASEMAP;
+    try {
+      if (!B || !window.mapboxgl || !window.mapboxgl.Map || !B.isMapbox() || !B.loaded() || !B.token()) return null;
+      var cur = B.current(), st = (B.LIST || []).filter(function (x) { return x.id === cur; })[0];
+      return st && st.mb ? st : null;
+    } catch (e) { return null; }
   }
   function drawMap(geo) {
-    var box = document.getElementById("ps-map"); if (!box || !window.L) return;
+    var box = document.getElementById("ps-map"); if (!box) return;
+    var st = glStyle();
+    if (!st) { drawRaster(box, geo); return; }
+    var go = function () { if (miniIO) { miniIO.disconnect(); miniIO = null; } if (!mini && document.body.contains(box)) drawGL(box, geo, st); };
+    if (window.IntersectionObserver) {
+      miniIO = new IntersectionObserver(function (es) { if (es.some(function (e) { return e.isIntersecting; })) go(); });
+      miniIO.observe(box);
+    } else go();
+  }
+  function drawGL(box, geo, st) {
+    try {
+      var gl = window.mapboxgl, B = window.BASEMAP;
+      gl.accessToken = B.token();
+      var o = { container: box, style: st.mb, interactive: false, attributionControl: false, renderWorldCopies: false, projection: "mercator",
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 2), fadeDuration: 0, antialias: false, performanceMetricsCollection: false, center: [15.19, 60.15], zoom: 11 };
+      if (st.cfg) o.config = { basemap: st.cfg };
+      var m = new gl.Map(o);
+      mini = m; miniEngine = "gl"; miniPins = 0;
+      try { m.addControl(new gl.AttributionControl({ compact: true })); } catch (e) {}   // Mapbox terms: logo + text attribution on every map
+      var bounds = new gl.LngLatBounds();
+      geo.forEach(function (b) {
+        var ll = [+b.lng, +b.lat]; bounds.extend(ll);
+        var el = pinEl(b); el.title = b.name || "";
+        new gl.Marker({ element: el, anchor: "center" }).setLngLat(ll).addTo(m); miniPins++;
+      });
+      // the zoom numbers here are GL zoom (Leaflet zoom − 1): 13 / 14 on the old raster map
+      if (geo.length === 1) m.jumpTo({ center: [+geo[0].lng, +geo[0].lat], zoom: 12 });
+      else m.fitBounds(bounds, { padding: 28, maxZoom: 13, duration: 0 });
+      m.on("error", function (e) {
+        var c = e && e.error && e.error.status;
+        if ((c === 401 || c === 403) && mini === m) { try { m.remove(); } catch (x) {} mini = null; drawRaster(box, geo); }
+      });
+    } catch (e) { try { console.warn("olnu passport map", e); } catch (x) {} mini = null; drawRaster(box, geo); }
+  }
+  function drawRaster(box, geo) {
+    if (!window.L) return;
     try {
       mini = window.L.map(box, { zoomControl: false, attributionControl: true, worldCopyJump: true, minZoom: 2 });
       var ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
       window.L.tileLayer(ESRI + "World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 18, attribution: "Tiles &copy; Esri" }).addTo(mini);
       var pts = [];
       geo.forEach(function (b) {
-        var hh = hash("b:" + b.id), ink = INKS[hh % INKS.length], rot = ((hh >> 7) % 25) - 12;
-        var ic = window.L.divIcon({ className: "ps-pin", iconSize: [30, 30], iconAnchor: [15, 15],
-          html: '<span style="--ink:' + ink + ";--rot:" + rot + 'deg">' + esc(String(b.name || "?").charAt(0).toUpperCase()) + "</span>" });
+        var pi = pinImg(b), w = pi ? pi.w : 30, hgt = pi ? pi.h : 30;   // ui1 B5: the main map's bar disc
+        var ic = window.L.divIcon({ className: "ps-pin ps-pin-pni", iconSize: [w, hgt], iconAnchor: [w / 2, hgt / 2],
+          html: pi ? '<img src="' + pi.src + '" width="' + w + '" height="' + hgt + '" alt="">' : "" });
         window.L.marker([+b.lat, +b.lng], { icon: ic, keyboard: false, title: b.name || "" }).addTo(mini)
           .bindTooltip(esc(b.name || L("Okänd krog", "Unknown bar")) + (b.nights > 1 ? " ×" + b.nights : ""), { direction: "top" });
         pts.push([+b.lat, +b.lng]);
       });
+      miniEngine = "raster"; miniPins = pts.length;
       if (pts.length === 1) mini.setView(pts[0], 13); else mini.fitBounds(pts, { padding: [24, 24], maxZoom: 14 });
       setTimeout(function () { try { mini && mini.invalidateSize(); } catch (e) {} }, 250);
     } catch (e) { try { console.warn("olnu passport map", e); } catch (x) {} }
@@ -198,7 +267,8 @@
     return b;
   }
   window.PASSPORT = {
-    data: function () { return data; }, open: openSheet, refresh: function () { return load(true); }, _placeOf: placeOf,
+    data: function () { return data; }, open: openSheet,
+    _map: function () { return { engine: miniEngine, pins: miniPins, gl: miniEngine === "gl" ? mini : null }; },   // ui1 B5 test hook refresh: function () { return load(true); }, _placeOf: placeOf,
     init: function (api) { A = api; },
     onAuthed: function () { setTimeout(function () { load(false); }, 8000); },   // review2: the first poll has loaded it already
     onPoll: function () { load(false); },

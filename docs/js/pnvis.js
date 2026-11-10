@@ -71,7 +71,7 @@
     setTimeout(function () { document.addEventListener("click", out, true); document.addEventListener("keydown", esc); }, 0);
   }
   function close() {
-    if (!menu) return; var m = menu; menu = null; m.classList.add("pn-out"); setTimeout(function () { m.remove(); }, 160);
+    if (!menu) return; var m = menu; menu = null; m.classList.add("pn-vis-out"); setTimeout(function () { m.remove(); }, 160);   // ui1 B6: own class (.pn-out = the "Ute ikväll" card style made the menu jump)
     var b = document.getElementById("pn-ghost"); if (b) b.setAttribute("aria-expanded", "false");
     document.removeEventListener("click", out, true); document.removeEventListener("keydown", esc);
   }

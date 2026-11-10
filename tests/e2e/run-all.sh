@@ -63,6 +63,7 @@ NEEDS_MAPBOX=1 run barzoom    $A barzoom-pw.js   # ds44: no glow circle over a l
 NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
+NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + B10 real zone pill at 360 px
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
 run social2    $B social2-pw.js
@@ -92,6 +93,7 @@ run txtfit     $B txtfit-pw.js     # every rank / KAOS / LIVE text fits at 390 p
 run ds-motion  $B ds-motion-pw.js  # ds10 motion rules
 run gw         $B gw-pw.js         # competitor-research build (gw.js): Ute ikväll?, previews, honest crowd, Följ mig hem timer
 run inst       $B inst-pw.js       # screens show at once (no layout shift / late inserts) with slow RPCs (inst-mocks.js)
+run ui1        $B ui1-pw.js       # ui1 Wave 1: B3 day headers, B4 chip fades, B6 close jumps, B7 bar card, B10 pill, B11 tabs, B12 bubble
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk

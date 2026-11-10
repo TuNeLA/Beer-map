@@ -480,7 +480,7 @@
     var a = amb; amb = null; clearTimeout(a.timer); clearTimeout(a.calmT);
     if (fast) { a.el.remove(); return; }
     a.el.style.transition = "opacity 1.5s ease"; a.el.style.opacity = "0";
-    a.el.classList.add("out");
+    a.el.classList.add("fx-amb-out");   // ui1 B6: own close class ("out" also means "out now" elsewhere)
     setTimeout(function () { a.el.remove(); }, 1600);
   }
   // burstMs: how long the full effect still runs (default 10 s). Then a 10 s fade into the subtle state.
@@ -579,7 +579,7 @@
       if (typeof cleanup === "function") { try { cleanup(); } catch (e) {} }
       if (current === ctl) current = null;
       if (now) el.remove();
-      else { el.classList.add("out"); setTimeout(function () { el.remove(); }, 260); }
+      else { el.classList.add("fx-tk-out"); setTimeout(function () { el.remove(); }, 260); }   // ui1 B6: own close class
     }
     var tkStart = Date.now();
     function done() {
