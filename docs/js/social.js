@@ -618,6 +618,17 @@
           b.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker(); sendReact(id, e); });
           picker.appendChild(b);
         });
+        // social-a (misc X5): "Anmäl / blockera …" = MISC.reportMenu (film photo, voice or text; the right report kind)
+        try {
+          var cm = chatMsgs[id] || {};
+          if (window.MISC && window.MISC.reportMenu && !li.classList.contains("me") && !g.dm) {
+            var rb = el("button", { type: "button", class: "cm-pick sa-cm-rep", role: "menuitem", "aria-label": "Anmäl eller blockera", title: "Anmäl eller blockera" });
+            rb.innerHTML = window.PNI && window.PNI.has("flag") ? window.PNI.svg("flag") : "!";
+            rb.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker();
+              window.MISC.reportMenu({ id: id, name: cm.name || "", photo_id: li.getAttribute("data-ph") || cm.photo_id || null, voice_id: li.getAttribute("data-afvid") || cm.voice_id || null }); });
+            picker.appendChild(rb); picker.__sf = 1;   // safety.js onPicker skips this picker (no 2nd 🚩 / 🚫 pair)
+          }
+        } catch (x) {}
         // v19 Citatboken (js/gang.js): "📖 Citat" in the same menu.
         try { if (!g.ev && !g.dm && window.GANG && window.GANG.chatPick) window.GANG.chatPick(picker, g, chatMsgs[id], closePicker); } catch (x) {}
         li.appendChild(picker); pickerAt = Date.now();

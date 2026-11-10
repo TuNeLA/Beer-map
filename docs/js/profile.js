@@ -121,6 +121,11 @@
         (gs.length > 6 ? '<span class="pf-chip pf-more">+' + (gs.length - 6) + "</span>" : "") + "</div>";
     }
     box.innerHTML = h;
+    // social-a (misc F4): "Grundare" badge next to the name; MISC.founderBadge() stays hidden until the owner sets the cutoff
+    try {
+      var nm = box.querySelector(".pf-name");
+      if (nm && window.MISC && window.MISC.founderBadge) { var fb = window.MISC.founderBadge(); if (fb) { nm.classList.add("sa-pf-name"); nm.appendChild(fb); } }
+    } catch (e) {}
   }
   function act(k) {
     var go = function (fn) { try { fn(); } catch (e) {} };

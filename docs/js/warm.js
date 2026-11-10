@@ -34,7 +34,8 @@
   var QUIET = {
     poll_v2: 1, live_beers: 1, live_others: 1, live_checkins: 1, heat_points: 1, ghost_points: 1, bar_kings: 1,
     award_medals: 1, public_config: 1, spel_group: 1, crew_dance_bar: 1, bar_photos: 1, city_league: 1, record_bar: 1, beer_reactions: 1, friend_totals: 1,
-    my_rallies: 1, safety_state: 1, pickup_poll: 1, vitals_log: 1, log_vitals: 1, my_push_state: 1
+    my_rallies: 1, safety_state: 1, pickup_poll: 1, vitals_log: 1, log_vitals: 1, my_push_state: 1,
+    after_report2: 1   // social-a: a READ (after2.js; the group page asks for it on open) — the name rule took it for a write and made every cached screen dirty
   };
   // ds59: writes that the read-like name rule (…_group) would miss: they always make the cache dirty
   var WRITES = { join_group: 1, create_group: 1, leave_group: 1, rename_group: 1, kick_member: 1, set_display_name: 1, friend_remove: 1, friend_answer: 1, dm_open: 1 };
