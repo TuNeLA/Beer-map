@@ -83,6 +83,7 @@ function build(now) {
     gang_poll: () => ({ v: 1, groups: [] }),                                                  // gang.js
     skal_poll: () => ({ v: 1, now: new Date(now).toISOString(), hours: [], fired: [] }),      // skal.js
     near_poll: () => ({ v: 1, squads: [], friends_in: [], find_in: [] }),                     // near.js
+    set_find_share: (b) => ({ groups: !!(b && b.p_groups), friends: !!(b && b.p_friends), until: new Date(now + 6 * 3600e3).toISOString() }),   // near.js Låt mig hittas (social-a: the switches are in view in Vänner now)
     walk_poll: () => ({ v: 1, mine: null, walks: [] }),                                       // hemfolj.js
     walk_timer_tick: () => ({ v: 1, mine: null, alerts: [], push: [] }),                      // gw.js
     party_mine: () => ({ v: 1, room: null }),                                                 // party.js

@@ -379,7 +379,7 @@
   function gkSub(g) {
     var n = 0;
     try { var d = window.DUEL.data(); (d && d.duels || []).forEach(function (x) { if (x && (x.status === "active" || x.status === "pending") && ((x.group && x.group.id === g.id) || (x.sides || []).some(function (y) { return y && y.id === g.id; }))) n++; }); } catch (e) {}
-    return n ? L(n + (n === 1 ? " kamp igång ikväll" : " kamper igång ikväll"), n + " running tonight") : L("Utmana ett annat gäng. Flest öl vinner.", "Challenge another gang. Most beers wins.");
+    return n ? L(n + (n === 1 ? " kamp igång ikväll" : " kamper igång ikväll"), n + " running tonight") : L("Utmana ett annat gäng", "Challenge another gang");
   }
   function gkOpen(g) { try { window.GAMES.openGangkamp({ id: g.id, name: g.name, code: g.code }); } catch (e) {} }
   function gkRow(g) {

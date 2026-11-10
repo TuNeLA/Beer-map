@@ -478,10 +478,17 @@
     box.appendChild(el("h3", { text: L("🧭 Låt mig hittas ikväll", "🧭 Let me be found tonight") }));
     box.appendChild(el("p", { class: "muted nr-hint", text: L("Påslaget kan gänget/vännerna starta kompassen mot dig utan att fråga – till kl 05 eller tills du slår av. Din exakta position skickas bara när DIN kompass ä öppen.",
       "When on, your groups/friends can start the compass to you without asking – until 05:00 or until you switch off. Your exact position is only sent while YOUR compass is open.") }));
+    // social-a: a change repaints the two rows in place (the switch elements stay, so a 2nd tap and the row tap keep working)
+    var rows = [];
+    function paintShare() {
+      var q = (P && P.share) || {};
+      rows.forEach(function (r) { var on = !!q[r.k]; r.sw.setAttribute("aria-checked", String(on)); r.t.textContent = r.l + (on && q.until ? " · " + L("till ", "until ") + U.timeHM(q.until) : ""); });
+    }
     [["groups", L("Låt gruppen hitta mig", "Let my groups find me")], ["friends", L("Låt vännerna hitta mig", "Let my friends find me")]].forEach(function (x) {
       var on = !!s[x[0]];
       var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(on), "aria-label": x[1] });
       sw.addEventListener("click", function () {
+        s = (P && P.share) || s; on = !!s[x[0]];
         var ns = { groups: !!s.groups, friends: !!s.friends }; ns[x[0]] = !on;
         sw.disabled = true;
         call("set_find_share", { p_groups: ns.groups, p_friends: ns.friends }).then(function (r) {
@@ -490,10 +497,12 @@
           var d = A.parseData(r.data);
           P = P || {}; P.share = d;
           A.toast(d[x[0]] ? L("🧭 På till kl 05. Ingen ser dig förrän din kompass ä öppen.", "🧭 On until 05:00.") : L("🧭 Avslaget.", "🧭 Off."));
-          drawShare(box);
+          s = d; paintShare();
         });
       });
-      box.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: x[1] + (on && s.until ? " · " + L("till ", "until ") + U.timeHM(s.until) : "") }), sw]));
+      var tx = el("span", { text: x[1] + (on && s.until ? " · " + L("till ", "until ") + U.timeHM(s.until) : "") });
+      rows.push({ k: x[0], l: x[1], sw: sw, t: tx });
+      box.appendChild(el("div", { class: "toggle-row" }, [tx, sw]));
     });
   }
   // From social.js member tap (v25 panel): add "➕ Lägg till vän" and "🧭 Hitta".

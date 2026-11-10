@@ -1474,7 +1474,8 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
   -webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
 #sheet .gitem .gmain.gtap .gname::after{content:"" !important;display:inline-block;width:16px;height:16px;margin-left:var(--sp-1);vertical-align:-2px;background:var(--ds-amber-t);
   -webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
-.glist .gcard .gcard-go{font-size:0 !important;width:16px;height:16px;flex:0 0 16px;background:var(--ds-muted);-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+.glist .gcard .gcard-go{display:grid;place-items:center;flex:0 0 16px;color:var(--ds-muted)}
+.glist .gcard .gcard-go .pi{width:16px;height:16px}
 #sheet .gpg .sa-gpg-n{display:inline-flex;align-items:center;gap:var(--sp-1)}
 #sheet .gpg .sa-chev{display:grid;color:var(--ds-muted)}
 #sheet .gpg .sa-chev .pi{width:16px;height:16px}
@@ -1489,7 +1490,7 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
 /* G5 Profil edit badge: a 32 px amber circle with the PNI edit glyph, centred on the avatar edge at 45° (iOS contact style),
    a 3 px ring in the card colour. The old text glyph (✎ / +) is hidden; a new user (no character) gets the plus. */
 .pf-hero .pf-av.av-pf .av-pen{right:-6px !important;bottom:-6px !important;width:32px !important;height:32px !important;padding:0 !important;border-radius:50% !important;
-  display:block !important;font-size:0 !important;line-height:0 !important;color:transparent !important;background:var(--ds-amber) !important;border:0 !important;
+  display:block !important;overflow:hidden;font-size:var(--fs-12) !important;line-height:32px !important;color:transparent !important;background:var(--ds-amber) !important;border:0 !important;
   box-shadow:0 0 0 3px var(--ds-card) !important;transform:none !important}
 .pf-hero .pf-av.av-pf .av-pen::before{content:"";position:absolute;left:7px;top:7px;width:18px;height:18px;background:var(--ds-on-amber);
   -webkit-mask:var(--sa-edit-img) center/18px no-repeat;mask:var(--sa-edit-img) center/18px no-repeat}

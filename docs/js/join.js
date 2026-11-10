@@ -642,6 +642,7 @@
           var live = (g.active_count | 0) > 0, ci = window.GPAGE && window.GPAGE.colorOf ? window.GPAGE.colorOf(g) : 0;
           var pi = window.PNI && window.PNI.has ? window.PNI : null;
           li.classList.add("sa-gc");
+          var go = li.querySelector(".gcard-go"); if (go && pi) go.innerHTML = pi.svg("chev-right");   // R1-24: the icon, not "›"
           li.insertBefore(h("span", { class: "sa-gc-ti " + (live ? "pn-acc-live" : "sa-gcol-" + ci), "aria-hidden": "true", html: pi ? pi.svg(live ? "beer" : "users") : "" }), li.firstChild);
         }
       } catch (e) {}

@@ -107,9 +107,9 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
     // ---------- G4 group tiles ----------
     await tab(page, "g"); await wait(page, 1000);
     const gc = await page.evaluate(() => [...document.querySelectorAll(".glist .gcard")].map((c) => ({ before: getComputedStyle(c, "::before").content, svg: !!c.querySelector(".sa-gc-ti svg"),
-      go: getComputedStyle(c.querySelector(".gcard-go") || c).fontSize })));
+      go: (c.querySelector(".gcard-go") || c).textContent.trim() === "" && !!(c.querySelector(".gcard-go svg")) })));
     ok(`[${w}] G4 group tiles: PNI icon tile, no 🍺 ::before`, gc.length >= 2 && gc.every((x) => x.svg && (x.before === "none" || x.before === "normal")), gc);
-    ok(`[${w}] R1-24 group cards: the chevron is an icon (no "›" glyph)`, gc.length >= 2 && gc.every((x) => x.go === "0px"), gc);
+    ok(`[${w}] R1-24 group cards: the chevron is an icon (no "›" glyph)`, gc.length >= 2 && gc.every((x) => x.go), gc);
     // G3 Tidigare event in Grupper: one list, PNI icons, place once
     const gp = await page.evaluate(() => { const d = document.querySelector("#inv-pane-g details.evg-fold"); if (!d) return null; d.open = true;
       const rows = [...d.querySelectorAll(".evg-prow")]; return { inPane: !!d.closest("#inv-pane-g"), n: rows.length, emo: rows.some((r) => /\p{Extended_Pictographic}/u.test(r.textContent)) || /\p{Extended_Pictographic}/u.test(d.querySelector("summary").textContent),
@@ -190,14 +190,14 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
       let p = null;
       if (pen && av) { const a = av.getBoundingClientRect(), b = pen.getBoundingClientRect(), cs = getComputedStyle(pen);
         const cx = b.left + b.width / 2 - (a.left + a.width / 2), cy = b.top + b.height / 2 - (a.top + a.height / 2);
-        p = { w: Math.round(b.width), h: Math.round(b.height), dist: Math.round(Math.hypot(cx, cy)), r: Math.round(a.width / 2), ang: Math.round(Math.atan2(cy, cx) * 180 / Math.PI), fs: cs.fontSize, glyph: getComputedStyle(pen, "::before").maskImage || getComputedStyle(pen, "::before").webkitMaskImage }; }
+        p = { w: Math.round(b.width), h: Math.round(b.height), dist: Math.round(Math.hypot(cx, cy)), r: Math.round(a.width / 2), ang: Math.round(Math.atan2(cy, cx) * 180 / Math.PI), fs: cs.color, glyph: getComputedStyle(pen, "::before").maskImage || getComputedStyle(pen, "::before").webkitMaskImage }; }
       return { empty, nested, kompisar, past: pastRow ? pastRow.textContent : null, evInFold, fade: fade ? { c: fade.content, h: fade.height, bg: fade.backgroundImage } : null, pen: p };
     });
     ok(`[${w}] G2 Profil: no empty section (Kompisar)`, pf.empty.length === 0 && !pf.kompisar, pf.empty);
     ok(`[${w}] G2 Profil: no card inside a card`, pf.nested.length === 0, pf.nested);
     ok(`[${w}] G2 Profil: Tidigare event = one row in Mitt (not a card in Kompisar)`, !!pf.past && /3 event/.test(pf.past) && !pf.evInFold, pf);
     ok(`[${w}] G2 Profil: the sticky tabs end in a fade (labels never cut under them)`, !!pf.fade && pf.fade.c !== "none" && /gradient/.test(pf.fade.bg) && parseFloat(pf.fade.h) >= 12, pf.fade);
-    ok(`[${w}] G5 pen badge: 32–36 px circle, glyph is the PNI edit mask (no text)`, !!pf.pen && pf.pen.w >= 32 && pf.pen.w <= 36 && pf.pen.w === pf.pen.h && pf.pen.fs === "0px" && /svg/.test(pf.pen.glyph || ""), pf.pen);
+    ok(`[${w}] G5 pen badge: 32–36 px circle, glyph is the PNI edit mask (no text)`, !!pf.pen && pf.pen.w >= 32 && pf.pen.w <= 36 && pf.pen.w === pf.pen.h && /rgba\(0, 0, 0, 0\)|transparent/.test(pf.pen.fs) && /svg/.test(pf.pen.glyph || ""), pf.pen);
     ok(`[${w}] G5 pen badge: centred on the avatar edge, lower right (45° ± 12°)`, !!pf.pen && Math.abs(pf.pen.dist - pf.pen.r) <= 6 && Math.abs(pf.pen.ang - 45) <= 12, pf.pen);
     // the Tidigare event list sheet: one list, no emoji, place once
     await page.evaluate(() => { const r = [...document.querySelectorAll("#sheet-body .pn-pf .ds-row")].find((x) => /Tidigare event/.test(x.textContent)); if (r) r.click(); }); await wait(page, 1200);
