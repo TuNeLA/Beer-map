@@ -70,6 +70,6 @@ Before the data file is in, the last region (`olnu.dialekt.r`) is used, so the t
 ## Data
 
 - `scripts/dialekt-kommuner.csv` = the D1 list (290 kommuner, `regionA`, `regionB`). The owner's changes go here.
-- `python3 scripts/dialekt-kommun.py` builds `docs/zones/dialekt-kommun.json` (kommuner, town aliases, a lat/lng grid).
+- `python3 scripts/dialekt-kommun.py` builds `docs/data/dialekt-kommun.json` (kommuner, town aliases, a lat/lng grid).
   It prints the grid error rate. Hand fixes for towns go in its `FIX` table.
 - New country = a new data file with its own `cc` and `lang`, added to `DATA` in `dialekt.js`, plus its packs.

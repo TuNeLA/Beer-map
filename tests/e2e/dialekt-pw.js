@@ -1,5 +1,5 @@
 // dialect-core (D2): docs/js/dialekt.js — the string layer and its kommun → region data. Usage: node dialekt-pw.js <port>
-// Part 1: the module alone on a tiny page from the same server (real dialekt.js + real zones/dialekt-kommun.json).
+// Part 1: the module alone on a tiny page from the same server (real dialekt.js + real data/dialekt-kommun.json).
 // Part 2: the real app (mocked Supabase): DIALEKT loads, finds Ludvika, and its Inställningar row works at 360/390/430.
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
@@ -51,7 +51,7 @@ async function fresh(browser, ls, o = {}) {
       out.ms = Math.round(performance.now() - out.t0);
       return out;
     }, CSV);
-    ok("data: 290 kommuner in zones/dialekt-kommun.json", r.n === 290 && CSV.length === 290, { n: r.n, csv: CSV.length });
+    ok("data: 290 kommuner in data/dialekt-kommun.json", r.n === 290 && CSV.length === 290, { n: r.n, csv: CSV.length });
     ok("data: every CSV regionA is a valid A code", CSV.every((x) => A_CODES.includes(x.a)), CSV.filter((x) => !A_CODES.includes(x.a)));
     ok("data: all 290 kommuner by SCB code → their CSV A region", r.code.length === 0, r.code);
     ok("data: all 290 kommuner by code → their CSV B region", r.codeB.length === 0, r.codeB);

@@ -12,7 +12,8 @@
      Sources, first hit wins: preview(code) → setArea() / api.lastLoc() (current position; mods hook) → olnu.pushLoc
      (push.js, < 12 h) → olnu.homeTown (hometown.js, the name) → olnu.home (homezone.js) → olnu.htPos (< 30 d) → neutral.
      No geolocation of its own, no network host of its own.
-   - Data: ./zones/dialekt-kommun.json (scripts/dialekt-kommun.py from the D1 CSV; sw.js caches zones/*.json offline):
+   - Data: ./data/dialekt-kommun.json (scripts/dialekt-kommun.py from the D1 CSV; not in zones/: zones-pw wants no zones/
+     file at boot; offline = the last region from localStorage until sw.js DATA_RE also lists data/dialekt-*.json):
      290 kommuner (SCB code, name, A and B region), town aliases, a 0.025° × 0.05° lat/lng → kommun grid. Loaded on the
      first t() / region() call or on idle 2 s after load. Until then the last region (localStorage olnu.dialekt.r) is used.
    - Countries: every dataset has a country code (cc) and a language (lang). Norway / Denmark / Finland = one more data
@@ -23,7 +24,7 @@
 (function () {
   "use strict";
   var LS = "olnu.dialekt", LS_R = "olnu.dialekt.r";
-  var DATA = ["./zones/dialekt-kommun.json"];
+  var DATA = ["./data/dialekt-kommun.json"];
   var NIGHT_H = 5, LOC_MS = 12 * 3600e3, HT_MS = 30 * 864e5;
   // B pack → its usual A pack (only used for preview(); real lookups use the kommun's own A code from the data)
   var PARENT = { "sv-smaland": "sv-syd", "sv-varmland": "sv-vast", "sv-norr-ovre": "sv-norr", "sv-norr-mitt": "sv-norr", "sv-gotland": "sv-neutral" };

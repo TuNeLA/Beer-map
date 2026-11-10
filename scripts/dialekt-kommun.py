@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""PintsNow dialect layer (D2): build docs/zones/dialekt-kommun.json for docs/js/dialekt.js.
+"""PintsNow dialect layer (D2): build docs/data/dialekt-kommun.json for docs/js/dialekt.js.
 
 Inputs (all in the repo):
   scripts/dialekt-kommuner.csv   the D1 research list: 290 kommuner, SCB code, regionA, regionB (owner edits THIS file)
   docs/zones/kommuner.json       SCB kommun borders (CC0, the same file the map zones use)
   docs/js/cities.js, docs/js/hometown.js (XY), docs/js/taxi-data.js   town names + positions → town aliases
 Output:
-  docs/zones/dialekt-kommun.json (zones/*.json is cached offline by sw.js DATA_RE)
+  docs/data/dialekt-kommun.json (not in zones/: the map test zones-pw.js wants no zones/ request at boot)
     k      [[kod, name, a, b, lat, lng], ...]  a / b = index into "codes"; lat/lng = the SCB label point
     alias  {normalised town name: kod}         towns that are not kommun names (Grängesberg → 2085 Ludvika)
     grid   {lat0, lng0, dlat, dlng, rows}      coarse lat/lng → kommun lookup, one RLE string per row
@@ -189,7 +189,7 @@ def main():
         "k": K, "alias": alias,
         "grid": {"lat0": lat0, "lng0": lng0, "dlat": DLAT, "dlng": DLNG, "rows": rows_enc},
     }
-    out = P("docs", "zones", "dialekt-kommun.json")
+    out = P("docs", "data", "dialekt-kommun.json"); os.makedirs(os.path.dirname(out), exist_ok=True)
     s = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     open(out, "w", encoding="utf-8").write(s + "\n")
     cnt = {}
