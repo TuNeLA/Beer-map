@@ -88,7 +88,8 @@
     if (k.contains("sp-gi")) return "home";   // 🎉 Spel (spel.js): one big entry on home
     if (k.contains("fm-gi")) return "home";
     if (k.contains("sa-gk")) return "home";
-    if (k.contains("a2-gcard")) return "home";   // social-a: after lane Kvällsrapporten row (under Nu)   // social-a: ⚔️ Gängkamp (GM5 moved it out of the Spel list)   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
+    if (k.contains("a2-gcard")) return "home";
+    if (k.contains("mo-gcard")) return "home";   // social-a: MOMENTS.groupCard (under Kvällsrapporten) + roomCard (in the Spel area)   // social-a: after lane Kvällsrapporten row (under Nu)   // social-a: ⚔️ Gängkamp (GM5 moved it out of the Spel list)   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
     if (k.contains("gpg-ph")) return "plus info";
     if (k.contains("gpg-ga") || k.contains("gpg-fold")) return "plus";
     if (k.contains("gp-more")) return "none";
@@ -392,6 +393,7 @@
     b.__sub = function () { var t = gkSub(g); if (sub.textContent !== t) sub.textContent = t; };
     return b;
   }
+  function moCard(g) { try { return window.MOMENTS && window.MOMENTS.groupCard ? window.MOMENTS.groupCard(g) : null; } catch (e) { return null; } }
   function topSheet(body) {
     if (!A || !A.LIVE || !gkOn() || !body || body.querySelector(".sa-gk-top")) return;
     var row = h("button", { type: "button", class: "ds-row pn-row sa-gk-top" }, [
@@ -508,7 +510,11 @@
     var gk = gkOn() ? gkRow(g) : null;   // social-a: ⚔️ Gängkamp on the page
     // social-a (after lane): the Kvällsrapporten row right under the Nu block (AFTER2.groupCard returns a row or null)
     var a2 = null; try { a2 = window.AFTER2 && window.AFTER2.groupCard ? window.AFTER2.groupCard(g) : null; } catch (e) { a2 = null; }
-    [invB, codeB, dots, now, a2, chat, bar, ph, info, fold, gk].forEach(function (x) { if (x) wrap.appendChild(x); });
+    // social-a (after lane GM7 / GM4): the moment that waits for me (under Kvällsrapporten) and a live party room (Spel area)
+    var mo = moCard(g), room = null; try { room = window.MOMENTS && window.MOMENTS.roomCard ? window.MOMENTS.roomCard(g) : null; } catch (e) { room = null; }
+    [invB, codeB, dots, now, a2, mo, chat, bar, ph, info, fold, gk].forEach(function (x) { if (x) wrap.appendChild(x); });
+    if (room) { var sp = wrap.querySelector(":scope > .sp-gi"); wrap.insertBefore(room, sp ? sp.nextSibling : gk); }
+    wrap.__moWait = !mo;   // a moment can open later (moments_poll): the tick below puts it in then, under Kvällsrapporten / Nu
     wrap.insertBefore(memS, chat || bar); loadMem(wrap, g, memS);
 
     // module actions (groupActions) as + tiles
@@ -531,6 +537,7 @@
       tick++;
       if (chat) loadChat(wrap, g);
       if (gk && gk.__sub) gk.__sub();
+      if (wrap.__moWait && !wrap.querySelector(":scope > .mo-gcard:not(.mo-room)")) { var m2 = moCard(g); if (m2) { var at = a2 && a2.isConnected ? a2 : now; wrap.insertBefore(m2, at.nextSibling); wrap.__moWait = false; } }
       if (tick % 3 === 0) { loadNow(wrap, g); var ms0 = wrap.querySelector(":scope > .pn-gp-mem"); if (ms0) loadMem(wrap, g, ms0); }   // ds58: live members
     }, 10000);
     // Tiles change inside (a skåltimme goes live, the chief tile fills in): re-check hot / proxies, debounced.
