@@ -50,6 +50,11 @@
   ];
   var ACT = {};
   ACTS.forEach(function (a) { ACT[a[0]] = a; });
+  // R1-21 (social-b): PNI row icons in the explainer (the emoji above stay for toasts and old callers)
+  var PNI_OF = { squad: "users", duel_win: "trophy", duel: "shield", rally_yes: "check", invite_show: "mail", arrive: "walk", callout: "megaphone",
+    buddy: "heart", home: "home", status: "camera", checkin: "pin", game: "game", party_win: "crown", party: "game", photo: "image",
+    skal_give: "cheers", skal_get: "cheers", drink: "beer" };
+  function actIcon(a) { try { var n = PNI_OF[a[0]]; if (n && window.PNI && window.PNI.has(n)) return window.PNI.svg(n, "mer-ic"); } catch (e) {} return esc(a[1]); }
 
   /* ---------- Reason lines (dalmål + military; "ä" for dialect "é"). Keep list ORDER, add at the end. ---------- */
   var LINES = {
@@ -401,7 +406,7 @@
         "Ranks are earned with merits. Every beer counts" + (cap ? " (the first " + cap + " each night)" : "") +
         ", but you get the most when the squad is out together, when you check in and when you look after your friends.")) + "</p>";
       h += '<ul class="mer-list">' + ACTS.map(function (a) {
-        return '<li class="mer-row"><span class="mer-e" aria-hidden="true">' + a[1] + '</span><span class="mer-main"><span class="mer-name">' +
+        return '<li class="mer-row"><span class="mer-e" aria-hidden="true">' + actIcon(a) + '</span><span class="mer-main"><span class="mer-name">' +
           esc(sv() ? a[3] : a[4]) + '</span><span class="mer-cap">' + esc(capOf(a, dp)) + '</span></span><span class="mer-pts">+' + (a[0] === "drink" ? dp : a[2]) + "</span></li>";
       }).join("") + "</ul>";
       h += '<p class="muted mer-care">' + esc(L("Natten räknas 05–05. Drick lagom, ta vatten och kom hem säkert – det ger också meriter.",
@@ -445,9 +450,10 @@
     var sec = el("section", { class: "mer-board" });
     var head = el("h3", { text: L("🎖️ Meriter", "🎖️ Merits") });
     var how = A.btn(L("❓ Hur får jag meriter?", "❓ How do I earn merits?"), "btn-small mer-how", explain);
-    var scopes = el("div", { class: "tabs mer-tabs", role: "tablist" });
-    var periods = el("div", { class: "tabs mer-tabs", role: "tablist" });
-    var gsel = el("div", { class: "tabs mer-groups", role: "tablist" });
+    // R1-25 (social-b): the one segmented control (DESIGN ds-seg), not 3 rows of outlined buttons; the groups row scrolls
+    var scopes = el("div", { class: "ds-seg mer-seg mer-tabs", role: "tablist", "aria-label": L("Vilka", "Who") });
+    var periods = el("div", { class: "ds-seg mer-seg mer-tabs", role: "tablist", "aria-label": L("När", "When") });
+    var gsel = el("div", { class: "ds-seg mer-seg mer-groups", role: "tablist", "aria-label": L("Grupp", "Group") });
     var list = el("ol", { class: "toplist mer-blist" });
     var seq = 0;
     var note = el("p", { class: "muted mer-note" });

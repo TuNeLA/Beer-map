@@ -94,26 +94,37 @@
     var pin = h("div", { class: "avw-pin", "aria-hidden": "true" });   // avt02: how it looks on the map and in the chat
     var quick = h("div", { class: "ds-seg avw-quick", role: "tablist", "aria-label": "Hoppa till" });
     var pane = h("div", { class: "avw-pane" });
-    var back = h("button", { type: "button", class: "btn avw-back", text: "‹ Tillbaka" });
-    var dice = h("button", { type: "button", class: "btn avw-dice", "aria-label": "Slumpa det här steget", html: '<span aria-hidden="true">🎲</span> Slumpa' });
+    // R1-08 (social-b): ‹ and the dice are PNI icon buttons (44 px), the bar has 4 controls (was 5)
+    function pni(n, fb) { try { if (window.PNI && window.PNI.has(n)) return window.PNI.svg(n, "avw-ic-i"); } catch (e) {} return '<span aria-hidden="true">' + fb + "</span>"; }
+    var back = h("button", { type: "button", class: "btn avw-back avw-ic", "aria-label": "Tillbaka", html: pni("chev-left", "‹") });
+    var dice = h("button", { type: "button", class: "btn avw-dice avw-ic", "aria-label": "Slumpa det här steget", html: pni("game", "🎲") });
     var next = h("button", { type: "button", class: "btn btn-amber avw-next", text: "Nästa" });
     var bar = h("div", { class: "avw-bar" }, [back, dice, next]);
     var rest = h("button", { type: "button", class: "btn avw-rest", html: '<span aria-hidden="true">🎲</span> Slumpa resten' });   // avt02
     var doneNow = h("button", { type: "button", class: "btn avw-donenow", text: "Klar nu" });
-    var bar2 = h("div", { class: "avw-bar2" }, [rest, doneNow]); bar.insertBefore(bar2, bar.firstChild);
-    wrap.appendChild(h("div", { class: "avw-top" }, [dots, quick, stepTxt, title, sub, h("div", { class: "avw-prevs" }, [prev, pin])]));
+    var bar2 = h("div", { class: "avw-bar2" }, [rest]); bar.insertBefore(doneNow, next);   // R1-08: "Slumpa resten" = the dice toast action
+    function restAct() { var n = STEPS.length - 1; return st.i > 0 && st.i < n - 2 ? { label: "Slumpa resten", fn: function () { rest.click(); } } : null; }
+    // social-b S1: focus view on the preview ("Visa allt" / "Dölj tillbehör"), preview + tiles only
+    var acc = h("button", { type: "button", class: "av-acc avw-acc" }); acc.hidden = true;
+    acc.addEventListener("click", function () { st.showAll = !st.showAll; paintPrev(false); refreshArt(); });
+    var prevw = h("div", { class: "avw-prevw" }, [prev, acc]);
+    wrap.appendChild(h("div", { class: "avw-top" }, [dots, quick, stepTxt, title, sub, h("div", { class: "avw-prevs" }, [prevw, pin])]));
     wrap.appendChild(pane); wrap.appendChild(bar);
     body.appendChild(wrap);
 
     function step() { return STEPS[st.i]; }
+    function view(spec, k) { var av2 = AV(); if (st.showAll || !av2 || !av2.focusSpec) return spec; return av2.focusSpec(spec, k) || spec; }
     function paintPrev(pop) {
-      prev.innerHTML = svgOf(st.draft);
-      var small = ""; try { small = AV().svg(st.draft, { r: facts().r, md: [], small: true }); } catch (e) {}
+      var k0 = step().k, av2 = AV(), shown = view(st.draft, k0);
+      prev.innerHTML = svgOf(shown);
+      if (av2 && av2.focusPill) av2.focusPill(acc, !prev.hidden && !!(av2.focusSpec && av2.focusSpec(st.draft, k0)), !!st.showAll); else acc.hidden = true;
+      var small = ""; try { small = AV().svg(shown, { r: facts().r, md: [], small: true }); } catch (e) {}
       pin.innerHTML = '<span class="avw-pin-map">' + small + '</span><span class="avw-pin-chat">' + small + '</span><small>Kartan · chatten</small>';
       if (pop && !reduced() && prev.animate) try { prev.animate([{ transform: "scale(.94)" }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }); } catch (e) {}
     }
     function paint() {
       var s = step(), n = STEPS.length - 1;
+      if (st.focusI !== st.i) { st.focusI = st.i; st.showAll = false; }   // S1: a new step = the normal view again
       wrap.setAttribute("data-step", s.id || s.k);
       dots.querySelectorAll("i").forEach(function (d, i) { d.className = i < st.i ? "done" : i === st.i ? "on" : ""; });
       stepTxt.textContent = s.id === "done" ? "" : "Steg " + (st.i + 1) + " av " + n;
@@ -123,6 +134,7 @@
       dice.hidden = s.id === "done";
       next.hidden = s.id === "done";
       bar2.hidden = s.id === "done" || s.id === "base" || st.i === n - 1; doneNow.disabled = !!st.saving;   // avt02
+      doneNow.hidden = bar2.hidden;
       next.disabled = s.id === "base" && !st.base && !st.had && !st.touchedBase;
       next.textContent = st.i === n - 1 ? (st.saving ? "Sparar…" : "Spara") : s.id === "base" && !st.base ? "Hoppa över" : "Nästa";
       next.classList.toggle("pn-skip", s.id === "base" && !st.base && st.i !== n - 1);   // ds16: skip is never the amber primary
@@ -168,7 +180,7 @@
       var b = h("button", { type: "button", class: "avw-tile" + (on ? " on" : "") + (locked ? " locked" : "") + (s.sw ? " sw" : ""), "aria-pressed": String(on),
         "aria-label": nm + (locked && lk ? " — " + av.lockText(lk) : ""), "data-k": k, "data-i": String(i) });
       if (s.sw) b.appendChild(h("span", { class: "avw-sw", style: "background:" + av.PAL.SKIN[i] }));
-      else b.appendChild(h("span", { class: "avw-art", html: svgOf(t, s.vb ? av.VB[s.vb] : "") }));
+      else b.appendChild(h("span", { class: "avw-art", html: svgOf(view(t, k), s.vb ? av.VB[s.vb] : "") }));
       b.appendChild(h("span", { class: "avw-nm", text: locked && lk ? "🔒 " + av.shortLock(lk) : nm }));
       b.addEventListener("click", function () {
         if (locked) { A.toast("🔒 " + (lk ? av.lockText(lk) : "Låst"), { ms: 3800, id: "avw-lock" }); return; }
@@ -204,7 +216,7 @@
       var s = step(); if (!s.k || s.sw) return;
       pane.querySelectorAll(".avw-tile").forEach(function (b) {
         var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(st.draft)); t[k] = i;
-        var art = b.querySelector(".avw-art"); if (art) art.innerHTML = svgOf(t, s.vb ? av.VB[s.vb] : "");
+        var art = b.querySelector(".avw-art"); if (art) art.innerHTML = svgOf(view(t, k), s.vb ? av.VB[s.vb] : "");
       });
     }
     function paintSlot(s) {
@@ -270,7 +282,7 @@
       var s = step();
       if (s.id === "base") { var b = BASES[Math.floor(Math.random() * BASES.length)]; var c = pane.querySelector('[data-b="' + b.id + '"]'); if (c) c.click(); return; }
       var k = s.k, ok = [];
-      if (av.nice) { av.nice(st.draft, f, k); if (s.col) av.nice(st.draft, f, s.col); paint(); paintPrev(true); A.toast("🎲 " + PICK_LINES[Math.floor(Math.random() * PICK_LINES.length)], { ms: 1600, id: "avw-dice" }); return; }   // avt02
+      if (av.nice) { av.nice(st.draft, f, k); if (s.col) av.nice(st.draft, f, s.col); paint(); paintPrev(true); A.toast("🎲 " + PICK_LINES[Math.floor(Math.random() * PICK_LINES.length)], { ms: restAct() ? 3200 : 1600, id: "avw-dice", action: restAct() }); return; }   // avt02
       for (var i = 0; i <= av.MAX[k]; i++) if (av.usable(k, i, f)) ok.push(i);
       st.draft[k] = NONE_P[k] && Math.random() < NONE_P[k] ? 0 : ok[Math.floor(Math.random() * ok.length)];
       if (s.col) {
@@ -280,7 +292,7 @@
         delete st.draft.hx; delete st.draft.ux;
       }
       paint(); paintPrev(true);
-      A.toast("🎲 " + PICK_LINES[Math.floor(Math.random() * PICK_LINES.length)], { ms: 1600, id: "avw-dice" });
+      A.toast("🎲 " + PICK_LINES[Math.floor(Math.random() * PICK_LINES.length)], { ms: restAct() ? 3200 : 1600, id: "avw-dice", action: restAct() });
     });
     paint();
   }

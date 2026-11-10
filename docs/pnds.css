@@ -1512,3 +1512,8 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
 .chat-keep:has(.chat-keep-cb[aria-checked="true"]) .chat-keep-i{display:block;font-size:var(--fs-14);line-height:20px;margin:0 0 var(--sp-2)}
 #sheet-body .ib-list>.sa-ib{margin:0}
 /* lane:social-a END */
+
+/* lane:social-b */
+/* R1-41: the Profil rank bar is a progress bar, not a slider: no white knob at its end (pnui.css .pf-bar>span::after) */
+#sheet-body .pf-hero .pf-bar>span::after{content:none;display:none}
+/* lane:social-b END */

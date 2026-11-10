@@ -146,3 +146,21 @@
 .ave .has-new > .ave-dot::before{content:"Nytt";font:700 10px/14px var(--ds-sans,system-ui);font-style:normal;color:#0b2a17}
 .ave-bar[hidden]{display:none}
 /* avt07 editor END */
+
+/* social-b S1 START — focus pill on the editor preview ("Visa allt" / "Dölj tillbehör") */
+.av-acc{position:absolute;left:50%;z-index:1;display:inline-flex;align-items:center;gap:6px;height:32px;min-height:0;margin:0;padding:0 12px;
+  transform:translateX(-50%);border-radius:var(--r-pill,999px);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));
+  background:var(--ds-raised,#222e48);color:var(--ds-text,#eef0ec);font:600 var(--ds-fs-12,12px)/1 var(--ds-sans,system-ui);white-space:nowrap;cursor:pointer;
+  box-shadow:var(--ds-sh-1,0 4px 12px rgba(0,0,0,.3));-webkit-tap-highlight-color:transparent}
+.av-acc::after{content:"";position:absolute;inset:-6px -4px}
+.av-acc[hidden]{display:none}
+.av-acc .av-acc-i{width:16px;height:16px;flex:0 0 16px}
+.av-acc[aria-pressed="true"]{color:var(--ds-amber-t,#ffc24d);border-color:color-mix(in srgb,var(--ds-amber,#f5a623) 55%,transparent)}
+.av-acc:focus-visible{outline:3px solid var(--ds-blue,#4aa3ff);outline-offset:2px}
+/* 32 px pill, 44 px hit area (::after); beats the sheet's 44 px button min-height (pnds.css #sheet-body button) */
+#sheet-body .ave-top button.av-acc.ave-acc{bottom:4px;min-height:0;height:32px}
+.avw-prevw{position:relative;display:flex;padding-bottom:14px}
+.avw-prevw .avw-prev{margin-top:0}
+#sheet-body .avw-prevw button.av-acc.avw-acc{bottom:0;min-height:0;height:28px;padding:0 10px}
+#sheet-body .avw-prevw button.av-acc.avw-acc::after{inset:-8px -4px}
+/* social-b S1 END */
