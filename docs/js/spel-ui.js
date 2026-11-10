@@ -54,21 +54,21 @@
       one: "Luren ligger mitt på bordet. Dra ett kort var, varvet runt, och gör vad kortet säger." },
     { id: "imposter", ic: "🕵️", name: "Imposter", sub: "Alla utom en ser det hemliga ordet. Hitta impostern!", n: "3–16", mode: "tv", party: 1, col: "#2a2f45",
       one: "Alla utom en får ett hemligt ord. Säg ett ord var om det – och rösta ut den som bluffar." },
-    { id: "hatten", ic: "🎩", name: "Namn i hatten", sub: "Alla svarar i hemlighet. Lapparna dras en och en.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45",
-      one: "Alla svarar på frågan i hemlighet. Lapparna läses upp en i taget – rösta på det bästa svaret." },
+    { id: "hatten", ic: "🎩", name: "Namn i hatten", sub: "Alla skriver ett påhittat svar. Lapparna dras en och en.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45",
+      one: "Alla skriver ett påhittat svar i hemlighet. Lapparna dras en i taget – rösta på det bästa." },
     { id: "flocken", ic: "🐑", name: "Flocken", sub: "Svara som de flesta. Den ensamma får 🥾 Kängan.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45",
       one: "Skriv det svar du tror att DE FLESTA skriver. Den som står ensam får 🥾 Kängan." },
     { id: "forfest", ic: "🍻", name: "Förfestläget", sub: "Utmaningar, kategorier, virus och order. En lur går runt.", n: "2–12", mode: "one", col: "#3d2a14",
       one: "En lur går runt. Läs kortet högt, gör vad det säger och tryck för nästa kort." },
     { id: "vagen", ic: "📡", name: "Radarn", sub: "Siaren ger en ledtråd, alla drar reglaget.", n: "3–12", mode: "tv", party: 1, col: "#2a2f45",
       one: "En siare ser målet på en skala och säger en ledtråd. Alla drar reglaget dit de tror." },
-    { id: "survivor", ic: "🔥", name: "Östra lägret", sub: "Rösta ut varandra tills juryn utser en vinnare.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45",
-      one: "Prata, smickra, lova. Rösta ut en i taget. När två är kvar utser juryn vinnaren." },
-    { id: "spin", ic: "🎡", name: "Vem fixar nästa?", sub: "Snurran bestämmer vem som hämtar – dricka, chips eller vatten.", n: "2+", mode: "one", col: "#3d2a14",
+    { id: "survivor", ic: "🔥", name: "Östra lägret", sub: "Rösta ut en i taget. Juryn korar vinnaren.", n: "3–16", mode: "tv", party: 1, col: "#2a2f45",
+      one: "Snacka, lova, rösta ut. Sista två: juryn väljer." },
+    { id: "spin", hide: 1, ic: "🎡", name: "Vem fixar nästa?", sub: "Snurran bestämmer vem som hämtar – dricka, chips eller vatten.", n: "2+", mode: "one", col: "#3d2a14",
       one: "Snurra hjulet. Den det stannar på hämtar nästa runda – dricka, chips eller vatten." },
-    { id: "lek", ic: "🎯", name: "Kvällens lekar", sub: "Uppdrag, bingo, hemlig agent och oraklet.", n: "1+", mode: "night", col: "#1f3d2a",
+    { id: "lek", ic: "🎯", name: "Kvällens lekar", sub: "Uppdrag, krogrunda och bingo.", n: "1+", mode: "night", col: "#1f3d2a",
       one: "Små uppdrag och en bingobricka som pågår hela kvällen, bredvid allt annat." },
-    { id: "duel", grp: 1, ic: "⚔️", name: "Gängkamp", sub: "Utmana ett annat gäng om kvällen.", n: "2 gäng", mode: "night", col: "#1f3d2a",
+    { id: "duel", hide: 1, grp: 1, ic: "⚔️", name: "Gängkamp", sub: "Utmana ett annat gäng om kvällen.", n: "2 gäng", mode: "night", col: "#1f3d2a",
       one: "Utmana ett annat gäng. Det gäng som gör mest ihop ikväll (incheckningar, skål, foton) vinner." }
   ];
   var MODES = {
@@ -79,7 +79,7 @@
   function game(id) { for (var i = 0; i < GAMES.length; i++) if (GAMES[i].id === id) return GAMES[i]; return null; }
   function sorted() {
     var rec = lsGet(LS_RECENT, []);
-    var list = GAMES.slice();
+    var list = GAMES.filter(function (g) { return !g.hide; });   // games lane GM5: spin → Ikväll menu, duel → group page
     list.sort(function (a, b) {
       var ra = rec.indexOf(a.id), rb = rec.indexOf(b.id);
       if (ra < 0) ra = 99; if (rb < 0) rb = 99;
@@ -125,6 +125,10 @@
     callMsg: L("🎉 {0} startar {1}! Hoppa in: Grupper → gruppen → 🎉 Spel", "🎉 {0} starts {1}! Jump in: Groups → the group → 🎉 Games"),
     askT: L("{0} väntar redan i {1}", "{0} already waits in {1}"), askRun: L("{0} pågår. Hoppa in – eller vänta tills spelet ä slut.", "{0} is on. Jump in – or wait until it ends."),
     askJoin: L("HOPPA IN DÄR ›", "JUMP IN THERE ›"), askSwitch: L("Byt till {0} för alla", "Switch to {0} for everyone"), askNo: L("Avbryt", "Cancel"),
+    onlyHost: L("Bara värden byter spel. Hoppa in och tjata på värden.", "Only the host switches games. Jump in and nag the host."),
+    hostKept: L("Bara värden ({0}) byter spel – du hoppade in i {1}.", "Only the host ({0}) switches games – you joined {1}."),
+    swT: L("Byt spel för alla", "Switch game for everyone"), swP: L("Alla i rummet hamnar i lobbyn för det nya spelet.", "Everyone in the room goes to the lobby of the new game."),
+    youHost: L("👑 Du ä värd nu. Du väljer spel och startar.", "👑 You host now. You pick the game and start."),
     qFew: L("Gänget behöver lite mer historia först. Gör nåt ihop ikväll och försök igen!", "The gang needs more history first."),
     qRight: L("✅ Rätt: {0}", "✅ Right: {0}"), qWrong: L("{mark} Fel: {0} – {K1}", "{mark} Wrong: {0} – {K1}"), qNone: L("Ingen hade rätt. Skäms, gänget!", "Nobody was right."),
     qAll: L("Alla hade rätt! Ni känner varandra för bra.", "Everyone was right!"), qYou: L("Du hade RÄTT! +1", "You were RIGHT! +1"), qYouNo: L("Fel! {K1}.", "Wrong! {K1}."),
@@ -314,14 +318,14 @@
     try { card.querySelector(".sp-main").focus(); } catch (e) {}
   }
   function askFirst(gm, room) {
-    var cur = game(room.game) || {}, canSwitch = room.phase === "lobby" || room.phase === "end";
+    var cur = game(room.game) || {}, canSwitch = room.phase === "lobby" || room.phase === "end";   // GM2: the switch is the host's (in the room)
     var who = (room.names || []).slice(0, 3).join(", ") || "Gänget";
     var box = el("div", { class: "sp-ask", role: "alertdialog", "aria-modal": "true" });
     var card = el("div", { class: "sp-ask-c" }, [
       el("div", { class: "sp-big-ic", text: cur.ic || "🎉" }),
       el("h3", { text: canSwitch ? F(TX.askT, who, cur.name || "") : F(TX.askRun, (cur.ic || "") + " " + (cur.name || "")) }),
       el("button", { type: "button", class: "sp-main", text: TX.askJoin, onclick: function () { box.remove(); launch(room.game, true, true); } }),
-      canSwitch ? el("button", { type: "button", class: "sp-sec", text: F(TX.askSwitch, gm.ic + " " + gm.name), onclick: function () { box.remove(); launch(gm.id, true); } }) : null,
+      canSwitch ? el("p", { class: "sp-muted sp-onlyhost", text: TX.onlyHost }) : null,
       el("button", { type: "button", class: "sp-sec sp-ask-no", text: TX.askNo, onclick: function () { box.remove(); } })
     ]);
     box.appendChild(card); root.appendChild(box);
@@ -331,7 +335,7 @@
     var gm = game(id); if (!gm || !st) return;
     var lr = st.liveRoom;
     if (id === "kung") { used(id); kungStart(); return; }
-    if (!sure && ROOM_GAMES[id] && lr && lr.game !== id && !lr.is_in && (lr.n | 0) > 0) { askFirst(gm, lr); return; }
+    if (!sure && ROOM_GAMES[id] && lr && lr.game !== id && (lr.n | 0) > 0) { askFirst(gm, lr); return; }   // GM2: no !lr.is_in
     if (!sure && !ROOM_GAMES[id] && id !== "kung" && !st.howOk) { howFirst(gm, function () { if (st) { st.howOk = 1; launch(id, sure, join); st && (st.howOk = 0); } }); return; }
     if (gm.party && st.liveParty && st.liveParty.code) { used(id); var lp = st.liveParty; if (!lp.is_in && lp.game !== id) { var p0 = lsGet("olnu.party", {}); p0.game = id; lsSet("olnu.party", p0); } partyGo(lp); return; }
     used(id);
@@ -348,6 +352,8 @@
         var d = A.parseData ? A.parseData(r.data) : r.data;
         setView(d, true);
         startPoll();
+        // GM2 (0440): the server switches only for the host; it kept the running game → say why
+        if (!join && d && d.game && d.game !== id) { var hp0 = hostP(d), cg = game(d.game) || {}; A.toast(F(TX.hostKept, hp0 ? hp0.name : "?", (cg.ic || "") + " " + (cg.name || "")), { id: "spel" }); }
       });
       return;
     }
@@ -458,6 +464,9 @@
       st.sel = []; st.win = null; st.editing = false;
     }
     st.reveal = changed && (d.phase === "result" || d.phase === "end");
+    // GM1: the host left / went quiet and I am the next one → tell me (once per change)
+    var wasHost = st.d && st.d.id === d.id ? isHost(st.d) : null;
+    if (wasHost === false && isHost(d) && active(d) > 1) { buzz(30); A.toast(TX.youHost, { id: "spel-host", ms: 5000 }); }
     st.key = key; st.room = d.id; st.view = "room"; st.v = d.v; st.d = d; inMark(d); st.recvAt = Date.now(); forceTimer(d);
     var sc = root.querySelector(".sp-body"), top = sc ? sc.scrollTop : 0;
     render();
@@ -557,7 +566,7 @@
       el("button", { type: "button", class: "sp-sec sp-call", text: TX.call, onclick: function (e) { callGang(gm, e.currentTarget); } }),
       el("button", { type: "button", class: "sp-sec sp-inv", text: L("📤 Bjud in till spelet", "📤 Invite to the game"), onclick: function (e) { inviteGame(gm, e.currentTarget); } })]));
     foot.appendChild(el("button", { type: "button", class: "sp-main", disabled: n < min, text: TX.start, onclick: function (e) { e.currentTarget.disabled = true; startGame(d.game, cur); } }));
-    foot.appendChild(el("button", { type: "button", class: "sp-sec", text: TX.switchG, onclick: toHub }));
+    foot.appendChild(el("button", { type: "button", class: "sp-sec sp-switch", text: TX.switchG, onclick: function () { switchBox(d); } }));
     pushCfg(d, { pen: packChoice(), goal: cur });
   }
   // gm12: a player who is not the host sees the host's settings read-only and waits
@@ -740,7 +749,28 @@
     foot.appendChild(el("button", { type: "button", class: "sp-main", text: TX.again, onclick: function (e) {
       e.currentTarget.disabled = true; startGame(d.game, lsGet(LS_GOAL, {})[d.game] || d.goal);
     } }));
-    foot.appendChild(el("button", { type: "button", class: "sp-sec", text: TX.switchG, onclick: toHub }));
+    foot.appendChild(el("button", { type: "button", class: "sp-sec sp-switch", text: TX.switchG, onclick: function () { switchBox(d); } }));
+  }
+  // GM2: the host switches the room's game for everyone, in the room (spel_act 'game'; 0440 = host only on the server too).
+  // Other games (party, one-phone) are not room games: "Alla spel" leaves the room for the hub as before.
+  function switchBox(d) {
+    if (!root || !isHost(d)) return;
+    var old = root.querySelector(".sp-ask"); if (old) old.remove();
+    var box = el("div", { class: "sp-ask sp-swbox", role: "alertdialog", "aria-modal": "true", "aria-label": TX.swT });
+    var kids = [el("h3", { text: TX.swT }), el("p", { class: "sp-muted", text: TX.swP })];
+    GAMES.forEach(function (g) {
+      if (!ROOM_GAMES[g.id] || g.id === d.game || (g.grp && st.g && st.g.evg)) return;
+      kids.push(el("button", { type: "button", class: "sp-sec sp-swgo", "data-g": g.id, text: g.ic + " " + g.name, onclick: function () {
+        box.remove(); used(g.id);
+        act("game", g.id).then(function () { if (st && st.d && st.d.game === g.id) render(); });
+      } }));
+    });
+    kids.push(el("button", { type: "button", class: "sp-sec", text: L("🎉 Alla spel", "🎉 All games"), onclick: function () { box.remove(); toHub(); } }));
+    kids.push(el("button", { type: "button", class: "sp-main", text: TX.askNo, onclick: function () { box.remove(); } }));
+    var card = el("div", { class: "sp-ask-c" }, kids);
+    box.addEventListener("click", function (e) { if (e.target === box) box.remove(); });
+    box.appendChild(card); root.appendChild(box);
+    try { card.querySelector(".sp-main").focus(); } catch (e) {}
   }
 
   /* --- Vem i gänget? · Jag har aldrig · Hellre eller? --- */

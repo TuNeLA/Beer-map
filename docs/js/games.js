@@ -15,6 +15,9 @@
   var openView = null;          // {kind:"me"} | {kind:"group", g, tab} | {kind:"crawl"} while one of our sheets is open
   var flagLayer = null, flagKey = "";
   var SEEN_KEY = "olnu.gameSeen", TAB_KEY = "olnu.gameTab";
+  // games lane GM5/GM6 (owner 9 Nov): Sugen is out of the games, Hemlig agent + Gissa kvällen are hidden for the big update.
+  // The code stays: GM7 brings agent/gissa back as "moments" (one-tap cards at the right time). true = shown again.
+  var SHOW = { sugen: false, agent: false, gissa: false };
   var CODES = ["not_member", "slow_down", "not_enough", "no_agent", "is_agent", "invalid_suspect", "not_yours", "too_late",
     "invalid_guess", "outside_sweden", "invalid_crawl", "no_card", "crawl_not_found", "invalid_status", "invalid_idx", "not_authenticated"];
 
@@ -37,6 +40,9 @@
       you: "Du",
       groupsHead: "Gruppens lekar",
       noGroup: "Gå med i en grupp för krogrunda, bingo och hemlig agent.",
+      noGroup2: "Gå med i ett gäng för krogrunda och bingo.",
+      vfT: "Vem fixar nästa?", vfSub: "Snurran väljer vem som hämtar", vfPick: "🎡 Vem fixar nästa? Välj gäng",
+      vfNone: "Gå med i ett gäng först – snurran behöver folk.", vfFail: "Kunde int' ladda gängen. Kolla nätet.",
       back: "← Tillbaka",
       tabs: { sugen: "🙋 Sugen", runda: "🗺️ Runda", bingo: "🎱 Bingo", agent: "🕵️ Agent", gissa: "🎲 Gissa" },
       // Sugen
@@ -135,6 +141,9 @@
       you: "You",
       groupsHead: "Group games",
       noGroup: "Join a group for pub crawls, bingo and the secret agent.",
+      noGroup2: "Join a group for pub crawls and bingo.",
+      vfT: "Who fetches next?", vfSub: "The wheel picks who goes", vfPick: "🎡 Who fetches next? Pick a group",
+      vfNone: "Join a group first – the wheel needs people.", vfFail: "Could not load your groups. Check the network.",
       back: "← Back",
       tabs: { sugen: "🙋 Up for it", runda: "🗺️ Crawl", bingo: "🎱 Bingo", agent: "🕵️ Agent", gissa: "🎲 Guess" },
       sugenHead: "Up for it tonight?",
@@ -368,7 +377,7 @@
       if ((me.done_n | 0) >= 3) once("all", true, function () { queueToast(T("allDone"), { cls: "promo", ms: 5000 }); });
       award();
     }
-    (me.agent || []).forEach(function (a) {
+    if (SHOW.agent) (me.agent || []).forEach(function (a) {
       once("ag:" + a.group_id, true, function () {
         queueToast(T("agentYouToast", a.group_name || "", agentText(a.mission)), { cls: "promo", ms: 10000, fx: "quiet",
           action: { label: "🕵️", fn: function () { openGroup({ id: a.group_id, name: a.group_name }, "agent"); } } });
@@ -376,7 +385,7 @@
     });
     (d.groups || []).forEach(function (g) {
       var gname = g.name || "";
-      (g.sugen || []).forEach(function (x) {
+      (SHOW.sugen ? g.sugen || [] : []).forEach(function (x) {
         if (x.is_me || x.status !== "sugen") return;
         once("s:" + g.id + ":" + x.k + ":" + x.at, minsAgo(x.at) < (first ? 20 : 60), function () {
           queueToast(fill(pick("sugen", C.sugen), { name: x.name || "?" }), { cls: "skal", ms: 5000 });
@@ -407,7 +416,7 @@
           award();
         });
       }
-      var ap = g.agent_prev;
+      var ap = SHOW.agent ? g.agent_prev : null;
       if (ap && ap.revealed) {
         once("ar:" + g.id, true, function () {
           var line = (ap.correct | 0) > 0
@@ -423,7 +432,7 @@
         });
       }
       var o = g.oracle;
-      if (o && o.name && guessOn) {
+      if (o && o.name && guessOn && SHOW.gissa) {
         once("o:" + g.id, true, function () {
           var list = +o.err > 0.5 ? C.guessNight && C.guessNight.wayOff : C.guessNight && C.guessNight.winner;
           queueToast(fill(pick("oracle", list), { name: o.name, guess: o.guess, real: o.real }), { ms: 6500 });
@@ -497,13 +506,15 @@
       box.appendChild(list);
       box.appendChild(el("p", { class: "gm-note", text: T("meHint") }));
       // Sugen (before the first beer) + Gissa kvällen
-      box.appendChild(el("h3", { text: T("sugenHead") }));
-      box.appendChild(sugenSeg(me, function () { renderMe(true); }));
-      if (guessOn) { box.appendChild(el("h3", { text: T("guessHead") })); box.appendChild(guessBlock(me, function () { renderMe(true); })); }
+      if (SHOW.sugen) {
+        box.appendChild(el("h3", { text: T("sugenHead") }));
+        box.appendChild(sugenSeg(me, function () { renderMe(true); }));
+      }
+      if (guessOn && SHOW.gissa) { box.appendChild(el("h3", { text: T("guessHead") })); box.appendChild(guessBlock(me, function () { renderMe(true); })); }
       // Group games
       box.appendChild(el("h3", { text: T("groupsHead") }));
       var gs = (poll && poll.groups) || [];
-      if (!gs.length) box.appendChild(el("p", { class: "muted", text: T("noGroup") }));
+      if (!gs.length) box.appendChild(el("p", { class: "muted", text: T(SHOW.agent ? "noGroup" : "noGroup2") }));
       var row = el("div", { class: "gm-glinks" });
       gs.forEach(function (g) { row.appendChild(A.btn("🎲 " + (g.name || ""), "btn-small", function () { openGroup(g); })); });
       box.appendChild(row);
@@ -602,8 +613,8 @@
   var EV_TABS = ["sugen", "bingo"];   // 📨 event groups (0187): only the games that fit one night with the event people
   function openGroup(g, tab) {
     if (!on() || !g || !g.id) return;
-    var tabsOf = (g.evg ? EV_TABS : TABS).filter(function (k) { return k !== "gissa" || guessOn; });
-    tab = tabsOf.indexOf(tab) >= 0 ? tab : (tabsOf.indexOf(U.ls.get(TAB_KEY, "")) >= 0 ? U.ls.get(TAB_KEY, "") : "sugen");
+    var tabsOf = (g.evg ? EV_TABS : TABS).filter(function (k) { return (k !== "gissa" || guessOn) && SHOW[k] !== false; });
+    tab = tabsOf.indexOf(tab) >= 0 ? tab : (tabsOf.indexOf(U.ls.get(TAB_KEY, "")) >= 0 ? U.ls.get(TAB_KEY, "") : tabsOf[0]);
     openView = { kind: "group", g: g, tab: tab, data: null };
     var view = openView;
     A.openSheet((g.name || "") + " · " + T("lek"), function (body) {
@@ -932,7 +943,7 @@
     var row = el("div", { class: "gm-gi" });
     var pg = groupOf(g.id);
     var em = T("sugenEmoji");
-    if (pg && pg.sugen && pg.sugen.length) {
+    if (SHOW.sugen && pg && pg.sugen && pg.sugen.length) {
       var chips = el("div", { class: "gm-gchips" });
       pg.sugen.slice(0, 5).forEach(function (x) {
         chips.appendChild(el("span", { class: "gm-gchip s-" + x.status, text: (em[x.status] || "") + " " + (x.is_me ? T("you") : x.name || "?") }));
@@ -944,9 +955,9 @@
     if (pg) {
       if (pg.crawl) sum.push("🗺️ " + (pg.crawl.done_n | 0) + "/" + (pg.crawl.n | 0));
       if (pg.bingo) sum.push("🎱 " + ((pg.bingo.lines | 0) > 0 ? "BINGO" : (pg.bingo.ticks | 0) + "/9"));
-      if (pg.agent_prev && pg.agent_prev.voting && !pg.agent_prev.my_vote && !pg.agent_prev.is_agent) sum.push("🕵️ " + T("vote") + "!");
-      else if (pg.agent && pg.agent.active) sum.push("🕵️");
-      if (pg.oracle && pg.oracle.name) sum.push("🔮 " + pg.oracle.name);
+      if (SHOW.agent && pg.agent_prev && pg.agent_prev.voting && !pg.agent_prev.my_vote && !pg.agent_prev.is_agent) sum.push("🕵️ " + T("vote") + "!");
+      else if (SHOW.agent && pg.agent && pg.agent.active) sum.push("🕵️");
+      if (SHOW.gissa && pg.oracle && pg.oracle.name) sum.push("🔮 " + pg.oracle.name);
     }
     var b = el("button", { type: "button", class: "btn btn-small btn-block gm-gbtn" }, [
       el("span", { class: "gm-gl", text: T("lekBtn") }),
@@ -957,8 +968,37 @@
     wrap.appendChild(row);
   }
 
+  /* ---------- GM5: games that left the 🎉 Spel list, opened from other places ---------- */
+  // "Vem fixar nästa?" lives in the Ikväll menu (pnikv.js, lane ui1) → GAMES.menuRows(row, close), same shape as BOLD.menuRows.
+  // Without a group: one group = straight in, more = a small group picker, none = a toast.
+  function vemFixar(g) {
+    var R = window.RUNDAN;
+    if (!A || !R || !R.openSpin) return;
+    if (g && g.id) { R.openSpin(g); return; }
+    A.rpc("my_groups", {}).then(function (r) {
+      var list = r && !r.error ? A.parseData(r.data) : null;
+      if (!Array.isArray(list)) { A.toast(T("vfFail"), { err: true, id: "gm-vf" }); return; }
+      list = list.filter(function (x) { return x && x.id && !x.dm && !x.is_dm && !x.evg && !x.hidden; });
+      if (!list.length) { A.toast(T("vfNone"), { id: "gm-vf" }); return; }
+      if (list.length === 1) { R.openSpin(list[0]); return; }
+      A.openSheet(T("vfPick"), function (body) {
+        var box = el("div", { class: "gm gm-vfpick" });
+        list.forEach(function (x) { box.appendChild(A.btn(x.name || "?", "btn-block gm-vfg", function () { R.openSpin(x); })); });
+        body.appendChild(box);
+      });
+    }, function () { A.toast(T("vfFail"), { err: true, id: "gm-vf" }); });
+  }
+  function menuRows(row, close) {
+    if (!window.RUNDAN || !window.RUNDAN.openSpin || typeof row !== "function") return [];
+    return [row("game", T("vfT"), T("vfSub"), function () { try { if (close) close(); } catch (e) {} vemFixar(null); })];
+  }
+  // ⚔️ Gängkamp lives on the group page / top lists (lane social): GAMES.openGangkamp(g) with g = {id, name, code}.
+  function gangkamp(g) { if (window.DUEL && window.DUEL.open && g && g.id) window.DUEL.open(g); }
+
   /* ---------- Public hooks ---------- */
   window.GAMES = {
+    shown: function (k) { return SHOW[k] !== false; },
+    openVemFixar: vemFixar, menuRows: menuRows, openGangkamp: gangkamp,
     state: function () { return state; },
     data: function () { return poll; },
     openMe: openMe, openGroup: openGroup,

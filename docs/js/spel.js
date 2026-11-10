@@ -44,7 +44,7 @@
 
   // Short names for the live line (the full game list lives in spel-ui.js).
   var NAMES = { kort: "🃏 Skämskort", vem: "👉 Vem i gänget?", aldrig: "🙊 Jag har aldrig", hellre: "⚖️ Hellre eller?", quiz: "🧠 Gängkollen" };
-  var N_GAMES = 15;
+  var N_GAMES = 13;   // games lane GM5: 15 − 🎡 Vem fixar nästa? (→ Ikväll menu) − ⚔️ Gängkamp (→ group page)
 
   /* ---------- ⚖️ OLNU_PEN · the ONE penalty table for every game (store-premium-plan.md 2.2) ---------- */
   // k1 small · k2 big · d3 give out; each = [3rd person, imperative]. Hard limits: max 2 per penalty, max 2 to give out,
