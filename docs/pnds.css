@@ -1348,3 +1348,8 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
     radial-gradient(circle at 100% 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left bottom/12px 12px no-repeat,
     radial-gradient(circle at 0 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right bottom/12px 12px no-repeat}
 /* lane:ui1 END */
+
+/* lane:social-b */
+/* R1-41: the Profil rank bar is a progress bar, not a slider: no white knob at its end (pnui.css .pf-bar>span::after) */
+#sheet-body .pf-hero .pf-bar>span::after{content:none;display:none}
+/* lane:social-b END */

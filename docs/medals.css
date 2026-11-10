@@ -80,3 +80,21 @@
 @keyframes mdhl{0%,40%{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(255,224,138,.6)}}
 .md-more{font-family:var(--hud);font-size:var(--fs-12);color:var(--muted);margin-left:2px}
 .st-medals .rb{width:22px;height:8px}
+
+/* social-b R1 START */
+/* R1-47: the uniform hero = a rounded card (DESIGN --r-lg), no square box and no top stripe inside the rounded sheet */
+.uni-box{border:1px solid var(--ds-border,rgba(255,255,255,.1));border-radius:var(--r-lg);overflow:hidden}
+/* R1-06: the medals = ONE grouped list of rows (iOS / DESIGN list card); words never break inside */
+.medal-grid{grid-template-columns:minmax(0,1fr);gap:0;background:var(--ds-card,#19233a);border-radius:var(--r-lg);overflow:hidden}
+.medal-grid .medal,.medal-grid .medal.on,.medal-grid .medal.on.soft{grid-template-columns:36px minmax(0,1fr);column-gap:var(--ds-3,12px);row-gap:2px;
+  min-height:56px;padding:var(--ds-3,12px) var(--ds-4,16px);border:0;border-radius:0;background:transparent;box-shadow:none}
+.medal-grid .medal+.medal{box-shadow:inset 0 1px 0 var(--ds-border,rgba(255,255,255,.1))}
+.medal-grid .md-n,.medal-grid .md-d{overflow-wrap:normal;word-break:normal}
+.medal-grid .md-n{font-size:var(--ds-fs-16,16px);line-height:var(--ds-lh-16,22px)}
+.medal-grid .md-d{font-size:var(--ds-fs-14,14px);line-height:var(--ds-lh-14,20px)}
+.medal-grid .md-e{justify-self:center}
+.medal-grid .medal.md-hl{animation:none;background:var(--ds-raised,#222e48);transition:background var(--m-6,600ms) var(--e-std,ease)}
+/* R1-15: the level-up card is rounded like every card; one soft gold edge instead of the square top stripe */
+.mx-card{border:1px solid color-mix(in srgb,var(--gold,#ffe08a) 40%,transparent);border-radius:var(--r-lg)}
+.mx-title{letter-spacing:.5px;text-transform:none}
+/* social-b R1 END */

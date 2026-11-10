@@ -25,6 +25,8 @@
    Nudge: one sheet, once ever, at a high-value moment (3rd night in olnu.nights, or in a group), never at first launch,
    never over a sheet / intro / the beer-type strip.
    Hidden until account_config().email is true (needs custom SMTP). OLNU_CONFIG.ACCOUNT_EMAIL / ACCOUNT_GOOGLE force on.
+   social-b S4: the BETA build (window.PN_BETA / #olnu-beta) treats email_login as on (owner 10 Nov), unless Supabase Auth
+   says the e-mail provider is off. The stable app stays hidden until the flag is set at release.
    Public: ACCOUNT.entry(container, where, opts) · on() · saved() · openSave() · openLogin() · openChange() · logout().
    Hooks: init, onAuthed, onPoll, groupItem, settingsSheet. */
 (function () {
@@ -264,7 +266,7 @@
       .then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
     cfgP = Promise.all([one, two]).then(function (x) {
       var d = x[0] || {}, s = x[1] && x[1].external ? x[1].external : null;
-      cfg = { email: d.email === true && (!s || s.email !== false), google: d.google === true, gOn: !!(s && s.google), at: Date.now() };
+      cfg = { email: d.email === true && (!s || s.email !== false), google: d.google === true, gOn: !!(s && s.google), authEmail: !s || s.email !== false, at: Date.now() };
       try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
       return cfg;
     }).catch(function () { return cfg; }).then(function (c) {
@@ -272,7 +274,8 @@
     });
     return cfgP;
   }
-  function on() { return LIVE && (forced("ACCOUNT_EMAIL") || cfg.email === true); }
+  function isBeta() { try { return !!(window.PN_BETA || document.getElementById("olnu-beta")); } catch (e) { return false; } }
+  function on() { return LIVE && (forced("ACCOUNT_EMAIL") || cfg.email === true || (isBeta() && cfg.authEmail !== false)); }
   function googleOn() {
     if (!on() || inApp() || (isIOS() && standalone())) return false;
     return forced("ACCOUNT_GOOGLE") || (cfg.google === true && cfg.gOn === true);
@@ -809,6 +812,10 @@
     onPoll: function () { if (nudgeCandidate()) tryNudge(); },
     groupItem: function () { if (ls(GROUP_KEY, "") !== "1") lsSet(GROUP_KEY, "1"); },
     profileSheet: settingsSheet,   // 👤 Profil (was settingsSheet)
+    // ⚙️ Inställningar rows of the settings lane (social-b): the Dialekt switch (dialekt.js; ds.js puts it in Skoj & överraskningar)
+    settingsSheet: function (body) {
+      try { if (body && window.DIALEKT && window.DIALEKT.settingsRow && !body.querySelector(".dk-set")) body.appendChild(window.DIALEKT.settingsRow()); } catch (e) {}
+    },
     entry: entry,
     on: on, saved: saved,
     openSave: openSave, openLogin: openLogin, openChange: openChange, logout: logout,

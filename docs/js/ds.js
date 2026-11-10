@@ -60,6 +60,7 @@
     if (has(n, ".ps-entry")) return "stat";
     if (has(n, ".bd-optin, .sos-block")) return "integ";
     if (has(n, ".pn-kanal")) return "om";   // 🧪 Betaversion
+    if (has(n, ".dk-set")) return "skoj";   // Dialekt: Auto/Av (dialekt.js, placed by account.js)
     if (has(n, ".ws-entry")) return "om";
     if (n.classList && n.classList.contains("toggle-row") && /uppdatera|update/i.test(t)) return "om";
     if (has(n, ".btn-amber") && /bjud in|invite/i.test(t)) return "vanner";

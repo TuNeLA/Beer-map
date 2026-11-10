@@ -69,6 +69,8 @@ jobs:
             filter: '^(inst)$'
           - name: ui1
             filter: '^(ui1)$'
+          - name: social-b
+            filter: '^(social-b)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
@@ -113,6 +115,7 @@ jobs:
             tests/e2e/out/logs/
             tests/e2e/out/traces/
             tests/e2e/out/ui1-shots/
+            tests/e2e/out/social-b-shots/
           retention-days: 14
           if-no-files-found: warn
 

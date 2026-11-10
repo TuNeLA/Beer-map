@@ -83,7 +83,7 @@ async function run(name, type, ctxOpts) {
     const sec = r.closest("section.ds-section"); const s = r.querySelector(".switch");
     return { sec: sec && sec.getAttribute("data-ds"), text: r.textContent.replace(/\s+/g, " ").trim(), on: s.getAttribute("aria-checked"), icon: !!r.querySelector("svg"), h: r.getBoundingClientRect().height }; });
   ok(name + ": row in Om & hjälp", row && row.sec === "om", row);
-  ok(name + ": row text + off", row && /Betaversion/.test(row.text) && /Få nya funktioner först\. Kan ha buggar\./.test(row.text) && row.on === "false", row);
+  ok(name + ": row text + off", row && /Betaversion/.test(row.text) && /Nya grejer först\. Kan ha buggar\./.test(row.text) && row.on === "false", row);
   ok(name + ": row has an icon, ≥ 44 px", row && row.icon && row.h >= 44, row);
   await shotRow(page, pre + "-1-row-off");
 
@@ -104,7 +104,7 @@ async function run(name, type, ctxOpts) {
   await page.screenshot({ path: SP + "beta-shots/" + pre + "-2-beta-main.png" });
   await openSettings(page);
   const row2 = await page.evaluate(() => { const r = document.querySelector("#sheet-body .pn-kanal"); return r ? { text: r.textContent.replace(/\s+/g, " ").trim(), on: r.querySelector(".switch").getAttribute("aria-checked") } : null; });
-  ok(name + ": row on + 'Du kör beta abc1234'", row2 && row2.on === "true" && /Du kör beta abc1234/.test(row2.text), row2);
+  ok(name + ": row on + 'Beta abc1234. Av = vanliga appen'", row2 && row2.on === "true" && /Beta abc1234\. Av = vanliga appen/.test(row2.text), row2);
   await shotRow(page, pre + "-3-row-on");
 
   // 3. Rapportera fel tagged as beta
@@ -164,13 +164,17 @@ async function run(name, type, ctxOpts) {
   ok(name + ": fell toast only once", !/Betan kunde inte starta/.test(again), again);
   await page.evaluate(() => localStorage.setItem("olnu.betaUrl", localStorage.getItem("olnu.betaUrl").replace(/:\d+\/$/, (m) => ":" + (+m.slice(1, -1) - 1) + "/")));
 
-  // 7. the direct beta URL still works as before (no switch there)
+  // 7. the direct beta URL (social-b S3): the switch is shown ON, a tap cannot switch (inline note + link to the normal app)
   const p2 = await ctx.newPage();
+  await p2.addInitScript((b) => { try { localStorage.setItem("olnu.betaUrl", b); } catch (e) {} }, BETA);
   await p2.goto(BETA); await waitApp(p2);
   const d = await betaCode(p2);
   ok(name + ": direct beta URL works", d.badge && d.pn === "abc1234" && /^BETA/.test(d.title), d);
   await openSettings(p2);
-  ok(name + ": no switch in the direct beta", !(await p2.evaluate(() => !!document.querySelector("#sheet-body .pn-kanal"))));
+  const dr = await p2.evaluate(async () => { const r = document.querySelector("#sheet-body .pn-kanal"); if (!r) return null; const h0 = location.href;
+    r.querySelector(".switch").click(); await new Promise((ok) => setTimeout(ok, 900));
+    const i = r.querySelector(".kn-info"); return { on: r.querySelector(".switch").getAttribute("aria-checked"), text: r.textContent, info: !!i && !i.hidden, same: location.href === h0 }; });
+  ok(name + ": direct beta: switch shown ON, tap stays beta, note shown", dr && dr.on === "true" && /Testadressen/.test(dr.text) && dr.info && dr.same, dr);
   await p2.close();
 
   const bad = errs.filter((m) => !/broken beta for the test/.test(m));

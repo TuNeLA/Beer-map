@@ -96,3 +96,14 @@ button.avw-cta.avw-cta{display:flex;align-items:center;gap:12px;width:100%;margi
 .avw-bar2[hidden]{display:none}
 .avw-bar2 .btn{flex:1 1 0;min-height:44px;margin:0;background:transparent;box-shadow:inset 0 0 0 1px var(--avw-bd)}
 /* avt02 avwiz END */
+
+/* social-b R1-08 START — quick tabs keep their own width (the track scrolls, ds15); 4-control bottom bar */
+.avw .avw-quick{justify-content:flex-start}
+.avw .avw-quick>button{flex:0 0 auto;min-width:0;padding:0 var(--ds-3,12px);white-space:nowrap;overflow:visible;text-overflow:clip}
+.avw .avw-bar{flex-wrap:nowrap;align-items:center;box-shadow:0 -10px 14px -10px rgba(0,0,0,.7),0 24px 0 0 var(--ds-sheet,#121a2a)}   /* the 2nd shadow covers the strip under the sticky bar (content showed through) */
+.avw .avw-bar .avw-ic{flex:0 0 44px;width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.avw .avw-bar .avw-ic .avw-ic-i{width:22px;height:22px}
+.avw .avw-bar .avw-donenow{flex:1 1 0;min-width:0;padding:0 var(--ds-3,12px);background:transparent;box-shadow:inset 0 0 0 1px var(--avw-bd);white-space:nowrap}
+.avw .avw-bar .avw-donenow[hidden],.avw .avw-bar .avw-ic[hidden]{display:none}
+.avw .avw-bar .avw-next{flex:1 1 0;min-width:0;white-space:nowrap}
+/* social-b R1-08 END */
