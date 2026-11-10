@@ -1655,3 +1655,22 @@ body.mn-lask .beer-btn:not(.cooldown):not(.soon) .beer-label::after{content:attr
 #sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.mo-gcard.mo-room{order:1 !important}   /* polish2 writes an inline order on every tile; the room row goes with Spel (order 1) */
 #sheet .gpg:not([data-gv="home"])>.mo-gcard{display:none !important}
 /* lane:social-a END */
+/* lane:x8 — weak-signal caption "Senast uppdaterad 22:14" (js/x8.js): ONE calm line under the HUD row, left of the rail,
+   same slot as the captions (DESIGN ds05). No red, no spinner. The red "Du är offline." banner waits while it shows. */
+:root{--x8-h:28px}
+.x8-stale{position:fixed;z-index:998;margin:0;box-sizing:border-box;
+  top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + var(--pn-rail) + var(--pn-gap) + var(--pn-ban, 0px));
+  left:calc(var(--sal) + var(--pn-edge));max-width:calc(100vw - var(--sal) - var(--sar) - 2 * var(--pn-edge) - var(--pn-rail) - var(--pn-gap));
+  display:inline-flex;align-items:center;gap:var(--sp-1);min-height:var(--x8-h);padding:var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2);
+  background:var(--pn-float);color:var(--ds-text-2);border:1px solid var(--ds-border);border-radius:var(--r-pill);box-shadow:var(--ds-sh-1);
+  font-family:var(--ds-sans);font-weight:600;font-size:var(--fs-12);line-height:var(--ds-lh-12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  pointer-events:none;animation:x8-in var(--m-4) var(--e-in) both}
+.x8-stale[hidden]{display:none}
+.x8-stale .pi{width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-muted);margin:0}
+.x8-stale span{overflow:hidden;text-overflow:ellipsis}
+.x8-stale.x8-stale-out{animation:none;opacity:0;transition:opacity var(--m-3) var(--e-out)}
+@keyframes x8-in{from{opacity:0}to{opacity:1}}
+body.x8-stale-on .offline-banner{display:none !important}
+body.x8-stale-on .dl-cap{margin-top:calc(var(--x8-h) + var(--pn-gap))}
+@media (prefers-reduced-motion:reduce){.x8-stale{animation:none}.x8-stale.x8-stale-out{transition:none}}
+/* lane:x8 END */

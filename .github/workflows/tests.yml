@@ -81,6 +81,8 @@ jobs:
             filter: '^(ride)$'
           - name: main
             filter: '^(main|sec)$'
+          - name: x8
+            filter: '^(x8)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
