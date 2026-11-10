@@ -57,8 +57,8 @@ const ovInfo = (page) => page.evaluate(() => {
     await wait(page, 1200);
     let i = await ovInfo(page);
     ok(i && i.title === "Hem nu?", "Hem-läge opens from the menu", i && i.title);
-    // 2. Ludvika is not verified → map search, never a number
-    ok(i && /google\.com\/maps\/search\/taxi/.test(i.taxiHref || "") && /Hitta taxi/.test(i.taxiText || ""), "unverified town → map search", i && i.taxiHref);
+    // 2. Ludvika is verified (B2: taxidalarna.se) → its number (or the map search before the first fix), never another number
+    ok(i && (i.taxiHref === "tel:+4624013900" || /google\.com\/maps\/search\/taxi/.test(i.taxiHref || "")), "Ludvika → Ludvikataxi or map search, no other number", i && i.taxiHref);
     // 3. sober friend row (Lisa, not me) + Skjuts?
     ok(i && i.drv.length === 1 && /Lisa kör ikväll/.test(i.drv[0]), "sober-friend row shows Lisa only", i && i.drv);
     ok(i && i.has112, "Ring 112 is a tel:112 link");
@@ -75,11 +75,16 @@ const ovInfo = (page) => page.evaluate(() => {
     await page.evaluate(() => window.BOLD_HEM.open({})); await wait(page, 1500);
     ok(!!(await page.$("#bh-ov")) && !(await page.evaluate(() => window.BOLD.api().sheetOpen())), "opens over an open sheet and stays open");
     // 5. verified towns → tel: links
-    for (const [lat, lng, tel, n] of [[60.4858, 15.4371, "tel:+46243228800", "Borlänge"], [59.3293, 18.0686, "tel:+468150000", "Stockholm"]]) {
+    for (const [lat, lng, tel, n] of [[60.1511, 15.1876, "tel:+4624013900", "Ludvika"], [60.4858, 15.4371, "tel:+4624313100", "Borlänge"], [59.3293, 18.0686, "tel:+468150000", "Stockholm"]]) {
       await page.evaluate(([a, b]) => { window.BOLD_HEM.close(); window.BOLD.api().setLastLoc(a, b); window.BOLD_HEM.open({}); }, [lat, lng]); await wait(page, 600);
       i = await ovInfo(page); ok(i && i.taxiHref === tel, "verified taxi for " + n, i && i.taxiHref);
     }
     await shot(page, "2-stockholm");
+    // 5b. a town with no verified number (Östersund) → map search, never a number (B2)
+    await page.evaluate(() => { window.BOLD_HEM.close(); window.BOLD.api().setLastLoc(63.1792, 14.6357); window.BOLD_HEM.open({}); }); await wait(page, 600);
+    i = await ovInfo(page);
+    ok(i && /google\.com\/maps\/search\/taxi/.test(i.taxiHref || "") && /Hitta taxi/.test(i.taxiText || ""), "no verified town → map search", i && i.taxiHref);
+    await page.evaluate(() => { window.BOLD_HEM.close(); window.BOLD.api().setLastLoc(59.3293, 18.0686); window.BOLD_HEM.open({}); }); await wait(page, 600);
     // 6. offline → Följ mig hem grey, taxi + 112 still there
     await ctx.setOffline(true); await wait(page, 500);
     i = await ovInfo(page);
