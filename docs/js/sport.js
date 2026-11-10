@@ -89,7 +89,7 @@
     try { if (window.FX && FX.haptic) FX.haptic(10); } catch (x) {}
     A.rpc("vote_bar_sport", { p_bar_id: String(id), p_yes: yes }).then(function (r) {
       if (r.error) {
-        if (U.missing(r.error)) { off = true; document.querySelectorAll(".sp-tag").forEach(function (x) { x.remove(); }); return; }
+        if (U.missing(r.error)) { off = true; document.querySelectorAll(".sp-tag[data-sptag]").forEach(function (x) { x.remove(); }); return; }   // only our own lines (R1-26)
         A.toast(/slow_down/.test(String(r.error.message || "")) ? L(T.slow[0], T.slow[1]) : L(T.err[0], T.err[1]), { err: true }); return;
       }
       var d = A.parseData(r.data), b = null; try { b = window.BARS.byId(id); } catch (x) {}

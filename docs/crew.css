@@ -6,7 +6,7 @@
 .cr-gl{font-weight:700;white-space:nowrap}
 .cr-gs{font-family:var(--hud);font-size:var(--fs-xs);color:var(--amber-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .cr-alone{margin:6px 0;padding:8px 10px;border:1px solid rgba(74,163,255,.45);border-left:4px solid var(--water);border-radius:var(--r-sm);
-  background:rgba(74,163,255,.1);color:var(--text);font-size:var(--fs-s);line-height:1.35}
+  background:var(--ds-blue-soft);color:var(--text);font-size:var(--fs-s);line-height:1.35}
 .cr-alone.big{font-size:var(--fs-m);margin-bottom:10px}
 
 /* sheet */
@@ -121,7 +121,7 @@
 .cr-rp-ic{font-size:var(--fs-34);line-height:1}
 .cr-play{min-height:52px;font-size:var(--fs-m)}
 .cr-rp{position:fixed;left:calc(8px + var(--sal));right:calc(8px + var(--sar));bottom:calc(8px + var(--sab));z-index:1200;
-  background:rgba(10,15,28,.94);border:1px solid var(--line);border-radius:var(--r-lg);padding:8px 10px 10px;box-shadow:0 8px 30px rgba(0,0,0,.55);
+  background:var(--pn-float);border:1px solid var(--line);border-radius:var(--r-lg);padding:8px 10px 10px;box-shadow:0 8px 30px rgba(0,0,0,.55);
   max-width:520px;margin:0 auto;backdrop-filter:blur(6px)}
 .cr-rp-top{display:flex;align-items:center;gap:8px;font-size:var(--fs-s)}
 .cr-rp-top b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -137,8 +137,8 @@
 .cr-rp-endh{font-weight:700;margin-bottom:4px}
 .cr-rp-stats{font-size:var(--fs-s);color:var(--muted);line-height:1.45}
 .cr-rp-dot,.cr-rp-burst{background:none;border:none}
-.cr-rp-dot span{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--c);color:#0a0f1c;
-  font-family:var(--hud);font-size:var(--fs-12);font-weight:700;border:2px solid #0a0f1c;box-shadow:0 0 0 2px var(--c),0 2px 8px rgba(0,0,0,.6)}
+.cr-rp-dot span{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--c);color:var(--ds-bg);
+  font-family:var(--hud);font-size:var(--fs-12);font-weight:700;border:2px solid var(--ds-bg);box-shadow:0 0 0 2px var(--c),0 2px 8px rgba(0,0,0,.6)}
 .cr-rp-burst span{display:block;width:36px;height:36px;line-height:36px;text-align:center;font-size:var(--fs-18);border-radius:50%;
   box-shadow:0 0 0 2px var(--c);animation:cr-burst 1.3s var(--e-in) forwards}
 @keyframes cr-burst{from{transform:scale(.4);opacity:1}to{transform:scale(1.8);opacity:0}}

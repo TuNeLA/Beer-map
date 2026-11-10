@@ -48,3 +48,11 @@
 /* 🏪 store build: user-written drink deals are web only (store-compliance B6) */
 html.olnu-store .bp-of, html.olnu-store [data-bpa="offer"]{display:none !important}
 @media (prefers-reduced-motion: no-preference){.sf-ov{animation:sfIn var(--m-4) var(--e-in)}@keyframes sfIn{from{opacity:0}to{opacity:1}}}
+/* followups (R1, ds12): PNI flag / block in the chat picker and the overlay (no 🚩 / 🚫 emoji as icons) */
+.cm-picker .sf-pick{display:grid;place-items:center;color:var(--ds-text-2)}
+.cm-picker .sf-pick .pi{width:20px;height:20px}
+.sf-card h2 .pi-lead{width:22px;height:22px;vertical-align:-.25em}
+.sf-card .btn .pi-lead,.sf-mini .pi-lead,.sf-person .btn .pi-lead{width:20px;height:20px}
+.bp-v.sf-of .pi{width:18px;height:18px}
+.sf-blist li>span{display:inline-flex;align-items:center;min-width:0}
+.sf-blist li>span .pi-lead{width:18px;height:18px;color:var(--ds-muted)}

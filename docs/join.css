@@ -22,7 +22,7 @@ body.jn-on #install-banner{display:none !important}
 @keyframes jn-nudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .jn-act{display:flex;flex-direction:column;gap:var(--ds-3);margin-top:var(--ds-2)}
 .jn-btn{min-height:64px !important;font-size:var(--ds-fs-18) !important;font-weight:700 !important;border-radius:var(--ds-r-2) !important;width:100%}
-.jn-install,.jn-iosprep,.jn-iacopy{min-height:72px !important;font-size:var(--fs-18) !important;box-shadow:0 8px 28px rgba(245,166,35,.28)}
+.jn-install,.jn-iosprep,.jn-iacopy{min-height:72px !important;font-size:var(--fs-18) !important;box-shadow:0 8px 28px var(--line)}
 a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .jn-then{margin:0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16);color:var(--ds-text-2)}
 .jn-okline{color:var(--ds-green-t);font-weight:700}
@@ -44,7 +44,7 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 .jn-step-b{flex:1;min-width:0}
 .jn-step-b p{margin:4px 0 0;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
 .jn-pic{margin-top:var(--ds-2);border-radius:var(--r-md);background:#f2f3f5;color:#1d2433;font:600 var(--fs-14)/1.2 system-ui,-apple-system,sans-serif;overflow:hidden}
-.jn-pic .jn-pic-hot{background:#ffd60a;color:#241300;border-radius:var(--r-sm);box-shadow:0 0 0 2px #f5a623}
+.jn-pic .jn-pic-hot{background:#ffd60a;color:var(--ds-on-amber);border-radius:var(--r-sm);box-shadow:0 0 0 2px var(--ds-amber)}
 .jn-pic-bar{display:flex;align-items:center;gap:8px;padding:8px 10px}
 .jn-pic-bar .jn-pic-url{flex:1;min-width:0;background:#fff;border-radius:var(--r-lg);padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#556}
 .jn-pic-bar .jn-pic-hot{padding:4px 10px;font-size:var(--fs-16)}
@@ -94,7 +94,7 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 .jn-cardbtn{flex:0 0 auto;min-height:44px;min-width:44px;padding:0 var(--ds-3);margin-left:auto;border-radius:var(--ds-r-pill);border:1px solid rgba(245,166,35,.55);
   background:var(--ds-amber-soft);color:var(--ds-amber-t);font:700 var(--ds-fs-14) var(--ds-sans);cursor:pointer;white-space:nowrap}
 @media (max-width:400px){ .jn-cardbtn{padding:0;width:44px;font-size:var(--fs-18)} .jn-cardbtn .jn-cb-t{display:none} }
-.jn-cardbtn:active{background:rgba(245,166,35,.28)}
+.jn-cardbtn:active{background:var(--line)}
 .gitem.gcard .jn-cardbtn+.gcard-go{margin-left:var(--ds-2)}
 
 /* ---------- Vänner tab ---------- */

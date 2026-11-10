@@ -19,12 +19,12 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff-x{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font-size:var(--fs-18);display:grid;place-items:center;flex:0 0 auto}
 .ff-hero{text-align:left}
 .ff-h1{margin:2px 0 6px;font-family:var(--display);font-weight:400;font-size:clamp(34px,11vw,52px);line-height:.95;letter-spacing:.01em;
-  background:linear-gradient(180deg,#fff6dd 0%,#ffc24d 55%,#f5a623 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  background:linear-gradient(180deg,#fff6dd 0%,var(--ds-amber-t) 55%,var(--ds-amber) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   text-shadow:0 2px 0 rgba(0,0,0,.0)}
 .ff-tag{margin:0;font-size:var(--fs-16);line-height:1.4;color:rgba(255,255,255,.78)}
 .ff-sv{font-size:var(--fs-s);color:var(--gold);margin-top:6px}
 
-.ff-sec{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-lg);padding:12px}
+.ff-sec{background:rgba(255,255,255,.06);border:1px solid var(--ds-border);border-radius:var(--r-lg);padding:12px}
 .ff-sh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
 .ff h2{margin:0;font-size:var(--fs-m);font-weight:700;letter-spacing:.02em}
 .ff-n{font-size:var(--fs-s);color:var(--green);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -32,7 +32,7 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff-chips{display:flex;flex-wrap:wrap;gap:8px}
 .ff-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;max-width:100%;padding:0 12px 0 8px;border-radius:var(--r-pill);
   border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.04);color:rgba(255,255,255,.7);font-size:var(--fs-16)}
-.ff-chip.on{background:rgba(61,220,132,.16);border-color:rgba(61,220,132,.7);color:#fff}
+.ff-chip.on{background:var(--pn-acc-live-bg);border-color:rgba(61,220,132,.7);color:#fff}
 .ff-ck{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:var(--fs-14);font-weight:700;border:1px solid rgba(255,255,255,.35);flex:0 0 auto}
 .ff-chip.on .ff-ck{background:var(--green);border-color:var(--green);color:var(--on-green)}
 .ff-cn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -69,7 +69,7 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 .ff-mc{font-size:var(--fs-xs);font-weight:600;letter-spacing:.04em;color:rgba(255,255,255,.85)}
 .ff-go{font-size:var(--fs-28);line-height:1;opacity:.8;flex:0 0 auto}
 
-.ff-sw{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 12px;border-radius:var(--r-lg);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer}
+.ff-sw{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 12px;border-radius:var(--r-lg);background:rgba(255,255,255,.06);border:1px solid var(--ds-border);cursor:pointer}
 .ff-cb{position:relative;appearance:none;-webkit-appearance:none;flex:0 0 auto;width:48px;height:28px;border-radius:var(--r-lg);background:rgba(255,255,255,.2);margin:0;cursor:pointer;transition:background var(--m-4)}
 .ff-cb::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform var(--m-4),opacity var(--m-4)}
 .ff-cb:checked{background:var(--green)}
@@ -143,7 +143,7 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
 /* gm07: "Lämna spelet?" box (Stanna kvar = the one amber), "‹ Förra" with a label */
 .ff-foot .ff-prev{width:auto;padding:0 16px;border-radius:var(--r-xl);font-size:var(--fs-16)}
 .ff-ask{position:absolute;inset:0;z-index:20;background:rgba(4,8,16,.74);display:flex;align-items:flex-end;justify-content:center;padding:16px}
-.ff-ask-c{width:100%;max-width:520px;border-radius:var(--r-xl);padding:20px 16px 14px;background:#19233a;border:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:10px;text-align:center}
+.ff-ask-c{width:100%;max-width:520px;border-radius:var(--r-xl);padding:20px 16px 14px;background:var(--ds-card);border:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:10px;text-align:center}
 .ff-ask-c h2{margin:0;font-size:var(--fs-22)} .ff-ask-c p{margin:0 0 6px;opacity:.85}
 .ff-ask-stay{min-height:52px;border-radius:var(--r-xl);border:0;background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);font-size:var(--fs-18);font-weight:700}
 /* gms07 END */
