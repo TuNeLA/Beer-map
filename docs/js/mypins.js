@@ -5,14 +5,15 @@
      🏃 my "Jag ä på väg" target (BARSPLUS.eta.mine) · 🪖 a call-out I made or said yes / maybe to (RALLY.list) ·
      🚪 the bar I am checked in at (olnu.checkin) · 👥 friends / group mates drinking there now (app beers with friend_name) ·
      📅 my "Går" events tonight (EVSHEET going state, event at a bar or with its own point) · 📍 the selected bar (open sheet).
-   - js/tiers.js gives these bars the full pill whenever their marker is drawn (ignores cap, HUD zone and minimum zooms).
+   - js/tiers.js gives these bars the full pill whenever their marker is drawn (ignores cap and minimum zooms; map M3: not
+     under the app UI, where only the pill hides). Zone labels (zones.js) step aside from these chips.
    - Where no marker of that bar shows (zoom < 13 for quiet bars, < 11 for every bar, or a dot hidden in the town view), a small
      labelled pin "🏃 Pitchers" is drawn in its own pane "mypins" (z 700: above the people count chips 600 and every bar pane).
      Max 8 pins in view; pins that would touch merge into the best one (with +N). Tap → zoom to the bar (z ≥ 16) and open its sheet.
    - Redrawn after each tier pass (js/tiers.js calls MYPINS.sync), on the poll and on moveend; diffed by id. */
 (function () {
   "use strict";
-  var A = null, map = null, layer = null, drawn = {}, raf = 0, MAX = 8;
+  var A = null, map = null, layer = null, drawn = {}, raf = 0, MAX = 8, lastSig = "";
   var RANK = { eta: 6, rally: 5, ci: 4, friends: 3, go: 2, sel: 1 };
   var EMO = { eta: "🏃", rally: "🪖", ci: "🚪", friends: "👥", go: "📅", sel: "📍" };
   var CSS =
@@ -100,6 +101,9 @@
       mk.on("click", function () { go(x); });
       mk.addTo(layer); drawn[k] = { m: mk, key: x.why + "|" + x.name + "|" + x.more + "|" + x.whys };
     });
+    // map M3: the zone labels step aside from these chips: tell zones.js when the chips changed
+    var sig = Object.keys(drawn).map(function (k) { var d = drawn[k], ll = d.m.getLatLng(); return k + d.key + ll.lat.toFixed(5) + ll.lng.toFixed(5); }).join("|");
+    if (sig !== lastSig) { lastSig = sig; try { if (window.ZONES && ZONES.relabel) ZONES.relabel(); } catch (e) {} }
   }
   function icon(x) { return window.L.divIcon({ html: label(x), className: "mp-w", iconSize: [0, 0], iconAnchor: [0, 10] }); }
   function go(x) {
