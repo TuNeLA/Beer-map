@@ -5,7 +5,8 @@
      🏃 my "Jag ä på väg" target (BARSPLUS.eta.mine) · 🪖 a call-out I made or said yes / maybe to (RALLY.list) ·
      🚪 the bar I am checked in at (olnu.checkin) · 👥 friends / group mates drinking there now (app beers with friend_name) ·
      📅 my "Går" events tonight (EVSHEET going state, event at a bar or with its own point) · 📍 the selected bar (open sheet).
-   - js/tiers.js gives these bars the full pill whenever their marker is drawn (ignores cap, HUD zone and minimum zooms).
+   - js/tiers.js gives these bars the full pill whenever their marker is drawn (ignores cap and minimum zooms; map M3: not
+     under the app UI, where only the pill hides). Zone labels (zones.js) step aside from these chips.
    - Where no marker of that bar shows (zoom < 13 for quiet bars, < 11 for every bar, or a dot hidden in the town view), a small
      labelled pin "🏃 Pitchers" is drawn in its own pane "mypins" (z 700: above the people count chips 600 and every bar pane).
      Max 8 pins in view; pins that would touch merge into the best one (with +N). Tap → zoom to the bar (z ≥ 16) and open its sheet.

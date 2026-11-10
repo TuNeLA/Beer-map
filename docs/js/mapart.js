@@ -40,7 +40,8 @@
       ring: 2,            // foam ring on every disc
       edge: 1,            // ink hairline outside the ring
       shadowY: 1, shadowBlur: 2.5, pad: 3,   // sprite padding around every asset (room for the shadow)
-      dotQuiet: 18, dotBusy: 20, dotHiScale: 1.2,   // dots (z >= 16: icon-size 1.2, no new images)
+      dotQuiet: 18, dotBusy: 20, dotHiScale: 1.2,   // (old dot sizes; town-view disc = dotBusy + 4)
+      dot: 28, glyphDot: 16, dotBadge: 12,   // map B9: a dot = the full disc size (glmap icon-size: x 24/28 in the town view, x 32/28 at z >= 16)
       glyphQuiet: 11, glyphBusy: 12,
       full: 28, fullHi: 32, glyphFull: 16, glyphFullHi: 18,
       badge: 12, crownW: 14, crownH: 10,
@@ -286,8 +287,9 @@
   function barOps(s, mode, hi, extra) {
     var ops = [], parts = [], full = mode !== "d", k = cat(s.k), busy = !!(s.p || s.hot), lit = !busy && !!s.lit;
     extra = extra || {};
-    var D = full ? (mode === "x" ? S.dotBusy + 4 : hi ? S.fullHi : S.full) : (busy ? S.dotBusy : S.dotQuiet), r = D / 2;
-    var gs = full ? (mode === "x" ? S.glyphBusy + 2 : hi ? S.glyphFullHi : S.glyphFull) : (busy ? S.glyphBusy : S.glyphQuiet);
+    // map B9: the dot disc is as big as the full pill's disc (owner: an icon may never shrink by position, only the name hides)
+    var D = full ? (mode === "x" ? S.dotBusy + 4 : hi ? S.fullHi : S.full) : S.dot, r = D / 2;
+    var gs = full ? (mode === "x" ? S.glyphBusy + 2 : hi ? S.glyphFullHi : S.glyphFull) : S.glyphDot;
     if (extra.sel) circle(ops, 0, 0, r + 4, { fill: "rgba(245,166,35,0.55)", sh: true });
     // the disc is ALWAYS navy with the type glyph (one look per place type at every zoom); busy = amber ring, lit = green
     var body = K.navy;
@@ -298,7 +300,7 @@
     if (!full) {
       if (busy && !king) foamCap(ops, r, 2);
       if (king) crown(ops, 0, -r + 2, 12);
-      var bd = 10;
+      var bd = S.dotBadge;   // map B9 (was 10 on the 18 px dot)
       if (s.p && s.p.f) badge(ops, bo, bo, bd, K.green, "person", K.greenInk);
       if (lit) badge(ops, -bo, bo, bd, K.ink, "door", K.green);
       if (extra.stammis) badge(ops, -bo, bo, bd, K.foam, "house", K.ink, { ring: K.amber });
