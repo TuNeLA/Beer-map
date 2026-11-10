@@ -1517,3 +1517,82 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
 /* R1-41: the Profil rank bar is a progress bar, not a slider: no white knob at its end (pnui.css .pf-bar>span::after) */
 #sheet-body .pf-hero .pf-bar>span::after{content:none;display:none}
 /* lane:social-b END */
+/* lane:main START — S5 install guide, R1-03 beta note caption, S2 Synlighet menu, rail labels (10 Nov). New rules only; no old line changed. */
+/* S5 · "Installera appen" (js/install1.js): full screen, solid, one column, tokens only */
+.mn-inst{position:fixed;inset:0;z-index:2650;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--ds-bg);color:var(--ds-text);
+  padding:calc(var(--sat,0px) + var(--sp-6)) calc(var(--sar,0px) + var(--sp-4)) calc(var(--sab,0px) + var(--sp-7)) calc(var(--sal,0px) + var(--sp-4));
+  animation:mnInstIn var(--m-5,300ms) var(--e-in,cubic-bezier(.05,.7,.1,1)) backwards}
+.mn-inst.mn-inst-out{animation:mnInstOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards;pointer-events:none}
+@keyframes mnInstIn{from{opacity:0}}
+@keyframes mnInstOut{to{opacity:0}}
+.mn-inst-col{max-width:420px;margin:0 auto;display:flex;flex-direction:column;align-items:stretch}
+.mn-inst-icon{display:block;width:64px;height:64px;border-radius:var(--r-lg);margin:0 auto var(--sp-4);box-shadow:var(--ds-sh-1)}
+.mn-inst-h{margin:0 0 var(--sp-2);text-align:center;font:400 var(--fs-28)/32px var(--ds-stencil);color:var(--ds-amber-t);letter-spacing:.01em}
+.mn-inst-p{margin:0 0 var(--sp-5);text-align:center;font:400 var(--fs-16)/24px var(--ds-sans);color:var(--ds-text-2)}
+.mn-inst-steps{list-style:none;margin:0;padding:0;border-radius:var(--r-lg);background:var(--ds-card);border:1px solid var(--ds-border);overflow:hidden}
+.mn-inst-step{display:flex;align-items:center;gap:var(--sp-3);min-height:var(--pn-row-h,56px);padding:var(--sp-3) var(--sp-4)}
+.mn-inst-step+.mn-inst-step{border-top:1px solid var(--ds-border)}
+.mn-inst-n{flex:0 0 28px;width:28px;height:28px;border-radius:var(--r-pill);display:grid;place-items:center;background:var(--ds-amber-soft);color:var(--ds-amber-t);
+  font:700 var(--fs-14)/1 var(--ds-sans)}
+.mn-inst-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mn-inst-tx>b,.mn-inst-st{font:600 var(--fs-16)/24px var(--ds-sans);color:var(--ds-text)}
+.mn-inst-tx>small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.mn-inst-key{display:inline-grid;place-items:center;width:32px;height:28px;margin:0 var(--sp-1);vertical-align:-8px;border-radius:var(--r-sm);
+  background:var(--ds-raised);border:1px solid var(--ds-border-2);color:var(--ds-blue)}
+.mn-inst-key .pi{width:18px;height:18px}
+.mn-inst-key-v .pi{transform:rotate(90deg)}
+.mn-inst-push{display:flex;align-items:flex-start;gap:var(--sp-3);margin:var(--sp-3) 0 0;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);
+  background:var(--ds-card);border:1px solid var(--ds-border);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text-2)}
+.mn-inst-push-i{flex:0 0 auto;display:grid;place-items:center;width:20px;height:20px;color:var(--ds-amber-t)}
+.mn-inst-push-i .pi{width:20px;height:20px}
+.mn-inst-go{min-height:52px;font-size:var(--fs-18)}
+.mn-inst-sub{margin:var(--sp-3) 0 0;text-align:center;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.mn-inst-act>.mn-inst-sub:first-child{margin:0 0 var(--sp-3);color:var(--ds-text-2)}
+.mn-inst-act>.mn-inst-steps+.mn-inst-go{margin-top:var(--sp-4)}
+.mn-inst-done{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);background:var(--ds-green-soft);border:1px solid var(--ds-green)}
+.mn-inst-done-i{display:grid;place-items:center;width:28px;height:28px;border-radius:var(--r-pill);background:var(--ds-green);color:var(--ds-on-green)}
+.mn-inst-done-i .pi{width:18px;height:18px}
+.mn-inst-qrw{display:flex;justify-content:center}
+.mn-inst-qr{padding:var(--sp-3);background:#fff;border-radius:var(--r-lg)}
+.mn-inst-skip{display:block;margin:var(--sp-5) auto 0;min-height:44px;padding:0 var(--sp-4);border:0;background:transparent;color:var(--ds-muted);
+  font:600 var(--fs-14)/20px var(--ds-sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.mn-inst-skip:focus-visible,.mn-inst-go:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.mn-inst-arrow{position:fixed;left:50%;bottom:calc(var(--sab,0px) + var(--sp-2));margin-left:-16px;width:32px;height:32px;display:grid;place-items:center;color:var(--ds-amber-t);
+  pointer-events:none;animation:mnInstBob .9s var(--e-std,ease) 3}
+.mn-inst-arrow.mn-inst-arrow-r{left:auto;right:calc(var(--sar,0px) + var(--sp-4));margin-left:0}
+.mn-inst-arrow .pi{width:28px;height:28px}
+@keyframes mnInstBob{50%{transform:translateY(6px)}}
+@media (prefers-reduced-motion:reduce){.mn-inst,.mn-inst.mn-inst-out,.mn-inst-arrow{animation:none}}
+/* R1-03 · the beta log note (js/pnlog.js noteCard): a caption in the toast column — under the HUD row, left of the rail */
+.mn-note{position:fixed;z-index:1200;box-sizing:border-box;margin:0;max-width:440px;
+  top:calc(var(--pn-r2, calc(var(--sat,0px) + 96px)) + var(--pn-gap,8px) + var(--pn-rail,44px) + var(--pn-gap,8px) + var(--pn-ban, 0px));
+  left:calc(var(--sal,0px) + var(--pn-edge,12px));right:calc(var(--sar,0px) + var(--pn-edge,12px) + var(--pn-rail,44px) + var(--pn-gap,8px));
+  padding:var(--sp-3) var(--sp-3) var(--sp-2) var(--sp-4);border-radius:var(--r-md);background:var(--pn-float-2);border:1px solid var(--ds-border-2);
+  box-shadow:var(--ds-sh-2);color:var(--ds-text-2);animation:mnNoteIn var(--m-4,200ms) var(--e-in,cubic-bezier(.05,.7,.1,1)) backwards}
+.mn-note.mn-note-out{animation:mnNoteOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards;pointer-events:none}
+@keyframes mnNoteIn{from{opacity:0;transform:translateY(-8px)}}
+@keyframes mnNoteOut{to{opacity:0}}
+.mn-note-t{margin:0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text-2)}
+.mn-note-row{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-1);margin-top:var(--sp-1)}
+.mn-note-off,.mn-note-ok{min-height:44px;border:0;cursor:pointer;font:600 var(--fs-14)/20px var(--ds-sans)}
+.mn-note-off{padding:0 var(--sp-3);background:transparent;color:var(--ds-amber-t)}
+.mn-note-ok{min-width:64px;padding:0 var(--sp-4);border-radius:var(--r-md);background:var(--ds-amber);color:var(--ds-on-amber);font-weight:700}
+.mn-note-off:focus-visible,.mn-note-ok:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.mn-note,.mn-note.mn-note-out{animation:none}}
+/* S2 · Synlighet menu (js/pnvis.js): rows = the Ikväll menu rows (.pn-ikm-row); scrolls on a short screen */
+.pn-ikm.pn-vis{overflow-y:auto;overscroll-behavior:contain}
+.pn-vis .mn-vis-list{margin-top:var(--sp-3)}
+.mn-vis-sos-p{margin:0 0 var(--sp-3)}
+.mn-vis-settop{padding:var(--sp-3) var(--sp-4)}
+.mn-vis-settop .pn-vis-seg{margin:0 0 var(--sp-2)}
+.mn-vis-setl>.mn-vis-row{border-top:1px solid var(--ds-border)}
+/* rail labels (js/pnds.js ds05 rail, first 3 nights of a new user): one word under each 44 px button; the rail steps 52 → 68 px.
+   !important only because the ds05 rail tops above are !important (pnds.css "ds05 layout"). */
+.mn-rail-l{display:none}
+body.mn-rail-lbl #pn-ghost,body.mn-rail-lbl #pn-evs,body.mn-rail-lbl #btn-more{overflow:visible}
+body.mn-rail-lbl .mn-rail-l{display:block;position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);max-width:60px;padding:0 var(--sp-1);
+  border-radius:var(--r-xs);background:var(--pn-float);color:var(--ds-text);font:600 var(--fs-12)/16px var(--ds-sans);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;pointer-events:none;text-shadow:none}
+body.mn-rail-lbl #pn-evs{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 1 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+body.mn-rail-lbl #btn-more.pn-more{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 2 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+/* lane:main END */
