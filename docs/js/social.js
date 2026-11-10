@@ -11,14 +11,14 @@
   var esc = U.esc;
   // 0029 keep-history switch + older messages (own strings; I18N fallback to Swedish).
   var KS = {
-    sv: { keepLabel: "💾 Spara chatten efter kl 05", keepInfo: "Meddelanden, bilder och röstskål ligger kvar för alltid i gruppen.",
+    sv: { keepLabel: "Spara chatten efter kl 05", keepInfo: "Meddelanden, bilder och röstskål ligger kvar för alltid i gruppen.",
       keepNote: "💾 Sparas i gruppen.", keepAdmin: "Bara den som skapade gruppen kan ändra det.",
       keepOnToasts: ["💾 Sparat för evigheten! Nu ä varje dumhet historia.", "💾 Arkivet ä öppet. Ölguden för protokoll från och med nu.",
         "💾 Chatten sparas. Tänk på barnbarnen när du skriver.", "💾 Klart! Inget försvinner kl 05 längre – int' ens det du ångrar."],
       keepOffToasts: ["🧹 Okej, kl 05 städar vi som förr. Det som sägs i natt stannar i natt.", "🧹 Chatten försvinner kl 05 igen. Bevisen ä snart borta.",
         "🧹 Tillbaka till engångschatt. Ölguden glömmer allt i gryningen."],
       older: "⬆️ Visa äldre", olderNone: "Inga äldre meddelanden." },
-    en: { keepLabel: "💾 Keep the chat after 05:00", keepInfo: "Messages, photos and voice cheers stay in the group forever.",
+    en: { keepLabel: "Keep the chat after 05:00", keepInfo: "Messages, photos and voice cheers stay in the group forever.",
       keepNote: "💾 Kept in the group.", keepAdmin: "Only the group's creator can change this.",
       keepOnToasts: ["💾 Saved for eternity!"], keepOffToasts: ["🧹 The chat vanishes at 05:00 again."],
       older: "⬆️ Show older", olderNone: "No older messages." }
@@ -483,9 +483,15 @@
       var keepOn = false;
       (function () {
         if (off.group_keep_history || g.dm) return;   // dm B1: a 1:1 chat has no group setting (the server answers not_member)
-        var cb = el("input", { type: "checkbox", class: "chat-keep-cb", "aria-describedby": "chat-keep-info" });
+        // social-a R1-22: an on/off setting is a switch row (ds08/ds17), PNI icon, no 💾 and no native checkbox.
+        // cb keeps the old checkbox API (.checked, .disabled, "change") so the code below stays the same.
+        var cb = el("button", { type: "button", class: "switch chat-keep-cb", role: "switch", "aria-checked": "false", "aria-label": KT("keepLabel"), "aria-describedby": "chat-keep-info" });
+        Object.defineProperty(cb, "checked", { get: function () { return cb.getAttribute("aria-checked") === "true"; }, set: function (v) { cb.setAttribute("aria-checked", String(!!v)); } });
+        cb.addEventListener("click", function () { if (cb.disabled) return; cb.checked = !cb.checked; cb.dispatchEvent(new Event("change")); });
+        var kIc = el("span", { class: "chat-keep-ic", "aria-hidden": "true" });
+        try { if (window.PNI && window.PNI.has("history")) kIc.innerHTML = window.PNI.svg("history"); } catch (e) {}
         var box = el("div", { class: "chat-keep", hidden: "" }, [
-          el("label", { class: "chat-keep-l" }, [cb, el("span", { text: KT("keepLabel") })]),
+          el("div", { class: "toggle-row chat-keep-l" }, [kIc, el("span", { class: "chat-keep-t", text: KT("keepLabel") }), cb]),
           el("p", { class: "muted chat-keep-i", id: "chat-keep-info", text: KT("keepInfo") })
         ]);
         list.parentNode.insertBefore(box, list);

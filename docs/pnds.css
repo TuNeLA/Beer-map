@@ -1348,3 +1348,167 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
     radial-gradient(circle at 100% 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left bottom/12px 12px no-repeat,
     radial-gradient(circle at 0 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right bottom/12px 12px no-repeat}
 /* lane:ui1 END */
+/* lane:social-a START — G1–G5, Gängkamp, R1-04/09/22/23/24, DM header (10 Nov). New rules only; no old line changed. */
+:root{--sa-users-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8.5' r='3.5'/%3E%3Cpath d='M2.5 20a6.5 6.5 0 0 1 13 0'/%3E%3Cpath d='M15.5 5.3a3.3 3.3 0 0 1 0 6.4'/%3E%3Cpath d='M17.5 14.2a6 6 0 0 1 4 5.8'/%3E%3C/svg%3E");
+  --sa-edit-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19l1-4.2L15.8 5a2.1 2.1 0 0 1 3 3L9 17.8z'/%3E%3Cpath d='M14 6.8l3.2 3.2'/%3E%3C/svg%3E");
+  --sa-plus-img:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E")}
+/* G1 Vänner: two actions first */
+#sheet-body .sa-vtop{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-2);margin:0 0 var(--sp-5)}
+#sheet-body .sa-vbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-1);min-height:76px;padding:var(--sp-3) var(--sp-2);
+  border-radius:var(--r-lg);border:1px solid var(--ds-border);background:var(--ds-card);color:var(--ds-text);font:600 var(--fs-16)/22px var(--ds-sans);text-align:center;cursor:pointer}
+#sheet-body .sa-vbtn-i{display:grid;place-items:center;width:40px;height:40px;border-radius:var(--r-md);background:var(--ds-amber-soft);color:var(--ds-amber-t)}
+#sheet-body .sa-vbtn-i .pi{width:24px;height:24px}
+#sheet-body .sa-hint{margin:var(--sp-3) 0 0;color:var(--ds-muted);font:400 var(--fs-14)/20px var(--ds-sans)}
+#sheet-body .sa-add-l{display:block;margin:0 0 var(--sp-2);color:var(--ds-text-2);font:600 var(--fs-14)/20px var(--ds-sans)}
+#sheet-body .sa-add-row{display:flex;gap:var(--sp-2);margin:0 0 var(--sp-3)}
+#sheet-body .sa-add-row .inp{flex:1 1 auto;min-width:0;min-height:48px;text-transform:none;letter-spacing:.04em}
+#sheet-body .sa-add-row .btn{flex:0 0 auto;min-height:48px}
+#sheet-body .sa-add-scan{margin-top:var(--sp-2);display:flex;align-items:center;justify-content:center;gap:var(--sp-2)}
+#sheet-body .sa-add-scan .pi{width:20px;height:20px}
+#sheet-body .sa-scan{margin-top:var(--sp-3)}
+#sheet-body .sa-scan[hidden]{display:none}
+#sheet-body .sa-scan-v{display:block;width:100%;max-height:320px;object-fit:cover;border-radius:var(--r-lg);background:var(--ds-bg)}
+#sheet-body .sa-mine{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2)}
+#sheet-body .sa-mine-qr{align-self:center;padding:var(--sp-3);background:var(--ds-text);border-radius:var(--r-lg);line-height:0}
+#sheet-body .sa-mine-qr img,#sheet-body .sa-mine-qr canvas{display:block;width:200px;height:200px}
+#sheet-body .sa-mine-s{text-align:center;margin:var(--sp-1) 0 var(--sp-2)}
+#sheet-body .sa-mine-code{display:flex;align-items:center;justify-content:center;gap:var(--sp-2);min-height:48px;margin:0 0 var(--sp-2);border:0;background:none;color:var(--ds-text-2);font:400 var(--fs-16)/22px var(--ds-sans);cursor:pointer}
+#sheet-body .sa-mine-code b{color:var(--ds-text);font-weight:700;letter-spacing:.12em;font-variant-numeric:tabular-nums}
+#sheet-body .sa-mine-ci{color:var(--ds-muted);display:grid}
+#sheet-body .sa-mine-ci .pi{width:16px;height:16px}
+#sheet-body .sa-mine-new{align-self:center;min-height:44px}
+#sheet-body .sa-mine-wait{align-self:center;width:224px;height:224px;border-radius:var(--r-lg);background:var(--ds-raised)}
+/* R1-09 one request / inbox row: icon tile, text, tonal actions; no stripe (Inkorg + Vänner) */
+#sheet-body .sa-ib,#sheet-body .nr-in .nr-req.sa-ib{display:grid;grid-template-columns:40px minmax(0,1fr) auto;column-gap:var(--sp-3);row-gap:var(--sp-2);align-items:start;
+  padding:var(--sp-3) var(--sp-4);margin:0 0 var(--sp-2);border-radius:var(--r-lg);border:1px solid var(--ds-border);background:var(--ds-card);box-shadow:none}
+#sheet-body .sa-ib-ti{display:grid;place-items:center;width:40px;height:40px;border-radius:var(--r-md);background:var(--acc-bg,var(--ds-raised));color:var(--acc,var(--ds-text-2))}
+#sheet-body .sa-ib-ti .pi{width:24px;height:24px}
+#sheet-body .sa-ib-main{min-width:0;display:flex;flex-direction:column;gap:var(--sp-0)}
+#sheet-body .sa-ib-main>b{font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);overflow-wrap:break-word}
+#sheet-body .sa-ib-main>small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);overflow-wrap:break-word}
+#sheet-body .sa-ib-acts{grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+#sheet-body .sa-ib .btn{min-height:44px;margin:0;padding:0 var(--sp-4);display:inline-flex;align-items:center;gap:var(--sp-1);border-radius:var(--r-pill) !important;
+  font:600 var(--fs-16)/1 var(--ds-sans);box-shadow:none}
+#sheet-body .sa-ib .btn .pi{width:18px;height:18px}
+#sheet-body .sa-ib .sa-ib-yes{background:var(--ds-amber-soft) !important;border:1px solid var(--ds-amber) !important;color:var(--ds-amber-t) !important}
+#sheet-body .sa-ib .sa-ib-no{width:44px;padding:0;justify-content:center;background:transparent !important;border:1px solid var(--ds-border-2) !important;color:var(--ds-text-2) !important}
+/* G2/G3 Tidigare event: ONE grouped list (card, radius 16, 1 px dividers), PNI kind tiles; the fold summary has an icon + one chevron */
+#sheet-body .evg-plist.sa-plist{gap:0;border-radius:var(--r-lg);border:1px solid var(--ds-border);background:var(--ds-card);overflow:hidden}
+#sheet-body .evg-plist.sa-plist>.sa-prow{min-height:var(--pn-row-h);padding:var(--pn-row-py) var(--pn-row-px);gap:var(--sp-3);border:0;border-radius:0;background:transparent}
+#sheet-body .evg-plist.sa-plist>.sa-prow+.sa-prow{border-top:1px solid var(--ds-border)}
+#sheet-body .sa-prow-i,#sheet-body .sa-evg-ico{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:var(--r-md);background:var(--pn-acc-event-bg);color:var(--pn-acc-event);font-size:0}
+#sheet-body .sa-prow-i .pi,#sheet-body .sa-evg-ico .pi{width:24px;height:24px}
+#sheet-body .evg-plist.sa-plist .evg-pt b{white-space:normal;overflow-wrap:break-word}
+#sheet-body .evg-fold.sa-pfold>summary{gap:var(--sp-3);color:var(--ds-text-2);font:600 var(--fs-16)/22px var(--ds-sans)}
+#sheet-body .evg-fold.sa-pfold>summary::after{content:"";margin-left:auto;width:16px;height:16px;opacity:1;background:var(--ds-muted);-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat;transition:transform var(--m-4) var(--e-std)}
+#sheet-body .evg-fold.sa-pfold[open]>summary::after{content:"";transform:rotate(90deg)}
+#sheet-body .sa-pfold-i{display:grid;color:var(--ds-muted)}
+#sheet-body .sa-pfold-i .pi{width:20px;height:20px}
+#sheet-body .evg-fold.sa-pfold>.sa-plist{margin-top:var(--sp-2)}
+/* G2 Profil: the sticky Profil | Inställningar bar ends in a 16 px fade (labels fade out, never cut under it) */
+.sheet #sheet-body>.tabs.pf-tabs::after{content:"";position:absolute;left:0;right:0;top:100%;height:16px;pointer-events:none;
+  background:linear-gradient(var(--ds-sheet),transparent)}
+/* G2 Profil "Namn, konto och mer": every section is ONE list card; nothing inside it is a 2nd card or an outlined box.
+   Button groups (Öl Wrapped), the Swish button, Ring 112 and the topplista opt-in become plain rows of that list. */
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .bd-optin{border:0 !important;background:transparent !important;border-radius:0 !important;box-shadow:none !important;padding:0 !important;margin:0 !important}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item.ds-blk>.row:not(:has(input)){display:flex !important;flex-direction:column !important;gap:0 !important;margin:0 calc(-1 * var(--pn-row-px)) !important}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item.ds-blk>.row:not(:has(input))>.btn:not(.btn-amber),
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .rnd-swrow>.btn,
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .sos-block>.btn{display:flex !important;align-items:center;justify-content:flex-start !important;gap:var(--sp-3);width:100% !important;flex:none !important;
+  min-height:var(--pn-row-h) !important;margin:0 !important;padding:var(--pn-row-py) 44px var(--pn-row-py) var(--pn-row-px) !important;position:relative;text-align:left;
+  border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;color:var(--ds-text) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item.ds-blk>.row:not(:has(input))>.btn:not(.btn-amber)+.btn{border-top:1px solid var(--ds-border) !important}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item.ds-blk>.row:not(:has(input))>.btn:not(.btn-amber)::after,
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .rnd-swrow>.btn::after{content:"" !important;position:absolute;right:var(--sp-4);top:50%;width:16px;height:16px;margin-top:-8px;transform:none !important;
+  background:var(--ds-muted);-webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .rnd-swrow{margin:0 calc(-1 * var(--pn-row-px)) !important}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .sos-block>.btn{color:var(--ds-red-t) !important}
+#sheet-body.pn-pfmode>section.ds-section>.ds-list>.ds-item .sos-block a[href^="tel:"]{display:flex !important;align-items:center;justify-content:flex-start !important;gap:var(--sp-3);width:100% !important;
+  min-height:var(--pn-row-h) !important;margin:0 !important;padding:var(--pn-row-py) var(--pn-row-px) !important;border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;
+  color:var(--ds-red-t) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important;text-align:left}
+/* G4 group colours (6, from the accent set) + the Grupper tile (PNI icon, no 🍺) */
+.sa-gcol-0{--acc:var(--pn-acc-chat);--acc-bg:var(--pn-acc-chat-bg)}
+.sa-gcol-1{--acc:var(--pn-acc-games);--acc-bg:var(--pn-acc-games-bg)}
+.sa-gcol-2{--acc:var(--pn-acc-cam);--acc-bg:var(--pn-acc-cam-bg)}
+.sa-gcol-3{--acc:var(--pn-acc-event);--acc-bg:var(--pn-acc-event-bg)}
+.sa-gcol-4{--acc:var(--pn-acc-skal);--acc-bg:var(--pn-acc-skal-bg)}
+.sa-gcol-5{--acc:var(--pn-acc-safe);--acc-bg:var(--pn-acc-safe-bg)}
+.glist .gcard.sa-gc::before{content:none !important;display:none !important}
+.glist .gcard.sa-gc{display:flex;align-items:center;gap:var(--sp-3)}
+.glist .gcard .sa-gc-ti{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:var(--r-md);background:var(--acc-bg,var(--ds-raised));color:var(--acc,var(--ds-text-2))}
+.glist .gcard .sa-gc-ti .pi{width:24px;height:24px}
+.glist .gcard.sa-gc>.gcard-main{flex:1 1 auto;min-width:0}
+/* G4 group page colour. The group's colour as --sa-g / --sa-g-bg on the page wrapper. */
+.sa-gpcol-0{--sa-g:var(--pn-acc-chat);--sa-g-bg:var(--pn-acc-chat-bg)}
+.sa-gpcol-1{--sa-g:var(--pn-acc-games);--sa-g-bg:var(--pn-acc-games-bg)}
+.sa-gpcol-2{--sa-g:var(--pn-acc-cam);--sa-g-bg:var(--pn-acc-cam-bg)}
+.sa-gpcol-3{--sa-g:var(--pn-acc-event);--sa-g-bg:var(--pn-acc-event-bg)}
+.sa-gpcol-4{--sa-g:var(--pn-acc-skal);--sa-g-bg:var(--pn-acc-skal-bg)}
+.sa-gpcol-5{--sa-g:var(--pn-acc-safe);--sa-g-bg:var(--pn-acc-safe-bg)}
+/* option A: a header band in the group's colour (behind the status, Bjud in and the code) + group-colour tiles */
+#sheet .gitem:not(.gcard)>div.gp.gpg.sa-gpc-a[data-gv="home"]>.gmain{position:relative;min-height:100px;padding:var(--sp-4) 150px var(--sp-4) 72px !important;border-radius:var(--r-lg);
+  border:1px solid var(--ds-border);background:linear-gradient(135deg,var(--sa-g-bg) 0%,transparent 85%),var(--ds-card)}
+#sheet .gpg.sa-gpc-a[data-gv="home"]>.gmain::before{content:"";position:absolute;left:var(--sp-4);top:50%;width:44px;height:44px;margin-top:-22px;border-radius:var(--r-md);background:var(--sa-g-bg)}
+#sheet .gpg.sa-gpc-a[data-gv="home"]>.gmain::after{content:"";position:absolute;left:calc(var(--sp-4) + 10px);top:50%;width:24px;height:24px;margin-top:-12px;background:var(--sa-g);
+  -webkit-mask:var(--sa-users-img) center/24px no-repeat;mask:var(--sa-users-img) center/24px no-repeat}
+#sheet .gpg.sa-gpc-a[data-gv="home"]>.pn-gp-inv{top:var(--sp-3);right:var(--sp-3)}
+#sheet .gpg.sa-gpc-a[data-gv="home"]>.pn-gp-code{position:relative;z-index:1}
+#sheet .gpg.sa-gpc-a .gpg-dots .pn-gp-ti,#sheet .gpg.sa-gpc-a .sa-gk .pn-gp-ti.sa-gk-g{--acc:var(--sa-g);--acc-bg:var(--sa-g-bg)}
+#sheet .gpg.sa-gpc-a>.pn-gp-mem{border-top:3px solid var(--sa-g) !important}
+/* option B: every card tinted in its own accent */
+#sheet .gpg.sa-gpc-b>.gpg-now{background:linear-gradient(var(--pn-acc-live-bg),var(--pn-acc-live-bg)),var(--ds-card) !important}
+#sheet .gpg.sa-gpc-b>.gpg-chat{background:linear-gradient(var(--pn-acc-chat-bg),var(--pn-acc-chat-bg)),var(--ds-card) !important}
+#sheet .gpg.sa-gpc-b>.sp-gi>.btn,#sheet .gpg.sa-gpc-b>.sa-gk{background:linear-gradient(var(--pn-acc-games-bg),var(--pn-acc-games-bg)),var(--ds-card) !important}
+#sheet .gpg.sa-gpc-b>.fm-gi{background:linear-gradient(var(--pn-acc-cam-bg),var(--pn-acc-cam-bg)),var(--ds-card) !important}
+#sheet .gpg.sa-gpc-b>.pn-gp-mem,#sheet .gitem:not(.gcard)>div.gp.gpg.sa-gpc-b[data-gv="home"]>.gpg-dots.pn-gp-about{background:linear-gradient(var(--sa-g-bg),var(--sa-g-bg)),var(--ds-card) !important}
+#sheet .gpg.sa-gpc-b .gpg-dots .pn-gp-ti{--acc:var(--sa-g);--acc-bg:var(--ds-card)}
+/* R1-23 group Ikväll view: each section = ONE list (tiles touch, inner dividers, round only at the ends), 24 px icons, 14 px subs */
+#sheet .gpg[data-gv="plus"]>.sa-gl:not(.sa-gl-first){margin-top:calc(-1 * var(--sp-2) - 1px) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl>.btn,#sheet .gpg[data-gv="plus"]>.sa-gl>.row>.btn,#sheet .gpg[data-gv="plus"]>.sa-gl>.toggle-row{border-radius:0 !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.sa-gl-first>.btn,#sheet .gpg[data-gv="plus"]>.sa-gl.sa-gl-first>.row>.btn,#sheet .gpg[data-gv="plus"]>.sa-gl.sa-gl-first>.toggle-row{border-top-left-radius:var(--r-lg) !important;border-top-right-radius:var(--r-lg) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.sa-gl-last>.btn,#sheet .gpg[data-gv="plus"]>.sa-gl.sa-gl-last>.row>.btn,#sheet .gpg[data-gv="plus"]>.sa-gl.sa-gl-last>.toggle-row{border-bottom-left-radius:var(--r-lg) !important;border-bottom-right-radius:var(--r-lg) !important}
+#sheet .gpg[data-gv="plus"] [class$="-gs"],#sheet .gpg[data-gv="plus"] .gpg-gs{font-size:var(--fs-14) !important;line-height:20px !important;font-weight:400 !important}
+#sheet .gpg[data-gv="plus"] [class$="-gl"] .pi,#sheet .gpg[data-gv="plus"] .gpg-gl .pi{width:24px !important;height:24px !important}
+/* R1-24 chevrons are the PNI chev-right, never the "›" character */
+#sheet .gpg[data-gv="plus"]>[data-gm~="plus"]:not(.gp-h):not(.gpg-ph)>.btn::after{content:"" !important;width:16px;height:16px;background:var(--ds-muted);
+  -webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+#sheet .gitem .gmain.gtap .gname::after{content:"" !important;display:inline-block;width:16px;height:16px;margin-left:var(--sp-1);vertical-align:-2px;background:var(--ds-amber-t);
+  -webkit-mask:var(--pn-chev-img) center/16px no-repeat;mask:var(--pn-chev-img) center/16px no-repeat}
+.glist .gcard .gcard-go{display:grid;place-items:center;flex:0 0 16px;color:var(--ds-muted)}
+.glist .gcard .gcard-go .pi{width:16px;height:16px}
+#sheet .gpg .sa-gpg-n{display:inline-flex;align-items:center;gap:var(--sp-1)}
+#sheet .gpg .sa-chev{display:grid;color:var(--ds-muted)}
+#sheet .gpg .sa-chev .pi{width:16px;height:16px}
+/* Gängkamp row on the group page: the same row as Om gruppen */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.sa-gk{order:1;grid-column:1 / -1;display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:64px;padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-lg);border:1px solid var(--ds-border);background:var(--ds-card);color:var(--ds-text);text-align:left;cursor:pointer}
+#sheet .gpg:not([data-gv="home"])>.sa-gk{display:none !important}
+#sheet .sa-gk .pn-gp-ti .pi{width:24px;height:24px}
+#sheet .sa-gk:active{transform:scale(.98)}
+#sheet-body .sa-gk-top .ds-row-i,#sheet-body .sa-gk-pick .ds-row-i{color:var(--pn-acc-games)}
+#sheet-body .sa-gk-pick .sa-gk-gt{color:var(--acc)}
+/* G5 Profil edit badge: a 32 px amber circle with the PNI edit glyph, centred on the avatar edge at 45° (iOS contact style),
+   a 3 px ring in the card colour. The old text glyph (✎ / +) is hidden; a new user (no character) gets the plus. */
+.pf-hero .pf-av.av-pf .av-pen{right:-6px !important;bottom:-6px !important;width:32px !important;height:32px !important;padding:0 !important;border-radius:50% !important;
+  display:block !important;overflow:hidden;font-size:var(--fs-12) !important;line-height:32px !important;color:transparent !important;background:var(--ds-amber) !important;border:0 !important;
+  box-shadow:0 0 0 3px var(--ds-card) !important;transform:none !important}
+.pf-hero .pf-av.av-pf .av-pen::before{content:"";position:absolute;left:7px;top:7px;width:18px;height:18px;background:var(--ds-on-amber);
+  -webkit-mask:var(--sa-edit-img) center/18px no-repeat;mask:var(--sa-edit-img) center/18px no-repeat}
+.pf-hero .pf-av.av-pf.av-new .av-pen::before{-webkit-mask-image:var(--sa-plus-img);mask-image:var(--sa-plus-img)}
+/* DM header: name + "Bara ni två" never cut; mute + block = 44 px icon buttons */
+#sheet-body .dm-chead{gap:var(--sp-2)}
+#sheet-body .dm-cwho{flex:1 1 auto;min-width:0}
+#sheet-body .dm-cwho small.dm-cpriv{display:inline-flex;align-items:center;gap:var(--sp-1);font:400 var(--fs-14)/20px var(--ds-sans);white-space:nowrap;overflow:visible}
+#sheet-body .dm-cpriv-i{width:14px;height:14px}
+#sheet-body .dm-cacts .sa-dm-ib{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;display:grid;place-items:center;border-radius:var(--r-pill) !important;
+  border:1px solid var(--ds-border-2);background:transparent;color:var(--ds-text-2)}
+#sheet-body .dm-cacts .sa-dm-ib .pi{width:20px;height:20px}
+/* R1-22 chat "Spara chatten efter kl 05": a switch row with an icon (no native checkbox) */
+.chat-keep .chat-keep-l.toggle-row{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;font:600 var(--fs-16)/22px var(--ds-sans)}
+.chat-keep .chat-keep-ic{display:grid;color:var(--ds-text-2)}
+.chat-keep .chat-keep-ic .pi{width:20px;height:20px}
+.chat-keep .chat-keep-t{flex:1 1 auto;min-width:0}
+.chat-keep .switch.chat-keep-cb{width:52px;height:32px;flex:0 0 52px;accent-color:auto}
+.chat-keep:has(.chat-keep-cb[aria-checked="true"]) .chat-keep-i{display:block;font-size:var(--fs-14);line-height:20px;margin:0 0 var(--sp-2)}
+#sheet-body .ib-list>.sa-ib{margin:0}
+/* lane:social-a END */

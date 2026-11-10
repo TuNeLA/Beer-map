@@ -69,6 +69,8 @@ jobs:
             filter: '^(inst)$'
           - name: ui1
             filter: '^(ui1)$'
+          - name: social-a
+            filter: '^(social-a)$'
           - name: after
             filter: '^(after2|moments)$'
           - name: misc

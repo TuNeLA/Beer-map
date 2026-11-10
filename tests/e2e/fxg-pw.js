@@ -116,7 +116,7 @@ async function openGroup(page) {
     const { ctx, page } = await start(browser);
     await clickJS(page, "#btn-groups"); await wait(page, 1000); await page.click('.inv-tabs button[data-t="f"]').catch(() => {}); await wait(page, 1800);
     ok(await page.evaluate(() => document.querySelectorAll(".nr-frow > .av").length === 2 && !/🍺|🌙/.test(document.querySelector(".nr-flist, #inv-pane-f").textContent)), "friends: rows with avatars, no 🍺 / 🌙");
-    await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body button, #sheet-body summary")].find((x) => /väns kod/.test(x.textContent)); if (b) b.click(); }); await wait(page, 1000);
+    await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body button, #sheet-body summary")].find((x) => /väns kod|^\s*Lägg till vän\s*$/.test(x.textContent)); if (b) b.click(); }); await wait(page, 1000);   // social-a G1: "Lägg till vän" (sub-screen) replaced the "Har du en väns kod?" fold
     const s = await page.evaluate(() => ({ back: document.getElementById("sheet").classList.contains("pn-has-back"), x: getComputedStyle(document.getElementById("sheet-close")).visibility, title: document.getElementById("sheet-title").textContent }));
     ok(!s.back || s.x === "visible", "friends: a sub-view with ‹ also shows ✕", s);
     await ctx.close();

@@ -108,7 +108,10 @@
     "flag": ["M5 21V4", "M5 4h11l-2 4 2 4H5"],
     "trash": ["M4 7h16", "M9.5 7V4.5h5V7", "M6 7l1 13h10l1-13", "M10 11v6", "M14 11v6"],
     "sos": ["c 12 12 8.5", "c 12 12 3.5", "M6 6l3.5 3.5", "M14.5 14.5L18 18", "M18 6l-3.5 3.5", "M9.5 14.5L6 18"],
-    "heart": ["M12 20s-8-4.8-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.2-8 11-8 11z"]
+    "heart": ["M12 20s-8-4.8-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.2-8 11-8 11z"],
+    // social-a (10 Nov): Profil edit badge (G5) + Gängkamp (crossed swords)
+    "edit": ["M5 19l1-4.2L15.8 5a2.1 2.1 0 0 1 3 3L9 17.8z", "M14 6.8l3.2 3.2"],
+    "swords": ["M5 5l11 11", "M13.5 18.5l5-5", "M17 17l3 3", "M19 5L8 16", "M10.5 18.5l-5-5", "M7 17l-3 3"]
   };
   // Emoji that the older code puts in front of UI labels → our icon (UI chrome only; chat text and fun copy keep emoji).
   var EMOJI = {

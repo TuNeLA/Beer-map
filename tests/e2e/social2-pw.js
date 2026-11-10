@@ -72,7 +72,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     // .cer-hot, e.g. 🚗 "Kör ikväll" when a member drives tonight: skjuts.js). Everything else lives behind + / ⋯.
     const homeTiles = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => { const r = e.getBoundingClientRect(); return r.height > 0 && getComputedStyle(e).display !== "none"; })
       .map((e) => e.className.split(" ")[0] + (e.querySelector(".live, .new, .cer-hot") || e.classList.contains("rl-group-item") ? ":live" : "")));
-    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi|pn-gp-inv|pn-gp-code|pn-gp-mem)$|:live$/.test(c)), homeTiles);
+    ok("home: only header, Nu, chat, bar (+ ⋯), Spel, kamera + live tiles", homeTiles.every((c) => /^(gmain|gpg-now|gpg-chat|gpg-bar|gpg-dots|sp-gi|fm-gi|pn-gp-inv|pn-gp-code|pn-gp-mem|sa-gk)$|:live$/.test(c)), homeTiles);
     ok("home: old 💬 Chatt button gone", !(await page.evaluate(() => [...document.querySelectorAll(".gpg > .row")].some((r) => /💬/.test(r.textContent) && r.getBoundingClientRect().height > 0))));
     await shot(page, "group-home");
     // quick reply
@@ -111,7 +111,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok("inbox actions inline", (await page.$$("#inv-pane-i .ib-friend .ib-b")).length === 2 && (await page.$$("#inv-pane-i .ib-inv .ib-b")).length === 3 && (await page.$$("#inv-pane-i .ib-duel .ib-b")).length === 2);
     await shot(page, "inbox");
     ok("badge cleared after open", await page.evaluate(() => document.getElementById("ib-badge").hidden));
-    await page.click("#inv-pane-i .ib-friend .btn-green"); await wait(page, 800);
+    await page.click("#inv-pane-i .ib-friend .sa-ib-yes"); await wait(page, 800);   // social-a R1-09: the answer is tonal (was filled green)
     ok("friend ✅ → friend_answer", calls.some((c) => c[0] === "friend_answer" && c[1].p_id === 5 && c[1].p_accept === true));
     // tab switch back to Grupper hides the inbox pane
     await page.click('.inv-tabs button[data-t="g"]'); await wait(page, 300);

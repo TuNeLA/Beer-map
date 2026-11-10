@@ -25,6 +25,8 @@
 
   /* ---------- texts (dalmål + military, ä for é) ---------- */
   var KIND = { quiz: "🧠", live: "🎸", dj: "🎧", karaoke: "🎤", sport: "📺", standup: "🎭", party: "🎉", other: "📅" };
+  var SA_KIND = { quiz: "bulb", live: "mic", dj: "speaker", karaoke: "mic", sport: "tv", standup: "mic", party: "sparkle", other: "calendar" };   // social-a R1-04
+  function saIc(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }
   var KIND_L = { quiz: ["Quiz", "Quiz"], live: ["Livemusik", "Live music"], dj: ["DJ / klubb", "DJ / club"], karaoke: ["Karaoke", "Karaoke"],
     sport: ["Sport på tv", "Sports on TV"], standup: ["Standup", "Stand-up"], party: ["Fest", "Party"], other: ["Annat", "Other"] };
   var T = {
@@ -305,9 +307,10 @@
     if (!bar || bar.id == null) return "";
     var h = "", evs = off.ev ? [] : forBar(bar.id).slice(0, 2);
     evs.forEach(function (e) {
-      h += '<div class="ev-line"><span class="ev-l-t">' + esc((KIND[e.kind] || "📅") + " " + e.title + " " + hhmm(e.starts_at)) + "</span>" +
-        '<button type="button" class="btn btn-small ev-go" data-evgo="' + esc(String(e.id)) + '">' + esc(two("go")) + "</button>" +
-        (window.INVITE ? '<button type="button" class="btn btn-small inv-ev" data-invev="' + esc(String(e.id)) + '" aria-label="' + esc(L("Bjud in", "Invite")) + '">📨</button>' : "") + "</div>";
+      // social-a R1-04: PNI kind icon + title + time (no emoji), the invite button is the mail icon
+      h += '<div class="ev-line sa-evl">' + saIc(SA_KIND[e.kind] || "calendar", "sa-evl-i") + '<span class="ev-l-t"><b>' + esc(e.title) + "</b> <small>" + esc(hhmm(e.starts_at)) + "</small></span>" +
+        '<button type="button" class="btn btn-small ev-go" data-evgo="' + esc(String(e.id)) + '">' + saIc("medal", "pi-lead") + esc(two("go").replace(/^\S+\s+/, "")) + "</button>" +
+        (window.INVITE ? '<button type="button" class="btn btn-small inv-ev" data-invev="' + esc(String(e.id)) + '" aria-label="' + esc(L("Bjud in", "Invite")) + '">' + saIc("mail") + "</button>" : "") + "</div>";
     });
     if (!off.rep && A && A.LIVE && !/^pl_/.test(String(bar.id))) {
       h += '<div class="pp-info ev-rep"><button type="button" class="btn btn-small" data-evrep="' + esc(String(bar.id)) + '">' + esc(two("rep")) + "</button>" +
