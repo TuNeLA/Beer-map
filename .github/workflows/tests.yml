@@ -110,6 +110,7 @@ jobs:
           path: |
             tests/e2e/out/logs/
             tests/e2e/out/traces/
+            tests/e2e/out/ui1-shots/
           retention-days: 14
           if-no-files-found: warn
 
