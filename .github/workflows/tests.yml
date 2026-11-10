@@ -80,6 +80,8 @@ jobs:
             filter: '^(tiers3|map4|barzoom)$'
           - name: map-3
             filter: '^(glfix-avpins|zones|mbx)$'
+          - name: map-lane
+            filter: '^(map)$'
           - name: map-ui1
             filter: '^(ui1-map)$'
     steps:
