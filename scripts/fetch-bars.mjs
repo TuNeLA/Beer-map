@@ -5,6 +5,8 @@
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = resolve(here, "../docs/bars.json");
@@ -19,6 +21,9 @@ area["ISO3166-1"="SE"][admin_level=2]->.se;
 out center tags;`;
 
 const r5 = (v) => Math.round(v * 1e5) / 1e5;
+// map BR1: venue type (vt) + name-badge flags with the app's own classifier (docs/js/mapart.js, window.PNVTYPE): one source
+const vtBox = {}; vm.runInNewContext(readFileSync(resolve(here, "../docs/js/mapart.js"), "utf8"), vtBox);
+const VT = vtBox.PNVTYPE;
 
 // Polite client: identify ourselves, give the server time, retry a few times with back-off.
 const UA = "OlNu-bars/1.1 (+https://github.com/TuNeLA/Beer-map; weekly fetch of Swedish bars)";
@@ -79,6 +84,7 @@ for (const el of json.elements || []) {
   const row = { id, name: t.name ?? null, lat: r5(lat), lng: r5(lng), type: t.amenity || "bar" };
   const os = String(t.outdoor_seating || "").toLowerCase();
   if ((os && os !== "no") || t.beer_garden === "yes" || t.amenity === "biergarten") row.outdoor = 1;
+  if (VT) { row.vt = VT.classify(t, t.name); Object.assign(row, VT.flags(t)); }   // map BR1
   bars.push(row);
 }
 bars.sort((a, b) => a.lat - b.lat || a.lng - b.lng);
