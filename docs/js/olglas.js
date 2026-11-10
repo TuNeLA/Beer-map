@@ -38,7 +38,6 @@
       "🍺 Glaset ä tomt. Uppdraget utfört, korpral.",
       "🍺 Dä va gött, dä. Int' en droppe kvar.",
       "🍺 Skål! Väsman blev just lite lägre.",
-      "🍺 Ner i ett svep. Mora-Nisse hade varit stolt.",
       "🍺 Målet neutraliserat. Glaset säkrat. Inga förluster.",
       "🍺 Hä rann ner som Dalälven i maj.",
       "🍺 Skål! Telefonen ä nu nykter igen. Det ä int' du.",

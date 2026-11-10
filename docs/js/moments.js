@@ -52,7 +52,7 @@
     "Säg \"det ä fakta\" efter tre påståenden som int' ä fakta.", "Säg \"som vi sa på lumpen…\" två gånger. Även om du aldrig gjorde lumpen.",
     "Fråga tre personer: \"Vilken superkraft skulle du välja?\"", "Få någon att berätta om sitt första jobb.",
     "Berätta om en dröm du hade i natt. Hitta på den.", "Säg \"på riktigt?\" med stor inlevelse fyra gånger.",
-    "Använd tre gammaldags ord: \"minsann\", \"tjusigt\", \"fjolla\".", "Få någon att berätta ett skämt.",
+    "Använd tre gammaldags ord: \"minsann\", \"tjusigt\", \"tokstolle\".", "Få någon att berätta ett skämt.",
     "Fråga \"Vad skulle du göra med en miljon?\" och få tre svar.", "Gissa högt vad någon jobbar med om tio år.",
     "Peka på en sak i rummet och hitta på historien bakom den.", "Få någon att säga ditt namn tre gånger.",
     "Få någon att säga \"va?\" tre gånger.", "Hitta på en \"gammal tradition\" i gänget och få någon att tro på den.",

@@ -114,6 +114,9 @@ run ds-layout-wk $B ds-layout-pw.js wk
 [[ local-lines =~ $FILTER ]] && { (cd $D && timeout 300 node local-lines-test.js "$REPO/docs/js" > $LOG/local-lines.1.log 2>&1); rc=$?
   p=$(grep -c '^PASS' $LOG/local-lines.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/local-lines.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1
   [ $fl != 0 ] && TOTALFAIL=$((TOTALFAIL+1)); RES+=("$(printf '%-16s %5s %5s  %-6s' local-lines $p $fl $([ $fl = 0 ] && echo ok || echo FAIL))"); }
+[[ dialekt-packs =~ $FILTER ]] && { (cd $D && timeout 120 node dialekt-packs-test.js $REPO > $LOG/dialekt-packs.1.log 2>&1); rc=$?
+  p=$(grep -c '^PASS' $LOG/dialekt-packs.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/dialekt-packs.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1
+  [ $fl != 0 ] && TOTALFAIL=$((TOTALFAIL+1)); RES+=("$(printf '%-16s %5s %5s  %-6s' dialekt-packs $p $fl $([ $fl = 0 ] && echo ok || echo FAIL))"); }   # dialect lane: region packs (keys, vars, length, banned words)
 echo
 echo "SUMMARY  HEAD $HEAD  $(( ($(date +%s)-START)/60 )) min"
 printf '%-16s %5s %5s  %-6s %s\n' TEST PASS FAIL STATUS NOTE

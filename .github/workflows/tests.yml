@@ -56,7 +56,7 @@ jobs:
           - name: dm
             filter: '^(dm)$'
           - name: dialekt
-            filter: '^(dialekt)$'
+            filter: '^(dialekt|dialekt-packs)$'
           - name: games2
             filter: '^(games2)$'
           - name: txtfit
