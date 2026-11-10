@@ -290,6 +290,108 @@
     });
   }
   function codeLink(code) { return location.origin + location.pathname + "?friend=" + encodeURIComponent(code); }
+
+  /* ---------- social-a G1: "Lägg till vän" + "Min kod & QR" (top of Vänner, each its own sub-screen) ---------- */
+  function icon(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }
+  function vBtn(ic, label, cls, fn) {
+    var b = A.el("button", { type: "button", class: "sa-vbtn " + cls, onclick: fn }, [A.el("span", { class: "sa-vbtn-i", "aria-hidden": "true", html: icon(ic) }), A.el("span", { text: label })]);
+    return b;
+  }
+  // A pasted invite link, a ?friend= link or a typed code → the code (letters + digits, upper case).
+  function codeFrom(v) { return String(v || "").trim().replace(/^.*[?&]friend=([^&#\s]+).*$/i, "$1").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function back() { try { if (window.SHEETNAV && window.SHEETNAV.back) { window.SHEETNAV.back(); return; } } catch (e) {} openFriends(); }
+  var scan = null;
+  function stopScan() { if (!scan) return; try { clearTimeout(scan.t); scan.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} scan = null; }
+  function canScan() { return !!(window.BarcodeDetector && navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
+  function startScan(box, onCode) {
+    stopScan();
+    var el = A.el, det;
+    try { det = new window.BarcodeDetector({ formats: ["qr_code"] }); } catch (e) { A.toast(L("Kameran gick int' att starta.", "Could not start the camera."), { err: true }); return; }
+    var v = el("video", { class: "sa-scan-v", playsinline: "", muted: "", autoplay: "" });
+    box.innerHTML = ""; box.hidden = false; box.appendChild(v);
+    box.appendChild(el("p", { class: "sa-hint", text: L("Rikta kameran mot kompisens QR-kod.", "Point the camera at your friend's QR code.") }));
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }).then(function (st) {
+      if (!document.body.contains(box)) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+      scan = { stream: st, t: 0 }; v.srcObject = st; try { v.play(); } catch (e) {}
+      (function look() {
+        var sh = document.getElementById("sheet");
+        if (!scan || !document.body.contains(box) || (sh && sh.hidden)) { stopScan(); return; }
+        det.detect(v).then(function (r) {
+          var raw = r && r[0] && r[0].rawValue, c = codeFrom(raw);
+          if (raw && c.length >= 5) { stopScan(); box.hidden = true; onCode(c); return; }
+          if (scan) scan.t = setTimeout(look, 250);   // 4 looks a second, no per-frame work
+        }, function () { if (scan) scan.t = setTimeout(look, 400); });
+      })();
+    }, function () { box.hidden = true; A.toast(L("Appen fick int' använda kameran.", "No camera access."), { err: true }); });
+  }
+  function openAdd(after) {
+    var el = A.el;
+    A.openSheet(L("Lägg till vän", "Add friend"), function (body) {
+      var inp = el("input", { class: "inp sa-add-inp", maxlength: "200", autocomplete: "off", autocapitalize: "characters", enterkeyhint: "go", id: "sa-add-inp",
+        placeholder: L("t.ex. K7Q2MXA", "e.g. K7Q2MXA"), "aria-label": L("Klistra in länken eller skriv koden", "Paste the link or type the code") });
+      var go = A.btn(L("Lägg till", "Add"), "btn-amber btn-block sa-add-go", function () { send(codeFrom(inp.value)); });
+      function send(c) {
+        if (c.length < 5) { A.toast(L("Skriv väns kod (7 tecken) eller klistra in länken.", "Type the friend code or paste the link."), { err: true }); return; }
+        go.disabled = true;
+        sendRequest({ p_code: c }, function (d) { go.disabled = false; if (d) { inp.value = ""; try { if (after) after(); } catch (e) {} back(); } });
+      }
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
+      body.appendChild(el("label", { class: "fld sa-add-l", for: "sa-add-inp", text: L("Klistra in länken eller skriv koden", "Paste the link or type the code") }));
+      var row = el("div", { class: "sa-add-row" }, [inp]);
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        var pb = A.btn(L("Klistra in", "Paste"), "btn-small sa-add-paste", function () {
+          navigator.clipboard.readText().then(function (t) { inp.value = codeFrom(t) || String(t || "").trim(); inp.focus(); }, function () { inp.focus(); });
+        });
+        row.appendChild(pb);
+      }
+      body.appendChild(row);
+      body.appendChild(go);
+      var cam = el("div", { class: "sa-scan", hidden: "" });
+      if (canScan()) {
+        var sb = A.btn(L("Skanna QR-kod", "Scan QR code"), "btn-block sa-add-scan", function () { startScan(cam, function (c) { inp.value = c; send(c); }); });
+        sb.insertAdjacentHTML("afterbegin", icon("camera"));
+        body.appendChild(sb);
+        body.appendChild(cam);
+      } else body.appendChild(el("p", { class: "sa-hint sa-add-cam", text: L("Har kompisen en QR-kod? Skanna den med mobilens kamera, så öppnas appen och ni blir vänner.", "Has your friend a QR code? Scan it with the phone camera.") }));
+      body.appendChild(el("p", { class: "sa-hint", text: L("Eller från en grupp: Om gruppen → Medlemmar → Lägg till vän.", "Or from a group: About the group → Members → Add friend.") }));
+      setTimeout(function () { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 120);
+    });
+  }
+  function openMine(code) {
+    var el = A.el;
+    A.openSheet(L("Min kod & QR", "My code & QR"), function (body) {
+      var box = el("div", { class: "sa-mine" });
+      body.appendChild(box);
+      function draw(c) {
+        box.innerHTML = "";
+        if (!c) { box.appendChild(el("div", { class: "sa-mine-wait", "aria-hidden": "true" })); return; }
+        var link = codeLink(c);
+        var qr = el("div", { class: "qr sa-mine-qr", role: "img", "aria-label": L("QR-kod med din vänlänk", "QR code with your friend link") });
+        box.appendChild(qr);
+        try { if (window.QRCode) new window.QRCode(qr, { text: link, width: 200, height: 200, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
+        box.appendChild(el("p", { class: "sa-hint sa-mine-s", text: L("Låt kompisen skanna koden med kameran, eller dela länken. Ett tryck, så ä ni vänner.", "Let your friend scan it, or share the link.") }));
+        var cb = el("button", { type: "button", class: "sa-mine-code", "aria-label": L("Kopiera koden ", "Copy the code ") + c,
+          onclick: function () { A.copyText(c); A.toast(L("Koden ä kopierad.", "Code copied."), { id: "sa-mine" }); } }, [el("span", { text: L("Din kod", "Your code") }), el("b", { text: c }), el("span", { class: "sa-mine-ci", "aria-hidden": "true", html: icon("copy") })]);
+        box.appendChild(cb);
+        box.appendChild(A.btn(L("Dela min vänlänk", "Share my friend link"), "btn-amber btn-block sa-mine-share", function () {
+          var txt = L("Bli min vän på PintsNow", "Be my friend on PintsNow");
+          if (navigator.share) navigator.share({ title: "PintsNow", text: txt, url: link }).catch(function () {});
+          else { A.copyText(link); A.toast(L("Länken ä kopierad. Klistra in den i chatten.", "Link copied."), { id: "sa-mine" }); }
+        }));
+        box.appendChild(A.btn(L("Kopiera länk", "Copy link"), "btn-block sa-mine-copy", function () { A.copyText(link); A.toast(L("Länken ä kopierad.", "Link copied."), { id: "sa-mine" }); }));
+        box.appendChild(el("button", { type: "button", class: "pn-textbtn sa-mine-new", text: L("Gör en ny länk", "Make a new link"), onclick: function () {
+          call("my_friend_code", { p_new: true, p_name: name() }).then(function (r) {
+            if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
+            draw(A.parseData(r.data).code); A.toast(L("Ny länk! Den gamla funkar int' längre.", "New link. The old one stops working."));
+          });
+        } }));
+      }
+      draw(code);
+      if (!code) call("my_friend_code", { p_name: name() }).then(function (r) { if (!r.error && document.body.contains(box)) draw(A.parseData(r.data).code); });
+    });
+  }
+  // the camera stops when the sheet closes or changes
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stopScan(); });
   function openFriends(into) {
     if (into && into.nodeType !== 1) into = null;   // a click event from A.btn
     if (!A || !A.LIVE) return false;
@@ -299,29 +401,17 @@
       var build = function (body) {
         var el = A.el;
         var inBox = el("div", { class: "nr-in" }), listBox = el("ul", { class: "nr-flist" }), outBox = el("div", { class: "nr-out muted" });
-        var mine = el("div", { class: "nr-mine pn-mine" });   // ui-build: share my link first
-        body.appendChild(mine);
+        // social-a G1: the two actions first ("Lägg till vän" + "Min kod & QR"), then Meddelanden (dm.js), requests, the list.
+        var myCode = null;
+        var vtop = el("div", { class: "sa-vtop", role: "group", "aria-label": L("Lägg till vänner", "Add friends") }, [
+          vBtn("user-plus", L("Lägg till vän", "Add friend"), "sa-vadd", function () { openAdd(load); }),
+          vBtn("qr", L("Min kod & QR", "My code & QR"), "sa-vmine", function () { openMine(myCode); })]);
+        body.insertBefore(vtop, body.firstChild);   // first, also when dm.js / join.js put their box in already
         body.appendChild(inBox);
         body.appendChild(el("h3", { text: L("Mina vänner", "My friends") }));
         body.appendChild(listBox);
         body.appendChild(outBox);
         listBox.appendChild(el("li", { class: "muted", text: "…" }));
-
-        // Add with code
-        var add = el("details", { class: "nr-add pn-codefold" });
-        var inp = el("input", { class: "inp nr-code-inp", maxlength: "12", autocomplete: "off", autocapitalize: "characters", enterkeyhint: "go",
-          placeholder: L("Väns kod, t.ex. K7Q2MXA", "Friend code"), "aria-label": L("Väns kod", "Friend code") });
-        var go = A.btn(L("➕ Lägg till", "➕ Add"), "btn-amber", function () {
-          var c = String(inp.value || "").replace(/^.*[?&]friend=/, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-          if (c.length < 5) { A.toast(L("Skriv väns kod (7 tecken).", "Type the friend code."), { err: true }); return; }
-          go.disabled = true;
-          sendRequest({ p_code: c }, function (d) { go.disabled = false; if (d) { inp.value = ""; load(); } });
-        });
-        inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
-        add.appendChild(el("summary", { text: L("Har du en väns kod?", "Have a friend code?") }));
-        add.appendChild(el("div", { class: "row nr-add-row" }, [inp, go]));
-        add.appendChild(el("p", { class: "muted nr-hint", text: L("Eller öppna en grupp → ⋯ → 👥 Medlemmar → ➕ Lägg till vän.", "Or open a group → ⋯ → 👥 Members → ➕ Add friend.") }));
-        body.appendChild(add);
 
 
         // Find-me switches
@@ -339,13 +429,17 @@
             if (r.error) { listBox.appendChild(el("li", { class: "muted", text: r.off ? L("Vänner finns int' på servern än.", "Friends are not on the server yet.") : errText("error") })); return; }
             var d = A.parseData(r.data);
             (d.incoming || []).forEach(function (f) {
+              // social-a R1-09: the same row as the Inkorg (icon tile, title, sub, tonal Ja + ghost ✕), no stripe
               var dem = demonym(f.home_town);
-              inBox.appendChild(el("div", { class: "nr-req" }, [
-                el("p", {}, [el("b", { text: "🤝 " + (f.name || L("Någon", "Someone")) }), document.createTextNode(dem ? " · " + dem : ""),
-                  el("span", { class: "muted", text: L(" vill bli din vän", " wants to be your friend") })]),
-                el("div", { class: "row" }, [
-                  A.btn(L("✅ Acceptera", "✅ Accept"), "btn-small", function () { answer(f, true); }),
-                  A.btn(L("Nej tack", "No thanks"), "btn-small", function () { answer(f, false); })])
+              var yes = A.btn(L("Ja", "Yes"), "btn-small sa-ib-yes", function () { answer(f, true); });
+              yes.insertAdjacentHTML("afterbegin", icon("check"));
+              var no = A.btn("", "btn-small sa-ib-no", function () { answer(f, false); });
+              no.innerHTML = icon("x"); no.setAttribute("aria-label", L("Nej tack", "No thanks"));
+              inBox.appendChild(el("div", { class: "nr-req sa-ib" }, [
+                el("span", { class: "sa-ib-ti pn-acc-live", "aria-hidden": "true", html: icon("user-plus") }),
+                el("span", { class: "sa-ib-main" }, [el("b", { text: (f.name || L("Någon", "Someone")) + L(" vill bli din vän", " wants to be your friend") }),
+                  el("small", { text: dem || L("Vänförfrågan", "Friend request") })]),
+                el("span", { class: "sa-ib-acts" }, [yes, no])
               ]));
             });
             var fr = d.friends || [];
@@ -359,7 +453,7 @@
                   A.btn(L("Ångra", "Undo"), "btn-small btn-ghost", function () { call("friend_remove", { p_id: f.id }).then(load); })]));
               });
             }
-            drawMine(d.code);
+            myCode = d.code || myCode;
           });
         }
         function answer(f, yes) {
@@ -368,43 +462,6 @@
             if (yes) { A.toast(sv() ? fill(pick("fnow", T.friendNow), { namn: f.name || "" }) : "🤝 Friends now!", { cls: "skal" }); try { window.FX.vibrate([20, 40, 20]); } catch (e) {} }
             load(); poll(true);
           });
-        }
-        function drawMine(code) {   // ui-build: friend link card
-          mine.innerHTML = "";
-          mine.appendChild(el("p", { class: "pn-mine-h", text: L("Lägg till vänner med din länk", "Add friends with your link") }));
-          mine.appendChild(el("p", { class: "pn-mine-s", text: L("De trycker på länken, så blir ni vänner. Ingen kod att skriva.", "They tap the link and you are friends.") }));
-          if (!code) {
-            mine.appendChild(el("div", { class: "pn-mine-wait", "aria-hidden": "true" }));
-            if (!mine.__asked) { mine.__asked = true; call("my_friend_code", { p_name: name() }).then(function (r) { if (!r.error && document.body.contains(mine)) drawMine(A.parseData(r.data).code); }); }
-            return;
-          }
-          var link = codeLink(code);
-          var share = function () {
-            var txt = L("Bli min vän på PintsNow 🍺", "Be my friend on PintsNow 🍺");
-            if (navigator.share) navigator.share({ title: "PintsNow", text: txt, url: link }).catch(function () {});
-            else { A.copyText(link); A.toast(L("📋 Länken ä kopierad. Klistra in den i chatten.", "📋 Link copied.")); }
-          };
-          mine.appendChild(A.btn(L("Dela min vänlänk", "Share my friend link"), "btn-amber btn-block pn-mine-share", share));
-          var qrBox = el("div", { class: "pn-mine-qr", hidden: "" });
-          var row = el("div", { class: "row pn-mine-row" }, [
-            A.btn(L("Visa QR-kod", "Show QR code"), "btn-small pn-mine-qrb", function () {
-              qrBox.hidden = !qrBox.hidden; this.textContent = qrBox.hidden ? L("Visa QR-kod", "Show QR code") : L("Dölj QR-kod", "Hide QR code");
-              if (!qrBox.hidden && !qrBox.firstChild) {
-                var qr = el("div", { class: "qr", "aria-label": L("QR-kod med din vänlänk", "QR code with your friend link"), role: "img" });
-                qrBox.appendChild(qr);
-                try { if (window.QRCode) new window.QRCode(qr, { text: link, width: 180, height: 180, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
-                qrBox.appendChild(el("p", { class: "pn-mine-code" }, [document.createTextNode(L("Din kod: ", "Your code: ")), el("b", { text: code })]));
-                qrBox.appendChild(A.btn(L("Ny länk", "New link"), "btn-small btn-ghost", function () {
-                  call("my_friend_code", { p_new: true, p_name: name() }).then(function (r) {
-                    if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
-                    drawMine(A.parseData(r.data).code); A.toast(L("Ny länk! Den gamla funkar int' längre.", "New link. The old one stops working."));
-                  });
-                }));
-              }
-            }),
-            A.btn(L("Kopiera länk", "Copy link"), "btn-small", function () { A.copyText(link); A.toast(L("📋 Kopierad.", "📋 Copied.")); })]);
-          mine.appendChild(row);
-          mine.appendChild(qrBox);
         }
         load();
       };

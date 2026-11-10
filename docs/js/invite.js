@@ -140,9 +140,26 @@
     if (h <= 19.5) { d.setHours(20, 0, 0, 0); return d; }
     d.setMinutes(d.getMinutes() < 30 ? 30 : 60, 0, 0); d.setMinutes(d.getMinutes() + 30); return d;
   }
+  function saIc(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }   // social-a
   function stripEmoji(s) { return String(s || "").replace(/^[^\p{L}\p{N}]+/u, "").trim(); }
+  // social-a G3: an event title that already says where ("Pubquiz på Pitchers") never gets the place twice.
+  // cleanTitle(title, place): drops the leading emoji and a repeated " på X" / " at X" (older invites were saved as
+  // "🧠 Pubquiz på Pitchers på Pitchers"). Used by the invite, the Inkorg and Tidigare event (evgroup.js).
+  function lc(x) { return String(x || "").toLowerCase().replace(/\s+/g, " ").trim(); }
+  function hasPlace(title, place) { var t = lc(title), p = lc(place); return !!p && (t === p || t.indexOf(" på " + p) >= 0 || t.indexOf(" at " + p) >= 0); }
+  function cleanTitle(title, place) {
+    var s = stripEmoji(title), m;
+    for (var k = 0; k < 3; k++) {   // "X på P på P" → "X på P"
+      m = /^(.*?) (på|at) (.+?) (?:på|at) \3$/i.exec(s);
+      if (!m) break;
+      s = m[1] + " " + m[2] + " " + m[3];
+    }
+    var p = lc(place);
+    if (p) { var re = new RegExp("^(.+ (?:på|at) " + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ") (?:på|at) " + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i"); m = re.exec(s); if (m) s = m[1]; }
+    return s;
+  }
   function shortTitle(inv) {
-    var s = stripEmoji(inv.title), i = s.indexOf(" på ");
+    var s = cleanTitle(inv.title, inv.place), i = s.indexOf(" på ");
     if (i > 2) s = s.slice(0, i);
     return s.length > 22 ? s.slice(0, 21) + "…" : s;
   }
@@ -425,7 +442,7 @@
   function isBar(spot) { return !!(spot && spot.id != null && !/^pl_/.test(String(spot.id)) || (spot && spot.type && !/restaurant|fast_food|cafe/.test(spot.type))); }
   function homeLabel() { return L("Hemma hos ", "At ") + (myName() || L("mig", "mine")); }
   function autoTitle(o) {
-    if (o.event) return (KIND[o.event.kind] || "📅") + " " + o.event.title + L(" på ", " at ") + placeOf(o.event);
+    if (o.event) { var pl = placeOf(o.event), et = cleanTitle(o.event.title, pl); return (KIND[o.event.kind] || "📅") + " " + et + (hasPlace(et, pl) || /^(På TV|On TV)$/i.test(pl) ? "" : L(" på ", " at ") + pl); }
     if (o.bar) return "🍺 " + (o.bar.name || L("Krogen", "The bar"));
     if (o.label) return (/^Hemma|^At /.test(o.label) ? "🏠 " : "📍 ") + o.label;
     return "🍺 " + L("Öl", "Beer");
@@ -687,16 +704,17 @@
     var id = String(bar.id), h = "";
     var mineHere = INV.filter(function (x) { return x.live && x.status === "open" && String(x.bar_id || "") === id && x.my_answer !== "no"; })[0];
     var up = evRows().filter(function (e) { return String(e.bar_id || "") === id && !e.pending && dayDiff(e.starts_at) >= 1; }).slice(0, 3);
-    var left = mineHere ? '<button type="button" class="inv-lnk" data-invopen="' + esc(String(mineHere.id)) + '">📨 ' +
+    // social-a R1-04: PNI icons (mail, calendar), no emoji in the bar sheet chrome
+    var left = mineHere ? '<button type="button" class="inv-lnk" data-invopen="' + esc(String(mineHere.id)) + '">' + saIc("mail", "pi-lead") +
         esc(whenText(mineHere.starts_at) + " · " + mineHere.yes + L(" kommer", " coming")) + "</button>"
-      : up.length ? '<span class="inv-up-h">' + esc(L("📅 Kommande här", "📅 Coming up here")) + "</span>" : "";
+      : up.length ? '<span class="inv-up-h">' + saIc("calendar", "pi-lead") + esc(L("Kommande här", "Coming up here")) + "</span>" : "";
     h += '<div class="ev-line inv-line' + (left ? "" : " solo") + '"><div class="inv-top"><span class="ev-l-t">' + left + "</span>" +
-      '<button type="button" class="btn btn-small inv-here" data-invbar="' + esc(id) + '">' + esc(L("📨 Bjud in hit", "📨 Invite here")) + "</button></div>";
+      '<button type="button" class="btn btn-small inv-here" data-invbar="' + esc(id) + '">' + saIc("mail", "pi-lead") + esc(L("Bjud in hit", "Invite here")) + "</button></div>";
     if (up.length) {
-      if (mineHere) h += '<span class="inv-up-h">' + esc(L("📅 Kommande här", "📅 Coming up here")) + "</span>";
+      if (mineHere) h += '<span class="inv-up-h">' + saIc("calendar", "pi-lead") + esc(L("Kommande här", "Coming up here")) + "</span>";
       h += up.map(function (e) {
-        return '<span class="inv-up-r"><span>' + esc(weekday(e.starts_at) + " " + hhmm(e.starts_at) + " · " + (KIND[e.kind] || "📅") + " " + e.title) + "</span>" +
-          '<button type="button" class="btn btn-small inv-ev" data-invev="' + esc(String(e.id)) + '" aria-label="' + esc(L("Bjud in till ", "Invite to ") + e.title) + '">📨</button></span>';
+        return '<span class="inv-up-r"><span>' + esc(weekday(e.starts_at) + " " + hhmm(e.starts_at) + " · " + cleanTitle(e.title, e.place)) + "</span>" +
+          '<button type="button" class="btn btn-small inv-ev" data-invev="' + esc(String(e.id)) + '" aria-label="' + esc(L("Bjud in till ", "Invite to ") + e.title) + '">' + saIc("mail") + "</button></span>";
       }).join("");
     }
     h += "</div>";
@@ -836,7 +854,7 @@
 
   window.INVITE = {
     T: T, openCreate: openCreate, open: openInvite, openFriendsTab: openFriendsTab, friendsMore: friendsMore, evButton: evButton,
-    _mix: mixEvents, _list: function () { return INV; }, _poll: poll, chipText: chipText,
+    _mix: mixEvents, _list: function () { return INV; }, _poll: poll, chipText: chipText, cleanTitle: cleanTitle, _autoTitle: function (o) { return autoTitle(o); },
     init: function (api) {
       A = api;
       document.addEventListener("click", onDocClick, true);

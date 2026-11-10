@@ -203,6 +203,7 @@
 
   /* ---------- 💬 Meddelanden box (top of the Vänner tab) ---------- */
   var showAll = false;
+  function saIc(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }   // social-a
   function initial(n) { var s = String(n || "?").trim(); return s ? s.charAt(0).toUpperCase() : "?"; }
   function preview(t) {
     if (t.blocked_by_me) return L("🚫 Blockerad", "🚫 Blocked");
@@ -254,7 +255,8 @@
     if (!pane || pane.querySelector(".dm-box")) return true;
     if (!pane.firstChild) return false;
     var box = h("section", { class: "dm-box", hidden: true });
-    pane.insertBefore(box, pane.firstChild);
+    var top = pane.querySelector(":scope > .sa-vtop");   // social-a G1: the two add actions stay first
+    pane.insertBefore(box, top ? top.nextSibling : pane.firstChild);
     paintBox(box);
     return true;
   }
@@ -293,10 +295,12 @@
     }
     // Header: 🔒 private + 🔕 + 🚫
     var head = h("div", { class: "dm-chead" });
+    // social-a: name + "Bara ni två" (lock icon) never cut at 360 px: the two actions are 44 px icon buttons (PNI)
+    var priv = h("small", { class: "muted dm-cpriv" }); priv.innerHTML = saIc("lock", "dm-cpriv-i") + "<span>" + U.esc(L("Bara ni två", "Just you two")) + "</span>";
     var who = h("span", { class: "dm-cwho" }, [h("span", { class: "dm-av sm", "aria-hidden": "true", text: initial(nm) }),
-      h("span", {}, [h("b", { text: nm }), h("small", { class: "muted", text: L("🔒 Bara ni två", "🔒 Just you two") })])]);
-    var muteB = A.btn("🔕", "btn-small btn-ghost dm-mute", function () { toggleMute(); });
-    var blockB = A.btn(L("🚫 Blockera", "🚫 Block"), "btn-small btn-ghost dm-block", function () { askBlock(); });
+      h("span", {}, [h("b", { text: nm }), priv])]);
+    var muteB = A.btn("", "btn-small btn-ghost dm-mute sa-dm-ib", function () { toggleMute(); });
+    var blockB = A.btn("", "btn-small btn-ghost dm-block sa-dm-ib", function () { askBlock(); });
     head.appendChild(who); head.appendChild(h("span", { class: "dm-cacts" }, [muteB, blockB]));
     body.insertBefore(head, list);
     var ask = h("div", { class: "dm-ask", hidden: true });
@@ -313,10 +317,12 @@
     }
     function show(x, on) { if (x) x.style.display = on ? "" : "none"; }
     function paint() {
-      muteB.textContent = st.muted ? "🔔" : "🔕";
+      muteB.innerHTML = saIc(st.muted ? "bell" : "bell-off");
       muteB.setAttribute("aria-label", st.muted ? L("Slå på notiser", "Unmute") : L("Tysta notiser", "Mute"));
       muteB.title = muteB.getAttribute("aria-label");
-      blockB.textContent = st.blocked_by_me ? L("✅ Avblockera", "✅ Unblock") : L("🚫 Blockera", "🚫 Block");
+      blockB.innerHTML = saIc(st.blocked_by_me ? "check" : "block");
+      blockB.setAttribute("aria-label", st.blocked_by_me ? L("Avblockera", "Unblock") : L("Blockera", "Block"));
+      blockB.title = blockB.getAttribute("aria-label");
       fixEmpty();
       if (st.can_write !== false) { lock.hidden = true; show(ctx.input, true); }
       else {

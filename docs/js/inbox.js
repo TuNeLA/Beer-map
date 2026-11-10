@@ -107,53 +107,66 @@
   function hideTab() { document.querySelectorAll(".ib-tab").forEach(function (x) { x.hidden = true; }); }
 
   /* ---------- rows ---------- */
+  // social-a R1-09: one row style (PNI icon tile in the accent, tonal primary, ghost ✕), no coloured stripe, no emoji.
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function ic(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
   function row(x, old) {
-    var li = h("li", { class: "ib-item ib-" + x.type + (old ? " ib-old" : ""), "data-k": x.k });
-    var ico = "", title = "", sub = "", acts = [], tap = null;
+    var li = h("li", { class: "ib-item sa-ib ib-" + x.type + (old ? " ib-old" : ""), "data-k": x.k });
+    var ico = "", acc = "group", title = "", sub = "", acts = [], tap = null;
     var name = x.name || x.from || "?";
-    function act(label, cls, fn) { return h("button", { type: "button", class: "btn btn-small ib-b " + (cls || ""), text: label, onclick: function (e) { e.stopPropagation(); fn(e.currentTarget); } }); }
+    // kind: "yes" = the tonal amber main answer (check icon), "x" = ghost ✕, "maybe" = ghost ?
+    function act(label, kind, fn, aria) {
+      var b = h("button", { type: "button", class: "btn btn-small ib-b " + (kind === "yes" ? "sa-ib-yes" : "sa-ib-no ib-x"), "aria-label": aria || null,
+        onclick: function (e) { e.stopPropagation(); fn(e.currentTarget); } });
+      if (kind === "yes") b.innerHTML = ic("check") + "<span>" + esc(label) + "</span>";
+      else b.innerHTML = ic(kind === "maybe" ? "help" : "x");
+      return b;
+    }
+    var NO = L("Nej", "No");
     if (x.type === "friend") {
-      ico = "🤝"; title = L(name + " vill bli din vän", name + " wants to be your friend");
+      ico = "user-plus"; acc = "live"; title = L(name + " vill bli din vän", name + " wants to be your friend");
       sub = x.home_town && window.HOMETOWN && window.HOMETOWN.label ? window.HOMETOWN.label(x.home_town) : L("Vänförfrågan", "Friend request");
-      acts = [act(L("✅ Ja", "✅ Yes"), "btn-green", function (b) { friend(x, true, b); }), act("✕", "ib-x", function (b) { friend(x, false, b); })];
+      acts = [act(L("Ja", "Yes"), "yes", function (b) { friend(x, true, b); }), act("", "x", function (b) { friend(x, false, b); }, L("Nej tack", "No thanks"))];
     } else if (x.type === "inv") {
-      ico = "📨"; title = x.title || L("Inbjudan", "Invite");
+      ico = "mail"; acc = "event"; title = cleanT(x.title, x.place) || L("Inbjudan", "Invite");
       sub = (x.from ? L("Från ", "From ") + x.from + " · " : "") + when(x.starts_at) + (x.place ? " · " + x.place : "");
       tap = function () { openInv(x.id); };
-      acts = [act(L("✅ Kommer", "✅ Going"), "btn-green", function () { openInv(x.id, "yes"); }), act("🤔", "", function () { openInv(x.id, "maybe"); }),
-        act("❌", "ib-x", function () { openInv(x.id, "no"); })];
+      acts = [act(L("Kommer", "Going"), "yes", function () { openInv(x.id, "yes"); }), act("", "maybe", function () { openInv(x.id, "maybe"); }, L("Kanske", "Maybe")),
+        act("", "x", function () { openInv(x.id, "no"); }, NO)];
     } else if (x.type === "rsvp") {
-      ico = x.answer === "yes" ? "✅" : "🤔";
+      ico = x.answer === "yes" ? "check" : "help"; acc = "live";
       title = x.answer === "yes" ? L(name + " kommer!", name + " is coming!") : L(name + " kanske kommer", name + " might come");
-      sub = (x.title || "") + " · " + when(x.starts_at);
+      sub = cleanT(x.title, x.place) + " · " + when(x.starts_at);
       tap = function () { openInv(x.id); };
     } else if (x.type === "status") {
-      ico = "📸"; title = L("Lägesrapport! " + (x.from || L("Chefen", "The chief")) + " vill se läget", "Status report! " + (x.from || "The chief") + " wants a photo");
+      ico = "camera"; acc = "cam"; title = L("Lägesrapport! " + (x.from || L("Chefen", "The chief")) + " vill se läget", "Status report! " + (x.from || "The chief") + " wants a photo");
       sub = (x.group_name || "") + " · " + L("svara mä ett foto", "answer with a photo");
-      acts = [act(L("📸 Svara", "📸 Answer"), "btn-amber", function () { if (window.CHIEF && window.CHIEF.openStatusLink) window.CHIEF.openStatusLink(x.id); })];
+      acts = [act(L("Svara", "Answer"), "yes", function () { if (window.CHIEF && window.CHIEF.openStatusLink) window.CHIEF.openStatusLink(x.id); })];
     } else if (x.type === "rally") {
-      ico = "🪖"; title = (x.name || "?") + ": " + (x.body || L("Kom hit!", "Come here!"));
-      sub = (x.group_name || "") + (x.place ? " · 📍 " + x.place : "") + (x.yes ? " · " + L(x.yes + " på väg", x.yes + " on the way") : "");
+      ico = "megaphone"; acc = "safe"; title = (x.name || "?") + ": " + (x.body || L("Kom hit!", "Come here!"));
+      sub = (x.group_name || "") + (x.place ? " · " + x.place : "") + (x.yes ? " · " + L(x.yes + " på väg", x.yes + " on the way") : "");
       tap = function () { if (window.RALLY && window.RALLY.openLink) window.RALLY.openLink(x.id); };
-      acts = [act(L("✅ Kommer", "✅ Coming"), "btn-green", function () { if (window.RALLY && window.RALLY.openLink) window.RALLY.openLink(x.id, "yes"); else rally(x, "yes"); }),
-        act("❌", "ib-x", function (b) { rally(x, "no", b); })];
+      acts = [act(L("Kommer", "Coming"), "yes", function () { if (window.RALLY && window.RALLY.openLink) window.RALLY.openLink(x.id, "yes"); else rally(x, "yes"); }),
+        act("", "x", function (b) { rally(x, "no", b); }, NO)];
     } else if (x.type === "duel") {
-      ico = "⚔️"; title = L((x.opp || "?") + " utmanar " + (x.group_name || "er") + "!", (x.opp || "?") + " challenges " + (x.group_name || "you") + "!");
+      ico = "swords"; acc = "games"; title = L((x.opp || "?") + " utmanar " + (x.group_name || "er") + "!", (x.opp || "?") + " challenges " + (x.group_name || "you") + "!");
       sub = L("Flest drinkar till kl 05 vinner", "Most drinks by 05:00 wins");
-      acts = [act(L("⚔️ Anta", "⚔️ Accept"), "btn-amber", function (b) { duel(x, true, b); }), act(L("Nej", "No"), "ib-x", function (b) { duel(x, false, b); })];
+      acts = [act(L("Anta", "Accept"), "yes", function (b) { duel(x, true, b); }), act("", "x", function (b) { duel(x, false, b); }, NO)];
     } else if (x.type === "join") {
-      ico = "👥"; title = L("Du blev inbjuden till en grupp", "You were invited to a group");
+      ico = "users"; acc = "group"; title = L("Du blev inbjuden till en grupp", "You were invited to a group");
       sub = L("Kod ", "Code ") + x.code;
-      acts = [act(L("✅ Gå med", "✅ Join"), "btn-green", function (b) { joinCode(x, b); })];
+      acts = [act(L("Gå med", "Join"), "yes", function (b) { joinCode(x, b); })];
     }
-    var main = h("div", { class: "ib-main" }, [h("b", { class: "ib-t", text: title }), h("small", { class: "ib-s muted", text: sub })]);
-    li.appendChild(h("span", { class: "ib-ico", "aria-hidden": "true", text: ico }));
+    var main = h("div", { class: "ib-main sa-ib-main" }, [h("b", { class: "ib-t", text: title }), h("small", { class: "ib-s", text: sub })]);
+    var ti = h("span", { class: "ib-ico sa-ib-ti pn-acc-" + acc, "aria-hidden": "true" }); ti.innerHTML = ic(ico);
+    li.appendChild(ti);
     li.appendChild(main);
     li.appendChild(h("small", { class: "ib-ago muted", text: ago(x.at) }));
-    if (acts.length) li.appendChild(h("div", { class: "ib-acts" }, acts));
+    if (acts.length) li.appendChild(h("div", { class: "ib-acts sa-ib-acts" }, acts));
     if (tap) { main.setAttribute("role", "button"); main.setAttribute("tabindex", "0"); main.addEventListener("click", tap); main.addEventListener("keydown", function (e) { if (e.key === "Enter") tap(); }); }
     return li;
   }
+  function cleanT(t, place) { try { if (window.INVITE && window.INVITE.cleanTitle) return window.INVITE.cleanTitle(t, place); } catch (e) {} return String(t || ""); }
   function gone(x) { items = items.filter(function (y) { return y.k !== x.k; }); paintBadge(); if (pane) render(pane, false); setTimeout(function () { load(true); }, 1500); }
   function err(r) { A.toast(A.errMsg ? A.errMsg(r.error) : L("Dä gick int'. Försök igen.", "That failed. Try again."), { err: true }); }
   function friend(x, yes, b) {

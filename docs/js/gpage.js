@@ -86,7 +86,8 @@
     if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots") || k.contains("pn-gp-inv") || k.contains("pn-gp-code")) return "home";
     if (k.contains("pn-gp-mem")) return "home";   // ds58: Gänget ikväll
     if (k.contains("sp-gi")) return "home";   // 🎉 Spel (spel.js): one big entry on home
-    if (k.contains("fm-gi")) return "home";   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
+    if (k.contains("fm-gi")) return "home";
+    if (k.contains("sa-gk")) return "home";   // social-a: ⚔️ Gängkamp (GM5 moved it out of the Spel list)   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
     if (k.contains("gpg-ph")) return "plus info";
     if (k.contains("gpg-ga") || k.contains("gpg-fold")) return "plus";
     if (k.contains("gp-more")) return "none";
@@ -192,6 +193,31 @@
       if (fb.textContent !== ft) fb.textContent = ft;
     }
     if (!wrap.hasAttribute("data-gv")) wrap.setAttribute("data-gv", "home");
+    groupRows(wrap);
+  }
+  // social-a R1-23: the Ikväll view (+) shows each section as ONE grouped list. The tiles keep their own DOM place
+  // (polish2 orders them with CSS order), so mark the first / last visible tile of each section; CSS joins the rest.
+  function groupRows(wrap) {
+    var open = wrap.classList.contains("gpg-open"), secs = {}, all = [];
+    [].slice.call(wrap.children).forEach(function (c, i) {
+      var m = c.getAttribute("data-gm") || "", k = c.classList;
+      if (!/\bplus\b/.test(m) || k.contains("gp-h") || k.contains("gpg-ph") || k.contains("gpg-fold") || c.hidden) return;
+      if (c.hasAttribute("data-gpg-fold") && !open && !k.contains("gpg-ga")) { /* folded */ }
+      var sct = c.getAttribute("data-gp") || "0", o = 0;
+      try { o = +getComputedStyle(c).order || 0; } catch (e) {}
+      all.push(c); (secs[sct] = secs[sct] || []).push({ c: c, o: o, i: i });
+    });
+    var first = [], last = [];
+    Object.keys(secs).forEach(function (k) {
+      var a = secs[k].sort(function (x, y) { return (x.o - y.o) || (x.i - y.i); });
+      first.push(a[0].c); last.push(a[a.length - 1].c);
+    });
+    all.forEach(function (c) {   // only touch a class when it changes (the page observer watches class changes)
+      var f = first.indexOf(c) >= 0, l = last.indexOf(c) >= 0;
+      if (c.classList.contains("sa-gl-first") !== f) c.classList.toggle("sa-gl-first", f);
+      if (c.classList.contains("sa-gl-last") !== l) c.classList.toggle("sa-gl-last", l);
+      if (!c.classList.contains("sa-gl")) c.classList.add("sa-gl");
+    });
   }
 
   /* ---------- the parts ---------- */
@@ -348,11 +374,57 @@
     try { if (A && A.copyText) { A.copyText(text); done(); } } catch (e) {}
   }
 
+  /* ---------- social-a: Gängkamp entry (group page row + Topplistor row) → GAMES.openGangkamp({ id, name, code }) ---------- */
+  function gkOn() { return !!(window.GAMES && window.GAMES.openGangkamp && window.DUEL && window.DUEL.open); }
+  function gkSub(g) {
+    var n = 0;
+    try { var d = window.DUEL.data(); (d && d.duels || []).forEach(function (x) { if (x && (x.status === "active" || x.status === "pending") && ((x.group && x.group.id === g.id) || (x.sides || []).some(function (y) { return y && y.id === g.id; }))) n++; }); } catch (e) {}
+    return n ? L(n + (n === 1 ? " kamp igång ikväll" : " kamper igång ikväll"), n + " running tonight") : L("Utmana ett annat gäng. Flest öl vinner.", "Challenge another gang. Most beers wins.");
+  }
+  function gkOpen(g) { try { window.GAMES.openGangkamp({ id: g.id, name: g.name, code: g.code }); } catch (e) {} }
+  function gkRow(g) {
+    var sub = h("small", { class: "sa-gk-s", text: gkSub(g) });
+    var b = h("button", { type: "button", class: "sa-gk pn-gp-row", "aria-label": L("Gängkamp", "Gang battle"), onclick: function () { gkOpen(g); } }, [
+      h("span", { class: "pn-gp-ti pn-acc-games", "aria-hidden": "true", html: ic("swords") }),
+      h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Gängkamp", "Gang battle") }), sub]),
+      h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]);
+    b.__sub = function () { var t = gkSub(g); if (sub.textContent !== t) sub.textContent = t; };
+    return b;
+  }
+  function topSheet(body) {
+    if (!A || !A.LIVE || !gkOn() || !body || body.querySelector(".sa-gk-top")) return;
+    var row = h("button", { type: "button", class: "ds-row pn-row sa-gk-top" }, [
+      h("span", { class: "ds-row-i sa-gk-ti", "aria-hidden": "true", html: ic("swords") }),
+      h("span", { class: "ds-row-t" }, [h("span", { text: L("Gängkamp", "Gang battle") }), h("small", { text: L("Ditt gäng mot ett annat ikväll", "Your gang against another tonight") })]),
+      h("span", { class: "ds-chev", "aria-hidden": "true" })]);
+    row.addEventListener("click", function () {
+      A.rpc("my_groups", {}).then(function (r) {
+        var list = r && !r.error ? A.parseData(r.data) : null;
+        list = Array.isArray(list) ? list.filter(function (x) { return x && x.id && !x.dm && !x.is_dm && !x.evg && !x.ev && !x.hidden; }) : [];
+        if (!list.length) { A.toast(L("Gå med i ett gäng först, sen kan ni kampa.", "Join a group first."), { id: "sa-gk" }); return; }
+        if (list.length === 1) { gkOpen(list[0]); return; }
+        A.openSheet(L("Vilket gäng?", "Which gang?"), function (b2) {
+          var l = h("div", { class: "ds-list sa-gk-pick" });
+          list.forEach(function (x) {
+            var it = h("button", { type: "button", class: "ds-row pn-row" }, [h("span", { class: "ds-row-i sa-gk-gt sa-gcol-" + colorOf(x), "aria-hidden": "true", html: ic("users") }),
+              h("span", { class: "ds-row-t" }, [h("span", { text: x.name || "?" }), h("small", { text: gkSub(x) })]), h("span", { class: "ds-chev", "aria-hidden": "true" })]);
+            it.addEventListener("click", function () { gkOpen(x); });
+            l.appendChild(it);
+          });
+          b2.appendChild(l);
+        });
+      }, function () { A.toast(L("Dä gick int'. Försök igen.", "That failed. Try again."), { err: true, id: "sa-gk" }); });
+    });
+    var sec = h("section", { class: "ds-section sa-gk-sec" }, [h("h3", { class: "ds-section-h", text: L("Gäng mot gäng", "Gang vs gang") }), h("div", { class: "ds-list" }, [row])]);
+    body.appendChild(sec);
+  }
+
   /* ---------- build (groupItem hook) ---------- */
   function build(g, wrap, main) {
     if (!A || !wrap || wrap.__gpg) return;
     wrap.__gpg = true; wrap.__g = g;
     wrap.classList.add("gpg");
+    var gc = gpColor(); if (gc !== "off") wrap.classList.add("sa-gpc-" + gc, "sa-gpcol-" + colorOf(g));   // social-a G4
     wrap.setAttribute("data-gv", "home");
 
     // ⋯ (info) top right of the header
@@ -407,7 +479,8 @@
 
     // info rows (⋯): members, code + invite
     var info = h("div", { class: "gpg-info" });
-    var mem = h("button", { type: "button", class: "gpg-row", onclick: function () { main.click(); } }, [h("span", { text: T("members") }), h("small", { class: "muted", text: (g.member_count | 0) + " ›" })]);
+    var mem = h("button", { type: "button", class: "gpg-row", onclick: function () { main.click(); } }, [h("span", { text: T("members") }),
+      h("small", { class: "muted sa-gpg-n" }, [document.createTextNode(String(g.member_count | 0)), h("span", { class: "sa-chev", "aria-hidden": "true", html: ic("chev-right") })])]);   // social-a R1-24: icon, not "›"
     info.appendChild(mem);
     if (g.code) {
       var code = U.cleanCode ? U.cleanCode(g.code) : g.code;
@@ -431,7 +504,8 @@
     var memS = h("button", { type: "button", class: "pn-gp-mem", hidden: true, "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [
       h("span", { class: "pn-gp-mem-h" }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
       h("span", { class: "pn-gp-mem-l" })]);
-    [invB, codeB, dots, now, chat, bar, ph, info, fold].forEach(function (x) { if (x) wrap.appendChild(x); });
+    var gk = gkOn() ? gkRow(g) : null;   // social-a: ⚔️ Gängkamp on the page
+    [invB, codeB, dots, now, chat, bar, ph, info, fold, gk].forEach(function (x) { if (x) wrap.appendChild(x); });
     wrap.insertBefore(memS, chat || bar); loadMem(wrap, g, memS);
 
     // module actions (groupActions) as + tiles
@@ -453,6 +527,7 @@
       if (wrap.getAttribute("data-gv") !== "home") return;
       tick++;
       if (chat) loadChat(wrap, g);
+      if (gk && gk.__sub) gk.__sub();
       if (tick % 3 === 0) { loadNow(wrap, g); var ms0 = wrap.querySelector(":scope > .pn-gp-mem"); if (ms0) loadMem(wrap, g, ms0); }   // ds58: live members
     }, 10000);
     // Tiles change inside (a skåltimme goes live, the chief tile fills in): re-check hot / proxies, debounced.
@@ -467,8 +542,21 @@
     setTimeout(function () { if (window.POLISH2 && window.POLISH2.sortGroup) window.POLISH2.sortGroup(wrap); else sorted(wrap); }, 0);
   }
 
+  // social-a G4: every group has its own colour (stable from its id): the Grupper tile and the group page use it.
+  var GCOLS = 6;
+  // G4 "more colour" on the group page: "a" = a header band + tiles in the group's colour (built, on);
+  // "b" = every card tinted in its accent (owner choice). Shots for the owner: localStorage olnu.saGpColor = "a" | "b" | "off".
+  var GP_COLOR = "a";
+  function gpColor() { try { var v = localStorage.getItem("olnu.saGpColor"); if (v === "a" || v === "b" || v === "off") return v; } catch (e) {} return GP_COLOR; }
+  function colorOf(g) {
+    var k = String((g && (g.id || g.code || g.name)) || ""), x = 0;
+    for (var i = 0; i < k.length; i++) x = (x * 31 + k.charCodeAt(i)) >>> 0;
+    return x % GCOLS;
+  }
   window.GPAGE = {
+    colorOf: colorOf,
     init: function (api) { A = api; },
+    topSheet: function (body) { try { topSheet(body); } catch (e) { try { console.warn("olnu gpage top", e); } catch (x) {} } },
     groupItem: function (g, wrap, main) { try { build(g, wrap, main); } catch (e) { try { console.warn("olnu gpage", e); } catch (x) {} } },
     // inst: warm.js showed a cached group_now / group_msgs and the server now has newer data → patch the open page.
     onWarm: function (fn, p, d) {

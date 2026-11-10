@@ -19,7 +19,7 @@
 .ute-good .ute-wx{color:#ffe08a}
 
 /* ---------- 📸 bar photo strip ---------- */
-.ev-line.bf-line{display:block;padding:6px 8px;border-color:var(--ds-border-2,rgba(255,255,255,.16));background:rgba(255,255,255,.03)}
+.ev-line.bf-line{display:block;padding:var(--sp-2,8px) var(--sp-3,12px);border-color:var(--ds-border,rgba(255,255,255,.1));border-radius:var(--r-md,12px);background:var(--ds-card,#19233a)}   /* social-a R1-04: rounded, no square box */
 .ev-line.bf-line[hidden]{display:none}
 .bf-h{display:block;font-size:var(--fs-12);color:var(--ds-text-2,#c9d0cd);margin-bottom:5px}
 .bf-strip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center}

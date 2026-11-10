@@ -96,6 +96,7 @@ run ds-motion  $B ds-motion-pw.js  # ds10 motion rules
 run gw         $B gw-pw.js         # competitor-research build (gw.js): Ute ikväll?, previews, honest crowd, Följ mig hem timer
 run inst       $B inst-pw.js       # screens show at once (no layout shift / late inserts) with slow RPCs (inst-mocks.js)
 run ui1        $B ui1-pw.js       # ui1 Wave 1: B3 day headers, B4 chip fades, B6 close jumps, B7 bar card, B10 pill, B11 tabs, B12 bubble
+run social-a   $B social-a-pw.js  # social-a Wave 3: G1 Vänner actions, G2 Profil one list style, G3 titles/icons, G4 group tiles + colour, G5 pen badge, Gängkamp, R1-04/09/22/23/24, DM header
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk
