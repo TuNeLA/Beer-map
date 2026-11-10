@@ -3365,6 +3365,34 @@ async function pickupYesPush(admin: Admin, uid: string, b: Body) {
   const jobs = (await subsOf(admin, [r.user_id as string])).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
+// ---- lane ride (F1, migration 0420) 🚕 RIDE v2 — block start ----
+// {event:"pickup", req_id, ride:1}: the app sends this after every ride change (request, take, Framme, cancel, Fråga igen /
+// fler). ride_push_claim(uid, req) (service_role) returns each due push ONCE (ride_push_log): the offer to the drivers
+// ("Lisa behöver skjuts" · "Från Pitchers · 2 pers · 1,2 km", Android buttons Jag tar den / Kan int'), "Oskar tar dig!",
+// "Oskar ä framme", "Lisa behöver int' skjuts längre", "Oskar kunde int' köra". Tag olnu-pickup-<id> = kind "safe":
+// outside the night budget, never paced, prio 100. iOS cannot update a sent push, so nothing here tries to.
+// A database without 0420 (PGRST202 / 42883) = no push (the old pickup push already went out for the first call).
+type RideJob = { to: string; title: string; body: string; url: string; tag: string; requireInteraction?: boolean;
+  actions?: { action: string; title: string; url?: string }[] };
+async function ridePush(admin: Admin, uid: string, b: Body) {
+  const id = parseRallyId(b.req_id);
+  if (id === null) return { ...NONE, reason: "no_req" };
+  const { data, error } = await admin.rpc("ride_push_claim", { p_uid: uid, p_req: id });
+  if (error) {
+    if (/PGRST202|42883|does not exist|Could not find the function/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) return await pickupPush(admin, uid, b);
+    throw error;
+  }
+  const rows = (Array.isArray(data) ? data : []) as RideJob[];
+  const jobs: Job[] = [];
+  for (const r of rows) {
+    if (!r || !r.to || !isUuid(r.to)) continue;
+    const payload = JSON.stringify({ title: r.title, body: r.body, url: r.url, tag: r.tag, requireInteraction: !!r.requireInteraction,
+      actions: Array.isArray(r.actions) ? r.actions.slice(0, 2) : undefined, renotify: true, k: "safe", v: "ride.1", ts: Date.now() });
+    for (const s of await subsOf(admin, [r.to])) jobs.push({ sub: s, payload });
+  }
+  return jobs.length ? await sendAll(admin, jobs, 1800) : { ...NONE, reason: rows.length ? "no_subs" : "nothing_due" };
+}
+// ---- lane ride — block end ----
 type CloseRow = { to: string; bar_id: string; bar_name?: string | null; min: number };
 async function closeSend(admin: Admin, rows: CloseRow[]) {
   const jobs: Job[] = [];
@@ -3590,6 +3618,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "replay_ready") return json(await replayReadyPush(admin, uid, body));   // bold §3.7 (flag bold_replay)
     if (event === "krog_crown") return json({ ...NONE, reason: "off_v1" });   // bold §4.7: kept OFF in v1 (tag olnu-crown-* = kind bar when it comes)
     if (event === "after_q") return json({ ok: true, sent: await afterQueueSend(admin, uid) });   // lane-after-0450
+    if (event === "pickup" && body.ride) return json(await ridePush(admin, uid, body));   // lane ride (0420): ride v2
     if (event === "pickup") return json(await pickupPush(admin, uid, body));          // feat 0250
     if (event === "pickup_yes") return json(await pickupYesPush(admin, uid, body));   // feat 0250
 

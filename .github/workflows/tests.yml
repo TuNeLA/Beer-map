@@ -77,6 +77,8 @@ jobs:
             filter: '^(after2|moments)$'
           - name: misc
             filter: '^(misc)$'
+          - name: ride
+            filter: '^(ride)$'
           - name: main
             filter: '^(main)$'
           - name: webkit
