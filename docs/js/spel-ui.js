@@ -217,12 +217,20 @@
   // gm01: sessionStorage survives a reload of this tab only → spel.js onAuthed opens the room again at once (no toast to find)
   function inMark(d) { try { if (d && d.id) sessionStorage.setItem("olnu.spel.in", JSON.stringify({ room: d.id, game: d.game, g: st && st.g || null, t: Date.now() })); else sessionStorage.removeItem("olnu.spel.in"); } catch (e) {} }
 
+  // followups (R1-38): PNI icons from the first paint (no "‹" / "✕" text characters for pnds.js to swap later).
+  // Same layout as before: the hub has ‹ only (back to the group), a game has ‹ (back to the games) + ✕ (close).
+  function icBtn(cls, icon, label, txt, fn) {
+    var b = el("button", { type: "button", class: cls, "aria-label": label, onclick: fn });
+    if (window.PNI && window.PNI.has(icon)) b.innerHTML = window.PNI.svg(icon); else b.textContent = txt;
+    return b;
+  }
   function topBar(title, sub, onBack, extra) {
+    var hub = onBack === close;
     return el("div", { class: "sp-top" }, [
-      onBack ? el("button", { type: "button", class: "sp-back", "aria-label": TX.back, text: onBack === close ? "✕" : "‹", onclick: function () { guard(onBack)(); } }) : null,
+      onBack ? icBtn("sp-back", "chev-left", hub ? L("Tillbaka till gruppen", "Back to the group") : L("Tillbaka till spelen", "Back to the games"), hub ? "✕" : "‹", function () { guard(onBack)(); }) : null,
       el("div", { class: "sp-top-t" }, [el("b", { text: title }), sub ? el("small", { text: sub }) : null]),
       extra || null,
-      onBack === close ? null : el("button", { type: "button", class: "sp-x", "aria-label": TX.close, text: "✕", onclick: function () { guard(close)(); } })
+      hub ? null : icBtn("sp-x", "x", L("Stäng spelet", "Close the game"), "✕", function () { guard(close)(); })
     ]);
   }
 
@@ -244,7 +252,7 @@
       var b = el("button", { type: "button", class: "sp-card", role: "listitem", "data-g": gm.id, style: "--sp-c:" + gm.col, onclick: function () { launch(gm.id); } }, [
         el("span", { class: "sp-card-ic", "aria-hidden": "true", text: gm.ic }),
         el("span", { class: "sp-card-tx" }, [
-          el("span", { class: "sp-card-h" }, [el("b", { text: gm.name }), gm.tag && pnNew(gm) ? el("em", { class: "sp-tag", text: "Nytt" }) : null, rec ? el("em", { class: "sp-tag sp-rec", text: TX.recent }) : null]),
+          el("span", { class: "sp-card-h" }, [el("b", { text: gm.name }), gm.tag && pnNew(gm) ? el("em", { class: "sp-badge", text: "Nytt" }) : null, rec ? el("em", { class: "sp-badge sp-rec", text: TX.recent }) : null]),
           el("span", { class: "sp-card-s", text: gm.sub }),
           el("span", { class: "sp-card-m" }, [el("span", { text: "👥 " + gm.n }), el("span", { text: MODES[gm.mode] })])
         ])

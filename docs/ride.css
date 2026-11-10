@@ -116,3 +116,6 @@
 /* inside the sheet: the sheet's own p / button rules are more specific; keep the ride rhythm (8 px) and 48 px buttons */
 #sheet-body .rd p{margin:0}
 #sheet-body .rd .btn:not(.btn-small){min-height:48px;height:auto;box-sizing:border-box}
+/* followups (owner 11 Nov): 112 is one small muted link at the very bottom of the ride sheet (a pickup is not an emergency) */
+.rd-112f{margin:var(--sp-5) 0 0;text-align:center;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.rd-112f-a{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-2);color:var(--ds-muted);text-decoration:underline;text-underline-offset:3px}

@@ -64,7 +64,7 @@
       "📸 Inlämnad till fotolabbet. Över och ut.", "📸 På filmen! Ingen tjuvkik förrän kl 10."],
     wind: ["▸▸ vevar filmen…", "▸▸ rullen snurrar…", "▸▸ klick… vev… vev…"],
     last: ["🎞️ Sista bilden! Filmen ä slut för ikväll.", "🎞️ Rullen ä full. Framkallas kl 10.", "🎞️ Tio av tio. Du ä en riktig krigsfotograf."],
-    empty: "FILMEN SLUT",
+    empty: "Filmen slut",   // followups R1-29: sentence case
     hint: ["Rikta. Andas. Knäpp.", "Ingen förhandsvisning. Som förr i tiden.", "Tummen bort från linsen, soldat.", "Tio bilder. Välj med hjärtat.",
       "Ingen ser bilden förrän kl 10 – int' ens du.", "Dalarnas modernaste engångskamera."],
     denT: "📵 Kameran ä avstängd för PintsNow",
@@ -337,7 +337,7 @@
     var flip = el("button", { type: "button", class: "fc-flip", "aria-label": L("Byt kamera", "Switch camera"), text: "🔄" });
     var shutter = el("button", { type: "button", class: "fc-shutter", "aria-label": L("Ta en bild", "Take a photo") }, [el("span", {})]);
     var body = el("div", { class: "fc-body" }, [
-      el("div", { class: "fc-top" }, [el("span", { class: "fc-brand", text: "PINTSNOW · ENGÅNGS 27" }), el("span", { class: "fc-grp", text: c.g.name || "" }), x]),
+      el("div", { class: "fc-top" }, [el("span", { class: "fc-brand", text: "PintsNow · Engångs 27" }), el("span", { class: "fc-grp", text: c.g.name || "" }), x]),
       vf,
       el("div", { class: "fc-info" }, [el("div", { class: "fc-lcd", "aria-hidden": "true" }, [lcd]), el("div", { class: "fc-count" }, [leftT, frames])]),
       status,
@@ -350,7 +350,7 @@
       if (!alive || !document.body.contains(o)) { alive = false; return false; }
       var left = leftOf(c), used = max - left;
       lcd.textContent = ("0" + left).slice(-2);
-      leftT.textContent = left > 0 ? L(left + " av " + max + " kvar", left + " of " + max + " left") : L(T.empty, "OUT OF FILM");
+      leftT.textContent = left > 0 ? L(left + " av " + max + " kvar", left + " of " + max + " left") : L(T.empty, "Out of film");
       frames.innerHTML = "";
       for (var i = 0; i < max; i++) frames.appendChild(el("span", { class: "fc-fr" + (i < used ? " used" : "") }));
       var full = (c.d.group_n | 0) + pendingFor(c.g.id) >= (c.d.group_max | 0 || 60);

@@ -334,7 +334,8 @@
     if (capCur && capCur.tm) clearTimeout(capCur.tm);
     capCur = o;
     box.className = "dl-cap " + (o.cls || "") + (o.onTap ? " dl-cap-tap" : "");
-    box.innerHTML = (o.head ? '<div class="dl-cap-h">' + esc(o.head) + "</div>" : "") + '<div class="dl-cap-t">' + esc(o.text) + "</div>" +
+    var ico = o.icon && window.PNI && window.PNI.has(o.icon) ? window.PNI.svg(o.icon, "pi-lead") : "";   // followups: a PNI icon, never an emoji
+    box.innerHTML = (o.head ? '<div class="dl-cap-h">' + ico + esc(o.head) + "</div>" : "") + '<div class="dl-cap-t">' + esc(o.text) + "</div>" +
       (o.onTap ? '<div class="dl-cap-more" aria-hidden="true">' + (en() ? "TAP ▸" : "TRYCK ▸") + "</div>" : "");
     box.hidden = false;
     capPlace(box);
@@ -710,7 +711,7 @@
     var line = pick(list); if (!line) return false;
     if (s.h >= 1 && s.h < 5) line += txt(G.late)[0] || "";
     var nm = ""; try { nm = A && A.getName ? A.getName() : ""; } catch (x) {}
-    caption({ head: "📋 " + ui("greetHead") + " · " + DAYN[lng()][e.dow] + (nm ? " · " + nm : ""), text: line, cls: "dl-cap-greet", ms: 6500 });
+    caption({ icon: "rules", head: ui("greetHead") + " · " + DAYN[lng()][e.dow] + (nm ? " · " + nm : ""), text: line, cls: "dl-cap-greet", ms: 6500 });
     return true;
   }
   function sunrise(force) {

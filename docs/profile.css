@@ -36,7 +36,7 @@ button.switch::before{inset:-8px 0 -8px -8px}
 .pf-hero .pf-rank{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:var(--ds-r-1,12px);background:var(--ds-raised,#222e48);min-width:0}
 .pf-rank-t{font:700 var(--ds-fs-16,16px)/1.25 var(--ds-sans,system-ui);color:var(--ds-amber-t,#ffc24d);overflow-wrap:anywhere}
 .pf-rank-m,.pf-rank-n{font-size:var(--ds-fs-12,12px);line-height:1.35;color:var(--ds-muted,#a7b0ac)}
-.pf-bar{display:block;height:8px;border-radius:var(--r-pill);background:rgba(255,255,255,.1);overflow:hidden}
+.pf-bar{display:block;height:8px;border-radius:var(--r-pill);background:var(--ds-border);overflow:hidden}
 .pf-bar>span{display:block;height:100%;border-radius:var(--r-pill);background:linear-gradient(90deg,var(--ds-amber,#f5a623),var(--ds-amber-t,#ffc24d))}
 .pf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .pf-grid.pf-g2{grid-template-columns:repeat(2,minmax(0,1fr))}

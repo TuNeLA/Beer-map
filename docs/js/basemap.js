@@ -87,12 +87,12 @@
 
   function sv() { return !I || I.lang !== "en"; }
   var S = {
-    sv: { title: "🗺️ Kartstil", tip: "Chefens val",
+    sv: { title: "🗺️ Kartstil", tip: "Chefens val", row: "Kartstil", hint: "Skymning ä chefens val. Natt ä mörkare.",
       info: "Skymning ä chefens favorit, Natt ä för mörka kvällar. Krogar, värme och pins ä som vanligt.",
       fail: "🗺️ Kartan vägrade starta här. Kör reservkartan så länge.",
       on: ["🗺️ Ny karta i drift. Spaningsläge: på.", "🗺️ Kartan bytt. Samma krogar, nytt ljus.", "🗺️ Klart! Ny terräng, samma uppdrag.",
         "🗺️ Kartan ä laddad. Säg till om nåt ser konstigt ut!", "🗺️ Ny karta. Krogarna lyser som förut.", "🗺️ Bytt! Spanarn ser allt nu."] },
-    en: { title: "🗺️ Map style", tip: "⭐ Boss's pick",
+    en: { title: "🗺️ Map style", tip: "⭐ Boss's pick", row: "Map style", hint: "Dusk is the boss's pick. Night is darker.",
       info: "Dusk is the boss's favourite, Night is for dark evenings. Bars, heat and pins stay the same.",
       fail: "🗺️ The map would not start here. Using the backup map for now.",
       on: ["🗺️ New map deployed. Recon mode: on.", "🗺️ Map switched. Same bars, new light.", "🗺️ Done! New terrain, same mission.",
@@ -396,7 +396,7 @@
       chip.style.background = "linear-gradient(135deg," + st.chip[0] + " 0 58%," + st.chip[1] + " 58% 100%)";
       b.appendChild(chip);
       b.appendChild(el("span", { class: "bm-n", text: nameOf(v) }));
-      if (v === TIP) b.appendChild(el("span", { class: "bm-b", text: T("tip") }));
+      if (v === TIP && !seg.classList.contains("bm-seg2")) b.appendChild(el("span", { class: "bm-b", text: T("tip") }));   // the 2-style row says it in the hint
       b.addEventListener("click", function () {
         U.ls.set(KEY, v); failed = false; userAsked = true;
         Array.prototype.forEach.call(seg.querySelectorAll("[data-bm]"), function (x) { x.setAttribute("aria-checked", String(x === b)); });
@@ -424,13 +424,26 @@
         ".ds-seg.bm-seg2>button{gap:var(--sp-2)}" +
         ".bm-seg2 .bm-chip{flex:0 0 18px;width:18px;height:18px;border-radius:var(--r-xs)}" +
         ".bm-seg2 .bm-n{flex:0 1 auto;padding:0}" +
+        // followups (owner 11 Nov): Kartstil = a normal settings row (icon + title like "Visa restauranger"); the segmented
+        // control is its own line INSIDE the row padding; "Chefens val" lives in the hint (no pill in the segment)
+        ".toggle-row.bm-row{flex-wrap:wrap}" +
+        ".toggle-row.bm-row>span{flex:1 1 auto;min-width:0}" +
+        ".toggle-row.bm-row>.bm-seg2{flex:1 0 100%;margin:0}" +
         ".bm-seg2 .bm-b{flex:0 0 auto;font:600 var(--fs-12)/16px var(--ds-sans,sans-serif);padding:0 var(--sp-1);border-radius:var(--r-xs);background:var(--ds-amber,#f5a623);color:var(--ds-on-amber,#241300);white-space:nowrap}";
       document.head.appendChild(st);
     }
     body.appendChild(el("h3", { text: T("title") }));
     var few = variants().length <= 4;   // map R1-16: the segmented control for 2–4 styles (today: Skymning · Natt)
-    var seg = sheetSeg = el("div", { class: few ? "ds-seg bm-seg2" : "seg bm-seg bm-grid", role: "radiogroup", "aria-label": T("title") });
+    var seg = sheetSeg = el("div", { class: few ? "ds-seg bm-seg2" : "seg bm-seg bm-grid", role: "radiogroup", "aria-label": few ? T("row") : T("title") });
     fillSeg(seg);
+    if (few) {
+      // ds.js makes the row + the hint after it ONE settings item (same as the toggle rows above and below)
+      var lab = el("span", {}); lab.innerHTML = (window.PNI && window.PNI.has("map") ? window.PNI.svg("map", "pi-lead") : "") ;
+      lab.appendChild(document.createTextNode(T("row")));
+      body.appendChild(el("div", { class: "toggle-row bm-row" }, [lab, seg]));
+      body.appendChild(el("p", { class: "muted bm-hint", text: T("hint") }));
+      return;
+    }
     body.appendChild(seg);
     body.appendChild(el("p", { class: "muted", style: "margin-top:6px", text: T("info") }));
   }

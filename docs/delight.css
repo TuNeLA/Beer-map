@@ -125,8 +125,8 @@
 @keyframes dlGl{0%{opacity:1}100%{opacity:0}}
 .dl-gl-txt{position:relative;font:400 44px/1 var(--display,Impact);letter-spacing:4px;color:#fff;text-shadow:0 0 14px rgba(255,59,59,.7);animation:dlJig var(--m-2) steps(2) 12}
 .dl-gl-txt::before,.dl-gl-txt::after{content:attr(data-t);position:absolute;left:0;top:0;opacity:.75}
-.dl-gl-txt::before{color:#ff3b3b;transform:translate(-4px,1px)}
-.dl-gl-txt::after{color:#3ddc84;transform:translate(4px,-1px)}
+.dl-gl-txt::before{color:var(--red);transform:translate(-4px,1px)}
+.dl-gl-txt::after{color:var(--ds-green);transform:translate(4px,-1px)}
 @keyframes dlJig{0%{transform:translate(-3px,1px) skewX(8deg)}50%{transform:translate(3px,-2px) skewX(-6deg)}100%{transform:translate(0,0)}}
 .dl-gl-bar{position:absolute;left:0;right:0;top:38%;height:14px;background:rgba(245,166,35,.35);animation:dlBar var(--m-4) steps(2) 7}
 .dl-gl-bar.dl-b2{top:57%;height:6px;background:rgba(61,220,132,.35);animation-duration:var(--m-3)}
@@ -135,7 +135,7 @@
 /* ---------- caption banner (above the dock) ---------- */
 .dl-cap{position:fixed;z-index:1002;left:50%;bottom:calc(var(--dock-h,212px) + 62px);width:min(calc(100vw - 32px),440px);
   transform:translate(-50%,10px);opacity:0;transition:opacity var(--m-4) var(--e-std),transform var(--m-4) var(--e-std);cursor:pointer;
-  background:rgba(10,15,28,.94);border:1px solid var(--line,rgba(245,166,35,.28));border-left:3px solid var(--amber,#f5a623);
+  background:var(--pn-float);border:1px solid var(--line,rgba(245,166,35,.28));border-left:3px solid var(--amber,#f5a623);
   padding:8px 12px 9px;box-shadow:0 8px 24px rgba(0,0,0,.5);
   clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
 .dl-cap.dl-in{opacity:1;transform:translate(-50%,0)}
@@ -210,16 +210,16 @@
 
 /* ---------- shake foam ---------- */
 .dl-foam{position:fixed;inset:0;z-index:1450;pointer-events:none;overflow:hidden}
-.dl-foam-sea{position:absolute;left:-5%;right:-5%;bottom:0;height:70%;background:linear-gradient(180deg,#fffaf0 0 14%,#ffe7a8 22%,rgba(245,166,35,.85) 60%,rgba(199,122,14,.9));
+.dl-foam-sea{position:absolute;left:-5%;right:-5%;bottom:0;height:70%;background:linear-gradient(180deg,var(--foam) 0 14%,#ffe7a8 22%,rgba(245,166,35,.85) 60%,rgba(199,122,14,.9));
   transform:translateY(102%);animation:dlSea 2.8s var(--e-std) forwards}
 @keyframes dlSea{0%{transform:translateY(102%)}35%,62%{transform:translateY(38%)}100%{transform:translateY(102%)}}
 .dl-foam-top{position:absolute;left:0;right:0;top:-26px;height:40px;
-  background:radial-gradient(circle at 20px 26px,#fffaf0 18px,transparent 19px) 0 0/40px 40px repeat-x;animation:dlFoamW .7s linear infinite}
+  background:radial-gradient(circle at 20px 26px,var(--foam) 18px,transparent 19px) 0 0/40px 40px repeat-x;animation:dlFoamW .7s linear infinite}
 @keyframes dlFoamW{to{transform:translateX(-40px)}}
 .dl-fb{position:absolute;bottom:-20px;width:var(--s,12px);height:var(--s,12px);border-radius:50%;border:2px solid rgba(255,250,240,.9);opacity:0;animation:dlFb 1.8s var(--e-in) forwards}
 @keyframes dlFb{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-60vh);opacity:0}}
 .dl-foam-t{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font:400 clamp(26px,8vw,40px)/1.1 var(--display,Impact);color:#3b2412;text-align:center;
-  text-shadow:0 2px 0 #fffaf0;width:90%;opacity:0;animation:dlFt 2.8s var(--e-std) forwards}
+  text-shadow:0 2px 0 var(--foam);width:90%;opacity:0;animation:dlFt 2.8s var(--e-std) forwards}
 @keyframes dlFt{0%,20%{opacity:0;transform:translate(-50%,-30%) scale(.9)}35%,65%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0}}
 
 /* ---------- skål clink in chat ---------- */
