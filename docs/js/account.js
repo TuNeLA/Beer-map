@@ -815,6 +815,10 @@
     // ⚙️ Inställningar rows of the settings lane (social-b): the Dialekt switch (dialekt.js; ds.js puts it in Skoj & överraskningar)
     settingsSheet: function (body) {
       try { if (body && window.DIALEKT && window.DIALEKT.settingsRow && !body.querySelector(".dk-set")) body.appendChild(window.DIALEKT.settingsRow()); } catch (e) {}
+      // lane main S2: Synlighet (Vem ser dig? + Göm min pin, Hemzon, SOS) lives here now; Profil shows only the profile
+      try { if (body && window.PNVIS && window.PNVIS.settingsRows && !body.querySelector(".mn-vis-set")) window.PNVIS.settingsRows().forEach(function (n) { body.appendChild(n); }); } catch (e) {}
+      // lane main X6: "Något knas?" (screenshot + log to the owner), group Om appen
+      try { if (body && window.KNAS && window.KNAS.settingsRow && !body.querySelector(".mn-knas-row")) body.appendChild(window.KNAS.settingsRow()); } catch (e) {}
     },
     entry: entry,
     on: on, saved: saved,

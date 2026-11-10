@@ -295,7 +295,7 @@
     b.classList.toggle("cooldown", left > 0);
     b.classList.toggle("busy", otherBusy);
     $("other-label").innerHTML = left > 0 ? '<span class="ol-t">' + esc(U.mmss(left)) + "</span>" :
-      '<span class="ol-e" aria-hidden="true">' + esc(parts[0]) + '</span><span class="ol-t">' + esc(parts.slice(1).join(" ")) + "</span>";
+      '<span class="ol-e" aria-hidden="true">' + (window.PNI && window.PNI.has && window.PNI.has("mixed") ? window.PNI.svg("mixed", "") : esc(parts[0])) + '</span><span class="ol-t">' + esc(parts.slice(1).join(" ")) + "</span>";   // lane main R1-14: the PNI glyph at once (no 🥃 until the icon pass)
     b.setAttribute("aria-label", left > 0 ? t("otherNextIn", U.mmss(left)) : t("otherAria"));
     $("ocd-ring").style.strokeDashoffset = String(OTHER_RING * (1 - Math.min(1, left / OTHER_MS)));
     if (left > 0 && !otherTimer) otherTimer = setInterval(applyOther, 1000);
@@ -513,7 +513,9 @@
     profileSheet: function (body) {   // 👤 Profil (was settingsSheet)
       if (!A.LIVE) return;
       var el = A.el;
+      var inSet = !!(window.PNVIS && window.PNVIS.settingsRows);   // lane main S2: Spökläge + SOS live in Inställningar (pnvis.js) → Profil shows only the profile
       body.appendChild(el("h3", { text: t("social") }));
+      if (!inSet) {
       var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(ghostOn()), "aria-label": t("ghostMode") });
       sw.addEventListener("click", function () {
         var on = sw.getAttribute("aria-checked") !== "true";
@@ -521,12 +523,13 @@
       });
       body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("ghostMode") }), sw]));
       body.appendChild(el("p", { class: "muted", style: "margin-top:0", text: t("ghostModeInfo") }));
+      }
       var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats();
       if (st) body.appendChild(el("p", { class: "muted", text: t("titleHud", st.title, st.total) + " — " + window.SOCIAL.titleProgress() }));
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [
         A.btn(t("badgesBtn"), "btn-small", showBadges), A.btn(t("nightBtn"), "btn-small", showNightBest)
       ]));
-      if (window.SOCIAL && window.SOCIAL.sosBlock) {
+      if (!inSet && window.SOCIAL && window.SOCIAL.sosBlock) {
         var box = el("div", { style: "margin-top:12px" });
         window.SOCIAL.sosBlock(box);
         if (box.children.length) { body.appendChild(el("h3", { text: t("safety") })); body.appendChild(box); }

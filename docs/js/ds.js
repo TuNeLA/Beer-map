@@ -61,6 +61,8 @@
     if (has(n, ".bd-optin, .sos-block")) return "integ";
     if (has(n, ".pn-kanal")) return "om";   // 🧪 Betaversion
     if (has(n, ".dk-set")) return "skoj";   // Dialekt: Auto/Av (dialekt.js, placed by account.js)
+    if (has(n, ".mn-vis-set, .mn-vis-srow")) return "integ";   // lane main S2: Synlighet rows (pnvis.js, placed by account.js)
+    if (has(n, ".mn-knas-row")) return "om";   // lane main X6: Något knas?
     if (has(n, ".ws-entry")) return "om";
     if (n.classList && n.classList.contains("toggle-row") && /uppdatera|update/i.test(t)) return "om";
     if (has(n, ".btn-amber") && /bjud in|invite/i.test(t)) return "vanner";

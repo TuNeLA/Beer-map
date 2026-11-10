@@ -108,6 +108,6 @@
   window.HOMEZONE = {
     ready: true, open: open, home: home,
     init: function (api) { A = api; },
-    settingsName: function (body) { if (A && A.LIVE) row(body); }
+    settingsName: function (body) { if (A && A.LIVE && !(window.PNVIS && window.PNVIS.settingsRows)) row(body); }   // lane main S2: Hemzon row is in Inställningar (pnvis.js) + the rail
   };
 })();
