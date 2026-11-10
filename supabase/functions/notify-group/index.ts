@@ -1146,6 +1146,7 @@ export function pushCat(tag: string): string {
   if (/^olnu-film(start)?-/.test(t)) return "film";   // 0195
   if (/^olnu-friend-/.test(t)) return "vanner";
   if (/^olnu-(gang|winback)-/.test(t)) return "gang";   // ntf v2 (0390): gang streak + win-back
+  if (/^olnu-(after|mom|game)-/.test(t)) return "kul";   // lane-after-0450: morning report, moments, game start
   if (/^olnu-skal2-/.test(t)) return "ute";   // bold: Skåltimmen v2 (paced, in the 4/night budget)
   if (/^olnu-replay-/.test(t)) return "film";   // bold: Kvällsreprisen (Bilder)
   if (/^olnu-crown-/.test(t)) return "bar";   // bold: krog_crown (flag OFF, not sent in v1)
@@ -3449,6 +3450,23 @@ async function gwCron(admin: Admin, key: string) {
   return { ikvall, walk };
 }
 
+/** lane-after-0450: send due rows of after_push_q (morning report 0450, moments 0451, game start 0452). Each kind has its
+ *  own flag in after_flags (the SQL claim checks it). by = only the caller's rows ({event:"after_q"}). */
+type AfterRow = { uid: string; kind: string; tag: string; title: string; body: string; url: string; has_sub: boolean };
+async function afterQueueSend(admin: Admin, by: string | null): Promise<number> {
+  try {
+    const { data, error } = await admin.rpc("after_push_due", by ? { p_limit: 50, p_by: by } : { p_limit: 500 });
+    if (error) { if (!/PGRST202|does not exist/i.test(String(error.message || ""))) console.error("after_push_due", error.message); return 0; }
+    const rows = ((Array.isArray(data) ? data : []) as AfterRow[]).filter((r) => r && r.has_sub && isUuid(r.uid));
+    if (!rows.length) return 0;
+    const byUid = new Map(rows.map((r) => [r.uid, r]));
+    const jobs = (await subsOf(admin, [...byUid.keys()])).map((sub) => {
+      const r = byUid.get(sub.user_id)!;
+      return { sub, payload: JSON.stringify({ title: r.title, body: r.body, url: r.url, tag: r.tag, k: r.kind === "am" ? "after" : r.kind, v: r.kind + ".1", ts: Date.now() }) };
+    });
+    return jobs.length ? (await sendAll(admin, jobs, 3 * 3600)).sent || 0 : 0;
+  } catch (e) { console.error("after queue", e); return 0; }
+}
 async function cronDue(key: string): Promise<Response> {
   if (key.length < 20 || key.length > 4096) return json({ error: "forbidden" }, 403);
   const claim = await keyRpc(key, "invite_due_claim", {});
@@ -3476,6 +3494,7 @@ async function cronDue(key: string): Promise<Response> {
   } catch (e) { console.error("ev_due failed", e); }
   const gw = await gwCron(admin, key);   // gw 0310 / 0313
   const v2 = await v2Cron(admin, key);   // ntf v2 (0390): each kind behind its own flag
+  const afterQ = await afterQueueSend(admin, null);   // lane-after-0450
   lastFlush28 = 0;
   const digests = await paceFlush(admin);   // v28 (deploy)
   // feat 0250 ⏰ Baren stänger (a missing RPC on an old database = skipped)
@@ -3484,7 +3503,7 @@ async function cronDue(key: string): Promise<Response> {
     const cr = await keyRpc(key, "close_remind_claim", {});
     if (cr.ok && Array.isArray(cr.data) && cr.data.length) closeSent = (await closeSend(admin, cr.data as CloseRow[])).sent || 0;
   } catch (e) { console.error("close_remind failed", e); }
-  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk, v2 });
+  return json({ ok: true, close_sent: closeSent, due: rows.length, sent: due.sent, failed: due.failed, yes_sent: yesSent, ev_due: evDue, ev_sent: evSent, digests, gw_ikvall: gw.ikvall, gw_walk: gw.walk, v2, after_q: afterQ });
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -3570,6 +3589,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (event === "walk_check") return json(await gwWalkCheck(admin, uid, body));   // gw 0313
     if (event === "replay_ready") return json(await replayReadyPush(admin, uid, body));   // bold §3.7 (flag bold_replay)
     if (event === "krog_crown") return json({ ...NONE, reason: "off_v1" });   // bold §4.7: kept OFF in v1 (tag olnu-crown-* = kind bar when it comes)
+    if (event === "after_q") return json({ ok: true, sent: await afterQueueSend(admin, uid) });   // lane-after-0450
     if (event === "pickup") return json(await pickupPush(admin, uid, body));          // feat 0250
     if (event === "pickup_yes") return json(await pickupYesPush(admin, uid, body));   // feat 0250
 
