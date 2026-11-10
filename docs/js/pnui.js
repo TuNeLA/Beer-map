@@ -229,6 +229,7 @@
       }
       body.appendChild(list);
       try { var sh = W("PNIKV") && W("PNIKV").safeRows ? W("PNIKV").safeRows() : null; if (sh) body.appendChild(sh); } catch (e) {}   // ds39 Säker hem
+      try { if (W("KNAS") && W("KNAS").moreRow) { body.appendChild(h("h3", { class: "pn-safe-h mn-knas-h", text: "Hjälp oss" })); body.appendChild(h("div", { class: "ds-list pn-list mn-knas-list" }, [W("KNAS").moreRow()])); } } catch (e) {}   // lane main X6: "Något knas?"
       body.appendChild(h("p", { class: "pn-note", text: "Tips: håll fingret på kartan för att skapa ett event eller lägga till ett ställe." }));
     });
   }
@@ -675,7 +676,7 @@
     box.appendChild(mitt); box.appendChild(help);
     // The rest (name, hemstad, pin, module rows, flytt, integritet = ds.js sections) folds away behind one row.
     var tog = h("button", { type: "button", class: "ds-row pn-row pn-fold-t ds-keep", "aria-expanded": "false" }, [h("span", { class: "ds-row-i", html: ic("sliders-horizontal") }),
-      h("span", { class: "ds-row-t" }, [h("span", { text: "Namn, konto och mer" }), h("small", { text: "Hemstad, vänner, Swish, synlighet, flytta" })]), h("span", { class: "pn-fold-c", html: ic("caret-right") })]);
+      h("span", { class: "ds-row-t" }, [h("span", { text: "Namn, konto och mer" }), h("small", { text: "Hemstad, vänner, Swish, flytta" })]), h("span", { class: "pn-fold-c", html: ic("caret-right") })]);
     var setOpen = function (o) { body.classList.toggle("pn-pfopen", o); tog.setAttribute("aria-expanded", String(o)); lsSet("olnu.pnFold", o ? "1" : "0"); };
     tog.addEventListener("click", function () { setOpen(!body.classList.contains("pn-pfopen")); });
     box.classList.add("ds-keep");

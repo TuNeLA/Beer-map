@@ -1604,4 +1604,44 @@ body.mn-rail-lbl .mn-rail-l{display:block;position:absolute;left:50%;top:calc(10
   text-overflow:ellipsis;pointer-events:none;text-shadow:none}
 body.mn-rail-lbl #pn-evs{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 1 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
 body.mn-rail-lbl #btn-more.pn-more{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 2 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+/* F2 · LÄSK! (js/lask.js): "Jag kör ikväll" on → the ÖL! button is a soda can for the driver (no drink is logged) */
+body.mn-lask .beer-btn:not(.cooldown):not(.soon){border-color:var(--ds-text);color:var(--ds-bg);
+  background:radial-gradient(circle at 30% 70%,rgba(255,255,255,.55) 0 2px,transparent 3px),radial-gradient(circle at 68% 76%,rgba(255,255,255,.45) 0 2.5px,transparent 3.5px),
+    radial-gradient(circle at 52% 86%,rgba(255,255,255,.5) 0 1.5px,transparent 2.5px),radial-gradient(circle at 35% 28%,var(--pn-acc-money) 0%,var(--pn-acc-cam) 100%) !important;
+  box-shadow:0 0 0 3px rgba(10,15,28,.9),0 10px 30px rgba(63,216,198,.38),inset 0 -6px 0 rgba(0,0,0,.16) !important}
+body.mn-lask .beer-btn:not(.cooldown):not(.soon) .beer-label{font-size:26px !important;letter-spacing:0 !important;line-height:1 !important;padding-top:0;
+  display:flex;flex-direction:column;align-items:center;color:var(--ds-bg)}
+body.mn-lask .beer-btn:not(.cooldown):not(.soon) .beer-label::after{content:attr(data-sub);margin-top:var(--sp-1);font:700 var(--fs-12)/14px var(--ds-sans);letter-spacing:.04em}
+@media (max-width:380px){body.mn-lask .beer-btn:not(.cooldown):not(.soon) .beer-label{font-size:24px !important}}
+.beer-btn.mn-lask-pop{animation:mnLaskPop var(--m-5,300ms) var(--e-spring,cubic-bezier(.2,0,0,1))}
+@keyframes mnLaskPop{30%{transform:scale(.92)}}
+@media (prefers-reduced-motion:reduce){.beer-btn.mn-lask-pop{animation:none}}
+/* X6 · Något knas? (js/knas.js): one text field, the screenshot + 2 switches in ONE card, one primary */
+.mn-knas-lead{margin:0 0 var(--sp-4);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text-2)}
+.mn-knas-ta{width:100%;min-height:96px;box-sizing:border-box;margin-bottom:var(--sp-4)}
+.mn-knas-card{display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-3);border-radius:var(--r-lg);background:var(--ds-card);border:1px solid var(--ds-border)}
+.mn-knas-img{flex:0 0 auto;width:72px;height:auto;max-height:156px;object-fit:cover;object-position:top;border-radius:var(--r-sm);border:1px solid var(--ds-border-2)}
+.mn-knas-none{margin:0;flex:0 0 72px;font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+.mn-knas-opts{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.mn-knas-sw{min-height:56px;padding:var(--sp-2) 0;gap:var(--sp-3)}
+.mn-knas-sw+.mn-knas-sw{border-top:1px solid var(--ds-border)}
+.mn-knas-sw .ds-row-t>span{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text)}
+.mn-knas-sw .switch{pointer-events:none;flex:0 0 auto}
+.mn-knas-meta,.mn-knas-left{margin:var(--sp-2) 0 var(--sp-4);font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+.mn-knas-left{margin:var(--sp-3) 0 0;text-align:center}
+.mn-knas-h{margin-top:var(--sp-5)}
+/* S2 · Synlighet in Inställningar (pnvis.js settingsRows): the control as the first row of "Integritet & säkerhet" */
+.mn-vis-set{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4)}
+.mn-vis-set-l{display:flex;align-items:center;gap:var(--sp-3);font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.mn-vis-set-l .pi-lead{margin:0;width:var(--pn-ic);height:var(--pn-ic);color:var(--ds-text-2)}
+.mn-vis-set .pn-vis-seg{margin:0}
+.mn-vis-set-n{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+/* R1-13 · Sidospår (ANNAT sheet) tiles: rounded like every button (--r-md), not square */
+.kind-grid>.kind-btn{border-radius:var(--r-md)}
+/* R1-14 · ANNAT: the label never shows the 🥃 text before extras.js draws the PNI glyph */
+#btn-other .other-label:not(:has(.ol-t)){visibility:hidden}
+#btn-other .ol-e .pi{width:20px;height:20px}
+/* R1-27 · intro "Tillåt plats": a PNI pin in a tonal circle (was the 📍 emoji) */
+.intro-big.mn-intro-pin{display:grid;place-items:center;width:72px;height:72px;margin:var(--sp-2) auto var(--sp-3);border-radius:var(--r-pill);background:var(--ds-amber-soft);color:var(--ds-amber-t)}
+.intro-big.mn-intro-pin .pi{width:36px;height:36px}
 /* lane:main END */

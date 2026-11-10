@@ -3143,7 +3143,7 @@
       }
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
       if (tab === "p") {
-      if (LIVE && myBeer()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", showStopSheet)]));
+      if (LIVE && myBeer() && !(window.PNVIS && window.PNVIS.settingsRows)) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", showStopSheet)]));   // lane main S2: Göm min pin is in Inställningar + the rail
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
       var saveName = function () {
@@ -3895,7 +3895,7 @@
       }
       function stepLoc() {
         body.innerHTML = "";
-        body.appendChild(el("div", { class: "intro-big", text: "📍" }));
+        body.appendChild(window.PNI && window.PNI.svg ? el("div", { class: "intro-big mn-intro-pin", "aria-hidden": "true", html: window.PNI.svg("pin", "") }) : el("div", { class: "intro-big", text: "📍" }));   // lane main R1-27: PNI pin, no emoji hero
         body.appendChild(el("h2", { class: "intro-h", text: t("locTitle") }));
         body.appendChild(el("p", { class: "intro-p", text: t("locWhy") }));
         body.appendChild(el("p", { class: "intro-p muted", text: t("locWhy2") }));

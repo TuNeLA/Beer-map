@@ -48,6 +48,7 @@ function build(now) {
     spel_act: () => room("kort"),
     drivers_for: () => ({ v: 1, drivers: [{ name: "Lisa", k: "cccccccccccc", is_me: false }] }),
     pickup_poll: () => ({ v: 1, driving: false, incoming: [], mine: null }),
+    submit_knas: () => ({ ok: true, id: 1, left: 4 }),                                     // lane main X6 knas.js (Något knas?)
     my_push_prefs: () => ({ v: 1, off: [], quiet_from: null, quiet_to: null, cap: 0, cap_default: 15, cats: ["ute", "chat", "dm", "plan", "kaos", "bar", "kul", "vanner", "film"], tonight: 2 }),
     // --- Topp, Profil, a bar sheet ---
     meriter_board: () => [{ name: "Oskar", is_me: false, meriter: 40, rank: 1 }, { name: "Anton", is_me: true, meriter: 12, rank: 2 }],   // meriter.js
