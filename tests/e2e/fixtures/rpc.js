@@ -97,6 +97,7 @@ function build(now) {
     account_config: () => ({ v: 1 }),
     my_visibility: () => ({ v: 1, friends_only: false }),
     bold_flags_get: () => ({ bold_skal_v2: false, bold_bump: false, bold_replay: false, bold_krog: false, bold_hemlage: false }),   // bold.js (all flags OFF until release)
+    my_night_report: () => null,   // after.js boot check (no report yet)
     film_stock: () => ({ film: "kvall", locked: false, set_by: null }),   // film.js / filmfx.js (film for tonight; default Kvällsljus 400)                                   // pnvis.js (Alla · Bara vänner · Spöke)
     // spel-ui.js launchSync(): same dates as its PN_LAUNCH fallback, so "Nytt" does not change with the mock
     game_launch_dates: () => ({ v: 1, games: { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" } }),
