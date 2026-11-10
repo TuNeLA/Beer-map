@@ -282,6 +282,11 @@ function noJump(fr, w0, h0, moveMax) {
       await wait(page, 450);
       const r0 = await page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; }, sel);
       if (!r0) { ok(false, "B6 " + name + " opens", null); continue; }
+      if (btn === "#pn-ikv2") {   // coordinator 10 Nov: the games row "Vem fixar nästa?" (GAMES.menuRows) is in the Ikväll menu
+        const g = await page.evaluate(() => { const m = document.getElementById("pn-ikm"), rows = m ? [...m.querySelectorAll(".pn-ikm-row")].map((r) => r.textContent.trim()) : [];
+          return { api: !!(window.GAMES && window.GAMES.menuRows && window.RUNDAN && window.RUNDAN.openSpin), rows, vem: rows.some((t) => /Vem fixar/.test(t)) }; });
+        ok(g.api && g.vem, "Ikväll menu has the 'Vem fixar nästa?' row (GAMES.menuRows)", g);
+      }
       const p = boxFrames(page, sel, 400);
       await page.keyboard.press("Escape");   // the same close() as a tap outside, without tapping something on the map
       const fr = await p;
