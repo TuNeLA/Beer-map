@@ -258,7 +258,7 @@ async function openGroup(page) {
       // Medlemmar
       await page.evaluate(() => { const b = document.querySelector(".gpg-back"); if (b) b.click(); }); await wait(page, 300);
       await page.evaluate(() => { const m = document.querySelector(".gmain"); if (m) m.click(); }); await wait(page, 1800);
-      ok("Medlemmar: 🚗 kör next to Oskar", await page.evaluate(() => { const r = [...document.querySelectorAll(".st-row")].find((x) => /Oskar/.test(x.textContent)); return !!r && !!r.querySelector(".skj-tag"); }));
+      ok("Medlemmar: 'Kör ikväll' role pill next to Oskar (R1-30, lane ride)", await page.evaluate(() => { const r = [...document.querySelectorAll(".st-row")].find((x) => /Oskar/.test(x.textContent)); return !!r && !!r.querySelector(".skj-role") && /Kör ikväll/.test(r.textContent); }));
       await shot(page, "21-medlemmar-kor");
       await ctx.close();
     }
