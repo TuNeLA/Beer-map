@@ -92,7 +92,7 @@ window.FORFEST_CONTENT = {
     "uks|Vem ä mest trolig att bli bästa kompis med en älg?",
     "u|Vem ä mest trolig att ha en powerpoint om varför Dalarna ä bäst?",
     "s|Vem ä mest trolig att gömma godis i packningen på ett fältprov?",
-    "ks|Vem ä mest trolig att säga 'bara en till' och mena tio?"
+    "ks|Vem ä mest trolig att säga 'bara ett avsnitt till' och se hela säsongen?"
   ],
 
   /* ---------- Jag har aldrig ---------- */

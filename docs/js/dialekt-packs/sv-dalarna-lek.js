@@ -55,7 +55,7 @@
   "forfest.mest.48": "Vem ä mest trolig att bli bästa kompis med en älg?",
   "forfest.mest.49": "Vem ä mest trolig att ha en powerpoint om varför Dalarna ä bäst?",
   "forfest.mest.50": "Vem ä mest trolig att gömma godis i packningen på ett fältprov?",
-  "forfest.mest.51": "Vem ä mest trolig att säga 'bara en till' och mena tio?",
+  "forfest.mest.51": "Vem ä mest trolig att säga 'bara ett avsnitt till' och se hela säsongen?",
   "forfest.aldrig.7": "Jag har aldrig åkt Vasaloppet. Int' ens öppet spår.",
   "forfest.aldrig.12": "Jag har aldrig ringt nån som jag lovat att int' ringa.",
   "forfest.aldrig.22": "Jag har aldrig ätit en hel fältranson och gillat dä.",
