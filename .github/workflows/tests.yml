@@ -55,6 +55,8 @@ jobs:
             filter: '^(cln)$'
           - name: dm
             filter: '^(dm)$'
+          - name: dialekt
+            filter: '^(dialekt)$'
           - name: txtfit
             filter: '^(txtfit)$'
           - name: ds-motion

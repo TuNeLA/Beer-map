@@ -88,6 +88,7 @@ run pf         $B pf-pw.js         # pin follow (pinfolj.js) + people count / "F
 run lg         $B lg-pw.js         # PNLOG usage + position log, consent, owner panel (stats.html), lx part (lgx-part.js)
 run cln        $B cln-pw.js        # clean-up: vitals only with the log on, Nytt dates, rpc_bundle2, not_member, medals throttle
 run dm         $B dm-pw.js         # dm B1: DM from Vänner → Meddelanden loads, sends, no not_member toast; not_member cache levels
+run dialekt    $B dialekt-pw.js    # dialect-core D2: DIALEKT lookup order, B→A, off, vars, variant per night, 290 kommuner, settings row
 run txtfit     $B txtfit-pw.js     # every rank / KAOS / LIVE text fits at 390 px
 run ds-motion  $B ds-motion-pw.js  # ds10 motion rules
 run gw         $B gw-pw.js         # competitor-research build (gw.js): Ute ikväll?, previews, honest crowd, Följ mig hem timer
