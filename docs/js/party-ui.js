@@ -380,10 +380,13 @@
         if (r.error) {
           var ec = errCode(r.error);
           toast(ERR[ec] || "Gick int' att skapa rummet.", { err: true, id: "party-err" });
-          if (ec === "room_exists" && group && group.id) A.rpc("party_group", { p_group_id: group.id }).then(function (r2) {   // 0440: show the code to join
-            var g2 = r2 && !r2.error ? A.parseData(r2.data) : null, rm = g2 && g2.room;
-            if (rm && rm.code && !R) renderStart(group, rm.code);
-          });
+          if (ec === "room_exists" && group && group.id) (function look(n) {   // 0440: show the group room's code to join
+            A.rpc("party_group", { p_group_id: group.id }).then(function (r2) {
+              var g2 = r2 && !r2.error ? A.parseData(r2.data) : null, rm = g2 && g2.room;
+              if (rm && rm.code) { if (!R && isOpen()) renderStart(group, rm.code); }
+              else if (r2 && r2.warm != null && !n) setTimeout(function () { look(1); }, 900);   // warm.js served an old answer: ask the server
+            });
+          })(0);
           return;
         }
         attachView(A.parseData(r.data));

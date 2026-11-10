@@ -255,7 +255,7 @@ const spelOpen = (page, what) => page.evaluate(([g, w]) => w ? window.SPEL.play(
       const S = St({ roomExists: true });
       const { ctx, page } = await open(browser, 390, S);
       await page.evaluate((g) => window.PARTY.open({ group: g }), G); await page.waitForSelector(".pt-hero", { timeout: 20000 }).catch(() => {}); await wait(page, 1200);
-      await tapText(page, "#pt button", "Skapa rum"); await wait(page, 1800);
+      await tapText(page, "#pt button", "Skapa rum"); await wait(page, 3000);
       const ts = await toasts(page), bs = await texts(page, "#pt button");
       ok("GM1 party: room_exists (0440) → 'Gänget har redan ett rum' + join with its code", ts.some((t) => /redan ett rum/.test(t)) && bs.some((t) => /GÅ MED I QRST/.test(t)), { ts, bs });
       await ctx.close();
