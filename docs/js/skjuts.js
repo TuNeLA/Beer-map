@@ -10,7 +10,11 @@
      🙋 Jag kommer / ✋ Kan int'. The asker sees who answered.
    - 🚗 Jag kör ikväll: a status for tonight (resets 05:00). Group page shows "🚗 Kör ikväll: …" + "Skjuts?" per driver,
      Medlemmar shows 🚗 at the name. Never counted as drinking (no beers / drink_log / meriter).
-   - A missing RPC (old server) = every part hides. Swedish only. Styles: skjuts.css. */
+   - A missing RPC (old server) = every part hides. Swedish only. Styles: skjuts.css.
+   - lane ride (F1, 0420): with ride_flags.ride_v2 ON, js/ride.js (window.RIDE) takes over "Hämta mig" (all drivers, first
+     accept wins, live driver card). This file then polls ride_poll (a superset of pickup_poll) and hands the ride part to
+     RIDE.onData. Flag off / old server / no ride.js = everything below works exactly as before.
+   - R1-30: the member row shows a neutral role pill "Kör ikväll" (PNI taxi) + a text button "Skjuts?" (like "Lägg till vän"). */
 (function () {
   "use strict";
   var U = window.U;
@@ -35,6 +39,8 @@
   }
   function data(r) { return r && !r.error ? A.parseData(r.data) : null; }
   function push(body) { try { if (A.PUSH_ON && A.invoke) A.invoke("notify-group", body); } catch (e) {} }
+  function RD() { var r = window.RIDE; return r && r.on && r.on() ? r : null; }   // lane ride: ride v2 on?
+  function pni(n) { try { return window.PNI ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
   function h(tag, attrs, kids) {
     var e = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) {
@@ -73,10 +79,13 @@
     try { if (!A.authed()) return Promise.resolve(P); } catch (e) {}
     if (!force && Date.now() - pollAt < POLL_MS) return Promise.resolve(P);
     busy = true;
-    return call("pickup_poll").then(function (r) {
+    var rd = RD();
+    return call(rd ? "ride_poll" : "pickup_poll", rd ? rd.pollArgs() : undefined).then(function (r) {
       busy = false; pollAt = Date.now();
+      if (rd && r.error && off) { off = false; rd.off(); return poll(true); }   // lane ride: server without 0420 → the old poll
       var d = data(r); if (!d) return P;
       var prev = P; P = d;
+      if (rd) { try { rd.onData(d.ride || null); } catch (e) {} }
       announce(prev);
       fastLoop();
       try { if (A.updateCounts) A.updateCounts(); } catch (e) {}
@@ -84,13 +93,14 @@
       if (want) {   // ?pickup=<id> (push tap): a request to me, or my own (answer push)
         var w = (P.incoming || []).filter(function (x) { return String(x.id) === want; })[0];
         if (w) { want = null; incomingSheet(w); } else if (P.mine && String(P.mine.id) === want) { want = null; liveSheet(); }
+        else if (RD() && RD().has(want)) { var wi = want; want = null; RD().openId(wi); }   // lane ride
       }
       return P;
     });
   }
   function fastLoop() {
     clearTimeout(fastT); fastT = 0;
-    if (!mineLive() && !incomingLive().length) return;
+    if (!mineLive() && !incomingLive().length && !(RD() && RD().live())) return;
     fastT = setTimeout(function () {
       if (document.hidden) { fastLoop(); return; }
       poll(true).then(function () { maybePing(); });
@@ -125,6 +135,7 @@
   function openPickup(opts) {
     opts = opts || {};
     if (off || !A || !A.LIVE) return;
+    if (RD() && RD().open(opts)) return;   // lane ride: ride v2 request sheet
     if (mineLive() && mineLive().kind === "hamta") { liveSheet(); return; }
     A.openSheet("🆘 Hämta mig", function (body) {
       var box = h("div", { class: "pk" });
@@ -308,6 +319,7 @@
     sw.addEventListener("click", function () { setDriver(!driving(), sw); });
     ikvEl.appendChild(h("div", { class: "toggle-row pk-ikv-row" }, [h("span", { class: "pk-ikv-t" }, [h("b", { text: "🚗 Jag kör ikväll" }),
       h("small", { text: "Gänget ser 🚗 vid ditt namn och kan fråga om skjuts. Räknas aldrig som dryck. Nollställs kl 05." })]), sw]));
+    try { var ex = RD() && RD().ikvExtra(on); if (ex) ikvEl.appendChild(ex); } catch (e) {}   // lane ride: car note + the ÖL! rule
   }
 
   /* ---------- group page + Medlemmar ---------- */
@@ -326,6 +338,7 @@
     return c.p;
   }
   function rideAsk(g, d, btn) {
+    if (RD()) { openPickup({ group: g }); return; }   // lane ride: with ride v2 every ask goes to all drivers (Hem-läge row too)
     if (btn) btn.disabled = true;
     fix(5000).then(function (p) {
       return call("ride_ask", { p_group_id: g.id, p_k: d.k, p_lat: p ? p.lat : null, p_lng: p ? p.lng : null, p_name: myName() });
@@ -357,9 +370,13 @@
       t.innerHTML = "";
       if (!list.length) { t.hidden = true; return; }
       t.hidden = false;
-      var row = h("div", { class: "skj-card live" }, [h("span", { class: "skj-ic", "aria-hidden": "true", text: "🚗" }),
+      var row = h("div", { class: "skj-card live" }, [h("span", { class: "skj-ic", "aria-hidden": "true", html: pni("taxi") }),
         h("span", { class: "skj-txt" }, [h("b", { text: "Kör ikväll" }), h("small", { text: list.map(function (d) { return d.is_me ? "du" : d.name; }).join(", ") })])]);
       var btns = h("span", { class: "skj-btns" });
+      if (RD() && list.some(function (d) { return !d.is_me; })) {   // lane ride: one request to every driver, not one per driver
+        btns.appendChild(h("button", { type: "button", class: "btn btn-small skj-ask", text: "Hämta mig", onclick: function (e) { e.stopPropagation(); openPickup({ group: g }); } }));
+        row.appendChild(btns); t.appendChild(row); return;
+      }
       list.filter(function (d) { return !d.is_me; }).slice(0, 3).forEach(function (d) {
         btns.appendChild(h("button", { type: "button", class: "btn btn-small skj-ask", text: list.filter(function (x) { return !x.is_me; }).length > 1 ? "Skjuts? " + d.name.split(" ")[0] : "Skjuts?", "aria-label": "Fråga " + d.name + " om skjuts",
           onclick: function (e) { e.stopPropagation(); rideAsk(g, d, e.currentTarget); } }));
@@ -380,22 +397,27 @@
   function paintRow(gid, m, row) {
     var c = drv[gid], list = (c && c.list) || [];
     var d = list.filter(function (x) { return (m.is_me && x.is_me) || (m.k && x.k === m.k); })[0];
-    var tag = row.querySelector(".skj-tag");
-    if (!d) { if (tag) tag.remove(); return; }
+    var tag = row.querySelector(".skj-role"), slot = row.querySelector(".skj-slot");
+    if (!d) { if (tag) tag.remove(); if (slot) slot.remove(); return; }
     if (tag) return;
-    var nm = row.querySelector(".st-name") || row;
-    tag = h("span", { class: "skj-tag" }, [h("span", { text: "🚗 kör" })]);
+    // R1-30: a neutral role pill like Ägare / Chef (ds53) + a text button like "Lägg till vän" (no one-off blue pill, no emoji)
+    var main = row.querySelector(".st-main") || row, roles = main.querySelector(".st-roles");
+    if (!roles) { roles = h("span", { class: "st-roles skj-roles" }); var ti = main.querySelector(".st-title"), nm = main.querySelector(".st-name");
+      var after = ti || nm; if (after && after.parentNode === main) main.insertBefore(roles, after.nextSibling); else main.appendChild(roles); }
+    tag = h("span", { class: "role-b skj-role", html: pni("taxi") + "<span>Kör ikväll</span>" });
+    roles.appendChild(tag);
     if (!m.is_me) {
-      var b = h("button", { type: "button", class: "skj-ask-s", text: "Skjuts?", "aria-label": "Fråga " + (m.name || "") + " om skjuts" });
-      b.addEventListener("click", function (e) { e.stopPropagation(); rideAsk({ id: gid }, d, b); });
+      var b = h("button", { type: "button", class: "skj-ask-t", text: "Skjuts?", "aria-label": "Fråga " + (m.name || "") + " om skjuts" });
+      b.addEventListener("click", function (e) { e.stopPropagation(); if (RD()) openPickup({ group: { id: gid } }); else rideAsk({ id: gid }, d, b); });
       b.addEventListener("keydown", function (e) { e.stopPropagation(); });
-      tag.appendChild(b);
+      slot = h("span", { class: "skj-slot" }, [b]);
+      if (roles.parentNode) roles.parentNode.insertBefore(slot, roles.nextSibling);
     }
-    nm.parentNode.insertBefore(tag, nm.nextSibling);
   }
 
   /* ---------- HUD chip ---------- */
   function chip() {
+    var rc = RD() && RD().chip(); if (rc) return rc;   // lane ride
     if (off || !P) return "";
     var inc = incomingLive().filter(function (x) { return x.my_ans !== "kan_inte"; })[0];
     if (inc) return '<button type="button" class="hx-chip pk-chip-hud" data-hx="pk-in:' + esc(String(inc.id)) + '">' + esc((inc.kind === "skjuts" ? "🚗 " + inc.name + ": Skjuts?" : "🆘 " + inc.name + " vill bli hämtad") + (inc.my_ans === "kommer" ? " · du kommer" : "")) + "</button>";
@@ -408,14 +430,22 @@
   window.SKJUTS = {
     init: function (api) {
       A = api;
+      try { if (window.RIDE) window.RIDE.init(api, { fix: fix, sos112: sos112, driving: driving, setDriver: function (on, b) { setDriver(on, b); },
+        force: function () { return poll(true); }, fast: function () { fastLoop(); } }); } catch (e) {}   // lane ride
       document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(true); });
       try { var q = new URLSearchParams(location.search).get("pickup"); if (q && /^\d{1,18}$/.test(q)) want = q; } catch (e) {}
     },
-    onAuthed: function () { poll(true); },
-    onPoll: function () { poll(false); },
+    onAuthed: function () {
+      var rd = window.RIDE;
+      if (rd && rd.onAuthed) { Promise.resolve(rd.onAuthed()).then(function () { poll(true); }, function () { poll(true); }); return; }   // lane ride: flags first
+      poll(true);
+    },
+    onPoll: function () { var rd = window.RIDE; if (rd && rd.loadFlags) rd.loadFlags(false); poll(false); },
     hudChipsHTML: function () { try { return chip(); } catch (e) { return ""; } },
     hudClick: function (a) {
       a = String(a || "");
+      if (RD() && (a.indexOf("rd:") === 0 || (a.indexOf("pk-in:") === 0 && RD().has(a.slice(6))))) { RD().openId(a.indexOf("rd:") === 0 ? a.slice(3) : a.slice(6)); return; }   // lane ride
+      if (RD() && a.indexOf("pk-in:") === 0 && !(P && (P.incoming || []).some(function (y) { return String(y.id) === a.slice(6); }))) { want = a.slice(6); poll(true); return; }
       if (a === "pk-mine") liveSheet();
       else if (a.indexOf("pk-in:") === 0) { var x = (P && P.incoming || []).filter(function (y) { return String(y.id) === a.slice(6); })[0]; if (x) incomingSheet(x); }
     },
