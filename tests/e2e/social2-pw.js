@@ -111,7 +111,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok("inbox actions inline", (await page.$$("#inv-pane-i .ib-friend .ib-b")).length === 2 && (await page.$$("#inv-pane-i .ib-inv .ib-b")).length === 3 && (await page.$$("#inv-pane-i .ib-duel .ib-b")).length === 2);
     await shot(page, "inbox");
     ok("badge cleared after open", await page.evaluate(() => document.getElementById("ib-badge").hidden));
-    await page.click("#inv-pane-i .ib-friend .btn-green"); await wait(page, 800);
+    await page.click("#inv-pane-i .ib-friend .sa-ib-yes"); await wait(page, 800);   // social-a R1-09: the answer is tonal (was filled green)
     ok("friend ✅ → friend_answer", calls.some((c) => c[0] === "friend_answer" && c[1].p_id === 5 && c[1].p_accept === true));
     // tab switch back to Grupper hides the inbox pane
     await page.click('.inv-tabs button[data-t="g"]'); await wait(page, 300);
