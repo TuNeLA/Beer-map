@@ -72,6 +72,8 @@ jobs:
             filter: '^(tiers3|map4|barzoom)$'
           - name: map-3
             filter: '^(glfix-avpins|zones|mbx)$'
+          - name: map-lane
+            filter: '^(map)$'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

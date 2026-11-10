@@ -244,7 +244,7 @@ async function open(browser, o = {}) {
       ok("8 demo off by default: no chip", await page.evaluate(() => { window.GW._demo(); const d = document.querySelector(".gw-demo"); return !d || d.hidden; }));
       await page.evaluate(() => { localStorage.setItem("olnu.visning", "1"); window.GW._demo(); }); await wait(page, 300);
       const demo = await page.evaluate(() => { const d = document.querySelector(".gw-demo"); return d && !d.hidden ? d.textContent : null; });
-      ok("8 demo on → 'Demo' chip", !!demo && /Demo/.test(demo), demo);
+      ok("8 demo removed (map M4): no 'Demo' chip even with olnu.visning=1", !demo, demo);
       await shot(page, "gw-8-demo-label");
       await page.evaluate(() => { localStorage.setItem("olnu.visning", "0"); window.GW._demo(); });
       ok("8 push budget label: '4 (standard)'", await page.evaluate(() => { const s = document.createElement("div"); return !!window.PUSH && typeof window.PUSH.prefsSection === "function"; }) && /4 \(standard\)/.test(require("fs").readFileSync(__dirname + "/../../docs/js/push.js", "utf8")));

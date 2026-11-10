@@ -2,7 +2,7 @@
    window.TIERS. No hooks, no RPC, no new buttons, no new markers. app.js calls TIERS.apply() after it draws its bar markers
    (render, renderPlainBars) and on moveend / popupopen / popupclose; the same marker elements only get a class:
    - .cm-full = the full pill: type icon + "5 🍺" + crowd word (Lugnt / Livligt / Packat) + name label (+ 👑 🏰 🚪 🪖 badges).
-   - .cm-dot  = a small type-coloured dot (the ICONS glyph at ~19 px, scale .8), no pill, no label, no badge. Nothing is removed:
+   - .cm-dot  = the same type icon at the SAME size (map B9), no pill, no label, no badge. Nothing is removed:
                 the dot is still a 44 × 44 px tap target and opens the normal bar sheet.
    Who gets the full pill (in view only; markers off screen keep their tier until they come into view):
      1. the selected bar (its sheet / popup is open) always;
@@ -12,6 +12,7 @@
      4. a full pill may not overlap a full pill with higher priority (box ≈ icon + count pill, 48 × 48 px) → it becomes a dot;
      5. eligible: bars with people / check-ins / call-outs from zoom 11; 👑 / 📅 bars from zoom 13; empty bars from zoom 16;
         never under the HUD (top bar, ticker, round buttons on the right): there it stays a dot (owner: "piles up under the buttons").
+        map B9: a dot has the same icon size as a full pill, so this hides only the pill / badges / name, never shrinks the icon.
    Zoom ≥ 16 (.tz-hi): a clear centred disc (full 32 px, dot 28 px) with every badge in a fixed slot around it.
    Zoom rules (CSS here): z < 12.5 (olnu-zxlo) dots are hidden (only heat + the few top pills); z13 icons back, empty dots
    hidden; z ≥ 14 every dot shows. Tier changes fade / scale in 160 ms (none with prefers-reduced-motion).
@@ -23,8 +24,8 @@
   var BOX_W = 48, BOX_H = 48, MARGIN = 40;
   var CSS =
     // dot: icon scaled to ~19 px, everything else faded out (visibility so it is not tappable / not read by screen readers)
-    ".cm .bar-ico{transition:transform .16s var(--e-std),opacity .16s var(--e-std)}" +
-    ".cm.cm-dot .bar-ico{transform:translate(-50%,-50%) scale(.8)}" +
+    // map B9: the icon keeps its size in both tiers (only pill, badges and name fade); no transform transition on markers
+    ".cm .bar-ico{transition:opacity .16s var(--e-std)}" +
     ".cm.cm-dot.cm-empty .bar-ico{opacity:.82}" +
     ".cm .pill,.cm .cm-rally,.cm .cm-ci,.cm .cm-b,.cm .cm-lbl,.cm .bi-tag,.cm .bi-ev,.cm .bi-flag,.cm .bi-q{transition:opacity .16s var(--e-std),visibility 0s linear 0s}" +
     ".cm.cm-dot .pill,.cm.cm-dot .cm-rally,.cm.cm-dot .cm-ci,.cm.cm-dot .cm-b,.cm.cm-dot .cm-lbl,.cm.cm-dot .bi-tag,.cm.cm-dot .bi-ev,.cm.cm-dot .bi-flag,.cm.cm-dot .bi-q" +
@@ -45,7 +46,6 @@
     // 👑 top-left · 🪖 top-right · 🎤/📅 event top-left on the disc · price tag top-right · 🚪 left · 🏰 right · pill below · name under it
     ".tz-hi .cm .bar-ico{width:32px;height:32px}" +
     ".tz-hi .cm .bar-ico.ic-mk>svg.ic{width:18px;height:18px}" +
-    ".tz-hi .cm.cm-dot .bar-ico{transform:translate(-50%,-50%) scale(.875)}" +
     ".tz-hi .cm.cm-dot.cm-empty .bar-ico{opacity:.92}" +
     ".tz-hi .cm .bi-ev{left:-7px;top:-7px;font-size:13px}" +
     ".tz-hi .cm .cm-king{left:-4px;top:-6px;font-size:14px}" +
@@ -104,7 +104,9 @@
   }
   // HUD zones (top bar, ticker, streak chip, right-hand round buttons): a full pill there would be half hidden → it stays a dot.
   // Rects are read at most every 2 s (or after a resize), never on each pan.
-  var HUD_SEL = ".topbar, .ticker, .hud-left, #btn-heat, #btn-ghostpins, #btn-taxi, #btn-evs, #btn-locate, #chaos, #rally";
+  // map M3: the real rail (#pn-ghost, #pn-evs, #btn-more) + the dock / ÖL! / Annat / ⓘ, banners and toasts; .hud-left = its chips
+  var HUD_SEL = ".topbar, .ticker, .hud-left > *, .pn-rail, #btn-more, #btn-heat, #btn-ghostpins, #btn-taxi, #btn-evs, #btn-locate, #btn-attrib, " +
+    "#other-wrap, .dock, #chaos, #rally, #toasts .toast";
   var hud = [], hudAt = 0, hudW = 0, hudH = 0;
   function hudZones(map, W, H) {
     var now = Date.now();
@@ -138,9 +140,11 @@
         var ic = m.getElement && m.getElement(), c = m.options && m.options.olnuC; if (!ic || !c) return;
         var p = map.latLngToContainerPoint(m.getLatLng());
         if (p.x < -MARGIN || p.y < -MARGIN || p.x > W + MARGIN || p.y > H + MARGIN) return;   // off screen: keep its tier
-        var r = rank(c), sel = (m.isPopupOpen && m.isPopupOpen()) || ic.classList.contains("cm-sel") || !!(c.bar && imp[String(c.bar.id)]);
+        // map M3: the open bar is always full; "my" bars too, but not under the UI (there only their pill hides, the icon stays)
+        var hard = (m.isPopupOpen && m.isPopupOpen()) || ic.classList.contains("cm-sel"), uh = underHud(zs, p.x, p.y);
+        var r = rank(c), sel = hard || (!uh && !!(c.bar && imp[String(c.bar.id)]));
         var dx = p.x - cx, dy = p.y - cy, near = 1 - Math.min(1, Math.sqrt(dx * dx + dy * dy) / diag);
-        cand.push({ m: m, ic: ic, x: p.x, y: p.y, sel: sel, ok: sel || (z >= r.el && !underHud(zs, p.x, p.y)), s: (sel ? 1e12 : 0) + r.s + (m._olnuTier === "f" ? 500 : 0) + near * 400 });
+        cand.push({ m: m, ic: ic, x: p.x, y: p.y, sel: sel, ok: sel || (z >= r.el && !uh), s: (sel ? 1e12 : 0) + r.s + (m._olnuTier === "f" ? 500 : 0) + near * 400 });
       });
     }
     cand.sort(function (a, b) { return b.s - a.s; });
@@ -240,5 +244,7 @@
     lstats.n++; lstats.last = performance.now() - t0; lstats.items = items.length; lstats.todo = todo.length; lstats.parts = obstacles.length + badges.length + labs.length;
     return true;
   }
-  window.TIERS = { apply: apply, onAdd: onAdd, capFor: capFor, rank: rank, labels: labels, stats: stats, lstats: lstats, _byId: tierById };
+  // map M3: the UI-safe rects in map container px ({l, t, r, b}, 4 px margin), for zones.js labels and tests
+  function safeRects(map) { try { var s = map.getSize(); return hudZones(map, s.x, s.y).slice(); } catch (e) { return []; } }
+  window.TIERS = { apply: apply, onAdd: onAdd, capFor: capFor, rank: rank, labels: labels, stats: stats, lstats: lstats, _byId: tierById, safeRects: safeRects };
 })();

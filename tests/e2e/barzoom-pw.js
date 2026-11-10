@@ -59,18 +59,18 @@ const ZC = { v: 1, at: new Date().toISOString(), k: 3, total: 23, some: true,
   ok(Array.isArray(d.glowNearCap) && d.glowNearCap.length === 0, "no ground glow next to a lit building part (" + JSON.stringify(d.glowNearCap) + ")");
   ok(shapes.length === 0, "no 2D barlit / arenaglow shapes (dashed house outlines) on the Mapbox map (" + JSON.stringify(shapes) + ")");
   ok(typeof d.heatNow === "number" ? d.heatNow < 0.05 : true, "heat is off at z18 (" + d.heatNow + ")");
-  // kommun view over Ludvika / Dalarna (Leaflet z8): clear solid kommun borders, home kommun stronger
+  // kommun view over Ludvika / Dalarna (Leaflet z8). map M1 (owner 2026-11-09): NO border lines for all kommuner; the soft fill stays
   await page.evaluate(() => { const A = PNDS._A(); A.map.setView([60.15, 15.19], 8, { animate: false }); });
   await settle(4000);
   await page.waitForFunction(() => window.ZONES && ZONES._geo && ZONES._geo().k, null, { timeout: 30000 }).catch(() => console.log("kommun borders late"));
-  await page.waitForFunction(() => { const g = BASEMAP.mapbox().getMapboxMap(); return g.getLayer("olnu-zk-line") && g.queryRenderedFeatures({ layers: ["olnu-zk-line"] }).length > 3; }, null, { timeout: 25000 }).catch(() => console.log("no kommun layer yet"));
+  await page.waitForFunction(() => { const g = BASEMAP.mapbox().getMapboxMap(); return g.getLayer("olnu-zk-fill") && g.queryRenderedFeatures({ layers: ["olnu-zk-fill"] }).length > 0; }, null, { timeout: 25000 }).catch(() => console.log("no kommun fill yet"));
   await settle(1500);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast, .dl-cap").forEach((t) => t.remove()));
   await page.screenshot({ path: SP + "logs/barzoom-" + TAG + "-z8.png" });
-  const k = await page.evaluate(() => { const g = BASEMAP.mapbox().getMapboxMap(), id = "olnu-zk-line"; if (!g.getLayer(id)) return { none: 1 };
-    return { dash: g.getPaintProperty(id, "line-dasharray") || null, n: g.queryRenderedFeatures({ layers: [id] }).length }; });
+  const k = await page.evaluate(() => { const g = BASEMAP.mapbox().getMapboxMap(), r = (id) => g.getLayer(id) ? g.queryRenderedFeatures({ layers: [id] }).length : -1;
+    return { line: r("olnu-zk-line"), you: r("olnu-zk-you-line"), fill: r("olnu-zk-fill") }; });
   console.log("KOMMUN", JSON.stringify(k));
-  ok(k && !k.none && !k.dash && k.n > 3, "kommun view: solid kommun borders drawn (" + JSON.stringify(k) + ")");
+  ok(k.line === -1 && k.you <= 1 && k.fill > 0, "kommun view: no all-kommun border lines (M1), at most the own kommun, soft fill drawn (" + JSON.stringify(k) + ")");
   ok(errs.length === 0, "no page errors " + JSON.stringify(errs.slice(0, 3)));
   await closeCounted(ctx, page, "barzoom-" + TAG);
   console.log("RESULT pass " + pass + " fail " + fail);
