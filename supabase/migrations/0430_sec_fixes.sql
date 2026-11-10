@@ -11,6 +11,9 @@
 --      file wins. This re-adds the 0340 condition when it is missing (the 0321 pin-follow reads stay).
 --  F2  "Bara vänner": strangers still got the person's own check-in row (bar + 15-min time) in poll_v2, poll_public
 --      and live_checkins. Now a friends-only person's check-in reaches only the people who know him.
+--  11 Nov: "know" = shared group OR accepted friend (olnu_are_friends), never a blocked person. A friend outside your
+--      groups gets the same row as with "Alla" (area / bar, no name). F1b / F2b upgrade a database that already has
+--      the first 0340 / 0430 text. People who are not friends-only: no change at all.
 --  F3  Owner key rate limit was ONE global counter: 21 wrong keys from anyone locked the owner out of stats.html for
 --      an hour (and stats.html then logs the owner out). Now the counter is per caller (signed-in user, else the
 --      client IP header, else one shared 'anon' bucket as before) with a global ceiling of 1000 per hour.
@@ -52,7 +55,15 @@ select public.olnu_sec_patch('public.olnu_pins(uuid, double precision, double pr
   array['and not public.olnu_ub_hidden(p_uid, c.user_id);'],
   array['and not public.olnu_ub_hidden(p_uid, c.user_id)
      -- 0340 (re-added by 0430): "Bara vänner": a stranger never gets this user''s pin
-     and (c.known or not exists (select 1 from public.olnu_visibility v where v.user_id = c.user_id and v.friends_only));']);
+     and (c.known or not exists (select 1 from public.olnu_visibility v where v.user_id = c.user_id and v.friends_only)
+          or public.olnu_are_friends(p_uid, c.user_id));']);
+
+-- F1b: a database that already has the first 0340 text (group mates only) gets the friends rule (marker = the call).
+select public.olnu_sec_patch('public.olnu_pins(uuid, double precision, double precision, double precision, double precision)',
+  'olnu_are_friends(p_uid, c.user_id)',
+  array['and (c.known or not exists (select 1 from public.olnu_visibility v where v.user_id = c.user_id and v.friends_only));'],
+  array['and (c.known or not exists (select 1 from public.olnu_visibility v where v.user_id = c.user_id and v.friends_only)
+          or public.olnu_are_friends(p_uid, c.user_id));']);
 
 -- ---------- F2: friends-only check-ins never reach strangers ----------
 select public.olnu_sec_patch('public.poll_v2(double precision, double precision, double precision, double precision, timestamp with time zone, boolean)',
@@ -60,7 +71,8 @@ select public.olnu_sec_patch('public.poll_v2(double precision, double precision,
   array['where not public.olnu_ub_hidden(v_uid, c.user_id) and (c.user_id = v_uid or f.fname is not null'],
   array['where not public.olnu_ub_hidden(v_uid, c.user_id) /*sec0430*/
                         and (c.user_id = v_uid or f.fname is not null
-                             or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only))
+                             or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only)
+                             or public.olnu_are_friends(v_uid, c.user_id))
                         and (c.user_id = v_uid or f.fname is not null']);
 
 select public.olnu_sec_patch('public.poll_public(double precision, double precision, double precision, double precision, boolean)',
@@ -74,8 +86,22 @@ select public.olnu_sec_patch('public.live_checkins()',
   array['where c.expires_at > now() and not public.olnu_ub_hidden(v_uid, c.user_id) and ('],
   array['where c.expires_at > now() and not public.olnu_ub_hidden(v_uid, c.user_id) /*sec0430*/
      and (c.user_id = v_uid or f.fname is not null
-          or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only))
+          or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only)
+          or public.olnu_are_friends(v_uid, c.user_id))
      and (']);
+
+-- F2b: a database that already has the first 0430 F2 text gets the friends rule (marker = the call).
+select public.olnu_sec_patch('public.poll_v2(double precision, double precision, double precision, double precision, timestamp with time zone, boolean)',
+  'olnu_are_friends(v_uid, c.user_id)',
+  array['or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only))'],
+  array['or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only)
+                             or public.olnu_are_friends(v_uid, c.user_id))']);
+
+select public.olnu_sec_patch('public.live_checkins()',
+  'olnu_are_friends(v_uid, c.user_id)',
+  array['or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only))'],
+  array['or not exists (select 1 from public.olnu_visibility v0 where v0.user_id = c.user_id and v0.friends_only)
+          or public.olnu_are_friends(v_uid, c.user_id))']);
 
 -- ---------- F3: owner key rate limit per caller, not global ----------
 -- The caller bucket: the signed-in user, else the client IP that the API gateway puts in the request headers

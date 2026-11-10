@@ -1,4 +1,4 @@
--- sec lane tests for 0430 (Bara vänner check-ins, olnu_pins order, owner key limit per caller, group_league),
+-- sec lane tests for 0340 + 0430 (Bara vänner: group mates + accepted friends, check-ins, olnu_pins order, owner key limit per caller, group_league),
 -- 0431 (block filter) and 0435 (crash alert). Run on STAGING after 0430/0431/0435 (never on live): paste into the SQL
 -- editor or the Supabase MCP execute_sql. One DO block. It ALWAYS ends with "raise exception 'SEC-TEST …'", so every
 -- row it made (fresh users that exist only inside this transaction, a group, pins, rallies, fake log rows, the alert
@@ -11,6 +11,8 @@ declare
   um uuid := gen_random_uuid();   -- M: group mate of V (control: still sees V)
   us uuid := gen_random_uuid();   -- S: stranger
   uo uuid := gen_random_uuid();   -- O: the owner's phone (crash alert)
+  uf uuid := gen_random_uuid();   -- F: accepted friend of V, no shared group
+  ubf uuid := gen_random_uuid();  -- BF: accepted friend of V whom V blocked
   g uuid := gen_random_uuid();
   j jsonb; t text; n int; ok boolean; vk text; e text;
   cu uuid[] := array[]::uuid[]; i int;
@@ -18,11 +20,15 @@ declare
 begin
   -- ---------- data ----------
   insert into auth.users (id, aud, role, is_anonymous, created_at, updated_at)
-    select x, 'authenticated', 'authenticated', true, now(), now() from unnest(array[uv, uk, um, us, uo]) x;
+    select x, 'authenticated', 'authenticated', true, now(), now() from unnest(array[uv, uk, um, us, uo, uf, ubf]) x;
   insert into public.groups (id, name, code) values (g, 'Sec testgäng', 'S' || substr(translate(upper(md5(random()::text)), '01IO', '2345'), 1, 5));
   insert into public.group_members (group_id, user_id, display_name) values (g, uv, 'SecVicZq'), (g, uk, 'SecBlkZq'), (g, um, 'SecMateZq');
   insert into public.beers (user_id, lat, lng, precise, beer_count, expires_at)
-    select u, 68.35 + x * 0.001, 18.80, false, 1, now() + interval '3 hours' from (values (uv, 1), (uk, 2), (um, 3), (us, 4)) v(u, x);
+    select u, 68.35 + x * 0.001, 18.80, false, 1, now() + interval '3 hours' from (values (uk, 2), (um, 3), (us, 4), (uf, 5), (ubf, 6)) v(u, x);
+  insert into public.beers (user_id, lat, lng, precise, beer_count, expires_at) values (uv, 68.42111, 18.62311, false, 1, now() + interval '3 hours');
+  insert into public.friendships (a, b, requester, status, via, accepted_at)
+    values (least(uv, uf), greatest(uv, uf), uv, 'accepted', 'code', now()), (least(uv, ubf), greatest(uv, ubf), uv, 'accepted', 'code', now());
+  insert into public.user_blocks (blocker, blocked, active) values (uv, ubf, true);
   insert into public.checkins (user_id, bar_id, bar_name, lat, lng, expires_at)
     values (uv, 'sec-test-bar', 'SecTestKrog', 68.3521, 18.8011, now() + interval '2 hours');
   insert into public.rallies (group_id, user_id, body, place, lat, lng) values (g, uv, 'SecRallyZq', 'SecTestKrog', 68.3521, 18.8011);
@@ -47,7 +53,23 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', um, 'role', 'authenticated')::text, true);
   t := public.poll_v2(68.30, 18.70, 68.40, 18.90, null, false)::text;
   res := res || ((case when position('sec-test-bar' in t) > 0 and position('SecVicZq' in t) > 0 then 'PASS' else 'FAIL' end) || ' F2 control: the group mate still sees the check-in with the name');
+  -- 11 Nov: friends = shared group OR accepted friend, never a blocked person
+  t := public.poll_v2(68.30, 18.60, 68.45, 18.95, null, false)::text;
+  res := res || ((case when position('68.42' in t) > 0 then 'PASS' else 'FAIL' end) || ' FR control: the group mate sees the friends-only pin');
+  perform set_config('request.jwt.claims', json_build_object('sub', uf, 'role', 'authenticated')::text, true);
+  t := public.poll_v2(68.30, 18.60, 68.45, 18.95, null, false)::text;
+  res := res || ((case when position('68.42' in t) > 0 and position('sec-test-bar' in t) > 0 and position('SecVicZq' in t) = 0 then 'PASS' else 'FAIL' end) || ' FR a friend without a shared group sees the pin + check-in (as with Alla: no name)');
+  t := coalesce((select json_agg(x)::text from public.live_checkins() x), '');
+  res := res || ((case when position('sec-test-bar' in t) > 0 then 'PASS' else 'FAIL' end) || ' FR friend: live_checkins has the check-in');
+  perform set_config('request.jwt.claims', json_build_object('sub', ubf, 'role', 'authenticated')::text, true);
+  t := public.poll_v2(68.30, 18.60, 68.45, 18.95, null, false)::text || coalesce((select json_agg(x)::text from public.live_checkins() x), '');
+  res := res || ((case when position('68.42' in t) = 0 and position('sec-test-bar' in t) = 0 then 'PASS' else 'FAIL' end) || ' FR a blocked friend sees no pin and no check-in');
+  perform set_config('request.jwt.claims', json_build_object('sub', us, 'role', 'authenticated')::text, true);
+  t := public.poll_v2(68.30, 18.60, 68.45, 18.95, null, false)::text;
+  res := res || ((case when position('68.42' in t) = 0 and position('sec-test-bar' in t) = 0 then 'PASS' else 'FAIL' end) || ' FR a stranger sees no pin and no check-in');
   update public.olnu_visibility set friends_only = false where user_id = uv;
+  t := public.poll_v2(68.30, 18.60, 68.45, 18.95, null, false)::text;
+  res := res || ((case when position('68.42' in t) > 0 then 'PASS' else 'FAIL' end) || ' FR control: with Alla the stranger sees the area pin');
   perform set_config('request.jwt.claims', json_build_object('sub', us, 'role', 'authenticated')::text, true);
   t := public.poll_v2(68.30, 18.70, 68.40, 18.90, null, false)::text;
   res := res || ((case when position('sec-test-bar' in t) > 0 and position('SecVicZq' in t) = 0 then 'PASS' else 'FAIL' end) || ' F2 control: with Alla the stranger sees the check-in, without a name');

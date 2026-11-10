@@ -1,6 +1,8 @@
 -- 0340 — "Bara vänner" visibility (ux3 #8, owner-run: it REPLACES the read core olnu_pins, so it changes what strangers get).
 -- Modes (client, js/pnvis.js): Alla = as today (strangers see the area / the bar) · Bara vänner = friends + group mates see
 -- the pin, strangers get NO row · Spöke = nobody (the existing post_beer_v2 p_hidden / stop_beer, unchanged).
+-- 11 Nov (sec): "friends" = shared group OR accepted friend (friendships, olnu_are_friends), never a blocked person.
+-- A friend outside your groups gets your pin in the same form as with "Alla" (area / bar, no name); a group mate as before.
 -- New: table olnu_visibility (one row per user who picked "Bara vänner"), set_visibility(boolean), my_visibility().
 -- olnu_pins: one added condition (marked "0340"); everything else is the live definition of 2026-11-08 copied 1:1.
 -- Not changed (aggregates, never a position or a name): heat_points, zone_counts, bar crowd counts. Owner: decide if
@@ -99,7 +101,9 @@ begin
           and coalesce(c.snap_lng, c.lng) between p_min_lng and p_max_lng))
      and (c.known or not public.olnu_is_test_zone(c.lat, c.lng) or (select public.olnu_is_test_user(p_uid)))
      and not public.olnu_ub_hidden(p_uid, c.user_id)
-     -- 0340: "Bara vänner": a stranger never gets this user's pin
-     and (c.known or not exists (select 1 from public.olnu_visibility v where v.user_id = c.user_id and v.friends_only));
+     -- 0340: "Bara vänner": a stranger never gets this user's pin. Friends (accepted, Vänner list) still get it
+     -- in the same form as with "Alla" (area / bar, no name); group mates as before (c.known). Blocked: never (above).
+     and (c.known or not exists (select 1 from public.olnu_visibility v where v.user_id = c.user_id and v.friends_only)
+          or public.olnu_are_friends(p_uid, c.user_id));
 end;
 $function$;
