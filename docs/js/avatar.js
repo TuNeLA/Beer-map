@@ -1565,6 +1565,24 @@
     if (ch) lsSet("olnu.avSeen", seen);
   }
   function newIn(k, f) { if (!(k in N)) return 0; var n = 0; for (var i = 0; i <= MAX[k]; i++) if (isNew(k, i, f)) n++; return n; }
+  /* social-b S1: focus view while editing (Bitmoji / Memoji). Eyes, eye colour, brows → no glasses / masks; hair, hair
+     colour → no hat (and no balaclava, it hides the hair). Returns a COPY for the preview, or null when nothing is hidden. */
+  var FOCUS = { ey: 1, ec: 1, br: 1, hr: 2, hc: 2 };
+  function focusSpec(spec, k) {
+    var f = FOCUS[k]; if (!f || !spec) return null;
+    var t = JSON.parse(JSON.stringify(spec)), hid = false;
+    if (f === 1 && (t.gl | 0)) { t.gl = 0; hid = true; }
+    if (f === 2) { if (t.hw | 0) { t.hw = 0; hid = true; } if ((t.gl | 0) === 6) { t.gl = 0; hid = true; } }
+    return hid ? t : null;
+  }
+  // the pill on the preview: shown only when this tab hides something; aria-pressed = "show all" is on
+  function focusPill(btn, can, showAll) {
+    btn.hidden = !can; if (!can) return;
+    var ico = ""; try { ico = window.PNI && window.PNI.has(showAll ? "eye-off" : "eye") ? window.PNI.svg(showAll ? "eye-off" : "eye", "av-acc-i") : ""; } catch (e) {}
+    var t = showAll ? L("Dölj tillbehör", "Hide extras") : L("Visa allt", "Show all");
+    if (btn.getAttribute("data-t") !== t) { btn.innerHTML = ico + "<span>" + esc(t) + "</span>"; btn.setAttribute("data-t", t); }
+    btn.setAttribute("aria-pressed", showAll ? "true" : "false");
+  }
   function openEditor(opts) {
     if (off || !A || !A.openSheet) return;
     var go = function () {
@@ -1592,12 +1610,20 @@
     body.appendChild(wrap);
     var bar = wrap.querySelector(".ave-bar"), prev = wrap.querySelector(".ave-prev"), tabs = wrap.querySelector(".ave-tabs"), subs = wrap.querySelector(".ave-subs"), pane = wrap.querySelector(".ave-body"), save = wrap.querySelector(".ave-save");
     function md() { return draft.ms === 0 ? [] : draft.md && draft.md.length ? draft.md : myMedals(null, f); }
+    // social-b S1: focus view (preview only; the draft is never changed)
+    var showAll = false, focusK = "";
+    var acc = document.createElement("button"); acc.type = "button"; acc.className = "av-acc ave-acc"; acc.hidden = true;
+    wrap.querySelector(".ave-top").appendChild(acc);
+    acc.addEventListener("click", function () { showAll = !showAll; paintPrev(); paintPane(true); });
+    function view(spec, k) { if (showAll) return spec; return focusSpec(spec, k) || spec; }
     var pvT = 0;
     function paintPrev() {
       if (pvT) return;
       pvT = requestAnimationFrame(function () {
         pvT = 0;
-        prev.innerHTML = svg(draft, { r: f.r, md: md() });
+        var k0 = subDef()[0];
+        prev.innerHTML = svg(view(draft, k0), { r: f.r, md: md() });
+        focusPill(acc, !!focusSpec(draft, k0), showAll);
         var dirty = JSON.stringify(clean(draft)) !== saved;
         save.disabled = !dirty; bar.hidden = !dirty;   // avt07: the Spara bar shows only when there is something to save
         save.textContent = dirty ? L("Spara", "Save") : L("Sparad ✓", "Saved ✓");
@@ -1636,7 +1662,7 @@
     try { io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { fill(e.target); io.unobserve(e.target); } }); }, { root: body, rootMargin: "240px 0px" }); } catch (e) { io = null; }
     function fill(b) {
       var art = b.querySelector(".ave-art"); if (!art || art.firstChild) return;
-      var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(draft)); t[k] = i;
+      var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(draft)); t[k] = i; t = view(t, k);
       if (k === "bg" && i === 16 && !t.bx) t.bx = valOf("#f5a623");
       art.innerHTML = svg(t, { r: f.r, md: md(), vb: b.getAttribute("data-vb") || "" });
     }
@@ -1709,6 +1735,7 @@
     }
     function paintPane(keepScroll) {
       var st = keepScroll ? body.scrollTop : 0, sd = subDef(), k = sd[0];
+      if (k !== focusK) { if (focusK) { showAll = false; paintPrev(); } focusK = k; }   // S1: a new tab = the normal view again
       pane.innerHTML = "";
       var sec = document.createElement("section"); sec.className = "ave-sec";
       var hd = document.createElement("div"); hd.className = "ave-hd";
@@ -1861,7 +1888,7 @@
     gf: function () { return grandfathered(me && me.facts); }, PAL: { SKIN: SKIN, HAIRC: HAIRC, TOPC: TOPC, EYEC: EYEC, BGC: BGC },
     VB: { FACE: FACE_VB, EYE: EYE_VB, NECK: NECK_VB, HAND: HAND_VB }, rankTitle: rankTitle,
     chatSeen: chatSeen, statusRow: statusRow, friendRow: friendRow, faces: faces, profileAv: profileAv,
-    openEditor: openEditor, forGroup: forGroup, forFriends: forFriends, repaint: repaint,
+    openEditor: openEditor, forGroup: forGroup, forFriends: forFriends, repaint: repaint, focusSpec: focusSpec, focusPill: focusPill,
     // avpins.js (map pins): the loaded caches {at, byName, byK, me}, friends first
     _caches: function () { var o = []; if (friends && friends.data) o.push(friends.data); Object.keys(groups || {}).forEach(function (g) { if (groups[g] && groups[g].data) o.push(groups[g].data); }); return o; },
     init: function (api) { A = api; },

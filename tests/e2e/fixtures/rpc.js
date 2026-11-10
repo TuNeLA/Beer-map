@@ -116,6 +116,8 @@ function build(now) {
     // spel-ui.js launchSync(): same dates as its PN_LAUNCH fallback, so "Nytt" does not change with the mock
     // lane:after A2 (0450): no report on a calm test night (after2-pw.js routes its own night); flags all off
     after_report2: () => ({ v: 1, empty: true, night: nightEnd(now - 24 * 3600e3), evening: null, groups: [] }),   // after2.js
+    moments_poll: () => ({ v: 1, on: false, rounds: [] }),                                     // moments.js (flag off)
+    moments_report: () => ({ v: 1, rounds: [] }),                                              // moments.js via after2.js
     after_flags_get: () => ({ v: 1, flags: { morning_push: false, push_ev: false, moments: false, moment_push: false, game_push: false } }),   // moments.js
     game_launch_dates: () => ({ v: 1, games: { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" } }),
   };

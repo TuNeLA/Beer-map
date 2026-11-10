@@ -460,6 +460,7 @@
   function start(m) {
     if (!C || active().length < 2) return;
     st.mode = m; st.playing = true; savePrefs();
+    try { if (st.gid && window.MOMENTS && MOMENTS.homeParty) MOMENTS.homeParty({ id: st.gid }, active().map(function (p) { return p.name; })); } catch (e) {}   // GM7: a Förfest with 3+ can start the home-party Hemlig agent (server checks the count + flag)
     st.hist = []; st.pos = -1; st.viruses = []; st.count = 0; st.lastTypes = []; st.lastVirus = -99; st.lastKapten = -99; st.waterAt = {};
     buildDeck();
     renderGame();

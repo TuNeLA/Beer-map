@@ -1,0 +1,44 @@
+/* lane:after GM7 — moments (js/moments.js): the card in a sheet, the HUD chip, the group page rows. Prefix mo-. Tokens only. */
+.mo{display:flex;flex-direction:column;gap:var(--sp-3);padding-bottom:var(--sp-2)}
+.mo-kick{font-size:var(--fs-14);line-height:20px;color:var(--ds-muted);font-weight:600}
+.mo-q{margin:0;font-size:var(--fs-22);line-height:28px;font-weight:700;color:var(--ds-text)}
+.mo-sub{margin:0;font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2)}
+.mo-res{margin:0;display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-16);line-height:22px;font-weight:700;color:var(--ds-amber-t)}
+.mo-res .pi{width:var(--pn-ic);height:var(--pn-ic)}
+.mo-mission{margin:0;padding:var(--sp-3) var(--sp-4);background:var(--ds-card);border:1px solid var(--ds-border);border-left:4px solid var(--ds-amber);
+  border-radius:var(--r-lg);font-size:var(--fs-18);line-height:24px;color:var(--ds-text)}
+.mo-opts{display:flex;flex-direction:column;gap:var(--sp-2)}
+.mo-opts-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* padding sets the 56 px row (pnds #sheet-body button min-height 44 wins over a class min-height) */
+.mo-opt{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);border:1px solid var(--ds-border-2);
+  background:var(--ds-card);color:var(--ds-text);font-family:var(--ds-sans);text-align:left;cursor:pointer;min-width:0}
+.mo-opts-3 .mo-opt{flex-direction:column;justify-content:center;text-align:center;padding:var(--sp-4) var(--sp-2);gap:var(--sp-1)}
+.mo-opt:disabled{cursor:default}
+.mo-opt.on{border-color:var(--ds-amber);background:var(--ds-raised)}
+.mo-opt.right{box-shadow:inset 0 0 0 2px var(--ds-green)}
+.mo-ot{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.mo-ot b{font-size:var(--fs-16);line-height:22px;font-weight:700;overflow-wrap:anywhere}
+.mo-ot small{font-size:var(--fs-12);line-height:16px;color:var(--ds-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-ck{width:var(--pn-ic);height:var(--pn-ic);color:var(--ds-amber-t);flex:0 0 auto}
+.mo-av{flex:0 0 auto;width:36px;height:36px;border-radius:var(--r-pill);background:var(--mo-c,var(--ds-amber));color:var(--ds-bg);display:grid;place-items:center;
+  font-family:var(--ds-stencil);font-size:var(--fs-16);line-height:1}
+.mo-btn{display:flex;align-items:center;justify-content:center;gap:var(--sp-2);min-height:48px;padding:0 var(--sp-4);border-radius:var(--r-md);border:0;
+  background:var(--ds-raised);color:var(--ds-text);font:700 var(--fs-16)/22px var(--ds-sans);cursor:pointer}
+.mo-btn.mo-pri{background:var(--ds-amber);color:var(--ds-on-amber)}
+.mo-btn .pi{width:var(--pn-ic);height:var(--pn-ic)}
+.mo-btn:disabled,.mo-opt:disabled:not(.on){opacity:.75}
+@media (prefers-reduced-motion:no-preference){.mo-btn:active,.mo-opt:active{transform:scale(.96);transition:transform var(--m-2) var(--e-std)}}
+.mo button:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+/* the HUD chip: calm amber, also when app.js picks it for the closed pill (hx-urgent is red for alarms) */
+.hx-chip.mo-chip .pi,.hx-chip.a2-chip .pi{width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-amber-t)}
+.hx-chip.mo-chip.hx-urgent,.hx-chip.a2-chip.hx-urgent{border-color:var(--ds-amber);background:var(--pn-float);color:var(--ds-text)}
+/* group page rows */
+.mo-gcard{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:56px;padding:var(--sp-3) var(--sp-4);background:var(--ds-card);border:1px solid var(--ds-border);
+  border-radius:var(--r-lg);color:var(--ds-text);font-family:var(--ds-sans);text-align:left;cursor:pointer}
+.mo-gcard[hidden]{display:none}
+.mo-room{border-color:var(--ds-amber)}
+.mo-gc-i{color:var(--ds-amber-t);display:grid;place-items:center}
+.mo-gc-x{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.mo-gc-x b{font-size:var(--fs-16);line-height:22px;font-weight:600}
+.mo-gc-x span{font-size:var(--fs-14);line-height:20px;color:var(--ds-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-chev{width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-muted)}

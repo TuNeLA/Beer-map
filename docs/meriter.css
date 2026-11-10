@@ -27,3 +27,15 @@
 .mer-note{font-size:var(--fs-12)}
 .uni-how{margin-top:8px}
 @media (prefers-reduced-motion: reduce){.mer-bar span{transition:none}}
+
+/* social-b R1 START */
+/* R1-21: PNI icons in the explainer rows */
+.mer-row .mer-e{display:inline-flex;align-items:center;justify-content:center;color:var(--ds-amber-t,#ffc24d)}
+.mer-row .mer-ic{width:22px;height:22px}
+/* R1-25: the Meriter board filters = segmented controls; the group row keeps each name whole and scrolls */
+.mer-board .mer-seg{margin:0 0 var(--ds-2,8px)}
+.mer-board .mer-seg[hidden]{display:none}
+.mer-board .ds-seg.mer-groups{overflow-x:auto;scrollbar-width:none}
+.mer-board .ds-seg.mer-groups::-webkit-scrollbar{display:none}
+.mer-board .ds-seg.mer-groups>button{flex:1 0 auto;max-width:none;padding:0 var(--ds-3,12px);white-space:nowrap}
+/* social-b R1 END */

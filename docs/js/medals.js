@@ -263,7 +263,8 @@
     return "linear-gradient(90deg," + stops.join(",") + ")";
   }
   function ribbonHTML(x, tap) {
-    var n = x.count | 0, mark = n > 4 ? "<b>×" + n + "</b>" : n > 1 ? "<i>" + new Array(n).join("★") + "</i>" : "";
+    // R1-07 (social-b): ★ / ×N only on the big uniform rack (tap); small racks (members, Profil) have no room for them
+    var n = x.count | 0, mark = !tap ? "" : n > 4 ? "<b>×" + n + "</b>" : n > 1 ? "<i>" + new Array(n).join("★") + "</i>" : "";
     var tag = tap ? "button" : "span";
     return "<" + tag + (tap ? ' type="button" data-md="' + esc(x.m.id) + '"' : "") + ' class="rb" title="' + esc(x.m.name + (n > 1 ? " ×" + n : "")) +
       '" aria-label="' + esc(x.m.name + (n > 1 ? " ×" + n : "")) + '" style="background:' + ribbonBg(x.m.id) + '">' + mark + "</" + tag + ">";
@@ -475,7 +476,7 @@
     var r = rankOf(total | 0);
     popup({
       cls: "mx-level", icon: "⬆️", delay: 2600, ms: 10000,
-      title: L("BEFORDRAN!", "PROMOTED!"),
+      title: L("Befordrad!", "Promoted!"),   // R1-15: no ALL CAPS
       html: '<div class="mx-ranks">' + (oldTitle ? '<span class="mx-old">' + esc(oldTitle) + '</span><span class="mx-arrow" aria-hidden="true">➜</span>' : "") +
         '<span class="mx-new">' + esc(newTitle) + "</span></div>" +
         (r.next && r.nextAt ? '<div class="mx-sub">' + esc(L("Nästa: " + r.next + " vid " + r.nextAt + " meriter", "Next: " + r.next + " at " + r.nextAt + " merits")) + "</div>" : ""),

@@ -96,9 +96,11 @@ run txtfit     $B txtfit-pw.js     # every rank / KAOS / LIVE text fits at 390 p
 run ds-motion  $B ds-motion-pw.js  # ds10 motion rules
 run gw         $B gw-pw.js         # competitor-research build (gw.js): Ute ikväll?, previews, honest crowd, Följ mig hem timer
 run inst       $B inst-pw.js       # screens show at once (no layout shift / late inserts) with slow RPCs (inst-mocks.js)
+run social-b   $B social-b-pw.js   # social-b: S3 Betaversion, S4 e-mail login in beta, Dialekt row, S1 avatar focus, R1-06/07/08/15/21/25/28/41/47
 run ui1        $B ui1-pw.js       # ui1 Wave 1: B3 day headers, B4 chip fades, B6 close jumps, B7 bar card, B10 pill, B11 tabs, B12 bubble
 run social-a   $B social-a-pw.js  # social-a Wave 3: G1 Vänner actions, G2 Profil one list style, G3 titles/icons, G4 group tiles + colour, G5 pen badge, Gängkamp, R1-04/09/22/23/24, DM header
 run after2     $B after2-pw.js     # lane after: A2 Kvällsrapporten (cards, awards, share card), R1-11 MEDEVAC chip only, R1-39 Mina kvällar chip
+run moments    $B moments-pw.js    # lane after: GM7 moments (vad, Halvtid, bordet, Hemlig agent) + GM4 room card + moments in the report
 run misc       $B misc-pw.js       # misc: X4 delete with 7 days to undo, F4 Grundare badge + owner cutoff, X5 film block + reportMenu, F3 film reports in the owner queue
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
