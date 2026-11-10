@@ -482,7 +482,7 @@
       // 0029: "💾 Spara chatten efter kl 05" (group setting). Hidden on an old server (RPC missing).
       var keepOn = false;
       (function () {
-        if (off.group_keep_history) return;
+        if (off.group_keep_history || g.dm) return;   // dm B1: a 1:1 chat has no group setting (the server answers not_member)
         var cb = el("input", { type: "checkbox", class: "chat-keep-cb", "aria-describedby": "chat-keep-info" });
         var box = el("div", { class: "chat-keep", hidden: "" }, [
           el("label", { class: "chat-keep-l" }, [cb, el("span", { text: KT("keepLabel") })]),
