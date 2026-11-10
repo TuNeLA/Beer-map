@@ -164,11 +164,35 @@
     paintSet();
     return sec;
   }
+  // Inställningar (lane main batch 2, owner: "full settings live in Inställningar"): top-level elements for account.js'
+  // settingsSheet hook. ds.js puts each in "Integritet & säkerhet" (secOf .mn-vis-set / .mn-vis-srow), pnds ds20 ranks them
+  // first there. Same functions as the rail menu, but ds rows (the Inställningar look), so no card in a card.
+  function srow(icon, title, sub, fn, cls) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "ds-row pn-row mn-vis-srow " + cls;
+    b.innerHTML = '<span class="ds-row-i" aria-hidden="true">' + ic(icon) + '</span><span class="ds-row-t"><span>' + esc(title) + "</span><small>" + esc(sub) + '</small></span><span class="ds-chev" aria-hidden="true"></span>';
+    b.addEventListener("click", function () { fn(); }); return b;
+  }
+  function settingsRows() {
+    var top = document.createElement("div"); top.className = "mn-vis-set";
+    var paintTop = function () {
+      probe();
+      var m = mode(), opts = srv === false ? ["alla", "spoke"] : ["alla", "vanner", "spoke"];
+      top.innerHTML = '<span class="mn-vis-set-l">' + ic("eye", "pi-lead") + "<span>" + esc(T("vis.head")) + "</span></span>";
+      var sg = seg(m, opts); sg.__fill = function () { setTimeout(paintTop, 0); }; top.appendChild(sg);
+      var p = document.createElement("small"); p.className = "pn-vis-note mn-vis-set-n"; p.textContent = T(TXT[m][2]); top.appendChild(p);
+    };
+    paintTop();
+    var out = [top];
+    if (myPin()) out.push(srow("pin", T("vis.hide"), T("vis.hideSub"), function () { try { api().showStopSheet(); } catch (e) {} }, "mn-vis-hide"));
+    if (W("HOMEZONE") && W("HOMEZONE").open && (api() || {}).LIVE) out.push(srow("home", T("vis.home"), homeSub(), function () { try { W("HOMEZONE").open(); } catch (e) {} }, "mn-vis-home"));
+    if (sosOk()) out.push(srow("sos", T("vis.sos"), T("vis.sosSub"), openSos, "mn-vis-sos"));
+    return out;
+  }
   // the rail button keeps its id/place (pnds ds05); its own toggle is replaced by the menu (capture: runs first)
   document.addEventListener("click", function (e) {
     var b = e.target && e.target.closest ? e.target.closest("#pn-ghost") : null; if (!b) return;
     e.stopImmediatePropagation(); e.preventDefault(); menu ? close() : open();
   }, true);
   setInterval(function () { paint(); probe(); }, 1500);
-  window.PNVIS = { mode: mode, setMode: setMode, open: open, close: close, label: label, settingsBlock: settingsBlock, _srv: function () { return srv; } };
+  window.PNVIS = { mode: mode, setMode: setMode, open: open, close: close, label: label, settingsBlock: settingsBlock, settingsRows: settingsRows, _srv: function () { return srv; } };
 })();

@@ -1631,6 +1631,11 @@
     if (has(it, ".pf-set, .pf-row")) return ["plats", 10, ""];
     if (has(it, ".ac-set, .ac-row")) return ["plats", 20, ""];
     if (has(it, ".ah-set, .ah-row")) return ["plats", 30, ""];   // Ställ in hem (autohome.js)
+    if (has(it, ".mn-vis-set")) return ["integ", 2, ""];   // lane main S2: Synlighet first in Integritet & säkerhet
+    if (has(it, ".mn-vis-hide")) return ["integ", 3, ""];
+    if (has(it, ".mn-vis-home")) return ["integ", 4, ""];
+    if (has(it, ".mn-vis-sos")) return ["integ", 5, ""];
+    if (has(it, ".mn-knas-row")) return ["om", 25, ""];   // lane main X6: Något knas? after "Lägg på hemskärmen"
     if (has(it, ".sf-set")) return ["integ", 90, "trygg"];
     if (from === "integ" && !has(it, ".pnlog-set, .sos-block, .bd-optin") && /^(integritet|privacy)\b/i.test(t)) return ["integ", 10, ""];
     if (has(it, ".pnlog-set")) return ["integ", 20, ""];   // both switches, in their own order (förbättra, position)
