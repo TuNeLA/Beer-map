@@ -273,7 +273,8 @@
   }
   window.PASSPORT = {
     data: function () { return data; }, open: openSheet,
-    _map: function () { return { engine: miniEngine, pins: miniPins, gl: miniEngine === "gl" ? mini : null }; },   // ui1 B5 test hook refresh: function () { return load(true); }, _placeOf: placeOf,
+    refresh: function () { return load(true); }, _placeOf: placeOf,   // ui1 fix: this line was commented out by the B5 hook line (8bd9a4b)
+    _map: function () { return { engine: miniEngine, pins: miniPins, gl: miniEngine === "gl" ? mini : null }; },   // ui1 B5 test hook
     init: function (api) { A = api; },
     onAuthed: function () { setTimeout(function () { load(false); }, 8000); },   // review2: the first poll has loaded it already
     onPoll: function () { load(false); },

@@ -32,6 +32,7 @@ const EV = events();
 async function setup(browser, w, o = {}) {
   const { ctx, page } = await H.ctxFor(browser, { width: w, height: HT[w] || 844 }, o);
   await page.route(/rest\/v1\/rpc\/(events_near2|events_near3)\b/, (r) => J(r, { v: 1, server_time: new Date().toISOString(), events: EV }));
+  if (o.routes) await o.routes(page);
   if (o.init) await ctx.addInitScript(o.init);
   if (o.url) { await page.goto(`http://127.0.0.1:${process.argv[2]}/${o.url}`); await page.waitForFunction(() => window.PNI && window.PNDS, null, { timeout: 30000 }).catch(() => {}); await wait(page, o.settle || 3500); }
   else await H.boot(page);
@@ -344,16 +345,19 @@ function noJump(fr, w0, h0, moveMax) {
     await ctx.close();
   }
 
-  // ================= B5 Ölpasset opens while a passport load is on the way (the 8 s onAuthed / poll load) =================
+  // ================= B5 Ölpasset opens while a passport load is on the way (the first poll / the 8 s onAuthed load) =================
   {
-    const { ctx, page } = await setup(browser, 390);
     const PB = { v: 1, nights_n: 2, towns: [{ town: "Ludvika", nights: 2, first: "2026-10-02", last: "2026-11-07" }], bars: [
       { id: "n3472634175", name: "Pitchers", lat: 60.14997, lng: 15.18679, town: "Ludvika", in_se: true, nights: 2, first: "2026-10-02", last: "2026-11-07" }] };
-    await page.route(/rest\/v1\/rpc\/my_passport/, async (r) => { await new Promise((x) => setTimeout(x, 2500)); J(r, PB); });
-    await page.evaluate(() => { window.PASSPORT.refresh(); window.PASSPORT.open(); });   // a load is on the way when the sheet opens
-    await wait(page, 4500);
-    const ps = await page.evaluate(() => { const r = document.getElementById("ps-root"); return { cover: !!(r && r.querySelector(".ps-cover")), map: !!document.getElementById("ps-map"), fail: !!(r && /gick int/.test(r.textContent)), bars: (window.PASSPORT.data() || { bars: [] }).bars.length }; });
-    ok(ps.cover && ps.map && !ps.fail && ps.bars === 1, "B5 Ölpasset opened during a slow passport load shows the passport + map (no 'gick int' att hämta')", ps);
+    const slow = { seen: 0 };
+    const { ctx, page } = await setup(browser, 390, { routes: async (pg) => pg.route(/rest\/v1\/rpc\/my_passport/, async (r) => { slow.seen++; await new Promise((x) => setTimeout(x, 9000)); J(r, PB).catch(() => {}); }) });
+    for (let i = 0; i < 30 && !slow.seen; i++) await wait(page, 500);
+    await page.evaluate(() => window.PASSPORT.open());   // the app's own load is still on the way
+    await page.waitForFunction(() => { const r = document.getElementById("ps-root"); return r && r.querySelector(".ps-cover"); }, null, { timeout: 15000 }).catch(() => {});
+    await wait(page, 500);
+    const ps = await page.evaluate(() => { const r = document.getElementById("ps-root"); return { cover: !!(r && r.querySelector(".ps-cover")), map: !!document.getElementById("ps-map"), fail: !!(r && /gick int/.test(r.textContent)), bars: (window.PASSPORT.data() || { bars: [] }).bars.length, api: typeof window.PASSPORT.refresh }; });
+    ok(slow.seen > 0 && ps.cover && ps.map && !ps.fail && ps.bars === 1, "B5 Ölpasset opened while the app's passport load is on the way shows the passport + map (no 'gick int' att hämta')", { seen: slow.seen, ...ps });
+    ok(ps.api === "function", "PASSPORT.refresh is still public (B5 hook line had commented it out)", ps.api);
     await shot(page, "B5-passport-slowload-390");
     await ctx.close();
   }
