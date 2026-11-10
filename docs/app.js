@@ -68,11 +68,16 @@
     });
   }
   // cln D: a group this account is not (any more) a member of: no more calls for it in this page life
+  // dm B1: a DM or an event chat is a hidden group with NO group_members rows. Member-only RPCs (group_keep_history,
+  // group_now …) answer not_member for it, but the chat RPCs (server olnu_chat_can / DM access) work. So: not_member from
+  // a member-only RPC blocks only member-only RPCs for that group (1); not_member from a chat RPC = no access at all (2).
   var notMember = {};
+  var CHAT_RPC = { group_msgs: 1, post_group_msg: 1, msg_reacts: 1, msg_likes: 1, group_photos: 1, post_photo: 1, group_voices: 1,
+    post_voice: 1, avatars_for: 1, dm_seen: 1, dm_mute: 1, dm_block: 1 };
   function rpcNet(name, params, noBundle) {
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
     var gid = params && params.p_group_id;
-    if (gid && notMember[gid]) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });
+    if (gid && notMember[gid] && (notMember[gid] > 1 || !CHAT_RPC[name])) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });
     if (!noBundle && bundleable(name, params)) return new Promise(function (res) {
       bq.push({ n: name, p: params, k: name + "|" + JSON.stringify(params || {}), res: res });
       if (bq.length >= 24) { clearTimeout(bqT); bundleGo(); }
@@ -80,7 +85,8 @@
     });
     if (gid) return rpcNet1(name, params).then(function (r) {
       if (r && r.error && /\bnot_member\b/.test(String(r.error.message || ""))) {
-        if (!notMember[gid]) { notMember[gid] = 1; try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {} }
+        var lv = CHAT_RPC[name] ? 2 : 1;
+        if ((notMember[gid] | 0) < lv) { notMember[gid] = lv; try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {} }
       }
       return r;
     });

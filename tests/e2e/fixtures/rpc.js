@@ -8,6 +8,13 @@ const ME_K = "aaaaaaaaaaaa";
 
 function nightEnd(now) { const d = new Date(now); if (d.getHours() >= 6) d.setDate(d.getDate() + 1); d.setHours(6, 0, 0, 0); return d.toISOString(); }
 
+// dm B1: the server's olnu_dm_json shape (0137) for the 1:1 chat with Ida.
+const DM_GID = "33333333-dddd-4444-8888-555555555555";
+function dmThread(gid, now) {
+  return { group_id: gid || DM_GID, name: "Ida", home_town: "Ludvika", can_write: true, friends: true, blocked_by_me: false, blocked_me: false,
+    muted: false, my_seen_id: 0, other_seen_id: 0, other_seen_at: null, now: new Date(now || Date.now()).toISOString() };
+}
+
 function build(now) {
   const iso = (m) => new Date(now - m * 60e3).toISOString();
   const members = [   // social.js groupStatus() (v3 = v2 + meriter + rank), spel-ui.js, near.js, hitta.js
@@ -97,6 +104,10 @@ function build(now) {
     account_config: () => ({ v: 1 }),
     my_visibility: () => ({ v: 1, friends_only: false }),
     bold_flags_get: () => ({ bold_skal_v2: false, bold_bump: false, bold_replay: false, bold_krog: false, bold_hemlage: false }),   // bold.js (all flags OFF until release)
+    // dm B1: a 1:1 chat (dm.js chatOpen sync / 🔕). The shared my_dms stays empty; dm-pw.js routes its own thread list.
+    dm_seen: (b) => dmThread(b && b.p_group_id, now),                                         // dm.js sync(), openById()
+    dm_mute: (b) => Object.assign(dmThread(b && b.p_group_id, now), { muted: !!(b && b.p_on) }),   // dm.js toggleMute()
+    msg_reacts: () => [],                                                                     // social.js loadLikes() (no reactions)
     my_night_report: () => null,   // after.js boot check (no report yet)
     film_stock: () => ({ film: "kvall", locked: false, set_by: null }),   // film.js / filmfx.js (film for tonight; default Kvällsljus 400)                                   // pnvis.js (Alla · Bara vänner · Spöke)
     // spel-ui.js launchSync(): same dates as its PN_LAUNCH fallback, so "Nytt" does not change with the mock
@@ -134,3 +145,4 @@ function answer(fn, body, ctx) {
   return undefined;
 }
 module.exports = { answer, EMPTY, GID, GID2, ME_K, names: () => Object.keys(build(Date.now())).concat([...EMPTY], ["rpc_bundle2"]) };
+module.exports.DM_GID = DM_GID; module.exports.dmThread = dmThread;   // dm B1
