@@ -299,6 +299,8 @@ async function safetyMocks(page, st, calls) {
     await safetyMocks(page, { age_ok: true, terms_ver: 1 }, calls);
     await boot(page);
     await page.evaluate(() => window.PRIVACY.showDelete()); await wait(page, 800);
+    // misc X4: "Radera mitt konto" opens the 7-day sheet (misc-mod.js); the instant delete is its "Radera direkt" link
+    await page.evaluate(() => { const b = document.querySelector("#sheet-body .mm-del-now"); if (b) b.click(); }); await wait(page, 800);
     await shot(page, "delete-1");
     await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet button")].find((x) => /Ja, radera/.test(x.textContent)); b.click(); }); await wait(page, 400);
     await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet button")].find((x) => /Radera nu/.test(x.textContent)); b.click(); });
