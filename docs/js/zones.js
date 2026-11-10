@@ -272,24 +272,68 @@
     if (z < Z_SWE) { name = "Sverige"; if (counts) { n = counts.total; some = counts.some; } }
     else if (z < Z_KOM) { var lf = zoneAt("l", c.lat, c.lng); if (!lf) return null; name = lf.properties.n; var x = lc(lf.properties.l); if (x) { n = x.n; some = x.some; } }
     else { var kf = zoneAt("k", c.lat, c.lng); if (!kf) return null; name = kf.properties.n; var y = kc(kf.properties.k); if (y) { n = y.n; some = y.some; } }
-    var e = function (s) { return String(s).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }); };
+    pillD = { name: name, n: counts ? n : null, some: !!some, known: !!counts };
+    var e = pillEsc;
     if (!counts) return e(name) + " · <b>–</b> ute ikväll";
     return e(name) + (n ? " · <b>" + nf(n) + "</b> ute ikväll" : some ? " · <b>några</b> ute ikväll" : " · lugnt ikväll");
   }
+  function pillEsc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }); }
+  /* ui1 B10 (owner): the town name is NEVER cut. Fit order, first that fits wins:
+     1. one line "Dalarna · 47 ute ikväll" → "· 47 ute" → "· 47"
+     2. two lines: the name (14 px) on top, the status (12 px, green dot when people are out) under it
+     3. two lines, the name a little tighter (−0.02 em)
+     4. a narrow phone and a long name: the PintsNow wordmark goes 22 → 18 px (body.pn-pill-tight), then 2 again.
+     The name and the status are their own spans; textContent stays "Name · N ute ikväll" (zones-pw). CSS: pnds.css "lane:ui1". */
+  var pillD = null;
+  function pillVariants(d) {
+    var e = pillEsc, nm = '<span class="zn-pn">' + e(d.name) + "</span>", sep = '<i class="zn-sep"> · </i>';
+    var num = !d.known ? "–" : d.n ? nf(d.n) : d.some ? "några" : null;
+    var one = num == null ? [" · lugnt ikväll", " · lugnt", " · lugnt"].map(function (x) { return nm + '<span class="zn-ps">' + x + "</span>"; })
+      : [" ute ikväll", " ute", ""].map(function (x) { return nm + '<span class="zn-ps"> · <b>' + num + "</b>" + x + "</span>"; });
+    var dot = d.known && (d.n || d.some) ? '<i class="zn-dot" aria-hidden="true"></i>' : "";
+    var two = num == null ? [nm + '<span class="zn-ps">' + sep + "lugnt ikväll</span>"]
+      : [" ute ikväll", " ute"].map(function (x) { return nm + '<span class="zn-ps">' + dot + sep + '<span class="zn-n">' + num + "</span>" + x + "</span>"; });
+    return { one: one, two: two };
+  }
+  function pillFits(el) {
+    var nmEl = el.querySelector(".zn-pn");
+    return el.scrollWidth <= el.clientWidth + 1 && (!nmEl || nmEl.scrollWidth <= nmEl.clientWidth + 1);
+  }
+  function fitPill(el, d) {
+    var v = pillVariants(d), body = document.body, steps = [];
+    v.one.forEach(function (h) { steps.push([h, ""]); });
+    v.two.forEach(function (h) { steps.push([h, "zn-2l"]); });
+    v.two.forEach(function (h) { steps.push([h, "zn-2l zn-tt"]); });
+    var tight = function (on) { if (body.classList.contains("pn-pill-tight") !== on) body.classList.toggle("pn-pill-tight", on); };
+    var tryAll = function () {
+      for (var i = 0; i < steps.length; i++) {
+        el.classList.remove("zn-2l", "zn-tt"); if (steps[i][1]) el.classList.add.apply(el.classList, steps[i][1].split(" "));
+        el.innerHTML = steps[i][0]; fitted = steps[i][0];
+        if (pillFits(el)) return true;
+      }
+      return false;
+    };
+    tight(false);
+    if (!tryAll()) { tight(true); tryAll(); }   // the last step stays when nothing fits (the name still shows whole, the status goes first)
+    el.setAttribute("aria-label", el.textContent);
+  }
   var fitFor = "", fitted = null;
+  function pillOff(el) {
+    if (el) el.classList.remove("zn-2l", "zn-tt");
+    if (document.body.classList.contains("pn-pill-tight")) document.body.classList.remove("pn-pill-tight");
+  }
   function pill(push) {
     var h = pillHTML(); lastPill = h;
     var el = document.getElementById("live-count"); if (!el) return;
     el.classList.toggle("zn-pill", !!h);
     if (h) {
-      // narrow phone: "Dalarna · 47 ute ikväll" → "Dalarna · 47 ute" → "Dalarna · 47"
-      var vs = [h, h.replace(/ ikväll$/, ""), h.replace(/ ute ikväll$/, "").replace(/ · lugnt ikväll$/, " · lugnt")];
-      if (vs.indexOf(el.innerHTML) < 0 || fitFor !== h) {
-        fitFor = h;
-        for (var i = 0; i < vs.length; i++) { el.innerHTML = vs[i]; fitted = vs[i]; if (el.scrollWidth <= el.clientWidth + 1) break; }
-      }
+      var key = h + "|" + window.innerWidth;
+      if (fitFor !== key || !el.querySelector(".zn-pn") || el.innerHTML !== fitted) { fitFor = key; fitPill(el, pillD); }
     }
-    else if (push && A && A.updateCounts && el.classList) { try { A.updateCounts(); } catch (e) {} }
+    else {
+      pillOff(el); fitFor = "";
+      if (push && A && A.updateCounts && el.classList) { try { A.updateCounts(); } catch (e) {} }
+    }
   }
 
   /* ---------- tap = zoom in ---------- */
@@ -373,6 +417,7 @@
       map.on("preclick", onPreclick);
       map.on("moveend", moved);
       map.on("zoomend", function () { cls(); pill(false); });
+      window.addEventListener("resize", function () { if (lastPill) pill(false); });   // ui1 B10: refit on rotation / width change
       var st = document.createElement("style"); st.id = "zones-css"; st.textContent = CSS; document.head.appendChild(st);
       setTimeout(function () { credit(); check(); }, 0);
     },
@@ -380,6 +425,9 @@
     onPublicPoll: function () { if (wanted()) ask(false); },
     // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
     pill: function () { if (!wanted() || !pillHTML()) return null; pill(false); return fitted; },
+    // ui1 B10 test hook: fit a name into the top bar pill like pill() does (no map needed)
+    _fitPill: function (name, n, some) { var el = document.getElementById("live-count"); if (!el) return null; el.classList.add("zn-pill"); fitFor = ""; fitPill(el, { name: name, n: n, some: !!some, known: true }); return fitted; },
+    _pillOff: function () { var el = document.getElementById("live-count"); if (el) el.classList.remove("zn-pill"); pillOff(el); fitFor = ""; },
     on: function () { return ready && wanted(); },
     stats: stats,
     // test hooks

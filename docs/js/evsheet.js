@@ -414,9 +414,12 @@
         segEl.appendChild(b);
       });
       chipsEl = A.el("div", { class: "evs-chips", role: "group", "aria-label": L("Vad", "What") });
+      chipsEl.addEventListener("scroll", function () { chipFades(chipsEl); }, { passive: true });   // ui1 B4
       bar.appendChild(segEl); bar.appendChild(chipsEl);
       body.appendChild(bar);
       requestAnimationFrame(function () { stickTop(body, bar); });
+      // ui1 B3: the chip row / counts change height after the data comes → keep the day headers right under the bar
+      try { if (window.ResizeObserver) { var ro = new ResizeObserver(function () { stickTop(body, bar); chipFades(chipsEl); }); ro.observe(bar); body.__evsRO = ro; } } catch (e) {}
       toolsEl = A.el("div", { class: "evs-tools" });
       body.appendChild(toolsEl);
       frEl = A.el("div", { class: "evs-friends", hidden: "" });
@@ -434,7 +437,7 @@
         autoJump(); draw();
         loadGoing(false).then(function () { if (listBox && document.body.contains(listBox)) repaint(); });
       });
-    }, { onClose: function () { listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
+    }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {} listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
   }
   function setTime(t, user) {
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;
@@ -483,6 +486,25 @@
       if (n) b.appendChild(A.el("b", { class: "evs-chip-n", text: String(n) }));
       chipsEl.appendChild(b);
     });
+    chipInView(chipsEl); chipFades(chipsEl);
+  }
+  // ui1 B4: an edge fades only when more chips are hidden on that side (data-fl / data-fr, CSS in pnds.css "lane:ui1").
+  function chipFades(c) {
+    if (!c) return;
+    var max = c.scrollWidth - c.clientWidth, x = Math.abs(c.scrollLeft);
+    c.toggleAttribute("data-fl", max > 1 && x > 1);
+    c.toggleAttribute("data-fr", max > 1 && x < max - 1);
+  }
+  // the chosen chip is fully in view (scrollLeft only: the sheet itself never moves)
+  function chipInView(c, again) {
+    var b = c && c.querySelector('[aria-pressed="true"]'); if (!b) return;
+    var cr = c.getBoundingClientRect(), br = b.getBoundingClientRect(), pad = 28;
+    if (!cr.width) { if (!again) requestAnimationFrame(function () { chipInView(c, true); }); return; }   // not laid out yet (sheet opening)
+    if (br.left - cr.left < pad) c.scrollLeft = Math.max(0, c.scrollLeft + br.left - cr.left - pad);
+    else if (br.right - cr.right > -pad) c.scrollLeft = c.scrollLeft + br.right - cr.right + pad;
+    chipFades(c);
+    // the chosen chip's own style (border / weight) can still change its width after this frame: check once more
+    if (!again) { requestAnimationFrame(function () { chipInView(c, true); }); setTimeout(function () { if (c.isConnected) chipInView(c, true); }, 260); }
   }
   function filtered() { return sorted(cache.rows.filter(function (e) { return inTime(e, st.time) && inType(e, st.type); })); }
   function drawTools(all) {
@@ -541,11 +563,14 @@
       var h = A.el("div", { class: "evs-day" + (g.k === "now" ? " evs-day-now" : ""), role: "heading", "aria-level": "3", "data-day": g.k });
       h.appendChild(A.el("span", { text: headOf(eveDiff(g.iso), g.iso) }));
       h.appendChild(A.el("b", { class: "evs-day-n", text: String(per[g.k] || "") }));
-      listBox.appendChild(h);
+      // ui1 B3: the header is sticky INSIDE its own day group, so the next day's header pushes it out (never stacks over it)
+      var dg = A.el("section", { class: "evs-dg", "data-day": g.k });
+      dg.appendChild(h);
+      listBox.appendChild(dg);
       var tv = st.type === "tv" ? [] : g.rows.filter(function (e) { return e.tv; });
       var fold = tv.length >= 2;
-      g.rows.forEach(function (e) { if (!fold || !e.tv) listBox.appendChild(rowEl(e)); });
-      if (fold) listBox.appendChild(tvFoldEl(g, tv));
+      g.rows.forEach(function (e) { if (!fold || !e.tv) dg.appendChild(rowEl(e)); });
+      if (fold) dg.appendChild(tvFoldEl(g, tv));
     });
     if (all.length > rows.length) listBox.appendChild(A.btn(fill(L("Visa fler ({n} till)", "Show more ({n} more)"), { n: all.length - rows.length }),
       "ds-btn ds-btn-secondary btn-block evs-more", function () { shown += 80; draw(); }));

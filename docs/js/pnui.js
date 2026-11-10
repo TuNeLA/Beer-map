@@ -277,7 +277,7 @@
   function hideGreetOnMove() {
     try {
       A.map.on("movestart zoomstart", function () {
-        document.querySelectorAll(".dl-cap-greet").forEach(function (c) { c.classList.add("pn-out"); setTimeout(function () { if (c.parentNode) c.remove(); }, 220); });
+        document.querySelectorAll(".dl-cap-greet").forEach(function (c) { c.classList.add("dl-cap-greet-out"); /* ui1 B6: own class (.pn-out = card style) */ setTimeout(function () { if (c.parentNode) c.remove(); }, 220); });
       });
     } catch (e) {}
   }

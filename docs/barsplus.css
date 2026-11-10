@@ -1,7 +1,7 @@
 /* Öl Nu v12 KROGARNA (js/barsplus.js): queue, offers, takeover, beer types, bar tips. */
 
 /* ---------- Bar popup ---------- */
-.bp{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line-soft)}
+.bp{margin-top:8px}   /* ui1 B7: no dashed line (the fold row above is the divider) */
 .bp-own{font-weight:700;color:var(--gold);font-size:var(--fs-12);line-height:1.3;padding:3px 7px;margin:2px 0 3px;
   background:rgba(255,224,138,.07);border-left:3px solid var(--gold)}
 .bp-own.mine{border-left-color:var(--green);color:#c9ffd9;background:rgba(61,220,132,.08)}
@@ -15,33 +15,36 @@
 .bp-of-note{font-size:var(--fs-12);color:var(--muted);margin-top:3px}
 .bp-of-t{flex:1 1 auto;min-width:0;font-size:var(--fs-14);color:var(--foam);overflow-wrap:anywhere}
 .bp-of-v{display:flex;gap:4px;flex:0 0 auto}
-.bp-v{min-width:42px;min-height:32px;padding:0 6px;border:1px solid var(--line-soft);background:var(--night);color:var(--text);
-  font-family:var(--hud);font-size:var(--fs-12);cursor:pointer}
+.bp-v{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);min-width:56px;min-height:44px;padding:0 var(--sp-2);
+  border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}   /* ui1 B7: no square box */
+.bp-v .pi{width:20px;height:20px}
 .bp-v.up.on{border-color:var(--green);color:var(--green);background:rgba(61,220,132,.12)}
 .bp-v.dn.on{border-color:var(--red);color:#ffb3b3;background:rgba(255,59,59,.12)}
 .bp-v:disabled{opacity:.5;cursor:default}
-.bp-more{margin-top:6px;border:1px solid var(--line-soft);background:rgba(10,15,28,.55)}
-.bp-more>summary{list-style:none;cursor:pointer;padding:6px 10px;font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.04em;color:var(--amber-2);
-  min-height:36px;display:flex;align-items:center;gap:6px}
-.bp-more>summary::-webkit-details-marker{display:none}
-.bp-more>summary::after{content:"▾";margin-left:auto;color:var(--amber)}
-.bp-more[open]>summary::after{content:"▴"}
-.bp-more[open]>summary{border-bottom:1px dashed var(--line-soft)}
-.bp-more>.bp-lbl,.bp-more>.bp-row{margin-left:8px;margin-right:8px}
-.bp-lbl{font-size:var(--fs-12);color:var(--muted);margin-top:8px;margin-bottom:4px}
-.bp-row{display:flex;gap:5px;flex-wrap:wrap}
+/* ui1 B7 (owner 10 Nov): no inner dropdown, no square box. The buttons sit straight in the open "Kö och erbjudanden" row,
+   app style (DESIGN.md sheet rules 8 + 11): 44 px, radius 12, raised, 1 px border; status = coloured dot + word; a chosen
+   chip is tonal amber (ds21). */
+.bp-body{display:flex;flex-direction:column}
+.bp-lbl{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);margin:var(--sp-3) 0 var(--sp-2)}
+.bp-body>.bp-lbl:first-child{margin-top:0}
+.bp-row{display:flex;gap:var(--sp-2);flex-wrap:nowrap}
 .bp-row>button{flex:1 1 0;min-width:0}
-.bp-chip,.bp-qb,.bp-act{min-height:38px;padding:0 6px;border:1px solid var(--line);background:var(--night-3);color:var(--text);
-  font-family:var(--body);font-weight:700;font-size:var(--fs-12);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bp-chip{min-height:32px;font-weight:600;font-size:var(--fs-12);color:var(--muted)}
-.bp-chip.on{border-color:var(--amber);color:#241300;background:var(--amber)}
-.bp-qb.q-none{border-color:rgba(61,220,132,.55)}
-.bp-qb.q-short{border-color:rgba(245,166,35,.7)}
-.bp-qb.q-long{border-color:rgba(255,59,59,.6)}
-.bp-qb:active,.bp-act:active,.bp-chip:active{transform:scale(.97)}
+.bp-chip,.bp-qb,.bp-act{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-2);
+  border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);
+  font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform var(--m-2) var(--e-std)}
+.bp-chip{color:var(--ds-text-2)}
+.bp-chip.on{border-color:var(--ds-amber);color:var(--ds-amber-t);background:var(--ds-amber-soft, rgba(245,166,35,.14))}
+.bp-qd{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--ds-muted)}
+.bp-qb.q-none .bp-qd{background:var(--ds-green)}
+.bp-qb.q-short .bp-qd{background:var(--ds-amber)}
+.bp-qb.q-long .bp-qd{background:var(--ds-red-t)}
+.bp-qb:active,.bp-act:active,.bp-chip:active{transform:scale(.96)}
 .bp-qb.busy{opacity:.55}
-.bp-acts{margin-top:8px;margin-bottom:8px}
-.bp-act{border-color:var(--amber);color:var(--amber-2)}
+.bp-acts{margin-top:var(--sp-4)}
+.bp-act{color:var(--ds-text)}
+.bp-act .pi{width:20px;height:20px;flex:0 0 auto;color:var(--ds-muted)}
+.bp-act>span{overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion: reduce){.bp-chip,.bp-qb,.bp-act{transition:none}.bp-qb:active,.bp-act:active,.bp-chip:active{transform:none}}
 
 /* ---------- Markers ---------- */
 .bi-flag,.bm-flag{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-3px);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;
@@ -110,21 +113,21 @@
 .eta-me{font-size:var(--fs-14);line-height:1.35;padding:4px 7px;border-left:3px solid var(--green);background:rgba(61,220,132,.06)}
 .eta-cd{font-family:var(--hud);color:var(--gold);font-variant-numeric:tabular-nums}
 .eta-else{font-size:var(--fs-12)}
-.eta-go{width:100%;min-height:42px;padding:6px 10px;border:1px solid var(--amber);background:rgba(255,176,32,.12);color:var(--amber-2);
+.eta-go{width:100%;min-height:44px;padding:6px 10px;border:1px solid var(--amber);border-radius:var(--r-md);background:rgba(255,176,32,.12);color:var(--amber-2);
   font:700 var(--fs-14)/1.2 var(--body);cursor:pointer}
 .eta-go[aria-expanded="true"]{background:rgba(255,176,32,.22)}
 .eta-pick[hidden]{display:none}
 .eta-q{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.04em;color:var(--muted);margin:4px 0 4px}
 .eta-chips{display:flex;flex-wrap:wrap;gap:6px}
-.eta-chip{flex:1 1 0;min-width:0;min-height:40px;padding:0 2px;white-space:nowrap;border:1px solid var(--line-soft);background:var(--night);color:var(--text);
-  font-family:var(--hud);font-size:var(--fs-12);cursor:pointer}
+.eta-chip{flex:1 1 0;min-width:0;min-height:44px;padding:0 2px;white-space:nowrap;border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);
+  font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}   /* ui1 B7: app-style chip, no square box */
 .eta-chip:hover,.eta-chip:focus-visible{border-color:var(--amber);color:var(--amber-2)}
 .eta-chip:disabled{opacity:.5;cursor:default}
 .eta-acts{display:flex;gap:6px}
-.eta-acts>button{flex:1 1 0;min-height:40px}
-.eta-here,.eta-x{padding:0 8px;border:1px solid var(--line-soft);background:var(--night);color:var(--text);font:700 var(--fs-14)/1.2 var(--body);cursor:pointer}
+.eta-acts>button{flex:1 1 0;min-height:44px}
+.eta-here,.eta-x{padding:0 8px;border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
 .eta-here{border-color:var(--green);color:#c9ffd9;background:rgba(61,220,132,.12)}
 .eta-x{color:#ffb3b3}
 .rl-eta-list{font-family:var(--hud);font-size:var(--fs-12);color:var(--amber-2);margin:6px 0}
-.rl-eta{margin:8px 0;padding:8px;border:1px dashed var(--line-soft);background:rgba(10,15,28,.45)}
+.rl-eta{margin:8px 0;padding:8px;border:1px solid var(--ds-border);border-radius:var(--r-md);background:rgba(10,15,28,.45)}
 .rl-eta .eta-acts{margin-top:6px}

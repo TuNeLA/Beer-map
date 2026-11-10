@@ -397,7 +397,7 @@
     var btns = wrap.querySelector(".mx-btns"), timer = null;
     function close() {
       if (!wrap.parentNode) return;
-      clearTimeout(timer); wrap.classList.add("out");
+      clearTimeout(timer); wrap.classList.add("mx-pop-out");   // ui1 B6: own close class
       setTimeout(function () { wrap.remove(); popOpen = false; setTimeout(nextPop, 400); }, 200);
     }
     (o.buttons || []).forEach(function (b) {

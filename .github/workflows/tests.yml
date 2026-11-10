@@ -67,6 +67,8 @@ jobs:
             filter: '^(gw)$'
           - name: inst
             filter: '^(inst)$'
+          - name: ui1
+            filter: '^(ui1)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
@@ -76,6 +78,8 @@ jobs:
             filter: '^(tiers3|map4|barzoom)$'
           - name: map-3
             filter: '^(glfix-avpins|zones|mbx)$'
+          - name: map-ui1
+            filter: '^(ui1-map)$'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -108,6 +112,7 @@ jobs:
           path: |
             tests/e2e/out/logs/
             tests/e2e/out/traces/
+            tests/e2e/out/ui1-shots/
           retention-days: 14
           if-no-files-found: warn
 
