@@ -46,3 +46,5 @@
 .ps-map.mapboxgl-map{background:var(--ds-card)}
 .ps-pin.ps-pin-pni{background:none;border:0;line-height:0;pointer-events:none}
 .ps-pin.ps-pin-pni img{display:block}
+/* Mapbox terms: the logo shows on every map (mbx.js hides the GL copy of the MAIN map, which has its own logo next to ⓘ) */
+.ps-map .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-logo{display:block}

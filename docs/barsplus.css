@@ -15,8 +15,9 @@
 .bp-of-note{font-size:var(--fs-12);color:var(--muted);margin-top:3px}
 .bp-of-t{flex:1 1 auto;min-width:0;font-size:var(--fs-14);color:var(--foam);overflow-wrap:anywhere}
 .bp-of-v{display:flex;gap:4px;flex:0 0 auto}
-.bp-v{min-width:42px;min-height:32px;padding:0 6px;border:1px solid var(--line-soft);background:var(--night);color:var(--text);
-  font-family:var(--hud);font-size:var(--fs-12);cursor:pointer}
+.bp-v{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);min-width:56px;min-height:44px;padding:0 var(--sp-2);
+  border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}   /* ui1 B7: no square box */
+.bp-v .pi{width:20px;height:20px}
 .bp-v.up.on{border-color:var(--green);color:var(--green);background:rgba(61,220,132,.12)}
 .bp-v.dn.on{border-color:var(--red);color:#ffb3b3;background:rgba(255,59,59,.12)}
 .bp-v:disabled{opacity:.5;cursor:default}
@@ -112,21 +113,21 @@
 .eta-me{font-size:var(--fs-14);line-height:1.35;padding:4px 7px;border-left:3px solid var(--green);background:rgba(61,220,132,.06)}
 .eta-cd{font-family:var(--hud);color:var(--gold);font-variant-numeric:tabular-nums}
 .eta-else{font-size:var(--fs-12)}
-.eta-go{width:100%;min-height:42px;padding:6px 10px;border:1px solid var(--amber);background:rgba(255,176,32,.12);color:var(--amber-2);
+.eta-go{width:100%;min-height:44px;padding:6px 10px;border:1px solid var(--amber);border-radius:var(--r-md);background:rgba(255,176,32,.12);color:var(--amber-2);
   font:700 var(--fs-14)/1.2 var(--body);cursor:pointer}
 .eta-go[aria-expanded="true"]{background:rgba(255,176,32,.22)}
 .eta-pick[hidden]{display:none}
 .eta-q{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.04em;color:var(--muted);margin:4px 0 4px}
 .eta-chips{display:flex;flex-wrap:wrap;gap:6px}
-.eta-chip{flex:1 1 0;min-width:0;min-height:40px;padding:0 2px;white-space:nowrap;border:1px solid var(--line-soft);background:var(--night);color:var(--text);
-  font-family:var(--hud);font-size:var(--fs-12);cursor:pointer}
+.eta-chip{flex:1 1 0;min-width:0;min-height:44px;padding:0 2px;white-space:nowrap;border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);
+  font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}   /* ui1 B7: app-style chip, no square box */
 .eta-chip:hover,.eta-chip:focus-visible{border-color:var(--amber);color:var(--amber-2)}
 .eta-chip:disabled{opacity:.5;cursor:default}
 .eta-acts{display:flex;gap:6px}
-.eta-acts>button{flex:1 1 0;min-height:40px}
-.eta-here,.eta-x{padding:0 8px;border:1px solid var(--line-soft);background:var(--night);color:var(--text);font:700 var(--fs-14)/1.2 var(--body);cursor:pointer}
+.eta-acts>button{flex:1 1 0;min-height:44px}
+.eta-here,.eta-x{padding:0 8px;border:1px solid var(--ds-border-2);border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
 .eta-here{border-color:var(--green);color:#c9ffd9;background:rgba(61,220,132,.12)}
 .eta-x{color:#ffb3b3}
 .rl-eta-list{font-family:var(--hud);font-size:var(--fs-12);color:var(--amber-2);margin:6px 0}
-.rl-eta{margin:8px 0;padding:8px;border:1px dashed var(--line-soft);background:rgba(10,15,28,.45)}
+.rl-eta{margin:8px 0;padding:8px;border:1px solid var(--ds-border);border-radius:var(--r-md);background:rgba(10,15,28,.45)}
 .rl-eta .eta-acts{margin-top:6px}

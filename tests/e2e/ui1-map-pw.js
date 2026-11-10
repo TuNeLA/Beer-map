@@ -61,7 +61,8 @@ async function settle(page, ms) {
       out.discs = [...box.querySelectorAll(".ps-pin-pni img")].filter((i) => /^data:image\/svg\+xml/.test(i.src) && i.naturalWidth > 0).length;
       const br = box.getBoundingClientRect();
       out.inBox = [...box.querySelectorAll(".ps-pin-pni")].every((p) => { const q = p.getBoundingClientRect(); return q.left >= br.left && q.right <= br.right && q.top >= br.top && q.bottom <= br.bottom; });
-      out.logo = !!box.querySelector(".mapboxgl-ctrl-logo"), out.attrib = !!box.querySelector(".mapboxgl-ctrl-attrib");
+      const shown = (e) => !!(e && e.offsetWidth > 0 && e.offsetHeight > 0 && getComputedStyle(e).visibility !== "hidden");
+      out.logo = shown(box.querySelector(".mapboxgl-ctrl-logo")); out.attrib = shown(box.querySelector(".mapboxgl-ctrl-attrib"));
     }
     return out;
   });
@@ -84,7 +85,9 @@ async function settle(page, ms) {
   const res = [];
   for (const [name, lat, lng] of KOM) {
     await page.evaluate(([lat, lng]) => { __map.closePopup(); __map.setView([lat, lng], 8.2, { animate: false }); }, [lat, lng]);
-    await settle(page, 2200);
+    await settle(page, 1500);
+    await page.waitForFunction((name) => { const el = document.getElementById("live-count"); return el.classList.contains("zn-pill") && el.textContent.indexOf(name) === 0; }, name, { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(400);
     const p = await page.evaluate((name) => {
       const el = document.getElementById("live-count"), nm = el.querySelector(".zn-pn"), z = window.ZONES && ZONES._zoneAt(__map.getCenter().lat, __map.getCenter().lng);
       return { name, zone: z && z.k, txt: el.textContent.replace(/ /g, " "), zn: el.classList.contains("zn-pill"), cut: el.scrollWidth > el.clientWidth + 1 || !!(nm && nm.scrollWidth > nm.clientWidth + 1),
