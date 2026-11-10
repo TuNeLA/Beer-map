@@ -394,7 +394,7 @@
     });
     body.appendChild(nameRow);
     var joinSec = el("section", { class: "pt-card" }, [el("h2", { class: "pt-h2", text: "🔑 Har du en kod?" }), el("div", { class: "pt-row" }, [codeInp, jb])]);
-    if (groupRoom) { body.appendChild(joinSec); body.appendChild(el("p", { class: "pt-sub pt-oneroom", text: "Gänget har redan ett rum igång. Hoppa in – värden ä den som startade, eller nästa på tur." })); }
+    if (groupRoom) { body.appendChild(joinSec); body.appendChild(el("p", { class: "pt-sub pt-oneroom", text: "Gänget har redan ett rum igång. Hoppa in!" })); }
     else if (code) { body.appendChild(joinSec); body.appendChild(el("p", { class: "pt-or", text: "eller" })); body.appendChild(create); }
     else { body.appendChild(create); body.appendChild(el("p", { class: "pt-sub", text: "Du blir värd. Kompisarna går med med koden eller QR-koden." })); body.appendChild(joinSec); }
     var list = el("section", { class: "pt-games", "aria-label": "Spelen" });

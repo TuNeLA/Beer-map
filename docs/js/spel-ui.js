@@ -766,11 +766,11 @@
       } }));
     });
     kids.push(el("button", { type: "button", class: "sp-sec", text: L("🎉 Alla spel", "🎉 All games"), onclick: function () { box.remove(); toHub(); } }));
-    kids.push(el("button", { type: "button", class: "sp-main", text: TX.askNo, onclick: function () { box.remove(); } }));
+    kids.push(el("button", { type: "button", class: "sp-sec sp-ask-no", text: TX.askNo, onclick: function () { box.remove(); } }));
     var card = el("div", { class: "sp-ask-c" }, kids);
     box.addEventListener("click", function (e) { if (e.target === box) box.remove(); });
     box.appendChild(card); root.appendChild(box);
-    try { card.querySelector(".sp-main").focus(); } catch (e) {}
+    try { card.querySelector(".sp-swgo").focus(); } catch (e) {}
   }
 
   /* --- Vem i gänget? · Jag har aldrig · Hellre eller? --- */
