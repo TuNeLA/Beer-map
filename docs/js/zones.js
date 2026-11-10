@@ -17,8 +17,14 @@
   var A = null, map = null, gm = null, hooked = null, ready = false;
   var Z_OFF = 10.5, Z_KOM = 6.6, Z_SWE = 5.2, K_MIN = 3, AGE_MS = 60000;
   var SK = "olnu-zk", SL = "olnu-zl", SKL = "olnu-zk-pt", SLL = "olnu-zl-pt";
-  var L_LF = "olnu-zl-fill", L_LG = "olnu-zl-glow", L_LL = "olnu-zl-line", L_KF = "olnu-zk-fill", L_KG = "olnu-zk-glow", L_KL = "olnu-zk-line", L_KT = "olnu-zk-lbl", L_LT = "olnu-zl-lbl", L_LQ = "olnu-zl-lblq", L_LC = "olnu-zl-lblc";
+  var L_LF = "olnu-zl-fill", L_LG = "olnu-zl-glow", L_LL = "olnu-zl-line", L_KF = "olnu-zk-fill", L_KG = "olnu-zk-glow", L_KT = "olnu-zk-lbl", L_LT = "olnu-zl-lbl", L_LQ = "olnu-zl-lblq", L_LC = "olnu-zl-lblc";
   var EMPTY = { type: "FeatureCollection", features: [] };
+  /* map M1 (owner 2026-11-09): the border lines of ALL kommuner are gone (too many lines zoomed out). OWNER CHOICE, one line:
+     "none" = (a) no kommun outline at all · "mine" = (b) one faint outline: the kommun you are in (last position, else home).
+     Fill, glow, labels, the top-bar counts and the län borders stay. Dev / screenshots: localStorage olnu.map.kline = none|mine. */
+  var KOMMUN_OUTLINE = "none";
+  try { var kl0 = localStorage.getItem("olnu.map.kline"); if (kl0 === "none" || kl0 === "mine") KOMMUN_OUTLINE = kl0; } catch (e) {}
+  var SKY = "olnu-zk-you", L_KY = "olnu-zk-you-line", youSig = "";
   var geo = { l: null, k: null }, geoP = { l: null, k: null }, byK = {}, byL = {};
   var counts = null, countsAt = 0, asking = false, lastPill = null, missing = false;
   var stats = { asks: 0, labels: 0, taps: 0, loadMs: {} };
@@ -103,7 +109,7 @@
   }
 
   /* ---------- labels (canvas images; the Standard style has no glyphs for our font) ---------- */
-  var imgs = {}, mc = document.createElement("canvas").getContext("2d");
+  var imgs = {}, imgWH = {}, mc = document.createElement("canvas").getContext("2d");
   function tw(s, f) { mc.font = f; return mc.measureText(s).width; }
   function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   /* ds41 zonefr START — owner 2026-11-08 (7-zone-overlap.jpg): a friend pin + a group badge on the kommun centroid covered the
@@ -147,7 +153,7 @@
       g.font = f4; g.textAlign = "left"; g.fillStyle = "#3DDC84"; g.fillText(ft, x4 + dW, cy + 0.5);
     }
     var data = g.getImageData(0, 0, cv.width, cv.height), id = "zn" + (++stats.labels);
-    imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R });
+    imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R }); imgWH[id] = [w + 4, h + 4];   // map M3
     return id;
   }
   function chipImg(m, name, n, fr) {   // the whole-Sweden view: "Dalarna [glyph] 8" on one line (+ a green friend dot + count)
@@ -163,7 +169,7 @@
     if (nf0) { var xf = 11 + w1 + w2 + 8; g.beginPath(); g.arc(xf + 7, h / 2, 7, 0, 6.2832); g.fillStyle = "#3DDC84"; g.fill(); gl(g, "person", xf + 2, h / 2 - 5, 10, "#00260F");
       g.fillStyle = "#3DDC84"; g.fillText(String(nf0), xf + 17, h / 2 + 0.5); }
     var data = g.getImageData(0, 0, cv.width, cv.height), id = "zn" + (++stats.labels);
-    imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R });
+    imgs[key] = id; imgs["d|" + key] = data; m.addImage(id, data, { pixelRatio: R }); imgWH[id] = [w + 4, h + 4];   // map M3
     return id;
   }
   // friends (and me) per zone code, from the pins the app has (friend rows only: strangers are never named)
@@ -181,6 +187,7 @@
   function barName(id) { try { var b = window.BARS && window.BARS.byId && window.BARS.byId(id); return b && b.name ? String(b.name).slice(0, 22) : null; } catch (e) { return null; } }
 
   /* ---------- layers ---------- */
+  var VIS = ["!=", ["coalesce", ["get", "hid"], 0], 1];   // map M3: a label with no free side waits for the next move
   var COL = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, "#2A3557", 1, "#C2650A", 2, "#F5A623", 3, "#FF9A1F", "#FFC24D"];
   var ALPHA = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, 0.16, 1, 0.26, 2, 0.38, 3, 0.48, 0.58];
   var ALPHA_K = ["match", ["coalesce", ["feature-state", "lv"], 0], 0, 0, 1, 0.2, 2, 0.3, 3, 0.4, 0.5];   // ds44: kommun = the soft heat only
@@ -192,6 +199,7 @@
       if (geo.l && !m.getSource(SL)) m.addSource(SL, { type: "geojson", data: geo.l, tolerance: 0.6 });
       if (geo.k && !m.getSource(SK)) m.addSource(SK, { type: "geojson", data: geo.k, tolerance: 0.6 });
       [SLL, SKL].forEach(function (id) { if (!m.getSource(id)) m.addSource(id, { type: "geojson", data: EMPTY, maxzoom: 10 }); });
+      if (KOMMUN_OUTLINE === "mine" && !m.getSource(SKY)) { m.addSource(SKY, { type: "geojson", data: EMPTY, tolerance: 0.6 }); youSig = ""; }   // map M1 (b)
       // fills + borders under the Mapbox place labels (Standard slot "middle"), labels above the heat, under the bars
       if (m.getSource(SL)) {
         addL(m, { id: L_LF, type: "fill", source: SL, slot: "middle", maxzoom: Z_KOM - 1 + 0.3,
@@ -210,23 +218,26 @@
         addL(m, { id: L_KG, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
           paint: { "line-color": "#FFB43C", "line-width": 6, "line-blur": 6, "line-emissive-strength": 1,
             "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 2, ["case", [">=", ["coalesce", ["feature-state", "lv"], 0], 3], 0.38, 0], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
-        addL(m, { id: L_KL, type: "line", source: SK, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
-          paint: { "line-color": ["case", ["boolean", ["feature-state", "home"], false], "#FFC24D", "#FFFAF0"], "line-emissive-strength": 1,   /* ds44: clear solid borders, home kommun stronger */
-            "line-width": ["interpolate", ["linear"], ["zoom"], 5.6, ["case", ["boolean", ["feature-state", "home"], false], 1.8, 0.9], 9, ["case", ["boolean", ["feature-state", "home"], false], 2.6, 1.4]],
-            "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, ["case", ["boolean", ["feature-state", "home"], false], 0.95, 0.6], Z_OFF - 2, ["case", ["boolean", ["feature-state", "home"], false], 0.9, 0.55], Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
+        // map M1: no line layer for all kommuner (was L_KL, ds44). Version (b): one faint outline, only the kommun you are in
+        if (KOMMUN_OUTLINE === "mine" && m.getSource(SKY)) addL(m, { id: L_KY, type: "line", source: SKY, slot: "middle", minzoom: Z_KOM - 1 - 0.3, maxzoom: Z_OFF - 1,
+          paint: { "line-color": "#FFFAF0", "line-emissive-strength": 1, "line-width": ["interpolate", ["linear"], ["zoom"], 5.6, 1.4, 9, 2],
+            "line-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.2, 0, Z_KOM - 1 + 0.2, 0.55, Z_OFF - 2, 0.5, Z_OFF - 1, 0] } }, m.getLayer(L_LL) ? L_LL : null);
       }
       // labels sit just above the zone's label point (the town's people pins / 📍 chips are DOM, GL cannot dodge them)
-      var lblLay = { "icon-image": ["get", "img"], "icon-anchor": "bottom", "icon-offset": [0, -10], "icon-allow-overlap": false, "icon-ignore-placement": false, "icon-padding": 2,
+      // map M3: the side of the town point comes from place() (an), default above it as before
+      var lblLay = { "icon-image": ["get", "img"], "icon-anchor": ["coalesce", ["get", "an"], "bottom"],
+        "icon-offset": ["match", ["coalesce", ["get", "an"], "bottom"], "top", ["literal", [0, 10]], "left", ["literal", [10, 0]], "right", ["literal", [-10, 0]], ["literal", [0, -10]]],
+        "icon-allow-overlap": false, "icon-ignore-placement": false, "icon-padding": 2,
         "symbol-sort-key": ["get", "sk"], "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };
       var above = m.getLayer("olnu-place") ? "olnu-place" : null;   // over the heat, under every GL bar layer (glmap.js)
       // busy län first: placement goes layer by layer (top first), the sort key only orders WITHIN a tile, so quiet names
       // get their own layer under the busy one (a quiet name never hides a busy label)
       var lp = { "icon-emissive-strength": 1, "icon-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.25, 1, Z_KOM - 1 + 0.1, 0] };
-      addL(m, { id: L_LQ, type: "symbol", source: SLL, maxzoom: Z_KOM - 1 + 0.15, filter: ["==", ["get", "q"], 1], layout: lblLay, paint: lp }, above);
-      addL(m, { id: L_LT, type: "symbol", source: SLL, minzoom: Z_SWE - 1, maxzoom: Z_KOM - 1 + 0.15, filter: ["==", ["get", "q"], 0], layout: lblLay, paint: lp }, above);
-      addL(m, { id: L_LC, type: "symbol", source: SLL, maxzoom: Z_SWE - 1, filter: ["==", ["get", "q"], 0],
+      addL(m, { id: L_LQ, type: "symbol", source: SLL, maxzoom: Z_KOM - 1 + 0.15, filter: ["all", ["==", ["get", "q"], 1], VIS], layout: lblLay, paint: lp }, above);
+      addL(m, { id: L_LT, type: "symbol", source: SLL, minzoom: Z_SWE - 1, maxzoom: Z_KOM - 1 + 0.15, filter: ["all", ["==", ["get", "q"], 0], VIS], layout: lblLay, paint: lp }, above);
+      addL(m, { id: L_LC, type: "symbol", source: SLL, maxzoom: Z_SWE - 1, filter: ["all", ["==", ["get", "q"], 0], VIS],
         layout: Object.assign({}, lblLay, { "icon-image": ["get", "ci"] }), paint: { "icon-emissive-strength": 1 } }, above);
-      addL(m, { id: L_KT, type: "symbol", source: SKL, minzoom: Z_KOM - 1 - 0.1, maxzoom: Z_OFF - 1 - 0.4, layout: lblLay,
+      addL(m, { id: L_KT, type: "symbol", source: SKL, minzoom: Z_KOM - 1 - 0.1, maxzoom: Z_OFF - 1 - 0.4, filter: VIS, layout: lblLay,
         paint: { "icon-emissive-strength": 1, "icon-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.1, 0, Z_KOM - 1 + 0.25, 1, Z_OFF - 2, 1, Z_OFF - 1 - 0.4, 0] } }, above);
       // glmap.js may have added its layers after ours (style reload): keep the labels under the bars
       if (above) [L_LQ, L_LT, L_LC, L_KT].forEach(function (id) { try { if (m.getLayer(id)) m.moveLayer(id, "olnu-place"); } catch (e) {} });
@@ -242,6 +253,11 @@
       if (geo.l && m.getSource(SL)) geo.l.features.forEach(function (f) { var c = lc(f.properties.l); m.setFeatureState({ source: SL, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some) }); });
       var hk = null; try { var hh = window.U && window.U.ls ? window.U.ls.getJSON("olnu.home", null) : null, ll = hh && isFinite(hh.lat) ? hh : (A && A.lastLoc ? A.lastLoc() : null); if (ll && geo.k) hk = zoneAt0("k", +ll.lat, +ll.lng); } catch (e) {}   // ds44: home kommun
       if (geo.k && m.getSource(SK)) geo.k.features.forEach(function (f) { var c = kc(f.properties.k); m.setFeatureState({ source: SK, id: f.id }, { lv: lvl(c ? c.n : 0, c && c.some), home: f === hk }); });
+      if (KOMMUN_OUTLINE === "mine" && geo.k && m.getSource(SKY)) {   // map M1 (b): the kommun you are in (position first, then home)
+        var yk = null; try { var yl = A && A.lastLoc ? A.lastLoc() : null; if (yl && isFinite(yl.lat)) yk = zoneAt0("k", +yl.lat, +yl.lng); } catch (e) {}
+        yk = yk || hk; var ys = yk ? String(yk.properties.k) : "-";
+        if (ys !== youSig) { youSig = ys; m.getSource(SKY).setData(yk ? { type: "FeatureCollection", features: [{ type: "Feature", id: 1, geometry: yk.geometry, properties: { k: yk.properties.k } }] } : EMPTY); }
+      }
       // län labels: all 21
       if (geo.l) {
         var lf = geo.l.features.map(function (f) {
@@ -249,7 +265,7 @@
           var img = labelImg(m, p.n, countLine(c), top, true, c && c.n >= 10, frL[p.l]);
           return { type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] }, properties: { img: img, ci: c ? chipImg(m, p.n, c.some || !c.n ? "några" : nf(c.n), frL[p.l]) : "", sk: -(c ? (c.n || 1) : 0), l: p.l, q: c ? 0 : 1 } };
         }), s1 = lf.map(function (f) { return f.properties.img; }).join();
-        if (s1 !== sigL) { sigL = s1; m.getSource(SLL).setData({ type: "FeatureCollection", features: lf }); }
+        lastF[SLL] = lf; if (s1 !== sigL) { sigL = s1; place(SLL); }   // map M3: place() picks the free side, then setData
       }
       // kommun labels: only where someone is out
       if (geo.k && counts) {
@@ -260,9 +276,54 @@
             properties: { img: labelImg(m, p.n, countLine(c), bn || null, false, c.n >= 10, frK[p.k]), sk: -(c.n || 1) - (frK[p.k] ? 1000 : 0), k: p.k } });
         });
         var s2 = kf.map(function (f) { return f.properties.img; }).join();
-        if (s2 !== sigK) { sigK = s2; m.getSource(SKL).setData({ type: "FeatureCollection", features: kf }); }
+        lastF[SKL] = kf; if (s2 !== sigK) { sigK = s2; place(SKL); }
       }
     } catch (e) {}
+  }
+
+  /* ---------- map M3: zone labels out of the UI-safe areas (moveend / new data only, never per frame) ---------- */
+  var lastF = {}, sideSig = {}, SIDES = ["bottom", "top", "right", "left"];
+  function uiRects() {   // GL canvas px: the app UI over the map + the 📍 my-pin / invite chips (DOM, GL collision cannot see them)
+    var out = [], m = gm; if (!m || !map) return out;
+    try {
+      var cv = m.getCanvas().getBoundingClientRect(), ct = map.getContainer().getBoundingClientRect(), dx = ct.left - cv.left, dy = ct.top - cv.top;
+      ((window.TIERS && TIERS.safeRects) ? TIERS.safeRects(map) : []).forEach(function (r) { out.push({ l: r.l + dx, t: r.t + dy, r: r.r + dx, b: r.b + dy }); });
+      document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *").forEach(function (e) {
+        var r = e.getBoundingClientRect(); if (r.width && r.height) out.push({ l: r.left - cv.left - 3, t: r.top - cv.top - 3, r: r.right - cv.left + 3, b: r.bottom - cv.top + 3 });
+      });
+    } catch (e) {}
+    return out;
+  }
+  function sideBox(q, wh, an) {
+    var w = wh[0], h = wh[1];
+    if (an === "top") return { l: q.x - w / 2, t: q.y + 10, r: q.x + w / 2, b: q.y + 10 + h };
+    if (an === "right") return { l: q.x - 10 - w, t: q.y - h / 2, r: q.x - 10, b: q.y + h / 2 };
+    if (an === "left") return { l: q.x + 10, t: q.y - h / 2, r: q.x + 10 + w, b: q.y + h / 2 };
+    return { l: q.x - w / 2, t: q.y - 10 - h, r: q.x + w / 2, b: q.y - 10 };
+  }
+  function place(only) {
+    var m = gm; if (!ready || !m || !map) return;
+    var rs = null, cv = null, z = zoom();
+    [SLL, SKL].forEach(function (src) {
+      if (only && only !== true && only !== src) return;
+      var fs = lastF[src], s = m.getSource(src); if (!fs || !s) return;
+      if (!rs) { rs = uiRects(); cv = m.getCanvas(); }
+      var W = cv.clientWidth || cv.width, H = cv.clientHeight || cv.height, key = src === SLL && z < Z_SWE ? "ci" : "img", sig = "";
+      fs.forEach(function (f) {
+        var pr = f.properties, wh = imgWH[pr[key]] || [90, 44], q = m.project(f.geometry.coordinates), an = "bottom", hid = 0;
+        if (q.x > -200 && q.y > -200 && q.x < W + 200 && q.y < H + 200) {   // off screen: as before
+          an = null;
+          for (var i = 0; i < SIDES.length && !an; i++) {
+            var b = sideBox(q, wh, SIDES[i]), vis = (Math.min(W, b.r) - Math.max(0, b.l)) / (b.r - b.l), hit = vis < 0.6;   // mostly off screen: try the next side
+            for (var j = 0; j < rs.length && !hit; j++) hit = b.l < rs[j].r && b.r > rs[j].l && b.t < rs[j].b && b.b > rs[j].t;
+            if (!hit) an = SIDES[i];
+          }
+          if (!an) { an = "bottom"; hid = 1; }
+        }
+        pr.an = an; pr.hid = hid; sig += an + hid + ",";
+      });
+      if (only === src || only === true || sig !== sideSig[src]) { sideSig[src] = sig; try { s.setData({ type: "FeatureCollection", features: fs }); } catch (e) {} }
+    });
   }
 
   /* ---------- the top bar pill ---------- */
@@ -392,9 +453,11 @@
     var v = ready && !!map && !!glm() && zoom() < Z_OFF - 0.9 && !!(geo.l || geo.k), de = document.documentElement;
     if (v !== de.hasAttribute("data-zones")) { if (v) de.setAttribute("data-zones", ""); else de.removeAttribute("data-zones"); }
   }
+  var placeT = 0;
   function moved() {
     cls();
     if (!map) return;
+    if (ready && wanted()) { clearTimeout(placeT); placeT = setTimeout(function () { place(false); }, 60); }   // map M3 (after the my-pin chips moved)
     if (wanted()) {
       if (!geo.l && !geo.k) { check(); return; }
       if (!ready) ensure();
@@ -433,7 +496,9 @@
     // test hooks
     _counts: function () { return counts; },
     _zoneAt: function (lat, lng) { var k = zoneAt("k", lat, lng), l = zoneAt("l", lat, lng); return { k: k && k.properties.n, l: l && l.properties.n }; },
-    _layers: function () { return [L_LF, L_LG, L_LL, L_KF, L_KG, L_KL, L_KT, L_LQ, L_LT, L_LC]; },
+    _layers: function () { return [L_LF, L_LG, L_LL, L_KF, L_KG, L_KY, L_KT, L_LQ, L_LT, L_LC]; },
+    _outline: function () { return KOMMUN_OUTLINE; },   // map M1: "none" | "mine"
+    _place: function () { place(true); }, _uiRects: function () { return uiRects(); },   // map M3 test hooks
     _ask: function () { countsAt = 0; ask(true); },
     _geo: function () { return { l: !!geo.l, k: !!geo.k, loadMs: stats.loadMs }; }
   };

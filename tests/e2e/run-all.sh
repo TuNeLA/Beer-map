@@ -63,6 +63,7 @@ NEEDS_MAPBOX=1 run barzoom    $A barzoom-pw.js   # ds44: no glow circle over a l
 NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
+run map        $A map-pw.js        # map lane: B9 icon size, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo (stub Mapbox without a token)
 NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + B10 real zone pill at 360 px
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
