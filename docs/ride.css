@@ -1,0 +1,118 @@
+/* lane:ride — RIDE v2 (js/ride.js). Tokens only (DESIGN.md / pnds.css :root). Prefix rd-. One card per block, no card in a card,
+   buttons 48 px (chips 44), one amber per screen, segmented control = ds06 rule 14. No transitions on map markers. */
+.rd{display:flex;flex-direction:column;gap:var(--sp-2)}
+.rd-lead{margin:0;font:400 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.rd-muted{margin:0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.rd-small,.rd-priv{font-size:var(--fs-12);line-height:16px}
+.rd-h{margin:var(--sp-4) 0 0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.rd-ic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.rd-ic .pi{width:var(--pn-ic);height:var(--pn-ic)}
+.rd-112{margin-bottom:var(--sp-1)}
+/* segmented control */
+.rd-seg{display:grid;gap:var(--sp-1);padding:var(--sp-1);border-radius:var(--r-md);background:var(--ds-bg)}
+.rd-seg2{grid-template-columns:1fr 1fr}
+.rd-seg4{grid-template-columns:repeat(4,1fr)}
+.rd-segb{min-height:44px;margin:0;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ds-text-2);
+  font:600 var(--fs-16)/22px var(--ds-sans);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 var(--sp-2)}
+.rd-segb[aria-checked="true"]{background:var(--ds-raised);color:var(--ds-amber-t)}
+.rd-segb:focus-visible,.rd-qb:focus-visible,.rd-send:focus-visible,.rd-rowbtn:focus-visible,.rd-taxi:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.rd-place{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);background:var(--ds-card);
+  color:var(--ds-text);font:600 var(--fs-16)/22px var(--ds-sans)}
+.rd-place .pi{color:var(--ds-amber-t)}
+.rd-place span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-place-none{color:var(--ds-muted);font-weight:400}
+.rd-in{flex:1 1 auto;min-width:0;width:100%;box-sizing:border-box;min-height:48px;padding:0 var(--sp-3);border-radius:var(--r-md);
+  border:1px solid var(--ds-border-2);background:var(--ds-card);color:var(--ds-text);font:400 var(--fs-16)/22px var(--ds-sans)}
+.rd-in::placeholder{color:var(--ds-muted)}
+.rd-go{min-height:48px;margin-top:var(--sp-4)}
+/* cards */
+.rd-card{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);background:var(--ds-card);border:1px solid var(--ds-border)}
+.rd-big{font:700 var(--fs-18)/24px var(--ds-sans);color:var(--ds-text);overflow-wrap:anywhere}
+.rd-wait-top{display:flex;align-items:center;gap:var(--sp-2)}
+.rd-pulse{width:12px;height:12px;border-radius:var(--r-pill);background:var(--ds-amber);flex:0 0 auto}
+@media (prefers-reduced-motion:no-preference){.rd-pulse{animation:rdPulse 1.6s ease-in-out 3}}
+@keyframes rdPulse{50%{opacity:.35;transform:scale(.8)}}
+.rd-row2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.rd-row2>.btn{min-height:48px;margin:0;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-row2>.btn:only-child{grid-column:1 / -1}
+.rd-cancel,.rd-new,.rd-drv-off{min-height:48px;margin:0}
+/* the driver / rider card */
+.rd-who{display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+.rd-who-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rd-face{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--r-pill);overflow:hidden;background:var(--ds-raised);flex:0 0 auto}
+.rd-face svg{width:100%;height:100%;display:block}
+.rd-face-l{width:56px;height:56px}
+.rd-face-i{color:var(--ds-amber-t);font:700 var(--fs-22)/28px var(--ds-sans)}
+.rd-eta{font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-green)}
+.rd-car{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--ds-raised)}
+.rd-car span{display:flex;flex-direction:column;min-width:0}
+.rd-car b{font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);overflow-wrap:anywhere}
+.rd-car small{font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+.rd-warn{margin:0;font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-amber-t)}
+.rd-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-1);margin:var(--sp-1) 0 0;padding:0;list-style:none}
+.rd-step{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;font:600 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted);text-align:center}
+.rd-step .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+.rd-step-done{color:var(--ds-green)}
+.rd-step-now{color:var(--ds-amber-t)}
+.rd-rowbtn{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:0 var(--sp-4);border:0;border-radius:var(--r-lg);background:var(--ds-card);
+  color:var(--ds-text);font:600 var(--fs-16)/22px var(--ds-sans);text-decoration:none;cursor:pointer;text-align:left;width:100%;box-sizing:border-box}
+.rd-rowbtn span:not(.rd-ic){flex:1 1 auto}
+.rd-chev .pi{width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-muted)}
+/* 1-tap chat */
+.rd-chat{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-2)}
+.rd-msgs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.rd-msg{align-self:flex-start;max-width:80%;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-lg);background:var(--ds-card);color:var(--ds-text);
+  font:400 var(--fs-16)/22px var(--ds-sans);overflow-wrap:anywhere}
+.rd-msg-me{align-self:flex-end;background:rgba(245,166,35,.16)}
+.rd-quick{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.rd-qb{min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-pill);border:1px solid var(--ds-border-2);background:var(--ds-card);color:var(--ds-text);
+  font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
+.rd-say{display:flex;gap:var(--sp-2);align-items:center}
+.rd-send{flex:0 0 48px;width:48px;height:48px;border-radius:var(--r-pill);border:0;background:var(--ds-raised);color:var(--ds-amber-t);display:grid;place-items:center;cursor:pointer}
+.rd-car-save{flex:0 0 auto;min-height:48px;margin:0}
+/* ended */
+.rd-end{align-items:center;text-align:center}
+.rd-ok .pi,.rd-gold .pi{width:40px;height:40px}
+.rd-ok{color:var(--ds-green)}
+.rd-gold{color:var(--ds-amber-t)}
+.rd-thanks{min-height:48px;margin:0}
+/* offer */
+.rd-facts{margin:0;font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text-2)}
+.rd-note{margin:0;font:400 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);font-style:italic;overflow-wrap:anywhere}
+.rd-drunk{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-lg);background:rgba(200,32,42,.16);color:var(--ds-red-t);
+  font:700 var(--fs-16)/22px var(--ds-sans)}
+.rd-card.rd-drunk{flex-direction:row}
+.rd-took{display:flex;align-items:center;gap:var(--sp-2);margin:0;font:700 var(--fs-16)/22px var(--ds-sans);color:var(--ds-green)}
+.rd-took .pi{width:var(--pn-ic);height:var(--pn-ic)}
+.rd-answer .btn{min-height:48px}
+/* taxi row */
+.rd-taxi{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:var(--sp-2) var(--sp-4);border-radius:var(--r-lg);background:var(--ds-card);
+  border:1px solid var(--ds-border);color:var(--ds-text);text-decoration:none}
+.rd-taxi .rd-ic .pi{color:var(--ds-amber-t)}
+.rd-taxi-t{flex:1 1 auto;display:flex;flex-direction:column;min-width:0}
+.rd-taxi-t b{font:600 var(--fs-16)/22px var(--ds-sans)}
+.rd-taxi-t small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);overflow-wrap:anywhere}
+.rd-taxi-go .pi{color:var(--ds-green)}
+/* Jag kör ikväll extras */
+.rd-ikv{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3)}
+.rd-lbl{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+/* map pick: a fixed pin over the map centre, the map moves under it */
+.rd-pick{position:fixed;inset:0;z-index:1600;pointer-events:none}   /* over the dock (1000), like a sheet (1600; the sheet is closed while picking) */
+.rd-pick-pin{position:fixed;transform:translate(-50%,-100%);color:var(--ds-amber);filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+.rd-pick-pin .pi{width:44px;height:44px}
+.rd-pick-bar{position:fixed;left:0;right:0;bottom:0;pointer-events:auto;display:flex;flex-direction:column;gap:var(--sp-2);
+  padding:var(--sp-4) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom,0px));background:var(--ds-sheet);border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:var(--ds-sh-2)}
+.rd-pick-place{margin:0;font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);text-align:center;overflow-wrap:anywhere}
+/* map pins (static: no transitions on markers) */
+.rd-pin{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;align-items:center;gap:var(--sp-1);padding:2px var(--sp-2) 2px 2px;
+  border-radius:var(--r-pill);background:var(--pn-float-2);border:2px solid var(--ds-amber);color:var(--ds-text);font:700 var(--fs-12)/16px var(--ds-sans);
+  white-space:nowrap;max-width:170px;cursor:pointer;box-shadow:var(--ds-sh-1)}
+.rd-pin .pi{width:22px;height:22px;padding:2px;border-radius:var(--r-pill);background:var(--ds-amber);color:var(--ds-on-amber)}
+.rd-pin b{overflow:hidden;text-overflow:ellipsis}
+.rd-pin-pk{border-color:var(--ds-green)}
+.rd-pin-pk .pi{background:var(--ds-green)}
+.rd-chip .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+.toast.rd-toast{border-left:4px solid var(--ds-amber)}
+/* inside the sheet: the sheet's own p / button rules are more specific; keep the ride rhythm (8 px) and 48 px buttons */
+#sheet-body .rd p{margin:0}
+#sheet-body .rd .btn:not(.btn-small){min-height:48px;height:auto;box-sizing:border-box}

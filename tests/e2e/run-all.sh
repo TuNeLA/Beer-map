@@ -102,6 +102,7 @@ run social-a   $B social-a-pw.js  # social-a Wave 3: G1 Vänner actions, G2 Prof
 run after2     $B after2-pw.js     # lane after: A2 Kvällsrapporten (cards, awards, share card), R1-11 MEDEVAC chip only, R1-39 Mina kvällar chip
 run moments    $B moments-pw.js    # lane after: GM7 moments (vad, Halvtid, bordet, Hemlig agent) + GM4 room card + moments in the report
 run misc       $B misc-pw.js       # misc: X4 delete with 7 days to undo, F4 Grundare badge + owner cutoff, X5 film block + reportMenu, F3 film reports in the owner queue
+run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, first-accept race, live driver card, 5/10 min, cancel/Tack, drink rule, flag off / old server, R1-30
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk

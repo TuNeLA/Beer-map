@@ -46,3 +46,11 @@
 .hf2{display:flex;flex-direction:column;gap:8px}
 .hf2 .btn{min-height:48px;margin:0;text-align:left;justify-content:flex-start}
 .hf2-lead{margin:0 0 4px;font-size:var(--ds-fs-16,16px);line-height:1.4}
+/* lane:ride R1-30 — member row: neutral role pill "Kör ikväll" (same as Ägare / Chef, ds53) + "Skjuts?" text button (same as
+   "Lägg till vän"); the group tile icon is PNI taxi. The old .skj-tag / .skj-ask-s rules above are no longer used. */
+.skj-role .pi{width:14px;height:14px;color:var(--ds-amber-t)}
+.skj-slot{display:block;margin-top:var(--sp-1)}
+.skj-ask-t{min-height:44px;padding:0 var(--sp-3);margin-left:calc(-1 * var(--sp-3));border:0;background:transparent;box-shadow:none;
+  color:var(--ds-amber-t);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
+.skj-ask-t:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.skj-ic .pi{width:22px;height:22px;color:var(--ds-amber-t)}
