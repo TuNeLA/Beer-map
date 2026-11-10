@@ -31,6 +31,8 @@
    Hooks: init, onAuthed, onPoll, groupItem, settingsSheet. */
 (function () {
   "use strict";
+  // mail language: the Supabase e-mail templates read user_metadata.lang ({{ .Data.lang }}) and pick the text. Swedish for now.
+  function mailLang() { var l = String(window.PN_LANG || "sv").slice(0, 2).toLowerCase(); return /^(sv|en|nb|da|fi)$/.test(l) ? l : "sv"; }
   var U = window.U, I = window.I18N, A = null;
   var CFG = window.OLNU_CONFIG || {};
   var LIVE = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY);
@@ -472,9 +474,9 @@
       }));
     }
     function sendSave() {
-      var c = client(), data = {}; if (myName()) data.olnu_name = myName();
+      var c = client(), data = { lang: mailLang() }; if (myName()) data.olnu_name = myName();
       if (st.mode === "change") st.old = savedEmail();
-      return call(function () { return c.auth.updateUser(st.mode === "change" ? { email: st.email } : { email: st.email, data: data }); })
+      return call(function () { return c.auth.updateUser(st.mode === "change" ? { email: st.email, data: { lang: data.lang } } : { email: st.email, data: data }); })
         .then(function (r) { if (!r.error) st.sentAt = Date.now(); return { err: r.error, data: r.data }; });
     }
     function sendLogin() {
@@ -803,6 +805,7 @@
         var u = user() || {}, md = u.user_metadata || {}, n = myName();
         if (!n && md.olnu_name) lsSet("olnu.name", String(md.olnu_name).slice(0, 30));
         else if (n && md.olnu_name !== n) setTimeout(function () { call(function () { return c.auth.updateUser({ data: { olnu_name: n } }); }); }, 8000);
+        if (!md.lang) setTimeout(function () { call(function () { return c.auth.updateUser({ data: { lang: mailLang() } }); }); }, 9000);   // saved accounts from before: the login mail picks this language
       }
       loadCfg(false).then(function () {
         setTimeout(resumeSheet, 1500);
