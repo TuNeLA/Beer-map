@@ -151,7 +151,8 @@
       "height:26px;padding:0 9px 0 6px;border-radius:999px;background:rgba(10,15,28,.92);color:var(--ds-text,#eef0ec);" +
       "font:700 12px/1 var(--ds-sans,system-ui,sans-serif);letter-spacing:.01em;border:1.5px solid var(--ap-c,#8fd8ff);" +
       "box-shadow:0 1px 2px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.4),0 0 0 3px rgba(10,15,28,.25);cursor:pointer;user-select:none;-webkit-user-select:none}" +
-    ".ap-pin::after{content:'';position:absolute;inset:-9px -4px -14px}" +
+    // map R1-34: the tap box is at least 44 × 44 px (it was 17 × 26 on a small chip), centred on the chip, invisible
+    ".ap-pin::after{content:'';position:absolute;left:50%;top:50%;width:max(100% + 8px,44px);height:max(100% + 18px,44px);transform:translate(-50%,-50%)}" +
     ".ap-pin::before{content:'';position:absolute;left:50%;bottom:-6px;width:8px;height:8px;margin-left:-4px;background:inherit;border:inherit;border-top:0;border-left:0;transform:rotate(45deg);border-radius:0 0 2px 0}" +
     ".ap-pin .ap-i{font-size:14px;line-height:1}" +
     ".ap-pin .ap-c{color:var(--ds-amber-t,#ffc24d);font-weight:700}" +

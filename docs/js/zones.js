@@ -476,7 +476,8 @@
     var pop = document.getElementById("attrib-pop"); if (!pop || pop.querySelector(".zn-credit")) return;
     var s = document.createElement("span"); s.className = "zn-credit";
     s.innerHTML = ' | Gränser: <a href="https://www.scb.se/hitta-statistik/regional-statistik-och-kartor/regionala-indelningar/digitala-granser/" target="_blank" rel="noopener">SCB</a> (CC0)';
-    pop.appendChild(s);
+    // map R1-36: on the map credit's own line (it stood alone after the legend)
+    var mc = pop.querySelector(".bm-credit"); if (mc && mc.parentNode === pop) pop.insertBefore(s, mc.nextSibling); else pop.appendChild(s);
   }
 
   window.ZONES = {
