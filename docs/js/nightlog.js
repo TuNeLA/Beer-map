@@ -88,9 +88,12 @@
       var s = d.stats || {}, items = d.items || [], nights = d.nights || [];
       // night chips (one scroll row)
       var curNight = String(d.night);
+      // lane:after R1-39: only real nights (a valid date) make a chip; the row shows only with 2+ of them (one chip for an
+      // empty night was a blank round chip above "Tomt i loggboken")
+      nights = nights.filter(function (n) { return n && isFinite(Date.parse(n.night)); });
       var has = nights.some(function (n) { return Date.parse(n.night) === Date.parse(curNight); });
-      if (!has) nights = [{ night: d.night, evening: d.evening, drinks: s.drinks | 0 }].concat(nights);
-      if (nights.length > 1 || !d.tonight) {
+      if (!has && isFinite(Date.parse(curNight))) nights = [{ night: d.night, evening: d.evening, drinks: s.drinks | 0 }].concat(nights);
+      if (nights.length > 1 || (!d.tonight && nights.length === 1 && (nights[0].drinks | 0) > 0)) {
         var row = el("div", { class: "nl-nights", role: "tablist", "aria-label": L("Kvällar", "Nights") });
         nights.slice(0, 30).forEach(function (n) {
           var on = Date.parse(n.night) === Date.parse(curNight);

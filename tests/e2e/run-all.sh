@@ -96,6 +96,7 @@ run ds-motion  $B ds-motion-pw.js  # ds10 motion rules
 run gw         $B gw-pw.js         # competitor-research build (gw.js): Ute ikväll?, previews, honest crowd, Följ mig hem timer
 run inst       $B inst-pw.js       # screens show at once (no layout shift / late inserts) with slow RPCs (inst-mocks.js)
 run ui1        $B ui1-pw.js       # ui1 Wave 1: B3 day headers, B4 chip fades, B6 close jumps, B7 bar card, B10 pill, B11 tabs, B12 bubble
+run after2     $B after2-pw.js     # lane after: A2 Kvällsrapporten (cards, awards, share card), R1-11 MEDEVAC chip only, R1-39 Mina kvällar chip
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk

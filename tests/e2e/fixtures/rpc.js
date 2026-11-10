@@ -111,6 +111,9 @@ function build(now) {
     my_night_report: () => null,   // after.js boot check (no report yet)
     film_stock: () => ({ film: "kvall", locked: false, set_by: null }),   // film.js / filmfx.js (film for tonight; default Kvällsljus 400)                                   // pnvis.js (Alla · Bara vänner · Spöke)
     // spel-ui.js launchSync(): same dates as its PN_LAUNCH fallback, so "Nytt" does not change with the mock
+    // lane:after A2 (0450): no report on a calm test night (after2-pw.js routes its own night); flags all off
+    after_report2: () => ({ v: 1, empty: true, night: nightEnd(now - 24 * 3600e3), evening: null, groups: [] }),   // after2.js
+    after_flags_get: () => ({ v: 1, flags: { morning_push: false, push_ev: false, moments: false, moment_push: false, game_push: false } }),   // moments.js
     game_launch_dates: () => ({ v: 1, games: { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" } }),
   };
 }

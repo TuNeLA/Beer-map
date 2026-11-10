@@ -741,3 +741,117 @@
    }
   };
 })();
+/* lane:after A2 (10 Nov) — Kvällsrapporten (js/after2.js) + calm MEDEVAC caption (R1-11). All new copy is a DIALEKT key
+   (sv-neutral pack below; the dialect lane adds regions). Read through AFTER_R2.t(key, vars). No copy counts drinks. */
+(function () {
+  "use strict";
+  var P = {
+    "after.med.cap": ["{name} ä på 10. Nån som kollar läget?", "{name} behöver en wingman. Tryck på chippet."],
+    "after.r2.title": "Kvällsrapporten",
+    "after.r2.chip": "Rapporten",
+    "after.r2.ready": ["Kvällsrapporten från {group} ä klar.", "{group}: rapporten från fronten ä klar."],
+    "after.r2.show": "Visa",
+    "after.r2.empty": ["Ingen rapport från igår. Soffan vann.", "Inget att rapportera. Kasernen var tyst."],
+    "after.r2.fail": "Rapporten gick int' att hämta. Kolla nätet.",
+    "after.r2.ghost": "Du körde spökläge, så du syns int' i rapporten.",
+    "after.r2.tap": "Tryck för nästa · {i}/{n}",
+    "after.r2.close": "Stäng rapporten",
+    "after.r2.prev": "Förra kortet",
+    "after.r2.next": "Nästa kort",
+    "after.r2.share1": "Dela detta kort",
+    "after.r2.shareAll": "Skicka till gruppchatten",
+    "after.r2.save": "Spara bild",
+    "after.r2.own": "Din egen kväll",
+    "after.r2.intro.kick": "Kvällsrapport",
+    "after.r2.intro.head": ["Högkvarteret har räknat.", "Rapporten från fronten ä klar.", "Natten ä över. Siffrorna lever kvar."],
+    "after.r2.intro.sub": "{n} i fält · {date}",
+    "after.r2.intro.line": ["En sak per kort. Tryck för nästa.", "Läs högt för truppen. Det ä tradition nu."],
+    "after.r2.num.kick": "Siffrorna",
+    "after.r2.num.bars": "krogar",
+    "after.r2.num.km": "km marsch",
+    "after.r2.num.h": "timmar i fält",
+    "after.r2.num.skal": "skål",
+    "after.r2.num.line": ["{km} km till fots. Lumpen kallar det promenad.", "{km} km marsch. Kängorna ä nöjda."],
+    "after.r2.num.line0": ["Ingen marsch. Ni höll positionen.", "Noll meter förflyttning. Taktiskt."],
+    "after.r2.cmp.kick": "Jämfört med förra gången",
+    "after.r2.cmp.sub": "Förra gången: {date}",
+    "after.r2.cmp.earlier": "Hemma {d} tidigare än förra gången. Blir ni gamla?",
+    "after.r2.cmp.later": "Hemma {d} senare än förra gången. Vem gav order om det?",
+    "after.r2.cmp.moreBars": "{n} krogar mot {p} förra gången. Turnén växer.",
+    "after.r2.cmp.fewerBars": "{n} krogar mot {p} förra gången. Stamkrogen tackar.",
+    "after.r2.cmp.morePpl": "{n} i fält mot {p} förra gången. Plutonen växer.",
+    "after.r2.cmp.fewerPpl": "{n} i fält mot {p} förra gången. Några tog permis.",
+    "after.r2.cmp.same": "Precis som förra gången. Rutin ä ett vapen.",
+    "after.r2.story.kick": "Kvällen minut för minut",
+    "after.r2.story.first": "{name} öppnade kvällen på {place}",
+    "after.r2.story.first0": "{name} öppnade kvällen",
+    "after.r2.story.move": "{names} drog vidare till {place}",
+    "after.r2.story.join": "{names} anslöt på {place}",
+    "after.r2.story.home": "{name} hemma",
+    "after.r2.story.last": "{name} släckte lyset",
+    "after.r2.story.more": "+{n} till i loggboken",
+    "after.r2.end.kick": "Kvällens medaljer",
+    "after.r2.end.foot": "Bilden visar inga hemadresser och inga öl per person.",
+    "after.r2.sh.lead": "Det här skickas som en bild. Du väljer vad som syns.",
+    "after.r2.sh.names": "Visa namn",
+    "after.r2.sh.route": "Visa kartlinjen",
+    "after.r2.sh.rings": "Ringar = hemområde ca 500 m. Ingen exakt plats.",
+    "after.r2.sh.text": "Kvällsrapporten från {group} · pintsnow.com",
+    "after.r2.sh.allHome": "{n} i fält · alla hemma {t}",
+    "after.r2.sh.out": "{n} i fält",
+    "after.r2.and": " och ",
+    "after.r2.min": "{n} min",
+    "after.r2.hm": "{h} h {m} min",
+    "after.r2.later": "Resten av plutonen dök upp {d} senare.",
+    "after.r2.anon": "En soldat",
+    // awards (each person gets exactly one; never for drinking more or faster)
+    "after.aw.jarn.name": "Järnsoldaten",
+    "after.aw.jarn.fact": "Först ute {a} · sist hem {b}",
+    "after.aw.jarn.line": ["Öppnade och stängde. Ett helt pass.", "Kom först, gick sist. Kasernen bugar."],
+    "after.aw.kapten.name": "Kvällens kapten",
+    "after.aw.kapten.fact": "Först ute · {place} {t}",
+    "after.aw.kapten.fact0": "Först ute · {t}",
+    "after.aw.kapten.line": ["Någon måste ju värma stolarna.", "Var på plats innan stolarna var nere."],
+    "after.aw.sist.name": "Sist kvar på skeppet",
+    "after.aw.sist.fact": "Hemma {t} · släckte lyset",
+    "after.aw.sist.fact0": "Sista livstecken {t}",
+    "after.aw.sist.line": ["Kaptenen lämnar skeppet sist. Alltid.", "Någon måste ju stänga."],
+    "after.aw.hopp.name": "Bar-hopparen",
+    "after.aw.hopp.fact": "{n} krogar på en kväll",
+    "after.aw.hopp.line": ["Ingen bar hann tröttna.", "Turnéplanen var tajt."],
+    "after.aw.orakel.name": "Oraklet",
+    "after.aw.orakel.fact": "{n} rätt i Kvällens vad",
+    "after.aw.orakel.line": ["Fråga hen om allt nu.", "Såg framtiden. Sa ingenting."],
+    "after.aw.chauf.name": "Kvällens chaufför",
+    "after.aw.chauf.fact": "Körde ikväll · läsk hela vägen",
+    "after.aw.chauf.line": ["Hjälten utan kapa.", "Truppen kom hem. Tack vare dig."],
+    "after.aw.skal.name": "Skålmästaren",
+    "after.aw.skal.fact": "{n} skål utdelade",
+    "after.aw.skal.line": ["Delade ut kärlek som en hel Röda Korset-bil.", "Höjde moralen i hela plutonen."],
+    "after.aw.klok.name": "Klokast i ledet",
+    "after.aw.klok.fact": "Hemma {t}",
+    "after.aw.klok.line": ["Ingen skam, bara strategi.", "Vaknar pigg. Vi andra int'."],
+    "after.aw.spoke.name": "Spöket",
+    "after.aw.spoke.fact": "Sa ja {t} · sågs aldrig",
+    "after.aw.spoke.fact0": "Sa ja · sågs aldrig",
+    "after.aw.spoke.line": ["Utredning pågår.", "Ingen skam. Soffan vann."],
+    "after.aw.lugn.name": "Lugna soldaten",
+    "after.aw.lugn.name1": "Stabil i ledet",
+    "after.aw.lugn.name2": "Fotfolket",
+    "after.aw.lugn.fact": "I fält ikväll",
+    "after.aw.lugn.line": ["Kom, såg, gick hem i tid. Respekt.", "Utan fotfolket ingen armé."]
+  };
+  function fill(s, v) { return String(s == null ? "" : s).replace(/\{(\w+)\}/g, function (m, k) { return v && v[k] != null ? String(v[k]) : ""; }); }
+  function reg() { try { if (window.DIALEKT && window.DIALEKT.register) { window.DIALEKT.register("sv-neutral", P); return true; } } catch (e) {} return false; }
+  if (!reg()) document.addEventListener("DOMContentLoaded", reg);
+  window.AFTER_R2 = {
+    P: P,
+    // t(key, vars): DIALEKT when it is there (region packs win), else the neutral text; arrays = one per night via DIALEKT
+    t: function (key, vars) {
+      var D = window.DIALEKT;
+      if (D && D.t) { var s = D.t(key, vars, P[key]); if (s !== key) return s; }
+      var x = P[key]; if (Array.isArray(x)) x = x[(vars && vars._seed | 0) % x.length];
+      return fill(x == null ? key : x, vars);
+    }
+  };
+})();
