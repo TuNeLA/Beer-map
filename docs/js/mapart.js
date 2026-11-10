@@ -26,29 +26,36 @@
     },
     // glyph tint per category ON the navy disc (>= 3:1 against #152050, checked by build.js)
     tint: {
-      pub: "#FFC24D", cocktail: "#FF8FB8", nightclub: "#BCA6FF", restbar: "#6FE0D2", brewery: "#F2A86E",
-      sportsbar: "#8CC6FF", karaoke: "#F7A1F0", biergarten: "#7FE0A6",
-      restaurant: "#7FD8CF", cafe: "#E6BC93", fastfood: "#FF9E90",
+      // map BR1: tint = family (beer amber · mixed pink · wine rose · party violet · sport blue · food+bar lime); shape = type
+      pub: "#FFC24D", olbar: "#F2A86E", biergarten: "#E3C45C", nation: "#FFDA8F", brewery: "#F2A86E",
+      bar: "#FFA3C7", cocktail: "#FF8FB8", hotellbar: "#FFB8DC", vinbar: "#FF7A93",
+      nightclub: "#BCA6FF", karaoke: "#F7A1F0", livescen: "#C3B4FF", spelbar: "#A8BDFF",
+      sportsbar: "#8CC6FF", restbar: "#C6E26E",
+      restaurant: "#7FD8CF", cafe: "#E6BC93", fastfood: "#FF9E90", kebab: "#FFB27A",
+      sun: "#FFC24D", note: "#C3B4FF", parasol: "#8FD8FF",
       hockey: "#FFFAF0", fotboll: "#FFFAF0", arena: "#FFFAF0"
     },
     // app data type -> marker category (bars.json has pub / bar / nightclub / biergarten today)
-    typeMap: { pub: "pub", bar: "cocktail", cocktail: "cocktail", nightclub: "nightclub", club: "nightclub", biergarten: "biergarten",
-      beer_garden: "biergarten", restaurant_bar: "restbar", brewery: "brewery", sports_bar: "sportsbar", karaoke: "karaoke",
-      restaurant: "restaurant", cafe: "cafe", fast_food: "fastfood", hockey: "hockey", fotboll: "fotboll", arena: "arena" },
+    // map BR1: venue key (window.PNVTYPE) or raw OSM type -> glyph. OSM "bar" is the generic Bar now (was the martini)
+    typeMap: { pub: "pub", bar: "bar", cocktail: "cocktail", vinbar: "vinbar", olbar: "olbar", brewery: "olbar", nattklubb: "nightclub",
+      nightclub: "nightclub", club: "nightclub", sportbar: "sportsbar", sports_bar: "sportsbar", karaoke: "karaoke", karaoke_box: "karaoke",
+      livescen: "livescen", music_venue: "livescen", restbar: "restbar", restaurant_bar: "restbar", hotellbar: "hotellbar",
+      oltradgard: "biergarten", biergarten: "biergarten", beer_garden: "biergarten", spelbar: "spelbar", nation: "nation",
+      restaurant: "restaurant", cafe: "cafe", fast_food: "fastfood", kebab: "kebab", hockey: "hockey", fotboll: "fotboll", arena: "arena" },
     font: '"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     size: {
       ring: 2,            // foam ring on every disc
       edge: 1,            // ink hairline outside the ring
       shadowY: 1, shadowBlur: 2.5, pad: 3,   // sprite padding around every asset (room for the shadow)
       dotQuiet: 18, dotBusy: 20, dotHiScale: 1.2,   // (old dot sizes; town-view disc = dotBusy + 4)
-      dot: 28, glyphDot: 16, dotBadge: 12,   // map B9: a dot = the full disc size (glmap icon-size: x 24/28 in the town view, x 32/28 at z >= 16)
+      dot: 32, glyphDot: 18, dotBadge: 14,   // map B9 + M2: a dot = the full disc (drawn at the z >= 16 size; glmap scales all by zoom)
       glyphQuiet: 11, glyphBusy: 12,
       full: 28, fullHi: 32, glyphFull: 16, glyphFullHi: 18,
       badge: 12, crownW: 14, crownH: 10,
       pillH: 22, pillR: 11, pillPadL: 7, pillPadR: 9, pillGap: 4, pillGlyph: 14, pillTop: 3,   // pill sits 3 px under the disc
       chipH: 18, chipR: 9, chipPad: 5, chipGlyph: 12,
       tagH: 14, tagR: 7,
-      labelSize: 13, labelHalo: 3, labelMax: 140,
+      labelSize: 15, labelHalo: 3, labelMax: 160, labelLines: 2,   // map M2: drawn at the z >= 16 size (x 0.875 = 13 px); R1-33: 2 lines
       meDot: 18, meCore: 12,
       clusterSteps: [[10, 28], [100, 32], [1000, 38], [1e9, 44]],
       personPin: 36, avatar: 28, personTail: 7,
@@ -88,8 +95,19 @@
     nightclub: [f("M11 3C11.7 8.4 14.3 11.1 19.5 12C14.3 12.9 11.7 15.6 11 21C10.3 15.6 7.7 12.9 2.5 12C7.7 11.1 10.3 8.4 11 3Z"),
       f("M18.5 2C18.8 4.2 19.8 5.2 22 5.5C19.8 5.8 18.8 6.8 18.5 9C18.2 6.8 17.2 5.8 15 5.5C17.2 5.2 18.2 4.2 18.5 2Z"),
       f(C(18.5, 18.5, 2.2))],
-    restbar: [f("M3 3H12.5V7.2A4.75 4.75 0 0 1 3 7.2Z"), f(R(6.65, 10.5, 2.2, 7, 1.1)), f(R(3.6, 17.8, 8.3, 2.6, 1.3)),
-      f(R(14.2, 3, 2.3, 6.5, 1.15)), f(R(18.7, 3, 2.3, 6.5, 1.15)), f(R(14.2, 7.6, 6.8, 3.6, 1.8)), f(R(16.4, 9.5, 2.4, 11.5, 1.2))],
+    // map BR1: restbar = beer mug + fork (was wine glass + fork, too busy at 24 px and close to the restaurant glyph)
+    restbar: [f(C(4.6, 8.8, 2.2)), f(C(7.6, 7.8, 2.6)), f(C(10.4, 8.8, 2.1)), f(R(2.6, 9, 9.6, 12.4, 2.2)), f(R(11, 11.2, 4.2, 6.8, 2.1)),
+      b(R(5.1, 12.2, 2, 6.4, 1)), f(R(16.9, 2.6, 2.1, 6.4, 1.05)), f(R(20.4, 2.6, 2.1, 6.4, 1.05)), f(R(16.9, 7.2, 5.6, 3.2, 1.6)), f(R(18.6, 9.4, 2.2, 12.2, 1.1))],
+    // map BR1 new bar types
+    bar: [f("M4.5 4.6H19.5L17.8 19.8A1.8 1.8 0 0 1 16 21.4H8A1.8 1.8 0 0 1 6.2 19.8Z"), b(R(7.2, 6.8, 9.6, 3.2, 0.6)), b(R(9.6, 12.4, 4.8, 4.8, 1))],
+    vinbar: [f("M6.2 2.5H17.8C18.6 8.6 17 12.9 13.2 14.2V19.2H16.4A1.2 1.2 0 0 1 16.4 21.6H7.6A1.2 1.2 0 0 1 7.6 19.2H10.8V14.2C7 12.9 5.4 8.6 6.2 2.5Z"),
+      b("M8.3 4.6H15.7C15.9 6 15.9 7.1 15.8 8.1H8.2C8.1 7.1 8.1 6 8.3 4.6Z")],
+    olbar: [f(R(4.4, 2.5, 3, 8.6, 1.5)), f(R(10.5, 2.5, 3, 8.6, 1.5)), f(R(16.6, 2.5, 3, 8.6, 1.5)), f(R(2.5, 10.8, 19, 3.8, 1.3)),
+      f(R(5, 14.2, 2, 3.4, 0.6)), f(R(11, 14.2, 2, 3.4, 0.6)), f(R(17.1, 14.2, 2, 3.4, 0.6)), f(R(3.5, 19, 17, 2.6, 1.3))],
+    livescen: [f(C(7.4, 17.6, 3.4)), f(C(17.2, 15.6, 3.4)), f(R(8.6, 5, 2.4, 12.6, 0.4)), f(R(18.4, 3, 2.4, 12.6, 0.4)), f(P([[8.6, 5], [20.8, 2.4], [20.8, 6.4], [8.6, 9]]))],
+    hotellbar: [f("M4 17.4A8 8 0 0 1 20 17.4Z"), f(R(2.5, 18.4, 19, 3, 1.5)), f(R(11, 6.8, 2, 3.4, 0.4)), f(C(12, 6, 2.1)), b("M7.2 15.6A5.2 5.2 0 0 1 9.6 11.6L10.8 13.2A3.4 3.4 0 0 0 9.4 15.6Z")],
+    spelbar: [f(C(10.5, 13.5, 8.5)), b(C(10.5, 13.5, 6.2)), f(C(10.5, 13.5, 3.8)), f(P([[10.1, 12.3], [19.1, 3.3], [20.9, 5.1], [11.9, 14.1]])), f(P([[18.4, 1.6], [22.4, 1.6], [22.4, 5.6]]))],
+    nation: [f("M4.5 12.4C4.5 8 7.8 5.8 12 5.8C16.2 5.8 19.5 8 19.5 12.4Z"), f(R(4, 14.2, 16, 3.4, 0.8)), f("M5.5 17.6H18.5L16.6 20.6Q12 21.8 7.4 20.6Z"), b(C(12, 9.6, 1.7))],
     brewery: [f("M6.6 3H17.4Q21.2 12 17.4 21H6.6Q2.8 12 6.6 3Z"), b(R(3.5, 7.4, 17, 2, 1)), b(R(3.5, 14.6, 17, 2, 1)),
       b(R(10.9, 10.4, 2.2, 3.2, 0.6))],
     sportsbar: [f(R(2, 3.5, 20, 13.5, 2.6)), b(R(4.2, 5.7, 15.6, 9.1, 1.2)), f(C(12, 10.25, 3.1)), f(R(11, 16.5, 2, 2.5, 0)),
@@ -103,6 +121,8 @@
     cafe: [f("M3.5 8.5H16V13.6A5.4 5.4 0 0 1 10.6 19H8.9A5.4 5.4 0 0 1 3.5 13.6Z"), f(R(13.8, 9.5, 7, 7, 3.5)), b(R(16, 11.7, 2.6, 2.6, 1.3)),
       f(R(2.5, 19.8, 16, 2.2, 1.1)), f(R(6.5, 2.5, 2.2, 4.5, 1.1)), f(R(10.8, 2, 2.2, 5, 1.1))],
     fastfood: [f("M3.5 10.2A8.5 7 0 0 1 20.5 10.2Z"), f(R(2.5, 11.8, 19, 3.2, 1.6)), f(R(3.5, 16.2, 17, 4.6, 2.3)), b(C(9, 7.4, 0.9)), b(C(13, 6.4, 0.9)), b(C(15.6, 8.4, 0.9))],
+    // map BR1: nattmat / kebab = a döner spit (cone on a skewer)
+    kebab: [f(R(11, 2, 2, 19, 1)), f("M6 5.2H18Q17.4 13.2 12 18.2Q6.6 13.2 6 5.2Z"), b(R(7.6, 8.4, 8.8, 2, 1)), b(R(9.2, 12.2, 5.6, 2, 1)), f(R(7.5, 19.6, 9, 2.2, 1.1))],
     /* ---- arenas ---- */
     hockey: [f(P([[5.2, 2.5], [8.4, 2.5], [14.2, 15.4], [19.4, 15.4], [21, 17], [21, 18.6], [19.6, 20], [12.6, 20]])), f(R(2.5, 16, 8.4, 4.4, 2.2))],
     fotboll: [f(C(12, 12, 9.5)), b(ngon(12, 12, 3.4, 5)), b(C(12, 4.4, 1.7)), b(C(19.2, 9.7, 1.7)), b(C(16.5, 18.1, 1.7)), b(C(7.5, 18.1, 1.7)), b(C(4.8, 9.7, 1.7))],
@@ -126,12 +146,63 @@
     flame: [f("M12 2C13.2 6 18.5 8.6 18.5 14.4A6.5 6.5 0 0 1 5.5 14.4C5.5 10.6 8 9 8.6 5.8C10.3 7.4 10.9 9 11 10.4C12.6 8.6 12.9 5.2 12 2Z"),
       b("M12 21A3 3 0 0 1 9 18C9 16.2 10.4 15.3 10.9 13.6C11.8 14.5 12.1 15.4 12.2 16.2C13.1 15.4 13.4 14.4 13.4 13.6C14.6 14.8 15 16.4 15 18A3 3 0 0 1 12 21Z")],
     cross: [f(R(9.4, 3, 5.2, 18, 1.3)), f(R(3, 9.4, 18, 5.2, 1.3))],
-    clock: [f(C(12, 12, 9.5)), b(C(12, 12, 7.2)), f(R(10.9, 6.5, 2.2, 6.6, 1.1)), f(R(10.9, 10.9, 5.6, 2.2, 1.1))]
+    clock: [f(C(12, 12, 9.5)), b(C(12, 12, 7.2)), f(R(10.9, 6.5, 2.2, 6.6, 1.1)), f(R(10.9, 10.9, 5.6, 2.2, 1.1))],
+    // map BR1 badges in front of a bar name: uteservering · live music · rooftop (HBTQ+ = rainbow, drawn in labelOps)
+    sun: [f(C(12, 12, 4.8)), f(R(11, 1.5, 2, 4, 1)), f(R(11, 18.5, 2, 4, 1)), f(R(1.5, 11, 4, 2, 1)), f(R(18.5, 11, 4, 2, 1)),
+      f(P([[4.2, 5.6], [5.6, 4.2], [8.4, 7], [7, 8.4]])), f(P([[18.4, 4.2], [19.8, 5.6], [17, 8.4], [15.6, 7]])), f(P([[4.2, 18.4], [7, 15.6], [8.4, 17], [5.6, 19.8]])), f(P([[15.6, 17], [17, 15.6], [19.8, 18.4], [18.4, 19.8]]))],
+    note: [f(C(9, 17.5, 3.6)), f(R(10.6, 4, 2.4, 13.6, 0.4)), f("M12.8 4C13.2 7 17.8 7.6 17.8 11.6C17.2 9.8 15.2 9 12.8 8.8Z")],
+    parasol: [f("M2.5 11.5Q12 1.5 21.5 11.5Z"), f(R(11, 10.5, 2, 9.5, 1)), f(R(7, 19.6, 10, 2.2, 1.1))]
   };
-  var CATS = ["pub", "cocktail", "nightclub", "restbar", "brewery", "sportsbar", "karaoke", "biergarten"];
-  var PLACES = ["restaurant", "cafe", "fastfood"], ARENAS = ["hockey", "fotboll", "arena"];
+  // map BR1: the 14 bar types (sprites are drawn for each), the places, the arenas
+  var CATS = ["pub", "bar", "cocktail", "vinbar", "olbar", "nightclub", "sportsbar", "karaoke", "livescen", "restbar", "hotellbar", "biergarten", "spelbar", "nation"];
+  var PLACES = ["restaurant", "cafe", "fastfood", "kebab"], ARENAS = ["hockey", "fotboll", "arena"];
   var out = { G: G, CATS: CATS, PLACES: PLACES, ARENAS: ARENAS };
   if (typeof module !== "undefined" && module.exports) module.exports = out; else root.PNGLYPHS = out;
+})(this);
+
+/* map BR1 — PNVTYPE: venue type of a bar from OSM tags (+ name words as the fallback). ONE source: the app (glmap.js for
+   rows without vt, bars.js Overpass fallback) and scripts/fetch-bars.mjs (runs this file in a vm). Import rule order:
+   karaoke → livescen → nattklubb → spelbar → nation → hotellbar → olbar → sportbar → vinbar → cocktail → oltradgard → pub → bar.
+   BR2 (manual Ludvika check) can override a row with "vt" in bars-extra.json / bars.json. */
+(function (root) {
+  var ORDER = ["karaoke", "livescen", "nattklubb", "spelbar", "nation", "hotellbar", "olbar", "sportbar", "vinbar", "cocktail", "oltradgard", "pub", "bar", "restbar"];
+  var LABEL = { pub: "Pub", bar: "Bar", cocktail: "Cocktailbar", vinbar: "Vinbar", olbar: "Ölbar / bryggeri", nattklubb: "Nattklubb", sportbar: "Sportbar",
+    karaoke: "Karaoke", livescen: "Livemusik", restbar: "Mat & bar", hotellbar: "Hotellbar", oltradgard: "Ölträdgård", spelbar: "Spelbar", nation: "Studentpub / nation" };
+  var RX = {
+    karaoke: /karaoke/, livescen: /(^|[^a-zåäö])(jazz\w*|live|livescen\w*|scen(en)?|rockklubb\w*|musikpub|konserthus)([^a-zåäö]|$)/,
+    spelbar: /(boule|shuffle|bowling|dart|minigolf|biljard|pingis|curling)/, nation: /(nation(en)?([^a-zåäö]|$)|studentpub|studentkår|kårhus|(^|[^a-zåäö])kåren?([^a-zåäö]|$))/,
+    hotellbar: /(lobby|(^|[^a-zåäö])hote(l|ll))/, olbar: /(bryggeri|brew|taproom|tap ?room|ölhall|ölbar|beer ?bar|craft ?beer|ölkaf[eé]|ölcaf[eé])/,
+    sportbar: /(^|[^a-zåäö])sport/, vinbar: /((^|[^a-zåäö])vin(bar(en)?|bod(en)?|stugan?|oteket|teket|källare(n)?)?([^a-zåäö]|$)|wine|champagne)/, cocktail: /(cocktail|speakeasy|tiki)/
+  };
+  function low(v) { return String(v == null ? "" : v).toLowerCase(); }
+  function yes(v) { v = low(v); return v === "yes" || v === "only" || v === "primary"; }
+  function classify(t, name) {
+    t = t || {}; var a = low(t.amenity || t.type), n = low(name != null ? name : t.name), bar = low(t.bar), barish = a === "bar" || a === "pub" || a === "";
+    if (a === "karaoke_box" || a === "karaoke" || yes(t.karaoke) || RX.karaoke.test(n)) return "karaoke";
+    if (a === "music_venue" || a === "livescen" || ((barish || a === "nightclub") && RX.livescen.test(n))) return "livescen";
+    if (a === "nightclub" || a === "nattklubb" || low(t.leisure) === "dance") return "nattklubb";
+    if (barish && (/^(bowling_alley|miniature_golf)$/.test(low(t.leisure)) || RX.spelbar.test(n))) return "spelbar";
+    if (barish && RX.nation.test(n)) return "nation";
+    if (barish && (low(t.tourism) === "hotel" || RX.hotellbar.test(n))) return "hotellbar";
+    if (a === "brewery" || low(t.craft) === "brewery" || (barish && (yes(t.microbrewery) || RX.olbar.test(n)))) return "olbar";
+    if (barish && (t.sport || /^(sports_bar|sportsbar)$/.test(bar) || RX.sportbar.test(n))) return "sportbar";
+    if (barish && (yes(t["drink:wine"]) && a === "bar" || /^(wine_bar|wine|winebar)$/.test(bar) || RX.vinbar.test(n))) return "vinbar";
+    if (barish && (yes(t.cocktails) || bar === "cocktail" || RX.cocktail.test(n))) return "cocktail";
+    if (a === "biergarten" || a === "beer_garden" || a === "oltradgard") return "oltradgard";
+    if (a === "restaurant_bar" || a === "restbar") return "restbar";
+    if (a === "pub") return "pub";
+    return "bar";
+  }
+  // flags for the name badges: live music, HBTQ+, rooftop (uteservering = the existing "outdoor")
+  function flags(t) {
+    t = t || {}; var o = {}, os = low(t.outdoor_seating);
+    if (yes(t.live_music)) o.live = 1;
+    if (/^(primary|only)$/.test(low(t.lgbtq)) || /^(primary|only)$/.test(low(t.gay))) o.lgbtq = 1;
+    if (os === "roof" || os === "rooftop" || yes(t.rooftop) || /(takterrass|rooftop|roof ?top|sky ?bar)/.test(low(t.name))) o.roof = 1;
+    return o;
+  }
+  function of(b) { if (!b) return null; if (b.vt) return b.vt; if (b.arena || b.place) return null; return classify({ amenity: b.type }, b.name); }
+  root.PNVTYPE = { classify: classify, flags: flags, of: of, ORDER: ORDER, LABEL: LABEL };
 })(this);
 
 /* PintsNow map markers (mapart v1) — ONE builder for every marker. Each builder returns a list of draw ops in CSS px around
@@ -260,7 +331,7 @@
   function countBadge(ops, parts, cx, cy, p, hi) {
     // pf01: the badge counts PEOPLE at the bar → a small people glyph before the number (never read as "drinks")
     // The left edge stays where it was (top-right of the disc); the badge grows to the right only (owner: "no long pills").
-    var t = countText(p), lv = BADGE[p.l || 0] || BADGE[0], h = hi ? 19 : 17, fs = hi ? 12 : 11, gw = hi ? 9 : 8, tws = Math.ceil(tw(t, fs, 700));
+    var t = countText(p), lv = BADGE[p.l || 0] || BADGE[0], h = 20, fs = 13, gw = 10, tws = Math.ceil(tw(t, fs, 700));   // map M2: x 0.75–1 by zoom
     var w0 = Math.max(h, tws + 9), w = Math.max(h, tws + gw + 7), x = Math.round(cx - w0 / 2), y = Math.round(cy - h / 2), cx0 = x + (w - (gw + 1 + tws)) / 2;
     if (lv.outer) rrect(ops, x - 2.5, y - 2.5, w + 5, h + 5, h / 2 + 2.5, { fill: lv.outer, sh: true });
     rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: p.f ? K.green : K.edge, sh: !lv.outer });
@@ -288,8 +359,9 @@
     var ops = [], parts = [], full = mode !== "d", k = cat(s.k), busy = !!(s.p || s.hot), lit = !busy && !!s.lit;
     extra = extra || {};
     // map B9: the dot disc is as big as the full pill's disc (owner: an icon may never shrink by position, only the name hides)
-    var D = full ? (mode === "x" ? S.dotBusy + 4 : hi ? S.fullHi : S.full) : S.dot, r = D / 2;
-    var gs = full ? (mode === "x" ? S.glyphBusy + 2 : hi ? S.glyphFullHi : S.glyphFull) : S.glyphDot;
+    // map M2: one size for every zoom (glmap scales the image); hi / mode change only what is drawn (price tag, town-view chips)
+    var D = full ? S.fullHi : S.dot, r = D / 2;
+    var gs = full ? S.glyphFullHi : S.glyphDot;
     if (extra.sel) circle(ops, 0, 0, r + 4, { fill: "rgba(245,166,35,0.55)", sh: true });
     // the disc is ALWAYS navy with the type glyph (one look per place type at every zoom); busy = amber ring, lit = green
     var body = K.navy;
@@ -306,8 +378,8 @@
       if (extra.stammis) badge(ops, -bo, bo, bd, K.foam, "house", K.ink, { ring: K.amber });
       return { ops: ops, parts: parts };
     }
-    if (king) { crown(ops, -r * 0.45, -r + 3, hi ? 14 : 13); parts.push({ sel: ".cm-king", bb: [-r - 4, -r - 9, 2, -r + 3] }); }
-    if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, hi);
+    if (king) { crown(ops, -r * 0.45, -r + 3, 14); parts.push({ sel: ".cm-king", bb: [-r - 4, -r - 9, 2, -r + 3] }); }
+    if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, true);
     else if (s.p && s.p.f) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
     if (s.p && s.p.ft) ftChip(ops, parts, Math.round(r + 3 + (s.tg && hi && mode !== "x" ? S.tagH + 3 : 0) + 10), s.p.ft);   // ds31
     if (mode === "x") return { ops: ops, parts: parts };
@@ -326,11 +398,32 @@
   }
 
   /* ---------- other markers ---------- */
-  function labelOps(name, small) {   // small = place (restaurant) names: 11 px, softer
-    var px = small ? 11 : S.labelSize, ops = [], t = name, w = tw(t, px, 600), mx = small ? 110 : S.labelMax;
-    while (w > mx && t.length > 3) { t = t.slice(0, -2).replace(/\s+$/, "") + "…"; w = tw(t, px, 600); }
-    text(ops, 0, 9, t, px, 600, small ? "#CFC6B4" : K.labelText, { align: "center", halo: small ? "rgba(8,12,30,0.78)" : K.labelHalo, haloW: small ? 2.5 : S.labelHalo });
-    return { ops: ops, bbox: [-Math.ceil(w / 2) - 3, 0, Math.ceil(w / 2) + 3, 18] };
+  function cut(t, px, mx) { var w = tw(t, px, 600); while (w > mx && t.length > 3) { t = t.slice(0, -2).replace(/\s+$/, "") + "…"; w = tw(t, px, 600); } return t; }
+  // R1-33: a bar name that does not fit goes on 2 lines (split at the word that gives the shortest longest line); cut only after that
+  function nameLines(name, px, mx, max) {
+    if (max < 2 || tw(name, px, 600) <= mx) return [cut(name, px, mx)];
+    var ws = String(name).split(/\s+/), best = null;
+    for (var i = 1; i < ws.length; i++) { var a = ws.slice(0, i).join(" "), b = ws.slice(i).join(" "), wa = tw(a, px, 600), wb = tw(b, px, 600);
+      if (wa <= mx && (!best || Math.max(wa, wb) < best.m)) best = { a: a, b: b, m: Math.max(wa, wb) }; }
+    return best ? [best.a, cut(best.b, px, mx)] : [cut(name, px, mx)];
+  }
+  // map BR1: a name badge (s uteservering, n live music, h HBTQ+, r rooftop): ink disc Ø 16 with the glyph
+  var PRIDE = ["#E40303", "#FF8C00", "#FFED00", "#008026", "#004DFF", "#750787"];
+  function nameBadge(ops, x, cy, k) {
+    circle(ops, x, cy, 9, { fill: K.edge, sh: true }); circle(ops, x, cy, 8, { fill: K.ink });
+    if (k === "h") { for (var i = 0; i < 6; i++) { var a0 = (i / 6) * 6.2832 - 1.5708, a1 = ((i + 1) / 6) * 6.2832 - 1.5708, rr0 = 6.2;
+        path(ops, "M" + x + " " + cy + "L" + (x + rr0 * Math.cos(a0)).toFixed(2) + " " + (cy + rr0 * Math.sin(a0)).toFixed(2) + "A" + rr0 + " " + rr0 + " 0 0 1 " + (x + rr0 * Math.cos(a1)).toFixed(2) + " " + (cy + rr0 * Math.sin(a1)).toFixed(2) + "Z", { fill: PRIDE[i] }); }
+      circle(ops, x, cy, 2.4, { fill: K.ink }); return; }
+    var g = { s: "sun", n: "note", r: "parasol" }[k] || "sun"; glyph(ops, g, x, cy, 11, T.tint[g] || K.foam, K.ink);
+  }
+  function labelOps(name, small, at) {   // small = place (restaurant) names: 11 px, softer; at = badge letters (bars)
+    var px = small ? 11 : S.labelSize, ops = [], mx = small ? 110 : S.labelMax, bs = small ? "" : String(at || "").slice(0, 2), bw = bs.length ? bs.length * 18 + 2 : 0;
+    var lines = small ? [cut(name, px, mx)] : nameLines(name, px, mx - bw, S.labelLines || 1);
+    var lh = px + 3, w = 0, cy0 = Math.round(px * 0.6);
+    lines.forEach(function (t, i) { var tw0 = tw(t, px, 600), lw = tw0 + (i ? 0 : bw), x0 = -lw / 2; w = Math.max(w, lw);
+      if (!i) for (var j = 0; j < bs.length; j++) nameBadge(ops, x0 + 8 + j * 18, cy0, bs[j]);
+      text(ops, i ? 0 : x0 + bw + tw0 / 2, cy0 + i * lh, t, px, 600, small ? "#CFC6B4" : K.labelText, { align: "center", halo: small ? "rgba(8,12,30,0.78)" : K.labelHalo, haloW: small ? 2.5 : S.labelHalo }); });
+    return { ops: ops, bbox: [-Math.ceil(w / 2) - 3, Math.min(0, cy0 - 10), Math.ceil(w / 2) + 3, lines.length * lh + 3], lines: lines };
   }
   function meDotOps(o) {
     var ops = [];
@@ -526,7 +619,7 @@
     var x = barOps(s, mode, hi, extra), r = raster(x.ops, R2), g = r.canvas.getContext("2d");
     return { data: g.getImageData(0, 0, r.canvas.width, r.canvas.height), ox: r.ox, oy: r.oy, bottom: r.bottom, parts: x.parts, canvas: r.canvas };
   }
-  function buildLabel(name) { var x = labelOps(name), r = raster(x.ops, R2, x.bbox); return { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), canvas: r.canvas, ox: r.ox, oy: r.oy }; }
+  function buildLabel(name, at) { var x = labelOps(name, false, at), r = raster(x.ops, R2, x.bbox); return { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), canvas: r.canvas, ox: r.ox, oy: r.oy }; }
 
   /* ---------- people pins + people clusters (DOM markers, mbx) ----------
      Owner (2026-11-07): "no long pills: avatar + small badge count". A round face (the AVATAR character for me / friends,

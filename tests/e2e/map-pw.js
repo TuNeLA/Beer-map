@@ -46,7 +46,8 @@ async function open(b, vp, o = {}) {
         const lays = GLBARS._layers().filter((l) => /bar-(full|dot|dote|cdot|cdote|cdotf)$/.test(l) && g.getLayer(l));
         const fs = g.queryRenderedFeatures([[p.x - 2, p.y - 2], [p.x + 2, p.y + 2]], { layers: lays }).filter((f) => String(f.properties.id) === String(id));
         const full = fs.find((f) => /bar-full$/.test(f.layer.id)), dot = fs.find((f) => !/bar-full$/.test(f.layer.id));
-        if (full) { const im = GLBARS._img(id), ico = im && im.parts.find((q) => q.sel === ".bar-ico"); return { kind: "full", d: ico ? +((ico.bb[2] - ico.bb[0]) * (+full.properties.sz || 1)).toFixed(2) : -1, x: p.x, y: p.y }; }
+        if (full) { const im = GLBARS._img(id), ico = im && im.parts.find((q) => q.sel === ".bar-ico"), fz = full.layer.layout && full.layer.layout["icon-size"];
+          return { kind: "full", d: ico ? +((ico.bb[2] - ico.bb[0]) * (typeof fz === "number" ? fz : (+full.properties.sz || 1))).toFixed(2) : -1, x: p.x, y: p.y }; }
         if (dot) {
           const di = String(dot.properties.di || ""), m = /^dot-([\w-]+)-(quiet|busy|lit)$/.exec(di);
           let r = 0;
@@ -138,6 +139,147 @@ async function closeAll(page) {
       console.log("SHOT sthlm-z15 " + vp.width + " " + JSON.stringify(n));
       await page.screenshot({ path: shotDir + "map-" + TAG + "-sh-sthlm-z15-" + vp.width + ".png" });
       await closeCounted(ctx, page, "map-" + TAG + "-sh");
+    }
+
+    /* ---------- M2: a full zoom sweep (Leaflet 18 → 11.5 in 0.1 steps) has no size jumps; symbols fade ---------- */
+    if (ONLY.test("m2")) {
+      const { ctx, page, errs } = await open(b, { width: 390, height: 844 });
+      await view(page, LUD, 18, 2500);
+      const ids = [PIT, "x-lobbybaren-ludvika"], series = {}; ids.forEach((id) => (series[id] = []));
+      for (let z10 = 180; z10 >= 115; z10--) {
+        const z = z10 / 10;
+        await page.evaluate(([ll, z]) => { __map.setView(ll, z, { animate: false }); }, [LUD, z]);
+        await idle(page, 140);
+        const d = await page.evaluate((ids) => ids.map((id) => __mpw.drawn(id)), ids);
+        ids.forEach((id, i) => series[id].push([z, d[i].kind, d[i].d]));
+      }
+      for (const id of ids) {
+        const sr = series[id]; let worst = 0, at = "", n = 0;
+        for (let i = 1; i < sr.length; i++) { const a = sr[i - 1], c = sr[i]; if (a[1] === "none" || c[1] === "none" || !(a[2] > 0) || !(c[2] > 0)) continue; n++;
+          const j = Math.abs(c[2] - a[2]) / a[2]; if (j > worst) { worst = j; at = a[0] + "→" + c[0] + " (" + a[1] + " " + a[2] + " → " + c[1] + " " + c[2] + ")"; } }
+        console.log("M2 " + id + " " + sr.filter((x, i) => i % 5 === 0).map((x) => x[0] + ":" + x[1][0] + Math.round(x[2])).join(" "));
+        ok(n >= 20 && worst <= 0.06, "M2 " + id + ": no size jump > 6 % between 0.1 zoom steps (" + n + " pairs, worst " + (worst * 100).toFixed(1) + " % at " + at + ")");
+      }
+      const fade = await page.evaluate(() => { const g = __mpw.gm(); return g._fadeDuration != null ? g._fadeDuration : (g.style && g.style.fadeDuration); });
+      ok(fade >= 100, "M2: symbols fade in / out (fadeDuration " + fade + " ms), clusters do not pop");
+      for (const z of [12, 14, 15.5, 17]) { await view(page, LUD, z, 1200); await page.screenshot({ path: shotDir + "map-" + TAG + "-m2-z" + z + ".png" }); }
+      ok(errs.length === 0, "M2 no page errors " + JSON.stringify(errs.slice(0, 3)));
+      await closeCounted(ctx, page, "map-" + TAG + "-m2");
+    }
+
+    /* ---------- BR1: venue types (classifier, glyphs at 24 px, all 14 on the map, name badges) ---------- */
+    if (ONLY.test("br1")) {
+      const { ctx, page, errs } = await open(b, { width: 390, height: 844 }, { init: () => { try { localStorage.setItem("olnu.map.ute", "1"); } catch (e) {} } });
+      const has = await page.evaluate(() => !!window.PNVTYPE);
+      ok(has, "BR1: the venue type classifier (window.PNVTYPE) is there");
+      if (has) {
+        const CASES = [
+          [{ amenity: "bar" }, "Badhytten", "bar"], [{ amenity: "pub" }, "Shakespeare Pub", "pub"], [{ amenity: "bar", cocktails: "yes" }, "X", "cocktail"],
+          [{ amenity: "bar" }, "Cocktailbaren", "cocktail"], [{ amenity: "bar", "drink:wine": "yes" }, "Y", "vinbar"], [{ amenity: "bar" }, "Vinbaren", "vinbar"],
+          [{ amenity: "bar", bar: "wine_bar" }, "F", "vinbar"], [{ amenity: "bar" }, "Vincents", "bar"], [{ amenity: "pub", microbrewery: "yes" }, "Z", "olbar"],
+          [{ amenity: "pub" }, "Ludvika Bryggeri", "olbar"], [{ amenity: "bar" }, "BrewDog Stockholm", "olbar"], [{ amenity: "nightclub" }, "Solo", "nattklubb"],
+          [{ amenity: "bar", sport: "soccer" }, "A", "sportbar"], [{ amenity: "pub" }, "Sportbaren", "sportbar"], [{ amenity: "bar" }, "Karaoke Kungen", "karaoke"],
+          [{ amenity: "bar", karaoke: "yes" }, "B", "karaoke"], [{ amenity: "music_venue" }, "Musikens Hus", "livescen"], [{ amenity: "pub" }, "Jazzklubben Fasching", "livescen"],
+          [{ amenity: "pub", live_music: "yes" }, "Kvarnen", "pub"], [{ amenity: "pub" }, "Liverpool Pub", "pub"], [{ amenity: "bar" }, "Shuffle Bar", "spelbar"],
+          [{ amenity: "bar" }, "Boulebar Rålis", "spelbar"], [{ amenity: "pub" }, "Västgöta Nation", "nation"], [{ amenity: "bar" }, "Lobbybaren (Grand Hotel Elektra)", "hotellbar"],
+          [{ amenity: "bar", tourism: "hotel" }, "C", "hotellbar"], [{ amenity: "biergarten" }, "D", "oltradgard"], [{ amenity: "restaurant_bar" }, "E", "restbar"],
+          [{ amenity: "pub" }, "Pitchers", "pub"], [{ amenity: "bar" }, "Speakeasy 23", "cocktail"], [{ amenity: "bar" }, "Sky Bar", "bar"]];
+        const res = await page.evaluate((C) => C.map((c) => [c[1], c[2], PNVTYPE.classify(c[0], c[1])]), CASES);
+        const wrong = res.filter((r) => r[1] !== r[2]);
+        ok(wrong.length === 0, "BR1: classifier gives the right type for " + res.length + " cases (wrong: " + JSON.stringify(wrong) + ")");
+        const fl = await page.evaluate(() => [PNVTYPE.flags({ live_music: "yes" }).live, PNVTYPE.flags({ lgbtq: "primary" }).lgbtq, PNVTYPE.flags({ outdoor_seating: "roof" }).roof, PNVTYPE.flags({ name: "Sky Bar" }).roof]);
+        ok(fl.every((x) => x === 1), "BR1: badge flags from tags: live music, HBTQ+, rooftop (" + JSON.stringify(fl) + ")");
+        const spread = await page.evaluate(async () => { const r = await fetch("./bars.json"); const list = await r.json(); const o = {}; list.forEach((x) => { const k = PNVTYPE.of(x); o[k] = (o[k] || 0) + 1; }); return o; });
+        console.log("BR1 bars.json types " + JSON.stringify(spread));
+        ok((spread.cocktail || 0) < 60 && (spread.bar || 0) > 250, "BR1: OSM 'bar' is the generic Bar now, not a martini (cocktail " + (spread.cocktail || 0) + ", bar " + (spread.bar || 0) + ")");
+        // glyphs at a 24 px disc (glyph 13.5 px): tint contrast >= 3:1 on navy, coverage 12–75 %, distinct shapes (mask IoU < 0.8)
+        const gl = await page.evaluate(() => {
+          const G = PNGLYPHS, T = PNTOKENS, P = PNPINS, cats = G.CATS.concat(G.PLACES), px = 27, out = { cats, low: [], cov: {}, iou: [], miss: [] };
+          const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+          const navy = lum(T.col.navy), masks = {};
+          cats.forEach((k) => {
+            if (!G.G[k]) { out.miss.push(k); return; }
+            const t = T.tint[k] || "#FFFAF0", L1 = Math.max(lum(t), navy), L2 = Math.min(lum(t), navy); if ((L1 + 0.05) / (L2 + 0.05) < 3) out.low.push(k);
+            const r = P.raster([{ o: "rr", x: -9, y: -9, w: 18, h: 18, r: 0, fill: "#000000" }, { o: "g", n: k, x: -9, y: -9, s: 18, fg: "#FFFFFF", bg: "#000000" }], px / 18, [-9, -9, 9, 9]);
+            const d = r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height).data, m = [];
+            for (let i = 0; i < d.length; i += 4) m.push(d[i] > 128 ? 1 : 0);
+            masks[k] = m; out.cov[k] = +(m.reduce((a, b) => a + b, 0) / m.length).toFixed(2);
+          });
+          const ks = Object.keys(masks);
+          for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = masks[ks[i]], c = masks[ks[j]]; let I = 0, U = 0; for (let q = 0; q < a.length; q++) { I += a[q] & c[q]; U += a[q] | c[q]; } const v = U ? I / U : 0; if (v >= 0.8) out.iou.push(ks[i] + "~" + ks[j] + " " + v.toFixed(2)); }
+          // contact sheet: every type as a dot (24 px) and a full pill disc (32 px), on the page
+          const box = document.createElement("div"); box.id = "br1-sheet"; box.style.cssText = "position:fixed;left:0;top:120px;right:0;z-index:99999;background:#2b3260;padding:8px;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;font:11px sans-serif;color:#fff";
+          cats.forEach((k) => { const cell = document.createElement("div"); cell.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:2px";
+            [24, 32].forEach((dpx) => { const ops = G.PLACES.indexOf(k) >= 0 ? P.placeOps(k).ops : P.barOps({ k: k }, "d", false).ops, rr = P.raster(ops, 2 * dpx / 32); rr.canvas.style.width = (rr.canvas.width / 2) + "px"; cell.appendChild(rr.canvas); });
+            const t = document.createElement("span"); t.textContent = k; cell.appendChild(t); box.appendChild(cell); });
+          document.body.appendChild(box);
+          return out;
+        });
+        console.log("BR1 glyphs " + JSON.stringify(gl));
+        ok(gl.miss.length === 0 && gl.cats.length >= 18, "BR1: all glyphs exist (14 bar types + 4 places: " + gl.cats.join(", ") + "; missing " + JSON.stringify(gl.miss) + ")");
+        ok(gl.low.length === 0, "BR1: every tint has >= 3:1 contrast on the navy disc (" + JSON.stringify(gl.low) + ")");
+        const badCov = Object.keys(gl.cov).filter((k) => gl.cov[k] < 0.12 || gl.cov[k] > 0.75);
+        ok(badCov.length === 0, "BR1: every glyph fills 12–75 % of its box at 24 px (" + JSON.stringify(gl.cov) + ")");
+        ok(gl.iou.length === 0, "BR1: no two glyphs look the same at 24 px (mask IoU >= 0.8: " + JSON.stringify(gl.iou) + ")");
+        await page.screenshot({ path: shotDir + "map-" + TAG + "-br1-sheet.png" });
+        await page.evaluate(() => document.getElementById("br1-sheet").remove());
+        // all 14 types on the map (an empty spot, Leaflet z17), with their own glyph; one bar with name badges
+        const P0 = await page.evaluate(() => { for (const c of [[60.1660, 15.2290], [60.1395, 15.1580], [60.1720, 15.1500]]) { const a = BARS.around(c[0], c[1], 400); if (!a.bars.length && !a.places.length) return c; } return [60.1660, 15.2290]; });
+        await view(page, P0, 17, 300);
+        const ids = await page.evaluate((p) => {
+          const keys = PNVTYPE.ORDER.filter((k) => k !== "restbar").concat(["restbar"]), o = [], c0 = __map.latLngToContainerPoint(p);
+          keys.forEach((k, i) => { const col = i % 3, row = Math.floor(i / 3), ll = __map.containerPointToLatLng([c0.x - 120 + col * 120, c0.y - 230 + row * 92]);
+            const b = { id: "x-br1-" + k, name: PNVTYPE.LABEL[k], lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6), type: k === "pub" ? "pub" : k === "nattklubb" ? "nightclub" : "bar", vt: k };
+            if (k === "pub") { b.outdoor = 1; b.live = 1; } BARS.addUser(b); o.push([b.id, k]); });
+          return o;
+        }, P0);
+        await view(page, P0, 17, 2500);
+        const on = await page.evaluate((ids) => ids.map(([id, k]) => { const v = GLBARS._vt(id); const cat = PNPINS.cat(k); return [k, v ? v.k : null, v ? v.at : null, cat]; }), ids);
+        console.log("BR1 map " + JSON.stringify(on));
+        await page.screenshot({ path: shotDir + "map-" + TAG + "-br1-map-z17.png" });
+        ok(on.length === 14 && on.every((x) => x[1] === x[0]), "BR1: all 14 bar types drawn on the map with their own glyph (" + on.filter((x) => x[1] !== x[0]).map((x) => x[0]).join(",") + ")");
+        ok(on.some((x) => x[0] === "pub" && x[2] === "sn"), "BR1: name badges uteservering + live music in front of the name (" + JSON.stringify(on.filter((x) => x[0] === "pub")) + ")");
+      }
+      ok(errs.length === 0, "BR1 no page errors " + JSON.stringify(errs.slice(0, 3)));
+      await closeCounted(ctx, page, "map-" + TAG + "-br1");
+    }
+
+    /* ---------- R1 map items: 2-line names (R1-33), arena chip tap box (R1-34), ⓘ credit line (R1-36), Kartstil control (R1-16) ---------- */
+    if (ONLY.test("r1")) {
+      const { ctx, page, errs } = await open(b, { width: 360, height: 780 });
+      const nm = await page.evaluate(() => { const name = "La Parma Pub & Restaurang", x = PNPINS.labelOps(name), t = x.ops.filter((o) => o.o === "t").map((o) => o.t);
+        return { t, whole: t.join(" ").replace(/\s+/g, " ") === name && !t.some((s) => /…/.test(s)) }; });
+      ok(nm.whole, "R1-33: a long bar name is drawn whole (" + JSON.stringify(nm.t) + ")");
+      await view(page, LUD, 17, 2500);
+      await page.screenshot({ path: shotDir + "map-" + TAG + "-r1-33-names-360.png" });
+      // R1-34: Hitachi Arena chip, Leaflet z16: a tap 18 px off its centre (all 4 sides) still hits the chip
+      await view(page, [60.1512, 15.20877], 16, 2500);
+      await page.waitForFunction(() => !!document.querySelector(".ap-pin"), null, { timeout: 10000 }).catch(() => console.log("no arena chip"));
+      const hb = await page.evaluate(() => { const e = [...document.querySelectorAll(".ap-pin")].find((x) => /Hitachi/.test(x.textContent)) || document.querySelector(".ap-pin"); if (!e) return null;
+        const r = e.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, hit = (x, y) => { const t = document.elementFromPoint(x, y); return !!(t && t.closest(".ap-pin") === e); };
+        return { box: [Math.round(r.width), Math.round(r.height)], txt: e.textContent.trim(), sides: [hit(cx - 21, cy), hit(cx + 21, cy), hit(cx, cy - 21), hit(cx, cy + 21)] }; });
+      console.log("R1-34 " + JSON.stringify(hb));
+      await page.screenshot({ path: shotDir + "map-" + TAG + "-r1-34-arena-360.png" });
+      ok(hb && hb.sides.every(Boolean), "R1-34: the arena chip takes a tap 21 px from its centre on all 4 sides (44 px box) (" + JSON.stringify(hb) + ")");
+      // R1-36: the SCB credit sits on the map credit's line, not alone after the legend
+      const cr = await page.evaluate(() => { document.getElementById("btn-attrib").click(); const pop = document.getElementById("attrib-pop"), z = pop.querySelector(".zn-credit");
+        const p = z && z.previousElementSibling; return { prev: p ? p.className : null, text: pop.textContent.replace(/\s+/g, " ").slice(0, 300) }; });
+      await wait(page, 300);
+      await page.screenshot({ path: shotDir + "map-" + TAG + "-r1-36-info-360.png" });
+      console.log("R1-36 " + JSON.stringify(cr));
+      ok(cr.prev === "bm-credit", "R1-36: '| Gränser: SCB' follows the map credit on its line (" + JSON.stringify(cr.prev) + ")");
+      await page.evaluate(() => { const p = document.getElementById("attrib-pop"); p.hidden = true; });
+      // R1-16: Kartstil = the one segmented control; the tip badge >= 12 px; items >= 44 px
+      const ks = await page.evaluate(() => { const sh = document.createElement("div"); sh.className = "sheet"; sh.id = "r1-ks"; sh.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;padding:16px;background:var(--ds-sheet,#121a2a)";
+        const body = document.createElement("div"); sh.appendChild(body); document.body.appendChild(sh); BASEMAP.settingsSheet(body);
+        const seg = body.querySelector("[role=radiogroup]"), bs = seg ? [...seg.querySelectorAll("button")] : [], tip = seg && seg.querySelector(".bm-b");
+        return { cls: seg ? seg.className : null, n: bs.length, h: bs.map((x) => Math.round(x.getBoundingClientRect().height)), tipPx: tip ? parseFloat(getComputedStyle(tip).fontSize) : null }; });
+      await wait(page, 300);
+      await page.screenshot({ path: shotDir + "map-" + TAG + "-r1-16-kartstil-360.png" });
+      console.log("R1-16 " + JSON.stringify(ks));
+      ok(/\bds-seg\b/.test(ks.cls || "") && ks.n >= 2 && ks.h.every((h) => h >= 44) && ks.tipPx >= 12, "R1-16: Kartstil is the segmented control, items >= 44 px, 'Chefens val' >= 12 px (" + JSON.stringify(ks) + ")");
+      ok(errs.length === 0, "R1 no page errors " + JSON.stringify(errs.slice(0, 3)));
+      await closeCounted(ctx, page, "map-" + TAG + "-r1");
     }
 
     /* ---------- B8: 2 close bars; A's long name points at B; a tap near B's icon opens B (3 zooms) ---------- */

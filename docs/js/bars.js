@@ -109,6 +109,7 @@
       if (lat == null || lng == null) return;
       var t = el.tags || {};
       var bar = { id: el.type[0] + el.id, name: t.name || null, lat: +(+lat).toFixed(5), lng: +(+lng).toFixed(5), type: t.amenity || "bar" };
+      if (window.PNVTYPE) { bar.vt = window.PNVTYPE.classify(t, t.name); var fl = window.PNVTYPE.flags(t); for (var fk in fl) bar[fk] = fl[fk]; }   // map BR1
       // Optional info for the bar popup, only when OSM has it.
       if (t.opening_hours) bar.opening_hours = String(t.opening_hours).slice(0, 120);
       if (t.website || t["contact:website"]) bar.website = String(t.website || t["contact:website"]).slice(0, 200);
