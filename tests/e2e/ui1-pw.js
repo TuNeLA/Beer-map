@@ -140,7 +140,8 @@ function noJump(fr, w0, h0, moveMax) {
       await page.evaluate(() => window.EVSHEET.open()); await wait(page, 1500);
       await page.evaluate(() => { const b = document.querySelector('.evs-time button[data-t="month"]'); if (b) b.click(); }); await wait(page, 1200);
       const iv = await page.evaluate(() => { const c = document.querySelector(".evs-chips"), b = c && c.querySelector('[aria-pressed="true"]'); if (!b) return null; const r = b.getBoundingClientRect(), cr = c.getBoundingClientRect();
-        return { k: b.getAttribute("data-k"), in: r.left >= cr.left - 0.5 && r.right <= cr.right + 0.5, l: Math.round(r.left), r: Math.round(r.right), cl: Math.round(cr.left), cr: Math.round(cr.right) }; });
+        return { k: b.getAttribute("data-k"), in: r.left >= cr.left - 0.5 && r.right <= cr.right + 0.5, l: Math.round(r.left), r: Math.round(r.right), cl: Math.round(cr.left), cr: Math.round(cr.right),
+          sl: Math.round(c.scrollLeft), max: c.scrollWidth - c.clientWidth, ow: b.offsetWidth, tf: getComputedStyle(b).transform, ml: getComputedStyle(b).marginRight }; });
       ok(iv && iv.k === "tv" && iv.in, w + ": B4 the chosen chip (På TV) is in view when the sheet opens", iv);
       await shot(page, "B4-chips-open-tv-" + w, { x: 0, y: 0, width: w, height: 420 });
       await page.evaluate(() => { try { localStorage.removeItem("olnu.evsFilter"); } catch (e) {} });
@@ -235,12 +236,25 @@ function noJump(fr, w0, h0, moveMax) {
         const cutL = [...f2.querySelectorAll(".pf-body button, .pf-body button > span")].filter(vis).filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent.trim());
         return { open: f2.open, inner, q, acts, square, dashed, copy, emo, rowIcon, small, cutL };
       });
-      ok(r && r.open && r.inner === 0 && r.q.length === 3 && r.acts.length === 2, w + ": B7 one tap on 'Kö och erbjudanden' shows the 3 queue buttons + Lägg till erbjudande + Tipsa (no inner dropdown)", r);
+      ok(r && r.open && r.inner === 0 && r.q.length === 3 && r.acts.length === 2, w + ": B7 one tap on 'Kö och erbjudanden' shows the 3 queue buttons + Erbjudande + Tipsa gruppen (no inner dropdown)", r);
       ok(r && !r.square.length && !r.dashed.length, w + ": B7 no square box / dashed line around the rounded buttons", r && { square: r.square, dashed: r.dashed });
       ok(r && !r.copy && !r.emo && r.rowIcon && !r.small.length, w + ": B7 PNI icons only (no copy icon, no emoji), the row has its icon, buttons ≥ 44 px", r && { copy: r.copy, emo: r.emo, rowIcon: r.rowIcon, small: r.small });
       ok(r && !r.cutL.length, w + ": B7 no button label is cut", r && r.cutL);
       await page.evaluate(() => { const f = document.querySelector('.leaflet-popup details.pp-fold[data-fold="bp"]'); if (f) f.scrollIntoView({ block: "start" }); }); await wait(page, 300);
       await shot(page, "B7-bar-ko-" + w);
+      // every other part of the bar card: open "På väg" (ETA picker) and "Mer", then look for square boxes anywhere in the card
+      const all = await page.evaluate(async () => {
+        const g = document.querySelector(".leaflet-popup .eta-go"); if (g) { g.click(); await new Promise((r) => setTimeout(r, 400)); }
+        const m = document.querySelector('.leaflet-popup details.pp-fold[data-fold="mer"]'); if (m && !m.open) { m.querySelector("summary").click(); await new Promise((r) => setTimeout(r, 400)); }
+        const root = document.querySelector(".leaflet-popup .pn-bs7"); if (!root) return null;
+        const vis = (e) => e.getClientRects().length && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== "hidden";
+        const sq = [];
+        root.querySelectorAll("*").forEach((e) => { if (!vis(e)) return; const cs = getComputedStyle(e);
+          const bw = ["Top", "Right", "Bottom", "Left"].filter((k) => parseFloat(cs["border" + k + "Width"]) > 0 && cs["border" + k + "Style"] !== "none" && !/rgba\(\d+, \d+, \d+, 0\)/.test(cs["border" + k + "Color"])).length;
+          if (bw >= 4 && parseFloat(cs.borderTopLeftRadius) < 4 && e.getBoundingClientRect().width > 24) sq.push(e.tagName + "." + String(e.className).slice(0, 30)); });
+        return { eta: !!g, sq };
+      });
+      ok(all && !all.sq.length, w + ": B7 no square bordered box anywhere in the bar card (Info, På väg picker, Mer)", all);
       await ctx.close();
     }
   }
@@ -283,7 +297,9 @@ function noJump(fr, w0, h0, moveMax) {
     const t0 = await page.evaluate(() => { const t = document.querySelector("#toasts .toast"); if (!t) return null; const r = t.getBoundingClientRect(); return { w: r.width, h: r.height }; });
     const tf = await page.evaluate(() => new Promise((res) => {
       const out = [], t0 = performance.now();
-      const f = () => { const g = [...document.querySelectorAll("body > .toast[aria-hidden=true]")][0];
+      let g = null;   // follow ONE fade-out copy (the first one) until it is removed
+      const f = () => { if (!g) g = [...document.querySelectorAll("body > .toast[aria-hidden=true]")][0] || null;
+        if (g && !g.isConnected) return res(out);
         if (g) { const r = g.getBoundingClientRect(), cs = getComputedStyle(g); out.push({ w: +r.width.toFixed(1), h: +r.height.toFixed(1), x: r.left, y: r.top, o: +cs.opacity, bg: cs.backgroundColor, cls: g.className }); }
         if (performance.now() - t0 > 2200) return res(out); requestAnimationFrame(f); };
       f(); }));
@@ -298,8 +314,11 @@ function noJump(fr, w0, h0, moveMax) {
     const af = await ap; await shot(page, "B6-attrib-2-end");
     ok(!a0.hidden && noJump(af, a0.w, a0.h, 4).ok, "B6 ⓘ credits popup closes without a jump", { a0, af: af.slice(0, 3) });
     // "Dagens order" caption: leaves on the first map move
-    await page.evaluate(() => { try { window.DELIGHT.caption({ head: "Dagens order", text: "Drick vatten mellan varven.", cls: "dl-cap-greet", now: true, ms: 12000 }); } catch (e) {} });
-    await page.waitForFunction(() => { const c = document.querySelector(".dl-cap-greet"); return c && c.getBoundingClientRect().width > 0 && +getComputedStyle(c).opacity > 0.9; }, null, { timeout: 9000 }).catch(() => {});
+    // the caption box as delight.js makes it (#dl-cap.dl-cap.dl-cap-greet); the close path under test is pnui.js (map move → close class)
+    await page.evaluate(() => { document.querySelectorAll("#dl-cap").forEach((x) => x.remove()); document.documentElement.classList.remove("pn-settle");
+      const c = document.createElement("div"); c.id = "dl-cap"; c.className = "dl-cap dl-cap-greet dl-in"; c.setAttribute("role", "status");
+      c.innerHTML = '<div class="dl-cap-h">Dagens order · tisdag</div><div class="dl-cap-t">Drick vatten mellan varven.</div>'; document.body.appendChild(c); });
+    await page.waitForFunction(() => { const c = document.querySelector(".dl-cap-greet"); return c && c.getBoundingClientRect().width > 0 && +getComputedStyle(c).opacity > 0.9; }, null, { timeout: 5000 }).catch(() => {});
     const cap = await page.evaluate(() => { const c = document.querySelector(".dl-cap-greet"); if (!c) return null; const r = c.getBoundingClientRect(); return { w: r.width, h: r.height }; });
     await shot(page, "B6-greet-0-open");
     if (cap && cap.w) {

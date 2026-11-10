@@ -503,6 +503,8 @@
     if (br.left - cr.left < pad) c.scrollLeft = Math.max(0, c.scrollLeft + br.left - cr.left - pad);
     else if (br.right - cr.right > -pad) c.scrollLeft = c.scrollLeft + br.right - cr.right + pad;
     chipFades(c);
+    // the chosen chip's own style (border / weight) can still change its width after this frame: check once more
+    if (!again) { requestAnimationFrame(function () { chipInView(c, true); }); setTimeout(function () { if (c.isConnected) chipInView(c, true); }, 260); }
   }
   function filtered() { return sorted(cache.rows.filter(function (e) { return inTime(e, st.time) && inType(e, st.type); })); }
   function drawTools(all) {

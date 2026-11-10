@@ -137,9 +137,9 @@
     return '<div class="bp-of"><span class="bp-of-t">' + esc(o.body) + "</span>" +
       '<span class="bp-of-v">' +
       '<button type="button" class="bp-v up' + (mv === 1 ? " on" : "") + '" data-bpv="1" data-of="' + esc(String(o.id)) + '"' +
-        (mine ? " disabled" : "") + ' aria-pressed="' + (mv === 1) + '" aria-label="👍 ' + esc(t("bpVoteAria", o.up | 0)) + '">👍 ' + (o.up | 0) + "</button>" +
+        (mine ? " disabled" : "") + ' aria-pressed="' + (mv === 1) + '" aria-label="' + esc(((!I || I.lang !== "en") ? "Tummen upp · " : "Thumbs up · ") + t("bpVoteAria", o.up | 0)) + '">' + (pni("thumb-up") || "👍 ") + "<span>" + (o.up | 0) + "</span></button>" +
       '<button type="button" class="bp-v dn' + (mv === -1 ? " on" : "") + '" data-bpv="-1" data-of="' + esc(String(o.id)) + '"' +
-        (mine ? " disabled" : "") + ' aria-pressed="' + (mv === -1) + '" aria-label="' + esc(t("bpDown")) + '">👎 ' + (o.down | 0) + "</button>" +
+        (mine ? " disabled" : "") + ' aria-pressed="' + (mv === -1) + '" aria-label="' + esc(t("bpDown")) + '">' + (pni("thumb-down") || "👎 ") + "<span>" + (o.down | 0) + "</span></button>" +
       "</span></div>";
   }
   // Compact: owner + queue are one short line each; offers and all buttons sit in ONE collapsed section.
