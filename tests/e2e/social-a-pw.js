@@ -19,7 +19,7 @@ const EVENTS = [{ id: 901, kind: "quiz", title: "Pubquiz på Pitchers", place: "
   km: 0.2, going: 1, source: "user", is_mine: false, pending: false, town: "Ludvika", url: null, tv: false, sport: null, league: null, home: null, away: null, ticket_url: null }];
 
 async function server(page, rec) {
-  await page.route(/rest\/v1\/rpc\/(my_friends|my_friend_code|friend_request|my_inbox|my_past_events|my_dms|my_founder|friend_suggest|group_keep_history|set_group_keep_history|group_now|group_msgs|events_near2|events_near3|events_near)\b/, (r) => {
+  await page.route(/rest\/v1\/rpc\/(my_friends|my_friend_code|friend_request|my_inbox|my_past_events|my_dms|my_founder|friend_suggest|after_flags_get|moments_poll|party_group|group_keep_history|set_group_keep_history|group_now|group_msgs|events_near2|events_near3|events_near)\b/, (r) => {
     const fn = r.request().url().match(/rpc\/(\w+)/)[1];
     let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
     const isDm = b.p_group_id === DM;
@@ -34,6 +34,11 @@ async function server(page, rec) {
         { k: "inv:9", type: "inv", id: 9, title: "🧠 Pubquiz på Pitchers på Pitchers", starts_at: at(3), place: "Pitchers", from: "Lisa", group_name: null, at: iso(30) }] });
       case "my_past_events": return J(r, PAST);
       case "my_founder": return J(r, { v: 1, founder: true, premium: true, final: true, cutoff: iso(-60 * 24 * 30), since: iso(60 * 24 * 20) });   // owner set the cutoff
+      // moments (after lane GM7 / GM4): the flag is OFF by default; on here, one open Kvällens vad + a live party room for Ludvika Lager
+      case "after_flags_get": return J(r, { v: 1, flags: { moments: true, push_ev: false } });
+      case "moments_poll": return J(r, { v: 1, on: true, opened: 0, rounds: [{ id: 101, kind: "vad", q: "first_home", phase: "open", group_id: "11111111-2222-3333-4444-555555555555", group_name: "Ludvika Lager",
+        asked: true, mine: null, n_picks: 0, n_who: 4, picks: null, answer: null, opts: [{ v: "aaaaaaaaaaaa" }, { v: "bbbbbbbbbbbb" }], names: { aaaaaaaaaaaa: "Anton", bbbbbbbbbbbb: "Oskar" }, closes_at: at(1) }] });
+      case "party_group": return b.p_group_id === "11111111-2222-3333-4444-555555555555" ? J(r, { v: 1, room: { id: 55, code: "QWE123", game: "imposter", host_name: "Oskar", n: 3, is_in: false } }) : J(r, { v: 1, room: null });
       case "friend_suggest": return J(r, { v: 1, people: [{ k: "0123456789abcdef", name: "Maja", mutual: 3 }] });
       case "my_dms": return J(r, { v: 1, now: new Date().toISOString(), unread: 0, threads: [Object.assign(RPCF.dmThread(DM), { last_id: 501, last_body: "Tjena!", last_at: iso(30), last_me: false, unread: 0, at: iso(30), out: true })] });
       case "group_keep_history": case "set_group_keep_history": case "group_now":
@@ -132,6 +137,16 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
     const a2 = await page.evaluate(() => { const c = document.querySelector(".gpg > .a2-gcard"), n = document.querySelector(".gpg > .gpg-now"), m = document.querySelector(".gpg > .pn-gp-mem");
       if (!c) return null; const r = c.getBoundingClientRect(), rn = n && n.getBoundingClientRect(), rm = m && !m.hidden ? m.getBoundingClientRect() : null;
       return { vis: r.height > 0, afterNu: !!rn && r.top >= rn.bottom - 1, beforeMem: !rm || r.bottom <= rm.top + 1, gid: window.__a2g && window.__a2g.id, w: Math.round(r.width), ww: Math.round(document.querySelector(".gpg").getBoundingClientRect().width) }; });
+    const mo = await page.evaluate(() => {
+      const g = document.querySelector(".gpg"), card = g.querySelector(":scope > .mo-gcard:not(.mo-room)"), room = g.querySelector(":scope > .mo-gcard.mo-room");
+      const R = (e) => e && e.getClientRects().length && getComputedStyle(e).display !== "none" ? e.getBoundingClientRect() : null;
+      const a2 = R(g.querySelector(":scope > .a2-gcard")), c = R(card), m = R(g.querySelector(":scope > .pn-gp-mem")), sp = R(g.querySelector(":scope > .sp-gi")), gk = R(g.querySelector(":scope > .sa-gk")), ro = R(room);
+      return { card: !!c, underA2: !!(c && a2 && c.top >= a2.bottom - 1 && c.top - a2.bottom < 24), aboveMem: !!(c && (!m || c.bottom <= m.top + 1)), full: !!(c && c.width >= g.getBoundingClientRect().width - 2),
+        room: !!ro, roomAfterSpel: !!(ro && sp && ro.top >= sp.bottom - 1 && ro.top - sp.bottom < 24), roomT: room ? room.textContent : "",
+        dbg: [...g.children].filter((e) => R(e)).map((e) => String(e.className).split(" ")[0] + ":" + Math.round(R(e).top) + "-" + Math.round(R(e).bottom) + ":o" + getComputedStyle(e).order).join(" ") };
+    });
+    ok(`[${w}] moments: MOMENTS.groupCard row right under Kvällsrapporten, above Gänget, full width (flag on)`, mo.card && mo.underA2 && mo.aboveMem && mo.full, mo);
+    ok(`[${w}] moments: MOMENTS.roomCard row in the Spel area (right under Spel)`, mo.room && mo.roomAfterSpel && /Partyspel pågår/.test(mo.roomT), mo);
     ok(`[${w}] after lane: AFTER2.groupCard(g) row sits right under the Nu block, full width`, !!a2 && a2.vis && a2.afterNu && a2.beforeMem && a2.gid === "11111111-2222-3333-4444-555555555555" && a2.w >= a2.ww - 2, a2);
     const gk = await page.evaluate(() => { const b = document.querySelector(".gpg > .sa-gk"); if (!b) return null; const r = b.getBoundingClientRect(); b.click(); return { h: Math.round(r.height), vis: r.height > 0, svg: !!b.querySelector("svg"), t: b.textContent }; });
     await wait(page, 300);
@@ -256,6 +271,11 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
       await page.evaluate(() => { const r = document.querySelector("#sheet-body .sa-gk-pick .ds-row"); if (r) r.click(); }); await wait(page, 400);
       ok(`[${w}] Topplistor Gängkamp: the pick opens GAMES.openGangkamp`, await page.evaluate(() => !!(window.__gk[0] && window.__gk[0].id && window.__gk[0].code)));
     }
+    // warm.js: moments_report / after_report2 are reads, a call right after a tap never makes the instant-screen cache dirty
+    await page.mouse.click(5, 300); await wait(page, 100);
+    const wq = await page.evaluate(async () => { const W = window.WARM; if (!W || !W.rpc) return null; const d0 = W.stats.dirty; const raw = () => Promise.resolve({ data: { v: 1 }, error: null });
+      await W.rpc("moments_report", { p_night: null }, raw); await W.rpc("after_report2", { p_group_id: "x" }, raw); return { d0, d1: W.stats.dirty, by: W.stats.dirtyBy }; });
+    ok(`[${w}] warm.js: moments_report + after_report2 after a tap do not make the cache dirty`, !!wq && wq.d1 === wq.d0, wq);
     await ctx.close();
   }
   await browser.close();
