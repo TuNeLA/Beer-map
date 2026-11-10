@@ -103,7 +103,7 @@
   }
   // mode: "d" dot · "f" full · "x" full in the town view (z < 12.5: no disc, like .olnu-zxlo)
   function build0(s, mode, hi) {
-    var ops = [], parts = [], full = mode !== "d", D = full ? (hi ? 32 : 24) : (hi ? 28 : 19.2), gs = full ? (hi ? 18 : 14) : (hi ? 15.75 : 11.2);
+    var ops = [], parts = [], full = mode !== "d", D = hi ? 32 : 24, gs = hi ? 18 : 14;   // map B9: dot = full disc
     if (mode !== "x") {
       var gl = glyph(s.k), ring = s.hot ? "#ffc24d" : s.lit ? "#3ddc84" : null, rad = D / 2;
       ops.push({ bb: [-rad - 3, -rad - 3, rad + 3, rad + 4], fn: function (g) {
@@ -235,8 +235,10 @@
   /* ---------- layers ---------- */
   // leaflet.heat gradient, shifted down: one lone point (weight ≥ 0.42 × intensity × the 0.4 kernel peak ≈ 0.2) = amber, as before
   var DOT_Z = 12.5, DOTE_Z = 14;   // Leaflet zooms (tiers.js): dots from 12.5, empty dots from 14
-  // dot size: 1 → 1.2 at Leaflet z16 (GL 15), × 1.25 for the selected bar
-  var DOT_SIZE = ["interpolate", ["linear"], ["zoom"], 14.5, ["get", "sz"], 15, ["*", 1.2, ["get", "sz"]]];
+  // map B9: dot sprites are drawn at the full disc size (28): icon-size follows the full images' zoom tiers (town view 24,
+  // Leaflet z >= 16 32), × 1.25 for the selected bar. So a dot and a full pill of the same zoom have the same icon.
+  var DOT_K = function (z) { return z < 12.5 ? 24 / 28 : z >= 16 ? 32 / 28 : 1; };   // Leaflet zoom
+  var DOT_SIZE = ["step", ["zoom"], ["*", 24 / 28, ["get", "sz"]], 11.5, ["get", "sz"], 15, ["*", 32 / 28, ["get", "sz"]]];
   // mapart P6: one warm hue family, a little softer at the top so pills stay readable over the hottest cells
   var HEAT_COL = ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(90,35,0,0)", 0.02, "rgba(90,35,0,0)", 0.08, "rgba(194,101,10,0.42)",
     0.2, "rgba(245,166,35,0.70)", 0.4, "rgba(255,122,26,0.80)", 0.68, "rgba(255,72,60,0.85)", 1, "rgba(255,236,200,0.88)"];
@@ -310,9 +312,9 @@
         layout: { "icon-image": img, "icon-anchor": "center", "icon-offset": off, "icon-size": DOT_SIZE, "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-padding": 0,
           "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, m.getLayer(L_LBL) ? L_LBL : undefined); };
       if (spr.sheet) {   // (only with the sprite images there; ensure() runs again when the sprite has loaded)
-      badge(L_DOTB1, "badge-friend", ["==", ["get", "bf"], 1], ["match", ["get", "bs"], 1, ["literal", [7, 7]], ["literal", [6, 6]]]);
-      badge(L_DOTB2, ["get", "b2"], ["!=", ["get", "b2"], ""], ["match", ["get", "b2"], "badge-king", ["match", ["get", "bs"], 1, ["literal", [0, -12]], ["literal", [0, -11]]],
-        ["match", ["get", "bs"], 1, ["literal", [-7, 7]], ["literal", [-6, 6]]]]);
+      // map B9: badge places on the 28 px dot disc (one size for quiet and busy dots)
+      badge(L_DOTB1, "badge-friend", ["==", ["get", "bf"], 1], ["literal", [10, 10]]);
+      badge(L_DOTB2, ["get", "b2"], ["!=", ["get", "b2"], ""], ["match", ["get", "b2"], "badge-king", ["literal", [0, -16]], ["literal", [-10, 10]]]);
       }
       // restaurant dots (places.js) in GL, UNDER every bar layer and placed last: GL collision hides one that would touch a
       // pill or a name (same source as the bars: cross-source collisions are off in basemap.js)
@@ -375,8 +377,8 @@
         var dk = keyOf(s, "d", hi), dimg = image(m, s, "d", hi); used[dimg.k] = 1; di = dk + "c";
         if (!m.hasImage(di)) m.addImage(di, centred(dimg), { pixelRatio: R }); used[di] = 1;
         if (!im) im = dimg;
-      } else if (!im) {   // a sprite dot (mapart: quiet Ø 18, busy Ø 20; the image box is centred on the point)
-        var dr = (s.p || s.hot) ? 10 : 9;
+      } else if (!im) {   // a sprite dot (map B9: Ø 28 × DOT_K, the full disc of this zoom; the image box is centred on the point)
+        var dr = 14 * DOT_K(z);
         im = { k: di, ox: dr, oy: dr, bottom: dr, parts: [{ sel: ".bar-ico", bb: [-dr, -dr, dr, dr] }], data: { width: 2 * dr * R, height: 2 * dr * R } };
       }
       used[im.k] = 1;
@@ -513,7 +515,8 @@
      Tap a cluster = zoom in to where it splits (getClusterExpansionZoom). From Leaflet z15 (GL 14) every bar is its own dot
      again. The dot / badge layers are clones of the old ones on the cluster source (same images, same rules). */
   var SRC_CL = "olnu-bars-cl", L_CL = "olnu-bar-cl", L_CDOT = "olnu-bar-cdot", L_CDOTE = "olnu-bar-cdote", L_CB1 = "olnu-bar-cdotb1", L_CB2 = "olnu-bar-cdotb2";
-  var CL_IDS = [L_CDOTE, L_CDOT, L_CB1, L_CB2, L_CL];
+  var L_CDOTF = "olnu-bar-cdotf";   // map B8: empty dots from Leaflet z16, always drawn (they block names, names never hide them)
+  var CL_IDS = [L_CDOTE, L_CDOTF, L_CDOT, L_CB1, L_CB2, L_CL];
   var CL_MAXZ = 13, CL_MINZ = 9, CL_R = 52;   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
   var cl = { on: false, sig: "", feats: [], seen: null, seenAt: 0, hooked: null, made: 0 };
   function clOps(n, busy, friend) {
@@ -556,13 +559,23 @@
         var o = byL[src]; if (!o || m.getLayer(id)) return;
         var c = JSON.parse(JSON.stringify(o)); c.id = id; c.source = SRC_CL; c.minzoom = CL_MINZ; delete c.maxzoom; delete c.slot;
         c.filter = o.filter ? ["all", un, o.filter] : un;
-        m.addLayer(c, m.getLayer(L_LBL) ? L_LBL : undefined);
+        // map B8: the dots are placed BEFORE the names (layer above = placed first) and block them (still always drawn):
+        // a long name that would cover another bar's icon hides, the icon stays (badges keep ignoring placement)
+        if (/cdote?$/.test(id)) c.layout["icon-ignore-placement"] = false;
+        m.addLayer(c, m.getLayer(L_FULL) ? L_FULL : undefined);
       };
       clone(L_DOTE, L_CDOTE); clone(L_DOT, L_CDOT); clone(L_DOTB1, L_CB1); clone(L_DOTB2, L_CB2);
+      // map B8 / B9: zoomed in (Leaflet z >= 16) no bar icon is left out: the empty dots thin out by collision only below that
+      if (!m.getLayer(L_CDOTF) && byL[L_DOTE]) {
+        var cf = JSON.parse(JSON.stringify(byL[L_DOTE])); cf.id = L_CDOTF; cf.source = SRC_CL; cf.minzoom = 15; delete cf.maxzoom; delete cf.slot;
+        cf.filter = cf.filter ? ["all", un, cf.filter] : un; cf.layout["icon-allow-overlap"] = true; cf.layout["icon-ignore-placement"] = false;
+        m.addLayer(cf, m.getLayer(L_FULL) ? L_FULL : undefined);
+      }
+      if (m.getLayer(L_CDOTE)) try { m.setLayerZoomRange(L_CDOTE, CL_MINZ, 15); } catch (e) {}
       if (!m.getLayer(L_CL)) m.addLayer({ id: L_CL, type: "symbol", source: SRC_CL, minzoom: CL_MINZ, filter: ["has", "point_count"],
         layout: { "icon-image": ["concat", "pncl-", ["to-string", ["get", "point_count"]], "-", ["case", [">", ["get", "b"], 0], "1", "0"], ["case", [">", ["get", "f"], 0], "1", "0"]],
-          "icon-anchor": "center", "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-padding": 0, "symbol-sort-key": ["get", "point_count"],
-          "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, m.getLayer(L_LBL) ? L_LBL : undefined);
+          "icon-anchor": "center", "icon-allow-overlap": true, "icon-ignore-placement": false, "icon-padding": 0, "symbol-sort-key": ["get", "point_count"],
+          "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, m.getLayer(L_FULL) ? L_FULL : undefined);   // map B8: a name never covers a cluster
       cl.on = !!(m.getSource(SRC_CL) && m.getLayer(L_CL) && m.getLayer(L_CDOT));
     } catch (e) { cl.on = false; try { console.warn("olnu glmap cl", e && e.message); } catch (x) {} }
     return cl.on;
@@ -582,7 +595,7 @@
     if (!cl.on || !gm) return false;
     if (!cl.seen || performance.now() - cl.seenAt > 250) {
       cl.seen = {}; cl.seenAt = performance.now();
-      try { gm.queryRenderedFeatures({ layers: [L_CDOT, L_CDOTE] }).forEach(function (f) { cl.seen[String(f.properties.id)] = 1; }); } catch (e) {}
+      try { gm.queryRenderedFeatures({ layers: [L_CDOT, L_CDOTE, L_CDOTF].filter(function (l) { return gm.getLayer(l); }) }).forEach(function (f) { cl.seen[String(f.properties.id)] = 1; }); } catch (e) {}
     }
     return !!cl.seen[String(id)];
   }
@@ -610,28 +623,43 @@
   /* ds30 barcl END */
   /* ---------- tap ---------- */
   var synth = false, tapAt = -1e9;
+  // map B8 (owner 2026-11-09: a long name of bar A reaching toward bar B stole the tap from B's icon): ICONS decide.
+  //   1. the finger is on a bar's disc (its radius + 6 px): the nearest disc wins, full pill or dot;
+  //   2. a direct hit on a full pill's count badge / chip (± 2 px): best priority first (the "Folk här" folds);
+  //   3. a bar cluster; 4. the nearest icon centre within 28 px; 5. the name label (fallback only); 6. a restaurant dot.
+  var TAP_NEAR = 28, TAP_DISC = 6;
+  function icoR(id) {   // a bar's drawn disc radius (CSS px), from its image parts
+    var x = parts[String(id)], b = x && x.im && x.im.parts.filter(function (q) { return q.sel === ".bar-ico"; })[0];
+    return (b ? (b.bb[2] - b.bb[0]) / 2 : 14) * (x && x.sz || 1);
+  }
   function onPreclick(e) {
     if (!on || synth || !gm || !layersReady || !e || !e.latlng) return;
     var m = gm, z = map.getZoom();
     try {
-      var p = m.project([e.latlng.lng, e.latlng.lat]), hit = null;
-      var fs = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: [L_FULL] });
-      // glfix: only a tap on a drawn part counts (disc, pill, crowd word, badge, ±4 px); the image box's empty corners let the
-      // tap through to a dot or the map under it
-      fs.forEach(function (f) {
-        var pi0 = parts[String(f.properties.id)]; if (!pi0) return;
-        var bp0 = m.project(f.geometry.coordinates), dx0 = (p.x - bp0.x) / pi0.sz, dy0 = (p.y - bp0.y) / pi0.sz;
-        if (!pi0.im.parts.some(function (x) { return dx0 >= x.bb[0] - 4 && dx0 <= x.bb[2] + 4 && dy0 >= x.bb[1] - 4 && dy0 <= x.bb[3] + 4; })) return;
-        if (!hit || f.properties.sk > hit.properties.sk) hit = f;
+      var p = m.project([e.latlng.lng, e.latlng.lat]), hit = null, how = "", B = TAP_NEAR + 6;
+      var lays = [L_FULL].concat(z >= DOT_Z || cl.on ? (cl.on ? [L_DOT, L_DOTE, L_CDOT, L_CDOTE, L_CDOTF] : [L_DOT, L_DOTE]) : []).filter(function (l) { return m.getLayer(l); });
+      var near = {};   // bar id -> { f, d (px from its icon centre), r (disc radius) }; the full pill feature wins over its own dot
+      m.queryRenderedFeatures([[p.x - B, p.y - B], [p.x + B, p.y + B]], { layers: lays }).forEach(function (f) {
+        if (f.layer.id !== L_FULL && z < DOTE_Z && f.properties.e === 1 && f.source !== SRC_CL) return;   // hidden by the zoom rule
+        var id = String(f.properties.id); if (!byId[id]) return;
+        var q = m.project(f.geometry.coordinates), d = Math.sqrt((q.x - p.x) * (q.x - p.x) + (q.y - p.y) * (q.y - p.y)), o = near[id];
+        if (!o || (f.layer.id === L_FULL && o.f.layer.id !== L_FULL)) near[id] = { f: f, d: d, r: icoR(id) };
+      });
+      var list = Object.keys(near).map(function (k) { return near[k]; }).sort(function (a, b) { return a.d - b.d; });
+      var onDisc = list.filter(function (o) { return o.d <= o.r + TAP_DISC; })[0];
+      if (onDisc) { hit = onDisc.f; how = "disc"; }
+      if (!hit) list.forEach(function (o) {   // 2: a full pill's count badge / chip
+        if (o.f.layer.id !== L_FULL) return;
+        var pi0 = parts[String(o.f.properties.id)]; if (!pi0) return;
+        var bp0 = m.project(o.f.geometry.coordinates), dx0 = (p.x - bp0.x) / pi0.sz, dy0 = (p.y - bp0.y) / pi0.sz;
+        if (!pi0.im.parts.some(function (x) { return x.sel !== ".bar-ico" && dx0 >= x.bb[0] - 2 && dx0 <= x.bb[2] + 2 && dy0 >= x.bb[1] - 2 && dy0 <= x.bb[3] + 2; })) return;
+        if (!hit || o.f.properties.sk > hit.properties.sk) { hit = o.f; how = "part"; }
       });
       if (!hit && cl.on && clTap(m, p, e)) return;   // ds30
-      if (!hit && (z >= DOT_Z || cl.on)) {
-        var best = 1e9;
-        m.queryRenderedFeatures([[p.x - 22, p.y - 22], [p.x + 22, p.y + 22]], { layers: cl.on ? [L_DOT, L_DOTE, L_CDOT, L_CDOTE] : [L_DOT, L_DOTE] }).forEach(function (f) {
-          if (z < DOTE_Z && f.properties.e === 1 && f.source !== SRC_CL) return;   // hidden by the zoom rule
-          var q = m.project(f.geometry.coordinates), d = Math.abs(q.x - p.x) + Math.abs(q.y - p.y);
-          if (d < best) { best = d; hit = f; }
-        });
+      if (!hit && list.length && list[0].d <= TAP_NEAR) { hit = list[0].f; how = "near"; }
+      if (!hit && m.getLayer(L_LBL)) {   // 5: the name, only when no icon is near
+        var lf = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: [L_LBL] })[0];
+        if (lf && byId[String(lf.properties.id)]) { hit = lf; how = "name"; }
       }
       if (!hit && placeTap) {   // a restaurant dot
         var pf = m.queryRenderedFeatures([[p.x - 10, p.y - 10], [p.x + 10, p.y + 10]], { layers: [L_PLACE] })[0], pl = pf && placeById[String(pf.properties.id)];
@@ -643,7 +671,7 @@
       var bp = m.project([mk.getLatLng().lng, mk.getLatLng().lat]), pi = parts[id], dx = (p.x - bp.x) / (pi ? pi.sz : 1), dy = (p.y - bp.y) / (pi ? pi.sz : 1), sel = ".bar-ico";
       if (hit.properties.t === 1 && pi) pi.im.parts.forEach(function (x) { if (dx >= x.bb[0] - 2 && dx <= x.bb[2] + 2 && dy >= x.bb[1] - 2 && dy <= x.bb[3] + 2 && x.sel !== ".bar-ico") sel = x.sel; });
       var tgt = el.querySelector(sel) || el;
-      stats.taps++; stats.lastTap = id + sel; tapAt = performance.now();
+      stats.taps++; stats.lastTap = id + sel; stats.tapHow = how; tapAt = performance.now();
       if (e.originalEvent) e.originalEvent._olnuGl = 1;   // map3d.js: this tap is used
       synth = true;
       // glfix: our own click event, flagged too: it bubbles to the map, and map3d.js (3D house tap → BARLIT.open → a 2nd click
