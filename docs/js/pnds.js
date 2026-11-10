@@ -233,8 +233,8 @@
     var s = $("prec-seg"); if (!s) return;
     var touched = false;
     s.addEventListener("click", function () { touched = true; setTimeout(function () { precHint(2800); }, 30); });
-    // first visit (before the first beer): show the hint once, short
-    setTimeout(function () { if (!touched && document.body.classList.contains("pn-first") && !sheetOpen()) precHint(5000); }, 2500);
+    // ui1 B12 (owner): the bubble shows only after a tap on the control, never by itself at start (pn-first stayed on for
+    // users whose first beer was logged on another device / before the olnu.pnBeer1 flag, so it came at every start).
   }
 
   /* ---------- 3. overlays go back to the sheet they came from ---------- */
@@ -742,7 +742,7 @@
       pick(".sp-tag").forEach(function (n) { info.appendChild(n); });
       if (fBp) {
         var h = fBp.querySelector("summary .pp-sec-h");
-        if (h) h.textContent = "Kö och erbjudanden";
+        if (h) { h.textContent = "Kö och erbjudanden"; if (!fBp.querySelector("summary > .pi")) h.insertAdjacentHTML("beforebegin", ico("megaphone")); }   // ui1 B7: same icon column as the other Info rows
         info.appendChild(fBp);
       }
       if (inv) mer.push(inv);
@@ -1035,7 +1035,7 @@
   function toastOut(t) {
     if (reduced() || !t.classList || !t.classList.contains("toast") || !t.textContent) return;
     var r = t.getBoundingClientRect && t._pnRect; if (!r) return;
-    var g = t.cloneNode(true); g.removeAttribute("id"); g.classList.add("pn-out"); g.setAttribute("aria-hidden", "true");
+    var g = t.cloneNode(true); g.removeAttribute("id"); g.classList.add("pn-toast-out"); g.setAttribute("aria-hidden", "true");   // ui1 B6: own class (.pn-out = card style)
     g.style.cssText += ";position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;margin:0;pointer-events:none";
     document.body.appendChild(g); setTimeout(function () { g.remove(); }, 200);
   }
@@ -1340,7 +1340,7 @@
     document.documentElement.classList.remove("pn-booting");
     if (sp) {
       var still = W.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-      sp.classList.add("pn-out");
+      sp.classList.add("pn-splash-out");   // ui1 B6: own class (.pn-out = the "Ute ikväll" card style: bg, radius, padding)
       setTimeout(function () { if (sp && sp.parentNode) sp.parentNode.removeChild(sp); }, still ? 0 : 320);
     }
     setTimeout(calm, 1200);

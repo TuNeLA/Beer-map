@@ -1308,3 +1308,43 @@ body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;fon
   color:var(--ds-text);font:600 var(--fs-16)/22px var(--ds-sans);text-decoration:none}
 #sheet-body .pn-ikv-clear{display:block;margin:var(--sp-2) auto 0;min-height:44px}
 /* ds60 polish END */
+/* lane:ui1 START — Wave 1 bugs B3 B4 B6 B10 B11 (10 Nov). New rules only; no old line changed. */
+/* B3 event sheet: one day = one section, so the sticky day header stays inside its day and the next one pushes it out */
+.evs-list>.evs-dg{display:flex;flex-direction:column;gap:var(--ds-2)}
+.evs-list>.evs-dg+.evs-dg{margin-top:var(--ds-2)}
+/* B4 chip row: an edge fades only when more chips are hidden on that side (evsheet.js chipFades) */
+.evs-bar .evs-chips{-webkit-mask-image:none;mask-image:none}
+.evs-bar .evs-chips[data-fr]{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.evs-bar .evs-chips[data-fl]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px);mask-image:linear-gradient(90deg,transparent,#000 28px)}
+.evs-bar .evs-chips[data-fl][data-fr]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+/* B6 close: every popup / menu / ghost has its OWN close class (".pn-out" is the "Ute ikväll" card: it made them jump) */
+.pn-ikm.pn-vis-out{animation:pnIkmOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards;pointer-events:none}
+.toast.pn-toast-out{animation:pnToastOut var(--m-3) var(--e-out) forwards}
+#pn-splash.pn-splash-out{opacity:0}
+.dl-cap-greet.dl-cap-greet-out{opacity:0;transform:translateY(-6px);transition:opacity var(--ds-t-2) var(--pn-acc),transform var(--ds-t-2) var(--pn-acc)}
+.fx-amb.fx-amb-out{opacity:0;transition:opacity 1.5s var(--e-std)}
+.takeover.fx-tk-out{opacity:0;transition:opacity var(--m-4)}
+.mx-pop.mx-pop-out{opacity:0;transition:opacity var(--m-4)}
+@media (prefers-reduced-motion: reduce){.pn-ikm.pn-vis-out{animation:none}.dl-cap-greet.dl-cap-greet-out{transition:none}}
+/* B10 top bar pill: the town name is never cut (zones.js fitPill). Two lines: name 14 px over the status 12 px. */
+#live-count.zn-pill .zn-pn{white-space:nowrap}
+#live-count.zn-pill.zn-2l{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding:0 var(--sp-2) 0 var(--sp-3) !important}   /* !important: pnds.css:47 sets the pill padding with !important */
+#live-count.zn-2l .zn-pn{display:block;max-width:100%;overflow:hidden;font:600 var(--fs-14)/16px var(--ds-sans);color:var(--ds-text)}
+#live-count.zn-2l.zn-tt .zn-pn{letter-spacing:-.02em}
+#live-count.zn-2l .zn-ps{display:flex;align-items:center;gap:var(--sp-1);max-width:100%;white-space:nowrap;font:400 var(--fs-12)/14px var(--ds-sans);color:var(--ds-text-2)}
+#live-count.zn-2l .zn-sep{display:none}
+#live-count .zn-sep{font-style:normal}
+#live-count.zn-2l .zn-n{font-weight:700;color:var(--ds-amber-t)}
+#live-count .zn-dot{display:none}
+#live-count.zn-2l .zn-dot{display:block;flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--ds-green)}
+/* last step for a long name on a narrow phone: the wordmark gives the pill room (pnds.css:46 sets it with !important) */
+body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
+/* B11 tabs under a sheet header (Grupper | Vänner | Inkorg, Topplista): the Profil fix (pnds.css:1271) for all — the track
+   is 16 px under the header line (no double line), also when it sticks; a strip in the sheet colour hides rows above it. */
+.sheet .tabs.inv-tabs,#sheet-body>.tt-bar{margin-top:0;top:0}
+.sheet .tabs.inv-tabs::after,#sheet-body>.tt-bar::after{content:"";position:absolute;left:0;right:0;top:-16px;height:28px;z-index:-1;pointer-events:none;
+  background:linear-gradient(var(--ds-sheet,#121a2a),var(--ds-sheet,#121a2a)) top/100% 16px no-repeat,
+    radial-gradient(circle at 100% 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left bottom/12px 12px no-repeat,
+    radial-gradient(circle at 0 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right bottom/12px 12px no-repeat}
+/* lane:ui1 END */

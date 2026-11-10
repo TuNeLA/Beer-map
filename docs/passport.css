@@ -42,3 +42,7 @@
 .ps-town .ps-name{font-size:var(--fs-14)}
 .ps-empty{background:var(--s2,#172134);border-radius:var(--r-lg);padding:14px;margin-top:10px}
 .ps-more,.ps-fine{font-size:var(--fs-12);margin-top:8px}
+/* ui1 B5: the mini map uses the main map's bar discs (mapart.js) on the main map style; non-interactive */
+.ps-map.mapboxgl-map{background:var(--ds-card)}
+.ps-pin.ps-pin-pni{background:none;border:0;line-height:0;pointer-events:none}
+.ps-pin.ps-pin-pni img{display:block}
