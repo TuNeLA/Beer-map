@@ -26,7 +26,8 @@
     "x8.full": "📡 Fem öl väntar redan på täckning. Ta det lugnt en stund!",
     "x8.sent": "📡 Ölen från {time} ä skickad",
     "x8.stale": "Senast uppdaterad {time}",
-    "x8.nonet": "Ingen täckning just nu"
+    "x8.nonet": "Ingen täckning just nu",
+    "x8.busy": "Det är mycket nu"   // perf: the server is overloaded (busy back-off)
   };
   var PEN = {
     "x8.pending": "🍺 Cheers! Counting your beer…",
@@ -35,7 +36,8 @@
     "x8.full": "📡 Five beers are already waiting for signal. Take it easy for a bit!",
     "x8.sent": "📡 Your beer from {time} is sent",
     "x8.stale": "Last updated {time}",
-    "x8.nonet": "No signal right now"
+    "x8.nonet": "No signal right now",
+    "x8.busy": "Lots going on right now"
   };
   try { if (window.DIALEKT && window.DIALEKT.register) { window.DIALEKT.register("sv-neutral", P); window.DIALEKT.register("en-neutral", PEN); } } catch (e) {}
   function lang() { try { return window.I18N && window.I18N.lang === "en" ? "en" : "sv"; } catch (e) { return "sv"; } }
@@ -161,7 +163,7 @@
   /* ---------- stale mode ---------- */
   var fails = 0, lastGood = 0, staleOn = false, capEl = null, hideT = 0;
   (function () { var l = lsGet(LAST); if (l && isFinite(l.at)) lastGood = +l.at; })();
-  function capText() { return lastGood ? say("x8.stale", { time: hhmm(lastGood) }) : say("x8.nonet"); }
+  function capText() { return busyN >= 2 ? say("x8.busy") : lastGood ? say("x8.stale", { time: hhmm(lastGood) }) : say("x8.nonet"); }
   function show() {
     if (!live) return;
     if (!capEl) {
@@ -176,13 +178,14 @@
     if (!staleOn) { staleOn = true; document.body.classList.add("x8-stale-on"); log("stale", { fails: fails }); }
   }
   function hide() {
-    if (!staleOn) return;
+    if (!staleOn || busyN >= 2) return;
     staleOn = false; document.body.classList.remove("x8-stale-on");
     if (capEl) { capEl.classList.add("x8-stale-out"); clearTimeout(hideT); hideT = setTimeout(function () { if (capEl && !staleOn) capEl.hidden = true; }, 160); }
   }
   // app.js after a good poll. info = { me, server_time } (poll_v2) or null (old server)
   function pollOk(info) {
     fails = 0; lastGood = now(); lsSet(LAST, { at: lastGood });
+    busyEnd();
     if (info && info.me && typeof info.me === "object") {
       me = info.me;
       var st = info.server_time ? Date.parse(info.server_time) : NaN;
@@ -194,6 +197,7 @@
   function pollFail() { fails++; if (fails >= 2 || navigator.onLine === false) show(); }
   // ms until the next poll after failures (null = the normal schedule)
   function delay() {
+    if (busyN >= 2) return Math.max(5e3, busyUntil - now());   // perf: busy → the next map poll is the probe, after the back-off
     if (navigator.onLine === false) return 60e3;
     if (!fails) return null;
     return Math.round(Math.min(60e3, 5e3 * Math.pow(2, fails - 1)) * (0.8 + Math.random() * 0.4));
@@ -201,6 +205,45 @@
   window.addEventListener("offline", function () { if (live) show(); });
   window.addEventListener("online", function () { setTimeout(function () { flush("online"); }, 1500); });
   window.addEventListener("storage", function (e) { if (e && e.key === KEY) arm(); });
+
+  /* ---------- perf: busy back-off (load REPORT fix 6) ---------- */
+  // app.js rpcNet1 calls netSeen(answer) for every request; busyHold(name) asks hold(name) for each background poll.
+  var BUSY_MIN = 60e3, BUSY_JIT = 60e3, busyN = 0, busyUntil = 0, probeAt = 0, busyHits = 0;
+  function isBusy(r) {
+    var e = r && r.error; if (!e) return false;
+    var st = +(r.status || e.status || 0), code = String(e.code || ""), msg = String(e.message || "");
+    if (code === "busy") return false;   // our own quiet answer
+    return st === 504 || st === 503 || code === "PGRST003" || msg === "timeout" || /PGRST003|upstream request timeout|gateway time-?out/i.test(msg);
+  }
+  function netSeen(r) {
+    if (!r) return;
+    if (isBusy(r)) {
+      busyN++; probeAt = 0;
+      if (busyN >= 2) {
+        busyUntil = now() + BUSY_MIN + Math.round(Math.random() * BUSY_JIT);
+        if (busyN === 2) { busyHits++; log("busy", { n: busyN }); }
+        show();
+      }
+      return;
+    }
+    var e = r.error, st = +(r.status || (e && e.status) || 0);
+    if (e && (e.code === "busy" || !st || st >= 500)) return;   // no network / odd 5xx: says nothing either way
+    busyEnd();
+  }
+  function busyEnd() {
+    if (busyN < 2) { busyN = 0; return; }
+    busyN = 0; busyUntil = 0; probeAt = 0; log("calm", {});
+    if (staleOn && !fails) hide();
+    else if (capEl && staleOn) capEl.querySelector("span").textContent = capText();
+  }
+  function busyMode() { return busyN >= 2; }   // (not "busy": x8 already has a var busy = the outbox flush flag)
+  // a background poll while busy: hold it (true), except ONE probe after the back-off (then the answer decides)
+  function hold() {
+    if (busyN < 2) return false;
+    var t = now();
+    if (t >= busyUntil && (!probeAt || t - probeAt > 20e3)) { probeAt = t; return false; }
+    return true;
+  }
 
   /* ---------- snapshot of the last good poll (cold start with no net) ---------- */
   var snapAt = 0;
@@ -234,6 +277,8 @@
   window.X8 = {
     bind: bind, add: add, list: list, count: count, flush: flush, isNet: isNet, say: say, hhmm: hhmm,
     pollOk: pollOk, pollFail: pollFail, stale: function () { return staleOn; }, staleShow: show, delay: delay,
+    netSeen: netSeen, busy: busyMode, hold: hold, busyLeft: function () { return busyN >= 2 ? Math.max(0, busyUntil - now()) : 0; },
+    _busy: function (o) { if (o && o.min != null) { BUSY_MIN = +o.min; BUSY_JIT = +(o.jit || 0); } return { n: busyN, until: busyUntil, hits: busyHits, probeAt: probeAt }; },
     snapSave: snapSave, snapGet: snapGet,
     _s: function () { return { fails: fails, lastGood: lastGood, stale: staleOn, busy: busy, skew: skew, me: me, q: load(), trail: trail.slice() }; }
   };

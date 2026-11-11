@@ -19,7 +19,8 @@
   "use strict";
   var CFG = window.OLNU_CONFIG || {};
   var K_EV = "olnu.logEv", K_LOC = "olnu.logLoc", K_NOTE = "olnu.logNote", K_CONS = "olnu.logCons", K_MODE = "olnu.logMode", K_HEAVY = "olnu.logHeavy";
-  var FLUSH_MS = 60e3, MAX_BATCH = 280, MAX_Q = 1500, MAX_L = 60, FIX_MS = 55e3, OWN_FIX_MS = 60e3;
+  // perf (load REPORT fix 4): one send per 5 min (was 60 s); the same events, in bigger batches. Hide / pagehide still send.
+  var FLUSH_MS = 300e3, MAX_BATCH = 600, MAX_Q = 1500, MAX_L = 60, FIX_MS = 55e3, OWN_FIX_MS = 60e3;
   var A = null, T0 = Date.now(), sess = rnd(), sq = 0, Q = [], L = [], dropped = 0, dead = false;
   var selfMs = 0, sent = 0, lastFlush = 0, flushing = false, lastDown = 0, lastFixAt = 0, lastFix = null, errSeen = {};
   var rpcAgg = {}, longN = 0, longMs = 0, cls = 0, lcp = 0, hiddenAt = 0, visStart = Date.now(), screen = "map", sheetAt = 0, mapAt = 0;
@@ -211,7 +212,10 @@
       return !!d;
     }, function () { flushing = false; Q = x.evs.concat(Q).slice(-MAX_Q); L = x.locs.concat(L).slice(-240); return false; });
   }
-  setInterval(function () { if (!document.hidden) idle(function () { flush(false); }); }, OPTS.flushMs);
+  setInterval(function () {
+    var busy = false; try { busy = !!(window.X8 && window.X8.busy && window.X8.busy()); } catch (e) {}   // perf: server overloaded → wait
+    if (!document.hidden && !busy) idle(function () { flush(false); });
+  }, OPTS.flushMs);
   function bye() {
     if (hiddenAt) return;
     hiddenAt = Date.now();

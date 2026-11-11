@@ -8,7 +8,7 @@
   "use strict";
   var I = window.I18N;
   var A = null, root = null, st = null;
-  var POLL = 1500, LS_RECENT = "olnu.spel.recent", LS_GOAL = "olnu.spel.goal";
+  var POLL = 2500, LS_RECENT = "olnu.spel.recent", LS_GOAL = "olnu.spel.goal";
 
   function en() { return !!(I && I.lang === "en"); }
   function L(sv, e) { return en() && e != null ? e : sv; }
@@ -167,7 +167,11 @@
     }
     else close(true);
   });
-  document.addEventListener("visibilitychange", function () { if (st && st.view === "room" && document.visibilityState === "visible") poll(true); });
+  // perf (load fix 5): no timer while the page is hidden; back → one poll at once, then the timer again
+  document.addEventListener("visibilitychange", function () {
+    if (!st || st.view !== "room") return;
+    if (document.visibilityState === "visible") { poll(true); startPoll(); } else stopPoll();
+  });
 
   function open(api, g, what, opts) {
     A = api;
@@ -436,7 +440,7 @@
     loadingScreen(game(gid) || game("kort"));
     poll(true); startPoll();
   }
-  function startPoll() { stopPoll(); st.timer = setInterval(function () { poll(false); }, POLL); }
+  function startPoll() { stopPoll(); if (document.visibilityState === "hidden") return; st.timer = setInterval(function () { poll(false); }, POLL); }
   function stopPoll() { if (st && st.timer) { clearInterval(st.timer); st.timer = null; } }
   function poll(force) {
     if (!st || !st.room || st.view !== "room" || st.busy) return;

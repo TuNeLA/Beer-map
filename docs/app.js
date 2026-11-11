@@ -26,39 +26,115 @@
   // Always resolves to {data, error}. Never rejects, never hangs longer than RPC_TIMEOUT_MS.
   // inst: WARM (js/warm.js) answers READ calls from its cache inside a render window and revalidates in the background.
   function rpc(name, params) {
-    if (window.WARM && !flyttGuard()) return window.WARM.rpc(name, params, rpcNet);
-    return rpcNet(name, params);
+    var c = cfgGet(name, params);   // perf (load fix 7): config / flags from this phone (≤ 10 min old)
+    if (c) return c;
+    var p = window.WARM && !flyttGuard() ? window.WARM.rpc(name, params, rpcNet) : rpcNet(name, params);
+    return CFG10[name] ? p.then(function (r) { cfgPut(name, params, r); return r; }) : p;
+  }
+  // perf (load REPORT fix 7): config and feature flags change rarely. Their last good answer is kept per user in
+  // localStorage for 10 min. It is used only during the first minute of a page life (a reopened app does not ask again);
+  // later calls (the modules' own 10-min refresh, a forced refresh) go to the server as before.
+  var CFG10 = { account_config: 1, public_config: 1, after_flags_get: 1, ride_flags_get: 1, bold_flags_get: 1 }, CFG10_MS = 10 * 60e3, LS_CFG10 = "olnu.cfg10";
+  var pageT0 = Date.now();
+  function cfgUid() { try { var a = JSON.parse(localStorage.getItem("olnu.auth") || "null"); return a && a.user && a.user.id ? String(a.user.id).slice(0, 8) : ""; } catch (e) { return ""; } }
+  function cfgGet(name, params) {
+    if (!CFG10[name] || (params && Object.keys(params).length) || Date.now() - pageT0 > 60000) return null;
+    try {
+      var o = JSON.parse(localStorage.getItem(LS_CFG10) || "null"), e = o && o[name], t = Date.now();
+      if (!e || e.u !== cfgUid() || !(t - e.at < CFG10_MS) || e.at > t + 60e3) return null;
+      return Promise.resolve({ data: e.d, error: null, status: 200, cached: true });
+    } catch (x) { return null; }
+  }
+  function cfgPut(name, params, r) {
+    if (!r || r.error || r.cached || r.data == null || (params && Object.keys(params).length)) return;
+    try {
+      var o = JSON.parse(localStorage.getItem(LS_CFG10) || "null") || {};
+      o[name] = { at: Date.now(), u: cfgUid(), d: r.data };
+      localStorage.setItem(LS_CFG10, JSON.stringify(o));
+    } catch (x) {}
   }
   // cln C: background polls go out together as ONE rpc_bundle2 (0297) per poll. Each caller gets its own answer.
   var BUNDLE = ["game_poll", "gang_poll", "skal_poll", "film_poll", "ceremony_poll", "walk_poll", "my_invites", "helg_state",
     "my_status", "my_inbox", "my_dms", "pickup_poll", "safety_state", "duel_poll", "knuff_inbox", "my_rallies", "bar_status",
     "medevac_checks", "group_etas", "beer_reactions", "crew_poll", "near_poll", "my_meriter", "avatars_for", "ikvall_status",
     "home_status", "friend_totals", "ghost_points2", "golden_horse"];
-  var bundleOff = false, bq = [], bqT = 0, bundleStats = { sent: 0, calls: 0, alone: 0 };
+  // perf (0465, load REPORT fix 3): poll_v2 + the start-up reads also go in a bundle, up to 40 calls. An older server answers
+  // not_bundled for a new name: that name then goes alone for this page life (= today's calls), and this phone remembers
+  // "old server" for 30 min. The cap stays 24 until a new name came back from a bundle ("new server", remembered).
+  var BUNDLE_NEW = ["poll_v2", "account_config", "public_config", "after_flags_get", "ride_flags_get", "bold_flags_get", "my_visibility",
+    "my_account_deletion", "my_avatar", "my_home_town", "my_medals", "my_passport", "my_groups", "party_mine", "spel_mine", "rnd_me",
+    "my_board_optin", "bars_gone", "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near",
+    "events_near2", "bar_sport_near", "my_past_events", "user_places", "group_now", "group_msgs", "drivers_for", "friend_list",
+    "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick", "after_report2", "my_night_report"];
+  var JSONB_ARG = { my_event_chats: { p_seen: 1 } };
+  var bgCall = false;   // true while WARM's background prefetch calls rpcNet (see WARM.setRaw)   // arguments of type jsonb: an object may go in the bundle too
+  var NEWB = {}; BUNDLE_NEW.forEach(function (n) { NEWB[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_NEW);
+  var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
+  try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
+  if (bSrv && bSrv.v === "old" && Date.now() - bSrv.at < 30 * 60e3) BUNDLE_NEW.forEach(function (n) { noB[n] = 1; });
+  function bCap() { return bSrv && bSrv.v === "new" ? 40 : 24; }
+  function bSrvSet(v) {
+    if (bSrv && bSrv.v === v && Date.now() - bSrv.at < 60e3) return;
+    bSrv = { v: v, at: Date.now() };
+    try { localStorage.setItem(LS_BSRV, JSON.stringify(bSrv)); } catch (e) {}
+  }
+  var bundleOff = false, bq = [], bqT = 0, bundleStats = { sent: 0, calls: 0, alone: 0, pre: 0, preUsed: 0, busy: 0 }, authedAt = 0;
   var lastTapAt = 0;
   ["pointerdown", "click", "keydown"].forEach(function (ev) { document.addEventListener(ev, function () { lastTapAt = Date.now(); }, true); });
   function bundleable(name, params) {
-    if (bundleOff || !authed || BUNDLE.indexOf(name) < 0) return false;
+    if (bundleOff || !authed || noB[name] || BUNDLE.indexOf(name) < 0) return false;
     if (Date.now() - lastTapAt < 2500) return false;   // a screen the user just opened: no wait, its own request
+    try { var ev = window.event; if (ev && /^(pointerdown|pointerup|mousedown|click|keydown|touchstart|touchend)$/.test(ev.type)) return false; } catch (e) {}   // perf: a call inside a tap handler (WARM's pointerdown prefetch runs before our tap clock)
+    if (name === "poll_v2" && !firstLoadDone) return false;   // perf: the first map poll goes alone (pins as fast as today)
+    // perf: the 0465 names (screen reads) go in a bundle only in the start-up window, from WARM's background refresh, or
+    // as a poll-plan answer. Otherwise alone, as before (a screen that opens never waits for a bundle timer).
+    if (NEWB[name] && name !== "poll_v2" && !bgCall && Date.now() - authedAt > 10000 && !(pre[name + "|" + JSON.stringify(params || {})])) return false;
     if (params == null) return true;
     if (typeof params !== "object" || Array.isArray(params)) return false;
-    return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v); });
+    return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v) || (JSONB_ARG[name] && JSONB_ARG[name][k] && typeof v === "object"); });
   }
+  function bAlone(xs) { xs.forEach(function (x) { bundleStats.alone++; rpcNet(x.n, x.p, true).then(x.res); }); }
   function bundleGo() {
-    var list = bq; bq = []; bqT = 0;
+    var list = bq; bq = []; clearTimeout(bqT); bqT = 0;
     var calls = [], seen = {};
     list.forEach(function (x) { if (!seen[x.k]) { seen[x.k] = 1; calls.push({ k: x.k, n: x.n, a: x.p || {} }); } });
-    var alone = function (xs) { xs.forEach(function (x) { bundleStats.alone++; rpcNet(x.n, x.p, true).then(x.res); }); };
-    if (calls.length < 2) { alone(list); return; }
+    if (calls.length < 2) { bAlone(list); return; }
+    bundleChunks(calls, list, bCap());
+  }
+  // perf: more calls than the server takes → equal chunks (each one request)
+  function bundleChunks(calls, list, cap) {
+    var parts = Math.ceil(calls.length / cap), size = Math.ceil(calls.length / parts);
+    for (var i = 0; i < calls.length; i += size) {
+      var part = calls.slice(i, i + size), ks = {};
+      part.forEach(function (c) { ks[c.k] = 1; });
+      var sub = list.filter(function (x) { return ks[x.k]; });
+      if (part.length < 2) bAlone(sub); else bundleSend(part, sub);
+    }
+  }
+  function bundleSend(calls, list) {
     bundleStats.sent++; bundleStats.calls += list.length;
     rpcNet("rpc_bundle2", { p_calls: calls }, true).then(function (r) {
       var e = r && r.error, d = r && !e ? parseData(r.data) : null;
-      if (e && /PGRST202|could not find the function|does not exist|\b404\b/i.test(String((e.code || "") + " " + (e.message || "")))) bundleOff = true;
-      if (!d || typeof d !== "object" || Array.isArray(d) || !d[calls[0].k]) { if (!e) bundleOff = true; alone(list); return; }
+      if (e) {
+        var em = String((e.code || "") + " " + (e.message || ""));
+        if (/PGRST202|could not find the function|does not exist|\b404\b/i.test(em)) { bundleOff = true; bAlone(list); return; }
+        if (/invalid_calls/.test(em) && calls.length > 24) { bSrvSet("old"); bundleChunks(calls, list, 24); return; }   // perf: a server without 0465 (cap 24)
+        var st = +(r.status || e.status || 0);
+        if (st >= 400 && st < 500) { bAlone(list); return; }   // the bundle itself was refused (as before: each call alone)
+        // perf: timeout / 5xx / no network → each caller gets that answer (no burst of single calls into a busy server)
+        list.forEach(function (x) { x.res({ data: null, error: { message: String(e.message || "error"), code: e.code || "", quiet: true }, status: st }); });
+        return;
+      }
+      if (!d || typeof d !== "object" || Array.isArray(d) || !d[calls[0].k]) { bundleOff = true; bAlone(list); return; }
       var used = {};
       list.forEach(function (x) {
         var it = d[x.k];
-        if (!it || (it.e && it.e.code === "not_bundled")) { alone([x]); return; }
+        // the real server answers a name off its list with { e: { code: "P0001", message: "not_bundled" } }
+        if (!it || (it.e && (it.e.code === "not_bundled" || /\bnot_bundled\b/.test(String(it.e.message || ""))))) {
+          if (it) { noB[x.n] = 1; if (NEWB[x.n]) bSrvSet("old"); }
+          bAlone([x]); return;
+        }
+        if (NEWB[x.n]) bSrvSet("new");
         if (it.e) { x.res({ data: null, error: { message: String(it.e.message || "error"), code: it.e.code || "" } }); return; }
         var v = it.d === undefined ? null : it.d;
         if (used[x.k] && v && typeof v === "object") { try { v = JSON.parse(JSON.stringify(v)); } catch (x2) {} }
@@ -66,6 +142,71 @@
         x.res({ data: v, error: null, status: 200 });
       });
     });
+  }
+  // perf (load REPORT fix 3): the POLL PLAN. Each map poll is ONE rpc_bundle2: poll_v2 + the background calls (same name and
+  // arguments) that earlier polls made at about this rhythm. The onPoll fan-out then gets its answers from this bundle (same
+  // order as before: the pins first, then the modules). A call the plan did not guess goes in the normal bundle. Calls that
+  // mark something as seen or claim a push are never asked for ahead (PRE_DENY). An answer is used once, ≤ 20 s old.
+  var plan = {}, pre = {}, pollWin = 0, PRE_DENY = { poll_v2: 1, knuff_inbox: 1, my_removals: 1, film_poll: 1, mark_seen: 1, walk_timer_tick: 1 };
+  // Background calls that claim / mark something (never asked ahead): they wait for the next map poll and go in its
+  // bundle (≤ 30 s later; their own rhythm is 60 s – 5 min). A 35 s timer sends them if no poll comes.
+  var DEFER = { knuff_inbox: 1, film_poll: 1, mark_seen: 1 }, bqNext = [], bqNextT = 0, burstDone = false, bqDue = 0;
+  function nextFlush() {
+    clearTimeout(bqNextT); bqNextT = 0;
+    if (!bqNext.length) return;
+    var xs = bqNext; bqNext = [];
+    if (busyNow()) { xs.forEach(function (x) { x.res({ data: null, error: { message: "busy", code: "busy", quiet: true } }); }); return; }
+    bq = bq.concat(xs);
+  }
+  // A key is asked ahead only after 2 calls ≥ 10 s apart (one-shot start-up reads never are). Keys seen only in the slow
+  // lane (app.js: once per 60 s) go with the slow polls; other keys with a 30–60 s rhythm go with every poll ≥ 22 s after
+  // their last call (the modules' own 30 s clocks jitter by a few seconds: an unused answer is cheaper than a 2nd request);
+  // slower keys (≤ 130 s) follow their own rhythm. Unused answers in a row: 4 (2 for slow keys) → not asked again until
+  // the next call.
+  var pollSlow = false;
+  function planRecord(k, n, p) {
+    var t = Date.now(); if (t > pollWin) return;
+    var e = plan[k];
+    if (!e) { plan[k] = { n: n, p: p, at: t, gap: 0, miss: 0, fast: !pollSlow }; return; }
+    if (!pollSlow) e.fast = true;
+    if (t - e.at < 10000) return;
+    e.gap = t - e.at; e.at = t; e.miss = 0;
+  }
+  // read-like names (same rule as warm.js READLIKE): anything else may write
+  var READ_RE = /^(my_|live_|heat|ghost|poll|events_|guess_|golden|bars?_|group_(msgs|now)$|friend_|avatars_|rnd_|public_|account_|report_vitals|pnlog_)|(_poll|_state|_status|_near\d*|_get|_preview|_list|_for|_mine|_checks|_etas|_group|_places|_passport|_kind|_in|_feed|_top|_league|_stats|_inbox|_dates|_board|_report2?)$/;
+  function preDrop() { Object.keys(pre).forEach(function (k) { pre[k].used = true; }); }
+  function planDue(e, t) {
+    if (!e.gap || e.gap > 130000 || noB[e.n] || PRE_DENY[e.n] || (e.p && e.p.p_seen === true)) return false;
+    var age = t - e.at;
+    if (!e.fast) return pollSlow && age > 20000 && e.miss < 2;
+    if (e.gap <= 65000) return age >= 22000 && e.miss < 4;
+    return age >= e.gap - 5000 && e.miss < 2;
+  }
+  function planStart() {
+    var t = Date.now();
+    Object.keys(pre).forEach(function (k) { if (!pre[k].used && plan[k]) plan[k].miss++; });
+    pre = {}; pollWin = t + 15000;
+    pollSlow = t - slowLaneAt >= SLOW_LANE_MS - 3000;   // this poll's slow-lane round (refresh uses the same answer)
+    nextFlush();
+    if (bundleOff || !authed || !firstLoadDone || busyNow()) return;
+    Object.keys(plan).forEach(function (k) {
+      var e = plan[k];
+      if (t - e.at > 5 * 60e3) { delete plan[k]; return; }
+      if (!planDue(e, t)) return;
+      var h = pre[k] = { at: t, used: false };
+      bundleStats.pre++;
+      h.p = new Promise(function (res) { bq.push({ n: e.n, p: e.p, k: k, res: res }); });
+    });
+  }
+  // perf (load REPORT fix 6): the server is overloaded (x8.js counts timeouts / 504 / PGRST003). A background poll then gets
+  // a quiet local answer and sends nothing; the map poll is the probe (x8 back-off 60–120 s). A tap always goes out.
+  var BUSY_POLL = { poll_public: 1, near_poll: 1, spel_state: 1, spel_group: 1, party_state: 1, party_group: 1, group_msgs: 1, group_now: 1, moments_poll: 1, ride_poll: 1, gpage_poll: 1 };
+  function busyNow() { try { return !!(window.X8 && window.X8.busy && window.X8.busy()); } catch (e) { return false; } }
+  function busyHold(name) {
+    if (!(BUSY_POLL[name] || BUNDLE.indexOf(name) >= 0) || !busyNow()) return false;
+    if (Date.now() - lastTapAt < 2500) return false;
+    try { var ev = window.event; if (ev && /^(pointerdown|pointerup|mousedown|click|keydown|touchstart|touchend)$/.test(ev.type)) return false; } catch (e) {}
+    try { return window.X8.hold(name); } catch (e) { return false; }
   }
   // cln D: a group this account is not (any more) a member of: no more calls for it in this page life
   // dm B1: a DM or an event chat is a hidden group with NO group_members rows. Member-only RPCs (group_keep_history,
@@ -78,12 +219,32 @@
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
     var gid = params && params.p_group_id;
     if (gid && notMember[gid] && (notMember[gid] > 1 || !CHAT_RPC[name])) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });
-    if (!noBundle && bundleable(name, params)) return new Promise(function (res) {
-      bq.push({ n: name, p: params, k: name + "|" + JSON.stringify(params || {}), res: res });
-      if (bq.length >= 24) { clearTimeout(bqT); bundleGo(); }
-      else if (!bqT) bqT = setTimeout(bundleGo, 1500);   // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll
-    });
-    if (gid) return rpcNet1(name, params).then(function (r) {
+    if (!noBundle && name !== "rpc_bundle2" && BUNDLE.indexOf(name) < 0 && !READ_RE.test(name)) preDrop();   // perf: a write → plan answers are old
+    if (!noBundle && busyHold(name)) { bundleStats.busy++; return Promise.resolve({ data: null, error: { message: "busy", code: "busy", quiet: true } }); }
+    var bp = null;
+    if (!noBundle && bundleable(name, params)) {
+      var bk = name + "|" + JSON.stringify(params || {});
+      planRecord(bk, name, params);
+      var h = pre[bk];
+      if (h && !h.used && Date.now() - h.at < 8000) { h.used = true; bundleStats.preUsed++; bp = h.p; }   // the poll's fan-out only
+      else if (DEFER[name] && firstLoadDone && pollOn && !bundleOff) bp = new Promise(function (res) {
+        bqNext.push({ n: name, p: params, k: bk, res: res });
+        if (!bqNextT) bqNextT = setTimeout(function () { nextFlush(); if (bq.length) bundleGo(); }, 35000);
+      });
+      else bp = new Promise(function (res) {
+        bq.push({ n: name, p: params, k: bk, res: res });
+        if (bq.length >= bCap()) bundleGo();
+        // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
+        // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
+        else {
+          var d = !burstDone && authedAt ? 250 : !NEWB[name] && Date.now() < pollWin ? 3000 : 1500;
+          if (!bqT || Date.now() + d < bqDue) { clearTimeout(bqT); bqDue = Date.now() + d; bqT = setTimeout(bundleGo, d); }
+          if (authedAt) burstDone = true;
+        }
+      });
+      if (!gid) return bp;
+    }
+    if (gid) return (bp || rpcNet1(name, params)).then(function (r) {
       if (r && r.error && /\bnot_member\b/.test(String(r.error.message || ""))) {
         var lv = CHAT_RPC[name] ? 2 : 1;
         if ((notMember[gid] | 0) < lv) { notMember[gid] = lv; try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {} }
@@ -102,8 +263,8 @@
     if (flyttGuard()) return Promise.resolve({ data: null, error: { message: "moved" } });
     return new Promise(function (resolve) {
       var done = false;
-      var ac = null, tm = setTimeout(function () { done = true; try { if (ac) ac.abort(); } catch (e3) {} resolve({ data: null, error: { message: "timeout" } }); }, RPC_TIMEOUT_MS);
-      var finish = function (r) { if (done) return; done = true; clearTimeout(tm); resolve(r); };
+      var ac = null, tm = setTimeout(function () { done = true; try { if (ac) ac.abort(); } catch (e3) {} var to = { data: null, error: { message: "timeout" } }; netSeen(to); resolve(to); }, RPC_TIMEOUT_MS);
+      var finish = function (r) { if (done) return; done = true; clearTimeout(tm); netSeen(r); resolve(r); };
       try {
         var q = params ? client.rpc(name, params) : client.rpc(name);
         try { if (q && typeof q.abortSignal === "function" && typeof AbortController === "function") { ac = new AbortController(); q = q.abortSignal(ac.signal); } } catch (e2) { ac = null; }
@@ -112,6 +273,7 @@
       } catch (e) { finish({ data: null, error: e }); }
     });
   }
+  function netSeen(r) { try { if (window.X8 && window.X8.netSeen) window.X8.netSeen(r); } catch (e) {} }   // perf: busy back-off
   function parseData(d) {
     if (typeof d === "string") { try { return JSON.parse(d) || {}; } catch (e) { return {}; } }
     return d || {};
@@ -1190,6 +1352,7 @@
   // dialekt (phase 2): a new region pack / Dialekt Auto<->Av: rebuild the queued headlines with the new lines
   window.addEventListener("dialekt:change", function () { tickerKey = ""; newsDirty = true; try { renderTicker(); } catch (e) {} });
   function renderTicker() {
+    if (LIVE && !firstLoadDone && !x8Snapped) { newsDirty = true; return; }   // perf T-08: no "sover" lines before the first load
     if (!newsDirty && tickerKey) return;
     newsDirty = false;
     var titles = null;
@@ -1255,6 +1418,7 @@
   }
   // Build a fresh set of headlines for the queue without touching what is on screen.
   function renderTickerItemsOnly() {
+    if (LIVE && !firstLoadDone && !x8Snapped) { newsDirty = true; return; }   // perf T-08
     newsDirty = false;
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
@@ -1824,11 +1988,13 @@
     loading = true;
     var startedAt = Date.now(), box = null, dv2 = null;
     var wantHeat = !!(heat && heatOn && (force === "heat" || Date.now() - heatAskAt >= HEAT_MS));
+    planStart();   // perf: the calls the modules will ask for after this poll join poll_v2 in one rpc_bundle2
     var step = pollV2 === "missing" ? Promise.resolve(null) : fetchV2(startedAt, wantHeat).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") throw e;
       if (pollV2 === "on" || /timeout|fetch|network|load failed|abort/i.test(String((e && e.message) || ""))) return Promise.reject(e);   // review: slow/offline is not "missing"
       return null;   // invalid_bbox / odd error on first try: old calls
     });
+    if (bq.length) bundleGo();   // perf: poll_v2 + the plan now, as one request
     loadingP = step.then(function (d) {
       if (movedState) return;
       if (d) {
@@ -1873,7 +2039,7 @@
       if (window.X8) { window.X8.pollOk(dv2 ? { me: dv2.me, server_time: dv2.server_time } : null); if (dv2) window.X8.snapSave(dv2); }   // x8: stale off, outbox flush, snapshot
       mods("onPollData", dv2);
       // review2: shared slow lane. Slow-changing modules get onPoll once per 60 s, in the same wave.
-      var slowDue = Date.now() - slowLaneAt >= SLOW_LANE_MS - 3000;
+      var slowDue = pollSlow;   // perf: decided at poll start (planStart), same rule
       if (slowDue) slowLaneAt = Date.now();
       else modsSkip = [window.MERITER, window.FILM, window.CEREMONY, window.HELG, window.PASSPORT, window.GOLDEN, window.EVENTS, window.HOMETOWN, window.KODEN];
       var wave = modsWave = [];
@@ -3445,7 +3611,9 @@
   function schedulePublic() {
     clearTimeout(pubTimer); pubTimer = null;
     if (!publicOn || authed || document.visibilityState === "hidden") return;
-    pubTimer = setTimeout(publicPoll, idle() ? POLL_SLOW_MS : POLL_MS);
+    var pw = idle() ? POLL_SLOW_MS : POLL_MS, px = window.X8 ? window.X8.delay() : null;
+    if (px != null) pw = Math.max(1000, px);   // perf T-08: failed polls back off like the map poll (busy: 60–120 s)
+    pubTimer = setTimeout(publicPoll, pw);
   }
   function publicPoll() {
     if (!publicOn || authed || pubBusy || document.visibilityState === "hidden") return;
@@ -3457,7 +3625,13 @@
       var d = r && !r.error ? parseData(r.data) : null;
       if (!d || !Array.isArray(d.pins)) {
         var m = String((r && r.error && (r.error.message || r.error.code)) || "");
-        if (r && r.error && /timeout|fetch|network|load failed|abort/i.test(m)) return;   // offline / slow: the next tick tries again
+        // perf T-08: offline / slow / overloaded (timeout, 5xx, PGRST003) = a failed poll: x8 caption + back-off, the next tick tries again
+        var pst = +((r && (r.status || (r.error && r.error.status))) || 0);
+        if (r && r.error && (/timeout|timed out|fetch|network|load failed|abort|busy|PGRST003/i.test(m + " " + (r.error.code || "")) || pst >= 500)) {
+          if (window.X8) window.X8.pollFail();
+          if (!firstLoadDone) x8Snap();
+          return;
+        }
         publicOn = false; signIn(); return;   // old server (no poll_public): sign in like before
       }
       pollBox = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
@@ -3466,6 +3640,7 @@
       checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       if (Array.isArray(d.heat)) heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
       drinkViews = null; lastPollAt = Date.now();
+      if (window.X8) window.X8.pollOk(null);   // perf T-08: caption off, busy over
       if (window.NEWS) window.NEWS.update(beerOnly());
       newsDirty = true;
       render(); try { renderHeat(); } catch (e) {}
@@ -3514,7 +3689,7 @@
       });
     }
     signingIn = go().then(function () {
-      authed = true;
+      authed = true; authedAt = Date.now();
       publicOn = false; clearTimeout(pubTimer); pubTimer = null;   // ⚡ SPEED: the account exists now
       toastClear("auth");
       var uid = storedUid(); if (uid) U.ls.set("olnu.uid", uid);
@@ -3987,7 +4162,7 @@
 
   function start() {
     U.ls.del("olnu.shot");   // shots were removed; drop the old timer
-    try { if (window.WARM) window.WARM.setRaw(rpcNet); } catch (e) {}
+    try { if (window.WARM) window.WARM.setRaw(function (n, p) { bgCall = true; try { return rpcNet(n, p); } finally { bgCall = false; } }); } catch (e) {}   // perf: background
     // inst: a background revalidation brought new data for an open screen → the module patches it in place.
     window.addEventListener("olnu:warm", function (e) { var d = e.detail || {}; mods("onWarm", d.fn, d.params, d.data); });
     mods("init", appApi());

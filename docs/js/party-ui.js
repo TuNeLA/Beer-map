@@ -15,7 +15,7 @@
   if (window.PARTY_UI) return;
   var U = window.U, I = window.I18N;
   var A = null, C = null, root = null, R = null, pollT = null, wl = null, rotT = null, autoT = null;
-  var POLL_MS = 1200, LS = "olnu.party", USED = "olnu.partyUsed";
+  var POLL_MS = 2500, LS = "olnu.party", USED = "olnu.partyUsed";
   var reduced = false;
   try { reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
 
@@ -186,7 +186,8 @@
   }
   function lockOff() { var l = wl; wl = null; if (l) { try { l.release(); } catch (e) {} } }
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible" && R) { lockOn(); poll(); }
+    if (document.visibilityState === "visible" && R) { lockOn(); poll(); if (R.hidStop) { R.hidStop = 0; startPoll(); } }
+    else if (document.visibilityState === "hidden" && pollT) { stopPoll(); if (R) R.hidStop = 1; }   // perf: no timer while hidden
   });
 
   /* ---------- server ---------- */
@@ -197,7 +198,7 @@
     startPoll();
     lockOn();
   }
-  function startPoll() { stopPoll(); pollT = setInterval(function () { poll(false); }, POLL_MS); }
+  function startPoll() { stopPoll(); if (document.visibilityState === "hidden") { if (R) R.hidStop = 1; return; } pollT = setInterval(function () { poll(false); }, POLL_MS); }
   function stopPoll() { if (pollT) { clearInterval(pollT); pollT = null; } }
   function poll(force) {
     if (!R || !R.id || (R.inflight && !force) || (!force && document.visibilityState === "hidden")) return;
