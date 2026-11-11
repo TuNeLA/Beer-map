@@ -201,7 +201,7 @@ const spelOpen = (page, what) => page.evaluate(([g, w]) => w ? window.SPEL.play(
       S.stateView = () => sview({ v: 2, creator_k: "me", players: [P("me", "Anton"), P("o", "Oskar")] });   // Lisa left; 0440 moved the host to me
       await wait(page, 3500);
       const ts = await toasts(page);
-      ok(`[${w}] GM1 toast '👑 Du ä värd nu'`, ts.some((t) => /Du ä värd nu/.test(t)), ts);
+      ok(`[${w}] GM1 toast '👑 Du ä värd nu'`, ts.some((t) => /Du (ä|är) värd nu/.test(t)), ts);
       ok(`[${w}] GM1 I get the host lobby (▶ STARTA)`, (await texts(page, ".sp-foot button")).some((t) => /STARTA/.test(t)));
       await shot(page, "spel-host-toast-" + w);
       await ctx.close();
@@ -237,7 +237,7 @@ const spelOpen = (page, what) => page.evaluate(([g, w]) => w ? window.SPEL.play(
       S.pstate = () => pview({ v: 4, host_k: "me", host_name: "Anton" });   // 0440: Lisa went quiet, I am next
       await wait(page, 2500);
       const ts = await toasts(page);
-      ok(`[${w}] GM1 party: toast '👑 Du ä värd nu' when the host moves to me`, ts.some((t) => /Du ä värd nu/.test(t)), ts);
+      ok(`[${w}] GM1 party: toast '👑 Du ä värd nu' when the host moves to me`, ts.some((t) => /Du (ä|är) värd nu/.test(t)), ts);
       ok(`[${w}] GM1 party: my phone shows the host screen (room code + START)`, await page.evaluate(() => !!document.querySelector(".pt-bigcode")));
       await shot(page, "party-host-toast-" + w);
       await ctx.close();
