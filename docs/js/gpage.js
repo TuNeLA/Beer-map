@@ -534,7 +534,7 @@
     var tick = 0;
     var tm = setInterval(function () {
       if (!document.body.contains(wrap)) { clearInterval(tm); return; }
-      if (wrap.getAttribute("data-gv") !== "home") return;
+      if (wrap.getAttribute("data-gv") !== "home" || document.hidden) return;   // perf: nothing while the page is hidden
       tick++;
       if (chat) loadChat(wrap, g);
       if (gk && gk.__sub) gk.__sub();

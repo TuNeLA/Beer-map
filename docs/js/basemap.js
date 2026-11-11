@@ -494,7 +494,9 @@
         fetchToken().then(function () { if (stored() === v) apply(v, "start"); });
       } else {
         apply(v, "start");
-        if (!CFG.MAPBOX_TOKEN) setTimeout(fetchToken, 4000);   // refresh the cached token once per page life
+        // refresh the cached token once per page life; perf (load fix 7): at most once per 10 min (public_config)
+        var tAt = 0; try { tAt = +localStorage.getItem("olnu.mbTokenAt") || 0; } catch (e) {}
+        if (!CFG.MAPBOX_TOKEN && !(Date.now() - tAt < 10 * 60e3 && tAt <= Date.now())) setTimeout(function () { fetchToken().then(function () { try { localStorage.setItem("olnu.mbTokenAt", String(Date.now())); } catch (e) {} }); }, 4000);
       }
     },
     set: function (v) {

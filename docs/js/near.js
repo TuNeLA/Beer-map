@@ -101,9 +101,10 @@
     var live = (P.find_in || []).concat(P.find_out || []).some(function (r) { return r.status === "pending" || ((r.status === "accepted" || r.status === "auto") && r.finding); });
     return live ? POLL_FAST_MS : POLL_MS;
   }
-  function poll(force) {
+  function poll(force, viaPoll) {
     if (!A || !A.LIVE || !A.authed() || off.near_poll || pollBusy) return Promise.resolve();
-    if (!force && Date.now() - pollAt < pollMs()) return Promise.resolve();
+    // perf: from the app poll (onPoll) with 5 s slack, so the 60 s near_poll goes in the same bundle every 2nd map poll
+    if (!force && Date.now() - pollAt < pollMs() - (viaPoll ? 5000 : 0)) return Promise.resolve();
     if (document.hidden && !force) return Promise.resolve();
     pollBusy = true; pollAt = Date.now();
     return call("near_poll", { p_name: name() }).then(function (r) {
@@ -124,7 +125,9 @@
   function nearNext() {
     clearTimeout(nearT); nearT = 0;
     if (document.hidden) return;
-    nearT = setTimeout(function () { nearT = 0; Promise.resolve(poll(false)).then(nearNext, nearNext); }, Math.max(2000, pollMs() - (Date.now() - pollAt) + 50));
+    // perf: the normal 60 s poll comes from onPoll (the app's map poll); this timer is the fallback 45 s later
+    var slack = pollMs() >= POLL_MS ? 45000 : 0;
+    nearT = setTimeout(function () { nearT = 0; Promise.resolve(poll(false)).then(nearNext, nearNext); }, Math.max(2000, pollMs() + slack - (Date.now() - pollAt) + 50));
   }
   document.addEventListener("visibilitychange", function () { if (document.hidden) { clearTimeout(nearT); nearT = 0; } else nearNext(); });
   setTimeout(nearNext, 5000);
@@ -869,7 +872,7 @@
       var l = linkFromUrl();
       poll(true).then(function () { if (l) openNearLink(l.find || (l.friends ? "list" : null), l.friend); });
     },
-    onPoll: function () { hookNews(); poll(false); },
+    onPoll: function () { hookNews(); poll(false, true); },
     applyText: function () {},
     profileSheet: function (body) {   // 👤 Profil (was settingsSheet) + the find-me switches
       if (!A || !A.LIVE || off.my_friends || off.near_poll) return;
