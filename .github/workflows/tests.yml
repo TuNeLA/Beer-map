@@ -91,6 +91,8 @@ jobs:
             filter: '^(fixj)$'
           - name: perf
             filter: '^(perf)$'
+          - name: perfchat
+            filter: '^(perfchat)$'
           - name: fixm
             filter: '^(fixm)$'
           - name: left

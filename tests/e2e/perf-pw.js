@@ -10,7 +10,9 @@ const { chromium } = require("playwright");
 const fs = require("fs"), path = require("path");
 const OUT = require("./env.js").OUT;
 const PORT = process.argv[2] || 8871;
-const MEASURE = process.argv[3] === "--measure", DOCS = MEASURE ? process.argv[4] : null, TAG = MEASURE ? process.argv[5] || "x" : "ci", SRV = MEASURE ? process.argv[6] || "new" : "new";
+// fixP: node perf-pw.js <port> --part chat   = only the sign-in burst / chat tick / flag cache checks (CI shard "perfchat")
+const PART = process.argv[3] === "--part" ? process.argv[4] || "base" : "base";
+const MEASURE = process.argv[3] === "--measure", DOCS = MEASURE ? process.argv[4] : process.env.PERF_DOCS || null, TAG = MEASURE ? process.argv[5] || "x" : "ci", SRV = MEASURE ? process.argv[6] || "new" : "new";
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : i === undefined ? "" : JSON.stringify(i).slice(0, 600)); c ? pass++ : fail++; };
 const J = (r, b, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -23,6 +25,7 @@ const ADD = ["poll_v2", "account_config", "public_config", "after_flags_get", "r
   "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near", "events_near2", "bar_sport_near", "my_past_events",
   "user_places", "group_now", "group_msgs", "drivers_for", "friend_list", "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick", "after_report2", "my_night_report",
   "zone_counts"];   // fixM 0480: the top bar count rides the bundle
+const ADD66 = ["group_photos", "msg_reacts", "group_voices", "group_status_v3", "group_status_v2", "moments_poll"];   // fixP 0466 (mode "n66")
 const R1 = "5e1a0000-0000-4000-8000-000000000001";
 const sview = (o = {}) => Object.assign({ v: 1, now: new Date().toISOString(), id: R1, group_id: GID, game: "kort", phase: "lobby", round: 0, goal: 5, game_no: 0, pub: {}, closed: false,
   creator_k: "me", judge_on: false, me: { k: "me", name: "Anton", score: 0, status: "in", hand: [], judge: false, mine: null, can_force: false },
@@ -63,7 +66,7 @@ async function server(ctx, page, S) {
     if (fn === "poll_v2") return J(r, v2(body));
     if (fn === "spel_open") return J(r, sview({ v: 1 }));
     if (fn === "spel_state") return J(r, !body.p_v ? sview({ v: 1 }) : { same: true, v: body.p_v });
-    const calls = body.p_calls || [], cap = S.mode === "old" ? 24 : 40, list = S.mode === "old" ? OLD : OLD.concat(ADD);
+    const calls = body.p_calls || [], cap = S.mode === "old" ? 24 : 40, list = S.mode === "old" ? OLD : S.mode === "n66" ? OLD.concat(ADD, ADD66) : OLD.concat(ADD);
     if (calls.length > cap) { S.refused = (S.refused || 0) + 1; return J(r, { code: "P0001", message: "invalid_calls", details: null, hint: null }, 400); }
     S.bundles.push(calls.map((c) => c.n));
     const h = q.headers(), base = q.url().slice(0, q.url().indexOf("/rpc/") + 5);
@@ -129,6 +132,144 @@ const R = {};   // numbers for DONE.md
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME,
     ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY, bypass: "<-loopback>,127.0.0.1,localhost" } } : {}), args: ["--ignore-certificate-errors"] });
   try {
+    /* ---------- fixP (test teams round 2, N-01 / N-02 / N-21): only with --part chat (own CI shard "perfchat") ---------- */
+    /* 6. N-01 sign-in burst: a phone with no account (lazy start) taps a button → the account is made → ≤ 12 requests in 15 s */
+    if (!MEASURE && PART === "chat") try {
+      const S = { mode: "new", bundles: [] };
+      const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, { clean: true });
+      await ctx.addInitScript(() => { if (sessionStorage.getItem("pf.si")) return; sessionStorage.setItem("pf.si", "1");
+        ["olnu.age18", "olnu.intro", "olnu.newsPn", "olnu.notifAsked", "olnu.installSeen", "olnu.locOk"].forEach((k) => localStorage.setItem(k, "1"));
+        localStorage.setItem("olnu.name", "Anton"); localStorage.setItem("olnu.guideSeen", String(Date.now())); localStorage.setItem("olnu.notifAskAt", String(Date.now())); localStorage.setItem("olnu.lang", "sv"); });
+      await ctx.addInitScript(hidInit);
+      await server(ctx, page, S);
+      await page.route(/rest\/v1\/rpc\/poll_public\b/, (r) => { let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {} return J(r, v2(b)); });
+      page.on("pageerror", (e) => { (S.errors = S.errors || []).push(e.message); });
+      const log = counter(page);
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+      await page.waitForFunction(() => window.__map && document.querySelectorAll(".pill").length > 3, null, { timeout: 30000 }).catch(() => console.log("no pills (public)"));
+      await wait(page, 3000);
+      const pre = await page.evaluate(() => !!localStorage.getItem("olnu.auth"));
+      const t0 = Date.now();
+      await page.click("#btn-groups");   // a real tap (trusted click): the first real action makes the account (like Kör! / Fortsätt / Jag hänger med)
+      await wait(page, 15000);
+      const b = since(log, t0, t0 + 15000), m = mix(b);
+      R.signin = { all: b.length, mix: m, bundles: b.filter((x) => x.inner).map((x) => x.inner.length) };
+      console.log("sign-in burst (15 s):", b.length, JSON.stringify(m), "bundle sizes", JSON.stringify(R.signin.bundles));
+      if (process.env.PERF_DEBUG) b.forEach((x) => console.log("  s", ((x.t - t0) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
+      const authed = await page.evaluate(() => !!localStorage.getItem("olnu.auth"));
+      ok("sign-in: no account before the tap, an account after it", !pre && authed, { pre, authed });
+      ok("sign-in burst: ≤ 12 requests in the first 15 s after the tap (was 55–79)", b.length <= 12, R.signin);
+      ok("sign-in burst: the start-up reads go in bundles (≥ 1 bundle, ≥ 20 calls in bundles)", R.signin.bundles.length >= 1 && R.signin.bundles.reduce((a, c) => a + c, 0) >= 20, R.signin.bundles);
+      ok("sign-in burst: the call of the tapped screen goes alone, at once (my_groups)", (m.my_groups || 0) >= 1, m);
+      ok("sign-in: no page errors", !(S.errors || []).length, S.errors);
+      await ctx.close();
+    } catch (e) { console.log("FAIL sign-in section:", e && e.message); fail++; }
+
+    /* 7. N-02 open chat (server with 0466): one tick = one request, 7 → 15 → 30 s, 7 s on a new line, none hidden; N-21 */
+    if (!MEASURE && PART === "chat") try {
+      const S = { mode: "n66", bundles: [] };
+      const { ctx, page, log } = await open(browser, S);
+      let newLine = 0, nextId = 90;
+      await page.route(/rest\/v1\/rpc\/group_msgs\b/, (r) => {
+        let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
+        if (b.p_after_id > 0) { if (newLine > 0) { newLine--; nextId++; return J(r, [{ id: nextId, name: "Oskar", body: "Nu kommer vi " + nextId, created_at: new Date().toISOString(), is_me: false }]); } return J(r, []); }
+        return r.fallback();
+      });
+      await page.route(/rest\/v1\/rpc\/join_group\b/, (r) => J(r, { id: GID, name: "Ludvika Lager", code: "ABC234" }));
+      await wait(page, 25000);   // start-up done, the map poll has a rhythm
+      const tOpen = Date.now();
+      await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID);
+      await page.waitForFunction(() => document.querySelectorAll(".chat-list .chat-msg").length >= 4, null, { timeout: 10000 }).catch(() => {});
+      await wait(page, 3000);
+      const opened = since(log, tOpen, Date.now());
+      const chatNames = /^(group_msgs|group_photos|msg_reacts|group_voices|group_status_v3|group_status_v2)$/;
+      const openReq = opened.filter((x) => chatNames.test(x.name) || (x.inner || []).some((n) => chatNames.test(n)));
+      R.chatOpen = { n: openReq.length, list: openReq.map((x) => x.inner ? "B[" + x.inner.join(",") + "]" : x.name) };
+      console.log("chat open (3 s):", JSON.stringify(R.chatOpen));
+      ok("chat open: lines shown", (await page.evaluate(() => document.querySelectorAll(".chat-list .chat-msg").length)) >= 4);
+      ok("chat open: ≤ 2 chat requests (was 5: msgs, status, voices, photos, reacts)", openReq.length <= 2, R.chatOpen);
+      await wait(page, 55000 - (Date.now() - tOpen));   // the tick reached 30 s
+      const t1 = Date.now();
+      await wait(page, 120000);
+      const idle = since(log, t1, t1 + 120000), im = mix(idle);
+      const ticks = (xs) => xs.filter((x) => x.name === "group_msgs" || (x.inner || []).includes("group_msgs"));
+      R.chatIdle = { perMin: +(idle.length / 2).toFixed(2), mix: im, ticks: ticks(idle).length, bundles: idle.filter((x) => x.inner).map((x) => x.inner.join(",")) };
+      console.log("chat idle 2 min:", idle.length, "=", R.chatIdle.perMin, "/min", JSON.stringify(im), "ticks", R.chatIdle.ticks);
+      if (process.env.PERF_DEBUG) idle.forEach((x) => console.log("  ch", ((x.t - t1) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
+      ok("chat idle: ≤ 6 requests a minute with the chat open (was 20–30)", R.chatIdle.perMin <= 6, R.chatIdle);
+      ok("chat idle: no chat read goes alone (group_msgs, group_photos, msg_reacts, group_voices, group_status_v3)", !Object.keys(im).some((n) => chatNames.test(n)), im);
+      ok("chat idle: my_invites / film_poll / moments_poll not alone", !im.my_invites && !im.film_poll && !im.moments_poll, im);
+      ok("chat idle: 30 s ticks (3–5 in 2 min)", R.chatIdle.ticks >= 3 && R.chatIdle.ticks <= 5, R.chatIdle.ticks);
+      ok("chat idle: photos + voices + reactions ride the tick bundle", idle.filter((x) => x.inner && x.inner.includes("group_msgs") && x.inner.includes("msg_reacts")).length >= 2, R.chatIdle.bundles);
+      // back-off from the open: gaps between ticks 7 → 15 → 30 s
+      const tk = ticks(since(log, tOpen, t1)).map((x) => x.t), gaps = tk.slice(1).map((t, i) => Math.round((t - tk[i]) / 1000));
+      R.chatGaps = gaps;
+      console.log("chat tick gaps after open (s):", JSON.stringify(gaps));
+      ok("chat back-off: tick gaps 7 → 15 → 30 s with no new line", gaps.length >= 3 && gaps[0] >= 6 && gaps[0] <= 9 && gaps[1] >= 13 && gaps[1] <= 18 && gaps[2] >= 27 && gaps[2] <= 33, gaps);
+      // a new line → the next tick 7 s later
+      newLine = 1;
+      const tn = Date.now();
+      await page.waitForFunction((id) => [...document.querySelectorAll(".chat-list .chat-msg")].some((li) => /Nu kommer vi/.test(li.textContent)), null, { timeout: 40000 }).catch(() => {});
+      const tGot = Date.now();
+      await wait(page, 9500);
+      const after = ticks(since(log, tGot - 500, Date.now())).map((x) => x.t);
+      R.chatNew = { gotIn: Math.round((tGot - tn) / 1000), nextTick: after.length >= 2 ? Math.round((after[1] - after[0]) / 1000) : null };
+      console.log("chat new line:", JSON.stringify(R.chatNew));
+      ok("chat back-off: a new line → the next tick 7 s later", R.chatNew.nextTick != null && R.chatNew.nextTick >= 6 && R.chatNew.nextTick <= 9, R.chatNew);
+      // typing (no Enter) in the chat: the map-poll fan-out still rides a bundle (typing is not a tap)
+      const tt = Date.now();
+      for (let i = 0; i < 12; i++) { await page.focus("#chat-inp").catch(() => {}); await page.keyboard.type("a"); await wait(page, 3000); }
+      const ty = since(log, tt, Date.now()), tyAlone = ty.filter((x) => !x.inner && OLD.includes(x.name));
+      console.log("typing 36 s:", JSON.stringify(mix(ty)));
+      ok("typing in the chat: no map-poll call goes alone (game_poll, my_invites, film_poll …)", ty.some((x) => x.inner && x.inner.includes("poll_v2")) && !tyAlone.length, mix(ty));
+      await page.fill("#chat-inp", "").catch(() => {});
+      // hidden: nothing; back → a tick at once
+      const th = Date.now();
+      await page.evaluate(() => window.__setHidden(true));
+      await wait(page, 40000);
+      const hid = since(log, th + 300, Date.now()).filter((x) => x.name !== "pnlog_ingest");
+      const tv = Date.now();
+      await page.evaluate(() => window.__setHidden(false));
+      await wait(page, 2500);
+      const back = ticks(since(log, tv, Date.now()));
+      ok("chat hidden: 0 requests in 40 s (no tick, no held read)", hid.length === 0, hid.map((x) => x.name + (x.inner ? "[" + x.inner.join(",") + "]" : "") + "@" + Math.round((x.t - th) / 1000)));
+      ok("chat back on screen: a tick at once", back.length >= 1, back.length);
+      // N-21 part 2: a group join drops the 10-min flag cache and moments asks for the flags again
+      const tj = Date.now();
+      const fl = await page.evaluate(() => { localStorage.setItem("olnu.cfg10", JSON.stringify({ after_flags_get: { at: Date.now(), u: "x", d: {} } }));
+        return window.__api.rpc("join_group", { p_code: "ABC234", p_display_name: "Anton" }).then(() => new Promise((res) => setTimeout(() => res(localStorage.getItem("olnu.cfg10")), 2500))); });
+      const askF = since(log, tj, Date.now()).some((x) => x.name === "after_flags_get" || (x.inner || []).includes("after_flags_get"));
+      const flE = (() => { try { return JSON.parse(fl).after_flags_get; } catch (e) { return null; } })();
+      ok("N-21: a group join drops the old flag cache (olnu.cfg10: gone or a new answer)", !flE || (flE.at >= tj && flE.u !== "x"), fl);
+      ok("N-21: after a group join the moments flags are asked again at once", askF, mix(since(log, tj, Date.now())));
+      const err = await page.evaluate(() => [...document.querySelectorAll(".toast.err")].map((x) => x.textContent));
+      ok("chat: no error toasts, no page errors", !err.length && !(S.errors || []).length, { err, pe: S.errors });
+      await ctx.close();
+    } catch (e) { console.log("FAIL chat section:", e && e.message); fail++; }
+
+    /* 8. N-02 old server (0465 + 0480, NO 0466): the chat works, refused names go alone at most once per tick */
+    if (!MEASURE && PART === "chat") try {
+      const S = { mode: "new", bundles: [] };
+      const { ctx, page, log } = await open(browser, S, { init: [() => { try { localStorage.removeItem("olnu.bsrv66"); } catch (e) {} }, null] });
+      await wait(page, 20000);
+      const t0 = Date.now();
+      await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID);
+      await wait(page, 60000);
+      const all = since(log, t0, Date.now()), m = mix(all);
+      const tk = all.filter((x) => x.name === "group_msgs" || (x.inner || []).includes("group_msgs")).length;
+      const lines = await page.evaluate(() => document.querySelectorAll(".chat-list .chat-msg").length);
+      const err = await page.evaluate(() => [...document.querySelectorAll(".toast.err")].map((x) => x.textContent));
+      const f66 = await page.evaluate(() => JSON.parse(localStorage.getItem("olnu.bsrv66") || "{}").v || "");
+      console.log("old server chat 60 s:", all.length, JSON.stringify(m), "ticks", tk, "bsrv66", f66);
+      ok("old server (no 0466): chat lines load", lines >= 4, lines);
+      ok("old server (no 0466): one group_msgs per tick (alone or in a bundle), ticks go on", tk >= 3 && tk <= 5, { m, tk });
+      ok("old server (no 0466): refused names go alone, at most once per tick", (m.group_photos || 0) <= tk + 1 && (m.msg_reacts || 0) <= tk + 1 && (m.group_voices || 0) <= tk + 1, { m, tk });
+      ok("old server (no 0466): remembered (olnu.bsrv66 = old)", f66 === "old", f66);
+      ok("old server (no 0466): no error toasts, no page errors", !err.length && !(S.errors || []).length, { err, pe: S.errors });
+      await ctx.close();
+    } catch (e) { console.log("FAIL old-server chat section:", e && e.message); fail++; }
+
+    if (PART !== "chat") {
     /* ---------- 1. cold start + 2 min open ---------- */
     {
       const S = { mode: SRV, bundles: [] };
@@ -305,6 +446,7 @@ const R = {};   // numbers for DONE.md
       ok("T-08 no account: no page errors", !(S.errors || []).length, S.errors);
       await ctx.close();
     } catch (e) { console.log("FAIL T-08 section:", e && e.message); fail++; }
+    }   // PART !== "chat"
   } catch (e) { console.log("FAIL exception", e && e.stack || e); fail++; }
   await browser.close();
   if (MEASURE) { fs.writeFileSync(OUT + "perf-" + TAG + ".json", JSON.stringify(R, null, 1)); console.log("wrote", OUT + "perf-" + TAG + ".json"); }
