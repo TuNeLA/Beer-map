@@ -1868,7 +1868,7 @@
       toastClear("load");
       if (!firstLoadDone) { firstLoadDone = true; handleFocus(); }
       else if (pendingFocus != null) handleFocus();   // v27: a pin push tapped while the app is open (routeOpen)
-      setTimeout(flushBeerQueue, 600);   // QA #19: an offline beer goes now
+      if (window.X8) { window.X8.pollOk(dv2 ? { me: dv2.me, server_time: dv2.server_time } : null); if (dv2) window.X8.snapSave(dv2); }   // x8: stale off, outbox flush, snapshot
       mods("onPollData", dv2);
       // review2: shared slow lane. Slow-changing modules get onPoll once per 60 s, in the same wave.
       var slowDue = Date.now() - slowLaneAt >= SLOW_LANE_MS - 3000;
@@ -1884,6 +1884,8 @@
         if (pend && !movedState) { finishExport(pend.kind, false); showMoved().then(signIn); return; }
         reauth(); return;
       }
+      if (window.X8) window.X8.pollFail();
+      if (!firstLoadDone && x8Snap()) return;   // x8: the last known map instead of a red error
       if (!firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
     }).then(function () {
       loading = false; loadingP = null;
@@ -1895,10 +1897,26 @@
   // Poll every 30 s; every 60 s when the map was not touched for 3 min. Hidden tab = no timer at all.
   var pollTimer = null, lastTouch = Date.now(), pollOn = false;
   function idle() { return Date.now() - lastTouch > IDLE_MS; }
+  // x8: cold start with no net → the last good poll_v2 answer from this phone (≤ 3 h, same user), drawn once, with the caption
+  var x8Snapped = false;
+  function x8Snap() {
+    if (x8Snapped || beers.length || !window.X8) return x8Snapped;
+    var o = window.X8.snapGet(); if (!o) return false;
+    x8Snapped = true;
+    try {
+      beers = normPins(o.pins); liveTotal = o.live_total != null ? o.live_total | 0 : null;
+      checkins = (o.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      drinkViews = null; newsDirty = true; render(); updateCounts();
+      window.X8.staleShow();   // the caption shows at once ("Senast uppdaterad <snapshot time>")
+    } catch (e) {}
+    return true;
+  }
   function schedulePoll() {
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
     if (!pollOn || !LIVE || loading || document.visibilityState === "hidden") return;   // a running poll schedules the next itself
     var wait = (idle() ? POLL_SLOW_MS : POLL_MS) - (Date.now() - lastPollAt);
+    var x8w = window.X8 ? window.X8.delay() : null;
+    if (x8w != null) wait = x8w;   // x8: failed polls back off 5 → 60 s; offline: one try per 60 s (was a 1 s loop)
     pollTimer = setTimeout(function () { pollTimer = null; refresh(); }, Math.max(1000, wait));
   }
   function startPoll() { if (LIVE) { pollOn = true; schedulePoll(); } }
@@ -2378,7 +2396,7 @@
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
     // The level message is a normal short toast; ÅNGRA is a small ↩️ button next to ÖL! (owner: the big
     // red toast covered the beer-type strip).
-    toast(text, { cls: cls || "", ms: 5000 });
+    beerSay(text, { cls: cls || "", ms: 5000 });   // x8: the "Skål! Ölen räknas…" toast turns into this line
     undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), text: "↩️",
       onclick: function () { doUndo(undoEl); } });
     document.body.appendChild(undoEl);
@@ -2422,89 +2440,143 @@
   function undoSync(me) { if (undoEl && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
 
   $("btn-beer").addEventListener("click", function () { beerTap(null); });
-  // QA #19: offline ÖL! → keep it (max 1, max 20 min old) and send it after the next good poll.
-  I.add({ sv: { beerQueued: "📡 Ingen täckning – ölen skickas när du är online igen" }, en: { beerQueued: "📡 No signal – the beer is sent when you are back online" } });
-  var BEERQ_KEY = "olnu.beerQueue", BEERQ_MAX_MS = 20 * 60 * 1000;
-  function beerQueued() {
-    var q = U.ls.getJSON(BEERQ_KEY, null);
-    return q && q.at && Date.now() - (+q.at) < BEERQ_MAX_MS && isFinite(q.lat) && isFinite(q.lng) ? q : null;
+  // x8 (weak signal): an ÖL! that can not reach the server goes into the outbox (js/x8.js, max 5, 90 min) and is sent later
+  // (online / next good poll / app start). Replaces the QA #19 queue (1 beer, 20 min). Instant feedback on every network:
+  // splash at the tap, then "Skål! Ölen räknas…" before the RPC; the answer changes the SAME toast (no 2nd slide-in).
+  var X8 = window.X8 || null, beerPend = null;
+  function beerPending() {
+    beerPend = null; toastClear("x8-beer");
+    if (X8) beerPend = toast(X8.say("x8.pending"), { id: "x8-beer", ms: RPC_TIMEOUT_MS + 3000 });
   }
+  function beerSay(text, opts) {
+    opts = opts || {};
+    var p = beerPend; beerPend = null;
+    if (p && p.parentNode && !opts.err && !opts.action) {
+      var sp = p.querySelector("span"); if (sp) sp.textContent = text;
+      p.className = "toast" + (opts.cls ? " " + opts.cls : ""); p.removeAttribute("data-id");
+      p._olnuT = { opts: opts, rank: 1 };
+      setTimeout(function () { p.remove(); }, opts.ms || 3800);
+      return p;
+    }
+    if (p) p.remove();
+    toastClear("x8-beer");
+    return toast(text, opts);
+  }
+  function beerSayClear() { var p = beerPend; beerPend = null; if (p) p.remove(); toastClear("x8-beer"); }
+  // keep a beer that could not be sent: outbox + the 10-min rule starts now (as the server would) + one calm toast
+  function x8Keep(spot, ghost, at, sentAt) {
+    var res = X8 ? X8.add(spot, ghost, at, sentAt) : { ok: false };
+    if (res.full) { beerSay(X8.say("x8.full"), { ms: 6000 }); return; }
+    if (!res.ok) { beerSay(t("postFail"), { err: true }); return; }
+    var m = myNight() || {}; m.lastTap = Date.now(); if (!m.expires) m.expires = nightEnd();
+    U.ls.setJSON("olnu.night", m);
+    beerSay(res.n > 1 ? X8.say("x8.queuedN", { n: res.n }) : X8.say("x8.queued"), { ms: 6000 });
+    window.FX.vibrate(20);
+  }
+  // offline tap: position + "Var dricker du?" as before, then the outbox (no RPC at all)
   function queueBeer() {
-    if (beerQueued()) { toast(t("beerQueued"), { id: "off", ms: 6000 }); return; }
     setBusy(true);
-    getPosition().then(askWhere).then(function (spot) {
-      if (!spot) { toast(t("whereCancel"), { id: "where" }); return; }
-      U.ls.setJSON(BEERQ_KEY, { at: Date.now(), lat: spot.lat, lng: spot.lng, precise: !!spot.precise, home: !!spot.home });
-      toast(t("beerQueued"), { id: "off", ms: 6000 });
-      window.FX.vibrate(20);
-    }, locError).catch(function () {}).then(function () { setBusy(false); });
+    getPosition().then(askWhere, noGpsSpot).then(function (spot) {
+      if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
+      x8Keep(spot, !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn()));
+    }, locError).catch(function () {}).then(function () { setBusy(false); tickCooldown(); });
   }
-  function flushBeerQueue() {
-    var q = U.ls.getJSON(BEERQ_KEY, null);
-    if (!q) return;
-    if (!beerQueued()) { U.ls.del(BEERQ_KEY); return; }
-    if (!LIVE || !authed || busy || navigator.onLine === false) return;   // the next poll tries again
-    U.ls.del(BEERQ_KEY);
-    if (cooldownLeft() > 0) return;   // a beer in the last 10 min wins (the server's rule)
-    beerTap({ lat: +q.lat, lng: +q.lng, precise: !!q.precise, home: !!q.home });
+  // X8 flush → one queued beer. Answers { kind: ok | refused | cooldown | net | skip, wait }.
+  function x8Send(q) {
+    if (!LIVE || !authed || busy || movedState) return Promise.resolve({ kind: "skip" });
+    var before = U.drinks(meState || myBeer() || {});
+    return postBeer({ lat: q.lat, lng: q.lng, precise: q.precise, home: q.home }, q.ghost).then(function (res) {
+      var r = res.r;
+      if (r.error) {
+        if (X8.isNet(r.error, r.status)) return { kind: "net" };
+        toast((U.errCode(r.error) === "outside_sweden" ? t("outsideServer") : errMsg(r.error, t("postFail"))), { err: true, ms: 6000 });
+        return { kind: "refused" };
+      }
+      var d = parseData(r.data);
+      if (d.accepted === false) { saveNight(d, false); tickCooldown(); return { kind: "cooldown", wait: d.wait_seconds | 0 }; }
+      beerDone(d, res, { lat: q.lat, lng: q.lng, precise: q.precise, home: q.home }, q.ghost, before, q);
+      tickCooldown(); updateCounts();
+      return { kind: "ok" };
+    }, function () { return { kind: "net" }; });
   }
-  function beerTap(queued) {
+  if (X8) {
+    X8.bind({ send: x8Send, live: LIVE });
+    // a beer the old QA #19 queue kept before this update: move it into the outbox once (same tap time)
+    try { var q19 = U.ls.getJSON("olnu.beerQueue", null); U.ls.del("olnu.beerQueue");
+      if (q19 && q19.at && Date.now() - (+q19.at) < 20 * 60e3) X8.add({ lat: +q19.lat, lng: +q19.lng, precise: !!q19.precise, home: !!q19.home }, false, +q19.at); } catch (e) {}
+  }
+  function beerTap() {
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (busy || cooldownLeft() > 0) return;
-    if (navigator.onLine === false) { if (!queued) queueBeer(); return; }
-    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (authed) beerTap(queued); }); return; }   // ⚡ the 1st action makes the account
+    if (navigator.onLine === false) { window.FX.unlock(); window.FX.splash($("btn-beer")); window.FX.vibrate(20); queueBeer(); return; }
+    if (!authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (authed) beerTap(); }); return; }   // ⚡ the 1st action makes the account
     window.FX.unlock();
     window.FX.splash($("btn-beer"));
     window.FX.vibrate(20);
     setBusy(true);
-    (queued ? Promise.resolve(queued) : getPosition().then(askWhere, noGpsSpot)).then(function (spot) {
+    getPosition().then(askWhere, noGpsSpot).then(function (spot) {
       if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
       var ghost = !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
       var before = U.drinks(meState || myBeer() || {});
+      beerPending();
+      var sentAt = Date.now();
       return postBeer(spot, ghost)
         .then(function (res) {
           var r = res.r;
           if (r.error) {
-            toast(U.errCode(r.error) === "outside_sweden" ? t("outsideServer") : errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
+            if (X8 && X8.isNet(r.error, r.status)) { x8Keep(spot, ghost, sentAt, sentAt); return; }   // x8: no signal → the outbox, not a red toast
+            beerSay(U.errCode(r.error) === "outside_sweden" ? t("outsideServer") : errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
             return;
           }
           var d = parseData(r.data);
           if (d.accepted === false) {
             saveNight(d, false);
-            toast(t("cooldownToast", U.mmss((d.wait_seconds | 0) * 1000)));
+            beerSay(t("cooldownToast", U.mmss((d.wait_seconds | 0) * 1000)));
             return;
           }
-          saveNight(d, true);
-          lastAcceptAt = Date.now();
-          if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
-          // v17 server: d.drinks = total drinks tonight (beers + others). Older server: beers + others we know.
-          var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow();
-          if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
-          var l = U.level(total);
-          if (meState) { meState.beer_count = d.beer_count | 0; meState.undo_until = d.undo_until || null; }
-          var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
-          var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
-          var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
-          if (res.v2 && d.undo_until) showUndo(d, text, cls);
-          else if (!big) toast(text, { cls: cls });
-          if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
-          window.FX.sound.beer();
-          // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
-          if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
-          else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
-          else notifyGroup();
-          mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
-          if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
-          if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
-            /* ux review: no notification ask on a beer tap. Calm moments only: after a group join, app start with a group. */
-          }
-          if (isFinite(d.lat) && isFinite(d.lng) && !ghost) {
-            map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
-          }
-          refresh();
+          beerDone(d, res, spot, ghost, before, null);
         });
-    }, locError).catch(function () { toast(t("postFail"), { err: true }); })
+    }, locError).catch(function () { beerSay(t("postFail"), { err: true }); })
       .then(function () { setBusy(false); tickCooldown(); updateCounts(); });
+  }
+  // An accepted beer (a tap now, or q = a beer from the x8 outbox). Outbox beers: one calm line, no ÅNGRA, no push, no map jump.
+  function beerDone(d, res, spot, ghost, before, q) {
+    saveNight(d, true);
+    lastAcceptAt = Date.now();
+    if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
+    // v17 server: d.drinks = total drinks tonight (beers + others). Older server: beers + others we know.
+    var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow();
+    if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
+    var l = U.level(total);
+    if (meState) { meState.beer_count = d.beer_count | 0; meState.undo_until = d.undo_until || null; }
+    var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
+    var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
+    var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
+    if (q) {
+      if (!big) toast(X8.say("x8.sent", { time: X8.hhmm(q.at) }) + " · " + text, { cls: cls, ms: 6000 });
+      if (ghost && !res.v2) rpc("stop_beer").then(function () { refresh(); });
+      mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, queued: true });
+      refresh();
+      return;
+    }
+    if (res.v2 && d.undo_until) showUndo(d, text, cls);
+    else if (!big) beerSay(text, { cls: cls });
+    else beerSayClear();
+    if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
+    window.FX.sound.beer();
+    // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
+    if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
+    else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
+    else notifyGroup();
+    mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
+    if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
+    if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
+      /* ux review: no notification ask on a beer tap. Calm moments only: after a group join, app start with a group. */
+    }
+    if (isFinite(d.lat) && isFinite(d.lng) && !ghost) {
+      map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
+    }
+    refresh();
   }
   // Push to the group. Fully silent: no push keys, no function deployed, network error → nothing happens.
   function notifyGroup() {
