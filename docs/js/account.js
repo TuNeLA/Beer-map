@@ -386,13 +386,13 @@
       var v = inp.value.replace(/\D/g, "").slice(0, CODE_LEN);
       if (v !== inp.value) inp.value = v;
       draw();
-      if (v.length === CODE_LEN && v !== lastFull) { lastFull = v; onFull(v); }
+      if (v.length === CODE_LEN && v !== lastFull) { lastFull = v; try { inp.blur(); } catch (e) {} onFull(v); }   // 6th digit: close the phone keyboard, then check
       if (v.length < CODE_LEN) lastFull = "";
     }
     inp.addEventListener("input", clean);
     inp.addEventListener("paste", function () { setTimeout(clean, 0); });
     ["focus", "blur", "keyup", "click"].forEach(function (ev) { inp.addEventListener(ev, draw); });
-    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { var v = inp.value.replace(/\D/g, ""); if (v.length === CODE_LEN) onFull(v); } });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { var v = inp.value.replace(/\D/g, ""); if (v.length === CODE_LEN) { try { inp.blur(); } catch (x) {} onFull(v); } } });
     draw();
     return { wrap: wrap, input: inp, value: function () { return inp.value.replace(/\D/g, ""); },
       clear: function () { inp.value = ""; lastFull = ""; draw(); }, focus: function () { try { inp.focus(); } catch (e) {} draw(); },
