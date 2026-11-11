@@ -327,21 +327,32 @@ function noJump(fr, w0, h0, moveMax) {
     await page.mouse.click(200, Math.round(HT[390] * 0.45));
     const af = await ap; await shot(page, "B6-attrib-2-end");
     ok(!a0.hidden && noJump(af, a0.w, a0.h, 4).ok, "B6 ⓘ credits popup closes without a jump", { a0, af: af.slice(0, 3) });
-    // "Dagens order" caption: leaves on the first map move
-    // the caption box as delight.js makes it (#dl-cap.dl-cap.dl-cap-greet); the close path under test is pnui.js (map move → close class)
-    await page.evaluate(() => { document.querySelectorAll("#dl-cap").forEach((x) => x.remove()); document.documentElement.classList.remove("pn-settle");
-      const c = document.createElement("div"); c.id = "dl-cap"; c.className = "dl-cap dl-cap-greet dl-in"; c.setAttribute("role", "status");
+    // "Dagens order" caption: leaves on the first map move. The close path under test = pnui.js (map "movestart" → dl-cap-greet-out,
+    // removed after 220 ms). Flake fix (11 Nov): the test box has its OWN id — "#dl-cap" belongs to delight.js, whose caption timer
+    // hid it on its own (dl-in off) in the capture window. The close is fired on purpose ("movestart", the event pnui listens to) and
+    // the frames are judged only from the moment the close class is set.
+    await page.evaluate(() => { document.querySelectorAll("#ui1-cap").forEach((x) => x.remove()); document.documentElement.classList.remove("pn-settle");
+      const c = document.createElement("div"); c.id = "ui1-cap"; c.className = "dl-cap dl-cap-greet dl-in"; c.setAttribute("role", "status");
       c.innerHTML = '<div class="dl-cap-h">Dagens order · tisdag</div><div class="dl-cap-t">Drick vatten mellan varven.</div>'; document.body.appendChild(c); });
-    await page.waitForFunction(() => { const c = document.querySelector(".dl-cap-greet"); return c && c.getBoundingClientRect().width > 0 && +getComputedStyle(c).opacity > 0.9; }, null, { timeout: 5000 }).catch(() => {});
-    const cap = await page.evaluate(() => { const c = document.querySelector(".dl-cap-greet"); if (!c) return null; const r = c.getBoundingClientRect(); return { w: r.width, h: r.height }; });
+    await page.waitForFunction(() => { const c = document.getElementById("ui1-cap"); return c && c.getBoundingClientRect().width > 0 && +getComputedStyle(c).opacity > 0.9; }, null, { timeout: 5000 }).catch(() => {});
+    await wait(page, 400);   // its own fade-in (opacity) is over
+    const c0 = await page.evaluate(() => { const c = document.getElementById("ui1-cap"); if (!c) return null; const r = c.getBoundingClientRect(); return { w: r.width, h: r.height, x: r.left, y: r.top }; });
     await shot(page, "B6-greet-0-open");
-    if (cap && cap.w) {
-      const c0 = await page.evaluate(() => { const r = document.querySelector(".dl-cap-greet").getBoundingClientRect(); return { w: r.width, h: r.height }; });
-      const cp = boxFrames(page, ".dl-cap-greet", 400);
-      await page.evaluate(() => window.__map.panBy([40, 0], { animate: false }));
-      const cf = await cp;
-      ok(noJump(cf, c0.w, c0.h, 10).ok, "B6 Dagens order caption leaves without a jump (" + cf.length + " frames, " + (cf[1] && cf[1].cls) + ")", { c0, cf: cf.slice(0, 3) });
-    } else ok(false, "B6 Dagens order caption shows", cap);
+    if (c0 && c0.w) {
+      const cp = boxFrames(page, "#ui1-cap", 3000);   // until the box is removed
+      const fired = await page.evaluate(async () => {
+        const m = window.__map, c = document.getElementById("ui1-cap");
+        for (let i = 0; i < 10 && c.isConnected && !c.classList.contains("dl-cap-greet-out"); i++) {
+          if (m && m.fire) m.fire("movestart"); else if (m) m.panBy([40, 0], { animate: false });
+          await new Promise((r) => setTimeout(r, 150));
+        }
+        return c.classList.contains("dl-cap-greet-out") || !c.isConnected;
+      });
+      const all = await cp, k = all.findIndex((f) => /dl-cap-greet-out/.test(f.cls));
+      const cf = k < 0 ? [] : all.slice(Math.max(0, k - 1));   // the last frame before the close class + every frame after it
+      const j = noJump(cf, c0.w, c0.h, 10);
+      ok(fired && k >= 0 && j.ok, "B6 Dagens order caption leaves without a jump (" + cf.length + " frames from the close class on)", { c0, fired, k, j, cf: cf.slice(0, 3) });
+    } else ok(false, "B6 Dagens order caption shows", c0);
     await ctx.close();
   }
 
