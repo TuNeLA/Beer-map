@@ -287,15 +287,15 @@ window.DELIGHT_CONTENT = {
   /* ---------- 3. Empty state (no pins near you). {stad} = town. ---------- */
   empty: {
     sv: DIALEKT.list({0: "delight.empty#0#30", 1: "delight.empty#1#30", 2: "delight.empty#2#30", 3: "delight.empty#3#30", 4: "delight.empty#4#30", 5: "delight.empty#5#30", 6: "delight.empty#6#30", 7: "delight.empty#7#30", 9: "delight.empty#8#30", 10: "delight.empty#9#30", 11: "delight.empty#10#30", 12: "delight.empty#11#30", 13: "delight.empty#12#30", 14: "delight.empty#13#30", 15: "delight.empty#14#30", 16: "delight.empty#15#30", 17: "delight.empty#16#30", 18: "delight.empty#17#30", 19: "delight.empty#18#30", 21: "delight.empty#19#30", 22: "delight.empty#20#30", 23: "delight.empty#21#30", 24: "delight.empty#22#30", 25: "delight.empty#23#30", 26: "delight.empty#24#30", 27: "delight.empty#25#30", 28: "delight.empty#26#30", 29: "delight.empty#27#30", 30: "delight.empty#28#30", 31: "delight.empty#29#30"}, [
-      "🌵 {stad} ikväll: en tumbleweed och en katt.", "🦗 Tyst i {stad}. Bara syrsorna har vakt.",
+      "🌵 {stad} ikväll: en tumbleweed rullade förbi. Den stannade inte. Inte ens den.", "🦗 Tyst i {stad}. Bara syrsorna har vakt.",
       "🫎 Tyst i stan. Till och med älgarna har gått hem.", "🐈 Spaning i {stad}: en katt. Katten är inte intresserad.",
       "📻 Radiotystnad över {stad}. Någon måste bryta den.", "🛰️ Satelliten ser inget i {stad}. Den kollade två gånger.",
       "🕸️ {stad}: spindlarna har tagit över krogen.", "🧊 Kallt på kartan i {stad}. Tänd en lykta, nån?",
-      "🌲 {stad} sover. Granarna snarkar.", "🚜 En traktor. En lampa. Inga människor. {stad} ikväll.",
+      "🌲 {stad} sover. Granarna snarkar.", "🚜 {stad} ikväll: en traktor står parkerad utanför krogen. Den väntar på föraren. Föraren ligger i soffan.",
       "🔭 Spanaren rapporterar: inga kontakter i {stad}. Han äter sin matsäck.", "📭 Inga pins här. Lådan är tom, soldat.",
       "🦉 Bara ugglan är ute i {stad}. Och hon dricker bara vatten.", "🌙 Månen har hela {stad} för sig själv.",
       "🗺️ Kartan över {stad} är så tom att man ser jordens rundning.", "🛋️ {stad} har valt soffan ikväll. Respekt.",
-      "🎻 Spelmanslaget i {stad} spelar för tomma bord.", "🌵 {stad} ikväll: en tumbleweed och en katt.",
+      "🎻 Spelmanslaget i {stad} spelar för tomma bord.", "🌵 {stad} ikväll: en tumbleweed rullade förbi. Den stannade inte. Inte ens den.",
       "🧹 Nån har sopat {stad} ren från folk.", "📡 Ölradarn piper inte ens. Den har somnat.",
       "🥶 {stad}: 0 pins, 1 frusen ekorre.", "🎖️ Den första pinnen i {stad} ikväll får äran. Och ingen medalj. Bara äran.",
       "🍃 Ett löv blåser förbi på Storgatan. Det är kvällens händelse i {stad}.", "🛰️ Kartan laddade klart. Det är bara inte nåt här.",

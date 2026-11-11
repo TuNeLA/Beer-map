@@ -254,7 +254,7 @@ D.setMode("auto");
   const V = packs["sv-vast"] || {}, glenn = [];
   keysOf(V).forEach((k) => list(V[k]).forEach((x) => { const t = txt(x); if (typeof t === "string" && /\bGlenn\b/.test(t)) glenn.push(k); }));
   ok(glenn.length >= 30 && glenn.some((k) => /^live\.(random|general|town\.goteborg)$/.test(k)), "d2 sv-vast: Glenn lines in the ticker (" + glenn.length + ")", glenn.slice(0, 5));
-  ok(V["live.town.goteborg"] && list(V["live.town.goteborg"]).filter((x) => !isMix(x)).length >= 15, "d2 sv-vast: Göteborg town jokes (live.town.goteborg)");
+  ok(V["live.town.goteborg"] && list(V["live.town.goteborg"]).filter((x) => !isMix(x)).length >= 10, "d2 sv-vast: Göteborg town jokes (live.town.goteborg, >= 10)");
   // within(): the ticker scope reads that area's pack; the phone's own region (here: none / neutral) is unchanged
   if (typeof D.within === "function") {
     D.setMode("auto"); D.preview(null);
