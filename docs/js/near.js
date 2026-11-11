@@ -479,7 +479,7 @@
             var fr = d.friends || [];
             if (!fr.length) listBox.appendChild(el("li", { class: "muted", text: L("Inga vänner än. Dela din kod, eller lägg till nån från en grupp.", "No friends yet. Share your code.") }));
             fr.forEach(function (f) { listBox.appendChild(friendRow(f, load)); });
-            try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, fr, load, friendRow); } catch (e) {}
+            try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, Array.isArray(d.friends) ? fr : null, load, friendRow); } catch (e) {}   // fixC: null = no my_friends list (old server)
             if ((d.outgoing || []).length) {
               outBox.appendChild(el("p", { text: L("⏳ Väntar på svar: ", "⏳ Waiting: ") }));
               d.outgoing.forEach(function (f) {

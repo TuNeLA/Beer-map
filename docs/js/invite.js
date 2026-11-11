@@ -296,12 +296,13 @@
   // fixC N-04: my_friends (near.js) is the truth for WHO is a friend. A friend_list that is older (warm cache) and does
   // not have a new friend yet: that friend keeps the near.js row and friend_list is asked again once (then the row gets
   // Skriv + Bjud in); a person friend_list still has but my_friends dropped (blocked, removed) is not shown.
+  // fr = null: no my_friends list (old server / odd answer) → the friend_list rows as before.
   function friendsMore(listBox, fr, reload, friendRow, again) {
     friends(Date.now() - flAt > 3000).then(function (d) {
       if (!d || !document.body.contains(listBox)) return;
       var people = (d.people || []).filter(function (p) { return p.friend_id != null; });   // friends2: friends only (0154)
       var byId = {}; (fr || []).forEach(function (f) { byId[String(f.id)] = f; });
-      if (friendRow) {
+      if (friendRow && fr) {   // fr null = near.js had no my_friends list: friend_list alone, as before
         var have = {}; people.forEach(function (p) { have[String(p.friend_id)] = 1; });
         var stale = people.some(function (p) { return !byId[String(p.friend_id)]; });
         var miss = (fr || []).filter(function (f) { return f && f.id != null && !have[String(f.id)]; });
