@@ -54,3 +54,6 @@
   color:var(--ds-amber-t);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
 .skj-ask-t:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
 .skj-ic .pi{width:22px;height:22px;color:var(--ds-amber-t)}
+/* followups (owner 11 Nov): 112 is one small muted link at the very bottom of the Hämta mig / Skjuts sheet */
+.pk-112{margin:var(--sp-5) 0 0;text-align:center;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.pk-112-a{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-2);color:var(--ds-muted);text-decoration:underline;text-underline-offset:3px}

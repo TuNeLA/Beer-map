@@ -192,7 +192,9 @@ async function openGroup(page) {
       ok("SKJUTS loaded", await page.evaluate(() => !!window.SKJUTS));
       await page.evaluate(() => window.SKJUTS.openPickup({}));
       await page.waitForSelector(".pk-chip", { timeout: 6000 }).catch(() => {});
-      ok("Hämta mig: 📞 Ring 112 is first", await page.evaluate(() => { const b = document.querySelector("#sheet-body .pk"); return !!b && !!b.querySelector(".sf-112") && b.firstElementChild.classList.contains("sf-112"); }));
+      // owner 11 Nov: a pickup is not an emergency: the request content is first, 112 = one small link at the very bottom
+      ok("Hämta mig: request content first, no big 112; 'Akut fara? Ring 112' small link at the bottom", await page.evaluate(() => { const sb = document.getElementById("sheet-body"), b = sb && sb.querySelector(".pk"); const last = sb && sb.lastElementChild;
+        return !!b && !b.querySelector(".sf-112") && b.firstElementChild.classList.contains("pk-lead") && !!last && last.classList.contains("pk-112") && !!last.querySelector('a[href="tel:112"]'); }));
       ok("send disabled until someone is picked", await page.evaluate(() => document.querySelector(".pk-go").disabled));
       await page.evaluate(() => document.querySelector(".pk-gchip").click()); await wait(page, 200);
       ok("group chip = 2 people", /2 får frågan/.test(await page.evaluate(() => document.querySelector(".pk-go").textContent)), await page.evaluate(() => document.querySelector(".pk-go").textContent));
@@ -215,7 +217,7 @@ async function openGroup(page) {
       ok("receiver: alarm toast '🆘 Oskar: Kan nån hämta mig?'", /Oskar: Kan nån hämta mig/.test(await toastText(page)), await toastText(page));
       await shot(page, "15-hamta-alarm", true);
       await page.evaluate(() => { const t = [...document.querySelectorAll(".toast button")].find((b) => /Visa/.test(b.textContent)); if (t) t.click(); }); await wait(page, 700);
-      ok("receiver sheet: map, directions, Jag kommer, 112", await page.evaluate(() => !!document.querySelector(".pk-map") && /maps\/dir/.test(document.querySelector(".pk-dir").href) && !!document.querySelector(".pk-yes") && !!document.querySelector(".pk .sf-112")));
+      ok("receiver sheet: map, directions, Jag kommer, 112", await page.evaluate(() => !!document.querySelector(".pk-map") && /maps\/dir/.test(document.querySelector(".pk-dir").href) && !!document.querySelector(".pk-yes") && !document.querySelector(".pk .sf-112") && !!document.querySelector("#sheet-body > .pk-112 a[href='tel:112']")));
       await shot(page, "16-hamta-mottagare");
       await page.evaluate(() => document.querySelector(".pk-yes").click()); await wait(page, 600);
       const an = calls.filter((c) => c.fn === "pickup_answer").pop();

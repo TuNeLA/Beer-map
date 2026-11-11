@@ -825,10 +825,12 @@
     d.className = "inv-legend";
     d.innerHTML = "<b>" + esc(L("Kartan", "The map")) + "</b>" +
       '<span><i class="lg-pin" aria-hidden="true"></i>' + esc(L("Pins = folk som dricker just nu", "Pins = people drinking now")) + "</span>" +
-      '<span><i class="lg-heat" aria-hidden="true"></i>' + esc(L("🔥 Gul–röd glöd = värme ikväll (live + kvällens spår, försvinner kl 05)", "🔥 Glow = heat tonight (live + tonight's trail, gone at 05:00)")) + "</span>" +
-      '<span><i class="lg-ghost" aria-hidden="true"></i>' + esc(L("☁️ Grå moln = senaste dagarna, int' live (bleknar på 3 dar; syns när dä ä lugnt, eller med 👻).",
-        "☁️ Grey clouds = the last few days, not live (they fade over 3 days).")) + "</span>" +
-      "<span>📨 " + esc(L("= din inbjudan (syns bara för de inbjudna)", "= your invite (only invited people see it)")) + "</span>";
+      '<span><i class="lg-heat" aria-hidden="true"></i>' + esc(L("Gul–röd glöd = värme ikväll (live + kvällens spår, försvinner kl 05)", "Glow = heat tonight (live + tonight's trail, gone at 05:00)")) + "</span>" +
+      '<span><i class="lg-ghost" aria-hidden="true"></i>' + esc(L("Grå moln = senaste dagarna, int' live (bleknar på 3 dar; syns när dä ä lugnt, eller i Spökläge).",
+        "Grey clouds = the last few days, not live (they fade over 3 days).")) + "</span>" +
+      // followups (R1-36): no emoji in the legend; the invite line gets the PNI envelope (the map pin itself keeps its art)
+      "<span>" + (window.PNI && window.PNI.has("mail") ? window.PNI.svg("mail", "lg-inv") : '<i class="lg-inv" aria-hidden="true"></i>') +
+        esc(L("Kuvert = din inbjudan (syns bara för de inbjudna)", "Envelope = your invite (only invited people see it)")) + "</span>";
     pop.appendChild(d);
   }
 

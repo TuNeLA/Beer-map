@@ -110,7 +110,8 @@
   }
 
   /* ---------- Stamps ---------- */
-  var INKS = ["#c0392b", "#1f5fa8", "#2e7d4f", "#6a3d9a", "#b0601a", "#8a1c3a"];
+  // followups R1-49: red, green and orange one step darker (rendered text ≥ 4:1 on the paper, was 3.2–3.8); same ink look
+  var INKS = ["#b23324", "#1f5fa8", "#276d44", "#6a3d9a", "#8f4c10", "#8a1c3a"];
   var SHAPES = ["circ", "rect", "oval", "dbl", "hex"];
   function fmtDate(ev) {
     var s = String(ev || "").slice(0, 10), p = s.split("-"); if (p.length < 3) return "";

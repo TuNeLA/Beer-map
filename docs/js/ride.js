@@ -14,7 +14,7 @@
    5 No answer (flag ride_v2_more): 5 min → [Fråga igen] [Fråga fler]; 10 min (or all said no) → the taxi card with the
      verified numbers (BOLD_TAXI / TAXI_DATA, B2).
    6 Both can cancel (the driver backing out = the others are asked again). Klar → "Tack! Skål" + Kvällens chaufför.
-   Copy: DIALEKT keys ride.* (sv-neutral pack registered below). Styles: ride.css (prefix rd-). 112 is first in every sheet. */
+   Copy: DIALEKT keys ride.* (sv-neutral pack registered below). Styles: ride.css (prefix rd-). 112: one small muted link at the bottom of the sheet (owner 11 Nov). */
 (function () {
   "use strict";
   var U = window.U;
@@ -27,6 +27,7 @@
   var P = {
     "ride.title": "Hämta mig", "ride.title.drive": "Du kör", "ride.title.offer": "Skjuts?",
     "ride.lead": "Frågan går till alla i dina gäng och vänner som kör ikväll. Ingen som tryckt ÖL! får den.",
+    "ride.112": "Akut fara? Ring 112",
     "ride.where": "Var ä du?", "ride.here": "Där jag ä", "ride.pick": "Välj på kartan", "ride.pax": "Hur många?",
     "ride.note": "Nåt mer?", "ride.note.ph": "t.ex. vid kebaben", "ride.send": "Skicka", "ride.sending": "Skickar…",
     "ride.priv": "Bara den som tar körningen ser exakt var du ä. Bilens position syns bara för dig, bara under körningen.",
@@ -233,7 +234,10 @@
   function sheet(title, kind, id) {
     A.openSheet(title, function (body) {
       box = h("div", { class: "rd" }); view = { kind: kind, id: id };
-      body.appendChild(box); paint();
+      body.appendChild(box);
+      // followups (owner 11 Nov): no big 112 at the top (a pickup is not an emergency); one small muted link at the bottom
+      body.appendChild(h("p", { class: "rd-112f" }, [h("a", { class: "rd-112f-a", href: "tel:112", text: T("ride.112") })]));
+      paint();
     });
     clearInterval(tick); tick = setInterval(function () { if (!box || !document.body.contains(box)) { clearInterval(tick); tick = 0; return; } if (view && view.kind !== "req") paint(); }, 30000);
   }
@@ -242,13 +246,9 @@
     if (!box || !view) return;
     if (view.kind === "req") return paintReq();
     var x = find(view.id); box.innerHTML = "";
-    sos(box);
     if (!x) { box.appendChild(h("p", { class: "rd-muted", text: T("ride.cancelled") })); return; }
     if (x.role === "rider") paintRider(x); else if (x.role === "taker") paintTaker(x); else paintOffer(x);
     if (pend[x.id]) { var a = pend[x.id]; pend[x.id] = null; if (a === "ta" && x.role === "asked" && x.can_take) take(x); else if (a === "nej" && x.role === "asked" && x.live) decline(x); }
-  }
-  function sos(el) {
-    try { if (HK.sos112) { HK.sos112(el); var b = el.querySelector(".sf-112"); if (b) b.classList.add("rd-112"); } } catch (e) {}
   }
   function openReq(opts) {
     if (!on()) return false;
@@ -283,7 +283,6 @@
   function paintReq() {
     if (!box || !view || view.kind !== "req") return;
     var f = form; box.innerHTML = "";
-    sos(box);
     box.appendChild(h("p", { class: "rd-lead", text: T("ride.lead") }));
     box.appendChild(h("h3", { class: "rd-h", text: T("ride.where") }));
     box.appendChild(seg(T("ride.where"), [["here", T("ride.here")], ["map", T("ride.pick")]], f.where, function (v) {

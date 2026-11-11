@@ -36,6 +36,9 @@
     return e;
   }
   function toast(msg, o) { if (A && A.toast) A.toast(msg, o || {}); }
+  // followups: PNI icons in this module's own overlay + buttons (no 🚩 / 🚫 emoji as icons; toast text keeps its emoji)
+  function ic(n, cls) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, cls == null ? "pi-lead" : cls) : ""; } catch (e) { return ""; } }
+  function icT(n, t) { return ic(n) + esc(t); }
   function missing(err) { return !!(err && U && U.missing && U.missing(err)); }
   function code(err) { var m = String((err && (err.message || err.details || err.hint)) || ""); var x = /(slow_down|invalid_target|own_content|need_birthday|age_locked|invalid_year|not_found|invalid_kind)/.exec(m); return x ? x[1] : "error"; }
   function data(r) { return A && A.parseData ? A.parseData(r && r.data) : r && r.data; }
@@ -169,10 +172,10 @@
     "Inget spam, inga bluffar, inga falska konton."
   ];
   function rulesBody(c) {
-    c.appendChild(h("h2", { text: "📜 Regler i PintsNow" }));
+    c.appendChild(h("h2", { html: icT("rules", "Regler i PintsNow") }));
     c.appendChild(h("p", { text: "Kort och tydligt. Det här gäller chatt, bilder, röstklipp, namn, avatarer, event och tips:" }));
     c.appendChild(h("ul", { class: "sf-rules" }, RULES.map(function (r) { return h("li", { text: r }); })));
-    c.appendChild(h("p", { text: "Ser du nåt som bryter mot reglerna? Tryck länge på inlägget → 🚩 Anmäl, eller 🚫 Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
+    c.appendChild(h("p", { text: "Ser du nåt som bryter mot reglerna? Tryck länge på inlägget → Anmäl, eller Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
     c.appendChild(h("p", { class: "muted", html: "Frågor eller anmälan utanför appen: <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
   }
   // Unknown server state (old server, offline, first second after start) = no gate; the server answer decides.
@@ -226,14 +229,14 @@
   })();
 
   /* ---------- 🚩 report + 🚫 block ---------- */
-  var REASONS = [["hat", "😡 Hat eller kränkning"], ["hot", "⚠️ Hot eller trakasserier"], ["sex", "🔞 Sexuellt eller naket"],
-    ["minor", "🧒 Minderårig"], ["drog", "💊 Droger eller försäljning"], ["spam", "📢 Spam eller bluff"], ["annat", "❓ Annat"]];
+  var REASONS = [["hat", "Hat eller kränkning"], ["hot", "Hot eller trakasserier"], ["sex", "Sexuellt eller naket"],
+    ["minor", "Minderårig"], ["drog", "Droger eller försäljning"], ["spam", "Spam eller bluff"], ["annat", "Annat"]];
   // t = { kind, ref?, group?, k?, name?, what? }
   function reportSheet(t) {
     if (off.report) { mailFallback(t); return; }
     overlay(function (c) {
       var reason = "";
-      c.appendChild(h("h2", { text: "🚩 Anmäl " + (t.what || "inlägget") }));
+      c.appendChild(h("h2", { html: icT("flag", "Anmäl " + (t.what || "inlägget")) }));
       c.appendChild(h("p", { class: "muted", text: "Vad ä fel? Den du anmäler får int' veta att det var du." }));
       var chips = h("div", { class: "sf-chips", role: "radiogroup", "aria-label": "Orsak" });
       REASONS.forEach(function (r) {
@@ -251,9 +254,9 @@
       var also = null;
       if (t.kind !== "event") {
         also = h("input", { type: "checkbox", id: "sf-also" });
-        c.appendChild(h("label", { class: "sf-also", for: "sf-also" }, [also, h("span", { text: " 🚫 Blockera personen också" })]));
+        c.appendChild(h("label", { class: "sf-also", for: "sf-also" }, [also, h("span", { text: "Blockera personen också" })]));
       }
-      var send = h("button", { type: "button", class: "btn btn-danger btn-block", disabled: true, text: "🚩 Skicka anmälan" });
+      var send = h("button", { type: "button", class: "btn btn-danger btn-block", disabled: true, html: icT("flag", "Skicka anmälan") });
       send.addEventListener("click", function () {
         send.disabled = true;
         rpc("report_content", { p_kind: t.kind, p_ref: t.ref == null ? null : String(t.ref), p_group: t.group || null, p_k: t.k || null, p_reason: reason, p_note: note.value || null })
@@ -283,14 +286,14 @@
   function blockSheet(t) {
     var who = t.name ? t.name : "personen";
     overlay(function (c) {
-      c.appendChild(h("h2", { text: "🚫 Blockera " + who + "?" }));
+      c.appendChild(h("h2", { html: icT("block", "Blockera " + who + "?") }));
       c.appendChild(h("ul", { class: "sf-rules" }, [
         h("li", { text: "Ni ser int' varandras chattar, bilder, röstklipp eller pin på kartan." }),
         h("li", { text: "Ni kan int' skicka meddelanden till varandra. Vänskapen tas bort." }),
         h("li", { text: "Hen får ingen notis om det." }),
-        h("li", { text: "Ångra under ⚙️ → 🛡️ Blockerade." })
+        h("li", { text: "Ångra under Inställningar → Blockerade." })
       ]));
-      c.appendChild(h("button", { type: "button", class: "btn btn-danger btn-block", text: "🚫 Blockera", onclick: function () { closeOverlay(); doBlock(t); } }));
+      c.appendChild(h("button", { type: "button", class: "btn btn-danger btn-block", html: icT("block", "Blockera"), onclick: function () { closeOverlay(); doBlock(t); } }));
       c.appendChild(h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Avbryt", onclick: closeOverlay }));
     }, { label: "Blockera" });
   }
@@ -314,8 +317,8 @@
   function actions(t) {
     overlay(function (c) {
       c.appendChild(h("h2", { text: t.title || "Vad vill du göra?" }));
-      c.appendChild(h("button", { type: "button", class: "btn btn-block", text: "🚩 Anmäl " + (t.what || ""), onclick: function () { closeOverlay(); reportSheet(t); } }));
-      if (t.kind !== "event") c.appendChild(h("button", { type: "button", class: "btn btn-block", text: "🚫 Blockera " + (t.name || "personen"), onclick: function () { closeOverlay(); blockSheet(t); } }));
+      c.appendChild(h("button", { type: "button", class: "btn btn-block", html: icT("flag", "Anmäl " + (t.what || "")), onclick: function () { closeOverlay(); reportSheet(t); } }));
+      if (t.kind !== "event") c.appendChild(h("button", { type: "button", class: "btn btn-block", html: icT("block", "Blockera " + (t.name || "personen")), onclick: function () { closeOverlay(); blockSheet(t); } }));
       c.appendChild(h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Avbryt", onclick: closeOverlay }));
     }, { label: "Åtgärder" });
   }
@@ -334,8 +337,8 @@
     if (!t) return;
     t.name = authorOf(li);
     var close = function () { if (pk.parentNode) pk.parentNode.removeChild(pk); };
-    var rep = h("button", { type: "button", class: "cm-pick sf-pick", role: "menuitem", title: "Anmäl", "aria-label": "Anmäl", text: "🚩" });
-    var blk = h("button", { type: "button", class: "cm-pick sf-pick", role: "menuitem", title: "Blockera", "aria-label": "Blockera " + (t.name || "personen"), text: "🚫" });
+    var rep = h("button", { type: "button", class: "cm-pick sf-pick", role: "menuitem", title: "Anmäl", "aria-label": "Anmäl", html: ic("flag", "") || "!" });
+    var blk = h("button", { type: "button", class: "cm-pick sf-pick", role: "menuitem", title: "Blockera", "aria-label": "Blockera " + (t.name || "personen"), html: ic("block", "") || "×" });
     rep.addEventListener("click", function (e) { e.stopPropagation(); close(); reportSheet(t); });
     blk.addEventListener("click", function (e) { e.stopPropagation(); close(); blockSheet(t); });
     pk.appendChild(rep); pk.appendChild(blk);
@@ -359,18 +362,18 @@
   function decorate(root) {
     (root.querySelectorAll ? root : document).querySelectorAll(".inv-view[data-id]:not([data-sf])").forEach(function (v) {
       v.setAttribute("data-sf", "1");
-      v.appendChild(h("button", { type: "button", class: "sf-mini", text: "🚩 Anmäl inbjudan", onclick: function () { reportSheet({ kind: "invite", ref: v.getAttribute("data-id"), what: "inbjudan" }); } }));
+      v.appendChild(h("button", { type: "button", class: "sf-mini", html: icT("flag", "Anmäl inbjudan"), onclick: function () { reportSheet({ kind: "invite", ref: v.getAttribute("data-id"), what: "inbjudan" }); } }));
     });
     (root.querySelectorAll ? root : document).querySelectorAll(".evs-detail[data-evid]").forEach(function (v) {
       if (v.querySelector(".sf-mini")) return;
-      v.appendChild(h("button", { type: "button", class: "sf-mini", text: "🚩 Anmäl eventet", onclick: function () { reportSheet({ kind: "event", ref: v.getAttribute("data-evid"), what: "eventet" }); } }));
+      v.appendChild(h("button", { type: "button", class: "sf-mini", html: icT("flag", "Anmäl eventet"), onclick: function () { reportSheet({ kind: "event", ref: v.getAttribute("data-evid"), what: "eventet" }); } }));
     });
     if (!store()) (root.querySelectorAll ? root : document).querySelectorAll(".bp-of:not([data-sf])").forEach(function (o) {
       o.setAttribute("data-sf", "1");
       var b = o.querySelector("[data-of]"); if (!b || b.disabled) return;   // own offer: vote buttons are disabled
       var id = b.getAttribute("data-of");
       var v = o.querySelector(".bp-of-v") || o;
-      v.appendChild(h("button", { type: "button", class: "bp-v sf-of", "aria-label": "Anmäl tipset", title: "Anmäl", text: "🚩",
+      v.appendChild(h("button", { type: "button", class: "bp-v sf-of", "aria-label": "Anmäl tipset", title: "Anmäl", html: ic("flag", "") || "!",
         onclick: function (e) { e.stopPropagation(); reportSheet({ kind: "offer", ref: id, what: "tipset" }); } }));
     });
   }
@@ -406,8 +409,8 @@
         return t;
       });
     }
-    row.appendChild(h("button", { type: "button", class: "btn btn-small", text: "🚩 Anmäl", onclick: function () { need().then(reportSheet); } }));
-    row.appendChild(h("button", { type: "button", class: "btn btn-small", text: "🚫 Blockera", onclick: function () { need().then(blockSheet); } }));
+    row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("flag", "Anmäl"), onclick: function () { need().then(reportSheet); } }));
+    row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("block", "Blockera"), onclick: function () { need().then(blockSheet); } }));
     body.appendChild(row);
   }
 
@@ -470,7 +473,7 @@
   /* ---------- ⚙️ settings: one line + Regler, Blockerade, kontakt ---------- */
   function blockedSheet() {
     overlay(function (c) {
-      c.appendChild(h("h2", { text: "🛡️ Blockerade" }));
+      c.appendChild(h("h2", { html: icT("shield", "Blockerade") }));
       var ul = h("ul", { class: "sf-blist" }, [h("li", { class: "muted", text: "…" })]);
       c.appendChild(ul);
       c.appendChild(h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Stäng", onclick: closeOverlay }));
@@ -479,7 +482,7 @@
         var d = r.error ? null : data(r), list = d && Array.isArray(d.blocks) ? d.blocks : [];
         if (!list.length) { ul.appendChild(h("li", { class: "muted", text: r.error && missing(r.error) ? "Finns int' på servern än." : "Du har int' blockerat nån." })); return; }
         list.forEach(function (b) {
-          var li = h("li", {}, [h("span", { text: "🚫 " + (b.name || "?") })]);
+          var li = h("li", {}, [h("span", { html: icT("block", b.name || "?") })]);
           li.appendChild(h("button", { type: "button", class: "btn btn-small", text: "Häv", onclick: function (e) {
             var btn = e.currentTarget; btn.disabled = true;
             rpc("unblock_user", { p_id: b.id }).then(function (x) {
@@ -500,7 +503,7 @@
     box.appendChild(h("p", { class: "sf-line", text: "Vi räknar kvällar och kompisar, inte glas." }));
     var row = h("div", { class: "row sf-set-row" });
     row.appendChild(h("button", { type: "button", class: "btn btn-small", text: "📜 Regler", onclick: showRules }));
-    if (A && A.LIVE && A.authed && A.authed()) row.appendChild(h("button", { type: "button", class: "btn btn-small", text: "🚫 Blockerade", onclick: blockedSheet }));
+    if (A && A.LIVE && A.authed && A.authed()) row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("block", "Blockerade"), onclick: blockedSheet }));
     row.appendChild(h("a", { class: "btn btn-small", href: "mailto:" + SUPPORT, text: "✉️ Kontakt" }));
     box.appendChild(row);
     body.appendChild(box);
