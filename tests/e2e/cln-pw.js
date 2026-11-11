@@ -49,12 +49,12 @@ const ok = (c, n, x) => { if (c) { pass++; console.log("PASS", n); } else { fail
     if (live) await page.route(/rpc\/rpc_bundle2/, (r) => { bundles++; const b = JSON.parse(r.request().postData() || "{}"); bnames = bnames.concat((b.p_calls || []).map((c) => c.n)); const o = {}; (b.p_calls || []).forEach((c) => { o[c.k] = c.n === "gang_poll" ? { e: { message: "slow_down", code: "P0001" } } : { d: /^(my_rallies|bar_status|medevac_checks|group_etas|beer_reactions|home_status|friend_totals|ghost_points2)$/.test(c.n) ? [] : { v: 1, n: c.n } }; }); r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(o) }); });
     else await page.route(/rpc\/rpc_bundle2/, (r) => r.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "PGRST202", message: "Could not find the function public.rpc_bundle2" }) }));   // old server
     await boot(page, { clean: true }); await wait(page, 4000);
-    const res = await page.evaluate(async () => { const A = window.__api; const a = await Promise.all([A.rpc("game_poll"), A.rpc("gang_poll"), A.rpc("my_dms", {}), A.rpc("my_friends", { p_name: "Anton" })]); return { a: a.map((r) => ({ d: r.data, e: r.error && r.error.message })), st: A.bundleStats && A.bundleStats() }; });
+    const res = await page.evaluate(async () => { const A = window.__api; const a = await Promise.all([A.rpc("game_poll"), A.rpc("gang_poll"), A.rpc("my_dms", {}), A.rpc("my_places", {})]); return { a: a.map((r) => ({ d: r.data, e: r.error && r.error.message })), st: A.bundleStats && A.bundleStats() }; });
     const alone = BN.filter((n) => cnt[n]).map((n) => n + ":" + cnt[n]);
     if (live) {
       ok(bundles >= 1 && res.a[0].d && res.a[0].d.n === "game_poll" && res.a[1].e === "slow_down" && res.a[2].d.n === "my_dms", "bundle: one request, each caller its own answer / error", { bundles, a: res.a.slice(0, 3), st: res.st });
       ok(bnames.length >= 2, "bundle: start-up polls went in the bundle", { bnames });
-      ok(cnt.my_friends >= 1, "bundle: other RPCs still go alone", cnt.my_friends);   // perf: my_groups is a bundle name since 0465
+      ok(cnt.my_places >= 1, "bundle: other RPCs still go alone", cnt.my_places);   // perf: my_groups is a bundle name since 0465
     } else {
       ok(res.a[0].d !== undefined && !res.a[0].e && (cnt.game_poll || 0) >= 1, "bundle: no rpc_bundle on the server = every call alone", { alone, st: res.st });
     }

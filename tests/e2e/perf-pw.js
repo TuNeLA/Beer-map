@@ -214,7 +214,7 @@ const R = {};   // numbers for DONE.md
     }
 
     /* ---------- 3. busy back-off (504 PGRST003) ---------- */
-    if (!MEASURE) {
+    if (!MEASURE) try {
       const S = { mode: "new", bundles: [] };
       const { ctx, page, log } = await open(browser, S);
       await wait(page, 5000);
@@ -257,10 +257,10 @@ const R = {};   // numbers for DONE.md
       ok("busy: no page errors", !(S.errors || []).length, S.errors);
       void tb;
       await ctx.close();
-    }
+    } catch (e) { console.log("FAIL busy section:", e && e.message); fail++; }
 
     /* ---------- 4. old server (before 0465): separate calls, no errors ---------- */
-    if (!MEASURE) {
+    if (!MEASURE) try {
       const S = { mode: "old", bundles: [] };
       const { ctx, page, log, t0 } = await open(browser, S, { init: [() => { try { if (!sessionStorage.getItem("pf.o")) { sessionStorage.setItem("pf.o", "1"); localStorage.setItem("olnu.bsrv", JSON.stringify({ v: "new", at: Date.now() })); } } catch (e) {} }, null] });
       await wait(page, 40000);
@@ -278,7 +278,7 @@ const R = {};   // numbers for DONE.md
       const pins = await page.evaluate(() => document.querySelectorAll(".pill").length);
       ok("old server: pins on the map", pins > 3, pins);
       await ctx.close();
-    }
+    } catch (e) { console.log("FAIL old-server section:", e && e.message); fail++; }
   } catch (e) { console.log("FAIL exception", e && e.stack || e); fail++; }
   await browser.close();
   if (MEASURE) { fs.writeFileSync(OUT + "perf-" + TAG + ".json", JSON.stringify(R, null, 1)); console.log("wrote", OUT + "perf-" + TAG + ".json"); }

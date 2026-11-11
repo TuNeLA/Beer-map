@@ -66,7 +66,8 @@
     "my_board_optin", "bars_gone", "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near",
     "events_near2", "bar_sport_near", "my_past_events", "user_places", "group_now", "group_msgs", "drivers_for", "friend_list",
     "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick"];
-  var JSONB_ARG = { my_event_chats: { p_seen: 1 } };   // arguments of type jsonb: an object may go in the bundle too
+  var JSONB_ARG = { my_event_chats: { p_seen: 1 } };
+  var bgCall = false;   // true while WARM's background prefetch calls rpcNet (see WARM.setRaw)   // arguments of type jsonb: an object may go in the bundle too
   var NEWB = {}; BUNDLE_NEW.forEach(function (n) { NEWB[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_NEW);
   var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
   try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
@@ -85,6 +86,9 @@
     if (Date.now() - lastTapAt < 2500) return false;   // a screen the user just opened: no wait, its own request
     try { var ev = window.event; if (ev && /^(pointerdown|pointerup|mousedown|click|keydown|touchstart|touchend)$/.test(ev.type)) return false; } catch (e) {}   // perf: a call inside a tap handler (WARM's pointerdown prefetch runs before our tap clock)
     if (name === "poll_v2" && !firstLoadDone) return false;   // perf: the first map poll goes alone (pins as fast as today)
+    // perf: the 0465 names (screen reads) go in a bundle only in the start-up window, from WARM's background refresh, or
+    // as a poll-plan answer. Otherwise alone, as before (a screen that opens never waits for a bundle timer).
+    if (NEWB[name] && name !== "poll_v2" && !bgCall && Date.now() - authedAt > 10000 && !(pre[name + "|" + JSON.stringify(params || {})])) return false;
     if (params == null) return true;
     if (typeof params !== "object" || Array.isArray(params)) return false;
     return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v) || (JSONB_ARG[name] && JSONB_ARG[name][k] && typeof v === "object"); });
@@ -146,7 +150,7 @@
   var plan = {}, pre = {}, pollWin = 0, PRE_DENY = { poll_v2: 1, knuff_inbox: 1, my_removals: 1, film_poll: 1, mark_seen: 1, walk_timer_tick: 1 };
   // Background calls that claim / mark something (never asked ahead): they wait for the next map poll and go in its
   // bundle (≤ 30 s later; their own rhythm is 60 s – 5 min). A 35 s timer sends them if no poll comes.
-  var DEFER = { knuff_inbox: 1, film_poll: 1, mark_seen: 1 }, bqNext = [], bqNextT = 0, burstDone = false;
+  var DEFER = { knuff_inbox: 1, film_poll: 1, mark_seen: 1 }, bqNext = [], bqNextT = 0, burstDone = false, bqDue = 0;
   function nextFlush() {
     clearTimeout(bqNextT); bqNextT = 0;
     if (!bqNext.length) return;
@@ -168,6 +172,9 @@
     if (t - e.at < 10000) return;
     e.gap = t - e.at; e.at = t; e.miss = 0;
   }
+  // read-like names (same rule as warm.js READLIKE): anything else may write
+  var READ_RE = /^(my_|live_|heat|ghost|poll|events_|guess_|golden|bars?_|group_(msgs|now)$|friend_|avatars_|rnd_|public_|account_|report_vitals|pnlog_)|(_poll|_state|_status|_near\d*|_get|_preview|_list|_for|_mine|_checks|_etas|_group|_places|_passport|_kind|_in|_feed|_top|_league|_stats|_inbox|_dates|_board|_report2?)$/;
+  function preDrop() { Object.keys(pre).forEach(function (k) { pre[k].used = true; }); }
   function planDue(e, t) {
     if (!e.gap || e.gap > 130000 || noB[e.n] || PRE_DENY[e.n] || (e.p && e.p.p_seen === true)) return false;
     var age = t - e.at;
@@ -212,13 +219,14 @@
     if (!client) return Promise.resolve({ data: null, error: { message: "no_client" } });
     var gid = params && params.p_group_id;
     if (gid && notMember[gid] && (notMember[gid] > 1 || !CHAT_RPC[name])) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });
+    if (!noBundle && name !== "rpc_bundle2" && BUNDLE.indexOf(name) < 0 && !READ_RE.test(name)) preDrop();   // perf: a write → plan answers are old
     if (!noBundle && busyHold(name)) { bundleStats.busy++; return Promise.resolve({ data: null, error: { message: "busy", code: "busy", quiet: true } }); }
     var bp = null;
     if (!noBundle && bundleable(name, params)) {
       var bk = name + "|" + JSON.stringify(params || {});
       planRecord(bk, name, params);
       var h = pre[bk];
-      if (h && !h.used && Date.now() - h.at < 20000) { h.used = true; bundleStats.preUsed++; bp = h.p; }
+      if (h && !h.used && Date.now() - h.at < 8000) { h.used = true; bundleStats.preUsed++; bp = h.p; }   // the poll's fan-out only
       else if (DEFER[name] && firstLoadDone && pollOn && !bundleOff) bp = new Promise(function (res) {
         bqNext.push({ n: name, p: params, k: bk, res: res });
         if (!bqNextT) bqNextT = setTimeout(function () { nextFlush(); if (bq.length) bundleGo(); }, 35000);
@@ -228,7 +236,11 @@
         if (bq.length >= bCap()) bundleGo();
         // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
         // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
-        else if (!bqT) { bqT = setTimeout(bundleGo, !burstDone && authedAt ? 250 : Date.now() < pollWin ? 3000 : 1500); if (authedAt) burstDone = true; }
+        else {
+          var d = !burstDone && authedAt ? 250 : NEWB[name] ? 800 : Date.now() < pollWin ? 3000 : 1500;
+          if (!bqT || Date.now() + d < bqDue) { clearTimeout(bqT); bqDue = Date.now() + d; bqT = setTimeout(bundleGo, d); }
+          if (authedAt) burstDone = true;
+        }
       });
       if (!gid) return bp;
     }
@@ -4139,7 +4151,7 @@
 
   function start() {
     U.ls.del("olnu.shot");   // shots were removed; drop the old timer
-    try { if (window.WARM) window.WARM.setRaw(rpcNet); } catch (e) {}
+    try { if (window.WARM) window.WARM.setRaw(function (n, p) { bgCall = true; try { return rpcNet(n, p); } finally { bgCall = false; } }); } catch (e) {}   // perf: background
     // inst: a background revalidation brought new data for an open screen → the module patches it in place.
     window.addEventListener("olnu:warm", function (e) { var d = e.detail || {}; mods("onWarm", d.fn, d.params, d.data); });
     mods("init", appApi());
