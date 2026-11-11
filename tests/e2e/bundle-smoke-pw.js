@@ -1,5 +1,6 @@
 // left T-25: smoke test of the BUNDLED site (scripts/bundle.mjs output, the GitHub Pages "bundled" build) against the plain docs/.
 // usage: node bundle-smoke-pw.js <bundled port> <plain port>     (scripts/bundle-check.sh builds + serves both and runs this)
+//        BUNDLE_PATH=test/ node bundle-smoke-pw.js …               (a site in a sub-folder, e.g. the beta /test/ build)
 // Mocked Supabase (ds-helpers). Checks: few requests; same window modules as the plain site after start and after the lazy
 // files; same computed styles on the main screen; no page errors / bundle part errors; a part error still reaches window
 // "error"; the service worker precaches the bundle and the app starts offline from it; a bundle that fails to load →
@@ -11,7 +12,7 @@ const BP = process.argv[2], PP = process.argv[3];
 if (!BP || !PP) { console.log("FAIL usage: node bundle-smoke-pw.js <bundled port> <plain port>"); process.exit(1); }
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : (i === undefined ? "" : JSON.stringify(i).slice(0, 700))); c ? pass++ : fail++; };
-const URL_ = (p) => "http://127.0.0.1:" + p + "/";
+const URL_ = (p) => "http://127.0.0.1:" + p + "/" + (process.env.BUNDLE_PATH || "");   // BUNDLE_PATH=test/ : the beta staging build
 
 // window globals the app's modules publish (UPPER_CASE names), after start and after the lazy files (OLNU_LAZY)
 const MODS = () => Object.keys(window).filter((k) => /^[A-Z][A-Z0-9_]{1,}$/.test(k) && window[k] != null).sort();

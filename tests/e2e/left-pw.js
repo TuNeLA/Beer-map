@@ -120,7 +120,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     ok("core: after 16 s with Regler open no post has timed out or ended (" + POSTS.length + " post RPCs)", early.length === 0, early);
     await accept(page); await wait(page, 2500);
     const res = await page.evaluate(() => window.__res);
-    const bad = POSTS.filter((fn) => !res[fn] || res[fn].error || n.length < 0);
+    const bad = POSTS.filter((fn) => !res[fn] || res[fn].error);
     ok("core: after \"Jag godkänner\" each post is sent ONCE and answers without error", bad.length === 0 && POSTS.every((fn) => n(st, fn).length === 1),
       { bad, counts: POSTS.map((fn) => fn + ":" + n(st, fn).length) });
     ok("core: Regler asked once (accept_terms once)", n(st, "accept_terms").length === 1, n(st, "accept_terms").length);

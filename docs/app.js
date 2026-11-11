@@ -3508,7 +3508,7 @@
   }
   function buildVer() {   // ds22: the build, when no service-worker cache name tells it (beta: the commit)
     try { if (window.KANAL && window.KANAL.sha && window.KANAL.sha()) return "beta " + window.KANAL.sha(); } catch (e) {}
-    var s = [].map.call(document.scripts, function (x) { return x.getAttribute("src") || ""; }).filter(function (x) { return /(^|\/)app\.js\?v=/.test(x); })[0];
+    var s = [].map.call(document.scripts, function (x) { return x.getAttribute("src") || ""; }).filter(function (x) { return /(^|\/)app(\.bundle-?\d*)?\.js\?v=/.test(x); }).pop();   /* left-T25: the last bundle */
     var m = /[?&]v=([^&]+)/.exec(s || ""); return m ? m[1] : "–";
   }
   function forceUpdate() {
