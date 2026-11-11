@@ -16,7 +16,7 @@
   var A = null, off = false, root = null, st = null, cache = {}, pending = null, deep = null;
   var TZ = "Europe/Stockholm", SEEN = "olnu.a2Seen", DAY = "olnu.a2Day";   // DAY = "<ymd>|seen" or "<ymd>|none": one RPC per morning
   var COL = ["--ds-amber", "--ds-green", "--ds-blue", "--ds-red-t", "--ds-amber-t", "--ds-green-t", "--ds-blue-t"];
-  function T(k, v) { return window.AFTER_R2 ? window.AFTER_R2.t(k, v) : k; }
+  function T(k, v) { var s = window.AFTER_R2 ? window.AFTER_R2.t(k, v) : k; return U && U.n1 ? U.n1(s) : s; }   // fixJ T-22: "1 skål utdelade" → "1 skål utdelad"
   function esc(s) { return U && U.esc ? U.esc(s) : String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return "&#" + c.charCodeAt(0) + ";"; }); }
   function pni(n, cls) { try { return window.PNI ? window.PNI.svg(n, cls || "") : ""; } catch (e) { return ""; } }
   function ts(x) { var t = Date.parse(x || ""); return isFinite(t) ? t : null; }
@@ -654,7 +654,15 @@
     });
   }
   // after.js onReadyShow: the morning (05–18 Stockholm). true = the report is there (after.js then skips the auto Bakis sheet).
+  // fixJ T-06: one answer per morning for every caller (after.js + extras.js ask at the same start): the same promise
+  var mornP = null, mornDay = "";
   function morning() {
+    if (mornP && mornDay === today()) return mornP;
+    var p = morning0(); mornDay = today(); mornP = p;
+    p.then(function (ok) { if (!ok && !off) { mornP = null; } }, function () { mornP = null; });   // not decided → the next call asks again
+    return p;
+  }
+  function morning0() {
     if (off || !A || !A.LIVE || !A.authed || !A.authed()) return Promise.resolve(false);
     var h = +(hm(Date.now()).slice(0, 2));
     if (!(h >= 5 && h < 18)) return Promise.resolve(false);

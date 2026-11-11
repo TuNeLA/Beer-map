@@ -63,13 +63,13 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
         await page.reload(); await wait(page, 3000);
         ok(!(await inst(page)).card, "S5: same night, reload → no guide again");
         // 2nd night: they continued, the intro is done, the night key is older
-        await page.evaluate(() => { const s = JSON.parse(localStorage.getItem("olnu.inst1")); s.k = "2000-01-01"; localStorage.setItem("olnu.inst1", JSON.stringify(s)); localStorage.setItem("olnu.intro", "1"); localStorage.setItem("olnu.age18", "1"); });
+        await page.evaluate(() => { const s = JSON.parse(localStorage.getItem("olnu.inst1")); s.k = "2000-01-01"; s.at = Date.now() - 20 * 3600e3; localStorage.setItem("olnu.inst1", JSON.stringify(s)); localStorage.setItem("olnu.intro", "1"); localStorage.setItem("olnu.age18", "1"); });
         await page.reload(); await wait(page, 3000);
         const n2 = await inst(page);
         ok(n2.card && /Andra kvällen/.test(n2.txt), "S5: 2nd night → the guide once more", n2.txt.slice(0, 120));
         await shot(page, "s5-ios-night2-390");
         await tapSkip(page); await wait(page, 600);
-        await page.evaluate(() => { const s = JSON.parse(localStorage.getItem("olnu.inst1")); s.k = "2000-01-02"; localStorage.setItem("olnu.inst1", JSON.stringify(s)); });
+        await page.evaluate(() => { const s = JSON.parse(localStorage.getItem("olnu.inst1")); s.k = "2000-01-02"; s.at = Date.now() - 20 * 3600e3; localStorage.setItem("olnu.inst1", JSON.stringify(s)); });
         await page.reload(); await wait(page, 3000);
         const n3 = await inst(page);
         ok(!n3.card && n3.st && n3.st.n === 2, "S5: 3rd night → no guide (shown twice)", n3.st);

@@ -1118,6 +1118,28 @@
     });
   }
 
+  // fixJ T-07: checked in at A, a beer picked at B → check in at B. The server keeps one row per user (on conflict update).
+  // Its 2-min cool-down (ok:false + wait_seconds) → one retry after the wait. Same bar (canonical id) = nothing.
+  function moveCheckin(bar, again) {
+    var ci = myCheckin();
+    if (!ci || !bar || bar.id == null || !LIVE || !authed || checkinState === "missing") return;
+    var canon = function (x) { try { return window.BARS && window.BARS.canonId ? window.BARS.canonId(String(x)) : String(x); } catch (e) { return String(x); } };
+    if (canon(ci.id) === canon(bar.id) || !isFinite(bar.lat) || !isFinite(bar.lng)) return;
+    if (window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn()) return;
+    var name = String(bar.name || t("unnamedBar")).replace(/\s+/g, " ").trim().slice(0, 60);
+    rpc("check_in", { p_bar_id: String(bar.id), p_bar_name: name, p_lat: bar.lat, p_lng: bar.lng }).then(function (r) {
+      if (r.error) { if (U.missing(r.error)) checkinState = "missing"; return; }
+      var d = parseData(r.data) || {};
+      if (d.ok === false) {
+        var w = d.wait_seconds | 0;
+        if (!again && w > 0 && w <= 125) setTimeout(function () { moveCheckin(bar, true); }, (w + 1) * 1000);
+        return;
+      }
+      U.ls.setJSON(CI_KEY, { id: String(bar.id), name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: nightEnd() });
+      updateCounts(); refresh();
+    });
+  }
+
   var markerById = {};   // beer id -> marker (or hot bar marker)
   var hotBarIds = {};    // bar id -> true
   // Keep an open popup open when the 30 s poll or a map move redraws the markers.
@@ -2460,7 +2482,7 @@
     var stayed = fresh && U.haversine(lat, lng, last.atLat, last.atLng) <= WHERE_STAY;
     var first = !night || !(night.count | 0);
     if (stayed && !first && Math.random() >= 0.25) {
-      return Promise.resolve(last.bar ? { lat: last.bar.lat, lng: last.bar.lng, precise: true } : real);
+      return Promise.resolve(last.bar ? { lat: last.bar.lat, lng: last.bar.lng, precise: true, _ciBar: last.bar } : real);   // fixJ T-07
     }
     return new Promise(function (resolve) {
       var done = false;
@@ -2469,7 +2491,7 @@
         U.ls.setJSON(WHERE_KEY, { atLat: lat, atLng: lng, until: nightEnd(),
           bar: bar ? { id: bar.id, name: bar.name, lat: bar.lat, lng: bar.lng } : null });
         closeSheet("pick");
-        resolve(bar ? { lat: bar.lat, lng: bar.lng, precise: true } : real);
+        resolve(bar ? { lat: bar.lat, lng: bar.lng, precise: true, _ciBar: bar } : real);   // fixJ T-07: _ciBar = moves a check-in
       }
       openSheet(t("whereTitle"), function (body) {
         body.appendChild(el("p", { class: "muted", text: t("whereInfo") }));
@@ -2737,6 +2759,7 @@
     else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
     else notifyGroup();
     mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
+    if (!ghost && spot._ciBar) moveCheckin(spot._ciBar);   // fixJ T-07
     if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
     if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
       /* ux review: no notification ask on a beer tap. Calm moments only: after a group join, app start with a group. */
@@ -4127,7 +4150,8 @@
         body.appendChild(el("div", { class: "intro-brand", text: "PintsNow" }));
         body.appendChild(el("p", { class: "intro-tag", text: t("introTag") }));
         body.appendChild(steps);
-        body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
+        if (ageOk()) { cb.checked = true; go.disabled = false; }   // fixJ T-03: 18+ already answered (join card) → no 2nd year question
+        else body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
         body.appendChild(go);
         body.appendChild(el("p", { class: "intro-priv", text: t("introPrivacy") }));
         if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: stepPriv }));

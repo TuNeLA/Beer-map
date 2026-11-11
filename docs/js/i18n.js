@@ -515,7 +515,7 @@
       get tickQuiet() { return DIALEKT.v("live.quiet", 0, null, "Lugnt läge. Inga hot streaks än."); },
       newHot: function (who, where) { return DIALEKT.v("live.hot", 0, {who: who, where: where}, "🔥 {who} {where} är på HOT STREAK!", 7); },
       newMed: function (who, where) { return DIALEKT.v("live.medevac", 0, {where: where, who: who}, "🚁 MEDEVAC {where}! {who} har druckit 10."); },
-      yourName: "Ditt namn (anropssignal)", nameHint: "Skriv ditt namn eller smeknamn, t.ex. Anton. Det är inte en grupp. Dina vänner ser namnet på din öl.",
+      yourName: "Ditt namn", nameHint: "Skriv ditt namn eller smeknamn, t.ex. Anton. Det är inte en grupp. Dina vänner ser namnet på din öl.",
       save: "Spara", next: "Fortsätt", cancel: "Avbryt",
       namePh: "Ditt namn, t.ex. Anton", rename: "Byt namn", version: "Version", updateNow: "Uppdatera nu", updating: "Hämtar senaste versionen…", nameLabel: "Ditt namn:",
       nameNeeded: "Skriv ditt namn först (1–30 tecken).",
@@ -597,7 +597,7 @@
       locWhy2: "Din plats skickas när du trycker ÖL! eller checkar in (och ett område på ~1 km om du har notiser på). Okända ser bara krogen eller ett område på ~500 m.",
       locAllow: "Tillåt plats", locLater: "Inte nu",
       showIntro: "Visa introduktionen igen",
-      friendsNow: function (n) { return n + " vänner dricker nu"; },
+      friendsNow: function (n) { return n === 1 ? "1 vän dricker nu" : n + " vänner dricker nu"; },   // fixJ T-22
       heat: "🔥 Värme", heatOn: "Värmekarta på", heatOff: "Värmekarta av",
       top: "Topplista ikväll", topBars: "Barer", topCities: "Städer", topStreaks: "Streaks",
       topNoBars: "Inga öl vid barer än.", topNoCities: "Inga öl än ikväll.", topNoStreaks: "Ingen streak än.",

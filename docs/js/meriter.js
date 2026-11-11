@@ -372,7 +372,7 @@
   function pct(c) { return c.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (c.m - c.at) / Math.max(1, c.nextAt - c.at)))) : 100; }
   function barHTML(c, cls) { return '<span class="mer-bar ' + (cls || "") + '" aria-hidden="true"><span style="width:' + pct(c) + '%"></span></span>'; }
   function nextText(c) {
-    return c.next && c.nextAt ? L((c.nextAt - c.m) + " meriter kvar till " + c.next, (c.nextAt - c.m) + " merits left to " + c.next)
+    return c.next && c.nextAt ? L(U.n1((c.nextAt - c.m) + " meriter kvar till " + c.next), (c.nextAt - c.m) + " merits left to " + c.next)   // fixJ T-22
       : L(DIALEKT.v("meriter.hogsta_grad_olguden", 0, {}, "Högsta grad. Ölguden själv."), "Highest rank.");
   }
 

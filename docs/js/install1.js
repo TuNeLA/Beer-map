@@ -178,7 +178,8 @@
     if (/[?&](flytt|chat|sos)=/.test(location.search)) return false;
     var s = state();
     if (!s) return lsGet("olnu.intro") !== "1";   // the first open (a returning user keeps the after-the-aha prompt)
-    return (s.n | 0) === 1 && s.how === "skip" && !!s.k && s.k !== nightKey();   // once more, on a later night
+    // once more, on a later night (fixJ T-22: and ≥ 12 h after the skip, so 04:30 → 05:06 is not "Andra kvällen!")
+    return (s.n | 0) === 1 && s.how === "skip" && !!s.k && s.k !== nightKey() && !(s.at && Date.now() - s.at < 12 * 3600e3);
   }
   function gate() {
     if (!want()) return Promise.resolve();

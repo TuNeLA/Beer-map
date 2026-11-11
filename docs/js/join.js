@@ -171,6 +171,8 @@
   var root = null, act = null, subEl = null, memEl = null, statEl = null, nameInp = null;
   var state = "", bip = null, waitT = null, gname = "", members = 0;
   var joined = false, joining = false, handledFlag = false, iosPrepped = false;
+  // fixJ T-04: answer buttons built once (ansNodes) + a tap that came before the session (joinQ / evQ, given up after 15 s)
+  var ansNodes = null, joinQ = 0, evQ = null, qT = 0;
   // social2: answer first. evd = ev_preview data, evAns = my answer on this card ("yes" | "maybe" | "").
   var evd = null, evAns = "", faces = [], outNow = 0, prevEl = null, whoLine = "";   // gw: whoLine = first names (link_preview)
   var gateRes = null, gate = Promise.resolve();
@@ -216,7 +218,8 @@
         function () { joining = false; status(L("Kunde int' gå med. Försök igen.", "Could not join. Try again."), "err"); });
       return;
     }
-    if (!A || !A.LIVE || !A.authed || !A.authed()) { lsSet("olnu.jn.pending", ARR.code); return; }
+    if (!A || !A.LIVE || !A.authed || !A.authed()) { lsSet("olnu.jn.pending", ARR.code); queueTap("join"); return; }
+    joinQ = 0;
     joining = true;
     status(L("⏳ Skriver in dig i " + (gname || "gruppen") + "…", "⏳ Adding you to " + (gname || "the group") + "…"));
     A.rpc("join_group", { p_code: ARR.code, p_display_name: n }).then(function (r) {
@@ -238,6 +241,7 @@
       }
       var g = A.parseData(r.data) || {};
       if (g.name) { gname = g.name; if (subEl) subEl.textContent = subText(); }
+      if (memEl && members) { members += 1; memEl.textContent = L("👥 " + members + " i gänget", "👥 " + members + " in the gang"); }   // fixJ: I count now
       joined = true; lsSet("olnu.jn.done", ARR.code); lsSet("olnu.jn.pending", null);
       status("");
       try { A.refresh(); } catch (e) {}
@@ -322,7 +326,8 @@
         function () { if (b) b.disabled = false; status(L("Kunde int' svara. Försök igen.", "Could not answer. Try again."), "err"); });
       return;
     }
-    if (!A || !A.LIVE || !A.authed || !A.authed()) { status(L("⏳ Laddar… försök igen om en sekund.", "⏳ Loading… try again in a second.")); return; }
+    if (!A || !A.LIVE || !A.authed || !A.authed()) { queueTap(a); return; }
+    evQ = null;
     if (b) b.disabled = true;
     status(L("⏳ Svarar…", "⏳ Answering…"));
     A.rpc("ev_join", { p_token: ARR.code, p_answer: a, p_name: n }).then(function (r) {
@@ -359,26 +364,45 @@
     act.insertBefore(box, btn);
   }
   // Step 1: answer (name only). Step 2 (renderAct below): the gentle install guide.
+  function isReady() { return !!(A && A.LIVE && ((A.authed && A.authed()) || noAcct())); }   // gw: no account yet = ready (the tap makes it)
+  // fixJ T-04: a tap before the session is ready waits here (one at a time) and runs from flushQ(); 15 s = give up with a message
+  function queueTap(what) {
+    if (what === "join") joinQ = 1; else evQ = what;
+    status(L("⏳ Ett ögonblick…", "⏳ One moment…"));
+    clearTimeout(qT);
+    qT = setTimeout(function () { if (joinQ || evQ) { joinQ = 0; evQ = null; status(L("Kunde int' nå servern. Försök igen.", "Could not reach the server. Try again."), "err"); } }, 15000);
+  }
+  function flushQ() {
+    if (!(joinQ || evQ) || !isReady() || !root) return;
+    clearTimeout(qT);
+    if (joinQ) { joinQ = 0; tryJoin(); }
+    else { var a = evQ; evQ = null; evJoin(a, act && act.querySelector(a === "yes" ? ".jn-evyes" : ".jn-evmaybe")); }
+  }
   function renderAnswer() {
-    var ready = A && A.LIVE && ((A.authed && A.authed()) || noAcct());   // gw: no account yet = ready (the tap makes it)
-    if (ARR.kind === "join") {
-      var jb = bigBtn(ready ? L("Jag hänger med", "I'm in") : L("⏳ Laddar…", "⏳ Loading…"), "btn-amber ds-btn-primary jn-joinbtn", function () {
-        if (needName() && !typedName()) { nameHint(); return; }
-        if (!adult() && window.SAFETY && window.SAFETY.ageWidget) { askAge(jb, tryJoin); return; }   // ds59: 18+ before the join
-        tryJoin();
-      });
-      jb.disabled = !ready || joining;
-      act.appendChild(jb);
-      act.appendChild(h("p", { class: "jn-then", text: L("Funkar direkt här i webbläsaren. Appen kan du fixa sen.", "Works right here in the browser. Get the app later.") }));
-    } else {
-      var row = h("div", { class: "jn-evbtns" });
-      var yb = bigBtn(ready ? L("Jag hänger med", "I'm going") : L("⏳ Laddar…", "⏳ Loading…"), "btn-amber ds-btn-primary jn-evyes", function () { evJoin("yes", yb); });
-      var mb = bigBtn(L("🤔 Kanske", "🤔 Maybe"), "ds-btn-secondary jn-evmaybe", function () { evJoin("maybe", mb); });
-      yb.disabled = mb.disabled = !ready;
-      row.appendChild(yb); row.appendChild(mb);
-      act.appendChild(row);
-      act.appendChild(h("p", { class: "jn-then", text: L("Bara ditt namn – ingen app, ingen inloggning.", "Just your name – no app, no login.") }));
+    if (!ansNodes) {
+      if (ARR.kind === "join") {
+        var jb = bigBtn(L("Jag hänger med", "I'm in"), "btn-amber ds-btn-primary jn-joinbtn", function () {
+          if (needName() && !typedName()) { nameHint(); return; }
+          if (!adult() && window.SAFETY && window.SAFETY.ageWidget) { askAge(jb, tryJoin); return; }   // ds59: 18+ before the join
+          tryJoin();
+        });
+        ansNodes = [jb, h("p", { class: "jn-then", text: L("Funkar direkt här i webbläsaren. Appen kan du fixa sen.", "Works right here in the browser. Get the app later.") })];
+      } else {
+        var row = h("div", { class: "jn-evbtns" });
+        var yb = bigBtn(L("Jag hänger med", "I'm going"), "btn-amber ds-btn-primary jn-evyes", function () { evJoin("yes", yb); });
+        var mb = bigBtn(L("🤔 Kanske", "🤔 Maybe"), "ds-btn-secondary jn-evmaybe", function () { evJoin("maybe", mb); });
+        row.appendChild(yb); row.appendChild(mb);
+        ansNodes = [row, h("p", { class: "jn-then", text: L("Bara ditt namn – ingen app, ingen inloggning.", "Just your name – no app, no login.") })];
+      }
     }
+    if (!act.contains(ansNodes[0])) { act.innerHTML = ""; ansNodes.forEach(function (n) { act.appendChild(n); }); }
+    // in place: the same nodes keep the tap; only the busy state changes (a tap while loading is queued, not lost)
+    var busy = !isReady();
+    act.querySelectorAll(".jn-joinbtn, .jn-evyes, .jn-evmaybe").forEach(function (b) {
+      if (b.classList.contains("jn-joinbtn")) b.disabled = joining;
+      b.setAttribute("aria-busy", busy ? "true" : "false");
+    });
+    flushQ();
   }
   // Above the install guide once answered: what happened + the code to type in the app.
   function doneBox() {
@@ -424,10 +448,11 @@
   function setState(s) { state = s; if (root) renderAct(); }
   function renderAct() {
     if (!act) return;
-    act.innerHTML = "";
     document.querySelectorAll(".jn-arrow").forEach(function (a) { a.remove(); });
-    // social2: answer first
+    // social2: answer first. fixJ T-04: the answer step is updated in place, never rebuilt under the finger.
     if (!answered()) { renderAnswer(); return; }
+    ansNodes = null; joinQ = 0; evQ = null; clearTimeout(qT);
+    act.innerHTML = "";
     if (ARR.kind === "join" || ARR.kind === "ev") {
       act.appendChild(doneBox());
       var nbx = root && root.querySelector(".jn-namebox"); if (nbx && myName()) nbx.hidden = true;   // the name is saved now
@@ -615,7 +640,7 @@
     init: function (api) {
       A = api;
       if (!root) return;
-      if (state === "ios") renderAct();
+      renderAct();   // fixJ T-04: in place (was: only on iOS); runs a tap that waited for the app
       if (A.authed && A.authed()) onAuthed();
     },
     onAuthed: onAuthed,

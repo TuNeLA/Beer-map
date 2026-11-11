@@ -169,5 +169,15 @@
       }, function (e) { return { data: null, error: e || { message: "error" } }; });
     };
   };
+  // fixJ T-22: a bare "1" before a Swedish plural noun → the singular ("1 prickar" → "1 prick", "1 skål utdelade" →
+  // "1 skål utdelad"). One helper for built texts, ticker lines and dialect-pack lines ({n} filled with 1).
+  // Only a lone 1 (not 21, 1,5 or 0.1). U.pl(n, one, many) = "n one|many" for new code.
+  var N1 = { prickar: "prick", drycker: "dryck", meriter: "merit", kvällar: "kväll", krogar: "krog", barer: "bar", bilder: "bild",
+    medlemmar: "medlem", medaljer: "medalj", vänner: "vän", soldater: "soldat", personer: "person", fotografer: "fotograf",
+    dagar: "dag", gånger: "gång", timmar: "timme", minuter: "minut", körningar: "körning", kompisar: "kompis", grupper: "grupp",
+    "skål utdelade": "skål utdelad", "öl loggade": "öl loggad" };
+  var N1_RE = new RegExp("(^|[^\\d.,:])1( |\\u00a0)(" + Object.keys(N1).sort(function (a, b) { return b.length - a.length; }).join("|") + ")(?![\\wåäöÅÄÖ])", "g");
+  U.n1 = function (s) { return s == null ? s : String(s).replace(N1_RE, function (m, a, sp, w) { return a + "1" + sp + N1[w]; }); };
+  U.pl = function (n, one, many) { n = n | 0; return n + " " + (n === 1 ? one : many); };
   window.U = U;
 })();

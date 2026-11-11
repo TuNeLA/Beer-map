@@ -483,6 +483,16 @@
       getLog();
       var last = U.ls.getJSON(LAST_KEY, null);
       if (!last || last.shown || !((last.beers | 0) > 0 || (last.others | 0) > 0)) return "";
+      // fixJ T-06 (A2 rule: no drink numbers in the morning): the new report decides first; the old card only on an old server
+      var A2 = window.AFTER2;
+      if (A2 && A2.off && !A2.off() && A2.morning) {
+        A2.morning().then(function () {
+          if (!A2.off() || A.sheetOpen()) return;   // report on (or no answer yet) → never the old card; next open asks again
+          var l2 = U.ls.getJSON(LAST_KEY, null); if (!l2 || l2.shown) return;
+          l2.shown = true; U.ls.setJSON(LAST_KEY, l2); showNight(l2);
+        }, function () {});
+        return "";
+      }
       last.shown = true; U.ls.setJSON(LAST_KEY, last);
       showNight(last);
       return "1";

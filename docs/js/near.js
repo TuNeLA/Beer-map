@@ -447,7 +447,7 @@
               ]));
             });
             var fr = d.friends || [];
-            if (!fr.length) listBox.appendChild(el("li", { class: "muted", text: L("Inga vänner än. Dela din kod nedan, eller lägg till nån från en grupp.", "No friends yet. Share your code below.") }));
+            if (!fr.length) listBox.appendChild(el("li", { class: "muted", text: L("Inga vänner än. Dela din kod, eller lägg till nån från en grupp.", "No friends yet. Share your code.") }));
             fr.forEach(function (f) { listBox.appendChild(friendRow(f, load)); });
             try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, fr, load, friendRow); } catch (e) {}
             if ((d.outgoing || []).length) {

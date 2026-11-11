@@ -106,7 +106,7 @@
   var mine = null;   // id -> {count, at}
   function setMine(rows) {
     var m = {};
-    (rows || []).forEach(function (r) { if (r && r.medal) m[r.medal] = { count: Math.max(1, r.count | 0), at: r.earned_at }; });
+    (rows || []).forEach(function (r) { if (r && r.medal && !/^void_/.test(r.medal)) m[r.medal] = { count: Math.max(1, r.count | 0), at: r.earned_at }; });   // fixJ T-21: void_ = taken back
     mine = m;
   }
   function loadMine() {
@@ -294,11 +294,11 @@
         var pct = r.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (total - start) / Math.max(1, r.nextAt - start)))) : 100;
         h += '<div class="uni-chev" aria-hidden="true">' + chevrons(idx) + "</div>" +
           '<div class="uni-rank">' + esc(r.title) + "</div>" +
-          '<div class="uni-sub">' + esc(L("Grad ", "Rank ") + idx + "/" + ((window.SOCIAL && window.SOCIAL.TITLES) || []).length + " · " + total +
-            (hasM ? L(" meriter", " merits") + (o.total != null ? L(" · " + (o.total | 0) + " drycker totalt", " · " + (o.total | 0) + " drinks total") : "") : L(" öl totalt", " beers total"))) + "</div>" +
+          '<div class="uni-sub">' + esc((U.n1 || String)(L("Grad ", "Rank ") + idx + "/" + ((window.SOCIAL && window.SOCIAL.TITLES) || []).length + " · " + total +
+            (hasM ? L(" meriter", " merits") + (o.total != null ? L(" · " + (o.total | 0) + " drycker totalt", " · " + (o.total | 0) + " drinks total") : "") : L(" öl totalt", " beers total")))) + "</div>" +
           '<div class="rank-bar"><span style="width:' + pct + '%"></span></div>' +
-          '<div class="uni-next">' + esc(r.next && r.nextAt ? (hasM ? L(Math.max(0, r.nextAt - total) + " meriter kvar till " + r.next, Math.max(0, r.nextAt - total) + " merits left to " + r.next)
-            : L(Math.max(0, r.nextAt - total) + " öl kvar till " + r.next, Math.max(0, r.nextAt - total) + " beers left to " + r.next)) : L("Högsta grad. Ölguden själv.", "Highest rank.")) + "</div>" +
+          '<div class="uni-next">' + esc((U.n1 || String)(r.next && r.nextAt ? (hasM ? L(Math.max(0, r.nextAt - total) + " meriter kvar till " + r.next, Math.max(0, r.nextAt - total) + " merits left to " + r.next)
+            : L(Math.max(0, r.nextAt - total) + " öl kvar till " + r.next, Math.max(0, r.nextAt - total) + " beers left to " + r.next)) : L("Högsta grad. Ölguden själv.", "Highest rank."))) + "</div>" +
           (o.isMe && window.MERITER ? '<div class="uni-how"><button type="button" class="btn btn-small mer-how" data-merhow="1">' + esc(L("❓ Hur får jag meriter?", "❓ How do I earn merits?")) + "</button></div>" : "");
       }
       var m = o.medals || {}, earned = sortedEarned(m);
@@ -360,7 +360,7 @@
       if (r.error) return null;
       var v = { byName: {}, me: {} };
       (r.data || []).forEach(function (x) {
-        if (!x || !x.medal) return;
+        if (!x || !x.medal || /^void_/.test(x.medal)) return;   // fixJ T-21
         var tgt = x.is_me ? v.me : (v.byName[x.name || ""] || (v.byName[x.name || ""] = {}));
         tgt[x.medal] = { count: Math.max(1, x.count | 0), at: x.earned_at };
       });
