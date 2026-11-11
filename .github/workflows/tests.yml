@@ -97,6 +97,8 @@ jobs:
             filter: '^(perfchat)$'
           - name: fixm
             filter: '^(fixm)$'
+          - name: heat
+            filter: '^(heat)$'
           - name: fixmo
             filter: '^(fixmo)$'
           - name: left

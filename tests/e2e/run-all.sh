@@ -110,6 +110,7 @@ run perfchat   $B perf-pw.js --part chat   # lane fixP: sign-in burst ≤ 12 / 1
 run perf       $B perf-pw.js       # lane perf (load X10): ≤ 3 requests/min open, cold start ≤ 12, reopen, game 2.5 s + 0 while hidden, busy back-off, old server (no 0465)
 run left       $B left-pw.js       # lane left (11 Nov): T-05b Regler before every post RPC (photo, voice, invite, event, wish …), Z1 zone_counts in the poll bundle
 run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallback map tap rule + clusters, T-14 ticker one snapshot, T-15 top bar pill + Ute nu, T-24 crowd word
+run heat       $B heat-pw.js       # lane heat (0485/0486): client draws the server heat; no double glow on my / my mate's pin; no glow near a village home
 run fixmo      $B fixmo-pw.js      # lane fixMo (test teams round 2): N-05 host reveal + Förfest members, N-06 test-kit clock vs login, N-07 all moments, N-08/N-10 distinct crowd, N-09 checked-in mates, N-11 crowd line, N-12 takeover news nearby, N-13 GL-failed cluster tap, N-14 report to the group chat, N-19 copy
 run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens order icon, Helgstreak empty, safety/legend icons, R1-26/29/38/40/42/45/48/49, R1-43 token swaps
 run fixs       $B fixs-pw.js       # lane fixS (test teams): T-01 full block DM + friend row, T-05 send after Regler, T-09/T-18 Synlighet, T-12 chat menu, T-13 Gängkamp in Inkorg, T-16 counts, T-17 Dialekt, T-23
