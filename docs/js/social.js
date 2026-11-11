@@ -1069,6 +1069,7 @@
     beerPopupHTML: function (b) { return rxHTML(b); },
     barPopupHTML: function (bar, list) {
       var h = "", n = (list || []).length, c = crowdLevel(n);
+      try { if (window.PNCROWD) c = window.PNCROWD.at(bar, list, A && A.checkins ? A.checkins() : []).lv; } catch (e) {}   // fixM T-24: one source (pins + check-ins, hysteresis)
       if (c) h += '<div class="pp-crowd c' + c + '">' + esc(t("crowd" + c)) + "</div>";
       h += kingLineHTML(bar);
       h += barInfoHTML(bar);
@@ -1078,6 +1079,7 @@
       var h = "";
       if (kings[bar.id]) h += '<span class="bm-king" aria-hidden="true">👑</span>';
       var c = crowdLevel((list || []).length);
+      try { if (window.PNCROWD) c = window.PNCROWD.at(bar, list, A && A.checkins ? A.checkins() : []).lv; } catch (e) {}   // fixM T-24
       if (c && zoom >= 16) h += '<span class="bm-crowd c' + c + '">' + esc(t("crowd" + c)) + "</span>";
       return h;
     },

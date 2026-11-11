@@ -94,7 +94,7 @@
   function repaintMeters() {
     document.querySelectorAll(".pn-meter[data-bar]").forEach(function (m) {
       var id = m.getAttribute("data-bar"), n = +m.getAttribute("data-n") || 0;
-      var tmp = document.createElement("div"); tmp.innerHTML = meterHTML(n, norm[id], 64, id, true);
+      var tmp = document.createElement("div"); tmp.innerHTML = meterHTML(n, norm[id], 64, id, true, m.getAttribute("data-w"));   // fixM T-24: keep the held word
       if (tmp.firstChild) m.parentNode.replaceChild(tmp.firstChild, m);
     });
   }
@@ -147,20 +147,23 @@
     var m = Math.floor((Date.now() - lastPollAt) / 60000);
     return m < 1 ? "uppdaterad nyss" : "uppdaterad " + m + " min sen";
   }
-  function meterHTML(n, nm, size, barId, still) {
+  function meterHTML(n, nm, size, barId, still, word) {
     var L = level(n, nm);
+    if (word) L.word = word;   // fixM T-24: the held crowd word (PNCROWD hysteresis)
     var label = L.word + ", " + n + " här" + (L.cmp ? ", " + L.cmp.toLowerCase() : "");
-    return '<div class="pn-meter" role="img" aria-label="' + esc(label) + '"' + (barId ? ' data-bar="' + esc(barId) + '" data-n="' + n + '"' : "") + ">" +
+    return '<div class="pn-meter" role="img" aria-label="' + esc(label) + '"' + (barId ? ' data-bar="' + esc(barId) + '" data-n="' + n + '"' + (word ? ' data-w="' + esc(word) + '"' : "") : "") + ">" +
       glassSVG(L, size || 64, still) +
-      '<div class="pn-mt"><b>' + esc(L.word) + ' <span class="pn-mt-n">· ' + n + " här</span></b>" +
+      '<div class="pn-mt"><b>' + esc(L.word) + (n >= 3 ? ' <span class="pn-mt-n">· ' + n + " här</span>" : "") + "</b>" +   // fixM T-24: no number below 3 (gw)
       (L.cmp ? '<small class="pn-mt-cmp">' + cue(L.arrow) + esc(L.cmp) + "</small>" : '<small class="pn-mt-cmp pn-mt-none">Inget snitt än för den här krogen</small>') +
       '<small class="pn-mt-up">' + esc(freshText()) + "</small></div></div>";
   }
   function barMeterHTML(bar, list) {
-    var n = (list || []).length, id = bar && bar.id != null ? String(bar.id) : null;
-    if (n < 3) return "";   // gw: honest crowd labels — the count from 3 people (was 2); below, the header says "Lugnt"
+    var n = (list || []).length, id = bar && bar.id != null ? String(bar.id) : null, cw = null;
+    // fixM T-24: the same count + word as the sheet header (PNCROWD: max(pins, check-ins) + hysteresis)
+    try { if (window.PNCROWD) { cw = window.PNCROWD.at(bar, list, A && A.checkins ? A.checkins() : []); n = cw.n; } } catch (e) { cw = null; }
+    if (cw ? cw.lv < 2 : n < 3) return "";   // gw: honest crowd labels — the count from 3 people (was 2); below, the header says "Lugnt"
     if (id) wantNorm(id);
-    return meterHTML(n, id ? norm[id] : null, 64, id, false);
+    return meterHTML(n, id ? norm[id] : null, 64, id, false, cw ? cw.word : null);
   }
 
   /* ---------- 2. LIVE ticker ---------- */

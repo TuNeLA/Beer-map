@@ -86,11 +86,12 @@
   // here = the town of the user's current position (ticker centre: own location, own pin or map centre; never the home
   // town). Live values (names, bars, towns) are taken out first, so only the template's own words are tested.
   function localOk(k, tx, d) {
-    if (/^townJoke_/.test(k)) return true;   // keyed by town already
     var here = d && d.here, t = String(tx);
     ["bar", "bar1", "bar2", "bar3", "name", "group", "stad", "town", "here", "rival", "who", "where"].forEach(function (f) {
       var v = d && d[f]; if (v && typeof v === "string" && v.length > 1) t = t.split(v).join(" ");
     });
+    if (!areaOk(t, d) || !timeOk(t)) return false;   // fixM T-14 (town jokes too: "Stureplan" on Söder, "ikväll" at 06:25)
+    if (/^townJoke_/.test(k)) return true;   // keyed by town already
     if (LUDV_RE.test(t) && !LUDV_TOWNS[here]) return false;
     if (FILLER_RE.test(k) && DAL_RE.test(t) && !DAL_TOWNS[here]) return false;
     return true;
@@ -118,6 +119,61 @@
     } catch (e) { return null; }
   }
   /* TX PICK END */
+  /* fixM T-14 SNAP START — test teams 11 Nov: the ticker said "Ingen ute i Ludvika än" next to "Nu ä det 9 på Pitchers",
+     "X gick in i baren" while X was at home, "Stureplan" for a bar on Söder and "Förfesten pågår" at 06:25.
+     1. ONE local snapshot per build (snap): people near the ticker centre = max(pins, check-ins) within 5 km, + live_total.
+        Quiet kinds (calm, emptyFirst, townQuiet) need it to be (near) empty; "total" uses live_total (the header's own
+        source), never the pins in view, and only from 3.
+     2. Districts: a line that names a Stockholm district shows only when its bar (or the centre) is in that district.
+     3. Hours (Europe/Stockholm): night words not 05–15, "ikväll / kvällen" not 05–12.
+     4. The belt (freshBelt): pieces of the OLD snapshot that are not on screen yet are dropped when a new one comes;
+        an old quiet line still on screen fades when the new snapshot has people. */
+  var snap = { n: 0, pins: 0, cis: 0, total: null, at: 0 }, curCenter = null, barLL = {};
+  var DISTRICTS = [   // rough boxes [s, w, n, e]; owner: widen here
+    { k: "soder", re: /(^|[^A-Za-zÅÄÖåäöé])(Söder|Södermalm|SoFo|Medborgarplatsen|Mariatorget|Nytorget|Hornstull|Skanstull|Mosebacke|Zinkensdamm)(?![a-zåäö])/, b: [59.3045, 18.0200, 59.3225, 18.1090] },
+    { k: "ostermalm", re: /(^|[^A-Za-zÅÄÖåäöé])(Stureplan|Östermalm\w*|Ö-malm|Karlaplan|Stureplans?)(?![a-zåäö])/, b: [59.3320, 18.0680, 59.3520, 18.1150] },
+    { k: "gamlastan", re: /(^|[^A-Za-zÅÄÖåäöé])(Gamla stan|Västerlånggatan|Stortorget)(?![a-zåäö])/, b: [59.3205, 18.0620, 59.3290, 18.0810] },
+    { k: "slussen", re: /(^|[^A-Za-zÅÄÖåäöé])(Slussen)(?![a-zåäö])/, b: [59.3150, 18.0600, 59.3290, 18.0850] },
+    { k: "saltsjobaden", re: /(^|[^A-Za-zÅÄÖåäöé])(Saltsjöbaden)(?![a-zåäö])/, b: [59.2700, 18.2700, 59.2950, 18.3300] }
+  ];
+  function inBox(p, b) { return !!p && p.lat >= b[0] && p.lat <= b[2] && p.lng >= b[1] && p.lng <= b[3]; }
+  function areaOk(t, d) {
+    var hits = DISTRICTS.filter(function (x) { return x.re.test(t); }); if (!hits.length) return true;
+    var bn = d && (d.bar || d.bar1), ref = (bn && barLL[bn]) || curCenter;
+    return hits.some(function (x) { return inBox(ref, x.b); });
+  }
+  var NIGHT_RX = /förfest|midnatt|i ?natt(?![a-zåäö])|nattmat|efterfest|sista beställning|stängningsdags|nattbuss/i, EVE_RX = /i ?kväll|kvällen|kvällens|ikväll/i;
+  var hourCur = 20;
+  function timeOk(t) {
+    if (hourCur >= 5 && hourCur < 15 && NIGHT_RX.test(t)) return false;
+    if (hourCur >= 5 && hourCur < 12 && EVE_RX.test(t)) return false;
+    return true;
+  }
+  // "… hissar flaggan." after "en grupp": a sentence never starts with a small letter
+  function sentences(t) { return String(t).replace(/((?:^|[^.…])[.!?]["”»]?\s+)([a-zåäö])/g, function (m, a, b) { return a + b.toUpperCase(); }); }   // "Asså... vad" (an ellipsis) stays
+  var QUIET = { calm: 3, emptyFirst: 1, townQuiet: 3 }, quietText = {}, quietN = 0;   // kind -> shown only while snap.n is below this
+  function friendAtBar(b) {
+    if (b.snap != null || b.bar_id != null) return b.snap === "bar" || (b.bar_id != null && b.snap !== "area" && b.snap !== "home");
+    try { return !!(window.BARS && b.precise && window.BARS.describe(b).kind === "at"); } catch (e) { return false; }
+  }
+  var BELT_CSS = ".tk-item.tk-stale{opacity:0;transition:opacity .25s var(--e-std,ease)}@media (prefers-reduced-motion:reduce){.tk-item.tk-stale{transition:none}}";
+  function freshBelt(track) {
+    if (!track || !track.parentNode) return 0;
+    if (!document.getElementById("news-belt-css") && document.head) { var st = document.createElement("style"); st.id = "news-belt-css"; st.textContent = BELT_CSS; document.head.appendChild(st); }
+    var vr = track.parentNode.getBoundingClientRect(), kids = [].slice.call(track.children), cut = 0;
+    for (var i = kids.length - 1; i >= 0; i--) {   // from the right end: never a gap in what is on screen
+      var r = kids[i].getBoundingClientRect();
+      if (r.left < vr.right - 1 || kids[i].classList.contains("tk-kick")) break;
+      track.removeChild(kids[i]); cut++;
+    }
+    // an old quiet line on screen that the NEW snapshot would not allow (its own threshold), or the plain "Lugnt läge" filler
+    [].forEach.call(track.querySelectorAll(".tk-item.tk-quiet"), function (e) {
+      var lim = quietText[String(e.textContent || "")];
+      if ((lim && snap.n >= lim) || (!lim && snap.n >= 3)) e.classList.add("tk-stale");
+    });
+    return cut;
+  }
+  /* fixM T-14 SNAP END */
   var sideSeen = {}, SIDE_FRESH_MS = 40 * 60 * 1000;   // pin id -> {n: other_count, at: when it went up}
 
   /* ---------- Helpers ---------- */
@@ -226,7 +282,7 @@
       var G = g.name;
       if (out.length >= 2 && total >= 2) add("groupTotal", { group: G, n: total, k: out.length }, 1, "tk-friend");
       if (g.m.length >= 3 && out.length === g.m.length) add("groupAllOut", { group: G, k: out.length }, 2, "tk-friend");
-      if (out.length === 1 && g.m.length >= 2) add("groupFirstOut", { name: nameOf(out[0]), group: G }, 1, "tk-friend");
+      if (out.length === 1 && out[0].live && g.m.length >= 2) add("groupFirstOut", { name: nameOf(out[0]), group: G }, 1, "tk-friend");
       if (!out.length && (hh >= 19 || hh < 3)) add("groupQuiet", { group: G }, 0, "tk-friend");
       var lead = out.slice().sort(function (a, b) { return drinks(b) - drinks(a); });
       if (lead.length >= 2 && drinks(lead[0]) >= 3 && drinks(lead[0]) > drinks(lead[1])) {
@@ -303,13 +359,23 @@
       (byKind[x.k] = byKind[x.k] || []).push(x.f);
     });
     var cand = [];   // {k, d, imp, cls}
-    function add(k, d, imp, cls) { if (byKind[k] && !storeSkip(k)) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" }); }
+    // fixM T-14: the one snapshot this build reads (pins + check-ins near the centre, the header's live_total)
+    var c0 = ctx.center || null, nearOf = function (p) { return !c0 || (isFinite(p.lat) && U.haversine(c0.lat, c0.lng, +p.lat, +p.lng) <= NEAR_M); };
+    curCenter = c0; hourCur = hourNow(now); barLL = {};
+    snap = { pins: beers.filter(nearOf).length, cis: (ctx.checkins || []).filter(function (c) { return c && nearOf(c); }).length, total: ctx.liveTotal != null ? ctx.liveTotal | 0 : null, at: now.getTime() };
+    snap.n = Math.max(snap.pins, snap.cis);
+    (ctx.checkins || []).forEach(function (c) { if (c && c.bar_name && isFinite(c.lat)) barLL[c.bar_name] = { lat: +c.lat, lng: +c.lng }; });
+    function add(k, d, imp, cls) {
+      if (QUIET[k] && snap.n >= QUIET[k]) return;   // fixM T-14: no "Ingen ute" next to people / check-ins near
+      if (byKind[k] && !storeSkip(k)) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" });
+    }
     var anon = t("newsAnon") || ["?"];
 
     // Bars with 2+ people (same assignment as the map: precise pins within 75 m).
     var per = window.BARS ? window.BARS.assign(beers).perBar : {}, busyBar = {}, bars = [];
     Object.keys(per).forEach(function (id) {
       var a = per[id];
+      if (a.bar && a.bar.name && isFinite(a.bar.lat)) barLL[a.bar.name] = { lat: a.bar.lat, lng: a.bar.lng };   // fixM T-14: districts
       if (a.beers.length < 2 || !a.bar.name) return;
       bars.push(a);
       a.beers.forEach(function (b) { busyBar[b.id] = a.bar.name; });
@@ -375,7 +441,7 @@
     var titles = ctx.titles || {};
     friends.forEach(function (b) {
       var ti = titles[b.id];
-      if (ti && Math.random() < 0.5) add("fTitle", { title: ti, name: b.friend_name, n: b.beer_count | 0 }, 1, "tk-friend");
+      if (ti && friendAtBar(b) && Math.random() < 0.5) add("fTitle", { title: ti, name: b.friend_name, n: b.beer_count | 0 }, 1, "tk-friend");
     });
     // v9: side tracks (other drinks). ctx.others = all live pins with other_count/other_kind.
     // A side track is news for ~40 min after the drink (count went up). After that only now and then.
@@ -447,23 +513,34 @@
     groupTownCands(beers, ctx, now, per, add);
 
     // Country, local town, forecast, time of day.
-    if (beers.length) add("total", { n: beers.length }, 0);
+    if (snap.total != null && snap.total >= 3) add("total", { n: snap.total }, 0);   // fixM T-14: the header's source, not the pins in view
     var c = ctx.center, stad = (c && townAt(c.lat, c.lng)) || t("newsTown");
     var near = c ? beers.filter(function (b) { return U.haversine(c.lat, c.lng, b.lat, b.lng) <= NEAR_M; }) : beers;
     var hotNear = near.filter(function (b) { return U.level(b.beer_count) > 0; }).length;
     if (near.length < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
     if (!near.length && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet");   // tx05: real line first
-    if (near.length >= 1) add("forecast", { stad: stad, n: near.length, p: Math.min(99, near.length * 9 + hotNear * 10) }, 0);
+    if (near.length >= 1 && (hourNow(now) >= 15 || hourNow(now) < 4)) add("forecast", { stad: stad, n: near.length, p: Math.min(99, near.length * 9 + hotNear * 10) }, 0);
     // Two random "filler" headlines every round: the biggest source of variety.
     add("random", { stad: stad }, 0); add("random", { stad: stad }, 0);
     // tx04: morning 05–11, day 11–17, pre-evening 17–20 (t1 was 05–20: "förfesten har börjat" at breakfast).
     var h = hourNow(now), tk = h >= 5 && h < 11 ? "tMorning" : h >= 11 && h < 17 ? "tDay" : h >= 17 && h < 20 ? "t1" : h >= 20 && h < 23 ? "t2" : h >= 23 || h < 1 ? "t3" : h < 3 ? "t4" : "t5";
-    if (!byKind[tk]) tk = h >= 5 && h < 20 ? "t1" : tk;
+    // fixM T-14: no fallback to t1 ("Förfesten pågår") when the morning / day lines are not loaded yet: no time line then
     add(tk, { hh: ("0" + h).slice(-2) }, 0);
     var pn = partsNow(now);
     if (Math.random() < 0.5) add("wd" + pn.wd, { hh: ("0" + h).slice(-2) }, 0);
     if (Math.random() < 0.3) add("mo" + pn.mo, {}, 0);
 
+    // fixM T-14: a gathering line (near.js, kept up to 120 min) only while the group has someone live, and never next to
+    // a live count of the same group (groupSameBar / groupTotal from the pins now)
+    var liveG = {}, homeG = {}, nowG = {};
+    (ctx.home || []).forEach(function (r) { if (r && r.group_name) { homeG[r.group_name] = 1; if (r.live) liveG[r.group_name] = 1; } });
+    cand.forEach(function (x) { if ((x.k === "groupSameBar" || x.k === "groupTotal") && x.d && x.d.group) nowG[x.d.group] = 1; });
+    cand = cand.filter(function (x) {
+      if (x.k !== "groupSquad" && x.k !== "groupSquadNights") return true;
+      var g = x.d && x.d.grupp;
+      if (x.k === "groupSquad" && g && nowG[g]) return false;
+      return homeG[g] ? !!liveG[g] : snap.n > 0;
+    });
     // QA #11: the local town for lines that name a place ("stan" when unknown); a stranger's own town wins.
     var here = (c && townAt(c.lat, c.lng)) || "stan";
     cand.forEach(function (x) { if (x.d && x.d.here == null) x.d.here = x.d.stad && x.d.stad !== t("newsTown") ? x.d.stad : here; });
@@ -486,6 +563,7 @@
         text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;
       }
+      if (text) text = sentences(text);   // fixM T-14: a sentence never starts with a small letter
       if (!text || seen[text]) return;
       if (usedId) { recentUsed.push(usedId); if (recentUsed.length > 60) recentUsed.shift(); }
       seen[text] = true;
@@ -513,10 +591,12 @@
     // tx05 (usability): in an empty town the useful real line opens the belt, the jokes come after it.
     for (var ef = 1; ef < out.length; ef++) if (out[ef].k === "emptyFirst") { out.unshift(out.splice(ef, 1)[0]); break; }
     markShown(now, out);   // tx04: only what is really shown counts as used tonight
+    out.forEach(function (x) { if (QUIET[x.k]) { if (++quietN > 400) { quietText = {}; quietN = 0; } quietText[x.text] = QUIET[x.k]; } });   // fixM T-14 (freshBelt)
     return out.map(function (x) { return { text: x.text, cls: (x.cls || "") + (catOf(x) !== "general" ? " tk-real" : ""), k: x.k }; });   // ds40 tk-real = a real event (dot)
   }
 
   window.NEWS = { build: build, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
+    freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
     // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
     last: function () { return { beers: lastBeers, ctx: lastCtx }; } };
 })();

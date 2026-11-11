@@ -184,7 +184,7 @@ function report() {
       await H.boot(page);
       const r = await page.evaluate(() => {
         const mk = (id, n, o) => Object.assign({ id, lat: 60.1500, lng: 15.1868, beer_count: n, precise: true, created_at: new Date().toISOString(), is_mine: false, friend_name: null, skal_count: 0, shot_count: 0 }, o);
-        const run = (me, fr) => { let lead = 0; for (let i = 0; i < 25; i++) { const out = window.NEWS.build([mk(1, me, { is_mine: true }), mk(2, fr, { friend_name: "Linnea" })], { now: new Date() }); if (out.some((x) => x.k === "meLead")) lead++; } return lead; };
+        const run = (me, fr) => { let lead = 0; for (let i = 0; i < 25; i++) { const out = window.NEWS.build([mk(1, me, { is_mine: true }), mk(2, fr, { friend_name: "Linnea" })], { now: new Date(new Date().setHours(22, 0, 0, 0)) /* fixM T-14: an evening (no kvällen lines 05-12) */ }); if (out.some((x) => x.k === "meLead")) lead++; } return lead; };
         return { tie1: run(1, 1), tie3: run(3, 3), one: run(1, 0), ahead: run(4, 1) };
       });
       ok("J20 no 'Du leder' on a tie (1–1, 3–3) or with 1 beer", r.tie1 === 0 && r.tie3 === 0 && r.one === 0, r);
