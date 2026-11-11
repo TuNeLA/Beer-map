@@ -21,7 +21,7 @@ const OLD = ["game_poll", "gang_poll", "skal_poll", "film_poll", "ceremony_poll"
 const ADD = ["poll_v2", "account_config", "public_config", "after_flags_get", "ride_flags_get", "bold_flags_get", "my_visibility", "my_account_deletion",
   "my_avatar", "my_home_town", "my_medals", "my_passport", "my_groups", "party_mine", "spel_mine", "rnd_me", "my_board_optin", "bars_gone",
   "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near", "events_near2", "bar_sport_near", "my_past_events",
-  "user_places", "group_now", "group_msgs", "drivers_for", "friend_list", "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick"];
+  "user_places", "group_now", "group_msgs", "drivers_for", "friend_list", "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick", "after_report2", "my_night_report"];
 const R1 = "5e1a0000-0000-4000-8000-000000000001";
 const sview = (o = {}) => Object.assign({ v: 1, now: new Date().toISOString(), id: R1, group_id: GID, game: "kort", phase: "lobby", round: 0, goal: 5, game_no: 0, pub: {}, closed: false,
   creator_k: "me", judge_on: false, me: { k: "me", name: "Anton", score: 0, status: "in", hand: [], judge: false, mine: null, can_force: false },

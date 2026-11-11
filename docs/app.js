@@ -65,7 +65,7 @@
     "my_account_deletion", "my_avatar", "my_home_town", "my_medals", "my_passport", "my_groups", "party_mine", "spel_mine", "rnd_me",
     "my_board_optin", "bars_gone", "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near",
     "events_near2", "bar_sport_near", "my_past_events", "user_places", "group_now", "group_msgs", "drivers_for", "friend_list",
-    "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick"];
+    "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick", "after_report2", "my_night_report"];
   var JSONB_ARG = { my_event_chats: { p_seen: 1 } };
   var bgCall = false;   // true while WARM's background prefetch calls rpcNet (see WARM.setRaw)   // arguments of type jsonb: an object may go in the bundle too
   var NEWB = {}; BUNDLE_NEW.forEach(function (n) { NEWB[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_NEW);
@@ -237,7 +237,7 @@
         // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
         // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
         else {
-          var d = !burstDone && authedAt ? 250 : NEWB[name] ? 800 : Date.now() < pollWin ? 3000 : 1500;
+          var d = !burstDone && authedAt ? 250 : !NEWB[name] && Date.now() < pollWin ? 3000 : 1500;
           if (!bqT || Date.now() + d < bqDue) { clearTimeout(bqT); bqDue = Date.now() + d; bqT = setTimeout(bundleGo, d); }
           if (authedAt) burstDone = true;
         }
