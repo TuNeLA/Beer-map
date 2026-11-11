@@ -512,6 +512,8 @@ async function fresh(browser, ls, o = {}) {
     const res = vre.map(toRe), seen = new Set();
     await page.evaluate(() => { window.PN_TICK_F = 8; });   // the belt runs 8x faster while we sample it (ui-build hold-to-pause factor)
     for (let i = 0; i < 12; i++) { (await page.evaluate(() => [...document.querySelectorAll("#ticker-track .tk-item")].map((e) => e.textContent))).forEach((x) => seen.add(x)); await wait(page, 1000); }
+    await page.evaluate(() => { window.PN_TICK_F = 0; }); await wait(page, 300);   // hold the belt for the shot
+    await page.screenshot({ path: SP + "ui-testshots/dialekt2-ticker-goteborg-390.png", clip: { x: 0, y: 0, width: 390, height: 200 } });
     await page.evaluate(() => { window.PN_TICK_F = null; });
     const beltHits = [...seen].filter((x) => res.some((re) => re.test(x)));
     ok(`[map] the ticker belt on screen shows Väst lines (${beltHits.length} of ${seen.size} pieces)`, beltHits.length > 0, [...seen].slice(0, 8));
