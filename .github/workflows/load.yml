@@ -1,0 +1,48 @@
+# X10 load test (lane load). STAGING ONLY (pintsnow-staging). Never the live project.
+# Runs only on pushes to load/** branches. Each push starts the shards listed in tests/load/plan.json "next".
+# One shard = one runner = up to 25 anonymous users (Supabase allows 30 anonymous sign-ups per IP per hour).
+name: load
+on:
+  push:
+    branches: ['load/**']
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: echo "shards=$(jq -c '.next' tests/load/plan.json)" >> "$GITHUB_OUTPUT"
+  shard:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run shard ${{ matrix.shard.id }}
+        working-directory: tests/load
+        run: |
+          T0=$(jq -r '.t0' plan.json); STEP=$(jq -r '.step_min' plan.json); END=$(jq -r '.end_min' plan.json)
+          export SHARD='${{ matrix.shard.id }}' USERS='${{ matrix.shard.users }}'
+          export START_AT=$(( T0 + ${{ matrix.shard.step }} * STEP * 60000 )) END_AT=$(( T0 + END * 60000 ))
+          export OUT="$PWD/out-$SHARD.jsonl" SPREAD_S=90
+          echo "shard $SHARD users $USERS start $(date -d @$((START_AT/1000))) end $(date -d @$((END_AT/1000)))"
+          node load.js
+          node analyze.js "out-$SHARD.jsonl" | head -20
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-${{ matrix.shard.id }}
+          path: tests/load/out-*.jsonl
+          retention-days: 7
