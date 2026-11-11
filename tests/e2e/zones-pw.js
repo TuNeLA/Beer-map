@@ -29,7 +29,7 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   await page.waitForFunction(() => window.__map && window.BASEMAP && BASEMAP.isMapbox() && BASEMAP.loaded(), null, { timeout: 45000 }).catch(() => console.log("mapbox not loaded"));
   await H.wait(page, 3000);
   ok(geoReq.length === 0, "no border file at boot (zoom 14)", geoReq.map((x) => x.p));
-  ok(zc.length === 0, "no zone_counts at boot (zoom 14)", zc.length);
+  ok(zc.length <= 1, "zone_counts at boot (zoom 14): at most one (fixM T-15: the top bar pill names the kommun at every zoom)", zc.length);
   const pill = () => page.evaluate(() => document.getElementById("live-count").textContent);
   const shot = (n) => page.screenshot({ path: SP + "zones-" + TAG + "-" + n + ".png" }).then(() => console.log("shot", SP + "zones-" + TAG + "-" + n + ".png"));
   const view = (ll, z) => page.evaluate(([ll, z]) => new Promise((res) => { __map.once("moveend", () => setTimeout(res, 50)); __map.setView(ll, z, { animate: false }); setTimeout(res, 3000); }), [ll, z]);
@@ -69,9 +69,9 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   await shot("ludvika-z8");
   await view([60.135, 15.42], 8.2); await H.wait(page, 1200);
   ok(/Smedjebacken · några( ute)?( ikväll)?$/.test(await pill()), "några (1–2) shown as words", await pill());
-  // 4) handover: z 11 = world counter, zones invisible
+  // 4) handover: z 11 = zones invisible; fixM T-15: the top bar keeps ONE meaning: the kommun under the centre + its count
   await view([60.15, 15.187], 11); await H.wait(page, 2500);
-  ok(/dricker|ute i världen|^\d+\s*ute$/.test((await pill()).replace(/\u00a0/g, " ").trim()), "zoomed in: world counter back", await pill());   // pnds: the world pill says "N ute"
+  ok(/^Ludvika · (\d+|några)( ute)?( ikväll)?$|^Ludvika · lugnt/.test((await pill()).replace(/\u00a0/g, " ").trim()), "zoomed in: the pill still names the kommun (no world counter)", await pill());
   const cl11 = await page.evaluate(() => [...document.querySelectorAll(".olnu-cl")].filter((e) => e.offsetParent).length);
   ok(cl11 > 0 && !(await page.evaluate(() => document.documentElement.hasAttribute("data-zones"))), "z11: count circles back", cl11);
   ok((await rendered(["olnu-zk-fill", "olnu-zk-lbl", "olnu-zl-fill"])) === 0, "no zone layers at z11");

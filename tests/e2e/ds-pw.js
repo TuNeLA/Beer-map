@@ -73,7 +73,7 @@ const dock = (page) => page.evaluate(() => {
       ok(top.meta === "black-translucent" && top.vf, "top: status-bar meta + viewport-fit=cover (the solid header paints under the island)", top);
       // ---- live count pill fits (coordinator 6) ----
       const lc = await page.evaluate(() => { const e = document.getElementById("live-count"); return { t: e.textContent.trim(), fit: e.scrollWidth <= e.clientWidth + 1, ic: !!e.querySelector(".pi") }; });
-      ok(/^\d+\s*ute$/.test(lc.t.replace(/ /g, " ")) && lc.fit && lc.ic, "top: world pill = icon + 'N ute', no cut text", lc);
+      ok(/^Ludvika · (\d+|–|några)( ute)?( ikväll)?$|^Ludvika · lugnt/.test(lc.t.replace(/\u00a0/g, " ")) && lc.fit, "top: the pill = the kommun + its count (fixM T-15), no cut text", lc);
       // ---- og tags (owner #10) ----
       const og = await page.evaluate(() => ({ img: document.querySelector('meta[property="og:image"]').content, tw: document.querySelector('meta[name="twitter:image"]').content, t: document.querySelector('meta[property="og:title"]').content }));
       ok(/og-image\.png\?v=pn2$/.test(og.img) && /\?v=pn2$/.test(og.tw) && !/\p{Extended_Pictographic}/u.test(og.t) && /PintsNow/.test(og.t), "link preview: PintsNow title, image URL with ?v=pn2", og);

@@ -158,7 +158,9 @@
       if (want) { kept.push(x); full++; }
       setTier(x.m, x.ic, want, x.sel);
       if (want) nf++; else nd++;
+      x.full = want;   // fixM T-10
     }
+    fbPass(map, layers, cand, z);   // fixM T-10: fallback clusters + tap rule (no-op while GL draws the bars)
     var ms = performance.now() - t0;
     stats.n++; stats.ms += ms; stats.last = ms; if (ms > stats.max) stats.max = ms; stats.full = nf; stats.dot = nd; stats.inView = cand.length;
     try { if (window.MYPINS && window.MYPINS.sync) window.MYPINS.sync(); } catch (e) {}
@@ -246,5 +248,146 @@
   }
   // map M3: the UI-safe rects in map container px ({l, t, r, b}, 4 px margin), for zones.js labels and tests
   function safeRects(map) { try { var s = map.getSize(); return hudZones(map, s.x, s.y).slice(); } catch (e) { return []; } }
-  window.TIERS = { apply: apply, onAdd: onAdd, capFor: capFor, rank: rank, labels: labels, stats: stats, lstats: lstats, _byId: tierById, safeRects: safeRects };
+
+  /* fixM T-10 FB START — the raster / Leaflet fallback (no Mapbox token, GL failed: GLBARS off) gets the two GL map rules.
+     1. map B8 tap rule (glmap.js onPreclick): a tap on a bar marker goes to the bar whose ICON is under or nearest the finger:
+        a. the finger on a disc (its radius + 6 px): the nearest disc wins, full pill or dot;
+        b. a direct hit on a full pill's part (count pill, 🪖, 🚪, badges): that bar (its own "Folk här" fold);
+        c. the nearest icon centre within 28 px; d. else the element under the finger (the name label = fallback only).
+        One capture listener on the map container (trusted clicks only); a redirect clicks the winner's icon (the normal sheet).
+     2. ds30 clusters: below Leaflet z15 the DOT bars (not full pills) within 52 px merge into one capsule (bar glyph + count,
+        amber ring = someone there, green dot = a friend), the same art as the GL cluster. Tap = zoom in to where it splits
+        (max z15, where every bar is its own dot again, like GL). Built in TIERS.apply (render / moveend), never per frame. */
+  var FB = { on: false, map: null, layers: null, hooked: null, cl: [], sig: "", pane: null, made: 0, taps: 0, last: "", clTaps: 0 };
+  var FB_NEAR = 28, FB_DISC = 6, FB_R = 52, FB_MAXZ = 15, FB_MINZ = 12.5;
+  var FB_CSS = ".leaflet-marker-icon.cm.tz-clh{visibility:hidden !important;pointer-events:none !important}" +   /* !important: the zoom rules above set opacity / pointer-events per tier */
+    ".leaflet-marker-icon.tz-cl{background:transparent;border:0;cursor:pointer}.tz-cl svg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:visible}";
+  function fbStyle() {
+    if (document.getElementById("tiers-fb-css") || !document.head) return;
+    var s = document.createElement("style"); s.id = "tiers-fb-css"; s.textContent = FB_CSS; document.head.appendChild(s);
+  }
+  function glOn() { try { return !!(window.GLBARS && window.GLBARS.on && window.GLBARS.on()); } catch (e) { return false; } }
+  function barMarkers() {
+    var out = [];
+    (FB.layers || []).forEach(function (ly) { if (ly && ly.eachLayer) ly.eachLayer(function (m) { var ic = m.getElement && m.getElement(); if (ic && ic.isConnected && m.options && m.options.olnuC) out.push(m); }); });
+    return out;
+  }
+  function shown(ic) {   // drawn and tappable now (zoom rules, cluster member, popup scale)
+    if (ic.classList.contains("tz-clh")) return false;
+    var cs = getComputedStyle(ic); return cs.visibility !== "hidden" && cs.pointerEvents !== "none" && cs.display !== "none" && +cs.opacity > 0.05;
+  }
+  var FB_PARTS = ".pill, .cm-rally, .cm-ci, .cm-b, .bm-crowd, .bm-q";
+  function fbTap(e) {
+    if (!FB.on || glOn() || !e.isTrusted || e._olnuFb || !e.target || !e.target.closest) return;
+    var own = e.target.closest(".leaflet-marker-icon.cm"); if (!own || own.classList.contains("tz-cl")) return;
+    var map = FB.map, cr = map.getContainer().getBoundingClientRect(), px = e.clientX - cr.left, py = e.clientY - cr.top, list = [];
+    barMarkers().forEach(function (m) {
+      var ic = m.getElement(), p = map.latLngToContainerPoint(m.getLatLng()), d = Math.sqrt((p.x - px) * (p.x - px) + (p.y - py) * (p.y - py));
+      if (d > FB_NEAR + 24 || !shown(ic)) return;
+      var bi = ic.querySelector(".bar-ico"), r = 14;
+      if (bi) { var b = bi.getBoundingClientRect(); if (b.width) r = b.width / 2; }
+      list.push({ m: m, ic: ic, d: d, r: r });
+    });
+    list.sort(function (a, b) { return a.d - b.d; });
+    var win = null, how = "";
+    var disc = list.filter(function (o) { return o.d <= o.r + FB_DISC; })[0];
+    if (disc) { win = disc; how = "disc"; }
+    if (!win && e.target.closest(FB_PARTS) && own.classList.contains("cm-full")) { FB.last = "part:" + own.getAttribute("data-bar"); return; }   // b: its own bar
+    if (!win && list.length && list[0].d <= FB_NEAR) { win = list[0]; how = "near"; }
+    if (!win) { FB.last = "dom:" + own.getAttribute("data-bar"); return; }   // d: the label / the box itself
+    FB.taps++; FB.last = how + ":" + win.ic.getAttribute("data-bar");
+    if (win.ic === own) return;   // the browser already hit the right bar
+    e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    var tgt = win.ic.querySelector(".bar-ico") || win.ic, ev = new MouseEvent("click", { bubbles: true, cancelable: true, view: window, clientX: e.clientX, clientY: e.clientY });
+    ev._olnuFb = 1; ev._olnuGl = 1;   // map3d.js / zones.js: this tap is used
+    tgt.dispatchEvent(ev);
+  }
+  // the GL cluster art (glmap.js clOps), as inline SVG: navy capsule, foam ring (amber = busy), bar glyph, count, friend dot
+  var clSvg = {};
+  function clHTML(n, busy, friend) {
+    var k = n + "-" + (busy ? 1 : 0) + (friend ? 1 : 0); if (clSvg[k]) return clSvg[k];
+    var T = window.PNTOKENS, P = window.PNPINS; if (!T || !P || !P.toSVG) return '<b class="tz-cl-n">' + n + "</b>";
+    var K = T.col, ops = [], t = n > 999 ? (Math.floor(n / 100) / 10).toString().replace(".", ",") + "k" : String(n);
+    var px = 13, h = 26, g = 14, tw0 = P._tw ? Math.ceil(P._tw(t, px, 700)) : t.length * 8;
+    var w = Math.max(h + 8, 7 + g + 3 + tw0 + 9), x = Math.round(-w / 2), y = -h / 2;
+    ops.push({ o: "rr", x: x - 1, y: y - 1, w: w + 2, h: h + 2, r: h / 2 + 1, fill: K.edge, sh: true });
+    ops.push({ o: "rr", x: x, y: y, w: w, h: h, r: h / 2, fill: busy ? K.amber : K.foam });
+    ops.push({ o: "rr", x: x + 2, y: y + 2, w: w - 4, h: h - 4, r: h / 2 - 2, fill: K.navy2 });
+    ops.push({ o: "g", n: "pub", x: x + 7, y: -g / 2, s: g, fg: T.tint.pub, bg: K.navy2 });
+    ops.push({ o: "t", x: x + 7 + g + 3, y: 0, t: t, px: px, wt: 700, fill: K.foam });
+    if (friend) {
+      var bx = x + w - 3, by = y + 1;
+      ops.push({ o: "c", x: bx, y: by, r: 8, fill: K.edge }); ops.push({ o: "c", x: bx, y: by, r: 7, fill: K.foam });
+      ops.push({ o: "c", x: bx, y: by, r: 5.5, fill: K.green }); ops.push({ o: "g", n: "person", x: bx - 4.5, y: by - 4.5, s: 9, fg: K.greenInk, bg: K.green });
+    }
+    try { return (clSvg[k] = P.toSVG(ops)); } catch (e) { return '<b class="tz-cl-n">' + n + "</b>"; }
+  }
+  function fbClear() {
+    FB.cl.forEach(function (c) { try { FB.map.removeLayer(c.mk); } catch (e) {} });
+    FB.cl = [];
+  }
+  function fbCluster(map, cand, z) {
+    var want = !glOn() && z >= FB_MINZ && z < FB_MAXZ;
+    // members of the last pass come back first (a full pill / a new zoom may free them)
+    var pts = [];
+    cand.forEach(function (x) {
+      if (!x.full && want && !x.sel) pts.push(x);
+      else if (x.ic.classList.contains("tz-clh")) x.ic.classList.remove("tz-clh");
+    });
+    if (!want) { if (FB.cl.length) { fbClear(); FB.sig = ""; } FB.on = !glOn(); return; }
+    FB.on = true;
+    pts.sort(function (a, b) { return b.s - a.s; });
+    var used = [], groups = [];
+    for (var i = 0; i < pts.length; i++) {
+      if (used[i]) continue;
+      var g = [i];
+      for (var j = i + 1; j < pts.length; j++) {
+        if (used[j]) continue;
+        var dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y;
+        if (dx * dx + dy * dy <= FB_R * FB_R) g.push(j);
+      }
+      if (g.length < 2) continue;
+      g.forEach(function (k) { used[k] = 1; });
+      groups.push(g.map(function (k) { return pts[k]; }));
+    }
+    pts.forEach(function (x, k) { var h = !!used[k]; if (x.ic.classList.contains("tz-clh") !== h) x.ic.classList.toggle("tz-clh", h); });
+    var sig = groups.map(function (g) { return g.map(function (x) { return x.m.options.olnuC.bar.id; }).sort().join(","); }).join("|") + "@" + Math.round(z * 4);
+    if (sig === FB.sig && FB.cl.length === groups.length) return;
+    FB.sig = sig; fbClear();
+    if (!FB.pane) { try { FB.pane = map.getPane("barcl") || map.createPane("barcl"); FB.pane.style.zIndex = 620; } catch (e) { FB.pane = null; } }
+    groups.forEach(function (g) {
+      var la = 0, ln = 0, busy = false, friend = false;
+      g.forEach(function (x) {
+        var ll = x.m.getLatLng(), c = x.m.options.olnuC; la += ll.lat; ln += ll.lng;
+        if ((c.beers && c.beers.length) || (c.cis && c.cis.length)) busy = true;
+        if ((c.beers || []).some(function (b) { return b.friend_name || b.is_mine; }) || (c.cis || []).some(function (q) { return q.is_friend || q.is_mine; })) friend = true;
+      });
+      var ctr = L.latLng(la / g.length, ln / g.length), cp = map.latLngToContainerPoint(ctr), spread = 1;
+      g.forEach(function (x) { spread = Math.max(spread, Math.sqrt((x.x - cp.x) * (x.x - cp.x) + (x.y - cp.y) * (x.y - cp.y))); });
+      var mk = L.marker(ctr, { icon: L.divIcon({ html: clHTML(g.length, busy, friend), className: "tz-cl", iconSize: [44, 44], iconAnchor: [22, 22] }),
+        pane: FB.pane ? "barcl" : undefined, keyboard: false, zIndexOffset: g.length });
+      var ids = g.map(function (x) { return String(x.m.options.olnuC.bar.id); });
+      mk.on("click", function () {
+        FB.clTaps++; FB.last = "cluster:" + g.length;
+        var z0 = map.getZoom(), to = Math.min(FB_MAXZ, Math.max(z0 + 1, z0 + Math.log(FB_R / Math.max(6, spread)) / Math.LN2 + 0.3));
+        var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+        try { map.setView(ctr, to, { animate: !still }); } catch (e) { map.setView(ctr, to); }
+      });
+      mk.addTo(map);
+      var el = mk.getElement && mk.getElement(); if (el) { el.setAttribute("data-cl", ids.join(",")); el.setAttribute("role", "button"); el.setAttribute("aria-label", g.length + " barer här. Zooma in"); }
+      FB.cl.push({ mk: mk, ids: ids }); FB.made++;
+    });
+  }
+  function fbHook(map, layers) {
+    FB.map = map; FB.layers = layers;
+    if (FB.hooked === map) return;
+    FB.hooked = map; fbStyle();
+    try { map.getContainer().addEventListener("click", fbTap, true); } catch (e) {}
+  }
+  function fbPass(map, layers, cand, z) {
+    try { fbHook(map, layers); fbCluster(map, cand, z); } catch (e) { try { console.warn("olnu tiers fb", e && e.message); } catch (x) {} }
+  }
+  /* fixM T-10 FB END */
+  window.TIERS = { apply: apply, onAdd: onAdd, capFor: capFor, rank: rank, labels: labels, stats: stats, lstats: lstats, _byId: tierById, safeRects: safeRects,
+    _fb: function () { return { on: FB.on, taps: FB.taps, last: FB.last, clusters: FB.cl.map(function (c) { return c.ids; }), made: FB.made, clTaps: FB.clTaps }; } };   // fixM T-10 tests
 })();
