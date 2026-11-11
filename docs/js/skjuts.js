@@ -14,13 +14,16 @@
    - lane ride (F1, 0420): with ride_flags.ride_v2 ON, js/ride.js (window.RIDE) takes over "Hämta mig" (all drivers, first
      accept wins, live driver card). This file then polls ride_poll (a superset of pickup_poll) and hands the ride part to
      RIDE.onData. Flag off / old server / no ride.js = everything below works exactly as before.
-   - R1-30: the member row shows a neutral role pill "Kör ikväll" (PNI taxi) + a text button "Skjuts?" (like "Lägg till vän"). */
+   - R1-30: the member row shows a neutral role pill "Kör ikväll" (PNI taxi) + a text button "Skjuts?" (like "Lägg till vän").
+   - lane ride3 (v3): the fast loop asks RIDE.fast() → {ms, tick}: a live ride polls ride_poll every 2 s (both phones),
+     an open request / offer asks the cheap ride_stamp_get every 2 s, a "Jag kör ikväll" driver every 5 s (a change →
+     ride_poll at once). Busy back-off (X8.busy) = no fast ticks; an answer with an error re-arms the loop. */
 (function () {
   "use strict";
   var U = window.U;
   var A = null, off = false, P = null, pollAt = 0, busy = false, fastT = 0, pingAt = 0, want = null;
   var drv = {}, rows = [], groupWraps = [];
-  var POLL_MS = 45000, FAST_MS = 10000, PING_MS = 30000;
+  var POLL_MS = 45000, FAST_MS = 10000, PING_MS = 30000, BUSY_MS = 20000;
   var ERR = {
     no_viewers: "Välj minst en kompis eller grupp.", too_many: "Max 30 personer åt gången.",
     slow_down: "Vänta en liten stund innan du frågar igen.", not_driving: "Hen kör int' längre ikväll.",
@@ -40,6 +43,7 @@
   function data(r) { return r && !r.error ? A.parseData(r.data) : null; }
   function push(body) { try { if (A.PUSH_ON && A.invoke) A.invoke("notify-group", body); } catch (e) {} }
   function RD() { var r = window.RIDE; return r && r.on && r.on() ? r : null; }   // lane ride: ride v2 on?
+  function busyNow() { try { return !!(window.X8 && window.X8.busy && window.X8.busy()); } catch (e) { return false; } }   // ride3: perf busy back-off
   function pni(n) { try { return window.PNI ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
   function h(tag, attrs, kids) {
     var e = document.createElement(tag);
@@ -89,7 +93,7 @@
     return call(rd ? "ride_poll" : "pickup_poll", rd ? rd.pollArgs() : undefined).then(function (r) {
       busy = false; pollAt = Date.now();
       if (rd && r.error && off) { off = false; rd.off(); return poll(true); }   // lane ride: server without 0420 → the old poll
-      var d = data(r); if (!d) return P;
+      var d = data(r); if (!d) { fastLoop(); return P; }   // ride3: busy / timeout answer: keep the fast loop alive
       var prev = P; P = d;
       if (rd) { try { rd.onData(d.ride || null); } catch (e) {} }
       announce(prev);
@@ -106,11 +110,20 @@
   }
   function fastLoop() {
     clearTimeout(fastT); fastT = 0;
-    if (!mineLive() && !incomingLive().length && !(RD() && RD().live())) return;
+    var rd = RD(), plan = rd && rd.fast ? rd.fast() : null;   // ride3: {ms, tick} from ride.js (null = nothing open)
+    var ms = plan && plan.ms ? plan.ms : (mineLive() || incomingLive().length || (rd && rd.live()) ? FAST_MS : 0);
+    if (!ms) return;
+    if (busyNow()) ms = Math.max(ms, BUSY_MS);   // the server is overloaded: the map poll is the probe
     fastT = setTimeout(function () {
+      fastT = 0;
       if (document.hidden) { fastLoop(); return; }
-      poll(true).then(function () { maybePing(); });
-    }, FAST_MS);
+      var r2 = RD(), p2 = r2 && r2.fast ? r2.fast() : null;
+      var need = p2 && p2.tick && r2.tick ? r2.tick() : Promise.resolve(true);
+      need.then(function (go) {
+        if (go) return poll(true).then(function () { maybePing(); });
+        fastLoop();
+      }, function () { fastLoop(); });
+    }, ms);
   }
   function maybePing() {
     var m = mineLive(); if (!m || m.kind !== "hamta" || document.hidden || Date.now() - pingAt < PING_MS) return;
@@ -302,7 +315,8 @@
       P = P || { incoming: [] }; P.driving = !!on;
       drv = {};   // group lists reload
       A.toast(on ? "🚗 Du kör ikväll. Gänget ser 🚗 vid ditt namn." : "🚗 Av. Du kör int' ikväll.", { ms: 3500 });
-      paintIkv(); refreshGroups();
+      paintIkv(); refreshGroups(); fastLoop();   // ride3: a driver who turns "Jag kör" on starts the 5 s offer check
+      try { if (window.LASK && window.LASK.sync) window.LASK.sync(); } catch (e) {}   // ride3: LÄSK! / ANNAT hidden at once
       try { if (A.updateCounts) A.updateCounts(); } catch (e) {}
     });
   }
@@ -434,7 +448,7 @@
     init: function (api) {
       A = api;
       try { if (window.RIDE) window.RIDE.init(api, { fix: fix, sos112: sos112, driving: driving, setDriver: function (on, b) { setDriver(on, b); },
-        force: function () { return poll(true); }, fast: function () { fastLoop(); } }); } catch (e) {}   // lane ride
+        force: function () { return poll(true); }, fast: function () { if (!fastT) fastLoop(); } }); } catch (e) {}   // lane ride (ride3: fast = arm the loop if idle)
       document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(true); });
       try { var q = new URLSearchParams(location.search).get("pickup"); if (q && /^\d{1,18}$/.test(q)) want = q; } catch (e) {}
     },

@@ -103,6 +103,7 @@ run after2     $B after2-pw.js     # lane after: A2 Kvällsrapporten (cards, awa
 run moments    $B moments-pw.js    # lane after: GM7 moments (vad, Halvtid, bordet, Hemlig agent) + GM4 room card + moments in the report
 run misc       $B misc-pw.js       # misc: X4 delete with 7 days to undo, F4 Grundare badge + owner cutoff, X5 film block + reportMenu, F3 film reports in the owner queue
 run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, first-accept race, live driver card, 5/10 min, cancel/Tack, drink rule, flag off / old server, R1-30
+run ride3      $B ride3-pw.js      # lane ride3 (0495): destination, fast polls (fake clock: each step on the other phone <= 3 s), steps in order, role chats + read-aloud, Ring consent, LÄSK soda, ANNAT hidden while driving, flag re-ask
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
 run sec        $B sec-pw.js        # lane sec: Spöke also ends the check-in and the pin (H2)
 run x8         $B x8-pw.js         # lane x8: weak signal: ÖL! outbox (offline / slow 3G / lost answer, no double log), 'Senast uppdaterad' + poll back-off, LÄSK!/spökläge
@@ -110,6 +111,7 @@ run perfchat   $B perf-pw.js --part chat   # lane fixP: sign-in burst ≤ 12 / 1
 run perf       $B perf-pw.js       # lane perf (load X10): ≤ 3 requests/min open, cold start ≤ 12, reopen, game 2.5 s + 0 while hidden, busy back-off, old server (no 0465)
 run left       $B left-pw.js       # lane left (11 Nov): T-05b Regler before every post RPC (photo, voice, invite, event, wish …), Z1 zone_counts in the poll bundle
 run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallback map tap rule + clusters, T-14 ticker one snapshot, T-15 top bar pill + Ute nu, T-24 crowd word
+run heat       $B heat-pw.js       # lane heat (0485/0486): client draws the server heat; no double glow on my / my mate's pin; no glow near a village home
 run fixmo      $B fixmo-pw.js      # lane fixMo (test teams round 2): N-05 host reveal + Förfest members, N-06 test-kit clock vs login, N-07 all moments, N-08/N-10 distinct crowd, N-09 checked-in mates, N-11 crowd line, N-12 takeover news nearby, N-13 GL-failed cluster tap, N-14 report to the group chat, N-19 copy
 run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens order icon, Helgstreak empty, safety/legend icons, R1-26/29/38/40/42/45/48/49, R1-43 token swaps
 run fixs       $B fixs-pw.js       # lane fixS (test teams): T-01 full block DM + friend row, T-05 send after Regler, T-09/T-18 Synlighet, T-12 chat menu, T-13 Gängkamp in Inkorg, T-16 counts, T-17 Dialekt, T-23

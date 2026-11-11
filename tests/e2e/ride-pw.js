@@ -105,7 +105,7 @@ const S = (p) => p.evaluate(() => {
 });
 const tap = (p, re, sel) => p.evaluate(([r, s]) => { const e = [...document.querySelectorAll(s || "#sheet-body button, #sheet-body a")].find((x) => x.getClientRects().length && new RegExp(r).test(x.textContent.trim())); if (e) e.click(); return e ? e.textContent.trim() : null; }, [re, sel]);
 const force = (p) => p.evaluate(() => window.SKJUTS && window.SKJUTS._force && window.SKJUTS._force()).then(() => wait(p, 400));
-const small = (s) => s.btns.filter((b) => b.h < 44 && !/rd-taxi|rd-rowbtn/.test(b.c));
+const small = (s) => s.btns.filter((b) => b.h < 44 && !/rd-taxi|rd-rowbtn|\bswitch\b/.test(b.c));   // ride3: .switch = the app toggle (32 px, ::before makes the target 48 px)
 async function shots(p, name, open) {
   for (const w of W) {
     await p.setViewportSize({ width: w, height: 844 }); await wait(p, 150);
@@ -129,9 +129,9 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     let s = await S(R.page);
     ok("F1-1 'Hämta mig' opens the ride request sheet (title, request content first, where / how many / note)", s.open && s.title === "Hämta mig" && s.rd && /rd-lead/.test(s.first)
       && /Var ä du\?/.test(s.text) && /Hur många\?/.test(s.text) && /Nåt mer\?/.test(s.text) && !/Vem ska få frågan/.test(s.text), { title: s.title, first: s.first, text: s.text.slice(0, 200) });
-    ok("F1-1 no big 112 in the sheet; 'Akut fara? Ring 112' is a small muted link at the very bottom (owner 11 Nov)", !s.big112 && s.foot112 && s.foot112.t === "Akut fara? Ring 112" && !/255, 1|200, 32|ff7b73/.test(s.foot112.c), { big: s.big112, foot: s.foot112 });
+    ok("F1-1 no 112 link at all in the ride sheet (owner 11 Nov 21:09, ride3: a pickup is not an emergency)", !s.big112 && !s.foot112 && !s.text.includes("Ring 112"), { big: s.big112, foot: s.foot112 });
     ok("F1-1 one amber button (Skicka), segmented where (2) + pax (4)", s.btns.filter((b) => /btn-amber/.test(b.c)).length === 1
-      && s.btns.filter((b) => /rd-segb/.test(b.c)).length === 6, s.btns.map((b) => b.t));
+      && s.btns.filter((b) => /rd-segb/.test(b.c)).length === 8, s.btns.map((b) => b.t));   // ride3: + Vart ska du? [Hem] [Annan plats]
     await shots(R.page, "1-request", async () => { await openReq(R.page); await wait(R.page, 900); });
     await openReq(R.page); await wait(R.page, 1200);
     await R.page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body .rd-seg4 .rd-segb")].find((x) => x.textContent === "2"); if (b) b.click(); });
@@ -156,7 +156,7 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     await openId(D1.page, ride1.id); await openId(D2.page, ride1.id); await wait(D1.page, 800);
     s = await S(D1.page);
     ok("F1-2 push tap (?pickup=id → hudClick pk-in) opens the offer: name, place, pax, km, note, [Kan int'] [Jag tar den]",
-      s.title === "Skjuts?" && /Lisa behöver skjuts/.test(s.text) && s.text.indexOf("Från " + PL + " · 2 pers · 1,2 km") >= 0 && /vid kebaben/.test(s.text)
+      s.title === "Skjuts?" && /Lisa behöver skjuts/.test(s.text) && s.text.indexOf("Från " + PL) >= 0 && s.text.indexOf("2 pers · 1,2 km bort") >= 0 && /Inget mål angivet/.test(s.text) && /vid kebaben/.test(s.text)
       && s.btns.some((b) => b.t === "Jag tar den" && /btn-amber/.test(b.c)) && s.btns.some((b) => b.t === "Kan int'"), s);
     const two = s.btns.filter((b) => /rd-take|rd-decline/.test(b.c));
     ok("F1-2 the two answers side by side, same width, ≥ 48 px", two.length === 2 && Math.abs(two[0].w - two[1].w) <= 1 && two.every((b) => b.h >= 48), two);
@@ -180,15 +180,15 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     ride1.taker = "D1"; const T = D1;
     await force(T.page); await T.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); await wait(T.page, 800);
     s = await S(T.page);
-    ok("F1-4 taker card: 'Du kör Lisa', place + pax, route link, [Släpp den] [På väg], chat quick replies", s.title === "Du kör" && /Du kör Lisa/.test(s.text)
+    ok("F1-4 taker card: 'Kör till Lisa', place + pax, route link, [Släpp den] [På väg], chat quick replies", s.title === "Du kör" && /Kör till Lisa/.test(s.text)
       && s.btns.some((b) => /rd-rowbtn/.test(b.c) && /maps\/dir/.test(b.href)) && s.btns.some((b) => b.t === "På väg" && /btn-amber/.test(b.c)) && s.btns.some((b) => b.t === "Släpp den")
-      && /Kommer ut nu/.test(s.text), s);
+      && /Jag är här/.test(s.text) && !/Kommer ut nu/.test(s.text), s);   // ride3: driver chips
     await wait(T.page, 1500);
     ok("F1-4 taker sends its live position (ride_pos) while driving", srv.calls.some((c) => c[0] === "ride_pos" && c[1] === "D1"), srv.calls.filter((c) => c[0] === "ride_pos").length);
     await shots(T.page, "4-taker", async () => { await T.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); });
     await T.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); await wait(T.page, 300);
     await tap(T.page, "^På väg$"); await wait(T.page, 700);
-    ok("F1-4 På väg → ride_step enroute; next button 'Framme'", srv.calls.some((c) => c[0] === "ride_step" && c[2].p_step === "enroute") && (await S(T.page)).btns.some((b) => b.t === "Framme"));
+    ok("F1-4 På väg → ride_step enroute; next button 'Jag är här' (ride3)", srv.calls.some((c) => c[0] === "ride_step" && c[2].p_step === "enroute") && (await S(T.page)).btns.some((b) => b.t === "Jag är här" && /rd-next/.test(b.c)));
     // rider
     ride1.drv = ride1.drv || { lat: 60.1440, lng: 15.1890, at: Date.now() };
     await force(R.page); await R.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); await wait(R.page, 800);
@@ -203,11 +203,15 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     ride1.status = "arrived"; ride1.step_at.arrived = new Date().toISOString();
     await force(R.page); await R.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); await wait(R.page, 700);
     s = await S(R.page);
-    ok("F1-4 arrived: 'Oskar ä framme' + 'Väntat 0 min' + amber 'Jag sitter i bilen'", /Oskar ä framme/.test(s.text) && /Väntat \d+ min/.test(s.text) && s.btns.some((b) => /Jag sitter i bilen/.test(b.t) && /btn-amber/.test(b.c)), s.text.slice(0, 200));
+    // ride3: the rider never ends the ride; on a 0420 server (no v3 'picked' step) the driver's next after Framme is Klar
+    ok("F1-4 arrived: 'Oskar ä framme' + 'Väntat 0 min'; no rider end button on a 0420 server (ride3: the driver owns the steps)", /Oskar ä framme/.test(s.text) && /Väntat \d+ min/.test(s.text) && !s.btns.some((b) => /Jag sitter i bilen|Klar/.test(b.t)), s.text.slice(0, 200));
     await shots(R.page, "4-rider-arrived", async () => { await R.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); });
 
     /* ---------- 6 end: done → Tack! Skål (rider) + Kvällens chaufför (driver); pin gone ---------- */
-    await tap(R.page, "Jag sitter i bilen"); await wait(R.page, 800);
+    await force(T.page); await T.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); await wait(T.page, 500);
+    ok("F1-6 (0420 server) driver at Framme: next = 'Klar, framme'", (await S(T.page)).btns.some((b) => b.t === "Klar, framme" && /rd-next/.test(b.c)));
+    await tap(T.page, "^Klar, framme$"); await wait(T.page, 800);
+    await force(R.page); await R.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); await wait(R.page, 800);
     s = await S(R.page);
     ok("F1-6 done → 'Tack! Skål' button; the live pin is removed", /Tack! Skål/.test(s.text) && !(await R.page.evaluate(() => !!document.querySelector(".rd-pin-car"))), s.text.slice(0, 200));
     await shots(R.page, "6-rider-done", async () => { await R.page.evaluate((i) => window.RIDE && window.RIDE.openId(i), ride1.id); });

@@ -1,0 +1,206 @@
+{
+ "note": "made by supabase/tests/heat-0485-fixture.sql on a local copy (old = before 0485/0486, new = after). Viewer M. Do not edit by hand.",
+ "old": {
+  "server": "old",
+  "live_beers": [
+   {
+    "id": 1,
+    "lat": 60.14997,
+    "lng": 15.18679,
+    "beer_count": 3,
+    "precise": true,
+    "is_mine": true,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 2,
+    "lat": 60.15124,
+    "lng": 15.18797,
+    "beer_count": 2,
+    "precise": true,
+    "is_mine": false,
+    "friend_name": "Lisa",
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 3,
+    "lat": 60.15098,
+    "lng": 15.18663,
+    "beer_count": 1,
+    "precise": true,
+    "is_mine": false,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 4,
+    "lat": 60.205,
+    "lng": 15.03,
+    "beer_count": 1,
+    "precise": false,
+    "is_mine": false,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 5,
+    "lat": 60.155,
+    "lng": 15.2,
+    "beer_count": 1,
+    "precise": false,
+    "is_mine": false,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   }
+  ],
+  "heat_points": [
+   {
+    "lat": 60.14997,
+    "lng": 15.18679,
+    "w": 1
+   },
+   {
+    "lat": 60.15098,
+    "lng": 15.18663,
+    "w": 1
+   },
+   {
+    "lat": 60.15124,
+    "lng": 15.18797,
+    "w": 1
+   },
+   {
+    "lat": 60.155,
+    "lng": 15.2,
+    "w": 1
+   },
+   {
+    "lat": 60.205,
+    "lng": 15.03,
+    "w": 1
+   }
+  ],
+  "spots": {
+   "me": [
+    60.14997,
+    15.18679
+   ],
+   "mate": [
+    60.15124,
+    15.18797
+   ],
+   "stranger_bar": [
+    60.15098,
+    15.18663
+   ],
+   "village_home": [
+    60.205,
+    15.03
+   ],
+   "town": [
+    60.1496,
+    15.1878
+   ]
+  }
+ },
+ "new": {
+  "server": "new",
+  "live_beers": [
+   {
+    "id": 1,
+    "lat": 60.14997,
+    "lng": 15.18679,
+    "beer_count": 3,
+    "precise": true,
+    "is_mine": true,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 2,
+    "lat": 60.15124,
+    "lng": 15.18797,
+    "beer_count": 2,
+    "precise": true,
+    "is_mine": false,
+    "friend_name": "Lisa",
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 3,
+    "lat": 60.15098,
+    "lng": 15.18663,
+    "beer_count": 1,
+    "precise": true,
+    "is_mine": false,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 4,
+    "lat": 60.1496,
+    "lng": 15.1878,
+    "beer_count": 1,
+    "precise": false,
+    "is_mine": false,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   },
+   {
+    "id": 5,
+    "lat": 60.1496,
+    "lng": 15.1878,
+    "beer_count": 1,
+    "precise": false,
+    "is_mine": false,
+    "friend_name": null,
+    "skal_count": 0,
+    "i_skaled": false
+   }
+  ],
+  "heat_points": [
+   {
+    "lat": 60.1496,
+    "lng": 15.1878,
+    "w": 2
+   },
+   {
+    "lat": 60.15098,
+    "lng": 15.18663,
+    "w": 1
+   }
+  ],
+  "spots": {
+   "me": [
+    60.14997,
+    15.18679
+   ],
+   "mate": [
+    60.15124,
+    15.18797
+   ],
+   "stranger_bar": [
+    60.15098,
+    15.18663
+   ],
+   "village_home": [
+    60.205,
+    15.03
+   ],
+   "town": [
+    60.1496,
+    15.1878
+   ]
+  }
+ }
+}
