@@ -15,7 +15,11 @@
 .rd-segb{min-height:44px;margin:0;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ds-text-2);
   font:600 var(--fs-16)/22px var(--ds-sans);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 var(--sp-2)}
 .rd-segb[aria-checked="true"]{background:var(--ds-raised);color:var(--ds-amber-t)}
-.rd-segb:focus-visible,.rd-qb:focus-visible,.rd-send:focus-visible,.rd-rowbtn:focus-visible,.rd-taxi:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+/* ride3 (owner 22:08): focus rings are INSET (outline-offset -2px): the sheet body scrolls (overflow) and has no side
+   padding, so an outside ring was cut on the left edge (chat field "Skriv…", first chip). */
+.rd-segb:focus-visible,.rd-qb:focus-visible,.rd-send:focus-visible,.rd-rowbtn:focus-visible,.rd-taxi:focus-visible,.rd-hit:focus-visible,.rd-x:focus-visible,
+.rd .btn:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
+.rd .rd-in:focus,.rd .rd-in:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px;border-color:transparent;box-shadow:none}
 .rd-place{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);background:var(--ds-card);
   color:var(--ds-text);font:600 var(--fs-16)/22px var(--ds-sans)}
 .rd-place .pi{color:var(--ds-amber-t)}
@@ -116,6 +120,43 @@
 /* inside the sheet: the sheet's own p / button rules are more specific; keep the ride rhythm (8 px) and 48 px buttons */
 #sheet-body .rd p{margin:0}
 #sheet-body .rd .btn:not(.btn-small){min-height:48px;height:auto;box-sizing:border-box}
-/* followups (owner 11 Nov): 112 is one small muted link at the very bottom of the ride sheet (a pickup is not an emergency) */
-.rd-112f{margin:var(--sp-5) 0 0;text-align:center;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
-.rd-112f-a{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-2);color:var(--ds-muted);text-decoration:underline;text-underline-offset:3px}
+/* ride3 (v3, 11 Nov): no 112 link in the ride sheets (owner 21:09). Destination, route lines, 5 steps, one next-step button,
+   "Ring" consent, read-aloud switch, destination pin. Tokens only; no transitions on markers (the car glides by rAF in ride.js). */
+.rd-steps5{grid-template-columns:repeat(5,1fr)}
+.rd-h-dest{display:flex;align-items:baseline;gap:var(--sp-2)}
+.rd-opt{font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+.rd-dest .pi{color:var(--ds-green)}
+.rd-x{flex:0 0 44px;width:44px;height:44px;margin:0 calc(-1 * var(--sp-2)) 0 auto;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ds-muted);display:grid;place-items:center;cursor:pointer}
+.rd-x .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+.rd-qbtn{flex:0 0 auto;min-height:48px;margin:0}
+.rd-hits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-1)}
+.rd-hit{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:52px;padding:var(--sp-1) var(--sp-3);border:0;border-radius:var(--r-md);background:var(--ds-card);
+  color:var(--ds-text);text-align:left;cursor:pointer;box-sizing:border-box}
+.rd-hit .pi{color:var(--ds-amber-t)}
+.rd-hit-t{display:flex;flex-direction:column;min-width:0}
+.rd-hit-t b{font:600 var(--fs-16)/22px var(--ds-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-hit-t small{font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+.rd-route{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.rd-route li{display:flex;align-items:center;gap:var(--sp-2);min-width:0;font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.rd-route li span:not(.rd-ic){min-width:0;overflow-wrap:anywhere}
+.rd-route .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+.rd-r-from .pi{color:var(--ds-amber-t)}
+.rd-r-to .pi{color:var(--ds-green)}
+.rd-route li.rd-r-none{color:var(--ds-muted);font-weight:400}
+.rd-trip{color:var(--ds-green)}
+.rd-next,.rd-incar{min-height:56px;margin:0;font-size:var(--fs-18)}
+.rd-letgo{min-height:48px;margin:0}
+.rd-callw{display:flex;flex-direction:column;gap:var(--sp-2)}
+.rd-call{min-height:48px;margin:0;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);text-decoration:none}
+.rd-call .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
+.rd-call-tel{color:var(--ds-green)}
+.rd-callin{border-color:var(--ds-amber)}
+.rd-callin b{font:700 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.rd-speak{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:48px;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.rd-pin-dst{border-color:var(--ds-green)}
+.rd-pin-dst .pi{background:var(--ds-green)}
+.rd-pick-dst{color:var(--ds-green)}
+/* ride3 LÄSK! toast (lask.js): "Jag kör inte" is a small secondary link, not the main action */
+.toast.rd-lask-toast .btn{min-height:44px;padding:0 var(--sp-2);border:0;background:transparent;color:var(--ds-muted);font:400 var(--fs-14)/20px var(--ds-sans);text-decoration:underline;text-underline-offset:3px;box-shadow:none}
+/* ride3 (owner 21:43): ANNAT (other drinks) is hidden while "Jag kör ikväll" is on (lask.js sets body.mn-drive) */
+body.mn-drive #other-wrap,body.mn-drive #btn-other{display:none !important}

@@ -78,7 +78,7 @@ jobs:
           - name: misc
             filter: '^(misc)$'
           - name: ride
-            filter: '^(ride)$'
+            filter: '^(ride|ride3)$'
           - name: main
             filter: '^(main|sec)$'
           - name: x8
