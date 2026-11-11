@@ -762,7 +762,7 @@
           var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
           var firstPage = lastId === 0;
           rows.forEach(function (m) { add(m); if (m.id > lastId) lastId = m.id; });
-          if (rows.length) { lastNewAt = Date.now(); window.OLNU_CHAT_AT = lastNewAt; }
+          if (rows.length) { lastNewAt = Date.now(); window.OLNU_CHAT_AT = lastNewAt; if (!firstPage) fast(); else tickNew = lastNewAt; }   // fixP N-02: a new line → 7 s (the first page is not new)
           if (firstPage && rows.length) { oldestId = rows[0].id; if (rows.length >= 100) showOlder(true); }
           if (!list.children.length) list.appendChild(el("li", { class: "muted chat-empty", text: t("chatEmpty") }));
           if (rows.length && (nearBottom || rows.length === list.children.length)) list.scrollTop = list.scrollHeight;
@@ -807,20 +807,33 @@
           if (String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim() === text) inp.value = "";
           A.invoke("notify-group", { event: "msg", group_id: g.id });   // fire-and-forget
           if (window.EXTRAS && window.EXTRAS.award) window.EXTRAS.award("chat");
-          load(); loadStats();
+          fast(); load(); loadStats();
         });
       }
-      var tick = 0;
-      // New messages every 3 s while the chat is open; reactions every 9 s, ranks every 30 s.
-      // Review: quiet chat (nothing new and no typing for 60 s) -> new messages every 9 s instead of every 3 s.
-      var lastNewAt = window.OLNU_CHAT_AT = Date.now();
-      timer = setInterval(function () {
-        ++tick;
-        if (Date.now() - lastNewAt < 60000 || tick % 3 === 0) load();
-        if (tick % (Date.now() - lastNewAt < 60000 ? 3 : 9) === 0) loadLikes();   // review2: quiet chat every 27 s
-        if (tick % 10 === 0) loadStats();
-      }, 3000);
-      load(); loadStats(); setTimeout(loadLikes, 600);
+      // fixP N-02: ONE chat tick = ONE request. The tick asks reactions (+ ranks every ~30 s) and then the new lines
+      // (group_msgs). app.js (A.chatLane) sends them in one rpc_bundle2, together with the photo / voice reads of
+      // photo.js / after.js that wait for the tick. Before: 5 timers, 20–30 requests a minute.
+      // Rhythm: 7 s; no new line since the last tick → 15 s, then 30 s; a new line, an own post or typing → 7 s again.
+      // Hidden: no tick; back on screen → a tick at once.
+      var lastNewAt = window.OLNU_CHAT_AT = Date.now(), GAPS = [7000, 15000, 30000], lvl = 0, tickNew = lastNewAt, statsAt = Date.now(), dueAt = 0;
+      var lane = A.chatLane ? A.chatLane(g.id, alive, true) : null;
+      function sched(ms) { clearTimeout(timer); dueAt = Date.now() + ms; timer = setTimeout(tickNow, ms); }
+      function fast() { lvl = 0; if (timer && dueAt - Date.now() > GAPS[0]) sched(GAPS[0]); }
+      function tickNow() {
+        timer = null;
+        if (!alive()) { if (lane) lane.end(); return; }
+        if (document.visibilityState === "hidden") return;   // the visibility listener ticks on return
+        if (lastNewAt !== tickNew) { tickNew = lastNewAt; lvl = 0; } else lvl = Math.min(lvl + 1, GAPS.length - 1);
+        loadLikes();
+        if (Date.now() - statsAt >= 28000) { statsAt = Date.now(); loadStats(); }
+        load();
+        sched(GAPS[lvl]);
+      }
+      document.addEventListener("visibilitychange", function vis() {
+        if (!alive()) { document.removeEventListener("visibilitychange", vis); if (lane) lane.end(); clearTimeout(timer); return; }
+        if (document.visibilityState !== "hidden" && !timer) { lvl = 0; tickNew = lastNewAt; loadLikes(); load(); sched(GAPS[0]); }
+      });
+      loadLikes(); loadStats(); load(); sched(GAPS[0]);
     });
   }
   function openChatLink(id) {

@@ -93,6 +93,8 @@ jobs:
             filter: '^(fixc)$'
           - name: perf
             filter: '^(perf)$'
+          - name: perfchat
+            filter: '^(perfchat)$'
           - name: fixm
             filter: '^(fixm)$'
           - name: fixmo

@@ -73,7 +73,7 @@ async function server(page, calls) {
     const got = await page.waitForFunction(() => document.querySelectorAll(".chat-list li.chat-msg").length >= 2, null, { timeout: 10000 }).then(() => true, () => false);
     ok(`[${w}] DM: messages load`, got, await page.evaluate(() => (document.querySelector(".chat-list") || {}).textContent));
     ok(`[${w}] DM: header shows the friend (dm.js chatOpen)`, await page.evaluate(() => /Ida/.test((document.querySelector(".dm-chead") || {}).textContent || "")));
-    await wait(page, 7500);   // the chat polls group_msgs every 3 s: 2+ polls
+    await wait(page, 9000);   // the chat polls group_msgs (fixP: first tick 7 s after the open): 2+ polls
     const polls = calls.filter((c) => c[0] === "group_msgs" && c[1] === DM).length;
     ok(`[${w}] DM: group_msgs keeps polling the server (${polls} calls in ~9 s)`, polls >= 2, calls);
     ok(`[${w}] DM: chat still open after 2 polls`, await page.evaluate(() => !document.getElementById("sheet").hidden && !!document.querySelector(".chat-list")));

@@ -29,8 +29,20 @@
     var c = cfgGet(name, params);   // perf (load fix 7): config / flags from this phone (≤ 10 min old)
     if (c) return c;
     var p = window.WARM && !flyttGuard() ? window.WARM.rpc(name, params, rpcNet) : rpcNet(name, params);
+    if (FLAGW.test(name)) p = p.then(function (r) { if (r && !r.error) flagsDirty(); return r; });   // fixP N-21
     return CFG10[name] ? p.then(function (r) { cfgPut(name, params, r); return r; }) : p;
   }
+  // fixP N-21 part 2: the flags (moments, after, ride, bold) can change with a group join / create / leave and with the test
+  // kit (zz_test_join / zz_test_set). Then the 10-min cache (localStorage + moments.js) must not answer: drop it and let
+  // moments.js ask again (its onAuthed = flagsCheck(true)). At most once per 3 s.
+  var FLAGW = /^(join_group|create_group|leave_group|zz_test_\w+)$/, flagsDirtyAt = 0;
+  function cfgClear() { try { localStorage.removeItem(LS_CFG10); } catch (e) {} }
+  function flagsDirty() {
+    cfgClear();
+    if (Date.now() - flagsDirtyAt < 3000) return; flagsDirtyAt = Date.now();
+    setTimeout(function () { try { if (authed && window.MOMENTS && window.MOMENTS.onAuthed) window.MOMENTS.onAuthed(); } catch (e) {} }, 400);
+  }
+  try { if (window.PNTEST && window.PNTEST.on) window.PNTEST.on(function (k) { if (k === "state") flagsDirty(); }); } catch (e) {}   // test kit: joined / flags set
   // perf (load REPORT fix 7): config and feature flags change rarely. Their last good answer is kept per user in
   // localStorage for 10 min. It is used only during the first minute of a page life (a reopened app does not ask again);
   // later calls (the modules' own 10-min refresh, a forced refresh) go to the server as before.
@@ -73,7 +85,24 @@
   var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
   try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
   if (bSrv && bSrv.v === "old" && Date.now() - bSrv.at < 30 * 60e3) BUNDLE_NEW.forEach(function (n) { noB[n] = 1; });
-  function bCap() { return bSrv && bSrv.v === "new" ? 40 : 24; }
+  // fixP N-02 (0466): the chat reads may go in a bundle too. A server with 0465 but without 0466 answers
+  // not_bundled for them: they go alone for this page life, and this phone remembers it 30 min (olnu.bsrv66, own flag: the
+  // 0465 names keep their cap and flag). The chat reads are screen reads (SCR66: like the 0465 names, they bundle only in the
+  // start-up window, in the background, or in the chat lane below). moments_poll is on the 0466 server list too, but the client
+  // still sends it alone: in a bundle it waits ≤ 3 s, and moments.js poll(true) (push link ?mom=) returns early while a poll is
+  // pending (moments-pw GM7). Add "moments_poll" here once moments.js waits for the pending poll (request to lane fixMo).
+  var BUNDLE_66 = ["group_photos", "msg_reacts", "group_voices", "group_status_v3", "group_status_v2"], N66 = {}, SCR66 = {}, LS_B66 = "olnu.bsrv66", b66 = null;
+  BUNDLE_66.forEach(function (n) { N66[n] = 1; SCR66[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_66);
+  try { b66 = JSON.parse(localStorage.getItem(LS_B66) || "null"); } catch (e) { b66 = null; }
+  if (b66 && b66.v === "old" && Date.now() - b66.at < 30 * 60e3) BUNDLE_66.forEach(function (n) { noB[n] = 1; });
+  function b66Set(v) {
+    if (b66 && b66.v === v && Date.now() - b66.at < 60e3) return;
+    b66 = { v: v, at: Date.now() };
+    try { localStorage.setItem(LS_B66, JSON.stringify(b66)); } catch (e) {}
+  }
+  // fixP N-01: cap 40 unless this phone saw an old server (a first start used to split its burst in 24 + 24): an old server
+  // answers invalid_calls once → chunks of 24, remembered 30 min
+  function bCap() { return bSrv && bSrv.v === "old" ? 24 : 40; }
   function bSrvSet(v) {
     if (bSrv && bSrv.v === v && Date.now() - bSrv.at < 60e3) return;
     bSrv = { v: v, at: Date.now() };
@@ -81,15 +110,40 @@
   }
   var bundleOff = false, bq = [], bqT = 0, bundleStats = { sent: 0, calls: 0, alone: 0, pre: 0, preUsed: 0, busy: 0 }, authedAt = 0;
   var lastTapAt = 0;
-  ["pointerdown", "click", "keydown"].forEach(function (ev) { document.addEventListener(ev, function () { lastTapAt = Date.now(); }, true); });
+  // fixP N-01: typing in a text field (keydown in input / textarea, not Enter) opens no screen: it does not start the tap clock
+  ["pointerdown", "click", "keydown"].forEach(function (ev) { document.addEventListener(ev, function (e) {
+    try { if (e && e.type === "keydown" && e.key !== "Enter" && e.target && (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable)) return; } catch (x) {}
+    lastTapAt = Date.now();
+  }, true); });
+  // fixP N-01: "is this call for a screen the user just opened?" (then it goes alone, at once).
+  //  - inside a tap event (also its microtasks: WARM's pointerdown prefetch): yes, always;
+  //  - the call that made the account after a tap (tapRpc): yes;
+  //  - the map-poll fan-out (runWave + its promise chains, bgRun): no — the tap clock does not count there;
+  //  - the start-up window (10 s after sign-in / account create): the tap that started the sign-in (Kör!, Fortsätt, Jag hänger
+  //    med, the first real tap of a phone with no account) does not count; a tap after the account exists does;
+  //  - else: a tap < 2.5 s ago = yes (as before).
+  var START_MS = 10000, tapCall = 0, bgZone = 0;
+  function inTapEv() { try { var ev = window.event; return !!(ev && /^(pointerdown|pointerup|mousedown|click|keydown|touchstart|touchend)$/.test(ev.type)); } catch (e) { return false; } }
+  function startWin() { return !!authedAt && Date.now() - authedAt < START_MS; }
+  function tapNow() {
+    if (inTapEv() || tapCall) return true;
+    if (bgZone > 0 || (startWin() && lastTapAt < authedAt)) return false;   // the sign-in tap itself does not count
+    return Date.now() - lastTapAt < 2500;
+  }
+  function tapRpc(n, p) { tapCall++; try { return rpc(n, p); } finally { tapCall--; } }
+  // runs fn as background work: calls made in it and in the promise chains it starts (up to 40 microtask hops; no user
+  // event can run before they end) do not look at the tap clock
+  function bgRun(fn) {
+    bgZone++;
+    try { fn(); } finally { var n = 40; (function hop() { if (--n > 0) Promise.resolve().then(hop); else bgZone--; })(); }
+  }
   function bundleable(name, params) {
     if (bundleOff || !authed || noB[name] || BUNDLE.indexOf(name) < 0) return false;
-    if (Date.now() - lastTapAt < 2500) return false;   // a screen the user just opened: no wait, its own request
-    try { var ev = window.event; if (ev && /^(pointerdown|pointerup|mousedown|click|keydown|touchstart|touchend)$/.test(ev.type)) return false; } catch (e) {}   // perf: a call inside a tap handler (WARM's pointerdown prefetch runs before our tap clock)
+    if (tapNow()) return false;   // a screen the user just opened: no wait, its own request (fixP N-01: see tapNow)
     if (name === "poll_v2" && !firstLoadDone) return false;   // perf: the first map poll goes alone (pins as fast as today)
     // perf: the 0465 names (screen reads) go in a bundle only in the start-up window, from WARM's background refresh, or
     // as a poll-plan answer. Otherwise alone, as before (a screen that opens never waits for a bundle timer).
-    if (NEWB[name] && name !== "poll_v2" && !bgCall && Date.now() - authedAt > 10000 && !(pre[name + "|" + JSON.stringify(params || {})])) return false;
+    if ((NEWB[name] || SCR66[name]) && name !== "poll_v2" && !bgCall && !bgZone && Date.now() - authedAt > START_MS && !(pre[name + "|" + JSON.stringify(params || {})])) return false;
     if (params == null) return true;
     if (typeof params !== "object" || Array.isArray(params)) return false;
     return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v) || (JSONB_ARG[name] && JSONB_ARG[name][k] && typeof v === "object"); });
@@ -99,7 +153,12 @@
     var list = bq; bq = []; clearTimeout(bqT); bqT = 0;
     var calls = [], seen = {};
     list.forEach(function (x) { if (!seen[x.k]) { seen[x.k] = 1; calls.push({ k: x.k, n: x.n, a: x.p || {} }); } });
-    if (calls.length < 2) { bAlone(list); return; }
+    if (calls.length < 2) {
+      // fixP N-01: start-up window: one lone read waits for company (≤ 2.5 s after it was asked), then goes alone as before
+      var w0 = list.length && list[0].at ? 2500 - (Date.now() - list[0].at) : 0;
+      if (startWin() && w0 > 50 && !bqT) { bq = list.concat(bq); bqDue = Date.now() + w0; bqT = setTimeout(bundleGo, w0); return; }
+      bAlone(list); return;
+    }
     bundleChunks(calls, list, bCap());
   }
   // perf: more calls than the server takes → equal chunks (each one request)
@@ -132,10 +191,10 @@
         var it = d[x.k];
         // the real server answers a name off its list with { e: { code: "P0001", message: "not_bundled" } }
         if (!it || (it.e && (it.e.code === "not_bundled" || /\bnot_bundled\b/.test(String(it.e.message || ""))))) {
-          if (it) { noB[x.n] = 1; if (NEWB[x.n]) bSrvSet("old"); }
+          if (it) { noB[x.n] = 1; if (NEWB[x.n]) bSrvSet("old"); if (N66[x.n]) b66Set("old"); }
           bAlone([x]); return;
         }
-        if (NEWB[x.n]) bSrvSet("new");
+        if (NEWB[x.n]) bSrvSet("new"); if (N66[x.n]) b66Set("new");
         if (it.e) { x.res({ data: null, error: { message: String(it.e.message || "error"), code: it.e.code || "" } }); return; }
         var v = it.d === undefined ? null : it.d;
         if (used[x.k] && v && typeof v === "object") { try { v = JSON.parse(JSON.stringify(v)); } catch (x2) {} }
@@ -148,7 +207,7 @@
   // arguments) that earlier polls made at about this rhythm. The onPoll fan-out then gets its answers from this bundle (same
   // order as before: the pins first, then the modules). A call the plan did not guess goes in the normal bundle. Calls that
   // mark something as seen or claim a push are never asked for ahead (PRE_DENY). An answer is used once, ≤ 20 s old.
-  var plan = {}, pre = {}, pollWin = 0, PRE_DENY = { poll_v2: 1, knuff_inbox: 1, my_removals: 1, film_poll: 1, mark_seen: 1, walk_timer_tick: 1 };
+  var plan = {}, pre = {}, pollWin = 0, PRE_DENY = { poll_v2: 1, knuff_inbox: 1, my_removals: 1, film_poll: 1, mark_seen: 1, walk_timer_tick: 1, moments_poll: 1 };
   // Background calls that claim / mark something (never asked ahead): they wait for the next map poll and go in its
   // bundle (≤ 30 s later; their own rhythm is 60 s – 5 min). A 35 s timer sends them if no poll comes.
   var DEFER = { knuff_inbox: 1, film_poll: 1, mark_seen: 1 }, bqNext = [], bqNextT = 0, burstDone = false, bqDue = 0;
@@ -156,6 +215,11 @@
   // 7 min), and after their first answer a background ask the plan did not answer waits for the next map poll (DEFER1)
   // instead of going alone. The first ask and a tap go at once; an old server (not_bundled) = alone, as before.
   var PLAN_LONG = { zone_counts: 1 }, DEFER1 = { zone_counts: 1 }, asked1 = {};
+  // fixP: the 35 s fallback for calls that wait for the next map poll; it never sends while the page is hidden
+  function armNext() {
+    if (bqNextT) return;
+    bqNextT = setTimeout(function nf() { if (document.visibilityState === "hidden") { bqNextT = setTimeout(nf, 35000); return; } nextFlush(); if (bq.length) bundleGo(); }, 35000);
+  }
   function nextFlush() {
     clearTimeout(bqNextT); bqNextT = 0;
     if (!bqNext.length) return;
@@ -210,9 +274,88 @@
   function busyNow() { try { return !!(window.X8 && window.X8.busy && window.X8.busy()); } catch (e) { return false; } }
   function busyHold(name) {
     if (!(BUSY_POLL[name] || BUNDLE.indexOf(name) >= 0) || !busyNow()) return false;
-    if (Date.now() - lastTapAt < 2500) return false;
-    try { var ev = window.event; if (ev && /^(pointerdown|pointerup|mousedown|click|keydown|touchstart|touchend)$/.test(ev.type)) return false; } catch (e) {}
+    if (tapNow()) return false;   // fixP N-01: a tap goes out (same rule as bundleable)
     try { return window.X8.hold(name); } catch (e) { return false; }
+  }
+  // fixP N-02: the CHAT LANE. An open chat (social.js) or group page (gpage.js) calls A.chatLane(gid, alive[, chat]). While
+  // it is open, the chat reads of that group wait for the chat tick (= its group_msgs call) and go with it in ONE
+  // rpc_bundle2. Before: 5 module timers (group_msgs, group_photos, msg_reacts, group_voices, group_status_v3), each alone,
+  // 20–30 requests a minute. A read waits at most 31 s. It goes at once (with what waits) inside a tap, ≤ 5 s after an own
+  // post / reaction, and in the first 2 s of the lane. Opening a chat: the first tick also asks the first calls of photo.js
+  // and after.js (p_after_id 0), so the chat opens with 1 request. A name the server does not take (not_bundled: no 0466,
+  // no 0465) goes alone at the tick (still at most once per tick); no rpc_bundle2 = each alone at the tick.
+  var LANE_N = { group_msgs: 1, group_photos: 1, msg_reacts: 1, group_voices: 1, group_status_v3: 1, group_status_v2: 1, group_now: 1 };
+  var CHAT_W = /^(post_group_msg|post_photo|post_voice|react_msg|like_msg)$/, chatWriteAt = 0, lanes = {}, LANE_OPEN_MS = 2000, LANE_MAX_MS = 31000;
+  function chatLane(gid, alive, chat) {
+    if (!gid || typeof alive !== "function") return { end: function () {} };
+    var l = lanes[gid] || (lanes[gid] = { gid: gid, alive: [], q: [], pre: {}, t: 0, due: 0, st: 0, at: 0, first: false, ticks: 0 });
+    l.alive.push(alive); l.at = Date.now();
+    if (chat) { l.first = true; l.pre = {}; }
+    return { end: function () { l.alive = l.alive.filter(function (f) { return f !== alive; }); if (!l.alive.length) laneEnd(l); } };
+  }
+  function laneOf(gid) {
+    var l = lanes[gid]; if (!l) return null;
+    var on = l.alive.filter(function (f) { try { return !!f(); } catch (e) { return false; } });
+    if (on.length) { l.alive = on; return l; }
+    if (Date.now() - l.at > 3000) laneEnd(l);   // a page that is not in the DOM yet (first 3 s) keeps its lane
+    return null;
+  }
+  function laneEnd(l) {
+    if (lanes[l.gid] === l) delete lanes[l.gid];
+    clearTimeout(l.t); clearTimeout(l.st); l.t = l.st = 0;
+    var xs = l.q; l.q = [];
+    if (xs.length) laneSend(xs);   // what waited goes now (its module decides if it still needs it)
+  }
+  function laneCall(l, name, params) {
+    var k = name + "|" + JSON.stringify(params || {}), t = Date.now(), h = l.pre[k];
+    if (h && !h.used && t - h.at < 15000) { h.used = true; bundleStats.preUsed++; return h.p; }
+    return new Promise(function (res) {
+      l.q.push({ n: name, p: params, k: k, res: res });
+      // WARM's revalidation (bgCall) goes soon too: a screen read of the same key waits on it (warm.js inflight)
+      var ms = name === "group_msgs" || inTapEv() || bgCall || t - chatWriteAt < 5000 ? 30 : t - l.at < LANE_OPEN_MS ? 150 : 0;
+      if (ms) laneSoon(l, ms);
+      else if (!l.st) l.st = setTimeout(function () { l.st = 0; laneGo(l); }, LANE_MAX_MS);   // waits for the next tick
+    });
+  }
+  function laneSoon(l, ms) {
+    var due = Date.now() + ms;
+    if (l.t && l.due <= due) return;
+    clearTimeout(l.t); l.due = due;
+    l.t = setTimeout(function () { l.t = 0; laneGo(l); }, ms);
+  }
+  function lanePre(l) {
+    var out = [], g = l.gid;
+    [["group_photos", { p_group_id: g, p_after_id: 0 }, window.PHOTO], ["group_voices", { p_group_id: g, p_after_id: 0 }, window.AFTER]].forEach(function (c) {
+      if (!c[2] || !c[2].chatOpen || noB[c[0]] || bundleOff) return;
+      var k = c[0] + "|" + JSON.stringify(c[1]); if (l.pre[k]) return;
+      var h = l.pre[k] = { at: Date.now(), used: false };
+      bundleStats.pre++;
+      h.p = new Promise(function (res) { out.push({ n: c[0], p: c[1], k: k, res: res }); });
+    });
+    return out;
+  }
+  function laneGo(l) {
+    clearTimeout(l.st); l.st = 0;
+    var xs = l.q; l.q = [];
+    if (l.first) { l.first = false; xs = xs.concat(lanePre(l)); }
+    if (!xs.length) return;
+    if (document.visibilityState === "hidden") { l.q = xs.concat(l.q); l.st = setTimeout(function () { l.st = 0; laneGo(l); }, LANE_MAX_MS); return; }   // hidden: nothing goes out
+    if (busyNow()) { xs.forEach(function (x) { x.res({ data: null, error: { message: "busy", code: "busy", quiet: true } }); }); return; }
+    l.ticks++;
+    laneSend(xs);
+  }
+  function laneSend(xs) {
+    var ok = [], alone = [], seen = {}, calls = [];
+    xs.forEach(function (x) {
+      if (bundleOff || !authed || noB[x.n]) alone.push(x);
+      else { ok.push(x); if (!seen[x.k]) { seen[x.k] = 1; calls.push({ k: x.k, n: x.n, a: x.p || {} }); } }
+    });
+    if (calls.length >= 2) bundleChunks(calls, ok, bCap()); else alone = alone.concat(ok);
+    var one = {};   // the same call twice = one request
+    alone.forEach(function (x) {
+      if (!one[x.k]) { one[x.k] = []; bundleStats.alone++; rpcNet(x.n, x.p, true).then(function (r) { one[x.k].forEach(function (y, i) { y.res(i && r && r.data && typeof r.data === "object" ? JSON.parse(JSON.stringify(r)) : r); }); }); }
+      one[x.k].push(x);
+    });
   }
   // cln D: a group this account is not (any more) a member of: no more calls for it in this page life
   // dm B1: a DM or an event chat is a hidden group with NO group_members rows. Member-only RPCs (group_keep_history,
@@ -227,8 +370,10 @@
     if (gid && notMember[gid] && (notMember[gid] > 1 || !CHAT_RPC[name])) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });
     if (!noBundle && name !== "rpc_bundle2" && BUNDLE.indexOf(name) < 0 && !READ_RE.test(name)) preDrop();   // perf: a write → plan answers are old
     if (!noBundle && busyHold(name)) { bundleStats.busy++; return Promise.resolve({ data: null, error: { message: "busy", code: "busy", quiet: true } }); }
-    var bp = null;
-    if (!noBundle && bundleable(name, params)) {
+    if (!noBundle && CHAT_W.test(name)) chatWriteAt = Date.now();   // fixP N-02: the reads right after an own post go at once
+    var bp = null, ln = !noBundle && gid && LANE_N[name] && authed ? laneOf(gid) : null;
+    if (ln) bp = laneCall(ln, name, params);   // fixP N-02: the chat tick
+    else if (!noBundle && bundleable(name, params)) {
       var bk = name + "|" + JSON.stringify(params || {});
       planRecord(bk, name, params);
       var d1 = !!(DEFER1[name] && asked1[name]); if (DEFER1[name]) asked1[name] = 1;   // left Z1: 2nd ask on → DEFER
@@ -236,15 +381,15 @@
       if (h && !h.used && Date.now() - h.at < 8000) { h.used = true; bundleStats.preUsed++; bp = h.p; }   // the poll's fan-out only
       else if ((DEFER[name] || d1) && firstLoadDone && pollOn && !bundleOff) bp = new Promise(function (res) {
         bqNext.push({ n: name, p: params, k: bk, res: res });
-        if (!bqNextT) bqNextT = setTimeout(function () { nextFlush(); if (bq.length) bundleGo(); }, 35000);
+        armNext();   // fixP: the 35 s fallback (nothing while hidden)
       });
       else bp = new Promise(function (res) {
-        bq.push({ n: name, p: params, k: bk, res: res });
+        bq.push({ n: name, p: params, k: bk, res: res, at: Date.now() });
         if (bq.length >= bCap()) bundleGo();
         // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
         // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
         else {
-          var d = !burstDone && authedAt ? 250 : !NEWB[name] && Date.now() < pollWin ? 3000 : 1500;
+          var d = !burstDone && authedAt ? 600 : !NEWB[name] && Date.now() < pollWin ? 3000 : startWin() ? 600 : 1500;   // fixP N-01: start-up burst / window = 600 ms collect (a poll fan-out keeps its 3 s)
           if (!bqT || Date.now() + d < bqDue) { clearTimeout(bqT); bqDue = Date.now() + d; bqT = setTimeout(bundleGo, d); }
           if (authedAt) burstDone = true;
         }
@@ -263,7 +408,7 @@
   function rpcNet1(name, params) {
     // ⚡ SPEED (#6) no account yet: public calls go out; a call right after a tap on a button makes the account first; others wait
     if (publicOn && !authed && PUBLIC_RPC.indexOf(name) < 0) {
-      if (Date.now() - lastUiClick < 1500) return signIn().then(function () { return authed ? rpc(name, params) : { data: null, error: { message: "no_session", code: "no_session" } }; });
+      if (Date.now() - lastUiClick < 1500) return signIn().then(function () { return authed ? tapRpc(name, params) : { data: null, error: { message: "no_session", code: "no_session" } }; });   // fixP N-01
       return Promise.resolve({ data: null, error: { message: "no_session", code: "no_session" } });
     }
     // Account moved away (flyttkod): this browser must never use or refresh that session again.
@@ -312,7 +457,7 @@
     var seq = ++waveSeq, i = 0;
     (function step() {
       if (seq !== waveSeq || document.hidden) return;
-      list.slice(i, i + WAVE_N).forEach(function (m) { try { m.onPoll(arg); } catch (e) { try { console.warn("olnu onPoll", e); } catch (x) {} } });
+      bgRun(function () { list.slice(i, i + WAVE_N).forEach(function (m) { try { m.onPoll(arg); } catch (e) { try { console.warn("olnu onPoll", e); } catch (x) {} } }); });   // fixP N-01
       i += WAVE_N; if (i < list.length) setTimeout(step, WAVE_MS);
     })();
   }   // review2: shared slow lane (see onPoll)
@@ -3709,7 +3854,7 @@
       return ask.then(function (choice) {
         if (choice !== "new") throw { message: "choice_" + choice, keep: true };
         U.ls.del("olnu.uid");
-        return Promise.resolve(client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; return r; });
+        return Promise.resolve(client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; cfgClear(); return r; });   // fixP N-21
       });
     });
   }
@@ -4372,7 +4517,7 @@
   // v9: what js/social.js and js/extras.js may use. Getters for state that changes.
   function appApi() {
     return {
-      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, toast: toast, toastClear: toastClear,
+      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, chatLane: chatLane, flagsDirty: flagsDirty, _lanes: function () { return Object.keys(lanes); }, toast: toast, toastClear: toastClear,
       openSheet: openSheet, closeSheet: closeSheet, el: el, btn: btn, errMsg: errMsg, flyTo: flyTo, refresh: refresh,
       render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
       beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,

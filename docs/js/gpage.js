@@ -364,6 +364,7 @@
         return;
       }
       var rows = (r.data || []).slice().sort(function (a, b) { return a.id - b.id; });
+      st.lvl = st.painted && rows.length ? 0 : Math.min((st.lvl | 0) + 1, 2);   // fixP N-02: no new line → slower preview
       rows.forEach(function (m) { if (m.id > st.lastId) { st.lastId = m.id; st.msgs.push(m); } });
       if (st.msgs.length > 20) st.msgs = st.msgs.slice(-20);
       if (rows.length || !st.painted) { st.painted = true; paintChat(wrap); }
@@ -569,6 +570,8 @@
       wrap.appendChild(tile);
     });
 
+    // fixP N-02: the chat lane (app.js): group_msgs, group_now and the members strip of this group go in one request per tick
+    if (chat && A.chatLane) A.chatLane(g.id, function () { return document.body.contains(wrap) && wrap.getAttribute("data-gv") === "home"; });
     loadNow(wrap, g);
     if (chat) loadChat(wrap, g);
     var tick = 0;
@@ -576,7 +579,8 @@
       if (!document.body.contains(wrap)) { clearInterval(tm); return; }
       if (wrap.getAttribute("data-gv") !== "home" || document.hidden) return;   // perf: nothing while the page is hidden
       tick++;
-      if (chat) loadChat(wrap, g);
+      var cs = wrap.__chat;   // fixP N-02: preview every 10 s → 20 s → 30 s with no new line; always with the 30 s refresh
+      if (chat && cs && (tick % 3 === 0 || tick - (cs.tk | 0) >= (cs.lvl | 0) + 1)) { cs.tk = tick; loadChat(wrap, g); }
       if (gk && gk.__sub) gk.__sub();
       if (wrap.__moWait && !wrap.querySelector(":scope > .mo-gcard:not(.mo-room)")) { var m2 = moCard(g); if (m2) { var at = a2 && a2.isConnected ? a2 : now; wrap.insertBefore(m2, at.nextSibling); wrap.__moWait = false; } }
       if (tick % 3 === 0) { loadNow(wrap, g); var ms0 = wrap.querySelector(":scope > .pn-gp-mem"); if (ms0) loadMem(wrap, g, ms0); }   // ds58: live members
