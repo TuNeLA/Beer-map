@@ -200,7 +200,7 @@
   }
   // perf (load REPORT fix 6): the server is overloaded (x8.js counts timeouts / 504 / PGRST003). A background poll then gets
   // a quiet local answer and sends nothing; the map poll is the probe (x8 back-off 60–120 s). A tap always goes out.
-  var BUSY_POLL = { near_poll: 1, spel_state: 1, spel_group: 1, party_state: 1, party_group: 1, group_msgs: 1, group_now: 1, moments_poll: 1, ride_poll: 1, gpage_poll: 1 };
+  var BUSY_POLL = { poll_public: 1, near_poll: 1, spel_state: 1, spel_group: 1, party_state: 1, party_group: 1, group_msgs: 1, group_now: 1, moments_poll: 1, ride_poll: 1, gpage_poll: 1 };
   function busyNow() { try { return !!(window.X8 && window.X8.busy && window.X8.busy()); } catch (e) { return false; } }
   function busyHold(name) {
     if (!(BUSY_POLL[name] || BUNDLE.indexOf(name) >= 0) || !busyNow()) return false;
@@ -1352,6 +1352,7 @@
   // dialekt (phase 2): a new region pack / Dialekt Auto<->Av: rebuild the queued headlines with the new lines
   window.addEventListener("dialekt:change", function () { tickerKey = ""; newsDirty = true; try { renderTicker(); } catch (e) {} });
   function renderTicker() {
+    if (LIVE && !firstLoadDone && !x8Snapped) { newsDirty = true; return; }   // perf T-08: no "sover" lines before the first load
     if (!newsDirty && tickerKey) return;
     newsDirty = false;
     var titles = null;
@@ -1417,6 +1418,7 @@
   }
   // Build a fresh set of headlines for the queue without touching what is on screen.
   function renderTickerItemsOnly() {
+    if (LIVE && !firstLoadDone && !x8Snapped) { newsDirty = true; return; }   // perf T-08
     newsDirty = false;
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
@@ -3609,7 +3611,9 @@
   function schedulePublic() {
     clearTimeout(pubTimer); pubTimer = null;
     if (!publicOn || authed || document.visibilityState === "hidden") return;
-    pubTimer = setTimeout(publicPoll, idle() ? POLL_SLOW_MS : POLL_MS);
+    var pw = idle() ? POLL_SLOW_MS : POLL_MS, px = window.X8 ? window.X8.delay() : null;
+    if (px != null) pw = Math.max(1000, px);   // perf T-08: failed polls back off like the map poll (busy: 60–120 s)
+    pubTimer = setTimeout(publicPoll, pw);
   }
   function publicPoll() {
     if (!publicOn || authed || pubBusy || document.visibilityState === "hidden") return;
@@ -3621,7 +3625,13 @@
       var d = r && !r.error ? parseData(r.data) : null;
       if (!d || !Array.isArray(d.pins)) {
         var m = String((r && r.error && (r.error.message || r.error.code)) || "");
-        if (r && r.error && /timeout|fetch|network|load failed|abort/i.test(m)) return;   // offline / slow: the next tick tries again
+        // perf T-08: offline / slow / overloaded (timeout, 5xx, PGRST003) = a failed poll: x8 caption + back-off, the next tick tries again
+        var pst = +((r && (r.status || (r.error && r.error.status))) || 0);
+        if (r && r.error && (/timeout|timed out|fetch|network|load failed|abort|busy|PGRST003/i.test(m + " " + (r.error.code || "")) || pst >= 500)) {
+          if (window.X8) window.X8.pollFail();
+          if (!firstLoadDone) x8Snap();
+          return;
+        }
         publicOn = false; signIn(); return;   // old server (no poll_public): sign in like before
       }
       pollBox = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
@@ -3630,6 +3640,7 @@
       checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       if (Array.isArray(d.heat)) heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
       drinkViews = null; lastPollAt = Date.now();
+      if (window.X8) window.X8.pollOk(null);   // perf T-08: caption off, busy over
       if (window.NEWS) window.NEWS.update(beerOnly());
       newsDirty = true;
       render(); try { renderHeat(); } catch (e) {}

@@ -279,6 +279,31 @@ const R = {};   // numbers for DONE.md
       ok("old server: pins on the map", pins > 3, pins);
       await ctx.close();
     } catch (e) { console.log("FAIL old-server section:", e && e.message); fail++; }
+    /* ---------- 5. T-08: no account yet, poll_public overloaded → back-off + caption, no sign-in, no "sover" ticker ---------- */
+    if (!MEASURE) try {
+      const S = { mode: "new", bundles: [] };
+      const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, { clean: true });
+      await ctx.addInitScript(() => { if (sessionStorage.getItem("pf.pub")) return; sessionStorage.setItem("pf.pub", "1");
+        ["olnu.age18", "olnu.intro", "olnu.newsPn", "olnu.notifAsked", "olnu.installSeen", "olnu.locOk"].forEach((k) => localStorage.setItem(k, "1"));
+        localStorage.setItem("olnu.guideSeen", String(Date.now())); localStorage.setItem("olnu.notifAskAt", String(Date.now())); localStorage.setItem("olnu.lang", "sv"); });
+      await server(ctx, page, S);
+      page.on("pageerror", (e) => { (S.errors = S.errors || []).push(e.message); });
+      let pub = 0; const signups = [];
+      await page.route(/rest\/v1\/rpc\/poll_public\b/, (r) => { pub++; return J(r, { code: "PGRST003", message: "Timed out acquiring connection from connection pool.", details: null, hint: null }, 504); });
+      page.on("request", (q) => { if (/\/auth\/v1\/(signup|token\?grant_type=anonymous)/.test(q.url())) signups.push(q.url()); });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+      await page.waitForFunction(() => window.X8 && window.X8.busy && window.X8.busy(), null, { timeout: 30000 }).catch(() => {});
+      await wait(page, 1500);
+      const st = await page.evaluate(() => ({ busy: window.X8.busy(), cap: (() => { const c = document.getElementById("x8-stale"); return c && !c.hidden ? c.textContent.trim() : ""; })(),
+        tick: (document.getElementById("ticker-track") || {}).textContent || "", authed: !!localStorage.getItem("olnu.auth") }));
+      const n1 = pub; await wait(page, 10000); const n2 = pub;
+      ok("T-08 no account: poll_public 504 ×2 → busy + caption 'Det är mycket nu'", st.busy && /Det är mycket nu/.test(st.cap), st);
+      ok("T-08 no account: a busy server is not 'old server' (no anonymous sign-in)", !signups.length && !st.authed, signups);
+      ok("T-08 no account: no 'sover' / empty-town ticker before the first load", !/sover|Väck|sleep/i.test(st.tick), st.tick);
+      ok("T-08 no account: public poll backs off (no new poll_public within 10 s)", n2 === n1, { n1, n2 });
+      ok("T-08 no account: no page errors", !(S.errors || []).length, S.errors);
+      await ctx.close();
+    } catch (e) { console.log("FAIL T-08 section:", e && e.message); fail++; }
   } catch (e) { console.log("FAIL exception", e && e.stack || e); fail++; }
   await browser.close();
   if (MEASURE) { fs.writeFileSync(OUT + "perf-" + TAG + ".json", JSON.stringify(R, null, 1)); console.log("wrote", OUT + "perf-" + TAG + ".json"); }
