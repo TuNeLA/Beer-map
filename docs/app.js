@@ -381,7 +381,7 @@
         // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
         // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
         else {
-          var d = startWin() ? 600 : !burstDone && authedAt ? 250 : !NEWB[name] && Date.now() < pollWin ? 3000 : 1500;   // fixP N-01: start-up window = one 600 ms collect
+          var d = !burstDone && authedAt ? 600 : !NEWB[name] && Date.now() < pollWin ? 3000 : startWin() ? 600 : 1500;   // fixP N-01: start-up burst / window = 600 ms collect (a poll fan-out keeps its 3 s)
           if (!bqT || Date.now() + d < bqDue) { clearTimeout(bqT); bqDue = Date.now() + d; bqT = setTimeout(bundleGo, d); }
           if (authedAt) burstDone = true;
         }
