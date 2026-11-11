@@ -258,9 +258,25 @@
     // ds52: ONE source for "who is out": the status line follows group_now too
     try {
       var gs = wrap.querySelector(".gmain .gsub"), g0 = wrap.__g;
-      if (gs && g0 && A && A.t) { var nh = U.esc(A.t("code")) + " " + U.esc(g0.code || "") + " · " + A.t("drinkingOf", out.length, g0.member_count | 0); if (gs.innerHTML !== nh) gs.innerHTML = nh; }
+      if (gs && g0 && A && A.t) { var nh = U.esc(A.t("code")) + " " + U.esc(g0.code || "") + " · " + A.t("drinkingOf", out.length, Math.max(g0.member_count | 0, out.length, 1)); if (gs.innerHTML !== nh) gs.innerHTML = nh; }   // fixS T-16: never "0 av 0" (I am a member)
     } catch (e) {}
     try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(box, out, wrap.__g); } catch (e) {}   // 👤 avatars
+  }
+  // fixS T-16: the member count on the open page follows the member list (group_status: one row per member). It came only
+  // from the Grupper list object (0 for a new group, stale after people join). Repaints the status line, "Om gruppen"
+  // and the Medlemmar row (text only, no repaint = no pop-in). group_now's count is exact; the member list only raises it
+  // (a list can leave people out, e.g. a blocked person).
+  function n1(s) { return U && U.n1 ? U.n1(s) : s; }   // fixJ T-22: "1 medlem", not "1 medlemmar" (util.js U.n1)
+  function setCount(wrap, n, exact) {
+    var g = wrap && wrap.__g; n = n | 0; if (!g || n < 1) return;
+    var cur = g.member_count | 0; if (n === cur || (!exact && n < cur)) return;
+    g.member_count = n;
+    try {
+      var ds = wrap.querySelector(".gpg-dots .pn-gp-tx small"), dt = L(n1(n + " medlemmar · kod · gruppchef"), n + " members · code · chief"); if (ds && ds.textContent !== dt) ds.textContent = dt;
+      var mn = wrap.querySelector(".gpg-info .sa-gpg-n"); if (mn && mn.firstChild && mn.firstChild.nodeType === 3 && mn.firstChild.nodeValue !== String(n)) mn.firstChild.nodeValue = String(n);
+      var nb = wrap.querySelector(".gpg-now"), on = nb && nb.__out ? nb.__out.length : 0, gs = wrap.querySelector(".gmain .gsub");
+      if (gs && A && A.t) { var nh = U.esc(A.t("code")) + " " + U.esc(g.code || "") + " · " + A.t("drinkingOf", on, Math.max(n, on, 1)); if (gs.innerHTML !== nh) gs.innerHTML = nh; }
+    } catch (e) {}
   }
   // ds58: the members strip (group_status_v3, then v2; same as Medlemmar). Live first, then most drinks, then the server order.
   function loadMem(wrap, g, box) {
@@ -282,7 +298,9 @@
         box.hidden = !rows.length;
         // ds58: someone new in the group while the page is open → one calm toast per name
         var names = data.map(function (m) { return m.name || ""; });
+        var joined = wrap.__memNames && names.some(function (n) { return n && wrap.__memNames.indexOf(n) < 0; });
         if (wrap.__memNames && A && A.toast) names.forEach(function (n) { if (n && wrap.__memNames.indexOf(n) < 0) A.toast(n + L(" gick med i gruppen", " joined the group"), { id: "gpg-join-" + n, ms: 4000 }); });
+        if (joined) loadNow(wrap, g);   // fixS T-16: someone joined → "N av M dricker nu" at once
         wrap.__memNames = names;
     };
     try { var c0 = window.WARM && window.WARM.get ? window.WARM.get("group_status_v3", { p_group_id: g.id }) : null; if (c0 && Array.isArray(c0.data) && c0.data.length) paint(c0.data); } catch (e) {}
@@ -290,6 +308,7 @@
       A.rpc(fn, { p_group_id: g.id }).then(function (r) {
         if (!document.body.contains(wrap)) return;
         if (r.error || !Array.isArray(r.data) || !r.data.length) { if (fn === "group_status_v3") go("group_status_v2"); return; }
+        setCount(wrap, r.data.length);   // fixS T-16: also for a late first answer (the strip waits, the count does not)
         if (box.hidden && !holding()) { try { if (window.WARM && window.WARM.prefetch) window.WARM.prefetch(fn, { p_group_id: g.id }); } catch (e) {} return; }   // late first answer: cached for the next open
         paint(r.data);
       });
@@ -301,7 +320,8 @@
     A.rpc("group_now", { p_group_id: g.id }).then(function (r) {
       if (!document.body.contains(wrap)) return;
       if (r.error) { if (U.missing && U.missing(r.error)) offNow = true; var b = wrap.querySelector(".gpg-now"); if (b && !b.__out) b.hidden = true; return; }
-      paintNow(wrap, A.parseData(r.data));
+      var dn = A.parseData(r.data); paintNow(wrap, dn);
+      if (dn && dn.members) setCount(wrap, dn.members, true);   // fixS T-16: group_now knows the member count (exact)
     });
   }
   function nowTap(wrap, g) {
@@ -353,7 +373,16 @@
     var text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
     if (!text || !A) return;
     if (text.length > 140) text = text.slice(0, 140);
+    if (btn.disabled) return;
     btn.disabled = true;
+    // fixS T-05: Regler before the post (the RPC timeout must not run while Regler is open → no 2nd copy on a 2nd tap)
+    var gate = window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : Promise.resolve(true);
+    Promise.resolve(gate).then(function (okT) {
+      if (!okT) { btn.disabled = false; return; }
+      sendNow(wrap, g, inp, btn, text);
+    });
+  }
+  function sendNow(wrap, g, inp, btn, text) {
     try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
     A.rpc("post_group_msg", { p_group_id: g.id, p_body: text }).then(function (r) {
       btn.disabled = false;
@@ -379,8 +408,14 @@
 
   /* ---------- social-a: Gängkamp entry (group page row + Topplistor row) → GAMES.openGangkamp({ id, name, code }) ---------- */
   function gkOn() { return !!(window.GAMES && window.GAMES.openGangkamp && window.DUEL && window.DUEL.open); }
+  // fixS T-13: a challenge that waits for this group's answer comes first: "Utmaning från X" (amber + dot)
+  function gkIn(g) {
+    try { var d = window.DUEL.data(); return (d && d.duels || []).filter(function (x) { return x && x.incoming && x.status === "pending" && x.group && x.group.id === g.id && !(x.answer_by && Date.parse(x.answer_by) <= Date.now()); }); } catch (e) { return []; }
+  }
   function gkSub(g) {
-    var n = 0;
+    var n = 0, inc = gkIn(g);
+    if (inc.length) return inc.length === 1 ? L("Utmaning från " + ((inc[0].opp && inc[0].opp.name) || "ett gäng"), "Challenge from " + ((inc[0].opp && inc[0].opp.name) || "a gang"))
+      : L(inc.length + " utmaningar väntar på svar", inc.length + " challenges waiting");
     try { var d = window.DUEL.data(); (d && d.duels || []).forEach(function (x) { if (x && (x.status === "active" || x.status === "pending") && ((x.group && x.group.id === g.id) || (x.sides || []).some(function (y) { return y && y.id === g.id; }))) n++; }); } catch (e) {}
     return n ? L(n + (n === 1 ? " kamp igång ikväll" : " kamper igång ikväll"), n + " running tonight") : L("Utmana ett annat gäng", "Challenge another gang");
   }
@@ -391,7 +426,12 @@
       h("span", { class: "pn-gp-ti pn-acc-games", "aria-hidden": "true", html: ic("swords") }),
       h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Gängkamp", "Gang battle") }), sub]),
       h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]);
-    b.__sub = function () { var t = gkSub(g); if (sub.textContent !== t) sub.textContent = t; };
+    // the red dot is CSS (.sa-gk.fs-gk-in .pn-gp-chev::before), no extra node; nothing changes when there is no challenge
+    b.__sub = function () {
+      var t = gkSub(g), inc = gkIn(g).length > 0; if (sub.textContent !== t) sub.textContent = t;
+      if (b.classList.contains("fs-gk-in") !== inc) { b.classList.toggle("fs-gk-in", inc); b.setAttribute("aria-label", L("Gängkamp", "Gang battle") + (inc ? ". " + t : "")); }
+    };
+    b.__sub();
     return b;
   }
   function moCard(g) { try { return window.MOMENTS && window.MOMENTS.groupCard ? window.MOMENTS.groupCard(g) : null; } catch (e) { return null; } }
@@ -444,7 +484,7 @@
     var dots = h("button", { type: "button", class: "gpg-dots pn-gp-row pn-gp-about", "aria-label": T("moreAria"), onclick: function () { view(wrap, "info"); } }, [
       h("span", { class: "pn-gp-ti pn-acc-group", "aria-hidden": "true", html: ic("users") }),
       h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Om gruppen", "About the group") }),
-        h("small", { text: L((g.member_count | 0) + " medlemmar · kod · gruppchef", (g.member_count | 0) + " members · code · chief") })]),
+        h("small", { text: L(n1((g.member_count | 0) + " medlemmar · kod · gruppchef"), (g.member_count | 0) + " members · code · chief") })]),
       h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]);
 
     // Nu strip

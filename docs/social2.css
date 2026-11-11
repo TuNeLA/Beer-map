@@ -183,3 +183,32 @@
   .gpg-beer b{font-size:var(--fs-22)}
 }
 @media (prefers-reduced-motion: reduce){ .sg-row,.gpg-plus,.gpg-beer{transition:none} .gpg-plus:active,.gpg-beer:active{transform:none} }
+
+/* fixS (test-team fixes, 11 Nov) ------------------------------------------------------------------------------------ */
+/* T-12: the chat line menu: reactions + a labelled row "Anmäl" + "Blockera" (44 px) for other people's lines */
+.chat-list .cm-picker.cmx-two{flex-wrap:wrap;width:max-content;max-width:min(320px,calc(100vw - 48px));border-radius:var(--ds-r-2,16px);padding:6px 8px 8px}
+.chat-list .cm-picker .cmx-acts{order:10;flex:1 0 100%;display:flex;gap:var(--ds-2,8px);margin-top:2px;padding-top:6px;border-top:1px solid var(--ds-border,rgba(255,255,255,.1))}
+.chat-list .cm-picker .cmx-acts .cmx-act{flex:1 1 0;min-width:0;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;
+  border:0;border-radius:var(--ds-r-pill,999px);background:var(--ds-raised,#222e48);color:var(--ds-text,#f3f5f9);font:600 var(--ds-fs-14,14px)/1 var(--ds-sans,inherit);cursor:pointer;white-space:nowrap}
+.chat-list .cm-picker .cmx-acts .cmx-act .pi{width:18px;height:18px;flex:none}
+.chat-list .cm-picker .cmx-acts .sa-cm-blk{color:var(--ds-red-t,#ff8a8a)}
+.chat-list .cm-picker .cmx-acts .cmx-act:active{background:var(--ds-border-2,rgba(255,255,255,.16))}
+.chat-list .cm-picker .cmx-acts .cmx-act:focus-visible{outline:2px solid var(--ds-amber,#f5b82e);outline-offset:2px}
+.cmx-tip{margin:4px 0 0;font-size:var(--ds-fs-14,14px);line-height:var(--ds-lh-14,20px)}
+.cmx-tip[hidden]{display:none}
+/* T-01: the DM block sheet (main = full block, 2nd = only close the chat) */
+.dm-ask .dm-ask-h{margin:0 0 var(--ds-1,4px)}
+.dm-ask .dm-ask-l{margin:0 0 var(--ds-3,12px);padding-left:18px;font-size:var(--ds-fs-14,14px);line-height:var(--ds-lh-14,20px);color:var(--ds-text-2,#c9d0dc)}
+.dm-ask .dm-ask-l li{margin:2px 0;overflow-wrap:anywhere}
+.dm-ask .dm-ask-acts{display:flex;flex-direction:column;gap:var(--ds-2,8px)}
+.dm-ask .dm-ask-acts .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.dm-ask .dm-ask-acts .pi{width:18px;height:18px}
+/* T-01: friend row menu (Mina vänner): Ta bort vän + Blockera + Stäng */
+.f2-menu .f2-acts .btn{display:inline-flex;align-items:center;gap:6px}
+.f2-menu .f2-acts .pi{width:18px;height:18px}
+.f2-menu .f2-acts .f2-blk{color:var(--ds-red-t,#ff8a8a)}
+/* T-13: an incoming Gängkamp challenge on the group page tile */
+.sa-gk.fs-gk-in .pn-gp-tx small{color:var(--ds-amber-t,#ffd27a);font-weight:600}
+.sa-gk.fs-gk-in .pn-gp-chev{position:relative}
+.sa-gk.fs-gk-in .pn-gp-chev::before{content:"";position:absolute;right:calc(100% + 6px);top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--ds-red,#e5484d)}
+.ib-loading{margin:var(--ds-4,16px) 0;text-align:center}

@@ -18,8 +18,10 @@
   var P = {
     "vis.head": "Vem ser dig?",
     "vis.alla": "Alla", "vis.vanner": "Bara vänner", "vis.spoke": "Spöke",
-    "vis.allaNote": "Alla ser ditt område (eller din krog). Vänner ser din pin.",
-    "vis.vannerNote": "Vänner och gänget ser dig. Andra ser ingenting.",
+    // fixS T-09: honest per group of people (server rule 0340, unchanged): your groups see the pin + name; a friend
+    // outside your groups and strangers see only the area (or the bar), no name.
+    "vis.allaNote": "Gänget ser din pin och ditt namn. Vänner utanför gänget och alla andra ser bara området eller krogen, utan namn.",
+    "vis.vannerNote": "Gänget ser din pin och ditt namn. Vänner utanför gänget ser bara området. Andra ser ingenting.",
     "vis.spokeNote": "Ingen ser dig på kartan. Dina öl räknas ändå.",
     "vis.lblAlla": "Synlig", "vis.lblVanner": "Vänner", "vis.lblSpoke": "Spöke",
     "vis.hide": "Göm min pin", "vis.hideSub": "Ta bort pinnen från kartan ikväll",
@@ -44,12 +46,14 @@
   function label() { return T(TXT[mode()][3]); }
   function probe() {
     if (asked) return; var A = api(); if (!A || !A.rpc || !A.LIVE) return; asked = true;
+    if (!A.authed || !A.authed()) { asked = false; return; }   // fixS T-18: no account yet = no answer yet (was: srv=false for good)
     A.rpc("my_visibility").then(function (r) {
-      if (r && r.error) { srv = false; return; }
+      // fixS T-18: only a missing RPC (old server) hides "Bara vänner"; no_session / timeout / 5xx → ask again later
+      if (r && r.error) { if (window.U && window.U.missing && window.U.missing(r.error)) srv = false; else setTimeout(function () { asked = false; }, 15000); return; }
       var d = A.parseData ? A.parseData(r.data) : r.data; srv = true;
       if (d && d.friends_only && !ghost()) ls(KEY, "vanner");
       paint();
-    }, function () { srv = false; });
+    }, function () { setTimeout(function () { asked = false; }, 15000); });
   }
   function setMode(m) {
     var A = api(), prev = mode(); if (m === prev) return;
@@ -61,7 +65,7 @@
       if (r && r.error) { ls(KEY, prev === "vanner" ? "vanner" : "alla"); paint(); try { A.toast("Det gick int' att ändra. Försök igen.", { err: true }); } catch (e) {} }
     });
     try { if (A && A.updateCounts) A.updateCounts(); } catch (e) {}
-    try { if (A && A.toast) A.toast(m === "spoke" ? "Spöke: ingen ser dig. Ölen räknas ändå." : m === "vanner" ? "Bara vänner ser dig nu." : "Alla ser ditt område igen.", { id: "pn-vis", ms: 3000 }); } catch (e) {}
+    try { if (A && A.toast) A.toast(m === "spoke" ? "Spöke: ingen ser dig. Ölen räknas ändå." : m === "vanner" ? "Bara gänget och vänner ser dig nu." : "Alla ser ditt område igen. Gänget ser din pin.", { id: "pn-vis", ms: 3000 }); } catch (e) {}
     paint(); if (menu) fill();
   }
   function paint() {
