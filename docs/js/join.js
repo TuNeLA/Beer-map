@@ -241,12 +241,20 @@
       }
       var g = A.parseData(r.data) || {};
       if (g.name) { gname = g.name; if (subEl) subEl.textContent = subText(); }
-      if (memEl && members) { members += 1; memEl.textContent = L("👥 " + members + " i gänget", "👥 " + members + " in the gang"); }   // fixJ: I count now
+      if (memEl && members) { members += 1; paintMembers(members, true); }   // fixJ: I count now (fixC: one painter)
       joined = true; lsSet("olnu.jn.done", ARR.code); lsSet("olnu.jn.pending", null);
       status("");
       try { A.refresh(); } catch (e) {}
       renderAct();
     });
+  }
+  // fixC N-15: ONE place paints the member line. n = the server count; mine = that count has me in it.
+  // Not a member: "N i gänget redan" (the others). Member: "N i gänget" (me counted, fixJ). Never "redan" with me in it.
+  function paintMembers(n, mine) {
+    n = n | 0; if (!memEl || n < 1) return;
+    if (joined && !mine) n += 1;   // an answer from before my join: add me
+    memEl.textContent = joined || mine ? L("👥 " + n + " i gänget", "👥 " + n + " in the gang") : L("👥 " + n + " i gänget redan", "👥 " + n + " in the gang already");
+    memEl.hidden = false;
   }
   // ds60: the member count is asked again while the card is open (people join right now)
   var prevT = 0;
@@ -254,13 +262,17 @@
   function preview() {
     previewLater();
     if (!ARR || ARR.kind !== "join" || !A || !A.LIVE || joined) return;
+    var j0 = joined || joining;
     A.rpc("join_preview", { p_code: ARR.code }).then(function (r) {
       if (r.error) return;
       var d = A.parseData(r.data) || {};
       if (!d.ok) { if (d.why === "group_not_found") status(L("🤷 Koden funkar int'. Be om en ny länk.", "🤷 That code doesn't work. Ask for a new link."), "err"); return; }
-      gname = d.name || gname; members = d.members | 0;
+      if ((joined || joining) !== j0 && !d.member) return;   // fixC N-15: asked before my join, came after it: old count
+      gname = d.name || gname;
+      if (d.member) joined = true;
+      members = d.members | 0;
       if (subEl) subEl.textContent = subText();
-      if (memEl && members) { memEl.textContent = L("👥 " + members + " i gänget redan", "👥 " + members + " in the gang already"); memEl.hidden = false; }
+      paintMembers(members, !!d.member);
       faces = Array.isArray(d.faces) ? d.faces.slice(0, 4) : []; outNow = d.out | 0;
       if (d.member) { joined = true; lsSet("olnu.jn.done", ARR.code); }
       paintPrev(); renderAct();
@@ -306,8 +318,8 @@
     }
     var nm = (d.faces || []).map(function (f) { return f && f.n; }).filter(Boolean), who = window.GW && window.GW.whoText ? window.GW.whoText : function (x) { return x.join(", "); };
     if (d.kind === "join" && ARR.kind === "join") {
-      gname = d.name || gname; members = d.members | 0; outNow = d.ute | 0; faces = nm.slice(0, 4);
-      if (memEl && members) { memEl.textContent = L("👥 " + members + " i gänget redan", "👥 " + members + " in the gang already"); memEl.hidden = false; }
+      gname = d.name || gname; outNow = d.ute | 0; faces = nm.slice(0, 4);
+      if (!joined && !joining) { members = d.members | 0; paintMembers(members, false); }   // fixC N-15: the anon preview never counts me
       whoLine = nm.length ? L("I gänget: ", "In the gang: ") + who(nm, members) : "";
     } else if (d.kind === "ev" && ARR.kind === "ev") {
       evd = Object.assign({}, evd || {}, d); faces = nm.slice(0, 4);
@@ -316,6 +328,33 @@
     if (subEl) subEl.textContent = subText();
     paintPrev(); renderAct();
   }
+  // fixC N-17: a newer my_groups (warm.js, after the list showed the cached one) repaints every Grupper card in place,
+  // also when there is only ONE group (app.js patches 2+ only: "0 av 1" stayed after 3 joins). The card's group object
+  // gets the new counts too, so the group page opens with them. Text + the tile class only (no rebuild, no pop-in).
+  function patchCards(gs) {
+    if (!A || !A.t) return;
+    gs.forEach(function (x) {
+      if (!x || x.id == null) return;
+      [].forEach.call(document.querySelectorAll(".glist .gcard[data-gid]"), function (li) {
+        if (li.getAttribute("data-gid") !== String(x.id)) return;
+        var g = li.__g; if (g) { g.member_count = x.member_count; g.active_count = x.active_count; }
+        var n = x.active_count | 0, sub = li.querySelector(".gsub");
+        var html = (n ? '<span class="gcard-live">● </span>' : "") + A.t("drinkingOf", n, x.member_count | 0);
+        if (sub && sub.innerHTML !== html) sub.innerHTML = html;
+        var ti = li.querySelector(".sa-gc-ti"), pi = window.PNI && window.PNI.has ? window.PNI : null;
+        if (ti && (n > 0) !== ti.classList.contains("pn-acc-live")) {
+          var ci = window.GPAGE && window.GPAGE.colorOf ? window.GPAGE.colorOf(g || x) : 0;
+          ti.className = "sa-gc-ti " + (n > 0 ? "pn-acc-live" : "sa-gcol-" + ci);
+          if (pi) ti.innerHTML = pi.svg(n > 0 ? "beer" : "users");
+        }
+      });
+    });
+  }
+  window.addEventListener("olnu:warm", function (e) {
+    var d = e.detail || {};
+    if (d.fn !== "my_groups" || !Array.isArray(d.data)) return;
+    setTimeout(function () { patchCards(d.data); }, 0);   // after app.js' own patch (2+ groups)
+  });
   function noAcct() { return !!(A && A.LIVE && A.noAccount && A.noAccount() && A.ensureAccount); }   // gw
   function evJoin(a, b) {
     var n = typedName();
@@ -671,6 +710,7 @@
           li.insertBefore(h("span", { class: "sa-gc-ti " + (live ? "pn-acc-live" : "sa-gcol-" + ci), "aria-hidden": "true", html: pi ? pi.svg(live ? "beer" : "users") : "" }), li.firstChild);
         }
       } catch (e) {}
+      try { if (li && g && g.id != null) { li.setAttribute("data-gid", String(g.id)); li.__g = g; } } catch (e) {}   // fixC N-17
       if (!A || !A.LIVE || !g || !g.code || !li) return;
       var b = h("button", { type: "button", class: "jn-cardbtn", "aria-label": L("Bjud in till ", "Invite to ") + (g.name || ""), html: '<span aria-hidden="true">➕</span><span class="jn-cb-t"> ' + L("Bjud in", "Invite") + "</span>",
         onclick: function (e) { e.stopPropagation(); openInvite(g, false); } });

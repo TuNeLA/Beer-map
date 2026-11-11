@@ -267,7 +267,7 @@
 
   /* ---------- Hooks ---------- */
   function entryBtn() {
-    var sub = data ? data.bars.length + " " + L("krogar", "bars") + " · " + data.countries.length + " " + (data.countries.length === 1 ? L("land", "country") : L("länder", "countries")) : "";
+    var sub = data ? L(U.pl(data.bars.length, "krog", "krogar"), data.bars.length + " bars") + " · " + data.countries.length + " " + (data.countries.length === 1 ? L("land", "country") : L("länder", "countries")) : "";
     var b = A.el("button", { type: "button", class: "btn btn-block ps-entry" }, [A.el("span", { text: L("🛂 Ölpasset", "🛂 Beer passport") }), sub ? A.el("small", { text: sub }) : null]);
     b.addEventListener("click", openSheet);
     return b;

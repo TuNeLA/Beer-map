@@ -150,7 +150,7 @@
     return true;
   }
   // "… hissar flaggan." after "en grupp": a sentence never starts with a small letter
-  function sentences(t) { return String(t).replace(/((?:^|[^.…])[.!?]["”»]?\s+)([a-zåäö])/g, function (m, a, b) { return a + b.toUpperCase(); }); }   // "Asså... vad" (an ellipsis) stays
+  function sentences(t) { return String(t).replace(/((?:^|[^.…])(?:[.!?]|\.["”»])\s+)([a-zåäö])/g, function (m, a, b) { return a + b.toUpperCase(); }); }   // fixC N-19: not after ?” / !” (a quoted question mid-sentence: "skicka ”Ikväll?” till gänget")   // "Asså... vad" (an ellipsis) stays
   var QUIET = { calm: 3, emptyFirst: 1, townQuiet: 3 }, quietText = {}, quietN = 0;   // kind -> shown only while snap.n is below this
   function friendAtBar(b) {
     if (b.snap != null || b.bar_id != null) return b.snap === "bar" || (b.bar_id != null && b.snap !== "area" && b.snap !== "home");

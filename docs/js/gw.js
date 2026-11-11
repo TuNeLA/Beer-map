@@ -424,7 +424,7 @@
         if (towns.length) {
           var tl = h("div", { class: "ds-list" });
           towns.forEach(function (t) {
-            var sub = t.total ? (t.visited | 0) + " av " + (t.total | 0) + " krogar" + (t.all ? " · alla!" : "") : "Besökt";
+            var sub = t.total ? U.n1((t.visited | 0) + " av " + (t.total | 0) + " krogar") + (t.all ? " · alla!" : "") : "Besökt";
             tl.appendChild(row(t.all ? "check" : "pin", t.town, sub, null, t.all ? "gw-pl-all" : ""));
           });
           box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Städer" }), tl]));

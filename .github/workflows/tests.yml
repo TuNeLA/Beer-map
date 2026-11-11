@@ -89,6 +89,8 @@ jobs:
             filter: '^(fixs)$'
           - name: fixj
             filter: '^(fixj)$'
+          - name: fixc
+            filter: '^(fixc)$'
           - name: perf
             filter: '^(perf)$'
           - name: fixm

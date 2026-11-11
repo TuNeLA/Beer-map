@@ -111,6 +111,7 @@ run left       $B left-pw.js       # lane left (11 Nov): T-05b Regler before eve
 run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallback map tap rule + clusters, T-14 ticker one snapshot, T-15 top bar pill + Ute nu, T-24 crowd word
 run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens order icon, Helgstreak empty, safety/legend icons, R1-26/29/38/40/42/45/48/49, R1-43 token swaps
 run fixs       $B fixs-pw.js       # lane fixS (test teams): T-01 full block DM + friend row, T-05 send after Regler, T-09/T-18 Synlighet, T-12 chat menu, T-13 Gängkamp in Inkorg, T-16 counts, T-17 Dialekt, T-23
+run fixc       $B fixc-pw.js       # lane fixC (test teams round 2): N-03 chat menu in a short chat, N-04/N-18 Mina vänner live, N-15 join count, N-16 invite GPS, N-17 group row, N-20 Anta, N-19/T-22 copy
 run fixj       $B fixj-pw.js       # lane fixJ (test-team fixes): T-03 year once, T-04 first tap, T-06 no old morning card, T-07 beer moves check-in, T-20 lead, T-21 Barkungen week, T-22 copy
 run kpi        $B kpi-pw.js        # lane kpi: X9 Nyckeltal owner panel (owner_kpi 0460, "<3" masks, wrong key) + no emoji in safety.js UI chrome (ds12)
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---

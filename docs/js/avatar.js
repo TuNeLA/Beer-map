@@ -1483,7 +1483,7 @@
     if (lk.r) return L("vid ", "at ") + rankTitle(lk.r);
     if (lk.m) return L("med medaljen ", "with the medal ") + medalName(lk.m);
     if (lk.s) return L("vid " + lk.s + " helger i rad", "at a " + lk.s + "-weekend streak");
-    if (lk.b) return L("vid " + lk.b + " krogar i Ölpasset", "at " + lk.b + " bars in the passport");
+    if (lk.b) return L(U.n1("vid " + lk.b + " krogar i Ölpasset"), "at " + lk.b + " bars in the passport");
     if (lk.t) return L("vid " + lk.t + " orter", "at " + lk.t + " towns");
     if (lk.e) return L("när du gått på " + (lk.e === 1 ? "ett event" : lk.e + " event"), "after " + lk.e + " event(s)");
     if (lk.g) return L("när du är med i " + (lk.g === 1 ? "en grupp" : lk.g + " grupper"), "when you are in " + lk.g + " group(s)");
@@ -1504,7 +1504,7 @@
     if (lk.r) { var t = rankTitle(lk.r); return t.split(" ")[0]; }
     if (lk.m) return medalName(lk.m);
     if (lk.s) return lk.s + L(" helger", " weekends");
-    if (lk.b) return lk.b + L(" krogar", " bars");
+    if (lk.b) return L(U.n1(lk.b + " krogar"), lk.b + " bars");
     if (lk.t) return lk.t + L(" orter", " towns");
     if (lk.e) return lk.e + " event";
     if (lk.g) return lk.g + L(lk.g === 1 ? " grupp" : " grupper", " groups");
