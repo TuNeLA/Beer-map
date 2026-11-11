@@ -4938,7 +4938,7 @@
   "📺 Dansbandet har lovat en låt till. Det har de sagt tre gånger.",
   "📺 Trubaduren har spelat Wonderwall igen. Oasis har skickat ett tackkort.",
   "📺 Rapport: en jacka har hittats på krogen. Fyra personer säger att den är deras. Ingen av dem hade jacka.",
-  "📺 Pizzerian i {stad} jobbar på högvarv. Kebabpizzan har fått en egen fanklubb.",
+  "📺 Pizzerian i stan jobbar på högvarv. Kebabpizzan har fått en egen fanklubb.",
   "📺 Experter: den bästa kvällen är den där ingen tittar på klockan. Utom taxichauffören.",
   "📺 Taxichauffören hälsar till alla. Ni ses senare.",
   "📺 Oväntat: nån har kommit hem i tid. Ingen tror på det.",

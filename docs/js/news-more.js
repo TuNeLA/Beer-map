@@ -302,7 +302,7 @@
       { k: "random", f: function () { return DIALEKT.v("live.random", 102, {}, "📺 Trubaduren har spelat Wonderwall igen. Oasis har skickat ett tackkort.", 137); } },
       { k: "random", f: function () { return DIALEKT.v("live.random", 103, {}, "📺 En mopedkö har bildats vid macken. Ingen vet varför.", 137); } },
       { k: "random", f: function () { return DIALEKT.v("live.random", 104, {}, "📺 Rapport: en jacka har hittats på krogen. Fyra personer säger att den är deras. Ingen av dem hade jacka.", 137); } },
-      { k: "random", f: function () { return DIALEKT.v("live.random", 105, {}, "📺 Pizzerian i {stad} jobbar på högvarv. Kebabpizzan har fått en egen fanklubb.", 137); } },
+      { k: "random", f: function () { return DIALEKT.v("live.random", 105, {}, "📺 Pizzerian i stan jobbar på högvarv. Kebabpizzan har fått en egen fanklubb.", 137); } },
       { k: "random", f: function () { return DIALEKT.v("live.random", 106, {}, "📺 Bartendern har kartlagt vad alla dricker. Svaret var öl.", 137); } },
       { k: "random", f: function () { return DIALEKT.v("live.random", 107, {}, "📺 Ölguden svarar på tittarfrågor: Nej, cider räknas inte.", 137); } },
       { k: "random", f: function () { return DIALEKT.v("live.random", 108, {}, "🚨 Glasbrist rapporteras ingenstans. Allt är under kontroll.", 137); } },
