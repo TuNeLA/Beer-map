@@ -13,6 +13,7 @@
   "use strict";
   var U = window.U, I = window.I18N;
   var A = null, off = false, openSeen = null, items = [], loadedAt = 0, busy = null, wantTab = false, pane = null, srvSkew = 0;
+  var gotOnce = false;   // fixS T-13: no "Inga order" before the first my_inbox answer
   var SEEN = "olnu.ibSeen", TAB = "olnu.ibTab", POLL_MS = 60000, OPEN_MS = 20000;
   function sv() { return !I || I.lang !== "en"; }
   function L(s, e) { return sv() ? s : e; }
@@ -70,16 +71,30 @@
     }
     return out;
   }
-  function all() { return localItems().concat(items); }
+  // fixS T-13: a Gängkamp challenge DUEL already knows (duel_poll: incoming + pending) shows here at once, also when
+  // my_inbox is late (it waits in rpc_bundle2) or missed it. Same row as the server's duel item (k "duel:<id>").
+  var answered = {};
+  function duelItems() {
+    var D = window.DUEL, d = null; try { d = D && D.data ? D.data() : null; } catch (e) { d = null; }
+    var have = {}; items.forEach(function (x) { have[x.k] = 1; });
+    return ((d && Array.isArray(d.duels)) ? d.duels : []).filter(function (x) {
+      return x && x.id != null && x.incoming && x.status === "pending" && !have["duel:" + x.id] && !(answered["duel:" + x.id] > Date.now() - 600000)
+        && !(x.answer_by && Date.parse(x.answer_by) <= Date.now());
+    }).map(function (x) {
+      return { k: "duel:" + x.id, type: "duel", id: x.id, group_id: x.group && x.group.id, group_name: x.group && x.group.name, opp: x.opp && x.opp.name,
+        answer_by: x.answer_by, at: x.created_at || new Date().toISOString(), local: true };
+    });
+  }
+  function all() { return localItems().concat(items.filter(function (x) { return !(answered[x.k] > Date.now() - 600000); }), duelItems()); }
   function unseen() { var s = seenAt(); return all().filter(function (x) { return (Date.parse(x.at) || 0) - srvSkew > s; }).length; }
   function load(force) {
-    if (off || !A || !A.LIVE || !A.authed || !A.authed()) return Promise.resolve();
+    if (off || !A || !A.LIVE || !A.authed || !A.authed()) { gotOnce = true; return Promise.resolve(); }
     var gap = pane && document.body.contains(pane) && !pane.hidden ? OPEN_MS : POLL_MS;
     if (!force && Date.now() - loadedAt < gap) return Promise.resolve();
     if (busy) return busy;
     loadedAt = Date.now();
     busy = A.rpc("my_inbox").then(function (r) {
-      busy = null;
+      busy = null; gotOnce = true;
       if (r.error) { if (U.missing && U.missing(r.error)) { off = true; paintBadge(); hideTab(); } return; }
       var d = A.parseData(r.data) || {};
       if (d.now) srvSkew = Date.parse(d.now) - Date.now();
@@ -104,6 +119,13 @@
     }
     document.querySelectorAll(".ib-tabn").forEach(function (x) { x.textContent = n ? String(n > 9 ? "9+" : n) : ""; x.hidden = !n; });
   }
+  // fixS T-13: DUEL answers after my_inbox (own poll): repaint the count when its incoming challenges change (no request)
+  var duelSig = "";
+  U.vInterval(function () {
+    if (!A || off) return;
+    var sg = duelItems().map(function (x) { return x.k; }).join(",");
+    if (sg !== duelSig) { duelSig = sg; paintBadge(); if (pane && document.body.contains(pane) && !pane.hidden) render(pane, false); }
+  }, 4000);
   function hideTab() { document.querySelectorAll(".ib-tab").forEach(function (x) { x.hidden = true; }); }
 
   /* ---------- rows ---------- */
@@ -150,7 +172,8 @@
         act("", "x", function (b) { rally(x, "no", b); }, NO)];
     } else if (x.type === "duel") {
       ico = "swords"; acc = "games"; title = L((x.opp || "?") + " utmanar " + (x.group_name || "er") + "!", (x.opp || "?") + " challenges " + (x.group_name || "you") + "!");
-      sub = L("Flest drinkar till kl 05 vinner", "Most drinks by 05:00 wins");
+      sub = L("Gängkamp ikväll. Svara innan " + (x.answer_by ? U.timeHM(x.answer_by) : "kl 05"), "Gang battle tonight. Answer before " + (x.answer_by ? U.timeHM(x.answer_by) : "05:00"));
+      tap = function () { if (window.DUEL && window.DUEL.open && x.group_id) window.DUEL.open({ id: x.group_id, name: x.group_name || "" }); };   // fixS T-13: the Gängkamp sheet
       acts = [act(L("Anta", "Accept"), "yes", function (b) { duel(x, true, b); }), act("", "x", function (b) { duel(x, false, b); }, NO)];
     } else if (x.type === "join") {
       ico = "users"; acc = "group"; title = L("Du blev inbjuden till en grupp", "You were invited to a group");
@@ -167,7 +190,7 @@
     return li;
   }
   function cleanT(t, place) { try { if (window.INVITE && window.INVITE.cleanTitle) return window.INVITE.cleanTitle(t, place); } catch (e) {} return String(t || ""); }
-  function gone(x) { items = items.filter(function (y) { return y.k !== x.k; }); paintBadge(); if (pane) render(pane, false); setTimeout(function () { load(true); }, 1500); }
+  function gone(x) { answered[x.k] = Date.now(); items = items.filter(function (y) { return y.k !== x.k; }); paintBadge(); if (pane) render(pane, false); setTimeout(function () { load(true); }, 1500); }
   function err(r) { A.toast(A.errMsg ? A.errMsg(r.error) : L("Dä gick int'. Försök igen.", "That failed. Try again."), { err: true }); }
   function friend(x, yes, b) {
     b.disabled = true;
@@ -175,7 +198,22 @@
       if (r.error) { b.disabled = false; err(r); return; }
       A.toast(yes ? L(pick("fy", ["🤝 Nu ä ni vänner, " + (x.name || "") + " och du!", "🤝 Vänskap bekräftad. Skål på't!", "🤝 Ny kamrat i leden!"]), "🤝 You are friends now!") : L("Okej, nej tack.", "Okay, declined."), { id: "ib" });
       gone(x);
+      if (yes) friendsAgain();
     });
+  }
+  // fixS T-23: the Vänner tab of this sheet was built before the answer (near.js buildFriends): build it again in place so
+  // the new friend is in "Mina vänner" at once. Only near.js' own parts are replaced; the Meddelanden box (dm.js) stays.
+  function friendsAgain() {
+    try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {}   // the cached my_friends / friend_list are old now
+    var fp = document.getElementById("inv-pane-f");
+    if (!fp || !fp.querySelector(".nr-flist") || !window.NEAR || !window.NEAR.buildFriends) return;
+    try {
+      var lst = fp.querySelector(".nr-flist"), hd = lst.previousElementSibling;
+      if (hd && hd.tagName === "H3") hd.remove();
+      [].slice.call(fp.querySelectorAll(":scope > .sa-vtop, :scope > .nr-in, :scope > .nr-flist, :scope > .nr-out, :scope > .nr-share, :scope > .nr-priv")).forEach(function (n) { n.remove(); });
+      window.NEAR.buildFriends(fp);
+    } catch (e) {}
+    try { if (window.SUGGEST && window.SUGGEST.refresh) window.SUGGEST.refresh(); } catch (e) {}
   }
   function openInv(id, ans) { if (window.INVITE && window.INVITE.open) { window.INVITE.open(id, ans); setTimeout(function () { load(true); }, 2500); } }
   function rally(x, ans, b) {
@@ -214,6 +252,7 @@
     box.innerHTML = "";
     var list = all().slice().sort(function (a, b) { return (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0); });
     box.appendChild(h("p", { class: "ib-head muted", text: P(HEAD) }));
+    if (!list.length && !gotOnce) { box.appendChild(h("p", { class: "ib-loading muted", role: "status", text: L("Hämtar…", "Loading…") })); return; }
     if (!list.length) { box.appendChild(h("p", { class: "ib-empty", text: P(EMPTY) })); }
     else {
       var ul = h("ul", { class: "ib-list" });
@@ -267,7 +306,7 @@
       /* ⚡ SPEED: no own resume poll (app.js polls once after the session refresh; onPoll does the rest) */
     },
     onAuthed: function () { load(true); },
-    onPoll: function () { load(false); },
+    onPoll: function () { load(false); try { paintBadge(); } catch (e) {} },   // fixS T-13: a DUEL challenge counts at once
     // inst: warm.js showed a cached my_inbox and the server has newer items → load again (served from the fresh
     // cache, no new request) and repaint the open tab in place.
     onWarm: function (fn) { if (fn !== "my_inbox") return; try { if (window.WARM) window.WARM.openWin(60); } catch (e) {} load(true); },

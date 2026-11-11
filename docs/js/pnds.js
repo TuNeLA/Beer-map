@@ -1642,6 +1642,7 @@
     if (has(it, ".pn-kanal")) return ["om", 10, ""];
     if (/hemskärm|home screen/i.test(t) && from === "om") return ["om", 20, ""];
     if (it.classList.contains("ds-ver")) return ["om", 30, ""];
+    if (has(it, ".dk-set")) return ["karta", 60, ""];   // fixS T-17: Dialekt is a visible row (Karta, last: after Kartstil), not behind "Mer"
     if (from === "skoj") return ["om", 92, "mer"];
     if (from === "om" && /introduktion|intro/i.test(t)) return ["om", 91, "mer"];
     if (from === "om" && it.classList.contains("ds-text")) return ["om", 93, "mer"];

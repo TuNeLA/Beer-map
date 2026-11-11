@@ -175,7 +175,7 @@
     c.appendChild(h("h2", { html: icT("rules", "Regler i PintsNow") }));
     c.appendChild(h("p", { text: "Kort och tydligt. Det här gäller chatt, bilder, röstklipp, namn, avatarer, event och tips:" }));
     c.appendChild(h("ul", { class: "sf-rules" }, RULES.map(function (r) { return h("li", { text: r }); })));
-    c.appendChild(h("p", { text: "Ser du nåt som bryter mot reglerna? Tryck länge på inlägget → Anmäl, eller Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
+    c.appendChild(h("p", { text: "Ser du nåt som bryter mot reglerna? Tryck på inlägget → Anmäl, eller Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
     c.appendChild(h("p", { class: "muted", html: "Frågor eller anmälan utanför appen: <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
   }
   // Unknown server state (old server, offline, first second after start) = no gate; the server answer decides.
@@ -288,9 +288,10 @@
     overlay(function (c) {
       c.appendChild(h("h2", { html: icT("block", "Blockera " + who + "?") }));
       c.appendChild(h("ul", { class: "sf-rules" }, [
-        h("li", { text: "Ni ser int' varandras chattar, bilder, röstklipp eller pin på kartan." }),
-        h("li", { text: "Ni kan int' skicka meddelanden till varandra. Vänskapen tas bort." }),
-        h("li", { text: "Hen får ingen notis om det." }),
+        // fixS T-01/T-23: the same facts as the DM block sheet (dm.js), plain Swedish
+        h("li", { text: "Ni ser inte varandra på kartan, i Vänner eller i chattar, bilder och röstklipp." }),
+        h("li", { text: "Vänskapen tas bort. Ni kan inte skriva till varandra." }),
+        h("li", { text: "Hen får ingen notis. Hen ser bara att chatten är stängd." }),
         h("li", { text: "Ångra under Inställningar → Blockerade." })
       ]));
       c.appendChild(h("button", { type: "button", class: "btn btn-danger btn-block", html: icT("block", "Blockera"), onclick: function () { closeOverlay(); doBlock(t); } }));
@@ -306,11 +307,14 @@
           return;
         }
         var d = data(r) || {};
-        toast("🚫 " + (d.name || t.name || "Personen") + " ä blockerad.", { ms: 4500 });
+        toast((d.name || t.name || "Personen") + " är blockerad.", { ms: 4500 });   // fixS: same line as the DM block
         // rows already on screen go now; the server leaves them out from the next load
         var nm = d.name || t.name || "";
         if (nm) document.querySelectorAll(".chat-msg:not(.me)").forEach(function (x) { if (authorOf(x) === nm) x.remove(); });
+        try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {}   // fixS T-01: no cached read shows the person again
         if (A && A.refresh) setTimeout(function () { A.refresh(); }, 300);
+        try { if (window.SUGGEST && window.SUGGEST.refresh) window.SUGGEST.refresh(); } catch (e) {}   // fixS T-01: "Du kanske känner" again
+        try { if (typeof t.onDone === "function") t.onDone(d); } catch (e) { try { console.warn("olnu safety onDone", e); } catch (x) {} }
       });
   }
   // One small action menu (report + block) for any target.

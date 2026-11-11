@@ -185,13 +185,15 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
       const li = [...document.querySelectorAll(".chat-list .chat-msg:not(.me)")].find((x) => x.getAttribute("data-mid")); if (!li) return null;
       li.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); await new Promise((r) => setTimeout(r, 300));
       const pk = li.querySelector(".cm-picker"); if (!pk) return { picker: false };
-      const b = pk.querySelector(".sa-cm-rep"), emo = [...pk.querySelectorAll("button")].filter((x) => /🚩|🚫/.test(x.textContent)).length;
+      // fixS T-12: labelled "Anmäl" + "Blockera" (PNI flag / block) instead of one icon-only entry; Anmäl → the report sheet
+      const b = pk.querySelector(".sa-cm-rep"), bb = pk.querySelector(".sa-cm-blk"), emo = [...pk.querySelectorAll("button")].filter((x) => /🚩|🚫/.test(x.textContent)).length;
+      const lab = [b, bb].map((x) => x && x.textContent.trim());
       if (b) b.click(); await new Promise((r) => setTimeout(r, 400));
-      const ov = [...document.querySelectorAll(".sf-ov button")].map((x) => x.textContent.trim());
+      const ov = [document.querySelector(".sf-ov h2")].concat([...document.querySelectorAll(".sf-ov button")]).filter(Boolean).map((x) => x.textContent.trim());
       const cancel = [...document.querySelectorAll(".sf-ov button")].find((x) => /Avbryt/.test(x.textContent)); if (cancel) cancel.click();
-      return { picker: true, rep: !!(b && b.querySelector("svg")), emo, ov };
+      return { picker: true, rep: !!(b && b.querySelector("svg") && bb && bb.querySelector("svg")), lab, emo, ov };
     });
-    ok(`[${w}] misc X5: the chat menu has ONE Anmäl/blockera entry (PNI flag) → MISC.reportMenu (Anmäl + Blockera)`, !!rp && rp.rep && rp.emo === 0 && rp.ov.some((t) => /Anmäl/.test(t)) && rp.ov.some((t) => /Blockera/.test(t)), rp);
+    ok(`[${w}] misc X5 + fixS T-12: the chat menu has labelled Anmäl + Blockera (PNI icons, no emoji) → the report sheet`, !!rp && rp.rep && rp.emo === 0 && rp.lab[0] === "Anmäl" && rp.lab[1] === "Blockera" && rp.ov.some((t) => /Anmäl meddelandet/.test(t)), rp);
     await close(page); await wait(page, 600);
 
     // ---------- DM header not cut ----------

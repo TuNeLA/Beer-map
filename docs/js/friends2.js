@@ -131,9 +131,26 @@
     var box = A.el("li", { class: "f2-menu", role: "group", "aria-label": L("Val för ", "Options for ") + nm });
     function first() {
       box.innerHTML = "";
+      // fixS T-01: Blockera next to Ta bort vän (the full block: SAFETY.block → block_user person; same sheet as the chat)
+      var blk = window.SAFETY && window.SAFETY.block ? A.btn(L("Blockera", "Block"), "btn-small f2-blk", function (e) { stop(e); block(blk); }) : null;
+      if (blk) blk.insertAdjacentHTML("afterbegin", ic("block"));
+      var rmB = A.btn(L("Ta bort vän", "Remove friend"), "btn-small f2-rm", function (e) { stop(e); confirm(); });   // fixS: PNI icon, no 🗑️ in the chrome
+      rmB.insertAdjacentHTML("afterbegin", ic("trash"));
       box.appendChild(A.el("div", { class: "row f2-acts" }, [
-        A.btn(L("🗑️ Ta bort vän", "🗑️ Remove friend"), "btn-small f2-rm", function (e) { stop(e); confirm(); }),
+        rmB, blk,
         A.btn(L("Stäng", "Close"), "btn-small btn-ghost f2-close", function (e) { stop(e); box.remove(); })]));
+    }
+    function block(b) {
+      b.disabled = true;
+      keyOf(f).then(function (k) {
+        b.disabled = false;
+        if (!k) { A.toast(L("Det gick inte att hitta personen. Försök igen.", "Could not find the person. Try again."), { err: true, id: "f2" }); return; }
+        window.SAFETY.block({ kind: "person", k: k, name: f.name || "", what: f.name || "personen", onDone: function () {
+          box.remove(); li.classList.add("f2-gone"); cache = {}; fl = null;
+          try { if (window.SUGGEST && window.SUGGEST.refresh) window.SUGGEST.refresh(); } catch (e2) {}
+          setTimeout(function () { try { li.remove(); } catch (e3) {} if (onChange) onChange(); }, 200);
+        } });
+      });
     }
     function confirm() {
       box.innerHTML = "";
@@ -159,6 +176,20 @@
     first();
     li.parentNode.insertBefore(box, li.nextSibling);
   }
+  // fixS T-01: the person key block_user needs for a friend (friend_list key = olnu_inv_key; my_friends rows only have the
+  // friendship id). One friend_list read, kept 30 s.
+  var fl = null, flAt = 0;
+  function keyOf(f) {
+    if (f && f.ukey) return Promise.resolve(f.ukey);
+    var find = function (d) { var p = ((d && d.people) || []).filter(function (x) { return x && x.friend_id != null && String(x.friend_id) === String(f.id); })[0]; return p && p.key ? p.key : null; };
+    if (fl && Date.now() - flAt < 30000) return Promise.resolve(find(fl));
+    return A.rpc("friend_list", { p_name: myName() }).then(function (r) {
+      var d = r && !r.error ? A.parseData(r.data) : null;
+      if (d && Array.isArray(d.people)) { fl = d; flAt = Date.now(); }
+      return find(d);
+    }, function () { return null; });
+  }
+  function ic(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, "pi-lead") : ""; } catch (e) { return ""; } }
   function decorate(li, f, onChange) {
     if (!li || !f || li._f2) return;
     li._f2 = true;

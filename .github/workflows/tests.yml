@@ -85,6 +85,8 @@ jobs:
             filter: '^(x8)$'
           - name: followups
             filter: '^(followups)$'
+          - name: fixs
+            filter: '^(fixs)$'
           - name: fixj
             filter: '^(fixj)$'
           - name: perf

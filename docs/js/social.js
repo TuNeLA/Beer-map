@@ -131,7 +131,7 @@
     if (!stats) return "";
     if (stats.meriter != null) {
       return stats.next && stats.nextAt ? (I.lang === "en" ? Math.max(0, stats.nextAt - stats.meriter) + " merits left to " + stats.next
-        : Math.max(0, stats.nextAt - stats.meriter) + " meriter kvar till " + stats.next) : t("titleMax");
+        : (U.n1 ? U.n1 : String)(Math.max(0, stats.nextAt - stats.meriter) + " meriter kvar till " + stats.next)) : t("titleMax");   // fixJ T-22 ask: "1 merit"
     }
     return stats.next && stats.nextAt ? t("titleNext", Math.max(0, stats.nextAt - stats.total), stats.next) : t("titleMax");
   }
@@ -477,6 +477,9 @@
       body.appendChild(el("div", { class: "chat-input" }, [inp, sendBtn]));
       var note = el("p", { class: "muted chat-note", text: t("chatNote") });
       body.appendChild(note);
+      // fixS T-12: one visible line until the first time the menu is opened
+      var tipSeen = false; try { tipSeen = localStorage.getItem("olnu.cmxTip") === "1"; } catch (e) {}
+      if (!tipSeen) body.appendChild(el("p", { class: "muted cmx-tip", text: "Tryck på ett meddelande för att reagera, anmäla eller blockera." }));
       inp.addEventListener("keydown", function (e) { lastNewAt = window.OLNU_CHAT_AT = Date.now(); if (e.key === "Enter") go(); });
       function alive() { return document.body.contains(list); }
       // 0029: "💾 Spara chatten efter kl 05" (group setting). Hidden on an old server (RPC missing).
@@ -608,7 +611,8 @@
           row.appendChild(c);
         });
       }
-      function closePicker() { if (picker) { picker.remove(); picker = null; } }
+      var pickerLi = null, pressOpened = false;
+      function closePicker() { if (picker) { picker.remove(); picker = null; pickerLi = null; } }
       function openPicker(li, id) {
         if (reactsOff) return;
         closePicker();
@@ -618,22 +622,44 @@
           b.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker(); sendReact(id, e); });
           picker.appendChild(b);
         });
-        // social-a (misc X5): "Anmäl / blockera …" = MISC.reportMenu (film photo, voice or text; the right report kind)
+        // fixS T-12 (was one icon-only "Anmäl eller blockera" button): other people's lines (group, event and DM chats) get a
+        // labelled row "Anmäl" + "Blockera" (PNI icons, 44 px) under the reactions. Same report kinds as MISC.reportMenu
+        // (voice clip, photo or text) → SAFETY.report / SAFETY.block (the full block, block_user).
         try {
-          var cm = chatMsgs[id] || {};
-          if (window.MISC && window.MISC.reportMenu && !li.classList.contains("me") && !g.dm) {
-            var rb = el("button", { type: "button", class: "cm-pick sa-cm-rep", role: "menuitem", "aria-label": "Anmäl eller blockera", title: "Anmäl eller blockera" });
-            rb.innerHTML = window.PNI && window.PNI.has("flag") ? window.PNI.svg("flag") : "!";
-            rb.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker();
-              window.MISC.reportMenu({ id: id, name: cm.name || "", photo_id: li.getAttribute("data-ph") || cm.photo_id || null, voice_id: li.getAttribute("data-afvid") || cm.voice_id || null }); });
-            picker.appendChild(rb); picker.__sf = 1;   // safety.js onPicker skips this picker (no 2nd 🚩 / 🚫 pair)
+          var cm = chatMsgs[id] || {}, S = window.SAFETY;
+          if (S && S.report && S.block && !li.classList.contains("me")) {
+            var vid = li.getAttribute("data-afvid") || cm.voice_id || null, pid = li.getAttribute("data-ph") || cm.photo_id || null;
+            var tg = vid ? { kind: "voice", ref: String(vid), what: "röstklippet" } : pid ? { kind: "photo", ref: String(pid), what: "bilden" } : { kind: "msg", ref: String(id), what: "meddelandet" };
+            tg.name = cm.name || "";
+            var pi = function (n) { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, "pi-lead") : ""; };
+            var rb = el("button", { type: "button", class: "sa-cm-rep cmx-act", role: "menuitem", "aria-label": "Anmäl " + tg.what });
+            rb.innerHTML = pi("flag") + "<span>Anmäl</span>";
+            rb.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker(); S.report(tg); });
+            var bb = el("button", { type: "button", class: "sa-cm-blk cmx-act", role: "menuitem", "aria-label": "Blockera " + (tg.name || "personen") });
+            bb.innerHTML = pi("block") + "<span>Blockera</span>";
+            bb.addEventListener("click", function (ev) { ev.stopPropagation(); closePicker(); S.block(tg); });
+            picker.appendChild(el("div", { class: "cmx-acts", role: "group", "aria-label": "Anmäl eller blockera" }, [rb, bb]));
+            picker.classList.add("cmx-two");
+            picker.__sf = 1;   // safety.js onPicker skips this picker (no 2nd pair)
           }
         } catch (x) {}
         // v19 Citatboken (js/gang.js): "📖 Citat" in the same menu.
         try { if (!g.ev && !g.dm && window.GANG && window.GANG.chatPick) window.GANG.chatPick(picker, g, chatMsgs[id], closePicker); } catch (x) {}
-        li.appendChild(picker); pickerAt = Date.now();
-        // Near the top of the list: show the picker under the message instead of above it.
-        if (li.getBoundingClientRect().top - list.getBoundingClientRect().top < 50) { picker.style.top = "auto"; picker.style.bottom = "-44px"; }
+        li.appendChild(picker); pickerAt = Date.now(); pickerLi = li;
+        // fixS T-12: the menu can be 2 rows: sit right above the line (or under it near the top of the list)
+        var ph = picker.offsetHeight || 52;
+        if (li.getBoundingClientRect().top - list.getBoundingClientRect().top < ph + 6) { picker.style.top = "auto"; picker.style.bottom = -(ph + 4) + "px"; }
+        else picker.style.top = -(ph + 4) + "px";
+        // never outside the screen (360 px); again after the next frame (the menu can still grow: icons, the Citat button)
+        var pk0 = picker, clamp = function () {
+          if (picker !== pk0 || !pk0.isConnected) return;
+          var pr = pk0.getBoundingClientRect(), vw = document.documentElement.clientWidth || window.innerWidth || 360;
+          if (pr.right > vw - 8) pk0.style.left = Math.round(pk0.offsetLeft - (pr.right - vw + 8)) + "px";
+          else if (pr.left < 8) pk0.style.left = Math.round(pk0.offsetLeft + (8 - pr.left)) + "px";
+        };
+        clamp(); requestAnimationFrame(clamp); setTimeout(clamp, 200);
+        try { localStorage.setItem("olnu.cmxTip", "1"); } catch (e) {}
+        var tip = body.querySelector(".cmx-tip"); if (tip) tip.hidden = true;
         window.FX.vibrate(12);
       }
       function sendReact(id, emoji) {
@@ -661,18 +687,30 @@
       var pressT = null, pressLi = null;
       function msgIdOf(li) { for (var k in reactRows) if (li.contains(reactRows[k])) return k; return null; }
       list.addEventListener("pointerdown", function (e) {
-        var li = e.target.closest(".chat-msg"); if (!li || e.target.closest("a,button")) return;
+        var li = e.target.closest(".chat-msg"); pressOpened = false; if (!li || e.target.closest("a,button")) return;
         pressLi = li; clearTimeout(pressT);
-        pressT = setTimeout(function () { var id = msgIdOf(li); if (id) openPicker(li, id); }, 450);
+        pressT = setTimeout(function () { var id = msgIdOf(li); if (id) { openPicker(li, id); pressOpened = true; } }, 450);
       });
       ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { list.addEventListener(ev, function () { clearTimeout(pressT); }); });
       list.addEventListener("scroll", function () { clearTimeout(pressT); });
       list.addEventListener("contextmenu", function (e) { if (e.target.closest(".chat-msg")) e.preventDefault(); });
       list.addEventListener("dblclick", function (e) {
         var li = e.target.closest(".chat-msg"); if (!li || e.target.closest("a,button")) return;
+        if (picker && pickerLi === li) return;   // fixS T-12: the first tap opened it already
         var id = msgIdOf(li); if (id) openPicker(li, id);
       });
-      list.addEventListener("click", function (e) { if (picker && Date.now() - pickerAt > 500 && !e.target.closest(".cm-picker")) closePicker(); });
+      // fixS T-12: ONE tap on a line opens the menu (Telegram style), a tap on the same line or outside closes it. The click
+      // that ends a long-press is not a "tap outside" (it used to close the menu when the press was held > 950 ms).
+      // Taps on links, buttons, the name (member card), photos and players keep their own action.
+      list.addEventListener("click", function (e) {
+        if (pressOpened) { pressOpened = false; return; }
+        if (e.target.closest(".cm-picker")) return;
+        var li = e.target.closest(".chat-msg");
+        if (picker) { var was = pickerLi; if (Date.now() - pickerAt < 350 && was === li) return; closePicker(); if (was === li || !li) return; }
+        if (!li || e.target.closest("a,button,input,img,video,audio,.cm-tap,.cm-reacts,.ph-frame,[data-phid]")) return;   // a photo tap = the viewer (photo.js)
+        var id = msgIdOf(li); if (id) openPicker(li, id);
+      });
+      document.addEventListener("keydown", function kd(e) { if (!alive()) { document.removeEventListener("keydown", kd); return; } if (e.key === "Escape" && picker) closePicker(); });
       function load() {
         if (!alive()) { clearInterval(timer); return; }
         if (loading || document.visibilityState === "hidden") return;
@@ -701,15 +739,37 @@
         if (!text) return;   // QA #17: blank message → nothing, no error toast
         if (text.length > 140) { A.toast(t("chatInvalid"), { err: true }); return; }
         sending = true; sendBtn.disabled = true;
+        // fixS T-05: Regler first (SAFETY.ensureTerms), THEN the post. The 15 s RPC timeout (app.js rpcNet1) used to run
+        // while Regler was open: a slow reader got "fail", the text stayed, the post still went out after "Jag godkänner"
+        // and the 2nd tap posted it again. The button stays off until the answer, and a lost answer (timeout) is checked
+        // against the chat before it counts as failed (so a retry never makes a 2nd copy).
+        var gate = window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : Promise.resolve(true);
+        Promise.resolve(gate).then(function (okT) {
+          if (!okT) { sending = false; sendBtn.disabled = false; return; }   // "Int' nu": nothing sent, the text stays
+          post(text);
+        });
+      }
+      function mineN(text) { return [].filter.call(list.querySelectorAll("li.chat-msg.me .cm-body"), function (b) { return b.textContent === text; }).length; }
+      function mine(text, n0, id0) {   // after a lost answer: is my line in the chat now (drawn by a poll, or on the server)?
+        if (mineN(text) > n0) return Promise.resolve(true);
+        return call("group_msgs", { p_group_id: g.id, p_after_id: id0 }).then(function (r) {
+          return !r.error && (r.data || []).some(function (m) { return m && m.is_me && String(m.body || "") === text; });
+        });
+      }
+      function post(text) {
+        var n0 = mineN(text), id0 = lastId;
         try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
         call("post_group_msg", { p_group_id: g.id, p_body: text }).then(function (r) {
+          if (r && r.error && /timeout/i.test(String(r.error.message || ""))) return mine(text, n0, id0).then(function (got) { return got ? { data: null, error: null } : r; });
+          return r;
+        }).then(function (r) {
           sending = false; sendBtn.disabled = false;
           if (r.error) {
             var c = codeOf(r.error);
             A.toast(c === "not_member" ? t("chatNotMember") : c === "invalid_msg" ? t("chatInvalid") : c === "slow_down" ? t("chatSlow") : t("chatFail"), { err: true });
             return;
           }
-          inp.value = "";
+          if (String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim() === text) inp.value = "";
           A.invoke("notify-group", { event: "msg", group_id: g.id });   // fire-and-forget
           if (window.EXTRAS && window.EXTRAS.award) window.EXTRAS.award("chat");
           load(); loadStats();

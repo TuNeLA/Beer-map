@@ -62,15 +62,20 @@
       "🪖 Privat radio till {namn}. Över.", "👀 Ingen har sagt nå än. Bryt tystnaden, soldat!"],
     note: ["🔒 Bara ni två ser chatten. Sparas i 7 dagar.", "🔒 Privat linje. Försvinner efter 7 dagar.",
       "🔒 Ingen annan ser dä här. Meddelanden lever i 7 dagar."],
-    blockedMe: ["🔒 Du kan int' skriva till {namn} just nu.", "🔒 Linjen ä stängd. Du kan int' skriva hit just nu.",
-      "🔒 Radiotystnad. Hä går int' att skicka nå just nu."],
-    notFriends: ["🔒 Ni ä int' vänner längre, så linjen ä stängd.", "🔒 Ingen gemensam grupp eller vänskap längre – bara läsa."],
-    iBlocked: ["🚫 Du har blockerat {namn}. Ingen av er kan skriva.", "🚫 {namn} ä blockerad. Linjen ä bruten åt båda hållen.",
-      "🚫 Blockerad. {namn} kan int' nå dig här."],
-    blockQ: ["🚫 Blockera {namn}? Ni kan int' skriva till varann. {namn} får int' veta nå.",
-      "🚫 Bryta linjen till {namn}? Ingen kan skriva, åt nåt håll. Hen får ingen signal om dä."],
-    blocked: ["🚫 {namn} ä blockerad.", "🚫 Linjen till {namn} ä bruten.", "🚫 Klart. {namn} kan int' skriva till dig."],
-    unblocked: ["✅ {namn} ä avblockerad.", "✅ Linjen ä öppen igen.", "✅ Fred i lägret. Ni kan skriva igen."],
+    // fixS T-23: the blocked side sees exactly what happened (the chat is closed), no "just nu" that promises it opens again
+    blockedMe: ["Chatten är stängd. Du kan inte skriva till {namn} här."],
+    notFriends: ["Ni är inte vänner längre, så chatten är stängd.", "Ingen gemensam grupp eller vänskap längre. Du kan bara läsa."],
+    // fixS T-01/T-23: plain copy (sv-neutral), the same facts on both sides. "Blockera" = the full block (block_user):
+    // vänskapen tas bort, ingen pin, inget "ute nu", ingen chatt. "Stäng bara chatten" = the old DM-only block (dm_block).
+    iBlocked: ["Du har blockerat {namn}. Ingen av er kan skriva här."],
+    iClosed: ["Du har stängt chatten med {namn}. Ingen av er kan skriva här."],
+    blockQ: ["Blockera {namn}?"],
+    blockLi: ["Ni ser inte varandra på kartan, i Vänner eller i chattar.", "Vänskapen tas bort. Ni kan inte skriva till varandra.",
+      "{namn} får ingen notis. Hen ser bara att chatten är stängd.", "Ångra under Inställningar → Blockerade."],
+    blocked: ["{namn} är blockerad."],
+    closed: ["Chatten med {namn} är stängd."],
+    unblocked: ["{namn} är inte blockerad längre. Vänskapen kommer inte tillbaka av sig själv."],
+    reopened: ["Chatten med {namn} är öppen igen."],
     muted: ["🔕 Tyst. Inga notiser från {namn}.", "🔕 Radion ä på tyst för {namn}."],
     unmuted: ["🔔 Notiser på igen.", "🔔 Nu hörs {namn} igen."],
     toast: ["💬 {namn}: {text}", "💬 Nytt från {namn}: {text}", "📨 {namn} skriver: {text}", "📡 Privat från {namn}: {text}"],
@@ -78,6 +83,8 @@
     fail: ["Hä gick int'. Försök igen.", "Signalen bröts. Försök igen."]
   };
   function P(key, o) { return fill(pick(key, T[key]), o || {}); }
+  // fixS: the block / safety lines are plain Swedish on purpose (no dialect: they must say exactly what happens)
+  function DV(key, def, o) { return fill(def, o || {}); }
 
   /* ---------- data ---------- */
   function rpc(name, params) {
@@ -133,7 +140,7 @@
   }
   function errText(c) {
     if (c === "not_friends" || c === "invalid_target") return pick("notFriend", T.notFriend);
-    if (c === "blocked") return L("🚫 Blockerad – ni kan int' skriva till varann.", "🚫 Blocked – you cannot message each other.");
+    if (c === "blocked") return L("Blockerad. Ni kan inte skriva till varandra.", "Blocked. You cannot message each other.");
     if (c === "slow_down") return L("Lugn i stormen! Vänta en stund.", "Slow down a bit.");
     return pick("fail", T.fail);
   }
@@ -206,7 +213,7 @@
   function saIc(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }   // social-a
   function initial(n) { var s = String(n || "?").trim(); return s ? s.charAt(0).toUpperCase() : "?"; }
   function preview(t) {
-    if (t.blocked_by_me) return L("🚫 Blockerad", "🚫 Blocked");
+    if (t.blocked_by_me) return L("Blockerad", "Blocked");
     if (!t.last_id) return L("Inga meddelanden än", "No messages yet");
     var b = String(t.last_body || "");
     if (/^📷/.test(b)) b = L("📷 Bild", "📷 Photo") + b.slice(2);
@@ -331,8 +338,8 @@
         var key = (st.blocked_by_me ? "me" : st.blocked_me ? "them" : "nf");
         if (lock.getAttribute("data-k") !== key) {
           lock.setAttribute("data-k", key); lock.innerHTML = "";
-          lock.appendChild(h("p", { class: "dm-lock-t", text: st.blocked_by_me ? P("iBlocked", { namn: nm }) : st.blocked_me ? P("blockedMe", { namn: nm }) : pick("notFriends", T.notFriends) }));
-          if (st.blocked_by_me) lock.appendChild(A.btn(L("✅ Avblockera ", "✅ Unblock ") + nm, "btn-small", function () { setBlock(false); }));
+          lock.appendChild(h("p", { class: "dm-lock-t", text: st.blocked_by_me ? (isFull() ? P("iBlocked", { namn: nm }) : P("iClosed", { namn: nm })) : st.blocked_me ? P("blockedMe", { namn: nm }) : pick("notFriends", T.notFriends) }));
+          if (st.blocked_by_me) lock.appendChild(A.btn(isFull() ? L("Avblockera ", "Unblock ") + nm : L("Öppna chatten igen", "Open the chat again"), "btn-small dm-unb", function () { setBlock(false); }));
         }
       }
       paintSeen();
@@ -373,23 +380,41 @@
         A.toast(st.muted ? P("muted", { namn: nm }) : P("unmuted", { namn: nm }));
       });
     }
+    // fixS T-01: the main choice is the FULL block (block_user: user_blocks + the friendship ends, so no pin, no "ute nu",
+    // no friend-of-friend names, no DM); "Stäng bara chatten" is the old DM-only block (dm_block) as the 2nd choice.
+    // dm_block is also set on a full block so this thread knows "blocked by me" before migration 0470 is live.
     function askBlock() {
       if (st.blocked_by_me) { setBlock(false); return; }
       ask.innerHTML = ""; ask.hidden = false;
-      ask.appendChild(h("p", { text: P("blockQ", { namn: nm }) }));
-      ask.appendChild(h("div", { class: "row" }, [
-        A.btn(L("🚫 Ja, blockera", "🚫 Yes, block"), "btn-small dm-yes", function () { ask.hidden = true; setBlock(true); }),
-        A.btn(L("Avbryt", "Cancel"), "btn-small", function () { ask.hidden = true; })]));
+      ask.appendChild(h("p", { class: "dm-ask-h" }, [h("b", { text: DV("dm.blockQ", T.blockQ[0], { namn: nm }) })]));
+      ask.appendChild(h("ul", { class: "dm-ask-l" }, T.blockLi.map(function (x, i) { return h("li", { text: DV("dm.blockLi" + i, x, { namn: nm }) }); })));
+      var yes = A.btn(L("Blockera ", "Block ") + nm, "btn-small btn-block dm-yes", function () { ask.hidden = true; setBlock(true, true); });
+      try { if (window.PNI && window.PNI.has("block")) yes.insertAdjacentHTML("afterbegin", window.PNI.svg("block", "pi-lead")); } catch (e) {}
+      ask.appendChild(h("div", { class: "dm-ask-acts" }, [yes,
+        A.btn(L("Stäng bara chatten", "Only close the chat"), "btn-small btn-block dm-close-only", function () { ask.hidden = true; setBlock(true, false); }),
+        A.btn(L("Avbryt", "Cancel"), "btn-small btn-block btn-ghost dm-no", function () { ask.hidden = true; })]));
     }
-    function setBlock(on) {
+    var fullBlock = !!t.full_block;
+    function isFull() { return fullBlock || !!st.full_block; }   // st.full_block: server 0470 (olnu_dm_json)
+    function setBlock(on, full) {
+      if (blockB.disabled) return;
+      if (!on) full = isFull();
       blockB.disabled = true;
-      rpc("dm_block", { p_group_id: g.id, p_on: on }).then(function (r) {
-        blockB.disabled = false;
-        if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
-        st = A.parseData(r.data) || st; paint();
-        var x = byGid(g.id); if (x) Object.keys(st).forEach(function (k) { x[k] = st[k]; });
-        A.toast(on ? P("blocked", { namn: nm }) : P("unblocked", { namn: nm }));
-        try { window.FX.vibrate(on ? [30, 40, 30] : 15); } catch (e) {}
+      // on + full: block_user first (the person), then the thread flag. off: both off (a full block made here or elsewhere).
+      var first = full ? rpc("block_user", { p_kind: "person", p_ref: null, p_group: g.id, p_k: null, p_on: !!on }) : Promise.resolve({});
+      first.then(function (r0) {
+        if (on && full && r0 && r0.error) { blockB.disabled = false; A.toast(missing(r0.error) ? L("Blockera finns inte på servern än.", "Block is not on the server yet.") : errText(codeOf(r0.error)), { err: true }); return; }
+        rpc("dm_block", { p_group_id: g.id, p_on: on }).then(function (r) {
+          blockB.disabled = false;
+          if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
+          fullBlock = !!(on && full); t.full_block = fullBlock; st.full_block = fullBlock;
+          st = A.parseData(r.data) || st; lock.removeAttribute("data-k"); paint();
+          var x = byGid(g.id); if (x) { Object.keys(st).forEach(function (k) { x[k] = st[k]; }); x.full_block = fullBlock; }
+          A.toast(on ? (full ? DV("dm.blocked", T.blocked[0], { namn: nm }) : DV("dm.closed", T.closed[0], { namn: nm })) : full ? DV("dm.unblocked", T.unblocked[0], { namn: nm }) : DV("dm.reopened", T.reopened[0], { namn: nm }), { id: "dm-block", ms: 4500 });
+          try { window.FX.vibrate(on ? [30, 40, 30] : 15); } catch (e) {}
+          if (full) { try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {} }
+          if (on && full) { try { if (A.refresh) setTimeout(function () { A.refresh(); }, 300); } catch (e) {} try { if (window.SUGGEST && window.SUGGEST.refresh) window.SUGGEST.refresh(); } catch (e) {} }
+        });
       });
     }
     // 📷 photos do not push by themselves: send the DM push for my new photo rows.
