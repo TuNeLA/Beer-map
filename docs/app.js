@@ -85,12 +85,14 @@
   var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
   try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
   if (bSrv && bSrv.v === "old" && Date.now() - bSrv.at < 30 * 60e3) BUNDLE_NEW.forEach(function (n) { noB[n] = 1; });
-  // fixP N-02 (0466): the chat reads + moments_poll may go in a bundle too. A server with 0465 but without 0466 answers
+  // fixP N-02 (0466): the chat reads may go in a bundle too. A server with 0465 but without 0466 answers
   // not_bundled for them: they go alone for this page life, and this phone remembers it 30 min (olnu.bsrv66, own flag: the
   // 0465 names keep their cap and flag). The chat reads are screen reads (SCR66: like the 0465 names, they bundle only in the
-  // start-up window, in the background, or in the chat lane below); moments_poll is a background poll (never asked ahead).
-  var BUNDLE_66 = ["group_photos", "msg_reacts", "group_voices", "group_status_v3", "group_status_v2", "moments_poll"], N66 = {}, SCR66 = {}, LS_B66 = "olnu.bsrv66", b66 = null;
-  BUNDLE_66.forEach(function (n) { N66[n] = 1; if (n !== "moments_poll") SCR66[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_66);
+  // start-up window, in the background, or in the chat lane below). moments_poll is on the 0466 server list too, but the client
+  // still sends it alone: in a bundle it waits ≤ 3 s, and moments.js poll(true) (push link ?mom=) returns early while a poll is
+  // pending (moments-pw GM7). Add "moments_poll" here once moments.js waits for the pending poll (request to lane fixMo).
+  var BUNDLE_66 = ["group_photos", "msg_reacts", "group_voices", "group_status_v3", "group_status_v2"], N66 = {}, SCR66 = {}, LS_B66 = "olnu.bsrv66", b66 = null;
+  BUNDLE_66.forEach(function (n) { N66[n] = 1; SCR66[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_66);
   try { b66 = JSON.parse(localStorage.getItem(LS_B66) || "null"); } catch (e) { b66 = null; }
   if (b66 && b66.v === "old" && Date.now() - b66.at < 30 * 60e3) BUNDLE_66.forEach(function (n) { noB[n] = 1; });
   function b66Set(v) {
