@@ -117,7 +117,7 @@ jobs:
           - name: map-lane
             filter: '^(map)$'
           - name: map-ui1
-            filter: '^(ui1-map)$'
+            filter: '^(ui1-map|ownerfix-map)$'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

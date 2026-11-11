@@ -200,7 +200,8 @@
 
   // ownerfix 4b: public face of the one controller (pnds.js tap, app.js reduced-motion line swap, tests)
   window.PNTICK = {
-    toggle: function () { tick.stop = !tick.stop; tickTarget(); return tick.stop; },
+    // a tap-stop is at once (readable now, like before); going on again eases up from 0
+    toggle: function () { tick.stop = !tick.stop; if (tick.stop) { if (tick.raf) { cancelAnimationFrame(tick.raf); tick.raf = 0; } tick.f = 0; } tickTarget(); return tick.stop; },
     setStop: function (v) { tick.stop = !!v; tickTarget(); return tick.stop; },
     stopped: function () { return tick.stop; },
     paused: function () { return tick.stop || tick.hold || sheetOpen(); },

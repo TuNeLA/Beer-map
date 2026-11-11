@@ -1097,8 +1097,7 @@
       var tr = document.getElementById("ticker-track");
       if (tr && tr.classList.contains("tk-one") && W.PN_TICK_NEXT) { W.PN_TICK_NEXT(); return; }
       // ownerfix 4b: the ONE controller (pnui.js PNTICK) owns the speed; this only toggles its stop state
-      stop = W.PNTICK ? W.PNTICK.toggle() : !stop;
-      if (!W.PNTICK) W.PN_TICK_F = stop ? 0 : 1;
+      stop = W.PNTICK ? W.PNTICK.toggle() : !stop;   // (no own write of PN_TICK_F here any more)
       tk.classList.toggle("pn-tk-stop", stop); tk.setAttribute("aria-label", stop ? "Nyheter (stoppad, tryck för att fortsätta)" : "Nyheter (tryck för att stoppa)");
     });
   }
