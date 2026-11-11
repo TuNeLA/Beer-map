@@ -4509,7 +4509,7 @@
   // v9: what js/social.js and js/extras.js may use. Getters for state that changes.
   function appApi() {
     return {
-      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, chatLane: chatLane, flagsDirty: flagsDirty, _lanes: function () { return Object.keys(lanes); },   // fixP toast: toast, toastClear: toastClear,
+      LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, chatLane: chatLane, flagsDirty: flagsDirty, _lanes: function () { return Object.keys(lanes); }, toast: toast, toastClear: toastClear,
       openSheet: openSheet, closeSheet: closeSheet, el: el, btn: btn, errMsg: errMsg, flyTo: flyTo, refresh: refresh,
       render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
       beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
