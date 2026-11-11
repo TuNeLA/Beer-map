@@ -1,0 +1,47 @@
+# PintsNow TEST BOTS: six fake friends on STAGING for the owner's hand test (scripts/bots/runner.py, scripts/bots/README.md).
+# Start from the phone: GitHub → Actions → bots → Run workflow. Stop: cancel the run, or write "bots: stopp" in Testgänget.
+# No secrets: the staging anon key is public (role anon) and the runner refuses any other Supabase project.
+# The bot sessions (anonymous staging users) are kept between runs in the Actions cache (.bots-state).
+name: bots
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How long the bots stay (minutes)"
+        required: true
+        default: "60"
+        type: choice
+        options: ["30", "45", "60", "90", "120"]
+      friend_code:
+        description: "Your friend code (optional): Bot-Lisa and Bot-Johan send you a friend request"
+        required: false
+        default: ""
+      quiet:
+        description: "Start silent (no chat replies; they still play)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency: { group: pintsnow-bots, cancel-in-progress: true }   # one bot run at a time: a new run stops the old one
+jobs:
+  bots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 135
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/cache/restore@v4
+        with: { path: .bots-state, key: "bots-state-${{ github.run_id }}", restore-keys: "bots-state-" }
+      - name: Bots (staging)
+        env:
+          BOTS_STATE: .bots-state/state.json
+          BOTS_FRIEND_CODE: ${{ inputs.friend_code }}
+          BOTS_MINUTES: ${{ inputs.minutes }}
+          BOTS_QUIET: ${{ inputs.quiet }}
+        run: |
+          set -eu
+          q=""; [ "$BOTS_QUIET" = "true" ] && q="--quiet"
+          python3 scripts/bots/runner.py --minutes "$BOTS_MINUTES" $q
+      - if: always()
+        uses: actions/cache/save@v4
+        with: { path: .bots-state, key: "bots-state-${{ github.run_id }}" }
