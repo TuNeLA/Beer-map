@@ -109,3 +109,24 @@ get bpOwnerMine() { return DIALEKT.v("bar.owner.mine", 0, null, "Det är ni! Hå
   start and offline use the cached pack.
 - A loaded pack fires `dialekt:change`; `app.js` then rebuilds the LIVE ticker queue. Other surfaces read the new lines
   the next time they render.
+
+## dialect2: more region, and the ticker follows the map (2026-11-11)
+
+Owner: "I don't like the neutral one. It should show more depending on where you are. In Gothenburg they say Glenn."
+
+- **Region share.** Every `{mix: p}` in the region packs is now `0.1`: the region line shows about 90 % of the time where
+  one exists. Care keys (`level.kolla`, `level.het`, `after.safeHome`, `after.hangover`, `crew.moodHem`, `forfest.nodrink`,
+  `forfest.water`, `live.townLate`, `live.groupLeader.d`, `live.medevac`) keep `0.25`. Neutral areas have no pack: plain.
+- **The LIVE ticker speaks the map area's dialect.** `news.js` runs `NEWS.build` inside
+  `DIALEKT.within(DIALEKT.tickerArea(ctx.center), fn)`.
+  - `tickerArea(center)`: the map view centre when the map shows a town or a region (Leaflet zoom >= 7), else the
+    ticker centre, else `null` (= the phone's region). Off, preview, no data yet or a point outside the data → `null`.
+  - `within(area, fn)`: runs `fn` with that area's chain. Sync only. Outside it (toasts, games, morning report, sheets)
+    everything uses the phone's region as before.
+  - `tickerRegion()`: the ticker's region code now (tests, debug).
+- **One extra pack.** When the ticker's region is not the phone's, `dialekt.js` loads that region's CORE pack only
+  (no `-lek`). A new extra pack drops the old one from memory (the service worker keeps the file). `onPoll` checks the
+  map and fires `dialekt:change` (`detail.ticker`), so `app.js` rebuilds the ticker queue at once.
+- **Lines.** Source: `scratchpad/dialect2/lines/<region>.txt` (same format as the dialect lane's `regions/*.txt`).
+  `dialect2-patches/02-packs.py` merges them into the packs (idempotent). New core keys always get `{mix: 0.1}`.
+- **Debug.** `DIALEKT._trace(true)` starts a list of `[key, pack | null]` per `v()` call; `_trace(false)` returns it.

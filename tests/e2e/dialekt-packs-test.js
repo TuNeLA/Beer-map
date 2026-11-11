@@ -212,5 +212,61 @@ D.setMode("auto");
   }
 }
 
+// ---------- dialect2 (owner 11 Nov: "more region, less neutral", "in Gothenburg they say Glenn") ----------
+// 1. {mix} ≤ 0.25 everywhere (region line ~90 %, care keys ~75 %); 2. region share ≥ 80 % over 200 renders of the ticker keys;
+// 3. no line breaks the alcohol-law list (scratchpad legal/alcohol-law.md section 5) in the written packs (Dalarna = NOTE:
+//    today's lines, owner / legal lane); 4. every rendered ticker line has no {var} left; 5. Glenn in sv-vast;
+// 6. within(area, fn): the ticker scope uses that area's pack, the phone's region stays.
+{
+  const LAW = ["beställ en till", "en öl till", "en till så", "bara att köra", "ska du inte ta det", "ska du låta det hända", "det här är krig",
+    "flest öl", "dricker för fullo", "svept", "svepa", "morsan", "öltorsk", "fyller inte på", "slutat dricka", "svag insats", "tråkmåns", "och du då",
+    "sitta hemma nu", "hänger du med", "ölbilen", "snabbare än en raggare", "väntat sig mer av dig", "nästa runda blir öl", "truppen följer efter",
+    "kör hårt", "slutat räkna", "inget mer öl", "törsten kommer tillbaka", "drick mer", "dricka mer", "en till!", "ta en till", "häll i", "botten upp",
+    "hinka", "kröka", "bala", "supa", "full som", "packad", "dricka ikapp", "ölrace", "töm glaset", "drick snabbare"];
+  const LAWRE = new RegExp("(?<![a-zåäö])(" + LAW.map(esc).join("|") + ")(?![a-zåäö])", "i");
+  const REG = ["sv-syd", "sv-vast", "sv-sthlm", "sv-norr", "sv-dalarna"];
+  for (const code of REG) {
+    const P = packs[code] || {}, hi = [], law = [];
+    keysOf(P).forEach((k) => list(P[k]).forEach((x) => {
+      if (isMix(x) && x.mix > 0.25) hi.push(k + " " + x.mix);
+      const t = txt(x); if (typeof t !== "string") return;
+      const m = LAWRE.exec(t); if (m && !ALLOW[k + "|" + m[0].toLowerCase()]) law.push(k + ": " + m[0]);
+    }));
+    ok(!hi.length, "d2 " + code + ": {mix} <= 0.25 (region line >= 75 %, ~90 % for most keys)", hi.slice(0, 5));
+    if (code === "sv-dalarna") { if (law.length) console.log("NOTE d2 sv-dalarna: " + law.length + " of today's Dalmål lines hit the alcohol-law list (owner / legal lane): " + law.slice(0, 6).join(" | ")); }
+    else ok(!law.length, "d2 " + code + ": no alcohol-law phrase (drink pressure, 'morsan', 'kör hårt' …)", law.slice(0, 8));
+    // share: 200 renders over the ticker keys this pack has (all vars of the key passed, as the call sites do)
+    D.setMode("auto"); D.preview(code);
+    const keys = keysOf(P).filter((k) => /^live\./.test(k) && N[k] !== undefined);
+    let hit = 0, tot = 0, left = [];
+    for (let i = 0; i < 200; i++) {
+      const k = keys[i % keys.length], defs = list(N[k]).filter((x) => !isMix(x)).map((x) => String(txt(x))), row = Math.floor(i / keys.length) % defs.length;
+      const vars = {}; nvars(k).forEach((v) => { vars[v] = "X" + v; });
+      D._setNow(Date.UTC(2026, 10, 1 + i, 20)); const r0 = D.stats.region;
+      const out = D.v(k, row, vars, defs[row], defs.length); tot++; if (D.stats.region > r0) hit++;
+      if (/\{[A-Za-z_]\w*\}/.test(out)) left.push(k + ": " + out);
+    }
+    D._setNow(null); D.preview(null);
+    ok(hit / tot >= 0.8, "d2 " + code + ": region share " + Math.round(hit / tot * 100) + " % over " + tot + " ticker renders (>= 80 %)", { hit, tot });
+    ok(!left.length, "d2 " + code + ": no {var} left in rendered ticker lines", left.slice(0, 3));
+  }
+  // Glenn: the Göteborg everyman (owner: "I've seen no Glenn")
+  const V = packs["sv-vast"] || {}, glenn = [];
+  keysOf(V).forEach((k) => list(V[k]).forEach((x) => { const t = txt(x); if (typeof t === "string" && /\bGlenn\b/.test(t)) glenn.push(k); }));
+  ok(glenn.length >= 30 && glenn.some((k) => /^live\.(random|general|town\.goteborg)$/.test(k)), "d2 sv-vast: Glenn lines in the ticker (" + glenn.length + ")", glenn.slice(0, 5));
+  ok(V["live.town.goteborg"] && list(V["live.town.goteborg"]).filter((x) => !isMix(x)).length >= 15, "d2 sv-vast: Göteborg town jokes (live.town.goteborg)");
+  // within(): the ticker scope reads that area's pack; the phone's own region (here: none / neutral) is unchanged
+  if (typeof D.within === "function") {
+    D.setMode("auto"); D.preview(null);
+    const own = D.region(), k = "live.town.goteborg";
+    const inV = D.within({ cc: "SE", lang: "sv", a: "sv-vast", b: "sv-vast", code: "1480", name: "Göteborg" }, () => ({ r: D.chain()[0], s: D.v(k, 0, {}, "§def§", 11) }));
+    ok(inV.r === "sv-vast" && D.region() === own && D.chain()[0] === own, "d2 within(): chain = the area's region inside, the phone's outside", { inV, own });
+    D.setMode("off");
+    const offV = D.within(D.tickerArea ? D.tickerArea({ lat: 57.7, lng: 11.97 }) : null, () => D.v(k, 0, {}, "§def§", 11));
+    ok(offV === "§def§", "d2 Dialekt Av: the ticker scope gives the plain line", offV);
+    D.setMode("auto");
+  } else ok(false, "d2 DIALEKT.within (ticker scope) exists");
+}
+
 console.log(fail ? fail + " failed" : "all passed");
 process.exit(fail ? 1 : 0);

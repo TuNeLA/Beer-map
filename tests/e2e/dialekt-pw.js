@@ -460,6 +460,90 @@ async function fresh(browser, ls, o = {}) {
     await ctx.close();
   }
 
+  // ---------- 12. dialect2: the LIVE ticker speaks the MAP AREA's dialect; the user's own messages keep the phone's region ----------
+  // Owner 11 Nov: in Ludvika he looked at Göteborg on the map and saw Dalarna / neutral lines ("in Gothenburg they say Glenn").
+  // Phone = Ludvika (sv-dalarna). Map → Göteborg: ticker = sv-vast (one extra CORE pack, no -lek), toasts / games = sv-dalarna.
+  // Region share in the ticker >= 80 % over 200 renders (each build's DIALEKT.v calls, keys the region pack has).
+  {
+    const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 });   // geolocation Ludvika
+    const preq = []; page.on("request", (r) => { if (/dialekt-packs\//.test(r.url())) preq.push(r.url().replace(/^.*\//, "").replace(/\?.*$/, "")); });
+    const perr = []; page.on("pageerror", (e) => perr.push(e.message));
+    await boot(page);
+    await page.evaluate(() => window.OLNU_LAZY_NOW && window.OLNU_LAZY_NOW());
+    await page.waitForFunction(() => window.DIALEKT.stats.packs["sv-dalarna"] && window.NEWS && window.NEWS.last, null, { timeout: 20000 }).catch(() => {});
+    await page.waitForFunction(() => window.DRINK_LINES && window.SPEL_CARDS, null, { timeout: 15000 }).catch(() => {});
+    const goMap = async (lat, lng, z) => { await page.evaluate(([a, b, z]) => { window.__map.setView([a, b], z, { animate: false }); window.DIALEKT.onPoll && window.DIALEKT.onPoll(); }, [lat, lng, z]); await wait(page, 600); };
+    // the ticker builds run in the page; trace = [key, pack that answered | null (= the plain def)] per DIALEKT.v call
+    const builds = (n) => page.evaluate((n) => {
+      const D = window.DIALEKT; if (!D._trace || !D.tickerRegion) return { err: "no ticker scope (old dialekt.js)" };
+      const L = window.NEWS.last(), base = Date.now(), texts = [];
+      D._trace(true);
+      for (let i = 0; i < n; i++) { D._setNow(base + i * 864e5); window.NEWS.build(L.beers, L.ctx).forEach((x) => texts.push(x.text)); }
+      D._setNow(null);
+      const tr = D._trace(false), by = {};
+      tr.forEach(([k, c]) => { by[c || "plain"] = (by[c || "plain"] | 0) + 1; });
+      return { n: tr.length, by, tr, texts, tick: D.tickerRegion(), own: D.region() };
+    }, n);
+    const share = (b, code) => { const p = b.tr.filter(([k]) => b.pk[k]); return { calls: p.length, hit: p.filter(([, c]) => c === code).length }; };
+    const withPack = async (b, code) => { if (b.err) return b; b.pk = await page.evaluate((c) => { const o = {}; Object.keys(window.DIALEKT._packs()[c] || {}).forEach((k) => { o[k] = 1; }); return o; }, code); return b; };
+
+    await goMap(57.7089, 11.9746, 13);   // Göteborg
+    await page.waitForFunction(() => window.DIALEKT.stats.packs["sv-vast"], null, { timeout: 15000 }).catch(() => {});
+    const st = await page.evaluate(() => ({ tick: window.DIALEKT.tickerRegion ? window.DIALEKT.tickerRegion() : null, own: window.DIALEKT.region(), chain: window.DIALEKT.chain(), packs: Object.keys(window.DIALEKT._packs()).filter((c) => c !== "sv-neutral") }));
+    ok("[map] phone in Ludvika, map on Göteborg: ticker region sv-vast, own region sv-dalarna", st.tick === "sv-vast" && st.own === "sv-dalarna" && st.chain[0] === "sv-dalarna", st);
+    ok("[map] the extra pack is the Väst CORE pack only (sv-vast.js, no sv-vast-lek.js), fetched once", preq.filter((f) => f === "sv-vast.js").length === 1 && !preq.includes("sv-vast-lek.js"), preq);
+    let b = await withPack(await builds(40), "sv-vast"), sh = b.err ? { calls: 0, hit: 0 } : share(b, "sv-vast");
+    ok(`[map] ticker lines come from sv-vast, never sv-dalarna (${JSON.stringify(b.by)})`, !b.err && (b.by["sv-vast"] | 0) > 0 && !(b.by["sv-dalarna"] | 0), b.err || b.by);
+    ok(`[map] region share in the ticker >= 80 % over ${sh.calls} renders (${sh.calls ? Math.round(sh.hit / sh.calls * 100) : 0} %)`, sh.calls >= 200 && sh.hit / sh.calls >= 0.8, sh);
+    ok("[map] no {var} left in 40 ticker builds", !b.err && b.texts.every((x) => !VARS.test(x)), (b.texts || []).filter((x) => VARS.test(x)).slice(0, 3));
+    // own messages: toasts (drink lines + queue toasts) and game cards read outside the ticker scope = the phone's region
+    const own = await page.evaluate(() => {
+      const D = window.DIALEKT; if (!D._trace) return { err: "old" };
+      D._trace(true);
+      Object.keys(window.DRINK_LINES || {}).forEach((k) => { const a = window.DRINK_LINES[k]; for (let i = 0; i < a.length; i++) void a[i]; });
+      const q = window.I18N.t("bpQueueToasts") || {}; ["none", "short", "long"].forEach((k) => (q[k] || []).forEach(() => {}));
+      const sc = window.SPEL_CARDS || {}; Object.keys(sc).forEach((k) => { const a = sc[k]; if (Array.isArray(a)) for (let i = 0; i < Math.min(a.length, 40); i++) void a[i]; });
+      const tr = D._trace(false), by = {}; tr.forEach(([, c]) => { by[c || "plain"] = (by[c || "plain"] | 0) + 1; });
+      return { by, n: tr.length };
+    });
+    ok(`[map] toasts + game cards keep the phone's region sv-dalarna, never sv-vast (${JSON.stringify(own.by)})`, !own.err && (own.by["sv-dalarna"] | 0) > 0 && !(own.by["sv-vast"] | 0), own);
+    // the belt on screen: after the pack came in, the app rebuilt the ticker (dialekt:change); sample the new pieces
+    const vre = await page.evaluate(() => { const p = window.DIALEKT._packs()["sv-vast"] || {}, out = []; Object.keys(p).forEach((k) => { (Array.isArray(p[k]) ? p[k] : [p[k]]).forEach((x) => { const s = typeof x === "string" ? x : x && x.t; if (s && s.replace(/\{\w+\}/g, "").length > 14) out.push(s); }); }); return out; });
+    const res = vre.map(toRe), seen = new Set();
+    await page.evaluate(() => { window.PN_TICK_F = 8; });   // the belt runs 8x faster while we sample it (ui-build hold-to-pause factor)
+    for (let i = 0; i < 12; i++) { (await page.evaluate(() => [...document.querySelectorAll("#ticker-track .tk-item")].map((e) => e.textContent))).forEach((x) => seen.add(x)); await wait(page, 1000); }
+    await page.evaluate(() => { window.PN_TICK_F = null; });
+    const beltHits = [...seen].filter((x) => res.some((re) => re.test(x)));
+    ok(`[map] the ticker belt on screen shows Väst lines (${beltHits.length} of ${seen.size} pieces)`, beltHits.length > 0, [...seen].slice(0, 8));
+    // back home: no extra needed; then Malmö: the extra pack swaps (max 1 extra pack in memory)
+    await goMap(60.1505, 15.1872, 13);
+    const home = await page.evaluate(() => window.DIALEKT.tickerRegion && window.DIALEKT.tickerRegion());
+    ok("[map] map back on Ludvika: ticker region = sv-dalarna", home === "sv-dalarna", home);
+    await goMap(55.605, 13.0038, 13);   // Malmö
+    await page.waitForFunction(() => window.DIALEKT.stats.packs["sv-syd"], null, { timeout: 15000 }).catch(() => {});
+    // stats.packs = the pack FILES in memory (dialekt.js also has tiny inline demo packs for every region)
+    const sw = await page.evaluate(() => { const P = window.DIALEKT._packs(); return { tick: window.DIALEKT.tickerRegion && window.DIALEKT.tickerRegion(), files: Object.keys(window.DIALEKT.stats.packs).filter((c) => !/-lek$/.test(c)), vastGone: !(P["sv-vast"] && P["sv-vast"]["live.town.goteborg"]), syd: !!(P["sv-syd"] && P["sv-syd"]["live.random"]) }; });
+    ok("[map] map on Malmö: ticker sv-syd; the sv-vast pack is dropped, so own + max 1 extra pack in memory", sw.tick === "sv-syd" && sw.syd && sw.vastGone && sw.files.length <= 2 && sw.files.includes("sv-dalarna"), sw);
+    b = await withPack(await builds(10), "sv-syd");
+    ok(`[map] Malmö ticker lines from sv-syd (${JSON.stringify(b.by)})`, !b.err && (b.by["sv-syd"] | 0) > 0 && !(b.by["sv-dalarna"] | 0) && !(b.by["sv-vast"] | 0), b.err || b.by);
+    // a neutral area on the map: plain ticker
+    await goMap(59.8586, 17.6389, 13);   // Uppsala
+    b = await builds(10);
+    ok(`[map] map on Uppsala (neutral): ticker plain, no region pack answers (${JSON.stringify(b.by)})`, !b.err && b.tick === "sv-neutral" && Object.keys(b.by).every((c) => c === "plain"), b.err || b.by);
+    // zoomed out to all of Sweden: the ticker centre (own position Ludvika) decides
+    await goMap(62.0, 15.0, 4);
+    const far = await page.evaluate(() => window.DIALEKT.tickerRegion && window.DIALEKT.tickerRegion());
+    ok("[map] map zoomed out (whole country): ticker = the ticker centre's region (Ludvika → sv-dalarna)", far === "sv-dalarna", far);
+    // Dialekt Av: plain everywhere, also with the map on Göteborg
+    await goMap(57.7089, 11.9746, 13);
+    await page.evaluate(() => window.DIALEKT.setMode("off"));
+    b = await builds(10);
+    ok(`[map] Dialekt Av + map on Göteborg: ticker plain (${JSON.stringify(b.by)})`, !b.err && b.tick === "sv-neutral" && Object.keys(b.by).every((c) => c === "plain"), b.err || b.by);
+    await page.evaluate(() => window.DIALEKT.setMode("auto"));
+    ok("[map] no page errors", perr.length === 0, perr);
+    await ctx.close();
+  }
+
   console.log(`dialekt: ${pass} pass, ${fail} fail`);
   await browser.close();
   process.exit(fail ? 1 : 0);
