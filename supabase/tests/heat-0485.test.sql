@@ -18,7 +18,7 @@ INSERT INTO u VALUES ('M','00000000-0000-4000-8000-000000048501'), ('G','0000000
   ('S','00000000-0000-4000-8000-000000048505'), ('K','00000000-0000-4000-8000-000000048506'),
   ('GH','00000000-0000-4000-8000-000000048507'), ('CI','00000000-0000-4000-8000-000000048508'),
   ('B','00000000-0000-4000-8000-000000048509'), ('V','00000000-0000-4000-8000-000000048510'),
-  ('L','00000000-0000-4000-8000-000000048511'), ('N','00000000-0000-4000-8000-000000048512'), ('D','00000000-0000-4000-8000-000000048513');
+  ('L','00000000-0000-4000-8000-000000048511'), ('N','00000000-0000-4000-8000-000000048512'), ('D','00000000-0000-4000-8000-000000048513'), ('H','00000000-0000-4000-8000-000000048514');
 INSERT INTO auth.users (id, aud, role) SELECT id, 'authenticated', 'authenticated' FROM u;
 CREATE OR REPLACE FUNCTION pg_temp.uid(p text) RETURNS uuid LANGUAGE sql AS $$ SELECT id FROM u WHERE k = p $$;
 CREATE OR REPLACE FUNCTION pg_temp.as_(p text) RETURNS void LANGUAGE plpgsql AS $$
@@ -134,6 +134,16 @@ SELECT 'Bara vänner: friend M gets nothing for FO (no bar, Ludvika centre = vil
 SELECT 'Spökläge: no heat at the bar or in Leksand', pg_temp.hw('S', b.lat, b.lng, 5000) = 0, '' FROM pg_temp.bar('n817725867') b;
 SELECT 'soda (lask / other): no heat at the bar', pg_temp.hw('S', b.lat, b.lng, 0.5) = 0, '' FROM pg_temp.bar('n9559016508') b;
 SELECT 'soda (lask / other): Mora town centre gets nothing', pg_temp.hw('S', 61.0070, 14.5430, 1) = 0, '';
+-- (6b) pin gone = heat gone: H at Sandviken Teaterbaren, then "Jag är hemma" (stop_beer as H)
+SELECT pg_temp.beer('H', b.lat, b.lng, true, 2) FROM pg_temp.bar('n14097812231') b;
+INSERT INTO w SELECT 'h0', pg_temp.hw('M', b.lat, b.lng, 0.5) FROM pg_temp.bar('n14097812231') b;
+SELECT pg_temp.as_('H');
+SELECT public.stop_beer();
+INSERT INTO w SELECT 'h1', pg_temp.hw('M', b.lat, b.lng, 0.5) FROM pg_temp.bar('n14097812231') b;
+SELECT 'stop_beer: heat at the bar before (1), none after (0)', (SELECT v FROM w WHERE k = 'h0') = 1 AND (SELECT v FROM w WHERE k = 'h1') = 0,
+       (SELECT string_agg(k || '=' || v, ' ' ORDER BY k) FROM w WHERE k LIKE 'h%');
+SELECT 'stop_beer: no town weight either (Sandviken centre)', pg_temp.hw('M', 60.6199, 16.7759, 1) = 0, '';
+SELECT 'stop_beer: the beer count stays', (SELECT beer_count FROM public.beers WHERE user_id = pg_temp.uid('H')) = 2, '';
 -- (7) only bars and town centres, ever
 SELECT 'every heat point is a bar or a town centre', NOT EXISTS (
   SELECT 1 FROM public.heat_points() h

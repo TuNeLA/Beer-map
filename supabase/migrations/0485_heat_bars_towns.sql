@@ -16,6 +16,8 @@
 --   "Bara vänner" (olnu_visibility.friends_only): strangers get only the rule (b) town weight, never the bar.
 --   Spökläge: a hidden beer has no beer event (as before). A beer row in ghost mode (beers.ghost) also takes its earlier
 --   events of that night out of the heat: NOT moved to the town (a town weight is still "someone drinks here").
+--   Pin gone = heat gone (owner 23:07): when the beer row is stopped (stop_beer: "Jag är hemma", Spöke, hidden pin) or
+--   gone (data erased), tonight's events of that row give no heat (at once, next poll). The beer count does not change.
 --   ghost_points / ghost_points2 (yesterday's clouds, 1-3 days old): rules (a) + (b) + Bara vänner + Spökläge + blocks (no pin
 --   exists, so rule (c) does not apply there).
 -- Town centres (olnu_heat_towns): (1) every olnu_towns row (curated centre, 0018) with >= 1 bar-type venue <= 3 km;
@@ -308,7 +310,11 @@ language sql stable security definer set search_path to 'public' as $$
       from ev
       left join public.beers b on b.id = ev.bid
       left join public.olnu_visibility vv on vv.user_id = b.user_id and vv.friends_only
-     where not coalesce(b.ghost, false)
+     where (case when p_live
+                 -- tonight: the pin is gone -> its heat is gone (stop_beer: "Jag är hemma", Spöke, hidden beer; beer row gone).
+                 -- beer_count stays as it is; only the heat goes. Events without bid (before 0485) cannot be checked.
+                 then ev.bid is null or (b.id is not null and not b.stopped and not b.ghost)
+                 else not coalesce(b.ghost, false) end)
        and (b.user_id is null or (not exists (select 1 from kn where kn.uid = b.user_id)
                                   and not exists (select 1 from bl where bl.uid = b.user_id)))
   ),
