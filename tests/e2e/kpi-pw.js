@@ -6,7 +6,8 @@
 // safety: report sheet + toast, block toast, unblock toast, Regler accept, Ring 112, Trygghet row, removal notice, age
 //         widget: no emoji in buttons, labels, headings or toasts; PNI icons where the old text had an emoji;
 //         safety.js string literals hold emoji only in the allow-list (big under-18 picture, the rank-prefix regex).
-// Every check FAILS on 9d20bc9 (no stats-kpi.js, emoji in safety.js) and PASSES with the kpi patches.
+// Every check that needs the new code FAILS on 9d20bc9 (no stats-kpi.js, emoji in safety.js) and PASSES with the kpi patches;
+// the two guard checks (wrong key, old server: no panel) pass on both.
 // Shots: OUT/kpi-shots/<tag>-<name>-<w>.png (KPI_TAG=new|old).
 const fs = require("fs");
 const { chromium } = require("playwright");
@@ -87,7 +88,7 @@ async function statsPage(browser, w, o) {
         ok(`stats ${w}: "<3" from the server shows as "<3" (masked cells), D2/D7 not known yet = "–"`,
           !!s && s.masks >= 5 && s.rows[1][7] === "–" && s.rows[2][6] === "6 · 38 %" && s.rows[9][7] === "<3" && /<3 svarade ja/.test(s.week[8]), s && { masks: s.masks, r1: s.rows[1], r9: s.rows[9] });
         ok(`stats ${w}: no emoji in the panel, no page scroll sideways, no page errors`, !!s && !EMO.test(s.t) && !s.hscroll && !errs.length, s && { emo: (s.t.match(EMO) || [])[0], h: s.hscroll, errs });
-        await page.evaluate(() => document.getElementById("pKpi").scrollIntoView()); await wait(page, 200);
+        await page.evaluate(() => { const p = document.getElementById("pKpi"); if (p) p.scrollIntoView(); }); await wait(page, 200);
         await shot(page, "nyckeltal", w);
         await page.evaluate(() => { const t = document.querySelector("#pKpi .kpi-scroll"); if (t) t.scrollLeft = 9999; }); await wait(page, 200);
         await shot(page, "nyckeltal-right", w);
@@ -95,7 +96,7 @@ async function statsPage(browser, w, o) {
       }
       { // a raw 1 / 2 in a count (old answer) is still masked by the page
         const { ctx, page } = await statsPage(browser, 390, { raw: 1 });
-        const r = await page.evaluate(() => { const p = document.getElementById("pKpi"); if (!p || p.hidden) return null; const tr = p.querySelectorAll("table tr"); return { g0: tr[1].children[3].textContent, y4: tr[5].children[13].textContent }; });
+        const r = await page.evaluate(() => { const p = document.getElementById("pKpi"); if (!p || p.hidden) return null; const tr = p.querySelectorAll("table tr"); return tr.length > 5 ? { g0: tr[1].children[3].textContent, y4: tr[5].children[13].textContent } : null; });
         ok("stats: a raw count 1 or 2 is shown as \"<3\" (client guard)", !!r && r.g0 === "<3" && r.y4 === "<3", r);
         await ctx.close();
       }
