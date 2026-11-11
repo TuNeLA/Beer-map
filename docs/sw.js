@@ -15,7 +15,7 @@ var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfre
 var TILE_META = /^\/(styles\/[^/]+|planet)\/?$/, TILE_BYTES = 40 * 1024 * 1024;
 var TILE_MAX = 300, TILE_MAX_AGE = 14 * 86400e3, NAV_TIMEOUT_MS = 4000;
 var SHELL_MAX_AGE = 3 * 86400e3;   // smooth: cached index.html younger than this opens the app at once
-var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json|zones\/[^/]+\.json|data\/dialekt-kommun\.json)$/;
+var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json|zones\/[^/]+\.json|data\/dialekt-kommun\.json|js\/dialekt-packs\/(?![a-z]{2}-neutral(-lek)?\.js)[a-z]{2}-[a-z-]+\.js)$/;
 
 function shellFromIndex(html) {
   var out = [], re = /<(?:script|link)\b[^>]*?\s(?:src|href)="(\.\/[^"]+?\.(?:js|css)(?:\?[^"]*)?)"/g, m;

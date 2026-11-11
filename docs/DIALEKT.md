@@ -73,3 +73,39 @@ Before the data file is in, the last region (`olnu.dialekt.r`) is used, so the t
 - `python3 scripts/dialekt-kommun.py` builds `docs/data/dialekt-kommun.json` (kommuner, town aliases, a lat/lng grid).
   It prints the grid error rate. Hand fixes for towns go in its `FIX` table.
 - New country = a new data file with its own `cc` and `lang`, added to `DATA` in `dialekt.js`, plus its packs.
+
+## Phase 2: the call sites (live since 2026-11-11)
+
+The fun copy in the content files is read through the layer. `dialect-patches/31-callsites.py` wrote these calls from the
+inventory; do not edit them by hand, change the line in the pack (`scratchpad/dialect/regions/*.txt`) or the def.
+
+```js
+// a string built when it is shown (row 3 of the key, 40 rows in all):
+return DIALEKT.v("live.checkin", 3, { name: d.name, bar: d.bar }, "📺 {name} har landat på {bar}.", 40);
+// a content array (same length, order and Array type; each element is read through v() when it is read):
+bpTooFar: DIALEKT.list("loc.far", ["📍 Du är för långt bort…", "…"], { n: 10 }),
+// a game deck: one key per card ({i} = the index), or a card made of parts ("MODES|text|end|N"):
+white: DIALEKT.list("spel.white.{i}", ["…", "…"]),
+// a string property: a getter, so it is read when it is used
+get bpOwnerMine() { return DIALEKT.v("bar.owner.mine", 0, null, "Det är ni! Håll krogen."); },
+```
+
+- `v(key, row, vars, def, n)`: the region packs in `chain()` order, then `def`. The `sv-neutral` pack is NOT read: the def
+  IS the neutral line (plain Swedish). So Dialekt **Av**, a neutral area, "no pack yet" and "pack failed" all give the def.
+- `{mix: p}` in a region value: the def shows exactly `p` of the time (hash of key + row + night). No `{mix}` = always the
+  region line (game cards, Dalarna).
+- `sv-dalarna` holds today's lines in the inventory order. When its list is as long as the call site's `n`, row i = line i
+  (Dalarna users see the app as before).
+- `vars` null = the raw line (the caller fills its own `{x}`). With `vars`, only those are filled; a region line that needs
+  a var the call site does not pass is skipped.
+- UI text (buttons, errors, rules, privacy, 112 / safety / taxi) is not dialect. It is plain Swedish in the code.
+
+### Loading
+
+- `index.html` loads only `dialekt.js` (before `i18n.js`). The packs are NOT `<script>` tags.
+- After the load event + one idle slot, `dialekt.js` adds `./js/dialekt-packs/<region>.js`, then `<region>-lek.js`.
+  Only the user's region; nothing for Av or a neutral area. A new region later (the user moves) loads that file then.
+- `sw.js` `DATA_RE` lists `js/dialekt-packs/*` (not `*-neutral*`): stale-while-revalidate in `olnu-data`, so the next
+  start and offline use the cached pack.
+- A loaded pack fires `dialekt:change`; `app.js` then rebuilds the LIVE ticker queue. Other surfaces read the new lines
+  the next time they render.

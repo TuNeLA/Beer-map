@@ -113,7 +113,7 @@
     var list = el("div", "bh-list");
     var hasH = W("HEMFOLJ") && W("HEMFOLJ").open;
     if (hasH) {
-      var fb = btn("bh-pri", "home", w ? "Följ mig hem: på" : "Följ mig hem", !net ? "Ingen täckning just nu" : w ? (w.watching | 0) + " följer dig" : "Gänget ser dig tills du ä hemma",
+      var fb = btn("bh-pri", "home", w ? "Följ mig hem: på" : "Följ mig hem", !net ? "Ingen täckning just nu" : w ? (w.watching | 0) + " följer dig" : "Gänget ser dig tills du är hemma",
         then(function () { W("HEMFOLJ").open({}); }));
       if (!net) fb.disabled = true;
       list.appendChild(fb);
@@ -133,7 +133,7 @@
         });
       });
       if (W("SKJUTS") && W("SKJUTS").openPickup) {
-        var pb = btn("", "sos", "Hämta mig", net ? "Skicka var du ä till gänget" : "Ingen täckning just nu", then(function () { W("SKJUTS").openPickup({}); }));
+        var pb = btn("", "sos", "Hämta mig", net ? "Skicka var du är till gänget" : "Ingen täckning just nu", then(function () { W("SKJUTS").openPickup({}); }));
         if (!net) pb.disabled = true;
         list.appendChild(pb);
       }

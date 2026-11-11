@@ -5,7 +5,7 @@ win.document={addEventListener(){},removeEventListener(){},querySelector(){retur
 win.navigator={userAgent:'node',language:'sv'};win.location={search:'',hash:'',href:'http://x/'};win.setTimeout=setTimeout;win.clearTimeout=clearTimeout;win.setInterval=()=>0;win.Intl=Intl;win.Date=Date;win.Math=Math;win.JSON=JSON;win.console=console;
 win.addEventListener=()=>{};win.matchMedia=()=>({matches:false,addEventListener(){}});
 const ctx=vm.createContext(win);
-for(const f of ['util.js','i18n.js','cities.js','news-more.js','news-gt.js','levels-content.js','news.js']){try{vm.runInContext(fs.readFileSync(path.join(D,f),'utf8'),ctx,{filename:f})}catch(e){console.error('ERR',f,e.message)}}
+for(const f of ['util.js','dialekt.js','i18n.js','cities.js','news-more.js','news-gt.js','levels-content.js','news.js']){try{vm.runInContext(fs.readFileSync(path.join(D,f),'utf8'),ctx,{filename:f})}catch(e){console.error('ERR',f,e.message)}}
 win.I18N.lang='sv';
 if(process.argv[4]==='store') win.OLNU_STORE=true;
 win.UTE={current:()=>({at:Date.now(),d:{t:-4,code:3,pr:0}})};

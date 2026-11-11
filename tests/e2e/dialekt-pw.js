@@ -1,9 +1,11 @@
 // dialect-core (D2): docs/js/dialekt.js — the string layer and its kommun → region data. Usage: node dialekt-pw.js <port>
 // Part 1: the module alone on a tiny page from the same server (real dialekt.js + real data/dialekt-kommun.json).
 // Part 2: the real app (mocked Supabase): DIALEKT loads, finds Ludvika, and its Inställningar row works at 360/390/430.
+// Part 3 (phase 2): call sites read the region packs (LIVE, toasts, group empty state, game cards) per region, Av = plain,
+// only the region's pack is fetched (after the load event, no long task), the service worker keeps it (next start + offline).
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
-const { ctxFor, boot, wait } = require("./ds-helpers.js");
+const { ctxFor, boot, wait, mock } = require("./ds-helpers.js");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8871, BASE = `http://127.0.0.1:${PORT}/`;
 let pass = 0, fail = 0;
@@ -290,6 +292,171 @@ async function fresh(browser, ls, o = {}) {
     await page.screenshot({ path: SP + `ui-testshots/dialekt-row-off-${w}.png`, clip: box });
     await page.click(".dk-sw"); await wait(page, 300);
     ok(`[${w}] row: second tap → Auto again`, await page.evaluate(() => window.DIALEKT.mode() === "auto" && document.querySelector(".dk-sw").getAttribute("aria-checked") === "true"));
+    await ctx.close();
+  }
+
+  // ---------- 9. phase 2: the call sites read the region packs (lazy, region only), Av = the plain def, exact {mix} ----------
+  // Region = the phone's position. Nights = DIALEKT._setNow (the variant + mix
+  // draw is stable per night). "Region line" = matches a line of that region's pack and is not in the Av (neutral) set.
+  // the phone's own position (geolocation → the app's api.lastLoc via the mods hook → the kommun → the region)
+  const P2 = [["Ludvika", "sv-dalarna", 60.1496, 15.1878], ["Malmö", "sv-syd", 55.6050, 13.0038], ["Stockholm", "sv-sthlm", 59.3293, 18.0686],
+    ["Umeå", "sv-norr", 63.8258, 20.2630], ["Göteborg", "sv-vast", 57.7089, 11.9746], ["Uppsala", "sv-neutral", 59.8586, 17.6389]];
+  const VARS = /\{[A-Za-z_]\w*\}/;
+  // all call-site text of the four surfaces, read through the real content objects (as the app reads them)
+  const sample = () => {
+    const d = new Proxy({ name: "Oskar", bar: "Pitchers", group: "Ludvika Lager", n: 7, k: 3, stad: "Ludvika", town: "Ludvika", t: 4, p: 40, title: "Löjtnant",
+      b: 2, who: "Lisa", where: "Pitchers", krogar: "krogar", personer: "personer", min: 5, m: 5, h: 2, x: 1, total: 9, home: "02:10" }, { get: (o, k) => (k in o ? o[k] : "Ludvika") });
+    const out = { live: [], toast: [], card: [] };
+    (window.NEWS_GT || []).concat((window.NEWS_MORE && window.NEWS_MORE.sv) || []).forEach((x) => { try { const s = x.f(d); if (typeof s === "string") out.live.push(s); } catch (e) {} });
+    const I = window.I18N, q = I.t("bpQueueToasts") || {};
+    ["none", "short", "long"].forEach((k) => (q[k] || []).forEach((s) => out.toast.push(s)));
+    Object.keys(window.DRINK_LINES || {}).forEach((k) => window.DRINK_LINES[k].forEach((s) => out.toast.push(s)));
+    // game cards: Spel (spel-cards.js), Förfest and Party decks (index-stable, one key per card)
+    const deep = (x, dep) => { if (dep > 4 || !x) return; if (typeof x === "string") { if (x.length > 15) out.card.push(x); return; } if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) deep(x[i], dep + 1); return; } if (typeof x === "object") Object.keys(x).forEach((k) => k !== "en" && deep(x[k], dep + 1)); };
+    deep(window.SPEL_CARDS, 0); ["mest", "aldrig", "utm", "kat", "virus", "kapten"].forEach((k) => deep((window.FORFEST_CONTENT || {})[k], 1));
+    ["survivor", "hatten", "flocken"].forEach((k) => deep((window.PARTY_CONTENT || {})[k], 1));
+    return out;
+  };
+  const regexes = (pack) => {
+    const out = [];
+    Object.keys(pack || {}).forEach((k) => { const v = pack[k]; (Array.isArray(v) ? v : [v]).forEach((x) => { const s = typeof x === "string" ? x : x && x.t; if (s && s.replace(/\{[A-Za-z_]\w*\}/g, "").length > 14) out.push(s); }); });
+    return out;
+  };
+  const toRe = (s) => new RegExp("^" + s.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\\?\{[A-Za-z_]\w*\\?\}/g, ".+?") + "$");
+  // boot without the Ludvika map-pill wait (the mock bars are in Ludvika; the phone is elsewhere)
+  const bootAt = async (page) => { await page.goto(BASE); await page.waitForFunction(() => window.__map && window.DIALEKT && document.getElementById("ticker-track"), null, { timeout: 30000 }).catch(() => {}); await wait(page, 3500); };
+  for (const [town, code, lat, lng] of P2) {
+    const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 });
+    await ctx.setGeolocation({ latitude: lat, longitude: lng });
+    const preq = []; page.on("request", (r) => { if (/dialekt-packs\//.test(r.url())) preq.push(r.url().replace(/^.*\//, "")); });
+    const perr = []; page.on("pageerror", (e) => perr.push(e.message));
+    await page.route(/rest\/v1\/rpc\/group_now\b/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ v: 1, now: new Date().toISOString(), members: 4, out: [], last: null }) }));
+    await page.route(/rest\/v1\/rpc\/post_other(_v2)?\b/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, other_count: 1, drinks: 7, beer_count: 6, wait_seconds: 0 }) }));
+    await bootAt(page);
+    await page.evaluate(() => window.OLNU_LAZY_NOW && window.OLNU_LAZY_NOW());
+    if (code !== "sv-neutral") await page.waitForFunction((c) => window.DIALEKT.stats.packs[c] && window.DIALEKT.stats.packs[c + "-lek"], code, { timeout: 15000 }).catch(() => {});
+    await page.waitForFunction(() => window.NEWS_GT && window.DRINK_LINES && window.SPEL_CARDS && window.FORFEST_CONTENT && window.PARTY_CONTENT, null, { timeout: 15000 }).catch(() => {});
+    const r = await page.evaluate(([code, sampleSrc, reSrc, toReSrc]) => {
+      const sample = eval("(" + sampleSrc + ")"), regexes = eval("(" + reSrc + ")"), toRe = eval("(" + toReSrc + ")"), D = window.DIALEKT, base = Date.now(), VARS_RE = /\{[A-Za-z_]\w*\}/;
+      const o = { region: D.region(), packs: Object.keys(D.stats.packs), hits: { live: 0, toast: 0, card: 0 }, n: {}, vars: [], offEqNeutral: null, offHits: 0 };
+      const res = regexes(D._packs()[code]).map(toRe);
+      const off = {}, offSets = {};
+      D.setMode("off"); const so = sample(); D.setMode("auto");
+      Object.keys(so).forEach((k) => { offSets[k] = new Set(so[k]); });
+      for (let night = 0; night < 4; night++) {
+        D._setNow(base + night * 864e5);
+        const s = sample();
+        Object.keys(s).forEach((k) => {
+          o.n[k] = s[k].length;
+          s[k].forEach((x) => { if (!offSets[k].has(x) && [x].concat(x.split("|")).some((y) => res.some((re) => re.test(y)))) o.hits[k]++; });   // a card may be "MODES|text|end|N"
+        });
+        s.live.forEach((x) => { if (VARS_RE.test(x) && o.vars.length < 5) o.vars.push(x); });
+      }
+      D._setNow(null);
+      // Av: the same text as a neutral area, whatever the region
+      D.setMode("off"); const a = JSON.stringify(sample()); const offRegion = D.region();
+      D.setMode("auto"); const keep = D.area(); D.setArea({ name: "Uppsala" }); const nz = JSON.stringify(sample());
+      o.offEqNeutral = a === nz && offRegion === "sv-neutral";
+      o.offHits = 0; D.setMode("off"); const s2 = sample(); D.setMode("auto"); D.setArea({ name: keep ? keep.name : "Uppsala" });
+      Object.keys(s2).forEach((k) => s2[k].forEach((x) => { if (!offSets[k].has(x)) o.offHits++; }));
+      return o;
+    }, [code, sample.toString(), regexes.toString(), toRe.toString()]).catch((e) => ({ err: String(e) }));
+    const label = `[p2 ${town} → ${code}]`;
+    if (code === "sv-neutral") {
+      ok(`${label} neutral area: no region pack loaded, every line = the Av line`, r.region === "sv-neutral" && preq.length === 0 && r.hits && r.hits.live + r.hits.toast + r.hits.card === 0, { r, preq });
+    } else {
+      ok(`${label} only this region's pack (+ its -lek) is fetched, once each`, preq.length === 2 && preq.includes(code + ".js") && preq.includes(code + "-lek.js"), preq);
+      ok(`${label} LIVE ticker templates show region lines (${r.hits && r.hits.live}/${r.n && r.n.live * 4})`, r.hits && r.hits.live > 0, r);
+      ok(`${label} toasts (queue + drink lines) show region lines (${r.hits && r.hits.toast})`, r.hits && r.hits.toast > 0, r);
+      ok(`${label} game cards show region cards (${r.hits && r.hits.card})`, r.hits && r.hits.card > 0, r);
+    }
+    ok(`${label} no {var} left in the LIVE lines`, r.vars && r.vars.length === 0, r.vars);
+    ok(`${label} Av = the same text as a neutral area, and never a region line`, r.offEqNeutral === true && r.offHits === 0, r);
+    // the rendered surfaces: ticker belt, a real drink toast, the group empty state (several nights)
+    const dom = await page.evaluate(async () => {
+      const W = (ms) => new Promise((f) => setTimeout(f, ms)), o = { tick: "", toast: "", empty: [] };
+      window.dispatchEvent(new CustomEvent("dialekt:change", { detail: {} })); await W(1500);
+      o.tick = (document.getElementById("ticker-track") || {}).textContent || "";
+      try { localStorage.removeItem("olnu.otherCd"); } catch (e) {}
+      document.querySelectorAll(".toast").forEach((t) => t.remove());
+      const b = document.getElementById("btn-other"); if (b) { b.click(); await W(900); const k = document.querySelector('#sheet-body .kind-btn[data-kind="rom"]') || document.querySelector("#sheet-body .kind-btn"); if (k) { k.click(); await W(1500); } }
+      o.toast = [...document.querySelectorAll(".toast")].map((t) => t.textContent).join(" | ");
+      document.getElementById("sheet-close") && document.getElementById("sheet-close").click(); await W(400);
+      return o;
+    });
+    ok(`${label} ticker belt rendered, no {var} in it`, dom.tick.length > 20 && !VARS.test(dom.tick), dom.tick.slice(0, 300));
+    ok(`${label} drink toast shown, no {var} in it`, dom.toast.length > 10 && !VARS.test(dom.toast), dom.toast);
+    const empties = [];
+    for (let night = 0; night < 6; night++) {
+      await page.evaluate((nt) => { window.DIALEKT._setNow(Date.now() + nt * 864e5); }, night);
+      await page.click("#btn-groups").catch(() => {}); await wait(page, 900);
+      await page.evaluate(() => { const c = [...document.querySelectorAll(".glist .gcard")][0]; if (c) c.click(); }); await wait(page, 1500);
+      empties.push(await page.evaluate(() => { const e = document.querySelector(".gpg-now-l"); return e ? e.textContent : null; }));
+      await page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); }); await wait(page, 400);
+    }
+    await page.evaluate(() => window.DIALEKT._setNow(null));
+    const em = await page.evaluate(([code, list]) => {
+      const D = window.DIALEKT, pk = D._packs()[code] || {}, v = pk["grp.empty"];
+      const reg = (Array.isArray(v) ? v : v ? [v] : []).map((x) => (typeof x === "string" ? x : x && x.t)).filter(Boolean);
+      return { reg: list.filter((x) => x && reg.includes(x)).length, ok: list.filter(Boolean).length };
+    }, [code, empties]);
+    ok(`${label} group empty state shown on 6 nights, no {var}`, em.ok === 6 && empties.every((x) => x && !VARS.test(x)), empties);
+    if (code !== "sv-neutral") ok(`${label} group empty state: region line at least once in 6 nights (${em.reg}/6)`, em.reg > 0, empties);
+    ok(`${label} no page errors`, perr.length === 0, perr);
+    await ctx.close();
+  }
+
+  // ---------- 10. phase 2: Settings Dialekt Av / Auto acts at once; start-up: the pack never makes a long task ----------
+  {
+    const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 });
+    await ctx.addInitScript(() => { window.__lt = []; try { performance.setResourceTimingBufferSize(3000); } catch (e) {} try { new PerformanceObserver((l) => l.getEntries().forEach((e) => window.__lt.push([e.startTime, e.duration]))).observe({ type: "longtask", buffered: true }); } catch (e) {} });
+    const perr = []; page.on("pageerror", (e) => perr.push(e.message));
+    await boot(page);   // ctxFor = Ludvika → sv-dalarna (the biggest pack, 351 KB)
+    await page.waitForFunction(() => window.DIALEKT.stats.packs["sv-dalarna"], null, { timeout: 15000 }).catch(() => {});
+    const t = await page.evaluate(() => {
+      const nav = performance.getEntriesByType("navigation")[0], res = performance.getEntriesByType("resource").filter((r) => /dialekt-packs\//.test(r.name));
+      const lt = window.__lt, win = res.map((r) => [r.responseEnd, r.responseEnd + 150]);
+      const near = lt.filter(([s, d]) => d > 50 && win.some(([a, b]) => s + d >= a && s <= b));
+      return { load: Math.round(nav.loadEventEnd), packs: res.map((r) => [r.name.replace(/^.*\//, ""), Math.round(r.startTime), Math.round(r.responseEnd)]), near: near.map((x) => x.map(Math.round)), all: lt.map((x) => x.map(Math.round)) };
+    });
+    ok("start-up: the region pack loads after the load event (first paint first)", t.packs.length >= 1 && t.packs.every((p) => p[1] >= t.load), t);
+    ok("start-up: no long task (> 50 ms) while a pack is evaluated", t.near.length === 0, t);
+    const before = await page.evaluate(() => window.I18N.t("tickQuiet"));
+    await page.click("#btn-settings"); await wait(page, 1200);
+    await page.evaluate(() => { const b = document.getElementById("sheet-body"), row = window.DIALEKT.settingsRow(); b.insertBefore(row, b.firstChild); });
+    await page.evaluate(() => document.querySelector(".dk-sw").click()); await wait(page, 300);
+    const off = await page.evaluate(() => ({ mode: window.DIALEKT.mode(), q: window.I18N.t("tickQuiet"), tick: document.getElementById("ticker-track").textContent }));
+    await page.evaluate(() => document.querySelector(".dk-sw").click()); await wait(page, 300);
+    const on = await page.evaluate(() => ({ mode: window.DIALEKT.mode(), q: window.I18N.t("tickQuiet") }));
+    ok("settings: Av = the plain line at once, Auto = the region line at once (tickQuiet)", off.mode === "off" && on.mode === "auto" && off.q !== before && on.q === before && !/int'/.test(off.q), { before, off, on });
+    ok("no page errors (settings / start-up part)", perr.length === 0, perr);
+    await ctx.close();
+  }
+
+  // ---------- 11. phase 2: the pack is fetched once and the service worker keeps it (next start + offline) ----------
+  {
+    const ctx = await browser.newContext({ serviceWorkers: "allow", viewport: { width: 390, height: 844 }, locale: "sv-SE" });
+    const page = await ctx.newPage();
+    await mock(page, {});
+    const net = []; ctx.on("requestfinished", async (r) => { if (/dialekt-packs\/sv-syd\.js/.test(r.url())) { const res = await r.response(); net.push({ sw: !!(res && res.fromServiceWorker()), byWorker: !!r.serviceWorker() }); } });
+    await page.goto(BASE); await wait(page, 2500);
+    const ctl = await page.evaluate(async () => { await navigator.serviceWorker.ready; return !!navigator.serviceWorker.controller; });
+    if (!ctl) { await page.reload(); await wait(page, 2500); }
+    await page.evaluate(() => window.DIALEKT.preview("sv-syd"));
+    await page.waitForFunction(() => window.DIALEKT.stats.packs["sv-syd"], null, { timeout: 15000 }).catch(() => {});
+    await wait(page, 1500);
+    const cached = await page.evaluate(async () => { const c = await caches.open("olnu-data"); const k = await c.keys(); return k.map((r) => r.url.replace(/^.*\//, "")).filter((u) => /^sv-/.test(u)); });
+    ok("sw: the region pack (and its -lek) is in the data cache after the first load", cached.includes("sv-syd.js") && cached.includes("sv-syd-lek.js"), cached);
+    ok("sw: no sv-neutral pack is fetched or cached", !cached.some((u) => /neutral/.test(u)), cached);
+    await ctx.setOffline(true);
+    await page.reload(); await wait(page, 2500);
+    const off = await page.evaluate(async () => { await new Promise((f) => setTimeout(f, 1500)); return { ok: !!window.DIALEKT.stats.packs["sv-syd"], region: window.DIALEKT.region() }; });
+    const first = net.filter((x) => !x.byWorker).length;
+    ok("sw: offline next start still gets the region pack (from the cache)", off.ok && off.region === "sv-syd", off);
+    // (Playwright does not report the worker's own fetches; the offline start above proves the cache.)
+    ok("sw: the page asked for the pack once per start, and the service worker answered both times", first === 2 && net.every((x) => x.sw), net);
+    await ctx.setOffline(false);
+    await page.evaluate(() => window.DIALEKT.preview(null));
     await ctx.close();
   }
 

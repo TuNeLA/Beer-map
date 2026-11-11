@@ -144,5 +144,73 @@ D.preview(null); D.setMode("off");
 D.setMode("auto");
 { const s = D.t("live.townQuiet", { town: "Ludvika" }); ok(s && s !== "live.townQuiet" && /Ludvika/.test(s), "neutral fallback with vars (no region)", s); }
 
+// ---------- phase 2 (dialect lane): call sites, v() / list(), exact {mix}, Av = def, aligned Dalarna ----------
+{
+  const files = fs.readdirSync(JS).filter((f) => f.endsWith(".js") && f !== "dialekt.js");
+  let nV = 0, nL = 0, noDef = [], keys = new Set(), defOut = [];
+  const V = /DIALEKT\.v\(("(?:[^"\\]|\\.)*"), (\d+), (null|\{[^]*?\}), ("(?:[^"\\]|\\.)*")(, \d+)?\)/g;
+  for (const f of files) {
+    const s = fs.readFileSync(path.join(JS, f), "utf8");
+    const all = (s.match(/DIALEKT\.v\(/g) || []).length; let m, n = 0;
+    V.lastIndex = 0; while ((m = V.exec(s))) { n++; const k = JSON.parse(m[1]), d = JSON.parse(m[4]); keys.add(k); if (N[k] !== undefined && !neutralTexts(k).includes(d)) defOut.push([f, k, d.slice(0, 60)]); }
+    if (n !== all && !/^(dialekt)/.test(f)) noDef.push([f, all - n]);
+    nV += n;
+    // the 2nd argument of every DIALEKT.list( … ) is an array literal of defs (skip the 1st argument: a string or a {…} spec)
+    let L = 0, Ld = 0, at = 0;
+    while ((at = s.indexOf("DIALEKT.list(", at)) >= 0) {
+      L++; let i = at + 13, dep = 0, q = null;
+      for (; i < s.length; i++) { const c = s[i]; if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; } if (c === '"') { q = c; continue; } if ("[{(".includes(c)) dep++; else if ("]})".includes(c)) dep--; else if (c === "," && dep === 0) break; }
+      if (s.slice(i, i + 3) === ", [") Ld++;
+      at = i;
+    }
+    if (L !== Ld) noDef.push([f, "list", L - Ld]);
+    nL += L;
+  }
+  if (nV + nL === 0) console.log("NOTE p2: no call sites yet (dialect patch 31 not applied): phase-2 checks skipped");
+  else {
+  ok(nV > 1000 && nL > 800, "p2: call sites in docs/js: " + nV + " DIALEKT.v + " + nL + " DIALEKT.list");
+  ok(noDef.length === 0, "p2: every DIALEKT.v call has a string def and every DIALEKT.list call an array of defs", noDef);
+  ok(defOut.length <= 5, "p2: every def is a line of the sv-neutral catalog for its key (Av = the neutral pack) (" + defOut.length + " outside)", defOut.slice(0, 5));
+  const missing = [...keys].filter((k) => N[k] === undefined && !/^(after|mom|x8|lask)\./.test(k));
+  ok(missing.length === 0, "p2: every call-site key is in sv-neutral", missing.slice(0, 10));
+
+  // exact {mix}: a key with {mix: p} in a region pack shows the def (next pack) p of the time over many rows/seeds
+  D.setMode("auto"); D.preview("sv-sthlm");
+  const P = packs["sv-sthlm"];
+  const mk = Object.keys(P).filter((k) => Array.isArray(P[k]) && P[k].some((x) => isMix(x)) && !/\{/.test(JSON.stringify(P[k].filter((x) => !isMix(x))))).slice(0, 6);
+  for (const k of mk) {
+    const p = P[k].find((x) => isMix(x)).mix, R = 4000; let d = 0;
+    for (let i = 0; i < R; i++) if (D.v(k, i, null, "§def§") === "§def§") d++;
+    ok(Math.abs(d / R - p) < 0.03, "p2: exact mix " + k + " (p " + p + "): the def shows " + (d / R).toFixed(3) + " of the time");
+  }
+  // no mix = always the region line; Av = always the def; an unknown key = the def
+  const nk = Object.keys(P).find((k) => typeof P[k] === "string" && !/\{/.test(P[k]));
+  ok(nk && D.v(nk, 0, null, "§def§") === P[nk], "p2: a key without {mix} gives the region line", nk);
+  D.setMode("off");
+  ok(D.v(nk, 0, null, "§def§") === "§def§" && D.v("no.such.key", 3, { a: 1 }, "x {a} {b}") === "x 1 {b}", "p2: Av gives the def (vars filled, the caller's own {b} kept)");
+  D.setMode("auto");
+  // a region line that needs a var the call site does not pass is never used
+  D.register("sv-sthlm", { "test.p2.var": ["Hej {name} på {bar}"] });
+  ok(D.v("test.p2.var", 0, { name: "Kim" }, "Hej {name}") === "Hej Kim" && D.v("test.p2.var", 0, { name: "Kim", bar: "Pitchers" }, "Hej {name}") === "Hej Kim på Pitchers",
+    "p2: region lines with vars the call site lacks are skipped (no {var} left)");
+  // list(): same length / order / Array type, elements read through v() at read time
+  const L = D.list("test.p2.list", ["a", "b", "c"]);
+  D.register("sv-sthlm", { "test.p2.list": ["R"] });
+  ok(Array.isArray(L) && L.length === 3 && L.join() === "R,R,R" && JSON.stringify(L.slice(1)) === '["R","R"]', "p2: list() keeps the array shape and reads the region line", L.join());
+  D.setMode("off");
+  ok(L.join() === "a,b,c" && L.indexOf("b") === 1, "p2: list() under Av = the defs, at once (no re-build)", L.join());
+  D.setMode("auto");
+  const C = D.list({ 1: ["s|", ["test.p2.card", "kort"], "|8"] }, [7, "s|kort|8"]);
+  D.register("sv-sthlm", { "test.p2.card": "Sthlm-kort" });
+  ok(C[0] === 7 && C[1] === "s|Sthlm-kort|8", "p2: list() card made of parts (Förfest MODES|text|N)", [C[0], C[1]]);
+  // aligned: sv-dalarna = today's lines in order -> row i gives today's line i
+  D.preview("sv-dalarna");
+  const DK = Object.keys(packs["sv-dalarna"]).find((k) => Array.isArray(packs["sv-dalarna"][k]) && packs["sv-dalarna"][k].length > 5 && packs["sv-dalarna"][k].every((x) => typeof x === "string"));
+  const DL = packs["sv-dalarna"][DK];
+  ok(DL.every((t, i) => D.v(DK, i, null, "§", DL.length) === t), "p2: sv-dalarna rows are read aligned (row i = today's line i): " + DK);
+  D.preview(null);
+  }
+}
+
 console.log(fail ? fail + " failed" : "all passed");
 process.exit(fail ? 1 : 0);
