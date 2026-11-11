@@ -4337,7 +4337,7 @@
   "🚨 {k} på {bar}! Bartendern har slutat prata och börjat tappa.",
   "📺 {k} pers på {bar}. Det är trångt, men det är gött.",
   "🎖️ Läget på {bar}: {k} på plats, moralen hög.",
-  "📺 Hela gänget är på {bar}. {k} pers och fler på väg.",
+  "📺 Ett helt gäng är på {bar}. {k} pers och fler på väg.",
   "📺 {k} pers på {bar}. Ölguden har bokat ett bord."
 ],
   "live.friendBeer": [

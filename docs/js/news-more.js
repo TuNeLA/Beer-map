@@ -176,7 +176,7 @@
       { k: "checkinCrowd", f: function (d) { return DIALEKT.v("live.checkinCrowd", 24, {k: d.k, bar: d.bar}, "🚨 {k} på {bar}! Bartendern har slutat prata och börjat tappa.", 29); } },
       { k: "checkinCrowd", f: function (d) { return DIALEKT.v("live.checkinCrowd", 25, {k: d.k, bar: d.bar}, "📺 {k} pers på {bar}. Det är trångt, men det är gött.", 29); } },
       { k: "checkinCrowd", f: function (d) { return DIALEKT.v("live.checkinCrowd", 26, {bar: d.bar, k: d.k}, "🎖️ Läget på {bar}: {k} på plats, moralen hög.", 29); } },
-      { k: "checkinCrowd", f: function (d) { return DIALEKT.v("live.checkinCrowd", 27, {bar: d.bar, k: d.k}, "📺 Hela gänget är på {bar}. {k} pers och fler på väg.", 29); } },
+      { k: "checkinCrowd", f: function (d) { return DIALEKT.v("live.checkinCrowd", 27, {bar: d.bar, k: d.k}, "📺 Ett helt gäng är på {bar}. {k} pers och fler på väg.", 29); } },
       { k: "checkinCrowd", f: function (d) { return DIALEKT.v("live.checkinCrowd", 28, {k: d.k, bar: d.bar}, "📺 {k} pers på {bar}. Ölguden har bokat ett bord.", 29); } },
       { k: "friendBeer", f: function (d) { return DIALEKT.v("live.friendBeer", 3, {name: d.name, n: d.n}, "🍺 {name} har just tagit öl nr {n}. Redaktionen följer utvecklingen.", 75); } },
       { k: "friendBeer", f: function (d) { return DIALEKT.v("live.friendBeer", 4, {name: d.name, n: d.n}, "📺 {name} höjer glaset. Öl nr {n} är på väg ner.", 75); } },

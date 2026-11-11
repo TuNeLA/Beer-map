@@ -161,6 +161,7 @@
   }
   function loadMembers(gid) {
     if (!gid || !A || !A.rpc) return;
+    if (st) st.memAt = Date.now();   // fixMo N-05: the start screen asks again when it comes back (new members show)
     A.rpc("group_status", { p_group_id: gid }).then(function (r) {
       if (!st || st.gid !== gid || !r || r.error || !Array.isArray(r.data)) return;
       var me = myName(), names = [];
@@ -469,7 +470,7 @@
     showCard(0);
     lockOn();
   }
-  function toStart() { renderStart(); }
+  function toStart() { renderStart(); if (st && st.gid && Date.now() - (st.memAt || 0) > 15000) loadMembers(st.gid); }   // fixMo N-05
   function renderGame() {
     root.className = "ff ff-g";
     root.innerHTML = "";

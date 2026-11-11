@@ -568,7 +568,7 @@
         });
         body.appendChild(ul);
       } else if (A.authed && A.authed()) body.appendChild(mk("p", "muted pn-un-empty", "Ingen av dina vänner är ute just nu."));
-      var note = mk("p", "muted zn-out-note", "Siffran = alla som har tryckt ÖL! eller ANNAT ikväll i " + (ar.k ? ar.name : "Sverige") + ". Spöken räknas inte. Den uppdateras varje minut.");
+      var note = mk("p", "muted zn-out-note", "Siffran = alla som har tryckt ÖL! eller ANNAT ikväll i " + (ar.k ? ar.name : "Sverige") + ". Spöken räknas inte. " + (wanted() ? "Den uppdateras varje minut." : "Den uppdateras var 5:e minut och när du öppnar den här."));   // fixMo N-19: the true refresh (AGE_MS / AGE_IN)
       body.appendChild(note);
       if (ar.k && counts) body.appendChild(mk("p", "muted zn-out-swe", "Hela Sverige: " + countWords(counts.total, counts.some)));
     });

@@ -277,9 +277,44 @@
     var cs = getComputedStyle(ic); return cs.visibility !== "hidden" && cs.pointerEvents !== "none" && cs.display !== "none" && +cs.opacity > 0.05;
   }
   var FB_PARTS = ".pill, .cm-rally, .cm-ci, .cm-b, .bm-crowd, .bm-q";
+  /* fixMo N-13 (test teams round 2): a cluster capsule sits in pane barcl (620), UNDER the full pills (hotbars 650) and, on the
+     GL engine with a failed style, next to the GL canvas. A tap on the drawn capsule landed on a full pill's transparent
+     44 px box (it opened that bar) or on the canvas (nothing). Rule now: the finger on a capsule's drawing = that cluster
+     (zoom in), unless the finger is on a bar ICON that is drawn on top of it (its disc radius, no extra margin). */
+  function clAt(cx, cy) {
+    for (var i = 0; i < FB.cl.length; i++) {
+      var el = FB.cl[i].mk.getElement && FB.cl[i].mk.getElement(); if (!el || !el.isConnected) continue;
+      var s = el.querySelector("svg") || el, r = s.getBoundingClientRect(); if (!r.width) continue;
+      if (cx >= r.left - 3 && cx <= r.right + 3 && cy >= r.top - 3 && cy <= r.bottom + 3) return FB.cl[i];
+    }
+    return null;
+  }
+  function iconAt(map, px, py) {   // a shown bar icon drawn under the finger (strict disc), or null
+    var hit = null;
+    barMarkers().forEach(function (m) {
+      if (hit) return;
+      var ic = m.getElement(), bi = ic.querySelector(".bar-ico"); if (!bi || !shown(ic)) return;
+      var b = bi.getBoundingClientRect(), cr = map.getContainer().getBoundingClientRect(); if (!b.width) return;
+      var dx = b.left + b.width / 2 - cr.left - px, dy = b.top + b.height / 2 - cr.top - py;
+      if (dx * dx + dy * dy <= (b.width / 2) * (b.width / 2)) hit = m;
+    });
+    return hit;
+  }
   function fbTap(e) {
     if (!FB.on || glOn() || !e.isTrusted || e._olnuFb || !e.target || !e.target.closest) return;
-    var own = e.target.closest(".leaflet-marker-icon.cm"); if (!own || own.classList.contains("tz-cl")) return;
+    if (e.target.closest(".leaflet-marker-icon.tz-cl")) return;   // the capsule itself: its own click
+    var own = e.target.closest(".leaflet-marker-icon.cm");
+    if (FB.cl.length && (own || e.target.closest(".mapboxgl-canvas, .mbx-raster, .leaflet-map-pane") || e.target === FB.map.getContainer())) {   // fixMo N-13
+      var c0 = clAt(e.clientX, e.clientY);
+      if (c0) {
+        var cr0 = FB.map.getContainer().getBoundingClientRect();
+        if (!iconAt(FB.map, e.clientX - cr0.left, e.clientY - cr0.top)) {
+          e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+          FB.last = "cl-hit:" + c0.ids.length; c0.zoom(); return;
+        }
+      }
+    }
+    if (!own) return;
     var map = FB.map, cr = map.getContainer().getBoundingClientRect(), px = e.clientX - cr.left, py = e.clientY - cr.top, list = [];
     barMarkers().forEach(function (m) {
       var ic = m.getElement(), p = map.latLngToContainerPoint(m.getLatLng()), d = Math.sqrt((p.x - px) * (p.x - px) + (p.y - py) * (p.y - py));
@@ -367,15 +402,16 @@
       var mk = L.marker(ctr, { icon: L.divIcon({ html: clHTML(g.length, busy, friend), className: "tz-cl", iconSize: [44, 44], iconAnchor: [22, 22] }),
         pane: FB.pane ? "barcl" : undefined, keyboard: false, zIndexOffset: g.length });
       var ids = g.map(function (x) { return String(x.m.options.olnuC.bar.id); });
-      mk.on("click", function () {
+      var zoomIn = function () {
         FB.clTaps++; FB.last = "cluster:" + g.length;
         var z0 = map.getZoom(), to = Math.min(FB_MAXZ, Math.max(z0 + 1, z0 + Math.log(FB_R / Math.max(6, spread)) / Math.LN2 + 0.3));
         var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
         try { map.setView(ctr, to, { animate: !still }); } catch (e) { map.setView(ctr, to); }
-      });
+      };
+      mk.on("click", zoomIn);
       mk.addTo(map);
       var el = mk.getElement && mk.getElement(); if (el) { el.setAttribute("data-cl", ids.join(",")); el.setAttribute("role", "button"); el.setAttribute("aria-label", g.length + " barer här. Zooma in"); }
-      FB.cl.push({ mk: mk, ids: ids }); FB.made++;
+      FB.cl.push({ mk: mk, ids: ids, zoom: zoomIn }); FB.made++;
     });
   }
   function fbHook(map, layers) {

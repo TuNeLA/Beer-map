@@ -670,8 +670,18 @@
     nodes.forEach(function (n) { s.appendChild(n); });
     return s;
   }
+  // fixMo N-09: the app api (checked-in mates without a pin are "here" too)
+  var A7 = null;
+  try { var P7 = window.PNDS, i07 = P7 && P7.init; if (i07) P7.init = function (api) { A7 = api; return i07.apply(this, arguments); }; } catch (e) {}
+  function ciMates(bar) {
+    try {
+      var all = A7 && A7.checkins ? A7.checkins() || [] : [];
+      var at = window.PNCROWD && window.PNCROWD.cisAt ? window.PNCROWD.cisAt(bar, all) : all.filter(function (c) { return bar && c && String(c.bar_id) === String(bar.id); });
+      return at.filter(function (c) { return c && !c.is_mine && c.is_friend && c.name; });
+    } catch (e) { return []; }
+  }
   // ds51: one row per friend here: own character, night total, Chatta + Skål. Max 3 rows, then "+ N till".
-  function friendRows(list) {
+  function friendRows(list, cis) {
     var by = {}, order = [];
     (list || []).forEach(function (b) {
       var n = b && !b.is_mine && b.friend_name ? String(b.friend_name).trim() : ""; if (!n) return;
@@ -679,11 +689,17 @@
       if (!o) { by[n] = b; order.push(n); }
       else if ((b.beer_count | 0) > (o.beer_count | 0) || Date.parse(b.created_at || 0) > Date.parse(o.created_at || 0)) by[n] = b;
     });
+    (cis || []).forEach(function (c) { var n = String(c.name).trim(); if (n && !by[n]) { by[n] = { _ci: 1, beer_count: 0 }; order.push(n); } });   // fixMo N-09
     if (!order.length) return null;
     order.sort(function (a, c) { return (by[c].beer_count | 0) - (by[a].beer_count | 0); });
     var box = mk("div", "pn-bs-frs");
     order.slice(0, 3).forEach(function (n) {
       var b = by[n], k = b.beer_count | 0, id = esc(String(b.id)), done = !!b.i_skaled, sk = Math.max(0, b.skal_count | 0);
+      if (b._ci) {   // fixMo N-09: checked in, no pin: no Chatta / Skål (both need the pin)
+        box.appendChild(mk("div", "pn-bs-fr2 pn-bs-frci", '<span class="av av-40 pn-bs-fav av-ph" data-pnav="' + esc(n) + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + "</span>" +
+          '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="Incheckad här">' + ico("pin") + "<span>Incheckad</span></small></span>"));
+        return;
+      }
       var sub = k > 0 ? '<span class="pn-bs-fn">' + k + "</span>" + ico("beer") + "<span>ikväll</span>" : "<span>Här nu</span>";
       box.appendChild(mk("div", "pn-bs-fr2", '<span class="av av-40 pn-bs-fav av-ph" data-pnav="' + esc(n) + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + "</span>" +
         '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="' + esc(k > 0 ? k + " öl ikväll" : "Här nu") + '">' + sub + "</small></span>" +
@@ -740,8 +756,9 @@
       // hero: crowd meter + friends here (+ the small king / queue marks)
       var hero = mk("div", "pn-bs-hero"), meter = kid(bs, ".pn-meter");
       if (meter) hero.appendChild(meter);
-      var names = [], frs = friendRows(list);
+      var cim = ciMates(bar), names = [], frs = friendRows(list, cim);
       (list || []).forEach(function (b) { var n = b && b.friend_name ? String(b.friend_name).trim() : ""; if (n && names.indexOf(n) < 0) names.push(n); });
+      cim.forEach(function (c) { var n = String(c.name).trim(); if (n && names.indexOf(n) < 0) names.push(n); });   // fixMo N-09
       if (frs) hero.appendChild(frs);
       else if (names.length) {
         hero.appendChild(mk("div", "pn-bs-fr", '<span class="pn-bs-avs" aria-hidden="true">' +
