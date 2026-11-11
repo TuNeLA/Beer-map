@@ -453,7 +453,8 @@ async function fresh(browser, ls, o = {}) {
     const off = await page.evaluate(async () => { await new Promise((f) => setTimeout(f, 1500)); return { ok: !!window.DIALEKT.stats.packs["sv-syd"], region: window.DIALEKT.region() }; });
     const first = net.filter((x) => !x.byWorker).length;
     ok("sw: offline next start still gets the region pack (from the cache)", off.ok && off.region === "sv-syd", off);
-    ok("sw: the pack came from the network once (first start); the next start was served by the service worker", net.filter((x) => x.byWorker).length === 1 && first === 2 && net.filter((x) => !x.byWorker).every((x) => x.sw), net);
+    // (Playwright does not report the worker's own fetches; the offline start above proves the cache.)
+    ok("sw: the page asked for the pack once per start, and the service worker answered both times", first === 2 && net.every((x) => x.sw), net);
     await ctx.setOffline(false);
     await page.evaluate(() => window.DIALEKT.preview(null));
     await ctx.close();
