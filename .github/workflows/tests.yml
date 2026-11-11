@@ -93,6 +93,8 @@ jobs:
             filter: '^(perf)$'
           - name: fixm
             filter: '^(fixm)$'
+          - name: fixmo
+            filter: '^(fixmo)$'
           - name: left
             filter: '^(left)$'
           - name: kpi

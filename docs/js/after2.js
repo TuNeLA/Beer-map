@@ -292,7 +292,8 @@
       else if (act === "share1") shareCard(st.i);
       else if (act === "shareAll") openShare();
       else if (act === "shx") closeShare();
-      else if (act === "send") sendShare(false);
+      else if (act === "send") sendShare(false, b);
+      else if (act === "nshare") sendShare(false, null, true);   // fixMo N-14: the native share sheet / download (other apps)
       else if (act === "save") sendShare(true);
       else if (act === "own") { close(); setTimeout(function () { if (window.AFTER && window.AFTER.openBakis) window.AFTER.openBakis(); else if (window.NIGHTLOG) window.NIGHTLOG.open(null); }, 260); }
       else if (act === "grp") { var g = b.getAttribute("data-g"); if (g && st && g !== st.m.gid) openFor(g, st.night, true); }
@@ -625,7 +626,8 @@
       ["names", "route"].map(function (k) {
         return '<button type="button" class="a2-sw-row" role="switch" data-a2="sw" data-k="' + k + '" aria-checked="' + !!st.opt[k] + '"><span>' + esc(T("after.r2.sh." + k)) + '</span><i class="a2-sw" aria-hidden="true"></i></button>';
       }).join("") + "</div>" +
-      '<div class="a2-row"><button type="button" class="a2-btn a2-pri" data-a2="send">' + pni("share") + "<span>" + esc(T("after.r2.shareAll")) + "</span></button>" +
+      '<div class="a2-row"><button type="button" class="a2-btn a2-pri" data-a2="send">' + pni("chat") + "<span>" + esc(T("after.r2.shareAll")) + "</span></button>" +
+      '<button type="button" class="a2-btn a2-sq" data-a2="nshare" aria-label="' + esc(T("after.r2.shareOther")) + '">' + pni("share") + "</button>" +
       '<button type="button" class="a2-btn a2-sq" data-a2="save" aria-label="' + esc(T("after.r2.save")) + '">' + pni("download") + "</button></div></div>";
     root.appendChild(box);
     st.sh = box;
@@ -637,10 +639,51 @@
     fontsReady().then(function () { if (st && st.sh) { try { drawShare(cv, st.m, st.opt); } catch (e) {} } });
   }
   function closeShare() { if (st && st.sh) { st.sh.remove(); st.sh = null; } }
-  function sendShare(saveOnly) {
+  /* fixMo N-14: "Skicka till gruppchatten" really posts the share card in the group's own chat: the 📷 path (post_photo, migration
+     0028: JPEG max 1024 px via PHOTO._shrink, Regler first, the caption = the share text). Regler "Int' nu" = nothing sent, the
+     sheet stays. No chat photo (old server, an error, no PHOTO) = the old share sheet / download, with a toast. */
+  function b64(blob) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { var s = String(fr.result || ""); res(s.slice(s.indexOf(",") + 1)); };
+      fr.onerror = function () { rej(fr.error); };
+      fr.readAsDataURL(blob);
+    });
+  }
+  function postChat(cv, m) {
+    var P = window.PHOTO;
+    if (!A || !A.rpc || !m || !m.gid || !P || !P._shrink) return Promise.resolve(null);
+    return toBlob(cv).then(function (png) {
+      if (!png) return null;
+      return P._shrink(png).then(function (s) {
+        return Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (ok) {
+          if (!ok) return "terms";
+          return b64(s.blob).then(function (data) {
+            return A.rpc("post_photo", { p_group_id: m.gid, p_b64: data, p_w: s.w, p_h: s.h, p_caption: String(shareText(m)).slice(0, 138) });
+          }).then(function (r) { return r && !r.error ? "posted" : null; });
+        });
+      });
+    }).catch(function () { return null; });
+  }
+  function sendShare(saveOnly, btnEl, other) {
     if (!st || !st.sh) return;
     var cv = st.sh.querySelector(".a2-sh-cv"), m = st.m;
-    fontsReady().then(function () { try { drawShare(cv, m, st.opt); } catch (e) {} return deliver(cv, "pintsnow-kvallsrapport.png", shareText(m), saveOnly); });
+    if (saveOnly || other) {
+      fontsReady().then(function () { try { drawShare(cv, m, st.opt); } catch (e) {} return deliver(cv, "pintsnow-kvallsrapport.png", shareText(m), saveOnly); });
+      return;
+    }
+    if (btnEl) { if (btnEl.disabled) return; btnEl.disabled = true; }
+    fontsReady().then(function () {
+      try { drawShare(cv, m, st.opt); } catch (e) {}
+      return postChat(cv, m).then(function (how) {
+        if (btnEl) btnEl.disabled = false;
+        try { if (window.PNLOG) window.PNLOG.event("after2.share", { how: how || "chat_fail" }); } catch (e) {}
+        if (how === "posted") { if (A) A.toast(T("after.r2.sent", { group: m.group }), { cls: "skal", ms: 5000 }); closeShare(); return "posted"; }
+        if (how === "terms") return "terms";
+        if (A) A.toast(T("after.r2.sendFail"), { err: true, ms: 5000 });
+        return deliver(cv, "pintsnow-kvallsrapport.png", shareText(m), false);
+      });
+    });
   }
 
   /* ---------- ways in ---------- */

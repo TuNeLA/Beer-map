@@ -103,3 +103,5 @@ html.a2-on,html.a2-on body{overflow:hidden}
 .a2-gc-x span{font-size:var(--fs-14);line-height:20px;color:var(--ds-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:370px){.a2-title{font-size:var(--fs-34);line-height:40px}.a2-name{font-size:var(--fs-28);line-height:32px}.a2-line{font-size:var(--fs-18);line-height:24px}}
 @media (max-height:640px){.a2-av-big{width:64px;height:64px;font-size:var(--fs-28)}.a2-line{font-size:var(--fs-18);line-height:24px}}
+/* fixMo N-14: the share sheet row = "Skicka till gruppchatten" + Dela + Spara: one line at 360 px */
+@media (max-width:380px){.a2-sh .a2-row .a2-btn.a2-pri{padding:0 var(--sp-2);font-size:15px;white-space:nowrap}.a2-sh .a2-row .a2-btn.a2-pri .pi{display:none}}

@@ -672,8 +672,8 @@
 })(this);
 /* fixM T-24 CROWD START — ONE source for the bar crowd word + count (test teams 11 Nov: "Livligt · 3 här" flipped to "Lugnt"
    while 3 were still checked in). window.PNCROWD.at(bar, pins, checkins) → { n, lv, word, held }.
-   - n = the people at the bar = max(pins assigned to the bar, live check-ins at the bar): the same person can be both, so the
-     larger one (never the sum). Pins move / snap every 10 min (BARS.assign), check-ins stay: the count no longer drops by itself.
+   - n = the people at the bar = DISTINCT people in (pins assigned to the bar ∪ live check-ins at the bar) (fixMo N-08: named
+     people once, strangers = the larger anonymous count; never the plain sum). Pins move / snap every 10 min (BARS.assign), check-ins stay: the count no longer drops by itself.
    - lv: 0 · 1 Lugnt (1–2) · 2 Livligt (3–7) · 3 Packat (8+). Up at once; DOWN only after the lower level held 3 min
      (hysteresis: a poll that misses one pin never flips the word). The count itself is never invented: n is today's value.
    Callers: social.js (sheet header word + the z16 marker tag), pnui.js (Krogmätaren). No RPC, no DOM. */
@@ -684,10 +684,23 @@
   function cisAt(id, cis) {
     var n = 0; (cis || []).forEach(function (c) { if (c && c.bar_id != null && canon(c.bar_id) === id) n++; }); return n;
   }
+  function cisList(id, cis) { return (cis || []).filter(function (c) { return c && c.bar_id != null && canon(c.bar_id) === id; }); }
+  /* fixMo N-08: DISTINCT people in pins + check-ins. The app knows who me and my friends are (is_mine / friend name), so a
+     named person with a pin AND a check-in counts once. Strangers have no id on either side: the larger of the two
+     anonymous counts (a lower bound, never invented). Callers: at() (label, bar sheet, Krogmätaren), news.js (ticker). */
+  function pinKey(b) { if (!b) return null; if (b.is_mine) return "me"; var n = b.friend_name ? String(b.friend_name).trim().toLowerCase() : ""; return n ? "f:" + n : null; }
+  function ciKey(c) { if (!c) return null; if (c.is_mine) return "me"; var n = c.is_friend && c.name ? String(c.name).trim().toLowerCase() : ""; return n ? "f:" + n : null; }
+  function people(pins, cis) {
+    var seen = {}, named = 0, ap = 0, ac = 0;
+    (pins || []).forEach(function (b) { if (!b) return; var k = pinKey(b); if (!k) { ap++; return; } if (!seen[k]) { seen[k] = 1; named++; } });
+    (cis || []).forEach(function (c) { if (!c) return; var k = ciKey(c); if (!k) { ac++; return; } if (!seen[k]) { seen[k] = 1; named++; } });
+    return named + Math.max(ap, ac);
+  }
+  function count(bar, pins, cis) { var id = bar && bar.id != null ? canon(bar.id) : null; return people(pins, id ? cisList(id, cis) : []); }
   function en() { try { return root.I18N && root.I18N.lang === "en"; } catch (e) { return false; } }
   function at(bar, pins, cis, now) {
     var id = bar && bar.id != null ? canon(bar.id) : null, np = (pins || []).length, nc = id ? cisAt(id, cis) : 0;
-    var n = Math.max(np, nc), lv = raw(n), t = now || Date.now(), s = id ? st[id] : null;
+    var n = people(pins, id ? cisList(id, cis) : []), lv = raw(n), t = now || Date.now(), s = id ? st[id] : null;
     if (id) {
       if (!s || t - s.at > FORGET_MS || lv >= s.lv) s = st[id] = { lv: lv, at: t, low: 0 };
       else {   // lower than shown: hold the shown word until the lower level held HOLD_MS
@@ -698,6 +711,6 @@
     }
     return { n: n, pins: np, cis: nc, lv: lv, held: lv !== raw(n), word: (en() ? WORDS_EN : WORDS)[lv] };
   }
-  root.PNCROWD = { at: at, raw: raw, HOLD_MS: HOLD_MS, _reset: function () { st = {}; }, _st: function () { return st; } };
+  root.PNCROWD = { at: at, raw: raw, people: people, count: count, cisAt: function (bar, cis) { return bar && bar.id != null ? cisList(canon(bar.id), cis) : []; }, HOLD_MS: HOLD_MS, _reset: function () { st = {}; }, _st: function () { return st; } };
 })(this);
 /* fixM T-24 CROWD END */
