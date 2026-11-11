@@ -1187,6 +1187,8 @@
   var tickerKey = "", newsDirty = true, newsPrev = [];
   // Lazy-loaded news texts (boot.js): use them at the next ticker refill.
   document.addEventListener("olnu:lazy", function () { newsDirty = true; });
+  // dialekt (phase 2): a new region pack / Dialekt Auto<->Av: rebuild the queued headlines with the new lines
+  window.addEventListener("dialekt:change", function () { tickerKey = ""; newsDirty = true; try { renderTicker(); } catch (e) {} });
   function renderTicker() {
     if (!newsDirty && tickerKey) return;
     newsDirty = false;

@@ -93,7 +93,7 @@
         }
       });
     }
-    A.toast("Ångrat. Du ä kvar ute.", { id: "ah-home", ms: 3000 });
+    A.toast("Ångrat. Du är kvar ute.", { id: "ah-home", ms: 3000 });
   }
 
   /* ---------- settings (inside the auto check-in section, js/autoci.js) ---------- */
@@ -103,7 +103,7 @@
     if (!home()) {
       var s = el("button", { type: "button", class: "btn btn-block pn-swb ah-set" });
       s.innerHTML = ic("home") + '<span class="pn-sw-l">Ställ in hem</span>';
-      s.addEventListener("click", function () { try { window.HOMEZONE.open({ then: function () { try { A.toast("Hemmet ä sparat. Auto hemma ä på.", { id: "ah-set", ms: 3500 }); } catch (e) {} } }); } catch (e) {} });
+      s.addEventListener("click", function () { try { window.HOMEZONE.open({ then: function () { try { A.toast("Hemmet är sparat. Auto hemma är på.", { id: "ah-set", ms: 3500 }); } catch (e) {} } }); } catch (e) {} });
       body.appendChild(el("div", { class: "row ah-row" }, [s]));
       body.appendChild(el("p", { class: "muted ah-hint", text: "Tryck på kartan där du bor, eller ”Använd nuvarande plats”. Sparas bara på telefonen." }));
       return;
@@ -113,7 +113,7 @@
     b.addEventListener("click", function () {
       var nv = b.getAttribute("aria-checked") !== "true"; setOn(nv); b.setAttribute("aria-checked", String(nv));
       var dot = b.querySelector(".switch"); if (dot) dot.setAttribute("aria-checked", String(nv));
-      A.toast(nv ? "Auto hemma på. Bara när appen ä öppen." : "Auto hemma av.", { id: "ah-set", ms: 3000 });
+      A.toast(nv ? "Auto hemma på. Bara när appen är öppen." : "Auto hemma av.", { id: "ah-set", ms: 3000 });
     });
     body.appendChild(el("div", { class: "row ah-set" }, [b]));
     body.appendChild(el("p", { class: "muted ah-hint", text: "10 min hemma efter en kväll ute: utcheckad, Hemma, Följ mig hem klar. Hemmet stannar på telefonen." }));

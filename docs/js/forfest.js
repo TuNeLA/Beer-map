@@ -25,7 +25,7 @@
       tile: "🎉 Förfest", lek: "🎉 Förfestläget", kicker: "🎉 En telefon · hela truppen",
       title: "Förfestläget", tag: "Ställ telefonen mitt på bordet, läs kortet högt och skicka runt. Inga konton, inget nät.",
       who: "Vilka ä med?", whoN: "{0} med", guest: "Gästens namn", add: "+ Lägg till", guestTag: "gäst",
-      group: "Grupp", noPlayers: "Bocka i minst 2 som ä med (eller lägg till gäster).",
+      group: "Grupp", noPlayers: "Bocka i minst 2 som är med (eller lägg till gäster).",
       pick: "Välj läge", cards: "{0} kort", nodrink: "🥤 Utan dricka", nodrinkSub: "Straffen blir knäböj, armhävningar och komplimanger.",
       fine: "Ingen måste göra nåt: säg pass och ta ett annat straff. Ta vatten emellan. 18+.",
       loading: "Laddar korten…", loadFail: "Korten kunde int' laddas. Öppna appen med nät en gång, sen funkar dä offline.",
