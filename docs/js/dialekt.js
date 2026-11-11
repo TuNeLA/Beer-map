@@ -468,11 +468,14 @@
     loadPack(c);
   }
   // onPoll: the map moved to another region → load its pack / tell the ticker (app.js rebuilds it on dialekt:change)
+  var tickScoped = false;
   function tickCheck() {
-    var a = tickerArea(), c = a ? tickCode(a) : ownChain()[0];
-    if (c === lastTick) return;
-    lastTick = c; stats.tick = c;
-    if (c !== ownChain()[0] && PACK_FILES[c] && !stats.packs[c]) { wantExtra(c); return; }   // its onload fires the change
+    var own = ownChain()[0], a = tickerArea(), c = a ? tickCode(a) : own, prev = lastTick, was = tickScoped;
+    if (c === prev) return;
+    lastTick = c; stats.tick = c; tickScoped = c !== own;
+    // first check, or the phone's own region moved (resolve() already fired dialekt:change): nothing more to tell
+    if (!tickScoped && (!prev || !was)) return;
+    if (tickScoped && PACK_FILES[c] && !stats.packs[c]) { wantExtra(c); return; }   // its onload fires the change
     try { window.dispatchEvent(new CustomEvent("dialekt:change", { detail: { region: region(), ticker: c, mode: st.mode, chain: chain() } })); } catch (e) {}
   }
   (function () {   // after the first paint: load + one idle slot (the pack never competes with the start-up)
