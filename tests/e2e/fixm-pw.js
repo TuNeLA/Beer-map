@@ -10,7 +10,7 @@ fs.mkdirSync(SP + "fixm-shots", { recursive: true });
 const PORT = process.argv[2] || 8871, BASE = `http://127.0.0.1:${PORT}/`;
 const ONLY = process.argv.slice(3);
 const OLD = process.env.FIXM_OLD || "";
-const want = (k) => !ONLY.length || ONLY.includes(k);
+const want = (k) => !ONLY.length || ONLY.includes(k) || (k !== "shots" && ONLY.length === 1 && ONLY[0] === "all");
 const { wait } = H;
 let pass = 0, fail = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); c ? pass++ : fail++; };
 const J = (r, b) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -292,6 +292,28 @@ async function tapEach(page, pts, dxy, ll, z) {
     await p.evaluate(() => { Date.now = window.__realNow; });
     ok(/^Lugnt/.test(w5), "the word drops to Lugnt only after the lower level held 3 min (" + w5 + ")");
     await t.ctx.close();
+  }
+
+
+  // ---------- screenshots for DONE.md (only when asked: node fixm-pw.js <port> shots; FIXM_OLD=<dir> for "before") ----------
+  if (ONLY.includes("shots")) {
+    const tag = OLD ? "before" : "after";
+    const ZC = { kommun: [{ c: "2085", n: 11, bar: "Pitchers" }, { c: "0180", n: 14 }], lan: [], total: 52, k: 3 };
+    for (const [w, h] of [[360, 780], [390, 844], [430, 932]]) {
+      const t = await setup(browser, { w, h, checkin: false, routes: async (page) => { await page.route(/rest\/v1\/rpc\/zone_counts\b/, (r) => J(r, ZC)); } });
+      const p = t.page;
+      await view(p, SODER, 15); await wait(p, 1800);
+      await p.screenshot({ path: SP + "fixm-shots/" + tag + "-t10-dense-z15-" + w + ".png" });
+      await view(p, SODER, 14); await wait(p, 1800);
+      await p.screenshot({ path: SP + "fixm-shots/" + tag + "-t10-z14-" + w + ".png" });
+      await view(p, [60.1505, 15.1872], 15); await wait(p, 2500);
+      await p.screenshot({ path: SP + "fixm-shots/" + tag + "-t15-pill-" + w + ".png", clip: { x: 0, y: 0, width: w, height: 120 } });
+      await p.click("#live-count").catch(() => {}); await wait(p, 900);
+      await p.screenshot({ path: SP + "fixm-shots/" + tag + "-t15-tap-" + w + ".png" });
+      await t.ctx.close();
+      console.log("shots", tag, w);
+    }
+    ok(true, "screenshots " + tag);
   }
 
   console.log(`\n${pass} PASS / ${fail} FAIL`);

@@ -57,7 +57,8 @@
   var BUNDLE = ["game_poll", "gang_poll", "skal_poll", "film_poll", "ceremony_poll", "walk_poll", "my_invites", "helg_state",
     "my_status", "my_inbox", "my_dms", "pickup_poll", "safety_state", "duel_poll", "knuff_inbox", "my_rallies", "bar_status",
     "medevac_checks", "group_etas", "beer_reactions", "crew_poll", "near_poll", "my_meriter", "avatars_for", "ikvall_status",
-    "home_status", "friend_totals", "ghost_points2", "golden_horse"];
+    "home_status", "friend_totals", "ghost_points2", "golden_horse",
+    "zone_counts"];   // fixM T-15 (0480): the top bar count (max 1 / min) rides the bundle; an older server answers not_bundled = alone
   // perf (0465, load REPORT fix 3): poll_v2 + the start-up reads also go in a bundle, up to 40 calls. An older server answers
   // not_bundled for a new name: that name then goes alone for this page life (= today's calls), and this phone remembers
   // "old server" for 30 min. The cap stays 24 until a new name came back from a bundle ("new server", remembered).
