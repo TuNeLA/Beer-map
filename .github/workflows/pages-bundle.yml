@@ -1,18 +1,22 @@
-# ⚡ SPEED #10 — ENABLED by cln09, but the build job only runs when the repo variable PAGES_BUNDLE = on (owner step 2).
-# Deploys the site to GitHub Pages from an Actions artifact, with the ~100 app scripts joined + minified into ONE file
-# (scripts/bundle.mjs, esbuild) and the ~40 stylesheets into one. docs/ on main stays the readable source.
-# To turn it on (owner):
-#   1. Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions" (was "Deploy from a branch").
-#      The custom domain (pintsnow.com) stays in the same Pages settings; no CNAME file is needed for Actions deploys.
-#   2. Rename this file to pages-bundle.yml (drop ".disabled") and push to main.
-#   3. Watch Actions → "Pages (bundled)" go green, then open the app and check Settings → ⓘ shows the new version.
-#   4. Roll back = set Pages Source back to "Deploy from a branch" (main, / root). Nothing in docs/ changed.
-# stamp-version.yml keeps stamping docs/ on main; this workflow stamps its own bundled copy the same way.
+# ⚡ SPEED #10 / T-25 (left-T25): the bundled Pages build. The build job runs only when the repo variable PAGES_BUNDLE = on.
+# Deploys the site to GitHub Pages from an Actions artifact, with the ~135 start scripts joined + minified into 3 files
+# (scripts/bundle.mjs, esbuild; config.js stays its own file) and the ~50 stylesheets into one. docs/ on main stays the
+# readable source. Measured (Slow 3G + CPU ×4, gzip like Pages): DOMContentLoaded 80 s → 37 s, 194 → 12 requests before it.
+# Owner steps (release day):
+#   1. Repo → Settings → Secrets and variables → Actions → Variables: PAGES_BUNDLE = on.
+#      PAGES_LAYOUT: leave it unset (= today's layout: / = the repo index.html, the app at /docs/).
+#      After the pintsnow.com switch (Pages source "/docs" in the move runbook) set PAGES_LAYOUT = docs (the app at /).
+#   2. Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions" (was "Deploy from a branch").
+#      A custom domain stays in the same Pages settings; an Actions deploy needs no CNAME file.
+#   3. Actions → "Pages (bundled)" → Run workflow (or push to main). Wait for green, open the app: Inställningar → ⓘ shows
+#      the new version; DevTools → Network shows js/app.bundle-3.js.
+#   4. Roll back = Settings → Pages → Source "Deploy from a branch" (main, the same folder as before). Nothing in docs/ changed.
+# stamp-version.yml keeps stamping docs/ on main; this workflow stamps its own bundled copy (bundle.mjs --stamp + the step below).
 name: Pages (bundled)
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "index.html", "scripts/bundle.mjs"]
+    paths: ["docs/**", "index.html", "scripts/bundle.mjs", ".github/workflows/pages-bundle.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,27 +34,36 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: "Copy the site (same layout as the branch deploy: / and /docs/)"
+      - name: "Copy the site (PAGES_LAYOUT unset = like the branch deploy: / and /docs/; docs = the app at /)"
         run: |
           mkdir -p _site
-          cp index.html .nojekyll _site/ 2>/dev/null || true
-          cp -r docs _site/docs
-      - name: Bundle + minify (esbuild)
+          if [ "${{ vars.PAGES_LAYOUT }}" = "docs" ]; then
+            cp -r docs/. _site/
+            echo "APP=_site" >> "$GITHUB_ENV"
+          else
+            cp index.html .nojekyll _site/ 2>/dev/null || true
+            cp -r docs _site/docs
+            echo "APP=_site/docs" >> "$GITHUB_ENV"
+          fi
+      - name: Bundle + minify (esbuild; acorn checks that every file can be joined safely)
         run: |
-          npm install --no-save --no-package-lock esbuild@0.24.0
-          node scripts/bundle.mjs _site/docs
+          mkdir -p "$RUNNER_TEMP/bnd" && cp scripts/bundle.mjs "$RUNNER_TEMP/bnd/"
+          npm install --prefix "$RUNNER_TEMP/bnd" --no-save --no-package-lock --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
+          node "$RUNNER_TEMP/bnd/bundle.mjs" "$APP" --stamp
+          for f in "$APP"/js/app.bundle*.js; do node --check "$f"; done
       - name: Stamp the bundled copy (cache version + ?v=<hash>, like stamp-version.yml)
         run: |
-          cd _site
-          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path 'docs/places/*' ! -path 'docs/buildings/*' ! -path 'docs/buildings3d/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
-          sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
-          for f in $(grep -oE '(src|href)="\./[^"?]+\.(js|css)' docs/index.html | sed -E 's/^(src|href)="\.\///' | sort -u); do
-            [ -f "docs/$f" ] || { echo "missing docs/$f"; exit 1; }
-            H=$(sha256sum "docs/$f" | cut -c1-10)
+          cd "$APP"
+          HASH=$(find . -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path './places/*' ! -path './buildings/*' ! -path './buildings3d/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
+          sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" sw.js
+          for f in $(grep -oE '(src|href)="\./[^"?]+\.(js|css)' index.html | sed -E 's/^(src|href)="\.\///' | sort -u); do
+            [ -f "$f" ] || { echo "missing $f"; exit 1; }
+            H=$(sha256sum "$f" | cut -c1-10)
             F=$(printf '%s' "$f" | sed 's/[.]/\\./g')
-            sed -i -E "s#((src|href)=\"\./$F)(\?v=[A-Za-z0-9]+)?\"#\1?v=$H\"#g" docs/index.html
+            sed -i -E "s#((src|href)=\"\./$F)(\?v=[A-Za-z0-9]+)?\"#\1?v=$H\"#g" index.html
           done
-          grep -c '<script' docs/index.html
+          grep -n '^var VERSION' sw.js
+          echo "start scripts: $(grep -c '<script defer src="\./' index.html) local, stylesheets: $(grep -c '<link rel="stylesheet" href="\./' index.html) local"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

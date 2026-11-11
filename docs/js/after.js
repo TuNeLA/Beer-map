@@ -695,6 +695,8 @@
     function start(e) {
       if (e) e.preventDefault();
       if (rec || mic.disabled) return;
+      // left T-05b: Regler before the mic opens (a recording is never lost to the Regler sheet or to the 15 s timeout)
+      if (window.SAFETY && window.SAFETY.needTerms && window.SAFETY.ensureTerms && window.SAFETY.needTerms("post_voice")) { holding = false; window.SAFETY.ensureTerms(); return; }
       holding = true;
       navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (s) {
         stream = s;

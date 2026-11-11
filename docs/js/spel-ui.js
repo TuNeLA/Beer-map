@@ -618,7 +618,8 @@
     if (m[id] && Date.now() - m[id] < 180000) { A.toast(TX.calledWait, { id: "spel" }); return; }
     btn.disabled = true;
     var body = F(TX.callMsg, (st.d.me && st.d.me.name) || "", gm.ic + " " + gm.name).slice(0, 140);
-    A.rpc("post_group_msg", { p_group_id: st.g.id, p_body: body }).then(function (r) {
+    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? A.rpc("post_group_msg", { p_group_id: st.g.id, p_body: body }) : { tx: 1 }; }).then(function (r) {   // left T-05b: Regler first
+      if (r && r.tx) { btn.disabled = false; return; }
       if (r && r.error) { btn.disabled = false; A.toast(TX.err.x, { err: true, id: "spel" }); return; }
       m[id] = Date.now(); lsSet(key, m);
       try { A.invoke("notify-group", { event: "msg", group_id: st.g.id }); } catch (e) {}

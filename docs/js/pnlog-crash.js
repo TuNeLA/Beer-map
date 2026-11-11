@@ -31,7 +31,7 @@
     if (!T) T = setTimeout(function () { T = 0; flush(false); }, Math.max(2000, 60000 - (Date.now() - lastSend)));
   }
   function ch() { try { return window.OLNU_STORE ? "store" : "stable"; } catch (e) { return "stable"; } }
-  function ver() { try { var s = document.querySelector('script[src*="app.js"]'); return (s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]) || "?"; } catch (e) { return "?"; } }
+  function ver() { try { var s = ([].slice.call(document.querySelectorAll('script[src*="app.bundle"]')).pop() || document.querySelector('script[src*="app.js"]')); /* left-T25 */ return (s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]) || "?"; } catch (e) { return "?"; } }
   function token() {
     try {
       var a = JSON.parse(localStorage.getItem("olnu.auth") || "null"), s = a && (a.currentSession || a);

@@ -266,7 +266,7 @@
         if (v.length < 3 || v.length > 60) { A.toast(t("bpOfferInvalid"), { err: true }); return; }
         if (send.disabled) return;
         send.disabled = true;
-        hereFor(bar).then(function (me) {
+        Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? hereFor(bar) : null; }).then(function (me) {   // left T-05b: Regler first
           if (!me) return null;
           return call("add_offer", { p_bar_id: String(bar.id), p_bar_name: cleanName(bar.name), p_bar_lat: bar.lat, p_bar_lng: bar.lng,
             p_lat: me.lat, p_lng: me.lng, p_body: v });
@@ -351,8 +351,9 @@
     var v = String(text || "").replace(/\s+/g, " ").trim();
     if (v.length > 40) { A.toast(t("bpTipBad"), { err: true }); return; }
     button.disabled = true;
-    call("send_tip", { p_group_id: g.id, p_bar_id: String(bar.id), p_bar_name: cleanName(bar.name), p_body: v || null }).then(function (r) {
+    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return !okT ? { tx: 1 } : call("send_tip", { p_group_id: g.id, p_bar_id: String(bar.id), p_bar_name: cleanName(bar.name), p_body: v || null }); }).then(function (r) {
       button.disabled = false;
+      if (r.tx) return;
       if (r.error) {
         if (r.off) { A.closeSheet(); return; }
         var c = codeOf(r.error);

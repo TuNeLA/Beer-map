@@ -134,8 +134,9 @@
         var txt = (ta.value || "").trim();
         if (txt.length < 3) { A.toast(T("need"), { err: true }); ta.focus(); return; }
         send.disabled = true;
-        call("submit_wish", { p_text: txt, p_category: cat, p_name: nameBox && nameBox.checked ? name : null }).then(function (r) {
+        Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return !okT ? { tx: 1 } : call("submit_wish", { p_text: txt, p_category: cat, p_name: nameBox && nameBox.checked ? name : null }); }).then(function (r) {   // left T-05b: Regler first
           send.disabled = false;
+          if (r.tx) return;
           if (r.error) { A.toast(off ? T("fail") : errText(r.error), { err: true }); return; }
           var d = A.parseData(r.data);
           ta.value = ""; cnt.textContent = "0/500";

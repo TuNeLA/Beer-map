@@ -558,8 +558,10 @@
             p_spot: st.bar || o.event ? "bar" : st.spot === "here" ? "here" : "spot",
             p_group_id: pk.groupIds()[0] || null, p_name: myName() };
           go.disabled = true;
-          call("invite_create", params).then(function (r) {
+          // left T-05b: Regler first, THEN the post ("Int' nu" = nothing sent, the form stays)
+          Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? call("invite_create", params) : { tx: 1 }; }).then(function (r) {
             go.disabled = false;
+            if (r.tx) return;
             if (r.error) { A.toast(r.off ? errText("error") : errText(codeOf(r.error)), { err: true }); return; }
             var j = A.parseData(r.data);
             push({ event: "invite", invite_id: j.id });

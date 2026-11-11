@@ -96,7 +96,7 @@
     var n = /SamsungBrowser/.test(ua) ? "Samsung" : /CriOS|Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "?";
     return n + (m ? " " + m[1] : "");
   }
-  function ver() { var s = document.querySelector('script[src*="app.js"], script[src*="app.bundle"]'); var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return v || "?"; }
+  function ver() { var s = ([].slice.call(document.querySelectorAll('script[src*="app.bundle"]')).pop() || document.querySelector('script[src*="app.js"]')); /* left-T25 */ var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return v || "?"; }
   function med(a) { if (!a.length) return 0; var b = a.slice().sort(function (x, y) { return x - y; }); return b[Math.floor(b.length / 2)]; }
   function loadMs() {
     try { var n = performance.getEntriesByType("navigation")[0]; if (n) return Math.round(n.loadEventEnd || n.domContentLoadedEventEnd || 0); } catch (e) {}

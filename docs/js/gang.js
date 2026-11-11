@@ -370,8 +370,9 @@
       var w = who.value.trim(), b = body.value.trim();
       if (!w || !b) { A.toast(S.sv.errs.invalid_quote, { err: true }); return; }
       save.disabled = true;
-      call("add_quote", { p_group_id: view.g.id, p_who: w, p_body: b, p_msg_id: null }).then(function (r) {
+      Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? call("add_quote", { p_group_id: view.g.id, p_who: w, p_body: b, p_msg_id: null }) : { tx: 1 }; }).then(function (r) {   // left T-05b
         save.disabled = false;
+        if (r.tx) return;
         if (r.error) { fail(r); return; }
         body.value = ""; cnt.textContent = "0/140";
         A.toast(pick("qs", C.quoteSaved), { ms: 4500 }); fx(false);
@@ -660,8 +661,9 @@
   }
   function rallyFor(w, b) {
     if (b) b.disabled = true;
-    A.rpc("create_rally", { p_group_id: view.g.id, p_body: ("🗳️ Gänget har röstat: " + w.name + "!").slice(0, 100), p_place: w.name.slice(0, 60), p_lat: w.lat, p_lng: w.lng }).then(function (r) {
+    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return !okT ? { tx: 1 } : A.rpc("create_rally", { p_group_id: view.g.id, p_body: ("🗳️ Gänget har röstat: " + w.name + "!").slice(0, 100), p_place: w.name.slice(0, 60), p_lat: w.lat, p_lng: w.lng }); }).then(function (r) {
       if (b) b.disabled = false;
+      if (r.tx) return;
       if (r.error) { A.toast(U.errCode(r.error) === "slow_down" ? S.sv.errs.slow_down : S.sv.errs.error, { err: true }); return; }
       var j = A.parseData(r.data);
       if (j && j.id) A.invoke("notify-group", { event: "rally", rally_id: j.id });

@@ -618,10 +618,16 @@
         var text = String(inp.value || "").trim(), pl = !other.hidden ? String(other.value || "").trim() : place;
         if (text.length > 100 || (pl && pl.length > 60)) { A.toast(t("rallyInvalid"), { err: true }); return; }
         sending = true; go.disabled = true;
-        var posP = useLoc && !(spot && isFinite(spot.lat)) ? A.getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }).then(function (p) {
-          return { lat: Math.round(p.coords.latitude * 1e5) / 1e5, lng: Math.round(p.coords.longitude * 1e5) / 1e5 };
-        }, function (err) { A.locError(err); return null; }) : Promise.resolve(null);
+        // left T-05b: Regler first, THEN the position and the post ("Int' nu" = nothing sent, the text stays)
+        var TXF = {};
+        var posP = Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) {
+          if (!okT) return TXF;
+          return useLoc && !(spot && isFinite(spot.lat)) ? A.getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }).then(function (p) {
+            return { lat: Math.round(p.coords.latitude * 1e5) / 1e5, lng: Math.round(p.coords.longitude * 1e5) / 1e5 };
+          }, function (err) { A.locError(err); return null; }) : null;
+        });
         posP.then(function (pos) {
+          if (pos === TXF) { sending = false; go.disabled = false; return; }
           var params = { p_group_id: gid, p_body: text || t("rallyPh"), p_place: pl || null };
           if (pos) { params.p_lat = pos.lat; params.p_lng = pos.lng; }
           else if (spot && isFinite(spot.lat)) { params.p_lat = +(+spot.lat).toFixed(5); params.p_lng = +(+spot.lng).toFixed(5); }

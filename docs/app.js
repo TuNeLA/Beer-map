@@ -152,6 +152,10 @@
   // Background calls that claim / mark something (never asked ahead): they wait for the next map poll and go in its
   // bundle (≤ 30 s later; their own rhythm is 60 s – 5 min). A 35 s timer sends them if no poll comes.
   var DEFER = { knuff_inbox: 1, film_poll: 1, mark_seen: 1 }, bqNext = [], bqNextT = 0, burstDone = false, bqDue = 0;
+  // left Z1: slow background reads (zones.js zone_counts: every 5 min zoomed in, 0480) are in the plan too (PLAN_LONG, up to
+  // 7 min), and after their first answer a background ask the plan did not answer waits for the next map poll (DEFER1)
+  // instead of going alone. The first ask and a tap go at once; an old server (not_bundled) = alone, as before.
+  var PLAN_LONG = { zone_counts: 1 }, DEFER1 = { zone_counts: 1 }, asked1 = {};
   function nextFlush() {
     clearTimeout(bqNextT); bqNextT = 0;
     if (!bqNext.length) return;
@@ -177,8 +181,9 @@
   var READ_RE = /^(my_|live_|heat|ghost|poll|events_|guess_|golden|bars?_|group_(msgs|now)$|friend_|avatars_|rnd_|public_|account_|report_vitals|pnlog_)|(_poll|_state|_status|_near\d*|_get|_preview|_list|_for|_mine|_checks|_etas|_group|_places|_passport|_kind|_in|_feed|_top|_league|_stats|_inbox|_dates|_board|_report2?)$/;
   function preDrop() { Object.keys(pre).forEach(function (k) { pre[k].used = true; }); }
   function planDue(e, t) {
-    if (!e.gap || e.gap > 130000 || noB[e.n] || PRE_DENY[e.n] || (e.p && e.p.p_seen === true)) return false;
+    if (!e.gap || (e.gap > 130000 && !(PLAN_LONG[e.n] && e.gap <= 7 * 60e3)) || noB[e.n] || PRE_DENY[e.n] || (e.p && e.p.p_seen === true)) return false;
     var age = t - e.at;
+    if (e.gap > 130000) return age >= e.gap - 20000 && e.miss < 2;   // left Z1: a PLAN_LONG key, asked with the poll that its module will ask in
     if (!e.fast) return pollSlow && age > 20000 && e.miss < 2;
     if (e.gap <= 65000) return age >= 22000 && e.miss < 4;
     return age >= e.gap - 5000 && e.miss < 2;
@@ -192,7 +197,7 @@
     if (bundleOff || !authed || !firstLoadDone || busyNow()) return;
     Object.keys(plan).forEach(function (k) {
       var e = plan[k];
-      if (t - e.at > 5 * 60e3) { delete plan[k]; return; }
+      if (t - e.at > (PLAN_LONG[e.n] ? 8 : 5) * 60e3) { delete plan[k]; return; }
       if (!planDue(e, t)) return;
       var h = pre[k] = { at: t, used: false };
       bundleStats.pre++;
@@ -226,9 +231,10 @@
     if (!noBundle && bundleable(name, params)) {
       var bk = name + "|" + JSON.stringify(params || {});
       planRecord(bk, name, params);
+      var d1 = !!(DEFER1[name] && asked1[name]); if (DEFER1[name]) asked1[name] = 1;   // left Z1: 2nd ask on → DEFER
       var h = pre[bk];
       if (h && !h.used && Date.now() - h.at < 8000) { h.used = true; bundleStats.preUsed++; bp = h.p; }   // the poll's fan-out only
-      else if (DEFER[name] && firstLoadDone && pollOn && !bundleOff) bp = new Promise(function (res) {
+      else if ((DEFER[name] || d1) && firstLoadDone && pollOn && !bundleOff) bp = new Promise(function (res) {
         bqNext.push({ n: name, p: params, k: bk, res: res });
         if (!bqNextT) bqNextT = setTimeout(function () { nextFlush(); if (bq.length) bundleGo(); }, 35000);
       });
@@ -262,6 +268,12 @@
     }
     // Account moved away (flyttkod): this browser must never use or refresh that session again.
     if (flyttGuard()) return Promise.resolve({ data: null, error: { message: "moved" } });
+    // left T-05b: a post RPC (safety.js POST_FNS) asks Regler FIRST, then starts the request and its 15 s timer. The timer used
+    // to run while Regler was open: a slow reader got "timeout" and the post still went out after "Jag godkänner".
+    var SF = window.SAFETY;
+    if (SF && SF.needTerms && SF.ensureTerms && SF.needTerms(name)) return Promise.resolve(SF.ensureTerms()).then(function (ok) {
+      return ok ? rpcNet1(name, params) : { data: null, error: { message: "terms_needed", code: "terms_needed", quiet: true } };
+    });
     return new Promise(function (resolve) {
       var done = false;
       var ac = null, tm = setTimeout(function () { done = true; try { if (ac) ac.abort(); } catch (e3) {} var to = { data: null, error: { message: "timeout" } }; netSeen(to); resolve(to); }, RPC_TIMEOUT_MS);
@@ -3496,7 +3508,7 @@
   }
   function buildVer() {   // ds22: the build, when no service-worker cache name tells it (beta: the commit)
     try { if (window.KANAL && window.KANAL.sha && window.KANAL.sha()) return "beta " + window.KANAL.sha(); } catch (e) {}
-    var s = [].map.call(document.scripts, function (x) { return x.getAttribute("src") || ""; }).filter(function (x) { return /(^|\/)app\.js\?v=/.test(x); })[0];
+    var s = [].map.call(document.scripts, function (x) { return x.getAttribute("src") || ""; }).filter(function (x) { return /(^|\/)app(\.bundle-?\d*)?\.js\?v=/.test(x); }).pop();   /* left-T25: the last bundle */
     var m = /[?&]v=([^&]+)/.exec(s || ""); return m ? m[1] : "–";
   }
   function forceUpdate() {

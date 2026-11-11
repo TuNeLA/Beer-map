@@ -253,10 +253,13 @@
       var text = String(cap.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
       if (text.length > CAP_MAX) { toast(errText("invalid_msg"), { err: true }); return; }
       busy = true; send.disabled = true; send.textContent = L("Skickar…", "Sending…");
-      blobB64(shot.blob).then(function (b64) {
+      // left T-05b: Regler first, THEN the post ("Int' nu" = nothing sent, the photo and the caption stay)
+      Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? blobB64(shot.blob) : null; }).then(function (b64) {
+        if (b64 == null) return { tx: 1 };
         return call("post_photo", { p_group_id: g.id, p_b64: b64, p_w: shot.w, p_h: shot.h, p_caption: text || null });
       }).then(function (r) {
         busy = false;
+        if (r.tx) { send.disabled = false; send.textContent = L("📤 Skicka", "📤 Send"); return; }
         if (r.error) {
           send.disabled = false; send.textContent = L("📤 Skicka", "📤 Send");
           if (r.off) { toast(errText(""), { err: true }); close(); if (ctx && ctx.btn) ctx.btn.remove(); return; }

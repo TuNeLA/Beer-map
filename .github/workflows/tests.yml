@@ -93,6 +93,8 @@ jobs:
             filter: '^(perf)$'
           - name: fixm
             filter: '^(fixm)$'
+          - name: left
+            filter: '^(left)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
@@ -140,6 +142,39 @@ jobs:
             tests/e2e/out/traces/
             tests/e2e/out/ui1-shots/
             tests/e2e/out/social-b-shots/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # left T-25: the bundled Pages build (scripts/bundle.mjs, pages-bundle.yml) must work like docs/: build it, smoke test it
+  # against the plain site (modules, styles, lazy files, part errors, unbundle fallback, service worker offline), then run
+  # e2e tests on the bundled copy (same mocks).
+  bundle:
+    name: bundle (bundled Pages build = docs/)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      TZ: Europe/Stockholm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-save --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Build + smoke test the bundle, e2e tests on the bundled site
+        env:
+          PN_TARGET: staging
+          TO: '900'
+        run: bash scripts/bundle-check.sh . 8875 8871 '^(sec|ux3|social2|dialekt|fixs|left|perf)$'
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs-bundle
+          path: tests/e2e/out/bundle/logs/
           retention-days: 14
           if-no-files-found: warn
 
