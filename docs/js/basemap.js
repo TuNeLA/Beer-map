@@ -75,6 +75,7 @@
       headers: { apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + CFG.SUPABASE_ANON_KEY, "Content-Type": "application/json" }, body: "{}" })
       .then(function (r) { if (!r.ok) throw new Error("cfg " + r.status); return r.json(); })
       .then(function (d) {
+        try { localStorage.setItem("olnu.mbTokenAt", String(Date.now())); } catch (e) {}   // perf (load fix 7): asked at most once per 10 min
         var t = d && typeof d === "object" && !Array.isArray(d) && typeof d.mapbox_token === "string" && /^pk\.[\w.-]{20,}$/.test(d.mapbox_token) ? d.mapbox_token : "";
         if (t) { token = t; U.ls.set(TOKEN_KEY, t); }
         else if (d && typeof d === "object" && !Array.isArray(d) && "mapbox_token" in d) { token = ""; U.ls.del(TOKEN_KEY); }   // removed on the server
@@ -489,14 +490,15 @@
       classicAttr = parts.join(" | ");
       var pop = document.getElementById("attrib-pop"); if (pop) creditEl(pop);
       var v = stored();
-      if (!token) {
+      // perf (load fix 7): public_config at most once per 10 min (a reopened app uses the answer it has)
+      var tAt = 0; try { tAt = +localStorage.getItem("olnu.mbTokenAt") || 0; } catch (e) {}
+      var tFresh = !CFG.MAPBOX_TOKEN && Date.now() - tAt < 10 * 60e3 && tAt <= Date.now();
+      if (!token && !tFresh) {
         // A Mapbox style but no token on this phone yet (first visit, cleared storage): ask the database first.
         fetchToken().then(function () { if (stored() === v) apply(v, "start"); });
       } else {
         apply(v, "start");
-        // refresh the cached token once per page life; perf (load fix 7): at most once per 10 min (public_config)
-        var tAt = 0; try { tAt = +localStorage.getItem("olnu.mbTokenAt") || 0; } catch (e) {}
-        if (!CFG.MAPBOX_TOKEN && !(Date.now() - tAt < 10 * 60e3 && tAt <= Date.now())) setTimeout(function () { fetchToken().then(function () { try { localStorage.setItem("olnu.mbTokenAt", String(Date.now())); } catch (e) {} }); }, 4000);
+        if (!CFG.MAPBOX_TOKEN && !tFresh) setTimeout(fetchToken, 4000);   // refresh the cached token once per page life
       }
     },
     set: function (v) {

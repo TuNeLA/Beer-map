@@ -236,7 +236,7 @@
     if (staleOn && !fails) hide();
     else if (capEl && staleOn) capEl.querySelector("span").textContent = capText();
   }
-  function busy() { return busyN >= 2; }
+  function busyMode() { return busyN >= 2; }   // (not "busy": x8 already has a var busy = the outbox flush flag)
   // a background poll while busy: hold it (true), except ONE probe after the back-off (then the answer decides)
   function hold() {
     if (busyN < 2) return false;
@@ -277,7 +277,7 @@
   window.X8 = {
     bind: bind, add: add, list: list, count: count, flush: flush, isNet: isNet, say: say, hhmm: hhmm,
     pollOk: pollOk, pollFail: pollFail, stale: function () { return staleOn; }, staleShow: show, delay: delay,
-    netSeen: netSeen, busy: busy, hold: hold, busyLeft: function () { return busyN >= 2 ? Math.max(0, busyUntil - now()) : 0; },
+    netSeen: netSeen, busy: busyMode, hold: hold, busyLeft: function () { return busyN >= 2 ? Math.max(0, busyUntil - now()) : 0; },
     _busy: function (o) { if (o && o.min != null) { BUSY_MIN = +o.min; BUSY_JIT = +(o.jit || 0); } return { n: busyN, until: busyUntil, hits: busyHits, probeAt: probeAt }; },
     snapSave: snapSave, snapGet: snapGet,
     _s: function () { return { fails: fails, lastGood: lastGood, stale: staleOn, busy: busy, skew: skew, me: me, q: load(), trail: trail.slice() }; }

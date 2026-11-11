@@ -34,10 +34,10 @@ CREATE OR REPLACE FUNCTION pg_temp.ci(p_heat boolean DEFAULT false) RETURNS json
   SELECT (public.poll_v2(60.14, 15.17, 60.16, 15.20, null, p_heat)::jsonb) -> 'checkins';
 $$;
 CREATE OR REPLACE FUNCTION pg_temp.b(p_calls jsonb) RETURNS jsonb LANGUAGE sql AS $$ SELECT public.rpc_bundle2(p_calls); $$;
--- in chunks of 16 (fits the old cap 24 too), answers merged
+-- in chunks of 20 (fits the old cap 24 too), answers merged
 CREATE OR REPLACE FUNCTION pg_temp.b16(p_calls jsonb) RETURNS jsonb LANGUAGE sql AS $$
-  SELECT public.rpc_bundle2(coalesce((SELECT jsonb_agg(e ORDER BY i) FROM jsonb_array_elements(p_calls) WITH ORDINALITY x(e, i) WHERE i <= 16), '[]'))
-      || public.rpc_bundle2(coalesce((SELECT jsonb_agg(e ORDER BY i) FROM jsonb_array_elements(p_calls) WITH ORDINALITY x(e, i) WHERE i > 16), '[]'));
+  SELECT public.rpc_bundle2(coalesce((SELECT jsonb_agg(e ORDER BY i) FROM jsonb_array_elements(p_calls) WITH ORDINALITY x(e, i) WHERE i <= 20), '[]'))
+      || public.rpc_bundle2(coalesce((SELECT jsonb_agg(e ORDER BY i) FROM jsonb_array_elements(p_calls) WITH ORDINALITY x(e, i) WHERE i > 20), '[]'));
 $$;
 CREATE OR REPLACE FUNCTION pg_temp.calls(n int, fn text) RETURNS jsonb LANGUAGE sql AS $$
   SELECT jsonb_agg(jsonb_build_object('k', fn || i, 'n', fn, 'a', '{}'::jsonb)) FROM generate_series(1, n) i;
@@ -55,7 +55,8 @@ CREATE OR REPLACE FUNCTION pg_temp.newcalls() RETURNS jsonb LANGUAGE sql AS $$
     ('bar_sport_near', '{"p_lat":60.1496,"p_lng":15.1878}'), ('my_past_events', '{"p_limit":20}'), ('user_places', '{"p_lat":60.1496,"p_lng":15.1878}'),
     ('group_now', '{"p_group_id":"00000000-0000-4000-8000-0000000465a0"}'),
     ('group_msgs', '{"p_group_id":"00000000-0000-4000-8000-0000000465a0","p_after_id":0}'),
-    ('drivers_for', '{"p_group_id":"00000000-0000-4000-8000-0000000465a0"}'), ('friend_list', '{"p_name":null}')) x(n, a);
+    ('drivers_for', '{"p_group_id":"00000000-0000-4000-8000-0000000465a0"}'), ('friend_list', '{"p_name":null}'),
+    ('my_stats', '{}'), ('my_friends', '{"p_name":"Jag"}'), ('my_event_chats', '{"p_seen":{"1":5}}'), ('mark_seen', '{}'), ('walk_timer_tick', '{}')) x(n, a);
 $$;
 CREATE OR REPLACE FUNCTION pg_temp.err(r jsonb, msg text) RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(k, ',' ORDER BY k), '') FROM jsonb_each(r) e(k, v) WHERE v -> 'e' ->> 'message' ~ msg;
@@ -93,7 +94,7 @@ CREATE TEMP TABLE t_after AS SELECT pg_temp.ci() AS c, pg_temp.ci(true) AS ch, p
 SELECT 'after_new_names_bundled', pg_temp.err(b, 'not_bundled') = '', pg_temp.err(b, 'not_bundled') FROM t_after;
 SELECT 'after_new_names_no_error', NOT EXISTS (SELECT 1 FROM jsonb_each(b) e(k, v) WHERE v ? 'e'),
        coalesce((SELECT string_agg(k || '=' || (v -> 'e' ->> 'message'), '; ') FROM jsonb_each(b) e(k, v) WHERE v ? 'e'), '') FROM t_after;
-SELECT 'after_32_names', (SELECT count(*) FROM jsonb_each(b)) = 32, (SELECT count(*) FROM jsonb_each(b))::text FROM t_after;
+SELECT 'after_37_names', (SELECT count(*) FROM jsonb_each(b)) = 37, (SELECT count(*) FROM jsonb_each(b))::text FROM t_after;
 SELECT 'after_poll_v2_in_bundle_same', (b -> 'poll_v2' -> 'd' -> 'checkins') = c AND (b -> 'poll_v2' -> 'd' -> 'pins') IS NOT NULL, left((b -> 'poll_v2' -> 'd')::text, 120) FROM t_after;
 SELECT 'after_cap_40', pg_temp.try(pg_temp.calls(40, 'my_status')) = 'ok' AND pg_temp.try(pg_temp.calls(41, 'my_status')) = 'invalid_calls',
        pg_temp.try(pg_temp.calls(41, 'my_status'));

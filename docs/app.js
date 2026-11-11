@@ -64,7 +64,9 @@
   var BUNDLE_NEW = ["poll_v2", "account_config", "public_config", "after_flags_get", "ride_flags_get", "bold_flags_get", "my_visibility",
     "my_account_deletion", "my_avatar", "my_home_town", "my_medals", "my_passport", "my_groups", "party_mine", "spel_mine", "rnd_me",
     "my_board_optin", "bars_gone", "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near",
-    "events_near2", "bar_sport_near", "my_past_events", "user_places", "group_now", "group_msgs", "drivers_for", "friend_list"];
+    "events_near2", "bar_sport_near", "my_past_events", "user_places", "group_now", "group_msgs", "drivers_for", "friend_list",
+    "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick"];
+  var JSONB_ARG = { my_event_chats: { p_seen: 1 } };   // arguments of type jsonb: an object may go in the bundle too
   var NEWB = {}; BUNDLE_NEW.forEach(function (n) { NEWB[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_NEW);
   var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
   try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
@@ -85,7 +87,7 @@
     if (name === "poll_v2" && !firstLoadDone) return false;   // perf: the first map poll goes alone (pins as fast as today)
     if (params == null) return true;
     if (typeof params !== "object" || Array.isArray(params)) return false;
-    return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v); });
+    return Object.keys(params).every(function (k) { var v = params[k]; return v === null || /^(string|number|boolean)$/.test(typeof v) || (JSONB_ARG[name] && JSONB_ARG[name][k] && typeof v === "object"); });
   }
   function bAlone(xs) { xs.forEach(function (x) { bundleStats.alone++; rpcNet(x.n, x.p, true).then(x.res); }); }
   function bundleGo() {
@@ -141,23 +143,49 @@
   // arguments) that earlier polls made at about this rhythm. The onPoll fan-out then gets its answers from this bundle (same
   // order as before: the pins first, then the modules). A call the plan did not guess goes in the normal bundle. Calls that
   // mark something as seen or claim a push are never asked for ahead (PRE_DENY). An answer is used once, ≤ 20 s old.
-  var plan = {}, pre = {}, pollWin = 0, PRE_DENY = { knuff_inbox: 1, my_removals: 1, film_poll: 1 };
+  var plan = {}, pre = {}, pollWin = 0, PRE_DENY = { poll_v2: 1, knuff_inbox: 1, my_removals: 1, film_poll: 1, mark_seen: 1, walk_timer_tick: 1 };
+  // Background calls that claim / mark something (never asked ahead): they wait for the next map poll and go in its
+  // bundle (≤ 30 s later; their own rhythm is 60 s – 5 min). A 35 s timer sends them if no poll comes.
+  var DEFER = { knuff_inbox: 1, film_poll: 1, mark_seen: 1 }, bqNext = [], bqNextT = 0, burstDone = false;
+  function nextFlush() {
+    clearTimeout(bqNextT); bqNextT = 0;
+    if (!bqNext.length) return;
+    var xs = bqNext; bqNext = [];
+    if (busyNow()) { xs.forEach(function (x) { x.res({ data: null, error: { message: "busy", code: "busy", quiet: true } }); }); return; }
+    bq = bq.concat(xs);
+  }
+  // A key is asked ahead only after 2 calls ≥ 10 s apart (one-shot start-up reads never are). Keys seen only in the slow
+  // lane (app.js: once per 60 s) go with the slow polls; other keys with a 30–60 s rhythm go with every poll ≥ 22 s after
+  // their last call (the modules' own 30 s clocks jitter by a few seconds: an unused answer is cheaper than a 2nd request);
+  // slower keys (≤ 130 s) follow their own rhythm. Unused answers in a row: 4 (2 for slow keys) → not asked again until
+  // the next call.
+  var pollSlow = false;
   function planRecord(k, n, p) {
     var t = Date.now(); if (t > pollWin) return;
     var e = plan[k];
-    if (!e) { plan[k] = { n: n, p: p, at: t, gap: 0, miss: 0 }; return; }
+    if (!e) { plan[k] = { n: n, p: p, at: t, gap: 0, miss: 0, fast: !pollSlow }; return; }
+    if (!pollSlow) e.fast = true;
     if (t - e.at < 10000) return;
     e.gap = t - e.at; e.at = t; e.miss = 0;
+  }
+  function planDue(e, t) {
+    if (!e.gap || e.gap > 130000 || noB[e.n] || PRE_DENY[e.n] || (e.p && e.p.p_seen === true)) return false;
+    var age = t - e.at;
+    if (!e.fast) return pollSlow && age > 20000 && e.miss < 2;
+    if (e.gap <= 65000) return age >= 22000 && e.miss < 4;
+    return age >= e.gap - 5000 && e.miss < 2;
   }
   function planStart() {
     var t = Date.now();
     Object.keys(pre).forEach(function (k) { if (!pre[k].used && plan[k]) plan[k].miss++; });
     pre = {}; pollWin = t + 15000;
+    pollSlow = t - slowLaneAt >= SLOW_LANE_MS - 3000;   // this poll's slow-lane round (refresh uses the same answer)
+    nextFlush();
     if (bundleOff || !authed || !firstLoadDone || busyNow()) return;
     Object.keys(plan).forEach(function (k) {
       var e = plan[k];
       if (t - e.at > 5 * 60e3) { delete plan[k]; return; }
-      if (!e.gap || e.gap > 130000 || e.miss >= 2 || t - e.at < e.gap - 5000 || noB[e.n] || PRE_DENY[e.n] || (e.p && e.p.p_seen === true)) return;
+      if (!planDue(e, t)) return;
       var h = pre[k] = { at: t, used: false };
       bundleStats.pre++;
       h.p = new Promise(function (res) { bq.push({ n: e.n, p: e.p, k: k, res: res }); });
@@ -191,11 +219,16 @@
       planRecord(bk, name, params);
       var h = pre[bk];
       if (h && !h.used && Date.now() - h.at < 20000) { h.used = true; bundleStats.preUsed++; bp = h.p; }
+      else if (DEFER[name] && firstLoadDone && pollOn && !bundleOff) bp = new Promise(function (res) {
+        bqNext.push({ n: name, p: params, k: bk, res: res });
+        if (!bqNextT) bqNextT = setTimeout(function () { nextFlush(); if (bq.length) bundleGo(); }, 35000);
+      });
       else bp = new Promise(function (res) {
         bq.push({ n: name, p: params, k: bk, res: res });
         if (bq.length >= bCap()) bundleGo();
-        // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll; perf: the start-up burst waits only 250 ms
-        else if (!bqT) bqT = setTimeout(bundleGo, Date.now() - authedAt < 1500 ? 250 : 1500);
+        // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
+        // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
+        else if (!bqT) { bqT = setTimeout(bundleGo, !burstDone && authedAt ? 250 : Date.now() < pollWin ? 3000 : 1500); if (authedAt) burstDone = true; }
       });
       if (!gid) return bp;
     }
@@ -1992,7 +2025,7 @@
       if (window.X8) { window.X8.pollOk(dv2 ? { me: dv2.me, server_time: dv2.server_time } : null); if (dv2) window.X8.snapSave(dv2); }   // x8: stale off, outbox flush, snapshot
       mods("onPollData", dv2);
       // review2: shared slow lane. Slow-changing modules get onPoll once per 60 s, in the same wave.
-      var slowDue = Date.now() - slowLaneAt >= SLOW_LANE_MS - 3000;
+      var slowDue = pollSlow;   // perf: decided at poll start (planStart), same rule
       if (slowDue) slowLaneAt = Date.now();
       else modsSkip = [window.MERITER, window.FILM, window.CEREMONY, window.HELG, window.PASSPORT, window.GOLDEN, window.EVENTS, window.HOMETOWN, window.KODEN];
       var wave = modsWave = [];

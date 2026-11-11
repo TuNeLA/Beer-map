@@ -4,7 +4,8 @@
 -- Each request is one JWT check, one PostgREST transaction and one pool slot (10 slots on Nano). One open app sent
 -- about 7 requests a minute, and a cold start sent about 45 requests in 5 s.
 -- This file lets the client (app.js, lane perf) send fewer requests:
---   A. rpc_bundle2 accepts poll_v2 and the start-up reads (flags, config, my_* and so on), and up to 40 calls (was 24).
+--   A. rpc_bundle2 accepts poll_v2 and the start-up calls (flags, config, my_* and so on; 2 small own-row writes:
+--      mark_seen, walk_timer_tick), and up to 40 calls (was 24).
 --      Then one map poll = 1 request (was 2–3), and a cold start = ~10 requests (was ~45).
 --      Old clients do not change. A name that is not on the list still answers 'not_bundled', as before.
 --      The new client works before this file runs too: it sends a name the server refuses alone (= today's calls).
@@ -16,7 +17,7 @@
 -- Method: the same anchor patch as 0149, 0403 and 0431. It reads the DEPLOYED definition and makes exact text replacements.
 -- Each anchor must occur exactly once, or the patch stops with an error and nothing changes. A function that already
 -- has the marker 'load0465' is skipped, so the file is safe to run twice.
--- Checked on a local copy (schema snapshot + migrations to 0453, Postgres 16): both anchors occur once; all 32 new names
+-- Checked on a local copy (schema snapshot + migrations to 0453, Postgres 16): both anchors occur once; all 37 new names
 -- exist, have one signature and are executable by authenticated; poll_v2 gives the same answer before and after
 -- (supabase/tests/load-0465.test.sql).
 -- Order: run it after 0430/0431 (sec). Those patch poll_v2 with other anchors; this file does not touch them.
@@ -53,7 +54,8 @@ select public.olnu_load_patch('public.rpc_bundle2(jsonb)',
                      'my_medals', 'my_passport', 'my_groups', 'party_mine', 'spel_mine', 'rnd_me', 'my_board_optin',
                      'bars_gone', 'guess_night_kind', 'my_removals', 'friend_suggest', 'my_wrapped', 'city_league',
                      'events_near', 'events_near2', 'bar_sport_near', 'my_past_events', 'user_places', 'group_now',
-                     'group_msgs', 'drivers_for', 'friend_list'];$a$,
+                     'group_msgs', 'drivers_for', 'friend_list', 'my_stats', 'my_friends', 'my_event_chats', 'mark_seen',
+                     'walk_timer_tick'];$a$,
         $a$jsonb_array_length(p_calls) > 40$a$]);
 
 -- B. poll_v2: the check-in list is filtered to "mine, in the map box, or a group-mate" first, then the per-row checks run.

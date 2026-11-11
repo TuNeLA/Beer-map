@@ -21,7 +21,7 @@ const OLD = ["game_poll", "gang_poll", "skal_poll", "film_poll", "ceremony_poll"
 const ADD = ["poll_v2", "account_config", "public_config", "after_flags_get", "ride_flags_get", "bold_flags_get", "my_visibility", "my_account_deletion",
   "my_avatar", "my_home_town", "my_medals", "my_passport", "my_groups", "party_mine", "spel_mine", "rnd_me", "my_board_optin", "bars_gone",
   "guess_night_kind", "my_removals", "friend_suggest", "my_wrapped", "city_league", "events_near", "events_near2", "bar_sport_near", "my_past_events",
-  "user_places", "group_now", "group_msgs", "drivers_for", "friend_list"];
+  "user_places", "group_now", "group_msgs", "drivers_for", "friend_list", "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick"];
 const R1 = "5e1a0000-0000-4000-8000-000000000001";
 const sview = (o = {}) => Object.assign({ v: 1, now: new Date().toISOString(), id: R1, group_id: GID, game: "kort", phase: "lobby", round: 0, goal: 5, game_no: 0, pub: {}, closed: false,
   creator_k: "me", judge_on: false, me: { k: "me", name: "Anton", score: 0, status: "in", hand: [], judge: false, mine: null, can_force: false },
@@ -136,11 +136,13 @@ const R = {};   // numbers for DONE.md
       const cold = since(log, t0, t0 + 20000);
       R.cold = { all: cold.length, rpc: rpcOnly(cold).length, mix: mix(cold) };
       console.log("cold start (20 s):", cold.length, JSON.stringify(R.cold.mix));
-      await wait(page, 25000);   // settle (start-up timers, first slow-lane round)
+      if (process.env.PERF_DEBUG) cold.forEach((x) => console.log("  c", ((x.t - t0) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
+      await wait(page, 40000);   // settle (start-up timers, 2 slow-lane rounds: the poll plan has learned the rhythm)
       const t1 = Date.now();
       await wait(page, 120000);
       const op = since(log, t1, t1 + 120000);
       R.open = { perMin: +(op.length / 2).toFixed(2), rpcPerMin: +(rpcOnly(op).length / 2).toFixed(2), mix: mix(op), bundles: op.filter((x) => x.inner).map((x) => x.inner.length) };
+      if (process.env.PERF_DEBUG) op.forEach((x) => console.log("  o", ((x.t - t1) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
       console.log("open 2 min:", op.length, "requests =", R.open.perMin, "/min", JSON.stringify(R.open.mix), "bundle sizes", JSON.stringify(R.open.bundles));
       const st = await page.evaluate(() => window.__api && window.__api.bundleStats ? window.__api.bundleStats() : null).catch(() => null);
       console.log("bundleStats", JSON.stringify(st));
