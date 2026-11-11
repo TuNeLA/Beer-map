@@ -64,6 +64,7 @@ NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
 run map        $A map-pw.js        # map lane: B9 icon size, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo (stub Mapbox without a token)
+NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food icons +20 % on the real map, no overlap, tap box, shots z15-17
 NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + B10 real zone pill at 360 px
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
@@ -117,6 +118,7 @@ run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens o
 run fixs       $B fixs-pw.js       # lane fixS (test teams): T-01 full block DM + friend row, T-05 send after Regler, T-09/T-18 Synlighet, T-12 chat menu, T-13 Gängkamp in Inkorg, T-16 counts, T-17 Dialekt, T-23
 run fixc       $B fixc-pw.js       # lane fixC (test teams round 2): N-03 chat menu in a short chat, N-04/N-18 Mina vänner live, N-15 join count, N-16 invite GPS, N-17 group row, N-20 Anta, N-19/T-22 copy
 run fixj       $B fixj-pw.js       # lane fixJ (test-team fixes): T-03 year once, T-04 first tap, T-06 no old morning card, T-07 beer moves check-in, T-20 lead, T-21 Barkungen week, T-22 copy
+run ownerfix   $B ownerfix-pw.js   # lane ownerfix (owner live test 11 Nov): Event sheet after Visa, Göm min pin = hide only, food icons, ticker gaps / one speed controller / reduced motion, price confirm + 1 rapport, Kontakt form
 run kpi        $B kpi-pw.js        # lane kpi: X9 Nyckeltal owner panel (owner_kpi 0460, "<3" masks, wrong key) + no emoji in safety.js UI chrome (ds12)
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk

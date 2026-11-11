@@ -60,7 +60,8 @@
     send: ["📤 Skicka tips", "📤 Send"],
     noBars: ["Inga krogar i närheten på kartan. Zooma in där eventet är.", "No bars near the map centre. Zoom in where it is."],
     errs: { invalid_event: ["Kolla titeln (3–80 tecken, inga länkar) och tiden (inom 60 dagar).", "Check the title (3–80 chars, no links) and the time (within 60 days)."],
-      slow_down: ["Lugn i stormen – max 5 tips om dan.", "Easy – max 5 tips a day."], outside_sweden: ["Den platsen hittar vi int'.", "Unknown place."],
+      slow_down: ["Lugn i stormen – vänta en halv minut.", "Easy – wait half a minute."], outside_sweden: ["Den platsen hittar vi int'.", "Unknown place."],
+      tip_limit: ["Max 3 tips om dan. Spara resten till i morgon, spanare.", "Max 3 tips a day. Save the rest for tomorrow."],   // ownerfix 7 (0497)
       error: ["Nåt gick snett. Försök igen.", "Something went wrong. Try again."] },
     // bar report
     rep: ["🚩 Fel plats / stängt?", "🚩 Wrong place / closed?"],
@@ -253,8 +254,13 @@
           p_place: String(b.name || "").slice(0, 60), p_lat: b.lat, p_lng: b.lng, p_kind: kind, p_url: link.value.trim() || null }); }).then(function (r) {
           go.disabled = false;
           if (r.tx) return;
-          if (r.error) { if (U.missing(r.error)) { off.ev = true; A.closeSheet(); return; } A.toast(errText(code(r.error, ["invalid_event", "slow_down", "outside_sweden"])), { err: true }); return; }
-          A.closeSheet(); A.toast(sv() ? pick("sent", T.sent) : T.sentEn[0]);
+          if (r.error) { if (U.missing(r.error)) { off.ev = true; A.closeSheet(); return; } A.toast(errText(code(r.error, ["invalid_event", "tip_limit", "slow_down", "outside_sweden"])), { err: true }); return; }
+          var dd = null; try { dd = A.parseData ? A.parseData(r.data) : r.data; } catch (x) {}
+          A.closeSheet();
+          // ownerfix 7 (0497): a known bar + a trusted sender (or a 2nd person with the same tip) = on the map at once
+          if (dd && dd.status === "ok") A.toast(dd.dup ? L("📅 Nån annan tipsade samma sak – nu syns det för alla. Tack!", "📅 Someone tipped the same – now everyone sees it. Thanks!") :
+            L("📅 Ute på kartan! Alla ser tipset nu.", "📅 On the map! Everyone sees it now."), { ms: 4500 });
+          else A.toast(sv() ? pick("sent", T.sent) : T.sentEn[0]);
           load(true, 7);
         });
       });
@@ -264,8 +270,8 @@
       if (near.length) body.appendChild(sel); else body.appendChild(A.el("p", { class: "muted", text: two("noBars") }));
       body.appendChild(chips);
       body.appendChild(A.el("label", { class: "ev-l", text: two("link") })); body.appendChild(link);
-      body.appendChild(A.el("p", { class: "muted ev-legal", text: L("Bara riktiga event. Inga erbjudanden om billig sprit (alkohollagen). Ägaren godkänner innan det syns för alla.",
-        "Real events only. No cheap-drink offers. The owner approves before everyone sees it.") }));
+      body.appendChild(A.el("p", { class: "muted ev-legal", text: L("Bara riktiga event. Inga erbjudanden om billig sprit (alkohollagen). Vid en känd krog syns det direkt för de flesta, annars kollar Generalen först. Max 3 tips om dan.",
+        "Real events only. No cheap-drink offers. At a known bar it shows at once for most people; else the owner checks first. Max 3 tips a day.") }));
       body.appendChild(go);
     }, { now: true });
   }

@@ -107,7 +107,7 @@
   }
   function quickRows(opts) {
     opts = opts || {}; var out = [];
-    if (myPin()) out.push(row("pin", T("vis.hide"), T("vis.hideSub"), function () { close(); try { api().showStopSheet(); } catch (e) {} }, "mn-vis-hide"));
+    if (myPin()) out.push(row("pin", T("vis.hide"), T("vis.hideSub"), function () { close(); try { var a = api(); (a.hidePin || a.showStopSheet)(); } catch (e) {} }, "mn-vis-hide"));   // ownerfix 2
     if (W("HOMEZONE") && W("HOMEZONE").open && (api() || {}).LIVE) out.push(row("home", T("vis.home"), homeSub(), function () { close(); try { W("HOMEZONE").open(); } catch (e) {} }, "mn-vis-home"));
     if (sosOk()) out.push(row("sos", T("vis.sos"), T("vis.sosSub"), function () { close(); openSos(); }, "mn-vis-sos"));
     if (!opts.noAll) out.push(row("gear", T("vis.all"), T("vis.allSub"), function () { close(); openSettings(); }, "mn-vis-all"));
@@ -189,7 +189,7 @@
     };
     paintTop();
     var out = [top];
-    if (myPin()) out.push(srow("pin", T("vis.hide"), T("vis.hideSub"), function () { try { api().showStopSheet(); } catch (e) {} }, "mn-vis-hide"));
+    if (myPin()) out.push(srow("pin", T("vis.hide"), T("vis.hideSub"), function () { try { var a = api(); (a.hidePin || a.showStopSheet)(); } catch (e) {} }, "mn-vis-hide"));   // ownerfix 2
     if (W("HOMEZONE") && W("HOMEZONE").open && (api() || {}).LIVE) out.push(srow("home", T("vis.home"), homeSub(), function () { try { W("HOMEZONE").open(); } catch (e) {} }, "mn-vis-home"));
     if (sosOk()) out.push(srow("sos", T("vis.sos"), T("vis.sosSub"), openSos, "mn-vis-sos"));
     return out;

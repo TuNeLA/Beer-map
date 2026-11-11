@@ -162,7 +162,8 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
           const s = await page.evaluate(() => ({ open: !document.getElementById("sheet").hidden, title: document.getElementById("sheet-title").textContent, menu: !!document.getElementById("pn-vis"),
             tab: (document.querySelector('#sheet-body [role="tab"][aria-selected="true"]') || {}).getAttribute ? document.querySelector('#sheet-body [role="tab"][aria-selected="true"]').getAttribute("data-pf") : null }));
           await H.closeSheet(page); await wait(page, 600); return s; };
-        let s = await open("mn-vis-hide"); ok(s.open && /Sluta dricka/.test(s.title) && !s.menu, "S2: Göm min pin → the stop sheet (menu closed)", s);
+        let s = await open("mn-vis-hide"); const hideT = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent).join(" | "));
+        ok(!(s.open && /Sluta dricka/.test(s.title)) && !s.menu && /gömd/i.test(hideT), "S2: Göm min pin → hides the pin only (ownerfix 2: no Sluta dricka sheet, menu closed, 'Pinnen ä gömd' toast)", { s, hideT });
         s = await open("mn-vis-home"); ok(s.open && /Hemzon/.test(s.title), "S2: Hemzon → the home zone sheet", s);
         s = await open("mn-vis-all"); ok(s.open && s.tab === "s", "S2: Alla inställningar → the Inställningar tab", s);
         if (sos) { s = await open("mn-vis-sos"); ok(s.open && s.title === "SOS", "S2: SOS → the SOS sheet (with the existing block)", s); }

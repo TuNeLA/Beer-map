@@ -405,6 +405,7 @@
     if (!A) return;
     A.openSheet(two("title"), function (body) {
       bodyEl = body; detailEl = null; detailId = null; tvOpen = {};
+      body.classList.remove("evs-in-detail");   // ownerfix 1: a detail view left over on the shared #sheet-body hid the list
       body.classList.add("evs-body");
       var bar = A.el("div", { class: "evs-bar" });
       segEl = A.el("div", { class: "ds-seg evs-time", role: "tablist", "aria-label": L("När", "When") });
@@ -440,7 +441,9 @@
         autoJump(); draw();
         loadGoing(false).then(function () { if (listBox && document.body.contains(listBox)) repaint(); });
       });
-    }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {} listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
+    }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {}
+      try { if (bodyEl) bodyEl.classList.remove("evs-in-detail", "evs-body"); } catch (e) {}   // ownerfix 1: #sheet-body is shared by every sheet
+      listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
   }
   function setTime(t, user) {
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;
@@ -756,6 +759,31 @@
     }
     if (!e.pending && window.EVENTS && window.EVENTS.go && !gs.goOff) acts.appendChild(A.btn(two("go"), "ds-btn ds-btn-secondary evs-go", function (ev) { rally(e, ev.currentTarget); }));
     detailEl.appendChild(acts);
+    if (e.source === "user" && !e.is_mine && !e.pending && !wrongOff) detailEl.appendChild(wrongBtn(e));   // ownerfix 7
+  }
+  // ownerfix 7 (0497): "Stämmer inte?" on a user tip. 3 different people → it is hidden; the owner sees it before that.
+  var wrongOff = false, WRONG_KEY = "olnu.evWrong";
+  function wrongDone() { try { return JSON.parse(localStorage.getItem(WRONG_KEY) || "[]") || []; } catch (x) { return []; } }
+  function wrongBtn(e) {
+    var id = String(e.id), done = wrongDone().indexOf(id) >= 0;
+    var b = A.btn(done ? L("Tack, vi kollar", "Thanks, we check") : L("Stämmer inte?", "Not right?"), "ds-btn ds-btn-ghost btn-block evs-wrong", function () {
+      if (b.disabled) return;
+      b.disabled = true;
+      A.rpc("report_event_tip", { p_id: +e.id }).then(function (r) {
+        if (r.error) {
+          var m = String((r.error && (r.error.message || r.error.details)) || "");
+          if (window.U && window.U.missing && window.U.missing(r.error)) { wrongOff = true; b.remove(); A.toast(L("Använd 🚩 Anmäl eventet istället.", "Use 🚩 Report instead."), { ms: 3500 }); return; }
+          b.disabled = /own_event/.test(m);
+          A.toast(/slow_down/.test(m) ? L("Lugn – många rapporter idag.", "Many reports today.") : /own_event/.test(m) ? L("Det ä ditt eget tips.", "That is your own tip.") : L("Gick int'. Försök igen.", "Failed. Try again."), { err: true });
+          return;
+        }
+        try { var l = wrongDone(); if (l.indexOf(id) < 0) l.push(id); localStorage.setItem(WRONG_KEY, JSON.stringify(l.slice(-100))); } catch (x) {}
+        b.textContent = L("Tack, vi kollar", "Thanks, we check");
+        A.toast(L("Tack! Säger tre stycken samma sak försvinner det.", "Thanks! When three people say so, it goes."), { ms: 3500 });
+      });
+    });
+    if (done) b.disabled = true;
+    return b;
   }
   function tellBox(e) {
     var box = A.el("div", { class: "evs-tell" });

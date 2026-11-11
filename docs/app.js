@@ -1587,15 +1587,49 @@
   function tickStart() {
     var track = $("ticker-track");
     track.classList.remove("moving"); track.style.animation = "none";
-    if (window.FX && window.FX.reduced && window.FX.reduced()) {
-      // Reduced motion: static list, the user can scroll it sideways.
-      track.innerHTML = ""; tickKickDone = false; tickIx = 0;
-      for (var i = 0; i < tickPending.length; i++) tickPiece();
-      track.style.transform = "none";
-      return;
-    }
+    if (window.FX && window.FX.reduced && window.FX.reduced()) { tickOneStart(track); return; }   // ownerfix 4c
     if (!track.firstChild) tickFill();
     if (!tickRaf) { tickLast = 0; tickRaf = requestAnimationFrame(tickFrame); }
+  }
+  // ownerfix 4c (owner 11 Nov: frozen on a PC with "Animation effects" off): reduced motion = ONE headline at a time,
+  // a soft opacity swap every 6 s (no sideways motion), tap = next line (pnds.js → PN_TICK_NEXT). Pauses with the
+  // controller (PNTICK: tap-stop / hold / open sheet) and in a hidden tab. A new poll only refills the queue.
+  var tickOneT = 0, TICK_ONE_MS = 6000;
+  function tickOneItem() {
+    if (tickIx >= tickPending.length) { tickIx = 0; newsDirty = true; try { renderTickerItemsOnly(); } catch (e) {} }
+    return tickPending[tickIx++] || { text: t("tickQuiet"), cls: "tk-quiet" };
+  }
+  function tickOneShow(track, fade) {
+    var x = tickOneItem(), n = el("span", { class: "tk-item tk-one-i" + (x.cls ? " " + x.cls : "") + (fade ? " tk-one-out" : ""), text: x.text, title: x.text });
+    track.innerHTML = ""; track.appendChild(n);
+    if (fade) requestAnimationFrame(function () { requestAnimationFrame(function () { n.classList.remove("tk-one-out"); }); });
+  }
+  function tickOneNext() {
+    var track = $("ticker-track"), cur = track && track.firstChild; if (!track) return;
+    clearInterval(tickOneT); tickOneT = setInterval(tickOneTick, TICK_ONE_MS);   // a tap starts a fresh 6 s
+    if (!cur || cur.classList.contains("tk-one-out")) { tickOneShow(track, true); return; }
+    cur.classList.add("tk-one-out");
+    setTimeout(function () { if ($("ticker-track").firstChild === cur) tickOneShow($("ticker-track"), true); }, 260);
+  }
+  function tickOneTick() {
+    var p = false; try { p = !!(window.PNTICK && window.PNTICK.paused()); } catch (e) {}
+    if (!p && !document.hidden) tickOneNext();
+  }
+  function tickOneStart(track) {
+    if (tickRaf) { cancelAnimationFrame(tickRaf); tickRaf = 0; }
+    track.style.transform = "none"; track.classList.add("tk-one");
+    try { track.parentNode.classList.add("tk-one-vp"); track.parentNode.scrollLeft = 0; } catch (e) {}
+    if (!document.getElementById("of-tick-one-css") && document.head) {
+      var st = document.createElement("style"); st.id = "of-tick-one-css";
+      st.textContent = ".ticker .tk-viewport.tk-one-vp{overflow:hidden}" +
+        ".tk-track.tk-one{width:100%;transform:none!important}" +
+        ".tk-track.tk-one>.tk-one-i{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.15;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 8px;opacity:1;transition:opacity .25s ease}" +
+        ".tk-track.tk-one>.tk-one-i.tk-one-out{opacity:0}";
+      document.head.appendChild(st);
+    }
+    window.PN_TICK_NEXT = tickOneNext;
+    if (!track.querySelector(".tk-one-i")) tickOneShow(track, false);
+    if (!tickOneT) tickOneT = setInterval(tickOneTick, TICK_ONE_MS);
   }
   // Build a fresh set of headlines for the queue without touching what is on screen.
   function renderTickerItemsOnly() {
@@ -1847,7 +1881,7 @@
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doSkal(x); });
     });
     root.querySelectorAll("[data-hidepin]").forEach(function (x) {
-      x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); map.closePopup(); showStopSheet(); });
+      x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); map.closePopup(); hidePin(); });   // ownerfix 2
     });
     root.querySelectorAll(".ci-btn").forEach(function (x) {
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doCheckin(x); });
@@ -2949,7 +2983,7 @@
       }
     });
   }
-  // "🙈 Göm min pin" (own-pin popup, Settings): the same choices as "Sluta dricka".
+  // "Sluta dricka" (#btn-stop): Jag är hemma / Öltorsk (+ a group notice). "🙈 Göm min pin" = hidePin() below (ownerfix 2).
   function showStopSheet() {
     if ($("btn-stop").disabled) return;
     openSheet(t("stopTitle"), function (body) {
@@ -2961,6 +2995,31 @@
     });
   }
   $("btn-stop").addEventListener("click", showStopSheet);
+  // ownerfix 2 (owner 11 Nov 21:27): "🙈 Göm min pin" = ONLY hide the pin. stop_beer keeps the beer count to 05:00;
+  // no group notice (notify-group), no "onStopped" hooks (those are for "Sluta dricka"). Undo: "Visa igen" = show_pin (0496).
+  function hidePin() {
+    var sb = $("btn-stop"); if (sb.disabled) return;
+    sb.disabled = true;
+    try { if (!$("sheet").hidden) closeSheet("pick"); } catch (e) {}
+    rpc("stop_beer").then(function (r) {
+      sb.disabled = false;
+      if (r.error) { toast(errMsg(r.error), { err: true }); return; }
+      refresh();
+      toast(tl("🙈 Pinnen ä gömd. Ölen räknas ändå, gänget får ingen notis.", "🙈 Pin hidden. Your beers still count, no notice to the group."),
+        { ms: 8000, id: "of-hide", cls: "of-hide", action: { label: tl("Visa igen", "Show again"), fn: showPinAgain } });
+    });
+  }
+  function showPinAgain() {
+    rpc("show_pin").then(function (r) {
+      if (r.error) {
+        var old = U.missing && U.missing(r.error);   // 0496 not run yet
+        toast(old ? tl("Posta nästa öl så syns pinnen igen.", "Post your next beer to show the pin again.") : errMsg(r.error), { err: !old, id: "of-hide", ms: 5000 });
+        return;
+      }
+      refresh();
+      toast(tl("📍 Pinnen syns igen.", "📍 Your pin is back."), { id: "of-hide", ms: 3500 });
+    });
+  }
 
   /* ---------- Sheet (v14: one sheet at a time + a queue) ----------
      A sheet that opens while "Var dricker du?" is open (lock) or while a beer is posted (busy) waits in
@@ -3565,7 +3624,7 @@
       }
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
       if (tab === "p") {
-      if (LIVE && myBeer() && !(window.PNVIS && window.PNVIS.settingsRows)) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", showStopSheet)]));   // lane main S2: Göm min pin is in Inställningar + the rail
+      if (LIVE && myBeer() && !(window.PNVIS && window.PNVIS.settingsRows)) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", hidePin)]));   // ownerfix 2   // lane main S2: Göm min pin is in Inställningar + the rail
       body.appendChild(el("h3", { text: t("yourName") }));
       var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
       var saveName = function () {
@@ -4524,7 +4583,7 @@
       authed: function () { return authed; }, client: function () { return client; }, prec: function () { return prec; },
       noAccount: function () { return publicOn && !authed; }, ensureAccount: function () { return signIn(); },   // ⚡ SPEED #6
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, validPos: U.validPos, showGroups: showGroups,
-      drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, me: function () { return meState; },
+      drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, hidePin: hidePin, me: function () { return meState; },
       pollV2: function () { return pollV2 === "on"; },
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
       checkins: function () { return checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return lastLoc; },

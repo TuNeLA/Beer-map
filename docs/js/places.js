@@ -113,13 +113,13 @@
       if (ob.ids[p.id]) continue;   // app.js draws it (people / check-ins / call-out there)
       var pt = map.latLngToContainerPoint([p.lat, p.lng]);
       var inView = pt.x >= -20 && pt.y >= -20 && pt.x <= W + 20 && pt.y <= H + 20;
-      var dot = { l: pt.x - 8, t: pt.y - 8, r: pt.x + 8, b: pt.y + 8 };
+      var dot = { l: pt.x - 10, t: pt.y - 10, r: pt.x + 10, b: pt.y + 10 };   // ownerfix 3: 20 px dot
       if (ob.rects.some(function (o) { return hit(dot, o); })) continue;
       if (kept.some(function (k) { return Math.abs(k.x - pt.x) < GAP_PX && Math.abs(k.y - pt.y) < GAP_PX; })) continue;
       kept.push(pt); if (inView) n++;
       var lbl = false;
       if (showLbl && p.name) {
-        var w = Math.min(120, String(p.name).length * 6.1 + 6), lr = { l: pt.x - w / 2, t: pt.y + 11, r: pt.x + w / 2, b: pt.y + 25 };
+        var w = Math.min(120, String(p.name).length * 6.1 + 6), lr = { l: pt.x - w / 2, t: pt.y + 13, r: pt.x + w / 2, b: pt.y + 27 };
         lbl = !ob.rects.some(function (o) { return hit(lr, o); }) && !labels.some(function (o) { return hit(lr, o); });
         if (lbl) labels.push(lr);
       }
@@ -129,8 +129,8 @@
     Object.keys(want).forEach(function (id) {
       var x = want[id]; if (!x.lbl) return;
       var pt = map.latLngToContainerPoint([x.p.lat, x.p.lng]), w = Math.min(120, String(x.p.name).length * 6.1 + 6);
-      var lr = { l: pt.x - w / 2, t: pt.y + 11, r: pt.x + w / 2, b: pt.y + 25 };
-      if (kept.some(function (k) { return (k.x !== pt.x || k.y !== pt.y) && hit(lr, { l: k.x - 9, t: k.y - 9, r: k.x + 9, b: k.y + 9 }); })) x.lbl = false;
+      var lr = { l: pt.x - w / 2, t: pt.y + 13, r: pt.x + w / 2, b: pt.y + 27 };
+      if (kept.some(function (k) { return (k.x !== pt.x || k.y !== pt.y) && hit(lr, { l: k.x - 11, t: k.y - 11, r: k.x + 11, b: k.y + 11 }); })) x.lbl = false;
     });
     // glfix / mapart: on the Mapbox map the restaurant dots are GL symbols UNDER the bar pills (glmap.js; GL collision hides
     // one that would touch a pill or a name). The DOM markers are then removed.
