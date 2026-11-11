@@ -1687,3 +1687,37 @@ body.x8-stale-on .offline-banner{display:none !important}
 body.x8-stale-on .dl-cap{margin-top:calc(var(--x8-h) + var(--pn-gap))}
 @media (prefers-reduced-motion:reduce){.x8-stale{animation:none}.x8-stale.x8-stale-out{transition:none}}
 /* lane:x8 END */
+/* lane:popfix START — bar popup on a PC (owner 11 Nov: width changed per open, "Visa / r dom / spo / rt", buttons on 2–3 lines,
+   dark cut corner without ✕). Cause: the popup shim (mbx.js Popup._updateLayout, Leaflet-style) measures the content with nowrap and
+   writes that width inline; the bar card's children set white-space:normal and overflow-wrap:anywhere, so the measured width was the
+   card's MIN-content (1 letter per line for labels), limited by the free space next to the popup pane = it changed with position and
+   content. Fix: one fixed card width from CSS (wins over the inline width, set before the shim measures, via :has(.bs)); words never
+   break; action / vote / event buttons never wrap; the ✕ sits inside the rounded card, above the sticky header. Phones (bar sheet,
+   .olnu-sheet) keep their layout; only the word / button rules apply there too. */
+:root{--pf-card:clamp(320px,calc(100vw - 24px),360px)}
+.leaflet-popup:not(.olnu-sheet):has(.bs)>.leaflet-popup-content-wrapper{width:var(--pf-card) !important;max-width:calc(100vw - 24px) !important;padding:0 !important;box-sizing:border-box}
+.leaflet-popup:not(.olnu-sheet):has(.bs) .leaflet-popup-content{width:auto !important;min-width:0 !important;margin:var(--ds-3) var(--ds-4) !important;
+  scrollbar-gutter:stable;scrollbar-width:thin}
+.leaflet-popup:not(.olnu-sheet):has(.bs) .leaflet-popup-content>.bs{min-width:0;max-width:100%}
+/* the ✕: inside the card (12 px from the top-right corner), on top of the sticky header, icon always visible */
+.leaflet-popup:not(.olnu-sheet):has(.bs)>a.leaflet-popup-close-button{position:absolute !important;top:var(--ds-3) !important;right:var(--ds-3) !important;left:auto !important;
+  z-index:5 !important;width:44px !important;height:44px !important;margin:0 !important;padding:0 !important;display:grid !important;place-items:center;
+  border-radius:var(--r-pill) !important;background:var(--ds-raised) !important;color:var(--ds-text) !important;box-shadow:none !important;text-decoration:none !important}
+.leaflet-popup:has(.bs)>a.leaflet-popup-close-button svg{width:20px;height:20px}
+.leaflet-popup:has(.bs)>a.leaflet-popup-close-button:not(:has(svg)){font:400 22px/44px var(--ds-sans) !important;color:var(--ds-text) !important}
+.leaflet-popup:not(.olnu-sheet):has(.bs) .pn-bs7 .bs-head{padding-right:56px !important}
+/* words never break inside a word (a word longer than the whole line may still wrap = break-word, never "anywhere") */
+.leaflet-popup:has(.bs) .bs,.leaflet-popup:has(.bs) .bs *{overflow-wrap:break-word !important;word-break:normal !important;hyphens:manual}
+/* Info: "Visar dom sport här?" — the label column takes the free width (min 6em), the two thumb buttons keep their width */
+.pn-bs7 .pn-bs-info .sp-tag .sp-l{flex:1 1 auto !important;min-width:6em}
+.pn-bs7 .pn-bs-info .sp-tag .sp-v{flex:0 0 auto;display:flex;gap:var(--ds-2)}
+.pn-bs7 .pn-bs-info .sp-tag .sp-b{flex:0 0 auto !important;min-width:56px !important;padding:0 var(--ds-2) !important;white-space:nowrap !important}
+.pn-bs7 .pn-bs-info .pp-fold>summary .pp-sec-h{min-width:6em}
+/* action row: Checka in + Jag är på väg on ONE line each, equal height; equal widths while they fit, else the longer label gets more */
+.pn-bs7 .pp-act.pn-bs-act{grid-template-columns:repeat(2,minmax(min-content,1fr)) !important;align-items:stretch !important}
+.pn-bs7 .pn-bs-act .ci-btn,.pn-bs7 .pn-bs-act .ci-out,.pn-bs7 .pn-bs-act .eta-go,.pn-bs7 .pn-bs-act .pa-kommer{white-space:nowrap !important;padding:0 var(--ds-3) !important}
+/* event line in the card ("adadad 22:00 [Vi går!] [✉]"): the buttons keep one line, the title wraps between words */
+.pn-bs7 .ev-line.sa-evl{gap:var(--ds-2)}
+.pn-bs7 .ev-line.sa-evl>.btn{white-space:nowrap !important}
+.pn-bs7 .ev-line.sa-evl>.ev-l-t{min-width:4em}
+/* lane:popfix END */
