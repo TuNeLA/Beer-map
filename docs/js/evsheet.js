@@ -346,7 +346,9 @@
   var groupsCache = null, groupsBusy = false;
   function tell(e, g) {
     tellFor = null;
-    A.rpc("event_go_tell", { p_event_id: +e.id }).then(function (r) {
+    // left T-05b: Regler first (before event_go_tell marks "told"), THEN the post ("Int' nu" = nothing sent)
+    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? A.rpc("event_go_tell", { p_event_id: +e.id }) : null; }).then(function (r) {
+      if (!r) return;
       if (r.error && !U.missing(r.error)) { A.toast(two("err"), { err: true }); return; }
       var d = r.error ? { first: true } : A.parseData(r.data) || {};
       if (d.first === false) { A.toast(two("tellDone")); if (detailOpen()) drawDetail(); return; }

@@ -592,7 +592,9 @@
       var st = document.createElement("style"); st.id = "zones-css"; st.textContent = CSS; document.head.appendChild(st);
       setTimeout(function () { credit(); check(); }, 0);
     },
-    onPoll: function () { ask(false, wanted() ? AGE_MS : AGE_IN); if (wanted()) paint(); pill(true); },   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
+    // left Z1: ask a little before the age limit (10 s zoomed in, 5 s zoomed out): the ask always falls on the same poll as
+    // app.js's poll plan (zone_counts then rides the poll bundle, no request of its own)
+    onPoll: function () { ask(false, wanted() ? AGE_MS - 5000 : AGE_IN - 10000); if (wanted()) paint(); pill(true); },   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
     onPublicPoll: function () { ask(false, wanted() ? AGE_MS : AGE_IN); pill(true); },   // fixM T-15
     // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
     pill: function () { if (!pillHTML()) return null; pill(false); return fitted; },   // fixM T-15: every zoom (null only on an old server)

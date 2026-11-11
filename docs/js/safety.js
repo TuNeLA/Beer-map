@@ -179,7 +179,8 @@
     c.appendChild(h("p", { class: "muted", html: "Frågor eller anmälan utanför appen: <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
   }
   // Unknown server state (old server, offline, first second after start) = no gate; the server answer decides.
-  function termsOk() { return !stateCache || ls(TERMS_KEY) === String(TERMS_VER) || (stateCache.terms_ver | 0) >= TERMS_VER; }
+  var termsMem = false;   // left T-05b: accepted in this page life (also when localStorage is blocked: never ask twice for one post)
+  function termsOk() { return termsMem || !stateCache || ls(TERMS_KEY) === String(TERMS_VER) || (stateCache.terms_ver | 0) >= TERMS_VER; }
   var termsWait = null;
   function ensureTerms() {
     if (termsOk() || off.terms) return Promise.resolve(true);
@@ -191,7 +192,7 @@
         var no = h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Int' nu" });
         yes.addEventListener("click", function () {
           yes.disabled = true;
-          ls(TERMS_KEY, String(TERMS_VER));
+          termsMem = true; ls(TERMS_KEY, String(TERMS_VER));
           (origRpc ? origRpc("accept_terms", { p_ver: TERMS_VER }) : Promise.resolve(null)).then(function () {}, function () {});
           closeOverlay(); termsWait = null; resolve(true);
         });
@@ -525,6 +526,8 @@
     ageWidget: ageWidget, ensureTerms: ensureTerms, showRules: showRules, rulesBody: rulesBody,
     report: reportSheet, block: blockSheet, actions: actions, personActions: personActions,
     sos112: sos112, maskPins: maskPins, store: store, SUPPORT: SUPPORT, _state: function () { return stateCache; },
+    // left T-05b: true = this post RPC (or any post, fn empty) must wait for Regler first (app.js rpcNet1 + the post buttons ask ensureTerms())
+    needTerms: function (fn) { return (!fn || !!POST_FNS[fn]) && !termsOk() && !off.terms; },
     _beers: function () { return A && A.beers ? A.beers() : []; }   // tests only
   };
 })();

@@ -407,7 +407,7 @@
     return m ? m[0] : null;
   }
   function hostJam(g) {
-    var el = A.el;
+    var el = A.el, jamBusy = false;   // left T-05b: one post only
     A.openSheet(t("jamTitle"), function (body) {
       body.appendChild(el("ol", { class: "jam-steps" }, (t("jamSteps") || []).map(function (x) { return el("li", { text: x }); })));
       body.appendChild(el("div", { class: "row", style: "margin:8px 0" }, [el("a", { class: "btn btn-block jam-btn", href: "https://open.spotify.com/", target: "_blank", rel: "noopener noreferrer", text: t("jamOpen") })]));
@@ -420,7 +420,9 @@
         var link = jamLink(inp.value);
         if (!link) { A.toast(t("jamBad"), { err: true }); return; }
         var text = t("jamMsg", link);
-        call("post_group_msg", { p_group_id: g.id, p_body: text.length <= 140 ? text : link }).then(function (r) {
+        if (jamBusy) return; jamBusy = true;
+        Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? call("post_group_msg", { p_group_id: g.id, p_body: text.length <= 140 ? text : link }) : { tx: 1 }; }).then(function (r) {
+          jamBusy = false; if (r.tx) return;
           if (r.error) { A.toast(t("chatFail"), { err: true }); return; }
           A.invoke("notify-group", { event: "msg", group_id: g.id });
           A.toast(t("jamDone")); openChat(g);

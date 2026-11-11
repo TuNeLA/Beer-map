@@ -160,8 +160,9 @@
     var body = fill(two("goBody"), { title: e.title, tid: tid }).slice(0, 100);
     var params = { p_group_id: g.id, p_body: body, p_place: String(bar).slice(0, 60) };
     if (isFinite(e.lat) && isFinite(e.lng) && e.lat != null) { params.p_lat = e.lat; params.p_lng = e.lng; }
-    A.rpc("create_rally", params).then(function (r) {
+    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? A.rpc("create_rally", params) : { tx: 1 }; }).then(function (r) {   // left T-05b
       if (b) b.disabled = false;
+      if (r.tx) return;
       if (r.error) { var c = U.errCode(r.error); A.toast(c === "slow_down" ? L("Lugn – en inkallelse per 3 min.", "Easy – one call-out per 3 min.") : errText("error"), { err: true }); return; }
       var j = A.parseData(r.data);
       if (j && j.id) A.invoke("notify-group", { event: "rally", rally_id: j.id });
@@ -247,9 +248,11 @@
         var b = near.filter(function (x) { return String(x.id) === sel.value; })[0];
         if (!b) { A.toast(two("noBars"), { err: true }); return; }
         go.disabled = true;
-        A.rpc("submit_event", { p_title: title.value, p_starts_at: isFinite(at) ? at.toISOString() : null, p_bar_id: String(b.id),
-          p_place: String(b.name || "").slice(0, 60), p_lat: b.lat, p_lng: b.lng, p_kind: kind, p_url: link.value.trim() || null }).then(function (r) {
+        // left T-05b: Regler first, THEN the post ("Int' nu" = nothing sent, the form stays)
+        Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return !okT ? { tx: 1 } : A.rpc("submit_event", { p_title: title.value, p_starts_at: isFinite(at) ? at.toISOString() : null, p_bar_id: String(b.id),
+          p_place: String(b.name || "").slice(0, 60), p_lat: b.lat, p_lng: b.lng, p_kind: kind, p_url: link.value.trim() || null }); }).then(function (r) {
           go.disabled = false;
+          if (r.tx) return;
           if (r.error) { if (U.missing(r.error)) { off.ev = true; A.closeSheet(); return; } A.toast(errText(code(r.error, ["invalid_event", "slow_down", "outside_sweden"])), { err: true }); return; }
           A.closeSheet(); A.toast(sv() ? pick("sent", T.sent) : T.sentEn[0]);
           load(true, 7);
