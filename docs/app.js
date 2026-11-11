@@ -312,7 +312,8 @@
     if (h && !h.used && t - h.at < 15000) { h.used = true; bundleStats.preUsed++; return h.p; }
     return new Promise(function (res) {
       l.q.push({ n: name, p: params, k: k, res: res });
-      var ms = name === "group_msgs" || inTapEv() || t - chatWriteAt < 5000 ? 30 : t - l.at < LANE_OPEN_MS ? 150 : 0;
+      // WARM's revalidation (bgCall) goes soon too: a screen read of the same key waits on it (warm.js inflight)
+      var ms = name === "group_msgs" || inTapEv() || bgCall || t - chatWriteAt < 5000 ? 30 : t - l.at < LANE_OPEN_MS ? 150 : 0;
       if (ms) laneSoon(l, ms);
       else if (!l.st) l.st = setTimeout(function () { l.st = 0; laneGo(l); }, LANE_MAX_MS);   // waits for the next tick
     });
