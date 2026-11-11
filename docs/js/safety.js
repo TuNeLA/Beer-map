@@ -36,7 +36,7 @@
     return e;
   }
   function toast(msg, o) { if (A && A.toast) A.toast(msg, o || {}); }
-  // followups: PNI icons in this module's own overlay + buttons (no 🚩 / 🚫 emoji as icons; toast text keeps its emoji)
+  // followups: PNI icons in this module's own overlay + buttons (no 🚩 / 🚫 emoji as icons). kpi (ds12): no emoji in labels, headings or toasts either
   function ic(n, cls) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, cls == null ? "pi-lead" : cls) : ""; } catch (e) { return ""; } }
   function icT(n, t) { return ic(n) + esc(t); }
   function missing(err) { return !!(err && U && U.missing && U.missing(err)); }
@@ -81,7 +81,7 @@
       h("button", { type: "button", class: "btn btn-small", "data-bd": "0", text: "Nej, inte än" })
     ]);
     var msg = h("p", { class: "sf-age-msg", "aria-live": "polite" });
-    box.appendChild(h("label", { class: "sf-age-l", for: "sf-age-year", text: "🎂 Vilket år ä du född?" }));
+    box.appendChild(h("label", { class: "sf-age-l", for: "sf-age-year", text: "Vilket år ä du född?" }));
     box.appendChild(sel); box.appendChild(bday); box.appendChild(msg);
     box.appendChild(h("p", { class: "sf-age-note muted", text: "Vi sparar bara att du ä 18+, int' året." }));
     function set(ok) { if (cb) { cb.checked = !!ok; cb.dispatchEvent(new Event("change")); } }
@@ -91,7 +91,7 @@
       var ok = d > 18 || (d === 18 && had);
       bday.hidden = d !== 18;
       if (ok) {
-        msg.className = "sf-age-msg ok"; msg.textContent = "✅ Välkommen in, soldat.";
+        msg.className = "sf-age-msg ok"; msg.innerHTML = icT("check", "Välkommen in, soldat.");
         ls(AGE_KEY, "1"); ls(AGE_NO, null);
         ss(AGE_PEND, JSON.stringify({ y: year, b: d === 18 ? !!had : null }));
         set(true);
@@ -188,7 +188,7 @@
     termsWait = new Promise(function (resolve) {
       overlay(function (c) {
         rulesBody(c);
-        var yes = h("button", { type: "button", class: "btn btn-amber btn-block sf-accept", text: "✅ Jag godkänner" });
+        var yes = h("button", { type: "button", class: "btn btn-amber btn-block sf-accept", html: icT("check", "Jag godkänner") });
         var no = h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Int' nu" });
         yes.addEventListener("click", function () {
           yes.disabled = true;
@@ -272,7 +272,7 @@
             }
             closeOverlay();
             var d = data(r) || {};
-            toast(d.hidden ? "🚩 Tack! Inlägget ä dolt tills vi kollat." : "🚩 Tack! Vi kollar inom 24 timmar.", { ms: 4500 });
+            toast(d.hidden ? "Tack! Inlägget ä dolt tills vi kollat." : "Tack! Vi kollar inom 24 timmar.", { ms: 4500 });
             if (also && also.checked) doBlock(t);
           });
       });
@@ -423,7 +423,7 @@
   function sos112(container) {
     if (!container || container.querySelector(".sf-112")) return;
     var box = h("div", { class: "sf-112" }, [
-      h("a", { class: "btn btn-danger btn-block sf-112-btn", href: "tel:112", text: "📞 Ring 112" }),
+      h("a", { class: "btn btn-danger btn-block sf-112-btn", href: "tel:112", html: icT("phone", "Ring 112") }),
       h("p", { class: "sf-112-note", text: "Appen larmar inte själv." })
     ]);
     container.insertBefore(box, container.firstChild);
@@ -466,7 +466,7 @@
       var nn = Array.isArray(d.notices) ? d.notices : [];
       if (nn.length) {
         overlay(function (c) {
-          c.appendChild(h("h2", { text: "📣 Från PintsNow" }));
+          c.appendChild(h("h2", { html: icT("megaphone", "Från PintsNow") }));
           nn.forEach(function (x) { c.appendChild(h("p", { text: String(x.text || "") })); });
           c.appendChild(h("p", { class: "muted", html: "Tycker du att det blev fel? Skriv till <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>." }));
           c.appendChild(h("button", { type: "button", class: "btn btn-amber btn-block", text: "Uppfattat", onclick: function () { closeOverlay(); rpc("safety_state", { p_seen: true }); } }));
@@ -492,7 +492,7 @@
             var btn = e.currentTarget; btn.disabled = true;
             rpc("unblock_user", { p_id: b.id }).then(function (x) {
               if (x.error) { btn.disabled = false; toast("Det gick int'. Försök igen.", { err: true }); return; }
-              li.remove(); toast("✅ " + (b.name || "") + " ä int' blockerad längre.");
+              li.remove(); toast((b.name || "Personen") + " är inte blockerad längre.");
               if (A && A.refresh) A.refresh();
             });
           } }));
@@ -504,12 +504,12 @@
   function settingsSheet(body) {
     if (!body || body.querySelector(".sf-set")) return;
     var box = h("div", { class: "sf-set" });
-    box.appendChild(h("h3", { text: "🛡️ Trygghet" }));
+    box.appendChild(h("h3", { html: icT("shield", "Trygghet") }));
     box.appendChild(h("p", { class: "sf-line", text: "Vi räknar kvällar och kompisar, inte glas." }));
     var row = h("div", { class: "row sf-set-row" });
-    row.appendChild(h("button", { type: "button", class: "btn btn-small", text: "📜 Regler", onclick: showRules }));
+    row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("rules", "Regler"), onclick: showRules }));
     if (A && A.LIVE && A.authed && A.authed()) row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("block", "Blockerade"), onclick: blockedSheet }));
-    row.appendChild(h("a", { class: "btn btn-small", href: "mailto:" + SUPPORT, text: "✉️ Kontakt" }));
+    row.appendChild(h("a", { class: "btn btn-small", href: "mailto:" + SUPPORT, html: icT("mail", "Kontakt") }));
     box.appendChild(row);
     body.appendChild(box);
   }
