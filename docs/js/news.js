@@ -129,6 +129,9 @@
      4. The belt (freshBelt): pieces of the OLD snapshot that are not on screen yet are dropped when a new one comes;
         an old quiet line still on screen fades when the new snapshot has people. */
   var snap = { n: 0, pins: 0, cis: 0, total: null, at: 0 }, curCenter = null, barLL = {};
+  // fixMo N-10: people = DISTINCT people in pins + check-ins (the same helper as the bar label: PNCROWD.people)
+  function ppl(pins, cis) { pins = pins || []; cis = cis || []; try { if (window.PNCROWD && window.PNCROWD.people) return window.PNCROWD.people(pins, cis); } catch (e) {} return Math.max(pins.length, cis.length); }
+  function ciCanon(id) { try { return window.BARS && window.BARS.canonId ? String(window.BARS.canonId(id)) : String(id); } catch (e) { return String(id); } }
   var DISTRICTS = [   // rough boxes [s, w, n, e]; owner: widen here
     { k: "soder", re: /(^|[^A-Za-zÅÄÖåäöé])(Söder|Södermalm|SoFo|Medborgarplatsen|Mariatorget|Nytorget|Hornstull|Skanstull|Mosebacke|Zinkensdamm)(?![a-zåäö])/, b: [59.3045, 18.0200, 59.3225, 18.1090] },
     { k: "ostermalm", re: /(^|[^A-Za-zÅÄÖåäöé])(Stureplan|Östermalm\w*|Ö-malm|Karlaplan|Stureplans?)(?![a-zåäö])/, b: [59.3320, 18.0680, 59.3520, 18.1150] },
@@ -258,14 +261,15 @@
     var hh = hourNow(now), myName = ctx.myName || t("you");
     // Where is each named person? name -> bar name (pins with a bar, then check-ins).
     var barOfName = {}, skalOfName = {};
-    beers.forEach(function (b) {
-      var nm = b.is_mine ? myName : b.friend_name; if (!nm) return;
-      skalOfName[nm] = (skalOfName[nm] | 0) + (b.skal_count | 0);
-      if (b.bar_id != null && b.snap !== "area" && window.BARS) { var bar = window.BARS.byId(b.bar_id); if (bar && bar.name) barOfName[nm] = bar.name; }
-    });
+    // fixMo N-10: a check-in is the person's own word for where they are: it wins over a snapped pin
     (ctx.checkins || []).forEach(function (c) {
       var nm = c.is_mine ? myName : c.is_friend ? c.name : null;
       if (nm && c.bar_name && !barOfName[nm]) barOfName[nm] = c.bar_name;
+    });
+    beers.forEach(function (b) {
+      var nm = b.is_mine ? myName : b.friend_name; if (!nm) return;
+      skalOfName[nm] = (skalOfName[nm] | 0) + (b.skal_count | 0);
+      if (!barOfName[nm] && b.bar_id != null && b.snap !== "area" && window.BARS) { var bar = window.BARS.byId(b.bar_id); if (bar && bar.name) barOfName[nm] = bar.name; }
     });
     var groups = {}, order = [];
     (ctx.home || []).forEach(function (r) {
@@ -277,7 +281,7 @@
     order.forEach(function (g) {
       var nameOf = function (r) { return r.is_me ? myName : r.name; };
       var drinks = function (r) { return Math.max(0, r.beers | 0) + Math.max(0, r.others | 0); };
-      var out = g.m.filter(function (r) { return r.live || r.was_out || drinks(r) > 0; });
+      var out = g.m.filter(function (r) { return r.live || r.was_out || drinks(r) > 0 || !!barOfName[nameOf(r)]; });   // fixMo N-10: checked in = out
       var total = 0; out.forEach(function (r) { total += drinks(r); });
       var G = g.name;
       if (out.length >= 2 && total >= 2) add("groupTotal", { group: G, n: total, k: out.length }, 1, "tk-friend");
@@ -317,8 +321,11 @@
     // Town (anonymous): the town of the map/user centre.
     var c = ctx.center, town = c && townAt(c.lat, c.lng);
     if (!town) return;
-    var byTown = {}, k = 0, barSet = {}, ranking = [];
-    beers.forEach(function (b) { var tw = townAt(b.lat, b.lng); if (tw) byTown[tw] = (byTown[tw] | 0) + 1; });
+    var byTown = {}, k = 0, barSet = {}, ranking = [], tP = {}, tC = {};
+    // fixMo N-10: people per town = distinct people in pins + check-ins (was pins only)
+    beers.forEach(function (b) { var tw = townAt(b.lat, b.lng); if (tw) (tP[tw] = tP[tw] || []).push(b); });
+    (ctx.checkins || []).forEach(function (q) { if (!q || !isFinite(q.lat)) return; var tw = townAt(+q.lat, +q.lng); if (tw) (tC[tw] = tC[tw] || []).push(q); });
+    Object.keys(tP).concat(Object.keys(tC)).forEach(function (tw) { if (byTown[tw] == null) byTown[tw] = ppl(tP[tw], tC[tw]); });
     k = byTown[town] | 0;
     Object.keys(per || {}).forEach(function (id) {
       var a = per[id]; if (!a.bar || !a.bar.name || townAt(a.bar.lat, a.bar.lng) !== town) return;
@@ -362,8 +369,9 @@
     // fixM T-14: the one snapshot this build reads (pins + check-ins near the centre, the header's live_total)
     var c0 = ctx.center || null, nearOf = function (p) { return !c0 || (isFinite(p.lat) && U.haversine(c0.lat, c0.lng, +p.lat, +p.lng) <= NEAR_M); };
     curCenter = c0; hourCur = hourNow(now); barLL = {};
-    snap = { pins: beers.filter(nearOf).length, cis: (ctx.checkins || []).filter(function (c) { return c && nearOf(c); }).length, total: ctx.liveTotal != null ? ctx.liveTotal | 0 : null, at: now.getTime() };
-    snap.n = Math.max(snap.pins, snap.cis);
+    var nearP = beers.filter(nearOf), nearC = (ctx.checkins || []).filter(function (c) { return c && nearOf(c); });
+    snap = { pins: nearP.length, cis: nearC.length, total: ctx.liveTotal != null ? ctx.liveTotal | 0 : null, at: now.getTime() };
+    snap.n = ppl(nearP, nearC);   // fixMo N-10: distinct people (was max(pins, check-ins))
     (ctx.checkins || []).forEach(function (c) { if (c && c.bar_name && isFinite(c.lat)) barLL[c.bar_name] = { lat: +c.lat, lng: +c.lng }; });
     function add(k, d, imp, cls) {
       if (QUIET[k] && snap.n >= QUIET[k]) return;   // fixM T-14: no "Ingen ute" next to people / check-ins near
@@ -474,9 +482,11 @@
         ciFriends++;
         add("checkin", { name: c.name, bar: c.bar_name }, 2, "tk-friend");
       }
-      var key = String(c.bar_id || c.bar_name);
-      (ciBars[key] = ciBars[key] || { bar: c.bar_name, k: 0 }).k++;
+      var key = c.bar_id != null ? ciCanon(c.bar_id) : String(c.bar_name);
+      (ciBars[key] = ciBars[key] || { bar: c.bar_name, k: 0, cis: [] }).k++;
+      ciBars[key].cis.push(c);
     });
+    Object.keys(ciBars).forEach(function (key) { var a = per[key]; ciBars[key].k = ppl(a ? a.beers : [], ciBars[key].cis); });   // fixMo N-10
     Object.keys(ciBars).map(function (k) { return ciBars[k]; })
       .filter(function (x) { return x.k >= 2; })
       .sort(function (a, b) { return b.k - a.k; }).slice(0, 2)
@@ -488,8 +498,10 @@
     } catch (e) {}
 
     // Bars with 2+ people.
-    bars.sort(function (a, b) { return b.beers.length - a.beers.length; }).slice(0, 2).forEach(function (a) {
-      add("barReport", { bar: a.bar.name, k: a.beers.length }, 0);
+    var cisOfBar = function (a) { var id = a.bar && a.bar.id != null ? ciCanon(a.bar.id) : null; return id ? (ctx.checkins || []).filter(function (c) { return c && c.bar_id != null && ciCanon(c.bar_id) === id; }) : []; };
+    bars.forEach(function (a) { a.k = ppl(a.beers, cisOfBar(a)); });   // fixMo N-10: distinct people at the bar
+    bars.sort(function (a, b) { return b.k - a.k; }).slice(0, 2).forEach(function (a) {
+      add("barReport", { bar: a.bar.name, k: a.k }, 0);
       // Beers per hour at the bar (estimate): each person's beers / hours since their first beer tonight.
       var rate = 0;
       a.beers.forEach(function (b) {
@@ -497,7 +509,7 @@
         rate += (b.beer_count | 0) / h;
       });
       rate = Math.round(rate);
-      if (rate >= 4) add(rate >= 30 ? "barRateHigh" : "barRate", { bar: a.bar.name, r: rate, k: a.beers.length }, rate >= 30 ? 2 : 1);
+      if (rate >= 4) add(rate >= 30 ? "barRateHigh" : "barRate", { bar: a.bar.name, r: rate, k: a.k }, rate >= 30 ? 2 : 1);
       var str = a.beers.filter(function (b) { return !b.is_mine && !b.friend_name; })
         .sort(function (x, y) { return (y.beer_count | 0) - (x.beer_count | 0); })[0];
       if (str) add("barStranger", { bar: a.bar.name, n: str.beer_count | 0, anon: pick(anon) }, 0);
@@ -517,9 +529,10 @@
     var c = ctx.center, stad = (c && townAt(c.lat, c.lng)) || t("newsTown");
     var near = c ? beers.filter(function (b) { return U.haversine(c.lat, c.lng, b.lat, b.lng) <= NEAR_M; }) : beers;
     var hotNear = near.filter(function (b) { return U.level(b.beer_count) > 0; }).length;
-    if (near.length < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
-    if (!near.length && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet");   // tx05: real line first
-    if (near.length >= 1 && (hourNow(now) >= 15 || hourNow(now) < 4)) add("forecast", { stad: stad, n: near.length, p: Math.min(99, near.length * 9 + hotNear * 10) }, 0);
+    var nearN = c ? snap.n : ppl(beers, ctx.checkins);   // fixMo N-10: distinct people near (pins + check-ins)
+    if (nearN < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
+    if (!nearN && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet");   // tx05: real line first
+    if (nearN >= 1 && (hourNow(now) >= 15 || hourNow(now) < 4)) add("forecast", { stad: stad, n: nearN, p: Math.min(99, nearN * 9 + hotNear * 10) }, 0);
     // Two random "filler" headlines every round: the biggest source of variety.
     add("random", { stad: stad }, 0); add("random", { stad: stad }, 0);
     // tx04: morning 05–11, day 11–17, pre-evening 17–20 (t1 was 05–20: "förfesten har börjat" at breakfast).

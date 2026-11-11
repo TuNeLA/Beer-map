@@ -19,7 +19,7 @@
   var SEEN = "olnu.momSeen", POLL_MS = 60000, FLAGS_MS = 10 * 60000;
   var P = {
     "mom.vad": "Kvällens vad", "mom.halvtid": "Halvtid", "mom.bord": "Uppdrag vid bordet", "mom.agent": "Hemlig agent",
-    "mom.chip.vad": "Kvällens vad", "mom.chip.halvtid": "Halvtid", "mom.chip.bord": "Uppdrag", "mom.chip.agent": "Ditt uppdrag", "mom.chip.vote": "Rösta",
+    "mom.chip.vad": "Kvällens vad", "mom.chip.halvtid": "Halvtid", "mom.chip.bord": "Uppdrag", "mom.chip.agent": "Ditt uppdrag", "mom.chip.vote": "Rösta", "mom.chip.reveal": "Avslöja agenten",
     "mom.q.first_home": "Vem går hem först?", "mom.q.last_home": "Vem ä sist kvar på skeppet?", "mom.q.bars": "Hur många krogar blir det för gänget?",
     "mom.q.all_come": "Kommer alla som sa Ja?", "mom.q.skal_n": "Hur många skål får gänget?", "mom.q.first_out": "Vem ä först ute?",
     "mom.q.last_home_t": "När ä sista person hemma?",
@@ -32,6 +32,7 @@
     "mom.toast.vad": ["Kvällens vad: {q}", "Gänget ska ut. Kvällens vad: {q}"],
     "mom.toast.halvtid": "Halvtid! {q}", "mom.toast.bord": "{n} i plutonen på {bar}. Uppdrag!",
     "mom.toast.agent": "Du ä kvällens hemliga agent. Avslöja dig int'!", "mom.toast.vote": "Vem ä agenten? Rösta nu.",
+    "mom.toast.reveal": "Du ä värd. Avslöja agenten när du vill.",
     "mom.toast.right": "{names} hade rätt i Kvällens vad!", "mom.answerBtn": "Svara",
     "mom.bord.lead": "{n} i plutonen på {bar}. Ett uppdrag till bordet:", "mom.bord.done": "Klart {t} · {name} tryckte",
     "mom.bord.expired": "Uppdraget gick ut. Nästa gång.", "mom.done": "Klart",
@@ -118,10 +119,13 @@
     if (r.kind === "bord") return r.phase === "open" ? "bord" : "";
     if (r.kind === "agent") {
       if (r.agent_me) return r.phase !== "done" && !r.done_at ? "agent" : "";
-      return r.phase === "vote" && !r.mine ? "vote" : "";
+      if (r.phase === "vote" && !r.mine) return "vote";
+      return r.host_me && r.phase === "secret" ? "reveal" : "";   // fixMo N-05: the host (never the agent) can reveal early
     }
     return "";
   }
+  // fixMo N-05: rounds that wait for me, the open-ended "reveal" (host, all evening) last
+  function needing() { var a = rounds.filter(function (x) { return need(x); }); return a.filter(function (x) { return need(x) !== "reveal"; }).concat(a.filter(function (x) { return need(x) === "reveal"; })); }
   function byId(id) { for (var i = 0; i < rounds.length; i++) if (String(rounds[i].id) === String(id)) return rounds[i]; return null; }
 
   /* ---------- data ---------- */
@@ -163,7 +167,7 @@
         seen[key] = Date.now(); dirty = true;
         var q = r.q ? T("mom.q." + r.q) : "";
         var txt = n === "vad" ? T("mom.toast.vad", { q: q, _seed: r.id }) : n === "halvtid" ? T("mom.toast.halvtid", { q: q })
-          : n === "bord" ? T("mom.toast.bord", { n: r.n_who, bar: r.bar_name || "" }) : n === "agent" ? T("mom.toast.agent") : T("mom.toast.vote");
+          : n === "bord" ? T("mom.toast.bord", { n: r.n_who, bar: r.bar_name || "" }) : n === "agent" ? T("mom.toast.agent") : n === "reveal" ? T("mom.toast.reveal") : T("mom.toast.vote");
         A.toast(txt, { ms: 9000, cls: "mo-toast", action: { label: T("mom.answerBtn"), fn: function () { openCard(r.id); } } });
       }
       var prev = null; old.forEach(function (o) { if (o.id === r.id) prev = o; });
@@ -202,7 +206,7 @@
   var openId = null;
   function openCard(id) {
     var r = id != null ? byId(id) : null;
-    if (!r) r = rounds.filter(function (x) { return need(x); })[0] || rounds[rounds.length - 1];
+    if (!r) r = needing()[0] || rounds[rounds.length - 1];
     if (!r || !A) return;
     openId = r.id;
     A.openSheet(T("mom." + r.kind), function (body) {
@@ -317,14 +321,14 @@
             !a.done ? T("mom.ag.notDone") : a.won ? T("mom.ag.won") : T("mom.ag.lost", { n: a.right | 0, m: a.votes | 0 })].filter(Boolean) });
       }
     });
-    return out.slice(0, 3);
+    return out;   // fixMo N-07: every moment of the night (max 5 a night: vad, halvtid, 2 bord, agent)
   }
 
   /* ---------- group page (the social lane places these) ---------- */
   // the moment of this group that waits for me (a row, tap = the card), or null
   function groupCard(g) {
     if (off || !on || !g) return null;
-    var r = rounds.filter(function (x) { return String(x.group_id) === String(g.id) && need(x); })[0];
+    var r = needing().filter(function (x) { return String(x.group_id) === String(g.id); })[0];
     if (!r) return null;
     var b = document.createElement("button");
     b.type = "button"; b.className = "mo-gcard";
@@ -397,10 +401,10 @@
     },
     chipHTML: function () {
       if (off || !on) return "";
-      var r = rounds.filter(function (x) { return need(x); })[0]; if (!r) return "";
+      var r = needing()[0]; if (!r) return "";
       var n = need(r);
       return '<button type="button" class="hx-chip mo-chip" data-hx="mom" data-mo="' + esc(String(r.id)) + '" aria-label="' + esc(T("mom." + r.kind)) + '">' +
-        pni(n === "agent" || n === "vote" ? "eye-off" : n === "bord" ? "users" : "sparkle", "pi-lead") + esc(T("mom.chip." + n)) + "</button>";
+        pni(n === "reveal" ? "eye" : n === "agent" || n === "vote" ? "eye-off" : n === "bord" ? "users" : "sparkle", "pi-lead") + esc(T("mom.chip." + n)) + "</button>";
     },
     hudClick: function (el) { openCard(el && el.getAttribute ? el.getAttribute("data-mo") : null); },
     open: openCard, poll: function () { return poll(true); }, reportData: reportData, reportCards: reportCards,

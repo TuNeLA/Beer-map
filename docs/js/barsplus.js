@@ -94,7 +94,7 @@
       if (prevOwners) {
         var p = prevOwners[id];
         if (bar && (!p || p.mine !== now[id].mine || p.who !== now[id].who)) {
-          takeNews.push({ bar: bar, who: now[id].who, n: now[id].n, at: Date.now() });
+          takeNews.push({ id: id, bar: bar, who: now[id].who, n: now[id].n, mine: !!s.owner_mine, at: Date.now() });
         }
       }
       if (s.owner_mine && !noted[id]) {
@@ -551,17 +551,27 @@
     var l = t("bpNews");
     return Array.isArray(l) ? l : [];
   }
-  function newsCands() {
+  // fixMo N-12: ticker news only for bars in the user's area (10 km from the ticker centre) or in the map view; own takeover always
+  var NEWS_M = 10000;
+  function newsNear(id, ctx, mine) {
+    if (mine) return true;
+    var b = barOf(id); if (!b || !isFinite(b.lat) || !isFinite(b.lng)) return false;
+    var c = ctx && ctx.center;
+    try { if (c && isFinite(c.lat) && U.haversine(c.lat, c.lng, b.lat, b.lng) <= NEWS_M) return true; } catch (e) {}
+    try { var m = A && A.map, bb = m && m.getBounds && m.getBounds(); if (bb && m.getZoom() >= 9 && bb.contains([b.lat, b.lng])) return true; } catch (e) {}
+    return false;
+  }
+  function newsCands(ctx) {
     if (!on()) return [];
-    var out = [], grp = t("bpNewsGroup");
-    takeNews.slice(-2).forEach(function (x) {
+    var out = [], grp = t("bpNewsGroup"), near = takeNews.filter(function (x) { return x.id != null && newsNear(x.id, ctx, x.mine); });
+    near.slice(-2).forEach(function (x) {
       out.push({ k: "takeover", d: { bar: x.bar, who: x.who || grp, n: x.n }, imp: 2 });
     });
     var q = { long: 0, none: 0 };   // offers never go in the ticker (legal: they stay in the popup only)
     Object.keys(status).forEach(function (id) {
       var s = status[id], bar = barNameOf(id);
-      if (!s || !bar) return;
-      if (!takeNews.length && (s.owner_n | 0) > 0 && out.length < 1) out.push({ k: "takeover", d: { bar: bar, who: s.owner_name || grp, n: s.owner_n | 0 }, imp: 0 });
+      if (!s || !bar || !newsNear(id, ctx, !!s.owner_mine)) return;
+      if (!near.length && (s.owner_n | 0) > 0 && out.length < 1) out.push({ k: "takeover", d: { bar: bar, who: s.owner_name || grp, n: s.owner_n | 0 }, imp: 0 });
       if ((s.queue === "long" || s.queue === "none") && q[s.queue] < 1 && minsAgo(s.queue_at) <= 20) {
         q[s.queue]++;
         out.push({ k: s.queue === "long" ? "queueLong" : "queueNone", d: { bar: bar }, imp: 0 });

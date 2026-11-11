@@ -182,9 +182,36 @@
           if (t && t[1] !== cfg().SUPABASE_ANON_KEY && t[1] !== token) { token = t[1]; setTimeout(onToken, 0); }
         } catch (e) {}
       }
+      // fixMo N-06: the fake clock moves the app, never the login. The auth server's expires_at is real time, and supabase-js
+      // compares it with Date.now() (fake): with the clock > 1 h ahead every call saw an expired token (a refresh ~1/s).
+      // So the session's expires_at is shifted by the same offset: the expiry stays consistent with the fake clock, the JWT
+      // itself is unchanged (the server checks it in real time). Only /auth/v1/ answers with a session, only while OFF.
+      if (OFF && isSb(url) && /\/auth\/v1\//.test(url)) return rFetch(input, init).then(shiftAuth);
       return rFetch(input, init);
     };
   }
+  var OFF_S = Math.round(OFF / 1000);
+  function shiftAuth(res) {
+    try {
+      if (!res || !res.ok || !/json/.test(res.headers.get("content-type") || "")) return res;
+      return res.clone().json().then(function (j) {
+        var sess = j && j.access_token ? j : j && j.session && j.session.access_token ? j.session : null;
+        if (!sess || !isFinite(+sess.expires_at)) return res;
+        sess.expires_at = +sess.expires_at + OFF_S;
+        PNA.shifts++;
+        var h = new Headers(res.headers); h.delete("content-length"); h.delete("content-encoding");
+        return new Response(JSON.stringify(j), { status: res.status, statusText: res.statusText, headers: h });
+      }, function () { return res; });
+    } catch (e) { return res; }
+  }
+  var PNA = { shifts: 0 };
+  // the stored session was written under another offset (a clock jump, or before this fix): shift it by the difference, so the
+  // first start after a jump does not see a token that is hours "old" (or hours "young")
+  try {
+    var st0 = JSON.parse(LS.getItem("olnu.auth") || "null"), was = +(LS.getItem("pnt.authOff") || 0) || 0;
+    if (st0 && isFinite(+st0.expires_at) && st0.expires_at > 1 && was !== OFF_S) { st0.expires_at = +st0.expires_at + (OFF_S - was); LS.setItem("olnu.auth", JSON.stringify(st0)); }
+    if (was !== OFF_S) { if (OFF_S) LS.setItem("pnt.authOff", String(OFF_S)); else LS.removeItem("pnt.authOff"); }
+  } catch (e) {}
   function sub() { try { return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub; } catch (e) { return null; } }
   function rpc(name, args) {
     if (!token || !rFetch) return Promise.reject(new Error("no_session"));
@@ -207,7 +234,7 @@
   var PN = W.PNTEST = {
     slot: slot, prefix: PFX, realLocalStorage: realLS,
     on: function (f) { listeners.push(f); },
-    uid: sub, token: function () { return token; }, rpc: rpc, state: null, err: null,
+    uid: sub, token: function () { return token; }, rpc: rpc, state: null, err: null, auth: PNA,
     ready: function () { return stateP || Promise.resolve(null); },
     label: label,
     setLabel: function (s) { LS.setItem("pnt.device", String(s || "").slice(0, 24)); if (token) rpc("zz_test_join", { p_label: label() }).then(function (st) { PN.state = st; emit("state", st); }, function () {}); },
