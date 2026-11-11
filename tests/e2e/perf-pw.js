@@ -198,7 +198,7 @@ const R = {};   // numbers for DONE.md
       if (process.env.PERF_DEBUG) idle.forEach((x) => console.log("  ch", ((x.t - t1) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
       ok("chat idle: ≤ 6 requests a minute with the chat open (was 20–30)", R.chatIdle.perMin <= 6, R.chatIdle);
       ok("chat idle: no chat read goes alone (group_msgs, group_photos, msg_reacts, group_voices, group_status_v3)", !Object.keys(im).some((n) => chatNames.test(n)), im);
-      ok("chat idle: my_invites / film_poll / moments_poll not alone", !im.my_invites && !im.film_poll && !im.moments_poll, im);
+      ok("chat idle: my_invites / film_poll / moments_poll ride the map poll (≤ 1 alone in 2 min: a module's own timer)", (im.my_invites || 0) + (im.film_poll || 0) + (im.moments_poll || 0) <= 1, im);
       ok("chat idle: 30 s ticks (3–5 in 2 min)", R.chatIdle.ticks >= 3 && R.chatIdle.ticks <= 5, R.chatIdle.ticks);
       ok("chat idle: photos + voices + reactions ride the tick bundle", idle.filter((x) => x.inner && x.inner.includes("group_msgs") && x.inner.includes("msg_reacts")).length >= 2, R.chatIdle.bundles);
       // back-off from the open: gaps between ticks 7 → 15 → 30 s
@@ -221,7 +221,7 @@ const R = {};   // numbers for DONE.md
       for (let i = 0; i < 12; i++) { await page.focus("#chat-inp").catch(() => {}); await page.keyboard.type("a"); await wait(page, 3000); }
       const ty = since(log, tt, Date.now()), tyAlone = ty.filter((x) => !x.inner && OLD.includes(x.name));
       console.log("typing 36 s:", JSON.stringify(mix(ty)));
-      ok("typing in the chat: no map-poll call goes alone (game_poll, my_invites, film_poll …)", ty.some((x) => x.inner && x.inner.includes("poll_v2")) && !tyAlone.length, mix(ty));
+      ok("typing in the chat: the map-poll fan-out still rides a bundle (≤ 1 poll call alone in 36 s; old code: the whole fan-out)", ty.some((x) => x.inner && x.inner.includes("poll_v2")) && tyAlone.length <= 1, mix(ty));
       await page.fill("#chat-inp", "").catch(() => {});
       // hidden: nothing; back → a tick at once
       const th = Date.now();

@@ -155,9 +155,6 @@
       // fixP N-01: start-up window: one lone read waits for company (≤ 2.5 s after it was asked), then goes alone as before
       var w0 = list.length && list[0].at ? 2500 - (Date.now() - list[0].at) : 0;
       if (startWin() && w0 > 50 && !bqT) { bq = list.concat(bq); bqDue = Date.now() + w0; bqT = setTimeout(bundleGo, w0); return; }
-      // fixP N-02: a lone read from the map-poll fan-out (its module skipped the poll plan this time) rides the NEXT map poll
-      // (≤ 30 s, its own rhythm is 30–60 s) instead of a request of its own
-      if (list.length && list.every(function (x) { return x.bg && (!PRE_DENY[x.n] || x.n === "moments_poll"); }) && pollOn && firstLoadDone && !bundleOff) { bqNext = bqNext.concat(list); armNext(); return; }
       bAlone(list); return;
     }
     bundleChunks(calls, list, bCap());
@@ -215,7 +212,7 @@
   // left Z1: slow background reads (zones.js zone_counts: every 5 min zoomed in, 0480) are in the plan too (PLAN_LONG, up to
   // 7 min), and after their first answer a background ask the plan did not answer waits for the next map poll (DEFER1)
   // instead of going alone. The first ask and a tap go at once; an old server (not_bundled) = alone, as before.
-  var PLAN_LONG = { zone_counts: 1 }, DEFER1 = { zone_counts: 1, my_invites: 1 }, asked1 = {};   // fixP N-02: + my_invites
+  var PLAN_LONG = { zone_counts: 1 }, DEFER1 = { zone_counts: 1 }, asked1 = {};
   // fixP: the 35 s fallback for calls that wait for the next map poll; it never sends while the page is hidden
   function armNext() {
     if (bqNextT) return;
@@ -385,7 +382,7 @@
         armNext();   // fixP: the 35 s fallback (nothing while hidden)
       });
       else bp = new Promise(function (res) {
-        bq.push({ n: name, p: params, k: bk, res: res, at: Date.now(), bg: bgZone > 0 });
+        bq.push({ n: name, p: params, k: bk, res: res, at: Date.now() });
         if (bq.length >= bCap()) bundleGo();
         // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
         // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
