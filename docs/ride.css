@@ -160,3 +160,6 @@
 .toast.rd-lask-toast .btn{min-height:44px;padding:0 var(--sp-2);border:0;background:transparent;color:var(--ds-muted);font:400 var(--fs-14)/20px var(--ds-sans);text-decoration:underline;text-underline-offset:3px;box-shadow:none}
 /* ride3 (owner 21:43): ANNAT (other drinks) is hidden while "Jag kör ikväll" is on (lask.js sets body.mn-drive) */
 body.mn-drive #other-wrap,body.mn-drive #btn-other{display:none !important}
+/* ride3: the chat field (foot) and the end buttons (tail) sit under the repainted card, same 8 px rhythm */
+#sheet-body .rd-foot,#sheet-body .rd-tail{margin-top:var(--sp-2)}
+#sheet-body .rd-foot:empty,#sheet-body .rd-tail:empty{display:none}

@@ -231,7 +231,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     await shot(D.page, "d2-taken");
     // owner 22:08: the focus ring of the chat field was cut on the left edge → inset ring, inside the sheet's clip box
     const ring = (p) => p.evaluate(() => {
-      const i = [...document.querySelectorAll("#sheet-body .rd-chat .rd-in")].pop(); if (!i) return null;
+      const i = document.querySelector("#sheet-body .rd-chat-in"); if (!i) return null;
       i.focus(); const c = getComputedStyle(i), r = i.getBoundingClientRect(), b = document.getElementById("sheet-body").getBoundingClientRect();
       const off = parseFloat(c.outlineOffset) || 0, w = parseFloat(c.outlineWidth) || 0;
       return { off: c.outlineOffset, style: c.outlineStyle, w: c.outlineWidth, ringL: Math.round(r.left - off - w), clipL: Math.round(b.left), ringR: Math.round(r.right + off + w), clipR: Math.round(b.right) };
@@ -240,7 +240,14 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
       await P0.setViewportSize({ width: w, height: 844 }); await openRide(P0, ride.id); await wait(P0, 500);
       const g = await ring(P0);
       ok(`R3 ${nm} ${w}: chat field focus ring is inset and inside the sheet (not cut)`, !!g && g.style !== "none" && g.off === "-2px" && g.ringL >= g.clipL && g.ringR <= g.clipR, g);
-      if (w === 360) await shot(P0, (nm === "rider" ? "r" : "d") + "9-focus-360");
+      if (w === 360) {
+        await shot(P0, (nm === "rider" ? "r" : "d") + "9-focus-360");
+        await P0.keyboard.type("Kommer");
+        await P0.waitForTimeout(5000);   // ≥ 2 live polls (2 s) repaint the card meanwhile
+        const kept = await P0.evaluate(() => { const a = document.activeElement; return { focus: !!(a && a.classList.contains("rd-chat-in")), v: a && a.value }; });
+        ok(`R3 ${nm}: the chat field keeps focus and the half-written line through the 2 s polls (keyboard stays open)`, kept.focus && kept.v === "Kommer", kept);
+        await P0.evaluate(() => { const a = document.activeElement; if (a) a.value = ""; });
+      }
       await P0.evaluate(() => document.activeElement && document.activeElement.blur());
     }
     await R.page.setViewportSize({ width: 390, height: 844 }); await D.page.setViewportSize({ width: 390, height: 844 });

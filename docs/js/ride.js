@@ -24,7 +24,7 @@
   "use strict";
   var U = window.U;
   var A = null, HK = {}, flags = null, flagsAt = 0, R = null, skew = 0, off = false;
-  var box = null, view = null, tick = 0, posT = 0, posBusy = false, pend = {}, pick = null, form = null, mk = { drv: null, pk: null, dst: null };
+  var box = null, foot = null, tail = null, view = null, tick = 0, posT = 0, posBusy = false, pend = {}, pick = null, form = null, mk = { drv: null, pk: null, dst: null };
   var FLAGS_MS = 30000, POS_MS = 4000, LIVE_MS = 2000, IDLE_MS = 5000, FULL_MS = 20000;   // live + open: 2 s (staging: 2.5 s gave 3.4 s once for stamp + poll)
   var stamp = null, stampOff = false, fullAt = 0, tw = {}, areaC = {}, cfgT = 0;
   var STEPS = ["taken", "enroute", "arrived", "picked", "done"];
@@ -390,21 +390,24 @@
   /* ---------- sheets ---------- */
   function sheet(title, kind, id) {
     A.openSheet(title, function (body) {
-      box = h("div", { class: "rd" }); view = { kind: kind, id: id };
-      body.appendChild(box);
+      // box = repainted on every poll; foot = the chat field (built once per ride, never repainted, so the keyboard stays
+      // open and a half-written line stays); tail = the end buttons (Avbryt / Släpp den) under the chat field
+      box = h("div", { class: "rd" }); foot = h("div", { class: "rd rd-foot" }); tail = h("div", { class: "rd rd-tail" }); view = { kind: kind, id: id };
+      body.appendChild(box); body.appendChild(foot); body.appendChild(tail);
       paint();
     });
     clearInterval(tick); tick = setInterval(function () { if (!box || !document.body.contains(box)) { clearInterval(tick); tick = 0; return; } if (view && view.kind !== "req") paint(); }, 30000);
   }
-  // a half-written line is kept: no repaint while an input in the sheet has focus AND text (an empty focused field repaints)
-  function typingIn() { var a = document.activeElement; return !!(a && box && box.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName) && String(a.value || "").trim()); }
+  // an input INSIDE the repainted box (the "Ring" number field) has focus: wait (the chat field lives in foot, never repainted)
+  function typingIn() { var a = document.activeElement; return !!(a && box && box.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName)); }
   function repaint() { if (box && document.body.contains(box) && view && view.kind !== "req" && !typingIn()) paint(); }
   function paint() {
     if (!box || !view) return;
     if (view.kind === "req") return paintReq();
-    var x = find(view.id); box.innerHTML = "";
-    if (!x) { box.appendChild(h("p", { class: "rd-muted", text: T("ride.cancelled") })); return; }
+    var x = find(view.id); box.innerHTML = ""; if (tail) tail.innerHTML = "";
+    if (!x) { box.appendChild(h("p", { class: "rd-muted", text: T("ride.cancelled") })); composer(null); return; }
     if (x.role === "rider") paintRider(x); else if (x.role === "taker") paintTaker(x); else paintOffer(x);
+    composer(x.live && x.status !== "open" && (x.role === "rider" || x.role === "taker") ? x : null);
     if (pend[x.id]) { var a = pend[x.id]; pend[x.id] = null; if (a === "ta" && x.role === "asked" && x.can_take) take(x); else if (a === "nej" && x.role === "asked" && x.live) decline(x); }
   }
   function openReq(opts) {
@@ -599,17 +602,26 @@
       q.appendChild(h("button", { type: "button", class: "rd-qb", text: t, onclick: function (e) { say(x, t, e.currentTarget); } }));
     });
     wrap.appendChild(q);
-    var inp = h("input", { type: "text", class: "rd-in", maxlength: "120", placeholder: T("ride.chat.ph"), "aria-label": T("ride.chat.ph") });
+    return wrap;
+  }
+  // the chat field (+ the read-aloud switch for the driver): built once per ride id in `foot`, outside the repainted box
+  function composer(x) {
+    if (!foot) return;
+    var key = x ? x.id + ":" + x.role : null;
+    if (foot.__key === key) return;
+    foot.__key = key; foot.innerHTML = "";
+    if (!x) return;
+    var id = x.id;
+    var inp = h("input", { type: "text", class: "rd-in rd-chat-in", maxlength: "120", placeholder: T("ride.chat.ph"), "aria-label": T("ride.chat.ph"), enterkeyhint: "send" });
     var sb = h("button", { type: "button", class: "rd-send", "aria-label": T("ride.chat.send"), html: ic("send") });
-    sb.addEventListener("click", function () { var v = inp.value.trim(); if (v) { inp.value = ""; inp.blur(); say(x, v, sb); } });
-    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") sb.click(); });
-    wrap.appendChild(h("div", { class: "rd-say" }, [inp, sb]));
+    sb.addEventListener("click", function () { var v = inp.value.trim(), y = find(id); if (v && y) { inp.value = ""; say(y, v, sb); } });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); sb.click(); } });
+    foot.appendChild(h("div", { class: "rd-say" }, [inp, sb]));
     if (x.role === "taker" && window.speechSynthesis) {
       var sw = h("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(speakOn()), "aria-label": T("ride.speak") });
       sw.addEventListener("click", function () { lsSet("olnu.rdSpeak", speakOn() ? 0 : 1); sw.setAttribute("aria-checked", String(speakOn())); });
-      wrap.appendChild(h("div", { class: "toggle-row rd-speak" }, [h("span", { text: T("ride.speak") }), sw]));
+      foot.appendChild(h("div", { class: "toggle-row rd-speak" }, [h("span", { text: T("ride.speak") }), sw]));
     }
-    return wrap;
   }
   function say(x, text, btn) {
     if (btn) btn.disabled = true;
@@ -712,7 +724,7 @@
       if (d.lat != null && p < 3) b.appendChild(h("button", { type: "button", class: "rd-rowbtn rd-showmap", onclick: function () { showMap(x); } }, [icEl("map"), h("span", { text: T("ride.map") }), icEl("chev-right", "rd-chev")]));
       var cb = callBox(x, d.name); if (cb) b.appendChild(cb);
       b.appendChild(chat(x));
-      if (p < 3) b.appendChild(h("button", { type: "button", class: "btn btn-block rd-cancel", text: T("ride.pick.cancel"), onclick: function (e) { cancel(x, e.currentTarget); } }));
+      if (p < 3) tail.appendChild(h("button", { type: "button", class: "btn btn-block rd-cancel", text: T("ride.pick.cancel"), onclick: function (e) { cancel(x, e.currentTarget); } }));
       return;
     }
     // ended
@@ -811,7 +823,7 @@
     b.appendChild(h("p", { class: "rd-muted rd-small", text: ghost() ? T("ride.drive.ghost", { name: rn }) : T("ride.drive.share", { name: rn }) }));
     var cb = callBox(x, rn); if (cb) b.appendChild(cb);
     b.appendChild(chat(x));
-    if (p < 3) b.appendChild(h("button", { type: "button", class: "btn btn-block rd-letgo", text: T("ride.drive.letgo"), onclick: function (e) { act(e.currentTarget, "ride_cancel", { p_id: x.id }, function (d) { if (R) R.drive = null; push(x.id); stopPos(); syncMap(); if (d) merge(d); }); } }));
+    if (p < 3) tail.appendChild(h("button", { type: "button", class: "btn btn-block rd-letgo", text: T("ride.drive.letgo"), onclick: function (e) { act(e.currentTarget, "ride_cancel", { p_id: x.id }, function (d) { if (R) R.drive = null; push(x.id); stopPos(); syncMap(); if (d) merge(d); }); } }));
   }
 
   /* ---------- open by id (push tap / HUD / map pin) ---------- */
