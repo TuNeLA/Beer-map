@@ -142,6 +142,19 @@ const kanalRow = (page) => page.evaluate(() => {
           const f = await page.evaluate(() => { const i = document.querySelector('#sheet-body input[type="email"], #sheet-body input[autocomplete="email"]'); return { input: !!i, title: (document.querySelector(".sheet-head h2") || {}).textContent }; });
           ok(`[${w}] S4 beta: tap → the e-mail step opens`, f.input, f);
           await page.screenshot({ path: SHOTS + `s4-beta-email-step-${w}.png` });
+          // owner 11 Nov: the code step covers the whole phone screen, code + Klart near the top (above the keyboard)
+          await page.route(/auth\/v1\/(otp|user)\b/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
+          await page.evaluate(() => { const i = document.querySelector('#sheet-body input[type="email"], #sheet-body input[autocomplete="email"]'); if (i) { i.value = "test@example.com"; i.dispatchEvent(new Event("input", { bubbles: true })); } });
+          await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body button")].find((x) => !x.disabled && x.getBoundingClientRect().height > 0 && /skicka|fortsätt|kod/i.test(x.textContent)); if (b) b.click(); });
+          await wait(page, 1500);
+          const c = await page.evaluate(() => { const s = document.getElementById("sheet"), v = document.querySelector("#sheet-body .acct-verify"), o = document.querySelector("#sheet-body .acct-otp");
+            return { code: !!o, full: s.classList.contains("acct-full"), top: Math.round(s.getBoundingClientRect().top), vb: v ? Math.round(v.getBoundingClientRect().bottom) : null, vh: innerHeight }; });
+          ok(`[${w}] S4 code step: full screen on a phone, code + Klart in the top half (above the keyboard)`, c.code && c.full && c.top <= 1 && c.vb !== null && c.vb < c.vh * 0.55, c);
+          await page.screenshot({ path: SHOTS + `s4-beta-code-step-${w}.png` });
+          await page.evaluate(() => { const x = document.querySelector("#sheet .sheet-close, #sheet [aria-label='Stäng'], #sheet-close"); if (x) x.click(); else if (window.OLNU && window.OLNU.closeSheet) window.OLNU.closeSheet(); });
+          await wait(page, 600);
+          const after = await page.evaluate(() => document.getElementById("sheet").classList.contains("acct-full"));
+          ok(`[${w}] S4 code step: the full-screen class goes away when the sheet closes`, !after, after);
         }
       } else ok(`[${w}] S4 stable: e-mail login still hidden (flag off): no badge, no button`, !a.on && !a.save && !a.hero, a);
       ok(`[${w}] S4 ${beta ? "beta" : "stable"}: no page errors`, errs.length === 0, errs);

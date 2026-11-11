@@ -367,6 +367,19 @@
     return null;
   }
 
+  // Code step on a phone: the sheet covers the whole screen so the code boxes + Klart sit above the keyboard.
+  // The class goes away when the sheet closes, gets another title, or no longer shows the code boxes.
+  function fullSheet() {
+    var s = document.getElementById("sheet"), t = document.getElementById("sheet-title"); if (!s) return;
+    s.classList.add("acct-full");
+    var t0 = t ? t.textContent : "";
+    try {
+      var mo = new MutationObserver(function () {
+        if (s.hidden || (t && t.textContent !== t0) || !s.querySelector(".acct-otp")) { s.classList.remove("acct-full"); mo.disconnect(); }
+      });
+      mo.observe(s, { attributes: true, attributeFilter: ["hidden"], childList: true, subtree: true, characterData: true });
+    } catch (e) {}
+  }
   // ONE real input (autofill + paste + typing) drawn as 6 boxes. onFull(code) fires on the 6th digit.
   function codeInput(onFull) {
     var inp = el("input", { class: "acct-code", type: "text", inputmode: "numeric", autocomplete: "one-time-code", pattern: "[0-9]*",
@@ -517,6 +530,7 @@
     function stepCode(kind) {
       var w = frame("code-" + kind);
       persist(kind);
+      fullSheet();
       var who = kind === "old" ? st.old : st.email;
       var txt = kind === "new" ? T("codeSentNew", "\u0001") : kind === "old" ? T("codeSentOld", "\u0001") : T("codeSent", "\u0001");
       w.appendChild(el("p", { class: "acct-p", html: esc(txt).replace("\u0001", "<b class=\"acct-to\">" + esc(mask(who)) + "</b>") }));
@@ -759,6 +773,7 @@
       ".acct-h3{font-size:18px;margin:2px 0 6px}",
       ".acct-ok{margin:0 0 4px;line-height:1.45}.acct-why{margin:0 0 8px}",
       ".acct-otp{position:relative;height:60px;margin:2px 0}",
+      "@media (max-width:600px){#sheet.acct-full{top:0;bottom:0;max-height:none;height:100vh;height:100dvh;border-radius:0 !important;padding-top:env(safe-area-inset-top)}}",   // code step on a phone: full screen, code at the top (above the keyboard)
       ".acct-cells{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;pointer-events:none}",
       ".acct-cell{display:flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid var(--hair-2,rgba(255,255,255,.18));background:var(--s0,#0b1220);font:700 26px/1 var(--hud,ui-monospace,monospace);color:var(--text,#fff)}",
       ".acct-cell.full{border-color:rgba(245,166,35,.55)}",
