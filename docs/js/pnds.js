@@ -1090,12 +1090,16 @@
   function ticker() {
     var tk = document.querySelector("#ticker, .ticker"); if (!tk || tk._pn10) return; tk._pn10 = true;
     var down = 0, stop = false;
-    tk.addEventListener("pointerdown", function () { down = Date.now(); });
+    tk.addEventListener("pointerdown", function (e) { down = e.button > 0 ? 0 : Date.now(); });
     tk.addEventListener("pointerup", function (e) {
-      if (Date.now() - down > 300 || (e.target.closest && e.target.closest("a, button"))) return;
-      stop = !stop; tk.classList.toggle("pn-tk-stop", stop); tk.setAttribute("aria-label", stop ? "Nyheter (stoppad, tryck för att fortsätta)" : "Nyheter (tryck för att stoppa)");
-      var f = function () { if (stop) { W.PN_TICK_F = 0; requestAnimationFrame(f); } };
-      if (stop) f(); else W.PN_TICK_F = 1;
+      if (!down || Date.now() - down > 300 || (e.target.closest && e.target.closest("a, button"))) return;
+      // ownerfix 4c: reduced motion = one line at a time → a tap shows the next line
+      var tr = document.getElementById("ticker-track");
+      if (tr && tr.classList.contains("tk-one") && W.PN_TICK_NEXT) { W.PN_TICK_NEXT(); return; }
+      // ownerfix 4b: the ONE controller (pnui.js PNTICK) owns the speed; this only toggles its stop state
+      stop = W.PNTICK ? W.PNTICK.toggle() : !stop;
+      if (!W.PNTICK) W.PN_TICK_F = stop ? 0 : 1;
+      tk.classList.toggle("pn-tk-stop", stop); tk.setAttribute("aria-label", stop ? "Nyheter (stoppad, tryck för att fortsätta)" : "Nyheter (tryck för att stoppa)");
     });
   }
   function start() {

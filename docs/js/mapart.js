@@ -59,7 +59,7 @@
       meDot: 18, meCore: 12,
       clusterSteps: [[10, 28], [100, 32], [1000, 38], [1e9, 44]],
       personPin: 36, avatar: 28, personTail: 7,
-      placeDot: 16, placeGlyph: 10,
+      placeDot: 20, placeGlyph: 12,   // ownerfix 3 (owner 11 Nov): food icons ~+20 % (was 16 / 10); bar dots stay 32
       mypinH: 24, mypinR: 12, mypinTail: 6,
       arenaH: 24, arenaR: 7
     }

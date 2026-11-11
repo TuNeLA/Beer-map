@@ -167,12 +167,15 @@
   }
 
   /* ---------- 2. LIVE ticker ---------- */
-  var tick = { f: 1, target: 1, raf: 0, hold: false };
+  // ownerfix 4b: the ONE ticker speed controller (owner 11 Nov: fast taps froze it; two loops wrote PN_TICK_F).
+  // State: stop (a short tap toggles it: pnds.js → PNTICK.toggle) · hold (finger / mouse down) · sheet (a sheet is open).
+  // Target speed = 0 when any is on, else 1; one eased rAF loop is the only writer of window.PN_TICK_F (app.js reads it).
+  var tick = { f: 1, target: 1, raf: 0, hold: false, stop: false };
   window.PN_TICK_F = 1;
   function tickTarget() {
-    var t = tick.hold || sheetOpen() ? 0 : 1;
-    if (t === tick.target) return;
+    var t = tick.hold || tick.stop || sheetOpen() ? 0 : 1;
     tick.target = t;
+    if (!tick.raf && tick.f === t) { window.PN_TICK_F = t; return; }   // idempotent: nothing to ease, the value is right
     if (!tick.raf) { var last = 0; tick.raf = requestAnimationFrame(function step(ts) {
       var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016; last = ts;
       var k = 1 - Math.pow(0.0005, dt);              // ≈ 250 ms ease to the target
@@ -186,13 +189,23 @@
     var tk = document.querySelector(".ticker");
     if (!tk || tk.__pn) return;
     tk.__pn = true;
-    var down = function () { tick.hold = true; tk.classList.add("pn-held"); tickTarget(); };
-    var up = function () { tick.hold = false; tk.classList.remove("pn-held"); tickTarget(); };
+    var down = function (e) { if (e && e.button > 0) return; tick.hold = true; tk.classList.add("pn-held"); tickTarget(); };
+    var up = function () { if (!tick.hold) return; tick.hold = false; tk.classList.remove("pn-held"); tickTarget(); };
     tk.addEventListener("pointerdown", down);
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (e) { tk.addEventListener(e, up); });
+    window.addEventListener("blur", up);   // ownerfix 4b: a lost pointerup (alt-tab, a dialog) never leaves it held
     try { new MutationObserver(tickTarget).observe(document.getElementById("sheet"), { attributes: true, attributeFilter: ["hidden"] }); } catch (e) {}
     tk.setAttribute("title", "Håll fingret på raden för att pausa");
   }
+
+  // ownerfix 4b: public face of the one controller (pnds.js tap, app.js reduced-motion line swap, tests)
+  window.PNTICK = {
+    toggle: function () { tick.stop = !tick.stop; tickTarget(); return tick.stop; },
+    setStop: function (v) { tick.stop = !!v; tickTarget(); return tick.stop; },
+    stopped: function () { return tick.stop; },
+    paused: function () { return tick.stop || tick.hold || sheetOpen(); },
+    state: function () { return { stop: tick.stop, hold: tick.hold, sheet: sheetOpen(), f: tick.f, target: tick.target, F: window.PN_TICK_F }; }
+  };
 
   /* ---------- 3. Calm main screen ---------- */
   var MORE = [["btn-heat", "fire", "Värme", "Var det är mest folk", true], ["btn-ghostpins", "ghost", "Senaste dagarna", "Var folk va förra helgen", true],

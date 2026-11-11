@@ -405,6 +405,7 @@
     if (!A) return;
     A.openSheet(two("title"), function (body) {
       bodyEl = body; detailEl = null; detailId = null; tvOpen = {};
+      body.classList.remove("evs-in-detail");   // ownerfix 1: a detail view left over on the shared #sheet-body hid the list
       body.classList.add("evs-body");
       var bar = A.el("div", { class: "evs-bar" });
       segEl = A.el("div", { class: "ds-seg evs-time", role: "tablist", "aria-label": L("När", "When") });
@@ -440,7 +441,9 @@
         autoJump(); draw();
         loadGoing(false).then(function () { if (listBox && document.body.contains(listBox)) repaint(); });
       });
-    }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {} listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
+    }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {}
+      try { if (bodyEl) bodyEl.classList.remove("evs-in-detail", "evs-body"); } catch (e) {}   // ownerfix 1: #sheet-body is shared by every sheet
+      listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
   }
   function setTime(t, user) {
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;

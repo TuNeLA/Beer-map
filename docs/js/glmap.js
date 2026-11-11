@@ -452,7 +452,7 @@
     if (!im && P) {
       try {
         var ops = P.placeOps(pk).ops.slice();
-        if (p.lbl && p.name) P.labelOps(String(p.name), true).ops.forEach(function (o) { var q = Object.assign({}, o); q.y = (q.y || 0) + 9; ops.push(q); });
+        if (p.lbl && p.name) P.labelOps(String(p.name), true).ops.forEach(function (o) { var q = Object.assign({}, o); q.y = (q.y || 0) + Math.round((window.PNTOKENS ? window.PNTOKENS.size.placeDot : 16) / 2) + 1; ops.push(q); });   // ownerfix 3: under the disc
         var r = P.raster(ops, R); im = imgs[k] = { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), ox: r.ox, oy: r.oy, k: k };
       } catch (e) { im = null; }
     }
@@ -690,7 +690,7 @@
         if (lf && byId[String(lf.properties.id)]) { hit = lf; how = "name"; }
       }
       if (!hit && placeTap) {   // a restaurant dot
-        var pf = m.queryRenderedFeatures([[p.x - 10, p.y - 10], [p.x + 10, p.y + 10]], { layers: [L_PLACE] })[0], pl = pf && placeById[String(pf.properties.id)];
+        var pf = m.queryRenderedFeatures([[p.x - 14, p.y - 14], [p.x + 14, p.y + 14]], { layers: [L_PLACE] })[0]   /* ownerfix 3: bigger dot, bigger box */, pl = pf && placeById[String(pf.properties.id)];
         if (pl) { stats.taps++; stats.lastTap = "place:" + pl.id; if (e.originalEvent) e.originalEvent._olnuGl = 1; synth = true; try { placeTap(pl); } finally { synth = false; } return; }
       }
       if (!hit) return;

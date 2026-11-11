@@ -56,3 +56,9 @@ html.olnu-store .bp-of, html.olnu-store [data-bpa="offer"]{display:none !importa
 .bp-v.sf-of .pi{width:18px;height:18px}
 .sf-blist li>span{display:inline-flex;align-items:center;min-width:0}
 .sf-blist li>span .pi-lead{width:18px;height:18px;color:var(--ds-muted)}
+
+/* lane:ownerfix 6 — Kontakt form */
+.sf-ct .sf-ct-text{min-height:96px}
+.sf-ct .sf-ct-mail{display:block;width:100%;box-sizing:border-box;height:44px;margin-top:8px;border-radius:var(--r-md);border:1px solid var(--line,#33373f);background:var(--night-3,#24282f);color:inherit;font:inherit;padding:0 10px}
+.sf-ct .sf-ct-hint{font-size:13px}
+.sf-ct .sf-ct-mailto{margin:12px 0 0;font-size:12px}
