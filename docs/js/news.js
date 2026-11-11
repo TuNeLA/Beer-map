@@ -557,11 +557,12 @@
       var text = "", usedId = null, usedIx = null;
       for (var i = 0; i < ids.length; i++) {
         var tx = "";
-        try { tx = sentences(String(ids[i].f(x.d))); } catch (e) { tx = ""; }   // fixM T-14: sentence start
+        try { tx = String(ids[i].f(x.d)); } catch (e) { tx = ""; }
         if (!tx || seen[tx] || !localOk(x.k, tx, x.d)) continue;
         text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;
       }
+      if (text) text = sentences(text);   // fixM T-14: a sentence never starts with a small letter
       if (!text || seen[text]) return;
       if (usedId) { recentUsed.push(usedId); if (recentUsed.length > 60) recentUsed.shift(); }
       seen[text] = true;

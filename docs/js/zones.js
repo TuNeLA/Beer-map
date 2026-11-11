@@ -16,6 +16,7 @@
   "use strict";
   var A = null, map = null, gm = null, hooked = null, ready = false;
   var Z_OFF = 10.5, Z_KOM = 6.6, Z_SWE = 5.2, K_MIN = 3, AGE_MS = 60000;
+  var AGE_IN = 5 * 60e3;   // fixM T-15: zoomed in only the top bar pill needs the counts: every 5 min (lane perf budget; a tap refreshes)
   var SK = "olnu-zk", SL = "olnu-zl", SKL = "olnu-zk-pt", SLL = "olnu-zl-pt";
   var L_LF = "olnu-zl-fill", L_LG = "olnu-zl-glow", L_LL = "olnu-zl-line", L_KF = "olnu-zk-fill", L_KG = "olnu-zk-glow", L_KT = "olnu-zk-lbl", L_LT = "olnu-zl-lbl", L_LQ = "olnu-zl-lblq", L_LC = "olnu-zl-lblc";
   var EMPTY = { type: "FeatureCollection", features: [] };
@@ -85,15 +86,16 @@
   function kc(code) { var c = counts && counts.kk[code]; return c || null; }
   function lc(code) { var c = counts && counts.ll[code]; return c || null; }
   function testZone() { try { var l = A && A.lastLoc && A.lastLoc(); return !!(l && l.lat > 68.25 && l.lat < 68.45 && l.lng > 18.6 && l.lng < 19); } catch (e) { return false; } }
-  function ask(force) {
+  function ask(force, minAge) {
     if (!A || !A.rpc || asking || document.hidden || !map) return;   // fixM T-15: the top bar pill needs the counts at every zoom
-    if (!force && Date.now() - countsAt < AGE_MS) return;
+    if (!force && Date.now() - countsAt < (minAge || AGE_MS)) return;
     asking = true; stats.asks++;
     A.rpc("zone_counts", testZone() ? { p_test: true } : {}).then(function (r) {
-      asking = false;
+      asking = false; countsAt = Date.now();   // fixM T-15: any answer counts for the rate limit (an odd answer is not retried every poll)
       if (!r || r.error) {
         // old server (no 0221): borders + names only, the top bar keeps the world counter; ask again in 10 min
         if (r && r.error && /zone_counts|PGRST202|does not exist|could not find/i.test(String(r.error.message || r.error.code || ""))) { missing = true; countsAt = Date.now() + 9 * 60000; pill(true); }
+        else countsAt = Date.now() - AGE_IN + 30000;   // fixM: a failed ask (timeout, busy) is asked again at the next poll after 30 s
         return;
       }
       missing = false;
@@ -338,12 +340,17 @@
      zoomed out to the whole country (Leaflet z < 5.2), outside Sweden or before the kommun is known = "Sverige · N ute";
      else the kommun under the map centre ("Ludvika · 11 ute"), on the GL map and on the raster fallback. The län step
      (z 5.2 – 6.6) stays a GL zones view. Kommun lookup: the zone borders when loaded, else the 0.025° grid in
-     data/dialekt-kommun.json (the file DIALEKT already loads: one cached GET). Tap = the "Ute nu" sheet (openOut). */
+     data/dialekt-kommun.json (read from DIALEKT's own copy: no second GET). Tap = the "Ute nu" sheet (openOut). */
   var kg = null, kgP = null;
-  function kgLoad() {
+  function kgLoad() {   // the kommun grid DIALEKT already loaded (data/dialekt-kommun.json): no second fetch
     if (kg || kgP) return;
-    kgP = fetch("./data/dialekt-kommun.json").then(function (r) { if (!r.ok) throw new Error("kg " + r.status); return r.json(); })
-      .then(function (d) { kg = d && d.grid && d.k ? { g: d.grid, k: d.k, rows: {} } : null; pill(true); }, function () { kgP = null; });
+    var D = window.DIALEKT; if (!D || !D.ready) return;
+    var wait = 2500 - ((window.performance && performance.now()) || 3000);   // DIALEKT loads on idle ~2 s after load: never earlier because of us
+    if (wait > 0) { kgP = new Promise(function (res) { setTimeout(res, wait); }).then(function () { kgP = null; kgLoad(); }); return; }
+    kgP = Promise.resolve(D.ready()).then(function () {
+      var st = D._sets ? D._sets() : null, s0 = st && st.filter(function (x) { return x && x.cc === "SE" && x.grid && x.k; })[0];
+      kg = s0 ? { g: s0.grid, k: s0.k, rows: {} } : null; if (!kg) kgP = null; pill(true);
+    }, function () { kgP = null; });
   }
   function kgRow(r) {
     if (kg.rows[r]) return kg.rows[r];
@@ -508,7 +515,7 @@
       if (!geo.l && !geo.k) { check(); return; }
       if (!ready) ensure();
     }
-    ask(false);   // fixM T-15 (max once per 60 s)
+    if (wanted()) ask(false);   // zoomed in the polls ask (fixM T-15: inside the poll fan-out = in the poll's rpc_bundle2)
     pill(true);
   }
   // credit (SCB asks for "Källa: SCB"; CC0 needs none, we give it anyway) in the ⓘ popover, next to the map credit
@@ -585,8 +592,8 @@
       var st = document.createElement("style"); st.id = "zones-css"; st.textContent = CSS; document.head.appendChild(st);
       setTimeout(function () { credit(); check(); }, 0);
     },
-    onPoll: function () { ask(false); if (wanted()) paint(); pill(true); },   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
-    onPublicPoll: function () { ask(false); pill(true); },
+    onPoll: function () { ask(false, wanted() ? AGE_MS : AGE_IN); if (wanted()) paint(); pill(true); },   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
+    onPublicPoll: function () { ask(false, wanted() ? AGE_MS : AGE_IN); pill(true); },   // fixM T-15
     // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
     pill: function () { if (!pillHTML()) return null; pill(false); return fitted; },   // fixM T-15: every zoom (null only on an old server)
     // ui1 B10 test hook: fit a name into the top bar pill like pill() does (no map needed)
