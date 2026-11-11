@@ -111,7 +111,7 @@
     if (nFr != null) tiles.push(tile("friends", String(nFr), nFr === 1 ? L("vän", "friend") : L("vänner", "friends"), true));
     if (tiles.length) h += '<div class="pf-grid' + (tiles.length === 2 || tiles.length === 4 ? " pf-g2" : "") + '">' + tiles.join("") + "</div>";
     if (y && y.fav_bar_name) h += '<p class="pf-fav">🪑 ' + esc(L("Stamkrog i år: ", "Regular bar this year: ")) + "<b>" + esc(y.fav_bar_name) + "</b>" +
-      (y.fav_bar_nights ? " · " + (y.fav_bar_nights | 0) + L(" kvällar", " nights") : "") + "</p>";
+      (y.fav_bar_nights ? " · " + L(U.pl(y.fav_bar_nights, "kväll", "kvällar"), (y.fav_bar_nights | 0) + " nights") : "") + "</p>";
     if (md && nMed) {
       var row = safe(function () { return W("MEDALS").medalRowHTML(md, 7, false); }, "");
       if (row) h += '<button type="button" class="pf-medals" data-pf="medals" aria-label="' + esc(L("Mina medaljer", "My medals")) + '">' + row + "</button>";

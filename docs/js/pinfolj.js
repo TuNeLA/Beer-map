@@ -104,7 +104,7 @@
     });
     // under the auto check-in row (same "Karta – incheckning" group) when it is there
     var ac = body.querySelector(".ac-hint");
-    var row = el("div", { class: "row pf-set" }, [b]), hint = el("p", { class: "muted pf-hint", text: "Bara vänner och gänget ser var du ä nu. Andra ser samma område som förut. Aldrig i spökläge eller hemma." });
+    var row = el("div", { class: "row pf-set" }, [b]), hint = el("p", { class: "muted pf-hint", text: "Gänget ser var du ä nu. Vänner utanför gänget och andra ser bara området eller krogen, utan namn. Aldrig i spökläge eller hemma." });   // fixC N-19: the T-09 rule
     if (ac && ac.parentNode === body) { ac.after(row); row.after(hint); } else { body.appendChild(row); body.appendChild(hint); }
   }
 

@@ -26,6 +26,10 @@
   var CODES = ["friend_not_found", "own_code", "not_member", "invalid_member", "slow_down", "friend_limit", "friend_req_not_found",
     "invalid_target", "no_find", "find_req_not_found", "outside_sweden", "code_generation_failed", "not_authenticated"];
   var squadCache = {};   // group id -> {at, d}
+  var FP = null;   // fixC N-04: the open Mina vänner pane {box, load, render, shown, at}
+  function fpLive() { return !!(FP && FP.box && document.body.contains(FP.box)); }
+  function fpRefresh(minAge) { if (fpLive() && FP.shown() && Date.now() - (FP.at || 0) >= (minAge || 0)) FP.load(); }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) fpRefresh(5000); });
 
   /* ---------- Texts (dalmål "ä" for é, military) ---------- */
   function sv() { return !I || I.lang !== "en"; }
@@ -116,6 +120,7 @@
       handleFriendsIn(P.friends_in || []);
       handleFindIn(P.find_in || []);
       firstPoll = false;
+      fpRefresh(25000);   // fixC N-18: the open Vänner pane follows the server (a block, an answer) on the near poll
       if (chipKey() !== was) { try { A.updateCounts(); } catch (e) {} }
       if (finder) finder.poll();
     }, function () { pollBusy = false; });
@@ -426,12 +431,37 @@
         body.appendChild(el("p", { class: "muted nr-priv", text: L("🔒 Vänner ser ditt namn, din hemstad och om du är ute ikväll (bara stan). Exakt position delas bara i 🧭 Hitta, när båda sagt ja, och försvinner efter 2 min.",
           "🔒 Friends see your name, home town and whether you are out tonight (town only). Exact position only in 🧭 Find, when both said yes; gone after 2 min.") }));
 
-        function load() {
-          call("my_friends", { p_name: name() }).then(function (r) {
+        // fixC N-04 / N-18: load() ran only when the pane was built, so the sender kept "Väntar på svar" / "Inga vänner än"
+        // (and the blocked side kept the blocker) until the sheet was opened again. Now the open pane is FP: warm.js
+        // repaints it with a newer my_friends / friend_list (NEAR.onWarm), the Vänner tab, an app resume and the near
+        // poll reload it (NEAR.refresh), and while my request waits it checks again every 20 s (max 10 min, visible only).
+        var lastSig = null, lastD = null, chkT = 0, chkN = 0;
+        function shown() { var pn = listBox.closest(".inv-pane"); return document.body.contains(listBox) && !document.hidden && !(pn && pn.hidden); }
+        function arm(d) {
+          clearTimeout(chkT); chkT = 0;
+          if (!(d && (d.outgoing || []).length) || chkN >= 30) return;
+          chkT = setTimeout(function () { chkT = 0; if (!document.body.contains(listBox) || !shown()) return; chkN++; load(true); }, 20000);
+        }
+        // force: a refresh (tab shown, resume, poll, the 20 s check) asks the server even when warm.js has a young cached
+        // answer (it serves the cache in a tap's render window and re-asks only after 15 s)
+        function load(force) {
+          if (FP && FP.box === listBox) FP.at = Date.now();
+          var pq = null;
+          if (force === true) { try { pq = window.WARM && window.WARM.prefetch ? window.WARM.prefetch("my_friends", { p_name: name() }, 1) : null; } catch (e) { pq = null; } }
+          (pq || call("my_friends", { p_name: name() })).then(function (r) {
+            r = r || { error: { message: "empty" } };
             if (!document.body.contains(listBox)) return;
+            if (r.error) { if (lastD) return; listBox.innerHTML = ""; inBox.innerHTML = ""; outBox.innerHTML = ""; listBox.appendChild(el("li", { class: "muted", text: r.off ? L("Vänner finns inte på servern än.", "Friends are not on the server yet.") : errText("error") })); return; }
+            render(A.parseData(r.data));
+          });
+        }
+        function render(d, force) {
+            if (!d || !document.body.contains(listBox)) return;
+            arm(d);
+            var sig = JSON.stringify([d.friends || [], d.incoming || [], d.outgoing || []]);
+            if (sig === lastSig && !force) return;   // same answer = no repaint (no pop-in)
+            lastSig = sig; lastD = d;
             listBox.innerHTML = ""; inBox.innerHTML = ""; outBox.innerHTML = "";
-            if (r.error) { listBox.appendChild(el("li", { class: "muted", text: r.off ? L("Vänner finns inte på servern än.", "Friends are not on the server yet.") : errText("error") })); return; }
-            var d = A.parseData(r.data);
             (d.incoming || []).forEach(function (f) {
               // social-a R1-09: the same row as the Inkorg (icon tile, title, sub, tonal Ja + ghost ✕), no stripe
               var dem = demonym(f.home_town);
@@ -449,7 +479,7 @@
             var fr = d.friends || [];
             if (!fr.length) listBox.appendChild(el("li", { class: "muted", text: L("Inga vänner än. Dela din kod, eller lägg till nån från en grupp.", "No friends yet. Share your code.") }));
             fr.forEach(function (f) { listBox.appendChild(friendRow(f, load)); });
-            try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, fr, load, friendRow); } catch (e) {}
+            try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, Array.isArray(d.friends) ? fr : null, load, friendRow); } catch (e) {}   // fixC: null = no my_friends list (old server)
             if ((d.outgoing || []).length) {
               outBox.appendChild(el("p", { text: L("⏳ Väntar på svar: ", "⏳ Waiting: ") }));
               d.outgoing.forEach(function (f) {
@@ -458,8 +488,8 @@
               });
             }
             myCode = d.code || myCode;
-          });
         }
+        FP = { box: listBox, load: function () { load(true); }, render: function (d, force) { render(d || lastD, force); }, shown: shown, at: Date.now() };
         function answer(f, yes) {
           call("friend_answer", { p_id: f.id, p_accept: yes, p_name: name() }).then(function (r) {
             if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); load(); return; }
@@ -873,6 +903,13 @@
       poll(true).then(function () { if (l) openNearLink(l.find || (l.friends ? "list" : null), l.friend); });
     },
     onPoll: function () { hookNews(); poll(false, true); },
+    // fixC N-04: warm.js brought a newer answer for an open Vänner pane → repaint it in place
+    onWarm: function (fn, params, data) {
+      if (!fpLive() || data == null) return;
+      if (fn === "my_friends") { var d = A.parseData(data); if (d && Array.isArray(d.friends)) FP.render(d); }
+      else if (fn === "friend_list") setTimeout(function () { if (fpLive()) FP.render(null, true); }, 0);   // after INVITE took the new list
+    },
+    refresh: function () { fpRefresh(0); },
     applyText: function () {},
     profileSheet: function (body) {   // 👤 Profil (was settingsSheet) + the find-me switches
       if (!A || !A.LIVE || off.my_friends || off.near_poll) return;

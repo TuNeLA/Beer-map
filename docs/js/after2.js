@@ -214,7 +214,7 @@
     var top = ps.filter(function (p) { return p.aw.id === "jarn" || p.aw.id === "kapten"; })[0];
     if (top) c.push(hero(top));
     c.push({ type: "num", kick: T("after.r2.num.kick"), icon: "walk",
-      stats: [[String(m.bars), T("after.r2.num.bars")], [dec1(m.km), T("after.r2.num.km")], [dec1(m.hours), T("after.r2.num.h")], [String(m.skal), T("after.r2.num.skal")]],
+      stats: [[String(m.bars), (m.bars | 0) === 1 ? String(U.n1("1 " + T("after.r2.num.bars"))).replace(/^1 /, "") : T("after.r2.num.bars")], [dec1(m.km), T("after.r2.num.km")], [dec1(m.hours), T("after.r2.num.h")], [String(m.skal), T("after.r2.num.skal")]],
       punch: m.km >= 0.1 ? T("after.r2.num.line", { km: dec1(m.km) }) : T("after.r2.num.line0") });
     var sist = ps.filter(function (p) { return p.aw.id === "sist"; })[0];
     if (sist) c.push(hero(sist));

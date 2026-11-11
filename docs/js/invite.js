@@ -293,12 +293,23 @@
     return b;
   }
   // near.js renders its list first (my_friends); this replaces it with the merged list when friend_list answers.
-  function friendsMore(listBox, fr, reload, friendRow) {
-    friends(true).then(function (d) {
+  // fixC N-04: my_friends (near.js) is the truth for WHO is a friend. A friend_list that is older (warm cache) and does
+  // not have a new friend yet: that friend keeps the near.js row and friend_list is asked again once (then the row gets
+  // Skriv + Bjud in); a person friend_list still has but my_friends dropped (blocked, removed) is not shown.
+  // fr = null: no my_friends list (old server / odd answer) → the friend_list rows as before.
+  function friendsMore(listBox, fr, reload, friendRow, again) {
+    friends(Date.now() - flAt > 3000).then(function (d) {
       if (!d || !document.body.contains(listBox)) return;
       var people = (d.people || []).filter(function (p) { return p.friend_id != null; });   // friends2: friends only (0154)
-      if (!people.length) return;
       var byId = {}; (fr || []).forEach(function (f) { byId[String(f.id)] = f; });
+      if (friendRow && fr) {   // fr null = near.js had no my_friends list: friend_list alone, as before
+        var have = {}; people.forEach(function (p) { have[String(p.friend_id)] = 1; });
+        var stale = people.some(function (p) { return !byId[String(p.friend_id)]; });
+        var miss = (fr || []).filter(function (f) { return f && f.id != null && !have[String(f.id)]; });
+        people = people.filter(function (p) { return !!byId[String(p.friend_id)]; });
+        if ((stale || miss.length) && !again) setTimeout(function () { if (document.body.contains(listBox)) { flAt = 0; FL = null; friendsMore(listBox, fr, reload, friendRow, true); } }, 1200);
+        if (!people.length) return;
+      } else if (!people.length) return;
       listBox.innerHTML = "";
       listBox.classList.add("inv-flist");
       people.forEach(function (p) {
@@ -324,6 +335,7 @@
         try { if (window.AVATAR && window.AVATAR.friendRow) window.AVATAR.friendRow(p, li); } catch (e) {}   // 👤 avatar
         listBox.appendChild(li);
       });
+      if (friendRow) (miss || []).forEach(function (f) { listBox.appendChild(friendRow(f, function () { flAt = 0; reload(); })); });   // fixC N-04: never dropped
     });
   }
   // Fallback Vänner tab when near.js is missing: the merged list only.
@@ -353,6 +365,7 @@
       tab = t; U.ls.set(TAB, t);
       gPane.hidden = t !== "g"; fPane.hidden = t !== "f";
       bar.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-selected", String(b.getAttribute("data-t") === t)); });
+      if (t === "f" && built) { try { if (window.NEAR && window.NEAR.refresh) window.NEAR.refresh(); } catch (e) {} }   // fixC N-04: the tab shows the server now
       if (t === "f" && !built) {
         built = true;
         try { if (window.NEAR && window.NEAR.buildFriends && window.NEAR.buildFriends(fPane)) return; } catch (e) {}
@@ -387,7 +400,7 @@
     var people = [];
     function n() { return Object.keys(sel).filter(function (k) { return sel[k]; }).length; }
     function upd() {
-      count.textContent = n() ? n() + L(" valda", " picked") : "";
+      count.textContent = n() ? L(U.pl(n(), "vald", "valda"), n() + " picked") : "";   // fixC T-22: "1 vald"
       list.querySelectorAll("input[type=checkbox]").forEach(function (c) { c.checked = !!sel[c.value]; });
       gRow.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(!!gsel[b.getAttribute("data-g")])); });
       if (opts.onChange) opts.onChange(n());
@@ -492,6 +505,21 @@
         var whereBox = el("div", { class: "inv-where" }), labelInp = el("input", { class: "inp inv-label", maxlength: "60", "aria-label": L("Platsens namn", "Place name") });
         labelInp.addEventListener("input", function () { st.label = labelInp.value.trim() || homeLabel(); retitle(); });
         body.appendChild(whereBox);
+        // fixC N-16: the GPS step (a pick in Var?, or Skicka while "Här där jag ä (GPS)" is the shown choice)
+        var gpsBusy = false;
+        function gpsPick(s, k0, then) {
+          if (gpsBusy) return; gpsBusy = true;
+          if (s) s.disabled = true;
+          A.getPosition().then(function (pos) {
+            gpsBusy = false; if (s) s.disabled = false;
+            st.lat = +pos.coords.latitude.toFixed(5); st.lng = +pos.coords.longitude.toFixed(5);
+            var nn = nearNamed(st.lat, st.lng);
+            if (nn && isBar(nn) && nn.id != null) { st.bar = nn; st.label = null; st.spot = "bar"; }
+            else { st.bar = null; st.label = nn ? nn.name : homeLabel(); st.spot = "here"; }
+            retitle(); drawWhere();
+            if (then) then(true);
+          }, function (e) { gpsBusy = false; if (s) s.disabled = false; try { A.locError(e); } catch (x2) {} if (s && k0) s.value = k0; if (then) then(false); });
+        }
         function drawWhere() {
           whereBox.innerHTML = "";
           if (o.event) { whereBox.appendChild(el("p", { class: "inv-place", text: "📍 " + placeOf(o.event) })); return; }
@@ -510,18 +538,7 @@
           s.addEventListener("change", function () {
             var x = opts.filter(function (y) { return y.k === s.value; })[0];
             if (!x) return;
-            if (x.k === "gps") {
-              s.disabled = true;
-              A.getPosition().then(function (pos) {
-                s.disabled = false;
-                st.lat = +pos.coords.latitude.toFixed(5); st.lng = +pos.coords.longitude.toFixed(5);
-                var nn = nearNamed(st.lat, st.lng);
-                if (nn && isBar(nn) && nn.id != null) { st.bar = nn; st.label = null; st.spot = "bar"; }
-                else { st.bar = null; st.label = nn ? nn.name : homeLabel(); st.spot = "here"; }
-                retitle(); drawWhere();
-              }, function (e) { s.disabled = false; try { A.locError(e); } catch (x2) {} s.value = opts[0].k; });
-              return;
-            }
+            if (x.k === "gps") { gpsPick(s, opts[0].k, null); return; }
             if (x.bar) { st.bar = x.bar; st.lat = x.bar.lat; st.lng = x.bar.lng; st.label = null; st.spot = "bar"; }
             retitle(); drawWhere();
           });
@@ -548,7 +565,15 @@
         function send() {
           var t = (title.value || "").trim() || (o.custom ? "" : autoTitle({ event: o.event, bar: st.bar, label: st.label }));
           if (!t) { A.toast(L("Skriv vad som händer.", "Write what is happening."), { err: true }); title.focus(); return; }
-          if (st.lat == null && !o.event) { A.toast(L("Välj var.", "Pick a place."), { err: true }); return; }
+          if (st.lat == null && !o.event) {
+            var wsel = whereBox.querySelector(".inv-sel");
+            if (wsel && wsel.value === "gps") {   // fixC N-16: the shown default is the real choice
+              var n0 = pk.count(); go.disabled = true;
+              gpsPick(wsel, "gps", function (okPos) { go.disabled = !n0; if (okPos && st.lat != null) send(); });
+              return;
+            }
+            A.toast(L("Välj var.", "Pick a place."), { err: true }); return;
+          }
           var d = new Date(when.value);
           var params = { p_title: t.slice(0, 80), p_starts_at: isFinite(d) ? d.toISOString() : null, p_keys: pk.keys(), p_group_ids: pk.groupIds(),
             p_bar_id: st.bar ? String(st.bar.id) : (o.event && o.event.bar_id) || null,
@@ -874,6 +899,11 @@
       friends(true);
     },
     onPoll: function () { wrapNews(); poll(false); },
+    // fixC N-04: a newer friend_list from warm.js is the friend cache now (near.js repaints the open pane with it)
+    onWarm: function (fn, params, data) {
+      if (fn !== "friend_list" || !A) return;
+      var d = A.parseData(data); if (d && Array.isArray(d.people)) { FL = d; flAt = Date.now(); }
+    },
     applyText: function () { var l = document.querySelector("#attrib-pop .inv-legend"); if (l) { l.remove(); legend(); } },
     groupsSheet: function (body) { groupsSheet(body); },
     hudChipsHTML: function () { return chipHTML(); },

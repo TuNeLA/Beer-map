@@ -665,8 +665,8 @@
     var box = h("div", { class: "pn-pf" });
     var mitt = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Mitt" })]);
     var l1 = h("div", { class: "ds-list" });
-    if (W("MEDALS") && W("MEDALS").showMine) l1.appendChild(rowBtn("shield-check", "Min uniform", nMed ? nMed + " medaljer" : "Medaljer och grad", function () { W("MEDALS").showMine(); }));
-    if (W("PASSPORT") && W("PASSPORT").open) l1.appendChild(rowBtn("map-trifold", "Ölpasset", nBars ? nBars + " krogar" : "Krogarna du har besökt", function () { W("PASSPORT").open(); }));
+    if (W("MEDALS") && W("MEDALS").showMine) l1.appendChild(rowBtn("shield-check", "Min uniform", nMed ? U.pl(nMed, "medalj", "medaljer") : "Medaljer och grad", function () { W("MEDALS").showMine(); }));
+    if (W("PASSPORT") && W("PASSPORT").open) l1.appendChild(rowBtn("map-trifold", "Ölpasset", nBars ? U.pl(nBars, "krog", "krogar") : "Krogarna du har besökt", function () { W("PASSPORT").open(); }));
     try { var gwr = W("GW") && W("GW").placesRow ? W("GW").placesRow(rowBtn) : null; if (gwr) l1.appendChild(gwr); } catch (e) {}   // gw: Mina ställen
     var nl = W("NIGHTLOG"), af = W("AFTER");
     if ((nl && nl.open) || (af && af.openWrapped)) l1.appendChild(rowBtn("clock", "Mina kvällar", "Din kväll, dagen efter, Wrapped", function () { if (nl && nl.open) nl.open(); else af.openWrapped("year", 0); }));

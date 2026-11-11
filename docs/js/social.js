@@ -648,22 +648,55 @@
         // v19 Citatboken (js/gang.js): "📖 Citat" in the same menu.
         try { if (!g.ev && !g.dm && window.GANG && window.GANG.chatPick) window.GANG.chatPick(picker, g, chatMsgs[id], closePicker); } catch (x) {}
         li.appendChild(picker); pickerAt = Date.now(); pickerLi = li;
-        // fixS T-12: the menu can be 2 rows: sit right above the line (or under it near the top of the list)
-        var ph = picker.offsetHeight || 52;
-        if (li.getBoundingClientRect().top - list.getBoundingClientRect().top < ph + 6) { picker.style.top = "auto"; picker.style.bottom = -(ph + 4) + "px"; }
-        else picker.style.top = -(ph + 4) + "px";
-        // never outside the screen (360 px); again after the next frame (the menu can still grow: icons, the Citat button)
-        var pk0 = picker, clamp = function () {
-          if (picker !== pk0 || !pk0.isConnected) return;
-          var pr = pk0.getBoundingClientRect(), vw = document.documentElement.clientWidth || window.innerWidth || 360;
-          if (pr.right > vw - 8) pk0.style.left = Math.round(pk0.offsetLeft - (pr.right - vw + 8)) + "px";
-          else if (pr.left < 8) pk0.style.left = Math.round(pk0.offsetLeft + (8 - pr.left)) + "px";
-        };
-        clamp(); requestAnimationFrame(clamp); setTimeout(clamp, 200);
+        // fixC N-03 (was: absolute in the line, under it near the top of the list = clipped by the 120 px chat box and a tap
+        // went to the sheet behind): the menu floats (position:fixed, .cmx-fix, over the sheet). The line is scrolled into
+        // the box first; the menu sits above the line when the screen has room, else under it; always 8 px inside the
+        // screen (360/390/430, keyboard open too). Again after the next frame (the menu can still grow: icons, Citat).
+        placePicker(li, picker);
         try { localStorage.setItem("olnu.cmxTip", "1"); } catch (e) {}
         var tip = body.querySelector(".cmx-tip"); if (tip) tip.hidden = true;
         window.FX.vibrate(12);
       }
+      // fixC N-03: place the floating menu (see openPicker). The size comes from offsetWidth/Height and the position from
+      // the rect centre, so the pickIn scale animation and a transformed sheet (fixed = relative to it) do not move it.
+      var cmxScrollAt = 0;
+      function placePicker(li, pk) {
+        var lr = li.getBoundingClientRect(), Lr = list.getBoundingClientRect();
+        if (lr.top < Lr.top + 2 || lr.bottom > Lr.bottom - 2) {
+          cmxScrollAt = Date.now();
+          list.scrollTop += lr.top < Lr.top + 2 || lr.height > Lr.height ? lr.top - Lr.top - 6 : lr.bottom - Lr.bottom + 6;
+        }
+        pk.classList.add("cmx-fix");
+        var go = function () {
+          if (picker !== pk || !pk.isConnected) return;
+          var de = document.documentElement, vv = window.visualViewport;
+          var vw = de.clientWidth || window.innerWidth || 360, vTop = vv ? vv.offsetTop : 0, vH = vv ? vv.height : (window.innerHeight || de.clientHeight || 640);
+          var r = li.getBoundingClientRect(), pw = pk.offsetWidth || 200, ph = pk.offsetHeight || 52, m = 8, gap = 4;
+          var y = r.top - ph - gap >= vTop + m ? r.top - ph - gap : r.bottom + gap;
+          if (y + ph > vTop + vH - m) y = Math.max(vTop + m, vTop + vH - m - ph);
+          var x = li.classList.contains("me") ? r.right - pw : r.left + 8;
+          x = Math.max(m, Math.min(x, vw - m - pw));
+          pk.style.right = "auto"; pk.style.bottom = "auto"; pk.style.left = Math.round(x) + "px"; pk.style.top = Math.round(y) + "px";
+          var q = pk.getBoundingClientRect(), qx = (q.left + q.right) / 2 - pw / 2, qy = (q.top + q.bottom) / 2 - ph / 2;
+          if (Math.abs(qx - x) > 1 || Math.abs(qy - y) > 1) { pk.style.left = Math.round(2 * x - qx) + "px"; pk.style.top = Math.round(2 * y - qy) + "px"; }
+        };
+        pk.__place = go;
+        go(); requestAnimationFrame(go); setTimeout(go, 200);
+      }
+      // the list (or the sheet) scrolls: the menu follows its line; the line out of the chat box = the menu closes
+      document.addEventListener("scroll", function cmxSc() {
+        if (!alive()) { document.removeEventListener("scroll", cmxSc, true); return; }
+        if (!picker || !pickerLi) return;
+        var r = pickerLi.getBoundingClientRect(), Lr = list.getBoundingClientRect();
+        if (Date.now() - cmxScrollAt > 400 && (r.bottom < Lr.top + 4 || r.top > Lr.bottom - 4)) { closePicker(); return; }
+        if (picker.__place) picker.__place();
+      }, true);
+      window.addEventListener("resize", function cmxRs() { if (!alive()) { window.removeEventListener("resize", cmxRs); return; } if (picker && picker.__place) picker.__place(); });
+      // a tap outside the chat box closes the menu (it floats over the sheet now)
+      document.addEventListener("pointerdown", function cmxOut(e) {
+        if (!alive()) { document.removeEventListener("pointerdown", cmxOut, true); return; }
+        if (picker && e.target && !list.contains(e.target)) closePicker();
+      }, true);
       function sendReact(id, emoji) {
         if (reactsOff || reactBusy[id]) return;
         reactBusy[id] = true;

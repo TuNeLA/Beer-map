@@ -1052,3 +1052,5 @@ body:has(#rally:not([hidden])) .chaos{top:calc(var(--sat) + 104px) !important}
 .gcard-go{font-size:var(--fs-28);line-height:1;color:var(--amber,#f5a623);flex:none}
 .g-back{background:none;border:0;color:var(--amber,#f5a623);font:inherit;font-weight:700;padding:6px 0 12px;cursor:pointer}
 /* cln02: dead rules removed */
+/* fixC N-03 */
+.cm-picker.cmx-fix{position:fixed;z-index:1700;margin:0}

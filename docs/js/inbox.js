@@ -228,9 +228,26 @@
     b.disabled = true;
     A.rpc("duel_answer", { p_duel_id: +x.id, p_accept: !!yes }).then(function (r) {
       if (r.error) { b.disabled = false; err(r); return; }
-      A.toast(yes ? L(pick("dy", ["⚔️ Duellen ä igång! Drick för gruppens ära.", "⚔️ Utmaningen antagen. Nu kör vi!", "⚔️ Krig! Varje öl räknas till kl 05."]), "⚔️ The duel is on!") : L("Duellen avböjd.", "Duel declined."), { id: "ib" });
+      duelDone(x, yes);
+      // fixC N-20: the answer toast has a button (rank 3 in app.js toast()), so DUEL's "X utmanar …" toast (also rank 3,
+      // 12 s) does not hide it; that old toast for this duel goes away, it is answered.
+      try { [].forEach.call(document.querySelectorAll("#toasts .toast"), function (t) { if (/utmanar|challenges/.test(t.textContent) && (!x.opp || t.textContent.indexOf(x.opp) >= 0)) t.remove(); }); } catch (e) {}
+      var openG = function () { if (window.DUEL && window.DUEL.open && x.group_id) window.DUEL.open({ id: x.group_id, name: x.group_name || "" }); };
+      A.toast(yes ? L(pick("dy", ["⚔️ Duellen ä igång! Drick för gruppens ära.", "⚔️ Utmaningen antagen. Nu kör vi!", "⚔️ Krig! Varje öl räknas till kl 05."]), "⚔️ The duel is on!") : L("Duellen avböjd.", "Duel declined."),
+        yes && x.group_id && window.DUEL && window.DUEL.open ? { id: "ib", ms: 6000, action: { label: L("Öppna", "Open"), fn: openG } } : { id: "ib" });
       gone(x);
     });
+  }
+  // fixC N-20: DUEL keeps its last duel_poll (pending + incoming) until its next poll: mark this duel answered there, so the
+  // Gängkamp tile ("Utmaning från …"), the red count and DUEL's own toast follow the answer now (the next poll confirms it).
+  function duelDone(x, yes) {
+    try {
+      var D = window.DUEL, dd = D && D.data ? D.data() : null;
+      ((dd && dd.duels) || []).forEach(function (q) { if (q && String(q.id) === String(x.id)) { q.incoming = false; q.status = yes ? "active" : "declined"; } });
+      var s = U.ls.getJSON("olnu.duelSeen", {}) || {}; s["in" + x.id] = Date.now(); U.ls.setJSON("olnu.duelSeen", s);
+    } catch (e) {}
+    try { [].forEach.call(document.querySelectorAll(".sa-gk"), function (b) { if (b.__sub) b.__sub(); }); } catch (e) {}
+    try { A.updateCounts(); } catch (e) {}
   }
   function joinCode(x, b) {
     b.disabled = true;
