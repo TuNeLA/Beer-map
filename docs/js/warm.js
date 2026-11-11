@@ -106,6 +106,14 @@
     try { return { data: JSON.parse(e.s), age: now() - e.at }; } catch (x) { return null; }
   }
   function dirtyAll() { load(); Object.keys(mem).forEach(function (k) { mem[k].dirty = 1; }); stats.dirty++; dirtyAt = now(); }
+  // fixP N-02: an own chat write (post, photo, voice, reaction) makes the cached reads of THAT group dirty (not every screen):
+  // the chat asks again at once and gets the server's answer (the chat tick is 7–30 s now)
+  var CHAT_W = { post_group_msg: 1, post_photo: 1, post_voice: 1, react_msg: 1 };
+  function dirtyGroup(gid) {
+    load(); var g = JSON.stringify(String(gid)), n = 0;
+    Object.keys(mem).forEach(function (k) { if (k.indexOf(g) >= 0) { mem[k].dirty = 1; n++; } });
+    if (n) { stats.dirty++; dirtyAt = now(); }
+  }
   function clear() { mem = {}; inflight = {}; lsSet(LS_D, null); }
 
   /* ---------- recipes (the READ calls one tap made) ---------- */
@@ -162,6 +170,7 @@
   function copyRes(r) { if (!r || r.error) return r; try { return { data: JSON.parse(JSON.stringify(r.data)), error: null, status: r.status }; } catch (e) { return r; } }
   function rpc(fn, params, raw) {
     if (!READ[fn]) {
+      if (CHAT_W[fn] && params && params.p_group_id) dirtyGroup(params.p_group_id);   // fixP N-02
       // A write the USER made (a tap or a key in the last 2.5 s) makes the cache dirty. Background polls and the
       // read-like calls a screen makes while it opens do not (they never change what these screens show).
       if (!QUIET[fn] && (WRITES[fn] || (now() - lastGesture < 2500 && !READLIKE.test(fn)))) { dirtyAll(); stats.dirtyBy[fn] = (stats.dirtyBy[fn] || 0) + 1; }
