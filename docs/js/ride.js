@@ -26,7 +26,7 @@
   var A = null, HK = {}, flags = null, flagsAt = 0, R = null, skew = 0, off = false;
   var box = null, foot = null, tail = null, view = null, tick = 0, posT = 0, posBusy = false, pend = {}, pick = null, form = null, mk = { drv: null, pk: null, dst: null };
   var FLAGS_MS = 30000, POS_MS = 4000, LIVE_MS = 2000, IDLE_MS = 5000, FULL_MS = 20000;   // live + open: 2 s (staging: 2.5 s gave 3.4 s once for stamp + poll)
-  var stamp = null, stampOff = false, fullAt = 0, tw = {}, areaC = {}, cfgT = 0;
+  var stamp = null, stampOff = false, fullAt = 0, tw = {}, areaC = {};
   var STEPS = ["taken", "enroute", "arrived", "picked", "done"];
 
   /* ---------- copy (sv-neutral; the dialect lane adds regions) ---------- */
@@ -193,7 +193,8 @@
     return call("ride_flags_get").then(function (r) {
       var d = data(r); flags = d && typeof d === "object" ? d : {};
       // app.js CFG10 may answer from this phone (≤ 10 min old) in the first minute of the page: ask the server after it
-      if (r && r.cached && !cfgT) { var age = 0; try { age = performance.now(); } catch (e) {} cfgT = setTimeout(function () { cfgT = 0; loadFlags(true); }, Math.max(1000, 62000 - age)); }
+      // → the next poll after page age 62 s asks again (inside the poll's bundle: no extra request, perf-pw "≤ 3 a minute")
+      if (r && r.cached) { var age = 0; try { age = performance.now(); } catch (e) {} flagsAt = Date.now() - FLAGS_MS + Math.max(0, 62000 - age); }
       if (!on()) { R = null; syncMap(); stopPos(); }
       if (was !== on()) { stamp = null; try { if (HK.force) HK.force(); } catch (e) {} try { if (A.updateCounts) A.updateCounts(); } catch (e) {} }
       return flags;
