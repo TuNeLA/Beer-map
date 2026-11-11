@@ -86,7 +86,7 @@
   function lc(code) { var c = counts && counts.ll[code]; return c || null; }
   function testZone() { try { var l = A && A.lastLoc && A.lastLoc(); return !!(l && l.lat > 68.25 && l.lat < 68.45 && l.lng > 18.6 && l.lng < 19); } catch (e) { return false; } }
   function ask(force) {
-    if (!A || !A.rpc || asking || document.hidden || !wanted()) return;
+    if (!A || !A.rpc || asking || document.hidden || !map) return;   // fixM T-15: the top bar pill needs the counts at every zoom
     if (!force && Date.now() - countsAt < AGE_MS) return;
     asking = true; stats.asks++;
     A.rpc("zone_counts", testZone() ? { p_test: true } : {}).then(function (r) {
@@ -333,7 +333,47 @@
   }
 
   /* ---------- the top bar pill ---------- */
+  /* fixM T-15 PILL START — ONE meaning for the top bar pill (test teams: national total before an account, local after; not
+     tappable). It always names its area and shows zone_counts for it (the same number for everyone, signed in or not):
+     zoomed out to the whole country (Leaflet z < 5.2), outside Sweden or before the kommun is known = "Sverige · N ute";
+     else the kommun under the map centre ("Ludvika · 11 ute"), on the GL map and on the raster fallback. The län step
+     (z 5.2 – 6.6) stays a GL zones view. Kommun lookup: the zone borders when loaded, else the 0.025° grid in
+     data/dialekt-kommun.json (the file DIALEKT already loads: one cached GET). Tap = the "Ute nu" sheet (openOut). */
+  var kg = null, kgP = null;
+  function kgLoad() {
+    if (kg || kgP) return;
+    kgP = fetch("./data/dialekt-kommun.json").then(function (r) { if (!r.ok) throw new Error("kg " + r.status); return r.json(); })
+      .then(function (d) { kg = d && d.grid && d.k ? { g: d.grid, k: d.k, rows: {} } : null; pill(true); }, function () { kgP = null; });
+  }
+  function kgRow(r) {
+    if (kg.rows[r]) return kg.rows[r];
+    var out = [], tok = (kg.g.rows[r] || "").split(",");
+    for (var i = 0; i < tok.length; i++) { var q = tok[i].split("*"), v = q[0] === "-" ? -1 : parseInt(q[0], 36), n = q[1] ? parseInt(q[1], 36) : 1; for (var j = 0; j < n; j++) out.push(v); }
+    return (kg.rows[r] = out);
+  }
+  function kommunAt(lat, lng) {   // {k: SCB code, n: name} or null (sea, abroad)
+    if (geo.k) { var f = zoneAt("k", lat, lng); if (f) return { k: f.properties.k, n: f.properties.n }; }
+    if (!kg) { kgLoad(); return null; }
+    var g = kg.g, r = Math.floor((lat - g.lat0) / g.dlat), c = Math.floor((lng - g.lng0) / g.dlng);
+    if (r < 0 || c < 0 || r >= g.rows.length) return null;
+    var v = kgRow(r)[c], x = v != null && v >= 0 ? kg.k[v] : null;
+    return x ? { k: x[0], n: x[1] } : null;
+  }
+  function inSwe(lat, lng) { return lat > 55 && lat < 69.2 && lng > 10.8 && lng < 24.3; }
+  function areaNow() {   // {name, k (kommun code or null), n, some}
+    var z = zoom(), c = map.getCenter(), ko = z >= Z_SWE && inSwe(c.lat, c.lng) ? kommunAt(c.lat, c.lng) : null;
+    if (!ko) return { name: "Sverige", k: null, n: counts ? counts.total : null, some: counts ? counts.some : false };
+    var y = kc(ko.k); return { name: ko.n, k: ko.k, n: counts ? (y ? y.n : 0) : null, some: !!(y && y.some), bar: y && y.bar };
+  }
   function pillHTML() {
+    if (missing || !map) return null;
+    if (!(wanted() && (geo.l || geo.k) && zoom() >= Z_SWE && zoom() < Z_KOM)) {   // GL län view: the old branch below
+      var ar = areaNow(), e0 = pillEsc;
+      pillD = { name: ar.name, n: counts ? ar.n : null, some: !!ar.some, known: !!counts };
+      if (!counts) return e0(ar.name) + " · <b>–</b> ute ikväll";
+      return e0(ar.name) + (ar.n ? " · <b>" + nf(ar.n) + "</b> ute ikväll" : ar.some ? " · <b>några</b> ute ikväll" : " · lugnt ikväll");
+    }
+    /* fixM T-15 PILL END (the län branch follows) */
     if (!wanted() || (!geo.l && !geo.k) || missing) return null;
     var z = zoom(), c = map.getCenter(), name, n = null, some = false;
     if (z < Z_SWE) { name = "Sverige"; if (counts) { n = counts.total; some = counts.some; } }
@@ -467,8 +507,8 @@
     if (wanted()) {
       if (!geo.l && !geo.k) { check(); return; }
       if (!ready) ensure();
-      ask(false);
     }
+    ask(false);   // fixM T-15 (max once per 60 s)
     pill(true);
   }
   // credit (SCB asks for "Källa: SCB"; CC0 needs none, we give it anyway) in the ⓘ popover, next to the map credit
@@ -480,9 +520,63 @@
     var mc = pop.querySelector(".bm-credit"); if (mc && mc.parentNode === pop) pop.insertBefore(s, mc.nextSibling); else pop.appendChild(s);
   }
 
+  /* fixM T-15 OUT START — tap on the top bar pill = "Ute nu": the area and its count (the pill's own number), the busiest bar,
+     the friends out (tap = fly there), one plain line on what is counted, the whole country. Same classes as the ds57 sheet. */
+  function mk(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
+  function icon(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  function countWords(n, some) { return n ? nf(n) + " ute ikväll" : some ? "några ute ikväll" : "lugnt ikväll"; }
+  function openOut() {
+    if (!A || !A.openSheet || !map) return false;
+    stats.outOpen = (stats.outOpen || 0) + 1;
+    ask(false);
+    var ar = areaNow();
+    return A.openSheet("Ute nu", function (body) {
+      var list = mk("div", "ds-list pn-un-list zn-out");
+      var head = mk("div", "ds-row pn-row zn-out-area");
+      var hi = mk("span", "ds-row-i"); hi.innerHTML = icon(ar.k ? "area" : "globe"); head.appendChild(hi);
+      var ht = mk("span", "ds-row-t"); ht.appendChild(mk("span", null, ar.name)); ht.appendChild(mk("small", null, !counts ? "Räknar…" : countWords(ar.n, ar.some))); head.appendChild(ht);
+      list.appendChild(head);
+      if (ar.bar && ar.k) {   // zone_counts: the busiest bar of the kommun (only with 3+ there)
+        var br = mk("div", "ds-row pn-row zn-out-bar"), bi = mk("span", "ds-row-i"); bi.innerHTML = icon("beer"); br.appendChild(bi);
+        var bt = mk("span", "ds-row-t"); bt.appendChild(mk("span", null, String(ar.bar))); bt.appendChild(mk("small", null, "Mest folk just nu")); br.appendChild(bt);
+        list.appendChild(br);
+      }
+      body.appendChild(list);
+      // friends out (the same pins as the map; strangers never named)
+      var seen = {}, fr = [];
+      try { (A.beers ? A.beers() : []).forEach(function (b) { var nm = b && b.friend_name; if (!nm || seen[nm]) return; seen[nm] = 1; fr.push({ name: nm, n: b.beer_count | 0, lat: b.lat, lng: b.lng }); }); } catch (e) {}
+      if (fr.length) {
+        body.appendChild(mk("h3", "ds-section-h pn-un-h", "Vänner ute"));
+        var ul = mk("div", "ds-list pn-un-list");
+        fr.slice(0, 12).forEach(function (p) {
+          var row = mk("button", "ds-row pn-row pn-un-row live"); row.type = "button";
+          var av = mk("span", "pn-un-av"); av.setAttribute("aria-hidden", "true");
+          try { av.innerHTML = window.PNUI && window.PNUI.capSVG ? window.PNUI.capSVG(p.name, 40) : ""; } catch (e) {}
+          if (!av.innerHTML) av.textContent = String(p.name).charAt(0).toUpperCase();
+          var t = mk("span", "ds-row-t"); t.appendChild(mk("span", null, p.name)); t.appendChild(mk("small", null, p.n > 0 ? p.n + " öl ikväll" : "Ute nu"));
+          row.appendChild(av); row.appendChild(t); row.appendChild(mk("span", "ds-chev"));
+          row.setAttribute("aria-label", p.name + (p.n > 0 ? ", " + p.n + " öl ikväll" : ", ute nu"));
+          row.addEventListener("click", function () { try { A.closeSheet(); map.flyTo([p.lat, p.lng], 16, { duration: 0.8 }); } catch (e) {} });
+          ul.appendChild(row);
+        });
+        body.appendChild(ul);
+      } else if (A.authed && A.authed()) body.appendChild(mk("p", "muted pn-un-empty", "Ingen av dina vänner är ute just nu."));
+      var note = mk("p", "muted zn-out-note", "Siffran = alla som har tryckt ÖL! eller ANNAT ikväll i " + (ar.k ? ar.name : "Sverige") + ". Spöken räknas inte. Den uppdateras varje minut.");
+      body.appendChild(note);
+      if (ar.k && counts) body.appendChild(mk("p", "muted zn-out-swe", "Hela Sverige: " + countWords(counts.total, counts.some)));
+    });
+  }
+  function hookPill() {
+    var el = document.getElementById("live-count"); if (!el || el._znTap) return;
+    el._znTap = 1; el.setAttribute("role", "button"); el.tabIndex = 0; el.style.cursor = "pointer";
+    el.addEventListener("click", function () { openOut(); });
+    el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openOut(); } });
+  }
+  /* fixM T-15 OUT END */
   window.ZONES = {
     init: function (api) {
       if (A) return; A = api; map = api && api.map; if (!map) return;
+      try { hookPill(); } catch (e) {}   // fixM T-15
       document.addEventListener("basemap:change", function () { setTimeout(check, 0); });
       map.on("preclick", onPreclick);
       map.on("moveend", moved);
@@ -491,10 +585,10 @@
       var st = document.createElement("style"); st.id = "zones-css"; st.textContent = CSS; document.head.appendChild(st);
       setTimeout(function () { credit(); check(); }, 0);
     },
-    onPoll: function () { if (wanted()) { ask(false); paint(); } },   // ds41: friends move → the pills follow
-    onPublicPoll: function () { if (wanted()) ask(false); },
+    onPoll: function () { ask(false); if (wanted()) paint(); pill(true); },   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
+    onPublicPoll: function () { ask(false); pill(true); },
     // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
-    pill: function () { if (!wanted() || !pillHTML()) return null; pill(false); return fitted; },
+    pill: function () { if (!pillHTML()) return null; pill(false); return fitted; },   // fixM T-15: every zoom (null only on an old server)
     // ui1 B10 test hook: fit a name into the top bar pill like pill() does (no map needed)
     _fitPill: function (name, n, some) { var el = document.getElementById("live-count"); if (!el) return null; el.classList.add("zn-pill"); fitFor = ""; fitPill(el, { name: name, n: n, some: !!some, known: true }); return fitted; },
     _pillOff: function () { var el = document.getElementById("live-count"); if (el) el.classList.remove("zn-pill"); pillOff(el); fitFor = ""; },
@@ -509,6 +603,7 @@
     // map M3: mypins.js calls this when its chips changed (labels step aside from them)
     relabel: function () { if (!ready || !wanted()) return; clearTimeout(placeT); placeT = setTimeout(function () { place(false); }, 60); },
     _ask: function () { countsAt = 0; ask(true); },
-    _geo: function () { return { l: !!geo.l, k: !!geo.k, loadMs: stats.loadMs }; }
+    _geo: function () { return { l: !!geo.l, k: !!geo.k, loadMs: stats.loadMs }; },
+    openOut: openOut, _area: function () { return map ? areaNow() : null; }, _kommunAt: function (lat, lng) { return kommunAt(lat, lng); }   // fixM T-15
   };
 })();

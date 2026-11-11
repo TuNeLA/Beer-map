@@ -87,6 +87,8 @@ jobs:
             filter: '^(followups)$'
           - name: perf
             filter: '^(perf)$'
+          - name: fixm
+            filter: '^(fixm)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit

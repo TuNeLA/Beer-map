@@ -108,6 +108,7 @@ run sec        $B sec-pw.js        # lane sec: Spöke also ends the check-in and
 run x8         $B x8-pw.js         # lane x8: weak signal: ÖL! outbox (offline / slow 3G / lost answer, no double log), 'Senast uppdaterad' + poll back-off, LÄSK!/spökläge
 run perf       $B perf-pw.js       # lane perf (load X10): ≤ 3 requests/min open, cold start ≤ 12, reopen, game 2.5 s + 0 while hidden, busy back-off, old server (no 0465)
 run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens order icon, Helgstreak empty, safety/legend icons, R1-26/29/38/40/42/45/48/49, R1-43 token swaps
+run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallback map tap rule + clusters, T-14 ticker one snapshot, T-15 top bar pill + Ute nu, T-24 crowd word
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk

@@ -670,3 +670,34 @@
     chipBgOps: chipBgOps, badgeOps: badgeOps, raster: raster, toSVG: toSVG, bboxOf: bboxOf, build: build, buildLabel: buildLabel,
     setRatio: function (r) { R2 = r; }, cat: cat, _tw: tw };
 })(this);
+/* fixM T-24 CROWD START — ONE source for the bar crowd word + count (test teams 11 Nov: "Livligt · 3 här" flipped to "Lugnt"
+   while 3 were still checked in). window.PNCROWD.at(bar, pins, checkins) → { n, lv, word, held }.
+   - n = the people at the bar = max(pins assigned to the bar, live check-ins at the bar): the same person can be both, so the
+     larger one (never the sum). Pins move / snap every 10 min (BARS.assign), check-ins stay: the count no longer drops by itself.
+   - lv: 0 · 1 Lugnt (1–2) · 2 Livligt (3–7) · 3 Packat (8+). Up at once; DOWN only after the lower level held 3 min
+     (hysteresis: a poll that misses one pin never flips the word). The count itself is never invented: n is today's value.
+   Callers: social.js (sheet header word + the z16 marker tag), pnui.js (Krogmätaren). No RPC, no DOM. */
+(function (root) {
+  var HOLD_MS = 3 * 60e3, FORGET_MS = 30 * 60e3, st = {}, WORDS = ["", "Lugnt", "Livligt", "Packat"], WORDS_EN = ["", "Chill", "Lively", "Packed"];
+  function raw(n) { return n >= 8 ? 3 : n >= 3 ? 2 : n >= 1 ? 1 : 0; }
+  function canon(id) { try { return root.BARS && root.BARS.canonId ? root.BARS.canonId(id) : String(id); } catch (e) { return String(id); } }
+  function cisAt(id, cis) {
+    var n = 0; (cis || []).forEach(function (c) { if (c && c.bar_id != null && canon(c.bar_id) === id) n++; }); return n;
+  }
+  function en() { try { return root.I18N && root.I18N.lang === "en"; } catch (e) { return false; } }
+  function at(bar, pins, cis, now) {
+    var id = bar && bar.id != null ? canon(bar.id) : null, np = (pins || []).length, nc = id ? cisAt(id, cis) : 0;
+    var n = Math.max(np, nc), lv = raw(n), t = now || Date.now(), s = id ? st[id] : null;
+    if (id) {
+      if (!s || t - s.at > FORGET_MS || lv >= s.lv) s = st[id] = { lv: lv, at: t, low: 0 };
+      else {   // lower than shown: hold the shown word until the lower level held HOLD_MS
+        if (!s.low) s.low = t;
+        if (t - s.low >= HOLD_MS) s = st[id] = { lv: lv, at: t, low: 0 };
+        else { s.at = t; lv = s.lv; }
+      }
+    }
+    return { n: n, pins: np, cis: nc, lv: lv, held: lv !== raw(n), word: (en() ? WORDS_EN : WORDS)[lv] };
+  }
+  root.PNCROWD = { at: at, raw: raw, HOLD_MS: HOLD_MS, _reset: function () { st = {}; }, _st: function () { return st; } };
+})(this);
+/* fixM T-24 CROWD END */
