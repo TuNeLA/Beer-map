@@ -21,6 +21,7 @@ function events() {
   const out = [];
   for (let k = 0; k < 4; k++) out.push({ id: 9100 + k, kind: "quiz", title: "Pubquiz " + (k + 1), place: "Pitchers", bar_id: "n3472634175", lat: 60.14997, lng: 15.18679, starts_at: day(k, 20) });
   for (let k = 0; k < 3; k++) out.push({ id: 9200 + k, kind: "sport", sport: "fotboll", league: "Div 2", title: "Ludvika FK – IFK Ore " + (k + 1), place: "Ludvika IP", lat: 60.15, lng: 15.19, starts_at: day(1 + k, 14) });
+  out.push({ id: 9300, kind: "music", title: "Trubadur Kalle", place: "Pitchers", bar_id: "n3472634175", lat: 60.14997, lng: 15.18679, starts_at: day(1, 21), source: "user", is_mine: false, pending: false });
   return out;
 }
 const EV = events();
@@ -82,7 +83,7 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
     const { ctx, page } = await setup(browser, 390, { routes });
     await page.evaluate(() => { localStorage.setItem("olnu.pushOn", "1"); });
     // my beer marker (a clustered L.marker with options.mine): record markers made after a re-render, open its own popup content
-    await page.evaluate(() => { window.__mk = []; L.Marker.addInitHook(function () { if (this.options && this.options.mine) window.__mk.push(this); }); window.__map.setView([60.1505, 15.1872], 12, { animate: false }); });
+    await page.evaluate(() => { window.__mk = []; L.Marker.addInitHook(function () { if (this.options && this.options.mine) window.__mk.push(this); }); window.__map.setView([60.1505, 15.1872], 10, { animate: false }); });
     await wait(page, 1500);
     const opened = await page.evaluate(() => {
       const m = window.__mk[window.__mk.length - 1]; if (!m || !m.getPopup()) return false;
@@ -167,13 +168,31 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
   }
 
   // ================= 4b. fast tap-tap-tap: state and motion always agree, it moves again =================
-  const tState = async (page) => {
-    const a = await tx(page); await wait(page, 700); const b = await tx(page);
-    return await page.evaluate(([a, b]) => ({ stop: document.querySelector(".ticker").classList.contains("pn-tk-stop"), moving: a !== null && b !== null && b < a - 3, a, b, F: window.PN_TICK_F }), [a, b]);
-  };
+  // motion = one belt piece on screen moves left (the transform alone jumps when a piece leaves on the left)
+  const tState = async (page) => page.evaluate(() => new Promise((res) => {
+    const tr = document.getElementById("ticker-track"), vr = tr.parentNode.getBoundingClientRect();
+    const el = [...tr.children].find((e) => { const r = e.getBoundingClientRect(); return r.left > vr.left + 40 && r.left < vr.right - 40; }) || tr.lastElementChild;
+    const a = el.getBoundingClientRect().left;
+    setTimeout(() => { const b = el.isConnected ? el.getBoundingClientRect().left : null;
+      res({ stop: document.querySelector(".ticker").classList.contains("pn-tk-stop"), moving: b !== null && b < a - 3, a: Math.round(a), b: b === null ? null : Math.round(b), F: window.PN_TICK_F,
+        ctl: window.PNTICK ? window.PNTICK.state() : null, sheet: !document.getElementById("sheet").hidden }); }, 700);
+  }));
+  if (ONLY.test("4b")) {
+    // ONE speed controller: only one file may write window.PN_TICK_F (was pnds.js tap-stop loop + pnui.js hold loop)
+    const { ctx, page } = await setup(browser, 390);
+    const w = await page.evaluate(async () => { const out = {};
+      for (const f of ["app.js", "js/pnds.js", "js/pnui.js", "js/news.js"]) { const t = await (await fetch(f + "?x=" + Date.now())).text(); out[f] = (t.match(/PN_TICK_F\s*=(?!=)/g) || []).length; }
+      return out; });
+    const writers = Object.keys(w).filter((k) => w[k] > 0);
+    ok(writers.length === 1 && writers[0] === "js/pnui.js", "4b ONE ticker speed controller: only pnui.js writes PN_TICK_F", w);
+    await ctx.close();
+  }
   if (ONLY.test("4b")) for (const how of ["mouse", "touch"]) {
     const { ctx, page } = await setup(browser, 390);
+    // KAOS (many people in the mock) takes over the ticker line with its own button: switch it off for this test
+    const noKaos = () => page.evaluate(() => { if (document.querySelector(".ticker.pn-kaos")) { const x = document.getElementById("chaos-close") || document.querySelector(".pn-kaos-x"); if (x) x.click(); } });
     const box = await page.evaluate(() => { const r = document.querySelector(".ticker .tk-viewport").getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await noKaos(); await wait(page, 300);
     const tap = async () => { if (how === "mouse") { await page.mouse.move(box.x, box.y); await page.mouse.down(); await wait(page, 25); await page.mouse.up(); } else await page.touchscreen.tap(box.x, box.y); };
     const s0 = await tState(page);
     ok(s0.moving && !s0.stop, "4b " + how + " belt moves at start", s0);
@@ -181,10 +200,10 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
     await wait(page, 500);
     const s1 = await tState(page);
     ok(s1.stop === !s1.moving, "4b " + how + " after 30 fast taps: the shown state matches the motion", s1);
-    await tap(); await wait(page, 500);
+    await noKaos(); await tap(); await wait(page, 500);
     const s2 = await tState(page);
     ok(s2.stop === !s2.moving && s2.stop !== s1.stop, "4b " + how + " 1 more tap toggles, state matches the motion", s2);
-    if (s2.stop) { await tap(); await wait(page, 500); }
+    if (s2.stop) { await noKaos(); await tap(); await wait(page, 500); }
     const s3 = await tState(page);
     ok(s3.moving && !s3.stop, "4b " + how + " it moves again (never frozen)", s3);
     // hold = pause, release = go (the one controller also owns hold)
@@ -239,7 +258,7 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
     ok(c1.shown && /Är du säker\? 180 kr för en öl\?/.test(c1.txt), "5 180 kr asks 'Är du säker? 180 kr för en öl?'", c1);
     ok(!calls(page, /report_bar_price/).length, "5 nothing sent before the confirm");
     await clickJS(page, "#sheet-body .bi-sure-no"); await wait(page, 300);
-    ok(await page.evaluate(() => document.querySelector("#sheet-body .bi-sure").hidden) && !calls(page, /report_bar_price/).length, "5 'Ändra' closes the question, nothing sent");
+    ok(await page.evaluate(() => { const x = document.querySelector("#sheet-body .bi-sure"); return !!x && x.hidden; }) && !calls(page, /report_bar_price/).length, "5 'Ändra' closes the question, nothing sent");
     await sendTo(180); await clickJS(page, "#sheet-body .bi-sure-yes"); await wait(page, 900);
     const sent = calls(page, /report_bar_price/);
     ok(sent.length === 1 && sent[0].body && sent[0].body.p_kr === 180, "5 'Ja' sends 180 kr once", sent.map((x) => x.body));
@@ -260,10 +279,11 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
       await page.route(/rest\/v1\/rpc\/submit_feedback\b/, (r) => J(r, { ok: true, id: 8 }));
     };
     const { ctx, page } = await setup(browser, 360, { routes });
-    await clickJS(page, "#btn-settings"); await wait(page, 1300);
-    const k = await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body .sf-set a, #sheet-body .sf-set button")].find((x) => /Kontakt/.test(x.textContent)); return b ? { tag: b.tagName, href: b.getAttribute("href") } : null; });
+    // Inställningar → Trygghet row (same entry as kpi-pw: SAFETY.settingsSheet into a box)
+    await page.evaluate(() => { const d = document.createElement("div"); d.id = "ofSet"; d.className = "sf-test"; document.body.appendChild(d); window.SAFETY.settingsSheet(d); });
+    const k = await page.evaluate(() => { const b = [...document.querySelectorAll("#ofSet .sf-set a, #ofSet .sf-set button")].find((x) => /Kontakt/.test(x.textContent)); return b ? { tag: b.tagName, href: b.getAttribute("href") } : null; });
     ok(k && k.tag === "BUTTON" && !k.href, "6" + (old ? " (old server)" : "") + " Kontakt is an in-app button, not a mailto link", k);
-    await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body .sf-set button")].find((x) => /Kontakt/.test(x.textContent)); if (b) b.click(); }); await wait(page, 700);
+    await page.evaluate(() => { const b = [...document.querySelectorAll("#ofSet .sf-set button")].find((x) => /Kontakt/.test(x.textContent)); if (b) b.click(); }); await wait(page, 700);
     const f = await page.evaluate(() => { const c = document.querySelector(".sf-ov .sf-ct"); return c ? { topics: [...c.querySelectorAll("[data-t]")].map((x) => x.textContent), ta: !!c.querySelector("textarea"), mail: !!c.querySelector("input[type=email]"),
       mailto: !!c.querySelector('.sf-ct-mailto a[href^="mailto:"]') } : null; });
     if (!old) await shot(page, "6-form-360");
@@ -280,6 +300,51 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
       const t = await page.evaluate(() => ({ ov: !!document.querySelector(".sf-ov"), toast: [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | ") }));
       ok(!t.ov && /Tack/.test(t.toast), "6 form closes with a thank-you toast", t);
     }
+    await ctx.close();
+  }
+
+  // ================= 7. event tips: auto ok answer, 3 a day, "Stämmer inte?" =================
+  if (ONLY.test("7")) {
+    let mode = "ok";
+    const routes = async (page) => {
+      await page.route(/rest\/v1\/rpc\/submit_event\b/, (r) => mode === "limit" ? r.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: "tip_limit" }) })
+        : J(r, { id: 501, status: mode === "ok" ? "ok" : "pending", bar_id: "n3472634175", reason: mode === "ok" ? "auto:account" : "new_user" }));
+      await page.route(/rest\/v1\/rpc\/report_event_tip\b/, (r) => J(r, { ok: true, n: 1, hidden: false }));
+    };
+    const { ctx, page } = await setup(browser, 390, { routes, init: () => { try { localStorage.setItem("olnu.terms", "1"); } catch (e) {} } });
+    const tip = async (title) => {
+      await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
+      await page.evaluate(() => window.EVENTS.tip(window.BARS.byId("n3472634175") || null));
+      await page.waitForSelector("#sheet .ev-kinds", { timeout: 10000 }).catch(() => {});
+      await page.evaluate((t) => { const i = document.querySelector('#sheet input.inp[maxlength="80"]'); i.value = t; const b = [...document.querySelectorAll("#sheet .btn-green.btn-block")].pop(); b.click(); }, title);
+      await wait(page, 900);
+      await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /godkänner/i.test(x.textContent)); if (b) b.click(); }); await wait(page, 1200);
+      return page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent).join(" | "));
+    };
+    const legal = await page.evaluate(() => { window.EVENTS.tip(window.BARS.byId("n3472634175")); return new Promise((r) => setTimeout(() => { const p = document.querySelector("#sheet .ev-legal"); r(p ? p.textContent : ""); document.getElementById("sheet-close").click(); }, 600)); });
+    ok(/känd krog syns det direkt/.test(legal) && /Max 3 tips/.test(legal), "7 tip form says how it works (known bar = at once, max 3 a day)", legal);
+    const t1 = await tip("Quiz på Pitchers");
+    ok(/Ute på kartan/.test(t1), "7 an auto-ok tip says 'Ute på kartan' (not 'waits for approval')", t1);
+    mode = "pending";
+    const t2 = await tip("Karaoke på Pitchers");
+    ok(!/Ute på kartan/.test(t2) && t2.length > 5, "7 a pending tip keeps the 'waits for the owner' toast", t2);
+    mode = "limit";
+    const t3 = await tip("Fjärde tipset");
+    ok(/Max 3 tips om dan/.test(t3), "7 the 4th tip in a day: friendly 'Max 3 tips om dan' error", t3);
+    // "Stämmer inte?" on a user event
+    await page.evaluate(() => { const s = document.getElementById("sheet"); if (!s.hidden) document.getElementById("sheet-close").click(); });
+    await page.evaluate(() => window.EVSHEET.open()); await wait(page, 1500);
+    await page.evaluate(() => window.EVSHEET.openDetail("9300")); await wait(page, 900);
+    const wb = await page.evaluate(() => { const b = document.querySelector("#sheet-body .evs-detail .evs-wrong"); return b ? b.textContent : null; });
+    await shot(page, "7-detail-wrong");
+    ok(wb && /Stämmer inte\?/.test(wb), "7 a user event detail has 'Stämmer inte?'", wb);
+    page.__calls.length = 0;
+    await clickJS(page, "#sheet-body .evs-detail .evs-wrong"); await wait(page, 900);
+    const rc = calls(page, /^report_event_tip$/);
+    const after = await page.evaluate(() => { const b = document.querySelector("#sheet-body .evs-detail .evs-wrong"); return b ? { t: b.textContent, d: b.disabled } : null; });
+    ok(rc.length === 1 && rc[0].body && rc[0].body.p_id === 9300 && after && after.d && /Tack/.test(after.t), "7 'Stämmer inte?' sends report_event_tip once and says thanks", { rc: rc.map((x) => x.body), after });
+    await page.evaluate(() => window.EVSHEET.openDetail("9100")); await wait(page, 700);
+    ok(await page.evaluate(() => !document.querySelector("#sheet-body .evs-detail .evs-wrong")), "7 a non-user event (quiz import) has no 'Stämmer inte?'");
     await ctx.close();
   }
 
