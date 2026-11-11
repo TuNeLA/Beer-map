@@ -95,16 +95,17 @@
       (saved === null ? "" : '<button type="button" class="pf-acct' + (saved ? " ok" : "") + '" data-pf="acct" aria-label="' + esc(saved ? L("Kontot ä sparat", "Account saved") : L("Kontot ä int' sparat", "Account not saved")) + '">' +
         (saved ? "🔐 " + esc(L("Sparat", "Saved")) : "⚠️ " + esc(L("Int' sparat", "Not saved"))) + "</button>") + "</div>";
     if (r) h += '<button type="button" class="pf-rank" data-pf="rank"><span class="pf-rank-t">🎖️ ' + esc(r.title) + "</span>" +
-      '<span class="pf-rank-m">' + esc(r.m + (r.mer ? L(" meriter", " merits") : L(" öl", " beers")) + (r.idx ? " · " + L("grad ", "rank ") + r.idx + "/" + r.n : "")) + "</span>" +
+      '<span class="pf-rank-m">' + esc((U.n1 || String)(r.m + (r.mer ? L(" meriter", " merits") : L(" öl", " beers")) + (r.idx ? " · " + L("grad ", "rank ") + r.idx + "/" + r.n : ""))) + "</span>" +
       '<span class="pf-bar" aria-hidden="true"><span style="width:' + r.pct + '%"></span></span>' +
       '<span class="pf-rank-n">' + esc(r.next) + "</span></button>";
     var nMed = md ? Object.keys(md).length : null;
     var streak = hs && hs.me ? hs.me.streak | 0 : null;
     var nFr = fr && Array.isArray(fr.friends) ? fr.friends.length : null;
     var tiles = [];
-    if (st) tiles.push(tile("total", String(st.total | 0), L("drycker totalt", "drinks total"), true));
-    if (y) tiles.push(tile("year", String(y.nights | 0), L("kvällar i år", "nights this year"), true));
-    if (ps) tiles.push(tile("pass", String((ps.bars || []).length), L("krogar i passet", "bars in passport"), true));
+    // fixJ T-22: the label follows the number (1 dryck / 1 kväll / 1 krog)
+    if (st) tiles.push(tile("total", String(st.total | 0), (st.total | 0) === 1 ? L("dryck totalt", "drink total") : L("drycker totalt", "drinks total"), true));
+    if (y) tiles.push(tile("year", String(y.nights | 0), (y.nights | 0) === 1 ? L("kväll i år", "night this year") : L("kvällar i år", "nights this year"), true));
+    if (ps) tiles.push(tile("pass", String((ps.bars || []).length), (ps.bars || []).length === 1 ? L("krog i passet", "bar in passport") : L("krogar i passet", "bars in passport"), true));
     if (streak != null) tiles.push(tile("streak", "🔥 " + streak, L("helger i rad", "weekends in a row"), true));
     if (nMed != null) tiles.push(tile("medals", String(nMed), L("medaljer", "medals"), true));
     if (nFr != null) tiles.push(tile("friends", String(nFr), nFr === 1 ? L("vän", "friend") : L("vänner", "friends"), true));

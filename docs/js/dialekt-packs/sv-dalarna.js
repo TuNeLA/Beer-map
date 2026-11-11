@@ -2810,7 +2810,7 @@
 ],
   "golden.du_hann_forst": "Du hann först till guldhästen. Dalarna kommer prata om det här i generationer.",
   "grp.empty": [
-  "Ingen ute än. Bli först, pojk!",
+  "Ingen ute än. Bli först, kamrat!",
   "Tyst i leden. Nån måste börja.",
   "Kasernen sover. Väck den mä en öl.",
   "Inga soldater i fält ikväll – än.",

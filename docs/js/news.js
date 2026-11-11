@@ -367,7 +367,8 @@
       var ahead = friends.filter(function (b) { return (b.beer_count | 0) > mn; })
         .sort(function (a, b) { return (b.beer_count | 0) - (a.beer_count | 0); })[0];
       if (ahead) add("meBehind", { name: ahead.friend_name, k: (ahead.beer_count | 0) - mn }, 1, "tk-me");
-      else if (friends.length && mn > 0) add("meLead", {}, 1, "tk-me");
+      else if (mn >= 2 && friends.some(function (b) { return (b.beer_count | 0) >= 1; }) &&
+        friends.every(function (b) { return (b.beer_count | 0) < mn; })) add("meLead", {}, 1, "tk-me");   // fixJ T-20: a real lead (strictly ahead, 2+); a tie is no lead
     }
 
     // v9: friends' titles (ctx.titles: beer id -> title; friends only, from friend_totals).
@@ -480,7 +481,7 @@
       var text = "", usedId = null, usedIx = null;
       for (var i = 0; i < ids.length; i++) {
         var tx = "";
-        try { tx = String(ids[i].f(x.d)); } catch (e) { tx = ""; }
+        try { tx = String(ids[i].f(x.d)); if (U.n1) tx = U.n1(tx); } catch (e) { tx = ""; }   // fixJ T-22: "1 prickar" → "1 prick"
         if (!tx || seen[tx] || !localOk(x.k, tx, x.d)) continue;
         text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;

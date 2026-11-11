@@ -497,11 +497,11 @@
     var per = d.kind === "year" ? String(String(d.from || "").slice(0, 4)) : monthLabel(d.from);
     var cards = [
       { e: "🌙", big: String(v.nights), small: L(v.nights === 1 ? "utekväll" : "utekvällar", "nights out"), line: wrapLine(["nights", "total"], v),
-        extra: L((d.home_nights | 0) + " hemma säkert · " + (d.bars | 0) + " krogar", (d.home_nights | 0) + " home safe · " + (d.bars | 0) + " bars") },
-      d.fav_bar_id ? { e: "🏠", big: v.favBar, small: L((d.fav_bar_nights | 0) + " kvällar där", (d.fav_bar_nights | 0) + " nights there"), line: wrapLine(["favBar"], v), extra: "" }
+        extra: L(U.n1((d.home_nights | 0) + " hemma säkert · " + (d.bars | 0) + " krogar"), (d.home_nights | 0) + " home safe · " + (d.bars | 0) + " bars") },
+      d.fav_bar_id ? { e: "🏠", big: v.favBar, small: L(U.n1((d.fav_bar_nights | 0) + " kvällar där"), (d.fav_bar_nights | 0) + " nights there"), line: wrapLine(["favBar"], v), extra: "" }
         : { e: "🗺️", big: String(d.bars | 0), small: L("krogar", "bars"), line: L(DIALEKT.v("after.cards.ingen_stamkrog_an", 0, {}, "Ingen stamkrog än. Kartan ligger öppen."), "No regular bar yet."), extra: "" },
       d.best_evening ? { e: "⭐", big: v.bestNight, small: L("bästa kvällen", "best night"), line: wrapLine(["bestNight"], v),
-        extra: L((d.best_bars | 0) + " krogar den kvällen", (d.best_bars | 0) + " bars that night") }
+        extra: L(U.n1((d.best_bars | 0) + " krogar den kvällen"), (d.best_bars | 0) + " bars that night") }
         : { e: "⭐", big: "–", small: L("bästa kvällen", "best night"), line: "", extra: "" },
       d.top_type ? { e: "🍺", big: v.topType, small: L("favoritsort", "favourite type"), line: wrapLine(["topType"], v), extra: "" }
         : { e: "🍻", big: String((d.skal_given | 0) + (d.skal_got | 0)), small: L("skål", "cheers"), line: L(DIALEKT.v("after.cards.skalen_flog_det", 0, {}, "Skålen flög. Det är det som räknas."), "Cheers flew."), extra: "" },
@@ -773,7 +773,7 @@
         list.appendChild(el("li", {}, [el("div", { class: "top-row af-lrow" + (x.is_mine ? " mine" : "") }, [
           el("span", { class: "top-rank", text: x.rank ? String(x.rank).padStart(2, "0") : "–" }),
           el("span", { class: "top-main" }, [el("span", { class: "top-name", text: x.town + (x.is_mine ? L(" · din stad", " · your town") : "") }),
-            el("span", { class: "top-sub", text: x.rank ? L((x.users | 0) + " soldater · " + (x.nights | 0) + " kvällar · " + (x.home | 0) + " hemma säkert", (x.users | 0) + " users · " + (x.nights | 0) + " nights")
+            el("span", { class: "top-sub", text: x.rank ? L(U.n1((x.users | 0) + " soldater · " + (x.nights | 0) + " kvällar · " + (x.home | 0) + " hemma säkert"), (x.users | 0) + " users · " + (x.nights | 0) + " nights")
               : L(DIALEKT.v("after.for_fa_soldater", 0, {x: (x.users | 0)}, "för få soldater för tabellen ({x}/3)"), "too few users (" + (x.users | 0) + "/3)") })]),
           el("span", { class: "top-n", text: (x.points | 0) + L(" poäng", " pts") })
         ])]));
