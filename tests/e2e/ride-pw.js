@@ -99,7 +99,9 @@ const S = (p) => p.evaluate(() => {
   const s = document.getElementById("sheet"), b = document.getElementById("sheet-body"), vis = (e) => !!e && e.getClientRects().length > 0;
   const btns = [...b.querySelectorAll("button, a.rd-taxi, a.rd-rowbtn")].filter(vis).map((x) => { const r = x.getBoundingClientRect(); return { t: x.textContent.trim(), h: Math.round(r.height), w: Math.round(r.width), c: x.className, href: x.getAttribute("href") || "" }; });
   return { open: !s.hidden, title: document.getElementById("sheet-title").textContent, text: b.textContent.replace(/\s+/g, " "), btns, sw: document.documentElement.scrollWidth, iw: innerWidth,
-    first: (b.querySelector(".rd > *") || {}).className || "", rd: !!b.querySelector(".rd") };
+    first: (b.querySelector(".rd > *") || {}).className || "", rd: !!b.querySelector(".rd"),
+    // owner 11 Nov: no big 112 in the ride sheet; one small muted link at the very bottom
+    big112: !!b.querySelector(".sf-112, .rd-112"), foot112: (() => { const l = b.lastElementChild; const a = l && l.querySelector('a[href="tel:112"]'); return a ? { t: a.textContent.trim(), c: getComputedStyle(a).color } : null; })() };
 });
 const tap = (p, re, sel) => p.evaluate(([r, s]) => { const e = [...document.querySelectorAll(s || "#sheet-body button, #sheet-body a")].find((x) => x.getClientRects().length && new RegExp(r).test(x.textContent.trim())); if (e) e.click(); return e ? e.textContent.trim() : null; }, [re, sel]);
 const force = (p) => p.evaluate(() => window.SKJUTS && window.SKJUTS._force && window.SKJUTS._force()).then(() => wait(p, 400));
@@ -125,8 +127,9 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     const R = await page(browser, srv, "R");
     await openReq(R.page); await wait(R.page, 1500);
     let s = await S(R.page);
-    ok("F1-1 'Hämta mig' opens the ride request sheet (title, 112 first, where / how many / note)", s.open && s.title === "Hämta mig" && s.rd && /sf-112|rd-112/.test(s.first)
+    ok("F1-1 'Hämta mig' opens the ride request sheet (title, request content first, where / how many / note)", s.open && s.title === "Hämta mig" && s.rd && /rd-lead/.test(s.first)
       && /Var ä du\?/.test(s.text) && /Hur många\?/.test(s.text) && /Nåt mer\?/.test(s.text) && !/Vem ska få frågan/.test(s.text), { title: s.title, first: s.first, text: s.text.slice(0, 200) });
+    ok("F1-1 no big 112 in the sheet; 'Akut fara? Ring 112' is a small muted link at the very bottom (owner 11 Nov)", !s.big112 && s.foot112 && s.foot112.t === "Akut fara? Ring 112" && !/255, 1|200, 32|ff7b73/.test(s.foot112.c), { big: s.big112, foot: s.foot112 });
     ok("F1-1 one amber button (Skicka), segmented where (2) + pax (4)", s.btns.filter((b) => /btn-amber/.test(b.c)).length === 1
       && s.btns.filter((b) => /rd-segb/.test(b.c)).length === 6, s.btns.map((b) => b.t));
     await shots(R.page, "1-request", async () => { await openReq(R.page); await wait(R.page, 900); });

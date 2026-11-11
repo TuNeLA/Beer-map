@@ -270,15 +270,17 @@ async function closeAll(page) {
       console.log("R1-36 " + JSON.stringify(cr));
       ok(cr.prev === "bm-credit", "R1-36: '| Gränser: SCB' follows the map credit on its line (" + JSON.stringify(cr.prev) + ")");
       await page.evaluate(() => { const p = document.getElementById("attrib-pop"); p.hidden = true; });
-      // R1-16: Kartstil = the one segmented control; the tip badge >= 12 px; items >= 44 px
+      // R1-16: Kartstil = the one segmented control; items >= 44 px. Owner 11 Nov (followups 09): "Chefens val" is in the
+      // hint, no pill in the segment (≥ 12 px text either way)
       const ks = await page.evaluate(() => { const sh = document.createElement("div"); sh.className = "sheet"; sh.id = "r1-ks"; sh.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;padding:16px;background:var(--ds-sheet,#121a2a)";
         const body = document.createElement("div"); sh.appendChild(body); document.body.appendChild(sh); BASEMAP.settingsSheet(body);
         const seg = body.querySelector("[role=radiogroup]"), bs = seg ? [...seg.querySelectorAll("button")] : [], tip = seg && seg.querySelector(".bm-b");
-        return { cls: seg ? seg.className : null, n: bs.length, h: bs.map((x) => Math.round(x.getBoundingClientRect().height)), tipPx: tip ? parseFloat(getComputedStyle(tip).fontSize) : null }; });
+        const hint = [...body.querySelectorAll("p")].find((p) => /chefens val/i.test(p.textContent)), tipEl = tip || hint;
+        return { cls: seg ? seg.className : null, n: bs.length, h: bs.map((x) => Math.round(x.getBoundingClientRect().height)), pill: !!tip, tipPx: tipEl ? parseFloat(getComputedStyle(tipEl).fontSize) : null }; });
       await wait(page, 300);
       await page.screenshot({ path: shotDir + "map-" + TAG + "-r1-16-kartstil-360.png" });
       console.log("R1-16 " + JSON.stringify(ks));
-      ok(/\bds-seg\b/.test(ks.cls || "") && ks.n >= 2 && ks.h.every((h) => h >= 44) && ks.tipPx >= 12, "R1-16: Kartstil is the segmented control, items >= 44 px, 'Chefens val' >= 12 px (" + JSON.stringify(ks) + ")");
+      ok(/\bds-seg\b/.test(ks.cls || "") && ks.n >= 2 && ks.h.every((h) => h >= 44) && !ks.pill && ks.tipPx >= 12, "R1-16: Kartstil is the segmented control, items >= 44 px, 'Chefens val' in the hint (no pill), >= 12 px (" + JSON.stringify(ks) + ")");
       ok(errs.length === 0, "R1 no page errors " + JSON.stringify(errs.slice(0, 3)));
       await closeCounted(ctx, page, "map-" + TAG + "-r1");
     }

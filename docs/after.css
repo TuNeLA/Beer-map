@@ -3,7 +3,7 @@
 /* 5. Högtidsläge: accent ring on the ÖL! button + emoji badge */
 .af-hol .beer-btn{box-shadow:0 0 0 3px var(--af-hol,var(--amber)),0 0 26px var(--af-hol,var(--amber)),inset 0 -8px 18px rgba(0,0,0,.25)}
 .af-hol .cd-track{stroke:var(--af-hol,var(--amber));stroke-opacity:.35}
-.af-hol .tk-live{background:var(--af-hol,var(--red));color:#0a0f1c}
+.af-hol .tk-live{background:var(--af-hol,var(--red));color:var(--ds-bg)}
 .af-hol-e{position:absolute;right:-6px;top:-4px;z-index:3;min-width:30px;height:30px;padding:0 5px;display:grid;place-items:center;font-size:var(--fs-16);line-height:1;
   background:var(--night-2);border:2px solid var(--af-hol,var(--amber));border-radius:var(--r-lg);pointer-events:none;white-space:nowrap;
   box-shadow:0 0 10px var(--af-hol,var(--amber))}
@@ -52,7 +52,7 @@
 .chat-input .af-mic:disabled{opacity:.5}
 .af-rec-t{position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;border-radius:var(--r-md);background:var(--red);color:#fff;font:700 var(--fs-12)/20px var(--hud);text-align:center}
 .af-play{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--line);background:rgba(245,166,35,.12);color:var(--text);font-weight:700;cursor:pointer}
-.af-play.on{background:var(--amber);color:#241300}
+.af-play.on{background:var(--amber);color:var(--ds-on-amber)}
 
 /* 7. Stad mot stad */
 .af-league{margin-top:14px}

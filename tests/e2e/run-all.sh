@@ -106,6 +106,7 @@ run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, f
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
 run sec        $B sec-pw.js        # lane sec: Spöke also ends the check-in and the pin (H2)
 run x8         $B x8-pw.js         # lane x8: weak signal: ÖL! outbox (offline / slow 3G / lost answer, no double log), 'Senast uppdaterad' + poll back-off, LÄSK!/spökläge
+run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens order icon, Helgstreak empty, safety/legend icons, R1-26/29/38/40/42/45/48/49, R1-43 token swaps
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk

@@ -57,7 +57,7 @@
       bNeedPlace: "Välj eller skriv ett ställe.",
       // Kebab
       kHead: "🌯 Kebabtoppen", kNear: "Käk nära dig", kNone: "Inga matställen nära dig. Gå närmare kebaben 🌯", kRate: "Betygsätt",
-      kStars: "Kebabstjärnor", kTag: "Bäst på (valfritt)", kSave: "🌯 Spara betyg", kTop: "🌯 Kebabkungen i {0}", kTopNone: "Ingen har betygsatt käk i {0} den här månaden. Bli först!",
+      kStars: "Kebabstjärnor", kTag: "Bäst på (valfritt)", kSave: "🌯 Spara betyg", kTop: "Kebabkungen i {0}", kTopNone: "Ingen har betygsatt käk i {0} den här månaden. Bli först!",
       kTown: "närområdet", kAvg: "★ {0} ({1})", kMine: "Ditt: {0}★", kOnce: "Ett betyg per ställe och natt. Du kan ändra det.",
       kNeedPos: "Slå på platsen så vi vet att du ä vid käket.", kPopBtn: "🌯 Betygsätt käket", kFoodOnly: "Bara mat – aldrig alkohol.",
       kRated: "Betygsatt ikväll ✓",
@@ -116,7 +116,7 @@
       bIn: "{0} coming", bCancel: "Cancel", bCancelled: "Brunch cancelled.", bNoPlaces: "No cafés nearby on the map. Type a place.",
       bHours: "Opening hours: check before you go.", bNeedPlace: "Pick or type a place.",
       kHead: "🌯 Kebab top", kNear: "Food near you", kNone: "No food places near you.", kRate: "Rate", kStars: "Kebab stars", kTag: "Best at (optional)",
-      kSave: "🌯 Save rating", kTop: "🌯 Kebab king of {0}", kTopNone: "No ratings in {0} this month. Be the first!", kTown: "the area",
+      kSave: "🌯 Save rating", kTop: "Kebab king of {0}", kTopNone: "No ratings in {0} this month. Be the first!", kTown: "the area",
       kAvg: "★ {0} ({1})", kMine: "Yours: {0}★", kOnce: "One rating per place per night. You can change it.", kNeedPos: "Turn on location so we know you're at the place.",
       kPopBtn: "🌯 Rate the food", kFoodOnly: "Food only – never alcohol.", kRated: "Rated tonight ✓",
       dHead: "💸 Debt book", dNetMe: "Net: {0}", dOwes: "{0} owes {1} kr", dGets: "{0} gets {1} kr", dEven: "{0} is even", dAllEven: "Everyone is even. 🌸",

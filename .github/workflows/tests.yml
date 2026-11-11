@@ -83,6 +83,8 @@ jobs:
             filter: '^(main|sec)$'
           - name: x8
             filter: '^(x8)$'
+          - name: followups
+            filter: '^(followups)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit

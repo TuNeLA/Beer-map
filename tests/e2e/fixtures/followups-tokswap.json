@@ -1,0 +1,857 @@
+{
+"what": "R1-43 safe token swaps (followups, 10 Nov): each declaration's colour literal was replaced by var(--token) with the SAME value in every page that loads the file. Test: tests/e2e/followups-pw.js (T7).",
+"decls": [
+{
+"file": "after.css",
+"prop": "color",
+"old": "#0a0f1c",
+"new": "var(--ds-bg)"
+},
+{
+"file": "after.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "avatar.css",
+"prop": "background",
+"old": "#3ddc84",
+"new": "var(--ds-green)"
+},
+{
+"file": "avatar.css",
+"prop": "background",
+"old": "#4aa3ff",
+"new": "var(--ds-blue)"
+},
+{
+"file": "avatar.css",
+"prop": "background",
+"old": "#ffc24d",
+"new": "var(--ds-amber-t)"
+},
+{
+"file": "avatar.css",
+"prop": "box-shadow",
+"old": "0 0 6px #ffc24d",
+"new": "0 0 6px var(--ds-amber-t)"
+},
+{
+"file": "avatar.css",
+"prop": "background",
+"old": "conic-gradient(#ff5a5a,#ffd36b,#3ddc84,#4aa3ff,#b26bff,#ff5a5a)",
+"new": "conic-gradient(#ff5a5a,#ffd36b,var(--ds-green),var(--ds-blue),#b26bff,#ff5a5a)"
+},
+{
+"file": "barsplus.css",
+"prop": "background",
+"old": "rgba(61,220,132,.12)",
+"new": "var(--ds-green-soft)"
+},
+{
+"file": "barsplus.css",
+"prop": "background",
+"old": "rgba(255,59,59,.12)",
+"new": "var(--ds-red-soft)"
+},
+{
+"file": "barsplus.css",
+"prop": "background",
+"old": "rgba(10,15,28,.94)",
+"new": "var(--pn-float)"
+},
+{
+"file": "barsplus.css",
+"prop": "border",
+"old": "1.5px solid #0a0f1c",
+"new": "1.5px solid var(--ds-bg)"
+},
+{
+"file": "barsplus.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "barsplus.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "barsplus.css",
+"prop": "background",
+"old": "rgba(61,220,132,.12)",
+"new": "var(--ds-green-soft)"
+},
+{
+"file": "ceremony.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "crew.css",
+"prop": "background",
+"old": "rgba(74,163,255,.1)",
+"new": "var(--ds-blue-soft)"
+},
+{
+"file": "crew.css",
+"prop": "background",
+"old": "rgba(10,15,28,.94)",
+"new": "var(--pn-float)"
+},
+{
+"file": "crew.css",
+"prop": "color",
+"old": "#0a0f1c",
+"new": "var(--ds-bg)"
+},
+{
+"file": "crew.css",
+"prop": "border",
+"old": "2px solid #0a0f1c",
+"new": "2px solid var(--ds-bg)"
+},
+{
+"file": "delight.css",
+"prop": "color",
+"old": "#ff3b3b",
+"new": "var(--red)"
+},
+{
+"file": "delight.css",
+"prop": "color",
+"old": "#3ddc84",
+"new": "var(--ds-green)"
+},
+{
+"file": "delight.css",
+"prop": "background",
+"old": "rgba(10,15,28,.94)",
+"new": "var(--pn-float)"
+},
+{
+"file": "delight.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#fffaf0 0 14%,#ffe7a8 22%,rgba(245,166,35,.85) 60%,rgba(199,122,14,.9))",
+"new": "linear-gradient(180deg,var(--foam) 0 14%,#ffe7a8 22%,rgba(245,166,35,.85) 60%,rgba(199,122,14,.9))"
+},
+{
+"file": "delight.css",
+"prop": "background",
+"old": "radial-gradient(circle at 20px 26px,#fffaf0 18px,transparent 19px) 0 0/40px 40px repeat-x",
+"new": "radial-gradient(circle at 20px 26px,var(--foam) 18px,transparent 19px) 0 0/40px 40px repeat-x"
+},
+{
+"file": "delight.css",
+"prop": "text-shadow",
+"old": "0 2px 0 #fffaf0",
+"new": "0 2px 0 var(--foam)"
+},
+{
+"file": "ds.css",
+"prop": "background",
+"old": "rgba(255,255,255,.16)",
+"new": "var(--ds-border-2)"
+},
+{
+"file": "events.css",
+"prop": "background",
+"old": "linear-gradient(90deg,#ffe08a,#f2c23c)",
+"new": "linear-gradient(90deg,var(--gold),#f2c23c)"
+},
+{
+"file": "events.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#1d1606,#0a0f1c)",
+"new": "linear-gradient(180deg,#1d1606,var(--ds-bg))"
+},
+{
+"file": "forfest.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#fff6dd 0%,#ffc24d 55%,#f5a623 100%)",
+"new": "linear-gradient(180deg,#fff6dd 0%,var(--ds-amber-t) 55%,var(--ds-amber) 100%)"
+},
+{
+"file": "forfest.css",
+"prop": "border",
+"old": "1px solid rgba(255,255,255,.1)",
+"new": "1px solid var(--ds-border)"
+},
+{
+"file": "forfest.css",
+"prop": "background",
+"old": "rgba(61,220,132,.16)",
+"new": "var(--pn-acc-live-bg)"
+},
+{
+"file": "forfest.css",
+"prop": "border",
+"old": "1px solid rgba(255,255,255,.1)",
+"new": "1px solid var(--ds-border)"
+},
+{
+"file": "forfest.css",
+"prop": "background",
+"old": "#19233a",
+"new": "var(--ds-card)"
+},
+{
+"file": "fx.css",
+"prop": "border",
+"old": "1.5px solid #fffaf0",
+"new": "1.5px solid var(--foam)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--ds-on-green)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--ds-on-green)"
+},
+{
+"file": "games.css",
+"prop": "border-color",
+"old": "#4aa3ff",
+"new": "var(--ds-blue)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--ds-on-green)"
+},
+{
+"file": "games.css",
+"prop": "background",
+"old": "rgba(245,166,35,.14)",
+"new": "var(--ds-amber-soft)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "games.css",
+"prop": "border",
+"old": "2px solid #241300",
+"new": "2px solid var(--ds-on-amber)"
+},
+{
+"file": "games.css",
+"prop": "background",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--ds-on-green)"
+},
+{
+"file": "games.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--ds-on-green)"
+},
+{
+"file": "games.css",
+"prop": "background",
+"old": "rgba(61,220,132,.16)",
+"new": "var(--pn-acc-live-bg)"
+},
+{
+"file": "hemute.css",
+"prop": "color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "hemute.css",
+"prop": "color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "hemute.css",
+"prop": "color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "invite.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "invite.css",
+"prop": "color",
+"old": "#fffaf0",
+"new": "var(--foam)"
+},
+{
+"file": "invite.css",
+"prop": "background",
+"old": "radial-gradient(circle,#ff5a1a 0,#ffc24d 55%,rgba(255,194,77,0) 75%)",
+"new": "radial-gradient(circle,#ff5a1a 0,var(--ds-amber-t) 55%,rgba(255,194,77,0) 75%)"
+},
+{
+"file": "join.css",
+"prop": "box-shadow",
+"old": "0 8px 28px rgba(245,166,35,.28)",
+"new": "0 8px 28px var(--line)"
+},
+{
+"file": "join.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "join.css",
+"prop": "box-shadow",
+"old": "0 0 0 2px #f5a623",
+"new": "0 0 0 2px var(--ds-amber)"
+},
+{
+"file": "join.css",
+"prop": "background",
+"old": "rgba(245,166,35,.28)",
+"new": "var(--line)"
+},
+{
+"file": "medals.css",
+"prop": "color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "olglas.css",
+"prop": "color",
+"old": "#fffaf0",
+"new": "var(--foam)"
+},
+{
+"file": "olglas.css",
+"prop": "color",
+"old": "#fffaf0",
+"new": "var(--foam)"
+},
+{
+"file": "olglas.css",
+"prop": "background",
+"old": "conic-gradient(#fffaf0 var(--p,0%),rgba(255,255,255,.18) 0)",
+"new": "conic-gradient(var(--foam) var(--p,0%),rgba(255,255,255,.18) 0)"
+},
+{
+"file": "oppet.css",
+"prop": "color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "oppet.css",
+"prop": "color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "radial-gradient(110% 55% at 50% -12%,rgba(245,166,35,.28),transparent 60%),radial-gradient(90% 50% at 110% 110%,rgba(123,77,255,.25),transparent 60%),#0b1020",
+"new": "radial-gradient(110% 55% at 50% -12%,var(--line),transparent 60%),radial-gradient(90% 50% at 110% 110%,rgba(123,77,255,.25),transparent 60%),#0b1020"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "radial-gradient(110% 55% at 50% -12%,rgba(245,166,35,.28),transparent 60%),radial-gradient(90% 50% at 110% 110%,rgba(123,77,255,.25),transparent 60%),#0b1020",
+"new": "radial-gradient(110% 55% at 50% -12%,var(--line),transparent 60%),radial-gradient(90% 50% at 110% 110%,rgba(123,77,255,.25),transparent 60%),#0b1020"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "rgba(255,255,255,.1)",
+"new": "var(--ds-border)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#ffc24d,#f5a623)",
+"new": "linear-gradient(180deg,var(--ds-amber-t),var(--ds-amber))"
+},
+{
+"file": "party.css",
+"prop": "box-shadow",
+"old": "0 8px 22px rgba(245,166,35,.28)",
+"new": "0 8px 22px var(--line)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "rgba(255,255,255,.1)",
+"new": "var(--ds-border)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#fff6dd 0%,#ffc24d 55%,#f5a623 100%)",
+"new": "linear-gradient(180deg,#fff6dd 0%,var(--ds-amber-t) 55%,var(--ds-amber) 100%)"
+},
+{
+"file": "party.css",
+"prop": "border",
+"old": "1px solid rgba(255,255,255,.1)",
+"new": "1px solid var(--ds-border)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "rgba(61,220,132,.16)",
+"new": "var(--pn-acc-live-bg)"
+},
+{
+"file": "party.css",
+"prop": "border",
+"old": "1px solid rgba(255,255,255,.1)",
+"new": "1px solid var(--ds-border)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "#fffaf0",
+"new": "var(--foam)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "rgba(255,255,255,.1)",
+"new": "var(--ds-border)"
+},
+{
+"file": "party.css",
+"prop": "background",
+"old": "linear-gradient(90deg,#ffc24d,#ff7a1a)",
+"new": "linear-gradient(90deg,var(--ds-amber-t),#ff7a1a)"
+},
+{
+"file": "party.css",
+"prop": "border",
+"old": "1px solid rgba(255,255,255,.1)",
+"new": "1px solid var(--ds-border)"
+},
+{
+"file": "pnds.css",
+"prop": "border",
+"old": "2px solid #FFFAF0",
+"new": "2px solid var(--foam)"
+},
+{
+"file": "pnds.css",
+"prop": "fill",
+"old": "#FFFAF0",
+"new": "var(--foam)"
+},
+{
+"file": "pnds.css",
+"prop": "color",
+"old": "#FFFAF0",
+"new": "var(--foam)"
+},
+{
+"file": "pnds.css",
+"prop": "outline",
+"old": "2px dashed #FFFAF0",
+"new": "2px dashed var(--foam)"
+},
+{
+"file": "pnds.css",
+"prop": "background",
+"old": "#4aa3ff",
+"new": "var(--ds-blue)"
+},
+{
+"file": "pnds.css",
+"prop": "background",
+"old": "rgba(245,166,35,.14)",
+"new": "var(--ds-amber-soft)"
+},
+{
+"file": "pnui.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#ffc24d,#f5a623 55%,#c97d0c)",
+"new": "linear-gradient(180deg,var(--ds-amber-t),var(--ds-amber) 55%,#c97d0c)"
+},
+{
+"file": "polish.css",
+"prop": "text-shadow",
+"old": "0 0 14px rgba(245,166,35,.28)",
+"new": "0 0 14px var(--line)"
+},
+{
+"file": "polish.css",
+"prop": "background",
+"old": "linear-gradient(135deg,#b3121b,#7d0c14)",
+"new": "linear-gradient(135deg,var(--red-d),#7d0c14)"
+},
+{
+"file": "profile.css",
+"prop": "background",
+"old": "rgba(255,255,255,.1)",
+"new": "var(--ds-border)"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "linear-gradient(160deg,#ffd23f,#f5a623)",
+"new": "linear-gradient(160deg,#ffd23f,var(--ds-amber))"
+},
+{
+"file": "skal.css",
+"prop": "border-color",
+"old": "#ffe08a",
+"new": "var(--gold)"
+},
+{
+"file": "skal.css",
+"prop": "border",
+"old": "1px solid #ffe08a",
+"new": "1px solid var(--gold)"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "radial-gradient(circle at 12% 30%,rgba(255,255,255,.55) 0 4px,transparent 5px),radial-gradient(circle at 30% 70%,rgba(255,255,255,.4) 0 3px,transparent 4px),\n  radial-gradient(circle at 58% 25%,rgba(255,255,255,.35) 0 2px,transparent 3px),linear-gradient(100deg,#ffe36e,#ffc21a 55%,#f5a623)",
+"new": "radial-gradient(circle at 12% 30%,rgba(255,255,255,.55) 0 4px,transparent 5px),radial-gradient(circle at 30% 70%,rgba(255,255,255,.4) 0 3px,transparent 4px),\n  radial-gradient(circle at 58% 25%,rgba(255,255,255,.35) 0 2px,transparent 3px),linear-gradient(100deg,#ffe36e,#ffc21a 55%,var(--ds-amber))"
+},
+{
+"file": "skal.css",
+"prop": "color",
+"old": "#b3121b",
+"new": "var(--red-d)"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "radial-gradient(circle at 15% 20%,rgba(255,255,255,.55) 0 5px,transparent 6px),radial-gradient(circle at 80% 30%,rgba(255,255,255,.45) 0 4px,transparent 5px),\n  radial-gradient(circle at 65% 80%,rgba(255,255,255,.35) 0 3px,transparent 4px),radial-gradient(circle at 30% 85%,rgba(255,255,255,.3) 0 2px,transparent 3px),\n  linear-gradient(180deg,#fffaf0 0 14px,#ffe36e 15px,#ffc21a 60%,#e8930f)",
+"new": "radial-gradient(circle at 15% 20%,rgba(255,255,255,.55) 0 5px,transparent 6px),radial-gradient(circle at 80% 30%,rgba(255,255,255,.45) 0 4px,transparent 5px),\n  radial-gradient(circle at 65% 80%,rgba(255,255,255,.35) 0 3px,transparent 4px),radial-gradient(circle at 30% 85%,rgba(255,255,255,.3) 0 2px,transparent 3px),\n  linear-gradient(180deg,var(--foam) 0 14px,#ffe36e 15px,#ffc21a 60%,#e8930f)"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "radial-gradient(circle at 18% 25%,rgba(255,255,255,.4) 0 4px,transparent 5px),linear-gradient(180deg,#fffaf0 0 10px,#ffe36e 11px,#f5a623)",
+"new": "radial-gradient(circle at 18% 25%,rgba(255,255,255,.4) 0 4px,transparent 5px),linear-gradient(180deg,var(--foam) 0 10px,#ffe36e 11px,var(--ds-amber))"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#ffe36e,#f5a623)",
+"new": "linear-gradient(180deg,#ffe36e,var(--ds-amber))"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "conic-gradient(from 200deg at 40% 55%,#f5a623,#6b3d00,#ffd23f,#3a2a10,#f5a623)",
+"new": "conic-gradient(from 200deg at 40% 55%,var(--ds-amber),#6b3d00,#ffd23f,#3a2a10,var(--ds-amber))"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "#fffaf0",
+"new": "var(--foam)"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#ffe36e,#f5a623)",
+"new": "linear-gradient(180deg,#ffe36e,var(--ds-amber))"
+},
+{
+"file": "skal.css",
+"prop": "background",
+"old": "linear-gradient(180deg,#ffe36e,#f5a623)",
+"new": "linear-gradient(180deg,#ffe36e,var(--ds-amber))"
+},
+{
+"file": "spel.css",
+"prop": "background",
+"old": "#00260f",
+"new": "var(--ds-on-green)"
+},
+{
+"file": "spel.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+},
+{
+"file": "spel.css",
+"prop": "background",
+"old": "rgba(74,163,255,.1)",
+"new": "var(--ds-blue-soft)"
+},
+{
+"file": "spel.css",
+"prop": "box-shadow",
+"old": "0 0 0 5px #ffc24d, 0 10px 30px rgba(0,0,0,.5)",
+"new": "0 0 0 5px var(--ds-amber-t), 0 10px 30px rgba(0,0,0,.5)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--on-green)"
+},
+{
+"file": "styles.css",
+"prop": "background",
+"old": "#4aa3ff",
+"new": "var(--water)"
+},
+{
+"file": "styles.css",
+"prop": "fill",
+"old": "#4aa3ff",
+"new": "var(--water)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--on-green)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "stroke",
+"old": "#d9b8ff",
+"new": "var(--other)"
+},
+{
+"file": "styles.css",
+"prop": "border",
+"old": "2px solid #d9b8ff",
+"new": "2px solid var(--other)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#d9b8ff",
+"new": "var(--other)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#d9b8ff",
+"new": "var(--other)"
+},
+{
+"file": "styles.css",
+"prop": "border-color",
+"old": "#4aa3ff",
+"new": "var(--water)"
+},
+{
+"file": "styles.css",
+"prop": "border-left-color",
+"old": "#4aa3ff",
+"new": "var(--water)"
+},
+{
+"file": "styles.css",
+"prop": "background",
+"old": "#0a0f1c",
+"new": "var(--night)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--on-green)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--on-amber)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--on-green)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#00260f",
+"new": "var(--on-green)"
+},
+{
+"file": "styles.css",
+"prop": "border-color",
+"old": "#4aa3ff",
+"new": "var(--water)"
+},
+{
+"file": "styles.css",
+"prop": "border-left-color",
+"old": "#ff3b3b",
+"new": "var(--red)"
+},
+{
+"file": "styles.css",
+"prop": "border-color",
+"old": "#ff3b3b",
+"new": "var(--red)"
+},
+{
+"file": "styles.css",
+"prop": "border-top-color",
+"old": "#ff3b3b",
+"new": "var(--red)"
+},
+{
+"file": "styles.css",
+"prop": "border-left-color",
+"old": "#ff3b3b",
+"new": "var(--red)"
+},
+{
+"file": "styles.css",
+"prop": "color",
+"old": "#3ddc84",
+"new": "var(--green)"
+},
+{
+"file": "ux3.css",
+"prop": "background",
+"old": "rgba(61,220,132,.12)",
+"new": "var(--ds-green-soft)"
+},
+{
+"file": "ux3.css",
+"prop": "color",
+"old": "#3ddc84",
+"new": "var(--ds-green)"
+},
+{
+"file": "v14.css",
+"prop": "color",
+"old": "#241300",
+"new": "var(--ds-on-amber)"
+}
+]
+}

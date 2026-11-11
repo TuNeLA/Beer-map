@@ -122,9 +122,15 @@
   function topSheet(body) {
     if (!A || !A.LIVE || off) return;
     var sec = A.el("section", { class: "hs-top" }, [A.el("h3", { text: L("🔥 Helgstreak", "🔥 Weekend streak") })]);
-    var box = A.el("div", { class: "hs" }); sec.appendChild(box); renderInto(box);
+    var box = A.el("div", { class: "hs" }); sec.appendChild(box);
+    // followups (R1-25): no streak data = no section (never an empty "Helgstreak" box); data already here = shown at once
+    var has = function () { return !!(st && st.me); };
+    if (has()) renderInto(box); else sec.hidden = true;
     body.appendChild(sec);
-    load(true).then(function () { if (off) { sec.remove(); return; } if (box.isConnected) renderInto(box); });
+    load(true).then(function () {
+      if (off || !has()) { sec.remove(); return; }
+      if (box.isConnected) { renderInto(box); sec.hidden = false; }
+    }, function () { if (!has()) sec.remove(); });
   }
   function groupItem(g, wrap) {
     if (!A || !A.LIVE || off || !g || !g.id) return;

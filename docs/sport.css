@@ -40,7 +40,7 @@ body.ghost-chip-on #btn-evs.locate-btn{top:calc(var(--sat) + 258px + var(--chaos
 
 /* bar sheet: 📺 Visar sport */
 .sp-tag{display:flex;align-items:center;justify-content:space-between;gap:var(--ds-2);margin:var(--ds-2) 0 2px;padding:6px 8px;border:1px solid var(--ds-border);border-radius:var(--ds-r-1);background:var(--ds-card)}
-.sp-tag.sp-on,.ev-line.sp-tag{border-color:var(--ds-blue);background:var(--ds-blue-soft)}
+/* .sp-tag.sp-on / .ev-line.sp-tag: events.css (R1-45, one place for every .ev-line) */
 .sp-l{font-weight:600;font-size:var(--ds-fs-14);overflow-wrap:anywhere}
 .sp-v{display:flex;gap:6px;flex:0 0 auto}
 .sp-b{min-width:56px;min-height:44px;padding:0 10px}

@@ -31,7 +31,7 @@ const ok = (c, n, x) => { if (c) { pass++; console.log("PASS", n); } else { fail
     await boot(page, { clean: true }); await wait(page, 1000);
     await page.waitForFunction(() => window.SPEL && window.VITALS, null, { timeout: 60000 }).catch(() => {});
     await page.evaluate(() => window.SPEL.open(null)); await page.waitForSelector(".sp-card[data-g]", { timeout: 60000 }).catch(() => {}); await wait(page, 5000);
-    const tags = await page.evaluate(() => [...document.querySelectorAll(".sp-card[data-g]")].filter((c) => [...c.querySelectorAll(".sp-tag")].some((t) => t.textContent === "Nytt")).map((c) => c.getAttribute("data-g")));
+    const tags = await page.evaluate(() => [...document.querySelectorAll(".sp-card[data-g]")].filter((c) => [...c.querySelectorAll(".sp-badge")].some((t) => t.textContent === "Nytt")).map((c) => c.getAttribute("data-g")));
     ok(tags.includes("kort") === wantKort && tags.includes("vem") === wantVem, "nytt: " + name, { tags, asked });
     if (cache) ok(asked === 0, "nytt: fresh cache = no server call", asked); else ok(asked === 1, "nytt: one server call", asked);
     if (answer && answer.games) ok(await page.evaluate(() => !!JSON.parse(localStorage.getItem("olnu.spLaunch") || "null")), "nytt: answer cached");

@@ -36,7 +36,7 @@
 .inv-from{font-size:var(--fs-12);margin:2px 0 6px}
 .inv-note{margin:6px 0;padding:6px 8px;border-left:3px solid var(--amber);background:rgba(245,166,35,.06);overflow-wrap:anywhere}
 .inv-ans{margin:10px 0}
-.inv-ans button[aria-checked="true"]{background:var(--amber);color:#241300}
+.inv-ans button[aria-checked="true"]{background:var(--amber);color:var(--ds-on-amber)}
 .inv-ppl{display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line-soft);font-size:var(--fs-14);line-height:1.4}
 .inv-ppl-h{flex:none;min-width:96px;font-weight:700}
 .inv-ppl-n{overflow-wrap:anywhere}
@@ -60,7 +60,7 @@
 .inv-chip{white-space:nowrap}
 /* 📨 map pin (only my invites) */
 .inv-pin-w{background:none;border:0}
-.inv-pin{display:inline-flex;align-items:center;gap:4px;padding:2px 7px 2px 4px;border:1px solid rgba(255,224,138,.8);background:rgba(16,24,38,.94);color:#fffaf0;
+.inv-pin{display:inline-flex;align-items:center;gap:4px;padding:2px 7px 2px 4px;border:1px solid rgba(255,224,138,.8);background:rgba(16,24,38,.94);color:var(--foam);
   font:600 var(--fs-12)/1.2 var(--body);white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer}
 .inv-pin.yes{border-color:var(--green,#3ddc84)}
 .inv-pin-e{font-size:15px}
@@ -84,6 +84,8 @@
 .inv-legend span{display:flex;gap:6px;align-items:flex-start}
 .inv-legend i{flex:none;display:inline-block;width:12px;height:12px;margin-top:1px;border-radius:50%}
 .lg-pin{background:var(--amber)}
-.lg-heat{background:radial-gradient(circle,#ff5a1a 0,#ffc24d 55%,rgba(255,194,77,0) 75%)}
+.lg-heat{background:radial-gradient(circle,#ff5a1a 0,var(--ds-amber-t) 55%,rgba(255,194,77,0) 75%)}
 .lg-ghost{border:0;background:radial-gradient(circle,rgba(200,212,234,.55) 0,rgba(200,212,234,.25) 45%,rgba(200,212,234,0) 72%)}
 @media (max-width:360px){.inv-ppl-h{min-width:80px}}
+/* followups (R1-36): the invite line's PNI envelope, same box as the other legend marks */
+.inv-legend .lg-inv{flex:none;width:14px;height:14px;margin-top:0;color:var(--ds-amber-t)}

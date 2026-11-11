@@ -4,7 +4,7 @@
    Research (Life360 / Snap Map live location / Watcher / Circle of 6): one tap, pick who gets it, live position for a fixed
    time with a clear stop, a visible answer ("Jag kommer"), and the emergency number always on screen.
    - 🆘 Hämta mig: picks friends / whole groups (friend_list), position for 30 / 60 / 90 min (default 60) or until ⏹ Stoppa.
-     "📞 Ring 112" is always first in the sheet. Rate-limited by the server (60 s between, max 6 per 12 h). While it is live
+     (owner 11 Nov: no big 112 here; "Akut fara? Ring 112" is a small link at the very bottom.) Rate-limited by the server (60 s between, max 6 per 12 h). While it is live
      and the app is open, the position is updated every 30 s (no history: one position, cleared at the end).
    - Receivers: one calm alarm toast per new request, a HUD chip, a sheet with 🗺️ Visa på kartan, 🧭 Vägbeskrivning and
      🙋 Jag kommer / ✋ Kan int'. The asker sees who answered.
@@ -70,6 +70,12 @@
   function sos112(body) { try { if (window.SAFETY && window.SAFETY.sos112) { window.SAFETY.sos112(body); return; } } catch (e) {}
     body.appendChild(h("div", { class: "sf-112" }, [h("a", { class: "btn btn-danger btn-block sf-112-btn", href: "tel:112", text: "📞 Ring 112" }),
       h("p", { class: "sf-112-note", text: "Appen larmar inte själv." })])); }
+  // followups (owner 11 Nov): a pickup request is not an emergency. No big red 112 at the top of the Hämta mig / Skjuts
+  // sheets; ONE small muted link at the very bottom of the sheet. 112 stays big where it belongs (SOS, Följ mig hem, Hem-läge).
+  function foot112(body) {
+    if (!body || body.querySelector(".pk-112")) return;
+    body.appendChild(h("p", { class: "pk-112" }, [h("a", { class: "pk-112-a", href: "tel:112", text: "Akut fara? Ring 112" })]));
+  }
 
   /* ---------- poll ---------- */
   function mineLive() { return P && P.mine && P.mine.live ? P.mine : null; }
@@ -139,8 +145,7 @@
     if (mineLive() && mineLive().kind === "hamta") { liveSheet(); return; }
     A.openSheet("🆘 Hämta mig", function (body) {
       var box = h("div", { class: "pk" });
-      body.appendChild(box);
-      sos112(box);
+      body.appendChild(box); foot112(body);
       box.appendChild(h("p", { class: "pk-lead", text: "Skickar \"Kan nån hämta mig?\" och var du ä till dem du väljer. De kan svara \"Jag kommer\"." }));
       box.appendChild(h("h3", { class: "pk-h", text: "Vem ska få frågan?" }));
       var pick = h("div", { class: "pk-pick" }, [h("p", { class: "pk-muted", text: "…" })]);
@@ -219,14 +224,13 @@
     var m = P && P.mine; if (!m) return;
     A.openSheet(m.kind === "skjuts" ? "🚗 Skjuts?" : "🆘 Hämta mig", function (body) {
       openBox = { kind: "mine", el: h("div", { class: "pk" }) };
-      body.appendChild(openBox.el); paintLive();
+      body.appendChild(openBox.el); foot112(body); paintLive();
     });
   }
   function paintLive() {
     var box = openBox && openBox.kind === "mine" ? openBox.el : null; if (!box || !document.body.contains(box)) return;
     var m = P && P.mine; box.innerHTML = "";
     if (!m) return;
-    sos112(box);
     if (m.live) {
       box.appendChild(h("p", { class: "pk-lead", text: m.kind === "skjuts" ? "🚗 Du har frågat " + (m.driver || "föraren") + " om skjuts." : "🆘 Din fråga ä skickad till " + (m.n | 0) + (m.n === 1 ? " person." : " personer.") }));
       box.appendChild(h("p", { class: "pk-muted", text: (m.has_pos ? "📍 Din position delas till " : "Gäller till ") + hm(m.ends_at) + "." }));
@@ -253,7 +257,7 @@
   function incomingSheet(x) {
     A.openSheet(x.kind === "skjuts" ? "🚗 " + x.name + " undrar: Skjuts?" : "🆘 " + x.name + " vill bli hämtad", function (body) {
       openBox = { kind: "in", id: x.id, el: h("div", { class: "pk" }) };
-      body.appendChild(openBox.el); paintIncoming();
+      body.appendChild(openBox.el); foot112(body); paintIncoming();
     });
   }
   function paintIncoming() {
@@ -275,7 +279,6 @@
     no.addEventListener("click", function () { answer(x, "kan_inte", no); });
     box.appendChild(h("div", { class: "pk-row pk-answer" }, [yes, no]));
     box.appendChild(h("p", { class: "pk-muted", text: "Gäller till " + hm(x.ends_at) + "." }));
-    sos112(box);
   }
   function answer(x, ans, btn) {
     btn.disabled = true;

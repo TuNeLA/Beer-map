@@ -22,7 +22,7 @@
 .cer-ct small{display:block;color:var(--muted,#a3aca8);font-size:var(--fs-12);line-height:1.35}
 .cer-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:44px}
 .cer-pick{border-radius:var(--r-pill,999px)}
-.cer-pick.on{background:var(--gold,#e8b84a);border-color:var(--gold,#e8b84a);color:#241300}
+.cer-pick.on{background:var(--gold,#e8b84a);border-color:var(--gold,#e8b84a);color:var(--ds-on-amber)}
 .cer-who{margin-top:10px;font-size:var(--fs-14)}
 .cer-fine{font-size:var(--fs-12)}
 .cer-win.cer-me{border-color:var(--gold,#e8b84a);background:linear-gradient(180deg,rgba(232,184,74,.14),rgba(232,184,74,.04))}

@@ -102,8 +102,8 @@
 .ave-grid{contain:layout paint}
 .ave-tile{content-visibility:auto;contain-intrinsic-size:auto 104px}
 .ave-art:empty{background:var(--ds-raised,#222e48)}
-.ave-gem{position:absolute;top:5px;right:5px;width:9px;height:9px;transform:rotate(45deg);border-radius:2px;background:#3ddc84}
-.ave-tile.r2 .ave-gem{background:#4aa3ff}.ave-tile.r3 .ave-gem{background:#b26bff}.ave-tile.r4 .ave-gem{background:#ffc24d;box-shadow:0 0 6px #ffc24d}
+.ave-gem{position:absolute;top:5px;right:5px;width:9px;height:9px;transform:rotate(45deg);border-radius:2px;background:var(--ds-green)}
+.ave-tile.r2 .ave-gem{background:var(--ds-blue)}.ave-tile.r3 .ave-gem{background:#b26bff}.ave-tile.r4 .ave-gem{background:var(--ds-amber-t);box-shadow:0 0 6px var(--ds-amber-t)}
 .ave-tile.locked .ave-gem{opacity:.6}
 .ave-tile.locked .ave-lk{top:auto;bottom:24px;right:auto;left:50%;transform:translateX(-50%)}
 .ave-sz{position:absolute;top:2px;left:50%;transform:translateX(-50%);font-size:12px;line-height:1}
@@ -116,7 +116,7 @@
 .ave-cs.on{border-color:var(--ds-amber,#f5a623);box-shadow:0 0 0 2px var(--ds-sheet,#121a2a) inset}
 .ave-cs.locked{opacity:.5}
 .ave-cs.ave-none{width:auto;padding:0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);font:600 var(--ds-fs-12,12px)/1 var(--ds-sans,system-ui);color:var(--ds-text-2,#c9d0cd)}
-.ave-own{overflow:hidden;background:conic-gradient(#ff5a5a,#ffd36b,#3ddc84,#4aa3ff,#b26bff,#ff5a5a)}
+.ave-own{overflow:hidden;background:conic-gradient(#ff5a5a,#ffd36b,var(--ds-green),var(--ds-blue),#b26bff,#ff5a5a)}
 .ave-own input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
 .ave-grid .ave-own{width:44px;height:44px;margin:auto}
 .ave-tile:focus-visible,.ave-cs:focus-visible,.ave-sub:focus-visible,.ave-keep:focus-visible{outline:2px solid var(--ds-amber-t,#ffc24d);outline-offset:2px}
