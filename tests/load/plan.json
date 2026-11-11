@@ -1,3 +1,28 @@
-{ "t0": 1794363346000, "step_min": 10, "end_min": 42,
-  "steps": "step 0 = 50 users (s00-s01), step 1 = +100 (s02-s05), step 2 = +150 (s06-s11), step 3 = +200 (s12-s19)",
-  "next": [ {"id":"s00","users":25,"step":0}, {"id":"s01","users":25,"step":0} ] }
+{
+ "t0": 1794363346000,
+ "step_min": 10,
+ "end_min": 42,
+ "steps": "step 0 = 50 users (s00-s01), step 1 = +100 (s02-s05), step 2 = +150 (s06-s11), step 3 = +200 (s12-s19)",
+ "next": [
+  {
+   "id": "s02",
+   "users": 25,
+   "step": 1
+  },
+  {
+   "id": "s03",
+   "users": 25,
+   "step": 1
+  },
+  {
+   "id": "s04",
+   "users": 25,
+   "step": 1
+  },
+  {
+   "id": "s05",
+   "users": 25,
+   "step": 1
+  }
+ ]
+}
