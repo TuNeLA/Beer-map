@@ -17,7 +17,6 @@
   function mods() { return PN.mods.apply(null, arguments); }
   function runWave() { return PN.runWave.apply(null, arguments); }
   function rpc() { return PN.rpc.apply(null, arguments); }
-  function cfgClear() { return PN.cfgClear.apply(null, arguments); }
   function flagsDirty() { return PN.flagsDirty.apply(null, arguments); }
   function bundleGo() { return PN.bundleGo.apply(null, arguments); }
   function planStart() { return PN.planStart.apply(null, arguments); }
@@ -34,16 +33,39 @@
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
   function copyText() { return PN.copyText.apply(null, arguments); }
-  function fallbackCopy() { return PN.fallbackCopy.apply(null, arguments); }
-  PN.put({ reauth: reauth, signIn: signIn, flyttGuard: flyttGuard });
+  function reauth() { return PN.reauth.apply(null, arguments); }
+  function getName() { return PN.getName.apply(null, arguments); }
+  function validName() { return PN.validName.apply(null, arguments); }
+  function withName() { return PN.withName.apply(null, arguments); }
+  function wait() { return PN.wait.apply(null, arguments); }
+  function signIn() { return PN.signIn.apply(null, arguments); }
+  function storedAuth() { return PN.storedAuth.apply(null, arguments); }
+  function flyttLink() { return PN.flyttLink.apply(null, arguments); }
+  function prepareExport() { return PN.prepareExport.apply(null, arguments); }
+  function finishExport() { return PN.finishExport.apply(null, arguments); }
+  function movedNow() { return PN.movedNow.apply(null, arguments); }
+  function flyttOnVisible() { return PN.flyttOnVisible.apply(null, arguments); }
+  function showMoved() { return PN.showMoved.apply(null, arguments); }
+  function showFlyttExport() { return PN.showFlyttExport.apply(null, arguments); }
+  function copyFlytt() { return PN.copyFlytt.apply(null, arguments); }
+  function showFlyttImport() { return PN.showFlyttImport.apply(null, arguments); }
+  function flyttBoot() { return PN.flyttBoot.apply(null, arguments); }
+  function makeClient() { return PN.makeClient.apply(null, arguments); }
+  function introDone() { return PN.introDone.apply(null, arguments); }
+  function ageOk() { return PN.ageOk.apply(null, arguments); }
+  function showAgeOnce() { return PN.showAgeOnce.apply(null, arguments); }
+  function showIntro() { return PN.showIntro.apply(null, arguments); }
+  PN.put({
+    render: render, refresh: refresh, startPoll: startPoll, stopPoll: stopPoll, locate: locate,
+    resumeNotify: resumeNotify, showSettings: showSettings
+  });
   // </split:imports>
-  var beers = [];
   // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
   // Used for levels, chaos, heat, counts, top lists and news numbers. The real rows stay in "beers".
   var drinkViews = null;
   function beerOnly() {
     if (drinkViews) return drinkViews;
-    drinkViews = beers.filter(function (b) { return U.drinks(b) >= 1; }).map(function (b) {
+    drinkViews = PN.s.beers.filter(function (b) { return U.drinks(b) >= 1; }).map(function (b) {
       var v = Object.create(b); v.beer_count = U.drinks(b); v.beers_only = b.beer_count | 0; v.other_count = 0; v.row = b;
       return v;
     });
@@ -536,7 +558,7 @@
   // Check-ins per bar id (from the poll), rally badges per bar id (js/rally.js).
   function checkinsByBar() {
     var out = {};
-    checkins.forEach(function (c) { var id = c.bar_id ? window.BARS.canonId(c.bar_id) : ""; if (id) (out[id] = out[id] || []).push(c); });
+    PN.s.checkins.forEach(function (c) { var id = c.bar_id ? window.BARS.canonId(c.bar_id) : ""; if (id) (out[id] = out[id] || []).push(c); });
     return out;
   }
   function rallyBadges(z) {
@@ -713,7 +735,7 @@
   // The server row wins (e.g. checked in on another phone, or the night ended).
   function syncMyCheckin() {
     var mine = null;
-    checkins.forEach(function (c) { if (c.is_mine) mine = c; });
+    PN.s.checkins.forEach(function (c) { if (c.is_mine) mine = c; });
     var loc = myCheckin();
     if (!mine) { if (loc && (Date.now() - loc.at) > 120e3) U.ls.del(CI_KEY); return; }
     var at = Date.parse(mine.created_at) || Date.now();
@@ -723,7 +745,7 @@
   }
   function checkinsAt(bar) {
     var id = String(bar.id);
-    return checkins.filter(function (c) { return window.BARS.canonId(c.bar_id) === window.BARS.canonId(id); })
+    return PN.s.checkins.filter(function (c) { return window.BARS.canonId(c.bar_id) === window.BARS.canonId(id); })
       .concat(window.DEMO ? window.DEMO.cisAt(bar) : []);   // 🎞️ visningsläge
   }
   // "Anton, Oskar + 2 till" (names: me + friends; strangers only as a count).
@@ -852,7 +874,7 @@
     var z = map.getZoom(), keep = openKey;
     redrawing = true;
     clusters.clearLayers(); hotLayer.clearLayers(); markerById = {}; hotBarIds = {}; compIds = {};
-    var split = z >= HOT_ZOOM ? window.BARS.assign(beers) : { perBar: {}, rest: beers };
+    var split = z >= HOT_ZOOM ? window.BARS.assign(PN.s.beers) : { perBar: {}, rest: PN.s.beers };
     var ms = split.rest.map(function (b) {
       var l = U.level(U.drinks(b));
       var m = L.marker([b.lat, b.lng], { icon: beerIcon(b), friend: !!b.friend_name, mine: !!b.is_mine, streak: l, beerId: b.id, olnuB: b,
@@ -1035,14 +1057,14 @@
     var rl = [];
     try { rl = window.RALLY && window.RALLY.list ? window.RALLY.list() : []; } catch (e) { rl = []; }
     return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles, liveTotal: liveTotal,   // fixM T-14: the header's own count
-      others: beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: checkins,
+      others: PN.s.beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: PN.s.checkins,
       home: groupRows, rallies: rl, myName: getName() || null, myTitle: me.title || null, myMedals: medals.slice(0, 3) };
   }
   // QA #11: before the first GPS fix (location allowed, first 15 s) the ticker has no centre, so it does not
   // name the start-view town. showMe() rebuilds the queued headlines when the fix arrives.
   var newsNoCenter = false, newsBootAt = Date.now();
   function newsCenter() {
-    if (!lastLoc && !myBeer() && U.ls.get("olnu.locOk", "") === "1" && Date.now() - newsBootAt < 15000) { newsNoCenter = true; return null; }
+    if (!PN.s.lastLoc && !myBeer() && U.ls.get("olnu.locOk", "") === "1" && Date.now() - newsBootAt < 15000) { newsNoCenter = true; return null; }
     return chaosCenter();
   }
   // LIVE ticker = funny TV news feed (js/news.js). New headlines after each poll (or language change), not on map moves.
@@ -1168,7 +1190,7 @@
   var prevLevels = null, prevStr = null, prevBox = null;
   function strangerLevels(box) {
     var c = { 1: [], 2: [] };
-    beers.forEach(function (b) {
+    PN.s.beers.forEach(function (b) {
       if (b.is_mine || b.friend_name || b.is_friend) return;
       if (box && !(b.lat >= box[0] && b.lat <= box[2] && b.lng >= box[1] && b.lng <= box[3])) return;
       var l = U.level(U.drinks(b)); if (l) c[l].push(b);
@@ -1177,9 +1199,9 @@
   }
   function streakAlerts(box) {
     var now = {};
-    beers.forEach(function (b) { if (b.is_mine || b.friend_name || b.is_friend) now[b.id] = U.level(U.drinks(b)); });
+    PN.s.beers.forEach(function (b) { if (b.is_mine || b.friend_name || b.is_friend) now[b.id] = U.level(U.drinks(b)); });
     if (prevLevels) {
-      beers.forEach(function (b) {
+      PN.s.beers.forEach(function (b) {
         if (b.is_mine || now[b.id] == null) return;
         var before = prevLevels[b.id] | 0, l = now[b.id];
         if (l > before) {
@@ -1212,7 +1234,6 @@
   }
 
   /* ---------- Kaos i stan (in-app only, anonymous counts) ---------- */
-  var lastLoc = null;          // last known own location {lat, lng} (locate or own beer tap)
   var chaosRes = null;         // last result of CHAOS.compute
   var chaosPrevOn = null;      // was it chaos at the last poll? (null before the first poll)
   var chaosShown = false;
@@ -1231,7 +1252,7 @@
   var chaosLastIx = -1;        // last headline index, never the same twice in a row
   var CHAOS_BACK_MS = 60 * 60 * 1000;
   function chaosCenter() {
-    if (lastLoc) return lastLoc;
+    if (PN.s.lastLoc) return PN.s.lastLoc;
     var m = myBeer();
     if (m) return { lat: m.lat, lng: m.lng };
     var c = map.getCenter();
@@ -1337,14 +1358,14 @@
     }
     if (PN.s.firstLoadDone || n != null) prevMySkal = n == null ? 0 : n;
   }
-  function beerById(id) { for (var i = 0; i < beers.length; i++) if (String(beers[i].id) === String(id)) return beers[i]; return null; }
+  function beerById(id) { for (var i = 0; i < PN.s.beers.length; i++) if (String(PN.s.beers[i].id) === String(id)) return PN.s.beers[i]; return null; }
   // Same person after a re-poll: a known pin keeps its id; a stranger's opaque id rotates every 10 min,
   // so match by spot (bar or grid point) + counts.
   function samePin(b) {
     var x = beerById(b.id); if (x) return x;
     if (b.is_mine || b.friend_name) return null;
-    for (var i = 0; i < beers.length; i++) {
-      var y = beers[i];
+    for (var i = 0; i < PN.s.beers.length; i++) {
+      var y = PN.s.beers[i];
       if (y.is_mine || y.friend_name) continue;
       if ((y.bar_id || "") === (b.bar_id || "") && Math.abs(y.lat - b.lat) < 1e-6 && Math.abs(y.lng - b.lng) < 1e-6 &&
           (y.beer_count | 0) === (b.beer_count | 0) && (y.other_count | 0) === (b.other_count | 0)) return y;
@@ -1409,7 +1430,7 @@
     root.querySelectorAll(".pp-all").forEach(function (x) {
       x.addEventListener("click", function (ev) {
         ev.preventDefault(); ev.stopPropagation();
-        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(beers).perBar[id];
+        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(PN.s.beers).perBar[id];
         if (window.DEMO) try { agg = window.DEMO.crowd(id, agg); } catch (e) {}   // 🎞️ visningsläge   // (rows, not views)
         map.closePopup();
         if (agg && agg.beers.length) openCrowd(agg.beers, agg.bar);
@@ -1492,7 +1513,7 @@
   /* ---------- Counts / chrome ---------- */
   function friendsDrinking() {
     var seen = {};
-    beers.forEach(function (b) { if (b.friend_name) seen[b.id] = 1; });
+    PN.s.beers.forEach(function (b) { if (b.friend_name) seen[b.id] = 1; });
     return Object.keys(seen).length;
   }
   // v13 poll_v2 "me": the server's view of the caller (count, cooldown, undo, ghost). null on an old server.
@@ -1503,7 +1524,7 @@
     if (!isFinite(e) || e < Date.now()) { var n = myNight(); e = n && n.expires ? n.expires : NaN; }
     return isFinite(e) && e > Date.now() ? e : U.next5am().getTime();
   }
-  function myBeer() { for (var i = 0; i < beers.length; i++) if (beers[i].is_mine) return beers[i]; return null; }
+  function myBeer() { for (var i = 0; i < PN.s.beers.length; i++) if (PN.s.beers[i].is_mine) return PN.s.beers[i]; return null; }
 
   // Own night state kept on the phone: {count, expires, lastTap}. Server stays the authority.
   function myNight() {
@@ -1637,18 +1658,18 @@
     });
   }
   // v10 Checka in: tonight's check-ins (RPC live_checkins, migration 0011). "missing" = old database → feature off.
-  var checkins = [], checkinState = "unknown";   // "unknown" | "on" | "missing"
+  var checkinState = "unknown";   // "unknown" | "on" | "missing"
   function fetchCheckins() {
-    if (checkinState === "missing") return Promise.resolve(checkins);
+    if (checkinState === "missing") return Promise.resolve(PN.s.checkins);
     return rpc("live_checkins").then(function (r) {
       if (r.error) {
-        if (U.missing(r.error)) { checkinState = "missing"; checkins = []; }
-        return checkins;   // network error: keep the last list
+        if (U.missing(r.error)) { checkinState = "missing"; PN.s.checkins = []; }
+        return PN.s.checkins;   // network error: keep the last list
       }
-      checkins = (r.data || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      PN.s.checkins = (r.data || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       checkinState = "on";
       syncMyCheckin();
-      return checkins;
+      return PN.s.checkins;
     });
   }
   // v13 poll_v2: one call per poll for the map view (+ margin). "unknown" | "on" | "missing" (old server).
@@ -1718,7 +1739,7 @@
   function refresh(force) {
     // A poll is already running (e.g. right after a beer tap): run once more after it, so the new pin shows now.
     if (loading) { refreshAgain = true; return loadingP || Promise.resolve(); }
-    if (!LIVE || !PN.s.authed || movedState) return Promise.resolve();
+    if (!LIVE || !PN.s.authed || PN.s.movedState) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
     var startedAt = Date.now(), box = null, dv2 = null;
@@ -1731,14 +1752,14 @@
     });
     if (PN.s.bq.length) bundleGo();   // perf: poll_v2 + the plan now, as one request
     loadingP = step.then(function (d) {
-      if (movedState) return;
+      if (PN.s.movedState) return;
       if (d) {
         dv2 = d;
         box = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
         pollBox = box;
-        beers = normPins(d.pins);
+        PN.s.beers = normPins(d.pins);
         liveTotal = d.live_total != null ? d.live_total | 0 : null;
-        checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+        PN.s.checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
         checkinState = "on"; syncMyCheckin();
         if (othersState !== "on") { othersState = "on"; mods("onOthersState", true); }
         if (Array.isArray(d.heat)) {
@@ -1749,14 +1770,14 @@
         return;
       }
       return fetchOld().then(function (list) {
-        if (movedState) return;
-        beers = normPins(list); liveTotal = null; pollBox = null; meState = null;
+        if (PN.s.movedState) return;
+        PN.s.beers = normPins(list); liveTotal = null; pollBox = null; meState = null;
       });
     }).then(function () {
-      if (movedState) return;
+      if (PN.s.movedState) return;
       drinkViews = null;
       lastPollAt = Date.now();
-      beers.forEach(function (b) {
+      PN.s.beers.forEach(function (b) {
         var mine = mySkals[b.id];
         if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
       });
@@ -1778,13 +1799,13 @@
       if (slowDue) PN.s.slowLaneAt = Date.now();
       else PN.s.modsSkip = [window.MERITER, window.FILM, window.CEREMONY, window.HELG, window.PASSPORT, window.GOLDEN, window.EVENTS, window.HOMETOWN, window.KODEN];
       var wave = PN.s.modsWave = [];
-      try { mods("onPoll", beers); } finally { PN.s.modsSkip = null; PN.s.modsWave = null; }
-      runWave(wave, beers);
+      try { mods("onPoll", PN.s.beers); } finally { PN.s.modsSkip = null; PN.s.modsWave = null; }
+      runWave(wave, PN.s.beers);
     }).catch(function (e) {
       if (U.errCode(e) === "not_authenticated") {
         // Export pending and the server stopped taking our token: the new app has taken the account over.
         var pend = U.ls.getJSON("olnu.flyttPending", null);
-        if (pend && !movedState) { finishExport(pend.kind, false); showMoved().then(signIn); return; }
+        if (pend && !PN.s.movedState) { finishExport(pend.kind, false); showMoved().then(signIn); return; }
         reauth(); return;
       }
       if (window.X8) window.X8.pollFail();
@@ -1803,12 +1824,12 @@
   // x8: cold start with no net → the last good poll_v2 answer from this phone (≤ 3 h, same user), drawn once, with the caption
   var x8Snapped = false;
   function x8Snap() {
-    if (x8Snapped || beers.length || !window.X8) return x8Snapped;
+    if (x8Snapped || PN.s.beers.length || !window.X8) return x8Snapped;
     var o = window.X8.snapGet(); if (!o) return false;
     x8Snapped = true;
     try {
-      beers = normPins(o.pins); liveTotal = o.live_total != null ? o.live_total | 0 : null;
-      checkins = (o.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      PN.s.beers = normPins(o.pins); liveTotal = o.live_total != null ? o.live_total | 0 : null;
+      PN.s.checkins = (o.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       drinkViews = null; newsDirty = true; render(); updateCounts();
       window.X8.staleShow();   // the caption shows at once ("Senast uppdaterad <snapshot time>")
     } catch (e) {}
@@ -1846,9 +1867,9 @@
       // their onPoll from that poll (they have no own visibilitychange polls any more)
       lastTouch = Date.now(); tickCooldown();
       if (PN.s.publicOn && !PN.s.authed) setTimeout(publicPoll, 300);   // ⚡ no account yet: the public poll
-      resumeSession().then(function () { if (document.visibilityState !== "visible" || movedState) return; startPoll(); refresh(); });
+      resumeSession().then(function () { if (document.visibilityState !== "visible" || PN.s.movedState) return; startPoll(); refresh(); });
     }
-    else { flyttHiddenAt = Date.now(); stopPoll(); memShed(); clearTimeout(pubTimer); if (cdTimer) { clearInterval(cdTimer); cdTimer = null; } }
+    else { PN.s.flyttHiddenAt = Date.now(); stopPoll(); memShed(); clearTimeout(PN.s.pubTimer); if (cdTimer) { clearInterval(cdTimer); cdTimer = null; } }
   });
   var resumeP = null;
   function resumeSession() {
@@ -1890,7 +1911,7 @@
     if (PN.s.pendingFocus == null) return;
     var id = PN.s.pendingFocus; PN.s.pendingFocus = null;
     var b = null;
-    for (var i = 0; i < beers.length; i++) if (String(beers[i].id) === String(id)) b = beers[i];
+    for (var i = 0; i < PN.s.beers.length; i++) if (String(PN.s.beers[i].id) === String(id)) b = PN.s.beers[i];
     var act = PN.s.pendingAct; PN.s.pendingAct = null;
     if (!b) { toast(t("linkGone"), { id: "link", urgent: true, ms: 5000 }); return; }
     if (act) pushAct(act, b);
@@ -1925,45 +1946,6 @@
     }
   }
   I.add({ sv: { pushActFail: "Kunde inte skicka. Försök igen." }, en: { pushActFail: "Could not send. Try again." } });
-  var reauthing = false;
-  function reauth() {
-    if (!LIVE || !PN.s.client || reauthing || movedState || flyttPendingNow()) return;
-    reauthing = true; PN.s.authed = false;
-    // Try to refresh the token first: signing out makes a NEW anonymous user and loses all groups.
-    PN.s.client.auth.refreshSession().then(function (r) {
-      if (r && r.data && r.data.session && !r.error) return "ok";
-      // Network error (phone just woke up, bad signal): keep the session. A new anonymous
-      // user would lose all groups and leave the old pin on the map.
-      if (authRetryable(r && r.error)) return "ok";
-      try { console.warn("olnu reauth", r && r.error && (r.error.message || r.error.status)); } catch (e) {}
-      // v14: never silently: warn and offer the flyttkod first.
-      return askNewAccount().then(function (choice) {
-        if (choice !== "new") return choice;
-        U.ls.del("olnu.uid");
-        return Promise.resolve(PN.s.client.auth.signOut()).catch(function () {}).then(function () { return "ok"; });
-      });
-    }).catch(function () { return "ok"; }).then(function (res) {
-      reauthing = false;
-      if (res === "retry") { setTimeout(reauth, 300); return; }
-      if (res === "ok") return signIn();
-    });
-  }
-  // "Din inloggning gick ut": continue with a new account, paste a flyttkod, or try again.
-  var askingAcc = null;
-  function askNewAccount() {
-    if (askingAcc) return askingAcc;
-    askingAcc = new Promise(function (resolve) {
-      var done = false, fin = function (v) { if (done) return; done = true; askingAcc = null; resolve(v); };
-      openSheet(t("reauthTitle"), function (body) {
-        body.appendChild(el("p", { text: t("reauthText") }));
-        body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn(t("reauthRetry"), "btn-green btn-block", function () { fin("retry"); closeSheet("pick"); })]));
-        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("reauthFlytt"), "btn-amber btn-block", function () { fin("flytt"); showFlyttImport(); })]));
-        body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("reauthNew"), "btn-ghost btn-block", function () { fin("new"); closeSheet("pick"); })]));
-        if (window.ACCOUNT) window.ACCOUNT.entry(body, "reauth");   // 🔐 account.js
-      }, { now: true, onClose: function () { fin("later"); } });
-    });
-    return askingAcc;
-  }
 
   /* ---------- Cooldown ---------- */
   var RING_LEN = 2 * Math.PI * 56;
@@ -2063,7 +2045,7 @@
   /* ---------- Locate me ---------- */
   var meLayer = L.layerGroup().addTo(map);
   function showMe(lat, lng, acc) {
-    lastLoc = { lat: lat, lng: lng };
+    PN.s.lastLoc = { lat: lat, lng: lng };
     if (PUSH_ON && PN.s.authed) window.PUSH.setLocation(rpc, lat, lng);
     if (chaosRes) evalChaos(false);
     if (newsNoCenter) { newsNoCenter = false; try { if (tickerKey) renderTickerItemsOnly(); } catch (e) {} }
@@ -2223,7 +2205,7 @@
       toast(msg + (ci ? " Räkna den på " + ci.name + "?" : " Räkna ölen ändå, utan pin på kartan?"), { err: true, id: "loc", ms: 9000,
         action: { label: ci ? "Ja, på " + String(ci.name).slice(0, 18) : "Räkna ölen ändå", fn: function () {
           if (ci) fin({ lat: +ci.lat, lng: +ci.lng, precise: true, _bar: ci.id });
-          else { var h = U.ls.getJSON("olnu.home", null), p = lastLoc || (h && isFinite(h.lat) ? h : null) || { lat: 59.3326, lng: 18.0649 };
+          else { var h = U.ls.getJSON("olnu.home", null), p = PN.s.lastLoc || (h && isFinite(h.lat) ? h : null) || { lat: 59.3326, lng: 18.0649 };
             fin({ lat: +p.lat, lng: +p.lng, precise: false, _nopin: true }); }
         } } });
       setTimeout(function () { fin({ _skip: true }); }, 9500);
@@ -2364,7 +2346,7 @@
   }
   // X8 flush → one queued beer. Answers { kind: ok | refused | cooldown | net | skip, wait }.
   function x8Send(q) {
-    if (!LIVE || !PN.s.authed || PN.s.busy || movedState) return Promise.resolve({ kind: "skip" });
+    if (!LIVE || !PN.s.authed || PN.s.busy || PN.s.movedState) return Promise.resolve({ kind: "skip" });
     var before = U.drinks(meState || myBeer() || {});
     return postBeer({ lat: q.lat, lng: q.lng, precise: q.precise, home: q.home }, q.ghost).then(function (res) {
       var r = res.r;
@@ -2424,7 +2406,7 @@
   function beerDone(d, res, spot, ghost, before, q) {
     saveNight(d, true);
     lastAcceptAt = Date.now();
-    if (isFinite(d.lat) && isFinite(d.lng)) lastLoc = { lat: +d.lat, lng: +d.lng };
+    if (isFinite(d.lat) && isFinite(d.lng)) PN.s.lastLoc = { lat: +d.lat, lng: +d.lng };
     // v17 server: d.drinks = total drinks tonight (beers + others). Older server: beers + others we know.
     var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow();
     if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
@@ -2521,52 +2503,6 @@
   $("sheet-close").addEventListener("click", function () { closeSheet("cancel"); });
   $("backdrop").addEventListener("click", function () { closeSheet("cancel"); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet("cancel"); });
-
-  /* ---------- Name ---------- */
-  function getName() { return (U.ls.get("olnu.name", "") || "").trim(); }
-  function validName(s) { s = (s || "").trim(); return s.length >= 1 && s.length <= 30 ? s : null; }
-  function askName(then) {
-    openSheet(t("yourName"), function (body) {
-      var inp = el("input", { class: "inp", id: "name-inp", maxlength: "30", autocomplete: "nickname", enterkeyhint: "done", value: getName(), placeholder: t("namePh") });
-      var go = function () {
-        var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
-        U.ls.set("olnu.name", n); then();
-      };
-      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
-      body.appendChild(el("label", { class: "fld", for: "name-inp", text: t("nameHint") }));
-      body.appendChild(inp);
-      if (window.ACCOUNT) window.ACCOUNT.entry(body, "name", { query: joinCode ? "join=" + U.cleanCode(joinCode) : "" });   // 🔐 account.js
-      body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn(t("next"), "btn-amber btn-block", go)]));
-      setTimeout(function () { inp.focus(); }, 50);
-    });
-  }
-  function withName(fn) { if (getName()) fn(); else askName(fn); }
-  function showRename(back) {
-    openSheet(t("rename"), function (body) {
-      var inp = el("input", { class: "inp", id: "rename-inp", maxlength: "30", autocomplete: "nickname", enterkeyhint: "done", value: getName(), placeholder: t("namePh") });
-      var busy = false;
-      var go = function () {
-        if (busy) return;
-        var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
-        busy = true;
-        U.ls.set("olnu.name", n);
-        rpc("set_display_name", { p_display_name: n }).then(function (r) {
-          busy = false;
-          if (r.error) { toast(errMsg(r.error), { err: true }); return; }
-          toast(t("nameSaved"));
-          if (back) back(); else closeSheet();
-        });
-      };
-      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
-      body.appendChild(el("label", { class: "fld", for: "rename-inp", text: t("nameHint") }));
-      body.appendChild(inp);
-      body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [
-        btn(t("cancel"), "", function () { if (back) back(); else closeSheet(); }),
-        btn(t("save"), "btn-amber", go)
-      ]));
-      setTimeout(function () { inp.focus(); inp.select(); }, 50);
-    });
-  }
 
   /* ---------- Groups ---------- */
   function joinLink(code) { return location.origin + location.pathname + "?join=" + encodeURIComponent(code); }
@@ -2803,7 +2739,7 @@
   }
   function topRows(kind) {
     if (kind === "bars") {
-      var per = window.BARS.assign(beers).perBar;
+      var per = window.BARS.assign(PN.s.beers).perBar;
       return Object.keys(per).map(function (k) { return per[k]; })
         .sort(function (a, b) { return b.beers.length - a.beers.length; })   // SAFE: people, never drink level
         .slice(0, 15).map(function (a) {
@@ -2835,7 +2771,7 @@
             friend: x.list.some(function (b) { return b.friend_name; }) };
         });
     }
-    return beers.filter(function (b) { return U.level(U.drinks(b)) > 0; })
+    return PN.s.beers.filter(function (b) { return U.level(U.drinks(b)) > 0; })
       .sort(function (a, b) { return U.drinks(b) - U.drinks(a); })
       .slice(0, 20).map(function (b) {
         return { name: whoOf(b), sub: placeLabel(b), n: U.drinks(b), icon: lvlIcon(U.level(U.drinks(b))),
@@ -2892,7 +2828,7 @@
     if (!PUSH_ON) return Promise.resolve("nokey");
     if (iosNeedsInstall()) { toast(t("iosInstall"), { ms: 8000 }); return Promise.resolve("ios"); }
     return window.PUSH.enable(rpc, CFG.VAPID_PUBLIC_KEY).then(function (res) {
-      if (res === "on") { toast(t("notifOn")); if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng, true); }
+      if (res === "on") { toast(t("notifOn")); if (PN.s.lastLoc) window.PUSH.setLocation(rpc, PN.s.lastLoc.lat, PN.s.lastLoc.lng, true); }
       else if (res === "denied") toast(t("notifDenied"), { err: true, ms: 6000 });
       else if (res === "nokey") toast(t("notifNoKey"), { err: true });
       else toast(t("notifUnsupported"), { err: true });
@@ -2974,7 +2910,7 @@
         body.appendChild(ol([U.esc(t("guideInApp1")), U.esc(U.isIOS() ? t("guideInApp2ios") : t("guideInApp2and"))]));
         body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("copy"), "btn-amber btn-block", function () { copyText(inviteLink()); })]));
         // Flyttlänk: opening it in Safari/Chrome brings this account (name, groups) along.
-        if (LIVE && storedAuth() && !movedState) {
+        if (LIVE && storedAuth() && !PN.s.movedState) {
           body.appendChild(el("p", { class: "muted", style: "margin-top:12px", text: t("flyttInAppHelp") }));
           body.appendChild(el("div", { class: "row", style: "margin-top:6px" }, [btn(t("flyttInApp"), "btn-block", function () {
             var code = prepareExport("inapp"); if (code) copyFlytt(flyttLink(code));
@@ -2983,7 +2919,7 @@
         }
       } else if (U.isIOS()) {
         var steps = ol([t("guideIos1"), t("guideIos2"), t("guideIos3"), t("guideIos4")]);
-        if (LIVE && storedAuth() && !movedState) {
+        if (LIVE && storedAuth() && !PN.s.movedState) {
           // Step 1: put the account in the URL (iOS may keep it as the start URL) and on the clipboard
           // (the home-screen app asks for it). The move finishes when this page comes back (finishExport).
           steps.setAttribute("start", "2");   // the steps stay visible: a new friend must see them at once
@@ -3106,7 +3042,7 @@
       if (LIVE && tab === "p") {
         body.appendChild(el("h3", { text: t("flyttSection") }));
         var fr = el("div", { class: "row" });
-        if (storedAuth() && !movedState) fr.appendChild(btn(t("flyttBtn"), "btn-block", showFlyttExport));
+        if (storedAuth() && !PN.s.movedState) fr.appendChild(btn(t("flyttBtn"), "btn-block", showFlyttExport));
         fr.appendChild(btn(t("flyttImportBtn"), "btn-block btn-small", showFlyttImport));
         body.appendChild(fr);
       }
@@ -3239,7 +3175,7 @@
 
   /* ---------- ⚡ SPEED (#6): no account until the first real action ---------- */
   var SEARCH0 = String(location.search || ""), HASH0 = String(location.hash || "");
-  var pubTimer = null, pubBusy = false;
+  var pubBusy = false;
   function lazyStart() {
     if (!LIVE || storedAuth() || U.ls.get("olnu.uid", "") || movedNow() || HASH0.length > 1) return false;
     var deep = false;
@@ -3257,11 +3193,11 @@
   }, true);
   function publicStart() { PN.s.publicOn = true; publicPoll(); return Promise.resolve(); }
   function schedulePublic() {
-    clearTimeout(pubTimer); pubTimer = null;
+    clearTimeout(PN.s.pubTimer); PN.s.pubTimer = null;
     if (!PN.s.publicOn || PN.s.authed || document.visibilityState === "hidden") return;
     var pw = idle() ? POLL_SLOW_MS : POLL_MS, px = window.X8 ? window.X8.delay() : null;
     if (px != null) pw = Math.max(1000, px);   // perf T-08: failed polls back off like the map poll (busy: 60–120 s)
-    pubTimer = setTimeout(publicPoll, pw);
+    PN.s.pubTimer = setTimeout(publicPoll, pw);
   }
   function publicPoll() {
     if (!PN.s.publicOn || PN.s.authed || pubBusy || document.visibilityState === "hidden") return;
@@ -3283,9 +3219,9 @@
         PN.s.publicOn = false; signIn(); return;   // old server (no poll_public): sign in like before
       }
       pollBox = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
-      beers = normPins(d.pins);
+      PN.s.beers = normPins(d.pins);
       liveTotal = d.live_total != null ? d.live_total | 0 : null;
-      checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      PN.s.checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       if (Array.isArray(d.heat)) heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
       drinkViews = null; lastPollAt = Date.now();
       if (window.X8) window.X8.pollOk(null);   // perf T-08: caption off, busy over
@@ -3302,512 +3238,6 @@
     var v = viewBox();
     if (!(v.p_min_lat >= pollBox[0] && v.p_min_lng >= pollBox[1] && v.p_max_lat <= pollBox[2] && v.p_max_lng <= pollBox[3]) && Date.now() - lastPollAt > 3000) publicPoll();
   }, 400));
-
-  /* ---------- Auth + start ---------- */
-  // Anonymous sign-in. Retries 3 times (1 s, 3 s, 6 s), then shows a clear message with a retry button.
-  var signingIn = null;
-  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function authRetryable(e) {
-    return !!e && (e.name === "AuthRetryableFetchError" || navigator.onLine === false || e.status === 0 || /fetch|network/i.test(String(e.message || "")));
-  }
-  function trySignInOnce() {
-    return Promise.resolve(PN.s.client.auth.getSession()).then(function (res) {
-      if (res && res.data && res.data.session) return res;
-      // Token refresh failed on the network: try again later, do not make a new user.
-      if (res && authRetryable(res.error)) throw res.error;
-      // v14: this phone had an account (olnu.uid) but the session is gone: never make a new one silently.
-      var ask = U.ls.get("olnu.uid", "") && !storedAuth() && !movedNow() ? askNewAccount() : Promise.resolve("new");
-      return ask.then(function (choice) {
-        if (choice !== "new") throw { message: "choice_" + choice, keep: true };
-        U.ls.del("olnu.uid");
-        return Promise.resolve(PN.s.client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; cfgClear(); return r; });   // fixP N-21
-      });
-    });
-  }
-  function signIn() {
-    if (!PN.s.client || movedState) return Promise.resolve();
-    if (signingIn) return signingIn;
-    toastClear("auth");
-    var delays = [1000, 3000, 6000], attempt = 0;
-    function go() {
-      return trySignInOnce().catch(function (e) {
-        if (e && e.keep) throw e;   // the user chose "later" / a flyttkod: no retries, no new account
-        if (attempt >= delays.length) throw e;
-        return wait(delays[attempt++]).then(go);
-      });
-    }
-    signingIn = go().then(function () {
-      PN.s.authed = true; PN.s.authedAt = Date.now();
-      PN.s.publicOn = false; clearTimeout(pubTimer); pubTimer = null;   // ⚡ SPEED: the account exists now
-      toastClear("auth");
-      var uid = storedUid(); if (uid) U.ls.set("olnu.uid", uid);
-      resumeNotify();
-      if (PUSH_ON) window.PUSH.resync(rpc, CFG.VAPID_PUBLIC_KEY).then(function () { if (lastLoc) window.PUSH.setLocation(rpc, lastLoc.lat, lastLoc.lng); });
-      startPoll();
-      var firstPoll = refresh();   // smooth: pins first, the ~30 module calls after
-      mods("onAuthed");
-      return firstPoll;
-    }).catch(function (e) {
-      var m = String((e && e.message) || "");
-      if (e && e.keep) { if (m === "choice_retry") setTimeout(signIn, 300); else if (m === "choice_later") toast(t("authFail"), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } }); return; }
-      var key = navigator.onLine === false ? "authOffline" : /anonymous/i.test(m) && /disabled/i.test(m) ? "authDisabled" : "authFail";
-      toast(t(key), { err: true, ms: 0, id: "auth", action: { label: t("retry"), fn: signIn } });
-    }).then(function () { signingIn = null; });
-    return signingIn;
-  }
-
-  /* ---------- Flytta konto (flyttkod) ----------
-     iPhone: a home-screen app has its own storage, separate from Safari. Android: an in-app browser
-     (Messenger, Snapchat) has its own storage, separate from Chrome. Without help the user gets a new
-     anonymous account there and loses name and groups.
-     Code = base64url(JSON {v:1, rt: refresh token, u: user id, name, ls: {whitelisted olnu.* keys}}).
-     Refresh tokens rotate, and Supabase revokes the whole session if an old token is used again.
-     So after an export the source browser must never use that session again: we remove "olnu.auth"
-     WITHOUT signOut (signOut would revoke the session on the server) and stop the auto refresh.
-     The code is a login credential: never log it, never send it anywhere. */
-  var AUTH_KEY = "olnu.auth";
-  // Useful olnu.* keys that follow the account (most important first; big ones drop out to keep the code short).
-  // Not moved: auth, bar caches, push state and "already asked" flags (the new app must ask again).
-  var FLYTT_KEYS = ["lang", "prec", "intro", "locOk", "night", "checkin", "title", "badges", "ghostMode", "mute", "heat",
-    "otherCd", "where", "comeAt", "nights", "records", "kingOf", "rallyHidden", "topTab", "nightlast", "barsEver", "nightlog", "age18", "newsPn"];
-  var FLYTT_MAX = 900, FLYTT_HIDDEN_MS = 10000;
-  var movedState = false, flyttHiddenAt = 0;
-  function b64urlEnc(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
-  function b64urlDec(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
-  function storedAuth() {
-    var a = U.ls.getJSON(AUTH_KEY, null);
-    return a && typeof a === "object" && a.refresh_token ? a : null;
-  }
-  function storedUid() { var a = storedAuth(); return a && a.user && a.user.id ? String(a.user.id) : ""; }
-  function makeFlyttCode() {
-    var a = storedAuth(); if (!a) return null;
-    var p = { v: 1, rt: String(a.refresh_token), u: storedUid() || null, name: getName() || null, ls: {} };
-    var code = b64urlEnc(JSON.stringify(p));
-    FLYTT_KEYS.forEach(function (k) {
-      var v = U.ls.get("olnu." + k, null);
-      if (v == null || v === "") return;
-      p.ls[k] = v;
-      var c = b64urlEnc(JSON.stringify(p));
-      if (c.length > FLYTT_MAX) delete p.ls[k]; else code = c;
-    });
-    return code;
-  }
-  // Accepts a raw code or a whole link with ?flytt= / #flytt=. Returns the payload or null.
-  function readFlytt(text) {
-    try {
-      var s = String(text || "").trim(), m = s.match(/flytt=([A-Za-z0-9_-]+)/);
-      s = (m ? m[1] : s).replace(/[^A-Za-z0-9_-]/g, "");
-      if (s.length < 16 || s.length > 6000) return null;
-      var p = JSON.parse(b64urlDec(s));
-      if (!p || p.v !== 1 || typeof p.rt !== "string" || p.rt.length < 6 || p.rt.length > 600) return null;
-      return p;
-    } catch (e) { return null; }
-  }
-  function flyttLink(code) { return location.origin + location.pathname + "?flytt=" + code; }
-  // Codes already tried in this browser (a short hash, never the token). A home-screen app that kept
-  // ?flytt= in its start URL must not try the same (used) token on every launch.
-  function rtHash(rt) { var h = 5381; for (var i = 0; i < rt.length; i++) h = ((h * 33) ^ rt.charCodeAt(i)) >>> 0; return h.toString(36); }
-  function flyttTried(rt) { var l = U.ls.getJSON("olnu.flyttUsed", []); return Array.isArray(l) && l.indexOf(rtHash(rt)) >= 0; }
-  function flyttMark(rt) {
-    var l = U.ls.getJSON("olnu.flyttUsed", []); if (!Array.isArray(l)) l = [];
-    if (l.indexOf(rtHash(rt)) < 0) l.push(rtHash(rt));
-    U.ls.setJSON("olnu.flyttUsed", l.slice(-8));
-  }
-  function urlFlyttCode() {
-    try {
-      var q = new URLSearchParams(location.search).get("flytt");
-      if (q) return q;
-      var m = String(location.hash || "").match(/flytt=([A-Za-z0-9_-]+)/);
-      return m ? m[1] : null;
-    } catch (e) { return null; }
-  }
-  function cleanUrl() {
-    var ps = new URLSearchParams(location.search); ps.delete("flytt");
-    var qs = ps.toString(), h = String(location.hash || "").replace(/[#&]?flytt=[A-Za-z0-9_-]*/, "");
-    if (h === "#") h = "";
-    return location.pathname + (qs ? "?" + qs : "") + h;
-  }
-  function stripFlytt() { try { history.replaceState(null, "", cleanUrl()); } catch (e) {} }
-  function stopRefresh() { try { if (PN.s.client && PN.s.client.auth && PN.s.client.auth.stopAutoRefresh) Promise.resolve(PN.s.client.auth.stopAutoRefresh()).catch(function () {}); } catch (e) {} }
-
-  // --- Import (new app / phone) ---
-  // Resolves "ok" | "same" | "tried" | "bad" | "net". Never touches the old session on failure.
-  function importFlytt(p) {
-    if (!PN.s.client || !p) return Promise.resolve("bad");
-    var cur = storedUid();
-    if (cur && p.u && cur === String(p.u)) return Promise.resolve("same");
-    if (flyttTried(p.rt)) return Promise.resolve("tried");
-    var backup = U.ls.get(AUTH_KEY, null);
-    var restore = function () { if (backup && !U.ls.get(AUTH_KEY, null)) U.ls.set(AUTH_KEY, backup); };
-    return new Promise(function (resolve) {
-      var done = false, tm = setTimeout(function () { done = true; restore(); resolve("net"); }, RPC_TIMEOUT_MS);
-      var fin = function (v) { if (done) return; done = true; clearTimeout(tm); resolve(v); };
-      Promise.resolve(PN.s.client.auth.refreshSession({ refresh_token: p.rt })).then(function (r) {
-        if (r && r.data && r.data.session && !r.error) {
-          flyttMark(p.rt);
-          var ls = p.ls && typeof p.ls === "object" ? p.ls : {};
-          FLYTT_KEYS.forEach(function (k) { if (typeof ls[k] === "string") U.ls.set("olnu." + k, ls[k]); });
-          if (validName(p.name)) U.ls.set("olnu.name", validName(p.name));
-          ["olnu.moved", "olnu.movedTo", "olnu.movedU", "olnu.flyttPending"].forEach(U.ls.del);
-          U.ls.set("olnu.flyttAsked", "1");
-          fin("ok"); return;
-        }
-        // A failed refresh makes supabase-js drop the session it had: put the old one back.
-        restore();
-        var e = r && r.error;
-        if (authRetryable(e)) { fin("net"); return; }
-        flyttMark(p.rt); fin("bad");
-      }, function (e) { restore(); fin(authRetryable(e) ? "net" : "bad"); });
-    });
-  }
-  // After a good import: start again clean, so every module reads the moved settings.
-  function reloadAfterImport(p) {
-    try { sessionStorage.setItem("olnu.flyttOk", validName(p.name) || "-"); } catch (e) {}
-    location.replace(cleanUrl());
-  }
-  function flyttResultToast(res, hadAccount) {
-    if (res === "bad") toast(hadAccount ? t("flyttBad") : t("flyttBadNew"), { err: true, ms: 8000, id: "flytt" });
-    else if (res === "net") toast(t("flyttNet"), { err: true, ms: 8000, id: "flytt" });
-    else if (res === "same") toast(t("flyttSame"), { id: "flytt" });
-  }
-  // A code from the URL (link, QR, or the start URL of an iOS home-screen app).
-  function runUrlImport(p) {
-    stripFlytt();
-    if (!p) { toast(t("flyttBadNew"), { err: true, ms: 8000, id: "flytt" }); return Promise.resolve(); }
-    var had = !!storedAuth();
-    return importFlytt(p).then(function (res) {
-      if (res === "ok") { reloadAfterImport(p); return new Promise(function () {}); }   // page reloads
-      if (res !== "tried" && res !== "same") flyttResultToast(res, had);
-    });
-  }
-  // Paste box: clipboard button (read inside the tap) + a text field fallback.
-  function flyttPasteUI(box, replacing) {
-    var inp = el("input", { class: "inp", id: "flytt-inp", autocomplete: "off", autocapitalize: "off", autocorrect: "off",
-      spellcheck: "false", enterkeyhint: "go", placeholder: t("flyttInputPh"), "aria-label": t("flyttInputPh") });
-    var busyNow = false;
-    var go = function (text) {
-      if (busyNow) return;
-      // 🔑 Återställningskod (0160): "ABCD-1234" made by the owner for a lost account → move it to this account.
-      var rc = String(text || "").trim().toUpperCase().replace(/\s+/g, "");
-      if (/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(rc) && PN.s.client) {
-        busyNow = true; pb.disabled = true; gob.disabled = true;
-        PN.s.client.rpc("redeem_recovery", { p_code: rc.replace(/^([A-Z0-9]{4})([A-Z0-9]{4})$/, "$1-$2") }).then(function (r) {
-          busyNow = false; pb.disabled = false; gob.disabled = false;
-          if (r.error) { toast(/same_account/.test(r.error.message || "") ? "Det här ä redan ditt konto." : "Koden funkar int' (fel eller redan använd).", { err: true, ms: 6000, id: "flytt" }); form.hidden = false; return; }
-          toast("✅ Kontot ä tillbaka! Laddar om…", { ms: 4000, id: "flytt" });
-          setTimeout(function () { location.reload(); }, 1500);
-        });
-        return;
-      }
-      var p = readFlytt(text);
-      if (!p) { toast(t("flyttBadFormat"), { err: true, id: "flytt" }); form.hidden = false; return; }
-      busyNow = true; pb.disabled = true; gob.disabled = true;
-      importFlytt(p).then(function (res) {
-        busyNow = false; pb.disabled = false; gob.disabled = false;
-        if (res === "ok") { reloadAfterImport(p); return; }
-        flyttResultToast(res === "tried" ? "bad" : res, true);
-        form.hidden = false;
-      });
-    };
-    var gob = btn(t("flyttGo"), "btn-green btn-block", function () { go(inp.value); });
-    var form = el("div", { class: "flytt-paste", hidden: "" }, [inp, gob]);
-    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go(inp.value); });
-    var pb = btn(t("flyttPaste"), "btn-amber btn-block", function () {
-      var show = function () { form.hidden = false; setTimeout(function () { inp.focus(); }, 50); };
-      if (navigator.clipboard && navigator.clipboard.readText) {
-        navigator.clipboard.readText().then(function (s) {
-          if (readFlytt(s)) go(s); else { toast(t("flyttPasteFail"), { id: "flytt" }); show(); }
-        }, function () { toast(t("flyttPasteFail"), { id: "flytt" }); show(); });
-      } else show();
-    });
-    if (replacing) box.appendChild(el("p", { class: "muted", text: t("flyttReplace") }));
-    box.appendChild(pb);
-    box.appendChild(form);
-  }
-  // First start of a home-screen app with no account: offer to bring the old one.
-  function askFlytt() {
-    return new Promise(function (resolve) {
-      var root = $("intro"), body = $("intro-body");
-      body.innerHTML = "";
-      body.classList.add("flytt-card");
-      body.appendChild(el("div", { class: "intro-big", text: "📲" }));
-      body.appendChild(el("h2", { class: "intro-h", text: t("flyttAskTitle") }));
-      body.appendChild(el("p", { class: "intro-p", text: t("flyttAskText") }));
-      var box = el("div");
-      flyttPasteUI(box, false);
-      body.appendChild(box);
-      if (window.ACCOUNT) window.ACCOUNT.entry(body, "flytt");   // 🔐 account.js
-      body.appendChild(btn(t("flyttNo"), "btn-block btn-ghost intro-later", function () {
-        U.ls.set("olnu.flyttAsked", "1");
-        root.hidden = true; body.innerHTML = ""; body.classList.remove("flytt-card");
-        resolve();
-      }));
-      body.appendChild(el("p", { class: "intro-priv", text: t("flyttSecret") }));
-      root.hidden = false;
-    });
-  }
-
-  // --- Export (this browser hands the account over) ---
-  function flyttPendingNow() { return !!U.ls.getJSON("olnu.flyttPending", null); }
-  // Step 1 for the iOS guide and the in-app browser: make the code, keep using this session for now
-  // (Safari must stay open to add the app), but never refresh it again. Finished later (finishExport).
-  function prepareExport(kind) {
-    var code = makeFlyttCode();
-    if (!code) { toast(t("flyttNoAcc"), { err: true, id: "flytt" }); return null; }
-    stopRefresh();
-    U.ls.setJSON("olnu.flyttPending", { at: Date.now(), kind: kind, u: storedUid() });
-    // 🚚 iPhone: also a one-time ticket in a cookie; iOS 17+ copies cookies (not localStorage) into the new home-screen app.
-    if (kind === "home" && window.HANDOVER && window.HANDOVER.homeCookie) window.HANDOVER.homeCookie(code, storedAuth());
-    return code;
-  }
-  // This browser lets go of the account: no signOut (it would revoke the session for the new app too).
-  function finishExport(kind, atBoot) {
-    var pend = U.ls.getJSON("olnu.flyttPending", null) || {};
-    stopRefresh();
-    var u = storedUid() || pend.u || "";
-    U.ls.del(AUTH_KEY); U.ls.del(AUTH_KEY + "-code-verifier"); U.ls.del(AUTH_KEY + "-user"); U.ls.del("olnu.uid");
-    U.ls.set("olnu.moved", String(Date.now()));
-    U.ls.set("olnu.movedTo", kind || pend.kind || "other");
-    if (u) U.ls.set("olnu.movedU", u);
-    U.ls.del("olnu.flyttPending");
-    movedState = true; PN.s.authed = false; stopPoll();
-    if (!atBoot) { beers = []; checkins = []; render(); }
-  }
-  function clearMoved() { ["olnu.moved", "olnu.movedTo", "olnu.movedU"].forEach(U.ls.del); movedState = false; }
-  function movedNow() { return !!U.ls.get("olnu.moved", "") && !storedAuth(); }
-  // Called by rpc(): true = do not call the server. A pending export finishes before the access token
-  // runs out, because supabase-js would then refresh it and burn the token the new app needs.
-  function flyttGuard() {
-    if (movedState) return true;
-    var pend = U.ls.getJSON("olnu.flyttPending", null);
-    if (!pend) return false;
-    var a = storedAuth();
-    if (!a || !a.expires_at || a.expires_at * 1000 - Date.now() < 60000) {
-      finishExport(pend.kind, false);
-      showMoved().then(signIn);
-      return true;
-    }
-    return false;
-  }
-  // Back after the user left this page for ≥ 10 s (opened the home-screen app / Chrome): finish the move.
-  // (called by the visibilitychange handler of the poll, before it polls)
-  function flyttOnVisible() {
-    var pend = U.ls.getJSON("olnu.flyttPending", null);
-    if (pend && flyttHiddenAt && Date.now() - flyttHiddenAt >= FLYTT_HIDDEN_MS && !movedState) {
-      finishExport(pend.kind, false);
-      showMoved().then(signIn);
-      return true;
-    }
-    return movedState;
-  }
-  // Full-screen notice. Resolves when the user picks "Fortsätt här ändå" (fresh anonymous account).
-  var movedShowing = null;
-  function showMoved() {
-    if (movedShowing) return movedShowing;
-    movedState = true;
-    var kind = U.ls.get("olnu.movedTo", "other");
-    movedShowing = new Promise(function (resolve) {
-      if (!$("sheet").hidden) { if (PN.s.sheetCur && !PN.s.sheetCur.lock) PN.s.sheetCur.onClose = null; closeSheet("replaced"); }
-      var root = $("intro"), body = $("intro-body");
-      body.innerHTML = "";
-      body.classList.add("flytt-card");
-      var home = kind === "home";
-      body.appendChild(el("div", { class: "intro-big", text: "📲" }));
-      body.appendChild(el("h2", { class: "intro-h", text: home ? t("flyttMovedHome") : t("flyttMovedOther") }));
-      body.appendChild(el("p", { class: "intro-p", html: "<b>" + U.esc(home ? t("flyttMovedHome2") : t("flyttMovedOther2")) + "</b>" }));
-      if (home && U.isIOS() && !U.isStandalone()) body.appendChild(el("p", { class: "intro-p muted", text: t("flyttMovedHome3") }));
-      body.appendChild(btn(t("flyttStay"), "btn-block btn-ghost intro-later", function () {
-        clearMoved(); stripFlytt();
-        root.hidden = true; body.innerHTML = ""; body.classList.remove("flytt-card");
-        movedShowing = null;
-        resolve();
-      }));
-      body.appendChild(el("p", { class: "intro-priv", text: t("flyttStayNote") }));
-      if (window.ACCOUNT) window.ACCOUNT.entry(body, "moved");   // 🔐 account.js
-      root.hidden = false;
-    });
-    return movedShowing;
-  }
-  // Settings: confirm, then make the code, log this browser out (no signOut) and show QR + link.
-  function showFlyttExport() {
-    openSheet(t("flyttTitle"), function (body) {
-      body.appendChild(el("div", { class: "info flytt-warn", html: "<b>" + U.esc(t("flyttWarn")) + "</b>" }));
-      body.appendChild(el("p", { class: "muted", text: t("flyttSecret") }));
-      var go = btn(t("flyttConfirm"), "btn-amber", function () {
-        var code = makeFlyttCode();
-        if (!code) { toast(t("flyttNoAcc"), { err: true, id: "flytt" }); return; }
-        go.disabled = true;
-        stopRefresh();
-        // This phone must not get the moved account's pushes any more (max 3 s, errors ignored).
-        var unsub = PUSH_ON && window.PUSH.supported() ? Promise.race([window.PUSH.disable(rpc).catch(function () {}), wait(3000)]) : Promise.resolve();
-        unsub.then(function () {
-          finishExport("other", false);
-          showFlyttCode(code);
-        });
-      });
-      body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn(t("cancel"), "", showSettings), go]));
-    });
-  }
-  function showFlyttCode(code) {
-    var link = flyttLink(code);
-    openSheet(t("flyttTitle"), function (body) {
-      body.appendChild(el("p", { text: t("flyttQrHelp") }));
-      var qr = el("div", { class: "qr", "aria-hidden": "true" });
-      body.appendChild(qr);
-      try {
-        if (window.QRCode) new window.QRCode(qr, { text: link, width: 232, height: 232, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.L });
-        else qr.remove();
-      } catch (e) { qr.remove(); }
-      body.appendChild(el("p", { class: "flytt-link", text: link }));
-      var row = el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttCopy"), "btn-amber", function () { copyFlytt(link); })]);
-      if (navigator.share) row.appendChild(btn("📲 " + t("share"), "", function () { navigator.share({ title: "PintsNow", url: link }).catch(function () {}); }));
-      body.appendChild(row);
-      body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("flyttSecret") }));
-      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("flyttDone"), "btn-block", function () { closeSheet(); })]));
-    }, { now: true, onClose: function () { showMoved().then(signIn); } });
-  }
-  function copyFlytt(text) {
-    var done = function () { toast(t("flyttCopied"), { id: "flytt" }); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done, function () { if (fallbackCopy(text)) done(); });
-    } else if (fallbackCopy(text)) done();
-  }
-  function showFlyttImport() {
-    openSheet(t("flyttImportBtn"), function (body) {
-      body.appendChild(el("p", { text: t("flyttAskText") }));
-      flyttPasteUI(body, !!storedAuth());
-      body.appendChild(el("p", { class: "muted", style: "margin-top:10px", text: t("flyttSecret") }));
-    });
-  }
-  // Runs once before sign-in. Order matters: a pending export ends BEFORE the client exists
-  // (its start-up could refresh the token), and an import happens BEFORE anonymous sign-in.
-  function flyttBoot() {
-    if (!LIVE) return Promise.resolve();
-    var pend = U.ls.getJSON("olnu.flyttPending", null);
-    if (pend && storedAuth()) finishExport(pend.kind, true);
-    else if (pend) U.ls.del("olnu.flyttPending");
-    makeClient();
-    if (!PN.s.client) return Promise.resolve();
-    if (U.ls.get("olnu.moved", "") && storedAuth()) clearMoved();
-    // 🚚 PintsNow move (js/handover.js, 0175): #pn=<ticket> from the old address, or the pn_ho cookie Safari copied into
-    // a new iPhone home-screen app. Same user id (refresh token), before any anonymous sign-in. Then the old ?flytt= flow.
-    var hoStep = window.HANDOVER && window.HANDOVER.boot ? Promise.resolve(window.HANDOVER.boot({ importFlytt: importFlytt, storedUid: storedUid,
-      rpc: rpc, reload: reloadAfterImport, toast: toast })).catch(function () {}) : Promise.resolve();
-    var code = urlFlyttCode(), p = code ? readFlytt(code) : null;
-    var step = hoStep;
-    if (code) {
-      // The source browser keeps its own code in the URL (iOS may use it as the home-screen start URL).
-      var own = movedNow() && p && p.u && String(p.u) === U.ls.get("olnu.movedU", "");
-      if (!own) step = hoStep.then(function () { return runUrlImport(p); });
-    }
-    return step.then(function () {
-      if (movedNow()) return showMoved();
-      movedState = false;
-      if (U.isStandalone() && !storedAuth() && U.ls.get("olnu.flyttAsked", "") !== "1") return askFlytt();
-    });
-  }
-  function makeClient() {
-    if (PN.s.client) return;
-    try {
-      PN.s.client = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_KEY }
-      });
-    } catch (e) { PN.s.client = null; }
-  }
-
-  /* ---------- First start (shown once) ---------- */
-  var INTRO_KEY = "olnu.intro", AGE_KEY = "olnu.age18";
-  function introDone() { return U.ls.get(INTRO_KEY, "") === "1"; }
-  function ageOk() { return U.ls.get(AGE_KEY, "") === "1"; }
-  // v14 🔞: users who saw the intro before the age question get it once.
-  function showAgeOnce() {
-    return new Promise(function (resolve) {
-      var root = $("intro"), body = $("intro-body");
-      function stepAsk() {
-        body.innerHTML = "";
-        var cb = el("input", { type: "checkbox", id: "age-cb" });
-        var go = btn(t("introGo"), "btn-amber btn-block", function () {
-          if (!cb.checked) { toast(t("ageNeeded"), { err: true, id: "age" }); return; }
-          U.ls.set(AGE_KEY, "1"); toastClear("age");
-          root.hidden = true; body.innerHTML = ""; resolve();
-        });
-        go.disabled = true;
-        cb.addEventListener("change", function () { go.disabled = !cb.checked; });
-        body.appendChild(el("div", { class: "intro-big", text: "🔞" }));
-        body.appendChild(el("h2", { class: "intro-h", text: t("ageTitle") }));
-        body.appendChild(el("p", { class: "intro-p", text: t("ageText") }));
-        body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
-        body.appendChild(go);
-        if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: function () {
-          body.innerHTML = "";
-          var box = el("div", { class: "intro-privtext" });
-          window.PRIVACY.fillPrivacy(box, null);
-          body.appendChild(el("h2", { class: "intro-h", text: t("privTitle") }));
-          body.appendChild(box);
-          body.appendChild(btn(t("back"), "btn-block btn-amber", stepAsk));
-        } }));
-      }
-      stepAsk();
-      root.hidden = false;
-    });
-  }
-  function showIntro(again) {
-    return new Promise(function (resolve) {
-      var root = $("intro"), body = $("intro-body");
-      function close() { root.hidden = true; body.innerHTML = ""; resolve(); }
-      function stepAge() {
-        body.innerHTML = "";
-        var steps = el("ol", { class: "intro-steps" }, [
-          el("li", {}, [el("span", { class: "is-n", text: "1" }), el("span", { text: t("intro1") })]),
-          el("li", {}, [el("span", { class: "is-n", text: "2" }), el("span", { text: t("intro2") })]),
-          el("li", {}, [el("span", { class: "is-n", text: "3" }), el("span", { text: t("intro3") })])
-        ]);
-        var cb = el("input", { type: "checkbox", id: "age-cb" });
-        var go = btn(t("introGo"), "btn-amber btn-block", function () {
-          if (!cb.checked) { toast(t("ageNeeded"), { err: true, id: "age" }); return; }
-          U.ls.set(INTRO_KEY, "1"); U.ls.set(AGE_KEY, "1");
-          toastClear("age");
-          if (again || U.ls.get("olnu.locOk", "") === "1") close(); else stepLoc();
-        });
-        go.disabled = true;
-        cb.addEventListener("change", function () { go.disabled = !cb.checked; });
-        // SAFE: Swedish only, no SV/EN buttons.
-        body.appendChild(el("div", { class: "intro-brand", text: "PintsNow" }));
-        body.appendChild(el("p", { class: "intro-tag", text: t("introTag") }));
-        body.appendChild(steps);
-        if (ageOk()) { cb.checked = true; go.disabled = false; }   // fixJ T-03: 18+ already answered (join card) → no 2nd year question
-        else body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
-        body.appendChild(go);
-        body.appendChild(el("p", { class: "intro-priv", text: t("introPrivacy") }));
-        if (window.PRIVACY) body.appendChild(el("button", { type: "button", class: "intro-privlink", text: t("privBtn"), onclick: stepPriv }));
-        if (!again && window.ACCOUNT) window.ACCOUNT.entry(body, "intro");   // 🔐 account.js
-      }
-      // 🔒 Integritet inside the intro card (the intro covers the sheet layer).
-      function stepPriv() {
-        body.innerHTML = "";
-        body.appendChild(el("h2", { class: "intro-h", text: t("privTitle") }));
-        var box = el("div", { class: "intro-privtext" });
-        window.PRIVACY.fillPrivacy(box, null);
-        body.appendChild(box);
-        body.appendChild(btn(t("back"), "btn-block btn-amber", stepAge));
-      }
-      function stepLoc() {
-        body.innerHTML = "";
-        body.appendChild(window.PNI && window.PNI.svg ? el("div", { class: "intro-big mn-intro-pin", "aria-hidden": "true", html: window.PNI.svg("pin", "") }) : el("div", { class: "intro-big", text: "📍" }));   // lane main R1-27: PNI pin, no emoji hero
-        body.appendChild(el("h2", { class: "intro-h", text: t("locTitle") }));
-        body.appendChild(el("p", { class: "intro-p", text: t("locWhy") }));
-        body.appendChild(el("p", { class: "intro-p muted", text: t("locWhy2") }));
-        var allow = btn(t("locAllow"), "btn-amber btn-block", function () {
-          allow.disabled = true;
-          locate({ quiet: false }).then(close);
-        });
-        body.appendChild(allow);
-        body.appendChild(btn(t("locLater"), "btn-block btn-ghost intro-later", close));
-      }
-      stepAge();
-      root.hidden = false;
-    });
-  }
 
   function start() {
     U.ls.del("olnu.shot");   // shots were removed; drop the old timer
@@ -3973,7 +3403,7 @@
       var m = plainBarMarkers[id] || null;
       if (!m) hotLayer.eachLayer(function (x) { if (x.options.olnuKey === "h" + id) m = x; });
       if (m && m.getPopup()) { m.openPopup(); return; }
-      var agg = window.BARS.assign(beers).perBar[id];
+      var agg = window.BARS.assign(PN.s.beers).perBar[id];
       L.popup({ offset: L.point(0, -10), className: "olnu-bar", autoPan: !sheetMode() }).setLatLng([bar.lat, bar.lng]).setContent(barPopup(bar, agg ? agg.beers : [])).openOn(map);
     };
     map.once("moveend", function () { setTimeout(open, 250); });
@@ -3986,19 +3416,19 @@
       LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, chatLane: chatLane, flagsDirty: flagsDirty, _lanes: function () { return Object.keys(lanes); }, toast: toast, toastClear: toastClear,
       openSheet: openSheet, closeSheet: closeSheet, el: el, btn: btn, errMsg: errMsg, flyTo: flyTo, refresh: refresh,
       render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
-      beers: function () { return beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
+      beers: function () { return PN.s.beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
       authed: function () { return PN.s.authed; }, client: function () { return PN.s.client; }, prec: function () { return prec; },
       noAccount: function () { return PN.s.publicOn && !PN.s.authed; }, ensureAccount: function () { return signIn(); },   // ⚡ SPEED #6
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, validPos: U.validPos, showGroups: showGroups,
       drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, hidePin: hidePin, me: function () { return meState; },
       pollV2: function () { return pollV2 === "on"; },
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
-      checkins: function () { return checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return lastLoc; },
-      setLastLoc: function (la, ln) { lastLoc = { lat: la, lng: ln }; },
+      checkins: function () { return PN.s.checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return PN.s.lastLoc; },
+      setLastLoc: function (la, ln) { PN.s.lastLoc = { lat: la, lng: ln }; },
       sheetOpen: function () { return !$("sheet").hidden; },
       // 🏟️ js/arenapin.js: the normal bar sheet HTML for a spot without a marker (people there from the poll)
-      barPopup: function (bar) { var agg = window.BARS.assign(beers).perBar[String(bar.id)]; ciBarById[String(bar.id)] = bar; return barPopup(bar, agg ? agg.beers : []); },
-      prepareExport: prepareExport, flyttLink: flyttLink, copyFlytt: copyFlytt, hasAccount: function () { return !!storedAuth() && !movedState; },   // join.js (iOS one tap)
+      barPopup: function (bar) { var agg = window.BARS.assign(PN.s.beers).perBar[String(bar.id)]; ciBarById[String(bar.id)] = bar; return barPopup(bar, agg ? agg.beers : []); },
+      prepareExport: prepareExport, flyttLink: flyttLink, copyFlytt: copyFlytt, hasAccount: function () { return !!storedAuth() && !PN.s.movedState; },   // join.js (iOS one tap)
       // functions.invoke that always resolves to {data, error} (never rejects, max RPC_TIMEOUT_MS).
       invoke: function (name, body) {
         if (!PN.s.client || !PN.s.client.functions) return Promise.resolve({ data: null, error: { message: "no_client" } });
