@@ -1,0 +1,62 @@
+{
+ "ok": true,
+ "seconds": 2.9,
+ "files": 237,
+ "splitCheck": "split blocks in sync (15 files)",
+ "counts": {
+  "fileSize": {
+   "now": 15,
+   "baseline": 15,
+   "newOrGrown": 0
+  },
+  "functions": {
+   "now": 147,
+   "baseline": 147,
+   "newOrGrown": 0
+  },
+  "windowGlobals": {
+   "now": 167,
+   "baseline": 167,
+   "newOrGrown": 0
+  },
+  "appFunctions": {
+   "now": 5,
+   "baseline": 5,
+   "newOrGrown": 0
+  },
+  "duplicates": {
+   "now": 5,
+   "baseline": 5,
+   "newOrGrown": 0
+  },
+  "unusedExports": {
+   "now": 5,
+   "baseline": 5,
+   "newOrGrown": 0
+  },
+  "emoji": {
+   "now": 121,
+   "baseline": 121,
+   "newOrGrown": 0
+  },
+  "rawHex": {
+   "now": 50,
+   "baseline": 50,
+   "newOrGrown": 0
+  }
+ },
+ "fails": [],
+ "warns": [
+  "docs/js/after.js has 1101 lines (warn at 900, limit 1200)",
+  "docs/js/barsplus.js has 1074 lines (warn at 900, limit 1200)",
+  "docs/js/crew.js has 923 lines (warn at 900, limit 1200)",
+  "docs/js/evsheet.js has 907 lines (warn at 900, limit 1200)",
+  "docs/js/games.js has 1047 lines (warn at 900, limit 1200)",
+  "docs/js/invite.js has 917 lines (warn at 900, limit 1200)",
+  "docs/js/near.js has 932 lines (warn at 900, limit 1200)",
+  "docs/js/news-gt.js has 1082 lines (warn at 900, limit 1200)",
+  "docs/js/party-ui.js has 1160 lines (warn at 900, limit 1200)",
+  "docs/js/spel-ui.js has 1067 lines (warn at 900, limit 1200)"
+ ],
+ "shrinkable": 0
+}

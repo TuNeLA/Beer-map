@@ -210,6 +210,25 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+  quality:
+    name: quality (size, structure, duplicates, UI rules; baseline only shrinks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save --no-audit --no-fund acorn@8.12.1
+      - run: node tests/quality/check.mjs .   # CODE QUALITY GUARD layer 1: writes tests/quality/report.json, prints a 10-line summary
+      - name: upload quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-report
+          path: tests/quality/report.json
+          retention-days: 14
+
   unit:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

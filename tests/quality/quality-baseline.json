@@ -1,0 +1,2088 @@
+{
+ "_doc": "Baseline = today's problems. It may only shrink: CI fails on a new entry or a bigger value. See tests/quality/README.md.",
+ "limits": {
+  "appLines": 400,
+  "moduleLines": 1200,
+  "moduleWarn": 900,
+  "fnLines": 150,
+  "dupLines": 30
+ },
+ "rules": {
+  "fileSize": {
+   "docs/js/avatar.js": {
+    "value": 1898,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-dalarna.js": {
+    "value": 6119,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral-lek.js": {
+    "value": 2074,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral.js": {
+    "value": 7427,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-norr-lek.js": {
+    "value": 1238,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-norr.js": {
+    "value": 2445,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-sthlm.js": {
+    "value": 2308,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-syd.js": {
+    "value": 2234,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-vast.js": {
+    "value": 2148,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gang.js": {
+    "value": 1671,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/i18n.js": {
+    "value": 1386,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/mbx.js": {
+    "value": 1353,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnds.js": {
+    "value": 1923,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/social.js": {
+    "value": 1215,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/spel-cards.js": {
+    "value": 1389,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "functions": {
+   "docs/app.js::anon": {
+    "value": 305,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/account.js::anon": {
+    "value": 815,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/account.js::flow": {
+    "value": 200,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/after-content.js::anon": {
+    "value": 741,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/after.js::anon": {
+    "value": 1092,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/after2.js::anon": {
+    "value": 765,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-account.js::anon": {
+    "value": 626,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-beer.js::anon": {
+    "value": 480,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-checkin.js::anon": {
+    "value": 212,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-crowd.js::anon": {
+    "value": 192,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-groups.js::anon": {
+    "value": 344,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-hud.js::anon": {
+    "value": 151,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-map.js::anon": {
+    "value": 421,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-net.js::anon": {
+    "value": 431,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-pins.js::anon": {
+    "value": 561,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-poll.js::anon": {
+    "value": 421,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-settings.js::anon": {
+    "value": 356,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-ticker.js::anon": {
+    "value": 349,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-ui.js::anon": {
+    "value": 165,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/arenapin.js::anon": {
+    "value": 406,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/autoci.js::anon": {
+    "value": 320,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/avatar.js::anon": {
+    "value": 1874,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/avatar.js::build": {
+    "value": 274,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/avwiz.js::anon": {
+    "value": 337,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/avwiz.js::build": {
+    "value": 212,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barea.js::anon": {
+    "value": 305,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barfoto.js::anon": {
+    "value": 181,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barinfo.js::anon": {
+    "value": 329,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barlit.js::anon": {
+    "value": 289,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bars.js::anon": {
+    "value": 556,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barsplus.js::anon": {
+    "value": 1068,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/basemap.js::anon": {
+    "value": 496,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/boards.js::anon": {
+    "value": 323,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-bump.js::anon": {
+    "value": 172,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-hem.js::anon": {
+    "value": 268,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-replay.js::anon": {
+    "value": 285,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-skal.js::anon": {
+    "value": 260,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/calm.js::anon": {
+    "value": 189,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ceremony.js::anon": {
+    "value": 306,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/chief.js::anon": {
+    "value": 669,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/crew-content.js::anon": {
+    "value": 286,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/crew.js::anon": {
+    "value": 916,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/delight.js::anon": {
+    "value": 883,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-dalarna-lek.js::anon": {
+    "value": 306,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-dalarna.js::anon": {
+    "value": 6116,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral-lek.js::anon": {
+    "value": 2071,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral.js::anon": {
+    "value": 7424,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-norr-lek.js::anon": {
+    "value": 1235,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-norr.js::anon": {
+    "value": 2442,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-sthlm-lek.js::anon": {
+    "value": 340,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-sthlm.js::anon": {
+    "value": 2305,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-syd-lek.js::anon": {
+    "value": 427,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-syd.js::anon": {
+    "value": 2231,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-vast-lek.js::anon": {
+    "value": 253,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-vast.js::anon": {
+    "value": 2145,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt.js::anon": {
+    "value": 484,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dm.js::anon": {
+    "value": 444,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dm.js::chatOpen": {
+    "value": 161,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/drink-lines.js::anon": {
+    "value": 231,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ds.js::anon": {
+    "value": 182,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/duel.js::anon": {
+    "value": 629,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evchat.js::anon": {
+    "value": 257,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/events.js::anon": {
+    "value": 395,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evgroup.js::anon": {
+    "value": 351,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evlink.js::anon": {
+    "value": 175,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evsheet.js::anon": {
+    "value": 887,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/extras.js::anon": {
+    "value": 547,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/film.js::anon": {
+    "value": 801,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/filmcam.js::anon": {
+    "value": 865,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/filmfx.js::anon": {
+    "value": 476,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/forfest.js::anon": {
+    "value": 597,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/friends2.js::anon": {
+    "value": 203,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/fx.js::anon": {
+    "value": 723,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/games.js::anon": {
+    "value": 1041,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gang-content.js::anon": {
+    "value": 717,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gang.js::anon": {
+    "value": 1664,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gang.js::paintStory": {
+    "value": 164,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/glmap.js::anon": {
+    "value": 843,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/golden.js::anon": {
+    "value": 211,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gpage.js::anon": {
+    "value": 626,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gw.js::anon": {
+    "value": 473,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/handover.js::anon": {
+    "value": 208,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/helg.js::anon": {
+    "value": 157,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/hemfolj.js::anon": {
+    "value": 415,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/hometown.js::anon": {
+    "value": 295,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/i18n.js::anon": {
+    "value": 1385,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/inbox.js::anon": {
+    "value": 324,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/install1.js::anon": {
+    "value": 174,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/invite.js::anon": {
+    "value": 894,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/join.js::anon": {
+    "value": 708,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/kanal.js::anon": {
+    "value": 175,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/knas.js::anon": {
+    "value": 168,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/levels-content.js::anon": {
+    "value": 211,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/map3d.js::anon": {
+    "value": 461,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/mapart.js::anon": {
+    "value": 459,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/mapmenu.js::anon": {
+    "value": 180,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/mbx.js::anon": {
+    "value": 1338,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/medals.js::anon": {
+    "value": 534,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/meriter.js::anon": {
+    "value": 570,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/misc-mod.js::anon": {
+    "value": 251,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/moments.js::anon": {
+    "value": 400,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/near.js::anon": {
+    "value": 913,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/near.js::openFinder": {
+    "value": 178,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/nearplaces.js::anon": {
+    "value": 152,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/news-gt.js::anon": {
+    "value": 581,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/news-more.js::anon": {
+    "value": 376,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/news.js::anon": {
+    "value": 642,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/news.js::build": {
+    "value": 254,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/nightlog.js::anon": {
+    "value": 173,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/olglas.js::anon": {
+    "value": 655,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/oppet.js::anon": {
+    "value": 373,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/party-ui.js::anon": {
+    "value": 1149,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/party.js::anon": {
+    "value": 177,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/passport.js::anon": {
+    "value": 285,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/photo.js::anon": {
+    "value": 541,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/photo.js::chatOpen": {
+    "value": 154,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/places.js::anon": {
+    "value": 203,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnds.js::anon": {
+    "value": 422,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnlog-hooks.js::anon": {
+    "value": 676,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnlog.js::anon": {
+    "value": 642,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnmove.js::anon": {
+    "value": 162,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnui.js::anon": {
+    "value": 847,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnvis.js::anon": {
+    "value": 190,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/polish2.js::anon": {
+    "value": 178,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/push.js::anon": {
+    "value": 579,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/rally.js::anon": {
+    "value": 736,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ride.js::anon": {
+    "value": 863,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/rundan.js::anon": {
+    "value": 873,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/rundan.js::openAdd": {
+    "value": 189,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/safety.js::anon": {
+    "value": 573,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/sheetnav.js::anon": {
+    "value": 277,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/skal.js::anon": {
+    "value": 598,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/skjuts.js::anon": {
+    "value": 466,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/smooth.js::anon": {
+    "value": 235,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/social.js::anon": {
+    "value": 1211,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/social.js::openChat": {
+    "value": 405,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/spel-ui.js::anon": {
+    "value": 1061,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/spel.js::anon": {
+    "value": 283,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/tiers.js::anon": {
+    "value": 410,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ute.js::anon": {
+    "value": 184,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/util.js::anon": {
+    "value": 183,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/uxfix.js::anon": {
+    "value": 155,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/v14.js::anon": {
+    "value": 226,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/warm.js::anon": {
+    "value": 430,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/wish.js::anon": {
+    "value": 217,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/x8.js::anon": {
+    "value": 268,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/zones.js::anon": {
+    "value": 604,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "windowGlobals": {
+   "ACCOUNT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AFTER": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AFTER2": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AFTER_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AFTER_R2": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "ARENAPIN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AUTOCI": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AUTOHOME": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AVATAR": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AVPINS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "AVWIZ": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BAREA": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BARFOTO": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BARINFO": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BARLIT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BARS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BARSPLUS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BASEMAP": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOARDS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOLD": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOLD_BUMP": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOLD_HEM": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOLD_KROG": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOLD_REPLAY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "BOLD_SKAL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CALM": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CARDS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CEREMONY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CHAOS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CHIEF": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CITIES": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CLOUDS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CREW": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "CREW_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DELIGHT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DELIGHT_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DELIGHT_MORE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DELIGHT_MORE_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DEMO": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DIALEKT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DM": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DRINK_LINES": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "DUEL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "EVCHAT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "EVENTS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "EVGROUP": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "EVLINK": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "EVSHEET": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "EXTRAS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FILM": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FILMCAM": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FILMFX": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FILM_EXTRAS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FORFEST": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FORFEST_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FRIENDS2": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FX": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "FX_GAGS_SV": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GAMES": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GAMES_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GANG": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GANG_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GLBARS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GOLDEN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GONE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GPAGE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "GW": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "HANDOVER": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "HELG": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "HEMFOLJ": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "HITTA": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "HOMETOWN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "HOMEZONE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "I18N": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "ICONS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "INBOX": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "INSTALL1": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "INVITE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "JOIN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "KANAL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "KNAS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "KODEN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "LASK": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "LEVELS_SV": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "LEVEL_FRIEND_SV": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MAP3D": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MAPMENU": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MEDALS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MERITER": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MISC": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MOMENTS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "MYPINS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NEAR": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NEARPLACES": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NEWS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NEWS_GT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NEWS_MORE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NEWS_TX": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "NIGHTLOG": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLGLAS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_AFTER_SHEET": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_CHAT_AT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_GA": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_LAZY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_LAZY_NOW": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_LOAD_QR": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_PEN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_STRIP": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_UNBUNDLED": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OPPET": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PARTY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PARTY_CONTENT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PARTY_UI": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PASSPORT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PHOTO": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PINFOLJ": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PLACEPINS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNDS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNDS_BEEROK": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNDS_TOASTB": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNDS_UX40": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNI": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNIKV": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNLOG": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNLOG_HOOKS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNMOVE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNPROMPT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNTICK": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNUI": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNVIS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PN_TICK_F": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PN_TICK_NEXT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "POLISH2": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PRIVACY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PROFIL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PUSH": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "QRCode": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "RALLY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "RIDE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "RUNDAN": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SAFETY": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SHEETNAV": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SIDETRACK_MORE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SKAL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SKJUTS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SOCIAL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SPEED": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SPEL": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SPEL_CARDS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SPEL_UI": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SPORT": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "SUGGEST": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "TAXI_DATA": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "TIERS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "TOWN_FACTS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "U": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "UTE": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "UXFIX": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "VITALS": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "WISH": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "X8": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "ZONES": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "__brpLast": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "__k3": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "fetch": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "olnuGroupBump": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "appFunctions": {
+   "appApi": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "checkPendingOpen": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "routeOpen": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "start": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "startRest": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "duplicates": {
+   "docs/js/after-content.js | docs/js/dialekt-packs/sv-neutral.js": {
+    "value": 49,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-dalarna.js | docs/js/dialekt-packs/sv-neutral.js": {
+    "value": 2,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral.js | docs/js/games-content.js": {
+    "value": 19,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral.js | docs/js/i18n.js": {
+    "value": 14,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral.js | docs/js/news-gt.js": {
+    "value": 25,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "unusedExports": {
+   "NEWS_TX": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "OLNU_LOAD_QR": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNDS_TOASTB": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PNDS_UX40": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "__k3": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "emoji": {
+   "docs/js/account.js": {
+    "value": 64,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/after-content.js": {
+    "value": 604,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/after.js": {
+    "value": 104,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-account.js": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-beer.js": {
+    "value": 11,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-checkin.js": {
+    "value": 7,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-core.js": {
+    "value": 2,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-crowd.js": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-groups.js": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-hud.js": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-pins.js": {
+    "value": 33,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-poll.js": {
+    "value": 4,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/app-settings.js": {
+    "value": 7,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/arenapin.js": {
+    "value": 38,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/autohome.js": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/avatar.js": {
+    "value": 33,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/avwiz.js": {
+    "value": 11,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barea.js": {
+    "value": 18,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barfoto.js": {
+    "value": 39,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barinfo.js": {
+    "value": 50,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/barsplus.js": {
+    "value": 150,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/basemap.js": {
+    "value": 17,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/boards.js": {
+    "value": 16,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-bump.js": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-krog.js": {
+    "value": 3,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-replay.js": {
+    "value": 7,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/bold-skal.js": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/calm.js": {
+    "value": 3,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/cards.js": {
+    "value": 20,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ceremony.js": {
+    "value": 44,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/chief.js": {
+    "value": 146,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/crew-content.js": {
+    "value": 216,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/crew.js": {
+    "value": 141,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/delight-content.js": {
+    "value": 449,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/delight-more-content.js": {
+    "value": 145,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/delight-more.js": {
+    "value": 17,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/delight.js": {
+    "value": 42,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-dalarna.js": {
+    "value": 4405,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-neutral.js": {
+    "value": 4722,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-norr.js": {
+    "value": 1001,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-sthlm.js": {
+    "value": 895,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-syd.js": {
+    "value": 1019,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dialekt-packs/sv-vast.js": {
+    "value": 871,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/dm.js": {
+    "value": 30,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/drink-lines.js": {
+    "value": 250,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ds.js": {
+    "value": 10,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/duel.js": {
+    "value": 159,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evchat.js": {
+    "value": 43,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/events.js": {
+    "value": 81,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evgroup.js": {
+    "value": 58,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evlink.js": {
+    "value": 32,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/evsheet.js": {
+    "value": 88,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/extras.js": {
+    "value": 32,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/film.js": {
+    "value": 75,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/filmcam.js": {
+    "value": 80,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/forfest-content.js": {
+    "value": 4,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/forfest.js": {
+    "value": 30,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/friends2.js": {
+    "value": 24,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/fx.js": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/games-content.js": {
+    "value": 302,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/games.js": {
+    "value": 114,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gang-content.js": {
+    "value": 99,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gang.js": {
+    "value": 166,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/glmap.js": {
+    "value": 9,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/golden.js": {
+    "value": 37,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gone.js": {
+    "value": 14,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gpage.js": {
+    "value": 20,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/gw.js": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/handover.js": {
+    "value": 4,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/helg.js": {
+    "value": 21,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/hemfolj.js": {
+    "value": 86,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/hitta.js": {
+    "value": 33,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/hometown.js": {
+    "value": 14,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/homezone.js": {
+    "value": 16,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/i18n.js": {
+    "value": 962,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/inbox.js": {
+    "value": 20,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/invite.js": {
+    "value": 168,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/join.js": {
+    "value": 139,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/koden.js": {
+    "value": 21,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/levels-content.js": {
+    "value": 161,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/mapmenu.js": {
+    "value": 38,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/medals.js": {
+    "value": 142,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/meriter.js": {
+    "value": 222,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/mypins.js": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/near.js": {
+    "value": 142,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/nearplaces.js": {
+    "value": 11,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/news-gt.js": {
+    "value": 966,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/news-more.js": {
+    "value": 737,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/nightlog.js": {
+    "value": 25,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/olglas.js": {
+    "value": 47,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/oppet.js": {
+    "value": 49,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/party-content.js": {
+    "value": 37,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/party-ui.js": {
+    "value": 138,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/party.js": {
+    "value": 8,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/passport.js": {
+    "value": 16,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/photo.js": {
+    "value": 48,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/places.js": {
+    "value": 16,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnds.js": {
+    "value": 67,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnicons.js": {
+    "value": 151,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnlog.js": {
+    "value": 74,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnmove.js": {
+    "value": 26,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnui.js": {
+    "value": 11,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/polish2.js": {
+    "value": 2,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/profile.js": {
+    "value": 10,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/push.js": {
+    "value": 32,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/rally.js": {
+    "value": 21,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/rundan.js": {
+    "value": 142,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/safety.js": {
+    "value": 2,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/skal.js": {
+    "value": 134,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/skjuts.js": {
+    "value": 47,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/social.js": {
+    "value": 32,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/spel-ui.js": {
+    "value": 161,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/spel.js": {
+    "value": 22,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/sport.js": {
+    "value": 19,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/suggest.js": {
+    "value": 13,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/ute.js": {
+    "value": 26,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/util.js": {
+    "value": 4,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/uxfix.js": {
+    "value": 14,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/v14.js": {
+    "value": 33,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/wish.js": {
+    "value": 69,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/x8.js": {
+    "value": 10,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  },
+  "rawHex": {
+   "docs/after.css": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/avatar.css": {
+    "value": 62,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/avwiz.css": {
+    "value": 17,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/barsplus.css": {
+    "value": 16,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/bold.css": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/ceremony.css": {
+    "value": 19,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/chief.css": {
+    "value": 30,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/crew.css": {
+    "value": 21,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/delight.css": {
+    "value": 51,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/dm.css": {
+    "value": 22,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/duel.css": {
+    "value": 2,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/evchat.css": {
+    "value": 12,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/events.css": {
+    "value": 9,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/evx.css": {
+    "value": 38,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/filmcam.css": {
+    "value": 78,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/forfest.css": {
+    "value": 46,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/friends2.css": {
+    "value": 3,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/fx.css": {
+    "value": 26,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/games.css": {
+    "value": 8,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/gang.css": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/gw.css": {
+    "value": 3,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/helg.css": {
+    "value": 13,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/hemute.css": {
+    "value": 29,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/hometown.css": {
+    "value": 10,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/invite.css": {
+    "value": 4,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/join.css": {
+    "value": 6,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/koden.css": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/medals.css": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/meriter.css": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/near.css": {
+    "value": 17,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/nearplaces.css": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/olglas.css": {
+    "value": 3,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/oppet.css": {
+    "value": 8,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/party.css": {
+    "value": 50,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/passport.css": {
+    "value": 13,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/photo.css": {
+    "value": 1,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/places.css": {
+    "value": 5,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/pnmove.css": {
+    "value": 13,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/pnui.css": {
+    "value": 11,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/polish.css": {
+    "value": 19,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/profile.css": {
+    "value": 23,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/safety.css": {
+    "value": 18,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/skal.css": {
+    "value": 114,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/skjuts.css": {
+    "value": 21,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/smooth.css": {
+    "value": 4,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/social2.css": {
+    "value": 25,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/spel.css": {
+    "value": 106,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/styles.css": {
+    "value": 123,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/ux3.css": {
+    "value": 22,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/v14.css": {
+    "value": 2,
+    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   }
+  }
+ }
+}
