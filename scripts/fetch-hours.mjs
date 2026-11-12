@@ -80,7 +80,8 @@ for (const el of json.elements || []) {
   if (t.shop === "alcohol") {
     if (!/systembolaget/i.test((t.brand || "") + " " + (t.name || "")) || /ombud/i.test(t.name || "")) continue;   // ombud = pick-up point, other hours
     const nm0 = (t.name || "Systembolaget").replace(/\s+/g, " ").trim().slice(0, 60);
-    stores.push([nm0, r5(lat), r5(lng), packW(oh ? oh.w : SB_DEFAULT), oh ? 0 : 1]);
+    const ad = [[t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(" "), t["addr:city"] || t["addr:place"]].filter(Boolean).join(", ").slice(0, 80);
+    stores.push([nm0, r5(lat), r5(lng), packW(oh ? oh.w : SB_DEFAULT), oh ? 0 : 1, ad]);   // [5] = address (optional, "" when OSM has none)
     continue;
   }
   if (/^(bar|pub|nightclub|biergarten)$/.test(t.amenity || "")) {

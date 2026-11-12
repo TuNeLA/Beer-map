@@ -132,6 +132,8 @@ jobs:
             filter: '^(ui1-map|ownerfix-map)$'
           - name: mapzoom
             filter: '^(mapzoom)$'
+          - name: systemet
+            filter: '^(systemet)$'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

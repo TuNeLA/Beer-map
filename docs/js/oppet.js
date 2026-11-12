@@ -119,9 +119,12 @@
       changed();
     }).catch(function () {});
     fetch("./systembolaget.json").then(function (r) { if (!r.ok) throw new Error("no sb"); return r.json(); }).then(function (d) {
-      if (d && Array.isArray(d.stores)) { SB = d.stores.map(function (x) { return { name: x[0], lat: x[1], lng: x[2], w: x[3], guess: !!x[4] }; }); changed(); }
+      if (d && Array.isArray(d.stores)) { SB = sbMap(d.stores); changed(); sbReady(); }
     }).catch(function () {});
   }
+  // x[5] (optional, since 12 Nov): "Street 5, Town" from OSM addr:* (scripts/fetch-hours.mjs). js/systemet-pins.js reads the list (map pins + card).
+  function sbMap(rows) { return rows.map(function (x) { return { name: x[0], lat: x[1], lng: x[2], w: x[3], guess: !!x[4], addr: x[5] || "" }; }); }
+  function sbReady() { try { document.dispatchEvent(new CustomEvent("oppet:sb")); } catch (e) {} }
   function changed() { chipCache.at = 0; try { if (A) A.updateCounts(); } catch (e) {} modeCheck(true); }
   function hoursFor(bar) {
     if (!bar) return null;
@@ -379,8 +382,9 @@
       if (c && c.min != null) overrides[k] = { min: c.min | 0, closed: !!c.closed, ev: evening() }; else delete overrides[k];
       chipCache.at = 0;
     },
+    sbList: function () { return SB; },
     nmSheet: nmSheet, sbSheet: sbSheet, distTxt: distTxt, hemfardSheet: hemfardSheet,
-    _set: function (h, sb) { if (h) { H = h; nmList = []; nmById = {}; (h.nm || []).forEach(function (x) { var o = { id: placeId(x[1], x[2]), name: x[0], lat: x[1], lng: x[2], t: x[3], w: x[4] }; nmList.push(o); nmById[o.id] = o; }); } if (sb) SB = sb.stores.map(function (x) { return { name: x[0], lat: x[1], lng: x[2], w: x[3], guess: !!x[4] }; }); loaded = true; changed(); },
+    _set: function (h, sb) { if (h) { H = h; nmList = []; nmById = {}; (h.nm || []).forEach(function (x) { var o = { id: placeId(x[1], x[2]), name: x[0], lat: x[1], lng: x[2], t: x[3], w: x[4] }; nmList.push(o); nmById[o.id] = o; }); } if (sb) SB = sbMap(sb.stores); loaded = true; changed(); if (sb) sbReady(); },
     _check: checkClosing
   };
 })();

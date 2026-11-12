@@ -733,6 +733,10 @@
     "value": 1,
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
+   "SYSTEMET": {
+    "value": 1,
+    "reason": "b3system 12 Nov: hook module (PN.hookList reads window[name]); move to PN.mod(name,obj) with the other hook modules later (STRUCTURE-CONFLICTS)"
+   },
    "TAXI_DATA": {
     "value": 1,
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"

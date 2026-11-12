@@ -1,7 +1,7 @@
 {
  "ok": true,
- "seconds": 2.9,
- "files": 237,
+ "seconds": 3.2,
+ "files": 239,
  "splitCheck": "split blocks in sync (15 files)",
  "counts": {
   "fileSize": {
@@ -15,8 +15,8 @@
    "newOrGrown": 0
   },
   "windowGlobals": {
-   "now": 167,
-   "baseline": 167,
+   "now": 168,
+   "baseline": 168,
    "newOrGrown": 0
   },
   "appFunctions": {
@@ -52,10 +52,12 @@
   "docs/js/crew.js has 923 lines (warn at 900, limit 1200)",
   "docs/js/evsheet.js has 907 lines (warn at 900, limit 1200)",
   "docs/js/games.js has 1047 lines (warn at 900, limit 1200)",
+  "docs/js/glmap.js has 954 lines (warn at 900, limit 1200)",
   "docs/js/invite.js has 917 lines (warn at 900, limit 1200)",
   "docs/js/near.js has 932 lines (warn at 900, limit 1200)",
   "docs/js/news-gt.js has 1082 lines (warn at 900, limit 1200)",
   "docs/js/party-ui.js has 1160 lines (warn at 900, limit 1200)",
+  "docs/js/pnui.js has 1046 lines (warn at 900, limit 1200)",
   "docs/js/spel-ui.js has 1067 lines (warn at 900, limit 1200)"
  ],
  "shrinkable": 0
