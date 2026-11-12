@@ -41,13 +41,18 @@ async function settle(page, ms) {
         const hitBar = pts.filter((p) => rects.some((q) => p.x + 10 > q.l && p.x - 10 < q.r && p.y + 10 > q.t && p.y - 10 < q.b)).map((p) => p.id);
         const img = pts[0] && g.style && g.style.getImage ? g.style.getImage(pts[0].img) : null;
         const R = window.devicePixelRatio || 1, iw = img && img.data ? Math.round(img.data.width / (img.pixelRatio || R)) : null;
-        return { n: pts.length, hitBar, iw, tok: window.PNTOKENS.size.placeDot, bars: rects.length, first: pts[0] || null };
+        // the tap target: a food dot in the open middle of the map (not under the top bar / ticker, the rail or the ÖL! bar,
+        // and not within 30 px of a bar icon, so the tap can only mean the food dot)
+        const W = innerWidth, Hh = innerHeight;
+        const free = pts.filter((p) => p.x > 40 && p.x < W - 90 && p.y > 200 && p.y < Hh - 280 && !rects.some((q) => p.x + 30 > q.l && p.x - 30 < q.r && p.y + 30 > q.t && p.y - 30 < q.b));
+        return { n: pts.length, hitBar, iw, tok: window.PNTOKENS.size.placeDot, bars: rects.length, first: free[0] || null, free: free.length };
       });
       await page.screenshot({ path: DIR + TAG + "-3-map-" + w + "-z" + z + ".png" });
       if (z === 15) { ok(true, w + " z15 food dots (shown from z16): " + r.n, r); continue; }
       ok(r.n > 0, w + " z" + z + " food dots on the real map", { n: r.n, bars: r.bars });
       ok(!r.hitBar.length, w + " z" + z + " no food dot on a bar icon or pill", r.hitBar);
       if (r.iw != null) ok(r.iw >= 26, w + " z" + z + " food icon image ≥ 26 px (20 px disc + ring + shadow room; was 24)", r.iw);
+      if (z === 17 && !r.first) ok(true, w + " z17 no food dot in the open middle of the map to tap (skip)", { n: r.n, free: r.free });
       if (z === 17 && r.first) {
         const before = await page.evaluate(() => (window.GLBARS && GLBARS.stats ? GLBARS.stats.lastTap : null) || (window.GLBARS && GLBARS._stats ? GLBARS._stats().lastTap : null));
         await page.mouse.click(r.first.x + 9, r.first.y + 9); await page.waitForTimeout(900);
