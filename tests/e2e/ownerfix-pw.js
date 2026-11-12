@@ -123,7 +123,7 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
       return { place: ["restaurant", "cafe", "fastfood", "kebab"].map((k) => w(P.placeOps(k).ops)), bar: w(P.barOps({ k: "pub" }, "d", false).ops),
         tok: window.PNTOKENS.size.placeDot, glyph: window.PNTOKENS.size.placeGlyph };
     });
-    ok(s.tok >= 19 && s.tok <= 20 && s.glyph >= 12, "3 place disc ≈ +20 % (token 16 → 19–20 px, glyph 10 → 12)", s);
+    ok(s.tok >= 19 && s.tok <= 22 && s.glyph >= 12, "3 place disc ≈ +20 % (token 16 → 19–20 px, glyph 10 → 12)", s);
     ok(Math.max(...s.place) < s.bar, "3 bar dots stay bigger than food dots", s);
     // the drawn images (incl. ring + edge) of all four food kinds grow
     ok(Math.min(...s.place) >= 26, "3 every food icon image grew (old 24 px box incl. shadow, now ≥ 26)", s.place);

@@ -17,10 +17,11 @@
   "use strict";
   var U = window.U, I = window.I18N, L = window.L;
   var A = null, map = null, layer = null, timer = 0, drawn = {}, selId = null;
-  var KEY = "olnu.places", MIN_Z = 16, LABEL_Z = 17, MAX_IN_VIEW = 150, PAD_PX = 4;
+  var KEY = "olnu.places", MIN_Z = 14, LABEL_Z = 17, MAX_IN_VIEW = 150, PAD_PX = 4;
   // denser zoomed out: fewer dots, more space (a city centre at zoom 16 stays calm); zoom 18+: up to 150
-  function capFor(z) { return z < 17 ? 60 : z < 18 ? 110 : MAX_IN_VIEW; }
-  function gapFor(z) { return z < 17 ? 30 : z < 18 ? 24 : 20; }
+  // c2speed I-50: from zoom 14 (was 16), small there (glmap.js icon-size ramp), sparser at the lower zooms
+  function capFor(z) { return z < 15 ? 35 : z < 16 ? 50 : z < 17 ? 70 : z < 18 ? 110 : MAX_IN_VIEW; }
+  function gapFor(z) { return z < 15 ? 38 : z < 16 ? 34 : z < 17 ? 30 : z < 18 ? 24 : 20; }
   var ICON = { restaurant: "🍽️", cafe: "☕", fast_food: "🍔" }, RANK = { restaurant: 0, cafe: 1, fast_food: 2 };
   // 🌭 js/oppet.js nattmat mode (01–05): open late food from zoom 13 and first in the cap (class pl-nm). Nothing else changes.
   var NM_Z = 13;
@@ -113,7 +114,7 @@
       if (ob.ids[p.id]) continue;   // app.js draws it (people / check-ins / call-out there)
       var pt = map.latLngToContainerPoint([p.lat, p.lng]);
       var inView = pt.x >= -20 && pt.y >= -20 && pt.x <= W + 20 && pt.y <= H + 20;
-      var dot = { l: pt.x - 10, t: pt.y - 10, r: pt.x + 10, b: pt.y + 10 };   // ownerfix 3: 20 px dot
+      var dot = { l: pt.x - 11, t: pt.y - 11, r: pt.x + 11, b: pt.y + 11 };   // c2speed I-50: 22 px dot
       if (ob.rects.some(function (o) { return hit(dot, o); })) continue;
       if (kept.some(function (k) { return Math.abs(k.x - pt.x) < GAP_PX && Math.abs(k.y - pt.y) < GAP_PX; })) continue;
       kept.push(pt); if (inView) n++;

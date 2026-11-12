@@ -132,6 +132,8 @@ jobs:
             filter: '^(map)$'
           - name: map-ui1
             filter: '^(ui1-map|ownerfix-map)$'
+          - name: c2speed
+            filter: '^(c2speed)$'
           - name: mapzoom
             filter: '^(mapzoom)$'
           - name: systemet

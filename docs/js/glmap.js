@@ -349,7 +349,8 @@
       // pill or a name (same source as the bars: cross-source collisions are off in basemap.js)
       if (!m.getLayer(L_PLACE)) m.addLayer({ id: L_PLACE, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 2],
         layout: { "icon-image": ["get", "img"], "icon-anchor": "top-left", "icon-offset": offExpr(), "icon-allow-overlap": false, "icon-ignore-placement": false,
-          "icon-padding": 0, "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } }, L_DOTE);
+          "icon-padding": 0, "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport",
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 13, 0.6, 14, 0.8, 15, 1] }, paint: { "icon-emissive-strength": 1 } }, L_DOTE);   // c2speed I-50: small from Leaflet 14, full size from 16
       // names: placed after the full pills (layer above = placed first), so a name that would touch a pill or a
       // higher-priority name is left out (the old placeLabels rule); dots never block a name (they ignore placement)
       if (!m.getLayer(L_LBL)) m.addLayer({ id: L_LBL, type: "symbol", source: SRC_B, filter: ["all", ["==", ["get", "t"], 1], ["!=", ["get", "li"], ""]],
@@ -585,7 +586,7 @@
   var CL_IDS = [L_CDOTE, L_CDOT, L_CB1, L_CB2, L_CL, L_BLK];   // cifix3: L_CDOTF is no layer any more (a1map I-27): only real ids here
   // cifix3: ONE list of every GL venue layer: the BAREA editor hide/restore (editVis) and _layers() use it
   function venueIds() { return [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(CL_IDS); }
-  var CL_MAXZ = 13, CL_MINZ = 9, CL_R = 52;   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
+  var CL_MAXZ = 12, CL_MINZ = 9, CL_R = 30;   // c2speed I-51 (was 13 / 52): clusters up to Leaflet 13, one dot per bar from 14; only overlapping pins merge. Was:   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
   var cl = { on: false, sig: "", feats: [], seen: null, seenAt: 0, hooked: null, made: 0 };
   function clOps(n, busy, friend) {
     var T = window.PNTOKENS, K = T.col, ops = [], t = n > 999 ? (Math.floor(n / 100) / 10).toString().replace(".", ",") + "k" : String(n);

@@ -421,16 +421,33 @@
   }
   // v14 worldwide: any valid position (the server may still refuse outside Sweden: outside_sweden toast).
   function inSweden(lat, lng) { return U.validPos(lat, lng); }
+  // c2speed I-45: the last known position (PN.s.lastLoc from an earlier fix / poll / beer tap, else the fix saved in this browser)
+  function lastKnown() {
+    var l = PN.s.lastLoc; if (l && U.validPos(l.lat, l.lng)) return l;
+    var c = U.ls.getJSON("olnu.lastFix", null);
+    return c && U.validPos(c.lat, c.lng) && Date.now() - (c.at || 0) < 7 * 86400000 ? c : null;
+  }
   function locate(opts) {
     opts = opts || {};
     var b = $("btn-locate"); b.classList.add("busy");
-    return getPosition({ enableHighAccuracy: !!opts.precise, timeout: 12000, maximumAge: 60000 }).then(function (pos) {
+    // c2speed I-45: with a known position the map moves AT ONCE; a fresh fix (short timeout) only refines it. The error toast
+    // shows only when there is no position at all.
+    var known = lastKnown(), moved = false;
+    if (known) {
+      showMe(known.lat, known.lng, 0);
+      map.setView([known.lat, known.lng], Math.max(opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate });
+      moved = true;
+    }
+    return getPosition({ enableHighAccuracy: !!opts.precise && !moved, timeout: moved ? 4000 : 12000, maximumAge: 60000 }).then(function (pos) {
       var la = pos.coords.latitude, ln = pos.coords.longitude;
       showMe(la, ln, pos.coords.accuracy);
-      if (U.validPos(la, ln)) map.setView([la, ln], Math.max(opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate });
+      U.ls.setJSON("olnu.lastFix", { lat: la, lng: ln, at: Date.now() });
+      if (U.validPos(la, ln) && (!moved || U.haversine(la, ln, known.lat, known.lng) > 30))
+        map.setView([la, ln], Math.max(moved || opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate || moved });
       U.ls.set("olnu.locOk", "1");
       return true;
     }, function (err) {
+      if (moved) return true;
       if (!opts.quiet) locError(err);
       return false;
     }).then(function (ok) { b.classList.remove("busy"); return ok; });
