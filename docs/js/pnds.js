@@ -359,17 +359,14 @@
     if (pit && !pit.classList.contains("pn-fold")) {
       pit.classList.add("pn-fold");
       pp.querySelectorAll(":scope > h3").forEach(function (x, i) { if (i > 0) x.classList.add("pn-sub"); });
-      var row = h("button", { type: "button", class: "pn-fold-row", "aria-expanded": "false" }, [h("span", { html: ic("bell", "pi-lead") }), h("span", { text: "Välj notiser" }), h("small", { class: "pn-fold-n" }), h("span", { html: ic("chev-right") })]);
-      var undo = null;
+      var row = h("button", { type: "button", class: "pn-fold-row", "aria-expanded": "false" }, [h("span", { html: ic("bell", "pi-lead") }), h("span", { text: "Välj notiser" }), h("small", { class: "pn-fold-n" }), h("span", { html: ic("chev-down") })]);
+      // b1people I-02: ONE fold rule. An inline fold = ⌄ closed / ⌃ open and NEVER adds a back step (› + back is for a sub-page).
       var set = function (open) {
         pit.classList.toggle("pn-open", open); row.setAttribute("aria-expanded", String(open));
-        row.lastChild.innerHTML = ic(open ? "chev-down" : "chev-right");
+        row.lastChild.innerHTML = ic(open ? "chev-up" : "chev-down");
       };
       row.addEventListener("click", function () {
         var open = !pit.classList.contains("pn-open"); set(open);
-        var sn = W("SHEETNAV");
-        if (open && sn && sn.sub) undo = sn.sub(function () { set(false); });
-        else if (!open && undo) { var u = undo; undo = null; try { u(); } catch (e) {} }
         if (open) setTimeout(function () { try { row.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 30);
       });
       pit.insertBefore(row, pit.firstChild);
@@ -1703,22 +1700,19 @@
     var f = FOLD[key];
     it = document.createElement("div"); it.className = "ds-item pn-f20-row"; it.setAttribute("data-f", key);
     var b = document.createElement("button"); b.type = "button"; b.className = "pn-f20"; b.setAttribute("aria-expanded", "false");
-    b.innerHTML = '<span class="pn-f20-i" aria-hidden="true">' + ic(f.icon) + '</span><span class="pn-f20-t"><span></span><small></small></span><span class="pn-f20-c" aria-hidden="true">' + ic("chev-right") + "</span>";
+    b.innerHTML = '<span class="pn-f20-i" aria-hidden="true">' + ic(f.icon) + '</span><span class="pn-f20-t"><span></span><small></small></span><span class="pn-f20-c" aria-hidden="true">' + ic("chev-down") + "</span>";
     b.querySelector(".pn-f20-t > span").textContent = f.title;
     it.appendChild(b);
-    var undo = null;
+    // b1people I-02: an inline fold = ⌄ closed / ⌃ open and never adds a back step (no SHEETNAV sub-view)
     var set = function (open) {
       var sec = it.closest("section.ds-section"); if (!sec) return;
       sec.classList.toggle("pn-f20-open", open); sec.setAttribute("data-f20", open ? key : "");
       b.setAttribute("aria-expanded", String(open));
-      b.querySelector(".pn-f20-c").innerHTML = ic(open ? "chev-down" : "chev-right");
+      b.querySelector(".pn-f20-c").innerHTML = ic(open ? "chev-up" : "chev-down");
     };
     b.addEventListener("click", function () {
       var sec = it.closest("section.ds-section"), open = !(sec && sec.classList.contains("pn-f20-open"));
       set(open);
-      var sn = W.SHEETNAV;   // Android back / ‹ closes the fold first (like "Välj notiser")
-      if (open && sn && sn.sub) undo = sn.sub(function () { undo = null; set(false); });
-      else if (!open && undo) { var u = undo; undo = null; try { u(); } catch (e) {} }
       if (open) setTimeout(function () {
         var body = $("sheet-body"), last = sec && [].slice.call(sec.querySelectorAll(".pn-f20-in")).pop(); if (!body || !last) return;
         var br = body.getBoundingClientRect(), lr = last.getBoundingClientRect();

@@ -217,7 +217,7 @@ async function safetyMocks(page, st, calls) {
     await shot(page, "settings");
     await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-set button")].find((x) => /Blockerade/.test(x.textContent)); b.click(); }); await wait(page, 1000);
     const bl = await page.evaluate(() => document.querySelector(".sf-blist").textContent);
-    ok("Blockerade lists Oskar with Häv", /Oskar/.test(bl) && /Häv/.test(bl), bl);
+    ok("Blockerade lists Oskar with Häv", /Oskar/.test(bl) && /Häv|Avblockera/.test(bl), bl);
     await shot(page, "blocked-list");
     await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-blist button")][0]; b.click(); }); await wait(page, 800);
     ok("Häv → unblock_user", calls.some((c) => c[0] === "unblock_user" && c[1].p_id === "abcdef0123456789"));

@@ -121,7 +121,7 @@
     var li = el("li", { class: "gitem" });
     var main = el("div", { class: "gmain" }, [
       el("div", { class: "gname", text: g.name }),
-      el("div", { class: "gsub", html: U.esc(t("code")) + " " + U.esc(g.code) + " · " + t("drinkingOf", g.active_count | 0, g.member_count | 0) })
+      el("div", { class: "gsub", html: t("drinkingOf", g.active_count | 0, g.member_count | 0) })   // b1people I-15: the code is the "Kod" line under it (gpage.js)
     ]);
     // Design pass 2: the name gets the full row; "Visa kod" below it; "Lämna" is a quiet text button at the
     // bottom of the card (after the module buttons), behind the same confirm. Never next to a common button.

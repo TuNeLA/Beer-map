@@ -117,6 +117,8 @@ jobs:
             filter: '^(placesearch)$'
           - name: a2ui
             filter: '^(a2ui)$'
+          - name: b1people
+            filter: '^(b1people)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit

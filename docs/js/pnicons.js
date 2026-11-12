@@ -81,6 +81,7 @@
     // ---- talk / media ----
     "chat": ["M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5v-3.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"],
     "send": ["M21 3L10 14", "M21 3l-7 18-4-7-7-4z"],
+    "send-r": ["M4 4l17 8-17 8 3-8z", "M7 12h8"],   // b1people I-13: the paper plane points right (one send icon for the DM and the group composer)
     "inbox": ["M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", "M3 13h5l1.5 2.5h5L16 13h5"],
     "bell": ["M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z", "M10 21h4"],
     "bell-off": ["M4 4l16 16", "M8.2 5.6A6 6 0 0 1 18 11v4", "M6 9.8V16l-1.5 2H17", "M10 21h4"],

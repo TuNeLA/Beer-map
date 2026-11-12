@@ -189,7 +189,7 @@ async function statsPage(browser, w, o) {
       const hasBlk = await page.evaluate(() => { const b = [...document.querySelectorAll("#kpiSet .btn")].find((x) => /Blockerade/.test(x.textContent)); if (b) b.click(); return !!b; });
       if (hasBlk) {
         await wait(page, 700);
-        await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov .sf-blist button")].find((x) => /Häv/.test(x.textContent)); if (b) b.click(); }); await wait(page, 800);
+        await page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov .sf-blist button")].find((x) => /Häv|Avblockera/.test(x.textContent)); if (b) b.click(); }); await wait(page, 800);
         t = await page.evaluate(() => window.__toasts.slice());
         ok("safety: Blockerade → Häv → 'Oskar är inte blockerad längre.' toast, no emoji", t.some((x) => /Oskar är inte blockerad längre/.test(x)) && !t.some((x) => EMO.test(x)), t);
         await closeOv();

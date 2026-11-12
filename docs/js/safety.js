@@ -492,11 +492,13 @@
         if (!list.length) { ul.appendChild(h("li", { class: "muted", text: r.error && missing(r.error) ? "Finns int' på servern än." : "Du har int' blockerat nån." })); return; }
         list.forEach(function (b) {
           var li = h("li", {}, [h("span", { html: icT("block", b.name || "?") })]);
-          li.appendChild(h("button", { type: "button", class: "btn btn-small", text: "Häv", onclick: function (e) {
+          li.appendChild(h("button", { type: "button", class: "btn btn-small sf-unb", text: "Avblockera", "aria-label": "Avblockera " + (b.name || "personen"), onclick: function (e) {
             var btn = e.currentTarget; btn.disabled = true;
             rpc("unblock_user", { p_id: b.id }).then(function (x) {
               if (x.error) { btn.disabled = false; toast("Det gick int'. Försök igen.", { err: true }); return; }
               li.remove(); toast((b.name || "Personen") + " är inte blockerad längre.");
+              if (!ul.children.length) ul.appendChild(h("li", { class: "muted", text: "Du har int' blockerat nån." }));
+              try { if (window.DM && window.DM.afterUnblock) window.DM.afterUnblock(b.name || ""); } catch (e2) {}   // b1people I-03: the DM opens again at once
               if (A && A.refresh) A.refresh();
             });
           } }));
@@ -579,7 +581,7 @@
     settingsSheet: settingsSheet,
     ageWidget: ageWidget, ensureTerms: ensureTerms, showRules: showRules, rulesBody: rulesBody,
     report: reportSheet, block: blockSheet, contact: contactSheet, actions: actions, personActions: personActions,
-    sos112: sos112, maskPins: maskPins, store: store, SUPPORT: SUPPORT, _state: function () { return stateCache; },
+    blocked: blockedSheet, sos112: sos112, maskPins: maskPins, store: store, SUPPORT: SUPPORT, _state: function () { return stateCache; },
     // left T-05b: true = this post RPC (or any post, fn empty) must wait for Regler first (app.js rpcNet1 + the post buttons ask ensureTerms())
     needTerms: function (fn) { return (!fn || !!POST_FNS[fn]) && !termsOk() && !off.terms; },
     _beers: function () { return A && A.beers ? A.beers() : []; }   // tests only

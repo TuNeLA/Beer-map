@@ -614,8 +614,15 @@
   function voiceRow(v, ctx) {
     var el = A.el, col = v.is_me ? null : (ctx.color ? ctx.color(v.name || "") : null);
     var secs = Math.max(1, Math.round((v.dur_ms | 0) / 100) / 10);
-    var play = el("button", { type: "button", class: "af-play", "data-afv": String(v.id), "data-mime": v.mime || "",
-      "aria-label": L("Spela röstskål", "Play voice cheers") }, [el("span", { text: "▶️" }), el("span", { text: L("Röstskål", "Voice cheers") + " · " + String(secs).replace(".", ",") + " s" })]);
+    // ownerfix 8: round 44 px PNI play button + a small wave (fills while it plays) + the length; same bubble as text
+    var pi = window.PNI && window.PNI.svg ? window.PNI.svg("play", "") : "";
+    var wave = el("span", { class: "af-wave", "aria-hidden": "true" });
+    [5, 9, 13, 8, 14, 10, 6, 12, 9, 5, 11, 7].forEach(function (hh) { wave.appendChild(el("i", { style: "height:" + hh + "px" })); });
+    var play = el("button", { type: "button", class: "af-play af-play2", "data-afv": String(v.id), "data-mime": v.mime || "",
+      "aria-label": L("Spela röstskål", "Play voice cheers") + " · " + String(secs).replace(".", ",") + " s" },
+      [el("span", { class: "af-pi", "aria-hidden": "true", html: pi || "▶" }),
+       el("span", { class: "af-vmid" }, [el("span", { class: "af-vlab", text: L("Röstskål", "Voice cheers") }), wave]),
+       el("span", { class: "af-dur", text: String(secs).replace(".", ",") + " s" })]);
     var name = el("span", { class: "cm-name", text: (v.name || (v.is_me ? L("Du", "You") : L("Någon", "Someone"))) });
     if (col) name.style.color = col;
     return el("li", { class: "chat-msg af-voice" + (v.is_me ? " me" : ""), style: col ? "border-left-color:" + col : "", "data-at": String(v.created_at || ""), "data-afvid": String(v.id) }, [
@@ -639,7 +646,11 @@
       try {
         var a = new Audio(url);
         btn.classList.add("on");
-        a.onended = a.onerror = function () { btn.classList.remove("on"); };
+        // ownerfix 8: the wave fills while it plays; the icon turns to pause
+        var ic = btn.querySelector(".af-pi"), svgOf = function (n) { return window.PNI && window.PNI.svg ? window.PNI.svg(n, "") : ""; };
+        if (ic && window.PNI) ic.innerHTML = svgOf("pause");
+        a.ontimeupdate = function () { if (a.duration > 0) btn.style.setProperty("--af-p", String(Math.min(1, a.currentTime / a.duration))); };
+        a.onended = a.onerror = function () { btn.classList.remove("on"); btn.style.setProperty("--af-p", "0"); if (ic && window.PNI) ic.innerHTML = svgOf("play"); };
         var p = a.play(); if (p && p.catch) p.catch(function () { btn.classList.remove("on"); A.toast(L("Kunde inte spela upp.", "Could not play."), { err: true }); });
       } catch (e) { A.toast(L("Kunde inte spela upp.", "Could not play."), { err: true }); }
     };
@@ -675,6 +686,7 @@
           if (seen[v.id]) return; seen[v.id] = 1;
           insertSorted(list, voiceRow(v, ctx));
         });
+        try { if (rows(r).length && window.AVATAR && window.AVATAR.chatDecorate) window.AVATAR.chatDecorate(); } catch (e) {}   // ownerfix 8: same run + indent
         if (rows(r).length) list.scrollTop = list.scrollHeight;
       });
     }

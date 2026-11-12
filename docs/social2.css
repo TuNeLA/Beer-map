@@ -212,3 +212,50 @@
 .sa-gk.fs-gk-in .pn-gp-chev{position:relative}
 .sa-gk.fs-gk-in .pn-gp-chev::before{content:"";position:absolute;right:calc(100% + 6px);top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--ds-red,#e5484d)}
 .ib-loading{margin:var(--ds-4,16px) 0;text-align:center}
+
+/* lane:ownerfix 8 — voice clip = the same bubble as text (avatar column via avatar.js runs), PNI play, wave, length */
+.chat-msg.af-voice .cm-body{padding:0}
+.chat-msg.af-voice .af-play.af-play2{display:flex;align-items:center;gap:10px;width:100%;min-width:200px;max-width:280px;min-height:48px;padding:2px 2px 2px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;box-shadow:none}
+.chat-msg.af-voice .af-play2 .af-pi{flex:0 0 44px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--ds-amber,#F5A623);color:var(--ds-on-amber,#1a1204)}
+.chat-msg.af-voice .af-play2 .af-pi svg{width:20px;height:20px}
+.chat-msg.af-voice .af-play2 .af-vmid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}
+.chat-msg.af-voice .af-play2 .af-vlab{font-size:12px;font-weight:700;color:var(--ds-text-2,rgba(255,255,255,.7));line-height:1}
+.chat-msg.af-voice .af-play2 .af-wave{--af-p:0;display:flex;align-items:center;gap:3px;height:16px}
+.chat-msg.af-voice .af-play2 .af-wave i{display:block;width:3px;border-radius:2px;background:rgba(255,255,255,.35)}
+.chat-msg.af-voice .af-play2.on .af-wave i{background:var(--ds-amber,#F5A623)}
+.chat-msg.af-voice .af-play2 .af-dur{flex:0 0 auto;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ds-text-2,rgba(255,255,255,.7));padding-right:6px}
+.chat-msg.af-voice .af-play2.on{background:none;color:inherit}
+.chat-msg.af-voice .af-play2:focus-visible .af-pi{outline:2px solid var(--ds-amber,#F5A623);outline-offset:2px}
+
+/* lane:ownerfix 9 — DM photo preview card in the token style, PNI icons in the privacy + seen lines */
+.ph-ov .ph-card{border-radius:var(--r-lg,16px);border:1px solid var(--ds-border-2,rgba(255,255,255,.14));background:var(--ds-sheet,var(--night-2))}
+.ph-ov .ph-priv .pi,.chat-list .dm-seen .pi{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
+
+/* lane:ownerfix 9b — chat sheets: ONE scroller (the message list); header card + composer stay put; above the keyboard */
+#sheet.sheet:has(> .sheet-body > .chat-list){height:86vh;height:min(86dvh,calc(var(--of-vvh,100dvh) - 8px));bottom:var(--of-kb,0px)}
+#sheet-body:has(> .chat-list){display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain}
+#sheet-body:has(> .chat-list)>*{flex:0 0 auto}
+#sheet-body:has(> .chat-list)>[hidden]{display:none}
+#sheet-body:has(> .chat-list)>.chat-list{flex:1 1 auto;min-height:96px;max-height:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+
+/* lane:b1people profile card START — I-12: a small card above the sheet: big avatar, name, tonight, friend / message / mute / block */
+.pc-ov{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:var(--sp-4,16px);background:rgba(4,8,18,.6);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.pc-card{position:relative;width:100%;max-width:340px;max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;padding:var(--sp-5,24px) var(--sp-4,16px) var(--sp-4,16px);border-radius:var(--r-lg,16px);background:var(--ds-sheet,var(--night-2,#141c30));border:1px solid var(--ds-border-2,rgba(255,255,255,.14));text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.pc-x{position:absolute;top:var(--sp-2,8px);right:var(--sp-2,8px);width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--ds-muted,#9aa3b8);cursor:pointer}
+.pc-x .pi{width:20px;height:20px}
+.pc-av{display:grid;place-items:center;width:96px;height:96px;margin:0 auto var(--sp-3,12px);border-radius:50%;background:var(--ds-raised,#222e48);font:700 40px/1 var(--ds-sans,inherit);color:var(--ds-text,#fff);overflow:hidden}
+.pc-av svg{width:100%;height:100%}
+.pc-name{margin:0 0 var(--sp-1,4px);font:700 var(--fs-20,20px)/26px var(--ds-sans,inherit);color:var(--ds-text,#fff);overflow-wrap:anywhere}
+.pc-status{display:flex;align-items:center;justify-content:center;gap:var(--sp-2,8px);margin:0 0 var(--sp-4,16px);font:400 var(--fs-14,14px)/20px var(--ds-sans,inherit);color:var(--ds-muted,#9aa3b8)}
+.pc-dot{width:8px;height:8px;border-radius:50%;background:var(--ds-muted,#9aa3b8)}
+.pc-status.on .pc-dot{background:var(--green,#3ecf8e)}
+.pc-acts{display:flex;flex-direction:column;gap:var(--sp-2,8px);margin-top:var(--sp-3,12px)}
+.pc-friend:empty{display:none}
+.pc-friend .f2-slot{display:flex;justify-content:center}
+.pc-friend .f2-add,.pc-friend .f2-chip{min-height:44px;width:100%}
+.pc-act{display:flex;align-items:center;gap:var(--sp-3,12px);width:100%;min-height:44px;padding:0 var(--sp-4,16px);border:1px solid var(--ds-border-2,rgba(255,255,255,.14));border-radius:var(--r-pill,999px);background:var(--ds-card,#19233a);color:var(--ds-text,#fff);font:600 var(--fs-16,16px)/1 var(--ds-sans,inherit);cursor:pointer;text-align:left}
+.pc-act:disabled{opacity:.5}
+.pc-act-i{display:inline-flex}.pc-act-i .pi{width:20px;height:20px}
+.pc-act.on{border-color:rgba(255,194,77,.45);color:var(--ds-amber-t,var(--amber))}
+.pc-block{color:var(--ds-danger-t,#ff8a80)}
+/* lane:b1people profile card END */

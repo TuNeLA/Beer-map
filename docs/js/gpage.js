@@ -258,7 +258,7 @@
     // ds52: ONE source for "who is out": the status line follows group_now too
     try {
       var gs = wrap.querySelector(".gmain .gsub"), g0 = wrap.__g;
-      if (gs && g0 && A && A.t) { var nh = U.esc(A.t("code")) + " " + U.esc(g0.code || "") + " · " + A.t("drinkingOf", out.length, Math.max(g0.member_count | 0, out.length, 1)); if (gs.innerHTML !== nh) gs.innerHTML = nh; }   // fixS T-16: never "0 av 0" (I am a member)
+      if (gs && g0 && A && A.t) { var nh = A.t("drinkingOf", out.length, Math.max(g0.member_count | 0, out.length, 1)); /* b1people I-15: the code has its own line (pn-gp-code) */ if (gs.innerHTML !== nh) gs.innerHTML = nh; }   // fixS T-16: never "0 av 0" (I am a member)
     } catch (e) {}
     try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(box, out, wrap.__g); } catch (e) {}   // 👤 avatars
   }
@@ -275,7 +275,7 @@
       var ds = wrap.querySelector(".gpg-dots .pn-gp-tx small"), dt = L(n1(n + " medlemmar · kod · gruppchef"), n + " members · code · chief"); if (ds && ds.textContent !== dt) ds.textContent = dt;
       var mn = wrap.querySelector(".gpg-info .sa-gpg-n"); if (mn && mn.firstChild && mn.firstChild.nodeType === 3 && mn.firstChild.nodeValue !== String(n)) mn.firstChild.nodeValue = String(n);
       var nb = wrap.querySelector(".gpg-now"), on = nb && nb.__out ? nb.__out.length : 0, gs = wrap.querySelector(".gmain .gsub");
-      if (gs && A && A.t) { var nh = U.esc(A.t("code")) + " " + U.esc(g.code || "") + " · " + A.t("drinkingOf", on, Math.max(n, on, 1)); if (gs.innerHTML !== nh) gs.innerHTML = nh; }
+      if (gs && A && A.t) { var nh = A.t("drinkingOf", on, Math.max(n, on, 1)); /* b1people I-15 */ if (gs.innerHTML !== nh) gs.innerHTML = nh; }
     } catch (e) {}
   }
   // ds58: the members strip (group_status_v3, then v2; same as Medlemmar). Live first, then most drinks, then the server order.
@@ -284,15 +284,20 @@
     // no pop-in: paint from the instant-screen cache at once; a late first answer (after the page showed) waits for the next open
     var t0 = Date.now(), holding = function () { var sb = document.getElementById("sheet-body"); return Date.now() - t0 < 400 && !!(sb && sb.classList.contains("wm-hold")); };
     var paint = function (data) {
-        var rows = data.map(function (m, i) { return { name: m.name || "", me: !!m.is_me, n: Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), live: !!m.live, ix: i }; })
+        var rows = data.map(function (m, i) { return { name: m.name || "", me: !!m.is_me, n: Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), live: !!m.live, ix: i, k: m.k || null }; })
           .sort(function (a, b) { return (b.live - a.live) || (b.n - a.n) || (a.ix - b.ix); }).slice(0, 12);
         var sig = JSON.stringify(rows); if (box.__sig === sig && !box.hidden) return; box.__sig = sig;   // same answer = no repaint (no pop-in)
         var l = box.querySelector(".pn-gp-mem-l"); l.innerHTML = "";
         rows.forEach(function (p) {
-          l.appendChild(h("span", { class: "pn-gp-mi" + (p.live ? " on" : "") + (p.me ? " me" : "") }, [
+          var mi = h("span", { class: "pn-gp-mi" + (p.live ? " on" : "") + (p.me ? " me" : ""), role: "button", tabindex: "0", "aria-label": (p.me ? L("Du", "You") : p.name) + L(", visa profilkort", ", show profile card") }, [
             h("span", { class: "gpg-face" + (p.live ? " on" : "") + (p.me ? " me" : ""), text: (p.name || "?").charAt(0).toUpperCase() }),
             h("small", { class: "pn-gp-mn", text: p.me ? L("Du", "You") : p.name }),
-            h("small", { class: "pn-gp-mc" + (p.n ? " has" : ""), html: p.n ? "<b>" + p.n + "</b>" + ic("beer") : L("–", "–"), "aria-label": p.n ? p.n + L(" öl ikväll", " drinks tonight") : L("inga öl", "none") })]));
+            h("small", { class: "pn-gp-mc" + (p.n ? " has" : ""), html: p.n ? "<b>" + p.n + "</b>" + ic("beer") : L("–", "–"), "aria-label": p.n ? p.n + L(" öl ikväll", " drinks tonight") : L("inga öl", "none") })]);
+          // b1people I-12: tap a member = a small profile card
+          var tapMi = function (e) { if (e) e.stopPropagation(); if (window.PROFCARD && window.PROFCARD.open) window.PROFCARD.open({ g: g, name: p.name, k: p.k, is_me: p.me, live: p.live, n: p.n }); };
+          mi.addEventListener("click", tapMi);
+          mi.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tapMi(e); } });
+          l.appendChild(mi);
         });
         try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(l, rows, g); } catch (e) {}
         box.hidden = !rows.length;
@@ -474,11 +479,11 @@
 
     // ⋯ (info) top right of the header
     // ds52: inviting is a labelled button (was ⋯); the info view is the row "Om gruppen" (same .gpg-dots hook)
-    // ds60: the code on the main screen, under Bjud in (tap = copy)
+    // ds60 / b1people I-15: the code under "N av M dricker nu" (left), Bjud in vertically centred (right); tap on the code = copy
     var codeV = g.code ? (U.cleanCode ? U.cleanCode(g.code) : g.code) : "";
     var codeB = codeV ? h("button", { type: "button", class: "pn-gp-code", "aria-label": L("Kopiera gruppkoden ", "Copy the group code ") + codeV,
-      onclick: function () { copy(codeV, function () { if (A) A.toast(L("Koden " + codeV + " är kopierad", "Code " + codeV + " copied"), { id: "gpg" }); }); } },
-      [h("span", { class: "muted", text: L("Kod ", "Code ") }), h("b", { text: codeV })]) : null;
+      onclick: function () { copy(codeV, function () { if (A) A.toast(L("Koden kopierad", "Code copied"), { id: "gpg" }); }); } },
+      [h("span", { class: "muted", text: L("Kod ", "Code ") }), h("b", { text: codeV }), h("span", { class: "pn-gp-cp", "aria-hidden": "true", html: ic("copy") })]) : null;   // b1people I-15: under "N av M dricker nu", tap = copy
     var invB = h("button", { type: "button", class: "pn-gp-inv", "aria-label": L("Bjud in till ", "Invite to ") + (g.name || L("gruppen", "the group")),
       onclick: function () { if (window.JOIN && window.JOIN.openGroup) window.JOIN.openGroup(g, false); else view(wrap, "info"); } },
       [h("span", { class: "pn-gp-ii", "aria-hidden": "true", html: ic("user-plus") }), h("span", { text: L("Bjud in", "Invite") })]);
@@ -495,7 +500,7 @@
     var chat = null;
     if (window.SOCIAL && window.SOCIAL.openChat) {
       var inp = h("input", { class: "inp gpg-inp", maxlength: "140", enterkeyhint: "send", autocomplete: "off", placeholder: T("chatPh"), "aria-label": T("chatPh") });
-      var sb = h("button", { type: "button", class: "btn btn-amber gpg-send", "aria-label": T("send"), text: "➤" });
+      var sb = h("button", { type: "button", class: "btn btn-amber gpg-send", "aria-label": T("send"), html: ic("send-r") || "➤" });   // b1people I-13: PNI send icon, points right
       sb.addEventListener("click", function () { send(wrap, g, inp, sb); });
       inp.addEventListener("keydown", function (e) { window.OLNU_CHAT_AT = Date.now(); if (e.key === "Enter") send(wrap, g, inp, sb); });
       chat = h("div", { class: "gpg-chat" }, [
@@ -546,8 +551,9 @@
     try { if (localStorage.getItem("olnu.gpgOpen") === "1") { wrap.classList.add("gpg-open"); fold.setAttribute("aria-expanded", "true"); } } catch (e) {}
 
     // ds58: Gänget ikväll: every member's face + tonight's count (tap = Medlemmar)
-    var memS = h("button", { type: "button", class: "pn-gp-mem", hidden: true, "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [
-      h("span", { class: "pn-gp-mem-h" }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
+    // b1people I-12: the strip is a block (header button = Medlemmar; each face = a profile card), not one big button
+    var memS = h("div", { class: "pn-gp-mem", hidden: true }, [
+      h("button", { type: "button", class: "pn-gp-mem-h", "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
       h("span", { class: "pn-gp-mem-l" })]);
     var gk = gkOn() ? gkRow(g) : null;   // social-a: ⚔️ Gängkamp on the page
     // social-a (after lane): the Kvällsrapporten row right under the Nu block (AFTER2.groupCard returns a row or null)

@@ -19,7 +19,7 @@
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
-  var A = null, off = false, TH = [], total = 0, at = 0, busy = null, first = true, openGid = null;
+  var A = null, off = false, TH = [], total = 0, at = 0, busy = null, first = true, openGid = null, onState = null, blkN = 0;
   var TOAST = "olnu.dmToast", POLL_MS = 30000, PANE_MS = 12000;
   function sv() { return !I || I.lang !== "en"; }
   function L(s, e) { return sv() ? s : e; }
@@ -76,8 +76,8 @@
     closed: ["Chatten med {namn} är stängd."],
     unblocked: ["{namn} är inte blockerad längre. Vänskapen kommer inte tillbaka av sig själv."],
     reopened: ["Chatten med {namn} är öppen igen."],
-    muted: ["🔕 Tyst. Inga notiser från {namn}.", "🔕 Radion ä på tyst för {namn}."],
-    unmuted: ["🔔 Notiser på igen.", "🔔 Nu hörs {namn} igen."],
+    muted: ["Notiser av för {namn}."],
+    unmuted: ["Notiser på för {namn}."],
     toast: ["💬 {namn}: {text}", "💬 Nytt från {namn}: {text}", "📨 {namn} skriver: {text}", "📡 Privat från {namn}: {text}"],
     notFriend: ["Ni måste va vänner eller i samma grupp för att skriva.", "Bara vänner och gruppkompisar kan få meddelanden."],
     fail: ["Hä gick int'. Försök igen.", "Signalen bröts. Försök igen."]
@@ -267,12 +267,60 @@
     paintBox(box);
     return true;
   }
+  /* ---------- b1people I-01: "Blockerade (N)" row at the bottom of the friends list ---------- */
+  // Unblock lives where the block happened (Vänner / Meddelanden). Settings → Trygghet has a link to the same list (safety.js).
+  function blkRowEl() {
+    var ic = saIc("block", "");
+    var b = h("button", { type: "button", class: "ds-row pn-row dm-blk-b", "aria-label": L("Blockerade personer", "Blocked people") }, [
+      h("span", { class: "ds-row-i", "aria-hidden": "true", html: ic }),
+      h("span", { class: "ds-row-t" }, [h("span", { class: "dm-blk-t", text: L("Blockerade", "Blocked") + " (" + blkN + ")" }),
+        h("small", { text: L("Avblockera här", "Unblock here") })]),
+      h("span", { class: "ds-chev", "aria-hidden": "true" })]);
+    b.addEventListener("click", function () { try { if (window.SAFETY && window.SAFETY.blocked) window.SAFETY.blocked(); } catch (e) {} });
+    return h("section", { class: "ds-section dm-blk", hidden: !blkN }, [h("div", { class: "ds-list" }, [b])]);
+  }
+  function paintBlk(pane) {
+    pane = pane || document.getElementById("inv-pane-f"); if (!pane) return;
+    var sec = pane.querySelector(":scope > .dm-blk");
+    if (sec) sec.remove();
+    sec = blkRowEl(); pane.appendChild(sec);
+  }
+  function loadBlk(pane) {
+    if (!A || !A.LIVE || !A.rpc || !A.authed || !A.authed()) return;
+    A.rpc("my_blocks").then(function (r) {
+      var d = r && !r.error ? A.parseData(r.data) : null;
+      blkN = d && Array.isArray(d.blocks) ? d.blocks.length : 0;
+      paintBlk(pane);
+    });
+  }
+  function placeBlk(pane) {
+    if (!pane || pane.__blk) return;
+    pane.__blk = 1; paintBlk(pane); loadBlk(pane);
+    if (window.MutationObserver) {   // the friends list is built later / rebuilt: the row stays the LAST child
+      var mo = new MutationObserver(function () {
+        if (!document.body.contains(pane)) { mo.disconnect(); return; }
+        var sec = pane.querySelector(":scope > .dm-blk");
+        if (!sec || pane.lastElementChild !== sec) paintBlk(pane);
+      });
+      mo.observe(pane, { childList: true });
+    }
+  }
+  // Settings → Blockerade → Avblockera: the DM of that person opens again at once. With migration 0470 the server ends the
+  // DM-only block too; before it (or on a server without it) the client ends it here, so there is no second tap.
+  function afterUnblock(name) {
+    var work = TH.filter(function (t) { return t.blocked_by_me && (!name || t.name === name); });
+    blkN = Math.max(0, blkN - 1);
+    Promise.all(work.map(function (t) { return rpc("dm_block", { p_group_id: t.group_id, p_on: false }); })).then(function () {
+      return poll(true);
+    }).then(function () { if (onState) onState(); paintBlk(); loadBlk(); });
+  }
   function groupsSheet() {
     if (off || !A || !A.LIVE) return;
     setTimeout(function () {
       paintTab();
       var pane = document.getElementById("inv-pane-f");
       if (!pane) return;
+      placeBlk(pane);
       if (!place(pane) && window.MutationObserver) {
         var mo = new MutationObserver(function () { if (!document.body.contains(pane) || place(pane)) mo.disconnect(); });
         mo.observe(pane, { childList: true });
@@ -324,11 +372,17 @@
     }
     function show(x, on) { if (x) x.style.display = on ? "" : "none"; }
     function paint() {
-      muteB.innerHTML = saIc(st.muted ? "bell" : "bell-off");
-      muteB.setAttribute("aria-label", st.muted ? L("Slå på notiser", "Unmute") : L("Tysta notiser", "Mute"));
-      muteB.title = muteB.getAttribute("aria-label");
-      blockB.innerHTML = saIc(st.blocked_by_me ? "check" : "block");
-      blockB.setAttribute("aria-label", st.blocked_by_me ? L("Avblockera", "Unblock") : L("Blockera", "Block"));
+      // b1people I-04: the bell shows the STATE (bell = notifications on, crossed bell = muted), a tap toggles, aria-pressed = muted
+      var mu = !!st.muted;
+      muteB.innerHTML = saIc(mu ? "bell-off" : "bell");
+      muteB.classList.toggle("on", mu); muteB.setAttribute("aria-pressed", String(mu));
+      muteB.setAttribute("aria-label", L("Notiser från ", "Notifications from ") + nm);
+      muteB.title = mu ? L("Notiser av. Tryck för att slå på.", "Notifications off. Tap to turn on.") : L("Notiser på. Tryck för att tysta.", "Notifications on. Tap to mute.");
+      // blocked: the button says "Avblockera" in words (not only an icon)
+      var bl = !!st.blocked_by_me;
+      blockB.innerHTML = saIc("block") + (bl ? '<span class="dm-unb-t">' + U.esc(L("Avblockera", "Unblock")) + "</span>" : "");
+      blockB.classList.toggle("on", bl);
+      blockB.setAttribute("aria-label", bl ? L("Avblockera ", "Unblock ") + nm : L("Blockera ", "Block ") + nm);
       blockB.title = blockB.getAttribute("aria-label");
       fixEmpty();
       if (st.can_write !== false) { lock.hidden = true; show(ctx.input, true); }
@@ -355,7 +409,9 @@
       if (!r || !r.classList.contains("me") || st.blocked_by_me || st.blocked_me) { if (seenEl.parentNode) seenEl.remove(); return; }
       var mid = +r.getAttribute("data-mid") || 0;
       var seen = (st.other_seen_id | 0) >= mid && mid > 0;
-      seenEl.textContent = seen ? L("👀 Sett ", "👀 Seen ") + hm(st.other_seen_at) : L("✓ Skickat", "✓ Sent");
+      // ownerfix 9c: PNI icons, no emoji in the chrome
+      var pi = function (n) { return window.PNI && window.PNI.svg ? window.PNI.svg(n, "pi-lead") : ""; };
+      seenEl.innerHTML = seen ? pi("eye") + U.esc(L("Sett ", "Seen ") + hm(st.other_seen_at)) : pi("check") + U.esc(L("Skickat", "Sent"));
       seenEl.classList.toggle("on", seen);
       if (r.nextSibling !== seenEl) list.insertBefore(seenEl, r.nextSibling);
     }
@@ -371,6 +427,7 @@
         paint();
       });
     }
+    onState = function () { if (!done) sync(); };   // b1people I-03: Settings → Blockerade → Avblockera refreshes this chat at once
     function toggleMute() {
       muteB.disabled = true;
       rpc("dm_mute", { p_group_id: g.id, p_on: !st.muted }).then(function (r) {
@@ -407,7 +464,7 @@
         rpc("dm_block", { p_group_id: g.id, p_on: on }).then(function (r) {
           blockB.disabled = false;
           if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
-          fullBlock = !!(on && full); t.full_block = fullBlock; st.full_block = fullBlock;
+          fullBlock = !!(on && full); t.full_block = fullBlock; st.full_block = fullBlock; loadBlk();
           st = A.parseData(r.data) || st; lock.removeAttribute("data-k"); paint();
           var x = byGid(g.id); if (x) { Object.keys(st).forEach(function (k) { x[k] = st[k]; }); x.full_block = fullBlock; }
           A.toast(on ? (full ? DV("dm.blocked", T.blocked[0], { namn: nm }) : DV("dm.closed", T.closed[0], { namn: nm })) : full ? DV("dm.unblocked", T.unblocked[0], { namn: nm }) : DV("dm.reopened", T.reopened[0], { namn: nm }), { id: "dm-block", ms: 4500 });
@@ -441,13 +498,14 @@
     var baseTries = 0;
     (function setBase() { if (!alive() && ++baseTries > 6) return; if (list.querySelector("li[data-mid], .chat-empty")) { base = maxId(); sync(); } else setTimeout(setBase, 800); })();
     var tm = setInterval(function () {
-      if (!alive()) { done = true; clearInterval(tm); if (String(openGid) === String(g.id)) openGid = null; poll(true); return; }
+      if (!alive()) { done = true; clearInterval(tm); onState = null; if (String(openGid) === String(g.id)) openGid = null; poll(true); return; }
       if (!document.hidden) sync();
     }, 4000);
   }
 
   window.DM = {
     T: T, open: open, openWith: openWith, openById: openById, friendBtn: friendBtn, memberPanel: memberPanel, chatOpen: chatOpen,
+    afterUnblock: afterUnblock, blockedCount: function () { return blkN; },
     unread: function () { return off ? 0 : total; }, list: function () { return TH; }, _poll: poll,
     init: function (api) {
       A = api;

@@ -212,15 +212,22 @@
     var cap = el("input", { class: "inp ph-cap", maxlength: String(CAP_MAX), placeholder: L("Text till bilden (valfritt)", "Caption (optional)"),
       "aria-label": L("Text till bilden", "Caption"), autocomplete: "off", enterkeyhint: "send" });
     var info = el("p", { class: "ph-info muted", text: "" });
-    var priv = el("p", { class: "ph-priv", text: L("🔒 Bilden syns bara för gruppen och försvinner kl 05.", "🔒 Only the group sees the photo. It is gone at 05:00.") });
+    // ownerfix 9a: a DM photo lives 7 days (server: olnu_dm_expiry on chat_photos); a group photo until 05:00 (or kept).
+    // PNI lock icon, no emoji in the chrome.
+    var priv = el("p", { class: "ph-priv" });
+    function privText(t) { priv.innerHTML = (window.PNI && window.PNI.svg ? window.PNI.svg("lock", "pi-lead") : "") + U.esc(t); }
     var keeps = false;
-    // 0029: a group that keeps its chat keeps photos too. Missing RPC = the 05:00 rule.
-    call("group_keep_history", { p_group_id: g.id }).then(function (r) {
-      if (r.error || closed || r.data !== true) return;
-      keeps = true;
-      priv.textContent = L("🔒 Bilden syns bara för gruppen. Gruppen sparar chatten, så bilden ligger kvar.", "🔒 Only the group sees the photo. This group keeps its chat, so the photo stays.");
-    });
-    var send = el("button", { type: "button", class: "btn btn-amber ph-send", text: L("📤 Skicka", "📤 Send") });
+    if (g && g.dm) privText(L("Bara ni två ser bilden. Den försvinner efter 7 dagar.", "Only you two see the photo. It is gone after 7 days."));
+    else {
+      privText(L("Bilden syns bara för gruppen och försvinner kl 05.", "Only the group sees the photo. It is gone at 05:00."));
+      // 0029: a group that keeps its chat keeps photos too. Missing RPC = the 05:00 rule.
+      call("group_keep_history", { p_group_id: g.id }).then(function (r) {
+        if (r.error || closed || r.data !== true) return;
+        keeps = true;
+        privText(L("Bilden syns bara för gruppen. Gruppen sparar chatten, så bilden ligger kvar.", "Only the group sees the photo. This group keeps its chat, so the photo stays."));
+      });
+    }
+    var send = el("button", { type: "button", class: "btn btn-amber ph-send", text: L("Skicka", "Send") });
     var cancel = el("button", { type: "button", class: "btn ph-cancel", text: L("Avbryt", "Cancel") });
     send.disabled = true;
     o.appendChild(el("div", { class: "ph-card" }, [
@@ -259,9 +266,9 @@
         return call("post_photo", { p_group_id: g.id, p_b64: b64, p_w: shot.w, p_h: shot.h, p_caption: text || null });
       }).then(function (r) {
         busy = false;
-        if (r.tx) { send.disabled = false; send.textContent = L("📤 Skicka", "📤 Send"); return; }
+        if (r.tx) { send.disabled = false; send.textContent = L("Skicka", "Send"); return; }
         if (r.error) {
-          send.disabled = false; send.textContent = L("📤 Skicka", "📤 Send");
+          send.disabled = false; send.textContent = L("Skicka", "Send");
           if (r.off) { toast(errText(""), { err: true }); close(); if (ctx && ctx.btn) ctx.btn.remove(); return; }
           toast(errText(codeOf(r.error)), { err: true });
           return;
@@ -275,7 +282,7 @@
         // Push: none from here yet (wanted: notify-group {event:"photo", photo_id}).
         close();
       }, function () {
-        busy = false; send.disabled = false; send.textContent = L("📤 Skicka", "📤 Send");
+        busy = false; send.disabled = false; send.textContent = L("Skicka", "Send");
         toast(errText(""), { err: true });
       });
     }

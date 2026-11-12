@@ -10,8 +10,8 @@
  "rules": {
   "fileSize": {
    "docs/js/avatar.js": {
-    "value": 1898,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 1906,
+    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
    },
    "docs/js/dialekt-packs/sv-dalarna.js": {
     "value": 6119,
@@ -62,8 +62,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/social.js": {
-    "value": 1215,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 1231,
+    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
    },
    "docs/js/spel-cards.js": {
     "value": 1389,
@@ -84,8 +84,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/dm.js::chatOpen": {
-    "value": 161,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 170,
+    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
    },
    "docs/js/gang.js::paintStory": {
     "value": 164,
@@ -116,8 +116,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/social.js::openChat": {
-    "value": 405,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 421,
+    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
    }
   },
   "windowGlobals": {

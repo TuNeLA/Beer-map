@@ -1318,13 +1318,21 @@
     chat.msgs[String(m.id)] = { me: !!m.is_me, name: m.name || "" };
     if (!chat.t) chat.t = setTimeout(decorateChat, 0);
   }
+  // ownerfix 8: a chat row that chatSeen never saw (voice clip, photo, game card): its sender from the row itself
+  function rowInfo(li) {
+    if (li.hasAttribute("data-mid")) return null;
+    if (li.classList.contains("me")) return { me: true, name: "" };
+    var n = li.querySelector(".cm-head .cm-name, .cm-name"), nm = n ? String(n.textContent || "").trim() : "";
+    return nm ? { me: false, name: nm } : null;
+  }
+  function chatDecorate() { if (!chat.t) chat.t = setTimeout(decorateChat, 0); }
   function decorateChat() {
     chat.t = 0;
     var list = document.querySelector("#sheet-body .chat-list"); if (!list || !chat.g) return;
     // ds54: runs like iMessage: name on the first bubble (CSS), the avatar on the LAST bubble of a run.
     var gid = chat.g.id, runs = [], cur = null;
     for (var li = list.firstElementChild; li; li = li.nextElementSibling) {
-      var info = li.classList.contains("chat-msg") ? chat.msgs[li.getAttribute("data-mid") || ""] : null;
+      var info = li.classList.contains("chat-msg") ? chat.msgs[li.getAttribute("data-mid") || ""] || rowInfo(li) : null;   // ownerfix 8: voice / photo / card rows too
       if (!info) { if (!li.classList.contains("chat-older-li") && !li.classList.contains("ux-day")) cur = null; else if (li.classList.contains("ux-day")) cur = null; continue; }
       var who = info.me ? "\u0001me" : info.name || "\u0001?";
       if (!cur || cur.who !== who) { cur = { who: who, me: info.me, info: info, els: [] }; runs.push(cur); }
@@ -1887,7 +1895,7 @@
     visible: visible, migrate: migrate, nice: nice, isRetired: isRetired, RETIRED: RETIRED, ORDER: ORDER, NKL: NKL, HCLIP: HCLIP, HAIRTOP: HAIRTOP, contrastOk: contrastOk, _layers: layerSVGs, _oldFit: function (v) { OLDFIT = !!v; svgMemo = {}; },
     gf: function () { return grandfathered(me && me.facts); }, PAL: { SKIN: SKIN, HAIRC: HAIRC, TOPC: TOPC, EYEC: EYEC, BGC: BGC },
     VB: { FACE: FACE_VB, EYE: EYE_VB, NECK: NECK_VB, HAND: HAND_VB }, rankTitle: rankTitle,
-    chatSeen: chatSeen, statusRow: statusRow, friendRow: friendRow, faces: faces, profileAv: profileAv,
+    chatSeen: chatSeen, chatDecorate: chatDecorate, statusRow: statusRow, friendRow: friendRow, faces: faces, profileAv: profileAv,
     openEditor: openEditor, forGroup: forGroup, forFriends: forFriends, repaint: repaint, focusSpec: focusSpec, focusPill: focusPill,
     // avpins.js (map pins): the loaded caches {at, byName, byK, me}, friends first
     _caches: function () { var o = []; if (friends && friends.data) o.push(friends.data); Object.keys(groups || {}).forEach(function (g) { if (groups[g] && groups[g].data) o.push(groups[g].data); }); return o; },

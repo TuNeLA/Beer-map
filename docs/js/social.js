@@ -473,6 +473,7 @@
         });
       }
       var sendBtn = A.btn(t("chatSend"), "btn-amber chat-send", go);
+      try { if (window.PNI && window.PNI.has("send-r")) { sendBtn.innerHTML = window.PNI.svg("send-r", "pi-lead") + "<span>" + U.esc(t("chatSend")) + "</span>"; } } catch (e) {}   // b1people I-13: same send icon as the group page
       var topRow = el("div", { class: "row", style: "margin-bottom:8px" }, [A.btn(t("back"), "btn-small", function () { A.showGroups(); })]);
       body.appendChild(topRow);
       body.appendChild(list);
@@ -484,6 +485,16 @@
       if (!tipSeen) body.appendChild(el("p", { class: "muted cmx-tip", text: "Tryck på ett meddelande för att reagera, anmäla eller blockera." }));
       inp.addEventListener("keydown", function (e) { lastNewAt = window.OLNU_CHAT_AT = Date.now(); if (e.key === "Enter") go(); });
       function alive() { return document.body.contains(list); }
+      // ownerfix 9b: the chat sheet sits on top of the keyboard (visualViewport), so the composer never hides under it
+      (function () {
+        var vv = window.visualViewport, sh = document.getElementById("sheet"); if (!vv || !sh) return;
+        var fit = function () {
+          if (!alive()) { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); sh.style.removeProperty("--of-kb"); sh.style.removeProperty("--of-vvh"); return; }
+          var kb = Math.max(0, Math.round((window.innerHeight || 0) - vv.height - vv.offsetTop));
+          sh.style.setProperty("--of-kb", kb + "px"); sh.style.setProperty("--of-vvh", Math.round(vv.height) + "px");
+        };
+        vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); setTimeout(fit, 0);
+      })();
       // 0029: "💾 Spara chatten efter kl 05" (group setting). Hidden on an old server (RPC missing).
       var keepOn = false;
       (function () {
@@ -580,7 +591,12 @@
         heads.push(hd); paintTags(hd);
         if (medalsOn() && !g.ev && !g.dm && (m.name || m.is_me)) {
           nmEl.classList.add("cm-tap"); nmEl.setAttribute("role", "button"); nmEl.setAttribute("tabindex", "0");
-          var openU = function () { var s = statOf(m); window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null, meriter: s ? s.meriter : null }, function () { openChat(g); }); };
+          var openU = function () {
+            var s = statOf(m), back = function () { openChat(g); };
+            // b1people I-12: a name in a group chat = the small profile card (its "Uniform och medaljer" button opens the old card)
+            if (window.PROFCARD && window.PROFCARD.open && m.name) { window.PROFCARD.open({ g: g, name: m.name, k: m.k || null, is_me: !!m.is_me, back: back }); return; }
+            window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null, meriter: s ? s.meriter : null }, back);
+          };
           nmEl.addEventListener("click", openU);
           nmEl.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openU(); } });
         }

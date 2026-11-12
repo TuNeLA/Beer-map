@@ -1792,3 +1792,27 @@ html body #prec-seg{height:var(--pn-side-h,80px) !important;box-sizing:border-bo
    (before: the block was centred, so icon + label jumped 10 px up when that line appeared) */
 html body .dock-row>#btn-groups{justify-content:flex-start !important}
 /* lane:a2ui more END */
+/* lane:b1people group top card START — I-15: left = "N av M dricker nu" + "Kod XXXXXX" under it (tap = copy), right = Bjud in, centred
+   vertically in the card. I-13: Chatten empty state = a plain muted line (no dashed box), calm spacing. */
+#sheet .gitem:not(.gcard)>div.gp.gpg.gpg[data-gv="home"]>.gmain{height:96px !important;min-height:96px !important;box-sizing:border-box;padding-top:0 !important;padding-bottom:22px !important;justify-content:center}
+#sheet .gpg.gpg[data-gv="home"]>.pn-gp-inv{position:absolute !important;top:26px !important;right:var(--sp-3) !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg.gpg[data-gv="home"]>.pn-gp-code{position:absolute !important;top:36px !important;left:72px !important;right:auto !important;height:44px;min-height:44px;padding:0 var(--sp-2) 0 0;gap:var(--sp-1);z-index:1}
+#sheet .gpg.gpg[data-gv="home"]>.pn-gp-code .pn-gp-cp{display:inline-flex;margin-left:var(--sp-1);color:var(--ds-muted)}
+#sheet .gpg.gpg[data-gv="home"]>.pn-gp-code .pn-gp-cp .pi{width:16px;height:16px}
+#sheet .gpg>.gpg-chat .gpg-msgs>li.gpg-empty{display:block;border:0 !important;background:none !important;border-radius:0;text-align:left;padding:var(--sp-1) 0 var(--sp-3) !important;margin:0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+#sheet .gpg .gpg-send{display:inline-flex;align-items:center;justify-content:center}
+#sheet .gpg .gpg-send .pi{width:22px;height:22px}
+.chat-send .pi{width:18px;height:18px;margin-right:var(--sp-1);vertical-align:-3px}
+/* lane:b1people group top card END */
+/* lane:b1people member strip START — I-12: the strip is a block; the header is its own button, each face opens the profile card */
+#sheet .pn-gp-mem-h{width:100%;min-height:24px;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+#sheet .pn-gp-mi[role="button"]{cursor:pointer;min-width:56px;border-radius:var(--r-md)}
+#sheet .pn-gp-mi[role="button"]:focus-visible{outline:2px solid var(--ds-amber-t,var(--amber));outline-offset:2px}
+/* lane:b1people member strip END */
+/* lane:b1people dm header START — I-04: mute = state icon (on = amber), I-03/I-01: blocked → "Avblockera" in words; Blockerade row */
+#sheet-body .dm-cacts .sa-dm-ib.dm-mute.on{color:var(--ds-amber-t,var(--amber));border-color:rgba(255,194,77,.45)}
+#sheet-body .dm-cacts .sa-dm-ib.dm-block.on{width:auto;min-width:44px;padding:0 var(--sp-3);display:inline-flex;gap:var(--sp-1);align-items:center;color:var(--ds-amber-t,var(--amber))}
+#sheet-body .dm-cacts .dm-unb-t{font:600 var(--fs-14)/1 var(--ds-sans)}
+.dm-blk{margin:var(--sp-4,16px) 0 0}
+.dm-blk[hidden]{display:none}
+/* lane:b1people dm header END */
