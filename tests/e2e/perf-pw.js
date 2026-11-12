@@ -278,6 +278,7 @@ const R = {};   // numbers for DONE.md
       const cold = since(log, t0, t0 + 20000);
       R.cold = { all: cold.length, rpc: rpcOnly(cold).length, mix: mix(cold) };
       console.log("cold start (20 s):", cold.length, JSON.stringify(R.cold.mix));
+      cold.forEach((x) => console.log("  c", ((x.t - t0) / 1000).toFixed(2), x.name, (x.inner || []).length, (x.inner || []).slice(0, 12).join(",")));
       if (process.env.PERF_DEBUG) cold.forEach((x) => console.log("  c", ((x.t - t0) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
       await wait(page, 40000);   // settle (start-up timers, 2 slow-lane rounds: the poll plan has learned the rhythm)
       const t1 = Date.now();
