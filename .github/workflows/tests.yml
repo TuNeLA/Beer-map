@@ -115,6 +115,8 @@ jobs:
             filter: '^(a4rel)$'
           - name: placesearch
             filter: '^(placesearch)$'
+          - name: icons
+            filter: '^(icons)$'
           - name: a2ui
             filter: '^(a2ui)$'
           - name: b1people
