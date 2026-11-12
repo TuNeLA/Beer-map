@@ -78,20 +78,37 @@ async function setup(browser, vw, vh, mode, o) {
   return { ctx, page, gl };
 }
 // in the page: open the popup again with the bar at screen fraction (fx, fy)
+// cifix: reload-safe. In CI the service worker can take over (controllerchange -> location.reload) in the middle of a case;
+// then window.__map is gone for a while and the pan is lost. We wait for the map + the ?bar= popup and redo the whole open.
 async function openAt(page, fx, fy) {
-  await page.evaluate(([fx, fy]) => {
-    const mp = window.__map, pp = mp._popup;
-    if (pp) { window.__pfPop = pp; window.__pfSrc = pp._source || window.__pfSrc; }
-    const p0 = window.__pfPop, s = window.__pfSrc, ll = s && s.getLatLng ? s.getLatLng() : p0.getLatLng();
-    mp.closePopup();
-    const sz = mp.getSize(), pt = mp.latLngToContainerPoint(ll);
-    mp.panBy([Math.round(pt.x - sz.x * fx), Math.round(pt.y - sz.y * fy)], { animate: false });
-  }, [fx, fy]);
-  await wait(page, 500);
-  await page.evaluate(() => { const s = window.__pfSrc; if (s && s.openPopup && s.getPopup && s.getPopup()) s.openPopup(); else window.__pfPop.openOn(window.__map); });
-  await wait(page, 1600);
-  const has = await page.evaluate(() => !![...document.querySelectorAll(".leaflet-popup")].find((p) => p.querySelector(".bs")));
-  if (!has) { await page.evaluate(() => { try { window.__pfPop.openOn(window.__map); } catch (e) {} }); await wait(page, 1600); }
+  const ready = () => page.waitForFunction(() => window.__map && (window.__pfPop || window.__map._popup || document.querySelector(".leaflet-popup .bs")), null, { timeout: 45000 }).catch(() => console.log("note: map not back after a reload"));
+  for (let a = 0; a < 3; a++) {
+    await ready();
+    const st = await page.evaluate(([fx, fy]) => {
+      if (!window.__map) return "nomap";
+      const mp = window.__map, pp = mp._popup;
+      if (pp) { window.__pfPop = pp; window.__pfSrc = pp._source || window.__pfSrc; }
+      const p0 = window.__pfPop, s = window.__pfSrc;
+      if (!p0 && !s) return "nopop";
+      const ll = s && s.getLatLng ? s.getLatLng() : p0.getLatLng();
+      mp.closePopup();
+      const sz = mp.getSize(), pt = mp.latLngToContainerPoint(ll);
+      mp.panBy([Math.round(pt.x - sz.x * fx), Math.round(pt.y - sz.y * fy)], { animate: false });
+      window.__pfMark = 1; return "ok";
+    }, [fx, fy]).catch(() => "reloaded");
+    if (st !== "ok") { console.log("note: openAt " + st + " (try " + (a + 1) + ")"); await wait(page, 2500); continue; }
+    await wait(page, 500);
+    const alive = await page.evaluate(() => window.__pfMark === 1 && !!window.__map).catch(() => false);
+    if (!alive) { console.log("note: page reloaded during openAt (try " + (a + 1) + ")"); await wait(page, 2500); continue; }
+    await page.addStyleTag({ content: "#toasts{display:none !important}" }).catch(() => {});
+    await page.evaluate(() => { const s = window.__pfSrc; if (s && s.openPopup && s.getPopup && s.getPopup()) s.openPopup(); else if (window.__pfPop) window.__pfPop.openOn(window.__map); }).catch(() => {});
+    await wait(page, 1600);
+    const has = () => page.evaluate(() => !![...document.querySelectorAll(".leaflet-popup")].find((p) => p.querySelector(".bs"))).catch(() => false);
+    if (await has()) return;
+    await page.evaluate(() => { try { window.__pfPop.openOn(window.__map); } catch (e) {} }).catch(() => {});
+    await wait(page, 1600);
+    if (await has()) return;
+  }
 }
 function measure(page) {
   return page.evaluate(() => {

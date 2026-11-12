@@ -415,7 +415,7 @@ async function fresh(browser, ls, o = {}) {
     await page.waitForFunction(() => window.DIALEKT.stats.packs["sv-dalarna"], null, { timeout: 15000 }).catch(() => {});
     const t = await page.evaluate(() => {
       const nav = performance.getEntriesByType("navigation")[0], res = performance.getEntriesByType("resource").filter((r) => /dialekt-packs\//.test(r.name));
-      const lt = window.__lt, win = res.map((r) => [r.responseEnd, r.responseEnd + 150]);
+      const lt = window.__lt, win = res.map((r) => [r.responseEnd, r.responseEnd + 30]);   // cifix: the eval runs right after responseEnd (script tag); +150 caught the app's own start-up work
       const near = lt.filter(([s, d]) => d > 50 && win.some(([a, b]) => s + d >= a && s <= b));
       return { load: Math.round(nav.loadEventEnd), packs: res.map((r) => [r.name.replace(/^.*\//, ""), Math.round(r.startTime), Math.round(r.responseEnd)]), near: near.map((x) => x.map(Math.round)), all: lt.map((x) => x.map(Math.round)) };
     });
