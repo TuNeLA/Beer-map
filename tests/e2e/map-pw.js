@@ -27,8 +27,10 @@ async function open(b, vp, o = {}) {
     ? r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STYLE) }) : r.fulfill({ status: 204, body: "" }));
   await page.route(/^https:\/\/tunela\.github\.io\/Beer-map\//, async (r) => {
     const u = new URL(r.request().url()); let p = u.pathname.replace(/^\/Beer-map\//, "/"); if (p === "/") p = "/index.html";
-    const res = await fetch("http://127.0.0.1:" + PORT + p + u.search);
-    r.fulfill({ status: res.status, body: Buffer.from(await res.arrayBuffer()), headers: { "content-type": res.headers.get("content-type") || "text/html" } });
+    // a TCP reset on the local server must not kill the suite: retry once, else abort only this request
+    let res, buf; for (let k = 0; k < 2 && !buf; k++) { try { res = await fetch("http://127.0.0.1:" + PORT + p + u.search); buf = Buffer.from(await res.arrayBuffer()); } catch (e) { await new Promise((z) => setTimeout(z, 300)); } }
+    if (!buf) { try { await r.abort("connectionreset"); } catch (e) {} return; }
+    try { await r.fulfill({ status: res.status, body: buf, headers: { "content-type": res.headers.get("content-type") || "text/html" } }); } catch (e) {}
   });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
   // CI: the full "load" event can wait long on remote fonts / CDN: DOM ready is enough (GL is waited for below); one retry

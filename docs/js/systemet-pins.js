@@ -132,6 +132,19 @@
     (SB || []).forEach(function (s) { var st = statusOf(s, ms); out.push({ type: "Feature", geometry: { type: "Point", coordinates: [+s.lng, +s.lat] }, properties: { k: key(s), o: st.open ? 1 : 0 } }); });
     return out;
   }
+  // cifix4: "bars first" is done HERE (setFilter, no setData) and not by GL collision: with real Mapbox the symbol collision also hit the basemap
+  // labels and the invisible bar blockers, so a store in a town never drew (0 features at z15). A store whose 24 px box touches a GL bar box
+  // (icon, pill: GLBARS.rects) is left out of the layer filter; the rest always draws.
+  function hideUnderBars(m) {
+    var rs = []; try { rs = ((window.GLBARS && GLBARS.rects && GLBARS.rects()) || []).filter(function (o) { return !o.lbl; }); } catch (e) {}   // icon / pill boxes, not the name text (same as the DOM fallback)
+    var hid = [];
+    if (rs.length && map.getZoom() >= MIN_Z) (SB || []).forEach(function (s) {
+      var pt = map.latLngToContainerPoint([s.lat, s.lng]), b = { l: pt.x - 12, t: pt.y - 12, r: pt.x + 12, b: pt.y + 12 };
+      if (rs.some(function (o) { return hit(b, o); })) hid.push(key(s));
+    });
+    var sg = hid.sort().join("|"); if (sg === gl.hid) return;
+    gl.hid = sg; m.setFilter(LAY, hid.length ? ["!", ["in", ["get", "k"], ["literal", hid]]] : null);
+  }
   function ensureGL() {
     var m = glm();
     if (!m || !m.style || !m.style._loaded || !SB) return false;
@@ -139,16 +152,17 @@
     try {
       if (m !== gl.hooked) {
         gl.hooked = m; gl.m = m;
-        m.on("style.load", function () { gl.sig = ""; setTimeout(update, 0); });
+        m.on("style.load", function () { gl.sig = ""; gl.hid = null; setTimeout(update, 0); });
         map.on("preclick", onPreclick);
       }
       if (!m.hasImage(IMG)) { var R = Math.min(3, Math.max(2, Math.ceil(window.devicePixelRatio || 1))), cv = iconCanvas(24, R); m.addImage(IMG, cv.getContext("2d").getImageData(0, 0, cv.width, cv.height), { pixelRatio: R }); }
       if (!m.getSource(SRC)) { m.addSource(SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } }); gl.sig = ""; }
       if (!m.getLayer(LAY)) m.addLayer({ id: LAY, type: "symbol", source: SRC, minzoom: MIN_Z - 1,   // GL zoom = Leaflet zoom - 1
-        layout: { "icon-image": IMG, "icon-allow-overlap": false, "icon-ignore-placement": true, "icon-padding": 2, "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport",
+        layout: { "icon-image": IMG, "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport",
           "icon-size": ["interpolate", ["linear"], ["zoom"], MIN_Z - 1, 0.85, MIN_Z + 3, 1.1], visibility: on() ? "visible" : "none" },
         paint: { "icon-emissive-strength": 1, "icon-opacity": ["case", ["==", ["get", "o"], 1], 1, 0.6] } }, BEFORE);
       m.setLayoutProperty(LAY, "visibility", on() ? "visible" : "none");
+      hideUnderBars(m);
       var sig = (SB.length) + "|" + devs.length + "|" + feats(Date.now()).map(function (f) { return f.properties.o; }).join("");
       if (sig !== gl.sig) { gl.sig = sig; m.getSource(SRC).setData({ type: "FeatureCollection", features: feats(Date.now()) }); }
       return true;
