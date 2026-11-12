@@ -23,6 +23,7 @@
   try { if (window.DIALEKT && window.DIALEKT.register) window.DIALEKT.register("sv-neutral", P); } catch (e) {}
   function T(k, v) { try { if (window.DIALEKT && window.DIALEKT.t) return window.DIALEKT.t(k, v || {}, P[k]); } catch (e) {} return String(P[k] || k).replace(/\{(\w+)\}/g, function (m, n) { return v && v[n] != null ? v[n] : ""; }); }
   var H2C = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+  var H2C_SRI = "sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H";   // A17
   var MAX = 200, LOG = [], t0 = Date.now(), DAY = "olnu.knasDay";
 
   /* ---------- the log ring (from the start of this page) ---------- */
@@ -65,7 +66,7 @@
   function loadH2C() {
     if (window.html2canvas) return Promise.resolve(window.html2canvas);
     return new Promise(function (res, rej) {
-      var s = document.createElement("script"); s.src = H2C; s.async = true; s.crossOrigin = "anonymous";
+      var s = document.createElement("script"); s.src = H2C; s.async = true; s.crossOrigin = "anonymous"; s.integrity = H2C_SRI;
       s.onload = function () { window.html2canvas ? res(window.html2canvas) : rej(new Error("no html2canvas")); };
       s.onerror = function () { s.remove(); rej(new Error("load html2canvas")); };
       document.head.appendChild(s);

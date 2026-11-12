@@ -11,12 +11,13 @@
 #   3. Actions → "Pages (bundled)" → Run workflow (or push to main). Wait for green, open the app: Inställningar → ⓘ shows
 #      the new version; DevTools → Network shows js/app.bundle-3.js.
 #   4. Roll back = Settings → Pages → Source "Deploy from a branch" (main, the same folder as before). Nothing in docs/ changed.
-# stamp-version.yml keeps stamping docs/ on main; this workflow stamps its own bundled copy (bundle.mjs --stamp + the step below).
+# A1: the repo holds no ?v= and sw.js VERSION is "dev". bundle.mjs --stamp (= scripts/stamp.mjs) stamps this build's copy.
+# Release day: also set the repo variable PAGES_DEPLOY = actions (turns the stamp-version.yml bot off, makes the CI stamp guard strict).
 name: Pages (bundled)
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "index.html", "scripts/bundle.mjs", ".github/workflows/pages-bundle.yml"]
+    paths: ["docs/**", "index.html", "scripts/bundle.mjs", "scripts/stamp.mjs", ".github/workflows/pages-bundle.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -47,23 +48,15 @@ jobs:
           fi
       - name: Bundle + minify (esbuild; acorn checks that every file can be joined safely)
         run: |
-          mkdir -p "$RUNNER_TEMP/bnd" && cp scripts/bundle.mjs "$RUNNER_TEMP/bnd/"
+          mkdir -p "$RUNNER_TEMP/bnd" && cp scripts/bundle.mjs scripts/stamp.mjs "$RUNNER_TEMP/bnd/"
           npm install --prefix "$RUNNER_TEMP/bnd" --no-save --no-package-lock --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
           node "$RUNNER_TEMP/bnd/bundle.mjs" "$APP" --stamp
           for f in "$APP"/js/app.bundle*.js; do node --check "$f"; done
-      - name: Stamp the bundled copy (cache version + ?v=<hash>, like stamp-version.yml)
+      - name: Check the stamp (bundle.mjs --stamp ran scripts/stamp.mjs: ?v=<hash> on every local file, sw.js VERSION = olnu-<site hash>)
         run: |
-          cd "$APP"
-          HASH=$(find . -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path './places/*' ! -path './buildings/*' ! -path './buildings3d/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
-          sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" sw.js
-          for f in $(grep -oE '(src|href)="\./[^"?]+\.(js|css)' index.html | sed -E 's/^(src|href)="\.\///' | sort -u); do
-            [ -f "$f" ] || { echo "missing $f"; exit 1; }
-            H=$(sha256sum "$f" | cut -c1-10)
-            F=$(printf '%s' "$f" | sed 's/[.]/\\./g')
-            sed -i -E "s#((src|href)=\"\./$F)(\?v=[A-Za-z0-9]+)?\"#\1?v=$H\"#g" index.html
-          done
-          grep -n '^var VERSION' sw.js
-          echo "start scripts: $(grep -c '<script defer src="\./' index.html) local, stylesheets: $(grep -c '<link rel="stylesheet" href="\./' index.html) local"
+          node "$RUNNER_TEMP/bnd/stamp.mjs" "$APP" --check
+          grep -n '^var VERSION' "$APP/sw.js"
+          echo "start scripts: $(grep -c '<script defer src="\./' "$APP/index.html") local, stylesheets: $(grep -c '<link rel="stylesheet" href="\./' "$APP/index.html") local"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

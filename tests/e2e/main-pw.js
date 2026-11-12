@@ -247,6 +247,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
     const setup = async (w, o = {}) => {
       const { ctx, page } = await H.ctxFor(browser, { width: w, height: VH[w] });
       const srv = { knas: [], fb: [] };
+      await page.addInitScript(() => { try { Object.defineProperty(HTMLScriptElement.prototype, "integrity", { set() {}, get() { return ""; } }); } catch (e) {} });   // A17: the stub below cannot match the SRI hash
       await page.route(/cdnjs\.cloudflare\.com\/ajax\/libs\/html2canvas\//, (r) => r.fulfill({ status: 200, contentType: "application/javascript", body: H2C }));
       await page.route(/rest\/v1\/rpc\/(submit_knas|submit_feedback)\b/, (r) => {
         const fn = r.request().url().match(/rpc\/(\w+)/)[1]; let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}

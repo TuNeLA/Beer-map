@@ -478,7 +478,7 @@
       (function wait() {
         if (test()) { res(); return; }
         if (n === 0 && !document.querySelector('script[src*="js/' + name + '.js"]')) {
-          var s = document.createElement("script"); s.src = "./js/" + name + ".js"; s.defer = true; s.onerror = function () { rej(new Error("load")); }; document.head.appendChild(s);
+          PN.load("./js/" + name + ".js").catch(function () { rej(new Error("load")); });   // A20
         }
         if (++n > 100) { rej(new Error("load")); return; }
         setTimeout(wait, 100);

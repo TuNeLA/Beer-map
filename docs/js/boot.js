@@ -9,23 +9,33 @@
 (function () {
   "use strict";
   var QR_URL = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+  var QR_SRI = "sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU";   // A17
 
-  function loadScript(src) {
+  // A20: the ONE lazy script loader (PN.load). Other modules (forfest, party, spel, filmfx) call it; nobody writes its own.
+  //   PN.load(src, { test: fn, ordered: bool, integrity: "sha384-…" }) -> Promise
+  //   test: when given, it is checked first (true = already there, no request) and again after load (false = reject "empty").
+  //   ordered: async = false (scripts keep their insertion order; the start-up lazy list uses it). Default: async.
+  //   integrity: SRI hash for a CDN file (sets crossOrigin = "anonymous" too).
+  function loadScript(src, o) {
+    o = o || {};
+    if (o.test && o.test()) return Promise.resolve();
     return new Promise(function (resolve, reject) {
       var s = document.createElement("script");
-      s.src = src; s.async = false;
-      s.onload = function () { resolve(); };
+      s.src = src; s.async = !o.ordered;
+      if (o.integrity) { s.integrity = o.integrity; s.crossOrigin = "anonymous"; }
+      s.onload = function () { if (o.test && !o.test()) { s.remove(); reject(new Error("empty")); } else resolve(); };
       s.onerror = function () { s.remove(); reject(new Error("load " + src)); };
       document.head.appendChild(s);
     });
   }
+  (window.PN = window.PN || {}).load = loadScript;
 
   /* ---------- 1. QRCode stand-in ---------- */
   var qrLoading = null;
   function loadQR() {
     if (window.QRCode && !window.QRCode.__olnuStub) return Promise.resolve();
     if (qrLoading) return qrLoading;
-    qrLoading = loadScript(QR_URL).then(function () {
+    qrLoading = loadScript(QR_URL, { integrity: QR_SRI }).then(function () {
       var Real = window.QRCode;
       if (!Real || Real.__olnuStub) throw new Error("no QRCode");
       queue.splice(0).forEach(function (q) {
@@ -63,7 +73,7 @@
       // review2: a module may have loaded its lazy file on demand already (forfest.js): do not run it twice
       .filter(function (src) { return !document.querySelector('script[src="' + src + '"]:not([type="text/x-lazy"])'); });
     // Order is kept (async = false); a missing file does not stop the others.
-    Promise.all(list.map(function (src) { return loadScript(src).catch(function () {}); }))
+    Promise.all(list.map(function (src) { return loadScript(src, { ordered: true }).catch(function () {}); }))
       .then(function () {
         done();
         try { document.dispatchEvent(new Event("olnu:lazy")); } catch (e) {}

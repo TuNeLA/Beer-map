@@ -105,12 +105,8 @@
     if (window.FORFEST_CONTENT) { C = window.FORFEST_CONTENT; return Promise.resolve(C); }
     if (loading) return loading;
     var src = lazySrc(/forfest-content\.js/, 'script[type="text/x-lazy"]', "src") || "./js/forfest-content.js";
-    loading = new Promise(function (resolve, reject) {
-      var s = document.createElement("script"); s.src = src; s.async = true;
-      s.onload = function () { C = window.FORFEST_CONTENT || null; if (C) resolve(C); else { loading = null; reject(new Error("empty")); } };
-      s.onerror = function () { s.remove(); loading = null; reject(new Error("load")); };
-      document.head.appendChild(s);
-    });
+    loading = PN.load(src, { test: function () { C = window.FORFEST_CONTENT || null; return !!C; } })   // A20
+      .then(function () { return C; }, function (e) { loading = null; throw e; });
     return loading;
   }
 

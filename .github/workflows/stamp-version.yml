@@ -4,7 +4,7 @@ name: Stamp app version
 on:
   push:
     branches: [main]
-    paths: ["docs/**"]
+    paths: ["docs/**", "scripts/stamp.mjs"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -13,25 +13,21 @@ concurrency:
   cancel-in-progress: false
 jobs:
   stamp:
+    # A1: only while the site deploys from the branch. Release day: repo variable PAGES_DEPLOY = actions (stamping then happens in
+    # pages-bundle.yml on a copy; the repo stays clean, no bot commits).
+    if: ${{ vars.PAGES_DEPLOY != 'actions' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Hash app files and stamp sw.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Stamp docs/ (scripts/stamp.mjs: ?v=<file hash> on every local js/css + sw.js VERSION)
         run: |
-          # index.html is left out of the hash: it is stamped below, and HTML is always fetched fresh.
-          # Data (bars.json, places.json, docs/places/ tiles) is left out too: the weekly data update must not
-          # make every phone download the whole app again (the service worker refreshes data on its own).
-          HASH=$(find docs -type f ! -name sw.js ! -name index.html ! -name bars.json ! -name places.json ! -path 'docs/places/*' ! -path 'docs/buildings/*' ! -path 'docs/buildings3d/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-10)
-          sed -i -E "s/^var VERSION = \"[^\"]*\";/var VERSION = \"olnu-$HASH\";/" docs/sw.js
-          # Give every local script and stylesheet a ?v=<hash of that file> so a new page can never run with old
-          # cached code, and an unchanged file keeps its URL (the service worker copies it, no new download).
-          for f in $(grep -oE '(src|href)="\./[^"?]+\.(js|css)' docs/index.html | sed -E 's/^(src|href)="\.\///' | sort -u); do
-            [ -f "docs/$f" ] || continue
-            H=$(sha256sum "docs/$f" | cut -c1-10)
-            F=$(printf '%s' "$f" | sed 's/[.]/\\./g')
-            sed -i -E "s#((src|href)=\"\./$F)(\?v=[A-Za-z0-9]+)?\"#\1?v=$H\"#g" docs/index.html
-          done
-          grep -n '?v=' docs/index.html | head -3
+          # A1: the same stamper as the bundled build and the beta. Data (bars.json, places.json, places/, buildings/) is not in the site hash:
+          # the weekly data update must not make every phone download the whole app again.
+          node scripts/stamp.mjs docs --write
+          HASH=$(grep -oE '^var VERSION = "olnu-[0-9a-f]{10}' docs/sw.js | grep -oE '[0-9a-f]{10}$')
           grep -n '^var VERSION' docs/sw.js
           if git diff --quiet; then echo "No change"; exit 0; fi
           git config user.name "github-actions[bot]"

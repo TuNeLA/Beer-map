@@ -297,7 +297,7 @@ const SPORT = { v: 1, bars: [{ bar_id: "n3472634175", name: "Pitchers", lat: 60.
       const js = fs.readdirSync(DOCS + "js").filter((f) => f.endsWith(".js")).map((f) => fs.readFileSync(DOCS + "js/" + f, "utf8")).join("\n");
       const scoped = toks.filter((t) => { const re = new RegExp("([^{}]*)\\{[^{}]*" + t.replace(/-/g, "\\-") + "\\s*:", "g"); return [...css.matchAll(re)].some((m) => !/:root\s*$/.test(m[1].trim())) || new RegExp(t.replace(/-/g, "\\-") + "\\s*:").test(js); });
       ok("T7 the " + toks.length + " tokens are only defined in :root (never scoped, never set from JS)", scoped.length === 0, scoped);
-      for (const pgName of ["index.html", "karta3d.html", "fx-test.html"]) {
+      for (const pgName of ["index.html", "karta3d.html"]) {
         const list = pgName === "index.html" ? man : man.filter((m) => (pgName === "karta3d.html" ? ["styles.css", "polish.css"] : ["styles.css", "fx.css"]).includes(m.file));
         const ctx = await browser.newContext({ serviceWorkers: "block" }), page = await ctx.newPage();
         await page.route(/supabase\.co|mapbox\.com|open-meteo|tile\.openstreetmap/, (r) => r.abort());

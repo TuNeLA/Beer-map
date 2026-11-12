@@ -21,6 +21,9 @@
   var MB_VER = "3.32.0";
   var MB_JS = "https://cdn.jsdelivr.net/npm/mapbox-gl@" + MB_VER + "/dist/mapbox-gl.js";
   var MB_CSS = "https://cdn.jsdelivr.net/npm/mapbox-gl@" + MB_VER + "/dist/mapbox-gl.css";
+  // A17: SRI hashes of mapbox-gl 3.32.0 (change them together with MB_VER and the tags in index.html; stamp-guard --online checks them)
+  var MB_JS_SRI = "sha384-acS2vHk2htvkMzGXnu5MTQNaFwFexCnoKasF90zPaHihi5xhWMsTcvVvTAJHXuHH";
+  var MB_CSS_SRI = "sha384-WR3U1V0+1MbG/yqoN2/UUbE92aMWypbO0XZyEPFDxl2zZgg3ppqJGUq3gqgaEZbX";
   var ATTR_MB = '&copy; <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener">Mapbox</a> ' +
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ' +
     '<a href="https://www.mapbox.com/map-feedback/" target="_blank" rel="noopener"><strong>Improve this map</strong></a>';
@@ -105,7 +108,7 @@
   /* ---------- Loading ---------- */
   function addScript(src) {
     return new Promise(function (res, rej) {
-      var s = document.createElement("script"); s.src = src; s.async = false; s.crossOrigin = "anonymous";
+      var s = document.createElement("script"); s.src = src; s.async = false; s.crossOrigin = "anonymous"; if (src === MB_JS) s.integrity = MB_JS_SRI;
       s.onload = res; s.onerror = function () { rej(new Error("load " + src)); };
       document.head.appendChild(s);
     });
@@ -194,7 +197,7 @@
   function loadMb() {
     if (mbP) return mbP;
     if (!document.querySelector('link[data-basemap-mb]')) {
-      var ln = document.createElement("link"); ln.rel = "stylesheet"; ln.href = MB_CSS; ln.setAttribute("data-basemap-mb", "1"); ln.crossOrigin = "anonymous";
+      var ln = document.createElement("link"); ln.rel = "stylesheet"; ln.href = MB_CSS; ln.setAttribute("data-basemap-mb", "1"); ln.crossOrigin = "anonymous"; ln.integrity = MB_CSS_SRI;
       document.head.appendChild(ln);
     }
     // index.html loads mapbox-gl.js before js/mbx.js; this only helps when that CDN request failed once

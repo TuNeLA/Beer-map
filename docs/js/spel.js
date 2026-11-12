@@ -106,12 +106,7 @@
   function loadScript(re, def, test) {
     if (test()) return Promise.resolve();
     var src = lazySrc(re, 'script[type="text/x-lazy"]', "src") || def;
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement("script"); s.src = src; s.async = true;
-      s.onload = function () { if (test()) resolve(); else reject(new Error("empty")); };
-      s.onerror = function () { s.remove(); reject(new Error("load")); };
-      document.head.appendChild(s);
-    });
+    return PN.load(src, { test: test });   // A20
   }
   function ensure() {
     ensureCss();

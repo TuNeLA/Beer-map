@@ -13,12 +13,11 @@
 //   rel="x-lazy-css" links (loaded later by boot.js / the modules) stay separate files.
 // - CDN scripts / styles stay as they are. index.html gets the new tags; the single files stay on the site (unbundle.js
 //   loads them from the tag's data-parts if a bundle fails to load).
-// - --stamp (left-T25): give every local js/css in index.html (also the data-parts lists) ?v=<sha256[:10] of the file> and
-//   add "-z<hash>" (hash of the bundle outputs) to sw.js VERSION, so a phone never mixes an old bundle with a new page.
-//   The beta build (transform.py stamps first, then this script) needs it; the Pages workflow has its own stamp step.
+// - --stamp (A1): runs scripts/stamp.mjs (the ONE stamper, must sit next to this file) on the finished site: every local js/css in
+//   index.html (also the data-parts lists) gets ?v=<sha256[:10] of the file>; sw.js VERSION = olnu-<hash of the whole site, bundles
+//   included>, so a phone never mixes an old bundle with a new page. The repo itself holds no ?v= (scripts/ci/stamp-guard.mjs).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
 import { transform } from "esbuild";
 
 const args = process.argv.slice(2);
@@ -107,20 +106,9 @@ if (cssParts.length) {
   html = html.replace(reCss, (all, href, off) => (off === cssFirst ? '<link rel="stylesheet" href="./css/app.bundle.css" data-parts="' + cssParts.join(",") + '">\n' : ""));
 }
 
-// ---- stamp (left-T25) ----
-const h10 = (b) => createHash("sha256").update(b).digest("hex").slice(0, 10);
 let stamped = 0;
-if (STAMP) {
-  const v = (rel) => { const p = join(SITE, rel); return existsSync(p) ? "?v=" + h10(readFileSync(p)) : null; };
-  html = html.replace(/((?:src|href)="\.\/)([^"?]+\.(?:js|css))(\?v=[^"]*)?"/g, (all, a, f, q) => { const s = v(f); if (s) stamped++; return a + f + (s || q || "") + '"'; });
-  html = html.replace(/data-parts="([^"]*)"/g, (all, list) => 'data-parts="' + list.split(",").map((u) => { const f = strip(u), s = v(f); return "./" + f + (s || (u.match(/\?.*$/) || [""])[0]); }).join(",") + '"');
-  const swp = join(SITE, "sw.js");
-  if (existsSync(swp)) {
-    const all = createHash("sha256"); outFiles.forEach((f) => all.update(f + "\0").update(readFileSync(join(SITE, f))));
-    const sw = readFileSync(swp, "utf8").replace(/^var VERSION = "([^"]*?)(-z[0-9a-f]{8})?";/m, (x, base) => `var VERSION = "${base}-z${all.digest("hex").slice(0, 8)}";`);
-    writeFileSync(swp, sw);
-  }
-}
 writeFileSync(idxPath, html);
+// ---- stamp (A1): after index.html is written; stamp.mjs reads the finished site ----
+if (STAMP) { const { stampSite } = await import("./stamp.mjs"); stamped = stampSite(SITE).stamped; }
 console.log(JSON.stringify({ scripts: nParts, bundles: runs.length, jsRawKB: Math.round(raw / 1024), jsBundleKB: Math.round(outKB), lazyMinified: lazyN,
   styles: cssParts.length, cssRawKB: Math.round(cssRaw / 1024), cssBundleKB: Math.round(cssKB), kept: [...KEEP], stamped }));

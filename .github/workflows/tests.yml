@@ -248,6 +248,12 @@ jobs:
           npm install --no-save --no-audit --no-fund acorn@8.12.1
           node scripts/split/move.mjs . --check
           node scripts/split/verify.mjs --base d523f17040bca4dddad99abe36a1475bfc607a0a   # = pre-w2 (tag push is blocked; branch ci/pre-w2)
+      - name: stamp guard (A1 no ?v= in the repo + stamp.mjs works, A17 SRI + exact CSP)
+        env:
+          PAGES_DEPLOY: ${{ vars.PAGES_DEPLOY }}   # = actions after release day: the repo must be clean (no ?v=, VERSION "dev")
+        run: |
+          npm install --no-save --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
+          node scripts/ci/stamp-guard.mjs docs
       - name: rpc_bundle2 client names are on the server list (A10)
         run: node scripts/ci/bundle-allow.mjs .
       - name: Migration rules (A3 no new anchor patch, CR-safe helpers, additive, in release/order.txt)

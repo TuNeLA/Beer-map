@@ -60,10 +60,10 @@ if s != o:
     x = rd("index.html"); n = re.sub(r'(src="\./js/i18n\.js)(\?v=[^"]*)?"', r'\1?v=%s"' % h("js/i18n.js"), x)
     if n != x: wr("index.html", n)
 
-s = rd("sw.js"); base = re.sub(r'var VERSION = "[^"]*";', "", s, count=1)
-v = hashlib.sha256(open(os.path.join(D, "index.html"), "rb").read() + base.encode()).hexdigest()[:10]
-n = re.sub(r'var VERSION = "[^"]*";', 'var VERSION = "olnu-%s-store";' % v, s, count=1)
-if n != s: wr("sw.js", n); print("sw.js VERSION", v)
+# A1: one stamper. The store build gets the same ?v= + VERSION as the web build, with a "-store" suffix (after every edit above).
+import subprocess
+subprocess.run(["node", os.path.join(HERE, "stamp.mjs"), D, "--prefix", "olnu-", "--suffix", "-store"], check=True)
+print("stamp.mjs: ?v= + sw.js VERSION (-store)")
 check()
 if problems: print("\n".join(problems)); sys.exit(1)
 print("store bundle: crash reports only (ok)")

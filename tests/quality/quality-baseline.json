@@ -196,8 +196,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/basemap.js::anon": {
-    "value": 496,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 499,
+    "reason": "legacy: present on 12 Nov 2026; +3 lines by w1-build (A17 SRI integrity on runtime CDN loads), coordinator OK"
    },
    "docs/js/boards.js::anon": {
     "value": 323,
@@ -436,8 +436,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/knas.js::anon": {
-    "value": 168,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 169,
+    "reason": "legacy: present on 12 Nov 2026; +1 line by w1-build (A17 SRI integrity on runtime CDN loads), coordinator OK"
    },
    "docs/js/levels-content.js::anon": {
     "value": 211,
