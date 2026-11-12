@@ -927,6 +927,25 @@
       }).catch(function () { return []; });
     });
   }
+  // c2speed I-56: the nearest food from LOCAL data (cache of the last OSM answer, else the restaurants / fast food the map already holds)
+  function localKebab(p) {
+    if (kebabCache && U.haversine(p.lat, p.lng, kebabCache.lat, kebabCache.lng) < 500) return kebabCache.list;
+    var out = [];
+    try {
+      var d = 0.025, bb = L_bounds(p.lat - d, p.lng - d * 2, p.lat + d, p.lng + d * 2);
+      (window.BARS && window.BARS.placesInBounds ? window.BARS.placesInBounds(bb, 400) : []).forEach(function (x) {
+        if (x && (x.type === "restaurant" || x.type === "fast_food") && x.name) out.push({ name: x.name, lat: +x.lat, lng: +x.lng, fast: x.type === "fast_food", oh: "", cuisine: "" });
+      });
+    } catch (e) {}
+    return out;
+  }
+  function L_bounds(a, b, c, d) { return window.L && window.L.latLngBounds ? window.L.latLngBounds([a, b], [c, d]) : null; }
+  function skelRows(list) {
+    if (!document.getElementById("af-skel-css")) { var st = document.createElement("style"); st.id = "af-skel-css";
+      st.textContent = ".af-skel{height:52px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.10),rgba(255,255,255,.04));background-size:200% 100%;border:1px solid var(--line-soft,#333)}@media (prefers-reduced-motion:no-preference){.af-skel{animation:afSk 1.2s linear infinite}}@keyframes afSk{to{background-position:-200% 0}}";
+      document.head.appendChild(st); }
+    for (var i = 0; i < 4; i++) list.appendChild(A.el("li", { class: "af-skel", "aria-hidden": "true" }));
+  }
   function showKebab() {
     var p = here();
     A.openSheet(L("🌯 Öppet nu", "🌯 Open now"), function (body) {
@@ -934,14 +953,13 @@
       body.appendChild(el("p", { class: "muted", text: L("Mat nära dig (2,5 km) från OpenStreetMap. Öppettider kan vara fel: ring om du ä osäker.", "Food near you (2.5 km) from OpenStreetMap.") }));
       body.appendChild(list);
       if (!p) { list.appendChild(el("li", { class: "muted", text: L("Ingen position. Tryck 📍 först.", "No position yet.") })); return; }
-      list.appendChild(el("li", { class: "muted", text: "…" }));
-      fetchKebab(p).then(function (all) {
+      function render(all, final) {
         if (!document.body.contains(list)) return;
         list.innerHTML = "";
         var s = sthlm(), items = all.map(function (x) { return { x: x, open: openNow(x.oh, s), d: U.haversine(p.lat, p.lng, x.lat, x.lng) }; })
-          .filter(function (o) { return o.open === true || (o.open === null && o.x.fast); })
+          .filter(function (o) { return o.open === true || (o.open === null && o.x.fast) || (!final && o.open === null); })
           .sort(function (a, b) { return (b.open === true) - (a.open === true) || (b.x.fast - a.x.fast) || a.d - b.d; }).slice(0, 25);
-        if (!items.length) { list.appendChild(el("li", { class: "muted", text: L("Inget öppet ställe hittat nära dig. Kylskåpet är din vän.", "Nothing open found nearby.") })); return; }
+        if (!items.length) { if (!final) { skelRows(list); return; } list.appendChild(el("li", { class: "muted", text: L("Inget öppet ställe hittat nära dig. Kylskåpet är din vän.", "Nothing open found nearby.") })); return; }
         items.forEach(function (o) {
           var kebab = /kebab|pizza|burger|falafel|grill/i.test(o.x.cuisine + " " + o.x.name);
           list.appendChild(el("li", {}, [el("button", { type: "button", class: "af-krow", onclick: function () { A.closeSheet(); A.flyTo(o.x.lat, o.x.lng, 17, null); } }, [
@@ -951,8 +969,10 @@
             el("span", { class: "af-kd", text: o.d < 1000 ? Math.round(o.d / 10) * 10 + " m" : (o.d / 1000).toFixed(1).replace(".", ",") + " km" })
           ])]));
         });
-        kebabCount = items.filter(function (o) { return o.open === true; }).length;
-      });
+        if (final) kebabCount = items.filter(function (o) { return o.open === true; }).length;
+      }
+      render(localKebab(p), false);   // at once: local data or a skeleton, never an empty box
+      fetchKebab(p).then(function (all) { render(all, true); }, function () { render([], true); });
     });
   }
   var kebabCount = 0;
