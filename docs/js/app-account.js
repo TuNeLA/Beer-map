@@ -19,13 +19,13 @@
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
   function fallbackCopy() { return PN.fallbackCopy.apply(null, arguments); }
+  function showSettings() { return PN.showSettings.apply(null, arguments); }
   function render() { return PN.render.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
   function startPoll() { return PN.startPoll.apply(null, arguments); }
   function stopPoll() { return PN.stopPoll.apply(null, arguments); }
   function locate() { return PN.locate.apply(null, arguments); }
   function resumeNotify() { return PN.resumeNotify.apply(null, arguments); }
-  function showSettings() { return PN.showSettings.apply(null, arguments); }
   PN.put({
     reauth: reauth, getName: getName, validName: validName, withName: withName, wait: wait, signIn: signIn,
     storedAuth: storedAuth, flyttLink: flyttLink, prepareExport: prepareExport, finishExport: finishExport,
