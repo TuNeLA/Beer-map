@@ -13,7 +13,7 @@
   var U = window.U, I = window.I18N;
   var A = null;
   var state = "unknown";           // duel_poll: unknown | on | missing
-  var data = null, loadedAt = 0, busy = false, POLL_MS = 30000;
+  var data = null, loadedAt = 0, busy = false, POLL_MS = 25000;   // w1-tests: < the 30 s map poll, so duel_poll rides in the poll bundle (30000 made it run alone 3.6 s later)
   var view = null;                 // open duel sheet: { g, box, timer }
   var linkToken = null;            // ?duel=TOKEN waiting for sign-in
   var SEEN_KEY = "olnu.duelSeen", LINE_KEY = "olnu.duelLine";

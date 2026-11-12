@@ -1,0 +1,32 @@
+{
+  "social-a: R1-04 bar event line": {
+    "first": "2026-11-11",
+    "count": 1,
+    "cause": "clock of day: the test event starts in 1.5 h; the app day starts at 05:00, so from 03:30 to 05:00 local the event is on the next day and no line shows (CI ran at 04:16)",
+    "status": "fixed (atEve)"
+  },
+  "fixm: z15 taps": {
+    "first": "2026-11-11",
+    "count": 1,
+    "cause": "after setView the icon is missing for a moment (not-on-screen); the test measured after a fixed 500 ms",
+    "status": "fixed (waits for the icon, max 5 s)"
+  },
+  "perf: open app 3 requests a minute": {
+    "first": "2026-11-11",
+    "count": 3,
+    "cause": "real: duel.js asked 30000 ms since last load, map poll is every 30 s, age 29.97 s = skip, ran alone 3.6 s later as 1 extra request (3.5/min)",
+    "status": "fixed (duel.js POLL_MS 25000)"
+  },
+  "map: B8 z17": {
+    "first": "2026-11-11",
+    "count": 2,
+    "cause": "first tap on B's icon opened nothing in CI (real Mapbox, 2 tries in a row at 9021022); not reproducible without MAPBOX_TEST_TOKEN, 5/5 pass in stub mode",
+    "status": "open (barrier + diagnostics added, waits for CI)"
+  },
+  "moments: GM7 push link": {
+    "first": "2026-11-11",
+    "count": 2,
+    "cause": "failed 2 tries in a row only at 4a96a57 (just after the perf bundle commit); app.js:92 comment: poll(true) returns early while a poll is pending. Passes at HEAD 3/3, not reproducible",
+    "status": "open (diagnostics added, waits for CI)"
+  }
+}

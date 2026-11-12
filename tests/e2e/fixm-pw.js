@@ -78,7 +78,10 @@ async function tapEach(page, pts, dxy, ll, z) {
     // the bar sheet auto-pans the map: back to the same view, measure again, then tap
     await page.evaluate(([ll, z]) => { window.__opened = []; window.__map.closePopup(); window.__map.setView(ll, z, { animate: false }); }, [ll, z]);
     await wait(page, 500);
-    const now = await points(page), p = now.find((q) => q.id === p0.id);
+    let now = await points(page), p = now.find((q) => q.id === p0.id);
+    // w1-tests: right after setView the icon can be missing for a moment (CI 360 px z15: 1-2 of 15 "not-on-screen", pts had them 2 s before).
+    // Wait up to 5 s for THIS icon; it is still a FAIL when it never comes back.
+    for (let i = 0; !p && i < 20; i++) { await wait(page, 250); now = await points(page); p = now.find((q) => q.id === p0.id); }
     if (!p) { res.push({ id: p0.id, got: "not-on-screen" }); continue; }
     // dxy: that many px toward the nearest other dense icon (still on this bar's own disc)
     let x = p.x, y = p.y;

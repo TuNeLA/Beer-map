@@ -7,6 +7,10 @@ const PORT = process.argv[2] || 8871;
 const DM = RPCF.DM_GID;
 const J = (r, b, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(b) });
 const now = Date.now(), iso = (m) => new Date(now - m * 60e3).toISOString(), at = (h) => new Date(now + h * 3600e3).toISOString();
+// The app's "ikväll" day starts at 05:00 (events.js eveKey). An event 1.5 h ahead is on the NEXT day when the test runs 03:30-05:00
+// (CI 11 Nov 04:16 failed R1-04 at all 3 widths: no event line). atEve keeps the event on this evening. Not a weaker check.
+const eveDay = (t) => { const d = new Date(t - 5 * 3600e3); return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); };
+const atEve = (h) => (eveDay(now + h * 3600e3) === eveDay(now) ? at(h) : at(0.1));
 const NOT_MEMBER = { code: "P0001", message: "not_member", details: null, hint: null };
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : (i === undefined ? "" : JSON.stringify(i).slice(0, 400))); c ? pass++ : fail++; };
@@ -15,7 +19,7 @@ const PAST = { v: 1, events: [
   { group_id: "e3333333-2222-3333-4444-555555555555", title: "🧠 Pubquiz på Pitchers på Pitchers", kind: "quiz", place: "Pitchers", starts_at: iso(60 * 24 * 19), people: 3, drinks: 18, photos: 0 },
   { group_id: "e2222222-2222-3333-4444-555555555555", title: "QUIZZZZEN", kind: "quiz", place: "Pitchers", starts_at: iso(60 * 24 * 5), people: 4, drinks: 20, photos: 1 },
   { group_id: "e1111111-2222-3333-4444-555555555555", title: "Grekiska Grill & Bar", kind: null, place: "Grekiska Grill & Bar", starts_at: iso(60 * 24 * 4), people: 3, drinks: 12, photos: 0 }] };
-const EVENTS = [{ id: 901, kind: "quiz", title: "Pubquiz på Pitchers", place: "Pitchers", bar_id: "n3472634175", starts_at: at(1.5), ends_at: null, lat: 60.14997, lng: 15.18679,
+const EVENTS = [{ id: 901, kind: "quiz", title: "Pubquiz på Pitchers", place: "Pitchers", bar_id: "n3472634175", starts_at: atEve(1.5), ends_at: null, lat: 60.14997, lng: 15.18679,
   km: 0.2, going: 1, source: "user", is_mine: false, pending: false, town: "Ludvika", url: null, tv: false, sport: null, league: null, home: null, away: null, ticket_url: null }];
 
 async function server(page, rec) {

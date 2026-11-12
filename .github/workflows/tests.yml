@@ -140,11 +140,18 @@ jobs:
           for p in 8793 8871; do
             for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
           done
+      - name: Restore last run's flaky list (flake gate)
+        uses: actions/cache/restore@v4
+        with:
+          path: tests/e2e/out/flaky-prev
+          key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: flaky-${{ matrix.name }}-${{ github.ref_name }}-
       - name: Run tests
         env:
           MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}   # real Mapbox for the map tests (matrix "map"); empty = skipped
           PN_TARGET: staging   # run-all.sh stops if the served config.js does not point at this target
           TO: '900'
+          FLAKE_GATE: '1'   # a test that passes only on the rerun in 2 runs in a row = FAIL (tests/e2e/flakes.json)
         run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
       - name: Upload logs
         if: always()
@@ -158,6 +165,15 @@ jobs:
             tests/e2e/out/social-b-shots/
           retention-days: 14
           if-no-files-found: warn
+      - name: Keep this run's flaky list for the next run
+        if: always()
+        run: mkdir -p tests/e2e/out/flaky-prev && cp tests/e2e/out/logs/flaky-now.txt tests/e2e/out/flaky-prev/ 2>/dev/null || true
+      - name: Save flaky list
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: tests/e2e/out/flaky-prev
+          key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
 
   # left T-25: the bundled Pages build (scripts/bundle.mjs, pages-bundle.yml) must work like docs/: build it, smoke test it
   # against the plain site (modules, styles, lazy files, part errors, unbundle fallback, service worker offline), then run
@@ -203,6 +219,7 @@ jobs:
       - run: node tests/e2e/notif-sw-test.js .
       - run: node scripts/import-sport.test.mjs
       - run: node tests/e2e/local-lines-test.js docs/js   # LIVE ticker: Ludvika-area lines only near Ludvika
+      - run: node --test "tests/unit/*.test.mjs"   # w1-tests: pure logic the app.js split moves (U.n1, kaos, poll plan, bundleChunks, crowdSort, ticker)
 
   schema:
     name: schema loads (supabase/schema -> empty Postgres 17)

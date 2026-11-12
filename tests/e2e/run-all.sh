@@ -28,6 +28,12 @@ for p in $A $B; do
 done
 HEAD=$(git -C $REPO log -1 --format='%h %ci' 2>/dev/null)
 RES=(); TOTALFAIL=0; START=$(date +%s)
+# w1-tests flake ledger: tests/e2e/flakes.json (name: date, count, cause, status). A test that passes only on the rerun prints a FLAKY line and
+# goes in $LOG/flaky-now.txt. FLAKE_GATE=1 (CI): flaky in this run AND in the last run (FLAKE_PREV file, restored by CI) = FAIL.
+FLAKE_PREV=${FLAKE_PREV:-$OUT/flaky-prev/flaky-now.txt}; : > $LOG/flaky-now.txt
+flake_known() {   # ledger text for suite $1, or nothing
+  [ -f $D/flakes.json ] && node -e 'const f=require(process.argv[1]),n=process.argv[2],k=Object.keys(f).filter(x=>x.split(":")[0]===n);if(k.length)console.log(" | ledger: "+k.map(x=>x+" ["+f[x].status+", "+f[x].count+"x]").join("; "))' $D/flakes.json $1 2>/dev/null
+}
 run() {   # name port file [args…]
   local n=$1 port=$2 f=$3; shift 3
   [[ "$n" =~ $FILTER ]] || return 0
@@ -51,6 +57,13 @@ run() {   # name port file [args…]
   done
   if [ "$st" = FAIL ] && [ "${SPEC:-0}" = 1 ]; then st="spec"; note="${note:-target spec, not gating}"
   elif [ "$st" = FAIL ]; then TOTALFAIL=$((TOTALFAIL+1)); fi
+  if [ "$st" = flaky ]; then   # w1-tests: passed only on the rerun
+    echo "FLAKY $n: failed try 1, passed try 2. First failure: $(grep -E '^FAIL' $LOG/$n.1.log | head -1 | cut -c1-200)$(flake_known $n)" | tee -a $LOG/summary.txt
+    echo "$n" >> $LOG/flaky-now.txt
+    if [ "${FLAKE_GATE:-0}" = 1 ] && [ -f "$FLAKE_PREV" ] && grep -qxF "$n" "$FLAKE_PREV"; then
+      st="FAIL"; note="flaky 2 runs in a row"; TOTALFAIL=$((TOTALFAIL+1)); echo "FLAKE-GATE $n was flaky in the last run too: FAIL" | tee -a $LOG/summary.txt
+    fi
+  fi
   RES+=("$(printf '%-16s %5s %5s  %-6s %s' $n $p $fl $st "$note")")
 }
 echo "=== suite start $(date '+%F %T')  HEAD $HEAD  ports $A/$B  supabase $TARGET" | tee -a $LOG/summary.txt

@@ -343,6 +343,9 @@ async function closeAll(page) {
         let good = 0, tries = 0; const got = [];
         for (const [dx, dy] of [[0, 0], [-7, 0], [-5, 5], [0, 7], [6, -4]]) {
           await closeAll(page);
+          await page.waitForFunction((idB) => { try { const g = __mpw.gm(), mk = GLBARS._marker(idB); if (!mk) return false; const ll = mk.getLatLng(), p = g.project([ll.lng, ll.lat]);
+            const lays = GLBARS._layers().filter((l) => /bar-(full|dot|dote|cdot|cdote|cdotf)$/.test(l) && g.getLayer(l));
+            return g.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: lays }).some((f) => String(f.properties.id) === String(idB)); } catch (e) { return false; } }, idB, { timeout: 10000, polling: 100 }).catch(() => {});   // w1-tests barrier
           const pt = await page.evaluate(([idB, dx, dy]) => { const mk = GLBARS._marker(idB) || null, g = __mpw.gm(), c = g.getCanvas().getBoundingClientRect();
             const ll = mk ? mk.getLatLng() : null, q = ll ? g.project([ll.lng, ll.lat]) : null; return q ? { x: c.left + q.x + dx, y: c.top + q.y + dy } : null; }, [idB, dx, dy]);
           if (!pt) { tries++; got.push("no B marker"); continue; }
@@ -352,7 +355,7 @@ async function closeAll(page) {
           if (t === NB) good++;
         }
         ok(st.b.kind !== "none", "B8 z" + z + ": B's icon is drawn although A's long name runs into it (" + st.b.kind + ")");
-        ok(good === tries, "B8 z" + z + ": a tap on / next to B's icon (" + tries + " points, A's long name runs into it) opens B: " + got.join(" | "));
+        ok(good === tries, "B8 z" + z + ": a tap on / next to B's icon (" + tries + " points, A's long name runs into it) opens B: " + got.join(" | ") + (good === tries ? "" : " | GLBARS.stats " + JSON.stringify(await page.evaluate(() => ({ s: GLBARS.stats, on: GLBARS.on() })))));
         await closeAll(page);
       }
       ok(errs.length === 0, "B8 no page errors " + JSON.stringify(errs.slice(0, 3)));

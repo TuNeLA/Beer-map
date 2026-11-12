@@ -145,10 +145,11 @@ const toastSpy = () => { window.__t = []; document.addEventListener("DOMContentL
     }
     /* the push link /?mom=<id> opens that card */
     {
-      const { ctx, page } = await setup(browser, 390, [VAD(), BORD()]);
+      const { ctx, page, S } = await setup(browser, 390, [VAD(), BORD()]);
       await page.goto(`http://127.0.0.1:${process.argv[2]}/?mom=103`);
       await page.waitForFunction(() => document.querySelector('.mo[data-mo="103"]'), null, { timeout: 20000 }).catch(() => {});
-      const r = await page.evaluate(() => ({ card: !!document.querySelector('.mo[data-mo="103"]'), url: location.search }));
+      const r = await page.evaluate(() => ({ card: !!document.querySelector('.mo[data-mo="103"]'), url: location.search, off: window.MOMENTS && window.MOMENTS.off() }));
+      r.calls = S.calls.map((c) => c[0]);   // w1-tests: on a FAIL: was moments_poll asked once, twice, never? (a poll in flight makes poll(true) return early)
       ok("GM7 push link /?mom=103 opens the Uppdrag card, the param is removed", r.card && !/mom=/.test(r.url), r);
       await ctx.close();
     }
