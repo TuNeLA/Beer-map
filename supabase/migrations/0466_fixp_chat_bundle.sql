@@ -20,9 +20,12 @@
 create or replace function public.olnu_fixp_patch(p_fn regprocedure, p_marker text, p_old text[], p_new text[])
 returns text language plpgsql security definer set search_path to 'public' as $$
 declare
-  v_def text := pg_get_functiondef(p_fn);
+  v_def text := replace(pg_get_functiondef(p_fn), chr(13), '');   -- CR-safe (0501, like 0436 olnu_sec_patch)
   i int; n int;
 begin
+  p_old := array(select replace(x, chr(13), '') from unnest(p_old) with ordinality u(x, o) order by o);
+  p_new := array(select replace(x, chr(13), '') from unnest(p_new) with ordinality u(x, o) order by o);
+  p_marker := replace(p_marker, chr(13), '');
   if position(p_marker in v_def) > 0 then return 'skip ' || p_fn::text; end if;
   for i in 1 .. coalesce(array_length(p_old, 1), 0) loop
     n := (length(v_def) - length(replace(v_def, p_old[i], ''))) / greatest(length(p_old[i]), 1);

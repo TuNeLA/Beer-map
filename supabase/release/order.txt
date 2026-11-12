@@ -1,0 +1,74 @@
+# Release-day SQL order (owner-run in the Supabase SQL editor, one file per run).
+# Used by scripts/ci/sql-rehearsal.mjs (CI job "schema"): it loads supabase/schema/, runs the "base" files (LF),
+# then runs the "release" files two times side by side: one copy with LF line ends, one copy with CR LF line ends
+# (= a Windows copy + paste). The two databases must end equal (md5 of every function, fingerprint.sql).
+#
+# base    = files that are LIVE but not in the snapshot yet (the snapshot is from 8 Nov).
+#           After the W0 snapshot (supabase/schema/ made again from live) remove the base lines that it contains.
+# release = files that the owner runs on release day, in this order. Keep 0436 as the LAST line.
+#
+# Format: "<kind> <4-digit migration number> [xfail]". "#" starts a comment.
+# xfail = a KNOWN release-day bug: the file must still fail; when it is fixed, CI says "remove xfail".
+
+base 0291
+base 0293
+base 0294
+base 0295
+base 0296
+base 0297
+base 0320
+base 0341
+base 0346
+base 0347
+base 0330
+base 0381
+base 0385
+base 0360
+base 0380
+base 0382
+base 0383
+base 0384
+base 0386
+base 0390
+base 0391
+base 0392
+base 0393
+base 0340
+base 0397
+base 0400
+base 0403
+base 0410
+base 0420
+base 0430
+base 0431
+base 0436
+base 0450
+
+release 0501
+release 0315
+release 0321
+release 0430
+release 0345
+release 0348
+release 0401
+release 0402
+release 0435
+release 0440
+release 0451
+release 0452
+release 0453
+release 0460
+release 0465
+release 0466
+release 0470
+release 0475
+release 0480
+release 0481
+release 0490
+release 0485
+release 0486 xfail   # KNOWN BUG (w1-server, 12 Nov): 0321 replaces olnu_pins (f_lat); 0486 anchor 4 expects the pre-0321 text -> "anchor 4 found 0 times"
+release 0495
+release 0496
+release 0497
+release 0500
+release 0436

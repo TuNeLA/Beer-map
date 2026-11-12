@@ -41,7 +41,7 @@ supabase functions deploy notify-group
 JWT verification can stay ON: the client sends the anonymous user's JWT with `supabase.functions.invoke`.
 
 ## Push v7: friend milestones + "Kaos i stan" (migration 0006)
-1. Run `supabase/update-now.sql` (or `migrations/0006_push_nearby.sql`) in the SQL Editor. Safe to run again.
+1. Run `supabase/archive/update-now.sql` (or `migrations/0006_push_nearby.sql`) in the SQL Editor. Safe to run again.
 2. Function secrets (same as before, all three are needed):
    ```
    supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:you@example.com
@@ -65,7 +65,7 @@ Client contract:
 Tests: `node --experimental-strip-types supabase/tests/notify-group.test.mjs`.
 
 ## v7 SOCIAL (migration 0007)
-1. Run `supabase/update-now.sql` (= `migrations/0007_social.sql`) in the SQL Editor. Safe to run again.
+1. Run `supabase/archive/update-now.sql` (= `migrations/0007_social.sql`) in the SQL Editor. Safe to run again.
    It has no remove-type statements (create-or-replace / if not exists / on conflict only).
    Needs Postgres 14+ (`create or replace trigger`); Supabase projects are 15+.
 2. Deploy `notify-group` again (one file, `index.ts`). No new secrets.

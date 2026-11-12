@@ -248,6 +248,10 @@ jobs:
           npm install --no-save --no-audit --no-fund acorn@8.12.1
           node scripts/split/move.mjs . --check
           node scripts/split/verify.mjs --base d523f17040bca4dddad99abe36a1475bfc607a0a   # = pre-w2 (tag push is blocked; branch ci/pre-w2)
+      - name: rpc_bundle2 client names are on the server list (A10)
+        run: node scripts/ci/bundle-allow.mjs .
+      - name: Migration rules (A3 no new anchor patch, CR-safe helpers, additive, in release/order.txt)
+        run: node scripts/ci/no-anchor-patch.mjs .
 
   schema:
     name: schema loads (supabase/schema -> empty Postgres 17)
@@ -287,3 +291,29 @@ jobs:
         run: |
           psql "$PGURL" -X -At -v ON_ERROR_STOP=1 -f supabase/staging/smoke.sql | tee /tmp/smoke.txt
           if grep -E '^[a-z0-9_]+\|f\|' /tmp/smoke.txt; then echo "smoke check failed"; exit 1; fi
+      # w1-server (A3, CR-LF, A10): rules and tools in supabase/README.md
+      - name: Snapshot md5 = live md5 of every function (A3)
+        run: node scripts/ci/schema-md5.mjs load -d "$PGURL"
+      - name: Fingerprint = supabase/schema/fingerprint.json (A3; prints only until W0 commits the file)
+        run: node scripts/ci/schema-md5.mjs fingerprint -d "$PGURL" --keys functions_md5,columns_md5,constraints_md5,indexes_md5,triggers_md5,views_md5
+      - name: Release rehearsal, LF and CR LF, two times (supabase/release/order.txt)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: node scripts/ci/sql-rehearsal.mjs --twice --pre 0500
+      - name: Anchor helpers with CR LF anchors (supabase/tests/crlf-anchors.test.sql)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          psql -d rh_crlf -X -v ON_ERROR_STOP=1 -f supabase/tests/crlf-anchors.test.sql | tee /tmp/crlf.txt
+          if grep -q '|f|' /tmp/crlf.txt || ! grep -q '^crlf-anchors total|t|' /tmp/crlf.txt; then echo "CR LF anchor test failed"; exit 1; fi
+      - name: 0500 rpc_bundle_allow (same rpc_bundle2 answers)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          psql -d rh_pre -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0500_rpc_bundle_allow.sql -f supabase/tests/rpc-bundle-allow-0500.test.sql | tee /tmp/b0500.txt
+          if grep -q '|f|' /tmp/b0500.txt || ! grep -q '^new_row_bundles|t|' /tmp/b0500.txt; then echo "0500 test failed"; exit 1; fi
+      - name: Staging drift report (optional secret STAGING_DB_URL, read-only; warn only)
+        continue-on-error: true
+        env:
+          STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+        run: |
+          if [ -z "$STAGING_DB_URL" ]; then echo "no STAGING_DB_URL secret: skipped"; exit 0; fi
+          node scripts/ci/schema-md5.mjs diff --url-env STAGING_DB_URL
+          node scripts/ci/schema-md5.mjs fingerprint --url-env STAGING_DB_URL
