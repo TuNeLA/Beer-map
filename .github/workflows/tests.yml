@@ -107,6 +107,8 @@ jobs:
             filter: '^(kpi)$'
           - name: ownerfix
             filter: '^(ownerfix)$'
+          - name: c1menus
+            filter: '^(c1menus)$'
           - name: popfix
             filter: '^(popfix)$'
           - name: hooks-order
@@ -117,6 +119,8 @@ jobs:
             filter: '^(placesearch)$'
           - name: a2ui
             filter: '^(a2ui)$'
+          - name: c3chat
+            filter: '^(c3chat)$'
           - name: b1people
             filter: '^(b1people)$'
           - name: webkit

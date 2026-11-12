@@ -302,7 +302,7 @@
         '<span class="cr-dep-st" data-cr-cd="' + esc(d.leave_at) + '">' + esc(depStatus(d)) + "</span>" }));
       var names = (d.going_names || []);
       row.appendChild(el("div", { class: "cr-dep-sub", text: L("av ", "by ") + (d.by || "?") + (names.length ? " · 🙋 " + names.join(", ") : "") }));
-      var acts = el("div", { class: "cr-row" });
+      var acts = el("div", { class: "cr-line" });
       var med = A.btn((d.i_going ? "✅ " : "🙋 ") + L("Med!", "I'm in") + " (" + (d.going_n | 0) + ")", "btn-small cr-med" + (d.i_going ? " on" : ""), function () { join(d.id, !d.i_going); });
       med.setAttribute("aria-pressed", String(!!d.i_going));
       acts.appendChild(med);
@@ -345,7 +345,7 @@
         tin.value = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
       } }));
     });
-    box.appendChild(el("div", { class: "cr-row cr-timerow" }, [tin, quick]));
+    box.appendChild(el("div", { class: "cr-line cr-timerow" }, [tin, quick]));
     var chosen = null, bars = el("div", { class: "cr-chips cr-bars" });
     var opts = [{ id: null, name: L("Bara tid", "Time only") }].concat(nearBars());
     opts.forEach(function (b, i) {
@@ -531,7 +531,7 @@
       var tips = el("ul", { class: "cr-tips" });
       (T("snurrTips") || []).forEach(function (t) { tips.appendChild(el("li", { text: t })); });
       care.appendChild(tips);
-      var acts = el("div", { class: "cr-row cr-care-acts" });
+      var acts = el("div", { class: "cr-line cr-care-acts" });
       if (window.EXTRAS && window.EXTRAS.taxiHTML) acts.appendChild(el("div", { html: window.EXTRAS.taxiHTML("btn btn-small taxi-btn") }));
       if (window.AFTER && window.AFTER.showKebab) acts.appendChild(A.btn(L("🌯 Mat nära", "🌯 Food nearby"), "btn-small", function () { window.AFTER.showKebab(); }));
       care.appendChild(acts);
@@ -585,7 +585,7 @@
       p.appendChild(el("div", { class: "cr-pend", html: "⏳ " + esc(L("På väg till ", "On its way to ") + lbl(t.pending.to)) + ' · <span data-cr-mmss="' + esc(t.pending.until) + '">' + esc(U.mmss(left)) + "</span>" }));
       if (t.pending.to_group === gid) {
         p.appendChild(el("div", { class: "cr-offer", text: pick("torch.offer", { grupp: lbl(t.pending.from) }) }));
-        p.appendChild(el("div", { class: "cr-row" }, [
+        p.appendChild(el("div", { class: "cr-line" }, [
           A.btn(L("🔥 Ta emot", "🔥 Accept"), "btn-amber", function () { torchAnswer(gid, true); }),
           A.btn(L("Låt den gå vidare", "Let it go"), "btn-ghost", function () { torchAnswer(gid, false); })
         ]));

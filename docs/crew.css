@@ -23,7 +23,7 @@
 .cr-sub{font-size:var(--fs-s);color:var(--muted);margin:4px 0 8px;line-height:1.35}
 .cr-lbl{font-size:var(--fs-xs);color:var(--muted);margin:8px 0 4px;font-family:var(--hud);text-transform:none}
 .cr-wait{padding:16px 0;text-align:center}
-.cr-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.cr-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .cr-form{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .cr-form .inp{width:100%;box-sizing:border-box}
 .cr-chips{display:flex;flex-wrap:wrap;gap:var(--sp-2,8px)}
@@ -164,3 +164,7 @@ body.cr-replaying .dock{visibility:hidden}
 @media (prefers-reduced-motion:reduce){
   .cr-flame,.cr-torch-mk span,.cr-dep.soon .cr-dep-st,.cr-rp-burst span{animation:none}
 }
+
+/* lane:c3chat I-43 — the Truppen sheet keeps ONE height on all 5 tabs (it used to grow / shrink with the tab and jump up and down) */
+#sheet.sheet:has(#cr-root){height:80vh;height:min(80dvh,720px)}
+#sheet-body:has(#cr-root){overflow-y:auto;overscroll-behavior:contain}

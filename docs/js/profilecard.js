@@ -80,14 +80,14 @@
       acts.insertBefore(friendSlot, acts.firstChild);
       keyOf(o).then(function (k) {
         if (cur && cur.el !== ov) return;
-        if (!k) { friendSlot.remove(); blk.disabled = true; return; }
+        if (!k) { friendSlot.remove(); if (blk) blk.disabled = true; return; }
         try { if (window.FRIENDS2 && window.FRIENDS2.statusRow) window.FRIENDS2.statusRow(g, { k: k, name: name }, friendSlot); } catch (e) {}
-        dm.disabled = false;
+        if (dm) dm.disabled = false;
       });
-      var dm = act("chat", L("Skriv", "Message"), function () {
+      var dm = o.noMsg ? null : act("chat", L("Skriv", "Message"), function () {   // c3chat I-40: inside the DM itself there is no "Skriv"
         keyOf(o).then(function (k) { if (!k || !window.DM || !window.DM.openWith) return; close(); window.DM.openWith({ p_group_id: g.id, p_k: k }, name, null); });
       }, "pc-dm");
-      acts.appendChild(dm);
+      if (dm) acts.appendChild(dm);
       var t = dmThread(name);
       if (t) {
         var mu = act(t.muted ? "bell-off" : "bell", L("Notiser", "Notifications"), function () {

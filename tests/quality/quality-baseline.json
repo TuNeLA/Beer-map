@@ -62,8 +62,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/social.js": {
-    "value": 1231,
-    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
+    "value": 1239,
+    "reason": "c3chat I-40/I-39 (13 Nov): avatar tap -> profile card, DM header avatar; coordinator OK for the Fri release — split social.js/dm.js in the structure lane (STRUCTURE-PLAN)"
    },
    "docs/js/spel-cards.js": {
     "value": 1389,
@@ -84,8 +84,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/dm.js::chatOpen": {
-    "value": 170,
-    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
+    "value": 173,
+    "reason": "c3chat I-40/I-39 (13 Nov): avatar tap -> profile card, DM header avatar; coordinator OK for the Fri release — split social.js/dm.js in the structure lane (STRUCTURE-PLAN)"
    },
    "docs/js/gang.js::paintStory": {
     "value": 164,
@@ -112,12 +112,12 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/social.js::anon": {
-    "value": 415,
-    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK — split social.js in a structure lane"
+    "value": 423,
+    "reason": "c3chat I-40/I-39 (13 Nov): avatar tap -> profile card, DM header avatar; coordinator OK for the Fri release — split social.js/dm.js in the structure lane (STRUCTURE-PLAN)"
    },
    "docs/js/social.js::openChat": {
-    "value": 421,
-    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK for the Fri release — split this file in a structure lane (STRUCTURE-CONFLICTS)"
+    "value": 429,
+    "reason": "c3chat I-40/I-39 (13 Nov): avatar tap -> profile card, DM header avatar; coordinator OK for the Fri release — split social.js/dm.js in the structure lane (STRUCTURE-PLAN)"
    }
   },
   "windowGlobals": {

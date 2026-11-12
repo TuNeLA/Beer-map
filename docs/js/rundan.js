@@ -820,29 +820,29 @@
     var box = el("section", { class: "rnd rnd-taxi" });
     box.appendChild(el("h3", { text: T("taxiH") }));
     try { var hfN = window.HEMFOLJ && window.HEMFOLJ.taxiNode ? window.HEMFOLJ.taxiNode() : null; if (hfN) box.appendChild(hfN); } catch (e) {}
-    if (!h) {
-      box.appendChild(bt(T("taxiSave"), "btn-block", saveHome));
-      box.appendChild(el("p", { class: "rnd-note", text: T("taxiSaveInfo") }));
-    } else {
-      if (c) {
-        var dm = U.haversine(c.lat, c.lng, h.lat, h.lng);
-        box.appendChild(el("p", { class: "rnd-note", text: fmt(T("dist"), dm < 1000 ? Math.round(dm / 10) * 10 + " m" : (dm / 1000).toFixed(1).replace(".", sv() ? "," : ".") + " km") }));
-      }
-      var row = el("div", { class: "rnd-taxirow" });
-      var tx = nearTaxis(c, 3);
-      function telA(x, cls) {
-        return el("a", { class: "btn taxi-btn rnd-tel" + (cls || ""), href: "tel:" + x.tel }, [el("span", { text: "📞 " + x.name }), el("span", { class: "taxi-num", text: x.text })]);
-      }
-      if (tx[0]) row.appendChild(telA(tx[0], " btn-amber"));
-      row.appendChild(el("a", { class: "btn taxi-btn", href: uberHome(h), target: "_blank", rel: "noopener noreferrer", text: T("uberHome") }));
-      if (tx.length > 1) {
-        var more = el("details", { class: "rnd-more" }, [el("summary", { text: T("moreTaxi") })]);
-        tx.slice(1).forEach(function (x) { more.appendChild(telA(x, "")); });
-        row.appendChild(more);
-      }
-      var nearBolt = c && BOLT.some(function (b) { return U.haversine(c.lat, c.lng, b[0], b[1]) < 40000; });
-      if (nearBolt) row.appendChild(el("a", { class: "btn taxi-btn", href: "https://bolt.eu/", target: "_blank", rel: "noopener noreferrer", title: T("boltInfo"), text: T("bolt") }));
-      box.appendChild(row);
+    // I-55: ONE Taxi button + ONE "Uber hem" (no home = "Lägg in hem" first). The old top row of extras.js is gone.
+    var row = el("div", { class: "rnd-taxirow" });
+    var tx = nearTaxis(c, 3);
+    function telA(x, cls) {
+      return el("a", { class: "btn taxi-btn rnd-tel" + (cls || ""), href: "tel:" + x.tel }, [el("span", { text: "📞 " + x.name }), el("span", { class: "taxi-num", text: x.text })]);
+    }
+    if (h && c) {
+      var dm = U.haversine(c.lat, c.lng, h.lat, h.lng);
+      box.appendChild(el("p", { class: "rnd-note", text: fmt(T("dist"), dm < 1000 ? Math.round(dm / 10) * 10 + " m" : (dm / 1000).toFixed(1).replace(".", sv() ? "," : ".") + " km") }));
+    }
+    if (tx[0]) row.appendChild(telA(tx[0], " btn-amber"));
+    if (h) row.appendChild(el("a", { class: "btn taxi-btn rnd-uber", href: uberHome(h), target: "_blank", rel: "noopener noreferrer", text: T("uberHome") }));
+    else row.appendChild(bt(T("taxiSave"), "btn-block rnd-savehome", saveHome));
+    if (tx.length > 1) {
+      var more = el("details", { class: "rnd-more" }, [el("summary", { text: T("moreTaxi") })]);
+      tx.slice(1).forEach(function (x) { more.appendChild(telA(x, "")); });
+      row.appendChild(more);
+    }
+    var nearBolt = c && BOLT.some(function (b) { return U.haversine(c.lat, c.lng, b[0], b[1]) < 40000; });
+    if (nearBolt) row.appendChild(el("a", { class: "btn taxi-btn", href: "https://bolt.eu/", target: "_blank", rel: "noopener noreferrer", title: T("boltInfo"), text: T("bolt") }));
+    box.appendChild(row);
+    if (!h) box.appendChild(el("p", { class: "rnd-note", text: T("taxiSaveInfo") }));
+    else {
       if (!nearBolt) box.appendChild(el("p", { class: "rnd-note", text: T("uberNote") }));
       box.appendChild(el("button", { type: "button", class: "rnd-link", text: T("changeHome"), onclick: saveHome }));
     }

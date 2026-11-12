@@ -352,7 +352,10 @@
     var head = h("div", { class: "dm-chead" });
     // social-a: name + "Bara ni två" (lock icon) never cut at 360 px: the two actions are 44 px icon buttons (PNI)
     var priv = h("small", { class: "muted dm-cpriv" }); priv.innerHTML = saIc("lock", "dm-cpriv-i") + "<span>" + U.esc(L("Bara ni två", "Just you two")) + "</span>";
-    var who = h("span", { class: "dm-cwho" }, [h("span", { class: "dm-av sm", "aria-hidden": "true", text: initial(nm) }),
+    // c3chat I-39: the same avatar component as the chat rows (data-avk g|group|n|name), so the real picture shows here too
+    var hav = h("span", { class: "av av-face dm-av sm", "aria-hidden": "true", "data-avk": "g|" + g.id + "|n|" + nm, "data-avi": initial(nm), text: initial(nm) });
+    try { if (window.AVATAR) { if (window.AVATAR.forGroup) window.AVATAR.forGroup(g.id); if (window.AVATAR.repaint) window.AVATAR.repaint(); } } catch (e) {}
+    var who = h("span", { class: "dm-cwho" }, [hav,
       h("span", {}, [h("b", { text: nm }), priv])]);
     var muteB = A.btn("", "btn-small btn-ghost dm-mute sa-dm-ib", function () { toggleMute(); });
     var blockB = A.btn("", "btn-small btn-ghost dm-block sa-dm-ib", function () { askBlock(); });

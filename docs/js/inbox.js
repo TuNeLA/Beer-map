@@ -74,7 +74,9 @@
   // fixS T-13: a Gängkamp challenge DUEL already knows (duel_poll: incoming + pending) shows here at once, also when
   // my_inbox is late (it waits in rpc_bundle2) or missed it. Same row as the server's duel item (k "duel:<id>").
   var answered = {};
+  function gkFlag() { return !!(window.PN_CFG && window.PN_CFG.gangkamp); }   // I-41: Gängkamp hidden unless PN_CFG.gangkamp
   function duelItems() {
+    if (!gkFlag()) return [];
     var D = window.DUEL, d = null; try { d = D && D.data ? D.data() : null; } catch (e) { d = null; }
     var have = {}; items.forEach(function (x) { have[x.k] = 1; });
     return ((d && Array.isArray(d.duels)) ? d.duels : []).filter(function (x) {
@@ -85,7 +87,7 @@
         answer_by: x.answer_by, at: x.created_at || new Date().toISOString(), local: true };
     });
   }
-  function all() { return localItems().concat(items.filter(function (x) { return !(answered[x.k] > Date.now() - 600000); }), duelItems()); }
+  function all() { return localItems().concat(items.filter(function (x) { return (gkFlag() || x.type !== "duel") && !(answered[x.k] > Date.now() - 600000); }), duelItems()); }
   function unseen() { var s = seenAt(); return all().filter(function (x) { return (Date.parse(x.at) || 0) - srvSkew > s; }).length; }
   function load(force) {
     if (off || !A || !A.LIVE || !A.authed || !A.authed()) { gotOnce = true; return Promise.resolve(); }
