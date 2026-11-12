@@ -27,6 +27,12 @@ Logs: `tests/e2e/out/logs/` (git-ignored). Screenshots: `tests/e2e/out/`.
 | Real server (fresh anonymous users) | beta-pw.js | **never** in CI. By hand only. Serve with `serve.py --cors` (staging by default) |
 | Probe (mocked) | speed-pw.js | not gating, by hand |
 
+## Add a test to CI (the recipe)
+
+1. `tests/e2e/<x>-pw.js` (prints `PASS ...` / `FAIL ...`), and `run <x> $B <x>-pw.js` in `run-all.sh`.
+2. ONE line at the end of `tests/e2e/shards.txt`: `<x> ^(<x>)$`. (Or put `<x>` into the regex of an existing line.) `tests.yml` does not change: its job `plan` turns that file into the e2e matrix.
+3. Test on a `ci/<agent>-<n>` branch with a `.ci-only` file that lists `<x>` (only that runner starts). See `CI-FOR-AGENTS.md`.
+
 ## Shared mock answers
 
 `d2-helpers.js` / `ds-helpers.js` answer the old RPCs in their switch and every other main-screen RPC from

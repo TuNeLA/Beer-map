@@ -20,141 +20,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # plan: the e2e matrix is a JSON list made from tests/e2e/shards.txt (ONE line per shard: add a shard = add a line there).
+  # On a ci/ branch with a .ci-only file only the named shards are in the list, so no runner starts for the others.
+  plan:
+    name: plan (e2e shard list)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        run: node scripts/ci/plan.mjs .
+
   e2e:
     name: e2e (${{ matrix.name }})
+    needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
       TZ: Europe/Stockholm   # tests were written for Swedish time (nights, "ikväll"); UTC breaks some
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # one shard = one runner (~1 min setup). Keep each shard under ~10 min, a failed test runs twice.
-          - name: ui-1
-            filter: '^(ux3|social2|strip|av2-wizard)$'
-          - name: ui-2
-            filter: '^(feat|nf|notif|autoci)$'
-          - name: ui-3
-            filter: '^(cam|ntf)$'
-          - name: ui-4
-            filter: '^(evx|safe|ds|ds-layout|notif-sw)$'
-          - name: ui-5
-            filter: '^(ds-sheet)$'
-          - name: ui-6
-            filter: '^(rpc-cover)$'
-          - name: fxm
-            filter: '^(fxm)$'
-          - name: fxg
-            filter: '^(fxg)$'
-          - name: pf
-            filter: '^(pf)$'
-          - name: lg
-            filter: '^(lg)$'
-          - name: cln
-            filter: '^(cln)$'
-          - name: dm
-            filter: '^(dm)$'
-          - name: dialekt
-            filter: '^(dialekt|dialekt-packs)$'
-          - name: games2
-            filter: '^(games2)$'
-          - name: txtfit
-            filter: '^(txtfit)$'
-          - name: ds-motion
-            filter: '^(ds-motion)$'
-          - name: gw
-            filter: '^(gw)$'
-          - name: inst
-            filter: '^(inst)$'
-          - name: ui1
-            filter: '^(ui1)$'
-          - name: social-b
-            filter: '^(social-b)$'
-          - name: social-a
-            filter: '^(social-a)$'
-          - name: after
-            filter: '^(after2|moments)$'
-          - name: misc
-            filter: '^(misc)$'
-          - name: ride
-            filter: '^(ride|ride3)$'
-          - name: main
-            filter: '^(main|sec)$'
-          - name: x8
-            filter: '^(x8)$'
-          - name: followups
-            filter: '^(followups)$'
-          - name: fixs
-            filter: '^(fixs)$'
-          - name: fixj
-            filter: '^(fixj)$'
-          - name: fixc
-            filter: '^(fixc)$'
-          - name: perf
-            filter: '^(perf)$'
-          - name: perfchat
-            filter: '^(perfchat)$'
-          - name: fixm
-            filter: '^(fixm)$'
-          - name: heat
-            filter: '^(heat)$'
-          - name: fixmo
-            filter: '^(fixmo)$'
-          - name: left
-            filter: '^(left)$'
-          - name: kpi
-            filter: '^(kpi)$'
-          - name: ownerfix
-            filter: '^(ownerfix)$'
-          - name: popfix
-            filter: '^(popfix)$'
-          - name: hooks-order
-            filter: '^(hooks-order)$'
-          - name: a4rel
-            filter: '^(a4rel)$'
-          - name: placesearch
-            filter: '^(placesearch)$'
-          - name: a2ui
-            filter: '^(a2ui)$'
-          - name: b1people
-            filter: '^(b1people)$'
-          - name: webkit
-            filter: '^(ds-motion-wk|ds-layout-wk)$'
-            browsers: chromium webkit
-          - name: map-1
-            filter: '^(glmap|tiers2)$'
-          - name: map-2
-            filter: '^(tiers3|map4|barzoom)$'
-          - name: map-3
-            filter: '^(glfix-avpins|zones|mbx)$'
-          - name: map-lane
-            filter: '^(map)$'
-          - name: map-ui1
-            filter: '^(ui1-map|ownerfix-map)$'
-          - name: mapzoom
-            filter: '^(mapzoom)$'
-          - name: systemet
-            filter: '^(systemet)$'
-          - name: c5extras
-            filter: '^(c5extras)$'
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-      - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"
-        id: only
-        run: if [ -f .ci-only ] && ! grep -qx "${{ matrix.name }}" .ci-only; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "skipped by .ci-only"; fi
       - uses: actions/setup-node@v4
-        if: steps.only.outputs.skip != '1'
         with:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
-        if: steps.only.outputs.skip != '1'
       - name: Install Playwright browsers
-        if: steps.only.outputs.skip != '1'
         run: npx playwright install --with-deps ${{ matrix.browsers || 'chromium' }}
       - name: Serve docs/ on port 8793 (map) and 8871 (UI), Supabase target = staging
-        if: steps.only.outputs.skip != '1'
         env:
           PN_TARGET: staging   # serve.py serves config.js pointed at pintsnow-staging (the file in git is not changed)
         run: |
@@ -164,14 +63,12 @@ jobs:
             for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
           done
       - name: Restore last run's flaky list (flake gate)
-        if: steps.only.outputs.skip != '1'
         uses: actions/cache/restore@v4
         with:
           path: tests/e2e/out/flaky-prev
           key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: flaky-${{ matrix.name }}-${{ github.ref_name }}-
       - name: Run tests
-        if: steps.only.outputs.skip != '1'
         env:
           MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}   # real Mapbox for the map tests (matrix "map"); empty = skipped
           PN_TARGET: staging   # run-all.sh stops if the served config.js does not point at this target
@@ -179,7 +76,7 @@ jobs:
           FLAKE_GATE: '1'   # a test that passes only on the rerun in 2 runs in a row = FAIL (tests/e2e/flakes.json)
         run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
       - name: Upload logs
-        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-logs-${{ matrix.name }}
@@ -191,10 +88,10 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - name: Keep this run's flaky list for the next run
-        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
+        if: always()
         run: mkdir -p tests/e2e/out/flaky-prev && cp tests/e2e/out/logs/flaky-now.txt tests/e2e/out/flaky-prev/ 2>/dev/null || true
       - name: Save flaky list
-        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
+        if: always()
         uses: actions/cache/save@v4
         with:
           path: tests/e2e/out/flaky-prev

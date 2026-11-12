@@ -1,0 +1,59 @@
+# E2E shards: ONE line per shard.  <name> <regex for run-all.sh> [browsers, default chromium]
+# Add a shard = add one line here (append at the end). No commas, no YAML, no indent.
+# A shard = one GitHub runner (~1 min setup). Keep each under ~10 min; a failed test runs twice.
+# Names: letters, digits, - and _ only. The regex has no spaces. Read by scripts/ci/plan.mjs (job "plan" in .github/workflows/tests.yml).
+# On a ci/ branch a .ci-only file (one shard name per line) cuts the run to only those shards.
+
+ui-1 ^(ux3|social2|strip|av2-wizard)$
+ui-2 ^(feat|nf|notif|autoci)$
+ui-3 ^(cam|ntf)$
+ui-4 ^(evx|safe|ds|ds-layout|notif-sw)$
+ui-5 ^(ds-sheet)$
+ui-6 ^(rpc-cover)$
+fxm ^(fxm)$
+fxg ^(fxg)$
+pf ^(pf)$
+lg ^(lg)$
+cln ^(cln)$
+dm ^(dm)$
+dialekt ^(dialekt|dialekt-packs)$
+games2 ^(games2)$
+txtfit ^(txtfit)$
+ds-motion ^(ds-motion)$
+gw ^(gw)$
+inst ^(inst)$
+ui1 ^(ui1)$
+social-b ^(social-b)$
+social-a ^(social-a)$
+after ^(after2|moments)$
+misc ^(misc)$
+ride ^(ride|ride3)$
+main ^(main|sec)$
+x8 ^(x8)$
+followups ^(followups)$
+fixs ^(fixs)$
+fixj ^(fixj)$
+fixc ^(fixc)$
+perf ^(perf)$
+perfchat ^(perfchat)$
+fixm ^(fixm)$
+heat ^(heat)$
+fixmo ^(fixmo)$
+left ^(left)$
+kpi ^(kpi)$
+ownerfix ^(ownerfix)$
+popfix ^(popfix)$
+hooks-order ^(hooks-order)$
+a4rel ^(a4rel)$
+placesearch ^(placesearch)$
+a2ui ^(a2ui)$
+b1people ^(b1people)$
+webkit ^(ds-motion-wk|ds-layout-wk)$ chromium webkit
+map-1 ^(glmap|tiers2)$
+map-2 ^(tiers3|map4|barzoom)$
+map-3 ^(glfix-avpins|zones|mbx)$
+map-lane ^(map)$
+map-ui1 ^(ui1-map|ownerfix-map)$
+mapzoom ^(mapzoom)$
+systemet ^(systemet)$
+c5extras ^(c5extras)$

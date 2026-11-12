@@ -15,6 +15,16 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const h10 = (b) => createHash("sha256").update(b).digest("hex").slice(0, 10);
+// I-29: files that load other files with THEIR OWN ?v= (dialekt.js loads js/dialekt-packs/*.js through PN.load with the tag of dialekt.js).
+// Their tag hash covers the loaded files too, so a change in only a pack file changes the tag and phones fetch the new pack.
+const DEPS = { "js/dialekt.js": "js/dialekt-packs/" };
+export function fileHash(site, f) {
+  const p = join(site, f), dep = DEPS[f];
+  if (!dep || !existsSync(join(site, dep))) return h10(readFileSync(p));
+  const all = createHash("sha256").update(readFileSync(p));
+  for (const q of walk(join(site, dep))) all.update("\0" + rel(site, q) + "\0").update(readFileSync(q));
+  return all.digest("hex").slice(0, 10);
+}
 const strip = (u) => u.replace(/^\.\//, "").replace(/\?.*$/, "");
 const RE_REF = /((?:src|href)="\.\/)([^"?]+\.(?:js|css))(\?[^"]*)?"/g;   // any local js/css reference (script, link, preload, x-lazy-css)
 const RE_PARTS = /data-parts="([^"]*)"/g;
@@ -50,9 +60,9 @@ export function siteHash(site) {
 }
 export function stampHtml(site, html) {
   let missing = [], n = 0;
-  const v = (f) => { const p = join(site, f); if (existsSync(p)) { n++; return "?v=" + h10(readFileSync(p)); } missing.push(f); return ""; };
+  const v = (f) => { const p = join(site, f); if (existsSync(p)) { n++; return "?v=" + fileHash(site, f); } missing.push(f); return ""; };
   const out = html.replace(RE_REF, (all, a, f) => a + f + v(f) + '"')
-    .replace(RE_PARTS, (all, list) => 'data-parts="' + list.split(",").map((u) => { const f = strip(u); return "./" + f + (existsSync(join(site, f)) ? "?v=" + h10(readFileSync(join(site, f))) : ""); }).join(",") + '"');
+    .replace(RE_PARTS, (all, list) => 'data-parts="' + list.split(",").map((u) => { const f = strip(u); return "./" + f + (existsSync(join(site, f)) ? "?v=" + fileHash(site, f) : ""); }).join(",") + '"');
   return { html: out, stamped: n, missing };
 }
 // state of a dir: "clean" (nothing stamped), "stamped" or "mixed"
