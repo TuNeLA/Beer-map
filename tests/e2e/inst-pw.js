@@ -98,7 +98,8 @@ async function pass_(page, P) {
     await page.evaluate(() => window.__inst.mark());
     await tap(page, "#btn-groups"); await wait(page, 200);
     first = await page.evaluate(() => { const c = [...document.querySelectorAll(".glist .gcard")].find((x) => /Ludvika/.test(x.textContent)); if (c) c.__mark = 1; return c ? c.textContent : null; });
-    await wait(page, 1300);
+    // cifix3: wait for the fresh answer (mock 300-800 ms + load on a shared runner), max 3.5 s, instead of a fixed 1.3 s
+    for (let w = 0; w < 14; w++) { await wait(page, 250); if (await page.evaluate((n) => { const c = [...document.querySelectorAll(".glist .gcard")].find((x) => /Ludvika/.test(x.textContent)); return !!c && c.textContent.indexOf(n + " av 5") >= 0; }, nw)) break; }
     after = await page.evaluate(() => { const c = [...document.querySelectorAll(".glist .gcard")].find((x) => /Ludvika/.test(x.textContent)); return c ? { same: !!c.__mark, t: c.textContent } : null; });
     m3 = await page.evaluate(() => window.__inst.stop());
     await close(page); await wait(page, 400);

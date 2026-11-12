@@ -1730,6 +1730,7 @@ html body #toasts{position:fixed !important;left:50% !important;right:auto !impo
   bottom:var(--pn-toast-b, var(--pn-ban-b, calc(var(--dock-h,212px) + 54px))) !important;width:min(420px, calc(100vw - 32px)) !important;max-width:none !important;
   transform:translateX(-50%) !important;padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important;justify-content:flex-end !important;
   align-items:stretch !important;gap:var(--sp-2) !important;z-index:2000 !important}
+html.pn-toast-strip:not(.pn-toast-sheet) body:not(.pn-modal-on):not(.barsheet-open) #toasts{bottom:var(--pn-toast-strip-b, calc(var(--dock-h,212px) + 54px)) !important}
 html.pn-toast-sheet body #toasts,html body.pn-modal-on #toasts,html body.barsheet-open #toasts{bottom:var(--pn-toast-sheet-b, calc(16px + env(safe-area-inset-bottom,0px))) !important;z-index:2600 !important}
 html body #toasts>.toast{width:100% !important;max-width:none !important;box-sizing:border-box;margin:0 !important;touch-action:pan-y;
   border-width:1px !important;box-shadow:0 8px 24px rgba(0,0,0,.45) !important;background:var(--ds-card,#1a2236) !important;color:var(--ds-text,#fff);

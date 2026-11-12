@@ -918,8 +918,20 @@
     var tn = sp.firstChild, name = "";
     if (tn && tn.nodeType === 3 && EMO) { var m = EMO.exec(tn.nodeValue); if (m) { name = iconName(m[1], el); tn.nodeValue = tn.nodeValue.slice(m[0].length); } }
     if (!name) name = el.classList.contains("err") ? "info" : (/\b(med|chaos-toast)\b/.test(el.className) ? "sos" : "info");
-    var i = document.createElement("span"); i.className = "pn-toast-i"; i.setAttribute("aria-hidden", "true"); i.innerHTML = P.svg(name, "");
+    var i = document.createElement("i"); i.className = "pn-toast-i"; i.setAttribute("aria-hidden", "true"); i.innerHTML = P.svg(name, "");
     el.insertBefore(i, el.firstChild);
+    // cifix3: A.toast update path (x8 beerSay turns "Ölen räknas…" into the answer by setting the text span): new text gets the same icon treatment
+    if (window.MutationObserver) {
+      var busy = false;
+      new MutationObserver(function () {
+        if (busy) return; busy = true;
+        try {
+          var t0 = sp.firstChild;
+          if (t0 && t0.nodeType === 3 && EMO) { var m2 = EMO.exec(t0.nodeValue); if (m2) { var nn = iconName(m2[1], el); t0.nodeValue = t0.nodeValue.slice(m2[0].length); if (nn) i.innerHTML = P.svg(nn, ""); } }
+        } catch (e) {}
+        busy = false;
+      }).observe(sp, { childList: true, characterData: true, subtree: true });
+    }
   }
   function trim(box) {
     var v = [].filter.call(box.children, function (x) { return !x.hasAttribute("data-keep") && !x.classList.contains("pn-toast-out") && x.getAttribute("data-leaving") !== "1"; });
@@ -967,6 +979,10 @@
     var on = document.body.classList.contains("pn-modal-on");
     R.classList.toggle("pn-toast-sheet", on);
     if (on) R.style.setProperty("--pn-toast-sheet-b", sheetBottom() + "px");
+    // cifix3: the beer-type strip (.bp-strip) is up: the toast sits ABOVE it, never over the chips
+    var st = document.querySelector(".bp-strip"), r = st && !st.hidden && st.getClientRects().length ? st.getBoundingClientRect() : null;
+    if (r && !on) { R.style.setProperty("--pn-toast-strip-b", Math.max(8, Math.round(innerHeight - r.top + 8)) + "px"); R.classList.add("pn-toast-strip"); }
+    else R.classList.remove("pn-toast-strip");
   }
   function start() {
     var box = document.getElementById("toasts"); if (!box) return;
@@ -980,7 +996,7 @@
     new MutationObserver(place).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     addEventListener("resize", place);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", place);
-    setInterval(function () { if (document.body.classList.contains("pn-modal-on")) place(); }, 700);
+    setInterval(function () { if (document.body.classList.contains("pn-modal-on") || R.classList.contains("pn-toast-strip") || document.querySelector(".bp-strip")) place(); }, 400);
     place();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();

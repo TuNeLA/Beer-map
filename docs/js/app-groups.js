@@ -67,11 +67,14 @@
         if (!window.JOIN) body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("📲 " + t("inviteBtn"), "btn-block", showInvite)]));   // join.js: ➕ per group + Vänner tab
         mods("groupsSheet", body);   // "Kom hit!"
         list.appendChild(el("li", { class: "muted", text: "…" }));
+        groupsList = list;   // cifix3: set at once: a fresh answer that lands before the cached rows are drawn is kept (list.__fresh) and patched in
         rpc("my_groups").then(function (r) {
           list.innerHTML = "";
           if (r.error) { list.appendChild(el("li", { class: "muted", text: t("fail") })); return; }
           fillGroups(list, r.data || []);
-          groupsList = list;
+          list.__filled = 1;
+          if (list.__fresh && list.isConnected && !list.__one && list.__fresh.length > 1) { var fr = list.__fresh, tp = el("ul", { class: list.className }); fillGroups(tp, fr); if (window.WARM) window.WARM.patch(list, tp); }
+          list.__fresh = null;
         });
       });
     });
@@ -89,6 +92,7 @@
   window.addEventListener("olnu:warm", function (e) {
     var d = e.detail || {};
     if (d.fn !== "my_groups" || !groupsList || !groupsList.isConnected || !Array.isArray(d.data) || !window.WARM) return;
+    if (!groupsList.__filled) { groupsList.__fresh = d.data; return; }   // cifix3: rows not drawn yet
     if (groupsList.__one || d.data.length < 2) return;   // the open single-group card holds module state: next open
     var tmp = el("ul", { class: groupsList.className }); fillGroups(tmp, d.data);
     window.WARM.patch(groupsList, tmp);   // only the changed values move (count, "● 3 av 5"), no list rebuild

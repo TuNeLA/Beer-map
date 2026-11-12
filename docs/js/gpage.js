@@ -247,7 +247,7 @@
     var main = h("div", { class: "gpg-now-main" }, [h("div", { class: "gpg-now-l", text: line })]);
     if (d && d.last) {
       var x = d.last, who = x.me ? T("you") : (x.name || "?");
-      var what = x.kind === "checkin" ? "📍 " + who + " " + T("ci") : (x.kind === "other" ? "🥃 " : "🍺 ") + who;
+      var what = x.kind === "checkin" ? who + " " + T("ci") : who;   // cifix3: no emoji here (pnds scrub removed it 120 ms later = a late text change)
       main.appendChild(h("div", { class: "gpg-now-s muted", text: T("last") + " " + what + (x.place ? " · " + x.place : "") + " · " + ago(x.at) }));
     }
     box.appendChild(head);
@@ -537,7 +537,7 @@
       var cr = h("div", { class: "gpg-row gpg-code" }, [
         h("button", { type: "button", class: "gpg-code-b", "aria-label": T("code") + " " + code, onclick: function () { copy(code, function () { A.toast(T("copied"), { id: "gpg" }); }); } },
           [h("span", { text: T("code") + " " }), h("b", { class: "gpg-code-v", text: code })]),
-        h("button", { type: "button", class: "btn btn-small btn-amber gpg-inv", text: T("invite"), onclick: function () { if (window.JOIN && window.JOIN.openGroup) window.JOIN.openGroup(g, false); } })
+        h("button", { type: "button", class: "btn btn-small btn-amber gpg-inv", html: ic("user-plus", "pi-lead") + L("Bjud in", "Invite"), onclick: function () { if (window.JOIN && window.JOIN.openGroup) window.JOIN.openGroup(g, false); } })
       ]);
       info.appendChild(cr);
     }

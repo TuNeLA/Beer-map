@@ -582,7 +582,9 @@
   var SRC_CL = "olnu-bars-cl", L_CL = "olnu-bar-cl", L_CDOT = "olnu-bar-cdot", L_CDOTE = "olnu-bar-cdote", L_CB1 = "olnu-bar-cdotb1", L_CB2 = "olnu-bar-cdotb2";
   var L_CDOTF = "olnu-bar-cdotf";   // map B8: empty dots from Leaflet z16, always drawn (they block names, names never hide them)
   var L_BLK = "olnu-bar-blk";   // a1map I-08: invisible pin discs (collision only)
-  var CL_IDS = [L_CDOTE, L_CDOTF, L_CDOT, L_CB1, L_CB2, L_CL, L_BLK];
+  var CL_IDS = [L_CDOTE, L_CDOT, L_CB1, L_CB2, L_CL, L_BLK];   // cifix3: L_CDOTF is no layer any more (a1map I-27): only real ids here
+  // cifix3: ONE list of every GL venue layer: the BAREA editor hide/restore (editVis) and _layers() use it
+  function venueIds() { return [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(CL_IDS); }
   var CL_MAXZ = 13, CL_MINZ = 9, CL_R = 52;   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
   var cl = { on: false, sig: "", feats: [], seen: null, seenAt: 0, hooked: null, made: 0 };
   function clOps(n, busy, friend) {
@@ -831,7 +833,7 @@
   function editVis() {
     var v = document.body.classList.contains("ba-edit"); if (v === editOn && layersReady) return;
     editOn = v; if (!gm || !layersReady) return;
-    [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(CL_IDS).forEach(function (id) { try { gm.setLayoutProperty(id, "visibility", v ? "none" : "visible"); } catch (e) {} });
+    venueIds().forEach(function (id) { try { gm.setLayoutProperty(id, "visibility", v ? "none" : "visible"); } catch (e) {} });
   }
   /* ---------- mbx: 🆘 Hämta mig / 🚗 Skjuts? requests on the map (js/skjuts.js data; coordinator request 2026-11-07) ----------
      A live request sent TO me that has a position = one small DOM pin above everything (pane "pickup", z 720), at every zoom
@@ -924,7 +926,7 @@
       });
       return out;
     },
-    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(cl.on ? CL_IDS : []); },
+    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(cl.on ? CL_IDS : []).filter(function (id) { return !gm || gm.getLayer(id); }); },
     _cl: function () { return { on: cl.on, dots: cl.feats.length, ids: cl.feats.map(function (f) { return f.properties.id; }).sort().join(), made: cl.made, maxz: CL_MAXZ + 1, src: SRC_CL, layer: L_CL, step: clStep }; },   // ds30 tests (+ a1map I-09)
     // places.js: the restaurant dots it chose (GL draws them under the bars); false = GL is off (keep the DOM dots)
     places: setPlaces,
