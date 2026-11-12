@@ -52,7 +52,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/bnd" --no-save --no-package-lock --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
           node "$RUNNER_TEMP/bnd/bundle.mjs" "$APP" --stamp
           for f in "$APP"/js/app.bundle*.js; do node --check "$f"; done
-      - name: Check the stamp (bundle.mjs --stamp ran scripts/stamp.mjs: ?v=<hash> on every local file, sw.js VERSION = olnu-<site hash>)
+      - name: "Check the stamp (bundle.mjs --stamp ran scripts/stamp.mjs: ?v=<hash> on every local file, sw.js VERSION = olnu-<site hash>)"
         run: |
           node "$RUNNER_TEMP/bnd/stamp.mjs" "$APP" --check
           grep -n '^var VERSION' "$APP/sw.js"

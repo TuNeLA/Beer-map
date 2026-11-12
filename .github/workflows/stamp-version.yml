@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Stamp docs/ (scripts/stamp.mjs: ?v=<file hash> on every local js/css + sw.js VERSION)
+      - name: "Stamp docs/ (scripts/stamp.mjs: ?v=<file hash> on every local js/css + sw.js VERSION)"
         run: |
           # A1: the same stamper as the bundled build and the beta. Data (bars.json, places.json, places/, buildings/) is not in the site hash:
           # the weekly data update must not make every phone download the whole app again.
