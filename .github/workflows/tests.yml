@@ -45,6 +45,8 @@ jobs:
             filter: '^(rpc-cover)$'
           - name: fxm
             filter: '^(fxm)$'
+          - name: juice
+            filter: '^(juice)$'
           - name: fxg
             filter: '^(fxg)$'
           - name: pf

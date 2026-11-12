@@ -102,6 +102,7 @@ run rpc-cover  $B rpc-cover-pw.js  # every RPC the main screens call must be ans
 if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else [[ autoci =~ $FILTER ]] && RES+=("$(printf '%-16s %5s %5s  %-6s %s' autoci - - skip 'docs/js/autoci.js not merged yet')"); fi
 # --- ported agent tests (2026-11-09; were only in agent scratchpads). Mocked Supabase, Leaflet fallback (no Mapbox) ---
 run fxm        $B fxm-pw.js        # map fixes ds31–ds42: ANNAT, ⓘ, Ikväll chip, auto check-in list, Auto hemma, Synlighet, calm start
+run juice      $B juice-pw.js      # lane juice: ÖL! sound engine + Ljud switch, haptics Android-only, foam burst cap / reduced motion, no long task, CC0 voice clips
 run pf         $B pf-pw.js         # pin follow (pinfolj.js) + people count / "Folk här" night totals
 run lg         $B lg-pw.js         # PNLOG usage + position log, consent, owner panel (stats.html), lx part (lgx-part.js)
 run cln        $B cln-pw.js        # clean-up: vitals only with the log on, Nytt dates, rpc_bundle2, not_member, medals throttle
