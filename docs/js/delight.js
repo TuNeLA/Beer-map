@@ -320,7 +320,10 @@
     if (capCur) { if (capQ.length < 3) capQ.push(o); return; }
     capShow(o);
   }
+  // I-31: never over the ✕ of a bar popup. While one is open the caption waits (a few tries, then it is dropped).
+  function barOpen() { try { return document.body.classList.contains("barsheet-open") || !!document.querySelector(".leaflet-popup.olnu-bar"); } catch (e) { return false; } }
   function capShow(o) {
+    if (barOpen()) { o._w = (o._w | 0) + 1; if (o._w <= 6) later(function () { capShow(o); }, 1500); else capNext(); return; }
     var box = $("dl-cap");
     if (!box) {
       box = mk("div", "dl-cap"); box.id = "dl-cap"; box.setAttribute("role", "status"); box.setAttribute("aria-live", "polite");

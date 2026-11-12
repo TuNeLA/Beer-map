@@ -419,15 +419,21 @@
   function loadPack(f, then) {
     if (packState[f]) { if (then && packState[f] === "ok") then(); return; }
     packState[f] = "loading"; var t0 = (window.performance && performance.now()) || 0;
-    var el = document.createElement("script"); el.src = PACK_DIR + f + ".js"; el.async = true;
-    el.onload = function () {
+    // I-29: through PN.load with the deploy stamp of dialekt.js's own tag (same rule as filmfx.js stampedSrc), so a deploy never runs an old pack.
+    var onload = function () {
       packState[f] = "ok"; stats.packMs[f] = Math.round(((window.performance && performance.now()) || 0) - t0);
       if (!packs[f.replace(/-lek$/, "")]) { packState[f] = "fail"; return; }
       if (PACK_FILES[f] && f !== extra && ownChain().indexOf(f) < 0) { delete packs[f]; delete packState[f]; return; }   // dialect2: an old extra pack that came in late
       stats.packs[f] = 1; emit(); if (then) then();
     };
-    el.onerror = function () { packState[f] = "fail"; try { el.remove(); } catch (e) {} setTimeout(function () { if (packState[f] === "fail") { delete packState[f]; syncPacks(); } }, 60e3); };
-    document.head.appendChild(el);
+    var onerror = function () { packState[f] = "fail"; setTimeout(function () { if (packState[f] === "fail") { delete packState[f]; syncPacks(); } }, 60e3); };
+    var src = packSrc(f);
+    if (window.PN && PN.load) PN.load(src).then(onload, onerror);
+    else { var el = document.createElement("script"); el.src = src; el.async = true; el.onload = onload; el.onerror = function () { try { el.remove(); } catch (e) {} onerror(); }; document.head.appendChild(el); }
+  }
+  function packSrc(f) {
+    var t = document.querySelector('script[src*="js/dialekt.js"]'), m = t && /\?v=[^"&]*/.exec(t.getAttribute("src") || "");
+    return PACK_DIR + f + ".js" + (m ? m[0] : "");
   }
   function syncPacks() {
     if (!painted || st.mode === "off") return;

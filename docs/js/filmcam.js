@@ -227,6 +227,39 @@
 
   /* ---------- Permission ---------- */
   function hasGum() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext !== false; }
+  /* I-54: a real torch (phone flash). Android Chrome: track.getCapabilities().torch + applyConstraints({advanced:[{torch}]}).
+     No torch capability (iPhone Safari, front camera, desktop) = the button stays hidden. The torch fires only for the shot. The white flash effect stays. */
+  var torchWant = false, torchFired = false, torchBusy = false;
+  function torchTrack(s) {
+    try { var t = s && s.getVideoTracks && s.getVideoTracks()[0]; if (t && t.getCapabilities && t.getCapabilities().torch) return t; } catch (e) {}
+    return null;
+  }
+  function torchSet(s, on) {
+    var t = torchTrack(s); if (!t) return Promise.resolve(false);
+    try { return t.applyConstraints({ advanced: [{ torch: !!on }] }).then(function () { return true; }, function () { return false; }); } catch (e) { return Promise.resolve(false); }
+  }
+  function torchSync(btn, s) {
+    if (!btn) return;
+    btn.hidden = !torchTrack(s); btn.classList.toggle("on", torchWant); btn.setAttribute("aria-pressed", torchWant ? "true" : "false");
+  }
+  function torchButton(cls, getStream) {
+    var b = el("button", { type: "button", class: cls, "aria-label": L("Blixt (ficklampa)", "Flash (torch)"), "aria-pressed": "false", text: "⚡", hidden: "" });
+    b.addEventListener("click", function (e) { e.stopPropagation(); torchWant = !torchWant; torchSync(b, getStream()); });
+    return b;
+  }
+  // true = the torch fires first and re-calls go() with torchFired set; the caller returns.
+  function torchGate(s, go) {
+    if (torchFired || !torchWant || !torchTrack(s)) return false;
+    if (torchBusy) return true;
+    torchBusy = true;
+    torchSet(s, true).then(function () {
+      setTimeout(function () {
+        torchFired = true;
+        try { go(); } finally { torchFired = false; torchBusy = false; torchSet(s, false); }
+      }, 280);
+    });
+    return true;
+  }
   function permState() {
     try {
       if (navigator.permissions && navigator.permissions.query) {
@@ -336,8 +369,9 @@
     var pend = el("div", { class: "fc-pend" });
     var flip = el("button", { type: "button", class: "fc-flip", "aria-label": L("Byt kamera", "Switch camera"), text: "🔄" });
     var shutter = el("button", { type: "button", class: "fc-shutter", "aria-label": L("Ta en bild", "Take a photo") }, [el("span", {})]);
+    var tb = torchButton("fc-torch", function () { return stream; });
     var body = el("div", { class: "fc-body" }, [
-      el("div", { class: "fc-top" }, [el("span", { class: "fc-brand", text: "PintsNow · Engångs 27" }), el("span", { class: "fc-grp", text: c.g.name || "" }), x]),
+      el("div", { class: "fc-top" }, [el("span", { class: "fc-brand", text: "PintsNow · Engångs 27" }), el("span", { class: "fc-grp", text: c.g.name || "" }), tb, x]),
       vf,
       el("div", { class: "fc-info" }, [el("div", { class: "fc-lcd", "aria-hidden": "true" }, [lcd]), el("div", { class: "fc-count" }, [leftT, frames])]),
       status,
@@ -391,7 +425,7 @@
         var pl = video.play(); if (pl && pl["catch"]) pl["catch"](function () {});
         var ready = function () { msg.hidden = true; paint(); };
         if (video.readyState >= 2) ready(); else video.addEventListener("loadeddata", ready, { once: true });
-        flip.hidden = false;
+        flip.hidden = false; torchSync(tb, s);
       }, function (e) {
         starting = false;
         if (!alive || cur !== c) return;
@@ -411,6 +445,7 @@
     } catch (e) {}
     shutter.addEventListener("click", function () {
       if (shutter.disabled || !stream || !video.videoWidth) return;
+      if (torchGate(stream, function () { shutter.click(); })) return;
       if (!rulesOk()) { rulesCard(c.g, paint); return; }   // cm
       var shot = grab(video, vf, c.g.id);
       if (!shot) { status.textContent = errText("invalid_photo"); return; }
@@ -584,10 +619,14 @@
       c.vf.appendChild(fl);
       try { navigator.mediaDevices.enumerateDevices().then(function (ds) { if (ds.filter(function (d) { return d.kind === "videoinput"; }).length < 2) fl.hidden = true; }, function () {}); } catch (e) {}
     }
+    var tbi = c.vf.querySelector(".fm-torch");
+    if (!tbi) { tbi = torchButton("fm-torch", function () { return inl.stream; }); c.vf.appendChild(tbi); }
+    torchSync(tbi, inl.stream);
     inlPaint();
   }
   function inlShoot(c) {
     if (inl.busy) return;
+    if (inl.stream && inl.video && inl.video.videoWidth && torchGate(inl.stream, function () { inlShoot(c); })) return;
     if (!rulesOk()) { rulesCard(c.g, inlPaint); return; }   // cm: the rules BEFORE the first shot
     if (!inl.stream || !inl.video || !inl.video.videoWidth) {
       if (inl.denied || !hasGum()) { open(c.g, c.d); return; }   // the card flow: denied help, camera app, gallery
