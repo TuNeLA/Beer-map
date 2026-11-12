@@ -15,13 +15,13 @@
   function heatMeters() { return PN.heatMeters.apply(null, arguments); }
   function heatRadiusPx() { return PN.heatRadiusPx.apply(null, arguments); }
   function renderHeat() { return PN.renderHeat.apply(null, arguments); }
-  function whoOf() { return PN.whoOf.apply(null, arguments); }
-  function renderTicker() { return PN.renderTicker.apply(null, arguments); }
-  function updateCounts() { return PN.updateCounts.apply(null, arguments); }
   function checkinsAt() { return PN.checkinsAt.apply(null, arguments); }
   function checkinNamesHTML() { return PN.checkinNamesHTML.apply(null, arguments); }
   function checkinBtnHTML() { return PN.checkinBtnHTML.apply(null, arguments); }
+  function whoOf() { return PN.whoOf.apply(null, arguments); }
+  function renderTicker() { return PN.renderTicker.apply(null, arguments); }
   function crowdSort() { return PN.crowdSort.apply(null, arguments); }
+  function updateCounts() { return PN.updateCounts.apply(null, arguments); }
   PN.put({
     lvlClass: lvlClass, lvList: lvList, lvOf: lvOf, lvAt: lvAt, lvName: lvName, lvLine: lvLine,
     noLeadEmoji: noLeadEmoji, streakToastText: streakToastText, skalCount: skalCount, skalBtn: skalBtn,

@@ -13,10 +13,10 @@
   function closeSheet() { return PN.closeSheet.apply(null, arguments); }
   function renderTickerItemsOnly() { return PN.renderTickerItemsOnly.apply(null, arguments); }
   function evalChaos() { return PN.evalChaos.apply(null, arguments); }
-  function beerOnly() { return PN.beerOnly.apply(null, arguments); }
   function beerById() { return PN.beerById.apply(null, arguments); }
   function openCrowd() { return PN.openCrowd.apply(null, arguments); }
   function showBeer() { return PN.showBeer.apply(null, arguments); }
+  function beerOnly() { return PN.beerOnly.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
   PN.put({
     heatMeters: heatMeters, heatRadiusPx: heatRadiusPx, loadHeatPoints: loadHeatPoints, renderHeat: renderHeat,

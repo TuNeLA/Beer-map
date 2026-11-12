@@ -29,16 +29,16 @@
   function lvLine() { return PN.lvLine.apply(null, arguments); }
   function noLeadEmoji() { return PN.noLeadEmoji.apply(null, arguments); }
   function tl() { return PN.tl.apply(null, arguments); }
+  function myCheckin() { return PN.myCheckin.apply(null, arguments); }
+  function moveCheckin() { return PN.moveCheckin.apply(null, arguments); }
+  function askWhere() { return PN.askWhere.apply(null, arguments); }
   function nightEnd() { return PN.nightEnd.apply(null, arguments); }
   function myBeer() { return PN.myBeer.apply(null, arguments); }
   function myNight() { return PN.myNight.apply(null, arguments); }
   function saveNight() { return PN.saveNight.apply(null, arguments); }
   function updateCounts() { return PN.updateCounts.apply(null, arguments); }
   function signIn() { return PN.signIn.apply(null, arguments); }
-  function myCheckin() { return PN.myCheckin.apply(null, arguments); }
-  function moveCheckin() { return PN.moveCheckin.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
-  function askWhere() { return PN.askWhere.apply(null, arguments); }
   PN.put({
     tickCooldown: tickCooldown, drinkFx: drinkFx, resumeNotify: resumeNotify, undoSync: undoSync,
     showStopSheet: showStopSheet, hidePin: hidePin
