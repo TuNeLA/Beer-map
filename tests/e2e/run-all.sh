@@ -87,6 +87,7 @@ NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + 
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
 run social2    $B social2-pw.js
+run placecard  $B placecard-pw.js   # lane placesdata: place card (cuisine, hours, $ level, chips, links, OSM source; data + RPC mocked)
 run fxg        $B fxg-pw.js        # ds50–ds60: bar sheet, group page, members, chat, ‹ ✕, warm, icons, join fixes
 run strip      $B strip-test.js
 run av2-wizard $B feat-av2-pw.js   # replaces av2-pw.js (old 9-chip editor; the wizard came in c317a9b)

@@ -13,6 +13,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { parseOH, packW, lateClose } from "./oh-parse.mjs";
+import { mergeSystembolaget } from "./placeinfo.mjs";   // placesdata: Overture stores + source column
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT_H = resolve(here, "../docs/hours.json");
@@ -31,7 +32,7 @@ const queries = [
   `nwr["amenity"="fast_food"]["opening_hours"](area.se);`,
   `(nwr["amenity"="restaurant"]["cuisine"~"pizza|kebab|burger|hot_dog|sausage|falafel|shawarma|grill",i]["opening_hours"](area.se);` +
     `nwr["shop"="convenience"]["opening_hours"]["brand"~"7-Eleven|Pressbyrån|MyWay",i](area.se););`,
-  `(nwr["shop"="alcohol"]["brand"~"Systembolaget",i](area.se);nwr["shop"="alcohol"]["name"~"Systembolaget",i](area.se););`,
+  `(nwr["shop"="alcohol"]["brand"~"Systembolaget",i](area.se);nwr["shop"~"^(alcohol|wine|alcohol;beverages)$"]["name"~"Systembolaget",i](area.se);nwr["shop"="alcohol"]["operator"~"Systembolaget",i](area.se););`,
 ].map((q) => AREA + q + "out center tags;");
 
 const r5 = (v) => Math.round(v * 1e5) / 1e5;
@@ -77,8 +78,8 @@ for (const el of json.elements || []) {
   const t = el.tags || {};
   const oh = t.opening_hours ? parseOH(t.opening_hours, now) : null;
   if (t.opening_hours && !oh) bad++;
-  if (t.shop === "alcohol") {
-    if (!/systembolaget/i.test((t.brand || "") + " " + (t.name || "")) || /ombud/i.test(t.name || "")) continue;   // ombud = pick-up point, other hours
+  if (/^(alcohol|wine|alcohol;beverages)$/.test(t.shop || "")) {
+    if (!/systembolaget/i.test((t.brand || "") + " " + (t.name || "") + " " + (t.operator || "")) || /ombud/i.test(t.name || "")) continue;   // ombud = pick-up point, other hours
     const nm0 = (t.name || "Systembolaget").replace(/\s+/g, " ").trim().slice(0, 60);
     const ad = [[t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(" "), t["addr:city"] || t["addr:place"]].filter(Boolean).join(", ").slice(0, 80);
     stores.push([nm0, r5(lat), r5(lng), packW(oh ? oh.w : SB_DEFAULT), oh ? 0 : 1, ad]);   // [5] = address (optional, "" when OSM has none)
@@ -102,5 +103,14 @@ const nb = Object.keys(bars).length;
 console.log(`bars with hours ${nb}, nightclub ages ${Object.keys(age).length}, nattmat ${nm.length}, systembolaget ${stores.length}, unparsed ${bad}`);
 if (nb < 150 || stores.length < 200) { console.error("Too few rows (broken query?): keeping the old files."); process.exit(1); }
 await writeFile(OUT_H, JSON.stringify({ v: 1, at: now.toISOString(), bars, age, nm }));
-await writeFile(OUT_S, JSON.stringify({ v: 1, at: now.toISOString(), stores }));
+// placesdata: Systembolaget's own location feed (PinMeTo, via Overture Maps, CDLA-Permissive-2.0) adds the stores OSM lacks
+// (no OSM store within 200 m; hours = the normal week, guess = 1); a complete feed also leaves out closed / moved OSM stores.
+// Row [6] = source "osm" | "ovr". OVERTURE_JSON: scripts/overture-se.py.
+let ovSb = [];
+if (process.env.OVERTURE_JSON) { try { ovSb = JSON.parse(await readFile(process.env.OVERTURE_JSON, "utf8")).sb || []; } catch (e) { console.log("::warning::No Overture file: OSM stores only"); } }
+const allStores = mergeSystembolaget(stores, ovSb, packW(SB_DEFAULT));
+const nOv = allStores.filter((r) => r[6] === "ovr").length;
+console.log(`systembolaget: ${stores.length} from OSM (${allStores.dropped.length} left out: not in Systembolaget's feed) + ${nOv} from Overture = ${allStores.length}`);
+for (const r of allStores.dropped) console.log("  left out (closed / moved?):", r[0], r[5] || "", r[1], r[2]);
+await writeFile(OUT_S, JSON.stringify({ v: 1, at: now.toISOString(), stores: allStores }));
 console.log(`Wrote ${OUT_H} and ${OUT_S}`);

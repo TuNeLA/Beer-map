@@ -142,6 +142,8 @@ jobs:
             filter: '^(mapzoom)$'
           - name: systemet
             filter: '^(systemet)$'
+          - name: placecard
+            filter: '^(placecard)$'
           - name: c5extras
             filter: '^(c5extras)$'
     steps:

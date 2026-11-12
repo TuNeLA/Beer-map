@@ -5,7 +5,7 @@
 // for the map view. places.json stays as the fallback.
 // The app uses it only to name the spot where someone drinks ("nära Pizzeria X"), never to draw markers.
 // Node 18+ (global fetch). Run weekly by .github/workflows/bars.yml.
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { writePlaceTiles } from "./places-tiles.mjs";
@@ -64,6 +64,8 @@ if (!json) {
   process.exit(1);
 }
 
+// placesdata: keep the raw Overpass answer for scripts/build-placeinfo.mjs (place cards), no extra Overpass call
+if (process.env.OSM_RAW_DIR) { await mkdir(process.env.OSM_RAW_DIR, { recursive: true }); await writeFile(resolve(process.env.OSM_RAW_DIR, "places.json"), JSON.stringify(json)); }
 const seen = new Set();
 const places = [];
 for (const el of json.elements || []) {
