@@ -1719,5 +1719,7 @@ body.x8-stale-on .dl-cap{margin-top:calc(var(--x8-h) + var(--pn-gap))}
 /* event line in the card ("adadad 22:00 [Vi går!] [✉]"): the buttons keep one line, the title wraps between words */
 .pn-bs7 .ev-line.sa-evl{gap:var(--ds-2)}
 .pn-bs7 .ev-line.sa-evl>.btn{white-space:nowrap !important}
-.pn-bs7 .ev-line.sa-evl>.ev-l-t{min-width:4em}
+.pn-bs7 .ev-line.sa-evl{flex-wrap:wrap}   /* w2fix: no room for the longest word + buttons = buttons go to a 2nd line */
+.pn-bs7 .ev-line.sa-evl>.ev-go{margin-left:auto}
+.pn-bs7 .ev-line.sa-evl>.ev-l-t{flex:1 1 0;min-width:min-content}
 /* lane:popfix END */
