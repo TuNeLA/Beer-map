@@ -413,7 +413,7 @@
   }
 
   /* ---------- social-a: Gängkamp entry (group page row + Topplistor row) → GAMES.openGangkamp({ id, name, code }) ---------- */
-  function gkOn() { return !!(window.GAMES && window.GAMES.openGangkamp && window.DUEL && window.DUEL.open); }
+  function gkOn() { return !!(window.PN_CFG && window.PN_CFG.gangkamp) && !!(window.GAMES && window.GAMES.openGangkamp && window.DUEL && window.DUEL.open); }
   // fixS T-13: a challenge that waits for this group's answer comes first: "Utmaning från X" (amber + dot)
   function gkIn(g) {
     try { var d = window.DUEL.data(); return (d && d.duels || []).filter(function (x) { return x && x.incoming && x.status === "pending" && x.group && x.group.id === g.id && !(x.answer_by && Date.parse(x.answer_by) <= Date.now()); }); } catch (e) { return []; }

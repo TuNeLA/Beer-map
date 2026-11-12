@@ -107,6 +107,8 @@ jobs:
             filter: '^(kpi)$'
           - name: ownerfix
             filter: '^(ownerfix)$'
+          - name: c1menus
+            filter: '^(c1menus)$'
           - name: popfix
             filter: '^(popfix)$'
           - name: hooks-order

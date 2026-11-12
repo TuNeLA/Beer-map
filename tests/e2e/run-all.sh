@@ -68,6 +68,7 @@ run() {   # name port file [args…]
 }
 echo "=== suite start $(date '+%F %T')  HEAD $HEAD  ports $A/$B  supabase $TARGET" | tee -a $LOG/summary.txt
 # --- map (Mapbox GL, mocked Supabase). OPTIONAL: need MAPBOX_TEST_TOKEN, else skipped ---
+run c1menus     $A c1menus-pw.js
 NEEDS_MAPBOX=1 run glmap      $A glmap-pw.js mbx
 NEEDS_MAPBOX=1 run tiers2     $A tiers2-pw.js mbx
 NEEDS_MAPBOX=1 run tiers3     $A tiers3-pw.js mbx

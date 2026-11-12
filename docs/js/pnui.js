@@ -634,17 +634,7 @@
         h("button", { type: "button", class: "pn-x", "aria-label": "Stäng", html: ic("x"), onclick: function () { c.remove(); } })]);
       if (first) pane.insertBefore(c, first); return;
     }
-    // b) Bjud in 1 till (a group where you are alone)
-    call("my_groups", {}).then(function (r) {
-      var gs = data(r); if (!Array.isArray(gs) || !document.body.contains(pane) || pane.querySelector(".pn-nudge")) return;
-      var solo = gs.filter(function (g) { return (g.member_count | 0) === 1 && !g.ev; })[0];
-      if (!solo || ls("olnu.pnSolo." + solo.id) === new Date().toDateString()) return;
-      var c2 = h("div", { class: "ds-card pn-nudge" }, [h("span", { class: "pn-nudge-i", html: ic("user-plus") }),
-        h("div", { class: "pn-nudge-t" }, [h("b", { text: "Bara du i " + (solo.name || "gänget") }), h("small", { text: "Ett gäng på en är ingen fest. Bjud in 1 till." })]),
-        h("button", { type: "button", class: "btn btn-small", text: "Bjud in", onclick: function () { if (W("JOIN") && W("JOIN").openGroup) W("JOIN").openGroup(solo, false); } }),
-        h("button", { type: "button", class: "pn-x", "aria-label": "Stäng", html: ic("x"), onclick: function () { lsSet("olnu.pnSolo." + solo.id, new Date().toDateString()); c2.remove(); } })]);
-      var fl = pane.querySelector(".glist"); if (fl) pane.insertBefore(c2, fl);
-    });
+    // b) (I-36: the "Bjud in 1 till" nudge for a solo group is removed)
   }
 
   /* ---------- header ‹ back (one back control) ---------- */
@@ -720,7 +710,7 @@
     // The rest (name, hemstad, pin, module rows, flytt, integritet = ds.js sections) folds away behind one row.
     var tog = h("button", { type: "button", class: "ds-row pn-row pn-fold-t ds-keep", "aria-expanded": "false" }, [h("span", { class: "ds-row-i", html: ic("sliders-horizontal") }),
       h("span", { class: "ds-row-t" }, [h("span", { text: "Namn, konto och mer" }), h("small", { text: "Hemstad, vänner, Swish, flytta" })]), h("span", { class: "pn-fold-c", html: ic("caret-right") })]);
-    var setOpen = function (o) { body.classList.toggle("pn-pfopen", o); tog.setAttribute("aria-expanded", String(o)); lsSet("olnu.pnFold", o ? "1" : "0"); };
+    var setOpen = function (o) { body.classList.toggle("pn-pfopen", o); tog.setAttribute("aria-expanded", String(o));  };
     tog.addEventListener("click", function () { setOpen(!body.classList.contains("pn-pfopen")); });
     box.classList.add("ds-keep");
     var wrap = h("div", { class: "pn-fold-w ds-keep" }, [tog]);
@@ -728,7 +718,7 @@
     body.insertBefore(box, after);
     body.insertBefore(wrap, box.nextSibling);
     body.classList.add("pn-pfmode");
-    setOpen(ls("olnu.pnFold") === "1");
+    setOpen(false);   // I-48: closed every time the profile opens (no remembered state)
     hideLang(body);
   }
   function hideLang(body) {   // Swedish only: no SV/EN row
@@ -862,13 +852,33 @@
     } catch (e) {}
   }
 
+  /* I-47: the top-right avatar (#btn-settings) and the trophy (#btn-top) TOGGLE their sheet: a 2nd tap closes it, never stacks.
+     Capture phase: runs before the opener. A tap outside = backdrop (app.js closes it). */
+  var tglOpen = {};
+  function sheetToggle() {
+    ["btn-settings", "btn-top"].forEach(function (id) {
+      var b = document.getElementById(id); if (!b || b.__pnTgl) return; b.__pnTgl = 1;
+      b.addEventListener("click", function (e) {
+        var sh = document.getElementById("sheet"), st = document.getElementById("sheet-title");
+        var seen = tglOpen[id];
+        if (sh && !sh.hidden && seen && st && seen.indexOf(st.textContent) >= 0) {
+          e.stopImmediatePropagation(); e.preventDefault(); tglOpen[id] = null;
+          if (A && A.closeSheet) A.closeSheet("cancel"); else { var x = document.getElementById("sheet-close"); if (x) x.click(); }
+          return;
+        }
+        tglOpen = {}; var mine = tglOpen[id] = [];   // one opener at a time; the sheet title may be renamed a moment after opening
+        [60, 800].forEach(function (ms) { setTimeout(function () { var s2 = document.getElementById("sheet"), t2 = document.getElementById("sheet-title"); if (tglOpen[id] === mine && s2 && !s2.hidden && t2) mine.push(t2.textContent); }, ms); });
+      }, true);
+    });
+  }
+
   window.PNUI = {
     init: function (api) {
       A = api;
       document.body.classList.add("pn-calm");
       // Install card after the "aha" (first beer / group), not before the map: until then the daily guide sheet waits too.
       if (!ls("olnu.pnAha") && !standalone()) lsSet("olnu.guideSeen", String(Date.now()));
-      moreBtn(); backBtn(); setupTicker(); avatarBtn(); calmFlags(); hideGreetOnMove(); precToggle(); watch();
+      sheetToggle(); moreBtn(); backBtn(); setupTicker(); avatarBtn(); calmFlags(); hideGreetOnMove(); precToggle(); watch();
       setTimeout(function () { moreDot(); groupsOut(); paintStrip(); }, 500);
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") loadIkvall(false); });
     },

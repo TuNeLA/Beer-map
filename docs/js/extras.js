@@ -74,8 +74,9 @@
   function showTaxi() {
     A.openSheet(t("taxiTitle"), function (body) {
       body.appendChild(A.el("p", { text: t("taxiInfo") }));
-      body.appendChild(A.el("div", { html: taxiHTML("btn taxi-btn") }));
-      try { if (window.RUNDAN && window.RUNDAN.taxiSheet) window.RUNDAN.taxiSheet(body); } catch (e) {}   // 🏠 Taxi hem + 🚕 Dela taxin
+      var rt = window.RUNDAN && window.RUNDAN.taxiSheet;
+      if (!rt) body.appendChild(A.el("div", { html: taxiHTML("btn taxi-btn") }));   // I-55: RUNDAN draws the one Taxi + one Uber hem
+      try { if (rt) window.RUNDAN.taxiSheet(body); } catch (e) {}   // 🏠 Taxi hem + 🚕 Dela taxin
       if (window.SOCIAL && window.SOCIAL.sosBlock) { body.appendChild(A.el("h3", { text: t("safety") })); window.SOCIAL.sosBlock(body); }
     });
   }
