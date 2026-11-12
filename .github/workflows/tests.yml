@@ -105,6 +105,8 @@ jobs:
             filter: '^(left)$'
           - name: kpi
             filter: '^(kpi)$'
+          - name: popfix
+            filter: '^(popfix)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
