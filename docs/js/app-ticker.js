@@ -8,12 +8,12 @@
   function rpc() { return PN.rpc.apply(null, arguments); }
   function toast() { return PN.toast.apply(null, arguments); }
   function el() { return PN.el.apply(null, arguments); }
+  function flyTo() { return PN.flyTo.apply(null, arguments); }
+  function streakToastText() { return PN.streakToastText.apply(null, arguments); }
   function nightEnd() { return PN.nightEnd.apply(null, arguments); }
   function myBeer() { return PN.myBeer.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
   function beerOnly() { return PN.beerOnly.apply(null, arguments); }
-  function streakToastText() { return PN.streakToastText.apply(null, arguments); }
-  function flyTo() { return PN.flyTo.apply(null, arguments); }
   PN.put({
     whoOf: whoOf, placeLabel: placeLabel, loadGroupNews: loadGroupNews, renderTicker: renderTicker,
     renderTickerItemsOnly: renderTickerItemsOnly, streakAlerts: streakAlerts, chaosCenter: chaosCenter,

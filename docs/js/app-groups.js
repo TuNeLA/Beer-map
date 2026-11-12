@@ -14,6 +14,10 @@
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
   function copyText() { return PN.copyText.apply(null, arguments); }
+  function flyTo() { return PN.flyTo.apply(null, arguments); }
+  function skalCount() { return PN.skalCount.apply(null, arguments); }
+  function barTypeLabel() { return PN.barTypeLabel.apply(null, arguments); }
+  function maxLevel() { return PN.maxLevel.apply(null, arguments); }
   function whoOf() { return PN.whoOf.apply(null, arguments); }
   function placeLabel() { return PN.placeLabel.apply(null, arguments); }
   function friendsDrinking() { return PN.friendsDrinking.apply(null, arguments); }
@@ -23,11 +27,7 @@
   function showInvite() { return PN.showInvite.apply(null, arguments); }
   function showInstallGuide() { return PN.showInstallGuide.apply(null, arguments); }
   function beerOnly() { return PN.beerOnly.apply(null, arguments); }
-  function skalCount() { return PN.skalCount.apply(null, arguments); }
-  function barTypeLabel() { return PN.barTypeLabel.apply(null, arguments); }
-  function maxLevel() { return PN.maxLevel.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
-  function flyTo() { return PN.flyTo.apply(null, arguments); }
   PN.put({ showGroups: showGroups, showJoin: showJoin });
   // </split:imports>
 

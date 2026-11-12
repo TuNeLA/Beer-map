@@ -20,12 +20,8 @@
   function drainSheets() { return PN.drainSheets.apply(null, arguments); }
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
-  function nightEnd() { return PN.nightEnd.apply(null, arguments); }
-  function myBeer() { return PN.myBeer.apply(null, arguments); }
-  function myNight() { return PN.myNight.apply(null, arguments); }
-  function saveNight() { return PN.saveNight.apply(null, arguments); }
-  function updateCounts() { return PN.updateCounts.apply(null, arguments); }
-  function signIn() { return PN.signIn.apply(null, arguments); }
+  function getPosition() { return PN.getPosition.apply(null, arguments); }
+  function locError() { return PN.locError.apply(null, arguments); }
   function lvList() { return PN.lvList.apply(null, arguments); }
   function lvOf() { return PN.lvOf.apply(null, arguments); }
   function lvAt() { return PN.lvAt.apply(null, arguments); }
@@ -33,11 +29,15 @@
   function lvLine() { return PN.lvLine.apply(null, arguments); }
   function noLeadEmoji() { return PN.noLeadEmoji.apply(null, arguments); }
   function tl() { return PN.tl.apply(null, arguments); }
+  function nightEnd() { return PN.nightEnd.apply(null, arguments); }
+  function myBeer() { return PN.myBeer.apply(null, arguments); }
+  function myNight() { return PN.myNight.apply(null, arguments); }
+  function saveNight() { return PN.saveNight.apply(null, arguments); }
+  function updateCounts() { return PN.updateCounts.apply(null, arguments); }
+  function signIn() { return PN.signIn.apply(null, arguments); }
   function myCheckin() { return PN.myCheckin.apply(null, arguments); }
   function moveCheckin() { return PN.moveCheckin.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
-  function getPosition() { return PN.getPosition.apply(null, arguments); }
-  function locError() { return PN.locError.apply(null, arguments); }
   function askWhere() { return PN.askWhere.apply(null, arguments); }
   PN.put({
     tickCooldown: tickCooldown, drinkFx: drinkFx, resumeNotify: resumeNotify, undoSync: undoSync,
