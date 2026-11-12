@@ -71,6 +71,6 @@ release 0495
 release 0496
 release 0497
 release 0500
-release 0505
-release 0506
+release 0505   # DONE on live 12 Nov
+release 0506   # DONE on live 12 Nov
 release 0436
