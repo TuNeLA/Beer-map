@@ -33,6 +33,13 @@
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
   function copyText() { return PN.copyText.apply(null, arguments); }
+  function whoOf() { return PN.whoOf.apply(null, arguments); }
+  function loadGroupNews() { return PN.loadGroupNews.apply(null, arguments); }
+  function renderTicker() { return PN.renderTicker.apply(null, arguments); }
+  function renderTickerItemsOnly() { return PN.renderTickerItemsOnly.apply(null, arguments); }
+  function streakAlerts() { return PN.streakAlerts.apply(null, arguments); }
+  function chaosCenter() { return PN.chaosCenter.apply(null, arguments); }
+  function evalChaos() { return PN.evalChaos.apply(null, arguments); }
   function reauth() { return PN.reauth.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
   function withName() { return PN.withName.apply(null, arguments); }
@@ -58,10 +65,10 @@
   function showInstallGuide() { return PN.showInstallGuide.apply(null, arguments); }
   function startNotifAsk() { return PN.startNotifAsk.apply(null, arguments); }
   PN.put({
-    beerOnly: beerOnly, skalCount: skalCount, barTypeLabel: barTypeLabel, maxLevel: maxLevel, render: render,
-    whoOf: whoOf, placeLabel: placeLabel, friendsDrinking: friendsDrinking, myBeer: myBeer, refresh: refresh,
-    startPoll: startPoll, stopPoll: stopPoll, locate: locate, resumeNotify: resumeNotify, hidePin: hidePin,
-    flyTo: flyTo
+    beerOnly: beerOnly, streakToastText: streakToastText, skalCount: skalCount, barTypeLabel: barTypeLabel,
+    maxLevel: maxLevel, render: render, friendsDrinking: friendsDrinking, nightEnd: nightEnd, myBeer: myBeer,
+    refresh: refresh, startPoll: startPoll, stopPoll: stopPoll, locate: locate, resumeNotify: resumeNotify,
+    hidePin: hidePin, flyTo: flyTo
   });
   // </split:imports>
   // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
@@ -82,6 +89,7 @@
     zoomControl: false, attributionControl: false, minZoom: 3, maxZoom: 19,
     worldCopyJump: true, tap: true
   });
+  PN.put({ map: map });   // <split:put/>
   // Start on Ludvika. If the user allows location, we move to them (see locate()).
   map.setView(LUDVIKA, START_ZOOM);
   // Default tiles: Esri Dark Gray Canvas (no key, no watermark). With CFG.CARTO_KEY set: CARTO dark_all.
@@ -1023,334 +1031,6 @@
   map.on("moveend", U.debounce(function () { if (!plainFresh()) renderPlainBars(); }, 150));
   lastZoomBand = map.getZoom() >= 16 ? 2 : map.getZoom() >= HOT_ZOOM ? 1 : 0;
 
-  /* ---------- Ticker + streak alerts ---------- */
-  function whoOf(b) { return b.is_mine ? t("you") : b.friend_name || t("someone"); }
-  // Place phrase with its preposition: "vid Pub X" / "nära Pizzeria Y" / "i Ludvika" / "på okänd plats".
-  function whereOf(b) {
-    var d = window.BARS.describe(b);
-    return d.kind === "unknown" ? t("whereUnknown") : t("where_" + d.kind, d.name);
-  }
-  // Short place label without preposition, for list rows.
-  function placeLabel(b) {
-    var d = window.BARS.describe(b);
-    return d.kind === "near" ? t("nearX", d.name) : d.name || t("other");
-  }
-  /* News context (polish): my groups' members tonight (home_status, max every 3 min, only with groups),
-     call-outs, my name/title/new medals, check-ins, centre. */
-  var groupRows = [], groupRowsAt = 0, groupRowsOff = false, groupRowsBusy = false, GROUP_NEWS_MS = 180000;
-  function loadGroupNews() {
-    if (!LIVE || !PN.s.authed || groupRowsOff || groupRowsBusy || document.hidden) return;
-    if (Date.now() - groupRowsAt < GROUP_NEWS_MS) return;
-    groupRowsBusy = true; groupRowsAt = Date.now();
-    rpc("home_status", { p_last: false }).then(function (r) {
-      groupRowsBusy = false;
-      if (r.error) { if (U.missing(r.error)) groupRowsOff = true; return; }
-      groupRows = Array.isArray(r.data) ? r.data.filter(function (x) { return x && x.group_id != null; }) : [];
-      newsDirty = true;
-    });
-  }
-  function newsCtx(titles) {
-    var me = meState || {}, medals = [];
-    try {
-      var mm = window.MEDALS && window.MEDALS.mine ? window.MEDALS.mine() : null;
-      if (mm) Object.keys(mm).forEach(function (id) {
-        var at = Date.parse(mm[id] && mm[id].at || "") || 0;
-        if (at && Date.now() - at < 2 * 3600e3) medals.push(window.MEDALS.info(id).name);
-      });
-    } catch (e) {}
-    var rl = [];
-    try { rl = window.RALLY && window.RALLY.list ? window.RALLY.list() : []; } catch (e) { rl = []; }
-    return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles, liveTotal: liveTotal,   // fixM T-14: the header's own count
-      others: PN.s.beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: PN.s.checkins,
-      home: groupRows, rallies: rl, myName: getName() || null, myTitle: me.title || null, myMedals: medals.slice(0, 3) };
-  }
-  // QA #11: before the first GPS fix (location allowed, first 15 s) the ticker has no centre, so it does not
-  // name the start-view town. showMe() rebuilds the queued headlines when the fix arrives.
-  var newsNoCenter = false, newsBootAt = Date.now();
-  function newsCenter() {
-    if (!PN.s.lastLoc && !myBeer() && U.ls.get("olnu.locOk", "") === "1" && Date.now() - newsBootAt < 15000) { newsNoCenter = true; return null; }
-    return chaosCenter();
-  }
-  // LIVE ticker = funny TV news feed (js/news.js). New headlines after each poll (or language change), not on map moves.
-  var tickerKey = "", newsDirty = true, newsPrev = [];
-  // Lazy-loaded news texts (boot.js): use them at the next ticker refill.
-  document.addEventListener("olnu:lazy", function () { newsDirty = true; });
-  // dialekt (phase 2): a new region pack / Dialekt Auto<->Av: rebuild the queued headlines with the new lines
-  window.addEventListener("dialekt:change", function () { tickerKey = ""; newsDirty = true; try { renderTicker(); } catch (e) {} });
-  function renderTicker() {
-    if (LIVE && !PN.s.firstLoadDone && !x8Snapped) { newsDirty = true; return; }   // perf T-08: no "sover" lines before the first load
-    if (!newsDirty && tickerKey) return;
-    newsDirty = false;
-    var titles = null;
-    try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
-    var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
-    if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
-    newsPrev = items.map(function (x) { return x.text; });
-    tickerKey = "v2";
-    tickPending = items; tickIx = 0;
-    try { if (window.NEWS && window.NEWS.freshBelt) window.NEWS.freshBelt($("ticker-track")); } catch (e) {}   // fixM T-14: one snapshot on the belt
-    tickStart();
-  }
-  /* Smooth news belt: one constant speed, never restarts. New headlines are queued and join at the
-     end of the belt; items that have left on the left side are removed. */
-  var TICK_PX_S = 46, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false, tickMeasureAt = 0;
-  function tickPiece() {
-    var track = $("ticker-track"), frag = document.createDocumentFragment();
-    if (!tickKickDone) {
-      tickKickDone = true;
-      frag.appendChild(el("span", { class: "tk-kick", text: t("newsKick") }));
-    } else frag.appendChild(el("span", { class: "tk-sep", text: "///" }));
-    if (tickIx >= tickPending.length) {   // all queued shown once: build a fresh set next time
-      tickIx = 0; newsDirty = true;
-      try { renderTickerItemsOnly(); } catch (e) {}
-    }
-    var x = tickPending[tickIx++] || { text: t("tickQuiet"), cls: "tk-quiet" };
-    frag.appendChild(el("span", { class: "tk-item" + (x.cls ? " " + x.cls : ""), text: x.text }));
-    track.appendChild(frag);
-  }
-  function tickFill() {
-    var track = $("ticker-track"), vp = track.parentNode, need = (vp ? vp.clientWidth : 400) * 2 + 200, guard = 0;
-    while (track.scrollWidth - tickOff < need && guard++ < 20) tickPiece();
-  }
-  function tickFrame(ts) {
-    tickRaf = 0;
-    var track = $("ticker-track");
-    var dt = tickLast ? Math.min(0.1, (ts - tickLast) / 1000) : 0;
-    tickLast = ts;
-    tickOff += TICK_PX_S * dt * (window.PN_TICK_F == null ? 1 : window.PN_TICK_F);   // ui-build: hold to pause, eased
-    // Layout reads (offsetWidth / scrollWidth) only ~4 times a second, not every frame.
-    if (!tickMeasureAt || ts - tickMeasureAt >= 250 || ts < tickMeasureAt) {
-      tickMeasureAt = ts;
-      var first = track.firstChild, guard = 0;
-      while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
-        tickOff -= first.offsetWidth; track.removeChild(first); first = track.firstChild;
-      }
-      tickFill();
-    }
-    track.style.transform = "translate3d(" + (-tickOff).toFixed(2) + "px,0,0)";
-    tickRaf = requestAnimationFrame(tickFrame);
-  }
-  function tickStart() {
-    var track = $("ticker-track");
-    track.classList.remove("moving"); track.style.animation = "none";
-    if (window.FX && window.FX.reduced && window.FX.reduced()) { tickOneStart(track); return; }   // ownerfix 4c
-    if (!track.firstChild) tickFill();
-    if (!tickRaf) { tickLast = 0; tickRaf = requestAnimationFrame(tickFrame); }
-  }
-  // ownerfix 4c (owner 11 Nov: frozen on a PC with "Animation effects" off): reduced motion = ONE headline at a time,
-  // a soft opacity swap every 6 s (no sideways motion), tap = next line (pnds.js → PN_TICK_NEXT). Pauses with the
-  // controller (PNTICK: tap-stop / hold / open sheet) and in a hidden tab. A new poll only refills the queue.
-  var tickOneT = 0, TICK_ONE_MS = 6000;
-  function tickOneItem() {
-    if (tickIx >= tickPending.length) { tickIx = 0; newsDirty = true; try { renderTickerItemsOnly(); } catch (e) {} }
-    return tickPending[tickIx++] || { text: t("tickQuiet"), cls: "tk-quiet" };
-  }
-  function tickOneShow(track, fade) {
-    var x = tickOneItem(), n = el("span", { class: "tk-item tk-one-i" + (x.cls ? " " + x.cls : "") + (fade ? " tk-one-out" : ""), text: x.text, title: x.text });
-    track.innerHTML = ""; track.appendChild(n);
-    if (fade) requestAnimationFrame(function () { requestAnimationFrame(function () { n.classList.remove("tk-one-out"); }); });
-  }
-  function tickOneNext() {
-    var track = $("ticker-track"), cur = track && track.firstChild; if (!track) return;
-    clearInterval(tickOneT); tickOneT = setInterval(tickOneTick, TICK_ONE_MS);   // a tap starts a fresh 6 s
-    if (!cur || cur.classList.contains("tk-one-out")) { tickOneShow(track, true); return; }
-    cur.classList.add("tk-one-out");
-    setTimeout(function () { if ($("ticker-track").firstChild === cur) tickOneShow($("ticker-track"), true); }, 260);
-  }
-  function tickOneTick() {
-    var p = false; try { p = !!(window.PNTICK && window.PNTICK.paused()); } catch (e) {}
-    if (!p && !document.hidden) tickOneNext();
-  }
-  function tickOneStart(track) {
-    if (tickRaf) { cancelAnimationFrame(tickRaf); tickRaf = 0; }
-    track.style.transform = "none"; track.classList.add("tk-one");
-    try { track.parentNode.classList.add("tk-one-vp"); track.parentNode.scrollLeft = 0; } catch (e) {}
-    if (!document.getElementById("of-tick-one-css") && document.head) {
-      var st = document.createElement("style"); st.id = "of-tick-one-css";
-      st.textContent = ".ticker .tk-viewport.tk-one-vp{overflow:hidden}" +
-        ".tk-track.tk-one{width:100%;transform:none!important}" +
-        ".tk-track.tk-one>.tk-one-i{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.15;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 8px;opacity:1;transition:opacity .25s ease}" +
-        ".tk-track.tk-one>.tk-one-i.tk-one-out{opacity:0}";
-      document.head.appendChild(st);
-    }
-    window.PN_TICK_NEXT = tickOneNext;
-    if (!track.querySelector(".tk-one-i")) tickOneShow(track, false);
-    if (!tickOneT) tickOneT = setInterval(tickOneTick, TICK_ONE_MS);
-  }
-  // Build a fresh set of headlines for the queue without touching what is on screen.
-  function renderTickerItemsOnly() {
-    if (LIVE && !PN.s.firstLoadDone && !x8Snapped) { newsDirty = true; return; }   // perf T-08
-    newsDirty = false;
-    var titles = null;
-    try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
-    var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
-    if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
-    newsPrev = items.map(function (x) { return x.text; });
-    tickPending = items;
-  }
-  // Known pins (friends) keep their numeric id: compare by id. Strangers get a new opaque id every
-  // 10 min and only the map view is polled: count strangers per level inside the part of the map both
-  // polls covered, and toast only when that count went up (an id change or a pan never toasts).
-  var prevLevels = null, prevStr = null, prevBox = null;
-  function strangerLevels(box) {
-    var c = { 1: [], 2: [] };
-    PN.s.beers.forEach(function (b) {
-      if (b.is_mine || b.friend_name || b.is_friend) return;
-      if (box && !(b.lat >= box[0] && b.lat <= box[2] && b.lng >= box[1] && b.lng <= box[3])) return;
-      var l = U.level(U.drinks(b)); if (l) c[l].push(b);
-    });
-    return c;
-  }
-  function streakAlerts(box) {
-    var now = {};
-    PN.s.beers.forEach(function (b) { if (b.is_mine || b.friend_name || b.is_friend) now[b.id] = U.level(U.drinks(b)); });
-    if (prevLevels) {
-      PN.s.beers.forEach(function (b) {
-        if (b.is_mine || now[b.id] == null) return;
-        var before = prevLevels[b.id] | 0, l = now[b.id];
-        if (l > before) {
-          var who = whoOf(b), where = whereOf(b);
-          toast(streakToastText(b, l, who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
-        }
-      });
-    }
-    prevLevels = now;
-    // Strangers: overlap of the previous and the current poll box (whole world when there is no box).
-    var inter = null;
-    if (box && prevBox) inter = [Math.max(box[0], prevBox[0]), Math.max(box[1], prevBox[1]), Math.min(box[2], prevBox[2]), Math.min(box[3], prevBox[3])];
-    if (inter && (inter[0] > inter[2] || inter[1] > inter[3])) inter = null;
-    var cur = strangerLevels(inter);
-    if (prevStr && (inter || (!box && !prevBox))) {
-      var before = { 1: 0, 2: 0 };
-      prevStr.forEach(function (x) {
-        if (!inter || (x.lat >= inter[0] && x.lat <= inter[2] && x.lng >= inter[1] && x.lng <= inter[3])) before[x.l]++;
-      });
-      [2, 1].some(function (l) {
-        if (cur[l].length <= before[l]) return false;
-        var b = cur[l][cur[l].length - 1], who = whoOf(b), where = whereOf(b);
-        toast(streakToastText(b, l, who, where), { ms: 5000, cls: l === 2 ? "med" : "hot" });
-        return true;
-      });
-    }
-    var all = strangerLevels(null);
-    prevStr = all[1].map(function (b) { return { lat: b.lat, lng: b.lng, l: 1 }; }).concat(all[2].map(function (b) { return { lat: b.lat, lng: b.lng, l: 2 }; }));
-    prevBox = box || null;
-  }
-
-  /* ---------- Kaos i stan (in-app only, anonymous counts) ---------- */
-  var chaosRes = null;         // last result of CHAOS.compute
-  var chaosPrevOn = null;      // was it chaos at the last poll? (null before the first poll)
-  var chaosShown = false;
-  // {at, out, hot, until} when the user tapped ✕ or the banner hid itself. Saved, so it stays away
-  // after the app is reopened, until 05:00 or until the night gets clearly wilder.
-  var CHAOS_SEEN_KEY = "olnu.chaosSeen", CHAOS_AUTO_MS = 9000, chaosAutoTimer = null;
-  var chaosHidden = (function () {
-    var v = U.ls.getJSON(CHAOS_SEEN_KEY, null);
-    return v && v.until > Date.now() ? v : null;
-  })();
-  function chaosMarkSeen(r) {
-    chaosHidden = { at: Date.now(), out: r.out | 0, hot: r.hot | 0, until: nightEnd() };
-    U.ls.setJSON(CHAOS_SEEN_KEY, chaosHidden);
-  }
-  var chaosLine = null;        // {lang, ix} of the headline on screen
-  var chaosLastIx = -1;        // last headline index, never the same twice in a row
-  var CHAOS_BACK_MS = 60 * 60 * 1000;
-  function chaosCenter() {
-    if (PN.s.lastLoc) return PN.s.lastLoc;
-    var m = myBeer();
-    if (m) return { lat: m.lat, lng: m.lng };
-    var c = map.getCenter();
-    return { lat: c.lat, lng: c.lng };
-  }
-  function chaosFits(line, r) {
-    if (line.indexOf("{bar}") >= 0 && !r.bar) return false;
-    if (line.indexOf("{hot}") >= 0 && !r.hot) return false;
-    return true;
-  }
-  function pickChaosLine(r) {
-    var lines = t("chaosLines") || [], ok = [];
-    lines.forEach(function (l, i) { if (chaosFits(l, r)) ok.push(i); });
-    if (ok.length > 1) ok = ok.filter(function (i) { return i !== chaosLastIx; });
-    var ix = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 0;
-    chaosLastIx = ix;
-    chaosLine = { lang: I.lang, ix: ix };
-  }
-  function chaosHeadline(r) {
-    var lines = t("chaosLines") || [];
-    if (!chaosLine || chaosLine.lang !== I.lang || !lines[chaosLine.ix] || !chaosFits(lines[chaosLine.ix], r)) pickChaosLine(r);
-    var town = r.city || t("chaosTown");
-    return String(lines[chaosLine.ix] || "").replace(/\{stad\}/g, town).replace(/\{n\}/g, String(r.out))
-      .replace(/\{hot\}/g, String(r.hot)).replace(/\{bar\}/g, r.bar || "");
-  }
-  function chaosFacts(r) {
-    var parts = [t("chaosOut", r.out)];
-    if (r.hot) parts.push(t("chaosHot", r.hot));
-    if (r.bar) parts.push(t("chaosBar", r.bar));
-    return parts.join(" · ");
-  }
-  function chaosSuppressed(r) {
-    if (!chaosHidden) return false;
-    // Comes back only when clearly wilder: 50 % more people out (min +5) or 2 more on hot streak, or after the night.
-    var back = Date.now() > (chaosHidden.until || 0) ||
-      r.out >= Math.max(Math.ceil(chaosHidden.out * 1.5), chaosHidden.out + 5) || r.hot >= chaosHidden.hot + 2;
-    if (back) { chaosHidden = null; U.ls.del(CHAOS_SEEN_KEY); }
-    return !back;
-  }
-  function setChaosHeight() {
-    var box = $("chaos");
-    // The banner floats over the HUD (it hides itself after a few seconds), so buttons never jump.
-    var h = 0;
-    document.documentElement.style.setProperty("--chaos-h", "0px");
-    // Keep popups clear of the banner too.
-    L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(10, 150 + h);
-  }
-  function renderChaos() {
-    var box = $("chaos"), r = chaosRes;
-    var show = !!(LIVE && r && r.on && !chaosSuppressed(r));
-    if (show && !chaosShown) pickChaosLine(r);   // new headline each time it starts or comes back
-    var started = show && !chaosShown;
-    chaosShown = show;
-    box.hidden = !show;
-    if (show) {
-      $("chaos-head").textContent = chaosHeadline(r);
-      $("chaos-facts").textContent = chaosFacts(r);
-      box.setAttribute("aria-label", t("chaosAria", r.city || t("chaosTown")));
-      $("chaos-show").textContent = t("chaosShow");
-      $("chaos-show").hidden = !r.target;
-      $("chaos-close").setAttribute("aria-label", t("chaosHide"));
-    }
-    setChaosHeight();
-    if (started) {
-      clearTimeout(chaosAutoTimer);
-      chaosAutoTimer = setTimeout(function () {
-        if (chaosShown && chaosRes) { chaosMarkSeen(chaosRes); renderChaos(); }
-      }, CHAOS_AUTO_MS);
-    } else if (!show) clearTimeout(chaosAutoTimer);
-    return started;
-  }
-  // fromPoll: called after live_beers loaded. Else (location or language changed): redraw, no toast.
-  function evalChaos(fromPoll) {
-    if (!window.CHAOS || !LIVE) return;
-    chaosRes = window.CHAOS.compute(beerOnly(), chaosCenter());
-    var started = renderChaos();
-    if (!fromPoll) return;
-    if (chaosPrevOn === false && chaosRes.on && started) {
-      toast($("chaos-head").textContent, { cls: "chaos-toast", ms: 5000, id: "chaos" });
-      if (!window.FX.muted()) window.FX.vibrate([30, 50, 30]);
-    }
-    chaosPrevOn = chaosRes.on;
-  }
-  $("chaos-show").addEventListener("click", function () {
-    var g = chaosRes && chaosRes.target; if (!g) return;
-    flyTo(g.lat, g.lng, g.zoom, null);
-  });
-  $("chaos-close").addEventListener("click", function () {
-    if (!chaosRes) return;
-    chaosMarkSeen(chaosRes);
-    renderChaos();
-  });
-  window.addEventListener("resize", U.debounce(setChaosHeight, 150));
-
   /* ---------- Skål ---------- */
   var mySkals = {};          // beer id -> count after my skål (kept until the server agrees)
   var prevMySkal = null;     // own skal_count at last poll (null before first load)
@@ -1521,10 +1201,9 @@
     return Object.keys(seen).length;
   }
   // v13 poll_v2 "me": the server's view of the caller (count, cooldown, undo, ghost). null on an old server.
-  var meState = null;
   // End of tonight: the server's expires_at when known, else the next 05:00 Stockholm (DST-safe).
   function nightEnd() {
-    var e = meState && meState.expires_at ? Date.parse(meState.expires_at) : NaN;
+    var e = PN.s.meState && PN.s.meState.expires_at ? Date.parse(PN.s.meState.expires_at) : NaN;
     if (!isFinite(e) || e < Date.now()) { var n = myNight(); e = n && n.expires ? n.expires : NaN; }
     return isFinite(e) && e > Date.now() ? e : U.next5am().getTime();
   }
@@ -1547,15 +1226,15 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = (window.ZONES && window.ZONES.pill && window.ZONES.pill()) || (LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(liveTotal != null ? liveTotal : lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive"));   // 🗺️ zones: "Dalarna · 47 ute ikväll" when zoomed out
+    $("live-count").innerHTML = (window.ZONES && window.ZONES.pill && window.ZONES.pill()) || (LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(PN.s.liveTotal != null ? PN.s.liveTotal : lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive"));   // 🗺️ zones: "Dalarna · 47 ute ikväll" when zoomed out
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
     var mine = myBeer();
     $("btn-stop").hidden = true; // Hidden from the dock (user asked). Still reachable in ⚙️ Inställningar.
     // v14: all drinks count. Server "me" first (also right when the pin is hidden), then the pin, then the phone.
-    var night = myNight(), n = meState ? U.drinks(meState) : mine ? U.drinks(mine) : night ? (night.count | 0) : 0;
-    if (!meState) {
+    var night = myNight(), n = PN.s.meState ? U.drinks(PN.s.meState) : mine ? U.drinks(mine) : night ? (night.count | 0) : 0;
+    if (!PN.s.meState) {
       var oc = mine ? mine.other_count | 0 : 0;
       try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
       if (!mine) n += oc;
@@ -1624,8 +1303,8 @@
     applyPrec();
     mods("applyText");
     updateCounts();
-    tickerKey = ""; newsDirty = true; renderTicker();
-    if (chaosRes) evalChaos(false);
+    PN.s.tickerKey = ""; PN.s.newsDirty = true; renderTicker();
+    if (PN.s.chaosRes) evalChaos(false);
     $("chaos-show").textContent = t("chaosShow");
     $("chaos-close").setAttribute("aria-label", t("chaosHide"));
     tickCooldown();
@@ -1677,7 +1356,7 @@
     });
   }
   // v13 poll_v2: one call per poll for the map view (+ margin). "unknown" | "on" | "missing" (old server).
-  var pollV2 = "unknown", liveTotal = null, heatAskAt = 0, pollBox = null, lastPollAt = 0, lastAcceptAt = 0;
+  var pollV2 = "unknown", heatAskAt = 0, pollBox = null, lastPollAt = 0, lastAcceptAt = 0;
   function viewBox() {
     var b = map.getBounds(), s = Math.max(-85, b.getSouth()), n = Math.min(85, b.getNorth());
     var w = b.getWest(), e = b.getEast();
@@ -1703,7 +1382,7 @@
   // came back is older than that beer: its cooldown is ignored.
   function applyMe(me, startedAt) {
     if (!me || typeof me !== "object") return;
-    meState = me;
+    PN.s.meState = me;
     if (startedAt < lastAcceptAt) return;
     var m = myNight() || {};
     m.count = me.beer_count | 0;
@@ -1762,7 +1441,7 @@
         box = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
         pollBox = box;
         PN.s.beers = normPins(d.pins);
-        liveTotal = d.live_total != null ? d.live_total | 0 : null;
+        PN.s.liveTotal = d.live_total != null ? d.live_total | 0 : null;
         PN.s.checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
         checkinState = "on"; syncMyCheckin();
         if (othersState !== "on") { othersState = "on"; mods("onOthersState", true); }
@@ -1775,7 +1454,7 @@
       }
       return fetchOld().then(function (list) {
         if (PN.s.movedState) return;
-        PN.s.beers = normPins(list); liveTotal = null; pollBox = null; meState = null;
+        PN.s.beers = normPins(list); PN.s.liveTotal = null; pollBox = null; PN.s.meState = null;
       });
     }).then(function () {
       if (PN.s.movedState) return;
@@ -1786,7 +1465,7 @@
         if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
       });
       if (window.NEWS) window.NEWS.update(beerOnly());
-      newsDirty = true;
+      PN.s.newsDirty = true;
       loadGroupNews();
       render();
       loadHeatPoints();
@@ -1826,15 +1505,14 @@
   var pollTimer = null, lastTouch = Date.now();
   function idle() { return Date.now() - lastTouch > IDLE_MS; }
   // x8: cold start with no net → the last good poll_v2 answer from this phone (≤ 3 h, same user), drawn once, with the caption
-  var x8Snapped = false;
   function x8Snap() {
-    if (x8Snapped || PN.s.beers.length || !window.X8) return x8Snapped;
+    if (PN.s.x8Snapped || PN.s.beers.length || !window.X8) return PN.s.x8Snapped;
     var o = window.X8.snapGet(); if (!o) return false;
-    x8Snapped = true;
+    PN.s.x8Snapped = true;
     try {
-      PN.s.beers = normPins(o.pins); liveTotal = o.live_total != null ? o.live_total | 0 : null;
+      PN.s.beers = normPins(o.pins); PN.s.liveTotal = o.live_total != null ? o.live_total | 0 : null;
       PN.s.checkins = (o.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
-      drinkViews = null; newsDirty = true; render(); updateCounts();
+      drinkViews = null; PN.s.newsDirty = true; render(); updateCounts();
       window.X8.staleShow();   // the caption shows at once ("Senast uppdaterad <snapshot time>")
     } catch (e) {}
     return true;
@@ -2051,8 +1729,8 @@
   function showMe(lat, lng, acc) {
     PN.s.lastLoc = { lat: lat, lng: lng };
     if (PUSH_ON && PN.s.authed) window.PUSH.setLocation(rpc, lat, lng);
-    if (chaosRes) evalChaos(false);
-    if (newsNoCenter) { newsNoCenter = false; try { if (tickerKey) renderTickerItemsOnly(); } catch (e) {} }
+    if (PN.s.chaosRes) evalChaos(false);
+    if (PN.s.newsNoCenter) { PN.s.newsNoCenter = false; try { if (PN.s.tickerKey) renderTickerItemsOnly(); } catch (e) {} }
     meLayer.clearLayers();
     if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
     L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
@@ -2095,7 +1773,7 @@
   }
   // v14: all drinks count. Drinks tonight after an accepted beer = beers + other drinks (server "me" or pin).
   function othersNow() {
-    var oc = meState ? meState.other_count | 0 : 0, mine = myBeer();
+    var oc = PN.s.meState ? PN.s.meState.other_count | 0 : 0, mine = myBeer();
     if (mine) oc = Math.max(oc, mine.other_count | 0);
     try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
     return oc;
@@ -2351,7 +2029,7 @@
   // X8 flush → one queued beer. Answers { kind: ok | refused | cooldown | net | skip, wait }.
   function x8Send(q) {
     if (!LIVE || !PN.s.authed || PN.s.busy || PN.s.movedState) return Promise.resolve({ kind: "skip" });
-    var before = U.drinks(meState || myBeer() || {});
+    var before = U.drinks(PN.s.meState || myBeer() || {});
     return postBeer({ lat: q.lat, lng: q.lng, precise: q.precise, home: q.home }, q.ghost).then(function (res) {
       var r = res.r;
       if (r.error) {
@@ -2384,7 +2062,7 @@
     getPosition().then(askWhere, noGpsSpot).then(function (spot) {
       if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
       var ghost = !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
-      var before = U.drinks(meState || myBeer() || {});
+      var before = U.drinks(PN.s.meState || myBeer() || {});
       beerPending();
       var sentAt = Date.now();
       return postBeer(spot, ghost)
@@ -2415,7 +2093,7 @@
     var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow();
     if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
     var l = U.level(total);
-    if (meState) { meState.beer_count = d.beer_count | 0; meState.undo_until = d.undo_until || null; }
+    if (PN.s.meState) { PN.s.meState.beer_count = d.beer_count | 0; PN.s.meState.undo_until = d.undo_until || null; }
     var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
     var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
     var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
@@ -2604,13 +2282,13 @@
       }
       pollBox = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
       PN.s.beers = normPins(d.pins);
-      liveTotal = d.live_total != null ? d.live_total | 0 : null;
+      PN.s.liveTotal = d.live_total != null ? d.live_total | 0 : null;
       PN.s.checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       if (Array.isArray(d.heat)) heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
       drinkViews = null; lastPollAt = Date.now();
       if (window.X8) window.X8.pollOk(null);   // perf T-08: caption off, busy over
       if (window.NEWS) window.NEWS.update(beerOnly());
-      newsDirty = true;
+      PN.s.newsDirty = true;
       render(); try { renderHeat(); } catch (e) {}
       evalChaos(true); toastClear("load");
       if (!PN.s.firstLoadDone) { PN.s.firstLoadDone = true; handleFocus(); }
@@ -2659,13 +2337,13 @@
     applyStaticText();
     applyOnline();
     // Bars load after the first poll: then also re-check the busiest bar in the chaos banner (no toast).
-    window.BARS.init({ map: map, onChange: function () { render(); if (chaosRes) evalChaos(false); } });
+    window.BARS.init({ map: map, onChange: function () { render(); if (PN.s.chaosRes) evalChaos(false); } });
     // Restaurant names for the feed: load after the map is up, then redraw the ticker.
     setTimeout(window.BARS.loadPlaces, 1500);
     // Places now load in tiles as the map moves: redraw the markers too, so a restaurant with a check-in or with
     // people (known only after its tile arrived) gets its marker.
     var placesRender = U.debounce(function () { render(); }, 300);
-    window.BARS.onPlacesReady(function () { tickerKey = ""; newsDirty = true; renderTicker(); placesRender(); });
+    window.BARS.onPlacesReady(function () { PN.s.tickerKey = ""; PN.s.newsDirty = true; renderTicker(); placesRender(); });
     // Flyttkod first (finish a pending export, import a code, or ask in a new home-screen app), then intro + sign-in.
     var boot;
     try { boot = flyttBoot(); } catch (e) { boot = Promise.resolve(); }
@@ -2799,12 +2477,12 @@
     return {
       LIVE: LIVE, PUSH_ON: PUSH_ON, t: t, map: map, rpc: rpc, parseData: parseData, bundleStats: function () { return bundleStats; }, chatLane: chatLane, flagsDirty: flagsDirty, _lanes: function () { return Object.keys(lanes); }, toast: toast, toastClear: toastClear,
       openSheet: openSheet, closeSheet: closeSheet, el: el, btn: btn, errMsg: errMsg, flyTo: flyTo, refresh: refresh,
-      render: render, updateCounts: updateCounts, renderTicker: function () { tickerKey = ""; newsDirty = true; renderTicker(); },
+      render: render, updateCounts: updateCounts, renderTicker: function () { PN.s.tickerKey = ""; PN.s.newsDirty = true; renderTicker(); },
       beers: function () { return PN.s.beers; }, myBeer: myBeer, myNight: myNight, getName: getName, withName: withName,
       authed: function () { return PN.s.authed; }, client: function () { return PN.s.client; }, prec: function () { return prec; },
       noAccount: function () { return PN.s.publicOn && !PN.s.authed; }, ensureAccount: function () { return signIn(); },   // ⚡ SPEED #6
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, validPos: U.validPos, showGroups: showGroups,
-      drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, hidePin: hidePin, me: function () { return meState; },
+      drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, hidePin: hidePin, me: function () { return PN.s.meState; },
       pollV2: function () { return pollV2 === "on"; },
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return othersState === "on"; },
       checkins: function () { return PN.s.checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return PN.s.lastLoc; },
