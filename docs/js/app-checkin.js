@@ -17,10 +17,10 @@
   function nightEnd() { return PN.nightEnd.apply(null, arguments); }
   function myNight() { return PN.myNight.apply(null, arguments); }
   function updateCounts() { return PN.updateCounts.apply(null, arguments); }
+  function refresh() { return PN.refresh.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
   function withName() { return PN.withName.apply(null, arguments); }
   function signIn() { return PN.signIn.apply(null, arguments); }
-  function refresh() { return PN.refresh.apply(null, arguments); }
   PN.put({
     myCheckin: myCheckin, syncMyCheckin: syncMyCheckin, checkinsAt: checkinsAt, checkinNamesHTML: checkinNamesHTML,
     checkinBtnHTML: checkinBtnHTML, doCheckin: doCheckin, moveCheckin: moveCheckin, askWhere: askWhere

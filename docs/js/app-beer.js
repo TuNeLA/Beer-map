@@ -37,8 +37,8 @@
   function myNight() { return PN.myNight.apply(null, arguments); }
   function saveNight() { return PN.saveNight.apply(null, arguments); }
   function updateCounts() { return PN.updateCounts.apply(null, arguments); }
-  function signIn() { return PN.signIn.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
+  function signIn() { return PN.signIn.apply(null, arguments); }
   PN.put({
     tickCooldown: tickCooldown, drinkFx: drinkFx, resumeNotify: resumeNotify, undoSync: undoSync,
     showStopSheet: showStopSheet, hidePin: hidePin

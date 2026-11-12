@@ -19,8 +19,8 @@
   function doCheckin() { return PN.doCheckin.apply(null, arguments); }
   function whoOf() { return PN.whoOf.apply(null, arguments); }
   function myBeer() { return PN.myBeer.apply(null, arguments); }
-  function hidePin() { return PN.hidePin.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
+  function hidePin() { return PN.hidePin.apply(null, arguments); }
   PN.put({
     skalAlert: skalAlert, beerById: beerById, skalCall: skalCall, crowdSort: crowdSort, openCrowd: openCrowd,
     showBeer: showBeer

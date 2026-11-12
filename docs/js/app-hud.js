@@ -15,9 +15,9 @@
   function myCheckin() { return PN.myCheckin.apply(null, arguments); }
   function renderTicker() { return PN.renderTicker.apply(null, arguments); }
   function evalChaos() { return PN.evalChaos.apply(null, arguments); }
-  function tickCooldown() { return PN.tickCooldown.apply(null, arguments); }
   function beerOnly() { return PN.beerOnly.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
+  function tickCooldown() { return PN.tickCooldown.apply(null, arguments); }
   PN.put({
     friendsDrinking: friendsDrinking, nightEnd: nightEnd, myBeer: myBeer, myNight: myNight, saveNight: saveNight,
     updateCounts: updateCounts, hudPanel: hudPanel, applyStaticText: applyStaticText, applyOnline: applyOnline
