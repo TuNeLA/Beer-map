@@ -54,7 +54,7 @@ jobs:
           - name: cln
             filter: '^(cln)$'
           - name: dm
-            filter: '^(dm)$'
+            filter: '^(dm|s1speed)$'
           - name: dialekt
             filter: '^(dialekt|dialekt-packs)$'
           - name: games2

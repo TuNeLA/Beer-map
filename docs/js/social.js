@@ -578,7 +578,7 @@
       try { if (!g.ev && !g.dm && window.RUNDAN && window.RUNDAN.chatOpen) window.RUNDAN.chatOpen(g, { list: list, input: inp.parentNode, alive: alive }); } catch (e) {}   // 💸 Swish cards
       try { if (!g.ev && !g.dm && window.SPEL && window.SPEL.chatOpen) window.SPEL.chatOpen(g, { list: list, alive: alive }); } catch (e) {}   // 🎉 HOPPA IN on "Kalla in gänget" rows
       try { if (g.ev && window.EVCHAT && window.EVCHAT.chatOpen) window.EVCHAT.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}
-      try { if (g.dm && window.DM && window.DM.chatOpen) window.DM.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {}   // 💬 1:1
+      try { if (g.dm && window.DM && window.DM.chatOpen) window.DM.chatOpen(g, { list: list, input: inp.parentNode, note: note, alive: alive }); } catch (e) {} try { if (window.PN && window.PN.chatLive) window.PN.chatLive.chat(g, { list: list, input: inp.parentNode, alive: alive, reload: function () { fast(); loadLikes(); load(); } }); } catch (e) {}   // 💬 1:1 · s1speed ⚡ PN.chatLive: a Realtime nudge runs the chat tick now (flag dmLive)
       function add(m, anchor) {
         if (!m || seen[m.id]) return;
         seen[m.id] = 1;
