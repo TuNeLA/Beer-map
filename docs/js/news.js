@@ -172,9 +172,28 @@
     // an old quiet line on screen that the NEW snapshot would not allow (its own threshold), or the plain "Lugnt läge" filler
     [].forEach.call(track.querySelectorAll(".tk-item.tk-quiet"), function (e) {
       var lim = quietText[String(e.textContent || "")];
-      if ((lim && snap.n >= lim) || (!lim && snap.n >= 3)) e.classList.add("tk-stale");
+      if ((lim && snap.n >= lim) || (!lim && snap.n >= 3)) staleOut(e);
     });
     return cut;
+  }
+  // ownerfix 4a (owner PC shot, 11 Nov): an invisible line that keeps its width = a big gap between "///" on a wide screen.
+  // Fade it (250 ms), then fold it shut together with one separator (300 ms) and remove both: the belt closes up smoothly.
+  function staleOut(e) {
+    if (!e || e.__ofStale) return; e.__ofStale = true;
+    e.classList.add("tk-stale");
+    var p = e.previousElementSibling, n = e.nextElementSibling;
+    var sep = p && p.classList.contains("tk-sep") ? p : n && n.classList.contains("tk-sep") ? n : null;
+    var parts = sep ? [e, sep] : [e];
+    var gone = function () { parts.forEach(function (x) { if (x.parentNode) x.parentNode.removeChild(x); }); };
+    var red = false; try { red = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (x) {}
+    if (red) { gone(); return; }
+    if (sep) { sep.style.transition = "opacity .25s ease"; sep.style.opacity = "0"; }
+    setTimeout(function () {
+      parts.forEach(function (x) { x.style.maxWidth = x.offsetWidth + "px"; x.style.overflow = "hidden"; x.style.boxSizing = "border-box"; });
+      void e.offsetWidth;
+      parts.forEach(function (x) { x.style.transition = "max-width .3s ease, padding .3s ease, opacity .25s ease"; x.style.maxWidth = "0px"; x.style.paddingLeft = "0px"; x.style.paddingRight = "0px"; });
+      setTimeout(gone, 330);
+    }, 260);
   }
   /* fixM T-14 SNAP END */
   var sideSeen = {}, SIDE_FRESH_MS = 40 * 60 * 1000;   // pin id -> {n: other_count, at: when it went up}

@@ -176,7 +176,9 @@
     c.appendChild(h("p", { text: "Kort och tydligt. Det här gäller chatt, bilder, röstklipp, namn, avatarer, event och tips:" }));
     c.appendChild(h("ul", { class: "sf-rules" }, RULES.map(function (r) { return h("li", { text: r }); })));
     c.appendChild(h("p", { text: "Ser du nåt som bryter mot reglerna? Tryck på inlägget → Anmäl, eller Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
-    c.appendChild(h("p", { class: "muted", html: "Frågor eller anmälan utanför appen: <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
+    var cl = h("p", { class: "muted", html: "Frågor? <a href=\"#\" class=\"sf-ct-link\">Skriv till oss i appen</a> · eller mejla <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" });   // ownerfix 6
+    cl.querySelector(".sf-ct-link").addEventListener("click", function (e) { e.preventDefault(); closeOverlay(); contactSheet("fraga"); });
+    c.appendChild(cl);
   }
   // Unknown server state (old server, offline, first second after start) = no gate; the server answer decides.
   var termsMem = false;   // left T-05b: accepted in this page life (also when localStorage is blocked: never ask twice for one post)
@@ -468,7 +470,9 @@
         overlay(function (c) {
           c.appendChild(h("h2", { html: icT("megaphone", "Från PintsNow") }));
           nn.forEach(function (x) { c.appendChild(h("p", { text: String(x.text || "") })); });
-          c.appendChild(h("p", { class: "muted", html: "Tycker du att det blev fel? Skriv till <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>." }));
+          var cn = h("p", { class: "muted", html: "Tycker du att det blev fel? <a href=\"#\" class=\"sf-ct-link\">Skriv till oss</a> · eller mejla <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>." });   // ownerfix 6
+          cn.querySelector(".sf-ct-link").addEventListener("click", function (e) { e.preventDefault(); closeOverlay(); rpc("safety_state", { p_seen: true }); contactSheet("annat"); });
+          c.appendChild(cn);
           c.appendChild(h("button", { type: "button", class: "btn btn-amber btn-block", text: "Uppfattat", onclick: function () { closeOverlay(); rpc("safety_state", { p_seen: true }); } }));
         }, { label: "Meddelande" });
       }
@@ -501,6 +505,56 @@
       });
     }, { label: "Blockerade" });
   }
+  /* ---------- ownerfix 6: ✉️ Kontakt = an in-app form (was a mailto link) ---------- */
+  var TOPICS = [["fraga", "Fråga"], ["anmalan", "Anmälan"], ["fel", "Fel i appen"], ["annat", "Annat"]];
+  var MAIL_RX = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i;
+  function contactSheet(pre) {
+    var topic = pre || "fraga";
+    if (!(A && A.LIVE)) { location.href = "mailto:" + SUPPORT; return; }   // demo / no server: the mail app as before
+    overlay(function (c) {
+      c.classList.add("sf-ct");
+      c.appendChild(h("h2", { html: icT("mail", "Kontakta oss") }));
+      c.appendChild(h("p", { class: "muted", text: "Skriv här, vi läser allt. Vill du ha svar? Lämna din e-post." }));
+      var hint = h("p", { class: "muted sf-ct-hint", hidden: true, text: "Gäller det ett inlägg, en bild eller en person? Tryck på det i appen → Anmäl, så hamnar det rätt direkt." });
+      var chips = h("div", { class: "sf-chips sf-ct-chips", role: "radiogroup", "aria-label": "Ämne" });
+      TOPICS.forEach(function (x) { chips.appendChild(h("button", { type: "button", class: "sf-chip", role: "radio", "aria-checked": String(x[0] === topic), "data-t": x[0], text: x[1] })); });
+      chips.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-t]"); if (!b) return;
+        topic = b.getAttribute("data-t");
+        chips.querySelectorAll("[data-t]").forEach(function (y) { y.setAttribute("aria-checked", String(y === b)); });
+        hint.hidden = topic !== "anmalan";
+      });
+      c.appendChild(chips); c.appendChild(hint); hint.hidden = topic !== "anmalan";
+      var ta = h("textarea", { class: "sf-note sf-ct-text", maxlength: "800", rows: "4", placeholder: "Vad vill du säga?", "aria-label": "Meddelande" });
+      c.appendChild(ta);
+      var mail = h("input", { class: "inp sf-ct-mail", type: "email", inputmode: "email", autocomplete: "email", maxlength: "120", placeholder: "Din e-post (frivilligt, för svar)", "aria-label": "Din e-post (frivilligt)" });
+      c.appendChild(mail);
+      var send = h("button", { type: "button", class: "btn btn-amber btn-block sf-ct-send", html: icT("mail", "Skicka") });
+      send.addEventListener("click", function () {
+        var t = String(ta.value || "").trim(), m = String(mail.value || "").trim();
+        if (t.length < 3) { toast("Skriv lite mer först.", { err: true }); try { ta.focus(); } catch (e) {} return; }
+        if (m && !MAIL_RX.test(m)) { toast("Kolla e-posten, den ser konstig ut.", { err: true }); try { mail.focus(); } catch (e) {} return; }
+        var lab = (TOPICS.filter(function (x) { return x[0] === topic; })[0] || TOPICS[0])[1];
+        var body = "[kontakt · " + lab + "] " + t + (m ? " · svar till: " + m : "");
+        var v = ""; try { var sc = [].slice.call(document.scripts).map(function (x) { return x.src || ""; }).filter(function (x) { return /app\.js/.test(x); })[0]; v = ((/[?&]v=([^&]+)/.exec(sc || "") || [])[1] || "").slice(0, 40); } catch (e) {}   // same as knas.js ver()
+        send.disabled = true;
+        rpc("submit_knas", { p_text: body, p_shot: null, p_logs: [], p_meta: { from: "kontakt", v: v } }).then(function (r) {
+          if (r && r.error && missing(r.error)) return rpc("submit_feedback", { p_kind: topic === "fel" ? "bug" : "wish", p_text: body, p_meta: { v: v } });   // 0410 not run yet
+          return r;
+        }).then(function (r) {
+          send.disabled = false;
+          var e = r && r.error, msg = e ? String(e.message || "") : "";
+          if (e && /slow_down/.test(msg)) { toast("Lugn i stormen – du har skickat många idag. Försök i morgon.", { err: true, ms: 5000 }); return; }
+          if (e) { toast("Gick int' att skicka. Försök igen, eller mejla oss.", { err: true, ms: 5000 }); return; }
+          closeOverlay();
+          toast(m ? "Tack! Vi svarar till " + m + "." : "Tack! Meddelandet ä framme.", { ms: 4500 });
+        });
+      });
+      c.appendChild(send);
+      c.appendChild(h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Avbryt", onclick: closeOverlay }));
+      c.appendChild(h("p", { class: "muted sf-ct-mailto", html: "Funkar int' formuläret? Mejla <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
+    }, { label: "Kontakt" });
+  }
   function settingsSheet(body) {
     if (!body || body.querySelector(".sf-set")) return;
     var box = h("div", { class: "sf-set" });
@@ -509,7 +563,7 @@
     var row = h("div", { class: "row sf-set-row" });
     row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("rules", "Regler"), onclick: showRules }));
     if (A && A.LIVE && A.authed && A.authed()) row.appendChild(h("button", { type: "button", class: "btn btn-small", html: icT("block", "Blockerade"), onclick: blockedSheet }));
-    row.appendChild(h("a", { class: "btn btn-small", href: "mailto:" + SUPPORT, html: icT("mail", "Kontakt") }));
+    row.appendChild(h("button", { type: "button", class: "btn btn-small sf-ct-open", html: icT("mail", "Kontakt"), onclick: function () { contactSheet(); } }));   // ownerfix 6
     box.appendChild(row);
     body.appendChild(box);
   }
@@ -524,7 +578,7 @@
     onAuthed: function () { wrapSos(); loadState(); },
     settingsSheet: settingsSheet,
     ageWidget: ageWidget, ensureTerms: ensureTerms, showRules: showRules, rulesBody: rulesBody,
-    report: reportSheet, block: blockSheet, actions: actions, personActions: personActions,
+    report: reportSheet, block: blockSheet, contact: contactSheet, actions: actions, personActions: personActions,
     sos112: sos112, maskPins: maskPins, store: store, SUPPORT: SUPPORT, _state: function () { return stateCache; },
     // left T-05b: true = this post RPC (or any post, fn empty) must wait for Regler first (app.js rpcNet1 + the post buttons ask ensureTerms())
     needTerms: function (fn) { return (!fn || !!POST_FNS[fn]) && !termsOk() && !off.terms; },

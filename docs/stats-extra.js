@@ -96,7 +96,9 @@
       var li = el("li");
       var t = new Date(e.starts_at);
       li.appendChild(el("div", "x-ev-h", t.toLocaleString("sv-SE", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) + " · " + e.title));
-      li.appendChild(el("div", "x-sub", [e.place || "", e.town || "", e.source, e.status].filter(Boolean).join(" · ") + (e.url ? " · " + e.url : "")));
+      // ownerfix 7 (0497): why it waits, and how many said "Stämmer inte?"
+      var RS = { not_bar: "ingen känd krog", new_user: "ny anonym", penalty: "2 dolda tips på 30 d", reported: "anmäld, syns än", reports: "3 sa stämmer inte", confirmed: "2 tipsare", "auto:account": "auto: konto", "auto:history": "auto: godkänt förut", owner: "du" };
+      li.appendChild(el("div", "x-sub", [e.place || "", e.town || "", e.source, e.status, e.reason ? "varför: " + (RS[e.reason] || e.reason) : "", e.reports ? "🚩 " + e.reports : ""].filter(Boolean).join(" · ") + (e.url ? " · " + e.url : "")));
       var row = el("div", "x-acts");
       [["ok", "✅ Godkänn"], ["hidden", "🙈 Dölj"], ["pending", "⏳ Väntar"]].forEach(function (a) {
         if (a[0] === e.status) return;

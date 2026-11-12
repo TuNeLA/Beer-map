@@ -88,7 +88,7 @@
       KINDS.forEach(function (k) {
         var p = pr[k]; if (!p) return;
         ph += '<div class="bi-r">' + kindEmo(k) + " " + esc(kindName(k)) + ": <b>" + (p.kr | 0) + " kr</b> " +
-          '<span class="muted">· ' + esc(L("uppdaterat ", "updated ") + ago(p.at)) + (p.n > 1 ? esc(L(" · " + p.n + " rapporter", " · " + p.n + " reports")) : "") + "</span></div>";
+          '<span class="muted">· ' + esc(L("uppdaterat ", "updated ") + ago(p.at)) + (p.n > 0 ? esc(p.n === 1 ? L(" · 1 rapport", " · 1 report") : L(" · " + p.n + " rapporter", " · " + p.n + " reports")) : "")   /* ownerfix 5: "1 rapport" = thin */ + "</span></div>";
       });
       if (!ph) ph = '<div class="bi-r muted">' + esc(d ? L("Inget pris rapporterat än.", "No price reported yet.") : L("Laddar…", "Loading…")) + "</div>";
       if (live && !off.report_bar_price) ph += '<button type="button" class="bi-btn" data-bia="price">💰 ' + esc(L("Rapportera pris", "Report price")) + "</button>";
@@ -176,9 +176,21 @@
       body.appendChild(el("div", { class: "row bi-krrow" }, [minus, inp, el("span", { class: "bi-kr-u", text: "kr" }), plus]));
       body.appendChild(el("p", { class: "muted", text: L("20–300 kr. En rapport per sort och dag (ny rapport samma dag rättar den gamla). Visas som info, inte som reklam.",
         "20–300 kr. One report per kind and day (a new one the same day corrects it). Shown as info, not as an ad.") }));
+      // ownerfix 5: a typo guard. Above 150 kr for a beer / cider (250 kr for a drink) the sheet asks once more.
+      var sure = el("div", { class: "bi-sure", role: "alert", hidden: "" }), sureKr = 0;
       var send = A.btn(L("✅ Skicka", "✅ Send"), "btn-amber btn-block", function () {
         var kr = Math.round(+inp.value);
         if (!(kr >= 20 && kr <= 300)) { A.toast(L("Priset ska vara 20–300 kr.", "Price must be 20–300 kr."), { err: true }); return; }
+        if (kr > (kind === "drink" ? 250 : 150) && sureKr !== kr) {
+          sureKr = 0; sure.innerHTML = ""; sure.hidden = false;
+          sure.appendChild(el("p", { class: "bi-sure-q", text: kind === "drink" ? L("Är du säker? " + kr + " kr för en drink?", "Sure? " + kr + " kr for a drink?") :
+            L("Är du säker? " + kr + " kr för en öl?", "Sure? " + kr + " kr for a beer?") }));
+          sure.appendChild(el("div", { class: "row bi-sure-row" }, [
+            A.btn(L("Ändra", "Change"), "btn-small bi-sure-no", function () { sure.hidden = true; try { inp.focus(); inp.select(); } catch (e) {} }),
+            A.btn(L("Ja, " + kr + " kr", "Yes, " + kr + " kr"), "btn-small btn-amber bi-sure-yes", function () { sureKr = kr; sure.hidden = true; send.click(); })]));
+          return;
+        }
+        sureKr = 0;
         send.disabled = true;
         call("report_bar_price", { p_bar_id: id, p_kind: kind, p_kr: kr }).then(function (r) {
           send.disabled = false;
@@ -189,6 +201,8 @@
           fetchExtra(id, true); tagBoxes = {}; loadTags();
         });
       });
+      inp.addEventListener("input", function () { sure.hidden = true; sureKr = 0; });
+      body.appendChild(sure);
       body.appendChild(send);
     });
   }
