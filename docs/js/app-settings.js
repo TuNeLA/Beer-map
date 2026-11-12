@@ -185,104 +185,193 @@
     });
     body.appendChild(bar);
   }
-  function showSettings(tab) {
+  function showSettings(tab, sub) {
     if (tab === "p" || tab === "s") setTab = tab;
     var tabNow = setTab;
     openSheet(tabNow === "p" ? t("profile") : t("settings"), function (body) {
-      var tab = tabNow;
-      setTabs(body, tab);
-      if (tab === "p") mods("profileHead", body);   // js/profile.js hero card
-      if (tab === "s") {
-      body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("📲 " + t("inviteBtn"), "btn-amber btn-block", showInvite)]));
-      if (!U.isStandalone()) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn("🏠 " + t("guideTitle"), "btn-block", showInstallGuide)]));
-      }
+      setTabs(body, tabNow);
+      if (tabNow === "p") mods("profileHead", body);   // js/profile.js hero card
       if (!LIVE) body.appendChild(el("div", { class: "info", text: t("soonInfo") }));
-      if (tab === "p") {
-      if (LIVE && myBeer() && !(window.PNVIS && window.PNVIS.settingsRows)) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", hidePin)]));   // ownerfix 2   // lane main S2: Göm min pin is in Inställningar + the rail
-      body.appendChild(el("h3", { text: t("yourName") }));
-      var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
-      var saveName = function () {
-        var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
-        U.ls.set("olnu.name", n);
-        rpc("set_display_name", { p_display_name: n }).then(function (r) {
-          if (r.error) toast(errMsg(r.error), { err: true }); else toast(t("nameSaved"));
-        });
-      };
-      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") saveName(); });
-      body.appendChild(el("p", { class: "muted", text: t("nameHint") }));
-      body.appendChild(el("div", { style: "display:flex;gap:8px" }, [inp, btn(t("save"), "btn-amber", saveName)]));
-      mods("settingsName", body);   // v25: 📍 Hemstad (js/hometown.js), next to the name
-
-      // SAFE (owner 2026-11-07): Swedish only, no language switch.
-      }
-
-      if (tab === "s") {
-      if (PUSH_ON) {
-      body.appendChild(el("h3", { text: t("notifications") }));
-      var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": "false", "aria-label": t("notif") });
-      var row = el("div", { class: "toggle-row" }, [el("span", { text: t("notif") }), sw]);
-      body.appendChild(row);
-      if (iosNeedsInstall()) body.appendChild(el("div", { class: "info", text: t("iosInstall") }));
-      else if (window.PUSH.supported() && Notification.permission === "denied") body.appendChild(el("div", { class: "info", text: t("notifBlockedHelp") }));
-      window.PUSH.current().then(function (sub) { sw.setAttribute("aria-checked", String(!!sub)); });
-      if (PN.s.authed && window.PUSH.prefsSection) window.PUSH.prefsSection(body, rpc, toast);   // v27 🔔 välj notiser, nattro, max per kväll
-      sw.addEventListener("click", function () {
-        var on = sw.getAttribute("aria-checked") === "true";
-        if (on) {
-          window.PUSH.disable(rpc).then(function () { sw.setAttribute("aria-checked", "false"); toast(t("notifOff")); })
-            .catch(function (e) { toast(errMsg(e), { err: true }); });
-        } else {
-          enableNotifs().then(function (res) { sw.setAttribute("aria-checked", String(res === "on")); });
-        }
-      });
-      }
-
-      body.appendChild(el("h3", { text: t("sound") }));
-      var snd = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(!window.FX.muted()), "aria-label": t("soundLabel") });
-      snd.addEventListener("click", function () {
-        var on = snd.getAttribute("aria-checked") === "true";
-        window.FX.setMuted(on); snd.setAttribute("aria-checked", String(!on));
-        if (!on) { window.FX.unlock(); window.FX.sound.clink(); }
-      });
-      body.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
-
-      mods("settingsSheet", body);   // app behaviour: map style, restaurants, prices, fun, wishes
-      } else mods("profileSheet", body);   // about me: passport, friends + find-me, account, Swish, ghost, top list, Wrapped, SOS
-
-      if (LIVE && tab === "p") {
-        body.appendChild(el("h3", { text: t("flyttSection") }));
-        var fr = el("div", { class: "row" });
-        if (storedAuth() && !PN.s.movedState) fr.appendChild(btn(t("flyttBtn"), "btn-block", showFlyttExport));
-        fr.appendChild(btn(t("flyttImportBtn"), "btn-block btn-small", showFlyttImport));
-        body.appendChild(fr);
-      }
-
-      if (tab === "p") { if (LIVE && window.PRIVACY) window.PRIVACY.homeBlock(body); return; }
-      body.appendChild(el("div", { class: "row", style: "margin-top:14px" }, [btn(t("showIntro"), "btn-small", function () {
-        closeSheet(); showIntro(true);
-      })]));
-
-      if (window.PRIVACY) {
-        body.appendChild(el("h3", { text: t("about") }));
-        body.appendChild(el("p", { text: t("privacy") }));
-        body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [btn(t("privBtn"), "btn-block", function () { window.PRIVACY.showPrivacy(showSettings); })]));
-        if (LIVE && PN.s.authed) body.appendChild(el("div", { class: "row", style: "margin-bottom:8px" }, [btn(t("delBtn"), "btn-block btn-danger btn-small", window.PRIVACY.showDelete)]));
-      } else {
-        body.appendChild(el("h3", { text: t("about") }));
-        body.appendChild(el("p", { text: t("privacy") }));
-      }
-      body.appendChild(el("p", { class: "muted", text: t("aboutMore") }));
-
-      // Version + force update
-      var ver = el("span", { class: "muted", text: t("version") + " …" });
-      if (window.caches && caches.keys) {
-        caches.keys().then(function (ks) {
-          var k = ks.filter(function (x) { return /^olnu-[0-9a-f]{8,}/.test(x); })[0];   // audit-03: not olnu-pending/-cdn/-data/-tiles/-beta
-          ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : buildVer());
-        }).catch(function () { ver.textContent = t("version") + " " + buildVer(); });
-      } else { ver.textContent = t("version") + " " + buildVer(); }
-      body.appendChild(el("div", { class: "toggle-row", style: "margin-top:10px" }, [ver, btn(t("updateNow"), "btn-small", forceUpdate)]));
+      if (tabNow === "p") profileTab(body); else buildHub(body, typeof sub === "string" ? sub : "");
     });
+  }
+  // 👤 Profil: name, hemstad, the modules' profile rows. Account things (Spara konto, Swish, Flytta, Radera) live in
+  // Inställningar › Konto (d1settings move 6): Profil only keeps one link row.
+  function profileTab(body) {
+    if (LIVE && myBeer() && !(window.PNVIS && window.PNVIS.settingsRows)) body.appendChild(el("div", { class: "row", style: "margin-bottom:10px" }, [btn(t("hidePin"), "btn-block", hidePin)]));   // ownerfix 2   // lane main S2: Göm min pin is in Inställningar + the rail
+    body.appendChild(el("h3", { text: t("yourName") }));
+    var inp = el("input", { class: "inp", id: "set-name", maxlength: "30", value: getName(), autocomplete: "nickname", enterkeyhint: "done", "aria-label": t("yourName"), placeholder: t("namePh") });
+    var saveName = function () {
+      var n = validName(inp.value); if (!n) { toast(t("nameNeeded"), { err: true }); return; }
+      U.ls.set("olnu.name", n);
+      rpc("set_display_name", { p_display_name: n }).then(function (r) {
+        if (r.error) toast(errMsg(r.error), { err: true }); else toast(t("nameSaved"));
+      });
+    };
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") saveName(); });
+    body.appendChild(el("p", { class: "muted", text: t("nameHint") }));
+    body.appendChild(el("div", { style: "display:flex;gap:8px" }, [inp, btn(t("save"), "btn-amber", saveName)]));
+    mods("settingsName", body);   // v25: 📍 Hemstad (js/hometown.js), next to the name
+    mods("profileSheet", body);   // about me: passport, friends + find-me, account, Swish, ghost, top list, Wrapped, SOS
+    [].forEach.call(body.querySelectorAll(":scope > .acct-sect, :scope > .rnd-set"), function (n) { n.remove(); });   // now in Inställningar › Konto
+    if (LIVE) body.appendChild(setRow("user", "Konto", "Spara konto, Swish, flytta, logga ut", function () { showSettings("s", "konto"); }, "pf-konto-row"));
+    if (LIVE && window.PRIVACY) window.PRIVACY.homeBlock(body);
+  }
+
+  /* ---------- ⚙️ Inställningar: 8 rows, each opens a page with ‹ (d1settings, moves 3 / 6 / 9) ---------- */
+  var PAGES = [
+    ["konto", "user", "Konto", "Spara konto, Swish, flytta, logga ut"],
+    ["synl", "shield", "Synlighet & trygghet", "Vem ser dig, spökläge, SOS, regler"],
+    ["notis", "bell", "Notiser & ljud", "Push, ljud, vad du vill höra"],
+    ["plats", "pin", "Plats & hem", "Hem, pinnen följer, checka in"],
+    ["karta", "map", "Karta & dialekt", "Kartlager, kartstil, dialekt"],
+    ["bjud", "heart", "Bjud in vänner", "Länk och QR-kod"],
+    ["hjalp", "help", "Hjälp oss", "Rapportera fel, önska något"],
+    ["om", "info", "Om appen", "Hemskärm, uppdatera, introduktion"]
+  ];
+  // which page a module block belongs to: by what the block holds first, else by the ds.js section it was sorted into
+  var PAGE_SEL = [
+    ["konto", ".acct-sect, .rnd-set"],
+    ["hjalp", ".mn-knas-row, .ws-entry, .ws-entry-set"],
+    ["plats", ".ht-set, .hz-row, .hz-set, .pf-set, .pf-row, .ac-set, .ac-row, .ah-set, .ah-row, .mn-vis-home"],
+    ["karta", ".dk-set, .bm-seg, .bi-switch"],
+    ["synl", ".mn-vis-set, .mn-vis-srow, .bd-optin, .sos-block, .nr-share, .sf-set, .pnlog-hint"],
+    ["om", ".pn-kanal"]
+  ];
+  var PAGE_SEC = { notis: "notis", integ: "synl", karta: "karta", konto: "konto", profil: "plats" };
+  var PARK = "position:absolute;left:-9999px;top:0;width:360px;height:0;overflow:hidden;pointer-events:none";
+  function setRow(icon, title, sub, fn, cls) {
+    var svg = window.PNI && window.PNI.svg ? window.PNI.svg(icon) : "";
+    var kids = [el("span", { class: "ds-row-i", "aria-hidden": "true", html: svg }),
+      el("span", { class: "ds-row-t" }, sub ? [el("span", { text: title }), el("small", { text: sub })] : [el("span", { text: title })]),
+      el("span", { class: "ds-chev", "aria-hidden": "true" })];
+    var b = el("button", { type: "button", class: "ds-row pn-row" + (cls ? " " + cls : "") }, kids);
+    b.addEventListener("click", fn);
+    return b;
+  }
+  function pageOf(it, secKey) {
+    for (var i = 0; i < PAGE_SEL.length; i++) if (it.querySelector(PAGE_SEL[i][1])) return PAGE_SEL[i][0];
+    return PAGE_SEC[secKey] || "om";
+  }
+  function notifRows(stage) {
+    if (!PUSH_ON) return;
+    stage.appendChild(el("h3", { text: t("notifications") }));
+    var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": "false", "aria-label": t("notif") });
+    stage.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("notif") }), sw]));
+    if (iosNeedsInstall()) stage.appendChild(el("div", { class: "info", text: t("iosInstall") }));
+    else if (window.PUSH.supported() && Notification.permission === "denied") stage.appendChild(el("div", { class: "info", text: t("notifBlockedHelp") }));
+    window.PUSH.current().then(function (sub) { sw.setAttribute("aria-checked", String(!!sub)); });
+    if (PN.s.authed && window.PUSH.prefsSection) window.PUSH.prefsSection(stage, rpc, toast);   // v27 🔔 välj notiser, nattro, max per kväll
+    sw.addEventListener("click", function () {
+      var on = sw.getAttribute("aria-checked") === "true";
+      if (on) {
+        window.PUSH.disable(rpc).then(function () { sw.setAttribute("aria-checked", "false"); toast(t("notifOff")); })
+          .catch(function (e) { toast(errMsg(e), { err: true }); });
+      } else {
+        enableNotifs().then(function (res) { sw.setAttribute("aria-checked", String(res === "on")); });
+      }
+    });
+  }
+  function soundRow(stage) {
+    stage.appendChild(el("h3", { text: t("sound") }));
+    var snd = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(!window.FX.muted()), "aria-label": t("soundLabel") });
+    snd.addEventListener("click", function () {
+      var on = snd.getAttribute("aria-checked") === "true";
+      window.FX.setMuted(on); snd.setAttribute("aria-checked", String(!on));
+      if (!on) { window.FX.unlock(); window.FX.sound.clink(); }
+    });
+    stage.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
+  }
+  // Konto page: the account rows of the Profil sheet + Flytta + Radera, as one list of rows
+  function kontoRows(list) {
+    var acc = window.ACCOUNT, back = function () { showSettings("s", "konto"); };
+    if (LIVE && acc && acc.on && acc.on()) {
+      if (acc.saved()) list.appendChild(setRow("key", "Konto sparat", "Byt e-post", acc.openChange, "set-acc-change"));
+      else {
+        list.appendChild(setRow("key", "Spara ditt konto", "Med e-post, så du aldrig tappar kvällarna", acc.openSave, "set-acc-save"));
+        list.appendChild(setRow("user", "Logga in mä e-post", "Du har redan ett konto", acc.openLogin, "set-acc-login"));
+      }
+    }
+    if (LIVE && PN.s.authed) { var sw = el("div", { class: "ds-item ds-blk set-swish" }); list.appendChild(sw); try { if (window.RUNDAN && window.RUNDAN.profileSheet) window.RUNDAN.profileSheet(sw); } catch (e) {} }   // Swish-nummer (fills in when the server answers)
+    if (LIVE && storedAuth() && !PN.s.movedState) list.appendChild(setRow("phone", "Flytta till annan app/telefon", t("flyttSection"), showFlyttExport, "set-flytt"));
+    if (LIVE) list.appendChild(setRow("key", "Jag har en flyttkod", "Hämta ditt konto hit", showFlyttImport, "set-flytt-in"));
+    if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("out", "Logga ut", "", acc.logout, "set-acc-logout acct-logout"));
+    if (LIVE && PN.s.authed && window.PRIVACY) list.appendChild(setRow("trash", "Radera konto", "Tar bort allt för alltid", window.PRIVACY.showDelete, "set-del"));
+  }
+  function ownRows(key, list) {
+    var sf = window.SAFETY;   // Trygghet as rows (safety.js opens the sheets; its own 3 small buttons are hidden in fill())
+    if (key === "synl" && sf) {
+      if (sf.showRules) list.appendChild(setRow("rules", "Regler", "Så funkar PintsNow", function () { sf.showRules(); }, "set-rules"));
+      if (sf.blocked && LIVE && PN.s.authed) list.appendChild(setRow("block", "Blockerade", "Avblockera personer", function () { sf.blocked(); }, "set-blocked"));
+      if (sf.contact) list.appendChild(setRow("mail", "Kontakt", "Mejla oss", function () { sf.contact(); }, "set-contact"));
+    }
+    if (key === "bjud") list.appendChild(setRow("heart", "Bjud in vänner", "Länk och QR-kod", showInvite, "set-invite"));
+    if (key !== "om") return;
+    list.appendChild(setRow("info", "Visa introduktionen", "", function () { closeSheet(); showIntro(true); }, "set-intro"));
+    if (!U.isStandalone()) list.appendChild(setRow("home", t("guideTitle"), "", showInstallGuide, "set-guide"));
+    list.appendChild(el("p", { class: "muted", style: "margin:12px 4px 0", text: t("privacy") + " " + t("aboutMore") }));
+    var ver = el("span", { class: "muted", text: t("version") + " …" });
+    var setVer = function (k) { ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : buildVer()); };
+    if (window.caches && caches.keys) caches.keys().then(function (ks) { setVer(ks.filter(function (x) { return /^olnu-[0-9a-f]{8,}/.test(x); })[0]); }).catch(function () { setVer(""); });   // audit-03: not olnu-pending/-cdn/-data/-tiles/-beta
+    else setVer("");
+    list.appendChild(el("div", { class: "toggle-row", style: "margin-top:10px" }, [ver, btn(t("updateNow"), "btn-small", forceUpdate)]));
+  }
+  function buildHub(body, openKey) {
+    var tabs = body.querySelector(".pf-tabs");
+    var hub = el("div", { class: "ds-list set-hub ds-keep" });
+    var stage = el("div", { class: "set-stage ds-keep", "aria-hidden": "true", style: PARK });   // the modules build here; ds.js sorts it; fill() moves each block to its page
+    stage.appendChild(el("span", { class: "pf-tabs ds-keep", hidden: true }));
+    var pages = {}, title = $("sheet-title") ? $("sheet-title").textContent : t("settings");
+    var backBtn = el("button", { type: "button", class: "g-back ds-keep", hidden: true, text: "‹ " + t("settings") });
+    PAGES.forEach(function (p) {
+      var pg = el("div", { class: "set-page ds-keep", "data-pg": p[0], hidden: true });
+      var list = el("div", { class: "ds-list" }); pg.appendChild(list);
+      pages[p[0]] = { el: pg, list: list };
+      if (p[0] === "konto") kontoRows(list); else ownRows(p[0], list);
+      if (p[0] === "bjud") return;
+      hub.appendChild(setRow(p[1], p[2], p[3], function () { openPage(p[0]); }, "set-r-" + p[0]));
+    });
+    hub.insertBefore(setRow("heart", "Bjud in vänner", "Länk och QR-kod", showInvite, "set-r-bjud"), hub.querySelector(".set-r-hjalp"));
+    function openPage(key) {
+      fill();
+      hub.hidden = true; if (tabs) tabs.hidden = true; backBtn.hidden = false;
+      Object.keys(pages).forEach(function (k) { pages[k].el.hidden = k !== key; });
+      var h = $("sheet-title"); if (h) h.textContent = PAGES.filter(function (p) { return p[0] === key; })[0][2];
+      try { body.scrollTop = 0; } catch (e) {}
+    }
+    backBtn.addEventListener("click", function () {
+      Object.keys(pages).forEach(function (k) { pages[k].el.hidden = true; });
+      hub.hidden = false; if (tabs) tabs.hidden = false; backBtn.hidden = true;
+      var h = $("sheet-title"); if (h) h.textContent = title;
+      try { body.scrollTop = 0; } catch (e) {}
+    });
+    function fill() {
+      if (!hub.isConnected) return;
+      try { if (window.DS) window.DS.organizeSettings(stage); } catch (e) {}
+      [].forEach.call(stage.querySelectorAll(":scope > section.ds-section"), function (sec) {
+        [].forEach.call(sec.querySelectorAll(".ds-list > .ds-item"), function (it) {
+          if (it.querySelector(".sf-set")) it.classList.add("pn-gone");   // replaced by the Regler / Blockerade / Kontakt rows
+          pages[pageOf(it, sec.getAttribute("data-ds"))].list.appendChild(it);
+        });
+      });
+      oneHome(pages.plats.list);
+    }
+    // move 9: ONE "Hem" row (opens the Hemzon sheet). The Synlighet-menu row is reused; every other Hemzon / "Ställ in hem" copy is hidden.
+    function oneHome(list) {
+      var rows = [].slice.call(list.querySelectorAll(".mn-vis-home, .hz-row")), keep = list.querySelector(".mn-vis-home") || rows[0];
+      if (!keep && LIVE && window.HOMEZONE && window.HOMEZONE.open) { keep = setRow("home", "Hem", "", function () { window.HOMEZONE.open(); }, "set-home"); list.appendChild(keep); }
+      rows.forEach(function (r) { if (r !== keep) (r.closest(".ds-item") || r).classList.add("pn-gone"); });
+      [].forEach.call(list.querySelectorAll(".ds-item"), function (it) { if (/^\s*Ställ in hem/.test(it.textContent || "")) it.classList.add("pn-gone"); });   // autohome.js "Ställ in hem" = the same setting
+      if (!keep) return;
+      var tt = keep.querySelector(".ds-row-t > span"); if (tt) tt.textContent = "Hem";
+      var it = keep.closest(".ds-item") || keep; it.style.order = "-1"; keep.classList.add("set-home");
+    }
+    notifRows(stage); soundRow(stage);
+    mods("settingsSheet", stage);   // app behaviour: map style, restaurants, prices, fun, wishes
+    body.appendChild(hub); body.appendChild(backBtn); body.appendChild(stage);
+    PAGES.forEach(function (p) { body.appendChild(pages[p[0]].el); });
+    [0, 150, 600, 1500, 3000].forEach(function (ms) { setTimeout(fill, ms); });
+    if (openKey && pages[openKey]) openPage(openKey);
   }
   function buildVer() {   // ds22: the build, when no service-worker cache name tells it (beta: the commit)
     try { if (window.KANAL && window.KANAL.sha && window.KANAL.sha()) return "beta " + window.KANAL.sha(); } catch (e) {}
