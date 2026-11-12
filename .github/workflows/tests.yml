@@ -80,7 +80,7 @@ jobs:
           - name: ride
             filter: '^(ride|ride3)$'
           - name: main
-            filter: '^(main|sec)$'
+            filter: '^(main|sec|eggs)$'
           - name: x8
             filter: '^(x8)$'
           - name: followups
