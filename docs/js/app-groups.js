@@ -16,6 +16,7 @@
   function copyText() { return PN.copyText.apply(null, arguments); }
   function whoOf() { return PN.whoOf.apply(null, arguments); }
   function placeLabel() { return PN.placeLabel.apply(null, arguments); }
+  function friendsDrinking() { return PN.friendsDrinking.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
   function withName() { return PN.withName.apply(null, arguments); }
   function notifPromptOnce() { return PN.notifPromptOnce.apply(null, arguments); }
@@ -25,7 +26,6 @@
   function skalCount() { return PN.skalCount.apply(null, arguments); }
   function barTypeLabel() { return PN.barTypeLabel.apply(null, arguments); }
   function maxLevel() { return PN.maxLevel.apply(null, arguments); }
-  function friendsDrinking() { return PN.friendsDrinking.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
   function flyTo() { return PN.flyTo.apply(null, arguments); }
   PN.put({ showGroups: showGroups, showJoin: showJoin });

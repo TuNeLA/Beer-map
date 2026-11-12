@@ -15,6 +15,8 @@
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
   function copyText() { return PN.copyText.apply(null, arguments); }
+  function myBeer() { return PN.myBeer.apply(null, arguments); }
+  function hidePin() { return PN.hidePin.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
   function validName() { return PN.validName.apply(null, arguments); }
   function storedAuth() { return PN.storedAuth.apply(null, arguments); }
@@ -24,8 +26,6 @@
   function copyFlytt() { return PN.copyFlytt.apply(null, arguments); }
   function showFlyttImport() { return PN.showFlyttImport.apply(null, arguments); }
   function showIntro() { return PN.showIntro.apply(null, arguments); }
-  function myBeer() { return PN.myBeer.apply(null, arguments); }
-  function hidePin() { return PN.hidePin.apply(null, arguments); }
   PN.put({
     notifPromptOnce: notifPromptOnce, showInvite: showInvite, inAppBrowser: inAppBrowser,
     showInstallGuide: showInstallGuide, showSettings: showSettings, startNotifAsk: startNotifAsk

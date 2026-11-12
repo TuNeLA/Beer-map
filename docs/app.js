@@ -26,10 +26,8 @@
   function toast() { return PN.toast.apply(null, arguments); }
   function toastClear() { return PN.toastClear.apply(null, arguments); }
   function errMsg() { return PN.errMsg.apply(null, arguments); }
-  function stripAfter() { return PN.stripAfter.apply(null, arguments); }
   function openSheet() { return PN.openSheet.apply(null, arguments); }
   function closeSheet() { return PN.closeSheet.apply(null, arguments); }
-  function drainSheets() { return PN.drainSheets.apply(null, arguments); }
   function el() { return PN.el.apply(null, arguments); }
   function btn() { return PN.btn.apply(null, arguments); }
   function copyText() { return PN.copyText.apply(null, arguments); }
@@ -40,6 +38,18 @@
   function streakAlerts() { return PN.streakAlerts.apply(null, arguments); }
   function chaosCenter() { return PN.chaosCenter.apply(null, arguments); }
   function evalChaos() { return PN.evalChaos.apply(null, arguments); }
+  function nightEnd() { return PN.nightEnd.apply(null, arguments); }
+  function myBeer() { return PN.myBeer.apply(null, arguments); }
+  function myNight() { return PN.myNight.apply(null, arguments); }
+  function updateCounts() { return PN.updateCounts.apply(null, arguments); }
+  function hudPanel() { return PN.hudPanel.apply(null, arguments); }
+  function applyStaticText() { return PN.applyStaticText.apply(null, arguments); }
+  function applyOnline() { return PN.applyOnline.apply(null, arguments); }
+  function tickCooldown() { return PN.tickCooldown.apply(null, arguments); }
+  function drinkFx() { return PN.drinkFx.apply(null, arguments); }
+  function undoSync() { return PN.undoSync.apply(null, arguments); }
+  function showStopSheet() { return PN.showStopSheet.apply(null, arguments); }
+  function hidePin() { return PN.hidePin.apply(null, arguments); }
   function reauth() { return PN.reauth.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
   function withName() { return PN.withName.apply(null, arguments); }
@@ -65,10 +75,11 @@
   function showInstallGuide() { return PN.showInstallGuide.apply(null, arguments); }
   function startNotifAsk() { return PN.startNotifAsk.apply(null, arguments); }
   PN.put({
-    beerOnly: beerOnly, streakToastText: streakToastText, skalCount: skalCount, barTypeLabel: barTypeLabel,
-    maxLevel: maxLevel, render: render, friendsDrinking: friendsDrinking, nightEnd: nightEnd, myBeer: myBeer,
-    refresh: refresh, startPoll: startPoll, stopPoll: stopPoll, locate: locate, resumeNotify: resumeNotify,
-    hidePin: hidePin, flyTo: flyTo
+    beerOnly: beerOnly, applyHeatBtn: applyHeatBtn, lvlClass: lvlClass, lvList: lvList, lvOf: lvOf, lvAt: lvAt,
+    lvName: lvName, lvLine: lvLine, noLeadEmoji: noLeadEmoji, streakToastText: streakToastText, skalCount: skalCount,
+    barTypeLabel: barTypeLabel, maxLevel: maxLevel, tl: tl, myCheckin: myCheckin, moveCheckin: moveCheckin,
+    render: render, applyPrec: applyPrec, refresh: refresh, startPoll: startPoll, stopPoll: stopPoll,
+    getPosition: getPosition, locError: locError, locate: locate, askWhere: askWhere, flyTo: flyTo
   });
   // </split:imports>
   // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
@@ -1194,122 +1205,6 @@
     setTimeout(open, 2200);   // flyTo to the same view may not fire moveend
   }
 
-  /* ---------- Counts / chrome ---------- */
-  function friendsDrinking() {
-    var seen = {};
-    PN.s.beers.forEach(function (b) { if (b.friend_name) seen[b.id] = 1; });
-    return Object.keys(seen).length;
-  }
-  // v13 poll_v2 "me": the server's view of the caller (count, cooldown, undo, ghost). null on an old server.
-  // End of tonight: the server's expires_at when known, else the next 05:00 Stockholm (DST-safe).
-  function nightEnd() {
-    var e = PN.s.meState && PN.s.meState.expires_at ? Date.parse(PN.s.meState.expires_at) : NaN;
-    if (!isFinite(e) || e < Date.now()) { var n = myNight(); e = n && n.expires ? n.expires : NaN; }
-    return isFinite(e) && e > Date.now() ? e : U.next5am().getTime();
-  }
-  function myBeer() { for (var i = 0; i < PN.s.beers.length; i++) if (PN.s.beers[i].is_mine) return PN.s.beers[i]; return null; }
-
-  // Own night state kept on the phone: {count, expires, lastTap}. Server stays the authority.
-  function myNight() {
-    var m = U.ls.getJSON("olnu.night", null);
-    if (!m || !m.expires || Date.now() > m.expires) return null;
-    return m;
-  }
-  function saveNight(d, accepted) {
-    var m = myNight() || {};
-    m.count = d.beer_count | 0;
-    m.expires = d.expires_at ? new Date(d.expires_at).getTime() : nightEnd();
-    // The server's wait_seconds always wins. Without it (accepted tap) the local fallback is 10 min.
-    var wait = d.wait_seconds | 0;
-    if (wait > 0) m.lastTap = Date.now() + wait * 1000 - U.COOLDOWN_MS;
-    else if (accepted) m.lastTap = Date.now();
-    U.ls.setJSON("olnu.night", m);
-  }
-  function updateCounts() {
-    $("live-count").innerHTML = (window.ZONES && window.ZONES.pill && window.ZONES.pill()) || (LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(PN.s.liveTotal != null ? PN.s.liveTotal : lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive"));   // 🗺️ zones: "Dalarna · 47 ute ikväll" when zoomed out
-    var f = friendsDrinking(), badge = $("groups-badge");
-    badge.textContent = String(f); badge.hidden = f === 0;
-    $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));
-    var mine = myBeer();
-    $("btn-stop").hidden = true; // Hidden from the dock (user asked). Still reachable in ⚙️ Inställningar.
-    // v14: all drinks count. Server "me" first (also right when the pin is hidden), then the pin, then the phone.
-    var night = myNight(), n = PN.s.meState ? U.drinks(PN.s.meState) : mine ? U.drinks(mine) : night ? (night.count | 0) : 0;
-    if (!PN.s.meState) {
-      var oc = mine ? mine.other_count | 0 : 0;
-      try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
-      if (!mine) n += oc;
-    }
-    // Design pass 2: ONE compact "Ikväll" pill ("🍺 6 Nu brinner byn ▾"). Tap = small panel with all HUD chips.
-    // Closed, only the most urgent chip (🚑 a friend at 10+, or 🚕 Taxi at 10+) shows next to the pill.
-    var st = $("my-streak"), head = "";
-    var hx = $("hud-x"), chips = LIVE ? mods("hudChipsHTML", { mine: mine, n: n }) : "";
-    var ci = LIVE ? myCheckin() : null;
-    if (ci) chips += '<button type="button" class="hx-chip hx-ci" data-hx="checkin" aria-label="' + U.esc(t("ciChip", ci.name)) + '">🚪 ' + U.esc(ci.name) + "</button>";
-    // Owner: "I came home and had no idea where to tap." A clear chip while your pin is on the map.
-    if (LIVE && myBeer()) chips += '<button type="button" class="hx-chip hx-home" data-hx="home">🏠 ' + U.esc(t("stopHome")) + "</button>";
-    if (n > 0) {
-      var l = U.level(n), mlv = lvOf(n);
-      var emo = mlv ? mlv.emoji : l === 2 ? "🚁" : l === 1 ? "🔥" : "🍺";
-      var tag = mlv ? lvName(mlv, "me") : l === 2 ? t("medevac") : l === 1 ? t("hot") : "";
-      st.className = "my-streak" + lvlClass(l);
-      st.innerHTML = '<span class="sr-only">' + U.esc(t("tonight")) + ": </span>" +
-        '<span class="ms-e" aria-hidden="true">' + U.esc(emo) + "</span><b>" + n + "</b>" +
-        (tag ? '<span class="ms-tag' + (mlv ? " ms-lv" : "") + '"' + (mlv ? ' style="--lv:' + U.esc(mlv.color) + '"' : "") + ">" + U.esc(tag) + "</span>" : "") +
-        '<span class="ms-chev" aria-hidden="true">▾</span>';
-      head = '<div class="hx-head">' + U.esc(t("tonight")) + ": <b>" + n + "</b>" + (tag ? " · " + U.esc(emo + " " + tag) : "") +
-        (mine ? " · " + U.esc(t("skalN", skalCount(mine))) : "") + "</div>";
-    } else if (chips) {
-      st.className = "my-streak";
-      st.innerHTML = '<span class="ms-e" aria-hidden="true">🍺</span><span class="ms-k">' + U.esc(t("tonight")) + '</span><span class="ms-chev" aria-hidden="true">▾</span>';
-    }
-    st.hidden = !(n > 0 || chips);
-    var html = chips ? head + chips : "";
-    if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
-    hx.hidden = !html;
-    // Closed pill: the 🚑 friend check comes first, then 🚕 Taxi at 10+, then the delight 🧢 cap chip.
-    var urgent = hx.querySelector(".af-chip-med") || hx.querySelector(".hx-chief.hx-urgent") || hx.querySelector(".nr-chip.hx-urgent") || hx.querySelector(".inv-chip.hx-urgent") || (n >= 10 ? hx.querySelector(".hx-taxi") : null) || hx.querySelector(".fm-chip") || hx.querySelector(".mo-chip") || hx.querySelector(".dl-cap-chip") || hx.querySelector(".a2-chip");   // lane:after: GM7 moment chip, A2 report chip   // 0195 📸 Gänget fotar ikväll
-    hx.querySelectorAll(".hx-urgent").forEach(function (x) { if (x !== urgent) x.classList.remove("hx-urgent"); });
-    if (urgent) urgent.classList.add("hx-urgent");
-    if (st.hidden) hudPanel(false);
-  }
-  // The Ikväll panel (open/close). Closes on outside tap, Escape, map move, and after a chip action.
-  function hudPanel(open) {
-    var box = document.querySelector(".hud-left"), st = $("my-streak");
-    if (!box) return;
-    box.classList.toggle("open", !!open);
-    st.setAttribute("aria-expanded", String(!!open));
-  }
-  function applyStaticText() {
-    $("beer-label").textContent = t("beer");
-    $("beer-sub").textContent = t("beerSub");
-    $("btn-stop").textContent = t("stop");
-    $("btn-stop").title = t("stopHint");
-    $("groups-label").textContent = t("groups");
-    $("prec-exact").textContent = t("exact");
-    $("prec-area").textContent = t("area");
-    $("btn-settings").setAttribute("aria-label", t("settings"));
-    $("sheet-close").setAttribute("aria-label", t("close"));
-    $("install-close").setAttribute("aria-label", t("close"));
-    $("soon-chip").hidden = LIVE;
-    $("soon-chip").textContent = t("soonChip");
-    $("btn-locate").setAttribute("aria-label", t("locate"));
-    $("btn-attrib").setAttribute("aria-label", t("mapSources"));
-    $("btn-attrib").title = t("mapSources");
-    $("btn-locate").title = t("locate");
-    $("offline-text").textContent = t("offline");
-    $("btn-top").setAttribute("aria-label", t("top"));
-    $("btn-top").title = t("top");
-    applyHeatBtn();
-    applyPrec();
-    mods("applyText");
-    updateCounts();
-    PN.s.tickerKey = ""; PN.s.newsDirty = true; renderTicker();
-    if (PN.s.chaosRes) evalChaos(false);
-    $("chaos-show").textContent = t("chaosShow");
-    $("chaos-close").setAttribute("aria-label", t("chaosHide"));
-    tickCooldown();
-  }
-
   /* ---------- Precision toggle ---------- */
   var prec = U.ls.get("olnu.prec", "exact") === "area" ? "area" : "exact";
   function applyPrec() {
@@ -1356,7 +1251,7 @@
     });
   }
   // v13 poll_v2: one call per poll for the map view (+ margin). "unknown" | "on" | "missing" (old server).
-  var pollV2 = "unknown", heatAskAt = 0, pollBox = null, lastPollAt = 0, lastAcceptAt = 0;
+  var pollV2 = "unknown", heatAskAt = 0, pollBox = null;
   function viewBox() {
     var b = map.getBounds(), s = Math.max(-85, b.getSouth()), n = Math.min(85, b.getNorth());
     var w = b.getWest(), e = b.getEast();
@@ -1383,7 +1278,7 @@
   function applyMe(me, startedAt) {
     if (!me || typeof me !== "object") return;
     PN.s.meState = me;
-    if (startedAt < lastAcceptAt) return;
+    if (startedAt < PN.s.lastAcceptAt) return;
     var m = myNight() || {};
     m.count = me.beer_count | 0;
     if (me.expires_at) m.expires = Date.parse(me.expires_at) || nightEnd();
@@ -1459,7 +1354,7 @@
     }).then(function () {
       if (PN.s.movedState) return;
       drinkViews = null;
-      lastPollAt = Date.now();
+      PN.s.lastPollAt = Date.now();
       PN.s.beers.forEach(function (b) {
         var mine = mySkals[b.id];
         if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
@@ -1520,7 +1415,7 @@
   function schedulePoll() {
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
     if (!PN.s.pollOn || !LIVE || loading || document.visibilityState === "hidden") return;   // a running poll schedules the next itself
-    var wait = (idle() ? POLL_SLOW_MS : POLL_MS) - (Date.now() - lastPollAt);
+    var wait = (idle() ? POLL_SLOW_MS : POLL_MS) - (Date.now() - PN.s.lastPollAt);
     var x8w = window.X8 ? window.X8.delay() : null;
     if (x8w != null) wait = x8w;   // x8: failed polls back off 5 → 60 s; offline: one try per 60 s (was a 1 s loop)
     pollTimer = setTimeout(function () { pollTimer = null; refresh(); }, Math.max(1000, wait));
@@ -1539,7 +1434,7 @@
     if (pollV2 !== "on" || !pollBox || loading) return;
     var b = map.getBounds(), v = viewBox();
     var inside = v.p_min_lat >= pollBox[0] && v.p_min_lng >= pollBox[1] && v.p_max_lat <= pollBox[2] && v.p_max_lng <= pollBox[3];
-    if (!inside && Date.now() - lastPollAt > 3000) refresh();
+    if (!inside && Date.now() - PN.s.lastPollAt > 3000) refresh();
   }, 400));
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") {
@@ -1551,7 +1446,7 @@
       if (PN.s.publicOn && !PN.s.authed) setTimeout(publicPoll, 300);   // ⚡ no account yet: the public poll
       resumeSession().then(function () { if (document.visibilityState !== "visible" || PN.s.movedState) return; startPoll(); refresh(); });
     }
-    else { PN.s.flyttHiddenAt = Date.now(); stopPoll(); memShed(); clearTimeout(PN.s.pubTimer); if (cdTimer) { clearInterval(cdTimer); cdTimer = null; } }
+    else { PN.s.flyttHiddenAt = Date.now(); stopPoll(); memShed(); clearTimeout(PN.s.pubTimer); if (PN.s.cdTimer) { clearInterval(PN.s.cdTimer); PN.s.cdTimer = null; } }
   });
   var resumeP = null;
   function resumeSession() {
@@ -1578,16 +1473,6 @@
       if (shedHeat) { shedHeat = false; renderHeat(); }
     } catch (e) {}
   }
-
-  /* ---------- Offline banner ---------- */
-  function applyOnline() {
-    var off = navigator.onLine === false;
-    $("offline-banner").hidden = !off;
-    document.body.classList.toggle("is-offline", off);
-    if (!off) refresh();
-  }
-  window.addEventListener("online", applyOnline);
-  window.addEventListener("offline", applyOnline);
 
   function handleFocus() {
     if (PN.s.pendingFocus == null) return;
@@ -1628,78 +1513,6 @@
     }
   }
   I.add({ sv: { pushActFail: "Kunde inte skicka. Försök igen." }, en: { pushActFail: "Could not send. Try again." } });
-
-  /* ---------- Cooldown ---------- */
-  var RING_LEN = 2 * Math.PI * 56;
-  var cdTimer = null;
-  function cooldownLeft() {
-    var m = myNight();
-    if (!m || !m.lastTap) return 0;
-    return Math.max(0, m.lastTap + U.COOLDOWN_MS - Date.now());
-  }
-  // Ready again: the foam spills over the rim once (not on page load, not with reduced motion).
-  var cdWasOn = false;
-  function pintSpill(btnEl) {
-    var wrap = btnEl.parentNode;
-    if (window.FX && window.FX.reduced && window.FX.reduced()) return;
-    wrap.classList.remove("spill"); btnEl.classList.remove("ready-pop");
-    void wrap.offsetWidth;
-    wrap.classList.add("spill"); btnEl.classList.add("ready-pop");
-    setTimeout(function () { wrap.classList.remove("spill"); btnEl.classList.remove("ready-pop"); }, 1200);
-  }
-  function tickCooldown() {
-    var left = cooldownLeft(), btnEl = $("btn-beer"), ring = $("cd-ring");
-    var on = left > 0;
-    btnEl.classList.toggle("cooldown", on);
-    btnEl.classList.toggle("soon", !LIVE);
-    if (!LIVE) {
-      // Coming soon: no backend yet. Button is visible but disabled.
-      if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
-      btnEl.disabled = true;
-      $("beer-label").textContent = t("soonBtn");
-      $("beer-sub").textContent = t("soonSub");
-      btnEl.setAttribute("aria-label", t("soonBtn") + " — " + t("soonSub"));
-      ring.style.strokeDashoffset = String(RING_LEN);
-      return;
-    }
-    if (on) {
-      btnEl.disabled = true;
-      $("beer-label").textContent = U.mmss(left);
-      $("beer-sub").textContent = t("nextIn");
-      btnEl.setAttribute("aria-label", t("nextIn") + " " + U.mmss(left));
-      // Server wait may be longer than the local fallback (old server): clamp the ring to 0..1.
-      ring.style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, left / U.COOLDOWN_MS)));
-      // Design pass 2: the button fills like a pint (14 % → 92 %), foam head on top, bubbles in the beer.
-      btnEl.style.setProperty("--fill", (14 + 78 * (1 - Math.min(1, left / U.COOLDOWN_MS))).toFixed(1) + "%");
-      if (!cdTimer) cdTimer = setInterval(tickCooldown, 1000);
-    } else {
-      if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
-      if (!PN.s.busy) btnEl.disabled = false;
-      $("beer-label").textContent = t("beer");
-      $("beer-sub").textContent = t("beerSub");
-      btnEl.removeAttribute("aria-label");
-      ring.style.strokeDashoffset = String(RING_LEN);
-      if (cdWasOn) pintSpill(btnEl);
-    }
-    cdWasOn = on;
-    btnEl.parentNode.classList.toggle("cd", on);
-    fitBeerLabel();
-  }
-  $("cd-ring").style.strokeDasharray = String(RING_LEN);
-  // v14: the label always fits inside the round button ("BEER!" is wider than "ÖL!").
-  var fitKey = "";
-  function fitBeerLabel() {
-    var lab = $("beer-label"), b = $("btn-beer");
-    if (!lab || !b) return;
-    var key = lab.textContent + "|" + b.className + "|" + b.clientWidth;
-    if (key === fitKey) return;
-    fitKey = key;
-    lab.style.fontSize = "";
-    var room = b.clientWidth * 0.8, size = parseFloat(getComputedStyle(lab).fontSize) || 34, guard = 0;
-    if (!room) return;
-    while (lab.scrollWidth > room && size > 14 && guard++ < 30) { size -= 1; lab.style.fontSize = size + "px"; }
-  }
-  window.addEventListener("resize", U.debounce(function () { fitKey = ""; fitBeerLabel(); }, 150));
 
   /* ---------- Beer button ---------- */
   function getPosition(opts) {
@@ -1753,62 +1566,6 @@
     }).then(function (ok) { b.classList.remove("busy"); return ok; });
   }
   $("btn-locate").addEventListener("click", function () { locate({ animate: true, precise: true }); });
-  function setBusy(v) {
-    PN.s.busy = v; var b = $("btn-beer"); b.disabled = v || cooldownLeft() > 0; b.classList.toggle("busy", v);
-    if (!v) setTimeout(drainSheets, 80);
-  }
-  function levelToast(n) {
-    if (n === 1) return t("lvl1");
-    var lv = lvOf(n);
-    if (lv) {
-      var nm = lvName(lv, "me");
-      if (n === lv.at) return lv.emoji + " " + nm + "! " + t("lvlN", n) + " · " + noLeadEmoji(lvLine(lv));
-      return lv.emoji + " " + t("lvlN", n) + " · " + nm;
-    }
-    if (n === 5) return t("lvl5");
-    if (n === 10) return t("lvl10");
-    if (n > 10) return t("lvlMed", n);
-    if (n > 5) return t("lvlHot", n);
-    return t("lvlN", n);
-  }
-  // v14: all drinks count. Drinks tonight after an accepted beer = beers + other drinks (server "me" or pin).
-  function othersNow() {
-    var oc = PN.s.meState ? PN.s.meState.other_count | 0 : 0, mine = myBeer();
-    if (mine) oc = Math.max(oc, mine.other_count | 0);
-    try { if (window.EXTRAS && window.EXTRAS.otherTonight) oc = Math.max(oc, window.EXTRAS.otherTonight() | 0); } catch (e) {}
-    return oc;
-  }
-  function drinkFx(total, prev, opts) {
-    opts = opts || {};
-    var lv10 = lvAt(10), lv5 = lvAt(5), lv15 = lvAt(15);
-    // SAFE (owner 2026-11-07): the full-screen effect also at 15, same energy as 10. Texts = tease + care.
-    if (prev < 15 && total >= 15) {
-      var medExtra15 = mods("medevacExtraHTML");
-      stripAfter(function () { window.FX.takeover(2, lv15 ? { title: lvName(lv15, "me"), sub: lvLine(lv15), icon: lv15.emoji, color: lv15.color, gag: true, hint: t("tapClose"), extraHTML: medExtra15, ms: medExtra15 ? 7000 : 0 }
-        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra15, ms: medExtra15 ? 7000 : 0 }); });
-      return true;
-    }
-    if (prev < 10 && total >= 10) {
-      var medExtra = mods("medevacExtraHTML");
-      stripAfter(function () { window.FX.takeover(2, lv10 ? { title: lvName(lv10, "me"), sub: lvLine(lv10), icon: lv10.emoji, color: lv10.color, gag: true, hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }
-        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }); });
-      return true;
-    }
-    if (prev < 5 && total >= 5) {
-      stripAfter(function () { window.FX.takeover(1, lv5 ? { title: lvName(lv5, "me"), sub: lvLine(lv5), icon: lv5.emoji, color: lv5.color, gag: true, hint: t("tapClose") }
-        : { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") }); });
-      return true;
-    }
-    // Small pops: the highest level crossed (3, 7, 13, 16, 20).
-    var all = lvList() || [], pop = null;
-    all.forEach(function (lv) { if (lv.at !== 5 && lv.at !== 10 && lv.at !== 15 && prev < lv.at && total >= lv.at && (!pop || lv.at > pop.at)) pop = lv; });
-    if (pop) {
-      if (window.FX.levelPop) window.FX.levelPop({ emoji: pop.emoji, color: pop.color, intensity: pop.intensity | 0, care: pop.at >= 13 });
-      if (!opts.noToast) toast(pop.emoji + " " + lvName(pop, "me") + "! " + noLeadEmoji(lvLine(pop)), { ms: 6000, cls: "lv-pop" });
-      // Owner: no warning toasts. The 🚕 Taxi button in the HUD stays (a tool, not a text).
-    }
-    return false;
-  }
   // "Var dricker du?" — sometimes asks which bar you are at, so the beer counts there.
   // Asks: on the first beer tonight, when you moved > 150 m since the last pick, or now and then (1 in 4).
   // Else it reuses the last picked bar while you stay within 150 m of where you picked it.
@@ -1875,313 +1632,6 @@
       }, { now: true, lock: true, onClose: function () { if (!done) { done = true; resolve(null); } } });
     });
   }
-  // ds42 (ux3): no GPS → the location toast offers "Räkna ölen ändå". Checked in = the pin at your bar; else NO pin (p_hidden,
-  // the spökläge path: the drink counts for you and your group). The point sent then is only a stand-in inside Sweden (your
-  // last known spot, your home zone or Stockholm) and is never shown (hidden). Not offered on an old server (no post_beer_v2).
-  function noGpsSpot(err) {
-    return new Promise(function (resolve) {
-      var done = false, fin = function (v) { if (!done) { done = true; resolve(v); } };
-      if (postV2 === "missing") { locError(err); fin({ _skip: true }); return; }
-      var ci = myCheckin();
-      var msg = err && err.code === 1 ? t("locDenied") : err && err.code === 3 ? t("locTimeout") : t("locFail");
-      toast(msg + (ci ? " Räkna den på " + ci.name + "?" : " Räkna ölen ändå, utan pin på kartan?"), { err: true, id: "loc", ms: 9000,
-        action: { label: ci ? "Ja, på " + String(ci.name).slice(0, 18) : "Räkna ölen ändå", fn: function () {
-          if (ci) fin({ lat: +ci.lat, lng: +ci.lng, precise: true, _bar: ci.id });
-          else { var h = U.ls.getJSON("olnu.home", null), p = PN.s.lastLoc || (h && isFinite(h.lat) ? h : null) || { lat: 59.3326, lng: 18.0649 };
-            fin({ lat: +p.lat, lng: +p.lng, precise: false, _nopin: true }); }
-        } } });
-      setTimeout(function () { fin({ _skip: true }); }, 9500);
-    });
-  }
-  /* ---------- Post: post_beer_v2 (v13) with fallback to post_beer ---------- */
-  var postV2 = "unknown";   // "unknown" | "on" | "missing"
-  function postBeer(spot, ghost) {
-    var p = { p_lat: spot.lat, p_lng: spot.lng, p_precise: !!spot.precise };
-    if (postV2 === "missing") return rpc("post_beer", p).then(function (r) { return { r: r, v2: false }; });
-    p.p_hidden = !!ghost;
-    return rpc("post_beer_v2", p).then(function (r) {
-      if (r.error && U.missing(r.error)) {
-        postV2 = "missing"; delete p.p_hidden;
-        return rpc("post_beer", p).then(function (r2) { return { r: r2, v2: false }; });
-      }
-      if (!r.error) postV2 = "on";
-      return { r: r, v2: true };
-    });
-  }
-  /* ---------- ↩️ ÅNGRA (undo_beer, 2 min) + push only after the undo window ---------- */
-  var NOTIFY_KEY = "olnu.notifyAt", notifyTimer = null;
-  var undoEl = null, undoTimer = null, undoMiniTimer = null, UNDO_BIG_MS = 12000;
-  function scheduleNotify(atMs) {
-    flushNotify(true);   // a beer still waiting: its window ends now (the next beer)
-    U.ls.set(NOTIFY_KEY, String(atMs));
-    clearTimeout(notifyTimer);
-    notifyTimer = setTimeout(function () { flushNotify(false); }, Math.max(0, atMs - Date.now()) + 1500);
-  }
-  function flushNotify(now) {
-    var at = +U.ls.get(NOTIFY_KEY, "0") || 0;
-    if (!at || (!now && Date.now() < at)) return;
-    U.ls.del(NOTIFY_KEY); clearTimeout(notifyTimer); notifyTimer = null;
-    if (Date.now() - at < 4 * 60e3) notifyGroup();   // notify-group needs a beer from the last 5 min
-  }
-  function cancelNotify() { U.ls.del(NOTIFY_KEY); clearTimeout(notifyTimer); notifyTimer = null; }
-  function resumeNotify() {
-    var at = +U.ls.get(NOTIFY_KEY, "0") || 0;
-    if (!at) return;
-    if (Date.now() >= at) flushNotify(false);
-    else { clearTimeout(notifyTimer); notifyTimer = setTimeout(function () { flushNotify(false); }, at - Date.now() + 1500); }
-  }
-  function clearUndo() {
-    clearTimeout(undoTimer); clearTimeout(undoMiniTimer); undoTimer = undoMiniTimer = null;
-    if (undoEl) { undoEl.remove(); undoEl = null; }
-  }
-  var UNDO_SHOW_MS = 10000;
-  function showUndo(d, text, cls) {
-    clearUndo();
-    var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
-    left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
-    // The level message is a normal short toast; ÅNGRA is a small ↩️ button next to ÖL! (owner: the big
-    // red toast covered the beer-type strip).
-    beerSay(text, { cls: cls || "", ms: 5000 });   // x8: the "Skål! Ölen räknas…" toast turns into this line
-    undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), text: "↩️",
-      onclick: function () { doUndo(undoEl); } });
-    document.body.appendChild(undoEl);
-    // The ÅNGRA toast stays 10 s only (owner: it was in the way). The group push still waits for the full window.
-    undoMiniTimer = setTimeout(function () { if (undoEl) { undoEl.remove(); undoEl = null; } }, UNDO_SHOW_MS);
-    undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
-  }
-  var undoing = false;
-  function doUndo(button) {
-    if (undoing) return;
-    undoing = true;
-    if (button) { button.disabled = true; button.textContent = button.classList.contains("undo-fab") ? "⏳" : t("undoBusy"); }
-    rpc("undo_beer").then(function (r) {
-      undoing = false;
-      if (r.error) {
-        if (button) { button.disabled = false; button.textContent = button.classList.contains("undo-fab") ? "↩️" : "↩️ " + t("undoBtn"); }
-        toast(t("undoFail"), { err: true });
-        return;
-      }
-      var d = parseData(r.data);
-      clearUndo();
-      if (!d.ok) {
-        toast(d.reason === "limit" ? t("undoLimit") : d.reason === "no_beer" ? t("undoNone") : t("undoTooLate"), { ms: 5000 });
-        flushNotify(true);
-        return;
-      }
-      cancelNotify();   // an undone milestone sends no push
-      var lines = t("undoToasts") || [];
-      toast(lines.length ? lines[Math.floor(Math.random() * lines.length)] : "↩️", { ms: 5500, cls: "skal" });
-      window.FX.vibrate([15, 30, 15]);
-      var m = myNight() || {};
-      m.count = d.beer_count | 0; m.lastTap = 0;   // the old cooldown comes back with the next poll
-      U.ls.setJSON("olnu.night", m);
-      lastAcceptAt = 0;
-      mods("onBeerUndone", d);
-      tickCooldown(); updateCounts();
-      refresh();
-    });
-  }
-  // A poll says the undo window is over (or undone on another phone): drop the button.
-  function undoSync(me) { if (undoEl && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
-
-  $("btn-beer").addEventListener("click", function () { beerTap(null); });
-  // x8 (weak signal): an ÖL! that can not reach the server goes into the outbox (js/x8.js, max 5, 90 min) and is sent later
-  // (online / next good poll / app start). Replaces the QA #19 queue (1 beer, 20 min). Instant feedback on every network:
-  // splash at the tap, then "Skål! Ölen räknas…" before the RPC; the answer changes the SAME toast (no 2nd slide-in).
-  var X8 = window.X8 || null, beerPend = null;
-  function beerPending() {
-    beerPend = null; toastClear("x8-beer");
-    if (X8) beerPend = toast(X8.say("x8.pending"), { id: "x8-beer", ms: RPC_TIMEOUT_MS + 3000 });
-  }
-  function beerSay(text, opts) {
-    opts = opts || {};
-    var p = beerPend; beerPend = null;
-    if (p && p.parentNode && !opts.err && !opts.action) {
-      var sp = p.querySelector("span"); if (sp) sp.textContent = text;
-      p.className = "toast" + (opts.cls ? " " + opts.cls : ""); p.removeAttribute("data-id");
-      p._olnuT = { opts: opts, rank: 1 };
-      setTimeout(function () { p.remove(); }, opts.ms || 3800);
-      return p;
-    }
-    if (p) p.remove();
-    toastClear("x8-beer");
-    return toast(text, opts);
-  }
-  function beerSayClear() { var p = beerPend; beerPend = null; if (p) p.remove(); toastClear("x8-beer"); }
-  // keep a beer that could not be sent: outbox + the 10-min rule starts now (as the server would) + one calm toast
-  function x8Keep(spot, ghost, at, sentAt) {
-    var res = X8 ? X8.add(spot, ghost, at, sentAt) : { ok: false };
-    if (res.full) { beerSay(X8.say("x8.full"), { ms: 6000 }); return; }
-    if (!res.ok) { beerSay(t("postFail"), { err: true }); return; }
-    var m = myNight() || {}; m.lastTap = Date.now(); if (!m.expires) m.expires = nightEnd();
-    U.ls.setJSON("olnu.night", m);
-    beerSay(res.n > 1 ? X8.say("x8.queuedN", { n: res.n }) : X8.say("x8.queued"), { ms: 6000 });
-    window.FX.vibrate(20);
-  }
-  // offline tap: position + "Var dricker du?" as before, then the outbox (no RPC at all)
-  function queueBeer() {
-    setBusy(true);
-    getPosition().then(askWhere, noGpsSpot).then(function (spot) {
-      if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
-      x8Keep(spot, !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn()));
-    }, locError).catch(function () {}).then(function () { setBusy(false); tickCooldown(); });
-  }
-  // X8 flush → one queued beer. Answers { kind: ok | refused | cooldown | net | skip, wait }.
-  function x8Send(q) {
-    if (!LIVE || !PN.s.authed || PN.s.busy || PN.s.movedState) return Promise.resolve({ kind: "skip" });
-    var before = U.drinks(PN.s.meState || myBeer() || {});
-    return postBeer({ lat: q.lat, lng: q.lng, precise: q.precise, home: q.home }, q.ghost).then(function (res) {
-      var r = res.r;
-      if (r.error) {
-        if (X8.isNet(r.error, r.status)) return { kind: "net" };
-        toast((U.errCode(r.error) === "outside_sweden" ? t("outsideServer") : errMsg(r.error, t("postFail"))), { err: true, ms: 6000 });
-        return { kind: "refused" };
-      }
-      var d = parseData(r.data);
-      if (d.accepted === false) { saveNight(d, false); tickCooldown(); return { kind: "cooldown", wait: d.wait_seconds | 0 }; }
-      beerDone(d, res, { lat: q.lat, lng: q.lng, precise: q.precise, home: q.home }, q.ghost, before, q);
-      tickCooldown(); updateCounts();
-      return { kind: "ok" };
-    }, function () { return { kind: "net" }; });
-  }
-  if (X8) {
-    X8.bind({ send: x8Send, live: LIVE });
-    // a beer the old QA #19 queue kept before this update: move it into the outbox once (same tap time)
-    try { var q19 = U.ls.getJSON("olnu.beerQueue", null); U.ls.del("olnu.beerQueue");
-      if (q19 && q19.at && Date.now() - (+q19.at) < 20 * 60e3) X8.add({ lat: +q19.lat, lng: +q19.lng, precise: !!q19.precise, home: !!q19.home }, false, +q19.at); } catch (e) {}
-  }
-  function beerTap() {
-    if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
-    if (PN.s.busy || cooldownLeft() > 0) return;
-    if (navigator.onLine === false) { window.FX.unlock(); window.FX.splash($("btn-beer")); window.FX.vibrate(20); queueBeer(); return; }
-    if (!PN.s.authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (PN.s.authed) beerTap(); }); return; }   // ⚡ the 1st action makes the account
-    window.FX.unlock();
-    window.FX.splash($("btn-beer"));
-    window.FX.vibrate(20);
-    setBusy(true);
-    getPosition().then(askWhere, noGpsSpot).then(function (spot) {
-      if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
-      var ghost = !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
-      var before = U.drinks(PN.s.meState || myBeer() || {});
-      beerPending();
-      var sentAt = Date.now();
-      return postBeer(spot, ghost)
-        .then(function (res) {
-          var r = res.r;
-          if (r.error) {
-            if (X8 && X8.isNet(r.error, r.status)) { x8Keep(spot, ghost, sentAt, sentAt); return; }   // x8: no signal → the outbox, not a red toast
-            beerSay(U.errCode(r.error) === "outside_sweden" ? t("outsideServer") : errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
-            return;
-          }
-          var d = parseData(r.data);
-          if (d.accepted === false) {
-            saveNight(d, false);
-            beerSay(t("cooldownToast", U.mmss((d.wait_seconds | 0) * 1000)));
-            return;
-          }
-          beerDone(d, res, spot, ghost, before, null);
-        });
-    }, locError).catch(function () { beerSay(t("postFail"), { err: true }); })
-      .then(function () { setBusy(false); tickCooldown(); updateCounts(); });
-  }
-  // An accepted beer (a tap now, or q = a beer from the x8 outbox). Outbox beers: one calm line, no ÅNGRA, no push, no map jump.
-  function beerDone(d, res, spot, ghost, before, q) {
-    saveNight(d, true);
-    lastAcceptAt = Date.now();
-    if (isFinite(d.lat) && isFinite(d.lng)) PN.s.lastLoc = { lat: +d.lat, lng: +d.lng };
-    // v17 server: d.drinks = total drinks tonight (beers + others). Older server: beers + others we know.
-    var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : (d.beer_count | 0) + othersNow();
-    if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
-    var l = U.level(total);
-    if (PN.s.meState) { PN.s.meState.beer_count = d.beer_count | 0; PN.s.meState.undo_until = d.undo_until || null; }
-    var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
-    var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
-    var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
-    if (q) {
-      if (!big) toast(X8.say("x8.sent", { time: X8.hhmm(q.at) }) + " · " + text, { cls: cls, ms: 6000 });
-      if (ghost && !res.v2) rpc("stop_beer").then(function () { refresh(); });
-      mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, queued: true });
-      refresh();
-      return;
-    }
-    if (res.v2 && d.undo_until) showUndo(d, text, cls);
-    else if (!big) beerSay(text, { cls: cls });
-    else beerSayClear();
-    if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
-    window.FX.sound.beer();
-    // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
-    if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
-    else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
-    else notifyGroup();
-    mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
-    if (!ghost && spot._ciBar) moveCheckin(spot._ciBar);   // fixJ T-07
-    if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
-    if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
-      /* ux review: no notification ask on a beer tap. Calm moments only: after a group join, app start with a group. */
-    }
-    if (isFinite(d.lat) && isFinite(d.lng) && !ghost) {
-      map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
-    }
-    refresh();
-  }
-  // Push to the group. Fully silent: no push keys, no function deployed, network error → nothing happens.
-  function notifyGroup() {
-    if (!PUSH_ON || !PN.s.client || !PN.s.client.functions) return;
-    try {
-      Promise.resolve(PN.s.client.functions.invoke("notify-group")).then(function () {}, function () {});
-    } catch (e) {}
-  }
-  // "Sluta dricka": choose "Jag är hemma" or "Öltorsk". Both hide the pin; the group gets a fun push.
-  function stopBeer(kind) {
-    var sb = $("btn-stop"); if (sb.disabled) return;
-    sb.disabled = true; closeSheet("pick");
-    rpc("stop_beer").then(function (r) {
-      sb.disabled = false;
-      if (r.error) { toast(errMsg(r.error), { err: true }); return; }
-      toast(kind === "home" ? t("stopHomeToast") : t("stopPauseToast"), { ms: 5000 }); refresh();
-      mods("onStopped", kind);
-      if (PUSH_ON && PN.s.client && PN.s.client.functions) {
-        try { Promise.resolve(PN.s.client.functions.invoke("notify-group", { body: { event: kind } })).then(function () {}, function () {}); } catch (e) {}
-      }
-    });
-  }
-  // "Sluta dricka" (#btn-stop): Jag är hemma / Öltorsk (+ a group notice). "🙈 Göm min pin" = hidePin() below (ownerfix 2).
-  function showStopSheet() {
-    if ($("btn-stop").disabled) return;
-    openSheet(t("stopTitle"), function (body) {
-      body.appendChild(el("p", { class: "muted", text: t("stopInfo") }));
-      body.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [btn("🏠 " + t("stopHome"), "btn-green btn-block", function () { stopBeer("home"); })]));
-      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn("🥀 " + t("stopPause"), "btn-amber btn-block", function () { stopBeer("pause"); })]));
-      body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [btn(t("cancel"), "btn-block", function () { closeSheet(); })]));
-      mods("stopSheet", body);   // taxi + SOS
-    });
-  }
-  $("btn-stop").addEventListener("click", showStopSheet);
-  // ownerfix 2 (owner 11 Nov 21:27): "🙈 Göm min pin" = ONLY hide the pin. stop_beer keeps the beer count to 05:00;
-  // no group notice (notify-group), no "onStopped" hooks (those are for "Sluta dricka"). Undo: "Visa igen" = show_pin (0496).
-  function hidePin() {
-    var sb = $("btn-stop"); if (sb.disabled) return;
-    sb.disabled = true;
-    try { if (!$("sheet").hidden) closeSheet("pick"); } catch (e) {}
-    rpc("stop_beer").then(function (r) {
-      sb.disabled = false;
-      if (r.error) { toast(errMsg(r.error), { err: true }); return; }
-      refresh();
-      toast(tl("🙈 Pinnen ä gömd. Ölen räknas ändå, gänget får ingen notis.", "🙈 Pin hidden. Your beers still count, no notice to the group."),
-        { ms: 8000, id: "of-hide", cls: "of-hide", action: { label: tl("Visa igen", "Show again"), fn: showPinAgain } });
-    });
-  }
-  function showPinAgain() {
-    rpc("show_pin").then(function (r) {
-      if (r.error) {
-        var old = U.missing && U.missing(r.error);   // 0496 not run yet
-        toast(old ? tl("Posta nästa öl så syns pinnen igen.", "Post your next beer to show the pin again.") : errMsg(r.error), { err: !old, id: "of-hide", ms: 5000 });
-        return;
-      }
-      refresh();
-      toast(tl("📍 Pinnen syns igen.", "📍 Your pin is back."), { id: "of-hide", ms: 3500 });
-    });
-  }
   $("sheet-close").addEventListener("click", function () { closeSheet("cancel"); });
   $("backdrop").addEventListener("click", function () { closeSheet("cancel"); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet("cancel"); });
@@ -2204,7 +1654,7 @@
     var reloadNow = function () {
       if (reloading) return;
       // Wait while typing, posting a beer, a sheet / intro is open, a takeover is shown or the undo button is up.
-      if (typing() || PN.s.busy || !$("sheet").hidden || !$("intro").hidden || document.querySelector(".takeover") || undoEl) { setTimeout(reloadNow, 5000); return; }
+      if (typing() || PN.s.busy || !$("sheet").hidden || !$("intro").hidden || document.querySelector(".takeover") || PN.s.undoEl) { setTimeout(reloadNow, 5000); return; }
       reloading = true; location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", function () {
@@ -2285,7 +1735,7 @@
       PN.s.liveTotal = d.live_total != null ? d.live_total | 0 : null;
       PN.s.checkins = (d.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       if (Array.isArray(d.heat)) heatPoints = d.heat.filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]) && x[2] > 0; }).map(function (x) { return [+x[0], +x[1], +x[2]]; });
-      drinkViews = null; lastPollAt = Date.now();
+      drinkViews = null; PN.s.lastPollAt = Date.now();
       if (window.X8) window.X8.pollOk(null);   // perf T-08: caption off, busy over
       if (window.NEWS) window.NEWS.update(beerOnly());
       PN.s.newsDirty = true;
@@ -2298,7 +1748,7 @@
   map.on("moveend", U.debounce(function () {
     if (!PN.s.publicOn || PN.s.authed || !pollBox || pubBusy) return;
     var v = viewBox();
-    if (!(v.p_min_lat >= pollBox[0] && v.p_min_lng >= pollBox[1] && v.p_max_lat <= pollBox[2] && v.p_max_lng <= pollBox[3]) && Date.now() - lastPollAt > 3000) publicPoll();
+    if (!(v.p_min_lat >= pollBox[0] && v.p_min_lng >= pollBox[1] && v.p_max_lat <= pollBox[2] && v.p_max_lng <= pollBox[3]) && Date.now() - PN.s.lastPollAt > 3000) publicPoll();
   }, 400));
 
   function start() {
