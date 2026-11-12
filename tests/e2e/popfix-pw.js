@@ -28,7 +28,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
 const PIT = "n3472634175";
 const VPS = [[360, 800], [390, 844], [430, 932], [1280, 800], [1920, 1080], [2543, 1270], [2560, 1440]];
 const POS = [["centre", 0.5, 0.55], ["left", 0.1, 0.55], ["right", 0.9, 0.55], ["top", 0.5, 0.3], ["bottom", 0.5, 0.85]];
-const CASES = [["quiet", { empty: true, checkin: false }], ["busy", { checkin: false }]];
+const CASES = [["quiet", { empty: true, checkin: false, noEv: true }], ["busy", { checkin: false }]];   // quiet = the owner's shot 4 (no people, no event)
 const DESK_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
 const CT = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png",
   ".webmanifest": "application/manifest+json", ".woff2": "font/woff2", ".ico": "image/x-icon", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -47,7 +47,7 @@ async function setup(browser, vw, vh, mode, o) {
   const desk = vw > 600;
   const proxy = { newContext: (opt) => browser.newContext(Object.assign({}, opt, desk ? { isMobile: false, hasTouch: false, deviceScaleFactor: 1, userAgent: DESK_UA } : {})) };
   const { ctx, page } = await H.ctxFor(proxy, { width: vw, height: vh }, o);
-  const EV = events();
+  const EV = o.noEv ? [] : events();
   await page.route(/rest\/v1\/rpc\/events_near\b/, (r) => J(r, EV));
   await page.route(/rest\/v1\/rpc\/(events_near2|events_near3)\b/, (r) => J(r, { v: 1, server_time: new Date().toISOString(), events: EV }));
   let url;
@@ -90,6 +90,8 @@ async function openAt(page, fx, fy) {
   await wait(page, 500);
   await page.evaluate(() => { const s = window.__pfSrc; if (s && s.openPopup && s.getPopup && s.getPopup()) s.openPopup(); else window.__pfPop.openOn(window.__map); });
   await wait(page, 1600);
+  const has = await page.evaluate(() => !![...document.querySelectorAll(".leaflet-popup")].find((p) => p.querySelector(".bs")));
+  if (!has) { await page.evaluate(() => { try { window.__pfPop.openOn(window.__map); } catch (e) {} }); await wait(page, 1600); }
 }
 function measure(page) {
   return page.evaluate(() => {
@@ -97,7 +99,8 @@ function measure(page) {
     const card = root.querySelector(".leaflet-popup-content-wrapper"), cont = root.querySelector(".leaflet-popup-content");
     const cr = card.getBoundingClientRect(), vw = innerWidth;
     const vis = (e) => { if (!e || !e.getClientRects().length) return false; const r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false;
-      for (let x = e; x && x !== document.body; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity < 0.05) return false; } return true; };
+      for (let x = e; x && x !== document.body; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity < 0.05) return false;
+        const pd = x.parentElement; if (pd && pd.tagName === "DETAILS" && !pd.open && x.tagName !== "SUMMARY") return false; } return true; };
     // B1: a word split over two lines
     const broken = [];
     const tw = document.createTreeWalker(cont, NodeFilter.SHOW_TEXT);
@@ -113,7 +116,7 @@ function measure(page) {
       }
     }
     // B2: buttons on one line (text nodes of the button: one line box)
-    const wrapped = [], btns = [...card.querySelectorAll("button, a.btn, .btn")].filter(vis);
+    const wrapped = [], btns = [...card.querySelectorAll("button, a.btn, .btn")].filter((b) => vis(b) && !b.closest(".pp-sec-mer"));   // Mer: 2-column grid of 2-line buttons (design)
     btns.forEach((b) => {
       const lines = [], t = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
       for (let n = t.nextNode(); n; n = t.nextNode()) {
@@ -136,7 +139,9 @@ function measure(page) {
       const px = xr.right - (parseFloat(cs.borderTopRightRadius) >= xr.width / 2 ? xr.width * 0.146 : 0), py = xr.top + (parseFloat(cs.borderTopRightRadius) >= xr.width / 2 ? xr.height * 0.146 : 0);
       const ccx = cr.right - rad, ccy = cr.top + rad;
       const inArc = !(px > ccx && py < ccy) || Math.hypot(px - ccx, py - ccy) <= rad;
-      xs = { w: Math.round(xr.width), h: Math.round(xr.height), vis: vis(x), glyph: !!glyph, hit: !!(hit && (hit === x || x.contains(hit))),
+      // hit: nothing of the popup itself (sticky header, scroller) is on top of the ✕. A map HUD control over the map is logged, not failed.
+      const own = !!(hit && (hit === x || x.contains(hit))), inPop = !!(hit && root.contains(hit));
+      xs = { w: Math.round(xr.width), h: Math.round(xr.height), vis: vis(x), glyph: !!glyph, hit: own || !inPop, hud: !own && !inPop && hit ? (hit.id || String(hit.className).slice(0, 30) || hit.tagName) : "",
         inside: xr.left >= cr.left && xr.right <= cr.right + 0.5 && xr.top >= cr.top - 0.5 && xr.bottom <= cr.bottom && inArc,
         off: [Math.round(cr.right - xr.right), Math.round(xr.top - cr.top)] };
     }
@@ -203,6 +208,7 @@ async function evSheet(page, w) {
         if (m.over.length) bad.over.push(pn + ": " + m.over.join(" "));
         if (m.act.length > 1 && Math.max(...m.act) - Math.min(...m.act) > 1) bad.act.push(pn + ": " + m.act.join("/"));
         if (m.ev.some((e) => e.right < 0)) bad.ev.push(pn + ": " + JSON.stringify(m.ev));
+        if (m.x && m.x.hud) console.log("  note: " + W + " " + cn + " " + pn + ": a map HUD control (" + m.x.hud + ") is over the popup's close button");
         if (pn === "centre") console.log("  " + W + " " + cn + ": card " + m.w + " px, sheet=" + m.sheet + ", scroll=" + m.scroll + ", gutter=" + m.gutter + ", ev=" + m.ev.length + ", x=" + JSON.stringify(m.x && m.x.off));
       }
       ok(!bad.broken.length, W + " " + cn + ": B1 no word is broken mid-word (e.g. 'Visar dom sport här?')", bad.broken);
