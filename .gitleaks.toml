@@ -1,11 +1,12 @@
 # Secret scan config (CI: .github/workflows/secrets.yml). Default gitleaks rules + two exceptions:
 # - JWTs: the Supabase ANON keys are public by design (docs/config.js etc.). gitleaks' jwt rule cannot tell anon from
 #   service_role, so it is silenced here and scripts/check-jwt-roles.py decodes every JWT and FAILS on any role but anon.
+# - tests: fake refresh tokens in unit tests (rt-abcdef-123).
 # - android.yml: the committed TEST signing key for sideloading (never used for the Play Store).
 title = "PintsNow gitleaks"
 [extend]
 useDefault = true
 [allowlist]
 description = "public anon JWTs (checked by check-jwt-roles.py) + the sideload test keystore workflow"
-regexes = ['''eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}''']
+regexes = ['''eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}''', '''rt-abcdef-123''']
 paths = ['''^\.github/workflows/android\.yml$''']
