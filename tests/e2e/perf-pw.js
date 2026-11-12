@@ -117,6 +117,8 @@ const hidInit = () => {
 async function open(browser, S, o = {}) {
   const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, o);
   await ctx.addInitScript(hidInit);
+  // PERF_CLOCK=HH:MM: the page clock starts at that UTC time (it goes on running); the cold start must not depend on the hour
+  if (process.env.PERF_CLOCK) { const [h, m] = process.env.PERF_CLOCK.split(":").map(Number), d = new Date(); d.setUTCHours(h, m, 0, 0); await ctx.clock.install({ time: d }); }
   if (o.init) await ctx.addInitScript(o.init[0], o.init[1]);
   await server(ctx, page, S);
   page.on("pageerror", (e) => { (S.errors = S.errors || []).push(e.message); });
@@ -276,9 +278,11 @@ const R = {};   // numbers for DONE.md
       const { ctx, page, log, t0 } = await open(browser, S);
       await wait(page, 20000 - (Date.now() - t0));
       const cold = since(log, t0, t0 + 20000);
-      R.cold = { all: cold.length, rpc: rpcOnly(cold).length, mix: mix(cold) };
+      // what each request was and when (ms after load, inner calls of each bundle): CI shows this when the count is red
+      R.cold = { all: cold.length, rpc: rpcOnly(cold).length, mix: mix(cold), seq: cold.map((x) => Math.round(x.t - t0) + "ms " + x.name + (x.inner ? "[" + x.inner.join(",") + "]" : "")) };
       console.log("cold start (20 s):", cold.length, JSON.stringify(R.cold.mix));
       if (process.env.PERF_DEBUG) cold.forEach((x) => console.log("  c", ((x.t - t0) / 1000).toFixed(1), x.name, (x.inner || []).join(",")));
+      if (process.env.PERF_COLD_ONLY) { console.log("cold seq:\n  " + R.cold.seq.join("\n  ")); ok("cold start: ≤ 12 requests in 20 s", R.cold.all <= 12, R.cold); await ctx.close(); console.log(pass + " passed, " + fail + " failed"); await browser.close(); process.exit(fail ? 1 : 0); }
       await wait(page, 40000);   // settle (start-up timers, 2 slow-lane rounds: the poll plan has learned the rhythm)
       const t1 = Date.now();
       await wait(page, 120000);
@@ -311,7 +315,8 @@ const R = {};   // numbers for DONE.md
         ok("open app: near_poll rides in the poll bundle", !R.open.mix.near_poll, R.open.mix);
         ok("open app: pnlog_ingest at most once in 2 min (5-min batches)", (R.open.mix.pnlog_ingest || 0) <= 1, R.open.mix);
         ok("open app: every bundle ≤ 40 calls", R.open.bundles.every((n) => n <= 40), R.open.bundles);
-        ok("cold start: ≤ 12 requests in 20 s (was ~45)", R.cold.all <= 12, R.cold);
+        if (R.cold.all > 12) console.log("cold start requests (ms after load, bundle = inner calls):\n  " + R.cold.seq.join("\n  "));
+        ok("cold start: ≤ 12 requests in 20 s (was ~45)", R.cold.all <= 12, { all: R.cold.all, mix: R.cold.mix });
         ok("hidden: the log batch goes out at once (pagehide)", (R.hidden.mix.pnlog_ingest || 0) >= 1, R.hidden);
         ok("hidden: no polls while hidden", !R.hidden.mix.poll_v2 && !R.hidden.mix.rpc_bundle2 && !R.hidden.mix.near_poll, R.hidden);
         ok("reopen < 10 min: no flags / config calls (cached 10 min)", !/(_flags_get|_config)\b/.test(JSON.stringify(warm.map((x) => x.inner || x.name))), R.reopen);

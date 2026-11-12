@@ -380,7 +380,7 @@
         // the onPoll fan-out runs in waves over ~1–4 s: one bundle per poll. perf: the start-up burst (first window after
         // sign-in) waits only 250 ms; the calls a poll's fan-out did not get from the plan wait 3 s (one bundle, not 2–3)
         else {
-          var d = !burstDone && PN.s.authedAt ? 600 : !NEWB[name] && Date.now() < pollWin ? 3000 : startWin() ? 600 : 1500;   // fixP N-01: start-up burst / window = 600 ms collect (a poll fan-out keeps its 3 s)
+          var d = !burstDone && PN.s.authedAt ? 600 : !NEWB[name] && Date.now() < pollWin ? 3000 : 1500;   // perfcold: only the very first burst (above) = 600 ms; later start-up calls collect 1500 ms like all background calls (modules start one by one over ~4 s: 600 ms made 4-6 small bundles, the count changed with CPU speed). A poll fan-out keeps its 3 s
           if (!bqT || Date.now() + d < bqDue) { clearTimeout(bqT); bqDue = Date.now() + d; bqT = setTimeout(bundleGo, d); }
           if (PN.s.authedAt) burstDone = true;
         }
