@@ -141,11 +141,11 @@ const dock = (page) => page.evaluate(() => {
       const d0 = await page.evaluate(() => window.SHEETNAV.depth());
       await page.click(".pn-fold-row"); await wait(page, 500);
       const f1 = await page.evaluate(() => ({ open: document.querySelector(".push-prefs").getClientRects().length > 0, d: window.SHEETNAV.depth(), back: !document.getElementById("pn-back").hidden }));
-      ok(f1.open && f1.d === d0 + 1 && f1.back, "Välj notiser opens as a back step (‹ shows)", [d0, f1]);
+      ok(f1.open && f1.d === d0 && !f1.back, "Välj notiser opens as an inline fold (I-02: no extra back step, depth same, ‹ hidden)", [d0, f1]);
       await shot(page, "settings-notiser");
-      await page.goBack(); await wait(page, 600);
+      await page.click(".pn-fold-row"); await wait(page, 500);   // I-02: the same row folds it again (no history step to go back)
       const f2 = await page.evaluate(() => ({ open: document.querySelector(".push-prefs").getClientRects().length > 0, sheet: !document.getElementById("sheet").hidden }));
-      ok(!f2.open && f2.sheet, "back closes only the notification list, Inställningar stays", f2);
+      ok(!f2.open && f2.sheet, "the fold row closes only the notification list, Inställningar stays", f2);
       // ---- 6. icons, not emoji, in the chrome (owner #6) ----
       const emo = await page.evaluate(() => {
         const re = /^\s*\p{Extended_Pictographic}/u, bad = [];

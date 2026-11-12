@@ -31,7 +31,7 @@ Srv.prototype.view = function (r, who) {
   const iso = (x) => x == null ? null : new Date(x).toISOString();
   const live = !r.ended && ["open", "taken", "enroute", "arrived"].includes(r.status), moving = live && r.status !== "open";
   const role = who === r.rider ? "rider" : who === r.taker ? "taker" : "asked";
-  const v = { id: r.id, role, status: r.status, live, created_at: iso(r.created), opened_at: iso(r.opened), taken_at: iso(r.taken), ended_at: r.ended ? iso(Date.now()) : null,
+  const v = { id: r.id, role, area: r.area || null, status: r.status, live, created_at: iso(r.created), opened_at: iso(r.opened), taken_at: iso(r.taken), ended_at: r.ended ? iso(Date.now()) : null,
     step_at: r.step_at, pax: r.pax, note: r.note, place: r.place, n: r.to.length, declined_n: r.declined.length, wide: r.wide, again: r.again, round: r.round, thanks: r.thanks,
     taker_name: r.taker ? NAMES[r.taker] : null };
   if (role !== "asked") v.msgs = r.msgs.map((m) => ({ me: m.from === who, body: m.body, at: iso(m.at) }));
@@ -55,6 +55,7 @@ Srv.prototype.rpc = function (fn, b, who) {
     case "ride_flags_get": return this.flags;
     case "ride_poll": return this.poll(who);
     case "pickup_poll": return { v: 1, driving: who !== "R", incoming: [], mine: null };
+    case "ride_request3": { const x = this.mk({ pax: b.p_pax, note: b.p_note, place: b.p_pk_chosen ? (b.p_place || null) : null, area: b.p_pk_area || null }); return this.view(x, who); }   // 0506: the name only when chosen (I-30)
     case "ride_request": { const x = this.mk({ pax: b.p_pax, note: b.p_note, place: b.p_place || null }); return this.view(x, who); }
     case "ride_take":   // first accept wins: one synchronous check-and-set (the server does it in one UPDATE)
       if (this.drinking[who]) return { ok: false, code: "drinking" };
@@ -137,7 +138,7 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     await R.page.evaluate(() => { const b = [...document.querySelectorAll("#sheet-body .rd-seg4 .rd-segb")].find((x) => x.textContent === "2"); if (b) b.click(); });
     await R.page.fill("#sheet-body .rd-in", "vid kebaben", { timeout: 3000 }).catch(() => {});
     await tap(R.page, "^Skicka$"); await wait(R.page, 1500);
-    const req = srv.calls.find((c) => c[0] === "ride_request");
+    const req = srv.calls.find((c) => c[0] === "ride_request3");
     ok("F1-1 Skicka → ride_request with position, 2 pers, note", !!req && req[2].p_pax === 2 && req[2].p_note === "vid kebaben" && Math.abs(req[2].p_lat - 60.1511) < 0.01, req);
     ok("F1-2 push asked: notify-group {event:'pickup', req_id, ride:1}", srv.push.some((x) => x[1].event === "pickup" && x[1].ride === 1 && srv.rides[0] && x[1].req_id === srv.rides[0].id), srv.push);
     s = await S(R.page);
@@ -278,7 +279,7 @@ const openId = (p, id) => p.evaluate((i) => window.SKJUTS.hudClick("pk-in:" + i)
     await R.page.evaluate(() => { const b = document.querySelector(".rd-pick-ok"); if (b) b.click(); }); await wait(R.page, 900);
     s = await S(R.page);
     await tap(R.page, "^Skicka$"); await wait(R.page, 1000);
-    const req2 = srv.calls.filter((c) => c[0] === "ride_request").slice(-1)[0];
+    const req2 = srv.calls.filter((c) => c[0] === "ride_request3").slice(-1)[0];
     ok("F1-1 the picked point is sent (not the GPS position)", s.open && /Hämta mig/.test(s.title) && req2 && Math.abs(req2[2].p_lat - 60.1520) < 0.001 && Math.abs(req2[2].p_lng - 15.19) < 0.001, req2 && req2[2]);
 
     /* ---------- R1-30 member row ---------- */

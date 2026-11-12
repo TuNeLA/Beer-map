@@ -10,7 +10,8 @@
 --      the arrived push to the rider has "Vid <name>" only when chosen.
 -- Additive: add column if not exists, create or replace function, grants. No row or object is removed. Safe to run twice.
 -- Deploy order: this file first (or together with the app); the notify-group function change is a second safety net only.
--- Check after the run (expect t, t, t): select exists (select 1 from information_schema.columns where table_name = 'pickup_reqs' and column_name = 'pk_chosen'),
+-- Check after the run (expect t, t, t):
+--   select exists (select 1 from information_schema.columns where table_name = 'pickup_reqs' and column_name = 'pk_chosen'),
 --   to_regprocedure('public.ride_request3(double precision,double precision,text,integer,text,text,double precision,double precision,text,text,text,boolean,text)') is not null,
 --   position('pk_chosen' in pg_get_functiondef('public.ride_push_claim(uuid,bigint)'::regprocedure)) > 0;
 
