@@ -1723,3 +1723,72 @@ body.x8-stale-on .dl-cap{margin-top:calc(var(--x8-h) + var(--pn-gap))}
 .pn-bs7 .ev-line.sa-evl>.ev-go{margin-left:auto}
 .pn-bs7 .ev-line.sa-evl>.ev-l-t{flex:1 1 0;min-width:min-content}
 /* lane:popfix END */
+/* lane:a2ui toast START — I-05: ONE toast place and look. Centred, max 420 px (16 px side margin), bottom only (never the header).
+   Map: --pn-toast-b (ds33 measure: above ANNAT / ÖL! / Grupper / banners). Sheet open: --pn-toast-sheet-b (js/pnds.js "lane:a2ui":
+   above the composer or 16 px above the screen bottom). Max 2 stacked. PNI icon in front, no thick amber edge. */
+html body #toasts{position:fixed !important;left:50% !important;right:auto !important;top:auto !important;
+  bottom:var(--pn-toast-b, var(--pn-ban-b, calc(var(--dock-h,212px) + 54px))) !important;width:min(420px, calc(100vw - 32px)) !important;max-width:none !important;
+  transform:translateX(-50%) !important;padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important;justify-content:flex-end !important;
+  align-items:stretch !important;gap:var(--sp-2) !important;z-index:2000 !important}
+html.pn-toast-sheet body #toasts,html body.pn-modal-on #toasts,html body.barsheet-open #toasts{bottom:var(--pn-toast-sheet-b, calc(16px + env(safe-area-inset-bottom,0px))) !important;z-index:2600 !important}
+html body #toasts>.toast{width:100% !important;max-width:none !important;box-sizing:border-box;margin:0 !important;touch-action:pan-y;
+  border-width:1px !important;box-shadow:0 8px 24px rgba(0,0,0,.45) !important;background:var(--ds-card,#1a2236) !important;color:var(--ds-text,#fff);
+  border-radius:var(--r-lg,16px) !important;transform:none}
+html body #toasts>.toast:not(.err):not(.med):not(.chaos-toast){border-color:var(--ds-border-2,rgba(255,255,255,.16)) !important}
+html body #toasts>.toast.err{border-color:var(--ds-red-t,#ff7b73) !important}
+html body #toasts>.toast:not(:last-child){font-size:inherit;padding:inherit;opacity:1;transform:none;margin-bottom:0 !important}
+html body #toasts>.toast:not(:last-child)>span{display:block;-webkit-line-clamp:unset;overflow:visible}
+html body #toasts>.toast>.pn-toast-i{flex:0 0 auto;display:grid;place-items:center;width:24px;height:24px;color:var(--ds-amber-t,#ffc24d)}
+html body #toasts>.toast.err>.pn-toast-i{color:var(--ds-red-t,#ff7b73)}
+html body #toasts>.toast>.pn-toast-i .pi{width:20px;height:20px;margin:0}
+html body #toasts>.toast>span:not(.pn-toast-i){flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+/* lane:a2ui toast END */
+/* lane:a2ui rows START — I-16 / I-23: ONE row for every grouped list (Profil, Mer på kartan, group Ikväll view).
+   Row: min 64 px; icon 24 px LEFT, centred to the 2 text lines; title 16/22 600; sub 14/20 muted; chevron 16 px at 16 px from the right;
+   one card per section, one radius (16), no gap inside; the same thin divider (token line colour, inset 52 px = from the text). */
+:root{--pn-row-ic:24px;--pn-div-inset:52px;--pn-div:var(--ds-border,rgba(255,255,255,.1))}
+html body .ds-list{border-radius:var(--r-lg,16px) !important}
+html body .ds-list>.ds-row{min-height:64px !important;padding:var(--sp-3,12px) var(--sp-4,16px) !important;gap:var(--sp-3,12px) !important;align-items:center}
+html body .ds-list>.ds-row>.ds-row-i{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important;align-self:center}
+html body .ds-list>.ds-row>.ds-row-i .pi,html body .ds-list>.ds-row>.ds-row-i .pn-ic{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important}
+html body .ds-list>.ds-row{position:relative}
+html body .ds-list>.ds-row:not(:first-child){border-top:0 !important}
+html body .ds-list>.ds-row:not(:first-child)::before{content:"";position:absolute;top:0;left:var(--pn-div-inset);right:0;height:1px;background:var(--pn-div);pointer-events:none}
+/* group Ikväll view: tiles = rows of one card per section */
+#sheet .gpg[data-gv="plus"]{row-gap:0 !important}
+#sheet .gpg[data-gv="plus"]>.skj-gi,#sheet .gpg[data-gv="plus"]>.fm-gi,#sheet .gpg[data-gv="plus"]>.gpg-chat{margin:var(--sp-2,8px) 0 !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl:not(.a2-row){margin:var(--sp-2,8px) 0 !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row{margin:0 !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn{display:grid !important;grid-template-columns:var(--pn-row-ic) minmax(0,1fr) auto;column-gap:var(--sp-3,12px);row-gap:0;align-items:center;
+  align-content:center;justify-content:stretch !important;text-align:left;width:100%;min-height:64px !important;padding:var(--sp-3,12px) 44px var(--sp-3,12px) var(--sp-4,16px) !important;
+  font:600 var(--fs-16,16px)/22px var(--ds-sans) !important;color:var(--ds-text) !important;background-color:var(--ds-card) !important;border:1px solid var(--pn-div) !important;
+  border-width:0 1px !important;border-radius:0 !important;box-shadow:none !important;position:relative}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn [class$="-gl"]{display:contents !important;font:inherit !important;max-width:none}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn [class$="-gl"]>svg{grid-column:1;grid-row:1 / span 2;align-self:center;width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn [class$="-gs"]{display:block !important;grid-column:2;grid-row:2;white-space:normal !important;max-width:none !important;
+  font:400 var(--fs-14,14px)/20px var(--ds-sans) !important;color:var(--ds-muted) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn>svg{grid-column:1;grid-row:1 / span 2;align-self:center;width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn:not(:has(svg)){grid-template-columns:minmax(0,1fr) auto;padding-left:calc(var(--sp-4,16px) + var(--pn-row-ic) + var(--sp-3,12px)) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row>.btn>.switch{grid-column:3;grid-row:1 / span 2;align-self:center}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row:not(.a2-first)>.btn{background-image:linear-gradient(var(--pn-div),var(--pn-div)) !important;background-size:calc(100% - var(--pn-div-inset)) 1px !important;background-position:right top !important;background-repeat:no-repeat !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row.a2-first>.btn{border-top-width:1px !important;border-top-left-radius:var(--r-lg,16px) !important;border-top-right-radius:var(--r-lg,16px) !important}
+#sheet .gpg[data-gv="plus"]>.sa-gl.a2-row.a2-last>.btn{border-bottom-width:1px !important;border-bottom-left-radius:var(--r-lg,16px) !important;border-bottom-right-radius:var(--r-lg,16px) !important}
+/* I-23 the stray mark under the Profil tab: the sticky bar covers its top corners (strip ::before) but not its two bottom corners,
+   so a card scrolling under it showed a small corner. The fade ::after now starts 12 px higher and fills the two bottom corners too. */
+.sheet #sheet-body>.tabs.pf-tabs::after{top:calc(100% - 12px) !important;height:28px !important;
+  background:radial-gradient(circle at 100% 0,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left top/12px 12px no-repeat,radial-gradient(circle at 0 0,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right top/12px 12px no-repeat,linear-gradient(var(--ds-sheet,#121a2a),transparent) left bottom/100% 16px no-repeat !important}
+/* lane:a2ui rows END */
+/* lane:a2ui kinds START — I-26 */
+.kind-btn .kb-e{display:grid;place-items:center;width:32px;height:32px;font-size:0;color:var(--ds-amber-t,#ffc24d)}
+.kind-btn .kb-e .pn-kind-i{width:28px;height:28px;margin:0}
+/* lane:a2ui kinds END */
+/* lane:a2ui more START — I-21: the bottom bar has its final size from the first paint (no shift when PNUI adds body.pn-calm = dock
+   padding-top 22 → 14, when the Grupper label gets its text, or when the precision box is measured). Values = the settled ones. */
+html body .dock{padding-top:14px !important;padding-bottom:calc(var(--sab,0px) + 10px) !important;gap:var(--sp-1,4px) !important}
+html body .dock-row{min-height:124px}
+html body .dock-row>.side-btn .side-label,html body #groups-label{display:block;min-height:18px;line-height:18px}
+html body #prec-seg{height:var(--pn-side-h,80px) !important;box-sizing:border-box}
+/* icon + label stay at the top of Grupper; the green "N ute" line (js/pnui.js groupsOut) arrives with the first poll and is added UNDER them
+   (before: the block was centred, so icon + label jumped 10 px up when that line appeared) */
+html body .dock-row>#btn-groups{justify-content:flex-start !important}
+/* lane:a2ui more END */

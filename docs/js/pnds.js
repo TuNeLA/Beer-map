@@ -573,7 +573,7 @@
       // side: +1 = up-right, -1 = up-left (--pn-annat-side, ds05c). The angle starts at 50° and rises until the button is
       // ≥ 8 px clear of the side box on that side (Grupper / precision), so it reads as a pair with ÖL!.
       var side = parseFloat(getComputedStyle(root).getPropertyValue("--pn-annat-side")) || 1;
-      var ring = b.width / 2, me = (ow.offsetWidth || 52) / 2, d = ring + 8 + me;
+      var ring = b.width / 2, me = (ow.offsetWidth || 60) / 2, d = ring + 8 + me;
       var box = side < 0 ? $("btn-groups") : $("prec-seg"), br = box && box.getClientRects().length ? box.getBoundingClientRect() : null;
       var cx, cy, deg;
       for (deg = 50; deg <= 88; deg++) {

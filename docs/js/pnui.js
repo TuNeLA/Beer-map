@@ -303,6 +303,31 @@
 
   /* ---------- friends strip (map) ---------- */
   var ikv = { d: null, at: 0, busy: false };
+  /* a2ui I-22: the Ikväll / Ute / Kanske / Hemma choice is kept on this phone with its night id (the day starts 05:00) and
+     is in the FIRST paint (read here, at load, before the chip paints). The server value only replaces it after the first poll;
+     a new night (05:00) = no choice = "Ikväll?". */
+  var IKV_KEY = "olnu.pnIkvMine";
+  function nightId(t) { var d = new Date((t || Date.now()) - 5 * 3600000); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function saveIkv(keepAt) { try { var m = ikv.d && ikv.d.mine, o = null; if (keepAt) { try { o = JSON.parse(ls(IKV_KEY, "null") || "null"); } catch (e) {} } if (m) lsSet(IKV_KEY, JSON.stringify({ mine: m, night: nightId(), at: o && o.at && keepAt ? o.at : Date.now() })); else lsSet(IKV_KEY, null); } catch (e) {} }
+  // the server answer replaces the saved choice only when it is newer: our own choice (this night) that the server does not have yet,
+  // or that is younger than 2 minutes, stays; and it is sent again (ikvall_set). A later change on another phone wins.
+  function mergeIkv(d) {
+    var o = null; try { o = JSON.parse(ls(IKV_KEY, "null") || "null"); } catch (e) {}
+    if (o && /^(ute|kanske|hemma)$/.test(o.mine) && o.night === nightId() && d.mine !== o.mine && (!d.mine || Date.now() - (o.at || 0) < 120000)) {
+      d.mine = o.mine; if (!off.ikvall_set) call("ikvall_set", { p_st: o.mine });
+      return true;
+    }
+    return false;
+  }
+  function restoreIkv() {
+    try {
+      var o = JSON.parse(ls(IKV_KEY, "null") || "null");
+      if (o && /^(ute|kanske|hemma)$/.test(o.mine) && o.night === nightId()) ikv.d = { mine: o.mine, people: [], counts: { ute: 0, kanske: 0, hemma: 0 }, local: 1 };
+      else if (o) lsSet(IKV_KEY, null);
+    } catch (e) {}
+  }
+  function newNight() { if (ikv.d && ikv.d.mine && ikv.d.local) { var o = null; try { o = JSON.parse(ls(IKV_KEY, "null") || "null"); } catch (e) {} if (!o || o.night !== nightId()) { ikv.d.mine = null; lsSet(IKV_KEY, null); stripSig = ""; } } }
+  restoreIkv();
   function stripEl() {
     var s = document.getElementById("pn-strip");
     if (s) return s;
@@ -361,10 +386,10 @@
     ikv.busy = true;
     return call("ikvall_status", {}).then(function (r) {
       ikv.busy = false; ikv.at = Date.now();
-      var d = data(r); if (d) ikv.d = d;
+      var d = data(r); if (d) { var kept = mergeIkv(d); ikv.d = d; saveIkv(kept); }
       // Already out tonight (a live pin) but no status yet: say "Ute" once (friends see the pin anyway).
       if (d && !d.mine && evening() && safe(function () { return A.myBeer(); }, null) && ls("olnu.pnAutoUte") !== String(d.night)) {
-        lsSet("olnu.pnAutoUte", String(d.night)); d.mine = "ute"; call("ikvall_set", { p_st: "ute" });
+        lsSet("olnu.pnAutoUte", String(d.night)); d.mine = "ute"; saveIkv(); call("ikvall_set", { p_st: "ute" });
       }
       paintStrip(); paintIkvSheet();
       return ikv.d;
@@ -385,10 +410,10 @@
   function setIkv(st) {
     var prev = ikv.d ? ikv.d.mine : null, nxt = prev === st ? null : st;
     if (!ikv.d) ikv.d = { mine: null, people: [], counts: { ute: 0, kanske: 0, hemma: 0 } };
-    ikv.d.mine = nxt; stripSig = ""; paintStrip(); paintIkvSheet(); vib(15);
+    ikv.d.mine = nxt; ikv.d.local = 0; saveIkv(); stripSig = ""; paintStrip(); paintIkvSheet(); vib(15);
     call("ikvall_set", { p_st: nxt }).then(function (r) {
       if (r.error) {
-        ikv.d.mine = prev; stripSig = ""; paintStrip(); paintIkvSheet();
+        ikv.d.mine = prev; saveIkv(); stripSig = ""; paintStrip(); paintIkvSheet();
         toast(errCode(r.error) === "slow_down" ? "Lugn, korpral. Vänta en sekund." : "Det gick int'. Försök igen.", { err: true });
       }
     });
@@ -848,12 +873,12 @@
       document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") loadIkvall(false); });
     },
     onAuthed: function () { loadIkvall(true); avatarBtn(); },
-    onPoll: function () { lastPollAt = Date.now(); paintStrip(); avatarBtn(); moreDot(); groupsOut(); loadIkvall(false); },
+    onPoll: function () { lastPollAt = Date.now(); newNight(); paintStrip(); avatarBtn(); moreDot(); groupsOut(); loadIkvall(false); },
     onBeerAccepted: function () {
       try { if (window.PNDS_BEEROK) window.PNDS_BEEROK(); } catch (e) {}   // ds40: "Öl #N registrerad"
       try { var ne = A.nightEnd ? A.nightEnd() : 0; if (ne) lsSet("olnu.pnOutNight", String(ne)); } catch (e) {}
       afterFirstBeer();
-      if (ikv.d && ikv.d.mine !== "ute" && evening() && !off.ikvall_set) { ikv.d.mine = "ute"; stripSig = ""; paintStrip(); call("ikvall_set", { p_st: "ute" }); }
+      if (ikv.d && ikv.d.mine !== "ute" && evening() && !off.ikvall_set) { ikv.d.mine = "ute"; saveIkv(); stripSig = ""; paintStrip(); call("ikvall_set", { p_st: "ute" }); }
     },
     onReadyShow: function () { return maybeOnboard() ? "pnob" : maybeMorning() ? "pnmorn" : ""; },
     barMeterHTML: barMeterHTML,
@@ -869,3 +894,153 @@
     _ikvRaw: function () { return ikv; }, _norm: norm
   };
 })();
+/* lane:a2ui START — ONE toast system (I-05) + the same drink icons wherever a drink kind shows (I-26).
+   Toast: centred, max 420 px, one place (bottom: above ÖL!/Grupper on the map, above the composer / sheet bottom when a sheet is
+   open, never over the header), max 2 stacked, swipe to dismiss, a PNI icon instead of the emoji. CSS: "lane:a2ui" in pnds.css.
+   The toast API stays A.toast (app-ui.js): every module already calls it. */
+(function () {
+  "use strict";
+  var R = document.documentElement, EMO = null;
+  try { EMO = /^\s*((?:\p{Extended_Pictographic})(?:️|‍\p{Extended_Pictographic}️?)*)\s*/u; } catch (e) {}
+  var EXTRA = {};
+  [[0x1F914, "help"], [0x1F6CB, "home"], [0x1F4A7, "drink"], [0x1F691, "sos"], [0x1F44B, "hand"], [0x270B, "hand"], [0x1F4E1, "info"], [0x26A0, "info"], [0x1F4A4, "moon"],
+    [0x1F680, "sparkle"], [0x1F38A, "sparkle"], [0x1F64C, "hand"], [0x1F507, "bell-off"]].forEach(function (x) { EXTRA[String.fromCodePoint(x[0])] = x[1]; });
+  function iconName(emoji, el) {
+    var P = window.PNI; if (!P) return "";
+    var k = emoji.replace(/️/g, ""), n = (P.EMOJI && (P.EMOJI[emoji] || P.EMOJI[k])) || EXTRA[k] || "";
+    if (!n || !P.has(n)) n = el.classList.contains("err") ? "info" : "";
+    return n;
+  }
+  function decorate(el) {
+    if (el.__pnT || el.classList.contains("pn-toast-out") || el.classList.contains("ac-list")) return;
+    var P = window.PNI, sp = el.querySelector(":scope > span"); if (!P || !sp) return;
+    el.__pnT = 1;
+    var tn = sp.firstChild, name = "";
+    if (tn && tn.nodeType === 3 && EMO) { var m = EMO.exec(tn.nodeValue); if (m) { name = iconName(m[1], el); tn.nodeValue = tn.nodeValue.slice(m[0].length); } }
+    if (!name) name = el.classList.contains("err") ? "info" : (/\b(med|chaos-toast)\b/.test(el.className) ? "sos" : "info");
+    var i = document.createElement("span"); i.className = "pn-toast-i"; i.setAttribute("aria-hidden", "true"); i.innerHTML = P.svg(name, "");
+    el.insertBefore(i, el.firstChild);
+  }
+  function trim(box) {
+    var v = [].filter.call(box.children, function (x) { return !x.hasAttribute("data-keep") && !x.classList.contains("pn-toast-out") && x.getAttribute("data-leaving") !== "1"; });
+    while (v.length > 2) v.shift().remove();   // max 2 stacked: the oldest goes
+  }
+  function swipe(box) {
+    var t = null;
+    box.addEventListener("pointerdown", function (e) {
+      var el = e.target.closest && e.target.closest(".toast"); if (!el || e.target.closest("button")) return;
+      t = { el: el, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId, t0: Date.now() };
+    });
+    box.addEventListener("pointermove", function (e) {
+      if (!t || e.pointerId !== t.id) return;
+      var dx = e.clientX - t.x, dy = e.clientY - t.y;
+      if (!t.on && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { t.on = true; try { t.el.setPointerCapture(e.pointerId); } catch (x) {} t.el.style.transition = "none"; }
+      if (t.on) { t.dx = dx; t.el.style.transform = "translateX(" + dx + "px)"; t.el.style.opacity = String(Math.max(.2, 1 - Math.abs(dx) / 300)); }
+    });
+    function end(e) {
+      if (!t || (e && e.pointerId !== t.id)) return;
+      var s = t; t = null; if (!s.on) return;
+      var fast = Math.abs(s.dx) / Math.max(1, Date.now() - s.t0) > .5;
+      if (Math.abs(s.dx) > 70 || (fast && Math.abs(s.dx) > 30)) {
+        s.el.setAttribute("data-leaving", "1"); s.el.style.transition = "transform .15s ease-out,opacity .15s"; s.el.style.transform = "translateX(" + (s.dx > 0 ? 420 : -420) + "px)"; s.el.style.opacity = "0";
+        setTimeout(function () { s.el.remove(); }, 150);
+      } else { s.el.style.transition = "transform .15s ease-out,opacity .15s"; s.el.style.transform = ""; s.el.style.opacity = ""; setTimeout(function () { s.el.style.transition = ""; }, 170); }
+    }
+    box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
+  }
+  /* the one place: bottom. With a sheet open: above the composer (the last visible text field low on the screen) or 16 px above the
+     bottom edge. On the map the ds33 measure (--pn-toast-b) already keeps it above ANNAT / ÖL! / Grupper. */
+  function sheetBottom() {
+    var sh = document.getElementById("sheet"), safe = 0;
+    try { var p = document.createElement("div"); p.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom,0px);visibility:hidden"; document.body.appendChild(p); safe = p.getBoundingClientRect().height; p.remove(); } catch (e) {}
+    var b = 16 + safe;
+    if (!sh) return b;
+    var best = 0;
+    sh.querySelectorAll("textarea, input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]), [contenteditable=true]").forEach(function (f) {
+      if (!f.getClientRects().length) return;
+      var r = f.getBoundingClientRect();
+      if (r.top > innerHeight * .5 && r.bottom <= innerHeight + 2) best = Math.max(best, Math.round(innerHeight - r.top + 12));
+    });
+    return Math.max(b, best);
+  }
+  function place() {
+    var on = document.body.classList.contains("pn-modal-on");
+    R.classList.toggle("pn-toast-sheet", on);
+    if (on) R.style.setProperty("--pn-toast-sheet-b", sheetBottom() + "px");
+  }
+  function start() {
+    var box = document.getElementById("toasts"); if (!box) return;
+    box.setAttribute("aria-live", "polite");
+    swipe(box);
+    new MutationObserver(function (ms) {
+      ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1 && n.classList.contains("toast")) decorate(n); }); });
+      trim(box); place();
+    }).observe(box, { childList: true });
+    [].forEach.call(box.querySelectorAll(".toast"), decorate);
+    new MutationObserver(place).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    addEventListener("resize", place);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", place);
+    setInterval(function () { if (document.body.classList.contains("pn-modal-on")) place(); }, 700);
+    place();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* lane:a2ui END */
+
+/* lane:a2ui rows START — I-16: one card per section in the group Ikväll view. gpage.js marks sa-gl-first / -last per data-gp; a tile
+   with another data-gp than its header (Truppen / Chatt / Kalla in) lost its round corners. Here the run is cut at the headers
+   (.gp-h, by CSS order) and at every tile that is not a plain list tile: own classes a2-first / a2-last, set only on change. */
+(function () {
+  "use strict";
+  var tm = 0, busy = false;
+  function shown(c) { return !c.hidden && c.getClientRects().length > 0; }
+  function mark(wrap) {
+    var seq = [];
+    [].forEach.call(wrap.children, function (c, i) {
+      if (!shown(c)) return;
+      var o = 0; try { o = +getComputedStyle(c).order || 0; } catch (e) {}
+      var k = c.classList;
+      var row = k.contains("sa-gl") && !k.contains("gp-h") && !!c.querySelector(':scope > .btn [class$="-gl"], :scope > .btn > svg');   // a plain row: icon + title (+ sub) in one button
+      if (k.contains("a2-row") !== row) k.toggle("a2-row", row);
+      seq.push({ c: c, o: o, i: i, tile: row });
+    });
+    seq.sort(function (a, b) { return (a.o - b.o) || (a.i - b.i); });
+    seq.forEach(function (x, j) {
+      if (!x.tile) { x.c.classList.remove("a2-first", "a2-last"); return; }
+      var f = j === 0 || !seq[j - 1].tile, l = j === seq.length - 1 || !seq[j + 1].tile;
+      if (x.c.classList.contains("a2-first") !== f) x.c.classList.toggle("a2-first", f);
+      if (x.c.classList.contains("a2-last") !== l) x.c.classList.toggle("a2-last", l);
+    });
+  }
+  function run() { if (busy) return; busy = true; try { [].forEach.call(document.querySelectorAll('#sheet .gpg[data-gv="plus"]'), mark); } catch (e) {} busy = false; }
+  function soon() { clearTimeout(tm); tm = setTimeout(run, 60); }
+  function start() {
+    var sb = document.getElementById("sheet-body"); if (!sb || !window.MutationObserver) return;
+    new MutationObserver(soon).observe(sb, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden", "data-gv"] });
+    soon();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* lane:a2ui rows END */
+
+/* lane:a2ui kinds START — I-26: the Sidospår sheet (extras.js writes system emoji into .kb-e) and every other [data-kind] chip with a
+   .kb-e: the own PNI drink icon (PNI.kind), nine silhouettes. Other places that show a drink kind call PNI.kind(kind, cls). */
+(function () {
+  "use strict";
+  var tm = 0;
+  function run() {
+    var P = window.PNI; if (!P || !P.kind) return;
+    [].forEach.call(document.querySelectorAll("#sheet-body .kind-btn[data-kind] > .kb-e, .kind-btn[data-kind] > .kb-e"), function (e) {
+      var k = e.parentNode.getAttribute("data-kind"); if (e.getAttribute("data-a2k") === k) return;
+      e.setAttribute("data-a2k", k); e.innerHTML = P.kind(k, "pn-kind-i");
+    });
+  }
+  function soon() { clearTimeout(tm); tm = setTimeout(run, 20); }
+  function start() {
+    var sb = document.getElementById("sheet-body"); if (!sb || !window.MutationObserver) return;
+    new MutationObserver(soon).observe(sb, { childList: true, subtree: true });
+    soon();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* lane:a2ui kinds END */

@@ -111,8 +111,20 @@
     "heart": ["M12 20s-8-4.8-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6.2-8 11-8 11z"],
     // social-a (10 Nov): Profil edit badge (G5) + Gängkamp (crossed swords)
     "edit": ["M5 19l1-4.2L15.8 5a2.1 2.1 0 0 1 3 3L9 17.8z", "M14 6.8l3.2 3.2"],
-    "swords": ["M5 5l11 11", "M13.5 18.5l5-5", "M17 17l3 3", "M19 5L8 16", "M10.5 18.5l-5-5", "M7 17l-3 3"]
+    "swords": ["M5 5l11 11", "M13.5 18.5l5-5", "M17 17l3 3", "M19 5L8 16", "M10.5 18.5l-5-5", "M7 17l-3 3"],
+    // a2ui I-26: the drink kinds of the Sidospår sheet. Nine silhouettes that differ at 28 px: bottle / wine glass / apple / martini /
+    // narrow shot / wide tumbler with ice / highball + lemon / flute + bubbles / dashed circle with a plus.
+    "k-rom": ["M10 2.5h4", "M10.5 2.5v4.3c0 1.2-2.5 1.6-2.5 4.4V20a1.5 1.5 0 0 0 1.5 1.5h5A1.5 1.5 0 0 0 16 20v-8.8c0-2.8-2.5-3.2-2.5-4.4V2.5", "M8 14.5h8", "M8 18h8"],
+    "k-vin": ["M7 3h10c0 5.2-1.6 8.2-5 8.2S7 8.2 7 3z", "M7.4 7h9.2", "M12 11.2V20", "M8.5 21h7"],
+    "k-cider": ["M12 7.5c-2.2-1.6-7.5-1.2-7.5 4.8 0 4.5 3 9.2 5.7 9.2 1 0 1.1-.6 1.8-.6s.8.6 1.8.6c2.7 0 5.7-4.7 5.7-9.2 0-6-5.3-6.4-7.5-4.8z", "M12 7.5c0-2 .6-3.5 2-4.5", "M14.5 5.2c1.4-.5 2.7-.2 3.5.8"],
+    "k-drink": ["M3.5 4h17L12 13z", "M12 13v7", "M8 20.5h8", "M15.5 2l-3 7.5", "C17.5 5 1"],
+    "k-shot": ["M8 4h8l-1 15.5a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 19.5z", "M8.4 9.5h7.2"],
+    "k-whisky": ["M3.5 7h17l-1.5 11a2 2 0 0 1-2 1.8H7a2 2 0 0 1-2-1.8z", "r 8.5 10.5 4 4 .8"],
+    "k-grogg": ["M7 5h10l-1 15.5a1 1 0 0 1-1 .9H9a1 1 0 0 1-1-.9z", "r 9.5 11 3 3 .6", "r 12 15.5 3 3 .6", "c 17.5 4.5 2.3", "M11 2l2.2 7"],
+    "k-bubbel": ["M9.2 3h5.6l-.4 9a2.4 2.4 0 0 1-4.8 0z", "M12 14.5V20", "M8.5 21h7", "C18.5 6 .9", "C5.5 8 .9", "C19.5 11 .7"],
+    "k-annat": ["d 12 12 9", "M12 8v8", "M8 12h8"]
   };
+  var KIND = { rom: "k-rom", vin: "k-vin", cider: "k-cider", drink: "k-drink", shot: "k-shot", whisky: "k-whisky", grogg: "k-grogg", bubbel: "k-bubbel", annat: "k-annat" };
   // Emoji that the older code puts in front of UI labels → our icon (UI chrome only; chat text and fun copy keep emoji).
   var EMOJI = {
     "🍺": "beer", "🍻": "cheers", "🥃": "drink", "🍷": "drink", "🥂": "cheers", "🍹": "drink", "🍸": "drink", "🍾": "drink",
@@ -148,5 +160,6 @@
       (label ? 'role="img" aria-label="' + String(label).replace(/"/g, "&quot;") + '"' : 'aria-hidden="true" focusable="false"') +
       '><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + "</g></svg>";
   }
-  window.PNI = { svg: svg, has: function (n) { return !!I[n]; }, names: function () { return Object.keys(I); }, EMOJI: EMOJI, _I: I };
+  function kind(k, cls, label) { return svg(KIND[k] || KIND.annat, cls, label); }
+  window.PNI = { kind: kind, KIND: KIND, svg: svg, has: function (n) { return !!I[n]; }, names: function () { return Object.keys(I); }, EMOJI: EMOJI, _I: I };
 })();
