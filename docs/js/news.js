@@ -631,4 +631,15 @@
     freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
     // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
     last: function () { return { beers: lastBeers, ctx: lastCtx }; } };
+  /* dialect2 (owner 11 Nov): the ticker speaks the dialect of the map area it shows (DIALEKT.tickerArea: the map view, else
+     the ticker centre). Only the build runs in that scope; toasts, games and reports keep the phone's region. */
+  (function () {
+    var b0 = window.NEWS.build;
+    window.NEWS.build = function (beers, ctx) {
+      var D = window.DIALEKT;
+      if (!D || !D.within || !D.tickerArea) return b0(beers, ctx);
+      var a = null; try { a = D.tickerArea(ctx && ctx.center ? ctx.center : null); } catch (e) { a = null; }
+      return D.within(a, function () { return b0(beers, ctx); });
+    };
+  })();
 })();

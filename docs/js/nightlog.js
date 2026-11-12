@@ -34,7 +34,7 @@
   var TX = {
     empty: [DIALEKT.list({0: "nightlog.empty#0#5"}, ["Inga drycker loggade ikväll. Kasernen är tyst – än så länge.", "No drinks logged tonight. Quiet barracks – so far."], {a: 1}),
       DIALEKT.list("nightlog.empty", ["Tomt i loggboken. Tryck ÖL! så börjar rapporten.", "The log is empty. Tap ÖL! to start the report."], {a: 1, n: 5, o: 1}),
-      DIALEKT.list({0: "nightlog.empty#3#5"}, ["Ingen aktivitet i fält. Vilodag för levern?", "No activity in the field. Rest day for the liver?"], {a: 1}),
+      DIALEKT.list({0: "nightlog.empty#3#5"}, ["Ingen aktivitet i fält. Levern har skickat ett tackkort.", "No activity in the field. Rest day for the liver?"], {a: 1}),
       DIALEKT.list({0: "nightlog.empty#4#5"}, ["Nollrapport, chefen. Inte en droppe.", "Zero report, sir. Not a drop."], {a: 1})],
     head: [["Fältrapport: {n} drycker.", "Field report: {n} drinks."], ["Loggboken säger {n}. Den ljuger inte.", "The log says {n}. It doesn't lie."],
       ["{n} i kroppen, noll i ångern.", "{n} down, zero regrets."], ["Uppdraget pågår: {n} avklarade.", "Mission running: {n} done."],

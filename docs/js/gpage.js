@@ -56,7 +56,7 @@
   /* ---------- texts (dalmål "ä" for é) ---------- */
   var TX = {
     none: [DIALEKT.list({0: "grp.empty#0#5"}, ["Ingen ute än. Bli först, kompis!", "Nobody out yet. Be the first!"]), DIALEKT.list({0: "grp.empty#1#5"}, ["Tyst i leden. Nån måste börja.", "All quiet. Someone has to start."]),
-      DIALEKT.list({0: "grp.empty#2#5"}, ["Kasernen sover. Väck den med en öl.", "The barracks sleep. Wake them with a beer."]), DIALEKT.list({0: "grp.empty#3#5"}, ["Inga soldater i fält ikväll – än.", "No troops in the field tonight – yet."]),
+      DIALEKT.list({0: "grp.empty#2#5"}, ["Kasernen sover. Väck den med en öl.", "The barracks sleep. Wake them with a beer."]), DIALEKT.list({0: "grp.empty#3#5"}, ["Inga soldater i fält än. Generalen har börjat lägga patiens.", "No troops in the field tonight – yet."]),
       DIALEKT.list({0: "grp.empty#4#5"}, ["Lugnt läge. Det är du som bestämmer när det smäller.", "Calm. You decide when it kicks off."])],
     beer: ["🍺 ÖL!", "🍺 ÖL!"], beerSub: [["jag ä ute", "I'm out"], ["syns för gänget", "the gang sees you"], ["säg till gänget", "tell the gang"]],
     plus: ["＋", "＋"], plusAria: ["Mer att göra", "More to do"], moreAria: ["Info om gruppen", "Group info"],

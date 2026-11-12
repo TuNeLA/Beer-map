@@ -26,7 +26,14 @@
      plain-Swedish line, so Dialekt Av, a neutral area, no pack yet or a failed pack = def. vars null = raw text for the caller.
    - list(spec, defs, opt): a content array (same length / order / Array) whose elements are read through v() when read.
    - Region packs load lazily: ONLY the user's region file (+ its -lek game cards), after the load event + one idle slot.
-     docs/js/dialekt-packs/sv-neutral(.js|-lek.js) is the catalog (owner review + tests), not loaded by the app. */
+     docs/js/dialekt-packs/sv-neutral(.js|-lek.js) is the catalog (owner review + tests), not loaded by the app.
+   DIALECT2 (owner 11 Nov: "more region, less neutral; in Göteborg they say Glenn"):
+   - The LIVE ticker speaks the dialect of the map area it shows: tickerArea(center) = the map view centre (api.map,
+     zoom >= 7), else the ticker centre, else null (= the phone's region). within(area, fn) runs fn with that area's chain.
+     news.js runs NEWS.build inside it. Toasts, games, the morning report: no scope = the phone's region, as before.
+   - The ticker's region pack, when it is not the phone's own, loads as ONE extra core pack (no -lek); a new extra pack
+     drops the old one. onPoll preloads it when the map moved to another region and fires dialekt:change (ticker rebuild).
+   - Dialekt Av / preview: no ticker scope (Av = plain everywhere). */
 (function () {
   "use strict";
   var LS = "olnu.dialekt", LS_R = "olnu.dialekt.r";
@@ -37,6 +44,7 @@
   var NAME = { "sv-neutral": "Neutral", "sv-syd": "Syd", "sv-vast": "Väst", "sv-sthlm": "Stockholm", "sv-dalarna": "Dalarna", "sv-norr": "Norrland",
     "sv-smaland": "Småland", "sv-varmland": "Värmland", "sv-norr-ovre": "Övre Norrland", "sv-norr-mitt": "Mitt-Norrland", "sv-gotland": "Gotland" };
 
+  var scope = null, TICK_Z = 7, lastTick = "", trace = null;   // dialect2: ticker scope (see tickerArea / within)
   var packs = {}, sets = [], dataP = null, failAt = 0, api = null, explicit = null, area = null, lastSig = "", lastLL = "", subs = [], rows = [];
   var nowFn = function () { return Date.now(); };
   var stats = { loads: 0, loadMs: null, resolves: 0, missVars: 0, miss: {}, err: null, region: 0, packs: {}, packMs: {} };
@@ -149,10 +157,11 @@
     function add(c) { if (c && out.indexOf(c) < 0) out.push(c); }
     if (st.mode === "off") return [N];
     if (st.force) { add(st.force); add(PARENT[st.force]); add(N); return out; }
-    if (area && area.lang === lang()) {
+    var ar = scope || area;   // dialect2: inside within() (the LIVE ticker) the map area's region, else the phone's
+    if (ar && ar.lang === lang()) {
       // scheme B: the B code decides (a B code "neutral" = neutral, e.g. Gästrikland); a missing key falls back to A
-      if (scheme() === "B" && area.b) { add(area.b); if (area.b !== N) add(area.a); }
-      else add(area.a);
+      if (scheme() === "B" && ar.b) { add(ar.b); if (ar.b !== N) add(ar.a); }
+      else add(ar.a);
     }
     add(N);
     return out;
@@ -163,7 +172,8 @@
   function ctxCodes() {
     if (st.mode === "off") return [neutral()];
     if (st.force) return [st.force, PARENT[st.force]].filter(Boolean);
-    return area ? [area.a, area.b].filter(Boolean) : [];
+    var ar = scope || area;
+    return ar ? [ar.a, ar.b].filter(Boolean) : [];
   }
   function night() {
     var d = new Date(nowFn() - NIGHT_H * 3600e3);
@@ -256,8 +266,9 @@
     for (var j = 0; j < ch.length; j++) {
       if (ch[j] === N) break;
       var p = packs[ch[j]]; if (!p || !Object.prototype.hasOwnProperty.call(p, key)) continue;
-      s = pick(key, p[key], vars, cs, seed, i, n, al, okT); if (s === MIX) continue; if (s != null) { stats.region++; return fill2(s, vars); }
+      s = pick(key, p[key], vars, cs, seed, i, n, al, okT); if (s === MIX) continue; if (s != null) { stats.region++; if (trace) trace.push([key, ch[j]]); return fill2(s, vars); }
     }
+    if (trace) trace.push([key, null]);
     if (def != null) return fill2(String(def), vars);
     return t(key, vars);
   }
@@ -412,6 +423,7 @@
     el.onload = function () {
       packState[f] = "ok"; stats.packMs[f] = Math.round(((window.performance && performance.now()) || 0) - t0);
       if (!packs[f.replace(/-lek$/, "")]) { packState[f] = "fail"; return; }
+      if (PACK_FILES[f] && f !== extra && ownChain().indexOf(f) < 0) { delete packs[f]; delete packState[f]; return; }   // dialect2: an old extra pack that came in late
       stats.packs[f] = 1; emit(); if (then) then();
     };
     el.onerror = function () { packState[f] = "fail"; try { el.remove(); } catch (e) {} setTimeout(function () { if (packState[f] === "fail") { delete packState[f]; syncPacks(); } }, 60e3); };
@@ -419,7 +431,52 @@
   }
   function syncPacks() {
     if (!painted || st.mode === "off") return;
-    chain().forEach(function (c) { if (PACK_FILES[c]) loadPack(c, function () { loadPack(c + "-lek"); }); });
+    ownChain().forEach(function (c) { if (PACK_FILES[c]) loadPack(c, function () { loadPack(c + "-lek"); }); });
+    if (extraWant) wantExtra(extraWant);
+  }
+  function ownChain() { var o = scope; scope = null; try { return chain(); } finally { scope = o; } }
+
+  /* ---------- dialect2: the LIVE ticker speaks the map area's dialect ----------
+     tickerArea(center): the map view centre when the map shows a town or a region (zoom >= TICK_Z), else the ticker
+     centre (app.js chaosCenter: own position / own pin / map centre), else null = the phone's own region.
+     Off / preview / no data yet / outside the data (sea, Norway) → null. */
+  var extra = null, extraWant = null;
+  function tickerArea(center) {
+    if (st.mode === "off" || st.force || !sets.length) return null;
+    var a = null, m = api && api.map, c;
+    try { if (m && m.getZoom && m.getZoom() >= TICK_Z) { c = m.getCenter(); a = fromLL(c.lat, c.lng, "map"); } } catch (e) { a = null; }
+    if (!a) { c = center; if (c === undefined && api && api.center) { try { c = api.center(); } catch (e) { c = null; } } if (c && isFinite(c.lat)) a = fromLL(c.lat, c.lng, "center"); }
+    return a && a.lang === lang() ? a : null;
+  }
+  function tickCode(a) { var o = scope; scope = a || null; try { return chain()[0]; } finally { scope = o; } }
+  // run fn with the chain of area a (null = no change). Sync only: the scope ends when fn returns.
+  function within(a, fn) {
+    if (!a) return fn();
+    var c = tickCode(a); if (c !== ownChain()[0]) wantExtra(c);
+    var o = scope; scope = a;
+    try { return fn(); } finally { scope = o; }
+  }
+  // at most ONE extra region pack (core only, no -lek): a new one drops the old one from memory (the sw keeps the file)
+  function wantExtra(c) {
+    if (!PACK_FILES[c] || st.mode === "off") return;
+    var own = ownChain();
+    if (own.indexOf(c) >= 0) return;
+    extraWant = c;
+    if (!painted) return;   // start-up: after the load event + idle, syncPacks() asks again
+    if (extra && extra !== c && own.indexOf(extra) < 0) { delete packs[extra]; delete stats.packs[extra]; delete packState[extra]; }
+    extra = c; stats.extra = c;
+    loadPack(c);
+  }
+  // onPoll: the map moved to another region → load its pack / tell the ticker (app.js rebuilds it on dialekt:change)
+  var tickScoped = false;
+  function tickCheck() {
+    var own = ownChain()[0], a = tickerArea(), c = a ? tickCode(a) : own, prev = lastTick, was = tickScoped;
+    if (c === prev) return;
+    lastTick = c; stats.tick = c; tickScoped = c !== own;
+    // first check, or the phone's own region moved (resolve() already fired dialekt:change): nothing more to tell
+    if (!tickScoped && (!prev || !was)) return;
+    if (tickScoped && PACK_FILES[c] && !stats.packs[c]) { wantExtra(c); return; }   // its onload fires the change
+    try { window.dispatchEvent(new CustomEvent("dialekt:change", { detail: { region: region(), ticker: c, mode: st.mode, chain: chain() } })); } catch (e) {}
   }
   (function () {   // after the first paint: load + one idle slot (the pack never competes with the start-up)
     var go = function () { try { (window.requestIdleCallback || function (f) { return setTimeout(f, 1); })(function () { painted = true; syncPacks(); }, { timeout: 3000 }); } catch (e) { painted = true; syncPacks(); } };
@@ -447,12 +504,17 @@
     names: function () { return Object.assign({}, NAME); },
     // mods hooks (app.js mods() list): the app's own last position, re-checked when it moves ~1 km
     init: function (a) { api = a || null; if (sets.length) resolve(); },   // no load here: start-up stays light (idle loads it)
-    onPoll: function () { if (!api || !sets.length) return; var k = ""; try { k = llKey(api.lastLoc()); } catch (e) {} if (k && k !== lastLL) resolve(); },
+    onPoll: function () { if (!api || !sets.length) return; var k = ""; try { k = llKey(api.lastLoc()); } catch (e) {} if (k && k !== lastLL) resolve(); tickCheck(); },
+    // dialect2: the LIVE ticker's area (map view, else ticker centre) and a sync scope for it (news.js NEWS.build)
+    tickerArea: function (c) { ensure(); return tickerArea(c); },
+    within: within,
+    tickerRegion: function (c) { var a = tickerArea(c); return a ? tickCode(a) : ownChain()[0]; },
     stats: stats,
     // test hooks
     _norm: norm, _night: night, _packs: function () { return packs; }, _sets: function () { return sets; },
     _setNow: function (ms) { nowFn = ms == null ? function () { return Date.now(); } : function () { return ms; }; },
     _resolve: function () { resolve(); return area; },
-    _packState: function () { return Object.assign({}, packState); }
+    _packState: function () { return Object.assign({}, packState); },
+    _trace: function (on) { var t = trace; trace = on ? [] : null; return t; }
   };
 })();
