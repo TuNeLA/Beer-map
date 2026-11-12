@@ -416,7 +416,7 @@
     var m = R && R.mine;
     if (m && m.live) { openId(m.id); return true; }
     var keep = !!(opts && opts.keep && form);
-    if (!keep) form = { pax: (form && form.pax) || 1, note: (form && form.note) || "", where: "here", lat: null, lng: null, place: "", dest: null, dmode: null, q: "", hits: null };
+    if (!keep) form = { pax: (form && form.pax) || 1, note: (form && form.note) || "", where: "here", lat: null, lng: null, place: "", dest: null, dmode: null, q: "", ps: null };
     sheet(T("ride.title"), "req", null);
     if (!keep) locate();
     return true;
@@ -443,7 +443,7 @@
   }
   function home() { try { return window.HOMEZONE && window.HOMEZONE.home ? window.HOMEZONE.home() : null; } catch (e) { return null; } }
   function setDest(d) {
-    form.dest = d; form.hits = null; paintReq();
+    form.dest = d; form.ps = null; paintReq();
     if (d && d.lat != null) areaOf(d.lat, d.lng).then(function (a) { if (form && form.dest === d && a) { d.area = a; paintReq(); } });
   }
   function pickDest(v) {
@@ -464,22 +464,13 @@
     if (f.dest && f.dest.kind === "home") f.dest = null;
     paintReq();
   }
-  function search(q, btn) {
-    var f = form, s = String(q || "").trim(); if (s.length < 3) return;
-    f.q = s; f.hits = "busy"; paintReq();
-    var c = f.lat != null ? f : (A.lastLoc && A.lastLoc()) || null, vb = "";
-    if (c && isFinite(c.lat)) vb = "&viewbox=" + [(+c.lng - 0.6).toFixed(3), (+c.lat + 0.3).toFixed(3), (+c.lng + 0.6).toFixed(3), (+c.lat - 0.3).toFixed(3)].join(",");
-    var done = function (list) { if (form !== f) return; f.hits = list; paintReq(); };
-    try {
-      fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&countrycodes=se&accept-language=sv" + vb + "&q=" + encodeURIComponent(s))
-        .then(function (r) { return r.json(); }).then(function (j) {
-          done((Array.isArray(j) ? j : []).slice(0, 5).map(function (x) {
-            var nm = x.name || String(x.display_name || "").split(",")[0], la = +x.lat, lo = +x.lon;
-            return { kind: "place", name: String(nm || "").slice(0, 40), area: areaFromAddr(x.address, town(la, lo)) || town(la, lo), lat: la, lng: lo };
-          }).filter(function (x) { return isFinite(x.lat) && isFinite(x.lng) && x.name; }));
-        }, function () { done([]); });
-    } catch (e) { done([]); }
+  function destCenter() {   // I-07: hits near the pickup / my position first, else the map centre
+    var f = form, c = f && f.lat != null ? f : null;
+    try { if (!c) c = (A.lastLoc && A.lastLoc()) || null; } catch (e) {}
+    if (!c || !isFinite(c.lat)) { try { var m = A.map.getCenter(); c = { lat: m.lat, lng: m.lng }; } catch (e) { c = null; } }
+    return c;
   }
+  function hitDest(x) { var t = town(x.lat, x.lng); return { kind: "place", name: String(x.title || "").slice(0, 40), area: areaFromAddr(x.addr, t) || x.sub || t, lat: x.lat, lng: x.lng }; }
   function paintReq() {
     if (!box || !view || view.kind !== "req") return;
     var f = form; box.innerHTML = "";
@@ -500,19 +491,10 @@
     } else if (f.dmode === "other") {
       var q = h("input", { type: "search", class: "rd-in rd-dq", maxlength: "80", placeholder: T("ride.dest.q"), "aria-label": T("ride.dest.q"), enterkeyhint: "search", value: f.q || "" });
       var qb = h("button", { type: "button", class: "btn rd-qbtn", text: T("ride.dest.qb") });
-      qb.addEventListener("click", function () { search(q.value, qb); });
-      q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); search(q.value, qb); } });
-      box.appendChild(h("div", { class: "rd-say" }, [q, qb]));
-      if (f.hits === "busy") box.appendChild(h("p", { class: "rd-muted", text: T("ride.dest.searching") }));
-      else if (Array.isArray(f.hits)) {
-        if (!f.hits.length) box.appendChild(h("p", { class: "rd-muted", text: T("ride.dest.none") }));
-        var ul = h("ul", { class: "rd-hits" });
-        f.hits.forEach(function (x) {
-          ul.appendChild(h("li", {}, [h("button", { type: "button", class: "rd-hit", onclick: function () { setDest(x); } }, [icEl("pin"),
-            h("span", { class: "rd-hit-t" }, [h("b", { text: x.name }), x.area ? h("small", { text: x.area }) : null])])]));
-        });
-        if (f.hits.length) box.appendChild(ul);
-      }
+      var say = h("div", { class: "rd-say" }, [q, qb]); box.appendChild(say);
+      if (!f.ps) f.ps = {};
+      if ((window.PN && window.PN.placeSearch)) (window.PN && window.PN.placeSearch).attach({ input: q, button: qb, host: say, center: destCenter, state: f.ps,
+        subOf: function (x) { return areaFromAddr(x.addr, town(x.lat, x.lng)) || x.sub; }, onPick: function (x) { f.ps = {}; f.q = ""; setDest(hitDest(x)); } });
       box.appendChild(h("button", { type: "button", class: "rd-rowbtn rd-dmap", onclick: function () { startPick("dest"); } }, [icEl("map"), h("span", { text: T("ride.dest.map") }), icEl("chev-right", "rd-chev")]));
     }
     box.appendChild(h("h3", { class: "rd-h", text: T("ride.pax") }));

@@ -184,7 +184,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     await tap(R.page, "^Sök$"); await wait(R.page, 1200);
     s = await S(R.page);
     ok("R3-4 Annan plats: search → result 'Folkets park · Centrum, Ludvika'", /Folkets park/.test(s.text) && /Centrum, Ludvika/.test(s.text), s.text.slice(0, 400));
-    await tap(R.page, "Folkets park", "#sheet-body .rd-hit"); await wait(R.page, 1200);
+    await tap(R.page, "Folkets park", "#sheet-body .ps-hit"); await wait(R.page, 1200);
     s = await S(R.page);
     ok("R3-4 picked place shows as the destination row (with a 44 px clear button)", /Folkets park/.test(s.text) && s.btns.some((b) => /rd-x/.test(b.c) && b.h >= 44), s.text.slice(0, 300));
     await shot(R.page, "r1-request-place");

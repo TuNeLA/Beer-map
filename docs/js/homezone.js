@@ -29,19 +29,17 @@
       var mapEl = el("div", { class: "hz-map", role: "img", "aria-label": L("Karta över hemzonen", "Home zone map") });
       // ds39: address search (OpenStreetMap Nominatim, only when you search; the answer stays on the phone)
       var q = el("input", { type: "search", class: "hz-q", placeholder: L("Sök adress, t.ex. Storgatan 5 Ludvika", "Search address"), "aria-label": L("Sök adress", "Search address"), enterkeyhint: "search" });
-      var qb = A.btn(L("Sök", "Search"), "btn-small hz-qb", function () { find(); });
-      var find = function () {
-        var s = String(q.value || "").trim(); if (s.length < 3) return;
-        qb.disabled = true;
-        fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=se&accept-language=sv&q=" + encodeURIComponent(s))
-          .then(function (r) { return r.json(); }).then(function (j) {
-            qb.disabled = false; var x = j && j[0];
-            if (!x) { A.toast(L("Hittade int' adressen. Prova med ort.", "Address not found."), { err: true }); return; }
-            picked = true; setPt(+(+x.lat).toFixed(5), +(+x.lon).toFixed(5), true);
-          }, function () { qb.disabled = false; A.toast(L("Sökningen gick int'. Tryck på kartan i stället.", "Search failed."), { err: true }); });
+      var qb = A.btn(L("Sök", "Search"), "btn-small hz-qb");
+      var srow = el("div", { class: "row hz-search" }, [q, qb]);
+      var mapC = function () {   // I-07: hits near the map preview centre / my position first
+        try { if (mini) { var c = mini.getCenter(); return { lat: c.lat, lng: c.lng }; } } catch (e) {}
+        try { var l = A.lastLoc && A.lastLoc(); if (l && isFinite(l.lat)) return { lat: l.lat, lng: l.lng }; } catch (e) {}
+        try { var m = A.map.getCenter(); return { lat: m.lat, lng: m.lng }; } catch (e) {}
+        return null;
       };
-      q.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); find(); } });
-      body.appendChild(el("div", { class: "row hz-search" }, [q, qb]));
+      body.appendChild(srow);
+      if ((window.PN && window.PN.placeSearch)) (window.PN && window.PN.placeSearch).attach({ input: q, button: qb, host: srow, center: mapC, onBusy: function (b) { qb.disabled = !!b; },
+        onPick: function (x) { picked = true; setPt(+x.lat.toFixed(5), +x.lng.toFixed(5), true); } });
       body.appendChild(mapEl);
       var hint = el("p", { class: "muted hz-hint", text: L("👆 Tryck på kartan där du bor – eller använd din plats.", "👆 Tap the map where you live – or use your location.") });
       body.appendChild(hint);
