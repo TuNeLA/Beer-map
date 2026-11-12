@@ -1,0 +1,73 @@
+{
+ "step": 4,
+ "note": "move groups + settings (SPLIT-SPEC 4.3 step 4). s = new PN.s fields.",
+ "s": [],
+ "parts": {
+  "groups": {
+   "fns": [
+    "joinLink",
+    "friendsNowText",
+    "gactScore",
+    "sortGroupsByChat",
+    "showGroups",
+    "fillGroups",
+    "groupCard",
+    "showGroupPage",
+    "groupItem",
+    "showCreate",
+    "openJoined",
+    "showJoin",
+    "showCode",
+    "lvlIcon",
+    "cityOf",
+    "topRows",
+    "showTop"
+   ],
+   "vars": [
+    "GACT_KEY",
+    "GACT_HALF",
+    "groupsList",
+    "topTab"
+   ],
+   "stmts": [
+    "window.olnuGroupBump = function (id, w) {",
+    "window.addEventListener(\"olnu:warm\", function (e) {",
+    "$(\"btn-groups\").addEventListener(\"click\", showGroups);",
+    "$(\"btn-top\").addEventListener(\"click\", showTop);"
+   ]
+  },
+  "settings": {
+   "fns": [
+    "iosNeedsInstall",
+    "enableNotifs",
+    "calmNotifAsk",
+    "askNotifSheet",
+    "inAsk",
+    "notifPromptOnce",
+    "inviteLink",
+    "showInvite",
+    "inAppBrowser",
+    "showInstallGuide",
+    "setTabs",
+    "showSettings",
+    "buildVer",
+    "forceUpdate",
+    "showInstallBanner",
+    "hideInstallBanner",
+    "startNotifAsk"
+   ],
+   "vars": [
+    "setTab",
+    "deferredPrompt"
+   ],
+   "stmts": [
+    "$(\"btn-settings\").addEventListener(\"click\", showSettings);",
+    "$(\"install-close\").addEventListener(\"click\", hideInstallBanner);",
+    "$(\"install-go\").addEventListener(\"click\", function () {",
+    "window.addEventListener(\"beforeinstallprompt\", function (e) { e.preventDefault(); deferredPrompt = e; showInstallBanner(\"android\"); });",
+    "window.addEventListener(\"appinstalled\", hideInstallBanner);",
+    "if (iosNeedsInstall()) setTimeout(function () { showInstallBanner(\"ios\"); }, 1500);"
+   ]
+  }
+ }
+}

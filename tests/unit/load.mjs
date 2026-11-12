@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 
 export const DOCS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../docs");
 const read = (rel) => fs.readFileSync(path.join(DOCS, rel), "utf8");
+// W2 split: the generated <split:imports> block holds 1-line stubs (function x() { return PN.x.apply(...) }): never load those
+const noStubs = (src) => src.replace(/\/\/ <split:imports>[\s\S]*?\/\/ <\/split:imports>/g, "");
 
 function stubWindow(extra) {
   const store = {};
@@ -47,12 +49,14 @@ export function functionSource(src, name) {
 
 export function findFunction(name) {
   const files = ["app.js"].concat(fs.readdirSync(path.join(DOCS, "js")).filter((f) => f.endsWith(".js")).map((f) => "js/" + f));
-  for (const f of files) { const s = functionSource(read(f), name); if (s) return { file: f, src: s }; }
+  for (const f of files) { const s = functionSource(noStubs(read(f)), name); if (s) return { file: f, src: s }; }
   throw new Error("function " + name + " not found in docs/");
 }
 
 export function loadFunctions(names, scope) {
   const ctx = vm.createContext(Object.assign({ console }, scope || {}));
+  // W2 split: shared state is PN.s.x in the parts. PN.s = the sandbox itself, so a test sets/reads "x" the same way before and after.
+  if (!("PN" in ctx)) ctx.PN = { s: ctx };
   const where = {};
   for (const n of names) { const f = findFunction(n); where[n] = f.file; vm.runInContext(f.src, ctx, { filename: f.file }); }
   const out = {}; names.forEach((n) => { out[n] = ctx[n]; });

@@ -59,8 +59,8 @@ test("a hook module is in BASE, calls PN.mod, or is listed in hook-free.json", (
   assert.deepEqual(bad, [], "add PN.mod(\"NAME\") after window.NAME = ...");
 });
 
-test("the 40 hook names used by mods(...) in docs/app.js are the fixture", () => {
-  const src = fs.readFileSync(path.join(DOCS, "app.js"), "utf8");
+test("the 40 hook names used by mods(...) in docs/app.js + docs/js/app-*.js are the fixture", () => {
+  const src = ["app.js"].concat(fs.readdirSync(path.join(DOCS, "js")).filter((f) => /^app-.*\.js$/.test(f)).map((f) => "js/" + f)).map((f) => fs.readFileSync(path.join(DOCS, f), "utf8")).join("\n");
   const got = [...new Set([...src.matchAll(/\bmods\("([A-Za-z0-9_]+)"/g)].map((m) => m[1]))].sort();
   assert.deepEqual(got, fx("hook-names.json").slice().sort());
 });

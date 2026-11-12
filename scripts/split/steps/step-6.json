@@ -1,0 +1,90 @@
+{
+ "step": 6,
+ "note": "move beer + hud (SPLIT-SPEC 4.3 step 6). s = new PN.s fields.",
+ "s": [
+  "lastPollAt",
+  "lastAcceptAt",
+  "cdTimer",
+  "undoEl"
+ ],
+ "parts": {
+  "beer": {
+   "fns": [
+    "cooldownLeft",
+    "pintSpill",
+    "tickCooldown",
+    "fitBeerLabel",
+    "setBusy",
+    "levelToast",
+    "othersNow",
+    "drinkFx",
+    "noGpsSpot",
+    "postBeer",
+    "scheduleNotify",
+    "flushNotify",
+    "cancelNotify",
+    "resumeNotify",
+    "clearUndo",
+    "showUndo",
+    "doUndo",
+    "undoSync",
+    "beerPending",
+    "beerSay",
+    "beerSayClear",
+    "x8Keep",
+    "queueBeer",
+    "x8Send",
+    "beerTap",
+    "beerDone",
+    "notifyGroup",
+    "stopBeer",
+    "showStopSheet",
+    "hidePin",
+    "showPinAgain"
+   ],
+   "vars": [
+    "busy",
+    "RING_LEN",
+    "cdTimer",
+    "cdWasOn",
+    "fitKey",
+    "postV2",
+    "NOTIFY_KEY",
+    "notifyTimer",
+    "undoEl",
+    "undoTimer",
+    "undoMiniTimer",
+    "UNDO_BIG_MS",
+    "UNDO_SHOW_MS",
+    "undoing",
+    "X8",
+    "beerPend"
+   ],
+   "stmts": [
+    "$(\"cd-ring\").style.strokeDasharray = String(RING_LEN);",
+    "window.addEventListener(\"resize\", U.debounce(function () { fitKey = \"\"; fitBeerLabel(); }, 150));",
+    "$(\"btn-beer\").addEventListener(\"click\", function () { beerTap(null); });",
+    "if (X8) {",
+    "$(\"btn-stop\").addEventListener(\"click\", showStopSheet);"
+   ]
+  },
+  "hud": {
+   "fns": [
+    "friendsDrinking",
+    "nightEnd",
+    "myBeer",
+    "myNight",
+    "saveNight",
+    "updateCounts",
+    "hudPanel",
+    "applyStaticText",
+    "applyOnline"
+   ],
+   "vars": [],
+   "stmts": [
+    "window.addEventListener(\"online\", applyOnline);",
+    "window.addEventListener(\"offline\", applyOnline);"
+   ]
+  }
+ }
+}

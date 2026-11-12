@@ -1,0 +1,54 @@
+{
+ "step": 8,
+ "note": "move checkin + crowd (SPLIT-SPEC 4.3 step 8). s = new PN.s fields.",
+ "s": [
+  "checkinState"
+ ],
+ "parts": {
+  "checkin": {
+   "fns": [
+    "myCheckin",
+    "syncMyCheckin",
+    "checkinsAt",
+    "checkinNamesHTML",
+    "checkinBtnHTML",
+    "checkinHTML",
+    "doCheckin",
+    "moveCheckin",
+    "askWhere",
+    "askWhereList"
+   ],
+   "vars": [
+    "CI_KEY",
+    "CI_FRESH_MS",
+    "CI_STAY_M",
+    "ciBarById",
+    "WHERE_KEY",
+    "WHERE_R",
+    "WHERE_STAY",
+    "WHERE_PLACE_R"
+   ],
+   "stmts": []
+  },
+  "crowd": {
+   "fns": [
+    "skalAlert",
+    "beerById",
+    "samePin",
+    "skalCall",
+    "doSkal",
+    "crowdSort",
+    "crowdCountHTML",
+    "openCrowd",
+    "showBeer"
+   ],
+   "vars": [
+    "mySkals",
+    "prevMySkal"
+   ],
+   "stmts": [
+    "map.on(\"popupopen\", function (e) {\nvar root = e.popup.getElement(); if (!root) return;"
+   ]
+  }
+ }
+}

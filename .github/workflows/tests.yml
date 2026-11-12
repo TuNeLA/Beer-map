@@ -215,6 +215,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # W2 split guard: verify.mjs needs the pre-w2 base commit
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -222,6 +224,11 @@ jobs:
       - run: node scripts/import-sport.test.mjs
       - run: node tests/e2e/local-lines-test.js docs/js   # LIVE ticker: Ludvika-area lines only near Ludvika
       - run: node --test "tests/unit/*.test.mjs"   # w1-tests: pure logic the app.js split moves (U.n1, kaos, poll plan, bundleChunks, crowdSort, ticker)
+      - name: split guard (W2 move-only proof)
+        run: |
+          npm install --no-save --no-audit --no-fund acorn@8.12.1
+          node scripts/split/move.mjs . --check
+          node scripts/split/verify.mjs --base d523f17040bca4dddad99abe36a1475bfc607a0a   # = pre-w2 (tag push is blocked; branch ci/pre-w2)
 
   schema:
     name: schema loads (supabase/schema -> empty Postgres 17)

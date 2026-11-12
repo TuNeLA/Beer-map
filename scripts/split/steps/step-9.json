@@ -1,0 +1,78 @@
+{
+ "step": 9,
+ "note": "move poll (SPLIT-SPEC 4.3 step 9). s = new PN.s fields.",
+ "s": [
+  "othersState"
+ ],
+ "parts": {
+  "poll": {
+   "fns": [
+    "beerOnly",
+    "fetchOthers",
+    "fetchCheckins",
+    "viewBox",
+    "normPins",
+    "applyMe",
+    "fetchV2",
+    "fetchOld",
+    "refresh",
+    "idle",
+    "x8Snap",
+    "schedulePoll",
+    "startPoll",
+    "stopPoll",
+    "touched",
+    "resumeSession",
+    "memShed",
+    "memRestore",
+    "handleFocus",
+    "pushAct",
+    "lazyStart",
+    "publicStart",
+    "schedulePublic",
+    "publicPoll"
+   ],
+   "vars": [
+    "beers",
+    "firstLoadDone",
+    "drinkViews",
+    "meState",
+    "loading",
+    "refreshAgain",
+    "loadingP",
+    "othersMap",
+    "othersState",
+    "checkins",
+    "checkinState",
+    "pollV2",
+    "liveTotal",
+    "heatAskAt",
+    "pollBox",
+    "lastPollAt",
+    "lastAcceptAt",
+    "pollTimer",
+    "lastTouch",
+    "pollOn",
+    "x8Snapped",
+    "resumeP",
+    "shedTiles",
+    "shedHeat",
+    "SEARCH0",
+    "HASH0",
+    "publicOn",
+    "lastUiClick",
+    "pubTimer",
+    "pubBusy"
+   ],
+   "stmts": [
+    "[\"pointerdown\", \"keydown\", \"wheel\"].forEach(function (ev) { document.addEventListener(ev, touched, { passive: true, capture: true }); });",
+    "map.on(\"movestart zoomstart\", touched);",
+    "map.on(\"moveend\", U.debounce(function () {\nif (pollV2 !== \"on\" || !pollBox || loading) return;",
+    "document.addEventListener(\"visibilitychange\", function () {",
+    "I.add({ sv: { pushActFail: \"Kunde inte skicka. Försök igen.\" }, en: { pushActFail: \"Could not send. Try again.\" } });",
+    "document.addEventListener(\"click\", function (e) {",
+    "map.on(\"moveend\", U.debounce(function () {\nif (!publicOn || authed || !pollBox || pubBusy) return;"
+   ]
+  }
+ }
+}

@@ -1,0 +1,97 @@
+{
+ "step": 1,
+ "note": "move core + ui (SPLIT-SPEC 4.3 step 1). s = new PN.s fields.",
+ "s": [
+  "pendingFocus",
+  "pendingAct",
+  "busy",
+  "modsSkip",
+  "modsWave",
+  "sheetCur"
+ ],
+ "parts": {
+  "core": {
+   "fns": [
+    "mods",
+    "runWave"
+   ],
+   "vars": [
+    "U",
+    "I",
+    "t",
+    "CFG",
+    "LIVE",
+    "PUSH_ON",
+    "SWEDEN",
+    "MAX_BOUNDS",
+    "POLL_MS",
+    "POLL_SLOW_MS",
+    "IDLE_MS",
+    "HEAT_MS",
+    "RPC_TIMEOUT_MS",
+    "LUDVIKA",
+    "START_ZOOM",
+    "HOT_ZOOM",
+    "BAR_ZOOM",
+    "MAX_PLAIN_BARS",
+    "$",
+    "pendingFocus",
+    "pendingAct",
+    "modsSkip",
+    "modsWave",
+    "waveSeq",
+    "WAVE_N",
+    "WAVE_MS",
+    "params",
+    "joinCode",
+    "focusId",
+    "invited",
+    "chatId",
+    "sosAt",
+    "rallyId",
+    "rallyAns",
+    "barLink"
+   ],
+   "stmts": [
+    "I.add({ sv: { linkGone: \"🔗 Hittade inte den länken – den har nog gått ut\" }, en: { linkGone: \"🔗 Could not find that link – it has probably expired\" } });",
+    "if (focusId) pendingFocus = focusId;",
+    "if (focusId && /^(coming|skal)$/.test(params.get(\"act\") || \"\")) pendingAct = params.get(\"act\");",
+    "params.delete(\"act\");",
+    "params.delete(\"reply\");",
+    "if ([\"join\", \"focus\", \"chat\", \"sos\", \"bar\", \"rally\"].some(function (k) { return params.has(k); }) || invited || rallyAns) {   // QA #15: also an empty ?join="
+   ]
+  },
+  "ui": {
+   "fns": [
+    "toast",
+    "sheetIsOpen",
+    "toastsVisible",
+    "toastShow",
+    "toastPump",
+    "toastClear",
+    "errMsg",
+    "stripUp",
+    "stripAfter",
+    "sheetLocked",
+    "openSheet",
+    "closeSheet",
+    "drainSheets",
+    "el",
+    "btn",
+    "copyText",
+    "fallbackCopy"
+   ],
+   "vars": [
+    "toastWait",
+    "lastTap",
+    "lastTapOut",
+    "sheetCur",
+    "sheetQueue"
+   ],
+   "stmts": [
+    "[\"pointerdown\", \"keydown\", \"click\"].forEach(function (ev) { document.addEventListener(ev, function (e) {",
+    "if (window.MutationObserver) new MutationObserver(function () { setTimeout(toastPump, 250); }).observe($(\"toasts\"), { childList: true });"
+   ]
+  }
+ }
+}

@@ -5,6 +5,7 @@
 const H = require("./ds-helpers.js");
 const { chromium } = require("playwright");
 const fs = require("fs");
+const { appFiles } = require("./lib/appsrc.js");   // W2 split: app.js + docs/js/app-*.js
 const SP = require("./env.js").OUT, DIR = SP + "ownerfix-shots/";
 fs.mkdirSync(DIR, { recursive: true });
 const ONLY = new RegExp(process.argv[3] || ".");
@@ -183,9 +184,9 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
   if (ONLY.test("4b")) {
     // ONE speed controller: only one file may write window.PN_TICK_F (was pnds.js tap-stop loop + pnui.js hold loop)
     const { ctx, page } = await setup(browser, 390);
-    const w = await page.evaluate(async () => { const out = {};
-      for (const f of ["app.js", "js/pnds.js", "js/pnui.js", "js/news.js"]) { const t = await (await fetch(f + "?x=" + Date.now())).text(); out[f] = (t.match(/PN_TICK_F\s*=(?!=)/g) || []).length; }
-      return out; });
+    const w = await page.evaluate(async (files) => { const out = {};
+      for (const f of files) { const t = await (await fetch(f + "?x=" + Date.now())).text(); out[f] = (t.match(/PN_TICK_F\s*=(?!=)/g) || []).length; }
+      return out; }, appFiles().concat(["js/pnds.js", "js/pnui.js", "js/news.js"]));
     const writers = Object.keys(w).filter((k) => w[k] > 0);
     ok(writers.length === 1 && writers[0] === "js/pnui.js", "4b ONE ticker speed controller: only pnui.js writes PN_TICK_F", w);
     await ctx.close();

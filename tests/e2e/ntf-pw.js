@@ -8,6 +8,7 @@
 // F) the REAL sw.js push + notificationclick handlers, run inside the service worker with hand-made events → fold of one night,
 //    the button deep link reaches the open page (postMessage) and answers Ikväll?.
 const H0 = require("./d2-helpers.js"), { boot, wait } = H0;
+const { appSrc } = require("./lib/appsrc.js");   // W2 split: app.js + docs/js/app-*.js
 // a busy CI box: long navigation timeouts (the default 30 s fails under load)
 const ctxFor = async (...a) => { const r = await H0.ctxFor(...a); r.ctx.setDefaultNavigationTimeout(90000); r.ctx.setDefaultTimeout(30000); return r; };
 const { chromium } = require("playwright");
@@ -249,7 +250,7 @@ const sheetTitle = (page) => page.evaluate(() => { const s = document.getElement
       const ov = await page.evaluate(() => { const c = document.querySelector(".pn-prime"), b = document.getElementById("btn-beer"); if (!c || !b) return null;
         const r1 = c.getBoundingClientRect(), r2 = b.getBoundingClientRect(); return r1.bottom <= r2.top || r1.top >= r2.bottom; });
       ok("H: the ask card never covers the ÖL! button", ov === true, ov);
-      const src = await page.evaluate(() => fetch("app.js").then((r) => r.text()));
+      const src = await appSrc(page);
       ok("H: no notification ask on a beer tap (no sheet 2.2 s after ÖL!)", /no notification ask on a beer tap/.test(src) && !/askNotifSheet\(\); \}, 2200\)/.test(src));
       const ui = await page.evaluate(() => fetch("js/pnui.js").then((r) => r.text()));
       ok("H: install card never on the first beer, guarded by one prompt per session", /if \(first\) \{ lsSet\("olnu.pnBeer1N"/.test(ui) && /PNPROMPT/.test(ui));

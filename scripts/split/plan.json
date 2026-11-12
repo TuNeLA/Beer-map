@@ -1,0 +1,572 @@
+{
+ "note": "W2 app.js split plan (SPLIT-SPEC 1.1, 1.4). Parts load in 'order' before app.js. 'state' = PN.s fields: start value, parts that may write it, step that creates it. 'stays' = what stays in app.js.",
+ "order": [
+  "core",
+  "net",
+  "ui",
+  "map",
+  "pins",
+  "checkin",
+  "ticker",
+  "crowd",
+  "hud",
+  "poll",
+  "beer",
+  "account",
+  "groups",
+  "settings",
+  "app"
+ ],
+ "purpose": {
+  "core": "PN.put/link/s, constants, $, deep-link params, hook fan-out mods() + runWave()",
+  "net": "RPC wrapper: config cache, rpc_bundle2 bundling, poll plan, chat lanes, rpcNet, parseData",
+  "ui": "Toasts, sheet queue, el, btn, errMsg, copy helpers",
+  "map": "The map object, panes, clusters, heat glow, precision toggle, locate / GPS, flyTo",
+  "pins": "Levels text, pin + bar icons, bar sheet popup HTML, marker render, labels, openBar",
+  "checkin": "Check-in state + HTML, do / move check-in, \"where are you\" sheet",
+  "ticker": "LIVE ticker + streak alerts + Kaos i stan",
+  "crowd": "Skål + crowd list + showBeer",
+  "hud": "Counts / Ikväll pill / static text / offline banner, myBeer, myNight, nightEnd",
+  "poll": "Live poll core (refresh, fetchV2, schedulePoll), public poll (SPEED #6), push focus",
+  "beer": "ÖL! flow: cooldown, beerTap, post, outbox (x8), ÅNGRA, notify, stop sheet",
+  "account": "Sign-in, reauth, name, flyttkod import/export, intro + age gate",
+  "groups": "Groups sheets + top list",
+  "settings": "Settings, notifications ask, invite + install guide, install banner"
+ },
+ "sections": [
+  "RPC wrapper",
+  "Toasts",
+  "Map",
+  "Heat glow (leaflet.heat). Its canvas goes in overlayPane (z ",
+  "Drink levels (polish): Swedish names from js/levels-content.",
+  "One marker per bar (polish 2026-10-17, research \"place stack",
+  "Bar sheet (design pass 2, owner: \"the list you see when you ",
+  "v10 Checka in",
+  "Ticker + streak alerts",
+  "Kaos i stan (in-app only, anonymous counts)",
+  "Skål",
+  "Crowd list (many people at one spot)",
+  "Counts / chrome",
+  "Precision toggle",
+  "Live beers",
+  "Offline banner",
+  "Error messages",
+  "Cooldown",
+  "Beer button",
+  "Locate me",
+  "Post: post_beer_v2 (v13) with fallback to post_beer",
+  "↩️ ÅNGRA (undo_beer, 2 min) + push only after the undo windo",
+  "Sheet (v14: one sheet at a time + a queue)",
+  "Name",
+  "Groups",
+  "Top list tonight",
+  "Notifications",
+  "Invite friends + install guide",
+  "Settings",
+  "Install hint",
+  "Service worker",
+  "Deep links",
+  "⚡ SPEED (#6): no account until the first real action",
+  "Auth + start",
+  "Flytta konto (flyttkod)",
+  "Import (new app / phone)",
+  "Export (this browser hands the account over)",
+  "First start (shown once)"
+ ],
+ "state": {
+  "pendingFocus": {
+   "start": "null",
+   "writers": [
+    "core",
+    "poll",
+    "app"
+   ],
+   "readers": [],
+   "step": 1
+  },
+  "pendingAct": {
+   "start": "null",
+   "writers": [
+    "core",
+    "poll",
+    "app"
+   ],
+   "readers": [],
+   "step": 1
+  },
+  "busy": {
+   "start": "false",
+   "writers": [
+    "beer"
+   ],
+   "readers": [
+    "ui",
+    "app"
+   ],
+   "step": 1
+  },
+  "modsSkip": {
+   "start": "null",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "core"
+   ],
+   "step": 1
+  },
+  "modsWave": {
+   "start": "null",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "core"
+   ],
+   "step": 1
+  },
+  "sheetCur": {
+   "start": "null",
+   "writers": [
+    "ui"
+   ],
+   "readers": [
+    "account"
+   ],
+   "step": 1
+  },
+  "client": {
+   "start": "null",
+   "writers": [
+    "account"
+   ],
+   "readers": [
+    "net",
+    "checkin",
+    "poll",
+    "beer",
+    "app"
+   ],
+   "step": 2
+  },
+  "authed": {
+   "start": "false",
+   "writers": [
+    "account"
+   ],
+   "readers": [
+    "net",
+    "checkin",
+    "ticker",
+    "poll",
+    "map",
+    "beer",
+    "settings",
+    "app"
+   ],
+   "step": 2
+  },
+  "firstLoadDone": {
+   "start": "false",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "net",
+    "ticker",
+    "crowd"
+   ],
+   "step": 2
+  },
+  "bgCall": {
+   "start": "false",
+   "writers": [
+    "app"
+   ],
+   "readers": [
+    "net"
+   ],
+   "step": 2
+  },
+  "bq": {
+   "start": "[]",
+   "writers": [
+    "net"
+   ],
+   "readers": [
+    "poll"
+   ],
+   "step": 2
+  },
+  "authedAt": {
+   "start": "0",
+   "writers": [
+    "account"
+   ],
+   "readers": [
+    "net"
+   ],
+   "step": 2
+  },
+  "pollSlow": {
+   "start": "false",
+   "writers": [
+    "net"
+   ],
+   "readers": [
+    "poll"
+   ],
+   "step": 2
+  },
+  "slowLaneAt": {
+   "start": "0",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "net"
+   ],
+   "step": 2
+  },
+  "pollOn": {
+   "start": "false",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "net"
+   ],
+   "step": 2
+  },
+  "lastUiClick": {
+   "start": "0",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "net"
+   ],
+   "step": 2
+  },
+  "publicOn": {
+   "start": "false",
+   "writers": [
+    "poll",
+    "account"
+   ],
+   "readers": [
+    "net",
+    "app"
+   ],
+   "step": 2
+  },
+  "beers": {
+   "start": "[]",
+   "writers": [
+    "poll",
+    "account"
+   ],
+   "readers": [
+    "pins",
+    "ticker",
+    "crowd",
+    "hud",
+    "groups",
+    "app"
+   ],
+   "step": 3
+  },
+  "checkins": {
+   "start": "[]",
+   "writers": [
+    "poll",
+    "account"
+   ],
+   "readers": [
+    "pins",
+    "checkin",
+    "ticker",
+    "app"
+   ],
+   "step": 3
+  },
+  "lastLoc": {
+   "start": "null",
+   "writers": [
+    "map",
+    "beer",
+    "app"
+   ],
+   "readers": [
+    "ticker",
+    "settings",
+    "account"
+   ],
+   "step": 3
+  },
+  "movedState": {
+   "start": "false",
+   "writers": [
+    "account"
+   ],
+   "readers": [
+    "poll",
+    "beer",
+    "settings",
+    "app"
+   ],
+   "step": 3
+  },
+  "flyttHiddenAt": {
+   "start": "0",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "account"
+   ],
+   "step": 3
+  },
+  "pubTimer": {
+   "start": "null",
+   "writers": [
+    "poll",
+    "account"
+   ],
+   "readers": [],
+   "step": 3
+  },
+  "newsDirty": {
+   "start": "true",
+   "writers": [
+    "ticker",
+    "hud",
+    "poll",
+    "app"
+   ],
+   "readers": [],
+   "step": 5
+  },
+  "liveTotal": {
+   "start": "null",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "ticker",
+    "hud"
+   ],
+   "step": 5
+  },
+  "meState": {
+   "start": "null",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "ticker",
+    "hud",
+    "beer",
+    "app"
+   ],
+   "step": 5
+  },
+  "newsNoCenter": {
+   "start": "false",
+   "writers": [
+    "ticker",
+    "map"
+   ],
+   "readers": [],
+   "step": 5
+  },
+  "tickerKey": {
+   "start": "\"\"",
+   "writers": [
+    "ticker",
+    "hud",
+    "app"
+   ],
+   "readers": [
+    "map"
+   ],
+   "step": 5
+  },
+  "x8Snapped": {
+   "start": "false",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "ticker"
+   ],
+   "step": 5
+  },
+  "chaosRes": {
+   "start": "null",
+   "writers": [
+    "ticker"
+   ],
+   "readers": [
+    "hud",
+    "map",
+    "app"
+   ],
+   "step": 5
+  },
+  "lastPollAt": {
+   "start": "0",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "hud"
+   ],
+   "step": 6
+  },
+  "lastAcceptAt": {
+   "start": "0",
+   "writers": [
+    "beer"
+   ],
+   "readers": [
+    "poll"
+   ],
+   "step": 6
+  },
+  "cdTimer": {
+   "start": "null",
+   "writers": [
+    "poll",
+    "beer"
+   ],
+   "readers": [],
+   "step": 6
+  },
+  "undoEl": {
+   "start": "null",
+   "writers": [
+    "beer"
+   ],
+   "readers": [
+    "app"
+   ],
+   "step": 6
+  },
+  "heatOn": {
+   "start": "(U.ls…)",
+   "writers": [
+    "map"
+   ],
+   "readers": [
+    "poll"
+   ],
+   "step": 7
+  },
+  "heat": {
+   "start": "null",
+   "writers": [
+    "map"
+   ],
+   "readers": [
+    "poll"
+   ],
+   "step": 7
+  },
+  "heatPoints": {
+   "start": "null",
+   "writers": [
+    "map",
+    "poll"
+   ],
+   "readers": [],
+   "step": 7
+  },
+  "pollV2": {
+   "start": "\"unknown\"",
+   "writers": [
+    "crowd",
+    "poll"
+   ],
+   "readers": [
+    "map",
+    "app"
+   ],
+   "step": 7
+  },
+  "heatAskAt": {
+   "start": "0",
+   "writers": [
+    "map",
+    "poll"
+   ],
+   "readers": [],
+   "step": 7
+  },
+  "markerById": {
+   "start": "{}",
+   "writers": [
+    "pins"
+   ],
+   "readers": [
+    "crowd",
+    "poll"
+   ],
+   "step": 7
+  },
+  "prec": {
+   "start": "(U.ls…)",
+   "writers": [
+    "map"
+   ],
+   "readers": [
+    "checkin",
+    "app"
+   ],
+   "step": 7
+  },
+  "checkinState": {
+   "start": "\"unknown\"",
+   "writers": [
+    "checkin",
+    "poll"
+   ],
+   "readers": [],
+   "step": 8
+  },
+  "othersState": {
+   "start": "\"unknown\"",
+   "writers": [
+    "poll"
+   ],
+   "readers": [
+    "app"
+   ],
+   "step": 9
+  }
+ },
+ "stays": {
+  "fns": [
+   "start",
+   "startRest",
+   "routeOpen",
+   "checkPendingOpen",
+   "appApi"
+  ],
+  "vars": [
+   "lastOpenUrl",
+   "lastOpenAt"
+  ],
+  "stmts": [
+   "$(\"sheet-close\").addEventListener(\"click\", function () { closeSheet(\"cancel\"); });",
+   "$(\"backdrop\").addEventListener(\"click\", function () { closeSheet(\"cancel\"); });",
+   "document.addEventListener(\"keydown\", function (e) { if (e.key === \"Escape\" && !$(\"sheet\").hidden) closeSheet(\"cancel\"); });",
+   "if (\"serviceWorker\" in navigator) {",
+   "(function () {\nfunction stripV() {",
+   "if (\"serviceWorker\" in navigator) navigator.serviceWorker.addEventListener(\"message\", function (e) {",
+   "document.addEventListener(\"visibilitychange\", checkPendingOpen);",
+   "setTimeout(checkPendingOpen, 1500);",
+   "if (window.SMOOTH && window.SMOOTH.afterPaint) window.SMOOTH.afterPaint(start); else start();"
+  ]
+ }
+}
