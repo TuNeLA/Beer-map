@@ -117,6 +117,8 @@ jobs:
             filter: '^(placesearch)$'
           - name: a2ui
             filter: '^(a2ui)$'
+          - name: c3chat
+            filter: '^(c3chat)$'
           - name: b1people
             filter: '^(b1people)$'
           - name: webkit

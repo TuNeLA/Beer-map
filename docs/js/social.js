@@ -738,7 +738,7 @@
       var pressT = null, pressLi = null;
       function msgIdOf(li) { for (var k in reactRows) if (li.contains(reactRows[k])) return k; return null; }
       list.addEventListener("pointerdown", function (e) {
-        var li = e.target.closest(".chat-msg"); pressOpened = false; if (!li || e.target.closest("a,button")) return;
+        var li = e.target.closest(".chat-msg"); pressOpened = false; if (!li || e.target.closest("a,button,.av-pic")) return;   // c3chat I-40: the avatar is not a bubble
         pressLi = li; clearTimeout(pressT);
         pressT = setTimeout(function () { var id = msgIdOf(li); if (id) { openPicker(li, id); pressOpened = true; } }, 450);
       });
@@ -746,17 +746,25 @@
       list.addEventListener("scroll", function () { clearTimeout(pressT); });
       list.addEventListener("contextmenu", function (e) { if (e.target.closest(".chat-msg")) e.preventDefault(); });
       list.addEventListener("dblclick", function (e) {
-        var li = e.target.closest(".chat-msg"); if (!li || e.target.closest("a,button")) return;
+        var li = e.target.closest(".chat-msg"); if (!li || e.target.closest("a,button,.av-pic")) return;
         if (picker && pickerLi === li) return;   // fixS T-12: the first tap opened it already
         var id = msgIdOf(li); if (id) openPicker(li, id);
       });
       // fixS T-12: ONE tap on a line opens the menu (Telegram style), a tap on the same line or outside closes it. The click
       // that ends a long-press is not a "tap outside" (it used to close the menu when the press was held > 950 ms).
       // Taps on links, buttons, the name (member card), photos and players keep their own action.
+      // c3chat I-40: a group chat name (.cm-tap) already opens the card (avatar.js clicks it); DM and event chats have no name button: open the card here.
+      function avatarTap(li) {
+        if (!li || li.querySelector(".cm-name.cm-tap") || !window.PROFCARD || !window.PROFCARD.open) return;
+        var n = li.querySelector(".cm-name"), nm = n ? String(n.textContent || "").trim() : "", w = li.getAttribute("data-who") || "";
+        if (!nm && w.indexOf("n:") === 0) nm = w.slice(2);
+        if (nm) window.PROFCARD.open({ g: { id: g.id, name: g.name }, name: nm, is_me: false, noMsg: !!g.dm, back: function () { openChat(g); } });
+      }
       list.addEventListener("click", function (e) {
         if (pressOpened) { pressOpened = false; return; }
         if (e.target.closest(".cm-picker")) return;
         var li = e.target.closest(".chat-msg");
+        if (e.target.closest(".av-pic")) { if (picker) closePicker(); avatarTap(li); return; }   // c3chat I-40: avatar tap = the profile card, never the reactions menu
         if (picker) { var was = pickerLi; if (Date.now() - pickerAt < 350 && was === li) return; closePicker(); if (was === li || !li) return; }
         if (!li || e.target.closest("a,button,input,img,video,audio,.cm-tap,.cm-reacts,.ph-frame,[data-phid]")) return;   // a photo tap = the viewer (photo.js)
         var id = msgIdOf(li); if (id) openPicker(li, id);
