@@ -137,7 +137,9 @@
     return n;
   }
   function sportOfArena(a, mm) { var m = mm && mm.matches[0]; return (m && sportOf(m)) || a.s || null; }
-  function ico(sp) { if (window.ICONS) return window.ICONS.disc(sp === "hockey" || sp === "fotboll" ? sp : "arena");
+  // a1map I-10: the chip icon = the bar pins' disc (mapart PNPINS.discSVG: navy, foam ring, hockey stick + puck / ball / flag)
+  function ico(sp) { if (window.PNPINS && window.PNPINS.discSVG) return window.PNPINS.discSVG(sp === "hockey" || sp === "fotboll" ? sp : "arena", 20);
+    if (window.ICONS) return window.ICONS.disc(sp === "hockey" || sp === "fotboll" ? sp : "arena");
     return sp === "hockey" ? "🏒" : sp === "fotboll" ? "⚽" : "🏟️"; }
 
   /* ---------- look ---------- */
@@ -156,6 +158,7 @@
     ".ap-pin::after{content:'';position:absolute;left:50%;top:50%;width:max(100% + 8px,44px);height:max(100% + 18px,44px);transform:translate(-50%,-50%)}" +
     ".ap-pin::before{content:'';position:absolute;left:50%;bottom:-6px;width:8px;height:8px;margin-left:-4px;background:inherit;border:inherit;border-top:0;border-left:0;transform:rotate(45deg);border-radius:0 0 2px 0}" +
     ".ap-pin .ap-i{font-size:14px;line-height:1}" +
+    ".ap-pin .ap-i .pni-disc{display:block;margin-left:-3px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}.ap-pin.ap-quiet .ap-i .pni-disc{width:16px;height:16px}" +   // a1map I-10
     ".ap-pin .ap-c{color:var(--ds-amber-t,#ffc24d);font-weight:700}" +
     ".ap-pin .ap-c .ap-ppl{width:13px;height:13px;vertical-align:-2px}" +
     ".ap-pin .ap-n{position:absolute;right:-7px;top:-8px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--ap-c,#8fd8ff);" +
@@ -342,6 +345,8 @@
 
   /* ---------- other events: bar badge + loose event chips ---------- */
   var EV_ICO = { quiz: "🎤", karaoke: "🎤", live: "🎸", standup: "🎭", dj: "🎧", party: "🎉" };
+  var EV_G = { quiz: "karaoke", karaoke: "karaoke", live: "note", dj: "note" };   // a1map I-10: the same disc family on the map chip
+  function evIco(kind) { return window.PNPINS && window.PNPINS.discSVG ? window.PNPINS.discSVG(EV_G[kind] || "calendar", 18) : (EV_ICO[kind] || "📅"); }
   function evTonight(e, now) {
     if (!e || e.tv || e.pending || sportOf(e) || e.kind === "sport" || !EV_ICO[e.kind]) return false;
     var s = Date.parse(e.starts_at), end = e.ends_at ? Date.parse(e.ends_at) : s + 3 * 3600e3;
@@ -370,7 +375,7 @@
   }
   function evMarker(e, now) {
     var s = Date.parse(e.starts_at), live = now >= s, sp = sportOf(e);
-    var h = '<div class="ap-pin ap-ev" role="button" aria-label="' + esc(e.title) + '"><span class="ap-i" aria-hidden="true">' + (EV_ICO[e.kind] || "📅") + "</span><span>" +
+    var h = '<div class="ap-pin ap-ev" role="button" aria-label="' + esc(e.title) + '"><span class="ap-i" aria-hidden="true">' + evIco(e.kind) + "</span><span>" +
       esc(live ? two(T.live) : hhmm(s)) + "</span></div>";
     var mk = L.marker([e.lat, e.lng], { pane: "arenapins", keyboard: false, icon: L.divIcon({ html: h, className: "ap-mk", iconSize: [0, 0], iconAnchor: [0, 0] }) });
     mk.on("click", function () { evSheet(e); });

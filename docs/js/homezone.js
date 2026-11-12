@@ -87,7 +87,10 @@
         if (!window.L || !document.body.contains(mapEl)) return;
         try {
           mini = window.L.map(mapEl, { zoomControl: false, attributionControl: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false });
-          window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19 }).addTo(mini);
+          // a1map I-06: the main map's navy look + street names (BASEMAP.miniLook), still the free raster (no Mapbox map load)
+          var B = window.BASEMAP;
+          if (B && B.miniLook) { B.miniLook(mapEl); B.miniTiles().forEach(function (t) { window.L.tileLayer(t[0], t[1]).addTo(mini); }); }
+          else window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19 }).addTo(mini);
           var c = st.lat != null ? [st.lat, st.lng] : (function () { try { var l = A.lastLoc && A.lastLoc(); if (l && isFinite(l.lat)) return [l.lat, l.lng]; } catch (e) {} var m = A.map.getCenter(); return [m.lat, m.lng]; })();
           mini.setView(c, 15);
           mini.on("click", function (e) { picked = true; setPt(+e.latlng.lat.toFixed(5), +e.latlng.lng.toFixed(5), false); });

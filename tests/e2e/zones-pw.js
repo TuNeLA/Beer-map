@@ -35,8 +35,8 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   const view = (ll, z) => page.evaluate(([ll, z]) => new Promise((res) => { __map.once("moveend", () => setTimeout(res, 50)); __map.setView(ll, z, { animate: false }); setTimeout(res, 3000); }), [ll, z]);
   const rendered = (layers) => page.evaluate((ls) => { const m = BASEMAP.mapbox().getMapboxMap(); return m.queryRenderedFeatures({ layers: ls.filter((l) => m.getLayer(l)) }).length; }, layers);
 
-  // 1) whole Sweden
-  await view([62.6, 16.4], 4.4);
+  // 1) whole Sweden (a1map I-11: z < 4.8 = the Nordic view with one country chip; the län chips are at 4.8–5.2)
+  await view([62.6, 16.4], 5.0);
   await page.waitForFunction(() => ZONES._counts() && ZONES._geo().l && ZONES._geo().k, null, { timeout: 45000 }).catch(() => console.log("counts / borders late"));
   await H.wait(page, 1500);
   const g = await page.evaluate(() => ZONES._geo());

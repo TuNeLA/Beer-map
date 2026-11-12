@@ -499,6 +499,16 @@
     text(ops, x + 3 + 18 + 6, 0, t, 12, 700, K.foam);
     return { ops: ops };
   }
+  /* a1map I-10 (owner: "the hockey / arena event icon looks weak"): the DOM chips (arenapin.js) get the SAME disc as the bar
+     pins: navy body + foam ring + the type glyph (hockey stick + puck, ball, flag, karaoke …), as inline SVG at px size */
+  var discMemo = {};
+  function discSVG(kind, px) {
+    var k = kind in GL.G || T.typeMap[kind] ? kind : "arena", key = k + "|" + (px || 20);
+    if (discMemo[key]) return discMemo[key];
+    var ops = barOps({ k: k }, "d", false).ops, b = bboxOf(ops), e = Math.ceil(Math.max(-b[0], -b[1], b[2], b[3]));
+    var svg = toSVG(ops, [-e, -e, e, e]).replace(/^<svg ([^>]*?)width="\d+" height="\d+"/, '<svg class="pni-disc pni-' + k + '" aria-hidden="true" $1width="' + (px || 20) + '" height="' + (px || 20) + '"');
+    return (discMemo[key] = svg);
+  }
   function arenaDiscOps(kind) { var ops = []; disc(ops, 0, 0, 11, "#2B6FD6", { ring: K.foam }); glyph(ops, kind, 0, 0, 13, K.foam, "#2B6FD6"); return { ops: ops }; }
   // mbx (owner screenshot: "small grey restaurant dots look like a different style"): the SAME disc family as the bar dots
   // (navy body, gradient, foam ring, tinted type glyph), one step smaller and a softer ring = lower rank
@@ -667,7 +677,7 @@
 
   root.PNPINS = { personHTML: personHTML, clusterHTML: clusterHTML, countText: countText, barOps: barOps, labelOps: labelOps, meDotOps: meDotOps, clusterOps: clusterOps, personOps: personOps, strangerOps: strangerOps,
     mypinOps: mypinOps, arenaOps: arenaOps, arenaDiscOps: arenaDiscOps, placeOps: placeOps, inviteOps: inviteOps, pillBgOps: pillBgOps,
-    chipBgOps: chipBgOps, badgeOps: badgeOps, raster: raster, toSVG: toSVG, bboxOf: bboxOf, build: build, buildLabel: buildLabel,
+    chipBgOps: chipBgOps, badgeOps: badgeOps, raster: raster, toSVG: toSVG, discSVG: discSVG, bboxOf: bboxOf, build: build, buildLabel: buildLabel,
     setRatio: function (r) { R2 = r; }, cat: cat, _tw: tw };
 })(this);
 /* fixM T-24 CROWD START — ONE source for the bar crowd word + count (test teams 11 Nov: "Livligt · 3 här" flipped to "Lugnt"

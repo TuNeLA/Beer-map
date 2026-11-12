@@ -73,7 +73,27 @@
   // 🗺️ Kartstil beta (js/basemap.js): may put a vector map under everything and take the raster layers off.
   if (window.BASEMAP) try { var baseTiles = []; map.eachLayer(function (l) { if (l instanceof L.TileLayer) baseTiles.push(l); }); window.BASEMAP.early(map, baseTiles); } catch (e) {}
   // Keep popups clear of the top HUD and the bottom dock.
-  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(10, 290), maxWidth: Math.min(300, Math.max(220, (window.innerWidth || 360) - 60)) });
+  // a1map I-20: 64 px from the right (the round-button rail never covers the ✕) and, at the top, below every top HUD control
+  L.Popup.mergeOptions({ autoPanPaddingTopLeft: L.point(10, 150), autoPanPaddingBottomRight: L.point(64, 290), maxWidth: Math.min(300, Math.max(220, (window.innerWidth || 360) - 60)) });
+  // (app-ticker.js / rally.js still set their own top value: it is kept as a floor)
+  var popFloor = 150;
+  try { Object.defineProperty(L.Popup.prototype.options, "autoPanPaddingTopLeft", { configurable: true, enumerable: true,
+    get: function () { return L.point(10, Math.max(popFloor, popTop())); }, set: function (v) { var y = v && (v.y != null ? v.y : v[1]); if (isFinite(+y)) popFloor = +y; } }); } catch (e) {}
+  // the lowest bottom edge of the top HUD controls (top bar, ticker, chips, captions) + 12 px, read when a popup opens; the
+  // right-hand rail is left out (the 64 px right padding keeps the popup clear of it). At least 150, at most 45 % of the map.
+  var POP_HUD = ".topbar, .ticker, .hud-left > *, .dl-cap, #live-count";
+  function popTop() {
+    var top = 150;
+    try {
+      var cr = map.getContainer().getBoundingClientRect(), H = cr.height || window.innerHeight;
+      document.querySelectorAll(POP_HUD).forEach(function (e) {
+        if (e.hidden) return; var r = e.getBoundingClientRect(); if (!r.width || !r.height || r.top - cr.top > H * 0.4 || r.left >= cr.right - 64) return;
+        top = Math.max(top, Math.ceil(r.bottom - cr.top + 12));
+      });
+      top = Math.min(top, Math.round(H * 0.45));
+    } catch (e) {}
+    return top;
+  }
 
   map.createPane("bars"); map.getPane("bars").style.zIndex = 590;
   map.createPane("hotbars"); map.getPane("hotbars").style.zIndex = 650;
@@ -393,8 +413,11 @@
     if (PN.s.newsNoCenter) { PN.s.newsNoCenter = false; try { if (PN.s.tickerKey) renderTickerItemsOnly(); } catch (e) {} }
     meLayer.clearLayers();
     if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
+    // a1map I-28: the bar icons are drawn OVER my dot: in GL (glmap.js draws it under the bar layers) or, without GL, in a pane under the bar panes
+    if (window.GLBARS && window.GLBARS.me) try { window.GLBARS.me(lat, lng); } catch (e) {}
+    if (!map.getPane("mepane")) { map.createPane("mepane"); map.getPane("mepane").style.zIndex = 580; }
     L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
-      interactive: false, keyboard: false }).addTo(meLayer);
+      interactive: false, keyboard: false, pane: "mepane" }).addTo(meLayer);
   }
   // v14 worldwide: any valid position (the server may still refuse outside Sweden: outside_sweden toast).
   function inSweden(lat, lng) { return U.validPos(lat, lng); }

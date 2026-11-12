@@ -16,6 +16,12 @@
   "use strict";
   var A = null, map = null, gm = null, hooked = null, ready = false;
   var Z_OFF = 10.5, Z_KOM = 6.6, Z_SWE = 5.2, K_MIN = 3, AGE_MS = 60000;
+  /* a1map I-11 (owner 2026-11-11): the Nordic view (Leaflet z < 4.8) = ONE chip per country ("Sverige 🍺 23 ute"), the län chips
+     only from 4.8. Aggregate only, the same small-number rule (< 3 = "några"), no chip for a country with nobody out.
+     Data: zone_counts total (Sweden). A drinks total (" · 340 öl") and other countries show when the server sends
+     counts.drinks / counts.countries [{c, n, d, x, y}] (not in 0221: owner decision, see a1map DONE.md). */
+  var Z_CTRY = 4.8, SCT = "olnu-zc-pt", L_CT = "olnu-zc-lbl", sigC = "";
+  var CTRY = { SE: ["Sverige", "Sweden", 16.2, 62.4] };
   var AGE_IN = 5 * 60e3;   // fixM T-15: zoomed in only the top bar pill needs the counts: every 5 min (lane perf budget; a tap refreshes)
   var SK = "olnu-zk", SL = "olnu-zl", SKL = "olnu-zk-pt", SLL = "olnu-zl-pt";
   var L_LF = "olnu-zl-fill", L_LG = "olnu-zl-glow", L_LL = "olnu-zl-line", L_KF = "olnu-zk-fill", L_KG = "olnu-zk-glow", L_KT = "olnu-zk-lbl", L_LT = "olnu-zl-lbl", L_LQ = "olnu-zl-lblq", L_LC = "olnu-zl-lblc";
@@ -104,7 +110,7 @@
       var kk = {}, ll = {};
       d.kommun.forEach(function (x) { if (x && x.c) kk[x.c] = { n: x.n | 0, some: x.n == null, bar: x.bar || null }; });
       (d.lan || []).forEach(function (x) { if (x && x.c) ll[x.c] = { n: x.n | 0, some: x.n == null, top: x.top || null }; });
-      counts = { kk: kk, ll: ll, total: d.total | 0, some: !!d.some && d.total == null, k: d.k || K_MIN, at: d.at };
+      counts = { kk: kk, ll: ll, total: d.total | 0, some: !!d.some && d.total == null, k: d.k || K_MIN, at: d.at, drinks: d.drinks | 0, countries: d.countries || null };   // a1map I-11
       countsAt = Date.now();
       paint(); pill(true);
     });
@@ -200,7 +206,7 @@
     try {
       if (geo.l && !m.getSource(SL)) m.addSource(SL, { type: "geojson", data: geo.l, tolerance: 0.6 });
       if (geo.k && !m.getSource(SK)) m.addSource(SK, { type: "geojson", data: geo.k, tolerance: 0.6 });
-      [SLL, SKL].forEach(function (id) { if (!m.getSource(id)) m.addSource(id, { type: "geojson", data: EMPTY, maxzoom: 10 }); });
+      [SLL, SKL, SCT].forEach(function (id) { if (!m.getSource(id)) { m.addSource(id, { type: "geojson", data: EMPTY, maxzoom: 10 }); if (id === SCT) sigC = ""; } });
       if (KOMMUN_OUTLINE === "mine" && !m.getSource(SKY)) { m.addSource(SKY, { type: "geojson", data: EMPTY, tolerance: 0.6 }); youSig = ""; }   // map M1 (b)
       // fills + borders under the Mapbox place labels (Standard slot "middle"), labels above the heat, under the bars
       if (m.getSource(SL)) {
@@ -235,14 +241,16 @@
       // busy län first: placement goes layer by layer (top first), the sort key only orders WITHIN a tile, so quiet names
       // get their own layer under the busy one (a quiet name never hides a busy label)
       var lp = { "icon-emissive-strength": 1, "icon-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.25, 1, Z_KOM - 1 + 0.1, 0] };
-      addL(m, { id: L_LQ, type: "symbol", source: SLL, maxzoom: Z_KOM - 1 + 0.15, filter: ["all", ["==", ["get", "q"], 1], VIS], layout: lblLay, paint: lp }, above);
+      addL(m, { id: L_LQ, type: "symbol", source: SLL, minzoom: Z_CTRY - 1, maxzoom: Z_KOM - 1 + 0.15, filter: ["all", ["==", ["get", "q"], 1], VIS], layout: lblLay, paint: lp }, above);
       addL(m, { id: L_LT, type: "symbol", source: SLL, minzoom: Z_SWE - 1, maxzoom: Z_KOM - 1 + 0.15, filter: ["all", ["==", ["get", "q"], 0], VIS], layout: lblLay, paint: lp }, above);
-      addL(m, { id: L_LC, type: "symbol", source: SLL, maxzoom: Z_SWE - 1, filter: ["all", ["==", ["get", "q"], 0], VIS],
+      addL(m, { id: L_LC, type: "symbol", source: SLL, minzoom: Z_CTRY - 1, maxzoom: Z_SWE - 1, filter: ["all", ["==", ["get", "q"], 0], VIS],
         layout: Object.assign({}, lblLay, { "icon-image": ["get", "ci"] }), paint: { "icon-emissive-strength": 1 } }, above);
+      addL(m, { id: L_CT, type: "symbol", source: SCT, maxzoom: Z_CTRY - 1, layout: Object.assign({}, lblLay, { "icon-anchor": "center", "icon-offset": ["literal", [0, 0]] }),
+        paint: { "icon-emissive-strength": 1 } }, above);   // a1map I-11
       addL(m, { id: L_KT, type: "symbol", source: SKL, minzoom: Z_KOM - 1 - 0.1, maxzoom: Z_OFF - 1 - 0.4, filter: VIS, layout: lblLay,
         paint: { "icon-emissive-strength": 1, "icon-opacity": ["interpolate", ["linear"], ["zoom"], Z_KOM - 1 - 0.1, 0, Z_KOM - 1 + 0.25, 1, Z_OFF - 2, 1, Z_OFF - 1 - 0.4, 0] } }, above);
       // glmap.js may have added its layers after ours (style reload): keep the labels under the bars
-      if (above) [L_LQ, L_LT, L_LC, L_KT].forEach(function (id) { try { if (m.getLayer(id)) m.moveLayer(id, "olnu-place"); } catch (e) {} });
+      if (above) [L_LQ, L_LT, L_LC, L_CT, L_KT].forEach(function (id) { try { if (m.getLayer(id)) m.moveLayer(id, "olnu-place"); } catch (e) {} });
       ready = true;
       return true;
     } catch (e) { try { console.warn("olnu zones layers", e && e.message); } catch (x) {} return false; }
@@ -280,9 +288,29 @@
         var s2 = kf.map(function (f) { return f.properties.img; }).join();
         lastF[SKL] = kf; if (s2 !== sigK) { sigK = s2; place(SKL); }
       }
+      ctryPaint(m);   // a1map I-11
     } catch (e) {}
   }
 
+  // a1map I-11: one chip per country with people out (Sweden from total / some; others only if the server lists them)
+  function ctryRows() {
+    if (!counts) return [];
+    var en = window.I18N && window.I18N.lang === "en", rows = [];
+    if (counts.total || counts.some) rows.push({ c: "SE", n: counts.total, d: counts.drinks });
+    (Array.isArray(counts.countries) ? counts.countries : []).forEach(function (x) { if (x && x.c && x.c !== "SE" && (x.n || x.some) && (CTRY[x.c] || isFinite(x.x))) rows.push(x); });
+    return rows.map(function (x) {
+      var d = CTRY[x.c] || [x.name || x.c, x.name || x.c, +x.x, +x.y], n = x.n >= K_MIN ? nf(x.n) : "några";
+      var t = (en ? n.replace("några", "a few") + " out" : n + " ute") + (x.d >= K_MIN ? " · " + nf(x.d) + (en ? " beers" : " öl") : "");
+      return { c: x.c, name: en ? d[1] : d[0], t: t, x: d[2], y: d[3], n: x.n || 1 };
+    });
+  }
+  function ctryPaint(m) {
+    if (!m.getSource(SCT)) return;
+    var rows = ctryRows(), fs = rows.map(function (r, i) { return { type: "Feature", id: i + 1, geometry: { type: "Point", coordinates: [r.x, r.y] },
+      properties: { img: chipImg(m, r.name, r.t, null), c: r.c, sk: -r.n } }; });
+    var sg = fs.map(function (f) { return f.properties.c + f.properties.img; }).join();
+    if (sg !== sigC) { sigC = sg; try { m.getSource(SCT).setData({ type: "FeatureCollection", features: fs }); } catch (e) {} }
+  }
   /* ---------- map M3: zone labels out of the UI-safe areas (moveend / new data only, never per frame) ---------- */
   var lastF = {}, sideSig = {}, SIDES = ["bottom", "top", "right", "left"];
   function uiRects() {   // GL canvas px: the app UI over the map + the 📍 my-pin / invite chips (DOM, GL collision cannot see them)
@@ -605,6 +633,7 @@
     stats: stats,
     // test hooks
     _counts: function () { return counts; },
+    _ctry: function () { return { z: Z_CTRY, layer: L_CT, rows: ctryRows() }; },   // a1map I-11 tests
     _zoneAt: function (lat, lng) { var k = zoneAt("k", lat, lng), l = zoneAt("l", lat, lng); return { k: k && k.properties.n, l: l && l.properties.n }; },
     _layers: function () { return [L_LF, L_LG, L_LL, L_KF, L_KG, L_KY, L_KT, L_LQ, L_LT, L_LC]; },
     _outline: function () { return KOMMUN_OUTLINE; },   // map M1: "none" | "mine"

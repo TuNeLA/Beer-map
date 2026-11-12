@@ -480,6 +480,22 @@
       return out;
     },
     layer: function () { return null; },   // the MapLibre layer is gone (glmap)
+    /* a1map I-06 (owner: "the Hemzon map shows the OLD grey map"): the small free raster maps (mbx raster engine: no Mapbox
+       map load each) get the main map's look: the dark grey tiles tinted to the PNI navy (land ≈ #414B70, streets light
+       blue-lavender, labels light), navy under the tiles. miniLook(el) = the class + this CSS (once). tiles() = base + names. */
+    miniLook: function (el) {
+      if (!document.getElementById("pn-mini-css")) {
+        var st = document.createElement("style"); st.id = "pn-mini-css";
+        st.textContent = ".pn-mini{background:#3D4473 !important}.pn-mini .leaflet-tile-pane{filter:sepia(1) saturate(2) hue-rotate(190deg) brightness(.9)}";
+        document.head.appendChild(st);
+      }
+      if (el && el.classList) el.classList.add("pn-mini");
+      return el;
+    },
+    miniTiles: function () {
+      var E = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_";
+      return [[E + "Base/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19 }], [E + "Reference/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 16, maxZoom: 19, opacity: 0.85 }]];
+    },
     gl: function () { return mb ? mb.getMapboxMap() : null; },
     token: function () { return token; },
     tokenReady: fetchToken,

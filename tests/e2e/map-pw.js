@@ -457,7 +457,7 @@ async function closeAll(page) {
       const { ctx, page, errs } = await open(b, vp);
       await page.evaluate(() => document.querySelectorAll("style").forEach((s) => { if (s.textContent === "#toasts{display:none !important}") s.remove(); }));   // toasts on, as in zones-pw
       // Sweden view (zones-pw case): the busy län chips (01 Stockholm, 14 Västra Götaland, 20 Dalarna) all stay on the map
-        await view(page, [62.6, 16.4], 4.4, 600);
+        await view(page, [62.6, 16.4], 5.0, 600);   // a1map I-11: the län chips are at 4.8–5.2 (below = one country chip)
         await page.waitForFunction(() => { const m = __mpw.gm(); const l = m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"].filter((x) => m.getLayer(x)) }).map((f) => f.properties.l);
           return ["01", "14", "20"].every((c) => l.includes(c)); }, null, { timeout: 12000 }).catch(() => {});
         const sw = await page.evaluate(() => { const m = __mpw.gm(), lays = ["olnu-zl-lblc", "olnu-zl-lblq"].filter((x) => m.getLayer(x));
