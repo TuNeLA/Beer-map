@@ -17,7 +17,7 @@ const CSV = fs.readFileSync(path.join(__dirname, "../../scripts/dialekt-kommuner
 });
 const PAGE = BASE + "__dialekt-test.html";
 const HTML = '<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>dk</title></head><body><script src="./js/dialekt.js"></script></body></html>';
-const HOOKED = /window\.DIALEKT\b/.test(fs.readFileSync(path.join(__dirname, "../../docs/app.js"), "utf8"));   // patch 02 applied?
+const HOOKED = /"DIALEKT"/.test(fs.readFileSync(path.join(__dirname, "../../docs/js/pn.js"), "utf8"));   // patch 02 applied?
 const at = (y, mo, d, h) => new Date(y, mo - 1, d, h, 0, 0).getTime();   // local time (CI: TZ=Europe/Stockholm)
 
 async function fresh(browser, ls, o = {}) {

@@ -1,0 +1,10 @@
+{
+ "AFTER2": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "BARS": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "FILMCAM": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "MEDALS": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "MOMENTS": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "PNLOG_HOOKS": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "RIDE": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)",
+ "SAFETY": "not in the app.js mods() list on 12 Nov 2026 (has a hook-like member, but app.js never fans out to it; called by its own caller)"
+}
