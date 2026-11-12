@@ -8,6 +8,8 @@
 --   - else: at the centre of the nearest town with bars (beers.tlat / tlng, filled by 0485), 'snap' = 'area' as before;
 --   - no town with bars within 60 km: strangers get no pin for it (it still counts in live_total).
 -- Me, my group mates (known) and "Bara vänner" rules do not change. poll_v2, poll_public and live_beers all read olnu_pins.
+-- Two states: before 0321 (live today: 0340 only) and after 0321 (olnu_pins reads the follow point: coalesce(c.f_lat, c.lat)).
+-- The file reads the deployed text and picks the matching anchors 4 and 5; the new text keeps f_lat / f_lng for known rows.
 -- Method: the CR-safe anchor patch of 0436 (olnu_sec_patch): it reads the DEPLOYED definition, each anchor must occur
 -- exactly once, a definition with the marker 'heat0486' is skipped.
 -- Check after the run (expect t):
@@ -28,8 +30,10 @@ select public.olnu_sec_patch('public.olnu_pins(uuid,double precision,double prec
     $a$b.snap_lat, b.snap_lng, b.snap_bar, mm.uid is not null as known, mm.fname$a$,
     $a$b.snap_lat, b.snap_lng, b.snap_bar, true, mm.fname$a$,
     $a$and (not v_box or (b.lat between v_a and v_c and b.lng between v_b and v_d))$a$,
-    $a$case when c.known then c.lat else coalesce(c.snap_lat, (round(c.lat::numeric / 0.005) * 0.005)::float8) end,$a$,
-    $a$case when c.known then c.lng else coalesce(c.snap_lng, (round(c.lng::numeric / 0.01) * 0.01)::float8) end,$a$,
+    case when v.f then $a$case when c.known then coalesce(c.f_lat, c.lat) else coalesce(c.snap_lat, (round(c.lat::numeric / 0.005) * 0.005)::float8) end,$a$
+         else $a$case when c.known then c.lat else coalesce(c.snap_lat, (round(c.lat::numeric / 0.005) * 0.005)::float8) end,$a$ end,
+    case when v.f then $a$case when c.known then coalesce(c.f_lng, c.lng) else coalesce(c.snap_lng, (round(c.lng::numeric / 0.01) * 0.01)::float8) end,$a$
+         else $a$case when c.known then c.lng else coalesce(c.snap_lng, (round(c.lng::numeric / 0.01) * 0.01)::float8) end,$a$ end,
     $a$(coalesce(c.snap_lat, c.lat) between p_min_lat and p_max_lat$a$,
     $a$and coalesce(c.snap_lng, c.lng) between p_min_lng and p_max_lng))$a$,
     $a$and not public.olnu_ub_hidden(p_uid, c.user_id)$a$
@@ -39,13 +43,16 @@ select public.olnu_sec_patch('public.olnu_pins(uuid,double precision,double prec
     $a$b.snap_lat, b.snap_lng, b.snap_bar, true, mm.fname, b.tlat, b.tlng$a$,
     $a$and (not v_box or (b.lat between v_a and v_c and b.lng between v_b and v_d)
             or (mm.uid is null and b.tlat between v_a and v_c and b.tlng between v_b and v_d))   -- heat0486: a stranger's town pin may be far from the home$a$,
-    $a$case when c.known then c.lat when c.snap_bar is not null then c.snap_lat else c.tlat end,   -- heat0486: stranger = bar or town centre$a$,
-    $a$case when c.known then c.lng when c.snap_bar is not null then c.snap_lng else c.tlng end,$a$,
+    case when v.f then $a$case when c.known then coalesce(c.f_lat, c.lat) when c.snap_bar is not null then c.snap_lat else c.tlat end,   -- heat0486: stranger = bar or town centre$a$
+         else $a$case when c.known then c.lat when c.snap_bar is not null then c.snap_lat else c.tlat end,   -- heat0486: stranger = bar or town centre$a$ end,
+    case when v.f then $a$case when c.known then coalesce(c.f_lng, c.lng) when c.snap_bar is not null then c.snap_lng else c.tlng end,$a$
+         else $a$case when c.known then c.lng when c.snap_bar is not null then c.snap_lng else c.tlng end,$a$ end,
     $a$((case when c.snap_bar is not null then c.snap_lat else c.tlat end) between p_min_lat and p_max_lat$a$,
     $a$and (case when c.snap_bar is not null then c.snap_lng else c.tlng end) between p_min_lng and p_max_lng))$a$,
     $a$and not public.olnu_ub_hidden(p_uid, c.user_id)
      and (c.known or c.snap_bar is not null or c.tlat is not null)   -- heat0486: no town with bars in 60 km = no stranger pin$a$
-  ]) as result;
+  ]) as result
+  from (select position('coalesce(c.f_lat, c.lat)' in replace(pg_get_functiondef('public.olnu_pins(uuid,double precision,double precision,double precision,double precision)'::regprocedure), chr(13), '')) > 0 as f) v;
 
 do $s$ begin
   if to_regprocedure('public.olnu_strip_cr()') is not null then perform public.olnu_strip_cr(); end if;

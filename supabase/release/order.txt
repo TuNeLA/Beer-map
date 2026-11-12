@@ -66,7 +66,7 @@ release 0480
 release 0481
 release 0490
 release 0485
-release 0486 xfail   # KNOWN BUG (w1-server, 12 Nov): 0321 replaces olnu_pins (f_lat); 0486 anchor 4 expects the pre-0321 text -> "anchor 4 found 0 times"
+release 0486
 release 0495
 release 0496
 release 0497
