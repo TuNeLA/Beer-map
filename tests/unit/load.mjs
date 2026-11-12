@@ -30,7 +30,8 @@ export function loadScript(rel, extra) {
   return w;
 }
 
-// source of "function name(...) { ... }" by balanced braces (skips strings, comments; a regex literal with a lone brace is not supported)
+const prevSig = (src, i) => { for (let j = i - 1; j >= 0; j--) if (!/\s/.test(src[j])) return src[j]; return ";"; };
+// source of "function name(...) { ... }" by balanced braces (skips strings, comments and regex literals)
 export function functionSource(src, name) {
   const m = new RegExp("(^|[^\\w$.])function\\s+" + name + "\\s*\\(").exec(src);
   if (!m) return null;
@@ -40,6 +41,10 @@ export function functionSource(src, name) {
     const c = src[i], d = src[i + 1];
     if (c === "/" && d === "/") { i = src.indexOf("\n", i); if (i < 0) break; continue; }
     if (c === "/" && d === "*") { i = src.indexOf("*/", i) + 1; continue; }
+    if (c === "/" && /[(,=:[!&|?{};]/.test(prevSig(src, i))) {   // regex literal (after an operator / open bracket): skip it, quotes and // inside do not count
+      for (i++; i < src.length && src[i] !== "/"; i++) { if (src[i] === "\\") i++; else if (src[i] === "[") { for (i++; i < src.length && src[i] !== "]"; i++) if (src[i] === "\\") i++; } }
+      continue;
+    }
     if (c === '"' || c === "'" || c === "`") { for (i++; i < src.length && src[i] !== c; i++) if (src[i] === "\\") i++; continue; }
     if (c === "{") { depth++; started = true; }
     else if (c === "}") { depth--; if (started && depth === 0) return src.slice(start, i + 1); }

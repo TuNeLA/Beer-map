@@ -20,4 +20,14 @@
   // Same as the old literal list: window[name] is read at EVERY call (late modules; FILM and PNLOG are set by 2 files).
   // A missing module gives undefined, like before. mods() skips it.
   PN.hookList = function () { var out = [], n = BASE.concat(extra); for (var i = 0; i < n.length; i++) out.push(window[n[i]]); return out; };
+  // Names that PN.put (app-core.js) must never overwrite: they belong to pn.js (mod, hookNames, hookList, reserved, putBad),
+  // boot.js (load) or app-core.js (s, put, link). putBad(name) is called by PN.put for such a name:
+  // dev/test (localhost, private LAN, or window.PN_DEV = true) throws; prod logs console.error and PN.put skips the name.
+  PN.reserved = ["mod", "hookNames", "hookList", "reserved", "putBad", "s", "put", "link", "load"];
+  PN.putBad = function (name) {
+    var msg = "PN.put: reserved name '" + name + "' (rename the export)";
+    var h = (window.location && window.location.hostname) || "";
+    if (window.PN_DEV === true || /^(localhost|127\.0\.0\.1|\[?::1\]?|192\.168\.[\d.]+|10\.[\d.]+)$/.test(h)) throw new Error(msg);
+    if (window.console && console.error) console.error(msg);
+  };
 })();

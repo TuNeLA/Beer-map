@@ -472,13 +472,21 @@
 
   // Stubs for other modules (stable API even if filmcam.js / film.js load later or lazily): FILMCAM.capture and
   // FILM.albumExtra work from the first call. The real modules replace these objects when they run.
+  // Deploy stamp (scripts/stamp.mjs): the page tags carry ?v=<hash>. A lazy file gets the stamped tag of its own name, else the ?v= of
+  // this file's own tag (changes on every deploy that touches it), so the SW / HTTP cache never serves an old copy next to new parts.
+  function stampedSrc(name) {
+    var q = function (n) { var e = document.querySelector('script[src*="js/' + n + '.js"]'); return e ? e.getAttribute("src") : ""; };
+    var own = q(name); if (own) return own;
+    var m = /\?v=[^"&]*/.exec(q("filmfx"));
+    return "./js/" + name + ".js" + (m ? m[0] : "");
+  }
   function whenReal(name, test) {
     return new Promise(function (res, rej) {
       var n = 0;
       (function wait() {
         if (test()) { res(); return; }
         if (n === 0 && !document.querySelector('script[src*="js/' + name + '.js"]')) {
-          PN.load("./js/" + name + ".js").catch(function () { rej(new Error("load")); });   // A20
+          PN.load(stampedSrc(name)).catch(function () { rej(new Error("load")); });   // A20
         }
         if (++n > 100) { rej(new Error("load")); return; }
         setTimeout(wait, 100);

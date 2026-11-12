@@ -334,9 +334,9 @@ export function render(A, plan) {
       out.push(header(plan, f.part), "(function () {", '  "use strict";');
       if (f.part !== "core") out.push("  var PN = window.PN;");
       else {
-        out.push("  // <split:core> " + GEN + " (PN.put, PN.link, PN.s; a field start value may be edited here)",
+        out.push("  // <split:core> " + GEN + " (PN.put, PN.link, PN.s; a start value is checked against plan.json and the move base: do not edit it by hand)",
           "  var PN = window.PN, links = [];",
-          "  PN.put = function (o) { for (var k in o) PN[k] = o[k]; for (var i = 0; i < links.length; i++) links[i](); };",
+          "  PN.put = function (o) { for (var k in o) { if (PN.reserved.indexOf(k) >= 0) { PN.putBad(k); continue; } PN[k] = o[k]; } for (var i = 0; i < links.length; i++) links[i](); };",
           "  PN.link = function (fn) { links.push(fn); fn(); };",
           "  PN.s = {", ...A.fields.map((x) => "    " + x.name + ": " + x.init + "," + x.comment), "  };",
           "  // </split:core>");
