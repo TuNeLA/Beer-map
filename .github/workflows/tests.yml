@@ -138,14 +138,21 @@ jobs:
             filter: '^(systemet)$'
     steps:
       - uses: actions/checkout@v4
+      - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"
+        id: only
+        run: if [ -f .ci-only ] && ! grep -qx "${{ matrix.name }}" .ci-only; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "skipped by .ci-only"; fi
       - uses: actions/setup-node@v4
+        if: steps.only.outputs.skip != '1'
         with:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
+        if: steps.only.outputs.skip != '1'
       - name: Install Playwright browsers
+        if: steps.only.outputs.skip != '1'
         run: npx playwright install --with-deps ${{ matrix.browsers || 'chromium' }}
       - name: Serve docs/ on port 8793 (map) and 8871 (UI), Supabase target = staging
+        if: steps.only.outputs.skip != '1'
         env:
           PN_TARGET: staging   # serve.py serves config.js pointed at pintsnow-staging (the file in git is not changed)
         run: |
@@ -155,12 +162,14 @@ jobs:
             for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
           done
       - name: Restore last run's flaky list (flake gate)
+        if: steps.only.outputs.skip != '1'
         uses: actions/cache/restore@v4
         with:
           path: tests/e2e/out/flaky-prev
           key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: flaky-${{ matrix.name }}-${{ github.ref_name }}-
       - name: Run tests
+        if: steps.only.outputs.skip != '1'
         env:
           MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}   # real Mapbox for the map tests (matrix "map"); empty = skipped
           PN_TARGET: staging   # run-all.sh stops if the served config.js does not point at this target
@@ -168,7 +177,7 @@ jobs:
           FLAKE_GATE: '1'   # a test that passes only on the rerun in 2 runs in a row = FAIL (tests/e2e/flakes.json)
         run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
       - name: Upload logs
-        if: always()
+        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
         uses: actions/upload-artifact@v4
         with:
           name: e2e-logs-${{ matrix.name }}
@@ -180,10 +189,10 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - name: Keep this run's flaky list for the next run
-        if: always()
+        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
         run: mkdir -p tests/e2e/out/flaky-prev && cp tests/e2e/out/logs/flaky-now.txt tests/e2e/out/flaky-prev/ 2>/dev/null || true
       - name: Save flaky list
-        if: always()
+        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
         uses: actions/cache/save@v4
         with:
           path: tests/e2e/out/flaky-prev
@@ -257,6 +266,8 @@ jobs:
       - run: node --test "tests/unit/*.test.mjs"   # w1-tests: pure logic the app.js split moves (U.n1, kaos, poll plan, bundleChunks, crowdSort, ticker)
       - name: "workflow YAML is valid (a bad file never runs and fails silently)"
         run: python3 -c "import glob,yaml; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]; print('workflows ok')"
+      - name: "no .ci-only file on big-update or main (it is only for ci/ lane branches)"
+        run: if [ -f .ci-only ] && { [ "${{ github.ref }}" = refs/heads/big-update ] || [ "${{ github.ref }}" = refs/heads/main ]; }; then echo ".ci-only must not be merged"; exit 1; fi
       - name: split guard (structure on every push; move-only proof only for a "W2 step" commit)
         run: |
           npm install --no-save --no-audit --no-fund acorn@8.12.1

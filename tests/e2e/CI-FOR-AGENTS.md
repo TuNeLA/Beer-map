@@ -63,3 +63,6 @@ To run only some tests: there is no input for that. Run the one test locally thr
 3. Add `run <name> $B <file>` to `tests/e2e/run-all.sh`.
 4. Add the name to a shard regex in `.github/workflows/tests.yml` (or a new shard). Keep each shard under about 10 min.
 5. Push to `ci/<agent>-<n>` and check that it is green.
+
+## Run only your shards (13 Nov)
+Put a file `.ci-only` in the root of your ci/ branch with one shard name per line (the `name:` values of the e2e matrix in .github/workflows/tests.yml, e.g. `ui-1`, `ride`, `mapzoom`, and the shard your build.sh adds for your new test). All other e2e shards skip in ~10 s. The unit/quality/schema jobs always run. Never merge `.ci-only` (CI fails on big-update/main if it exists).
