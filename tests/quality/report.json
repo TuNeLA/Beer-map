@@ -1,6 +1,6 @@
 {
  "ok": true,
- "seconds": 3.9,
+ "seconds": 2.9,
  "files": 237,
  "splitCheck": "split blocks in sync (15 files)",
  "counts": {
@@ -10,8 +10,8 @@
    "newOrGrown": 0
   },
   "functions": {
-   "now": 147,
-   "baseline": 147,
+   "now": 12,
+   "baseline": 12,
    "newOrGrown": 0
   },
   "windowGlobals": {
@@ -58,5 +58,5 @@
   "docs/js/party-ui.js has 1160 lines (warn at 900, limit 1200)",
   "docs/js/spel-ui.js has 1067 lines (warn at 900, limit 1200)"
  ],
- "shrinkable": 3
+ "shrinkable": 0
 }

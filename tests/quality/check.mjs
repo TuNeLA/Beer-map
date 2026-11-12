@@ -67,11 +67,26 @@ const fnName = (n, p, src) => {
   if (p && p.type === "AssignmentExpression") return src.slice(p.left.start, p.left.end).replace(/\s+/g, "").slice(0, 60);
   return "anon";
 };
+// module wrapper(s): top-level `(function () { ... })()`, `(() => {...})()`, `!function(){}()`, `(function(){}).call(this)`
+const wrapperOf = (ast) => {
+  const out = new Set();
+  for (const s of ast.body) {
+    let e = s.type === "ExpressionStatement" ? s.expression : null;
+    if (e && e.type === "UnaryExpression") e = e.argument;
+    if (!e || e.type !== "CallExpression") continue;
+    let c = e.callee;
+    if (c.type === "MemberExpression" && /^(call|apply)$/.test(c.property.name || "")) c = c.object;
+    if (c.type === "FunctionExpression" || c.type === "ArrowFunctionExpression") out.add(c);
+  }
+  return out;
+};
 const exportsDef = {}; // name -> count of definition sites
 for (const f of jsFiles) {
   const ast = AST[f]; if (!ast) continue; const src = SRC[f];
+  const wrap = wrapperOf(ast);
   walk(ast, (n, p) => {
     if (/^(FunctionDeclaration|FunctionExpression|ArrowFunctionExpression)$/.test(n.type)) {
+      if (wrap.has(n)) return; // top-level IIFE wrapper = the module itself, not a function; functions inside it are still measured
       const len = n.loc.end.line - n.loc.start.line + 1;
       if (len > LIM.fnLines) { const k = f + "::" + fnName(n, p, src); facts.functions[k] = Math.max(facts.functions[k] || 0, len); }
     }

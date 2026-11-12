@@ -243,11 +243,10 @@ jobs:
       - run: node scripts/import-sport.test.mjs
       - run: node tests/e2e/local-lines-test.js docs/js   # LIVE ticker: Ludvika-area lines only near Ludvika
       - run: node --test "tests/unit/*.test.mjs"   # w1-tests: pure logic the app.js split moves (U.n1, kaos, poll plan, bundleChunks, crowdSort, ticker)
-      - name: split guard (W2 move-only proof)
+      - name: split guard (structure on every push; move-only proof only for a "W2 step" commit)
         run: |
           npm install --no-save --no-audit --no-fund acorn@8.12.1
-          node scripts/split/move.mjs . --check
-          node scripts/split/verify.mjs --base d523f17040bca4dddad99abe36a1475bfc607a0a   # = pre-w2 (tag push is blocked; branch ci/pre-w2)
+          bash scripts/split/ci.sh "${{ github.event.before }}"
       - name: stamp guard (A1 no ?v= in the repo + stamp.mjs works, A17 SRI + exact CSP)
         env:
           PAGES_DEPLOY: ${{ vars.PAGES_DEPLOY }}   # = actions after release day: the repo must be clean (no ?v=, VERSION "dev")

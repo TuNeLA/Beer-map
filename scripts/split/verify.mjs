@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 // W2 app.js split — move-only proof (SPLIT-SPEC 4.2). Exit 0 = OK, 1 = FAIL.
-// usage: node scripts/split/verify.mjs --base <ref> [--order <ref>] [--repo <dir>]
+// usage: node scripts/split/verify.mjs --base <ref> [--order <ref>] [--repo <dir>]     (move-only proof: ONLY for a move commit)
+//        node scripts/split/verify.mjs --structure [--order <ref>] [--repo <dir>]       (PERMANENT, valid for normal edits)
+//   --structure  no base. Checks 2-5 only: PN.s fields + writers = plan.json (a new field/writer must be added to plan.json on
+//                purpose), generated headers + index.html in sync, node --check, load hazards of the CURRENT tree, listener order
+//                of the old items against --order (default pre-w2 / d523f17; SPEC 4.4 pairs allowed). Item/comment equality is skipped.
 //   --base   the commit to compare with (pre-w2, or the commit before this step). Its app.js + parts are read with git show.
 //   --order  an UNSPLIT app.js (default: pre-w2 if the tag exists, else --base) for the load-order checks.
 // Checks: 1 every item (function / var / statement) of the base is in the work tree, text byte-equal after "PN.s.x" -> "x"
@@ -15,8 +19,10 @@ import * as L from "./lib.mjs";
 
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const repo = path.resolve(arg("--repo") || ".");
-const base = arg("--base");
-if (!base) { console.error("usage: verify.mjs --base <ref> [--order <ref>] [--repo <dir>]"); process.exit(2); }
+const STRUCT = process.argv.includes("--structure");
+const PRE_W2 = "d523f17040bca4dddad99abe36a1475bfc607a0a";
+const base = arg("--base") || (STRUCT ? (arg("--order") || PRE_W2) : null);
+if (!base) { console.error("usage: verify.mjs --base <ref> [--order <ref>] [--repo <dir>] | --structure"); process.exit(2); }
 const git = (...a) => execFileSync("git", ["-C", repo, ...a], { encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "pipe"] });
 const has = (ref) => { try { git("rev-parse", "--verify", "-q", ref + "^{commit}"); return true; } catch (e) { return false; } };
 if (!has(base)) { console.error("no such ref: " + base); process.exit(2); }
@@ -27,7 +33,7 @@ const rd = (rel) => { const p = path.join(repo, rel); return fs.existsSync(p) ? 
 const atRef = (ref) => { const ls = git("ls-tree", "--name-only", ref, "docs/js/").split("\n"); return (part) => (part === "app" || ls.includes(L.relOf(part)) ? git("show", ref + ":" + L.relOf(part)) : null); };
 
 const A = L.loadApp((p) => rd(L.relOf(p)));
-const B = L.loadApp(atRef(base));
+const B = STRUCT ? null : L.loadApp(atRef(base));
 
 // ---------- 1 items + comments ----------
 function itemMap(X) {
@@ -52,8 +58,9 @@ const comments = (X) => {
   for (const x of X.fields) if (x.comment) out.push(x.comment.replace(/^\s*\/\//, ""));
   return out;
 };
-const IA = itemMap(A), IB = itemMap(B);
+const IA = itemMap(A), IB = STRUCT ? null : itemMap(B);
 let same = 0;
+if (!STRUCT) {
 for (const [k, v] of IB.m) {
   const w = IA.m.get(k);
   if (!w) FAIL("lost: " + k + " (was in " + L.relOf(v.file) + ")");
@@ -71,12 +78,13 @@ for (const [k, w] of IA.st) if (!IB.st.has(k)) FAIL("new or changed statement in
   if (bad.length) FAIL("comments differ (" + bad.length + "): " + bad.slice(0, 4).map(([c, n]) => (n > 0 ? "lost " : "extra ") + JSON.stringify(c.slice(0, 60))).join("; "));
 }
 console.log("items: " + same + " names + " + stmts + " statements byte-equal to " + base + " (" + IB.m.size + " names, " + [...IB.st.values()].reduce((a, v) => a + v.length, 0) + " statements in base)");
+}
 
 // ---------- 2 state ----------
 const applied = plan.steps.filter((s) => Object.keys(s.parts).every((p) => A.files[p]));
-const want = new Set(applied.flatMap((s) => s.s)), got = L.fieldNames(A);
+const want = new Set(STRUCT ? Object.keys(plan.state) : applied.flatMap((s) => s.s)), got = L.fieldNames(A);
 for (const x of want) if (!got.has(x)) FAIL("PN.s." + x + " missing (step file says it is shared state)");
-for (const x of got) if (!want.has(x)) FAIL("PN.s." + x + " is not in the applied step files");
+for (const x of got) if (!want.has(x)) FAIL("PN.s." + x + " is not in " + (STRUCT ? "scripts/split/plan.json state: a NEW shared field must be added there on purpose (start, writers, readers)" : "the applied step files"));
 const writers = {};
 const walkW = (n, file) => {
   if (!n || typeof n.type !== "string") return;
@@ -88,7 +96,7 @@ for (const f of Object.values(A.files)) for (const it of f.items) { if (it.kind 
 for (const x in writers) {
   const st = plan.state[x]; if (!st) continue;
   const ok = new Set(st.writers.map((w) => (A.files[w] ? w : "app")));
-  for (const w of writers[x]) if (!ok.has(w)) FAIL("PN.s." + x + " written in " + L.relOf(w) + " (writers: " + st.writers.join(", ") + ")");
+  for (const w of writers[x]) if (!ok.has(w)) FAIL("PN.s." + x + " written in " + L.relOf(w) + " (writers in plan.json: " + st.writers.join(", ") + "). A NEW writer must be added on purpose: scripts/split/plan.json state." + x + ".writers");
 }
 for (const x of L.needState(A)) FAIL(x + " is written and used by 2+ files: it must be PN.s." + x);
 console.log("state: " + got.size + " PN.s fields (" + applied.map((s) => s.step).join(",") + " applied)");
@@ -125,11 +133,18 @@ const OI = O.files.app.items.map((it) => {
   }
   return { it, file, imm, calls, sig, line: it.sL };
 });
-const OO = {}; OI.forEach((x) => x.it.names.forEach((n) => (OO[n] = x)));
+const OIa = [];   // structure mode: the CURRENT tree (all items of all parts), so new code is load-checked too
+if (STRUCT) for (const f of Object.values(A.files)) for (const it of f.items) {
+  const imm = new Set(), calls = new Set();
+  L.walkItem(it.node, (r) => { if (!r.load) return; if (r.call) calls.add(r.name); else imm.add(r.name); });
+  OIa.push({ it, file: f.part, imm, calls, sig: [], line: it.sL });
+}
+const HZ = STRUCT ? OIa : OI;
+const OO = {}; HZ.forEach((x) => x.it.names.forEach((n) => (OO[n] = x)));
 const lost = OI.filter((x) => !x.file); if (lost.length) console.log("order: " + lost.length + " items of " + order + " not found (new since then?) — not checked");
 const pos = (x) => rank(x.file) * 1e6 + x.line;
 let hz = 0;
-for (const x of OI) {
+for (const x of HZ) {
   if (x.it.kind === "fn" || !x.file) continue;
   const seen = new Set(x.imm), q = [...x.calls], called = new Set();
   while (q.length) { const f = q.pop(); if (called.has(f)) continue; called.add(f); const b = OO[f]; if (!b || b.it.kind !== "fn") continue; b.imm.forEach((r) => seen.add(r)); b.calls.forEach((c) => q.push(c)); }
@@ -157,4 +172,4 @@ console.log("load order (" + order + "): " + hz + " hazards, " + flips + " liste
 const parts = Object.keys(A.files).filter((p) => p !== "app");
 console.log("files: " + parts.length + " parts + app.js (" + (A.files.app.raw.split("\n").length - 1) + " lines)");
 if (fails.length) { console.log("FAIL (" + fails.length + "):"); fails.slice(0, 40).forEach((f) => console.log("  " + f)); if (fails.length > 40) console.log("  …"); process.exit(1); }
-console.log("verify OK: move only");
+console.log(STRUCT ? "verify OK: structure (state, headers, load order)" : "verify OK: move only");
