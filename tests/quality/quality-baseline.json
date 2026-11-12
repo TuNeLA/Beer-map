@@ -112,8 +112,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/social.js::anon": {
-    "value": 399,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 415,
+    "reason": "legacy (12 Nov); grew by b1people bug fixes, coordinator OK — split social.js in a structure lane"
    },
    "docs/js/social.js::openChat": {
     "value": 421,
@@ -660,6 +660,10 @@
    "PRIVACY": {
     "value": 1,
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "PROFCARD": {
+    "value": 1,
+    "reason": "b1people 12 Nov: hook-style module; move to PN.mod(name,obj) later (STRUCTURE-CONFLICTS)"
    },
    "PROFIL": {
     "value": 1,
