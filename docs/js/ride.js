@@ -149,10 +149,19 @@
     return f;
   }
   function town(lat, lng) { try { var c = window.CITIES && window.CITIES.nearest(lat, lng); return c && c.name ? c.name : ""; } catch (e) { return ""; } }
-  function placeOf(lat, lng) {
-    try { if (window.BARS && window.BARS.describe) { var d = window.BARS.describe({ precise: true, lat: lat, lng: lng }); if (d && d.name) return (d.kind === "near" ? "nära " : "") + d.name; } } catch (e) {}
+  // I-30: a place NAME only if the rider CHOSE it: the bar they are checked in at (≤ 150 m), or (viaMap) the bar they put the pin on
+  // (≤ 75 m). Never an automatic "nära <bar>" from the GPS. No name = "" (the label is then the area only).
+  function distM(a, b, c, d) { var r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2); return 12742000 * Math.asin(Math.sqrt(x * x + Math.cos(a * r) * Math.cos(c * r) * y * y)); }
+  function placeOf(lat, lng, viaMap) {
+    try { var c = window.PN && window.PN.myCheckin && window.PN.myCheckin(); if (c && c.name && isFinite(c.lat) && distM(lat, lng, +c.lat, +c.lng) <= 150) return String(c.name); } catch (e) {}
+    try { if (viaMap && window.BARS && window.BARS.describe) { var d = window.BARS.describe({ precise: true, lat: lat, lng: lng }); if (d && d.kind === "at" && d.name) return d.name; } } catch (e) {}
     return "";
   }
+  function pkSet(lat, lng, viaMap) {   // the pickup point: a chosen name (or "") + the coarse area (async, ≤ 4 s)
+    form.lat = lat; form.lng = lng; form.place = placeOf(lat, lng, viaMap); form.area = town(lat, lng);
+    areaOf(lat, lng).then(function (a) { if (form && form.lat === lat && a) { form.area = a; paintReq(); } });
+  }
+  function fromTxt(x) { return x.place ? T("ride.from", { x: x.place }) : x.area ? T("ride.from.area", { x: x.area }) : T("ride.from.none"); }
   function fix(ms) { return HK.fix ? HK.fix(ms) : Promise.resolve(null); }
   // phase: 0 taken · 1 på väg · 2 framme · 3 i bilen · 4 klar (the server status + step_at.picked, 0495)
   function phase(x) {
@@ -171,7 +180,7 @@
       var done = false, fin = function (v) { if (done) return; done = true; v = v || t0 || ""; if (v) areaC[k] = v; res(v); };
       setTimeout(function () { fin(null); }, 4000);
       try {
-        fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=sv&lat=" + (+lat).toFixed(5) + "&lon=" + (+lng).toFixed(5))
+        fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=sv&lat=" + (+lat).toFixed(3) + "&lon=" + (+lng).toFixed(3))
           .then(function (r) { return r.json(); }).then(function (j) { fin(areaFromAddr(j && j.address, t0)); }, function () { fin(null); });
       } catch (e) { fin(null); }
     });
@@ -277,7 +286,7 @@
     (r.offers || []).forEach(function (x) {
       if (!x.live || !x.can_take || x.my_declined || r.drinking) return;
       once("o" + x.id + ":" + x.round, function () {
-        var pl = [x.place || "", x.dest && x.dest.area ? "→ " + x.dest.area : ""].filter(Boolean).join(" ");
+        var pl = [x.place || x.area || "", x.dest && x.dest.area ? "→ " + x.dest.area : ""].filter(Boolean).join(" ");
         A.toast(T("ride.toast.offer", { name: x.name, place: pl }).replace(/ · $/, ""), { id: "rd-o-" + x.id, ms: 15000, urgent: true, cls: "rd-toast",
           action: { label: "Visa", fn: function () { openId(x.id); } } });
         vib();
@@ -422,13 +431,13 @@
     return true;
   }
   function locate() {
-    form.lat = null; form.lng = null; form.place = ""; form.loading = true; paintReq();
+    form.lat = null; form.lng = null; form.place = ""; form.area = ""; form.loading = true; paintReq();
     var l = null; try { l = A.lastLoc && A.lastLoc(); } catch (e) {}
-    if (l && isFinite(l.lat)) { form.lat = l.lat; form.lng = l.lng; form.place = placeOf(l.lat, l.lng); }
+    if (l && isFinite(l.lat)) pkSet(l.lat, l.lng, false);
     fix(8000).then(function (p) {
       form.loading = false;
       if (form.where !== "here") return;
-      if (p) { form.lat = p.lat; form.lng = p.lng; form.place = placeOf(p.lat, p.lng); }
+      if (p) pkSet(p.lat, p.lng, false);
       paintReq();
     });
   }
@@ -480,7 +489,7 @@
       if (v === "map") { startPick("pk"); return; }
       f.where = "here"; locate();
     }, "rd-seg2"));
-    var plTxt = f.lat != null ? (f.place || (f.where === "map" ? T("ride.dest.point") : "Din position")) : (f.loading ? T("ride.pos.wait") : T("ride.pos.none"));
+    var plTxt = f.lat != null ? (f.place || (f.area ? T("ride.from.area", { x: f.area }) : (f.where === "map" ? T("ride.dest.point") : "Din position"))) : (f.loading ? T("ride.pos.wait") : T("ride.pos.none"));
     box.appendChild(h("div", { class: "rd-place" + (f.lat == null ? " rd-place-none" : "") }, [icEl("pin"), h("span", { text: plTxt })]));
     // destination (optional)
     box.appendChild(h("h3", { class: "rd-h rd-h-dest" }, [T("ride.dest") + " ", h("small", { class: "rd-opt", text: T("ride.dest.opt") })]));
@@ -511,12 +520,14 @@
   function send(btn) {
     var f = form; if (f.lat == null || f.busy) return;
     f.busy = true; btn.disabled = true; btn.textContent = T("ride.sending");
-    var base = { p_lat: f.lat, p_lng: f.lng, p_place: f.place || town(f.lat, f.lng) || null, p_pax: f.pax, p_note: (f.note || "").trim() || null, p_name: myName() };
-    var d = f.dest, go;
-    if (d && d.lat != null) {
-      go = call("ride_request2", Object.assign({}, base, { p_dest_lat: d.lat, p_dest_lng: d.lng, p_dest_name: d.name || null, p_dest_area: d.area || town(d.lat, d.lng) || null, p_dest_kind: d.kind === "home" ? "home" : "place" }), true)
-        .then(function (r) { return r.error && missing(r.error) ? call("ride_request", base) : r; });   // older server: no destination
-    } else go = call("ride_request", base);
+    // I-30: the place NAME goes to the server only when chosen; the area (stadsdel / by) always. Exact point = p_lat / p_lng (after the take only)
+    var base = { p_lat: f.lat, p_lng: f.lng, p_place: f.place || null, p_pax: f.pax, p_note: (f.note || "").trim() || null, p_name: myName() };
+    var d = f.dest, go, dp = d && d.lat != null ? { p_dest_lat: d.lat, p_dest_lng: d.lng, p_dest_name: d.name || null, p_dest_area: d.area || town(d.lat, d.lng) || null, p_dest_kind: d.kind === "home" ? "home" : "place" } : {};
+    var legacy = function () {   // an older server (no 0506): 0495 ride_request2 with the destination, or 0420 ride_request
+      return d && d.lat != null ? call("ride_request2", Object.assign({}, base, dp), true).then(function (r) { return r.error && missing(r.error) ? call("ride_request", base) : r; }) : call("ride_request", base);
+    };
+    go = call("ride_request3", Object.assign({}, base, dp, { p_pk_chosen: !!f.place, p_pk_area: f.area || town(f.lat, f.lng) || null }), true)
+      .then(function (r) { return r.error && missing(r.error) ? legacy() : r; });
     go.then(function (r) {
       f.busy = false;
       if (r.error) { A.toast(errText(r.error), { err: true }); paintReq(); return; }
@@ -542,7 +553,7 @@
     var bar = h("div", { class: "rd-pick-bar" }, [lbl, h("div", { class: "rd-row2" }, [noB, okB])]);
     pick.appendChild(pin); pick.appendChild(bar);
     document.body.appendChild(pick);
-    var upd = function () { try { var ll = map.getCenter(); var p = placeOf(ll.lat, ll.lng) || (dest ? town(ll.lat, ll.lng) : ""); lbl.textContent = p || lead; } catch (e) {} };
+    var upd = function () { try { var ll = map.getCenter(); var p = placeOf(ll.lat, ll.lng, true) || town(ll.lat, ll.lng); lbl.textContent = p || lead; } catch (e) {} };
     map.on("moveend", upd);
     var end = function (ok) {
       try { map.off("moveend", upd); } catch (e) {}
@@ -550,10 +561,10 @@
       if (pick && pick.parentNode) pick.parentNode.removeChild(pick); pick = null;
       if (dest) {
         openReq({ keep: true });
-        if (ok && ll) setDest({ kind: "place", name: placeOf(ll.lat, ll.lng) || T("ride.dest.point"), area: town(ll.lat, ll.lng), lat: ll.lat, lng: ll.lng });
+        if (ok && ll) setDest({ kind: "place", name: placeOf(ll.lat, ll.lng, true) || T("ride.dest.point"), area: town(ll.lat, ll.lng), lat: ll.lat, lng: ll.lng });
         return;
       }
-      if (ok && ll) { form.lat = ll.lat; form.lng = ll.lng; form.place = placeOf(ll.lat, ll.lng); }
+      if (ok && ll) pkSet(ll.lat, ll.lng, true);
       else if (form.lat == null) form.where = "here";
       openReq({ keep: true });
       if (form && form.where === "here" && form.lat == null) locate();
@@ -679,7 +690,7 @@
       var m = mins(x.opened_at), none = !x.n, alln = x.n > 0 && x.declined_n >= x.n;
       b.appendChild(h("div", { class: "rd-card rd-wait" }, [
         h("div", { class: "rd-wait-top" }, [h("span", { class: "rd-pulse", "aria-hidden": "true" }), h("b", { class: "rd-big", text: none ? T("ride.none") : alln ? T("ride.allno") : T("ride.wait") })]),
-        route(T("ride.from", { x: x.place || "?" }), x.dest ? T("ride.to", { x: destTxt(x.dest, true) }) : ""),
+        route(fromTxt(x), x.dest ? T("ride.to", { x: destTxt(x.dest, true) }) : ""),
         h("p", { class: "rd-muted", text: [x.pax + " pers", T("ride.asked", { n: x.n }) + (x.declined_n ? " · " + T("ride.no", { n: x.declined_n }) : "")].filter(Boolean).join(" · ") }),
         h("p", { class: "rd-muted", text: T("ride.since", { m: m }) })]));
       if (more() && (none || alln || m >= 5)) {
@@ -738,7 +749,7 @@
     var facts = [T("ride.offer.pax", { pax: x.pax || 1 }), x.dist_m != null ? T("ride.away", { km: km(x.dist_m), m: x.drv_min || Math.max(1, Math.ceil(x.dist_m / 500)) }) : ""].filter(Boolean).join(" · ");
     b.appendChild(h("div", { class: "rd-card rd-offer" }, [
       h("b", { class: "rd-big", text: T("ride.offer.lead", { name: x.name }) }),
-      route(T("ride.from", { x: x.place || "?" }), d ? T("ride.to", { x: d.area || "?" }) : ""),
+      route(fromTxt(x), d ? T("ride.to", { x: d.area || "?" }) : ""),
       h("p", { class: "rd-facts", text: facts }),
       d && d.trip_m ? h("p", { class: "rd-facts rd-trip", text: tripTxt(d) }) : null,
       x.note ? h("p", { class: "rd-note", text: "”" + x.note + "”" }) : null,
@@ -794,7 +805,7 @@
     b.appendChild(h("div", { class: "rd-card rd-driver", "data-phase": String(p) }, [
       h("div", { class: "rd-who" }, [face(rn, x.rider && x.rider.avatar, "rd-face-l"), h("div", { class: "rd-who-t" }, [h("b", { class: "rd-big rd-state", text: sub }),
         h("span", { class: "rd-eta", text: facts })])]),
-      route(T("ride.from", { x: x.place || "?" }), dt ? T("ride.to", { x: dt }) : ""),
+      route(fromTxt(x), dt ? T("ride.to", { x: dt }) : ""),
       x.note ? h("p", { class: "rd-note", text: "”" + x.note + "”" }) : null,
       steps(x)]));
     var nx = nextStep(x, rn);

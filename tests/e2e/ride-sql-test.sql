@@ -49,7 +49,7 @@ begin
 
   -- ---------- 2. push claim: one offer per driver, all facts in the text, safety tag; second claim = nothing ----------
   j := public.ride_push_claim(R, v_id);
-  if jsonb_array_length(j) = 2 and j -> 0 ->> 'title' = 'Lisa behöver skjuts' and j::text like '%Från Pitchers · 2 pers%'
+  if jsonb_array_length(j) = 2 and j -> 0 ->> 'title' = 'Lisa behöver skjuts' and j::text like '%Hämtning · 2 pers%'
      and j::text like '%km%' and j -> 0 ->> 'tag' = 'olnu-pickup-' || v_id and jsonb_array_length(j -> 0 -> 'actions') = 2
   then pass := pass + 1; else fail := fail + 1; msg := msg || ' FAIL2:' || j::text; end if;
   j := public.ride_push_claim(R, v_id);

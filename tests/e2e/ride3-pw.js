@@ -42,7 +42,7 @@ Srv.prototype.view = function (r, who) {
     : { kind: r.dest.kind, area: r.dest.area, trip_m: trip, trip_min: tmin };
   const v = { id: r.id, role, status: r.status, live, created_at: iso(r.created), opened_at: iso(r.opened), taken_at: iso(r.taken), ended_at: r.ended ? iso(Date.now()) : null,
     step_at: r.step_at, pax: r.pax, note: r.note, place: r.place, n: r.to.length, declined_n: r.declined.length, wide: false, again: false, round: r.round, thanks: r.thanks,
-    taker_name: r.taker ? NAMES[r.taker] : null, dest, v3: true };
+    taker_name: r.taker ? NAMES[r.taker] : null, dest, v3: true, area: r.area || null };
   if (role !== "asked") { v.msgs = r.msgs.map((m) => ({ id: m.id, me: m.from === who, body: m.body, at: iso(m.at) })); v.call = this.callJson(r, who, live); }
   if (role === "rider") Object.assign(v, { pk_lat: live ? PK.lat : null, pk_lng: live ? PK.lng : null });
   if (role === "rider" && r.taker) v.driver = { name: NAMES[r.taker], car: CAR[r.taker], avatar: null, lat: moving && r.drv ? r.drv.lat : null, lng: moving && r.drv ? r.drv.lng : null,
@@ -75,6 +75,8 @@ Srv.prototype.rpc = function (fn, b, who) {
     case "pickup_poll": return { v: 1, driving: !!this.driving[who], incoming: [], mine: null };
     case "driver_set": this.driving[who] = !!b.p_on; return { ok: true, on: !!b.p_on };
     case "ride_request": { const x = this.mk({ pax: b.p_pax, note: b.p_note, place: b.p_place || null }); return this.view(x, who); }
+    case "ride_request3": { const x = this.mk({ pax: b.p_pax, note: b.p_note, place: b.p_pk_chosen ? b.p_place || null : null, area: b.p_pk_area || null,   // 0506: the name only when chosen
+      dest: b.p_dest_lat != null ? { kind: b.p_dest_kind, name: b.p_dest_name, area: b.p_dest_area, lat: b.p_dest_lat, lng: b.p_dest_lng } : null }); return this.view(x, who); }
     case "ride_request2": { const x = this.mk({ pax: b.p_pax, note: b.p_note, place: b.p_place || null,
       dest: b.p_dest_lat != null ? { kind: b.p_dest_kind, name: b.p_dest_name, area: b.p_dest_area, lat: b.p_dest_lat, lng: b.p_dest_lng } : null }); return this.view(x, who); }
     case "ride_take":
@@ -111,7 +113,7 @@ Srv.prototype.rpc = function (fn, b, who) {
   return undefined;
 };
 async function page(browser, srv, who) {
-  const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 });
+  const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, { checkin: false });   // I-30: not checked in (the default fixture is checked in at Pitchers)
   page.__errs = []; page.on("pageerror", (e) => page.__errs.push(e.message));
   page.__posts = []; page.on("request", (q) => { const m = q.url().match(/rpc\/(post_\w+)/); if (m) page.__posts.push(m[1]); });
   await page.route(/rest\/v1\/rpc\/(ride_\w+|pickup_poll|driver_set)\b/, async (r) => {
@@ -162,7 +164,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
 (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME, args: ["--ignore-certificate-errors"] });
   try {
-    const srv = new Srv();
+    const srv = new Srv(), errs0 = [];
     const R = await page(browser, srv, "R"), D = await page(browser, srv, "D1");
 
     /* ---------- poll windows while nothing is open ---------- */
@@ -179,6 +181,8 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     let s = await S(R.page);
     ok("R3-4 request sheet has 'Vart ska du?' (Valfritt) with [Hem] [Annan plats]", /Vart ska du\?/.test(s.text) && /Valfritt/.test(s.text) && s.btns.some((b) => b.t === "Hem") && s.btns.some((b) => b.t === "Annan plats"), s.text.slice(0, 300));
     ok("R3 no 112 link in the request sheet (owner 21:09)", !s.tel112);
+    // I-30: the phone is 133 m from Pitchers (not checked in): the sheet shows only the area, never "nära Pitchers"
+    ok("I-30 request sheet at 133 m from a bar: 'Hämtning i Marnäs, Ludvika', no bar name", /Hämtning i Marnäs, Ludvika/.test(s.text) && !/Pitchers/.test(s.text) && !/[Nn]ära/.test(s.text), s.text.slice(0, 300));
     await tap(R.page, "^Annan plats$"); await wait(R.page, 400);
     await R.page.fill("#sheet-body .rd-dq", "Folkets park", { timeout: 3000 }).catch(() => {});
     await tap(R.page, "^Sök$"); await wait(R.page, 1200);
@@ -195,8 +199,9 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     await shot(R.page, "r2-request-home");
     await pause(D.page);
     await tap(R.page, "^Skicka$"); await wait(R.page, 1500);
-    const req = srv.calls.find((c) => c[0] === "ride_request2");
-    ok("R3-4 Skicka → ride_request2 with the destination (kind home, area, exact point)", !!req && req[2].p_dest_kind === "home" && req[2].p_dest_area === "Marnäs, Ludvika" && Math.abs(req[2].p_dest_lat - HOME.lat) < 1e-6, req && req[2]);
+    const req = srv.calls.find((c) => c[0] === "ride_request3");
+    ok("R3-4 Skicka → ride_request3 with the destination (kind home, area, exact point)", !!req && req[2].p_dest_kind === "home" && req[2].p_dest_area === "Marnäs, Ludvika" && Math.abs(req[2].p_dest_lat - HOME.lat) < 1e-6, req && req[2]);
+    ok("I-30 Skicka sends NO place name (p_place null, p_pk_chosen false) + the area 'Marnäs, Ludvika'", !!req && req[2].p_place === null && req[2].p_pk_chosen === false && req[2].p_pk_area === "Marnäs, Ludvika", req && req[2]);
     const ride = srv.rides[0] || srv.mk({ dest: { kind: "home", name: "Hem", area: "Marnäs, Ludvika", lat: HOME.lat, lng: HOME.lng } });
 
     /* ---------- the idle driver sees it within seconds ---------- */
@@ -205,7 +210,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     s = await S(D.page);
     const dt = await toasts(D.page);
     ok("R3-1 idle driver: the request shows within 6 s (fake clock): toast + the offer sheet opens by itself", /Lisa behöver skjuts/.test(dt) && s.open && /Lisa behöver skjuts/.test(s.text), { dt, title: s.title });
-    ok("R3-4 offer card: Från <pickup place> / Till Marnäs, Ludvika (area only) + distance + trip estimate", /Från \S/.test(s.text) && /Till Marnäs, Ludvika/.test(s.text) && !/Hem/.test(s.text)
+    ok("R3-4 offer card: Hämtning i <area> (no bar name: I-30) / Till Marnäs, Ludvika (area only) + distance + trip estimate", /Hämtning i Marnäs, Ludvika/.test(s.text) && !/Pitchers/.test(s.text) && /Till Marnäs, Ludvika/.test(s.text) && !/Hem/.test(s.text)
       && /1,2 km bort · ca 3 min dit/.test(s.text) && /Resa ca \d+,\d km · \d+ min/.test(s.text), s.text.slice(0, 400));
     ok("R3 offer sheet: no 112 link", !s.tel112);
     await shot(D.page, "d1-offer");
@@ -222,12 +227,14 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     ok("R3-2 rider at 'taken': no 'Jag sitter i bilen' / done button; steps show Tagen as now", !s.btns.some((b) => /sitter i bilen|Klar|Framme/.test(b.t)) && /Tagen/.test(s.now), s.btns.map((b) => b.t));
     ok("R3-3 rider chips = Kommer ut nu / Står vid ingången / Ge mig 5 min / Tack!", JSON.stringify(s.chips) === JSON.stringify(["Kommer ut nu", "Står vid ingången", "Ge mig 5 min", "Tack!"]), s.chips);
     ok("R3 rider live sheet: no 112 link; buttons ≥ 44 px; no sideways scroll", !s.tel112 && small(s).length === 0 && s.sw <= s.iw, small(s));
+    ok("I-30 rider live sheet after the take: no bar name", !/Pitchers/.test(s.text) && /Hämtning i Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
     await R.page.clock.resume();
     await openRide(D.page, ride.id); await wait(D.page, 500);
     s = await S(D.page);
     ok("R3-2 driver at 'taken': ONE amber step button 'På väg' (no Framme / Klar / OK)", JSON.stringify(s.amber) === JSON.stringify(["På väg"]) && !s.btns.some((b) => !/rd-qb/.test(b.c) && /^(Klar|OK|Framme vid målet|Jag är här)$/.test(b.t)), s.amber);
     ok("R3-3 driver chips = Jag är här / 2 min kvar / Hittar int' / Står utanför", JSON.stringify(s.chips) === JSON.stringify(["Jag är här", "2 min kvar", "Hittar int'", "Står utanför"]), s.chips);
     ok("R3 driver sheet: no 112 link; 'Ring' button; 'Läs upp meddelanden' switch; Till Hem · Marnäs (exact after take)", !s.tel112 && s.btns.some((b) => /^Ring$/.test(b.t)) && /Läs upp meddelanden/.test(s.text) && /Till Hem · Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
+    ok("I-30 driver sheet after the take: still no bar name (the pin is the exact point)", !/Pitchers/.test(s.text) && /Hämtning i Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
     await shot(D.page, "d2-taken");
     // owner 22:08: the focus ring of the chat field was cut on the left edge → inset ring, inside the sheet's clip box
     const ring = (p) => p.evaluate(() => {
@@ -377,7 +384,19 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     ok("R3-6 flag OFF reaches the app within 65 s, and back ON within 65 s (ride_flags_get re-asked)", offNow && onNow && count(srv, "R", "ride_flags_get", t0) >= 1, { offNow, onNow, asks: count(srv, "R", "ride_flags_get", t0) });
     await R.page.clock.resume();
 
-    const errs = [].concat(R.page.__errs, D.page.__errs);
+    /* ---------- I-30: a place the rider is CHECKED IN at keeps its name ---------- */
+    {
+      const srv2 = new Srv(), R2 = await page(browser, srv2, "R");
+      await R2.page.evaluate(() => { const n = Date.now(); localStorage.setItem("olnu.checkin", JSON.stringify({ id: "x1", name: "Pitchers", lat: 60.1511, lng: 15.1876, at: n, until: n + 3 * 3600e3 })); });
+      await R2.page.evaluate(() => window.SKJUTS.openPickup({})); await wait(R2.page, 1500);
+      const s2 = await S(R2.page);
+      ok("I-30 checked in at Pitchers: the sheet shows the name (no 'nära')", /Pitchers/.test(s2.text) && !/[Nn]ära Pitchers/.test(s2.text), s2.text.slice(0, 300));
+      await tap(R2.page, "^Skicka$"); await wait(R2.page, 1500);
+      const q2 = srv2.calls.find((c) => c[0] === "ride_request3");
+      ok("I-30 checked in: Skicka sends p_place 'Pitchers', p_pk_chosen true", !!q2 && q2[2].p_place === "Pitchers" && q2[2].p_pk_chosen === true, q2 && q2[2]);
+      errs0.push(...R2.page.__errs); await R2.ctx.close();
+    }
+    const errs = [].concat(R.page.__errs, D.page.__errs, errs0);
     ok("R3 no page errors", errs.length === 0, errs);
     await R.ctx.close(); await D.ctx.close();
   } catch (e) { ok("no exception", false, String(e && e.stack || e)); }

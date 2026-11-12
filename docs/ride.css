@@ -17,7 +17,7 @@
 .rd-segb[aria-checked="true"]{background:var(--ds-raised);color:var(--ds-amber-t)}
 /* ride3 (owner 22:08): focus rings are INSET (outline-offset -2px): the sheet body scrolls (overflow) and has no side
    padding, so an outside ring was cut on the left edge (chat field "Skriv…", first chip). */
-.rd-segb:focus-visible,.rd-qb:focus-visible,.rd-send:focus-visible,.rd-rowbtn:focus-visible,.rd-taxi:focus-visible,.rd-hit:focus-visible,.rd-x:focus-visible,
+.rd-segb:focus-visible,.rd-qb:focus-visible,.rd-send:focus-visible,.rd-rowbtn:focus-visible,.rd-taxi:focus-visible,.rd-x:focus-visible,
 .rd .btn:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
 .rd .rd-in:focus,.rd .rd-in:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px;border-color:transparent;box-shadow:none}
 .rd-place{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);background:var(--ds-card);
@@ -129,13 +129,6 @@
 .rd-x{flex:0 0 44px;width:44px;height:44px;margin:0 calc(-1 * var(--sp-2)) 0 auto;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ds-muted);display:grid;place-items:center;cursor:pointer}
 .rd-x .pi{width:var(--pn-ic-s);height:var(--pn-ic-s)}
 .rd-qbtn{flex:0 0 auto;min-height:48px;margin:0}
-.rd-hits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-1)}
-.rd-hit{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:52px;padding:var(--sp-1) var(--sp-3);border:0;border-radius:var(--r-md);background:var(--ds-card);
-  color:var(--ds-text);text-align:left;cursor:pointer;box-sizing:border-box}
-.rd-hit .pi{color:var(--ds-amber-t)}
-.rd-hit-t{display:flex;flex-direction:column;min-width:0}
-.rd-hit-t b{font:600 var(--fs-16)/22px var(--ds-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rd-hit-t small{font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
 .rd-route{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .rd-route li{display:flex;align-items:center;gap:var(--sp-2);min-width:0;font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
 .rd-route li span:not(.rd-ic){min-width:0;overflow-wrap:anywhere}

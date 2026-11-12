@@ -2347,9 +2347,11 @@ async function dedupeSend(admin: Admin, jobs: Job[]): Promise<Job[]> {
   } catch (_e) { return jobs; }
 }
 
-/** I-19c: ride pushes said "Vid nära Taste Of India". "nära X" is a place label, so "Vid " is wrong in front of it. */
+/** I-19c / I-30: ride pushes said "Vid nära Taste Of India" (a place made from the GPS). The 0506 SQL no longer writes it; this is the safety net. */
 export function tidyRideText(s: string): string {
-  return String(s ?? "").replace(/\bVid nära /g, "Nära ").replace(/\bFrån nära /g, "Från ");
+  // I-30: never a place name made from the GPS ("nära X"): an older database text is cut to the area-free words.
+  return String(s ?? "").replace(/\b(Igen: från|Från) nära [^·→]*?(?=\s*(?:→|·|$))/g, (_m, p) => (p === "Från" ? "Hämtning" : "Igen: hämtning"))
+    .replace(/\bVid nära [^·→]*?(?=\s*(?:·|$))/g, "").replace(/^\s*·\s*/, "").replace(/(\s·){2,}/g, " ·").replace(/\s*·\s*$/, "");
 }
 
 async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600, raw = false) {

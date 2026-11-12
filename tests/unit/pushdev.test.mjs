@@ -32,7 +32,9 @@ test("no info (0505 not run): nothing dropped", () => {
   assert.equal(dedupeDevices(jobs, new Map()).length, 2);
 });
 test("ride text: 'Vid nära X' becomes 'Nära X'", () => {
-  assert.equal(tidyRideText("Vid nära Taste Of India · Röd Volvo · Kolla att det ä rätt bil"), "Nära Taste Of India · Röd Volvo · Kolla att det ä rätt bil");
+  assert.equal(tidyRideText("Vid nära Taste Of India · Röd Volvo · Kolla att det ä rätt bil"), "Röd Volvo · Kolla att det ä rätt bil");
   assert.equal(tidyRideText("Vid Pitchers · Kolla"), "Vid Pitchers · Kolla");
-  assert.equal(tidyRideText("Från nära Pitchers → Centrum · 1 pers"), "Från Pitchers → Centrum · 1 pers");
+  assert.equal(tidyRideText("Från nära Pitchers → Centrum · 1 pers"), "Hämtning → Centrum · 1 pers");
+  assert.equal(tidyRideText("Igen: från nära Taste Of India · 2 pers"), "Igen: hämtning · 2 pers");
+  assert.equal(tidyRideText("Från Pitchers · 1 pers"), "Från Pitchers · 1 pers");
 });
