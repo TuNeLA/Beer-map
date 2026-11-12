@@ -2306,11 +2306,57 @@ async function v2ReplayCron(admin: Admin, key: string): Promise<number> {
 }
 // ---- ntf v2 — runtime block end ----
 
+/** I-19a (migration 0505): one push per user + device class. A phone can hold two rows for one user (a browser tab and the
+ *  installed app). Rows with dev = null (old rows) are always kept. Per user and dev: if any row is the installed app
+ *  (standalone), keep the installed rows and drop the browser rows; else keep only the newest browser row. */
+export type DevRow = { dev: string | null; standalone: boolean | null; seen: string | null; created: string | null };
+// deno-lint-ignore no-explicit-any
+export function dedupeDevices(jobs: any[], info: Map<number, DevRow>): any[] {
+  const stamp = (r: DevRow) => Date.parse(r.seen || r.created || "") || 0;
+  // deno-lint-ignore no-explicit-any
+  const groups = new Map<string, any[]>();
+  for (const j of jobs) {
+    const r = info.get(j.sub.id);
+    if (!r || !r.dev) continue;
+    const k = j.sub.user_id + "|" + r.dev;
+    groups.set(k, (groups.get(k) ?? []).concat([j]));
+  }
+  // deno-lint-ignore no-explicit-any
+  const drop = new Set<any>();
+  for (const g of groups.values()) {
+    if (g.length < 2) continue;
+    const inst = g.filter((j) => info.get(j.sub.id)!.standalone);
+    const web = g.filter((j) => !info.get(j.sub.id)!.standalone);
+    if (inst.length) { web.forEach((j) => drop.add(j)); continue; }
+    web.sort((a, b) => stamp(info.get(b.sub.id)!) - stamp(info.get(a.sub.id)!) || b.sub.id - a.sub.id);
+    web.slice(1).forEach((j) => drop.add(j));
+  }
+  return drop.size ? jobs.filter((j) => !drop.has(j)) : jobs;
+}
+async function dedupeSend(admin: Admin, jobs: Job[]): Promise<Job[]> {
+  try {
+    const ids = [...new Set(jobs.map((j) => j.sub.id))];
+    if (ids.length < 2) return jobs;
+    const { data, error } = await admin.from("push_subscriptions").select("id, dev, standalone, seen_at, created_at").in("id", ids);
+    if (error || !data) return jobs;   // columns missing (0505 not run yet): send as before
+    const info = new Map<number, DevRow>();
+    for (const r of data as { id: number; dev: string | null; standalone: boolean | null; seen_at: string | null; created_at: string | null }[]) {
+      info.set(r.id, { dev: r.dev, standalone: r.standalone, seen: r.seen_at, created: r.created_at });
+    }
+    return dedupeDevices(jobs, info) as Job[];
+  } catch (_e) { return jobs; }
+}
+
+/** I-19c: ride pushes said "Vid nära Taste Of India". "nära X" is a place label, so "Vid " is wrong in front of it. */
+export function tidyRideText(s: string): string {
+  return String(s ?? "").replace(/\bVid nära /g, "Nära ").replace(/\bFrån nära /g, "Från ");
+}
+
 async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600, raw = false) {
   // v28 (deploy): gate28 (falls back to the v27 gate); raw = digest flush, already paced.
   const v2 = V2.on;   // ntf v2 (0390): v2Load ran at the start of the request / cron
   const g = raw ? { jobs: allJobs, held: 0 } : v2 ? await gateV2(admin, allJobs) : await gate28(admin, allJobs);
-  const jobs = g.jobs;
+  const jobs = await dedupeSend(admin, g.jobs);   // I-19a
   const results = await Promise.allSettled(
     jobs.map((j) =>
       webpush.sendNotification(
@@ -3386,7 +3432,7 @@ async function ridePush(admin: Admin, uid: string, b: Body) {
   const jobs: Job[] = [];
   for (const r of rows) {
     if (!r || !r.to || !isUuid(r.to)) continue;
-    const payload = JSON.stringify({ title: r.title, body: r.body, url: r.url, tag: r.tag, requireInteraction: !!r.requireInteraction,
+    const payload = JSON.stringify({ title: r.title, body: tidyRideText(r.body), url: r.url, tag: r.tag, requireInteraction: !!r.requireInteraction,
       actions: Array.isArray(r.actions) ? r.actions.slice(0, 2) : undefined, renotify: true, k: "safe", v: "ride.1", ts: Date.now() });
     for (const s of await subsOf(admin, [r.to])) jobs.push({ sub: s, payload });
   }

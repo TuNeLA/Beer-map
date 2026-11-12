@@ -31,6 +31,18 @@
     }
     return { p256dh: p256dh, auth: auth };
   }
+  // I-19a: tell the server which kind of device this row is (migration 0505), so one phone with a browser tab AND the
+  // installed app gets ONE push (the installed app wins). Best effort: an old database without the RPC is fine.
+  function devInfo() {
+    var ua = "", st = false;
+    try { ua = navigator.userAgent || ""; } catch (e) {}
+    try { st = !!((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone); } catch (e) {}
+    return { dev: /iPhone|iPad|iPod/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : "desktop", standalone: st };
+  }
+  function saveDevice(rpc, endpoint) {
+    var d = devInfo();
+    try { return Promise.resolve(rpc("set_push_device", { p_endpoint: endpoint, p_dev: d.dev, p_standalone: d.standalone })).catch(function () {}); } catch (e) { return Promise.resolve(); }
+  }
   // Returns "on" | "denied" | "unsupported" | "nokey" ; rejects on other errors.
   function enable(rpc, vapidKey) {
     ntfRpc(rpc, vapidKey);   // ntf v2
@@ -50,7 +62,7 @@
       }).then(function (sub) {
         var k = keysOf(sub);
         return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth })
-          .then(function (r) { if (r.error) throw r.error; want("1"); return "on"; });
+          .then(function (r) { if (r.error) throw r.error; want("1"); return saveDevice(rpc, sub.endpoint).then(function () { return "on"; }); });
       });
     });
   }
@@ -79,17 +91,17 @@
         }).then(function (nsub) {
           var nk = keysOf(nsub);
           return rpc("save_push_subscription", { p_endpoint: nsub.endpoint, p_p256dh: nk.p256dh, p_auth: nk.auth })
-            .then(function (r) { if (!r.error) want("1"); });
+            .then(function (r) { if (!r.error) { want("1"); return saveDevice(rpc, nsub.endpoint); } });
         });
       }
       if (!sub) return;
       var k = keysOf(sub), stamp = "", uid = "";
-      try { uid = localStorage.getItem("olnu.uid") || ""; stamp = uid + "|" + sub.endpoint; } catch (e) {}
+      try { uid = localStorage.getItem("olnu.uid") || ""; stamp = uid + "|" + sub.endpoint + "|" + devInfo().dev + (devInfo().standalone ? "|app" : "|web"); } catch (e) {}
       var last = null;
       try { last = JSON.parse(localStorage.getItem("olnu.pushSaved") || "null"); } catch (e) {}
       if (uid && last && last.s === stamp && Date.now() - (last.t || 0) < 12 * 3600e3) return;   // review: same row, saved recently
       return rpc("save_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: k.p256dh, p_auth: k.auth }).then(function (r) {
-        if (r && !r.error && uid) { try { localStorage.setItem("olnu.pushSaved", JSON.stringify({ s: stamp, t: Date.now() })); } catch (e) {} }
+        if (r && !r.error && uid) { try { localStorage.setItem("olnu.pushSaved", JSON.stringify({ s: stamp, t: Date.now() })); } catch (e) {} return saveDevice(rpc, sub.endpoint); }
       });
     }).catch(function () {});
   }

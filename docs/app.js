@@ -85,10 +85,25 @@
       var a = document.activeElement;
       return a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
     };
+    // I-25: a new version never reloads the page under the user's hands. Idle = no typing, nothing busy, no sheet / intro /
+    // takeover / undo button, no live ride and no live Följ mig hem. Idle: reload at once. Not idle: a small button
+    // "Ny version – tryck för att ladda om" (the user decides), no timer reload.
+    var calm = function () {
+      var live = false;
+      try { live = !!((window.RIDE && window.RIDE.live && window.RIDE.live()) || (window.HEMFOLJ && window.HEMFOLJ._mine && (window.HEMFOLJ._mine() || {}).live)); } catch (e) {}
+      return !(typing() || PN.s.busy || !$("sheet").hidden || !$("intro").hidden || document.querySelector(".takeover") || PN.s.undoEl || live);
+    };
+    var updBtn = function () {
+      if (document.getElementById("pn-newver")) return;
+      var b = document.createElement("button");
+      b.id = "pn-newver"; b.type = "button"; b.textContent = "Ny version – tryck för att ladda om";
+      b.setAttribute("style", "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:99999;padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:#0a0f1c;color:#fff;font:600 14px system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:90vw");
+      b.addEventListener("click", function () { reloading = true; location.reload(); });
+      document.body.appendChild(b);
+    };
     var reloadNow = function () {
       if (reloading) return;
-      // Wait while typing, posting a beer, a sheet / intro is open, a takeover is shown or the undo button is up.
-      if (typing() || PN.s.busy || !$("sheet").hidden || !$("intro").hidden || document.querySelector(".takeover") || PN.s.undoEl) { setTimeout(reloadNow, 5000); return; }
+      if (!calm()) { updBtn(); return; }
       reloading = true; location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", function () {

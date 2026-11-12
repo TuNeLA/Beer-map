@@ -111,6 +111,8 @@ jobs:
             filter: '^(popfix)$'
           - name: hooks-order
             filter: '^(hooks-order)$'
+          - name: a4rel
+            filter: '^(a4rel)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit

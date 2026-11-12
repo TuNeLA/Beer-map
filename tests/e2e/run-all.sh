@@ -115,6 +115,7 @@ run ui1        $B ui1-pw.js       # ui1 Wave 1: B3 day headers, B4 chip fades, B
 run social-a   $B social-a-pw.js  # social-a Wave 3: G1 Vänner actions, G2 Profil one list style, G3 titles/icons, G4 group tiles + colour, G5 pen badge, Gängkamp, R1-04/09/22/23/24, DM header
 run after2     $B after2-pw.js     # lane after: A2 Kvällsrapporten (cards, awards, share card), R1-11 MEDEVAC chip only, R1-39 Mina kvällar chip
 run moments    $B moments-pw.js    # lane after: GM7 moments (vad, Halvtid, bordet, Hemlig agent) + GM4 room card + moments in the report
+run a4rel      $B a4rel-pw.js      # lane a4rel: I-25 idle-only reload, I-24 moments push-link race
 run misc       $B misc-pw.js       # misc: X4 delete with 7 days to undo, F4 Grundare badge + owner cutoff, X5 film block + reportMenu, F3 film reports in the owner queue
 run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, first-accept race, live driver card, 5/10 min, cancel/Tack, drink rule, flag off / old server, R1-30
 run ride3      $B ride3-pw.js      # lane ride3 (0495): destination, fast polls (fake clock: each step on the other phone <= 3 s), steps in order, role chats + read-aloud, Ring consent, LÄSK soda, ANNAT hidden while driving, flag re-ask

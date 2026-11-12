@@ -15,7 +15,7 @@
 (function () {
   "use strict";
   var U = window.U;
-  var A = null, off = false, on = false, rounds = [], pollAt = 0, busy = false, flagsAt = 0, deep = null, pushEv = false;
+  var A = null, off = false, on = false, rounds = [], pollAt = 0, busy = false, flagsAt = 0, deep = null, pushEv = false, pend = null;
   var SEEN = "olnu.momSeen", POLL_MS = 60000, FLAGS_MS = 10 * 60000;
   var P = {
     "mom.vad": "Kvällens vad", "mom.halvtid": "Halvtid", "mom.bord": "Uppdrag vid bordet", "mom.agent": "Hemlig agent",
@@ -141,11 +141,13 @@
     }, function () { return false; });
   }
   function poll(force) {
+    // I-24: a forced poll (push link /?mom) waits for the poll in flight, so the rounds exist when the card opens.
+    if (force && busy && pend && !off && on && A && A.LIVE) return pend;
     if (off || !on || busy || !A || !A.LIVE) return Promise.resolve(null);
     if (!force && Date.now() - pollAt < POLL_MS) return Promise.resolve(null);
     if (document.visibilityState === "hidden") return Promise.resolve(null);
     busy = true; pollAt = Date.now();
-    return A.rpc("moments_poll").then(function (r) {
+    pend = A.rpc("moments_poll").then(function (r) {
       busy = false;
       if (r.error) { if (missing(r.error)) off = true; return null; }
       var d = A.parseData(r.data) || {};
@@ -157,6 +159,7 @@
       repaintCards();
       return d;
     }, function () { busy = false; return null; });
+    return pend;
   }
   // one toast per round per need (never over a sheet), one per early answer I bet on
   function announce(old) {
