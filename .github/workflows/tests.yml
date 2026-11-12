@@ -136,6 +136,8 @@ jobs:
             filter: '^(mapzoom)$'
           - name: systemet
             filter: '^(systemet)$'
+          - name: bump
+            filter: '^(bump)$'
     steps:
       - uses: actions/checkout@v4
       - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"
@@ -339,6 +341,11 @@ jobs:
         run: |
           psql -d rh_pre -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0500_rpc_bundle_allow.sql -f supabase/tests/rpc-bundle-allow-0500.test.sql | tee /tmp/b0500.txt
           if grep -q '|f|' /tmp/b0500.txt || ! grep -q '^new_row_bundles|t|' /tmp/b0500.txt; then echo "0500 test failed"; exit 1; fi
+      - name: 0509 Skåla med telefonen matcher (supabase/tests/bump-0509.test.sql)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0509_bump_cheers.sql -f supabase/tests/bump-0509.test.sql | tee /tmp/b0509.txt
+          if grep -q '|f|' /tmp/b0509.txt || ! grep -q '^bump-0509 done|t|' /tmp/b0509.txt; then echo "0509 test failed"; exit 1; fi
       - name: Staging drift report (optional secret STAGING_DB_URL, read-only; warn only)
         continue-on-error: true
         env:
