@@ -75,11 +75,6 @@ const ms = (iso) => Date.parse(iso);
       ok(!!bp && bp.shown && !under.length, "GL: a store under a drawn bar icon is hidden (bars first) (bar " + JSON.stringify(bp) + ", pins there " + under.length + ")");
       await page.evaluate(() => { SYSTEMET._gl().sig = ""; SYSTEMET._update(); });
       await view(page, [60.14856, 15.18689], 15, true);
-      if (TOKEN) { const dg = await page.evaluate(() => { const g = BASEMAP.mapbox().getMapboxMap(), L = SYSTEMET.LAYER, q = () => g.queryRenderedFeatures({ layers: [L] }).length, o = { loaded: g.loaded(), style: g.isStyleLoaded(), z: g.getZoom(), img: g.hasImage("pn-sb-ico"), src: !!g.getSource("pn-sb"), lay: !!g.getLayer(L),
-        vis: g.getLayer(L) && g.getLayoutProperty(L, "visibility"), minz: g.getLayer(L) && g.getLayer(L).minzoom, srcFeat: g.getSource("pn-sb") ? g.querySourceFeatures("pn-sb").length : -1, r0: q(), stores: SYSTEMET._stores().length, gl: JSON.stringify(Object.assign({}, SYSTEMET._gl(), { m: 0, hooked: 0 })),
-        bars: (window.GLBARS && GLBARS._view ? GLBARS._view().filter((v) => v.shown && Math.hypot(v.x - g.project([15.18689, 60.14856]).x, v.y - g.project([15.18689, 60.14856]).y) < 60).length : -1), pt: g.project([15.18689, 60.14856]) };
-        return new Promise((res) => setTimeout(() => { o.r1 = q(); g.setLayoutProperty(L, "icon-allow-overlap", true); setTimeout(() => { o.rOv = q(); g.setLayoutProperty(L, "icon-allow-overlap", false); setTimeout(() => { o.rBack = q(); res(o); }, 1500); }, 1500); }, 2000)); });
-        ok(false, "DIAG z15 " + JSON.stringify(dg)); }
       pins = await glPins(page); ok(pins.some((p) => p.k === "60.14856,15.18689"), "GL: the free store still draws at z15 (" + pins.length + ")");
       // tap: a click on the pin opens the card
       const pt = pins.find((p) => p.k === "60.14856,15.18689");
