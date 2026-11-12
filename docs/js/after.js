@@ -376,7 +376,7 @@
     c.fillText(dateLabel(d.evening).toUpperCase(), 94, 435);
     var v = bakisVars(d);
     statBoxes(c, W, 500, [[L("Öl", "Beers"), String(v.beers)], [L("Krogar", "Bars"), String(v.bars)], [L("Skål", "Cheers"), String(v.skal)]], acc);
-    statBoxes(c, W, 700, [[L("Sidospår", "Other"), v.others + " 🥃"], [L("Hemma", "Home"), v.home]], acc);
+    statBoxes(c, W, 700, [[L("Sidospår", "Other"), String(v.others)], [L("Hemma", "Home"), v.home]], acc);
     c.textAlign = "left"; c.fillStyle = "#ece6d6"; c.font = '600 40px "Chakra Petch", sans-serif';
     var n = wrapText(c, head, 90, 960, W - 180, 52, 3);
     c.fillStyle = "#3ddc84"; c.font = '36px "Chakra Petch", sans-serif';

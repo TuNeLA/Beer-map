@@ -396,6 +396,10 @@
     if (gateTimer) clearTimeout(gateTimer);
     gateTimer = setTimeout(gateCheck, 0);
   }
+  // c4drinks I-33/I-35: one PNI icon per beer style (PNI.kind); the emoji only if the icon file is missing.
+  function styleIcon(k, emo) {
+    return window.PNI && window.PNI.kind ? window.PNI.kind(k, "bp-ti") : esc(emo[k] || "🍺");
+  }
   function showStrip(delay) {
     // Old server (0014 missing): bar_status is known missing by now -> no strip at all.
     if (off.set_beer_type || state === "missing" || !A || !A.authed()) return;
@@ -413,7 +417,7 @@
         '<div class="bp-st-chips">' + order.map(function (k) {
           var same = k === last;
           return '<button type="button" class="bp-tc' + (same ? " same" : "") + '" data-bpt="' + k + '">' +
-            (same ? '<span class="bp-same">' + esc(t("bpSame")) + "</span>" : "") + (emo[k] || "🍺") + " " + esc(names[k] || k) + "</button>";
+            (same ? '<span class="bp-same">' + esc(t("bpSame")) + "</span>" : "") + styleIcon(k, emo) + '<span class="bp-tn">' + esc(names[k] || k) + "</span></button>";
         }).join("") + '</div><div class="bp-st-bar"><span></span></div>';
       strip.hidden = false;
       try { document.documentElement.style.setProperty("--bp-strip-h", (strip.offsetHeight + 18) + "px"); } catch (e) {}
@@ -479,7 +483,7 @@
       list.sort(function (a, b) { return (b.n | 0) - (a.n | 0); }).slice(0, 6).forEach(function (r) {
         var pct = Math.round((r.n | 0) * 100 / tot);
         box.appendChild(el("div", { class: "bp-sr t-" + r.type }, [
-          el("span", { class: "bp-sr-n", text: (emo[r.type] || "🍺") + " " + (names[r.type] || r.type) }),
+          el("span", { class: "bp-sr-n", html: styleIcon(r.type, emo) + " " + esc(names[r.type] || r.type) }),
           el("span", { class: "bp-sr-bar" }, [el("span", { style: "width:" + Math.max(3, pct) + "%" })]),
           el("span", { class: "bp-sr-p", text: pct + "%" })
         ]));

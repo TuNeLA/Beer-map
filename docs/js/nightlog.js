@@ -30,6 +30,12 @@
   };
   function kname(k) { var x = KIND[k] || KIND.unknown; return sv() ? x[1] : x[2]; }
   function kemo(k) { return (KIND[k] || KIND.unknown)[0]; }
+  // c4drinks I-33: the same PNI drink icon as everywhere (PNI.kind); the emoji only without the icon file.
+  function kico(k) {
+    var P = window.PNI; if (!P || !P.kind) return "";
+    if (k === "checkin") return P.svg("door", "nl-ki");
+    return KIND[k] ? P.kind(k, "pn-kind-i nl-ki") : P.svg("cheers", "nl-ki");
+  }
 
   var TX = {
     empty: [DIALEKT.list({0: "nightlog.empty#0#5"}, ["Inga drycker loggade ikväll. Kasernen är tyst – än så länge.", "No drinks logged tonight. Quiet barracks – so far."], {a: 1}),
@@ -121,7 +127,7 @@
       var kinds = s.kinds || {}, kk = Object.keys(kinds).sort(function (a, b) { return kinds[b] - kinds[a]; });
       if (kk.length) {
         var kr = el("div", { class: "nl-kinds" });
-        kk.forEach(function (k) { kr.appendChild(el("span", { class: "ds-chip nl-kind", text: kemo(k) + " " + kinds[k] + " " + kname(k).toLowerCase() })); });
+        kk.forEach(function (k) { kr.appendChild(el("span", { class: "ds-chip nl-kind", html: (kico(k) || U.esc(kemo(k))) + " " + U.esc(kinds[k] + " " + kname(k).toLowerCase()) })); });
         root.appendChild(kr);
       }
       // per-hour bars
@@ -145,7 +151,7 @@
           var nth = 0; for (var j = 0; j <= i; j++) if (items[j].kind !== "checkin") nth++;
           ul.appendChild(el("li", { class: "nl-it" + (it.kind === "checkin" ? " nl-ci" : "") }, [
             el("span", { class: "nl-t", text: hm(it.at) }),
-            el("span", { class: "nl-e", "aria-hidden": "true", text: kemo(it.kind) }),
+            el("span", Object.assign({ class: "nl-e", "aria-hidden": "true" }, kico(it.kind) ? { html: kico(it.kind) } : { text: kemo(it.kind) })),
             el("span", { class: "nl-x" }, [el("b", { text: label + (it.ghost ? " 👻" : "") }),
               it.kind !== "checkin" && place ? el("small", { text: "📍 " + place }) : null]),
             it.kind !== "checkin" ? el("span", { class: "nl-n", text: "#" + nth }) : null

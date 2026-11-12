@@ -228,9 +228,24 @@
   }
   function clearUndo() {
     clearTimeout(undoTimer); clearTimeout(undoMiniTimer); undoTimer = undoMiniTimer = null;
+    clearInterval(undoPosTimer);
     if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; }
   }
-  var UNDO_SHOW_MS = 10000;
+  var UNDO_SHOW_MS = 10000, undoPosTimer = null;
+  // c4drinks I-34: the ÅNGRA chip sits exactly over #btn-other (Annat): same box, measured, kept in place while the dock moves.
+  // Why this and not "ÖL! turns into Ångra": a second tap on ÖL! is the most likely tap right after a beer, so it must never undo by mistake.
+  function placeUndo() {
+    clearInterval(undoPosTimer);
+    function put() {
+      var u = PN.s.undoEl, o = document.getElementById("btn-other");
+      if (!u) { clearInterval(undoPosTimer); return; }
+      var r = o && o.getBoundingClientRect();
+      if (!r || !r.width || !r.height) { u.classList.remove("over-annat"); return; }
+      u.classList.add("over-annat");
+      u.style.left = r.left + "px"; u.style.top = r.top + "px"; u.style.width = r.width + "px"; u.style.height = r.height + "px";
+    }
+    put(); undoPosTimer = setInterval(put, 200);
+  }
   function showUndo(d, text, cls) {
     clearUndo();
     var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
@@ -241,6 +256,7 @@
     PN.s.undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), text: "↩️",
       onclick: function () { doUndo(PN.s.undoEl); } });
     document.body.appendChild(PN.s.undoEl);
+    placeUndo();   // c4drinks I-34: exactly over the Annat button (same size, same place) while it lives
     // The ÅNGRA toast stays 10 s only (owner: it was in the way). The group push still waits for the full window.
     undoMiniTimer = setTimeout(function () { if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; } }, UNDO_SHOW_MS);
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);

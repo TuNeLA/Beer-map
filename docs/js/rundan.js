@@ -166,9 +166,35 @@
   function swishSafe(m) { return String(m || "").replace(/[–—·•|]/g, "-").replace(/[^0-9A-Za-zÅÄÖåäöÉéÜü !?().,:;\-+'\/&]/g, "").replace(/\s+/g, " ").trim().slice(0, 50); }
   function swish46(num) { var v = String(num || "").replace(/\D/g, ""); return /^07\d{8}$/.test(v) ? "46" + v.slice(1) : v; }
   function swishMsg(what) { return swishSafe("PintsNow - " + (what || "Rundan")); }
-  function swishHttps(num, amt, msg) {
-    var a = (+amt), as = (Math.round(a * 100) % 100 === 0) ? String(Math.round(a)) : a.toFixed(2);
-    return "https://app.swish.nu/1/p/sw/?sw=" + swish46(num) + "&amt=" + as + "&msg=" + encodeURIComponent(swishSafe(msg));
+  // lane c4drinks I-44: ALWAYS a decimal point in the amount (170.0, 72.5 -> 72.50): Swish's own example does it, and the
+  // owner's Android opened Swish EMPTY with a bare integer. No edit= parameter = payee, amount and message are locked.
+  function swishAmt(amt) { var a = +amt; return (Math.round(a * 100) % 100 === 0) ? a.toFixed(1) : a.toFixed(2); }
+  function swishQuery(num, amt, msg) { return "sw=" + swish46(num) + "&amt=" + swishAmt(amt) + "&msg=" + encodeURIComponent(swishSafe(msg)); }
+  function swishHttps(num, amt, msg) { return "https://app.swish.nu/1/p/sw/?" + swishQuery(num, amt, msg); }
+  // Android: an explicit intent for the Swish package (the plain App Link can open the app and drop the data).
+  function swishIntent(num, amt, msg) {
+    return "intent://app.swish.nu/1/p/sw/?" + swishQuery(num, amt, msg) + "#Intent;scheme=https;package=se.bankgirot.swish;S.browser_fallback_url=" +
+      encodeURIComponent(swishHttps(num, amt, msg)) + ";end";
+  }
+  function swishPlatform() {
+    var ua = ""; try { ua = navigator.userAgent || ""; } catch (e) {}
+    if (/Android/i.test(ua)) return "android";
+    if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && (navigator.maxTouchPoints | 0) > 1)) return "ios";
+    return "desktop";
+  }
+  function swishHref(num, amt, msg) { return swishPlatform() === "android" ? swishIntent(num, amt, msg) : swishHttps(num, amt, msg); }
+  // The pay control: a link on a phone (Android intent / iPhone https), on a PC a QR code of the https link + the number to copy.
+  function swishCtl(to, amount, msg, cls, label, onclick) {
+    if (swishPlatform() !== "desktop") {
+      var at = { class: cls, href: swishHref(to.swish, amount, msg), target: "_blank", rel: "noopener noreferrer", "data-sw": swishPlatform() };
+      if (onclick) at.onclick = onclick;
+      if (typeof label === "string") at.text = label;
+      return el("a", at, typeof label === "string" ? undefined : label);
+    }
+    var link = swishHttps(to.swish, amount, msg), qr = el("div", { class: "rnd-qr", "aria-label": "QR Swish" });
+    try { if (window.QRCode) new window.QRCode(qr, { text: link, width: 168, height: 168, colorDark: "#0b1030", colorLight: "#ffffff", correctLevel: window.QRCode.CorrectLevel.M }); } catch (e) {}
+    return el("div", { class: "rnd-swqr", "data-sw": "desktop", "data-link": link }, [qr,
+      el("p", { class: "rnd-note", text: sv() ? "Skanna med Swish i mobilen. Beloppet och numret fylls i." : "Scan with Swish on your phone. Amount and number are filled in." })]);
   }
   function swishApp(num, amt, msg) {
     return "swish://payment?data=" + encodeURIComponent(JSON.stringify({ version: 1, payee: { value: swish46(num) }, amount: { value: +amt }, message: { value: swishSafe(msg), editable: false } }));
@@ -211,12 +237,11 @@
     var box = el("div", { class: "rnd-pay" });
     if (to.swish) {
       var msg = swishMsg(what);
-      box.appendChild(el("a", { class: "btn btn-green btn-small rnd-swish", href: swishHttps(to.swish, amount, msg), target: "_blank", rel: "noopener noreferrer",
-        text: fmt(TC("pay"), to.name, kr(amount)), onclick: function () { haptic(12); } }));
+      box.appendChild(swishCtl(to, amount, msg, "btn btn-green btn-small rnd-swish", fmt(TC("pay"), to.name, kr(amount)), function () { haptic(12); }));
       var fb = el("div", { class: "rnd-fb" }, [
         el("span", { class: "rnd-num", text: prettyNum(to.swish) + " · " + kr(amount) + " kr" }),
         el("button", { type: "button", class: "rnd-link", text: TC("copy"), onclick: function (e) { e.stopPropagation(); copy(to.swish); } }),
-        el("a", { class: "rnd-link", href: swishApp(to.swish, amount, msg), text: TC("alt") })
+        swishPlatform() === "desktop" ? null : el("a", { class: "rnd-link", href: swishApp(to.swish, amount, msg), text: TC("alt") })
       ]);
       box.appendChild(fb);
     } else {
@@ -299,12 +324,11 @@
   }
   function swishBig(to, amount, what) {
     var msg = swishMsg(what), box = el("div", { class: "rnd-swbox" });
-    box.appendChild(el("a", { class: "btn btn-amber btn-block rnd-swish rnd-swbig", href: swishHttps(to.swish, amount, msg), target: "_blank", rel: "noopener noreferrer",
-      onclick: function () { haptic(12); } }, [el("span", { class: "rnd-sw-logo", "aria-hidden": "true", text: "S" }), el("span", { text: (sv() ? "Swisha " : "Swish ") + kr(amount) + " kr" })]));
+    box.appendChild(swishCtl(to, amount, msg, "btn btn-amber btn-block rnd-swish rnd-swbig", [el("span", { class: "rnd-sw-logo", "aria-hidden": "true", text: "S" }), el("span", { text: (sv() ? "Swisha " : "Swish ") + kr(amount) + " kr" })], function () { haptic(12); }));
     box.appendChild(el("div", { class: "rnd-fb" }, [
       el("span", { class: "rnd-num", text: prettyNum(to.swish) }),
       el("button", { type: "button", class: "rnd-link", text: sv() ? "Kopiera numret" : "Copy number", onclick: function (e) { e.stopPropagation(); copy(to.swish); A.toast(sv() ? "📋 Numret ä kopierat." : "📋 Copied."); } }),
-      el("a", { class: "rnd-link", href: swishApp(to.swish, amount, msg), text: sv() ? "Öppnas inte Swish?" : "Swish didn't open?" })]));
+      swishPlatform() === "desktop" ? null : el("a", { class: "rnd-link", href: swishApp(to.swish, amount, msg), text: sv() ? "Öppnas inte Swish?" : "Swish didn't open?" })]));
     return box;
   }
   function openNota(g) {
@@ -881,6 +905,6 @@
     init: function (api) { A = api; },
     groupItem: groupItem, chatOpen: chatOpen, taxiSheet: taxiSheet, profileSheet: settingsSheet,   /* 👤 Profil (was settingsSheet) */
     openNota: openNota, openSpin: openSpin, openAdd: openAdd,
-    _settle: settle, _swish: { https: swishHttps, app: swishApp, norm: normSwish }
+    _settle: settle, _swish: { https: swishHttps, app: swishApp, norm: normSwish, intent: swishIntent, href: swishHref, platform: swishPlatform, ctl: swishCtl }
   };
 })();
