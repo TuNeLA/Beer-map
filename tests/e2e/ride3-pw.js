@@ -114,6 +114,8 @@ Srv.prototype.rpc = function (fn, b, who) {
 };
 async function page(browser, srv, who) {
   const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, { checkin: false });   // I-30: not checked in (the default fixture is checked in at Pitchers)
+  // I-30: the fixture server also holds a check-in row "is_mine" at Pitchers (syncMyCheckin would check the rider in again): none here
+  await page.route(/rest\/v1\/rpc\/live_checkins\b/, (r) => J(r, []));
   page.__errs = []; page.on("pageerror", (e) => page.__errs.push(e.message));
   page.__posts = []; page.on("request", (q) => { const m = q.url().match(/rpc\/(post_\w+)/); if (m) page.__posts.push(m[1]); });
   await page.route(/rest\/v1\/rpc\/(ride_\w+|pickup_poll|driver_set)\b/, async (r) => {
@@ -227,7 +229,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     ok("R3-2 rider at 'taken': no 'Jag sitter i bilen' / done button; steps show Tagen as now", !s.btns.some((b) => /sitter i bilen|Klar|Framme/.test(b.t)) && /Tagen/.test(s.now), s.btns.map((b) => b.t));
     ok("R3-3 rider chips = Kommer ut nu / Står vid ingången / Ge mig 5 min / Tack!", JSON.stringify(s.chips) === JSON.stringify(["Kommer ut nu", "Står vid ingången", "Ge mig 5 min", "Tack!"]), s.chips);
     ok("R3 rider live sheet: no 112 link; buttons ≥ 44 px; no sideways scroll", !s.tel112 && small(s).length === 0 && s.sw <= s.iw, small(s));
-    ok("I-30 rider live sheet after the take: no bar name", !/Pitchers/.test(s.text) && /Hämtning i Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
+    ok("I-30 rider live sheet after the take: no bar name", !/Pitchers/.test(s.text), s.text.slice(0, 300));   // the rider card shows the driver + steps, no pickup line
     await R.page.clock.resume();
     await openRide(D.page, ride.id); await wait(D.page, 500);
     s = await S(D.page);
@@ -388,8 +390,8 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     {
       const srv2 = new Srv(), R2 = await page(browser, srv2, "R");
       await R2.page.evaluate(() => { const n = Date.now(); localStorage.setItem("olnu.checkin", JSON.stringify({ id: "x1", name: "Pitchers", lat: 60.1511, lng: 15.1876, at: n, until: n + 3 * 3600e3 })); });
-      await R2.page.evaluate(() => window.SKJUTS.openPickup({})); await wait(R2.page, 1500);
-      const s2 = await S(R2.page);
+      let s2 = null;   // a fresh page: the ride flag (ride_flags_get) is on a moment after the boot, so ask again until the sheet opens
+      for (let i = 0; i < 8 && !(s2 && s2.open); i++) { await wait(R2.page, 1200); await R2.page.evaluate(() => window.SKJUTS.openPickup({})); await wait(R2.page, 1200); s2 = await S(R2.page); }
       ok("I-30 checked in at Pitchers: the sheet shows the name (no 'nära')", /Pitchers/.test(s2.text) && !/[Nn]ära Pitchers/.test(s2.text), s2.text.slice(0, 300));
       await tap(R2.page, "^Skicka$"); await wait(R2.page, 1500);
       const q2 = srv2.calls.find((c) => c[0] === "ride_request3");

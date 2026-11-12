@@ -42,7 +42,7 @@
     "ride.dest.q": "Sök plats eller adress", "ride.dest.qb": "Sök", "ride.dest.map": "Välj på kartan", "ride.dest.clear": "Ta bort målet",
     "ride.dest.nohome": "Ingen hemzon än. Sätt den, så räcker ett tryck nästa gång.", "ride.dest.none": "Hittade inget. Prova med ort, eller välj på kartan.",
     "ride.dest.searching": "Söker…", "ride.dest.pick.lead": "Dra kartan så nålen står där du ska.", "ride.dest.pick.ok": "Hit ska jag",
-    "ride.dest.point": "Punkt på kartan", "ride.from": "Från {x}", "ride.to": "Till {x}", "ride.to.none": "Inget mål angivet",
+    "ride.dest.point": "Punkt på kartan", "ride.from": "Från {x}", "ride.from.area": "Hämtning i {x}", "ride.from.none": "Hämtning", "ride.to": "Till {x}", "ride.to.none": "Inget mål angivet",
     "ride.trip": "Resa ca {km} km · {m} min", "ride.away": "{km} km bort · ca {m} min dit",
     "ride.wait": "Väntar på chaufför", "ride.asked": ["{n} tillfrågade", "{n} har fått frågan"], "ride.no": "{n} kan int'",
     "ride.since": "Skickad för {m} min sen", "ride.none": "Ingen kör ikväll just nu.", "ride.allno": "Alla har sagt nej.",
