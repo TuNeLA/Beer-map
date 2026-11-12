@@ -160,7 +160,7 @@ async function routes(page, me) {
       const last = saves[saves.length - 1] || {};
       ok("set_my_avatar got beret + field jacket + medal + pint", last.hw === 6 && last.up === 4 && last.hi === 1 && JSON.stringify(last.md) === '["kung"]', last);
       ok("dice never picked a locked item", saves.every((s) => !Object.keys(s).some((k) => LOCKS[k + ":" + s[k]])));
-      ok("Spara → 'Sparad ✓' + toast", await page.evaluate(() => /Sparad/.test(document.querySelector(".ave-save").textContent) && [...document.querySelectorAll(".toast")].some((t) => t.querySelector(".pn-toast-i") && t.textContent.trim().length > 5));   // a2ui: the leading 👤 becomes a PNI icon (.pn-toast-i)
+      ok("Spara → 'Sparad ✓' + toast", await page.evaluate(() => /Sparad/.test(document.querySelector(".ave-save").textContent) && [...document.querySelectorAll(".toast")].some((t) => t.querySelector(".pn-toast-i") && t.textContent.trim().length > 5)));   // a2ui: the leading 👤 becomes a PNI icon (.pn-toast-i)
       // back to Profil: hero repainted
       await page.evaluate(() => document.getElementById("btn-settings").click());
       await wait(page, 900);

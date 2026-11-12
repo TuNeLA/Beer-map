@@ -73,6 +73,11 @@
 .fm-vf.winding .fm-video{filter:brightness(.25);transition:filter var(--m-3)}
 .fm-flip{position:absolute;top:8px;right:8px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:var(--fs-18);display:none;align-items:center;justify-content:center;cursor:pointer}
 .fm-vf.fm-live .fm-flip:not([hidden]){display:flex}
+.fm-torch{position:absolute;top:8px;right:56px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:var(--foam);font-size:var(--fs-18);display:none;align-items:center;justify-content:center;cursor:pointer}
+.fm-vf.fm-live .fm-torch:not([hidden]){display:flex}
+.fc-torch{flex:0 0 auto;width:44px;height:44px;margin-right:8px;border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:var(--foam);font-size:var(--fs-18);cursor:pointer}
+.fc-torch[hidden]{display:none}
+.fm-torch.on,.fc-torch.on{background:var(--amber-2);color:var(--on-amber);border-color:var(--amber-2)}
 .fm-vf .fm-flashfx{z-index:4}
 /* 0195 📸 "Gänget fotar ikväll": the ONE chip next to the closed Ikväll pill (amber, not the red alarm style) */
 .hx-chip.fm-chip,.hx-chip.fm-chip.hx-urgent,.hud-left.open .hx-chip.fm-chip{gap:6px;min-width:0;padding:0 6px 0 12px;border:1px solid var(--ds-amber,#f5a623);background:rgba(36,24,6,.86);color:var(--ds-text,#eef0ec)}

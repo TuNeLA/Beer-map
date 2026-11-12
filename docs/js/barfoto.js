@@ -135,9 +135,10 @@
     }
     if (x.pub && !x.is_me) acts.appendChild(A.btn(L("🚩 Anmäl / dölj", "🚩 Report / hide"), "btn-small", function () { confirmReport(x, id, acts); }));
     if (x.pub && x.is_me) acts.appendChild(A.btn(L("🔒 Sluta dela", "🔒 Stop sharing"), "btn-small", function (e) { share(x, id, false, e.target); }));
-    acts.appendChild(A.btn("✕", "btn-small bf-x", close));
+    // I-49: the header with the ✕ is pinned; only .bf-scroll scrolls, so nothing is cut at the top and the scrollbar never runs into the ✕.
+    var head = el("div", { class: "bf-head" }, [el("span", { class: "bf-who", text: who }), A.btn("✕", "btn-small bf-x", close)]);
     view = el("div", { class: "bf-view", role: "dialog", "aria-modal": "true", "aria-label": L("Bild", "Photo"), "data-bfk": key }, [
-      el("div", { class: "bf-card" }, [el("div", { class: "bf-img" }, [img]), el("div", { class: "bf-who", text: who }), note, acts])]);
+      el("div", { class: "bf-card" }, [head, el("div", { class: "bf-scroll" }, [el("div", { class: "bf-img" }, [img]), note, acts])])]);
     view.addEventListener("click", function (e) { if (e.target === view) close(); });
     document.body.appendChild(view);
     document.addEventListener("keydown", onKey, true);

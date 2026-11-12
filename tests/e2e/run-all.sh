@@ -80,6 +80,7 @@ run map        $A map-pw.js        # map lane: B9 icon size, B8 tap, M1 kommun l
 NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food icons +20 % on the real map, no overlap, tap box, shots z15-17
 run mapzoom    $A mapzoom-pw.js    # lane a1map: I-08 icons stay while there is room, I-27 no blink on zoom, I-28 my dot under the bars, I-09 cluster >= pin, I-20 popup ✕ clear, I-10 arena disc, I-06 Hemzon navy, I-11 country chip (stub Mapbox without a token)
 run systemet  $A systemet-pw.js   # lane b3system I-18: Systembolaget pins (GL + Leaflet fallback), z12 floor, bars first, filter, card text, holiday hook (stub Mapbox without a token)
+run c5extras  $A c5extras-pw.js   # lane c5extras: photo viewer X pinned (I-49), camera torch (I-54), ticker height (I-32), delight caption waits (I-31), dialekt pack ?v= (I-29)
 NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + B10 real zone pill at 360 px
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js

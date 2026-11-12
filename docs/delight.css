@@ -295,3 +295,6 @@
   .dl-gud-drop,.dl-gud-say,.dl-gud-glow,.dl-gud-eyes,.dl-gud-beard,.dl-gud-arm,.dl-gud-crown,.dl-reveal .dl-capx,.dl-shine,.dl-radar i,
   .dl-cap-chip,.brand-name.dl-wiggle,.beer-btn.dl-press,.dl-boot-dot,.dl-bl::after,#map.dl-lanterns .pill{animation:none !important}
 }
+
+/* I-31: no caption over a bar popup (its ✕ is top right) */
+body.barsheet-open .dl-cap,body:has(.leaflet-popup.olnu-bar) .dl-cap{display:none !important}

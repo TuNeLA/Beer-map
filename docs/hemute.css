@@ -30,7 +30,7 @@
 .bf-b{position:absolute;right:2px;bottom:1px;font-style:normal;font-size:var(--fs-12);text-shadow:0 1px 2px #000}
 .bf-more{flex:0 0 auto;font-size:var(--fs-14);color:var(--ds-muted,#a7b0ac);padding:0 4px}
 .bf-view{position:fixed;inset:0;z-index:2600;background:rgba(4,7,14,.88);display:flex;align-items:center;justify-content:center;padding:16px}
-.bf-card{width:100%;max-width:440px;max-height:100%;overflow:auto;background:var(--ds-sheet,#121a2a);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));border-radius:var(--ds-r-2,16px);padding:10px;box-shadow:var(--ds-sh-2)}
+.bf-card{width:100%;max-width:440px;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden;background:var(--ds-sheet,#121a2a);border:1px solid var(--ds-border-2,rgba(255,255,255,.16));border-radius:var(--ds-r-2,16px);padding:10px;box-shadow:var(--ds-sh-2)}
 .bf-img{background:#000;border-radius:var(--r-md);overflow:hidden;display:flex;justify-content:center;min-height:120px}
 .bf-img img{max-width:100%;max-height:60vh;object-fit:contain;display:block}
 .bf-who{margin:8px 2px 2px;font-weight:700}
@@ -76,3 +76,8 @@ body.sk-on.chief-on .hf-banner{bottom:calc(var(--sab,0px) + 278px)}
 .ht-list small{padding-left:4px}
 
 @media (prefers-reduced-motion: reduce){.bf-sh{animation:none}}
+
+.bf-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 0 8px}
+.bf-head .bf-who{flex:1;min-width:0;margin:0 2px}
+.bf-head .bf-x{flex:0 0 auto;min-width:44px;min-height:44px}
+.bf-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}

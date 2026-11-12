@@ -35,7 +35,7 @@
 
 /* ---------- 2. LIVE ticker (kept as a row; polish only) ---------- */
 .ticker{background:rgba(10,15,28,.9) !important;border-color:var(--ds-border-2) !important;touch-action:pan-y;-webkit-user-select:none;user-select:none;cursor:default}
-.ticker .tk-viewport{mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent)}
+.ticker .tk-viewport{min-height:30px;mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 28px),transparent)}
 .ticker .tk-item{color:var(--ds-amber-t)}
 .ticker .tk-item.tk-friend{color:var(--ds-green-t)}
 .ticker .tk-item.tk-quiet{color:var(--ds-text-2)}
