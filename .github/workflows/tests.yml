@@ -81,6 +81,8 @@ jobs:
             filter: '^(ride|ride3)$'
           - name: main
             filter: '^(main|sec)$'
+          - name: themes
+            filter: '^(themes)$'
           - name: x8
             filter: '^(x8)$'
           - name: followups
