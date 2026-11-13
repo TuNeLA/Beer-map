@@ -200,6 +200,8 @@ jobs:
             filter: '^(friends2)$'
           - name: hitta2
             filter: '^(hitta2)$'
+          - name: night3
+            filter: '^(night3)$'
     steps:
       - uses: actions/checkout@v4
       - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"

@@ -47,7 +47,8 @@
     tvPubs: ["📺 Visas på: {list}", "📺 Showing at: {list}"],
     // evsearch I-73 / I-74: search box + "go to the game"
     sPh: ["Sök ort eller event", "Search a town or event"], sClr: ["Rensa sökningen", "Clear search"],
-    sBusy: ["Söker…", "Searching…"], sN: ["{n} träffar för \u201d{q}\u201d · 30 dagar", "{n} results for \u201c{q}\u201d · 30 days"],
+    sBusy: ["Söker…", "Searching…"], sPlaces: ["{n} platser", "{n} places"], sNear: ["närmast {t}", "nearest {t}"],   // night3 I-96
+     sN: ["{n} träffar för \u201d{q}\u201d · 30 dagar", "{n} results for \u201c{q}\u201d · 30 days"],
     sNone: ["Inga event för \u201d{q}\u201d de närmaste 30 dagarna.", "No events for \u201c{q}\u201d in the next 30 days."],
     venue: ["På plats: {plats} · {tid}", "At the arena: {plats} · {tid}"], buy: ["Köp biljett", "Buy tickets"],
     gameLink: ["Matchsidan", "Match page"], arenaShow: ["Visa arenan", "Show the arena"],
@@ -477,6 +478,7 @@
       listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); clearTimeout(sq.t); sq.seq++; } });
   }
   function setTime(t, user) {
+    if (user) leaveQ();
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;
     if (segEl) segEl.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", String(x.getAttribute("data-t") === st.time)); });
     draw();
@@ -517,7 +519,7 @@
       var n = c.per[t[0]] || 0;
       if (t[0] !== "all" && !n && st.type !== t[0]) return;   // only types with events in this range (+ the chosen one)
       var b = A.el("button", { type: "button", class: "ds-chip evs-chip", "data-k": t[0], "aria-pressed": String(st.type === t[0]), onclick: function () {
-        st.type = t[0]; save(); draw();
+        leaveQ(); st.type = t[0]; save(); draw();
       } });
       b.appendChild(A.el("span", { class: "evs-chip-l", text: L(t[1], t[2]) }));
       if (n) b.appendChild(A.el("b", { class: "evs-chip-n", text: String(n) }));
@@ -581,6 +583,7 @@
   }
   function draw() {
     if (!listBox) return;
+    if (!searching() || sq.done) { listBox.classList.remove("evs-busy"); listBox.style.minHeight = ""; }   // night3 I-96
     if (bodyEl) bodyEl.classList.toggle("evs-searching", searching());
     if (searching()) { drawSearch(); return; }
     drawBar();
@@ -619,7 +622,10 @@
   }
   /* ---------- 🔎 search (evsearch I-73, migration 0512 events_search: title / place / town, any distance, 30 days) ---------- */
   var sq = { q: "", rows: [], seq: 0, t: null, off: false, busy: false, done: false, inp: null, x: null };
-  function searching() { return sq.q.length >= 2; }
+  // night3 I-96: from 3 characters (2 only when it is a town name in the list: "Ed")
+  function searching() { var n = sq.q.length; return n >= 3 || (n === 2 && townHit(sq.q)); }
+  function townHit(q) { q = q.toLowerCase(); try { return cache.rows.some(function (e) { return String(e.town || "").toLowerCase() === q; }); } catch (e) { return false; } }
+  function leaveQ() { if (!sq.q && !(sq.inp && sq.inp.value)) return; clearTimeout(sq.t); sq.seq++; sq.q = ""; sq.rows = []; sq.done = false; sq.busy = false; if (sq.inp) sq.inp.value = ""; if (sq.x) sq.x.hidden = true; }
   function pni(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, "evs-pi") : ""; } catch (e) { return ""; } }
   function searchBox() {
     var box = A.el("div", { class: "evs-search", role: "search" });
@@ -664,12 +670,72 @@
     }, function () { gotSearch(my, localHits(q)); });
   }
   function drawSearch() {
-    listBox.innerHTML = "";
     if (toolsEl) { toolsEl.innerHTML = ""; toolsEl.appendChild(A.el("span", { class: "evs-sum evs-s-sum", text: sq.done ? fill(two("sN"), { n: sq.rows.length, q: sq.q }) : two("sBusy") })); }
+    if (!sq.done) { busyList(); return; }   // night3 I-96: keep the old list (faded) or 3 skeleton rows: no jump while it loads
+    listBox.innerHTML = "";
     if (frEl) frEl.hidden = true;
-    if (!sq.done) return;
     if (!sq.rows.length) { listBox.appendChild(A.el("p", { class: "ds-empty evs-empty evs-s-none", text: fill(two("sNone"), { q: sq.q }) })); return; }
-    drawGroups(sq.rows, sq.rows, true, { town: true });
+    hitItems(sq.rows).forEach(function (it) { listBox.appendChild(it.rows.length > 1 ? hitGroupEl(it) : rowEl(it.rows[0], { town: true, day: true })); });
+  }
+  function busyList() {
+    if (!listBox.classList.contains("evs-busy")) {
+      var h = listBox.offsetHeight; if (h) listBox.style.minHeight = Math.min(h, 640) + "px";
+      listBox.classList.add("evs-busy");
+    }
+    if (!listBox.querySelector(".evs-row, .evs-skel, .evs-dg, .evs-hgrp")) {
+      listBox.innerHTML = "";
+      for (var i = 0; i < 3; i++) listBox.appendChild(A.el("div", { class: "ds-card evs-skel", "aria-hidden": "true" }));
+    }
+  }
+  /* night3 I-96: one row per title at many places ("A Talent for Murder · 12 platser · närmast Ludvika"), nearest first */
+  var hitOpen = {};
+  function myPos() {
+    try {
+      var m = A.me && A.me(); if (m && m.lat != null && isFinite(m.lat) && isFinite(m.lng)) return { lat: +m.lat, lng: +m.lng };
+      var l = A.lastLoc && A.lastLoc(); if (l && l.lat != null && isFinite(l.lat) && isFinite(l.lng)) return { lat: +l.lat, lng: +l.lng };
+    } catch (e) {}
+    return null;
+  }
+  function kmTo(p, e) {
+    if (!p || e.lat == null || e.lng == null || !isFinite(e.lat) || !isFinite(e.lng)) return Infinity;
+    var r = Math.PI / 180, dLa = (e.lat - p.lat) * r, dLo = (e.lng - p.lng) * r;
+    var a = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(p.lat * r) * Math.cos(e.lat * r) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(a)));
+  }
+  function hitItems(rows) {
+    var me = myPos(), by = {}, items = [];
+    var cmp = function (a, b) { return (me && a.d !== b.d ? (a.d === Infinity ? 1 : b.d === Infinity ? -1 : a.d - b.d) : 0) || a.t - b.t; };
+    rows.forEach(function (e) {
+      var k = String(e.title || "").toLowerCase().replace(/\s+/g, " ").trim() || ("#" + e.id);
+      if (!by[k]) { by[k] = { k: k, rows: [] }; items.push(by[k]); }
+      by[k].rows.push({ e: e, d: kmTo(me, e), t: Date.parse(e.starts_at) || 0 });
+    });
+    var out = [];
+    items.forEach(function (it) {
+      it.rows.sort(cmp);
+      var places = {}; it.rows.forEach(function (x) { places[(placeOf(x.e) + "|" + (x.e.town || "")).toLowerCase()] = 1; });
+      var np = Object.keys(places).length;
+      if (it.rows.length < 2 || np < 2) { it.rows.forEach(function (x) { out.push({ k: it.k, rows: [x.e], d: x.d, t: x.t }); }); return; }
+      out.push({ k: it.k, rows: it.rows.map(function (x) { return x.e; }), d: it.rows[0].d, t: Math.min.apply(null, it.rows.map(function (x) { return x.t; })), np: np, near: me && it.rows[0].d < Infinity ? (it.rows[0].e.town || placeOf(it.rows[0].e)) : "" });
+    });
+    return out.sort(cmp);
+  }
+  function hitGroupEl(it) {
+    var open = !!hitOpen[it.k], e0 = it.rows[0];
+    var box = A.el("div", { class: "evs-tvfold evs-hgrp" + (open ? " evs-open" : ""), "data-n": String(it.rows.length) });
+    var head = A.el("button", { type: "button", class: "ds-card evs-tvh evs-hgh", "aria-expanded": String(open), onclick: function () { hitOpen[it.k] = !hitOpen[it.k]; repaint(); } });
+    head.appendChild(A.el("b", { class: "evs-tvh-t", text: icon(e0) + " " + String(e0.title || "") }));
+    var s = [fill(two("sPlaces"), { n: it.np })];
+    if (it.near) s.push(fill(two("sNear"), { t: it.near })); else s.push(headOf(eveDiff(e0.starts_at), e0.starts_at) + " " + hhmm(e0.starts_at));
+    head.appendChild(A.el("span", { class: "evs-tvh-s", text: s.join(" · ") }));
+    head.appendChild(A.el("i", { class: "evs-chev", "aria-hidden": "true", text: "▾" }));
+    box.appendChild(head);
+    if (open) {
+      var inner = A.el("div", { class: "evs-tvlist" });
+      it.rows.forEach(function (e) { inner.appendChild(rowEl(e, { town: true, day: true })); });
+      box.appendChild(inner);
+    }
+    return box;
   }
   function repaint() {
     if (detailOpen()) drawDetail();
@@ -732,6 +798,7 @@
     tl.appendChild(A.el("b", { class: "evs-t", text: String(e.title || "") }));
     txt.appendChild(tl);
     var sub = [];
+    if (opt && opt.day) sub.push(headOf(eveDiff(e.starts_at), e.starts_at));   // night3 I-96: search hits are not under day headers
     if (e.league) sub.push(e.league);
     if (!tv && place) sub.push(place);
     if (!tv && e.km != null && e.km > 1.5) sub.push(String(e.km).replace(".", ",") + " km");

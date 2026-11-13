@@ -179,6 +179,7 @@ run ds-layout-wk $B ds-layout-pw.js wk
 run c4drinks    $B c4drinks-pw.js   # lane c4drinks: PNI.kind drink icons, beer-style picker >= 44 px, undo chip over Annat, Swish link per platform
 run tickerfix2 $A tickerfix2-pw.js # lane tickerfix2 (owner 13 Nov): I-70 no '///' between ticker items, I-71 max one quiet/empty-map line per 30 min + fun lines + Systembolaget countdown, I-72 event lines only near the real position
 run evsearch   $B evsearch-pw.js   # lane evsearch: I-73 event search (town / name, Går from a result), I-74/I-76 På plats + Köp biljett in the TV match window, I-75a one row per game
+run night3     $B night3-pw.js   # lane night3: I-98/I-99 beer at the check-in place, I-97 search focus ring, I-96 stable search + grouped titles, I-95 departure chip tap
 # --- unit (no browser) ---
 [[ notif-sw =~ $FILTER ]] && { (cd $D && timeout 120 node notif-sw-test.js $REPO > $LOG/notif-sw.1.log 2>&1); rc=$?
   p=$(grep -c '^PASS' $LOG/notif-sw.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/notif-sw.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1

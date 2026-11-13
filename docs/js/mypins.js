@@ -125,13 +125,33 @@
     } catch (e) {}
   }
   function icon(x) { return window.L.divIcon({ html: label(x), className: "mp-w", iconSize: [0, 0], iconAnchor: [0, 10] }); }
+  // night3 I-95: a tap ALWAYS opens the bar card (with my "På väg" box: Framme! / Avbryt). It did nothing when the GL marker
+  // click was a no-op, the marker was not drawn, its popup was already open (a click toggled it shut) or moveend never came.
+  function barOpen(x) {   // a bar card is open at this place (the Leaflet popup; on a phone it is drawn as the bottom sheet)
+    try {
+      var pp = map._popup, ll = pp && map.hasLayer(pp) && pp.getLatLng(), el = pp && pp.getElement && pp.getElement();
+      return !!(ll && el && /olnu-bar/.test(el.className) && Math.abs(ll.lat - x.lat) < 2e-4 && Math.abs(ll.lng - x.lng) < 2e-4);
+    } catch (e) { return false; }
+  }
+  function showEta() {
+    var b = document.querySelector(".leaflet-popup.olnu-bar .pp-sec-eta");
+    if (b && b.scrollIntoView) try { b.scrollIntoView({ block: "nearest" }); } catch (e) {}
+  }
   function go(x) {
-    var z = Math.max(16, map.getZoom());
-    map.once("moveend", function () { setTimeout(function () {
-      if (x.id && window.GLBARS && GLBARS.on && GLBARS.on() && GLBARS.open && GLBARS.open(x.id)) return;   // mbx: GL bars
-      var ic = x.id && map.getContainer().querySelector('.cm[data-bar="' + String(x.id).replace(/["\\]/g, "") + '"] .bar-ico');
-      if (ic) ic.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    }, 350); });
+    var z = Math.max(16, map.getZoom()), done = false, id = x.id ? String(x.id).replace(/["\\]/g, "") : "";
+    if (barOpen(x)) { showEta(); return; }
+    var tap = function () {
+      if (done) return; done = true;
+      var hit = false;
+      try { if (x.id && window.GLBARS && GLBARS.on && GLBARS.on() && GLBARS.open && GLBARS.open(x.id)) hit = true; } catch (e) {}   // mbx: GL bars
+      if (!hit) { var ic = id && map.getContainer().querySelector('.cm[data-bar="' + id + '"] .bar-ico'); if (ic) ic.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
+      setTimeout(function () {
+        if (!barOpen(x)) { var bar = byId(x.id); if (bar && A && A.openBar) try { A.openBar(bar); } catch (e) {} }
+        setTimeout(showEta, 400);
+      }, 450);
+    };
+    map.once("moveend", function () { setTimeout(tap, 350); });
+    setTimeout(tap, 1600);   // moveend did not come (the view was already there)
     map.setView([x.lat, x.lng], z);
   }
   function soon() { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; try { sync(); } catch (e) {} }); }

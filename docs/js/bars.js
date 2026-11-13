@@ -380,6 +380,36 @@
   // Drink spot for a pin: a bar within 75 m wins, else a restaurant/café within 40 m (same rule as the server).
   var PLACE_M = 40;   // restaurants are small and often next to homes: 40 m (bars 75 m), same as the server
   function nearestSpot(lat, lng) { return nearestBar(lat, lng) || canon(nearestPlace(lat, lng, PLACE_M)); }
+  // night3 I-98: beer → spot rules (see assign)
+  var SNAP_M = 35, CI_M = 150;
+  function snapSpot(lat, lng) {
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    var b = nearestBar(lat, lng), db = b ? U.haversine(lat, lng, b.lat, b.lng) : Infinity;
+    if (db > SNAP_M) b = null;
+    var p = canon(nearestPlace(lat, lng, SNAP_M));
+    if (b && p && p !== b && U.haversine(lat, lng, p.lat, p.lng) < db - 10) return p;
+    return b || p || null;
+  }
+  // night3 I-99: the person's newest active check-in wins over an OLDER beer pin (any distance: drawn at the check-in place
+  // at once, the old position is not shown); a newer beer goes there only within 150 m (I-98). Me: also the local check-in.
+  function ciSpot(be, cis) {
+    if (!(be.is_mine || be.friend_name) || !isFinite(be.lat) || !isFinite(be.lng)) return null;
+    var list = (cis || []).slice();
+    if (be.is_mine) { try { var lc = U.ls.getJSON("olnu.checkin", null); if (lc && lc.id != null && lc.until && Date.now() < lc.until) list.push({ bar_id: lc.id, bar_name: lc.name, lat: lc.lat, lng: lc.lng, is_mine: true, created_at: new Date(lc.at || Date.now()).toISOString() }); } catch (e) {} }
+    var best = null, bt = -1, bAt = Date.parse(be.created_at) || 0;
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i]; if (!c || c.bar_id == null || !isFinite(c.lat) || !isFinite(c.lng)) continue;
+      if (be.is_mine ? !c.is_mine : !(c.is_friend && c.name && String(c.name) === String(be.friend_name))) continue;
+      var cAt = Date.parse(c.created_at) || 0;
+      if (cAt > bt) { bt = cAt; best = c; }
+    }
+    if (!best) return null;
+    if (!(bAt && bt && bAt <= bt + 60e3) && U.haversine(be.lat, be.lng, +best.lat, +best.lng) > CI_M) return null;
+    var id = String(best.bar_id); if (closed[id]) return null;
+    var o = bars[id] || canon(placesById[id]);
+    if (!o && best.bar_name) { addPlaces([{ id: id, name: String(best.bar_name).slice(0, 80), lat: +best.lat, lng: +best.lng, type: "restaurant" }]); o = canon(placesById[id]); }
+    return o || null;
+  }
   // Nearest named spot (bar or place) within maxM metres. Search radius limited to the 3x3 grid (~1 km).
   function nearestNamed(lat, lng, maxM) {
     var gy = Math.floor(lat / GRID), gx = Math.floor(lng / GRID), best = null, bestD = maxM;
@@ -540,13 +570,21 @@
     // Split live pins into per-spot aggregates and the rest.
     // v14: the server's bar_id (poll_v2, 75 m, bars before restaurants) decides; no bar_id = not at a spot.
     // snap "area" never belongs to a spot. Old server (no snap field): nearest bar, else place (75 m).
+    // night3 I-98: (1) the owner is checked in (me / a friend by name) within 150 m → that check-in's bar OR place (pl_* ids too:
+    // a place not loaded yet is added from the check-in row); (2) else a spot only within 35 m (the server's bar_id is 75 m and
+    // bars-first: a beer AT O'Learys went to Pitcher's 57 m away); a place clearly nearer than the bar wins; (3) else the free pin.
     assign: function (beers) {
-      var perBar = {}, rest = [];
+      var perBar = {}, rest = [], cis = [];
+      try { cis = (window.PN && PN.s && PN.s.checkins) || []; } catch (e) {}
       beers.forEach(function (be) {
         var bar = null;
-        if (be.snap === "area" || !be.precise) bar = null;
-        else if (be.bar_id != null) bar = closed[String(be.bar_id)] ? null : bars[be.bar_id] || canon(placesById[be.bar_id]) || null;
-        else if (!be.snap) bar = nearestSpot(be.lat, be.lng);   // old server: no snap/bar_id fields
+        if ((bar = ciSpot(be, cis))) {}   // I-98 / I-99: a check-in the map already shows wins (also for an area pin)
+        else if (be.snap === "area" || !be.precise) bar = null;
+        else if (be.bar_id != null) {
+          bar = closed[String(be.bar_id)] ? null : bars[be.bar_id] || canon(placesById[be.bar_id]) || null;
+          if (bar && isFinite(be.lat) && isFinite(be.lng) && U.haversine(be.lat, be.lng, bar.lat, bar.lng) > SNAP_M) bar = snapSpot(be.lat, be.lng);
+        }
+        else if (!be.snap) bar = snapSpot(be.lat, be.lng);   // old server: no snap/bar_id fields
         if (!bar) { rest.push(be); return; }
         var a = perBar[bar.id] || (perBar[bar.id] = { bar: bar, beers: [] });
         a.beers.push(be);
