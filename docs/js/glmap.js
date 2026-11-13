@@ -793,7 +793,8 @@
       synth = true;
       // glfix: our own click event, flagged too: it bubbles to the map, and map3d.js (3D house tap → BARLIT.open → a 2nd click
       // on the same marker) must skip it, else Leaflet toggles the just-opened popup closed again
-      try { var ev = new MouseEvent("click", { bubbles: true, cancelable: true, view: window }); ev._olnuGl = 1; tgt.dispatchEvent(ev); } finally { synth = false; }
+      // d4map: _pnTap = a finger tap (app-pins.js paints the tap ring first and builds the sheet after that frame)
+      try { var ev = new MouseEvent("click", { bubbles: true, cancelable: true, view: window }); ev._olnuGl = 1; if (e.originalEvent && e.originalEvent.isTrusted) ev._pnTap = 1; tgt.dispatchEvent(ev); } finally { synth = false; }
     } catch (x) {}
   }
 

@@ -380,6 +380,7 @@
     var prio = barPrio(c);
     var m = L.marker([c.bar.lat, c.bar.lng], { icon: compositeIcon(c), pane: pane, keyboard: false,
       zIndexOffset: 1000 + prio, olnuKey: (pane === "hotbars" ? "h" : "p") + c.bar.id, olnuPrio: prio, olnuC: c });
+    m._openPopup = tapFirst(m._openPopup);   // d4map: before bindPopup (it registers this._openPopup as the click handler)
     m.bindPopup(function () { return barPopup(c.bar, c.beers); }, { pane: "popupPane", className: "olnu-bar", autoPan: !sheetMode() });
     m.on("add", function () {
       var ic = m.getElement(); if (!ic) return;
@@ -389,6 +390,40 @@
     m.addTo(layer);
     return m;
   }
+  /* d4map (SMOOTH-PLAN fix 2): a finger tap on a bar paints feedback first (a ring at the bar, under 100 ms), the sheet is
+     built after that frame (it was one 140-270 ms task at 4x CPU before the first paint). Close, toggle and code calls
+     (m.fire("click"), GLBARS.open, el.click()) stay synchronous: only a trusted tap or a GL tap (glmap.js marks it _pnTap). */
+  var tapSeq = 0;
+  function tapFirst(open0) {
+    return function (e) {
+      var self = this, oe = e && e.originalEvent;
+      if (!oe || !(oe.isTrusted || oe._pnTap) || !this._map || !this._popup || this._map.hasLayer(this._popup)) return open0.call(this, e);
+      oe._stopped = true;   // as open0 does at once: the map click under it must not close or reopen anything
+      tapRing(this);
+      var my = ++tapSeq, go = function () { if (my !== tapSeq) return; tapSeq++; if (self._map) open0.call(self, e); };
+      if (window.requestAnimationFrame && !document.hidden) requestAnimationFrame(function () { setTimeout(go, 0); });
+      setTimeout(go, 120);
+    };
+  }
+  function tapRing(mk) {
+    try {
+      var p = map.latLngToContainerPoint(mk.getLatLng()), r = document.createElement("div");
+      r.className = "pn-tapring"; r.setAttribute("aria-hidden", "true");
+      r.style.left = Math.round(p.x) + "px"; r.style.top = Math.round(p.y) + "px";
+      map.getContainer().appendChild(r);
+      setTimeout(function () { if (r.parentNode) r.parentNode.removeChild(r); }, 700);
+    } catch (x) {}
+  }
+  // the ring (compositor only: transform + opacity) and fix 9: a DOM pin under the finger shrinks a little (scale is its own
+  // property: the inline transform that places the marker is not touched). No html.map-moving guard here: a :not() on the root
+  // class would restyle the whole page at every movestart / moveend.
+  var TAP_CSS = ".pn-tapring{position:absolute;z-index:690;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;pointer-events:none;" +
+    "border:3px solid var(--amber,#f5a623);box-shadow:0 0 12px rgba(245,166,35,.55);animation:pnTapRing .5s cubic-bezier(.2,.7,.3,1) forwards}" +
+    "@keyframes pnTapRing{from{transform:scale(.45);opacity:1}to{transform:scale(1.25);opacity:0}}" +
+    ".leaflet-marker-icon:active>*{animation:pnPinPress 90ms ease-out forwards}" +
+    "@keyframes pnPinPress{to{scale:.92;filter:brightness(1.18)}}" +
+    "@media (prefers-reduced-motion:reduce){.pn-tapring{animation-name:pnTapFade}}@keyframes pnTapFade{from{opacity:1}to{opacity:0}}";
+  (function () { var st = document.createElement("style"); st.id = "pn-tap-css"; st.textContent = TAP_CSS; document.head.appendChild(st); })();
   function render() {
     var z = map.getZoom(), keep = openKey;
     redrawing = true;

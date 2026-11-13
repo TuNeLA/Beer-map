@@ -154,6 +154,8 @@ jobs:
             filter: '^(bump)$'
           - name: c5extras
             filter: '^(c5extras)$'
+          - name: d4map
+            filter: '^(d4map)$'
           - name: consent
             filter: '^(consent)$'
           - name: c4drinks

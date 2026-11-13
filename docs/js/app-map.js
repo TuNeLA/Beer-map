@@ -32,6 +32,7 @@
     worldCopyJump: true, tap: true
   });
   PN.put({ map: map });   // <split:put/>
+  smoothMoves(map);
   // Start on Ludvika. If the user allows location, we move to them (see locate()).
   map.setView(LUDVIKA, START_ZOOM);
   // Default tiles: Esri Dark Gray Canvas (no key, no watermark). With CFG.CARTO_KEY set: CARTO dark_all.
@@ -458,5 +459,75 @@
     var b = openId == null ? null : beerById(openId);
     if (b) { showBeer(b, z); return; }
     map.flyTo([lat, lng], z, { duration: 1.2 });
+  }
+  /* d4map (SMOOTH-PLAN fix 3): smooth pan and pinch.
+     1. "Map is moving" signal for every decoration: html.map-moving and the document event "pn:mapmove" ({ detail: { moving } })
+        from movestart / zoomstart until 150 ms after the last moveend. While it is on, the repeating CSS animations (pill glow,
+        call-out glow, rings, shimmer) and the ambient overlay are paused. alive.js and juice.js can pause on the class or event.
+     2. The moveend / zoomend listeners (about 25 modules) no longer run in ONE long task when the finger lifts: they run in
+        order, in slices of at most SLICE ms, one slice after each frame. A new moveend / zoomend first runs what is left of
+        the one before it (each listener still sees every event, in order). map._pnMoves.flush() runs the rest at once. */
+  function smoothMoves(m) {
+    var SLICE = 6, de = document.documentElement, q = [], qType = {}, tok = 0, moving = false, offT = 0, paused = [];
+    var fire0 = m.fire;
+    function setMoving(on) {
+      if (on === moving) return;
+      moving = on; de.classList.toggle("map-moving", on);
+      if (on) paused = pauseLoops(); else { playLoops(paused); paused = []; }
+      try { document.dispatchEvent(new CustomEvent("pn:mapmove", { detail: { moving: on } })); } catch (e) {}
+    }
+    function stopIn(ms) { clearTimeout(offT); offT = setTimeout(function () { setMoving(false); }, ms); }
+    function live(x) {   // still a listener? (a layer removed meanwhile is skipped, as if the event had come later)
+      var l = m._events && m._events[x.ev.type];
+      for (var i = 0; l && i < l.length; i++) if (l[i].fn === x.fn && l[i].ctx === x.ctx) return true;
+      return false;
+    }
+    function callOne(x) { if (!live(x)) return; try { x.fn.call(x.ctx || m, x.ev); } catch (e) { try { console.warn("olnu mbx " + x.ev.type, e); } catch (y) {} } }
+    function flush() { tok++; while (q.length) callOne(q.shift()); qType = {}; }
+    function arm() {   // the next slice runs after the next frame is painted (rAF, then a task); no frames (hidden page): a timer
+      var my = ++tok, go = function () { if (my === tok) run(); };
+      if (window.requestAnimationFrame && !document.hidden) requestAnimationFrame(function () { setTimeout(go, 0); });
+      setTimeout(go, 200);
+    }
+    function run() {
+      var t0 = performance.now();
+      while (q.length && performance.now() - t0 < SLICE) callOne(q.shift());
+      if (q.length) arm(); else { tok++; qType = {}; }
+    }
+    m.fire = function (type, data, propagate) {
+      if (type === "movestart" || type === "zoomstart") { setMoving(true); stopIn(3000); }
+      else if (type === "move" || type === "zoom") { if (!moving) setMoving(true); stopIn(1500); }   // a pinch without movestart; safety off
+      if (type !== "moveend" && type !== "zoomend") return fire0.apply(this, arguments);
+      if (type === "moveend") stopIn(150);
+      if (this !== m || propagate || qType[type]) flush();   // the same type again: the old event's listeners first
+      var l = this._events && this._events[type];
+      if (this !== m || propagate || !l || !l.length) return fire0.apply(this, arguments);
+      qType[type] = 1;
+      var ev = {}; for (var k in data || {}) ev[k] = data[k];
+      ev.type = type; ev.target = this; ev.sourceTarget = (data && data.sourceTarget) || this;
+      l.forEach(function (x) { q.push({ fn: x.fn, ctx: x.ctx, ev: ev }); });
+      if (q.length === l.length) arm();
+      return this;
+    };
+    m._pnMoves = { flush: flush, pending: function () { return q.length; }, moving: function () { return moving; } };
+  }
+  // While the map moves: every repeating CSS animation on the page (iterations > 1: glows, pulses, rings, shimmer = the
+  // decorations; the pill glow is capped at 3 loops) and every animation / transition of the full-screen ambient overlay
+  // (fx.js .fx-amb: edges + embers, restyled every frame) pause. One-shot ones (a sheet sliding, a toast, an enter or a press
+  // animation) keep running.
+  function pauseLoops() {
+    var out = [];
+    try {
+      if (!document.getAnimations) return out;
+      document.getAnimations().forEach(function (a) {
+        if (a.playState !== "running") return;
+        var tm = a.effect && a.effect.getTiming && a.effect.getTiming(), tg = a.effect && a.effect.target;
+        if ((tm && tm.iterations > 1) || (tg && tg.closest && tg.closest(".fx-amb"))) { a.pause(); out.push(a); }
+      });
+    } catch (e) {}
+    return out;
+  }
+  function playLoops(list) {
+    list.forEach(function (a) { try { var tg = a.effect && a.effect.target; if (a.playState === "paused" && tg && tg.isConnected) a.play(); } catch (e) {} });
   }
 })();
