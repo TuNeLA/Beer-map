@@ -89,14 +89,55 @@
     var root = document.documentElement;
     document.body.classList.toggle("af-hol", !!h);
     var wrap = document.querySelector(".beer-wrap"), badge = $("af-hol-e");
-    if (!h) { if (badge) badge.remove(); root.style.removeProperty("--af-hol"); return; }
+    if (badge && badge.getAttribute("data-hol") !== k) { badge.remove(); badge = null; }   // f13: a new holiday key = a fresh badge
+    if (!h) { root.style.removeProperty("--af-hol"); return; }
     root.style.setProperty("--af-hol", h.theme && h.theme.color || "#f5a623");
-    if (wrap && !badge) { badge = document.createElement("span"); badge.id = "af-hol-e"; badge.className = "af-hol-e"; wrap.appendChild(badge); }
-    if (badge) {
+    if (wrap && !badge && k === "fredag13") { f13Scene(wrap, h); return; }
+    if (wrap && !badge) { badge = document.createElement("span"); badge.id = "af-hol-e"; badge.className = "af-hol-e"; badge.setAttribute("data-hol", k); wrap.appendChild(badge); }
+    if (badge && k !== "fredag13") {
       badge.textContent = (h.theme && h.theme.emoji) || "🎉";
       badge.setAttribute("role", "img"); badge.setAttribute("aria-label", h.name || "");
       badge.title = h.name || "";
     }
+  }
+  // f13 (owner 13 Nov): Fredag 13 gets a small SVG scene in place of the emoji: a black cat (amber eyes) on the chip + a crystal ball.
+  // Tap = hop or tail flick + one "fredag13" line as a toast (max once per 5 s). Idle: a slow blink / tail swish every 20-40 s while
+  // the page is visible and the map stands still. prefers-reduced-motion = a static scene (CSS animates only under no-preference).
+  var F13_SVG = '<svg class="f13-svg" viewBox="0 0 58 42" aria-hidden="true" focusable="false"><defs>' +
+    '<radialGradient id="f13-ball" cx="38%" cy="34%" r="70%"><stop offset="0" stop-color="#f1e6ff"/><stop offset=".45" stop-color="#9a6ad6"/><stop offset="1" stop-color="#2a1548"/></radialGradient></defs>' +
+    '<rect class="f13-hit" x="12" y="-1" width="46" height="44" fill="transparent"/><rect class="f13-chip" x="2" y="24" width="54" height="16" rx="8"/>' +
+    '<circle class="f13-star" cx="25" cy="33" r=".9" fill="#d9f7ec"/><circle class="f13-star f13-s2" cx="52" cy="31" r=".7" fill="#d9f7ec"/>' +
+    '<path d="M8.5 35.5h13l-2-5h-9z" fill="#6b4a1f"/><path d="M10.5 30.5h9" stroke="#e0b36a" stroke-width="1.2" stroke-linecap="round"/>' +
+    '<circle cx="15" cy="22" r="8.5" fill="url(#f13-ball)" stroke="#e9dcff" stroke-opacity=".45" stroke-width=".8"/>' +
+    '<g class="f13-mist"><path d="M9.5 24.5c2.5-2.6 5.5-.6 8-3s-.6-4.6-3-4.2M12 27.5c2.4.6 5-.4 6.6-2.6" fill="none" stroke="#9ff5d6" stroke-opacity=".55" stroke-width="1.1" stroke-linecap="round"/></g>' +
+    '<ellipse class="f13-shine" cx="12" cy="18.2" rx="2.4" ry="1.4" fill="#fff" fill-opacity=".85" transform="rotate(-30 12 18.2)"/>' +
+    '<g class="f13-cat"><g class="f13-tail"><path d="M47 26c5 .6 8-3.4 6.2-8.2-.6-1.7.9-3 2.2-1.6" fill="none" stroke="#c9a8f0" stroke-width="3.6" stroke-linecap="round"/>' +
+    '<path d="M47 26c5 .6 8-3.4 6.2-8.2-.6-1.7.9-3 2.2-1.6" fill="none" stroke="#0c0913" stroke-width="2.2" stroke-linecap="round"/></g>' +
+    '<path class="f13-body" d="M34.5 27.5C33 22 34 17.5 37.5 16h7c3.5 1.5 4.5 6 3 11.5-4.5 1.4-8.5 1.4-13 0z" fill="#0c0913" stroke="#c9a8f0" stroke-width=".8"/>' +
+    '<path d="M36 9l-.4-6.4L40 6zM46 9l.4-6.4L42 6z" fill="#0c0913" stroke="#c9a8f0" stroke-width=".8" stroke-linejoin="round"/>' +
+    '<ellipse cx="41" cy="11" rx="6.6" ry="5.8" fill="#0c0913" stroke="#c9a8f0" stroke-width=".8"/>' +
+    '<g class="f13-eyes"><ellipse cx="38.5" cy="11" rx="1.5" ry="1.7" fill="#ffb52e"/><ellipse cx="43.5" cy="11" rx="1.5" ry="1.7" fill="#ffb52e"/>' +
+    '<ellipse cx="38.5" cy="11" rx=".4" ry="1.3" fill="#0c0913"/><ellipse cx="43.5" cy="11" rx=".4" ry="1.3" fill="#0c0913"/></g></g></svg>';
+  var f13T = null, f13Toast = -9e9, f13Last = "";
+  function f13Play(b, cls, ms) { b.classList.remove("f13-hop", "f13-flick", "f13-blink", "f13-swish"); void b.offsetWidth; b.classList.add(cls); clearTimeout(b._f13); b._f13 = setTimeout(function () { b.classList.remove(cls); }, ms); }
+  function f13Idle() {
+    clearTimeout(f13T);
+    f13T = setTimeout(function () {
+      var b = $("af-hol-e"); if (!b || b.getAttribute("data-hol") !== "fredag13") { f13T = null; return; }
+      if (document.visibilityState === "visible" && !document.documentElement.classList.contains("map-moving")) f13Play(b, Math.random() < 0.5 ? "f13-blink" : "f13-swish", 1600);
+      f13Idle();
+    }, (window.PN_F13_MS || 20000) * (1 + Math.random()));   // 20-40 s (PN_F13_MS: tests/e2e/f13-pw.js only)
+  }
+  function f13Scene(wrap, h) {
+    var b = document.createElement("button"); b.type = "button"; b.id = "af-hol-e"; b.className = "af-hol-e af-f13"; b.setAttribute("data-hol", "fredag13");
+    b.setAttribute("aria-label", h.name || ""); b.title = h.name || ""; b.innerHTML = F13_SVG;
+    b.addEventListener("click", function (ev) {
+      ev.stopPropagation(); f13Play(b, Math.random() < 0.5 ? "f13-hop" : "f13-flick", 700);
+      var lines = (h.lines || []).filter(function (x) { return x && x !== f13Last; });
+      if (performance.now() - f13Toast < 5000 || !lines.length || !A) return;
+      f13Toast = performance.now(); f13Last = pick(lines); A.toast(f13Last);
+    });
+    wrap.appendChild(b); f13Idle();
   }
   // Medal names for the medals 0018 adds (the server ids are stable).
   var MEDALS_V16 = [

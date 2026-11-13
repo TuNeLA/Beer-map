@@ -9,6 +9,40 @@
   box-shadow:0 0 10px var(--af-hol,var(--amber))}
 @media (prefers-reduced-motion:no-preference){.af-hol-e{animation:af-bob 3.2s var(--e-std) infinite}}
 @keyframes af-bob{50%{transform:translateY(-3px)}}
+/* f13: Fredag 13 scene (cat + crystal ball, js/after.js f13Scene). It sits up and right of the ÖL! ring; only painted shapes take taps,
+   so the ring corner under the box stays ÖL!. Motion only under no-preference; html.map-moving pauses it. */
+.af-hol-e.af-f13{right:-20px;top:-24px;width:56px;min-width:0;height:44px;padding:0;margin:0;display:block;background:none;border:0;border-radius:0;
+  box-shadow:none;animation:none;pointer-events:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.af-f13 .f13-svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 5px var(--af-hol,var(--amber)))}
+.af-f13 .f13-svg *{pointer-events:visiblePainted}
+.af-f13 .f13-hit{pointer-events:all}
+.af-f13 .f13-chip{fill:var(--night-2);stroke:var(--af-hol,var(--amber));stroke:color-mix(in srgb,var(--af-hol,var(--amber)) 70%,var(--text));stroke-width:1.6}
+.af-f13 .f13-eyes{filter:drop-shadow(0 0 1.4px var(--amber))}
+.af-f13:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:var(--r-sm)}
+.af-f13 .f13-cat,.af-f13 .f13-tail,.af-f13 .f13-eyes,.af-f13 .f13-mist,.af-f13 .f13-shine,.af-f13 .f13-star{transform-box:fill-box;transform-origin:50% 50%}
+.af-f13 .f13-cat{transform-origin:50% 100%}
+.af-f13 .f13-tail{transform-origin:0 85%}
+.af-f13 .f13-mist{transform-box:view-box;transform-origin:15px 22px}
+@media (prefers-reduced-motion:no-preference){
+  .af-f13 .f13-mist{animation:f13-mist 7s linear infinite}
+  .af-f13 .f13-shine{animation:f13-shine 3.6s var(--e-std) infinite}
+  .af-f13 .f13-star{animation:f13-twinkle 2.8s var(--e-std) infinite}
+  .af-f13 .f13-s2{animation-delay:-1.4s}
+  .af-f13 .f13-eyes{animation:f13-glow 3s var(--e-std) infinite}
+  .af-f13.f13-hop .f13-cat{animation:f13-hop .6s var(--e-std)}
+  .af-f13.f13-flick .f13-tail,.af-f13.f13-hop .f13-tail{animation:f13-flick .6s var(--e-std)}
+  .af-f13.f13-blink .f13-eyes{animation:f13-blink 1.4s var(--e-std)}
+  .af-f13.f13-swish .f13-tail{animation:f13-swish 1.5s var(--e-std)}
+  html.map-moving .af-f13 *{animation-play-state:paused}
+}
+@keyframes f13-mist{to{transform:rotate(360deg)}}
+@keyframes f13-shine{0%,100%{opacity:.85}50%{opacity:.35}}
+@keyframes f13-twinkle{0%,100%{opacity:.15}50%{opacity:1}}
+@keyframes f13-glow{0%,100%{opacity:1}50%{opacity:.78}}
+@keyframes f13-hop{0%,100%{transform:translateY(0) scaleY(1)}15%{transform:translateY(0) scaleY(.9)}45%{transform:translateY(-6px) scaleY(1.04)}75%{transform:translateY(0) scaleY(.95)}}
+@keyframes f13-flick{0%,100%{transform:rotate(0)}30%{transform:rotate(-22deg)}60%{transform:rotate(12deg)}}
+@keyframes f13-blink{0%,100%{transform:scaleY(1)}35%,60%{transform:scaleY(.08)}}
+@keyframes f13-swish{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}55%{transform:rotate(9deg)}80%{transform:rotate(-4deg)}}
 
 /* HUD chip (max one): 🚑 buddy check / 🌯 kebab */
 .af-chip-med{border-color:var(--red) !important;color:#fff !important;background:rgba(179,18,27,.55) !important}
