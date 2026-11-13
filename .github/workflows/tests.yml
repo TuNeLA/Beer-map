@@ -151,7 +151,7 @@ jobs:
           - name: alive
             filter: '^(alive)$'
           - name: mapzoom
-            filter: '^(mapzoom)$'
+            filter: '^(mapzoom|nightmap)$'
           - name: systemet
             filter: '^(systemet)$'
           - name: placecard

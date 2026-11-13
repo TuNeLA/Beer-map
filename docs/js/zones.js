@@ -318,7 +318,7 @@
     try {
       var cv = m.getCanvas().getBoundingClientRect(), ct = map.getContainer().getBoundingClientRect(), dx = ct.left - cv.left, dy = ct.top - cv.top;
       ((window.TIERS && TIERS.safeRects) ? TIERS.safeRects(map) : []).forEach(function (r) { out.push({ l: r.l + dx, t: r.t + dy, r: r.r + dx, b: r.b + dy }); });
-      document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *").forEach(function (e) {
+      document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *, .leaflet-frdots-pane .nm-fd").forEach(function (e) {
         var r = e.getBoundingClientRect(); if (r.width && r.height) out.push({ l: r.left - cv.left - 3, t: r.top - cv.top - 3, r: r.right - cv.left + 3, b: r.bottom - cv.top + 3 });
       });
     } catch (e) {}
@@ -489,6 +489,7 @@
     // finds the zone in JS. Only the GL map and the zoom decide if zones take taps.
     if (!e || !e.latlng || !wanted()) { stats.skip = "off"; return; }
     var oe = e.originalEvent || {}, ll = e.latlng;
+    if (oe.target && oe.target.closest && oe.target.closest(".nm-fd")) { stats.skip = "frdot"; return; }   // nightmap I-78: a friend dot took it
     // glmap.js's preclick runs after ours (it attaches later) and marks a tap it used: decide after this dispatch
     setTimeout(function () {
       if (oe._olnuGl || (window.GLBARS && GLBARS.tappedAt && performance.now() - GLBARS.tappedAt() < 400)) { stats.skip = "gl-bar"; return; }
@@ -498,24 +499,117 @@
   function tapZone(ll) {
     var e = { latlng: ll };
     if (!wanted()) { stats.skip = "off"; return; }
-    var z = zoom(), lay = z < Z_KOM ? L_LF : L_KF;
+    // nightmap I-83 (owner 13 Nov): the chip under the finger first. A chip sits above (or beside) its town point, often over
+    // the NEXT kommun ("Kungälv · Enberg" over Stenungsund): the fill under the tap was the wrong zone.
+    var z = zoom(), lab = labelAt(ll), isL = lab ? lab.kind === "l" : z < Z_KOM, lay = isL ? L_LF : L_KF;
     try {
-      var f = null;
-      if (ready && gm && gm.getLayer(lay)) { var p = gm.project([e.latlng.lng, e.latlng.lat]); f = gm.queryRenderedFeatures([p.x, p.y], { layers: [lay] })[0]; }
-      var feat = f && (z < Z_KOM ? geo.l : geo.k) && (z < Z_KOM ? geo.l : geo.k).features.filter(function (x) { return x.id === f.id; })[0];
+      var f = null, feat = lab ? lab.f : null;
+      if (!feat && ready && gm && gm.getLayer(lay)) { var p = gm.project([e.latlng.lng, e.latlng.lat]); f = gm.queryRenderedFeatures([p.x, p.y], { layers: [lay] })[0]; }
+      if (!feat) feat = f && (isL ? geo.l : geo.k) && (isL ? geo.l : geo.k).features.filter(function (x) { return x.id === f.id; })[0];
       // GL has not drawn this layer at the tap yet (just flown in, slow phone / CI: the kommun fill tiles for the new zoom
       // come a moment after moveend): use the same border files in JS, so the tap still zooms in.
-      if (!feat) { feat = zoneAt(z < Z_KOM ? "l" : "k", ll.lat, ll.lng); if (feat) stats.tapJs = (stats.tapJs || 0) + 1; }
+      if (!feat) { feat = zoneAt(isL ? "l" : "k", ll.lat, ll.lng); if (feat) stats.tapJs = (stats.tapJs || 0) + 1; }
       if (!feat) { stats.skip = "no-zone"; return; }
       stats.skip = null;
       var b = feat.properties.b, bounds = L.latLngBounds([b[1], b[0]], [b[3], b[2]]);
       var fz = map.getBoundsZoom(bounds, false, L.point(24, 24));
-      stats.taps++; stats.lastTap = feat.properties.n;
-      if (z < Z_KOM) map.flyTo(bounds.getCenter(), Math.max(Z_KOM + 0.25, Math.min(fz, 9)), { duration: 0.8 });   // into its kommuner
+      stats.taps++; stats.lastTap = feat.properties.n; stats.lastLab = lab ? feat.properties.n : null; stats.fitFr = 0;
+      if (!isL) { var fp = zonePins(feat); if (fp.length && fitPins(fp)) { stats.fitFr = fp.length; return; } }   // nightmap I-83: its people in view
+      if (isL) map.flyTo(bounds.getCenter(), Math.max(Z_KOM + 0.25, Math.min(fz, 9)), { duration: 0.8 });   // into its kommuner
       else if (fz > z + 0.3) map.flyToBounds(bounds, { padding: [12, 12], duration: 0.8 });
-      else map.flyTo(e.latlng, Math.min(13, Math.max(Z_OFF + 0.5, z + 2)), { duration: 0.8 });   // already showing the whole kommun: into its bars
+      else map.flyTo(lab ? [feat.properties.y, feat.properties.x] : e.latlng, Math.min(13, Math.max(Z_OFF + 0.5, z + 2)), { duration: 0.8 });   // already showing the whole kommun: into its bars
     } catch (x) { stats.skip = "err: " + String(x && x.message || x).slice(0, 80); }
   }
+  // nightmap I-83: the zone chip (GL label) at a tap point: { kind: "k" | "l", f: the zone feature } or null
+  function labelAt(ll) {
+    if (!ready || !gm || !ll) return null;
+    try {
+      var lays = [L_KT, L_LT, L_LQ, L_LC].filter(function (id) { return gm.getLayer(id); }); if (!lays.length) return null;
+      var p = gm.project([ll.lng, ll.lat]), hit = gm.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: lays });
+      for (var i = 0; i < hit.length; i++) {
+        var q = hit[i].properties || {};
+        if (q.k != null && byK[q.k]) return { kind: "k", f: byK[q.k] };
+        if (q.l != null && byL[q.l]) return { kind: "l", f: byL[q.l] };
+      }
+    } catch (e) {}
+    return null;
+  }
+  // the pins of my friends (and me) inside a zone: the same rows as the map pins (strangers are never fitted or named)
+  function zonePins(feat) {
+    var out = [], kind = feat && feat.properties && feat.properties.k != null ? "k" : "l";
+    try { (A && A.beers ? A.beers() : []).forEach(function (b) {
+      if (!b || !(b.friend_name || b.is_mine) || !isFinite(b.lat) || !isFinite(b.lng)) return;
+      if (zoneAt(kind, +b.lat, +b.lng) === feat) out.push({ lat: +b.lat, lng: +b.lng });
+    }); } catch (e) {}
+    return out;
+  }
+  // fly so all these pins are in view: room for the top bar + LIVE strip and the bottom dock + ÖL!, max zoom 15
+  function fitPins(list) {
+    if (!map || !list || !list.length) return false;
+    try {
+      var bb = L.latLngBounds(list.map(function (p) { return [p.lat, p.lng]; })), sz = map.getSize();
+      var top = Math.min(170, Math.round(sz.y * 0.2)), bot = Math.min(230, Math.round(sz.y * 0.27)), side = Math.min(48, Math.round(sz.x * 0.12));
+      map.flyToBounds(bb, { paddingTopLeft: [side, top], paddingBottomRight: [side, bot], maxZoom: 15, duration: 0.8 });
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* nightmap I-78 (owner 13 Nov): friends' live pins at EVERY zoom. While the zones hide the people pins (html[data-zones]:
+     the GL map zoomed out, also over Europe / the world) each friend out tonight = a small avatar dot at the pin (the saved
+     character, else the initial) + the name; friends close together at this zoom = ONE chip "Ida +2". Data = the pins the app
+     already has (A.beers(): the same rows as the normal pins, so ghost mode, Bara vänner, blocks and fuzzy positions stay as
+     they are; the poll asks for the map view and the server never caps friends). Tap = zoom to that friend (several: fit them). */
+  var fdLayer = null, fdSig = "", fdT = 0, fdLater = 0, fdTries = 0, FD_PX = 46;
+  function fdOn() { return !!map && document.documentElement.hasAttribute("data-zones"); }
+  function fdFriends() {
+    var seen = {}, out = [];
+    try { (A && A.beers ? A.beers() : []).forEach(function (b) {
+      if (!b || !b.friend_name || b.is_mine || !isFinite(b.lat) || !isFinite(b.lng) || seen[b.friend_name]) return;
+      seen[b.friend_name] = 1; out.push({ name: String(b.friend_name), lat: +b.lat, lng: +b.lng });
+    }); } catch (e) {}
+    return out;
+  }
+  // the friend's character as an image URL (the same SVG as the map pin and the chat, js/avpins.js), "" = none saved / not loaded
+  function avSrc(nm) { try { var h = window.AVPINS && window.AVPINS.img ? window.AVPINS.img({ friend_name: nm }) : "", m = h && /src="([^"]+)"/.exec(h); return m ? m[1] : ""; } catch (e) { return ""; } }
+  function fdGroups(list) {   // greedy: a friend within FD_PX px of a group's first friend joins that group
+    var gs = [];
+    list.forEach(function (p) {
+      var q = map.latLngToContainerPoint([p.lat, p.lng]); p.av = avSrc(p.name);
+      for (var i = 0; i < gs.length; i++) if (Math.abs(gs[i].q.x - q.x) < FD_PX && Math.abs(gs[i].q.y - q.y) < FD_PX * 0.8) { gs[i].ps.push(p); return; }
+      gs.push({ q: q, at: [p.lat, p.lng], ps: [p] });
+    });
+    gs.forEach(function (g) { g.ps.sort(function (a, b) { return (b.av ? 1 : 0) - (a.av ? 1 : 0); }); });   // a face first
+    return gs;
+  }
+  function fdHTML(g) {
+    var p = g.ps[0], n = g.ps.length, t = p.name.split(" ")[0] + (n > 1 ? " +" + (n - 1) : "");
+    var face = p.av ? '<img alt="" decoding="async" src="' + p.av + '">' : "<i>" + pillEsc(p.name.charAt(0).toUpperCase()) + "</i>";
+    var lbl = g.ps.map(function (x) { return x.name; }).join(", ") + (n > 1 ? " är ute" : " är ute");
+    return '<div class="nm-fd' + (p.av ? " nm-fd-av" : "") + '" role="button" tabindex="0" aria-label="' + pillEsc(lbl) + '" data-n="' + n + '"><span class="nm-fd-f">' + face + "</span><b>" + pillEsc(t) + "</b></div>";
+  }
+  function fdGo(g) {
+    stats.fdTap = (stats.fdTap || 0) + 1;
+    if (g.ps.length === 1) { var p = g.ps[0]; try { map.flyTo([p.lat, p.lng], Math.max(15, zoom()), { duration: 0.9 }); } catch (e) {} return; }
+    fitPins(g.ps);
+  }
+  function fdDraw() {
+    if (!map || !window.L) return;
+    var list = fdOn() ? fdFriends() : [];
+    if (!fdLayer) { if (!list.length) return; if (!map.getPane("frdots")) map.createPane("frdots").style.zIndex = 640; fdLayer = L.layerGroup().addTo(map); }
+    var gs = list.length ? fdGroups(list) : [];
+    var sig = Math.round(zoom() * 4) + "|" + gs.map(function (g) { return g.ps.map(function (p) { return p.name + (p.av ? "*" : ""); }).join("+") + "@" + g.at.join(","); }).join(";");
+    stats.fd = gs.length;
+    if (sig === fdSig) return; fdSig = sig;
+    fdLayer.clearLayers();
+    gs.forEach(function (g) {
+      var mk = L.marker(g.at, { pane: "frdots", keyboard: false, icon: L.divIcon({ html: fdHTML(g), className: "nm-fd-mk", iconSize: [0, 0], iconAnchor: [0, 0] }) });
+      mk.on("click", function (ev) { if (ev && ev.originalEvent) L.DomEvent.stop(ev.originalEvent); fdGo(g); });
+      fdLayer.addLayer(mk);
+    });
+    // characters load a moment after the first friend pin (avpins.js): look again a few times
+    if (!fdLater && fdTries < 4 && gs.some(function (g) { return g.ps.some(function (p) { return !p.av; }); })) { fdTries++; fdLater = setTimeout(function () { fdLater = 0; fdDraw(); }, 2500); }
+  }
+  function fdSoon() { clearTimeout(fdT); fdT = setTimeout(fdDraw, 40); }
 
   /* ---------- on / off ---------- */
   function check() {
@@ -533,9 +627,18 @@
   }
   // ds41: no people marker over the zones: pins + clusters hide while zones show (friends are in the pills)
   var CSS = "html[data-zones] .olnu-cl,html[data-zones] .leaflet-marker-icon:has(>.pn-p),html[data-zones] .leaflet-marker-icon:has(>.pn-cl){display:none}";
+  // nightmap I-78: the friend dots (only while the zones hide the people pins)
+  CSS += ".nm-fd-mk{background:none;border:0}html:not([data-zones]) .leaflet-frdots-pane{display:none}" +
+    ".nm-fd{position:absolute;left:0;top:0;transform:translate(-15px,-50%);display:flex;align-items:center;gap:5px;width:max-content;white-space:nowrap;box-sizing:border-box;" +
+    "height:30px;padding:0 9px 0 2px;border-radius:15px;background:rgba(10,15,36,.92);border:1.5px solid #3DDC84;color:#3DDC84;cursor:pointer;" +
+    "box-shadow:0 1px 2px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.35);font:700 12px/1 " + FONT + ";user-select:none;-webkit-user-select:none}" +
+    ".nm-fd::after{content:'';position:absolute;left:50%;top:50%;width:max(100% + 8px,44px);height:44px;transform:translate(-50%,-50%)}" +
+    ".nm-fd-f{width:24px;height:24px;flex:0 0 24px;border-radius:50%;overflow:hidden;background:#152050;box-shadow:0 0 0 1.5px #3DDC84;display:flex;align-items:center;justify-content:center}" +
+    ".nm-fd-f img{width:100%;height:100%;display:block}.nm-fd-f i{font:700 12px/1 " + FONT + ";font-style:normal;color:#3DDC84}";
   function cls() {
     var v = ready && !!map && !!glm() && zoom() < Z_OFF - 0.9 && !!(geo.l || geo.k), de = document.documentElement;
     if (v !== de.hasAttribute("data-zones")) { if (v) de.setAttribute("data-zones", ""); else de.removeAttribute("data-zones"); }
+    fdSoon();   // nightmap I-78
   }
   var placeT = 0;
   function moved() {
@@ -626,7 +729,7 @@
     },
     // left Z1: ask a little before the age limit (10 s zoomed in, 5 s zoomed out): the ask always falls on the same poll as
     // app.js's poll plan (zone_counts then rides the poll bundle, no request of its own)
-    onPoll: function () { ask(false, wanted() ? AGE_MS - 5000 : AGE_IN - 10000); if (wanted()) paint(); pill(true); },   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
+    onPoll: function () { ask(false, wanted() ? AGE_MS - 5000 : AGE_IN - 10000); if (wanted()) paint(); pill(true); fdSig = ""; fdTries = 0; fdSoon(); },   // nightmap I-78: friends moved   // ds41: friends move → the pills follow · fixM T-15: counts at every zoom
     onPublicPoll: function () { ask(false, wanted() ? AGE_MS : AGE_IN); pill(true); },   // fixM T-15
     // app.js updateCounts(): the zone line for the top bar, or null (zoomed in / no zones) = the world counter
     pill: function () { if (!pillHTML()) return null; pill(false); return fitted; },   // fixM T-15: every zoom (null only on an old server)
@@ -646,6 +749,9 @@
     relabel: function () { if (!ready || !wanted()) return; clearTimeout(placeT); placeT = setTimeout(function () { place(false); }, 60); },
     _ask: function () { countsAt = 0; ask(true); },
     _geo: function () { return { l: !!geo.l, k: !!geo.k, loadMs: stats.loadMs }; },
+    // nightmap I-85: a friend's character as a 32 px round <img> ("" = none: the caller keeps its initial), I-78 test hooks
+    avatarHTML: function (nm, px) { var u = avSrc(nm), d = (px | 0) || 32; return u ? '<img class="nm-av" alt="" decoding="async" src="' + u + '" style="display:block;width:' + d + "px;height:" + d + 'px;border-radius:50%;background:#152050;box-shadow:0 0 0 2px #3DDC84">' : ""; },
+    _fd: function () { fdSig = ""; fdDraw(); return { on: fdOn(), n: stats.fd || 0 }; },
     openOut: openOut, _area: function () { return map ? areaNow() : null; }, _kommunAt: function (lat, lng) { return kommunAt(lat, lng); }   // fixM T-15
   };
 })();

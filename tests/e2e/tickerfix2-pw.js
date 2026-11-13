@@ -159,12 +159,15 @@ async function evNews(page, p) {
     if (ONLY.test("Y")) {
       const { ctx, page } = await phone(browser, { beers: [] });
       const R = await page.evaluate(() => {
-        const c0 = { lat: 60.1505, lng: 15.1872 }, run = (iso) => { const now = new Date(iso), out = [];
-          for (let i = 0; i < 40; i++) { try { localStorage.removeItem("olnu.tkNight"); } catch (e) {} window.NEWS.build([], { center: c0, now, prev: [], titles: null, liveTotal: 0, hdrOut: 0, others: [], checkins: [], home: [], rallies: [], myName: null, myTitle: null, myMedals: [] }).forEach((x) => { if (/Systembolaget/.test(x.text)) out.push(x.text); }); }
-          return [...new Set(out)]; };
+        const AV = {}, c0 = { lat: 60.1505, lng: 15.1872 }, run = (iso) => { const now = new Date(iso), out = []; let n = 0;
+          for (let i = 0; i < 300; i++) { try { localStorage.removeItem("olnu.tkNight"); } catch (e) {} const o = window.NEWS.build([], { center: c0, now, prev: [], titles: null, liveTotal: 0, hdrOut: 0, others: [], checkins: [], home: [], rallies: [], myName: null, myTitle: null, myMedals: [] }); n += o.length; o.forEach((x) => { if (/Systembolaget/.test(x.text)) out.push(x.text); }); }
+          AV[iso] = n / 300; return [...new Set(out)]; };   // tickerfix2b: 300 builds (the mix is random), the exact rule via NEWS._sys
         return { fri: run("2026-11-13T16:30:00+01:00"), sun: run("2026-11-15T16:30:00+01:00"), friLate: run("2026-11-13T19:20:00+01:00"), satLate: run("2026-11-14T15:30:00+01:00"),
-          friNoon: run("2026-11-13T12:00:00+01:00"), sat: run("2026-11-14T13:00:00+01:00") };
+          friNoon: run("2026-11-13T12:00:00+01:00"), sat: run("2026-11-14T13:00:00+01:00"), av: AV };
       });
+      const sysOf = await page.evaluate(() => ["2026-11-13T16:30:00+01:00", "2026-11-14T13:00:00+01:00", "2026-11-15T16:30:00+01:00", "2026-11-13T19:20:00+01:00", "2026-11-14T15:30:00+01:00", "2026-11-13T12:00:00+01:00"].map((d) => window.NEWS._sys(new Date(d))));
+      ok("Y I-71 the countdown rule (Stockholm time): Fri 16:30 '2,5 h', Sat 13:00 '2 h', Sun / Fri 19:20 / Sat 15:30 / Fri 12:00 none", JSON.stringify(sysOf) === JSON.stringify(["2,5 h", "2 h", null, null, null, null]), sysOf);   // tickerfix2b
+      ok("Y I-71 an empty-map build is full again: about 6 lines (was ~4: the dropped quiet lines left holes)", R.av["2026-11-13T16:30:00+01:00"] >= 5.5 && R.av["2026-11-14T13:00:00+01:00"] >= 5.5, R.av);   // tickerfix2b
       ok("Y I-71 Fri 16:30 Stockholm → the Systembolaget line shows, '2,5 h'", R.fri.length > 0 && R.fri.every((t) => /2,5 h/.test(t)), R.fri);
       ok("Y I-71 Sat 13:00 (closes 15:00) → shows with '2 h'", R.sat.length > 0 && R.sat.every((t) => /\b2 h\b/.test(t)), R.sat);
       ok("Y I-71 never on Sunday, never after closing (Fri 19:20, Sat 15:30), not more than 3 h before (Fri 12:00)", !R.sun.length && !R.friLate.length && !R.satLate.length && !R.friNoon.length, R);

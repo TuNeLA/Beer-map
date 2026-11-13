@@ -83,6 +83,7 @@ NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food 
 run c2speed    $A c2speed-pw.js    # lane c2speed: I-45 locate-me < 1 s, I-56 food list at once, I-50 food icons from z14, I-51 bars at city zoom
 run alive      $A alive-pw.js      # lane alive: Levande karta (clink, event pulse, sparks, night glow; cap 12, pause on move, reduced motion, raster fallback)
 run mapzoom    $A mapzoom-pw.js    # lane a1map: I-08 icons stay while there is room, I-27 no blink on zoom, I-28 my dot under the bars, I-09 cluster >= pin, I-20 popup ✕ clear, I-10 arena disc, I-06 Hemzon navy, I-11 country chip (stub Mapbox without a token)
+run nightmap  $A nightmap-pw.js   # lane nightmap (owner 13 Nov): I-78 friend dots at every zoom (Dublin at z4, 'Enberg +1', tap = zoom), I-83 town chip tap fits its friends, I-81 round arena disc, I-85 avatar in 'vänner ute nu' (stub Mapbox without a token)
 run systemet  $A systemet-pw.js   # lane b3system I-18: Systembolaget pins (GL + Leaflet fallback), z12 floor, bars first, filter, card text, holiday hook (stub Mapbox without a token)
 run c5extras  $A c5extras-pw.js   # lane c5extras: photo viewer X pinned (I-49), camera torch (I-54), ticker height (I-32), delight caption waits (I-31), dialekt pack ?v= (I-29)
 run hotfix1   $A hotfix1-pw.js    # lane hotfix1 (owner 13 Nov, after the release): I-63 my-dot ring only when a bar / food icon covers the dot (stub Mapbox without a token), I-64 avatar labels Ansiktsform + Tröja & jacka, tab row at 360 px

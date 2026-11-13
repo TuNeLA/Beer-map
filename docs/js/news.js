@@ -737,7 +737,7 @@
     // A quiet group (0–1 items) leaves most slots to town news, then general. No text twice.
     var by = function (a, b) { return b.imp - a.imp || (a.old - b.old) || a.r - b.r; };
     var grp = [], town = [], gen = [];
-    items.forEach(function (x) { (catOf(x) === "group" ? grp : catOf(x) === "town" ? town : gen).push(x); });
+    oneQuiet(items).forEach(function (x) { (catOf(x) === "group" ? grp : catOf(x) === "town" ? town : gen).push(x); });   // tickerfix2b: the extra quiet lines leave BEFORE the slots fill (6 lines, not 4)
     grp.sort(by); town.sort(by); gen.sort(function (a, b) { return (a.old - b.old) || a.r - b.r; });
     var out = grp.splice(0, Math.min(grp.length, 4));
     var room = MAX_ITEMS - out.length - (gen.length ? 1 : 0);

@@ -293,7 +293,7 @@
   function outCard() {
     var o = outPeople(), all = o.live.concat(o.plan), cap = W("PNUI") && W("PNUI").capSVG;
     var faces = h("span", { class: "pn-out-faces", "aria-hidden": "true" });
-    all.slice(0, 4).forEach(function (p) { faces.appendChild(h("span", { html: cap ? cap(p.name, 32) : "" })); });
+    all.slice(0, 4).forEach(function (p) { var av = window.ZONES && window.ZONES.avatarHTML ? window.ZONES.avatarHTML(p.name, 32) : ""; faces.appendChild(h("span", { html: av || (cap ? cap(p.name, 32) : "") })); });   // nightmap I-85: the real character, the initial cap as fallback
     var t, s;
     if (o.live.length) { t = o.live.length === 1 ? "1 vän ute nu" : o.live.length + " vänner ute nu"; s = names(o.live) + (o.plan.length ? " · " + o.plan.length + " ska ut" : ""); }
     else if (o.plan.length) { t = o.plan.length + " ska ut ikväll"; s = names(o.plan); }
@@ -315,7 +315,7 @@
     body = body || $("sheet-body");
     var pane = body && body.querySelector("#inv-pane-g"); if (!pane) return;
     var old = pane.querySelector(":scope > .pn-out"), nb = outCard();
-    if (old) { if (old.textContent !== nb.textContent) old.replaceWith(nb); }
+    if (old) { if (old.textContent !== nb.textContent || old.querySelectorAll("img").length !== nb.querySelectorAll("img").length) old.replaceWith(nb); }   // nightmap I-85: + characters that loaded later
     else pane.insertBefore(nb, pane.firstChild);
     // the card says who is out: the "Mina grupper · N vänner dricker nu" heading does not repeat it
     var hh = pane.querySelector(":scope > h3"), tn = hh && [].filter.call(hh.childNodes, function (c) { return c.nodeType === 3 && / · \d+ vänner dricker nu/.test(c.nodeValue); })[0];

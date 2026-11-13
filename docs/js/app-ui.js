@@ -41,8 +41,8 @@
     // calm2: ONE toast per tap. The first answer to a tap wins; a later non-urgent toast in the 8 s after it (same tap) is
     // dropped, not queued (no 2nd / 3rd toast in a row). A toast nobody tapped for: the same text max once per night.
     if (rank <= 1 && !safe && !opts.calm) {
-      if (tapShownFor === lastTap && Date.now() - tapShownAt < 8000) return el;
-      if (rank === 1) { tapShownFor = lastTap; tapShownAt = Date.now(); }
+      if (tapShownFor === tapN && pnow() - tapShownAt < 8000) return el;
+      if (rank === 1) { tapShownFor = tapN; tapShownAt = pnow(); }
       else if (Date.now() - lastTap > 8000 && window.CALM && window.CALM.seen && window.CALM.seen(msg, opts)) return el;
     }
     // calm: calm news (rank 0) and a promo line nobody tapped for (👑 king …) wait for the one automatic slot
@@ -59,11 +59,16 @@
     } else if (!toastWait || rank >= toastWait._olnuT.rank) toastWait = el;
     return el;
   }
-  var toastWait = null, lastTap = 0, lastTapOut = 0, tapShownFor = -1, tapShownAt = 0;
+  var toastWait = null, lastTap = 0, lastTapOut = 0, tapShownFor = -1, tapShownAt = 0, tapN = 0, tapDownAt = -9e9;
+  // calm2 fix1: a tap = its own number (pointerdown / key; a click without a pointerdown just before it = a new tap too), so a
+  // fixed clock never makes two taps look like one. performance.now() for the 8 s "one toast per tap" window.
+  function pnow() { try { return performance.now(); } catch (e) { return Date.now(); } }
   var SAFE_RX = /Följ mig hem|går hem|är hemma|hemma!|medevac|hämtning|hämtar dig|SOS|larm|walking home|is home|pick ?up|Follow me home/i;
   function calmSafe(msg, o) { return !!(o.err || o.action || o.urgent || o.keep || /\b(med|hf|gw|ride|rd|sos|pick)\b|^(hf|gw|ride|rd|sos)-/.test((o.id || "") + " " + (o.cls || "")) || SAFE_RX.test(String(msg))); }
   ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function (e) {
     lastTap = Date.now();
+    if (e && (e.type !== "click" || pnow() - tapDownAt > 800)) tapN++;
+    if (e && e.type === "pointerdown") tapDownAt = pnow();
     // A tap outside the beer-type strip and the ÖL! button = the user asked for something (a sheet may open now).
     var tg = e && e.target && e.target.closest ? e.target : null;
     if (!tg || !tg.closest(".bp-strip, #btn-beer")) lastTapOut = Date.now();

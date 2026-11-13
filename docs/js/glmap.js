@@ -821,7 +821,12 @@
     // mbx declutter: zoomed out (zones on) the DOM chips may not fight the zone labels: 📍 my-place pins = icon only,
     // arena chips and call-out labels hidden (zone labels + friend faces carry the view)
     "html[data-zones] .mp-pin b,html[data-zones] .mp-pin .mp-more,html[data-zones] .rl-pin-lbl{display:none}" +
-    "html[data-zones] .mp-pin{padding:2px 4px;gap:0}html[data-zones] .leaflet-arenapins-pane{display:none}";
+    "html[data-zones] .mp-pin{padding:2px 4px;gap:0}html[data-zones] .leaflet-arenapins-pane{display:none}" +
+    // nightmap I-81: the arena chip keeps its own size (pnds.css .ap-pin{position:relative} collapsed it to 13 px wide);
+    // an icon-only chip = one round disc at every zoom
+    ".leaflet-arenapins-pane .ap-pin{position:absolute;width:max-content;box-sizing:border-box}.leaflet-arenapins-pane .ap-pin .ap-i{flex:0 0 auto;display:flex;align-items:center;justify-content:center}" +
+    ".leaflet-arenapins-pane .ap-pin.ap-quiet:not(:has(>:not(.ap-i))){width:24px;height:24px;padding:0;gap:0;justify-content:center;border-radius:50%}" +
+    ".leaflet-arenapins-pane .ap-pin.ap-quiet:not(:has(>:not(.ap-i))) .ap-i .pni-disc,.leaflet-arenapins-pane .ap-pin.ap-quiet:not(:has(>:not(.ap-i))) .ap-i .ic-disc{margin:0;width:18px;height:18px}";
   function setOn(v) {
     if (on === v) return;
     on = v;
