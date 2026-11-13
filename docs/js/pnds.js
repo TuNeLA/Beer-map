@@ -551,7 +551,7 @@
       ["chaos", "rally", "install-banner", "hud-x"].forEach(function (id) { var e = $(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ["hidden", "class"], childList: true, characterData: true, subtree: id === "hud-x" || id === "chaos" }); });
       mo.observe(document.body, { childList: true });   // #btn-evs arrives later (evsheet.js)
     }
-    setInterval(function () { kaos(); rail(); place(); }, 2000);   // cheap safety net (layout reads only, writes only on change)
+    setInterval(function () { var s = $("sheet"); if (s && !s.hidden) return; kaos(); rail(); place(); }, 2000);   // safety net (layout reads only, writes only on change); d3smooth: not under an open sheet
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
@@ -1380,6 +1380,7 @@
     var n = 0; document.querySelectorAll("#map img.leaflet-tile").forEach(function (i) { if (i.complete && i.naturalWidth) n++; });
     return n >= 4;
   }
+  try { if (document.fonts && document.fonts.load) ["600 1em 'Chakra Petch'", "700 1em 'Chakra Petch'"].forEach(function (f) { document.fonts.load(f).catch(function () {}); }); } catch (e) {}   // d3smooth: bold faces with the splash, not on the 1st sheet
   function fontsOk() { try { return !document.fonts || document.fonts.status === "loaded"; } catch (e) { return true; } }
   function hide() {
     if (gone) return; gone = true; W.__pnSplashGone = Math.round(performance.now());

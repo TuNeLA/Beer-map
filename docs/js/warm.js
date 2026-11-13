@@ -12,12 +12,15 @@
       group card …), kept in localStorage. pointerdown on that target replays the recipe (before the click), an open
       sheet replays the recipes of its tabs and group cards when the browser is idle, and the shared poll wave
       (onPoll) refreshes the Grupper recipes when they are older than 3 min (max one small batch per 3 min).
-   4. Hold until complete: a sheet that opens keeps its body at opacity 0 (the sheet frame itself still slides in)
+   4. Hold until complete: a sheet that opens keeps its body at opacity 0 (d3smooth: after a slide-first open the skeleton
+      rows stay instead, pnds.css .wm-cont; the empty sliding box is gone)
       until its render-window calls are back and the DOM inside is still for 2 frames (max 120 ms warm, 650 ms cold),
       then shows it in one step. The body keeps the height it had last time (min-height) while it waits, so the
       sheet never grows in steps. prefers-reduced-motion: same, without the 120 ms fade.
    5. Old data is never shown as live: an answer older than 2 min shows a quiet "Uppdaterad för N min sedan" pill
       (absolute, no layout) until the fresh answer is in.
+   6. d3smooth (SMOOTH-PLAN 1): slide first, fill second. A sheet that opens from closed after a tap shows skeleton rows at
+      its remembered height and slides at once; the real build runs right after that first frame, then the hold of 4.
    Public: window.WARM = { rpc, get, prefetch, replay, beginSheet, endSheet, onPoll, stats, clear }. */
 (function () {
   "use strict";
@@ -366,7 +369,8 @@
     clearTimeout(h.cap); clearTimeout(h.q);
     var body = h.body;
     stats.hold++; stats.holdMs += now() - h.t0;
-    body.classList.remove("wm-hold");
+    if (body.classList.contains("wm-cont")) body.style.maxHeight = "";   // d3smooth: fill() locked it
+    body.classList.remove("wm-hold", "wm-cont");
     if (!reduced()) { body.classList.add("wm-in"); setTimeout(function () { body.classList.remove("wm-in"); }, 160); }
     // remember the height for next time (after the reveal frame)
     requestAnimationFrame(function () {
@@ -382,6 +386,7 @@
   function endSheet(body, title) {
     if (!body) return;
     if (hold) reveal(hold);
+    if (isShell(body)) return;   // d3smooth: the build comes after the first frame (fill)
     var h = { body: body, title: title, t0: now(), done: false, quiet: 0 };
     var cold = pending > 0;
     // Remembered height: the body keeps it while the data is on its way (no growing in steps).
@@ -406,6 +411,59 @@
     requestAnimationFrame(check);
     h.cap = setTimeout(function () { reveal(h); }, cold ? 650 : 100);
   }
+
+  /* ---------- d3smooth: slide first, fill second (SMOOTH-PLAN 1) ----------
+     openSheet built the whole body before the sheet could move: tap -> first motion = build time (75-125 ms at 4x CPU, then
+     frames of 150 ms in the slide). Now a sheet that opens from CLOSED within 0.7 s of a tap, and whose height is known from
+     last time, gets skeleton rows (.wm-shell) at that height and slides in the next frame; the real build runs in the task after that frame, then the
+     normal hold (4.) keeps the same rows on screen (.wm-cont: no gap) until the data is in. The slide is a transform animation
+     (compositor), so the build no longer delays it. A sheet that replaces an open one, reduced motion and opens without a tap
+     build at once, as before. The wrapper decides at build time, so the SHEETNAV back stack can replay it.
+     Off switch: window.PN_SLIDE_FIRST = false. */
+  function isShell(b) { var c = b && b.firstElementChild; return !!(c && c.classList.contains("wm-shell")); }
+  function heightOf(title) {
+    var t = String(title || "").slice(0, 40), hh = htsLoad(), k;
+    if (hh[t]) return hh[t];
+    for (k in hh) if (k.indexOf(t + "|") === 0) return hh[k];
+    return 0;
+  }
+  function fill(body, title, build, sk) {
+    if (!sk.isConnected || body.firstElementChild !== sk) return;   // closed or replaced before the fill
+    var lockH = Math.round(body.getBoundingClientRect().height);   // the height on screen now (the shell)
+    openWin(); body.innerHTML = "";
+    try { build(body); } catch (e) { try { console.warn("olnu sheet", title, e); } catch (x) {} try { if (W.PNDS && W.PNDS.sheetFail) W.PNDS.sheetFail(body, title); } catch (x) {} }
+    var sh = document.getElementById("sheet");   // what SHEETNAV.didOpen read from the body (it saw only the shell)
+    if (sh) sh.classList.toggle("sn-tall", !!body.querySelector(".inv-tabs"));
+    body.classList.add("wm-cont");
+    body.style.maxHeight = lockH + "px";   // the rows stay still: the body grows at the reveal, under the fade (no layout shift)
+    endSheet(body, title);
+  }
+  function slideFirst(title, build) {
+    if (typeof build !== "function" || build.__wm) return build;
+    var f = function (body) {
+      var sh = document.getElementById("sheet");
+      if (W.PN_SLIDE_FIRST === false || !body || !sh || !sh.hidden || reduced() || now() - lastGesture > 700) return build(body);
+      var h = heightOf(title);
+      if (!h) return build(body);   // first time: no known height, a guessed one would make the sheet jump (layout shift)
+      var sk = document.createElement("div");
+      sk.className = "wm-shell"; sk.setAttribute("aria-busy", "true");
+      sk.style.minHeight = Math.min(h, Math.round(innerHeight * 0.8)) + "px";
+      body.appendChild(sk);
+      var once = false, go = function () { if (!once) { once = true; fill(body, title, build, sk); } };
+      requestAnimationFrame(function () { setTimeout(go, 0); });
+      setTimeout(go, 300);   // a hidden tab gets no frame
+    };
+    f.__wm = 1;
+    // SHEETNAV.same() compares the build source: the wrapper answers with the source of the real build
+    try { Object.defineProperty(f, "__snSrc", { get: function () { return build.__snSrc || (build.__snSrc = String(build)); } }); } catch (e) {}
+    return f;
+  }
+  function wrapOpen() {
+    var P = W.PN; if (!P || typeof P.openSheet !== "function" || P.openSheet.__wm) return;
+    var o = P.openSheet, w = function (title, build, opts) { return o.call(this, title, slideFirst(title, build), opts); };
+    w.__wm = 1; P.openSheet = w;
+  }
+  wrapOpen(); document.addEventListener("DOMContentLoaded", wrapOpen); W.addEventListener("load", wrapOpen);   // deferred: the parts load later
 
   /* ---------- "Uppdaterad för N min sedan" ---------- */
   var oldEl = null;

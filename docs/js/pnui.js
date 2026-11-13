@@ -172,16 +172,17 @@
   // Target speed = 0 when any is on, else 1; one eased rAF loop is the only writer of window.PN_TICK_F (app.js reads it).
   var tick = { f: 1, target: 1, raf: 0, hold: false, stop: false };
   window.PN_TICK_F = 1;
+  function tickF(v) { window.PN_TICK_F = v; try { window.dispatchEvent(new Event("pn:tickf")); } catch (e) {} }   // d3smooth: the belt (a Web Animation, app-ticker.js) follows at once
   function tickTarget() {
     var t = tick.hold || tick.stop || sheetOpen() ? 0 : 1;
     tick.target = t;
-    if (!tick.raf && tick.f === t) { window.PN_TICK_F = t; return; }   // idempotent: nothing to ease, the value is right
+    if (!tick.raf && tick.f === t) { tickF(t); return; }   // idempotent: nothing to ease, the value is right
     if (!tick.raf) { var last = 0; tick.raf = requestAnimationFrame(function step(ts) {
       var dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016; last = ts;
       var k = 1 - Math.pow(0.0005, dt);              // ≈ 250 ms ease to the target
       tick.f += (tick.target - tick.f) * k;
       if (Math.abs(tick.target - tick.f) < 0.01) tick.f = tick.target;
-      window.PN_TICK_F = tick.f;
+      tickF(tick.f);
       tick.raf = tick.f === tick.target ? 0 : requestAnimationFrame(step);
     }); }
   }
@@ -988,6 +989,7 @@
   function place() {
     var on = document.body.classList.contains("pn-modal-on");
     R.classList.toggle("pn-toast-sheet", on);
+    if (!document.querySelector("#toasts .toast")) return;   // d3smooth: no toast = nothing to place (no layout reads)
     if (on) R.style.setProperty("--pn-toast-sheet-b", sheetBottom() + "px");
     // cifix3: the beer-type strip (.bp-strip) is up: the toast sits ABOVE it, never over the chips
     var st = document.querySelector(".bp-strip"), r = st && !st.hidden && st.getClientRects().length ? st.getBoundingClientRect() : null;
@@ -1070,3 +1072,113 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* lane:a2ui kinds END */
+
+/* d3smooth drag START — SMOOTH-PLAN 4. The open sheet follows the finger from the grip AND from its content (content scrolled to
+   the top, move down), rests on snap points (open · half for a tall sheet · closed) picked by the projected end of the flick, and
+   settles with a spring that starts at the release speed (a Web Animation of transform = compositor; a new touch catches it where
+   it is). sheetnav.js leaves the grip to this (#sheet[data-pn-drag]). Reduced motion: no spring, it jumps. */
+(function () {
+  "use strict";
+  var W = window, s = null, bd = null, st = null, an = null, ban = null, rest = 0, eatClick = 0;
+  var NO = "input, select, textarea, [contenteditable=true], .leaflet-container, canvas, [data-nodrag]";   // buttons too: a drag never clicks
+  function reduced() { try { return W.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
+  function yNow() { try { return new DOMMatrixReadOnly(getComputedStyle(s).transform).m42 || 0; } catch (e) { return 0; } }
+  function setY(y, h) { s.style.transform = y ? "translateY(" + y.toFixed(1) + "px)" : ""; if (bd) bd.style.opacity = y > 0 ? String(Math.max(0.15, 1 - y / h)) : ""; }
+  function halt() {   // interrupt: keep the live position
+    if (!an) return; var y = yNow(), o = bd ? getComputedStyle(bd).opacity : "";
+    an.cancel(); an = null; if (ban) { ban.cancel(); ban = null; }
+    s.style.transform = y ? "translateY(" + y.toFixed(1) + "px)" : ""; if (bd) bd.style.opacity = o;
+  }
+  function topped(t) {   // every scroll box between the touch and the sheet is at its top
+    for (var e = t; e && e !== s; e = e.parentElement) if (e.scrollTop > 0) return false;
+    return true;
+  }
+  function snaps(h) { var a = [0], half = Math.round(h - innerHeight * 0.5); if (h > innerHeight * 0.72 && half > 80) a.push(half); a.push(h + 40); return a; }
+  function go(y0, v0, y1, h, then) {   // damped spring (response 0.42 s, damping 0.86), sampled at 60 Hz, from the release speed
+    var k = Math.pow(2 * Math.PI / 0.42, 2), c = 2 * 0.86 * Math.sqrt(k), x = y0 - y1, v = v0 * 1000, ks = [{ transform: "translateY(" + y0 + "px)" }], i = 0;
+    while (i++ < 90 && (Math.abs(x) > 0.5 || Math.abs(v) > 20) && !(then && y1 + x > h)) { v += (-k * x - c * v) / 60; x += v / 60; ks.push({ transform: "translateY(" + (y1 + x).toFixed(1) + "px)" }); }
+    ks.push({ transform: "translateY(" + y1 + "px)" });
+    var end = function () { an = null; ban = null; setY(y1, h); if (then) then(); };
+    if (reduced() || ks.length < 3) { end(); return; }
+    var ms = (ks.length - 1) * 1000 / 60, o0 = bd ? +getComputedStyle(bd).opacity : 1, o1 = y1 > h ? 0 : y1 > 0 ? Math.max(0.15, 1 - y1 / h) : 1;
+    an = s.animate(ks, { duration: ms, easing: "linear", fill: "forwards" });
+    if (bd) ban = bd.animate([{ opacity: o0 }, { opacity: o1 }], { duration: ms, easing: "ease-out", fill: "forwards" });
+    var me = an; an.onfinish = function () { if (an !== me) return; me.cancel(); if (ban) ban.cancel(); end(); };
+  }
+  function release(x) {
+    var p = x.pts, b = p[p.length - 1], a = p[0];
+    for (var i = p.length - 1; i >= 0 && b[0] - p[i][0] <= 90; i--) a = p[i];
+    var v = (b[1] - a[1]) / Math.max(10, b[0] - a[0]), y = x.y, proj = Math.abs(y - x.base) < 36 ? y : y + v * 300, sn = snaps(x.h), best = sn[0];
+    sn.forEach(function (q) { if (Math.abs(q - proj) < Math.abs(best - proj)) best = q; });
+    if (best > x.h) { go(y, v, best, x.h, function () { rest = 0; s.hidden = true; try { if (W.PN && W.PN.closeSheet) W.PN.closeSheet("cancel"); else document.getElementById("sheet-close").click(); } catch (e) {} setY(0, 1); }); return; }
+    rest = best; go(y, v, best, x.h, null);
+  }
+  function down(e) {
+    if (e.button > 0 || s.hidden || st) return;
+    var t = e.target; if (!t || !t.closest || t.closest(NO)) return;
+    var base = rest; if (an) { halt(); base = yNow(); }   // caught in flight
+    st = { id: e.pointerId, x0: e.clientX, y0: e.clientY, base: base, y: base, h: 400, grip: !!t.closest(".sheet-grip, .sheet-head"), t: t, on: false, pts: [[e.timeStamp, e.clientY]] };
+  }
+  function move(e) {
+    if (!st || e.pointerId !== st.id) return;
+    var dx = e.clientX - st.x0, dy = e.clientY - st.y0;
+    if (!st.on) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < (st.grip ? 4 : 7)) return;
+      if (!st.grip && (Math.abs(dx) > Math.abs(dy) || !(rest > 0 || (dy > 0 && topped(st.t))))) { st = null; return; }   // a scroll or a side swipe
+      st.on = true; s.classList.add("sn-drag"); s.style.animation = "none";   // a grab during the slide-in: no replay of smSheetIn
+      st.h = s.getBoundingClientRect().height || 400; try { s.setPointerCapture(e.pointerId); } catch (x) {}
+    }
+    var y = st.base + dy; if (y < 0) y = -Math.pow(-y, 0.7);   // above the top: rubber band
+    st.y = y; setY(y, st.h);
+    st.pts.push([e.timeStamp, e.clientY]); if (st.pts.length > 8) st.pts.shift();
+    if (e.cancelable) e.preventDefault();
+  }
+  function up(e) {
+    if (!st || e.pointerId !== st.id) return;
+    var x = st; st = null; try { s.releasePointerCapture(x.id); } catch (er) {}
+    if (!x.on) return;
+    s.classList.remove("sn-drag"); eatClick = Date.now();
+    if (e.type === "pointercancel") { go(x.y, 0, x.base > 0 ? x.base : 0, x.h, null); return; }
+    release(x);
+  }
+  function start() {
+    s = document.getElementById("sheet"); bd = document.getElementById("backdrop"); if (!s || !s.animate) return;
+    s.setAttribute("data-pn-drag", "");
+    s.addEventListener("pointerdown", down, true);
+    s.addEventListener("pointermove", move, true);
+    s.addEventListener("pointerup", up, true); s.addEventListener("pointercancel", up, true);
+    s.addEventListener("touchmove", function (e) { if (st && st.on && e.cancelable) e.preventDefault(); }, { passive: false });   // the content does not scroll while it pulls
+    s.addEventListener("click", function (e) { if (Date.now() - eatClick < 60) { e.stopPropagation(); e.preventDefault(); } }, true);
+    var reset = function () { if (an) { an.cancel(); an = null; } if (ban) { ban.cancel(); ban = null; } rest = 0; st = null; s.classList.remove("sn-drag"); s.style.transform = ""; if (bd) bd.style.opacity = ""; };
+    new MutationObserver(function () { if (s.hidden) reset(); }).observe(s, { attributes: true, attributeFilter: ["hidden"] });
+    var t = document.getElementById("sheet-title");   // a new sheet in the open one goes back to fully open
+    if (t) new MutationObserver(function () { if (rest > 0 && !st) { var y = yNow(); rest = 0; go(y, 0, 0, s.getBoundingClientRect().height || 400, null); } }).observe(t, { childList: true, characterData: true, subtree: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* d3smooth drag END */
+
+/* d3smooth press START — every tap shows its press at once (SMOOTH-PLAN 9, not the map pins: map lane). Chrome shows :active late or
+   not at all for a quick tap in a scroll box, and the slow tap handlers came first. .pn-press = the same look as :active (pnds.css),
+   at least 90 ms; in a scroll box it waits 60 ms so a scroll start does not flash it. */
+(function () {
+  "use strict";
+  var SEL = "button, .btn, [role=button], a.ds-row, .gcard", cur = null, tm = 0, t0 = 0;
+  function off(now) {
+    clearTimeout(tm); var b = cur; cur = null; if (!b) return;
+    if (now) { b.classList.remove("pn-press"); return; }
+    if (!b.classList.contains("pn-press")) { b.classList.add("pn-press"); t0 = performance.now(); }
+    setTimeout(function () { b.classList.remove("pn-press"); }, Math.max(0, 90 - (performance.now() - t0)));
+  }
+  document.addEventListener("pointerdown", function (e) {
+    if (e.button > 0) return; off(true);
+    var b = e.target && e.target.closest && e.target.closest(SEL);
+    if (!b || b.disabled || b.closest(".leaflet-container, .mapboxgl-map, .ticker")) return;
+    cur = b; t0 = performance.now();
+    var lift = function () { if (cur === b) { b.classList.add("pn-press"); t0 = performance.now(); } };
+    if (b.closest("#sheet-body, #toasts")) tm = setTimeout(lift, 60); else lift();
+  }, { capture: true, passive: true });
+  document.addEventListener("pointerup", function () { off(false); }, true);
+  document.addEventListener("pointercancel", function () { off(true); }, true);
+})();
+/* d3smooth press END */

@@ -9,7 +9,7 @@
   font:600 var(--ds-fs-16)/var(--ds-lh-16) var(--ds-sans);cursor:pointer}
 .pn-textbtn:active{opacity:.7}
 .pn-row{cursor:pointer;transition:background var(--ds-t-1)}
-.pn-row:active{background:rgba(255,255,255,.05)}
+.pn-row:active,.pn-row.pn-press{background:rgba(255,255,255,.05)}   /* d3smooth: .pn-press = pnui.js press (shows on every tap) */
 .pn-row .ds-row-i .pn-ic{width:18px;height:18px;color:var(--ds-text-2)}
 .pn-row .ds-row-t>span{font-weight:600}
 .pn-row:focus-visible,.pn-face:focus-visible,.pn-ikv-chip:focus-visible,.pn-ikv-b:focus-visible,.pn-back:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}

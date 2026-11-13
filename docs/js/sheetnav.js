@@ -224,6 +224,7 @@
       if (e.button > 0 || !isOpen()) return;
       var t = e.target; if (!t || !t.closest) return;
       if (!t.closest(".sheet-grip, .sheet-head") || t.closest("button, a, input, select, textarea")) return;
+      if (s.hasAttribute("data-pn-drag")) return;   // d3smooth: pnui.js drags the sheet (grip + content, snap points, spring)
       st = { id: e.pointerId, y0: e.clientY, dy: 0, h: s.getBoundingClientRect().height || 400, pts: [[e.timeStamp || Date.now(), e.clientY]], moved: false };
       try { s.setPointerCapture(e.pointerId); } catch (x) {}
     });

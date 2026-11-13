@@ -671,7 +671,7 @@ html,body{font-synthesis:none}
 }
 /* ONE press: scale .96 in --m-2 (ÖL! has its own squash, js "ds10") */
 :is(button,.btn,[role=button],a.ds-row,.gcard,summary){transition-property:transform,opacity,background-color,border-color,color,box-shadow;transition-duration:var(--m-2);transition-timing-function:var(--e-std)}
-:is(button,.btn,[role=button],a.ds-row,.gcard):active:not(:disabled):not(.beer-btn):not(.switch):not([role=switch]){transform:scale(.96)}
+:is(button,.btn,[role=button],a.ds-row,.gcard):is(:active,.pn-press):not(:disabled):not(.beer-btn):not(.switch):not([role=switch]){transform:scale(.96)}
 summary:active{transform:none}
 /* audit-01: map markers are placed with an inline transform on every frame: never transition transform (it made DOM pins lag
    behind the GL map during zoom, glmap-pw drift up to 110 px). Their colour / opacity changes keep the press timing. */
@@ -713,7 +713,7 @@ summary:active{transform:none}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:1ms !important;animation-delay:0ms !important;animation-iteration-count:1 !important;
     transition-property:opacity,color,background-color,border-color !important;transition-duration:var(--m-2) !important;scroll-behavior:auto !important}
-  :is(button,.btn,[role=button],a.ds-row,.gcard):active{transform:none !important}
+  :is(button,.btn,[role=button],a.ds-row,.gcard):is(:active,.pn-press){transform:none !important}
   .pn-foam,.pn-bs-ghost{display:none !important}
 }
 /* ds10 motion END */
@@ -1817,3 +1817,23 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 .dm-blk{margin:var(--sp-4,16px) 0 0}
 .dm-blk[hidden]{display:none}
 /* lane:b1people dm header END */
+/* d3smooth START (SMOOTH-PLAN 7) — a glow pulses on the compositor: the shadow is painted ONCE on a pseudo element and only its
+   opacity animates (an infinite box-shadow animation repainted the element every frame on the main thread).
+   #rally clips (overflow:hidden): its glow is inset. .rl-pin = map lane CSS, the override lives here (one place for glows). */
+.sk-banner{animation:none !important;box-shadow:0 8px 26px #000c}
+.sk-banner::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:0 0 18px 2px rgba(255,210,63,.55);opacity:0;animation:pnGlowO 2s var(--e-std) infinite}
+.rally.rl-lv4{animation:none !important}
+.rally.rl-lv4::after,.rally.hud-panel.rl-lv4::after{content:"";display:block;position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 0 0 2px rgba(255,59,59,.55),inset 0 0 22px rgba(255,59,59,.35);opacity:0;animation:pnGlowO 1.6s var(--e-std) infinite}
+.rl-pin.rl-n4{animation:none !important;box-shadow:0 4px 18px #000a}
+.rl-pin.rl-n4::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:0 0 0 2px rgba(255,59,59,.55),0 4px 22px rgba(255,59,59,.35);opacity:0;animation:pnGlowO 1.6s var(--e-std) infinite}
+@keyframes pnGlowO{50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.sk-banner::after,.rally.rl-lv4::after,.rl-pin.rl-n4::before{animation:none;opacity:.6}}
+/* SMOOTH-PLAN 1: a sheet that opened slide-first keeps its skeleton rows while warm.js holds the body for its data
+   (.wm-cont; it was an invisible body = an empty sliding box). Static rows, painted once. Other holds stay invisible (a tab,
+   a sheet in the open sheet): they grow while hidden, so nothing visible shifts. .wm-shell = the rows before the first build. */
+:root{--pn-skel-rows:repeating-linear-gradient(180deg,rgba(255,255,255,.06) 0 52px,transparent 52px 64px)}
+#sheet-body.wm-hold.wm-cont{opacity:1;background:var(--pn-skel-rows) 0 var(--ds-4,16px)/100% min(448px,100%) no-repeat}
+#sheet-body.wm-hold.wm-cont>*{visibility:hidden}
+#sheet-body>.wm-shell{min-height:192px;background:var(--pn-skel-rows) 0 0/100% 100% no-repeat}
+/* d3smooth END */

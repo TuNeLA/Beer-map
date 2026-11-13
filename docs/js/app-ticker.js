@@ -91,7 +91,7 @@
   }
   /* Smooth news belt: one constant speed, never restarts. New headlines are queued and join at the
      end of the belt; items that have left on the left side are removed. */
-  var TICK_PX_S = 46, tickPending = [], tickIx = 0, tickOff = 0, tickLast = 0, tickRaf = 0, tickKickDone = false, tickMeasureAt = 0;
+  var TICK_PX_S = 46, tickPending = [], tickIx = 0, tickOff = 0, tickKickDone = false;
   function tickPiece() {
     var track = $("ticker-track"), frag = document.createDocumentFragment();
     if (!tickKickDone) {
@@ -110,30 +110,42 @@
     var track = $("ticker-track"), vp = track.parentNode, need = (vp ? vp.clientWidth : 400) * 2 + 200, guard = 0;
     while (track.scrollWidth - tickOff < need && guard++ < 20) tickPiece();
   }
-  function tickFrame(ts) {
-    tickRaf = 0;
-    var track = $("ticker-track");
-    var dt = tickLast ? Math.min(0.1, (ts - tickLast) / 1000) : 0;
-    tickLast = ts;
-    tickOff += TICK_PX_S * dt * (window.PN_TICK_F == null ? 1 : window.PN_TICK_F);   // ui-build: hold to pause, eased
-    // Layout reads (offsetWidth / scrollWidth) only ~4 times a second, not every frame.
-    if (!tickMeasureAt || ts - tickMeasureAt >= 250 || ts < tickMeasureAt) {
-      tickMeasureAt = ts;
-      var first = track.firstChild, guard = 0;
-      while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
-        tickOff -= first.offsetWidth; track.removeChild(first); first = track.firstChild;
-      }
-      tickFill();
+  // d3smooth (SMOOTH-PLAN 5): the belt runs on the compositor. ONE linear Web Animation of transform moves the track at
+  // TICK_PX_S; no JS write per frame (a long task froze the always-visible line). A 250 ms timer drops the pieces that left
+  // on the left (the static CSS translate takes up their width, so nothing jumps) and appends new ones. Speed = PN_TICK_F
+  // (pnui.js PNTICK eases it and fires "pn:tickf") = playbackRate; a hidden tab pauses it.
+  var TICK_SPAN_S = 3600, tickAnim = null, tickCut = 0, tickT = 0;
+  function tickRate() {
+    var f = window.PN_TICK_F == null ? 1 : Math.max(0, +window.PN_TICK_F || 0);   // ui-build: hold to pause, eased
+    if (document.hidden) f = 0;
+    if (tickAnim && tickAnim.playbackRate !== f) tickAnim.playbackRate = f;
+  }
+  window.addEventListener("pn:tickf", tickRate);
+  function tickKeep() {
+    var track = $("ticker-track"); if (!track || !tickAnim) return;
+    var pos = (tickAnim.currentTime || 0) / 1000 * TICK_PX_S;
+    if (pos > TICK_SPAN_S * TICK_PX_S * 0.9) { tickAnim.currentTime = 0; tickCut -= pos; pos = 0; }   // once an hour: rebase
+    tickOff = pos - tickCut;
+    var first = track.firstChild, guard = 0;
+    while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
+      tickOff -= first.offsetWidth; tickCut += first.offsetWidth; track.removeChild(first); first = track.firstChild;
     }
-    track.style.transform = "translate3d(" + (-tickOff).toFixed(2) + "px,0,0)";
-    tickRaf = requestAnimationFrame(tickFrame);
+    var tr = tickCut ? tickCut.toFixed(2) + "px 0" : "";
+    if (track.style.translate !== tr) track.style.translate = tr;
+    tickFill(); tickRate();
   }
   function tickStart() {
     var track = $("ticker-track");
     track.classList.remove("moving"); track.style.animation = "none";
     if (window.FX && window.FX.reduced && window.FX.reduced()) { tickOneStart(track); return; }   // ownerfix 4c
     if (!track.firstChild) tickFill();
-    if (!tickRaf) { tickLast = 0; tickRaf = requestAnimationFrame(tickFrame); }
+    if (!tickAnim && track.animate) {
+      track.style.transform = ""; tickCut = -tickOff;
+      tickAnim = track.animate([{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(" + (-TICK_SPAN_S * TICK_PX_S) + "px,0,0)" }],
+        { duration: TICK_SPAN_S * 1000, easing: "linear", fill: "both" });
+      tickRate(); document.addEventListener("visibilitychange", tickRate);
+    }
+    if (!tickT) tickT = setInterval(tickKeep, 250);
   }
   // ownerfix 4c (owner 11 Nov: frozen on a PC with "Animation effects" off): reduced motion = ONE headline at a time,
   // a soft opacity swap every 6 s (no sideways motion), tap = next line (pnds.js → PN_TICK_NEXT). Pauses with the
@@ -160,7 +172,8 @@
     if (!p && !document.hidden) tickOneNext();
   }
   function tickOneStart(track) {
-    if (tickRaf) { cancelAnimationFrame(tickRaf); tickRaf = 0; }
+    if (tickAnim) { tickAnim.cancel(); tickAnim = null; } if (tickT) { clearInterval(tickT); tickT = 0; }
+    track.style.translate = ""; tickCut = 0; tickOff = 0;
     track.style.transform = "none"; track.classList.add("tk-one");
     try { track.parentNode.classList.add("tk-one-vp"); track.parentNode.scrollLeft = 0; } catch (e) {}
     if (!document.getElementById("of-tick-one-css") && document.head) {
