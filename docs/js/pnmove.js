@@ -161,11 +161,28 @@
     if (blocked()) { if (m && ++tries < 20) setTimeout(tryShow, 3000); return; }
     open(false);
   }
+  /* Release 13 Nov 2026 (owner 16:43): one "the app is updated" note per phone, only for people who used the app before,
+     never over a sheet / the intro, never in test browsers (navigator.webdriver, like eggs.js). */
+  var UPD = "olnu.upd1311", updTries = 0;
+  function updText() {
+    var d = ""; try { d = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (e) {}
+    return /13/.test(d) && /11/.test(d)
+      ? "PintsNow är uppdaterad! Fredag den 13:e – svarta katter har företräde. Ta det lugnt och kom hem säkert ikväll."
+      : "PintsNow är uppdaterad! Ta det lugnt och kom hem säkert ikväll.";
+  }
+  function updNote() {
+    try { if (navigator.webdriver) return; } catch (e) { return; }
+    if (!A || !A.toast || get(UPD) === "1" || !WAS_USER) return;
+    if (blocked() || shown) { if (++updTries < 10) setTimeout(updNote, 3000); return; }
+    set(UPD, "1");
+    A.toast(updText(), { action: { label: "Skål!", fn: function () {} } });
+  }
   window.PNMOVE = {
     init: function (api) { A = api; },
     onAuthed: function () {
       retireOldPush();
       if (!shown) setTimeout(tryShow, movedIn() ? 1500 : 3500);
+      setTimeout(updNote, 6000);
     },
     open: function () { return open(true); }
   };
