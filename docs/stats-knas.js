@@ -21,7 +21,7 @@
     p = el("section", "panel"); p.id = "pKnas"; p.hidden = true;
     var h = el("h2", null, "🐞 Något knas? "); var c = el("span"); c.id = "xKnasN"; h.appendChild(c); p.appendChild(h);
     var box = el("div"); box.id = "xKnas"; p.appendChild(box);
-    p.appendChild(el("p", "note", "Från ⋯ Mer på kartan och Inställningar → Om appen. Skärmbild + senaste 200 loggrader + beta-id. Max 5 per användare och dygn. Testanvändare är markerade med (test)."));
+    p.appendChild(el("p", "note", "Från ⋯ Mer på kartan och Inställningar → Hjälp oss. Skärmbild + senaste 200 loggrader + beta-id. Max 5 per användare och dygn. Testanvändare är markerade med (test)."));
     var anchor = $("pFb") || $("pWishes");
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(p, anchor); else if ($("main")) $("main").appendChild(p);
     return p;

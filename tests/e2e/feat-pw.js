@@ -244,7 +244,8 @@ async function openGroup(page) {
       await openGroup(page);
       await page.waitForSelector(".skj-gi:not([hidden]) .skj-card", { timeout: 8000 }).catch(() => {});
       ok("group page: '🚗 Kör ikväll: Oskar' + Skjuts?", await page.evaluate(() => { const t = document.querySelector(".skj-gi:not([hidden])"); return !!t && /Oskar/.test(t.textContent) && !!t.querySelector(".skj-ask"); }));
-      ok("group '+' has 🆘 Hämta mig and 🚗 Jag kör ikväll", await page.evaluate(() => !!document.querySelector('.gpg-ga[data-ga="pk-ga"]') && !!document.querySelector('.gpg-ga[data-ga="pk-drv"]')));
+      // polishA (AUDIT-NAV move 4, owner I-17): Hämta mig + Jag kör ikväll are personal → the Ikväll chip menu, not the group '+' (checked at the end of C)
+      ok("group '+' has no 🆘 Hämta mig / 🚗 Jag kör ikväll tile (personal menu now)", await page.evaluate(() => !document.querySelector('.gpg-ga[data-ga="pk-ga"]') && !document.querySelector('.gpg-ga[data-ga="pk-drv"]')));
       await page.evaluate(() => { const t = document.querySelector(".skj-gi"); if (t) t.scrollIntoView({ block: "center" }); });
       await shot(page, "18-grupp-korikvall");
       await page.evaluate(() => document.querySelector(".skj-ask").click());
@@ -255,13 +256,15 @@ async function openGroup(page) {
       await shot(page, "19-skjuts-fragad", true);
       // plus menu screenshot
       await page.evaluate(() => { const p = document.querySelector(".gpg-plus"); if (p) p.click(); }); await wait(page, 600);
-      await page.evaluate(() => { const t = document.querySelector('.gpg-ga[data-ga="pk-ga"]'); if (t) t.scrollIntoView({ block: "center" }); });
       await shot(page, "20-grupp-plus");
       // Medlemmar
       await page.evaluate(() => { const b = document.querySelector(".gpg-back"); if (b) b.click(); }); await wait(page, 300);
       await page.evaluate(() => { const m = document.querySelector(".gmain"); if (m) m.click(); }); await wait(page, 1800);
       ok("Medlemmar: 'Kör ikväll' role pill next to Oskar (R1-30, lane ride)", await page.evaluate(() => { const r = [...document.querySelectorAll(".st-row")].find((x) => /Oskar/.test(x.textContent)); return !!r && !!r.querySelector(".skj-role") && /Kör ikväll/.test(r.textContent); }));
       await shot(page, "21-medlemmar-kor");
+      await page.evaluate(() => document.getElementById("sheet-close") && document.getElementById("sheet-close").click()); await wait(page, 600);
+      await page.evaluate(() => { const c = document.getElementById("pn-ikv2"); if (c) c.click(); }); await wait(page, 500);
+      ok("personal menu (Ikväll chip) has 🆘 Hämta mig and 🚗 Jag kör ikväll (polishA move 4)", await page.evaluate(() => { const t = [...document.querySelectorAll("#pn-ikm .pn-ikm-row")].map((b) => b.textContent); return t.some((x) => /Hämta mig/.test(x)) && t.some((x) => /Jag kör ikväll/.test(x)); }));
       await ctx.close();
     }
     /* ---------- D: ⏰ Baren stänger ---------- */

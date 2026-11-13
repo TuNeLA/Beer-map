@@ -125,7 +125,7 @@
         return;
       }
       setDel(data(r));
-      toast("Kontot raderas " + daysTxt(del && del.days_left) + ". Ångra under Inställningar.", { ms: 6000 });
+      toast("Kontot raderas " + daysTxt(del && del.days_left) + ". Ångra under Inställningar → Konto.", { ms: 6000 });
       if (body && body.isConnected) fillDelete(body);
     });
   }
@@ -216,7 +216,7 @@
     ovEl = h("div", { class: "mm-ov" }, [card]);
     ovEl.addEventListener("click", function (e) { if (e.target === ovEl) closeOv(); });
     card.appendChild(h("h2", { class: "mm-card-t", text: "Blockera den som tog bilden?" }));
-    card.appendChild(h("p", { class: "mm-card-p", text: "Ni ser int' varandra i gänget, chatten, Ikväll eller på kartan. Personen får int' veta det. Ångra under Inställningar → Blockerade." }));
+    card.appendChild(h("p", { class: "mm-card-p", text: "Ni ser int' varandra i gänget, chatten, Ikväll eller på kartan. Personen får int' veta det. Ångra under Inställningar → Integritet & synlighet → Blockerade." }));
     var yes = h("button", { type: "button", class: "btn btn-danger btn-block mm-block-yes", text: "Blockera" });
     var no = h("button", { type: "button", class: "btn btn-ghost btn-block mm-block-no", text: "Avbryt", onclick: closeOv });
     yes.addEventListener("click", function () {

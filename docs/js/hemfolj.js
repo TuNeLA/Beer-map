@@ -1,5 +1,5 @@
 /* Öl Nu — 🏠 FÖLJ MIG HEM (CONTRACT "📸 KROGBILDER · ☀️ UTEVÄDER · 🏠 FÖLJ MIG HEM · 🔍 HITTA KOMPIS", migration 0141, notify-group v26).
-   window.HEMFOLJ, in app.js mods(): init, onAuthed, onPoll, hudChipsHTML, hudClick, openWalkLink + groupActions (gpage.js "+").
+   window.HEMFOLJ, in app.js mods(): init, onAuthed, onPoll, hudChipsHTML, hudClick, openWalkLink. Följ mig hem opens from the personal menu (pnikv.js), not from the group "+" (polishA).
    Entry points (no new map button): 🚕 Taxi hem sheet (rundan.js → HEMFOLJ.taxiNode) and the group page "+" ("🏠 Följ mig hem").
    - Walker: picks friends / whole groups (friend_list = friends + group-mates only), needs the 🏠 Hemzon home point
      (homezone.js, phone only). walk_start → push {event:"walk"} to the chosen people. GPS watchPosition (high accuracy) while
@@ -409,13 +409,8 @@
       return '<button type="button" class="hx-chip hx-walk" data-hx="walkw:' + esc(String(w.id)) + '">🏠 ' + esc(w.name + L(" går hem", " walking home") + (d != null ? " · " + dist(d) + L(" kvar", " left") : "")) + "</button>";
     },
     hudClick: function (a) { if (String(a || "").indexOf("walkw:") === 0) fly(byId(a.slice(6))); },
-    groupActions: function (g) {
-      if (!A || !A.LIVE || off || !g || !g.id || g.dm) return null;
-      var on = mine && mine.live;
-      return { id: "hf-ga", icon: "🏠", label: L("Följ mig hem", "Walk me home"),
-        sub: on ? L("På · " + (mine.watching | 0) + " följer", "On · " + (mine.watching | 0) + " watching") : L("Kompisarna ser dig tills du ä hemma", "Friends see you until you're home"), sect: 1,
-        onClick: function () { openStart({ group: g }); } };
-    },
+    // polishA (AUDIT-NAV move 4, owner I-17): no "Följ mig hem" tile in the group Ikväll (+) view. It is my own thing:
+    // the personal menu (top-left Ikväll chip, pnikv.js) has it, and the "Ta dig hem" sheet (taxiNode).
     taxiNode: function () {
       if (!A || !A.LIVE || off) return null;
       var on = mine && mine.live;

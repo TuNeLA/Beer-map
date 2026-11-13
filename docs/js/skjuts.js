@@ -1,6 +1,6 @@
 /* PintsNow — 🆘 HÄMTA MIG · 🚗 JAG KÖR IKVÄLL · 🚗 SKJUTS? (owner-approved 2026-11-07; migration 0250; push = notify-group
    {event:"pickup"|"pickup_yes", req_id}, owner deploys). window.SKJUTS, in app.js mods(): init, onAuthed, onPoll, groupItem,
-   hudChipsHTML, hudClick + groupActions (gpage.js "+"), statusRow (social.js Medlemmar), ikvNode (pnui.js Ikväll? sheet).
+   hudChipsHTML, hudClick (Hämta mig + Jag kör ikväll: personal menu pnikv.js, polishA), statusRow (social.js Medlemmar), ikvNode (pnui.js Ikväll? sheet).
    Research (Life360 / Snap Map live location / Watcher / Circle of 6): one tap, pick who gets it, live position for a fixed
    time with a clear stop, a visible answer ("Jag kommer"), and the emergency number always on screen.
    - 🆘 Hämta mig: picks friends / whole groups (friend_list), position for 30 / 60 / 90 min (default 60) or until ⏹ Stoppa.
@@ -467,15 +467,8 @@
       else if (a.indexOf("pk-in:") === 0) { var x = (P && P.incoming || []).filter(function (y) { return String(y.id) === a.slice(6); })[0]; if (x) incomingSheet(x); }
     },
     groupItem: groupItem,
-    groupActions: function (g) {
-      if (off || !A || !A.LIVE || !g || !g.id || g.dm) return null;
-      var on = driving(), live = mineLive() && mineLive().kind === "hamta";
-      var out = [{ id: "pk-ga", icon: "🆘", label: live ? "Hämta mig: skickad" : "Hämta mig", sub: live ? "Se vem som kommer" : "Kan nån hämta mig?", sect: 1,
-        onClick: function () { openPickup({ group: g }); } }];
-      if (!g.ev && !g.evg) out.push({ id: "pk-drv", icon: "🚗", label: "Jag kör ikväll", sub: on ? "Gänget ser att du kör" : "Visa gänget att du kör", sect: 1,
-        onClick: function (gg, b) { setDriver(!driving(), b); } });
-      return out;
-    },
+    // polishA (AUDIT-NAV move 4, owner I-17): "Hämta mig" and "Jag kör ikväll" are my own status, not group actions.
+    // They live in the personal menu (top-left Ikväll chip, pnikv.js); the group page keeps "Kör ikväll: N · Skjuts?" (groupItem).
     statusRow: statusRow,
     ikvNode: ikvNode,
     openPickup: openPickup, setDriver: setDriver, driving: driving,

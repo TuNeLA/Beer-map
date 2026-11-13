@@ -221,7 +221,7 @@
   /* ---------- ⚙️ Inställningar: 8 rows, each opens a page with ‹ (d1settings, moves 3 / 6 / 9) ---------- */
   var PAGES = [
     ["konto", "user", "Konto", "Spara konto, Swish, flytta, logga ut"],
-    ["synl", "shield", "Integritet & synlighet", "Vem ser dig, loggning, spökläge, blockerade"],   // relrisk: copy says "Inställningar → Integritet"
+    ["synl", "shield", "Integritet & synlighet", "Vem ser dig, loggning, spökläge, blockerade"],   // relrisk + polishA: copy says "Inställningar → Integritet & synlighet"
     ["notis", "bell", "Notiser & ljud", "Push, ljud, vad du vill höra"],
     ["plats", "pin", "Plats & hem", "Hem, pinnen följer, checka in"],
     ["karta", "map", "Karta & dialekt", "Kartlager, kartstil, dialekt"],
@@ -253,13 +253,23 @@
     for (var i = 0; i < PAGE_SEL.length; i++) if (it.querySelector(PAGE_SEL[i][1])) return PAGE_SEL[i][0];
     return PAGE_SEC[secKey] || "om";
   }
+  // polishA (blind test P2-4): the blocked help names the lock by the address: our lock icon (PNI), not the 🔒 emoji.
+  // The text says "låset" / "the lock" itself, so the icon is decoration (aria-hidden). The text wraps (pnds.css .pn-info-ic).
+  function lockInfo(text) {
+    var d = el("div", { class: "info pn-info-ic" }), P = window.PNI;
+    String(text).split("🔒").forEach(function (part, i) {
+      if (i) { var s = document.createElement("span"); s.innerHTML = P && P.svg ? P.svg("lock", "pi-inl") : "🔒"; while (s.firstChild) d.appendChild(s.firstChild); }
+      d.appendChild(document.createTextNode(part));
+    });
+    return d;
+  }
   function notifRows(stage) {
     if (!PUSH_ON) return;
     stage.appendChild(el("h3", { text: t("notifications") }));
     var sw = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": "false", "aria-label": t("notif") });
     stage.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("notif") }), sw]));
     if (iosNeedsInstall()) stage.appendChild(el("div", { class: "info", text: t("iosInstall") }));
-    else if (window.PUSH.supported() && Notification.permission === "denied") stage.appendChild(el("div", { class: "info", text: t("notifBlockedHelp") }));
+    else if (window.PUSH.supported() && Notification.permission === "denied") stage.appendChild(lockInfo(t("notifBlockedHelp")));
     // uxfix P2-4: main switch off → the choices below look off (grey) too, so green never says "on" while push is off
     var pp = [];   // the .push-prefs box(es) of this page (the stage may not be in the document yet; ds.js moves the box later)
     function subsOff(off) { pp.forEach(function (b) { b.classList.toggle("pn-push-off", !!off); }); }

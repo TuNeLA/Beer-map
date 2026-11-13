@@ -81,7 +81,7 @@
       privNoH: "Det gör vi int'",
       privNo: ["Ingen reklam. Ingen spårning mellan appar. Vi säljer ingen data."],
       privDelH: "Radera",
-      privDel: "⚙️ Inställningar → \"🗑️ Radera mitt konto\": namn, avatar, e-post, chatt, bilder, röstklipp, meddelanden, Swish-nummer, platser, notiser och själva kontot raderas. Delade saker, som en grupp du skapat, blir kvar för de andra – utan dig. Har du tappat appen? Gå till pintsnow.com/radera.",
+      privDel: "Inställningar → Konto → Radera mitt konto: namn, avatar, e-post, chatt, bilder, röstklipp, meddelanden, Swish-nummer, platser, notiser och själva kontot raderas. Delade saker, som en grupp du skapat, blir kvar för de andra – utan dig. Har du tappat appen? Gå till pintsnow.com/radera.",
       privAge: "🔞 PintsNow ä för dig som ä 18 år eller äldre.",
       privContactH: "Frågor?",
       privContact: "Vill du se din data, rätta den eller klaga? Mejla " + SUPPORT + ". Du kan också klaga hos Integritetsskyddsmyndigheten (imy.se).",

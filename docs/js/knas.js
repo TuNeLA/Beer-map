@@ -1,4 +1,4 @@
-/* PintsNow — "Något knas?" (X6, lane main, 10 Nov). One tap from the ⋯ menu (Mer på kartan) or Inställningar → Om appen:
+/* PintsNow — "Något knas?" (X6, lane main, 10 Nov). One tap from the ⋯ menu (Mer på kartan) or Inställningar → Hjälp oss:
    a picture of the screen you came from, the last 200 log lines and the beta id go to the owner (table "feedback", 0410).
      - log: a ring of the last 200 lines from this start: console warn / error / info / log, page errors, failed promises,
        RPC calls (name, ms, ok; never the arguments) and screen changes. Text only, 200 chars a line.

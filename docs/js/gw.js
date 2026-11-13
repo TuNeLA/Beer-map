@@ -92,7 +92,7 @@
   function ikvPromptNode() {
     if (!authed() || off.ikvall_prompt_get) return null;
     var sec = h("section", { class: "ds-section gw-ikvp" }, [h("h3", { class: "ds-section-h", text: "Varje helg" })]);
-    var sub = pushOk() ? "En notis fre och lör kl 20: Ute ikväll?" : "Kräver notiser. Slå på dem i Inställningar.";
+    var sub = pushOk() ? "En notis fre och lör kl 20: Ute ikväll?" : "Kräver notiser. Slå på dem i Inställningar → Notiser & ljud.";
     var list = h("div", { class: "ds-list" });
     var r = swRow("Fråga mig fre + lör kl 20", sub, ikvP.on === true, function (nv, sw) {
       call("ikvall_prompt_set", { p_on: nv }).then(function (res) {

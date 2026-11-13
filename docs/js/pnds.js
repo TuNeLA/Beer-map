@@ -155,7 +155,7 @@
     document.querySelectorAll(".skj-ic").forEach(function (x) { if (!x.querySelector(".pi")) x.innerHTML = ic("taxi"); });
     document.querySelectorAll(".sp-gi-ic").forEach(function (x) { if (!x.querySelector(".pi-game")) x.innerHTML = ic("game"); });
     document.querySelectorAll("#sp .sp-x").forEach(function (b) { if (!b.querySelector(".pi")) { b.innerHTML = ic("x"); b.setAttribute("aria-label", "Stäng spelet"); } });
-    liveCount(); merExtra(); driveLabel(); profileBtn();
+    liveCount(); merExtra(); profileBtn();
   }
   // top-right: my own character's face if I made one, else a clean person icon (no initial on a bottle cap)
   function profileBtn() {
@@ -181,22 +181,7 @@
     var rows = list.querySelectorAll(":scope > .pn-row"), last = rows[rows.length - 1];
     if (last && /Kartstil/.test(txt(last))) list.insertBefore(r, last); else list.appendChild(r);
   }
-  // group page "+": the "Jag kör ikväll" tile shows the new state at once (skjuts.js builds the label once)
-  var driveT = 0;
-  function driveLabel() {
-    var sk = W("SKJUTS"); if (!sk || typeof sk.driving !== "function") return;
-    var on = safe(function () { return sk.driving(); }, false);
-    document.querySelectorAll('#sheet-body [data-ga="pk-drv"] .btn').forEach(function (b) {
-      var gl = b.querySelector(".gpg-gl"), gs = b.querySelector(".gpg-gs"), want = "Jag kör ikväll";
-      if (gl && txt(gl) !== want) gl.innerHTML = ic("taxi", "pi-lead") + want;
-      if (gs) { var ws = on ? "Gänget ser att du kör" : "Visa gänget att du kör"; if (txt(gs) !== ws) gs.textContent = ws; }
-    });
-  }
-  document.addEventListener("click", function (e) {
-    if (!e.target || !e.target.closest || !e.target.closest('[data-ga="pk-drv"]')) return;
-    var n = 0; clearInterval(driveT);
-    driveT = setInterval(function () { driveLabel(); if (++n > 16) clearInterval(driveT); }, 300);
-  });
+  // polishA: the group "+" has no "Jag kör ikväll" tile any more (personal menu, pnikv.js), so no tile label refresh here
 
   /* ---------- 2. main screen ---------- */
   var lcBusy = false;
@@ -1261,33 +1246,6 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds14 back END */
-/* ds17 switch START — "Jag kör ikväll" in the group + menu is an on/off setting: a switch on the tile (role=switch,
-   aria-checked), the label never says ": på". State = SKJUTS.driving(); refreshed after every repaint and after a tap. */
-(function () {
-  "use strict";
-  function on() { try { return !!(window.SKJUTS && window.SKJUTS.driving && window.SKJUTS.driving()); } catch (e) { return false; } }
-  function run() {
-    var v = String(on());
-    document.querySelectorAll('#sheet-body [data-ga="pk-drv"] .btn').forEach(function (b) {
-      var sw = b.querySelector(":scope > .pn-ga-sw");
-      if (!sw) { sw = document.createElement("span"); sw.className = "switch pn-ga-sw"; sw.setAttribute("aria-hidden", "true"); b.appendChild(sw); b.classList.add("pn-ga-swb"); b.setAttribute("role", "switch"); }
-      if (sw.getAttribute("aria-checked") !== v) sw.setAttribute("aria-checked", v);
-      if (b.getAttribute("aria-checked") !== v) b.setAttribute("aria-checked", v);
-    });
-  }
-  var t = 0;
-  function soon() { clearTimeout(t); t = setTimeout(run, 60); }
-  function start() {
-    var s = document.getElementById("sheet"); if (!s || !window.MutationObserver) return;
-    new MutationObserver(soon).observe(s, { childList: true, subtree: true });
-    document.addEventListener("click", function (e) {
-      if (!e.target || !e.target.closest || !e.target.closest('[data-ga="pk-drv"]')) return;
-      var n = 0, iv = setInterval(function () { run(); if (++n > 16) clearInterval(iv); }, 300);
-    });
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
-})();
-/* ds17 switch END */
 /* ds18 motion START — progress bars move with transform: the inline width a module sets ("62%") becomes --pn-p (0.62);
    CSS draws the bar at full width and scales it from the left. Modules keep writing style.width; nothing else changes. */
 (function () {

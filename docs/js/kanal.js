@@ -149,7 +149,7 @@
       if (!/id="olnu-beta"/.test(html)) throw new Error("not a beta");
       return setRec({ ch: "beta", url: BETA, at: Date.now(), by: "user" }).then(function (saved) {
         if (!saved) { undo("Det gick inte att slå på betan. Uppdatera appen och försök igen."); return writeRec({ ch: "stable", at: Date.now() }); }
-        toast("Startar betan… I betan loggar vi allt för att förbättra appen (stäng av i Inställningar → Integritet).", { ms: 4000 });
+        toast("Startar betan… I betan loggar vi allt för att förbättra appen (stäng av i Inställningar → Integritet & synlighet).", { ms: 4000 });
         setTimeout(function () { location.reload(); }, 600);
       });
     }).catch(function () { clearTimeout(tm); undo("Betan går inte att nå just nu. Försök igen senare."); });

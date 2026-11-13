@@ -782,11 +782,6 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .pt-body:has(.pt-xl) .pt-row .pt-go{background:var(--ds-raised) !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;box-shadow:none !important}
 .avw-next.pn-skip{background:transparent !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;box-shadow:none !important}
 /* ds16 primary END */
-/* ds17 switch START — the switch sits at the right end of the "+" tile row */
-#sheet-body .pn-ga-swb{position:relative;padding-right:76px !important}
-#sheet-body .pn-ga-swb::after{display:none !important}
-#sheet-body .pn-ga-swb>.pn-ga-sw{position:absolute;right:var(--ds-4);top:50%;margin-top:-16px;pointer-events:none}
-/* ds17 switch END */
 /* ds18 motion START — motion leftovers (audit): only transform and opacity move.
    Switch knob: transform (was left). Progress bars: scaleX from the left (js maps the inline width to --pn-p).
    Tab marker: transform only; the selected item is transparent while the marker slides. Bar sheet opens with the spring.
@@ -1086,9 +1081,6 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #sheet .gpg[data-gv="plus"]>.sk-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.row .pi-medal{color:var(--pn-acc-skal)}
 #sheet .gpg[data-gv="plus"]>[data-ga="spel"] .pi-lead,#sheet .gpg[data-gv="plus"]>.gg-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.cr-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.cer-gi .pi-lead{color:var(--pn-acc-games)}
 #sheet .gpg[data-gv="plus"]>[data-ga="gpg-ev"] .pi-lead{color:var(--pn-acc-event)}
-#sheet .gpg[data-gv="plus"]>[data-ga="hf-ga"] .pi-lead{color:var(--pn-acc-cam)}
-#sheet .gpg[data-gv="plus"]>[data-ga="pk-ga"] .pi-lead{color:var(--pn-acc-safe)}
-#sheet .gpg[data-gv="plus"]>[data-ga="pk-drv"] .pi-lead{color:var(--pn-acc-chat)}
 #sheet .gpg[data-gv="plus"]>.rnd-gi .pi-lead{color:var(--pn-acc-money)}
 /* + / ⋯ view head: a plain heading (no card, no icon) — the header ‹ is the way back */
 #sheet .gitem:not(.gcard)>div.gp.gpg>.gpg-ph{background:none !important;border:0 !important;padding:0 !important;min-height:0 !important;box-shadow:none !important}
@@ -1427,7 +1419,11 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
 body.mn-rail-lbl #pn-ghost,body.mn-rail-lbl #pn-evs,body.mn-rail-lbl #btn-more{overflow:visible}
 body.mn-rail-lbl .mn-rail-l{display:block;position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);max-width:60px;padding:0 var(--sp-1);
   border-radius:var(--r-xs);background:var(--pn-float);color:var(--ds-text);font:600 var(--fs-12)/16px var(--ds-sans);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;pointer-events:none;text-shadow:none}
+  text-overflow:ellipsis;pointer-events:auto;cursor:pointer;text-shadow:none}
+/* polishA (blind test P2-2): the word is part of the button. The label is a child of the button (a tap on it = a tap on the
+   button) and ::after fills the 18 px under the 44 px button, so the hit area is one 44 × 62 px column (no gap that goes to
+   the map). Absolute: no layout shift. */
+body.mn-rail-lbl #pn-ghost::after,body.mn-rail-lbl #pn-evs::after,body.mn-rail-lbl #btn-more::after{content:"";position:absolute;left:0;right:0;top:100%;height:18px}
 body.mn-rail-lbl #pn-evs{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 1 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
 body.mn-rail-lbl #btn-more.pn-more{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 2 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
 /* F2 · LÄSK! (js/lask.js): "Jag kör ikväll" on → the ÖL! button is a soda can for the driver (no drink is logged) */
@@ -1897,4 +1893,7 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 /* P2-4: push page. Main switch off → the sub-switches look off (grey); the help text under the main switch is never cut */
 .push-prefs.pn-push-off .switch{filter:grayscale(1);opacity:.5}
 #sheet-body.ds-set .ds-item-hint.info{display:block !important;-webkit-line-clamp:unset;overflow:visible;cursor:auto}
+/* polishA: the push help always wraps (never one cut line), the lock is our 16 px icon in the text line */
+#sheet-body .info.pn-info-ic{display:block !important;-webkit-line-clamp:unset !important;overflow:visible !important;white-space:normal !important;overflow-wrap:anywhere;text-overflow:clip;max-height:none !important}
+.info .pi-inl{width:16px;height:16px;vertical-align:-3px;margin:0 1px}
 /* uxfix END */

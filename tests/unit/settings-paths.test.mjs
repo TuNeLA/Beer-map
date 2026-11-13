@@ -20,3 +20,31 @@ for (const f of FILES) {
     for (const h of hits) assert.ok(titles.some((t) => t.startsWith(h[1])), f + " says 'Inställningar → " + h[1] + "' but the hub rows are: " + titles.join(" | "));
   });
 }
+
+// polishA (13 Nov, blind test + AUDIT-NAV): EVERY app path "Inställningar → <X>" (copy, not comments) names a real hub page
+// exactly (Konto, Integritet & synlighet, Notiser & ljud, …). Before: "Inställningar → 🗑️ Radera mitt konto" (v14 privacy text),
+// "→ Integritet", "→ Blockerade", "Om PintsNow". Phone system paths (iPhone: Inställningar → Notiser …, Safari) are not ours.
+// PENDING: dm.js + safety.js belong to lane polishB this morning ("Inställningar → Blockerade" there); remove them from SKIP after its merge.
+const SKIP = new Set(["js/dm.js", "js/safety.js"]);
+const SYS = /^(Notiser|Notifications|Safari|Integritet och säkerhet|Privacy & Security|Location)\b/;
+const strip = (f, s) => f.endsWith(".html") ? s.replace(/<!--[\s\S]*?-->/g, "") : s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:\\"'\w])\/\/.*$/gm, "$1");
+const list = (d) => fs.readdirSync(new URL(d, R)).filter((f) => /\.(js|html)$/.test(f)).map((f) => d + f);
+const ALL = [...list("js/"), ...list("")].filter((f) => !SKIP.has(f));
+test("every 'Inställningar → X' in the app copy names a hub page (polishA)", () => {
+  const bad = [];
+  for (const f of ALL) {
+    const s = strip(f, read(f)).replace(/&amp;/g, "&");
+    for (const m of s.matchAll(/(?<!Website |Webbplats)(Inställningar|Settings)(?: \(Settings\))? → ([^→.,()<\n]+)/g)) {
+      const before = s.slice(Math.max(0, m.index - 12), m.index);
+      const x = m[2].replace(/\\"|"|\p{Extended_Pictographic}|️/gu, "").trim();
+      if (/iPhone|Android/.test(before) || SYS.test(x)) continue;
+      if (!titles.includes(x)) bad.push(f + ": '" + m[0].slice(0, 60) + "'");
+    }
+  }
+  assert.deepEqual(bad, [], "paths that name no hub page (" + titles.join(" | ") + ")");
+});
+test("the privacy text and radera.html give the new delete path Inställningar → Konto → Radera mitt konto", () => {
+  assert.match(read("js/v14.js"), /privDel: "Inställningar → Konto → Radera mitt konto/);
+  assert.match(read("integritet.html"), /Inställningar → Konto → Radera mitt konto/);
+  const rd = read("radera.html"); assert.match(rd, /<b>Konto<\/b> och sedan <b>Radera mitt konto<\/b>/); assert.doesNotMatch(rd, /Om PintsNow/);
+});

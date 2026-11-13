@@ -344,7 +344,7 @@
       m === "on" ? "Alltid (också om du stänger av): " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Vid ett fel skickas dina senaste knapptryck med, bara om användning ä på."
         : "Bara om du har sagt ja: " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Alltid: felrapporter (fel i appen, appversion) – utan position och utan uppgifter om telefonen.",
       "Sparas i 30 dagar, sen tas det bort. Bara vi (PintsNow) ser det. Inga andra företag.",
-      "Stäng av i ⚙️ Inställningar → Integritet. Stänger du av positionen tar vi bort det sparade."];
+      "Stäng av i Inställningar → Integritet & synlighet. Stänger du av positionen tar vi bort det sparade."];
   }
   function privBlock(into) {
     var b = into && into.nodeType ? into : document.getElementById("sheet-body"); if (!b || b.querySelector(".pnlog-priv") || !A || !A.el) return;
@@ -511,7 +511,7 @@
   // R1-03 (lane main): a quiet caption in the toast column (under the HUD row, left of the rail), not a card over the top.
   // "OK" = the small primary; the opt-out is a text button. Styles: pnds.css "lane:main" (.mn-note), tokens only.
   var NOTE_P = {
-    "lognote.loc": "Under betan sparar vi din position (max 1/min) och vad du trycker på i 30 dagar. Inga namn. Ändra i Inställningar.",
+    "lognote.loc": "Under betan sparar vi din position (max 1/min) och vad du trycker på i 30 dagar. Inga namn. Ändra i Inställningar → Integritet & synlighet.",
     "lognote.use": "Under betan sparar vi vad du trycker på, och din position när plats är på. 30 dagar, inga namn.",
     "lognote.offLoc": "Stäng av position", "lognote.offUse": "Ändra", "lognote.ok": "OK"
   };
@@ -566,10 +566,10 @@
         "Din position under kvällen (max 1 gång/min när appen är öppen) och dina in- och utcheckningar. Så kan vi göra automatisk incheckning bättre."]
         .forEach(function (t) { ul.appendChild(el("li", { text: t })); });
       body.appendChild(ul);
-      body.appendChild(el("p", { class: "muted", text: "Vi sparar det i 30 dagar. Ingen annan ser det. Du kan ändra dig när du vill i Inställningar. Teknisk data (system, nät, minne, hastighet) skickas bara om du säger ja. Felrapporter (fel i appen, utan position och utan uppgifter om telefonen) skickas alltid." }));
+      body.appendChild(el("p", { class: "muted", text: "Vi sparar det i 30 dagar. Ingen annan ser det. Du kan ändra dig när du vill i Inställningar → Integritet & synlighet. Teknisk data (system, nät, minne, hastighet) skickas bara om du säger ja. Felrapporter (fel i appen, utan position och utan uppgifter om telefonen) skickas alltid." }));
       var yes = el("button", { type: "button", class: "btn btn-amber btn-block pnlog-yes", text: "Ja, hjälp till" });
       var no = el("button", { type: "button", class: "btn btn-block pnlog-no", text: "Nej tack" });
-      yes.addEventListener("click", function () { setCons(true); A.closeSheet(); A.toast("Tack! Du kan ändra det i Inställningar.", { id: "pnlog-ask", ms: 3000 }); });
+      yes.addEventListener("click", function () { setCons(true); A.closeSheet(); A.toast("Tack! Du kan ändra det i Inställningar → Integritet & synlighet.", { id: "pnlog-ask", ms: 3000 }); });
       no.addEventListener("click", function () { setCons(false); A.closeSheet(); });
       body.appendChild(el("div", { class: "row pnlog-btns" }, [yes, no]));
     }, { onClose: function () { if (ls(K_CONS) == null) { lsSet(K_CONS, "0"); consChanged(); } } });
