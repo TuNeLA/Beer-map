@@ -73,6 +73,11 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
     if (ONLY.test("N")) {
       const { ctx, page } = await H.ctxFor(browser, { width: 390, height: 844 });
       await H.boot(page);
+      // hotfix1 (RC2 CI 13 Nov, real Mapbox): the header can still show "– ute" (no poll answer yet) when boot() returns. Wait up
+      // to 15 s for the first number (shown or published), then check that the header publishes the SAME number it shows. "–" after 15 s still fails.
+      const t0 = Date.now();
+      await page.waitForFunction(() => { const e = document.getElementById("live-count"); return !!e && (!!e.getAttribute("data-out") || /\d+\s*ute/.test(e.textContent || "")); }, null, { timeout: 15000 }).catch(() => {});
+      console.log("N P1-5 header number after boot: +" + (Date.now() - t0) + " ms");
       const hd = await page.evaluate(() => { const e = document.getElementById("live-count"); const m = /(\d+)\s*ute/.exec(e.textContent || ""); return { out: e.getAttribute("data-out"), txt: e.textContent, n: m ? +m[1] : null }; });
       ok("N P1-5 the header's own number is published (#live-count[data-out] = the 'N ute' it shows)", hd.out != null && hd.out !== "" && (hd.n == null || +hd.out === hd.n), hd);
       const r = await page.evaluate(() => {

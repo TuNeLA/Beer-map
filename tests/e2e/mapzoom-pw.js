@@ -155,7 +155,14 @@ function bars(page) {
       ok(r.under, "I-28 " + W + ": my dot layer is UNDER every bar / food icon layer (dot at " + r.dot + ")");
       ok(r.over, "I-28 " + W + ": the ring (bigger than a bar icon) is OVER the bar icons (ring at " + r.ring + ")");
       ok(r.dom === 0, "I-28 " + W + ": no DOM me-dot on top of the GL bars (" + r.dom + " visible)");
-      if (!ci) ok(r.nDot === 1 && r.nRing >= 1, "I-28 not checked in: my dot + ring are drawn (" + r.nDot + "/" + r.nRing + ")");
+      if (!ci) {   // hotfix1 I-63 (owner 13 Nov): the ring only when a bar / food icon covers my dot; away from the bars = the dot only
+        const at = async (ll) => { await page.evaluate((ll) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, 16.5, { animate: false }); }, ll); await idle(page, 1200);
+          return page.evaluate(() => { const g = __mz.gm(), q = (l) => g.getLayer(l) ? g.queryRenderedFeatures({ layers: [l] }).length : -1; return { nDot: q("olnu-me-dot"), nRing: q("olnu-me-ring"), cov: GLBARS._me().cov }; }); };
+        const pit = await page.evaluate((id) => { const m = GLBARS._marker(id); return m ? [m.getLatLng().lat, m.getLatLng().lng] : null; }, PIT);
+        const nb = pit ? await at(pit) : {}, aw = await at([60.1452, 15.1745]);
+        ok(nb.nDot === 1 && nb.nRing >= 1, "I-28 not checked in, on the Pitchers icon: my dot + ring are drawn " + JSON.stringify(nb));
+        ok(aw.nDot === 1 && aw.nRing === 0, "I-28 not checked in, away from the bars: my dot, no ring (I-63) " + JSON.stringify(aw));
+      }
       else ok(r.nDot === 0 && r.du.length === 1 && r.du[0] <= 2, "I-28 checked in at Pitchers: no dot, one 'Du' tag on the Pitchers icon (dot " + r.nDot + ", du " + JSON.stringify(r.du) + ")");
       await page.screenshot({ path: shotDir + "mapzoom-" + TAG + "-z28-" + (ci ? "ci" : "me") + ".png" });
       ok(errs.length === 0, "I-28 " + W + " no page errors " + JSON.stringify(errs.slice(0, 3)));

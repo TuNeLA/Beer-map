@@ -107,10 +107,20 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     // reopen, then a tap outside the chat box closes it
     await page.evaluate(() => { const p = document.querySelector(".chat-list .cm-picker"); if (p) p.remove(); });
     await page.click('.chat-list .chat-msg[data-mid="1"] .cm-body').catch(() => {}); await wait(page, 500);
-    const hd = await page.evaluate(() => { const h = document.querySelector("#sheet .sheet-head h2, #sheet h2"); if (!h) return null; const r = h.getBoundingClientRect(); return { x: r.left + 4, y: r.top + r.height / 2 }; });
+    // hotfix1 (RC2 CI, 13 Nov): the floating menu of the top line floats up over the sheet title, so the old fixed point (the h2's
+    // left edge) was ON the menu (at 360/390 it hit a reaction button, at 430 the menu's padding). Tap a plain spot of the sheet
+    // that is outside the chat box AND outside the menu (not a button / field): the title row first, then the area under the list.
+    const hd = await page.evaluate(() => {
+      const list = document.querySelector(".chat-list"), sh = document.getElementById("sheet"), h = document.querySelector("#sheet .sheet-head h2, #sheet h2");
+      const free = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && sh.contains(e) && !list.contains(e) && !e.closest(".cm-picker, button, a, input, textarea, select, [role=button]"); };
+      const vw = document.documentElement.clientWidth, rows = [];
+      if (h) { const r = h.getBoundingClientRect(); rows.push(r.top + r.height / 2); }
+      const L = list.getBoundingClientRect(); rows.push(L.bottom + 6, L.top - 6);
+      for (const y of rows) for (let x = 8; x < vw - 8; x += 6) if (free(x, y)) return { x, y };
+      return null; });
     const had = await page.evaluate(() => !!document.querySelector(".chat-list .cm-picker"));
     if (hd) await page.mouse.click(hd.x, hd.y); await wait(page, 400);
-    ok(`[${w}] N-03 a tap outside the chat box closes the floating menu`, had && await page.evaluate(() => !document.querySelector(".chat-list .cm-picker")), { had });
+    ok(`[${w}] N-03 a tap outside the chat box closes the floating menu`, had && !!hd && await page.evaluate(() => !document.querySelector(".chat-list .cm-picker")), { had, hd });
     await ctx.close();
   }
   // a longer chat: the top line of a scrolled box → the line comes into view, the menu above or under it, inside the screen

@@ -59,7 +59,8 @@
     { id: "done", t: "Klar!" }
   ];
   var NONE_P = { fh: 0.5, gl: 0.6, hw: 0.5 };
-  var QUICK = { sk: "Hud", fs: "Form", hr: "Hår", ey: "Ögon", br: "Bryn", mt: "Mun", fh: "Skägg", up: "Kläder", gl: "Glasögon", hw: "Huvud", hi: "Hand", bg: "Bakgrund" };
+  // hotfix1 I-64: "Form" alone read as "shape of what?" → "Ansiktsform" (as the step title); up "Kläder" stays
+  var QUICK = { sk: "Hud", fs: "Ansiktsform", hr: "Hår", ey: "Ögon", br: "Bryn", mt: "Mun", fh: "Skägg", up: "Kläder", gl: "Glasögon", hw: "Huvud", hi: "Hand", bg: "Bakgrund" };
   var PICK_LINES = ["Snyggt val!", "Den sitter.", "Klockrent.", "Ja, dä ä du.", "Stilpoäng!"];
 
   /* ---------- the wizard ---------- */

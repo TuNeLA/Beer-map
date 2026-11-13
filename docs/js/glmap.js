@@ -467,7 +467,7 @@
         m.setLayoutProperty(L_LBL, "icon-offset", JSON.parse(JSON.stringify(oe).replace('["get","oi"]', '["get","lo"]'))); } catch (e) {}
     }
     clSplit(m, cfeats);   // ds30 + a1map I-27
-    meDraw(m);   // a1map I-28
+    meDraw(m); meCheck();   // a1map I-28 + hotfix1 I-63 (re-check the ring after this redraw)
     var sig = feats.map(function (f) { var p = f.properties; return p.id + p.img + p.di + p.t + p.sz + p.e + p.li + p.lo + p.bf + p.b2 + p.oi; }).join("|");
     if (sig !== lastSig) {
       lastSig = sig; try { m.getSource(SRC_B).setData({ type: "FeatureCollection", features: feats }); } catch (e) {}
@@ -705,8 +705,25 @@
   /* a1map I-28 (owner 2026-11-12: "my dot sat on top of the Pitchers icon"): my position in GL. The blue dot is UNDER every
      bar / food icon; a thin blue ring, bigger than a bar icon, is OVER them, so "where am I" stays clear and the bar icon
      on my spot stays readable. Checked in at a bar in view: no dot, a blue ring + "Du" tag on that bar's icon instead.
-     app-map.js showMe() calls GLBARS.me(); the DOM me-dot is hidden while GL draws (and sits under the bar panes without GL). */
+     app-map.js showMe() calls GLBARS.me(); the DOM me-dot is hidden while GL draws (and sits under the bar panes without GL).
+     hotfix1 I-63 (owner 2026-11-13: "a separate blue ring with a gap around my dot looks odd"): the ring is drawn ONLY when a
+     bar / food / place icon (or a bar name) covers or touches my dot on screen; else the dot only (+ the accuracy circle).
+     meCheck() re-checks after the bars redraw, on moveend (zoomend too) and on a new position: one debounced box query. */
   var SRC_ME = "olnu-me", L_MED = "olnu-me-dot", L_MER = "olnu-me-ring", L_MEDU = "olnu-me-du", meLL = null, meAt = null, meSig = "";
+  var meCov = false, meChkT = 0, ME_TOUCH = 13;   // I-63: the ring is on (an icon covers the dot) · dot radius 8 + stroke 3 + 2 px = "touch"
+  function meCovered(m) {   // I-63: does a drawn venue icon cover or touch my dot (rendered features in a small box)?
+    if (!meLL || meAt) return false;
+    var p = m.project([meLL[1], meLL[0]]), B = ME_TOUCH, lays = venueIds().filter(function (l) { return l !== L_BLK && m.getLayer(l); });
+    return m.queryRenderedFeatures([[p.x - B, p.y - B], [p.x + B, p.y + B]], { layers: lays }).length > 0;
+  }
+  function meCheck() {   // I-63: debounced, after GL has drawn the new bars / view (no per-frame work)
+    clearTimeout(meChkT);
+    meChkT = setTimeout(function () {
+      if (!on || !gm || !layersReady || !gm.getSource(SRC_ME)) return;
+      var c = false; try { c = meCovered(gm); } catch (e) {}
+      if (c !== meCov) { meCov = c; meDraw(gm); }
+    }, 250);
+  }
   function duImage(m) {
     if (m.hasImage("pn-du")) return;
     var w = 26, h = 16, cv = document.createElement("canvas"), x = cv.getContext("2d"); cv.width = (w + 4) * R; cv.height = (h + 4) * R; x.scale(R, R);
@@ -734,7 +751,7 @@
     if (!m || !m.getSource || !m.getSource(SRC_ME)) return;
     var f = [], pt = function (ll, p) { f.push({ type: "Feature", geometry: { type: "Point", coordinates: [ll[1], ll[0]] }, properties: p }); };
     if (meAt) { pt(meAt.ll, { k: "du", s: meAt.r / 16 }); }
-    else if (meLL) { pt(meLL, { k: "dot", s: 1 }); pt(meLL, { k: "ring", s: 1 }); }
+    else if (meLL) { pt(meLL, { k: "dot", s: 1 }); if (meCov) pt(meLL, { k: "ring", s: 1 }); }   // I-63: the ring only when an icon covers the dot
     var sig = JSON.stringify(f); if (sig === meSig) return; meSig = sig;
     try { m.getSource(SRC_ME).setData({ type: "FeatureCollection", features: f }); } catch (e) {}
   }
@@ -885,7 +902,7 @@
       map.on("preclick", onPreclick);
       // glfix: the selected bar (cm-sel, set by app.js after the tier pass) is full + 1.25× at once, not at the next pan
       map.on("popupopen popupclose", function () { if (on) setTimeout(function () { lastSig = ""; sync(); }, 0); });
-      map.on("moveend", function () { if (on) { heatPaint(); cloudPaint(); } });
+      map.on("moveend", function () { if (on) { heatPaint(); cloudPaint(); meCheck(); } });   // hotfix1 I-63: meCheck
       // ✏️ BAREA editor (body.ba-edit) hides the marker panes: the GL bar layers hide with them
       if (window.MutationObserver) new MutationObserver(editVis).observe(document.body, { attributes: true, attributeFilter: ["class"] });
       setTimeout(check, 0);
@@ -894,8 +911,8 @@
     on: function () { return on; },
     sync: sync,
     // a1map I-28: app-map.js showMe(): my position (drawn in GL under the bar icons while GL is on). true = GL draws it.
-    me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) meDraw(gm); return on; },
-    _me: function () { return { ll: meLL, at: meAt, sig: meSig, layers: [L_MED, L_MER, L_MEDU] }; },
+    me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
+    _me: function () { return { ll: meLL, at: meAt, sig: meSig, cov: meCov, layers: [L_MED, L_MER, L_MEDU] }; },
     // app.js renderHeat: pts = [[lat, lng, w]…] or null (heat off). true = drawn in GL (leaflet.heat stays off the map).
     heat: function (pts) { if (!on) return false; heatPts = pts || null; heatData(); return true; },
     // clouds.js redraw: the snapped points {lat, lng, w, a}. true = drawn in GL (the canvas stays empty).

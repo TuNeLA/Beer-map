@@ -115,7 +115,7 @@ async function routes(page, me) {
       ok("beret selected", await page.evaluate(() => { const t = [...document.querySelectorAll(".ave-tile")].find((x) => /^Basker/.test(x.getAttribute("aria-label"))); return t.classList.contains("on"); }));
       await shot(page, "editor-head");
       // Uniform
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Överdel").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Tröja & jacka").click());
       await wait(page, 300);
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       await wait(page, 200);
@@ -136,8 +136,8 @@ async function routes(page, me) {
       // set the wanted look again (dice changed it)
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Huvud").click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Basker/.test(t.getAttribute("aria-label"))).click());
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Överdel").click());
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => /Överdel/.test(b.textContent)).click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Tröja & jacka").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => /Tröja & jacka/.test(b.textContent)).click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       // v2: held item pint, frame rank ring; lock "Hand" against dice
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Hand").click());
@@ -150,7 +150,7 @@ async function routes(page, me) {
       ok("dice kept the held pint", await page.evaluate(() => { const t = [...document.querySelectorAll(".ave-tile")].find((x) => /^Stor stark/.test(x.getAttribute("aria-label"))); return t && t.classList.contains("on"); }));
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Huvud").click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Basker/.test(t.getAttribute("aria-label"))).click());
-      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Överdel").click());
+      await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => b.textContent.trim() === "Tröja & jacka").click());
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       await wait(page, 300);
       await shot(page, "editor-v2");

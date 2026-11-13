@@ -154,6 +154,8 @@ jobs:
             filter: '^(bump)$'
           - name: c5extras
             filter: '^(c5extras)$'
+          - name: hotfix1
+            filter: '^(hotfix1)$'
           - name: f13
             filter: '^(f13)$'
           - name: menufix

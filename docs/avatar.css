@@ -84,7 +84,7 @@
 .ave-nav{position:sticky;top:calc(-1 * var(--ds-4,16px));z-index:5;display:flex;flex-direction:column;gap:var(--ds-2,8px);padding:var(--ds-2,8px) 0;background:var(--ds-sheet,#121a2a)}
 .ave-nav .ave-tabs{position:static;flex-wrap:nowrap;overflow-x:auto;padding:0 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
 .ave-nav .ave-tabs::-webkit-scrollbar{display:none}
-.ave-tab{position:relative;flex:0 0 auto;scroll-snap-align:start}
+.ave-tab{position:relative;flex:0 0 auto;scroll-snap-align:start;white-space:nowrap}
 .ave-subs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:var(--ds-1,4px);scrollbar-width:none}
 .ave-subs::-webkit-scrollbar{display:none}
 .ave-subs[hidden]{display:none}

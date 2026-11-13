@@ -1522,15 +1522,15 @@
 
   /* ---------- Editor: category chips + sub-tabs, lazy tile grid, live preview, 🎲 with "lock this slot", "Nytt" dots ---------- */
   var FACE_VB = "24 20 52 52", EYE_VB = "31 33 38 24", NECK_VB = "22 58 56 42", HAND_VB = "0 46 54 54";
-  var TABS = [
-    ["face", "Ansikte", "Face", [["sk", "Hudton", "Skin", "sw"], ["fs", "Form", "Shape"], ["ey", "Ögon", "Eyes", FACE_VB], ["ec", "Ögonfärg", "Eye colour", "sw"], ["br", "Bryn", "Brows", FACE_VB],
+  var TABS = [   // hotfix1 I-64 (owner 2026-11-13): "Form" (shape of what?) → "Ansiktsform"; "Överdel" → "Tröja & jacka"
+    ["face", "Ansikte", "Face", [["sk", "Hudton", "Skin", "sw"], ["fs", "Ansiktsform", "Face shape"], ["ey", "Ögon", "Eyes", FACE_VB], ["ec", "Ögonfärg", "Eye colour", "sw"], ["br", "Bryn", "Brows", FACE_VB],
       ["ns", "Näsa", "Nose", FACE_VB], ["mt", "Mun", "Mouth", FACE_VB], ["ck", "Kinder", "Cheeks", FACE_VB]]],
     ["det", "Detaljer", "Details", [["fm", "Märken", "Marks", FACE_VB], ["fp", "Målning", "Paint", FACE_VB], ["er", "Öron", "Ears", FACE_VB]]],
     ["hair", "Hår", "Hair", [["hr", "Frisyr", "Style"], ["hc", "Färg", "Colour", "sw"]]],
     ["beard", "Skägg", "Beard", [["fh", "Skägg & mustasch", "Beard & mustache", FACE_VB]]],
     ["head", "Huvud", "Hat", [["hw", "Huvudbonad", "Headwear"]]],
     ["acc", "Glasögon", "Glasses", [["gl", "Glasögon & masker", "Glasses & masks", FACE_VB]]],
-    ["uni", "Kläder", "Clothes", [["up", "Överdel", "Top"], ["uc", "Färg", "Colour", "sw"], ["nk", "Hals", "Neck", NECK_VB], ["md", "Medaljer", "Medals"]]],
+    ["uni", "Kläder", "Clothes", [["up", "Tröja & jacka", "Top"], ["uc", "Färg", "Colour", "sw"], ["nk", "Hals", "Neck", NECK_VB], ["md", "Medaljer", "Medals"]]],
     ["hand", "Hand", "Hand", [["hi", "Håller i", "Holding", HAND_VB]]],
     ["bg", "Bakgrund", "Background", [["bg", "Bakgrund", "Background"], ["fr", "Ram", "Frame"]]]
   ];
