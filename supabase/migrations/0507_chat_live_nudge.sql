@@ -66,10 +66,13 @@ exception when others then
   return false;
 end $$;
 
-revoke all on function public.olnu_live_can(text) from public;
+revoke all on function public.olnu_live_can(text) from public, anon;
 grant execute on function public.olnu_live_can(text) to authenticated;
 revoke all on function public.olnu_live_msg_tg() from public;
 revoke all on function public.olnu_live_seen_tg() from public;
+-- Supabase grants new functions to anon/authenticated by default privileges: take them back (sqlauto found them callable)
+revoke all on function public.olnu_live_msg_tg() from anon, authenticated;
+revoke all on function public.olnu_live_seen_tg() from anon, authenticated;
 
 do $$
 begin
