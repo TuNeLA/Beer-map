@@ -17,7 +17,7 @@
 --   select to_regprocedure('public.olnu_live_can(text)') is not null,
 --     exists (select 1 from pg_trigger where tgname = 'olnu_zz_live_msg'),
 --     exists (select 1 from pg_trigger where tgname = 'olnu_zz_live_seen_u'),
---     exists (select 1 from pg_policies where schemaname = 'realtime' and tablename = 'messages' and policyname = 'pn_live_chat_read');
+--     to_regclass('realtime.messages') is null or exists (select 1 from pg_policies where schemaname = 'realtime' and tablename = 'messages' and policyname = 'pn_live_chat_read');   -- no Realtime schema (CI) = t
 
 -- 1. the chat nudge
 create or replace function public.olnu_live_msg_tg()
