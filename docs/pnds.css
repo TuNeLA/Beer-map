@@ -1837,3 +1837,12 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 #sheet-body.wm-hold.wm-cont>*{visibility:hidden}
 #sheet-body>.wm-shell{min-height:192px;background:var(--pn-skel-rows) 0 0/100% 100% no-repeat}
 /* d3smooth END */
+/* uxfix START (blind test 13 Nov) */
+/* P1-4: Systembolaget row in "Mer på kartan": the row opens the nearest store, the switch shows / hides the pins */
+.pn-sb-row{gap:var(--ds-3)}
+.pn-sb-go{flex:1 1 auto;min-width:0;min-height:44px;display:flex;align-items:center;gap:var(--ds-3);padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pn-sb-go .sb-ico{display:block}
+/* P2-4: push page. Main switch off → the sub-switches look off (grey); the help text under the main switch is never cut */
+.push-prefs.pn-push-off .switch{filter:grayscale(1);opacity:.5}
+#sheet-body.ds-set .ds-item-hint.info{display:block !important;-webkit-line-clamp:unset;overflow:visible;cursor:auto}
+/* uxfix END */

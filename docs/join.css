@@ -99,3 +99,8 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
 
 /* ---------- Vänner tab ---------- */
 .inv-pane>.jn-app{margin:0 0 var(--ds-4)}
+/* uxfix P1-6: after a join the map button leads; the install guide is optional (folded) */
+.jn-tomap{margin-top:var(--ds-3)}
+.jn-instfold{margin-top:var(--ds-3);text-align:left}
+.jn-instsum{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ds-text-2);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.jn-instfold[open]>.jn-instsum{margin-bottom:var(--ds-2)}

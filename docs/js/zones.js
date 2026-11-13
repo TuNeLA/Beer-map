@@ -419,6 +419,8 @@
     if (!counts) return e(name) + " · <b>–</b> ute ikväll";
     return e(name) + (n ? " · <b>" + nf(n) + "</b> ute ikväll" : some ? " · <b>några</b> ute ikväll" : " · lugnt ikväll");
   }
+  // uxfix P1-5: people out in the area the pill names (null = not known yet; "några" counts as 1)
+  function outN() { return pillD && pillD.known ? ((pillD.n | 0) || (pillD.some ? 1 : 0)) : null; }
   function pillEsc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }); }
   /* ui1 B10 (owner): the town name is NEVER cut. Fit order, first that fits wins:
      1. one line "Dalarna · 47 ute ikväll" → "· 47 ute" → "· 47"
@@ -469,6 +471,7 @@
     var el = document.getElementById("live-count"); if (!el) return;
     el.classList.toggle("zn-pill", !!h);
     if (h) {
+      var on = outN(); el.setAttribute("data-out", on == null ? "" : String(on));   // uxfix P1-5: the header's own number (one count source)
       var key = h + "|" + window.innerWidth;
       if (fitFor !== key || !el.querySelector(".zn-pn") || el.innerHTML !== fitted) { fitFor = key; fitPill(el, pillD); }
     }
@@ -609,6 +612,7 @@
   }
   /* fixM T-15 OUT END */
   window.ZONES = {
+    outN: outN,
     init: function (api) {
       if (A) return; A = api; map = api && api.map; if (!map) return;
       try { hookPill(); } catch (e) {}   // fixM T-15

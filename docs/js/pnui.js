@@ -239,6 +239,7 @@
         });
         list.appendChild(row);
       });
+      sbRow(list);
       var b2 = W("BASEMAP");
       if (b2 && typeof b2.open === "function") {
         var r = h("button", { type: "button", class: "ds-row pn-row" }, [h("span", { class: "ds-row-i", html: ic("map-trifold") }),
@@ -251,6 +252,16 @@
       try { if (W("KNAS") && W("KNAS").moreRow) { body.appendChild(h("h3", { class: "pn-safe-h mn-knas-h", text: "Hjälp oss" })); body.appendChild(h("div", { class: "ds-list pn-list mn-knas-list" }, [W("KNAS").moreRow()])); } } catch (e) {}   // lane main X6: "Något knas?"
       body.appendChild(h("p", { class: "pn-note", text: "Tips: håll fingret på kartan för att skapa ett event eller lägga till ett ställe." }));
     });
+  }
+  // uxfix P1-4: Systembolaget in "Mer på kartan". The row opens the nearest store card (pins on); the switch only shows / hides the pins.
+  function sbRow(list) {
+    var S = W("SYSTEMET"); if (!S || !S.openNearest || !S.isOn) return;
+    var sw = h("button", { type: "button", class: "switch pn-sb-sw", role: "switch", "aria-checked": String(!!S.isOn()), "aria-label": "Systembolaget på kartan" });
+    var go = h("button", { type: "button", class: "pn-sb-go" }, [h("span", { class: "ds-row-i", html: S.icon ? S.icon(24) : ic("clock") }),
+      h("span", { class: "ds-row-t" }, [h("span", { text: "Systembolaget" }), h("small", { text: "Närmaste butik och öppettider" })])]);
+    go.addEventListener("click", function () { A.closeSheet(); setTimeout(function () { S.openNearest(); }, 320); });
+    sw.addEventListener("click", function () { var now = sw.getAttribute("aria-checked") !== "true"; S.setOn(now); sw.setAttribute("aria-checked", String(now)); });
+    list.appendChild(h("div", { class: "ds-row pn-row pn-sb-row" }, [go, sw]));
   }
   function moreDot() {   // an event badge on the hidden 📅 shows as a small dot on Mer
     var b = document.getElementById("btn-more"), e = document.querySelector("#btn-evs .evs-badge");

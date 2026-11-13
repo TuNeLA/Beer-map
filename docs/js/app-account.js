@@ -576,7 +576,7 @@
         var steps = el("ol", { class: "intro-steps" }, [
           el("li", {}, [el("span", { class: "is-n", text: "1" }), el("span", { text: t("intro1") })]),
           el("li", {}, [el("span", { class: "is-n", text: "2" }), el("span", { text: t("intro2") })]),
-          el("li", {}, [el("span", { class: "is-n", text: "3" }), el("span", { text: t("intro3") })])
+          U.ls.get("olnu.jn.done", "") ? null : el("li", {}, [el("span", { class: "is-n", text: "3" }), el("span", { text: t("intro3") })])   // uxfix P1-6: already in a group (invite link) → no "Gå med i en grupp"
         ]);
         var cb = el("input", { type: "checkbox", id: "age-cb" });
         var go = btn(t("introGo"), "btn-amber btn-block", function () {

@@ -260,15 +260,20 @@
     stage.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("notif") }), sw]));
     if (iosNeedsInstall()) stage.appendChild(el("div", { class: "info", text: t("iosInstall") }));
     else if (window.PUSH.supported() && Notification.permission === "denied") stage.appendChild(el("div", { class: "info", text: t("notifBlockedHelp") }));
-    window.PUSH.current().then(function (sub) { sw.setAttribute("aria-checked", String(!!sub)); });
+    // uxfix P2-4: main switch off → the choices below look off (grey) too, so green never says "on" while push is off
+    var pp = [];   // the .push-prefs box(es) of this page (the stage may not be in the document yet; ds.js moves the box later)
+    function subsOff(off) { pp.forEach(function (b) { b.classList.toggle("pn-push-off", !!off); }); }
+    window.PUSH.current().then(function (sub) { sw.setAttribute("aria-checked", String(!!sub)); subsOff(!sub); });
     if (PN.s.authed && window.PUSH.prefsSection) window.PUSH.prefsSection(stage, rpc, toast);   // v27 🔔 välj notiser, nattro, max per kväll
+    pp = [].slice.call(stage.querySelectorAll(".push-prefs"));
+    subsOff(sw.getAttribute("aria-checked") !== "true");   // uxfix P2-4: off until PUSH.current() says on (it can wait long for the service worker)
     sw.addEventListener("click", function () {
       var on = sw.getAttribute("aria-checked") === "true";
       if (on) {
-        window.PUSH.disable(rpc).then(function () { sw.setAttribute("aria-checked", "false"); toast(t("notifOff")); })
+        window.PUSH.disable(rpc).then(function () { sw.setAttribute("aria-checked", "false"); subsOff(true); toast(t("notifOff")); })
           .catch(function (e) { toast(errMsg(e), { err: true }); });
       } else {
-        enableNotifs().then(function (res) { sw.setAttribute("aria-checked", String(res === "on")); });
+        enableNotifs().then(function (res) { sw.setAttribute("aria-checked", String(res === "on")); subsOff(res !== "on"); });
       }
     });
   }

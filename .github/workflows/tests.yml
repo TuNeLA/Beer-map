@@ -154,6 +154,8 @@ jobs:
             filter: '^(bump)$'
           - name: c5extras
             filter: '^(c5extras)$'
+          - name: uxfix
+            filter: '^(uxfix)$'
           - name: d3smooth
             filter: '^(d3smooth)$'
           - name: d4map

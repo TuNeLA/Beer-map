@@ -56,7 +56,13 @@
     U.ls.setJSON("olnu.night", m);
   }
   function updateCounts() {
-    $("live-count").innerHTML = (window.ZONES && window.ZONES.pill && window.ZONES.pill()) || (LIVE ? t("live", (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(PN.s.liveTotal != null ? PN.s.liveTotal : PN.s.lastPollAt ? beerOnly().length | 0 : "–"))   /* QA #18: "–" before the first poll */ : t("soonLive"));   // 🗺️ zones: "Dalarna · 47 ute ikväll" when zoomed out
+    // uxfix P1-5: ONE count source. The number the header shows goes on #live-count[data-out]; the ticker and the
+    // "no data here" toast read it, so "7 ute" never stands next to "Ingen ute här".
+    var zp = window.ZONES && window.ZONES.pill && window.ZONES.pill();
+    var ln = (function (v) { try { return window.DEMO ? window.DEMO.counter(v) : v; } catch (e) { return v; } })(PN.s.liveTotal != null ? PN.s.liveTotal : PN.s.lastPollAt ? beerOnly().length | 0 : "–");
+    $("live-count").innerHTML = zp || (LIVE ? t("live", ln)   /* QA #18: "–" before the first poll */ : t("soonLive"));   // 🗺️ zones: "Dalarna · 47 ute ikväll" when zoomed out
+    var hn = zp ? (window.ZONES.outN ? window.ZONES.outN() : null) : LIVE && typeof ln === "number" ? ln : null;
+    $("live-count").setAttribute("data-out", hn == null ? "" : String(hn | 0));
     var f = friendsDrinking(), badge = $("groups-badge");
     badge.textContent = String(f); badge.hidden = f === 0;
     $("btn-groups").setAttribute("aria-label", t("groups") + (f ? " — " + t("friendsNow", f) : ""));

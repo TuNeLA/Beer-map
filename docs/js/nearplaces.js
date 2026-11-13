@@ -95,7 +95,13 @@
       var note = el("p", { class: "muted np-note" });
       var seg = el("div", { class: "np-seg", role: "tablist", "aria-label": "Visa" });
       var list = el("div", { class: "np-list", "aria-live": "polite" });
-      body.appendChild(note); body.appendChild(seg); body.appendChild(list);
+      body.appendChild(note); body.appendChild(seg);
+      // uxfix P1-4: Systembolaget chip (nearest store card + opening hours; js/systemet-pins.js)
+      var SBm = window.SYSTEMET;
+      if (SBm && SBm.openNearest) body.appendChild(el("div", { class: "np-chips" }, [el("button", { type: "button", class: "np-chip np-sb",
+        html: (SBm.icon ? SBm.icon(20) : "") + "<span>Systembolaget</span><small>öppettider</small>",
+        onclick: function () { var p = pos && pos.own ? pos : null; A.closeSheet(); setTimeout(function () { SBm.openNearest(p); }, 320); } })]));
+      body.appendChild(list);
       var filter = opts.filter || "all", step = 0, pos = here(), all = null, seq = 0;
       [["all", "Alla"], ["bar", "Barer"], ["food", "Mat & fika"]].forEach(function (f) {
         var b = el("button", { type: "button", class: "np-seg-b" + (f[0] === filter ? " on" : ""), role: "tab", "aria-selected": String(f[0] === filter), text: f[1] });

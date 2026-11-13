@@ -242,7 +242,34 @@
     body.appendChild(A.el("p", { class: "muted sb-set-note", text: tx(T.note[0], T.note[1]) }));
   }
 
+  // uxfix P1-4 (blind test: hours were hard to find): "Mer på kartan" and "Ställen nära dig" open the NEAREST store card.
+  // Turns the pins on, centres that store (zoom ≥ 14) and opens its card. No list yet: waits for oppet:sb (max 8 s).
+  function nearest(lat, lng) {
+    load(); if (!SB || !SB.length || !isFinite(lat)) return null;
+    var best = null, bd = Infinity;
+    SB.forEach(function (s) { var d = U.haversine(lat, lng, s.lat, s.lng); if (d < bd) { bd = d; best = s; } });
+    return best;
+  }
+  function openNearest(pos) {
+    if (!map) return Promise.resolve(null);
+    if (!on()) { setOn(true); update(); }
+    return new Promise(function (res) {
+      var t0 = Date.now();
+      (function go() {
+        var p = pos; try { if (!p && A && A.lastLoc) p = A.lastLoc(); } catch (e) {}
+        if (!p) { var c = map.getCenter(); p = { lat: c.lat, lng: c.lng }; }
+        var s = nearest(p.lat, p.lng);
+        if (!s) { if (Date.now() - t0 < 8000) { setTimeout(go, 300); return; } res(null); return; }
+        try { map.setView([s.lat, s.lng], Math.max(map.getZoom(), 14), { animate: false }); } catch (e) {}
+        update();
+        setTimeout(function () { openCard(s); res(s); }, 120);
+      })();
+    });
+  }
   window.SYSTEMET = {
+    isOn: on,
+    setOn: function (v) { setOn(!!v); if (!v && map && popup) map.closePopup(popup); update(); },
+    nearest: nearest, openNearest: openNearest, icon: iconSVG,
     init: function (api) {
       A = api; map = api && api.map; if (!map || !L) return;
       if (!map.getPane("sbpins")) { map.createPane("sbpins"); map.getPane("sbpins").style.zIndex = 565; }

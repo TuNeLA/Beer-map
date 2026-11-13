@@ -114,11 +114,22 @@
   }
 
   /* ---------- New medal toast (queued, after the beer toast) ---------- */
-  var nextAt = 0;
-  function later(fn, delay) {
-    var at = Math.max(Date.now() + (delay || 0), nextAt);
-    nextAt = at + 2000;
-    setTimeout(fn, at - Date.now());
+  // uxfix P1-3 (blind test: ~5 pop-ups in 10 s after the first ÖL!): medal toasts and the "Befordrad!" card wait while a
+  // sheet, the "Vilken sort?" strip, a takeover or the other kind is on screen, and for 10 s after an accepted beer (the beer
+  // toast + the strip are the 2 things then). Then one at a time, 2 s apart.
+  var beerAt = 0, CALM_MS = 10000, tq = [], tqT = 0;
+  function calmBusy() {
+    if (Date.now() - beerAt < CALM_MS) return true;
+    var sh = document.getElementById("sheet"); if (sh && !sh.hidden) return true;
+    if (window.OLNU_STRIP && window.OLNU_STRIP.up()) return true;
+    return !!document.querySelector(".takeover");
+  }
+  function later(fn, delay) { tq.push(fn); if (!tqT) tqT = setTimeout(pumpToasts, delay || 0); }
+  function pumpToasts() {
+    tqT = 0; if (!tq.length) return;
+    if (calmBusy() || popOpen) { tqT = setTimeout(pumpToasts, 700); return; }
+    var f = tq.shift(); try { f(); } catch (e) {}
+    if (tq.length) tqT = setTimeout(pumpToasts, 2000);
   }
   function announce(rows, quiet) {
     (rows || []).forEach(function (r) {
@@ -385,8 +396,10 @@
   function nextPop() {
     if (popOpen) return;
     var o = popQ.shift(); if (!o) return;
-    // Wait for the HOT STREAK / MEDEVAC takeover to finish.
-    if (document.querySelector(".takeover")) { popQ.unshift(o); setTimeout(nextPop, 900); return; }
+    // Wait for the HOT STREAK / MEDEVAC takeover to finish. uxfix P1-3: also while a sheet is open, during the 10 s after a
+    // beer and while medal toasts still wait (they go first).
+    var shOpen = document.getElementById("sheet"); shOpen = !!(shOpen && !shOpen.hidden);
+    if (document.querySelector(".takeover") || shOpen || Date.now() - beerAt < CALM_MS || tq.length || tqT) { popQ.unshift(o); setTimeout(nextPop, 900); return; }
     // Never on top of the beer-type strip (js/barsplus.js): wait until it closes.
     if (window.OLNU_STRIP && window.OLNU_STRIP.up()) { popQ.unshift(o); window.OLNU_STRIP.after(nextPop); return; }
     popOpen = true;
@@ -523,6 +536,7 @@
     },
     onAuthed: function () { soft(IDLE_MS); },
     onBeerAccepted: function (d, o) {
+      beerAt = Date.now();   // uxfix P1-3: calm window
       if ((d.beer_count | 0) > 0) noteBeer();
       if (o && o.ghost) setTimeout(function () { claim("spoke"); }, 1200);
       setTimeout(function () { award(null, true); }, 1500);

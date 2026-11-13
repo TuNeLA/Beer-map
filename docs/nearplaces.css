@@ -31,3 +31,9 @@
 .where-more{margin-top:10px}
 .where-more-box:empty{display:none}
 .where-more-box{margin-top:8px}
+/* uxfix P1-4: Systembolaget chip (nearest store + hours) */
+.np-chips{display:flex;flex-wrap:wrap;gap:var(--ds-2,8px);margin:0 0 var(--ds-3,12px)}
+.np-chip{display:inline-flex;align-items:center;gap:var(--ds-2,8px);min-height:44px;padding:0 var(--ds-3,12px);border-radius:var(--ds-r-pill,999px);
+  border:1px solid var(--np-line);background:var(--np-bg);color:var(--np-text);font:inherit;font-weight:600;cursor:pointer}
+.np-chip small{color:var(--np-muted);font-weight:400}
+.np-chip .sb-ico{flex:none}

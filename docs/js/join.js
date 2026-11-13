@@ -561,6 +561,21 @@
       qr(qb, dl, 220);
       act.appendChild(h("p", { class: "jn-then muted", text: L("Funkar på iPhone och Android.", "Works on iPhone and Android.") }));
     }
+    foldAfterJoin();
+  }
+  // uxfix P1-6 (blind test: 5 screens, the only exit under a long install guide): after a join the map is the next step.
+  // One primary "Till kartan – se gänget" right under the done line; the install guide folds into an optional <details>.
+  function foldAfterJoin() {
+    if (!(ARR && ARR.kind === "join" && joined) || !act) return;
+    var done = act.querySelector(".jn-donebox"), rest = [].slice.call(act.children).filter(function (n) { return n !== done; });
+    var go = bigBtn(L("Till kartan – se gänget", "To the map – see the gang"), "btn-amber ds-btn-primary jn-tomap", close);
+    var det = h("details", { class: "jn-instfold" }, [h("summary", { class: "jn-instsum", text: L("Lägg appen på hemskärmen (valfritt)", "Add the app to your home screen (optional)") })]);
+    rest.forEach(function (n) { det.appendChild(n); });
+    if (done) { var hint = done.querySelector(".jn-then"); if (hint) hint.remove(); }
+    act.insertBefore(go, done ? done.nextSibling : act.firstChild);
+    if (rest.length) act.appendChild(det);
+    var sk = root && root.querySelector(".jn-skip"); if (sk) sk.hidden = true;
+    try { go.focus({ preventScroll: true }); go.scrollIntoView({ block: "nearest" }); } catch (e) {}
   }
   function install() {
     var e = bip;

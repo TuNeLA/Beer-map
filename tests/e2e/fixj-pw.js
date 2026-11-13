@@ -71,7 +71,8 @@ function report() {
       await page.selectOption("#sf-age-year", "1995").catch(() => {}); await wait(page, 300);
       await page.click(".jn-age-go").catch(() => {}); await wait(page, 2500);
       const joined = calls.some((c) => c.fn === "join_group");
-      await page.click(".jn-skip").catch(() => {}); await wait(page, 3000);
+      // uxfix P1-6: after the join the exit is the primary "Till kartan – se gänget" (the skip link hides then)
+      await page.click((await page.$(".jn-tomap")) ? ".jn-tomap" : ".jn-skip").catch(() => {}); await wait(page, 3000);
       const intro = await page.evaluate(() => {
         const r = document.getElementById("intro"), b = document.getElementById("intro-body");
         const go = b ? [...b.querySelectorAll("button")].find((x) => /btn-amber/.test(x.className) && !/intro-privlink/.test(x.className)) : null;

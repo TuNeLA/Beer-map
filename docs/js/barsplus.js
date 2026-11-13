@@ -389,7 +389,22 @@
     q.forEach(function (f, i) { setTimeout(function () { try { f(); } catch (e) {} }, 350 + i * 300); });
   }
   window.OLNU_STRIP = { up: stripUp, after: afterStrip };
+  // uxfix P1-3: back (Android gesture / button), Escape and a map tap close the strip. The strip owns ONE history entry
+  // (like bold-hem.js); a close by ✕ / a pick / the timer takes it back only when it is still on top.
+  var stripHist = false, stripOwnBack = 0, stripKeysOn = false;
+  function stripKey(e) { if (e.key === "Escape" && strip && !strip.hidden) hideStrip(); }
+  function stripPop(e) {
+    if (stripOwnBack > 0) { stripOwnBack--; return; }
+    if (strip && !strip.hidden && !(e.state && e.state.bpStrip)) { stripHist = false; hideStrip(); }
+  }
+  function stripMapTap() { if (strip && !strip.hidden) hideStrip(); }
+  function stripOpened() {
+    if (!stripKeysOn) { stripKeysOn = true; document.addEventListener("keydown", stripKey); window.addEventListener("popstate", stripPop); try { A.map.on("click", stripMapTap); } catch (e) {} }
+    if (stripHist) return;
+    try { var st = history.state || {}; history.pushState({ bpStrip: 1, olnuNav: typeof st.olnuNav === "number" ? st.olnuNav : 0 }, ""); stripHist = true; } catch (e) {}
+  }
   function hideStrip() {
+    if (stripHist) { stripHist = false; try { if (history.state && history.state.bpStrip) { stripOwnBack++; history.back(); } } catch (e) { stripOwnBack = 0; } }
     if (stripTimer) { clearInterval(stripTimer); stripTimer = null; }
     if (strip) { strip.hidden = true; strip.innerHTML = ""; }
     gateUntil = 0;
@@ -420,6 +435,7 @@
             (same ? '<span class="bp-same">' + esc(t("bpSame")) + "</span>" : "") + styleIcon(k, emo) + '<span class="bp-tn">' + esc(names[k] || k) + "</span></button>";
         }).join("") + '</div><div class="bp-st-bar"><span></span></div>';
       strip.hidden = false;
+      stripOpened();
       try { document.documentElement.style.setProperty("--bp-strip-h", (strip.offsetHeight + 18) + "px"); } catch (e) {}
       stripLeft = 12000; stripLast = Date.now();
       var bar = strip.querySelector(".bp-st-bar span");

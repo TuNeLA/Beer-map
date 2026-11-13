@@ -1416,6 +1416,8 @@
       var c = m.getCenter(), k = Math.round(c.lat * 20) + ":" + Math.round(c.lng * 10); if (seen[k]) return;
       var b = m.getBounds(), any = (A.beers() || []).some(function (x) { return isFinite(x.lat) && b.contains([x.lat, x.lng]); });
       seen[k] = 1;
+      var lc = document.getElementById("live-count"), hn = lc ? +(lc.getAttribute("data-out") || 0) || 0 : 0;   // uxfix P1-5: one count source (the header's "N ute")
+      if (hn > 0) { if (!(A.beers() || []).some(function (x) { return x && !x.is_mine && (x.friend_name || x.is_friend); })) A.toast(hn + " ute – gå med i ett gäng för att se namn", { id: "pn-nodata", ms: 5000, cls: "pn-nodata" }); return; }
       if (!any) A.toast("Ingen data här ikväll än: ingen har tryckt ÖL! i närheten. Bli först!", { id: "pn-nodata", ms: 5000, cls: "pn-nodata" });
     } catch (e) {}
   }
@@ -1468,6 +1470,7 @@
     try {
       var n = 0; try { var nt = JSON.parse(localStorage.getItem("olnu.night") || "null"); n = nt ? nt.count | 0 : 0; } catch (e) {}
       var ghost = false; try { ghost = localStorage.getItem("olnu.ghostMode") === "1"; } catch (e) {}
+      if (n <= 1 && document.querySelector("#toasts .toast")) return;   // uxfix P1-3: the 1st beer = the beer toast + "Vilken sort?" only (max 2 things)
       var old = document.querySelector(".pn-beerok"); if (old) old.remove();
       var c = document.createElement("div"); c.className = "pn-beerok"; c.setAttribute("role", "status");
       c.innerHTML = (window.PNI ? window.PNI.svg("check", "") : "") + "<span>" + (n ? "Öl #" + n + " registrerad" : "Öl registrerad") + "</span><small>" + (ghost ? "spökläge" : "syns för gänget") + "</small>";

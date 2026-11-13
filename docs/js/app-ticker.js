@@ -47,6 +47,14 @@
       PN.s.newsDirty = true;
     });
   }
+  // uxfix P1-5: the header's own number (#live-count[data-out], app-hud updateCounts / zones pill). With people out the
+  // filler never says "nobody here": no named pins → "N ute – gå med i ett gäng för att se namn".
+  function hdrOut() { var e = $("live-count"), v = e && e.getAttribute("data-out"); return v ? +v || 0 : 0; }
+  function quietItem() {
+    var n = hdrOut();
+    if (n > 0 && !PN.s.beers.some(function (b) { return b && !b.is_mine && (b.friend_name || b.is_friend); })) return { text: n + " ute – gå med i ett gäng för att se namn", cls: "" };
+    return n > 0 ? { text: t("chaosOut", n), cls: "" } : { text: t("tickQuiet"), cls: "tk-quiet" };
+  }
   function newsCtx(titles) {
     var me = PN.s.meState || {}, medals = [];
     try {
@@ -58,7 +66,7 @@
     } catch (e) {}
     var rl = [];
     try { rl = window.RALLY && window.RALLY.list ? window.RALLY.list() : []; } catch (e) { rl = []; }
-    return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles, liveTotal: PN.s.liveTotal,   // fixM T-14: the header's own count
+    return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles, liveTotal: PN.s.liveTotal, hdrOut: hdrOut(),   // fixM T-14: the header's own count · uxfix P1-5: the number the header shows
       others: PN.s.beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: PN.s.checkins,
       home: groupRows, rallies: rl, myName: getName() || null, myTitle: me.title || null, myMedals: medals.slice(0, 3) };
   }
@@ -82,7 +90,7 @@
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
     var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
-    if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
+    if (!items.length) items = [quietItem()];
     newsPrev = items.map(function (x) { return x.text; });
     PN.s.tickerKey = "v2";
     tickPending = items; tickIx = 0;
@@ -102,7 +110,7 @@
       tickIx = 0; PN.s.newsDirty = true;
       try { renderTickerItemsOnly(); } catch (e) {}
     }
-    var x = tickPending[tickIx++] || { text: t("tickQuiet"), cls: "tk-quiet" };
+    var x = tickPending[tickIx++] || quietItem();
     frag.appendChild(el("span", { class: "tk-item" + (x.cls ? " " + x.cls : ""), text: x.text }));
     track.appendChild(frag);
   }
@@ -153,7 +161,7 @@
   var tickOneT = 0, TICK_ONE_MS = 6000;
   function tickOneItem() {
     if (tickIx >= tickPending.length) { tickIx = 0; PN.s.newsDirty = true; try { renderTickerItemsOnly(); } catch (e) {} }
-    return tickPending[tickIx++] || { text: t("tickQuiet"), cls: "tk-quiet" };
+    return tickPending[tickIx++] || quietItem();
   }
   function tickOneShow(track, fade) {
     var x = tickOneItem(), n = el("span", { class: "tk-item tk-one-i" + (x.cls ? " " + x.cls : "") + (fade ? " tk-one-out" : ""), text: x.text, title: x.text });
@@ -195,7 +203,7 @@
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
     var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
-    if (!items.length) items = [{ text: t("tickQuiet"), cls: "tk-quiet" }];
+    if (!items.length) items = [quietItem()];
     newsPrev = items.map(function (x) { return x.text; });
     tickPending = items;
   }

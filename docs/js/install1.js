@@ -176,6 +176,7 @@
     var k = kind(); if (k === "desktop") return false;
     if (window.JOIN && window.JOIN.handled && window.JOIN.handled()) return false;   // the invite card has its own install step
     if (/[?&](flytt|chat|sos)=/.test(location.search)) return false;
+    if (lsGet("olnu.jn.done")) return false;   // uxfix P1-6: joined from an invite link (that card had its own optional guide): no install wall later
     var s = state();
     if (!s) return lsGet("olnu.intro") !== "1";   // the first open (a returning user keeps the after-the-aha prompt)
     // once more, on a later night (fixJ T-22: and ≥ 12 h after the skip, so 04:30 → 05:06 is not "Andra kvällen!")

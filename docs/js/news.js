@@ -154,6 +154,12 @@
   }
   // "… hissar flaggan." after "en grupp": a sentence never starts with a small letter
   function sentences(t) { return String(t).replace(/((?:^|[^.…])(?:[.!?]|\.["”»])\s+)([a-zåäö])/g, function (m, a, b) { return a + b.toUpperCase(); }); }   // fixC N-19: not after ?” / !” (a quoted question mid-sentence: "skicka ”Ikväll?” till gänget")   // "Asså... vad" (an ellipsis) stays
+  // uxfix P1-5: the header says "N ute" (snap.hdr) and no pin has a name → one real line "N ute – gå med i ett gäng för att se namn"
+  function namesHint(beers, byKind) {
+    if (!(snap.hdr > 0) || beers.some(function (b) { return b && !b.is_mine && (b.friend_name || b.is_friend); })) return false;
+    byKind.townNames = [function (d) { return d.n + " ute – gå med i ett gäng för att se namn"; }];
+    return true;
+  }
   var QUIET = { calm: 3, emptyFirst: 1, townQuiet: 3 }, quietText = {}, quietN = 0;   // kind -> shown only while snap.n is below this
   function friendAtBar(b) {
     if (b.snap != null || b.bar_id != null) return b.snap === "bar" || (b.bar_id != null && b.snap !== "area" && b.snap !== "home");
@@ -172,7 +178,7 @@
     // an old quiet line on screen that the NEW snapshot would not allow (its own threshold), or the plain "Lugnt läge" filler
     [].forEach.call(track.querySelectorAll(".tk-item.tk-quiet"), function (e) {
       var lim = quietText[String(e.textContent || "")];
-      if ((lim && snap.n >= lim) || (!lim && snap.n >= 3)) staleOut(e);
+      if ((lim && snap.n >= lim) || (!lim && snap.n >= 3) || snap.hdr > 0) staleOut(e);
     });
     return cut;
   }
@@ -389,11 +395,11 @@
     var c0 = ctx.center || null, nearOf = function (p) { return !c0 || (isFinite(p.lat) && U.haversine(c0.lat, c0.lng, +p.lat, +p.lng) <= NEAR_M); };
     curCenter = c0; hourCur = hourNow(now); barLL = {};
     var nearP = beers.filter(nearOf), nearC = (ctx.checkins || []).filter(function (c) { return c && nearOf(c); });
-    snap = { pins: nearP.length, cis: nearC.length, total: ctx.liveTotal != null ? ctx.liveTotal | 0 : null, at: now.getTime() };
+    snap = { pins: nearP.length, cis: nearC.length, total: ctx.liveTotal != null ? ctx.liveTotal | 0 : null, at: now.getTime(), hdr: ctx.hdrOut | 0 };   // uxfix P1-5: hdr = the header's "N ute"
     snap.n = ppl(nearP, nearC);   // fixMo N-10: distinct people (was max(pins, check-ins))
     (ctx.checkins || []).forEach(function (c) { if (c && c.bar_name && isFinite(c.lat)) barLL[c.bar_name] = { lat: +c.lat, lng: +c.lng }; });
     function add(k, d, imp, cls) {
-      if (QUIET[k] && snap.n >= QUIET[k]) return;   // fixM T-14: no "Ingen ute" next to people / check-ins near
+      if (QUIET[k] && (snap.n >= QUIET[k] || snap.hdr > 0)) return;   // uxfix P1-5: never "Tomt / Int' en själ" while the header says "N ute"   // fixM T-14: no "Ingen ute" next to people / check-ins near
       if (byKind[k] && !storeSkip(k)) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" });
     }
     var anon = t("newsAnon") || ["?"];
@@ -550,7 +556,7 @@
     var hotNear = near.filter(function (b) { return U.level(b.beer_count) > 0; }).length;
     var nearN = c ? snap.n : ppl(beers, ctx.checkins);   // fixMo N-10: distinct people near (pins + check-ins)
     if (nearN < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
-    if (!nearN && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet");   // tx05: real line first
+    if (!nearN && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet"); if (namesHint(beers, byKind)) add("townNames", { n: snap.hdr }, 3);   // tx05: real line first · uxfix P1-5: "N ute – gå med i ett gäng"
     if (nearN >= 1 && (hourNow(now) >= 15 || hourNow(now) < 4)) add("forecast", { stad: stad, n: nearN, p: Math.min(99, nearN * 9 + hotNear * 10) }, 0);
     // Two random "filler" headlines every round: the biggest source of variety.
     add("random", { stad: stad }, 0); add("random", { stad: stad }, 0);
@@ -621,7 +627,7 @@
     var lastText = prev.length ? prev[prev.length - 1] : null;
     if (out.length > 1 && out[0].text === lastText) out.push(out.shift());
     // tx05 (usability): in an empty town the useful real line opens the belt, the jokes come after it.
-    for (var ef = 1; ef < out.length; ef++) if (out[ef].k === "emptyFirst") { out.unshift(out.splice(ef, 1)[0]); break; }
+    for (var ef = 1; ef < out.length; ef++) if (out[ef].k === "emptyFirst" || out[ef].k === "townNames") { out.unshift(out.splice(ef, 1)[0]); break; }
     markShown(now, out);   // tx04: only what is really shown counts as used tonight
     out.forEach(function (x) { if (QUIET[x.k]) { if (++quietN > 400) { quietText = {}; quietN = 0; } quietText[x.text] = QUIET[x.k]; } });   // fixM T-14 (freshBelt)
     return out.map(function (x) { return { text: x.text, cls: (x.cls || "") + (catOf(x) !== "general" ? " tk-real" : ""), k: x.k }; });   // ds40 tk-real = a real event (dot)

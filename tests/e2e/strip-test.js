@@ -202,8 +202,12 @@ const S2 = {
     await shot2(page, "fifth-strip");
     await page.locator(".bp-strip .bp-st-x").tap();
     await page.waitForTimeout(1500);
-    const d = await stripState(page);
-    ok("level-up popup shows after the strip closes", !d.vis && d.mxPop, d);
+    let d = await stripState(page);
+    // uxfix P1-3 (owner/blind test 13 Nov): the popup also waits while a sheet is open (here the sheet that the strip's after-queue
+    // opens). Same intent: never under the strip, never lost. A sheet up → the popup waits; the sheet closes → it shows.
+    ok("level-up popup is not lost and not on top of a sheet after the strip closes", !d.vis && (d.sheet ? !d.mxPop : d.mxPop), d);
+    if (d.sheet) { await page.click("#sheet-close").catch(() => {}); await page.waitForTimeout(2500); d = await stripState(page); }
+    ok("level-up popup shows after the strip closes (and the sheet, if one opened)", !d.vis && d.mxPop, d);
     await shot2(page, "fifth-after");
     ok("fifth: no page errors", errors.length === 0, errors.slice(0, 3).join(" | "));
     await ctx.close();

@@ -17,11 +17,14 @@
   var U = window.U;
   var A = null;
   var SUPPORT = "support@pintsnow.com", TERMS_VER = 1;
-  var TERMS_KEY = "olnu.terms", AGE_KEY = "olnu.age18", AGE_NO = "olnu.ageNo", AGE_PEND = "olnu.agePend", AGE_SRV = "olnu.ageSrv";
+  var TERMS_KEY = "olnu.terms", AGE_KEY = "olnu.age18", AGE_NO = "olnu.ageNo", AGE_PEND = "olnu.agePend", AGE_SRV = "olnu.ageSrv", AGE_ANS = "olnu.ageAns";
   var off = {};            // RPC missing on this server → that feature is off
   var stateCache = null;
 
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; }
+  // uxfix P1-1: the pending answer stays in localStorage until set_age_ok says OK (sessionStorage was lost on a reopen,
+  // so the sheet asked again). An old sessionStorage value is still read once.
+  function pend(v) { if (v === undefined) return ls(AGE_PEND) || ss(AGE_PEND); ls(AGE_PEND, v); ss(AGE_PEND, null); return null; }
   function ss(k, v) { try { if (v === undefined) return sessionStorage.getItem(k); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) {} return null; }
   function esc(s) { return U.esc(s); }
   function h(tag, attrs, kids) {
@@ -58,7 +61,7 @@
     closeOverlay();
     opts = opts || {};
     var card = h("div", { class: "sf-card", role: "dialog", "aria-modal": "true", "aria-label": opts.label || "PintsNow" });
-    ovEl = h("div", { class: "sf-ov" + (opts.hard ? " sf-hard" : "") }, [card]);
+    ovEl = h("div", { class: "sf-ov" + (opts.hard ? " sf-hard" : "") + (opts.block ? " sf-block" : "") }, [card]);
     if (!opts.hard) ovEl.addEventListener("click", function (e) { if (e.target === ovEl) { closeOverlay(); if (opts.onCancel) opts.onCancel(); } });
     document.body.appendChild(ovEl);
     build(card);
@@ -92,14 +95,14 @@
       bday.hidden = d !== 18;
       if (ok) {
         msg.className = "sf-age-msg ok"; msg.innerHTML = icT("check", "Välkommen in, soldat.");
-        ls(AGE_KEY, "1"); ls(AGE_NO, null);
-        ss(AGE_PEND, JSON.stringify({ y: year, b: d === 18 ? !!had : null }));
+        ls(AGE_KEY, "1"); ls(AGE_NO, null); ls(AGE_ANS, "1");
+        pend(JSON.stringify({ y: year, b: d === 18 ? !!had : null }));
         set(true);
         flushAge();
       } else {
         msg.className = "sf-age-msg no"; msg.textContent = "";
         ls(AGE_NO, String(Date.now())); ls(AGE_KEY, null);
-        ss(AGE_PEND, JSON.stringify({ y: year, b: d === 18 ? !!had : null }));
+        pend(JSON.stringify({ y: year, b: d === 18 ? !!had : null }));
         set(false);
         flushAge();
         setTimeout(showUnder18, 150);
@@ -117,22 +120,22 @@
       c.appendChild(h("h2", { text: "Sorry, kompis!" }));
       c.appendChild(h("p", { text: "PintsNow ä bara för dig som fyllt 18. Kom tillbaka när du ä där – vi sparar en plats vid bordet." }));
       c.appendChild(h("p", { class: "muted", text: "Fel år? Prova igen i morgon." }));
-    }, { hard: true, label: "Bara 18+" });
+    }, { hard: true, block: true, label: "Bara 18+" });
   }
   // Send a pending answer (from the intro or the sheet) once there is a session. The year is then forgotten.
   var ageBusy = false;
   function flushAge() {
-    var p = null; try { p = JSON.parse(ss(AGE_PEND) || "null"); } catch (e) { p = null; }
+    var p = null; try { p = JSON.parse(pend() || "null"); } catch (e) { p = null; }
     if (!p || !A || !A.authed || !A.authed() || ageBusy || off.age) return Promise.resolve(null);
     ageBusy = true;
     return rpc("set_age_ok", { p_birth_year: p.y, p_had_birthday: p.b }).then(function (r) {
       ageBusy = false;
       if (r.error) {
-        if (missing(r.error)) { off.age = true; ss(AGE_PEND, null); }
-        else if (code(r.error) === "age_locked") { ss(AGE_PEND, null); ls(AGE_NO, String(Date.now())); showUnder18(); }
+        if (missing(r.error)) { off.age = true; pend(null); }
+        else if (code(r.error) === "age_locked") { pend(null); ls(AGE_NO, String(Date.now())); showUnder18(); }
         return null;
       }
-      ss(AGE_PEND, null);
+      pend(null);
       var d = data(r) || {};
       ls(AGE_SRV, d.age_ok ? "1" : "0");
       if (stateCache) stateCache.age_ok = !!d.age_ok;
@@ -144,7 +147,10 @@
   function maybeAskAge() {
     var intro = document.getElementById("intro");
     if ((intro && !intro.hidden) || ls("olnu.intro") !== "1") { setTimeout(maybeAskAge, 1500); return; }   // new user: the intro asks
-    if (ss(AGE_PEND) || ls(AGE_SRV) === "1" || (stateCache && stateCache.age_ok != null) || ovEl) return;
+    // uxfix P1-1: answered with the year picker in this install (join card, intro or this sheet) = never a 2nd sheet.
+    // The upgrade case (old 18+ box only: olnu.age18 = "1" but no olnu.ageAns) still gets the sheet ONCE.
+    if (ls(AGE_KEY) === "1" && ls(AGE_ANS) === "1") return;
+    if (pend() || ls(AGE_SRV) === "1" || (stateCache && stateCache.age_ok != null) || ovEl) return;
     askAgeOnce();
   }
   // Existing users who only ticked the old 18+ box: one sheet, once.
