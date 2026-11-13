@@ -332,10 +332,17 @@
   U.vInterval(function () { if (A && !off && paneOpen() && !document.hidden) poll(false); }, PANE_MS);
 
   /* ---------- inside the chat (social.js openChat with g.dm) ---------- */
+  // s1speed (PN.chatLive, flag dmLive): while the live socket is up the server nudges 's' when the other has seen, and a new
+  // line changes maxId: dm_seen goes then (and every 30 s as a safety net), not every 4 s. No socket = every 4 s as before.
+  function liveDue(g, o) {   // o = { at, max, off, done, sync, maxId } of one open DM chat
+    var L = window.PN && window.PN.chatLive; if (!L || !L.up || !L.up(g.id)) return true;
+    if (!o.off && L.onSeen) o.off = L.onSeen(g.id, function () { if (!o.done && Date.now() - o.at > 1500) o.sync(); });
+    return o.maxId() !== o.max || Date.now() - o.at >= 30000;
+  }
   function chatOpen(g, ctx) {
     if (!g || !g.dm || !ctx || !ctx.list || !A) return;
     var t = byGid(g.id) || g.dm, list = ctx.list, nm = t.name || g.name || "?";
-    var body = list.parentNode, done = false, st = t, pushed = {}, base = 0, busyS = false;
+    var body = list.parentNode, done = false, st = t, pushed = {}, base = 0, busyS = false, lv = { at: 0, max: -1, off: null, done: false, sync: sync, maxId: maxId };   // s1speed lv: liveDue
     openGid = g.id;
     if (byGid(g.id)) byGid(g.id).unread = 0;
     total = TH.reduce(function (s, x) { return s + (x.unread | 0); }, 0); paintAll();
@@ -420,7 +427,7 @@
     }
     function sync() {
       if (busyS || done) return;
-      busyS = true;
+      busyS = true; lv.at = Date.now(); lv.max = maxId();
       rpc("dm_seen", { p_group_id: g.id, p_last_id: maxId() }).then(function (r) {
         busyS = false;
         if (r.error || done) return;
@@ -501,8 +508,8 @@
     var baseTries = 0;
     (function setBase() { if (!alive() && ++baseTries > 6) return; if (list.querySelector("li[data-mid], .chat-empty")) { base = maxId(); sync(); } else setTimeout(setBase, 800); })();
     var tm = setInterval(function () {
-      if (!alive()) { done = true; clearInterval(tm); onState = null; if (String(openGid) === String(g.id)) openGid = null; poll(true); return; }
-      if (!document.hidden) sync();
+      if (!alive()) { done = lv.done = true; clearInterval(tm); onState = null; if (lv.off) lv.off(); if (String(openGid) === String(g.id)) openGid = null; poll(true); return; }
+      if (!document.hidden && liveDue(g, lv)) sync();
     }, 4000);
   }
 

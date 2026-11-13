@@ -73,4 +73,5 @@ release 0497
 release 0500
 release 0505   # DONE on live 12 Nov
 release 0506   # DONE on live 12 Nov
+release 0507   # s1speed fast DM nudge (2 triggers + realtime policy); coordinator applies on live 13 Nov with the release (owner OK)
 release 0436

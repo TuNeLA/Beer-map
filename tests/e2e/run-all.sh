@@ -109,6 +109,7 @@ run pf         $B pf-pw.js         # pin follow (pinfolj.js) + people count / "F
 run lg         $B lg-pw.js         # PNLOG usage + position log, consent, owner panel (stats.html), lx part (lgx-part.js)
 run cln        $B cln-pw.js        # clean-up: vitals only with the log on, Nytt dates, rpc_bundle2, not_member, medals throttle
 run dm         $B dm-pw.js         # dm B1: DM from Vänner → Meddelanden loads, sends, no not_member toast; not_member cache levels
+run s1speed    $B s1speed-pw.js    # s1speed: CHATLIVE nudge reads the chat at once, optimistic bubble, dm_seen 4 s -> 30 s, flag off = old
 run dialekt    $B dialekt-pw.js    # dialect-core D2: DIALEKT lookup order, B→A, off, vars, variant per night, 290 kommuner, settings row
 run games2     $B games2-pw.js     # games lane: GM1 host handover, GM2 host-only switch, GM3 close confirm, GM5 list, GM6 hidden games
 run txtfit     $B txtfit-pw.js     # every rank / KAOS / LIVE text fits at 390 px
@@ -126,6 +127,7 @@ run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, f
 run ride3      $B ride3-pw.js      # lane ride3 (0495): destination, fast polls (fake clock: each step on the other phone <= 3 s), steps in order, role chats + read-aloud, Ring consent, LÄSK soda, ANNAT hidden while driving, flag re-ask
 run placesearch $B placesearch-pw.js   # lane a3search I-07: shared address search (Hemzon; mocked geocoder): near town first, list, Enter, no jump, mapbox flag
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
+run d1settings  $B d1settings-pw.js  # lane d1settings: Inställningar = 8 rows -> pages with back, one Hem row, Konto page
 run a2ui       $B a2ui-pw.js       # lane a2ui: toast system, one row + divider, bottom bar CLS, Ikväll choice at first paint, drink icons
 run c3chat     $B c3chat-pw.js     # lane c3chat: DM list fills the sheet, voice bubble edge, DM header avatar, avatar tap = profile card, Truppen plain time field + fixed sheet height
 run b1people   $B b1people-pw.js   # lane b1people: Blockerade row, one fold style, unblock opens the DM, mute bell state, profile card, group top card + chat card

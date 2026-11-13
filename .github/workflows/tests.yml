@@ -54,7 +54,7 @@ jobs:
           - name: cln
             filter: '^(cln)$'
           - name: dm
-            filter: '^(dm)$'
+            filter: '^(dm|s1speed)$'
           - name: dialekt
             filter: '^(dialekt|dialekt-packs)$'
           - name: games2
@@ -123,6 +123,8 @@ jobs:
             filter: '^(c3chat)$'
           - name: b1people
             filter: '^(b1people)$'
+          - name: d1settings
+            filter: '^(d1settings)$'
           - name: webkit
             filter: '^(ds-motion-wk|ds-layout-wk)$'
             browsers: chromium webkit
