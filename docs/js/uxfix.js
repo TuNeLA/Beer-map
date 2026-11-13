@@ -52,8 +52,18 @@
     }
     cog.addEventListener("click", function () { show(panel.hidden); });
     topRow.classList.add("ux-chat-top");
-    topRow.appendChild(cog);
     topRow.parentNode.insertBefore(panel, topRow.nextSibling);
+    // I-62 (lane menufix): the gear sits in the sheet header row (next to ✕), not in a row of its own, so the messages get the height.
+    // It leaves the header with the chat (another sheet / chat → removed). No header (old markup) → the old place in the top row.
+    var head = document.querySelector("#sheet .sheet-head"), x = document.getElementById("sheet-close");
+    if (head && x && x.parentNode === head && window.MutationObserver) {
+      [].forEach.call(head.querySelectorAll(".ux-cog"), function (o) { o.remove(); });
+      cog.classList.add("ux-cog-head"); head.insertBefore(cog, x);
+      var bodyEl = document.getElementById("sheet-body"), sheetEl = document.getElementById("sheet");
+      var mo = new MutationObserver(function () { if (!panel.isConnected || (sheetEl && sheetEl.hidden)) { mo.disconnect(); if (done) show(false); cog.remove(); } });
+      if (bodyEl) mo.observe(bodyEl, { childList: true });
+      if (sheetEl) mo.observe(sheetEl, { attributes: true, attributeFilter: ["hidden"] });
+    } else topRow.appendChild(cog);
   }
 
   /* ---------- 8. day separators ---------- */

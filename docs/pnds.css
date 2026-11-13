@@ -1906,3 +1906,39 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 #sheet-body.ds-set .ds-item .toggle-row>span:has(>svg[data-pn8]:first-child){padding-left:calc(20px + var(--ds-3)) !important}
 #sheet-body.ds-set .ds-item .toggle-row>span>svg[data-pn8]:first-child{margin-left:calc(-20px - var(--ds-3)) !important}
 /* lane:uifix END */
+/* lane:menufix rows START — I-60: ONE rule for every ds list card (Settings pages, Om appen, Mer på kartan, Vänner hub).
+   The card has the only radius. Rows inside are plain (no own background, border or radius, no gap between them).
+   Every divider is the same thin line, inset from the text start (--pn-div-inset = 16 padding + 24 icon + 12 gap = 52 px). */
+html body #sheet-body .ds-list>*+*:not(.ds-row){border-top:0 !important;background-image:linear-gradient(var(--pn-div),var(--pn-div)) !important;
+  background-size:calc(100% - var(--pn-div-inset)) 1px !important;background-position:right top !important;background-repeat:no-repeat !important}
+html body #sheet-body .ds-list>.ds-item:not(.ds-blk)>.row{gap:0 !important;row-gap:0 !important}
+html body #sheet-body .ds-list>.ds-item:not(.ds-blk)>.row>.btn,html body #sheet-body .ds-list>.ds-item>.btn,html body #sheet-body .ds-list>.ds-item>div>.sos-block>.btn{
+  display:flex !important;align-items:center;justify-content:flex-start !important;gap:var(--sp-3,12px) !important;margin:0 !important;
+  border:0 !important;border-radius:0 !important;box-shadow:none !important;background-color:transparent !important;text-align:left}
+html body #sheet-body .ds-list>.ds-item:not(.ds-blk)>.row>.btn+.btn{background-image:linear-gradient(var(--pn-div),var(--pn-div)) !important;
+  background-size:calc(100% - var(--pn-div-inset)) 1px !important;background-position:right top !important;background-repeat:no-repeat !important}
+html body #sheet-body .ds-list>.ds-item:not(.ds-blk)>.row>.btn>svg:first-child,html body #sheet-body .ds-list>.ds-item>.btn>svg:first-child,
+html body #sheet-body .ds-list>.ds-item>.toggle-row>svg:first-child{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important;margin:0 !important;flex:none}
+html body #sheet-body .ds-list>.ds-item .toggle-row{background-color:transparent !important;border:0 !important;border-radius:0 !important;box-shadow:none !important}
+html body #sheet-body.ds-set .ds-list>.ds-item .toggle-row>span:has(>svg:first-child){position:relative;padding-left:calc(var(--pn-row-ic) + var(--sp-3,12px)) !important}
+html body #sheet-body.ds-set .ds-list>.ds-item .toggle-row>span>svg:first-child{position:absolute;left:0;top:-1px;width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important;margin:0 !important}
+/* lane:menufix rows END */
+/* lane:menufix gangpick START — I-61: "Vem fixar nästa? Välj gäng" = one ds list card; the gang initial in a round avatar */
+#sheet-body .gm-vfpick .gm-vfav{display:grid;place-items:center;width:var(--pn-row-ic,24px);height:var(--pn-row-ic,24px);border-radius:50%;
+  background:var(--ds-amber-soft,rgba(245,166,35,.14));color:var(--ds-amber-t,#ffc24d);font:700 12px/1 var(--ds-sans)}
+/* lane:menufix gangpick END */
+/* lane:menufix chat START — I-62: the group chat gives the message list most of the height.
+   The gear (js/uxfix.js) sits in the sheet header row between the title and ✕; the sheet opens near full height for a chat
+   (still above the keyboard: --of-vvh / --of-kb from social.js); a photo bubble is at most ~40 % of the viewport (cover; tap = full size). */
+#sheet:has(.sheet-head>.ux-cog) .sheet-head{grid-template-columns:44px minmax(0,1fr) 44px 44px !important}
+#sheet:has(.sheet-head>.ux-cog) .sheet-head>h2{grid-column:1 / 3}
+#sheet.pn-has-back:has(.sheet-head>.ux-cog) .sheet-head>h2{grid-column:2}
+#sheet .sheet-head>.ux-cog{grid-column:3;grid-row:1;display:grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0 !important;margin:0;
+  border-radius:var(--r-pill) !important;background:var(--ds-raised) !important;border:0 !important;color:var(--ds-text-2) !important}
+#sheet .sheet-head>.ux-cog .pi{width:22px;height:22px}
+#sheet .sheet-head>.ux-cog.on{color:var(--ds-amber-t) !important;box-shadow:inset 0 0 0 1px var(--ds-amber-t)}
+#sheet:has(.sheet-head>.ux-cog) .sheet-head>#sheet-close{grid-column:4;grid-row:1}
+html body #sheet.sheet:has(> .sheet-body > .chat-list){height:94vh !important;height:min(calc(100dvh - var(--sat,0px) - 12px),calc(var(--of-vvh,100dvh) - 8px)) !important;max-height:none !important}
+#sheet-body .chat-list .ph-frame{max-height:min(260px,40vh) !important;max-height:min(260px,40dvh) !important}
+#sheet-body .chat-list .ph-frame .ph-img{max-height:inherit;object-fit:cover}
+/* lane:menufix chat END */

@@ -154,6 +154,8 @@ jobs:
             filter: '^(bump)$'
           - name: c5extras
             filter: '^(c5extras)$'
+          - name: menufix
+            filter: '^(menufix)$'
           - name: tickerfix
             filter: '^(tickerfix)$'
           - name: uifix

@@ -983,8 +983,19 @@
       if (!list.length) { A.toast(T("vfNone"), { id: "gm-vf" }); return; }
       if (list.length === 1) { R.openSpin(list[0]); return; }
       A.openSheet(T("vfPick"), function (body) {
-        var box = el("div", { class: "gm gm-vfpick" });
-        list.forEach(function (x) { box.appendChild(A.btn(x.name || "?", "btn-block gm-vfg", function () { R.openSpin(x); })); });
+        // I-61 (lane menufix): one ds list card (avatar initial · name · chevron), like the other pickers
+        var box = document.createElement("div"); box.className = "ds-list gm gm-vfpick";
+        list.forEach(function (x) {
+          var nm = String(x.name || "?"), b = document.createElement("button"), i = document.createElement("span"), av = document.createElement("span"),
+            t = document.createElement("span"), n = document.createElement("span"), ch = document.createElement("span");
+          b.type = "button"; b.className = "ds-row pn-row gm-vfg";
+          i.className = "ds-row-i"; i.setAttribute("aria-hidden", "true"); av.className = "gm-vfav"; av.textContent = (Array.from(nm.trim())[0] || "?").toUpperCase(); i.appendChild(av);
+          t.className = "ds-row-t"; n.textContent = nm; t.appendChild(n);
+          ch.className = "ds-chev"; ch.setAttribute("aria-hidden", "true");
+          b.appendChild(i); b.appendChild(t); b.appendChild(ch);
+          b.addEventListener("click", function () { R.openSpin(x); });
+          box.appendChild(b);
+        });
         body.appendChild(box);
       });
     }, function () { A.toast(T("vfFail"), { err: true, id: "gm-vf" }); });

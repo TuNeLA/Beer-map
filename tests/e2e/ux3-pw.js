@@ -101,7 +101,7 @@ const noToasts = (page) => page.evaluate(() => document.querySelectorAll(".toast
     await page.evaluate((G) => window.SOCIAL.openChat({ id: G, name: "Ludvika Lager" }), G); await wait(page, 1800); await noToasts(page);
     const ch = await page.evaluate(() => {
       const vis = (e) => !!e && e.getClientRects().length > 0 && !e.closest("[hidden]");
-      return { cog: !!document.querySelector(".ux-chat-top .ux-cog"), note: vis(document.querySelector(".chat-note")), keep: vis(document.querySelector(".chat-keep")),
+      return { cog: !!document.querySelector("#sheet .sheet-head .ux-cog")   /* menufix I-62: the gear is in the sheet header row */, note: vis(document.querySelector(".chat-note")), keep: vis(document.querySelector(".chat-keep")),
         days: [...document.querySelectorAll(".chat-list > .ux-day")].map((x) => x.textContent), exp: [3, 1, 0].map((d) => { const x = new Date(); x.setDate(x.getDate() - d); return window.UXFIX.dayLabel(x.toISOString()); }) };
     });
     ok(ch.cog && !ch.note && !ch.keep, "chat: ⚙️ in the head, no keep note in the body", ch);
