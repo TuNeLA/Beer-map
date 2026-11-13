@@ -77,16 +77,17 @@
     var Y = thisYear(), box = h("div", { class: "sf-age" });
     var sel = h("select", { class: "sf-age-sel", id: "sf-age-year", "aria-label": "Födelseår" });
     sel.appendChild(h("option", { value: "", text: "Välj år" }));
-    for (var y = Y - 13; y >= 1930; y--) sel.appendChild(h("option", { value: String(y), text: String(y) }));
+    sel.appendChild(h("option", { value: String(Y - 17), text: (Y - 17) + " eller senare" }));   // polishB P3-1: an 18+ app lists (year − 18) and older; younger = this one choice (the under-18 path)
+    for (var y = Y - 18; y >= 1930; y--) sel.appendChild(h("option", { value: String(y), text: String(y) }));
     var bday = h("div", { class: "sf-age-bd", hidden: true }, [
       h("span", { text: "Har du fyllt år i år?" }),
       h("button", { type: "button", class: "btn btn-small", "data-bd": "1", text: "Ja" }),
       h("button", { type: "button", class: "btn btn-small", "data-bd": "0", text: "Nej, inte än" })
     ]);
     var msg = h("p", { class: "sf-age-msg", "aria-live": "polite" });
-    box.appendChild(h("label", { class: "sf-age-l", for: "sf-age-year", text: "Vilket år ä du född?" }));
+    box.appendChild(h("label", { class: "sf-age-l", for: "sf-age-year", text: "Vilket år är du född?" }));
     box.appendChild(sel); box.appendChild(bday); box.appendChild(msg);
-    box.appendChild(h("p", { class: "sf-age-note muted", text: "Vi sparar bara att du ä 18+, int' året." }));
+    box.appendChild(h("p", { class: "sf-age-note muted", text: "Vi sparar bara att du är 18 år eller äldre, inte födelseåret." }));
     function set(ok) { if (cb) { cb.checked = !!ok; cb.dispatchEvent(new Event("change")); } }
     function decide(year, had) {
       var d = Y - year;
@@ -94,7 +95,7 @@
       var ok = d > 18 || (d === 18 && had);
       bday.hidden = d !== 18;
       if (ok) {
-        msg.className = "sf-age-msg ok"; msg.innerHTML = icT("check", "Välkommen in, soldat.");
+        msg.className = "sf-age-msg ok"; msg.innerHTML = icT("check", "Välkommen in.");
         ls(AGE_KEY, "1"); ls(AGE_NO, null); ls(AGE_ANS, "1");
         pend(JSON.stringify({ y: year, b: d === 18 ? !!had : null }));
         set(true);
@@ -117,9 +118,9 @@
   function showUnder18() {
     overlay(function (c) {
       c.appendChild(h("div", { class: "sf-big", text: "🧃" }));
-      c.appendChild(h("h2", { text: "Sorry, kompis!" }));
-      c.appendChild(h("p", { text: "PintsNow ä bara för dig som fyllt 18. Kom tillbaka när du ä där – vi sparar en plats vid bordet." }));
-      c.appendChild(h("p", { class: "muted", text: "Fel år? Prova igen i morgon." }));
+      c.appendChild(h("h2", { text: "Du behöver vara 18 år" }));
+      c.appendChild(h("p", { text: "PintsNow är bara för dig som har fyllt 18. Välkommen tillbaka när du har fyllt 18." }));
+      c.appendChild(h("p", { class: "muted", text: "Valde du fel år? Du kan försöka igen i morgon." }));
     }, { hard: true, block: true, label: "Bara 18+" });
   }
   // Send a pending answer (from the intro or the sheet) once there is a session. The year is then forgotten.
@@ -162,7 +163,7 @@
       go.addEventListener("click", function () { if (cb.checked) closeOverlay(); });
       c.appendChild(h("div", { class: "sf-big", text: "🎂" }));
       c.appendChild(h("h2", { text: "En snabb kontroll" }));
-      c.appendChild(h("p", { text: "Appstores kräver att vi frågar en gång. Svara så ä du klar för gott." }));
+      c.appendChild(h("p", { text: "Appbutikerna kräver att vi frågar en gång. Svara, så behöver vi inte fråga igen." }));
       c.appendChild(ageWidget(cb));
       c.appendChild(go);
     }, { hard: true, label: "Ålder" });
@@ -173,15 +174,15 @@
     "Inga trakasserier, hot eller hat. Mot någon.",
     "Ingen nakenhet och inget sexuellt.",
     "Inga droger. Ingen försäljning av alkohol eller annat.",
-    "Inget om minderåriga och alkohol. PintsNow ä 18+.",
-    "Dela int' andras bilder, röst eller plats utan att de vill.",
+    "Inget om minderåriga och alkohol. PintsNow är för dig som är 18 år eller äldre.",
+    "Dela inte andras bilder, röst eller plats utan att de vill.",
     "Inget spam, inga bluffar, inga falska konton."
   ];
   function rulesBody(c) {
     c.appendChild(h("h2", { html: icT("rules", "Regler i PintsNow") }));
     c.appendChild(h("p", { text: "Kort och tydligt. Det här gäller chatt, bilder, röstklipp, namn, avatarer, event och tips:" }));
     c.appendChild(h("ul", { class: "sf-rules" }, RULES.map(function (r) { return h("li", { text: r }); })));
-    c.appendChild(h("p", { text: "Ser du nåt som bryter mot reglerna? Tryck på inlägget → Anmäl, eller Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
+    c.appendChild(h("p", { text: "Ser du något som bryter mot reglerna? Tryck på inlägget → Anmäl, eller Blockera personen. Vi läser varje anmälan inom 24 timmar och tar bort det som bryter mot reglerna. Den som bryter mot dem flera gånger kan stängas av." }));
     var cl = h("p", { class: "muted", html: "Frågor? <a href=\"#\" class=\"sf-ct-link\">Skriv till oss i appen</a> · eller mejla <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" });   // ownerfix 6
     cl.querySelector(".sf-ct-link").addEventListener("click", function (e) { e.preventDefault(); closeOverlay(); contactSheet("fraga"); });
     c.appendChild(cl);
@@ -197,7 +198,7 @@
       overlay(function (c) {
         rulesBody(c);
         var yes = h("button", { type: "button", class: "btn btn-amber btn-block sf-accept", html: icT("check", "Jag godkänner") });
-        var no = h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Int' nu" });
+        var no = h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Inte nu" });
         yes.addEventListener("click", function () {
           yes.disabled = true;
           termsMem = true; ls(TERMS_KEY, String(TERMS_VER));
@@ -246,7 +247,7 @@
     overlay(function (c) {
       var reason = "";
       c.appendChild(h("h2", { html: icT("flag", "Anmäl " + (t.what || "inlägget")) }));
-      c.appendChild(h("p", { class: "muted", text: "Vad ä fel? Den du anmäler får int' veta att det var du." }));
+      c.appendChild(h("p", { class: "muted", text: "Vad är fel? Den du anmäler får inte veta att det var du." }));
       var chips = h("div", { class: "sf-chips", role: "radiogroup", "aria-label": "Orsak" });
       REASONS.forEach(function (r) {
         chips.appendChild(h("button", { type: "button", class: "sf-chip", role: "radio", "aria-checked": "false", "data-r": r[0], text: r[1] }));
@@ -258,7 +259,7 @@
         send.disabled = false;
       });
       c.appendChild(chips);
-      var note = h("textarea", { class: "sf-note", maxlength: "300", rows: "2", placeholder: "Vill du lägga till nåt? (frivilligt)" });
+      var note = h("textarea", { class: "sf-note", maxlength: "300", rows: "2", placeholder: "Vill du lägga till något? (frivilligt)" });
       c.appendChild(note);
       var also = null;
       if (t.kind !== "event") {
@@ -274,13 +275,13 @@
               send.disabled = false;
               if (missing(r.error)) { off.report = true; closeOverlay(); mailFallback(t); return; }
               var c2 = code(r.error);
-              toast(c2 === "slow_down" ? "Lugn, soldat. Många anmälningar på kort tid – vänta lite." : c2 === "own_content" ? "Dä ä ditt eget, kompis." :
-                c2 === "invalid_target" ? "Det gick int' att hitta inlägget. Det kan redan vara borta." : "Anmälan gick int' iväg. Försök igen.", { err: true });
+              toast(c2 === "slow_down" ? "Du har skickat många anmälningar på kort tid. Vänta en stund." : c2 === "own_content" ? "Det här är ditt eget inlägg." :
+                c2 === "invalid_target" ? "Det gick inte att hitta inlägget. Det kan redan vara borttaget." : "Anmälan gick inte iväg. Försök igen.", { err: true });
               return;
             }
             closeOverlay();
             var d = data(r) || {};
-            toast(d.hidden ? "Tack! Inlägget ä dolt tills vi kollat." : "Tack! Vi kollar inom 24 timmar.", { ms: 4500 });
+            toast(d.hidden ? "Tack! Inlägget är dolt tills vi har kollat." : "Tack! Vi kollar inom 24 timmar.", { ms: 4500 });
             if (also && also.checked) doBlock(t);
           });
       });
@@ -301,7 +302,7 @@
         h("li", { text: "Ni ser inte varandra på kartan, i Vänner eller i chattar, bilder och röstklipp." }),
         h("li", { text: "Vänskapen tas bort. Ni kan inte skriva till varandra." }),
         h("li", { text: "Hen får ingen notis. Hen ser bara att chatten är stängd." }),
-        h("li", { text: "Ångra under Inställningar → Blockerade." })
+        h("li", { text: "Ångra under Inställningar → Integritet & synlighet → Blockerade." })
       ]));
       c.appendChild(h("button", { type: "button", class: "btn btn-danger btn-block", html: icT("block", "Blockera"), onclick: function () { closeOverlay(); doBlock(t); } }));
       c.appendChild(h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Avbryt", onclick: closeOverlay }));
@@ -311,8 +312,8 @@
     rpc("block_user", { p_kind: t.kind === "event" ? "person" : t.kind, p_ref: t.ref == null ? null : String(t.ref), p_group: t.group || null, p_k: t.k || null, p_on: true })
       .then(function (r) {
         if (r.error) {
-          if (missing(r.error)) { toast("Blockera finns int' på servern än.", { err: true }); return; }
-          toast(code(r.error) === "slow_down" ? "Lugn – vänta en minut." : "Det gick int' att blockera. Försök igen.", { err: true });
+          if (missing(r.error)) { toast("Blockera finns inte på servern än.", { err: true }); return; }
+          toast(code(r.error) === "slow_down" ? "Vänta en minut och försök igen." : "Det gick inte att blockera. Försök igen.", { err: true });
           return;
         }
         var d = data(r) || {};
@@ -495,15 +496,15 @@
       rpc("my_blocks").then(function (r) {
         ul.innerHTML = "";
         var d = r.error ? null : data(r), list = d && Array.isArray(d.blocks) ? d.blocks : [];
-        if (!list.length) { ul.appendChild(h("li", { class: "muted", text: r.error && missing(r.error) ? "Finns int' på servern än." : "Du har int' blockerat nån." })); return; }
+        if (!list.length) { ul.appendChild(h("li", { class: "muted", text: r.error && missing(r.error) ? "Finns inte på servern än." : "Du har inte blockerat någon." })); return; }
         list.forEach(function (b) {
           var li = h("li", {}, [h("span", { html: icT("block", b.name || "?") })]);
           li.appendChild(h("button", { type: "button", class: "btn btn-small sf-unb", text: "Avblockera", "aria-label": "Avblockera " + (b.name || "personen"), onclick: function (e) {
             var btn = e.currentTarget; btn.disabled = true;
             rpc("unblock_user", { p_id: b.id }).then(function (x) {
-              if (x.error) { btn.disabled = false; toast("Det gick int'. Försök igen.", { err: true }); return; }
+              if (x.error) { btn.disabled = false; toast("Det gick inte. Försök igen.", { err: true }); return; }
               li.remove(); toast((b.name || "Personen") + " är inte blockerad längre.");
-              if (!ul.children.length) ul.appendChild(h("li", { class: "muted", text: "Du har int' blockerat nån." }));
+              if (!ul.children.length) ul.appendChild(h("li", { class: "muted", text: "Du har inte blockerat någon." }));
               try { if (window.DM && window.DM.afterUnblock) window.DM.afterUnblock(b.name || ""); } catch (e2) {}   // b1people I-03: the DM opens again at once
               if (A && A.refresh) A.refresh();
             });
@@ -552,15 +553,15 @@
         }).then(function (r) {
           send.disabled = false;
           var e = r && r.error, msg = e ? String(e.message || "") : "";
-          if (e && /slow_down/.test(msg)) { toast("Lugn i stormen – du har skickat många idag. Försök i morgon.", { err: true, ms: 5000 }); return; }
-          if (e) { toast("Gick int' att skicka. Försök igen, eller mejla oss.", { err: true, ms: 5000 }); return; }
+          if (e && /slow_down/.test(msg)) { toast("Du har skickat många meddelanden i dag. Försök igen i morgon.", { err: true, ms: 5000 }); return; }
+          if (e) { toast("Det gick inte att skicka. Försök igen, eller mejla oss.", { err: true, ms: 5000 }); return; }
           closeOverlay();
-          toast(m ? "Tack! Vi svarar till " + m + "." : "Tack! Meddelandet ä framme.", { ms: 4500 });
+          toast(m ? "Tack! Vi svarar till " + m + "." : "Tack! Meddelandet har kommit fram.", { ms: 4500 });
         });
       });
       c.appendChild(send);
       c.appendChild(h("button", { type: "button", class: "btn btn-block btn-ghost", text: "Avbryt", onclick: closeOverlay }));
-      c.appendChild(h("p", { class: "muted sf-ct-mailto", html: "Funkar int' formuläret? Mejla <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
+      c.appendChild(h("p", { class: "muted sf-ct-mailto", html: "Fungerar inte formuläret? Mejla <a href=\"mailto:" + SUPPORT + "\">" + SUPPORT + "</a>" }));
     }, { label: "Kontakt" });
   }
   function settingsSheet(body) {

@@ -24,8 +24,8 @@ for (const f of FILES) {
 // polishA (13 Nov, blind test + AUDIT-NAV): EVERY app path "Inställningar → <X>" (copy, not comments) names a real hub page
 // exactly (Konto, Integritet & synlighet, Notiser & ljud, …). Before: "Inställningar → 🗑️ Radera mitt konto" (v14 privacy text),
 // "→ Integritet", "→ Blockerade", "Om PintsNow". Phone system paths (iPhone: Inställningar → Notiser …, Safari) are not ours.
-// PENDING: dm.js + safety.js belong to lane polishB this morning ("Inställningar → Blockerade" there); remove them from SKIP after its merge.
-const SKIP = new Set(["js/dm.js", "js/safety.js"]);
+// polishB: dm.js + safety.js now say "Inställningar → Integritet & synlighet → Blockerade" and are checked too (SKIP empty).
+const SKIP = new Set([]);
 const SYS = /^(Notiser|Notifications|Safari|Integritet och säkerhet|Privacy & Security|Location)\b/;
 const strip = (f, s) => f.endsWith(".html") ? s.replace(/<!--[\s\S]*?-->/g, "") : s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:\\"'\w])\/\/.*$/gm, "$1");
 const list = (d) => fs.readdirSync(new URL(d, R)).filter((f) => /\.(js|html)$/.test(f)).map((f) => d + f);

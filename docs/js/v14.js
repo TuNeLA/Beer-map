@@ -49,7 +49,7 @@
       privWhat: ["Ett konto-id. Kontot ä anonymt tills du själv sparar det med e-post (frivilligt, inloggning med engångskod).",
         "E-post – bara om du sparar kontot. Den används bara för inloggning, aldrig för reklam.",
         "Ditt namn och din avatar, när du sätter dem eller går med i en grupp.",
-        "Ålder: bara att du ä 18+ och datumet du svarade. Inte födelseåret.",
+        "Ålder: bara att du är 18 år eller äldre och datumet du svarade. Inte födelseåret.",
         "Drycker: antal, tid och plats (krogen eller ett område).",
         "Plats: din pin, incheckningar och – bara när du startar dem – \"Följ mig hem\" och \"Hitta kompis\".",
         "Det du skickar: chatt, bilder, röstklipp, direktmeddelanden, event, tips och önskemål.",

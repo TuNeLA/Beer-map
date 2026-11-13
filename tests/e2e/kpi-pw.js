@@ -205,7 +205,7 @@ async function statsPage(browser, w, o) {
         const msg = box.querySelector(".sf-age-msg");
         return { l: box.querySelector("label").textContent, m: msg.textContent.trim(), i: !!msg.querySelector(".pi-check") };
       });
-      ok("safety: age picker label + 'Välkommen in, soldat.' without emoji (check icon)", age.l === "Vilket år ä du född?" && age.m === "Välkommen in, soldat." && age.i, age);
+      ok("safety: age picker label + 'Välkommen in.' without emoji (check icon), plain Swedish (polishB P3-1)", age.l === "Vilket år är du född?" && age.m === "Välkommen in." && age.i, age);
       await ctx.close();
     }
   } catch (e) { console.log("FAIL exception", e && e.stack); fail++; }

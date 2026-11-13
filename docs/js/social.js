@@ -434,7 +434,8 @@
   function openChat(g) {
     if (!chatOn() || !g || !g.id) return;
     try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 1); } catch (e) {}
-    var el = A.el;
+    var el = A.el, pv = [];   // polishB P2-5: the group page preview lines (the page leaves when the chat sheet opens)
+    try { var pw = document.querySelector(".gpg-chat"); while (pw && !pw.__chat) pw = pw.parentNode; if (pw && pw.__g && pw.__g.id === g.id) pv = pw.__chat.msgs.slice(); } catch (e) {}
     chatColAssigned = {}; chatColUsed = {};
     A.openSheet(t("chatTitle", g.name || ""), function (body) {
       var list = el("ul", { class: "chat-list", "aria-live": "polite" });
@@ -455,9 +456,7 @@
         var s = statOf(h.m); h.tag.innerHTML = "";
         if (s && s.row) tagEls(s.row).forEach(function (x) { h.tag.appendChild(x); });
       }
-      function paintHeads() {
-        heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.innerHTML = beersHTML(h.m); h.n.setAttribute("aria-label", beersText(h.m) ? beersText(h.m) + " öl ikväll" : ""); paintTags(h); });
-      }
+      function paintHeads() { heads.forEach(function (h) { h.name.textContent = headText(h.m); h.n.innerHTML = beersHTML(h.m); h.n.setAttribute("aria-label", beersText(h.m) ? beersText(h.m) + " öl ikväll" : ""); paintTags(h); }); }
       function loadStats() {
         if (!statusOn() || !alive() || g.ev || g.dm) return;
         groupStatus(g.id).then(function (r) {
@@ -537,10 +536,7 @@
       var oldestId = 0, olderLi = null, olderBusy = false;
       function showOlder(on) {
         if (!on) { if (olderLi) { olderLi.remove(); olderLi = null; } return; }
-        if (olderLi) return;
-        var b = A.btn(KT("older"), "btn-small btn-block chat-older", loadOlder);
-        olderLi = el("li", { class: "chat-older-li" }, [b]);
-        list.insertBefore(olderLi, list.firstChild);
+        if (!olderLi) list.insertBefore(olderLi = el("li", { class: "chat-older-li" }, [A.btn(KT("older"), "btn-small btn-block chat-older", loadOlder)]), list.firstChild);
       }
       function loadOlder() {
         if (olderBusy || !oldestId) return;
@@ -614,11 +610,7 @@
       }
       // Reactions (0020): long-press or double-tap a message → 🍻 😂 🔥 ❤️. Only used emojis are shown.
       var REACTS = ["🍻", "😂", "🔥", "❤️"], reactRows = {}, chatMsgs = {}, reactsOff = false, reactBusy = {}, picker = null, pickerAt = 0;
-      function reactRow(m) {
-        var row = el("div", { class: "cm-reacts" });
-        reactRows[m.id] = row; chatMsgs[m.id] = m;   // v19: GANG quote option needs the message
-        return row;
-      }
+      function reactRow(m) { chatMsgs[m.id] = m; return (reactRows[m.id] = el("div", { class: "cm-reacts" })); }   // v19: GANG quote option needs the message
       function paintReacts(id, list) {
         var row = reactRows[id]; if (!row) return;
         row.innerHTML = "";
@@ -784,14 +776,19 @@
           }
           var rows = (r.data || []).slice().sort(function (a, b) { return a.id - b.id; });
           var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
-          var firstPage = lastId === 0;
-          rows.forEach(function (m) { add(m); if (m.id > lastId) lastId = m.id; });
+          var firstPage = lastId === 0, top = firstPage && list.querySelector("li[data-mid]"), topId = top ? +top.getAttribute("data-mid") : 0;
+          rows.forEach(function (m) { add(m, m.id < topId ? top : null); if (m.id > lastId) lastId = m.id; });   // polishB P2-5: lines older than the shown preview go above it
           if (rows.length) { lastNewAt = Date.now(); window.OLNU_CHAT_AT = lastNewAt; if (!firstPage) fast(); else tickNew = lastNewAt; }   // fixP N-02: a new line → 7 s (the first page is not new)
           if (firstPage && rows.length) { oldestId = rows[0].id; if (rows.length >= 100) showOlder(true); }
           if (!list.children.length) list.appendChild(el("li", { class: "muted chat-empty", text: t("chatEmpty") }));
-          if (rows.length && (nearBottom || rows.length === list.children.length)) list.scrollTop = list.scrollHeight;
+          if (rows.length && (nearBottom || rows.length === list.children.length)) toBottom();
         });
       }
+      // polishB P2-5: stay on the newest line for 2 s while late parts (day line, avatars, photos) still grow the list; a finger or the wheel stops it
+      var stickTo = 0, stick = function () { if (Date.now() < stickTo) list.scrollTop = list.scrollHeight; };
+      function toBottom() { stickTo = Date.now() + 2000; stick(); }
+      new MutationObserver(stick).observe(list, { childList: true, subtree: true }); try { new ResizeObserver(stick).observe(list); } catch (e) {}
+      ["pointerdown", "wheel"].forEach(function (ev) { list.addEventListener(ev, function () { stickTo = 0; }, { passive: true }); });
       function go() {
         if (sending) return;
         var text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
@@ -857,6 +854,8 @@
         if (!alive()) { document.removeEventListener("visibilitychange", vis); if (lane) lane.end(); clearTimeout(timer); return; }
         if (document.visibilityState !== "hidden" && !timer) { lvl = 0; tickNew = lastNewAt; loadLikes(); load(); sched(GAPS[0]); }
       });
+      // polishB P2-5: the last lines at once (WARM cache, else the group page preview); load() merges the server answer (add() skips seen ids)
+      try { var c0 = window.WARM && window.WARM.get("group_msgs", { p_group_id: g.id, p_after_id: 0 }); ((c0 && Array.isArray(c0.data) && c0.data) || pv).slice().sort(function (a, b) { return a.id - b.id; }).forEach(function (m) { add(m); }); if (list.children.length) toBottom(); } catch (e) {}
       loadLikes(); loadStats(); load(); sched(GAPS[0]);
     });
   }

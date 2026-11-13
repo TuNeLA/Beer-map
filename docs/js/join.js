@@ -188,13 +188,13 @@
     var g = gname, inv = ARR && ARR.kind === "invite";
     if (ARR && ARR.kind === "ev") {
       var who = BY || (evd && evd.from) || "";
-      return who ? L(who + " har bjudit in dig 🍺", who + " invited you 🍺") : L("Du ä bjuden 🍺", "You're invited 🍺");
+      return who ? L(who + " har bjudit in dig 🍺", who + " invited you 🍺") : L("Du är bjuden 🍺", "You're invited 🍺");
     }
-    if (inv) return BY ? L(BY + " har bjudit in dig till PintsNow 🍺", BY + " invited you to PintsNow 🍺") : L("Du ä inbjuden till PintsNow 🍺", "You're invited to PintsNow 🍺");
+    if (inv) return BY ? L(BY + " har bjudit in dig till PintsNow 🍺", BY + " invited you to PintsNow 🍺") : L("Du är inbjuden till PintsNow 🍺", "You're invited to PintsNow 🍺");
     if (BY && g) return L(BY + " har bjudit in dig till " + g + " 🍺", BY + " invited you to " + g + " 🍺");
     if (BY) return L(BY + " har bjudit in dig till gänget 🍺", BY + " invited you to the gang 🍺");
-    if (g) return L("Du ä inbjuden till " + g + " 🍺", "You're invited to " + g + " 🍺");
-    return L("Du ä inbjuden till ett gäng på PintsNow 🍺", "You're invited to a gang on PintsNow 🍺");
+    if (g) return L("Du är inbjuden till " + g + " 🍺", "You're invited to " + g + " 🍺");
+    return L("Du är inbjuden till ett gäng på PintsNow 🍺", "You're invited to a gang on PintsNow 🍺");
   }
   function needName() { return ARR && (ARR.kind === "join" || ARR.kind === "ev") && !myName(); }
   function typedName() {

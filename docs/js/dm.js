@@ -71,7 +71,7 @@
     iClosed: ["Du har stängt chatten med {namn}. Ingen av er kan skriva här."],
     blockQ: ["Blockera {namn}?"],
     blockLi: ["Ni ser inte varandra på kartan, i Vänner eller i chattar.", "Vänskapen tas bort. Ni kan inte skriva till varandra.",
-      "{namn} får ingen notis. Hen ser bara att chatten är stängd.", "Ångra under Inställningar → Blockerade."],
+      "{namn} får ingen notis. Hen ser bara att chatten är stängd.", "Ångra under Inställningar → Integritet & synlighet → Blockerade."],
     blocked: ["{namn} är blockerad."],
     closed: ["Chatten med {namn} är stängd."],
     unblocked: ["{namn} är inte blockerad längre. Vänskapen kommer inte tillbaka av sig själv."],

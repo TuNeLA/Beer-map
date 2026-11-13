@@ -1,5 +1,5 @@
 // lane left (11 Nov): T-05b Regler BEFORE every post RPC (the 15 s timer never runs while Regler is open; one post only;
-// "Int' nu" = nothing sent, no error toast, the text stays) and Z1 zone_counts rides the map-poll bundle (poll plan).
+// "Inte nu" = nothing sent, no error toast, the text stays) and Z1 zone_counts rides the map-poll bundle (poll plan).
 // usage: node left-pw.js <port> [part …]   parts: core photo voice invite event wish zone zoneold (default: all). Mocked Supabase.
 // Every part FAILS on big-update 744b622 and PASSES with the left patches (zoneold / tap = guards that pass on both).
 const { chromium } = require("playwright");
@@ -102,7 +102,7 @@ async function app(browser, o = {}) {
 const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
 const rules = (page) => page.evaluate(() => !!document.querySelector(".sf-ov .sf-accept"));
 const accept = (page) => page.evaluate(() => { const b = document.querySelector(".sf-ov .sf-accept"); if (b) b.click(); return !!b; });
-const decline = (page) => page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /Int' nu/.test(x.textContent)); if (b) b.click(); return !!b; });
+const decline = (page) => page.evaluate(() => { const b = [...document.querySelectorAll(".sf-ov button")].find((x) => /Inte nu/.test(x.textContent)); if (b) b.click(); return !!b; });
 const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].filter((t) => /err|error/.test(t.className) || /gick int|kunde int|Försök igen|fel/i.test(t.textContent)).map((t) => t.textContent));
 
 (async () => {
@@ -127,7 +127,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await ctx.close();
   }
 
-  /* ---------- photo: Regler before the post; Int' nu = nothing sent, photo + caption stay; accept = ONE post ---------- */
+  /* ---------- photo: Regler before the post; Inte nu = nothing sent, photo + caption stay; accept = ONE post ---------- */
   if (want("photo")) {
     const { ctx, page, st } = await app(browser, { terms: false });
     await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID);
@@ -141,7 +141,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await decline(page); await wait(page, 1200);
     const s1 = await page.evaluate(() => ({ ov: !!document.querySelector(".ph-ov .ph-send"), cap: (document.querySelector(".ph-cap") || {}).value, dis: (document.querySelector(".ph-send") || {}).disabled }));
     const e1 = await errToasts(page);
-    ok("photo: \"Int' nu\" = no post, no error toast, the photo and the caption stay, Skicka works again", !n(st, "post_photo").length && !e1.length && s1.ov && s1.cap === "Skål från Pitchers" && s1.dis === false, { posts: n(st, "post_photo").length, e1, s1 });
+    ok("photo: \"Inte nu\" = no post, no error toast, the photo and the caption stay, Skicka works again", !n(st, "post_photo").length && !e1.length && s1.ov && s1.cap === "Skål från Pitchers" && s1.dis === false, { posts: n(st, "post_photo").length, e1, s1 });
     await clickJS(page, ".ph-send"); await wait(page, 600); await clickJS(page, ".ph-send");
     await accept(page); await wait(page, 2500);
     ok("photo: after \"Jag godkänner\" ONE post with the caption, the sheet closes", n(st, "post_photo").length === 1 && n(st, "post_photo")[0][1].p_caption === "Skål från Pitchers" && !(await page.evaluate(() => !!document.querySelector(".ph-ov .ph-send"))), n(st, "post_photo").length);
@@ -165,7 +165,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await ctx.close();
   }
 
-  /* ---------- invite: Regler first; Int' nu keeps the form; accept = ONE invite ---------- */
+  /* ---------- invite: Regler first; Inte nu keeps the form; accept = ONE invite ---------- */
   if (want("invite")) {
     const { ctx, page, st } = await app(browser, { terms: false });
     await page.evaluate(() => window.INVITE.openCreate({ custom: true, lat: 60.1511, lng: 15.1876, keys: ["1111aaaa2222bbbb"] }));
@@ -176,14 +176,14 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await decline(page); await wait(page, 1000);
     const s = await page.evaluate(() => ({ t: (document.querySelector(".inv-title") || {}).value, dis: (document.querySelector(".inv-send") || {}).disabled }));
     const e1 = await errToasts(page);
-    ok("invite: \"Int' nu\" = no post, no error toast, the form stays", !n(st, "invite_create").length && !e1.length && s.t === "Grillkväll hos mig" && s.dis === false, { e1, s });
+    ok("invite: \"Inte nu\" = no post, no error toast, the form stays", !n(st, "invite_create").length && !e1.length && s.t === "Grillkväll hos mig" && s.dis === false, { e1, s });
     await clickJS(page, ".inv-send"); await wait(page, 500); await clickJS(page, ".inv-send");
     await accept(page); await wait(page, 2000);
     ok("invite: after \"Jag godkänner\" ONE invite", n(st, "invite_create").length === 1 && n(st, "invite_create")[0][1].p_title === "Grillkväll hos mig", n(st, "invite_create").length);
     await ctx.close();
   }
 
-  /* ---------- event tip (submit_event): Regler first; Int' nu keeps the form; accept = ONE event ---------- */
+  /* ---------- event tip (submit_event): Regler first; Inte nu keeps the form; accept = ONE event ---------- */
   if (want("event")) {
     const { ctx, page, st } = await app(browser, { terms: false });
     await page.evaluate(() => window.EVENTS.tip(window.BARS.byId("n3472634175") || null));
@@ -195,14 +195,14 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await decline(page); await wait(page, 1000);
     const s = await page.evaluate(() => ({ t: (document.querySelector('#sheet input.inp[maxlength="80"]') || {}).value, open: !document.getElementById("sheet").hidden }));
     const e1 = await errToasts(page);
-    ok("event: \"Int' nu\" = no post, no error toast, the form stays", !n(st, "submit_event").length && !e1.length && s.t === "Quiz på Pitchers" && s.open, { e1, s });
+    ok("event: \"Inte nu\" = no post, no error toast, the form stays", !n(st, "submit_event").length && !e1.length && s.t === "Quiz på Pitchers" && s.open, { e1, s });
     await go(); await wait(page, 500); await go();
     await accept(page); await wait(page, 2000);
     ok("event: after \"Jag godkänner\" ONE event", n(st, "submit_event").length === 1 && n(st, "submit_event")[0][1].p_title === "Quiz på Pitchers", n(st, "submit_event").length);
     await ctx.close();
   }
 
-  /* ---------- wish (Önska): Regler first; Int' nu keeps the text ---------- */
+  /* ---------- wish (Önska): Regler first; Inte nu keeps the text ---------- */
   if (want("wish")) {
     const { ctx, page, st } = await app(browser, { terms: false });
     await page.evaluate(() => window.WISH.open());
@@ -213,7 +213,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await decline(page); await wait(page, 1000);
     const e1 = await errToasts(page);
     const t = await page.evaluate(() => (document.querySelector("#sheet textarea") || {}).value);
-    ok("wish: \"Int' nu\" = no post, no error toast, the text stays", !n(st, "submit_wish").length && !e1.length && t === "Mörkt läge på Ölpasset", { e1, t });
+    ok("wish: \"Inte nu\" = no post, no error toast, the text stays", !n(st, "submit_wish").length && !e1.length && t === "Mörkt läge på Ölpasset", { e1, t });
     await clickJS(page, ".ws-send"); await wait(page, 500);
     await accept(page); await wait(page, 2000);
     ok("wish: after \"Jag godkänner\" ONE wish", n(st, "submit_wish").length === 1, n(st, "submit_wish").length);

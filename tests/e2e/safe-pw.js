@@ -53,13 +53,14 @@ async function safetyMocks(page, st, calls) {
     ok("Swedish only on an English phone, no SV/EN buttons", intro.lang === "sv" && intro.html === "sv" && !intro.svenBtn, intro);
     ok("intro asks for the birth year (no extra sheet on top); Kör! disabled", intro.sel && !intro.ov && intro.go === true, intro);
     await shot(page, "intro-age");
-    await page.selectOption("#sf-age-year", "2008");
+    const Y = await page.evaluate(() => { try { return +new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric" }).format(new Date()); } catch (e) { return new Date().getFullYear(); } });
+    await page.selectOption("#sf-age-year", String(Y - 18));   // polishB P3-1: the youngest listed year (was 2008 hard-coded)
     await wait(page, 300);
     const bd = await page.evaluate(() => !document.querySelector(".sf-age-bd").hidden);
-    ok("born 2008 → asks 'Har du fyllt år i år?'", bd, bd);
-    await page.selectOption("#sf-age-year", "2012"); await wait(page, 800);
+    ok("born (year − 18) → asks 'Har du fyllt år i år?'", bd, bd);
+    await page.selectOption("#sf-age-year", String(Y - 17)); await wait(page, 800);   // polishB P3-1: "(year − 17) eller senare" (the list no longer has 2009–2013)
     const blocked = await page.evaluate(() => { const o = document.querySelector(".sf-ov.sf-hard"); return o ? o.textContent : ""; });
-    ok("under 18 → friendly block screen", /Sorry, kompis/.test(blocked) && /18/.test(blocked), blocked);
+    ok("under 18 → friendly block screen (plain Swedish, polishB P3-1)", /Du behöver vara 18 år/.test(blocked) && /18/.test(blocked), blocked);
     await shot(page, "under18");
     await page.reload(); await wait(page, 3500);
     const still = await page.evaluate(() => !!document.querySelector(".sf-ov.sf-hard"));
@@ -81,7 +82,7 @@ async function safetyMocks(page, st, calls) {
     await shot(page, "intro-adult");
     await page.evaluate(() => { const b = [...document.querySelectorAll("#intro-body button")].find((x) => /Kör/.test(x.textContent)); if (b) b.click(); });
     await wait(page, 1500);
-    await page.evaluate(() => { const b = [...document.querySelectorAll("#intro-body button")].find((x) => /Senare|senare|Int' nu|Hoppa/i.test(x.textContent)); if (b) b.click(); });
+    await page.evaluate(() => { const b = [...document.querySelectorAll("#intro-body button")].find((x) => /Senare|senare|Inte nu|Hoppa/i.test(x.textContent)); if (b) b.click(); });
     await wait(page, 5000);
     const age = calls.filter((c) => c[0] === "set_age_ok");
     ok("set_age_ok sent once with the year, then forgotten", age.length === 1 && age[0][1].p_birth_year === 1990, age);
