@@ -42,15 +42,18 @@
   function stop(e) { if (e) { e.stopPropagation(); } }
 
   /* ---------- group member friend states (0155) ---------- */
-  function states(gid, force) {
-    if (off || !A || !A.LIVE || !gid) return Promise.resolve(null);
+  // friends2 I-91: a DM "group" has no group_members, so group_friend_states says not_member there. dm = true →
+  // dm_friend_state (0512) with the same answer shape; x.dm = true → send() uses dm_friend_request. Missing → only the DM button hides.
+  var dmOff = false;
+  function states(gid, force, dm) {
+    if (off || !A || !A.LIVE || !gid || (dm && dmOff)) return Promise.resolve(null);
     var c = cache[gid];
     if (!force && c && (c.p || Date.now() - c.at < 20000)) return c.p || Promise.resolve(c.d);
-    var p = A.rpc("group_friend_states", { p_group_id: gid }).then(function (r) {
+    var p = A.rpc(dm ? "dm_friend_state" : "group_friend_states", { p_group_id: gid }).then(function (r) {
       cache[gid] = { at: Date.now(), d: null };
-      if (r.error) { if (window.U && window.U.missing && window.U.missing(r.error)) off = true; return null; }
+      if (r.error) { if (window.U && window.U.missing && window.U.missing(r.error)) { if (dm) dmOff = true; else off = true; } return null; }
       var d = A.parseData(r.data) || {}, byK = {}, byName = {};
-      (d.states || []).forEach(function (x) { if (x && x.k) { byK[x.k] = x; if (x.name) byName[x.name] = x; } });
+      (d.states || []).forEach(function (x) { if (x && x.k) { if (dm) x.dm = true; byK[x.k] = x; if (x.name) byName[x.name] = x; } });
       cache[gid].d = { byK: byK, byName: byName };
       return cache[gid].d;
     });
@@ -78,7 +81,7 @@
   }
   function send(gid, x, b) {
     b.disabled = true;
-    A.rpc("friend_request", { p_group_id: gid, p_k: x.k, p_name: myName() }).then(function (r) {
+    A.rpc(x.dm ? "dm_friend_request" : "friend_request", x.dm ? { p_group_id: gid, p_name: myName() } : { p_group_id: gid, p_k: x.k, p_name: myName() }).then(function (r) {
       if (r.error) { b.disabled = false; A.toast(errOf(r.error), { err: true, id: "f2" }); return; }
       var d = A.parseData(r.data) || {}, n = d.name || x.name || "";
       if (d.status === "accepted") {
@@ -101,7 +104,7 @@
   // Medlemmar row (social.js showStatus, after AFTER.statusRow).
   function statusRow(g, m, row) {
     if (off || !A || !A.LIVE || !g || !g.id || !m || m.is_me || !m.k || !row) return;
-    states(g.id).then(function (d) {
+    states(g.id, false, !!g.dm).then(function (d) {
       if (!d || !document.body.contains(row) || row.querySelector(".f2-slot")) return;
       var x = d.byK[m.k]; if (!x) return;
       mount(g.id, x, row.querySelector(".st-main") || row);

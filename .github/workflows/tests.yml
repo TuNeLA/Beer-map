@@ -196,6 +196,10 @@ jobs:
             filter: '^(tickerfix2)$'
           - name: evsearch
             filter: '^(evsearch)$'
+          - name: friends2
+            filter: '^(friends2)$'
+          - name: hitta2
+            filter: '^(hitta2)$'
     steps:
       - uses: actions/checkout@v4
       - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"

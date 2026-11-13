@@ -328,7 +328,14 @@
           }
         }
         var main = li.querySelector(".nr-fmain"), gl = groupsLine(p);
-        if (main && gl) main.appendChild(gl);
+        // friends2 I-90: town + status + groups = ONE info text (max 2 lines, normal word wrap) under the name
+        var sub0 = main && main.querySelector(":scope > small:not(.inv-fg)");
+        if (main && sub0 && !main.querySelector(".nr-finfo")) { var fi = A.el("span", { class: "nr-finfo" }); main.insertBefore(fi, sub0); fi.appendChild(sub0); if (gl) fi.appendChild(gl); }
+        else if (main && gl) main.appendChild(gl);
+        // friends2 I-90: the near.js row drew its avatar with the my_friends key ("f" + id), which avatars_for never knows →
+        // a letter disc for everyone. friend_list has the real key (olnu_inv_key): draw the avatar again with that key.
+        var av0 = p.key ? li.querySelector(":scope > .av") : null;
+        if (av0 && av0.getAttribute("data-avk") !== "f|" + p.key) av0.remove();
         var rm = li.querySelector(".nr-rm-b");
         try { var dmb = window.DM && window.DM.friendBtn ? window.DM.friendBtn(p) : null; if (dmb) li.insertBefore(dmb, rm || null); } catch (e) {}   // 💬 Skriv
         li.insertBefore(inviteBtn(p), rm || null);

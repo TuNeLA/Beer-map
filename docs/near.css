@@ -73,3 +73,14 @@
   .nr-arrow,.nr-n{transition:none}
 }
 /* cln02: dead rules removed */
+/* hitta2 (I-92/I-93): the arrow glides 100 ms linear at max 10 fps (JS unwraps the angle: never the long way round) */
+.nr-arrow{transition:transform 100ms linear,opacity var(--m-5) var(--e-in)}
+.nr-n{transition:transform 100ms linear,opacity var(--m-5) linear}
+.nr-near{font:700 var(--fs-l,20px)/1.2 var(--body,sans-serif);color:var(--green);text-align:center}
+.nr-near[hidden],.nr-lock[hidden],.nr-cal[hidden]{display:none}
+.nr-lock,.nr-cal{text-align:center;margin:2px 0;font-size:var(--fs-xs,11px)}
+.nr-dial.near .nr-ring{border-color:var(--green)}
+.nr-dial.stale{filter:grayscale(1);opacity:.5}
+@media (prefers-reduced-motion: no-preference){.nr-dial.near .nr-ring{animation:nr-near 1.6s ease-in-out infinite}}
+@keyframes nr-near{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 35%,transparent)}50%{box-shadow:0 0 0 12px transparent}}
+@media (prefers-reduced-motion: reduce){.nr-arrow,.nr-n{transition:none}}

@@ -207,7 +207,7 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
     if (row) { await row.click(); await wait(page, 2000); }
     const dmh = await page.evaluate(() => { const s = document.querySelector(".dm-chead .dm-cwho small"); if (!s) return null;
       const t = s.querySelector("span") || s; return { txt: s.textContent.trim(), cut: t.scrollWidth > t.clientWidth + 1 || s.scrollWidth > s.clientWidth + 1, btns: [...document.querySelectorAll(".dm-cacts button")].map((b) => ({ w: Math.round(b.getBoundingClientRect().width), h: Math.round(b.getBoundingClientRect().height), t: b.textContent.trim(), a: b.getAttribute("aria-label") })) }; });
-    ok(`[${w}] DM header: "Bara ni två" whole, no emoji`, !!dmh && dmh.txt === "Bara ni två" && !dmh.cut, dmh);
+    ok(`[${w}] DM header: "Bara ni två" whole, no emoji`, !!dmh && /^Bara ni två( · försvinner efter 7 dagar)?$/.test(dmh.txt) && !dmh.cut, dmh);   // owner 13 Nov I-87: the 7-day note moved into the header
     ok(`[${w}] DM header: mute + block = 44 px icon buttons with labels`, !!dmh && dmh.btns.length === 2 && dmh.btns.every((b) => b.w >= 44 && b.h >= 44 && !b.t && b.a), dmh && dmh.btns);
     await close(page); await wait(page, 600);
 

@@ -339,6 +339,15 @@
     if (!o.off && L.onSeen) o.off = L.onSeen(g.id, function () { if (!o.done && Date.now() - o.at > 1500) o.sync(); });
     return o.maxId() !== o.max || Date.now() - o.at >= 30000;
   }
+  // friends2 I-91: a tap on the DM header avatar or name = the full profile card (the same card as from the map); ✕ goes back to the chat
+  function headCard(who, g, t, nm) {
+    if (!window.PROFCARD || !window.PROFCARD.open) return;
+    who.classList.add("dm-cwho-tap"); who.setAttribute("role", "button"); who.setAttribute("tabindex", "0");
+    who.setAttribute("aria-label", L("Visa profilen för ", "Show the profile of ") + nm);
+    var openCard = function () { var tt = byGid(g.id) || t; window.PROFCARD.open({ g: { id: g.id, name: g.name, dm: true }, name: nm, is_me: false, noMsg: true, live: tt && tt.out != null ? !!tt.out : null }); };
+    who.addEventListener("click", openCard);
+    who.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(); } });
+  }
   function chatOpen(g, ctx) {
     if (!g || !g.dm || !ctx || !ctx.list || !A) return;
     var t = byGid(g.id) || g.dm, list = ctx.list, nm = t.name || g.name || "?";
@@ -366,7 +375,7 @@
       h("span", {}, [h("b", { text: nm }), priv])]);
     var muteB = A.btn("", "btn-small btn-ghost dm-mute sa-dm-ib", function () { toggleMute(); });
     var blockB = A.btn("", "btn-small btn-ghost dm-block sa-dm-ib", function () { askBlock(); });
-    head.appendChild(who); head.appendChild(h("span", { class: "dm-cacts" }, [muteB, blockB]));
+    headCard(who, g, t, nm); head.appendChild(who); head.appendChild(h("span", { class: "dm-cacts" }, [muteB, blockB]));
     body.insertBefore(head, list);
     var ask = h("div", { class: "dm-ask", hidden: true });
     body.insertBefore(ask, list);

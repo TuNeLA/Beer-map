@@ -89,6 +89,7 @@ run c5extras  $A c5extras-pw.js   # lane c5extras: photo viewer X pinned (I-49),
 run hotfix1   $A hotfix1-pw.js    # lane hotfix1 (owner 13 Nov, after the release): I-63 my-dot ring only when a bar / food icon covers the dot (stub Mapbox without a token), I-64 avatar labels Ansiktsform + Tröja & jacka, tab row at 360 px
 run f13       $B f13-pw.js        # lane f13 (owner 13 Nov): Fredag 13 badge = SVG cat + crystal ball (no emoji), tap = hop/flick + fredag13 toast (5 s), ÖL! not covered, idle blink only when visible + map still, reduced motion static, 14 Nov none, other holidays unchanged
 run alive2    $B alive2-pw.js     # lane alive2 (I-77): friend ÖL! ripple, holiday ÖL! pulse + bob, Skåltimmen glow, my ÖL! foam, weekend dusk; pause on move/hidden, reduced motion still, budget 12, store = no drink FX
+run hitta2    $B hitta2-pw.js    # lane hitta2: I-92 calm compass (no spin 359/1 and 179/181, 300 km, outliers, Nära < 20 m, arrow stays), I-93 Senast sedd + fresh fix on wake
 run menufix   $B menufix-pw.js    # lane menufix (owner phone test 13 Nov): I-60 one inset divider rule + no nested boxes in ds list cards (Settings, Om appen, Mer på kartan, Vänner), I-61 Välj gäng = ds list, I-62 chat list ≥ 55 % height, gear in the header, photo ≤ 40 %
 run tickerfix $A tickerfix-pw.js  # lane tickerfix (finalcheck 13 Nov): names hint = others out + no gang + once per loop, 'Du' lines 2nd person, no blank items / '/// ///', no empty-map line (any hour) while the header says N ute
 run uifix     $A uifix-pw.js      # lane uifix (final check 13 Nov): 1st ÖL! calm 60 s (toast + strip only; Ny grad + Befordrad = 1 card; medals + Hjälp till? wait), settings row icons, Om appen text card + PNI lock, ÅNGRA chip PNI undo + solid
@@ -151,6 +152,7 @@ run d1settings  $B d1settings-pw.js  # lane d1settings: Inställningar = 8 rows 
 run icons      $B icons-pw.js      # lane icons: 25 new PNI icons (unique, live area, labels), emoji → icon map (chrome pass, toasts), one meaning per icon
 run a2ui       $B a2ui-pw.js       # lane a2ui: toast system, one row + divider, bottom bar CLS, Ikväll choice at first paint, drink icons
 run c3chat     $B c3chat-pw.js     # lane c3chat: DM list fills the sheet, voice bubble edge, DM header avatar, avatar tap = profile card, Truppen plain time field + fixed sheet height
+run friends2   $B friends2-pw.js   # lane friends2: I-90 Vänner rows full width + real avatars, I-89 card friend button centred, I-91 DM header = profile card
 run b1people   $B b1people-pw.js   # lane b1people: Blockerade row, one fold style, unblock opens the DM, mute bell state, profile card, group top card + chat card
 run sec        $B sec-pw.js        # lane sec: Spöke also ends the check-in and the pin (H2)
 run x8         $B x8-pw.js         # lane x8: weak signal: ÖL! outbox (offline / slow 3G / lost answer, no double log), 'Senast uppdaterad' + poll back-off, LÄSK!/spökläge

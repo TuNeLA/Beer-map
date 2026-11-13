@@ -15,3 +15,49 @@
 .nr-frow.f2-gone { opacity: .35; transition: opacity var(--m-4); }
 .nr-frow { -webkit-touch-callout: none; }
 @media (prefers-reduced-motion: reduce) { .nr-frow.f2-gone { transition: none; } }
+/* friends2 lane (13 Nov, I-89/I-90/I-91). I-90 Vänner + "Du kanske känner" rows at 360-430 px: avatar left, name (1 line) and
+   info (max 2 lines, word wrap) use the full row width, the actions are ONE compact row of 40 px buttons under the text
+   (⋯ at the right end). A wide list (container >= 560 px) keeps the actions on the right of the text. */
+#sheet-body .nr-flist{container-type:inline-size}
+#sheet-body .nr-flist > .nr-frow{--nr-ind:22px;flex-wrap:wrap;align-items:flex-start;column-gap:8px;row-gap:4px;min-height:0;padding:6px 8px 6px 12px}
+#sheet-body .nr-flist > .nr-frow.av-row{--nr-ind:50px;column-gap:10px}
+#sheet-body .nr-flist > .nr-frow > .st-dot{margin:7px 4px 0 0}
+#sheet-body .nr-flist > .nr-frow.av-row > .av{flex:0 0 40px;margin:2px 0 0}
+#sheet-body .nr-flist > .nr-frow > .nr-fmain{flex:1 1 calc(100% - var(--nr-ind) - 2px);min-width:0;display:flex;flex-direction:column;gap:0}
+#sheet-body .nr-flist > .nr-frow .nr-fmain > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 var(--ds-fs-16,16px)/22px var(--ds-sans,inherit)}
+#sheet-body .nr-flist > .nr-frow .nr-finfo,#sheet-body .nr-flist > .nr-frow .nr-fmain > small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;
+  white-space:normal;word-break:normal;overflow-wrap:normal;font:400 var(--ds-fs-14,14px)/18px var(--ds-sans,inherit);color:var(--ds-muted)}
+#sheet-body .nr-flist > .nr-frow .nr-finfo > small{display:inline;font:inherit;white-space:normal}
+#sheet-body .nr-flist > .nr-frow .nr-finfo > small + small::before{content:" · "}
+#sheet-body .nr-flist > .nr-frow.out .nr-finfo > small:first-child{color:var(--ds-green)}
+#sheet-body .nr-flist > .nr-frow .nr-fmain + .btn{margin-left:var(--nr-ind)}
+#sheet-body .nr-flist > .nr-frow > .btn{flex:0 0 40px;width:40px;min-width:40px;height:40px;min-height:40px;padding:0}
+#sheet-body .nr-flist > .nr-frow > .btn.nr-more-b{margin-left:auto}
+#sheet-body .nr-flist > .nr-frow > .btn svg{width:18px;height:18px}
+@container (min-width: 560px){
+  #sheet-body .nr-flist > .nr-frow{flex-wrap:nowrap;align-items:center}
+  #sheet-body .nr-flist > .nr-frow > .nr-fmain{flex:1 1 auto}
+  #sheet-body .nr-flist > .nr-frow .nr-fmain + .btn,#sheet-body .nr-flist > .nr-frow > .btn.nr-more-b{margin-left:0}
+}
+#sheet-body .sg-list{container-type:inline-size}
+#sheet-body .sg-row{flex-wrap:wrap;align-items:flex-start;column-gap:10px;row-gap:6px;min-height:0}
+#sheet-body .sg-row > .sg-face{flex:0 0 36px;margin-top:2px}
+#sheet-body .sg-row > .sg-main{flex:1 1 calc(100% - 48px);min-width:0;gap:2px}
+#sheet-body .sg-row > .sg-main > small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;white-space:normal;word-break:normal;overflow-wrap:normal;font:400 var(--ds-fs-14,14px)/18px var(--ds-sans,inherit)}
+#sheet-body .sg-row > .sg-main + .btn{margin-left:46px}
+#sheet-body .sg-row .sa-sg-add,#sheet-body .sg-row .sg-x{min-height:40px;height:40px}
+#sheet-body .sg-row .sg-x{flex:0 0 40px;width:40px;min-width:40px;margin-left:auto}
+@container (min-width: 560px){
+  #sheet-body .sg-row{flex-wrap:nowrap;align-items:center}
+  #sheet-body .sg-row > .sg-main{flex:1 1 auto}
+  #sheet-body .sg-row > .sg-main + .btn{margin-left:0}
+}
+/* I-89 profile card: every friend state (➕ Lägg till vän · ⏳ Skickad · ✓ Vän · ✅ Acceptera) is a 44 px pill like the other
+   card buttons, label centred both ways, no extra top margin. */
+.pc-card .pc-friend .f2-slot{margin:0;display:flex;justify-content:center}
+.pc-card .pc-friend .f2-chip,.pc-card .pc-friend .btn.f2-add{display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;width:100%;
+  height:44px;min-height:44px;margin:0;padding:0 16px;border-radius:var(--r-pill,999px);font:600 var(--fs-16,16px)/20px var(--ds-sans,inherit);text-align:center}
+.pc-card .pc-friend .f2-chip .pi,.pc-card .pc-friend .f2-add .pi{width:20px;height:20px;margin:0;flex:0 0 auto}
+/* I-91 DM header: the avatar + name is a button (opens the profile card) */
+.dm-cwho.dm-cwho-tap{cursor:pointer;border-radius:var(--r-md,12px);min-height:44px}
+.dm-cwho.dm-cwho-tap:focus-visible{outline:2px solid var(--ds-amber);outline-offset:2px}

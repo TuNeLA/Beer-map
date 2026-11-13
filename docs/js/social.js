@@ -585,13 +585,13 @@
         var tagEl = el("span", { class: "cm-tags" });   // v25: 👑/🎖️/🎗️ + "Ludvikabo", small, after the rank + name
         var hd = { m: m, name: nmEl, n: nEl, tag: tagEl };
         heads.push(hd); paintTags(hd);
-        if (medalsOn() && !g.ev && !g.dm && (m.name || m.is_me)) {
+        if ((medalsOn() || (window.PROFCARD && window.PROFCARD.open && m.name)) && !g.ev && !g.dm && (m.name || m.is_me)) {   // friends2 I-91: the card also when medals are off
           nmEl.classList.add("cm-tap"); nmEl.setAttribute("role", "button"); nmEl.setAttribute("tabindex", "0");
           var openU = function () {
             var s = statOf(m), back = function () { openChat(g); };
             // b1people I-12: a name in a group chat = the small profile card (its "Uniform och medaljer" button opens the old card)
             if (window.PROFCARD && window.PROFCARD.open && m.name) { window.PROFCARD.open({ g: g, name: m.name, k: m.k || null, is_me: !!m.is_me, back: back }); return; }
-            window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null, meriter: s ? s.meriter : null }, back);
+            if (medalsOn()) window.MEDALS.openMember(g, { name: m.name, is_me: m.is_me, total: s ? s.total : null, meriter: s ? s.meriter : null }, back);
           };
           nmEl.addEventListener("click", openU);
           nmEl.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openU(); } });

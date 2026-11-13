@@ -55,7 +55,7 @@
     if (o.live != null || o.n != null) {
       var n = Math.max(0, o.n | 0), parts = [];
       parts.push(o.live ? L("Ute nu", "Out now") : L("Inte ute nu", "Not out now"));
-      parts.push(n ? n + " " + L(n === 1 ? "dryck ikväll" : "drycker ikväll", n === 1 ? "drink tonight" : "drinks tonight") : L("Inga drycker ikväll", "No drinks tonight"));
+      if (o.n != null) parts.push(n ? n + " " + L(n === 1 ? "dryck ikväll" : "drycker ikväll", n === 1 ? "drink tonight" : "drinks tonight") : L("Inga drycker ikväll", "No drinks tonight"));
       status = h("p", { class: "pc-status" + (o.live ? " on" : ""), "data-live": o.live ? "1" : "0" }, [h("span", { class: "pc-dot", "aria-hidden": "true" }), h("span", { text: parts.join(" · ") })]);
     }
     var acts = h("div", { class: "pc-acts" });

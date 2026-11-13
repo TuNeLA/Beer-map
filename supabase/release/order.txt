@@ -80,4 +80,6 @@ release 0508   # lane unlocks: achievements + 12 avatar items (functions only, a
 release 0511   # lane unlocks: wires the u_* medals into award_medals (after the client is live)
 release 0512   # evsearch: events_search + event_venue (read only) + import_sport_events takes an arena town (any time; the client works without it)
 release 0513   # polish3 I-69: my_place_suggestions (applied on live 13 Nov 18:14)
+release 0514   # friends2 I-91: dm_friend_state + dm_friend_request (applied on live 13 Nov 19:00)
+release 0515   # hitta2 I-93: find_ping keeps the last fix for the active find
 release 0436

@@ -639,8 +639,8 @@
       var el = A.el;
       body.appendChild(el("p", {}, [el("b", { text: r.name || L("Någon", "Someone") }),
         document.createTextNode(L(" vill hitta dig i vimlet" + (r.group_name ? " (" + r.group_name + ")" : "") + ".", " wants to find you in the crowd."))]));
-      body.appendChild(el("p", { class: "muted", text: L("Säger du ja ser ni varandras exakta position i 30 min, men bara medan kompassen är öppen. Inget sparas.",
-        "If you say yes you see each other's exact position for 30 min, only while the compass is open. Nothing is kept.") }));
+      body.appendChild(el("p", { class: "muted", text: L("Säger du ja ser ni varandras position i 30 min medan kompassen är öppen. Låser du skärmen ser " + (r.name || "hen") + " var du var senast. Allt försvinner när hittandet slutar.",
+        "If you say yes you see each other's position for 30 min while the compass is open. If you lock the screen, " + (r.name || "they") + " sees where you were last. All gone when the find ends.") }));
       body.appendChild(el("div", { class: "row" }, [
         A.btn(L("✅ Ja, hitta mig", "✅ Yes, find me"), "btn-green", function () {
           call("find_answer", { p_id: r.id, p_accept: true }).then(function (x) {
@@ -679,13 +679,15 @@
     st.distEl = el("div", { class: "nr-dist", "aria-live": "polite", text: "– m" });
     st.hotEl = el("div", { class: "nr-hot", text: "" });
     st.statusEl = el("p", { class: "nr-status muted", text: L("📡 Söker GPS…", "📡 Getting GPS…") });
+    // hitta2 (I-92/I-93): calm compass in hitta.js: one stream, tilt + smoothing, unwrapped angles, 10 fps, Senast sedd, Nära.
+    st.cf = window.HITTA.calm.finder(st, { el: el, L: L, sv: sv, bearing: bearing });
     st.compBtn = A.btn(L("🧭 Slå på kompassen", "🧭 Turn on compass"), "btn-amber btn-block nr-comp", askCompass);
     st.compBtn.hidden = !(window.DeviceOrientationEvent && typeof window.DeviceOrientationEvent.requestPermission === "function");
     st.mapEl = el("div", { class: "nr-mini", hidden: "" });
     A.openSheet(L("🧭 Hitta ", "🧭 Find ") + st.name, function (body) {
-      var box = el("div", { class: "nr-finder" }, [dial, st.distEl, st.hotEl, st.statusEl, st.compBtn, st.mapEl,
-        el("p", { class: "muted nr-priv", text: L("🔒 Exakt position delas bara medan denna ruta ä öppen och bara med " + st.name + ". Raderas efter 2 min.",
-          "🔒 Exact position only while this is open, only with " + st.name + ". Gone after 2 min.") }),
+      var box = el("div", { class: "nr-finder" }, [dial, st.distEl, st.nearEl, st.hotEl, st.statusEl, st.lockEl, st.calEl, st.compBtn, st.mapEl,
+        el("p", { class: "muted nr-priv", text: L("🔒 Exakt position delas bara med " + st.name + " och bara medan hittandet pågår. Stänger du rutan raderas den direkt.",
+          "🔒 Exact position only with " + st.name + ", only during this find. Close this and it is gone at once.") }),
         el("div", { class: "row" }, [A.btn(L("✖️ Stäng", "✖️ Close"), "btn-block", function () { A.closeSheet(); })])]);
       body.appendChild(box);
       start();
@@ -695,6 +697,7 @@
       if (!st.alive) return; st.alive = false;
       if (st.watch != null) try { navigator.geolocation.clearWatch(st.watch); } catch (e) {}
       if (st.timer) clearInterval(st.timer);
+      clearInterval(st.drawT); document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("deviceorientationabsolute", onOri, true);
       window.removeEventListener("deviceorientation", onOri, true);
       if (st.mini) try { st.mini.remove(); } catch (e) {}
@@ -718,14 +721,16 @@
       // 2. GPS while open.
       try {
         st.watch = navigator.geolocation.watchPosition(function (p) {
-          st.me = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
-          if (!st.firstFix) { st.firstFix = true; ping(); }
+          st.cf.fix(p);
+          if (!st.firstFix || st.wake) { st.firstFix = true; st.wake = false; ping(); }
           draw();
         }, function (e) {
           st.statusEl.textContent = e && e.code === 1 ? L("📍 Appen får int' använda platsen. Tillåt plats i inställningarna.", "📍 Location not allowed.") : L("📡 Ingen GPS-signal än…", "📡 No GPS yet…");
         }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 });
       } catch (e) {}
       st.timer = setInterval(ping, PING_MS);
+      st.drawT = setInterval(function () { if (!document.hidden) drawArrow(); }, 100);   // hitta2: the arrow at max 10 fps
+      document.addEventListener("visibilitychange", onVis);
       // 3. Compass (Android: absolute event; iOS: webkitCompassHeading after a permission tap).
       window.addEventListener("deviceorientationabsolute", onOri, true);
       window.addEventListener("deviceorientation", onOri, true);
@@ -739,16 +744,14 @@
         }).catch(function () { showMini(); });
       } catch (e) { showMini(); }
     }
-    function onOri(e) {
+    function onOri(e) { if (st.alive && st.cf.ori(e) && st.compBtn) st.compBtn.hidden = true; }
+    // hitta2 (I-93): no GPS with the screen off (web limit). Before it sleeps: send the last good fix (the server keeps it
+    // for the whole active find, 0515). When it wakes: a fresh fix at once.
+    function onVis() {
       if (!st.alive) return;
-      var h = null;
-      if (typeof e.webkitCompassHeading === "number" && isFinite(e.webkitCompassHeading)) h = e.webkitCompassHeading;
-      else if ((e.absolute || e.type === "deviceorientationabsolute") && typeof e.alpha === "number" && isFinite(e.alpha)) h = (360 - e.alpha) % 360;
-      if (h == null) return;
-      var so = 0; try { so = (screen.orientation && screen.orientation.angle) || window.orientation || 0; } catch (x) {}
-      st.heading = (h + so + 360) % 360; st.headingAt = Date.now();
-      if (st.compBtn) st.compBtn.hidden = true;
-      if (!st.raf) st.raf = requestAnimationFrame(function () { st.raf = 0; drawArrow(); });
+      if (document.hidden) { ping(); return; }
+      st.cf.wake(); st.wake = true;   // the first fix after wake (watch or this one) is sent at once
+      try { navigator.geolocation.getCurrentPosition(function (p) { if (st.alive) { st.wake = false; st.cf.fix(p); ping(); draw(); } }, function () {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }); } catch (e) {}
     }
     function ping() {
       if (!st.alive || !st.me || (!st.req && !st.reqErr)) return;
@@ -761,7 +764,7 @@
         }
         st.info = A.parseData(r.data);
         if (st.info.target) {
-          var t = st.info.target, d = U.haversine(st.me.lat, st.me.lng, t.lat, t.lng);
+          var t = st.cf.target(st.info.target), d = U.haversine(st.me.lat, st.me.lng, t.lat, t.lng);
           st.prev = st.dist; st.dist = d; st.tgt = t;
           hotCold();
         } else st.tgt = null;
@@ -786,14 +789,7 @@
       if (!st.alive || !document.body.contains(st.distEl)) return;
       var inf = st.info || {}, req = st.req || {};
       var s = inf.status || req.status;
-      if (st.tgt && st.me) {
-        var acc = Math.round(Math.max(st.me.acc || 0, st.tgt.acc || 0));
-        st.distEl.textContent = Math.round(st.dist) + " m" + (acc ? " ±" + acc : "");
-        var age = st.tgt.age_s | 0;
-        st.statusEl.textContent = (age > 20 ? L("📡 " + st.name + " sågs för " + age + " s sen", "📡 Seen " + age + " s ago") : L("📡 Live – " + st.name + " har kompassen öppen", "📡 Live"));
-        st.dial.classList.add("live");
-      } else {
-        st.dial.classList.remove("live");
+      if (!st.cf.view(s, req)) {
         st.distEl.textContent = "– m";
         if (!st.me) st.statusEl.textContent = L("📡 Söker GPS…", "📡 Getting GPS…");
         else if (s === "pending") st.statusEl.textContent = (sv() ? fill(pick("wa", T.waitAns), { namn: st.name }) : "⏳ Waiting for " + st.name + "…") + cd(req.answer_by || inf.answer_by);
@@ -804,18 +800,7 @@
       drawArrow(); drawMini();
     }
     function cd(iso) { var t = Date.parse(iso); if (!isFinite(t)) return ""; var ms = t - Date.now(); return ms > 0 ? " (" + U.mmss(ms) + ")" : ""; }
-    function drawArrow() {
-      if (!st.arrow) return;
-      var have = st.tgt && st.me, comp = st.heading != null && Date.now() - st.headingAt < 5000;
-      st.arrow.classList.toggle("on", !!have);
-      if (!have) return;
-      var b = bearing(st.me.lat, st.me.lng, st.tgt.lat, st.tgt.lng);
-      // With compass: arrow relative to where the phone points. Without: north-up (N mark at the top).
-      var rot = comp ? b - st.heading : b;
-      st.arrow.style.transform = "rotate(" + rot.toFixed(1) + "deg)";
-      if (st.nmark) st.nmark.style.transform = "rotate(" + (comp ? -st.heading : 0).toFixed(1) + "deg)";
-      st.dial.classList.toggle("nocomp", !comp);
-    }
+    function drawArrow() { st.cf.arrow(); }
     function showMini() {
       if (!st.alive || st.mini || !st.mapEl || !window.L) return;
       st.mapEl.hidden = false;
