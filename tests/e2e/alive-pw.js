@@ -73,7 +73,8 @@ const anim = (page, sel) => page.evaluate((s) => { const e = document.querySelec
 
       // pause: movestart -> paused; moveend -> running again
       await page.evaluate(() => __map.fire("movestart"));
-      const st1 = await anim(page, ".al-lively i"), cls = await page.evaluate(() => __map.getPane("alive").classList.contains("al-move"));
+      // coord 13 Nov: read the computed animation-play-state after one frame (Animation.playState can lag a frame under load; CI saw "running" while the computed style was already "paused")
+      const st1 = await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => { const e = document.querySelector(".al-lively i"); res(e ? getComputedStyle(e).animationPlayState : "none"); })))), cls = await page.evaluate(() => __map.getPane("alive").classList.contains("al-move"));
       ok(st1 === "paused" && cls, "movestart pauses every effect", { st1, cls });
       await page.evaluate(() => __map.fire("moveend"));
       await wait(page, 500);

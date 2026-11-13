@@ -124,7 +124,7 @@
     clearTimeout(f13T);
     f13T = setTimeout(function () {
       var b = $("af-hol-e"); if (!b || b.getAttribute("data-hol") !== "fredag13") { f13T = null; return; }
-      if (document.visibilityState === "visible" && !document.documentElement.classList.contains("map-moving")) f13Play(b, Math.random() < 0.5 ? "f13-blink" : "f13-swish", 1600);
+      if (document.visibilityState === "visible" && !document.documentElement.classList.contains("map-moving") && !/\bf13-(hop|flick)\b/.test(b.className)) f13Play(b, Math.random() < 0.5 ? "f13-blink" : "f13-swish", 1600);
       f13Idle();
     }, (window.PN_F13_MS || 20000) * (1 + Math.random()));   // 20-40 s (PN_F13_MS: tests/e2e/f13-pw.js only)
   }

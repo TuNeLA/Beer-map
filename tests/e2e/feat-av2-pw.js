@@ -104,7 +104,7 @@ async function routes(page, me) {
       ok("crown unlocked by the Barkungen medal", by(/^Krona/).l === false);
       ok("santa hat locked by medal Luciatåget", /medaljen Luciatåget/.test(by(/^Tomteluva/).a || ""), by(/^Tomteluva/));
       ok("party hat locked (events)", /event/.test(by(/^Partyhatt/).a || ""));
-      ok("v2 hats listed (44) incl. Studentmössa + seasonal Häxhatt open now (11-07)", st.length === 44 && by(/^Studentmössa/).a && by(/^Häxhatt/).l === false, st.length);
+      ok("v2 hats listed (48: 44 + 4 unlock hats) incl. Studentmössa + seasonal Häxhatt open now (11-07)", st.length === 48 && by(/^Studentmössa/).a && by(/^Häxhatt/).l === false, st.length);
       ok("rarity shown (Generalsmössa legendary)", /Legendarisk/.test(by(/^Generalsmössa/).a || ""));
       ok("Tomteluva lucia lock kept", by(/^Tomteluva/).l === true);
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Hjälm/.test(t.getAttribute("aria-label"))).click());
@@ -119,7 +119,7 @@ async function routes(page, me) {
       await wait(page, 300);
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       await wait(page, 200);
-      ok("tops 31 + colour row with egen färg", await page.evaluate(() => document.querySelectorAll(".ave-tile").length === 31 && !!document.querySelector(".ave-colrow .ave-own input[type=color]")));
+      ok("tops 33 (31 + 2 unlock tops) + colour row with egen färg", await page.evaluate(() => document.querySelectorAll(".ave-tile").length === 33 && !!document.querySelector(".ave-colrow .ave-own input[type=color]")));
       ok("officer jacket locked (Löjtnant)", await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Officersjacka/.test(t.getAttribute("aria-label"))).classList.contains("locked")));
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => /Medaljer/.test(b.textContent)).click());
       await wait(page, 200);
