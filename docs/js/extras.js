@@ -314,7 +314,7 @@
       KINDS.forEach(function (k) {
         var kk = kinds[k] || ["❓", k];
         grid.appendChild(A.el("button", { type: "button", class: "kind-btn", "data-kind": k, onclick: function () { A.closeSheet(); postOther(k); } }, [
-          A.el("span", { class: "kb-e", "aria-hidden": "true", text: kk[0] }), A.el("span", { class: "kb-n", text: kk[1] })
+          A.el("span", Object.assign({ class: "kb-e", "aria-hidden": "true" }, window.PNI && window.PNI.kind ? { html: window.PNI.kind(k, "pn-kind-i"), "data-a2k": k } : { text: kk[0] })), A.el("span", { class: "kb-n", text: kk[1] })
         ]));
       });
       body.appendChild(grid);

@@ -26,7 +26,7 @@
 
   /* ---------- texts (dalmål + military, ä for é) ---------- */
   var KIND = { quiz: "🧠", live: "🎸", dj: "🎧", karaoke: "🎤", sport: "📺", standup: "🎭", party: "🎉", other: "📅" };
-  var SA_KIND = { quiz: "bulb", live: "mic", dj: "speaker", karaoke: "mic", sport: "tv", standup: "mic", party: "sparkle", other: "calendar" };   // social-a R1-04
+  var SA_KIND = { quiz: "bulb", live: "mic", dj: "speaker", karaoke: "mic", sport: "ball", standup: "mic", party: "party", other: "calendar" };   // social-a R1-04
   function saIc(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, c) : ""; } catch (e) { return ""; } }
   var KIND_L = { quiz: ["Quiz", "Quiz"], live: ["Livemusik", "Live music"], dj: ["DJ / klubb", "DJ / club"], karaoke: ["Karaoke", "Karaoke"],
     sport: ["Sport på tv", "Sports on TV"], standup: ["Standup", "Stand-up"], party: ["Fest", "Party"], other: ["Annat", "Other"] };

@@ -67,7 +67,7 @@
     node.innerHTML = "";
     var s = x.s || "none";
     if (s === "friend" || s === "out") {
-      node.appendChild(A.el("span", { class: "f2-chip" + (s === "friend" ? " ok" : ""), text: s === "friend" ? L("✓ Vän", "✓ Friend") : L("⏳ Skickad", "⏳ Sent") }));
+      node.appendChild(A.el("span", { class: "f2-chip" + (s === "friend" ? " ok" : ""), html: s === "friend" ? ic("check") + L("Vän", "Friend") : ic("hourglass") + L("Skickad", "Sent") }));   // lane icons: PNI icon, no emoji in the chip
       return;
     }
     var b = A.btn(s === "in" ? L("✅ Acceptera vän", "✅ Accept friend") : L("➕ Lägg till vän", "➕ Add friend"), "btn-small f2-add" + (s === "in" ? " btn-green" : ""), function (e) {

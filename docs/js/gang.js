@@ -897,10 +897,12 @@
     return out;
   }
   function swishUrl(num, amount, msg) {
-    // Swish's documented app link (same as rundan.js): sw=46…, decimal point, no cur, Swish-safe %20-encoded message.
+    // Swish app link (same as rundan.js, which owns the platform logic): sw=46…, amount ALWAYS with a decimal point, no cur, no edit
+    // (= locked), Swish-safe %20-encoded message. lane c4drinks I-44.
+    var R = window.RUNDAN && window.RUNDAN._swish; if (R) return R.href(num, amount, msg);
     var v = String(num || "").replace(/\D/g, ""); if (/^07\d{8}$/.test(v)) v = "46" + v.slice(1);
     var m = String(msg || "").replace(/[–—·•|]/g, "-").replace(/[^0-9A-Za-zÅÄÖåäöÉéÜü !?().,:;\-+'\/&]/g, "").replace(/\s+/g, " ").trim().slice(0, 50);
-    var a = +amount, as = (Math.round(a * 100) % 100 === 0) ? String(Math.round(a)) : a.toFixed(2);
+    var a = +amount, as = (Math.round(a * 100) % 100 === 0) ? a.toFixed(1) : a.toFixed(2);
     return "https://app.swish.nu/1/p/sw/?sw=" + v + "&amt=" + as + "&msg=" + encodeURIComponent(m);
   }
   function renderDebts(pane, d) {
@@ -922,7 +924,9 @@
           var s = swish[t.to.k];
           if (s && s.number) {
             var row = el("div", { class: "gg-row" });
-            var a = el("a", { class: "btn btn-small btn-green", href: swishUrl(s.number, t.amount, "PintsNow: " + view.g.name), text: T("dSwish", t.to.name) });
+            var R = window.RUNDAN && window.RUNDAN._swish;
+            var a = R ? R.ctl({ swish: s.number, name: t.to.name }, t.amount, "PintsNow: " + view.g.name, "btn btn-small btn-green", T("dSwish", t.to.name))
+              : el("a", { class: "btn btn-small btn-green", href: swishUrl(s.number, t.amount, "PintsNow: " + view.g.name), text: T("dSwish", t.to.name) });
             row.appendChild(a);
             row.appendChild(bt(T("dCopy"), "btn-small", function () { A.copyText(s.number); }));
             li.appendChild(row);
@@ -1635,6 +1639,7 @@
 
   /* ---------- Public hooks ---------- */
   window.GANG = {
+    _swishUrl: swishUrl,
     state: function () { return state; },
     data: function () { return poll; },
     openGang: openGang, chatPick: chatPick, openKebab: openKebabSheet,

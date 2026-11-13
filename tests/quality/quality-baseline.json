@@ -46,8 +46,8 @@
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
    },
    "docs/js/gang.js": {
-    "value": 1671,
-    "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+    "value": 1676,
+    "reason": "c4drinks I-44 (13 Nov): Swish link per platform (+5 lines); coordinator OK — split gang.js in a structure lane"
    },
    "docs/js/i18n.js": {
     "value": 1386,
@@ -1348,6 +1348,10 @@
    "docs/js/x8.js": {
     "value": 10,
     "reason": "legacy: present on 12 Nov 2026, fix when the file is touched"
+   },
+   "docs/js/pnicons-more.js": {
+    "value": 57,
+    "reason": "icons lane (13 Nov): these are the KEYS of the emoji -> PNI icon map (PNI.EMOJI) that REMOVES emoji from the UI; not user-facing text"
    }
   },
   "rawHex": {

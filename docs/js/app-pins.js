@@ -123,7 +123,7 @@
   function otherLine(b) {
     var oc = b.other_count | 0; if (!oc) return "";
     var k = (t("kindLow") || {})[b.other_kind] || (t("kindLow") || {}).annat || "";
-    return '<div class="pp-other">' + U.esc(oc === 1 ? t("otherPlus", oc, k) : t("otherPlusMany", oc, k)) + "</div>";
+    return '<div class="pp-other">' + (window.PNI && window.PNI.kind ? window.PNI.kind(b.other_kind, "pn-kind-i pp-ki") + " " : "") + U.esc(oc === 1 ? t("otherPlus", oc, k) : t("otherPlusMany", oc, k)) + "</div>";
   }
   function beerPopup(b) {
     if (b && b._demo && window.DEMO) return window.DEMO.popup(b);   // 🎞️ visningsläge

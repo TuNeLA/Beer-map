@@ -127,7 +127,9 @@ run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, f
 run ride3      $B ride3-pw.js      # lane ride3 (0495): destination, fast polls (fake clock: each step on the other phone <= 3 s), steps in order, role chats + read-aloud, Ring consent, LÄSK soda, ANNAT hidden while driving, flag re-ask
 run placesearch $B placesearch-pw.js   # lane a3search I-07: shared address search (Hemzon; mocked geocoder): near town first, list, Enter, no jump, mapbox flag
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
+run eggs       $B eggs-pw.js       # lane s3eggs: 7 hidden Easter eggs (once a day, off in ride / Folj mig hem, reduced motion)
 run d1settings  $B d1settings-pw.js  # lane d1settings: Inställningar = 8 rows -> pages with back, one Hem row, Konto page
+run icons      $B icons-pw.js      # lane icons: 25 new PNI icons (unique, live area, labels), emoji → icon map (chrome pass, toasts), one meaning per icon
 run a2ui       $B a2ui-pw.js       # lane a2ui: toast system, one row + divider, bottom bar CLS, Ikväll choice at first paint, drink icons
 run c3chat     $B c3chat-pw.js     # lane c3chat: DM list fills the sheet, voice bubble edge, DM header avatar, avatar tap = profile card, Truppen plain time field + fixed sheet height
 run b1people   $B b1people-pw.js   # lane b1people: Blockerade row, one fold style, unblock opens the DM, mute bell state, profile card, group top card + chat card
@@ -150,6 +152,7 @@ run hooks-order $B hooks-order-pw.js   # lane w1-hooks: PN.hookList() order = th
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk
+run c4drinks    $B c4drinks-pw.js   # lane c4drinks: PNI.kind drink icons, beer-style picker >= 44 px, undo chip over Annat, Swish link per platform
 # --- unit (no browser) ---
 [[ notif-sw =~ $FILTER ]] && { (cd $D && timeout 120 node notif-sw-test.js $REPO > $LOG/notif-sw.1.log 2>&1); rc=$?
   p=$(grep -c '^PASS' $LOG/notif-sw.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/notif-sw.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1

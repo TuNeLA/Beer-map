@@ -123,9 +123,22 @@
     "k-whisky": ["M3.5 7h17l-1.5 11a2 2 0 0 1-2 1.8H7a2 2 0 0 1-2-1.8z", "r 8.5 10.5 4 4 .8"],
     "k-grogg": ["M7 5h10l-1 15.5a1 1 0 0 1-1 .9H9a1 1 0 0 1-1-.9z", "r 9.5 11 3 3 .6", "r 12 15.5 3 3 .6", "c 17.5 4.5 2.3", "M11 2l2.2 7"],
     "k-bubbel": ["M9.2 3h5.6l-.4 9a2.4 2.4 0 0 1-4.8 0z", "M12 14.5V20", "M8.5 21h7", "C18.5 6 .9", "C5.5 8 .9", "C19.5 11 .7"],
-    "k-annat": ["d 12 12 9", "M12 8v8", "M8 12h8"]
+    "k-annat": ["d 12 12 9", "M12 8v8", "M8 12h8"],
+    // c4drinks I-35: ten beer styles of the "Vilken sort?" picker. Mug / pilsner cone / hop cone / citrus wheel / pint with head /
+    // wheat ear / cask / lemon / drop / dashed circle with three dots. All differ at 24-28 px.
+    "k-lager": ["r 4.5 7.5 10.5 13 2", "M15 10.5h2.2a2.3 2.3 0 0 1 2.3 2.3v2.4a2.3 2.3 0 0 1-2.3 2.3H15", "M4.5 8a3 3 0 0 1 5-2.2 3 3 0 0 1 5.5 2.2", "M8 12v5", "M11.5 12v5"],
+    "k-pilsner": ["M6.5 3.5h11L15 18.5H9z", "M7 7h10", "M12 18.5V21", "M8.5 21h7", "C11 11 .8", "C13.5 13.5 .8"],
+    "k-ipa": ["M12 2.8c3 1.5 5.2 4.2 5.2 7.7 0 3.8-2.3 6.7-5.2 8.2-2.9-1.5-5.2-4.4-5.2-8.2 0-3.5 2.2-6.2 5.2-7.7z", "M7.2 9c3 .9 6.6.9 9.6 0", "M7 13c3.2.9 6.8.9 10 0", "M12 18.7V21.5"],
+    "k-apa": ["c 12 12 8.5", "c 12 12 2", "M12 3.5V10", "M12 14v6.500", "M3.500 12H10", "M14 12h6.500"],
+    "k-stout": ["M6.5 4.5h11l-1.5 15.5a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1z", "M6.8 8.5c1.5 1.4 3 1.4 5.2 0s3.7-1.4 5.2 0", "C10 14 .9", "C14 16.5 .9", "C11.5 18.5 .7"],
+    "k-vete": ["M12 21V9.5", "M12 3c1.5 1.3 1.5 3.2 0 4.5-1.5-1.3-1.5-3.2 0-4.5z", "M12 11c-2.7 0-4-1.7-4-3.8 2.7 0 4 1.7 4 3.8z", "M12 11c2.7 0 4-1.7 4-3.8-2.7 0-4 1.7-4 3.8z", "M12 16c-2.7 0-4-1.7-4-3.8 2.7 0 4 1.7 4 3.8z", "M12 16c2.7 0 4-1.7 4-3.8-2.7 0-4 1.7-4 3.8z"],
+    "k-ale": ["M7 4c-2.5 3-2.5 13 0 16h10c2.5-3 2.5-13 0-16z", "M6.3 8.5h11.4", "M6.3 15.5h11.4", "M12 11v1.8", "M7 4h10"],
+    "k-sour": ["M3.5 12c0-1 1-1.6 2.2-1.9C7.2 9.7 8.7 6 12 6s4.8 3.7 6.3 4.1c1.2.3 2.2.9 2.2 1.9s-1 1.6-2.2 1.9C16.8 14.3 15.3 18 12 18s-4.8-3.7-6.3-4.1C4.5 13.6 3.5 13 3.5 12z", "M9.5 12h5", "M12 6V3.5", "M12 3.5c1.5 0 2.7.5 3.5 1.5"],
+    "k-alkfri": ["M12 3c3.5 4.3 5.8 7.1 5.8 10.3a5.8 5.8 0 0 1-11.6 0C6.2 10.1 8.5 7.3 12 3z", "M9.3 14a2.8 2.8 0 0 0 2.7 2.8"],
+    "k-annan": ["d 12 12 9", "C8 12 1", "C12 12 1", "C16 12 1"]
   };
-  var KIND = { rom: "k-rom", vin: "k-vin", cider: "k-cider", drink: "k-drink", shot: "k-shot", whisky: "k-whisky", grogg: "k-grogg", bubbel: "k-bubbel", annat: "k-annat" };
+  var KIND = { rom: "k-rom", vin: "k-vin", cider: "k-cider", drink: "k-drink", shot: "k-shot", whisky: "k-whisky", grogg: "k-grogg", bubbel: "k-bubbel", annat: "k-annat",
+    lager: "k-lager", pilsner: "k-pilsner", ipa: "k-ipa", apa: "k-apa", stout: "k-stout", vete: "k-vete", ale: "k-ale", sour: "k-sour", alkfri: "k-alkfri", annan: "k-annan", beer: "beer" };
   // Emoji that the older code puts in front of UI labels → our icon (UI chrome only; chat text and fun copy keep emoji).
   var EMOJI = {
     "🍺": "beer", "🍻": "cheers", "🥃": "drink", "🍷": "drink", "🥂": "cheers", "🍹": "drink", "🍸": "drink", "🍾": "drink",

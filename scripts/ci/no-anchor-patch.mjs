@@ -54,8 +54,11 @@ for (const f of fs.readdirSync(MIG).filter((x) => /^\d{4}_.*\.sql$/.test(x)).sor
   // a call = the helper name not right after "function " (a REVOKE / GRANT "on function public.x(…)" names it, it does not call it)
   const calls = [...code.matchAll(/\b(olnu_\w+_patch)\s*\(/gi)]
     .filter((m) => !/\bfunction\s+(public\.)?$/i.test(code.slice(Math.max(0, m.index - 30), m.index)));
-  if (calls.length) fail.push(`${f}: calls an anchor helper (${[...new Set(calls.map((m) => m[1]))].join(', ')}). Rule A3: full CREATE OR REPLACE from the snapshot.`);
-  if (/\bexecute\s+(replace\s*\(|v_def\b)/i.test(code)) fail.push(`${f}: own anchor patch (execute replace(…)/v_def). Rule A3: full CREATE OR REPLACE from the snapshot.`);
+  // A3 exception (13 Nov, 0510): a hotfix that must patch BOTH the live model and the later release model may keep anchor calls,
+  // if the file says why on a line "-- A3-EXCEPTION: <reason>" and the coordinator dry-runs it on live in a rolled-back transaction first.
+  const a3x = /^--\s*A3-EXCEPTION:\s*\S/m.test(raw);
+  if (calls.length && !a3x) fail.push(`${f}: calls an anchor helper (${[...new Set(calls.map((m) => m[1]))].join(', ')}). Rule A3: full CREATE OR REPLACE from the snapshot.`);
+  if (!a3x && /\bexecute\s+(replace\s*\(|v_def\b)/i.test(code)) fail.push(`${f}: own anchor patch (execute replace(…)/v_def). Rule A3: full CREATE OR REPLACE from the snapshot.`);
   const words = [...raw.matchAll(/\b(delete|drop|truncate)\b/gi)].map((m) => `"${m[1]}" on line ${raw.slice(0, m.index).split('\n').length}`);
   if (words.length) fail.push(`${f}: forbidden word ${words.slice(0, 5).join(', ')} (no DELETE/DROP/TRUNCATE, also not in comments)`);
   const stmts = code.split(';').map((s) => s.trim()).filter(Boolean);

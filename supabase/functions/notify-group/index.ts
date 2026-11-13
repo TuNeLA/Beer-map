@@ -2404,7 +2404,7 @@ async function mateNames(admin: Admin, uid: string, onlyGroup?: string): Promise
     const { data: ev, error: eErr } = await admin.rpc("evchat_push_mates", { p_gid: onlyGroup, p_uid: uid });
     if (eErr) { console.warn("evchat_push_mates", eErr.message); return nameFor; }
     for (const r of (ev ?? []) as { user_id: string; name: string }[]) nameFor.set(r.user_id, r.name);
-    return nameFor;
+    return await dropBlocked(admin, uid, nameFor);   // secaudit 0510
   }
   if (!mine || mine.length === 0) return nameFor;
   const nameByGroup = new Map<string, string>();
@@ -2419,7 +2419,18 @@ async function mateNames(admin: Admin, uid: string, onlyGroup?: string): Promise
     const prev = nameFor.get(o.user_id as string);
     if (prev === undefined || name < prev) nameFor.set(o.user_id as string, name);
   }
-  return nameFor;
+  return await dropBlocked(admin, uid, nameFor);   // secaudit 0510
+}
+
+// secaudit 0510: no group push (sos with the exact point, come-here, chat text, voice, walk, rally ...) between two people
+// when one of them blocked the other (user_blocks.active, both ways). On a read error the push goes as before (logged).
+async function dropBlocked(admin: Admin, uid: string, m: Map<string, string>): Promise<Map<string, string>> {
+  if (m.size === 0) return m;
+  const { data, error } = await admin.from("user_blocks").select("blocker, blocked")
+    .eq("active", true).or(`blocker.eq.${uid},blocked.eq.${uid}`);
+  if (error) { console.warn("user_blocks", error.message); return m; }
+  for (const b of (data ?? []) as { blocker: string; blocked: string }[]) m.delete(b.blocker === uid ? b.blocked : b.blocker);
+  return m;
 }
 
 async function subsOf(admin: Admin, userIds: string[]): Promise<Sub[]> {

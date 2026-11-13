@@ -80,7 +80,7 @@ jobs:
           - name: ride
             filter: '^(ride|ride3)$'
           - name: main
-            filter: '^(main|sec)$'
+            filter: '^(main|sec|eggs)$'
           - name: x8
             filter: '^(x8)$'
           - name: followups
@@ -117,6 +117,8 @@ jobs:
             filter: '^(a4rel)$'
           - name: placesearch
             filter: '^(placesearch)$'
+          - name: icons
+            filter: '^(icons)$'
           - name: a2ui
             filter: '^(a2ui)$'
           - name: c3chat
@@ -146,6 +148,10 @@ jobs:
             filter: '^(systemet)$'
           - name: c5extras
             filter: '^(c5extras)$'
+          - name: c4drinks
+            filter: '^(c4drinks)$'
+          - name: eggs
+            filter: '^(eggs)$'
     steps:
       - uses: actions/checkout@v4
       - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"
@@ -351,6 +357,11 @@ jobs:
         run: |
           psql -d rh_pre -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0500_rpc_bundle_allow.sql -f supabase/tests/rpc-bundle-allow-0500.test.sql | tee /tmp/b0500.txt
           if grep -q '|f|' /tmp/b0500.txt || ! grep -q '^new_row_bundles|t|' /tmp/b0500.txt; then echo "0500 test failed"; exit 1; fi
+      - name: 0510 security (a block really hides, group code IP limit, server age gate)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0510_security_audit.sql -f supabase/tests/security-0510.test.sql | tee /tmp/s0510.txt
+          if grep -q '|f|' /tmp/s0510.txt || ! grep -q '^age: under-18 cannot join a group|t|' /tmp/s0510.txt; then echo "0510 test failed"; exit 1; fi
       - name: Staging drift report (optional secret STAGING_DB_URL, read-only; warn only)
         continue-on-error: true
         env:

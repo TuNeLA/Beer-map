@@ -45,7 +45,7 @@
   }
   var KEMO = { quiz: "🧠", live: "🎸", dj: "🎧", karaoke: "🎤", sport: "⚽", standup: "🎭", party: "🎉" };
   // social-a G3: list + head icons are PNI (no emoji in chrome); titles never say the place twice
-  var KICO = { quiz: "bulb", live: "mic", dj: "speaker", karaoke: "mic", sport: "tv", standup: "mic", party: "sparkle" };
+  var KICO = { quiz: "bulb", live: "mic", dj: "speaker", karaoke: "mic", sport: "ball", standup: "mic", party: "party" };
   function kic(kind, def) { var n = KICO[kind] || def || "calendar"; try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
   function ctitle(t, place) { try { if (window.INVITE && window.INVITE.cleanTitle) return window.INVITE.cleanTitle(t, place); } catch (e) {} return String(t || ""); }
 
