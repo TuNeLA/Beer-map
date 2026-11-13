@@ -73,7 +73,7 @@ button{font:inherit;color:inherit}
 .tk-item.tk-med{color:#fff;text-shadow:0 0 6px var(--red)}
 .tk-item.tk-friend{color:var(--green)}
 .tk-item.tk-quiet{color:var(--muted)}
-.tk-sep{color:var(--olive-text);padding:0 12px}
+.tk-sep{display:inline-block;width:18px;padding:0;color:var(--olive-text)}   /* tickerfix2 I-70: an empty spacer between items, no "///" */
 @keyframes tick{to{transform:translateX(-50%)}}
 
 .my-streak{position:fixed;z-index:999;top:calc(var(--sat) + 100px);left:calc(var(--sal) + 10px);font-family:var(--body);font-weight:600;font-size:var(--fs-14);

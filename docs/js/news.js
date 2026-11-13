@@ -199,6 +199,88 @@
      empty (time-of-day, weekday, filler, dialect packs, not only the QUIET kinds) never shows while the header says N > 0. */
   var EMPTY_RX = /kartan (är|ä) tom|tom karta|tomt på kartan|tomt i (?!gänget|loggboken|röstlådan|rullan)\S|tomt på grupper|tom innerstad|(inte|int'|int’) en (själ|kjäft)(?! i kön)|ingen ute|ingen på kartan|inga prickar|ingen fackla tänd|ingen har tryckt|ingen har varit ute|stranden (är|ä) tom|bara (snön|regnet|måsarna) (är|ä) ute|nobody (is )?out|empty map|map is empty|no one (is )?out|not a soul/i;
   function emptyLine(tx) { return EMPTY_RX.test(String(tx || "")); }
+  /* tickerfix2 I-71 (owner 13 Nov: "Inga prickar / Tomt på kartan / Lugnt i Ludvika", "seen 20 times in a minute"): at most ONE
+     quiet / empty-map line per 30 min per phone. Quiet = a QUIET kind (calm, emptyFirst, townQuiet), the tk-quiet filler, or any
+     "empty map" text of any kind and pack (emptyLine). The belt (app-ticker nextItem) marks the time when one goes on screen. */
+  var QUIET_KEY = "olnu.tkQuietAt", QUIET_MS = 30 * 60e3, quietMem = 0;
+  function isQuiet(x) { return !!x && (!!QUIET[x.k] || /(^|\s)tk-quiet(\s|$)/.test(x.cls || "") || emptyLine(x.text)); }
+  function quietOk(now) {
+    var a = quietMem, t = now ? +now : Date.now();
+    try { a = +localStorage.getItem(QUIET_KEY) || 0; } catch (e) { a = quietMem; }
+    return !(a > 0 && Math.abs(t - a) < QUIET_MS);
+  }
+  // tickerfix2 oneQuiet: one build holds at most ONE quiet line (the useful "emptyFirst" line first); the rest leave room for news
+  function oneQuiet(out) {
+    var keep = null;
+    out.forEach(function (x) { if (isQuiet(x) && (!keep || (x.k === "emptyFirst" && keep.k !== "emptyFirst"))) keep = x; });
+    return out.filter(function (x) { return !isQuiet(x) || x === keep; });
+  }
+  function quietMark(now) { quietMem = now ? +now : Date.now(); try { localStorage.setItem(QUIET_KEY, String(quietMem)); } catch (e) {} }
+  /* tickerfix2 I-71: fun lines that need no live people (news-gt.js TICKERFIX2 FUN): time of day, weekday, days to the weekend,
+     the next holiday, the Systembolaget countdown and absurd lines. All times Europe/Stockholm. */
+  function sthlm(now) {
+    var o = { y: now.getFullYear(), mo: now.getMonth() + 1, d: now.getDate(), h: now.getHours(), mi: now.getMinutes(), wd: ((now.getDay() + 6) % 7) + 1 };
+    try {
+      new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" })
+        .formatToParts(now).forEach(function (p) {
+          var v = p.value;
+          if (p.type === "year") o.y = +v; else if (p.type === "month") o.mo = +v; else if (p.type === "day") o.d = +v;
+          else if (p.type === "hour") o.h = (+v) % 24; else if (p.type === "minute") o.mi = +v;
+          else if (p.type === "weekday") o.wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(v) + 1;
+        });
+    } catch (e) {}
+    return o;
+  }
+  function midsFri(y) { for (var d = 19; d <= 25; d++) if (new Date(Date.UTC(y, 5, d)).getUTCDay() === 5) return d; return 19; }
+  var SB_SHUT = { "1-1": 1, "1-6": 1, "5-1": 1, "6-6": 1, "12-24": 1, "12-25": 1, "12-26": 1, "12-31": 1 };
+  // minutes until Systembolaget closes (Mon–Fri 19:00, Sat 15:00, closed Sun + fixed holidays + midsommar); null outside the last 3 h
+  function sysLeft(s) {
+    var md = midsFri(s.y);
+    if (s.wd === 7 || SB_SHUT[s.mo + "-" + s.d] || (s.mo === 6 && (s.d === md || s.d === md + 1))) return null;
+    var left = (s.wd === 6 ? 15 : 19) * 60 - (s.h * 60 + s.mi);
+    return left > 5 && left <= 180 ? left : null;
+  }
+  function durTxt(m) { if (m < 55) return Math.max(5, Math.round(m / 5) * 5) + " min"; return String(Math.round(m / 30) / 2).replace(".", ",") + " h"; }
+  var HOLS = [[12, 13, "Lucia"], [12, 24, "julafton"], [12, 31, "nyårsafton"], [1, 6, "trettondagen"], [2, 14, "alla hjärtans dag"],
+    [4, 30, "valborg"], [6, 6, "nationaldagen"], [6, 0, "midsommarafton"], [10, 31, "halloween"]];
+  function nextHol(s) {
+    var today = Date.UTC(s.y, s.mo - 1, s.d), best = null;
+    HOLS.forEach(function (h) {
+      [s.y, s.y + 1].forEach(function (y) {
+        var n = Math.round((Date.UTC(y, h[0] - 1, h[1] || midsFri(y)) - today) / 864e5);
+        if (n >= 0 && (!best || n < best.n)) best = { n: n, hel: h[2] };
+      });
+    });
+    return best;
+  }
+  function days(n) { return n === 1 ? "1 dag" : n + " dagar"; }
+  function funCands(now, add) {
+    var s = sthlm(now), h = s.h, hol = nextHol(s), sy = sysLeft(s);
+    add(h >= 5 && h < 11 ? "funMorning" : h >= 11 && h < 17 ? "funDay" : h >= 17 && h < 23 ? "funEve" : "funLate", {}, 0);
+    if (Math.random() < 0.5) add("funWd" + s.wd, {}, 0);
+    if (s.wd <= 4) add("funWeek", { dagar: days(5 - s.wd) }, 0); else if (s.wd <= 6) add("funWeekend", {}, 0);
+    if (hol && hol.n === 0) add("funHolToday", { hel: hol.hel }, 0); else if (hol && hol.n <= 45) add("funHol", { hel: hol.hel, dagar: days(hol.n) }, 0);
+    if (sy != null && Math.random() < 0.5) add("funSys", { tid: durTxt(sy) }, 1);
+    add("funAbsurd", {}, 0); if (Math.random() < 0.5) add("funAbsurd", {}, 0);
+  }
+  // one fun line now (the belt's filler while a quiet line is not allowed); null = none (English: no fun lines)
+  function funLine(now) {
+    if (I.lang === "en") return null;
+    now = now || new Date();
+    var c = [], g = window.NEWS_GT || [], o = hourCur; hourCur = hourNow(now);
+    try {
+      funCands(now, function (k, d) { c.push({ k: k, d: d || {} }); });
+      shuffle(c);
+      for (var i = 0; i < c.length; i++) {
+        var fs = shuffle(g.filter(function (x) { return x && x.k === c[i].k; }));
+        for (var j = 0; j < fs.length; j++) {
+          var tx = ""; try { tx = String(fs[j].f(c[i].d)); } catch (e) { tx = ""; }
+          if (tx && tx.trim() && timeOk(tx) && !emptyLine(tx)) return { text: sentences(tx), cls: "", k: c[i].k };
+        }
+      }
+    } finally { hourCur = o; }
+    return null;
+  }
   var QUIET = { calm: 3, emptyFirst: 1, townQuiet: 3 }, quietText = {}, quietN = 0;   // kind -> shown only while snap.n is below this
   function friendAtBar(b) {
     if (b.snap != null || b.bar_id != null) return b.snap === "bar" || (b.bar_id != null && b.snap !== "area" && b.snap !== "home");
@@ -222,7 +304,8 @@
     if (snap.hdr > 0) [].forEach.call(track.querySelectorAll(".tk-item"), function (e) { if (emptyLine(e.textContent)) staleOut(e); });   // tickerfix 4: any "empty map" line
     return cut;
   }
-  // ownerfix 4a (owner PC shot, 11 Nov): an invisible line that keeps its width = a big gap between "///" on a wide screen.
+  // ownerfix 4a (owner PC shot, 11 Nov): an invisible line that keeps its width = a big gap between two items on a wide screen.
+  // tickerfix2 I-70: the .tk-sep piece is now an empty spacer (no "///"); it still folds shut with the stale line.
   // Fade it (250 ms), then fold it shut together with one separator (300 ms) and remove both: the belt closes up smoothly.
   function staleOut(e) {
     if (!e || e.__ofStale) return; e.__ofStale = true;
@@ -439,10 +522,10 @@
     snap.n = ppl(nearP, nearC);   // fixMo N-10: distinct people (was max(pins, check-ins))
     (ctx.checkins || []).forEach(function (c) { if (c && c.bar_name && isFinite(c.lat)) barLL[c.bar_name] = { lat: +c.lat, lng: +c.lng }; });
     function add(k, d, imp, cls) {
-      if (QUIET[k] && (snap.n >= QUIET[k] || snap.hdr > 0)) return;   // uxfix P1-5: never "Tomt / Int' en själ" while the header says "N ute"   // fixM T-14: no "Ingen ute" next to people / check-ins near
+      if (QUIET[k] && (snap.n >= QUIET[k] || snap.hdr > 0 || !qok)) return;   // uxfix P1-5: never "Tomt / Int' en själ" while the header says "N ute"   // fixM T-14: no "Ingen ute" next to people / check-ins near
       if (byKind[k] && !storeSkip(k)) cand.push({ k: k, d: d || {}, imp: imp | 0, cls: cls || "" });
     }
-    var anon = t("newsAnon") || ["?"];
+    var anon = t("newsAnon") || ["?"], qok = quietOk(now);   // tickerfix2 I-71: a quiet line was shown < 30 min ago → none in this build
 
     // Bars with 2+ people (same assignment as the map: precise pins within 75 m).
     var per = window.BARS ? window.BARS.assign(beers).perBar : {}, busyBar = {}, bars = [];
@@ -587,7 +670,7 @@
       if (lt) add("anon", { anon: pick(anon), stad: lt, n: lb.beer_count | 0 }, 0);
     }
 
-    groupTownCands(beers, ctx, now, per, add);
+    groupTownCands(beers, ctx, now, per, add); funCands(now, add);   // tickerfix2 I-71: fun lines that need no live people
 
     // Country, local town, forecast, time of day.
     if (snap.total != null && snap.total >= 3) add("total", { n: snap.total }, 0);   // fixM T-14: the header's source, not the pins in view
@@ -637,7 +720,7 @@
       for (var i = 0; i < ids.length; i++) {
         var tx = "";
         try { tx = String(ids[i].f(x.d)); if (U.n1) tx = U.n1(tx); tx = youFix(tx, x.d); } catch (e) { tx = ""; }   // fixJ T-22: "1 prickar" → "1 prick" · tickerfix 2: "Du" lines in 2nd person
-        if (!tx || !tx.trim() || seen[tx] || !localOk(x.k, tx, x.d) || (snap.hdr > 0 && emptyLine(tx))) continue;   // tickerfix 3: never a blank line · tickerfix 4: no "empty map" line (any kind) while the header says N ute
+        if (!tx || !tx.trim() || seen[tx] || !localOk(x.k, tx, x.d) || ((snap.hdr > 0 || !qok) && emptyLine(tx))) continue;   // tickerfix 3: never a blank line · tickerfix 4: no "empty map" line (any kind) while the header says N ute
         text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;
       }
@@ -668,12 +751,13 @@
     if (out.length > 1 && out[0].text === lastText) out.push(out.shift());
     // tx05 (usability): in an empty town the useful real line opens the belt, the jokes come after it.
     for (var ef = 1; ef < out.length; ef++) if (out[ef].k === "emptyFirst" || out[ef].k === "townNames") { out.unshift(out.splice(ef, 1)[0]); break; }
-    markShown(now, out);   // tx04: only what is really shown counts as used tonight
+    out = oneQuiet(out); markShown(now, out);   // tx04: only what is really shown counts as used tonight · tickerfix2 I-71: one quiet line per build
     out.forEach(function (x) { if (QUIET[x.k]) { if (++quietN > 400) { quietText = {}; quietN = 0; } quietText[x.text] = QUIET[x.k]; } });   // fixM T-14 (freshBelt)
     return out.map(function (x) { return { text: x.text, cls: (x.cls || "") + (catOf(x) !== "general" ? " tk-real" : ""), k: x.k }; });   // ds40 tk-real = a real event (dot)
   }
 
-  window.NEWS = { build: build, hintN: hintN, emptyLine: emptyLine, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
+  window.NEWS = { build: build, hintN: hintN, emptyLine: emptyLine, isQuiet: isQuiet, quietOk: quietOk, quietMark: quietMark, funLine: funLine,   // tickerfix2 I-71
+    _sys: function (now) { var m = sysLeft(sthlm(now || new Date())); return m == null ? null : durTxt(m); }, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
     freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
     // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
     last: function () { return { beers: lastBeers, ctx: lastCtx }; } };

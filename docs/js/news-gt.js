@@ -1080,3 +1080,94 @@ window.NEWS_GT = [
   window.NEWS_TX = { towns: Object.keys(TOWNS), count: out.length };
 })();
 /* TX NEWS END */
+/* TICKERFIX2 FUN START — owner 13 Nov (I-71): fun lines that need no live people. Plain Swedish, no emoji, no "drink more",
+   no amounts, no drunk-driving jokes, no real people or brands (only the plain name Systembolaget). Kinds: news.js funCands. */
+(function () {
+  var F = {
+    funMorning: [
+      "God morgon. Kaffet är den enda drycken som jobbar just nu.",
+      "Morgonläge. Kaffebryggaren gör allt jobb i det här landet just nu.",
+      "Det är för tidigt för det mesta. Utom frukost. Frukost är alltid i tid.",
+      "Morgonrapport: sängen vann igen. Matchen var aldrig jämn.",
+      "Någonstans står en brödrost och känner sig viktig. Låt den ha det."
+    ],
+    funDay: [
+      "Lunchrast. Någon i landet äter en sallad och längtar efter fredag.",
+      "Eftermiddag. Kontorsstolarna knarrar i takt över hela Sverige.",
+      "Dagtid. Kvällen ligger och laddar i bakgrunden. Den är inte klar än.",
+      "Ett möte någonstans kunde ha varit ett mejl. Det är också en sorts nyhet.",
+      "Klockan rör sig. Sakta, men den rör sig. Det är vetenskap."
+    ],
+    funEve: [
+      "Någonstans sitter en man på ett kontor och drömmer om ölen du ska dricka ikväll.",
+      "Kvällen har börjat. Soffan och krogen tävlar om dig. Båda är bra val.",
+      "Ikväll: samma stad, nya historier. Ingen vet vilka än.",
+      "Kvällsläge. Någon har just bestämt sig för att ta på sig den fina tröjan.",
+      "Ikväll är en bra kväll att ringa den där kompisen du inte hört av på länge.",
+      "Kvällsnytt: en strumpa har försvunnit i en tvättmaskin. Polisen har inga spår."
+    ],
+    funLate: [
+      "Sent nu. Kebabkön är landets mest demokratiska plats.",
+      "Gatlyktorna jobbar övertid och klagar aldrig.",
+      "Det är sent. Sängen har skickat ett vänligt sms. Svara när du vill.",
+      "Nattrapport: en räv korsar gatan och ser väldigt nöjd ut."
+    ],
+    funWd1: ["Måndag. Veckans längsta dag, enligt alla som någonsin haft en måndag."],
+    funWd2: ["Tisdag. Veckans mest anonyma dag. Ingen har någonsin längtat till tisdag."],
+    funWd3: ["Onsdag. Lilla lördag enligt somliga, vanlig onsdag enligt kalendern."],
+    funWd4: ["Torsdag. Ärtsoppan har talat, pannkakorna lyssnar."],
+    funWd5: ["Fredag! Veckan har gett upp och lämnat över till helgen."],
+    funWd6: ["Lördag. Väckarklockan har ledigt. Respektera det."],
+    funWd7: ["Söndag. Landets officiella dag för att ligga under en filt och tänka på ingenting."],
+    funWeek: [
+      "{dagar} kvar till fredag. Kalendern räknar. Du behöver inte.",
+      "Helgen är {dagar} bort. Den är på väg, den har bara lite trafik.",
+      "Prognos: helg om {dagar}. Säkerheten i prognosen är hög.",
+      "{dagar} till helgen. Planera något roligt. Eller planera att inte planera."
+    ],
+    funWeekend: [
+      "Helgen är här. Den stannar till söndag, sen åker den hem igen.",
+      "Helgläge. Ingen väckarklocka i världen kan stoppa det här.",
+      "I helgen: ingen plan än. Det är också en plan."
+    ],
+    funHol: [
+      "{dagar} kvar till {hel}. Någon har redan börjat planera. Det är inte du.",
+      "Nedräkning: {dagar} till {hel}. Kalendern är nervös.",
+      "Snart {hel}. {dagar} kvar. Det hinner hända mycket före dess.",
+      "Statusrapport: {hel} om {dagar}. Läget är under kontroll. Typ."
+    ],
+    funHolToday: [
+      "Idag är det {hel}. Kalendern har sett fram emot det här hela året.",
+      "Det är {hel} idag. Ha det fint, vad du än gör."
+    ],
+    funSys: [
+      "{tid} tills Systembolaget stänger. Köerna växer. Hinner alla?",
+      "Systembolaget stänger om {tid}. Kassorna piper i takt.",
+      "Om {tid} släcker Systembolaget lamporna. Ingen panik, bara information.",
+      "Systembolaget: {tid} kvar. Kundvagnarna rör sig snabbare än vanligt."
+    ],
+    funAbsurd: [
+      "Någonstans i Sverige letar en man efter sina nycklar. De sitter i dörren.",
+      "En duva har setts gå över ett övergångsställe på grönt. Experterna är imponerade.",
+      "Forskare meddelar: soffan är lika bekväm som förra veckan.",
+      "Någonstans sitter en katt och dömer sin ägare. Tyst, men bestämt.",
+      "Breaking: ett paraply har glömts kvar på en buss. Igen.",
+      "Någonstans diskuterar två personer var de ska äta. Det tar fortfarande tid.",
+      "Nyhet: en granne har köpt en ny gräsklippare. Ingen vet varför.",
+      "En kylskåpslampa någonstans tänds och släcks. Den gör sitt bästa.",
+      "Rapport: en strumpa och dess partner har återförenats efter en lång tid isär.",
+      "Någonstans säger någon ”bara ett avsnitt till”. Det är en lögn.",
+      "Ett tåg är i tid någonstans. Ingen tror på det, men det är sant.",
+      "Väderleksrapport inomhus: torrt, varmt och lite för mycket tv."
+    ]
+  };
+  function fill(s, d) {
+    var miss = false;
+    var out = String(s).replace(/\{(\w+)\}/g, function (m, k) { var v = d && d[k]; if (v == null || v === "") { miss = true; return ""; } return String(v); });
+    return miss ? "" : out;
+  }
+  var out = [];
+  Object.keys(F).forEach(function (k) { F[k].forEach(function (s) { out.push({ k: k, f: function (d) { return fill(s, d || {}); } }); }); });
+  window.NEWS_GT = (window.NEWS_GT || []).concat(out);
+})();
+/* TICKERFIX2 FUN END */

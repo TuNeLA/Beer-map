@@ -186,6 +186,8 @@ jobs:
             filter: '^(c4drinks)$'
           - name: eggs
             filter: '^(eggs)$'
+          - name: tickerfix2
+            filter: '^(tickerfix2)$'
     steps:
       - uses: actions/checkout@v4
       - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"

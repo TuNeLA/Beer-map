@@ -105,17 +105,46 @@
     try { return new Intl.DateTimeFormat(sv() ? "sv-SE" : "en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "numeric" }).format(d); } catch (e) { return dayKey(d); }
   }
   function tonight(e) { var d = new Date(e.starts_at); return eveKey(d) === eveKey(new Date()) && (!e.ends_at || Date.parse(e.ends_at) > Date.now()); }
-  function where() {
+  // tickerfix2 I-72 (owner 13 Nov: a friend in Göteborg saw Ludvika / Smedjebacken events in the ticker): the user's REAL
+  // position = own pin, the server's "me", or the last location fix. NEVER the map centre. null = no real position.
+  function llOk(o) { return !!o && o.lat != null && o.lng != null && isFinite(o.lat) && isFinite(o.lng); }
+  function realPos() {
     var p = null;
     try {
-      var me = A.me && A.me();
-      if (me && isFinite(me.lat) && isFinite(me.lng) && me.lat !== null) p = { lat: +me.lat, lng: +me.lng };
-      if (!p && A.lastLoc) { var l = A.lastLoc(); if (l && isFinite(l.lat) && isFinite(l.lng)) p = { lat: +l.lat, lng: +l.lng }; }
-      if (!p && A.map) { var c = A.map.getCenter(); p = { lat: c.lat, lng: c.lng }; }
-    } catch (e) {}
+      var b = A.myBeer && A.myBeer();
+      if (llOk(b)) p = { lat: +b.lat, lng: +b.lng };
+      var me = !p && A.me && A.me();
+      if (!p && llOk(me)) p = { lat: +me.lat, lng: +me.lng };
+      var l = !p && A.lastLoc && A.lastLoc();
+      if (!p && llOk(l)) p = { lat: +l.lat, lng: +l.lng };
+    } catch (e) { p = null; }
+    if (p) { p.lng = ((((p.lng + 180) % 360) + 360) % 360) - 180; p.lat = Math.max(-85, Math.min(85, p.lat)); }
+    return p;
+  }
+  // events_near centre: the real position, else the map centre (the 🏆 sheet "Ikväll i stan" shows the area you look at)
+  function where() {
+    var p = realPos();
+    try { if (!p && A.map) { var c = A.map.getCenter(); p = { lat: c.lat, lng: c.lng }; } } catch (e) {}
     if (!p) p = { lat: 60.1496, lng: 15.1878 };
     p.lng = ((((p.lng + 180) % 360) + 360) % 360) - 180; p.lat = Math.max(-85, Math.min(85, p.lat));
     return p;
+  }
+  function posKey(p) { return (Math.round(p.lat * 20) / 20) + "," + (Math.round(p.lng * 10) / 10); }
+  var EV_NEWS_M = 30000, evKickAt = 0;   // the server box is ±0.27° (~30 km): the ticker uses only events within 30 km of ME
+  function evNear(e, p) { return llOk(e) && U.haversine(p.lat, p.lng, +e.lat, +e.lng) <= EV_NEWS_M; }
+  function evTown(e) { return (e && e.town) || (llOk(e) ? townOf({ lat: +e.lat, lng: +e.lng }) : "") || ""; }
+  // tickerfix2 I-72: other modules make ticker lines from these rows too (invite.js evMix reads EVENTS._cache().rows). The belt
+  // (app-ticker itemOk) asks here: a line that names an event's title shows only when that event is <= 30 km from my REAL position.
+  function tickerOk(text) {
+    text = String(text || ""); var rows = cache.rows || [], p = null, bad = false;
+    for (var i = 0; i < rows.length; i++) {
+      var e = rows[i], ti = e && e.title ? String(e.title) : "";
+      if (ti.length < 3 || text.indexOf(ti) < 0) continue;
+      if (p === null) p = realPos() || false;
+      if (p && evNear(e, p)) return true;
+      bad = true;
+    }
+    return !bad;
   }
   function townOf(p) { var c = null; try { c = window.CITIES && window.CITIES.nearest(p.lat, p.lng); } catch (e) {} return c ? c.name : ""; }
   function placeOf(e) {
@@ -126,7 +155,7 @@
   /* ---------- data ---------- */
   function load(force, days) {
     if (!A || !A.LIVE || off.ev || !A.authed || !A.authed()) return Promise.resolve(cache.rows);
-    var p = where(), key = (Math.round(p.lat * 20) / 20) + "," + (Math.round(p.lng * 10) / 10) + ":" + (days || 7);
+    var p = where(), key = posKey(p) + ":" + (days || 7);
     if (!force && key === cache.key && Date.now() - cache.at < 120000) return Promise.resolve(cache.rows);
     if (busy) return Promise.resolve(cache.rows);
     busy = true;
@@ -351,10 +380,15 @@
   function newsCands() {
     var out = [];
     if (!off.ev && sv()) {
-      var now = Date.now(), p = where(), town = townOf(p) || "stan";
-      var tn = cache.rows.filter(function (e) { return tonight(e) && !e.pending && Date.parse(e.starts_at) > now - 2 * 3600e3; });
-      tn.slice(0, 2).forEach(function (e, i) { out.push({ k: "evTonight", d: { title: e.title, bar: placeOf(e), tid: hhmm(e.starts_at), stad: town }, imp: i ? 0 : 1 }); });
-      if (tn.length >= 3) out.push({ k: "evCount", d: { n: tn.length, stad: town }, imp: 0 });
+      // tickerfix2 I-72: only with a REAL position, only rows loaded for THIS position (cache key), only events <= 30 km from
+      // me, and {stad} = the event's own town (was the viewer's town). Rows for another place: reload once a minute.
+      var now = Date.now(), p = realPos(), same = !!p && String(cache.key).split(":")[0] === posKey(p);
+      if (p && !same && now - evKickAt > 60000) { evKickAt = now; setTimeout(function () { load(true, 7); }, 0); }
+      var tn = !same ? [] : cache.rows.filter(function (e) { return tonight(e) && !e.pending && Date.parse(e.starts_at) > now - 2 * 3600e3 && evNear(e, p) && evTown(e); });
+      tn.slice(0, 2).forEach(function (e, i) { out.push({ k: "evTonight", d: { title: e.title, bar: placeOf(e), tid: hhmm(e.starts_at), stad: evTown(e) }, imp: i ? 0 : 1 }); });
+      var tw = {}; tn.forEach(function (e) { tw[evTown(e)] = (tw[evTown(e)] | 0) + 1; });
+      var top = Object.keys(tw).sort(function (a, b) { return tw[b] - tw[a]; })[0];
+      if (tn.length >= 3 && top && tw[top] >= 3) out.push({ k: "evCount", d: { n: tw[top], stad: top }, imp: 0 });
     }
     try { if (window.GOLDEN && window.GOLDEN.newsCands) out = out.concat(window.GOLDEN.newsCands() || []); } catch (e) {}
     return out;
@@ -400,6 +434,6 @@
     barPopupHTML: function (bar) { try { return barHTML(bar); } catch (e) { return ""; } },
     applyText: function () {},
     // tests / other modules
-    _cache: function () { return cache; }, _load: load, report: reportSheet, tip: tipForm, go: goFor, hhmm: hhmm, T: T
+    _cache: function () { return cache; }, _load: load, _realPos: function () { return realPos(); }, tickerOk: tickerOk, report: reportSheet, tip: tipForm, go: goFor, hhmm: hhmm, T: T
   };
 })();

@@ -202,6 +202,8 @@ async function moveToast(page) {
     if (ONLY.test("E")) {
       const world = { beers: [], gang: true };
       const { ctx, page } = await phone(browser, world);
+      await page.evaluate(() => { try { localStorage.removeItem("olnu.tkQuietAt"); } catch (e) {} window.PN.s.newsDirty = true; window.PN.s.tickerKey = ""; window.PN.renderTicker(); });   // tickerfix2: fresh quiet cap for E (I-71: one quiet line per 30 min)
+      await wait(page, 1500);
       const h0 = await hdr(page);
       const pre = await page.evaluate((re) => [...document.querySelectorAll("#ticker-track .tk-item")].map((e) => e.textContent).filter((t) => new RegExp(re, "i").test(t)), EMPTY.source);
       ok("E precondition: empty town → the header says 0 and the belt has an empty-town line", h0.out === "0" && pre.length > 0, { h0, pre });
@@ -243,6 +245,7 @@ async function moveToast(page) {
         const r = await page.evaluate(([iso, re]) => {
           const R = new RegExp(re, "i"), now = new Date(iso), all = [], c0 = { lat: 60.1505, lng: 15.1872 };
           for (let i = 0; i < 40; i++) window.NEWS.build([], { center: c0, now, prev: [], titles: null, liveTotal: 7, hdrOut: 7, others: [], checkins: [], home: [], rallies: [], myName: "Anton", myTitle: null, myMedals: [] }).forEach((x) => all.push(x.text));
+          try { localStorage.removeItem("olnu.tkQuietAt"); } catch (e) {}   // tickerfix2: the 30 min quiet cap (I-71) is not part of this sanity check
           const zero = [];   // the same clock with the header at 0: the empty-map lines are still there (the check is not empty by luck)
           for (let i = 0; i < 40; i++) window.NEWS.build([], { center: c0, now, prev: [], titles: null, liveTotal: 0, hdrOut: 0, others: [], checkins: [], home: [], rallies: [], myName: "Anton", myTitle: null, myMedals: [] }).forEach((x) => zero.push(x.text));
           return { bad: [...new Set(all.filter((t) => R.test(t)))], n: all.length, zero: [...new Set(zero.filter((t) => R.test(t)))].length };

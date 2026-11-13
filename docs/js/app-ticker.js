@@ -59,7 +59,9 @@
   function quietItem() {
     var n = hdrOut(), h = namesHintN();
     if (h > 0 && sinceHint >= HINT_GAP) return { text: h + " ute – gå med i ett gäng för att se namn", cls: "", k: "townNames" };
-    return n > 0 ? { text: t("chaosOut", n), cls: "" } : { text: t("tickQuiet"), cls: "tk-quiet" };
+    if (n > 0) return { text: t("chaosOut", n), cls: "" };
+    var f = null; try { f = window.NEWS && window.NEWS.quietOk && !window.NEWS.quietOk() && window.NEWS.funLine ? window.NEWS.funLine() : null; } catch (e) { f = null; }   // tickerfix2 I-71: a fun line, not a 2nd quiet one
+    return f || { text: t("tickQuiet"), cls: "tk-quiet" };
   }
   // tickerfix 1/3/4: the line that goes on the belt NOW. Never a blank line ("/// ///"), the names hint at most once per
   // loop (HINT_GAP lines between two), and no quiet / empty-town line ("Inga prickar i X än") while the header says "N ute".
@@ -67,6 +69,8 @@
     if (!x || !String(x.text == null ? "" : x.text).replace(/[\s\u00a0\u200b-\u200d\u2060\ufeff]+/g, "")) return false;
     if (isHint(x)) return namesHintN() > 0 && (built || sinceHint >= HINT_GAP);
     if (hdrOut() > 0 && (/(^|\s)tk-quiet(\s|$)/.test(x.cls || "") || (window.NEWS && window.NEWS.emptyLine && window.NEWS.emptyLine(x.text)))) return false;   // tickerfix 4: any "empty map" line
+    try { if (window.NEWS && window.NEWS.isQuiet && window.NEWS.isQuiet(x) && !window.NEWS.quietOk()) return false; } catch (e) {}   // tickerfix2 I-71: max one quiet line per 30 min
+    try { if (window.EVENTS && window.EVENTS.tickerOk && !window.EVENTS.tickerOk(x.text)) return false; } catch (e) {}   // tickerfix2 I-72: event lines only near my real position (also invite.js lines)
     return true;
   }
   function nextItem() {
@@ -81,6 +85,7 @@
       if (itemOk(c)) { x = c; break; }
     }
     if (!x || !itemOk(x)) x = quietItem();
+    try { if (window.NEWS && window.NEWS.isQuiet && window.NEWS.isQuiet(x)) window.NEWS.quietMark(); } catch (e) {}   // tickerfix2 I-71: the quiet line goes on screen now
     if (isHint(x)) sinceHint = 0; else sinceHint++;
     return x;
   }
@@ -143,7 +148,7 @@
     if (!tickKickDone) {
       tickKickDone = true;
       frag.appendChild(el("span", { class: "tk-kick", text: t("newsKick") }));
-    } else if (!(track.lastElementChild && track.lastElementChild.classList.contains("tk-sep"))) frag.appendChild(el("span", { class: "tk-sep", text: "///" }));   // tickerfix 3: freshBelt can leave a "///" at the end: never two in a row
+    } else if (!(track.lastElementChild && track.lastElementChild.classList.contains("tk-sep"))) { var sp = el("span", { class: "tk-sep" }); sp.setAttribute("aria-hidden", "true"); frag.appendChild(sp); }   // tickerfix 3: never two in a row · tickerfix2 I-70: an empty spacer, no "///" (the green dot marks a new item)
     var x = nextItem();
     frag.appendChild(el("span", { class: "tk-item" + (x.cls ? " " + x.cls : ""), text: x.text }));
     track.appendChild(frag);
