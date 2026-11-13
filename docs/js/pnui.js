@@ -479,7 +479,7 @@
     document.querySelectorAll(".gpg > .gpg-now").forEach(function (now) {
       var w = now.parentNode, g = w && w.__pnG, c = g && gikv[g.id];
       var cn = c && c.d && c.d.counts, txt = "";
-      if (cn && ((cn.ute | 0) || (cn.kanske | 0))) txt = [(cn.ute | 0) ? "🍺 " + cn.ute + " ska ut" : "", (cn.kanske | 0) ? "🤔 " + cn.kanske + " kanske" : ""].filter(Boolean).join(" · ");
+      if (cn && ((cn.ute | 0) || (cn.kanske | 0))) txt = [(cn.ute | 0) ? cn.ute + " ska ut" : "", (cn.kanske | 0) ? cn.kanske + " kanske" : ""].filter(Boolean).join(" · ");
       var el0 = now.querySelector(".pn-gikv");
       if (!txt) { if (el0) el0.remove(); return; }
       if (!el0) { el0 = h("span", { class: "pn-gikv" }); (now.querySelector(".gpg-now-main") || now).appendChild(el0); }

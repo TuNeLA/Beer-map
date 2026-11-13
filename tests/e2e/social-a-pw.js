@@ -68,6 +68,7 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
     const rec = { fr: [] };
     await server(page, rec);
     await ctx.addInitScript(() => { try { localStorage.setItem("olnu.pnFold", "1"); } catch (e) {} });
+    await ctx.addInitScript(() => { window.PN_CFG = Object.assign(window.PN_CFG || {}, { gangkamp: true }); });   // c1menus I-41: Gängkamp is behind PN_CFG.gangkamp (off on live); this test still checks the rows
     await boot(page);
     await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
 
