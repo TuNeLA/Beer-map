@@ -29,7 +29,7 @@
 .fx-heat{position:absolute;left:-5%;right:-5%;bottom:-5%;height:70vh;background:linear-gradient(to top,rgba(255,90,0,.35),transparent);
   transform-origin:50% 100%;animation:fxhaze .9s var(--e-std) infinite alternate;will-change:transform}
 @keyframes fxhaze{from{transform:scaleY(.92) skewX(-1.5deg)}to{transform:scaleY(1.06) skewX(1.5deg)}}
-html.fx-shimmer #map{animation:fxshimmer var(--m-6) var(--e-std) infinite alternate;will-change:transform}
+html.fx-shimmer #map{animation:none}   /* owner 13 Nov 21:12: the map never pulses; colours at the edges instead */
 @keyframes fxshimmer{0%{transform:scale(1.01) skewX(-.35deg) translateY(1px)}100%{transform:scale(1.016) skewX(.35deg) translateY(-2px)}}
 
 /* fireball / lava: screen shake + shockwave */

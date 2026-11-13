@@ -321,7 +321,7 @@
     inferno: function (el, L) {
       mk("fx-edges soft", L, "<i class=\"e-b\"></i><i class=\"e-l\"></i><i class=\"e-r\"></i>");
       mk("fx-heat", L);
-      DOC.classList.add("fx-shimmer");
+      // owner 13 Nov 21:12: no map shimmer (the whole map pulsing); the coloured edges + embers carry the effect
       var st = {}, sf = {};
       var stop = particles(L, { emitFor: 3.8, emit: function (ps, dt, t, W, H, room) {
         var n = rate(st, 75, dt, room);
