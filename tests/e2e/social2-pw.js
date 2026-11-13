@@ -55,6 +55,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
   {
     const { ctx, page } = await ctxFor(browser, { width: 412, height: 915 }, {});
     page.on("pageerror", (e) => errs.push(e.message));
+    await page.addInitScript(() => { window.PN_CFG = Object.assign(window.PN_CFG || {}, { gangkamp: true }); });   // c1menus I-41: the Inkorg duel tile is behind PN_CFG.gangkamp (off on live); this test still checks it
     await page.addInitScript(() => { window.TESTMOD = { groupActions: (g) => [{ id: "t1", icon: "💸", label: "Jag bjöd", sub: "skriv upp en runda", onClick: () => { window.__ga = g.id; } }] }; });
     await extra(page);
     await boot(page);

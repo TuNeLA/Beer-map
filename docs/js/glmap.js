@@ -586,7 +586,9 @@
   var CL_IDS = [L_CDOTE, L_CDOT, L_CB1, L_CB2, L_CL, L_BLK];   // cifix3: L_CDOTF is no layer any more (a1map I-27): only real ids here
   // cifix3: ONE list of every GL venue layer: the BAREA editor hide/restore (editVis) and _layers() use it
   function venueIds() { return [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(CL_IDS); }
-  var CL_MAXZ = 12, CL_MINZ = 9, CL_R = 30;   // c2speed I-51 (was 13 / 52): clusters up to Leaflet 13, one dot per bar from 14; only overlapping pins merge. Was:   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
+  // c12fix: CL_MAXZ 13 = clusters up to Leaflet 14 (c2speed had 12): at 12 the overlapping quiet dots at Leaflet 14 hid by collision
+  // with no cluster badge, so bars vanished (the owner's I-08). CL_R 30 (c2speed I-51) stays: only overlapping pins merge.
+  var CL_MAXZ = 13, CL_MINZ = 9, CL_R = 30;   // c2speed I-51 (was 13 / 52): clusters up to Leaflet 13, one dot per bar from 14; only overlapping pins merge. Was:   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
   var cl = { on: false, sig: "", feats: [], seen: null, seenAt: 0, hooked: null, made: 0 };
   function clOps(n, busy, friend) {
     var T = window.PNTOKENS, K = T.col, ops = [], t = n > 999 ? (Math.floor(n / 100) / 10).toString().replace(".", ",") + "k" : String(n);

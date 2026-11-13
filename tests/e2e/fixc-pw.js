@@ -67,6 +67,7 @@ async function app(browser, w, o = {}) {
   const { ctx, page } = await ctxFor(browser, { width: w, height: o.h || 844 });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
   const st = {}; await server(page, o, st);
+  if (o.duel) await ctx.addInitScript(() => { window.PN_CFG = Object.assign(window.PN_CFG || {}, { gangkamp: true }); });   // c1menus I-41: Gängkamp duels are behind PN_CFG.gangkamp (off on live); N-20 still checks Anta
   await boot(page);
   await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
   return { ctx, page, st, errs };

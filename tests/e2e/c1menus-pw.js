@@ -48,16 +48,17 @@ const open = (page) => page.evaluate(() => { const s = document.getElementById("
   ok(on, "I-41: flag on is switchable at runtime (GAMES + DUEL loaded)");
   await page.evaluate(() => { window.PN_CFG.gangkamp = false; });
   // I-55: Taxi sheet = one Taxi + one Uber hem
+  // c12fix: "Ring 112" (the Trygghet block under the taxi buttons, safety.js) is no taxi: the count skips tel:112
   await clickJS(page, "#btn-taxi"); await wait(page, 1500);
   const x = await page.evaluate(() => { const b = document.getElementById("sheet-body"); const a = [...b.querySelectorAll("a,button")];
-    return { uber: a.filter((e) => /uber/i.test((e.href || "") + e.textContent)).length, tel: [...b.querySelectorAll("a[href^='tel:']")].filter((e) => !e.closest(".rnd-more")).length, saveHome: a.filter((e) => /Lägg in hem|Spara hem/i.test(e.textContent)).length, rows: b.querySelectorAll(".taxi-row").length, txt: b.textContent.replace(/\s+/g, " ").slice(0, 200) }; });
+    return { uber: a.filter((e) => /uber/i.test((e.href || "") + e.textContent)).length, tel: [...b.querySelectorAll("a[href^='tel:']:not([href='tel:112'])")].filter((e) => !e.closest(".rnd-more")).length, saveHome: a.filter((e) => /Lägg in hem|Spara hem/i.test(e.textContent)).length, rows: b.querySelectorAll(".taxi-row").length, txt: b.textContent.replace(/\s+/g, " ").slice(0, 200) }; });
   ok(x.uber <= 1 && x.rows === 0 && x.tel <= 1, "I-55: no duplicate top row; at most one Uber and one Taxi (no home)", x);
   ok(x.saveHome >= 1 && x.uber === 0, "I-55: no home → 'Lägg in hem' first (no Uber link)", x);
   await clickJS(page, "#sheet-close"); await wait(page, 400);
   await page.evaluate(() => { localStorage.setItem("olnu.home", JSON.stringify({ lat: 60.15, lng: 15.19, r: 300, at: Date.now() })); });
   await clickJS(page, "#btn-taxi"); await wait(page, 1500);
   const y = await page.evaluate(() => { const b = document.getElementById("sheet-body"); const u = [...b.querySelectorAll("a")].filter((e) => /uber/i.test((e.href || "") + e.textContent));
-    return { uber: u.length, href: u[0] && u[0].href, tel: [...b.querySelectorAll("a[href^='tel:']")].filter((e) => !e.closest(".rnd-more")).length, rows: b.querySelectorAll(".taxi-row").length }; });
+    return { uber: u.length, href: u[0] && u[0].href, tel: [...b.querySelectorAll("a[href^='tel:']:not([href='tel:112'])")].filter((e) => !e.closest(".rnd-more")).length, rows: b.querySelectorAll(".taxi-row").length }; });
   ok(y.uber === 1 && /pickup=my_location/.test(y.href || "") && /dropoff/.test(y.href || "") && y.rows === 0 && y.tel <= 1, "I-55: with home = exactly one 'Uber hem' (pickup my_location + dropoff) and one Taxi", y);
   await ctx.close(); await browser.close();
   console.log(`c1menus: ${pass} pass, ${fail} fail`); process.exit(fail ? 1 : 0);
