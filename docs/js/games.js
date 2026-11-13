@@ -371,11 +371,11 @@
       once("m" + m.slot + ":" + m.id, !first || m.fresh || minsAgo(m.done_at) < 20, function () {
         newDone = true;
         var line = fill(pick("done", C.missionDone), { m: missionText(m.id) || T("meTitle") });
-        queueToast(line, { cls: "promo", ms: 6000, fx: "big" });
+        queueToast(line, { cls: "promo pn-news", ms: 6000 });   // calm2: a done mission = news (CALM: one quiet line, no fx)
       });
     });
     if (newDone) {
-      if ((me.done_n | 0) >= 3) once("all", true, function () { queueToast(T("allDone"), { cls: "promo", ms: 5000 }); });
+      if ((me.done_n | 0) >= 3) once("all", true, function () { queueToast(T("allDone"), { cls: "promo pn-news", ms: 5000 }); });
       award();
     }
     if (SHOW.agent) (me.agent || []).forEach(function (a) {

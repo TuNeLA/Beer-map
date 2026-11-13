@@ -201,7 +201,9 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     const nd = await p.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "));
     const ndWhy = /Ingen data här ikväll/.test(nd) ? "" : JSON.stringify(await p.evaluate(() => { const A = window.PNDS && window.PNDS._A && window.PNDS._A(), m = A.map;
       return { z: m.getZoom(), sheet: !document.getElementById("sheet").hidden, live: !!(A && A.LIVE), beers: A && A.beers ? (A.beers() || []).filter((x) => m.getBounds().contains([x.lat, x.lng])).length : null, calm: window.__pnCalm, cs: window.CALM && window.CALM._state ? window.CALM._state() : null }; }));
-    ok(/Ingen data här ikväll/.test(nd), "no crowd data in view (Stockholm) → 'Ingen data här ikväll än' (" + nd.slice(0, 90) + ") " + ndWhy.slice(0, 600));
+    // calm2 I-82 (owner 13 Nov): never when the header already says nobody is out ("lugnt"), else max once per night per phone
+    const ndQuiet = await p.evaluate(() => { const lc = document.getElementById("live-count"), o = lc && lc.getAttribute("data-out"); return !!lc && ((o != null && o !== "" && +o === 0) || /lugnt|quiet|ingen ute|nobody/i.test(lc.textContent || "")); });
+    ok(ndQuiet ? !/Ingen data här ikväll/.test(nd) : /Ingen data här ikväll/.test(nd), "no crowd data in view (Stockholm) → 'Ingen data här ikväll än' only when the header does not already say 'lugnt' (quiet=" + ndQuiet + ", " + nd.slice(0, 90) + ") " + ndWhy.slice(0, 600));
     await p.screenshot({ path: SP + "fxm-shots/t-nodata-sthlm-390.png" });
     // ds41: at zone zoom (html[data-zones]) people pins + clusters are not drawn (friends are in the zone pills)
     await p.evaluate(() => window.PNDS._A().map.setView([60.1505, 15.1872], 15, { animate: false })); await wait(p, 2500);   // back where the friends are

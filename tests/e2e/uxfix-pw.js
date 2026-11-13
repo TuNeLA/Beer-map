@@ -230,7 +230,9 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
       await page.evaluate(() => { const real = Date.now.bind(Date); Date.now = () => real() + 52000; });
       await wait(page, 16000);   // uifix: one at a time: the 2 medal toasts (5 s each), then the card
       const later = await page.evaluate(() => Object.assign({}, window.__seen));
-      ok("F P1-3 the medal toasts and 'Befordrad!' still come when idle (queued, not lost)", Object.keys(later).some((k) => /^medal:/.test(k)) && later.pop != null, later);
+      // calm2 (owner 13 Nov, POPUP-RULES): the medals are ONE quiet line when idle on the map (shown, or still waiting: not lost)
+      const mq1 = await page.evaluate(() => window.CALM && CALM._news ? CALM._news().news : 0);
+      ok("F P1-3 the medals (one line, or waiting for idle) and 'Befordrad!' still come (queued, not lost)", Object.keys(later).filter((k) => /^medal:/.test(k)).length <= 1 && (Object.keys(later).some((k) => /^medal:/.test(k)) || mq1 > 0) && later.pop != null, { later, mq1 });
       await page.evaluate(() => { clearInterval(window.__spy); document.querySelectorAll(".mx-pop .btn-amber").forEach((b) => b.click()); });
       await wait(page, 800);
       // back closes the strip (one history step, the page stays)
@@ -266,7 +268,8 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
       await page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); });
       await wait(page, 16000);   // uifix: the card waits until the medal toasts are gone
       const after = await page.evaluate(() => Object.assign({}, window.__seen));
-      ok("F P1-3 the sheet closed → they come (toast first, then the card)", after.medal != null && after.pop != null && after.medal <= after.pop, after);
+      const mq2 = await page.evaluate(() => window.CALM && CALM._news ? CALM._news().news : 0);
+      ok("F P1-3 the sheet closed → they come (the card; the medals as one line when idle, or still waiting: not lost)", after.pop != null && (after.medal != null || mq2 > 0), { after, mq2 });
       await ctx.close();
     }
   } catch (e) { console.log("ERROR", e && e.stack); fail++; }

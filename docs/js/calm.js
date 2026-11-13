@@ -122,6 +122,112 @@
     return true;
   }
 
+  /* ---------- calm2 (I-79 / I-84 / I-82, owner 13 Nov: "too many pop-ups, they are in the way"; spec POPUP-RULES.md) ----------
+     filter(msg, opts) runs first in app.js toast(). true = no toast of its own:
+     - "+1 merit" (cls mer-toast): off (the count still goes up where it is shown).
+     - medal / mission news (cls medal-toast, badge-toast, pn-news): into ONE bucket. The bucket shows ONE quiet line
+       ("3 nya medaljer · Visa" with the medal icon, one medal = its name, a burst >= 5 = "N medaljer upplåsta") only when idle on the map.
+     - "Ingen data här" (id pn-nodata): never when the header already says nobody is out, max once per night per phone.
+     - any other toast nobody tapped for (rank 0): the same text max once per night.
+     Not requested pop-ups (the news line, the unlock sheet) share one budget: not in the first 10 s, max 1 per 2 min,
+     max 3 per 10 min, only idle on the map (no sheet, no input focused, no tap in the last 4 s, no toast up).
+     unlock(run, n): the "Du låste upp" sheet: same idle rule, max one per start; more = a dot on the profile button. */
+  var AUTO_QUIET = 10000, AUTO_GAP = 120000, AUTO_WIN = 600000, AUTO_MAX = 3, NEWS_IDLE = 4000, NEWS_SETTLE = 2500;
+  var news = [], newsFirst = 0, autoAt = [], newsIv = null, unl = { shown: 0, run: null, extra: 0 }, NODATA_KEY = "olnu.calm.nd", SEEN_KEY = "olnu.calm.tx";
+  function L2(s, e) { return en() ? e : s; }
+  function typing() { var a = document.activeElement; return !!(a && a !== document.body && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)); }
+  function toastUp() { var b = document.getElementById("toasts"); return !!(b && Array.prototype.some.call(b.children, function (x) { return !x.hasAttribute("data-keep"); })); }
+  function idleMap() {
+    return !document.hidden && !sheetUp() && !stripUp() && !introUp() && !typing() && !toastUp() && now() - lastUser >= NEWS_IDLE &&
+      !document.querySelector(".takeover, .mx-pop, .leaflet-popup, .mapboxgl-popup") && medalsCalm();
+  }
+  // medals.js calm window (60 s after a beer, the "Befordrad!" card, the strip): the news line waits for it too
+  function medalsCalm() { try { var M = window.MEDALS; return !(M && M.calm) || M.calm(); } catch (e) { return true; } }
+  function budget() {   // may one not requested pop-up show now? (does not take it)
+    var t = now(); autoAt = autoAt.filter(function (x) { return t - x < AUTO_WIN; });
+    if (t - t0 < AUTO_QUIET) return false;
+    if (autoAt.length >= AUTO_MAX || (autoAt.length && t - autoAt[autoAt.length - 1] < AUTO_GAP)) return false;
+    return idleMap();
+  }
+  function spend(what) { autoAt.push(now()); take("auto", what); }
+  function headerQuiet() {
+    var lc = document.getElementById("live-count"); if (!lc) return false;
+    var o = lc.getAttribute("data-out");
+    return (o != null && o !== "" && +o === 0) || /lugnt|quiet|ingen ute|nobody/i.test(lc.textContent || "");
+  }
+  function lsGetS(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSetS(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function seenTonight(msg) {   // same text max once per night (not requested toasts)
+    var n = nightId(), o = null; try { o = JSON.parse(lsGetS(SEEN_KEY) || "null"); } catch (e) { o = null; }
+    if (!o || o.n !== n || !Array.isArray(o.t)) o = { n: n, t: [] };
+    var k = String(msg).slice(0, 80); if (o.t.indexOf(k) >= 0) return true;
+    o.t.push(k); if (o.t.length > 80) o.t = o.t.slice(-80); lsSetS(SEEN_KEY, JSON.stringify(o));
+    return false;
+  }
+  function filter(msg, opts) {
+    opts = opts || {};
+    if (opts.calm || opts.err || opts.urgent || opts.keep) return false;
+    var cls = opts.cls || "";
+    if (/\bmer-toast\b/.test(cls)) { take("drop", msg); return true; }
+    if (/\b(medal-toast|badge-toast|pn-news)\b/.test(cls) && !opts.action) { newsAdd(msg, opts); return true; }
+    if (opts.id === "pn-nodata" && /^Ingen data|^No data/.test(String(msg))) {
+      if (headerQuiet() || lsGetS(NODATA_KEY) === nightId()) { take("drop", msg); return true; }
+      lsSetS(NODATA_KEY, nightId());
+      return false;
+    }
+    return false;
+  }
+  function seenRank0(msg, opts) { return !(opts && (opts.calm || opts.err || opts.action || opts.urgent || opts.keep)) && seenTonight(msg); }
+  function newsAdd(msg, opts) {
+    var m = String(msg || ""), medal = /\b(medal-toast|badge-toast)\b/.test(opts.cls || "");
+    var mN = /(\d+) medalj/i.exec(m);   // the first-run summary "Din uniform har fått 13 medaljer" counts as 13
+    news.push({ msg: m, medal: medal, n: medal && mN ? Math.max(1, +mN[1]) : 1 });
+    if (news.length > 60) news = news.slice(-60);
+    if (!newsFirst) newsFirst = now();
+    if (!newsIv) newsIv = setInterval(newsPump, 1000);
+  }
+  function newsLine() {
+    var med = news.filter(function (x) { return x.medal; }), oth = news.filter(function (x) { return !x.medal; });
+    var n = med.reduce(function (s, x) { return s + x.n; }, 0), parts = [];
+    var ic = med.length ? (/^\s*(\S+)\s/.exec(med[0].msg) || ["", ""])[1] : "";   // the medal's own icon (medals.js text)
+    var pre = ic ? ic + " " : "";
+    if (n === 1 && med.length === 1) parts.push(med[0].msg.replace(/!$/, ""));
+    else if (n >= 5) parts.push(pre + L2(n + " medaljer upplåsta", n + " medals unlocked"));
+    else if (n > 1) parts.push(pre + L2(n + " nya medaljer", n + " new medals"));
+    if (oth.length === 1 && !parts.length) parts.push(oth[0].msg);
+    else if (oth.length) parts.push(L2(oth.length + (oth.length === 1 ? " uppdrag klart" : " uppdrag klara"), oth.length + (oth.length === 1 ? " mission done" : " missions done")));
+    var s = parts.join(" · ");
+    return s.length > 64 ? s.slice(0, 62).replace(/\s+\S*$/, "") + "…" : s;
+  }
+  function newsPump() {
+    if (!news.length) { clearInterval(newsIv); newsIv = null; return; }
+    if (now() - newsFirst < NEWS_SETTLE || !A || !budget()) return;   // a burst settles first: one line for all of it
+    var line = newsLine(), medal = news.some(function (x) { return x.medal; });
+    news = []; newsFirst = 0; clearInterval(newsIv); newsIv = null;
+    spend(line);
+    var o = { calm: 1, cls: "pn-news-line", ms: medal ? 7000 : 4000 };
+    if (medal && window.MEDALS && window.MEDALS.showMine) o.action = { label: L2("Visa", "Show"), fn: function () { try { window.MEDALS.showMine(); } catch (e) {} } };
+    try { A.toast(line, o); } catch (e) {}
+  }
+  function unlock(run, n) {
+    if (unl.shown || unl.run) { unl.extra += n || 1; dot(); return true; }
+    unl.run = run;
+    if (!newsIv) newsIv = setInterval(newsPump, 1000);
+    var iv = setInterval(function () {
+      if (!unl.run) { clearInterval(iv); return; }
+      if (news.length || !budget()) return;
+      var r = unl.run; unl.run = null; unl.shown = 1; clearInterval(iv);
+      spend("unlock"); try { r(); } catch (e) {}
+    }, 1000);
+    return true;
+  }
+  function dot() {
+    var b = document.getElementById("btn-settings"); if (!b || b.querySelector(".pn-unl-dot")) return;
+    var d = document.createElement("span"); d.className = "pn-unl-dot"; d.setAttribute("aria-hidden", "true"); b.appendChild(d);
+    b.setAttribute("data-unl", String(unl.extra));
+    b.addEventListener("click", function () { d.remove(); b.removeAttribute("data-unl"); unl.extra = 0; }, { once: true });
+  }
+
   /* ---------- 📜 town cards: memorial (rare) or a true fact (rare) ---------- */
   var MEM = [{ key: "solo", id: "n1471185136", lat: 60.15071, lng: 15.18664, r: 120, z: 18, old: "olnu.eggSoloAt" }];   // old: hotfix key
   function hav(a, b, c, d) { try { return window.U.haversine(a, b, c, d); } catch (e) { return Infinity; } }
@@ -177,6 +283,8 @@
 
   window.CALM = {
     sheet: sheet, toast: toast, caption: caption, radar: radar, townCard: true, fact: fact, slot: slot,
+    filter: filter, seen: seenRank0, unlock: unlock, idle: idleMap, typing: typing,   // calm2
+    _news: function () { return { news: news.length, auto: autoAt.slice(), unl: { shown: unl.shown, wait: !!unl.run, extra: unl.extra } }; },
     radarMs: 5000,
     init: function (api) {
       A = api;
@@ -188,7 +296,9 @@
           ".dl-empty.dl-in{transform:translate(-50%,0)}" +
           ".dl-empty .dl-radar{left:8px;top:50%;width:20px;height:20px;margin:-10px 0 0}" +
           ".dl-empty-h{font-size:9px;margin-bottom:2px}.dl-empty-t{font-size:12.5px;line-height:1.3}" +
-          ".dl-cap-fact .dl-cap-h{color:var(--amber-2,#ffc24d)}";
+          ".dl-cap-fact .dl-cap-h{color:var(--amber-2,#ffc24d)}" +
+          "#btn-settings{position:relative}.pn-unl-dot{position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;" +
+          "background:var(--ds-amber,#ffb21e);box-shadow:0 0 0 2px var(--ds-bg,#0d1326);pointer-events:none}";   // calm2: more unlocks wait here
         document.head.appendChild(css);
       } catch (e) {}
       try {
@@ -200,7 +310,7 @@
     },
     // tests
     _state: function () { return { t: now() - t0, autoN: autoN, held: q.map(function (x) { return x.kind + ":" + String(x.what || "").slice(0, 30); }), log: log.slice(), ls: st() }; },
-    _reset: function () { t0 = now() - START_MS - GAP_MS; lastAuto = 0; autoN = 0; q = []; lsSet({}); },
+    _reset: function () { t0 = now() - START_MS - GAP_MS; lastAuto = 0; autoN = 0; q = []; lsSet({}); autoAt = []; news = []; newsFirst = 0; unl = { shown: 0, run: null, extra: 0 }; },
     _idle: function (ms) { lastUser = now() - ms; lastMove = now() - ms; }
   };
 })();

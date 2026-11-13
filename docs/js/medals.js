@@ -149,6 +149,8 @@
       var msg = r.is_new ? L("🎖️ Ny medalj: ", "🎖️ New medal: ") + m.e + " " + m.name + "!"
         : m.stack ? L("🎖️ ", "🎖️ ") + m.e + " " + m.name + " ×" + (r.count | 0) : "";
       if (!msg) return;
+      // calm2 (I-79/I-84): CALM collects every medal into ONE quiet line when idle on the map (no toast, sound or buzz each)
+      if (window.CALM && window.CALM.filter) { A.toast(msg, { cls: "badge-toast medal-toast", ms: 5000 }); return; }
       later(function () {
         A.toast(msg, { cls: "badge-toast medal-toast", ms: 5000 });
         window.FX.unlock(); window.FX.sound.clink(); window.FX.vibrate([20, 30, 20, 30, 60]);
@@ -180,8 +182,10 @@
       U.ls.set(SEED_KEY, "1");
       if (first && rows.length > 1) {
         announce(rows, true);
-        later(function () {
-          A.toast(L("🎖️ Din uniform har fått " + rows.length + " medaljer! Tryck på din grad och kika.", "🎖️ Your uniform got " + rows.length + " medals!"), { cls: "badge-toast medal-toast", ms: 6500 });
+        var sumMsg = L("🎖️ Din uniform har fått " + rows.length + " medaljer! Tryck på din grad och kika.", "🎖️ Your uniform got " + rows.length + " medals!");
+        if (window.CALM && window.CALM.filter) A.toast(sumMsg, { cls: "badge-toast medal-toast" });   // calm2: CALM makes it ONE line ("N medaljer upplåsta")
+        else later(function () {
+          A.toast(sumMsg, { cls: "badge-toast medal-toast", ms: 6500 });
           window.FX.unlock(); window.FX.sound.clink(); window.FX.vibrate([20, 30, 60]);
         }, 2400);
       } else announce(rows, false);

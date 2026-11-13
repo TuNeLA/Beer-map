@@ -82,7 +82,8 @@
     if (!fresh.length) return [];
     lsSet(KEY, { s: who, k: st.k.concat(fresh) });
     fresh.sort(function (x, y) { var cx = catOf(x), cy = catOf(y); return (cy ? 10 + cy.tier : a.rarity.apply(null, split(y))) - (cx ? 10 + cx.tier : a.rarity.apply(null, split(x))); });
-    showSheet(fresh);
+    // calm2 (I-79): the unlock sheet only when idle on the map (never over a sheet or while typing), max one per start; more = a dot
+    if (window.CALM && window.CALM.unlock) window.CALM.unlock(function () { showSheet(fresh); }, fresh.length); else showSheet(fresh);
     return fresh;
   }
 

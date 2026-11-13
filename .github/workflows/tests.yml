@@ -164,6 +164,8 @@ jobs:
             filter: '^(hotfix1)$'
           - name: f13
             filter: '^(f13)$'
+          - name: alive2
+            filter: '^(alive2)$'
           - name: menufix
             filter: '^(menufix)$'
           - name: tickerfix
@@ -178,6 +180,8 @@ jobs:
             filter: '^(d2group)$'
           - name: uxfix
             filter: '^(uxfix)$'
+          - name: calm2
+            filter: '^(calm2)$'
           - name: d3smooth
             filter: '^(d3smooth)$'
           - name: d4map

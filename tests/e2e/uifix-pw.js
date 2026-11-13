@@ -107,7 +107,9 @@ function rowGeo(page, key, re) {
       await wait(page, 500);
       const card = await page.evaluate(() => { const p = document.querySelector(".mx-pop"); return p ? { ht: !!p.querySelector(".mx-ht .mx-ht-b"), pin: !!p.querySelector(".mx-ht svg.pi"), txt: p.textContent.replace(/\s+/g, " ").slice(0, 200) } : null; });
       await shot(page, "F-card");
-      ok("F after the calm window the medal toasts come (queued, not lost), before the card", after["medal-toast"] != null && after["medal-toast"] <= after.befordrad, after);
+      // calm2 (owner 13 Nov, POPUP-RULES): medals are ONE quiet line when idle on the map (never over the card): shown or still waiting, not lost
+      const mq = await page.evaluate(() => ({ n: window.__toasts.filter((x) => /medalj/i.test(x)).length, wait: window.CALM && CALM._news ? CALM._news().news : -1 }));
+      ok("F after the calm window the medals are ONE line (shown, or waiting for idle: not lost), never over the card", mq.n <= 1 && (mq.n === 1 || mq.wait > 0), { after, mq });
       ok("F 'Ny grad!' + 'Befordrad!' = ONE card: the hometown ask is a row in it, never its own toast", card && card.ht && card.pin && after["hometown-toast"] == null, { card, after });
       ok("F the consent sheet did not come before / with the medal toasts and the card", after["consent-sheet"] == null, after);
       // strip up (a 2nd beer type pick, no new beer in medals) → no consent sheet; strip gone + calm → the sheet comes

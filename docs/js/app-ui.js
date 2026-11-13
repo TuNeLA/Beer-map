@@ -15,6 +15,10 @@
   /* ---------- Toasts ---------- */
   function toast(msg, opts) {
     opts = opts || {};
+    // calm2 (I-79/I-84, POPUP-RULES.md): medal / merit / mission news and "Ingen data här" go through CALM.filter first (one
+    // quiet line when idle, "+1 merit" off, once per night). Errors, buttons, alarms and safety never do.
+    var safe = calmSafe(msg, opts);
+    if (!safe && window.CALM && window.CALM.filter && window.CALM.filter(msg, opts)) return document.createElement("div");
     var box = $("toasts"), el = document.createElement("div");
     if (opts.id) { toastClear(opts.id); el.setAttribute("data-id", opts.id); }
     el.className = "toast" + (opts.err ? " err" : "") + (opts.cls ? " " + opts.cls : "");
@@ -34,6 +38,13 @@
     // toasts also wait while a sheet is open. A newer toast replaces a waiting one of the same or lower rank.
     var rank = opts.err || opts.action ? 3 : opts.urgent || /\b(med|undo|lv-pop|chaos-toast|promo)\b/.test(opts.cls || "") ? 2 : Date.now() - lastTap < 2500 ? 1 : 0;
     el._olnuT = { opts: opts, rank: rank };
+    // calm2: ONE toast per tap. The first answer to a tap wins; a later non-urgent toast in the 8 s after it (same tap) is
+    // dropped, not queued (no 2nd / 3rd toast in a row). A toast nobody tapped for: the same text max once per night.
+    if (rank <= 1 && !safe && !opts.calm) {
+      if (tapShownFor === lastTap && Date.now() - tapShownAt < 8000) return el;
+      if (rank === 1) { tapShownFor = lastTap; tapShownAt = Date.now(); }
+      else if (Date.now() - lastTap > 8000 && window.CALM && window.CALM.seen && window.CALM.seen(msg, opts)) return el;
+    }
     // calm: calm news (rank 0) and a promo line nobody tapped for (👑 king …) wait for the one automatic slot
     if ((!rank || (rank === 2 && !opts.urgent && /\bpromo\b/.test(opts.cls || ""))) && window.CALM && window.CALM.toast(msg, opts)) return el;
     var vis = toastsVisible(), vr = vis.length ? Math.max.apply(null, vis.map(function (x) { return x._olnuT ? x._olnuT.rank : 0; })) : -1;
@@ -48,7 +59,9 @@
     } else if (!toastWait || rank >= toastWait._olnuT.rank) toastWait = el;
     return el;
   }
-  var toastWait = null, lastTap = 0, lastTapOut = 0;
+  var toastWait = null, lastTap = 0, lastTapOut = 0, tapShownFor = -1, tapShownAt = 0;
+  var SAFE_RX = /Följ mig hem|går hem|är hemma|hemma!|medevac|hämtning|hämtar dig|SOS|larm|walking home|is home|pick ?up|Follow me home/i;
+  function calmSafe(msg, o) { return !!(o.err || o.action || o.urgent || o.keep || /\b(med|hf|gw|ride|rd|sos|pick)\b|^(hf|gw|ride|rd|sos)-/.test((o.id || "") + " " + (o.cls || "")) || SAFE_RX.test(String(msg))); }
   ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function (e) {
     lastTap = Date.now();
     // A tap outside the beer-type strip and the ÖL! button = the user asked for something (a sheet may open now).
@@ -59,7 +72,12 @@
   function toastsVisible() { return Array.prototype.filter.call($("toasts").children, function (x) { return !x.hasAttribute("data-keep"); }); }
   function toastShow(el, opts) {
     $("toasts").appendChild(el);
-    if (opts.ms !== 0) setTimeout(function () { el.remove(); }, opts.ms || 3800);
+    if (opts.ms === 0) return;
+    // calm2 (POPUP-RULES 6): 4 s without a button, 7 s with one (when the caller gives no time); the timer pauses while touched
+    var left = opts.ms || (opts.action ? 7000 : 4000), t0 = Date.now(), tm = setTimeout(function () { el.remove(); }, left);
+    var hold = function () { if (!tm) return; clearTimeout(tm); tm = 0; left -= Date.now() - t0; };
+    var go = function () { if (tm || !el.isConnected) return; t0 = Date.now(); tm = setTimeout(function () { el.remove(); }, Math.max(1500, left)); };
+    el.addEventListener("pointerdown", hold); el.addEventListener("pointerup", go); el.addEventListener("pointercancel", go); el.addEventListener("pointerleave", go);
   }
   function toastPump() {
     if (!toastWait || toastsVisible().length || (sheetIsOpen() && !toastWait._olnuT.rank)) return;
