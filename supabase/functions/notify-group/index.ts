@@ -2602,8 +2602,9 @@ export function dmPayload(namn: string, body: string, gid: string, voice = false
   const n = cleanBarName(namn) || "Nån";
   const b = String(body || "").replace(/\s+/g, " ").trim();
   return {
-    title: voice ? `🎙️ ${n} skickade ett röstmeddelande` : `💬 ${n}: ${b.length > 90 ? b.slice(0, 89) + "…" : b}`,
-    body: voice ? "🔒 Privat · tryck för att lyssna" : "🔒 Privat meddelande · tryck för att svara",
+    // owner 13 Nov 17:41 (I-88): the name as the title, the message itself as the text (no "Privat meddelande" line)
+    title: voice ? `🎙️ ${n}` : `💬 ${n}`,
+    body: voice ? "Röstmeddelande · tryck för att lyssna" : (b.length > 160 ? b.slice(0, 159) + "…" : b) || "Nytt meddelande",
     url: `/?chat=${gid}`,
     tag: `olnu-dm-${gid}`,
     renotify: true,

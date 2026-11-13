@@ -1,0 +1,38 @@
+# Deploy one Supabase edge function to LIVE (owner 13 Nov 2026: SUPABASE_ACCESS_TOKEN repo secret).
+# Manual only (Actions → "Deploy edge function" → Run workflow). Never runs on push.
+name: Deploy edge function
+on:
+  workflow_dispatch:
+    inputs:
+      fn:
+        description: "Function name (folder in supabase/functions)"
+        required: true
+        default: notify-group
+      ref:
+        description: "Git ref to deploy from (empty = this branch). A known-good commit is the rollback."
+        required: false
+        default: ""
+permissions:
+  contents: read
+concurrency:
+  group: deploy-fn-${{ github.event.inputs.fn }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - name: Check the function name
+        run: |
+          case "${{ github.event.inputs.fn }}" in *[!a-z0-9-]*|"") echo "bad name"; exit 1;; esac
+          test -f "supabase/functions/${{ github.event.inputs.fn }}/index.ts"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy (JWT check stays on)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy "${{ github.event.inputs.fn }}" --project-ref wcdskpcevbhouvbytkhv --use-api
