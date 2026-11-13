@@ -1922,6 +1922,8 @@ html body #sheet-body .ds-list>.ds-item>.toggle-row>svg:first-child{width:var(--
 html body #sheet-body .ds-list>.ds-item .toggle-row{background-color:transparent !important;border:0 !important;border-radius:0 !important;box-shadow:none !important}
 html body #sheet-body.ds-set .ds-list>.ds-item .toggle-row>span:has(>svg:first-child){position:relative;padding-left:calc(var(--pn-row-ic) + var(--sp-3,12px)) !important}
 html body #sheet-body.ds-set .ds-list>.ds-item .toggle-row>span>svg:first-child{position:absolute;left:0;top:-1px;width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important;margin:0 !important}
+/* menufix2: the Betaversion hint (js/kanal.js) keeps max 2 lines at 360 px (R1-28) now that it starts at the text column: the small font token */
+html body #sheet-body.ds-set .ds-list>.ds-item .toggle-row.pn-kanal .kn-sub{font-size:var(--fs-12,12px) !important;line-height:16px !important}
 /* lane:menufix rows END */
 /* lane:menufix gangpick START — I-61: "Vem fixar nästa? Välj gäng" = one ds list card; the gang initial in a round avatar */
 #sheet-body .gm-vfpick .gm-vfav{display:grid;place-items:center;width:var(--pn-row-ic,24px);height:var(--pn-row-ic,24px);border-radius:50%;
