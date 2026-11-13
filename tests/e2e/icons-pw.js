@@ -68,6 +68,9 @@ const NEW = ["warn", "siren", "stop", "hourglass", "undo", "save", "age18", "sig
   Object.keys(want).forEach((k) => ok(c[k] && c[k][0] === want[k] && !c[k][1], "sheet chrome: " + k + " → icon " + want[k] + ", no emoji", c[k]));
 
   /* ---- 4. toasts: the leading emoji becomes the right icon (⚠️ was the generic info icon) ---- */
+  // c4fix: close the Settings sheet from step 3 first. A calm toast (no tap in the last 2.5 s) waits while a sheet is open (app-ui.js
+  // toast queue, by design), so with the sheet open only the first toasts showed and the rest gave ["", false].
+  await clickJS(page, "#sheet-close"); await wait(page, 500);
   await page.evaluate(() => document.querySelectorAll(".toast, .dl-cap").forEach((t) => t.remove()));
   const T = {};
   for (const [e, n] of [["⚠️", "warn"], ["🚨", "siren"], ["🚚", "truck"], ["🔇", "speaker-off"], ["🤕", "bandage"], ["📻", "radio"]]) {

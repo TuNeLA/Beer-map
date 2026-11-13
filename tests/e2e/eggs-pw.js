@@ -12,6 +12,8 @@ const tap = (page, sel, n) => page.evaluate(([s, n]) => { for (let i = 0; i < n;
 const resetDay = (page) => page.evaluate(() => Object.keys(localStorage).filter((k) => /^olnu\.egg\.d/.test(k)).forEach((k) => localStorage.removeItem(k)));
 async function phone(browser, o = {}) {
   const { ctx, page } = await H.ctxFor(browser, { width: 390, height: 844 }, o);
+  // c4fix: eggs are off under automation (navigator.webdriver) so they never fire in OTHER tests; this test turns them on
+  if (!o.off) await ctx.addInitScript(() => { try { localStorage.setItem("olnu.egg.test", "1"); } catch (e) {} });
   await H.boot(page);
   await page.waitForFunction(() => window.PN && window.PN.eggs, null, { timeout: 10000 }).catch(() => {});
   await H.closeSheet(page); await wait(page, 300); await clear(page);
@@ -53,6 +55,10 @@ async function phone(browser, o = {}) {
     await tap(page, "#live-count", 5); await wait(page, 400);
     ok(/vatten/.test(await toasts(page)), "count x5: water toast (no pressure to drink)");
     ok(!/drick mer|dricka mer|drink more/i.test(src), "no 'drink more' text");
+    // c4fix: a tap on the live count also opens "Ute nu" (zones.js fixM T-15). Close it like a person would before using the map:
+    // map eggs stay quiet and calm toasts wait while a sheet is open (by design).
+    ok(await page.evaluate(() => !document.getElementById("sheet").hidden), "count taps also open Ute nu (normal use kept)");
+    await H.closeSheet(page); await wait(page, 400);
     // 6 dawn
     await clear(page);
     await page.evaluate(() => window.PN.eggs.clock(() => new Date(2026, 10, 13, 14, 2)));
@@ -93,20 +99,33 @@ async function phone(browser, o = {}) {
     ok(/Byggd i Ludvika av TuNeLA/.test(await page.evaluate(() => document.getElementById("sheet-title").textContent)), "version x5: credits sheet");
     const f = await found(page);
     ok(new RegExp("Hittade " + f.length + " av 7").test(sheet) && (sheet.match(/\?\?\?/g) || []).length === 7 - f.length, "sheet counts " + f.length + " found, rest are ???");
-    ok(f.length === 7, "all 7 eggs found in this run");
+    // c4fix: the swipe egg is tested on the 2nd phone (own localStorage), so this phone finds the other 6
+    ok(f.length === 6 && ids.filter((k) => k !== "swipe").every((k) => f.indexOf(k) >= 0), "all 6 eggs of this phone found (swipe: 2nd phone)");
     await ctx.close();
   }
   { // swipe code with real drags + reduced motion
     const { ctx, page } = await phone(browser, { reduced: true });
     await page.evaluate(() => window.__map.setView([60.1496, 15.1878], 14, { animate: false })); await wait(page, 800);
-    const drag = async (dx, dy) => { const m = page.mouse; await m.move(195, 420); await m.down(); for (let i = 1; i <= 8; i++) await m.move(195 + dx * i / 8, 420 + dy * i / 8); await m.up(); await wait(page, 900); };
+    // c4fix: start each swipe on bare map (a tile), not on a pin / cluster: after one swipe a marker could sit at a fixed start point,
+    // and a drag that starts on a marker does not move the map (only the first swipe counted).
+    const bare = () => page.evaluate(() => { for (let y = 300; y <= 600; y += 20) for (let x = 120; x <= 270; x += 15) { const e = document.elementFromPoint(x, y);
+      if (e && (e.classList.contains("leaflet-tile") || e.classList.contains("leaflet-container"))) return [x, y]; } return [195, 420]; });
+    const drag = async (dx, dy) => { const [x0, y0] = await bare(), m = page.mouse; await m.move(x0, y0); await m.down(); for (let i = 1; i <= 8; i++) await m.move(x0 + dx * i / 8, y0 + dy * i / 8); await m.up(); await wait(page, 900); };
     await drag(0, -120); await drag(0, -120); await drag(0, 120); await drag(0, 120); await drag(-120, 0);
     ok((await toasts(page)) === "" && (await found(page)).length === 0, "5 of 6 swipes: nothing");
     await drag(120, 0); await wait(page, 300);
     ok(/hemliga kod/.test(await toasts(page)), "swipe up up down down left right: toast");
+    ok((await found(page)).indexOf("swipe") >= 0, "swipe egg counted as found");
     await clear(page); await resetDay(page);
     await tap(page, ".brand-name", 7); await wait(page, 300);
     ok(/Ölguden/.test(await toasts(page)) && (await page.evaluate(() => document.querySelectorAll("i[style*='fixed']").length)) === 0, "reduced motion: toast, no foam");
+    await ctx.close();
+  }
+  { // c4fix: automation without the switch = no eggs (x8: the 05:0x morning toast replaced the test's ÖL! toast)
+    const { ctx, page } = await phone(browser, { off: true });
+    ok((await found(page)) === null, "under automation without olnu.egg.test: module off (no eggs in other tests)");
+    await tap(page, ".brand-name", 7); await wait(page, 400);
+    ok(!/Ölguden/.test(await toasts(page)), "under automation without the switch: logo x7 does nothing");
     await ctx.close();
   }
   await browser.close();

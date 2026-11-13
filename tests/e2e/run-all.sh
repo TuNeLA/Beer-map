@@ -77,7 +77,8 @@ NEEDS_MAPBOX=1 run barzoom    $A barzoom-pw.js   # ds44: no glow circle over a l
 NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
-run map        $A map-pw.js        # map lane: B9 icon size, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo (stub Mapbox without a token)
+run map        $A map-pw.js t '^(b9|sh|m2|br1|r1)$'      # map lane part 1: B9 icon size, shots, M2 fade, BR1 bar types, R1 (stub Mapbox without a token)
+run map-b      $A map-pw.js t '^(tz|b8|m1|m3|m3sw|m4)$'  # map lane part 2: town zoom, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo. c4fix: split, one run was ~830-1000 s on CI (TO 900)
 NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food icons +20 % on the real map, no overlap, tap box, shots z15-17
 run c2speed    $A c2speed-pw.js    # lane c2speed: I-45 locate-me < 1 s, I-56 food list at once, I-50 food icons from z14, I-51 bars at city zoom
 run mapzoom    $A mapzoom-pw.js    # lane a1map: I-08 icons stay while there is room, I-27 no blink on zoom, I-28 my dot under the bars, I-09 cluster >= pin, I-20 popup ✕ clear, I-10 arena disc, I-06 Hemzon navy, I-11 country chip (stub Mapbox without a token)

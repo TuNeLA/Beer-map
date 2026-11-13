@@ -8,22 +8,24 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { if (c) pass++; else fail++; console.log((c ? "PASS " : "FAIL ") + m, x === undefined ? "" : JSON.stringify(x).slice(0, 600)); };
 
 // Pixel difference of the icon drawings at 28 px: every pair must differ clearly.
-async function minDiff(page, names) {
-  return page.evaluate(async (names) => {
+async function minDiff(page, names, same = []) {
+  return page.evaluate(async ([names, same]) => {
     const px = [];
     for (const n of names) {
-      const x = window.PNI.kind(n, "").replace(/currentColor/g, "#000").replace(/width="24" height="24"/, 'width="28" height="28"');
+      const x = window.PNI.kind(n, "").replace(/currentColor/g, "#000").replace(/width="24" height="24"/, 'width="28" height="28"').replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');   // c4fix: an SVG file (data: URL) needs xmlns, inline HTML SVG does not
       const img = new Image(); img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(x); await img.decode();
       const c = document.createElement("canvas"); c.width = 28; c.height = 28; const g = c.getContext("2d"); g.drawImage(img, 0, 0, 28, 28);
       const a = g.getImageData(0, 0, 28, 28).data, m = []; for (let i = 3; i < a.length; i += 4) m.push(a[i] > 60 ? 1 : 0); px.push(m);
     }
-    let minD = 1, pair = "";
+    let minD = 1, pair = "", sameD = {};
     for (let i = 0; i < px.length; i++) for (let j = i + 1; j < px.length; j++) {
       let u = 0, n = 0; for (let k = 0; k < px[i].length; k++) { if (px[i][k] || px[j][k]) u++; if (px[i][k] !== px[j][k]) n++; }
-      const v = u ? n / u : 0; if (v < minD) { minD = v; pair = names[i] + "/" + names[j]; }
+      const v = u ? n / u : 0, pn = names[i] + "/" + names[j];
+      if (same.indexOf(pn) >= 0) { sameD[pn] = v; continue; }
+      if (v < minD) { minD = v; pair = pn; }
     }
-    return { minD, pair };
-  }, names);
+    return { minD, pair, sameD };
+  }, [names, same]);
 }
 async function open(browser, o = {}) {
   const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, o);
@@ -41,9 +43,12 @@ async function open(browser, o = {}) {
   {
     const { ctx, page } = await open(browser);
     /* ---- I-35: ten own icons, all different from each other and from the Sidospår set ---- */
-    const all = await minDiff(page, TYPES.concat(SIDE));
-    ok(all.minD >= 0.3, "19 drink icons clearly different at 28 px", all);
-    ok(await page.evaluate((T) => T.every((k) => window.PNI.KIND[k] && window.PNI.kind(k).indexOf("<path") > 0 || window.PNI.kind(k).indexOf("<rect") > 0), TYPES), "every beer style has its own PNI icon");
+    // c4fix: "annan" (other beer style) and "annat" (other side drink) share the dashed "other" ring on purpose (same meaning, never in
+    // the same picker): that one pair must still differ (dots vs plus), every other pair >= 0.3 as before.
+    const all = await minDiff(page, TYPES.concat(SIDE), ["annan/annat"]);
+    ok(all.minD >= 0.3 && all.sameD["annan/annat"] >= 0.15, "19 drink icons clearly different at 28 px (annan/annat: same 'other' ring, own mark)", all);
+    // c4fix: was `a && b || c` (precedence) and missed icons drawn only with circles (annan): now each style has its own PNI drawing
+    ok(await page.evaluate((T) => { const K = window.PNI.KIND; return T.every((k) => K[k] && /^k-/.test(K[k]) && window.PNI.has(K[k]) && /<(path|rect|circle)/.test(window.PNI.kind(k))) && new Set(T.map((k) => K[k])).size === T.length; }, TYPES), "every beer style has its own PNI icon");
     /* ---- I-35: the picker: icons, no emoji, buttons >= 44 px ---- */
     await page.evaluate(() => window.BARSPLUS.onBeerAccepted({ beer_count: 4 })); await wait(page, 2000);
     const p = await page.evaluate(() => {
@@ -95,7 +100,7 @@ async function open(browser, o = {}) {
         gang: window.GANG && window.GANG._swishUrl ? window.GANG._swishUrl(to.swish, 170, "x") : null, qr: !!n.querySelector(".rnd-qr") };
     }, ua);
     console.log(ua, JSON.stringify(r).slice(0, 400));
-    const Q = "sw=46701234567&amt=170.0&msg=PintsNow%20-%20K%C3%A4llens%20nota";
+    const Q = "sw=46701234567&amt=170.0&msg=PintsNow%20-%20Kv%C3%A4llens%20nota";   // c4fix: was "K%C3%A4llens" (typo: the message is "Kvällens")
     ok(r.https0.indexOf("amt=170.0&") > 0 && r.https.indexOf("amt=72.50&") > 0 && r.https.indexOf("edit=") < 0, "amount always has a decimal point, no edit param", [r.https0, r.https]);
     ok(r.gang && (want === "intent" ? /^intent:\/\/app\.swish\.nu\//.test(r.gang) : /^https:\/\/app\.swish\.nu\/1\/p\/sw\/\?sw=46701234567&amt=170\.0&/.test(r.gang)), "group debts (gang.js) build the same link", r.gang);
     if (want === "intent") {
