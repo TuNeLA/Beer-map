@@ -3749,8 +3749,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
         .select("id");
       if (claimErr) throw claimErr;
       if (claimed && claimed.length > 0) {
-        const fj = await friendJobs(admin, uid, claimed[0].id as number, level as 1 | 5 | 10, titel,
-          beer.precise ? cleanBarName(beer.snap_bar) : "", hhmm(now));
+        // owner 13 Nov 19:51: snap_bar is a bar ID (e.g. "n3911317766"), never show it as a name. Look the name up; none = no bar.
+        let barNm = "";
+        if (beer.precise && beer.snap_bar) {
+          try {
+            const { data: bn } = await admin.from("bars_lite").select("name").eq("id", String(beer.snap_bar)).maybeSingle();
+            barNm = cleanBarName(bn?.name ?? "");
+          } catch (_e) { barNm = ""; }
+        }
+        const fj = await friendJobs(admin, uid, claimed[0].id as number, level as 1 | 5 | 10, titel, barNm, hhmm(now));
         friendCount = fj.length;
         jobs.push(...fj);
       }
