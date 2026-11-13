@@ -230,8 +230,12 @@
   }
   function openSheet(gid, name, tab) {
     if (!A) return;
-    view = { gid: gid, name: name || (groupOf(gid) || {}).name || "", tab: tab || defaultTab(gid), g: groupOf(gid), torch: null };
-    A.openSheet("🎖️ " + (view.name || L("Truppen", "Squad")), function (body) {
+    var v = view = { gid: gid, name: name || (groupOf(gid) || {}).name || "", tab: tab || defaultTab(gid), g: groupOf(gid), torch: null };
+    // c3fix2: the pane is drawn INSIDE the build. openSheet can build later than this call (CALM holds an automatic sheet,
+    // the busy / beer-strip queue, warm.js slide-first fills after the first frame, the SHEETNAV back stack builds again).
+    // Drawn outside, a late build left an empty pane (no "Hämtar order …", no form) until the 20 s refresh.
+    A.openSheet("🎖️ " + (v.name || L("Truppen", "Squad")), function (body) {
+      view = v;   // the sheet on screen is this one (a replaced Truppen sheet's onClose ran before this build)
       var root = el("div", { class: "cr", id: "cr-root" });
       var tabs = el("div", { class: "cr-tabs", role: "tablist" });
       TABS.forEach(function (x) {
@@ -247,8 +251,10 @@
       root.appendChild(tabs);
       root.appendChild(el("div", { class: "cr-pane", id: "cr-pane" }));
       body.appendChild(root);
-    }, { onClose: function () { view = null; } });
-    renderPane();
+      renderPane();   // what is known now: the crew_group answer if it came before this build, else "Hämtar order …"
+      if (v.built) refreshView(true);   // built again (back stack): fresh data
+      v.built = true;
+    }, { onClose: function () { if (view === v) view = null; } });
     refreshView(true);
   }
   function refreshView(withTorch) {

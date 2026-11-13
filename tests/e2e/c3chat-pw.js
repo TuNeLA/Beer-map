@@ -106,6 +106,22 @@ async function openDm(page) {
       seen.push(await geo());
     }
     ok(vp.width + " I-43 switching tabs does not move the sheet (top and bottom equal on all 5 tabs)", seen.every((g) => g.top === base.top && g.bot === base.bot), seen);
+    if (vp.width === 390) {
+      // c3fix2: the pane must be drawn by the sheet build itself. CI: CALM held the automatic open, the sheet opened later and the
+      // pane stayed EMPTY (crew.js drew it right after openSheet, when there was no pane yet). Same for the busy queue, warm.js
+      // slide-first (build after the first frame) and a Truppen sheet that replaces an open Truppen sheet (toast "Svara").
+      const paneNow = () => page.evaluate(() => { const p = document.getElementById("cr-pane"), t = document.querySelector('.cr-tab[aria-selected="true"]');
+        return { pane: p ? p.textContent.trim().slice(0, 60) : "no #cr-pane", tab: t ? t.getAttribute("data-tab") : null, form: !!document.querySelector(".cr-time") }; });
+      await page.evaluate((g) => window.CREW.open(g, "Test", "laget"), RPCF.GID); await wait(page, 900);
+      const rep = await paneNow();
+      ok("390 I-43 Truppen opened over an open Truppen sheet (toast 'Svara') draws the new tab", rep.tab === "laget" && rep.pane.length > 0, rep);
+      await page.evaluate(() => document.getElementById("sheet-close").click()); await wait(page, 700);
+      await page.evaluate((g) => { window.PN.s.busy = true; window.CREW.open(g, "Test", "dep"); }, RPCF.GID); await wait(page, 1200);   // queued; crew_group answers meanwhile
+      await page.evaluate(() => { window.PN.s.busy = false; window.PN.drainSheets(); });
+      await page.waitForSelector(".cr-time", { timeout: 4000 }).catch(() => {});
+      const late = await paneNow();
+      ok("390 I-43 Truppen that opens late (sheet queue) shows the Departures form, not an empty pane", late.form && late.tab === "dep", late);
+    }
     await ctx.close();
   }
   await browser.close();
