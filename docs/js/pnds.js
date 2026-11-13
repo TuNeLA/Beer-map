@@ -1378,7 +1378,7 @@
       var b = m.getBounds(), any = (A.beers() || []).some(function (x) { return isFinite(x.lat) && b.contains([x.lat, x.lng]); });
       seen[k] = 1;
       var lc = document.getElementById("live-count"), hn = lc ? +(lc.getAttribute("data-out") || 0) || 0 : 0;   // uxfix P1-5: one count source (the header's "N ute")
-      if (hn > 0) { if (!(A.beers() || []).some(function (x) { return x && !x.is_mine && (x.friend_name || x.is_friend); })) A.toast(hn + " ute – gå med i ett gäng för att se namn", { id: "pn-nodata", ms: 5000, cls: "pn-nodata" }); return; }
+      if (hn > 0) { var hk = 0; try { hk = window.NEWS && window.NEWS.hintN ? window.NEWS.hintN(hn, A.beers() || [], 0) | 0 : 0; } catch (x) { hk = 0; } if (hk > 0) A.toast(hk + " ute – gå med i ett gäng för att se namn", { id: "pn-nodata", ms: 5000, cls: "pn-nodata" }); return; }   // tickerfix 1: others out (not me), only when I am in no gang (NEWS.hintN, news.js)
       if (!any) A.toast("Ingen data här ikväll än: ingen har tryckt ÖL! i närheten. Bli först!", { id: "pn-nodata", ms: 5000, cls: "pn-nodata" });
     } catch (e) {}
   }

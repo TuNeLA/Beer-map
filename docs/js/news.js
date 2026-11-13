@@ -155,11 +155,50 @@
   // "… hissar flaggan." after "en grupp": a sentence never starts with a small letter
   function sentences(t) { return String(t).replace(/((?:^|[^.…])(?:[.!?]|\.["”»])\s+)([a-zåäö])/g, function (m, a, b) { return a + b.toUpperCase(); }); }   // fixC N-19: not after ?” / !” (a quoted question mid-sentence: "skicka ”Ikväll?” till gänget")   // "Asså... vad" (an ellipsis) stays
   // uxfix P1-5: the header says "N ute" (snap.hdr) and no pin has a name → one real line "N ute – gå med i ett gäng för att se namn"
-  function namesHint(beers, byKind) {
-    if (!(snap.hdr > 0) || beers.some(function (b) { return b && !b.is_mine && (b.friend_name || b.is_friend); })) return false;
-    byKind.townNames = [function (d) { return d.n + " ute – gå med i ett gäng för att se namn"; }];
-    return true;
+  // tickerfix 1: ONE rule for "N ute – gå med i ett gäng för att se namn" (the ticker, app-ticker.js, and the "Ingen data här" toast,
+  // pnds.js): N = others out = the header's number (hdr) without my own live pin; 0 while I am in a gang (gang_poll groups, the
+  // cached my_groups, home_status group rows (homeRows) or a pin with a name).
+  function hintN(hdr, beers, homeRows) {
+    beers = beers || []; hdr = hdr | 0;
+    var mine = beers.some(function (b) { return b && b.is_mine; }), n = Math.max(0, hdr - (hdr > 0 && mine ? 1 : 0));
+    if (!(n > 0) || (homeRows | 0) > 0 || beers.some(function (b) { return b && !b.is_mine && (b.friend_name || b.is_friend); })) return 0;
+    try { var g = window.GANG && window.GANG.data && window.GANG.data(); if (g && Array.isArray(g.groups) && g.groups.length) return 0; } catch (e) {}
+    try { var w = window.WARM && window.WARM.get && window.WARM.get("my_groups", {}); if (w && Array.isArray(w.data) && w.data.length) return 0; } catch (e) {}
+    return n;
   }
+  // N = ctx.namesHint (app-ticker: hintN of the header's number), else the header's number (old callers / tests)
+  function namesHint(beers, byKind, ctx) {
+    var n = ctx && ctx.namesHint != null ? ctx.namesHint | 0 : snap.hdr;
+    if (!(n > 0) || beers.some(function (b) { return b && !b.is_mine && (b.friend_name || b.is_friend); })) return 0;
+    byKind.townNames = [function (d) { return d.n + " ute – gå med i ett gäng för att se namn"; }];
+    return n;
+  }
+  /* tickerfix 2 (finalcheck: "Du har fått sina nya streck", "Kalla inte Du vid förnamn", "Namn: Du."): a line whose name is the
+     user's own fallback word (t("you") = "Du" / "You") keeps "Du" only as the subject that opens a sentence, followed by a verb;
+     there sv "sin / sitt / sina" becomes "din / ditt / dina" and en "has / is / was / their" becomes "have / are / were / your".
+     Any other place ("Namn: Du.", "Grattis Du", "Kalla inte Du") = the template is skipped (the next one is tried). */
+  var YOU_L = "A-Za-zÅÄÖåäöÉéÜü";
+  function youFix(tx, d) {
+    var you = t("you"); if (!you || !d || typeof you !== "string") return tx;
+    var hit = false; Object.keys(d).forEach(function (k) { if (d[k] === you) hit = true; }); if (!hit) return tx;
+    var re = new RegExp("(^|[^" + YOU_L + "])" + you + "(?![" + YOU_L + "])", "g"), m, en = I.lang === "en";
+    while ((m = re.exec(tx))) {
+      var before = tx.slice(0, m.index + m[1].length), after = tx.slice(m.index + m[0].length);
+      var start = new RegExp("^[^" + YOU_L + "0-9]*$").test(before) || new RegExp("[.!?:]\\s+[^" + YOU_L + "0-9]*$").test(before);
+      if (!start || !/^ [a-zåäöé]/.test(after)) return "";
+      if (en && !/^ (has|is|was|have|are|were|just|got|made|did|can|could|will|would|beat|hit)\b|^ [a-z]+ed\b/.test(after)) return "";
+    }
+    var sentence = new RegExp("(^|[.!?:]\\s+[^" + YOU_L + "0-9]*|^[^" + YOU_L + "0-9]*)(" + you + " [^.!?]*)", "g");
+    return tx.replace(sentence, function (all, a, b) {
+      b = en ? b.replace(/^(You) (has|is|was)\b/, function (x, y, v) { return y + " " + ({ has: "have", is: "are", was: "were" })[v]; }).replace(/\btheir\b/g, "your")
+        : b.replace(/(^|[^A-Za-zÅÄÖåäö])(sina|sitt|sin)(?![A-Za-zÅÄÖåäö])/g, function (x, p, w) { return p + ({ sina: "dina", sitt: "ditt", sin: "din" })[w]; });
+      return a + b;
+    });
+  }
+  /* tickerfix 4 (+ coordinator: CI 08:40 "☕ God morgon! Kartan är tom …" next to "7 ute"): ANY line that says the map / town is
+     empty (time-of-day, weekday, filler, dialect packs, not only the QUIET kinds) never shows while the header says N > 0. */
+  var EMPTY_RX = /kartan (är|ä) tom|tom karta|tomt på kartan|tomt i (?!gänget|loggboken|röstlådan|rullan)\S|tomt på grupper|tom innerstad|(inte|int'|int’) en (själ|kjäft)(?! i kön)|ingen ute|ingen på kartan|inga prickar|ingen fackla tänd|ingen har tryckt|ingen har varit ute|stranden (är|ä) tom|bara (snön|regnet|måsarna) (är|ä) ute|nobody (is )?out|empty map|map is empty|no one (is )?out|not a soul/i;
+  function emptyLine(tx) { return EMPTY_RX.test(String(tx || "")); }
   var QUIET = { calm: 3, emptyFirst: 1, townQuiet: 3 }, quietText = {}, quietN = 0;   // kind -> shown only while snap.n is below this
   function friendAtBar(b) {
     if (b.snap != null || b.bar_id != null) return b.snap === "bar" || (b.bar_id != null && b.snap !== "area" && b.snap !== "home");
@@ -180,6 +219,7 @@
       var lim = quietText[String(e.textContent || "")];
       if ((lim && snap.n >= lim) || (!lim && snap.n >= 3) || snap.hdr > 0) staleOut(e);
     });
+    if (snap.hdr > 0) [].forEach.call(track.querySelectorAll(".tk-item"), function (e) { if (emptyLine(e.textContent)) staleOut(e); });   // tickerfix 4: any "empty map" line
     return cut;
   }
   // ownerfix 4a (owner PC shot, 11 Nov): an invisible line that keeps its width = a big gap between "///" on a wide screen.
@@ -556,7 +596,7 @@
     var hotNear = near.filter(function (b) { return U.level(b.beer_count) > 0; }).length;
     var nearN = c ? snap.n : ppl(beers, ctx.checkins);   // fixMo N-10: distinct people near (pins + check-ins)
     if (nearN < 3 && !hotNear) add("calm", { stad: stad }, beers.length ? 0 : 1, "tk-quiet");
-    if (!nearN && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet"); if (namesHint(beers, byKind)) add("townNames", { n: snap.hdr }, 3);   // tx05: real line first · uxfix P1-5: "N ute – gå med i ett gäng"
+    if (!nearN && c && stad !== t("newsTown")) add("emptyFirst", { stad: stad }, 3, "tk-quiet"); var nh = namesHint(beers, byKind, ctx); if (nh) add("townNames", { n: nh }, 3);   // tickerfix 1: others out (not me)   // tx05: real line first · uxfix P1-5: "N ute – gå med i ett gäng"
     if (nearN >= 1 && (hourNow(now) >= 15 || hourNow(now) < 4)) add("forecast", { stad: stad, n: nearN, p: Math.min(99, nearN * 9 + hotNear * 10) }, 0);
     // Two random "filler" headlines every round: the biggest source of variety.
     add("random", { stad: stad }, 0); add("random", { stad: stad }, 0);
@@ -596,8 +636,8 @@
       var text = "", usedId = null, usedIx = null;
       for (var i = 0; i < ids.length; i++) {
         var tx = "";
-        try { tx = String(ids[i].f(x.d)); if (U.n1) tx = U.n1(tx); } catch (e) { tx = ""; }   // fixJ T-22: "1 prickar" → "1 prick"
-        if (!tx || seen[tx] || !localOk(x.k, tx, x.d)) continue;
+        try { tx = String(ids[i].f(x.d)); if (U.n1) tx = U.n1(tx); tx = youFix(tx, x.d); } catch (e) { tx = ""; }   // fixJ T-22: "1 prickar" → "1 prick" · tickerfix 2: "Du" lines in 2nd person
+        if (!tx || !tx.trim() || seen[tx] || !localOk(x.k, tx, x.d) || (snap.hdr > 0 && emptyLine(tx))) continue;   // tickerfix 3: never a blank line · tickerfix 4: no "empty map" line (any kind) while the header says N ute
         text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;
       }
@@ -633,7 +673,7 @@
     return out.map(function (x) { return { text: x.text, cls: (x.cls || "") + (catOf(x) !== "general" ? " tk-real" : ""), k: x.k }; });   // ds40 tk-real = a real event (dot)
   }
 
-  window.NEWS = { build: build, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
+  window.NEWS = { build: build, hintN: hintN, emptyLine: emptyLine, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
     freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
     // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
     last: function () { return { beers: lastBeers, ctx: lastCtx }; } };

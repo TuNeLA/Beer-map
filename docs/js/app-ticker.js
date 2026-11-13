@@ -50,10 +50,47 @@
   // uxfix P1-5: the header's own number (#live-count[data-out], app-hud updateCounts / zones pill). With people out the
   // filler never says "nobody here": no named pins → "N ute – gå med i ett gäng för att se namn".
   function hdrOut() { var e = $("live-count"), v = e && e.getAttribute("data-out"); return v ? +v || 0 : 0; }
+  // tickerfix 1 (finalcheck 13 Nov: "1 ute – gå med i ett gäng" when only I was out, also in a gang, 2–3 times a loop):
+  // the hint's number = others out (the header's number without my own pin), 0 while I am in a gang. ONE rule: NEWS.hintN
+  // (news.js), also used by the "Ingen data här" toast (pnds.js).
+  function namesHintN() { try { return window.NEWS && window.NEWS.hintN ? window.NEWS.hintN(hdrOut(), PN.s.beers, groupRows.length) : 0; } catch (e) { return 0; } }
+  var HINT_RX = / – gå med i ett gäng för att se namn$/, HINT_GAP = 6, sinceHint = 99, hdrWas = null;
+  function isHint(x) { return !!x && (x.k === "townNames" || HINT_RX.test(String(x.text || ""))); }
   function quietItem() {
-    var n = hdrOut();
-    if (n > 0 && !PN.s.beers.some(function (b) { return b && !b.is_mine && (b.friend_name || b.is_friend); })) return { text: n + " ute – gå med i ett gäng för att se namn", cls: "" };
+    var n = hdrOut(), h = namesHintN();
+    if (h > 0 && sinceHint >= HINT_GAP) return { text: h + " ute – gå med i ett gäng för att se namn", cls: "", k: "townNames" };
     return n > 0 ? { text: t("chaosOut", n), cls: "" } : { text: t("tickQuiet"), cls: "tk-quiet" };
+  }
+  // tickerfix 1/3/4: the line that goes on the belt NOW. Never a blank line ("/// ///"), the names hint at most once per
+  // loop (HINT_GAP lines between two), and no quiet / empty-town line ("Inga prickar i X än") while the header says "N ute".
+  function itemOk(x, built) {
+    if (!x || !String(x.text == null ? "" : x.text).replace(/[\s\u00a0\u200b-\u200d\u2060\ufeff]+/g, "")) return false;
+    if (isHint(x)) return namesHintN() > 0 && (built || sinceHint >= HINT_GAP);
+    if (hdrOut() > 0 && (/(^|\s)tk-quiet(\s|$)/.test(x.cls || "") || (window.NEWS && window.NEWS.emptyLine && window.NEWS.emptyLine(x.text)))) return false;   // tickerfix 4: any "empty map" line
+    return true;
+  }
+  function nextItem() {
+    var x = null, guard = 0, max = Math.min(40, tickPending.length * 2 + 2);
+    while (guard++ < max) {
+      if (tickIx >= tickPending.length) {   // all queued shown once: build a fresh set (one loop)
+        tickIx = 0; PN.s.newsDirty = true;
+        try { renderTickerItemsOnly(); } catch (e) {}
+        if (!tickPending.length) break;
+      }
+      var c = tickPending[tickIx++];
+      if (itemOk(c)) { x = c; break; }
+    }
+    if (!x || !itemOk(x)) x = quietItem();
+    if (isHint(x)) sinceHint = 0; else sinceHint++;
+    return x;
+  }
+  // tickerfix 4: the header's count went 0 ↔ N: rebuild the headlines from the same number (old quiet lines fade out).
+  function hdrWatch() {
+    var on = hdrOut() > 0;
+    if (hdrWas === null) { hdrWas = on; return; }
+    if (on === hdrWas) return;
+    hdrWas = on; PN.s.tickerKey = ""; PN.s.newsDirty = true;
+    try { renderTicker(); var tr = $("ticker-track"); if (tr && tr.classList.contains("tk-one")) tickOneNext(); } catch (e) {}   // reduced motion: the next line at once
   }
   function newsCtx(titles) {
     var me = PN.s.meState || {}, medals = [];
@@ -66,7 +103,7 @@
     } catch (e) {}
     var rl = [];
     try { rl = window.RALLY && window.RALLY.list ? window.RALLY.list() : []; } catch (e) { rl = []; }
-    return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles, liveTotal: PN.s.liveTotal, hdrOut: hdrOut(),   // fixM T-14: the header's own count · uxfix P1-5: the number the header shows
+    return { center: newsCenter(), now: new Date(), prev: newsPrev, titles: titles, liveTotal: PN.s.liveTotal, hdrOut: hdrOut(), namesHint: namesHintN(),   // tickerfix 1: others out, 0 in a gang   // fixM T-14: the header's own count · uxfix P1-5: the number the header shows
       others: PN.s.beers.filter(function (b) { return (b.other_count | 0) > 0; }), checkins: PN.s.checkins,
       home: groupRows, rallies: rl, myName: getName() || null, myTitle: me.title || null, myMedals: medals.slice(0, 3) };
   }
@@ -90,6 +127,7 @@
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
     var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
+    items = items.filter(function (x) { return itemOk(x, true); }); hdrWas = hdrOut() > 0;   // tickerfix 3/4: no blank lines; the count this build used
     if (!items.length) items = [quietItem()];
     newsPrev = items.map(function (x) { return x.text; });
     PN.s.tickerKey = "v2";
@@ -105,12 +143,8 @@
     if (!tickKickDone) {
       tickKickDone = true;
       frag.appendChild(el("span", { class: "tk-kick", text: t("newsKick") }));
-    } else frag.appendChild(el("span", { class: "tk-sep", text: "///" }));
-    if (tickIx >= tickPending.length) {   // all queued shown once: build a fresh set next time
-      tickIx = 0; PN.s.newsDirty = true;
-      try { renderTickerItemsOnly(); } catch (e) {}
-    }
-    var x = tickPending[tickIx++] || quietItem();
+    } else if (!(track.lastElementChild && track.lastElementChild.classList.contains("tk-sep"))) frag.appendChild(el("span", { class: "tk-sep", text: "///" }));   // tickerfix 3: freshBelt can leave a "///" at the end: never two in a row
+    var x = nextItem();
     frag.appendChild(el("span", { class: "tk-item" + (x.cls ? " " + x.cls : ""), text: x.text }));
     track.appendChild(frag);
   }
@@ -140,7 +174,7 @@
     }
     var tr = tickCut ? tickCut.toFixed(2) + "px 0" : "";
     if (track.style.translate !== tr) track.style.translate = tr;
-    tickFill(); tickRate();
+    tickFill(); tickRate(); hdrWatch();
   }
   function tickStart() {
     var track = $("ticker-track");
@@ -159,10 +193,7 @@
   // a soft opacity swap every 6 s (no sideways motion), tap = next line (pnds.js → PN_TICK_NEXT). Pauses with the
   // controller (PNTICK: tap-stop / hold / open sheet) and in a hidden tab. A new poll only refills the queue.
   var tickOneT = 0, TICK_ONE_MS = 6000;
-  function tickOneItem() {
-    if (tickIx >= tickPending.length) { tickIx = 0; PN.s.newsDirty = true; try { renderTickerItemsOnly(); } catch (e) {} }
-    return tickPending[tickIx++] || quietItem();
-  }
+  function tickOneItem() { return nextItem(); }   // tickerfix: the same filter as the belt
   function tickOneShow(track, fade) {
     var x = tickOneItem(), n = el("span", { class: "tk-item tk-one-i" + (x.cls ? " " + x.cls : "") + (fade ? " tk-one-out" : ""), text: x.text, title: x.text });
     track.innerHTML = ""; track.appendChild(n);
@@ -178,6 +209,7 @@
   function tickOneTick() {
     var p = false; try { p = !!(window.PNTICK && window.PNTICK.paused()); } catch (e) {}
     if (!p && !document.hidden) tickOneNext();
+    hdrWatch();
   }
   function tickOneStart(track) {
     if (tickAnim) { tickAnim.cancel(); tickAnim = null; } if (tickT) { clearInterval(tickT); tickT = 0; }
@@ -203,6 +235,7 @@
     var titles = null;
     try { titles = window.SOCIAL && window.SOCIAL.titlesByBeer ? window.SOCIAL.titlesByBeer() : null; } catch (e) { titles = null; }
     var items = window.NEWS ? window.NEWS.build(beerOnly(), newsCtx(titles)) : [];
+    items = items.filter(function (x) { return itemOk(x, true); }); hdrWas = hdrOut() > 0;   // tickerfix 3/4
     if (!items.length) items = [quietItem()];
     newsPrev = items.map(function (x) { return x.text; });
     tickPending = items;
