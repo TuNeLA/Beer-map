@@ -37,6 +37,7 @@ function build(now) {
       people: [{ name: "Lisa", st: "ute", friend: true }, { name: "Oskar", st: "ute", friend: true }, { name: "Ida", st: "kanske", friend: false }] }),
     safety_state: () => ({ v: 1, age_ok: true, terms_ver: 1, terms_at: iso(9999), store: "off", blocks: 0, notices: [] }),   // safety.js
     my_avatar: () => ({ v: 1, spec: null, seed: "5e3a91c2", facts: { r: 8, m: [] } }),     // avatar.js (no spec = the default face)
+    my_unlock_progress: () => ({ v: 1, c: { pass: 3, town: 1, gang: 2 } }),   // unlocks.js Garderob (0508)
     avatars_for: () => ({ v: 1, people: members.map((m) => ({ k: m.is_me ? "me" : m.k, name: m.name, is_me: m.is_me })) }),
     // 📸 engångskamera: nobody has shot tonight (cam-pw.js routes its own night)
     film_poll: () => ({ v: 2, now: new Date(now).toISOString(), night: nightEnd(now), develop_at: nightEnd(now), groups: [], rolls: [] }),   // film.js

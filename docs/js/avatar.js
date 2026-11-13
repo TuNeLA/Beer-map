@@ -1,22 +1,13 @@
 /* PintsNow (Öl Nu) — 👤 AVATAR v2 (owner 2026-11-07: "Like Snapchat Bitmoji but our own …"; v2 same day: "MANY more items so
-   everyone gets a unique character, and an even better design for all items").
-   - Art: one flat SVG drawn in code (viewBox 0 0 100 100, circle). One light from the top left: every big shape gets ONE soft
-     highlight rim and ONE shadow tone (cel(); same offsets everywhere). Feature lines 1.7, outlines 1.4. Original art, no assets,
-     no brand logos, no team crests, no copied characters.
-   - Layers: background · hair (back, cut under a hat) · neck · top + rank mark + mini ribbons · neckwear · hair (in front of the
-     shoulders: braids) · ears + earrings · head · cheeks · marks · face paint · nose · eyes · brows · mouth · facial hair · foam ·
-     hair (front, cut under a hat) · glasses/mask · headwear · held item + hand · frame ring + rank badge.
-   - Small size (≤ 40 px: chat, rows, NU strip): `small` = flat shapes, thicker face lines, no ribbons and no fine marks.
-   - Spec (server table `avatars`, ≤ 1 KB): v1 keys {v, sk, fs, ey, br, mt, hr, hc, fh, hw, gl, up, uc, bg, ms, md} keep their
-     indexes and meaning (new items are added at the end), plus v2 keys: ec eye colour, ns nose, ck cheeks, fm marks, fp face paint,
-     er ears/earrings, nk neckwear, hi held item, fr frame, h2 second hair colour (0 = none, else palette index + 1), ht two-tone style,
-     hx / ux / bx "egen färg" for hair / top / background (0 = palette, else 0xRRGGBB + 1). A missing key = 0 = the v1 look.
-   - No spec = a default character from `seed`: the v1 fields come from the same random stream as v1 (same look), the v2 fields from
-     a second stream (only free items), so everyone is more unique and nobody changes much.
-   - Unlocks (LOCKS = SQL olnu_avatar_locks(), 0200): r rank index, m medal, s best weekend streak, b bars in the passport, t towns,
-     e events said yes to, g groups, k engångskamera shots, d date window "MM-DD:MM-DD" (Stockholm), o = list of alternatives (any one
-     is enough). The item you already wear stays yours (seasonal items too). Rarity is shown (◆ ovanlig … legendarisk). Nothing is
-     bought. PREMIUM_LATER marks items that COULD become Premium later (not locked now).
+   everyone gets a unique character, and an even better design for all items"). - Art: one flat SVG drawn in code (viewBox 0 0 100 100, circle). One light from the top left: every big shape gets ONE soft
+     highlight rim and ONE shadow tone (cel(); same offsets everywhere). Feature lines 1.7, outlines 1.4. Original art, no assets, no brand logos, no team crests, no copied characters.
+   - Layers: background · hair (back, cut under a hat) · neck · top + rank mark + mini ribbons · neckwear · hair (in front of the shoulders: braids) · ears + earrings · head · cheeks · marks · face paint · nose · eyes · brows · mouth · facial hair · foam ·
+     hair (front, cut under a hat) · glasses/mask · headwear · held item + hand · frame ring + rank badge. - Small size (≤ 40 px: chat, rows, NU strip): `small` = flat shapes, thicker face lines, no ribbons and no fine marks.
+   - Spec (server table `avatars`, ≤ 1 KB): v1 keys {v, sk, fs, ey, br, mt, hr, hc, fh, hw, gl, up, uc, bg, ms, md} keep their indexes and meaning (new items are added at the end), plus v2 keys: ec eye colour, ns nose, ck cheeks, fm marks, fp face paint,
+     er ears/earrings, nk neckwear, hi held item, fr frame, h2 second hair colour (0 = none, else palette index + 1), ht two-tone style, hx / ux / bx "egen färg" for hair / top / background (0 = palette, else 0xRRGGBB + 1). A missing key = 0 = the v1 look.
+   - No spec = a default character from `seed`: the v1 fields come from the same random stream as v1 (same look), the v2 fields from a second stream (only free items), so everyone is more unique and nobody changes much.
+   - Unlocks (LOCKS = SQL olnu_avatar_locks(), 0200): r rank index, m medal, s best weekend streak, b bars in the passport, t towns, e events said yes to, g groups, k engångskamera shots, d date window "MM-DD:MM-DD" (Stockholm), o = list of alternatives (any one
+     is enough). The item you already wear stays yours (seasonal items too). Rarity is shown (◆ ovanlig … legendarisk). Nothing is bought. PREMIUM_LATER marks items that COULD become Premium later (not locked now).
    - RPCs: my_avatar(), set_my_avatar(p_spec), avatars_for(p_group_id | null). Missing RPC (old server) = feature off.
    - Shown in: group chat / event chat / DM (next to each message group, social.js hook chatSeen), Medlemmar
      (statusRow), Vänner rows (friendRow), the group NU strip (faces), the Profil hero (profileAv → opens the editor).
@@ -1108,6 +1099,15 @@
     }
   }
 
+  /* lane unlocks: parts + unlock paths from js/unlock-parts.js. addPart(slot, index, {name, svg(s, H, o), lock, rare, clip, tuck}): index = the next free one, never re-used (= SQL 0508 olnu_avatar_max / locks4). addPath(key, lock) = one more way to open an old item. equip(slot, index) = wear it now. */
+  var XP = {}, XH = { P: P, S: S, C: C, E: E, R: R, cel: cel, shade: shade, mix: mix, star: star, dR: dR, dC: dC, grad: grad, nid: nid, f2: f2, rankMark: rankMark, hexOf: hexOf, SHOULDERS: SHOULDERS, TOPC: TOPC, lite: function () { return LITE; } };
+  function xp(k, i, s, o) { var f = XP[k] && XP[k][i]; return f ? f(s, XH, o || {}) : null; }
+  var hat0 = hatSVG, top0 = topSVG, nk0 = neckSVG, gl0 = glassesSVG, fr0 = frameSVG, bg0 = bgSVG;
+  hatSVG = function (h, s) { var x = xp("hw", h, s); return x == null ? hat0(h, s) : x; }; neckSVG = function (n, s) { var x = xp("nk", n, s); return x == null ? nk0(n, s) : x; }; glassesSVG = function (g) { var x = xp("gl", g, null); return x == null ? gl0(g) : x; };
+  topSVG = function (s, r, md, skin) { var x = xp("up", s.up, s, { r: r, skin: skin }); return x == null ? top0(s, r, md, skin) : x + (md && md.length ? ribbonsSVG(md) : ""); }; frameSVG = function (f, r) { var x = xp("fr", f, null, { r: r }); return x == null ? fr0(f, r) : x; }; bgSVG = function (b, s) { var x = xp("bg", b, s); return x == null ? bg0(b, s) : x; };
+  function addPart(k, i, d) { if (!N[k] || N[k].length !== i || !d || typeof d.svg !== "function") return false; N[k].push(d.name); MAX[k] = i; (XP[k] = XP[k] || {})[i] = d.svg; if (d.lock) LOCKS[k + ":" + i] = d.lock; if (d.rare) RARE[k + ":" + i] = d.rare; if (k === "hw" && d.clip) HCLIP[i] = d.clip; if (k === "nk" && d.tuck) NKL[i] = 1; svgMemo = {}; svgMemoN = 0; return true; }
+  function addPath(key, lk) { var o = LOCKS[key]; if (!lk) return; if (!o) { LOCKS[key] = lk; return; } var js = JSON.stringify(lk); if ((o.o || []).some(function (x) { return JSON.stringify(x) === js; })) return; LOCKS[key] = Object.assign({}, o, { o: (o.o || []).concat([lk]) }); }
+  function equip(k, i) { if (off || !me) return Promise.resolve({ ok: false, code: "no_me" }); if (!me.spec) return Promise.resolve({ ok: false, code: "no_spec" }); if (!usable(k, i, me.facts)) return Promise.resolve({ ok: false, code: "locked" }); var sp = JSON.parse(JSON.stringify(me.spec)); sp[k] = i; return saveSpec(sp); }
   /* svg(spec, {r rank, md medal ids, vb viewBox, small}) → SVG string. layers(spec, o) → [[name, svg part]] (avt01: the
      fit / clip tests render one layer at a time). Layer order: bg · hairB · neck · (nk tucked) · top · nk · hairM · ears ·
      head · earring · face · beard · foam · hairF · glasses · hat · held · frame. */
@@ -1505,7 +1505,7 @@
       if (lk.o) t += L(" · annars ", " · or ") + lk.o.map(function (x) { return x.d ? L("under ", "during ") + winTxt(x.d) : needTxt(x); }).join(L(" eller ", " or "));
       return t;
     }
-    return L("Låses upp ", "Unlocks ") + needTxt(lk);
+    return L("Låses upp ", "Unlocks ") + [lk].concat(lk.o || []).map(needTxt).filter(Boolean).join(L(" eller ", " or "));   // lane unlocks: + the new path
   }
   function shortLock(lk) {
     if (lk.d) return (SEASON[lk.d] || "📅") + " " + dayTxt(lk.d.slice(0, 5));
@@ -1888,7 +1888,7 @@
 
   window.AVATAR = {
     svg: svg, defaultSpec: defaultSpec, LOCKS: LOCKS, MAX: MAX, NAMES: N, SLOTS: SLOTS, PREMIUM_LATER: PREMIUM_LATER,
-    unlocked: unlocked, lockText: lockText, rarity: rarity, tileVB: tileVB, clean: clean,
+    unlocked: unlocked, lockText: lockText, rarity: rarity, tileVB: tileVB, clean: clean, addPart: addPart, addPath: addPath, equip: equip,
     me: function () { return me && me.spec ? me : null; }, on: function () { return !off; },
     // v3 (avwiz.js)
     meRaw: function () { return me; }, loadMe: loadMe, saveSpec: saveSpec, usable: usable, lockOf: lockOf, shortLock: shortLock,

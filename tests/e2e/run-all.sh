@@ -81,6 +81,7 @@ run map        $A map-pw.js t '^(b9|sh|m2|br1|r1)$'      # map lane part 1: B9 i
 run map-b      $A map-pw.js t '^(tz|b8|m1|m3|m3sw|m4)$'  # map lane part 2: town zoom, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo. c4fix: split, one run was ~830-1000 s on CI (TO 900)
 NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food icons +20 % on the real map, no overlap, tap box, shots z15-17
 run c2speed    $A c2speed-pw.js    # lane c2speed: I-45 locate-me < 1 s, I-56 food list at once, I-50 food icons from z14, I-51 bars at city zoom
+run alive      $A alive-pw.js      # lane alive: Levande karta (clink, event pulse, sparks, night glow; cap 12, pause on move, reduced motion, raster fallback)
 run mapzoom    $A mapzoom-pw.js    # lane a1map: I-08 icons stay while there is room, I-27 no blink on zoom, I-28 my dot under the bars, I-09 cluster >= pin, I-20 popup ✕ clear, I-10 arena disc, I-06 Hemzon navy, I-11 country chip (stub Mapbox without a token)
 run systemet  $A systemet-pw.js   # lane b3system I-18: Systembolaget pins (GL + Leaflet fallback), z12 floor, bars first, filter, card text, holiday hook (stub Mapbox without a token)
 run c5extras  $A c5extras-pw.js   # lane c5extras: photo viewer X pinned (I-49), camera torch (I-54), ticker height (I-32), delight caption waits (I-31), dialekt pack ?v= (I-29)
@@ -157,6 +158,7 @@ run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallbac
 run heat       $B heat-pw.js       # lane heat (0485/0486): client draws the server heat; no double glow on my / my mate's pin; no glow near a village home
 run fixmo      $B fixmo-pw.js      # lane fixMo (test teams round 2): N-05 host reveal + Förfest members, N-06 test-kit clock vs login, N-07 all moments, N-08/N-10 distinct crowd, N-09 checked-in mates, N-11 crowd line, N-12 takeover news nearby, N-13 GL-failed cluster tap, N-14 report to the group chat, N-19 copy
 run followups  $B followups-pw.js  # lane followups: ride award (0453), Dagens order icon, Helgstreak empty, safety/legend icons, R1-26/29/38/40/42/45/48/49, R1-43 token swaps
+run unlocks    $B unlocks-pw.js    # lane unlocks: achievements unlock avatar clothes (0508/0509): unlock sheet, Använd nu, Garderob, no drink counting, reduced motion
 run fixs       $B fixs-pw.js       # lane fixS (test teams): T-01 full block DM + friend row, T-05 send after Regler, T-09/T-18 Synlighet, T-12 chat menu, T-13 Gängkamp in Inkorg, T-16 counts, T-17 Dialekt, T-23
 run fixc       $B fixc-pw.js       # lane fixC (test teams round 2): N-03 chat menu in a short chat, N-04/N-18 Mina vänner live, N-15 join count, N-16 invite GPS, N-17 group row, N-20 Anta, N-19/T-22 copy
 run fixj       $B fixj-pw.js       # lane fixJ (test-team fixes): T-03 year once, T-04 first tap, T-06 no old morning card, T-07 beer moves check-in, T-20 lead, T-21 Barkungen week, T-22 copy

@@ -87,6 +87,8 @@ jobs:
             filter: '^(x8)$'
           - name: followups
             filter: '^(followups)$'
+          - name: unlocks
+            filter: '^(unlocks)$'
           - name: fixs
             filter: '^(fixs)$'
           - name: fixj
@@ -144,6 +146,8 @@ jobs:
             filter: '^(ui1-map|ownerfix-map)$'
           - name: c2speed
             filter: '^(c2speed)$'
+          - name: alive
+            filter: '^(alive)$'
           - name: mapzoom
             filter: '^(mapzoom)$'
           - name: systemet
