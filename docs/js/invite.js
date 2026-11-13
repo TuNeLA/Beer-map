@@ -352,6 +352,11 @@
 
   /* ---------- Grupper | Vänner tabs (groupsSheet hook; INVITE is last in mods, so it wraps the whole sheet) ---------- */
   var wantTab = null;
+  // polish3 I-68 (owner): a tap on the Grupper button = the Grupper tab, never the last used one. Capture phase: runs before
+  // the button opens the sheet. Other ways in keep their tab: openFriendsTab (?friends=1, ⚙️ Vänner), INBOX.open, ‹ back.
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.closest && e.target.closest("#btn-groups")) { wantTab = null; try { U.ls.set(TAB, "g"); } catch (x) {} }
+  }, true);
   function groupsSheet(body) {
     if (!A || !A.LIVE) return;
     var kids = Array.prototype.slice.call(body.childNodes);

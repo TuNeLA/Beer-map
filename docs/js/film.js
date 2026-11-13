@@ -326,9 +326,9 @@
         el("div", { class: "fm-edge", text: (i + 1) + "A ▸ PINTSNOW 400" }),
         fr,
         el("figcaption", { class: "fm-cap" }, [el("b", { text: p.is_me ? L("Du", "You") : p.name }), el("small", { text: hm(p.at) })]),
-        reactBar(p)
+        reactChips(p)
       ]);
-      fr.addEventListener("click", function () { viewer(p.id); });
+      shotTap(fr, p);   // polish3 I-65: tap = the photo big (Spara), press and hold = react
       strip.appendChild(frame);
       lazy(fr, p.id);
     });
@@ -336,29 +336,80 @@
     cmSave();
     if (d.expires_at) root.appendChild(el("p", { class: "fm-note muted", text: L("Filmen försvinner ", "The roll expires ") + dayLbl(String(new Date(d.expires_at).toISOString())) + "." }));
   }
-  function reactBar(p) {
-    var bar = el("div", { class: "fm-reacts" });
+  /* polish3 I-65 (owner 13 Nov): no emoji row under each photo (the emojis were not centred in their round buttons).
+     Tap a photo = the photo big with 💾 Spara (viewer). Press and hold (450 ms, small buzz) = the picker with the same 8
+     reactions. The counts show as small chips under the photo only when it has reactions. Keyboard / screen reader: the
+     photo is a button (Enter = big view) and the big view has "Reagera". */
+  var HOLD_MS = 450;
+  function reactCounts(p) {
+    var c = {}; (p.reacts || []).forEach(function (x) { if (x && EMOJIS.indexOf(x.e) >= 0 && (x.n | 0) > 0) c[x.e] = x.n | 0; });
+    return c;
+  }
+  function reactChips(p) {
+    var bar = el("div", { class: "fm-rchips", role: "group", "aria-label": L("Reaktioner", "Reactions") });
     function draw() {
       bar.innerHTML = "";
-      var counts = {}; (p.reacts || []).forEach(function (x) { counts[x.e] = x.n; });
+      var c = reactCounts(p), n = 0;
       EMOJIS.forEach(function (e) {
-        var b = el("button", { type: "button", class: "fm-r" + (p.my === e ? " on" : ""), "aria-pressed": String(p.my === e), "aria-label": e }, [
-          document.createTextNode(e), counts[e] ? el("small", { text: String(counts[e]) }) : null]);
-        b.addEventListener("click", function () {
-          bar.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
-          call("film_react", { p_photo_id: +p.id, p_emoji: e }).then(function (r) {
-            if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); draw(); return; }
-            var np = A.parseData(r.data) || {};
-            p.reacts = np.reacts; p.my = np.my; p.n = np.n;
-            try { window.FX.vibrate(10); } catch (x) {}
-            draw();
-          });
-        });
-        bar.appendChild(b);
+        if (!c[e]) return; n++;
+        bar.appendChild(el("span", { class: "fm-rc" + (p.my === e ? " on" : ""), "aria-label": e + " " + c[e] }, [
+          el("span", { class: "fm-rc-e", "aria-hidden": "true", text: e }), el("small", { "aria-hidden": "true", text: String(c[e]) })]));
       });
+      bar.hidden = !n;
     }
-    draw();
+    p._chips = draw; draw();
     return bar;
+  }
+  function reactPick(p) {
+    var old = document.querySelector(".fm-rpick"); if (old) old.remove();
+    var back = document.activeElement;
+    var ov = el("div", { class: "fc-rules fm-mini fm-rpick" }), card = el("div", { class: "fc-r-card", role: "dialog", "aria-modal": "true", "aria-label": L("Reagera på bilden", "React to the photo") });
+    card.appendChild(el("h2", { class: "fc-r-t", text: L("Reagera", "React") }));
+    var grid = el("div", { class: "fm-rp-grid" }), c = reactCounts(p);
+    function close() { ov.remove(); try { if (back && back.focus && document.body.contains(back)) back.focus({ preventScroll: true }); } catch (x) {} }
+    EMOJIS.forEach(function (e) {
+      var b = el("button", { type: "button", class: "fm-rp" + (p.my === e ? " on" : ""), "aria-pressed": String(p.my === e), "aria-label": e + (c[e] ? " " + c[e] : "") }, [
+        el("span", { class: "fm-rp-e", "aria-hidden": "true", text: e }), c[e] ? el("small", { "aria-hidden": "true", text: String(c[e]) }) : null]);
+      b.addEventListener("click", function () {
+        grid.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+        call("film_react", { p_photo_id: +p.id, p_emoji: e }).then(function (r) {
+          close();
+          if (r.error) { A.toast(errText(codeOf(r.error)), { err: true }); return; }
+          var np = A.parseData(r.data) || {};
+          p.reacts = np.reacts; p.my = np.my; p.n = np.n;
+          try { window.FX.vibrate(10); } catch (x) {}
+          try { if (p._chips) p._chips(); } catch (x) {}
+          try { if (p._vr) p._vr(); } catch (x) {}
+        });
+      });
+      grid.appendChild(b);
+    });
+    card.appendChild(grid);
+    var no = el("button", { type: "button", class: "btn btn-block btn-ghost", text: L("Avbryt", "Cancel") });
+    no.addEventListener("click", close);
+    card.appendChild(el("div", { class: "fc-r-btns" }, [no]));
+    ov.appendChild(card);
+    ov.addEventListener("click", function (ev) { if (ev.target === ov) close(); });
+    ov.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { ev.stopPropagation(); close(); } });
+    document.body.appendChild(ov);
+    setTimeout(function () { var f = grid.querySelector(".on") || grid.querySelector("button"); try { f.focus({ preventScroll: true }); } catch (x) {} }, 30);
+    return ov;
+  }
+  function shotTap(fr, p) {
+    var t = 0, held = false, x0 = 0, y0 = 0;
+    fr.setAttribute("role", "button"); fr.setAttribute("tabindex", "0");
+    fr.setAttribute("aria-label", L("Öppna bilden", "Open the photo") + " · " + (p.is_me ? L("Du", "You") : (p.name || "")) + ". " + L("Håll inne för att reagera.", "Press and hold to react."));
+    function stop() { if (t) { clearTimeout(t); t = 0; } }
+    fr.addEventListener("pointerdown", function (e) {
+      if (e.button > 0) return;
+      held = false; x0 = e.clientX; y0 = e.clientY; stop();
+      t = setTimeout(function () { t = 0; held = true; try { window.FX.vibrate(15); } catch (x) {} reactPick(p); }, HOLD_MS);
+    });
+    fr.addEventListener("pointermove", function (e) { if (t && Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 12) stop(); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (k) { fr.addEventListener(k, stop); });
+    fr.addEventListener("contextmenu", function (e) { e.preventDefault(); });   // Android: no image menu on the hold
+    fr.addEventListener("click", function (e) { if (held) { held = false; e.preventDefault(); return; } viewer(p.id, p); });
+    fr.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); viewer(p.id, p); } });
   }
   var io = null;
   function lazy(fr, id) {
@@ -387,14 +438,20 @@
     }, function (e) { delete loading[id]; throw e; });
     return loading[id];
   }
-  function viewer(id) {
+  function viewer(id, p) {
     var o = el("div", { class: "ph-ov ph-view fm-view", role: "dialog", "aria-modal": "true" });
+    // polish3 I-65: "Reagera" in the big view (keyboard / screen reader path to the reactions; the hold works here too)
+    var rb = p ? el("button", { type: "button", class: "btn btn-ghost fm-v-react" }) : null;
+    if (rb) {
+      p._vr = function () { rb.textContent = (p.my ? p.my + " " : "") + L("Reagera", "React"); rb.setAttribute("aria-label", L("Reagera på bilden", "React to the photo") + (p.my ? " (" + p.my + ")" : "")); };
+      p._vr(); rb.addEventListener("click", function () { reactPick(p); });
+    }
     var img = el("img", { class: "ph-big", alt: L("Bild", "Photo"), draggable: "false" });
     var save = el("a", { class: "btn btn-amber ph-save", text: L("💾 Spara", "💾 Save"), download: "olnu-film-" + id + ".jpg", href: "#" });
     var x = el("button", { type: "button", class: "btn ph-x", "aria-label": L("Stäng", "Close"), text: "✕" });
     o.appendChild(el("div", { class: "ph-stage" }, [img]));
-    o.appendChild(el("div", { class: "ph-bar" }, [save, x]));
-    function close() { o.remove(); document.removeEventListener("keydown", k); }
+    o.appendChild(el("div", { class: "ph-bar" }, [rb, save, x].filter(Boolean)));
+    function close() { o.remove(); document.removeEventListener("keydown", k); if (p) p._vr = null; }
     function k(e) { if (e.key === "Escape") close(); }
     document.addEventListener("keydown", k);
     x.addEventListener("click", close);

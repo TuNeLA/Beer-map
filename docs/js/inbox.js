@@ -318,6 +318,10 @@
     if (!A || !A.LIVE || !A.showGroups) return false;
     wantTab = true; A.showGroups(); return true;
   }
+  // polish3 I-68: the Grupper button opens Grupper (not the remembered Inkorg tab); INBOX.open() still opens Inkorg
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.closest && e.target.closest("#btn-groups")) { wantTab = false; lsSet(TAB, "0"); }
+  }, true);
 
   window.INBOX = {
     init: function (api) {

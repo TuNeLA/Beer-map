@@ -45,8 +45,10 @@
     ".leaflet-popup summary", ".leaflet-popup .pp-sec-h", ".leaflet-popup .bi-h", ".leaflet-popup .ci-here", ".leaflet-popup .ute-tag", ".leaflet-popup .sp-l",
     ".leaflet-popup a.af-qr", "#sheet-body .gpg-ph-t", "#sheet-body .bp-sb-h > span", "#sheet-body .pk-ikv-t > b", "#sheet-body .pk-h", "#sheet-body .np-h", "#sheet-body .ht-h", "#sheet-body .pn-it > .pn-e"].join(",");
   // fun copy / user text / game art: emoji stay
+  // polish3 I-86 (owner 13 Nov): REACTIONS keep the real emoji everywhere (friend card, Engångskameran, chat, pickers); PNI icons stay for UI buttons
+  var RXK = ".rx-wrap, .rx-row, .rx-btn, .rx-top, .pp-rx-got, .fm-rpick, .fm-rchips, .fm-v-react, .cm-reacts, .cm-react, .cm-picker, .cm-pick";   // polish3 I-86 (KEEP 1)
   var KEEP = ".chat-list, .gpg-msgs, .cm-body, .cm-text, .dm-list, .dm-msg, .tk-track, .takeover, .mx-pop, .og, .kind-grid, .no-pi, .sp-cards, .sp-card, .sp-room, " +
-    ".pn-gikv, .rx, .pp-rx, .react, .reactions, .emoji, .ev-react, .bm-b, .pf-av, .av-wiz, .avatar, input, textarea, select, [contenteditable], .sk-, .ff-cards, .pt-cards";
+    ".pn-gikv, .rx, .pp-rx, .react, .reactions, .emoji, .ev-react, " + RXK + ", .bm-b, .pf-av, .av-wiz, .avatar, input, textarea, select, [contenteditable], .sk-, .ff-cards, .pt-cards";
   var EXTRA = { "🤔": "help", "🛋️": "home", "🛋": "home", "💧": "drink", "🎯": "locate", "🧪": "sparkle", "🔙": "chev-left", "🙋": "hand", "🫡": "hand", "🏁": "flag", "🎤": "speaker",
     "📞": "phone", "☎️": "phone", "✋": "hand", "⏹️": "x", "⏹": "x", "🚑": "sos", "🪖": "medal", "🪩": "sparkle", "🖨️": "qr", "🗣️": "megaphone", "🧾": "receipt", "☕": "drink", "🍔": "food", "🍟": "food", "🥙": "food", "🍜": "food", "🍣": "food", "🥗": "food", "🧁": "food", "🍦": "food", "📊": "clock", "🧑‍🎨": "user", "👆": "hand", "📈": "clock" };
   function iconFor(e) {
@@ -598,7 +600,7 @@
   // emoji inside chrome labels (not only leading): headings, buttons, summaries, tab labels lose them (pnds iconize does the
   // leading one; this does the rest). Fun copy / chat / game art keep theirs (same KEEP list as pnds iconize).
   var EMO = /(?:\p{Extended_Pictographic}(?:\uFE0F|\u20E3|[\u{1F3FB}-\u{1F3FF}]|\u200D\p{Extended_Pictographic}\uFE0F?)*)\s?/gu;
-  var KEEP = ".chat-list, .gpg-msgs, .cm-body, .dm-list, .tk-track, .takeover, .mx-pop, .sp-cards, .kind-grid, .rx, .reactions, input, textarea, [contenteditable], .no-pi";
+  var KEEP = ".chat-list, .gpg-msgs, .cm-body, .dm-list, .tk-track, .takeover, .mx-pop, .sp-cards, .kind-grid, .rx, .reactions, .rx-wrap, .rx-row, .rx-btn, .rx-top, .pp-rx-got, .fm-rpick, .fm-rchips, .fm-v-react, .cm-reacts, .cm-react, .cm-picker, .cm-pick, input, textarea, [contenteditable], .no-pi";   // polish3 I-86 (KEEP 2)
   function scrub(root) {
     if (!root) return;
     root.querySelectorAll("h2, h3, h4, button, summary, [role=button], .bm-b, .pp-sec-h, .gpg-now-s, .pn-gikv").forEach(function (el) {
@@ -1159,7 +1161,7 @@
     ".af-mic", ".cr-tabs .cr-te", ".hf-nm", ".hf-people button", "#sheet-body label > span", "#sheet-body .inv-pk-main > small",
     "#sheet-body .np-ic", "#sheet-body .nr-frow .btn", "#sheet-body .rl-loc > span", ".gpg-dots", "#sheet-body .evs-detail button", "#sheet-body .cr button", "#sheet-body .cr summary",
     ".toast .btn", "#sheet-body .rnd-check > span"].join(",");
-  var KEEP = ".chat-list, .gpg-msgs, .cm-body, .sp-card-ic, .ff-me, .kind-grid, .kb-e, .pn-kaos-line, .tk-track, .rb, .uni-ribbon, .pf-ribbons, .leaflet-marker-pane, .mapboxgl-marker, input, textarea";
+  var KEEP = ".chat-list, .gpg-msgs, .cm-body, .sp-card-ic, .ff-me, .kind-grid, .kb-e, .pn-kaos-line, .tk-track, .rb, .uni-ribbon, .pf-ribbons, .leaflet-marker-pane, .mapboxgl-marker, .rx-wrap, .rx-row, .rx-btn, .rx-top, .pp-rx-got, .fm-rpick, .fm-rchips, .fm-v-react, .cm-reacts, .cm-react, .cm-picker, .cm-pick, input, textarea";   // polish3 I-86 (KEEP 3)
   var EXTRA = { "🎙️": "mic", "🎙": "mic", "🎤": "mic", "🚌": "bus", "📼": "history", "🤔": "help", "🏟️": "trophy", "🏟": "trophy", "👀": "eye", "📡": "locate",
     "🗓️": "calendar", "👋": "hand", "🔆": "sun", "🚑": "sos", "🥳": "sparkle", "😎": "user", "🎂": "", "⚖️": "", "📏": "", "🥾": "", "🥃": "mixed" };
   var DOTS = { "🟢": "on", "🔴": "red", "🟡": "amber", "⚪": "off", "⚫": "off" };

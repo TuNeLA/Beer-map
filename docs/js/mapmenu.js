@@ -130,6 +130,8 @@
       var go = A.btn(L("📤 Skicka", "📤 Send"), "btn-green btn-block", function () { send(false); });
       body.appendChild(go);
       body.appendChild(el("p", { class: "muted ev-legal", text: L("Max 5 om dan. Bara riktiga ställen – ägaren kollar varje förslag.", "Max 5 a day. Real places only.") }));
+      // polish3 I-69: the sender sees what happened to the places they sent (my_place_suggestions, 0513)
+      if (!off.my_place_suggestions) body.appendChild(A.btn(L("Mina förslag", "My suggestions"), "btn-small btn-ghost pl-mine-b", mySuggestions));
       function upd() { go.disabled = !(type && name.value.trim().length >= 2); }
       name.addEventListener("input", function () { warn.hidden = true; upd(); });
       upd();
@@ -162,6 +164,30 @@
         });
       }
       setTimeout(function () { name.focus(); }, 60);
+    }, { now: true });
+  }
+  /* polish3 I-69: "Mina förslag" = my own place suggestions with their status (Väntar / Godkänd / Avvisad).
+     Server: my_place_suggestions() (0513, own rows only). Old server (no function) → a short note, the button hides next time. */
+  var PL_ST = { pending: ["Väntar", "Waiting", "pl-st-wait"], ok: ["Godkänd", "Approved", "pl-st-ok"], rejected: ["Avvisad", "Not added", "pl-st-no"] };
+  function mySuggestions() {
+    A.openSheet(L("Mina förslag", "My suggestions"), function (body) {
+      var el = A.el, list = el("ul", { class: "pl-mine" });
+      body.appendChild(el("p", { class: "muted", text: L("Ställen du har föreslagit. Ägaren kollar varje förslag.", "Places you suggested. The owner checks each one.") }));
+      body.appendChild(list);
+      list.appendChild(el("li", { class: "muted", text: "…" }));
+      call("my_place_suggestions", {}).then(function (r) {
+        list.innerHTML = "";
+        if (r.error) { list.appendChild(el("li", { class: "muted", text: r.off ? L("Servern har int' den listan än.", "Not on the server yet.") : L("Dä gick int'. Försök igen.", "That did not work.") })); return; }
+        var rows = A.parseData(r.data);
+        if (!Array.isArray(rows) || !rows.length) { list.appendChild(el("li", { class: "muted", text: L("Inga förslag än. Håll inne på kartan där stället ligger.", "No suggestions yet.") })); return; }
+        rows.forEach(function (x) {
+          var st = PL_ST[x.status] || PL_ST.pending, ty = TYPES.filter(function (k) { return k[0] === x.type; })[0];
+          var when = ""; try { when = new Date(x.created_at).toLocaleDateString(sv() ? "sv-SE" : "en-GB", { day: "numeric", month: "short" }); } catch (e) {}
+          list.appendChild(el("li", { class: "pl-mine-r", "data-st": String(x.status || "") }, [
+            el("div", { class: "pl-mine-t" }, [el("b", { text: String(x.name || "") }), el("small", { class: "muted", text: (ty ? L(ty[1], ty[2]) : "") + (when ? " · " + when : "") })]),
+            el("span", { class: "pl-st " + st[2], text: L(st[0], st[1]) })]));
+        });
+      });
     }, { now: true });
   }
   function addOne(p) {

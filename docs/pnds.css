@@ -1313,6 +1313,29 @@ body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;fon
 /* B6 close: every popup / menu / ghost has its OWN close class (".pn-out" is the "Ute ikväll" card: it made them jump) */
 .pn-ikm.pn-vis-out{animation:pnIkmOut var(--m-3,150ms) var(--e-out,cubic-bezier(.3,0,.8,.15)) forwards;pointer-events:none}
 .toast.pn-toast-out{animation:pnToastOut var(--m-3) var(--e-out) forwards}
+/* polish3 I-86: reaction buttons show the real emoji, centred (an empty count took 9 px and pushed the emoji left) */
+.rx-btn .rx-e{display:block;font-size:20px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.rx-btn .rx-n:empty{display:none}
+.cm-pick{display:inline-grid;place-items:center;padding:0;line-height:1}
+/* polish3 I-69: "Mina förslag" rows (mapmenu.js) */
+.pl-mine-b{margin-top:var(--sp-2,8px)}
+.pl-mine{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2,8px)}
+.pl-mine-r{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3,12px);min-height:56px;padding:var(--sp-2,8px) var(--sp-3,12px);border:1px solid var(--ds-border,rgba(255,255,255,.1));border-radius:var(--r-md,12px);background:var(--ds-card,#1a2236)}
+.pl-mine-t{display:flex;flex-direction:column;min-width:0}
+.pl-mine-t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-st{flex:0 0 auto;font:600 var(--fs-14,14px)/20px var(--ds-sans,sans-serif);padding:2px 10px;border-radius:var(--r-pill,999px);border:1px solid currentColor;white-space:nowrap}
+.pl-st-wait{color:var(--ds-amber-t,#ffc24d)}.pl-st-ok{color:var(--ds-green-t,#5be49b)}.pl-st-no{color:var(--ds-muted,#9aa3a0)}
+/* polish3 I-66 (owner: an orange border flashed when a toast went away): the exit copy (pnds.js toastOut) sits in <body>,
+   not in #toasts, so it got the OLD .toast look (styles.css amber border + 5 px amber left edge, polish.css amber inset
+   line, no border-box). Give the copy the same look as the live toast in #toasts: it only fades. */
+body>.toast.pn-toast-out{box-sizing:border-box;border-width:1px !important;border-style:solid !important;box-shadow:0 8px 24px rgba(0,0,0,.45) !important;
+  background:var(--ds-card,#1a2236) !important;color:var(--ds-text,#fff);border-radius:var(--r-lg,16px) !important;outline:0 !important;max-width:none !important}
+body>.toast.pn-toast-out:not(.err):not(.med):not(.chaos-toast){border-color:var(--ds-border-2,rgba(255,255,255,.16)) !important}
+body>.toast.pn-toast-out.err{border-color:var(--ds-red-t,#ff7b73) !important}
+body>.toast.pn-toast-out>.pn-toast-i{flex:0 0 auto;display:grid;place-items:center;width:24px;height:24px;color:var(--ds-amber-t,#ffc24d)}
+body>.toast.pn-toast-out.err>.pn-toast-i{color:var(--ds-red-t,#ff7b73)}
+body>.toast.pn-toast-out>.pn-toast-i .pi{width:20px;height:20px;margin:0}
+body>.toast.pn-toast-out>span:not(.pn-toast-i){flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 #pn-splash.pn-splash-out{opacity:0}
 .dl-cap-greet.dl-cap-greet-out{opacity:0;transform:translateY(-6px);transition:opacity var(--ds-t-2) var(--pn-acc),transform var(--ds-t-2) var(--pn-acc)}
 .fx-amb.fx-amb-out{opacity:0;transition:opacity 1.5s var(--e-std)}

@@ -158,6 +158,7 @@
     box.textContent = "";
     var c = d.counts || {};
     $("xPlCount").textContent = "· " + (c.pending || 0) + " väntar, " + (c.ok || 0) + " godkända";
+    plBadge(c.pending | 0);   // polish3 I-69
     var f = el("div", "wf");
     [["pending", "Väntar"], ["ok", "Godkända"], ["rejected", "Avvisade"], ["all", "Alla"]].forEach(function (s) {
       var b = el("button", "btn ghost" + (s[0] === plStatus ? " on" : ""), s[1]); b.type = "button";
@@ -186,6 +187,21 @@
     if (!(d.places || []).length) box.appendChild(el("p", "note", "Inga förslag här."));
     box.appendChild(list);
     $("pPl").hidden = false;
+  }
+  // polish3 I-69 (owner could not see a friend's place request): a note at the TOP of the page while requests wait.
+  // Tap = scroll to the ➕ Nya ställen panel (filter Väntar). No push in this lane.
+  function plBadge(n) {
+    var main = $("main"); if (!main) return;
+    var b = $("xPlBadge");
+    if (!n) { if (b) b.hidden = true; return; }
+    if (!b) {
+      b = el("button", "btn x-plb"); b.id = "xPlBadge"; b.type = "button";
+      b.style.cssText = "display:block;width:100%;margin:0 0 12px;min-height:44px;text-align:left;border-color:var(--amber);color:var(--amber-2)";
+      b.addEventListener("click", function () { if (plStatus !== "pending") { plStatus = "pending"; loadPlaces(); } var p = $("pPl"); if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); });
+      main.insertBefore(b, main.firstChild);
+    }
+    b.hidden = false;
+    b.textContent = "➕ Nya ställen (" + n + ") · " + (n === 1 ? "ett förslag väntar" : n + " förslag väntar") + " på dig";
   }
   function loadPlaces() { call("owner_places", { p_key: key(), p_status: plStatus }).then(function (r) { if (r && r.d) drawPlaces(r.d); }); }
 

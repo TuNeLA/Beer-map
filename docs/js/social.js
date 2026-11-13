@@ -270,7 +270,7 @@
     h += '<div class="rx-row">' + RX.map(function (e) {
       var x = o[e] || { n: 0, mine: false };
       return '<button type="button" class="rx-btn' + (x.mine ? " on" : "") + '" data-e="' + esc(e) + '" aria-pressed="' + x.mine + '" aria-label="' + esc(t("rxAria", e)) + '">' +
-        e + '<span class="rx-n">' + (x.n > 0 ? x.n : "") + "</span></button>";
+        '<span class="rx-e" aria-hidden="true">' + e + '</span><span class="rx-n">' + (x.n > 0 ? x.n : "") + "</span></button>";   // polish3 I-86: real emoji, centred
     }).join("") + "</div>";
     if (top) h += '<div class="rx-top">' + esc(t("rxTop", top.e, top.n)) + "</div>";
     return h;

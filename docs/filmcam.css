@@ -159,3 +159,22 @@
 body.fm-camon .toasts{top:calc(var(--sat,0px) + 8px) !important;bottom:auto !important}
 @media (prefers-reduced-motion:reduce){.fm-st,.fm-st-ok,.fm-save{transition:none}}
 /* cm FILMRULLAR END */
+/* polish3 I-65: no emoji row under each photo. Chips only when a photo has reactions; the hold picker has fixed round
+   buttons with the emoji centred on a 1em box (the old row put the glyph off-centre) */
+.fm-shot{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.fm-shot img{-webkit-touch-callout:none}
+.fm-shot:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.fm-rchips{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0 2px}
+.fm-rchips[hidden]{display:none}
+.fm-rc{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:var(--r-pill,999px);background:rgba(241,230,207,.08);border:1px solid rgba(241,230,207,.18);color:rgb(241,230,207);line-height:1}
+.fm-rc.on{background:rgba(232,147,15,.28);border-color:rgb(232,147,15)}
+.fm-rc-e{font-size:15px;line-height:1}
+.fm-rc small{font:700 12px/1 var(--hud,monospace)}
+.fm-rp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3,12px);justify-items:center;margin:0 0 var(--sp-4,16px)}
+.fm-rp{position:relative;box-sizing:border-box;width:60px;height:60px;min-height:0;padding:0;margin:0;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(241,230,207,.2);
+  background:rgba(241,230,207,.06);color:var(--ds-text);cursor:pointer;line-height:1;font-size:28px}
+.fm-rp.on{background:rgba(232,147,15,.3);border-color:rgb(232,147,15)}
+.fm-rp:disabled{opacity:.6}
+.fm-rp-e{display:block;width:1em;height:1em;font-size:28px;line-height:1;text-align:center;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.fm-rp small{position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;display:grid;place-items:center;background:rgb(232,147,15);color:rgb(18,12,4);font:700 12px/1 var(--hud,monospace)}
+.fm-view .fm-v-react{flex:0 0 auto;min-height:var(--tap,44px);white-space:nowrap}

@@ -109,6 +109,8 @@ jobs:
             filter: '^(left)$'
           - name: kpi
             filter: '^(kpi)$'
+          - name: polish3
+            filter: '^(polish3)$'
           - name: ownerfix
             filter: '^(ownerfix)$'
           - name: c1menus
