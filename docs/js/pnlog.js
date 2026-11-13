@@ -551,10 +551,21 @@
   function askOnce() {
     if (mode() !== "optin" || ls(K_CONS) != null || ls(K_EV) === "0" || isBeta() || !A || !A.openSheet || !A.authed || !A.authed()) return;
     if (A.sheetOpen && A.sheetOpen()) return;
+    if (!calmNow()) return;
     if (pnow() - lastDown < 10000) return;
     var tb = document.getElementById("toasts"); if (tb && tb.children.length) return;
     var intro = document.getElementById("intro"); if (intro && !intro.hidden) return;
     showAsk();
+  }
+  // uifix (final check: "Hjälp till?" was the 7th pop-up after the 1st ÖL!): ask only in a calm moment: not in the 60 s after a
+  // beer, not while the beer-type strip, a medal toast, the "Befordrad!" card or a takeover is up (MEDALS.calm() = the same rule).
+  var beerAt = 0;
+  function calmNow() {
+    if (Date.now() - beerAt < 60000) return false;
+    if (window.OLNU_STRIP && window.OLNU_STRIP.up && window.OLNU_STRIP.up()) return false;
+    if (document.querySelector(".mx-pop, .takeover, #toasts .medal-toast")) return false;
+    try { if (window.MEDALS && window.MEDALS.calm && !window.MEDALS.calm()) return false; } catch (e) {}
+    return true;
   }
   function showAsk() {
     var el = A.el;
@@ -657,6 +668,7 @@
     },
     onAuthed: function () { wrapClient(); perm(); H("onAuthed"); },
     onPoll: function () { wrapClient(); },
+    onBeerAccepted: function () { beerAt = Date.now(); },   // uifix: the calm window of the "Hjälp till?" ask
     settingsSheet: settingsSheet,
     event: event,
     loc: function (kind, x) { try { if (/^(fix|eval|ask|answer|auto_in|auto_out|ci|co|beer|notice)$/.test(kind)) locRow(kind, x); } catch (e) {} },
@@ -670,6 +682,7 @@
     _lsDirty: function (k) { delete LSC[k]; },
     _cfg: function (o) { if (o && o.fixMs != null) FIX_MS = o.fixMs; if (o && o.titles) TITLES = o.titles; return { FIX_MS: FIX_MS }; },
     _ask: function () { showAsk(); },
+    _askOnce: function () { askOnce(); },   // uifix test: the 20 s ask timer, one tick
     _note: function (k) { showNote(k); },
     _bye: bye,
     _fix: fix

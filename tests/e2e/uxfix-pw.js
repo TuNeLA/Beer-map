@@ -192,7 +192,10 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
     /* ================= F: first beer, calm ================= */
     if (ONLY.test("F")) {
       const { ctx, page } = await H.ctxFor(browser, { width: 390, height: 844 });
-      await page.route(/rest\/v1\/rpc\/award_medals\b/, (r) => J(r, [{ medal: "m1", count: 1, is_new: true, earned_at: new Date().toISOString() }, { medal: "pluton", count: 1, is_new: true, earned_at: new Date().toISOString() }]));
+      // uifix: like the real server, a medal is "new" in ONE award answer (the mock gave the same 2 new medals on every call:
+      // with one-at-a-time toasts the card then waited behind an endless medal stream)
+      let medalsLeft = 1;
+      await page.route(/rest\/v1\/rpc\/award_medals\b/, (r) => J(r, medalsLeft-- > 0 ? [{ medal: "m1", count: 1, is_new: true, earned_at: new Date().toISOString() }, { medal: "pluton", count: 1, is_new: true, earned_at: new Date().toISOString() }] : []));
       await H.boot(page);
       await page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c && !document.getElementById("sheet").hidden) c.click(); document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()); });
       await wait(page, 800);
@@ -218,7 +221,9 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
       ok("F P1-3 'Vilken sort?' strip is up", await page.evaluate(() => { const s = document.querySelector(".bp-strip"); return !!s && !s.hidden; }));
       await page.keyboard.press("Escape"); await wait(page, 400);
       ok("F P1-3 Escape closes the 'Vilken sort?' strip", await page.evaluate(() => { const s = document.querySelector(".bp-strip"); return !s || s.hidden; }));
-      await wait(page, 9000);
+      // uifix: the calm window after a beer is 60 s now (uifix-pw.js checks it in real time): jump the page clock past it here
+      await page.evaluate(() => { const real = Date.now.bind(Date); Date.now = () => real() + 52000; });
+      await wait(page, 16000);   // uifix: one at a time: the 2 medal toasts (5 s each), then the card
       const later = await page.evaluate(() => Object.assign({}, window.__seen));
       ok("F P1-3 the medal toasts and 'Befordrad!' still come when idle (queued, not lost)", Object.keys(later).some((k) => /^medal:/.test(k)) && later.pop != null, later);
       await page.evaluate(() => { clearInterval(window.__spy); document.querySelectorAll(".mx-pop .btn-amber").forEach((b) => b.click()); });
@@ -238,6 +243,7 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
       ok("F P1-3 a map tap closes the strip", up3 && await page.evaluate(() => { const s = document.querySelector(".bp-strip"); return !s || s.hidden; }), { up3 });
       // a sheet is open: medal toasts and "Befordrad!" wait, then come when it closes
       await wait(page, 10500);   // past the 10 s calm window of the beer above
+      medalsLeft = 1;
       await page.evaluate(() => {
         document.querySelectorAll(".mx-pop").forEach((p) => p.remove());
         window.PN.openSheet("Test", (b) => { b.textContent = "uxfix"; });
@@ -247,13 +253,13 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
           document.querySelectorAll("#toasts .toast").forEach((t) => { if ((/medalj/i.test(t.textContent) || t.classList.contains("medal-toast")) && s.medal == null) s.medal = at; });
           if (document.querySelector(".mx-pop") && s.pop == null) s.pop = at;
         }, 100);
-        window.MEDALS.award(null, true); window.MEDALS.levelUp("Värnpliktig Veteöl", "Menig Mellanöl", 12);
+        window.MEDALS.award(null, true); window.MEDALS.levelUp("Värnpliktig Veteöl", "Menig Mellanöl", 12);   // (medalsLeft = 1 above: new medals again)
       });
       await wait(page, 5500);
       const during = await page.evaluate(() => Object.assign({ open: !document.getElementById("sheet").hidden }, window.__seen));
       ok("F P1-3 while a sheet is open: no medal toast, no 'Befordrad!'", during.open && during.medal == null && during.pop == null, during);
       await page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); });
-      await wait(page, 9000);
+      await wait(page, 16000);   // uifix: the card waits until the medal toasts are gone
       const after = await page.evaluate(() => Object.assign({}, window.__seen));
       ok("F P1-3 the sheet closed → they come (toast first, then the card)", after.medal != null && after.pop != null && after.medal <= after.pop, after);
       await ctx.close();

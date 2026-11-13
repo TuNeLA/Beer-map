@@ -154,6 +154,8 @@ jobs:
             filter: '^(bump)$'
           - name: c5extras
             filter: '^(c5extras)$'
+          - name: uifix
+            filter: '^(uifix)$'
           - name: polishB
             filter: '^(polishB)$'
           - name: polishA

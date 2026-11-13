@@ -987,7 +987,7 @@ body.barsheet-open .toasts{top:calc(var(--sat) + 108px) !important;bottom:auto !
 /* Small ÅNGRA button: a round ↩️ just left of the ÖL! button, 10 s after a beer. */
 .undo-fab{position:fixed;z-index:1460;left:calc(50% - 84px);bottom:calc(var(--dock-h,212px) - 60px);width:48px;height:48px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;font-size:var(--fs-22);cursor:pointer;color:#fff;
-  background:rgba(10,15,28,.92);border:2px solid var(--amber);box-shadow:0 0 12px rgba(245,166,35,.5);animation:undoPop var(--m-4) var(--e-in)}
+  background:var(--ds-raised);border:2px solid var(--amber);box-shadow:0 0 12px rgba(245,166,35,.5);animation:undoPop var(--m-4) var(--e-in)}
 .undo-fab:active{transform:scale(.92)}
 .undo-fab:disabled{opacity:.6}
 @keyframes undoPop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}

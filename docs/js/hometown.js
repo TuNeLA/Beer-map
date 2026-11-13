@@ -278,9 +278,13 @@
 
   /* ---------- One gentle prompt after the next level-up ---------- */
   var promptTimer = null;
+  // uifix: with medals.js the ask is a row in the "Befordrad!" card (MEDALS.levelUp reads wantAsk / markAsked): one item, not two
+  function wantAsk() { return !!(A && A.LIVE && !off && !mine && !U.ls.get(LS_TOWN, "") && U.ls.get(LS_ASKED, "") !== "1"); }
+  function markAsked() { try { U.ls.set(LS_ASKED, "1"); } catch (e) {} }
   function afterLevelUp() {
     if (!A || !A.LIVE || off || promptTimer) return;
     if (mine || U.ls.get(LS_ASKED, "") === "1") return;
+    if (window.MEDALS && window.MEDALS.levelUp) return;
     try { U.ls.set(LS_ASKED, "1"); } catch (e) {}
     var tries = 0;
     function show() {
@@ -297,7 +301,7 @@
   }
 
   window.HOMETOWN = {
-    label: label, towns: allTowns, mine: function () { return mine; }, open: open, afterLevelUp: afterLevelUp,
+    label: label, towns: allTowns, mine: function () { return mine; }, open: open, afterLevelUp: afterLevelUp, wantAsk: wantAsk, markAsked: markAsked,
     DEMONYM: DEMONYM,
     init: function (api) { A = api; },
     onAuthed: function () { load(); },

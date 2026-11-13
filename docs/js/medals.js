@@ -117,13 +117,16 @@
   // uxfix P1-3 (blind test: ~5 pop-ups in 10 s after the first ÖL!): medal toasts and the "Befordrad!" card wait while a
   // sheet, the "Vilken sort?" strip, a takeover or the other kind is on screen, and for 10 s after an accepted beer (the beer
   // toast + the strip are the 2 things then). Then one at a time, 2 s apart.
-  var beerAt = 0, CALM_MS = 10000, tq = [], tqT = 0;
+  // uifix (final check: 7 pop-ups after the 1st ÖL!): the calm window is 60 s, and nothing comes while a medal toast or the
+  // "Befordrad!" card is still on screen. MEDALS.calm() tells other modules (pnlog.js "Hjälp till?") that the moment is calm.
+  var beerAt = 0, CALM_MS = 60000, tq = [], tqT = 0;
   function calmBusy() {
     if (Date.now() - beerAt < CALM_MS) return true;
     var sh = document.getElementById("sheet"); if (sh && !sh.hidden) return true;
     if (window.OLNU_STRIP && window.OLNU_STRIP.up()) return true;
-    return !!document.querySelector(".takeover");
+    return !!document.querySelector(".takeover, .mx-pop, #toasts .medal-toast");
   }
+  function calm() { return !calmBusy() && !popOpen && !popQ.length && !tq.length && !tqT; }
   function later(fn, delay) { tq.push(fn); if (!tqT) tqT = setTimeout(pumpToasts, delay || 0); }
   function pumpToasts() {
     tqT = 0; if (!tq.length) return;
@@ -399,7 +402,7 @@
     // Wait for the HOT STREAK / MEDEVAC takeover to finish. uxfix P1-3: also while a sheet is open, during the 10 s after a
     // beer and while medal toasts still wait (they go first).
     var shOpen = document.getElementById("sheet"); shOpen = !!(shOpen && !shOpen.hidden);
-    if (document.querySelector(".takeover") || shOpen || Date.now() - beerAt < CALM_MS || tq.length || tqT) { popQ.unshift(o); setTimeout(nextPop, 900); return; }
+    if (document.querySelector(".takeover, #toasts .medal-toast") || shOpen || Date.now() - beerAt < CALM_MS || tq.length || tqT) { popQ.unshift(o); setTimeout(nextPop, 900); return; }
     // Never on top of the beer-type strip (js/barsplus.js): wait until it closes.
     if (window.OLNU_STRIP && window.OLNU_STRIP.up()) { popQ.unshift(o); window.OLNU_STRIP.after(nextPop); return; }
     popOpen = true;
@@ -426,6 +429,7 @@
     wrap.addEventListener("click", function (e) { if (e.target === wrap) close(); });
     document.body.appendChild(wrap);
     timer = setTimeout(close, o.ms || 9000);
+    if (o.onShow) try { o.onShow(wrap, close); } catch (e) {}
     if (o.fx) o.fx();
   }
   // Random line without repeating the last 10 (per list, per phone).
@@ -488,12 +492,22 @@
     if (!A || !newTitle) return;
     var line = freshLine("olnu.lvlSeen", LEVEL_LINES).replace(/\{ny\}/g, newTitle).replace(/\{gammal\}/g, oldTitle || "");
     var r = rankOf(total | 0);
+    // uifix: "Ny grad! Var är du mest baserad?" (hometown.js) is a row in this card now, not its own toast (one item, not two)
+    var H = window.HOMETOWN, ht = !!(H && H.wantAsk && H.wantAsk());
     popup({
       cls: "mx-level", icon: "⬆️", delay: 2600, ms: 10000,
       title: L("Befordrad!", "Promoted!"),   // R1-15: no ALL CAPS
       html: '<div class="mx-ranks">' + (oldTitle ? '<span class="mx-old">' + esc(oldTitle) + '</span><span class="mx-arrow" aria-hidden="true">➜</span>' : "") +
         '<span class="mx-new">' + esc(newTitle) + "</span></div>" +
-        (r.next && r.nextAt ? '<div class="mx-sub">' + esc(L("Nästa: " + r.next + " vid " + r.nextAt + " meriter", "Next: " + r.next + " at " + r.nextAt + " merits")) + "</div>" : ""),
+        (r.next && r.nextAt ? '<div class="mx-sub">' + esc(L("Nästa: " + r.next + " vid " + r.nextAt + " meriter", "Next: " + r.next + " at " + r.nextAt + " merits")) + "</div>" : "") +
+        (ht ? '<div class="mx-ht">' + (window.PNI && PNI.svg ? PNI.svg("pin", "mx-ht-i") : "") + '<span class="mx-ht-t">' +
+          esc(L("Var bor du mest? Visa gänget din hemstad.", "Where are you based? Show your groups your home town.")) +
+          '</span><button type="button" class="btn btn-small mx-ht-b">' + esc(L("Välj", "Pick")) + "</button></div>" : ""),
+      onShow: ht ? function (wrap, close) {
+        if (!H.wantAsk()) { var x = wrap.querySelector(".mx-ht"); if (x) x.remove(); return; }
+        H.markAsked();
+        var b = wrap.querySelector(".mx-ht-b"); if (b) b.addEventListener("click", function (e) { e.stopPropagation(); close(); H.open(); });
+      } : null,
       line: line,
       ok: L("Givakt! 🫡", "Salute! 🫡"),
       buttons: [{ label: L("🎖️ Uniform", "🎖️ Uniform"), fn: showMine }],
@@ -522,7 +536,7 @@
   window.MEDALS = {
     CAT: CAT, info: info, on: on, award: award, claim: claim, showMine: showMine, showUniform: showUniform,
     memberMedals: memberMedals, openMember: openMember, medalRowHTML: medalRowHTML, ribbonBg: ribbonBg,
-    levelUp: levelUp, waterTaken: waterTaken, noteBeer: noteBeer,
+    levelUp: levelUp, waterTaken: waterTaken, noteBeer: noteBeer, calm: calm,
     LEVEL_LINES: LEVEL_LINES,
     mine: function () { return mine; },
     init: function (api) {

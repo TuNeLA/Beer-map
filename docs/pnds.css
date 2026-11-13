@@ -1897,3 +1897,12 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 #sheet-body .info.pn-info-ic{display:block !important;-webkit-line-clamp:unset !important;overflow:visible !important;white-space:normal !important;overflow-wrap:anywhere;text-overflow:clip;max-height:none !important}
 .info .pi-inl{width:16px;height:16px;vertical-align:-3px;margin:0 1px}
 /* uxfix END */
+/* lane:uifix START — final check. (1) Om appen about text = its own card row with the ds row padding (was edge to edge), PNI lock
+   inline. (2) A toggle label with a lead icon (pnds settings MAP: Röst, Vibration, Notiser, Systembolaget …) wraps under its text,
+   not under the icon (hanging indent: the icon stays in the icon column). */
+#sheet-body .ds-item.set-about>p.set-about-t{padding:var(--pn-row-py,12px) var(--pn-row-px,16px) !important;margin:0 !important;
+  font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);display:block !important;-webkit-line-clamp:none !important;overflow:visible !important}
+.set-about-t .pi-inl{width:16px;height:16px;vertical-align:-3px;margin:0 2px;color:var(--ds-text-2)}
+#sheet-body.ds-set .ds-item .toggle-row>span:has(>svg[data-pn8]:first-child){padding-left:calc(20px + var(--ds-3)) !important}
+#sheet-body.ds-set .ds-item .toggle-row>span>svg[data-pn8]:first-child{margin-left:calc(-20px - var(--ds-3)) !important}
+/* lane:uifix END */

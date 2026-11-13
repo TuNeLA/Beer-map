@@ -98,3 +98,9 @@
 .mx-card{border:1px solid color-mix(in srgb,var(--gold,#ffe08a) 40%,transparent);border-radius:var(--r-lg)}
 .mx-title{letter-spacing:.5px;text-transform:none}
 /* social-b R1 END */
+/* uifix: the hometown ask inside the "Befordrad!" card (was its own "Ny grad!" toast) */
+.mx-ht{display:flex;align-items:center;gap:var(--ds-2,8px);margin:12px 0 0;padding:var(--ds-2,8px) var(--ds-3,12px);text-align:left;
+  border-radius:var(--ds-r-1,12px);background:var(--ds-raised)}
+.mx-ht-i{width:20px;height:20px;flex:0 0 auto;color:var(--ds-amber-t,var(--gold))}
+.mx-ht-t{flex:1 1 auto;min-width:0;font-size:var(--fs-14);line-height:1.35;color:var(--text)}
+.mx-ht-b{flex:0 0 auto;min-width:64px}

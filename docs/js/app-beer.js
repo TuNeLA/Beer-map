@@ -253,7 +253,7 @@
     // The level message is a normal short toast; ÅNGRA is a small ↩️ button next to ÖL! (owner: the big
     // red toast covered the beer-type strip).
     beerSay(text, { cls: cls || "", ms: 5000 });   // x8: the "Skål! Ölen räknas…" toast turns into this line
-    PN.s.undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), text: "↩️",
+    PN.s.undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), html: undoIc("undo"),
       onclick: function () { doUndo(PN.s.undoEl); } });
     document.body.appendChild(PN.s.undoEl);
     placeUndo();   // c4drinks I-34: exactly over the Annat button (same size, same place) while it lives
@@ -261,15 +261,17 @@
     undoMiniTimer = setTimeout(function () { if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; } }, UNDO_SHOW_MS);
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
   }
+  // uifix (final check): the chip shows the PNI undo / hourglass icon, not the ↩️ / ⏳ emoji
+  function undoIc(n) { var P = window.PNI; return P && P.svg && (!P.has || P.has(n)) ? P.svg(n, "undo-ic") : (n === "undo" ? "↩️" : "⏳"); }
   var undoing = false;
   function doUndo(button) {
     if (undoing) return;
     undoing = true;
-    if (button) { button.disabled = true; button.textContent = button.classList.contains("undo-fab") ? "⏳" : t("undoBusy"); }
+    if (button) { button.disabled = true; if (button.classList.contains("undo-fab")) button.innerHTML = undoIc("hourglass"); else button.textContent = t("undoBusy"); }
     rpc("undo_beer").then(function (r) {
       undoing = false;
       if (r.error) {
-        if (button) { button.disabled = false; button.textContent = button.classList.contains("undo-fab") ? "↩️" : "↩️ " + t("undoBtn"); }
+        if (button) { button.disabled = false; if (button.classList.contains("undo-fab")) button.innerHTML = undoIc("undo"); else button.textContent = "↩️ " + t("undoBtn"); }
         toast(t("undoFail"), { err: true });
         return;
       }

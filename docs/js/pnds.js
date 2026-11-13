@@ -887,7 +887,10 @@
       if (sec.parentNode !== b || b.lastElementChild !== sec) b.appendChild(sec);
     }
     // c) icon on every row: rows without one get a fitting icon
-    var MAP = [[/^Ljud/, "speaker"], [/^Visa introduktionen/, "help"], [/^Uppdatera/, "refresh"]];
+    var MAP = [[/^Ljud/, "speaker"], [/^Visa introduktionen/, "help"], [/^Uppdatera/, "refresh"],
+      // uifix (final check): these toggle rows had no icon
+      [/^(Röst som säger|Voice that says)/, "mic"], [/^Vibration/, "vibrate"], [/^Systembolaget (på kartan|on the map)/, "k-rom"],
+      [/^(Notiser om|Get notices)/, "bell"], [/^Sound when/, "speaker"]];
     b.querySelectorAll(".ds-item .toggle-row > span:first-child, .ds-item > .row > button.btn").forEach(function (x) {
       if (x.querySelector("svg") || x.closest(".push-prefs")) return;
       var t = (x.textContent || "").trim();

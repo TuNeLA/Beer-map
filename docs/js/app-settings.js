@@ -310,7 +310,7 @@
     if (LIVE && PN.s.authed) { var sw = el("div", { class: "ds-item ds-blk set-swish" }); list.appendChild(sw); try { if (window.RUNDAN && window.RUNDAN.profileSheet) window.RUNDAN.profileSheet(sw); } catch (e) {} }   // Swish-nummer (fills in when the server answers)
     if (LIVE && storedAuth() && !PN.s.movedState) list.appendChild(setRow("phone", "Flytta till annan app/telefon", t("flyttSection"), showFlyttExport, "set-flytt"));
     if (LIVE) list.appendChild(setRow("key", "Jag har en flyttkod", "Hämta ditt konto hit", showFlyttImport, "set-flytt-in"));
-    if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("out", "Logga ut", "", acc.logout, "set-acc-logout acct-logout"));
+    if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("door", "Logga ut", "", acc.logout, "set-acc-logout acct-logout"));   // uifix: "out" is no PNI icon (empty column)
     if (LIVE && PN.s.authed && window.PRIVACY) list.appendChild(delRow());
   }
   // setfix: "Radera mitt konto" = misc-mod's row (in the 7 days its sub line says "Raderas om N dagar · tryck för att ångra"), else a plain row
@@ -334,7 +334,13 @@
     list.appendChild(setRow("info", "Visa introduktionen", "", function () { closeSheet(); showIntro(true); }, "set-intro"));
     if (!U.isStandalone()) list.appendChild(setRow("home", t("guideTitle"), "", showInstallGuide, "set-guide"));
     if (window.PRIVACY && window.PRIVACY.showPrivacy) list.appendChild(setRow("lock", "Integritet", "Vad vi sparar och varför", function () { window.PRIVACY.showPrivacy(function () { showSettings("s", "om"); }); }, "set-priv"));   // setfix: the privacy text says "Läs mer under Integritet"
-    list.appendChild(el("p", { class: "muted set-end", style: "margin:12px 4px 0", text: t("privacy") + " " + t("aboutMore") }));
+    // uifix (final check): the about text sits in its own card row with the ds row padding; PNI lock instead of the lock emoji
+    var about = el("p", { class: "muted set-about-t" }), P = window.PNI;
+    String(t("privacy") + " " + t("aboutMore")).split(String.fromCodePoint(0x1F512)).forEach(function (part, i) {
+      if (i && P && P.svg) { var s = document.createElement("span"); s.innerHTML = P.svg("lock", "pi-inl"); while (s.firstChild) about.appendChild(s.firstChild); }
+      about.appendChild(document.createTextNode(part));
+    });
+    list.appendChild(el("div", { class: "ds-item set-about set-end" }, [about]));
     var ver = el("span", { class: "muted", text: t("version") + " …" });
     var setVer = function (k) { ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : buildVer()); };
     if (window.caches && caches.keys) caches.keys().then(function (ks) { setVer(ks.filter(function (x) { return /^olnu-[0-9a-f]{8,}/.test(x); })[0]); }).catch(function () { setVer(""); });   // audit-03: not olnu-pending/-cdn/-data/-tiles/-beta
@@ -380,8 +386,18 @@
         });
       });
       oneHome(pages.plats.list);
+      wishRow(pages.hjalp.list);
       Object.keys(pages).forEach(function (k) { [].forEach.call(pages[k].list.querySelectorAll(":scope > .set-end"), function (n) { pages[k].list.appendChild(n); }); });   // setfix: a page starts with its settings (Vem ser dig? first); Trygghet rows, about text and version stay last
       try { if (window.PNDS && window.PNDS._tidy) window.PNDS._tidy(body); } catch (e) {}   // setfix: the notification types fold behind "Välj notiser" (pnds one fold rule; owner default yes)
+    }
+    // uifix (final check): "Önska en feature" = a normal row (icon in the icon column, like "Något knas?"), not wish.js's wide button
+    function wishRow(list) {
+      [].forEach.call(list.querySelectorAll(":scope > .ds-item"), function (it) {
+        var wb = it.querySelector(".ws-entry"); if (!wb || it.querySelector(".set-wish")) return;
+        wb.style.setProperty("display", "none", "important");   // pnds.css shows ".ds-item > .btn" with !important
+        var lab = (wb.textContent || "").replace(/^[^0-9A-Za-zÅÄÖåäö]+/, "").trim() || "Önska en feature";
+        it.insertBefore(setRow("bulb", lab, "", function () { wb.click(); }, "set-wish"), wb);
+      });
     }
     // move 9: ONE "Hem" row (opens the Hemzon sheet). The Synlighet-menu row is reused; every other Hemzon / "Ställ in hem" copy is hidden.
     function oneHome(list) {
