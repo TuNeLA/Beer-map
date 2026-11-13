@@ -78,7 +78,8 @@ const anim = (page, sel) => page.evaluate((s) => { const e = document.querySelec
       ok(st1 === "paused" && cls, "movestart pauses every effect", { st1, cls });
       await page.evaluate(() => __map.fire("moveend"));
       await wait(page, 500);
-      ok(await anim(page, ".al-lively i") === "running", "moveend resumes the effects");
+      const st2 = await page.evaluate(() => { const e = document.querySelector(".al-lively i"); return e ? getComputedStyle(e).animationPlayState : "none"; });   // coord 13 Nov: computed style (Animation.playState lags in CI)
+      ok(st2 === "running", "moveend resumes the effects", { st2 });
       // a real pan: paused while it moves
       const mid = await page.evaluate(() => new Promise((res) => { __map.panBy([120, 0], { animate: true, duration: 0.8 });
         setTimeout(() => { const e = document.querySelector(".al-event i"); res({ c: __map.getPane("alive").classList.contains("al-move"), s: e ? e.getAnimations()[0].playState : "none" }); }, 250); }));

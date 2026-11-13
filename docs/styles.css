@@ -228,8 +228,8 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 .pill.p2.pf{box-shadow:inset 0 0 0 2px var(--green),0 0 0 2px #fff,0 0 10px 3px rgba(255,59,59,.75)}
 /* Review: the pulse is an opacity animation on a pseudo layer (compositor), not a box-shadow animation (repaint). */
 .pill.p1::after,.pill.p2::after{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;opacity:0}
-.pill.p1::after{box-shadow:0 0 8px 3px rgba(255,170,40,.85),0 0 16px 5px rgba(255,90,20,.45);animation:pillglow 1.2s var(--e-std) infinite}
-.pill.p2::after{box-shadow:0 0 0 2px var(--red),0 0 14px 5px rgba(255,255,255,.45);animation:pillglow .9s steps(1) infinite}
+.pill.p1::after{box-shadow:0 0 8px 3px rgba(255,170,40,.85),0 0 16px 5px rgba(255,90,20,.45);animation:pillglow 1.2s var(--e-std) 3}
+.pill.p2::after{box-shadow:0 0 0 2px var(--red),0 0 14px 5px rgba(255,255,255,.45);animation:pillglow .9s steps(1) 3}
 @keyframes pillglow{50%{opacity:1}}
 @keyframes pillfire{
   0%,100%{border-color:var(--fire);box-shadow:0 0 4px 1px rgba(255,122,26,.8),0 0 10px 2px rgba(255,59,59,.35),0 2px 8px #000a}
