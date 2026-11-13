@@ -17,7 +17,7 @@ const ok = (c, m, x) => { if (c) pass++; else fail++; console.log((c ? "PASS " :
     await wait(page, 22000);
     const loops = await page.evaluate(() => document.getAnimations().filter((a) => a.effect && a.effect.getTiming().iterations === Infinity).map((a) => (a.animationName || "?") + "@" + ((a.effect.target && a.effect.target.className) || "").toString().slice(0, 30)));
     const allowed = loops.filter((x) => !/spin|load|skel|shim|busy|wait|breath|rot/i.test(x));
-    ok(!allowed.length, "no endless loop left (3 cycles, then still)", allowed.slice(0, 8));
+    console.log("INFO endless loops on the idle map (allowed since owner 13 Nov 16:50: no 3-cycle stop):", JSON.stringify(allowed.slice(0, 8)));
     const tAll = await page.evaluate(() => { const out = []; for (const s of document.styleSheets) { let r; try { r = s.cssRules; } catch (e) { continue; } for (const x of r) if (x.style && /(^|\s|,)all(\s|$)/.test(x.style.transitionProperty || "") && x.style.transitionDuration && !/^0s/.test(x.style.transitionDuration)) out.push(x.selectorText.slice(0, 40)); } return out; });
     ok(!tAll.length, "no transition: all", tAll.slice(0, 6));
     // press scale

@@ -28,7 +28,7 @@
   .af-f13 .f13-shine{animation:f13-shine 3.6s var(--e-std) infinite}
   .af-f13 .f13-star{animation:f13-twinkle 2.8s var(--e-std) infinite}
   .af-f13 .f13-s2{animation-delay:-1.4s}
-  .af-f13 .f13-eyes{animation:f13-glow 3s var(--e-std) 3}
+  .af-f13 .f13-eyes{animation:f13-glow 3s var(--e-std) infinite}
   .af-f13.f13-hop .f13-cat{animation:f13-hop .6s var(--e-std)}
   .af-f13.f13-flick .f13-tail,.af-f13.f13-hop .f13-tail{animation:f13-flick .6s var(--e-std)}
   .af-f13.f13-blink .f13-eyes{animation:f13-blink 1.4s var(--e-std)}

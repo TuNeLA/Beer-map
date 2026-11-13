@@ -928,6 +928,7 @@
   /* 1. loops: 3 cycles, then still */
   var LOOP_OK = /spin|load|skel|shim|busy|wait|breath|rot|smBreath/i;
   function stopLoops() {
+    return;   // owner 13 Nov 16:50: NO 3-cycle stop ("rules are meant to be broken"; the pulse makes the app feel alive). Reduced motion still stops everything.
     if (!document.getAnimations || document.hidden) return;
     try {
       document.getAnimations().forEach(function (a) {
