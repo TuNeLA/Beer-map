@@ -112,14 +112,16 @@ async function read(t, ll, acc, advMin, dm = [0, 0]) {
     const t = await setup(browser);
     await H.clickJS(t.page, "#btn-settings"); await wait(t.page, 1200);
     await H.clickJS(t.page, "#sheet-body [data-pf=s]"); await wait(t.page, 1200);
+    await t.page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-synl"); if (b) b.click(); }); await wait(t.page, 600);
     const rows = await t.page.evaluate(() => [...document.querySelectorAll("#sheet-body .pnlog-set")].map((r) => r.textContent.trim()));
     ok(rows.length === 2 && /förbättra appen/.test(rows[0]) && /position/.test(rows[1]), "⚙️ Inställningar: 2 switch rows (" + rows.join(" | ") + ")");
     await t.page.evaluate(() => { const r = document.querySelector("#sheet-body .pnlog-set"); r && r.scrollIntoView({ block: "center" }); });
     await wait(t.page, 400);
     await t.page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((x) => x.remove())); await wait(t.page, 200);
     await t.page.screenshot({ path: SHOTS + "settings-rows.png" });
-    const sec = await t.page.evaluate(() => { const r = document.querySelector("#sheet-body .pnlog-set"); const s = r && r.closest("section.ds-section"); return s ? s.getAttribute("data-ds") : "?"; });
-    ok(MAIN || sec === "integ", "rows sit in the section Integritet & säkerhet (" + sec + ")");
+    // d1settings hub (setfix): Integritet & säkerhet = the page "Synlighet & trygghet" (data-pg synl)
+    const sec = await t.page.evaluate(() => { const r = document.querySelector("#sheet-body .pnlog-set"); const s = r && r.closest("section.ds-section, .set-page"); return s ? (s.getAttribute("data-ds") || s.getAttribute("data-pg")) : "?"; });
+    ok(MAIN || sec === "integ" || sec === "synl", "rows sit in the section Integritet & säkerhet / page Synlighet & trygghet (" + sec + ")");
     // turn both off (pn-swb row button in big-update, .pnlog-switch in main)
     await t.page.evaluate(() => document.querySelectorAll("#sheet-body .pnlog-set").forEach((r) => (r.querySelector(".pnlog-row") || r.querySelector(".pnlog-switch")).click()));
     await wait(t.page, 800);

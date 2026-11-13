@@ -47,6 +47,7 @@ async function openSettings(page) {
   await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 1500);
   await page.evaluate(() => { const t = [...document.querySelectorAll(".pf-tabs button, .tabs button")].find((b) => /Inställningar/.test(b.textContent)); if (t) t.click(); });
   await wait(page, 1200);
+  await page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-notis"); if (b) b.click(); }); await wait(page, 600);   // d1settings hub (setfix): page Notiser & ljud
   await page.waitForSelector(".push-prefs:not([hidden]) .switch", { timeout: 45000 }).catch(() => {});
   await page.evaluate(() => { const r = document.querySelector(".pn-fold-row"); if (r && r.getAttribute("aria-expanded") !== "true") r.click(); }); await wait(page, 400);
 }

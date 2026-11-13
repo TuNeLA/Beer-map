@@ -36,6 +36,8 @@ async function openTab(page, tab) {
   await page.waitForSelector("#sheet-body [data-pf=" + tab + "]", { timeout: 10000 }).catch(() => {});
   await clickJS(page, "#sheet-body [data-pf=" + tab + "]"); await wait(page, 1600);
 }
+// d1settings hub (setfix): Inställningar = 8 rows; a row opens its page (om = Om appen, karta = Karta & dialekt, konto = Konto)
+async function openPg(page, key) { await clickJS(page, "#sheet-body .set-r-" + key); await wait(page, 700); }
 async function clipShot(page, sel, name, pad = 80) {
   const box = await page.evaluate(([s, pad]) => {
     const e = document.querySelector(s); if (!e) return null; e.scrollIntoView({ block: "center" });
@@ -50,9 +52,9 @@ const kanalRow = (page) => page.evaluate(() => {
   const r = document.querySelector("#sheet-body .pn-kanal"); if (!r) return null;
   const sw = r.querySelector(".switch"), sm = r.querySelector("small"), info = r.querySelector(".kn-info");
   const lh = sm ? parseFloat(getComputedStyle(sm).lineHeight) || 20 : 20;
-  const sec = r.closest("section.ds-section");
+  const sec = r.closest("section.ds-section, .set-page");
   return { on: sw && sw.getAttribute("aria-checked"), sub: sm ? sm.textContent.trim() : "", lines: sm ? Math.round(sm.getBoundingClientRect().height / lh) : 0,
-    sec: sec && sec.getAttribute("data-ds"), h: Math.round(r.getBoundingClientRect().height), info: !!info && !info.hidden && info.getBoundingClientRect().height > 0,
+    sec: sec && (sec.getAttribute("data-ds") || sec.getAttribute("data-pg")), h: Math.round(r.getBoundingClientRect().height), info: !!info && !info.hidden && info.getBoundingClientRect().height > 0,
     infoText: info ? info.textContent : "", link: info && info.querySelector("a") ? info.querySelector("a").href : "", right: Math.round(r.getBoundingClientRect().right), vw: innerWidth };
 });
 
@@ -64,7 +66,7 @@ const kanalRow = (page) => page.evaluate(() => {
     // a) beta through the launcher (same app, beta channel): row ON, 2-line hint; OFF → stable, same account
     {
       const { ctx, page, errs } = await app(browser, w, { beta: true, fakeSw: true });
-      await openTab(page, "s");
+      await openTab(page, "s"); await openPg(page, "om");
       const r = await kanalRow(page);
       ok(`[${w}] S3 launcher beta: Betaversion row shown, ON, in Om appen`, !!r && r.on === "true" && r.sec === "om", r);
       ok(`[${w}] S3 launcher beta: hint says beta + 'Av = vanliga appen, samma konto', max 2 lines (R1-28)`, !!r && /Beta abc1234\. Av = vanliga appen, samma konto\./.test(r.sub) && r.lines <= 2, r);
@@ -88,7 +90,7 @@ const kanalRow = (page) => page.evaluate(() => {
     // b) the test URL itself (tunela.github.io/pintsnow-beta): shown ON + why it cannot switch; a tap stays beta
     {
       const { ctx, page, errs } = await app(browser, w, { beta: true, direct: true });
-      await openTab(page, "s");
+      await openTab(page, "s"); await openPg(page, "om");
       const r = await kanalRow(page);
       ok(`[${w}] S3 test URL: Betaversion row shown, ON, with the explanation`, !!r && r.on === "true" && /Testadressen kör alltid betan/.test(r.sub) && r.lines <= 2, r);
       await clipShot(page, "#sheet-body .pn-kanal", `s3-testurl-on-${w}`);
@@ -105,7 +107,7 @@ const kanalRow = (page) => page.evaluate(() => {
     // c) the stable app: row OFF, short hint, the logging text opens under it ("Vad loggas?") without flipping the switch
     {
       const { ctx, page, errs } = await app(browser, w, {});
-      await openTab(page, "s");
+      await openTab(page, "s"); await openPg(page, "om");
       const r = await kanalRow(page);
       ok(`[${w}] S3 stable: row OFF, hint max 2 lines (R1-28)`, !!r && r.on === "false" && r.lines <= 2 && r.right <= r.vw, r);
       await clipShot(page, "#sheet-body .pn-kanal", `s3-stable-off-${w}`);
@@ -128,17 +130,19 @@ const kanalRow = (page) => page.evaluate(() => {
       // the rows below the Profil hero sit behind the "Namn, konto och mer" fold
       await page.evaluate(() => { const f = document.querySelector("#sheet-body .pn-fold-t"); const b = document.getElementById("sheet-body"); if (f && !b.classList.contains("pn-pfopen")) f.click(); });
       await wait(page, 700);
+      // d1settings move 6 (setfix): the account rows moved to Inställningar › Konto; Profil has one "Konto" link row that opens it
+      await clickJS(page, "#sheet-body .pf-konto-row"); await wait(page, 1200);
       const a = await page.evaluate(() => {
-        const b = document.querySelector("#sheet-body .acct-save"); if (b) b.scrollIntoView({ block: "center" });
+        const b = document.querySelector("#sheet-body .set-acc-save"); if (b) b.scrollIntoView({ block: "center" });
         return { save: !!b && b.getBoundingClientRect().height > 0 ? b.textContent.trim() : null, on: !!(window.ACCOUNT && window.ACCOUNT.on && window.ACCOUNT.on()), cfg: window.ACCOUNT && window.ACCOUNT._cfg && window.ACCOUNT._cfg() };
       });
       a.hero = hero;
       if (beta) {
         ok(`[${w}] S4 beta: Profil hero shows the account badge ('Int' sparat')`, !!hero && /sparat/i.test(hero), a);
-        ok(`[${w}] S4 beta: 'Spara kontot' (e-post) shown in Profil although account_config says email false`, a.on && !!a.save, a);
-        await clipShot(page, "#sheet-body .acct-sect", `s4-beta-save-${w}`);
+        ok(`[${w}] S4 beta: 'Spara kontot' (e-post) shown (Profil → Konto) although account_config says email false`, a.on && !!a.save, a);
+        await clipShot(page, "#sheet-body .set-acc-save", `s4-beta-save-${w}`);
         if (w === 390) {   // the flow opens (no mail is sent: the test stops at the e-mail field)
-          await clickJS(page, "#sheet-body .acct-save"); await wait(page, 1200);
+          await clickJS(page, "#sheet-body .set-acc-save"); await wait(page, 1200);
           const f = await page.evaluate(() => { const i = document.querySelector('#sheet-body input[type="email"], #sheet-body input[autocomplete="email"]'); return { input: !!i, title: (document.querySelector(".sheet-head h2") || {}).textContent }; });
           ok(`[${w}] S4 beta: tap → the e-mail step opens`, f.input, f);
           await page.screenshot({ path: SHOTS + `s4-beta-email-step-${w}.png` });
@@ -166,21 +170,20 @@ const kanalRow = (page) => page.evaluate(() => {
   if (want("dk")) for (const w of WIDTHS) {
     const { ctx, page, errs } = await app(browser, w, {});
     await page.route(/rest\/v1\/rpc\/my_home_town\b/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ v: 1, town: "Ludvika" }) }));
-    await openTab(page, "s");
+    await openTab(page, "s"); await openPg(page, "karta");
     const d0 = await page.evaluate(() => {
       const r = document.querySelector("#sheet-body .dk-set"); if (!r) return null;
-      const it = r.closest(".ds-item"), sec = r.closest("section.ds-section");
-      return { n: document.querySelectorAll("#sheet-body .dk-set").length, from: it && it.getAttribute("data-f20o"), sec: sec && sec.getAttribute("data-ds"), fold: !!(it && it.classList.contains("pn-f20-in")) };
+      const pg = r.closest(".set-page");
+      return { n: document.querySelectorAll("#sheet-body .dk-set").length, pg: pg && pg.getAttribute("data-pg") };
     });
-    ok(`[${w}] Dialekt: one row in Inställningar, sorted as Skoj & överraskningar (behind Mer)`, !!d0 && d0.n === 1 && d0.from === "skoj", d0);
-    await page.evaluate(() => { const b = document.querySelector('#sheet-body .pn-f20-row[data-f="mer"] .pn-f20'); if (b && b.getAttribute("aria-expanded") !== "true") b.click(); });
-    await wait(page, 700);
+    // d1settings hub (setfix): Dialekt is on the page "Karta & dialekt" (was: Skoj & överraskningar behind Mer)
+    ok(`[${w}] Dialekt: one row in Inställningar, on the page Karta & dialekt`, !!d0 && d0.n === 1 && d0.pg === "karta", d0);
     const m = await page.evaluate(() => {
       const b = document.querySelector("#sheet-body .dk-set .dk-sw"); if (!b) return null; b.scrollIntoView({ block: "center" });
       const r = b.getBoundingClientRect(), sub = b.querySelector(".dk-sub");
       return { h: Math.round(r.height), right: Math.round(r.right), vw: innerWidth, vis: r.height > 0, aria: b.getAttribute("aria-checked"), sub: sub && sub.textContent, cut: sub && sub.scrollWidth > sub.clientWidth + 1 };
     });
-    ok(`[${w}] Dialekt: row visible after 'Mer', ≥ 56 px, inside the screen, ON = Auto, sub not cut`, !!m && m.vis && m.h >= 56 && m.right <= m.vw && m.aria === "true" && /^Auto · /.test(m.sub) && !m.cut, m);
+    ok(`[${w}] Dialekt: row visible on Karta & dialekt, ≥ 56 px, inside the screen, ON = Auto, sub not cut`, !!m && m.vis && m.h >= 56 && m.right <= m.vw && m.aria === "true" && /^Auto · /.test(m.sub) && !m.cut, m);
     await clipShot(page, "#sheet-body .dk-set", `dk-row-${w}`, 120);
     await clickJS(page, "#sheet-body .dk-set .dk-sw"); await wait(page, 400);
     const off = await page.evaluate(() => { const b = document.querySelector("#sheet-body .dk-sw"); return { mode: window.DIALEKT && window.DIALEKT.mode(), aria: b && b.getAttribute("aria-checked") }; });

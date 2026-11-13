@@ -31,6 +31,7 @@ async function openSettings(page) {
   await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 900);
   await page.evaluate(() => { const t = [...document.querySelectorAll(".pf-tabs button, .tabs button")].find((b) => /Inställningar/.test(b.textContent)); if (t) t.click(); });
   await wait(page, 1200);
+  await page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-notis"); if (b) b.click(); }); await wait(page, 600);   // d1settings hub (setfix): page Notiser & ljud
 }
 (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME,

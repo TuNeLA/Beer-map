@@ -251,8 +251,9 @@ const SPORT = { v: 1, bars: [{ bar_id: "n3472634175", name: "Pitchers", lat: 60.
       const { ctx, page } = await setup(browser, w);
       await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 1500);
       await page.evaluate(() => { const t = [...document.querySelectorAll("#sheet [role=tab], #sheet .tabs button")].find((x) => /Inställningar/.test(x.textContent)); if (t) t.click(); }); await wait(page, 1500);
+      await page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-karta"); if (b) b.click(); }); await wait(page, 700);   // d1settings hub (setfix): Kartstil is on the page Karta & dialekt
       const k = await page.evaluate(() => {
-        const segB = document.querySelector("#sheet-body [data-bm]"); if (!segB) return null;
+        const segB = document.querySelector("#sheet-body [data-bm]"); if (!segB || !segB.getClientRects().length) return null;
         const it = segB.closest(".ds-item"), seg = segB.closest("[role=radiogroup]"); it.scrollIntoView({ block: "center" });
         const ir = it.getBoundingClientRect(), sr = seg.getBoundingClientRect();
         const row = it.querySelector(":scope > .toggle-row"), lab = row && row.querySelector(":scope > span");

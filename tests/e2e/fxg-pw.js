@@ -59,7 +59,7 @@ async function openGroup(page) {
       return { beer: vis(document.querySelector(".gpg-beer")), inv: vis(w.querySelector(".pn-gp-inv")) && /Bjud in/.test(w.querySelector(".pn-gp-inv").textContent) && !!w.querySelector(".pn-gp-inv svg.pi-user-plus"),
         ikv: vis(w.querySelector(".gpg-plus")) && /Ikväll/.test(w.querySelector(".gpg-plus").textContent), about: vis(w.querySelector(".gpg-dots")) && /Om gruppen/.test(w.querySelector(".gpg-dots").textContent),
         spCol: sp && getComputedStyle(sp).color, spFont: sp && getComputedStyle(sp).fontFamily, opCol: op && getComputedStyle(op).color, amber: "rgb(255, 194, 77)",
-        tiles: [...w.querySelectorAll(".pn-gp-ti")].map((t) => getComputedStyle(t).color), spSub: (document.querySelector(".sp-gi .sp-gs") || {}).textContent };
+        tiles: [...w.querySelectorAll(".pn-gp-ti")].filter(vis).map((t) => getComputedStyle(t).color), gk: vis(w.querySelector(".sa-gk")), grey: (() => { const d = document.createElement("span"); d.style.color = "var(--ds-text-2)"; w.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; })(), spSub: (document.querySelector(".sp-gi .sp-gs") || {}).textContent };
     });
     ok(!g.beer, "group: no ÖL! bar on the group page");
     ok(g.inv, "group: explicit 'Bjud in' button with person-plus", g);
@@ -68,7 +68,10 @@ async function openGroup(page) {
     ok(g.ikv && g.about, "group: labelled 'Ikväll' button + 'Om gruppen' row", g);
     ok(g.spCol !== g.amber && !/Black Ops/.test(g.spFont) && g.opCol !== g.amber, "group: Spel title + 'Öppna' not yellow", g);
     ok(/^\d+ spel · /.test(g.spSub || ""), "group: Spel sub '15 spel · Skämskort, Kungaleken…'", g.spSub);
-    ok(new Set(g.tiles).size >= 3, "group: tinted accent icon tiles (≥ 3 accents)", g.tiles);
+    // c35fix: Gängkamp (purple tile) is hidden by default since I-41 (PN_CFG.gangkamp off). The fixture group's own colour is blue
+    // (sa-gpcol-0 = chat accent), so the visible page has Om gruppen + Chatten in blue and Ikväll in green. Intent kept: every tile is
+    // tinted (none in the plain grey), at least 2 accents, and 3 when the Gängkamp row shows.
+    ok(g.tiles.length >= 3 && !g.tiles.includes(g.grey) && new Set(g.tiles).size >= (g.gk ? 3 : 2), "group: tinted accent icon tiles (no grey tile, ≥ 2 accents, ≥ 3 with Gängkamp)", g);
     await page.evaluate(() => { document.getElementById("sheet-body").scrollTop = 80; }); await wait(page, 300);
     ok(await page.evaluate(() => document.getElementById("sheet").classList.contains("pn-scrolled") && /gradient/.test(getComputedStyle(document.getElementById("sheet-body")).webkitMaskImage || getComputedStyle(document.getElementById("sheet-body")).maskImage || "")),
       "group: scrolled body fades under the header (mask)");

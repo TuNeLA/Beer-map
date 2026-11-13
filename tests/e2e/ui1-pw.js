@@ -331,6 +331,11 @@ function noJump(fr, w0, h0, moveMax) {
     // removed after 220 ms). Flake fix (11 Nov): the test box has its OWN id — "#dl-cap" belongs to delight.js, whose caption timer
     // hid it on its own (dl-in off) in the capture window. The close is fired on purpose ("movestart", the event pnui listens to) and
     // the frames are judged only from the moment the close class is set.
+    // c35fix: c5extras I-31 hides every .dl-cap while a bar popup / bar sheet is open (on purpose: never over its ✕). The tap that
+    // closed ⓘ can land on a bar marker; close that bar first so the caption is judged on the plain map (I-31 has its own test).
+    const barUp = await page.evaluate(() => { const o = { sheet: document.body.classList.contains("barsheet-open"), pop: !!document.querySelector(".leaflet-popup.olnu-bar") };
+      if ((o.sheet || o.pop) && window.__map) window.__map.closePopup(); return o; });
+    if (barUp.sheet || barUp.pop) { console.log("note: B6 a bar popup was open before the caption check, closed it", JSON.stringify(barUp)); await wait(page, 400); }
     await page.evaluate(() => { document.querySelectorAll("#ui1-cap").forEach((x) => x.remove()); document.documentElement.classList.remove("pn-settle");
       const c = document.createElement("div"); c.id = "ui1-cap"; c.className = "dl-cap dl-cap-greet dl-in"; c.setAttribute("role", "status");
       c.innerHTML = '<div class="dl-cap-h">Dagens order · tisdag</div><div class="dl-cap-t">Drick vatten mellan varven.</div>'; document.body.appendChild(c); });

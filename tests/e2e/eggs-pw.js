@@ -80,6 +80,9 @@ async function phone(browser, o = {}) {
     // 7 credits from Om appen
     await clear(page);
     await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 1500);
+    // d1settings hub (setfix): Inställningar tab → the page Om appen (the version row lives there)
+    await page.evaluate(() => { const t = document.querySelector('#sheet-body [role="tab"][data-pf="s"]'); if (t && t.getAttribute("aria-selected") !== "true") t.click(); }); await wait(page, 1200);
+    await page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-om"); if (b) b.click(); }); await wait(page, 600);
     await page.waitForSelector(".ds-ver .toggle-row", { state: "attached", timeout: 6000 }).catch(() => {});
     const has = await page.evaluate(() => !!document.querySelector(".ds-ver .toggle-row")); ok(has, "Om appen has the version row");
     if (!has) console.log("  sheet:", await page.evaluate(() => document.getElementById("sheet-title").textContent + " | " + [...document.querySelectorAll("#sheet-body h3,#sheet-body .ds-sec-t,#sheet-body .toggle-row")].map((x) => x.textContent.trim().slice(0, 25)).join(" / ").slice(0, 600)));

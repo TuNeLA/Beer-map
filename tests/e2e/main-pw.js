@@ -294,8 +294,10 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
         await page.evaluate(() => { localStorage.removeItem("olnu.knasDay"); if (!document.getElementById("sheet").hidden) document.getElementById("sheet-close").click(); }); await wait(page, 500);
         await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 900);
         await page.evaluate(() => { const t = document.querySelector('#sheet-body [role="tab"][data-pf="s"]'); if (t && t.getAttribute("aria-selected") !== "true") t.click(); }); await wait(page, 1600);
-        const inr = await page.evaluate(() => { const r = document.querySelector("#sheet-body .mn-knas-row"); const s = r && r.closest("section"); return r ? { sec: s && s.getAttribute("data-ds"), vis: r.getClientRects().length > 0 } : null; });
-        ok(inr && inr.sec === "om", "X6: Inställningar → Om appen has 'Något knas?'", inr);
+        // d1settings hub (setfix): Något knas? lives on the page "Hjälp oss" (Rapportera fel, önska något)
+        await page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-hjalp"); if (b) b.click(); }); await wait(page, 600);
+        const inr = await page.evaluate(() => { const r = document.querySelector("#sheet-body .mn-knas-row"); const s = r && r.closest(".set-page"); return r ? { pg: s && s.getAttribute("data-pg"), vis: r.getClientRects().length > 0, title: document.getElementById("sheet-title").textContent } : null; });
+        ok(inr && inr.pg === "hjalp" && inr.vis, "X6: Inställningar → Hjälp oss has 'Något knas?' (visible)", inr);
       }
       await ctx.close();
     }
@@ -341,16 +343,19 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       const tab = async (k) => { await page.evaluate(() => { if (document.getElementById("sheet").hidden) document.getElementById("btn-settings").click(); }); await wait(page, 900);
         await page.evaluate((k) => { const t = document.querySelector('#sheet-body [role="tab"][data-pf="' + k + '"]'); if (t && t.getAttribute("aria-selected") !== "true") t.click(); }, k); await wait(page, 1600); };
       await tab("s");
-      const s = await page.evaluate(() => { const sec = document.querySelector('#sheet-body section[data-ds="integ"]'); if (!sec) return null;
-        const items = [...sec.querySelectorAll(":scope > .ds-list > .ds-item:not(.pn-gone)")];
+      // d1settings hub (setfix): the Synlighet settings are the page "Synlighet & trygghet"; Hemzon is the one Hem row in "Plats & hem" (move 9)
+      await page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-synl"); if (b) b.click(); }); await wait(page, 700);
+      const s = await page.evaluate(() => { const sec = document.querySelector('#sheet-body .set-page[data-pg="synl"]'); if (!sec || sec.hidden) return null;
+        const items = [...sec.querySelectorAll(":scope > .ds-list > .ds-item:not(.pn-gone), :scope > .ds-list > .ds-row")].filter((e) => e.getClientRects().length);
         return { first: items[0] && items[0].querySelector(".mn-vis-set") ? "vis" : (items[0] || {}).textContent, radios: sec.querySelectorAll(".mn-vis-set [role=radio]").length,
           rows: [...sec.querySelectorAll(".mn-vis-srow .ds-row-t > span")].map((x) => x.textContent), nested: sec.querySelectorAll(".ds-list .ds-list").length,
           wide: [...sec.querySelectorAll("*")].filter((e) => e.getBoundingClientRect().right > innerWidth + 0.5).length,
-          cut: [...sec.querySelectorAll(".mn-vis-set .pn-vis-seg, .mn-vis-set [role=radio]")].filter((e) => e.scrollWidth > e.clientWidth + 1).length }; });
-      ok(s && s.first === "vis" && s.radios >= 2 && s.rows.includes("Göm min pin") && s.rows.includes("Hemzon") && s.nested === 0 && s.wide === 0 && s.cut === 0,
-        "S2 " + w + ": Inställningar → Integritet & säkerhet starts with Vem ser dig? + Göm min pin, Hemzon (SOS when on); no card in a card", s);
+          cut: [...sec.querySelectorAll(".mn-vis-set .pn-vis-seg, .mn-vis-set [role=radio]")].filter((e) => e.scrollWidth > e.clientWidth + 1).length,
+          home: !!document.querySelector('#sheet-body .set-page[data-pg="plats"] .set-home') }; });
+      ok(s && s.first === "vis" && s.radios >= 2 && s.rows.includes("Göm min pin") && s.home && s.nested === 0 && s.wide === 0 && s.cut === 0,
+        "S2 " + w + ": Inställningar → Synlighet & trygghet starts with Vem ser dig? + Göm min pin (SOS when on), Hem in Plats & hem; no card in a card", s);
       if (w === 390) {
-        await page.evaluate(() => document.querySelector('#sheet-body section[data-ds="integ"]').scrollIntoView()); await wait(page, 400); await shot(page, "set-integ-390");
+        await page.evaluate(() => document.querySelector('#sheet-body .set-page[data-pg="synl"]').scrollIntoView()); await wait(page, 400); await shot(page, "set-integ-390");
         await page.evaluate(() => document.querySelector('#sheet-body .mn-vis-set [data-vis="spoke"]').click()); await wait(page, 700);
         ok(await page.evaluate(() => localStorage.getItem("olnu.ghostMode") === "1" && document.getElementById("pn-ghost").getAttribute("data-vis") === "spoke"), "S2: Spöke in Inställningar = the same spökläge as the rail");
         await page.evaluate(() => window.PNVIS.setMode("alla"));

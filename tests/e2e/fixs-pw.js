@@ -284,8 +284,9 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
     const v = await page.evaluate(() => { const s = document.querySelector("#sheet-body .mn-vis-set"); return s ? { opts: [...s.querySelectorAll("[role=radio]")].map((b) => b.textContent.trim()), note: (s.querySelector(".pn-vis-note") || {}).textContent } : null; });
     ok(`[${w}] T-18 Inställningar "Vem ser dig?" has Alla · Bara vänner · Spöke (also after a failed my_visibility)`, !!v && v.opts.join("|") === "Alla|Bara vänner|Spöke", v);
     ok(`[${w}] T-09 Alla note is honest: the gang sees the pin, friends outside the gang see only the area, no name`, !!v && /Gänget ser din pin/.test(v.note) && /utan namn/.test(v.note) && !/Vänner ser din pin/.test(v.note), v && v.note);
-    const dk = await page.evaluate(() => { const r = document.querySelector("#sheet-body .dk-set"); if (!r) return null; const it = r.closest(".ds-item"), sec = r.closest("section.ds-section");
-      r.scrollIntoView({ block: "center" }); const b = r.getBoundingClientRect(); return { sec: sec && sec.getAttribute("data-ds"), fold: !!(it && it.classList.contains("pn-f20-in")), h: Math.round(b.height), vis: b.height > 0 && getComputedStyle(it || r).display !== "none" }; });
+    await clickJS(page, "#sheet-body .set-r-karta"); await wait(page, 700);   // d1settings hub (setfix): Dialekt is a row on the page Karta & dialekt
+    const dk = await page.evaluate(() => { const r = document.querySelector("#sheet-body .dk-set"); if (!r) return null; const it = r.closest(".ds-item"), sec = r.closest("section.ds-section, .set-page");
+      r.scrollIntoView({ block: "center" }); const b = r.getBoundingClientRect(); return { sec: sec && (sec.getAttribute("data-ds") || sec.getAttribute("data-pg")), fold: !!(it && it.classList.contains("pn-f20-in")), h: Math.round(b.height), vis: b.height > 0 && getComputedStyle(it || r).display !== "none" }; });
     ok(`[${w}] T-17 Dialekt is a visible row (Karta), not behind "Mer"`, !!dk && dk.sec === "karta" && !dk.fold && dk.vis && dk.h >= 44, dk);
     await wait(page, 300); await shot(page, "settings-dialekt", w);
     await page.evaluate(() => { const s = document.querySelector("#sheet-body .mn-vis-set"); if (s) s.scrollIntoView({ block: "center" }); }); await wait(page, 300);

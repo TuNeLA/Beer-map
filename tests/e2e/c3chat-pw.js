@@ -95,9 +95,11 @@ async function openDm(page) {
     await page.evaluate((g) => window.CREW.open(g, "Test", "dep"), RPCF.GID); await wait(page, 1200);
     const geo = () => page.evaluate(() => { const s = document.getElementById("sheet").getBoundingClientRect(), p = document.getElementById("cr-pane").getBoundingClientRect(); return { top: Math.round(s.top), bot: Math.round(s.bottom), ph: Math.round(p.height) }; });
     const base = await geo(), seen = [base];
-    const tin = await page.evaluate(() => { const e = document.querySelector(".cr-time"); if (!e) return null; e.focus(); const c = getComputedStyle(e), p = e.parentElement, pc = getComputedStyle(p);
+    // c35fix: wait for the Departures form itself (crew_group answer drawn), not a fixed 1.2 s; on a miss report what the pane shows
+    await page.waitForSelector(".cr-time", { timeout: 8000 }).catch(() => {});
+    const tin = await page.evaluate(() => { const e = document.querySelector(".cr-time"); if (!e) { const p = document.getElementById("cr-pane"); return { missing: true, pane: p ? p.textContent.slice(0, 120) : "no #cr-pane", toast: [...document.querySelectorAll(".toast")].map((t) => t.textContent).join(" | ").slice(0, 120) }; } e.focus(); const c = getComputedStyle(e), p = e.parentElement, pc = getComputedStyle(p);
       return { ml: c.borderLeftWidth + " " + c.borderLeftColor, bs: c.boxShadow, pbs: pc.boxShadow, pbl: pc.borderLeftWidth, ptr: pc.backgroundColor, rad: c.borderRadius, h: Math.round(e.getBoundingClientRect().height) }; });
-    ok(vp.width + " I-43 time field: no accent bar (no inset left shadow, border 1 px all sides)", tin && !/inset\s+-?\d+px 0/.test(tin.bs + " " + tin.pbs) && /^1px/.test(tin.ml) && tin.pbl === "0px", tin);   // the row around it must not wear the bar-list style (border-left 3px amber)
+    ok(vp.width + " I-43 time field: no accent bar (no inset left shadow, border 1 px all sides)", tin && !tin.missing && !/inset\s+-?\d+px 0/.test(tin.bs + " " + tin.pbs) && /^1px/.test(tin.ml) && tin.pbl === "0px", tin);   // the row around it must not wear the bar-list style (border-left 3px amber)
     await shot(page, "truppen-" + vp.width);
     for (const t of ["dates", "laget", "torch", "replay", "dep"]) {
       await page.evaluate((t) => document.querySelector('.cr-tab[data-tab="' + t + '"]').click(), t); await wait(page, 500);

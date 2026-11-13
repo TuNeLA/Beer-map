@@ -8,13 +8,13 @@ const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : (i === un
 const PAGES = ["konto", "synl", "notis", "plats", "karta", "bjud", "hjalp", "om"];
 // every setting that the old flat sheet had (regex on the page text) -> the page it must live on
 const OLD = [
-  ["Ölpriser", "karta"], ["Restauranger på kartan", "karta"], ["Kartstil", "karta"], ["Dialekt", "karta"],
+  ["Ölpriser", "karta"], ["Restauranger på kartan", "karta"], ["Kartstil", "karta"], ["Dialekt", "karta"], ["Systembolaget på kartan", "karta"],
   ["Pinnen följer med dig", "plats"], ["Checka in automatiskt", "plats"], ["^Hem", "plats"],
   ["Vem ser dig", "synl"], ["Göm min pin", "synl"], ["SOS till gänget", "synl"], ["Integritet – förbättra appen", "synl"], ["Regler", "synl"], ["Blockerade", "synl"], ["Kontakt", "synl"],
   ["Notiser", "notis"], ["Välj notiser", "notis"], ["Ljud", "notis"],
   ["Något knas", "hjalp"],
   ["Betaversion", "om"], ["Uppdatera nu", "om"], ["Introduktionen|introduktionen", "om"],
-  ["Swish-nummer", "konto"], ["Flytta till annan", "konto"], ["Jag har en flyttkod", "konto"], ["Radera konto", "konto"]
+  ["Swish-nummer", "konto"], ["Flytta till annan", "konto"], ["Jag har en flyttkod", "konto"], ["Radera mitt konto", "konto"], ["Vad vi sparar och varför", "om"]
 ];
 (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME });
@@ -61,7 +61,7 @@ const OLD = [
     await page.evaluate(() => document.querySelector(".pf-konto-row").click()); await wait(page, 900);
     const kt = await page.evaluate(() => ({ title: document.getElementById("sheet-title").textContent, rows: [...document.querySelectorAll('.set-page[data-pg="konto"] .ds-row')].map((r) => r.querySelector(".ds-row-t > span").textContent), vis: !document.querySelector('.set-page[data-pg="konto"]').hidden }));
     ok("Profil Konto row opens Inställningar > Konto", kt.vis && /Konto/.test(kt.title), kt);
-    ok("Konto rows in the order: save/login, flytta, flyttkod, (logga ut), radera", kt.rows.length >= 3 && kt.rows[kt.rows.length - 1] === "Radera konto" && kt.rows.indexOf("Flytta till annan app/telefon") < kt.rows.indexOf("Jag har en flyttkod"), kt.rows);
+    ok("Konto rows in the order: save/login, flytta, flyttkod, (logga ut), radera", kt.rows.length >= 3 && kt.rows[kt.rows.length - 1] === "Radera mitt konto" && kt.rows.indexOf("Flytta till annan app/telefon") < kt.rows.indexOf("Jag har en flyttkod"), kt.rows);
     await page.screenshot({ path: require("./env.js").OUT + "d1settings-konto.png" }).catch(() => {});
     await ctx.close();
   }

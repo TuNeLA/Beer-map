@@ -132,16 +132,19 @@ const dock = (page) => page.evaluate(() => {
           });
           l.querySelectorAll(".switch").forEach((s) => { if (!s.getClientRects().length) return; const r = s.getBoundingClientRect(); if (lr.right - r.right < 12) out.push(["switch", Math.round(lr.right - r.right)]); });
         });
-        const sf = document.querySelector(".sf-set"), integ = document.querySelector('section[data-ds="integ"]');
-        return { bad: out, sfInInteg: !!(sf && integ && integ.contains(sf)), fold: !!document.querySelector(".pn-fold-row"), pp: !!(document.querySelector(".push-prefs") && document.querySelector(".push-prefs").getClientRects().length) };
+        // d1settings hub (setfix): Trygghet = rows on the page "Synlighet & trygghet"; the notification types fold on "Notiser & ljud"
+        const synl = document.querySelector('.set-page[data-pg="synl"]'), notis = document.querySelector('.set-page[data-pg="notis"]');
+        return { bad: out, sfInSynl: !!(synl && synl.querySelector(".set-rules") && synl.querySelector(".set-contact")), fold: !!(notis && notis.querySelector(".pn-fold-row")) };
       });
       ok(!st.bad.length, "Inställningar: every row has 12 px+ inner padding, 40 px+ height, switches 12 px+ from the edge", st.bad);
-      ok(st.sfInInteg && st.fold && !st.pp, "Inställningar: Trygghet rows under Integritet & säkerhet; notification types folded behind 'Välj notiser'", st);
       await shot(page, "settings");
-      const d0 = await page.evaluate(() => window.SHEETNAV.depth());
+      await clickJS(page, "#sheet-body .set-r-notis"); await wait(page, 700);
+      st.pp = await page.evaluate(() => !!(document.querySelector(".push-prefs") && document.querySelector(".push-prefs").getClientRects().length));
+      ok(st.sfInSynl && st.fold && !st.pp, "Inställningar: Trygghet rows on Synlighet & trygghet; notification types folded behind 'Välj notiser' on Notiser & ljud", st);
+      const d0 = await page.evaluate(() => ({ d: window.SHEETNAV.depth(), back: !document.getElementById("pn-back").hidden }));
       await page.click(".pn-fold-row"); await wait(page, 500);
       const f1 = await page.evaluate(() => ({ open: document.querySelector(".push-prefs").getClientRects().length > 0, d: window.SHEETNAV.depth(), back: !document.getElementById("pn-back").hidden }));
-      ok(f1.open && f1.d === d0 && !f1.back, "Välj notiser opens as an inline fold (I-02: no extra back step, depth same, ‹ hidden)", [d0, f1]);
+      ok(f1.open && f1.d === d0.d && f1.back === d0.back, "Välj notiser opens as an inline fold (I-02: no extra back step, depth and ‹ unchanged)", [d0, f1]);
       await shot(page, "settings-notiser");
       await page.click(".pn-fold-row"); await wait(page, 500);   // I-02: the same row folds it again (no history step to go back)
       const f2 = await page.evaluate(() => ({ open: document.querySelector(".push-prefs").getClientRects().length > 0, sheet: !document.getElementById("sheet").hidden }));

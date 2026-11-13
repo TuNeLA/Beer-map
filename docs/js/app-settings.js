@@ -221,7 +221,7 @@
   /* ---------- ⚙️ Inställningar: 8 rows, each opens a page with ‹ (d1settings, moves 3 / 6 / 9) ---------- */
   var PAGES = [
     ["konto", "user", "Konto", "Spara konto, Swish, flytta, logga ut"],
-    ["synl", "shield", "Synlighet & trygghet", "Vem ser dig, spökläge, SOS, regler"],
+    ["synl", "shield", "Integritet & synlighet", "Vem ser dig, loggning, spökläge, blockerade"],   // relrisk: copy says "Inställningar → Integritet"
     ["notis", "bell", "Notiser & ljud", "Push, ljud, vad du vill höra"],
     ["plats", "pin", "Plats & hem", "Hem, pinnen följer, checka in"],
     ["karta", "map", "Karta & dialekt", "Kartlager, kartstil, dialekt"],
@@ -234,7 +234,7 @@
     ["konto", ".acct-sect, .rnd-set"],
     ["hjalp", ".mn-knas-row, .ws-entry, .ws-entry-set"],
     ["plats", ".ht-set, .hz-row, .hz-set, .pf-set, .pf-row, .ac-set, .ac-row, .ah-set, .ah-row, .mn-vis-home"],
-    ["karta", ".dk-set, .bm-seg, .bi-switch"],
+    ["karta", ".dk-set, .bm-seg, .bi-switch, .sb-switch"],   // setfix: + Systembolaget på kartan (a map layer, was on Om appen)
     ["synl", ".mn-vis-set, .mn-vis-srow, .bd-optin, .sos-block, .nr-share, .sf-set, .pnlog-hint"],
     ["om", ".pn-kanal"]
   ];
@@ -296,25 +296,35 @@
     if (LIVE && storedAuth() && !PN.s.movedState) list.appendChild(setRow("phone", "Flytta till annan app/telefon", t("flyttSection"), showFlyttExport, "set-flytt"));
     if (LIVE) list.appendChild(setRow("key", "Jag har en flyttkod", "Hämta ditt konto hit", showFlyttImport, "set-flytt-in"));
     if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("out", "Logga ut", "", acc.logout, "set-acc-logout acct-logout"));
-    if (LIVE && PN.s.authed && window.PRIVACY) list.appendChild(setRow("trash", "Radera konto", "Tar bort allt för alltid", window.PRIVACY.showDelete, "set-del"));
+    if (LIVE && PN.s.authed && window.PRIVACY) list.appendChild(delRow());
+  }
+  // setfix: "Radera mitt konto" = misc-mod's row (in the 7 days its sub line says "Raderas om N dagar · tryck för att ångra"), else a plain row
+  function delRow() {
+    var r = null;
+    try { if (window.MISC && window.MISC.deleteAccountRow) r = window.MISC.deleteAccountRow(); } catch (e) { r = null; }
+    if (!r) return setRow("trash", "Radera mitt konto", "Tar bort allt för alltid", window.PRIVACY.showDelete, "set-del");
+    r.classList.add("pn-row", "set-del");
+    if (!r.querySelector(".ds-chev")) r.appendChild(el("span", { class: "ds-chev", "aria-hidden": "true" }));
+    return r;
   }
   function ownRows(key, list) {
     var sf = window.SAFETY;   // Trygghet as rows (safety.js opens the sheets; its own 3 small buttons are hidden in fill())
     if (key === "synl" && sf) {
-      if (sf.showRules) list.appendChild(setRow("rules", "Regler", "Så funkar PintsNow", function () { sf.showRules(); }, "set-rules"));
-      if (sf.blocked && LIVE && PN.s.authed) list.appendChild(setRow("block", "Blockerade", "Avblockera personer", function () { sf.blocked(); }, "set-blocked"));
-      if (sf.contact) list.appendChild(setRow("mail", "Kontakt", "Mejla oss", function () { sf.contact(); }, "set-contact"));
+      if (sf.showRules) list.appendChild(setRow("rules", "Regler", "Så funkar PintsNow", function () { sf.showRules(); }, "set-rules set-end"));
+      if (sf.blocked && LIVE && PN.s.authed) list.appendChild(setRow("block", "Blockerade", "Avblockera personer", function () { sf.blocked(); }, "set-blocked set-end"));
+      if (sf.contact) list.appendChild(setRow("mail", "Kontakt", "Mejla oss", function () { sf.contact(); }, "set-contact set-end"));
     }
     if (key === "bjud") list.appendChild(setRow("heart", "Bjud in vänner", "Länk och QR-kod", showInvite, "set-invite"));
     if (key !== "om") return;
     list.appendChild(setRow("info", "Visa introduktionen", "", function () { closeSheet(); showIntro(true); }, "set-intro"));
     if (!U.isStandalone()) list.appendChild(setRow("home", t("guideTitle"), "", showInstallGuide, "set-guide"));
-    list.appendChild(el("p", { class: "muted", style: "margin:12px 4px 0", text: t("privacy") + " " + t("aboutMore") }));
+    if (window.PRIVACY && window.PRIVACY.showPrivacy) list.appendChild(setRow("lock", "Integritet", "Vad vi sparar och varför", function () { window.PRIVACY.showPrivacy(function () { showSettings("s", "om"); }); }, "set-priv"));   // setfix: the privacy text says "Läs mer under Integritet"
+    list.appendChild(el("p", { class: "muted set-end", style: "margin:12px 4px 0", text: t("privacy") + " " + t("aboutMore") }));
     var ver = el("span", { class: "muted", text: t("version") + " …" });
     var setVer = function (k) { ver.textContent = t("version") + " " + (k ? k.replace("olnu-", "") : buildVer()); };
     if (window.caches && caches.keys) caches.keys().then(function (ks) { setVer(ks.filter(function (x) { return /^olnu-[0-9a-f]{8,}/.test(x); })[0]); }).catch(function () { setVer(""); });   // audit-03: not olnu-pending/-cdn/-data/-tiles/-beta
     else setVer("");
-    list.appendChild(el("div", { class: "toggle-row", style: "margin-top:10px" }, [ver, btn(t("updateNow"), "btn-small", forceUpdate)]));
+    list.appendChild(el("div", { class: "ds-item ds-ver set-end" }, [el("div", { class: "toggle-row" }, [ver, btn(t("updateNow"), "btn-small", forceUpdate)])]));   // setfix: .ds-ver .toggle-row = the old ds.js shape (eggs.js egg 7: 5 taps → credits)
   }
   function buildHub(body, openKey) {
     var tabs = body.querySelector(".pf-tabs");
@@ -355,6 +365,8 @@
         });
       });
       oneHome(pages.plats.list);
+      Object.keys(pages).forEach(function (k) { [].forEach.call(pages[k].list.querySelectorAll(":scope > .set-end"), function (n) { pages[k].list.appendChild(n); }); });   // setfix: a page starts with its settings (Vem ser dig? first); Trygghet rows, about text and version stay last
+      try { if (window.PNDS && window.PNDS._tidy) window.PNDS._tidy(body); } catch (e) {}   // setfix: the notification types fold behind "Välj notiser" (pnds one fold rule; owner default yes)
     }
     // move 9: ONE "Hem" row (opens the Hemzon sheet). The Synlighet-menu row is reused; every other Hemzon / "Ställ in hem" copy is hidden.
     function oneHome(list) {

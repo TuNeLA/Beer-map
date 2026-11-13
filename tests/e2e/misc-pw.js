@@ -57,6 +57,7 @@ const tap = (page, sel, re) => page.evaluate(([s, r]) => { const e = [...documen
       await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 1200);
       // the ⚙️ button opens Profil; Inställningar is its 2nd tab (pnui / ds20)
       await tap(page, "#sheet button, #sheet [role=tab]", "^Inställningar$"); await wait(page, 900);
+      await tap(page, "#sheet-body .set-r-konto", "Konto"); await wait(page, 600);   // d1settings hub (setfix): Radera mitt konto is on the page Konto
       await page.evaluate(() => { const e = [...document.querySelectorAll("#sheet button, #sheet [role=button]")].find((x) => /Radera mitt konto/.test(x.textContent)); if (e) e.scrollIntoView({ block: "center" }); });
       await wait(page, 300);
       const hit = await tap(page, "#sheet button, #sheet [role=button]", "Radera mitt konto");
