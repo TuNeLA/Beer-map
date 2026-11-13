@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { parseSwehockeyDay, parseSwehockeySchedule, swehockeyRows, swhId, swhTimeKnown, swhWomen, swhFilters,
-  retirePlan, retireSwehockey, placer, stockholm } from "./import-sport.mjs";
+  retirePlan, retireSwehockey, placer, stockholm, gameDedupe } from "./import-sport.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cfg = JSON.parse(readFileSync(resolve(here, "sport-feeds.json"), "utf8")).swehockey;
@@ -132,4 +132,23 @@ test("venues: Swetex Arena = Hallstahammar, ICA Maxi Arena = Kumla (not Visby)",
   assert.ok(Math.abs(sw.lat - 59.6217) < 0.01 && Math.abs(sw.lng - 16.2285) < 0.01);
   const ku = place("ICA Maxi Arena", "Kumla Hockey");
   assert.ok(Math.abs(ku.lat - 59.1314) < 0.01 && Math.abs(ku.lng - 15.1277) < 0.01);
+});
+// evsearch I-75b: Liljas Arena is in Nybro (the nearest app town was Kalmar, 28 km away)
+test("venues: an arena town wins (Liljas Arena → Nybro) and rides on the swehockey row", () => {
+  const p = place("Liljas Arena", "Nybro Vikings IF");
+  assert.equal(p.town, "Nybro");
+  const html = '<html><table><tr><th class="tdHeader">Time</th><th class="tdHeader">Game</th><th class="tdHeader">Result</th><th class="tdHeader">Venue</th></tr>' +
+    group(20962, "HockeyAllsvenskan") + game("19:00", "Nybro Vikings IF", "Leksands IF", "Liljas Arena") + "</table></html>";
+  const rows = swehockeyRows("2026-11-18", parseSwehockeyDay(html), cfg, place).filter((r) => !r.tv);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].town, "Nybro");
+  assert.equal(place("Wibe Arena", "Mora IK").town, undefined);
+});
+// evsearch I-75a: the same game from two sources = one row per kind (tv / local); a real double-header stays
+test("gameDedupe: one row per game and kind, ±15 min, double-headers kept", () => {
+  const r = (sid, h, a, at, tv) => ({ source_id: sid, home: h, away: a, starts_at: at, tv: !!tv });
+  const out = gameDedupe([r("tv:swh:x", "Leksands IF", "Mora IK", "2026-11-20T18:00:00Z", 1), r("tv:tsdb:1", "Leksand", "Mora", "2026-11-20T18:05:00Z", 1),
+    r("swh:x", "Leksands IF", "Mora IK", "2026-11-20T18:00:00Z"), r("tsdb:1", "Leksand", "Mora", "2026-11-20T18:00:00Z"),
+    r("swh:y", "Leksands IF", "AIK", "2026-11-21T16:15:00Z"), r("swh:z", "Leksands IF", "AIK", "2026-11-22T10:00:00Z"), { source_id: "quiz", title: "Pubquiz" }]);
+  assert.deepEqual(out.map((x) => x.source_id), ["tv:swh:x", "swh:x", "swh:y", "swh:z", "quiz"]);
 });

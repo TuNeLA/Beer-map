@@ -45,3 +45,22 @@ body.ghost-chip-on #btn-evs.locate-btn{top:calc(var(--sat) + 258px + var(--chaos
 .sp-v{display:flex;gap:6px;flex:0 0 auto}
 .sp-b{min-width:56px;min-height:44px;padding:0 10px}
 .sp-b[aria-pressed="true"]{background:var(--ds-amber-soft);border-color:var(--ds-amber);color:var(--ds-amber-t)}
+/* evsearch I-73: search box at the top of the event sheet; I-74 / I-76: "På plats" + "Köp biljett" in the TV match window */
+.evs-search{position:relative;display:flex;align-items:center;margin:0 0 var(--ds-2)}
+.evs-s-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;color:var(--ds-muted);pointer-events:none}
+.evs-s-ic svg,.evs-qx svg,.evs-buy svg{width:18px;height:18px}
+.evs-q{flex:1;min-width:0;min-height:44px;padding:0 44px 0 38px;border:1px solid var(--ds-border);border-radius:var(--ds-r-pill);
+  background:var(--ds-card);color:var(--ds-text);font-family:var(--ds-sans);font-size:var(--ds-fs-16);line-height:var(--ds-lh-22)}
+.evs-q::placeholder{color:var(--ds-muted);opacity:1}
+.evs-q::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.evs-q:focus-visible{outline:2px solid var(--ds-amber);outline-offset:1px}
+.evs-qx{position:absolute;right:0;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--ds-muted);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:var(--ds-r-pill)}
+.evs-qx[hidden]{display:none}
+.evs-searching .evs-bar .evs-time,.evs-searching .evs-bar .evs-chips{display:none}
+.evs-d-venue{margin-top:var(--ds-2);display:flex;flex-direction:column;gap:var(--ds-2)}
+.evs-d-venue[hidden]{display:none}
+.evs-d-arena{margin:0;font-size:var(--ds-fs-14);line-height:var(--ds-lh-18);font-weight:600;color:var(--ds-text)}
+.evs-d-vacts{display:flex;flex-wrap:wrap;gap:var(--ds-2);align-items:center}
+.evs-buy{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.evs-gamelink{display:inline-flex;align-items:center;min-height:44px;font-size:var(--ds-fs-14);color:var(--ds-blue-t)}

@@ -45,6 +45,12 @@
     friends: ["👥 Vänner går", "👥 Friends going"],
     tvFold: ["📺 {n} matcher på TV {nar}", "📺 {n} matches on TV {nar}"], tvFoldDay: ["📺 {n} matcher på TV", "📺 {n} matches on TV"],
     tvPubs: ["📺 Visas på: {list}", "📺 Showing at: {list}"],
+    // evsearch I-73 / I-74: search box + "go to the game"
+    sPh: ["Sök ort eller event", "Search a town or event"], sClr: ["Rensa sökningen", "Clear search"],
+    sBusy: ["Söker…", "Searching…"], sN: ["{n} träffar för \u201d{q}\u201d · 30 dagar", "{n} results for \u201c{q}\u201d · 30 days"],
+    sNone: ["Inga event för \u201d{q}\u201d de närmaste 30 dagarna.", "No events for \u201c{q}\u201d in the next 30 days."],
+    venue: ["På plats: {plats} · {tid}", "At the arena: {plats} · {tid}"], buy: ["Köp biljett", "Buy tickets"],
+    gameLink: ["Matchsidan", "Match page"], arenaShow: ["Visa arenan", "Show the arena"],
     tvNoPub: ["📺 Ingen krog är flaggad för sport än. Tryck 👍 i krogens ruta när du ser en storbild!",
       "📺 No pub flagged for sports yet. Tap 👍 in a bar's sheet when you see a big screen!"],
     noPubAct: ["📺 Ingen sportkrog i närheten än. Flagga en med 👍 i krogens ruta.", "📺 No sports pub nearby yet. Flag one with 👍 in a bar's sheet."],
@@ -180,13 +186,35 @@
     p.lng = ((((p.lng + 180) % 360) + 360) % 360) - 180; p.lat = Math.max(-85, Math.min(85, p.lat));
     return p;
   }
+  // evsearch I-75a: ONE row per game. Same words as the server (olnu_ev_words / scripts/ev-dedupe.mjs): "Leksands IF" = "Leksand".
+  var STOPW = /^(vs|mot|och|and|the|pa|at|med|mfl|if|ik|hc|hk|bk|sk|aik|ff|fk|fc|is|hf|goif|ibk|ibf|bois|hockey|ishockey|hockeyforening|hockeyklubb|forening|idrottsforening|idrottsklubb|idrottsallskap|klubb|club|fotboll|fotbollsklubb|tal|text|svenska|engelska|live|biljetter|tickets|presenterar|presents|feat|ft)$/;
+  function words(s) {
+    var t = String(s || "").replace(/\([^)]*(\)|$)/g, " ").toLowerCase();
+    try { t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch (x) {}
+    return t.replace(/\u00f8/g, "o").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(function (w) { return w.length >= 2 && !STOPW.test(w); })
+      .map(function (w) { return w.length >= 5 && w.charAt(w.length - 1) === "s" ? w.slice(0, -1) : w; });
+  }
+  function team(s) { return words(s).filter(function (w) { return w.length >= 3; })[0] || String(s || "").toLowerCase().trim(); }
+  function near(a, b, min) { return Math.abs(Date.parse(a.starts_at) - Date.parse(b.starts_at)) <= min * 60e3; }
+  function sameGame(a, b) { return !!(a.home && a.away && b.home && b.away) && team(a.home) === team(b.home) && team(a.away) === team(b.away) && near(a, b, 15); }
+  function shopRow(x) { return !x.tv && !x.home && (x.source === "tickster" || x.source === "ticketmaster"); }
+  function shopTwin(x, m) { if (!m.home || !m.away || !near(x, m, 45)) return false; var w = words(x.title); return w.indexOf(team(m.home)) >= 0 && w.indexOf(team(m.away)) >= 0; }
   function dedupe(rows) {
-    // a TV row for a game that is also a local row near me → keep the local row only
-    var local = rows.filter(function (e) { return !e.tv && e.home && e.away; });
-    return rows.filter(function (e) {
-      if (!e.tv || !e.home) return true;
-      return !local.some(function (x) { return x.home === e.home && x.away === e.away && Math.abs(Date.parse(x.starts_at) - Date.parse(e.starts_at)) < 15 * 60e3; });
+    // a TV row for a game that is also a local row → the local row only; the same game twice (two sources) → once;
+    // a Tickster / Ticketmaster row of a match → folded into the match row (its shop link becomes the ticket link)
+    var local = rows.filter(function (e) { return e && !e.tv && e.home && e.away; }), out = [];
+    rows.forEach(function (e) {
+      if (!e) return;
+      if (e.pending) { out.push(e); return; }
+      if (e.home && e.away && (out.some(function (x) { return !x.pending && !!x.tv === !!e.tv && sameGame(x, e); }) ||
+          (e.tv && local.some(function (x) { return sameGame(x, e); })))) return;
+      if (shopRow(e)) {
+        var m = local.filter(function (x) { return shopTwin(e, x); })[0];
+        if (m) { var u = e.ticket_url || e.url; if (!m.ticket_url && /^https:\/\//.test(u || "")) m.ticket_url = u; return; }
+      }
+      out.push(e);
     });
+    return out;
   }
   // 📅 Månad (migration 0111): 31 days from events_near3 only while the sheet shows Månad; else 7 days (events_near2).
   var off3 = false, wantMore = 0;
@@ -240,7 +268,7 @@
   function goState(id) { return gs.by[String(id)] || null; }
   function loadGoing(force) {
     if (gs.off || !A || !A.authed || !A.authed()) return Promise.resolve(gs);
-    var ids = cache.rows.filter(function (e) { return !e.pending && e.id != null; }).map(function (e) { return +e.id; }).filter(isFinite).slice(0, 400);
+    var ids = cache.rows.concat(sq.rows).filter(function (e) { return !e.pending && e.id != null; }).map(function (e) { return +e.id; }).filter(isFinite).slice(0, 400);
     var key = ids.join(",");
     if (!force && key === gs.key && Date.now() - gs.at < 60000) return Promise.resolve(gs);
     if (gs.busy) return Promise.resolve(gs);
@@ -261,7 +289,8 @@
   }
   function evById(id) {
     id = String(id);
-    return cache.rows.filter(function (e) { return String(e.id) === id; })[0] || gs.friends.filter(function (e) { return String(e.id) === id; })[0] || null;
+    return cache.rows.filter(function (e) { return String(e.id) === id; })[0] || sq.rows.filter(function (e) { return String(e.id) === id; })[0] ||
+      gs.friends.filter(function (e) { return String(e.id) === id; })[0] || null;
   }
   function initials(name) {
     var w = String(name || "?").trim().split(/\s+/).filter(Boolean);
@@ -405,9 +434,11 @@
     if (!A) return;
     A.openSheet(two("title"), function (body) {
       bodyEl = body; detailEl = null; detailId = null; tvOpen = {};
+      sq.q = ""; sq.rows = []; sq.done = false; sq.busy = false;   // evsearch: a new sheet starts without a search
       body.classList.remove("evs-in-detail");   // ownerfix 1: a detail view left over on the shared #sheet-body hid the list
       body.classList.add("evs-body");
       var bar = A.el("div", { class: "evs-bar" });
+      bar.appendChild(searchBox());
       segEl = A.el("div", { class: "ds-seg evs-time", role: "tablist", "aria-label": L("När", "When") });
       T.times.forEach(function (t) {
         var b = A.el("button", { type: "button", role: "tab", "data-t": t[0], "aria-selected": String(st.time === t[0]), onclick: function () {
@@ -443,7 +474,7 @@
       });
     }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {}
       try { if (bodyEl) bodyEl.classList.remove("evs-in-detail", "evs-body"); } catch (e) {}   // ownerfix 1: #sheet-body is shared by every sheet
-      listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); } });
+      listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); clearTimeout(sq.t); sq.seq++; } });
   }
   function setTime(t, user) {
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;
@@ -550,6 +581,8 @@
   }
   function draw() {
     if (!listBox) return;
+    if (bodyEl) bodyEl.classList.toggle("evs-searching", searching());
+    if (searching()) { drawSearch(); return; }
     drawBar();
     listBox.innerHTML = "";
     var all = filtered();
@@ -560,7 +593,12 @@
       listBox.appendChild(A.el("p", { class: "ds-empty evs-empty", text: fill(sv() ? pick("empty", T.empty) : pick("emptyEn", T.emptyEn), { nar: L(w[0], w[1]), vad: L(v[0], v[1]) }) }));
       return;
     }
-    // Sticky day headers ("Ikväll", "I morgon", "Lör 25/10") with the number of rows that day; TV matches of a day fold into one row.
+    drawGroups(rows, all, st.type === "tv", null);
+    if (all.length > rows.length) listBox.appendChild(A.btn(fill(L("Visa fler ({n} till)", "Show more ({n} more)"), { n: all.length - rows.length }),
+      "ds-btn ds-btn-secondary btn-block evs-more", function () { shown += 80; draw(); }));
+  }
+  // Sticky day headers ("Ikväll", "I morgon", "Lör 25/10") with the number of rows that day; TV matches of a day fold into one row.
+  function drawGroups(rows, all, noFold, opt) {
     var gk = function (e) { return eveDiff(e.starts_at) <= 0 ? "now" : eveKey(new Date(e.starts_at)); };
     var groups = [], by = {};
     rows.forEach(function (e) { var k = gk(e); if (!by[k]) { by[k] = { k: k, iso: e.starts_at, rows: [] }; groups.push(by[k]); } by[k].rows.push(e); });
@@ -573,13 +611,65 @@
       var dg = A.el("section", { class: "evs-dg", "data-day": g.k });
       dg.appendChild(h);
       listBox.appendChild(dg);
-      var tv = st.type === "tv" ? [] : g.rows.filter(function (e) { return e.tv; });
+      var tv = noFold ? [] : g.rows.filter(function (e) { return e.tv; });
       var fold = tv.length >= 2;
-      g.rows.forEach(function (e) { if (!fold || !e.tv) dg.appendChild(rowEl(e)); });
+      g.rows.forEach(function (e) { if (!fold || !e.tv) dg.appendChild(rowEl(e, opt)); });
       if (fold) dg.appendChild(tvFoldEl(g, tv));
     });
-    if (all.length > rows.length) listBox.appendChild(A.btn(fill(L("Visa fler ({n} till)", "Show more ({n} more)"), { n: all.length - rows.length }),
-      "ds-btn ds-btn-secondary btn-block evs-more", function () { shown += 80; draw(); }));
+  }
+  /* ---------- 🔎 search (evsearch I-73, migration 0512 events_search: title / place / town, any distance, 30 days) ---------- */
+  var sq = { q: "", rows: [], seq: 0, t: null, off: false, busy: false, done: false, inp: null, x: null };
+  function searching() { return sq.q.length >= 2; }
+  function pni(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, "evs-pi") : ""; } catch (e) { return ""; } }
+  function searchBox() {
+    var box = A.el("div", { class: "evs-search", role: "search" });
+    box.appendChild(A.el("span", { class: "evs-s-ic", "aria-hidden": "true", html: pni("search") }));
+    sq.inp = A.el("input", { type: "search", class: "evs-q", enterkeyhint: "search", autocomplete: "off", spellcheck: "false", maxlength: "60",
+      placeholder: two("sPh"), "aria-label": two("sPh"), oninput: function () { onQ(sq.inp.value); },
+      onkeydown: function (ev) { if (ev.key === "Enter") { ev.preventDefault(); clearTimeout(sq.t); if (searching()) runSearch(); try { sq.inp.blur(); } catch (x) {} } else if (ev.key === "Escape" && sq.inp.value) { ev.stopPropagation(); clearQ(); } } });
+    sq.inp.value = sq.q;
+    sq.x = A.el("button", { type: "button", class: "evs-qx", "aria-label": two("sClr"), html: pni("x") || "x", onclick: function () { clearQ(); try { sq.inp.focus(); } catch (x) {} } });
+    sq.x.hidden = !sq.q;
+    box.appendChild(sq.inp); box.appendChild(sq.x);
+    return box;
+  }
+  function clearQ() { if (sq.inp) sq.inp.value = ""; onQ(""); }
+  function onQ(v) {
+    sq.q = String(v || "").replace(/\s+/g, " ").trim().slice(0, 60);
+    clearTimeout(sq.t); sq.seq++;
+    if (sq.x) sq.x.hidden = !(sq.inp && sq.inp.value);
+    if (!searching()) { sq.rows = []; sq.done = false; sq.busy = false; draw(); return; }
+    sq.done = false; sq.busy = true; draw();
+    sq.t = setTimeout(runSearch, 300);
+  }
+  function localHits(q) {
+    var n = q.toLowerCase();
+    return cache.rows.filter(function (e) { return [e.title, e.place, e.town, placeOf(e)].some(function (x) { return String(x || "").toLowerCase().indexOf(n) >= 0; }); });
+  }
+  function gotSearch(my, rows) {
+    if (my !== sq.seq) return;
+    sq.busy = false; sq.done = true; sq.rows = sorted(dedupe(rows || []));
+    if (!listBox || !document.body.contains(listBox)) return;
+    draw();
+    loadGoing(true).then(function () { if (listBox && document.body.contains(listBox)) repaint(); });
+  }
+  function runSearch() {
+    var q = sq.q, my = ++sq.seq;
+    if (!searching()) return;
+    if (sq.off || off || !A || !A.LIVE || !A.authed || !A.authed()) { gotSearch(my, localHits(q)); return; }
+    A.rpc("events_search", { p_q: q, p_days: 31 }).then(function (r) {
+      if (r.error) { if (U.missing(r.error)) sq.off = true; gotSearch(my, localHits(q)); return; }
+      var d = A.parseData(r.data) || {};
+      gotSearch(my, Array.isArray(d.events) ? d.events : []);
+    }, function () { gotSearch(my, localHits(q)); });
+  }
+  function drawSearch() {
+    listBox.innerHTML = "";
+    if (toolsEl) { toolsEl.innerHTML = ""; toolsEl.appendChild(A.el("span", { class: "evs-sum evs-s-sum", text: sq.done ? fill(two("sN"), { n: sq.rows.length, q: sq.q }) : two("sBusy") })); }
+    if (frEl) frEl.hidden = true;
+    if (!sq.done) return;
+    if (!sq.rows.length) { listBox.appendChild(A.el("p", { class: "ds-empty evs-empty evs-s-none", text: fill(two("sNone"), { q: sq.q }) })); return; }
+    drawGroups(sq.rows, sq.rows, true, { town: true });
   }
   function repaint() {
     if (detailOpen()) drawDetail();
@@ -624,8 +714,9 @@
       onclick: function (ev) { ev.stopPropagation(); if (gs.goOff) { rally(e, ev.currentTarget); return; } setGo(e, !on, ev.currentTarget); } });
     return b;
   }
-  function rowEl(e) {
+  function rowEl(e, opt) {
     var tv = !!e.tv, place = placeOf(e), s = goState(e.id);
+    if (opt && opt.town && e.town && place && place.toLowerCase().indexOf(String(e.town).toLowerCase()) < 0) place += ", " + e.town;
     var card = A.el("div", { class: "ds-card evs-row" + (tv ? " evs-tv" : "") + (e.pending ? " evs-pending" : "") + (s && s.mine ? " evs-going" : ""),
       "data-evs": String(e.id), role: "button", tabindex: "0", "aria-label": String(e.title || "") + ", " + whenText(e.starts_at) });
     var open1 = function (ev) { if (ev.target && ev.target.closest && ev.target.closest(".evs-gar")) return; openDetail(e.id); };
@@ -732,6 +823,7 @@
       } else pl.appendChild(A.el("p", { class: "evs-nopub", text: two("tvNoPub") }));
       facts.appendChild(pl);
     }
+    if (tv) { var ve = venueEl(e); if (ve) facts.appendChild(ve); }
     if (e.pending) facts.appendChild(A.el("p", { class: "evs-d-pend", text: two("pending") }));
     detailEl.appendChild(facts);
     // who goes
@@ -760,6 +852,38 @@
     if (!e.pending && window.EVENTS && window.EVENTS.go && !gs.goOff) acts.appendChild(A.btn(two("go"), "ds-btn ds-btn-secondary evs-go", function (ev) { rally(e, ev.currentTarget); }));
     detailEl.appendChild(acts);
     if (e.source === "user" && !e.is_mine && !e.pending && !wrongOff) detailEl.appendChild(wrongBtn(e));   // ownerfix 7
+  }
+  // evsearch I-74 / I-76: the same game at the arena. Server match (event_venue): the arena row has the teams + start ±15 min,
+  // a ticket only from a Tickster / Ticketmaster row of that game. Here: only https links on those shops, never a guess.
+  var vc = {}, venueOff = false;
+  function okTicket(u) { return typeof u === "string" && u.length <= 300 && /^https:\/\/([a-z0-9-]+\.)*(tickster\.com|ticketmaster\.se|ticketmaster\.com)\//i.test(u); }
+  function okHttps(u) { return typeof u === "string" && u.length <= 300 && /^https:\/\/[^\s"<>]+$/i.test(u); }
+  function venueEl(e) {
+    if (venueOff || !e.home || !e.away || e.id == null || !A.LIVE) return null;
+    var id = String(e.id), c = vc[id], box = A.el("div", { class: "evs-d-venue", hidden: "" });
+    if (c && c.at && Date.now() - c.at < 300000) { fillVenue(box, e, c.d); return box; }
+    if (c && c.busy) return box;
+    vc[id] = { busy: true, at: 0, d: null };
+    A.rpc("event_venue", { p_id: +e.id }).then(function (r) {
+      if (r.error && U.missing(r.error)) venueOff = true;
+      vc[id] = { at: Date.now(), d: r.error ? null : A.parseData(r.data) || null };
+      if (detailOpen() && detailId === id) drawDetail();
+    }, function () { vc[id] = { at: Date.now(), d: null }; });
+    return box;
+  }
+  function fillVenue(box, e, d) {
+    if (!d || !d.found || !(d.arena || d.town)) return;
+    var at = d.starts_at || e.starts_at, pl = [d.arena, d.town && String(d.arena || "").toLowerCase().indexOf(String(d.town).toLowerCase()) < 0 ? d.town : ""].filter(Boolean).join(", ");
+    box.hidden = false;
+    box.appendChild(A.el("p", { class: "evs-d-arena", text: ICON.sport + " " + fill(two("venue"), { plats: pl, tid: hhmm(at) }) }));
+    var row = A.el("div", { class: "evs-d-vacts" });
+    if (okTicket(d.ticket_url)) {
+      var a = A.el("a", { class: "ds-btn ds-btn-secondary evs-buy", href: d.ticket_url, target: "_blank", rel: "noopener noreferrer nofollow" });
+      a.innerHTML = pni("ticket"); a.appendChild(document.createTextNode(two("buy")));
+      row.appendChild(a);
+    } else if (okHttps(d.game_url)) row.appendChild(A.el("a", { class: "evs-gamelink", href: d.game_url, target: "_blank", rel: "noopener noreferrer nofollow", text: two("gameLink") }));
+    if (d.lat != null && isFinite(d.lat) && isFinite(d.lng)) row.appendChild(A.btn(two("arenaShow"), "ds-btn ds-btn-ghost evs-arena-show", function () { A.closeSheet(); A.flyTo(+d.lat, +d.lng, 15); }));
+    if (row.childNodes.length) box.appendChild(row);
   }
   // ownerfix 7 (0497): "Stämmer inte?" on a user tip. 3 different people → it is hidden; the owner sees it before that.
   var wrongOff = false, WRONG_KEY = "olnu.evWrong";
@@ -902,6 +1026,7 @@
     // tests / other modules
     _cache: function () { return cache; }, _load: load, _inTime: inTime, _countdown: countdown, T: T, _dayName: dayName,
     _setTime: function (t) { st.time = t; shown = 80; draw(); }, _head: headOf, _going: function () { return gs; }, _loadGoing: loadGoing,
-    _setFocus: function (f) { focus = f; mapRedraw(); }
+    _setFocus: function (f) { focus = f; mapRedraw(); },
+    _search: function (q) { if (sq.inp) sq.inp.value = q; onQ(q); }, _sq: function () { return sq; }, _dedupe: dedupe
   };
 })();

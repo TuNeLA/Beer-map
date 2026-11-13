@@ -78,4 +78,5 @@ release 0510   # secaudit: a block really hides (find, walk, invites, departures
 release 0509   # bump: Skåla med telefonen (pn_bump_test ON on live = ?bump=1 testers; pn_bump ON = everyone)
 release 0508   # lane unlocks: achievements + 12 avatar items (functions only, additive)
 release 0511   # lane unlocks: wires the u_* medals into award_medals (after the client is live)
+release 0512   # evsearch: events_search + event_venue (read only) + import_sport_events takes an arena town (any time; the client works without it)
 release 0436

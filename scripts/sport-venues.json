@@ -1,5 +1,5 @@
 {
-"_doc": "Arena name (as stats.swehockey.se / TheSportsDB write it) → position. Built 2026-10-21 from OpenStreetMap (Nominatim, © OSM contributors, ODbL); unknown arenas fall back to the town in the team/arena name.",
+"_doc": "Arena name (as stats.swehockey.se / TheSportsDB write it) → position. Built 2026-10-21 from OpenStreetMap (Nominatim, © OSM contributors, ODbL); unknown arenas fall back to the town in the team/arena name. Optional \"town\" per arena (evsearch I-75b) = the town shown in the app; without it the server takes the nearest app town (only 80 towns: Liljas Arena became \"Kalmar\").",
 "ABB Arena Nord": {
 "lat": 59.62631,
 "lng": 16.5287
@@ -10,7 +10,8 @@
 },
 "Arena Grosvad": {
 "lat": 58.71517,
-"lng": 15.80469
+"lng": 15.80469,
+"town": "Finspång"
 },
 "Arena Jernvallen": {
 "lat": 60.60871,
@@ -43,7 +44,8 @@
 "Björbo Ishall": {
 "lat": 60.45925,
 "lng": 14.71343,
-"note": "Björbo"
+"note": "Björbo",
+"town": "Björbo"
 },
 "Björknäs Ishall": {
 "lat": 59.31147,
@@ -75,11 +77,13 @@
 },
 "Bålsta Ishall": {
 "lat": 59.56583,
-"lng": 17.52626
+"lng": 17.52626,
+"town": "Bålsta"
 },
 "Catena Arena": {
 "lat": 56.22586,
-"lng": 12.84484
+"lng": 12.84484,
+"town": "Ängelholm"
 },
 "DIÖ Ishall": {
 "lat": 56.63861,
@@ -119,7 +123,8 @@
 },
 "Gnesta Ishall": {
 "lat": 59.03547,
-"lng": 17.3214
+"lng": 17.3214,
+"town": "Gnesta"
 },
 "Gränshallen": {
 "lat": 59.8796,
@@ -187,7 +192,8 @@
 },
 "Järfälla Ishall": {
 "lat": 59.41832,
-"lng": 17.8236
+"lng": 17.8236,
+"town": "Järfälla"
 },
 "Järna Ishall": {
 "lat": 59.09619,
@@ -243,7 +249,8 @@
 },
 "Liljas Arena": {
 "lat": 56.73811,
-"lng": 15.91236
+"lng": 15.91236,
+"town": "Nybro"
 },
 "Lionshov Ishall": {
 "lat": 58.92475,
@@ -255,7 +262,8 @@
 },
 "Lödöseborg": {
 "lat": 58.02949,
-"lng": 12.15307
+"lng": 12.15307,
+"town": "Lödöse"
 },
 "Löfbergs Arena": {
 "lat": 59.40754,
@@ -315,7 +323,8 @@
 },
 "Nobelhallen": {
 "lat": 59.33648,
-"lng": 14.52031
+"lng": 14.52031,
+"town": "Karlskoga"
 },
 "Nolhaga Ishall": {
 "lat": 57.93143,
@@ -331,7 +340,8 @@
 },
 "Odenrinken": {
 "lat": 58.16396,
-"lng": 13.57158
+"lng": 13.57158,
+"town": "Falköping"
 },
 "Osby Ishall": {
 "lat": 56.379,
@@ -391,7 +401,8 @@
 },
 "Skara Ishall": {
 "lat": 58.38722,
-"lng": 13.45688
+"lng": 13.45688,
+"town": "Skara"
 },
 "Skellefteå Kraft Arena": {
 "lat": 64.76153,
@@ -419,7 +430,8 @@
 },
 "Soft Center Arena": {
 "lat": 56.24815,
-"lng": 15.2767
+"lng": 15.2767,
+"town": "Ronneby"
 },
 "Somashallen": {
 "lat": 59.12944,
@@ -459,7 +471,8 @@
 },
 "Sydnärkehallen": {
 "lat": 59.0621,
-"lng": 15.10448
+"lng": 15.10448,
+"town": "Hallsberg"
 },
 "Sävsjö Ishall": {
 "lat": 57.3928,
@@ -511,7 +524,8 @@
 },
 "Vallentuna Ishall": {
 "lat": 59.53411,
-"lng": 18.09508
+"lng": 18.09508,
+"town": "Vallentuna"
 },
 "Vallhamra Ishall": {
 "lat": 57.72397,
@@ -567,7 +581,8 @@
 },
 "Öckerö Ishall": {
 "lat": 57.71667,
-"lng": 11.64317
+"lng": 11.64317,
+"town": "Öckerö"
 },
 "Österåker Sportcentrum": {
 "lat": 59.4888,

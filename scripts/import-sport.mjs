@@ -18,6 +18,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { ticketFor } from "./import-tickster.mjs";   // 🎟️ exact match links (optional TICKSTER_KEY)
+import { evTeam } from "./ev-dedupe.mjs";   // evsearch I-75a: one row per game and kind (tv / local)
 
 const here = dirname(fileURLToPath(import.meta.url));
 const UA = "OlNu-events/1.0 (+https://github.com/TuNeLA/Beer-map; daily match import)";
@@ -63,7 +64,8 @@ export function placer(venues, towns) {
   }
   return function place(venue, home, location) {
     const v = venue && vIdx.get(norm(venue));
-    if (v && isFinite(v.lat)) return { lat: +v.lat, lng: +v.lng, place: cut(venue, 60), exact: true };
+    // evsearch I-75b: an arena with its own "town" (Liljas Arena → Nybro) — the nearest app town is often wrong (Nybro → "Kalmar")
+    if (v && isFinite(v.lat)) return Object.assign({ lat: +v.lat, lng: +v.lng, place: cut(venue, 60), exact: true }, v.town ? { town: cut(v.town, 40) } : {});
     const t = townIn(location || "") || townIn(venue || "") || townIn(home || "");
     if (t) return { lat: +t.lat, lng: +t.lng, place: cut(venue || t.name, 60), exact: false };
     return null;
@@ -122,7 +124,7 @@ export function swehockeyRows(day, games, cfg, place, seen) {
     const base = { source: "swehockey", source_id: sid, title: cut(g.home + " – " + g.away, women ? 74 : 80) + (women ? " (dam)" : ""), starts_at: new Date(st).toISOString(),
       ends_at: new Date(st + 150 * 60e3).toISOString(), url: "https://stats.swehockey.se/ScheduleAndResults/Schedule/" + g.groupId,
       sport: "hockey", league, home: cut(g.home, 60), away: cut(g.away, 60), kind: "sport" };
-    if (p) out.push(Object.assign({}, base, { place: p.place, lat: p.lat, lng: p.lng, tv: false }));
+    if (p) out.push(Object.assign({}, base, { place: p.place, lat: p.lat, lng: p.lng, tv: false }, p.town ? { town: p.town } : {}));
     // Regional "TV match": e.g. Leksand / Mora games for everyone in Dalarna (ends up town-less, with an area)
     if (isTv) {
       out.push(Object.assign({}, base, { source: "tv", source_id: "tv:" + sid, place: null, lat: null, lng: null, tv: true,
@@ -223,7 +225,7 @@ export function tsdbRow(e, o) {
     league: cut(o.league || e.strLeague, 40), home: cut(e.strHomeTeam, 60), away: cut(e.strAwayTeam, 60), kind: "sport", tv: !!o.tv };
   if (o.tv) return Object.assign(row, { place: null, lat: null, lng: null });
   if (!o.pos) return null;
-  return Object.assign(row, { place: o.pos.place, lat: o.pos.lat, lng: o.pos.lng });
+  return Object.assign(row, { place: o.pos.place, lat: o.pos.lat, lng: o.pos.lng }, o.pos.town ? { town: o.pos.town } : {});
 }
 async function thesportsdb(cfg, place, log, now, skipClubTv) {
   const key = process.env.THESPORTSDB_KEY || "123", base = "https://www.thesportsdb.com/api/v1/json/" + encodeURIComponent(key) + "/";
@@ -329,6 +331,27 @@ export function manualRows(list, now) {
 }
 
 /* ---------- 🎟️ tickets (scripts/sport-tickets.json: one verified link per home club) ---------- */
+// evsearch I-75a: ONE row per game and kind. The same game from two sources (swehockey + TheSportsDB, football-data + TheSportsDB
+// or a manual TV entry) had two TV rows (two source ids) → shown twice. Key = first team word of home + away (evTeam: "Leksands IF"
+// = "Leksand") + tv/local + start within 15 min. The first row wins (sources run in order: swehockey, football-data, TheSportsDB, manual).
+export function gameKey(r) {
+  const h = evTeam(r.home) || String(r.home || "").toLowerCase(), a = evTeam(r.away) || String(r.away || "").toLowerCase();
+  if (!h || !a) return null;
+  return (r.tv ? "tv|" : "loc|") + h + "|" + a;
+}
+export function gameDedupe(rows) {
+  const kept = new Map(), out = [];
+  for (const r of rows || []) {
+    const k = gameKey(r), t = Date.parse(r.starts_at);
+    if (k && isFinite(t)) {
+      const list = kept.get(k) || [];
+      if (list.some((x) => Math.abs(x - t) <= 15 * 60e3)) continue;
+      list.push(t); kept.set(k, list);
+    }
+    out.push(r);
+  }
+  return out;
+}
 export function clubTicket(tickets, row) {
   const list = tickets && tickets[row.sport]; if (!list || !row.home) return null;
   const hit = list[row.home] || Object.entries(list).find(([k]) => norm(k) === norm(row.home))?.[1];
@@ -350,7 +373,7 @@ export async function sportRows({ towns, log, now, tickster }) {
   // Local games only near a town the app knows (40 km); TV rows always.
   const near = towns && towns.length ? rows.filter((r) => r.tv || towns.some((t) => km(t, r) <= (+cfg.town_km || 40))) : rows;
   const seen = new Set();
-  const out = near.filter((r) => (seen.has(r.source_id) ? false : seen.add(r.source_id)));
+  const out = gameDedupe(near.filter((r) => (seen.has(r.source_id) ? false : seen.add(r.source_id))));
   // 🎟️ local matches: the exact Tickster match first, else the home club's ticket page. TV rows never get one.
   const tickets = JSON.parse(await readFile(resolve(here, "sport-tickets.json"), "utf8").catch(() => "{}"));
   let nt = 0, nx = 0;
