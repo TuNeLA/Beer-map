@@ -446,6 +446,12 @@
       if (U.validPos(la, ln) && (!moved || U.haversine(la, ln, known.lat, known.lng) > 30))
         map.setView([la, ln], Math.max(moved || opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate || moved });
       U.ls.set("olnu.locOk", "1");
+      // owner 13 Nov: the fast refine (no high accuracy) can be a coarse network fix = a big blue accuracy circle.
+      // A tap on "locate me" then also asks for a precise GPS fix in the background and redraws the dot + circle.
+      if (moved && opts.precise) getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }).then(function (p2) {
+        if (p2.coords.accuracy < (pos.coords.accuracy || 1e9)) { showMe(p2.coords.latitude, p2.coords.longitude, p2.coords.accuracy);
+          U.ls.setJSON("olnu.lastFix", { lat: p2.coords.latitude, lng: p2.coords.longitude, at: Date.now() }); }
+      }, function () {});
       return true;
     }, function (err) {
       if (moved) return true;
