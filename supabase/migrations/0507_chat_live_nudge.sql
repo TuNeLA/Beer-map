@@ -73,7 +73,8 @@ revoke all on function public.olnu_live_seen_tg() from public;
 
 do $$
 begin
-  if not exists (select 1 from pg_policies where schemaname = 'realtime' and tablename = 'messages' and policyname = 'pn_live_chat_read') then
+  -- an empty Postgres (CI schema rehearsal) has no Supabase Realtime schema: skip the policy there
+  if to_regclass('realtime.messages') is not null and not exists (select 1 from pg_policies where schemaname = 'realtime' and tablename = 'messages' and policyname = 'pn_live_chat_read') then
     create policy pn_live_chat_read on realtime.messages for select to authenticated
       using (realtime.messages.extension = 'broadcast' and public.olnu_live_can(realtime.topic()));
   end if;
