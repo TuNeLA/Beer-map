@@ -10,7 +10,9 @@ window.OLNU_CONFIG = {
   // Mapbox PUBLIC token (pk.*): safe in client code. URL-restricted in the Mapbox account to the app's site
   // (https://tunela.github.io/Beer-map). Used only by the opt-in "Mapbox natt (beta)" map style and docs/karta3d.html.
   MAPBOX_TOKEN: "",   // leave empty: basemap.js reads the pk token from the public_config() RPC (GitHub push protection blocks it in git)
-  VAPID_PUBLIC_KEY: "BMtX3rVi1PuU-ytEsnt0udIaBKBWAELrLEUdCaWW54ltwFfISOPqqkN7DLVXbXsgMNfNxx6yWo8gnNuin8zRAtc"
+  VAPID_PUBLIC_KEY: "BMtX3rVi1PuU-ytEsnt0udIaBKBWAELrLEUdCaWW54ltwFfISOPqqkN7DLVXbXsgMNfNxx6yWo8gnNuin8zRAtc",
+  // Fast chat (lane s1speed, SQL 0507 live 13 Nov 16:57): DM chats get a Realtime nudge. true = DMs, "all" = every chat.
+  dmLive: true
 };
 // 🏪 SAFE: store build flag (store-compliance C). The Android TWA starts with ?app=android (and/or has an
 // android-app:// referrer); the iOS shell is Capacitor. Kept for this session so in-app links keep it.
