@@ -189,7 +189,7 @@ function barInView(page, k) {
         return { dot, bars: barIx.length, under: dot >= 0 && barIx.every((i) => i > dot) }; });
       ok(ord.under && ord.bars > 0, "guard: my-location dot layer stays under every bar / food layer", ord);
       const cl = await page.evaluate(() => GLBARS._cl());
-      ok(cl.maxz === 13, "guard: bar clusters stop at Leaflet zoom 13 (CL_MAXZ 12, c2speed)", { maxz: cl.maxz });
+      ok(cl.maxz === 14, "guard: bar clusters stop at Leaflet zoom 14 (CL_MAXZ 13: c12fix put it back so close bars never disappear at z14)", { maxz: cl.maxz });
       ok(errs.length === 0, "no page errors", errs.slice(0, 5));
     }
     await ctx.close().catch(() => {});
