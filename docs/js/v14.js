@@ -41,7 +41,7 @@
       reauthText: "Appen kan inte nå ditt konto. Om du fortsätter får du ett nytt, tomt konto och tappar dina grupper och din statistik. Har du en flyttkod från en annan app/telefon? Klistra in den i stället.",
       reauthNew: "Fortsätt med nytt konto", reauthFlytt: "📥 Jag har en flyttkod", reauthRetry: "🔄 Försök igen",
       // 18+
-      ageTitle: "En sak till", ageText: "PintsNow ä en app för kvällar ute med kompisar. Den ä bara för dig som ä 18 år eller äldre.",
+      ageTitle: "En sak till", ageText: "PintsNow är en app för kvällar ute med kompisar. Den är bara för dig som är 18 år eller äldre.",
       // Privacy page (SAFE 2026-11-07: must be true – e-mail login, Swish, speed data, retention, processors, contact)
       privBtn: "🔒 Integritet", privTitle: "🔒 Integritet",
       privIntro: "Kort och ärligt: vad PintsNow sparar, varför, vem som ser det och hur länge. PintsNow drivs av en privatperson i Ludvika (Anton Larsson, TuNeLA).",
@@ -82,7 +82,7 @@
       privNo: ["Ingen reklam. Ingen spårning mellan appar. Vi säljer ingen data."],
       privDelH: "Radera",
       privDel: "Inställningar → Konto → Radera mitt konto: namn, avatar, e-post, chatt, bilder, röstklipp, meddelanden, Swish-nummer, platser, notiser och själva kontot raderas. Delade saker, som en grupp du skapat, blir kvar för de andra – utan dig. Har du tappat appen? Gå till pintsnow.com/radera.",
-      privAge: "🔞 PintsNow ä för dig som ä 18 år eller äldre.",
+      privAge: "🔞 PintsNow är för dig som är 18 år eller äldre.",
       privContactH: "Frågor?",
       privContact: "Vill du se din data, rätta den eller klaga? Mejla " + SUPPORT + ". Du kan också klaga hos Integritetsskyddsmyndigheten (imy.se).",
       // Delete all (v2: real deletion, 0209)
