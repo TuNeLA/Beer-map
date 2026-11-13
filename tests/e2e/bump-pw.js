@@ -2,7 +2,7 @@
 // Two phones (two browser contexts) on a mocked server with the same rules as 0509 in this process (the real SQL is tested with
 // supabase/tests/bump-0509.test.sql). Motion = synthetic DeviceMotionEvents at 60 Hz in the page (same shapes as tests/unit/bump.test.mjs).
 // Checks: off = no listener; ?bump=1 / ?bump=0 switch; guards (pocket walk, text field, Följ mig hem); shake opens the glass by itself;
-// knock both = match, NOTHING logged; tilt drains; one empty = wait; both empty = one ÖL! each (toast + Ångra / app-beer hook);
+// knock both = match, NOTHING logged; tilt drains; one empty = wait; both empty = one ÖL! each (app-beer hook on both: level toast + ÅNGRA chip over Annat);
 // one never drinks = "Skålen rann ut", nothing logged; shake alone fades after ~8 s, no server call; hidden page detaches;
 // iPhone asks the motion permission once after the first ÖL! press; store build off; delight.js shake glass stays closed.
 process.argv[2] = process.argv[2] || "8971";
@@ -118,7 +118,7 @@ async function knockPair(A, B) {
     await move(A.page, "shake");
     ok(!(await A.page.$(".pnb-ov")), "Följ mig hem on: no glass");
     await A.page.evaluate(() => document.body.classList.remove("hf-on"));
-    // the hook from app-beer.js on B (A has none: toast path)
+    // B: the app-beer hook is stubbed (records the beer); A keeps the real hook (normal ÖL! confirmation)
     await B.page.evaluate(() => { window.__hook = []; window.BOLD.api().beerFromBump = (b) => window.__hook.push(b.accepted); });
     await Promise.all([move(A.page, "shake"), move(B.page, "shake")]);
     const sa = await st(A.page);
@@ -142,12 +142,19 @@ async function knockPair(A, B) {
     await move(A.page, "drink");
     await A.page.waitForFunction(() => !document.querySelector(".pnb-ov"), null, { timeout: 8000 }).catch(() => {});
     await B.page.waitForFunction(() => window.__hook && window.__hook.length, null, { timeout: 8000 }).catch(() => {});
+    // A has the real app-beer hook (A.beerFromBump → beerDone): the normal ÖL! confirmation = the level toast + the ÅNGRA chip
+    // over Annat (c4drinks I-34). bump.js's own "Skål med X! Loggad som öl." toast is only the fallback when the hook is missing.
+    await A.page.waitForSelector(".undo-fab", { timeout: 5000 }).catch(() => {});
     const ta = await toasts(A.page);
-    ok(/Skål med Lisa! Loggad som öl\./.test(ta), "both empty → A: Skål! then the ÖL! confirmation (toast)", ta);
+    const ca2 = await A.page.evaluate(() => ({ undo: !!document.querySelector(".undo-fab"), over: !!document.querySelector(".undo-fab.over-annat"),
+      accAgo: window.PN && window.PN.s && window.PN.s.lastAcceptAt ? Date.now() - window.PN.s.lastAcceptAt : -1 }));
+    ok(ta.trim().length > 3 && !/kunde inte loggas/.test(ta) && ca2.undo && ca2.accAgo >= 0 && ca2.accAgo < 15000,
+      "both empty → A: Skål! then the ÖL! confirmation (toast)", { ta, ...ca2 });
     ok((await B.page.evaluate(() => window.__hook)).join() === "true", "B: app-beer hook gets the accepted beer");
     ok(logged.filter((l) => l.accepted).length === 2, "one ÖL! each", logged);
-    await A.page.evaluate(() => { const b = [...document.querySelectorAll("#toasts .toast button")].find((x) => x.textContent === "Ångra"); if (b) b.click(); }); await wait(A.page, 600);
-    ok(calls.some((c) => c.fn === "undo" && c.who === "A"), "Ångra in the toast calls undo_beer");
+    // ÅNGRA = the chip over Annat (app-beer.js showUndo); a toast "Ångra" button only on the fallback path
+    await A.page.evaluate(() => { const b = document.querySelector(".undo-fab") || [...document.querySelectorAll("#toasts .toast button")].find((x) => x.textContent === "Ångra"); if (b) b.click(); }); await wait(A.page, 600);
+    ok(calls.some((c) => c.fn === "undo" && c.who === "A"), "Ångra (the chip over Annat) calls undo_beer");
     // 3. one never drinks: Skålen rann ut, nothing logged (window 6 s in the mock)
     WIN = 6000; const before = logged.length;
     await knockPair(A, B);

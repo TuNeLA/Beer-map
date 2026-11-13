@@ -80,15 +80,23 @@ const cap = (page) => page.evaluate(() => {
     bg: c ? getComputedStyle(c).backgroundColor : "" };
 });
 const hhmm = (ms) => { const d = new Date(ms); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); };
-// tap ÖL! and time the first feedback (splash call + first toast) inside the page
+// tap ÖL! and time the first feedback (splash + first toast) inside the page.
+// "splash" = the first VISIBLE tap effect: the fx.js CSS splash (FX.splash) OR, since lane juice, the FX.juice.press effect
+// (squash .jc-pop on .beer-wrap + the foam burst canvas .jc-cv). out.how says which one came first.
 const tapTimed = (page) => page.evaluate(() => new Promise((res) => {
-  const t0 = performance.now(), out = { splash: -1, toast: -1, text: "" };
-  const fx = window.FX, orig = fx.splash; fx.splash = function () { if (out.splash < 0) out.splash = performance.now() - t0; return orig.apply(this, arguments); };
+  const t0 = performance.now(), out = { splash: -1, how: "", toast: -1, text: "" };
+  const hit = (how) => { if (out.splash < 0) { out.splash = performance.now() - t0; out.how = how; } };
+  const fx = window.FX, orig = fx.splash; fx.splash = function () { hit("fx.splash"); return orig.apply(this, arguments); };
+  const fmo = new MutationObserver((ms) => { for (const m of ms) {
+    if (m.type === "attributes" && m.target.classList && m.target.classList.contains("jc-pop")) hit("juice.squash");
+    for (const n of m.addedNodes || []) if (n.nodeType === 1 && (n.classList.contains("jc-cv") || n.classList.contains("foam-splash"))) hit(n.classList.contains("jc-cv") ? "juice.burst" : "fx.splash");
+  } });
+  fmo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   const box = document.getElementById("toasts");
   const mo = new MutationObserver(() => { const t = box.querySelector(".toast"); if (t && out.toast < 0) { out.toast = performance.now() - t0; out.text = t.textContent; t.setAttribute("data-x8test", "1"); } });
   mo.observe(box, { childList: true, subtree: true, characterData: true });
   document.getElementById("btn-beer").click();
-  setTimeout(() => { mo.disconnect(); fx.splash = orig; res(out); }, 1200);
+  setTimeout(() => { mo.disconnect(); fmo.disconnect(); fx.splash = orig; res(out); }, 1200);
 }));
 
 (async () => {

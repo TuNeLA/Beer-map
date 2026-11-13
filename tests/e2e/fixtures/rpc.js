@@ -132,6 +132,8 @@ function build(now) {
 const EMPTY = new Set(["my_rallies", "live_others", "ghost_points", "ghost_points2", "my_blocks", "group_etas", "bars_gone",
   "beer_reactions", "friend_totals", "my_medals", "award_medals", "member_medals",
   "bar_areas_in", "bar_status", "my_group_flags", "beer_type_stats", "bar_regulars", "city_league", "events_near", "home_status", "knuff_inbox", "medevac_checks", "my_removals", "my_status", "user_places",
+  // bar_prices_in: [] = no crowd prices in the area (placecard.js $ level → none; barinfo.js price tags → none). placecard-pw.js routes its own.
+  "bar_prices_in",
   // poll_v2: [] on purpose = "old server", so the app reads live_beers / live_checkins, which the helpers and many tests mock.
   // strip-test.js and speed-pw.js answer poll_v2 themselves (the new path). Do not answer it here without moving those tests.
   "poll_v2"]);
