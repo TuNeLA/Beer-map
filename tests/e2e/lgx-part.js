@@ -97,9 +97,9 @@ module.exports = async function ({ browser, setup, ok, st, flush, evs, wait, H, 
   };
   const MATRIX = [
     ["on", {}, { err: 1, keep: 1, use: 1, heavy: 1 }],
-    ["optin", {}, { err: 1, keep: 1, use: 0, heavy: 0 }],
+    ["optin", {}, { err: 1, keep: 0, use: 0, heavy: 0 }],   // consent lane: no diagnostics before Ja
     ["optin", { cons: 1 }, { err: 1, keep: 1, use: 1, heavy: 1 }],
-    ["lite", {}, { err: 1, keep: 1, use: 0, heavy: 0 }],
+    ["lite", {}, { err: 1, keep: 0, use: 0, heavy: 0 }],   // consent lane: lite + no answer = errors only
     ["off", {}, { err: 1, keep: 0, use: 0, heavy: 0 }],
     ["on", { heavyOff: 1 }, { err: 1, keep: 1, use: 1, heavy: 0 }],
   ];

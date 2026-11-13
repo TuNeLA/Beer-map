@@ -140,6 +140,7 @@ function seed(o = {}) {
     S("olnu.guideSeen", String(Date.now())); S("olnu.installSeen", "1"); S("olnu.lang", o.lang || "sv");
     S("olnu.title", "Löjtnant Lager"); S("olnu.titleTotal", "43"); S("olnu.ladder", "11"); S("olnu.medalsSeeded", "1"); S("olnu.medalsMigrated", "1");
     S("olnu.auth", SESSION);
+    if (location.hostname === "tunela.github.io" && o.logCons !== null) S("olnu.logCons", o.logCons || "1");   // consent lane
     const exp = Date.now() + 6 * 3600e3;
     S("olnu.night", { count: 6, expires: exp, lastTap: o.cooldown ? Date.now() - 3 * 60e3 : Date.now() - 40 * 60e3 });
     if (o.checkin !== false) S("olnu.checkin", { id: "n3472634175", name: "Pitchers", lat: 60.14997, lng: 15.18679, at: Date.now() - 90 * 60e3, until: exp });

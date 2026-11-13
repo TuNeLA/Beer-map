@@ -48,9 +48,13 @@
     if (window.OLNU_STORE != null) return !!window.OLNU_STORE;
     try { return !!window.Capacitor || /[?&]app=(android|ios)\b/.test(location.search) || /^android-app:/.test(document.referrer || "") || ls("olnu.store") === "1"; } catch (e) { return false; }
   }
+  // consent lane (13 Nov; ePrivacy art. 5(3) / LEK 9 kap. 28 §): the REAL app (store build + the public site) reads and sends
+  // no diagnostics before "Ja". Beta / test builds (PN_BETA, #olnu-beta badge) and a local dev server keep the beta mode "on".
+  function devHost() { try { return /^(localhost|127(\.\d+){3}|\[::1\]|0\.0\.0\.0)$/.test(location.hostname); } catch (e) { return false; } }
+  function real() { return store() || !isBeta() && !devHost(); }
   function mode() {   // effective server mode for this phone
     var m = ls(K_MODE) || "on";
-    if (store() && m === "on") m = "optin";
+    if (m === "on" && real()) m = "optin";
     return m;
   }
   var betaC = null;
@@ -73,7 +77,7 @@
     return permOk || permState === "na";
   }
   function errOn() { return mode() !== "none"; }
-  function keepOn() { var m = mode(); return m === "on" || m === "optin" || m === "lite"; }   // diagnostics, also when usage is off
+  function keepOn() { var m = mode(); return m === "on" || (m === "optin" || m === "lite") && cons() && ls(K_EV) !== "0"; }   // diagnostics: beta always; the real app only after "Ja" (consent lane)
   function heavyOn() { return fullOn() && ls(K_HEAVY) !== "0"; }
   // LX classes. KEEP = crash / error context / device / network / speed (no usage, no position). HEAVY = high volume usage.
   var KEEP_RE = /^(crash\.|dev$|dev\.|net\.|sw\.|perf\.(boot|load|fcp|lcp|cls|long|map|rpc|self|inp|ft|mem)$)/;
@@ -117,11 +121,24 @@
   }
 
   /* ---------- queue ---------- */
+  // consent lane: diagnostics before an answer wait in memory (HOLD, max 200, never stored, never sent); "Ja" sends them,
+  // "Nej" / closing the ask / the switch off drops them. Errors are always sent, but without device fields (FP) until "Ja".
+  var HOLD = [], FP = { os: 1, osv: 1, br: 1, brv: 1, mob: 1, mdl: 1, mem: 1, cpu: 1, scw: 1, sch: 1, dpr: 1, w: 1, h: 1, ct: 1, rtt: 1, dl: 1, sd: 1, tz: 1, tch: 1 };
+  function waitCons() { var m = mode(); return (m === "optin" || m === "lite") && ls(K_CONS) == null && ls(K_EV) !== "0"; }
+  function consChanged() {
+    var h = HOLD; HOLD = [];
+    Q = (keepOn() ? Q.concat(h) : Q).filter(function (e) { var c = evCls(e.n); return c === "err" || allowed(c); }).slice(-MAX_Q);
+  }
   function push(name, p, force) {
     if (dead) return;
-    if (!allowed(evCls(name)) && !force) return;
-    var t = pnow();
-    Q.push({ at: Date.now(), n: name, p: clean(p) });
+    var c = evCls(name);
+    if (!allowed(c) && !force) {
+      if (c === "keep" && waitCons()) { HOLD.push({ at: Date.now(), n: name, p: clean(p) }); if (HOLD.length > 200) HOLD.shift(); }
+      return;
+    }
+    var t = pnow(), cp = clean(p);
+    if (c === "err" && !keepOn()) Object.keys(cp).forEach(function (k) { if (FP[k]) delete cp[k]; });
+    Q.push({ at: Date.now(), n: name, p: cp });
     if (Q.length > MAX_Q) {   // memory cap: drop the oldest taps first, then the oldest of anything
       var i = 0; while (i < Q.length && evCls(Q[i].n) !== "heavy") i++;
       Q.splice(i < Q.length ? i : 0, 1); dropped++;
@@ -324,7 +341,8 @@
     var pre = m === "on" ? "Under betan, om du int' stänger av det: " : "Bara om du har sagt ja: ";
     return [pre + "vad du trycker på, vilka menyer och flikar du öppnar och hur länge, hur du använder kartan (zoom, och vilket område du tittar på – avrundat till ca 1 km, aldrig nära hemmet), vilka funktioner och spel du använder, notiser, installation, telefonmodell, minne, skärm och batterinivå. Inga texter, inga namn.",
       pre + "din position max 1 gång/min när appen ä öppen, och dina in- och utcheckningar – för att göra automatisk incheckning bättre. Inte i spökläge, inte i hemzonen.",
-      "Alltid (också om du stänger av): " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Vid ett fel skickas dina senaste knapptryck med, bara om användning ä på.",
+      m === "on" ? "Alltid (också om du stänger av): " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Vid ett fel skickas dina senaste knapptryck med, bara om användning ä på."
+        : "Bara om du har sagt ja: " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Alltid: felrapporter (fel i appen, appversion) – utan position och utan uppgifter om telefonen.",
       "Sparas i 30 dagar, sen tas det bort. Bara vi (PintsNow) ser det. Inga andra företag.",
       "Stäng av i ⚙️ Inställningar → Integritet. Stänger du av positionen tar vi bort det sparade."];
   }
@@ -531,7 +549,7 @@
     push("log.notice", { k: kind });
   }
   function askOnce() {
-    if (mode() !== "optin" || ls(K_CONS) != null || isBeta() || !A || !A.openSheet || !A.authed || !A.authed()) return;
+    if (mode() !== "optin" || ls(K_CONS) != null || ls(K_EV) === "0" || isBeta() || !A || !A.openSheet || !A.authed || !A.authed()) return;
     if (A.sheetOpen && A.sheetOpen()) return;
     if (pnow() - lastDown < 10000) return;
     var tb = document.getElementById("toasts"); if (tb && tb.children.length) return;
@@ -548,15 +566,15 @@
         "Din position under kvällen (max 1 gång/min när appen är öppen) och dina in- och utcheckningar. Så kan vi göra automatisk incheckning bättre."]
         .forEach(function (t) { ul.appendChild(el("li", { text: t })); });
       body.appendChild(ul);
-      body.appendChild(el("p", { class: "muted", text: "Vi sparar det i 30 dagar. Ingen annan ser det. Du kan ändra dig när du vill i Inställningar. Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid." }));
+      body.appendChild(el("p", { class: "muted", text: "Vi sparar det i 30 dagar. Ingen annan ser det. Du kan ändra dig när du vill i Inställningar. Teknisk data (system, nät, minne, hastighet) skickas bara om du säger ja. Felrapporter (fel i appen, utan position och utan uppgifter om telefonen) skickas alltid." }));
       var yes = el("button", { type: "button", class: "btn btn-amber btn-block pnlog-yes", text: "Ja, hjälp till" });
       var no = el("button", { type: "button", class: "btn btn-block pnlog-no", text: "Nej tack" });
       yes.addEventListener("click", function () { setCons(true); A.closeSheet(); A.toast("Tack! Du kan ändra det i Inställningar.", { id: "pnlog-ask", ms: 3000 }); });
       no.addEventListener("click", function () { setCons(false); A.closeSheet(); });
       body.appendChild(el("div", { class: "row pnlog-btns" }, [yes, no]));
-    }, { onClose: function () { if (ls(K_CONS) == null) lsSet(K_CONS, "0"); } });
+    }, { onClose: function () { if (ls(K_CONS) == null) { lsSet(K_CONS, "0"); consChanged(); } } });
   }
-  function setCons(b) { lsSet(K_CONS, b ? "1" : "0"); if (b) { lsSet(K_EV, null); lsSet(K_LOC, null); } }
+  function setCons(b) { lsSet(K_CONS, b ? "1" : "0"); if (b) { lsSet(K_EV, null); lsSet(K_LOC, null); } consChanged(); }
 
   /* ---------- ⚙️ settings ---------- */
   function swRow(label, on, icon, onToggle) {
@@ -586,10 +604,10 @@
     if (m === "lite") { body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vi sparar bara felrapporter och teknisk data (system, nät, hastighet – utan position) just nu." })); return; }
     body.appendChild(swRow("Hjälp till att förbättra appen", evNow, "bulb", function (v) {
       lsSet(K_EV, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
-      if (!v) { Q = Q.filter(function (e) { var c = evCls(e.n); return c === "err" || c === "keep"; }); }
+      consChanged();   // consent lane: on = held diagnostics go; off = usage + (real app) diagnostics dropped
       A.toast(v ? "Tack! Vi sparar hur appen används (inga texter, inga namn)." : "Av. Vi sparar bara felrapporter.", { id: "pnlog-set", ms: 3000 });
     }));
-    body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vad du trycker på, menyer, kartan (område avrundat ~1 km), funktioner och hur snabb appen är. Inga texter, inga namn. Sparas 30 dagar. Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid." }));
+    body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vad du trycker på, menyer, kartan (område avrundat ~1 km), funktioner och hur snabb appen är. Inga texter, inga namn. Sparas 30 dagar. " + (m === "on" ? "Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid." : "Teknisk data (system, nät, hastighet) bara när den är på. Felrapporter (utan position, utan uppgifter om telefonen) skickas alltid.") }));
     body.appendChild(swRow("Spara position för bättre incheckning", locNow, "pin", function (v) {
       lsSet(K_LOC, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
       if (!v) {
@@ -643,7 +661,7 @@
     event: event,
     loc: function (kind, x) { try { if (/^(fix|eval|ask|answer|auto_in|auto_out|ci|co|beer|notice)$/.test(kind)) locRow(kind, x); } catch (e) {} },
     flush: function () { return flush(false); },
-    state: function () { return { q: Q.length, l: L.length, sent: sent, selfMs: Math.round(selfMs * 10) / 10, mode: mode(), full: fullOn(), loc: locOn(), keep: keepOn(), heavy: heavyOn(), authed: !!token(), sess: sess, screen: screen, dead: dead }; },
+    state: function () { return { q: Q.length, l: L.length, sent: sent, selfMs: Math.round(selfMs * 10) / 10, mode: mode(), full: fullOn(), loc: locOn(), keep: keepOn(), hold: HOLD.length, real: real(), heavy: heavyOn(), authed: !!token(), sess: sess, screen: screen, dead: dead }; },
     cls: evCls, allowed: function (c) { try { return allowed(c); } catch (e) { return false; } },
     onRpc: function (fn) { if (typeof fn === "function" && RL.indexOf(fn) < 0) RL.push(fn); },
     screen: function () { return screen; }, crumbs: function () { return crumbStr(); },
