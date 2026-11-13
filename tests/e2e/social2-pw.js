@@ -65,7 +65,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     await page.evaluate(() => { const c = [...document.querySelectorAll(".glist .gcard")].find((x) => /Ludvika/.test(x.textContent)); c.click(); }); await wait(page, 2200);
     ok("home: Nu strip", await vis(page, ".gpg-now") && /3 ute nu/.test(await page.textContent(".gpg-now")) && /La Parma/.test(await page.textContent(".gpg-now")), await page.textContent(".gpg-now"));
     ok("home: faces 3", (await page.$$(".gpg-now .gpg-face")).length === 3);
-    ok("home: chat preview 3 msgs", (await page.$$(".gpg-msgs .gpg-msg")).length === 3);
+    ok("home: chat preview = the last 5 msgs (d2group I-42; the mock has 4)", (await page.$$(".gpg-msgs .gpg-msg")).length === 4);
     ok("home: [ds52] bar = labelled Ikväll, no 🍺", await vis(page, ".gpg-plus") && /Ikväll/.test(await page.textContent(".gpg-plus")) && !(await vis(page, ".gpg-beer")));
     ok("home: [ds52] Bjud in button + [ds60] group code on the page", await vis(page, ".pn-gp-inv") && /Bjud in/.test(await page.textContent(".pn-gp-inv")) && /ABC234/.test(await page.textContent(".pn-gp-code")));
     ok("home: [ds52] Om gruppen row (.gpg-dots)", await vis(page, ".gpg-dots") && /Om gruppen/.test(await page.textContent(".gpg-dots")));
@@ -85,10 +85,10 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     ok("+: [ui-build] Kalla in + Spel visible, Bjud in only in ⋯", ["Kalla in", "Spel"].every((w) => plusVis.some((t) => t.indexOf(w) >= 0)) && !plusVis.some((t) => /Bjud in till/.test(t)), plusVis);
     ok("+: groupActions item (Jag bjöd)", plusVis.some((t) => /Jag bjöd/.test(t)), plusVis);
     ok("+: Nu/chat/bar hidden", !(await vis(page, ".gpg-now")) && !(await vis(page, ".gpg-chat")) && !(await vis(page, ".gpg-bar")));
-    ok("+: [ui-build] one list, no fold: Gänget visible, no Mer… button", plusVis.some((t) => /Gänget/.test(t)) && !(await vis(page, ".gpg-fold")), plusVis);
+    ok("+: [ui-build] one list, no fold: no Mer… button; [d2group] no Gänget row (it is a section of the Spel hub)", !plusVis.some((t) => /^Gänget/.test(t)) && !(await vis(page, ".gpg-fold")), plusVis);
     ok("+: chief/leave not here", !plusVis.some((t) => /Lämna|Gruppchef/.test(t)), plusVis);
     await shot(page, "plus");
-    ok("+ [ui-build] list: Gänget + Spel (duels live in the 🎉 Spel hub)", plusVis.some((t) => /Gänget/.test(t)) && plusVis.some((t) => /Spel/.test(t)), plusVis);
+    ok("+ [ui-build] list: Spel (duels + [d2group] Gänget live in the 🎉 Spel hub)", plusVis.some((t) => /Spel/.test(t)), plusVis);
     await page.evaluate(() => [...document.querySelectorAll(".gpg-ga .btn")].find((b) => /Jag bjöd/.test(b.textContent)).click());
     ok("groupActions onClick gets g", await page.evaluate((gid) => window.__ga === gid, GID));
     await page.click("#pn-back"); await wait(page, 300);
@@ -96,7 +96,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     // ⋯ menu
     await page.click(".gpg-dots"); await wait(page, 600);
     const infoVis = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => e.getBoundingClientRect().height > 0).map((e) => (e.textContent || "").trim().slice(0, 26)));
-    ok("⋯: members, code, leave [ui-build: the code is only in the ⋯ Kod row, not in the subtitle]", infoVis.some((t) => /Medlemmar/.test(t)) && /ABC234/.test(await page.evaluate(() => { const c = document.querySelector(".gpg-code-v"); return c && c.getBoundingClientRect().height > 0 ? c.textContent : ""; })) && infoVis.some((t) => /Lämna/.test(t)), infoVis);
+    ok("⋯: members, leave; [d2group move 8] no Kod / Bjud in row (the code is on the top card)", infoVis.some((t) => /Medlemmar/.test(t)) && !(await page.evaluate(() => { const c = document.querySelector(".gpg-code-v"); return !!(c && c.getBoundingClientRect().height > 0); })) && infoVis.some((t) => /Lämna/.test(t)), infoVis);
     ok("⋯: no game tiles", !infoVis.some((t) => /Lek|Förfest|Kalla in/.test(t)), infoVis);
     await shot(page, "info");
     await page.click("#pn-back"); await wait(page, 300);

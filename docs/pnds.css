@@ -1817,6 +1817,58 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 .dm-blk{margin:var(--sp-4,16px) 0 0}
 .dm-blk[hidden]{display:none}
 /* lane:b1people dm header END */
+/* lane:d2group START — AUDIT-NAV move 8 + I-42 (js/gpage.js). Group home = top card (Kod under "N av M dricker nu") · Nu · Gänget ikväll ·
+   live tiles · Chatten · Om gruppen · [Ikväll]. The chat preview = the last 5 messages, 2 lines each; a photo row = a fixed 48 px thumb.
+   Spel hub: the Gänget fun pack as one card of rows under the games (GPAGE.spelGang). Tokens only. */
+#sheet .gpg>.gpg-chat .gpg-msgs{gap:var(--sp-2,8px);margin:0 0 var(--sp-3,12px)}
+#sheet .gpg>.gpg-chat .gpg-msg{font:400 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text-2)}
+#sheet .gpg>.gpg-chat .gpg-msg b{font-weight:600;color:var(--ds-text)}
+#sheet .gpg>.gpg-chat .gpg-msg.me b{color:var(--ds-amber-t,var(--amber))}
+#sheet .gpg>.gpg-chat .gpg-msg small{font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted)}
+#sheet .gpg>.gpg-chat .gpg-msg.gpg-pmsg{display:flex;align-items:center;gap:var(--sp-3,12px);overflow:visible;-webkit-line-clamp:none}
+#sheet .gpg>.gpg-chat .gpg-pt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#sheet .gpg>.gpg-chat .gpg-thumb{flex:0 0 48px;width:48px;height:48px;box-sizing:border-box;border-radius:var(--ds-r-1,12px);border:1px solid var(--ds-border);
+  background:var(--ds-raised);color:var(--ds-muted);display:inline-flex;align-items:center;justify-content:center;overflow:hidden}
+#sheet .gpg>.gpg-chat .gpg-thumb .pi{width:20px;height:20px}
+#sheet .gpg>.gpg-chat .gpg-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.sp-hub .pn-ggs{margin:var(--sp-5,24px) 0 0}
+.sp-hub .pn-ggs-h{margin:0;font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.sp-hub .pn-ggs-s{margin:var(--sp-1,4px) 0 var(--sp-3,12px);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.sp-hub .pn-ggs-l{display:flex;flex-direction:column;border:1px solid var(--ds-border);border-radius:var(--ds-r-2,16px);background:var(--ds-card);overflow:hidden}
+.sp-hub .pn-ggs-r{position:relative;display:flex;align-items:center;gap:var(--sp-3,12px);width:100%;min-height:64px;padding:var(--sp-3,12px) var(--sp-4,16px);
+  border:0;background:none;color:var(--ds-text);font:inherit;text-align:left;cursor:pointer}
+.sp-hub .pn-ggs-r+.pn-ggs-r::before{content:"";position:absolute;top:0;left:52px;right:0;height:1px;background:var(--ds-border);pointer-events:none}
+.sp-hub .pn-ggs-r:active{background:var(--ds-raised)}
+.sp-hub .pn-ggs-r:focus-visible{outline:2px solid var(--ds-amber-t,var(--amber));outline-offset:-2px}
+.sp-hub .pn-ggs-i{flex:0 0 24px;width:24px;height:24px;display:inline-flex;color:var(--ds-text-2)}
+.sp-hub .pn-ggs-i .pi{width:24px;height:24px}
+.sp-hub .pn-ggs-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.sp-hub .pn-ggs-t b{font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.sp-hub .pn-ggs-t small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.sp-hub .pn-ggs-b{flex:0 0 auto;font:600 var(--fs-12)/16px var(--ds-sans);padding:var(--sp-1,4px) var(--sp-2,8px);border-radius:var(--ds-r-pill,999px);background:var(--ds-amber-soft);color:var(--ds-amber-t,var(--amber))}
+.sp-hub .pn-ggs-c{flex:0 0 16px;width:16px;height:16px;display:inline-flex;color:var(--ds-muted)}
+.sp-hub .pn-ggs-c .pi{width:16px;height:16px}
+/* top card: "N av M dricker nu" stays ONE line, so "Kod" under it never overlaps it (360 px: the line wrapped under the Kod row) */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gmain .gsub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@media (max-width:374px){
+  #sheet .gitem:not(.gcard)>div.gp.gpg.gpg[data-gv="home"]>.gmain{padding-right:124px !important}
+  #sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gmain .gsub{font-size:var(--fs-14) !important;line-height:20px !important}
+  #sheet .gpg.gpg[data-gv="home"]>.pn-gp-inv{padding:0 var(--sp-3) 0 var(--sp-2) !important;gap:var(--sp-1) !important}
+}
+/* Ikväll (+): 📸 Engångskamera is the first row of the Ikväll card, drawn like the other rows (not the home tile) */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]>.fm-gi{padding:0 !important;margin:0 !important;background:none !important;border:0 !important;box-shadow:none !important;border-radius:0 !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]>.fm-gi>.btn.fm-gbtn{display:grid !important;grid-template-columns:var(--pn-row-ic,24px) minmax(0,1fr);column-gap:var(--sp-3,12px);row-gap:0;
+  align-items:center;align-content:center;text-align:left;width:100%;min-height:64px !important;padding:var(--sp-3,12px) 44px var(--sp-3,12px) var(--sp-4,16px) !important;
+  background-color:var(--ds-card) !important;border:1px solid var(--pn-div) !important;border-width:0 1px !important;border-radius:0 !important;box-shadow:none !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]>.fm-gi.a2-first>.btn.fm-gbtn{border-top-width:1px !important;border-top-left-radius:var(--r-lg,16px) !important;border-top-right-radius:var(--r-lg,16px) !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]>.fm-gi.a2-last>.btn.fm-gbtn{border-bottom-width:1px !important;border-bottom-left-radius:var(--r-lg,16px) !important;border-bottom-right-radius:var(--r-lg,16px) !important}
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="plus"]>.fm-gi:not(.a2-first)>.btn.fm-gbtn{background-image:linear-gradient(var(--pn-div),var(--pn-div)) !important;background-size:calc(100% - var(--pn-div-inset,52px)) 1px !important;background-position:right top !important;background-repeat:no-repeat !important}
+#sheet .gpg[data-gv="plus"]>.fm-gi>.fm-gbtn::before{content:none !important}
+#sheet .gpg[data-gv="plus"]>.fm-gi>.fm-gbtn::after{right:var(--sp-4,16px)}
+#sheet .gpg[data-gv="plus"]>.fm-gi .fm-gl{display:contents !important}
+#sheet .gpg[data-gv="plus"]>.fm-gi .fm-gl>.pi{position:static !important;grid-column:1;grid-row:1 / span 2;margin:0 !important}
+#sheet .gpg[data-gv="plus"]>.fm-gi .fm-gs{grid-column:2;grid-row:2}
+/* lane:d2group END */
 /* d3smooth START (SMOOTH-PLAN 7) — a glow pulses on the compositor: the shadow is painted ONCE on a pseudo element and only its
    opacity animates (an infinite box-shadow animation repainted the element every frame on the main thread).
    #rally clips (overflow:hidden): its glow is inset. .rl-pin = map lane CSS, the override lives here (one place for glows). */

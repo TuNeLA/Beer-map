@@ -113,7 +113,7 @@ const fire = (page, msg, o) => page.evaluate(([m, o]) => { window.PNDS._A().toas
     const { ctx, page } = await open(browser, { width: 390, height: 844 });
     await clickJS(page, "#btn-groups"); await wait(page, 1400);
     await page.evaluate(() => { const c = document.querySelector(".glist .gcard"); if (c) c.click(); }); await wait(page, 1800);
-    await page.evaluate(() => { const f = [...document.querySelectorAll("#sheet-body button, #sheet-body summary")].find((x) => /Ikväll/.test(x.textContent) && /Jag kör/.test(x.textContent)); if (f) f.click(); }); await wait(page, 1200);
+    await page.evaluate(() => { const f = [...document.querySelectorAll("#sheet-body button, #sheet-body summary")].find((x) => /Ikväll/.test(x.textContent) && /Jag kör|Skåltimmen/.test(x.textContent)); if (f) f.click(); }); await wait(page, 1200);   // d2group: the Ikväll button says "Kamera, Skåltimmen, Spel…"
     const g = await page.evaluate(() => {
       const w = document.querySelector('#sheet .gpg[data-gv="plus"]'); if (!w) return null;
       const tiles = [...w.querySelectorAll(":scope > .sa-gl.a2-row")].filter((t) => t.getClientRects().length).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top), out = [];

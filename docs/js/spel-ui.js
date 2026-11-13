@@ -265,6 +265,7 @@
       list.appendChild(b);
     });
     body.appendChild(list);
+    try { var gg = st.g && window.GPAGE && window.GPAGE.spelGang ? window.GPAGE.spelGang(st.g, close) : null; if (gg) body.appendChild(gg); } catch (e) {}   // d2group (AUDIT-NAV Q13): Gänget fun pack = a section of this hub
     launchSync();
     if (!st.g) body.appendChild(el("p", { class: "sp-note", text: TX.noGroup }));
     root.appendChild(body);

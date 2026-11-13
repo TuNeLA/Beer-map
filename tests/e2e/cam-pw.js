@@ -89,7 +89,7 @@ const sheet = (page) => page.evaluate(() => ({ open: !document.getElementById("s
           const wrap = t.closest("[data-gv]");
           return { gm: t.getAttribute("data-gm"), gv: wrap && wrap.getAttribute("data-gv"), vis: t.getClientRects().length > 0 && getComputedStyle(t).display !== "none", text: t.textContent, tonight: !!t.querySelector(".fm-tonight") };
         });
-        ok("group page: 📸 tile visible on the home view (not in + / ⋯)", tile && tile.vis && /home/.test(tile.gm) && tile.gv === "home", tile);
+        ok("group page: 📸 tile in Ikväll (+) (d2group AUDIT-NAV Q5: not on the calm home view)", tile && /plus/.test(tile.gm), tile);
         ok("group page tile: '🔴 Gänget fotar ikväll · 8 kvar för dig'", tile && tile.tonight && /Gänget fotar ikväll · 8 kvar för dig/.test(tile.text), tile && tile.text);
         await page.evaluate(() => document.querySelector("#sheet-body .fm-gi").scrollIntoView({ block: "center" })); await wait(page, 300);
         await page.evaluate(() => document.querySelectorAll(".toast").forEach((t) => t.remove()));
