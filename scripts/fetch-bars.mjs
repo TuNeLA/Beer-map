@@ -2,7 +2,7 @@
 // Fetch all bars/pubs/nightclubs/biergartens in Sweden from OpenStreetMap (Overpass)
 // and write docs/bars.json as [{id,name,lat,lng,type,outdoor?}]. Node 18+ (global fetch). Run weekly by .github/workflows/bars.yml.
 // outdoor: 1 = OSM outdoor_seating=* (not "no"), beer_garden=yes or a biergarten (☀️ Uteservering, js/ute.js). Missing = unknown.
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { readFileSync } from "node:fs";
@@ -64,6 +64,8 @@ if (!json) {
   console.error("Giving up:", lastErr && lastErr.message);
   process.exit(1);
 }
+// placesdata: keep the raw Overpass answer for scripts/build-placeinfo.mjs (place cards), no extra Overpass call
+if (process.env.OSM_RAW_DIR) { await mkdir(process.env.OSM_RAW_DIR, { recursive: true }); await writeFile(resolve(process.env.OSM_RAW_DIR, "bars.json"), JSON.stringify(json)); }
 // Places we know are closed (OSM is not always up to date). Edit docs/bars-closed.json to add more.
 let closed = new Set();
 try {

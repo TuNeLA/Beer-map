@@ -1,0 +1,46 @@
+/* Skåla med telefonen (js/bump.js, lane bump). rel="x-lazy-css": loaded on the first open. Tokens only (ds.css). */
+.pnb-ov{position:fixed;inset:0;z-index:10046;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;
+  font-family:var(--ds-sans);color:var(--ds-text);box-sizing:border-box;transition:opacity .6s var(--ds-ease);
+  background:radial-gradient(circle at 50% 45%,var(--ds-amber-soft) 0,var(--ds-bg) 66%);background-color:var(--ds-bg);
+  padding:calc(env(safe-area-inset-top,0px) + 56px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.pnb-ov.pnb-fade{opacity:0;pointer-events:none}
+.pnb-x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;width:48px;height:48px;border-radius:var(--ds-r-pill);border:0;
+  background:var(--ds-card);color:var(--ds-text);font-size:28px;line-height:1;cursor:pointer}
+.pnb-t{font-family:var(--ds-stencil);font-weight:400;font-size:var(--ds-fs-28);line-height:var(--ds-lh-28);margin:0}
+/* the glass: walls + a liquid block whose surface stays level (rotated by the roll), clipped by the glass */
+.pnb-glass{position:relative;width:150px;height:230px;margin:20px 0 16px;flex:none;overflow:hidden;isolation:isolate;
+  border:4px solid var(--ds-text-2);border-top-width:2px;border-radius:6px 6px 34px 34px;background:var(--ds-card);
+  box-shadow:inset 10px 0 18px -12px var(--ds-text),inset -6px 0 14px -10px var(--ds-text)}
+.pnb-liq{position:absolute;left:-50%;width:200%;height:200%;top:100%;transform-origin:50% 0;
+  background:linear-gradient(to bottom,var(--ds-amber-t),var(--ds-amber) 40%);
+  transition:top 140ms linear,transform 120ms linear}
+.pnb-liq::before{content:"";position:absolute;left:0;right:0;top:-12px;height:16px;border-radius:8px;background:var(--ds-text);opacity:.92;
+  box-shadow:0 3px 0 -1px var(--ds-text)}
+.pnb-b{position:absolute;bottom:52%;width:6px;height:6px;border-radius:50%;background:var(--ds-text);opacity:.35;animation:pnb-rise 2.4s linear infinite}
+.pnb-b:nth-child(1){left:42%}.pnb-b:nth-child(2){left:50%;animation-delay:.8s;width:4px;height:4px}.pnb-b:nth-child(3){left:57%;animation-delay:1.6s}
+@keyframes pnb-rise{0%{transform:translateY(0);opacity:0}15%{opacity:.4}100%{transform:translateY(-36vh);opacity:0}}
+/* foam lace left on the rim when the glass is empty */
+.pnb-lace{position:absolute;left:0;right:0;top:0;height:22px;opacity:0;transition:opacity .5s var(--ds-ease);
+  background:radial-gradient(circle at 12% 0,var(--ds-text) 0 9px,transparent 10px),radial-gradient(circle at 34% 0,var(--ds-text) 0 7px,transparent 8px),
+    radial-gradient(circle at 58% 0,var(--ds-text) 0 10px,transparent 11px),radial-gradient(circle at 82% 0,var(--ds-text) 0 8px,transparent 9px)}
+.pnb-glass.pnb-empty .pnb-lace{opacity:.9}
+.pnb-glass.pnb-empty .pnb-liq::before,.pnb-glass.pnb-empty .pnb-b{display:none}
+.pnb-glass.pnb-full{box-shadow:0 0 40px var(--ds-amber-soft),inset 10px 0 18px -12px var(--ds-text)}
+.pnb-ov[data-state="ready"] .pnb-glass{animation:pnb-ready 1.6s var(--ds-ease) infinite}
+.pnb-glass.pnb-clink{animation:pnb-clink 560ms var(--ds-ease)}
+.pnb-ov[data-state="skal"] .pnb-glass{animation:pnb-clink 560ms var(--ds-ease)}
+@keyframes pnb-ready{0%,100%{transform:rotate(0)}50%{transform:rotate(-4deg)}}
+@keyframes pnb-clink{0%{transform:rotate(0) scale(1)}35%{transform:rotate(14deg) scale(1.08)}100%{transform:rotate(0) scale(1)}}
+@media (prefers-reduced-motion:reduce){.pnb-liq{transition:none}.pnb-b{display:none}
+  .pnb-ov[data-state="ready"] .pnb-glass,.pnb-glass.pnb-clink,.pnb-ov[data-state="skal"] .pnb-glass{animation:none}}
+.pnb-msg{min-height:48px;margin:0;text-align:center;font-size:var(--ds-fs-18);line-height:var(--ds-lh-18);font-weight:700;max-width:340px}
+.pnb-msg.pnb-ok{color:var(--ds-amber-t)}
+.pnb-msg.pnb-wait,.pnb-msg.pnb-err{color:var(--ds-text-2);font-weight:600}
+.pnb-foot{margin:12px 0 0;font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);color:var(--ds-muted);text-align:center;max-width:320px}
+.pnb-dbg{margin:8px 0 0;font:var(--ds-fs-12)/1.2 monospace;color:var(--ds-muted)}
+/* iPhone: the one-time motion question (small, calm, above the bottom bar) */
+.pnb-ask{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);z-index:10040;max-width:480px;margin:0 auto;
+  padding:12px 16px;border-radius:var(--ds-r-3);background:var(--ds-sheet);color:var(--ds-text);box-shadow:var(--ds-sh-2);font-family:var(--ds-sans)}
+.pnb-ask p{margin:0 0 8px;font-size:var(--ds-fs-14);line-height:var(--ds-lh-14)}
+.pnb-ask-row{display:flex;gap:8px;flex-wrap:wrap}
+.pnb-ask-row .btn{min-height:44px}

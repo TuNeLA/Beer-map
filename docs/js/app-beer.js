@@ -41,7 +41,7 @@
   function signIn() { return PN.signIn.apply(null, arguments); }
   PN.put({
     tickCooldown: tickCooldown, drinkFx: drinkFx, resumeNotify: resumeNotify, undoSync: undoSync,
-    showStopSheet: showStopSheet, hidePin: hidePin
+    beerFromBump: beerFromBump, showStopSheet: showStopSheet, hidePin: hidePin
   });
   // </split:imports>
 
@@ -307,6 +307,7 @@
   }
   function beerSay(text, opts) {
     opts = opts || {};
+    if (opts.err && window.FX.juice) window.FX.juice.error();
     var p = beerPend; beerPend = null;
     if (p && p.parentNode && !opts.err && !opts.action) {
       var sp = p.querySelector("span"); if (sp) sp.textContent = text;
@@ -365,11 +366,10 @@
   function beerTap() {
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (PN.s.busy || cooldownLeft() > 0) return;
-    if (navigator.onLine === false) { window.FX.unlock(); window.FX.splash($("btn-beer")); window.FX.vibrate(20); queueBeer(); return; }
+    if (navigator.onLine === false) { window.FX.unlock(); if (window.FX.juice) window.FX.juice.press($("btn-beer")); else { window.FX.splash($("btn-beer")); window.FX.vibrate(20); } queueBeer(); return; }
     if (!PN.s.authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (PN.s.authed) beerTap(); }); return; }   // ⚡ the 1st action makes the account
     window.FX.unlock();
-    window.FX.splash($("btn-beer"));
-    window.FX.vibrate(20);
+    if (window.FX.juice) window.FX.juice.press($("btn-beer")); else { window.FX.splash($("btn-beer")); window.FX.vibrate(20); }
     setBusy(true);
     getPosition().then(askWhere, noGpsSpot).then(function (spot) {
       if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
@@ -419,8 +419,7 @@
     if (res.v2 && d.undo_until) showUndo(d, text, cls);
     else if (!big) beerSay(text, { cls: cls });
     else beerSayClear();
-    if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]);
-    window.FX.sound.beer();
+    if (window.FX.juice) window.FX.juice.accepted(l, big); else { if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]); window.FX.sound.beer(); }
     // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
     if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
     else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
@@ -435,6 +434,11 @@
       map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
     }
     refresh();
+  }
+  // lane bump: a beer the server logged after a phone skål (0509 bump_finish / bump_wait → post_beer_v2). Same UI as a tap.
+  function beerFromBump(d, spot, ghost) {
+    var before = U.drinks(PN.s.meState || myBeer() || {});   // meState is not refreshed yet = drinks before this beer
+    beerDone(d, { v2: true }, spot, ghost, before, null); tickCooldown(); updateCounts();
   }
   // Push to the group. Fully silent: no push keys, no function deployed, network error → nothing happens.
   function notifyGroup() {

@@ -1,0 +1,13 @@
+/* PintsNow juice (js/juice.js): ÖL! squash-and-stretch + the foam burst canvas. Transform / opacity only. */
+.jc-cv{position:fixed;left:0;top:0;width:320px;height:360px;z-index:1400;pointer-events:none;contain:strict}
+/* The wrap moves, not the button: the button keeps its own pn-squash / ready-pop transforms (pnds.css, styles.css). */
+.beer-wrap.jc-pop{animation:jcPop .46s cubic-bezier(.3,.7,.4,1);transform-origin:50% 85%;will-change:transform}
+@keyframes jcPop{
+  0%{transform:scale(1,1)}
+  16%{transform:scale(1.16,.84)}
+  38%{transform:scale(.9,1.12)}
+  58%{transform:scale(1.05,.96)}
+  78%{transform:scale(.985,1.015)}
+  100%{transform:scale(1,1)}
+}
+@media (prefers-reduced-motion:reduce){.beer-wrap.jc-pop{animation:none}.jc-cv{display:none}}

@@ -51,6 +51,7 @@
   function lazyStart() { return PN.lazyStart.apply(null, arguments); }
   function publicStart() { return PN.publicStart.apply(null, arguments); }
   function drinkFx() { return PN.drinkFx.apply(null, arguments); }
+  function beerFromBump() { return PN.beerFromBump.apply(null, arguments); }
   function showStopSheet() { return PN.showStopSheet.apply(null, arguments); }
   function hidePin() { return PN.hidePin.apply(null, arguments); }
   function getName() { return PN.getName.apply(null, arguments); }
@@ -293,7 +294,7 @@
       authed: function () { return PN.s.authed; }, client: function () { return PN.s.client; }, prec: function () { return PN.s.prec; },
       noAccount: function () { return PN.s.publicOn && !PN.s.authed; }, ensureAccount: function () { return signIn(); },   // ⚡ SPEED #6
       center: chaosCenter, getPosition: getPosition, locError: locError, inSweden: inSweden, validPos: U.validPos, showGroups: showGroups,
-      drinkFx: drinkFx, nightEnd: nightEnd, showStopSheet: showStopSheet, hidePin: hidePin, me: function () { return PN.s.meState; },
+      drinkFx: drinkFx, beerFromBump: beerFromBump, nightEnd: nightEnd, showStopSheet: showStopSheet, hidePin: hidePin, me: function () { return PN.s.meState; },
       pollV2: function () { return PN.s.pollV2 === "on"; },
       copyText: copyText, beerOnly: beerOnly, othersOn: function () { return PN.s.othersState === "on"; },
       checkins: function () { return PN.s.checkins; }, myCheckin: myCheckin, openBar: openBar, lastLoc: function () { return PN.s.lastLoc; },

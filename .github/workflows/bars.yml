@@ -7,6 +7,8 @@ on:
     paths:
       - 'scripts/fetch-bars.mjs'
       - 'scripts/fetch-places.mjs'
+      - 'scripts/build-placeinfo.mjs'
+      - 'scripts/placeinfo.mjs'
       - '.github/workflows/bars.yml'
   schedule:
     - cron: '17 4 * * 1'   # every Monday 04:17 UTC
@@ -22,6 +24,9 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      OSM_RAW_DIR: /tmp/osm-raw          # placesdata: raw Overpass answers for build-placeinfo.mjs
+      OVERTURE_JSON: /tmp/overture-se.json
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +46,17 @@ jobs:
         timeout-minutes: 12
         run: node scripts/fetch-places.mjs
 
+      - name: Overture Maps places for Sweden (optional gap filler)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: pip install --quiet duckdb==2.0.0 && python3 scripts/overture-se.py "$OVERTURE_JSON"
+
+      - name: Build place cards (docs/placeinfo/)
+        # Optional: hours, cuisine, flags, website, phone per place. Fails = last week's tiles stay.
+        continue-on-error: true
+        timeout-minutes: 5
+        run: node scripts/build-placeinfo.mjs
+
       - name: Commit docs/bars.json and docs/places.json if changed
         run: |
           git config user.name "github-actions[bot]"
@@ -48,6 +64,7 @@ jobs:
           git add docs/bars.json
           if [ -f docs/places.json ]; then git add docs/places.json; fi
           if [ -d docs/places ]; then git add docs/places; fi
+          if [ -d docs/placeinfo ]; then git add -A docs/placeinfo; fi
           if git diff --cached --quiet; then
             echo "bars.json and places.json unchanged"
             exit 0

@@ -87,6 +87,7 @@ NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + 
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
 run social2    $B social2-pw.js
+run placecard  $B placecard-pw.js   # lane placesdata: place card (cuisine, hours, $ level, chips, links, OSM source; data + RPC mocked)
 run fxg        $B fxg-pw.js        # ds50–ds60: bar sheet, group page, members, chat, ‹ ✕, warm, icons, join fixes
 run strip      $B strip-test.js
 run av2-wizard $B feat-av2-pw.js   # replaces av2-pw.js (old 9-chip editor; the wizard came in c317a9b)
@@ -105,6 +106,7 @@ run rpc-cover  $B rpc-cover-pw.js  # every RPC the main screens call must be ans
 if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else [[ autoci =~ $FILTER ]] && RES+=("$(printf '%-16s %5s %5s  %-6s %s' autoci - - skip 'docs/js/autoci.js not merged yet')"); fi
 # --- ported agent tests (2026-11-09; were only in agent scratchpads). Mocked Supabase, Leaflet fallback (no Mapbox) ---
 run fxm        $B fxm-pw.js        # map fixes ds31–ds42: ANNAT, ⓘ, Ikväll chip, auto check-in list, Auto hemma, Synlighet, calm start
+run juice      $B juice-pw.js      # lane juice: ÖL! sound engine + Ljud switch, haptics Android-only, foam burst cap / reduced motion, no long task, CC0 voice clips
 run pf         $B pf-pw.js         # pin follow (pinfolj.js) + people count / "Folk här" night totals
 run lg         $B lg-pw.js         # PNLOG usage + position log, consent, owner panel (stats.html), lx part (lgx-part.js)
 run cln        $B cln-pw.js        # clean-up: vitals only with the log on, Nytt dates, rpc_bundle2, not_member, medals throttle
@@ -149,6 +151,7 @@ run ownerfix   $B ownerfix-pw.js   # lane ownerfix (owner live test 11 Nov): Eve
 run kpi        $B kpi-pw.js        # lane kpi: X9 Nyckeltal owner panel (owner_kpi 0460, "<3" masks, wrong key) + no emoji in safety.js UI chrome (ds12)
 run popfix     $B popfix-pw.js     # lane popfix: the bar popup on a PC: one card width (320-380 px) at every map position, no word broken mid-word, one-line buttons, the close button inside the card, no overflow (fallback + GL path, 360-2560 px)
 run hooks-order $B hooks-order-pw.js   # lane w1-hooks: PN.hookList() order = the old app.js mods() list (85 names), every hooked module reached
+run bump       $B bump-pw.js       # lane bump: Skåla med telefonen (flag pn_bump): shake fills, knock on 2 phones = ÖL! for both, tap fallback, pause text, iPhone permission
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk

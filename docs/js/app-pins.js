@@ -235,7 +235,7 @@
     var id = bar.id != null ? String(bar.id) : null, open = foldsOpen(), once = foldOnce; foldOnce = null;
     var isOpen = function (k) { return !!open[k] || once === k; };
     // Module sections, sorted by class.
-    popBox.innerHTML = mods("barPopupHTML", bar, list);
+    popBox.innerHTML = mods("barPopupHTML", bar, list) + (PN.placecard ? PN.placecard.popupHTML(bar) : "");   // placesdata: place card
     var crowdEl = popBox.querySelector(".pp-crowd"), crowd = crowdEl ? crowdEl.textContent : "", crowdCls = crowdEl ? crowdEl.className.replace("pp-crowd", "").trim() : "";
     if (crowdEl) crowdEl.remove();
     var dance = popBox.innerHTML.indexOf("🕺") >= 0;

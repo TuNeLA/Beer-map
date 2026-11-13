@@ -1,0 +1,14 @@
+PintsNow audio files (docs/audio/)
+
+voice/v01.mp3 ... voice/v10.mp3 - short Swedish "skål" lines for the ÖL! button (js/juice.js).
+  Made on 13 Nov 2026 with Piper TTS (https://github.com/rhasspy/piper, piper-tts 1.8.0) and the voice
+  sv_SE-nst-medium (https://huggingface.co/rhasspy/piper-voices/tree/main/sv/sv_SE/nst/medium).
+  Voice model: trained from scratch by KBLab (National Library of Sweden), licence CC0 1.0
+  (https://huggingface.co/KBLab/piper-tts-nst-swedish). Training data: NST Swedish speech synthesis
+  (Språkbanken, National Library of Norway), licence CC0 1.0 (https://www.nb.no/sprakbanken/en/resource-catalogue/oai-nb-no-sbr-17/).
+  The program (Piper) is only the tool; the audio it made is not covered by the program licence.
+  Post-processing: ffmpeg (trim silence, loudness -19 LUFS, mono 22.05 kHz, MP3 48 kbit/s).
+  Text: lines from the app's own dialect packs (fx.VOICE_LINES), plain spelling.
+  These clips are released under CC0 1.0 like their sources.
+
+All other sounds (tap, fizz, clink, skal, error, hot, medevac) are made in code in js/juice.js (no files).
