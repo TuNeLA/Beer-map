@@ -591,7 +591,7 @@
       age18: "Jag är 18 år eller äldre",
       ageNeeded: "Du måste vara 18 år eller äldre.",
       introGo: "Kör!",
-      introPrivacy: "Ingen reklam. Vi sparar fel och hur appen används (inga texter, inga namn) för att göra den bättre – stäng av i Inställningar → Integritet & synlighet. Okända ser bara ungefär var du ä – utan namn och antal. Läs mer under 🔒 Integritet.",
+      introPrivacy: "Ingen reklam. Vi sparar fel och hur appen används (inga texter, inga namn) för att göra den bättre – stäng av i Inställningar → Integritet & synlighet. Okända ser bara ungefär var du är – utan namn och antal. Läs mer under 🔒 Integritet.",
       locTitle: "Tillåt plats",
       locWhy: "Vi behöver din plats för att visa kartan där du är och sätta din öl på rätt ställe.",
       locWhy2: "Din plats skickas när du trycker ÖL! eller checkar in (och ett område på ~1 km om du har notiser på). Okända ser bara krogen eller ett område på ~500 m.",

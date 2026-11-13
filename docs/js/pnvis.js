@@ -65,7 +65,7 @@
       if (r && r.error) { ls(KEY, prev === "vanner" ? "vanner" : "alla"); paint(); try { A.toast("Det gick int' att ändra. Försök igen.", { err: true }); } catch (e) {} }
     });
     try { if (A && A.updateCounts) A.updateCounts(); } catch (e) {}
-    try { if (A && A.toast) A.toast(m === "spoke" ? "Spöke: ingen ser dig. Ölen räknas ändå." : m === "vanner" ? "Bara gänget och vänner ser dig nu." : "Alla ser ditt område igen. Gänget ser din pin.", { id: "pn-vis", ms: 3000 }); } catch (e) {}
+    try { if (A && A.toast) A.toast(m === "spoke" ? "Spöke: ingen ser dig. Ölen räknas ändå." : prev === "spoke" ? "Synlig igen. Din pin syns från nästa ÖL!" : m === "vanner" ? "Bara gänget och vänner ser dig nu." : "Alla ser ditt område igen. Gänget ser din pin.", { id: "pn-vis", ms: 3000 }); } catch (e) {}
     paint(); if (menu) fill();
   }
   function paint() {
