@@ -81,9 +81,32 @@
       setTimeout(land, 480);
     }, calm ? 900 : 1150);
     setTimeout(land, 3000);   // never stuck
+    return host;
+  }
+  // I-104: the count + burst at the TAP (before the server answer). early(n) = the expected total; the server answer
+  // (onBeerAccepted) then only confirms it (no 2nd burst). settle() after the answer: not confirmed (refused, no signal →
+  // outbox, error) → the number goes back quietly.
+  var early = 0, earlyPrev = 0, earlyHost = null;
+  function earlyBurst(n) {
+    early = 0; earlyHost = null;
+    n = n | 0; if (n < 1) return;
+    var prev = shown > 0 ? shown : Math.max(0, n - 1);
+    earlyPrev = Math.max(0, shown);
+    if (crossed(prev, n)) { early = n; want = n; if (!hold) paint(n); return; }   // 5/10/15: the takeover comes with the answer
+    early = n; want = n;
+    if (W.OLNU_STORE || D.querySelector(".fx-takeover,.takeover:not([hidden])")) { if (!hold) paint(n); return; }
+    earlyHost = burst(n, prev);
+  }
+  function settle() {
+    if (!early) return;
+    early = 0;
+    if (earlyHost && earlyHost.parentNode) earlyHost.parentNode.removeChild(earlyHost);
+    earlyHost = null;
+    hold = false; want = earlyPrev; paint(earlyPrev);
   }
   function onBeer(d, info) {
     info = info || {};
+    if (early && !info.queued) { early = 0; earlyHost = null; return; }   // already shown at the tap
     if (info.queued || W.OLNU_STORE) return;
     var n = info.total | 0, prev = shown > 0 ? shown : Math.max(0, n - 1);
     if (n < 1 || crossed(prev, n)) return;
@@ -94,6 +117,8 @@
   W.MYCOUNT = {
     set: set,
     onBeerAccepted: function (d, info) { try { onBeer(d, info); } catch (e) {} },
+    early: function (n) { try { earlyBurst(n); } catch (e) {} },
+    settle: function () { try { settle(); } catch (e) {} },
     _burst: function (n, prev) { burst(n | 0, prev | 0); },
     _state: function () { return { shown: shown, want: want, hold: hold }; }
   };

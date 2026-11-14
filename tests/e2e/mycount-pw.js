@@ -66,6 +66,25 @@ async function open(browser, o = {}) {
     ok("D skips the 5 takeover and outbox beers", d3.t5 === 0 && d3.q === 0, d3);
     ok("D is calm at 8+ (no bits)", d3.calm && d3.cp === 0, d3);
     await wait(page, 2000);
+    // I-104: the count + burst at the TAP; the server answer only confirms (no 2nd burst); no answer → back quietly
+    const e1 = await page.evaluate(() => {
+      document.querySelectorAll(".pm-burst").forEach((x) => x.remove());
+      MYCOUNT.set(2); MYCOUNT.early(3);
+      const at = document.querySelectorAll(".pm-burst").length;
+      MYCOUNT.onBeerAccepted({}, { total: 3 }); const after = document.querySelectorAll(".pm-burst").length;
+      MYCOUNT.settle(); return { at, after, st: MYCOUNT._state() };
+    });
+    ok("I-104 early burst at the tap, the answer adds no 2nd burst", e1.at === 1 && e1.after === 1 && e1.st.want === 3, e1);
+    await wait(page, 2000);
+    const e2 = await page.evaluate(() => {
+      MYCOUNT.set(3); MYCOUNT.early(4); const b = document.querySelectorAll(".pm-burst").length;
+      MYCOUNT.settle();   // refused / outbox / error
+      const m = document.getElementById("pn-mine");
+      return { b, left: document.querySelectorAll(".pm-burst").length, n: m.querySelector(".pm-n").textContent, st: MYCOUNT._state() };
+    });
+    ok("I-104 no answer → burst gone, count back", e2.b === 1 && e2.left === 0 && e2.n === "3" && e2.st.hold === false, e2);
+    ok("I-104 FASTPOS loaded", await page.evaluate(() => !!(window.FASTPOS && FASTPOS.forTap)));
+    await wait(page, 3200);
     ok("no page errors", errs.length === 0, errs);
     await ctx.close();
 

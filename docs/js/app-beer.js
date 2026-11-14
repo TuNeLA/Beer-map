@@ -116,7 +116,9 @@
   }
   window.addEventListener("resize", U.debounce(function () { fitKey = ""; fitBeerLabel(); }, 150));
   function setBusy(v) {
-    PN.s.busy = v; var b = $("btn-beer"); b.disabled = v || cooldownLeft() > 0; b.classList.toggle("busy", v);
+    // I-104: the pulsing "busy" look only when the answer takes > 0.9 s (a normal tap feels instant; the tap is blocked at once)
+    PN.s.busy = v; var b = $("btn-beer"); b.disabled = v || cooldownLeft() > 0;
+    clearTimeout(PN.s.busyT); if (v) PN.s.busyT = setTimeout(function () { if (PN.s.busy) b.classList.add("busy"); }, 900); else b.classList.remove("busy");
     if (!v) setTimeout(drainSheets, 80);
   }
   function levelToast(n) {
@@ -336,7 +338,7 @@
   // offline tap: position + "Var dricker du?" as before, then the outbox (no RPC at all)
   function queueBeer() {
     setBusy(true);
-    getPosition().then(askWhere, noGpsSpot).then(function (spot) {
+    tapPos().then(askWhere, noGpsSpot).then(function (spot) {
       if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
       x8Keep(spot, !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn()));
     }, locError).catch(function () {}).then(function () { setBusy(false); tickCooldown(); });
@@ -365,6 +367,8 @@
     try { var q19 = U.ls.getJSON("olnu.beerQueue", null); U.ls.del("olnu.beerQueue");
       if (q19 && q19.at && Date.now() - (+q19.at) < 20 * 60e3) X8.add({ lat: +q19.lat, lng: +q19.lng, precise: !!q19.precise, home: !!q19.home }, false, +q19.at); } catch (e) {}
   }
+  // I-104: a recent position at once (js/fastpos.js), else a quick network fix; the old exact GPS wait only as the last way
+  function tapPos() { return window.FASTPOS && window.FASTPOS.forTap ? window.FASTPOS.forTap(function () { return getPosition(); }) : getPosition(); }
   function beerTap() {
     if (!LIVE) { toast(t("soonToast"), { id: "soon" }); return; }
     if (PN.s.busy || cooldownLeft() > 0) return;
@@ -373,11 +377,12 @@
     window.FX.unlock();
     if (window.FX.juice) window.FX.juice.press($("btn-beer")); else { window.FX.splash($("btn-beer")); window.FX.vibrate(20); }
     setBusy(true);
-    getPosition().then(askWhere, noGpsSpot).then(function (spot) {
+    tapPos().then(askWhere, noGpsSpot).then(function (spot) {
       if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
       var ghost = !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
       var before = U.drinks(PN.s.meState || myBeer() || {});
       beerPending();
+      try { if (window.MYCOUNT && window.MYCOUNT.early) window.MYCOUNT.early(before + 1); } catch (e) {}   // I-104: the count + burst at once
       var sentAt = Date.now();
       return postBeer(spot, ghost)
         .then(function (res) {
@@ -396,7 +401,7 @@
           beerDone(d, res, spot, ghost, before, null);
         });
     }, locError).catch(function () { beerSay(t("postFail"), { err: true }); })
-      .then(function () { setBusy(false); tickCooldown(); updateCounts(); });
+      .then(function () { try { if (window.MYCOUNT && window.MYCOUNT.settle) window.MYCOUNT.settle(); } catch (e) {} setBusy(false); tickCooldown(); updateCounts(); });
   }
   // An accepted beer (a tap now, or q = a beer from the x8 outbox). Outbox beers: one calm line, no ÅNGRA, no push, no map jump.
   function beerDone(d, res, spot, ghost, before, q) {

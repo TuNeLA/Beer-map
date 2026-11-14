@@ -145,15 +145,16 @@
     });
   }
   // "Var dricker du?" — sometimes asks which bar you are at, so the beer counts there.
-  // Asks: on the first beer tonight, when you moved > 150 m since the last pick, or now and then (1 in 4).
+  // Asks: on the first beer tonight, or when you moved > 150 m since the last pick (I-104: the "1 in 4" re-ask is gone),
+  // and only when a bar/place is within 150 m of you (I-104).
   // Else it reuses the last picked bar while you stay within 150 m of where you picked it.
   // v14: ✕ / backdrop / Escape / another sheet = CANCEL (no beer). Bars first, then restaurants/cafés (🍽️).
   // 🏠 Hemzon: the beer is posted as an area unless a bar or restaurant is picked.
-  var WHERE_KEY = "olnu.where", WHERE_R = 400, WHERE_STAY = 150, WHERE_PLACE_R = 250;
+  var WHERE_KEY = "olnu.where", WHERE_ASK_M = 150, WHERE_R = 400, WHERE_STAY = 150, WHERE_PLACE_R = 250;
   function askWhere(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     var home = !!(window.PRIVACY && window.PRIVACY.inHome(lat, lng));
-    var real = { lat: lat, lng: lng, precise: PN.s.prec === "exact" && !home, home: home };
+    var real = { lat: lat, lng: lng, precise: PN.s.prec === "exact" && !home, home: home, acc: pos.coords.accuracy };
     // v10: fresh own check-in (< 3 h) and still within 150 m of it → drink there, no question.
     var ci = myCheckin();
     if (ci && Date.now() - ci.at < CI_FRESH_MS && U.haversine(lat, lng, ci.lat, ci.lng) <= CI_STAY_M) {
@@ -161,17 +162,21 @@
     }
     // nf 2026-11-07: wait (max 1.2 s) for the restaurant tiles around this spot. They load only for the map VIEW, so the
     // first sheet away from the map view listed bars only ("my friend saw no restaurants"). Then 6 bars + 6 places (250 m).
-    var wait = window.BARS && window.BARS.ensurePlacesP ? window.BARS.ensurePlacesP(lat, lng, 1, 1200) : Promise.resolve();
+    var wait = window.BARS && window.BARS.ensurePlacesP ? window.BARS.ensurePlacesP(lat, lng, 1, 600) : Promise.resolve();
     return wait.then(function () { return askWhereList(lat, lng, real); });
   }
   function askWhereList(lat, lng, real) {
     var list = window.BARS && window.BARS.nearby ? window.BARS.nearby(lat, lng, WHERE_R, 6, { places: true, placeM: WHERE_PLACE_R, maxPlaces: 6 }) : [];
     if (!list.length) return Promise.resolve(real);
+    // I-104 (owner 14 Nov: "I'm 340 m from Pitchers, it does not have to ask"): ask only when a bar/place is so close
+    // that you can be in it: 150 m, or up to 300 m when the GPS is that unsure. Else the beer counts where you are.
+    var near = Math.min.apply(null, list.map(function (x) { return x.d; }));
+    if (near > Math.max(WHERE_ASK_M, Math.min(300, +real.acc || 0))) return Promise.resolve(real);
     var last = U.ls.getJSON(WHERE_KEY, null), night = myNight();
     var fresh = last && last.until > Date.now();
     var stayed = fresh && U.haversine(lat, lng, last.atLat, last.atLng) <= WHERE_STAY;
     var first = !night || !(night.count | 0);
-    if (stayed && !first && Math.random() >= 0.25) {
+    if (stayed && !first) {   // I-104 (owner 14 Nov: "where are you drinking? No, at home" on every tap): no more random re-ask
       return Promise.resolve(last.bar ? { lat: last.bar.lat, lng: last.bar.lng, precise: true, _ciBar: last.bar } : real);   // fixJ T-07
     }
     return new Promise(function (resolve) {
