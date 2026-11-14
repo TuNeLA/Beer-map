@@ -40,7 +40,9 @@
     el._olnuT = { opts: opts, rank: rank };
     // calm2: ONE toast per tap. The first answer to a tap wins; a later non-urgent toast in the 8 s after it (same tap) is
     // dropped, not queued (no 2nd / 3rd toast in a row). A toast nobody tapped for: the same text max once per night.
-    if (rank <= 1 && !safe && !opts.calm) {
+    // nightfix: opts.upd = a later state of the SAME answer (x8: "Ölen från 21:04 ä skickad" replaces "Skickas när du har täckning"):
+    // the caller removes the old line first, so it is not a 2nd toast and is not dropped.
+    if (rank <= 1 && !safe && !opts.calm && !opts.upd) {
       if (tapShownFor === tapN && pnow() - tapShownAt < 8000) return el;
       if (rank === 1) { tapShownFor = tapN; tapShownAt = pnow(); }
       else if (Date.now() - lastTap > 8000 && window.CALM && window.CALM.seen && window.CALM.seen(msg, opts)) return el;

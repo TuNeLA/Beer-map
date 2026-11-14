@@ -74,7 +74,9 @@ const NEW = ["warn", "siren", "stop", "hourglass", "undo", "save", "age18", "sig
   await page.evaluate(() => document.querySelectorAll(".toast, .dl-cap").forEach((t) => t.remove()));
   const T = {};
   for (const [e, n] of [["⚠️", "warn"], ["🚨", "siren"], ["🚚", "truck"], ["🔇", "speaker-off"], ["🤕", "bandage"], ["📻", "radio"]]) {
-    await page.evaluate(([e, i]) => window.PNDS._A().toast(e + " Test " + i, { ms: 0, id: "ic" + i }), [e, n]); await wait(page, 500);
+    // owner 13 Nov: one toast per tap (calm2, POPUP-RULES 1-2): a 2nd toast for the same tap is dropped. Each toast here is the
+    // answer to its own tap (a pointerdown first), so the check still sees every emoji → icon pair.
+    await page.evaluate(([e, i]) => { document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); window.PNDS._A().toast(e + " Test " + i, { ms: 0, id: "ic" + i }); }, [e, n]); await wait(page, 500);
     T[n] = await page.evaluate((i) => { const t = document.querySelector("#toasts .toast:last-child .pn-toast-i svg"); const tx = document.querySelector("#toasts .toast:last-child"); return [t ? t.getAttribute("class") : "", /\p{Extended_Pictographic}/u.test(tx ? tx.textContent : "")]; }, n);
     await page.evaluate(() => document.querySelectorAll(".toast").forEach((t) => t.remove()));
     ok(T[n][0].indexOf("pi-" + n) > 0 && !T[n][1], "toast " + e + " → icon " + n + ", no emoji", T[n]);

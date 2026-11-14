@@ -86,7 +86,8 @@ const tab = (page, t) => page.evaluate((t) => { const x = document.querySelector
     ok(w + " I-90 info width > 50% of the row, max 2 lines", m.rows.length && m.rows.every((x) => x.info && x.info.w > x.row.w * 0.5 && x.infoLines <= 2), m.rows.map((x) => [x.info && x.info.w, x.row.w, x.infoLines]));
     ok(w + " I-90 info has town + status + groups in one text", /Göteborg/.test(en.infoText || "") && /Vänner/.test(en.infoText || ""), en.infoText);
     ok(w + " I-90 friend with an avatar spec gets the real avatar (svg, not the letter disc), green ring when out", en.av && en.av.svg && !en.av.ph && en.av.live, en.av);
-    ok(w + " I-90 the 4 actions are in ONE row (same top) of 40 px buttons", en.btns && en.btns.length === 4 && new Set(en.btns.map((b) => b.t)).size === 1 && en.btns.every((b) => b.h <= 40), en.btns);
+    // nightfix: 44 px (the DESIGN.md tap target minimum, gated by ds-sheet-pw "tap targets ≥ 44"); compact = not taller than 44
+    ok(w + " I-90 the 4 actions are in ONE row (same top) of 44 px buttons", en.btns && en.btns.length === 4 && new Set(en.btns.map((b) => b.t)).size === 1 && en.btns.every((b) => b.h >= 43.5 && b.h <= 44.5), en.btns);
     ok(w + " I-90 'Du kanske känner' row < 120 px and its text > 50% of the row", m.sg.length && m.sg.every((x) => x.row.h < 120 && x.main.w > x.row.w * 0.5), m.sg);
     await page.evaluate(() => { const l = document.querySelector("#sheet-body .nr-flist"); if (l) l.scrollIntoView({ block: "start" }); });
     await shot(page, "vanner-" + w);

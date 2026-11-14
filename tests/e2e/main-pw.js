@@ -126,7 +126,8 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
         const railL = Math.min(...g.rails.map((x) => x.l)), hudB = Math.max(0, ...g.hud.map((x) => x.b));
         ok(g.n.r <= railL - 7.5 && !g.rails.some((x) => hit(x, g.n)), "R1-03 " + w + ": left of the rail (never over it)", { r: g.n.r, railL });
         ok(g.n.t >= hudB - 0.5 && (!g.tk || g.n.t >= g.tk.b), "R1-03 " + w + ": under the HUD row and the ticker", { t: g.n.t, hudB, tk: g.tk && g.tk.b });
-        ok(g.lines <= 3 && g.n.b - g.n.t <= 130, "R1-03 " + w + ": a caption, not a big card (≤ 3 lines, ≤ 130 px)", { lines: g.lines, h: g.n.b - g.n.t });
+        // nightfix: + 0.5 px for sub-pixel layout (CI measured 130.00001 px for 3 lines = the limit itself; flake gate red)
+        ok(g.lines <= 3 && g.n.b - g.n.t <= 130.5, "R1-03 " + w + ": a caption, not a big card (≤ 3 lines, ≤ 130 px)", { lines: g.lines, h: g.n.b - g.n.t });
         ok(g.okBg === "rgb(245, 166, 35)" && g.offBg === "rgba(0, 0, 0, 0)", "R1-03 " + w + ": OK is the primary, the opt-out is a text button", { ok: g.okBg, off: g.offBg });
         ok(g.note === "1", "R1-03 " + w + ": one note per phone (olnu.logNote set, so no 2nd note when location turns on)", g.note);
       }

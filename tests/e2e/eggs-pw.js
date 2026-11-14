@@ -81,7 +81,9 @@ async function phone(browser, o = {}) {
     await wait(page, 300);
     ok(!/Tjena Glenn/.test(await toasts(page)), "glenn in a neutral dialect: nothing");
     await page.evaluate(() => { window.DIALEKT.preview("sv-vast"); }); await wait(page, 300);
-    await page.evaluate(() => { const i = document.getElementById("chat-inp"); i.value = "glenn"; i.dispatchEvent(new Event("input", { bubbles: true })); }); await wait(page, 300);
+    // owner 13 Nov: one toast per tap (calm2): the Morgonrapport above was the answer to the last tap (the sheet close), so an
+    // input event with no key press counted as the same tap and its toast was dropped. A real user types: send the keydown too.
+    await page.evaluate(() => { const i = document.getElementById("chat-inp"); i.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true })); i.value = "glenn"; i.dispatchEvent(new Event("input", { bubbles: true })); }); await wait(page, 300);
     ok(/Tjena Glenn!/.test(await toasts(page)), "glenn in the Göteborg dialect: Tjena Glenn!");
     // 7 credits from Om appen
     await clear(page);

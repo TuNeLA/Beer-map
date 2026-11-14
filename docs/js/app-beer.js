@@ -330,7 +330,7 @@
     if (!res.ok) { beerSay(t("postFail"), { err: true }); return; }
     var m = myNight() || {}; m.lastTap = Date.now(); if (!m.expires) m.expires = nightEnd();
     U.ls.setJSON("olnu.night", m);
-    beerSay(res.n > 1 ? X8.say("x8.queuedN", { n: res.n }) : X8.say("x8.queued"), { ms: 6000 });
+    beerSay(res.n > 1 ? X8.say("x8.queuedN", { n: res.n }) : X8.say("x8.queued"), { ms: 6000, cls: "x8-q" });
     window.FX.vibrate(20);
   }
   // offline tap: position + "Var dricker du?" as before, then the outbox (no RPC at all)
@@ -412,7 +412,9 @@
     var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
     var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
     if (q) {
-      if (!big) toast(X8.say("x8.sent", { time: X8.hhmm(q.at) }) + " · " + text, { cls: cls, ms: 6000 });
+      // nightfix: the "sent" line REPLACES the "Skickas när du har täckning" line of the same tap (calm2 dropped it as a 2nd toast
+      // when the signal came back within 8 s, so the stale "will be sent" line was the last word)
+      if (!big) { document.querySelectorAll("#toasts .x8-q").forEach(function (x) { x.remove(); }); toast(X8.say("x8.sent", { time: X8.hhmm(q.at) }) + " · " + text, { cls: cls, ms: 6000, upd: 1 }); }
       if (ghost && !res.v2) rpc("stop_beer").then(function () { refresh(); });
       mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, queued: true });
       refresh();

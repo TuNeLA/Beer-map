@@ -18,6 +18,16 @@ const sheetOpen = (page) => page.evaluate(() => { const s = document.getElementB
 async function open(browser, vp, date, o = {}) {
   const { ctx, page } = await ctxFor(browser, vp, { reduced: !!o.reduced });
   await ctx.clock.setFixedTime(date);   // Date is fixed, timers keep running
+  // nightfix (C, date-independent): the helper seed (an init script added BEFORE the fixed clock) writes olnu.night.lastTap and
+  // olnu.checkin with the REAL time. After 13 Nov ~20:40 the real time is later than the fixed 20:00, so the last beer was "in the
+  // future": ÖL! stayed in cooldown (disabled, wide mm:ss label) and the tap test failed. Move the seeded times onto the fixed clock.
+  await ctx.addInitScript(() => {
+    try {
+      const t = Date.now(), G = (k) => JSON.parse(localStorage.getItem(k) || "null"), P = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+      const n = G("olnu.night"); if (n && n.lastTap > t) P("olnu.night", Object.assign(n, { lastTap: t - 40 * 60e3, expires: t + 6 * 3600e3 }));
+      const c = G("olnu.checkin"); if (c && c.at > t) P("olnu.checkin", Object.assign(c, { at: t - 90 * 60e3, until: t + 6 * 3600e3 }));
+    } catch (e) {}
+  });
   await ctx.addInitScript((a) => {
     window.PN_F13_MS = a.ms || 0;
     if (a.hol) try { sessionStorage.setItem("olnu.hol", a.hol); } catch (e) {}

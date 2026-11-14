@@ -15,6 +15,9 @@ const ok = (n, c, i) => { console.log(c ? "PASS" : "FAIL", n, c ? "" : (i === un
 // flag + fake socket (live.js test seam PN.chatLive._transport), set before the app loads
 const live = (o) => {
   try { if (o.flag) localStorage.setItem("olnu.dmLive", o.flag); sessionStorage.removeItem("olnu.liveBad"); } catch (e) {}
+  // owner 13 Nov: fast chat is ON for everyone (config.js dmLive: true, release 1db56f8, 0507 on live). The config wins over the
+  // localStorage test flag, so the OFF case turns the flag off with PN_CFG (read first by live.js flag()).
+  if (o.off) window.PN_CFG = Object.assign({}, window.PN_CFG || {}, { dmLive: 0 });
   window.__ons = []; window.__left = 0;
   const fake = function (gid, on) {
     window.__ons.push(on);
@@ -102,7 +105,7 @@ async function arrive(page, S, id, nudge) {   // the other phone posts; the nudg
   // ---------- 2. flag OFF: the old polling, no socket, no bubble ----------
   {
     const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 });
-    await ctx.addInitScript(live, { flag: "" });
+    await ctx.addInitScript(live, { flag: "", off: true });
     const S = {}; await server(page, S); await boot(page);
     ok("OFF: DM opens", await openDm(page));
     const q0 = Date.now(); await wait(page, 9000);

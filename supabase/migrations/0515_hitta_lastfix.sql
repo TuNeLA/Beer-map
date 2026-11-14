@@ -3,7 +3,8 @@
 -- Check after the run (expect t, t):
 --   select position('/*s515*/' in pg_get_functiondef('public.find_ping(text, double precision, double precision, double precision)'::regprocedure)) > 0,
 --          position('/*s510*/' in pg_get_functiondef('public.olnu_find_allowed(uuid, uuid)'::regprocedure)) > 0;
---   (the 2nd one is t on live since 0510; on staging it is t only after 0510 ran there)
+-- Note: the 2nd one is t on live since 0510; on staging it is t only after 0510 ran there. (nightfix: one space after "--", so
+-- sql-rehearsal.mjs does not read this note as a line of the check query.)
 --
 -- Why: a web page gets no GPS with the screen off. find_pos rows expire 2 min after the last ping, so the seeker lost the
 -- found person 2 min after they put the phone in the pocket.
