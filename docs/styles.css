@@ -365,22 +365,20 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
   70%{opacity:1}
   100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy) + 30px)) scale(.9);opacity:0}}
 
-/* ---------- v3: full-screen takeover ---------- */
+/* ---------- v3: full-screen takeover (fit to the screen, entrance and exit motion: takeover.css) ---------- */
 .takeover{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;overflow:hidden;cursor:pointer;
   animation:toin var(--m-4) var(--e-in);-webkit-user-select:none;user-select:none}
 .takeover.out{opacity:0;transition:opacity var(--m-4)}
 .tk-hot{background:radial-gradient(ellipse at 50% 70%,rgba(255,122,26,.55),rgba(60,12,0,.92) 60%,rgba(10,6,4,.97))}
 .tk-medevac{background:radial-gradient(ellipse at center,rgba(179,18,27,.75),rgba(10,15,28,.97) 70%)}
 .to-core{position:relative;text-align:center;padding:0 20px}
-.to-icon{font-size:84px;line-height:1;filter:drop-shadow(0 0 18px rgba(255,122,26,.8));animation:toicon var(--m-6) cubic-bezier(.2,1.6,.4,1)}
-.to-title{font-family:var(--display);font-size:clamp(44px,14vw,84px);line-height:1;letter-spacing:2px;color:var(--gold);margin-top:10px;
-  text-shadow:0 0 20px rgba(255,122,26,.9),0 4px 0 #6b1d00;animation:toslam var(--m-6) cubic-bezier(.2,1.4,.4,1)}
+.to-icon{font-size:84px;line-height:1;filter:drop-shadow(0 0 18px rgba(255,122,26,.8))}
+.to-title{font-family:var(--display);font-size:clamp(32px,11vw,64px);line-height:1.05;letter-spacing:1px;color:var(--gold);margin-top:10px;
+  text-shadow:0 0 20px rgba(255,122,26,.9),0 4px 0 #6b1d00}
 .tk-medevac .to-title{color:#fff;text-shadow:0 0 18px rgba(255,59,59,.95),0 4px 0 var(--red-d)}
 .to-sub{font-family:var(--body);font-weight:600;font-size:var(--fs-16);color:var(--foam);margin-top:12px;}
 .to-hint{font-family:var(--body);font-weight:600;font-size:var(--fs-14);color:var(--muted);margin-top:22px}
 @keyframes toin{from{opacity:0}}
-@keyframes toicon{from{transform:scale(.2) rotate(-20deg);opacity:0}}
-@keyframes toslam{from{transform:scale(2.4);opacity:0}}
 
 /* ---------- v6: Kaos i stan banner (under the ticker; pushes the HUD line, Värme chip, locate and toasts down) ---------- */
 .chaos{position:fixed;z-index:1001;top:calc(var(--sat) + 100px);left:calc(var(--sal) + 10px);right:calc(var(--sar) + 10px);

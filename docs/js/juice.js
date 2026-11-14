@@ -281,10 +281,12 @@
     play("tap");
     haptic("press");
     if (!btn || reduced() || document.hidden) return;
+    if (FX.store && FX.store()) return;   // store build: the neutral press only (tap sound + tick), no squash, no foam
     squash(btn);
     burst(btn);
   }
   function accepted(level, big) {
+    if (FX.store && FX.store()) { haptic("accepted"); return; }   // store build: one plain tick; no fizz, clink, "skål" voice or level buzz
     play("fizz"); play("clink", { delay: 0.12 });
     if (!big) haptic(level ? "level" : "accepted");
     say(650);

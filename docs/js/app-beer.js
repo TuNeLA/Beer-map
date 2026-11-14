@@ -144,23 +144,18 @@
   }
   function drinkFx(total, prev, opts) {
     opts = opts || {};
-    var lv10 = lvAt(10), lv5 = lvAt(5), lv15 = lvAt(15);
-    // SAFE (owner 2026-11-07): the full-screen effect also at 15, same energy as 10. Texts = tease + care.
-    if (prev < 15 && total >= 15) {
-      var medExtra15 = mods("medevacExtraHTML");
-      stripAfter(function () { window.FX.takeover(2, lv15 ? { title: lvName(lv15, "me"), sub: lvLine(lv15), icon: lv15.emoji, color: lv15.color, gag: true, hint: t("tapClose"), extraHTML: medExtra15, ms: medExtra15 ? 7000 : 0 }
-        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra15, ms: medExtra15 ? 7000 : 0 }); });
-      return true;
-    }
-    if (prev < 10 && total >= 10) {
-      var medExtra = mods("medevacExtraHTML");
-      stripAfter(function () { window.FX.takeover(2, lv10 ? { title: lvName(lv10, "me"), sub: lvLine(lv10), icon: lv10.emoji, color: lv10.color, gag: true, hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }
-        : { title: t("medTitle"), sub: t("medSub"), hint: t("tapClose"), extraHTML: medExtra, ms: medExtra ? 7000 : 0 }); });
-      return true;
-    }
-    if (prev < 5 && total >= 5) {
-      stripAfter(function () { window.FX.takeover(1, lv5 ? { title: lvName(lv5, "me"), sub: lvLine(lv5), icon: lv5.emoji, color: lv5.color, gag: true, hint: t("tapClose") }
-        : { title: t("hotTitle"), sub: t("hotSub"), hint: t("tapClose") }); });
+    // The full-screen card at 5 / 10 / 15 (FX.takeover, takeover.css). SAFE (owner 2026-11-07): also at 15, same energy as 10.
+    // Texts = tease + care. Store builds (FX.store): no card; false = the caller shows its plain toast.
+    var at = prev < 15 && total >= 15 ? 15 : prev < 10 && total >= 10 ? 10 : prev < 5 && total >= 5 ? 5 : 0;
+    if (at && !(window.FX.store && window.FX.store())) {
+      var level = at === 5 ? 1 : 2, extra = level === 2 ? mods("medevacExtraHTML") : "";
+      stripAfter(function () {
+        var lv = lvAt(at), o = lv ? { title: lvName(lv, "me"), sub: lvLine(lv), icon: lv.emoji, color: lv.color, gag: true }
+          : { title: t(level === 2 ? "medTitle" : "hotTitle"), sub: t(level === 2 ? "medSub" : "hotSub") };
+        o.hint = t("tapClose"); o.onClose = opts.onClose;
+        if (extra) { o.extraHTML = extra; o.ms = 7000; }
+        window.FX.takeover(level, o);
+      });
       return true;
     }
     // Small pops: the highest level crossed (3, 7, 13, 16, 20).
@@ -231,9 +226,10 @@
   function clearUndo() {
     clearTimeout(undoTimer); clearTimeout(undoMiniTimer); undoTimer = undoMiniTimer = null;
     clearInterval(undoPosTimer);
+    if (undoLate) { clearTimeout(undoLate.t); undoLate = null; }
     if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; }
   }
-  var UNDO_SHOW_MS = 10000, undoPosTimer = null;
+  var UNDO_SHOW_MS = 10000, undoPosTimer = null, undoLate = null;
   // c4drinks I-34: the ÅNGRA chip sits exactly over #btn-other (Annat): same box, measured, kept in place while the dock moves.
   // Why this and not "ÖL! turns into Ångra": a second tap on ÖL! is the most likely tap right after a beer, so it must never undo by mistake.
   function placeUndo() {
@@ -254,7 +250,8 @@
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
     // The level message is a normal short toast; ÅNGRA is a small ↩️ button next to ÖL! (owner: the big
     // red toast covered the beer-type strip).
-    beerSay(text, { cls: cls || "", ms: 5000 });   // x8: the "Skål! Ölen räknas…" toast turns into this line
+    if (text) beerSay(text, { cls: cls || "", ms: 5000 });   // x8: the "Skål! Ölen räknas…" toast turns into this line
+    else beerSayClear();   // I-105: after a 5 / 10 / 15 card there is no 2nd text
     PN.s.undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), html: undoIc("undo"),
       onclick: function () { doUndo(PN.s.undoEl); } });
     document.body.appendChild(PN.s.undoEl);
@@ -262,6 +259,14 @@
     // The ÅNGRA toast stays 10 s only (owner: it was in the way). The group push still waits for the full window.
     undoMiniTimer = setTimeout(function () { if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; } }, UNDO_SHOW_MS);
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
+  }
+  // I-105: a 5 / 10 / 15 beer. The full-screen card is the ONE text (no toast behind it) and it covers the dock, so the ↩ button
+  // comes when the card closes and lives its 10 s from then. Returns the "card closed" function. 20 s = safety net (no card came).
+  function undoAfterCard(d, cls) {
+    clearUndo();
+    var w = undoLate = { t: setTimeout(go, 20000) };
+    function go() { if (undoLate !== w) return; clearTimeout(w.t); undoLate = null; showUndo(d, "", cls); }
+    return go;
   }
   // uifix (final check): the chip shows the PNI undo / hourglass icon, not the ↩️ / ⏳ emoji
   function undoIc(n) { var P = window.PNI; return P && P.svg && (!P.has || P.has(n)) ? P.svg(n, "undo-ic") : (n === "undo" ? "↩️" : "⏳"); }
@@ -298,7 +303,7 @@
     });
   }
   // A poll says the undo window is over (or undone on another phone): drop the button.
-  function undoSync(me) { if (PN.s.undoEl && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
+  function undoSync(me) { if ((PN.s.undoEl || undoLate) && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
 
   $("btn-beer").addEventListener("click", function () { beerTap(null); });
   // x8 (weak signal): an ÖL! that can not reach the server goes into the outbox (js/x8.js, max 5, 90 min) and is sent later
@@ -413,7 +418,8 @@
     if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
     var l = U.level(total);
     if (PN.s.meState) { PN.s.meState.beer_count = d.beer_count | 0; PN.s.meState.undo_until = d.undo_until || null; }
-    var big = drinkFx(total, Math.max(before, total - 1), { noToast: true });
+    var cardClosed = null;
+    var big = drinkFx(total, Math.max(before, total - 1), { noToast: true, onClose: function () { if (cardClosed) cardClosed(); } });
     var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
     var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
     if (q) {
@@ -425,15 +431,16 @@
       refresh();
       return;
     }
-    if (res.v2 && d.undo_until) showUndo(d, text, cls);
+    if (big) beerSayClear();   // I-105: the card is the one text of this tap
+    if (res.v2 && d.undo_until) { if (big) cardClosed = undoAfterCard(d, cls); else showUndo(d, text, cls); }
     else if (!big) beerSay(text, { cls: cls });
-    else beerSayClear();
     if (window.FX.juice) window.FX.juice.accepted(l, big); else { if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]); window.FX.sound.beer(); }
     // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
     if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
     else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
     else notifyGroup();
-    mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total });
+    mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, big: big });
+    if (big) document.querySelectorAll(".pn-beerok").forEach(function (x) { x.remove(); });   // I-105: no "Öl #N registrerad" chip under the card (pnui.js makes it in the hook above)
     if (!ghost && spot._ciBar) moveCheckin(spot._ciBar);   // fixJ T-07
     if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
     if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {

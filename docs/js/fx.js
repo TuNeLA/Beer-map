@@ -9,6 +9,12 @@
   function reduced() {
     try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
   }
+  // Store builds (config.js sets window.OLNU_STORE): no drinking celebration. ONE check for every effect here and in juice.js:
+  // splash, takeover, levelPop, ambient, juice.press / accepted. The tap answer there = the neutral press + the plain toast.
+  function store() {
+    try { if (window.OLNU_STORE != null) return !!window.OLNU_STORE; } catch (e) {}
+    try { return document.documentElement.classList.contains("olnu-store"); } catch (e2) { return false; }
+  }
   function muted() { return U.ls.get(MUTE_KEY, "0") === "1"; }
   function setMuted(v) { U.ls.set(MUTE_KEY, v ? "1" : "0"); }
 
@@ -498,6 +504,7 @@
   function ambient(level, ms, burstMs, fadeMs) {
     level = level | 0;
     if (!level) { ambientStop(); return; }
+    if (store()) return;
     ms = ms > 0 ? ms : AMB_MS[level] || 60e3;
     var end = Date.now() + ms;
     if (amb && amb.level > level) return;          // keep the bigger one
@@ -534,10 +541,23 @@
   }
 
   /* ---------- Full-screen takeover. level 1 = HOT STREAK, 2 = MEDEVAC ----------
-     opts: {title, sub, hint, extraHTML, ms, variant (test), noAmbient (test)} */
-  var current = null, lastTk = { level: 0, at: 0 };
+     opts: {title, sub, hint, extraHTML, ms, onClose (called once when the card is gone), variant (test), noAmbient (test)}
+     I-105 (styles: takeover.css): the title is fitted to the card, close taps wait 600 ms, never shown in a store build. */
+  var current = null, lastTk = { level: 0, at: 0 }, TK_MIN_FS = 24, TK_GUARD_MS = 600;
+  // The title always fits: 1 px smaller at a time while a word is wider than the card or the title is over 2 lines
+  // (same idea as fitBeerLabel in app-beer.js). Only a word that no size can hold is broken (.to-brk).
+  function fitTitle(el) {
+    var ti = el.querySelector(".to-title");
+    if (!ti || !ti.clientWidth) return;
+    ti.style.fontSize = ""; ti.classList.remove("to-brk");
+    var cs = getComputedStyle(ti), size = parseFloat(cs.fontSize) || 40, ratio = parseFloat(cs.lineHeight) / size || 1.2, guard = 0;
+    function over() { return ti.scrollWidth > ti.clientWidth + 1; }
+    while ((over() || Math.round(ti.offsetHeight / (size * ratio)) > 2) && size > TK_MIN_FS && guard++ < 60) { size -= 1; ti.style.fontSize = size + "px"; }
+    if (over()) ti.classList.add("to-brk");
+  }
   function takeover(level, opts) {
     opts = opts || {};
+    if (store()) { if (typeof opts.onClose === "function") setTimeout(opts.onClose, 0); return ""; }
     level = level === 2 ? 2 : 1;
     if (current) current.kill(true);
     var rm = reduced(), list = level === 2 ? MED_LIST : HOT_LIST;
@@ -569,6 +589,10 @@
       (opts.extraHTML ? '<div class="to-extra">' + opts.extraHTML + "</div>" : "") +
       '<div class="to-hint">' + U.esc(opts.hint || "") + "</div></div>";
     document.body.appendChild(el);
+    function refit() { fitTitle(el); }
+    refit();
+    try { if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(refit); } catch (e) {}   // the display font came late
+    window.addEventListener("resize", refit);
     var layer = el.firstChild, cleanup = null;
     if (rm) mk("fx-still-glow", layer);
     else {
@@ -577,10 +601,12 @@
     var closed = false, timer = 0;
     function kill(now) {
       if (closed) return; closed = true; clearTimeout(timer);
+      window.removeEventListener("resize", refit);
       if (typeof cleanup === "function") { try { cleanup(); } catch (e) {} }
       if (current === ctl) current = null;
       if (now) el.remove();
-      else { el.classList.add("fx-tk-out"); setTimeout(function () { el.remove(); }, 260); }   // ui1 B6: own close class
+      else { el.classList.add("fx-tk-out"); setTimeout(function () { el.remove(); }, 180); }   // ui1 B6: own close class; 150 ms fade (takeover.css)
+      if (typeof opts.onClose === "function") { try { opts.onClose(); } catch (e) {} }
     }
     var tkStart = Date.now();
     function done() {
@@ -590,7 +616,11 @@
       if (!opts.noAmbient) ambient(level, AMB_MS[level], AMB_BURST_MS - (Date.now() - tkStart));
     }
     var ctl = { el: el, kill: kill };
-    el.addEventListener("click", done);
+    el.addEventListener("click", function (e) {
+      // The card comes with the server answer, so a quick 2nd tap on ÖL! lands on it: such a tap closes nothing and opens no taxi link.
+      if (Date.now() - tkStart < TK_GUARD_MS) { e.preventDefault(); e.stopPropagation(); return; }
+      done();
+    });
     current = ctl;
     var dur = Math.max(opts.ms || 0, level === 2 ? 5200 : 4300);
     timer = setTimeout(done, dur);
@@ -647,7 +677,7 @@
   }
   var BEER_FX = { foam: foam, bubbles: bubbles, clink: clinkFx };
   function splash(anchor, kind) {
-    if (!anchor || reduced()) return;
+    if (!anchor || reduced() || store()) return;
     var fn = BEER_FX[kind] || BEER_FX[pickNoRepeat("beer", ["foam", "bubbles", "clink"])];
     fn(anchor);
   }
@@ -655,6 +685,7 @@
   /* ---------- Small level pop (3, 7, 13, 16, 20): emoji burst + one soft edge flash, < 2 s ----------
      o: {emoji, color, intensity 1–7, care}. Care (13+): calm, no particles. One flash only (flash safety). */
   function levelPop(o) {
+    if (store()) return;
     o = o || {};
     var k = Math.max(1, Math.min(7, o.intensity | 0 || 1)), rm = reduced();
     var el = document.createElement("div");
@@ -719,7 +750,7 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch); else watch();
 
   window.FX = { hapticTrigger: hapticTrigger, vibrate: vibrate, unlock: unlock, sound: sound, splash: splash, takeover: takeover, levelPop: levelPop,
-    muted: muted, setMuted: setMuted, reduced: reduced, say: say,
+    muted: muted, setMuted: setMuted, reduced: reduced, store: store, say: say,
     ambient: ambient, ambientStop: ambientStop,
     variants: { 1: HOT_LIST.slice(), 2: MED_LIST.slice(), beer: ["foam", "bubbles", "clink"] } };
 })();

@@ -1,0 +1,41 @@
+/* PintsNow — the full-screen card at drink 5, 10 and 15 (js/fx.js takeover). I-105, owner 14 Nov 2026: "the pop-up at 10
+   looked weird". Loaded after styles.css + fx.css (base look there). Here: 1 fit to the phone, 2 entrance, 3 exit, 4 reduced motion.
+   Only transform and opacity move. */
+
+/* 1 · fit: the column is the screen, never the longest word; fx.js fitTitle() makes the title smaller until it fits (max 2 lines) */
+.takeover.fx-tk{grid-template-columns:minmax(0,1fr)}
+.takeover.fx-tk .to-core{box-sizing:border-box;min-width:0;width:100%;max-width:min(540px,100vw);margin:0 auto}
+.takeover.fx-tk.tk-medevac .to-core{width:min(540px,94vw);max-width:none}
+.takeover.fx-tk .to-title{max-width:100%;overflow-wrap:normal;word-break:normal;hyphens:manual;text-wrap:balance}
+.takeover.fx-tk .to-title.to-brk{overflow-wrap:anywhere}   /* a word no size can hold: break it, never cut it at the edge */
+.takeover.fx-tk .to-sub{overflow-wrap:break-word;text-wrap:pretty}
+.takeover.fx-tk .to-gag{box-sizing:border-box;max-width:100%;overflow-wrap:break-word}
+
+/* one text: while the card is up, the "Öl #N registrerad" chip (pnds.js) stays away, whichever of the two came first */
+.takeover.fx-tk ~ .pn-beerok{display:none}
+body:has(> .takeover.fx-tk) .pn-beerok{display:none}
+
+/* 2 · entrance: backdrop 200 ms (toin, styles.css), then the card, the emoji, the title, the line, the buttons, the hint.
+   "backwards" = hidden while it waits, and no fill after, so the exit below can move the card. */
+.takeover.fx-tk.tk-medevac .to-core{animation:tk-card 300ms var(--e-spring) backwards}
+.takeover.fx-tk .to-icon{animation:tk-icon 300ms cubic-bezier(.2,1.4,.4,1) 60ms backwards}
+.takeover.fx-tk .to-title{animation:tk-title 300ms var(--e-in) 120ms backwards}
+.takeover.fx-tk .to-sub,.takeover.fx-tk .to-gag,.takeover.fx-tk .to-extra,.takeover.fx-tk .to-hint{animation:tk-rise 200ms var(--e-in) 220ms backwards}
+.takeover.fx-tk .to-gag{animation-delay:250ms}
+.takeover.fx-tk .to-extra{animation-delay:280ms}
+.takeover.fx-tk .to-hint{animation-delay:340ms}
+@keyframes tk-card{from{transform:translateY(16px) scale(.96)}}
+@keyframes tk-icon{from{transform:scale(.6);opacity:0}}
+@keyframes tk-title{from{transform:scale(1.25);opacity:0}}
+@keyframes tk-rise{from{transform:translateY(8px);opacity:0}}
+@keyframes tk-fade{from{opacity:0}}
+
+/* 3 · exit: 150 ms, the card sinks a little; no taps on a card that is leaving */
+.takeover.fx-tk.fx-tk-out{opacity:0;pointer-events:none;transition:opacity 150ms var(--e-out)}
+.takeover.fx-tk.fx-tk-out .to-core{transform:scale(.98);transition:transform 150ms var(--e-out)}
+
+/* 4 · reduced motion (fx.js sets .still): one plain 150 ms fade in and out, nothing else moves */
+.takeover.fx-tk.still{animation:tk-fade 150ms linear !important}
+.takeover.fx-tk.still .to-core,.takeover.fx-tk.still .to-core *{animation:none !important}
+.takeover.fx-tk.still.fx-tk-out{transition:opacity 150ms linear !important}
+.takeover.fx-tk.still.fx-tk-out .to-core{transform:none;transition:none}
