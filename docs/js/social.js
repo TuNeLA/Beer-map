@@ -794,7 +794,7 @@
         var text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
         if (!text) return;   // QA #17: blank message → nothing, no error toast
         if (text.length > 140) { A.toast(t("chatInvalid"), { err: true }); return; }
-        sending = true; sendBtn.disabled = true;
+        sendBtn.removeAttribute("data-send"); sending = true; sendBtn.disabled = true;   // speed1: data-send = the result for the "Skickar…" bubble (live.js)
         // fixS T-05: Regler first (SAFETY.ensureTerms), THEN the post. The 15 s RPC timeout (app.js rpcNet1) used to run
         // while Regler was open: a slow reader got "fail", the text stayed, the post still went out after "Jag godkänner"
         // and the 2nd tap posted it again. The button stays off until the answer, and a lost answer (timeout) is checked
@@ -819,6 +819,7 @@
           if (r && r.error && /timeout/i.test(String(r.error.message || ""))) return mine(text, n0, id0).then(function (got) { return got ? { data: null, error: null } : r; });
           return r;
         }).then(function (r) {
+          sendBtn.setAttribute("data-send", r.error ? "fail" : "ok");
           sending = false; sendBtn.disabled = false;
           if (r.error) {
             var c = codeOf(r.error);

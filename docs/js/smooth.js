@@ -18,7 +18,7 @@
   "use strict";
   var W = window;
   function reduced() { try { return !!(W.matchMedia && W.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } }
-  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, ghost: 0 };
+  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, ghost: 0, cssSync: 0, cssAdd: 0 };
 
   /* ---------- 1. Intl cache ---------- */
   (function () {
@@ -147,21 +147,37 @@
   }
 
   /* ---------- 4. Sheet feel ---------- */
-  var sheetCSS = null, cssBusy = false;
-  // One constructable stylesheet with every same-origin rule, built when the browser is idle (for the ghost's shadow root).
-  function buildCSS() {
-    if (sheetCSS || cssBusy || typeof CSSStyleSheet !== "function" || !("adoptedStyleSheets" in Document.prototype)) return;
+  var sheetCSS = null, cssBusy = false, cssAgain = false, cssMap = typeof WeakMap === "function" ? new WeakMap() : null;
+  function cssCan() { return !!cssMap && typeof CSSStyleSheet === "function" && "adoptedStyleSheets" in Document.prototype; }
+  // The ghost's shadow root needs the page's CSS. sheetCSS = one constructed copy per stylesheet of the page, in page order.
+  // speed1 (audit speed #5): each stylesheet is copied ONCE (cssMap: page sheet -> its copy). Before: ONE copy of all CSS
+  // (~765 KB), made again 2.5 s after load and again for every node that came into <head> (lazy scripts too): 443 ms at start,
+  // 189 ms in idle, 293 ms in a map pan. Now cssSync() walks the page's sheets: a known sheet = its copy is used again; a new
+  // one (a module's <style>, a lazy CSS file) = one small copy. The old list stays in use until the new one is ready.
+  function cssCopy(sh) {
+    var txt = [];
+    try { var r = sh.cssRules; for (var j = 0; j < r.length; j++) txt.push(r[j].cssText); } catch (e) {}   // a cross-origin sheet: empty
+    var cs = new CSSStyleSheet(); cs.replaceSync(txt.join("\n").replace(/@import[^;]+;/g, ""));
+    return cs;
+  }
+  function cssSync() {
+    if (!cssCan()) return;
+    if (cssBusy) { cssAgain = true; return; }
     cssBusy = true;
-    // ds37: in slices of ≤ 8 ms per idle period (was ONE ~330 ms long task on a phone), then an async parse
-    var list = Array.prototype.slice.call(document.styleSheets), txt = [], i = 0, v0 = cssVer;
+    // ds37: in slices of ≤ 8 ms per idle period (was ONE ~330 ms long task on a phone)
+    var list = Array.prototype.slice.call(document.styleSheets), out = [], i = 0;
+    var done = function () { cssBusy = false; if (cssAgain) { cssAgain = false; cssSync(); } };
     var step = function () {
       var t = performance.now();
-      while (i < list.length && performance.now() - t < 8) { try { var r = list[i].cssRules; for (var j = 0; j < r.length; j++) txt.push(r[j].cssText); } catch (e) {} i++; }
-      if (i < list.length) { idle(step, 3000); return; }
       try {
-        var cs = new CSSStyleSheet(), src = txt.join("\n").replace(/@import[^;]+;/g, ""), ok = function () { cssBusy = false; if (v0 === cssVer) sheetCSS = cs; else buildCSS(); };
-        if (cs.replace) cs.replace(src).then(ok, function () { cssBusy = false; }); else { cs.replaceSync(src); ok(); }
-      } catch (e) { sheetCSS = null; cssBusy = false; }
+        while (i < list.length && performance.now() - t < 8) {
+          var c = cssMap.get(list[i]);
+          if (!c) { c = cssCopy(list[i]); cssMap.set(list[i], c); stats.cssAdd++; }
+          out.push(c); i++;
+        }
+      } catch (e) { done(); return; }   // the old list stays
+      if (i < list.length) { idle(step, 3000); return; }
+      sheetCSS = out; stats.cssSync++; done();
     };
     step();
   }
@@ -171,7 +187,7 @@
   var cssVer = 0;
   // ds37: never during start (it was the biggest long task of the first 2 s): after "pn:calm" (js/pnds.js), then idle
   function afterCalm(fn) { if (W.__pnCalm) fn(); else { document.addEventListener("pn:calm", function () { fn(); }, { once: true }); setTimeout(fn, 9000); } }
-  function cssLater() { var v = ++cssVer; sheetCSS = null; afterCalm(function () { idle(function () { if (v === cssVer) buildCSS(); }, 6000); }); }
+  function cssLater() { var v = ++cssVer; afterCalm(function () { idle(function () { if (v === cssVer) cssSync(); }, 6000); }); }
   var MAX_NODES = 900;
   // Call BEFORE #sheet is hidden and its body emptied (app.js closeSheet).
   function sheetOut() {
@@ -195,7 +211,7 @@
       host.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;z-index:" +
         (getComputedStyle(sh).zIndex || 1600) + ";pointer-events:none;contain:strict";
       var root = host.attachShadow({ mode: "closed" });
-      root.adoptedStyleSheets = [sheetCSS];
+      root.adoptedStyleSheets = sheetCSS;
       var c = sh.cloneNode(true);
       c.hidden = false; c.removeAttribute("aria-modal"); c.setAttribute("role", "presentation");
       c.style.cssText += ";position:absolute;left:0;top:0;right:auto;bottom:auto;width:100%;height:100%;max-height:none;margin:0;animation:none;transition:none";
@@ -210,7 +226,7 @@
       setTimeout(gone, 400);
     } catch (e) {}
   }
-  afterCalm(function () { idle(buildCSS, 6000); });   // ds37   // ds10: the style copy exists before the first close, so the first close slides too
+  afterCalm(function () { idle(function () { if (!sheetCSS) cssSync(); }, 6000); });   // ds37   // ds10: the style copy exists before the first close, so the first close slides too
   function watchSheet() {
     var sh = document.getElementById("sheet"), body = document.getElementById("sheet-body"), title = document.getElementById("sheet-title");
     if (!sh || !body || !W.MutationObserver) return;
@@ -241,7 +257,18 @@
   function onReady() {
     watchSheet();
     // Rebuild the ghost CSS when a lazy stylesheet arrives (boot.js x-lazy-css, module CSS).
-    try { new MutationObserver(cssLater).observe(document.head, { childList: true }); } catch (e) {}
+    // speed1: only a stylesheet node counts (lazy <script> tags come into <head> too); a <link> is read when it has loaded.
+    function isCss(n) { return !!n && n.nodeType === 1 && (n.tagName === "STYLE" || (n.tagName === "LINK" && /(^|\s)stylesheet(\s|$)/i.test(n.rel || ""))); }
+    try {
+      new MutationObserver(function (ms) {
+        var hit = false;
+        ms.forEach(function (m) {
+          [].forEach.call(m.addedNodes, function (n) { if (!isCss(n)) return; hit = true; if (n.tagName === "LINK" && !n.sheet) n.addEventListener("load", cssLater, { once: true }); });
+          [].forEach.call(m.removedNodes, function (n) { if (isCss(n)) hit = true; });
+        });
+        if (hit) cssLater();
+      }).observe(document.head, { childList: true });
+    } catch (e) {}
     W.addEventListener("load", function () { setTimeout(cssLater, 2500); });
     if (document.readyState === "complete") setTimeout(cssLater, 2500);
   }

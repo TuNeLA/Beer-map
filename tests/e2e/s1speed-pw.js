@@ -112,7 +112,8 @@ async function arrive(page, S, id, nudge) {   // the other phone posts; the nudg
     ok(`OFF: no socket (${await page.evaluate(() => (window.__ons || []).length)} joins)`, await page.evaluate(() => (window.__ons || []).length === 0));
     ok(`OFF: dm_seen every 4 s as before (${seenN(S, q0)} in 9 s)`, seenN(S, q0) >= 2, seenN(S, q0));
     await page.fill("#chat-inp", "Utan flagga"); await page.click(".chat-send"); await wait(page, 250);
-    ok("OFF: no optimistic bubble", await page.evaluate(() => !document.querySelector(".chat-list li.pn-pend")));
+    // lane speed1 (owner 14 Nov: every tap reacts at once): the sender bubble is for every chat now, also with the flag OFF (still no socket)
+    ok("OFF: the sender bubble shows all the same (no socket)", await page.evaluate(() => !!document.querySelector(".chat-list li.pn-pend") && (window.__ons || []).length === 0));
     await ctx.close();
   }
   // ---------- 3. the server refuses the socket (no 0507 yet): polling only, the line still comes at the tick ----------

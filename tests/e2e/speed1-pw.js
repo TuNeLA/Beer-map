@@ -41,6 +41,10 @@ function fakeGeo() {
     const d = Object.getOwnPropertyDescriptor(proto, k); if (!d || !d.get) return;
     Object.defineProperty(proto, k, { configurable: true, get() { hit(this); return d.get.call(this); } });
   });
+  // S6: every text that goes into a constructed stylesheet (smooth.js ghost CSS)
+  window.__css = [];
+  try { ["replace", "replaceSync"].forEach((k) => { const f = CSSStyleSheet.prototype[k]; if (!f) return;
+    CSSStyleSheet.prototype[k] = function (t) { try { window.__css.push({ n: String(t).length, at: Math.round(performance.now()), mark: /speed1-mark-(\d)/.test(String(t)) ? RegExp.$1 : "" }); } catch (e) {} return f.apply(this, arguments); }; }); } catch (e) {}
   const si = window.setInterval; window.__iv = [];
   window.setInterval = function (fn, ms) { try { window.__iv.push({ n: fn && fn.name, ms: ms }); } catch (e) {} return si.apply(this, arguments); };
 }
@@ -226,6 +230,115 @@ const timed = (page, body) => page.evaluate(`(async () => { const t0 = performan
       ok("S4 cool-down (ok:false): Checka in is back and works, the phone forgets the bar, one line with the wait", !r.b.here && !r.b.out && r.b.btn && !r.b.btnOff && /Checka in/.test(r.b.btnText) && !r.b.ls && r.b.toasts.length === 1 && /90/.test(r.b.toasts[0].t), r);
       r = await run("server error", (q) => J(q, { code: "XX000", message: "boom" }, 500));
       ok("S4 error: Checka in is back, the phone forgets the bar, one error line", !r.b.here && !r.b.out && r.b.btn && !r.b.btnOff && !r.b.ls && r.b.toasts.length === 1 && r.b.toasts[0].err, r);
+    }
+
+    /* ---------- S5: group chat send ---------- */
+    if (want("s5")) {
+      const chat = async (S) => {
+        const { ctx, page, errs } = await open(browser, { routes: async (page) => {
+          await page.route(/rest\/v1\/rpc\/(post_group_msg|group_msgs)\b/, async (r) => {
+            const fn = r.request().url().match(/rpc\/(\w+)/)[1]; let body = {}; try { body = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
+            if (fn === "group_msgs") return J(r, S.msgs.filter((m) => m.id > (body.p_after_id || 0)));
+            S.posts++;
+            const row = { id: 100 + S.posts, name: "Anton", body: body.p_body, created_at: new Date().toISOString(), is_me: true };
+            if (S.early && !S.fail) S.msgs.push(row);   // saved at once, the answer is slow
+            await new Promise((z) => setTimeout(z, S.ms));
+            if (S.fail) return J(r, { code: "XX000", message: "boom" }, 500);
+            if (!S.early) S.msgs.push(row);
+            return J(r, { id: row.id });
+          });
+        } });
+        await page.evaluate((g) => window.SOCIAL.openChat({ id: g, name: "Ludvika Lager" }), GID);
+        await page.waitForFunction(() => document.querySelectorAll(".chat-list li.chat-msg[data-mid]").length >= 2 && document.getElementById("chat-inp"), null, { timeout: 12000 }).catch(() => console.log("no chat"));
+        await wait(page, 500);
+        await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((x) => x.remove()));
+        return { ctx, page, errs };
+      };
+      const snap = (page, t) => page.evaluate((t) => { const p = document.querySelector(".chat-list li.pn-pend");
+        return { pend: document.querySelectorAll(".chat-list li.pn-pend").length, pendText: p ? p.textContent : "", fail: !!(p && p.classList.contains("pn-fail")),
+          real: [...document.querySelectorAll(".chat-list li.chat-msg.me[data-mid] .cm-body")].filter((b) => b.textContent === t).length,
+          copies: [...document.querySelectorAll(".chat-list li.chat-msg.me")].filter((li) => li.textContent.includes(t)).length,
+          inp: document.getElementById("chat-inp").value, off: document.querySelector(".chat-send").disabled,
+          toasts: [...document.querySelectorAll("#toasts .toast")].map((x) => ({ t: x.textContent, err: x.classList.contains("err") })) }; }, t);
+      const send = (page, t) => page.evaluate((t) => { const i = document.getElementById("chat-inp"); i.value = t; document.querySelector(".chat-send").click();
+        const p = document.querySelector(".chat-list li.pn-pend"); return { pend: !!p, text: p ? p.textContent : "" }; }, t);
+      const base = [{ id: 1, name: "Lisa", body: "Var é ni?", created_at: new Date(Date.now() - 3e6).toISOString(), is_me: false }, { id: 2, name: "Oskar", body: "La Parma", created_at: new Date(Date.now() - 2e6).toISOString(), is_me: false }];
+      // a. slow server (3 s): the line at once, then the real row, one copy
+      {
+        const S = { msgs: base.slice(), posts: 0, ms: 3000 }, T = "Kommer om fem";
+        const { ctx, page, errs } = await chat(S);
+        const sync = await send(page, T); await wait(page, 250);
+        const a = await snap(page, T);
+        ok('S5 group chat: my line is in the list at the tap as "Skickar…" (server 3 s), the box is empty', sync.pend && sync.text.includes(T) && /Skickar/.test(sync.text) && a.pend === 1 && a.inp === "" && a.real === 0, { sync, a });
+        await page.waitForFunction((t) => [...document.querySelectorAll(".chat-list li.chat-msg.me[data-mid] .cm-body")].some((b) => b.textContent === t), T, { timeout: 8000 }).catch(() => null);
+        await wait(page, 400);
+        const b = await snap(page, T);
+        ok("S5 group chat: the real row replaces the bubble: exactly 1 copy, 1 post, no error", b.pend === 0 && b.real === 1 && b.copies === 1 && S.posts === 1 && !b.toasts.some((x) => x.err), { b, posts: S.posts });
+        ok("S5 group chat: no page error", errs.length === 0, errs);
+        await ctx.close();
+      }
+      // b. the send fails: "Inte skickat – tryck för att försöka igen"; a tap sends it again
+      {
+        const S = { msgs: base.slice(), posts: 0, ms: 1500, fail: true }, T = "Hallå där";
+        const { ctx, page } = await chat(S);
+        await send(page, T); await wait(page, 2300);
+        const a = await snap(page, T);
+        ok('S5 failed send: the bubble stays as "Inte skickat – tryck för att försöka igen", one error line, Skicka works again', a.pend === 1 && a.fail && /Inte skickat/.test(a.pendText) && a.pendText.includes(T) && a.real === 0 && !a.off && a.toasts.length === 1 && a.toasts[0].err, a);
+        S.fail = false;
+        await page.evaluate(() => { document.getElementById("chat-inp").value = "nytt utkast"; const f = document.querySelector(".chat-list li.pn-fail"); if (f) f.click(); });
+        await wait(page, 300);
+        const b = await snap(page, T);
+        ok('S5 retry: a tap on the bubble sends it again ("Skickar…"), what I typed since stays in the box', b.pend === 1 && !b.fail && /Skickar/.test(b.pendText) && S.posts === 2 && b.inp === "nytt utkast", { b, posts: S.posts });
+        await page.waitForFunction((t) => [...document.querySelectorAll(".chat-list li.chat-msg.me[data-mid] .cm-body")].some((x) => x.textContent === t), T, { timeout: 8000 }).catch(() => null);
+        await wait(page, 400);
+        const c = await snap(page, T);
+        ok("S5 retry: sent, exactly 1 copy, the draft is still in the box", c.pend === 0 && c.real === 1 && c.copies === 1 && c.inp === "nytt utkast", c);
+        await ctx.close();
+      }
+      // c. the poll brings my line before the (slow) answer: no 2nd copy
+      {
+        const S = { msgs: base.slice(), posts: 0, ms: 9000, early: true }, T = "Poll först";
+        const { ctx, page } = await chat(S);
+        await send(page, T);
+        await page.waitForFunction((t) => [...document.querySelectorAll(".chat-list li.chat-msg.me[data-mid] .cm-body")].some((x) => x.textContent === t), T, { timeout: 9000 }).catch(() => null);
+        await wait(page, 200);
+        const a = await snap(page, T);
+        await wait(page, 3200);
+        const b = await snap(page, T);
+        ok("S5 the poll returns my line before the answer: the bubble goes, 1 copy then and after the answer", a.real === 1 && a.copies === 1 && a.pend === 0 && b.real === 1 && b.copies === 1 && b.pend === 0, { a, b });
+        await ctx.close();
+      }
+    }
+
+    /* ---------- S6: the ghost CSS copy ---------- */
+    if (want("s6")) {
+      const { ctx, page, errs } = await open(browser);
+      await page.waitForFunction(() => window.__css.reduce((n, x) => n + x.n, 0) > 200000, null, { timeout: 25000 }).catch(() => console.log("no CSS copy"));
+      await wait(page, 9000);   // load + 2.5 s, the lazy files at 3 s
+      const all = await page.evaluate(() => { let n = 0; [...document.styleSheets].forEach((sh) => { try { [...sh.cssRules].forEach((r) => { n += r.cssText.length; }); } catch (e) {} }); return n; });
+      const css = () => page.evaluate(() => ({ chars: window.__css.reduce((n, x) => n + x.n, 0), copies: window.__css.length, marks: window.__css.filter((x) => x.mark).map((x) => x.mark + ":" + x.n).join(","), sheets: document.styleSheets.length }));
+      const a = await css();
+      console.log("     ghost CSS after start: page CSS " + all + " chars; copied " + JSON.stringify(a));
+      ok("S6 start: the page CSS is copied ONCE (old code: again 2.5 s after load and for every <head> change)", a.chars > all * 0.5 && a.chars < all * 1.3, { all, a });
+      // 2 modules add a <style>, a lazy <script> comes into <head>
+      for (const k of [1, 2]) {
+        await page.evaluate((k) => { const st = document.createElement("style"); st.textContent = ".speed1-mark-" + k + "{color:red}"; document.head.appendChild(st);
+          const sc = document.createElement("script"); sc.type = "text/x-nothing"; document.head.appendChild(sc); }, k);
+        await wait(page, 7500);
+      }
+      const b = await css();
+      console.log("     ghost CSS after 2 new <style> + 2 <script> in <head>: " + JSON.stringify(b));
+      ok("S6 new <style> nodes: only the new sheet is copied (< 5 KB more; old code: all CSS again, twice)", b.chars - a.chars < 5000 && /1:\d+/.test(b.marks) && /2:\d+/.test(b.marks), { a, b });
+      // the close ghost still works
+      await page.evaluate(() => document.getElementById("btn-top").click());
+      await wait(page, 1500);
+      const g0 = await page.evaluate(() => window.SMOOTH.stats.ghost);
+      await page.evaluate(() => document.getElementById("sheet-close").click());
+      await wait(page, 100);
+      const g = await page.evaluate(() => ({ n: window.SMOOTH.stats.ghost, host: !!document.querySelector(".sm-ghost-host") }));
+      ok("S6 the sheet close still slides out (ghost made)", g.n === g0 + 1 && g.host, { g0, g });
+      ok("S6 no page error", errs.length === 0, errs);
+      await ctx.close();
     }
   } catch (e) { fail++; console.log("FAIL exception", e && e.stack || e); }
   await browser.close();

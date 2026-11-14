@@ -6,6 +6,8 @@
    call (ctx.reload = social.js tick now), on 's' dm.js asks dm_seen once. Polling stays as the fallback: no socket,
    a failed join or an old server = the app works exactly as before.
    Sender: the line shows at once as a "Skickar…" bubble, "✓" when the server saved it; the real row replaces it.
+   speed1 (14 Nov): the sender bubble is for every chat, also with the flag OFF (no socket then). A failed send keeps the
+   bubble: "Inte skickat – tryck för att försöka igen".
    Flag: OLNU_CONFIG.dmLive or window.PN_CFG.dmLive: true = DM chats, "all" = every chat (group + event chats too).
    Test phone: localStorage "olnu.dmLive" = "1" / "all". Default OFF.
    Budget: 0 extra requests per tick. +1 group_msgs read per incoming line (it shows at once), dm_seen 4 s → 30 s while the
@@ -82,38 +84,67 @@
   /* ---------- the sender: the bubble shows at once ---------- */
   function clean(v) { return String(v || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim(); }
   function sv() { var I = window.I18N; return !(I && I.lang === "en"); }
+  // speed1 (audit speed #14, owner 14 Nov: "any loading should be in the background"): the bubble is for EVERY chat now,
+  // with or without the socket. The text leaves the box at once (the bubble holds it). social.js tells the result on the
+  // send button (data-send = ok | fail). ok: "✓", then the real row replaces the bubble (never 2 copies). fail: the bubble
+  // stays as "Inte skickat – tryck för att försöka igen" (a tap sends it again). "Int' nu" at Regler: the text goes back.
   function optimistic(ctx, sub) {
     var box = ctx.input, list = ctx.list;
     var inp = box && box.querySelector("input.chat-inp, input"), btn = box && box.querySelector(".chat-send, button.btn-amber");
     if (!inp || !btn || !list) return;
     var pend = [];
+    function mineN(text) { return [].filter.call(list.querySelectorAll("li.chat-msg.me[data-mid] .cm-body"), function (b) { return b.textContent === text; }).length; }
     function mk(text) {
       var li = document.createElement("li"), b = document.createElement("div"), s = document.createElement("span");
       li.className = "chat-msg me pn-pend"; li.setAttribute("aria-busy", "true");
       b.className = "pn-pend-b"; b.textContent = text;
       s.className = "pn-pend-s"; s.textContent = sv() ? "Skickar…" : "Sending…";
       li.appendChild(b); li.appendChild(s);
-      return { li: li, s: s, text: text, st: "send", at: Date.now() };
+      return { li: li, s: s, text: text, st: "send", at: Date.now(), n0: mineN(text), draft: "" };
     }
     function rm(p) { var i = pend.indexOf(p); if (i >= 0) pend.splice(i, 1); if (p.li.parentNode) p.li.remove(); }
-    function start() {
+    function start(draft) {
       if (btn.disabled) return;
       var text = clean(inp.value);
       if (!text || text.length > 140 || pend.some(function (p) { return p.text === text && p.st === "send"; })) return;
       var p = mk(text), near = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+      p.draft = draft || "";
       pend.push(p); list.appendChild(p.li);
       if (near) list.scrollTop = list.scrollHeight;
-      setTimeout(function () { if (p.st === "send" && !btn.disabled) rm(p); }, 60);   // social.js did not start a send
-      setTimeout(function () { rm(p); }, 20000);   // never stuck: the poll draws the real row anyway
+      setTimeout(function () {
+        if (p.st !== "send") return;
+        if (!btn.disabled) { rm(p); return; }   // social.js did not start a send
+        if (clean(inp.value) === p.text) { inp.value = p.draft; p.took = true; }   // the bubble holds the text now
+      }, 60);
+    }
+    function failed(p) {
+      p.st = "fail"; p.li.removeAttribute("aria-busy"); p.li.classList.add("pn-fail");
+      p.s.textContent = sv() ? "Inte skickat – tryck för att försöka igen" : "Not sent – tap to try again";
+      p.li.setAttribute("role", "button"); p.li.tabIndex = 0;
+      var again = function (e) {
+        if (e && e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (btn.disabled || p.st !== "fail") return;
+        var draft = clean(inp.value) === p.text ? "" : inp.value;   // what the user typed since: it comes back after the send starts
+        rm(p); inp.value = p.text; start(draft); btn.click();   // start() first: it keeps the draft; the click's own start() then finds this bubble
+      };
+      p.li.addEventListener("click", again); p.li.addEventListener("keydown", again);
     }
     box.addEventListener("click", function (e) { if (e.target.closest && e.target.closest(".chat-send, button.btn-amber") === btn) start(); }, true);
     box.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target === inp) start(); }, true);
     new MutationObserver(function () {
       if (btn.disabled) return;
-      pend.forEach(function (p) {
+      var res = btn.getAttribute("data-send");
+      pend.slice().forEach(function (p) {
         if (p.st !== "send") return;
-        if (clean(inp.value) === p.text) { rm(p); return; }   // failed or "Int' nu": the text is still in the box (social.js toasts)
+        if (res === "fail" && p.took) { failed(p); return; }
+        if (res !== "ok" || clean(inp.value) === p.text) {   // failed with the text still in the box, or "Int' nu": nothing sent (social.js toasts)
+          if (p.took && !clean(inp.value)) inp.value = p.text;
+          rm(p); return;
+        }
         p.st = "ok"; p.s.textContent = "✓"; p.li.removeAttribute("aria-busy"); sub.sentAt = Date.now();
+        if (mineN(p.text) > p.n0) { rm(p); return; }   // a poll drew the real row already
+        setTimeout(function () { rm(p); }, 20000);   // never stuck: the poll draws the real row anyway
       });
     }).observe(btn, { attributes: true, attributeFilter: ["disabled"] });
     new MutationObserver(function (ms) {
@@ -121,7 +152,7 @@
         [].forEach.call(m.addedNodes, function (n) {
           if (!n.classList || !n.classList.contains("me") || !n.hasAttribute("data-mid")) return;
           var b = n.querySelector(".cm-body"), t = b ? b.textContent : null;
-          var p = pend.filter(function (x) { return x.text === t; })[0];
+          var p = pend.filter(function (x) { return x.text === t && x.st !== "fail"; })[0];
           if (p) rm(p);
         });
       });
@@ -131,7 +162,8 @@
 
   /* ---------- one open chat ---------- */
   function chat(g, ctx) {
-    if (!enabled(g) || !ctx || !ctx.list || typeof ctx.alive !== "function") return null;
+    if (!ctx || !ctx.list || typeof ctx.alive !== "function") return null;
+    if (!enabled(g)) { try { optimistic(ctx, {}); } catch (e) {} return null; }   // speed1: no socket, the bubble all the same
     var gid = String(g.id).toLowerCase();
     var r = rooms[gid] || (rooms[gid] = { gid: gid, h: null, up: false, fails: 0, subs: [], seen: [], hideT: 0 });
     r.dead = false;
@@ -168,7 +200,8 @@
 
   var st = document.createElement("style");
   st.textContent = ".chat-list .pn-pend{opacity:.72}.chat-list .pn-pend .pn-pend-b{white-space:pre-wrap;word-break:break-word}" +
-    ".chat-list .pn-pend .pn-pend-s{display:block;text-align:right;font-size:var(--fs-12,12px);opacity:.8}";
+    ".chat-list .pn-pend .pn-pend-s{display:block;text-align:right;font-size:var(--fs-12,12px);opacity:.8}" +
+    ".chat-list .pn-pend.pn-fail{opacity:1;cursor:pointer;min-height:44px}.chat-list .pn-pend.pn-fail .pn-pend-s{opacity:1;font-weight:700;color:var(--red)}";
   (document.head || document.documentElement).appendChild(st);
 
   var CL = PN.chatLive = {
