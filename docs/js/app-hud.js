@@ -99,6 +99,9 @@
       st.innerHTML = '<span class="ms-e" aria-hidden="true">🍺</span><span class="ms-k">' + U.esc(t("tonight")) + '</span><span class="ms-chev" aria-hidden="true">▾</span>';
     }
     st.hidden = !(n > 0 || chips);
+    // I-102 (owner 14 Nov 2026: "hard to see how many beers you've drunk"): the Ikväll pill is hidden in the calm top bar
+    // (pnds.css), so mycount.js shows tonight's count as a rail button. Information only: a number, no goal, no "more".
+    try { if (window.MYCOUNT) window.MYCOUNT.set(LIVE ? n : 0); } catch (e) {}
     var html = chips ? head + chips : "";
     if (hx.getAttribute("data-html") !== html) { hx.innerHTML = html; hx.setAttribute("data-html", html); }
     hx.hidden = !html;

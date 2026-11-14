@@ -1,0 +1,67 @@
+/* PintsNow — 🍺 MYCOUNT (I-102, owner 14 Nov 2026: B + D). See docs/js/mycount.js. */
+:root{--pm-ink: #1a0f02;--pm-amber: #ffb43a;--pm-cream: #fff3d6;--pm-white: #fff}
+
+/* B: the count button, 4th in the right rail (under ⋯ Mer). Grows to the left for 2 digits. */
+#pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + var(--pn-gap))) !important;
+  display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:0;min-width:44px;
+  border:2px solid var(--ds-amber-t,var(--pm-amber)) !important;color:var(--ds-text,var(--pm-white))}
+body.mn-rail-lbl #pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+#pn-mine[hidden]{display:none !important}
+/* the mug above the number: the rail stays one 44 px column (nothing next to the rail moves, also at 99+) */
+#pn-mine{flex-direction:column;gap:0}
+#pn-mine .pm-e{font-size:13px;line-height:1}
+#pn-mine.pm-wide .pm-n{letter-spacing:-.02em}
+#pn-mine .pm-n{font:800 15px/1 var(--ds-sans,system-ui);color:var(--ds-amber-t,var(--pm-amber));font-variant-numeric:tabular-nums}
+#pn-mine.pm-bump{animation:pmBump .6s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pmBump{0%{transform:scale(1)}30%{transform:scale(1.32)}55%{transform:scale(.92)}100%{transform:scale(1)}}
+
+/* D: the count burst at the middle of the map. Never takes taps. */
+.pm-burst{position:fixed;left:50%;top:42%;z-index:2400;width:0;height:0;pointer-events:none}
+.pm-num{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:grid;place-items:center}
+.pm-num>span{grid-area:1/1;font:400 150px/1 var(--display,Impact,system-ui);color:var(--pm-amber);
+  -webkit-text-stroke:5px var(--pm-ink);paint-order:stroke fill;
+  text-shadow:0 6px 0 var(--pm-ink),0 0 28px rgba(255,170,40,.75),0 0 70px rgba(255,120,20,.45)}
+.pm-new{animation:pmSlam .62s cubic-bezier(.2,1.5,.4,1) both}
+.pm-old{animation:pmRoll .38s cubic-bezier(.5,0,.8,.4) both;color:var(--pm-cream) !important}
+.pm-sub{position:absolute;left:0;top:78px;transform:translateX(-50%);white-space:nowrap;
+  font:800 22px/1 var(--ds-sans,system-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--pm-white);
+  text-shadow:0 2px 0 var(--pm-ink),0 0 12px rgba(0,0,0,.6);animation:pmSub .5s .25s cubic-bezier(.2,1.2,.4,1) both}
+.pm-ring{position:absolute;left:0;top:0;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;
+  border:6px solid rgba(255,190,70,.9);box-shadow:0 0 30px rgba(255,150,30,.6),inset 0 0 20px rgba(255,150,30,.5);
+  animation:pmRing .7s .08s cubic-bezier(.1,.7,.3,1) both}
+.pm-ring.pm-r2{border-width:3px;border-color:rgba(255,255,255,.7);animation-delay:.2s;animation-duration:.8s}
+.pm-p{position:absolute;left:0;top:0;font-style:normal;font-size:calc(30px * var(--s,1));line-height:1;margin:-.5em 0 0 -.5em;
+  animation:pmFly .95s var(--t,0ms) cubic-bezier(.15,.8,.3,1) both}
+@keyframes pmSlam{0%{transform:scale(3.2) rotate(-14deg);opacity:0;filter:blur(6px)}45%{transform:scale(.86) rotate(4deg);opacity:1;filter:none}
+  70%{transform:scale(1.1) rotate(-2deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes pmRoll{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-120px) scale(.6);opacity:0}}
+@keyframes pmSub{0%{transform:translate(-50%,20px) scale(.6);opacity:0}100%{transform:translate(-50%,0) scale(1);opacity:1}}
+@keyframes pmRing{0%{transform:scale(.3);opacity:1}100%{transform:scale(2.6);opacity:0}}
+@keyframes pmFly{0%{transform:rotate(var(--a)) translateY(0) rotate(calc(-1 * var(--a))) scale(.3);opacity:0}
+  15%{opacity:1}
+  100%{transform:rotate(var(--a)) translateY(calc(-1 * var(--d))) rotate(calc(-1 * var(--a))) scale(1);opacity:0}}
+/* the screen edges flash amber → red once (owner 13 Nov: coloured edges, not a pulsing map) */
+.pm-edge{position:fixed;inset:0;margin:0;pointer-events:none;
+  box-shadow:inset 0 0 0 0 rgba(255,150,30,0),inset 0 0 90px 30px rgba(255,120,20,.55),inset 0 0 160px 60px rgba(230,40,30,.28);
+  animation:pmEdge .75s ease-out both}
+@keyframes pmEdge{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+/* the whole number flies into the 🍺 button */
+.pm-burst.pm-fly .pm-num{transition:transform .46s cubic-bezier(.55,0,.75,.3),opacity .46s ease-in;
+  transform:translate(calc(-50% + var(--fx,0px)),calc(-50% + var(--fy,0px))) scale(.16);opacity:.35}
+.pm-burst.pm-fly .pm-sub,.pm-burst.pm-fly .pm-ring,.pm-burst.pm-fly .pm-edge{animation:none !important;opacity:0;transition:opacity .15s}
+/* calm (8+): number only, smaller, no ring, no burst */
+.pm-calm .pm-ring{display:none}
+.pm-calm .pm-num>span{font-size:110px}
+.pm-calm .pm-sub{top:58px}
+/* reduced motion: fade in, fade out, no fly */
+.pm-rm .pm-new,.pm-rm .pm-sub{animation:pmFade .2s both}
+.pm-rm .pm-old{display:none}
+.pm-burst.pm-out{opacity:0;transition:opacity .25s}
+@keyframes pmFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){#pn-mine.pm-bump{animation:none}}
+/* the mug and the burst bits (CSS, not JS strings: quality rule "no new emoji in docs/js") */
+#pn-mine .pm-e::before{content:"🍺"}
+.pm-p[data-k="0"]::before,.pm-p[data-k="3"]::before{content:"🍺"}
+.pm-p[data-k="1"]::before,.pm-p[data-k="4"]::before{content:"🫧"}
+.pm-p[data-k="2"]::before{content:"✨"}
+.pm-p[data-k="5"]::before{content:"⭐"}
