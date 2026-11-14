@@ -8,13 +8,18 @@ var SHELL = [
   "./icons/icon-192.png", "./icons/apple-touch-icon.png", "./icons/favicon-32.png", "./icons/badge-96.png"
 ];
 var CDN_CACHE = "olnu-cdn", DATA_CACHE = "olnu-data", TILE_CACHE = "olnu-tiles";
-var KEEP = [CDN_CACHE, DATA_CACHE, TILE_CACHE, "olnu-pending", "olnu-beta"];   // olnu-pending: notificationclick parks the target there
+// olnu-pending: notificationclick parks the target there. mapbox-tiles: Mapbox GL JS's own tile cache (500 tiles, 12 h; start1 F1:
+// it was deleted at every app update). olnu-bold: the film background image (js/bold-replay.js).
+var KEEP = [CDN_CACHE, DATA_CACHE, TILE_CACHE, "olnu-pending", "olnu-beta", "mapbox-tiles", "olnu-bold"];
+// start1 (I-107 "the app opened twice"): a new version installs and WAITS. It takes over at the next cold start, or when the page
+// asks ({type:"pn-skip"}, js/upd0.js: during the splash, or after 30 min in the background). Never under the user.
+// ROLLBACK SWITCH: set this to true in an emergency release = that version takes over at once on every phone (the old flow).
+var TAKE_OVER_NOW = false;
 var CDN_HOSTS = ["cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"];
 var TILE_HOST = /(^|\.)(arcgisonline\.com|basemaps\.cartocdn\.com|tiles\.openfreemap\.org)$/;
 // 🗺️ Kartstil beta: OpenFreeMap style + TileJSON change weekly (network first); vector tiles are bigger than PNGs (byte cap).
 var TILE_META = /^\/(styles\/[^/]+|planet)\/?$/, TILE_BYTES = 40 * 1024 * 1024;
 var TILE_MAX = 300, TILE_MAX_AGE = 14 * 86400e3, NAV_TIMEOUT_MS = 4000;
-var SHELL_MAX_AGE = 3 * 86400e3;   // smooth: cached index.html younger than this opens the app at once
 var DATA_RE = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json|zones\/[^/]+\.json|data\/dialekt-kommun\.json|js\/dialekt-packs\/(?![a-z]{2}-neutral(-lek)?\.js)[a-z]{2}-[a-z-]+\.js)$/;
 
 function shellFromIndex(html) {
@@ -23,36 +28,108 @@ function shellFromIndex(html) {
   return out;
 }
 
-self.addEventListener("install", function (e) {
-  e.waitUntil(caches.open(VERSION).then(function (c) {
+// sha256(body)[:10] === the ?v= value (scripts/stamp.mjs stamps every local js/css with it)
+function hashOk(res, v) {
+  if (!(self.crypto && crypto.subtle)) return Promise.resolve(false);
+  return res.clone().arrayBuffer().then(function (buf) { return crypto.subtle.digest("SHA-256", buf); }).then(function (d) {
+    var b = new Uint8Array(d), h = "";
+    for (var i = 0; i < 5; i++) h += (b[i] < 16 ? "0" : "") + b[i].toString(16);
+    return h === v;
+  }).catch(function () { return false; });
+}
+// One precache file. A file with ?v=<hash>: (1) an older version cache has the same file → copy it; (2) else the browser HTTP
+// cache (the page has just loaded it: no second download on the first visit). Both only when the content has that hash
+// (GitHub Pages ignores the query: during a deploy x.js?v=NEW can still answer the old file). Else, and for files with no hash:
+// cache "reload" (skips the HTTP cache, max-age=600 on GitHub Pages).
+function precacheOne(c, u) {
+  var m = /[?&]v=([0-9a-f]{10})(&|$)/.exec(u);   // pnds: only a real content hash is "the same file"
+  var fresh = function () {
+    return fetch(new Request(u, { cache: "reload" })).then(function (res) { if (!res.ok) throw new Error(u + " " + res.status); return c.put(u, res); });
+  };
+  if (!m) return fresh();
+  var good = function (res) { return res && res.ok ? hashOk(res, m[1]).then(function (ok) { return ok ? res : null; }) : null; };
+  return caches.match(u).then(good).then(function (hit) {
+    return hit || fetch(new Request(u)).then(good, function () { return null; });
+  }).then(function (res) { return res ? c.put(u, res) : fresh(); });
+}
+// Fill the VERSION cache: index.html + SHELL + every local js/css file that index.html names. Rejects when one file fails.
+function precache() {
+  return caches.open(VERSION).then(function (c) {
     // cache: "reload" skips the browser HTTP cache (GitHub Pages sends max-age=600),
     // so a new version never stores an older app.js next to a newer index.html.
     return fetch(new Request("./index.html", { cache: "reload" })).then(function (res) {
       if (!res.ok) throw new Error("index " + res.status);
-      return res.clone().text().then(function (html) {
-        return Promise.all([c.put("./index.html", res.clone()), c.put("./", res)]).then(function () { return shellFromIndex(html); });
+      return res.clone().text().then(function (html) { return { res: res, list: shellFromIndex(html) }; });
+    }).then(function (ix) {   // ⚡ SPEED: no file may fail (index.html, the shell, every ./js + ./css file it names)
+      var list = SHELL.filter(function (u) { return u !== "./" && u !== "./index.html"; }).concat(ix.list);
+      return Promise.all(list.map(function (u) { return precacheOne(c, u); })).then(function () {
+        // the page goes in LAST: a cache with "./index.html" is a complete version (oldIntact, shellFirst0)
+        return Promise.all([c.put("./index.html", ix.res.clone()), c.put("./", ix.res)]);
       });
-    }).then(function (fromIndex) {   // ⚡ SPEED: no file may fail (index.html, the shell, every ./js + ./css file it names)
-      var list = SHELL.filter(function (u) { return u !== "./" && u !== "./index.html"; }).concat(fromIndex);
-      return Promise.all(list.map(function (u) {
-        // A file with ?v=<hash> that an older version already has is the same file: copy it, do not download it again.
-        var copy = /[?&]v=[0-9a-f]{8,}(&|$)/.test(u) ? caches.match(u) : Promise.resolve(null);   // pnds: only a real content hash is "the same file"
-        return copy.then(function (hit) {
-          return hit ? c.put(u, hit) : c.add(new Request(u, { cache: "reload" }));
-        });
-      }));
     });
-  }).then(function () { return self.skipWaiting(); }, function (err) {
+  });
+}
+// Does an older version still have its own page in its cache? Then the old worker can keep serving its version: wait.
+function oldIntact() {
+  return caches.keys().then(function (keys) {
+    var olds = keys.filter(function (k) { return k !== VERSION && KEEP.indexOf(k) < 0; });
+    return Promise.all(olds.map(function (k) { return caches.open(k).then(function (c) { return c.match("./index.html"); }); }));
+  }).then(function (rs) { return rs.some(Boolean); }, function () { return false; });
+}
+
+self.addEventListener("install", function (e) {
+  e.waitUntil(precache().then(function () {
+    // start1: first install (no active worker), an emergency release, or the old version lost its cache ("Uppdatera nu", storage
+    // pressure) → take over now. Else WAIT: the open app keeps its version, with its own files, until js/upd0.js says pn-skip
+    // or the app was closed.
+    if (TAKE_OVER_NOW || !self.registration.active) return self.skipWaiting();
+    return oldIntact().then(function (yes) { if (!yes) return self.skipWaiting(); });
+  }, function (err) {
     // the new version is not complete: drop it, keep the old worker + cache (install is retried on the next update check)
     return caches.delete(VERSION).then(function () { throw err; });
   }));
 });
 
+// Old version caches. Activated with no app page open (the normal case: a cold start) → deleted at once. Activated UNDER an
+// open page (pn-skip, or the browser's own 5 min limit after a pn-skip) → that page is still the old version and may load
+// its lazy files later: keep its cache, note the names in olnu-pending ./__old, delete them at the next app start (dropOld).
+var OLD_KEY = "./__old";
+function dropOld() {
+  return caches.open("olnu-pending").then(function (c) {
+    return c.match(OLD_KEY).then(function (r) { return r ? r.json() : null; }).then(function (list) {
+      if (!Array.isArray(list)) return;
+      return Promise.all(list.filter(function (k) { return k !== VERSION && KEEP.indexOf(k) < 0; }).map(function (k) { return caches.delete(k); }))
+        .then(function () { return c.delete(OLD_KEY); });
+    });
+  }).catch(function () {});
+}
 self.addEventListener("activate", function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== VERSION && KEEP.indexOf(k) < 0; }).map(function (k) { return caches.delete(k); }));
-  }).then(function () { return self.clients.claim(); }));
+    var olds = keys.filter(function (k) { return k !== VERSION && KEEP.indexOf(k) < 0; });
+    return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) { return list.length; }, function () { return 0; }).then(function (open) {
+      if (!open || !olds.length) return Promise.all(olds.map(function (k) { return caches.delete(k); }));
+      return caches.open("olnu-pending").then(function (c) { return c.put(OLD_KEY, new Response(JSON.stringify(olds), { headers: { "Content-Type": "application/json" } })); });
+    });
+  }).catch(function () {}).then(function () { return self.clients.claim(); }).then(function () { heal(); }));   // heal: not awaited (activate must not wait for downloads)
 });
+
+// This version's own cache lost its page ("Uppdatera nu" deletes the app caches, storage pressure): fill it again, but only
+// when the server still has THIS version (its sw.js has the same VERSION). A newer version on the server: ask for the update
+// instead (its install sees no complete old cache and takes over at once). At most one try per minute.
+var healAt = 0, healing = null;
+function heal() {
+  if (healing) return healing;
+  healing = caches.open(VERSION).then(function (c) { return c.match("./index.html"); }).then(function (hit) {
+    if (hit || Date.now() - healAt < 60000) return;
+    healAt = Date.now();
+    return fetch(new Request("./sw.js", { cache: "no-store" })).then(function (r) { return r.ok ? r.text() : ""; }).then(function (txt) {
+      var m = /^var VERSION = "([^"]*)";/m.exec(txt);
+      if (m && m[1] === VERSION) return precache();
+      if (m) return self.registration.update();
+    });
+  }).catch(function () {}).then(function () { healing = null; });
+  return healing;
+}
 
 function keep(e, p) { try { e.waitUntil(p); } catch (err) {} return p; }
 function put(cacheName, req, res) {
@@ -69,6 +146,10 @@ function appNav(req) {
     var p = new URL(req.url).pathname, sp = new URL(self.registration.scope).pathname;
     return p === sp || p === sp + "index.html";
   } catch (err) { return false; }
+}
+// The app page itself (any request for it, also a plain fetch("./index.html")). A version's page never changes (start1 F4).
+function appPage(u) {
+  try { var p = new URL(u).pathname, sp = new URL(self.registration.scope).pathname; return p === sp || p === sp + "index.html"; } catch (err) { return false; }
 }
 function otherOrigin(u) { try { return new URL(u).origin !== self.location.origin; } catch (err) { return false; } }
 function isMoved() { return caches.open("olnu-pending").then(function (c) { return c.match("./__moved"); }).then(function (r) { return !!r; }).catch(function () { return false; }); }
@@ -109,13 +190,17 @@ function networkFirst(req, e) {
       throw err;
     });
   }).then(function (res) {
-    if (res && res.ok && !isMovePage(res)) keep(e, put(VERSION, req, res.clone()));
+    // start1 F4: the app page is NEVER stored here. A fresh index.html in an old version's cache names files that this
+    // cache does not have (offline start broke after a deploy). The page of a version comes from precache() only.
+    if (res && res.ok && !isMovePage(res) && !appPage(req.url)) keep(e, put(VERSION, req, res.clone()));
     return res;
   });
-  function cached() {
-    return caches.match(req).then(function (r) {
-      if (r || req.mode !== "navigate") return r;
-      return caches.match("./index.html").then(function (h) { return h || caches.match("./"); });
+  function cached() {   // this version's own cache first (a waiting newer version has its own cache on the phone too)
+    return caches.open(VERSION).then(function (c) {
+      return c.match(req).then(function (r) { return r || caches.match(req); }).then(function (r) {
+        if (r || (req.mode !== "navigate" && !appPage(req.url))) return r;
+        return c.match("./index.html");
+      });
     });
   }
   var timer;
@@ -130,31 +215,42 @@ function networkFirst(req, e) {
   return Promise.race([first, slow]);
 }
 // smooth: app shell first. The page for this version is in the VERSION cache with the same ?v= scripts, so it always
-// fits the cached code. Answer it at once and refresh it in the background (stale-while-revalidate).
+// fits the cached code. start1: it is answered from that cache on EVERY start and never replaced (F4); the new version's
+// page comes with the new worker. Other pages (integritet.html …) are network first.
 function shellFirst(req, e) {
-  if (appNav(req)) {
-    // 🚚 moved: show the move page at once; the network check in the background clears the mark after a rollback.
-    return isMoved().then(function (m) {
-      if (!m) return shellFirst0(req, e);
-      keep(e, networkFirst(req, e).catch(function () {}));
-      return movedPage(req);
-    });
-  }
-  return shellFirst0(req, e);
+  if (!appNav(req)) return networkFirst(req, e);
+  // 🚚 moved: show the move page at once; the network check in the background clears the mark after a rollback.
+  return isMoved().then(function (m) {
+    if (!m) return shellFirst0(req, e);
+    keep(e, networkFirst(req, e).catch(function () {}));
+    return movedPage(req);
+  });
 }
 function shellFirst0(req, e) {
-  return caches.open(VERSION).then(function (c) {
-    return c.match(req, { ignoreSearch: true }).then(function (hit) { return hit || c.match("./index.html"); }).then(function (hit) {
-      var at = hit ? Date.parse(hit.headers.get("date") || "") : NaN;
-      if (!hit || !(Date.now() - at < SHELL_MAX_AGE)) return networkFirst(req, e);
-      keep(e, networkFirst(req, e).catch(function () {}));   // refresh the cached page for the next start
-      return hit;
+  return caches.open(VERSION).then(function (c) { return c.match("./index.html"); }).catch(function () { return null; }).then(function (hit) {
+    if (!hit) {   // this version's cache is gone: the network now, and fill the cache again when the server has this version
+      return networkFirst(req, e).then(function (res) { keep(e, heal()); return res; });
+    }
+    keep(e, movedCheck(req));
+    keep(e, dropOld());   // a start on this version: the caches of older versions can go now
+    return hit;
+  });
+}
+// 🚚 One cheap background request per start: did the app page move to another origin? Nothing is stored (start1 F4).
+function movedCheck(req) {
+  return fetch(new Request(req.url, { cache: "no-cache", credentials: "same-origin" })).then(function (res) {
+    if (res && res.redirected && otherOrigin(res.url)) return setMoved(true);
+    if (res && res.ok) return setMoved(false);
+  }, function () {
+    // CORS may hide a cross-origin redirect: ask once more without following it.
+    return fetch(new Request(req.url, { redirect: "manual", cache: "no-cache", credentials: "same-origin" })).then(function (r) {
+      if (r && r.type === "opaqueredirect") return setMoved(true);
     });
-  }).catch(function () { return networkFirst(req, e); });
+  }).catch(function () {});
 }
 // Code and styles: cache first (the URLs carry ?v=<hash>, so a new file has a new URL).
 function cacheFirst(req, cacheName) {
-  return caches.match(req).then(function (hit) {
+  return caches.open(cacheName).then(function (c) { return c.match(req); }).then(function (own) { return own || caches.match(req); }).then(function (hit) {
     if (hit) return hit;
     return fetch(req).then(function (res) {
       if (res && (res.ok || res.type === "opaque")) put(cacheName, req, res.clone());
@@ -397,6 +493,8 @@ function kanalRoute(req, e, url, scopePath, route) {
 self.addEventListener("message", function (e) {
   var d = e.data || {}, id = e.source && e.source.id, reply = function () { try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {} };
   var all = function (f) { for (var b in kanalBoots) if (!id || b === id || !b) kanalBoots[b][f] = true; };   // Safari may not give resultingClientId
+  if (d.type === "pn-skip") { keep(e, Promise.resolve(self.skipWaiting()).then(reply, reply)); return; }   // start1: js/upd0.js says "take over now"
+  if (d.type === "pn-ver") { try { if (e.ports && e.ports[0]) e.ports[0].postMessage({ v: VERSION }); } catch (err) {} return; }
   if (d.type === "pn-kanal-alive") { all("alive"); reply(); return; }
   if (d.type === "pn-kanal-ok") {
     all("ok");

@@ -48,6 +48,7 @@
   function applyOnline() { return PN.applyOnline.apply(null, arguments); }
   function beerOnly() { return PN.beerOnly.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
+  function x8Snap() { return PN.x8Snap.apply(null, arguments); }
   function lazyStart() { return PN.lazyStart.apply(null, arguments); }
   function publicStart() { return PN.publicStart.apply(null, arguments); }
   function drinkFx() { return PN.drinkFx.apply(null, arguments); }
@@ -78,48 +79,8 @@
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("sheet").hidden) closeSheet("cancel"); });
 
   /* ---------- Service worker ---------- */
-  if ("serviceWorker" in navigator) {
-    // Auto-update: always check for a new sw.js, and reload once when a new version takes over.
-    var hadController = !!navigator.serviceWorker.controller;
-    var reloading = false;
-    var typing = function () {
-      var a = document.activeElement;
-      return a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
-    };
-    // I-25: a new version never reloads the page under the user's hands. Idle = no typing, nothing busy, no sheet / intro /
-    // takeover / undo button, no live ride and no live Följ mig hem. Idle: reload at once. Not idle: a small button
-    // "Ny version – tryck för att ladda om" (the user decides), no timer reload.
-    var calm = function () {
-      var live = false;
-      try { live = !!((window.RIDE && window.RIDE.live && window.RIDE.live()) || (window.HEMFOLJ && window.HEMFOLJ._mine && (window.HEMFOLJ._mine() || {}).live)); } catch (e) {}
-      return !(typing() || PN.s.busy || !$("sheet").hidden || !$("intro").hidden || document.querySelector(".takeover") || PN.s.undoEl || live);
-    };
-    var updBtn = function () {
-      if (document.getElementById("pn-newver")) return;
-      var b = document.createElement("button");
-      b.id = "pn-newver"; b.type = "button"; b.textContent = "Ny version – tryck för att ladda om";
-      b.setAttribute("style", "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:99999;padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:#0a0f1c;color:#fff;font:600 14px system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:90vw");
-      b.addEventListener("click", function () { reloading = true; location.reload(); });
-      document.body.appendChild(b);
-    };
-    var reloadNow = function () {
-      if (reloading) return;
-      if (!calm()) { updBtn(); return; }
-      reloading = true; location.reload();
-    };
-    navigator.serviceWorker.addEventListener("controllerchange", function () {
-      if (hadController) reloadNow();   // first install: no reload needed
-      hadController = true;
-    });
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" }).then(function (reg) {
-        var check = function () { if (reg && reg.update) reg.update().catch(function () {}); };
-        var lastCheck = 0;   // ⚡ SPEED: not in the resume burst, max once per 30 min
-        document.addEventListener("visibilitychange", function () { if (!document.hidden && Date.now() - lastCheck > 30 * 60000) { lastCheck = Date.now(); setTimeout(check, 8000); } });
-        setInterval(check, 10 * 60 * 1000);
-      }).catch(function () {});
-    });
-  }
+  // start1 (I-107): registration + the update flow live in js/upd0.js (loaded right after config.js). A new version never
+  // reloads the page under the user: it waits for the next cold start or 30 min in the background.
 
   // QA #20: "Uppdatera nu" reloads to ?v=<time>; drop it from the address bar after load.
   (function () {
@@ -178,6 +139,9 @@
     // people (known only after its tile arrived) gets its marker.
     var placesRender = U.debounce(function () { render(); }, 300);
     window.BARS.onPlacesReady(function () { PN.s.tickerKey = ""; PN.s.newsDirty = true; renderTicker(); placesRender(); });
+    // start1: the saved map first (friends' pins from the last poll of tonight, dimmed, with "Senast uppdaterad 22:14");
+    // the first poll then replaces it. Before: only after the first poll FAILED (up to 15 s of empty map).
+    try { x8Snap(true); } catch (e) {}
     // Flyttkod first (finish a pending export, import a code, or ask in a new home-screen app), then intro + sign-in.
     var boot;
     try { boot = flyttBoot(); } catch (e) { boot = Promise.resolve(); }

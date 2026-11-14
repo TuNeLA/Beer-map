@@ -160,6 +160,7 @@ run friends2   $B friends2-pw.js   # lane friends2: I-90 Vänner rows full width
 run b1people   $B b1people-pw.js   # lane b1people: Blockerade row, one fold style, unblock opens the DM, mute bell state, profile card, group top card + chat card
 run sec        $B sec-pw.js        # lane sec: Spöke also ends the check-in and the pin (H2)
 run x8         $B x8-pw.js         # lane x8: weak signal: ÖL! outbox (offline / slow 3G / lost answer, no double log), 'Senast uppdaterad' + poll back-off, LÄSK!/spökläge
+run start1     $B start1-pw.js     # lane start1 (I-107 "the app opened twice"): saved map first on every start (dimmed + 'Senast uppdaterad'), new version waits (no reload under the user; real service-worker update cycle on temp copies of docs/), version-mix fix, tiles kept, no double download, wipe at logout / deletion
 run perfchat   $B perf-pw.js --part chat   # lane fixP: sign-in burst ≤ 12 / 15 s, chat tick = 1 request (7 → 15 → 30 s), hidden 0, old server (no 0466), flag cache
 run perf       $B perf-pw.js       # lane perf (load X10): ≤ 3 requests/min open, cold start ≤ 12, reopen, game 2.5 s + 0 while hidden, busy back-off, old server (no 0465)
 run left       $B left-pw.js       # lane left (11 Nov): T-05b Regler before every post RPC (photo, voice, invite, event, wish …), Z1 zone_counts in the poll bundle

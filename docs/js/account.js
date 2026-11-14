@@ -661,7 +661,10 @@
     unsub.then(function () { return c ? call(function () { return c.auth.signOut({ scope: "local" }); }) : null; }).then(function () {
       [AUTH_KEY, AUTH_KEY + "-user", AUTH_KEY + "-code-verifier", "olnu.uid", "olnu.acct.prev", PEND_KEY, GROUP_KEY, NUDGE_KEY].forEach(function (k) { lsSet(k, null); });
       lsSet("olnu.flyttAsked", "1");
-      location.replace(location.pathname);
+      // start1 (audit F7): logout removed only the auth keys. Now friends' pins, chats, photos and faces leave the phone too
+      // (x8.js wipe: snapshot, WARM cache, outboxes, olnu-photos, olnu-film-q, olnu-bold, the faces in olnu-pending).
+      var gone = null; try { gone = window.X8 && window.X8.wipe ? window.X8.wipe("logout") : null; } catch (e) {}
+      return Promise.resolve(gone).catch(function () {}).then(function () { location.replace(location.pathname); });
     });
   }
 

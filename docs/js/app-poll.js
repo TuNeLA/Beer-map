@@ -21,6 +21,7 @@
   function loadHeatPoints() { return PN.loadHeatPoints.apply(null, arguments); }
   function renderHeat() { return PN.renderHeat.apply(null, arguments); }
   function render() { return PN.render.apply(null, arguments); }
+  function myCheckin() { return PN.myCheckin.apply(null, arguments); }
   function syncMyCheckin() { return PN.syncMyCheckin.apply(null, arguments); }
   function loadGroupNews() { return PN.loadGroupNews.apply(null, arguments); }
   function streakAlerts() { return PN.streakAlerts.apply(null, arguments); }
@@ -42,8 +43,8 @@
   function flyttOnVisible() { return PN.flyttOnVisible.apply(null, arguments); }
   function showMoved() { return PN.showMoved.apply(null, arguments); }
   PN.put({
-    beerOnly: beerOnly, refresh: refresh, startPoll: startPoll, stopPoll: stopPoll, lazyStart: lazyStart,
-    publicStart: publicStart
+    beerOnly: beerOnly, refresh: refresh, x8Snap: x8Snap, startPoll: startPoll, stopPoll: stopPoll,
+    lazyStart: lazyStart, publicStart: publicStart
   });
   // </split:imports>
   // v14 (owner: all drinks count): every live pin as a light view whose beer_count = beers + other drinks.
@@ -212,6 +213,7 @@
       else if (PN.s.pendingFocus != null) handleFocus();   // v27: a pin push tapped while the app is open (routeOpen)
       if (window.X8) { window.X8.pollOk(dv2 ? { me: dv2.me, server_time: dv2.server_time } : null); if (dv2) window.X8.snapSave(dv2); }   // x8: stale off, outbox flush, snapshot
       mods("onPollData", dv2);
+      try { persistMaybe(dv2 && dv2.me); } catch (e) {}
       // review2: shared slow lane. Slow-changing modules get onPoll once per 60 s, in the same wave.
       var slowDue = PN.s.pollSlow;   // perf: decided at poll start (planStart), same rule
       if (slowDue) PN.s.slowLaneAt = Date.now();
@@ -239,18 +241,30 @@
   // Poll every 30 s; every 60 s when the map was not touched for 3 min. Hidden tab = no timer at all.
   var pollTimer = null, lastTouch = Date.now();
   function idle() { return Date.now() - lastTouch > IDLE_MS; }
-  // x8: cold start with no net → the last good poll_v2 answer from this phone (≤ 3 h, same user), drawn once, with the caption
-  function x8Snap() {
-    if (PN.s.x8Snapped || PN.s.beers.length || !window.X8) return PN.s.x8Snapped;
+  // x8 + start1: the last good poll_v2 answer from this phone (x8.js snapGet: same user, tonight, the privacy rules), drawn once.
+  // early = app.js start(), on EVERY start before the first poll (I-107: the map is not empty while the poll runs).
+  // Not early = the first poll failed (the old path). No alerts, sounds or toasts come from these pins.
+  function x8Snap(early) {
+    if (PN.s.x8Snapped || PN.s.firstLoadDone || PN.s.beers.length || !window.X8 || !LIVE) return PN.s.x8Snapped;
     var o = window.X8.snapGet(); if (!o) return false;
+    if (early && !o.pins.length && !o.checkins.length && o.live_total == null) return false;   // nothing to show: no caption either
     PN.s.x8Snapped = true;
     try {
       PN.s.beers = normPins(o.pins); PN.s.liveTotal = o.live_total != null ? o.live_total | 0 : null;
-      PN.s.checkins = (o.checkins || []).filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
+      PN.s.checkins = o.checkins.filter(function (c) { return c && c.bar_name && isFinite(c.lat) && isFinite(c.lng); });
       drinkViews = null; PN.s.newsDirty = true; render(); updateCounts();
-      window.X8.staleShow();   // the caption shows at once ("Senast uppdaterad <snapshot time>")
+      // dimmed people pins + the caption at once ("Senast uppdaterad <snapshot time>"); the next good poll takes both away
+      if (window.X8.snapShow) window.X8.snapShow(o.at); else window.X8.staleShow();
+      try { performance.mark("pn:snap"); } catch (e) {}
     } catch (e) {}
     return true;
+  }
+  // start1 (audit item 9): ask the browser to keep the storage. Not at first open: only when this user has a beer or a
+  // check-in tonight, or runs the installed app. x8.js does it once per start, with no prompt.
+  function persistMaybe(me) {
+    if (!window.X8 || !window.X8.persist) return;
+    var why = me && ((me.beer_count | 0) + (me.other_count | 0)) > 0 ? "beer" : PN.s.lastAcceptAt ? "beer" : myCheckin() ? "checkin" : U.isStandalone() ? "installed" : "";
+    if (why) window.X8.persist(why);
   }
   function schedulePoll() {
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }

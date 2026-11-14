@@ -136,6 +136,7 @@
       var ask = U.ls.get("olnu.uid", "") && !storedAuth() && !movedNow() ? askNewAccount() : Promise.resolve("new");
       return ask.then(function (choice) {
         if (choice !== "new") throw { message: "choice_" + choice, keep: true };
+        if (U.ls.get("olnu.uid", "") && window.X8 && window.X8.wipe) window.X8.wipe("new");   // start1: a new account on this phone: the old account's friends leave it
         U.ls.del("olnu.uid");
         return Promise.resolve(PN.s.client.auth.signInAnonymously()).then(function (r) { if (r && r.error) throw r.error; cfgClear(); return r; });   // fixP N-21
       });
@@ -529,6 +530,14 @@
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_KEY }
       });
     } catch (e) { PN.s.client = null; }
+    // start1 (audit F7): the session ended on this phone (logout in account.js, account deletion in v14.js, "new account" after
+    // a lost session) → other people's data leaves the phone (x8.js wipe: the list is there). signOut() waits for it (max 2.5 s),
+    // so the reload after a deletion finds the stores empty. An account move does no signOut: not wiped here.
+    try {
+      if (PN.s.client) PN.s.client.auth.onAuthStateChange(function (ev) {
+        if (ev === "SIGNED_OUT" && window.X8 && window.X8.wipe) return window.X8.wipe("signout");
+      });
+    } catch (e) {}
   }
 
   /* ---------- First start (shown once) ---------- */

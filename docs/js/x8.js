@@ -11,10 +11,17 @@
    2. Stale mode: 2 failed polls in a row, or the browser is offline → the last map, pins and counts stay and ONE calm
       caption "Senast uppdaterad 22:14" shows under the HUD row (p#x8-stale; place + look: pnds.css "lane:x8"). The next good poll hides it. Poll back-off
       (app.js schedulePoll asks delay()): 5, 10, 20, 40, 60 s (+/- 20 %), offline: one try per 60 s. No red banner, no loop.
-   3. Snapshot: the last good poll_v2 answer (≤ 300 pins, ≤ 3 h, same user) so a cold start with no net still shows the
-      last map (app.js draws it when the first poll fails).
+   3. Snapshot: the last good poll_v2 answer (≤ 300 pins, same user, tonight only). start1 (14 Nov 2026, I-107): app.js draws
+      it FIRST on every start (app-poll.js x8Snap), the first good poll replaces it. Privacy rules: other people only from
+      tonight (before the next 05:00) and ≤ 3 h old, strangers and the live total ≤ 30 min; older = only my own pin and
+      check-in; after 05:00 or for another user the snapshot is deleted. While snapshot pins are on the map: body.x8-snap
+      (the people pins are dimmed) + the caption with the snapshot's time. No alerts, sounds or toasts from stored data.
+   4. X8.persist(why): ask the browser once per start to keep the storage (navigator.storage.persist; no prompt in Chrome and
+      Safari; never in Firefox, which asks the user). Called after a beer / check-in tonight or in the installed app.
+   5. X8.wipe(why): logout / account deletion → other people's data leaves the phone (list at "wipe" below).
    Copy: DIALEKT keys "x8.*" (sv-neutral + en-neutral). No notifications, no browser dialogs.
-   Public: window.X8 = { bind, add, list, count, flush, isNet, say, pollOk, pollFail, stale, delay, snapSave, snapGet, _s }. */
+   Public: window.X8 = { bind, add, list, count, flush, isNet, say, pollOk, pollFail, stale, delay, snapSave, snapGet, snapShow,
+   persist, wipe, _s }. */
 (function () {
   "use strict";
   var KEY = "olnu.x8.outbox", LAST = "olnu.x8.last", SNAP = "olnu.x8.snap";
@@ -161,10 +168,13 @@
   }
 
   /* ---------- stale mode ---------- */
-  var fails = 0, lastGood = 0, staleOn = false, capEl = null, hideT = 0;
+  var fails = 0, lastGood = 0, staleOn = false, capEl = null, hideT = 0, snapOn = false, snapTime = 0;
   (function () { var l = lsGet(LAST); if (l && isFinite(l.at)) lastGood = +l.at; })();
-  function capText() { return busyN >= 2 ? say("x8.busy") : lastGood ? say("x8.stale", { time: hhmm(lastGood) }) : say("x8.nonet"); }
-  function show() {
+  function capText() {
+    var at = snapOn ? snapTime : lastGood;   // snapshot pins on the map: the time of THAT data
+    return busyN >= 2 ? say("x8.busy") : at ? say("x8.stale", { time: hhmm(at) }) : say("x8.nonet");
+  }
+  function show(quiet) {
     if (!live) return;
     if (!capEl) {
       capEl = document.createElement("p"); capEl.id = "x8-stale"; capEl.className = "x8-stale"; capEl.setAttribute("role", "status");
@@ -175,7 +185,7 @@
     clearTimeout(hideT);
     capEl.querySelector("span").textContent = capText();
     capEl.classList.remove("x8-stale-out"); capEl.hidden = false;
-    if (!staleOn) { staleOn = true; document.body.classList.add("x8-stale-on"); log("stale", { fails: fails }); }
+    if (!staleOn) { staleOn = true; document.body.classList.add("x8-stale-on"); if (!quiet) log("stale", { fails: fails }); }
   }
   function hide() {
     if (!staleOn || busyN >= 2) return;
@@ -186,6 +196,7 @@
   function pollOk(info) {
     fails = 0; lastGood = now(); lsSet(LAST, { at: lastGood });
     busyEnd();
+    snapHide();   // start1: live pins replaced the snapshot
     if (info && info.me && typeof info.me === "object") {
       me = info.me;
       var st = info.server_time ? Date.parse(info.server_time) : NaN;
@@ -194,7 +205,7 @@
     hide();
     if (count()) setTimeout(function () { flush("poll"); }, 600);
   }
-  function pollFail() { fails++; if (fails >= 2 || navigator.onLine === false) show(); }
+  function pollFail() { fails++; if (fails >= 2 || navigator.onLine === false) show(); if (snapOn && fails === 2) log("stale", { fails: fails, snap: 1 }); }
   // ms until the next poll after failures (null = the normal schedule)
   function delay() {
     if (busyN >= 2) return Math.max(5e3, busyUntil - now());   // perf: busy → the next map poll is the probe, after the back-off
@@ -245,24 +256,135 @@
     return true;
   }
 
-  /* ---------- snapshot of the last good poll (cold start with no net) ---------- */
-  var snapAt = 0;
+  /* ---------- snapshot of the last good poll (start1: drawn first on every start) ---------- */
+  var snapAt = 0, SNAP_NEAR = 30 * 60e3, snapCss = false;
   function who() { try { var s = JSON.parse(localStorage.getItem("olnu.auth") || "null"); return s && s.user && s.user.id ? String(s.user.id).slice(0, 8) : ""; } catch (e) { return ""; } }
+  // "tonight" = until the next 05:00 Stockholm (util.js U.next5am, the same rule as nightEnd / olnu.night)
+  function nightOf(ms) { try { return window.U.next5am(new Date(ms)).getTime(); } catch (e) { return 0; } }
   function snapSave(d) {
     if (!d || !Array.isArray(d.pins) || now() - snapAt < SNAP_EVERY) return;
     snapAt = now();
     try {
       var o = { at: now(), u: who(), pins: d.pins.slice(0, 300), live_total: d.live_total == null ? null : d.live_total, checkins: (d.checkins || []).slice(0, 80) };
       var s = JSON.stringify(o);
-      if (s.length < 160000) localStorage.setItem(SNAP, s);
+      if (o.u && s.length < 160000) localStorage.setItem(SNAP, s);
     } catch (e) {}
   }
+  // → { at, age, pins, checkins, live_total } or null. Only what may be shown now (privacy rules in the header):
+  //   another user / not tonight / a clock that went back → deleted, null · ≤ 30 min: all · ≤ 3 h: mine + friends · older: mine only
   function snapGet() {
     var o = lsGet(SNAP);
-    if (!o || !Array.isArray(o.pins) || !isFinite(o.at) || now() - o.at > SNAP_MS || o.u !== who()) return null;
-    lastGood = Math.max(lastGood, +o.at);
-    return o;
+    if (!o) return null;
+    var age = now() - o.at;
+    if (!Array.isArray(o.pins) || !isFinite(o.at) || !o.u || o.u !== who() || age < -60e3 || nightOf(o.at) !== nightOf(now())) { lsSet(SNAP, null); return null; }
+    var fresh = age <= SNAP_MS, near = age <= SNAP_NEAR;
+    return { at: +o.at, age: age,
+      pins: o.pins.filter(function (p) { return p && (p.is_mine || (fresh && (p.friend_name || near))); }),
+      checkins: (o.checkins || []).filter(function (c) { return c && (c.is_mine || (fresh && (c.is_friend || near))); }),
+      live_total: near ? o.live_total : null };
   }
+  // app-poll.js x8Snap(): snapshot pins are on the map now → dim the people pins + ONE calm caption with the snapshot's time
+  // (no toast, no spinner). The next good poll (pollOk) takes both away.
+  function snapShow(at) {
+    snapOn = true; snapTime = +at || 0;
+    lastGood = Math.max(lastGood, snapTime);
+    if (!snapCss) {
+      snapCss = true;
+      try {
+        var el = document.createElement("style"); el.id = "x8-snap-css";
+        el.textContent = "body.x8-snap .leaflet-marker-pane,body.x8-snap .leaflet-hotbars-pane{opacity:.6}";
+        document.head.appendChild(el);
+      } catch (e) {}
+    }
+    document.body.classList.add("x8-snap");
+    show(true);
+    log("snap", { min: Math.round((now() - snapTime) / 60e3) });
+  }
+  function snapHide() {
+    if (!snapOn) return;
+    snapOn = false; document.body.classList.remove("x8-snap");
+  }
+
+  /* ---------- persistent storage (start1; audit item 9) ---------- */
+  // The anonymous account lives in localStorage only: under storage pressure (and on iPhone Safari after 7 days away) the
+  // browser may delete it. persist() asks the browser to keep this site's data. Chrome and Safari decide by themselves
+  // (no prompt). Firefox shows a prompt: never call it there. Once per start; the result is logged when it changes.
+  var persistAsked = false, PERSIST = "olnu.x8.persist";
+  function persist(why) {
+    if (persistAsked) return; persistAsked = true;
+    try {
+      var st = navigator.storage;
+      if (!st || !st.persist || !st.persisted || /Firefox\/|FxiOS/.test(navigator.userAgent)) return;
+      st.persisted().then(function (p) { return p ? true : st.persist(); }).then(function (ok) {
+        var v = ok ? "1" : "0";
+        if (lsGet(PERSIST) !== v) { lsSet(PERSIST, v); log("persist", { ok: !!ok, why: String(why || "") }); }
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* ---------- wipe (start1; audit F7 / item 8): logout and account deletion ---------- */
+  // Other people's data and data that is tied to the account leave the phone. Kept: the app code, bars, map tiles, device
+  // settings (language, map style), the beta channel choice (olnu-pending ./__kanal) and the "app moved" mark (./__moved).
+  //   localStorage  WIPE_LS below: the poll snapshot, the WARM cache (groups, friends, chats, inbox, avatars), both outboxes
+  //                 and the small lists with friends' names or places
+  //   Cache Storage olnu-pending: ./__face/* (friends' faces), ./__pnq + ./__pnlog_ntf (notification log), ./__badge,
+  //                 ./__pending_open · olnu-bold (film background images): the whole cache
+  //   IndexedDB     olnu-photos (chat photos), olnu-film-q (film pictures that wait for upload): every store emptied, then
+  //                 the database deleted (a delete waits while another connection is open: the emptied stores do not)
+  // "pn.wipe" (not an olnu.* key: account deletion removes those) marks an unfinished wipe: wipeBoot() finishes it on the next start.
+  var WIPE_LS = [SNAP, LAST, KEY, "olnu.beerQueue", "olnu.otherQueue", "olnu.warm.d1", "olnu.warm.r1", "olnu.ffNames", "olnu.squadLast",
+    "olnu.rallyHeads", "olnu.kingOf", "olnu.newsRanks", "olnu.gact", "olnu.pinFolj", "olnu.pinFolj.last", "olnu.walkMine"];
+  var WIPE_PEND = /\/__(face\/.*|pnq|pnlog_ntf|badge|pending_open)$/, WIPE_DB = ["olnu-photos", "olnu-film-q"], WIPE_MARK = "pn.wipe";
+  function idbEmpty(name) {
+    return new Promise(function (done) {
+      var fin = function () { try { indexedDB.deleteDatabase(name); } catch (e) {} done(); };
+      try {
+        if (!window.indexedDB) { done(); return; }
+        var known = indexedDB.databases ? indexedDB.databases().then(function (l) { return l.some(function (d) { return d.name === name; }); }, function () { return true; }) : Promise.resolve(true);
+        known.then(function (yes) {
+          if (!yes) { done(); return; }
+          var rq = indexedDB.open(name);
+          rq.onerror = rq.onblocked = fin;
+          rq.onupgradeneeded = function () { try { rq.transaction.abort(); } catch (e) {} };   // it did not exist: do not create it
+          rq.onsuccess = function () {
+            var db = rq.result, names = [].slice.call(db.objectStoreNames);
+            if (!names.length) { db.close(); fin(); return; }
+            try {
+              var tx = db.transaction(names, "readwrite");
+              names.forEach(function (n) { tx.objectStore(n).clear(); });
+              tx.oncomplete = tx.onerror = tx.onabort = function () { db.close(); fin(); };
+            } catch (e) { db.close(); fin(); }
+          };
+        });
+      } catch (e) { fin(); }
+      setTimeout(done, 2500);
+    });
+  }
+  var wiping = null, wipedAt = 0;
+  function wipe(why) {
+    if (wiping) return wiping;
+    if (now() - wipedAt < 10e3) return Promise.resolve(true);   // logout: SIGNED_OUT did it a moment ago
+    try { localStorage.setItem(WIPE_MARK, String(now())); } catch (e) {}
+    WIPE_LS.forEach(function (k) { lsSet(k, null); });
+    mem = null; me = null; snapAt = 0; snapHide();
+    try { if (window.WARM && window.WARM.clear) window.WARM.clear(); } catch (e) {}
+    var jobs = WIPE_DB.map(idbEmpty);
+    if (window.caches) {
+      jobs.push(caches.delete("olnu-bold").catch(function () {}));
+      jobs.push(caches.has("olnu-pending").then(function (has) {
+        if (!has) return;
+        return caches.open("olnu-pending").then(function (c) {
+          return c.keys().then(function (ks) { return Promise.all(ks.filter(function (r) { return WIPE_PEND.test(new URL(r.url).pathname); }).map(function (r) { return c.delete(r); })); });
+        });
+      }).catch(function () {}));
+    }
+    log("wipe", { why: String(why || "") });
+    wiping = Promise.all(jobs).then(function () { try { localStorage.removeItem(WIPE_MARK); } catch (e) {} return true; }, function () { return false; })
+      .then(function (ok) { wiping = null; if (ok) wipedAt = now(); return ok; });
+    return wiping;
+  }
+  // a wipe that the reload after logout / deletion cut short: finish it before anything is drawn
+  (function wipeBoot() { try { if (localStorage.getItem(WIPE_MARK)) wipe("boot"); } catch (e) {} })();
 
   // app.js: bind({ send: function (item) → Promise<{ kind: "ok"|"refused"|"cooldown"|"net"|"skip", wait }>, live: LIVE })
   function bind(o) {
@@ -279,7 +401,7 @@
     pollOk: pollOk, pollFail: pollFail, stale: function () { return staleOn; }, staleShow: show, delay: delay,
     netSeen: netSeen, busy: busyMode, hold: hold, busyLeft: function () { return busyN >= 2 ? Math.max(0, busyUntil - now()) : 0; },
     _busy: function (o) { if (o && o.min != null) { BUSY_MIN = +o.min; BUSY_JIT = +(o.jit || 0); } return { n: busyN, until: busyUntil, hits: busyHits, probeAt: probeAt }; },
-    snapSave: snapSave, snapGet: snapGet,
+    snapSave: snapSave, snapGet: snapGet, snapShow: snapShow, snapOn: function () { return snapOn; }, persist: persist, wipe: wipe,
     _s: function () { return { fails: fails, lastGood: lastGood, stale: staleOn, busy: busy, skew: skew, me: me, q: load(), trail: trail.slice() }; }
   };
 })();
