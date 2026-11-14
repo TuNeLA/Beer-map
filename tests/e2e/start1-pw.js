@@ -343,7 +343,15 @@ const mapState = (page) => page.evaluate(() => {
       await page.waitForFunction(() => window.__pnSplashGone || performance.now() > 6000, null, { timeout: 20000 }).catch(() => {});
       const m = await mods(page).catch((e) => ({ missing: ["page"], build: String(e).slice(0, 60) }));
       ok("U1 version mix (F4): after a deploy, an OFFLINE start still runs complete build A from A's own cache", m.build === "A" && m.missing.length === 0, m);
+      // other pages under the worker: never the app page in their place; the precached move page also works offline with a query
+      const other = await ctx.newPage();
+      await other.goto(BASE() + "flytta.html?x=1").catch(() => {});
+      const off = await other.evaluate(() => ({ app: !!document.getElementById("map"), path: location.pathname, len: document.documentElement.outerHTML.length })).catch((e) => ({ err: String(e).slice(0, 80) }));
       await ctx.setOffline(false); srv.block = false; net.down = false;
+      await other.goto(BASE() + "integritet.html").catch(() => {});
+      const on = await other.evaluate(() => ({ app: !!document.getElementById("map"), h: (document.querySelector("h1") || {}).textContent || "" })).catch((e) => ({ err: String(e).slice(0, 80) }));
+      await other.close();
+      ok("U1b other pages: flytta.html?x=1 opens offline from the cache, integritet.html is itself (not the app page)", off.app === false && off.len > 500 && on.app === false && on.h.length > 0, { off, on });
       await page.reload(); await firstLoad(page); await wait(page, 500);
 
       // --- the update is found while the app is open and in use

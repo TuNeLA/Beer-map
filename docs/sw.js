@@ -197,7 +197,7 @@ function networkFirst(req, e) {
   });
   function cached() {   // this version's own cache first (a waiting newer version has its own cache on the phone too)
     return caches.open(VERSION).then(function (c) {
-      return c.match(req).then(function (r) { return r || caches.match(req); }).then(function (r) {
+      return c.match(req, { ignoreSearch: req.mode === "navigate" }).then(function (r) { return r || caches.match(req); }).then(function (r) {
         if (r || (req.mode !== "navigate" && !appPage(req.url))) return r;
         return c.match("./index.html");
       });
@@ -216,9 +216,17 @@ function networkFirst(req, e) {
 }
 // smooth: app shell first. The page for this version is in the VERSION cache with the same ?v= scripts, so it always
 // fits the cached code. start1: it is answered from that cache on EVERY start and never replaced (F4); the new version's
-// page comes with the new worker. Other pages (integritet.html …) are network first.
+// page comes with the new worker.
 function shellFirst(req, e) {
-  if (!appNav(req)) return networkFirst(req, e);
+  if (!appNav(req)) {
+    // flytta.html (precached), integritet.html …: the cached copy of THAT page at once + a refresh for the next time.
+    // Never the app page in its place (before: a first visit to another page got index.html).
+    return caches.open(VERSION).then(function (c) { return c.match(req, { ignoreSearch: true }); }).catch(function () { return null; }).then(function (hit) {
+      if (!hit) return networkFirst(req, e);
+      keep(e, networkFirst(req, e).catch(function () {}));
+      return hit;
+    });
+  }
   // 🚚 moved: show the move page at once; the network check in the background clears the mark after a rollback.
   return isMoved().then(function (m) {
     if (!m) return shellFirst0(req, e);
