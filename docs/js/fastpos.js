@@ -5,8 +5,9 @@
    2. While the app is visible and location is already allowed, one quiet fix is taken at start / on resume and at most
       every 2 min after, so a fresh position is ready BEFORE the tap. (One getCurrentPosition, not a running watch:
       a watch makes other calls wait for its next fix in Chromium, see autoci.js.)
-   3. FASTPOS.forTap(): a fix < 2 min old → at once (and a new one in the background). Else a quick network fix
-      (Wi-Fi/cell, max 2.5 s, may be 5 min old), and only if that fails the old exact GPS wait.
+   3. FASTPOS.forTap(): an exact fix (<= 100 m) < 2 min old → at once (and a new one in the background). Else a quick
+      network fix (Wi-Fi/cell, max 2.5 s, max 1 min old), and only if that fails the old exact GPS wait.
+      A coarse fix (> 100 m) never gives an EXACT pin: app-checkin.js askWhere posts it as an area (precise: false).
    Never asks for permission itself (only when the browser says "granted"). */
 (function () {
   "use strict";
@@ -20,9 +21,11 @@
     g.getCurrentPosition = function (ok, err, o) { return gc(function (p) { keep(p); if (ok) ok(p); }, err, o); };
     g.watchPosition = function (ok, err, o) { return wp(function (p) { keep(p); if (ok) ok(p); }, err, o); };
   } catch (e) {}
+  // audit A2 (14 Nov): a kept fix is good for a tap only when it is exact enough (GOOD_M). A coarse fix is never reused.
+  var GOOD_M = 100;
   function fresh(ms) {
     var l = F.last;
-    return l && Date.now() - l.at <= (ms || FRESH_MS) ? l.pos : null;
+    return l && Date.now() - l.at <= (ms || FRESH_MS) && l.pos.coords.accuracy <= GOOD_M ? l.pos : null;
   }
   function ask(o) {
     return new Promise(function (res, rej) { try { g.getCurrentPosition(res, rej, o); } catch (e) { rej({ code: 2 }); } });
@@ -46,7 +49,7 @@
   function forTap(exact) {
     var p = fresh();
     if (p) { setTimeout(function () { warm(true); }, 50); return Promise.resolve(p); }
-    return ask({ enableHighAccuracy: false, timeout: 2500, maximumAge: 5 * 60e3 }).then(function (q) {
+    return ask({ enableHighAccuracy: false, timeout: 2500, maximumAge: 60e3 }).then(function (q) {
       setTimeout(function () { warm(true); }, 50);
       return q;
     }, function (e) {

@@ -154,7 +154,8 @@
   function askWhere(pos) {
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
     var home = !!(window.PRIVACY && window.PRIVACY.inHome(lat, lng));
-    var real = { lat: lat, lng: lng, precise: PN.s.prec === "exact" && !home, home: home, acc: pos.coords.accuracy };
+    // audit A2: an unsure position (> 100 m) is never posted as an exact pin (I-104 made the tap use quick network fixes)
+    var real = { lat: lat, lng: lng, precise: PN.s.prec === "exact" && !home && !(pos.coords.accuracy > 100), home: home, acc: pos.coords.accuracy };
     // v10: fresh own check-in (< 3 h) and still within 150 m of it → drink there, no question.
     var ci = myCheckin();
     if (ci && Date.now() - ci.at < CI_FRESH_MS && U.haversine(lat, lng, ci.lat, ci.lng) <= CI_STAY_M) {
