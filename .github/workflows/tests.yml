@@ -165,7 +165,7 @@ jobs:
           - name: f13
             filter: '^(f13)$'
           - name: alive2
-            filter: '^(alive2|mycount|takeover|mapfix)$'
+            filter: '^(alive2|mycount|takeover|mapfix|speed1)$'
           - name: menufix
             filter: '^(menufix)$'
           - name: tickerfix
