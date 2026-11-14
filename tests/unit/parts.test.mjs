@@ -61,10 +61,12 @@ test("ticker: chaosFits needs its placeholders; chaosSuppressed comes back only 
 
 test("ticker: tickFill adds pieces until the track is wide enough, and stops (guard)", () => {
   let width = 0, calls = 0;
-  const track = { get scrollWidth() { return width; }, parentNode: { clientWidth: 100 } };
-  const f = lf(["tickFill"], { $: () => track, tickOff: 0, tickPiece: () => { calls++; width += 150; } });
+  // lane speed1: tickFill reads the widths through tkMeasure (stored numbers; a new read only after tkDirty)
+  const track = { get scrollWidth() { return width; }, parentNode: { clientWidth: 100 }, firstChild: null, childElementCount: 0 };
+  const fns = ["tickFill", "tkMeasure", "tkDirty"];
+  const f = lf(fns, { $: () => track, tickOff: 0, tkM: null, tickPiece: () => { calls++; width += 150; } });
   f.tickFill(); assert.ok(width >= 400 && calls === 3, "need = 2*100+200 = 400 px: " + calls);
-  calls = 0; width = 0; const g = lf(["tickFill"], { $: () => track, tickOff: 0, tickPiece: () => { calls++; } });
+  calls = 0; width = 0; const g = lf(fns, { $: () => track, tickOff: 0, tkM: null, tickPiece: () => { calls++; } });
   g.tickFill(); assert.equal(calls, 20, "a piece that adds nothing cannot loop forever (guard 20)");
 });
 

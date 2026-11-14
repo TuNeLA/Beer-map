@@ -31,6 +31,7 @@
   var CI_KEY = "olnu.checkin", CI_FRESH_MS = 3 * 3600e3, CI_STAY_M = 150;
   var ciBarById = {};    // bar id -> bar, for the button in an open popup
   PN.put({ ciBarById: ciBarById });   // <split:put/>
+  var ciPend = null;     // speed1: the bar id of a check-in that the phone shows but the server has not answered yet
   // Own check-in on this phone: {id, name, lat, lng, at, until}. null when none or after 05:00.
   function myCheckin() {
     var c = U.ls.getJSON(CI_KEY, null);
@@ -71,7 +72,8 @@
     ciBarById[String(bar.id)] = bar;
     if (!PN.s.authed || PN.s.checkinState === "missing") return "";
     var me = myCheckin(), here = me && me.id === String(bar.id);
-    if (here) return '<div class="ci-here">' + U.esc(t("ciDone")) + '</div><button type="button" class="ci-out" data-ciout="' + U.esc(String(bar.id)) + '">' +
+    if (here) return '<div class="ci-here">' + U.esc(t("ciDone")) + '</div><button type="button" class="ci-out" data-ciout="' + U.esc(String(bar.id)) + '"' +
+      (ciPend === String(bar.id) ? ' disabled data-cipend="1"' : "") + ">" +   // speed1: "Checka ut" works when the server has the check-in
       U.esc(tl("🚪 Checka ut", "🚪 Check out")) + "</button>";   // ux3: uxfix.js does the tap (check_out, 0162)
     return '<button type="button" class="ci-btn" data-ci="' + U.esc(String(bar.id)) + '"' + (here ? " disabled" : "") + ">" +
       U.esc(here ? t("ciDone") : t("ciBtn")) + "</button>";
@@ -88,38 +90,67 @@
     var name = String(bar.name || t("unnamedBar")).replace(/\s+/g, " ").trim().slice(0, 60);
     withName(function () {
       if (!$("sheet").hidden) closeSheet();   // the name sheet (first time only)
-      button.disabled = true; button.classList.add("busy"); button.textContent = t("ciBusy");
-      rpc("check_in", { p_bar_id: String(bar.id), p_bar_name: name, p_lat: bar.lat, p_lng: bar.lng }).then(function (r) {
-        button.classList.remove("busy");
-        var reset = function () { button.disabled = false; button.textContent = t("ciBtn"); };
+      // speed1 (audit speed #13, owner 14 Nov: "any loading should be in the background"): the checked-in state, the toast and
+      // the sound come AT THE TAP. The server answers in the background; an error or its cool-down (ok:false) takes it all back
+      // with one calm line. The group push goes out only after the server said yes.
+      var id = String(bar.id), prev = U.ls.getJSON(CI_KEY, null), shown = [], par = button.parentNode, eta = null;
+      button.disabled = true;
+      U.ls.setJSON(CI_KEY, { id: id, name: name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: nightEnd() });
+      ciPend = id;
+      try {   // ds51: the checked-in state (status + Checka ut), not a dead "Du ä incheckad här" button
+        var ciTmp = document.createElement("div"); ciTmp.innerHTML = checkinBtnHTML(bar);
+        var out = ciTmp.querySelector(".ci-out");
+        if (par && out) {
+          while (ciTmp.firstChild) { shown.push(ciTmp.firstChild); par.insertBefore(ciTmp.firstChild, button); }
+          par.removeChild(button); par.classList.add("pn-bs-in");
+          eta = par.querySelector(".pp-sec-eta"); if (eta) eta.classList.add("pn-bs-hide");
+        }
+      } catch (e) {}
+      if (!shown.length) button.textContent = t("ciDone");   // no storage on this phone: the old dead button
+      var lines = t("ciToasts") || [];
+      toast(lines.length ? lines[Math.floor(Math.random() * lines.length)](name) : t("ciDone"), { ms: 5000, cls: "skal", id: "ci" });
+      window.FX.sound.clink(); window.FX.vibrate([18, 40, 18, 40, 60]);
+      updateCounts();
+      // take the optimistic state back: the phone's check-in as it was, the "Checka in" button where it stood
+      var undo = function () {
+        if (ciPend === id) ciPend = null;
+        if (prev) U.ls.setJSON(CI_KEY, prev); else U.ls.del(CI_KEY);
+        button.disabled = false; button.classList.remove("busy"); button.textContent = t("ciBtn");
+        try {
+          var at = shown.length && shown[0].isConnected ? shown[0] : null;
+          if (!at && shown.length) {   // the bar card was drawn again while we waited: find its "Checka ut"
+            var o2 = document.querySelector('.ci-out[data-ciout="' + id.replace(/["\\]/g, "") + '"]');
+            if (o2) { shown = [o2]; if (o2.previousElementSibling && o2.previousElementSibling.classList.contains("ci-here")) shown.unshift(o2.previousElementSibling); at = shown[0]; }
+          }
+          if (at) {
+            var p2 = at.parentNode; p2.insertBefore(button, at);
+            shown.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+            p2.classList.remove("pn-bs-in");
+            var e2 = p2.querySelector(".pp-sec-eta"); if (e2) e2.classList.remove("pn-bs-hide");
+          }
+        } catch (e) {}
+        updateCounts();
+      };
+      rpc("check_in", { p_bar_id: id, p_bar_name: name, p_lat: bar.lat, p_lng: bar.lng }).then(function (r) {
         if (r.error) {
-          reset();
-          if (U.missing(r.error)) { PN.s.checkinState = "missing"; toast(t("ciOff"), { err: true }); return; }
+          undo();
+          if (U.missing(r.error)) { PN.s.checkinState = "missing"; toast(t("ciOff"), { err: true, id: "ci" }); return; }
           var c = U.errCode(r.error);
-          toast(c === "outside_sweden" || c === "not_authenticated" ? errMsg(r.error) : t("ciFail"), { err: true });
+          toast(c === "outside_sweden" || c === "not_authenticated" ? errMsg(r.error) : t("ciFail"), { err: true, id: "ci" });
           return;
         }
         var d = parseData(r.data);
-        if (d.ok === false) { reset(); toast(t("ciWait", Math.max(1, d.wait_seconds | 0))); return; }
-        U.ls.setJSON(CI_KEY, { id: String(bar.id), name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: nightEnd() });
-        button.textContent = t("ciDone");
-        try {   // ds51: the checked-in state at once (status + Checka ut), not a dead "Du ä incheckad här" button
-          var ciTmp = document.createElement("div"), ciPar = button.parentNode; ciTmp.innerHTML = checkinBtnHTML(bar);
-          if (ciPar && ciTmp.querySelector(".ci-out")) {
-            while (ciTmp.firstChild) ciPar.insertBefore(ciTmp.firstChild, button);
-            button.remove(); ciPar.classList.add("pn-bs-in");
-            var ciEta = ciPar.querySelector(".pp-sec-eta"); if (ciEta) ciEta.classList.add("pn-bs-hide");
-          }
-        } catch (e) {}
-        var lines = t("ciToasts") || [];
-        toast(lines.length ? lines[Math.floor(Math.random() * lines.length)](d.bar_name || name) : t("ciDone"), { ms: 5000, cls: "skal" });
-        window.FX.sound.clink(); window.FX.vibrate([18, 40, 18, 40, 60]);
+        if (d.ok === false) { undo(); toast(t("ciWait", Math.max(1, d.wait_seconds | 0)), { id: "ci", upd: 1 }); return; }   // upd: the same tap's answer, not a 2nd toast
+        if (ciPend === id) ciPend = null;
+        var mine = U.ls.getJSON(CI_KEY, null);
+        if (!mine || mine.id === id) U.ls.setJSON(CI_KEY, { id: id, name: d.bar_name || name, lat: +bar.lat, lng: +bar.lng, at: Date.now(), until: nightEnd() });
+        [].forEach.call(document.querySelectorAll(".ci-out[data-cipend]"), function (o) { o.disabled = false; o.removeAttribute("data-cipend"); });
         if (PUSH_ON && PN.s.client && PN.s.client.functions) {
           try { Promise.resolve(PN.s.client.functions.invoke("notify-group", { body: { event: "checkin", bar: d.bar_name || name } })).then(function () {}, function () {}); } catch (e) {}
         }
         updateCounts();
         refresh();
-      });
+      }, function () { undo(); toast(t("ciFail"), { err: true, id: "ci" }); });
     });
   }
 

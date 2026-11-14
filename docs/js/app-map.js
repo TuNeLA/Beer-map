@@ -383,13 +383,22 @@
   });
 
   /* ---------- Beer button ---------- */
-  function getPosition(opts) {
+  // the browser's own answer (a new exact GPS fix can take up to 12 s)
+  function rawPosition(opts) {
     return new Promise(function (res, rej) {
       if (!("geolocation" in navigator)) { rej({ code: 2 }); return; }
       try {
         navigator.geolocation.getCurrentPosition(res, rej, opts || { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 });
       } catch (e) { rej({ code: 2 }); }
     });
+  }
+  // speed1 (audit speed #1): getPosition() with NO options = "where am I, for this tap". A recent exact fix (js/fastpos.js:
+  // < 2 min old, <= 100 m) answers at once; else a quick network fix if it is exact enough; else the old exact wait.
+  // A caller that passes its own options (locate button, SOS, rally, near places) gets exactly what it asks for.
+  function getPosition(opts) {
+    var F = window.FASTPOS;
+    if (opts || !F || !F.forExact || F._raw) return rawPosition(opts);
+    return F.forExact(function () { return rawPosition(); });
   }
   // Explain how to turn location on, for the browser the user has.
   function locHelp() {

@@ -153,29 +153,54 @@
     frag.appendChild(el("span", { class: "tk-item" + (x.cls ? " " + x.cls : ""), text: x.text }));
     track.appendChild(frag);
   }
+  // speed1 (audit speed #4): the belt math uses STORED numbers. Layout is read (one pass: every piece width, the belt
+  // width, the viewport width) only after the belt changed: a piece added here, a ResizeObserver says the track or its
+  // viewport changed size (fonts, icon pass, freshBelt, rotation), or the pieces are not the ones that were measured.
+  // Before: 4 forced layouts per second, always (380 ms of JS per 15 s idle, 70-175 ms inside every sheet open).
+  var tkM = null, tkRO = null;
+  function tkDirty() { tkM = null; }
+  function tkMeasure(track) {
+    if (tkM && tkM.n === track.childElementCount && tkM.first === track.firstChild) return tkM;
+    var vp = track.parentNode, w = [], c = track.firstChild;
+    for (; c; c = c.nextSibling) w.push(c.offsetWidth || 0);
+    tkM = { w: w, n: w.length, first: track.firstChild, total: track.scrollWidth, vp: vp ? vp.clientWidth : 400 };
+    return tkM;
+  }
+  function tkWatch(track) {
+    if (tkRO || !window.ResizeObserver) return;
+    try { tkRO = new ResizeObserver(tkDirty); tkRO.observe(track); if (track.parentNode) tkRO.observe(track.parentNode); } catch (e) { tkRO = null; }
+  }
   function tickFill() {
-    var track = $("ticker-track"), vp = track.parentNode, need = (vp ? vp.clientWidth : 400) * 2 + 200, guard = 0;
-    while (track.scrollWidth - tickOff < need && guard++ < 20) tickPiece();
+    var track = $("ticker-track"), m = tkMeasure(track), guard = 0;
+    while (m.total - tickOff < m.vp * 2 + 200 && guard++ < 20) { tickPiece(); tkDirty(); m = tkMeasure(track); }
   }
   // d3smooth (SMOOTH-PLAN 5): the belt runs on the compositor. ONE linear Web Animation of transform moves the track at
-  // TICK_PX_S; no JS write per frame (a long task froze the always-visible line). A 250 ms timer drops the pieces that left
+  // TICK_PX_S; no JS write per frame (a long task froze the always-visible line). A 1 s timer (speed1: was 250 ms) drops the pieces that left
   // on the left (the static CSS translate takes up their width, so nothing jumps) and appends new ones. Speed = PN_TICK_F
   // (pnui.js PNTICK eases it and fires "pn:tickf") = playbackRate; a hidden tab pauses it.
-  var TICK_SPAN_S = 3600, tickAnim = null, tickCut = 0, tickT = 0;
+  var TICK_SPAN_S = 3600, TICK_KEEP_MS = 1000, tickAnim = null, tickCut = 0, tickT = 0;
   function tickRate() {
     var f = window.PN_TICK_F == null ? 1 : Math.max(0, +window.PN_TICK_F || 0);   // ui-build: hold to pause, eased
     if (document.hidden) f = 0;
     if (tickAnim && tickAnim.playbackRate !== f) tickAnim.playbackRate = f;
   }
   window.addEventListener("pn:tickf", tickRate);
+  function tickIdle() {   // nothing to keep: a hidden tab, or a sheet is open and the belt stands still (PNTICK eased it to 0)
+    if (document.hidden) return true;
+    var s = $("sheet");
+    return !!(s && !s.hidden && tickAnim && tickAnim.playbackRate === 0);
+  }
   function tickKeep() {
     var track = $("ticker-track"); if (!track || !tickAnim) return;
+    if (tickIdle()) return;
+    if (!window.ResizeObserver) tkDirty();   // very old browser: measure every time (once per second)
     var pos = (tickAnim.currentTime || 0) / 1000 * TICK_PX_S;
     if (pos > TICK_SPAN_S * TICK_PX_S * 0.9) { tickAnim.currentTime = 0; tickCut -= pos; pos = 0; }   // once an hour: rebase
     tickOff = pos - tickCut;
-    var first = track.firstChild, guard = 0;
-    while (first && first.offsetWidth && tickOff >= first.offsetWidth && guard++ < 20) {
-      tickOff -= first.offsetWidth; tickCut += first.offsetWidth; track.removeChild(first); first = track.firstChild;
+    var m = tkMeasure(track), guard = 0, w;
+    while (m.n && (w = m.w[0]) && tickOff >= w && guard++ < 20) {   // numbers only: no layout read per piece
+      tickOff -= w; tickCut += w; track.removeChild(track.firstChild);
+      m.w.shift(); m.n--; m.total -= w; m.first = track.firstChild;
     }
     var tr = tickCut ? tickCut.toFixed(2) + "px 0" : "";
     if (track.style.translate !== tr) track.style.translate = tr;
@@ -185,6 +210,7 @@
     var track = $("ticker-track");
     track.classList.remove("moving"); track.style.animation = "none";
     if (window.FX && window.FX.reduced && window.FX.reduced()) { tickOneStart(track); return; }   // ownerfix 4c
+    tkWatch(track); tkDirty();   // speed1: a new set of headlines (freshBelt may have dropped pieces) = measure again
     if (!track.firstChild) tickFill();
     if (!tickAnim && track.animate) {
       track.style.transform = ""; tickCut = -tickOff;
@@ -192,7 +218,7 @@
         { duration: TICK_SPAN_S * 1000, easing: "linear", fill: "both" });
       tickRate(); document.addEventListener("visibilitychange", tickRate);
     }
-    if (!tickT) tickT = setInterval(tickKeep, 250);
+    if (!tickT) tickT = setInterval(tickKeep, TICK_KEEP_MS);
   }
   // ownerfix 4c (owner 11 Nov: frozen on a PC with "Animation effects" off): reduced motion = ONE headline at a time,
   // a soft opacity swap every 6 s (no sideways motion), tap = next line (pnds.js → PN_TICK_NEXT). Pauses with the

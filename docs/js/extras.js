@@ -284,7 +284,7 @@
 
   /* ---------- Annan drink / sidospår (v8, Q) ---------- */
   var OTHER_CD_KEY = "olnu.otherCd", OTHER_MS = 10 * 60 * 1000, OTHER_RING = 2 * Math.PI * 27;
-  var otherTimer = null, otherBusy = false, otherMissing = false;
+  var otherTimer = null, otherBusy = false, otherBusyAt = 0, otherMissing = false;
   var KINDS = ["rom", "vin", "cider", "drink", "shot", "whisky", "grogg", "bubbel", "annat"];
   function otherLeft() { var end = +U.ls.get(OTHER_CD_KEY, "0") || 0; return Math.max(0, end - Date.now()); }
   function applyOther() {
@@ -294,7 +294,7 @@
     if (!on) return;
     var left = otherLeft(), b = $("btn-other"), parts = String(t("otherBtn")).split(" ");
     b.classList.toggle("cooldown", left > 0);
-    b.classList.toggle("busy", otherBusy);
+    b.classList.toggle("busy", otherBusy && Date.now() - otherBusyAt >= 900);   // speed1: the tap already answered; the pulse only for a slow server
     $("other-label").innerHTML = left > 0 ? '<span class="ol-t">' + esc(U.mmss(left)) + "</span>" :
       '<span class="ol-e" aria-hidden="true">' + (window.PNI && window.PNI.has && window.PNI.has("mixed") ? window.PNI.svg("mixed", "") : esc(parts[0])) + '</span><span class="ol-t">' + esc(parts.slice(1).join(" ")) + "</span>";   // lane main R1-14: the PNI glyph at once (no 🥃 until the icon pass)
     b.setAttribute("aria-label", left > 0 ? t("otherNextIn", U.mmss(left)) : t("otherAria"));
@@ -352,13 +352,51 @@
     if (otherLeft() > 0) return;   // a drink in the last 10 min wins (the server's rule)
     postOther(q.kind, { coords: { latitude: +q.lat, longitude: +q.lng } });
   }
+  // speed1 (audit speed #2, owner 14 Nov: "When you press it, it's supposed to be immediate. Any loading should be in the
+  // background"): the same pattern as ÖL! (I-104). AT THE TAP: clink + buzz, the 10-min ring starts, the count goes +1
+  // (MYCOUNT.early, when tonight's total is known) and one line says "Skål! Drinken räknas…". GPS + server run in the
+  // background. The server stays the judge: its answer turns the SAME toast into the drink line, or takes everything back
+  // (count, ring) with one calm line. A drink from the offline queue (fixedPos) is not a tap: it keeps the old order.
+  I.add({ sv: { otherPending: "Skål! Drinken räknas…" }, en: { otherPending: "Cheers! Counting your drink…" } });
+  var otherPend = null;
+  function otherSayClear() { var p = otherPend; otherPend = null; if (p && p.parentNode) p.remove(); try { A.toastClear("other-pend"); } catch (e) {} }
+  function otherSay(text, opts) {
+    opts = opts || {};
+    var p = otherPend; otherPend = null;
+    if (p && p.parentNode && !opts.err && !opts.action) {   // the answer changes the pending line (one text pop-up per tap)
+      var sp = p.querySelector("span"); if (sp) sp.textContent = text;
+      p.className = "toast" + (opts.cls ? " " + opts.cls : ""); p.removeAttribute("data-id");
+      p._olnuT = { opts: opts, rank: 1 };
+      setTimeout(function () { p.remove(); }, opts.ms || 3800);
+      return p;
+    }
+    if (p && p.parentNode) p.remove();
+    try { A.toastClear("other-pend"); } catch (e) {}
+    return A.toast(text, opts);
+  }
+  function drinksNow() {   // tonight's total as the app knows it (server "me" first, then my pin); null = not known
+    try {
+      var P = window.PN, me = P && P.s && P.s.meState, mine = !me && A.myBeer ? A.myBeer() : null;
+      return me || mine ? U.drinks(me || mine) : null;
+    } catch (e) { return null; }
+  }
   function postOther(kind, fixedPos) {
     if (otherBusy) return;
     if (!fixedPos && navigator.onLine === false) { queueOther(kind); return; }
     if (!A.authed()) { A.toast(t("connecting")); return; }
-    otherBusy = true; applyOther();
+    otherBusy = true; otherBusyAt = Date.now();
     window.FX.unlock(); window.FX.vibrate(20);
     var kinds = t("kinds") || {};
+    var early = !fixedPos, cdWas = U.ls.get(OTHER_CD_KEY, "0"), state = "", counted = false;
+    if (early) {
+      U.ls.set(OTHER_CD_KEY, String(Date.now() + OTHER_MS));
+      try { window.FX.sound.clink(); } catch (e) {}
+      otherPend = A.toast(t("otherPending"), { id: "other-pend", ms: 18000 });
+      var before = drinksNow();
+      if (before != null) { try { if (window.MYCOUNT && window.MYCOUNT.early) { window.MYCOUNT.early(before + 1); counted = true; } } catch (e) {} }
+      setTimeout(applyOther, 950);   // a slow server: the pulse starts now
+    }
+    applyOther();
     (fixedPos ? Promise.resolve(fixedPos) : A.getPosition()).then(function (pos) {
       var prm = { p_kind: kind, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_precise: A.prec() === "exact" };
       // post_other_v2 knows grogg/bubbel (0022). Old server: fall back to post_other ("annat" for the new kinds).
@@ -370,19 +408,19 @@
         return r;
       }).then(function (r) {
         if (r.error) {
-          if (U.missing(r.error)) { otherMissing = true; A.toast(t("postFail"), { err: true }); return; }
-          A.toast(U.errCode(r.error) === "invalid_kind" ? t("invalidKind") : A.errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
+          if (U.missing(r.error)) { otherMissing = true; otherSay(t("postFail"), { err: true }); return; }
+          otherSay(U.errCode(r.error) === "invalid_kind" ? t("invalidKind") : A.errMsg(r.error, t("postFail")), { err: true, ms: 6000 });
           return;
         }
         var d = A.parseData(r.data);
         if (d.accepted === false) {
           var w = Math.max(1, d.wait_seconds | 0) * 1000;
-          U.ls.set(OTHER_CD_KEY, String(Date.now() + w));
-          A.toast(t("otherWait", U.mmss(w)));
+          U.ls.set(OTHER_CD_KEY, String(Date.now() + w)); state = "wait";
+          otherSay(t("otherWait", U.mmss(w)));
           return;
         }
         var wait = (d.wait_seconds | 0) > 0 ? (d.wait_seconds | 0) * 1000 : OTHER_MS;
-        U.ls.set(OTHER_CD_KEY, String(Date.now() + wait));
+        U.ls.set(OTHER_CD_KEY, String(Date.now() + wait)); state = "ok";
         var name = (kinds[kind] || ["", kind])[1];
         // Half the time a line made for this drink (rom → pirat), else a general line with the drink's name.
         // Always a line made for this drink: 30 per drink in drink-lines.js (Swedish), else the short i18n list.
@@ -392,13 +430,21 @@
         // QA #11: {stad} = the town where the drink was posted ("stan" when unknown).
         var stadHere = "stan";
         try { var cty = window.CITIES && window.CITIES.nearest(pos.coords.latitude, pos.coords.longitude); if (cty && cty.name) stadHere = cty.name; } catch (e) {}
-        A.toast(line.replace(/\{d\}/g, name).replace(/\{stad\}/g, stadHere), { cls: "hot" });
-        window.FX.sound.clink(); window.FX.vibrate([30, 40, 30]);
+        otherSay(line.replace(/\{d\}/g, name).replace(/\{stad\}/g, stadHere), { cls: "hot" });
+        if (!early) window.FX.sound.clink();   // a tap already clinked
+        window.FX.vibrate([30, 40, 30]);
         var l = getLog(); l.others = Math.max((l.others | 0) + 1, d.other_count | 0); saveLog(l);
         award("side");
         // v14 (owner): all drinks count – HOT STREAK / MEDEVAC at 5 / 10 drinks, water and "ta det lugnt" too.
         // v17 server: d.drinks = total drinks tonight (beers + others) when present.
         var total = d.drinks != null && isFinite(d.drinks) ? Math.max(0, d.drinks | 0) : Math.max(0, d.beer_count | 0) + Math.max(0, d.other_count | 0);
+        // speed1: the count shown at the tap is now the server's (no 2nd burst, no fall back to the old number before the next poll)
+        try {
+          var ms = window.PN && window.PN.s && window.PN.s.meState, mp = A.myBeer ? A.myBeer() : null;
+          if (ms) ms.other_count = Math.max((ms.other_count | 0) + 1, d.other_count | 0);
+          if (mp) mp.other_count = Math.max((mp.other_count | 0) + 1, d.other_count | 0);
+        } catch (e) {}
+        if (counted) { try { window.MYCOUNT.onBeerAccepted(d, { total: total }); } catch (e) {} }
         if (A.drinkFx && total > 0) A.drinkFx(total, total - 1);
         // Friend 5/10 pushes also when an other drink crosses the level (server decides; fire-and-forget).
         if (!ghostOn() && A.PUSH_ON && A.invoke) { try { A.invoke("notify-group").then(function () {}, function () {}); } catch (e) {} }
@@ -410,8 +456,16 @@
         A.setLastLoc(la, ln); A.map.setView([la, ln], Math.max(A.map.getZoom(), 15));
         A.refresh();
       });
-    }, A.locError).catch(function () { A.toast(t("postFail"), { err: true }); })
-      .then(function () { otherBusy = false; applyOther(); A.updateCounts(); });
+    }, function (err) { otherSayClear(); A.locError(err); }).catch(function () { otherSay(t("postFail"), { err: true }); })
+      .then(function () {
+        if (early) {
+          // not accepted: the count goes back; no server rule either (error, no position): the ring goes back too
+          if (state !== "ok") { try { if (counted && window.MYCOUNT.settle) window.MYCOUNT.settle(); } catch (e) {} }
+          if (!state) { if (+cdWas > 0) U.ls.set(OTHER_CD_KEY, cdWas); else U.ls.del(OTHER_CD_KEY); }
+          if (otherPend) otherSayClear();
+        }
+        otherBusy = false; applyOther(); A.updateCounts();
+      });
   }
 
   /* ---------- Public hooks ---------- */
