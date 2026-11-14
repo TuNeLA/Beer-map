@@ -769,6 +769,12 @@
   function onPreclick(e) {
     if (!on || synth || !gm || !layersReady || !e || !e.latlng) return;
     var m = gm, z = map.getZoom();
+    // mapfix I-110 (owner 2026-11-14: "a tap outside the bar pop-up opens the same bar again; only the X closes it"): while a
+    // pop-up is open, a tap only closes it (the pop-up's own preclick + mbx.js _click do that). One exception: the finger is
+    // ON another bar's disc / pill part, or ON another restaurant dot: that switches. Never the loose rules (cluster, the
+    // nearest icon within 28 px, the name) and never the open bar itself.
+    var pop = e._pnPop !== undefined ? e._pnPop : (map._popup && map._popup._map ? map._popup : null);
+    var popKey = pop && pop._source && pop._source.options ? String(pop._source.options.olnuKey || "") : "", popId = /^[hp]./.test(popKey) ? popKey.slice(1) : null;
     try {
       var p = m.project([e.latlng.lng, e.latlng.lat]), hit = null, how = "", B = TAP_NEAR + 6;
       var lays = [L_FULL].concat(z >= DOT_Z || cl.on ? (cl.on ? [L_DOT, L_DOTE, L_CDOT, L_CDOTE, L_CDOTF] : [L_DOT, L_DOTE]) : []).filter(function (l) { return m.getLayer(l); });
@@ -789,17 +795,21 @@
         if (!pi0.im.parts.some(function (x) { return x.sel !== ".bar-ico" && dx0 >= x.bb[0] - 2 && dx0 <= x.bb[2] + 2 && dy0 >= x.bb[1] - 2 && dy0 <= x.bb[3] + 2; })) return;
         if (!hit || o.f.properties.sk > hit.properties.sk) { hit = o.f; how = "part"; }
       });
-      if (!hit && cl.on && clTap(m, p, e)) return;   // ds30
-      if (!hit && list.length && list[0].d <= TAP_NEAR) { hit = list[0].f; how = "near"; }
-      if (!hit && m.getLayer(L_LBL)) {   // 5: the name, only when no icon is near
+      var own = !!(pop && hit && String(hit.properties.id) === popId);   // mapfix I-110: the open bar itself = close only
+      if (own) hit = null;
+      if (!pop && !hit && cl.on && clTap(m, p, e)) return;   // ds30 (!pop: the loose rules 3-5 are off while a pop-up is open)
+      if (!pop && !hit && list.length && list[0].d <= TAP_NEAR) { hit = list[0].f; how = "near"; }
+      if (!pop && !hit && m.getLayer(L_LBL)) {   // 5: the name, only when no icon is near
         var lf = m.queryRenderedFeatures([[p.x - 3, p.y - 3], [p.x + 3, p.y + 3]], { layers: [L_LBL] })[0];
         if (lf && byId[String(lf.properties.id)]) { hit = lf; how = "name"; }
       }
-      if (!hit && placeTap) {   // a restaurant dot
+      if (!hit && !own && placeTap) {   // a restaurant dot
         var pf = m.queryRenderedFeatures([[p.x - 14, p.y - 14], [p.x + 14, p.y + 14]], { layers: [L_PLACE] })[0]   /* ownerfix 3: bigger dot, bigger box */, pl = pf && placeById[String(pf.properties.id)];
+        var pll = pl && pop && !pop._source && pop.getLatLng ? pop.getLatLng() : null;   // mapfix I-110: the open place itself = close only
+        if (pll && Math.abs(pll.lat - pl.lat) < 1e-6 && Math.abs(pll.lng - pl.lng) < 1e-6) pl = null;
         if (pl) { stats.taps++; stats.lastTap = "place:" + pl.id; if (e.originalEvent) e.originalEvent._olnuGl = 1; synth = true; try { placeTap(pl); } finally { synth = false; } return; }
       }
-      if (!hit) return;
+      if (!hit) { if (pop) { stats.lastTap = "close"; stats.tapHow = "close"; } return; }
       var id = String(hit.properties.id), mk = byId[id], el = mk && mk.getElement && mk.getElement(); if (!el) return;
       // which part was tapped (same folds as a tap on the DOM marker)
       var bp = m.project([mk.getLatLng().lng, mk.getLatLng().lat]), pi = parts[id], kk = (pi ? pi.sz : 1) * zk(z), dx = (p.x - bp.x) / kk, dy = (p.y - bp.y) / kk, sel = ".bar-ico";

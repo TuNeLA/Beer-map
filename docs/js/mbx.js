@@ -542,9 +542,9 @@
       this.fire(type, ev);
     },
     _click: function (ev) {
-      var oe = ev.originalEvent;
+      var oe = ev.originalEvent, pp = ev._pnPop = this._popup && this._popup._map ? this._popup : null;   // mapfix I-110: the pop-up open at this tap (glmap.js reads e._pnPop)
       this.fire("preclick", ev);
-      if (oe && oe._olnuGl) return;                                  // glmap.js used this tap for a GL bar
+      if ((oe && oe._olnuGl) || (pp && !pp._map)) return;            // glmap.js used this tap for a GL bar · mapfix I-110 (owner 2026-11-14, "a tap outside the bar pop-up opens the same bar again"): or the tap closed a pop-up = it is used: no vector layer (the bar's lit house, barlit.js) and no map "click" listener (map3d.js 3D house) may open something with it; both engines come through here
       if (this._shapes.click(ev)) return;                            // a vector layer took it (no bubbling)
       if (oe && oe._stopped) return;
       this.fire("click", ev);
@@ -592,7 +592,7 @@
         if (left) return;
         W.removeEventListener("pointermove", move); W.removeEventListener("pointerup", up); W.removeEventListener("pointercancel", up);
         if (st && moved) { self.fire("dragend"); self._onMoveEnd(); self.fire("moveend"); }
-        else if (st && !moved && !self._blocked(e)) {
+        else if (st && !moved && (!self._blocked(e) || (self._popup && self._popup._map && e.target && e.target._mbxShape))) {   // mapfix I-110: with a pop-up open, a tap on a vector shape (a bar's lit house) is a tap outside it too: _click closes the pop-up and stops (no pop-up open: a shape tap does nothing in this engine, as before)
           var now = Date.now();
           if (now - lastTap < 300 && self.options.doubleClickZoom !== false) { lastTap = 0; self.setZoomAround(self.mouseEventToContainerPoint(e), self._z + 1); }
           else { lastTap = now; self._click(self._mouseEvent("click", e)); }
@@ -625,7 +625,7 @@
         var h = self[k] && self[k]._gl && gl[self[k]._gl]; if (!h) return;
         try { if (self.options[k] === false) h.disable(); else h.enable(); } catch (e) {}
       });
-      try { gl.touchZoomRotate.disableRotation(); } catch (e) {}
+      try { var tz = gl.touchZoomRotate; tz.disableRotation(); if (tz.disableTapDragZoom) tz.disableTapDragZoom(); else if (tz._tapDragZoom && tz._tapDragZoom.disable) tz._tapDragZoom.disable(); } catch (e) {}   // mapfix I-108 (owner 2026-11-14, "I tap a bar, tap away, put one finger on the screen: it zooms in and out"): Mapbox GL's "tap, then drag with one finger = zoom" gesture is off (the tap that closed a pop-up was its first tap); pinch + double-tap zoom stay on. GL JS 3.32: the public switch disableTapDragZoom() (enable() above keeps it off); an older build: the inner handler, set after every enable()
     },
     /* ---------- overlay positioning ---------- */
     _onResize: function () { this._size = null; if (!this._gl) { this._onMove(); this._cull(true); this.fire("resize"); } },

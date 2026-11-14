@@ -324,6 +324,7 @@
   map.panBy = function (off, o) { if (barSheet && !(o && o.olnuSheet)) return this; return panBy0.call(this, off, o); };
   map.on("popupopen", function (e) {
     var pp = e.popup, root = pp && pp.getElement();
+    if (root) { if (reopening) root.setAttribute("data-pn-reopen", ""); else root.removeAttribute("data-pn-reopen"); }   // mapfix I-109: a redraw put it back: no open animation
     if (!root || !root.querySelector(".bs")) return;
     if (!root._olnuBs) root._olnuBs = true, root.addEventListener("click", function (ev) {
       var k = ev.target.closest && ev.target.closest(".pa-kommer"); if (!k) return;
@@ -349,6 +350,10 @@
     });
   });
   map.on("popupclose", function (e) {
+    // mapfix I-109: a redraw takes the sheet away and puts it back in the same task. Without its sheet class the removed
+    // element gets no "slides down" copy (pnds.js ghost(), it looks at the class after this task).
+    var r0 = redrawing && e.popup && e.popup.getElement && e.popup.getElement();
+    if (r0) r0.classList.remove("olnu-sheet");
     if (e.popup !== barSheet) return;
     barSheet = null;
     document.body.classList.remove("barsheet-open");
@@ -362,7 +367,11 @@
 
   var hotBarIds = {};    // bar id -> true
   // Keep an open popup open when the 30 s poll or a map move redraws the markers.
-  var openKey = null, redrawing = false, plainBarMarkers = {};
+  /* mapfix I-109 (owner 2026-11-14: "a bar tap opens the bar menu 1-2 times, very fast"): every render() (the poll, new
+     avatar specs, a zoom band change) removes all markers; the open bar pop-up closed with its marker and reopenPopup()
+     opened it again. On a phone that showed: a copy of the sheet slides down + the new sheet slides up = "open, close,
+     open". The redraw still swaps the pop-up (new data), but without any animation: reopening marks it (data-pn-reopen). */
+  var openKey = null, redrawing = false, reopening = false, plainBarMarkers = {};
   map.on("popupopen", function (e) { var s = e.popup && e.popup._source; openKey = s && s.options.olnuKey || null; });
   map.on("popupclose", function () { if (!redrawing) openKey = null; });
   function reopenPopup(keep) {
@@ -373,7 +382,8 @@
     if (!m || !m.getPopup()) { openKey = null; return; }
     if (clusters.hasLayer(m) && clusters.getVisibleParent(m) !== m) { openKey = null; return; }
     var pp = m.getPopup(), ap = pp.options.autoPan;
-    pp.options.autoPan = false; m.openPopup(); pp.options.autoPan = ap;
+    pp.options.autoPan = false; reopening = true;
+    try { m.openPopup(); } finally { reopening = false; pp.options.autoPan = ap; }
   }
   var compIds = {};      // bar id -> true: drawn as a composite with content (people / call-out / check-ins)
   function addComposite(c, layer, pane) {
@@ -422,7 +432,11 @@
     "@keyframes pnTapRing{from{transform:scale(.45);opacity:1}to{transform:scale(1.25);opacity:0}}" +
     ".leaflet-marker-icon:active>*{animation:pnPinPress 90ms ease-out forwards}" +
     "@keyframes pnPinPress{to{scale:.92;filter:brightness(1.18)}}" +
-    "@media (prefers-reduced-motion:reduce){.pn-tapring{animation-name:pnTapFade}}@keyframes pnTapFade{from{opacity:1}to{opacity:0}}";
+    "@media (prefers-reduced-motion:reduce){.pn-tapring{animation-name:pnTapFade}}@keyframes pnTapFade{from{opacity:1}to{opacity:0}}" +
+    // mapfix I-109: a pop-up that a redraw put back does not play its open animation again (and its pnds.js copy, a clone
+    // with the same attribute, stays hidden)
+    ".leaflet-popup[data-pn-reopen],.leaflet-popup[data-pn-reopen] .leaflet-popup-content-wrapper{animation:none !important}" +
+    ".pn-bs-ghost[data-pn-reopen]{display:none !important}";
   (function () { var st = document.createElement("style"); st.id = "pn-tap-css"; st.textContent = TAP_CSS; document.head.appendChild(st); })();
   function render() {
     var z = map.getZoom(), keep = openKey;
