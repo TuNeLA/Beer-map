@@ -218,7 +218,8 @@
     "#btn-settings": [["my_wrapped", '{"p_kind":"year","p_offset":0}'], ["my_groups", "{}"], ["my_friends", '{"p_name":"{name}"}'], ["my_board_optin", "{}"], ["rnd_me", "{}"]],
     "gcard": [["my_group_flags", "{}"], ["chief_state", '{"p_group_id":"{gid}"}'], ["party_group", '{"p_group_id":"{gid}"}'], ["squad_group", '{"p_group_id":"{gid}"}'],
       ["skal_state", '{"p_group_id":"{gid}"}'], ["group_now", '{"p_group_id":"{gid}"}'], ["group_msgs", '{"p_after_id":0,"p_group_id":"{gid}"}'],
-      ["rnd_group", '{"p_group_id":"{gid}"}'], ["drivers_for", '{"p_group_id":"{gid}"}'], ["ikvall_status", '{"p_group_id":"{gid}"}'], ["avatars_for", '{"p_group_id":"{gid}"}']]
+      ["rnd_group", '{"p_group_id":"{gid}"}'], ["drivers_for", '{"p_group_id":"{gid}"}'], ["ikvall_status", '{"p_group_id":"{gid}"}'], ["avatars_for", '{"p_group_id":"{gid}"}'],
+      ["group_status_v3", '{"p_group_id":"{gid}"}']]   // cifix1: d-social put the Gänget ikväll faces in the top card: warm them too (no pop-in on the first open)
   };
   function myName() { try { return (localStorage.getItem("olnu.name") || "").trim(); } catch (e) { return ""; } }
   function groupsCached() { var g = get("my_groups", {}); return g && Array.isArray(g.data) ? g.data : null; }
