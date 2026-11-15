@@ -55,7 +55,7 @@ Details: `scripts/split/README.md` (structure), `DESIGN.md` (design), `CONTRACT.
 - A bug fix needs a test that FAILS on the old code and PASSES on the new code.
 - Show proof: the command and its output. Do not write "it works" with no output.
 - Run e2e on GitHub: push a throw-away commit to `ci/<lane>-<n>` (`.ci-only` = your shards; never merge it), then ONE
-  blocking `gh run watch <id> -R TuNeLA/Beer-map --exit-status`. Local browser runs only for pictures and quick debug.
+  blocking `gh run watch <id> -R TuNeLA/Beer-map --exit-status`. Local runs (pwq.sh) are also fine for pictures and quick tests (RULES §9).
   If the brief says SECURITY-LOCAL, do not push `ci/` (public repo, open hole).
 - After each commit: `git push opsbak lane/<name>:codelane/<name>` (a restart loses local work).
 - Deliver and STOP. Do not start work that the brief does not name.
