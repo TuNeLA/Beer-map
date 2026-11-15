@@ -1,0 +1,20 @@
+/* PintsNow — soft scroll edges for sheets (lane d-profile, owner I-114: "the bottom is completely cut off … make it nice").
+   When a sheet has more content below, the last 28 px of the scroll area fade out; at the end of the scroll the fade is
+   gone. The same at the top (16 px) once the sheet has scrolled. A mask on the SCROLL AREA only (no blur, no extra layer
+   of colour): js/sheetfade.js sets .sf-top / .sf-bot and three lengths:
+     --sf-t    top fade now (0–16 px: it grows with the first pixels of scroll, so nothing pops)
+     --sf-b    bottom fade now (0–28 px: it shrinks over the last pixels before the end)
+     --sf-foot height of a bar that is fixed at the bottom INSIDE the scroll area (sticky footer): that zone stays crisp,
+               the fade ends at its top edge.
+     --sf-head height of a bar that sticks to the top INSIDE the scroll area (the Profil | Inställningar strip): that zone
+               stays crisp, the top fade starts at its bottom edge.
+   No class = no mask (content fits, or a floating bar owns the bottom edge). */
+#sheet-body,.olnu-sheet .leaflet-popup-content{--sf-t:0px;--sf-b:0px;--sf-foot:0px;--sf-head:0px}
+:is(#sheet-body,.olnu-sheet .leaflet-popup-content).sf-top:not(.sf-bot){
+  -webkit-mask-image:linear-gradient(to bottom,black 0,black var(--sf-head),transparent var(--sf-head),black calc(var(--sf-head) + var(--sf-t)));mask-image:linear-gradient(to bottom,black 0,black var(--sf-head),transparent var(--sf-head),black calc(var(--sf-head) + var(--sf-t)))}
+:is(#sheet-body,.olnu-sheet .leaflet-popup-content).sf-bot:not(.sf-top){
+  -webkit-mask-image:linear-gradient(to bottom,black 0,black calc(100% - var(--sf-foot) - var(--sf-b)),transparent calc(100% - var(--sf-foot)),black calc(100% - var(--sf-foot)));
+  mask-image:linear-gradient(to bottom,black 0,black calc(100% - var(--sf-foot) - var(--sf-b)),transparent calc(100% - var(--sf-foot)),black calc(100% - var(--sf-foot)))}
+:is(#sheet-body,.olnu-sheet .leaflet-popup-content).sf-top.sf-bot{
+  -webkit-mask-image:linear-gradient(to bottom,black 0,black var(--sf-head),transparent var(--sf-head),black calc(var(--sf-head) + var(--sf-t)),black calc(100% - var(--sf-foot) - var(--sf-b)),transparent calc(100% - var(--sf-foot)),black calc(100% - var(--sf-foot)));
+  mask-image:linear-gradient(to bottom,black 0,black var(--sf-head),transparent var(--sf-head),black calc(var(--sf-head) + var(--sf-t)),black calc(100% - var(--sf-foot) - var(--sf-b)),transparent calc(100% - var(--sf-foot)),black calc(100% - var(--sf-foot)))}

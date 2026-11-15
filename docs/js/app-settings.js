@@ -221,7 +221,7 @@
   /* ---------- ⚙️ Inställningar: 8 rows, each opens a page with ‹ (d1settings, moves 3 / 6 / 9) ---------- */
   var PAGES = [
     ["konto", "user", "Konto", "Spara konto, Swish, flytta, logga ut"],
-    ["synl", "shield", "Integritet & synlighet", "Vem ser dig, loggning, spökläge, blockerade"],   // relrisk + polishA: copy says "Inställningar → Integritet & synlighet"
+    ["synl", "shield", "Integritet & synlighet", "Vem ser dig, loggning, spökläge, blockerade", "Integritet"],   // relrisk + polishA: copy says "Inställningar → Integritet & synlighet"
     ["notis", "bell", "Notiser & ljud", "Push, ljud, vad du vill höra"],
     ["plats", "pin", "Plats & hem", "Hem, pinnen följer, checka in"],
     ["karta", "map", "Karta & dialekt", "Kartlager, kartstil, dialekt"],
@@ -307,11 +307,31 @@
         list.appendChild(setRow("user", "Logga in mä e-post", "Du har redan ett konto", acc.openLogin, "set-acc-login"));
       }
     }
-    if (LIVE && PN.s.authed) { var sw = el("div", { class: "ds-item ds-blk set-swish" }); list.appendChild(sw); try { if (window.RUNDAN && window.RUNDAN.profileSheet) window.RUNDAN.profileSheet(sw); } catch (e) {} }   // Swish-nummer (fills in when the server answers)
+    if (LIVE && PN.s.authed) { var sw = el("div", { class: "ds-item ds-blk set-swish" }); list.appendChild(sw); try { if (window.RUNDAN && window.RUNDAN.profileSheet) window.RUNDAN.profileSheet(sw); } catch (e) {} swishRow(sw); }   // Swish-nummer (fills in when the server answers)
     if (LIVE && storedAuth() && !PN.s.movedState) list.appendChild(setRow("phone", "Flytta till annan app/telefon", t("flyttSection"), showFlyttExport, "set-flytt"));
     if (LIVE) list.appendChild(setRow("key", "Jag har en flyttkod", "Hämta ditt konto hit", showFlyttImport, "set-flytt-in"));
     if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("door", "Logga ut", "", acc.logout, "set-acc-logout acct-logout"));   // uifix: "out" is no PNI icon (empty column)
     if (LIVE && PN.s.authed && window.PRIVACY) list.appendChild(delRow());
+  }
+  // d-profile (design review, small fix 11): "Mitt Swish-nummer" = a normal row (icon, title, the number as the sub line, chevron),
+  // not rundan.js's wide button. The button stays in the DOM (hidden) and the row presses it, like wishRow() below.
+  function swishRow(box) {
+    var fix = function () {
+      var b = box.querySelector(".rnd-swrow .btn"); if (!b) return;
+      var txt = (b.textContent || "").replace(/^[^0-9A-Za-zÅÄÖåäö]+/, "").replace(/[\s›]+$/, ""), i = txt.indexOf(":");
+      var title = (i > 0 ? txt.slice(0, i) : txt).trim(), sub = i > 0 ? txt.slice(i + 1).trim() : "";
+      sub = sub ? sub.charAt(0).toUpperCase() + sub.slice(1) : "";
+      var old = box.querySelector(".set-swish-row");
+      if (old && old.getAttribute("data-t") === txt) return;
+      if (old) old.remove();
+      var wrap = b.closest(".rnd-set") || b.parentNode;
+      wrap.style.setProperty("display", "none", "important");
+      var r = setRow("coins", title, sub, function () { var x = box.querySelector(".rnd-swrow .btn"); if (x) x.click(); }, "set-swish-row");
+      r.setAttribute("data-t", txt);
+      box.insertBefore(r, box.firstChild);
+    };
+    fix();
+    if (window.MutationObserver) new MutationObserver(fix).observe(box, { childList: true, subtree: true, characterData: true });
   }
   // setfix: "Radera mitt konto" = misc-mod's row (in the 7 days its sub line says "Raderas om N dagar · tryck för att ångra"), else a plain row
   function delRow() {
@@ -367,7 +387,8 @@
       fill();
       hub.hidden = true; if (tabs) tabs.hidden = true; backBtn.hidden = false;
       Object.keys(pages).forEach(function (k) { pages[k].el.hidden = k !== key; });
-      var h = $("sheet-title"); if (h) h.textContent = PAGES.filter(function (p) { return p[0] === key; })[0][2];
+      var pg = PAGES.filter(function (p) { return p[0] === key; })[0];
+      var h = $("sheet-title"); if (h) h.textContent = pg[4] || pg[2];   // d-profile (I-114, 05): a one-line page title (the row in the list keeps the long name)
       try { body.scrollTop = 0; } catch (e) {}
     }
     backBtn.addEventListener("click", function () {

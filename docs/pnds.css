@@ -1094,8 +1094,8 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 
 /* the sticky Ikväll bar never covers what scrolls into view (focus, the chat input) */
 #sheet-body:has(.gpg[data-gv="home"]){scroll-padding-bottom:96px}
-/* scroll: the body fades out under the header line instead of being cut by it (iOS scroll edge) */
-#sheet.pn-scrolled #sheet-body{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 16px);mask-image:linear-gradient(to bottom,transparent 0,#000 16px)}
+/* scroll: the body fades out under the header line instead of being cut by it (iOS scroll edge).
+   d-profile (I-114): the mask is in sheetfade.css now (top AND bottom edge, js/sheetfade.js); #sheet.pn-scrolled stays as a state class */
 /* ds52 group END */
 /* ds53 members START — Medlemmar: one grouped list, avatar 40 with room, neutral role pills, grey status */
 #sheet-body .st-list{gap:0 !important;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--r-lg);overflow:hidden;padding:0 !important}
@@ -1242,8 +1242,8 @@ body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;fon
 #sheet-body.ds-set .ds-item>.row>.btn-small{justify-content:flex-start !important}
 #sheet-body.ds-set .ds-ver>.toggle-row>svg.pn-ver-i{flex:0 0 20px;width:20px;height:20px;margin:0 !important;color:var(--ds-text-2)}
 #sheet-body.ds-set .ds-ver>.toggle-row>svg.pn-ver-i+span{flex:1 1 auto}
-#sheet-body.pn-s20 .ds-item-hint:not(.pn-full):not(.info){-webkit-line-clamp:1 !important}
-#sheet-body.pn-s20 .ds-item.ds-karta>.ds-item-hint:not(.pn-full){-webkit-line-clamp:1 !important}
+/* d-profile (I-114, 05): a settings page shows every hint in full (the privacy texts were cut after one line) */
+#sheet-body.ds-set .set-page .ds-item-hint:not(.info){display:block !important;-webkit-line-clamp:unset !important;overflow:visible !important;max-height:none !important;cursor:auto}
 #sheet-body.ds-set .ds-item.ds-karta>.ds-item-hint{margin:0 !important;padding:var(--sp-2) var(--sp-1) 0 !important}
 /* the fold row: like "Välj notiser" (56 px, icon 20, title 16/600, sub 14 grey on one line, chevron 16 grey) */
 .pn-f20{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:var(--pn-row-h,56px);padding:var(--sp-3) var(--sp-4);border:0;border-radius:0;
@@ -1264,6 +1264,11 @@ body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;fon
 /* the old profile.css ::before (a 2nd outlined box, placed for 12 px padding) becomes a plain strip in the sheet colour behind
    the bar: no 2nd outline; the bar stays 16 px under the header line, also when it sticks (the strip hides rows scrolling under) */
 .sheet .tabs.pf-tabs{margin:0 0 var(--sp-3) !important;top:0 !important}
+/* d-profile (I-114, 05): a settings page (‹ title ✕) has no Profil | Inställningar strip (the root list has it), a one-line
+   title, and the sheet keeps ONE height on the root and on every page (small fix 12: it jumped between half and full) */
+.sheet .tabs.pf-tabs[hidden]{display:none !important}
+#sheet.sheet:has(>#sheet-body>.tabs.pf-tabs){height:86vh;height:86dvh}
+#sheet:has(>#sheet-body>.set-page:not([hidden])) .sheet-head>h2{white-space:nowrap !important;overflow:hidden;text-overflow:ellipsis}
 .sheet .tabs.pf-tabs::before{content:"" !important;display:block !important;position:absolute !important;left:0 !important;right:0 !important;
   top:-16px !important;bottom:auto !important;height:28px !important;border-radius:0 !important;background:linear-gradient(var(--ds-sheet,#121a2a),var(--ds-sheet,#121a2a)) top/100% 16px no-repeat,radial-gradient(circle at 100% 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) left bottom/12px 12px no-repeat,radial-gradient(circle at 0 100%,transparent 11.5px,var(--ds-sheet,#121a2a) 12px) right bottom/12px 12px no-repeat !important;box-shadow:none !important;z-index:-1 !important}
 #sheet-body.pn-p20 .ds-item-hint:not(.pn-full):not(.info){-webkit-line-clamp:1 !important}
@@ -1967,3 +1972,36 @@ html body #sheet.sheet:has(> .sheet-body > .chat-list){height:94vh !important;he
 #sheet-body .chat-list .ph-frame{max-height:min(260px,40vh) !important;max-height:min(260px,40dvh) !important}
 #sheet-body .chat-list .ph-frame .ph-img{max-height:inherit;object-fit:cover}
 /* lane:menufix chat END */
+
+/* d-profile START (I-114, proposals 05 + 06) — Profil: who I am, then "Vem ser mig", then the rest; one icon per rank */
+/* rank icon (js/rankico.js): amber marks, any size; .rk-plate = the 48 px icon on a navy plate (Min uniform) */
+.rk-ico{flex:0 0 auto;display:inline-block;vertical-align:middle;color:var(--ds-amber);overflow:visible}
+.rk-plate{display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:var(--r-lg);
+  background:var(--ds-bg);border:1px solid var(--ds-amber);box-shadow:inset 0 0 0 3px var(--ds-bg),inset 0 0 0 4px var(--ds-border-strong)}
+.uni-ico{display:flex;justify-content:center;margin:var(--sp-3) 0 var(--sp-2)}
+.mer-rank{display:flex;align-items:center;justify-content:center;gap:var(--sp-2)}
+.mer-rank>span{min-width:0;overflow-wrap:anywhere}
+.top-sub.top-rk{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.top-sub.top-rk>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the rank block: icon + name, the bar (merits), "12 av 20 meriter till …" */
+#sheet-body .pf-hero .pf-rank{display:flex !important;flex-direction:column;align-items:stretch;gap:var(--sp-2);min-height:44px;margin-top:var(--sp-3) !important;padding:var(--sp-2) 0 !important;text-align:left}
+#sheet-body .pf-hero .pf-rank .pf-rank-t{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+#sheet-body .pf-hero .pf-rank .pf-rank-t>span{min-width:0;overflow-wrap:anywhere}
+#sheet-body .pf-hero .pf-rank .pf-rank-n{color:var(--ds-muted);font-variant-numeric:tabular-nums}
+/* "Skapa din karaktär" = one row (the long help text is in the wizard) */
+#sheet-body.pn-pfmode .pf-hero .avw-cta{min-height:56px !important;padding:var(--sp-2) var(--sp-4) !important;margin-top:var(--sp-3) !important}
+#sheet-body.pn-pfmode .pf-hero .avw-cta small{display:none !important}
+#sheet-body.pn-pfmode .pf-hero .avw-cta .avw-cta-ic{flex:0 0 32px;width:32px;height:32px}
+/* "Vem ser mig": rows with a value or a switch */
+#sheet-body>.pn-vsm-w{margin-top:var(--sp-5)}
+#sheet-body .pn-vsm .ds-section-h{font:700 var(--ds-fs-12)/var(--ds-lh-12) var(--ds-sans);letter-spacing:.08em;text-transform:none;color:var(--ds-muted)}
+#sheet-body .pn-vsm .pn-row-v{flex:0 0 auto;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+#sheet-body .pn-vsm .ds-row[role="switch"]>.switch{pointer-events:none;flex:0 0 auto}
+/* Konto: "Mitt Swish-nummer" = a normal row (js/app-settings.js swishRow): its holder has no padding of its own */
+#sheet-body.ds-set .set-page .ds-item.set-swish{padding:0 !important;margin:0 !important;min-height:0 !important}
+/* its icon gets the same size as a direct list row (the ".ds-list>.ds-row" rule above does not reach one level down) */
+html body .ds-list>.set-swish>.ds-row>.ds-row-i{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important;align-self:center}
+html body .ds-list>.set-swish>.ds-row>.ds-row-i .pi,html body .ds-list>.set-swish>.ds-row>.ds-row-i .pn-ic{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important}
+/* Radera kontot: the ghost "Avbryt" under the red button (js/pnds.js "d-profile") */
+#sheet-body .mm-del-step>.pn-del-cancel{margin-top:var(--sp-2);min-height:48px}
+/* d-profile END */

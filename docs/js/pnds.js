@@ -1883,3 +1883,30 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 /* ds22 sheets END */
+
+/* d-profile START (design review, small fix 24) — "Radera kontot" (misc-mod.js): the first step gets a ghost "Avbryt" under the
+   red button, so there is a way out that is not the ✕ (it goes one step back: Inställningar › Konto). Only adds one button;
+   misc-mod.js builds and rebuilds the sheet, so a MutationObserver puts the button back. */
+(function () {
+  "use strict";
+  var q = 0;
+  function fix() {
+    q = 0;
+    var body = document.getElementById("sheet-body"); if (!body) return;
+    var go = body.querySelector(".mm-del-step > .mm-del-go"); if (!go || go.parentNode.querySelector(".pn-del-cancel")) return;
+    var b = document.createElement("button"); b.type = "button"; b.className = "btn btn-ghost btn-block pn-del-cancel";
+    b.textContent = window.I18N && window.I18N.lang === "en" ? "Cancel" : "Avbryt";
+    b.addEventListener("click", function () {
+      var back = document.getElementById("pn-back");
+      if (back && !back.hidden) { back.click(); return; }
+      try { var A = window.PNDS && window.PNDS._A ? window.PNDS._A() : null; if (A && A.closeSheet) A.closeSheet(); else document.getElementById("sheet-close").click(); } catch (e) {}
+    });
+    go.parentNode.insertBefore(b, go.nextSibling);
+  }
+  function start() {
+    var body = document.getElementById("sheet-body"); if (!body || !window.MutationObserver) return;
+    new MutationObserver(function () { if (!q) { q = 1; (window.requestAnimationFrame || setTimeout)(fix); setTimeout(fix, 80); } }).observe(body, { childList: true, subtree: true });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+/* d-profile END */

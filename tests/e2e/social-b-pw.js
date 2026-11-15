@@ -310,7 +310,10 @@ const kanalRow = (page) => page.evaluate(() => {
       return { bar: !!s, knob: !!a && a.content !== "none" && a.display !== "none" && parseFloat(a.width) > 0, marks: document.querySelectorAll("#sheet-body .pf-medals .rb i, #sheet-body .pf-medals .rb b").length,
         rb: document.querySelectorAll("#sheet-body .pf-medals .rb").length };
     });
-    ok(`[${w}] R1-41 Profil rank bar: no white knob (not a slider)`, pr.bar && !pr.knob, pr);
+    // d-profile (I-114, 06): the Profil bar counts MERITS and shows only when the server sends merits; this test's mock is an
+    // old server without merits, so there may be no bar at all. The rule here stays: a bar never has a white knob.
+    // (dprofile-pw.js checks the bar itself with merits.)
+    ok(`[${w}] R1-41 Profil rank bar: no white knob (not a slider)`, !pr.knob, pr);
     ok(`[${w}] R1-07 Profil rack: ribbons without ★ / ×N`, pr.rb > 0 && pr.marks === 0, pr);
     await clipShot(page, "#sheet-body .pf-hero", `r1-profil-hero-${w}`, 10);
     await clickJS(page, "#sheet-close"); await wait(page, 800);

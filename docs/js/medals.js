@@ -226,7 +226,6 @@
     for (var i = 0; i < T.length; i++) if (T[i][1] === title) return i + 1;
     return 0;
   }
-  function chevrons(n) { return n >= 35 ? "★★★★" : n >= 26 ? "★★★" : n >= 18 ? "★★" : n >= 10 ? "★" : n >= 5 ? "︽︽" : "︽"; }
 
   /* ---------- Uniform sheet ---------- */
   function sortedEarned(m) {
@@ -308,15 +307,19 @@
       var name = o.name || (o.isMe ? A.t("you") : A.t("someone"));
       var h = '<div class="uni-name">' + esc(name) + "</div>";
       if (total != null) {
-        var r = rankOf(total), idx = rankIndex(r.title), start = rankStart(total);
-        var pct = r.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (total - start) / Math.max(1, r.nextAt - start)))) : 100;
-        h += '<div class="uni-chev" aria-hidden="true">' + chevrons(idx) + "</div>" +
+        // d-profile (I-114, 06): the rank from js/rankico.js (my own: RANKICO.mine(), the same as Profil → the same name),
+        // one icon per rank, and the progress in merits ("8 meriter till …"). No goal text for drinks.
+        var R = window.RANKICO, r = o.rank || (R ? R.info(total) : null);
+        if (!r) { var r0 = rankOf(total), st0 = rankStart(total); r = { idx: Math.max(0, rankIndex(r0.title) - 1), n: ((window.SOCIAL && window.SOCIAL.TITLES) || []).length, title: r0.title, next: r0.next, nextAt: r0.nextAt, v: total,
+          pct: r0.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (total - st0) / Math.max(1, r0.nextAt - st0)))) : 100 }; }
+        r.mer = hasM;
+        var prog = R ? R.progText(r) : "";
+        h += (R ? '<div class="uni-ico">' + R.plate(r.idx, 48) + "</div>" : "") +
           '<div class="uni-rank">' + esc(r.title) + "</div>" +
-          '<div class="uni-sub">' + esc((U.n1 || String)(L("Grad ", "Rank ") + idx + "/" + ((window.SOCIAL && window.SOCIAL.TITLES) || []).length + " · " + total +
+          '<div class="uni-sub">' + esc((U.n1 || String)(L("Grad ", "Rank ") + (r.idx + 1) + "/" + r.n + " · " + total +
             (hasM ? L(" meriter", " merits") + (o.total != null ? L(" · " + (o.total | 0) + " drycker totalt", " · " + (o.total | 0) + " drinks total") : "") : L(" öl totalt", " beers total")))) + "</div>" +
-          '<div class="rank-bar"><span style="width:' + pct + '%"></span></div>' +
-          '<div class="uni-next">' + esc((U.n1 || String)(r.next && r.nextAt ? (hasM ? L(Math.max(0, r.nextAt - total) + " meriter kvar till " + r.next, Math.max(0, r.nextAt - total) + " merits left to " + r.next)
-            : L(Math.max(0, r.nextAt - total) + " öl kvar till " + r.next, Math.max(0, r.nextAt - total) + " beers left to " + r.next)) : L("Högsta grad. Ölguden själv.", "Highest rank."))) + "</div>" +
+          (hasM && r.next ? '<div class="rank-bar"><span style="width:' + r.pct + '%"></span></div>' : "") +
+          (prog ? '<div class="uni-next">' + esc(prog) + "</div>" : "") +
           (o.isMe && window.MERITER ? '<div class="uni-how"><button type="button" class="btn btn-small mer-how" data-merhow="1">' + esc(L("❓ Hur får jag meriter?", "❓ How do I earn merits?")) + "</button></div>" : "");
       }
       var m = o.medals || {}, earned = sortedEarned(m);
@@ -357,7 +360,8 @@
   function showMine() {
     if (!A || !A.LIVE || !A.authed() || off.my_medals) { if (window.EXTRAS && window.EXTRAS.showBadgesLegacy) window.EXTRAS.showBadgesLegacy(); return; }
     var st = window.SOCIAL && window.SOCIAL.stats && window.SOCIAL.stats();
-    var me = { name: A.getName() || A.t("you"), isMe: true, total: st ? st.total : null, meriter: st && st.meriter != null ? st.meriter : null, medals: mine || {} };
+    var mr = null; try { mr = window.RANKICO ? window.RANKICO.mine() : null; } catch (e) {}   // d-profile: the same rank as Profil (small fix 6)
+    var me = { name: A.getName() || A.t("you"), isMe: true, total: st ? st.total : null, meriter: mr && mr.mer ? mr.v : st && st.meriter != null ? st.meriter : null, medals: mine || {}, rank: mr };
     showUniform(me);
     (Date.now() - lastAward >= IDLE_MS ? award(null, true) : Promise.resolve()).then(function () {
       return loadMine();
