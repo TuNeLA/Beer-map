@@ -230,15 +230,17 @@ const scrollTo = async (page, y, sel) => { await page.evaluate(([y, sel]) => { c
         q(".pn-vsm-ghost").click(); await w(150);
         out.ghostOff = { ls: localStorage.getItem("olnu.ghostMode"), mode: window.PNVIS.mode(), sw: q(".pn-vsm-ghost").getAttribute("aria-checked"), val: q(".pn-vsm-vis .pn-row-v").textContent };
         q(".pn-vsm-exact").click(); await w(100);
-        out.area = { prec: window.PN.s.prec, ls: localStorage.getItem("olnu.prec"), real: document.getElementById("prec-area").getAttribute("aria-checked"), sw: q(".pn-vsm-exact").getAttribute("aria-checked") };
+        out.area = { prec: window.PN.s.prec, ls: localStorage.getItem("olnu.prec"), real: document.getElementById("prec-area").getAttribute("aria-checked"), sw: q(".pn-vsm-exact").getAttribute("aria-checked"), sub: q(".pn-vsm-exact small").textContent };
         q(".pn-vsm-exact").click(); await w(100);
-        out.exact = { prec: window.PN.s.prec, ls: localStorage.getItem("olnu.prec"), real: document.getElementById("prec-exact").getAttribute("aria-checked"), sw: q(".pn-vsm-exact").getAttribute("aria-checked") };
+        out.exact = { prec: window.PN.s.prec, ls: localStorage.getItem("olnu.prec"), real: document.getElementById("prec-exact").getAttribute("aria-checked"), sw: q(".pn-vsm-exact").getAttribute("aria-checked"), sub: q(".pn-vsm-exact small").textContent };
         return out;
       });
       ok("C Spökläge switch = the real ghost mode (PNVIS), and the Synlighet value follows", g.ghostOn.ls === "1" && g.ghostOn.mode === "spoke" && g.ghostOn.sw === "true" && g.ghostOn.knob === "true" && g.ghostOn.val === "Spöke" &&
         g.ghostOff.ls === "0" && g.ghostOff.mode === "alla" && g.ghostOff.sw === "false" && g.ghostOff.val === "Alla", g);
       ok("C Exakt plats switch = the app's own precision setting (PN.s.prec / olnu.prec)", g.area.prec === "area" && g.area.ls === "area" && g.area.real === "true" && g.area.sw === "false" &&
         g.exact.prec === "exact" && g.exact.ls === "exact" && g.exact.real === "true" && g.exact.sw === "true", g);
+      // the sub line tells what the current state does (old code: always "Av: nya öl visar bara området", also while the switch was on)
+      ok("C Exakt plats sub line follows the switch (on = exact place, off = only the area)", /bara området/.test(g.area.sub) && !/^Av:/.test(g.area.sub) && /exakta plats/.test(g.exact.sub), { area: g.area.sub, exact: g.exact.sub });
       await page.evaluate(() => document.querySelector("#sheet-body .pn-vsm-vis").click()); await wait(page, 1900);
       const v = await page.evaluate(() => { const pg = document.querySelector("#sheet-body .set-page:not([hidden])");
         return { title: document.getElementById("sheet-title").textContent, pg: pg && pg.getAttribute("data-pg"), ctl: !!(pg && pg.querySelector(".mn-vis-set")) }; });

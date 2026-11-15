@@ -172,20 +172,23 @@
   function visSection() {
     var V = W("PNVIS");
     if (!A || !A.LIVE || !V || !V.mode || !V.setMode) return null;
-    var NAME = { alla: "Alla", vanner: "Bara vänner", spoke: "Spöke" };
-    var sec = h("section", { class: "ds-section pn-vsm" }, [h("h3", { class: "ds-section-h", text: "Vem ser mig" })]);
+    var NAME = { alla: L("Alla", "Everyone"), vanner: L("Bara vänner", "Friends only"), spoke: L("Spöke", "Ghost") };
+    var sec = h("section", { class: "ds-section pn-vsm" }, [h("h3", { class: "ds-section-h", text: L("Vem ser mig", "Who sees me") })]);
     var list = h("div", { class: "ds-list" }); sec.appendChild(list);
     var prec = function () { var P = W("PN"); return P && P.s && P.s.prec ? P.s.prec : ls("olnu.prec", "exact") === "area" ? "area" : "exact"; };
     var setSw = function (b, on) { b.setAttribute("aria-checked", String(on)); b.querySelector(".switch").setAttribute("aria-checked", String(on)); };
-    var rVis = visRow("eye", "Synlighet", "", "pn-vsm-vis", false);
-    var sGhost = visRow("eye-off", "Spökläge", "Ingen ser dig på kartan", "pn-vsm-ghost", true);
-    var sExact = visRow("pin", "Exakt plats", "Av: nya öl visar bara området", "pn-vsm-exact", true);
-    var rHome = W("HOMEZONE") && W("HOMEZONE").open ? visRow("home", "Hemzon", "Hemma syns bara ett område", "pn-vsm-home", false) : null;
+    var rVis = visRow("eye", L("Synlighet", "Visibility"), "", "pn-vsm-vis", false);
+    var sGhost = visRow("eye-off", L("Spökläge", "Ghost mode"), L("Ingen ser dig på kartan", "Nobody sees you on the map"), "pn-vsm-ghost", true);
+    var sExact = visRow("pin", L("Exakt plats", "Exact place"), " ", "pn-vsm-exact", true);
+    var rHome = W("HOMEZONE") && W("HOMEZONE").open ? visRow("home", L("Hemzon", "Home zone"), L("Hemma syns bara ett område", "At home only an area shows"), "pn-vsm-home", false) : null;
     function paint() {
       var m = safe(function () { return V.mode(); }, "alla"), hz = safe(function () { return W("HOMEZONE").home(); }, null);
       var v = rVis.querySelector(".pn-row-v"), t = NAME[m] || NAME.alla; if (v.textContent !== t) v.textContent = t;
       setSw(sGhost, m === "spoke"); setSw(sExact, prec() === "exact");
-      if (rHome) { var hv = rHome.querySelector(".pn-row-v"), ht = hz ? "På" : "Av"; if (hv.textContent !== ht) hv.textContent = ht; }
+      // the sub line says what the CURRENT state does (it said "Av: …" while the switch was on)
+      var es = sExact.querySelector(".ds-row-t > small"), et = prec() === "exact" ? L("Nya öl visar din exakta plats", "New beers show your exact place") : L("Nya öl visar bara området", "New beers show only the area");
+      if (es && es.textContent !== et) es.textContent = et;
+      if (rHome) { var hv = rHome.querySelector(".pn-row-v"), ht = hz ? L("På", "On") : L("Av", "Off"); if (hv.textContent !== ht) hv.textContent = ht; }
     }
     rVis.addEventListener("click", function () { var P = W("PN"); if (P && P.showSettings) P.showSettings("s", "synl"); else safe(function () { V.open(); }); });
     sGhost.addEventListener("click", function () {
