@@ -130,8 +130,8 @@
   function titleProgress() {
     if (!stats) return "";
     if (stats.meriter != null) {
-      return stats.next && stats.nextAt ? (I.lang === "en" ? Math.max(0, stats.nextAt - stats.meriter) + " merits left to " + stats.next
-        : (U.n1 ? U.n1 : String)(Math.max(0, stats.nextAt - stats.meriter) + " meriter kvar till " + stats.next)) : t("titleMax");   // fixJ T-22 ask: "1 merit"
+      return stats.next && stats.nextAt ? (I.lang === "en" ? Math.max(0, stats.nextAt - stats.meriter) + " merits to " + stats.next
+        : (U.n1 ? U.n1 : String)(Math.max(0, stats.nextAt - stats.meriter) + " meriter till " + stats.next)) : t("titleMax");   // fixJ T-22 ask: "1 merit"
     }
     return stats.next && stats.nextAt ? t("titleNext", Math.max(0, stats.nextAt - stats.total), stats.next) : t("titleMax");
   }
