@@ -12,7 +12,6 @@
   function openSheet() { return PN.openSheet.apply(null, arguments); }
   function closeSheet() { return PN.closeSheet.apply(null, arguments); }
   function el() { return PN.el.apply(null, arguments); }
-  function btn() { return PN.btn.apply(null, arguments); }
   function tl() { return PN.tl.apply(null, arguments); }
   function nightEnd() { return PN.nightEnd.apply(null, arguments); }
   function myNight() { return PN.myNight.apply(null, arguments); }
@@ -220,30 +219,46 @@
         closeSheet("pick");
         resolve(bar ? { lat: bar.lat, lng: bar.lng, precise: true, _ciBar: bar } : real);   // fixJ T-07: _ciBar = moves a check-in
       }
+      // d-beer (I-114, proposal 04, owner 15 Nov): a list, not a wall of buttons. The nearest bar = the ONE amber button.
+      // Other bars and places = rows (name left, distance right) in grouped lists. "Hemma eller annan plats" is always
+      // in view: pinned to the bottom of the sheet, a rounded row like the lists (the owner saw square corners). Styles: beerui.css.
       openSheet(t("whereTitle"), function (body) {
         body.appendChild(el("p", { class: "muted", text: t("whereInfo") }));
+        var box = el("div", { class: "wh" });
         var bars = list.filter(function (x) { return !x.place; }), places = list.filter(function (x) { return x.place; });
-        var row = function (x, i, emo) {
-          var m = Math.round(x.d / 10) * 10;
-          body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [
-            btn(emo + " " + x.bar.name + "  · " + (m < 20 ? t("whereHere") : m + " m"), (i === 0 && emo === "🍺" ? "btn-amber " : "") + "btn-block" + (x.place ? " where-place" : ""), function () { pick(x.bar); })
-          ]));
+        var ic = function (n) { var P = window.PNI; return P && P.svg && (!P.has || P.has(n)) ? P.svg(n, "wh-ic") : ""; };
+        var dist = function (x) { var m = Math.round(x.d / 10) * 10; return m < 20 ? t("whereHere") : m + " m"; };
+        var row = function (x, icon) {
+          return el("button", { type: "button", class: "btn wh-row" + (x.place ? " where-place" : ""),
+            html: ic(icon) + '<span class="wh-name">' + U.esc(x.bar.name) + '</span><span class="wh-dist">' + U.esc(dist(x)) + "</span>",
+            onclick: function () { pick(x.bar); } });
         };
-        bars.forEach(function (x, i) { row(x, i, "🍺"); });
-        if (places.length) {
-          body.appendChild(el("p", { class: "muted where-sub", text: t("wherePlaces") }));
-          places.forEach(function (x, i) { row(x, i, "🍽️"); });
+        var group = function (title, items, icon) {
+          if (!items.length) return;
+          box.appendChild(el("h3", { class: "wh-h", text: title }));
+          var l = el("div", { class: "wh-list" });
+          items.forEach(function (x) { l.appendChild(row(x, icon)); });
+          box.appendChild(l);
+        };
+        if (bars.length) {
+          box.appendChild(el("button", { type: "button", class: "btn btn-amber btn-block wh-main",
+            html: ic("beer") + "<span>" + U.esc(bars[0].bar.name + " · " + dist(bars[0])) + "</span>", onclick: function () { pick(bars[0].bar); } }));
         }
-        // nf 2026-11-07: "📍 Fler ställen nära" = bars AND restaurants within 1 km (js/nearplaces.js), same pick.
+        group(tl("Krogar nära", "Bars near you"), bars.slice(1), "beer");
+        group(tl("Restauranger och caféer", "Restaurants and cafés"), places, "food");
+        // nf 2026-11-07: "Fler ställen nära" = bars AND restaurants within 1 km (js/nearplaces.js), same pick.
         if (window.NEARPLACES && window.NEARPLACES.inline) {
           var moreBox = el("div", { class: "where-more-box" });
-          var moreB = btn("📍 Fler ställen nära", "btn-ghost btn-block where-more", function () {
-            moreB.remove();
-            window.NEARPLACES.inline(moreBox, lat, lng, pick, list.map(function (x) { return x.bar.id; }));
-          });
-          body.appendChild(moreB); body.appendChild(moreBox);
+          var moreB = el("button", { type: "button", class: "btn btn-ghost where-more", html: ic("pin") + "<span>" + U.esc(tl("Fler ställen nära", "More places nearby")) + "</span>",
+            onclick: function () {
+              moreB.remove();
+              window.NEARPLACES.inline(moreBox, lat, lng, pick, list.map(function (x) { return x.bar.id; }));
+            } });
+          box.appendChild(moreB); box.appendChild(moreBox);
         }
-        body.appendChild(el("div", { class: "row", style: "margin-top:12px" }, [btn("🏠 " + t("whereNone"), "btn-ghost btn-block", function () { pick(null); })]));
+        box.appendChild(el("div", { class: "wh-foot" }, [el("button", { type: "button", class: "btn wh-home",
+          html: ic("home") + "<span>" + U.esc(tl("Hemma eller annan plats", "At home or another place")) + "</span>", onclick: function () { pick(null); } })]));
+        body.appendChild(box);
       }, { now: true, lock: true, onClose: function () { if (!done) { done = true; resolve(null); } } });
     });
   }

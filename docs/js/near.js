@@ -256,14 +256,17 @@
   function friendRow(f, onChange) {
     var el = A.el;
     var dem = demonym(f.home_town);
-    var sub = [];
-    if (dem) sub.push(dem);
-    sub.push(f.out ? L("Ute ikväll", "Out tonight") + (f.town ? " " + L("i ", "in ") + f.town : "") : L("Int' ute", "Not out"));   // ds55: status = dot / ring + word
+    // d-social (design 10, I-114): one friend = one 64 px row: avatar, name, ONE status line (the state first, then the home
+    // town), "Hitta" + "⋯" at the right. ds55: status = dot / ring + word. PNI icons, no emoji.
+    var stTxt = f.out ? L("Ute ikväll", "Out tonight") + (f.town ? " " + L("i ", "in ") + f.town : "") : L("Int' ute", "Not out");
+    var findB = off.find_request ? null : A.btn("", "btn-small nr-find-b", function () { whereIs(f.key, f.name); });
+    if (findB) findB.innerHTML = icon("compass");
+    var moreB = A.btn("", "btn-small btn-ghost nr-rm-b" + (window.FRIENDS2 ? " nr-more-b" : ""), function () { if (window.FRIENDS2 && window.FRIENDS2.menu) window.FRIENDS2.menu(li, f, onChange); else askRemove(); });
+    moreB.innerHTML = icon(window.FRIENDS2 ? "dots" : "x");
     var li = el("li", { class: "nr-frow" + (f.out ? " out" : "") }, [
       el("span", { class: "st-dot" + (f.out ? " on" : ""), "aria-hidden": "true" }),
-      el("span", { class: "nr-fmain" }, [el("b", { text: f.name || L("Okänd kamrat", "Unknown") }), el("small", { class: "muted", text: sub.join(" · ") })]),
-      off.find_request ? null : A.btn("🧭", "btn-small nr-find-b", function () { whereIs(f.key, f.name); }),
-      A.btn(window.FRIENDS2 ? "⋯" : "✕", "btn-small btn-ghost nr-rm-b" + (window.FRIENDS2 ? " nr-more-b" : ""), function () { if (window.FRIENDS2 && window.FRIENDS2.menu) window.FRIENDS2.menu(li, f, onChange); else askRemove(); })
+      el("span", { class: "nr-fmain" }, [el("b", { text: f.name || L("Okänd kamrat", "Unknown") }), el("small", { class: "muted" }, [el("span", { class: "nr-st", text: stTxt }), dem ? " · " + dem : null])]),
+      findB, moreB
     ]);
     li.querySelector(".nr-find-b") && li.querySelector(".nr-find-b").setAttribute("aria-label", L("Hitta ", "Find ") + (f.name || ""));
     li.querySelector(".nr-rm-b").setAttribute("aria-label", (window.FRIENDS2 ? L("Mer för ", "More for ") : L("Ta bort vän ", "Remove friend ")) + (f.name || ""));
@@ -428,8 +431,8 @@
         body.appendChild(share);
         drawShare(share);
 
-        body.appendChild(el("p", { class: "muted nr-priv", text: L("🔒 Vänner ser ditt namn, din hemstad och om du är ute ikväll (bara stan). Exakt position delas bara i 🧭 Hitta, när båda sagt ja, och försvinner efter 2 min.",
-          "🔒 Friends see your name, home town and whether you are out tonight (town only). Exact position only in 🧭 Find, when both said yes; gone after 2 min.") }));
+        body.appendChild(el("p", { class: "muted nr-priv", text: L("🔒 Vänner ser ditt namn, din hemstad och om du är ute ikväll (bara stan). Exakt position delas bara i Hitta, när båda sagt ja, och försvinner efter 2 min.",
+          "🔒 Friends see your name, home town and whether you are out tonight (town only). Exact position only in Find, when both said yes; gone after 2 min.") }));
 
         // fixC N-04 / N-18: load() ran only when the pane was built, so the sender kept "Väntar på svar" / "Inga vänner än"
         // (and the blocked side kept the blocker) until the sheet was opened again. Now the open pane is FP: warm.js
@@ -476,7 +479,7 @@
                 el("span", { class: "sa-ib-acts" }, [yes, no])
               ]));
             });
-            var fr = d.friends || [];
+            var fr = (d.friends || []).slice().sort(function (a, b) { return (b.out ? 1 : 0) - (a.out ? 1 : 0); });   // design2 small fix 27: friends who are out come first (the server order inside each part)
             if (!fr.length) listBox.appendChild(el("li", { class: "muted", text: L("Inga vänner än. Dela din kod, eller lägg till nån från en grupp.", "No friends yet. Share your code.") }));
             fr.forEach(function (f) { listBox.appendChild(friendRow(f, load)); });
             try { if (window.INVITE && window.INVITE.friendsMore) window.INVITE.friendsMore(listBox, Array.isArray(d.friends) ? fr : null, load, friendRow); } catch (e) {}   // fixC: null = no my_friends list (old server)
@@ -509,7 +512,7 @@
     box.innerHTML = "";
     if (off.set_find_share || off.near_poll) return;
     var s = (P && P.share) || {};
-    box.appendChild(el("h3", { text: L("🧭 Låt mig hittas ikväll", "🧭 Let me be found tonight") }));
+    box.appendChild(el("h3", { text: L("Låt mig hittas ikväll", "Let me be found tonight") }));
     box.appendChild(el("p", { class: "muted nr-hint", text: L("Påslaget kan gänget/vännerna starta kompassen mot dig utan att fråga – till kl 05 eller tills du slår av. Din exakta position skickas bara när DIN kompass är öppen.",
       "When on, your groups/friends can start the compass to you without asking – until 05:00 or until you switch off. Your exact position is only sent while YOUR compass is open.") }));
     // social-a: a change repaints the two rows in place (the switch elements stay, so a 2nd tap and the row tap keep working)

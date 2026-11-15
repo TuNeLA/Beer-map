@@ -1,0 +1,137 @@
+# The browser tests (Playwright, mocked Supabase). ONE copy, called from two places (ci1):
+#   tests.yml         every shard of tests/e2e/shards.txt (a ci/ branch with .ci-only: only the named shards)
+#   pages-bundle.yml  gate: true = only the `gate` shards, on the BUILT site, before a live deploy
+# The shard list is tests/e2e/shards.txt (one line per shard). scripts/ci/plan.mjs turns it into the matrix.
+# scripts/ci/shard-guard.mjs (guards.yml) fails when a tests/e2e/*-pw.js file is in no shard or in two.
+# Map tests need the secret MAPBOX_TEST_TOKEN. Without it they are skipped (not failed).
+# Supabase target: staging (pintsnow-staging). tests/e2e/serve.py rewrites the served config.js; run-all.sh checks it.
+name: e2e
+
+on:
+  workflow_call:
+    inputs:
+      gate:
+        description: "true = only the deploy-gate shards (shards.txt option `gate`)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  # plan: the e2e matrix is a JSON list made from tests/e2e/shards.txt. On a ci/ branch with a .ci-only file only the named
+  # shards are in the list, so no runner starts for the others. A push that changes only docs / ops files gets an empty list.
+  plan:
+    name: plan (e2e shard list)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the changed-file list needs the commit before the push
+      - id: plan
+        env:
+          BEFORE: ${{ github.event.before || github.event.pull_request.base.sha }}
+          GATE: ${{ inputs.gate && '--gate' || '' }}
+        run: |
+          # Changed files of this push (or PR). No usable "before" commit (new branch, manual run, deploy) = no list = run all.
+          if [ -z "$GATE" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            CHANGED_FILES="$(git diff --name-only "$BEFORE" HEAD)"; export CHANGED_FILES
+            echo "changed files: $(printf '%s\n' "$CHANGED_FILES" | grep -c .)"
+          fi
+          node scripts/ci/plan.mjs . $GATE
+
+  e2e:
+    name: e2e (${{ matrix.name }})
+    needs: plan
+    if: ${{ needs.plan.outputs.count != '0' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      TZ: Europe/Stockholm   # tests were written for Swedish time (nights, "ikväll"); UTC breaks some
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ startsWith(github.ref, 'refs/heads/ci/') && 4 || 20 }}   # a lane run never takes all 20 runners
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # B1: the browsers come from a cache (key = package-lock.json, which pins the Playwright version, + the browser list).
+      # A miss downloads them with their system packages. A hit only checks that each browser starts; if one does not
+      # (a new runner image without a library), the system packages are installed then.
+      - name: Playwright browsers (cache)
+        id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.bkey }}
+      - name: Install Playwright browsers (cache miss)
+        if: steps.pw.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.browsers }}
+      - name: Check that the cached browsers start (cache hit)
+        if: steps.pw.outputs.cache-hit == 'true'
+        env:
+          BROWSERS: ${{ matrix.browsers }}
+        run: |
+          node -e '
+            const pw = require("playwright");
+            (async () => { for (const b of process.env.BROWSERS.split(/\s+/).filter(Boolean)) { const x = await pw[b].launch(); await x.close(); console.log(b + " starts"); } })()
+              .catch((e) => { console.log(String(e).slice(0, 300)); process.exit(1); });' \
+          || npx playwright install --with-deps $BROWSERS
+      - name: Build the site that goes live (shards with site=bundled; scripts/build-site.mjs = the deploy's own build)
+        if: matrix.site == 'bundled'
+        run: node scripts/build-site.mjs --out "$RUNNER_TEMP/site" --bundle on --sha "$GITHUB_SHA"
+      - name: Serve the site on port 8793 (map) and 8871 (UI), plain docs/ on 8872, Supabase target = staging
+        env:
+          PN_TARGET: staging   # serve.py serves config.js pointed at pintsnow-staging (the file in git is not changed)
+          SITE: ${{ matrix.site == 'bundled' && format('{0}/site/docs', runner.temp) || 'docs' }}
+        run: |
+          nohup python3 tests/e2e/serve.py 8793 "$SITE" > /tmp/http-8793.log 2>&1 &
+          nohup python3 tests/e2e/serve.py 8871 "$SITE" > /tmp/http-8871.log 2>&1 &
+          nohup python3 tests/e2e/serve.py 8872 docs > /tmp/http-8872.log 2>&1 &
+          for p in 8793 8871 8872; do
+            for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
+          done
+      - name: Restore last run's flaky list (flake gate)
+        uses: actions/cache/restore@v4
+        with:
+          path: tests/e2e/out/flaky-prev
+          key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: flaky-${{ matrix.name }}-${{ github.ref_name }}-
+      - name: Run tests
+        env:
+          MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}   # real Mapbox for the map tests; empty = skipped
+          PN_TARGET: staging   # run-all.sh stops if the served config.js does not point at this target
+          TO: '900'
+          PAR: ${{ matrix.par }}   # tests at once in this shard (shards.txt par=N, default 2; the runner has 4 CPUs)
+          PLAIN_PORT: ${{ matrix.site == 'bundled' && '8872' || '' }}   # bundle-smoke compares the built site with plain docs/
+          FLAKE_GATE: '1'   # a test that passes only on the rerun in 2 runs in a row = FAIL (tests/e2e/flakes.json)
+        run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs-${{ matrix.name }}
+          path: |
+            tests/e2e/out/logs/
+            tests/e2e/out/traces/
+            tests/e2e/out/ui1-shots/
+            tests/e2e/out/social-b-shots/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Keep this run's flaky list for the next run
+        if: always()
+        run: mkdir -p tests/e2e/out/flaky-prev && cp tests/e2e/out/logs/flaky-now.txt tests/e2e/out/flaky-prev/ 2>/dev/null || true
+      - name: Save flaky list
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: tests/e2e/out/flaky-prev
+          key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}

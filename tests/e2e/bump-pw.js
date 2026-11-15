@@ -2,7 +2,7 @@
 // Two phones (two browser contexts) on a mocked server with the same rules as 0509 in this process (the real SQL is tested with
 // supabase/tests/bump-0509.test.sql). Motion = synthetic DeviceMotionEvents at 60 Hz in the page (same shapes as tests/unit/bump.test.mjs).
 // Checks: off = no listener; ?bump=1 / ?bump=0 switch; guards (pocket walk, text field, Följ mig hem); shake opens the glass by itself;
-// knock both = match, NOTHING logged; tilt drains; one empty = wait; both empty = one ÖL! each (app-beer hook on both: level toast + ÅNGRA chip over Annat);
+// knock both = match, NOTHING logged; tilt drains; one empty = wait; both empty = one ÖL! each (app-beer hook on both: the count burst + "Ångra" on the ÖL! button, d-beer I-114);
 // one never drinks = "Skålen rann ut", nothing logged; shake alone fades after ~8 s, no server call; hidden page detaches;
 // iPhone asks the motion permission once after the first ÖL! press; store build off; delight.js shake glass stays closed.
 process.argv[2] = process.argv[2] || "8971";
@@ -142,19 +142,21 @@ async function knockPair(A, B) {
     await move(A.page, "drink");
     await A.page.waitForFunction(() => !document.querySelector(".pnb-ov"), null, { timeout: 8000 }).catch(() => {});
     await B.page.waitForFunction(() => window.__hook && window.__hook.length, null, { timeout: 8000 }).catch(() => {});
-    // A has the real app-beer hook (A.beerFromBump → beerDone): the normal ÖL! confirmation = the level toast + the ÅNGRA chip
-    // over Annat (c4drinks I-34). bump.js's own "Skål med X! Loggad som öl." toast is only the fallback when the hook is missing.
-    await A.page.waitForSelector(".undo-fab", { timeout: 5000 }).catch(() => {});
+    // A has the real app-beer hook (A.beerFromBump → beerDone): the normal ÖL! confirmation. d-beer (I-114): no toast in the web
+    // build (the count burst is the answer) and the ÖL! button itself is "Ångra" for 10 s (no chip over Annat any more).
+    // bump.js's own "Skål med X! Loggad som öl." toast is only the fallback when the hook is missing.
+    await A.page.waitForSelector("#btn-beer.undo", { timeout: 5000 }).catch(() => {});
     const ta = await toasts(A.page);
-    const ca2 = await A.page.evaluate(() => ({ undo: !!document.querySelector(".undo-fab"), over: !!document.querySelector(".undo-fab.over-annat"),
+    const ca2 = await A.page.evaluate(() => ({ undo: !!document.querySelector("#btn-beer.undo"), fab: !!document.querySelector(".undo-fab"),
       accAgo: window.PN && window.PN.s && window.PN.s.lastAcceptAt ? Date.now() - window.PN.s.lastAcceptAt : -1 }));
-    ok(ta.trim().length > 3 && !/kunde inte loggas/.test(ta) && ca2.undo && ca2.accAgo >= 0 && ca2.accAgo < 15000,
-      "both empty → A: Skål! then the ÖL! confirmation (toast)", { ta, ...ca2 });
+    ok(!/kunde inte loggas|Loggad som öl/.test(ta) && ca2.undo && !ca2.fab && ca2.accAgo >= 0 && ca2.accAgo < 15000,
+      "both empty → A: Skål! then the ÖL! confirmation (the ÖL! button is 'Ångra', no fallback toast)", { ta, ...ca2 });
     ok((await B.page.evaluate(() => window.__hook)).join() === "true", "B: app-beer hook gets the accepted beer");
     ok(logged.filter((l) => l.accepted).length === 2, "one ÖL! each", logged);
-    // ÅNGRA = the chip over Annat (app-beer.js showUndo); a toast "Ångra" button only on the fallback path
-    await A.page.evaluate(() => { const b = document.querySelector(".undo-fab") || [...document.querySelectorAll("#toasts .toast button")].find((x) => x.textContent === "Ångra"); if (b) b.click(); }); await wait(A.page, 600);
-    ok(calls.some((c) => c.fn === "undo" && c.who === "A"), "Ångra (the chip over Annat) calls undo_beer");
+    // ÅNGRA = the ÖL! button in its "Ångra" state (app-beer.js showUndo); a toast "Ångra" button only on the fallback path
+    await wait(A.page, 700);   // the first 0.5 s of the state take no tap
+    await A.page.evaluate(() => { const b = document.querySelector("#btn-beer.undo") || [...document.querySelectorAll("#toasts .toast button")].find((x) => x.textContent === "Ångra"); if (b) b.click(); }); await wait(A.page, 600);
+    ok(calls.some((c) => c.fn === "undo" && c.who === "A"), "Ångra (the ÖL! button) calls undo_beer");
     // 3. one never drinks: Skålen rann ut, nothing logged (window 6 s in the mock)
     WIN = 6000; const before = logged.length;
     await knockPair(A, B);

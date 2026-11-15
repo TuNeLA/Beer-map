@@ -73,6 +73,8 @@ const tab = (page, t) => page.evaluate((t) => { const x = document.querySelector
         const nm = li.querySelector(".nr-fmain > b"), info = li.querySelector(".nr-finfo") || li.querySelector(".nr-fmain small"), av = li.querySelector(":scope > .av");
         const ib = info ? info.getBoundingClientRect() : null, lh = info ? parseFloat(getComputedStyle(info).lineHeight) || 18 : 18;
         return { name: nm ? nm.textContent : "", row: r(li), nm: r(nm), info: r(info), infoLines: ib ? Math.round(ib.height / lh) : 0, infoText: info ? info.textContent : "",
+          nmCut: nm ? nm.scrollWidth > nm.clientWidth + 1 || nm.scrollHeight > nm.clientHeight + 1 : true, nmLines: nm ? Math.round(nm.getBoundingClientRect().height / 22) : 0,
+          xa: [...li.querySelectorAll(":scope > .nr-xacts > .btn")].map((b) => ({ c: b.className, vis: b.getClientRects().length > 0, t: b.textContent.trim() })),
           av: av ? { avk: av.getAttribute("data-avk"), svg: !!av.querySelector("svg"), ph: av.classList.contains("av-ph"), live: av.classList.contains("av-live") } : null,
           btns: [...li.querySelectorAll(":scope > .btn")].map((b) => { const x = b.getBoundingClientRect(); return { t: Math.round(x.top), h: Math.round(x.height), r: Math.round(x.right) }; }) };
       });
@@ -82,12 +84,15 @@ const tab = (page, t) => page.evaluate((t) => { const x = document.querySelector
     const en = m.rows.find((x) => x.name === "Enberg") || {};
     ok(w + " I-90 two friend rows", m.rows.length === 2, m);
     ok(w + " I-90 every friend row is shorter than 120 px (long info text)", m.rows.length && m.rows.every((x) => x.row.h < 120), m.rows.map((x) => x.row.h));
-    ok(w + " I-90 name width > 50% of the row", m.rows.length && m.rows.every((x) => x.nm && x.nm.w > x.row.w * 0.5), m.rows.map((x) => [x.nm && x.nm.w, x.row.w]));
-    ok(w + " I-90 info width > 50% of the row, max 2 lines", m.rows.length && m.rows.every((x) => x.info && x.info.w > x.row.w * 0.5 && x.infoLines <= 2), m.rows.map((x) => [x.info && x.info.w, x.row.w, x.infoLines]));
+    // d-social (design 10, I-114, owner 15 Nov): one friend = ONE 64 px row with Hitta + "⋯" at the right. The I-90 need stays:
+    // a name is never cut (it wraps to max 2 lines) and the info never wraps letter by letter (ONE line, ellipsis at the end).
+    ok(w + " I-90 / design 10: a name is never cut (max 2 lines), a row with a 1-line name is 64 px", m.rows.length && m.rows.every((x) => !x.nmCut && x.nmLines <= 2 && (x.nmLines > 1 || Math.abs(x.row.h - 64) <= 2)), m.rows.map((x) => [x.name, x.nmCut, x.nmLines, x.row.h]));
+    ok(w + " I-90 / design 10: the info is ONE line under the name, at least 120 px wide", m.rows.length && m.rows.every((x) => x.info && x.info.w >= 120 && x.infoLines === 1), m.rows.map((x) => [x.info && x.info.w, x.row.w, x.infoLines]));
     ok(w + " I-90 info has town + status + groups in one text", /Göteborg/.test(en.infoText || "") && /Vänner/.test(en.infoText || ""), en.infoText);
     ok(w + " I-90 friend with an avatar spec gets the real avatar (svg, not the letter disc), green ring when out", en.av && en.av.svg && !en.av.ph && en.av.live, en.av);
     // nightfix: 44 px (the DESIGN.md tap target minimum, gated by ds-sheet-pw "tap targets ≥ 44"); compact = not taller than 44
-    ok(w + " I-90 the 4 actions are in ONE row (same top) of 44 px buttons", en.btns && en.btns.length === 4 && new Set(en.btns.map((b) => b.t)).size === 1 && en.btns.every((b) => b.h >= 43.5 && b.h <= 44.5), en.btns);
+    ok(w + " design 10: Hitta + ⋯ at the right in ONE row (same top) of 44 px buttons; Skriv + Bjud in wait in the row (shown when ⋯ is open)", en.btns && en.btns.length === 2 && new Set(en.btns.map((b) => b.t)).size === 1 && en.btns.every((b) => b.h >= 43.5 && b.h <= 44.5 && b.r <= m.vw) &&
+      en.xa && en.xa.length === 2 && /dm-fb/.test(en.xa[0].c) && /inv-fb/.test(en.xa[1].c) && en.xa.every((b) => !b.vis), { btns: en.btns, xa: en.xa });
     ok(w + " I-90 'Du kanske känner' row < 120 px and its text > 50% of the row", m.sg.length && m.sg.every((x) => x.row.h < 120 && x.main.w > x.row.w * 0.5), m.sg);
     await page.evaluate(() => { const l = document.querySelector("#sheet-body .nr-flist"); if (l) l.scrollIntoView({ block: "start" }); });
     await shot(page, "vanner-" + w);

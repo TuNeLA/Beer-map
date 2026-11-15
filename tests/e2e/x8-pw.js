@@ -84,12 +84,13 @@ const hhmm = (ms) => { const d = new Date(ms); return ("0" + d.getHours()).slice
 // "splash" = the first VISIBLE tap effect: the fx.js CSS splash (FX.splash) OR, since lane juice, the FX.juice.press effect
 // (squash .jc-pop on .beer-wrap + the foam burst canvas .jc-cv). out.how says which one came first.
 const tapTimed = (page) => page.evaluate(() => new Promise((res) => {
-  const t0 = performance.now(), out = { splash: -1, how: "", toast: -1, text: "" };
+  const t0 = performance.now(), out = { splash: -1, how: "", toast: -1, text: "", burst: -1 };
   const hit = (how) => { if (out.splash < 0) { out.splash = performance.now() - t0; out.how = how; } };
   const fx = window.FX, orig = fx.splash; fx.splash = function () { hit("fx.splash"); return orig.apply(this, arguments); };
   const fmo = new MutationObserver((ms) => { for (const m of ms) {
     if (m.type === "attributes" && m.target.classList && m.target.classList.contains("jc-pop")) hit("juice.squash");
     for (const n of m.addedNodes || []) if (n.nodeType === 1 && (n.classList.contains("jc-cv") || n.classList.contains("foam-splash"))) hit(n.classList.contains("jc-cv") ? "juice.burst" : "fx.splash");
+    for (const n of m.addedNodes || []) if (n.nodeType === 1 && n.classList.contains("pm-burst") && out.burst < 0) out.burst = performance.now() - t0;   // d-beer: the count burst
   } });
   fmo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
   const box = document.getElementById("toasts");
@@ -127,15 +128,18 @@ const tapTimed = (page) => page.evaluate(() => new Promise((res) => {
   }
 
   if (PARTS.includes("slow")) {
-    // slow 3G: the answer takes 4 s; the toast is there at once, and the SAME toast then shows the level line
+    // slow 3G: the answer takes 4 s. d-beer (I-114, owner 15 Nov): no text pop-up for an accepted beer in the web build. The
+    // feedback at once = the splash + the count burst (the new number); the answer adds no toast either.
+    // (before: the toast "Skål! Ölen räknas…" at once, then the same toast showed the level line)
     const { ctx, page, srv } = await open(browser, 390);
     srv.postSlow = 4000;
     const f = await tapTimed(page);
-    ok(f.splash >= 0 && f.splash < 150 && f.toast >= 0 && f.toast < 800 && /Ölen räknas/.test(f.text) && srv.accepted === 0, "slow 3G: splash + 'Skål! Ölen räknas…' before the server answers", { f, accepted: srv.accepted });
+    ok(f.splash >= 0 && f.splash < 150 && f.burst >= 0 && f.burst < 800 && f.toast < 0 && srv.accepted === 0, "slow 3G: splash + the count burst before the server answers, no toast", { f, accepted: srv.accepted });
     await shot(page, "slow-pending-390");
     await wait(page, 4200);
-    const s = await page.evaluate(() => { const t = document.querySelector('#toasts .toast[data-x8test="1"]'); return { same: !!t, txt: t ? t.textContent : "", n: document.querySelectorAll("#toasts .toast").length, all: [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | ") }; });
-    ok(srv.accepted === 1 && s.same && !/Ölen räknas/.test(s.txt) && s.txt.length > 3, "slow 3G: the same toast now shows the answer (no 2nd toast slides in)", s);
+    const s = await page.evaluate(() => ({ n: document.querySelectorAll("#toasts .toast").length, all: [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "),
+      night: (JSON.parse(localStorage.getItem("olnu.night") || "{}").count | 0), cd: document.getElementById("btn-beer").classList.contains("cooldown") }));
+    ok(srv.accepted === 1 && s.n === 0 && s.cd, "slow 3G: the answer adds no toast; the beer is counted and the wait runs", s);
     ok((await outbox(page)) === 0, "slow 3G: a slow answer is not queued (outbox 0)");
     await ctx.close();
   }

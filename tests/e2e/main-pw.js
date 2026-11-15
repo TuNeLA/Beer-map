@@ -5,7 +5,7 @@ const { chromium } = require("playwright");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8871, BASE = `http://127.0.0.1:${PORT}/`;
 const PARTS = (process.argv[3] || "s5,note,s2,rail,f2,x6,set,r1").split(",");
-const { wait } = H;
+const { wait, settle } = H;
 require("fs").mkdirSync(SP + "main-shots", { recursive: true });
 let pass = 0, fail = 0; const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x === undefined ? "" : " " + JSON.stringify(x).slice(0, 400))); c ? pass++ : fail++; };
 const J = (r, b) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -193,7 +193,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       ok(!g.lbl.some((l) => hit(l, g.loc)) && !g.btn.some((b) => hit(b, g.loc)), "rail " + w + ": labels and buttons never over locate");
       if (w === 390) {
         await shot(page, "rail-labels-390");
-        await page.evaluate(() => window.PNVIS.setMode("spoke")); await wait(page, 1800);
+        await page.evaluate(() => window.PNVIS.setMode("spoke")); await settle(page, 1800);
         ok((await page.evaluate(() => (document.querySelector("#pn-ghost .mn-rail-l") || {}).textContent)) === "Spöke", "rail: the eye label follows the state (Spöke)");
         await page.evaluate(() => window.PNVIS.setMode("alla"));
         // night 4 → gone
@@ -220,7 +220,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       });
       await page.addInitScript(() => { try { const n = JSON.parse(localStorage.getItem("olnu.night") || "null"); if (n) { n.lastTap = Date.now() - 40 * 60e3; localStorage.setItem("olnu.night", JSON.stringify(n)); } } catch (e) {} });
       await H.boot(page);
-      await page.evaluate(() => window.SKJUTS && window.SKJUTS._force && window.SKJUTS._force()); await wait(page, 2200);
+      await page.evaluate(() => window.SKJUTS && window.SKJUTS._force && window.SKJUTS._force()); await settle(page, 2200);
       const g = await page.evaluate(() => { const b = document.getElementById("btn-beer"), l = document.getElementById("beer-label"); const cs = getComputedStyle(b), lr = l.getBoundingClientRect(), br = b.getBoundingClientRect();
         return { on: document.body.classList.contains("mn-lask"), t: l.textContent, sub: getComputedStyle(l, "::after").content, bg: cs.backgroundImage, cd: b.classList.contains("cooldown"), fit: lr.left >= br.left + 4 && lr.right <= br.right - 4, aria: b.getAttribute("aria-label") }; });
       ok(g.on && g.t === "LÄSK!" && /chaufför/.test(g.sub) && /181, 230, 106/.test(g.bg), "F2 " + w + ": Jag kör on → the button is LÄSK! (chaufför, soda colours)", g);
@@ -228,14 +228,14 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       if (w === 390) {
         await shot(page, "f2-lask-390");
         await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
-        await page.evaluate(() => document.getElementById("btn-beer").click()); await wait(page, 1200);
+        await page.evaluate(() => document.getElementById("btn-beer").click()); await settle(page, 1200);
         const t1 = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent).join(" | "));
         ok(srv.beers === 0 && /chaufför|ratten|Chaufför/i.test(t1) && /Jag kör inte/.test(t1), "F2: a tap on LÄSK! logs NO drink, a skål toast with 'Jag kör inte'", { beers: srv.beers, t1 });
         await page.evaluate(() => { const b = [...document.querySelectorAll("#toasts .toast button, #toasts .toast .btn")].find((x) => /Jag kör inte/.test(x.textContent)); if (b) b.click(); }); await wait(page, 2500);
         const g2 = await page.evaluate(() => ({ on: document.body.classList.contains("mn-lask"), t: document.getElementById("beer-label").textContent }));
         ok(srv.set.includes(false) && !g2.on && g2.t === "ÖL!", "F2: 'Jag kör inte' → driver_set(false) → ÖL! again", { set: srv.set, g2 });
         await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
-        await page.evaluate(() => document.getElementById("btn-beer").click()); await wait(page, 2500);
+        await page.evaluate(() => document.getElementById("btn-beer").click()); await settle(page, 2500);
         const st2 = await page.evaluate(() => ({ sheet: !document.getElementById("sheet").hidden && document.getElementById("sheet-title").textContent, busy: document.getElementById("btn-beer").classList.contains("busy") }));
         ok(srv.beers >= 1 || !!st2.sheet || st2.busy, "F2: not driving → the ÖL! tap goes through as before (beer posted or the picker opens)", { beers: srv.beers, st2 });
       }
@@ -275,7 +275,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
         await shot(page, "x6-sheet-390");
         await page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await wait(page, 500);
         ok(srv.knas.length === 0 && /Skriv vad som hände/.test(await page.evaluate(() => document.getElementById("toasts").textContent)), "X6: no text → 'Skriv vad som hände', nothing sent");
-        await page.fill("#mn-knas-ta", "Checka in gjorde inget på Pitchers"); await page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await wait(page, 1500);
+        await page.fill("#mn-knas-ta", "Checka in gjorde inget på Pitchers"); await page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await settle(page, 1500);
         const b = srv.knas[0] || {};
         ok(b.p_text === "Checka in gjorde inget på Pitchers" && /^data:image\/jpeg;base64,/.test(b.p_shot || "") && Array.isArray(b.p_logs) && b.p_logs.length > 0 && b.p_logs.length <= 200 && b.p_logs.some((x) => /test line for the log/.test(x)) && "beta" in (b.p_meta || {}) && b.p_meta.from === "mer",
           "X6: Skicka → submit_knas {text, JPEG screenshot, ≤ 200 log lines incl. console, meta with beta id + from}", { text: b.p_text, shot: (b.p_shot || "").slice(0, 30), logs: (b.p_logs || []).length, meta: b.p_meta });
@@ -283,7 +283,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
         // switches off → no picture, no log
         await page.waitForTimeout(400); await viaMore(page);
         await page.evaluate(() => document.querySelectorAll("#sheet-body .mn-knas-sw").forEach((x) => x.click()));
-        await page.fill("#mn-knas-ta", "Utan bild"); await page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await wait(page, 1200);
+        await page.fill("#mn-knas-ta", "Utan bild"); await page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await settle(page, 1200);
         const b2 = srv.knas[1] || {};
         ok(b2.p_text === "Utan bild" && !b2.p_shot && Array.isArray(b2.p_logs) && b2.p_logs.length === 0, "X6: both switches off → no screenshot, no log", { shot: !!b2.p_shot, logs: (b2.p_logs || []).length });
         // the phone counts: 5 today → the 6th says so at once, no sheet
@@ -303,9 +303,9 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       await ctx.close();
     }
     { // server says slow_down → limit text; old server (no 0410) → the text goes through submit_feedback
-      const a = await setup(390, { slow: true }); await viaMore(a.page); await a.page.fill("#mn-knas-ta", "Femte idag"); await a.page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await wait(a.page, 1200);
+      const a = await setup(390, { slow: true }); await viaMore(a.page); await a.page.fill("#mn-knas-ta", "Femte idag"); await a.page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await settle(a.page, 1200);
       ok(/Max 5 om dagen/.test(await a.page.evaluate(() => document.getElementById("toasts").textContent)), "X6: server slow_down (6th in 24 h) → 'Max 5 om dagen'"); await a.ctx.close();
-      const m = await setup(390, { missing: true }); await viaMore(m.page); await m.page.fill("#mn-knas-ta", "Gammal server"); await m.page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await wait(m.page, 1500);
+      const m = await setup(390, { missing: true }); await viaMore(m.page); await m.page.fill("#mn-knas-ta", "Gammal server"); await m.page.evaluate(() => document.querySelector("#sheet-body .mn-knas-go").click()); await settle(m.page, 1500);
       ok(m.srv.fb.length === 1 && m.srv.fb[0].p_kind === "bug" && /\[knas\] Gammal server/.test(m.srv.fb[0].p_text), "X6: before 0410 runs → the text goes through submit_feedback (kind bug)", m.srv.fb[0]); await m.ctx.close();
     }
     { // owner panel
@@ -392,13 +392,13 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       ok(!seenEmoji && seenIcon, "R1-14 " + w + ": ANNAT never shows the 🥃 emoji at cold start (PNI glyph at once)", { seenEmoji, seenIcon });
       await page.waitForFunction(() => window.__map && document.querySelectorAll(".pill").length > 3, null, { timeout: 30000 }).catch(() => {});
       await wait(page, 1500);
-      await page.evaluate(() => document.getElementById("btn-other").click()); await wait(page, 1200);
+      await page.evaluate(() => document.getElementById("btn-other").click()); await settle(page, 1200);
       const kb = await page.evaluate(() => [...document.querySelectorAll("#sheet-body .kind-btn")].map((b) => getComputedStyle(b).borderTopLeftRadius));
       ok(kb.length > 0 && kb.every((r) => r === "12px"), "R1-13 " + w + ": Sidospår tiles have radius 12 (not square)", kb.slice(0, 3));
       if (w === 390) await shot(page, "r113-annat-390");
       await H.closeSheet(page); await wait(page, 500);
       // R1-37: Mer på kartan: no darker square panel behind the lists
-      await page.evaluate(() => document.getElementById("btn-more").click()); await wait(page, 1200);
+      await page.evaluate(() => document.getElementById("btn-more").click()); await settle(page, 1200);
       const bg = await page.evaluate(() => [...document.querySelectorAll("#sheet *")].filter((e) => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
           return r.width >= 60 && r.height >= 60 && (cs.backgroundColor !== "rgba(0, 0, 0, 0)" || cs.backgroundImage !== "none") && !e.classList.contains("ds-list"); }).map((e) => e.tagName + "." + e.className));
       ok(bg.length === 0, "R1-37 " + w + ": Mer på kartan has no panel behind its lists (only the rounded lists)", bg);

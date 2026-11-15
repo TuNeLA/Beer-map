@@ -62,14 +62,12 @@
       "Match data: stats.swehockey.se · TheSportsDB · Football data provided by the Football-Data.org API"],
     nGo: ["{n} går", "{n} going"], nAll: ["{n} går totalt", "{n} going in total"],
     remind: ["⏰ Vi pockar på dig 1 tim innan.", "⏰ We'll remind you 1 h before."],
-    // empty states: {vad} = the filter, {nar} = the time
-    empty: DIALEKT.list("evsheet.empty", ["Spaningen hittade inga {vad} {nar}. Antingen är det lugnt i stan, eller så har ingen berättat.",
-      "Spaningen hittade inga {vad} {nar}. Antingen är det lugnt i stan, eller så har ingen berättat.",
-      "Nä du, inga {vad} {nar}. Gå ut ändå – det är ju så event uppstår.",
-      "Kalendern är tom {nar}. Inte ens en trubadur i sikte. Tipsa om nåt!",
-      "Nä du, inga {vad} {nar}. Gå ut ändå – det är ju så event uppstår.",
-      "Radiotystnad på eventfronten {nar}. Högkvarteret väntar på din rapport."], {n: 6}),
-    emptyEn: ["Nothing here {nar}. Know of something? Add it below!", "No {vad} {nar}. Quiet in town – or nobody told us yet."],
+    // d-social (design 09): the ONE empty state: a fact, what the screen shows, one action. {vad} = the filter, {nar} = the time
+    none: ["Inga {vad} {nar}", "No {vad} {nar}"],
+    noneHelp: ["Vet du något som händer? Tipsa, så ser hela stan det.", "Do you know of something? Add it, and the whole town sees it."],
+    noneAct: ["Tipsa om ett event", "Add an event"],
+    tellTo: ["Till {grupp}", "To {grupp}"], tellSending: ["Skickar…", "Sending…"], tellSent: ["Skickat", "Sent"],
+    tellFail: ["Inte skickat – tryck för att försöka igen", "Not sent – tap to try again"],
     jumped: DIALEKT.list("evsheet.jumped", ["Ikväll är det dödtyst, så det är helgen istället.", "Ikväll händer inget – spaningen visar helgen.", "Tomt ikväll. Vi hoppade fram till helgen åt dig."], {n: 3}),
     jumpedEn: ["Nothing tonight – here's the weekend instead."],
     whenTxt: { tonight: ["ikväll", "tonight"], tomorrow: ["i morron", "tomorrow"], weekend: ["i helgen", "this weekend"], week: ["den här veckan", "this week"], month: ["den närmaste månaden", "this month"] },
@@ -374,25 +372,63 @@
     });
   }
   var groupsCache = null, groupsBusy = false;
+  // d-social (speed #14 for this send): the line shows in the detail at the tap ("Skickar…"), then "Skickat". A failed
+  // post stays as "Inte skickat – tryck för att försöka igen" (tap = the post again; event_go_tell is not asked twice,
+  // it answers "first: false" the 2nd time). tl = { ev, g, text, st: send | ok | fail, told }
+  var tl = null;
   function tell(e, g) {
     tellFor = null;
+    var plats = e.tv ? L("📺 på TV", "📺 on TV") : placeOf(e) || L("stan", "town");
+    var text = fill(sv() ? pick("tellMsg", T.tellMsg) : T.tellMsgEn[0], { titel: String(e.title || "").slice(0, 46), nar: whenText(e.starts_at), plats: String(plats).slice(0, 36) });
+    if (text.length > 140) text = text.slice(0, 139) + "…";
+    tl = { ev: String(e.id), g: g, text: text, st: "send", told: false };
+    if (detailOpen()) drawDetail();
+    tellGo(e, tl);
+  }
+  function tellGo(e, t) {
+    var g = t.g, here = function () { return detailOpen() && String(detailId) === t.ev; };
+    var bad = function (slow) {
+      t.st = "fail";
+      if (slow || !here()) A.toast(slow ? two("slow") : two("err"), { err: true });   // the line itself says "Inte skickat" (one text)
+      if (here()) drawDetail();
+    };
     // left T-05b: Regler first (before event_go_tell marks "told"), THEN the post ("Int' nu" = nothing sent)
-    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) { return okT ? A.rpc("event_go_tell", { p_event_id: +e.id }) : null; }).then(function (r) {
+    Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) {
+      if (!okT) { if (tl === t) tl = null; tellFor = t.ev; if (here()) drawDetail(); return null; }
+      return t.told ? { data: { first: true } } : A.rpc("event_go_tell", { p_event_id: +e.id });
+    }).then(function (r) {
       if (!r) return;
-      if (r.error && !U.missing(r.error)) { A.toast(two("err"), { err: true }); return; }
+      if (r.error && !U.missing(r.error)) { bad(false); return; }
       var d = r.error ? { first: true } : A.parseData(r.data) || {};
-      if (d.first === false) { A.toast(two("tellDone")); if (detailOpen()) drawDetail(); return; }
+      if (d.first === false) { if (tl === t) tl = null; A.toast(two("tellDone")); if (detailOpen()) drawDetail(); return; }
+      t.told = true;
       var st0 = goState(e.id); if (st0) st0.told = true;
-      var plats = e.tv ? L("📺 på TV", "📺 on TV") : placeOf(e) || L("stan", "town");
-      var text = fill(sv() ? pick("tellMsg", T.tellMsg) : T.tellMsgEn[0], { titel: String(e.title || "").slice(0, 46), nar: whenText(e.starts_at), plats: String(plats).slice(0, 36) });
-      if (text.length > 140) text = text.slice(0, 139) + "…";
-      A.rpc("post_group_msg", { p_group_id: g.id, p_body: text }).then(function (r2) {
-        if (r2.error) { A.toast(U.errCode(r2.error) === "slow_down" ? two("slow") : two("err"), { err: true }); return; }
+      return A.rpc("post_group_msg", { p_group_id: g.id, p_body: t.text }).then(function (r2) {
+        if (!r2 || r2.error) { bad(!!(r2 && r2.error) && U.errCode(r2.error) === "slow_down"); return; }
+        t.st = "ok";
         try { A.invoke("notify-group", { event: "msg", group_id: g.id }); } catch (x) {}
         A.toast(fill(sv() ? pick("tellOk", T.tellOk) : T.tellOkEn[0], { grupp: g.name }));
         if (detailOpen()) drawDetail();
       });
-    });
+    }).catch(function () { bad(false); });
+  }
+  function tellRow(e) {
+    var t = tl, fail = t.st === "fail";
+    var row = A.el("div", { class: "evs-tell evs-tell-msg" + (fail ? " evs-tell-fail" : t.st === "ok" ? " evs-tell-ok" : "") });
+    if (t.st === "send") row.setAttribute("aria-busy", "true");
+    if (fail) { row.setAttribute("role", "button"); row.tabIndex = 0; }
+    row.appendChild(A.el("b", { text: fill(two("tellTo"), { grupp: t.g.name || "" }) }));
+    row.appendChild(A.el("span", { class: "evs-tell-t no-pi", text: t.text }));   // no-pi: the line keeps its emoji (it is the chat text)
+    row.appendChild(A.el("small", { class: "evs-tell-s", html: (fail ? pni("refresh") : t.st === "ok" ? pni("check") : "") + U.esc(fail ? two("tellFail") : t.st === "ok" ? two("tellSent") : two("tellSending")) }));
+    if (!fail) return row;
+    var again = function (ev) {
+      if (ev.type === "keydown" && ev.key !== "Enter" && ev.key !== " ") return;
+      ev.preventDefault();
+      if (t.st !== "fail") return;
+      t.st = "send"; drawDetail(); tellGo(e, t);
+    };
+    row.addEventListener("click", again); row.addEventListener("keydown", again);
+    return row;
   }
   // ⏰ fallback: the reminders cron sends the push; an open app asks once when a Går event is 51–69 min away.
   function dueCheck() {
@@ -429,7 +465,7 @@
   try { var saved = JSON.parse(localStorage.getItem(FILTER_KEY) || "null"); if (saved && saved.type) st.type = saved.type; } catch (e) {}
   function save() { try { localStorage.setItem(FILTER_KEY, JSON.stringify({ type: st.type })); } catch (e) {} }
   function two(k) { return L(T[k][0], T[k][1]); }
-  var listBox = null, bodyEl = null, segEl = null, chipsEl = null, toolsEl = null, frEl = null, detailEl = null, detailId = null, detailTimer = 0;
+  var listBox = null, bodyEl = null, segEl = null, chipsEl = null, toolsEl = null, frEl = null, tipEl = null, detailEl = null, detailId = null, detailTimer = 0;
   var tvOpen = {}, jumpedOnce = false, jumpNote = "";
   function open() {
     if (!A) return;
@@ -462,21 +498,22 @@
       body.appendChild(frEl);
       listBox = A.el("div", { class: "evs-list", "aria-live": "polite" });
       body.appendChild(listBox);
-      body.appendChild(A.btn(two("tip"), "ds-btn ds-btn-ghost btn-block evs-tip", function () {
-        try { if (window.EVENTS && window.EVENTS.tip) window.EVENTS.tip(null); } catch (e) {}
-      }));
+      tipEl = A.btn(two("tip"), "ds-btn ds-btn-ghost btn-block evs-tip", tip);
+      body.appendChild(tipEl);
       body.appendChild(A.el("p", { class: "evs-src", text: two("src") }));
+      var first = load(false, st.time === "month" ? 31 : 7);   // asked before the first draw: draw() knows an answer is on its way
       draw();
       try { if (window.SPORT && window.SPORT.load) window.SPORT.load(false).then(function () { if (listBox && document.body.contains(listBox)) repaint(); }); } catch (e) {}
-      load(false, st.time === "month" ? 31 : 7).then(function () {
+      first.then(function () {
         if (!listBox || !document.body.contains(listBox)) return;
         autoJump(); draw();
         loadGoing(false).then(function () { if (listBox && document.body.contains(listBox)) repaint(); });
       });
     }, { onClose: function () { try { if (bodyEl && bodyEl.__evsRO) { bodyEl.__evsRO.disconnect(); bodyEl.__evsRO = null; } } catch (e) {}
       try { if (bodyEl) bodyEl.classList.remove("evs-in-detail", "evs-body"); } catch (e) {}   // ownerfix 1: #sheet-body is shared by every sheet
-      listBox = null; bodyEl = null; detailEl = null; detailId = null; tellFor = null; clearInterval(detailTimer); clearTimeout(sq.t); sq.seq++; } });
+      listBox = null; bodyEl = null; tipEl = null; detailEl = null; detailId = null; tellFor = null; if (tl && tl.st === "ok") tl = null; clearInterval(detailTimer); clearTimeout(sq.t); sq.seq++; } });
   }
+  function tip() { try { if (window.EVENTS && window.EVENTS.tip) window.EVENTS.tip(null); } catch (e) {} }
   function setTime(t, user) {
     if (user) leaveQ();
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;
@@ -525,6 +562,7 @@
       if (n) b.appendChild(A.el("b", { class: "evs-chip-n", text: String(n) }));
       chipsEl.appendChild(b);
     });
+    chipsEl.hidden = chipsEl.children.length < 2;   // design2 small fix 7: "Alla" alone filters nothing
     chipInView(chipsEl); chipFades(chipsEl);
   }
   // ui1 B4: an edge fades only when more chips are hidden on that side (data-fl / data-fr, CSS in pnds.css "lane:ui1").
@@ -549,14 +587,16 @@
   function drawTools(all) {
     if (!toolsEl) return;
     toolsEl.innerHTML = "";
-    var txt = A.el("span", { class: "evs-sum", text: jumpNote || (all.length ? fill(L("{n} event", "{n} events"), { n: all.length }) : "") });
+    var sum = jumpNote || (all.length ? fill(L("{n} event", "{n} events"), { n: all.length }) : "");
+    var txt = A.el("span", { class: "evs-sum", text: sum });
     toolsEl.appendChild(txt);
     var onMap = !!mapFocus();
     var pinable = all.filter(hasSpot).length;
+    toolsEl.hidden = !sum && !pinable && !onMap;
+    if (!pinable && !onMap) return;   // design2 small fix 7: nothing to show on the map = no switch (it was a disabled one)
     var tg = A.el("button", { type: "button", class: "evs-maptg", role: "switch", "aria-checked": String(onMap), onclick: function () { toggleMap(); } });
     tg.appendChild(A.el("span", { text: two("mapTg") }));
     tg.appendChild(A.el("i", { class: "evs-sw", "aria-hidden": "true" }));
-    if (!pinable && !onMap) tg.disabled = true;
     toolsEl.appendChild(tg);
   }
   function drawFriends() {
@@ -591,14 +631,27 @@
     var all = filtered();
     drawTools(all); drawFriends();
     var rows = all.slice(0, shown);
+    if (tipEl) tipEl.hidden = !rows.length;   // the empty state has the ONE action
     if (!rows.length) {
-      var w = T.whenTxt[st.time], v = T.whatTxt[st.type] || T.whatTxt.all;
-      listBox.appendChild(A.el("p", { class: "ds-empty evs-empty", text: fill(sv() ? pick("empty", T.empty) : pick("emptyEn", T.emptyEn), { nar: L(w[0], w[1]), vad: L(v[0], v[1]) }) }));
+      if (busy && !cache.at) return;   // the first answer is on its way: no "Inga event" before it
+      listBox.appendChild(emptyState());
       return;
     }
     drawGroups(rows, all, st.type === "tv", null);
     if (all.length > rows.length) listBox.appendChild(A.btn(fill(L("Visa fler ({n} till)", "Show more ({n} more)"), { n: all.length - rows.length }),
       "ds-btn ds-btn-secondary btn-block evs-more", function () { shown += 80; draw(); }));
+  }
+  // d-social (design 09, I-114): the ONE empty state (ds.css .ds-estate): what is missing, what the screen shows, one action.
+  function emptyState() {
+    var w = T.whenTxt[st.time], v = T.whatTxt[st.type] || T.whatTxt.all;
+    var box = A.el("div", { class: "ds-estate evs-empty" });
+    box.appendChild(A.el("span", { class: "ds-estate-i", "aria-hidden": "true", html: pni("calendar") }));
+    box.appendChild(A.el("b", { text: fill(two("none"), { nar: L(w[0], w[1]), vad: L(v[0], v[1]) }) }));
+    box.appendChild(A.el("p", { text: two("noneHelp") }));
+    var b = A.el("button", { type: "button", class: "ds-estate-a evs-none-tip", html: pni("plus") + "<span>" + U.esc(two("noneAct")) + "</span>" });
+    b.addEventListener("click", tip);
+    box.appendChild(b);
+    return box;
   }
   // Sticky day headers ("Ikväll", "I morgon", "Lör 25/10") with the number of rows that day; TV matches of a day fold into one row.
   function drawGroups(rows, all, noFold, opt) {
@@ -856,7 +909,7 @@
     return true;
   }
   function closeDetail() {
-    clearInterval(detailTimer); tellFor = null;
+    clearInterval(detailTimer); tellFor = null; if (tl && tl.st === "ok") tl = null;
     if (detailEl && detailEl.parentNode) detailEl.parentNode.removeChild(detailEl);
     detailEl = null; detailId = null;
     if (bodyEl) bodyEl.classList.remove("evs-in-detail");
@@ -906,7 +959,8 @@
       detailEl.appendChild(garBtn(e, true));
       if (s && s.mine && s.remind) detailEl.appendChild(A.el("p", { class: "evs-d-rem", text: two("remind") }));
     }
-    if (tellFor === String(e.id) && s && s.mine && !s.told) detailEl.appendChild(tellBox(e));
+    if (tl && tl.ev === String(e.id)) detailEl.appendChild(tellRow(e));
+    else if (tellFor === String(e.id) && s && s.mine && !s.told) detailEl.appendChild(tellBox(e));
     var acts = A.el("div", { class: "evs-d-acts" });
     acts.appendChild(A.btn(two("show"), "ds-btn ds-btn-secondary evs-show", function () { show(e, pub); }));
     if (e.ticket_url && /^https:\/\//.test(e.ticket_url)) acts.appendChild(A.el("a", { class: "ds-btn ds-btn-secondary evs-tk", href: e.ticket_url, target: "_blank", rel: "noopener nofollow", text: two("ticket") }));

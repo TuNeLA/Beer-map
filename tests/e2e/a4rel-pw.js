@@ -13,28 +13,18 @@ const ROUND = { id: 103, kind: "bord", q: "", phase: "open", opts: [], bar_name:
 (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME });
   try {
-    /* I-25: controllerchange while a sheet is open -> no reload, a button; idle -> reload at once; the button reloads */
+    /* I-25 (12 Nov) is replaced by I-107 (14 Nov, lane start1): a new version never reloads the page in use and there is no
+       "Ny version" button on the map. The new flow is tested in start1-pw.js (U1-U10). Here: a controllerchange in use = no reload. */
     try {
       const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, { empty: true });
       await boot(page); await wait(page, 2500);
-      const fire = () => page.evaluate(() => { window.__mark = 1; const s = navigator.serviceWorker; s.dispatchEvent(new Event("controllerchange")); s.dispatchEvent(new Event("controllerchange")); });
-      await page.evaluate(() => { document.getElementById("sheet").hidden = false; });
-      await fire(); await wait(page, 1500);
-      let r = await page.evaluate(() => ({ mark: window.__mark, btn: (document.getElementById("pn-newver") || {}).textContent || "" }));
-      ok("I-25 sheet open: no reload, the button 'Ny version – tryck för att ladda om' shows", r.mark === 1 && /Ny version – tryck för att ladda om/.test(r.btn), r);
-      await page.evaluate(() => { document.getElementById("sheet").hidden = true; });
-      await wait(page, 6500);
-      r = await page.evaluate(() => ({ mark: window.__mark }));
-      ok("I-25 sheet closed later: still no timer reload (the user decides)", r.mark === 1, r);
-      const nav = page.waitForNavigation({ timeout: 8000 }).then(() => true, () => false);
-      await page.evaluate(() => document.getElementById("pn-newver").click());
-      ok("I-25 the button reloads the page", await nav);
-      await boot(page); await wait(page, 2000);
-      const nav2 = page.waitForNavigation({ timeout: 8000 }).then(() => true, () => false);
-      await fire();
-      ok("I-25 idle: reloads at once", await nav2);
+      let navs = 0; page.on("framenavigated", (f) => { if (f === page.mainFrame()) navs++; });
+      await page.evaluate(() => { window.__mark = 1; navigator.serviceWorker.dispatchEvent(new Event("controllerchange")); });
+      await wait(page, 3000);
+      const r = await page.evaluate(() => ({ mark: window.__mark, btn: !!document.getElementById("pn-newver") }));
+      ok("I-107 controllerchange while the app is in use: no reload, no 'Ny version' button", r.mark === 1 && navs === 0 && !r.btn, { r, navs });
       await ctx.close();
-    } catch (e) { ok("I-25 section ran without error", false, String(e)); }
+    } catch (e) { ok("I-107 section ran without error", false, String(e)); }
     /* I-24: a poll in flight, then the push link message: the card opens after that poll */
     {
       const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, { empty: true });

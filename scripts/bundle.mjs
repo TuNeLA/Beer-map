@@ -3,6 +3,11 @@
 // - every <script defer src="./…"> in index.html, in document order, is joined into one file per run (a CDN script between two
 //   local scripts ends a run, so the order stays the same: js/app.bundle-1.js, CDN, js/app.bundle-2.js …) and minified.
 //   Deferred scripts run in document order after parsing, so one deferred bundle in the same place = the same order.
+//   ci1 GROUPS: a run is cut into named groups (js/app.bundle-<name>.js) at the files in GROUPS below. The cuts follow the
+//   document order, so the run order never changes. Why: a phone downloads a bundle again only when its ?v= hash changed
+//   (sw.js copies files with the same hash from the old cache), so a fix in one file costs one group, not the whole app.
+//   The last group ("last" = app.js) also gets `window.PN_BUILD = "<hash of the whole source site>"`: the last bundle tag
+//   changes with every release (pnlog.js / vitals.js read the app version from it) and stays tiny.
 //   The IIFE files only talk through window globals (scripts/bundle-check.sh checks: no top-level let/const/class/function).
 //   Each part is wrapped in try/catch like separate <script> tags: one file that throws does not stop the rest; the error is
 //   thrown again on a timer, so window "error" listeners (pnlog crash log, knas) still see it.
@@ -21,14 +26,30 @@ import { join } from "node:path";
 import { transform } from "esbuild";
 
 const args = process.argv.slice(2);
-const SITE = args.find((a) => !a.startsWith("--"));
+const SITE = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--groups");
 const STAMP = args.includes("--stamp");
-if (!SITE) { console.error("usage: node scripts/bundle.mjs <site dir> [--stamp]"); process.exit(1); }
+if (!SITE) { console.error("usage: node scripts/bundle.mjs <site dir> [--stamp] [--groups off]"); process.exit(1); }
 const idxPath = join(SITE, "index.html");
 let html = readFileSync(idxPath, "utf8");
 if (/js\/app\.bundle[-\w]*\.js/.test(html)) { console.error("index.html is already bundled"); process.exit(1); }
 const strip = (u) => u.replace(/^\.\//, "").replace(/\?.*$/, "");
 const KEEP = new Set(["config.js"]);
+// ci1: group name -> the file that STARTS the group (document order; a file that is not in index.html = that cut is skipped
+// with a warning, the build still works). A run that starts with another file gets the name g<n>. --groups off = one bundle per run.
+export const GROUPS = [
+  ["boot", "js/upd0.js"],            // before the Mapbox CDN tag: update flow, PN, logging, warm start
+  ["mbx", "js/mbx.js"],              // the Leaflet-like shim over Mapbox GL
+  ["base", "js/icons.js"],           // texts (i18n), util, bars, push, fx
+  ["social", "js/news.js"],          // news, medals, social, games, after
+  ["fun", "js/delight-content.js"],  // delight, gang, crew, film, events
+  ["more", "js/delight-more-content.js"],   // near, forfest, group page, party, inbox, dm, invite
+  ["map", "js/barea.js"],            // basemap, glmap, zones, places, ride
+  ["people", "js/account.js"],       // account, profile, avatar, unlocks
+  ["ui", "js/pnmove.js"],            // pnui, icons, pnds, bold, x8
+  ["app", "js/app-core.js"],         // the app parts (docs/js/app-*.js)
+  ["last", "app.js"],                // boot file + PN_BUILD (changes every release, a few KB)
+];
+const GROUPS_ON = !(args.includes("--groups") && args[args.indexOf("--groups") + 1] === "off");
 const MIN = { loader: "js", minify: true, target: "es2017", legalComments: "none" };
 
 // ---- scripts: each run of consecutive local deferred scripts → one bundle (a CDN or KEEP script between them keeps its place) ----
@@ -61,24 +82,39 @@ for (const t of tags) if (t.local) { const b = partProblems(readFileSync(join(SI
 if (problems.length) { console.error("bundle.mjs: these files cannot be joined safely:\n  " + problems.join("\n  ")); process.exit(1); }
 
 const runs = []; let cur = null;
-for (const t of tags) { if (t.local) { if (!cur) runs.push(cur = []); cur.push(t); } else cur = null; }
+const cutAt = new Map(GROUPS_ON ? GROUPS.map(([n, f]) => [f, n]) : []), cutSeen = new Set();
+for (const t of tags) {
+  if (!t.local) { cur = null; continue; }
+  const cut = cutAt.get(strip(t.src));
+  if (cut) cutSeen.add(cut);
+  if (!cur || cut) { runs.push(cur = []); cur.name = cut || null; }
+  cur.push(t);
+}
 if (!runs.length) { console.error("no local deferred scripts found"); process.exit(1); }
+const cutMiss = GROUPS_ON ? GROUPS.filter(([n]) => !cutSeen.has(n)).map(([n, f]) => n + " (" + f + ")") : [];
+if (cutMiss.length) console.warn("bundle.mjs: group start files not found in index.html (cut skipped): " + cutMiss.join(", "));
+runs.forEach((r, i) => { r.file = "js/app.bundle" + (GROUPS_ON ? "-" + (r.name || "g" + (i + 1)) : runs.length > 1 ? "-" + (i + 1) : "") + ".js"; });
+// PN_BUILD: the hash of the whole source site (before any file is written), so it changes with every release
+let build = "";
+if (GROUPS_ON) { try { build = (await import("./stamp.mjs")).siteHash(SITE); } catch (e) { build = ""; } }
 let raw = 0, outKB = 0, nParts = 0;
-const outFiles = [];
+const outFiles = [], groups = [];
 mkdirSync(join(SITE, "js"), { recursive: true });
 // one tiny helper per bundle (the bundles may load in any order; the first one that runs defines it)
 const HELP = 'var __olnuBE=window.__olnuBE||(window.__olnuBE=function(f,e){try{console.error("olnu bundle: "+f,e)}catch(x){}' +
   'window.OLNU_BUNDLE_ERR=(window.OLNU_BUNDLE_ERR||[]).concat(f);setTimeout(function(){throw e},0)});\n';
 for (let i = 0; i < runs.length; i++) {
-  let js = HELP;
+  let js = HELP, rawG = 0;
+  if (build && i === runs.length - 1) js += "window.PN_BUILD=" + JSON.stringify(build) + ";\n";
   for (const t of runs[i]) {
     const f = strip(t.src);
-    const src = readFileSync(join(SITE, f), "utf8"); raw += src.length; nParts++;
+    const src = readFileSync(join(SITE, f), "utf8"); raw += src.length; rawG += src.length; nParts++;
     js += `\n/* ${f} */\ntry {\n${src}\n} catch (e) { __olnuBE(${JSON.stringify(f)}, e); }\n`;
   }
-  const name = "js/app.bundle" + (runs.length > 1 ? "-" + (i + 1) : "") + ".js";
+  const name = runs[i].file;
   const out = await transform(js, MIN);
   writeFileSync(join(SITE, name), out.code); outKB += out.code.length / 1024; outFiles.push(name);
+  groups.push({ file: name, parts: runs[i].length, rawKB: Math.round(rawG / 1024), kb: Math.round(out.code.length / 1024) });
   // cln08: data-parts = the single files (js/unbundle.js loads them if this bundle fails to load)
   const dp = runs[i].map((t) => t.src).join(",");
   runs[i].forEach((t, k) => { html = html.replace(t.all, k === 0 ? (i === 0 ? '<script defer src="./js/unbundle.js"></script>\n' : "") + '<script defer src="./' + name + '" data-parts="' + dp + '"></script>\n' : ""); });
@@ -111,4 +147,4 @@ writeFileSync(idxPath, html);
 // ---- stamp (A1): after index.html is written; stamp.mjs reads the finished site ----
 if (STAMP) { const { stampSite } = await import("./stamp.mjs"); stamped = stampSite(SITE).stamped; }
 console.log(JSON.stringify({ scripts: nParts, bundles: runs.length, jsRawKB: Math.round(raw / 1024), jsBundleKB: Math.round(outKB), lazyMinified: lazyN,
-  styles: cssParts.length, cssRawKB: Math.round(cssRaw / 1024), cssBundleKB: Math.round(cssKB), kept: [...KEEP], stamped }));
+  styles: cssParts.length, cssRawKB: Math.round(cssRaw / 1024), cssBundleKB: Math.round(cssKB), kept: [...KEEP], stamped, build, groups }));

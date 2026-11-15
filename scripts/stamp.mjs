@@ -19,7 +19,7 @@ const strip = (u) => u.replace(/^\.\//, "").replace(/\?.*$/, "");
 const RE_REF = /((?:src|href)="\.\/)([^"?]+\.(?:js|css))(\?[^"]*)?"/g;   // any local js/css reference (script, link, preload, x-lazy-css)
 const RE_PARTS = /data-parts="([^"]*)"/g;
 const RE_VER = /^var VERSION = "([^"]*)";/m;
-const SKIP_FILE = new Set(["sw.js", "index.html", "bars.json", "places.json"]);
+const SKIP_FILE = new Set(["sw.js", "index.html", "bars.json", "places.json", "build.json"]);   // build.json: scripts/build-site.mjs writes it after the stamp (commit, time)
 const SKIP_DIR = ["places/", "buildings/", "buildings3d/"];
 
 function walk(dir, out = []) {

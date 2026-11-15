@@ -1,7 +1,11 @@
 #!/bin/bash
-# PintsNow canonical regression suite. Runs every test ONE AT A TIME (shared machine). Server calls are mocked; anything
+# PintsNow canonical regression suite. Runs every test ONE AT A TIME by default (shared machine); PAR=<n> runs n tests at
+# once (CI: 2 per shard, tests/e2e/shards.txt `par=`). Server calls are mocked; anything
 # not mocked goes to the STAGING project (PN_TARGET=staging, default), never to live.
 # usage: bash run-all.sh <port-A, e.g. 8793> <port-B, e.g. 8871> [name-filter-regex]
+#   PAR=2            tests at once (default 1). The tests are mocked and share nothing; timing checks want PAR=1 on a small machine.
+#   PLAIN_PORT=8872  a server with the plain docs/ : needed by `bundle-smoke` (ports A/B then serve the BUILT site, scripts/build-site.mjs)
+# Every tests/e2e/*-pw.js file must be in this list (and in one CI shard) or in tests/e2e/not-in-ci.txt: scripts/ci/shard-guard.mjs.
 #   port A: map tests (map3-lib: page served as tunela.github.io/Beer-map/, real Mapbox tiles, mocked Supabase)
 #   port B: UI tests (d2-helpers / ds-helpers: mocked Supabase)
 # Both ports must serve <repo>/docs with tests/e2e/serve.py (PN_TARGET=staging python3 tests/e2e/serve.py <port> docs).
@@ -34,12 +38,34 @@ FLAKE_PREV=${FLAKE_PREV:-$OUT/flaky-prev/flaky-now.txt}; : > $LOG/flaky-now.txt
 flake_known() {   # ledger text for suite $1, or nothing
   [ -f $D/flakes.json ] && node -e 'const f=require(process.argv[1]),n=process.argv[2],k=Object.keys(f).filter(x=>x.split(":")[0]===n);if(k.length)console.log(" | ledger: "+k.map(x=>x+" ["+f[x].status+", "+f[x].count+"x]").join("; "))' $D/flakes.json $1 2>/dev/null
 }
+# ci1: PAR tests at once. Each test writes its result to $LOG/res/<seq> (line 1 = status, line 2 = the table row); the rows are
+# read back in list order after the last test (collect), so the table and the exit code are the same as with PAR=1.
+PAR=${PAR:-1}; SEQ=0; mkdir -p $LOG/res; rm -f $LOG/res/[0-9]*; : > $LOG/durations.txt
 run() {   # name port file [args…]
-  local n=$1 port=$2 f=$3; shift 3
-  [[ "$n" =~ $FILTER ]] || return 0
+  [[ "$1" =~ $FILTER ]] || return 0
+  SEQ=$((SEQ+1)); local seq; seq=$(printf '%03d' $SEQ)
+  if [ "$PAR" -le 1 ]; then run1 $seq "$@"; return 0; fi
+  while [ "$(jobs -rp | wc -l)" -ge "$PAR" ]; do wait -n; done
+  run1 $seq "$@" &
+}
+skip() {   # name reason  (a test that cannot run here: shown in the table, not a fail)
+  [[ "$1" =~ $FILTER ]] || return 0
+  SEQ=$((SEQ+1)); printf 'skip\n%s\n' "$(printf '%-16s %5s %5s  %-6s %s' $1 - - skip "$2")" > $LOG/res/$(printf '%03d' $SEQ)
+}
+collect() {   # wait for the running tests, then read the result files in list order
+  wait
+  local f st
+  for f in $LOG/res/[0-9]*; do
+    [ -f "$f" ] || continue
+    st=$(sed -n 1p "$f"); RES+=("$(sed -n 2p "$f")"); [ "$st" = FAIL ] && TOTALFAIL=$((TOTALFAIL+1))
+  done
+  rm -f $LOG/res/[0-9]*
+}
+run1() {   # seq name port file [args…]
+  local seq=$1 n=$2 port=$3 f=$4; shift 4
   if [ "${NEEDS_MAPBOX:-0}" = 1 ] && [ -z "$MAPBOX_TEST_TOKEN" ]; then
     echo "$(date +%T) $n SKIP (no MAPBOX_TEST_TOKEN)" | tee -a $LOG/summary.txt
-    RES+=("$(printf '%-16s %5s %5s  %-6s %s' $n - - skip 'no MAPBOX_TEST_TOKEN')"); return 0
+    printf 'skip\n%s\n' "$(printf '%-16s %5s %5s  %-6s %s' $n - - skip 'no MAPBOX_TEST_TOKEN')" > $LOG/res/$seq; return 0
   fi
   local st="" p=0 fl=0 rc=0 t0 note=""
   for try in 1 2; do
@@ -50,21 +76,20 @@ run() {   # name port file [args…]
     [ $rc != 0 ] && [ $fl = 0 ] && fl=1 && note="${note:-exit $rc}"
     [ $p = 0 ] && [ $fl = 0 ] && fl=1 && note="no PASS lines"
     echo "$(date +%T) $n try$try pass=$p fail=$fl rc=$rc $note ($(( $(date +%s)-t0 ))s)" | tee -a $LOG/summary.txt
-    if [ $fl = 0 ]; then [ $try = 2 ] && st="flaky" || st="ok"; break; fi
+    if [ $fl = 0 ]; then [ $try = 2 ] && st="flaky" || st="ok"; echo "$n $(( $(date +%s)-t0 ))" >> $LOG/durations.txt; break; fi
     # show why (CI logs are easier to read than the artifact): FAIL lines + last lines of the log
     { grep -E '^FAIL' $LOG/$n.$try.log | cut -c1-400 | head -20; [ $rc != 0 ] && tail -n 15 $LOG/$n.$try.log; } | sed "s/^/    [$n] /"
     st="FAIL"
   done
-  if [ "$st" = FAIL ] && [ "${SPEC:-0}" = 1 ]; then st="spec"; note="${note:-target spec, not gating}"
-  elif [ "$st" = FAIL ]; then TOTALFAIL=$((TOTALFAIL+1)); fi
+  if [ "$st" = FAIL ] && [ "${SPEC:-0}" = 1 ]; then st="spec"; note="${note:-target spec, not gating}"; fi
   if [ "$st" = flaky ]; then   # w1-tests: passed only on the rerun
     echo "FLAKY $n: failed try 1, passed try 2. First failure: $(grep -E '^FAIL' $LOG/$n.1.log | head -1 | cut -c1-200)$(flake_known $n)" | tee -a $LOG/summary.txt
     echo "$n" >> $LOG/flaky-now.txt
     if [ "${FLAKE_GATE:-0}" = 1 ] && [ -f "$FLAKE_PREV" ] && grep -qxF "$n" "$FLAKE_PREV"; then
-      st="FAIL"; note="flaky 2 runs in a row"; TOTALFAIL=$((TOTALFAIL+1)); echo "FLAKE-GATE $n was flaky in the last run too: FAIL" | tee -a $LOG/summary.txt
+      st="FAIL"; note="flaky 2 runs in a row"; echo "FLAKE-GATE $n was flaky in the last run too: FAIL" | tee -a $LOG/summary.txt
     fi
   fi
-  RES+=("$(printf '%-16s %5s %5s  %-6s %s' $n $p $fl $st "$note")")
+  printf '%s\n%s\n' "$st" "$(printf '%-16s %5s %5s  %-6s %s' $n $p $fl $st "$note")" > $LOG/res/$seq
 }
 echo "=== suite start $(date '+%F %T')  HEAD $HEAD  ports $A/$B  supabase $TARGET" | tee -a $LOG/summary.txt
 # --- map (Mapbox GL, mocked Supabase). OPTIONAL: need MAPBOX_TEST_TOKEN, else skipped ---
@@ -77,7 +102,8 @@ NEEDS_MAPBOX=1 run barzoom    $A barzoom-pw.js   # ds44: no glow circle over a l
 NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
-run map        $A map-pw.js t '^(b9|sh|m2|br1|r1)$'      # map lane part 1: B9 icon size, shots, M2 fade, BR1 bar types, R1 (stub Mapbox without a token)
+run map        $A map-pw.js t '^(b9|sh|m2)$'             # map lane part 1: B9 icon size, shots, M2 fade (stub Mapbox without a token). ci1: split in two (501 s in one run)
+run map-c      $A map-pw.js t '^(br1|r1)$'               # map lane part 3: BR1 bar types, R1
 run map-b      $A map-pw.js t '^(tz|b8|m1|m3|m3sw|m4)$'  # map lane part 2: town zoom, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo. c4fix: split, one run was ~830-1000 s on CI (TO 900)
 NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food icons +20 % on the real map, no overlap, tap box, shots z15-17
 run c2speed    $A c2speed-pw.js    # lane c2speed: I-45 locate-me < 1 s, I-56 food list at once, I-50 food icons from z14, I-51 bars at city zoom
@@ -91,8 +117,11 @@ run f13       $B f13-pw.js        # lane f13 (owner 13 Nov): Fredag 13 badge = S
 run alive2    $B alive2-pw.js     # lane alive2 (I-77): friend ÖL! ripple, holiday ÖL! pulse + bob, Skåltimmen glow, my ÖL! foam, weekend dusk; pause on move/hidden, reduced motion still, budget 12, store = no drink FX
 run mycount   $B mycount-pw.js    # I-102 (owner 14 Nov): B = 🍺 count rail button under ⋯ (tap = Min kväll), D = count burst on my ÖL! (calm 8+, reduced = fade, store = off)
 run takeover  $B takeover-pw.js   # lane takeover, I-105: the 5/10/15 card fits at 360/390/430 (every pool string), one text (no toast under it, Ångra after it), 600 ms tap guard, staggered entrance, store = no celebration
+run dhome     $B dhome-pw.js      # lane d-home, I-114 proposal 03: "Ta dig hem" = one amber call button (tel:), rows of one style, safety group; every entry point, no emoji, 44 px, 360x640, a town without a taxi, fresh fix at walk start
+run d-beer    $B dbeer-pw.js      # lane d-beer, I-114 (proposals 02 + 04): no pop-up after ÖL! (the count burst is the answer), the ÖL! button is 'Ångra' for 10 s (1 s tap guard, Annat never covered) then m:ss in the glass, store = one fact toast, 'Var dricker du?' list with the pinned rounded 'Hemma eller annan plats', Ångra in Min kväll
 run dprofile  $B dprofile-pw.js   # lane d-profile (I-114, 05 + 06): settings pages without the tab strip, one-line title, hints in full, one sheet height; soft scroll edges (fade at the bottom while content goes on, fixed footer never masked); Profil: "Vem ser mig" = the real settings, progress in MERITS, one SVG icon per rank, same rank on Profil / Min uniform; Konto: Swish row, Radera kontot: Avbryt
 run speed1    $B speed1-pw.js     # lane speed1 (owner 14 Nov: every tap reacts at once): getPosition from the kept exact fix, Annat + check-in at the tap with rollback, chat line at once, ticker without layout thrash
+run dsocial   $B dsocial-pw.js    # lane d-social (I-114 designs 07/09/10/11): ONE "who is out" card + chat 80 px higher + Ikväll bar as before, chat lines at the tap (group + event) with retry, 44 px chat avatars, the ONE empty state (Event / Inkorg / Topplistor, tab Krogar), Vänner 64 px rows out-first, Bjud in quick time choices = the old payload
 run hitta2    $B hitta2-pw.js    # lane hitta2: I-92 calm compass (no spin 359/1 and 179/181, 300 km, outliers, Nära < 20 m, arrow stays), I-93 Senast sedd + fresh fix on wake
 run menufix   $B menufix-pw.js    # lane menufix (owner phone test 13 Nov): I-60 one inset divider rule + no nested boxes in ds list cards (Settings, Om appen, Mer på kartan, Vänner), I-61 Välj gäng = ds list, I-62 chat list ≥ 55 % height, gear in the header, photo ≤ 40 %
 run tickerfix $A tickerfix-pw.js  # lane tickerfix (finalcheck 13 Nov): names hint = others out + no gang + once per loop, 'Du' lines 2nd person, no blank items / '/// ///', no empty-map line (any hour) while the header says N ute
@@ -126,7 +155,7 @@ run ds-layout  $B ds-layout-pw.js
 run ds-sheet   $B ds-sheet-pw.js   # sheet rules (DESIGN.md), newest copy from the design agent; gating since 2026-11-08
 run rpc-cover  $B rpc-cover-pw.js  # every RPC the main screens call must be answered by the mock (fixtures/rpc.js)
 # auto check-in (js/autoci.js): runs only when that module is in docs/ (branch 01-autoci merged)
-if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else [[ autoci =~ $FILTER ]] && RES+=("$(printf '%-16s %5s %5s  %-6s %s' autoci - - skip 'docs/js/autoci.js not merged yet')"); fi
+if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else skip autoci 'docs/js/autoci.js not merged yet'; fi
 # --- ported agent tests (2026-11-09; were only in agent scratchpads). Mocked Supabase, Leaflet fallback (no Mapbox) ---
 run fxm        $B fxm-pw.js        # map fixes ds31–ds42: ANNAT, ⓘ, Ikväll chip, auto check-in list, Auto hemma, Synlighet, calm start
 run juice      $B juice-pw.js      # lane juice: ÖL! sound engine + Ljud switch, haptics Android-only, foam burst cap / reduced motion, no long task, CC0 voice clips
@@ -179,13 +208,23 @@ run popfix     $B popfix-pw.js     # lane popfix: the bar popup on a PC: one car
 run hooks-order $B hooks-order-pw.js   # lane w1-hooks: PN.hookList() order = the old app.js mods() list (85 names), every hooked module reached
 run polish3    $B polish3-pw.js    # lane polish3: I-65 film photo tap = big view / hold = react (no emoji row), I-66 toast exit without the amber border, I-68 Grupper button = Grupper tab, I-69 Mina förslag + owner badge
 run bump       $B bump-pw.js       # lane bump: Skåla med telefonen (flag pn_bump): shake fills, knock on 2 phones = ÖL! for both, tap fallback, pause text, iPhone permission
-# --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI shard "webkit" ---
+# --- ci1 (code audit A1): tests that were in no CI shard. The two that fail today are in tests/e2e/not-in-ci.txt ---
+run bold-krog   $B bold-krog-pw.js    # bd: Krogrundan card (bold lane, 9 Nov)
+run bold-replay $B bold-replay-pw.js  # bd: night replay film
+run bold-skal   $B bold-skal-pw.js    # bd: Skål moments
+run camfilm     $B camfilm-pw.js      # film rolls + Spara alla: 6 films, picker, in-app shot, album save / share / ZIP
+# --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI: the shard with `webkit` in tests/e2e/shards.txt ---
 run ds-motion-wk $B ds-motion-pw.js wk
 run ds-layout-wk $B ds-layout-pw.js wk
 run c4drinks    $B c4drinks-pw.js   # lane c4drinks: PNI.kind drink icons, beer-style picker >= 44 px, undo chip over Annat, Swish link per platform
 run tickerfix2 $A tickerfix2-pw.js # lane tickerfix2 (owner 13 Nov): I-70 no '///' between ticker items, I-71 max one quiet/empty-map line per 30 min + fun lines + Systembolaget countdown, I-72 event lines only near the real position
 run evsearch   $B evsearch-pw.js   # lane evsearch: I-73 event search (town / name, Går from a result), I-74/I-76 På plats + Köp biljett in the TV match window, I-75a one row per game
 run night3     $B night3-pw.js   # lane night3: I-98/I-99 beer at the check-in place, I-97 search focus ring, I-96 stable search + grouped titles, I-95 departure chip tap
+# --- the BUILT site (ci1: CI shards with `site=bundled` in tests/e2e/shards.txt; ports A/B serve scripts/build-site.mjs output) ---
+if [ -n "${PLAIN_PORT:-}" ]; then run bundle-smoke $B bundle-smoke-pw.js $PLAIN_PORT   # bundled site = plain site: modules, styles, lazy files, part errors, unbundle fallback, service worker offline
+else skip bundle-smoke 'needs PLAIN_PORT (a plain docs/ server) and the built site on port B'; fi
+run ci1        $B ci1-pw.js        # lane ci1: the live build (scripts/build-site.mjs): <= 20 start requests, one changed file = one bundle group downloaded again, PN_BUILD, plain mode = the old stamp, dotfiles in the artifact
+collect
 # --- unit (no browser) ---
 [[ notif-sw =~ $FILTER ]] && { (cd $D && timeout 120 node notif-sw-test.js $REPO > $LOG/notif-sw.1.log 2>&1); rc=$?
   p=$(grep -c '^PASS' $LOG/notif-sw.1.log); fl=$(grep -cE '^FAIL( |$)' $LOG/notif-sw.1.log); [ $rc != 0 ] && [ $fl = 0 ] && fl=1
