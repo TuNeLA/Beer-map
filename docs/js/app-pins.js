@@ -436,10 +436,24 @@
       if (!oe || !(oe.isTrusted || oe._pnTap) || !this._map || !this._popup || this._map.hasLayer(this._popup)) return open0.call(this, e);
       oe._stopped = true;   // as open0 does at once: the map click under it must not close or reopen anything
       tapRing(this);
-      var my = ++tapSeq, go = function () { if (my !== tapSeq) return; tapSeq++; if (self._map) open0.call(self, e); };
+      // cifix1: a redraw in that wait (a poll → render()) replaces the bar's marker: then the tap opens the NEW marker of the
+      // same bar (it did nothing: the ring showed, no sheet came; d4map CI 15 Nov)
+      var my = ++tapSeq, go = function () {
+        if (my !== tapSeq) return; tapSeq++;
+        if (self._map) { open0.call(self, e); return; }
+        var nm = markerOfKey(self.options && self.options.olnuKey);
+        if (nm && nm._map && nm.getPopup && nm.getPopup() && !nm._map.hasLayer(nm.getPopup())) nm.openPopup();
+      };
       if (window.requestAnimationFrame && !document.hidden) requestAnimationFrame(function () { setTimeout(go, 0); });
       setTimeout(go, 120);
     };
+  }
+  function markerOfKey(key) {   // the marker that a redraw drew for the same key ("b" beer, "h" hot bar, "p" plain bar)
+    if (!key) return null;
+    var id = String(key).slice(1), k = String(key).charAt(0), m = k === "b" ? PN.s.markerById[id] || null : null;
+    if (!m && k === "h") hotLayer.eachLayer(function (x) { if (x.options.olnuKey === key) m = x; });
+    if (!m && k === "p") m = plainBarMarkers[id] || null;
+    return m;
   }
   function tapRing(mk) {
     try {

@@ -223,7 +223,7 @@
       // Other bars and places = rows (name left, distance right) in grouped lists. "Hemma eller annan plats" is always
       // in view: pinned to the bottom of the sheet, a rounded row like the lists (the owner saw square corners). Styles: beerui.css.
       openSheet(t("whereTitle"), function (body) {
-        body.appendChild(el("p", { class: "muted", text: t("whereInfo") }));
+        body.appendChild(el("p", { class: "muted wh-info", text: t("whereInfo") }));
         var box = el("div", { class: "wh" });
         var bars = list.filter(function (x) { return !x.place; }), places = list.filter(function (x) { return x.place; });
         var ic = function (n) { var P = window.PNI; return P && P.svg && (!P.has || P.has(n)) ? P.svg(n, "wh-ic") : ""; };

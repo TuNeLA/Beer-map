@@ -1,12 +1,13 @@
 # CI for agents: test your copy on GitHub, not on the shared machine
 
 The shared dev machine has 2 CPUs. Browser tests there are slow and block other agents.
-GitHub Actions runs the full suite for free (public repo), about 20 shards in parallel, in about 10 min.
+GitHub Actions runs the full suite for free (public repo), about 21 shards in parallel. Time depends on the runner queue.
 
 ## Rule
 
-- Push ONLY to branches named `ci/<agent>-<n>` (for example `ci/fxm-1`, `ci/fxm-2`).
-- NEVER push to `big-update`, `main` or any other branch. The coordinator merges.
+- Push ONLY to branches named `ci/<agent>-<n>` (for example `ci/fxm-1`, `ci/fxm-2`). Your lane branch goes to opsbak `codelane/<lane>` (RULES §10).
+- NEVER push to `big-update`, `main` or any name other than `ci/<agent>-<n>`. The coordinator merges.
+- If the brief says SECURITY-LOCAL, do not push `ci/`. Why: public repo + open hole. Remove when: the fix is live.
 - Do not delete remote branches or runs. Do not put secrets in the repo.
 
 ## Steps
@@ -41,7 +42,7 @@ GitHub Actions runs the full suite for free (public repo), about 20 shards in pa
    Each shard prints a SUMMARY table (test, PASS count, FAIL count, status) at the end of its log and on the run page.
    Full logs per test: `gh run download <run-id> -R TuNeLA/Beer-map -n e2e-logs-<shard>`.
 
-5. Send your patch script to the coordinator as usual. Say which `ci/` run is green.
+5. Say in your DONE.md which `ci/` run is green.
 
 ## What runs
 

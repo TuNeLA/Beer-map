@@ -82,7 +82,9 @@ function barInView(page, k) {
         const r = await page.evaluate(() => ({ fb: window.__fb, full: window.__full, title: ((document.querySelector(".olnu-sheet .pp-title, .leaflet-popup .pp-title") || {}).textContent || "").trim(),
           ring: window.__fb && window.__fb.at || null }));
         r.id = v.id; r.name = v.name; r.at = { x: Math.round(v.cx), y: Math.round(v.cy) }; runs.push(r);
-        await page.evaluate(() => __map.closePopup()); await wait(page, 900);
+        // cifix1: wait until the map is still and its tiles are in (real GL on CI: the sheet pans the map; a fixed 900 ms left
+        // tiles loading at 4x CPU → taps 2 and 3 measured tile work (260 ms) or hit a bar that had moved: La Parma / no sheet)
+        await page.evaluate(() => __map.closePopup()); await idle(page, 300);
       }
       console.log("TAP " + JSON.stringify(runs));
       const ms = runs.map((r) => (r.fb ? r.fb.ms : 9999)).sort((a, b) => a - b), med = ms[Math.floor(ms.length / 2)];
@@ -96,6 +98,21 @@ function barInView(page, k) {
       const sync = await page.evaluate((id) => { const did = GLBARS.open(id); return { did, open: !!document.querySelector(".leaflet-popup .bs") }; }, PIT);
       ok(sync.did && sync.open, "fix 2: GLBARS.open (code call) still opens the sheet in the same task", sync);
       await page.evaluate(() => __map.closePopup()); await wait(page, 600);
+      // cifix1: a redraw (a poll → render()) between the ring and the sheet replaced the bar's marker: the ring showed and
+      // no sheet came (d4map CI 15 Nov: "full" null, the sheet not of the tapped bar). The new marker of that bar opens now.
+      await view(page, LUD, 16, 1500);
+      const v2 = await barInView(page, 0);
+      if (!v2) ok(false, "fix 2 redraw: a GL bar in view to tap");
+      else {
+        await page.evaluate(() => { window.__rd = 0; addEventListener("touchend", () => setTimeout(() => { try { PN.render(); window.__rd = 1; } catch (e) { window.__rd = String(e); } }, 0), { capture: true, once: true }); });
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: v2.x, y: v2.y }] }); await wait(page, 30);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await page.waitForFunction(() => document.querySelector(".leaflet-popup .bs"), null, { timeout: 4000 }).catch(() => {});
+        const rr = await page.evaluate(() => ({ rd: window.__rd, title: ((document.querySelector(".olnu-sheet .pp-title, .leaflet-popup .pp-title") || {}).textContent || "").trim() }));
+        ok(rr.rd === 1 && rr.title && rr.title.toLowerCase().indexOf(String(v2.name).toLowerCase().slice(0, 6)) >= 0,
+          "fix 2: a redraw right after the tap (before the sheet is built) still opens the tapped bar's sheet", { rr, name: v2.name });
+        await page.evaluate(() => __map.closePopup()); await idle(page, 300);
+      }
     }
 
     /* ---------- fix 3: moveend work in slices after the frame; order kept; map-moving + pn:mapmove ---------- */

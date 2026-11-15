@@ -5,19 +5,21 @@ Details: `scripts/split/README.md` (structure), `DESIGN.md` (design), `CONTRACT.
 `tests/e2e/CI-FOR-AGENTS.md` (e2e).
 
 ## Hard rules (the owner decides; do not break these)
-- Agents NEVER push to `main` or `big-update`. Only the coordinator merges and goes live, and only work that passed
-  unit tests + guards + its own e2e + the main e2e (owner rule 14 Nov 2026).
+- Agents push only to `ci/<lane>-<n>` and to opsbak `codelane/<lane>` (RULES §10, ops repo). Never to `main` or
+  `big-update`. Only the coordinator goes live, only through `release.sh` (CI green on the commit; owner rule 14 Nov 2026).
 - The normal beta URL uses the LIVE database. Only `/test/` uses staging.
   Before a browser job, check that `config.js` points at staging. Never write to the live project.
 - No secrets in the repo. No keys in code, tests, logs or commit messages.
 - SQL files: additive and idempotent. No DELETE, DROP or TRUNCATE anywhere, not even in a comment.
-  Each file ends with `select public.olnu_strip_cr();`. The owner runs SQL. Use the next free number.
+  Each file ends with `select public.olnu_strip_cr();`. Lanes do not run SQL on live.
+  The coordinator applies it (RULES §5); the owner runs only the delete lines. Use the next free number.
 - Each `security definer` function: a fixed `search_path`, an `auth.uid()` / membership check in the body,
   execute revoked from `public` and `anon` unless the function is public on purpose.
 - Safety, privacy, legal and 18+ rules are not design rules. They always hold.
 - Never text or effects that push drinking more. A count is information only. Store builds (`window.OLNU_STORE`)
   show no drinking celebration. One text pop-up per tap.
 - A rough position (accuracy > 100 m) is never shown or sent as an exact pin (`docs/js/fastpos.js`).
+  Why: an exact pin of a rough fix leaks a home.
 
 ## Structure traps
 - App code: `docs/js/app-<area>.js` (parts). `docs/app.js` is boot only. Add no features there.
@@ -44,9 +46,7 @@ Details: `scripts/split/README.md` (structure), `DESIGN.md` (design), `CONTRACT.
 - `bash scripts/split/ci.sh`   (needs `npm i --no-save acorn@8.12.1` and the full git history)
   or `node scripts/split/move.mjs . --check && node scripts/split/verify.mjs --structure`
 - `node scripts/ci/stamp-guard.mjs docs`
-- e2e: `PN_TARGET=staging python3 tests/e2e/serve.py <port> docs`, then your own `*-pw.js` test
-  and the main test. Shards: `bash tests/e2e/run-all.sh <port> <port2> '<filter>'`.
-  Map tests with real GL need `MAPBOX_TEST_TOKEN` (CI has it; use the stub path locally).
+- e2e: on GitHub (below). Map tests with real GL need `MAPBOX_TEST_TOKEN` (CI has it; use the stub path locally).
 
 ## How to work
 - Work in your own git worktree. Edit only the files that your brief lists.
@@ -56,8 +56,10 @@ Details: `scripts/split/README.md` (structure), `DESIGN.md` (design), `CONTRACT.
 - Show proof: the command and its output. Do not write "it works" with no output.
 - Run e2e on GitHub: push a throw-away commit to `ci/<lane>-<n>` (`.ci-only` = your shards; never merge it), then ONE
   blocking `gh run watch <id> -R TuNeLA/Beer-map --exit-status`. Local browser runs only for pictures and quick debug.
+  If the brief says SECURITY-LOCAL, do not push `ci/` (public repo, open hole).
+- After each commit: `git push opsbak lane/<name>:codelane/<name>` (a restart loses local work).
 - Deliver and STOP. Do not start work that the brief does not name.
-- Final message: at most 20 lines, short simple English sentences. Details go in your DONE file.
+- Final message: length and form in RULES §12. Details go in your DONE file.
 - If the owner's wish and a design rule conflict: follow the owner and write the exception down.
 
 ## When you compact

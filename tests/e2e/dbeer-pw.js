@@ -323,6 +323,19 @@ const timer = (page) => page.evaluate(() => {
         ok(T + "the nearest bar is the ONE amber button", s.home && s.amber.length === 1 && /^La Parma Pub & Restaurang · här$/.test(s.amber[0]), s.amber);
         ok(T + "other bars and places are rows in rounded lists, ≥ 56 px, with the distance at the right", s.home && s.rows >= 4 && s.rowH >= 56 && s.distRight && s.dist.every((d) => /^(\d+ m|här)$/.test(d || "")) && s.lists.length === 2 && s.lists.every((r) => r === "16px") && s.places >= 1, { rows: s.rows, rowH: s.rowH, dist: s.dist, lists: s.lists, distRight: s.distRight });
         ok(T + "headings 'Krogar nära' + 'Restauranger och caféer', 'Fler ställen nära' stays, no emoji, no sideways scroll", s.home && s.heads.join("|") === "Krogar nära|Restauranger och caféer" && /Fler ställen nära/.test(s.more || "") && !s.emoji && !s.wide, { heads: s.heads, more: s.more, emoji: s.emoji });
+        // I-118 (owner: "it's all squashed" on 360x640): rows keep their height, no cut text, the sheet fits, enough list in view.
+        const sq = await page.evaluate(() => {
+          const body = document.getElementById("sheet-body"), sheet = document.getElementById("sheet"), sr = sheet.getBoundingClientRect(), br = body.getBoundingClientRect();
+          const hs = [...body.querySelectorAll(".wh-row,.wh-main,.wh-home,.where-more")].map((e) => e.getBoundingClientRect().height);
+          const cut = [...body.querySelectorAll(".wh-name,.wh-main span,.wh-home span")].filter((e) => { const cs = getComputedStyle(e); return e.classList.contains("wh-name") ? e.scrollHeight > e.clientHeight + 1 && cs.webkitLineClamp === "none" : e.scrollWidth > e.clientWidth + 1; }).length;
+          const nameClip = [...body.querySelectorAll(".wh-name")].filter((e) => e.scrollHeight > e.clientHeight + 1).length;
+          const homeR = body.querySelector(".wh-home").getBoundingClientRect(), vis = [...body.querySelectorAll(".wh-row")].filter((e) => { const r = e.getBoundingClientRect(); return r.top >= br.top && r.bottom <= homeR.top; }).length;
+          return { minH: Math.min(...hs), cut, nameClip, sheetT: sr.top, sheetB: sr.bottom, vh: innerHeight, bodyH: br.height, vis };
+        });
+        ok(T + "no row is squashed: every row, the amber button and 'Hemma' are >= 44 px high", sq.minH >= 44, sq);
+        ok(T + "no text is cut (names fit in 2 lines, nothing overflows sideways)", sq.cut === 0 && sq.nameClip === 0, sq);
+        ok(T + "the sheet fits in the viewport (top >= 0, bottom <= viewport)", sq.sheetT >= 0 && sq.sheetB <= sq.vh + 0.5, sq);
+        if (w === 360) ok(T + "the list has room: at least 4 full rows in view above the pinned row (was 3: squashed)", sq.vis >= 4, sq);
         if (w === 360) {
           // scrolled to the end: still there, same place
           const e = await page.evaluate(() => { const body = document.getElementById("sheet-body"); body.scrollTop = body.scrollHeight; const r = body.querySelector(".wh-home").getBoundingClientRect(); return { t: r.top, b: r.bottom, vh: innerHeight }; });

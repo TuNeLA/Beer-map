@@ -24,6 +24,9 @@ const at = (h) => { const t = new Date(Date.now() + h * 3600e3); t.setMinutes(0,
 const TOWNS = [["Malmö", 55.605, 13.0], ["Lund", 55.70, 13.19], ["Göteborg", 57.70, 11.97], ["Stockholm", 59.33, 18.06], ["Uppsala", 59.86, 17.64],
   ["Umeå", 63.83, 20.26], ["Luleå", 65.58, 22.15], ["Örebro", 59.27, 15.21], ["Västerås", 59.61, 16.55], ["Falun", 60.61, 15.63], ["Borlänge", 60.48, 15.43], ["Ludvika", 60.1496, 15.1878]];
 const FILM = TOWNS.map((t, i) => ({ id: 9300 + i, kind: "other", title: "A Talent for Murder", place: "Filmstaden " + t[0], town: t[0], lat: t[1], lng: t[2], starts_at: at(20 + i) }));
+// cifix1: two types in every time range (tonight, tomorrow, in 3 days) → the chip row has something to filter
+const EVROWS = [1, 2, 26, 27, 74, 75].map((h, i) => ({ id: 9600 + i, kind: i % 2 ? "live" : "quiz", title: (i % 2 ? "Live " : "Quiz ") + i, place: "Pitchers", town: "Ludvika",
+  bar_id: "n3472634175", lat: 60.14997, lng: 15.18679, starts_at: new Date(Date.now() + h * 3600e3).toISOString() }));
 const HITS = FILM.concat([{ id: 9400, kind: "quiz", title: "Talentjakt Malmö", place: "Pub Malmö", town: "Malmö", lat: 55.6, lng: 13.0, starts_at: at(3) }]);
 function search(q) {
   q = String(q || "").toLowerCase();
@@ -38,6 +41,9 @@ async function setup(browser, vp, o = {}) {
   await page.route(/rest\/v1\/rpc\/events_search\b/, async (r) => { let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
     if (o.slow) await new Promise((res) => setTimeout(res, o.slow));
     J(r, { v: 1, q: b.p_q, events: search(b.p_q) }); });
+  // cifix1: the event list itself (the server has none for the test user, and an empty list hides the lone "Alla" chip: d-social fix 7)
+  if (o.ev) await page.route(/rest\/v1\/rpc\/events_near[23]\b/, async (r) => { if (o.ev.slow) await new Promise((res) => setTimeout(res, o.ev.slow));
+    J(r, { v: 1, server_time: new Date().toISOString(), events: o.ev.rows }); });
   if (o.live) { await page.route(/rest\/v1\/rpc\/live_beers\b/, (r) => J(r, o.live.beers)); await page.route(/rest\/v1\/rpc\/live_checkins\b/, (r) => J(r, o.live.cis)); }
   if (o.eta) await page.route(/rest\/v1\/rpc\/group_etas\b/, (r) => J(r, [{ id: 91, is_me: true, bar_id: o.eta.id, bar_name: o.eta.name, lat: o.eta.lat, lng: o.eta.lng,
     eta_at: new Date(Date.now() + 10 * 60e3).toISOString(), created_at: new Date(Date.now() - 5 * 60e3).toISOString() }]));
@@ -102,11 +108,21 @@ const calls = (page, fn) => page.__calls.filter((c) => c.fn === fn);
 
   /* ---------- I-96: stable bar while loading, 3 characters, one row per title, nearest first ---------- */
   if (ONLY.test("i96")) {
-    const { ctx, page } = await setup(browser, null, { slow: 1800 });
+    { // cifix1: while the event list FIRST loads, the chip row stays (it hides only when the list came with nothing to filter)
+      const { ctx, page } = await setup(browser, null, { ev: { rows: [], slow: 6000 } });
+      await page.evaluate(() => window.EVSHEET.open()); await wait(page, 600);
+      const ld = await page.evaluate(() => ({ busy: !EVSHEET._cache().at, chips: getComputedStyle(document.querySelector("#sheet-body .evs-chips")).display }));
+      await page.waitForFunction(() => EVSHEET._cache().at > 0, null, { timeout: 15000 }).catch(() => {}); await wait(page, 400);
+      const dn = await page.evaluate(() => ({ at: EVSHEET._cache().at, chips: getComputedStyle(document.querySelector("#sheet-body .evs-chips")).display }));
+      ok(ld.busy && ld.chips !== "none" && dn.at > 0 && dn.chips === "none", "I-96 while the event list loads the chip row stays; only an empty list that came hides the lone 'Alla' (d-social fix 7)", { ld, dn });
+      await ctx.close();
+    }
+    const { ctx, page } = await setup(browser, null, { slow: 1800, ev: { rows: EVROWS } });
     await page.evaluate(() => { PN.s.lastLoc = { lat: 60.1496, lng: 15.1878 }; });   // my real position: Ludvika
     await openEv(page);
-    const before = await page.evaluate(() => ({ bar: document.querySelector("#sheet-body .evs-bar").getBoundingClientRect().height, list: document.querySelector("#sheet-body .evs-list").getBoundingClientRect().height }));
+    const before = await page.evaluate(() => ({ chips: document.querySelectorAll("#sheet-body .evs-chips:not([hidden]) .evs-chip").length, bar: document.querySelector("#sheet-body .evs-bar").getBoundingClientRect().height, list: document.querySelector("#sheet-body .evs-list").getBoundingClientRect().height }));
     await page.fill("#sheet-body .evs-q", "Le"); await wait(page, 700);
+    ok(before.chips >= 2, "I-96 before the search: the chip row shows 'Alla' + the types (" + before.chips + " chips)", before);
     ok(calls(page, "events_search").length === 0, "I-96 2 characters ('Le', not a town) = no search yet", calls(page, "events_search").map((c) => c.body));
     await page.fill("#sheet-body .evs-q", "Lud"); await wait(page, 800);   // the debounce has passed, the RPC is still slow
     const mid = await page.evaluate(() => { const seg = document.querySelector("#sheet-body .evs-time"), ch = document.querySelector("#sheet-body .evs-chips"), lb = document.querySelector("#sheet-body .evs-list");

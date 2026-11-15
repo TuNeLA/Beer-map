@@ -21,7 +21,7 @@
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
-  var A = null, off = false, busy = false, cache = { at: 0, key: "", rows: [], v2: false }, pollAt = 0, btnEl = null;
+  var A = null, off = false, busy = false, cache = { at: 0, key: "", rows: [], v2: false }, pollAt = 0, btnEl = null, loadP = null;
   var FILTER_KEY = "olnu.evsFilter", ASKED_KEY = "olnu.evsAsked";
   function sv() { return !I || I.lang !== "en"; }
   function L(s, e) { return sv() ? s : e; }
@@ -224,7 +224,8 @@
     if (!A || !A.LIVE || !A.authed || !A.authed()) return Promise.resolve(cache.rows);
     var p = where(), key = (Math.round(p.lat * 20) / 20) + "," + (Math.round(p.lng * 10) / 10);
     if (!force && key === cache.key && (cache.days || 7) >= days && Date.now() - cache.at < 120000) return Promise.resolve(cache.rows);
-    if (busy) { wantMore = Math.max(wantMore, days); return Promise.resolve(cache.rows); }
+    // cifix1: a load already on its way (e.g. the boot load) → wait for IT, so the sheet draws its answer (was: the old empty cache, no redraw)
+    if (busy) { wantMore = Math.max(wantMore, days); return loadP ? loadP.then(null, function () { return cache.rows; }) : Promise.resolve(cache.rows); }
     busy = true;
     var done = function (rows, v2, d) {
       busy = false; cache = { at: Date.now(), key: key, rows: dedupe(rows || []), v2: v2, days: d || 7 }; badge();
@@ -233,9 +234,9 @@
       if (w > cache.days) setTimeout(function () { load(true, w).then(function () { if (listBox && document.body.contains(listBox)) draw(); }); }, 0);
       return cache.rows;
     };
-    if (off) return fallback().then(function (rows) { return done(rows, false, 7); });
+    if (off) return (loadP = fallback().then(function (rows) { return done(rows, false, 7); }));
     var use3 = days > 14 && !off3, pd = use3 ? days : Math.min(days > 7 ? 14 : 7, 14);
-    return A.rpc(use3 ? "events_near3" : "events_near2", { p_lat: p.lat, p_lng: p.lng, p_days: pd }).then(function (r) {
+    return (loadP = A.rpc(use3 ? "events_near3" : "events_near2", { p_lat: p.lat, p_lng: p.lng, p_days: pd }).then(function (r) {
       if (r.error) {
         if (U.missing(r.error)) {
           if (use3) { off3 = true; busy = false; return load(true, days); }
@@ -245,7 +246,7 @@
       }
       var d = A.parseData(r.data);
       return done(Array.isArray(d.events) ? d.events : [], true, pd);
-    });
+    }));
   }
   function fallback() {
     try { if (window.EVENTS && window.EVENTS._load) return window.EVENTS._load(true, 7).then(function (rows) { return (rows || []).slice(); }); } catch (e) {}
@@ -562,7 +563,10 @@
       if (n) b.appendChild(A.el("b", { class: "evs-chip-n", text: String(n) }));
       chipsEl.appendChild(b);
     });
-    chipsEl.hidden = chipsEl.children.length < 2;   // design2 small fix 7: "Alla" alone filters nothing
+    // design2 small fix 7: "Alla" alone filters nothing → hidden, but only when the list has COME (cifix1, owner rule I-96:
+    // while a load or a search runs, the chip row stays and the bar keeps its height; it never hides while loading)
+    var loading = (busy && !cache.at) || sq.busy;
+    if (!loading) chipsEl.hidden = chipsEl.children.length < 2;
     chipInView(chipsEl); chipFades(chipsEl);
   }
   // ui1 B4: an edge fades only when more chips are hidden on that side (data-fl / data-fr, CSS in pnds.css "lane:ui1").
