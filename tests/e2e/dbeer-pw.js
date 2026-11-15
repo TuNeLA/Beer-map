@@ -154,12 +154,15 @@ const timer = (page) => page.evaluate(() => {
     // ---------- A2 · the double-tap guard ----------
     if (PARTS.includes("guard")) {
       ({ ctx, page, errs, calls } = await open(browser));
-      // people tap twice (and more) fast: taps every 120 ms for the first 0.95 s after the ÖL! tap
+      // people tap twice (and more) fast: a tap every 100 ms from the ÖL! tap until "Ångra" has been on screen for 0.35 s
+      // (all inside the guard time: 1.0 s after the ÖL! tap, and the first 0.5 s of the state)
       const g = await page.evaluate(() => new Promise((res) => {
-        const b = document.getElementById("btn-beer"), t0 = performance.now(), seen = [];
+        const b = document.getElementById("btn-beer"), t0 = performance.now(), seen = []; let onAt = 0;
         b.click();
-        const iv = setInterval(() => { const t = performance.now() - t0; if (t > 950) { clearInterval(iv); setTimeout(() => res({ seen, undo: b.classList.contains("undo"), label: document.getElementById("beer-label").textContent }), 250); return; }
-          seen.push([Math.round(t), b.classList.contains("undo"), b.disabled]); b.click(); }, 120);
+        const iv = setInterval(() => { const t = performance.now() - t0, on = b.classList.contains("undo");
+          if (on && !onAt) onAt = t;
+          if ((onAt && t - onAt > 350) || t > 6000) { clearInterval(iv); setTimeout(() => res({ seen, onAt: Math.round(onAt), undo: b.classList.contains("undo"), label: document.getElementById("beer-label").textContent }), 250); return; }
+          seen.push([Math.round(t), on, b.disabled]); b.click(); }, 100);
       }));
       await wait(page, 500);
       ok("guard: taps in the first 1.0 s after the ÖL! tap do nothing (1 beer, no undo)", n(calls, "post_beer_v2") === 1 && n(calls, "undo_beer") === 0, { calls: calls.map((c) => c[0]), g });

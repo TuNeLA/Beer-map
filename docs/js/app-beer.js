@@ -104,7 +104,7 @@
       ring.style.strokeDashoffset = "0";   // beerui.css runs the ring down over the 10 s
       if (!PN.s.cdTimer) PN.s.cdTimer = setInterval(tickCooldown, 1000);
     } else if (on) {
-      // The wait: only the time, in the middle of the glass (owner 15 Nov: no "Nästa öl om", no box around the time).
+      // The wait: only the time, in the middle of the glass (owner 15 Nov: no words before the time, no box around it).
       var mmss = U.mmss(left);
       btnEl.disabled = true;
       setLabel(timeHTML(mmss), mmss);

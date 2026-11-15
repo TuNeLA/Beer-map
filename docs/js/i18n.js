@@ -473,7 +473,7 @@
       liveTag: "LIVE",
       settings: "Inställningar", profile: "Profil", close: "Stäng",
       beer: "ÖL!", beerSub: "Rapportera öl",
-      cooldownToast: function (m) { return "Paus. " + m + " kvar."; },   // d-beer (I-114): the wait is information only (no "Nästa öl om")
+      cooldownToast: function (m) { return "Paus. " + m + " kvar."; },   // d-beer (I-114): the wait is information only (no "next beer" words)
       stop: "Sluta dricka",
       stopped: "Din pin är dold. Dina öl räknas till kl 05.",
       stopHint: "Döljer din pin. Antalet finns kvar till kl 05.",
