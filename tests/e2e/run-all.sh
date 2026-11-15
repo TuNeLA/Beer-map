@@ -211,6 +211,8 @@ run bump       $B bump-pw.js       # lane bump: Skåla med telefonen (flag pn_bu
 run bold-krog   $B bold-krog-pw.js    # bd: Krogrundan card (bold lane, 9 Nov)
 run bold-replay $B bold-replay-pw.js  # bd: night replay film
 run bold-skal   $B bold-skal-pw.js    # bd: Skål moments
+run bold-bump   $B bold-bump-pw.js    # bd: Skål! bump (cifix1: back in CI, chip text after dialekt p2)
+run bold-hem    $B bold-hem-pw.js     # bd: Hem-läge (cifix1: back in CI, history push after close+open)
 run camfilm     $B camfilm-pw.js      # film rolls + Spara alla: 6 films, picker, in-app shot, album save / share / ZIP
 # --- WebKit (iPhone engine). Needs: npx playwright install webkit. CI: the shard with `webkit` in tests/e2e/shards.txt ---
 run ds-motion-wk $B ds-motion-pw.js wk

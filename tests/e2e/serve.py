@@ -69,4 +69,11 @@ class H(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     print("serving %s on 127.0.0.1:%d, PN_TARGET=%s" % (DOCS, PORT, TARGET), flush=True)
-    http.server.ThreadingHTTPServer(("127.0.0.1", PORT), functools.partial(H, directory=DOCS)).serve_forever()
+    # cifix1: the GL tests (map-pw, popfix, d4map …) open the page on the github.io URL and fetch EVERY file through a
+    # Playwright route (Node fetch, ~100 files at once). The default listen backlog (5) dropped the extra connections:
+    # the kernel retried them after 1, 3, 7, 15 s … (probe: files at 4 / 7 / 13 / 26 s) → page.goto "Timeout 60000ms".
+    class Server(http.server.ThreadingHTTPServer):
+        request_queue_size = 256
+        daemon_threads = True
+
+    Server(("127.0.0.1", PORT), functools.partial(H, directory=DOCS)).serve_forever()
