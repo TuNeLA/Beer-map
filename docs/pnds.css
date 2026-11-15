@@ -813,20 +813,25 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .cm .pill .pft::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--ds-green)}
 .cm.cm-dot .pill .pft{display:none}
 /* ds31 friendtot END */
-/* ds32 annat START — ANNAT: a 50 px lilac-ringed button (the 10-min ring around it in a 60 px box), our "mixed" glyph 20 px over
+/* ds32 annat START — ANNAT: a 50 px button (uifix3: no lilac ring any more, see below) (the 10-min ring around it in a 60 px box), our "mixed" glyph 20 px over
    the word "Annat" 12/14: the word sits inside the circle (chord at its bottom edge ≈ 37 px > 33 px word). Lilac = other drinks
    (same as on the map). Secondary to ÖL!: navy body, no fill colour. */
 .beer-wrap>.other-wrap{width:60px !important;height:60px !important}
+/* uifix3 I-125 (owner 15 Nov: "some purple bar around it", "Annat looks a bit weird"): Annat is dressed like the other round
+   floating buttons (locate, ⋯ Mer): dark glass, a thin neutral edge, the same shadow. Lilac stays only on the glyph (and on the
+   m:ss + the 10-min ring while it waits) = the Annat colour cue. The faint track ring shows only while it waits. */
 .beer-wrap>.other-wrap .other-btn{width:50px !important;height:50px !important;padding:0 !important;gap:0 !important;border-radius:50% !important;
-  background:var(--pn-float-2) !important;border:2px solid var(--pn-lilac,#D9B8FF) !important;color:var(--ds-text) !important;
-  box-shadow:var(--ds-sh-1),inset 0 0 0 1px rgba(217,184,255,.18) !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important}
+  background:var(--pn-float) !important;border:1px solid var(--ds-border) !important;color:var(--ds-text) !important;
+  box-shadow:var(--ds-sh-1) !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important}
 #btn-other .other-label{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:-3px;width:auto !important;height:auto !important}
 #btn-other .ol-e{display:block;line-height:0;color:var(--pn-lilac,#D9B8FF)}
 #btn-other .ol-e svg{width:20px !important;height:20px !important}
 #btn-other .ol-t{font:600 var(--fs-12)/13px var(--ds-sans) !important;letter-spacing:0 !important;color:var(--ds-text);white-space:nowrap}
 #btn-other.cooldown .ol-t{font:700 var(--fs-12)/14px var(--ds-sans) !important;font-variant-numeric:tabular-nums;color:var(--pn-lilac,#D9B8FF)}
 #btn-other:active{transform:scale(.96)}
-.beer-wrap>.other-wrap .ocd-track{stroke:rgba(217,184,255,.16) !important}
+.beer-wrap>.other-wrap .ocd-track{stroke:transparent !important}
+.beer-wrap>.other-wrap:has(> .other-btn.cooldown) .ocd-track{stroke:rgba(217,184,255,.16) !important}
+.beer-wrap>.other-wrap .other-btn.cooldown{filter:none}   /* waiting: the lilac m:ss + the running ring say it (the old dim filter made the time grey) */
 /* ds32 annat END */
 /* ds33 toasts START — every bottom message keeps clear of ANNAT, locate, the map credits and the bottom banners
    (--pn-toast-b, measured in js/pnds.js "ds33"). Toast text wraps; it is never cut. */

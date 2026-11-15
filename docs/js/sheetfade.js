@@ -3,8 +3,8 @@
    its sticky head owns the top). One passive scroll listener (capture, rAF-throttled) + a re-check when the content
    changes (MutationObserver / ResizeObserver, a tap, a sheet opening). Reads: scrollTop, scrollHeight, clientHeight
    (+ two rects when the sheet has a fixed bar). Writes only when a value changed.
-   A bar that sticks to the top of the scroll area (a direct child, position sticky with a top) is never masked: the top
-   fade starts under it (--sf-head).
+   A bar that sticks to the top of the scroll area (a direct child, or the first child of the first child; position sticky
+   with a top) is never masked: the top fade starts under it (--sf-head).
    A bar fixed at the bottom of the scroll area (position sticky / fixed with a bottom) is never masked:
      - a solid bar (.sheet-foot, [data-sheet-foot], or any sticky bar among the last children of the body, 3 levels down): the fade ends at
        its top edge (--sf-foot);
@@ -44,13 +44,18 @@
   }
   // a bar that sticks to the TOP of the scroll area (Profil | Inställningar, Grupper | Vänner | Inkorg …): one of the first 2
   // shown children of the body, position sticky with a top. The top fade starts under it (--sf-head), the bar stays crisp.
-  function findHead(el) {
-    if (!dirty && heads && heads.has(el)) { var h0 = heads.get(el); if (!h0 || h0.isConnected) return h0; }
-    var c = el.firstElementChild, k = 0, f = null;
+  // uifix3 (I-123): also one level down, when the sheet puts everything in one wrapper (the character creator: .avw > .avw-top)
+  function headIn(n, depth) {
+    var c = n.firstElementChild, k = 0, f = null;
     while (c && k < 2 && !f) {
-      if (shown(c)) { k++; var cs = getComputedStyle(c); if (cs.position === "sticky" && cs.top !== "auto") f = c; }
+      if (shown(c)) { k++; var cs = getComputedStyle(c); if (cs.position === "sticky" && cs.top !== "auto") f = c; else if (depth < 2 && k === 1) f = headIn(c, depth + 1); }
       c = c.nextElementSibling;
     }
+    return f;
+  }
+  function findHead(el) {
+    if (!dirty && heads && heads.has(el)) { var h0 = heads.get(el); if (!h0 || h0.isConnected) return h0; }
+    var f = headIn(el, 1);
     if (heads) heads.set(el, f);
     return f;
   }

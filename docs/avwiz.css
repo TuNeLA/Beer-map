@@ -100,10 +100,51 @@ button.avw-cta.avw-cta{display:flex;align-items:center;gap:12px;width:100%;margi
 /* social-b R1-08 START — quick tabs keep their own width (the track scrolls, ds15); 4-control bottom bar */
 .avw .avw-quick{justify-content:flex-start}
 .avw .avw-quick>button{flex:0 0 auto;min-width:0;padding:0 var(--ds-3,12px);white-space:nowrap;overflow:visible;text-overflow:clip}
-.avw .avw-bar{flex-wrap:nowrap;align-items:center;box-shadow:0 -10px 14px -10px rgba(0,0,0,.7),0 24px 0 0 var(--ds-sheet,#121a2a)}   /* the 2nd shadow covers the strip under the sticky bar (content showed through) */
+.avw .avw-bar{flex-wrap:nowrap;align-items:center}   /* uifix3: the old 2nd shadow covered a strip under the bar; the bar now sits at the very bottom (no strip) */
 .avw .avw-bar .avw-ic{flex:0 0 44px;width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .avw .avw-bar .avw-ic .avw-ic-i{width:22px;height:22px}
 .avw .avw-bar .avw-donenow{flex:1 1 0;min-width:0;padding:0 var(--ds-3,12px);background:transparent;box-shadow:inset 0 0 0 1px var(--avw-bd);white-space:nowrap}
 .avw .avw-bar .avw-donenow[hidden],.avw .avw-bar .avw-ic[hidden]{display:none}
 .avw .avw-bar .avw-next{flex:1 1 0;min-width:0;white-space:nowrap}
 /* social-b R1-08 END */
+
+/* uifix3 I-123 START — the creator on an iPhone (owner 15 Nov 21:48, research/owner-shots/2026-11-15-iphone-avwiz.png)
+   1. No padding at the top or bottom of the scroll area: the sticky top sticks at its very top (nothing scrolls above or
+      behind it), and the bar sits at the very bottom of the sheet with only the safe area under it. The old gap under the
+      bar on an iPhone was sheet padding (16 + safe area) + body padding (16) + the bar's own safe area = about 100 px.
+   2. A compact top: dots, the tab strip, then ONE row = preview 64 px | "Steg n av 13" + title (+ the focus pill) | the
+      map and chat pins side by side. At least 2 full rows of tiles show at 360x640.
+   3. The list fades under the sticky top and above the bar: js/sheetfade.js (head = .avw-top, foot = .avw-bar).
+   4. The tab strip fades out on the side that has more tabs (.avw-q-l / .avw-q-r, set by js/avwiz.js). */
+#sheet.sheet:has(> #sheet-body > .avw){padding-bottom:0 !important}
+#sheet-body:has(> .avw){padding-top:0;padding-bottom:0 !important}
+.avw{padding-bottom:0}
+.avw .avw-top{top:0;padding:var(--sp-2) 0}
+.avw .avw-dots{margin:0 0 var(--sp-2)}
+.avw .avw-quick{margin:0 0 var(--sp-2)}
+.avw .avw-prevs{width:100%;box-sizing:border-box;padding:0 var(--sp-1);justify-content:flex-start;align-items:center;gap:var(--sp-3);margin-top:0;text-align:left}   /* 4 px side room: the 2 px ring of the preview is not cut by the scroll box */
+.avw .avw-prevw{flex:0 0 auto;padding-bottom:0}
+.avw .avw-prev{width:64px;height:64px;box-shadow:0 0 0 2px var(--avw-acc),var(--ds-sh-1)}
+.avw-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-0)}
+.avw .avw-tx .avw-n{margin:0}
+#sheet-body .avw .avw-tx h3.avw-t{margin:0 !important;font:700 var(--fs-18)/22px var(--ds-sans) !important;color:var(--ds-text) !important;overflow-wrap:anywhere}   /* beats pnds.css .sheet-body h3 (a 14 px muted label, 24 px on top, !important): the step title is the heading of this row */
+.avw .avw-tx .avw-s{margin:0;font-size:var(--fs-12);line-height:1.3}
+#sheet-body .avw-tx button.av-acc.avw-acc{position:relative;left:auto;bottom:auto;transform:none;height:28px;min-height:0;margin-top:var(--sp-1);padding:0 var(--sp-2)}
+#sheet-body .avw-tx button.av-acc.avw-acc::after{inset:-8px -4px}
+.avw .avw-pin{display:grid;grid-template-columns:auto auto;align-items:end;justify-items:center;gap:var(--sp-1) var(--sp-2);min-width:0;flex:0 0 auto}
+.avw .avw-pin[hidden]{display:none}
+.avw .avw-pin small{grid-column:1 / -1}
+.avw-noprev .avw-prevs{justify-content:center;text-align:center}
+.avw-noprev .avw-prevw{display:none}
+.avw-noprev .avw-tx{align-items:center}
+.avw .avw-bar{bottom:0;padding:var(--sp-2) 0 calc(var(--sp-2) + var(--sab,0px))}
+.avw-quick.avw-q-r{-webkit-mask-image:linear-gradient(to right,black calc(100% - var(--sp-6)),transparent);mask-image:linear-gradient(to right,black calc(100% - var(--sp-6)),transparent)}
+.avw-quick.avw-q-l{-webkit-mask-image:linear-gradient(to left,black calc(100% - var(--sp-6)),transparent);mask-image:linear-gradient(to left,black calc(100% - var(--sp-6)),transparent)}
+.avw-quick.avw-q-l.avw-q-r{-webkit-mask-image:linear-gradient(to right,transparent,black var(--sp-6),black calc(100% - var(--sp-6)),transparent);
+  mask-image:linear-gradient(to right,transparent,black var(--sp-6),black calc(100% - var(--sp-6)),transparent)}
+/* a short phone (360x640, iPhone SE): a taller sheet and a tighter head, the same as the "Var dricker du?" sheet (beerui.css I-118) */
+@media (max-height:700px){
+  #sheet:has(> #sheet-body > .avw){max-height:94vh;max-height:94dvh}
+  #sheet:has(> #sheet-body > .avw) .sheet-head{padding-top:0;padding-bottom:var(--sp-1);margin-bottom:0}
+}
+/* uifix3 I-123 END */

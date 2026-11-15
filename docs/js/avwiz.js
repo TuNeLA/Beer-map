@@ -85,6 +85,17 @@
     vis.forEach(function (i) { if (!seen[i]) out.push(i); });
     return out;
   }
+  // uifix3 (I-123 point 4): the tab strip scrolls sideways; an edge fade shows on the side that has more tabs (.avw-q-l / .avw-q-r,
+  // avwiz.css). Re-checked on scroll, when the tabs are drawn again (a step change) and when the strip changes width.
+  function stripFade(q) {
+    function upd() {
+      var max = q.scrollWidth - q.clientWidth, x = q.scrollLeft;
+      q.classList.toggle("avw-q-l", !q.hidden && x > 2);
+      q.classList.toggle("avw-q-r", !q.hidden && max - x > 2);
+    }
+    q.addEventListener("scroll", upd, { passive: true });
+    try { if (window.MutationObserver) new MutationObserver(upd).observe(q, { childList: true }); if (window.ResizeObserver) new ResizeObserver(upd).observe(q); } catch (e) {}
+  }
   function build(body, st) {
     var av = AV(), f = facts();
     var wrap = h("div", { class: "avw" });
@@ -93,7 +104,7 @@
     var stepTxt = h("p", { class: "avw-n" }), title = h("h3", { class: "avw-t" }), sub = h("p", { class: "avw-s" });
     var prev = h("div", { class: "avw-prev", "aria-hidden": "true" });
     var pin = h("div", { class: "avw-pin", "aria-hidden": "true" });   // avt02: how it looks on the map and in the chat
-    var quick = h("div", { class: "ds-seg avw-quick", role: "tablist", "aria-label": "Hoppa till" });
+    var quick = h("div", { class: "ds-seg avw-quick", role: "tablist", "aria-label": "Hoppa till" }); stripFade(quick);
     var pane = h("div", { class: "avw-pane" });
     // R1-08 (social-b): ‹ and the dice are PNI icon buttons (44 px), the bar has 4 controls (was 5)
     function pni(n, fb) { try { if (window.PNI && window.PNI.has(n)) return window.PNI.svg(n, "avw-ic-i"); } catch (e) {} return '<span aria-hidden="true">' + fb + "</span>"; }
@@ -108,8 +119,8 @@
     // social-b S1: focus view on the preview ("Visa allt" / "Dölj tillbehör"), preview + tiles only
     var acc = h("button", { type: "button", class: "av-acc avw-acc" }); acc.hidden = true;
     acc.addEventListener("click", function () { st.showAll = !st.showAll; paintPrev(false); refreshArt(); });
-    var prevw = h("div", { class: "avw-prevw" }, [prev, acc]);
-    wrap.appendChild(h("div", { class: "avw-top" }, [dots, quick, stepTxt, title, sub, h("div", { class: "avw-prevs" }, [prevw, pin])]));
+    var prevw = h("div", { class: "avw-prevw" }, [prev]);   // uifix3: the focus pill sits under the title (the 64 px preview has no room for it)
+    wrap.appendChild(h("div", { class: "avw-top" }, [dots, quick, h("div", { class: "avw-prevs" }, [prevw, h("div", { class: "avw-tx" }, [stepTxt, title, sub, acc]), pin])]));   // uifix3 (I-123): ONE compact row = preview | step + title | pins
     wrap.appendChild(pane); wrap.appendChild(bar);
     body.appendChild(wrap);
 
@@ -140,7 +151,7 @@
       next.textContent = st.i === n - 1 ? (st.saving ? "Sparar…" : "Spara") : s.id === "base" && !st.base ? "Hoppa över" : "Nästa";
       next.classList.toggle("pn-skip", s.id === "base" && !st.base && st.i !== n - 1);   // ds16: skip is never the amber primary
       if (s.id === "base") next.disabled = false;
-      prev.hidden = s.id === "base" || s.id === "done"; pin.hidden = prev.hidden;
+      prev.hidden = s.id === "base" || s.id === "done"; pin.hidden = prev.hidden; wrap.classList.toggle("avw-noprev", prev.hidden);
       paintQuick();
       pane.innerHTML = "";
       if (s.id === "base") paintBase(); else if (s.id === "done") paintDone(); else paintSlot(s);
