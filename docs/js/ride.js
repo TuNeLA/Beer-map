@@ -85,6 +85,12 @@
     "ride.toast.redisp": "{name} kunde int'. Vi frågar de andra.", "ride.toast.sent": "Skickat till {n}. Håll appen öppen.",
     "ride.toast.sent0": "Ingen kör ikväll just nu. Kolla taxi.",
     "ride.chip.wait": "Hämta mig · väntar", "ride.chip.live": "{name} kör dig", "ride.chip.offer": "{name} behöver skjuts", "ride.chip.drive": "Du kör {name}",
+    "ride.st.wait": "Väntar på skjuts", "ride.st.taken": "Accepterad · {name}", "ride.st.enroute": "På väg", "ride.st.enroute.eta": "På väg · {m} min",
+    "ride.st.min": "{m} min", "ride.st.arrived": "Framme", "ride.st.picked": "I bilen", "ride.st.drive": "Du kör · {name}",
+    "ride.st.a.wait": "Hämta mig: väntar på skjuts. Öppna.", "ride.st.a.taken": "Hämta mig: {name} har accepterat. Öppna.",
+    "ride.st.a.enroute": "Hämta mig: {name} ä på väg. Öppna.", "ride.st.a.enroute.eta": "Hämta mig: {name} ä på väg, ca {m} min bort. Öppna.",
+    "ride.st.a.arrived": "Hämta mig: {name} ä framme. Öppna.", "ride.st.a.picked": "Hämta mig: du sitter i bilen med {name}. Öppna.",
+    "ride.st.a.drive": "Du kör {name}. Öppna körningen.",
     "ride.car.label": "Bil (syns bara för den du kör)", "ride.car.ph": "t.ex. Röd Volvo V70 · ABC 123", "ride.car.saved": "Bilen sparad.",
     "ride.err": "Det gick int'. Försök igen.", "ride.err.slow": "Vänta en liten stund innan du frågar igen.",
     "ride.err.pos": "Vi vet int' var du ä. Välj på kartan.", "ride.err.drinking": "Du har tryckt ÖL! ikväll. Någon annan får köra.",
@@ -220,13 +226,14 @@
     if (!r || !r.on) {
       R = null;
       if (r && r.on === false && flags && flags.ride_v2) { flags = Object.assign({}, flags, { ride_v2: false }); loadFlags(true); }   // the switch went off: confirm now
-      syncMap(); stopPos(); return;
+      syncMap(); stopPos(); statPaint(); return;
     }
     var prev = R; R = r;
     if (r.now) { var t = Date.parse(r.now); if (isFinite(t)) skew = t - Date.now(); }
     announce(prev, r);
     syncMap(); syncPos(); repaint();
     if (want) openId(want);
+    statPaint(); autoOpen();   // I-124
   }
   function live() { return !!(R && ((R.mine && R.mine.live) || (R.drive && R.drive.live) || (R.offers || []).some(function (x) { return x.live && x.can_take; }))); }
   // skjuts.js fastLoop asks this: {ms, tick}. tick = ask the cheap ride_stamp_get first; null = slow (the 45 s poll).
@@ -260,7 +267,7 @@
     if (x.role === "rider") R.mine = x; else if (x.role === "taker") { R.drive = x; R.offers = (R.offers || []).filter(function (o) { return o.id !== x.id; }); }
     else { var f = false; R.offers = (R.offers || []).map(function (o) { if (o.id === x.id) { f = true; return x; } return o; }); if (!f) R.offers.unshift(x); }
     if (x.role !== "taker" && R.drive && R.drive.id === x.id && x.role === "asked") R.drive = null;
-    syncMap(); syncPos(); repaint();
+    syncMap(); syncPos(); repaint(); statPaint();
     try { if (HK.fast) HK.fast(); } catch (e) {}
   }
   function refresh() { return HK.force ? HK.force() : Promise.resolve(); }
@@ -820,6 +827,64 @@
     if (p < 3) tail.appendChild(h("button", { type: "button", class: "btn btn-block rd-letgo", text: T("ride.drive.letgo"), onclick: function (e) { act(e.currentTarget, "ride_cancel", { p_id: x.id }, function (d) { if (R) R.drive = null; push(x.id); stopPos(); syncMap(); if (d) merge(d); }); } }));
   }
 
+  /* ---------- I-124 status chip (owner 15 Nov: "you click out of it and the menu's gone") ----------
+     While MY request (or the ride I drive) is live, one chip sits in the HUD row next to the "Ikväll" drop-down (#pn-ikv2).
+     It is built from the poll data only (R.mine / R.drive: status, taker_name, driver.eta_min), so after a reload it comes
+     back with the first ride_poll. Tap = the ride sheet at the current state. When a driver accepts while the sheet is
+     closed, the sheet opens by itself ONCE (localStorage key per ride + round + driver); it waits while another sheet, the
+     map pick, the Ikväll menu or the bar sheet is open. The old in-panel chip (chip() below) stays for the HUD panel. */
+  var sc = null, scSig = "", scT = 0;
+  function stat() {   // null = no chip
+    if (!on() || !R) return null;
+    var m = R.mine, d = R.drive;
+    if (m && m.live) {
+      var n = m.taker_name || (m.driver && m.driver.name) || "", p = phase(m), eta = m.driver && m.driver.eta_min, v = { name: n, m: eta };
+      var k = m.status === "open" || !n ? "wait" : p === 0 ? "taken" : p === 1 ? (eta ? "enroute.eta" : "enroute") : p === 2 ? "arrived" : p === 3 ? "picked" : "";
+      if (k) return { id: m.id, k: k.split(".")[0], t: T("ride.st." + k, v), a: T("ride.st.a." + k, v), s: k === "enroute.eta" ? T("ride.st.min", v) : "" };
+    }
+    if (d && d.live && d.status !== "open") { var rn = { name: (d.rider && d.rider.name) || "" }; return { id: d.id, k: "drive", t: T("ride.st.drive", rn), a: T("ride.st.a.drive", rn) }; }
+    return null;
+  }
+  function chipEl() {
+    var hl = document.querySelector(".hud-left"); if (!hl) return null;
+    if (sc && sc.parentNode === hl) return sc;
+    sc = h("button", { type: "button", id: "rd-stat", class: "rd-stat", hidden: "" });
+    sc.addEventListener("click", function (e) { e.stopPropagation(); var s = stat(); if (s) openId(s.id); });
+    var ikv = document.getElementById("pn-ikv2"), hx = document.getElementById("hud-x");
+    hl.insertBefore(sc, ikv && ikv.parentNode === hl ? ikv.nextSibling : hx && hx.parentNode === hl ? hx : hl.firstChild);
+    scSig = "";
+    return sc;
+  }
+  function statPaint() {
+    var s = stat(), c = s || sc ? chipEl() : null;
+    if (!c) return;
+    var sig = s ? [s.id, s.k, s.t, s.a, s.s || ""].join("|") : "";
+    if (sig === scSig) return;
+    var was = scSig.split("|")[1] || "";
+    scSig = sig; c.hidden = !s;
+    if (!s) { c.removeAttribute("data-k"); return; }
+    c.setAttribute("data-k", s.k); c.setAttribute("aria-label", s.a); c.setAttribute("data-id", String(s.id));
+    c.innerHTML = '<span class="rd-stat-d' + (was !== s.k ? " rd-pulse" : "") + '" aria-hidden="true"></span>' + ic("taxi", "rd-stat-i") +
+      '<span class="rd-stat-t">' + esc(s.t) + '</span><span class="rd-stat-s" aria-hidden="true">' + esc(s.s || "") + "</span>";
+  }
+  // the sheet opens itself once when a driver accepted MY request (not over another sheet / the map pick / a menu)
+  function busy() {
+    try { return sheetOpen() || !!pick || document.hidden || !!document.getElementById("pn-ikm") || document.body.classList.contains("barsheet-open"); } catch (e) { return true; }
+  }
+  function autoOpen() {
+    var m = R && R.mine;
+    if (!on() || !m || !m.live || m.status === "open" || !m.taker_name || phase(m) > 2) return;
+    var k = "a" + m.id + ":" + (m.round || 1) + ":" + m.taker_name, seen = lsGet("olnu.rdAuto", {}) || {};
+    if (seen[k]) return;
+    var showing = box && document.body.contains(box) && view && view.kind !== "req" && String(view.id) === String(m.id);
+    if (!showing && busy()) return;   // wait: the 1 s timer tries again when the other sheet is closed
+    var t = Date.now(); Object.keys(seen).forEach(function (x) { if (t - seen[x] > 2 * 864e5) delete seen[x]; });
+    seen[k] = t; lsSet("olnu.rdAuto", seen);
+    if (!showing) openId(m.id);
+  }
+  function statTick() { statPaint(); autoOpen(); }
+  function statStart() { if (!scT) scT = setInterval(statTick, 1000); }
+
   /* ---------- open by id (push tap / HUD / map pin) ---------- */
   var want = null;
   function openId(id) {
@@ -866,10 +931,10 @@
   document.addEventListener("visibilitychange", function () { if (!document.hidden && A && Date.now() - flagsAt > FLAGS_MS) loadFlags(true); });
 
   window.RIDE = {
-    init: function (api, hooks) { A = api; HK = hooks || {}; reg(); },
+    init: function (api, hooks) { A = api; HK = hooks || {}; reg(); statStart(); },
     onAuthed: function () { return loadFlags(true); },
     loadFlags: loadFlags, on: on, live: live, pollArgs: pollArgs, onData: onData, fast: fast, tick: stampTick,
-    off: function () { off = true; flags = {}; R = null; syncMap(); stopPos(); },
+    off: function () { off = true; flags = {}; R = null; syncMap(); stopPos(); statPaint(); },
     open: openReq, openId: openId, has: function (id) { return !!find(id); },
     chip: chip, hud: function (a) { a = String(a || ""); if (a.indexOf("rd:") === 0) return openId(a.slice(3)); return false; },
     ikvExtra: ikvExtra, taxiCard: taxiCard, T: T, PACK: P,
