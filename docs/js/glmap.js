@@ -883,7 +883,8 @@
     var name = function (o) { var g = gm, rr = meR * k * 0.9, x = c.x + o[0], y = c.y + o[1];
       try { return !!g && g.queryRenderedFeatures([[x - rr, y - rr], [x + rr, y + rr]], { layers: [L_LBL, L_PLACE].filter(function (l) { return g.getLayer(l); }) })
         .some(function (f) { return String(f.properties.id) !== String(at.id); }); } catch (e) { return false; } };
-    return (hit(L) || name(L)) && !hit(U) ? U : L;
+    if (!hit(L) && !name(L)) return L;
+    return !hit(U) && !name(U) ? U : !hit(L) ? L : !hit(U) ? U : L;   // both taken: never on an icon if one side is free of icons
   }
   function meDraw(m) {
     if (!m || !m.getSource || !m.getSource(SRC_ME)) return;
