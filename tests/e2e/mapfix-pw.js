@@ -217,16 +217,21 @@ async function run(b, mode) {
     const pick = await page.evaluate(([A, top]) => { const bars = __mf.bars(), out = [];
       bars.filter((b) => b.id !== A && b.y > 60 && b.y < (top || 220) - 6).forEach((b) => {
         const d = b.icoW / 2 + 6 + 3; if (d > 27) return;   // off its disc (+ 6 px), inside the 28 px "near" rule
-        [[1, 0], [-1, 0], [0.7, 0.7], [-0.7, 0.7], [0, 1], [0.7, -0.7], [-0.7, -0.7]].forEach((v) => { const x = b.x + v[0] * d, y = b.y + v[1] * d;
+        [[1, 0], [-1, 0], [0.7, 0.7], [-0.7, 0.7], [0, 1], [0.7, -0.7], [-0.7, -0.7], [0, -1], [-0.92, 0.38], [-0.92, -0.38], [0.38, -0.92], [-0.38, -0.92]].forEach((v) => { const x = b.x + v[0] * d, y = b.y + v[1] * d;
           if (y > (top || 220) - 6 || !__mf.free(x, y)) return;
           if (bars.some((o) => o.id !== b.id && Math.hypot(o.x - x, o.y - y) < o.icoW / 2 + 40)) return;
+          // maplight (I-115): a full marker's image has more than the disc (count badge, the friends' faces + totals chip under
+          // it): a tap on those parts opens that bar on purpose (the "part" rule). "Near" = on no part of any bar's image.
+          if (bars.some((o) => { const im = GLBARS._img(o.id), ico = im && im.parts.find((q) => q.sel === ".bar-ico"); if (!im || !ico || !o.full) return false;
+            const k = o.icoW / (ico.bb[2] - ico.bb[0]), dx = (x - o.x) / k, dy = (y - o.y) / k;
+            return im.parts.some((q) => q.sel !== ".bar-ico" && dx >= q.bb[0] - 4 && dx <= q.bb[2] + 4 && dy >= q.bb[1] - 4 && dy <= q.bb[3] + 4); })) return;
           out.push({ id: b.id, x, y, bx: b.x, by: b.y, onFree: __mf.free(b.x, b.y), d }); }); });
       return out.sort((a, b) => (b.onFree ? 1 : 0) - (a.onFree ? 1 : 0))[0] || null; }, [LOBBY, s0.top]);
     if (!s0.open || !pick) ok(false, W + "I-110 setup: another bar above the sheet with a free spot near it", { s0, pick });
     else {
       await tap(page, cdp, pick.x, pick.y); await wait(page, 1800);
       const s1 = await st(page), how = await page.evaluate(() => GLBARS.stats.tapHow);
-      ok(!s1.open && s1.ev.filter((x) => /^open/.test(x)).length === 0, W + "I-110 a tap NEAR another bar (" + pick.d + " px from its centre, off its icon) only closes the sheet (rule: " + how + ")", s1);
+      ok(!s1.open && s1.ev.filter((x) => /^open/.test(x)).length === 0, W + "I-110 a tap NEAR another bar (" + pick.d + " px from its centre, off its icon) only closes the sheet (rule: " + how + ")", { s1, pick });
       await codeOpen(page, LOBBY); await lower();
       const b2 = await barAt(page, pick.id), s2 = await st(page);
       if (!s2.open || !b2 || !(await page.evaluate((b) => __mf.free(b.x, b.y), b2))) console.log("note " + W + "the other bar's icon is not free to tap: switch guard skipped " + JSON.stringify({ open: s2.open, b2, pick }));

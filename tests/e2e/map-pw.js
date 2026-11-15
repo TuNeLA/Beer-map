@@ -45,6 +45,9 @@ async function open(b, vp, o = {}) {
       drawn(id) {
         const g = this.gm(), mk = GLBARS._marker(id); if (!mk) return { kind: "none", why: "no marker" };
         const ll = mk.getLatLng(), p = g.project([ll.lng, ll.lat]);
+        // maplight I-115: below Leaflet zoom 14.5 a bar with people can be inside ONE town-crowd lantern (no pin of its own)
+        const cr = GLBARS._crowds ? Object.values(GLBARS._crowds()).find((c) => c.ids.indexOf(String(id)) >= 0) : null;
+        if (cr) return { kind: "crowd", d: cr.r * 2, n: cr.n, x: p.x, y: p.y };
         const lays = GLBARS._layers().filter((l) => /bar-(full|dot|dote|cdot|cdote|cdotf)$/.test(l) && g.getLayer(l));
         const fs = g.queryRenderedFeatures([[p.x - 2, p.y - 2], [p.x + 2, p.y + 2]], { layers: lays }).filter((f) => String(f.properties.id) === String(id));
         const full = fs.find((f) => /bar-full$/.test(f.layer.id)), dot = fs.find((f) => !/bar-full$/.test(f.layer.id));
@@ -157,10 +160,10 @@ async function closeAll(page) {
       }
       for (const id of ids) {
         const sr = series[id]; let worst = 0, at = "", n = 0;
-        for (let i = 1; i < sr.length; i++) { const a = sr[i - 1], c = sr[i]; if (a[1] === "none" || c[1] === "none" || !(a[2] > 0) || !(c[2] > 0)) continue; n++;
+        for (let i = 1; i < sr.length; i++) { const a = sr[i - 1], c = sr[i]; if (a[1] === "none" || c[1] === "none" || a[1] === "crowd" || c[1] === "crowd" || !(a[2] > 0) || !(c[2] > 0)) continue; n++;   // (crowd = the town lantern: another marker, no size jump of the bar)
           const j = Math.abs(c[2] - a[2]) / a[2]; if (j > worst) { worst = j; at = a[0] + "→" + c[0] + " (" + a[1] + " " + a[2] + " → " + c[1] + " " + c[2] + ")"; } }
         console.log("M2 " + id + " " + sr.filter((x, i) => i % 5 === 0).map((x) => x[0] + ":" + x[1][0] + Math.round(x[2])).join(" "));
-        if (id === "x-la-parma-ludvika") ok(sr.filter((x) => x[1] !== "none").map((x) => x[0]).some((z) => z <= 12.5), "M2 La Parma is drawn down to the town view (Leaflet <= 12.5) (" + sr.filter((x) => x[1] !== "none").length + " zooms)");
+        if (id === "x-la-parma-ludvika") ok(sr.filter((x) => x[1] !== "none").map((x) => x[0]).some((z) => z <= 12.5), "M2 La Parma is drawn down to the town view (Leaflet <= 12.5; there as its own pin or inside the town lantern) (" + sr.filter((x) => x[1] !== "none").length + " zooms)");
         ok(n >= 20 && worst <= 0.06, "M2 " + id + ": no size jump > 6 % between 0.1 zoom steps (" + n + " pairs, worst " + (worst * 100).toFixed(1) + " % at " + at + ")");
       }
       const fade = await page.evaluate(() => { const g = __mpw.gm(); return g._fadeDuration != null ? g._fadeDuration : (g.style && g.style.fadeDuration); });
@@ -310,7 +313,12 @@ async function closeAll(page) {
         console.log("TZ " + vp.width + " z" + z + " " + JSON.stringify(d));
         const c = await page.evaluate(() => { const e = document.querySelector(".leaflet-mypins-pane .mp-pin"); const r = e ? e.getBoundingClientRect() : null; return r ? { x: Math.max(0, r.left - 60), y: Math.max(0, r.top - 60), width: Math.min(innerWidth - Math.max(0, r.left - 60), r.width + 120), height: r.height + 120 } : null; });
         await page.screenshot(Object.assign({ path: shotDir + "map-" + TAG + "-tz-" + vp.width + "-z" + z + ".png" }, c ? { clip: c } : {}));
-        ok(d.chips.length > 0 && d.bad.length === 0, "town zoom " + vp.width + " z" + z + ": a bar with friends = one visible pill, nothing peeking out behind it (" + JSON.stringify(d.bad) + ")");
+        // maplight I-115: when the bar is inside a town-crowd lantern, the lantern (friends' faces under it) is that ONE marker: no chip over it
+        const lant = await page.evaluate(() => { const cs = Object.values(GLBARS._crowds ? GLBARS._crowds() : {}).filter((c) => c.nf > 0), box = __map.getContainer().getBoundingClientRect();
+          const over = cs.filter((c) => { const p = __map.latLngToContainerPoint(c.ll), x = p.x + box.left, y = p.y + box.top;
+            return [...document.querySelectorAll(".leaflet-mypins-pane .mp-pin")].some((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && x > r.left - 8 && x < r.right + 8 && y > r.top - 8 && y < r.bottom + 8; }); }).length;
+          return { n: cs.length, over }; });
+        ok((d.chips.length > 0 || lant.n > 0) && lant.over === 0 && d.bad.length === 0, "town zoom " + vp.width + " z" + z + ": a bar with friends = one visible pill (the chip, or the town lantern with the faces), nothing peeking out behind it (" + JSON.stringify(d.bad) + ", chips " + d.chips.length + ", lanterns " + JSON.stringify(lant) + ")");
       }
       ok(errs.length === 0, "town zoom " + vp.width + " no page errors " + JSON.stringify(errs.slice(0, 3)));
       await closeCounted(ctx, page, "map-" + TAG + "-tz");
