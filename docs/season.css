@@ -1,0 +1,85 @@
+/* PintsNow — SEASONS (lane seasons, owner 15 Nov 2026, I-115 / I-117). The ÖL! button dress (js/seasondress.js), the season
+   button colours, GLÖGG, the tap effect canvas (js/seasontap.js) and the map season canvas (js/seasonsky.js).
+   Colours are tokens (custom properties) here; no raw hex in rules. Contrast of the label on the season colour (middle stop):
+   Christmas cream on red 5.6:1 · New Year gold on navy 9.6:1 · Valborg ink on fire 5.7:1 · Midsummer ink on green 6.8:1 ·
+   Autumn ink on rust 5.5:1 (all >= 4.5:1). */
+:root{
+  --ss-xmas-1: #ff5a5f; --ss-xmas-2: #c4162b; --ss-xmas-3: #6e0714; --ss-xmas-ink: #fff4e2; --ss-xmas-rim: #ffe2a0; --ss-xmas-glow: rgba(255,70,70,.35);
+  --ss-ny-1: #4a5cb0; --ss-ny-2: #1d2a64; --ss-ny-3: #0b1230; --ss-ny-ink: #ffd66b; --ss-ny-rim: #f2c14e; --ss-ny-glow: rgba(242,193,78,.4);
+  --ss-vb-1: #ffb15a; --ss-vb-2: #f0601e; --ss-vb-3: #9c2a06; --ss-vb-ink: #2a0b00; --ss-vb-rim: #fff1d6; --ss-vb-glow: rgba(255,110,30,.45);
+  --ss-ms-1: #c8f07a; --ss-ms-2: #5cbf3a; --ss-ms-3: #2a7a1e; --ss-ms-ink: #0d2806; --ss-ms-rim: #fffbe0; --ss-ms-glow: rgba(150,230,90,.4);
+  --ss-au-1: #ffb766; --ss-au-2: #e2681c; --ss-au-3: #8a3006; --ss-au-ink: #2a0f00; --ss-au-rim: #ffe9c8; --ss-au-glow: rgba(240,120,30,.42);
+  --ss-dark: rgba(10,15,28,.9); --ss-shade: rgba(0,0,0,.35);
+  /* glögg in the glass while you wait: deep red wine, a warm spice line on top (no foam) */
+  --ss-glogg-deep: #5a0612; --ss-glogg: #a3192c; --ss-glogg-top: #e8a050; --ss-glogg-line: #f6d7a0; --ss-glass: #2b1416; --ss-glass-2: #0e0405;
+  /* ring + edge of the count burst per family */
+  --ss-ring-xmas: rgba(255,90,90,.9); --ss-ring-ny: rgba(242,193,78,.95); --ss-ring-ms: rgba(140,220,90,.9); --ss-ring-vb: rgba(255,140,50,.9);
+  --ss-ring-sp: rgba(170,230,110,.9); --ss-ring-au: rgba(240,120,30,.9);
+  --ss-edge-xmas: rgba(220,40,50,.5); --ss-edge-ny: rgba(242,193,78,.5); --ss-edge-ms: rgba(120,200,70,.45); --ss-edge-vb: rgba(255,110,30,.55);
+  --ss-edge-sp: rgba(150,220,90,.45); --ss-edge-au: rgba(230,100,20,.5)
+}
+
+/* ---------- the dress: one piece on the top-right rim, or a band across the top rim (crown, snow) ---------- */
+.ss-dress{position:absolute;z-index:4;left:var(--ss-bx,0);top:var(--ss-by,0);width:var(--ss-bw,106px);height:var(--ss-bw,106px);pointer-events:none;
+  transition:transform var(--m-1,90ms) var(--e-out,ease-out)}
+.ss-dress[hidden]{display:none}
+.ss-dress i{position:absolute;display:block;font-style:normal;pointer-events:none}
+.ss-dress svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 2px var(--ss-shade))}
+.ss-d{width:48px;height:42px;right:-15px;top:-17px;transform:rotate(16deg);transform-origin:30% 90%}
+.ss-d-cap{width:50px;height:44px;right:-14px;top:-16px;transform:rotate(14deg)}
+.ss-d-leaves{width:50px;height:44px;right:-16px;top:-14px;transform:rotate(4deg)}
+.ss-d-party{right:-10px;top:-24px;transform:rotate(22deg)}
+.ss-top{left:50%;top:-14px;width:112%;height:34px;transform:translateX(-50%)}
+.ss-top-snow{top:-12px;width:106%;height:32px}
+/* pressed: the piece goes down with the button; after the tap it hops once */
+.beer-wrap:has(#btn-beer:active:not(:disabled)) .ss-dress{transform:translateY(3px) scale(.95)}
+.ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-top-crown{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
+@keyframes ssHop{0%{translate:0 0}35%{translate:0 -9px}62%{translate:0 1px}100%{translate:0 0}}
+/* "Ångra" and the wait: the piece stays out of the way (it sits on the rim, above the ring) */
+.beer-wrap.ud .ss-dress,.beer-wrap.cd .ss-dress{z-index:4}
+
+/* ---------- the button colour per season (at rest only: the wait and "Ångra" keep their own look) ---------- */
+body.ss-c-xmas #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-xmas-1);--ss-2:var(--ss-xmas-2);--ss-3:var(--ss-xmas-3);--ss-ink:var(--ss-xmas-ink);--ss-rim:var(--ss-xmas-rim);--ss-glow:var(--ss-xmas-glow)}
+body.ss-c-newyear #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-ny-1);--ss-2:var(--ss-ny-2);--ss-3:var(--ss-ny-3);--ss-ink:var(--ss-ny-ink);--ss-rim:var(--ss-ny-rim);--ss-glow:var(--ss-ny-glow)}
+body.ss-c-valborg #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-vb-1);--ss-2:var(--ss-vb-2);--ss-3:var(--ss-vb-3);--ss-ink:var(--ss-vb-ink);--ss-rim:var(--ss-vb-rim);--ss-glow:var(--ss-vb-glow)}
+body.ss-c-midsummer #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-ms-1);--ss-2:var(--ss-ms-2);--ss-3:var(--ss-ms-3);--ss-ink:var(--ss-ms-ink);--ss-rim:var(--ss-ms-rim);--ss-glow:var(--ss-ms-glow)}
+body.ss-c-autumn #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-au-1);--ss-2:var(--ss-au-2);--ss-3:var(--ss-au-3);--ss-ink:var(--ss-au-ink);--ss-rim:var(--ss-au-rim);--ss-glow:var(--ss-au-glow)}
+body[class*="ss-c-"] #btn-beer:not(.cooldown):not(.soon){background:radial-gradient(circle at 35% 30%,var(--ss-1) 0%,var(--ss-2) 45%,var(--ss-3) 100%) !important;
+  border-color:var(--ss-rim) !important;box-shadow:0 0 0 3px var(--ss-dark),0 8px 26px var(--ss-glow),0 0 34px var(--ss-glow),inset 0 -8px 16px var(--ss-shade) !important}
+body[class*="ss-c-"] #btn-beer:not(.cooldown):not(.soon) #beer-label{color:var(--ss-ink) !important}
+body.ss-c-xmas #btn-beer:not(.cooldown):not(.soon) #beer-label,body.ss-c-newyear #btn-beer:not(.cooldown):not(.soon) #beer-label{text-shadow:0 2px 0 var(--ss-shade),0 0 10px var(--ss-shade)}
+body.mn-lask[class*="ss-c-"] #btn-beer:not(.cooldown):not(.soon){background:var(--ss-2) !important}
+
+/* ---------- GLÖGG (1 - 26 Dec): a small steaming mug above the word; still one drink ---------- */
+#btn-beer>.ss-mug{position:absolute;z-index:2;left:50%;top:17px;width:30px;height:22px;transform:translateX(-50%);color:var(--ss-xmas-ink);pointer-events:none}
+.ss-mug[hidden],#btn-beer.cooldown .ss-mug,#btn-beer.soon .ss-mug{display:none}
+.ss-mug svg{display:block;width:100%;height:100%}
+body.ss-glogg #btn-beer:not(.cooldown):not(.soon) #beer-label{font-size:23px !important;letter-spacing:0 !important;padding-top:22px}
+@media (max-width:380px){ body.ss-glogg #btn-beer:not(.cooldown):not(.soon) #beer-label{font-size:20px !important;padding-top:20px} body.ss-glogg #btn-beer>.ss-mug{top:14px} }
+/* the wait in the glögg month: the glass fills with glögg (dark red) under a warm spice line */
+body.ss-glogg .beer-btn.cooldown:not(.undo){background:
+    linear-gradient(102deg,transparent 20%,rgba(255,255,255,.09) 26%,transparent 33%),
+    linear-gradient(to top,var(--ss-glogg-deep) 0,var(--ss-glogg) calc(var(--fill,0%) - 5px),var(--ss-glogg-top) calc(var(--fill,0%) - 4px),var(--ss-glogg-line) calc(var(--fill,0%) + 1px),transparent calc(var(--fill,0%) + 1.5px)),
+    radial-gradient(circle at 35% 30%,var(--ss-glass),var(--ss-glass-2) 75%) !important;background-origin:border-box !important;background-repeat:no-repeat !important}
+
+/* ---------- the tap effect canvas: inside the burst, after the dark backdrop = behind the number ---------- */
+.ss-tap{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none}
+.ss-tap.ss-tap-out{z-index:2399}
+.pm-sub .ss-mark{display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:-2px}
+.pm-burst[data-fam="xmas"] .pm-ring{border-color:var(--ss-ring-xmas)}
+.pm-burst[data-fam="newyear"] .pm-ring{border-color:var(--ss-ring-ny)}
+.pm-burst[data-fam="midsummer"] .pm-ring{border-color:var(--ss-ring-ms)}
+.pm-burst[data-fam="valborg"] .pm-ring{border-color:var(--ss-ring-vb)}
+.pm-burst[data-fam="spring"] .pm-ring{border-color:var(--ss-ring-sp)}
+.pm-burst[data-fam="autumn"] .pm-ring{border-color:var(--ss-ring-au)}
+.pm-burst[data-fam="xmas"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-xmas),inset 0 0 160px 60px var(--ss-edge-xmas)}
+.pm-burst[data-fam="newyear"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-ny),inset 0 0 160px 60px var(--ss-edge-ny)}
+.pm-burst[data-fam="midsummer"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-ms),inset 0 0 160px 60px var(--ss-edge-ms)}
+.pm-burst[data-fam="valborg"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-vb),inset 0 0 160px 60px var(--ss-edge-vb)}
+.pm-burst[data-fam="spring"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-sp),inset 0 0 160px 60px var(--ss-edge-sp)}
+.pm-burst[data-fam="autumn"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-au),inset 0 0 160px 60px var(--ss-edge-au)}
+
+@media (prefers-reduced-motion:reduce){
+  .ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-top-crown{animation:none}
+  .beer-wrap:has(#btn-beer:active) .ss-dress{transform:none}
+}
