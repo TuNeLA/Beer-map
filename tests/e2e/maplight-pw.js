@@ -234,10 +234,10 @@ async function runGL(b) {
     await view(page, LUD, 13, 2500);
     const tw = await page.evaluate(([a, b, c, d]) => { const cs = Object.values(GLBARS._crowds ? GLBARS._crowds() : {}), v = GLBARS._view() || [];
       return { cs: cs.map((x) => ({ ids: x.ids.slice().sort(), n: x.n, lv: x.lv })), own: v.filter((x) => [a, b, c].includes(x.id) && x.shown).map((x) => x.id), grek: v.some((x) => x.id === d),
-        drawn: __gm().getLayer("olnu-bar-crowd") ? __gm().queryRenderedFeatures({ layers: ["olnu-bar-crowd"] }).length : -1, mp: GLBARS.shown ? GLBARS.shown(a) : null }; }, [PARMA, PIT, LOBBY, GREK]);
+        drawn: __gm().getLayer("olnu-bar-crowd") ? (GLBARS._feats() || []).filter((f) => f.t === 3).length : -1, mp: GLBARS.shown ? GLBARS.shown(a) : null }; }, [PARMA, PIT, LOBBY, GREK]);
     const one = tw.cs.find((x) => x.ids.includes(PARMA));
     ok(tw.cs.length === 1 && one && one.ids.length === 3 && one.n === 29 && one.lv === 3, "town view (z13): La Parma + Pitchers + Lobbybaren = ONE lantern, 16 + 9 + 4 = 29 people, step 3", tw);
-    ok(tw.drawn >= 1 && tw.own.length === 0 && tw.mp === true, "town view: the lantern is drawn; its bars have no pin of their own (and count as drawn for mypins)", tw);
+    ok(tw.drawn >= 1 && tw.own.length === 0 && tw.mp === true, "town view: the lantern is in the GL bar data (layer olnu-bar-crowd); its bars have no pin of their own (and count as drawn for mypins)", tw);
     ok(tw.grek, "town view: a bar that stands alone keeps its own pin (Grekiska)", tw);
     await page.screenshot({ path: require("./env.js").OUT + "maplight-town-z13.png" }).catch(() => {});
     await view(page, LUD, 14.6, 2000);

@@ -574,6 +574,7 @@
         m.setLayoutProperty(L_LBL, "icon-offset", JSON.parse(JSON.stringify(oe).replace('["get","oi"]', '["get","lo"]'))); } catch (e) {}
     }
     clSplit(m, cfeats);   // ds30 + a1map I-27
+    syncZ = z; try { if (!meAt && meLL) meCov = meCover(m); } catch (e) {}   // maplight: the icons just drawn decide where I stand
     meDraw(m); meCheck();   // a1map I-28 + hotfix1 I-63 (re-check after this redraw)
     var sig = feats.map(function (f) { var p = f.properties; return p.id + p.img + p.di + p.t + p.sz + p.e + p.li + p.lo + p.bf + p.b2 + p.oi; }).join("|");
     if (sig !== lastSig) {
@@ -817,7 +818,7 @@
      (never on the people count at the right, never on the friends row under it). No ring round the bar icon any more. History: a1map I-28 put the dot under the icons, hotfix1
      I-63 added the ring only when covered. app-map.js showMe() calls GLBARS.me(); the DOM me-dot is hidden while GL draws.
      meCheck(): after the bars redraw, on moveend and on a new position; one debounced check, no per-frame work. */
-  var SRC_ME = "olnu-me", L_ME = "olnu-me-pin", meLL = null, meAt = null, meSig = "", meCov = null, meChkT = 0, meOffSig = "", meR = 18, meBot = 28, meVerT = 0, meTry = 0;
+  var SRC_ME = "olnu-me", L_ME = "olnu-me-pin", meLL = null, meAt = null, meSig = "", meCov = null, meChkT = 0, meOffSig = "", meR = 18, meBot = 28, meVerT = 0, meTry = 0, syncZ = -1;
   function L1(sv, en) { return window.I18N && window.I18N.lang === "en" ? en : sv; }
   function meImage(m, tag) {   // my marker image: "a" = my character, "d" = the dot; with or without the "Du" tag
     var P = art(); if (!P || !P.meOps) return "";
@@ -856,6 +857,7 @@
     clearTimeout(meChkT);
     meChkT = setTimeout(function () {
       if (!on || !gm || !layersReady || !gm.getSource(SRC_ME)) return;
+      if (Math.abs(map.getZoom() - syncZ) > 0.01) { lastSig = ""; sync(); return; }   // the icons are from another zoom (town lanterns!): redraw them first (sync checks me again)
       var c = null; try { c = meAt ? null : meCover(gm); } catch (e) {}
       var a = c ? c.id : "", b = meCov ? meCov.id : "";
       meCov = c;
@@ -901,6 +903,7 @@
       if (img) f.push({ type: "Feature", geometry: { type: "Point", coordinates: [ll[1], ll[0]] }, properties: { k: at ? "at" : "me", img: img, sz: at ? at.sz || 1 : 1, at: at ? String(at.id) : "" } });
     }
     var os = off.join(), sig = JSON.stringify(f);
+    try { var ord = m.style && m.style.order; if (ord && ord.length && ord[ord.length - 1] !== L_ME && m.getLayer(L_ME)) m.moveLayer(L_ME); } catch (e) {}   // a layer added later (map3d.js arena): I stay on top
     try {
       if (os !== meOffSig && m.getLayer(L_ME)) { meOffSig = os; m.setPaintProperty(L_ME, "icon-translate", off); }
       if (sig !== meSig) { meSig = sig; m.getSource(SRC_ME).setData({ type: "FeatureCollection", features: f }); meTry = 0; meVerify(m, sig); }
