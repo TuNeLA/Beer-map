@@ -871,8 +871,6 @@
         layout: { "icon-image": ["get", "img"], "icon-anchor": "center", "icon-size": ICON_Z, "icon-allow-overlap": true, "icon-ignore-placement": true,
           "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1, "icon-translate": [0, 0] } }); meOffSig = ""; }
       else { var ls = (m.getStyle().layers || []); if (ls.length && ls[ls.length - 1].id !== L_ME) m.moveLayer(L_ME); }   // a layer that came later: my marker stays the top layer
-      if (!m.__pnMeTop) { m.__pnMeTop = 1; m.on("styledata", function () {   // a layer added later (map3d.js 3D arenas): back on top (no loop: then it is last)
-        try { var o = m.style && (m.style.order || m.style._order); if (o && o.length && o[o.length - 1] !== L_ME && m.getLayer(L_ME)) m.moveLayer(L_ME); } catch (e) {} }); }
     } catch (e) { try { console.warn("olnu glmap me", e && e.message); } catch (x) {} }
   }
   // where I stand at an icon (screen px from its centre): on its LEFT; when another icon or a bar / place NAME is in the way
@@ -905,7 +903,6 @@
       if (img) f.push({ type: "Feature", geometry: { type: "Point", coordinates: [ll[1], ll[0]] }, properties: { k: at ? "at" : "me", img: img, sz: at ? at.sz || 1 : 1, at: at ? String(at.id) : "" } });
     }
     var os = off.join(), sig = JSON.stringify(f);
-    try { var ord = m.style && (m.style.order || m.style._order); if (ord && ord.length && ord[ord.length - 1] !== L_ME && m.getLayer(L_ME)) m.moveLayer(L_ME); } catch (e) {}   // a layer added later (map3d.js arena): I stay on top
     try {
       if (os !== meOffSig && m.getLayer(L_ME)) { meOffSig = os; m.setPaintProperty(L_ME, "icon-translate", off); }
       if (sig !== meSig) { meSig = sig; m.getSource(SRC_ME).setData({ type: "FeatureCollection", features: f }); meTry = 0; meVerify(m, sig); }

@@ -135,7 +135,7 @@ async function runGL(b) {
     const rings = () => page.evaluate(() => ({ n: document.querySelectorAll(".bl-ring").length, total: BARLIGHT.stats.rings }));
     const r0 = await rings();
     S.checkins = [CI(BAR.pitch, PIT, "Pitchers", { who: "Kalle K" })]; await poll(page, 300);
-    await page.waitForFunction((t) => BARLIGHT.stats.rings > t, r0.total, { timeout: 6000 }).catch(() => {});
+    await page.waitForFunction((t) => BARLIGHT.stats.rings > t && document.querySelector(".bl-ring>i"), r0.total, { timeout: 6000, polling: 50 }).catch(() => {});
     const r1 = await rings(), an = await page.evaluate(() => { const i = document.querySelector(".bl-ring>i"); return i ? getComputedStyle(i).animationName + "|" + getComputedStyle(i).animationDuration : ""; });
     ok(r1.total === r0.total + 1 && r1.n === 1, "ring: a check-in that arrives in the poll = one ring at that bar", [r0, r1]);
     ok(/blRing/.test(an) && /2s/.test(an), "ring: 2 s, once (CSS, transform + opacity)", an);
@@ -174,7 +174,9 @@ async function runGL(b) {
       // the icon my marker stands beside: the bar's own pin, its town lantern, or what GLBARS says covers my position (a cluster)
       const cv = m.cov || m.at, k = m.px && m.r ? m.px.r / m.r : 1, q = cv ? __map.latLngToContainerPoint(cv.ll) : null;
       const ic = bar && bar.shown ? { x: bar.x, y: bar.y, r: bar.icoW / 2 } : cp ? { x: cp.x, y: cp.y, r: c.r * 0.75 } : q ? { x: q.x, y: q.y, r: cv.r * (cv.sz || 1) * k } : null;
-      return { top: ids[ids.length - 1], drawn, px: m.px, img: m.img, k: m.k, cov: m.cov && m.cov.id, ic, gap: ic && m.px ? Math.hypot(m.px.x - ic.x, m.px.y - ic.y) - ic.r - m.px.r : null,
+      // the top layer = the last one without a style slot (map3d's 3D houses / arenas sit in the slot "middle", under the labels)
+      const own = g.getStyle().layers.filter((l) => !l.slot).map((l) => l.id);
+      return { top: own[own.length - 1], drawn, px: m.px, img: m.img, k: m.k, cov: m.cov && m.cov.id, ic, gap: ic && m.px ? Math.hypot(m.px.x - ic.x, m.px.y - ic.y) - ic.r - m.px.r : null,
         dom: [...document.querySelectorAll(".me-dot")].filter((e) => e.offsetParent && getComputedStyle(e).display !== "none").length, old: ["olnu-me-dot", "olnu-me-ring", "olnu-me-du"].filter((l) => g.getLayer(l)) }; }, id || null);
     for (const z of [13.5, 16, 17.5]) {
       await meAt(BAR.pitch, z);
@@ -232,6 +234,7 @@ async function runGL(b) {
     const opAt = (z) => { const e = ht.op, st = e.slice(3); let v = st[1]; for (let i = 0; i < st.length; i += 2) { if (z >= st[i]) v = st[i + 1]; if (i + 2 < st.length && z >= st[i] && z < st[i + 2]) { v = st[i + 1] + (st[i + 3] - st[i + 1]) * (z - st[i]) / (st[i + 2] - st[i]); break; } } return v; };
     ok(Array.isArray(ht.op) && opAt(13.6) === 1 && opAt(14.6) === 0 && opAt(16) === 0, "heat: full until GL zoom 13.6, hidden from GL zoom 14.6 (Leaflet 15.6)", ht.op);
     await view(page, LUD, 13, 2500);
+    await page.waitForFunction(() => Object.keys(GLBARS._crowds ? GLBARS._crowds() : {}).length > 0, null, { timeout: 8000 }).catch(() => {});
     const tw = await page.evaluate(([a, b, c, d]) => { const cs = Object.values(GLBARS._crowds ? GLBARS._crowds() : {}), v = GLBARS._view() || [];
       return { cs: cs.map((x) => ({ ids: x.ids.slice().sort(), n: x.n, lv: x.lv })), own: v.filter((x) => [a, b, c].includes(x.id) && x.shown).map((x) => x.id), grek: v.some((x) => x.id === d),
         drawn: __gm().getLayer("olnu-bar-crowd") ? (GLBARS._feats() || []).filter((f) => f.t === 3).length : -1, mp: GLBARS.shown ? GLBARS.shown(a) : null }; }, [PARMA, PIT, LOBBY, GREK]);
@@ -270,8 +273,10 @@ async function runGL(b) {
       const t = await page.evaluate(async () => {
         const B = window.BARLIGHT, out = {}, time = (fn, n) => { const t0 = performance.now(); for (let i = 0; i < n; i++) fn(); return +((performance.now() - t0) / n).toFixed(2); };
         out.syncMs = time(() => GLBARS.sync(), 20);
-        out.renderMs = time(() => PN.render(), 12);
-        out.layers = __gm().getStyle().layers.length;
+        const keep = window.BARLIGHT; let on = 1e9, offMs = 1e9;
+        for (let r = 0; r < 3; r++) { on = Math.min(on, time(() => PN.render(), 8)); window.BARLIGHT = null; offMs = Math.min(offMs, time(() => PN.render(), 8)); window.BARLIGHT = keep; }
+        PN.render(); out.renderMs = +on.toFixed(2); out.renderNoFeedMs = +offMs.toFixed(2);   // the same page with and without the light feed
+        out.layers = __gm().getStyle().layers.filter((l) => /^pn-light/.test(l.id)).length;
         if (B && B.on()) {
           const lines = window.__PN_ROADS ? window.__PN_ROADS().map((c) => ({ c, z: 16 })) : [];
           if (lines.length) out.piecesMs = time(() => B._pieces(lines, { lat: 60.15124, lng: 15.18797 }), 20);
@@ -293,8 +298,8 @@ async function runGL(b) {
     console.log("PERF 4x CPU, light off (kill switch, same page)     : " + JSON.stringify(k));
     ok((t.piecesMs == null || t.piecesMs < 25) && t.syncMs < 40 && t.spreadStepMs < 12 && t.setMs < 5, "4x CPU: street pieces of one bar < 25 ms (" + t.piecesMs + "), one GL bar pass < 40 ms (" + t.syncMs + "), one spread step < 12 ms (" + t.spreadStepMs + "), the feed of one poll < 5 ms (" + t.setMs + ")", t);
     ok(t.idleFrames === 0, "4x CPU: idle = no light frame work", t);
-    ok(t.layers - k.layers === 4, "layers: the light adds 4 GL layers (2 street lines + 2 halo circles)", [t.layers, k.layers]);
-    ok(t.renderMs - k.renderMs < 8, "4x CPU: the light adds < 8 ms to the app redraw of one poll (" + t.renderMs + " with, " + k.renderMs + " ms kill switch)", [t.renderMs, k.renderMs]);
+    ok(t.layers === 4 && k.layers === 0, "layers: the light adds 4 GL layers (2 street lines + 2 halo circles); none with the kill switch", [t.layers, k.layers]);
+    ok(t.renderMs - t.renderNoFeedMs < 8, "4x CPU: the light feed adds < 8 ms to the app redraw of one poll (" + t.renderMs + " ms with, " + t.renderNoFeedMs + " ms without, same page, best of 3)", t);
   }
 }
 async function runFB(b) {
