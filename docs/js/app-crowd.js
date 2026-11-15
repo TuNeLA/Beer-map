@@ -16,13 +16,14 @@
   function skalCount() { return PN.skalCount.apply(null, arguments); }
   function skalBtn() { return PN.skalBtn.apply(null, arguments); }
   function beerPopup() { return PN.beerPopup.apply(null, arguments); }
+  function tl() { return PN.tl.apply(null, arguments); }
   function doCheckin() { return PN.doCheckin.apply(null, arguments); }
   function whoOf() { return PN.whoOf.apply(null, arguments); }
   function myBeer() { return PN.myBeer.apply(null, arguments); }
   function refresh() { return PN.refresh.apply(null, arguments); }
   function hidePin() { return PN.hidePin.apply(null, arguments); }
   PN.put({
-    skalAlert: skalAlert, beerById: beerById, skalCall: skalCall, crowdSort: crowdSort, openCrowd: openCrowd,
+    skalAlert: skalAlert, beerById: beerById, skalCall: skalCall, openCrowd: openCrowd, folkWallHTML: folkWallHTML,
     showBeer: showBeer
   });
   // </split:imports>
@@ -68,13 +69,14 @@
       return r;
     });
   }
-  function doSkal(button) {
-    if (window.DEMO && window.DEMO.skal(button)) return;   // 🎞️ visningsläge: never sent
+  // quiet (folkhar menu): no clink, one short buzz, no pop (no celebration). Resolves true when the skål went through.
+  function doSkal(button, quiet) {
+    if (window.DEMO && window.DEMO.skal(button)) return Promise.resolve(false);   // 🎞️ visningsläge: never sent
     var id = button.getAttribute("data-skal"), b = beerById(id);
-    if (!b || b.i_skaled || button.disabled) return;
+    if (!b || b.i_skaled || button.disabled) return Promise.resolve(false);
     window.FX.unlock();
     button.disabled = true; button.classList.add("busy");
-    skalCall(b, false).then(function (r) {
+    return skalCall(b, false).then(function (r) {
       button.classList.remove("busy");
       if (r.error) {
         var c = U.errCode(r.error);
@@ -82,7 +84,7 @@
         if (c === "own_beer") { toast(t("skalOwn"), { err: true }); button.disabled = true; }
         else if (c === "beer_not_found") { toast(t("skalGone"), { err: true }); refresh(); }
         else toast(errMsg(r.error), { err: true });
-        return;
+        return false;
       }
       if (r.pin) b = r.pin;
       var d = parseData(r.data);
@@ -91,11 +93,20 @@
       document.querySelectorAll('.skal-btn[data-skal="' + String(id).replace(/["\\]/g, "") + '"]').forEach(function (x) {
         x.disabled = true; x.textContent = t("skaled", n);
       });
-      if (!d.already) {
+      if (!d.already && quiet) window.FX.vibrate(18);
+      else if (!d.already) {
         window.FX.sound.clink(); window.FX.vibrate([18, 40, 18]);
         button.classList.add("pop");
       }
+      return true;
     });
+  }
+  // "Visa alla" (bar popup): the full crowd list of one bar
+  function crowdAt(id) {
+    var agg = window.BARS.assign(PN.s.beers).perBar[id];
+    if (window.DEMO) try { agg = window.DEMO.crowd(id, agg); } catch (e) {}   // 🎞️ visningsläge   // (rows, not views)
+    map.closePopup();
+    if (agg && agg.beers.length) openCrowd(agg.beers, agg.bar);
   }
   map.on("popupopen", function (e) {
     var root = e.popup.getElement(); if (!root) return;
@@ -109,13 +120,7 @@
       x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); doCheckin(x); });
     });
     root.querySelectorAll(".pp-all").forEach(function (x) {
-      x.addEventListener("click", function (ev) {
-        ev.preventDefault(); ev.stopPropagation();
-        var id = x.getAttribute("data-crowd"), agg = window.BARS.assign(PN.s.beers).perBar[id];
-        if (window.DEMO) try { agg = window.DEMO.crowd(id, agg); } catch (e) {}   // 🎞️ visningsläge   // (rows, not views)
-        map.closePopup();
-        if (agg && agg.beers.length) openCrowd(agg.beers, agg.bar);
-      });
+      x.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); crowdAt(x.getAttribute("data-crowd")); });
     });
   });
 
@@ -157,6 +162,7 @@
         var sub = t("since", U.timeHM(b.created_at)) + (b.precise ? "" : " · " + t("crowdApprox"));
         var main = el("button", { type: "button", class: "cr-main", "aria-label": t("crowdShow", whoOf(b)), onclick: function () { showBeer(b); } }, [
           el("span", { class: "cr-name", text: whoOf(b) }),
+          b.friend_name && !b.is_mine ? el("span", { class: "cr-g pn-fh-gl", html: fhLabel(fhGroups(b)) }) : null,   // folkhar: dot + shared group
           el("span", { class: "cr-sub", text: sub })
         ]);
         var right;
@@ -174,6 +180,185 @@
       body.appendChild(el("p", { class: "muted crowd-note", text: t("crowdTap") }));
     });
   }
+  /* ---------- folkhar: "Folk här" = the face wall + the tap menu (I-120 / I-122, design4 D "Ansiktsväggen") ----------
+     Order = crowdSort (me, friends, arrival; NEVER by count). Strangers: no name, no group, no number (as the old list).
+     Group label = dot + the first group from shared_groups (0524: only groups that I AND the person are in) + "+N";
+     none (or an old server without the field) = "Vän". Count badge = tonight's drinks of a named friend: plain info,
+     neutral style, no glow, also in store builds (counts are information there too: mycount.js B, ds51 friend rows).
+     Tap a face = a small menu (Skåla, Visa profil, Skriv till X). After a skål: "Skålat med X", closes after ~1 s, no fx. */
+  function fhIc(n, c) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n, "pi " + (c || "")) : ""; } catch (e) { return ""; } }
+  function fhGroups(b) {
+    var g = b && Array.isArray(b.shared_groups) ? b.shared_groups : [];
+    return g.filter(function (x) { return x && x.id != null && x.name; });
+  }
+  function fhCol(g) { try { return window.GPAGE && window.GPAGE.colorOf ? window.GPAGE.colorOf(g) : 0; } catch (e) { return 0; } }
+  function fhLabel(gs) {
+    if (!gs.length) return '<span class="pn-fh-g pn-fh-van"><i></i>' + U.esc(tl("Vän", "Friend")) + "</span>";
+    return '<span class="pn-fh-g sa-gcol-' + fhCol(gs[0]) + '"><i></i>' + U.esc(gs[0].name) + (gs.length > 1 ? "\u00a0<em>+" + (gs.length - 1) + "</em>" : "") + "</span>";
+  }
+  function fhAv(b, name) {   // pnds.js paintFav paints the character into it; no saved character = the initial
+    return '<span class="pn-fh-av av-ph"' + (b.is_mine ? ' data-pnme="1"' : ' data-pnav="' + U.esc(name) + '"') + ">" + U.esc(String(name).charAt(0).toUpperCase()) + "</span>";
+  }
+  function fhDone() { return '<span class="pn-fh-done" aria-hidden="true">' + fhIc("cheers") + "</span>"; }
+  function fhCount(n) { return tl(n + " öl ikväll", n + (n === 1 ? " drink tonight" : " drinks tonight")); }
+  function fhTile(b) {
+    var me = !!b.is_mine, name = me ? tl("Du", "You") : b.friend_name, gs = me ? [] : fhGroups(b), n = U.drinks(b), sk = skalCount(b);
+    var face = '<span class="pn-fh-face">' + fhAv(b, name) + (!me && n > 0 ? '<span class="pn-fh-cnt" aria-hidden="true">' + fhIc("beer") + "<b>" + n + "</b></span>" : "") +
+      (b.i_skaled ? fhDone() : "") + "</span>";
+    if (me) return '<div class="pn-fh-p pn-fh-me">' + face + '<span class="pn-fh-n">' + U.esc(name) + "</span>" +
+      (sk ? '<span class="pn-fh-g pn-fh-mysk">' + fhIc("cheers") + " " + U.esc(tl(sk + " skål", sk + " cheers")) + "</span>" : "") + "</div>";
+    var aria = name + ", " + (gs.length ? gs[0].name : tl("Vän", "Friend")) + (n > 0 ? ", " + fhCount(n) : "");
+    return '<button type="button" class="pn-fh-p pn-fh-fr" data-fh="' + U.esc(String(b.id)) + '" aria-haspopup="dialog" aria-label="' + U.esc(aria) + '">' + face +
+      '<span class="pn-fh-n">' + U.esc(name) + "</span>" + fhLabel(gs) + "</button>";
+  }
+  function fhStranger(b) {
+    return '<button type="button" class="pn-fh-s" data-fh="' + U.esc(String(b.id)) + '" aria-haspopup="dialog" aria-label="' +
+      U.esc(b.i_skaled ? tl("Du har skålat med någon här", "You said cheers to someone here") : tl("Skåla med någon här", "Say cheers to someone here")) + '">' +
+      fhIc("user") + (b.i_skaled ? fhDone() : "") + "</button>";
+  }
+  function fhMore(n, barId) {   // "+N" after the strangers: opens the full list when the bar is known
+    return barId != null ? '<button type="button" class="pn-fh-more" data-fh-all="' + U.esc(barId) + '" aria-label="' + U.esc(tl("Visa alla", "Show all")) + '">+' + n + "</button>" :
+      '<span class="pn-fh-more">+' + n + "</span>";
+  }
+  function fhLegend(named) {   // 6+ named and 2+ shared groups: one line of group chips (max 2 + "+N")
+    var c = {}, order = [];
+    named.forEach(function (b) { fhGroups(b).forEach(function (g) { var k = String(g.id); if (!c[k]) { c[k] = { g: g, n: 0 }; order.push(k); } c[k].n++; }); });
+    if (order.length < 2 || named.length < 6) return "";
+    order.sort(function (a, b) { return c[b].n - c[a].n; });   // the biggest groups first (people, not drinks)
+    return '<div class="pn-fh-leg">' + order.slice(0, 2).map(function (k) {
+      return '<span class="pn-fh-lg sa-gcol-' + fhCol(c[k].g) + '"><i></i>' + U.esc(c[k].g.name) + " <em>" + c[k].n + "</em></span>";
+    }).join("") + (order.length > 2 ? '<span class="pn-fh-lg"><em>+' + (order.length - 2) + "</em></span>" : "") + "</div>";
+  }
+  function folkWallHTML(list, barId) {
+    list = (list || []).slice().sort(crowdSort);   // SAFE: me, friends, then arrival – never by count
+    var named = list.filter(function (b) { return b.is_mine || b.friend_name; }), anon = list.filter(function (b) { return !b.is_mine && !b.friend_name; });
+    var mine = named.filter(function (b) { return b.is_mine; })[0], sk = 0, h = "";
+    list.forEach(function (b) { sk += skalCount(b); });
+    var top = sk ? '<span class="pn-fh-sk">' + fhIc("cheers") + "<b>" + sk + "</b> " + U.esc(tl("skål här ikväll", "cheers here tonight")) + "</span>" : "<span></span>";
+    var hint = '<span class="pn-fh-hint">' + U.esc(tl("Tryck på någon för att skåla", "Tap someone to say cheers")) + "</span>";
+    if (named.length === 1 && mine && !anon.length) {   // me alone
+      h += '<div class="pn-fh-top">' + top + "</div><div class=\"pn-fh-alone\">" + fhTile(mine) + "<p>" + U.esc(tl("Bara du här just nu.", "Only you here right now.")) + "<br>" +
+        U.esc(tl("Dina vänner ser att du är här.", "Your friends can see that you are here.")) + "</p></div>";
+      if (barId != null) h += '<button type="button" class="pn-fh-inv" data-invbar="' + U.esc(barId) + '"><span class="pn-fh-it">' + fhIc("user-plus") + "</span>" +
+        U.esc(tl("Bjud hit gänget", "Invite the gang here")) + '<span class="pn-fh-ch">' + fhIc("chev-right") + "</span></button>";
+    } else if (!named.length) {   // only strangers: bigger grey faces, 5 a row
+      h += '<div class="pn-fh-top"><span class="pn-fh-sub">' + U.esc(tl(anon.length + " här just nu", anon.length + " here right now")) + "</span>" + hint + "</div>";
+      h += '<div class="pn-fh-anon">' + anon.slice(0, 15).map(fhStranger).join("") + (anon.length > 15 ? fhMore(anon.length - 15, barId) : "") + "</div>";
+    } else {
+      var more = named.length > 8 && barId != null;   // 8+ named: 7 faces + one "+N Visa alla" face
+      h += '<div class="pn-fh-top">' + top + hint + "</div>" + fhLegend(named);
+      h += '<div class="pn-fh-wall">' + named.slice(0, more ? 7 : 8).map(fhTile).join("") + (more ? '<button type="button" class="pn-fh-p pn-fh-allt" data-fh-all="' + U.esc(barId) + '">' +
+        '<span class="pn-fh-face"><span class="pn-fh-av"><b>+' + (named.length - 7) + '</b></span></span><span class="pn-fh-n">' + U.esc(tl("Visa alla", "Show all")) + "</span>" +
+        '<span class="pn-fh-g">' + U.esc(tl(list.length + " här", list.length + " here")) + "</span></button>" : "") + "</div>";
+      if (anon.length) h += '<div class="pn-fh-sub">' + U.esc(tl(anon.length + " till här", anon.length + " more here")) + '</div><div class="pn-fh-strip">' +
+        anon.slice(0, 12).map(fhStranger).join("") + (anon.length > 12 ? fhMore(anon.length - 12, barId) : "") + "</div>";
+    }
+    return '<div class="pn-fh">' + h + "</div>";
+  }
+  // The menu: a popover over the sheet (scrim), the arrow points at the face, flips up when there is no room below.
+  // Esc, the back gesture and a tap outside close it. One history entry (same olnuNav depth: sheetnav does nothing on it).
+  var fhM = null, fhPop = null, fhPopT = 0, fhSeq = 0;
+  function fhSel(id) { return '.pn-fh [data-fh="' + String(id).replace(/["\\]/g, "") + '"]'; }
+  function fhHead(b, face, named, name, gs) {
+    var av = face && face.querySelector(".pn-fh-av"), hm = U.timeHM(b.created_at);
+    var g = gs.map(function (x) { return '<span class="sa-gcol-' + fhCol(x) + '"><i></i>' + U.esc(x.name) + "</span>"; }).join("");
+    if (named && !g) g = '<span class="pn-fh-van"><i></i>' + U.esc(tl("Vän", "Friend")) + "</span>";
+    return '<div class="pn-fh-mh"><span class="pn-fh-face' + (named ? " fr" : "") + '">' + (named && av ? av.outerHTML : '<span class="pn-fh-av">' + fhIc("user") + "</span>") + "</span>" +
+      '<div class="pn-fh-mn">' + U.esc(name) + "</div>" + (g ? '<div class="pn-fh-mg">' + g + "</div>" : "") +
+      '<div class="pn-fh-mc">' + U.esc((named ? fhCount(U.drinks(b)) + " · " : "") + tl("här sedan ", "here since ") + hm) + "</div></div>";
+  }
+  function fhRow(icon, text, fn) {
+    var r = document.createElement("button"); r.type = "button"; r.className = "pn-fh-mr";
+    r.innerHTML = fhIc(icon) + "<span>" + U.esc(text) + '</span><span class="pn-fh-ch">' + fhIc("chev-right") + "</span>";
+    r.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); fhClose(fn); });
+    return r;
+  }
+  function fhGoDone(go, named, name) {
+    go.disabled = true; go.classList.add("done");
+    go.innerHTML = fhIc("check") + "<span>" + U.esc(tl("Skålat med ", "Cheered with ") + (named ? name : tl("någon här", "someone here"))) + "</span>";
+  }
+  function fhOpen(face) {
+    var id = face.getAttribute("data-fh"), b = beerById(id); if (!b || b.is_mine || fhM) return;
+    var named = !!b.friend_name, name = named ? b.friend_name : tl("Någon här", "Someone here"), gs = named ? fhGroups(b) : [];
+    var scrim = document.createElement("div"), box = document.createElement("div");
+    scrim.className = "pn-fh-scrim"; box.className = "pn-fh-menu"; box.tabIndex = -1; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", name);
+    box.innerHTML = fhHead(b, face, named, name, gs);
+    var go = document.createElement("button"); go.type = "button"; go.className = "skal-btn pn-fh-go"; go.setAttribute("data-skal", String(b.id));
+    go.innerHTML = fhIc("cheers") + "<span>" + U.esc(named ? tl("Skåla med ", "Say cheers to ") + name : tl("Skåla", "Cheers")) + "</span>";
+    if (b.i_skaled) fhGoDone(go, named, name);
+    go.addEventListener("click", function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      doSkal(go, true).then(function (ok) {
+        if (!ok || !fhM || fhM.go !== go) return;
+        fhGoDone(go, named, name); fhMarkDone(b.id);
+        fhM.timer = setTimeout(function () { fhClose(); }, 1000);
+      });
+    });
+    box.appendChild(go);
+    if (named && gs.length && window.PROFCARD && window.PROFCARD.open) box.appendChild(fhRow("user", tl("Visa profil", "Show profile"), function () {
+      window.PROFCARD.open({ g: { id: gs[0].id, name: gs[0].name }, name: name, is_me: false, live: true, n: U.drinks(b) });
+    }));
+    if (named && window.DM && window.DM.openWith) box.appendChild(fhRow("chat", tl("Skriv till ", "Message ") + name, function () {
+      map.closePopup(); window.DM.openWith({ p_pin: String(b.id) }, name, null);
+    }));
+    if (!named) box.insertAdjacentHTML("beforeend", '<div class="pn-fh-mnote">' + U.esc(tl("Du ser inte vem det är. Inget namn, ingen siffra.", "You do not see who it is. No name, no number.")) + "</div>");
+    scrim.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); fhClose(); });
+    document.body.appendChild(scrim); document.body.appendChild(box);
+    fhPlace(box, face);
+    var depth = 0; try { depth = window.SHEETNAV && window.SHEETNAV.depth ? window.SHEETNAV.depth() : 0; } catch (e) {}
+    var tok = ++fhSeq; try { history.pushState({ olnuNav: depth, pnFh: tok }, ""); } catch (e) { tok = 0; }
+    fhM = { box: box, scrim: scrim, go: go, id: id, hist: tok, timer: 0 };
+    face.classList.add("pn-fh-on");
+    document.addEventListener("keydown", fhKey, true);
+    try { (go.disabled ? box.querySelector(".pn-fh-mr") || box : go).focus({ preventScroll: true }); } catch (e) {}
+  }
+  function fhPlace(box, face) {
+    var fe = face.querySelector(".pn-fh-face") || face, r = face.getBoundingClientRect(), fr = fe.getBoundingClientRect();
+    var vw = window.innerWidth, vh = window.innerHeight, W = Math.min(280, vw - 32), cx = fr.left + fr.width / 2;
+    var left = Math.max(16, Math.min(vw - 16 - W, cx - W / 2)), mh = box.getBoundingClientRect().height;
+    var up = r.bottom + 10 + mh > vh - 16 && r.top - 10 - mh >= 16;
+    box.style.width = W + "px"; box.style.left = left + "px";
+    box.style.top = (up ? r.top - 10 - mh : Math.min(r.bottom + 10, Math.max(16, vh - 16 - mh))) + "px";
+    box.classList.add(up ? "up" : "dn"); box.style.setProperty("--ax", Math.max(18, Math.min(W - 18, cx - left)) + "px");
+  }
+  function fhKey(e) { if (e.key === "Escape" && fhM) { e.preventDefault(); e.stopPropagation(); fhClose(); } }
+  function fhMarkDone(id) {
+    document.querySelectorAll(fhSel(id)).forEach(function (f) {
+      var host = f.querySelector(".pn-fh-face") || f;
+      if (!host.querySelector(".pn-fh-done")) host.insertAdjacentHTML("beforeend", fhDone());
+      if (f.classList.contains("pn-fh-s")) f.setAttribute("aria-label", tl("Du har skålat med någon här", "You said cheers to someone here"));
+    });
+  }
+  function fhRunPop() { var f = fhPop; fhPop = null; clearTimeout(fhPopT); if (f) f(); }
+  // after = what the tapped row does, run once our history entry is gone (so a new sheet level lands on the right step)
+  function fhClose(after) {
+    var m = fhM; if (!m) { if (after) after(); return; }
+    fhM = null; clearTimeout(m.timer);
+    if (m.scrim.parentNode) m.scrim.remove();
+    if (m.box.parentNode) m.box.remove();
+    document.removeEventListener("keydown", fhKey, true);
+    document.querySelectorAll(".pn-fh-on").forEach(function (x) { x.classList.remove("pn-fh-on"); });
+    if (!after) { var f = document.querySelector(fhSel(m.id)); if (f) try { f.focus({ preventScroll: true }); } catch (e) {} }
+    var st = null; try { st = history.state; } catch (e) {}
+    if (m.hist && st && st.pnFh === m.hist) {
+      fhPop = after || function () {}; fhPopT = setTimeout(fhRunPop, 400);
+      try { history.back(); } catch (e) { fhRunPop(); }
+    } else if (after) after();
+  }
+  window.addEventListener("popstate", function () {
+    if (fhPop) { fhRunPop(); return; }
+    if (fhM && fhM.hist) { fhM.hist = 0; fhClose(); }   // the back gesture closes the menu only
+  });
+  // One click router: a face tap opens the menu and never reaches the map or another handler.
+  document.addEventListener("click", function (e) {
+    var tg = e.target && e.target.closest ? e.target : null; if (!tg) return;
+    var all = tg.closest(".pn-fh [data-fh-all]");
+    if (all) { e.preventDefault(); e.stopPropagation(); fhClose(); crowdAt(all.getAttribute("data-fh-all")); return; }
+    var f = tg.closest(".pn-fh [data-fh]");
+    if (f) { e.preventDefault(); e.stopPropagation(); fhOpen(f); }
+  }, true);
+  // The bar sheet closed (not a redraw): the menu goes too, before sheetnav pops the sheet's own entry.
+  map.on("popupclose", function () { setTimeout(function () { if (fhM && !document.querySelector(".leaflet-popup")) fhClose(); }, 0); });
   // Fly to one beer and open its popup. When the pin is still inside a cluster (same spot),
   // the popup opens on its own at the pin's position (no spiderfy).
   function showBeer(b, z) {
