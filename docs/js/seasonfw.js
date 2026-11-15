@@ -30,11 +30,11 @@
     c1 = type === "willow" ? "gold" : type === "palm" ? "green" : type === "glitter" ? "white" : pal[0]; c2 = type === "willow" ? "gold" : type === "glitter" ? "silver" : pal[1];
     var tilt = rnd(0.35, 0.8), rot = rnd(0, PI);
     for (var i = 0; i < n; i++) {
-      var a = (i / n) * TAU + rnd(-0.05, 0.05), v, vx, vy, life, d = 1.6, g = 70, sz = 16, tail = 4;
-      if (type === "ring") { v = 230; var cx = Math.cos(a) * v, cy = Math.sin(a) * v * tilt; vx = cx * Math.cos(rot) - cy * Math.sin(rot); vy = cx * Math.sin(rot) + cy * Math.cos(rot); life = 1.6; }
-      else if (type === "willow") { v = rnd(140, 220) * Math.sqrt(rnd(0.3, 1)); vx = Math.cos(a) * v; vy = Math.sin(a) * v; d = 1.2; g = 110; life = rnd(2.8, 3.6); sz = 14; tail = light ? 3 : 9; }
-      else if (type === "palm") { v = rnd(230, 270); vx = Math.cos(a) * v; vy = Math.sin(a) * v - 40; d = 1.1; g = 120; life = 2.2; sz = 26; tail = light ? 4 : 12; }
-      else { v = rnd(150, 260) * (type === "glitter" ? 0.9 : 1) * Math.sqrt(rnd(0.55, 1)); vx = Math.cos(a) * v; vy = Math.sin(a) * v; life = rnd(1.5, 2.1); }
+      var a = (i / n) * TAU + rnd(-0.05, 0.05), v, vx, vy, life, d = 1.6, g = 70, sz = 22, tail = 5;
+      if (type === "ring") { v = 300; var cx = Math.cos(a) * v, cy = Math.sin(a) * v * tilt; vx = cx * Math.cos(rot) - cy * Math.sin(rot); vy = cx * Math.sin(rot) + cy * Math.cos(rot); life = 1.6; }
+      else if (type === "willow") { v = rnd(180, 290) * Math.sqrt(rnd(0.3, 1)); vx = Math.cos(a) * v; vy = Math.sin(a) * v; d = 1.2; g = 110; life = rnd(2.8, 3.6); sz = 18; tail = light ? 3 : 9; }
+      else if (type === "palm") { v = rnd(300, 350); vx = Math.cos(a) * v; vy = Math.sin(a) * v - 40; d = 1.1; g = 120; life = 2.2; sz = 32; tail = light ? 4 : 12; }
+      else { v = rnd(200, 340) * (type === "glitter" ? 0.9 : 1) * Math.sqrt(rnd(0.55, 1)); vx = Math.cos(a) * v; vy = Math.sin(a) * v; life = rnd(1.5, 2.1); }
       st.push({ vx: vx, vy: vy, d: d, g: g, life: life, sz: sz, tail: light ? Math.min(tail, 3) : tail, fl: type === "glitter" ? 1 : rnd(0, 0.3), ph: rnd(0, 6) });
     }
     if (type === "ring") for (i = 0; i < Math.round(14 * k); i++) { var a2 = rnd(0, TAU), v2 = rnd(30, 70); st.push({ vx: Math.cos(a2) * v2, vy: Math.sin(a2) * v2, d: 1.6, g: 60, life: 1.3, sz: 14, tail: 2, fl: 0, ph: 0, c: pal[1] === "white" ? "pink" : "white" }); }

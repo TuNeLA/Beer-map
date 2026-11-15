@@ -63,7 +63,7 @@
     if (spr.fog) return spr.fog;
     var s = 512, c = D.createElement("canvas"); c.width = c.height = s; var q = c.getContext("2d");
     for (var i = 0; i < 60; i++) { var x = rnd(0, s), y = rnd(0, s), r = rnd(50, 140);
-      [-s, 0, s].forEach(function (dx) { [-s, 0, s].forEach(function (dy) { var gr = q.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); gr.addColorStop(0, "rgba(220,226,240,.22)"); gr.addColorStop(1, "rgba(220,226,240,0)"); q.fillStyle = gr; q.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }); }
+      [-s, 0, s].forEach(function (dx) { [-s, 0, s].forEach(function (dy) { var gr = q.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); gr.addColorStop(0, "rgba(220,226,240,.4)"); gr.addColorStop(1, "rgba(220,226,240,0)"); q.fillStyle = gr; q.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }); }
     return (spr.fog = { c: c, s: s });
   }
 
@@ -85,11 +85,11 @@
     },
     rain: function (lv, light) {
       var n = [0, 80, 170, 320][lv] || 80, dr = [], sp = [], ang = 9 * PI / 180, sx = Math.sin(ang), cy = Math.cos(ang);
-      for (var i = 0; i < Math.round(n * (light ? 0.5 : 1)); i++) { var d = Math.random() < 0.6 ? 1 : 2; dr.push({ x: rnd(0, 1), y: rnd(0, 1), v: d === 1 ? rnd(600, 760) : rnd(880, 1080), l: d === 1 ? rnd(12, 18) : rnd(22, 32), a: d === 1 ? 0.45 : 0.68 }); }
+      for (var i = 0; i < Math.round(n * (light ? 0.5 : 1)); i++) { var d = Math.random() < 0.6 ? 1 : 2; dr.push({ x: rnd(0, 1), y: rnd(0, 1), v: d === 1 ? rnd(600, 760) : rnd(880, 1080), l: d === 1 ? rnd(14, 20) : rnd(24, 36), a: d === 1 ? 0.6 : 0.85 }); }
       if (!light) for (i = 0; i < 26; i++) sp.push({ x: rnd(0, 1), y: rnd(0.08, 1), ph: rnd(0, 1), f: rnd(1.6, 2.6) });
       return { id: "rain", dur: 30, fin: 2, fout: 4, still: 4, draw: function (t, a) {
         g.fillStyle = "rgba(8,12,26," + (0.14 * a).toFixed(3) + ")"; g.fillRect(0, 0, cw, ch);
-        var H = ch + 60; g.lineCap = "round"; g.lineWidth = 1.6;
+        var H = ch + 60; g.lineCap = "round"; g.lineWidth = 2;
         for (var i = 0; i < dr.length; i++) { var q = dr[i], y = (q.y * H + q.v * t) % H - 30, x = ((q.x * (cw + 80) - (y + 30) * sx) % (cw + 80) + cw + 80) % (cw + 80) - 40;
           g.strokeStyle = "rgba(200,215,240," + (q.a * a).toFixed(3) + ")"; g.beginPath(); g.moveTo(x, y); g.lineTo(x - sx * q.l, y - cy * q.l); g.stroke(); }
         for (i = 0; i < sp.length; i++) { var s = sp[i], u = (t * s.f + s.ph) % 1; g.strokeStyle = "rgba(210,225,250," + (0.5 * (1 - u) * a).toFixed(3) + ")"; g.lineWidth = 1;
@@ -108,7 +108,7 @@
       } };
     },
     fog: function (light) {
-      var k = 0.7, ly = light ? [[0.6, 8, 0]] : [[0.5, 6, 0], [0.38, 11, 1.7], [0.3, 17, 3.1]];
+      var k = 1, ly = light ? [[0.6, 8, 0]] : [[0.5, 6, 0], [0.38, 11, 1.7], [0.3, 17, 3.1]];
       return { id: "fog", dur: 20, fin: 3, fout: 0, hold: true, still: 20, draw: function (t, a) {
         var ft = fogTile(), tt = Math.min(t, 20);
         ly.forEach(function (l) { var ox = (tt * l[1] + l[2] * 100) % ft.s, oy = (tt * l[1] * 0.3 + l[2] * 50) % ft.s; g.globalAlpha = l[0] * k * a;

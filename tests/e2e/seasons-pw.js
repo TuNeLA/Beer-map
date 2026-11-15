@@ -176,8 +176,10 @@ async function runGL(b) {
   if (ONLY.test("map") || ONLY.test("sky")) {
     const { ctx, page, errs } = await open(b, "gl", { query: "?season=xmas&wx=none&light=0" });
     let worst = [], drawn = 0;
+    await page.waitForFunction(() => window.PNSeasonMap && PNSeasonMap.stats.feats > 0, null, { timeout: 30000 }).catch(() => {});
     for (const z of [17, 16.5, 16, 15.5, 15]) {
       await view(page, LUD, z, 2500);
+      await page.evaluate(() => new Promise((res) => { const m = __gm(); let d = 0; const f = () => { if (!d) { d = 1; res(); } }; if (m.loaded() && !m.isMoving()) setTimeout(f, 300); m.once("idle", () => setTimeout(f, 300)); setTimeout(f, 8000); }));
       const d = await decoBoxes(page), p = await pinBoxes(page); drawn = Math.max(drawn, d.length);
       d.forEach((x) => p.forEach((y) => { if (inter(x, y)) worst.push({ z, k: x.k, pin: y.id }); }));
     }
@@ -185,11 +187,14 @@ async function runGL(b) {
     ok(st.street && st.feats >= 2 && st.bulbs > 0, "Christmas: the shopping street found in the map data (" + st.street + "), tree + candles + " + st.bulbs + " bulbs, no hand list", st);
     ok(drawn > 0, "Christmas decorations are drawn on the map (" + drawn + " pieces at most in one view)", drawn);
     ok(worst.length === 0, "NOTHING covers a pin: no drawn decoration box touches a bar icon, a bar name, my marker or a DOM pin (5 zooms)", worst.slice(0, 8));
-    const lay = await page.evaluate(() => { const L = __gm().getStyle().layers.map((l) => l.id), first = L.findIndex((id) => /^olnu-(place|bar-)/.test(id)); return { ss: PNSeasonMap._layers().filter((id) => id !== "pn-ss-park").map((id) => L.indexOf(id)), first }; });
-    ok(lay.first < 0 || lay.ss.every((i) => i >= 0 && i < lay.first), "every decoration layer is UNDER the bar layers", lay);
+    // a layer in a basemap slot ("middle": the park pattern, the 3D tree) is drawn under every root layer (all bar layers are root)
+    const lay = await page.evaluate(() => { const S = __gm().getStyle().layers, L = S.map((l) => l.id), first = L.findIndex((id) => /^olnu-(place|bar-)/.test(id));
+      return { ss: PNSeasonMap._layers().map((id) => { const l = S.find((x) => x.id === id); return { id, i: L.indexOf(id), slot: l && l.slot || "" }; }), first }; });
+    ok(lay.first < 0 || lay.ss.every((x) => x.slot === "middle" || x.slot === "bottom" || (x.i >= 0 && x.i < lay.first)), "every decoration layer is UNDER the bar layers", lay);
     // the 3D tree only in the tilted view
-    const t3 = await page.evaluate(async () => { const m = __gm(), vis = () => m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none"; const a = vis(); m.setMaxPitch(70); m.jumpTo({ pitch: 50 }); m.fire("pitchend"); await new Promise((r) => setTimeout(r, 800)); const c = vis(); m.jumpTo({ pitch: 0 }); m.fire("pitchend"); await new Promise((r) => setTimeout(r, 600)); return { flat: a, tilt: c, model: PNSeasonMap.stats.model, tree: !!PNSeasonMap.stats.tree }; });
-    ok(t3.flat !== "visible" && (!t3.model || !t3.tree || t3.tilt === "visible"), "the real 3D tree shows only in the tilted view", t3);
+    const tp = await page.evaluate(() => PNSeasonMap.stats.tree); if (tp) await view(page, [tp[1], tp[0]], 17, 2000);
+    const t3 = await page.evaluate(async () => { const m = __gm(), vis = () => m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none"; const a = vis(); m.setMaxPitch(70); m.jumpTo({ pitch: 50 }); m.fire("pitchend"); await new Promise((r) => setTimeout(r, 800)); const c = vis(); m.jumpTo({ pitch: 0 }); m.fire("pitchend"); await new Promise((r) => setTimeout(r, 600)); const tr = PNSeasonMap.feats().filter((x) => x.k === "tree")[0]; return { flat: a, tilt: c, model: PNSeasonMap.stats.model, tree: !!tr, hidden: tr ? tr.h : 1 }; });
+    ok(t3.flat !== "visible" && (!t3.model || !t3.tree || t3.hidden || t3.tilt === "visible") && t3.tree && !t3.hidden, "the real 3D tree shows only in the tilted view (and the drawn tree is shown flat)", t3);
     // the snow canvas: snow falls, and every pin centre stays clear (a hole)
     await view(page, LUD, 16, 1500);
     await force(page, { wx: "snow3" }); await wait(page, 3000);
@@ -206,6 +211,7 @@ async function runGL(b) {
   if (ONLY.test("map")) {
     const st = await open(b, "gl", { query: "?season=xmas&wx=none&app=android" });
     await view(st.page, LUD, 16, 2500);
+    await st.page.waitForFunction(() => window.PNSeasonMap && PNSeasonMap.stats.feats > 0, null, { timeout: 30000 }).catch(() => {});
     const r = await st.page.evaluate(() => ({ store: !!window.OLNU_STORE, feats: PNSeasonMap.stats.feats, bulbs: PNSeasonMap.stats.bulbs }));
     ok(r.store && r.feats > 0, "store build: the map decorations stay (no drinking celebration in them)", r);
     await st.ctx.close();
@@ -219,16 +225,18 @@ async function runGL(b) {
   if (ONLY.test("ends")) {
     const { ctx, page, errs } = await open(b, "gl", { clock: true, query: "?season=xmas&wx=snow&light=0" });
     await view(page, LUD, 16, 2000);
+    await page.waitForFunction(() => window.PNSky && PNSky.active().includes("snow") && PNSeasonMap.stats.anim > 0, null, { timeout: 30000 }).catch(() => {});
     const a0 = await page.evaluate(() => ({ sky: PNSky.active(), anim: PNSeasonMap.stats.anim }));
-    await page.clock.runFor(42000); await wait(page, 600);
+    for (let i = 0; i < 14; i++) await page.clock.fastForward(3000);   // 42 s: jump (fire each timer once), do not draw every frame
+    await page.clock.runFor(100); await wait(page, 600);
     const a1 = await page.evaluate(() => { const c = document.querySelector(".ss-sky"), g = c.getContext("2d"), d = g.getImageData(0, 0, c.width, c.height).data; let s = 0; for (let i = 3; i < d.length; i += 64) s += d[i]; return { sky: PNSky.active(), sum: s, anim: PNSeasonMap.stats.anim }; });
-    await page.clock.runFor(6000); await wait(page, 300);
+    await page.clock.fastForward(6000); await page.clock.runFor(100); await wait(page, 300);
     const a2 = await page.evaluate(() => PNSeasonMap.stats.anim);
     ok(a0.sky.includes("snow") && a1.sky.length === 0 && a1.sum === 0, "snow ends by 30 s (+ fade): no scene, an empty canvas", { a0, a1 });
     ok(a1.anim > a0.anim && a2 === a1.anim, "the twinkle on the map stops by 40 s (no more steps)", { a0: a0.anim, a1: a1.anim, a2 });
     await page.evaluate(() => { PNSeason._force({ season: "fireworks", wx: "none" }); PNSky.add(PNSkyFx.fireworks()); });
     await page.clock.runFor(1000); const f0 = await page.evaluate(() => PNSky.active());
-    await page.clock.runFor(47000); await wait(page, 400); const f1 = await page.evaluate(() => PNSky.active());
+    for (let i = 0; i < 16; i++) await page.clock.fastForward(3000); await page.clock.runFor(100); await wait(page, 400); const f1 = await page.evaluate(() => PNSky.active());
     ok(f0.includes("fireworks") && !f1.includes("fireworks"), "the fireworks show ends (about 46 s)", { f0, f1 });
     ok(errs.length === 0, "ends: no page error", errs);
     await ctx.close();

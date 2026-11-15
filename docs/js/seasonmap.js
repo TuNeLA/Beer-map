@@ -24,7 +24,7 @@
   var CLS = ["street", "street_limited", "pedestrian", "primary", "secondary", "tertiary"];
   var EMPTY = { type: "FeatureCollection", features: [] };
   var map = null, gm = null, hooked = null, cur = null, town = null, feats = [], bulbs = [], wires = [], parks = [], buildT = 0, animT = 0, animEnd = 0, frame = 0, swingT0 = 0;
-  var pal = { on: "", orig: {} }, made = {}, sig = "", lastBuild = 0;
+  var pal = { on: "", orig: {} }, made = {}, sig = "", lastBuild = 0, treeAt = {};
   var stats = { builds: 0, ms: 0, roads: 0, churches: 0, parks: 0, feats: 0, bulbs: 0, hidden: 0, street: "", tree: null, palette: "", model: false, anim: 0 };
   function S() { return W.PNSeason; }
   function glm() { try { var b = W.BASEMAP; return b && b.isMapbox && b.isMapbox() && b.mapbox() ? b.mapbox().getMapboxMap() : null; } catch (e) { return null; } }
@@ -100,8 +100,9 @@
     if (!m.addModel || m.getLayer(L_MODEL)) return;
     try {
       if (!m.hasModel || !m.hasModel(MODEL)) m.addModel(MODEL, new URL("season/tree.glb", D.baseURI).href);
-      m.addLayer({ id: L_MODEL, type: "model", source: SRC_M, minzoom: 14, layout: { "model-id": MODEL, visibility: "none" },
-        paint: { "model-scale": [1, 1, 1], "model-emissive-strength": 0.65, "model-cast-shadows": false } }, before(m));
+      // slot "middle": the houses hide it where they stand in front (depth), and every bar layer / pin is drawn above it
+      m.addLayer({ id: L_MODEL, type: "model", source: SRC_M, slot: "middle", minzoom: 14, layout: { "model-id": MODEL, visibility: "none" },
+        paint: { "model-scale": [1.7, 1.7, 1.7], "model-emissive-strength": 0.65, "model-cast-shadows": false } });
       stats.model = true;
     } catch (e) { stats.model = false; }
   }
@@ -190,12 +191,15 @@
     if (M.tree && T.st) {
       var pts = walk(T.st.ls, 10, 900), best = null, cen = [0, 0], nb = 0, cands = [], R = pinRects(m);
       bars.forEach(function (x) { if (dist(x, T.C) < 600) { cen[0] += x[0]; cen[1] += x[1]; nb++; } }); cen = nb ? [cen[0] / nb, cen[1] / nb] : T.C;
-      pts.forEach(function (q2) { [14, -14].forEach(function (o) { var side = [q2.p[0] - q2.dy * o / kx(q2.p[1]), q2.p[1] + q2.dx * o / 110540];
+      // on the street itself (open space: the 3D tree is not inside a house)
+      pts.forEach(function (q2) { [0, 5, -5].forEach(function (o) { var side = [q2.p[0] - q2.dy * o / kx(q2.p[1]), q2.p[1] + q2.dx * o / 110540];
         if (clearOf(side, bars, 70)) cands.push({ sc: dist(side, cen), p: side }); }); });
       cands.sort(function (a, b2) { return a.sc - b2.sc; });
       // the nearest free spot: its box on screen touches no pin now (the rule), else the nearest one (then it is hidden)
+      // the tree keeps its spot in this town (it must not jump on zoom); a new pick only in a new town
+      if (treeAt[T.cell]) best = treeAt[T.cell];
       for (var ci = 0; ci < Math.min(60, cands.length) && !best; ci++) if (!hit(boxOf(m, F(cands[ci].p, { k: "tree" })), R)) best = cands[ci];
-      best = best || cands[0];
+      best = best || cands[0]; if (best && m.getZoom() >= 14.5) treeAt[T.cell] = best;
       if (best) { f.push(F(best.p, { k: "tree", img: "ss-tree-0", glow: "#ffcf7a", sk: 1 })); mdl.push(F(best.p, { k: "tree3d" })); stats.tree = best.p; }
       if (M.lights) walk(T.st.ls, 30, 720).forEach(function (q2, i) {
         var ax = -q2.dy / kx(q2.p[1]), ay = q2.dx / 110540, ends = [[q2.p[0] + ax * 9.5, q2.p[1] + ay * 9.5], [q2.p[0] - ax * 9.5, q2.p[1] - ay * 9.5]];
@@ -258,12 +262,16 @@
     var s = iconK(m.getZoom()) * (x.properties.sz || 1), w = sz[0] * s, h = sz[1] * s;
     return [p.x - w / 2, p.y - h, p.x + w / 2, p.y];
   }
-  function cull(m) {
+  var cullSig = "";
+  function cull(m, quiet) {
     if (!m) return;
-    var R = pinRects(m), hid = 0;
-    feats.forEach(function (x) { if (x.properties.k === "beam") return; var h = hit(boxOf(m, x), R) ? 1 : 0; x.properties.h = h; hid += h; });
-    bulbs.forEach(function (x) { var p = m.project(x.geometry.coordinates), h = hit([p.x - 6, p.y - 6, p.x + 6, p.y + 6], R) ? 1 : 0; x.properties.h = h; hid += h; });
+    var R = pinRects(m), hid = 0, sg = "";
+    feats.forEach(function (x) { if (x.properties.k === "beam") return; var h = hit(boxOf(m, x), R) ? 1 : 0; x.properties.h = h; hid += h; sg += h; });
+    bulbs.forEach(function (x) { var p = m.project(x.geometry.coordinates), h = hit([p.x - 6, p.y - 6, p.x + 6, p.y + 6], R) ? 1 : 0; x.properties.h = h; hid += h; sg += h; });
     stats.hidden = hid;
+    // quiet (map "idle"): send only when a piece changed (else idle → setData → idle … would loop)
+    if (quiet && sg === cullSig) return;
+    cullSig = sg; stats.culls = (stats.culls || 0) + 1;
     try { m.getSource(SRC).setData({ type: "FeatureCollection", features: feats }); m.getSource(SRC_B).setData({ type: "FeatureCollection", features: bulbs }); } catch (e) {}
   }
 
@@ -303,6 +311,8 @@
     m.on("style.load", function () { pal = { on: "", orig: {} }; town = null; W.setTimeout(function () { if (ensure(m)) { palette(m, cur); need(200); } }, 400); });
     m.on("moveend", function () { if (!feats.length && !bulbs.length && Date.now() - lastBuild < 2500) return; need(250); });
     m.on("pitchend", function () { tilt(m); need(100); });
+    // pins come and go (a poll, a DOM pin mounts, a name gets placed): check the rule again when the map is still
+    m.on("idle", function () { if (feats.length || bulbs.length) cull(m, true); });
     m.on("sourcedata", function (e) { if (e && e.isSourceLoaded && !town && cur && allowed()) need(600); });
   }
   function check() {
