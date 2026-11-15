@@ -1012,8 +1012,14 @@
         });
         if (final) kebabCount = items.filter(function (o) { return o.open === true; }).length;
       }
-      render(localKebab(p), false);   // at once: local data or a skeleton, never an empty box
-      fetchKebab(p).then(function (all) { render(all, true); }, function () { render([], true); });
+      var done = false, loc = localKebab(p);
+      render(loc, false);   // at once: local data or a skeleton, never an empty box
+      // cifix2: the place tiles of this spot are not in yet (the boot loads them 1.5 s after start, or the map is elsewhere):
+      // ask for them and draw the local rows as soon as they come, long before the OpenStreetMap answer
+      if (!loc.length && window.BARS && window.BARS.ensurePlacesP) {
+        try { window.BARS.ensurePlacesP(p.lat, p.lng, 2.5, 3000).then(function () { if (!done) { var l2 = localKebab(p); if (l2.length) render(l2, false); } }); } catch (e) {}
+      }
+      fetchKebab(p).then(function (all) { done = true; render(all, true); }, function () { done = true; render([], true); });
     });
   }
   var kebabCount = 0;
