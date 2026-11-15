@@ -74,6 +74,13 @@
       var u = url(p); if (!u) return "";
       return '<img class="bm-av" alt="" aria-hidden="true" decoding="async" src="' + u + '">';
     },
+    // maplight (glmap.js): the character of a pin / check-in row (friend_name or is_mine) as an SVG data URL, "" = none (yet)
+    url: function (b) {
+      if (!b || !(b.friend_name || b.is_mine)) return "";
+      want = true;
+      if (!loadAt) { loadAt = 1; setTimeout(kick, 0); }
+      var p = person(b); return p ? url(p) : "";
+    },
     // a cluster chip: up to max faces (me first, then friends with a loaded character), "" = the plain number chip
     faces: function (list, max) {
       var out = "", n = 0, seen = {};

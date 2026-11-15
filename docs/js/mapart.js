@@ -42,6 +42,9 @@
       livescen: "livescen", music_venue: "livescen", restbar: "restbar", restaurant_bar: "restbar", hotellbar: "hotellbar",
       oltradgard: "biergarten", biergarten: "biergarten", beer_garden: "biergarten", spelbar: "spelbar", nation: "nation",
       restaurant: "restaurant", cafe: "cafe", fast_food: "fastfood", kebab: "kebab", hockey: "hockey", fotboll: "fotboll", arena: "arena" },
+    // maplight (I-115) lantern pin: the bar disc gets warmer with the crowd. Step 1 = 3-7 people, 2 = 8-14, 3 = 15+ (under 3: no lantern)
+    lantern: { 1: { body: ["#3B2F5E", "#241E4A"], ring: "#F5A623" }, 2: { body: ["#F0A12A", "#B8690E"], ring: "#FFD27A", glyph: "#2A1600" },
+      3: { body: ["#FFE6A8", "#FFC24D"], ring: "#FFFAF0", glyph: "#2A1600" } },
     font: '"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     size: {
       ring: 2,            // foam ring on every disc
@@ -335,7 +338,7 @@
     var t = countText(p), lv = BADGE[p.l || 0] || BADGE[0], h = 20, fs = 13, gw = 10, tws = Math.ceil(tw(t, fs, 700));   // map M2: x 0.75–1 by zoom
     var w0 = Math.max(h, tws + 9), w = Math.max(h, tws + gw + 7), x = Math.round(cx - Math.min(w0, 19) / 2),   /* M2: left edge as with the 19 px badge */ y = Math.round(cy - h / 2), cx0 = x + (w - (gw + 1 + tws)) / 2;
     if (lv.outer) rrect(ops, x - 2.5, y - 2.5, w + 5, h + 5, h / 2 + 2.5, { fill: lv.outer, sh: true });
-    rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: p.f ? K.green : K.edge, sh: !lv.outer });
+    rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: K.edge, sh: !lv.outer });   // maplight: no green edge (friends = faces beside the disc)
     rrect(ops, x, y, w, h, h / 2, { fill: lv.b });
     glyph(ops, "people", cx0 + gw / 2, y + h / 2, gw, lv.t, lv.b);
     text(ops, cx0 + gw + 1, y + h / 2, t, fs, 700, lv.t);
@@ -356,22 +359,54 @@
     glyph(ops, "pub", x + 2 + 16 + 4 + tw_ + 3 + 6, y + h / 2, 12, K.amberHi, K.ink);
     parts.push({ sel: ".pill", bb: [x - 1, y - 1, x + w + 1, y + h + 1] });   // tap = Folk här (the friends' rows)
   }
+  /* maplight (owner 15 Nov 2026, I-115) — ONE rule for the bar disc:
+     - ring + body = the crowd: quiet = foam ring on navy · somebody there (1-2 people, or check-ins only) = amber ring on navy ·
+       3-7 / 8-14 / 15+ people = the lantern steps (extra.lv 1-3, PNTOKENS.lantern). No green ring on the disc (it fought the
+       lantern colours) and NO foam bumps on the disc (they sat in front of a dot and behind a full pin: "makes no sense").
+     - people I know stand BESIDE the disc, on its left: my face first (blue ring, drawn by glmap's own top layer so it is
+       never hidden), then friends (green ring), at most 3 faces, then "+N". extra.faces = [{ img }] (img = a loaded avatar
+       image or null = the person glyph), extra.more = N, extra.meSlot = px kept free next to the disc for my own marker. */
+  var FACE = 24, FACE_STEP = 17;
+  function face(ops, cx, cy, d, f) {
+    circle(ops, cx, cy, d / 2 + 1, { fill: K.edge, sh: true });
+    circle(ops, cx, cy, d / 2, { fill: f && f.me ? K.blue : K.green });
+    circle(ops, cx, cy, d / 2 - 2, { fill: K.navy2 });
+    if (f && f.img) ops.push({ o: "i", img: f.img, x: cx, y: cy, r: d / 2 - 2 });
+    else glyph(ops, "person", cx, cy + 0.5, Math.round(d * 0.54), "rgba(255,250,240,0.88)", K.navy2);
+  }
+  // faces left of a disc of radius r; returns the x of the left edge (the 🚪 chip goes left of it)
+  function faceStack(ops, parts, r, faces, more, skip) {   // skip = px kept free next to the disc (my own marker stands there)
+    skip = +skip || 0;
+    var n = faces.length, x0 = -(r + 2 + skip + FACE / 2), xl = n ? x0 - (n - 1) * FACE_STEP - FACE / 2 : -(r + 2 + skip), i;
+    if (!n && !more) return xl;
+    if (more > 0) {
+      var t = "+" + (more > 99 ? 99 : more), w = Math.ceil(tw(t, 11, 700)) + 11, h = 18, x = Math.round(xl - w + 6), y = -h / 2;
+      rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: K.edge, sh: true });
+      rrect(ops, x, y, w, h, h / 2, { fill: K.ink });
+      rrect(ops, x + 1, y + 1, w - 2, h - 2, h / 2 - 1, { fill: "none", stroke: K.green, sw: 1.5 });
+      text(ops, x + 5, 0, t, 11, 700, K.foam);
+      xl = x - 1;
+    }
+    for (i = n - 1; i >= 0; i--) face(ops, x0 - i * FACE_STEP, 0, FACE, faces[i]);
+    if (parts && n) parts.push({ sel: ".pill", bb: [xl, -FACE / 2 - 1, x0 + FACE / 2, FACE / 2 + 1] });   // tap = Folk här
+    return xl;
+  }
   function barOps(s, mode, hi, extra) {
     var ops = [], parts = [], full = mode !== "d", k = cat(s.k), busy = !!(s.p || s.hot), lit = !busy && !!s.lit;
     extra = extra || {};
+    var LN = T.lantern[extra.lv | 0] || null, faces = extra.faces || [], hasF = faces.length || extra.more || extra.meSlot;
     // map B9: the dot disc is as big as the full pill's disc (owner: an icon may never shrink by position, only the name hides)
     // map M2: one size for every zoom (glmap scales the image); hi / mode change only what is drawn (price tag, town-view chips)
     var D = full ? S.fullHi : S.dot, r = D / 2;
     var gs = full ? S.glyphFullHi : S.glyphDot;
     if (extra.sel) circle(ops, 0, 0, r + 4, { fill: "rgba(245,166,35,0.55)", sh: true });
-    // the disc is ALWAYS navy with the type glyph (one look per place type at every zoom); busy = amber ring, lit = green
-    var body = K.navy;
-    disc(ops, 0, 0, r, body, { ring: busy ? K.amber : lit ? K.green : K.foam, grad: [K.navy2, K.navy] });
-    glyph(ops, k, 0, 0, gs, T.tint[k] || K.foam, body);
+    // the disc: navy with the type glyph (one look per place type at every zoom); the ring and the lantern body say how many are there
+    var body = LN ? LN.body[1] : K.navy;
+    disc(ops, 0, 0, r, body, { ring: LN ? LN.ring : busy || lit ? K.amber : K.foam, grad: LN ? LN.body : [K.navy2, K.navy] });
+    glyph(ops, k, 0, 0, gs, LN && LN.glyph ? LN.glyph : T.tint[k] || K.foam, body);
     parts.push({ sel: ".bar-ico", bb: [-r, -r, r, r] });
     var king = s.king || extra.king, bo = Math.round(r * 0.72);
     if (!full) {
-      if (busy && !king) foamCap(ops, r, 2);
       if (king) crown(ops, 0, -r + 2, 12);
       var bd = S.dotBadge;   // map B9 (was 10 on the 18 px dot)
       if (s.p && s.p.f) badge(ops, bo, bo, bd, K.green, "person", K.greenInk);
@@ -381,14 +416,15 @@
     }
     if (king) { crown(ops, -r * 0.45, -r + 3, 14); parts.push({ sel: ".cm-king", bb: [-r - 4, -r - 9, 2, -r + 3] }); }
     if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, true);
-    else if (s.p && s.p.f) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
+    else if (s.p && s.p.f && !hasF) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
+    var fx = hasF ? faceStack(ops, parts, r, faces, extra.more | 0, extra.meSlot) : -r;
     if (s.p && s.p.ft) ftChip(ops, parts, Math.round(r + 3 + (s.tg && hi && mode !== "x" ? S.tagH + 3 : 0) + 10), s.p.ft);   // ds31
     if (mode === "x") return { ops: ops, parts: parts };
     if (s.ev) { badge(ops, -bo - 1, bo + 1, 15, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-bo - 10, bo - 8, -bo + 8, bo + 10] }); }
     if (s.rl) chip(ops, parts, ".cm-rally", r + 4, s.p ? 6 : 0, "helmet", s.rl[0], s.rl[1] ? K.green : "#FF8A1F", { gcol: s.rl[1] ? K.green : "#FFB36B" });
     var cf = s.cf || (s.fl ? (s.fl[1] ? 2 : 1) : 0);
     if (cf) chip(ops, parts, ".cm-flag", r - 2, r + 2, "castle", null, cf === 2 ? K.green : K.amber, { gcol: cf === 2 ? K.green : K.amberHi });
-    if (s.ci) chip(ops, parts, ".cm-ci", 0, 0, "door", s.ci, "rgba(61,220,132,0.9)", { right: -r - 4, gcol: K.green });
+    if (s.ci) chip(ops, parts, ".cm-ci", 0, 0, "door", s.ci, "rgba(61,220,132,0.9)", { right: Math.min(-r, fx) - 4, gcol: K.green });
     if (s.tg && hi) {
       var tW = Math.ceil(tw(s.tg, 10, 700)) + 10, tx = Math.round(-tW / 2), ty = Math.round(r + 3);
       rrect(ops, tx - 1, ty - 1, tW + 2, S.tagH + 2, S.tagR + 1, { fill: K.edge, sh: true });
@@ -396,6 +432,44 @@
       text(ops, tx + 5, ty + S.tagH / 2, s.tg, 10, 700, "#241300");
     }
     return { ops: ops, parts: parts };
+  }
+  /* maplight — the town view (zoomed out): bars with people that would sit on each other are ONE "town crowd" lantern:
+     the people glyph + the summed people count, lantern colours by the step of the sum. Under 3 people in all: no number. */
+  function crowdOps(n, lv, extra) {
+    extra = extra || {};
+    var ops = [], parts = [], LN = T.lantern[lv | 0] || null, r = lv >= 3 ? 22 : lv === 2 ? 20 : lv === 1 ? 18 : 14, body = LN ? LN.body[1] : K.navy;
+    var fg = LN && LN.glyph ? LN.glyph : LN ? K.foam : K.amberHi;
+    disc(ops, 0, 0, r, body, { ring: LN ? LN.ring : K.amber, rw: 2.5, grad: LN ? LN.body : [K.navy2, K.navy] });
+    if (n >= 3) {
+      var t = n > 999 ? "999+" : String(n), px = lv >= 3 ? 16 : 15, g = 11, w = g + 2 + Math.ceil(tw(t, px, 700)), x = Math.round(-w / 2);
+      if (w > 2 * r - 9) { rrect(ops, x - 6, -r, w + 12, 2 * r, r, { fill: body }); }   // 3 digits: the body grows sideways under the text
+      glyph(ops, "people", x + g / 2, 0, g, fg, body); text(ops, x + g + 2, 0, t, px, 700, fg);
+    } else glyph(ops, "people", 0, 0, 14, fg, body);
+    if ((extra.faces && extra.faces.length) || extra.more || extra.meSlot) faceStack(ops, null, r, extra.faces || [], extra.more | 0, extra.meSlot);
+    return { ops: ops, parts: parts, r: r };
+  }
+  /* maplight — my own marker ("I am ALWAYS visible", owner 15 Nov): my face (the character from js/avatar.js) in a blue
+     ring with a white edge and a small "Du" tag; without a character = the blue target dot (blue core, white ring, soft
+     outer ring: DESIGN.md "never colour only"). Drawn by glmap in the TOP layer, beside a bar icon when I am at one. */
+  var ME_BLUE = "#2B6FD6";
+  function meOps(o) {
+    o = o || {}; var ops = [], rad;
+    if (o.img) {
+      rad = 18;
+      circle(ops, 0, 0, rad + 1, { fill: K.edge, sh: true }); circle(ops, 0, 0, rad, { fill: "#FFFFFF" }); circle(ops, 0, 0, rad - 1.5, { fill: K.blue });
+      circle(ops, 0, 0, rad - 4.5, { fill: K.navy2 }); ops.push({ o: "i", img: o.img, x: 0, y: 0, r: rad - 4.5 });
+    } else {
+      rad = 11;
+      circle(ops, 0, 0, 16, { fill: "rgba(74,163,255,0.26)" });
+      circle(ops, 0, 0, rad + 1, { fill: K.edge, sh: true }); circle(ops, 0, 0, rad, { fill: "#FFFFFF" }); circle(ops, 0, 0, rad - 3.5, { fill: K.blue });
+    }
+    if (o.tag) {
+      var t = String(o.tag), w = Math.ceil(tw(t, 10, 700)) + 10, h = 14, x = Math.round(-w / 2), y = Math.round(rad - 4);
+      rrect(ops, x - 1.5, y - 1.5, w + 3, h + 3, h / 2 + 1.5, { fill: "#FFFFFF" });
+      rrect(ops, x, y, w, h, h / 2, { fill: ME_BLUE });
+      text(ops, 0, y + h / 2, t, 10, 700, "#FFFFFF", { align: "center" });
+    }
+    return { ops: ops, r: rad };
   }
 
   /* ---------- other markers ---------- */
@@ -417,13 +491,13 @@
       circle(ops, x, cy, 2.4, { fill: K.ink }); return; }
     var g = { s: "sun", n: "note", r: "parasol" }[k] || "sun"; glyph(ops, g, x, cy, 11, T.tint[g] || K.foam, K.ink);
   }
-  function labelOps(name, small, at) {   // small = place (restaurant) names: 11 px, softer; at = badge letters (bars)
+  function labelOps(name, small, at, tone) {   // small = place (restaurant) names: 11 px, softer; at = badge letters (bars); tone (maplight): "w" warm = a busy bar (step 2-3), "q" = nobody there
     var px = small ? 11 : S.labelSize, ops = [], mx = small ? 110 : S.labelMax, bs = small ? "" : String(at || "").slice(0, 2), bw = bs.length ? bs.length * 18 + 2 : 0;
     var lines = small ? [cut(name, px, mx)] : nameLines(name, px, mx - bw, S.labelLines || 1);
     var lh = px + 3, w = 0, cy0 = Math.round(px * 0.6);
     lines.forEach(function (t, i) { var tw0 = tw(t, px, 600), lw = tw0 + (i ? 0 : bw), x0 = -lw / 2; w = Math.max(w, lw);
       if (!i) for (var j = 0; j < bs.length; j++) nameBadge(ops, x0 + 8 + j * 18, cy0, bs[j]);
-      text(ops, i ? 0 : x0 + bw + tw0 / 2, cy0 + i * lh, t, px, 600, small ? "#CFC6B4" : K.labelText, { align: "center", halo: small ? "rgba(8,12,30,0.78)" : K.labelHalo, haloW: small ? 2.5 : S.labelHalo }); });
+      text(ops, i ? 0 : x0 + bw + tw0 / 2, cy0 + i * lh, t, px, 600, small ? "#CFC6B4" : tone === "w" ? "#FFE3A6" : tone === "q" ? "#AEB6CC" : K.labelText, { align: "center", halo: small ? "rgba(8,12,30,0.78)" : K.labelHalo, haloW: small ? 2.5 : S.labelHalo }); });
     return { ops: ops, bbox: [-Math.ceil(w / 2) - 3, Math.min(0, cy0 - 10), Math.ceil(w / 2) + 3, lines.length * lh + 3], lines: lines };
   }
   function meDotOps(o) {
@@ -559,6 +633,7 @@
       if (o.o === "c") add(o.x - o.r - sw - sh, o.y - o.r - sw - sh, o.x + o.r + sw + sh, o.y + o.r + sw + sh + 1);
       else if (o.o === "rr") add(o.x - sh - sw, o.y - sh - sw, o.x + o.w + sh + sw, o.y + o.h + sh + sw + 1);
       else if (o.o === "g") add(o.x, o.y, o.x + o.s, o.y + o.s);
+      else if (o.o === "i") add(o.x - o.r, o.y - o.r, o.x + o.r, o.y + o.r);
       else if (o.o === "t") { var w = tw(o.t, o.px, o.wt) + (o.haloW || 0) * 2, x0 = o.align === "center" ? o.x - w / 2 : o.x - (o.haloW || 0); add(x0, o.y - o.px * 0.7, x0 + w, o.y + o.px * 0.7); }
       else if (o.o === "p") { var nums = String(o.d).match(/-?\d+(\.\d+)?/g) || [], tf = o.tf || [1, 0, 0];
         for (var i = 0; i + 1 < nums.length; i += 2) add(+nums[i] * tf[0] + tf[1] - 3, +nums[i + 1] * tf[0] + tf[2] - 3, +nums[i] * tf[0] + tf[1] + 3, +nums[i + 1] * tf[0] + tf[2] + 4); }
@@ -586,6 +661,8 @@
         var gl = GL.G[o.n] || GL.G.pub, sc = o.s / 24;
         g.translate(o.x, o.y); g.scale(sc, sc);
         gl.forEach(function (L) { g.fillStyle = L.k === "b" ? (o.bg || K.ink) : o.fg; g.fill(p2d(L.d)); });
+      } else if (o.o === "i") {   // maplight: a round face (an avatar image), clipped to its circle
+        try { g.beginPath(); g.arc(o.x, o.y, o.r, 0, Math.PI * 2); g.clip(); g.drawImage(o.img, o.x - o.r, o.y - o.r, o.r * 2, o.r * 2); } catch (e) {}
       } else if (o.o === "t") {
         g.font = o.wt + " " + o.px + "px " + FONT; g.textBaseline = "middle"; g.textAlign = o.align || "left";
         if (o.halo) { g.lineJoin = "round"; g.lineWidth = o.haloW; g.strokeStyle = o.halo; g.strokeText(o.t, o.x, o.y + 0.5); }
@@ -630,7 +707,7 @@
     var x = barOps(s, mode, hi, extra), r = raster(x.ops, R2), g = r.canvas.getContext("2d");
     return { data: g.getImageData(0, 0, r.canvas.width, r.canvas.height), ox: r.ox, oy: r.oy, bottom: r.bottom, parts: x.parts, canvas: r.canvas };
   }
-  function buildLabel(name, at) { var x = labelOps(name, false, at), r = raster(x.ops, R2, x.bbox); return { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), canvas: r.canvas, ox: r.ox, oy: r.oy }; }
+  function buildLabel(name, at, tone) { var x = labelOps(name, false, at, tone), r = raster(x.ops, R2, x.bbox); return { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), canvas: r.canvas, ox: r.ox, oy: r.oy }; }
 
   /* ---------- people pins + people clusters (DOM markers, mbx) ----------
      Owner (2026-11-07): "no long pills: avatar + small badge count". A round face (the AVATAR character for me / friends,
@@ -675,7 +752,7 @@
     return '<div class="' + cls + '">' + (o.faces || "") + "<b>" + (o.n >= 1000 ? (Math.floor(o.n / 100) / 10).toString().replace(".", ",") + "k" : cnt(o.n)) + "</b></div>";
   }
 
-  root.PNPINS = { personHTML: personHTML, clusterHTML: clusterHTML, countText: countText, barOps: barOps, labelOps: labelOps, meDotOps: meDotOps, clusterOps: clusterOps, personOps: personOps, strangerOps: strangerOps,
+  root.PNPINS = { personHTML: personHTML, clusterHTML: clusterHTML, countText: countText, barOps: barOps, crowdOps: crowdOps, meOps: meOps, labelOps: labelOps, meDotOps: meDotOps, clusterOps: clusterOps, personOps: personOps, strangerOps: strangerOps,
     mypinOps: mypinOps, arenaOps: arenaOps, arenaDiscOps: arenaDiscOps, placeOps: placeOps, inviteOps: inviteOps, pillBgOps: pillBgOps,
     chipBgOps: chipBgOps, badgeOps: badgeOps, raster: raster, toSVG: toSVG, discSVG: discSVG, bboxOf: bboxOf, build: build, buildLabel: buildLabel,
     setRatio: function (r) { R2 = r; }, cat: cat, _tw: tw };
@@ -721,6 +798,9 @@
     }
     return { n: n, pins: np, cis: nc, lv: lv, held: lv !== raw(n), word: (en() ? WORDS_EN : WORDS)[lv] };
   }
-  root.PNCROWD = { at: at, raw: raw, people: people, count: count, cisAt: function (bar, cis) { return bar && bar.id != null ? cisList(canon(bar.id), cis) : []; }, HOLD_MS: HOLD_MS, _reset: function () { st = {}; }, _st: function () { return st; } };
+  // maplight (I-115): the crowd step of the map light. 3-7 people = 1, 8-14 = 2, 15+ = 3. Under 3 people = 0: no light,
+  // no lantern, no halo (it must never point at one or two persons).
+  function step(n) { n = +n || 0; return n >= 15 ? 3 : n >= 8 ? 2 : n >= 3 ? 1 : 0; }
+  root.PNCROWD = { step: step, at: at, raw: raw, people: people, count: count, cisAt: function (bar, cis) { return bar && bar.id != null ? cisList(canon(bar.id), cis) : []; }, HOLD_MS: HOLD_MS, _reset: function () { st = {}; }, _st: function () { return st; } };
 })(this);
 /* fixM T-24 CROWD END */
