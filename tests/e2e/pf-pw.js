@@ -83,9 +83,17 @@ const why = (t) => t.page.evaluate(() => window.PINFOLJ.state().why);
     await wait(t.page, 600);
     const head = await t.page.evaluate(() => { const sm = document.querySelector('details[data-fold="here"] > summary'); return sm ? { html: sm.innerHTML, txt: sm.textContent } : null; });
     ok(head && !/🍺/.test(head.txt) && !/pi-beer|pi-mug|pi-pub/.test(head.html) && (/👥/.test(head.txt) || /pi-users/.test(head.html)), "Folk här header: people icon, no beer glyph next to the people count " + (head && head.txt.trim()));
-    const rows = await t.page.evaluate(() => [...document.querySelectorAll(".pp-list li")].map((li) => li.textContent.replace(/\s+/g, " ").trim()));
-    ok(rows.some((r) => /Robban/.test(r) && /15 🍺 ikväll/.test(r)), "Folk här: Robban shows his NIGHT TOTAL '15 🍺 ikväll' " + JSON.stringify(rows));
-    ok(rows.some((r) => /Någon/.test(r) && !/\d/.test(r.replace(/Skål.*$/, ""))) && rows.filter((r) => /Någon/.test(r)).every((r) => !/\d/.test(r.replace(/Skål.*$/, ""))), "Folk här: strangers show no number (store-safe)");
+    // folkhar (I-120 / I-122): the list is a face wall now. The night total is the badge on Robban's face and the line in his tap
+    // menu ("15 öl ikväll · här sedan …"); strangers are grey faces with no text and no badge (was: .pp-list rows).
+    const fh = await t.page.evaluate(() => {
+      const rb = [...document.querySelectorAll(".pn-fh-p")].find((x) => /Robban/.test(x.textContent));
+      const out = { badge: rb && rb.querySelector(".pn-fh-cnt") ? rb.querySelector(".pn-fh-cnt").textContent.trim() : null,
+        strangers: [...document.querySelectorAll(".pn-fh-s")].map((s) => s.textContent.trim() + (s.querySelector(".pn-fh-cnt") ? "#" : "")) };
+      if (rb) { rb.click(); const m = document.querySelector(".pn-fh-menu .pn-fh-mc"); out.menu = m ? m.textContent : null; const sc = document.querySelector(".pn-fh-scrim"); if (sc) sc.click(); }
+      return out;
+    });
+    ok(fh.badge === "15" && /^15 öl ikväll/.test(fh.menu || ""), "Folk här: Robban shows his NIGHT TOTAL 15 (face badge + menu '15 öl ikväll') " + JSON.stringify(fh));
+    ok(fh.strangers.length === 2 && fh.strangers.every((s) => s === ""), "Folk här: strangers show no number (store-safe) " + JSON.stringify(fh.strangers));
     await t.page.evaluate(() => { const s = document.querySelector('details[data-fold="here"]'); if (s) s.scrollIntoView(); });
     await wait(t.page, 400); await shot(t.page, "1-folk-har");
     await t.page.evaluate(() => window.__map.closePopup()); await H.closeSheet(t.page); await wait(t.page, 500);

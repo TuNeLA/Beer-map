@@ -18,9 +18,8 @@
   function checkinsAt() { return PN.checkinsAt.apply(null, arguments); }
   function checkinNamesHTML() { return PN.checkinNamesHTML.apply(null, arguments); }
   function checkinBtnHTML() { return PN.checkinBtnHTML.apply(null, arguments); }
-  function whoOf() { return PN.whoOf.apply(null, arguments); }
   function renderTicker() { return PN.renderTicker.apply(null, arguments); }
-  function crowdSort() { return PN.crowdSort.apply(null, arguments); }
+  function folkWallHTML() { return PN.folkWallHTML.apply(null, arguments); }
   function updateCounts() { return PN.updateCounts.apply(null, arguments); }
   PN.put({
     lvlClass: lvlClass, lvList: lvList, lvOf: lvOf, lvAt: lvAt, lvName: lvName, lvLine: lvLine,
@@ -317,20 +316,8 @@
     var h0 = h; h = "";
     h += fold("rally", tl("🪖 Inkallelser", "🪖 Call-outs"), nRl, rl, "pp-sec-rl", isOpen("rally"));
     if (list.length) {
-      var names = [], body = "";
-      list.forEach(function (b) { if (b.friend_name && names.indexOf(b.friend_name) < 0) names.push(b.friend_name); });
-      if (!(top && U.drinks(top) >= 10)) body += levelLine(maxLevel(list), list);
-      if (names.length) body += '<div class="pp-friend">' + U.esc(t("barFriends")) + names.map(U.esc).join(", ") + "</div>";
-      var tot = 0; list.forEach(function (b) { tot += skalCount(b); });
-      if (tot) body += '<div class="pp-skal">' + U.esc(t("barSkal", tot)) + "</div>";
-      var prow = list.slice().sort(crowdSort).slice(0, 8);   // SAFE: me, friends, then arrival – never by count
-      body += '<ul class="pp-list">' + prow.map(function (b) {
-        return '<li><span class="pp-who' + (b.friend_name ? " f" : b.is_mine ? " m" : "") + '">' + U.esc(whoOf(b)) + "</span>" +
-          '<span class="pp-n">' + (b._nc ? "🍺" : b.friend_name || b.is_mine ? nightTotalHTML(b) : U.drinks(b) + " " + lvEmoji(b)) + "</span>" +
-          (b.is_mine ? '<span class="pp-skal">' + U.esc(t("skalN", skalCount(b))) + "</span>" : skalBtn(b, true)) + "</li>";
-      }).join("") + "</ul>";
-      if (list.length > 8 && id != null) body += '<button type="button" class="btn btn-small btn-block pp-all" data-crowd="' + U.esc(id) + '">' + U.esc(t("crowdAll", list.length)) + "</button>";
-      body += '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
+      // folkhar (I-120 / I-122): the face wall + tap menu (app-crowd.js). Order = crowdSort, never by count.
+      var body = folkWallHTML(list, id) + '<div class="pp-note">' + U.esc(t("barNote")) + "</div>";
       h += fold("here", tl("👥 Folk här", "👥 People here"), list.length >= 3 ? list.length : 0, body, "pp-sec-here", isOpen("here"));   // gw: count from 3
     }
     h += fold("bp", tl("📋 Kö · erbjudanden · tips", "📋 Queue · offers · tips"), ofN, bp, "pp-sec-bp", isOpen("bp"));

@@ -697,12 +697,12 @@
   // ds51: paint the friends' own characters (no saved character = the initial stays, as everywhere)
   function paintFav(root) {
     var AV = window.AVATAR; if (!AV || !AV.svg || !AV._caches) return;
-    var els = root.querySelectorAll(".pn-bs-fav[data-pnav]"); if (!els.length) return;
+    var els = root.querySelectorAll(".pn-bs-fav[data-pnav], .pn-fh [data-pnav], .pn-fh [data-pnme]"); if (!els.length) return;   // folkhar: the face wall too
     var cs = []; try { cs = AV._caches() || []; } catch (e) {}
     var me = null; try { me = AV.me && AV.me(); } catch (e) {}
     els.forEach(function (el) {
-      var n = el.getAttribute("data-pnav"), p = null;
-      for (var i = 0; i < cs.length && !p; i++) { var x = cs[i] && cs[i].byName && cs[i].byName[n]; if (x && x.a && !x.is_me) p = x; }
+      var n = el.getAttribute("data-pnav"), p = el.hasAttribute("data-pnme") && me ? { a: me.spec } : null;   // folkhar: me = AVATAR.me()
+      for (var i = 0; n && i < cs.length && !p; i++) { var x = cs[i] && cs[i].byName && cs[i].byName[n]; if (x && x.a && !x.is_me) p = x; }
       var sig = p ? JSON.stringify([p.a, p.r, p.md]) : "";
       if (!p || el.__pnSig === sig) return;
       try { el.innerHTML = AV.svg(p.a, { r: p.r, md: p.md, small: true }); el.__pnSig = sig; el.classList.remove("av-ph"); } catch (e) {}

@@ -139,7 +139,21 @@ The bar sheet follows the sheet rules. Order, top to bottom:
 4. One action row: **Checka in** (amber) + **På väg** (ghost), equal width, 48 px, radius 12.
    Checked in: status line + **Checka ut** (amber, full width). På väg is hidden.
 5. Photos: one row, 72 × 72, radius 12, swipe.
-6. Folk här (row, count badge).
+6. Folk här (row, count badge). Open = the face wall (folkhar, I-120 / I-122, owner pick design4 D "Ansiktsväggen"):
+   - Faces 56 px, 4 a row (tile 78 wide, min 44 tall), ring amber = me, green = friend. Order = crowdSort (me, friends,
+     arrival). NEVER by count. Max 8 faces; 8+ named = 7 faces + "+N Visa alla" (opens the crowd list).
+   - Group label under the name: dot in the group's colour (GPAGE.colorOf, `sa-gcol-N`) + the first group name, max 2 lines,
+     never cut; 2+ groups = "+N". Only groups that I AND the person are in (server field `shared_groups`, SQL 0524).
+     No shared group, or an old server = green dot + "Vän". 6+ named and 2+ groups: one line of group chips (max 2 + "+N").
+   - Count badge top-right of each named friend's face: beer icon + tonight's drinks. Information only: neutral
+     (raised fill, grey border, no glow, no praise). Not on my face, never on strangers. Store builds show it too (a count is information).
+   - Strangers: grey 44 px faces in one strip ("N till här"), max 12 + "+N". No name, no group, no number.
+     Only strangers: 52 px, 5 a row. Me alone: my face + "Bara du här just nu." + "Bjud hit gänget" (invite to this bar).
+   - Tap a face = a small menu over the sheet (scrim, arrow at the face, flips up, 16 px from the edges): head (face, name,
+     all shared groups, "N öl ikväll · här sedan HH:MM"), **Skåla med X** (the only amber, 48 px), Visa profil, Skriv till X (48 px rows).
+     Stranger: "Någon här", only **Skåla**, "Du ser inte vem det är. Inget namn, ingen siffra." After a skål: "Skålat med X" with a
+     check, closes after about 1 s. No sound, no pop, no toast. Esc, back and a tap on the scrim close only the menu.
+   - Group colour 4 is lime (`--pn-acc-money`), not amber: amber = me / action, and an amber tint on navy turns brown.
 7. "Info": one grouped list, rows 56: hours / Stor stark price, Uteservering, Sport (Ja / Nej), Kö och erbjudanden (row).
 8. "Mer" (row, last): Bjud in hit, Incheckade, Stammis & kung, hours/price reports, dansgolv, QR-affisch, Fel plats, Finns inte längre.
 

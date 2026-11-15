@@ -161,6 +161,7 @@ if [ -f "$REPO/docs/js/autoci.js" ]; then run autoci $B ac-pw.js; else skip auto
 run fxm        $B fxm-pw.js        # map fixes ds31–ds42: ANNAT, ⓘ, Ikväll chip, auto check-in list, Auto hemma, Synlighet, calm start
 run juice      $B juice-pw.js      # lane juice: ÖL! sound engine + Ljud switch, haptics Android-only, foam burst cap / reduced motion, no long task, CC0 voice clips
 run pf         $B pf-pw.js         # pin follow (pinfolj.js) + people count / "Folk här" night totals
+run folkhar    $B folkhar-pw.js    # I-120/I-122 "Folk här" face wall: shared-group label, count badge, tap menu (Skåla), strangers no name/number
 run lg         $B lg-pw.js         # PNLOG usage + position log, consent, owner panel (stats.html), lx part (lgx-part.js)
 run cln        $B cln-pw.js        # clean-up: vitals only with the log on, Nytt dates, rpc_bundle2, not_member, medals throttle
 run dm         $B dm-pw.js         # dm B1: DM from Vänner → Meddelanden loads, sends, no not_member toast; not_member cache levels
