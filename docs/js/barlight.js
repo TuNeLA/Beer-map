@@ -5,7 +5,8 @@
    A  street light  warm light on the street pieces near a busy bar. Reach 60 / 95 / 140 m, brightest at the bar's "door"
                     (the nearest street point within 70 m), fades out to the end. Two GL line layers in the Standard
                     style's slot "middle" (over the roads, under the houses and the labels).
-   C  halo          two soft GL circles under the bar pin: "exactly here".
+   C  halo          two soft GL circles under the bar pin, in the street-light yellow: "exactly here"; the inner one is
+                    bigger zoomed out (the town view: one warm spot per busy bar).
    B  lantern pin   the bar disc itself (js/mapart.js barOps, drawn by js/glmap.js): this module only gives the step.
    E  ring          ONE 2 s ring when a check-in at a bar arrives in the poll (max one per bar per 10 s). A DOM marker
                     (CSS transform / opacity only), so it also works without GL.
@@ -75,10 +76,13 @@
       line(L_CORE, { "line-color": ["interpolate", ["linear"], A, 0, "#F5A623", 0.5, "#FFB84A", 1, "#FFDC96"], "line-width": Wd(0.95), "line-blur": Wd(0.25),
         "line-opacity": A, "line-emissive-strength": 1 });
       var Z = function (a, b, c) { return ["interpolate", ["linear"], ["zoom"], 12, L3(a * 0.4, b * 0.4, c * 0.4), 14, L3(a * 0.63, b * 0.63, c * 0.63), 16, L3(a * 0.9, b * 0.9, c * 0.9), 18, L3(a * 1.35, b * 1.35, c * 1.35)]; };
-      if (!m.getLayer(L_HA)) m.addLayer({ id: L_HA, type: "circle", source: SRC_P, paint: { "circle-color": "#FF9A1F", "circle-blur": 1, "circle-emissive-strength": 1, "circle-pitch-alignment": "map",
-        "circle-radius": Z(40, 58, 80), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 13.4, 0, 14.4, L3(0.32, 0.44, 0.56)] } }, bf);
-      if (!m.getLayer(L_HB)) m.addLayer({ id: L_HB, type: "circle", source: SRC_P, paint: { "circle-color": "#FFC861", "circle-blur": 0.9, "circle-emissive-strength": 1, "circle-pitch-alignment": "map",
-        "circle-radius": Z(20, 26, 34), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 11, L3(0.24, 0.34, 0.45), 13.5, L3(0.42, 0.58, 0.72)] } }, bf);
+      if (!m.getLayer(L_HA)) m.addLayer({ id: L_HA, type: "circle", source: SRC_P, paint: { "circle-color": "#F5A623", "circle-blur": 1, "circle-emissive-strength": 1, "circle-pitch-alignment": "map",
+        "circle-radius": Z(40, 58, 80), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 13.4, 0, 14.4, L3(0.36, 0.5, 0.62)] } }, bf);
+      if (!m.getLayer(L_HB)) m.addLayer({ id: L_HB, type: "circle", source: SRC_P, paint: { "circle-color": "#FFB84A", "circle-blur": 0.9, "circle-emissive-strength": 1, "circle-pitch-alignment": "map",
+        // the town view (owner 15 Nov 18:17: "hard to see where people are at the bar"; "a slight yellow glow where people drink,
+        // the same yellow as the street light"): this inner glow is bigger and stronger zoomed out, one spot per busy bar
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, L3(11, 14, 18), 13.5, L3(15, 19, 24), 16, L3(18, 23.4, 30.6), 18, L3(27, 35, 46)],
+        "circle-opacity": ["interpolate", ["linear"], ["zoom"], 11, L3(0.4, 0.52, 0.64), 13.5, L3(0.5, 0.64, 0.78)] } }, bf);
       ready = !!(m.getLayer(L_HA) && m.getLayer(L_HB) && m.getLayer(L_GLOW) && m.getLayer(L_CORE));
     } catch (e) { ready = false; try { console.warn("pn barlight", e && e.message); } catch (x) {} }
     if (ready) { pushPts(); pushLines(); need(); }

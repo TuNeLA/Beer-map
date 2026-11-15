@@ -368,10 +368,12 @@
     if (f && f.img) ops.push({ o: "i", img: f.img, x: cx, y: cy, r: d / 2 - 2 });
     else glyph(ops, "person", cx, cy + 0.5, Math.round(d * 0.54), "rgba(255,250,240,0.88)", K.navy2);
   }
-  // the friends row under a disc, centred: faces (overlapping), "+N", then the totals chip (ds31) when there is one
-  function friendRow(ops, parts, cy, faces, more, ft) {
+  // the friends row under a disc: faces (overlapping), "+N", then the totals chip (ds31) when there is one. It starts at the
+  // disc's left edge and runs to the right (left of the disc is where my own marker stands; a row out to the left also hit
+  // the next bar's icon there and turned the busy pin into a dot)
+  function friendRow(ops, parts, cy, faces, more, ft, r) {
     var n = faces.length, fw = n ? FACE + (n - 1) * FACE_STEP : 0, mt = more > 0 ? "+" + (more > 99 ? 99 : more) : "", mw = mt ? Math.ceil(tw(mt, 11, 700)) + 11 : 0;
-    var cw = ft ? ftW(ft) : 0, gap = 3, W = fw + (mw ? (fw ? gap : 0) + mw : 0) + (cw ? (fw || mw ? gap : 0) + cw : 0), x = Math.round(-W / 2), xl = x, i;
+    var cw = ft ? ftW(ft) : 0, gap = 3, W = fw + (mw ? (fw ? gap : 0) + mw : 0) + (cw ? (fw || mw ? gap : 0) + cw : 0), x = r == null ? Math.round(-W / 2) : Math.round(-r - 2), xl = x, i;
     for (i = n - 1; i >= 0; i--) face(ops, x + FACE / 2 + i * FACE_STEP, cy, FACE, faces[i]);
     x += fw;
     if (mw) {
@@ -411,7 +413,7 @@
     if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, true);
     else if (s.p && s.p.f && !hasF) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
     var ft = s.p && s.p.ft ? s.p.ft : "", rowY = Math.round(r + 3 + (s.tg && hi && mode !== "x" ? S.tagH + 3 : 0) + 11);
-    if (hasF) friendRow(ops, parts, rowY, faces, extra.more | 0, ft);   // maplight: faces + "+N" + the totals chip in one row
+    if (hasF) friendRow(ops, parts, rowY, faces, extra.more | 0, ft, r);   // maplight: faces + "+N" + the totals chip in one row
     else if (ft) ftChip(ops, parts, rowY - 1, ft);   // ds31
     if (mode === "x") return { ops: ops, parts: parts };
     if (s.ev) { badge(ops, -bo - 1, bo + 1, 15, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-bo - 10, bo - 8, -bo + 8, bo + 10] }); }
