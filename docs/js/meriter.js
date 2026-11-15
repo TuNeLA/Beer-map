@@ -371,9 +371,14 @@
   }
   function pct(c) { return c.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (c.m - c.at) / Math.max(1, c.nextAt - c.at)))) : 100; }
   function barHTML(c, cls) { return '<span class="mer-bar ' + (cls || "") + '" aria-hidden="true"><span style="width:' + pct(c) + '%"></span></span>'; }
+  // d-profile (I-114, 06): "12 av 20 meriter till <next rank>" (a count, no "kvar"); the same words as Profil and Min uniform
   function nextText(c) {
-    return c.next && c.nextAt ? L(U.n1((c.nextAt - c.m) + " meriter kvar till " + c.next), (c.nextAt - c.m) + " merits left to " + c.next)   // fixJ T-22
+    return c.next && c.nextAt ? L(c.m + " av " + c.nextAt + " meriter till " + c.next, c.m + " of " + c.nextAt + " merits to " + c.next)
       : L(DIALEKT.v("meriter.hogsta_grad_olguden", 0, {}, "Högsta grad. Ölguden själv."), "Highest rank.");
+  }
+  function rankHTML(c) {   // the rank name with its icon (js/rankico.js)
+    var ic = ""; try { ic = window.RANKICO ? window.RANKICO.svg(c.idx - 1, 24) : ""; } catch (e) {}
+    return '<div class="mer-rank">' + ic + "<span>" + esc(c.title) + "</span></div>";
   }
 
   /* ---------- "Hur får jag meriter?" ---------- */
@@ -397,7 +402,7 @@
       var box = el("div", { class: "mer-ex" });
       var h = "";
       if (c) {
-        h += '<div class="mer-me"><div class="mer-rank">' + esc(c.title) + '</div><div class="mer-sub">' +
+        h += '<div class="mer-me">' + rankHTML(c) + '<div class="mer-sub">' +
           esc(L("Grad ", "Rank ") + c.idx + "/" + c.n + " · " + c.m + L(" meriter", " merits") + (c.tonight ? L(" · +" + c.tonight + " ikväll", " · +" + c.tonight + " tonight") : "")) +
           "</div>" + barHTML(c, "mer-bar-big") + '<div class="mer-next">' + esc(nextText(c)) + "</div></div>";
       }
@@ -419,6 +424,12 @@
 
   /* ---------- 🏆 Meriter board ---------- */
   // tx01: the rank name from the client ladder (same thresholds as the server), the server title as the fallback.
+  // d-profile (I-114, 06): the rank line of a board row = the rank's own icon (js/rankico.js) + the name
+  function boardRank(x) {
+    var t = boardTitle(x) || "", R = window.RANKICO, ic = "";
+    try { if (R && x.meriter != null) ic = R.svg(R.info(x.meriter | 0).idx, 20); } catch (e) { ic = ""; }
+    return ic ? A.el("span", { class: "top-sub top-rk", html: ic + "<span>" + esc(t) + "</span>" }) : A.el("span", { class: "top-sub", text: "🎖️ " + t });
+  }
   function boardTitle(x) {
     try { if (x.meriter != null && window.SOCIAL && window.SOCIAL.titleFor) return window.SOCIAL.titleFor(x.meriter | 0).title; } catch (e) {}
     return x.title;
@@ -506,7 +517,7 @@
             list.appendChild(el("li", {}, [el("div", { class: "top-row" + (x.is_me ? " mine" : "") }, [
               el("span", { class: "top-rank", text: String(x.rank | 0).padStart(2, "0") }),
               el("span", { class: "top-main" }, [el("span", { class: "top-name", text: nm + (ht ? " · " + ht : "") }),
-                el("span", { class: "top-sub", text: "🎖️ " + (boardTitle(x) || "") })]),
+                boardRank(x)]),
               el("span", { class: "top-n", text: (x.meriter | 0) + L(" m", " m") })
             ])]));
           });
@@ -539,7 +550,7 @@
     var me = document.querySelector(".mer-ex .mer-me");
     if (!me) return;
     var c = cur(); if (!c) return;
-    me.innerHTML = '<div class="mer-rank">' + esc(c.title) + '</div><div class="mer-sub">' +
+    me.innerHTML = rankHTML(c) + '<div class="mer-sub">' +
       esc(L("Grad ", "Rank ") + c.idx + "/" + c.n + " · " + c.m + L(" meriter", " merits") + (c.tonight ? L(" · +" + c.tonight + " ikväll", " · +" + c.tonight + " tonight") : "")) +
       "</div>" + barHTML(c, "mer-bar-big") + '<div class="mer-next">' + esc(nextText(c)) + "</div>";
   }

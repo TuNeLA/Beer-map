@@ -1,13 +1,14 @@
 /* Öl Nu — 👤 PROFIL (owner 2026-10-22: "put Ölpass and more of the things in settings into a Profile tab that shows
    everything for your profile"). The ⚙️ sheet has two tabs: "👤 Profil | ⚙️ Inställningar" (app.js showSettings).
    This file draws only the hero card at the top of Profil (hook profileHead): initial, name, hemstad (demonym),
-   rank + progress to the next rank, a stat grid (drinks, nights this year, bars in the passport, weekend streak,
+   rank icon + rank + progress to the next rank in MERITS (js/rankico.js), a stat grid (drinks, nights this year, bars in the passport, weekend streak,
    medals, friends), the regular bar this year, the medal ribbon and my groups. Every number comes from data other
    modules already hold (SOCIAL.stats, MERITER.cur, PASSPORT.data, HELG.data, MEDALS.mine, HOMETOWN.mine) plus three
    reads on open, cached 60 s: my_wrapped('year', 0), my_groups, my_friends. No new RPC, no migration, no button on
    the map. The rows below the hero are the modules' own "profileSheet" hooks (moved from "settingsSheet", not
    copied): Ölpasset, Vänner & Hitta (+ Låt mig hittas), Konto, Swish, Spökläge, Topplistan, Wrapped, SOS.
-   A missing module or RPC hides its tile. Styles: profile.css. Public: window.PROFIL. */
+   A missing module or RPC hides its tile. Styles: profile.css. Public: window.PROFIL.
+   d-profile (I-114, 06): PROFIL.visSection() = the "Vem ser mig" group (js/pnui.js shapeProfil puts it right under the hero). */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
@@ -59,15 +60,14 @@
   }
 
   /* ---------- data from other modules ---------- */
+  // d-profile (I-114, 06): the rank comes from ONE place (js/rankico.js RANKICO.mine(): by merits; Min uniform uses the same).
+  // text = "12 av 20 meriter till <next rank>" (merits, information only). An old server without merits: the title only.
   function rank() {
-    var c = safe(function () { return W("MERITER") && W("MERITER").on() ? W("MERITER").cur() : null; }, null);
-    if (c) return { title: c.title, m: c.m, pct: c.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (c.m - c.at) / Math.max(1, c.nextAt - c.at)))) : 100,
-      next: safe(function () { return W("MERITER").nextText(c); }, ""), idx: c.idx, n: c.n, mer: true };
-    var s = safe(function () { return W("SOCIAL").stats(); }, null);
-    if (!s || !s.title) return null;
-    var v = s.meriter != null ? s.meriter : s.total;
-    return { title: s.title, m: v, pct: s.nextAt ? Math.max(0, Math.min(100, Math.round(100 * v / Math.max(1, s.nextAt)))) : 100,
-      next: safe(function () { return W("SOCIAL").titleProgress(); }, ""), mer: s.meriter != null };
+    var R = W("RANKICO"), r = R ? safe(function () { return R.mine(); }, null) : null;
+    if (!r || !r.title) return null;
+    r.text = safe(function () { return R.progText(r); }, "");
+    r.ico = safe(function () { return R.svg(r.idx, 28); }, "");
+    return r;
   }
   function demonym() {
     var t = safe(function () { return W("HOMETOWN").mine(); }, null);
@@ -94,10 +94,10 @@
       '<div class="pf-line">' + esc(line()) + "</div></div>" +
       (saved === null ? "" : '<button type="button" class="pf-acct' + (saved ? " ok" : "") + '" data-pf="acct" aria-label="' + esc(saved ? L("Kontot ä sparat", "Account saved") : L("Kontot ä int' sparat", "Account not saved")) + '">' +
         (saved ? "🔐 " + esc(L("Sparat", "Saved")) : "⚠️ " + esc(L("Int' sparat", "Not saved"))) + "</button>") + "</div>";
-    if (r) h += '<button type="button" class="pf-rank" data-pf="rank"><span class="pf-rank-t">🎖️ ' + esc(r.title) + "</span>" +
-      '<span class="pf-rank-m">' + esc((U.n1 || String)(r.m + (r.mer ? L(" meriter", " merits") : L(" öl", " beers")) + (r.idx ? " · " + L("grad ", "rank ") + r.idx + "/" + r.n : ""))) + "</span>" +
-      '<span class="pf-bar" aria-hidden="true"><span style="width:' + r.pct + '%"></span></span>' +
-      '<span class="pf-rank-n">' + esc(r.next) + "</span></button>";
+    if (r) h += '<button type="button" class="pf-rank" data-pf="rank" aria-label="' + esc(L("Grad: ", "Rank: ") + r.title + (r.text ? ". " + r.text : "")) + '">' +
+      '<span class="pf-rank-t">' + r.ico + "<span>" + esc(r.title) + "</span></span>" +
+      (r.mer && r.next ? '<span class="pf-bar" aria-hidden="true"><span style="width:' + r.pct + '%"></span></span>' : "") +
+      (r.text ? '<span class="pf-rank-n">' + esc(r.text) + "</span>" : "") + "</button>";
     var nMed = md ? Object.keys(md).length : null;
     var streak = hs && hs.me ? hs.me.streak | 0 : null;
     var nFr = fr && Array.isArray(fr.friends) ? fr.friends.length : null;
@@ -151,9 +151,64 @@
     load(false).then(function () { if (document.body.contains(box)) paint(box); });
   }
 
+  /* d-profile (I-114, 06): "Vem ser mig" right under the identity card. The rows are the REAL settings, not copies:
+       Synlighet    → Inställningar › Integritet (the Alla | Bara vänner | Spöke control); the row shows the value
+       Spökläge     = PNVIS.setMode() in place (a switch)
+       Exakt plats  = the app's own precision control (#prec-seg → PN.s.prec, olnu.prec) in place (a switch)
+       Hemzon       → the Hemzon sheet; the row shows På / Av
+     The values are read again on every paint (after a tap, and when the sheet body changes). */
+  function pni(n) { return safe(function () { return W("PNI").svg(n); }, "") || ""; }
+  function h(tag, attrs, kids) { return A.el(tag, attrs, (kids || []).filter(Boolean)); }
+  function ls(k, d) { return U.ls.get(k, d); }
+  function visRow(icon, title, sub, cls, sw) {
+    var kids = [h("span", { class: "ds-row-i", "aria-hidden": "true", html: pni(icon) }),
+      h("span", { class: "ds-row-t" }, [h("span", { text: title }), sub ? h("small", { text: sub }) : null]),
+      sw ? h("span", { class: "switch", "aria-hidden": "true", "aria-checked": "false" }) : h("span", { class: "pn-row-v" }),
+      sw ? null : h("span", { class: "ds-chev", "aria-hidden": "true" })];
+    var b = h("button", { type: "button", class: "ds-row pn-row " + cls }, kids);
+    if (sw) { b.setAttribute("role", "switch"); b.setAttribute("aria-checked", "false"); }
+    return b;
+  }
+  function visSection() {
+    var V = W("PNVIS");
+    if (!A || !A.LIVE || !V || !V.mode || !V.setMode) return null;
+    var NAME = { alla: "Alla", vanner: "Bara vänner", spoke: "Spöke" };
+    var sec = h("section", { class: "ds-section pn-vsm" }, [h("h3", { class: "ds-section-h", text: "Vem ser mig" })]);
+    var list = h("div", { class: "ds-list" }); sec.appendChild(list);
+    var prec = function () { var P = W("PN"); return P && P.s && P.s.prec ? P.s.prec : ls("olnu.prec", "exact") === "area" ? "area" : "exact"; };
+    var setSw = function (b, on) { b.setAttribute("aria-checked", String(on)); b.querySelector(".switch").setAttribute("aria-checked", String(on)); };
+    var rVis = visRow("eye", "Synlighet", "", "pn-vsm-vis", false);
+    var sGhost = visRow("eye-off", "Spökläge", "Ingen ser dig på kartan", "pn-vsm-ghost", true);
+    var sExact = visRow("pin", "Exakt plats", "Av: nya öl visar bara området", "pn-vsm-exact", true);
+    var rHome = W("HOMEZONE") && W("HOMEZONE").open ? visRow("home", "Hemzon", "Hemma syns bara ett område", "pn-vsm-home", false) : null;
+    function paint() {
+      var m = safe(function () { return V.mode(); }, "alla"), hz = safe(function () { return W("HOMEZONE").home(); }, null);
+      var v = rVis.querySelector(".pn-row-v"), t = NAME[m] || NAME.alla; if (v.textContent !== t) v.textContent = t;
+      setSw(sGhost, m === "spoke"); setSw(sExact, prec() === "exact");
+      if (rHome) { var hv = rHome.querySelector(".pn-row-v"), ht = hz ? "På" : "Av"; if (hv.textContent !== ht) hv.textContent = ht; }
+    }
+    rVis.addEventListener("click", function () { var P = W("PN"); if (P && P.showSettings) P.showSettings("s", "synl"); else safe(function () { V.open(); }); });
+    sGhost.addEventListener("click", function () {
+      var on = safe(function () { return V.mode(); }, "alla") !== "spoke";
+      safe(function () { V.setMode(on ? "spoke" : ls("olnu.visMode", "") === "vanner" ? "vanner" : "alla"); });
+      paint();
+    });
+    sExact.addEventListener("click", function () {
+      var b = document.getElementById(prec() === "exact" ? "prec-area" : "prec-exact"); if (b) b.click();   // the real control (app-map.js)
+      paint();
+    });
+    if (rHome) rHome.addEventListener("click", function () { safe(function () { W("HOMEZONE").open(); }); });
+    [rVis, sGhost, sExact, rHome].forEach(function (r) { if (r) list.appendChild(r); });
+    paint();
+    // a wrapper, not a section of the body: the Profil fold hides the body's own sections (pnui.css), and unlocks.js puts its
+    // "Garderob" row in the first list inside .pn-pf (that stays the "Mitt" list)
+    return h("div", { class: "pn-vsm-w ds-keep" }, [sec]);
+  }
+
   window.PROFIL = {
     init: function (api) { A = api; },
     profileHead: head,
+    visSection: visSection,
     refresh: function () { cache.at = 0; return load(true); },
     _cache: function () { return cache; }
   };

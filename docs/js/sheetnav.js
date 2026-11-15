@@ -96,7 +96,7 @@
   function didOpen(title, build, opts) {
     cur = [title, build, opts || {}];
     var s = sheet(), b = sbody();
-    if (s && b) s.classList.toggle("sn-tall", !!b.querySelector(".inv-tabs"));
+    if (s && b) s.classList.toggle("sn-tall", !!b.querySelector(".inv-tabs, :scope > .tabs.pf-tabs"));   // d-profile: Profil | Inställningar and its pages too (one height)
     if (pendingRestore) { var lv = pendingRestore; pendingRestore = null; restore(lv); }
     watchGv();
   }

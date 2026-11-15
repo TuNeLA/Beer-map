@@ -727,6 +727,8 @@
     box.classList.add("ds-keep");
     var wrap = h("div", { class: "pn-fold-w ds-keep" }, [tog]);
     var after = hero ? hero.nextSibling : (tabs ? tabs.nextSibling : body.firstChild);
+    var vsm = safe(function () { return W("PROFIL").visSection(); }, null);   // d-profile (I-114, 06): identity card, then "Vem ser mig" (js/profile.js), then the rest
+    if (vsm) body.insertBefore(vsm, after);
     body.insertBefore(box, after);
     body.insertBefore(wrap, box.nextSibling);
     body.classList.add("pn-pfmode");

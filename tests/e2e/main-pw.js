@@ -365,8 +365,12 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       await page.evaluate(() => { const f = document.querySelector("#sheet-body .pn-fold-t"); if (f && f.getAttribute("aria-expanded") !== "true") f.click(); }); await wait(page, 700);
       const p = await page.evaluate(() => { const b = document.getElementById("sheet-body"), t = b.textContent;
         return { ghost: [...b.querySelectorAll('[role="switch"]')].some((x) => /spökläge|ghost/i.test(x.getAttribute("aria-label") || "")), sos: !!b.querySelector(".sos-block"),
-          hide: /Göm min pin/.test(t), home: !!b.querySelector(".hz-row, .hz-set") || /Hemzon:/.test(t), sub: (b.querySelector(".pn-fold-t small") || {}).textContent }; });
-      ok(!p.ghost && !p.sos && !p.hide && !p.home && !/synlighet/.test(p.sub || ""), "S2 " + w + ": Profil shows only the profile (no Spökläge switch, SOS, Göm min pin, Hemzon)", p);
+          hide: /Göm min pin/.test(t), home: !!b.querySelector(".hz-row, .hz-set") || /Hemzon:/.test(t), sub: (b.querySelector(".pn-fold-t small") || {}).textContent,
+          vsm: [...b.querySelectorAll(".pn-vsm .ds-row .ds-row-t > span")].map((x) => x.textContent).join("|") }; });
+      // d-profile (owner I-114, proposal 06): Profil now has ONE "Vem ser mig" group right under the identity card (Synlighet, Spökläge,
+      // Exakt plats, Hemzon: links / switches to the real settings). Still no copy of the old module rows (SOS, Göm min pin, the Hemzon button).
+      ok(!p.ghost && !p.sos && !p.hide && !p.home && !/synlighet/.test(p.sub || "") && p.vsm === "Synlighet|Spökläge|Exakt plats|Hemzon",
+        "S2 " + w + ": Profil = the profile + the \"Vem ser mig\" group (no old Spökläge switch, SOS, Göm min pin or Hemzon button)", p);
       if (w === 390) await shot(page, "set-profil-390");
       await ctx.close();
     }
