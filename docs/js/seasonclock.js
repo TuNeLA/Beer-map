@@ -185,6 +185,7 @@
     try {
       var n = W.navigator, c = n.connection;
       if (/[?&]light=1(&|$)/.test(W.location.search)) return true;
+      if (/[?&]light=0(&|$)/.test(W.location.search) || W.__PN_LIGHT === false) return false;   // pictures / tests: the full version
       return !!((c && c.saveData) || (n.deviceMemory && n.deviceMemory < 4) || (n.hardwareConcurrency && n.hardwareConcurrency < 4));
     } catch (e) { return false; }
   }

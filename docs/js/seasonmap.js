@@ -188,10 +188,14 @@
     var T = readTown(m), bars = T.bars;
     // Christmas: the tree on the shopping street (45 m from every bar), light strings across it
     if (M.tree && T.st) {
-      var pts = walk(T.st.ls, 10, 900), best = null, cen = [0, 0], nb = 0;
+      var pts = walk(T.st.ls, 10, 900), best = null, cen = [0, 0], nb = 0, cands = [], R = pinRects(m);
       bars.forEach(function (x) { if (dist(x, T.C) < 600) { cen[0] += x[0]; cen[1] += x[1]; nb++; } }); cen = nb ? [cen[0] / nb, cen[1] / nb] : T.C;
-      pts.forEach(function (q2) { var side = [q2.p[0] - q2.dy * 14 / kx(q2.p[1]), q2.p[1] + q2.dx * 14 / 110540];
-        if (!clearOf(side, bars, 45)) return; var sc = dist(side, cen); if (!best || sc < best.sc) best = { sc: sc, p: side }; });
+      pts.forEach(function (q2) { [14, -14].forEach(function (o) { var side = [q2.p[0] - q2.dy * o / kx(q2.p[1]), q2.p[1] + q2.dx * o / 110540];
+        if (clearOf(side, bars, 70)) cands.push({ sc: dist(side, cen), p: side }); }); });
+      cands.sort(function (a, b2) { return a.sc - b2.sc; });
+      // the nearest free spot: its box on screen touches no pin now (the rule), else the nearest one (then it is hidden)
+      for (var ci = 0; ci < Math.min(60, cands.length) && !best; ci++) if (!hit(boxOf(m, F(cands[ci].p, { k: "tree" })), R)) best = cands[ci];
+      best = best || cands[0];
       if (best) { f.push(F(best.p, { k: "tree", img: "ss-tree-0", glow: "#ffcf7a", sk: 1 })); mdl.push(F(best.p, { k: "tree3d" })); stats.tree = best.p; }
       if (M.lights) walk(T.st.ls, 30, 720).forEach(function (q2, i) {
         var ax = -q2.dy / kx(q2.p[1]), ay = q2.dx / 110540, ends = [[q2.p[0] + ax * 9.5, q2.p[1] + ay * 9.5], [q2.p[0] - ax * 9.5, q2.p[1] - ay * 9.5]];
