@@ -134,17 +134,18 @@ async function runGL(b) {
     await view(page, LUD, 16, 2000);
     const rings = () => page.evaluate(() => ({ n: document.querySelectorAll(".bl-ring").length, total: BARLIGHT.stats.rings }));
     const r0 = await rings();
-    S.checkins = [CI(BAR.pitch, PIT, "Pitchers", { who: "Kalle K" })]; await poll(page, 400);
+    S.checkins = [CI(BAR.pitch, PIT, "Pitchers", { who: "Kalle K" })]; await poll(page, 300);
+    await page.waitForFunction((t) => BARLIGHT.stats.rings > t, r0.total, { timeout: 6000 }).catch(() => {});
     const r1 = await rings(), an = await page.evaluate(() => { const i = document.querySelector(".bl-ring>i"); return i ? getComputedStyle(i).animationName + "|" + getComputedStyle(i).animationDuration : ""; });
     ok(r1.total === r0.total + 1 && r1.n === 1, "ring: a check-in that arrives in the poll = one ring at that bar", [r0, r1]);
     ok(/blRing/.test(an) && /2s/.test(an), "ring: 2 s, once (CSS, transform + opacity)", an);
-    await poll(page, 400); const r2 = await rings();
+    await poll(page, 1500); const r2 = await rings();
     ok(r2.total === r1.total, "ring: the same check-in in the next poll = no second ring", [r1, r2]);
-    S.checkins.push(CI(BAR.pitch, PIT, "Pitchers", { who: "Nisse N" })); await poll(page, 400); const r3 = await rings();
+    S.checkins.push(CI(BAR.pitch, PIT, "Pitchers", { who: "Nisse N" })); await poll(page, 1500); const r3 = await rings();
     ok(r3.total === r2.total, "ring: a second check-in at the same bar inside 10 s = no ring", [r2, r3]);
-    S.checkins.push(CI(BAR.grek, GREK, "Grekiska", { who: "Okänd" })); await poll(page, 400); const r4 = await rings();
+    S.checkins.push(CI(BAR.grek, GREK, "Grekiska", { who: "Okänd" })); await poll(page, 1500); const r4 = await rings();
     ok(r4.total === r3.total, "ring: a stranger checks in at a bar with under 3 people = no ring (never point at one person)", [r3, r4]);
-    S.checkins.push(CI(BAR.lobby, LOBBY, "Lobbybaren", { who: "Gammal G", at: iso(40) })); await poll(page, 400); const r5 = await rings();
+    S.checkins.push(CI(BAR.lobby, LOBBY, "Lobbybaren", { who: "Gammal G", at: iso(40) })); await poll(page, 1500); const r5 = await rings();
     ok(r5.total === r4.total, "ring: an old check-in (40 min) that shows up now = no ring", [r4, r5]);
     await wait(page, 2400); const r6 = await rings();
     ok(r6.n === 0, "ring: its element is removed after 2 s", r6);
@@ -170,7 +171,9 @@ async function runGL(b) {
     const meAt = async (ll, z) => { await page.evaluate(([ll, z]) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, z, { animate: false }); }, [ll, z]); await wait(page, 1600); };
     const me = (id) => page.evaluate((id) => { const g = __gm(), m = GLBARS._me(), ids = g.getStyle().layers.map((l) => l.id), drawn = g.getLayer("olnu-me-pin") ? g.queryRenderedFeatures({ layers: ["olnu-me-pin"] }).length : -1;
       const bar = id ? (GLBARS._view() || []).find((x) => x.id === id) : null, c = Object.values(GLBARS._crowds ? GLBARS._crowds() : {}).find((q) => id && q.ids.includes(id)), cp = c ? __map.latLngToContainerPoint(c.ll) : null;
-      const ic = bar && bar.shown ? { x: bar.x, y: bar.y, r: bar.icoW / 2 } : cp ? { x: cp.x, y: cp.y, r: c.r * 0.75 } : null;
+      // the icon my marker stands beside: the bar's own pin, its town lantern, or what GLBARS says covers my position (a cluster)
+      const cv = m.cov || m.at, k = m.px && m.r ? m.px.r / m.r : 1, q = cv ? __map.latLngToContainerPoint(cv.ll) : null;
+      const ic = bar && bar.shown ? { x: bar.x, y: bar.y, r: bar.icoW / 2 } : cp ? { x: cp.x, y: cp.y, r: c.r * 0.75 } : q ? { x: q.x, y: q.y, r: cv.r * (cv.sz || 1) * k } : null;
       return { top: ids[ids.length - 1], drawn, px: m.px, img: m.img, k: m.k, cov: m.cov && m.cov.id, ic, gap: ic && m.px ? Math.hypot(m.px.x - ic.x, m.px.y - ic.y) - ic.r - m.px.r : null,
         dom: [...document.querySelectorAll(".me-dot")].filter((e) => e.offsetParent && getComputedStyle(e).display !== "none").length, old: ["olnu-me-dot", "olnu-me-ring", "olnu-me-du"].filter((l) => g.getLayer(l)) }; }, id || null);
     for (const z of [13.5, 16, 17.5]) {
