@@ -53,11 +53,14 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
   (function look() { if (hit()) return res(Math.round(performance.now() - t0)); if (performance.now() - t0 > mx) return res(-1); requestAnimationFrame(look); })();
 }), [clickSel, sel, text, max]);
 
+// one section = one part of the lane; an exception stops that section only (on the old code most parts are not there)
+const sect = async (k, fn) => { if (!want(k)) return; try { await fn(); } catch (e) { fail++; console.log("FAIL " + k + " stopped by an exception:", String(e.message).split("\n")[0].slice(0, 200)); } };
+
 (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME });
   try {
     /* ---------- grp: design 07, one "who is out" card ---------- */
-    if (want("grp")) {
+    await sect("grp", async () => {
       const { ctx, page, errs } = await open(browser);
       await openGroup(page);
       const G = await page.evaluate((P) => {
@@ -98,10 +101,10 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
       ok("grp a tap on the Nu text still opens 'who is out' (HITTA.nowSheet)", tap === 1, tap);
       ok("grp no page errors", errs.length === 0, errs);
       await ctx.close();
-    }
+    });
 
     /* ---------- chat: the group chat line at the tap + small fixes 14, 15 ---------- */
-    if (want("chat")) {
+    await sect("chat", async () => {
       const st = { posts: [], mode: "slow", next: 100, rows: [] };
       const { ctx, page, errs } = await open(browser, { routes: async (page) => {
         await page.route(/rest\/v1\/rpc\/post_group_msg/, async (r) => {
@@ -155,10 +158,10 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
       ok("chat fix 15: my bubble colour is the token --pn-chat-me (#3b3329)", !!av && av.tok.toLowerCase() === "#3b3329" && av.meBg === "rgb(59, 51, 41)", av);
       ok("chat no page errors", errs.length === 0, errs);
       await ctx.close();
-    }
+    });
 
     /* ---------- tell: the event chat line (evsheet.js "Säg till gruppen") ---------- */
-    if (want("tell")) {
+    await sect("tell", async () => {
       const st = { posts: [], tells: 0, mode: "fail" };
       const { ctx, page, errs } = await open(browser, { routes: async (page) => {
         await page.route(/rest\/v1\/rpc\/events_near2/, (r) => J(r, { v: 1, server_time: new Date().toISOString(), events: [{ id: 501, title: "Pubquiz", kind: "quiz", starts_at: new Date(now + 3 * 3600e3).toISOString(), place: "Pitchers", bar_id: "n3472634175", lat: 60.14997, lng: 15.18679, town: "Ludvika" }] }));
@@ -196,10 +199,10 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
       ok("tell event: the text that was sent is the line on the page", s1.length === 1 && s1[0].t.indexOf(st.posts[0].p_body) >= 0, { s1, body: st.posts[0] && st.posts[0].p_body });
       ok("tell no page errors", errs.length === 0, errs);
       await ctx.close();
-    }
+    });
 
     /* ---------- empty: design 09 + small fixes 7, 8 ---------- */
-    if (want("empty")) {
+    await sect("empty", async () => {
       const { ctx, page, errs } = await open(browser, { empty: true });
       // what one empty state must be: 1 visible card, 1 sentence (b), 1 help line, 1 button, and no disabled / single-choice control near it
       const look = (page, root) => page.evaluate((root) => {
@@ -252,10 +255,10 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
       await clickJS(d.page, "#btn-top"); await wait(d.page, 1500);
       ok("Topplistor with bars: the list shows, no empty card, tab Krogar", await d.page.evaluate(() => !document.querySelector("#sheet-body .bd-none") && document.querySelectorAll("#sheet-body > ol.toplist .top-row").length > 0 && document.querySelector('#sheet-body .tt-bar [data-t="top"]').textContent === "Krogar"));
       await d.ctx.close();
-    }
+    });
 
     /* ---------- van: design 10 Vänner ---------- */
-    if (want("van")) {
+    await sect("van", async () => {
       const { ctx, page, errs } = await open(browser, { routes: async (page) => {
         await page.route(/rest\/v1\/rpc\/my_friends/, (r) => J(r, { code: "K7Q2MXA", friends: FRIENDS, incoming: [], outgoing: [] }));
         await page.route(/rest\/v1\/rpc\/friend_list/, (r) => J(r, { v: 1, people: PEOPLE, groups: [{ id: GID, name: "Ludvika Lager" }] }));
@@ -297,10 +300,10 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
       ok("van the switch in the card still works (set_find_share → on)", await page.evaluate(() => document.querySelector("#inv-pane-f .nr-share .switch").getAttribute("aria-checked") === "true"));
       ok("van no page errors", errs.length === 0, errs);
       await ctx.close();
-    }
+    });
 
     /* ---------- inv: design 11 Bjud in ---------- */
-    if (want("inv")) {
+    await sect("inv", async () => {
       let body = null;
       const { ctx, page, errs } = await open(browser, { routes: async (page) => {
         await page.route(/rest\/v1\/rpc\/friend_list/, (r) => J(r, { v: 1, people: PEOPLE, groups: [{ id: GID, name: "Ludvika Lager" }] }));
@@ -360,10 +363,10 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
       await shot(page, "bjudin");
       ok("inv no page errors", errs.length === 0, errs);
       await ctx.close();
-    }
+    });
 
     /* ---------- join: small fix 30 ---------- */
-    if (want("join")) {
+    await sect("join", async () => {
       for (const [w, h] of [[390, 844], [360, 780]]) {
         const { ctx, page } = await ctxFor(browser, { width: w, height: h });
         await boot(page);
@@ -376,7 +379,7 @@ const msUntil = (page, clickSel, sel, text, max) => page.evaluate(([c, s, t, mx]
         if (w === 390) await shot(page, "join");
         await ctx.close();
       }
-    }
+    });
   } catch (e) { fail++; console.log("FAIL exception", e.stack); }
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);

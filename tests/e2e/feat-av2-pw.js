@@ -189,7 +189,8 @@ async function routes(page, me) {
       ok("Anton's 1st message starts the group (no avatar; ds54: avatar on the last bubble)", !m(4).cont && !m(4).pic && m(5).cont, m(4));
       ok("Oskar: 1 avatar for 2 messages (on the last)", !m(2).pic && m(3).cont && m(3).pic);
       ok("my own (Lisa) messages have no avatar", m(1).mine && !m(1).pic && m(6).mine);
-      ok("chat avatar is 32 px, left of the bubble", await page.evaluate(() => { const p = document.querySelector('.chat-msg[data-mid="5"] > .av-pic'), li = p.parentNode; const a = p.getBoundingClientRect(), b = li.getBoundingClientRect(); return Math.round(a.width) === 32 && a.right <= b.left + 1; }));
+      // d-social (design2 small fix 14): the picture is still 32 px; the element is a 44 px tap target (a 6 px clear border around the picture)
+      ok("chat avatar picture is 32 px (in a 44 px tap target), left of the bubble", await page.evaluate(() => { const p = document.querySelector('.chat-msg[data-mid="5"] > .av-pic'), li = p.parentNode; const a = p.getBoundingClientRect(), b = li.getBoundingClientRect(); return parseFloat(getComputedStyle(p).width) === 32 && Math.round(a.width) === 44 && a.right <= b.left + 1; }));
       await page.evaluate(() => { const l = document.querySelector(".chat-list"); if (l) l.scrollTop = 0; });
       await shot(page, "chat");
       // C: group page NU strip, ⋯ → Medlemmar, Vänner tab
@@ -197,7 +198,7 @@ async function routes(page, me) {
       await page.evaluate(() => window.A_closeSheet ? 0 : document.getElementById("btn-groups").click());
       await wait(page, 1200);
       if (await page.$(".glist .gcard")) { await page.click(".glist .gcard >> nth=0"); await wait(page, 1500); }
-      const fc = await page.evaluate(() => [...document.querySelectorAll(".gpg-now .gpg-face")].map((f) => !!f.querySelector("svg")));
+      const fc = await page.evaluate(() => [...document.querySelectorAll(".gpg-now .gpg-face")].filter((f) => f.getAttribute("data-avk") !== "me").map((f) => !!f.querySelector("svg")));   // the other members (the old NU strip had the 2 who are out; my own face comes from my_avatar)
       ok("NU card faces are avatars (d-social design 07: the faces are the Gänget ikväll strip in the same card)", fc.length >= 2 && fc.every(Boolean), fc);
       await shot(page, "group-now");
       await page.click(".gpg-dots").catch(() => {}); await wait(page, 500);
