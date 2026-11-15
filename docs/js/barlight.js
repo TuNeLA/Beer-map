@@ -63,22 +63,22 @@
       var bf = before && m.getLayer(before) ? before : undefined;
       // k = how far the light has spread (feature-state, 0.02 → 1 while "the light spreads"; no state = 1 = the still light)
       var K = ["coalesce", ["feature-state", "k"], 1];
-      var A = ["*", L3(STR[1], STR[2], STR[3]), ["^", ["max", 0, ["-", 1, ["/", ["get", "d"], ["*", K, L3(REACH[1], REACH[2], REACH[3])]]]], 1.6]];
-      var Wd = function (k) { return ["interpolate", ["exponential", 1.6], ["zoom"], 12, 1.2 * k, 14, 4.5 * k, 16, 15 * k, 18, 42 * k]; };
+      var A = ["*", L3(STR[1], STR[2], STR[3]), ["^", ["max", 0, ["-", 1, ["/", ["get", "d"], ["*", K, L3(REACH[1], REACH[2], REACH[3])]]]], 1.2]];
+      var Wd = function (k) { return ["interpolate", ["exponential", 1.6], ["zoom"], 12, 1.4 * k, 14, 5.6 * k, 16, 17 * k, 18, 44 * k]; };
       var line = function (id, paint) {
         if (m.getLayer(id)) return;
         // slot "middle" of the Standard style = over the roads, under the houses and the labels. A style without that slot
         // (tests, an old style) keeps the layer where it is added: under the halo and the bar layers.
         m.addLayer({ id: id, type: "line", source: SRC_L, slot: "middle", minzoom: 12, layout: { "line-cap": "butt", "line-join": "round" }, paint: paint }, bf);
       };
-      line(L_GLOW, { "line-color": "#F5A623", "line-width": Wd(2.3), "line-blur": Wd(1.6), "line-opacity": ["*", A, 0.5], "line-emissive-strength": 1 });
+      line(L_GLOW, { "line-color": "#F5A623", "line-width": Wd(2.3), "line-blur": Wd(1.6), "line-opacity": ["*", A, 0.68], "line-emissive-strength": 1 });
       line(L_CORE, { "line-color": ["interpolate", ["linear"], A, 0, "#F5A623", 0.5, "#FFB84A", 1, "#FFDC96"], "line-width": Wd(0.95), "line-blur": Wd(0.25),
         "line-opacity": A, "line-emissive-strength": 1 });
       var Z = function (a, b, c) { return ["interpolate", ["linear"], ["zoom"], 12, L3(a * 0.4, b * 0.4, c * 0.4), 14, L3(a * 0.63, b * 0.63, c * 0.63), 16, L3(a * 0.9, b * 0.9, c * 0.9), 18, L3(a * 1.35, b * 1.35, c * 1.35)]; };
       if (!m.getLayer(L_HA)) m.addLayer({ id: L_HA, type: "circle", source: SRC_P, paint: { "circle-color": "#FF9A1F", "circle-blur": 1, "circle-emissive-strength": 1, "circle-pitch-alignment": "map",
-        "circle-radius": Z(40, 58, 80), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 13.4, 0, 14.4, L3(0.22, 0.30, 0.38)] } }, bf);
+        "circle-radius": Z(40, 58, 80), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 13.4, 0, 14.4, L3(0.32, 0.44, 0.56)] } }, bf);
       if (!m.getLayer(L_HB)) m.addLayer({ id: L_HB, type: "circle", source: SRC_P, paint: { "circle-color": "#FFC861", "circle-blur": 0.9, "circle-emissive-strength": 1, "circle-pitch-alignment": "map",
-        "circle-radius": Z(20, 26, 34), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 11, L3(0.2, 0.3, 0.4), 13.5, L3(0.33, 0.46, 0.58)] } }, bf);
+        "circle-radius": Z(20, 26, 34), "circle-opacity": ["interpolate", ["linear"], ["zoom"], 11, L3(0.24, 0.34, 0.45), 13.5, L3(0.42, 0.58, 0.72)] } }, bf);
       ready = !!(m.getLayer(L_HA) && m.getLayer(L_HB) && m.getLayer(L_GLOW) && m.getLayer(L_CORE));
     } catch (e) { ready = false; try { console.warn("pn barlight", e && e.message); } catch (x) {} }
     if (ready) { pushPts(); pushLines(); need(); }
