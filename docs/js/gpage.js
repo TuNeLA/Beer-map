@@ -70,7 +70,9 @@
     event: ["📨 Skapa event", "📨 Make an event"], eventSub: ["bjud in gänget", "invite the gang"],
     out1: ["{n} ute nu", "{n} out now"], last: ["Senast:", "Latest:"], at: ["på", "at"],
     ci: ["checkade in", "checked in"], fail: ["Kunde int' skicka. Försök igen.", "Could not send. Try again."],
-    slow: ["Lugn i stormen – vänta nån sekund.", "Easy – wait a few seconds."]
+    slow: ["Lugn i stormen – vänta nån sekund.", "Easy – wait a few seconds."],
+    out0: ["Ingen ute nu", "Nobody out now"], gang: ["Gänget ikväll", "The gang tonight"],
+    sending: ["Skickar…", "Sending…"], notSent: ["Inte skickat – tryck för att försöka igen", "Not sent – tap to try again"]
   };
   function T(k) { var v = TX[k]; if (!v) return ""; if (Array.isArray(v[0])) v = pick(k, v); return sv() ? v[0] : v[1]; }
 
@@ -235,43 +237,43 @@
   }
 
   /* ---------- the parts ---------- */
-  function faceEls(list, cls) {
-    return list.slice(0, 5).map(function (p, i) {
-      return h("span", { class: "gpg-face " + (cls || "") + (p.me ? " me" : ""), style: "--i:" + i, "aria-hidden": "true", text: p.i || (p.name || "?").charAt(0).toUpperCase() });
-    });
-  }
   function barName(p) {
     if (p.place) return p.place;
     try { if (p.bar_id && window.BARS && window.BARS.byId) { var b = window.BARS.byId(p.bar_id); if (b && b.name) return b.name; } } catch (e) {}
     return "";
   }
+  // d-social (design 07, I-114): ONE "who is out" card. Its top is this button (who is out now, where, the newest beer /
+  // check-in; tap = show them). The faces with tonight's counts are the strip under it (loadMem). The card shows when
+  // one of the two has data. The old line "N av M dricker nu" on the top card is hidden on the page (CSS).
+  function syncCard(wrap) {
+    var c = wrap.querySelector(".gpg-now"); if (!c) return;
+    var b = c.querySelector(".gpg-now-b"), l = c.querySelector(".pn-gp-mem-l"), hide = !((b && b.__out) || (l && l.__on));
+    if (c.hidden !== hide) c.hidden = hide;
+  }
   function paintNow(wrap, d) {
-    var box = wrap.querySelector(".gpg-now"); if (!box) return;
-    box.hidden = false; box.innerHTML = "";
+    var box = wrap.querySelector(".gpg-now-b"); if (!box) return;
+    box.innerHTML = "";
     var out = (d && d.out) || [];
     var places = []; out.forEach(function (p) { var b = barName(p); if (b && places.indexOf(b) < 0) places.push(b); });
-    var head = h("div", { class: "gpg-now-h" }, [h("span", { class: "gpg-dot" + (out.length ? " on" : ""), "aria-hidden": "true" }), h("b", { text: L("Nu", "Now") })]);
-    var faces = h("div", { class: "gpg-faces" }, faceEls(out, "on"));
-    var line = out.length
-      ? T("out1").replace("{n}", out.length) + (places.length ? " · " + places.slice(0, 2).join(", ") + (places.length > 2 ? " +" + (places.length - 2) : "") : "")
-      : T("none");
-    var main = h("div", { class: "gpg-now-main" }, [h("div", { class: "gpg-now-l", text: line })]);
+    var title = out.length ? T("out1").replace("{n}", out.length) : T("out0");
+    var where = out.length ? places.slice(0, 2).join(", ") + (places.length > 2 ? " +" + (places.length - 2) : "") : T("none");
+    box.appendChild(h("span", { class: "gpg-now-t" }, [h("span", { class: "gpg-dot" + (out.length ? " on" : ""), "aria-hidden": "true" }), h("b", { text: title })]));
+    var main = h("div", { class: "gpg-now-main" }, [where ? h("div", { class: "gpg-now-l", text: where }) : null]);
     if (d && d.last) {
       var x = d.last, who = x.me ? T("you") : (x.name || "?");
       var what = x.kind === "checkin" ? who + " " + T("ci") : who;   // cifix3: no emoji here (pnds scrub removed it 120 ms later = a late text change)
-      main.appendChild(h("div", { class: "gpg-now-s muted", text: T("last") + " " + what + (x.place ? " · " + x.place : "") + " · " + ago(x.at) }));
+      var pl = x.place && places.slice(0, 2).indexOf(x.place) < 0 ? " · " + x.place : "";   // a place that is on the line above is not said twice
+      main.appendChild(h("div", { class: "gpg-now-s muted", text: T("last") + " " + what + pl + " · " + ago(x.at) }));
     }
-    box.appendChild(head);
-    if (out.length) box.appendChild(faces);
     box.appendChild(main);
-    box.setAttribute("aria-label", line);
+    box.setAttribute("aria-label", title + (out.length && where ? " · " + where : ""));
     box.__out = out;
     // ds52: ONE source for "who is out": the status line follows group_now too
     try {
       var gs = wrap.querySelector(".gmain .gsub"), g0 = wrap.__g;
       if (gs && g0 && A && A.t) { var nh = A.t("drinkingOf", out.length, Math.max(g0.member_count | 0, out.length, 1)); /* b1people I-15: the code has its own line (pn-gp-code) */ if (gs.innerHTML !== nh) gs.innerHTML = nh; }   // fixS T-16: never "0 av 0" (I am a member)
     } catch (e) {}
-    try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(box, out, wrap.__g); } catch (e) {}   // 👤 avatars
+    syncCard(wrap);
   }
   // fixS T-16: the member count on the open page follows the member list (group_status: one row per member). It came only
   // from the Grupper list object (0 for a new group, stale after people join). Repaints the status line, "Om gruppen"
@@ -285,20 +287,20 @@
     try {
       var ds = wrap.querySelector(".gpg-dots .pn-gp-tx small"), dt = L(n1(n + " medlemmar · kod · gruppchef"), n + " members · code · chief"); if (ds && ds.textContent !== dt) ds.textContent = dt;
       var mn = wrap.querySelector(".gpg-info .sa-gpg-n"); if (mn && mn.firstChild && mn.firstChild.nodeType === 3 && mn.firstChild.nodeValue !== String(n)) mn.firstChild.nodeValue = String(n);
-      var nb = wrap.querySelector(".gpg-now"), on = nb && nb.__out ? nb.__out.length : 0, gs = wrap.querySelector(".gmain .gsub");
+      var nb = wrap.querySelector(".gpg-now-b"), on = nb && nb.__out ? nb.__out.length : 0, gs = wrap.querySelector(".gmain .gsub");
       if (gs && A && A.t) { var nh = A.t("drinkingOf", on, Math.max(n, on, 1)); /* b1people I-15 */ if (gs.innerHTML !== nh) gs.innerHTML = nh; }
     } catch (e) {}
   }
   // ds58: the members strip (group_status_v3, then v2; same as Medlemmar). Live first, then most drinks, then the server order.
   function loadMem(wrap, g, box) {
     if (!A || !A.rpc || !A.LIVE || !g || !g.id || !box) return;
-    // no pop-in: paint from the instant-screen cache at once; a late first answer (after the page showed) waits for the next open
-    var t0 = Date.now(), holding = function () { var sb = document.getElementById("sheet-body"); return Date.now() - t0 < 400 && !!(sb && sb.classList.contains("wm-hold")); };
+    // no pop-in: paint from the instant-screen cache at once. d-social: the strip keeps its height from the start
+    // (.pn-gp-mem-wait), so a late first answer fills it in place: nothing under the card moves.
     var paint = function (data) {
         var rows = data.map(function (m, i) { return { name: m.name || "", me: !!m.is_me, n: Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), live: !!m.live, ix: i, k: m.k || null }; })
           .sort(function (a, b) { return (b.live - a.live) || (b.n - a.n) || (a.ix - b.ix); }).slice(0, 12);
         var sig = JSON.stringify(rows); if (box.__sig === sig && !box.hidden) return; box.__sig = sig;   // same answer = no repaint (no pop-in)
-        var l = box.querySelector(".pn-gp-mem-l"); l.innerHTML = "";
+        var l = box; l.innerHTML = "";
         rows.forEach(function (p) {
           var mi = h("span", { class: "pn-gp-mi" + (p.live ? " on" : "") + (p.me ? " me" : ""), role: "button", tabindex: "0", "aria-label": (p.me ? L("Du", "You") : p.name) + L(", visa profilkort", ", show profile card") }, [
             h("span", { class: "gpg-face" + (p.live ? " on" : "") + (p.me ? " me" : ""), text: (p.name || "?").charAt(0).toUpperCase() }),
@@ -311,7 +313,7 @@
           l.appendChild(mi);
         });
         try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(l, rows, g); } catch (e) {}
-        box.hidden = !rows.length;
+        box.classList.remove("pn-gp-mem-wait"); box.__on = rows.length > 0; box.hidden = !rows.length; syncCard(wrap);
         // ds58: someone new in the group while the page is open → one calm toast per name
         var names = data.map(function (m) { return m.name || ""; });
         var joined = wrap.__memNames && names.some(function (n) { return n && wrap.__memNames.indexOf(n) < 0; });
@@ -323,25 +325,27 @@
     var go = function (fn) {
       A.rpc(fn, { p_group_id: g.id }).then(function (r) {
         if (!document.body.contains(wrap)) return;
-        if (r.error || !Array.isArray(r.data) || !r.data.length) { if (fn === "group_status_v3") go("group_status_v2"); return; }
-        setCount(wrap, r.data.length);   // fixS T-16: also for a late first answer (the strip waits, the count does not)
-        if (box.hidden && !holding()) { try { if (window.WARM && window.WARM.prefetch) window.WARM.prefetch(fn, { p_group_id: g.id }); } catch (e) {} return; }   // late first answer: cached for the next open
+        if (r.error || !Array.isArray(r.data) || !r.data.length) {
+          if (fn === "group_status_v3") go("group_status_v2"); else if (!box.__on) { box.hidden = true; syncCard(wrap); }   // no member list: the card is the Nu text only
+          return;
+        }
+        setCount(wrap, r.data.length);   // fixS T-16: the member count follows the member list
         paint(r.data);
       });
     };
     go("group_status_v3");
   }
   function loadNow(wrap, g) {
-    if (offNow || !A || !A.LIVE || !g || !g.id) { var b0 = wrap.querySelector(".gpg-now"); if (b0) b0.hidden = true; return; }
+    if (offNow || !A || !A.LIVE || !g || !g.id) return;   // d-social: no group_now = the card keeps its "Gänget ikväll" title
     A.rpc("group_now", { p_group_id: g.id }).then(function (r) {
       if (!document.body.contains(wrap)) return;
-      if (r.error) { if (U.missing && U.missing(r.error)) offNow = true; var b = wrap.querySelector(".gpg-now"); if (b && !b.__out) b.hidden = true; return; }
+      if (r.error) { if (U.missing && U.missing(r.error)) offNow = true; return; }
       var dn = A.parseData(r.data); paintNow(wrap, dn);
       if (dn && dn.members) setCount(wrap, dn.members, true);   // fixS T-16: group_now knows the member count (exact)
     });
   }
   function nowTap(wrap, g) {
-    var out = (wrap.querySelector(".gpg-now") || {}).__out || [];
+    var out = (wrap.querySelector(".gpg-now-b") || {}).__out || [];
     if (!A || !A.map) return;
     if (g && !wrap.__hfAll && window.HITTA && window.HITTA.nowSheet) {
       try { if (window.HITTA.nowSheet(g, out, function () { wrap.__hfAll = true; try { nowTap(wrap, g); } finally { wrap.__hfAll = false; } })) return; } catch (e) {}
@@ -372,9 +376,41 @@
     var st = wrap.__chat; if (!st) return;
     var ul = wrap.querySelector(".gpg-msgs"); if (!ul) return;
     ul.innerHTML = "";
-    var last = st.msgs.slice(-PREV_N);
-    if (!last.length) ul.appendChild(h("li", { class: "gpg-msg muted gpg-empty", text: T("chatEmpty") }));
+    var pend = st.pend || [], last = st.msgs.slice(-Math.max(1, PREV_N - pend.length));
+    if (!last.length && !pend.length) ul.appendChild(h("li", { class: "gpg-msg muted gpg-empty", text: T("chatEmpty") }));
     last.forEach(function (m) { ul.appendChild(chatRow(wrap, m)); });
+    pend.forEach(function (p) { ul.appendChild(pendRow(wrap, p)); });
+  }
+  // d-social (speed #14 for this chat): my line shows at the tap as "Skickar…". The real row takes its place when a read
+  // returns it (by id, else by text: never two copies). A failed send stays as "Inte skickat – tryck för att försöka
+  // igen" (tap = send again). The same pattern as live.js has for the full chat.
+  function pendRow(wrap, p) {
+    var fail = p.st === "fail";
+    var li = h("li", { class: "gpg-msg me gpg-pend" + (fail ? " gpg-fail" : p.st === "ok" ? " gpg-sent" : ""), "aria-busy": p.st === "send" ? "true" : null, role: fail ? "button" : null, tabindex: fail ? "0" : null }, [
+      h("b", { text: T("you") + " " }), h("span", { text: p.text }),
+      h("small", { class: "gpg-pend-s", html: fail ? ic("refresh") + esc(T("notSent")) : p.st === "ok" ? ic("check") : esc(T("sending")) })]);
+    if (!fail) return li;
+    var again = function (e) {
+      if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault(); e.stopPropagation();   // the list itself opens the full chat
+      if (p.st !== "fail") return;
+      p.st = "send"; paintChat(wrap); post(wrap, wrap.__g, p);
+    };
+    li.addEventListener("click", again); li.addEventListener("keydown", again);
+    return li;
+  }
+  function takeRows(st, rows) {
+    var n = 0;
+    rows.forEach(function (m) {
+      if (!(m.id > st.lastId)) return;
+      st.lastId = m.id; st.msgs.push(m); n++;
+      if (!m.is_me || !st.pend) return;
+      var body = String(m.body || "").replace(/^⁣/, "");
+      var hit = st.pend.filter(function (p) { return p.id === m.id; })[0] || st.pend.filter(function (p) { return p.st !== "fail" && p.id == null && p.text === body; })[0];
+      if (hit) st.pend.splice(st.pend.indexOf(hit), 1);
+    });
+    if (st.msgs.length > 20) st.msgs = st.msgs.slice(-20);
+    return n;
   }
   function photoList(wrap) {
     var st = wrap.__chat, g = wrap.__g;
@@ -423,34 +459,42 @@
       }
       var rows = (r.data || []).slice().sort(function (a, b) { return a.id - b.id; });
       st.lvl = st.painted && rows.length ? 0 : Math.min((st.lvl | 0) + 1, 2);   // fixP N-02: no new line → slower preview
-      rows.forEach(function (m) { if (m.id > st.lastId) { st.lastId = m.id; st.msgs.push(m); } });
-      if (st.msgs.length > 20) st.msgs = st.msgs.slice(-20);
+      takeRows(st, rows);
       if (rows.length || !st.painted) { st.painted = true; paintChat(wrap); }
     });
   }
-  function send(wrap, g, inp, btn) {
-    var text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
-    if (!text || !A) return;
+  function send(wrap, g, inp) {
+    var st = wrap.__chat, text = String(inp.value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+    if (!text || !A || !st) return;
     if (text.length > 140) text = text.slice(0, 140);
-    if (btn.disabled) return;
-    btn.disabled = true;
+    st.pend = st.pend || [];
+    if (st.pend.some(function (q) { return q.text === text && q.st === "send"; })) return;   // a double tap = one line
+    var p = { text: text, st: "send", id: null };
+    st.pend.push(p); inp.value = ""; paintChat(wrap);   // the line is on the page before any server answer
     // fixS T-05: Regler before the post (the RPC timeout must not run while Regler is open → no 2nd copy on a 2nd tap)
     var gate = window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : Promise.resolve(true);
     Promise.resolve(gate).then(function (okT) {
-      if (!okT) { btn.disabled = false; return; }
-      sendNow(wrap, g, inp, btn, text);
+      if (okT) { post(wrap, g, p); return; }
+      st.pend.splice(st.pend.indexOf(p), 1); if (!inp.value) inp.value = text; paintChat(wrap);   // "Int' nu": nothing sent, the text is back
     });
   }
-  function sendNow(wrap, g, inp, btn, text) {
+  function post(wrap, g, p) {
+    var st = wrap.__chat;
     try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
-    A.rpc("post_group_msg", { p_group_id: g.id, p_body: text }).then(function (r) {
-      btn.disabled = false;
-      if (r.error) { A.toast(U.errCode && U.errCode(r.error) === "slow_down" ? T("slow") : T("fail"), { err: true }); return; }
-      inp.value = "";
+    var bad = function (r) {
+      var slow = !!(r && r.error && U.errCode && U.errCode(r.error) === "slow_down");
+      if (st.pend.indexOf(p) < 0) return;
+      p.st = "fail"; paintChat(wrap);
+      if (slow || !document.body.contains(wrap)) A.toast(slow ? T("slow") : T("fail"), { err: true });   // the line itself says "Inte skickat" (one text)
+    };
+    A.rpc("post_group_msg", { p_group_id: g.id, p_body: p.text }).then(function (r) {
+      if (!r || r.error) { bad(r); return; }
+      var d = null; try { d = A.parseData ? A.parseData(r.data) : r.data; } catch (e) {}
+      if (st.pend.indexOf(p) >= 0) { p.st = "ok"; if (d && d.id != null) p.id = d.id; paintChat(wrap); }
       A.invoke("notify-group", { event: "msg", group_id: g.id });
       try { if (window.EXTRAS && window.EXTRAS.award) window.EXTRAS.award("chat"); } catch (e) {}
       loadChat(wrap, g);
-    });
+    }, function () { bad(null); });
   }
   function openChat(g) { try { if (window.SOCIAL && window.SOCIAL.openChat) window.SOCIAL.openChat(g); } catch (e) {} }
 
@@ -546,23 +590,32 @@
         h("small", { text: L(n1((g.member_count | 0) + " medlemmar · gruppchef"), (g.member_count | 0) + " members · chief") })]),
       h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]);
 
-    // Nu strip
-    var now = h("button", { type: "button", class: "gpg-now", hidden: true, onclick: function () { nowTap(wrap, g); } });
+    // d-social (design 07): ONE card for "who is out": the Nu text (tap = show them on the map / Hitta) + the Gänget ikväll
+    // strip (faces, tonight's counts; a face = a profile card) + a ">" to Medlemmar. Before group_now answers (or on an
+    // old server) the title is "Gänget ikväll" and a tap opens Medlemmar.
+    var nowB = h("button", { type: "button", class: "gpg-now-b", onclick: function () { if (nowB.__out) nowTap(wrap, g); else main.click(); } }, [
+      h("span", { class: "gpg-now-t" }, [h("b", { text: T("gang") })])]);
+    var memL = h("span", { class: "pn-gp-mem-l pn-gp-mem-wait" });
+    var now = h("div", { class: "gpg-now pn-gp-mem", hidden: true }, [
+      h("div", { class: "pn-gp-mem-h" }, [nowB,
+        h("button", { type: "button", class: "pn-gp-mem-more", "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [
+          h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })])]),
+      memL]);
 
     // chat block
     var chat = null;
     if (window.SOCIAL && window.SOCIAL.openChat) {
       var inp = h("input", { class: "inp gpg-inp", maxlength: "140", enterkeyhint: "send", autocomplete: "off", placeholder: T("chatPh"), "aria-label": T("chatPh") });
       var sb = h("button", { type: "button", class: "btn btn-amber gpg-send", "aria-label": T("send"), html: ic("send-r") || "➤" });   // b1people I-13: PNI send icon, points right
-      sb.addEventListener("click", function () { send(wrap, g, inp, sb); });
-      inp.addEventListener("keydown", function (e) { window.OLNU_CHAT_AT = Date.now(); if (e.key === "Enter") send(wrap, g, inp, sb); });
+      sb.addEventListener("click", function () { send(wrap, g, inp); });
+      inp.addEventListener("keydown", function (e) { window.OLNU_CHAT_AT = Date.now(); if (e.key === "Enter") send(wrap, g, inp); });
       chat = h("div", { class: "gpg-chat" }, [
         h("button", { type: "button", class: "gpg-chat-h", onclick: function () { openChat(g); } }, [h("span", { class: "pn-gp-ti pn-acc-chat", "aria-hidden": "true", html: ic("chat") }),
           h("b", { text: L("Chatten", "Chat") }), h("span", { class: "gpg-chat-o", text: T("chatOpen") })]),
         h("ul", { class: "gpg-msgs", role: "button", tabindex: "0", "aria-label": T("chatH"), onclick: function () { openChat(g); } }),
         h("div", { class: "gpg-qr" }, [inp, sb])
       ]);
-      wrap.__chat = { msgs: [], lastId: 0, busy: false, painted: false };
+      wrap.__chat = { msgs: [], lastId: 0, busy: false, painted: false, pend: [] };
     }
 
     // bottom bar: + and the ONE main action
@@ -594,11 +647,6 @@
     } });
     try { if (localStorage.getItem("olnu.gpgOpen") === "1") { wrap.classList.add("gpg-open"); fold.setAttribute("aria-expanded", "true"); } } catch (e) {}
 
-    // ds58: Gänget ikväll: every member's face + tonight's count (tap = Medlemmar)
-    // b1people I-12: the strip is a block (header button = Medlemmar; each face = a profile card), not one big button
-    var memS = h("div", { class: "pn-gp-mem", hidden: true }, [
-      h("button", { type: "button", class: "pn-gp-mem-h", "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [h("b", { text: L("Gänget ikväll", "The gang tonight") }), h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]),
-      h("span", { class: "pn-gp-mem-l" })]);
     var gk = gkOn() ? gkRow(g) : null;   // social-a: ⚔️ Gängkamp on the page
     // social-a (after lane): the Kvällsrapporten row right under the Nu block (AFTER2.groupCard returns a row or null)
     var a2 = null; try { a2 = window.AFTER2 && window.AFTER2.groupCard ? window.AFTER2.groupCard(g) : null; } catch (e) { a2 = null; }
@@ -607,7 +655,7 @@
     [invB, codeB, dots, now, a2, mo, chat, bar, ph, info, fold, gk].forEach(function (x) { if (x) wrap.appendChild(x); });
     if (room) { var sp = wrap.querySelector(":scope > .sp-gi"); wrap.insertBefore(room, sp ? sp.nextSibling : gk); }
     wrap.__moWait = !mo;   // a moment can open later (moments_poll): the tick below puts it in then, under Kvällsrapporten / Nu
-    wrap.insertBefore(memS, chat || bar); loadMem(wrap, g, memS);
+    loadMem(wrap, g, memL);   // ds58 / b1people I-12: every member's face + tonight's count, live first (now inside the one card)
 
     // module actions (groupActions) as + tiles
     actions(g).forEach(function (x, i) {
@@ -633,7 +681,7 @@
       if (chat && cs && (tick % 3 === 0 || tick - (cs.tk | 0) >= (cs.lvl | 0) + 1)) { cs.tk = tick; loadChat(wrap, g); }
       if (gk && gk.__sub) gk.__sub();
       if (wrap.__moWait && !wrap.querySelector(":scope > .mo-gcard:not(.mo-room)")) { var m2 = moCard(g); if (m2) { var at = a2 && a2.isConnected ? a2 : now; wrap.insertBefore(m2, at.nextSibling); wrap.__moWait = false; } }
-      if (tick % 3 === 0) { loadNow(wrap, g); var ms0 = wrap.querySelector(":scope > .pn-gp-mem"); if (ms0) loadMem(wrap, g, ms0); }   // ds58: live members
+      if (tick % 3 === 0) { loadNow(wrap, g); loadMem(wrap, g, memL); }   // ds58: live members
     }, 10000);
     // Tiles change inside (a skåltimme goes live, the chief tile fills in): re-check hot / proxies, debounced.
     if (window.MutationObserver) {
@@ -710,20 +758,17 @@
         if (fn === "group_now") {
           // Paint into a copy, keep the chips other modules put in (Ikväll chip), then patch only what changed.
           try {
-            var box = wrap.querySelector(".gpg-now"); if (!box || !window.WARM || !window.WARM.patch) { paintNow(wrap, d); return; }
+            var box = wrap.querySelector(".gpg-now-b"); if (!box || !window.WARM || !window.WARM.patch) { paintNow(wrap, d); return; }
             var fake = document.createElement("div"), nb = box.cloneNode(false); fake.appendChild(nb); fake.__g = wrap.__g;
             paintNow(fake, d);
             var keep = box.querySelector(".gpg-now-main > .pn-gikv"), nm = nb.querySelector(".gpg-now-main");
             if (keep && nm) nm.appendChild(keep.cloneNode(true));
-            window.WARM.patch(box, nb); box.__out = nb.__out; box.hidden = false;
+            window.WARM.patch(box, nb); box.__out = nb.__out; if (nb.hasAttribute("aria-label")) box.setAttribute("aria-label", nb.getAttribute("aria-label")); syncCard(wrap);
           } catch (e) {}
           return;
         }
         var st = wrap.__chat; if (!st || !Array.isArray(d)) return;
-        var add = d.slice().sort(function (a, b) { return a.id - b.id; }).filter(function (m) { return m.id > st.lastId; });
-        if (!add.length) return;
-        add.forEach(function (m) { st.lastId = m.id; st.msgs.push(m); });
-        if (st.msgs.length > 20) st.msgs = st.msgs.slice(-20);
+        if (!takeRows(st, d.slice().sort(function (a, b) { return a.id - b.id; }))) return;
         try { paintChat(wrap); } catch (e) {}
       });
     },

@@ -15,31 +15,33 @@
 .nr-frow.f2-gone { opacity: .35; transition: opacity var(--m-4); }
 .nr-frow { -webkit-touch-callout: none; }
 @media (prefers-reduced-motion: reduce) { .nr-frow.f2-gone { transition: none; } }
-/* friends2 lane (13 Nov, I-89/I-90/I-91). I-90 Vänner + "Du kanske känner" rows at 360-430 px: avatar left, name (1 line) and
-   info (max 2 lines, word wrap) use the full row width, the actions are ONE compact row of 44 px buttons under the text
-   (nightfix: 44 px, not 40: the DESIGN.md tap target minimum that ds-sheet-pw gates)
-   (⋯ at the right end). A wide list (container >= 560 px) keeps the actions on the right of the text. */
-#sheet-body .nr-flist{container-type:inline-size}
-#sheet-body .nr-flist > .nr-frow{--nr-ind:22px;flex-wrap:wrap;align-items:flex-start;column-gap:8px;row-gap:4px;min-height:0;padding:6px 8px 6px 12px}
-#sheet-body .nr-flist > .nr-frow.av-row{--nr-ind:50px;column-gap:10px}
-#sheet-body .nr-flist > .nr-frow > .st-dot{margin:7px 4px 0 0}
-#sheet-body .nr-flist > .nr-frow.av-row > .av{flex:0 0 40px;margin:2px 0 0}
-#sheet-body .nr-flist > .nr-frow > .nr-fmain{flex:1 1 calc(100% - var(--nr-ind) - 2px);min-width:0;display:flex;flex-direction:column;gap:0}
-#sheet-body .nr-flist > .nr-frow .nr-fmain > b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 var(--ds-fs-16,16px)/22px var(--ds-sans,inherit)}
-#sheet-body .nr-flist > .nr-frow .nr-finfo,#sheet-body .nr-flist > .nr-frow .nr-fmain > small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;
-  white-space:normal;word-break:normal;overflow-wrap:normal;font:400 var(--ds-fs-14,14px)/18px var(--ds-sans,inherit);color:var(--ds-muted)}
-#sheet-body .nr-flist > .nr-frow .nr-finfo > small{display:inline;font:inherit;white-space:normal}
+/* d-social (design 10, I-114; replaces the I-90 "actions under the text" layout of 13 Nov): one friend = ONE 64 px row:
+   avatar (ring = out), the name, ONE status line (the state first), then Hitta + "⋯" at the right. The name keeps its
+   words (2 lines when it is long: I-90 "names cut"), the status line is one line. Skriv + Bjud in are the row's 2nd line
+   (.nr-xacts, with their words); it shows while the row's "⋯" menu (friends2.js li.f2-menu) is open. */
+#sheet-body .nr-flist > .nr-frow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;column-gap:var(--sp-3);row-gap:0;
+  min-height:64px;padding:var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4)}
+#sheet-body .nr-flist > .nr-frow > .st-dot{grid-column:1;margin:0 var(--sp-1)}
+#sheet-body .nr-flist > .nr-frow.av-row > .av{grid-column:1;width:40px;height:40px;margin:0}
+#sheet-body .nr-flist > .nr-frow > .nr-fmain{grid-column:2;min-width:0;display:flex;flex-direction:column;gap:0}
+#sheet-body .nr-flist > .nr-frow .nr-fmain > b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;white-space:normal;overflow-wrap:anywhere;
+  font:600 var(--ds-fs-16,16px)/22px var(--ds-sans,inherit);color:var(--ds-text)}
+#sheet-body .nr-flist > .nr-frow .nr-finfo,#sheet-body .nr-flist > .nr-frow .nr-fmain > small{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  font:400 var(--ds-fs-14,14px)/20px var(--ds-sans,inherit);color:var(--ds-muted)}
+#sheet-body .nr-flist > .nr-frow .nr-finfo > small{display:inline;font:inherit;color:inherit;white-space:nowrap}
 #sheet-body .nr-flist > .nr-frow .nr-finfo > small + small::before{content:" · "}
-#sheet-body .nr-flist > .nr-frow.out .nr-finfo > small:first-child{color:var(--ds-green)}
-#sheet-body .nr-flist > .nr-frow .nr-fmain + .btn{margin-left:var(--nr-ind)}
-#sheet-body .nr-flist > .nr-frow > .btn{flex:0 0 44px;width:44px;min-width:44px;height:44px;min-height:44px;padding:0}
-#sheet-body .nr-flist > .nr-frow > .btn.nr-more-b{margin-left:auto}
-#sheet-body .nr-flist > .nr-frow > .btn svg{width:18px;height:18px}
-@container (min-width: 560px){
-  #sheet-body .nr-flist > .nr-frow{flex-wrap:nowrap;align-items:center}
-  #sheet-body .nr-flist > .nr-frow > .nr-fmain{flex:1 1 auto}
-  #sheet-body .nr-flist > .nr-frow .nr-fmain + .btn,#sheet-body .nr-flist > .nr-frow > .btn.nr-more-b{margin-left:0}
-}
+#sheet-body .nr-flist > .nr-frow.out .nr-fmain small{color:var(--ds-muted)}   /* only the state is green (pnds.css 1177 made the whole line green) */
+#sheet-body .nr-flist > .nr-frow.out .nr-st{color:var(--ds-green-t)}
+#sheet-body .nr-flist > .nr-frow > .btn{grid-row:1;width:44px;min-width:44px;height:44px;min-height:44px;margin:0;padding:0;border:0;border-radius:var(--r-pill) !important;background:var(--ds-raised);color:var(--ds-text)}
+#sheet-body .nr-flist > .nr-frow > .btn.nr-find-b{grid-column:3}
+#sheet-body .nr-flist > .nr-frow > .btn.nr-rm-b{grid-column:4;margin-left:calc(-1 * var(--sp-2));background:transparent;color:var(--ds-muted)}
+#sheet-body .nr-flist > .nr-frow > .btn svg{width:20px;height:20px}
+#sheet-body .nr-flist > .nr-frow > .nr-xacts{display:none;grid-column:2 / -1;grid-row:2;flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-2) 0 var(--sp-1)}
+#sheet-body .nr-flist > .nr-frow:has(+ .f2-menu) > .nr-xacts{display:flex}
+#sheet-body .nr-flist > .nr-frow > .nr-xacts > .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);width:auto;min-width:0;height:44px;min-height:44px;margin:0;padding:0 var(--sp-4);
+  border:0;border-radius:var(--r-md);background:var(--ds-raised);color:var(--ds-text);font:600 var(--ds-fs-16,16px)/1 var(--ds-sans,inherit)}
+#sheet-body .nr-flist > .nr-frow > .nr-xacts > .btn svg{width:20px;height:20px;flex:0 0 20px;color:var(--ds-amber-t)}
+#sheet-body .nr-flist > .f2-menu{padding:var(--sp-1) var(--sp-4) var(--sp-3);border-bottom:0}
 #sheet-body .sg-list{container-type:inline-size}
 #sheet-body .sg-row{flex-wrap:wrap;align-items:flex-start;column-gap:10px;row-gap:6px;min-height:0}
 #sheet-body .sg-row > .sg-face{flex:0 0 36px;margin-top:2px}

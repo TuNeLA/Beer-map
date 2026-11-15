@@ -55,8 +55,6 @@
   }
 
   /* ---------- texts ---------- */
-  var EMPTY = [["📭 Inget som väntar. Lugnt i leden.", "📭 Nothing waiting. All quiet."], ["📭 Tom inkorg. Ingen behöver dig – just nu.", "📭 Empty. Nobody needs you – right now."],
-    ["📭 Inga order från högkvarteret.", "📭 No orders from HQ."], ["📭 Postlådan ä tom. Gå ut och skapa nåt!", "📭 The mailbox is empty. Go make something happen!"]];
   var HEAD = [["Allt som väntar på dig. Svara direkt här.", "Everything waiting for you. Answer right here."], ["Order, förfrågningar och inkallelser – på ett ställe.", "Orders, requests and call-outs – in one place."]];
   function P(a) { var x = pick(a[0][0], a); return sv() ? x[0] : x[1]; }
 
@@ -266,13 +264,28 @@
     });
   }
 
+  // d-social (design 09, I-114): the ONE empty state (ds.css .ds-estate): a fact, what this tab shows, one action.
+  function emptyState() {
+    var box = h("div", { class: "ds-estate ib-empty" });
+    var i = h("span", { class: "ds-estate-i", "aria-hidden": "true" }); i.innerHTML = ic("inbox");
+    box.appendChild(i);
+    box.appendChild(h("b", { text: L("Inget väntar på dig", "Nothing is waiting for you") }));
+    box.appendChild(h("p", { text: L("Inbjudningar och frågor från gänget hamnar här. Du svarar direkt i listan.", "Invites and questions from your friends land here. You answer right in the list.") }));
+    if (window.INVITE && window.INVITE.openCreate) {
+      var b = h("button", { type: "button", class: "ds-estate-a ib-none-inv", onclick: function () { try { window.INVITE.openCreate({}); } catch (e) {} } });
+      b.innerHTML = ic("mail") + "<span>" + esc(L("Bjud in gänget", "Invite your friends")) + "</span>";
+      box.appendChild(b);
+    }
+    return box;
+  }
+
   function render(box, markSeen) {
     var before = openSeen != null ? openSeen : seenAt();   // rows seen before this opening fade
     box.innerHTML = "";
     var list = all().slice().sort(function (a, b) { return (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0); });
-    box.appendChild(h("p", { class: "ib-head muted", text: P(HEAD) }));
+    if (list.length || !gotOnce) box.appendChild(h("p", { class: "ib-head muted", text: P(HEAD) }));
     if (!list.length && !gotOnce) { box.appendChild(h("p", { class: "ib-loading muted", role: "status", text: L("Hämtar…", "Loading…") })); return; }
-    if (!list.length) { box.appendChild(h("p", { class: "ib-empty", text: P(EMPTY) })); }
+    if (!list.length) box.appendChild(emptyState());
     else {
       var ul = h("ul", { class: "ib-list" });
       list.forEach(function (x) { ul.appendChild(row(x, (Date.parse(x.at) || 0) - srvSkew <= before)); });

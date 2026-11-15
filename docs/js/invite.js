@@ -276,19 +276,20 @@
     });
     return flP;
   }
-  function personSub(p) {
-    var s = [], dem = demonym(p.home_town);
-    if (dem) s.push(dem);
-    s.push(p.out ? L("🍺 ute nu", "🍺 out now") + (p.town ? L(" i ", " in ") + p.town : "") : L("🌙 int' ute", "🌙 not out"));
-    return s.join(" · ");
+  // d-social (design 10 + 11, I-114): ONE status line, the state first, no emoji (the avatar ring / dot says "out" too).
+  function statusText(p) { return p.out ? L("Ute ikväll", "Out tonight") + (p.town ? L(" i ", " in ") + p.town : "") : L("Int' ute", "Not out"); }
+  function statusEl(p) {
+    var dem = demonym(p.home_town);
+    return A.el("small", { class: "muted" }, [A.el("span", { class: "nr-st", text: statusText(p) }), dem ? " · " + dem : null]);
   }
   function groupsLine(p) {
     var g = (p.groups || []).map(function (x) { return x.name; }).filter(Boolean);
     if (!g.length) return null;
-    return A.el("small", { class: "inv-fg muted", text: "👥 " + (g.length > 3 ? g.slice(0, 3).join(", ") + " +" + (g.length - 3) : g.join(", ")) });
+    return A.el("small", { class: "inv-fg muted", text: g.length > 3 ? g.slice(0, 3).join(", ") + " +" + (g.length - 3) : g.join(", ") });
   }
   function inviteBtn(p) {
-    var b = A.btn("📨", "btn-small inv-fb", function () { openCreate({ keys: [p.key], who: p.name }); });
+    var b = A.btn("", "btn-small inv-fb", function () { openCreate({ keys: [p.key], who: p.name }); });
+    b.innerHTML = saIc("mail") + '<span class="nr-xl">' + U.esc(L("Bjud in", "Invite")) + "</span>";
     b.setAttribute("aria-label", L("Bjud in ", "Invite ") + (p.name || "")); b.title = L("Bjud in", "Invite");
     return b;
   }
@@ -312,18 +313,20 @@
       } else if (!people.length) return;
       listBox.innerHTML = "";
       listBox.classList.add("inv-flist");
+      var isOut = function (p) { var nf = byId[String(p.friend_id)]; return (nf ? nf.out : p.out) ? 1 : 0; };
+      people = people.slice().sort(function (a, b) { return isOut(b) - isOut(a); });   // design2 small fix 27: friends who are out come first
       people.forEach(function (p) {
         var li, nf = p.friend_id != null ? byId[String(p.friend_id)] : null;
         if (nf && friendRow) {
-          li = friendRow(nf, function () { flAt = 0; reload(); });
-          li.querySelector(".nr-fmain small") && (li.querySelector(".nr-fmain small").textContent = personSub(p));
+          li = friendRow(nf, function () { flAt = 0; reload(); });   // d-social: the row keeps its own status line (near.js: the state first, no emoji)
         } else {
           li = A.el("li", { class: "nr-frow inv-frow" + (p.out ? " out" : "") }, [
             A.el("span", { class: "st-dot" + (p.out ? " on" : ""), "aria-hidden": "true" }),
-            A.el("span", { class: "nr-fmain" }, [A.el("b", { text: p.name || "?" }), A.el("small", { class: "muted", text: personSub(p) })])
+            A.el("span", { class: "nr-fmain" }, [A.el("b", { text: p.name || "?" }), statusEl(p)])
           ]);
           if (p.find_key && window.NEAR && window.NEAR.openFinder) {
-            var fb = A.btn("🧭", "btn-small nr-find-b", function () { if (window.HITTA && window.HITTA.where) window.HITTA.where(p.find_key, p.name); else window.NEAR.openFinder(p.find_key, p.name); });
+            var fb = A.btn("", "btn-small nr-find-b", function () { if (window.HITTA && window.HITTA.where) window.HITTA.where(p.find_key, p.name); else window.NEAR.openFinder(p.find_key, p.name); });
+            fb.innerHTML = saIc("compass");
             fb.setAttribute("aria-label", L("Hitta ", "Find ") + (p.name || "")); li.appendChild(fb);
           }
         }
@@ -336,9 +339,12 @@
         // a letter disc for everyone. friend_list has the real key (olnu_inv_key): draw the avatar again with that key.
         var av0 = p.key ? li.querySelector(":scope > .av") : null;
         if (av0 && av0.getAttribute("data-avk") !== "f|" + p.key) av0.remove();
-        var rm = li.querySelector(".nr-rm-b");
-        try { var dmb = window.DM && window.DM.friendBtn ? window.DM.friendBtn(p) : null; if (dmb) li.insertBefore(dmb, rm || null); } catch (e) {}   // 💬 Skriv
-        li.insertBefore(inviteBtn(p), rm || null);
+        // d-social (design 10): the row shows Hitta + "⋯". Skriv and Bjud in sit in a 2nd line of the same row (.nr-xacts)
+        // that shows while the row's "⋯" menu is open (friends2.css: .nr-frow:has(+ .f2-menu)), with their words.
+        var rm = li.querySelector(".nr-rm-b"), xa = A.el("span", { class: "nr-xacts" });
+        try { var dmb = window.DM && window.DM.friendBtn ? window.DM.friendBtn(p) : null; if (dmb) { dmb.appendChild(A.el("span", { class: "nr-xl", text: L("Skriv", "Message") })); xa.appendChild(dmb); } } catch (e) {}   // 💬 Skriv
+        xa.appendChild(inviteBtn(p));
+        li.insertBefore(xa, rm ? rm.nextSibling : null);
         try { if (window.AVATAR && window.AVATAR.friendRow) window.AVATAR.friendRow(p, li); } catch (e) {}   // 👤 avatar
         listBox.appendChild(li);
       });
@@ -404,7 +410,7 @@
     (opts.keys || []).forEach(function (k) { sel[k] = true; });
     var head = A.el("div", { class: "inv-pk-head" });
     var count = A.el("span", { class: "inv-pk-n" });
-    var search = A.el("input", { class: "inp inv-pk-q", type: "search", placeholder: L("🔎 Sök kompis", "🔎 Search"), "aria-label": L("Sök kompis", "Search friends"), autocomplete: "off" });
+    var search = A.el("input", { class: "inp inv-pk-q", type: "search", placeholder: L("Sök kompis", "Search friends"), "aria-label": L("Sök kompis", "Search friends"), autocomplete: "off" });
     var gRow = A.el("div", { class: "inv-pk-groups" }), list = A.el("ul", { class: "inv-pk-list" });
     head.appendChild(A.el("b", { text: L("Vem bjuder du in?", "Who do you invite?") })); head.appendChild(count);
     box.appendChild(head); box.appendChild(search); box.appendChild(gRow); box.appendChild(list);
@@ -429,7 +435,7 @@
         cb.addEventListener("change", function () { sel[p.key] = cb.checked; upd(); });
         list.appendChild(A.el("li", { class: "inv-pk-row" + (p.out ? " out" : "") }, [
           A.el("label", { for: id }, [cb, A.el("span", { class: "inv-pk-main" }, [A.el("b", { text: p.name || "?" }),
-            A.el("small", { class: "muted", text: personSub(p) + ((p.groups || []).length ? " · 👥 " + p.groups.map(function (g) { return g.name; }).slice(0, 2).join(", ") : "") })])])
+            A.el("small", { class: "muted", text: statusText(p) + ((p.groups || []).length ? " · " + p.groups.map(function (g) { return g.name; }).slice(0, 2).join(", ") : "") })])])
         ]));
       });
     }
@@ -441,7 +447,7 @@
         var mem = people.filter(function (p) { return (p.groups || []).some(function (x) { return String(x.id) === String(g.id); }); });
         if (!mem.length) return;
         gRow.appendChild(A.el("button", { type: "button", class: "chip inv-pk-g", "data-g": String(g.id), "aria-pressed": "false",
-          text: L("👥 Hela ", "👥 All of ") + g.name + " (" + mem.length + ")", onclick: function () {
+          text: L("Hela ", "All of ") + g.name + " (" + mem.length + ")", onclick: function () {
             var on = !gsel[g.id]; gsel[g.id] = on;
             mem.forEach(function (p) { sel[p.key] = on; });
             upd();
@@ -477,6 +483,29 @@
     try { var c = A.map.getCenter(); return { lat: c.lat, lng: c.lng }; } catch (e) {}
     return { lat: 60.1496, lng: 15.1878 };
   }
+  // d-social (design 11, I-114): "När?" = quick choices on the real time field (the ONE segmented control). A choice writes
+  // the field; the field is what is sent, as before. "Nu" and "Om 30 min" are counted again at the send (value()).
+  // The start value is the old default (tonight 20:00, or the event's time): it is "Ikväll 20" or "Välj tid" with the field in view.
+  function whenPick(at, isEvent) {
+    var el = A.el, mode = "pick";
+    var when = el("input", { class: "inp inv-when-f", type: "datetime-local", value: localInput(at), "aria-label": L("Välj tid", "Pick a time") });
+    var eve = new Date(); eve.setHours(20, 0, 0, 0);
+    var quick = function (k) { return k === "now" ? new Date() : k === "30" ? new Date(Date.now() + 30 * 60e3) : eve; };
+    var wq = el("div", { class: "ds-seg inv-wq", role: "radiogroup", "aria-label": L("När?", "When?") });
+    var set = function (k, user) {
+      mode = k;
+      if (k !== "pick") when.value = localInput(quick(k));
+      when.hidden = k !== "pick";
+      wq.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-checked", String(b.getAttribute("data-w") === k)); });
+      if (k === "pick" && user) { try { when.focus(); if (when.showPicker) when.showPicker(); } catch (e) {} }
+    };
+    [["now", L("Nu", "Now")], ["30", L("Om 30 min", "In 30 min")], ["eve", L("Ikväll 20", "Tonight 20")], ["pick", L("Välj tid", "Pick a time")]].forEach(function (x) {
+      if (x[0] === "eve" && eve.getTime() <= Date.now()) return;   // 20:00 has passed
+      wq.appendChild(el("button", { type: "button", role: "radio", "data-w": x[0], "aria-checked": "false", text: x[1], onclick: function () { set(x[0], true); } }));
+    });
+    set(!isEvent && at.getTime() === eve.getTime() && eve.getTime() > Date.now() ? "eve" : "pick", false);
+    return { box: wq, field: when, value: function () { if (mode === "now" || mode === "30") when.value = localInput(quick(mode)); return when.value; } };
+  }
   // o: {event, bar, lat, lng, label, custom, keys, who, kind}
   function openCreate(o) {
     if (!A || !A.LIVE) return;
@@ -487,8 +516,11 @@
       if (nn) { if (isBar(nn) && nn.id != null) o.bar = nn; else o.label = o.label || nn.name; }
     }
     A.withName(function () {
-      A.openSheet(o.custom ? L("📨 Skapa event här", "📨 Create an event here") : L("📨 Bjud in", "📨 Invite"), function (body) {
-        var el = A.el;
+      A.openSheet(o.custom ? L("📨 Skapa event här", "📨 Create an event here") : L("📨 Bjud in", "📨 Invite"), function (sheetBody) {
+        // d-social (design 11, I-114): a calmer form: ONE label style, no emoji inside a field, quick time choices on the
+        // real time field, a round check mark for a chosen friend (invite.css ".inv-form"). The RPC gets what it got before.
+        var el = A.el, body = el("div", { class: "inv-form" });
+        sheetBody.appendChild(body);
         var st = { lat: null, lng: null, bar: o.bar || null, label: o.label || null, spot: "bar", kind: o.kind || (o.event ? o.event.kind : o.custom ? "party" : "beer"), titleTouched: false };
         if (o.event) { st.lat = o.event.lat; st.lng = o.event.lng; }
         else if (st.bar) { st.lat = st.bar.lat; st.lng = st.bar.lng; }
@@ -496,7 +528,8 @@
         var title = el("input", { class: "inp inv-title", maxlength: "80", "aria-label": L("Titel", "Title"),
           placeholder: o.custom ? L("t.ex. Grillkväll, Förfest, Kräftskiva", "e.g. BBQ, pre-party") : "" });
         title.addEventListener("input", function () { st.titleTouched = true; });
-        function retitle() { if (!st.titleTouched && !o.custom) title.value = autoTitle({ event: o.event, bar: st.bar, label: st.label }); }
+        // the field shows the title without its emoji; an untouched title is sent as before (with it)
+        function retitle() { if (!st.titleTouched && !o.custom) title.value = stripEmoji(autoTitle({ event: o.event, bar: st.bar, label: st.label })); }
         if (o.custom) title.value = ""; else retitle();
         body.appendChild(el("label", { class: "ev-l", text: L("Vad?", "What?") })); body.appendChild(title);
         if (o.custom) {
@@ -510,8 +543,9 @@
         }
         // When
         var at = o.event ? new Date(o.event.starts_at) : defaultStart();
-        var when = el("input", { class: "inp", type: "datetime-local", value: localInput(at), "aria-label": L("När?", "When?") });
-        body.appendChild(el("label", { class: "ev-l", text: L("När?", "When?") })); body.appendChild(when);
+        body.appendChild(el("label", { class: "ev-l", text: L("När?", "When?") }));
+        var wp = whenPick(at, !!o.event);
+        body.appendChild(wp.box); body.appendChild(wp.field);
         // Where
         body.appendChild(el("label", { class: "ev-l", text: L("Var?", "Where?") }));
         var whereBox = el("div", { class: "inv-where" }), labelInp = el("input", { class: "inp inv-label", maxlength: "60", "aria-label": L("Platsens namn", "Place name") });
@@ -534,14 +568,14 @@
         }
         function drawWhere() {
           whereBox.innerHTML = "";
-          if (o.event) { whereBox.appendChild(el("p", { class: "inv-place", text: "📍 " + placeOf(o.event) })); return; }
+          if (o.event) { whereBox.appendChild(el("p", { class: "inv-place", text: placeOf(o.event) })); return; }
           var opts = [], p0 = st.lat != null ? { lat: st.lat, lng: st.lng } : where();
-          if (st.bar) opts.push({ k: "b:" + st.bar.id, t: "🍺 " + st.bar.name, bar: st.bar });
-          else if (st.lat != null) opts.push({ k: "pt", t: "📍 " + (st.label || homeLabel()) });
-          opts.push({ k: "gps", t: L("📍 Här där jag ä (GPS)", "📍 Where I am (GPS)") });
+          if (st.bar) opts.push({ k: "b:" + st.bar.id, t: st.bar.name, bar: st.bar });
+          else if (st.lat != null) opts.push({ k: "pt", t: st.label || homeLabel() });
+          opts.push({ k: "gps", t: L("Där jag är nu", "Where I am now") });
           try {
             window.BARS.nearby(p0.lat, p0.lng, 1500, 8, {}).forEach(function (x) {
-              if (!st.bar || String(x.bar.id) !== String(st.bar.id)) opts.push({ k: "b:" + x.bar.id, t: "🍺 " + x.bar.name, bar: x.bar });
+              if (!st.bar || String(x.bar.id) !== String(st.bar.id)) opts.push({ k: "b:" + x.bar.id, t: x.bar.name, bar: x.bar });
             });
           } catch (e) {}
           var s = el("select", { class: "inp inv-sel", "aria-label": L("Var?", "Where?") });
@@ -560,12 +594,12 @@
             whereBox.appendChild(labelInp);
             whereBox.appendChild(el("p", { class: "muted inv-hint", text: L("🔒 Privat: bara de inbjudna ser platsen och inbjudan.", "🔒 Private: only invited people see it.") }));
           }
-          if (st.lat == null) whereBox.appendChild(el("p", { class: "muted inv-hint", text: L("Välj en krog, eller 📍 Här där jag ä. Tips: långtryck på kartan för valfri plats.", "Pick a bar or your spot. Tip: long-press the map.") }));
+          if (st.lat == null) whereBox.appendChild(el("p", { class: "muted inv-hint", text: L("Välj en krog, eller platsen där du är. Tips: långtryck på kartan för valfri plats.", "Pick a bar or the place where you are. Tip: long-press the map for any place.") }));
         }
         drawWhere();
         // Note
-        var note = el("input", { class: "inp", maxlength: "200", placeholder: L("Meddelande (valfritt), t.ex. ”Jag bjuder på första”", "Note (optional)"), "aria-label": L("Meddelande", "Note") });
-        body.appendChild(el("label", { class: "ev-l", text: L("Meddelande", "Note") })); body.appendChild(note);
+        var note = el("input", { class: "inp inv-note-f", maxlength: "200", placeholder: L("T.ex. Jag bjuder på första", "E.g. The first one is on me"), "aria-label": L("Meddelande", "Note") });
+        body.appendChild(el("label", { class: "ev-l", text: L("Meddelande (valfritt)", "Note (optional)") })); body.appendChild(note);
         // People
         var pkBox = el("div", { class: "inv-pk" });
         body.appendChild(pkBox);
@@ -575,7 +609,8 @@
         body.appendChild(el("p", { class: "muted inv-hint", text: L("Bara dina vänner och gruppkompisar kan bjudas in. De inbjudna kan bjuda in sina vänner.", "Only friends and group-mates. Invited people can invite their friends.") }));
         body.appendChild(go);
         function send() {
-          var t = (title.value || "").trim() || (o.custom ? "" : autoTitle({ event: o.event, bar: st.bar, label: st.label }));
+          var tv = (title.value || "").trim(), auto = o.custom ? "" : autoTitle({ event: o.event, bar: st.bar, label: st.label });
+          var t = !o.custom && (!tv || tv === stripEmoji(auto)) ? auto : tv;   // an untouched title = the old value (with its emoji)
           if (!t) { A.toast(L("Skriv vad som händer.", "Write what is happening."), { err: true }); title.focus(); return; }
           if (st.lat == null && !o.event) {
             var wsel = whereBox.querySelector(".inv-sel");
@@ -586,7 +621,7 @@
             }
             A.toast(L("Välj var.", "Pick a place."), { err: true }); return;
           }
-          var d = new Date(when.value);
+          var d = new Date(wp.value());
           var params = { p_title: t.slice(0, 80), p_starts_at: isFinite(d) ? d.toISOString() : null, p_keys: pk.keys(), p_group_ids: pk.groupIds(),
             p_bar_id: st.bar ? String(st.bar.id) : (o.event && o.event.bar_id) || null,
             p_place: String(st.bar ? st.bar.name : o.event ? placeOf(o.event) : st.label || "").slice(0, 60) || null,

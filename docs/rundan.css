@@ -68,14 +68,33 @@
 .rnd-go{font-size:var(--fs-18)}
 @media (prefers-reduced-motion: reduce){.rnd-stage.hit{animation:none;box-shadow:0 0 0 3px rgba(245,166,35,.35)}.rnd-reel{transition:none !important}}
 
-/* 🚕 Taxi hem */
-.rnd-taxi{margin-top:14px;padding-top:6px;border-top:1px solid var(--line-soft)}
-.rnd-taxi h3{margin:6px 0}
-.rnd-taxirow{display:flex;flex-direction:column;gap:6px}
-.rnd-taxirow .btn{display:flex;justify-content:space-between;align-items:center;gap:8px;text-decoration:none}
-.rnd-taxirow .taxi-num{font-family:var(--hud);font-size:var(--fs-14)}
-.rnd-more summary{cursor:pointer;color:var(--amber-2);font-size:var(--fs-14);padding:8px 2px;min-height:36px}
-.rnd-more .btn{margin-top:6px}
+/* ---------- "Ta dig hem" sheet (d-home, I-114 proposal 03) ----------
+   ONE amber button (call the local taxi, or the map search when no number is known), then rows of ONE style (.ds-row from
+   ds.css / pnds.css, built by RUNDAN.homeRow for rundan.js, hemfolj.js and safety.js), then the safety group. No emoji.
+   Every target is at least 44 px (rows 64, the amber button 56). */
+#sheet-body .hs{margin:0;padding:0;border:0}
+#sheet-body .hs-lead{margin:0 0 var(--sp-4);font:400 var(--fs-16)/24px var(--ds-sans);color:var(--ds-text-2)}
+#sheet-body a.hs-call{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--sp-1) var(--sp-2);box-sizing:border-box;width:100%;min-height:56px;
+  margin:0 0 var(--sp-5);padding:var(--sp-2) var(--sp-4);border-radius:var(--r-md);font:700 var(--fs-16)/22px var(--ds-sans);text-decoration:none;text-align:center}
+#sheet-body .hs-call-i{display:inline-flex;flex:0 0 auto}
+#sheet-body .hs-call-i .pi{width:20px;height:20px}
+#sheet-body .hs-call small{font:600 var(--fs-14)/20px var(--ds-sans);font-variant-numeric:tabular-nums;letter-spacing:0}
+#sheet-body .hs-list{margin:0 0 var(--sp-5);border-radius:var(--r-lg)}
+#sheet-body .hs-safe{margin-bottom:0}
+#sheet-body .hs-row{box-sizing:border-box;min-height:64px;text-align:left;text-decoration:none;color:var(--ds-text);cursor:pointer}
+#sheet-body .hs-row[hidden]{display:none !important}
+#sheet-body .hs-row .ds-row-t>span{overflow-wrap:anywhere}
+#sheet-body .hs-row .ds-chev{flex:0 0 auto;display:inline-flex;transition:transform var(--m-4) var(--e-std)}
+#sheet-body .hs-more[aria-expanded="true"] .ds-chev{transform:rotate(90deg)}
+#sheet-body .hs-sub{background:var(--ds-raised)}
+#sheet-body .hs-sub small{font-variant-numeric:tabular-nums}
+#sheet-body .hs-red,#sheet-body .hs-red .ds-row-i,#sheet-body .hs-red .ds-row-t>span{color:var(--ds-red-t)}
+#sheet-body h3.hs-h{margin:0 0 var(--sp-2) !important}
+/* SOS keeps the logic of social.js: its button is here but not shown (the row taps it); its question opens under the list */
+#sheet-body .hs-sos .sos-btn,#sheet-body .hs-sos .sf-112{display:none !important}
+#sheet-body .hs-sos .confirm{margin:var(--sp-3) 0 0}
+#sheet-body .hs-sos .confirm .btn{min-height:44px}
+@media (prefers-reduced-motion:reduce){#sheet-body .hs-row .ds-chev{transition:none}}
 /* cln02: dead rules removed */
 /* lane c4drinks I-44: on a PC the Swish control is a QR code of the https link (scan with the phone) + the number to copy */
 .rnd-swqr{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border-radius:var(--r-md,12px);background:var(--night-3)}

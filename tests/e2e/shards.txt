@@ -36,4 +36,4 @@ ui-09      ^(uifix|dialekt|ui1|after2|bold-skal)$
 ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left)$
 ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump)$
 ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3)$
-ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|eggs|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch)$
+ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|eggs|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome|dsocial)$

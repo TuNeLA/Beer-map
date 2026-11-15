@@ -2,8 +2,9 @@
    window.RUNDAN, through app.js mods(): init, groupItem (ONE tile "rnd-gi" on the group page), settingsSheet (📱 Swish number row).
    social.js calls RUNDAN.chatOpen(g, ctx) (ctx = {list, input, alive}): chat rows whose msg id belongs to an expense get a
    card (who has paid, "📱 Swisha Anton 72 kr", number + amount + 📋 Kopiera fallback, ✅ Betalt / ✅ Fått).
-   extras.js showTaxi() calls RUNDAN.taxiSheet(body): 🏠 Taxi hem (home from js/homezone.js, phone only), Uber with
-   drop-off = home, local taxi numbers from js/taxi-data.js, 🚕 Dela taxin (= an expense of kind "taxi").
+   extras.js showTaxi() calls RUNDAN.taxiSheet(body) = the whole "Ta dig hem" sheet (d-home, I-114): one amber call button
+   (local taxi from js/taxi-data.js; none = a map search), rows (Följ mig hem, Uber with drop-off = home from js/homezone.js,
+   Bolt, Dela taxin = an expense of kind "taxi", home address, more taxi firms) and the safety group (safety.js homeSafety).
    Patterns copied from the Steven ("Even Steven") app: one running group tab instead of single debts, "Vem betalade?",
    unequal splits, "Gör upp" (settle up), "paid outside the app" that the receiver confirms, Swish to settle.
    Fewest payments ("Gör upp"): greedy biggest debtor → biggest creditor (Splitwise "simplify debts"), done here in the client.
@@ -56,10 +57,15 @@
         invalid_amount: "Fel belopp.", expense_not_found: "Den utgiften finns inte längre.", payment_not_found: "Betalningen finns inte längre.",
         not_yours: "Det får bara den det gäller göra.", too_late: "För sent att ändra.", invalid_swish: "Skriv ett svenskt mobilnummer: 07x-xxx xx xx.",
         invalid_spin: "Minst två måste vara med.", fail: "Det gick int'. Försök igen." },
-      dist: "Hem: {0} fågelvägen", taxiH: "🏠 Taxi hem", taxiSave: "🏠 Spara hemadress", taxiSaveInfo: "Sparas bara på din telefon. Samma som 🏠 Hemzon i ⚙️.",
-      uberHome: "🚗 Uber hem", bolt: "⚡ Bolt", boltInfo: "Bolt: skriv in Hem i appen.", moreTaxi: "Fler taxibolag nära", split: "🚕 Dela taxin",
-      pickGroup: "Vilken grupp delar taxin?", taxiNoGroup: "Gå med i en grupp först, så kan ni dela taxin.", changeHome: "Ändra hem",
-      uberNote: "Uber finns bara i en del städer. I Dalarna: ring den lokala taxin."
+      split: "🚕 Dela taxin", pickGroup: "Vilken grupp delar taxin?", taxiNoGroup: "Gå med i en grupp först, så kan ni dela taxin.",
+      // d-home (I-114, proposal 03): the "Ta dig hem" sheet. Plain Swedish, no jokes, no emoji (a care screen).
+      hsLead: "Lämna bilen. Ring en taxi, eller låt gänget se dig hela vägen hem.", hsLeadTaxi: "Lämna bilen. Ring en taxi.",
+      hsCall: "Ring {0}", hsFind: "Hitta taxi nära dig", hsFindSub: "Öppnar kartan",
+      hsUber: "Uber hem", hsUberSub: "Öppnar Uber med din hemadress", hsUberFew: "Finns bara i en del städer",
+      hsBolt: "Bolt", hsBoltSub: "Skriv in Hem i appen",
+      hsSplit: "Dela taxin", hsSplitSub: "Dela kostnaden med gänget",
+      hsSave: "Spara hemadress", hsSaveSub: "Sparas bara på din telefon", hsChange: "Ändra hemadress", hsDist: "Hem: {0} fågelvägen",
+      hsMore: "Fler taxibolag", hsMoreSub: "Nära dig"
     },
     en: {
       tile: "💸 Tonight's tab", tileSpin: "🎲", even: "even", plus: "+{0} kr", minus: "−{0} kr",
@@ -94,10 +100,14 @@
         invalid_member: "Someone left the group. Reload.", invalid_amount: "Wrong amount.", expense_not_found: "That expense is gone.",
         payment_not_found: "That payment is gone.", not_yours: "Only the person it concerns can do that.", too_late: "Too late to change.",
         invalid_swish: "Type a Swedish mobile number: 07x-xxx xx xx.", invalid_spin: "At least two must be in.", fail: "That didn't work. Try again." },
-      dist: "Home: {0} as the crow flies", taxiH: "🏠 Taxi home", taxiSave: "🏠 Save home address", taxiSaveInfo: "Kept on this phone only. Same as 🏠 Home zone in ⚙️.",
-      uberHome: "🚗 Uber home", bolt: "⚡ Bolt", boltInfo: "Bolt: type Home in the app.", moreTaxi: "More taxi firms nearby", split: "🚕 Split the taxi",
-      pickGroup: "Which group splits the taxi?", taxiNoGroup: "Join a group first, then you can split the taxi.", changeHome: "Change home",
-      uberNote: "Uber only runs in some cities. In Dalarna: call the local taxi."
+      split: "🚕 Split the taxi", pickGroup: "Which group splits the taxi?", taxiNoGroup: "Join a group first, then you can split the taxi.",
+      hsLead: "Leave the car. Call a taxi, or let your friends see you all the way home.", hsLeadTaxi: "Leave the car. Call a taxi.",
+      hsCall: "Call {0}", hsFind: "Find a taxi near you", hsFindSub: "Opens the map",
+      hsUber: "Uber home", hsUberSub: "Opens Uber with your home address", hsUberFew: "Only runs in some cities",
+      hsBolt: "Bolt", hsBoltSub: "Type Home in the app",
+      hsSplit: "Split the taxi", hsSplitSub: "Split the cost with your group",
+      hsSave: "Save home address", hsSaveSub: "Kept on this phone only", hsChange: "Change home address", hsDist: "Home: {0} as the crow flies",
+      hsMore: "More taxi firms", hsMoreSub: "Near you"
     }
   };
   // Dalmål lines. {n} = the winner's name (the server puts it in). Keep the ORDER, add at the end.
@@ -806,7 +816,7 @@
     });
   }
 
-  /* ---------- 🚕 Taxi hem (extras.js showTaxi → taxiSheet) ---------- */
+  /* ---------- Ta dig hem (extras.js showTaxi → taxiSheet) ---------- */
   // Bolt cities in Sweden (bento.travel, 2026-10-22). No public Bolt deep link: the button opens Bolt, you type "Hem".
   var BOLT = [[57.72, 12.94], [59.62, 17.08], [59.37, 16.51], [57.71, 11.97], [56.05, 12.69], [56.03, 14.16], [58.41, 15.62], [55.70, 13.19],
     [55.60, 13.00], [58.59, 16.18], [59.27, 15.21], [59.20, 17.63], [59.33, 18.07], [55.38, 13.16], [59.86, 17.64], [59.61, 16.55]];
@@ -838,40 +848,76 @@
       if (home() && !was) { var tb = document.getElementById("btn-taxi"); if (tb) tb.click(); }
     }, 500);
   }
+  // d-home (I-114, proposal 03): the "Ta dig hem" sheet = ONE amber button (call the local taxi) + rows + a safety group.
+  // homeRow is the ONE row of this sheet: rundan.js (here), hemfolj.js (Följ mig hem) and safety.js (112, SOS) all build
+  // their rows with it. Look: .hs-* in rundan.css. o = {icon, title, sub, cls, href, ext (new tab), fn}.
+  function pic(n) { try { return window.PNI && window.PNI.svg ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  function span(cls, text, html) { var e = document.createElement("span"); e.className = cls; if (html != null) e.innerHTML = html; else if (text != null) e.textContent = text; return e; }
+  function homeRow(o) {
+    var n = document.createElement(o.href ? "a" : "button");
+    n.className = "ds-row hs-row" + (o.cls ? " " + o.cls : "");
+    if (o.href) { n.href = o.href; if (o.ext) { n.target = "_blank"; n.rel = "noopener noreferrer"; } } else n.type = "button";
+    var ic = span("ds-row-i", null, pic(o.icon)); ic.setAttribute("aria-hidden", "true");
+    var tx = span("ds-row-t"); tx.appendChild(span("", o.title));
+    if (o.sub) { var sm = document.createElement("small"); sm.textContent = o.sub; tx.appendChild(sm); }
+    var ch = span("ds-chev"); ch.setAttribute("aria-hidden", "true");
+    n.appendChild(ic); n.appendChild(tx); n.appendChild(ch);
+    if (o.fn) n.addEventListener("click", o.fn);
+    return n;
+  }
+  // No verified taxi number near (or no position, or abroad): a map search "taxi" at my position (same link as Hem-läge).
+  function taxiSearch(c) { return "https://www.google.com/maps/search/taxi/" + (c ? "@" + (+c.lat).toFixed(5) + "," + (+c.lng).toFixed(5) + ",14z" : ""); }
+  function km(m) { return m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(1).replace(".", sv() ? "," : ".") + " km"; }
   function taxiSheet(body) {
     if (!A) return;
-    var c = pos(), h = home();
-    var box = el("section", { class: "rnd rnd-taxi" });
-    box.appendChild(el("h3", { text: T("taxiH") }));
-    try { var hfN = window.HEMFOLJ && window.HEMFOLJ.taxiNode ? window.HEMFOLJ.taxiNode() : null; if (hfN) box.appendChild(hfN); } catch (e) {}
-    // I-55: ONE Taxi button + ONE "Uber hem" (no home = "Lägg in hem" first). The old top row of extras.js is gone.
-    var row = el("div", { class: "rnd-taxirow" });
-    var tx = nearTaxis(c, 3);
-    function telA(x, cls) {
-      return el("a", { class: "btn taxi-btn rnd-tel" + (cls || ""), href: "tel:" + x.tel }, [el("span", { text: "📞 " + x.name }), el("span", { class: "taxi-num", text: x.text })]);
-    }
-    if (h && c) {
-      var dm = U.haversine(c.lat, c.lng, h.lat, h.lng);
-      box.appendChild(el("p", { class: "rnd-note", text: fmt(T("dist"), dm < 1000 ? Math.round(dm / 10) * 10 + " m" : (dm / 1000).toFixed(1).replace(".", sv() ? "," : ".") + " km") }));
-    }
-    if (tx[0]) row.appendChild(telA(tx[0], " btn-amber"));
-    if (h) row.appendChild(el("a", { class: "btn taxi-btn rnd-uber", href: uberHome(h), target: "_blank", rel: "noopener noreferrer", text: T("uberHome") }));
-    else row.appendChild(bt(T("taxiSave"), "btn-block rnd-savehome", saveHome));
-    if (tx.length > 1) {
-      var more = el("details", { class: "rnd-more" }, [el("summary", { text: T("moreTaxi") })]);
-      tx.slice(1).forEach(function (x) { more.appendChild(telA(x, "")); });
-      row.appendChild(more);
-    }
-    var nearBolt = c && BOLT.some(function (b) { return U.haversine(c.lat, c.lng, b[0], b[1]) < 40000; });
-    if (nearBolt) row.appendChild(el("a", { class: "btn taxi-btn", href: "https://bolt.eu/", target: "_blank", rel: "noopener noreferrer", title: T("boltInfo"), text: T("bolt") }));
-    box.appendChild(row);
-    if (!h) box.appendChild(el("p", { class: "rnd-note", text: T("taxiSaveInfo") }));
-    else {
-      if (!nearBolt) box.appendChild(el("p", { class: "rnd-note", text: T("uberNote") }));
-      box.appendChild(el("button", { type: "button", class: "rnd-link", text: T("changeHome"), onclick: saveHome }));
-    }
-    if (on()) box.appendChild(el("div", { class: "row", style: "margin-top:10px" }, [bt(T("split"), "btn-small btn-block", splitTaxi)]));
+    var box = el("section", { class: "rnd rnd-taxi hs" });
     body.appendChild(box);
+    paintHome(box);
+    try { if (window.SAFETY && window.SAFETY.homeSafety) window.SAFETY.homeSafety(body, homeRow); } catch (e) {}
+    // taxi-data.js is a lazy content file: openSheet() starts the load. First open before it is there = the map search
+    // is the amber button; the numbers come in when the file has loaded.
+    try {
+      if (!window.TAXI_DATA && window.OLNU_LAZY_NOW) window.OLNU_LAZY_NOW().then(function () { if (window.TAXI_DATA && document.body.contains(box)) paintHome(box); });
+    } catch (e) {}
+  }
+  function paintHome(box) {
+    var c = pos(), h = home(), tx = nearTaxis(c, 3), walk = null;
+    box.textContent = "";
+    try { walk = window.HEMFOLJ && window.HEMFOLJ.taxiNode ? window.HEMFOLJ.taxiNode(homeRow) : null; } catch (e) { walk = null; }
+    box.appendChild(el("p", { class: "hs-lead", text: T(walk ? "hsLead" : "hsLeadTaxi") }));
+    // 1. ONE amber button. A known taxi = call it. None = the map search. Never empty, never dead.
+    var call1 = tx[0] ? el("a", { class: "btn btn-amber hs-call rnd-tel", href: "tel:" + tx[0].tel }) : el("a", { class: "btn btn-amber hs-call hs-find", href: taxiSearch(c), target: "_blank", rel: "noopener noreferrer" });
+    call1.appendChild(span("hs-call-i", null, pic(tx[0] ? "phone" : "search")));
+    call1.appendChild(span("hs-call-t", fmt(T(tx[0] ? "hsCall" : "hsFind"), tx[0] ? tx[0].name : "")));
+    call1.appendChild(el("small", { class: "taxi-num", text: tx[0] ? tx[0].text : T("hsFindSub") }));
+    box.appendChild(call1);
+    // 2. The other ways home: one row style.
+    var list = el("div", { class: "ds-list hs-list" });
+    if (walk) list.appendChild(walk);
+    var nearBolt = c && BOLT.some(function (b) { return U.haversine(c.lat, c.lng, b[0], b[1]) < 40000; });
+    if (h) list.appendChild(homeRow({ icon: "taxi", cls: "rnd-uber", href: uberHome(h), ext: true, title: T("hsUber"), sub: T(nearBolt ? "hsUberSub" : "hsUberFew") }));
+    if (nearBolt) list.appendChild(homeRow({ icon: "flash", cls: "hs-bolt", href: "https://bolt.eu/", ext: true, title: T("hsBolt"), sub: T("hsBoltSub") }));
+    if (on()) list.appendChild(homeRow({ icon: "coins", cls: "hs-split", title: T("hsSplit"), sub: T("hsSplitSub"), fn: splitTaxi }));
+    if (window.HOMEZONE && window.HOMEZONE.open) {
+      list.appendChild(homeRow({ icon: "pin", cls: "rnd-savehome", title: T(h ? "hsChange" : "hsSave"),
+        sub: h && c ? fmt(T("hsDist"), km(U.haversine(c.lat, c.lng, h.lat, h.lng))) : T("hsSaveSub"), fn: saveHome }));
+    }
+    if (tx.length > 1) {
+      var towns = [], subs = [];
+      tx.slice(1).forEach(function (x) { if (x.town && towns.indexOf(x.town) < 0) towns.push(x.town); });
+      var more = homeRow({ icon: "phone", cls: "hs-more", title: T("hsMore"), sub: towns.join(", ") || T("hsMoreSub"), fn: function () {
+        var open = more.getAttribute("aria-expanded") !== "true";
+        more.setAttribute("aria-expanded", String(open));
+        subs.forEach(function (r) { r.hidden = !open; });
+      } });
+      more.setAttribute("aria-expanded", "false");
+      list.appendChild(more);
+      tx.slice(1).forEach(function (x) {
+        var r = homeRow({ icon: "phone", cls: "hs-sub rnd-more rnd-tel", href: "tel:" + x.tel, title: x.name, sub: x.text });
+        r.hidden = true; subs.push(r); list.appendChild(r);
+      });
+    }
+    if (list.children.length) box.appendChild(list);
   }
   function splitTaxi() {
     A.rpc("my_groups").then(function (r) {
@@ -903,7 +949,7 @@
 
   window.RUNDAN = {
     init: function (api) { A = api; },
-    groupItem: groupItem, chatOpen: chatOpen, taxiSheet: taxiSheet, profileSheet: settingsSheet,   /* 👤 Profil (was settingsSheet) */
+    groupItem: groupItem, chatOpen: chatOpen, taxiSheet: taxiSheet, homeRow: homeRow, profileSheet: settingsSheet,   /* 👤 Profil (was settingsSheet) */
     openNota: openNota, openSpin: openSpin, openAdd: openAdd,
     _settle: settle, _swish: { https: swishHttps, app: swishApp, norm: normSwish, intent: swishIntent, href: swishHref, platform: swishPlatform, ctl: swishCtl }
   };
