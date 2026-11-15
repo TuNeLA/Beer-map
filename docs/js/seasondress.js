@@ -105,8 +105,22 @@
     glogg(!off && !!s.glogg);
     if (mug) mug.hidden = !curG;
   }
+  // I-117 "the Annat button looks a little bit weird" (sheet 11): the "Vilken sort?" strip (.bp-strip, barsplus.js) covered the
+  // top of Annat. When both show, the strip moves up until it ends 8 px above Annat. Annat itself is not restyled (I-125).
+  var stripMo = null;
+  function stripFix() {
+    var st = D.querySelector(".bp-strip"), o = D.getElementById("other-wrap");
+    if (!st) return;
+    if (!stripMo && W.MutationObserver) { stripMo = new MutationObserver(function () { W.requestAnimationFrame(stripFix); }); stripMo.observe(st, { attributes: true, attributeFilter: ["hidden"] }); }
+    st.style.removeProperty("margin-bottom");
+    if (st.hidden || !o || o.hidden) return;
+    var sr = st.getBoundingClientRect(), or = o.getBoundingClientRect(), over = sr.bottom - (or.top - 8);
+    if (over > 0 && sr.top - over > 40) st.style.setProperty("margin-bottom", Math.ceil(over) + "px");
+  }
   function init() {
     if (!S() || !btn()) return false;
+    if (W.MutationObserver) new MutationObserver(function (l) { for (var i = 0; i < l.length; i++) for (var j = 0; j < l[i].addedNodes.length; j++) { var n = l[i].addedNodes[j]; if (n.classList && n.classList.contains("bp-strip")) { W.requestAnimationFrame(stripFix); return; } } })
+      .observe(D.body, { childList: true });
     S().on(apply); apply(S().now());
     var b = btn();
     // the hat goes down with the pressed button (CSS :active) and hops once after the tap
@@ -119,6 +133,6 @@
   W.PNDress = {
     state: function () { return { dress: cur, color: curC, glogg: !!curG, shown: !!(el && !el.hidden), label: (D.getElementById("beer-label") || {}).textContent || "" }; },
     rects: function () { var out = []; if (el && !el.hidden) el.querySelectorAll("i").forEach(function (i) { out.push(i.getBoundingClientRect().toJSON()); }); return out; },
-    hop: hop, place: place
+    hop: hop, place: place, stripFix: stripFix
   };
 })();
