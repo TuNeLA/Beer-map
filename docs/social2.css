@@ -87,9 +87,11 @@
 :root{--pn-chat-me:#3b3329}
 #sheet-body .chat-list>.chat-msg.me.me{background:var(--pn-chat-me) !important}
 /* design2 small fix 14: a chat avatar is a 44 px tap target. The picture stays 32 px: a 6 px clear border around it (wins over
-   pnds.css 1150 with one more class). The list gets 6 px room on the left so the target is not cut. */
+   pnds.css 1150 with one more class). The chat sheet body and the list get 6 px room on the left (the content stays where it
+   was), so the target is not cut by the two scroll boxes. */
 #sheet-body .chat-list>.chat-msg.av-on>.av-pic.av-pic{box-sizing:content-box;border:6px solid transparent;background-clip:padding-box;left:-46px;bottom:-6px}
-#sheet-body>.chat-list{padding-left:6px;margin-left:-6px}
+#sheet-body:has(> .chat-list){margin-left:-6px;padding-left:6px}
+#sheet-body>.chat-list{margin-left:-6px;padding-left:6px}
 
 /* bottom bar: + and the ONE main action */
 .gpg-bar{position:sticky;bottom:0;z-index:3;display:flex;gap:10px;align-items:stretch;padding:12px 0 calc(4px + env(safe-area-inset-bottom,0px));margin-top:4px !important;
