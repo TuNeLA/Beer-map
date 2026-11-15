@@ -38,6 +38,8 @@ async function open(b, vp, o = {}) {
       await r.fulfill({ status: res.status, body: Buffer.from(await res.arrayBuffer()), headers: { "content-type": res.headers.get("content-type") || "text/html" } });
     } catch (e) { r.abort().catch(() => {}); }   // a closed page / a reset local socket: never crash the run
   });
+  // cifix2: slow place tiles (registered last = asked first): the food list must not wait for the network when they come late
+  if (o.slowTiles) await page.route(/\/Beer-map\/places\/(?!index)/, async (r) => { await new Promise((z) => setTimeout(z, o.slowTiles)); r.fallback().catch(() => {}); });
   const errs = []; page.on("pageerror", (e) => { if (!/ResizeObserver/.test(e.message)) errs.push(e.message); });
   const url = "https://tunela.github.io/Beer-map/" + (o.q || "");
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(async (e) => { console.log("goto retry: " + e.message.split("\n")[0]); await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 }); });
@@ -102,7 +104,7 @@ function counts(page) {
     }
     /* ---------- I-56: "Öppet nu: mat nära dig" shows rows (or a skeleton) at once, before the network answers ---------- */
     if (ONLY.test("food")) {
-      const { ctx, page } = await open(b, { width: 390, height: 780 });
+      const { ctx, page } = await open(b, { width: 390, height: 780 }, { slowTiles: 2500 });
       await page.route(/overpass/, (r) => setTimeout(() => r.abort().catch(() => {}), 15000));
       await wait(page, 1500);
       // c12fix: a real tap opens this list. Without a user gesture CALM holds every sheet in its 4 s quiet start (CI read 1079 ms here)
@@ -110,7 +112,14 @@ function counts(page) {
       const q = await page.evaluate(() => new Promise((res) => { const t0 = performance.now(), tick = () => { const rows = document.querySelectorAll(".af-krow").length, skel = document.querySelectorAll(".af-skel").length;
         if (rows + skel > 0) res({ rows, skel, ms: Math.round(performance.now() - t0) }); else if (performance.now() - t0 > 5000) res({ rows: 0, skel: 0, ms: 5000 }); else requestAnimationFrame(tick); }; tick(); }));
       ok(q.rows + q.skel > 0 && q.ms < 1000, "I-56 food list shows a skeleton or rows < 1 s with the network still pending", q);
-      ok(q.rows > 0, "I-56 nearest food rows come from local data at once (Ludvika)", q);
+      // cifix2: the place tiles load 1.5 s after the app starts (here 2.5 s late on purpose). A first frame with the skeleton is
+      // right ("at once" = check 1); the rows must then come from LOCAL data as soon as the tiles are in (the OSM network is held
+      // 15 s here). Was: rows in the very first frame = a race with the boot tile load (CI red on 2ce9949: {"rows":0,"skel":4});
+      // the old code then kept the skeleton until the network answered.
+      const rowsBy = (ms) => page.evaluate((mx) => new Promise((res) => { const t0 = performance.now(), tick = () => { const n = document.querySelectorAll(".af-krow").length;
+        if (n > 0) res({ rows: n, ms: Math.round(performance.now() - __t0) }); else if (performance.now() - t0 > mx) res({ rows: 0, ms: -1 }); else requestAnimationFrame(tick); }; tick(); }), ms);
+      const q2 = await rowsBy(6000);
+      ok(q2.rows > 0, "I-56 nearest food rows come from local data, long before the network (Ludvika, tiles 2.5 s late: " + q2.ms + " ms)", { q, q2 });
       await ctx.close().catch(() => {});
     }
     /* ---------- I-50 / I-51: icon + cluster counts ---------- */
