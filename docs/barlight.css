@@ -1,0 +1,33 @@
+/* PintsNow — BARLIGHT (lane maplight, I-115): the check-in ring + the raster-map (no GL) look of the lantern pin.
+   The GL map draws the lantern, the halo and the street light itself (js/barlight.js, js/glmap.js, js/mapart.js). */
+:root{
+  --bl-ring:#FFC24D; --bl-ring-fill:rgba(245,166,35,.16); --bl-glow:rgba(255,154,31,.5); --bl-edge:rgba(4,7,20,.62); --bl-shadow:rgba(0,0,0,.6);
+  --bl-l1a:#3B2F5E; --bl-l1b:#241E4A; --bl-l1r:#F5A623;
+  --bl-l2a:#F0A12A; --bl-l2b:#B8690E; --bl-l2r:#FFD27A;
+  --bl-l3a:#FFE6A8; --bl-l3b:#FFC24D; --bl-l3r:#FFFAF0; --bl-ink:#2A1600;
+  --bl-face:#1E2B66; --bl-face-ring:#3DDC84;
+}
+/* E: one ring when a check-in arrives (2 s, once; transform + opacity only). The second, thinner ring starts at 22 %. */
+.leaflet-barlight-pane{pointer-events:none}
+.bl-ring{pointer-events:none}
+.bl-ring>i{position:absolute;left:-80px;top:-80px;width:160px;height:160px;box-sizing:border-box;border-radius:50%;border:7px solid var(--bl-ring);
+  background:radial-gradient(circle,var(--bl-ring-fill) 0 62%,transparent 70%);opacity:0;transform:scale(.225);will-change:transform,opacity;
+  animation:blRing 2s cubic-bezier(.16,.8,.3,1) forwards}
+.bl-ring>i+i{left:-62px;top:-62px;width:124px;height:124px;border-width:4px;background:none;animation:blRing2 1.56s cubic-bezier(.16,.8,.3,1) .44s forwards}
+@keyframes blRing{0%{opacity:.95;transform:scale(.225)}100%{opacity:0;transform:scale(1)}}
+@keyframes blRing2{0%{opacity:.6;transform:scale(.29)}100%{opacity:0;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.bl-ring{display:none !important}}
+
+/* Raster map (no GL): the bar icons are DOM. Same rule as the GL pin: no green ring on the disc, the lantern steps by people. */
+.cm.cm-lit .bar-ico.ic-mk{box-shadow:0 0 0 2px var(--amber-2),0 1px 6px var(--bl-shadow)}
+.cm.cm-lv1 .bar-ico.ic-mk{background:linear-gradient(var(--bl-l1a),var(--bl-l1b)) !important;box-shadow:0 0 0 2px var(--bl-l1r),0 0 12px 3px var(--bl-glow)}
+.cm.cm-lv2 .bar-ico.ic-mk{background:linear-gradient(var(--bl-l2a),var(--bl-l2b)) !important;border-color:var(--bl-l2r) !important;color:var(--bl-ink);box-shadow:0 0 0 1px var(--bl-edge),0 0 14px 4px var(--bl-glow)}
+.cm.cm-lv3 .bar-ico.ic-mk{background:linear-gradient(var(--bl-l3a),var(--bl-l3b)) !important;border-color:var(--bl-l3r) !important;color:var(--bl-ink);box-shadow:0 0 0 1px var(--bl-edge),0 0 18px 6px var(--bl-glow)}
+/* friends at the bar: faces left of the disc */
+.cm .cm-faces{position:absolute;right:calc(50% + 15px);top:50%;transform:translateY(-50%);display:flex;flex-direction:row-reverse;align-items:center;pointer-events:none}
+.cm .cm-faces>.bm-av,.cm .cm-faces>.cm-face0{width:22px;height:22px;flex:0 0 22px;margin:0 0 0 -7px;border-radius:50%;display:block;background:var(--bl-face);
+  box-shadow:0 0 0 2px var(--bl-face-ring),0 1px 4px var(--bl-shadow)}
+.cm .cm-faces>:last-child{margin-left:0}
+.cm .cm-faces>b{order:9;margin-right:3px;font:700 11px/18px var(--body,system-ui,sans-serif);color:var(--foam);padding:0 5px;border-radius:9px;background:var(--bl-edge);box-shadow:0 0 0 1.5px var(--bl-face-ring)}
+/* my own dot is never under a bar icon (raster map: the pane goes above the bar panes; the GL map draws my marker itself) */
+.leaflet-mepane-pane{z-index:655 !important}

@@ -65,6 +65,8 @@ async function tapBar(page, wantFull) {
       const x = cv.left + q.x, y = cv.top + q.y; if (x < 60 || x > W - 60 || y < 220 || y > Hh - 330) continue;
       // glfix: a dot under another bar's full pill image is not a fair dot tap
       if (!wantFull && GLBARS.rects && GLBARS.rects().some((r) => r.t1 && r.id !== p.id && x >= r.l && x <= r.r && y >= r.t && y <= r.b)) continue;
+      // maplight (I-115): nor a dot under a town-crowd lantern (drawn over it below Leaflet z14.5; a tap there = the lantern = zoom in)
+      if (!wantFull && GLBARS._crowds && Object.values(GLBARS._crowds()).some((c) => { const o = g.project([c.ll[1], c.ll[0]]); return Math.hypot(cv.left + o.x - x, cv.top + o.y - y) < c.r + 22; })) continue;
       const im = GLBARS._img(p.id); const pill = wantFull && im && im.parts.find((x) => x.sel === ".pill");
       const c = mk.options && mk.options.olnuC, name = (c && c.bar && c.bar.name) || (c && c.name) || "";
       return { id: p.id, name, x: Math.round(x + (pill ? (pill.bb[0] + pill.bb[2]) / 2 : 0)), y: Math.round(y + (pill ? (pill.bb[1] + pill.bb[3]) / 2 : 0)), pill: !!pill };

@@ -185,11 +185,37 @@
     if (c.cis.length >= 3 && z >= LABEL_ZOOM) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";   // gw: no check-in number below 3 (the green 'lit' ring stays)
     if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";
     h += "</div>";
+    // maplight (I-115): people I know stand beside the disc (GL draws them itself, glmap.js: only the raster map needs this HTML)
+    if (!(window.GLBARS && window.GLBARS.on && window.GLBARS.on())) h += facesHTML(c);
     c.tk = { king: !!bx.king, ev: ico.indexOf("bi-ev") >= 0 };   // 🏷️ tiers: 👑 / 📅 tonight priority
     var quiet = !list.length && !c.rallies.length && !c.cis.length && z < LABEL_ZOOM && !window.TIERS;
+    var lv = 0; try { lv = window.BARLIGHT && window.BARLIGHT.lvOf ? window.BARLIGHT.lvOf(bar.id) : 0; } catch (e) {}   // maplight: the lantern step (raster map: CSS, barlight.css)
     return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : "") +
-        (quiet ? " cm-quiet" : "") + (!list.length && c.cis.length ? " cm-lit" : ""),
+        (quiet ? " cm-quiet" : "") + (!list.length && c.cis.length ? " cm-lit" : "") + (lv ? " cm-lv" + lv : ""),
       iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -20] });
+  }
+  // maplight: my friends at this bar as faces left of the disc (max 3, then "+N"); a friend without a character = a person dot
+  function facesHTML(c) {
+    var seen = {}, fr = [];
+    c.beers.forEach(function (b) { if (b && b.friend_name && !b.is_mine) { var k = String(b.friend_name).toLowerCase(); if (!seen[k]) { seen[k] = 1; fr.push(b); } } });
+    c.cis.forEach(function (q) { if (q && q.is_friend && !q.is_mine && q.name) { var k = String(q.name).toLowerCase(); if (!seen[k]) { seen[k] = 1; fr.push({ friend_name: q.name }); } } });
+    if (!fr.length) return "";
+    var h = fr.slice(0, 3).map(function (b) { return (window.AVPINS && window.AVPINS.img(b)) || '<i class="cm-face0"></i>'; }).join("");
+    return '<span class="cm-faces" aria-hidden="true">' + (fr.length > 3 ? "<b>+" + (fr.length - 3) + "</b>" : "") + h + "</span>";
+  }
+  // maplight: the people data of every bar with somebody (the same pins and check-ins the bar pills use) → js/barlight.js.
+  // Check-ins count at every zoom here, so the crowd step of a bar does not change when the zoom changes.
+  function lightFeed(comp, z) {
+    var BLT = window.BARLIGHT; if (!BLT || !BLT.set) return;
+    if (z < HOT_ZOOM) { BLT.set(null); return; }
+    var cib = checkinsByBar(), ids = {}, out = [], PC = window.PNCROWD;
+    Object.keys(comp).forEach(function (id) { ids[id] = 1; }); Object.keys(cib).forEach(function (id) { ids[id] = 1; });
+    Object.keys(ids).forEach(function (id) {
+      var c = comp[id], bar = c ? c.bar : window.BARS.byId(id); if (!bar || bar.arena) return;
+      var beers = c ? c.beers : [], cis = cib[id] || (c ? c.cis : []);
+      out.push({ id: String(bar.id != null ? bar.id : id), lat: +bar.lat, lng: +bar.lng, n: PC && PC.people ? PC.people(beers, cis) : Math.max(beers.length, cis.length), cis: cis });
+    });
+    BLT.set(out);
   }
   // Check-ins per bar id (from the poll), rally badges per bar id (js/rally.js).
   function checkinsByBar() {
@@ -460,6 +486,7 @@
     Object.keys(rb).forEach(function (id) { var x = rb[id]; if (x && x.bar) get(id, x.bar).rallies = x.rallies || []; });
     Object.keys(cib).forEach(function (id) { var bar = window.BARS.byId(id); if (bar) get(id, bar).cis = cib[id]; });
     if (window.DEMO) try { window.DEMO.bars(comp, get, z); } catch (e) {}   // 🎞️ visningsläge
+    try { lightFeed(comp, z); } catch (e) {}   // maplight: before the icons are made (they read the lantern step)
     Object.keys(comp).forEach(function (id) {
       var c = comp[id];
       if (c.bar && c.bar.arena) return;   // 🏟️ js/arenapin.js draws arenas (glow + chip with the crowd)

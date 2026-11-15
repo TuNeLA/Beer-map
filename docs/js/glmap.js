@@ -26,6 +26,9 @@
   var A = null, map = null, on = false, gm = null, hooked = null, layersReady = false;
   var SRC_B = "olnu-bars", SRC_H = "olnu-heat", SRC_C = "olnu-clouds";
   var L_PLACE = "olnu-place", L_DOTB1 = "olnu-bar-dotb1", L_DOTB2 = "olnu-bar-dotb2", L_DOT = "olnu-bar-dot", L_DOTE = "olnu-bar-dote", L_LBL = "olnu-bar-lbl", L_FULL = "olnu-bar-full", L_HEAT = "olnu-heat", L_CLOUD = "olnu-clouds";
+  var L_CROWD = "olnu-bar-crowd";   // maplight: the town-view "town crowd" lanterns (bars with people that would sit on each other)
+  // maplight (I-115): is the map light on (js/barlight.js; kill switch PN.CFG.barlight / ?barlight=0)? Off = the look before it.
+  function BL() { var b = window.BARLIGHT; return b && b.on && b.on() ? b : null; }
   // mbx: images at the phone's own pixel ratio (2 or 3): crisp on 3x screens (was always 2x)
   var R = Math.min(3, Math.max(2, Math.ceil(window.devicePixelRatio || 1))), FONT = '"Chakra Petch", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   var EMPTY = { type: "FeatureCollection", features: [] };
@@ -116,7 +119,8 @@
   function art() { var P = window.PNPINS; if (P && P.build && P.setRatio && !P._r) { P.setRatio(R); P._r = R; } return P && P.build ? P : null; }
   function build(s, mode, hi, extra) {
     var P = art();
-    if (P) { try { var r = P.build(s, mode, hi, extra); stats.made++; return { data: r.data, ox: r.ox, oy: r.oy, bottom: r.bottom, parts: r.parts }; } catch (e) {} }
+    if (P) { try { var r = P.build(s, mode, hi, extra); stats.made++; return { data: r.data, ox: r.ox, oy: r.oy, bottom: r.bottom, parts: r.parts }; }
+      catch (e) { if (extra && extra.faces && extra.faces.some(function (f) { return f.img; })) throw e; } }
     return build0(s, mode, hi);
   }
   // mode: "d" dot · "f" full · "x" full in the town view (z < 12.5: no disc, like .olnu-zxlo)
@@ -195,9 +199,9 @@
     return { data: g.getImageData(0, 0, W * R, H * R), ox: ox, oy: oy, bottom: b[3], parts: parts };
   }
   // the name under a full pill (GL text needs glyphs the Standard root style does not have: drawn as an image, same font as before)
-  function buildLabel(name, at) {
+  function buildLabel(name, at, tone) {
     var P = art();
-    if (P) { try { var r = P.buildLabel(name, at); stats.made++; return { data: r.data, w: r.data.width / R, h: r.data.height / R }; } catch (e) {} }
+    if (P) { try { var r = P.buildLabel(name, at, tone); stats.made++; return { data: r.data, w: r.data.width / R, h: r.data.height / R }; } catch (e) {} }
     var f = "600 13px " + FONT, t = name, w = tw(t, f);
     while (w > 140 && t.length > 3) { t = t.slice(0, -2).replace(/\s+$/, "") + "…"; w = tw(t, f); }
     var W = Math.ceil(w) + 6, Hh = 18, cv = document.createElement("canvas"); cv.width = W * R; cv.height = Hh * R;
@@ -216,9 +220,9 @@
     if (Object.keys(lwCache).length > 2000) lwCache = {};
     return (lwCache[name] = Math.ceil(w) + 6);
   }
-  function label(m, name, at) {
-    var k = keyOf(name + (at ? "|" + at : ""), "l", 0), im = imgs[k];   // map BR1: + name badges
-    if (!im) { im = imgs[k] = buildLabel(name, at); im.k = k; }
+  function label(m, name, at, tone) {   // maplight: tone "w" = a busy bar (lantern step 2-3), "q" = nobody there
+    var k = keyOf(name + (at ? "|" + at : "") + (tone ? "~" + tone : ""), "l", 0), im = imgs[k];   // map BR1: + name badges
+    if (!im) { im = imgs[k] = buildLabel(name, at, tone); im.k = k; }
     if (!m.hasImage(k)) m.addImage(k, im.data, { pixelRatio: R });
     return im;
   }
@@ -239,13 +243,18 @@
   function keyOf(s, mode, hi, extra) {
     // mapart P1: the name is NOT on the bar image (the label is its own image) → not in the key, so bars with the same
     // state share one image (was one image per bar: 655 images, ~58 ms per sync)
-    var str = JSON.stringify(Object.assign({}, s, { name: 0 })) + mode + (hi ? 1 : 0) + (extra && extra.sel ? "s" : ""), h = 2166136261;
+    var str = JSON.stringify(Object.assign({}, s, { name: 0 })) + mode + (hi ? 1 : 0) + (extra && extra.sel ? "s" : "") +
+      (extra && extra.lv ? "L" + extra.lv : "") + (extra && extra.fk ? "F" + extra.fk : ""), h = 2166136261;   // maplight: lantern step, faces
     for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
     return "gb" + (h >>> 0).toString(36) + str.length.toString(36);
   }
   function image(m, s, mode, hi, extra) {
     var k = keyOf(s, mode, hi, extra), im = imgs[k];
-    if (!im) { im = imgs[k] = build(s, mode, hi, extra); im.k = k; }
+    if (!im) {
+      try { im = build(s, mode, hi, extra); }
+      catch (e) { faceBad = true; im = build(s, mode, hi, Object.assign({}, extra, { faces: (extra.faces || []).map(function () { return {}; }) })); }   // a browser that will not read a face image back: person glyphs
+      imgs[k] = im; im.k = k;
+    }
     if (!m.hasImage(k)) m.addImage(k, im.data, { pixelRatio: R });
     return im;
   }
@@ -266,6 +275,12 @@
   // mapart P6: one warm hue family, a little softer at the top so pills stay readable over the hottest cells
   var HEAT_COL = ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(90,35,0,0)", 0.02, "rgba(90,35,0,0)", 0.08, "rgba(194,101,10,0.42)",
     0.2, "rgba(245,166,35,0.70)", 0.4, "rgba(255,122,26,0.80)", 0.68, "rgba(255,72,60,0.85)", 1, "rgba(255,236,200,0.88)"];
+  // maplight (I-115): with the street light on, the cloud is ONE amber hue and only for the zoomed-out view: it fades out
+  // from GL zoom 13.6 to 14.6 (Leaflet 14.6-15.6); at street zoom the street light, the halo and the lantern pin say it.
+  var HEAT_COL_1 = ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(245,166,35,0)", 0.02, "rgba(245,166,35,0)", 0.08, "rgba(245,166,35,0.10)",
+    0.25, "rgba(245,166,35,0.38)", 0.6, "rgba(255,190,90,0.62)", 1, "rgba(255,214,140,0.78)"];
+  var HEAT_OP = ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 12, 1, 14, 0.6, 15, 0.45, 16, 0];   // ds44: no heat blob over the lit houses (Leaflet ≥ 17)
+  var HEAT_OP_1 = ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 13.6, 1, 14.6, 0];
   /* ---------- mapart P2: the static marker images (dots, dot badges, place dots) from one sprite sheet ---------- */
   /* mbx: the static images (dots per type and state, dot badges) are drawn HERE from the same PNPINS art as the full markers,
      at this phone's pixel ratio. Before, a prebuilt sprite sheet had dots for 8 bar types only: every other type (restaurant,
@@ -288,7 +303,7 @@
         put("dot-" + c + "-lit", P.barOps({ k: c, lit: true }, "d", false).ops);
       });
       ["friend", "friend-l", "king", "king-l", "stammis", "stammis-l", "event", "queue"].forEach(function (k) { var o = P.badgeOps(k).ops; if (o.length) put("badge-" + k, o); });
-      spr.sheet = imgs0; stats.sprite = Object.keys(imgs0).length;
+      spr.sheet = imgs0; spr.put = put; stats.sprite = Object.keys(imgs0).length;
     }
     addSprite(m); spr.ok = true;
   }
@@ -300,8 +315,13 @@
     });
   }
   // the dot sprite of a bar: navy disc, ring by state, category glyph (mapart tokens.typeMap)
-  function dotName(s) {
-    var P = window.PNPINS, c = P && P.cat ? P.cat(s.k) : "pub", st = (s.p || s.hot) ? "busy" : s.lit ? "lit" : "quiet", n = "dot-" + c + "-" + st;
+  // maplight: + the lantern step (lv 1-3): that dot is drawn when a bar first needs it (14 types x 3 steps would be 42 idle images)
+  function dotName(s, lv, m) {
+    var P = window.PNPINS, c = P && P.cat ? P.cat(s.k) : "pub", st = (s.p || s.hot) ? "busy" : s.lit ? "lit" : "quiet", n = "dot-" + c + "-" + (lv ? "l" + lv + "-" + (s.lit && !s.p ? "lit" : "busy") : st);   // (the state stays the last word of the name: tests and B9 read it)
+    if (lv && !spr.names[n] && spr.put && m) {
+      try { spr.put(n, P.barOps(s.lit && !s.p ? { k: c, lit: true } : { k: c, p: {}, hot: true }, "d", false, { lv: lv }).ops); spr.names[n] = 1;
+        if (!m.hasImage(n)) m.addImage(n, spr.sheet[n].data, { pixelRatio: spr.sheet[n].pixelRatio }); stats.sprite++; } catch (e) {}
+    }
     return spr.names[n] ? n : "";
   }
   function ensure(m) {
@@ -314,8 +334,10 @@
         paint: { "circle-color": "#c8d4ea", "circle-blur": 1, "circle-opacity": ["*", 0.62, ["get", "a"]], "circle-radius": 9, "circle-pitch-alignment": "map",
           "circle-emissive-strength": 1 } });
       if (!m.getLayer(L_HEAT)) m.addLayer({ id: L_HEAT, type: "heatmap", source: SRC_H,
-        paint: { "heatmap-color": HEAT_COL, "heatmap-radius": 40, "heatmap-intensity": 1.25, "heatmap-weight": 1,
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 8.4, 0.12, 9.6, 1, 12, 1, 14, 0.6, 15, 0.45, 16, 0] } });   // ds44: no heat blob over the lit houses (Leaflet ≥ 17)
+        paint: { "heatmap-color": BL() ? HEAT_COL_1 : HEAT_COL, "heatmap-radius": 40, "heatmap-intensity": 1.25, "heatmap-weight": 1,
+          "heatmap-opacity": BL() ? HEAT_OP_1 : HEAT_OP } });
+      // maplight: the street light (slot "middle") and the halo (under every bar layer, over the cloud)
+      if (BL()) try { window.BARLIGHT.ensure(m, m.getLayer(L_PLACE) ? L_PLACE : m.getLayer(L_DOTE) ? L_DOTE : undefined); } catch (e) {}
       var common = { "icon-image": ["get", "img"], "icon-anchor": "top-left", "icon-offset": offExpr(), "icon-size": ICON_Z,   // map M2
         "icon-allow-overlap": true, "icon-padding": 0, "symbol-sort-key": ["get", "sk"], "symbol-z-order": "auto",
         "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" };
@@ -362,14 +384,17 @@
       // that would touch another pill or another bar's icon to its dot at each tier pass; the icons (placed first) always win.
       if (!m.getLayer(L_FULL)) m.addLayer({ id: L_FULL, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 1],
         layout: Object.assign({}, common, { "icon-allow-overlap": true, "icon-ignore-placement": false, "symbol-sort-key": ["get", "sk"] }), paint: { "icon-emissive-strength": 1 } });
+      // maplight: the town-crowd lanterns (zoomed out), over the pills
+      if (!m.getLayer(L_CROWD)) m.addLayer({ id: L_CROWD, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 3],
+        layout: Object.assign({}, common, { "icon-allow-overlap": true, "icon-ignore-placement": false }), paint: { "icon-emissive-strength": 1 } });
       clEnsure(m);   // ds30: dot bars cluster when zoomed out
-      meEnsure(m);   // a1map I-28
+      meEnsure(m);   // a1map I-28 → maplight: my marker, the TOP layer
       return true;
     } catch (e) { try { console.warn("olnu glmap", e && e.message); } catch (x) {} return false; }
   }
 
   /* ---------- bars ---------- */
-  var byId = {}, lastSig = "", parts = {}, placeFeats = [], placeTap = null, placeById = {};
+  var byId = {}, lastSig = "", parts = {}, placeFeats = [], placeTap = null, placeById = {}, crowds = {}, crowdOf = {};
   function centred(im) {   // a dot image (canvas fallback when the sprite is not there) re-padded so the bar point is its centre
     if (im.cen) return im.cen;
     var W = im.data.width, H = im.data.height, ax = im.ox * R, ay = im.oy * R, hw = Math.ceil(Math.max(ax, W - ax)), hh = Math.ceil(Math.max(ay, H - ay));
@@ -400,10 +425,75 @@
     });
     return out;
   }
+  /* ---------- maplight: the people I know at a bar (faces beside the disc) + the town-crowd groups ---------- */
+  var faceC = {}, faceT = 0, faceBad = false;
+  function hash36(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+  // a person's character (js/avpins.js gives an SVG data URL) as a loaded image; null until it has loaded (then one redraw)
+  function faceImg(url) {
+    if (!url || faceBad) return null;
+    var f = faceC[url];
+    if (!f) {
+      f = faceC[url] = { img: new Image(), ok: false };
+      f.img.onload = function () { f.ok = true; clearTimeout(faceT); faceT = setTimeout(function () { lastSig = ""; meSig = ""; sync(); }, 80); };
+      f.img.onerror = function () { f.bad = true; };
+      try { f.img.src = url; } catch (e) { f.bad = true; }
+    }
+    return f.ok ? f.img : null;
+  }
+  function faceOf(row) {   // row = a pin or a check-in of a friend / me
+    var u = ""; try { u = window.AVPINS && window.AVPINS.url ? window.AVPINS.url(row) : ""; } catch (e) {}
+    var img = faceImg(u); return { img: img, k: (u ? hash36(u) : "0") + (img ? 1 : 0) };
+  }
+  // who I know at this bar: my friends (pins with a name + friends' check-ins, each once), and am I checked in here
+  function whoAt(c) {
+    var seen = {}, fr = [], me = false;
+    (c.beers || []).forEach(function (b) { if (b && b.friend_name && !b.is_mine) { var k = String(b.friend_name).trim().toLowerCase(); if (!seen[k]) { seen[k] = 1; fr.push({ friend_name: b.friend_name }); } } });
+    (c.cis || []).forEach(function (q) { if (!q) return; if (q.is_mine) { me = true; return; }
+      if (q.is_friend && q.name) { var k = String(q.name).trim().toLowerCase(); if (!seen[k]) { seen[k] = 1; fr.push({ friend_name: q.name }); } } });
+    return { fr: fr, me: me };
+  }
+  function knownExtra(fr) {   // → the barOps / crowdOps extras: at most 3 faces, then "+N" (in the row under the disc)
+    if (!fr.length) return null;
+    var faces = fr.slice(0, 3).map(faceOf), more = Math.max(0, fr.length - 3);
+    return { faces: faces, more: more, fk: faces.map(function (f) { return f.k; }).join(".") + "+" + more };
+  }
+  /* Town view ("it's hard to see where people are", owner 15 Nov): below Leaflet zoom 14.5 the bars with people whose
+     icons would sit on each other (centres closer than 36 px) become ONE lantern with the summed people count. A bar
+     that stands alone keeps its own pin. Zoom-only rule (a pan never regroups); the open bar is never grouped. */
+  var CROWD_Z = 14.5, CROWD_PX = 36;
+  function crowdGroups(list, z) {
+    var out = [], b = BL(); if (!b || z >= CROWD_Z) return out;
+    var cand = list.filter(function (x) { return !x.sel && x.n > 0; });
+    cand.forEach(function (x) { x.pt = map.latLngToContainerPoint([+x.c.bar.lat, +x.c.bar.lng]); });
+    cand.sort(function (p, q) { return q.n - p.n || (String(p.c.bar.id) < String(q.c.bar.id) ? -1 : 1); });
+    cand.forEach(function (x) {
+      if (x.cg) return;
+      var mem = cand.filter(function (y) { return !y.cg && Math.abs(y.pt.x - x.pt.x) < CROWD_PX && Math.abs(y.pt.y - x.pt.y) < CROWD_PX && Math.sqrt((y.pt.x - x.pt.x) * (y.pt.x - x.pt.x) + (y.pt.y - x.pt.y) * (y.pt.y - x.pt.y)) < CROWD_PX; });
+      if (mem.length < 2) return;
+      var g = { id: "cr:" + x.c.bar.id, mem: mem, n: 0, lat: 0, lng: 0, fr: [], me: false, seen: {} };
+      mem.forEach(function (y) { y.cg = g; g.n += y.n; g.lat += +y.c.bar.lat * y.n; g.lng += +y.c.bar.lng * y.n;
+        if (y.who.me) g.me = true;
+        y.who.fr.forEach(function (f) { var k = String(f.friend_name).toLowerCase(); if (!g.seen[k]) { g.seen[k] = 1; g.fr.push(f); } }); });
+      g.lat /= g.n; g.lng /= g.n; g.lv = b.step(g.n);
+      out.push(g);
+    });
+    return out;
+  }
+  function crowdImage(m, g) {
+    var P = art(), ex = knownExtra(g.fr) || {}, k = "cr|" + (g.n >= 3 ? g.n : 0) + "|" + g.lv + "|" + (ex.fk || ""), im = imgs[k];
+    if (!im && P && P.crowdOps) {
+      var mk = function (e) { var x = P.crowdOps(g.n, g.lv, e), r = P.raster(x.ops, R); return { data: r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), ox: r.ox, oy: r.oy, bottom: r.bottom, r: x.r, k: k,
+        parts: [{ sel: ".bar-ico", bb: [-x.r, -x.r, x.r, x.r] }] }; };
+      try { im = mk(ex); } catch (e) { faceBad = true; try { im = mk(Object.assign({}, ex, { faces: (ex.faces || []).map(function () { return {}; }) })); } catch (e2) { im = null; } }
+      if (im) { imgs[k] = im; stats.made++; }
+    }
+    if (im && !m.hasImage(k)) m.addImage(k, im.data, { pixelRatio: R });
+    return im || null;
+  }
   function sync() {
     if (!on || !A) return;
     var m = gm; if (!m || !layersReady) return;
-    var t0 = performance.now(), z = map.getZoom(), hi = z >= 16, xlo = z < 12.5, feats = [], cfeats = [], used = {}, n = 0, list = [], sun = season();
+    var t0 = performance.now(), z = map.getZoom(), hi = z >= 16, xlo = z < 12.5, feats = [], cfeats = [], used = {}, n = 0, list = [], sun = season(), lt = BL();
     byId = {}; parts = {}; meAt = null;
     (A.layers || []).forEach(function (ly) {
       if (!ly || !ly.eachLayer) return;
@@ -412,14 +502,17 @@
         var ic = mk.getElement && mk.getElement(), s = withVt(parse(io.html || "", io.className || ""), c.bar);   // map BR1
         var empty = !((c.beers && c.beers.length) || (c.rallies && c.rallies.length) || (c.cis && c.cis.length));
         list.push({ mk: mk, c: c, s: s, full: mk._olnuTier === "f", sel: !!(ic && ic.classList.contains("cm-sel")), prio: (mk.options.olnuPrio || 0),
-          empty: empty, pin: !empty || !!s.king || !!s.ev });   // a1map I-27: a pin can be a full pill zoomed out: never clustered
+          empty: empty, pin: !empty || !!s.king || !!s.ev,   // a1map I-27: a pin can be a full pill zoomed out: never clustered
+          n: lt ? lt.nOf(c.bar.id) : 0, lv: lt ? lt.lvOf(c.bar.id) : 0, who: whoAt(c) });   // maplight: people, crowd step, the people I know there
       });
     });
+    var groups = crowdGroups(list, z);   // maplight: town view
     // mapart P3b: walk the full pills best first; a pill whose real image box (−2 px) touches one already placed shows as a dot.
     // The selected bar is never demoted. Only pills near the view count (off-screen ones keep their tier).
-    var size = map.getSize(), placed = [], demoted = 0, discs = icoDiscs(list, z, size);
-    list.filter(function (x) { return x.full; }).sort(function (a, b) { return (b.sel ? 1 : 0) - (a.sel ? 1 : 0) || b.prio - a.prio; }).forEach(function (x) {
-      x.im = image(m, x.s, xlo ? "x" : "f", hi, { sel: x.sel });
+    var size = map.getSize(), placed = [], demoted = 0, discs = icoDiscs(list.filter(function (x) { return !x.cg; }), z, size);
+    var ext = function (x) { var e = knownExtra(x.who.fr) || {}; e.sel = x.sel; e.lv = x.lv; return e; };
+    list.filter(function (x) { return x.full && !x.cg; }).sort(function (a, b) { return (b.sel ? 1 : 0) - (a.sel ? 1 : 0) || b.prio - a.prio; }).forEach(function (x) {
+      x.im = image(m, x.s, xlo ? "x" : "f", hi, ext(x));
       var p = map.latLngToContainerPoint([+x.c.bar.lat, +x.c.bar.lng]), k = (x.sel ? 1.25 : 1) * zk(z), W = x.im.data.width / R, H = x.im.data.height / R;   // map M2
       if (p.x < -150 || p.y < -150 || p.x > size.x + 150 || p.y > size.y + 150) return;
       var b = [p.x - x.im.ox * k + 2, p.y - x.im.oy * k + 2, p.x + (W - x.im.ox) * k - 2, p.y + (H - x.im.oy) * k - 2];
@@ -429,9 +522,12 @@
     });
     list.forEach(function (x) {
       var s = x.s, c = x.c, mk = x.mk, full = x.full, sel = x.sel, mode = full ? (xlo ? "x" : "f") : "d";
-      var im = full ? (x.im || image(m, s, mode, hi, { sel: sel })) : null, di = spr.ok ? dotName(s) : "";
+      var id = String(c.bar.id);
+      byId[id] = mk;
+      if (x.cg) return;   // maplight: inside a town-crowd lantern (drawn below)
+      var im = full ? (x.im || image(m, s, mode, hi, ext(x))) : null, di = spr.ok ? dotName(s, x.lv, m) : "";
       if (!di) {   // no sprite (yet): the canvas dot, centred
-        var dk = keyOf(s, "d", hi), dimg = image(m, s, "d", hi); used[dimg.k] = 1; di = dk + "c";
+        var dk = keyOf(s, "d", hi, { lv: x.lv }), dimg = image(m, s, "d", hi, { lv: x.lv }); used[dimg.k] = 1; di = dk + "c";
         if (!m.hasImage(di)) m.addImage(di, centred(dimg), { pixelRatio: R }); used[di] = 1;
         if (!im) im = dimg;
       } else if (!im) {   // a sprite dot (map B9 + M2: Ø 32 image px, the full disc; zk() scales it; the box is centred on the point)
@@ -441,33 +537,45 @@
       used[im.k] = 1;
       var empty = x.empty, pin = x.pin || !cl.on, rk = rankOf(c.bar, s);   // a1map I-08: + type / open rank (< 1)
       var prio = x.prio + rk + (full ? 10000 : 0) + (sel ? 1e6 : 0), busy = !!(s.p || s.hot);
-      if (c.cis && c.cis.some(function (q) { return q && q.is_mine; })) meAt = { id: String(c.bar.id), ll: [+c.bar.lat, +c.bar.lng], r: 16 * (sel ? 1.25 : 1) };   // I-28
+      if (x.who.me) meAt = { id: id, ll: [+c.bar.lat, +c.bar.lng], r: 16, sz: sel ? 1.25 : 1 };   // I-28: I am checked in here
       // the name sits 3 px under its own pill image: the pills are GL collision boxes now (mapart P3b), a name that
       // touched its own pill box was always hidden
       var lblTop = Math.max(18, Math.ceil(im.bottom) + 1);   // just clear of its own image box (GL collision); image px (M2)
-      var id = String(c.bar.id);
-      byId[id] = mk; parts[id] = { im: im, sz: sel ? 1.25 : 1, ll: [+c.bar.lat, +c.bar.lng], t: full ? 1 : 0, e: empty ? 1 : 0, s: s, sel: sel, dem: x.full !== (mk._olnuTier === "f"),
-        lt: lblTop, lw: 0, lh: 0, pin: pin };
-      var at = full && s.name ? attrsOf(c.bar, sun) : "", lim = full && s.name ? label(m, s.name, at) : null, li = lim ? lim.k : "";
+      parts[id] = { im: im, sz: sel ? 1.25 : 1, ll: [+c.bar.lat, +c.bar.lng], t: full ? 1 : 0, e: empty ? 1 : 0, s: s, sel: sel, dem: x.full !== (mk._olnuTier === "f"),
+        lt: lblTop, lw: 0, lh: 0, pin: pin, lv: x.lv, n: x.n, nf: x.who.fr.length };
+      var tone = !lt ? "" : x.lv >= 2 ? "w" : x.n < 1 && !s.p ? "q" : "";   // maplight: a busy bar's name is warm, an empty bar's name is quiet
+      var at = full && s.name ? attrsOf(c.bar, sun) : "", lim = full && s.name ? label(m, s.name, at, tone) : null, li = lim ? lim.k : "";
       if (lim) { parts[id].lw = lim.w; parts[id].lh = lim.h || 18; parts[id].at = at; }
       if (li) used[li] = 1;
       var g = { type: "Point", coordinates: [+c.bar.lng, +c.bar.lat] };
       if (pin || full) feats.push({ type: "Feature", id: ++n, geometry: g,
         properties: { id: id, t: full ? 1 : 0, dh: pin ? 1 : 0, img: full ? im.k : "", di: di, oi: full ? offIndex(-im.ox, -im.oy) : 0, sz: sel ? 1.25 : 1, e: empty ? 1 : 0, sk: prio, skf: -prio,
           bf: s.p && s.p.f ? 1 : 0, bs: busy ? 1 : 0, b2: s.king && spr.ok && (!empty || z >= DOTE_Z) ? "badge-king" : "",
-          li: li, lo: offIndex(0, lblTop) } });
+          li: li, lo: offIndex(0, lblTop), lv: x.lv } });
       // a1map I-27: the quiet bar's dot = zoom-free data (no tier, no zoom in it): a zoom never re-sends this source
       if (!pin) cfeats.push({ type: "Feature", geometry: g, properties: { id: id, t: 0, dh: 1, di: di, sz: sel ? 1.25 : 1, e: 1, sk: x.prio + rk + (sel ? 1e6 : 0), bf: 0, bs: busy ? 1 : 0, b2: "" } });
     });
+    // maplight: one lantern per town-crowd group (t 3); its members have no pin of their own while they are in it
+    crowds = {}; crowdOf = {};
+    groups.forEach(function (g) {
+      var im = crowdImage(m, g); if (!im) { g.mem.forEach(function (y) { y.cg = null; }); return; }
+      used[im.k] = 1; crowds[g.id] = { ll: [g.lat, g.lng], n: g.n, lv: g.lv, r: im.r, ids: g.mem.map(function (y) { return String(y.c.bar.id); }), nf: g.fr.length };
+      g.mem.forEach(function (y) { crowdOf[String(y.c.bar.id)] = g.id; });
+      if (g.me) meAt = { id: g.id, ll: [g.lat, g.lng], r: im.r, sz: 1 };
+      parts[g.id] = { im: im, sz: 1, ll: [g.lat, g.lng], t: 1, e: 0, s: { k: "pub", name: "" }, sel: false, dem: false, lt: 0, lw: 0, lh: 0, pin: true, crowd: 1, lv: g.lv, n: g.n };
+      feats.push({ type: "Feature", id: ++n, geometry: { type: "Point", coordinates: [g.lng, g.lat] },
+        properties: { id: g.id, t: 3, dh: 0, img: im.k, di: "", oi: offIndex(-im.ox, -im.oy), sz: 1, e: 0, sk: 20000 + g.n, skf: -20000 - g.n, bf: 0, bs: 1, b2: "", li: "", lo: 0, lv: g.lv } });
+    });
     placeFeats.forEach(function (f) { f.id = ++n; feats.push(f); used[f.properties.img] = 1; });
-    stats.demoted = demoted;
+    stats.demoted = demoted; stats.crowds = groups.length;
     if (offsDirty) {   // a new offset: the layers' offset tables first (the label layer reads its own row "lo")
       offsDirty = false; lastSig = "";
-      try { var oe = offExpr(); m.setLayoutProperty(L_FULL, "icon-offset", oe); m.setLayoutProperty(L_PLACE, "icon-offset", oe);
+      try { var oe = offExpr(); m.setLayoutProperty(L_FULL, "icon-offset", oe); m.setLayoutProperty(L_PLACE, "icon-offset", oe); if (m.getLayer(L_CROWD)) m.setLayoutProperty(L_CROWD, "icon-offset", oe);
         m.setLayoutProperty(L_LBL, "icon-offset", JSON.parse(JSON.stringify(oe).replace('["get","oi"]', '["get","lo"]'))); } catch (e) {}
     }
     clSplit(m, cfeats);   // ds30 + a1map I-27
-    meDraw(m); meCheck();   // a1map I-28 + hotfix1 I-63 (re-check the ring after this redraw)
+    syncZ = z; try { if (!meAt && meLL) meCov = meCover(m); } catch (e) {}   // maplight: the icons just drawn decide where I stand
+    meDraw(m); meCheck();   // a1map I-28 + hotfix1 I-63 (re-check after this redraw)
     var sig = feats.map(function (f) { var p = f.properties; return p.id + p.img + p.di + p.t + p.sz + p.e + p.li + p.lo + p.bf + p.b2 + p.oi; }).join("|");
     if (sig !== lastSig) {
       lastSig = sig; try { m.getSource(SRC_B).setData({ type: "FeatureCollection", features: feats }); } catch (e) {}
@@ -585,7 +693,7 @@
   var L_BLK = "olnu-bar-blk";   // a1map I-08: invisible pin discs (collision only)
   var CL_IDS = [L_CDOTE, L_CDOT, L_CB1, L_CB2, L_CL, L_BLK];   // cifix3: L_CDOTF is no layer any more (a1map I-27): only real ids here
   // cifix3: ONE list of every GL venue layer: the BAREA editor hide/restore (editVis) and _layers() use it
-  function venueIds() { return [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(CL_IDS); }
+  function venueIds() { return [L_PLACE, L_DOT, L_DOTE, L_DOTB1, L_DOTB2, L_LBL, L_FULL, L_CROWD].concat(CL_IDS); }
   // c12fix: CL_MAXZ 13 = clusters up to Leaflet 14 (c2speed had 12): at 12 the overlapping quiet dots at Leaflet 14 hid by collision
   // with no cluster badge, so bars vanished (the owner's I-08). CL_R 30 (c2speed I-51) stays: only overlapping pins merge.
   var CL_MAXZ = 13, CL_MINZ = 9, CL_R = 30;   // c2speed I-51 (was 13 / 52): clusters up to Leaflet 13, one dot per bar from 14; only overlapping pins merge. Was:   // GL zooms (Leaflet = GL + 1): clusters up to Leaflet 14, one dot per bar from Leaflet 15
@@ -702,58 +810,116 @@
     return true;
   }
   /* ds30 barcl END */
-  /* a1map I-28 (owner 2026-11-12: "my dot sat on top of the Pitchers icon"): my position in GL. The blue dot is UNDER every
-     bar / food icon; a thin blue ring, bigger than a bar icon, is OVER them, so "where am I" stays clear and the bar icon
-     on my spot stays readable. Checked in at a bar in view: no dot, a blue ring + "Du" tag on that bar's icon instead.
-     app-map.js showMe() calls GLBARS.me(); the DOM me-dot is hidden while GL draws (and sits under the bar panes without GL).
-     hotfix1 I-63 (owner 2026-11-13: "a separate blue ring with a gap around my dot looks odd"): the ring is drawn ONLY when a
-     bar / food / place icon (or a bar name) covers or touches my dot on screen; else the dot only (+ the accuracy circle).
-     meCheck() re-checks after the bars redraw, on moveend (zoomend too) and on a new position: one debounced box query. */
-  var SRC_ME = "olnu-me", L_MED = "olnu-me-dot", L_MER = "olnu-me-ring", L_MEDU = "olnu-me-du", meLL = null, meAt = null, meSig = "";
-  var meCov = false, meChkT = 0, ME_TOUCH = 13;   // I-63: the ring is on (an icon covers the dot) · dot radius 8 + stroke 3 + 2 px = "touch"
-  function meCovered(m) {   // I-63: does a drawn venue icon cover or touch my dot (rendered features in a small box)?
-    if (!meLL || meAt) return false;
-    var p = m.project([meLL[1], meLL[0]]), B = ME_TOUCH, lays = venueIds().filter(function (l) { return l !== L_BLK && m.getLayer(l); });
-    return m.queryRenderedFeatures([[p.x - B, p.y - B], [p.x + B, p.y + B]], { layers: lays }).length > 0;
+  /* maplight (owner 15 Nov 2026, I-115: "when a bar covers you, you get completely removed from the map, and there's a blue
+     outline perfectly on that beer thing"). New rule: I am ALWAYS visible. My marker (js/mapart.js meOps: my character in a
+     blue ring + a "Du" tag; without a character the blue target dot) is ONE symbol in the TOP GL layer, above every bar,
+     food and cluster icon. It never hides an icon either: when it would sit on one (I am checked in there, or my position
+     is on the icon), it stands BESIDE that icon: on its left; when another icon or a name is in the way there, above it
+     (never on the people count at the right, never on the friends row under it). No ring round the bar icon any more. History: a1map I-28 put the dot under the icons, hotfix1
+     I-63 added the ring only when covered. app-map.js showMe() calls GLBARS.me(); the DOM me-dot is hidden while GL draws.
+     meCheck(): after the bars redraw, on moveend and on a new position; one debounced check, no per-frame work. */
+  var SRC_ME = "olnu-me", L_ME = "olnu-me-pin", meLL = null, meAt = null, meSig = "", meCov = null, meChkT = 0, meOffSig = "", meR = 18, meBot = 28, meVerT = 0, meTry = 0, syncZ = -1, meWhy = "";
+  function L1(sv, en) { return window.I18N && window.I18N.lang === "en" ? en : sv; }
+  function meImage(m, tag) {   // my marker image: "a" = my character, "d" = the dot; with or without the "Du" tag
+    var P = art(); if (!P || !P.meOps) return "";
+    var f = faceOf({ is_mine: true }), t = tag || f.img ? L1("Du", "You") : "", k = "pn-me-" + (f.img ? "a" + f.k : "d") + (t ? "-" + t : "");
+    if (!m.hasImage(k)) {
+      var mk = function (img) { var x = P.meOps({ img: img, tag: t }), b = P.bboxOf(x.ops), e = Math.ceil(Math.max(-b[0], -b[1], b[2], b[3])), r = P.raster(x.ops, R, [-e, -e, e, e]);   // square, centred on the point
+        m.addImage(k, r.canvas.getContext("2d").getImageData(0, 0, r.canvas.width, r.canvas.height), { pixelRatio: R }); return x.r; };
+      try { mk(f.img); } catch (e) { faceBad = true; try { k = "pn-me-d" + (t ? "-" + t : ""); if (!m.hasImage(k)) mk(null); } catch (e2) { return ""; } }
+    }
+    meR = /^pn-me-a/.test(k) ? 18 : 11; meBot = t ? meR + 10 : meR;   // (the tag hangs 10 px under the circle)
+    return k;
   }
-  function meCheck() {   // I-63: debounced, after GL has drawn the new bars / view (no per-frame work)
+  function shownPart(id, z) { var x = parts[String(id)]; return !!x && (!!x.t || (x.pin ? z >= DOT_Z : clShown(id))); }
+  // the drawn icon my marker would sit on (my position on a bar / town-crowd / food / cluster icon), or null
+  function meCover(m) {
+    if (!meLL) return null;
+    var z = map.getZoom(), k = zk(z), p = m.project([meLL[1], meLL[0]]), best = null, bd = 1e9, was = meCov ? meCov.id : null;
+    var test = function (id, ll, rImg, sz, q) {   // on the icon = my centre inside its disc + 60 % of mine (stays until clear of it: no flicker)
+      var d = Math.sqrt((q.x - p.x) * (q.x - p.x) + (q.y - p.y) * (q.y - p.y)), lim = rImg * sz * k + meR * k * (was === id ? 1.05 : 0.6);
+      if (d < lim && d < bd) { bd = d; best = { id: id, ll: ll, r: rImg, sz: sz }; }
+    };
+    Object.keys(parts).forEach(function (id) {
+      var x = parts[id]; if (!shownPart(id, z)) return;
+      test(id, x.ll, x.crowd ? x.im.r : 16, x.sz, m.project([x.ll[1], x.ll[0]]));
+    });
+    if (best) return best;
+    var B = 30, lays = [L_PLACE, L_CL].filter(function (l) { return m.getLayer(l); }), gz = m.getZoom();
+    m.queryRenderedFeatures([[p.x - B, p.y - B], [p.x + B, p.y + B]], { layers: lays }).forEach(function (f) {
+      var c = f.geometry.coordinates, pk = gz <= 13 ? 0.6 : gz >= 15 ? 1 : gz <= 14 ? 0.6 + 0.2 * (gz - 13) : 0.8 + 0.2 * (gz - 14);
+      var rPx = f.layer.id === L_PLACE ? 11 * pk : clStep(f.properties.point_count || 2)[0] / 2 + 4;
+      test((f.layer.id === L_PLACE ? "pl:" : "cl:") + (f.properties.id || f.properties.cluster_id), [c[1], c[0]], rPx / k, 1, m.project(c));
+    });
+    return best;
+  }
+  function meCheck() {   // debounced, after GL has drawn the new bars / view (no per-frame work)
     clearTimeout(meChkT);
     meChkT = setTimeout(function () {
       if (!on || !gm || !layersReady || !gm.getSource(SRC_ME)) return;
-      var c = false; try { c = meCovered(gm); } catch (e) {}
-      if (c !== meCov) { meCov = c; meDraw(gm); }
+      if (Math.abs(map.getZoom() - syncZ) > 0.01) { lastSig = ""; sync(); return; }   // the icons are from another zoom (town lanterns!): redraw them first (sync checks me again)
+      var c = null; try { c = meAt ? null : meCover(gm); } catch (e) {}
+      var a = c ? c.id : "", b = meCov ? meCov.id : "";
+      meCov = c;
+      meDraw(gm);   // (the bar images do not change: my marker finds its own free side, mePlace)
     }, 250);
   }
-  function duImage(m) {
-    if (m.hasImage("pn-du")) return;
-    var w = 26, h = 16, cv = document.createElement("canvas"), x = cv.getContext("2d"); cv.width = (w + 4) * R; cv.height = (h + 4) * R; x.scale(R, R);
-    x.fillStyle = "#ffffff"; x.beginPath(); x.roundRect ? x.roundRect(0, 0, w + 4, h + 4, (h + 4) / 2) : x.rect(0, 0, w + 4, h + 4); x.fill();
-    x.fillStyle = "#2B6FD6"; x.beginPath(); x.roundRect ? x.roundRect(2, 2, w, h, h / 2) : x.rect(2, 2, w, h); x.fill();
-    x.fillStyle = "#ffffff"; x.font = "700 11px " + FONT; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(L1("Du", "You"), (w + 4) / 2, (h + 4) / 2 + 0.5);
-    m.addImage("pn-du", x.getImageData(0, 0, cv.width, cv.height), { pixelRatio: R });
-  }
-  function L1(sv, en) { return window.I18N && window.I18N.lang === "en" ? en : sv; }
   function meEnsure(m) {
     try {
-      if (!m.getSource(SRC_ME)) { m.addSource(SRC_ME, { type: "geojson", data: EMPTY }); meSig = ""; }
-      var rr = ["interpolate", ["linear"], ["zoom"]]; ZK.forEach(function (q) { rr.push(q[0], ["*", ["get", "s"], 16 * q[1] + 5]); });   // the bar disc + 5 px
-      if (!m.getLayer(L_MED)) m.addLayer({ id: L_MED, type: "circle", source: SRC_ME, filter: ["==", ["get", "k"], "dot"],
-        paint: { "circle-radius": 8, "circle-color": "#4AA3FF", "circle-stroke-width": 3, "circle-stroke-color": "#ffffff", "circle-emissive-strength": 1 } }, m.getLayer(L_PLACE) ? L_PLACE : undefined);
-      if (!m.getLayer(L_MER)) m.addLayer({ id: L_MER, type: "circle", source: SRC_ME, filter: ["!=", ["get", "k"], "dot"],
-        paint: { "circle-radius": rr, "circle-opacity": 0, "circle-stroke-width": 2.5, "circle-stroke-color": "#4AA3FF", "circle-stroke-opacity": 0.95, "circle-emissive-strength": 1 } });
-      duImage(m);
-      if (!m.getLayer(L_MEDU)) m.addLayer({ id: L_MEDU, type: "symbol", source: SRC_ME, filter: ["==", ["get", "k"], "du"],
-        layout: { "icon-image": "pn-du", "icon-anchor": "center", "icon-offset": ["literal", [-15, -17]], "icon-size": ["interpolate", ["linear"], ["zoom"], 11, 0.75, 14, 0.875, 15, 1],
-          "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1 } });
+      if (!m.getSource(SRC_ME)) { m.addSource(SRC_ME, { type: "geojson", data: EMPTY }); meSig = ""; meOffSig = ""; }
+      if (!m.getLayer(L_ME)) { m.addLayer({ id: L_ME, type: "symbol", source: SRC_ME,
+        layout: { "icon-image": ["get", "img"], "icon-anchor": "center", "icon-size": ICON_Z, "icon-allow-overlap": true, "icon-ignore-placement": true,
+          "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" }, paint: { "icon-emissive-strength": 1, "icon-translate": [0, 0] } }); meOffSig = ""; }
+      else { var ls = (m.getStyle().layers || []); if (ls.length && ls[ls.length - 1].id !== L_ME) m.moveLayer(L_ME); }   // a layer that came later: my marker stays the top layer
     } catch (e) { try { console.warn("olnu glmap me", e && e.message); } catch (x) {} }
+  }
+  // where I stand at an icon (screen px from its centre): on its LEFT; when another icon or a bar / place NAME is in the way
+  // there, ABOVE it (my tag just over the disc). Never on the right (the people count) and never below (friends, the name).
+  function mePlace(at, z) {
+    var k = zk(z) * (at.sz || 1), c = map.latLngToContainerPoint(at.ll), L = [-Math.round((at.r + 2 + meR) * k), 0], U = [0, -Math.round((at.r + 1 + meBot) * k)];
+    var hit = function (o) { return Object.keys(parts).some(function (id) {
+      if (id === String(at.id) || !shownPart(id, z)) return false;
+      var q = map.latLngToContainerPoint(parts[id].ll), rr = (parts[id].crowd ? parts[id].im.r : 16) * parts[id].sz * zk(z) + meR * k * 0.8;
+      return Math.abs(q.x - c.x - o[0]) < rr && Math.abs(q.y - c.y - o[1]) < rr; }); };
+    // a name there: my marker is on top and would hide it (owner pictures 15 Nov). One query, only here: no per-frame work.
+    var name = function (o) { var g = gm, rr = meR * k * 0.9, q = g ? g.project([at.ll[1], at.ll[0]]) : c, x = q.x + o[0], y = q.y + o[1];   // (GL canvas px: not always the Leaflet container's)
+      try { return !!g && g.queryRenderedFeatures([[x - rr, y - rr], [x + rr, y + rr]], { layers: [L_LBL, L_PLACE].filter(function (l) { return g.getLayer(l); }) }).length > 0; } catch (e) { return false; } };   // (its own name too)
+    if (!hit(L) && !name(L)) { meWhy = "left"; return L; }
+    if (!hit(U) && !name(U)) { meWhy = "above"; return U; }
+    meWhy = "both taken"; return !hit(L) ? L : !hit(U) ? U : L;   // both taken: never on an icon if one side is free of icons
   }
   function meDraw(m) {
     if (!m || !m.getSource || !m.getSource(SRC_ME)) return;
-    var f = [], pt = function (ll, p) { f.push({ type: "Feature", geometry: { type: "Point", coordinates: [ll[1], ll[0]] }, properties: p }); };
-    if (meAt) { pt(meAt.ll, { k: "du", s: meAt.r / 16 }); }
-    else if (meLL) { pt(meLL, { k: "dot", s: 1 }); if (meCov) pt(meLL, { k: "ring", s: 1 }); }   // I-63: the ring only when an icon covers the dot
-    var sig = JSON.stringify(f); if (sig === meSig) return; meSig = sig;
-    try { m.getSource(SRC_ME).setData({ type: "FeatureCollection", features: f }); } catch (e) {}
+    var z = map.getZoom();
+    if (meCov && meLL) {   // the icon I stood beside is gone, or I have walked away from it: at once (the full check follows)
+      var p0 = map.latLngToContainerPoint(meLL), p1 = map.latLngToContainerPoint(meCov.ll), far = Math.sqrt((p0.x - p1.x) * (p0.x - p1.x) + (p0.y - p1.y) * (p0.y - p1.y));
+      if (far > (meCov.r * (meCov.sz || 1) + meR * 1.05) * zk(z) + 2 || (!/^(pl|cl):/.test(meCov.id) && !shownPart(meCov.id, z))) meCov = null;
+    }
+    var at = meAt && shownPart(meAt.id, z) ? meAt : meCov, ll = at ? at.ll : meLL || (meAt ? meAt.ll : null), f = [], off = [0, 0];
+    if (ll) {
+      var img = meImage(m, !!(at || meAt));
+      // beside the icon: a PAINT translate in screen px (a layout offset made GL show the old feature with the new offset
+      // for a frame: it reloads the tile with the new data). Set again on moveend (the icons scale with the zoom).
+      if (at) off = mePlace(at, z);
+      if (img) f.push({ type: "Feature", geometry: { type: "Point", coordinates: [ll[1], ll[0]] }, properties: { k: at ? "at" : "me", img: img, sz: at ? at.sz || 1 : 1, at: at ? String(at.id) : "" } });
+    }
+    var os = off.join(), sig = JSON.stringify(f);
+    try {
+      if (os !== meOffSig && m.getLayer(L_ME)) { meOffSig = os; m.setPaintProperty(L_ME, "icon-translate", off); }
+      if (sig !== meSig) { meSig = sig; m.getSource(SRC_ME).setData({ type: "FeatureCollection", features: f }); meTry = 0; meVerify(m, sig); }
+    } catch (e) {}
+  }
+  // "always visible" safety net: 0.8 s after new data, is the marker GL holds the one we sent? If not (a tile load that
+  // overtook a newer one), send it once more (at most 3 times).
+  function meVerify(m, sig) {
+    clearTimeout(meVerT);
+    meVerT = setTimeout(function () {
+      if (sig !== meSig || gm !== m || !m.getSource(SRC_ME)) return;
+      try { var want = JSON.parse(sig)[0], got = m.querySourceFeatures(SRC_ME)[0], g = got && got.geometry.coordinates, w = want && want.geometry.coordinates;
+        var same = !want === !got && (!want || (got.properties.img === want.properties.img && Math.abs(g[0] - w[0]) < 2e-5 && Math.abs(g[1] - w[1]) < 2e-5));
+        if (!same && meTry++ < 3) { stats.meFix = (stats.meFix || 0) + 1; m.getSource(SRC_ME).setData({ type: "FeatureCollection", features: want ? [want] : [] }); meVerify(m, sig); }
+      } catch (e) {}
+    }, 800);
   }
   /* ---------- tap ---------- */
   var synth = false, tapAt = -1e9;
@@ -777,6 +943,19 @@
     var popKey = pop && pop._source && pop._source.options ? String(pop._source.options.olnuKey || "") : "", popId = /^[hp]./.test(popKey) ? popKey.slice(1) : null;
     try {
       var p = m.project([e.latlng.lng, e.latlng.lat]), hit = null, how = "", B = TAP_NEAR + 6;
+      // maplight: a tap on a town-crowd lantern = zoom in to where its bars stand apart (never while a pop-up is open: that tap only closes)
+      if (!pop && m.getLayer(L_CROWD)) {
+        var cf = null, cd = 1e9;
+        m.queryRenderedFeatures([[p.x - 26, p.y - 26], [p.x + 26, p.y + 26]], { layers: [L_CROWD] }).forEach(function (f) {
+          var q0 = m.project(f.geometry.coordinates), d0 = Math.abs(q0.x - p.x) + Math.abs(q0.y - p.y); if (d0 < cd) { cd = d0; cf = f; } });
+        if (cf) {
+          var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+          stats.taps++; stats.lastTap = "crowd:" + cf.properties.id; stats.tapHow = "crowd"; tapAt = performance.now();
+          if (e.originalEvent) e.originalEvent._olnuGl = 1;
+          m.easeTo({ center: cf.geometry.coordinates.slice(), zoom: Math.max(CROWD_Z - 0.9, m.getZoom() + 1), duration: still ? 0 : 420 });
+          return;
+        }
+      }
       var lays = [L_FULL].concat(z >= DOT_Z || cl.on ? (cl.on ? [L_DOT, L_DOTE, L_CDOT, L_CDOTE, L_CDOTF] : [L_DOT, L_DOTE]) : []).filter(function (l) { return m.getLayer(l); });
       var near = {};   // bar id -> { f, d (px from its icon centre), r (disc radius) }; the full pill feature wins over its own dot
       m.queryRenderedFeatures([[p.x - B, p.y - B], [p.x + B, p.y + B]], { layers: lays }).forEach(function (f) {
@@ -912,6 +1091,7 @@
   window.GLBARS = {
     attach: function (o) {
       A = o; map = o.map;
+      try { if (window.BARLIGHT && window.BARLIGHT.attach) window.BARLIGHT.attach({ map: map }); } catch (e) {}   // maplight
       var st = document.createElement("style"); st.id = "glmap-css"; st.textContent = CSS; document.head.appendChild(st);
       document.addEventListener("basemap:change", function () { setTimeout(check, 0); });
       map.on("preclick", onPreclick);
@@ -927,7 +1107,14 @@
     sync: sync,
     // a1map I-28: app-map.js showMe(): my position (drawn in GL under the bar icons while GL is on). true = GL draws it.
     me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
-    _me: function () { return { ll: meLL, at: meAt, sig: meSig, cov: meCov, layers: [L_MED, L_MER, L_MEDU] }; },
+    // tests: my marker. at = the icon I am checked in at, cov = the icon my position is on (I stand beside it), px = where it is drawn
+    _me: function () {
+      var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR, why: meWhy };
+      try { var f = JSON.parse(meSig || "[]")[0]; if (f && gm) { var p = gm.project(f.geometry.coordinates), k = zk(map.getZoom()) * (f.properties.sz || 1), off = meOffSig.split(",");   // the offset is screen px (paint translate)
+        o.img = f.properties.img; o.k = f.properties.k; o.px = { x: p.x + (+off[0] || 0), y: p.y + (+off[1] || 0), r: meR * k }; } } catch (e) {}
+      return o;
+    },
+    _crowds: function () { return crowds; },
     // app.js renderHeat: pts = [[lat, lng, w]…] or null (heat off). true = drawn in GL (leaflet.heat stays off the map).
     heat: function (pts) { if (!on) return false; heatPts = pts || null; heatData(); return true; },
     // clouds.js redraw: the snapped points {lat, lng, w, a}. true = drawn in GL (the canvas stays empty).
@@ -954,15 +1141,15 @@
       try { gm.queryRenderedFeatures({ layers: [L_LBL] }).forEach(function (f) { placed[f.properties.id] = 1; }); } catch (e) {}
       var out = [];
       Object.keys(parts).forEach(function (id) {
-        var x = parts[id], p = map.latLngToContainerPoint(x.ll); if (p.x < 0 || p.y < 0 || p.x > size.x || p.y > size.y) return;
+        var x = parts[id], p = map.latLngToContainerPoint(x.ll); if (x.crowd || p.x < 0 || p.y < 0 || p.x > size.x || p.y > size.y) return;
         var ico = x.im.parts.filter(function (q) { return q.sel === ".bar-ico"; })[0], s = x.s;
         out.push({ id: id, full: !!x.t, empty: !!x.e, sel: x.sel, x: p.x, y: p.y, n: s.p ? +s.p.n || 0 : 0, friend: !!(s.p && s.p.f), crowd: !!s.cw,
-          pill: !!(x.t && s.p), dem: !!x.dem, icoW: ico ? +((ico.bb[2] - ico.bb[0]) * x.sz * zk(z)).toFixed(1) : 0, lbl: !!placed[id], name: s.name,
+          lv: x.lv || 0, pill: !!(x.t && s.p), dem: !!x.dem, icoW: ico ? +((ico.bb[2] - ico.bb[0]) * x.sz * zk(z)).toFixed(1) : 0, lbl: !!placed[id], name: s.name,
           shown: !!x.t || (x.pin ? z >= DOT_Z : clShown(id)) });
       });
       return out;
     },
-    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL].concat(cl.on ? CL_IDS : []).filter(function (id) { return !gm || gm.getLayer(id); }); },
+    _layers: function () { return [L_CLOUD, L_HEAT, L_PLACE, L_DOTE, L_DOT, L_DOTB1, L_DOTB2, L_LBL, L_FULL, L_CROWD].concat(cl.on ? CL_IDS : []).filter(function (id) { return !gm || gm.getLayer(id); }); },
     _cl: function () { return { on: cl.on, dots: cl.feats.length, ids: cl.feats.map(function (f) { return f.properties.id; }).sort().join(), made: cl.made, maxz: CL_MAXZ + 1, src: SRC_CL, layer: L_CL, step: clStep }; },   // ds30 tests (+ a1map I-09)
     // places.js: the restaurant dots it chose (GL draws them under the bars); false = GL is off (keep the DOM dots)
     places: setPlaces,
@@ -970,7 +1157,8 @@
     tappedAt: function () { return tapAt; },
     // mbx: is this bar drawn in GL right now (full, or a dot the zoom rules show)? (mypins.js: else it draws its own chip)
     shown: function (id) {
-      var x = parts[String(id)]; if (!on || !x || !map) return false;
+      var x = parts[String(id)]; if (on && !x && crowdOf[String(id)]) x = parts[crowdOf[String(id)]];   // maplight: inside a town-crowd lantern = drawn (mypins.js draws no chip of its own over it)
+      if (!on || !x || !map) return false;
       var z = map.getZoom(); if (!x.t && (x.pin ? z < DOT_Z : !clShown(id))) return false;
       var p = map.latLngToContainerPoint(x.ll), s = map.getSize(); return p.x >= -20 && p.y >= -20 && p.x <= s.x + 20 && p.y <= s.y + 20;
     },

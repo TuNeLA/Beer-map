@@ -1,5 +1,5 @@
 // mapzoom-pw.js — lane a1map (2026-11-12, map polish): I-08 bars hide on zoom-out while there is room, I-27 bar icons blink on zoom,
-// I-28 my dot under the bar icons (+ "Du" when checked in), I-09 cluster badge >= pin, I-20 popup clear of the HUD, I-10 arena chip
+// I-28 my marker never under / on a bar icon (maplight I-115: top layer, beside the icon, "Du" when checked in), I-09 cluster badge >= pin, I-20 popup clear of the HUD, I-10 arena chip
 // icon = the pin disc, I-06 Hemzon mini map in the main map's navy look, I-11 one chip per country at the Nordic zoom.
 // Real Mapbox when MAPBOX_TEST_TOKEN is set (CI). Without it: a STUB Mapbox (fake pk token, blank style), so the SAME GL bar /
 // zone layers run on any machine (no basemap tiles, no Mapbox load counted).
@@ -135,35 +135,38 @@ function bars(page) {
       await closeCounted(ctx, page, "mapzoom-" + TAG + "-z27");
     }
 
-    /* ---------- I-28: my dot under the bar icons, a ring over them; checked in = "Du" on that bar ---------- */
+    /* ---------- I-28 → maplight I-115 (owner 15 Nov: "when a bar covers you, you get completely removed from the map, and
+       there's a blue outline perfectly on that beer thing"): my marker is ONE symbol in the TOP layer, always drawn; on a bar
+       icon it stands BESIDE the icon (so the icon stays readable, the I-28 wish); checked in = with the "Du" tag beside that
+       bar. No dot under the icons and no ring round an icon any more. ---------- */
     if (ONLY.test("z28")) for (const ci of [false, true]) {
       const W = ci ? "checked in at Pitchers" : "not checked in";
       const { ctx, page, errs } = await open(b, { width: 412, height: 860 }, ci ? {} : { noMine: true, h: { checkin: false } });
       await view(page, [60.14997, 15.18679], 16.5, 2500);
       await page.evaluate(() => { if (PN.locate) PN.locate({}); });
       await wait(page, 2500); await idle(page, 600);
-      const r = await page.evaluate(() => {
+      const state = () => page.evaluate(() => {
         const g = __mz.gm(), ids = (g.getStyle().layers || []).map((l) => l.id), ix = (id) => ids.indexOf(id);
-        const barIx = ids.filter((id) => /^olnu-(bar-|place$)/.test(id) && id !== "olnu-bar-blk").map(ix);
-        const dot = ix("olnu-me-dot"), ring = ix("olnu-me-ring"), dom = [...document.querySelectorAll(".me-dot")].filter((e) => e.offsetParent && getComputedStyle(e).display !== "none").length;
-        const q = (l) => g.getLayer(l) ? g.queryRenderedFeatures({ layers: [l] }).length : -1;
+        const barIx = ids.filter((id) => /^olnu-(bar-|place$)/.test(id) && id !== "olnu-bar-blk").map(ix), pin = ix("olnu-me-pin");
+        const dom = [...document.querySelectorAll(".me-dot")].filter((e) => e.offsetParent && getComputedStyle(e).display !== "none").length;
+        const q = (l) => g.getLayer(l) ? g.queryRenderedFeatures({ layers: [l] }).length : -1, me = GLBARS._me();
         const pit = GLBARS._marker("n3472634175"), pp = pit && g.project([pit.getLatLng().lng, pit.getLatLng().lat]);
-        const du = g.getLayer("olnu-me-du") ? g.queryRenderedFeatures({ layers: ["olnu-me-du"] }).map((f) => { const p = g.project(f.geometry.coordinates); return pp ? Math.round(Math.hypot(p.x - pp.x, p.y - pp.y)) : -1; }) : [];
-        return { dot, ring, under: dot >= 0 && barIx.every((i) => i > dot), over: ring >= 0 && barIx.every((i) => i < ring), dom, nDot: q("olnu-me-dot"), nRing: q("olnu-me-ring"), du, me: GLBARS._me ? GLBARS._me() : null };
+        return { pin, over: pin >= 0 && barIx.every((i) => i < pin), dom, n: q("olnu-me-pin"), k: me.k, img: me.img, cov: me.cov && me.cov.id,
+          old: ["olnu-me-dot", "olnu-me-ring", "olnu-me-du"].filter((l) => g.getLayer(l)), gap: pp && me.px ? Math.round(Math.hypot(me.px.x - pp.x, me.px.y - pp.y)) : null };
       });
+      const r = await state();
       console.log("I-28 " + W + " " + JSON.stringify(r).slice(0, 400));
-      ok(r.under, "I-28 " + W + ": my dot layer is UNDER every bar / food icon layer (dot at " + r.dot + ")");
-      ok(r.over, "I-28 " + W + ": the ring (bigger than a bar icon) is OVER the bar icons (ring at " + r.ring + ")");
+      ok(r.over, "I-28 " + W + ": my marker layer is OVER every bar / food icon layer (maplight I-115; at " + r.pin + ")");
+      ok(r.old.length === 0, "I-28 " + W + ": no dot under the icons and no ring round an icon any more (" + r.old.join() + ")");
       ok(r.dom === 0, "I-28 " + W + ": no DOM me-dot on top of the GL bars (" + r.dom + " visible)");
-      if (!ci) {   // hotfix1 I-63 (owner 13 Nov): the ring only when a bar / food icon covers my dot; away from the bars = the dot only
-        const at = async (ll) => { await page.evaluate((ll) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, 16.5, { animate: false }); }, ll); await idle(page, 1200);
-          return page.evaluate(() => { const g = __mz.gm(), q = (l) => g.getLayer(l) ? g.queryRenderedFeatures({ layers: [l] }).length : -1; return { nDot: q("olnu-me-dot"), nRing: q("olnu-me-ring"), cov: GLBARS._me().cov }; }); };
+      if (!ci) {
+        const at = async (ll) => { await page.evaluate((ll) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, 16.5, { animate: false }); }, ll); await idle(page, 1200); return state(); };
         const pit = await page.evaluate((id) => { const m = GLBARS._marker(id); return m ? [m.getLatLng().lat, m.getLatLng().lng] : null; }, PIT);
         const nb = pit ? await at(pit) : {}, aw = await at([60.1452, 15.1745]);
-        ok(nb.nDot === 1 && nb.nRing >= 1, "I-28 not checked in, on the Pitchers icon: my dot + ring are drawn " + JSON.stringify(nb));
-        ok(aw.nDot === 1 && aw.nRing === 0, "I-28 not checked in, away from the bars: my dot, no ring (I-63) " + JSON.stringify(aw));
+        ok(nb.n === 1 && nb.cov === PIT && nb.gap > 20, "I-28 not checked in, on the Pitchers icon: my marker is drawn BESIDE the icon " + JSON.stringify(nb));
+        ok(aw.n === 1 && !aw.cov, "I-28 not checked in, away from the bars: my marker at my position, no ring " + JSON.stringify(aw));
       }
-      else ok(r.nDot === 0 && r.du.length === 1 && r.du[0] <= 2, "I-28 checked in at Pitchers: no dot, one 'Du' tag on the Pitchers icon (dot " + r.nDot + ", du " + JSON.stringify(r.du) + ")");
+      else ok(r.n === 1 && r.k === "at" && /(Du|You)$/.test(r.img) && r.gap > 20, "I-28 checked in at Pitchers: one marker with the 'Du' tag beside the Pitchers icon " + JSON.stringify(r));
       await page.screenshot({ path: shotDir + "mapzoom-" + TAG + "-z28-" + (ci ? "ci" : "me") + ".png" });
       ok(errs.length === 0, "I-28 " + W + " no page errors " + JSON.stringify(errs.slice(0, 3)));
       await closeCounted(ctx, page, "mapzoom-" + TAG + "-z28");

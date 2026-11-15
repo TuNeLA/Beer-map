@@ -63,7 +63,12 @@ const beers = [P(FAL, 1), P(FAL, 2)];
       // suite: MBX declutter (CONTRACT KARTSTIL 6): while zones show the GL heat fades to 0.12 (glmap.js heatmap-opacity 0.12 at GL z ≤ 8.4 = app z ≤ 9.4),
       // so at app z8 the heat must be there but faint (≈ 12 % of the z10 alpha); from z10 the old rule holds.
       const faded = z < 9.4;
-      ok(r && r.R >= 40 && (faded ? r.gl && r.a20 > 3 && r.a20 < 25 : r.gl ? r.a20 > 25 && r.a28 > 8 : r.a0 > 60 && r.a28 > 25), (faded ? "[faded under zones] " : "") + sn + " z" + z + ": Falun 2 people — heat radius " + (r && r.R) + " px (≥ 40), red visible outside the chip (alpha at 0 / 20 / 28 / 34 px: " + (r && [r.a0, r.a20, r.a28, r.a34].join(" / ")) + ", chip " + (r && r.chipW) + " px wide)");
+      // maplight (I-115, owner 15 Nov): with the street light on (BARLIGHT) the GL cloud is ONE soft amber hue (alpha 0.10 / 0.38 /
+      // 0.62 / 0.78 by density, no red): the same radius and fade, but a smaller pixel difference over the map than the old red.
+      // Measured on the real style 15 Nov: z8 a20 2.7-2.9 · z10 16.7-17.6 / a28 6.1-6.4 · z12 35-38 / 14-15 · z14 25-27 / 8-9.
+      const amber = r && r.gl && await page.evaluate(() => !!(window.BARLIGHT && BARLIGHT.on()));
+      const lo = amber ? { f: 1.5, a20: 12, a28: 4 } : { f: 3, a20: 25, a28: 8 };
+      ok(r && r.R >= 40 && (faded ? r.gl && r.a20 > lo.f && r.a20 < 25 : r.gl ? r.a20 > lo.a20 && r.a28 > lo.a28 : r.a0 > 60 && r.a28 > 25), (faded ? "[faded under zones] " : "") + (amber ? "[amber] " : "") + sn + " z" + z + ": Falun 2 people — heat radius " + (r && r.R) + " px (≥ 40), the glow visible outside the chip (alpha at 0 / 20 / 28 / 34 px: " + (r && [r.a0, r.a20, r.a28, r.a34].join(" / ")) + ", chip " + (r && r.chipW) + " px wide)");
     }
   }
   if (!BEFORE) {
