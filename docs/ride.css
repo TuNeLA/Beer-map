@@ -158,7 +158,7 @@ body.mn-drive #other-wrap,body.mn-drive #btn-other{display:none !important}
 #sheet-body .rd-foot:empty,#sheet-body .rd-tail:empty{display:none}
 /* I-124 (owner 15 Nov): the ride status chip in the HUD row, right after the "Ikväll" drop-down (#pn-ikv2). 44 px, tokens only.
    ONE row (toasts, banners and cards below assume one HUD row): the text ends with … before the chip reaches the right rail.
-   An urgent HUD chip (.hud-x .hx-urgent, e.g. "Kolla till …") keeps its place: then this chip is compact (dot + car, and
+   A VISIBLE urgent HUD chip (.hud-x .hx-urgent, e.g. "Kolla till …") keeps its place: then ride.js sets .rd-stat-c (compact: dot + car, and
    "N min" when known); the aria-label always says the full state. */
 .hud-left>#rd-stat{order:0;flex:0 1 auto;min-width:0;max-width:100%;box-sizing:border-box;display:inline-flex;align-items:center;gap:var(--sp-1);
   height:44px;margin:0;padding:0 var(--sp-3) 0 var(--sp-2);border-radius:var(--r-pill);background:var(--pn-float);border:1px solid var(--ds-amber);
@@ -166,9 +166,9 @@ body.mn-drive #other-wrap,body.mn-drive #btn-other{display:none !important}
 .hud-left>#rd-stat[hidden]{display:none !important}
 .hud-left:not(.open):has(>#rd-stat:not([hidden]))>.hud-x{flex:0 1 auto !important;min-width:0 !important;max-width:none !important}
 #rd-stat .rd-stat-s{display:none}
-.hud-left:not(.open):has(>.hud-x .hx-urgent)>#rd-stat{flex:0 0 auto;padding:0 var(--sp-2)}
-.hud-left:not(.open):has(>.hud-x .hx-urgent)>#rd-stat .rd-stat-t{display:none}
-.hud-left:not(.open):has(>.hud-x .hx-urgent)>#rd-stat .rd-stat-s:not(:empty){display:inline}
+.hud-left>#rd-stat.rd-stat-c{flex:0 0 auto;padding:0 var(--sp-2)}
+.hud-left>#rd-stat.rd-stat-c .rd-stat-t{display:none}
+.hud-left>#rd-stat.rd-stat-c .rd-stat-s:not(:empty){display:inline}
 #rd-stat .rd-stat-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
 #rd-stat .rd-stat-i{flex:0 0 auto;width:var(--pn-ic-s);height:var(--pn-ic-s);color:var(--ds-amber-t)}
 #rd-stat .rd-stat-d{flex:0 0 auto;width:8px;height:8px;border-radius:var(--r-pill);background:var(--ds-amber)}

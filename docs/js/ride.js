@@ -852,12 +852,21 @@
     sc.addEventListener("click", function (e) { e.stopPropagation(); var s = stat(); if (s) openId(s.id); });
     var ikv = document.getElementById("pn-ikv2"), hx = document.getElementById("hud-x");
     hl.insertBefore(sc, ikv && ikv.parentNode === hl ? ikv.nextSibling : hx && hx.parentNode === hl ? hx : hl.firstChild);
+    try { if (hx && window.MutationObserver) new MutationObserver(function () { statPaint(); }).observe(hx, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] }); } catch (e) {}
     scSig = "";
     return sc;
+  }
+  // a VISIBLE urgent HUD chip ("Kolla till …") next to us: then the chip is compact, so the HUD stays one row
+  function urgentOn() {
+    try {
+      var u = document.querySelector(".hud-left:not(.open)>.hud-x:not([hidden]) .hx-urgent"); if (!u || !u.getClientRects().length) return false;
+      var cs = getComputedStyle(u); return cs.display !== "none" && cs.visibility !== "hidden";
+    } catch (e) { return false; }
   }
   function statPaint() {
     var s = stat(), c = s || sc ? chipEl() : null;
     if (!c) return;
+    c.classList.toggle("rd-stat-c", !!s && urgentOn());
     var sig = s ? [s.id, s.k, s.t, s.a, s.s || ""].join("|") : "";
     if (sig === scSig) return;
     var was = scSig.split("|")[1] || "";
