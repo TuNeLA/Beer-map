@@ -308,7 +308,7 @@
       var h = '<div class="uni-name">' + esc(name) + "</div>";
       if (total != null) {
         // d-profile (I-114, 06): the rank from js/rankico.js (my own: RANKICO.mine(), the same as Profil → the same name),
-        // one icon per rank, and the progress in merits ("12 av 20 meriter till …"). No goal text for drinks.
+        // one icon per rank, and the progress in merits ("8 meriter till …"). No goal text for drinks.
         var R = window.RANKICO, r = o.rank || (R ? R.info(total) : null);
         if (!r) { var r0 = rankOf(total), st0 = rankStart(total); r = { idx: Math.max(0, rankIndex(r0.title) - 1), n: ((window.SOCIAL && window.SOCIAL.TITLES) || []).length, title: r0.title, next: r0.next, nextAt: r0.nextAt, v: total,
           pct: r0.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (total - st0) / Math.max(1, r0.nextAt - st0)))) : 100 }; }

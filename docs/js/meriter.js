@@ -371,9 +371,10 @@
   }
   function pct(c) { return c.nextAt ? Math.max(0, Math.min(100, Math.round(100 * (c.m - c.at) / Math.max(1, c.nextAt - c.at)))) : 100; }
   function barHTML(c, cls) { return '<span class="mer-bar ' + (cls || "") + '" aria-hidden="true"><span style="width:' + pct(c) + '%"></span></span>'; }
-  // d-profile (I-114, 06): "12 av 20 meriter till <next rank>" (a count, no "kvar"); the same words as Profil and Min uniform
+  // d-profile (I-114, 06): "8 meriter till <next rank>" (owner wording; a count, no "kvar"); the same words as Profil and Min uniform
   function nextText(c) {
-    return c.next && c.nextAt ? L(c.m + " av " + c.nextAt + " meriter till " + c.next, c.m + " of " + c.nextAt + " merits to " + c.next)
+    var n = Math.max(1, (c.nextAt || 0) - c.m);
+    return c.next && c.nextAt ? L(n + (n === 1 ? " merit" : " meriter") + " till " + c.next, n + (n === 1 ? " merit" : " merits") + " to " + c.next)
       : L(DIALEKT.v("meriter.hogsta_grad_olguden", 0, {}, "Högsta grad. Ölguden själv."), "Highest rank.");
   }
   function rankHTML(c) {   // the rank name with its icon (js/rankico.js)

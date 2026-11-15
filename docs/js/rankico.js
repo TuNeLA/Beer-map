@@ -7,7 +7,7 @@
      pips  = N % 6: 1, 2, 3 chevrons, then 1, 2, 3 stars
    24 x 24 box: the crest in the top half, the pips under it. Readable at 20 px and at 48 px.
    Also the one place that turns a rank value into a rank (index, title, next rank, progress), so Profil and Min uniform
-   always show the same rank name, and the one wording of the progress: "X av Y meriter till <next rank>" (a count is
+   always show the same rank name, and the one wording of the progress: "N meriter till <next rank>" (a count is
    information only; no "kvar", no push).
    Public: window.RANKICO = { svg(n, size, cls), plate(n, size), info(value), mine(), indexOf(title), progText(r), count() }. */
 (function () {
@@ -92,12 +92,14 @@
     return r;
   }
   function indexOf(title) { var T = titles(); for (var i = 0; i < T.length; i++) if (T[i][1] === title) return i; return -1; }
-  // "12 av 20 meriter till Korpral Kranöl". Only for a rank by merits (r.mer); "" for the old drink-based rank (no goal for drinks).
+  // "8 meriter till Korpral Kranöl" (owner wording 15 Nov: N = the merits to the next rank). Only for a rank by merits (r.mer);
+  // "" for the old drink-based rank (no goal for drinks). 1 = "1 merit till …".
   function progText(r) {
     if (!r) return "";
     if (!r.next || !r.nextAt) return sv() ? "Högsta grad." : "Highest rank.";
     if (!r.mer) return "";
-    return sv() ? r.v + " av " + r.nextAt + " meriter till " + r.next : r.v + " of " + r.nextAt + " merits to " + r.next;
+    var n = Math.max(1, r.nextAt - r.v);
+    return sv() ? n + (n === 1 ? " merit" : " meriter") + " till " + r.next : n + (n === 1 ? " merit" : " merits") + " to " + r.next;
   }
   W.RANKICO = { svg: svg, plate: plate, info: info, mine: mine, indexOf: indexOf, progText: progText, count: function () { return titles().length; } };
 })();

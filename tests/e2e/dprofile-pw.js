@@ -3,7 +3,7 @@
 // B  soft scroll edges (docs/sheetfade.css + js/sheetfade.js): a fade at the bottom while content goes on, gone at the end,
 //    none when the content fits, a fixed footer inside the sheet is never masked, a floating bar = no bottom fade
 // C  Profil: identity card, then "Vem ser mig" (the real settings), then the rest; no "öl kvar" goal; the progress bar counts
-//    MERITS ("X av Y meriter till …"); one SVG icon per rank (js/rankico.js); the same rank name on Profil and Min uniform
+//    MERITS ("N meriter till …", owner wording 15 Nov); one SVG icon per rank (js/rankico.js); the same rank name on Profil and Min uniform
 //    (small fix 6); Konto: Swish = a normal row (11); Radera kontot has a ghost "Avbryt" (24)
 // 360 + 390 px, mocked Supabase (port B). Usage: node dprofile-pw.js <port>
 const { ctxFor, boot, wait } = require("./d2-helpers.js");
@@ -215,8 +215,8 @@ const scrollTo = async (page, y, sel) => { await page.evaluate(([y, sel]) => { c
       ok("C Profil order: strip, identity card, \"Vem ser mig\" right after it, then the rest (Mitt, Hjälp …)", p.cls.join(",") === "tabs,hero,vsm,rest,fold" && p.secs[0] === "Mitt" && p.garderob &&
         p.heroB <= p.vsmT && p.vsmT - p.heroB <= 40 && p.vsmT < p.mittT && p.name && /pf-top/.test(p.first), { cls: p.cls, secs: p.secs, heroB: p.heroB, vsmT: p.vsmT, mittT: p.mittT });
       ok("C no drink goal on Profil (no \"öl kvar\", no \"kvar till\")", !/öl kvar|kvar till|beers left/i.test(p.text), (/.{0,80}(öl kvar|kvar till|beers left).{0,40}/i.exec(p.text) || [])[0]);
-      ok("C rank block: icon (≥ 20 px) + name, bar and text in MERITS: \"103 av 115 meriter till Premiärlöjtnant Pilsner\", bar 40 %",
-        !!p.rank && p.rank.title === "Löjtnant Lager" && p.rank.ico === "11" && p.rank.icoW >= 20 && p.rank.bar === "40%" && p.rank.n === "103 av 115 meriter till Premiärlöjtnant Pilsner" && !p.rank.m && p.rank.h >= 44 && /103 av 115 meriter/.test(p.rank.aria), p.rank);
+      ok("C rank block: icon (≥ 20 px) + name, bar and text in MERITS: \"12 meriter till Premiärlöjtnant Pilsner\", bar 40 %",
+        !!p.rank && p.rank.title === "Löjtnant Lager" && p.rank.ico === "11" && p.rank.icoW >= 20 && p.rank.bar === "40%" && p.rank.n === "12 meriter till Premiärlöjtnant Pilsner" && !p.rank.m && p.rank.h >= 44 && /12 meriter till/.test(p.rank.aria), p.rank);
       ok("C the character invite is one row (no long text)", !p.cta || (p.cta.h <= 64 && p.cta.h >= 44 && !p.cta.small), p.cta);
       ok("C \"Vem ser mig\": Synlighet (Alla), Spökläge (switch, off), Exakt plats (switch, on), Hemzon (Av); 44 px rows",
         !!p.vsm && p.vsm.head === "Vem ser mig" && p.vsm.rows.length === 4 && p.vsm.rows[0].t === "Synlighet" && p.vsm.rows[0].v === "Alla" && p.vsm.rows[1].t === "Spökläge" && p.vsm.rows[1].sw === "false" &&
@@ -253,16 +253,16 @@ const scrollTo = async (page, y, sel) => { await page.evaluate(([y, sel]) => { c
       const u = await page.evaluate(() => { const b = document.getElementById("sheet-body"), ic = b.querySelector(".uni-ico svg.rk-ico"), bar = b.querySelector(".uni-box .rank-bar > span");
         return { rank: (b.querySelector(".uni-rank") || {}).textContent, ico: ic && ic.getAttribute("data-rk"), icoW: ic && ic.getBoundingClientRect().width, next: (b.querySelector(".uni-next") || {}).textContent,
           bar: bar && bar.style.width, text: b.textContent, chev: !!b.querySelector(".uni-chev") }; });
-      ok("C Min uniform: the same rank name and icon as Profil, the icon at 48 px, progress in merits", u.rank === p.rank.title && u.ico === p.rank.ico && u.icoW === 48 && u.next === "103 av 115 meriter till Premiärlöjtnant Pilsner" && u.bar === "40%" && !u.chev && !/kvar till/.test(u.text), u);
+      ok("C Min uniform: the same rank name and icon as Profil, the icon at 48 px, progress in merits", u.rank === p.rank.title && u.ico === p.rank.ico && u.icoW === 48 && u.next === "12 meriter till Premiärlöjtnant Pilsner" && u.bar === "40%" && !u.chev && !/kvar till/.test(u.text), u);
       await page.evaluate(() => window.MERITER.explain()); await wait(page, 900);
       const mx = await page.evaluate(() => { const b = document.getElementById("sheet-body"), r = b.querySelector(".mer-me .mer-rank");
         return { rank: r && r.textContent, ico: r && r.querySelector("svg.rk-ico") && r.querySelector("svg.rk-ico").getAttribute("data-rk"), next: (b.querySelector(".mer-me .mer-next") || {}).textContent }; });
-      ok("C Meriter sheet: the same rank, icon and wording", mx.rank === "Löjtnant Lager" && mx.ico === "11" && mx.next === "103 av 115 meriter till Premiärlöjtnant Pilsner", mx);
+      ok("C Meriter sheet: the same rank, icon and wording", mx.rank === "Löjtnant Lager" && mx.ico === "11" && mx.next === "12 meriter till Premiärlöjtnant Pilsner", mx);
       ok("C no page errors", errs.length === 0, errs);
       await ctx.close();
     }
     // the merit numbers in two more states + an old server without merits
-    for (const st of [{ mer: 12, title: "Menig Mellanöl", ico: "2", bar: "80%", n: "12 av 13 meriter till Vicekorpral Kapsyl" }, { mer: 2650, title: "Ölguden", ico: "41", bar: null, n: "Högsta grad." },
+    for (const st of [{ mer: 12, title: "Menig Mellanöl", ico: "2", bar: "80%", n: "1 merit till Vicekorpral Kapsyl" }, { mer: 2650, title: "Ölguden", ico: "41", bar: null, n: "Högsta grad." },
       { mer: null, title: "Löjtnant Lager", ico: "11", bar: null, n: null }]) {
       const { ctx, page } = await open(browser, { width: 390, height: 844 }, { mer: st.mer });
       await profil(page);

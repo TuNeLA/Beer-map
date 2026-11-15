@@ -61,7 +61,7 @@
 
   /* ---------- data from other modules ---------- */
   // d-profile (I-114, 06): the rank comes from ONE place (js/rankico.js RANKICO.mine(): by merits; Min uniform uses the same).
-  // text = "12 av 20 meriter till <next rank>" (merits, information only). An old server without merits: the title only.
+  // text = "8 meriter till <next rank>" (merits, information only). An old server without merits: the title only.
   function rank() {
     var R = W("RANKICO"), r = R ? safe(function () { return R.mine(); }, null) : null;
     if (!r || !r.title) return null;
