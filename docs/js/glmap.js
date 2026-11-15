@@ -880,7 +880,7 @@
       var q = map.latLngToContainerPoint(parts[id].ll), rr = (parts[id].crowd ? parts[id].im.r : 16) * parts[id].sz * zk(z) + meR * k * 0.8;
       return Math.abs(q.x - c.x - o[0]) < rr && Math.abs(q.y - c.y - o[1]) < rr; }); };
     // a name there: my marker is on top and would hide it (owner pictures 15 Nov). One query, only here: no per-frame work.
-    var name = function (o) { var g = gm, rr = meR * k * 0.9, x = c.x + o[0], y = c.y + o[1];
+    var name = function (o) { var g = gm, rr = meR * k * 0.9, q = g ? g.project([at.ll[1], at.ll[0]]) : c, x = q.x + o[0], y = q.y + o[1];   // (GL canvas px: not always the Leaflet container's)
       try { return !!g && g.queryRenderedFeatures([[x - rr, y - rr], [x + rr, y + rr]], { layers: [L_LBL, L_PLACE].filter(function (l) { return g.getLayer(l); }) })
         .some(function (f) { return String(f.properties.id) !== String(at.id); }); } catch (e) { return false; } };
     if (!hit(L) && !name(L)) return L;

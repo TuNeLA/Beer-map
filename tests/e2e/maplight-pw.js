@@ -201,12 +201,16 @@ async function runGL(b) {
     ok(up.cov === PARMA && ((up.dx < -20 && Math.abs(up.dy) <= 1) || (Math.abs(up.dx) <= 1 && up.dy < -20)), "me on an icon: I stand left of it or above it, never right of it or below it", up);
     // friends: faces with a green ring in the row under the disc, then +N; no green ring on the disc or the count badge
     const fr = await page.evaluate(() => { const K = PNTOKENS.col;
-      const ops = PNPINS.barOps({ k: "pub", p: { n: "9", f: true, ft: "2 · 1" }, hot: true }, "f", true, { lv: 2, faces: [{}, {}], more: 2 }).ops;
+      const ops = PNPINS.barOps({ k: "pub", p: { n: "9", f: true, ft: "2 · 1" }, hot: true }, "f", true, { lv: 2, faces: [{}, {}], more: 0 }).ops;
+      const ops2 = PNPINS.barOps({ k: "pub", p: { n: "9" }, hot: true }, "f", true, { lv: 2, faces: [{}, {}, {}], more: 2 }).ops, f2 = ops2.filter((o) => o.o === "c" && o.fill === K.green && o.r === 11);
+      const bb = PNPINS.bboxOf(ops);
       const lit = PNPINS.barOps({ k: "pub", lit: true }, "f", true, {}).ops, badge = PNPINS.barOps({ k: "pub", p: { n: "9", f: true } }, "f", true, { lv: 0 }).ops;
-      const faces = ops.filter((o) => o.o === "c" && o.fill === K.green && o.r === 11);
-      return { faces: faces.length, under: faces.every((o) => o.y > 16), plus: ops.some((o) => o.o === "t" && o.t === "+2"),
+      const faces = ops.filter((o) => o.o === "c" && o.fill === K.green && o.r === 10);
+      return { faces: faces.length, under: faces.every((o) => o.y > 16), plus: ops2.some((o) => o.o === "t" && o.t === "+2") && f2.length === 3 && f2.every((o) => o.y > 16), w: Math.round(bb[2] - bb[0]),
+        person: ops.some((o) => o.o === "c" && o.fill === K.green && o.r === 8),
         litGreen: lit.filter((o) => o.fill === K.green && o.o === "c" && o.x === 0 && o.y === 0).length, badgeGreen: badge.filter((o) => o.o === "rr" && o.fill === K.green).length }; });
-    ok(fr.faces === 2 && fr.under && fr.plus, "friends: 2 faces with a green ring in the row under the disc, then +2", fr);
+    ok(fr.faces === 2 && fr.under && fr.plus, "friends: their faces (green ring) in the row under the disc: inside the totals chip, or 3 faces + \"+2\"", fr);
+    ok(fr.w < 85, "friends: the marker with 2 faces + the totals chip stays < 85 px wide (mbx: no long pill)", fr);
     ok(fr.litGreen === 0 && fr.badgeGreen === 0, "no green outline: a checked-in bar has no green disc ring, the count badge no green edge", fr);
     const nf = await page.evaluate(() => { const v = GLBARS._view() || []; return v.length; });
     ok(nf > 0 && errs.length === 0, "me: no page error", errs);

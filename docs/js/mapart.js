@@ -341,16 +341,18 @@
     return bb;
   }
   // ds31: friends here → ONE chip under the disc: green friend badge + their night total(s) + a beer glyph. Ink body, green ring.
-  function ftW(t) { return 2 + 16 + 4 + Math.ceil(tw(String(t).slice(0, 14), 12, 700)) + 3 + 12 + 7; }
-  function ftChip(ops, parts, cy, t, x0) {   // x0 = its left edge (maplight: after the friends' faces); none = centred
-    t = String(t).slice(0, 14);
-    var h = 20, tw_ = Math.ceil(tw(t, 12, 700)), w = 2 + 16 + 4 + tw_ + 3 + 12 + 7, x = x0 == null ? Math.round(-w / 2) : Math.round(x0), y = Math.round(cy - h / 2);
+  // maplight: faces = the friends' faces (at most 2, overlapping) in place of the green person badge; x0 = left edge (none = centred)
+  function ftChip(ops, parts, cy, t, x0, faces) {
+    t = String(t).slice(0, 14); faces = (faces || []).slice(0, 2);
+    var h = 20, fw = faces.length ? CHIP_FACE + (faces.length - 1) * CHIP_STEP : 16, tw_ = Math.ceil(tw(t, 12, 700)), w = 2 + fw + (faces.length ? 3 : 4) + tw_ + 3 + 12 + (faces.length ? 5 : 7), x = x0 == null ? Math.round(-w / 2) : Math.round(x0), y = Math.round(cy - h / 2), i;
     rrect(ops, x - 1, y - 1, w + 2, h + 2, h / 2 + 1, { fill: K.edge, sh: true });
     rrect(ops, x, y, w, h, h / 2, { fill: K.ink });
     rrect(ops, x + 1, y + 1, w - 2, h - 2, h / 2 - 1, { fill: "none", stroke: K.green, sw: 2 });
-    badge(ops, x + 2 + 8, y + h / 2, 16, K.green, "person", K.greenInk);
-    text(ops, x + 2 + 16 + 4, y + h / 2, t, 12, 700, K.foam);
-    glyph(ops, "pub", x + 2 + 16 + 4 + tw_ + 3 + 6, y + h / 2, 12, K.amberHi, K.ink);
+    if (faces.length) { for (i = faces.length - 1; i >= 0; i--) face(ops, x + 1 + CHIP_FACE / 2 + i * CHIP_STEP, y + h / 2, CHIP_FACE, faces[i]); }
+    else badge(ops, x + 2 + 8, y + h / 2, 16, K.green, "person", K.greenInk);
+    var tx = x + 2 + fw + (faces.length ? 3 : 4);
+    text(ops, tx, y + h / 2, t, 12, 700, K.foam);
+    glyph(ops, "pub", tx + tw_ + 3 + 6, y + h / 2, 12, K.amberHi, K.ink);
     parts.push({ sel: ".pill", bb: [x - 1, y - 1, x + w + 1, y + h + 1] });   // tap = Folk här (the friends' rows)
   }
   /* maplight (owner 15 Nov 2026, I-115) — ONE rule for the bar disc:
@@ -360,7 +362,7 @@
      - friends at the bar = their faces (green ring) in the row UNDER the disc, before their totals chip: at most 3 faces,
        then "+N". extra.faces = [{ img }] (img = a loaded avatar image or null = the person glyph), extra.more = N. The left
        side stays free: my own marker stands there (glmap's top layer, never hidden; above the disc when the left is taken). */
-  var FACE = 22, FACE_STEP = 15;
+  var FACE = 22, FACE_STEP = 15, CHIP_FACE = 20, CHIP_STEP = 9;   // (the chip's faces: the marker stays < 85 px wide, mbx rule)
   function face(ops, cx, cy, d, f) {
     circle(ops, cx, cy, d / 2 + 1, { fill: K.edge, sh: true });
     circle(ops, cx, cy, d / 2, { fill: f && f.me ? K.blue : K.green });
@@ -373,7 +375,7 @@
   // the next bar's icon there and turned the busy pin into a dot)
   function friendRow(ops, parts, cy, faces, more, ft, r) {
     var n = faces.length, fw = n ? FACE + (n - 1) * FACE_STEP : 0, mt = more > 0 ? "+" + (more > 99 ? 99 : more) : "", mw = mt ? Math.ceil(tw(mt, 11, 700)) + 11 : 0;
-    var cw = ft ? ftW(ft) : 0, gap = 3, W = fw + (mw ? (fw ? gap : 0) + mw : 0) + (cw ? (fw || mw ? gap : 0) + cw : 0), x = r == null ? Math.round(-W / 2) : Math.round(-r - 2), xl = x, i;
+    var cw = 0, gap = 3, W = fw + (mw ? (fw ? gap : 0) + mw : 0) + (cw ? (fw || mw ? gap : 0) + cw : 0), x = r == null ? Math.round(-W / 2) : Math.round(-r - 2), xl = x, i;
     for (i = n - 1; i >= 0; i--) face(ops, x + FACE / 2 + i * FACE_STEP, cy, FACE, faces[i]);
     x += fw;
     if (mw) {
@@ -384,7 +386,6 @@
       text(ops, x + 5, cy, mt, 11, 700, K.foam); x += mw;
     }
     if (parts && (n || mw)) parts.push({ sel: ".pill", bb: [xl, cy - FACE / 2 - 1, x, cy + FACE / 2 + 1] });   // tap = Folk här (the friends' rows)
-    if (cw) ftChip(ops, parts || [], cy, ft, x + (fw || mw ? gap : 0));
   }
   function barOps(s, mode, hi, extra) {
     var ops = [], parts = [], full = mode !== "d", k = cat(s.k), busy = !!(s.p || s.hot), lit = !busy && !!s.lit;
@@ -413,8 +414,9 @@
     if (s.p && !s.p.q) countBadge(ops, parts, r * 0.78, -r * 0.78, s.p, true);
     else if (s.p && s.p.f && !hasF) badge(ops, r * 0.78, -r * 0.78, 14, K.green, "person", K.greenInk);   // gw: < 3 people = no number; a friend keeps the dot
     var ft = s.p && s.p.ft ? s.p.ft : "", rowY = Math.round(r + 3 + (s.tg && hi && mode !== "x" ? S.tagH + 3 : 0) + 11);
-    if (hasF) friendRow(ops, parts, rowY, faces, extra.more | 0, ft, r);   // maplight: faces + "+N" + the totals chip in one row
-    else if (ft) ftChip(ops, parts, rowY - 1, ft);   // ds31
+    // maplight: friends with night totals = their faces inside the totals chip (ds31); faces without totals = faces + "+N"
+    if (ft) ftChip(ops, parts, rowY - 1, ft, faces.length ? -r - 2 : null, faces);
+    else if (hasF) friendRow(ops, parts, rowY, faces, extra.more | 0, "", r);
     if (mode === "x") return { ops: ops, parts: parts };
     if (s.ev) { badge(ops, -bo - 1, bo + 1, 15, K.ink, evGlyph(s.ev), K.foam); parts.push({ sel: ".bi-ev", bb: [-bo - 10, bo - 8, -bo + 8, bo + 10] }); }
     if (s.rl) chip(ops, parts, ".cm-rally", r + 4, s.p ? 6 : 0, "helmet", s.rl[0], s.rl[1] ? K.green : "#FF8A1F", { gcol: s.rl[1] ? K.green : "#FFB36B" });
