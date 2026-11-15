@@ -54,7 +54,9 @@ Details: `scripts/split/README.md` (structure), `DESIGN.md` (design), `CONTRACT.
 - Read little: `grep -n` first, then read a line range. Never read a big file whole. Use `tail` on logs.
 - A bug fix needs a test that FAILS on the old code and PASSES on the new code.
 - Show proof: the command and its output. Do not write "it works" with no output.
-- Deliver and STOP. Do not wait for CI. Do not start work that the brief does not name.
+- Run e2e on GitHub: push a throw-away commit to `ci/<lane>-<n>` (`.ci-only` = your shards; never merge it), then ONE
+  blocking `gh run watch <id> -R TuNeLA/Beer-map --exit-status`. Local browser runs only for pictures and quick debug.
+- Deliver and STOP. Do not start work that the brief does not name.
 - Final message: at most 20 lines, short simple English sentences. Details go in your DONE file.
 - If the owner's wish and a design rule conflict: follow the owner and write the exception down.
 
