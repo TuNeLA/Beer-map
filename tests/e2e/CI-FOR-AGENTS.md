@@ -77,4 +77,4 @@ To run only some tests: locally `bash scripts/dev/quick.sh <names>` (guards + th
 6. Push to `ci/<agent>-<n>` and check that it is green.
 
 ## Run only your shards (13 Nov)
-Put a file `.ci-only` in the root of your ci/ branch with one shard name per line (the first word of a line in `tests/e2e/shards.txt`, e.g. `ui-04`, `map-lane`, `gate-a`). No runner starts for the other e2e shards. The guards and the schema job always run. A wrong name or an empty file fails the plan job. `.ci-only` is read only on `ci/` branches; never merge it (the unit job fails on other branches if it exists).
+Put a file `.ci-only` in the root of your ci/ branch (it is in .gitignore: add it with `git add -f .ci-only`) with one shard name per line (the first word of a line in `tests/e2e/shards.txt`, e.g. `ui-04`, `map-lane`, `gate-a`). No runner starts for the other e2e shards. The guards and the schema job always run. A wrong name or an empty file fails the plan job. `.ci-only` is read only on `ci/` branches; never merge it (the unit job fails on other branches if it exists).
