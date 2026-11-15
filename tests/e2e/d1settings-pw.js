@@ -36,8 +36,11 @@ const OLD = [
       const r = await page.evaluate((k) => { const b = document.querySelector(".set-r-" + k); if (!b) return null; const name = b.querySelector(".ds-row-t > span").textContent; b.click(); return name; }, key); await wait(page, 500);
       const st = await page.evaluate((k) => { const pg = document.querySelector('.set-page[data-pg="' + k + '"]'), back = document.getElementById("pn-back"), hub = document.querySelector(".set-hub"); const vis = (e) => !!e && !e.hidden && e.getClientRects().length > 0;
         return { title: document.getElementById("sheet-title").textContent, page: vis(pg), items: pg ? pg.querySelectorAll(".ds-row, .ds-item").length : 0, back: vis(back), hubHidden: !vis(hub), h: pg ? pg.getBoundingClientRect().height : 0 }; }, key);
-      ok(tag + key + ": opens as a page with a title, a back arrow, the hub hidden", r && st.page && st.back && st.hubHidden && st.title === r, { r, st });
-      ok(tag + key + ": page has content and fits 1.1 screens", st.items > 0 && st.h <= vp.height * (key === "notis" ? 1.5 : 1.1), st);
+      // d-profile (owner I-114, 05): a page title is ONE line, so "Integritet & synlighet" opens as "Integritet" (the row keeps the long name),
+      // and a settings page shows every privacy hint in full (they were cut after one line), so synl may be up to 1.25 screens
+      const SHORT = { synl: "Integritet" };
+      ok(tag + key + ": opens as a page with a title, a back arrow, the hub hidden", r && st.page && st.back && st.hubHidden && st.title === (SHORT[key] || r), { r, st });
+      ok(tag + key + ": page has content and fits 1.1 screens", st.items > 0 && st.h <= vp.height * (key === "notis" ? 1.5 : key === "synl" ? 1.25 : 1.1), st);
       await page.click("#pn-back"); await wait(page, 400);
       const bk = await page.evaluate(() => { const hub = document.querySelector(".set-hub"); return { hub: !hub.hidden && hub.getClientRects().length > 0, title: document.getElementById("sheet-title").textContent }; });
       ok(tag + key + ": ‹ returns to the 8 rows (title Inställningar)", bk.hub && /Inställningar/.test(bk.title), bk);
