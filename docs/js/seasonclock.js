@@ -203,7 +203,6 @@
     _force: setForce,
     _at: at, _parts: parts, _advent1: advent1, _adventN: adventN, _midsummerEve: midsummerEve, _wxOf: wxOf, _sthlmMs: sthlmMs
   };
-  if (W.PN && W.PN.mod) W.PN.mod("PNSeason");
   readQuery();
   check(false);
   // the clock moves on: once a minute (the minute-exact things, e.g. fireworks at 00:00, ask PNSeason.clock() themselves)

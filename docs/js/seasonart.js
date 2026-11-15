@@ -305,6 +305,118 @@
     }
   };
 
+
+  /* ---------- map pieces (js/seasonmap.js): drawn in a w × h box, origin top-left, anchor = bottom centre ---------- */
+  var MAP = {
+    // the Christmas tree: 4 tiers with snow on the edges, balls, a light string, a glowing star, gifts. f = twinkle frame 0-2
+    tree: function (g, w, h, o) {
+      var f = o.f || 0, cx = w / 2, base = h - 14, top = 22;
+      g.fillStyle = "rgba(0,0,0,.28)"; g.beginPath(); g.ellipse(cx, h - 7, w * 0.36, 6, 0, 0, TAU); g.fill();
+      g.fillStyle = "#5a3416"; g.fillRect(cx - 6, base - 16, 12, 16);
+      var tiers = [[0.0, 0.3, 0.18], [0.22, 0.52, 0.3], [0.45, 0.75, 0.4], [0.68, 1.0, 0.48]];
+      tiers.forEach(function (t, i) {
+        var y0 = top + (base - 14 - top) * t[0], y1 = top + (base - 14 - top) * t[1], hw = w * t[2];
+        g.fillStyle = lg(g, cx - hw, 0, cx + hw, 0, [[0, "#0f4a22"], [0.45, "#2f8f44"], [0.6, "#3aa352"], [1, "#0c3a1b"]]);
+        g.beginPath(); g.moveTo(cx, y0 - 6); g.quadraticCurveTo(cx - hw * 0.3, y1 - (y1 - y0) * 0.4, cx - hw, y1);
+        for (var k = 0; k <= 6; k++) g.quadraticCurveTo(cx - hw + (k + 0.5) * hw / 3.5, y1 + 5, cx - hw + (k + 1) * hw / 3.5, y1);
+        g.quadraticCurveTo(cx + hw * 0.3, y1 - (y1 - y0) * 0.4, cx, y0 - 6); g.fill();
+        g.fillStyle = "rgba(255,255,255,.92)";   // snow on the tier edge
+        g.beginPath(); g.moveTo(cx - hw, y1); for (k = 0; k <= 6; k++) g.quadraticCurveTo(cx - hw + (k + 0.5) * hw / 3.5, y1 + 5, cx - hw + (k + 1) * hw / 3.5, y1);
+        g.lineTo(cx + hw * 0.92, y1 - 3); for (k = 6; k >= 0; k--) g.quadraticCurveTo(cx - hw + (k + 0.5) * hw / 3.5, y1 + 1.5, cx - hw + k * hw / 3.5 + 1, y1 - 3); g.closePath(); g.fill();
+      });
+      // the light string (warm dots on a curve per tier) and the balls
+      var L = [], B = [];
+      tiers.forEach(function (t, i) { var y1 = top + (base - 14 - top) * t[1], hw = w * t[2]; for (var k = 0; k < 4 + i; k++) { var u = (k + 0.5) / (4 + i); L.push([cx - hw * 0.85 + u * hw * 1.7, y1 - 9 - Math.sin(u * PI) * 6]); }
+        B.push([cx - hw * 0.5, y1 - 4, ["#e63946", "#ffd166", "#4cc9f0"][i % 3]], [cx + hw * 0.45, y1 - 6, ["#ffd166", "#e63946", "#f4a3c0"][i % 3]]); });
+      L.forEach(function (p, i) { var on = (i + f) % 3 !== 0; g.fillStyle = rg(g, p[0], p[1], on ? 7 : 4, [[0, on ? "rgba(255,240,180,1)" : "rgba(255,200,120,.6)"], [1, "rgba(255,190,80,0)"]]); g.fillRect(p[0] - 7, p[1] - 7, 14, 14);
+        g.fillStyle = on ? "#fff6d6" : "#d8a050"; circ(g, p[0], p[1], 1.6); g.fill(); });
+      B.forEach(function (b) { g.fillStyle = rg(g, b[0] - 1.5, b[1] - 1.5, 5, [[0, "#ffffff"], [0.35, b[2]], [1, "rgba(0,0,0,.5)"]]); circ(g, b[0], b[1], 4.2); g.fill(); });
+      // the star
+      var sg = f === 1 ? 1 : 0.8; g.fillStyle = rg(g, cx, top - 6, 18, [[0, "rgba(255,240,170," + sg + ")"], [1, "rgba(255,200,60,0)"]]); g.fillRect(cx - 18, top - 24, 36, 36);
+      star(g, cx, top - 6, 5, 10, 4.2, -PI / 2); g.fillStyle = lg(g, cx, top - 16, cx, top + 4, [[0, "#fff6c0"], [1, "#ffb81c"]]); g.fill(); g.strokeStyle = "#a86a00"; g.lineWidth = 1; g.stroke();
+      // gifts
+      [[cx - 26, "#d62839", "#ffd166"], [cx + 14, "#2a9d8f", "#ffffff"], [cx - 6, "#4361ee", "#ffd166"]].forEach(function (q, i) { var bw = i === 2 ? 12 : 16, bh = i === 2 ? 10 : 13, x = q[0], y = base - bh + 2 + (i === 2 ? 4 : 0);
+        g.fillStyle = q[1]; g.fillRect(x, y, bw, bh); g.fillStyle = q[2]; g.fillRect(x + bw / 2 - 1.5, y, 3, bh); g.fillRect(x, y + bh / 2 - 1.5, bw, 3); });
+    },
+    // the Advent candlestick (brass, 4 candles, the first one the shortest; n lit), f = flame frame
+    advent: function (g, w, h, o) {
+      var n = o.n || 1, f = o.f || 0, by = h - 14, cx = w / 2;
+      g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(cx, h - 6, w * 0.4, 5, 0, 0, TAU); g.fill();
+      g.fillStyle = lg(g, 0, by - 8, 0, by + 6, [[0, "#ffe08a"], [0.5, "#c8901c"], [1, "#6e4a08"]]); g.beginPath(); g.moveTo(cx - w * 0.42, by - 6); g.lineTo(cx + w * 0.42, by - 6); g.lineTo(cx + w * 0.34, by + 6); g.lineTo(cx - w * 0.34, by + 6); g.closePath(); g.fill();
+      g.fillStyle = "#3f8f2a"; for (var k = 0; k < 9; k++) { g.beginPath(); g.ellipse(cx - w * 0.38 + k * w * 0.095, by - 7, 4, 2.4, (k % 2 ? 0.5 : -0.5), 0, TAU); g.fill(); }
+      g.fillStyle = "#d62839"; [cx - w * 0.2, cx + w * 0.05, cx + w * 0.3].forEach(function (x) { circ(g, x, by - 8, 2); g.fill(); });
+      for (var i = 0; i < 4; i++) {
+        var x = cx - w * 0.3 + i * w * 0.2, ch2 = [34, 40, 44, 48][i] - (i < n ? (n - 1 - i) * 3 : 0), y = by - 8 - ch2;   // a burnt candle is shorter
+        g.fillStyle = lg(g, x - 5, 0, x + 5, 0, [[0, "#e9e2d0"], [0.5, "#ffffff"], [1, "#d6cdb8"]]); g.fillRect(x - 5, y, 10, ch2);
+        if (i < n) { var fl = [1, 0.85, 1.12][(f + i) % 3];
+          g.fillStyle = rg(g, x, y - 8, 20, [[0, "rgba(255,220,130,.85)"], [1, "rgba(255,170,50,0)"]]); g.fillRect(x - 20, y - 28, 40, 40);
+          g.fillStyle = rg(g, x, y - 5, 7 * fl, [[0, "#ffffff"], [0.35, "#ffe58a"], [1, "#ff8a1c"]]); g.beginPath(); g.moveTo(x, y - 15 * fl); g.quadraticCurveTo(x + 5, y - 5, x, y - 1); g.quadraticCurveTo(x - 5, y - 5, x, y - 15 * fl); g.fill(); }
+        g.strokeStyle = "#2b2016"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 3); g.stroke();
+      }
+    },
+    // the Lucia crown: a lingonberry-leaf wreath with 7 candles
+    lucia: function (g, w, h, o) {
+      var f = o.f || 0, cx = w / 2, cy = h - 22;
+      g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(cx, h - 7, w * 0.42, 5, 0, 0, TAU); g.fill();
+      g.save(); g.translate(cx, cy); g.scale(1, 0.38); g.strokeStyle = "#2f7a26"; g.lineWidth = 9; circ(g, 0, 0, w * 0.36); g.stroke(); g.restore();
+      for (var k = 0; k < 16; k++) { var a = k * TAU / 16, x = cx + Math.cos(a) * w * 0.36, y = cy + Math.sin(a) * w * 0.36 * 0.38; g.fillStyle = k % 2 ? "#4ea036" : "#3a8a2c"; g.beginPath(); g.ellipse(x, y, 4, 2.6, a, 0, TAU); g.fill(); if (k % 3 === 0) { g.fillStyle = "#d62839"; circ(g, x, y + 1, 1.8); g.fill(); } }
+      for (var i = 0; i < 7; i++) { var a2 = PI + (i + 0.5) * PI / 7, x2 = cx + Math.cos(a2) * w * 0.32, y2 = cy + Math.sin(a2) * w * 0.32 * 0.38 - 2, chh = 26;
+        g.fillStyle = "#fbf6ea"; g.fillRect(x2 - 3, y2 - chh, 6, chh); var fl = [1, 0.85, 1.12][(f + i) % 3];
+        g.fillStyle = rg(g, x2, y2 - chh - 6, 14, [[0, "rgba(255,220,130,.8)"], [1, "rgba(255,170,50,0)"]]); g.fillRect(x2 - 14, y2 - chh - 20, 28, 28);
+        g.fillStyle = rg(g, x2, y2 - chh - 4, 6 * fl, [[0, "#ffffff"], [0.35, "#ffe58a"], [1, "#ff8a1c"]]); g.beginPath(); g.moveTo(x2, y2 - chh - 12 * fl); g.quadraticCurveTo(x2 + 4, y2 - chh - 4, x2, y2 - chh); g.quadraticCurveTo(x2 - 4, y2 - chh - 4, x2, y2 - chh - 12 * fl); g.fill(); }
+    },
+    // the Midsummer pole (sway = top offset in px): leaves, two rings, ribbons, a pennant
+    pole: function (g, w, h, o) {
+      var sw = o.sw || 0, cx = w / 2, base = h - 8, top = 10, y1 = top + 26;
+      var X = function (y) { var u = (base - y) / (base - top); return cx + sw * u * u; };
+      g.fillStyle = "rgba(0,0,0,.28)"; g.beginPath(); g.ellipse(cx, h - 5, 14, 4, 0, 0, TAU); g.fill();
+      g.strokeStyle = "#3d7a26"; g.lineWidth = 7; g.lineCap = "round"; g.beginPath(); g.moveTo(cx, base); g.quadraticCurveTo(X((base + top) / 2), (base + top) / 2, X(top), top); g.stroke();
+      g.strokeStyle = "#3d7a26"; g.lineWidth = 6; g.beginPath(); g.moveTo(X(y1) - 22, y1); g.lineTo(X(y1) + 22, y1); g.stroke();
+      [-1, 1].forEach(function (s) { g.lineWidth = 4.5; g.beginPath(); g.ellipse(X(y1) + s * 16, y1 + 15, 9, 15, 0, 0, TAU); g.stroke(); });
+      for (var y = top + 6; y < base - 6; y += 7) { var x = X(y); g.fillStyle = (y / 7) % 2 < 1 ? "#6cc04a" : "#4ea036"; g.beginPath(); g.ellipse(x - 4, y, 5, 3, -0.6, 0, TAU); g.ellipse(x + 4, y + 3, 5, 3, 0.6, 0, TAU); g.fill(); }
+      [["#ffd21c", -1], ["#3d6bff", 1], ["#ffffff", -0.4]].forEach(function (c, i) { g.strokeStyle = c[0]; g.lineWidth = 2.4; g.beginPath(); g.moveTo(X(y1) + c[1] * 18, y1 + 2);
+        g.bezierCurveTo(X(y1) + c[1] * 26 + sw * 0.4, y1 + 30, X(y1) + c[1] * 14 + sw * 0.6, y1 + 50, X(y1) + c[1] * 22 + sw, y1 + 64 + i * 6); g.stroke(); });
+      g.fillStyle = "#ffffff"; [[X(y1) - 16, y1 + 15], [X(y1) + 16, y1 + 15], [X(top), top + 3]].forEach(function (p) { circ(g, p[0], p[1], 2.6); g.fill(); });
+      g.fillStyle = "#ffd21c"; g.beginPath(); g.moveTo(X(top), top - 2); g.lineTo(X(top) + 14 + sw * 0.3, top + 2); g.lineTo(X(top), top + 6); g.fill();
+    },
+    // the Valborg fire: logs + a flame of soft rising discs; t = seconds (the frames are drawn once, 12 of them)
+    fire: function (g, w, h, o) {
+      var t = o.t || 0, cx = w / 2, by = h - 12;
+      g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.ellipse(cx, h - 6, w * 0.4, 6, 0, 0, TAU); g.fill();
+      g.strokeStyle = "#4a2a12"; g.lineWidth = 7; g.lineCap = "round"; [[-0.5, 0.2], [0.5, -0.2], [-0.15, -0.6], [0.2, 0.6]].forEach(function (l) { g.beginPath(); g.moveTo(cx - w * 0.3 * Math.cos(l[0]), by + 4 - Math.sin(l[1]) * 4); g.lineTo(cx + w * 0.3 * Math.cos(l[0]), by - 6 + Math.sin(l[1]) * 4); g.stroke(); });
+      g.globalCompositeOperation = "lighter";
+      for (var i = 0; i < 46; i++) { var ph = (i * 0.137 + t * 1.6) % 1, x = cx + Math.sin(i * 7.1 + t * 3) * w * 0.18 * (1 - ph), y = by - 6 - ph * h * 0.72, r = (1 - ph) * w * 0.17 + 3;
+        var c = ph < 0.3 ? "255,240,180" : ph < 0.6 ? "255,170,60" : "230,80,30"; g.fillStyle = rg(g, x, y, r, [[0, "rgba(" + c + ",.55)"], [1, "rgba(" + c + ",0)"]]); g.fillRect(x - r, y - r, r * 2, r * 2); }
+      for (i = 0; i < 10; i++) { var q = (i * 0.29 + t * 0.9) % 1; g.fillStyle = "rgba(255,210,120," + (1 - q).toFixed(2) + ")"; circ(g, cx + Math.sin(i * 3.3 + t) * w * 0.25, by - 20 - q * h * 0.85, 1.4); g.fill(); }
+      g.globalCompositeOperation = "source-over";
+    },
+    // a soft warm beam of light (tilted view, 15+ people)
+    beam: function (g, w, h) {
+      var cx = w / 2;
+      g.fillStyle = lg(g, 0, h, 0, 0, [[0, "rgba(255,200,90,.55)"], [0.4, "rgba(255,190,80,.22)"], [1, "rgba(255,180,60,0)"]]);
+      g.beginPath(); g.moveTo(cx - w * 0.22, h); g.lineTo(cx - w * 0.5, 0); g.lineTo(cx + w * 0.5, 0); g.lineTo(cx + w * 0.22, h); g.closePath(); g.fill();
+      g.fillStyle = lg(g, 0, h, 0, 0, [[0, "rgba(255,240,200,.7)"], [0.5, "rgba(255,220,150,.18)"], [1, "rgba(255,220,150,0)"]]);
+      g.beginPath(); g.moveTo(cx - w * 0.07, h); g.lineTo(cx - w * 0.16, 0); g.lineTo(cx + w * 0.16, 0); g.lineTo(cx + w * 0.07, h); g.closePath(); g.fill();
+      for (var i = 0; i < 14; i++) { var y = h * ((i * 0.37) % 1), x = cx + Math.sin(i * 5.3) * w * 0.2 * (1 - y / h * 0.3); g.fillStyle = "rgba(255,240,200,.5)"; circ(g, x, y, 1); g.fill(); }
+    },
+    // fill patterns for the parks (tile 32 × 32): small flowers (Midsummer) / fallen leaves (autumn)
+    flowers: function (g, w) {
+      [[6, 7, "#ffffff"], [22, 5, "#ffd21c"], [14, 18, "#ff8cc0"], [28, 24, "#5f86ff"], [4, 27, "#ffffff"]].forEach(function (p) { g.fillStyle = p[2]; for (var k = 0; k < 5; k++) { var a = k * TAU / 5; circ(g, p[0] + Math.cos(a) * 1.6, p[1] + Math.sin(a) * 1.6, 1.3); g.fill(); } g.fillStyle = "#ffc928"; circ(g, p[0], p[1], 0.9); g.fill(); });
+    },
+    leafpat: function (g, w) {
+      [[7, 8, "#e0761a", 0.4], [23, 6, "#c8401a", 1.9], [15, 20, "#e8b020", 3.1], [28, 26, "#a8561e", 5.0], [4, 27, "#e0761a", 2.5]].forEach(function (p) { g.save(); g.translate(p[0], p[1]); g.rotate(p[3]); g.fillStyle = p[2]; g.beginPath(); g.ellipse(0, 0, 4.2, 2.4, 0, 0, TAU); g.fill(); g.restore(); });
+    }
+  };
+  // a map piece as ImageData at pixel ratio 2 → { data, pixelRatio } for map.addImage (cached)
+  var mcache = {};
+  function mapImg(name, w, h, o) {
+    o = o || {}; var k = name + "|" + w + "x" + h + "|" + JSON.stringify(o); if (mcache[k]) return mcache[k];
+    var f = MAP[name]; if (!f) return null;
+    var c = D.createElement("canvas"); c.width = Math.ceil(w * 2); c.height = Math.ceil(h * 2); var g = c.getContext("2d"); if (!g) return null;
+    g.scale(2, 2); try { f(g, w, h, o); } catch (e) {}
+    return (mcache[k] = { data: g.getImageData(0, 0, c.width, c.height), pixelRatio: 2 });
+  }
+
   // a piece at size s (css px) → { c: canvas, s } (cached). o = colour options (part of the key).
   function get(name, s, o) {
     o = o || {}; s = Math.max(4, Math.round(s));
@@ -324,5 +436,5 @@
     g.save(); g.globalAlpha = Math.min(1, al); g.translate(x, y); if (a) g.rotate(a);
     g.scale(k * (fx == null ? 1 : fx), k); g.drawImage(p.c, -p.s / 2, -p.s / 2, p.s, p.s); g.restore();
   }
-  W.PNArt = { get: get, put: put, names: function () { return Object.keys(ART); }, star: star, rg: rg, lg: lg, R: R, size: function () { return n; } };
+  W.PNArt = { get: get, put: put, map: mapImg, names: function () { return Object.keys(ART); }, star: star, rg: rg, lg: lg, R: R, size: function () { return n; } };
 })();
