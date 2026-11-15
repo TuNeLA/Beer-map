@@ -1999,6 +1999,9 @@ html body #sheet.sheet:has(> .sheet-body > .chat-list){height:94vh !important;he
 #sheet-body .pn-vsm .ds-row[role="switch"]>.switch{pointer-events:none;flex:0 0 auto}
 /* Konto: "Mitt Swish-nummer" = a normal row (js/app-settings.js swishRow): its holder has no padding of its own */
 #sheet-body.ds-set .set-page .ds-item.set-swish{padding:0 !important;margin:0 !important;min-height:0 !important}
+/* its icon gets the same size as a direct list row (the ".ds-list>.ds-row" rule above does not reach one level down) */
+html body .ds-list>.set-swish>.ds-row>.ds-row-i{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important;align-self:center}
+html body .ds-list>.set-swish>.ds-row>.ds-row-i .pi,html body .ds-list>.set-swish>.ds-row>.ds-row-i .pn-ic{width:var(--pn-row-ic) !important;height:var(--pn-row-ic) !important}
 /* Radera kontot: the ghost "Avbryt" under the red button (js/pnds.js "d-profile") */
 #sheet-body .mm-del-step>.pn-del-cancel{margin-top:var(--sp-2);min-height:48px}
 /* d-profile END */
