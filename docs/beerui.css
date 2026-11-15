@@ -1,0 +1,75 @@
+/* PintsNow — d-beer (I-114, owner 15 Nov 2026; design proposals 02 + 04).
+   1 the wait on the ÖL! button: only m:ss in the middle of the glass   (docs/js/app-beer.js tickCooldown)
+   2 "Ångra" on the ÖL! button for 10 s after an accepted beer          (docs/js/app-beer.js showUndo)
+   3 "Var dricker du?": a list, "Hemma eller annan plats" always in view (docs/js/app-checkin.js askWhereList)
+   4 "Ångra" on the newest beer row in Min kväll                        (docs/js/nightlog.js)
+   ID selectors: pnds.css (loaded last) sets the label size with !important. */
+:root{--bu-ink:#1a0f02;--bu-ring-len:351.86px;--bu-edge:rgba(245,166,35,.3);--bu-edge-2:rgba(245,166,35,.16)}
+
+/* ---------- 1 · the wait: the time only ---------- */
+#btn-beer.cooldown #beer-sub{display:none !important}
+/* cream figures with a dark outline: 4.5:1 and more on the empty glass, on the beer and on the foam (the outline is the
+   background of the figures at every fill level) */
+#btn-beer.cooldown:not(.undo) #beer-label{display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:var(--fs-34) !important;
+  line-height:1;letter-spacing:0;color:var(--foam);background:none;border:0;padding:0;margin:0;
+  -webkit-text-stroke:6px var(--bu-ink);paint-order:stroke fill;text-shadow:0 2px 0 var(--bu-ink),0 0 10px var(--bu-ink)}
+#beer-label .bt-t{display:inline-flex;align-items:center;font-variant-numeric:tabular-nums}
+#beer-label .bt-t.bt-long{font-size:var(--fs-28)}   /* 10:00 and more: 5 figures */
+#beer-label .bt-d{display:inline-block;width:.66em;text-align:center}
+#beer-label .bt-c{display:inline-block;width:.34em;text-align:center}
+
+/* ---------- 2 · "Ångra" for 10 s: dark glass, an amber ring that runs down ---------- */
+#btn-beer.undo{cursor:pointer;filter:none;color:var(--ds-amber-t);border-color:var(--bu-edge-2);
+  background:radial-gradient(circle at 35% 30%,var(--ds-raised),var(--ds-bg) 78%);
+  box-shadow:0 0 0 3px var(--pn-float),0 8px 24px var(--bu-edge-2),inset 0 0 0 1px var(--ds-border)}
+#btn-beer.undo>.pn-cdbub{display:none}
+#btn-beer.undo #beer-label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-0);
+  font:700 var(--fs-18)/22px var(--ds-sans) !important;letter-spacing:0;color:var(--ds-amber-t);background:none;border:0;padding:0;margin:0;
+  animation:buIn var(--m-4) var(--e-in) both}
+#btn-beer.undo #beer-label .undo-ic{width:28px;height:28px;margin:0}
+#btn-beer.undo:active{transform:scale(.94)}
+#btn-beer.undo:disabled{opacity:.75}
+.beer-wrap.ud .cd-svg{z-index:3}
+.beer-wrap.ud .cd-track{stroke:var(--bu-edge)}
+.beer-wrap.cd.ud .cd-ring{opacity:1;stroke:var(--ds-amber-t);transition:none;animation:buRing 10s linear both}
+@keyframes buRing{from{stroke-dashoffset:0}to{stroke-dashoffset:var(--bu-ring-len)}}
+@keyframes buIn{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .beer-wrap.cd.ud .cd-ring{animation-timing-function:steps(10,end)}
+  #btn-beer.undo #beer-label{animation:none}
+}
+
+/* ---------- 3 · "Var dricker du?" ---------- */
+/* the sheet keeps its own 16 px + safe area under the body; the body's own bottom padding goes so the pinned row sits on it.
+   "#sheet-body" in front: pnds.css sets button heights in the sheet with an id selector. */
+#sheet-body:has(> .wh){padding-bottom:0 !important}
+#sheet-body .wh{display:flex;flex-direction:column}
+#sheet-body .wh .btn.wh-main{display:flex;align-items:center;justify-content:center;gap:var(--sp-2);margin:var(--sp-2) 0 0;text-align:center}
+#sheet-body .wh .wh-main .wh-ic{color:inherit}
+#sheet-body .wh-list{background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--r-lg);overflow:hidden}
+#sheet-body .wh-list .btn.wh-row{display:flex;align-items:center;justify-content:flex-start;gap:var(--sp-3);width:100%;min-height:var(--pn-row-h);margin:0;
+  padding:var(--sp-2) var(--sp-4) !important;background:transparent !important;border:0 !important;border-radius:0 !important;box-shadow:none !important;
+  color:var(--ds-text) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important;text-align:left}
+#sheet-body .wh-list .btn.wh-row + .btn.wh-row{border-top:1px solid var(--ds-border) !important}
+#sheet-body .wh-list .btn.wh-row:active{background:var(--ds-raised) !important;transform:none}
+#sheet-body .wh-ic{flex:0 0 auto;width:var(--pn-ic);height:var(--pn-ic);color:var(--ds-text-2)}
+#sheet-body .wh-name{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+#sheet-body .wh-dist{flex:0 0 auto;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+#sheet-body .wh .btn.where-more{align-self:flex-start;min-height:44px;margin:var(--sp-3) 0 0 !important;padding:0 var(--sp-1) !important;justify-content:flex-start;gap:var(--sp-2);
+  width:auto;color:var(--ds-amber-t) !important;border:0 !important;background:transparent !important;box-shadow:none !important}
+#sheet-body .wh .where-more .wh-ic{color:inherit}
+/* "Hemma eller annan plats": pinned to the bottom of the sheet, the same rounded row shape as the lists (owner: it was square) */
+#sheet-body .wh-foot{position:sticky;bottom:0;z-index:2;margin-top:var(--sp-4);padding-top:var(--sp-2);background:var(--ds-sheet)}
+#sheet-body .wh-foot::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:var(--sp-5);pointer-events:none;
+  background:linear-gradient(to top,var(--ds-sheet),transparent)}
+#sheet-body .wh-foot .btn.wh-home{display:flex;align-items:center;justify-content:flex-start;gap:var(--sp-3);width:100%;min-height:var(--pn-row-h);margin:0;
+  padding:var(--sp-2) var(--sp-4) !important;background:var(--ds-card) !important;border:1px solid var(--ds-border-2) !important;border-radius:var(--r-lg) !important;
+  box-shadow:none !important;color:var(--ds-text) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important;text-align:left}
+#sheet-body .wh-foot .btn.wh-home:active{background:var(--ds-raised) !important;transform:none}
+
+/* ---------- 4 · Min kväll: "Ångra" on the newest beer while the server's 2 min are open ---------- */
+.nl-n.nl-n-u{display:inline-flex;align-items:center;gap:var(--sp-2)}
+.nl-undo{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);border:1px solid var(--ds-amber);border-radius:var(--r-pill);
+  background:transparent;color:var(--ds-amber-t);font:700 var(--fs-14)/1 var(--ds-sans);cursor:pointer}
+.nl-undo .undo-ic{width:16px;height:16px}
+.nl-undo:disabled{opacity:.6}

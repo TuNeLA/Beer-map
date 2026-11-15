@@ -144,6 +144,10 @@
       if (items.length) {
         root.appendChild(el("h3", { class: "nl-h", text: L("Tidslinje", "Timeline") }));
         var ul = el("ul", { class: "nl-list" }), ghost = false;
+        // d-beer (I-114): the newest drink is my beer and the server's undo window (2 min, app-beer.js PN.beerUndo) is open →
+        // that row has "Ångra". (The ÖL! button itself is "Ångra" only for the first 10 s.)
+        var newest = -1; items.forEach(function (it, i) { if (it.kind !== "checkin" && (newest < 0 || Date.parse(it.at) >= Date.parse(items[newest].at))) newest = i; });
+        var BU = window.PN && window.PN.beerUndo, undoAt = d.tonight && newest >= 0 && items[newest].kind === "beer" && BU && BU.open && BU.open() ? newest : -1;
         items.forEach(function (it, i) {
           var place = it.bar || it.area || "";
           if (it.ghost) ghost = true;
@@ -154,7 +158,7 @@
             el("span", Object.assign({ class: "nl-e", "aria-hidden": "true" }, kico(it.kind) ? { html: kico(it.kind) } : { text: kemo(it.kind) })),
             el("span", { class: "nl-x" }, [el("b", { text: label + (it.ghost ? " 👻" : "") }),
               it.kind !== "checkin" && place ? el("small", { text: "📍 " + place }) : null]),
-            it.kind !== "checkin" ? el("span", { class: "nl-n", text: "#" + nth }) : null
+            it.kind !== "checkin" ? (i === undoAt ? el("span", { class: "nl-n nl-n-u" }, ["#" + nth, undoBtn(root, night)]) : el("span", { class: "nl-n", text: "#" + nth })) : null
           ]));
         });
         root.appendChild(ul);
@@ -165,6 +169,19 @@
     });
   }
 
+  // "Ångra" on the newest beer row: the same undo as the ÖL! button (undo_beer). Done → the log is read again.
+  function undoBtn(root, night) {
+    var P = window.PNI, b = el("button", { type: "button", class: "nl-undo", "aria-label": L("Ångra senaste ölen", "Undo the last beer") });
+    b.innerHTML = (P && P.svg && (!P.has || P.has("undo")) ? P.svg("undo", "undo-ic") : "") + "<span>" + U.esc(L("Ångra", "Undo")) + "</span>";
+    b.addEventListener("click", function () {
+      window.PN.beerUndo.run(b, function (ok) {
+        if (!ok && window.PN.beerUndo.open()) { b.innerHTML = "<span>" + U.esc(L("Ångra", "Undo")) + "</span>"; return; }   // network error: try again
+        cache = {};
+        if (document.body.contains(root)) draw(root, night);
+      });
+    });
+    return b;
+  }
   function button(row) {
     if (!A || off || !row) return;
     row.appendChild(A.btn(L("📊 Min kväll", "📊 My night"), "btn-small", function () { open(null); }));

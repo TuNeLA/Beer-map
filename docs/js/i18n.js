@@ -473,7 +473,7 @@
       liveTag: "LIVE",
       settings: "Inställningar", profile: "Profil", close: "Stäng",
       beer: "ÖL!", beerSub: "Rapportera öl",
-      nextIn: "Nästa öl om", cooldownToast: function (m) { return DIALEKT.v("toast.cooldown", 0, {m: m}, "Lugn, soldat. Nästa öl om {m}."); },
+      cooldownToast: function (m) { return "Paus. " + m + " kvar."; },   // d-beer (I-114): the wait is information only (no "Nästa öl om")
       stop: "Sluta dricka",
       stopped: "Din pin är dold. Dina öl räknas till kl 05.",
       stopHint: "Döljer din pin. Antalet finns kvar till kl 05.",
@@ -1113,7 +1113,7 @@
       liveTag: "LIVE",
       settings: "Settings", profile: "Profile", close: "Close",
       beer: "BEER!", beerSub: "Report a beer",
-      nextIn: "Next beer in", cooldownToast: function (m) { return "Easy, soldier. Next beer in " + m + "."; },
+      cooldownToast: function (m) { return "Pause. " + m + " left."; },
       stop: "Stop drinking",
       stopped: "Your pin is hidden. Your beers count until 05:00.",
       stopHint: "Hides your pin. The count stays until 05:00.",

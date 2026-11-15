@@ -3,9 +3,12 @@
    B  #pn-mine: a rail button under ⋯ Mer with tonight's count ("🍺 3"). Only while the count is > 0. Tap = 📊 Min kväll
       (NIGHTLOG.open). app-hud.js updateCounts() calls MYCOUNT.set(n) (n = all drinks tonight, the same number as Ikväll).
    D  the count burst: my ÖL! is accepted → the new number slams in at the middle of the map (ring + foam/bubble burst,
-      the old number rolls away), then flies into #pn-mine and the button bumps. aria-hidden: the tap toast (with ÅNGRA)
-      stays the one text answer to the tap (POPUP-RULES 1–2). Not for outbox beers, not when a 5/10/15 takeover plays.
-      8+ = calm (number only, no burst). Reduced motion = a short fade, no fly.
+      the old number rolls away), then flies into #pn-mine and the button bumps. Not for outbox beers, not when a 5/10/15
+      takeover plays. 8+ = calm (number only, no burst). Reduced motion = a short fade, no fly.
+      d-beer (I-114, owner 15 Nov): the burst IS the answer to the tap in the web build (no toast any more; app-beer.js
+      says the count to screen readers, the burst itself is aria-hidden). So: a soft dark backdrop behind the number and
+      the label (reads over any map), about 1.6 s in all (motion audit 6: was 2.2 s), and a beer that got no burst at
+      the tap and no card (the counts did not agree) gets its burst with the server answer.
    SAFE / store: a number only. No goal, no "next", no "more" (I-100). Store builds (OLNU_STORE): B stays (information),
    D is OFF (same policy as alive2: no drinking celebration in the store apps). */
 (function () {
@@ -49,7 +52,7 @@
     var host = D.createElement("div");
     host.className = "pm-burst" + (calm ? " pm-calm" : "") + (reduced() ? " pm-rm" : "");
     host.setAttribute("aria-hidden", "true");
-    var h = (calm ? "" : '<div class="pm-edge"></div>') + '<div class="pm-ring"></div><div class="pm-ring pm-r2"></div><div class="pm-num">' +
+    var h = (calm ? "" : '<div class="pm-edge"></div>') + '<div class="pm-back"></div><div class="pm-ring"></div><div class="pm-ring pm-r2"></div><div class="pm-num">' +
       (prev > 0 ? '<span class="pm-old">' + prev + "</span>" : "") + '<span class="pm-new">' + n + "</span></div>" +
       '<div class="pm-sub">' + (sv() ? "ikväll" : "tonight") + "</div>";
     if (!calm) {
@@ -67,7 +70,7 @@
       if (done) return; done = true;
       hold = false; paint(want);
       var b = $("pn-mine");
-      if (b && !reduced()) { b.classList.remove("pm-bump"); void b.offsetWidth; b.classList.add("pm-bump"); setTimeout(function () { b.classList.remove("pm-bump"); }, 700); }
+      if (b && !reduced()) { b.classList.remove("pm-bump"); void b.offsetWidth; b.classList.add("pm-bump"); setTimeout(function () { b.classList.remove("pm-bump"); }, 520); }
       if (host.parentNode) host.parentNode.removeChild(host);
     }
     setTimeout(function () {
@@ -78,8 +81,8 @@
       host.style.setProperty("--fx", (r.left + r.width / 2 - (q.left + q.width / 2)).toFixed(0) + "px");
       host.style.setProperty("--fy", (r.top + r.height / 2 - (q.top + q.height / 2)).toFixed(0) + "px");
       host.classList.add("pm-fly");
-      setTimeout(land, 480);
-    }, calm ? 900 : 1150);
+      setTimeout(land, 370);
+    }, calm ? 680 : 820);
     setTimeout(land, 3000);   // never stuck
     return host;
   }
@@ -106,10 +109,14 @@
   }
   function onBeer(d, info) {
     info = info || {};
-    if (early && !info.queued) { early = 0; earlyHost = null; return; }   // already shown at the tap
+    if (early && !info.queued) {
+      var had = !!earlyHost; early = 0; earlyHost = null;
+      if (had || info.big !== false) return;   // already shown at the tap (or the 5/10/15 card is the answer)
+    }
     if (info.queued || W.OLNU_STORE) return;
-    var n = info.total | 0, prev = shown > 0 ? shown : Math.max(0, n - 1);
-    if (n < 1 || crossed(prev, n)) return;
+    var n = info.total | 0, prev = shown > 0 && shown < n ? shown : Math.max(0, n - 1);
+    // info.big (app-beer.js): did the 5/10/15 card come? Not told (other callers) → the count says it.
+    if (n < 1 || (info.big == null ? crossed(prev, n) : info.big)) return;
     if (D.querySelector(".fx-takeover,.takeover:not([hidden])")) return;
     burst(n, prev);
   }

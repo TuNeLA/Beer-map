@@ -5,7 +5,7 @@
 //  I  settings rows "Logga ut", "Röst som säger skål", "Vibration", "Systembolaget på kartan", "Notiser om vänner och kaos" have a PNI
 //     icon; "Önska en feature" has its icon in the icon column: icon + text start at the same x as the normal rows of the page (360/390/430)
 //  O  Om appen: the about text has the ds row padding inside its card and the PNI lock (no 🔒 emoji) (360/390/430)
-//  U  the ÅNGRA chip: PNI undo icon (no ↩️ emoji) and a solid ds background (Annat does not show through) (360/390/430)
+//  U  ÅNGRA: PNI undo icon (no ↩️ emoji). d-beer (I-114): it is the ÖL! button itself for 10 s (dark glass), Annat is not covered (360/390/430)
 // Mocked Supabase (ds-helpers). usage: node uifix-pw.js <port> [only-regex, e.g. "I|O"]
 const H = require("./ds-helpers.js");
 const { chromium } = require("playwright");
@@ -194,15 +194,15 @@ function rowGeo(page, key, re) {
         await page.evaluate(() => document.querySelectorAll(".toast, .dl-cap").forEach((t) => t.remove()));
         await page.evaluate(() => document.getElementById("btn-beer").click()); await wait(page, 1800);
         const u = await page.evaluate(() => {
-          const f = document.querySelector(".undo-fab"), o = document.getElementById("btn-other"); if (!f) return { err: "no chip" };
-          const cs = getComputedStyle(f), a = f.getBoundingClientRect(), b = o ? o.getBoundingClientRect() : a;
+          const f = document.querySelector("#btn-beer.undo"), o = document.getElementById("btn-other"); if (!f) return { err: "no Ångra state" };
+          const cs = getComputedStyle(f), b = o.getBoundingClientRect();
           const tok = getComputedStyle(document.documentElement).getPropertyValue("--ds-raised").trim();
-          const pts = [[.5, .5], [.5, .8], [.3, .7], [.7, .7]].map(([x, y]) => { const e = document.elementFromPoint(b.left + b.width * x, b.top + b.height * y); return !!(e && f.contains(e)); });
-          return { svg: !!f.querySelector("svg.pi-undo"), txt: f.textContent.trim(), bg: cs.backgroundColor, tok, cover: pts };
+          const pts = [[.5, .5], [.5, .8], [.3, .7], [.7, .7]].map(([x, y]) => { const e = document.elementFromPoint(b.left + b.width * x, b.top + b.height * y); return !!(e && (e === o || o.contains(e))); });
+          return { svg: !!f.querySelector("svg.pi-undo"), txt: f.textContent.trim(), bg: cs.backgroundImage, tok, free: pts, fab: !!document.querySelector(".undo-fab") };
         });
         await shot(page, "U-undo-" + w);
-        ok("U " + w + ": ÅNGRA chip shows the PNI undo icon, no ↩️ emoji", !u.err && u.svg && !/[↩⏳]/.test(u.txt), u);
-        ok("U " + w + ": ÅNGRA chip background is solid (the --ds-raised token) and covers Annat", !u.err && u.tok && u.bg === rgb(u.tok) && u.cover.every(Boolean), u);
+        ok("U " + w + ": ÅNGRA (the ÖL! button) shows the PNI undo icon, no ↩️ emoji", !u.err && u.svg && !/[↩⏳]/.test(u.txt) && /Ångra/.test(u.txt), u);
+        ok("U " + w + ": ÅNGRA is a solid dark glass (starts at the --ds-raised token) and Annat is not covered", !u.err && u.tok && u.bg.indexOf(rgb(u.tok)) >= 0 && u.free.every(Boolean) && !u.fab, u);
         await ctx.close();
       }
     }
