@@ -1,72 +1,141 @@
-# ⚡ SPEED #10 / T-25 (left-T25): the bundled Pages build. The build job runs only when the repo variable PAGES_BUNDLE = on.
-# Deploys the site to GitHub Pages from an Actions artifact, with the ~135 start scripts joined + minified into 3 files
-# (scripts/bundle.mjs, esbuild; config.js stays its own file) and the ~50 stylesheets into one. docs/ on main stays the
-# readable source. Measured (Slow 3G + CPU ×4, gzip like Pages): DOMContentLoaded 80 s → 37 s, 194 → 12 requests before it.
-# Owner steps (release day):
-#   1. Repo → Settings → Secrets and variables → Actions → Variables: PAGES_BUNDLE = on.
-#      PAGES_LAYOUT: leave it unset (= today's layout: / = the repo index.html, the app at /docs/).
-#      After the pintsnow.com switch (Pages source "/docs" in the move runbook) set PAGES_LAYOUT = docs (the app at /).
-#   2. Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions" (was "Deploy from a branch").
-#      A custom domain stays in the same Pages settings; an Actions deploy needs no CNAME file.
-#   3. Actions → "Pages (bundled)" → Run workflow (or push to main). Wait for green, open the app: Inställningar → ⓘ shows
-#      the new version; DevTools → Network shows js/app.bundle-3.js.
-#   4. Roll back = Settings → Pages → Source "Deploy from a branch" (main, the same folder as before). Nothing in docs/ changed.
-# A1: the repo holds no ?v= and sw.js VERSION is "dev". bundle.mjs --stamp (= scripts/stamp.mjs) stamps this build's copy.
-# Release day: also set the repo variable PAGES_DEPLOY = actions (turns the stamp-version.yml bot off, makes the CI stamp guard strict).
-name: Pages (bundled)
+# The LIVE deploy (ci1). On = repo variable PAGES_DEPLOY = actions. Off (unset) = the old path: GitHub's own branch deploy +
+# the stamp bot (stamp-version.yml). The two never run together: both read the same variable.
+#
+# What a run does:  guards ─┐
+#                   e2e gate ┼─► deploy (GitHub Pages, from an artifact)
+#                   build ───┘
+#   guards  .github/workflows/guards.yml: unit tests, quality, split, stamp guard, shard guard (about 1 min)
+#   e2e     .github/workflows/e2e.yml, only the `gate` shards of tests/e2e/shards.txt, on the BUILT site (about 7 min):
+#           bundle-smoke, main, sec, ux3, social2 · start1 (service-worker update), x8, mycount, takeover, ci1
+#   build   scripts/build-site.mjs on a COPY of docs/: bundle (PAGES_BUNDLE = on) or stamp only, checks, build.json.
+#           Nothing is committed. The repo keeps no ?v= and sw.js VERSION "dev" (scripts/ci/stamp-guard.mjs).
+#   deploy  only when all three are green.
+#
+# Repo variables (Settings → Secrets and variables → Actions → Variables):
+#   PAGES_DEPLOY = actions   this workflow deploys; stamp-version.yml stops; the stamp guard wants a clean repo
+#   PAGES_BUNDLE = on        11 script bundles + 1 stylesheet (scripts/bundle.mjs). Any other value: the single files,
+#                            stamped (the same bytes as the old branch deploy). ONE flip = back to the unbundled site.
+#   PAGES_LAYOUT             unset: / = the repo index.html, the app at /docs/ (today). docs: the app at / (pintsnow.com move)
+# Repo setting: Settings → Pages → Source = "GitHub Actions".
+# Switch on:  1. Pages source = GitHub Actions  2. PAGES_BUNDLE = on  3. PAGES_DEPLOY = actions  4. Run workflow (or push to main).
+# Roll back the bundle only: PAGES_BUNDLE = off, Run workflow. Roll back all: PAGES_DEPLOY unset, run "Stamp app version"
+# by hand (it stamps main again), then Pages source = "Deploy from a branch" (main, / root). Full steps: lane note ci1-SWITCH.md.
+#
+# When it runs:
+#   push to main that changes the site or the build
+#   after each data bot (bars, buildings, hours). They commit data to main with [skip ci], which starts no push workflow,
+#   so without this trigger new bars / hours would not go live (code audit A7).
+#   Monday 06:37 UTC: a safety net for the data, in case a bot run started no deploy. Same files = same VERSION = no phone
+#   downloads anything.
+#   by hand (Actions → Deploy live → Run workflow). skip_e2e = skip only for an emergency fix (the guards still run).
+name: Deploy live (Pages)
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "index.html", "scripts/bundle.mjs", "scripts/stamp.mjs", ".github/workflows/pages-bundle.yml"]
+    paths: ["docs/**", "index.html", "scripts/bundle.mjs", "scripts/stamp.mjs", "scripts/build-site.mjs", "package-lock.json", ".github/workflows/pages-bundle.yml"]
+  workflow_run:
+    workflows: ["Bars (OpenStreetMap)", "Bar buildings (OpenStreetMap + Microsoft footprints)", "Hours (OpenStreetMap)"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '37 6 * * 1'
   workflow_dispatch:
+    inputs:
+      skip_e2e:
+        description: 'Emergency only: type "skip" to deploy without the e2e gate (the guards still run)'
+        required: false
+        default: ''
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: false   # never cancel a deploy that is running; a newer push waits and then deploys the newest main
 jobs:
+  switch:
+    name: "on? (PAGES_DEPLOY = actions)"
+    # a data bot that failed starts no deploy
+    if: ${{ vars.PAGES_DEPLOY == 'actions' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "deploy of ${{ github.sha }} (${{ github.event_name }}), bundle = ${{ vars.PAGES_BUNDLE == 'on' && 'on' || 'off' }}, layout = ${{ vars.PAGES_LAYOUT || 'root' }}"
+
+  guards:
+    needs: switch
+    uses: ./.github/workflows/guards.yml
+
+  e2e:
+    needs: switch
+    if: ${{ inputs.skip_e2e != 'skip' }}
+    uses: ./.github/workflows/e2e.yml
+    with:
+      gate: true
+    secrets: inherit
+
   build:
-    if: ${{ vars.PAGES_BUNDLE == 'on' }}   # cln09: off until the owner sets the repo variable (and Pages Source = Actions)
-    runs-on: ubuntu-latest
+    needs: switch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.site.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: "Copy the site (PAGES_LAYOUT unset = like the branch deploy: / and /docs/; docs = the app at /)"
+          cache: npm
+      - run: npm ci --no-audit --no-fund   # esbuild + acorn: versions from package-lock.json
+      - name: "Build a COPY of the site: bundle + stamp (PAGES_BUNDLE = on) or stamp only, then check it"
+        id: site
+        env:
+          PAGES_DEPLOY: ${{ vars.PAGES_DEPLOY }}
+        run: node scripts/build-site.mjs --out _site --layout "${{ vars.PAGES_LAYOUT }}" --bundle "${{ vars.PAGES_BUNDLE }}" --sha "$GITHUB_SHA"
+      - name: Build report
         run: |
-          mkdir -p _site
-          if [ "${{ vars.PAGES_LAYOUT }}" = "docs" ]; then
-            cp -r docs/. _site/
-            echo "APP=_site" >> "$GITHUB_ENV"
-          else
-            cp index.html .nojekyll _site/ 2>/dev/null || true
-            cp -r docs _site/docs
-            echo "APP=_site/docs" >> "$GITHUB_ENV"
-          fi
-      - name: Bundle + minify (esbuild; acorn checks that every file can be joined safely)
-        run: |
-          mkdir -p "$RUNNER_TEMP/bnd" && cp scripts/bundle.mjs scripts/stamp.mjs "$RUNNER_TEMP/bnd/"
-          npm install --prefix "$RUNNER_TEMP/bnd" --no-save --no-package-lock --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
-          node "$RUNNER_TEMP/bnd/bundle.mjs" "$APP" --stamp
-          for f in "$APP"/js/app.bundle*.js; do node --check "$f"; done
-      - name: "Check the stamp (bundle.mjs --stamp ran scripts/stamp.mjs: ?v=<hash> on every local file, sw.js VERSION = olnu-<site hash>)"
-        run: |
-          node "$RUNNER_TEMP/bnd/stamp.mjs" "$APP" --check
-          grep -n '^var VERSION' "$APP/sw.js"
-          echo "start scripts: $(grep -c '<script defer src="\./' "$APP/index.html") local, stylesheets: $(grep -c '<link rel="stylesheet" href="\./' "$APP/index.html") local"
-      - uses: actions/configure-pages@v5
+          { echo '### Site build'; echo '```'; node -e 'const b=require(process.argv[1]+"/build.json");console.log("VERSION "+b.version+"  commit "+b.commit.slice(0,7)+"  "+b.mode+"  start files "+b.start_files+" ("+b.start_gzip_kb+" KB gzip)");for(const f of b.files)console.log(f.file.padEnd(30)+String(Math.round(f.gzip/1024)).padStart(5)+" KB gzip")' "${{ steps.site.outputs.app }}"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # @v3 on purpose: it keeps dotfiles (docs/.well-known/ = Android app links, .nojekyll). @v4 drops every dotfile and has
+      # no switch; @v5 needs `include-hidden-files: true`. The next step fails the build if the dotfiles are not in the tar.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      - name: The artifact holds the dotfiles and the stamped service worker
+        env:
+          APP: ${{ vars.PAGES_LAYOUT == 'docs' && '.' || './docs' }}
+        run: |
+          tar -tf "$RUNNER_TEMP/artifact.tar" > /tmp/artifact.txt
+          for f in ./.nojekyll "$APP/.well-known/assetlinks.json" "$APP/sw.js" "$APP/index.html" "$APP/build.json"; do
+            grep -qxF "$f" /tmp/artifact.txt || { echo "MISSING in the Pages artifact: $f"; exit 1; }
+          done
+          echo "artifact: $(wc -l < /tmp/artifact.txt) entries, dotfiles in"
+
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
+    needs: [guards, e2e, build]
+    # all green; the e2e gate may be skipped only by the emergency input
+    if: ${{ !cancelled() && needs.guards.result == 'success' && needs.build.result == 'success' && (needs.e2e.result == 'success' || (needs.e2e.result == 'skipped' && inputs.skip_e2e == 'skip')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: "Live answers with this build (sw.js VERSION, build.json, .well-known)"
+        env:
+          BASE: ${{ steps.deployment.outputs.page_url }}
+          APP: ${{ vars.PAGES_LAYOUT == 'docs' && '' || 'docs/' }}
+          WANT: ${{ needs.build.outputs.version }}
+        run: |
+          # GitHub's CDN can serve the old file for a short time: try for 3 minutes, then only warn (the deploy itself is done).
+          for i in $(seq 1 18); do
+            GOT=$(curl -s -m 20 "${BASE}${APP}sw.js?t=$(date +%s)" | sed -n 's/^var VERSION = "\(.*\)";.*/\1/p' | head -1)
+            [ "$GOT" = "$WANT" ] && break; sleep 10
+          done
+          WK=$(curl -s -o /dev/null -m 20 -w '%{http_code}' "${BASE}${APP}.well-known/assetlinks.json")
+          echo "live sw.js VERSION: $GOT (built: $WANT) · .well-known/assetlinks.json: $WK · ${BASE}${APP}build.json"
+          { echo "### Live"; echo "- VERSION \`$GOT\` (built \`$WANT\`)"; echo "- .well-known/assetlinks.json: $WK"; echo "- ${BASE}${APP}"; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$GOT" != "$WANT" ]; then echo "::warning::live sw.js still shows $GOT, the build is $WANT (CDN delay?). Check again in a few minutes."; fi
+          if [ "$WK" != "200" ]; then echo "::error::.well-known/assetlinks.json answers $WK on live"; exit 1; fi

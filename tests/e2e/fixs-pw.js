@@ -5,7 +5,7 @@
 // Every check FAILS on e292592 and PASSES with the fixS patches. Shots: OUT/fixs-shots/<tag>-<name>-<w>.png (FIXS_TAG=new|old).
 const fs = require("fs");
 const { chromium } = require("playwright");
-const { ctxFor, boot, wait, clickJS } = require("./ds-helpers.js");
+const { ctxFor, boot, wait, clickJS, settle } = require("./ds-helpers.js");
 const RPCF = require("./fixtures/rpc.js");
 const OUT = require("./env.js").OUT, SHOTS = OUT + "fixs-shots/";
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -137,7 +137,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   // T-23 the blocked side: the text matches (the chat is closed), no "just nu"
   if (want("dm")) {
     const { ctx, page } = await app(browser, 390, { dmBlockedMe: true });
-    await openDm(page); await wait(page, 2500);
+    await openDm(page); await settle(page, 2500);
     const lock = await page.evaluate(() => { const l = document.querySelector(".dm-lock"); return l && !l.hidden ? l.innerText : null; });
     ok("[390] T-23 blocked side: \"Chatten är stängd\" (no promise that it opens 'just nu', no emoji)", !!lock && /Chatten är stängd/.test(lock) && !/just nu/.test(lock) && !EMO.test(lock), lock);
     await shot(page, "dm-blocked-side", 390);
@@ -147,8 +147,8 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   /* ---------- T-01: Mina vänner row → Blockera (full block) ---------- */
   if (want("fr")) for (const w of W3) {
     const { ctx, page, st } = await app(browser, w);
-    await clickJS(page, "#btn-groups"); await wait(page, 1200);
-    await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 2500);
+    await clickJS(page, "#btn-groups"); await settle(page, 1200);
+    await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 2500);
     await page.evaluate(() => { const r = [...document.querySelectorAll(".nr-flist .nr-frow")].find((x) => /Lisa/.test(x.textContent)); const b = r && r.querySelector(".nr-more-b"); if (b) b.click(); });
     await wait(page, 500);
     const m = await page.evaluate(() => { const box = document.querySelector(".f2-menu"); if (!box) return null; const bs = [...box.querySelectorAll("button")];
@@ -171,7 +171,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   if (want("send")) for (const kind of ["group", "dm"]) {
     const { ctx, page, st } = await app(browser, 390, { terms: false });
     if (kind === "dm") await openDm(page); else await openGroupChat(page);
-    await page.waitForSelector("#chat-inp", { timeout: 10000 }).catch(() => {}); await wait(page, 1500);
+    await page.waitForSelector("#chat-inp", { timeout: 10000 }).catch(() => {}); await settle(page, 1500);
     await page.fill("#chat-inp", "Skål på er!");
     await clickJS(page, ".chat-send"); await wait(page, 600);
     const rules = await page.evaluate(() => !!document.querySelector(".sf-ov .sf-accept"));
@@ -183,7 +183,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
     const s = await page.evaluate(() => ({ v: document.getElementById("chat-inp").value, mine: [...document.querySelectorAll(".chat-list li.chat-msg.me .cm-body")].map((b) => b.textContent),
       toasts: [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent) }));
     ok(`[390] T-05 ${kind}: after "Jag godkänner" ONE post, the field is empty, the line shows, no error toast`, posts === 1 && s.v === "" && s.mine.filter((x) => x === "Skål på er!").length === 1 && !s.toasts.some((t) => /gick int|Försök igen|fail/i.test(t)), { posts, s });
-    await clickJS(page, ".chat-send"); await wait(page, 1200);
+    await clickJS(page, ".chat-send"); await settle(page, 1200);
     ok(`[390] T-05 ${kind}: a tap on Skicka with the empty field posts nothing more`, n(st, "post_group_msg").length === 1, n(st, "post_group_msg").length);
     await shot(page, "send-" + kind, 390);
     await ctx.close();
@@ -193,7 +193,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   if (want("menu")) for (const w of W3) {
     const { ctx, page, st } = await app(browser, w);
     await page.evaluate(() => { try { localStorage.removeItem("olnu.cmxTip"); } catch (e) {} });
-    await openGroupChat(page); await page.waitForSelector('.chat-list .chat-msg[data-mid="4"]', { timeout: 10000 }).catch(() => {}); await wait(page, 1500);
+    await openGroupChat(page); await page.waitForSelector('.chat-list .chat-msg[data-mid="4"]', { timeout: 10000 }).catch(() => {}); await settle(page, 1500);
     const tip = await page.evaluate(() => { const t = document.querySelector(".cmx-tip"); return t && !t.hidden ? t.textContent : null; });
     ok(`[${w}] T-12 a visible line says how: "Tryck på ett meddelande …"`, !!tip && /Tryck på ett meddelande/.test(tip), tip);
     await page.evaluate(() => { const m = document.querySelector('.chat-msg[data-mid="2"]'); if (m) m.scrollIntoView({ block: "center" }); }); await wait(page, 600);
@@ -231,7 +231,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   // (a) my_inbox is slow (it waits in rpc_bundle2; a 500 there = ~15 s): Inkorg says "Hämtar…", never "Inga order", then the row
   if (want("duel")) {
     const { ctx, page } = await app(browser, 390, { duel: false, inboxDuel: true, inboxDelay: 9000 });
-    await clickJS(page, "#btn-groups"); await wait(page, 1000);
+    await clickJS(page, "#btn-groups"); await settle(page, 1000);
     await clickJS(page, ".inv-tabs .ib-tab"); await wait(page, 600);
     const s0 = await page.evaluate(() => ({ empty: !!document.querySelector("#inv-pane-i .ib-empty"), load: !!document.querySelector("#inv-pane-i .ib-loading") }));
     ok("[390] T-13 Inkorg before the first answer: \"Hämtar…\", not \"Inga order\"", s0.load && !s0.empty, s0);
@@ -247,14 +247,14 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
     await wait(page, 5000);
     const badge = await page.evaluate(() => { const b = document.getElementById("ib-badge"); return b && !b.hidden ? b.textContent : null; });
     ok(`[${w}] T-13 the red count on Grupper counts it`, !!badge && +badge >= 1, badge);
-    await clickJS(page, "#btn-groups"); await wait(page, 1200);
-    await clickJS(page, ".inv-tabs .ib-tab"); await wait(page, 1500);
+    await clickJS(page, "#btn-groups"); await settle(page, 1200);
+    await clickJS(page, ".inv-tabs .ib-tab"); await settle(page, 1500);
     const ib = await page.evaluate(() => { const r = document.querySelector("#inv-pane-i .ib-duel"); return { row: r ? r.innerText : null, acts: r ? [...r.querySelectorAll(".ib-b")].length : 0, empty: !!document.querySelector("#inv-pane-i .ib-empty") }; });
     ok(`[${w}] T-13 Inkorg lists the challenge at once (Anta + Nej), also while my_inbox is late`, !!ib.row && /Borlänge Bärs utmanar Ludvika Lager/.test(ib.row) && ib.acts === 2 && !ib.empty, ib);
     await shot(page, "inbox-duel", w);
     await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 600);
     await page.evaluate(() => { window.GAMES.openGangkamp = function () {}; const c = [...document.querySelectorAll(".gcard")].find((x) => /Ludvika Lager/.test(x.textContent)); if (c) c.click(); });
-    await page.waitForSelector(".gpg > .sa-gk", { timeout: 15000 }).catch(() => {}); await wait(page, 1500);
+    await page.waitForSelector(".gpg > .sa-gk", { timeout: 15000 }).catch(() => {}); await settle(page, 1500);
     const gk = await page.evaluate(() => { const b = document.querySelector(".gpg > .sa-gk"); if (!b) return null; b.scrollIntoView({ block: "center" }); const c = b.querySelector(".pn-gp-chev"), dot = c ? getComputedStyle(c, "::before") : null; return { t: b.innerText, dot: !!dot && dot.content !== "none" && dot.width === "10px", cls: b.className }; });
     ok(`[${w}] T-13 the Gängkamp tile says "Utmaning från Borlänge Bärs" (+ dot)`, !!gk && /Utmaning från Borlänge Bärs/.test(gk.t) && gk.dot, gk);
     await wait(page, 300); await shot(page, "gk-tile", w);
@@ -264,10 +264,10 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   /* ---------- T-16: group page counts follow the member list ---------- */
   if (want("count")) {
     const { ctx, page } = await app(browser, 390, { members0: true });
-    await clickJS(page, "#btn-groups"); await wait(page, 1200);
+    await clickJS(page, "#btn-groups"); await settle(page, 1200);
     await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 500);
     await page.evaluate(() => { const c = [...document.querySelectorAll(".gcard")].find((x) => /Ludvika Lager/.test(x.textContent)); if (c) c.click(); });
-    await page.waitForSelector(".gpg", { timeout: 15000 }).catch(() => {}); await wait(page, 3500);
+    await page.waitForSelector(".gpg", { timeout: 15000 }).catch(() => {}); await settle(page, 3500);
     const c = await page.evaluate(() => ({ about: (document.querySelector(".gpg-dots .pn-gp-tx small") || {}).textContent, sub: (document.querySelector(".gpg .gmain .gsub") || {}).textContent,
       mem: ((document.querySelector(".gpg-info .sa-gpg-n") || {}).textContent || "").trim() }));
     ok("[390] T-16 open group page: 4 members (from the member list, the list object said 0)", /^4 medlemmar/.test(c.about || "") && /av 4 dricker nu/.test(c.sub || "") && c.mem === "4" && !/av 0 /.test(c.sub || ""), c);
@@ -279,9 +279,9 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   if (want("set")) for (const w of W3) {
     const { ctx, page } = await app(browser, w, { visFail: true });
     await wait(page, 2500);
-    await clickJS(page, "#btn-settings"); await wait(page, 1300);
+    await clickJS(page, "#btn-settings"); await settle(page, 1300);
     await page.waitForSelector("#sheet-body [data-pf=s]", { timeout: 10000 }).catch(() => {});
-    await clickJS(page, "#sheet-body [data-pf=s]"); await wait(page, 1800);
+    await clickJS(page, "#sheet-body [data-pf=s]"); await settle(page, 1800);
     const v = await page.evaluate(() => { const s = document.querySelector("#sheet-body .mn-vis-set"); return s ? { opts: [...s.querySelectorAll("[role=radio]")].map((b) => b.textContent.trim()), note: (s.querySelector(".pn-vis-note") || {}).textContent } : null; });
     ok(`[${w}] T-18 Inställningar "Vem ser dig?" has Alla · Bara vänner · Spöke (also after a failed my_visibility)`, !!v && v.opts.join("|") === "Alla|Bara vänner|Spöke", v);
     ok(`[${w}] T-09 Alla note is honest: the gang sees the pin, friends outside the gang see only the area, no name`, !!v && /Gänget ser din pin/.test(v.note) && /utan namn/.test(v.note) && !/Vänner ser din pin/.test(v.note), v && v.note);
@@ -306,12 +306,12 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
   /* ---------- T-23: a friend accepted in Inkorg is in Mina vänner at once ---------- */
   if (want("acc")) {
     const { ctx, page, st } = await app(browser, 390, { friendIn: true });
-    await clickJS(page, "#btn-groups"); await wait(page, 1200);
-    await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 2500);
+    await clickJS(page, "#btn-groups"); await settle(page, 1200);
+    await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 2500);
     const before = await page.evaluate(() => [...document.querySelectorAll(".nr-flist .nr-frow")].map((x) => x.querySelector("b") && x.querySelector("b").textContent));
-    await clickJS(page, ".inv-tabs .ib-tab"); await wait(page, 1500);
+    await clickJS(page, ".inv-tabs .ib-tab"); await settle(page, 1500);
     await page.evaluate(() => { const b = document.querySelector("#inv-pane-i .ib-friend .sa-ib-yes"); if (b) b.click(); }); await wait(page, 1500);
-    await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 1800);
+    await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 1800);
     const after = await page.evaluate(() => [...document.querySelectorAll("#inv-pane-f .nr-flist .nr-frow")].map((x) => x.querySelector("b") && x.querySelector("b").textContent));
     ok("[390] T-23 accepted in Inkorg → Kalle is in Mina vänner at once (no reopen)", n(st, "friend_answer").length === 1 && !before.includes("Kalle") && after.includes("Kalle"), { before, after });
     ok("[390] T-23 the Vänner tab still has one 'Lägg till vän' row and one list (rebuilt in place)", await page.evaluate(() => document.querySelectorAll("#inv-pane-f .sa-vtop").length === 1 && document.querySelectorAll("#inv-pane-f .nr-flist").length === 1));

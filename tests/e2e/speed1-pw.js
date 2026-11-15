@@ -46,7 +46,9 @@ function fakeGeo() {
   try { ["replace", "replaceSync"].forEach((k) => { const f = CSSStyleSheet.prototype[k]; if (!f) return;
     CSSStyleSheet.prototype[k] = function (t) { try { window.__css.push({ n: String(t).length, at: Math.round(performance.now()), mark: /speed1-mark-(\d)/.test(String(t)) ? RegExp.$1 : "" }); } catch (e) {} return f.apply(this, arguments); }; }); } catch (e) {}
   const si = window.setInterval; window.__iv = [];
-  window.setInterval = function (fn, ms) { try { window.__iv.push({ n: fn && fn.name, ms: ms }); } catch (e) {} return si.apply(this, arguments); };
+  // ci1: the ticker keeper is found by what its code touches (the id "ticker-track", a string the minifier keeps), not by the
+  // function name `tickKeep`: the live build renames functions (scripts/bundle.mjs), and this check then found no timer.
+  window.setInterval = function (fn, ms) { try { window.__iv.push({ n: fn && fn.name, ms: ms, belt: /ticker-track/.test(Function.prototype.toString.call(fn)) }); } catch (e) {} return si.apply(this, arguments); };
 }
 const seedFix = (page, acc, ageMs) => page.evaluate(([acc, ageMs]) => {
   window.FASTPOS.last = { pos: { coords: { latitude: 60.1511, longitude: 15.1876, accuracy: acc }, timestamp: Date.now() - ageMs }, at: Date.now() - ageMs };
@@ -165,7 +167,7 @@ const timed = (page, body) => page.evaluate(`(async () => { const t0 = performan
       const count = async (ms) => { await page.evaluate(() => { window.__tk.reads = 0; window.__tk.at = []; }); await wait(page, ms);
         return page.evaluate(() => { const a = window.__tk.at; let c = 0, last = -1e9; a.forEach((t) => { if (t - last > 50) c++; last = t; }); return { reads: window.__tk.reads, passes: c }; }); };
       const idle = await count(5000);
-      const iv = await page.evaluate(() => window.__iv.filter((x) => x.n === "tickKeep"));
+      const iv = await page.evaluate(() => window.__iv.filter((x) => x.belt));
       console.log("     ticker 5 s idle: " + idle.reads + " layout reads in " + idle.passes + " passes; keeper timer " + JSON.stringify(iv));
       ok("S3 idle 5 s: at most 3 layout passes on the belt (old code: 20, 4 per second)", idle.passes <= 3, idle);
       ok("S3 the keeper runs once per second (was 250 ms)", iv.length === 1 && iv[0].ms === 1000, iv);

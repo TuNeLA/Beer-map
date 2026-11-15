@@ -1,0 +1,42 @@
+# E2E shards: ONE line per shard.   <name> <regex for run-all.sh> [options]
+#   options: chromium | webkit (browsers, default chromium) · par=N (tests at once, default 2) · site=bundled (serve the BUILT
+#            site: scripts/build-site.mjs --bundle on) · gate (the shard also runs before every live deploy, pages-bundle.yml)
+# A shard = one GitHub runner (about 45 s setup). Target: no shard over 8 minutes. See the expected time of each shard:
+#   node scripts/ci/plan.mjs . --times        (from tests/e2e/durations.txt)
+# Every suite of run-all.sh must match exactly ONE line here: node scripts/ci/shard-guard.mjs .   (in the unit job)
+# Add a test: `run <name> $B <file>` in run-all.sh, then add <name> to the regex of a shard with room (or add a line).
+# Names: letters, digits, - and _ only. The regex has no spaces. Read by scripts/ci/plan.mjs (job "plan" in e2e.yml).
+# On a ci/ branch a .ci-only file (one shard name per line) cuts the run to only those shards.
+
+# --- the deploy gate: these two run on the bundled site, in tests.yml AND before a live deploy ---
+gate-a     ^(bundle-smoke|main|sec|ux3|social2)$                site=bundled gate
+gate-b     ^(start1|x8|mycount|takeover|ci1)$                   site=bundled gate par=1   # service-worker cycles and a tap-timing check: one at a time
+
+# --- timing checks (taps < 100 ms, frame budgets): one test at a time ---
+timing-1   ^(speed1|d4map|c2speed|inst|s1speed)$                par=1
+timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1)$       par=1
+perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine
+
+# --- real Mapbox GL (need MAPBOX_TEST_TOKEN) and the map lane ---
+map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c)$
+map-gl-2   ^(map4|glfix-avpins|mbx|ownerfix-map|ui1-map)$
+map-lane   ^(map|map-b)$
+
+# --- UI (mocked Supabase), packed by measured time: 2 tests at once, about 7 minutes each (plan.mjs --times) ---
+# moments, popfix and fixmo are alone: each takes 8-10 minutes by itself (see ci1-DONE.md: the next thing to make faster).
+ui-01      ^(moments)$
+ui-02      ^(popfix)$
+ui-03      ^(fixmo)$
+ui-04      ^(mapzoom|lg|tickerfix2)$
+ui-05      ^(social-b|fixs|camfilm)$
+ui-06      ^(games2|fixm|fixc|ownerfix)$
+ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3)$
+ui-08      ^(c1menus|c5extras|cam|cln|followups|fixj|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk)$   chromium webkit   # + the two WebKit (iPhone engine) runs
+ui-09      ^(uifix|dialekt|ui1|after2|bold-skal)$
+ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left)$
+ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump)$
+ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3)$
+ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|eggs|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome|dsocial)$
+
+# --- 15 Nov design lanes (coordinator) ---
+ui-design  ^(d-beer)$
