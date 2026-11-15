@@ -107,10 +107,13 @@ function counts(page) {
       await wait(page, 1500);
       // c12fix: a real tap opens this list. Without a user gesture CALM holds every sheet in its 4 s quiet start (CI read 1079 ms here)
       await page.evaluate((ll) => { PN.s.lastLoc = { lat: ll[0], lng: ll[1] }; document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); window.__t0 = performance.now(); AFTER.showKebab(); }, LUD);
+      const pre = await page.evaluate(() => { const d = 0.025, la = 60.1496, ln = 15.1878; let n; try { n = BARS.placesInBounds(L.latLngBounds([la - d, ln - 2 * d], [la + d, ln + 2 * d]), 400).length; } catch (e) { n = String(e); } return { n, t: Math.round(performance.now()), glon: window.__glOnAt || null }; }); console.log("PRE " + JSON.stringify(pre));
       const q = await page.evaluate(() => new Promise((res) => { const t0 = performance.now(), tick = () => { const rows = document.querySelectorAll(".af-krow").length, skel = document.querySelectorAll(".af-skel").length;
         if (rows + skel > 0) res({ rows, skel, ms: Math.round(performance.now() - t0) }); else if (performance.now() - t0 > 5000) res({ rows: 0, skel: 0, ms: 5000 }); else requestAnimationFrame(tick); }; tick(); }));
       ok(q.rows + q.skel > 0 && q.ms < 1000, "I-56 food list shows a skeleton or rows < 1 s with the network still pending", q);
       ok(q.rows > 0, "I-56 nearest food rows come from local data at once (Ludvika)", q);
+      console.log("DBG " + JSON.stringify(await page.evaluate(() => { const c = __map.getCenter(), d = 0.025, la = 60.1496, ln = 15.1878; let n = -1; try { n = BARS.placesInBounds(L.latLngBounds([la - d, ln - 2 * d], [la + d, ln + 2 * d]), 400).length; } catch (e) { n = String(e); }
+        return { c: [c.lat, c.lng], z: __map.getZoom(), n, res: performance.getEntriesByType("resource").filter((r) => /places|index\.json/.test(r.name)).map((r) => r.name.split("/").pop() + "@" + Math.round(r.startTime) + "+" + Math.round(r.duration)), now: Math.round(performance.now()) }; })));
       await ctx.close().catch(() => {});
     }
     /* ---------- I-50 / I-51: icon + cluster counts ---------- */
