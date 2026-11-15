@@ -303,9 +303,42 @@
     return sec;
   }
 
+  // d-social (design2 small fix 8 + proposal 09, I-114). The top sheet said "Topplistor" twice (title + first tab): the tab
+  // is "Krogar". An empty bar list is the ONE empty state (ds.css .ds-estate): a fact, what the list shows, one action
+  // (it was a dashed box "Inga öl vid barer än."). The tab bar is drawn by polish2.js and the bar list by app-groups.js
+  // (showTop), after this hook or again later, so one observer keeps the two in step while this sheet is open.
+  function ic(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  function barsEmpty() {
+    var el = A.el, near = window.NEARPLACES && window.NEARPLACES.open;
+    var b = el("button", { type: "button", class: "ds-estate-a bd-none-go", html: ic(near ? "food" : "map") + "<span>" + U.esc(near ? L("Visa krogar nära dig", "Show bars near you") : L("Visa kartan", "Show the map")) + "</span>" });
+    b.addEventListener("click", function () { if (near) { try { window.NEARPLACES.open(); return; } catch (e) {} } A.closeSheet(); });
+    return el("div", { class: "ds-estate bd-none", "data-tt": "top" }, [
+      el("span", { class: "ds-estate-i", "aria-hidden": "true", html: ic("trophy") }),
+      el("b", { text: L("Ingen krog på listan än", "No bar on the list yet") }),
+      el("p", { text: L("Här ser du krogarna där folk är ikväll, flest först.", "Here you see the bars where people are tonight, the busiest first.") }), b]);
+  }
+  function tidyTop(body) {
+    var list = body.querySelector(":scope > ol.toplist:not(.bd-list):not(.bd-wlist)");
+    if (!list) return false;
+    var tab = body.querySelector(':scope > .tt-bar > [data-t="top"]'), name = L("Krogar", "Bars");
+    if (tab && tab.textContent !== name) tab.textContent = name;
+    var none = !!list.querySelector(":scope > li.top-empty:only-child"), box = body.querySelector(":scope > .bd-none"), note = body.querySelector(":scope > .top-note");
+    if (none && !box) body.insertBefore(barsEmpty(), list);
+    if (!none && box) box.remove();
+    if (list.hidden !== none) list.hidden = none;
+    if (note && note.hidden !== none) note.hidden = none;
+    return true;
+  }
+  function watchTop(body) {
+    if (!tidyTop(body) || !window.MutationObserver) return;
+    var mo = new MutationObserver(function () { if (!tidyTop(body)) mo.disconnect(); });   // another sheet took the body: stop
+    mo.observe(body, { childList: true, subtree: true });
+  }
+
   window.BOARDS = {
     init: function (api) { A = api; },
     topSheet: function (body) {
+      try { if (A && body) watchTop(body); } catch (e) {}
       if (!A || !A.LIVE || off || !A.authed || !A.authed()) return;
       var p = where(), town = townOf(p);
       var box = A.el("div", { class: "bd-box" });

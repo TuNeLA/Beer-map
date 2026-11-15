@@ -141,12 +141,14 @@ const close = (page) => page.evaluate(() => { const c = document.getElementById(
     ok(`[${w}] G4 group page has its colour (option A: a header band in the group colour)`, /sa-gpc-a/.test(pg.cls || "") && /sa-gpcol-\d/.test(pg.cls || "") && /gradient/.test(pg.bg), pg);
     const a2 = await page.evaluate(() => { const c = document.querySelector(".gpg > .a2-gcard"), n = document.querySelector(".gpg > .gpg-now"), m = document.querySelector(".gpg > .pn-gp-mem");
       if (!c) return null; const r = c.getBoundingClientRect(), rn = n && n.getBoundingClientRect(), rm = m && !m.hidden ? m.getBoundingClientRect() : null;
-      return { vis: r.height > 0, afterNu: !!rn && r.top >= rn.bottom - 1, beforeMem: !rm || r.bottom <= rm.top + 1, gid: window.__a2g && window.__a2g.id, w: Math.round(r.width), ww: Math.round(document.querySelector(".gpg").getBoundingClientRect().width) }; });
+      const ch = document.querySelector(".gpg > .gpg-chat"), rc = ch && ch.getClientRects().length ? ch.getBoundingClientRect() : null;   // d-social (design 07): Nu + Gänget ikväll = ONE card (n === m); the row sits under it, above the chat
+      return { vis: r.height > 0, afterNu: !!rn && r.top >= rn.bottom - 1, beforeMem: n === m ? (!rc || r.bottom <= rc.top + 1) : (!rm || r.bottom <= rm.top + 1), gid: window.__a2g && window.__a2g.id, w: Math.round(r.width), ww: Math.round(document.querySelector(".gpg").getBoundingClientRect().width) }; });
     const mo = await page.evaluate(() => {
       const g = document.querySelector(".gpg"), card = g.querySelector(":scope > .mo-gcard:not(.mo-room)"), room = g.querySelector(":scope > .mo-gcard.mo-room");
       const R = (e) => e && e.getClientRects().length && getComputedStyle(e).display !== "none" ? e.getBoundingClientRect() : null;
       const a2 = R(g.querySelector(":scope > .a2-gcard")), c = R(card), m = R(g.querySelector(":scope > .pn-gp-mem")), sp = R(g.querySelector(":scope > .sp-gi")), gk = R(g.querySelector(":scope > .sa-gk")), ro = R(room);
-      return { card: !!c, underA2: !!(c && a2 && c.top >= a2.bottom - 1 && c.top - a2.bottom < 24), aboveMem: !!(c && (!m || c.bottom <= m.top + 1)), full: !!(c && c.width >= g.getBoundingClientRect().width - 2),
+      const one = g.querySelector(":scope > .gpg-now.pn-gp-mem"), ch = R(g.querySelector(":scope > .gpg-chat"));   // d-social (design 07): the ONE card; "above Gänget ikväll" = above the chat now
+      return { card: !!c, underA2: !!(c && a2 && c.top >= a2.bottom - 1 && c.top - a2.bottom < 24), aboveMem: !!(c && (one ? (!ch || c.bottom <= ch.top + 1) : (!m || c.bottom <= m.top + 1))), full: !!(c && c.width >= g.getBoundingClientRect().width - 2),
         room: !!ro, roomAfterSpel: !!(ro && sp && ro.top >= sp.bottom - 1 && ro.top - sp.bottom < 24), roomT: room ? room.textContent : "",
         dbg: [...g.children].filter((e) => R(e)).map((e) => String(e.className).split(" ")[0] + ":" + Math.round(R(e).top) + "-" + Math.round(R(e).bottom) + ":o" + getComputedStyle(e).order).join(" ") };
     });

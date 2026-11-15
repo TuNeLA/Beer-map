@@ -198,7 +198,7 @@ async function routes(page, me) {
       await wait(page, 1200);
       if (await page.$(".glist .gcard")) { await page.click(".glist .gcard >> nth=0"); await wait(page, 1500); }
       const fc = await page.evaluate(() => [...document.querySelectorAll(".gpg-now .gpg-face")].map((f) => !!f.querySelector("svg")));
-      ok("NU strip faces are avatars", fc.length === 2 && fc.every(Boolean), fc);
+      ok("NU card faces are avatars (d-social design 07: the faces are the Gänget ikväll strip in the same card)", fc.length >= 2 && fc.every(Boolean), fc);
       await shot(page, "group-now");
       await page.click(".gpg-dots").catch(() => {}); await wait(page, 500);
       await page.evaluate(() => { const b = [...document.querySelectorAll(".gpg-info .gpg-row")].find((x) => /Medlemmar/.test(x.textContent)); if (b) b.click(); });

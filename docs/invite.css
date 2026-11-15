@@ -21,11 +21,33 @@
 .inv-pk-row input{width:20px;height:20px;flex:none;accent-color:var(--amber)}
 .inv-pk-main{display:flex;flex-direction:column;min-width:0}
 .inv-pk-main small{font-size:var(--fs-12);overflow-wrap:anywhere}
-.inv-pk-row.out .inv-pk-main b::after{content:" 🍺";font-weight:400}
 .inv-hint{font-size:var(--fs-12);line-height:1.4;margin:6px 0}
 .inv-send{margin-top:8px}
 .inv-where .inv-label{margin-top:6px}
 .inv-place{font-weight:600;overflow-wrap:anywhere}
+/* d-social (design 11, I-114): the "Bjud in" form (.inv-form): ONE label style, no emoji in a field, quick time choices
+   (the ONE segmented control, DESIGN.md rule 14) on the real time field, friends as rows with a round check mark. */
+.inv-form .ev-l,.inv-form .inv-pk-head > b{display:block;margin:var(--sp-4) 0 var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.inv-form > .ev-l:first-child{margin-top:0}
+.inv-form .inp{min-height:48px;border-radius:var(--r-md)}
+.inv-form .inv-hint{margin:var(--sp-2) 0 0;font:400 var(--fs-14)/20px var(--ds-sans)}
+.inv-form .inv-wq > button{flex:1 1 auto;padding:0 var(--sp-2);font:600 var(--fs-14)/1 var(--ds-sans);white-space:nowrap;overflow:visible;text-overflow:clip}   /* a label is never cut (DESIGN.md): widths follow the words */
+.inv-form .inv-when-f{margin-top:var(--sp-2)}
+.inv-form .inv-when-f[hidden]{display:none}
+.inv-form .inv-pk{margin-top:0}
+.inv-form .inv-pk-head{align-items:baseline;margin:0}
+.inv-form .inv-pk-head > .inv-pk-n{margin:var(--sp-4) 0 var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-amber-t)}
+.inv-form .inv-pk-q{margin-bottom:var(--sp-2)}
+.inv-form .inv-pk-list{margin-top:var(--sp-2);padding:0;overflow:auto;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--r-lg)}
+.inv-form .inv-pk-row label{display:flex;align-items:center;gap:var(--sp-3);min-height:56px;padding:var(--sp-2) var(--sp-4)}
+.inv-form .inv-pk-main{flex:1 1 auto}
+.inv-form .inv-pk-main b{font:600 var(--fs-16)/22px var(--ds-sans);overflow-wrap:anywhere}
+.inv-form .inv-pk-main small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.inv-form .inv-pk-row input{-webkit-appearance:none;appearance:none;order:2;flex:0 0 24px;width:24px;height:24px;margin:0 0 0 auto;border:2px solid var(--ds-muted);border-radius:var(--r-pill);background:transparent;cursor:pointer}
+.inv-form .inv-pk-row input:checked{border-color:var(--ds-amber);background:var(--ds-amber) var(--inv-check) center/14px no-repeat}
+.inv-form .inv-pk-row input:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.inv-form .inv-pk-row:has(input:checked){background:var(--ds-raised)}
+:root{--inv-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a0f1c' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
 /* invite view */
 .inv-when{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:var(--fs-m,16px)}
 .inv-cd{font-family:var(--hud);color:var(--amber-2)}

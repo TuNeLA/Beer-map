@@ -80,6 +80,10 @@ a.jn-btn{display:flex;align-items:center;justify-content:center;text-decoration:
   border-radius:var(--ds-r-pill);padding:0 var(--ds-3);color:var(--ds-text);font:400 var(--ds-fs-14) var(--ds-sans);cursor:pointer}
 .jn-code-v{font-family:var(--hud,ui-monospace,monospace);letter-spacing:.12em;font-size:var(--ds-fs-16)}
 .jn-code-help{margin:0;text-align:center;font-size:var(--ds-fs-12)}
+/* design2 small fix 30 (d-social): the group "Bjud in" sheet fits the first screen at 390 x 844. The hint under the buttons
+   was an amber box that the sheet edge cut in two: it is a plain grey line now, and the QR code is a little smaller. */
+.jn-inv .jn-qr img,.jn-inv .jn-qr canvas{max-width:min(196px,54vw)}
+.jn-inv .jn-how{margin:var(--ds-1) 0 0;padding:0;border-radius:0;background:none;color:var(--ds-muted);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);font-weight:400}
 
 /* ---------- group page tile: primary, full width, right under 💬 Chatt (polish2: section 0) ---------- */
 .gitem:not(.gcard)>div.gp>.jn-gtile,.jn-gtile{grid-column:1 / -1;display:flex}

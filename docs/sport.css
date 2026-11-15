@@ -36,6 +36,20 @@ body.ghost-chip-on #btn-evs.locate-btn{top:calc(var(--sat) + 258px + var(--chaos
 
 .evs-empty{margin:var(--ds-2) 0}
 .evs-tip{margin-top:var(--ds-4)}
+/* d-social (design2 small fix 7 + proposal 09): a filter part that has nothing to do is hidden (the rules that set display would show it) */
+.evs-chips[hidden],.evs-tools[hidden],.evs-tip[hidden]{display:none !important}
+/* d-social: the "Säg till gruppen" line in the detail shows at the tap ("Skickar…"), then "Skickat"; a failed post = one row to tap */
+.evs-tell.evs-tell-msg{gap:2px;border-style:solid;border-color:var(--ds-border);background:var(--ds-card)}
+.evs-tell-msg>b{font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted)}
+.evs-tell-t{font:400 var(--ds-fs-16)/22px var(--ds-sans);color:var(--ds-text);overflow-wrap:anywhere}
+.evs-tell-msg[aria-busy="true"]>.evs-tell-t{opacity:.72}
+.evs-tell-s{display:flex;align-items:center;gap:var(--ds-1);font:400 var(--ds-fs-12)/var(--ds-lh-12) var(--ds-sans);color:var(--ds-muted)}
+.evs-tell-s svg{width:14px;height:14px;flex:0 0 14px}
+.evs-tell-ok .evs-tell-s{color:var(--ds-green-t)}
+.evs-tell.evs-tell-fail{min-height:44px;border-color:var(--ds-red-t);cursor:pointer}
+.evs-tell-fail .evs-tell-s{font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-red-t)}
+.evs-tell-fail .evs-tell-s svg{width:16px;height:16px;flex:0 0 16px}
+.evs-tell-fail:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
 .evs-src{margin:var(--ds-3) 0 0;font-size:var(--ds-fs-12);line-height:var(--ds-lh-12);color:var(--ds-muted);text-align:center}
 
 /* bar sheet: 📺 Visar sport */

@@ -226,7 +226,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
     await clickJS(page, ".inv-send"); await wait(page, 2500);
     const ic = n(st, "invite_create").pop(), toasts = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent));
-    ok(`[${w}] N-16 "${f.shown}" shown first → Skicka sends with my GPS spot (no "Välj var.")`, /GPS/.test(f.shown || "") && !!ic && Math.abs(ic[1].p_lat - 60.1511) < 0.01 && !toasts.some((t) => /Välj var/.test(t)), { f, ic: ic && ic[1], toasts });
+    ok(`[${w}] N-16 "${f.shown}" shown first → Skicka sends with my GPS spot (no "Välj var.")`, /GPS|Där jag är nu/.test(f.shown || "") && !!ic && Math.abs(ic[1].p_lat - 60.1511) < 0.01 && !toasts.some((t) => /Välj var/.test(t)), { f, ic: ic && ic[1], toasts });
     await ctx.close();
   }
 
