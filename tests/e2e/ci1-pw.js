@@ -57,7 +57,7 @@ function startServer() {
   });
 }
 const BASE = () => "http://127.0.0.1:" + srv.port + "/";
-// own scripts + stylesheets the page asks for until the first pins are on the map
+// own scripts + stylesheets the page asks for until the "load" event; then the first pins must come
 async function startFiles(browser, dir) {
   srv.root = dir;
   const ctx = await browser.newContext({ serviceWorkers: "block", viewport: { width: 390, height: 844 }, locale: "sv-SE" });
@@ -65,9 +65,9 @@ async function startFiles(browser, dir) {
   await mock(page);
   const errs = []; page.on("pageerror", (e) => errs.push(e.message.slice(0, 160)));
   const reqs = []; page.on("request", (q) => { if (q.url().startsWith(BASE()) && /^(script|stylesheet)$/.test(q.resourceType())) reqs.push(q.url().replace(BASE(), "").replace(/\?.*/, "")); });
-  await page.goto(BASE());
+  await page.goto(BASE());   // resolves at the "load" event: every start script and stylesheet has been asked for
+  const n = reqs.length;     // (the lazy content files come 3 s after "load", js/boot.js: they are not start files)
   const pills = await page.waitForFunction(() => document.querySelectorAll(".pill").length > 0, null, { timeout: 45000 }).then(() => true, () => false);
-  const n = reqs.length;
   const info = await page.evaluate(() => ({ build: window.PN_BUILD || "", last: ([].slice.call(document.querySelectorAll('script[src*="app.bundle"]')).pop() || { getAttribute() { return ""; } }).getAttribute("src"), partErr: (window.OLNU_BUNDLE_ERR || []).length }));
   await ctx.close();
   return { n, pills, errs, reqs: reqs.slice(0, n), ...info };

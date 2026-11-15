@@ -166,7 +166,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
       await openVanner(page);
       st.kalle = "accepted";
       await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 600);
-      await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 2500);
+      await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 2500);
       const rows = await friendRows(page), k = rows.find((r) => r.name === "Kalle");
       if (process.env.FIXC_DEBUG) console.log("DEBUG", JSON.stringify(await page.evaluate(() => { const f = document.getElementById("inv-pane-f"); return { hid: f && f.hidden, html: f && f.innerHTML.replace(/<svg.*?<\/svg>/g, "").slice(0, 1500), panes: [...document.querySelectorAll(".inv-pane")].map((x) => x.id + ":" + x.hidden) }; })), JSON.stringify(st.calls.filter((c) => /friend/.test(c[0])).map((c) => c[0])));
       ok(`[${w}] N-04 Grupper → Vänner again: Kalle is a friend now, row has Skriv + Bjud in`, !!k && k.skriv && k.bjud && !/Väntar/.test(await waitTxt(page)), rows);
@@ -176,7 +176,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     // (c) friend_list is older than my_friends (first answer without Kalle) → the row still gets Skriv + Bjud in
     {
       const { ctx, page } = await app(browser, 390, { kalle: "accepted", flKalleAfter: 2 });
-      await openVanner(page); await settle(page, 2500);
+      await openVanner(page); await wait(page, 2500);
       const rows = await friendRows(page), k = rows.find((r) => r.name === "Kalle");
       ok("[390] N-04 a stale friend_list: the accepted friend's row has Skriv + Bjud in (DM start)", !!k && k.skriv && k.bjud, rows);
       await ctx.close();
@@ -188,7 +188,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
       const r0 = await friendRows(page);
       st.lisa = false;   // block_user on her side; friend_list answer still old
       await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 600);
-      await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 3000);
+      await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 3000);
       const r1 = await friendRows(page);
       ok("[390] N-18 blocked side: Lisa leaves Mina vänner without a reopen (a stale friend_list does not bring her back)", r0.some((r) => r.name === "Lisa") && !r1.some((r) => r.name === "Lisa"), { r0, r1 });
       await shot(page, "blocked-side", 390);

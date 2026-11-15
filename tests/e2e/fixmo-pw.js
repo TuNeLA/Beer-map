@@ -14,7 +14,7 @@ const PORT = process.argv[2] || 8871, BASE = `http://127.0.0.1:${PORT}/`;
 const ONLY = process.argv.slice(3).filter((x) => x !== "shots"), SHOTS = process.argv.includes("shots") || !ONLY.length;
 const OLD = process.env.FIXMO_OLD || "", ROOT = OLD || path.join(__dirname, "..", ".."), DOCS = path.join(ROOT, "docs");
 const want = (k) => !ONLY.length || ONLY.includes(k);
-const { wait, GID, settle } = H;
+const { wait, GID } = H;
 let pass = 0, fail = 0;
 const ok = (c, m, i) => { console.log((c ? "PASS " : "FAIL ") + m + (c || i === undefined ? "" : " " + JSON.stringify(i).slice(0, 400))); c ? pass++ : fail++; };
 const J = (r, b, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -256,13 +256,13 @@ const REPORT = { v: 1, night: NIGHT.toISOString(), evening: at(18, 0).slice(0, 1
       await page.waitForFunction(() => window.__map && document.querySelectorAll(".pill").length > 3, null, { timeout: 40000 }).catch(() => console.log("no pills"));
       await wait(page, 3000);
       const st0 = await page.evaluate(() => ({ gl: !!(window.__map.isGL && window.__map.isGL()), canvas: !!document.querySelector(".mapboxgl-canvas"), glbars: !!(window.GLBARS && window.GLBARS.on && window.GLBARS.on()) }));
-      await page.evaluate(() => window.__map.setView([60.1505, 15.1872], 13.6, { animate: false })); await settle(page, 2500);
+      await page.evaluate(() => window.__map.setView([60.1505, 15.1872], 13.6, { animate: false })); await wait(page, 2500);
       const cl = await page.evaluate(() => [...document.querySelectorAll(".leaflet-marker-icon.tz-cl")].map((e) => { const r = e.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2, t = document.elementFromPoint(x, y);
         return { x, y, hit: !!(t && t.closest(".tz-cl")), top: t ? t.tagName + "." + String(t.className && t.className.baseVal != null ? t.className.baseVal : t.className).slice(0, 40) : "" }; }).filter((c) => c.y > 140 && c.y < innerHeight - 260));
       let z0 = 0, z1 = 0;
       if (cl.length) {
         z0 = await page.evaluate(() => window.__map.getZoom());
-        await page.touchscreen.tap(cl[0].x, cl[0].y); await settle(page, 1600);
+        await page.touchscreen.tap(cl[0].x, cl[0].y); await wait(page, 1600);
         z1 = await page.evaluate(() => window.__map.getZoom());
       }
       ok(st0.gl && !st0.glbars && cl.length > 0, "N-13 setup: GL map attached, its style failed (GLBARS off), DOM fallback clusters drawn", { st0, n: cl.length });
@@ -281,7 +281,7 @@ const REPORT = { v: 1, night: NIGHT.toISOString(), evening: at(18, 0).slice(0, 1
         await page.evaluate(() => window.AFTER2.open(null, null));
         await page.waitForFunction(() => document.querySelector('.a2 [data-a2="next"]'), null, { timeout: 10000 }).catch(() => {});
         await page.evaluate(() => { const st = window.AFTER2._st(); st.i = st.m.cards.length - 2; document.querySelector('.a2 [data-a2="next"]').click(); }); await wait(page, 400);
-        await page.evaluate(() => document.querySelector('.a2 [data-a2="shareAll"]').click()); await settle(page, 1600);
+        await page.evaluate(() => document.querySelector('.a2 [data-a2="shareAll"]').click()); await wait(page, 1600);
         const f = await page.evaluate(() => { const c = document.querySelector(".a2-sh-card"), b = c && c.getBoundingClientRect(), row = c && [...c.querySelectorAll(".a2-row .a2-btn")].map((x) => x.getBoundingClientRect());
           return { fits: !!b && b.right <= innerWidth + 1 && b.left >= -1 && row.every((r) => r.right <= b.right + 1 && r.height >= 44), n: row ? row.length : 0, label: (c.querySelector('[data-a2="send"]') || {}).textContent }; });
         if (w !== 390) { await shot(page, "n14-share-sheet-" + w); ok(f.fits, `N-14 share sheet (3 buttons) fits @${w}`, f); await ctx.close(); continue; }
@@ -302,7 +302,7 @@ const REPORT = { v: 1, night: NIGHT.toISOString(), evening: at(18, 0).slice(0, 1
     if (want("copy")) {
       for (const w of SHOTS ? [390, 360, 430] : [390]) {
         const { ctx, page } = await setup(browser, { w });
-        await page.evaluate(() => document.getElementById("live-count").click()); await settle(page, 1200);
+        await page.evaluate(() => document.getElementById("live-count").click()); await wait(page, 1200);
         const t = await page.evaluate(() => (document.querySelector(".zn-out-note") || {}).textContent || "");
         if (w === 390) ok(/var 5:e minut/.test(t) && !/varje minut/.test(t), "N-19 Ute nu (zoomed in): 'uppdateras var 5:e minut' (the real 5 min)", t);
         if (SHOTS) await shot(page, "n19-ute-nu-" + w);

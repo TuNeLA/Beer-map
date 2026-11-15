@@ -167,16 +167,18 @@ async function ctxFor(browser, vp, o = {}) {
   await mock(page, o);
   return { ctx, page };
 }
-// ci1 (code audit B1): boot() slept a fixed 3.5 s on every start. The sleep covered four things. boot() now waits for each
-// of them by name, with the old 3.5 s as the cap (never slower than before):
-//   1. the lazy content files + sheet stylesheets. The app loads them 3 s after "load" when idle, or AT ONCE when a sheet
-//      opens (js/boot.js OLNU_LAZY_NOW, the app's own path). The helper asks for them at once and waits for OLNU_LAZY.
-//   2. window.__pnCalm     js/pnds.js: the splash is gone + 1.2 s, the start-up work that waits for "pn:calm" has begun
-//   3. PN.s.firstLoadDone  js/app-poll.js: the first poll is in and drawn (not asked for a clean start: no session, no poll)
-//   4. one idle period after 1-3 (the idle warm-up work that was queued before it has run), then BOOT_SETTLE ms for the
-//      redraw after setView (the 300 ms debounces).
-// Env PN_BOOT_SLEEP=3500 = the old fixed sleep (one switch back, also in CI: e2e.yml env).
-const BOOT_CAP = 3500, BOOT_SETTLE = Number(process.env.PN_BOOT_SETTLE || 400), BOOT_OLD = Number(process.env.PN_BOOT_SLEEP === undefined ? 3500 : process.env.PN_BOOT_SLEEP);   // WIP ci1: default = old 3.5 s sleep; PN_BOOT_SLEEP=0 = the new ready wait (misc + feat fail with it)
+// ci1 (code audit B1): boot() sleeps a fixed 3.5 s on every start. What that sleep really waits for (found with a probe):
+//   1. the CALM quiet window: js/calm.js holds every sheet that no real tap asked for during its first QUIET_MS = 4 s.
+//      The tests open sheets with a script click (no user activation), so a click before that opens the sheet up to 2 s late.
+//      This is the big one: it makes most of the 3.5 s necessary.
+//   2. the lazy content files + sheet stylesheets (js/boot.js: 3 s after "load", or at once when a sheet opens)
+//   3. window.__pnCalm (js/pnds.js: splash gone + 1.2 s) and PN.s.firstLoadDone (js/app-poll.js: the first poll is drawn)
+//   4. the idle warm-up work that waits for 1-3
+// PN_BOOT_SLEEP=0 = wait for each of these by name (cap: the old 3.5 s, so never slower). Gain here: 0.3-0.8 s per boot.
+// DEFAULT = the old fixed sleep: the named wait passed the 5 files it was tried on, but about 60 files use boot() and they
+// were not all run with it. To turn it on for all: run one full CI with PN_BOOT_SLEEP: '0' in e2e.yml, then change the default.
+const BOOT_CAP = 3500, BOOT_SETTLE = Number(process.env.PN_BOOT_SETTLE || 200), CALM_QUIET_MS = 4000;
+const BOOT_OLD = Number(process.env.PN_BOOT_SLEEP === undefined ? 3500 : process.env.PN_BOOT_SLEEP);
 async function ready(page, clean) {
   if (BOOT_OLD) { await wait(page, BOOT_OLD); return; }
   const t0 = Date.now(), left = () => Math.max(0, BOOT_CAP - (Date.now() - t0));
@@ -184,8 +186,10 @@ async function ready(page, clean) {
     const css = () => [].every.call(document.querySelectorAll('link[rel="stylesheet"]'), (l) => !!l.sheet || l.href.indexOf(location.origin) !== 0);   // own stylesheets only
     return new Promise((r) => (function chk() { if (css()) r(); else setTimeout(chk, 30); })());
   })]), left()).catch(() => {});
-  await page.waitForFunction((c) => window.__pnCalm === true && !document.getElementById("pn-splash") &&
-    (c || !window.PN || !window.PN.s || window.PN.s.firstLoadDone !== false), !!clean, { timeout: Math.max(1, left()), polling: 50 }).catch(() => {});
+  // calm.js starts its clock when it loads, before DOMContentLoaded: 4 s after DOMContentLoaded is past its quiet window
+  await page.waitForFunction(([c, q]) => { const n = performance.getEntriesByType("navigation")[0], dcl = n ? n.domContentLoadedEventStart : 0;
+    return window.__pnCalm === true && !document.getElementById("pn-splash") && performance.now() - dcl >= q + 100 &&
+      (c || !window.PN || !window.PN.s || window.PN.s.firstLoadDone !== false); }, [!!clean, CALM_QUIET_MS], { timeout: Math.max(1, left()), polling: 50 }).catch(() => {});
   await page.evaluate((cap) => new Promise((r) => { const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 800 }) : (f) => setTimeout(f, 50); setTimeout(r, cap); idle(() => idle(() => r())); }), left()).catch(() => {});
   await wait(page, Math.min(BOOT_SETTLE, left()));
 }
@@ -195,7 +199,7 @@ async function ready(page, clean) {
 // of the page is in flight (a mocked RPC answer still on its way). The cap is the old sleep, so it is never slower than before.
 // Do NOT use it where the test waits for a timer of the app (a calm window, a toast life, an RPC timeout) or checks that
 // nothing happens: keep wait() there. Env PN_SETTLE=off = every settle() is the old fixed wait.
-const SETTLE_QUIET = Number(process.env.PN_SETTLE_QUIET || 500), SETTLE_OFF = process.env.PN_SETTLE !== "on";   // WIP ci1: default off (= old fixed wait) until the 8 converted files are verified; PN_SETTLE=on = settle
+const SETTLE_QUIET = Number(process.env.PN_SETTLE_QUIET || 500), SETTLE_OFF = process.env.PN_SETTLE === "off";
 function track(page) {
   if (page.__pnInflight) return page.__pnInflight;
   const f = page.__pnInflight = new Set(), done = (q) => f.delete(q);

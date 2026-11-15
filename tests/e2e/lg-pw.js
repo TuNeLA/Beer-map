@@ -5,7 +5,7 @@ const H = require("./ds-helpers.js");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8920, MAIN = process.argv[3] === "main", BASE = `http://127.0.0.1:${PORT}/`;
 const SHOTS = SP + (MAIN ? "lg-shots/main-" : "lg-shots/");
-const { wait, settle } = H;
+const { wait } = H;
 let fails = 0;
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
 const BAR = { parma: [60.15124, 15.18797], pitch: [60.14997, 15.18679], lobby: [60.15098, 15.18663], grek: [60.15205, 15.18059] };
@@ -57,11 +57,11 @@ async function read(t, ll, acc, advMin, dm = [0, 0]) {
     const s0 = await st(t);
     ok(s0.full === true && s0.loc === true && s0.mode === "on", "default (beta, mode on): usage + position log ON (" + JSON.stringify(s0) + ")");
     ok(t.srv.reqs.length === 0, "no request at boot (events wait in memory)");
-    await H.clickJS(t.page, "#btn-groups"); await settle(t.page, 1200);
-    await H.clickJS(t.page, ".gmain.gtap"); await settle(t.page, 1500);
-    await t.page.evaluate((gid) => window.SOCIAL && window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), H.GID); await settle(t.page, 1200);
+    await H.clickJS(t.page, "#btn-groups"); await wait(t.page, 1200);
+    await H.clickJS(t.page, ".gmain.gtap"); await wait(t.page, 1500);
+    await t.page.evaluate((gid) => window.SOCIAL && window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), H.GID); await wait(t.page, 1200);
     await H.closeSheet(t.page); await wait(t.page, 400);
-    await H.clickJS(t.page, "#btn-settings"); await settle(t.page, 1200); await H.closeSheet(t.page); await wait(t.page, 300);
+    await H.clickJS(t.page, "#btn-settings"); await wait(t.page, 1200); await H.closeSheet(t.page); await wait(t.page, 300);
     for (let i = 0; i < 5; i++) await H.clickJS(t.page, "#btn-heat");
     await t.page.evaluate(() => { window.PNLOG.event("pf.test", { n: 2, name: "Kalle", lat: 60.1, note: "kalle@x.se", id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" }); });
     ok(t.srv.reqs.length === 0, "taps and sheets do not send one request each (" + t.srv.reqs.length + " requests before flush)");
@@ -110,8 +110,8 @@ async function read(t, ll, acc, advMin, dm = [0, 0]) {
   // 2. opt-out: switch off → only errors; position switch off → forget + no loc rows
   {
     const t = await setup(browser);
-    await H.clickJS(t.page, "#btn-settings"); await settle(t.page, 1200);
-    await H.clickJS(t.page, "#sheet-body [data-pf=s]"); await settle(t.page, 1200);
+    await H.clickJS(t.page, "#btn-settings"); await wait(t.page, 1200);
+    await H.clickJS(t.page, "#sheet-body [data-pf=s]"); await wait(t.page, 1200);
     await t.page.evaluate(() => { const b = document.querySelector("#sheet-body .set-r-synl"); if (b) b.click(); }); await wait(t.page, 600);
     const rows = await t.page.evaluate(() => [...document.querySelectorAll("#sheet-body .pnlog-set")].map((r) => r.textContent.trim()));
     ok(rows.length === 2 && /förbättra appen/.test(rows[0]) && /position/.test(rows[1]), "⚙️ Inställningar: 2 switch rows (" + rows.join(" | ") + ")");
@@ -151,7 +151,7 @@ async function read(t, ll, acc, advMin, dm = [0, 0]) {
     ok(s0.mode === "optin" && !s0.full && !s0.loc, "optin mode: usage + position OFF until the user says yes (" + JSON.stringify(s0) + ")");
     await t.page.evaluate(() => window.PNLOG._fix(60.15, 15.18, 9, "test"));
     ok((await st(t)).l === 0, "optin mode: a reading is NOT kept");
-    await t.page.evaluate(() => window.PNLOG._ask()); await settle(t.page, 1000);
+    await t.page.evaluate(() => window.PNLOG._ask()); await wait(t.page, 1000);
     const askTxt = await t.page.evaluate(() => document.getElementById("sheet-body").textContent);
     ok(/30 dagar/.test(askTxt) && /position/.test(askTxt) && /Inga texter, inga namn/.test(askTxt), "the ask says what, why, how long");
     await t.page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((x) => x.remove())); await wait(t.page, 200);
@@ -221,7 +221,7 @@ async function read(t, ll, acc, advMin, dm = [0, 0]) {
     await read(t, BAR.grek, 10, 1, [3, 2]); await read(t, BAR.grek, 10, 2.5, [-2, 3]); await read(t, BAR.grek, 9, 2.6, [1, -2]);
     const tx = await t.page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join("|"));
     ok(/Är du på Grekiska/.test(tx), "autoci still asks as before (" + tx.slice(0, 60) + ")");
-    await t.page.evaluate(() => document.querySelector("#toasts .ac-yes") && document.querySelector("#toasts .ac-yes").click()); await settle(t.page, 1800);
+    await t.page.evaluate(() => document.querySelector("#toasts .ac-yes") && document.querySelector("#toasts .ac-yes").click()); await wait(t.page, 1800);
     await flush(t);
     const L = locs(t), kinds = L.map((l) => l.k);
     console.log("   loc kinds:", kinds.join(","));
