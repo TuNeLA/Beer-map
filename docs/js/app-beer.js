@@ -270,11 +270,17 @@
     var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
     undoUntilMs = Date.now() + left;
-    var now = Date.now(), showAt = Math.max(now, tapAt + UNDO_AFTER_MS);
-    var st = undoSt = { on: false, busy: false, showAt: showAt, end: showAt + UNDO_SHOW_MS, guard: Math.max(tapAt + UNDO_GUARD_MS, showAt + UNDO_SETTLE_MS) };
-    undoOnT = setTimeout(function () { if (undoSt === st) { st.on = true; tickCooldown(); } }, showAt - now);
-    // "Ångra" stays 10 s only, then the timer. The group push still waits for the full window.
-    undoMiniTimer = setTimeout(function () { if (undoSt === st && !st.busy) { undoSt = null; tickCooldown(); } }, st.end - now);
+    // The 10 s and the guard count from the moment the state is really on screen (a busy phone runs this timer late: a
+    // guard planned from the tap would be over before "Ångra" shows).
+    var st = undoSt = { on: false, busy: false, end: 0, guard: Infinity };
+    undoOnT = setTimeout(function () {
+      if (undoSt !== st) return;
+      var t = Date.now();
+      st.on = true; st.end = t + UNDO_SHOW_MS; st.guard = Math.max(tapAt + UNDO_GUARD_MS, t + UNDO_SETTLE_MS);
+      // "Ångra" stays 10 s only, then the timer. The group push still waits for the full window.
+      undoMiniTimer = setTimeout(function () { if (undoSt === st && !st.busy) { undoSt = null; tickCooldown(); } }, UNDO_SHOW_MS);
+      tickCooldown();
+    }, Math.max(0, tapAt + UNDO_AFTER_MS - Date.now()));
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
     tickCooldown();
   }
