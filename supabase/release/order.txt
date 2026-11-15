@@ -87,6 +87,6 @@ release 0518   # srv1 sec: old pin functions give strangers no fixed beer id; sk
 release 0519   # srv1 sec: owner key lock-out cannot be caused by strangers; the correct key always works
 release 0520   # srv1 sec: group code guessing: per-IP day limit + global soft limit (on top of 0510)
 release 0521   # srv1 sec: claim_medal / award_medals('home') need a server fact; claims are logged
-release 0522   # srv1 perf: olnu_town_of cheap path, poll indexes, role statement_timeout only where none is set
+release 0522   # srv1: statement_timeout 20 s for anon / authenticated only where the role has none (no function change)
 release 0523   # srv1: drink cooldown from one setting (olnu_cooldown; default 10 min; staging row = 0)
 release 0436

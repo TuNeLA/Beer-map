@@ -417,6 +417,14 @@ jobs:
         run: |
           psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0509_bump_cheers.sql -f supabase/tests/bump-0509.test.sql | tee /tmp/b0509.txt
           if grep -q '|f|' /tmp/b0509.txt || ! grep -q '^bump-0509 done|t|' /tmp/b0509.txt; then echo "0509 test failed"; exit 1; fi
+      - name: 0517-0523 srv1 security + server fixes (check-in proof, pin ids, owner key, join codes, medals, timeout, cool-down)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          for t in "0517_checkin_verify checkin-0517" "0518_old_pin_ids pins-0518" "0519_owner_key_lockout ownerkey-0519" "0520_join_code_limit joincode-0520" "0521_medal_claims medals-0521" "0522_role_timeout timeout-0522" "0523_cooldown_setting cooldown-0523"; do
+            set -- $t
+            psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/$1.sql -f supabase/tests/$2.test.sql | tee /tmp/srv1-$2.txt
+            if grep -q '|f|' /tmp/srv1-$2.txt || ! grep -q "^$2 done|t|" /tmp/srv1-$2.txt; then echo "$2 test failed"; exit 1; fi
+          done
       - name: Staging drift report (optional secret STAGING_DB_URL, read-only; warn only)
         continue-on-error: true
         env:
