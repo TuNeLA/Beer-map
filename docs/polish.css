@@ -97,7 +97,7 @@
 .beer-sub{font-size:var(--fs-xs);font-weight:700;opacity:.8}
 .cd-track{stroke:rgba(245,166,35,.14);stroke-dasharray:none;stroke-width:3}
 /* ANNAT: a calm satellite button (still a 44+ target), not a second glowing hero */
-.other-btn{background:var(--glass-strong);border:1.5px solid rgba(217,184,255,.55);color:#efe4ff;
+.other-btn{background:var(--glass-strong);border:1px solid var(--hair);color:var(--ds-text);   /* uifix3 I-125: neutral edge (pnds.css ds32 wins) */
   box-shadow:0 0 0 2px rgba(8,12,22,.9),var(--sh-1);transition:transform var(--d-1) var(--ease)}
 .other-btn .ol-t{font-weight:700;letter-spacing:.06em;font-size:var(--fs-12)}
 .ocd-track{stroke:rgba(217,184,255,.12)}
