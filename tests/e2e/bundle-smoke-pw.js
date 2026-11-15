@@ -51,7 +51,10 @@ async function boot(browser, port, o = {}) {
   const html = await (await fetch(URL_(BP) + "index.html")).text();
   const localJs = [...html.matchAll(/<script defer src="\.\/([^"?]+)(\?v=[0-9a-f]{10})?"/g)];
   const localCss = [...html.matchAll(/<link rel="stylesheet" href="\.\/([^"?]+)(\?v=[0-9a-f]{10})?"/g)];
-  ok("B1 bundled index: ≤ 6 local start scripts (config.js, unbundle.js, the bundles)", localJs.length > 0 && localJs.length <= 6, localJs.map((m) => m[1]));
+  // ci1: the bundles are named groups (scripts/bundle.mjs GROUPS: boot, mbx, base … app, last), cut along the document order
+  ok("B1 bundled index: ≤ 14 local start scripts (config.js, unbundle.js, the bundle groups)", localJs.length > 0 && localJs.length <= 14, localJs.map((m) => m[1]));
+  const grp = localJs.map((m) => m[1]).filter((f) => /^js\/app\.bundle/.test(f));
+  ok("B1 the last bundle is the small boot group (app.js + PN_BUILD), so the last bundle tag changes with every release", /app\.bundle(-last|-\d+)?\.js$/.test(grp[grp.length - 1] || ""), grp);
   ok("B1 bundled index: 1 local stylesheet", localCss.length === 1, localCss.map((m) => m[1]));
   ok("B1 config.js stays its own file (server address: test server + beta staging build rewrite it)", localJs.some((m) => m[1] === "config.js"));
   const unstamped = [...html.matchAll(/(?:src|href)="\.\/([^"?]+\.(?:js|css))(\?v=[0-9a-f]{10})?"/g)].filter((m) => !m[2]).map((m) => m[1]);
@@ -90,7 +93,7 @@ async function boot(browser, port, o = {}) {
 
   // ---------- B4: a bundle that does not load → unbundle.js loads the single files ----------
   {
-    const U = await boot(browser, BP, { before: async (ctx, page) => { await page.route(/\/js\/app\.bundle-?\d*\.js/, (r) => /bundle(-3)?\.js/.test(r.request().url()) ? r.abort() : r.fallback()); } });
+    const U = await boot(browser, BP, { before: async (ctx, page) => { await page.route(/\/js\/app\.bundle[-\w]*\.js/, (r) => /bundle(-3|-social|-ui)?\.js/.test(r.request().url()) ? r.abort() : r.fallback()); } });
     await wait(U.page, 3000);
     const s = await U.page.evaluate(() => ({ unb: window.OLNU_UNBUNDLED || 0, mods: ["SAFETY", "SOCIAL", "ZONES", "PNDS", "X8", "GPAGE"].filter((k) => !window[k]), pills: document.querySelectorAll(".pill").length }));
     ok("B4 the main bundle fails to load: reload once, then the single files (data-parts) → the app works", s.unb >= 1 && s.mods.length === 0 && s.pills > 0, s);
@@ -112,7 +115,7 @@ async function boot(browser, port, o = {}) {
           if (!v) { if (Date.now() - t0 > 40000) return res({ keys: ks }); return setTimeout(chk, 500); }
           return caches.open(v).then((c) => c.keys()).then((rs) => {
             const u = rs.map((r) => r.url.replace(location.origin, ""));
-            if (!u.some((x) => /app\.bundle-?\d*\.js/.test(x)) && Date.now() - t0 < 40000) return setTimeout(chk, 500);
+            if (!u.some((x) => /app\.bundle[-\w]*\.js/.test(x)) && Date.now() - t0 < 40000) return setTimeout(chk, 500);
             Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(r, 15000))]).then((reg) => res({ v, n: u.length, bundle: u.filter((x) => /bundle/.test(x)), active: !!(reg && reg.active) }));
           });
         });

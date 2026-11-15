@@ -184,6 +184,22 @@ label.fld,label.ev-l{display:block;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(
 .ds-empty,.sheet-body li.muted:only-child,.sheet-body .empty{display:block;text-align:center;padding:var(--ds-5) var(--ds-4);color:var(--ds-muted);font-size:var(--ds-fs-14);line-height:var(--ds-lh-14);
   border:1px dashed var(--ds-border-2);border-radius:var(--ds-r-2);list-style:none}
 
+/* ---------- .ds-estate: the ONE empty state (design2 proposal 09, I-114) ----------
+   Says what is missing (one plain sentence, a fact, no joke), then what this screen shows, then at most ONE action.
+   No dashed box. Controls that do nothing while the list is empty are hidden by their own module.
+   <div class="ds-estate"><span class="ds-estate-i">icon</span><b>Inga event ikväll</b><p>help</p><button class="ds-estate-a">icon + label</button></div>
+   Used by js/evsheet.js (Event), js/inbox.js (Inkorg), js/boards.js (Topplistor). */
+.ds-estate{display:flex;flex-direction:column;align-items:flex-start;gap:var(--ds-2);margin:var(--ds-3) 0;padding:var(--ds-5) var(--ds-4);
+  background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);color:var(--ds-text);text-align:left;list-style:none}
+.ds-estate-i{flex:0 0 auto;width:44px;height:44px;margin-bottom:var(--ds-1);border-radius:var(--ds-r-1);background:var(--ds-raised);color:var(--ds-amber-t);display:grid;place-items:center}
+.ds-estate-i svg{width:24px;height:24px}
+.ds-estate>b{font:600 var(--ds-fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.ds-estate>p{margin:0;font:400 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted)}
+.ds-estate-a{display:inline-flex;align-items:center;justify-content:center;gap:var(--ds-2);min-height:44px;margin-top:var(--ds-3);padding:0 var(--ds-4);border:0;border-radius:var(--ds-r-1);
+  background:var(--ds-raised);color:var(--ds-text);font:600 var(--ds-fs-16)/1 var(--ds-sans);cursor:pointer}
+.ds-estate-a svg{width:20px;height:20px;flex:0 0 20px;color:var(--ds-amber-t)}
+.ds-estate-a:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+
 /* ---------- .ds-list / .ds-row (56–64 px rows with dividers) ---------- */
 .ds-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--ds-r-2);overflow:hidden}
 .ds-list>*{margin:0 !important}

@@ -1,5 +1,5 @@
 // lane c4drinks: I-33 one PNI.kind everywhere, I-35 beer-style picker icons + >= 44 px, I-26 Sidospår buttons hold the icon,
-// I-34 ÅNGRA chip exactly over Annat, I-44 Swish link per platform (Android intent / iPhone https / PC QR).
+// I-34 ÅNGRA never covers Annat (d-beer I-114: "Ångra" is the ÖL! button itself for 10 s; before: a chip exactly over Annat), I-44 Swish link per platform (Android intent / iPhone https / PC QR).
 // Usage: node c4drinks-pw.js <port>
 const { ctxFor, boot, wait } = require("./ds-helpers.js");
 const pw = require("playwright");
@@ -73,20 +73,20 @@ async function open(browser, o = {}) {
     await page.screenshot({ path: (process.env.TEST_OUT || "/tmp/") + "c4drinks-sidospar.png" });
     await ctx.close();
   }
-  /* ---- I-34: ÅNGRA chip exactly over Annat ---- */
+  /* ---- I-34 → d-beer I-114 (owner 15 Nov: the undo "covers the Annat choice"): "Ångra" is the ÖL! button, Annat stays free ---- */
   {
     const { ctx, page } = await open(browser);
     await page.evaluate(() => document.getElementById("btn-beer").click()); await wait(page, 1800);
     const u = await page.evaluate(() => {
-      const f = document.querySelector(".undo-fab"), o = document.getElementById("btn-other"); if (!f || !o) return { f: !!f, o: !!o };
-      const a = f.getBoundingClientRect(), b = o.getBoundingClientRect(), e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
-      return { a: [a.left, a.top, a.width, a.height].map(Math.round), b: [b.left, b.top, b.width, b.height].map(Math.round), top: !!(e && f.contains(e)) };
+      const f = document.querySelector(".undo-fab"), o = document.getElementById("btn-other"), bb = document.getElementById("btn-beer"); if (!o) return { o: false };
+      const b = o.getBoundingClientRect(), e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height * 0.6);
+      return { fab: !!f, undo: bb.classList.contains("undo"), label: document.getElementById("beer-label").textContent.trim(), top: !!(e && (e === o || o.contains(e))) };
     });
-    ok(u.a && JSON.stringify(u.a) === JSON.stringify(u.b), "undo chip has the same box as Annat", u);
-    ok(u.top, "undo chip is the element on top of Annat");
+    ok(u.undo && u.label === "Ångra" && !u.fab, "Ångra is the ÖL! button (no floating undo chip)", u);
+    ok(u.top, "Annat is the element on top at its own place (not covered)", u);
     await page.screenshot({ path: (process.env.TEST_OUT || "/tmp/") + "c4drinks-undo.png" });
     await wait(page, 10500);
-    ok(await page.evaluate(() => !document.querySelector(".undo-fab")), "undo chip gone after 10 s (Annat usable again)");
+    ok(await page.evaluate(() => !document.querySelector("#btn-beer.undo") && /^\d:\d\d$/.test(document.getElementById("beer-label").textContent)), "Ångra gone after 10 s (the button shows the timer)");
     await ctx.close();
   }
   /* ---- I-44: Swish per user agent ---- */

@@ -62,10 +62,27 @@
     wrap.classList.add("spill"); btnEl.classList.add("ready-pop");
     setTimeout(function () { wrap.classList.remove("spill"); btnEl.classList.remove("ready-pop"); }, 1200);
   }
+  // The label of the round button. html = what to draw, text = what it reads as (others write textContent: then we draw again).
+  function setLabel(html, text) {
+    var lab = $("beer-label");
+    if (lab._pnH === html && lab.textContent === text) return;
+    lab.innerHTML = html; lab._pnH = html;
+  }
+  // m:ss with one fixed cell per digit (the display font has no tabular figures: the time must not jump every second)
+  function timeHTML(s) {
+    s = String(s);
+    return '<span class="bt-t' + (s.length > 4 ? " bt-long" : "") + '">' +
+      s.split("").map(function (c) { return '<span class="' + (c === ":" ? "bt-c" : "bt-d") + '">' + U.esc(c) + "</span>"; }).join("") + "</span>";
+  }
   function tickCooldown() {
-    var left = cooldownLeft(), btnEl = $("btn-beer"), ring = $("cd-ring");
-    var on = left > 0;
-    btnEl.classList.toggle("cooldown", on);
+    var left = cooldownLeft(), btnEl = $("btn-beer"), ring = $("cd-ring"), wrap = btnEl.parentNode;
+    // d-beer: after an accepted beer the button is "Ångra" for 10 s (undoSt.on). uWait = the short time between the server's
+    // yes and that state: the pressed ÖL! face stays (no 10:00 flash before "Ångra").
+    var u = undoSt, uOn = !!(u && u.on), uWait = !!(u && !u.on);
+    var on = left > 0 && !uWait;
+    btnEl.classList.toggle("cooldown", on || uOn);
+    btnEl.classList.toggle("undo", uOn);
+    wrap.classList.toggle("ud", uOn);
     btnEl.classList.toggle("soon", !LIVE);
     if (!LIVE) {
       // Coming soon: no backend yet. Button is visible but disabled.
@@ -77,11 +94,22 @@
       ring.style.strokeDashoffset = String(RING_LEN);
       return;
     }
-    if (on) {
+    if (uOn) {
+      // "Ångra" in the glass: icon + word. A tap = undo_beer (the click handler below; guarded against a double tap).
+      var word = u.busy ? t("undoBusy") : tl("Ångra", "Undo");
+      btnEl.disabled = !!u.busy;
+      setLabel(undoIc(u.busy ? "hourglass" : "undo") + '<span class="bu-w">' + U.esc(word) + "</span>", word);
+      $("beer-sub").textContent = "";
+      btnEl.setAttribute("aria-label", tl("Ångra senaste ölen", "Undo the last beer"));
+      ring.style.strokeDashoffset = "0";   // beerui.css runs the ring down over the 10 s
+      if (!PN.s.cdTimer) PN.s.cdTimer = setInterval(tickCooldown, 1000);
+    } else if (on) {
+      // The wait: only the time, in the middle of the glass (owner 15 Nov: no words before the time, no box around it).
+      var mmss = U.mmss(left);
       btnEl.disabled = true;
-      $("beer-label").textContent = U.mmss(left);
-      $("beer-sub").textContent = t("nextIn");
-      btnEl.setAttribute("aria-label", t("nextIn") + " " + U.mmss(left));
+      setLabel(timeHTML(mmss), mmss);
+      $("beer-sub").textContent = "";
+      btnEl.setAttribute("aria-label", tl("Paus, " + mmss + " kvar", "Pause, " + mmss + " left"));
       // Server wait may be longer than the local fallback (old server): clamp the ring to 0..1.
       ring.style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, left / U.COOLDOWN_MS)));
       // Design pass 2: the button fills like a pint (14 % → 92 %), foam head on top, bubbles in the beer.
@@ -89,15 +117,15 @@
       if (!PN.s.cdTimer) PN.s.cdTimer = setInterval(tickCooldown, 1000);
     } else {
       if (PN.s.cdTimer) { clearInterval(PN.s.cdTimer); PN.s.cdTimer = null; }
-      if (!PN.s.busy) btnEl.disabled = false;
-      $("beer-label").textContent = t("beer");
+      btnEl.disabled = !!(PN.s.busy || uWait);
+      $("beer-label").textContent = t("beer"); $("beer-label")._pnH = "";
       $("beer-sub").textContent = t("beerSub");
       btnEl.removeAttribute("aria-label");
       ring.style.strokeDashoffset = String(RING_LEN);
-      if (cdWasOn) pintSpill(btnEl);
+      if (cdWasOn && !uWait) pintSpill(btnEl);
     }
-    cdWasOn = on;
-    btnEl.parentNode.classList.toggle("cd", on);
+    cdWasOn = on && !uOn;   // the foam spills when the WAIT ends (not when "Ångra" ends or a beer is undone)
+    wrap.classList.toggle("cd", on || uOn);
     fitBeerLabel();
   }
   $("cd-ring").style.strokeDasharray = String(RING_LEN);
@@ -117,7 +145,7 @@
   window.addEventListener("resize", U.debounce(function () { fitKey = ""; fitBeerLabel(); }, 150));
   function setBusy(v) {
     // I-104: the pulsing "busy" look only when the answer takes > 0.9 s (a normal tap feels instant; the tap is blocked at once)
-    PN.s.busy = v; var b = $("btn-beer"); b.disabled = v || cooldownLeft() > 0;
+    PN.s.busy = v; var b = $("btn-beer"); b.disabled = v || (cooldownLeft() > 0 && !(undoSt && undoSt.on));
     clearTimeout(PN.s.busyT); if (v) PN.s.busyT = setTimeout(function () { if (PN.s.busy) b.classList.add("busy"); }, 900); else b.classList.remove("busy");
     if (!v) setTimeout(drainSheets, 80);
   }
@@ -203,7 +231,7 @@
   }
   /* ---------- ↩️ ÅNGRA (undo_beer, 2 min) + push only after the undo window ---------- */
   var NOTIFY_KEY = "olnu.notifyAt", notifyTimer = null;
-  var undoTimer = null, undoMiniTimer = null, UNDO_BIG_MS = 12000;
+  var undoTimer = null, undoMiniTimer = null;
   function scheduleNotify(atMs) {
     flushNotify(true);   // a beer still waiting: its window ends now (the next beer)
     U.ls.set(NOTIFY_KEY, String(atMs));
@@ -223,96 +251,126 @@
     if (Date.now() >= at) flushNotify(false);
     else { clearTimeout(notifyTimer); notifyTimer = setTimeout(function () { flushNotify(false); }, at - Date.now() + 1500); }
   }
+  // d-beer (I-114, owner 15 Nov: "I click the beer button and then it goes over to: you can regret it for 10 seconds, and
+  // then it goes over to the timer"). undoSt = the Ångra state of the ÖL! button: { on, end, guard, busy }. No floating
+  // button any more (the old round ↩ sat on top of Annat). The server's own window (2 min) stays open in 📊 Min kväll.
+  var UNDO_SHOW_MS = 10000, UNDO_GUARD_MS = 1000, UNDO_AFTER_MS = 600, UNDO_SETTLE_MS = 500;
+  var undoSt = null, undoLate = null, undoOnT = null, tapAt = 0, undoUntilMs = 0;   // undoUntilMs: the end of the server's window for the last beer of this phone
   function clearUndo() {
-    clearTimeout(undoTimer); clearTimeout(undoMiniTimer); undoTimer = undoMiniTimer = null;
-    clearInterval(undoPosTimer);
+    clearTimeout(undoTimer); clearTimeout(undoMiniTimer); clearTimeout(undoOnT); undoTimer = undoMiniTimer = undoOnT = null;
+    undoUntilMs = 0;
     if (undoLate) { clearTimeout(undoLate.t); undoLate = null; }
-    if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; }
+    if (undoSt) { undoSt = null; tickCooldown(); }
   }
-  var UNDO_SHOW_MS = 10000, undoPosTimer = null, undoLate = null;
-  // c4drinks I-34: the ÅNGRA chip sits exactly over #btn-other (Annat): same box, measured, kept in place while the dock moves.
-  // Why this and not "ÖL! turns into Ångra": a second tap on ÖL! is the most likely tap right after a beer, so it must never undo by mistake.
-  function placeUndo() {
-    clearInterval(undoPosTimer);
-    function put() {
-      var u = PN.s.undoEl, o = document.getElementById("btn-other");
-      if (!u) { clearInterval(undoPosTimer); return; }
-      var r = o && o.getBoundingClientRect();
-      if (!r || !r.width || !r.height) { u.classList.remove("over-annat"); return; }
-      u.classList.add("over-annat");
-      u.style.left = r.left + "px"; u.style.top = r.top + "px"; u.style.width = r.width + "px"; u.style.height = r.height + "px";
-    }
-    put(); undoPosTimer = setInterval(put, 200);
-  }
-  function showUndo(d, text, cls) {
+  // An accepted beer with an undo window. Order on screen: tap → number + effect → "Ångra" 10 s → timer.
+  // The state starts 0.6 s after the tap at the earliest (the number is in by then). Taps do nothing in the first 1.0 s
+  // after the ÖL! tap and the first 0.5 s of the state (people tap twice fast; a card-close tap can land here too).
+  function showUndo(d) {
     clearUndo();
     var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
-    // The level message is a normal short toast; ÅNGRA is a small ↩️ button next to ÖL! (owner: the big
-    // red toast covered the beer-type strip).
-    if (text) beerSay(text, { cls: cls || "", ms: 5000 });   // x8: the "Skål! Ölen räknas…" toast turns into this line
-    else beerSayClear();   // I-105: after a 5 / 10 / 15 card there is no 2nd text
-    PN.s.undoEl = el("button", { type: "button", class: "undo-fab", "aria-label": t("undoBtn"), title: t("undoBtn"), html: undoIc("undo"),
-      onclick: function () { doUndo(PN.s.undoEl); } });
-    document.body.appendChild(PN.s.undoEl);
-    placeUndo();   // c4drinks I-34: exactly over the Annat button (same size, same place) while it lives
-    // The ÅNGRA toast stays 10 s only (owner: it was in the way). The group push still waits for the full window.
-    undoMiniTimer = setTimeout(function () { if (PN.s.undoEl) { PN.s.undoEl.remove(); PN.s.undoEl = null; } }, UNDO_SHOW_MS);
+    undoUntilMs = Date.now() + left;
+    // The 10 s and the guard count from the moment the state is really on screen (a busy phone runs this timer late: a
+    // guard planned from the tap would be over before "Ångra" shows).
+    var st = undoSt = { on: false, busy: false, end: 0, guard: Infinity };
+    undoOnT = setTimeout(function () {
+      if (undoSt !== st) return;
+      var t = Date.now();
+      st.on = true; st.end = t + UNDO_SHOW_MS; st.guard = Math.max(tapAt + UNDO_GUARD_MS, t + UNDO_SETTLE_MS);
+      // "Ångra" stays 10 s only, then the timer. The group push still waits for the full window.
+      undoMiniTimer = setTimeout(function () { if (undoSt === st && !st.busy) { undoSt = null; tickCooldown(); } }, UNDO_SHOW_MS);
+      tickCooldown();
+    }, Math.max(0, tapAt + UNDO_AFTER_MS - Date.now()));
     undoTimer = setTimeout(function () { clearUndo(); flushNotify(false); }, left);
+    tickCooldown();
   }
-  // I-105: a 5 / 10 / 15 beer. The full-screen card is the ONE text (no toast behind it) and it covers the dock, so the ↩ button
-  // comes when the card closes and lives its 10 s from then. Returns the "card closed" function. 20 s = safety net (no card came).
-  function undoAfterCard(d, cls) {
+  // I-105: a 5 / 10 / 15 beer. The full-screen card is the ONE text (no toast behind it) and it covers the dock, so the
+  // Ångra state comes when the card closes and lives its 10 s from then. Returns the "card closed" function. 20 s = safety net (no card came).
+  function undoAfterCard(d) {
     clearUndo();
     var w = undoLate = { t: setTimeout(go, 20000) };
-    function go() { if (undoLate !== w) return; clearTimeout(w.t); undoLate = null; showUndo(d, "", cls); }
+    function go() { if (undoLate !== w) return; clearTimeout(w.t); undoLate = null; showUndo(d); }
     return go;
   }
-  // uifix (final check): the chip shows the PNI undo / hourglass icon, not the ↩️ / ⏳ emoji
-  function undoIc(n) { var P = window.PNI; return P && P.svg && (!P.has || P.has(n)) ? P.svg(n, "undo-ic") : (n === "undo" ? "↩️" : "⏳"); }
+  // uifix (final check): the PNI undo / hourglass icon, not the ↩️ / ⏳ emoji
+  function undoIc(n) { var P = window.PNI; return P && P.svg && (!P.has || P.has(n)) ? P.svg(n, "undo-ic") : ""; }
   var undoing = false;
-  function doUndo(button) {
+  // button = an other control that asked (the "Ångra" row in Min kväll); cb(ok) when the answer is in.
+  function doUndo(button, cb) {
     if (undoing) return;
     undoing = true;
-    if (button) { button.disabled = true; if (button.classList.contains("undo-fab")) button.innerHTML = undoIc("hourglass"); else button.textContent = t("undoBusy"); }
+    var keep = button ? button.textContent : "";
+    if (button) { button.disabled = true; button.textContent = t("undoBusy"); }
+    if (undoSt) { undoSt.busy = true; tickCooldown(); }
     rpc("undo_beer").then(function (r) {
       undoing = false;
       if (r.error) {
-        if (button) { button.disabled = false; if (button.classList.contains("undo-fab")) button.innerHTML = undoIc("undo"); else button.textContent = "↩️ " + t("undoBtn"); }
+        if (button) { button.disabled = false; button.textContent = keep; }
+        if (undoSt) { undoSt.busy = false; if (Date.now() >= undoSt.end) undoSt = null; tickCooldown(); }
         toast(t("undoFail"), { err: true });
+        if (cb) cb(false);
         return;
       }
       var d = parseData(r.data);
       clearUndo();
+      if (PN.s.meState) PN.s.meState.undo_until = null;
       if (!d.ok) {
         toast(d.reason === "limit" ? t("undoLimit") : d.reason === "no_beer" ? t("undoNone") : t("undoTooLate"), { ms: 5000 });
         flushNotify(true);
+        if (cb) cb(false);
         return;
       }
       cancelNotify();   // an undone milestone sends no push
-      var lines = t("undoToasts") || [];
-      toast(lines.length ? lines[Math.floor(Math.random() * lines.length)] : "↩️", { ms: 5500, cls: "skal" });
+      toast(tl("Ölen togs bort.", "The beer was removed."), { ms: 4000, id: "undo" });   // ONE calm line: the answer to this tap
       window.FX.vibrate([15, 30, 15]);
       var m = myNight() || {};
       m.count = d.beer_count | 0; m.lastTap = 0;   // the old cooldown comes back with the next poll
       U.ls.setJSON("olnu.night", m);
+      if (PN.s.meState) PN.s.meState.beer_count = d.beer_count | 0;
       PN.s.lastAcceptAt = 0;
       mods("onBeerUndone", d);
+      cdWasOn = false;   // ready again without the "foam spills" effect
       tickCooldown(); updateCounts();
       refresh();
+      if (cb) cb(true);
     });
   }
+  // Min kväll (nightlog.js): is the server's undo window (2 min) still open, and the way to use it.
+  PN.beerUndo = {
+    open: function () {   // this phone's last beer (undoUntilMs), or the server's "me" after a reload / a beer on another phone
+      var u = PN.s.meState && PN.s.meState.undo_until, at = u ? Date.parse(u) : NaN;
+      return !undoing && (undoUntilMs > Date.now() || (isFinite(at) && at > Date.now()));
+    },
+    run: function (button, cb) { doUndo(button || null, cb); },
+    state: function () { return undoSt ? { on: undoSt.on, busy: undoSt.busy, left: undoSt.end - Date.now(), guard: undoSt.guard - Date.now() } : null; }
+  };
   // A poll says the undo window is over (or undone on another phone): drop the button.
-  function undoSync(me) { if ((PN.s.undoEl || undoLate) && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
+  function undoSync(me) { if ((undoSt || undoLate) && !undoing && me && !me.undo_until) { clearUndo(); flushNotify(false); } }
 
-  $("btn-beer").addEventListener("click", function () { beerTap(null); });
+  $("btn-beer").addEventListener("click", function () {
+    var u = undoSt;
+    if (u) { if (u.on && !u.busy && Date.now() >= u.guard) doUndo(null); return; }   // "Ångra" (a tap in the guard time does nothing)
+    beerTap(null);
+  });
   // x8 (weak signal): an ÖL! that can not reach the server goes into the outbox (js/x8.js, max 5, 90 min) and is sent later
   // (online / next good poll / app start). Replaces the QA #19 queue (1 beer, 20 min). Instant feedback on every network:
   // splash at the tap, then "Skål! Ölen räknas…" before the RPC; the answer changes the SAME toast (no 2nd slide-in).
   var X8 = window.X8 || null, beerPend = null;
+  function isStore() { try { return !!(window.FX && window.FX.store && window.FX.store()); } catch (e) { return false; } }
+  // d-beer: is the count burst the answer to an accepted tap? (web build with mycount.js). Else: one plain fact toast.
+  function burstOn() { return !isStore() && !!(window.MYCOUNT && window.MYCOUNT.early); }
   function beerPending() {
     beerPend = null; toastClear("x8-beer");
+    if (burstOn()) return;   // I-114: the number is on screen at the tap: no "Skål! Ölen räknas…" line
     if (X8) beerPend = toast(X8.say("x8.pending"), { id: "x8-beer", ms: RPC_TIMEOUT_MS + 3000 });
+  }
+  // The accepted beer for screen readers (the burst is aria-hidden and there is no toast): one polite line.
+  function srSay(text) {
+    try {
+      var n = document.getElementById("beer-sr");
+      if (!n) { n = el("span", { id: "beer-sr", class: "sr-only", role: "status", "aria-live": "polite" }); document.querySelector(".dock").appendChild(n); }
+      n.textContent = text; clearTimeout(n._t); n._t = setTimeout(function () { n.textContent = ""; }, 4000);
+    } catch (e) {}
   }
   function beerSay(text, opts) {
     opts = opts || {};
@@ -381,9 +439,12 @@
     if (!PN.s.authed) { toast(t("connecting"), { id: "auth" }); signIn().then(function () { if (PN.s.authed) beerTap(); }); return; }   // ⚡ the 1st action makes the account
     window.FX.unlock();
     if (window.FX.juice) window.FX.juice.press($("btn-beer")); else { window.FX.splash($("btn-beer")); window.FX.vibrate(20); }
+    clearUndo();   // a new beer: an "Ångra" still waiting for a card is over
+    tapAt = Date.now();
     setBusy(true);
     tapPos().then(askWhere, noGpsSpot).then(function (spot) {
       if (!spot || spot._skip) { if (!spot) toast(t("whereCancel"), { id: "where" }); return; }
+      tapAt = Date.now();   // after "Var dricker du?" the pick is the tap that counts
       var ghost = !!spot._nopin || !!(window.EXTRAS && window.EXTRAS.ghostOn && window.EXTRAS.ghostOn());
       var before = U.drinks(PN.s.meState || myBeer() || {});
       beerPending();
@@ -421,6 +482,8 @@
     var cardClosed = null;
     var big = drinkFx(total, Math.max(before, total - 1), { noToast: true, onClose: function () { if (cardClosed) cardClosed(); } });
     var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
+    // the plain fact (store toast, screen readers). Not t("lvlN"): v14.js makes that "Nr N ikväll. Skål!" (a cheer).
+    var fact = tl("Öl nr " + total + " ikväll", "Beer no. " + total + " tonight") + (spot.home ? " · " + t("homeNote") : "");
     var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
     if (q) {
       // nightfix: the "sent" line REPLACES the "Skickas när du har täckning" line of the same tap (calm2 dropped it as a 2nd toast
@@ -431,16 +494,19 @@
       refresh();
       return;
     }
-    if (big) beerSayClear();   // I-105: the card is the one text of this tap
-    if (res.v2 && d.undo_until) { if (big) cardClosed = undoAfterCard(d, cls); else showUndo(d, text, cls); }
-    else if (!big) beerSay(text, { cls: cls });
+    // One answer per tap. 5 / 10 / 15: the card (I-105). Web build: the count burst (I-114, owner 15 Nov: "the number that comes
+    // up on the screen with some effects is better" than a pop-up). Store build / no mycount.js: ONE plain fact toast.
+    if (big) beerSayClear();
+    else if (burstOn()) { beerSayClear(); srSay(fact); }
+    else beerSay(fact, { ms: 5000 });
+    if (res.v2 && d.undo_until) { if (big) cardClosed = undoAfterCard(d); else showUndo(d); }
     if (window.FX.juice) window.FX.juice.accepted(l, big); else { if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]); window.FX.sound.beer(); }
     // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
     if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
     else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
     else notifyGroup();
     mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, big: big });
-    if (big) document.querySelectorAll(".pn-beerok").forEach(function (x) { x.remove(); });   // I-105: no "Öl #N registrerad" chip under the card (pnui.js makes it in the hook above)
+    document.querySelectorAll(".pn-beerok").forEach(function (x) { x.remove(); });   // I-105 / I-114: no "Öl #N registrerad" chip (pnui.js makes it in the hook above): the card, the burst or the store toast is the one answer
     if (!ghost && spot._ciBar) moveCheckin(spot._ciBar);   // fixJ T-07
     if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
     if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {

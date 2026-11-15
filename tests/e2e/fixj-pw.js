@@ -167,7 +167,7 @@ function report() {
       const rows = await page.evaluate(() => [...document.querySelectorAll("#sheet-body button")].map((b) => b.textContent));
       if (pickWhat === "bar") await shot(page, "J07-picker-390");
       const clicked = await page.evaluate((what) => {
-        const b = [...document.querySelectorAll("#sheet-body button")].find((x) => what === "bar" ? /La Parma/.test(x.textContent) : /Ingen krog/.test(x.textContent));
+        const b = [...document.querySelectorAll("#sheet-body button")].find((x) => what === "bar" ? /La Parma/.test(x.textContent) : /Ingen krog|Hemma eller annan plats/.test(x.textContent));   // d-beer: the row is "Hemma eller annan plats" now
         if (b) b.click(); return b ? b.textContent : null;
       }, pickWhat);
       await wait(page, 3000);

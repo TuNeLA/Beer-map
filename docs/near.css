@@ -23,6 +23,13 @@
 .nr-share{margin-top:12px}
 .nr-share .toggle-row span{min-width:0}
 .nr-priv{font-size:var(--fs-xs,11px);margin-top:12px}
+/* d-social (design 10, I-114): in the Vänner tab "Låt mig hittas ikväll" is a normal card: title, help, two switch rows (like a settings group) */
+#inv-pane-f .nr-share{margin-top:var(--sp-5);padding:var(--sp-3) var(--sp-4) 0;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:var(--r-lg);overflow:hidden}
+#inv-pane-f .nr-share:empty{display:none}
+#inv-pane-f .nr-share > h3{margin:0 0 var(--sp-1) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important;color:var(--ds-text) !important}
+#inv-pane-f .nr-share > .nr-hint{margin:0 0 var(--sp-3);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+#inv-pane-f .nr-share > .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:56px;margin:0 calc(-1 * var(--sp-4));padding:0 var(--sp-4);
+  border-top:1px solid var(--ds-border);font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
 
 /* Group page tile */
 .nr-tile{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:6px 10px;

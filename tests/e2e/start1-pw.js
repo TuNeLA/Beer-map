@@ -21,6 +21,10 @@ const J = (r, b) => r.fulfill({ status: 200, contentType: "application/json", bo
 const hhmm = (ms) => { const d = new Date(ms); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); };
 
 /* ---------- two stamped builds + a static server like GitHub Pages ---------- */
+// ci1: START1_BUNDLE=1, or a test server (<port>) that serves the bundled site = build A and B as BUNDLED sites (the live build).
+// ONE = the start file that holds js/pn.js (the file build B changes): pn.js itself, or its bundle group.
+let BUNDLED = process.env.START1_BUNDLE === "1";
+const ONE = () => (BUNDLED ? "/js/app.bundle-boot.js" : "/js/pn.js"), ONE_RE = () => new RegExp(ONE().replace(/[./]/g, "\\$&") + "\\?");
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "pn-start1-"));
 function build(tag, cfg) {
   const dir = path.join(TMP, tag);
@@ -29,7 +33,8 @@ function build(tag, cfg) {
   const ix = path.join(dir, "index.html");
   fs.writeFileSync(ix, fs.readFileSync(ix, "utf8").replace("<head>", '<head>\n<meta name="pn-build" content="' + tag + '">'));
   if (tag !== "A") fs.appendFileSync(path.join(dir, "js", "pn.js"), "\n// build " + tag + "\n");   // one file with a new hash
-  execFileSync("node", [path.join(REPO, "scripts", "stamp.mjs"), dir], { stdio: "pipe" });
+  // ci1: BUNDLED = the live build (scripts/bundle.mjs --stamp: bundle groups + minify, then the same stamp). Else stamp only.
+  execFileSync("node", BUNDLED ? [path.join(REPO, "scripts", "bundle.mjs"), dir, "--stamp"] : [path.join(REPO, "scripts", "stamp.mjs"), dir], { stdio: "pipe" });
   const ver = (fs.readFileSync(path.join(dir, "sw.js"), "utf8").match(/^var VERSION = "([^"]*)";/m) || [])[1];
   return { dir, ver, tag };
 }
@@ -165,6 +170,8 @@ const mapState = (page) => page.evaluate(() => {
   let cfg = "";
   try { cfg = await (await fetch(`http://127.0.0.1:${PORT}/config.js`)).text(); } catch (e) {}
   if (!/SUPABASE_URL/.test(cfg) || /wcdskpcevbhouvbytkhv/.test(cfg)) { console.log("FAIL the server on port " + PORT + " must serve the STAGING config.js (PN_TARGET=staging python3 tests/e2e/serve.py " + PORT + " docs)"); process.exit(1); }
+  if (!process.env.START1_BUNDLE && !process.env.START1_DOCS) { try { BUNDLED = /js\/app\.bundle/.test(await (await fetch(`http://127.0.0.1:${PORT}/index.html`)).text()); } catch (e) {} }
+  if (BUNDLED) console.log("bundled builds (scripts/bundle.mjs --stamp)");
   const A = build("A", cfg), B = build("B", cfg);
   console.log("builds:", A.ver, B.ver, "from", DOCS);
   await startServer();
@@ -464,16 +471,16 @@ const mapState = (page) => page.evaluate(() => {
     /* ===== once: no double download on the first visit (audit item 4) ===== */
     if (PARTS.includes("once")) {
       srv.root = A.dir; srv.sw = null; srv.block = false; srv.counts.clear();
-      srv.lie = { "/js/pn.js": 1 };   // half-way deploy: the first answer for pn.js?v=<new hash> carries other bytes
+      srv.lie = { [ONE()]: 1 };   // half-way deploy: the first answer for pn.js?v=<new hash> (bundled: its bundle group) carries other bytes
       const ctx = await newCtx(browser, { clean: true }), page = await newPage(ctx, null);   // no routes: the HTTP cache is on
       await page.goto(BASE());
       const ready = await cacheReady(page, A.ver, 120000);
       const hashed = [...srv.counts.entries()].filter(([u]) => /[?&]v=[0-9a-f]{10}$/.test(u));
-      const twice = hashed.filter(([u, n]) => n > 1 && !/\/js\/pn\.js\?/.test(u)).map(([u, n]) => u.replace(/\?.*/, "") + "×" + n);
+      const twice = hashed.filter(([u, n]) => n > 1 && !ONE_RE().test(u)).map(([u, n]) => u.replace(/\?.*/, "") + "×" + n);
       const total = hashed.reduce((a, [, n]) => a + n, 0);
-      ok("O1 first visit: each ?v= file is downloaded ONCE (the worker takes it from the HTTP cache the page just filled)", ready && hashed.length > 100 && twice.length === 0, { files: hashed.length, requests: total, twice: twice.slice(0, 6), more: twice.length });
-      const pn = await page.evaluate(() => caches.keys().then((ks) => caches.open(ks.find((k) => /^olnu-[0-9a-f]{10}$/.test(k))).then((c) => c.keys().then((rs) => { const r = rs.find((x) => /\/js\/pn\.js\?v=/.test(x.url)); return r ? c.match(r).then((x) => x.text()) : null; }))));
-      const disk = fs.readFileSync(path.join(A.dir, "js", "pn.js"), "utf8"), nPn = [...srv.counts.entries()].filter(([u]) => /\/js\/pn\.js\?/.test(u)).reduce((a, [, n]) => a + n, 0);
+      ok("O1 first visit: each ?v= file is downloaded ONCE (the worker takes it from the HTTP cache the page just filled)", ready && hashed.length > (BUNDLED ? 10 : 100) && twice.length === 0, { files: hashed.length, requests: total, twice: twice.slice(0, 6), more: twice.length });
+      const pn = await page.evaluate((one) => caches.keys().then((ks) => caches.open(ks.find((k) => /^olnu-[0-9a-f]{10}$/.test(k))).then((c) => c.keys().then((rs) => { const r = rs.find((x) => x.url.indexOf(one + "?v=") > 0); return r ? c.match(r).then((x) => x.text()) : null; }))), ONE());
+      const disk = fs.readFileSync(path.join(A.dir, ONE().slice(1)), "utf8"), nPn = [...srv.counts.entries()].filter(([u]) => ONE_RE().test(u)).reduce((a, [, n]) => a + n, 0);
       ok("O2 wrong bytes under a new hash (deploy half way): the worker sees the hash is wrong, downloads again, stores the right file", pn === disk && nPn === 2, { same: pn === disk, requests: nPn });
       srv.lie = {};
       await ctx.close();

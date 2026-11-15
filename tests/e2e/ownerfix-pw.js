@@ -175,9 +175,12 @@ const calls = (page, re) => page.__calls.filter((c) => re.test(c.fn));
   // motion = one belt piece on screen moves left (the transform alone jumps when a piece leaves on the left)
   const tState = async (page) => page.evaluate(() => new Promise((res) => {
     const tr = document.getElementById("ticker-track"), vr = tr.parentNode.getBoundingClientRect();
-    const el = [...tr.children].find((e) => { const r = e.getBoundingClientRect(); return r.left > vr.left + 40 && r.left < vr.right - 40; }) || tr.lastElementChild;
-    const a = el.getBoundingClientRect().left;
-    setTimeout(() => { const b = el.isConnected ? el.getBoundingClientRect().left : null;
+    // speed1 (14 Nov): the belt recycles its pieces, so one picked piece can be gone 700 ms later → measure every piece, use one that is still there
+    const all = [...tr.children].map((e) => [e, e.getBoundingClientRect().left]);
+    const pick0 = all.find((x) => x[1] > vr.left + 40 && x[1] < vr.right - 40) || all[all.length - 1];
+    setTimeout(() => { const live = (pick0[0].isConnected ? pick0 : all.find((x) => x[0].isConnected)) || null;
+      const a = live ? live[1] : pick0[1], el = live ? live[0] : pick0[0];
+      const b = live ? el.getBoundingClientRect().left : null;
       res({ stop: document.querySelector(".ticker").classList.contains("pn-tk-stop"), moving: b !== null && b < a - 3, a: Math.round(a), b: b === null ? null : Math.round(b), F: window.PN_TICK_F,
         ctl: window.PNTICK ? window.PNTICK.state() : null, sheet: !document.getElementById("sheet").hidden }); }, 700);
   }));

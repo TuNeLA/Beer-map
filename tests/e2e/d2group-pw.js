@@ -59,7 +59,8 @@ const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: SH
         return { sub: R(".gpg > .gmain .gsub"), code: R(".gpg > .pn-gp-code"), inv: R(".gpg > .pn-gp-inv"), card: R(".gpg > .gmain"), codeT: (document.querySelector(".gpg > .pn-gp-code") || {}).textContent || "",
           about: (document.querySelector(".gpg-dots .pn-gp-tx small") || {}).textContent || "" };
       });
-      ok(`${P} home: "Kod ABC234" sits under "N av M dricker nu" (left-aligned, below it, inside the top card)`, !!(top.sub && top.code && /ABC234/.test(top.codeT) && Math.abs(top.code.l - top.sub.l) <= 4 && top.code.t >= top.sub.b - 14 && top.code.b <= top.card.b + 1), top);
+      // d-social (design 07, I-114): "N av M dricker nu" is not on the page any more (ONE "who is out" card); the code is centred in the top card
+      ok(`${P} home: "Kod ABC234" is on the top card, centred in its height, left of Bjud in; no "N av M dricker nu" line`, !!(!top.sub && top.code && top.inv && /ABC234/.test(top.codeT) && top.code.l >= top.card.l + 56 && top.code.r <= top.inv.l && Math.abs((top.code.t + top.code.b) / 2 - (top.card.t + top.card.b) / 2) <= 3), top);
       ok(`${P} home: Bjud in on the top card`, !!(top.inv && top.card && top.inv.t >= top.card.t && top.inv.b <= top.card.b && top.inv.h >= 44), top);
       ok(`${P} home: Om gruppen sub has no "kod"`, /medlemmar/.test(top.about) && !/kod/i.test(top.about), top.about);
       // ---------- I-42 chat preview ----------

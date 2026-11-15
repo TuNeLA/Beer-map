@@ -1,6 +1,6 @@
 /* Öl Nu — 🏠 FÖLJ MIG HEM (CONTRACT "📸 KROGBILDER · ☀️ UTEVÄDER · 🏠 FÖLJ MIG HEM · 🔍 HITTA KOMPIS", migration 0141, notify-group v26).
    window.HEMFOLJ, in app.js mods(): init, onAuthed, onPoll, hudChipsHTML, hudClick, openWalkLink. Följ mig hem opens from the personal menu (pnikv.js), not from the group "+" (polishA).
-   Entry points (no new map button): 🚕 Taxi hem sheet (rundan.js → HEMFOLJ.taxiNode) and the group page "+" ("🏠 Följ mig hem").
+   Entry points (no new map button): the "Ta dig hem" sheet (rundan.js → HEMFOLJ.taxiNode = one row) and the personal menu (pnikv.js).
    - Walker: picks friends / whole groups (friend_list = friends + group-mates only), needs the 🏠 Hemzon home point
      (homezone.js, phone only). walk_start → push {event:"walk"} to the chosen people. GPS watchPosition (high accuracy) while
      the app is open: walk_ping when moved ≥ 10 m or every 15 s. Screen Wake Lock when the browser has it. Inside 60–150 m of
@@ -292,18 +292,18 @@
       if (window.SAFETY && window.SAFETY.sos112) window.SAFETY.sos112(body);   // SAFE: 📞 Ring 112 first
       if (/iPhone|iPad|iPod/.test(navigator.userAgent || "")) body.appendChild(el("p", { class: "hf-warn hf-ios", text: L("iPhone: håll skärmen på och appen öppen hela vägen. När skärmen låser sig stannar GPS:en, och kompisarna ser dig int' röra dig.",
         "iPhone: keep the screen on and the app open. When the screen locks, GPS stops.") }));   // ds42 (ux3): the web limit, said up front
-      body.appendChild(el("p", { class: "hf-lead", text: L("Dina valda kompisar ser dig röra dig på kartan tills du ä hemma. Når du hemzonen skickas \"✅ Hemma!\" och delningen slutar av sig själv (max 2 timmar).",
-        "The friends you pick see you move on the map until you are home. At home a \"✅ Home!\" goes out and sharing stops (max 2 hours).") }));
+      body.appendChild(el("p", { class: "hf-lead", text: L("Dina valda kompisar ser dig röra dig på kartan tills du ä hemma. Når du hemzonen skickas \"Hemma!\" och delningen slutar av sig själv (max 2 timmar).",
+        "The friends you pick see you move on the map until you are home. At home a \"Home!\" goes out and sharing stops (max 2 hours).") }));
       if (!h) {
-        body.appendChild(el("p", { class: "hf-warn", text: L("🏠 Du har ingen hemadress sparad än. Den behövs för att veta när du ä framme (sparas bara på telefonen).",
-          "🏠 No home saved yet. It is needed to know when you arrive (kept on this phone).") }));
+        body.appendChild(el("p", { class: "hf-warn", text: L("Du har ingen hemadress sparad än. Den behövs för att veta när du ä framme (sparas bara på telefonen).",
+          "No home saved yet. It is needed to know when you arrive (kept on this phone).") }));
         body.appendChild(el("div", { class: "row" }, [A.btn(L("🏠 Spara hemadress", "🏠 Save home"), "btn-amber btn-block", function () {
           if (window.HOMEZONE && window.HOMEZONE.open) window.HOMEZONE.open({ then: function () { openStart(opts); } }); })]));   // ds39: back to Följ mig hem
         return;
       }
-      body.appendChild(el("p", { class: "hf-warn", text: L("📱 Håll appen öppen med skärmen på hela vägen hem. En webbapp får ingen GPS i bakgrunden (iPhone stänger av direkt, Android efter en stund)." +
+      body.appendChild(el("p", { class: "hf-warn", text: L("Håll appen öppen med skärmen på hela vägen hem. En webbapp får ingen GPS i bakgrunden (iPhone stänger av direkt, Android efter en stund)." +
         (navigator.wakeLock ? " Vi håller skärmen vaken åt dig." : " Sätt skärmlåset på \"Aldrig\" en stund."),
-        "📱 Keep the app open with the screen on all the way. A web app gets no GPS in the background." + (navigator.wakeLock ? " We keep the screen awake." : "")) }));
+        "Keep the app open with the screen on all the way. A web app gets no GPS in the background." + (navigator.wakeLock ? " We keep the screen awake." : "")) }));
       var pickBox = el("div", { class: "hf-pick" }, [el("p", { class: "muted", text: "…" })]);
       body.appendChild(el("h3", { class: "hf-h", text: L("Vem ska ha koll på dig?", "Who should keep an eye on you?") }));
       body.appendChild(pickBox);
@@ -313,15 +313,15 @@
       body.appendChild(gLine);
       try { var gwt = window.GW && window.GW.walkTimerNode ? window.GW.walkTimerNode(null) : null; if (gwt) body.appendChild(gwt); } catch (e) {}   // gw 0313
       body.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [go]));
-      body.appendChild(el("p", { class: "muted hf-priv", text: L("🔒 Bara de du väljer ser dig. Hemmet visas ungefär (±100 m). Ingen historik sparas – positionen raderas när du ä hemma.",
-        "🔒 Only the people you pick. Home is shown roughly (±100 m). No history is kept.") }));
+      body.appendChild(el("p", { class: "muted hf-priv", text: L("Bara de du väljer ser dig. Hemmet visas ungefär (±100 m). Ingen historik sparas – positionen raderas när du ä hemma.",
+        "Only the people you pick. Home is shown roughly (±100 m). No history is kept.") }));
       var sel = {}, people = [], groups = [], postG = opts.group ? opts.group.id : null, chips = {};
       function count() { return Object.keys(sel).filter(function (k) { return sel[k]; }).length; }
       function refresh() {
         var n = count(); go.disabled = n === 0;
         go.textContent = n ? L("🏠 Starta – " + n + " följer dig hem", "🏠 Start – " + n + " will follow") : L("🏠 Välj minst en", "🏠 Pick at least one");
         var gn = null; groups.forEach(function (g) { if (g.id === postG) gn = g.name; });
-        gLine.textContent = gn ? L("✅ Hemma! skickas till gruppen " + gn + ".", "✅ Home! goes to " + gn + ".") : "";
+        gLine.textContent = gn ? L("\"Hemma!\" skickas till gruppen " + gn + ".", "\"Home!\" goes to " + gn + ".") : "";
         pickBox.querySelectorAll("input[data-k]").forEach(function (c) { c.checked = !!sel[c.getAttribute("data-k")]; });
         Object.keys(chips).forEach(function (gid) {
           var all = people.filter(function (p) { return (p.groups || []).some(function (g) { return g.id === gid; }); });
@@ -361,8 +361,12 @@
       function start() {
         var keys = Object.keys(sel).filter(function (k) { return sel[k]; });
         if (!keys.length) return;
-        go.disabled = true; go.textContent = L("📡 Startar…", "📡 Starting…");
+        go.disabled = true; go.textContent = L("Hämtar din position…", "Getting your position…");
+        var begun = false;
         var begin = function (pos) {
+          if (begun) return; begun = true;
+          if (!document.body.contains(go)) return;   // the sheet was closed while the fix was on its way: no walk starts behind my back
+          go.textContent = L("Startar…", "Starting…");
           var c = pos && pos.coords;
           call("walk_start", { p_home_lat: h.lat, p_home_lng: h.lng, p_keys: keys, p_group_ids: [], p_group_id: postG,
             p_lat: c ? c.latitude : null, p_lng: c ? c.longitude : null, p_acc: c ? c.accuracy : null, p_name: (A.getName && A.getName()) || null }).then(function (r) {
@@ -377,7 +381,9 @@
             banner(); poll(true);
           });
         };
-        try { A.getPosition().then(begin, function () { begin(null); }); } catch (e) { begin(null); }
+        // d-home: a walk home starts from a NEW exact fix (maximumAge 0), never the kept fix of getPosition() (up to 2 min old).
+        // Explicit options = app-map.js asks the browser itself. The sheet stays usable while it waits (max 12 s; no fix = start without one).
+        try { A.getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }).then(begin, function () { begin(null); }); } catch (e) { begin(null); }
       }
     });
   }
@@ -411,12 +417,15 @@
     hudClick: function (a) { if (String(a || "").indexOf("walkw:") === 0) fly(byId(a.slice(6))); },
     // polishA (AUDIT-NAV move 4, owner I-17): no "Följ mig hem" tile in the group Ikväll (+) view. It is my own thing:
     // the personal menu (top-left Ikväll chip, pnikv.js) has it, and the "Ta dig hem" sheet (taxiNode).
-    taxiNode: function () {
+    // d-home (I-114): a row of the sheet's ONE row builder (rundan.js homeRow), no button of its own look.
+    taxiNode: function (row) {
       if (!A || !A.LIVE || off) return null;
+      row = row || (window.RUNDAN && window.RUNDAN.homeRow);
+      if (!row) return null;
       var on = mine && mine.live;
-      var b = A.btn(on ? L("🏠 Följ mig hem: på · visa", "🏠 Walk me home: on") : L("🏠 Följ mig hem – kompisarna ser dig tills du ä hemma", "🏠 Walk me home – friends see you until you're home"),
-        "btn-block hf-taxi", function () { openStart({}); });
-      return A.el("div", { class: "row hf-taxi-row", style: "margin:4px 0 10px" }, [b]);
+      return row({ icon: "home", cls: "hf-taxi", title: L("Följ mig hem", "Walk me home"),
+        sub: on ? L("På nu. Tryck för att visa.", "On now. Tap to show.") : L("Vänner ser dig tills du är hemma", "Friends see you until you are home"),
+        fn: function () { openStart({}); } });
     },
     open: openStart,
     // tests

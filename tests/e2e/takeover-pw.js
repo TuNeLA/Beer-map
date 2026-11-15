@@ -1,6 +1,7 @@
 // takeover-pw.js — lane takeover, I-105 (owner 14 Nov 2026: "the pop-up at 10 looked weird"). The full-screen card at
 // drink 5 / 10 / 15 (docs/js/fx.js takeover, docs/takeover.css, docs/js/app-beer.js beerDone):
-//   1 one text: no tap toast behind the card; the ↩ Ångra button comes when the card closes and then lives its 10 s
+//   1 one text: no tap toast behind the card; "Ångra" comes when the card closes and then lives its 10 s
+//     (d-beer, I-114: "Ångra" is the ÖL! button itself for 10 s, no floating ↩ button over Annat any more)
 //   2 fit: every name, line and gag of the 5 / 10 / 15 pools fits at 360 / 390 / 430 px (title max 2 lines, no cut word)
 //   3 tap guard: a close tap in the first 600 ms does nothing
 //   4 entrance: emoji 60 ms, title 120 ms, line / buttons / hint 220-340 ms, transform + opacity only; reduced motion = 150 ms fade
@@ -29,7 +30,7 @@ async function open(browser, o = {}) {
 // what is on screen now (runs in the page)
 const state = () => {
   const vis = (e) => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none"; };
-  const tk = document.querySelector(".takeover"), u = document.querySelector(".undo-fab"), m = document.getElementById("pn-mine");
+  const tk = document.querySelector(".takeover"), u = document.querySelector("#btn-beer.undo"), m = document.getElementById("pn-mine");   // d-beer: the ÖL! button in its "Ångra" state
   return { tk: !!tk, out: !!(tk && tk.classList.contains("fx-tk-out")), title: tk ? tk.querySelector(".to-title").textContent : "",
     toasts: [...document.querySelectorAll("#toasts .toast")].filter(vis).map((t) => t.textContent.trim().slice(0, 90)),
     // every other text pop-up on screen: the "Öl #N registrerad" chip and anything that announces itself (role status / alert).
@@ -120,7 +121,9 @@ const fitAll = async () => {
     s = await page.evaluate(state);
     ok("3 a tap after 600 ms closes the card", !s.tk, s);
     ok("1 Ångra shows when the card is closed, still no 2nd text", s.undo && s.toasts.length === 0 && s.more.length === 0, s);
-    await page.evaluate(() => { const u = document.querySelector(".undo-fab"); if (u) u.click(); });
+    ok("1 no floating undo button (Annat stays free)", await page.evaluate(() => !document.querySelector(".undo-fab")));
+    await wait(page, 400);   // d-beer: the first 0.5 s of the Ångra state take no tap (the tap that closed the card)
+    await page.evaluate(() => { const u = document.querySelector("#btn-beer.undo"); if (u) u.click(); });
     await wait(page, 600);
     ok("1 Ångra works (undo_beer sent)", calls.includes("undo_beer"), calls);
     ok("10: no page errors", errs.length === 0, errs);

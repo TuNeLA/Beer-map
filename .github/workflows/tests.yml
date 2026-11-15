@@ -1,8 +1,13 @@
 name: tests
 
-# Gating tests: UI e2e (mocked Supabase, no live writes), unit tests, and a schema load test.
+# Gating tests: guards (unit, quality, split, stamp, shards), UI e2e (mocked Supabase, no live writes) and a schema load test.
+# ci1: the jobs live in two reusable files, so the live deploy (pages-bundle.yml) runs the SAME guards and the SAME gate shards:
+#   guards.yml  unit + quality (about 1 min, no browser)
+#   e2e.yml     the Playwright shards. The list is tests/e2e/shards.txt (one line per shard), not this file.
+#               Shards with `site=bundled` test the built site (scripts/build-site.mjs): they replace the old "bundle" job.
+# Speed (code audit B1): browser cache, 2 tests at once per shard (PAR), 20 balanced shards = one wave of runners,
+#   a push with only docs / ops files starts no e2e runner. A new push cancels the older run only on ci/ branches.
 # Map tests need the secret MAPBOX_TEST_TOKEN. Without it they are skipped (not failed).
-# Supabase target: staging (pintsnow-staging). tests/e2e/serve.py rewrites the served config.js; run-all.sh checks it.
 # Live-server tests (beta-pw.js) never run here.
 
 on:
@@ -15,341 +20,20 @@ on:
 permissions:
   contents: read
 
+# One finished run per commit on big-update (the release gate reads the run of a commit): there the group holds the commit,
+# so no run is cancelled and none waits behind another (a waiting run of the same group would be dropped by a newer push).
+# Only a ci/ lane branch keeps one group per branch: a new push cancels the run of its older commit.
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.ref }}-${{ startsWith(github.ref, 'refs/heads/ci/') && 'lane' || github.sha }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/ci/') }}
 
 jobs:
+  guards:
+    uses: ./.github/workflows/guards.yml
+
   e2e:
-    name: e2e (${{ matrix.name }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 50
-    env:
-      TZ: Europe/Stockholm   # tests were written for Swedish time (nights, "ikväll"); UTC breaks some
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # one shard = one runner (~1 min setup). Keep each shard under ~10 min, a failed test runs twice.
-          - name: ui-1
-            filter: '^(ux3|social2|strip|av2-wizard)$'
-          - name: ui-2
-            filter: '^(feat|nf|notif|autoci)$'
-          - name: ui-3
-            filter: '^(cam|ntf)$'
-          - name: ui-4
-            filter: '^(evx|safe|ds|ds-layout|notif-sw)$'
-          - name: ui-5
-            filter: '^(ds-sheet)$'
-          - name: ui-6
-            filter: '^(rpc-cover)$'
-          - name: fxm
-            filter: '^(fxm)$'
-          - name: juice
-            filter: '^(juice)$'
-          - name: fxg
-            filter: '^(fxg)$'
-          - name: pf
-            filter: '^(pf)$'
-          - name: lg
-            filter: '^(lg)$'
-          - name: cln
-            filter: '^(cln)$'
-          - name: dm
-            filter: '^(dm|s1speed)$'
-          - name: dialekt
-            filter: '^(dialekt|dialekt-packs)$'
-          - name: games2
-            filter: '^(games2)$'
-          - name: txtfit
-            filter: '^(txtfit)$'
-          - name: ds-motion
-            filter: '^(ds-motion)$'
-          - name: gw
-            filter: '^(gw)$'
-          - name: inst
-            filter: '^(inst)$'
-          - name: ui1
-            filter: '^(ui1)$'
-          - name: social-b
-            filter: '^(social-b)$'
-          - name: social-a
-            filter: '^(social-a)$'
-          - name: after
-            filter: '^(after2|moments)$'
-          - name: misc
-            filter: '^(misc)$'
-          - name: ride
-            filter: '^(ride|ride3)$'
-          - name: main
-            filter: '^(main|sec|eggs)$'
-          - name: x8
-            filter: '^(x8)$'
-          - name: followups
-            filter: '^(followups)$'
-          - name: unlocks
-            filter: '^(unlocks)$'
-          - name: fixs
-            filter: '^(fixs)$'
-          - name: fixj
-            filter: '^(fixj)$'
-          - name: fixc
-            filter: '^(fixc)$'
-          - name: perf
-            filter: '^(perf)$'
-          - name: perfchat
-            filter: '^(perfchat)$'
-          - name: fixm
-            filter: '^(fixm)$'
-          - name: heat
-            filter: '^(heat)$'
-          - name: fixmo
-            filter: '^(fixmo)$'
-          - name: left
-            filter: '^(left)$'
-          - name: kpi
-            filter: '^(kpi)$'
-          - name: polish3
-            filter: '^(polish3)$'
-          - name: ownerfix
-            filter: '^(ownerfix)$'
-          - name: c1menus
-            filter: '^(c1menus)$'
-          - name: popfix
-            filter: '^(popfix)$'
-          - name: hooks-order
-            filter: '^(hooks-order)$'
-          - name: a4rel
-            filter: '^(a4rel)$'
-          - name: placesearch
-            filter: '^(placesearch)$'
-          - name: icons
-            filter: '^(icons)$'
-          - name: a2ui
-            filter: '^(a2ui)$'
-          - name: c3chat
-            filter: '^(c3chat)$'
-          - name: b1people
-            filter: '^(b1people)$'
-          - name: d1settings
-            filter: '^(d1settings)$'
-          - name: webkit
-            filter: '^(ds-motion-wk|ds-layout-wk)$'
-            browsers: chromium webkit
-          - name: map-1
-            filter: '^(glmap|tiers2)$'
-          - name: map-2
-            filter: '^(tiers3|map4|barzoom)$'
-          - name: map-3
-            filter: '^(glfix-avpins|zones|mbx)$'
-          - name: map-lane
-            filter: '^(map|map-b)$'
-          - name: map-ui1
-            filter: '^(ui1-map|ownerfix-map)$'
-          - name: c2speed
-            filter: '^(c2speed)$'
-          - name: alive
-            filter: '^(alive)$'
-          - name: mapzoom
-            filter: '^(mapzoom|nightmap)$'
-          - name: systemet
-            filter: '^(systemet)$'
-          - name: placecard
-            filter: '^(placecard)$'
-          - name: bump
-            filter: '^(bump)$'
-          - name: c5extras
-            filter: '^(c5extras)$'
-          - name: hotfix1
-            filter: '^(hotfix1)$'
-          - name: f13
-            filter: '^(f13)$'
-          - name: alive2
-            filter: '^(alive2|mycount|takeover|mapfix|speed1|start1)$'
-          - name: menufix
-            filter: '^(menufix)$'
-          - name: tickerfix
-            filter: '^(tickerfix)$'
-          - name: uifix
-            filter: '^(uifix)$'
-          - name: polishB
-            filter: '^(polishB)$'
-          - name: polishA
-            filter: '^(polishA)$'
-          - name: d2group
-            filter: '^(d2group)$'
-          - name: uxfix
-            filter: '^(uxfix)$'
-          - name: calm2
-            filter: '^(calm2)$'
-          - name: d3smooth
-            filter: '^(d3smooth)$'
-          - name: d4map
-            filter: '^(d4map)$'
-          - name: consent
-            filter: '^(consent)$'
-          - name: c4drinks
-            filter: '^(c4drinks)$'
-          - name: eggs
-            filter: '^(eggs)$'
-          - name: tickerfix2
-            filter: '^(tickerfix2)$'
-          - name: evsearch
-            filter: '^(evsearch)$'
-          - name: friends2
-            filter: '^(friends2)$'
-          - name: hitta2
-            filter: '^(hitta2)$'
-          - name: night3
-            filter: '^(night3)$'
-    steps:
-      - uses: actions/checkout@v4
-      - name: "lane filter: a .ci-only file on a ci/ branch lists the shards to run (one name per line)"
-        id: only
-        run: if [ -f .ci-only ] && ! grep -qx "${{ matrix.name }}" .ci-only; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "skipped by .ci-only"; fi
-      - uses: actions/setup-node@v4
-        if: steps.only.outputs.skip != '1'
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-        if: steps.only.outputs.skip != '1'
-      - name: Install Playwright browsers
-        if: steps.only.outputs.skip != '1'
-        run: npx playwright install --with-deps ${{ matrix.browsers || 'chromium' }}
-      - name: Serve docs/ on port 8793 (map) and 8871 (UI), Supabase target = staging
-        if: steps.only.outputs.skip != '1'
-        env:
-          PN_TARGET: staging   # serve.py serves config.js pointed at pintsnow-staging (the file in git is not changed)
-        run: |
-          nohup python3 tests/e2e/serve.py 8793 docs > /tmp/http-8793.log 2>&1 &
-          nohup python3 tests/e2e/serve.py 8871 docs > /tmp/http-8871.log 2>&1 &
-          for p in 8793 8871; do
-            for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:$p/index.html && break; sleep 1; done
-          done
-      - name: Restore last run's flaky list (flake gate)
-        if: steps.only.outputs.skip != '1'
-        uses: actions/cache/restore@v4
-        with:
-          path: tests/e2e/out/flaky-prev
-          key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: flaky-${{ matrix.name }}-${{ github.ref_name }}-
-      - name: Run tests
-        if: steps.only.outputs.skip != '1'
-        env:
-          MAPBOX_TEST_TOKEN: ${{ secrets.MAPBOX_TEST_TOKEN }}   # real Mapbox for the map tests (matrix "map"); empty = skipped
-          PN_TARGET: staging   # run-all.sh stops if the served config.js does not point at this target
-          TO: '900'
-          FLAKE_GATE: '1'   # a test that passes only on the rerun in 2 runs in a row = FAIL (tests/e2e/flakes.json)
-        run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
-      - name: Upload logs
-        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-logs-${{ matrix.name }}
-          path: |
-            tests/e2e/out/logs/
-            tests/e2e/out/traces/
-            tests/e2e/out/ui1-shots/
-            tests/e2e/out/social-b-shots/
-          retention-days: 14
-          if-no-files-found: warn
-      - name: Keep this run's flaky list for the next run
-        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
-        run: mkdir -p tests/e2e/out/flaky-prev && cp tests/e2e/out/logs/flaky-now.txt tests/e2e/out/flaky-prev/ 2>/dev/null || true
-      - name: Save flaky list
-        if: ${{ (always()) && steps.only.outputs.skip != '1' }}
-        uses: actions/cache/save@v4
-        with:
-          path: tests/e2e/out/flaky-prev
-          key: flaky-${{ matrix.name }}-${{ github.ref_name }}-${{ github.run_id }}
-
-  # left T-25: the bundled Pages build (scripts/bundle.mjs, pages-bundle.yml) must work like docs/: build it, smoke test it
-  # against the plain site (modules, styles, lazy files, part errors, unbundle fallback, service worker offline), then run
-  # e2e tests on the bundled copy (same mocks).
-  bundle:
-    name: bundle (bundled Pages build = docs/)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    env:
-      TZ: Europe/Stockholm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm install --no-save --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Build + smoke test the bundle, e2e tests on the bundled site
-        env:
-          PN_TARGET: staging
-          TO: '900'
-        run: bash scripts/bundle-check.sh . 8875 8871 '^(sec|ux3|social2|dialekt|fixs|left|perf)$'
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-logs-bundle
-          path: tests/e2e/out/bundle/logs/
-          retention-days: 14
-          if-no-files-found: warn
-
-  quality:
-    name: quality (size, structure, duplicates, UI rules; baseline only shrinks)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-save --no-audit --no-fund acorn@8.12.1
-      - run: node tests/quality/check.mjs .   # CODE QUALITY GUARD layer 1: writes tests/quality/report.json, prints a 10-line summary
-      - name: upload quality report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: quality-report
-          path: tests/quality/report.json
-          retention-days: 14
-
-  unit:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # W2 split guard: verify.mjs needs the pre-w2 base commit
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node tests/e2e/notif-sw-test.js .
-      - run: node scripts/import-sport.test.mjs
-      - run: node tests/e2e/local-lines-test.js docs/js   # LIVE ticker: Ludvika-area lines only near Ludvika
-      - run: node --test "tests/unit/*.test.mjs"   # w1-tests: pure logic the app.js split moves (U.n1, kaos, poll plan, bundleChunks, crowdSort, ticker)
-      - name: "workflow YAML is valid (a bad file never runs and fails silently)"
-        run: python3 -c "import glob,yaml; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]; print('workflows ok')"
-      - name: "every e2e test file parses (a syntax error fails a whole shard with 0 tests)"
-        run: for f in tests/e2e/*.js tests/e2e/*.mjs; do [ -f "$f" ] || continue; node --check "$f" || { echo "syntax error in $f"; exit 1; }; done
-      - name: "no .ci-only file on big-update or main (it is only for ci/ lane branches)"
-        run: if [ -f .ci-only ] && { [ "${{ github.ref }}" = refs/heads/big-update ] || [ "${{ github.ref }}" = refs/heads/main ]; }; then echo ".ci-only must not be merged"; exit 1; fi
-      - name: split guard (structure on every push; move-only proof only for a "W2 step" commit)
-        run: |
-          npm install --no-save --no-audit --no-fund acorn@8.12.1
-          bash scripts/split/ci.sh "${{ github.event.before }}"
-      - name: stamp guard (A1 no ?v= in the repo + stamp.mjs works, A17 SRI + exact CSP)
-        env:
-          PAGES_DEPLOY: ${{ vars.PAGES_DEPLOY }}   # = actions after release day: the repo must be clean (no ?v=, VERSION "dev")
-        run: |
-          npm install --no-save --no-audit --no-fund esbuild@0.24.0 acorn@8.12.1
-          node scripts/ci/stamp-guard.mjs docs
-      - name: rpc_bundle2 client names are on the server list (A10)
-        run: node scripts/ci/bundle-allow.mjs .
-      - name: Migration rules (A3 no new anchor patch, CR-safe helpers, additive, in release/order.txt)
-        run: node scripts/ci/no-anchor-patch.mjs .
+    uses: ./.github/workflows/e2e.yml
+    secrets: inherit   # MAPBOX_TEST_TOKEN
 
   schema:
     name: schema loads (supabase/schema -> empty Postgres 17)
@@ -417,6 +101,14 @@ jobs:
         run: |
           psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0509_bump_cheers.sql -f supabase/tests/bump-0509.test.sql | tee /tmp/b0509.txt
           if grep -q '|f|' /tmp/b0509.txt || ! grep -q '^bump-0509 done|t|' /tmp/b0509.txt; then echo "0509 test failed"; exit 1; fi
+      - name: 0517-0523 srv1 security + server fixes (check-in proof, pin ids, owner key, join codes, medals, timeout, cool-down)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          for t in "0517_checkin_verify checkin-0517" "0518_old_pin_ids pins-0518" "0519_owner_key_lockout ownerkey-0519" "0520_join_code_limit joincode-0520" "0521_medal_claims medals-0521" "0522_role_timeout timeout-0522" "0523_cooldown_setting cooldown-0523"; do
+            set -- $t
+            psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/$1.sql -f supabase/tests/$2.test.sql | tee /tmp/srv1-$2.txt
+            if grep -q '|f|' /tmp/srv1-$2.txt || ! grep -q "^$2 done|t|" /tmp/srv1-$2.txt; then echo "$2 test failed"; exit 1; fi
+          done
       - name: Staging drift report (optional secret STAGING_DB_URL, read-only; warn only)
         continue-on-error: true
         env:

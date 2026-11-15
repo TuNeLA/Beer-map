@@ -64,7 +64,7 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     await page.click("#btn-groups"); await wait(page, 1200);
     await page.evaluate(() => { const c = [...document.querySelectorAll(".glist .gcard")].find((x) => /Ludvika/.test(x.textContent)); c.click(); }); await wait(page, 2200);
     ok("home: Nu strip", await vis(page, ".gpg-now") && /3 ute nu/.test(await page.textContent(".gpg-now")) && /La Parma/.test(await page.textContent(".gpg-now")), await page.textContent(".gpg-now"));
-    ok("home: faces 3", (await page.$$(".gpg-now .gpg-face")).length === 3);
+    ok("home: faces = the Gänget ikväll strip in the same card (d-social design 07: one face per member, 3 of them live)", (await page.$$(".gpg-now .pn-gp-mi .gpg-face")).length >= 3 && /3 ute nu/.test(await page.textContent(".gpg-now .gpg-now-t")));
     ok("home: chat preview = the last 5 msgs (d2group I-42; the mock has 4)", (await page.$$(".gpg-msgs .gpg-msg")).length === 4);
     ok("home: [ds52] bar = labelled Ikväll, no 🍺", await vis(page, ".gpg-plus") && /Ikväll/.test(await page.textContent(".gpg-plus")) && !(await vis(page, ".gpg-beer")));
     ok("home: [ds52] Bjud in button + [ds60] group code on the page", await vis(page, ".pn-gp-inv") && /Bjud in/.test(await page.textContent(".pn-gp-inv")) && /ABC234/.test(await page.textContent(".pn-gp-code")));
