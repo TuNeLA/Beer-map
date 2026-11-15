@@ -441,9 +441,30 @@
     var S = window.SOCIAL;
     if (S && typeof S.sosBlock === "function" && !S.sosBlock.__sf) {
       var o = S.sosBlock;
-      S.sosBlock = function (c) { var r = o.apply(this, arguments); var w = c && c.querySelector && c.querySelector(".sos-block"); if (w) sos112(w); return r; };
+      // d-home: the "Ta dig hem" sheet has its own 112 row (homeSafety), so its hidden SOS holder (.hs-sos) gets no second one
+      S.sosBlock = function (c) { var r = o.apply(this, arguments); var w = c && c.querySelector && c.querySelector(".sos-block"); if (w && !(c.classList && c.classList.contains("hs-sos"))) sos112(w); return r; };
       S.sosBlock.__sf = 1;
     }
+  }
+  // d-home (I-114, proposal 03): the safety group of the "Ta dig hem" sheet. row = the sheet's ONE row builder (rundan.js
+  // homeRow). "Ring 112" is a tel: row. "SOS till gruppen" keeps the logic of social.js: its own button + question live in a
+  // holder under the list (the button is hidden by CSS, the row taps it, the question opens under the list).
+  function homeSafety(body, row) {
+    if (!body || typeof row !== "function") return;
+    var en = !!(window.I18N && window.I18N.lang === "en");
+    var list = h("div", { class: "ds-list hs-list hs-safe" });
+    list.appendChild(row({ icon: "phone", cls: "hs-red hs-112", href: "tel:112", title: en ? "Call 112" : "Ring 112",
+      sub: en ? "The app does not call for help by itself" : "Appen larmar inte själv" }));
+    var hold = h("div", { class: "hs-sos" }), sb = null;
+    try { wrapSos(); if (window.SOCIAL && window.SOCIAL.sosBlock) window.SOCIAL.sosBlock(hold); sb = hold.querySelector(".sos-btn"); } catch (e) { sb = null; }
+    if (sb) {
+      list.appendChild(row({ icon: "sos", cls: "hs-sosrow", title: en ? "SOS to my group" : "SOS till gruppen",
+        sub: en ? "Sends your exact location to your group" : "Skickar din exakta plats till gänget",
+        fn: function () { sb.click(); var q = hold.querySelector(".confirm"); try { if (q && q.scrollIntoView) q.scrollIntoView({ block: "nearest" }); } catch (e) {} } }));
+    }
+    body.appendChild(h("h3", { class: "hs-h", text: en ? "If something happens" : "Om något händer" }));
+    body.appendChild(list);
+    if (sb) body.appendChild(hold);
   }
 
   /* ---------- 🔢 own group sees counts; strangers never see a number ---------- */
@@ -588,7 +609,7 @@
     settingsSheet: settingsSheet,
     ageWidget: ageWidget, ensureTerms: ensureTerms, showRules: showRules, rulesBody: rulesBody,
     report: reportSheet, block: blockSheet, contact: contactSheet, actions: actions, personActions: personActions,
-    blocked: blockedSheet, sos112: sos112, maskPins: maskPins, store: store, SUPPORT: SUPPORT, _state: function () { return stateCache; },
+    blocked: blockedSheet, sos112: sos112, homeSafety: homeSafety, maskPins: maskPins, store: store, SUPPORT: SUPPORT, _state: function () { return stateCache; },
     // left T-05b: true = this post RPC (or any post, fn empty) must wait for Regler first (app.js rpcNet1 + the post buttons ask ensureTerms())
     needTerms: function (fn) { return (!fn || !!POST_FNS[fn]) && !termsOk() && !off.terms; },
     _beers: function () { return A && A.beers ? A.beers() : []; }   // tests only

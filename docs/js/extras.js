@@ -71,12 +71,17 @@
     container.appendChild(A.el("p", { class: "muted", text: t("taxiInfo") }));
     container.appendChild(A.el("div", { html: taxiHTML("btn btn-small taxi-btn") }));
   }
+  // d-home (I-114, proposal 03): rundan.js taxiSheet draws the whole "Ta dig hem" sheet (one amber call button, rows, the
+  // safety group of safety.js). Every entry point comes here (#btn-taxi, the HUD chip, hudClick("taxi")). The old stack of
+  // buttons is only the fallback when rundan.js is missing or fails.
   function showTaxi() {
     A.openSheet(t("taxiTitle"), function (body) {
+      var done = false;
+      try { if (window.RUNDAN && window.RUNDAN.taxiSheet) { window.RUNDAN.taxiSheet(body); done = !!body.querySelector(".hs-call"); } } catch (e) { done = false; }
+      if (done) return;
+      body.textContent = "";
       body.appendChild(A.el("p", { text: t("taxiInfo") }));
-      var rt = window.RUNDAN && window.RUNDAN.taxiSheet;
-      if (!rt) body.appendChild(A.el("div", { html: taxiHTML("btn taxi-btn") }));   // I-55: RUNDAN draws the one Taxi + one Uber hem
-      try { if (rt) window.RUNDAN.taxiSheet(body); } catch (e) {}   // 🏠 Taxi hem + 🚕 Dela taxin
+      body.appendChild(A.el("div", { html: taxiHTML("btn taxi-btn") }));
       if (window.SOCIAL && window.SOCIAL.sosBlock) { body.appendChild(A.el("h3", { text: t("safety") })); window.SOCIAL.sosBlock(body); }
     });
   }
