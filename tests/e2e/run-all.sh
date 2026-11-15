@@ -133,6 +133,7 @@ run calm2     $B calm2-pw.js      # lane calm2 (owner 13 Nov): I-79/I-84 calm to
 run d3smooth  $B d3smooth-pw.js   # lane d3smooth: sheet slides first then fills (skeleton, not an empty box), pull down from content + snap points + spring, ticker on the compositor, no infinite box-shadow animation, press feedback, bold fonts, reduced motion
 run d4map     $A d4map-pw.js      # lane d4map: SMOOTH fix 2 bar tap ring < 100 ms then sheet, fix 3 moveend slices + html.map-moving / pn:mapmove + endless map animations paused while moving, fix 9 pin press (stub Mapbox without a token)
 run mapfix    $A mapfix-pw.js     # lane mapfix (owner 14 Nov): I-108 tap then one-finger drag = pan (GL tap-drag-zoom off, pinch + double tap kept), I-110 a tap outside the bar pop-up only closes it (not its lit house / a map click listener / the "near" rule), I-109 a redraw with the sheet open shows no second open (stub Mapbox without a token + raster path)
+run maplight  $A maplight-pw.js   # lane maplight (owner 15 Nov, I-115): crowd steps -> lantern + halo + street light, < 3 people = nothing, same poll sends nothing, check-in ring, my marker always on top, friends faces, no foam, amber heat, town lantern, kill switch (stub Mapbox without a token)
 run consent   $A consent-pw.js    # lane consent: real app (live site / store) sends no diagnostics before "Ja"; beta + test builds keep them; errors without device fields
 NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + B10 real zone pill at 360 px
 # --- UI (mocked Supabase). GATING in CI ---

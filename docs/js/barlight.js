@@ -301,6 +301,9 @@
       return { on: !off(), ready: ready, lit: lit.map(function (b) { return { id: b.id, n: b.n, lv: b.lv }; }), pieces: Object.keys(featIds).reduce(function (o, id) { o[id] = featIds[id].length; return o; }, {}),
         cache: Object.keys(cache).reduce(function (o, id) { var c = cache[id]; o[id] = { n: c.f.length, len: c.len, full: c.full, z: c.z, door: c.door }; return o; }, {}), anim: !!anim, motion: motionOK(), booted: booted };
     },
-    _pieces: pieces, _reset: function () { offV = null; }
+    _pieces: pieces, _reset: function () { offV = null; },
+    // tests / pictures: hold the spread at k (0..1) on every piece; null = the still light again
+    _k: function (k) { if (!gm) return; if (k == null) { try { gm.removeFeatureState({ source: SRC_L }); } catch (e) {} return; }
+      var ids = []; Object.keys(featIds).forEach(function (id) { ids = ids.concat(featIds[id]); }); setK(ids, k); }
   };
 })();
