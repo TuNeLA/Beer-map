@@ -82,4 +82,11 @@ release 0512   # evsearch: events_search + event_venue (read only) + import_spor
 release 0513   # polish3 I-69: my_place_suggestions (applied on live 13 Nov 18:14)
 release 0514   # friends2 I-91: dm_friend_state + dm_friend_request (applied on live 13 Nov 19:00)
 release 0515   # hitta2 I-93: find_ping keeps the last fix for the active find
+release 0517   # srv1 sec: check-in place must be proven before strangers see it (checkins.unverified)
+release 0518   # srv1 sec: old pin functions give strangers no fixed beer id; skal / react check block + visibility
+release 0519   # srv1 sec: owner key lock-out cannot be caused by strangers; the correct key always works
+release 0520   # srv1 sec: group code guessing: per-IP day limit + global soft limit (on top of 0510)
+release 0521   # srv1 sec: claim_medal / award_medals('home') need a server fact; claims are logged
+release 0522   # srv1 perf: olnu_town_of cheap path, poll indexes, role statement_timeout only where none is set
+release 0523   # srv1: drink cooldown from one setting (olnu_cooldown; default 10 min; staging row = 0)
 release 0436
