@@ -152,8 +152,18 @@
     sos.appendChild(a); box.appendChild(sos);
   }
   function onNet() { paint(); }
-  var ownBack = 0, popOn = false;   // popstate events caused by our own history.back() in close()
-  function onPop(e) { if (ownBack > 0) { ownBack--; return; } if (ov && !(e.state && e.state.bh)) close(true); }
+  var ownBack = 0, popOn = false, pushLate = false;   // popstate events caused by our own history.back() in close()
+  // cifix1: close() + open() in one go: history.back() is async, so a pushState right away was undone by that back (the
+  // overlay stayed open on the base entry, and the next Back left the app). Now the push waits for our own back to land.
+  function pushHist() {
+    if (!ov) return;
+    if (ownBack > 0) { pushLate = true; setTimeout(function () { if (pushLate) { pushLate = false; ownBack = 0; pushHist(); } }, 600); return; }   // no popstate came: push anyway
+    try { var st = history.state || {}; history.pushState({ bh: 1, olnuNav: typeof st.olnuNav === "number" ? st.olnuNav : 0 }, ""); ov.__hist = true; } catch (e) {}
+  }
+  function onPop(e) {
+    if (ownBack > 0) { ownBack--; if (!ownBack && pushLate) { pushLate = false; pushHist(); } return; }
+    if (ov && !(e.state && e.state.bh)) close(true);
+  }
   function open(o) {
     if (!on() || !A) return false;
     o = o || {};
@@ -177,7 +187,7 @@
     paint();
     // taxi-data.js is a lazy content file: load it now if the app has not yet, then repaint (verified taxi row)
     try { if (!window.TAXI_DATA && window.OLNU_LAZY_NOW) window.OLNU_LAZY_NOW().then(function () { if (ov) paint(); }); } catch (e) {}
-    try { var st = history.state || {}; history.pushState({ bh: 1, olnuNav: typeof st.olnuNav === "number" ? st.olnuNav : 0 }, ""); ov.__hist = true; } catch (e) {}
+    pushHist();
     if (!popOn) { popOn = true; addEventListener("popstate", onPop); }
     addEventListener("online", onNet); addEventListener("offline", onNet);
     document.addEventListener("keydown", onKey);
@@ -187,7 +197,7 @@
   function onKey(e) { if (e.key === "Escape") close(); }
   function close(fromPop) {
     if (!ov) return;
-    var o = ov; ov = null;
+    var o = ov; ov = null; pushLate = false;
     removeEventListener("online", onNet); removeEventListener("offline", onNet);
     document.removeEventListener("keydown", onKey);
     document.body.classList.remove("bh-on");

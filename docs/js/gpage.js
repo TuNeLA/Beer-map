@@ -294,10 +294,8 @@
   // ds58: the members strip (group_status_v3, then v2; same as Medlemmar). Live first, then most drinks, then the server order.
   function loadMem(wrap, g, box) {
     if (!A || !A.rpc || !A.LIVE || !g || !g.id || !box) return;
-    // no pop-in (INST rule): paint from the instant-screen cache at once, or while the sheet is still held (invisible,
-    // .wm-hold, first 400 ms). A late first answer (after the page showed) is not painted: it waits in the cache for the
-    // next open (cifix1: d-social painted it into a reserved space 0.5-0.8 s after the page showed = faces popped in).
-    var t0 = Date.now(), holding = function () { var sb = document.getElementById("sheet-body"); return Date.now() - t0 < 400 && !!(sb && sb.classList.contains("wm-hold")); };
+    // no pop-in: paint from the instant-screen cache at once. d-social: the strip keeps its height from the start
+    // (.pn-gp-mem-wait), so a late first answer fills it in place: nothing under the card moves.
     var paint = function (data) {
         var rows = data.map(function (m, i) { return { name: m.name || "", me: !!m.is_me, n: Math.max(0, m.beers | 0) + Math.max(0, m.others | 0), live: !!m.live, ix: i, k: m.k || null }; })
           .sort(function (a, b) { return (b.live - a.live) || (b.n - a.n) || (a.ix - b.ix); }).slice(0, 12);
@@ -315,7 +313,7 @@
           l.appendChild(mi);
         });
         try { if (window.AVATAR && window.AVATAR.faces) window.AVATAR.faces(l, rows, g); } catch (e) {}
-        box.__on = rows.length > 0; box.hidden = !rows.length; syncCard(wrap);
+        box.classList.remove("pn-gp-mem-wait"); box.__on = rows.length > 0; box.hidden = !rows.length; syncCard(wrap);
         // ds58: someone new in the group while the page is open → one calm toast per name
         var names = data.map(function (m) { return m.name || ""; });
         var joined = wrap.__memNames && names.some(function (n) { return n && wrap.__memNames.indexOf(n) < 0; });
@@ -331,8 +329,7 @@
           if (fn === "group_status_v3") go("group_status_v2"); else if (!box.__on) { box.hidden = true; syncCard(wrap); }   // no member list: the card is the Nu text only
           return;
         }
-        setCount(wrap, r.data.length);   // fixS T-16: the member count follows the member list (also for a late first answer)
-        if (box.hidden && !holding()) { try { if (window.WARM && window.WARM.prefetch) window.WARM.prefetch(fn, { p_group_id: g.id }); } catch (e) {} return; }   // late first answer: cached for the next open
+        setCount(wrap, r.data.length);   // fixS T-16: the member count follows the member list
         paint(r.data);
       });
     };
@@ -598,7 +595,7 @@
     // old server) the title is "Gänget ikväll" and a tap opens Medlemmar.
     var nowB = h("button", { type: "button", class: "gpg-now-b", onclick: function () { if (nowB.__out) nowTap(wrap, g); else main.click(); } }, [
       h("span", { class: "gpg-now-t" }, [h("b", { text: T("gang") })])]);
-    var memL = h("span", { class: "pn-gp-mem-l", hidden: true });   // cifix1: shown by its first paint (cache or held sheet), never late
+    var memL = h("span", { class: "pn-gp-mem-l pn-gp-mem-wait" });
     var now = h("div", { class: "gpg-now pn-gp-mem", hidden: true }, [
       h("div", { class: "pn-gp-mem-h" }, [nowB,
         h("button", { type: "button", class: "pn-gp-mem-more", "aria-label": L("Gänget ikväll, visa medlemmar", "The gang tonight, show members"), onclick: function () { main.click(); } }, [
