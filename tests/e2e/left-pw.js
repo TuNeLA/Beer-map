@@ -3,7 +3,7 @@
 // usage: node left-pw.js <port> [part …]   parts: core photo voice invite event wish zone zoneold (default: all). Mocked Supabase.
 // Every part FAILS on big-update 744b622 and PASSES with the left patches (zoneold / tap = guards that pass on both).
 const { chromium } = require("playwright");
-const { ctxFor, boot, wait, clickJS } = require("./ds-helpers.js");
+const { ctxFor, boot, wait, clickJS, settle } = require("./ds-helpers.js");
 const PORT = process.argv[2] || 8871;
 const ONLY = process.argv.slice(3);
 const want = (p) => !ONLY.length || ONLY.includes(p);
@@ -118,7 +118,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await wait(page, 16000);   // longer than app.js RPC_TIMEOUT_MS (15 s)
     const early = await page.evaluate(() => Object.keys(window.__res).map((k) => k + ":" + JSON.stringify(window.__res[k] && window.__res[k].error)));
     ok("core: after 16 s with Regler open no post has timed out or ended (" + POSTS.length + " post RPCs)", early.length === 0, early);
-    await accept(page); await wait(page, 2500);
+    await accept(page); await settle(page, 2500);
     const res = await page.evaluate(() => window.__res);
     const bad = POSTS.filter((fn) => !res[fn] || res[fn].error);
     ok("core: after \"Jag godkänner\" each post is sent ONCE and answers without error", bad.length === 0 && POSTS.every((fn) => n(st, fn).length === 1),
@@ -138,12 +138,12 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await clickJS(page, ".ph-send"); await wait(page, 700);
     ok("photo: Regler shows before the post", await rules(page));
     await clickJS(page, ".ph-send"); await wait(page, 300);   // an impatient 2nd tap
-    await decline(page); await wait(page, 1200);
+    await decline(page); await settle(page, 1200);
     const s1 = await page.evaluate(() => ({ ov: !!document.querySelector(".ph-ov .ph-send"), cap: (document.querySelector(".ph-cap") || {}).value, dis: (document.querySelector(".ph-send") || {}).disabled }));
     const e1 = await errToasts(page);
     ok("photo: \"Inte nu\" = no post, no error toast, the photo and the caption stay, Skicka works again", !n(st, "post_photo").length && !e1.length && s1.ov && s1.cap === "Skål från Pitchers" && s1.dis === false, { posts: n(st, "post_photo").length, e1, s1 });
     await clickJS(page, ".ph-send"); await wait(page, 600); await clickJS(page, ".ph-send");
-    await accept(page); await wait(page, 2500);
+    await accept(page); await settle(page, 2500);
     ok("photo: after \"Jag godkänner\" ONE post with the caption, the sheet closes", n(st, "post_photo").length === 1 && n(st, "post_photo")[0][1].p_caption === "Skål från Pitchers" && !(await page.evaluate(() => !!document.querySelector(".ph-ov .ph-send"))), n(st, "post_photo").length);
     await ctx.close();
   }
@@ -173,12 +173,12 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await page.fill(".inv-title", "Grillkväll hos mig"); await wait(page, 300);
     await clickJS(page, ".inv-send"); await wait(page, 700);
     ok("invite: Regler shows before the post", await rules(page));
-    await decline(page); await wait(page, 1000);
+    await decline(page); await settle(page, 1000);
     const s = await page.evaluate(() => ({ t: (document.querySelector(".inv-title") || {}).value, dis: (document.querySelector(".inv-send") || {}).disabled }));
     const e1 = await errToasts(page);
     ok("invite: \"Inte nu\" = no post, no error toast, the form stays", !n(st, "invite_create").length && !e1.length && s.t === "Grillkväll hos mig" && s.dis === false, { e1, s });
     await clickJS(page, ".inv-send"); await wait(page, 500); await clickJS(page, ".inv-send");
-    await accept(page); await wait(page, 2000);
+    await accept(page); await settle(page, 2000);
     ok("invite: after \"Jag godkänner\" ONE invite", n(st, "invite_create").length === 1 && n(st, "invite_create")[0][1].p_title === "Grillkväll hos mig", n(st, "invite_create").length);
     await ctx.close();
   }
@@ -192,12 +192,12 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     const go = () => page.evaluate(() => { const b = [...document.querySelectorAll("#sheet .btn-green.btn-block")].pop(); if (b) b.click(); return !!b; });
     await go(); await wait(page, 700);
     ok("event: Regler shows before the post", await rules(page));
-    await decline(page); await wait(page, 1000);
+    await decline(page); await settle(page, 1000);
     const s = await page.evaluate(() => ({ t: (document.querySelector('#sheet input.inp[maxlength="80"]') || {}).value, open: !document.getElementById("sheet").hidden }));
     const e1 = await errToasts(page);
     ok("event: \"Inte nu\" = no post, no error toast, the form stays", !n(st, "submit_event").length && !e1.length && s.t === "Quiz på Pitchers" && s.open, { e1, s });
     await go(); await wait(page, 500); await go();
-    await accept(page); await wait(page, 2000);
+    await accept(page); await settle(page, 2000);
     ok("event: after \"Jag godkänner\" ONE event", n(st, "submit_event").length === 1 && n(st, "submit_event")[0][1].p_title === "Quiz på Pitchers", n(st, "submit_event").length);
     await ctx.close();
   }
@@ -210,12 +210,12 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await page.evaluate(() => { const t = document.querySelector("#sheet textarea"); t.value = "Mörkt läge på Ölpasset"; t.dispatchEvent(new Event("input")); });
     await clickJS(page, ".ws-send"); await wait(page, 700);
     ok("wish: Regler shows before the post", await rules(page));
-    await decline(page); await wait(page, 1000);
+    await decline(page); await settle(page, 1000);
     const e1 = await errToasts(page);
     const t = await page.evaluate(() => (document.querySelector("#sheet textarea") || {}).value);
     ok("wish: \"Inte nu\" = no post, no error toast, the text stays", !n(st, "submit_wish").length && !e1.length && t === "Mörkt läge på Ölpasset", { e1, t });
     await clickJS(page, ".ws-send"); await wait(page, 500);
-    await accept(page); await wait(page, 2000);
+    await accept(page); await settle(page, 2000);
     ok("wish: after \"Jag godkänner\" ONE wish", n(st, "submit_wish").length === 1, n(st, "submit_wish").length);
     await ctx.close();
   }
@@ -246,7 +246,7 @@ const errToasts = (page) => page.evaluate(() => [...document.querySelectorAll("#
     // a tap on the pill still asks at once (its own request, no wait for a poll)
     await z.page.evaluate(() => { window.__dt += 70e3; });   // the counts are > 60 s old: a tap asks again
     const i0 = z.st.outer.length;
-    await clickJS(z.page, "#live-count"); await wait(z.page, 1500);
+    await clickJS(z.page, "#live-count"); await settle(z.page, 1500);
     const tap = z.st.outer.slice(i0).filter((x) => x.n === "zone_counts" || (x.inner && x.inner.includes("zone_counts")));
     ok("Z1 a tap on the pill asks at once (no wait for the next poll)", tap.length >= 1, z.st.outer.slice(i0).map((x) => x.n));
     await z.ctx.close();

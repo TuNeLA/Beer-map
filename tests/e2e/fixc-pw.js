@@ -7,7 +7,7 @@
 const fs = require("fs");
 const { chromium } = require("playwright");
 const H = require("./ds-helpers.js");
-const { ctxFor, boot, wait, clickJS } = H;
+const { ctxFor, boot, wait, clickJS, settle } = H;
 const RPCF = require("./fixtures/rpc.js");
 const OUT = require("./env.js").OUT, SHOTS = OUT + "fixc-shots/";
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -76,7 +76,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
 const friendRows = (page) => page.evaluate(() => [...document.querySelectorAll("#inv-pane-f .nr-flist .nr-frow")].map((x) => ({
   name: (x.querySelector("b") || {}).textContent, skriv: !!x.querySelector(".dm-fb"), bjud: !!x.querySelector(".inv-fb") })));
 const waitTxt = (page) => page.evaluate(() => { const o = document.querySelector("#inv-pane-f .nr-out"); return o ? o.textContent : ""; });
-const openVanner = async (page) => { await page.click("#btn-groups").catch(() => clickJS(page, "#btn-groups")); await wait(page, 1300); await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 2500); };
+const openVanner = async (page) => { await page.click("#btn-groups").catch(() => clickJS(page, "#btn-groups")); await settle(page, 1300); await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 2500); };
 const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? await r.text() : ""; } catch (e) { return ""; } };
 
 (async () => {
@@ -86,7 +86,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
   if (want("menu")) for (const w of W3) {
     const { ctx, page } = await app(browser, w);
     await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID);
-    await page.waitForSelector('.chat-list .chat-msg[data-mid="1"]', { timeout: 10000 }).catch(() => {}); await wait(page, 1500);
+    await page.waitForSelector('.chat-list .chat-msg[data-mid="1"]', { timeout: 10000 }).catch(() => {}); await settle(page, 1500);
     await page.click('.chat-list .chat-msg[data-mid="1"] .cm-body').catch(() => {}); await wait(page, 700);
     const m = await page.evaluate(() => {
       const p = document.querySelector(".chat-list .cm-picker"); if (!p) return null;
@@ -128,7 +128,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     const msgs = []; for (let i = 1; i <= 12; i++) msgs.push({ id: i, name: i % 3 ? "Oskar" : "Anton", body: "Rad " + i + " med lite text så det blir en rad", created_at: iso(60 - i), is_me: !(i % 3) });
     const { ctx, page } = await app(browser, 390, { msgs });
     await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID);
-    await page.waitForSelector('.chat-list .chat-msg[data-mid="12"]', { timeout: 10000 }).catch(() => {}); await wait(page, 1500);
+    await page.waitForSelector('.chat-list .chat-msg[data-mid="12"]', { timeout: 10000 }).catch(() => {}); await settle(page, 1500);
     // line 4 half hidden at the top of the box
     await page.evaluate(() => { const l = document.querySelector(".chat-list"), m = document.querySelector('.chat-msg[data-mid="4"]'); l.scrollTop += m.getBoundingClientRect().top - l.getBoundingClientRect().top + m.offsetHeight / 2; });
     await wait(page, 400);
@@ -166,7 +166,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
       await openVanner(page);
       st.kalle = "accepted";
       await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 600);
-      await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 2500);
+      await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 2500);
       const rows = await friendRows(page), k = rows.find((r) => r.name === "Kalle");
       if (process.env.FIXC_DEBUG) console.log("DEBUG", JSON.stringify(await page.evaluate(() => { const f = document.getElementById("inv-pane-f"); return { hid: f && f.hidden, html: f && f.innerHTML.replace(/<svg.*?<\/svg>/g, "").slice(0, 1500), panes: [...document.querySelectorAll(".inv-pane")].map((x) => x.id + ":" + x.hidden) }; })), JSON.stringify(st.calls.filter((c) => /friend/.test(c[0])).map((c) => c[0])));
       ok(`[${w}] N-04 Grupper → Vänner again: Kalle is a friend now, row has Skriv + Bjud in`, !!k && k.skriv && k.bjud && !/Väntar/.test(await waitTxt(page)), rows);
@@ -176,7 +176,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     // (c) friend_list is older than my_friends (first answer without Kalle) → the row still gets Skriv + Bjud in
     {
       const { ctx, page } = await app(browser, 390, { kalle: "accepted", flKalleAfter: 2 });
-      await openVanner(page); await wait(page, 2500);
+      await openVanner(page); await settle(page, 2500);
       const rows = await friendRows(page), k = rows.find((r) => r.name === "Kalle");
       ok("[390] N-04 a stale friend_list: the accepted friend's row has Skriv + Bjud in (DM start)", !!k && k.skriv && k.bjud, rows);
       await ctx.close();
@@ -188,7 +188,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
       const r0 = await friendRows(page);
       st.lisa = false;   // block_user on her side; friend_list answer still old
       await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 600);
-      await clickJS(page, '.inv-tabs button[data-t="f"]'); await wait(page, 3000);
+      await clickJS(page, '.inv-tabs button[data-t="f"]'); await settle(page, 3000);
       const r1 = await friendRows(page);
       ok("[390] N-18 blocked side: Lisa leaves Mina vänner without a reopen (a stale friend_list does not bring her back)", r0.some((r) => r.name === "Lisa") && !r1.some((r) => r.name === "Lisa"), { r0, r1 });
       await shot(page, "blocked-side", 390);
@@ -219,12 +219,12 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
   if (want("inv")) for (const w of W3) {
     const { ctx, page, st } = await app(browser, w, { invPeople: true });
     await page.evaluate((k) => window.INVITE.openCreate({ keys: [k], who: "Kalle" }), KALLE);
-    await page.waitForSelector(".inv-sel", { timeout: 10000 }).catch(() => {}); await wait(page, 2000);
+    await page.waitForSelector(".inv-sel", { timeout: 10000 }).catch(() => {}); await settle(page, 2000);
     const f = await page.evaluate(() => ({ sel: (document.querySelector(".inv-sel") || {}).value, shown: ((document.querySelector(".inv-sel") || {}).selectedOptions || [{}])[0].textContent, n: (document.querySelector(".inv-pk-n") || {}).textContent }));
     ok(`[${w}] T-22 picker count: "1 vald" (not "1 valda")`, f.n === "1 vald", f);
     await shot(page, "invite-form", w);
     await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
-    await clickJS(page, ".inv-send"); await wait(page, 2500);
+    await clickJS(page, ".inv-send"); await settle(page, 2500);
     const ic = n(st, "invite_create").pop(), toasts = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent));
     ok(`[${w}] N-16 "${f.shown}" shown first → Skicka sends with my GPS spot (no "Välj var.")`, /GPS/.test(f.shown || "") && !!ic && Math.abs(ic[1].p_lat - 60.1511) < 0.01 && !toasts.some((t) => /Välj var/.test(t)), { f, ic: ic && ic[1], toasts });
     await ctx.close();
@@ -233,13 +233,13 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
   /* ---------- N-17: ONE group: the Grupper row follows a newer my_groups (and the group page opens with it) ---------- */
   if (want("grp")) for (const w of W3) {
     const { ctx, page, st } = await app(browser, w, { groups: true, mc: 1 });
-    await page.click("#btn-groups").catch(() => {}); await wait(page, 1500);
+    await page.click("#btn-groups").catch(() => {}); await settle(page, 1500);
     await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 800);
     const t0 = await page.evaluate(() => (document.querySelector(".glist .gcard .gsub") || {}).textContent);
-    await clickJS(page, "#sheet-close"); await wait(page, 1200);
+    await clickJS(page, "#sheet-close"); await settle(page, 1200);
     st.mc = 4; st.ac = 1;   // 3 people joined, one is out
     await wait(page, 16000);   // the cached answer is older than 15 s → warm.js asks again in the background
-    await page.click("#btn-groups").catch(() => {}); await wait(page, 4000);
+    await page.click("#btn-groups").catch(() => {}); await settle(page, 4000);
     await clickJS(page, '.inv-tabs button[data-t="g"]'); await wait(page, 500);
     const t1 = await page.evaluate(() => (document.querySelector(".glist .gcard .gsub") || {}).textContent);
     ok(`[${w}] N-17 one group: the row said "${t0}", after 3 joins it says "1 av 4 dricker nu" without a reopen`, /av 1 /.test(t0 || "") && /1 av 4 dricker nu/.test(t1 || ""), { t0, t1, mg: n(st, "my_groups").length });
@@ -252,8 +252,8 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     const { ctx, page, st } = await app(browser, w, { duel: true });
     await page.waitForFunction(() => window.DUEL && window.DUEL.data && window.DUEL.data() && (window.DUEL.data().duels || []).length, null, { timeout: 15000 }).catch(() => {});
     await page.evaluate(() => { try { window.DUEL.onAuthed(); } catch (e) {} }); await wait(page, 1500);
-    await clickJS(page, "#btn-groups"); await wait(page, 1300);
-    await clickJS(page, ".inv-tabs .ib-tab"); await wait(page, 2000);
+    await clickJS(page, "#btn-groups"); await settle(page, 1300);
+    await clickJS(page, ".inv-tabs .ib-tab"); await settle(page, 2000);
     const pre = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent));
     await page.evaluate(() => { const b = [...document.querySelectorAll("#inv-pane-i .ib-duel .sa-ib-yes")].find((x) => /Anta/.test(x.textContent)); if (b) b.click(); }); await wait(page, 900);
     const t = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => ({ t: x.textContent, open: !!x.querySelector("button") && /Öppna/.test(x.querySelector("button").textContent) })));

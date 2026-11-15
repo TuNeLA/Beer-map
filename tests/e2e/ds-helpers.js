@@ -167,12 +167,71 @@ async function ctxFor(browser, vp, o = {}) {
   await mock(page, o);
   return { ctx, page };
 }
+// ci1 (code audit B1): boot() slept a fixed 3.5 s on every start. The sleep covered four things. boot() now waits for each
+// of them by name, with the old 3.5 s as the cap (never slower than before):
+//   1. the lazy content files + sheet stylesheets. The app loads them 3 s after "load" when idle, or AT ONCE when a sheet
+//      opens (js/boot.js OLNU_LAZY_NOW, the app's own path). The helper asks for them at once and waits for OLNU_LAZY.
+//   2. window.__pnCalm     js/pnds.js: the splash is gone + 1.2 s, the start-up work that waits for "pn:calm" has begun
+//   3. PN.s.firstLoadDone  js/app-poll.js: the first poll is in and drawn (not asked for a clean start: no session, no poll)
+//   4. one idle period after 1-3 (the idle warm-up work that was queued before it has run), then BOOT_SETTLE ms for the
+//      redraw after setView (the 300 ms debounces).
+// Env PN_BOOT_SLEEP=3500 = the old fixed sleep (one switch back, also in CI: e2e.yml env).
+const BOOT_CAP = 3500, BOOT_SETTLE = Number(process.env.PN_BOOT_SETTLE || 400), BOOT_OLD = Number(process.env.PN_BOOT_SLEEP === undefined ? 3500 : process.env.PN_BOOT_SLEEP);   // WIP ci1: default = old 3.5 s sleep; PN_BOOT_SLEEP=0 = the new ready wait (misc + feat fail with it)
+async function ready(page, clean) {
+  if (BOOT_OLD) { await wait(page, BOOT_OLD); return; }
+  const t0 = Date.now(), left = () => Math.max(0, BOOT_CAP - (Date.now() - t0));
+  await page.evaluate((cap) => Promise.race([new Promise((r) => setTimeout(r, cap)), Promise.resolve(window.OLNU_LAZY_NOW ? window.OLNU_LAZY_NOW() : null).then(() => {
+    const css = () => [].every.call(document.querySelectorAll('link[rel="stylesheet"]'), (l) => !!l.sheet || l.href.indexOf(location.origin) !== 0);   // own stylesheets only
+    return new Promise((r) => (function chk() { if (css()) r(); else setTimeout(chk, 30); })());
+  })]), left()).catch(() => {});
+  await page.waitForFunction((c) => window.__pnCalm === true && !document.getElementById("pn-splash") &&
+    (c || !window.PN || !window.PN.s || window.PN.s.firstLoadDone !== false), !!clean, { timeout: Math.max(1, left()), polling: 50 }).catch(() => {});
+  await page.evaluate((cap) => new Promise((r) => { const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 800 }) : (f) => setTimeout(f, 50); setTimeout(r, cap); idle(() => idle(() => r())); }), left()).catch(() => {});
+  await wait(page, Math.min(BOOT_SETTLE, left()));
+}
+// ci1 (code audit B1 step 6): settle(page, cap) = "the UI has finished reacting", at most `cap` ms. Use it in place of a fixed
+// wait(page, cap) AFTER AN ACTION (a click that opens a sheet or a tab, setView, a send): it returns when, for SETTLE_QUIET ms,
+// the DOM did not change (map tiles and the ticker belt do not count), no finite animation or transition runs, and no request
+// of the page is in flight (a mocked RPC answer still on its way). The cap is the old sleep, so it is never slower than before.
+// Do NOT use it where the test waits for a timer of the app (a calm window, a toast life, an RPC timeout) or checks that
+// nothing happens: keep wait() there. Env PN_SETTLE=off = every settle() is the old fixed wait.
+const SETTLE_QUIET = Number(process.env.PN_SETTLE_QUIET || 500), SETTLE_OFF = process.env.PN_SETTLE !== "on";   // WIP ci1: default off (= old fixed wait) until the 8 converted files are verified; PN_SETTLE=on = settle
+function track(page) {
+  if (page.__pnInflight) return page.__pnInflight;
+  const f = page.__pnInflight = new Set(), done = (q) => f.delete(q);
+  page.on("request", (q) => f.add(q)); page.on("requestfinished", done); page.on("requestfailed", done);
+  return f;
+}
+async function settle(page, cap) {
+  if (SETTLE_OFF) { await wait(page, cap); return; }
+  const inflight = track(page), t0 = Date.now();
+  for (;;) {
+    const left = cap - (Date.now() - t0);
+    if (left <= 0) return;
+    const quiet = await page.evaluate(([max, q]) => new Promise((res) => {
+      const skip = (n) => { const e = n && (n.nodeType === 1 ? n : n.parentElement); return !!(e && e.closest && e.closest("#map, #ticker, .ticker")); };
+      const t0 = performance.now(); let last = t0;
+      const mo = new MutationObserver((ms) => { if (ms.some((m) => !skip(m.target))) last = performance.now(); });
+      mo.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+      const moving = () => { try { return document.getAnimations().some((a) => { const t = a.effect && a.effect.getComputedTiming(); return a.playState === "running" && t && isFinite(t.endTime) && !skip(a.effect.target); }); } catch (e) { return false; } };
+      (function tick() {
+        const now = performance.now();
+        if (now - t0 >= max) { mo.disconnect(); return res(false); }
+        if (now - last >= q && !moving()) { mo.disconnect(); return res(true); }
+        setTimeout(tick, 50);
+      })();
+    }), [left, SETTLE_QUIET]).catch(() => null);
+    if (quiet === null) { await wait(page, Math.max(0, cap - (Date.now() - t0))); return; }   // the page navigated: the old sleep
+    if (!quiet || inflight.size === 0) return;
+    await wait(page, 50);
+  }
+}
 async function boot(page, o = {}) {
   await page.goto(BASE);
-  if (o.clean) { await wait(page, 3500); return; }
+  if (o.clean) { await ready(page, true); return; }
   await page.waitForFunction(() => window.__map && document.querySelectorAll(".pill").length > 3, null, { timeout: 30000 }).catch(() => console.log("no pills"));
   await page.evaluate(() => window.__map.setView([60.1505, 15.1872], 15, { animate: false }));
-  await wait(page, 3500);
+  await ready(page, false);
 }
 
 const scenarios = {
@@ -310,7 +369,7 @@ const scenarios = {
   },
 };
 
-module.exports = { ctxFor, boot, wait, clickJS, shot, mock, GID, clickText, closeSheet, unmocked };
+module.exports = { ctxFor, boot, wait, clickJS, shot, mock, GID, clickText, closeSheet, unmocked, settle };
 if (require.main === module) (async () => {
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME,
     ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY, bypass: "<-loopback>,127.0.0.1,localhost" } } : {}), args: ["--ignore-certificate-errors"] });

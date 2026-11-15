@@ -6,9 +6,14 @@
     "test:e2e": "bash tests/e2e/run-all.sh 8793 8871",
     "test:unit": "node tests/e2e/notif-sw-test.js . && node scripts/import-sport.test.mjs",
     "schema:snapshot": "node scripts/schema-snapshot.mjs",
-    "staging:bundle": "node supabase/staging/apply.mjs --seed --out supabase/staging/out/apply.sql"
+    "staging:bundle": "node supabase/staging/apply.mjs --seed --out supabase/staging/out/apply.sql",
+    "quick": "bash scripts/dev/quick.sh",
+    "build:site": "node scripts/build-site.mjs",
+    "guard:shards": "node scripts/ci/shard-guard.mjs ."
   },
   "devDependencies": {
+    "acorn": "8.12.1",
+    "esbuild": "0.24.0",
     "playwright": "1.56.1"
   },
   "engines": {

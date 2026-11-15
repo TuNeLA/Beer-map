@@ -1,0 +1,7 @@
+# tests/e2e/*-pw.js files that are NOT in a CI shard, and why. One line: <file>  <why>
+# scripts/ci/shard-guard.mjs fails when a *-pw.js file is neither in run-all.sh (and one shard) nor on this list.
+# Take a line off this list when the test is green again and add `run <name> $B <file>` to run-all.sh.
+bold-bump-pw.js   fails on big-update defe149 (15 Nov 2026): "HUD chip: Lisa ä nära · Skål!" (8 pass, 1 fail, 2 runs). Never ran in CI since 9 Nov. Owner of bold-bump.js must fix the test or the chip.
+bold-hem-pw.js    stops with an exception on big-update defe149 (15 Nov 2026): page.evaluate "Cannot read properties of undefined (reading 'open')" after "back button closes Hem-läge" (16 pass). Never ran in CI since 10 Nov.
+speed-pw.js       a measuring probe (writes speed-<tag>.json, prints numbers): it has no PASS / FAIL lines, so it cannot gate.
+beta-pw.js        a live-server test: it drives the real beta site and creates real users. Run by hand only (see run-all.sh header).

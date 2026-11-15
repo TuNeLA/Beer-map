@@ -1,6 +1,6 @@
 // SAFE Playwright test (mocked server, 412x915): store-safe + trust & safety client.
 // Usage: NODE_PATH=... node safe-pw.js <port>      Screenshots: safe-tests/safe-*.png
-const { ctxFor, boot, wait, clickJS } = require("./d2-helpers.js");
+const { ctxFor, boot, wait, clickJS, settle } = require("./d2-helpers.js");
 const { chromium } = require("playwright");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8901, BASE = `http://127.0.0.1:${PORT}/`;
@@ -108,7 +108,7 @@ async function safetyMocks(page, st, calls) {
     await wait(page, 1500);
     ok("age answer sent; sheet closed", calls.some((c) => c[0] === "set_age_ok" && c[1].p_birth_year === 1985) && !(await page.$(".sf-ov")), calls.filter((c) => c[0] === "set_age_ok"));
     // chat: Regler before the first post
-    await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID); await wait(page, 2000);
+    await page.evaluate((gid) => window.SOCIAL.openChat({ id: gid, name: "Ludvika Lager" }), GID); await settle(page, 2000);
     await page.fill(".chat-input input, #chat-input, .chat-in input, input[enterkeyhint='send']", "Skål på er!").catch(() => {});
     await page.evaluate(() => { const i = document.querySelector("#sheet input[type=text], #sheet input:not([type]), #sheet textarea"); if (i) { i.value = "Skål på er!"; i.dispatchEvent(new Event("input")); i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); } });
     await wait(page, 1200);
@@ -116,7 +116,7 @@ async function safetyMocks(page, st, calls) {
     ok("first post → 📜 Regler sheet (chat stays open)", /Regler i PintsNow/.test(rules) && /support@pintsnow.com/.test(rules) && await page.evaluate(() => !document.querySelector("#sheet").hidden), rules.slice(0, 80));
     await shot(page, "regler");
     ok("post waits for the answer", !calls.some((c) => c[0] === "post_group_msg"));
-    await page.evaluate(() => document.querySelector(".sf-accept").click()); await wait(page, 1500);
+    await page.evaluate(() => document.querySelector(".sf-accept").click()); await settle(page, 1500);
     ok("Jag godkänner → accept_terms, then the message goes", calls.some((c) => c[0] === "accept_terms") && calls.some((c) => c[0] === "post_group_msg" && c[1].p_body === "Skål på er!"));
     // long-press a message from Oskar
     // The app cancels a long-press when the list scrolls (by design). On a slow CI machine the list can still be
@@ -199,7 +199,7 @@ async function safetyMocks(page, st, calls) {
     ok("strangers carry no number (all 1, masked)", strangers.length > 5 && strangers.every((p) => p.nc && p.n === 1), strangers.slice(0, 4));
     ok("own pin + group keep their count (care signal)", group.some((p) => p.f === "Oskar" && p.n >= 11) && group.some((p) => p.me && p.n >= 6), group);
     // top list: only Barer
-    await clickJS(page, "#btn-top"); await wait(page, 1200);
+    await clickJS(page, "#btn-top"); await settle(page, 1200);
     const tabs = await page.evaluate(() => [...document.querySelectorAll("#sheet .tabs button")].map((b) => b.textContent));
     const topTxt = await page.evaluate(() => document.querySelector("#sheet").textContent);
     const appTabs = await page.evaluate(() => [...document.querySelectorAll('#sheet .tabs button[data-k]')].map((b) => b.getAttribute("data-k")));
@@ -227,7 +227,7 @@ async function safetyMocks(page, st, calls) {
     const sos = await page.evaluate(() => { const c = document.createElement("div"); document.body.appendChild(c); window.SOCIAL.sosBlock(c);
       const w = c.querySelector(".sos-block"); const first = w && w.firstElementChild; const r = { first: first ? first.textContent : "", href: first ? first.querySelector("a,.sf-112-btn") && (first.querySelector("a") || {}).getAttribute("href") : "", text: c.textContent }; c.remove(); return r; });
     ok("SOS: 📞 Ring 112 first + 'Appen larmar inte själv.'", /Ring 112/.test(sos.first) && sos.href === "tel:112" && /Appen larmar inte själv\./.test(sos.text), sos);
-    await page.evaluate(() => window.HEMFOLJ && window.HEMFOLJ.open ? window.HEMFOLJ.open() : null); await wait(page, 1000);
+    await page.evaluate(() => window.HEMFOLJ && window.HEMFOLJ.open ? window.HEMFOLJ.open() : null); await settle(page, 1000);
     const hf = await page.evaluate(() => { const s = document.querySelector("#sheet"); const f = s && s.querySelector(".sf-112"); return f ? [f.textContent, f === s.querySelector("#sheet-body, .sheet-body, .sheet-content") ? 1 : 0] : null; });
     ok("Följ mig hem sheet starts with Ring 112", !!hf && /Ring 112/.test(hf[0]), hf);
     await shot(page, "folj-112");

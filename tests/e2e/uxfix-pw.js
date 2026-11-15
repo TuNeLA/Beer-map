@@ -14,7 +14,7 @@ const { chromium } = require("playwright");
 const SP = require("./env.js").OUT;
 const PORT = process.argv[2] || 8793, BASE = `http://127.0.0.1:${PORT}/`;
 const ONLY = new RegExp(process.argv[3] || ".");
-const { wait, GID } = H;
+const { wait, GID, settle } = H;
 let pass = 0, fail = 0;
 const ok = (m, c, x) => { c = !!c; console.log((c ? "PASS " : "FAIL ") + m + (c || x === undefined ? "" : " " + JSON.stringify(x).slice(0, 500))); c ? pass++ : fail++; };
 const J = (r, b, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -111,7 +111,7 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
       await page.fill("#jn-name", "Sara").catch(() => {});
       await page.click(".jn-joinbtn").catch(() => {}); await wait(page, 600);
       await page.selectOption("#sf-age-year", "2002").catch(() => {}); await wait(page, 300);
-      await page.click(".jn-age-go").catch(() => {}); await wait(page, 3500);
+      await page.click(".jn-age-go").catch(() => {}); await settle(page, 3500);
       const st = await page.evaluate(() => {
         const vis = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden" && (!e.checkVisibility || e.checkVisibility({ contentVisibilityAuto: true }));
         const go = document.querySelector(".jn-tomap"), card = document.querySelector("#jn-wel");
@@ -175,7 +175,7 @@ const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) retur
       const { ctx, page } = await H.ctxFor(browser, { width: 360, height: 780 });
       await ctx.addInitScript(() => { try { Object.defineProperty(Notification, "permission", { configurable: true, get: () => "denied" }); } catch (e) {} });
       await H.boot(page);
-      await page.evaluate(() => document.getElementById("btn-settings").click()); await wait(page, 1200);
+      await page.evaluate(() => document.getElementById("btn-settings").click()); await settle(page, 1200);
       await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet [role=tab]")].find((x) => /Inställningar/.test(x.textContent)); b && b.click(); }); await wait(page, 2000);
       await page.evaluate(() => { const b = document.querySelector(".set-r-notis"); b && b.click(); }); await wait(page, 2500);
       await page.evaluate(() => { const x = [...document.querySelectorAll("#sheet-body summary, #sheet-body button, #sheet-body [role=button]")].find((e) => /Välj notiser/.test(e.textContent) && e.getClientRects().length); if (x) x.click(); }); await wait(page, 1200);
