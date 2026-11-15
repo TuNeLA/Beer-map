@@ -92,7 +92,7 @@
         layout: { "icon-image": ["get", "img"], "icon-anchor": "bottom", "icon-allow-overlap": true, "icon-ignore-placement": true, "icon-pitch-alignment": "viewport", "icon-rotation-alignment": "viewport",
           "icon-size": ["interpolate", ["linear"], Z, 14, 0.5, 16, 0.85, 18, 1.2] }, paint: { "icon-emissive-strength": 1, "icon-opacity": 0.9 } }, L_GLOW);
     } catch (e) { try { console.warn("pn seasonmap", e && e.message); } catch (x) {} return false; }
-    model(m);
+    if (cur && cur.map.tree && allowed()) model(m);   // the 115 KB model is fetched only in the Christmas period
     return true;
   }
   // the real 3D tree (tilted view only): addModel FIRST, then a model layer (a URL as model-id broke rendering in 3.32)
@@ -323,7 +323,7 @@
   function onSeason(s) {
     var g2 = [s.key, s.map.advent, s.map.lucia, s.map.fire, s.map.fireworks, s.wx && s.wx.fallen, allowed()].join("|");
     cur = s; if (g2 === sig) return; sig = g2;
-    if (gm) { palette(gm, s); W.clearTimeout(animT); animT = 0; need(100); }
+    if (gm) { if (s.map.tree && allowed()) model(gm); palette(gm, s); W.clearTimeout(animT); animT = 0; need(100); }
   }
   W.PNSeasonMap = {
     init: function (api) {
