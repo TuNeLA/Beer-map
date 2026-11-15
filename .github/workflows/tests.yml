@@ -6,7 +6,7 @@ name: tests
 #   e2e.yml     the Playwright shards. The list is tests/e2e/shards.txt (one line per shard), not this file.
 #               Shards with `site=bundled` test the built site (scripts/build-site.mjs): they replace the old "bundle" job.
 # Speed (code audit B1): browser cache, 2 tests at once per shard (PAR), 20 balanced shards = one wave of runners,
-#   a new push cancels the older run of the same branch, a push with only docs / ops files starts no e2e runner.
+#   a push with only docs / ops files starts no e2e runner. A new push cancels the older run only on ci/ branches.
 # Map tests need the secret MAPBOX_TEST_TOKEN. Without it they are skipped (not failed).
 # Live-server tests (beta-pw.js) never run here.
 
@@ -20,9 +20,12 @@ on:
 permissions:
   contents: read
 
+# One finished run per commit on big-update (the release gate reads the run of a commit): there the group holds the commit,
+# so no run is cancelled and none waits behind another (a waiting run of the same group would be dropped by a newer push).
+# Only a ci/ lane branch keeps one group per branch: a new push cancels the run of its older commit.
 concurrency:
-  group: tests-${{ github.ref }}   # one run per branch: a new push cancels the run of the older commit
-  cancel-in-progress: true
+  group: tests-${{ github.ref }}-${{ startsWith(github.ref, 'refs/heads/ci/') && 'lane' || github.sha }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/ci/') }}
 
 jobs:
   guards:

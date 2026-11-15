@@ -57,7 +57,7 @@ It calls two shared files: `guards.yml` (unit, quality) and `e2e.yml` (the brows
 - WebKit (iPhone engine) runs of `ds-motion` and `ds-layout` are in the shard that has `webkit` on its line.
 - `guards / unit`: tests without a browser, split guard, stamp guard, shard guard. `schema`: the schema loads into an empty Postgres 17.
 - A push that changes only docs or ops files (`*.md`, `ops/`, `android/`, `supabase/`, `scripts/dev/`) starts no e2e runner.
-- A new push to the same branch cancels the run of the older commit.
+- On a `ci/` branch a new push cancels the run of the older commit. On `big-update` every commit gets its own full run (never cancelled).
 
 Expected time per shard: `node scripts/ci/plan.mjs . --times`. Check the lists: `node scripts/ci/shard-guard.mjs .`
 To run only some tests: locally `bash scripts/dev/quick.sh <names>` (guards + the named tests, one table), or see ".ci-only" below.

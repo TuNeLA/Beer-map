@@ -175,9 +175,11 @@ async function ctxFor(browser, vp, o = {}) {
 //   2. the lazy content files + sheet stylesheets (js/boot.js: 3 s after "load", or at once when a sheet opens)
 //   3. window.__pnCalm (js/pnds.js: splash gone + 1.2 s) and PN.s.firstLoadDone (js/app-poll.js: the first poll is drawn)
 //   4. the idle warm-up work that waits for 1-3
-// PN_BOOT_SLEEP=0 = wait for each of these by name (cap: the old 3.5 s, so never slower). Gain here: 0.3-0.8 s per boot.
-// DEFAULT = the old fixed sleep: the named wait passed the 5 files it was tried on, but about 60 files use boot() and they
-// were not all run with it. To turn it on for all: run one full CI with PN_BOOT_SLEEP: '0' in e2e.yml, then change the default.
+// PN_BOOT_SLEEP=0 = wait for each of these by name (cap: the old 3.5 s, so never slower).
+// DEFAULT = the old fixed sleep. The named wait passes the 5 files it was tried on (after2, misc, feat, evx, polish3), but it
+// saved nothing there (498 s, old sleep 502 s): the 4 s quiet window is most of the 3.5 s. About 60 files use boot() and
+// were not all run with it. It can pay off on a slow runner, where the pins come late: try one full CI run with
+// PN_BOOT_SLEEP: '0' in e2e.yml before you change the default.
 const BOOT_CAP = 3500, BOOT_SETTLE = Number(process.env.PN_BOOT_SETTLE || 200), CALM_QUIET_MS = 4000;
 const BOOT_OLD = Number(process.env.PN_BOOT_SLEEP === undefined ? 3500 : process.env.PN_BOOT_SLEEP);
 async function ready(page, clean) {
