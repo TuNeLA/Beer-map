@@ -175,7 +175,7 @@
     var pk = []; seen = {};
     lu.forEach(function (f) { var p = f.properties || {}; if (p.class !== "park" && p.class !== "grass") return; var ce = centroid(f.geometry); if (!ce) return; var k = ce.p[0].toFixed(4) + ce.p[1].toFixed(4); if (seen[k]) return; seen[k] = 1;
       pk.push({ f: f, p: ce.p, area: ce.area, cls: p.class, d: dist(ce.p, C) }); });
-    town = { cell: cell, z: z, st: st, ch: ch.slice(0, 3), parks: pk, bars: bars, C: C };
+    town = { cell: cell, z: z, st: st, ch: ch.slice(0, 3), parks: pk, bars: bars, C: C, at: Date.now(), n: roads.length + pois.length + lu.length };
     stats.roads = roads.length; stats.churches = ch.length; stats.parks = pk.length; stats.street = st ? st.name : ""; stats.ms = Math.round(W.performance.now() - t0);
     return town;
   }
@@ -197,9 +197,9 @@
       cands.sort(function (a, b2) { return a.sc - b2.sc; });
       // the nearest free spot: its box on screen touches no pin now (the rule), else the nearest one (then it is hidden)
       // the tree keeps its spot in this town (it must not jump on zoom); a new pick only in a new town
-      if (treeAt[T.cell]) best = treeAt[T.cell];
+      var tk = T.cell + "|" + T.st.name; if (treeAt[tk]) best = treeAt[tk];
       for (var ci = 0; ci < Math.min(60, cands.length) && !best; ci++) if (!hit(boxOf(m, F(cands[ci].p, { k: "tree" })), R)) best = cands[ci];
-      best = best || cands[0]; if (best && m.getZoom() >= 14.5) treeAt[T.cell] = best;
+      best = best || cands[0]; if (best && m.getZoom() >= 14.5) treeAt[tk] = best;
       if (best) { f.push(F(best.p, { k: "tree", img: "ss-tree-0", glow: "#ffcf7a", sk: 1 })); mdl.push(F(best.p, { k: "tree3d" })); stats.tree = best.p; }
       if (M.lights) walk(T.st.ls, 30, 720).forEach(function (q2, i) {
         var ax = -q2.dy / kx(q2.p[1]), ay = q2.dx / 110540, ends = [[q2.p[0] + ax * 9.5, q2.p[1] + ay * 9.5], [q2.p[0] - ax * 9.5, q2.p[1] - ay * 9.5]];
@@ -312,7 +312,12 @@
     m.on("moveend", function () { if (!feats.length && !bulbs.length && Date.now() - lastBuild < 2500) return; need(250); });
     m.on("pitchend", function () { tilt(m); need(100); });
     // pins come and go (a poll, a DOM pin mounts, a name gets placed): check the rule again when the map is still
-    m.on("idle", function () { if (feats.length || bulbs.length) cull(m, true); });
+    m.on("idle", function () {
+      if (feats.length || bulbs.length) cull(m, true);
+      // more tiles came after the first read (a church, the real shopping street): read the town again, at most every 10 s
+      if (town && cur && allowed() && Date.now() - town.at > 10000 && Date.now() - (town.re || 0) > 10000) { var n0 = town.n, t0 = town; town.re = Date.now();
+        town = null; var t2 = readTown(m); if (t2.n > n0) need(50); else { town = t0; town.re = Date.now(); } }
+    });
     m.on("sourcedata", function (e) { if (e && e.isSourceLoaded && !town && cur && allowed()) need(600); });
   }
   function check() {
