@@ -255,9 +255,10 @@
   // then it goes over to the timer"). undoSt = the Ångra state of the ÖL! button: { on, end, guard, busy }. No floating
   // button any more (the old round ↩ sat on top of Annat). The server's own window (2 min) stays open in 📊 Min kväll.
   var UNDO_SHOW_MS = 10000, UNDO_GUARD_MS = 1000, UNDO_AFTER_MS = 600, UNDO_SETTLE_MS = 500;
-  var undoSt = null, undoLate = null, undoOnT = null, tapAt = 0;
+  var undoSt = null, undoLate = null, undoOnT = null, tapAt = 0, undoUntilMs = 0;   // undoUntilMs: the end of the server's window for the last beer of this phone
   function clearUndo() {
     clearTimeout(undoTimer); clearTimeout(undoMiniTimer); clearTimeout(undoOnT); undoTimer = undoMiniTimer = undoOnT = null;
+    undoUntilMs = 0;
     if (undoLate) { clearTimeout(undoLate.t); undoLate = null; }
     if (undoSt) { undoSt = null; tickCooldown(); }
   }
@@ -268,6 +269,7 @@
     clearUndo();
     var until = Date.parse(d.undo_until), left = isFinite(until) ? until - Date.now() : 120000;
     left = Math.max(10000, Math.min(125000, left));   // phone clock skew: at least 10 s, at most ~2 min
+    undoUntilMs = Date.now() + left;
     var now = Date.now(), showAt = Math.max(now, tapAt + UNDO_AFTER_MS);
     var st = undoSt = { on: false, busy: false, showAt: showAt, end: showAt + UNDO_SHOW_MS, guard: Math.max(tapAt + UNDO_GUARD_MS, showAt + UNDO_SETTLE_MS) };
     undoOnT = setTimeout(function () { if (undoSt === st) { st.on = true; tickCooldown(); } }, showAt - now);
@@ -329,7 +331,10 @@
   }
   // Min kväll (nightlog.js): is the server's undo window (2 min) still open, and the way to use it.
   PN.beerUndo = {
-    open: function () { var u = PN.s.meState && PN.s.meState.undo_until, at = u ? Date.parse(u) : NaN; return !undoing && isFinite(at) && at > Date.now(); },
+    open: function () {   // this phone's last beer (undoUntilMs), or the server's "me" after a reload / a beer on another phone
+      var u = PN.s.meState && PN.s.meState.undo_until, at = u ? Date.parse(u) : NaN;
+      return !undoing && (undoUntilMs > Date.now() || (isFinite(at) && at > Date.now()));
+    },
     run: function (button, cb) { doUndo(button || null, cb); },
     state: function () { return undoSt ? { on: undoSt.on, busy: undoSt.busy, left: undoSt.end - Date.now(), guard: undoSt.guard - Date.now() } : null; }
   };
@@ -471,7 +476,8 @@
     var cardClosed = null;
     var big = drinkFx(total, Math.max(before, total - 1), { noToast: true, onClose: function () { if (cardClosed) cardClosed(); } });
     var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
-    var fact = t("lvlN", total) + (spot.home ? " · " + t("homeNote") : "");   // the plain fact (store toast, screen readers)
+    // the plain fact (store toast, screen readers). Not t("lvlN"): v14.js makes that "Nr N ikväll. Skål!" (a cheer).
+    var fact = tl("Öl nr " + total + " ikväll", "Beer no. " + total + " tonight") + (spot.home ? " · " + t("homeNote") : "");
     var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
     if (q) {
       // nightfix: the "sent" line REPLACES the "Skickas när du har täckning" line of the same tap (calm2 dropped it as a 2nd toast
