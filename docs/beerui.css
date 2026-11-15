@@ -67,6 +67,21 @@
   box-shadow:none !important;color:var(--ds-text) !important;font:600 var(--fs-16)/22px var(--ds-sans) !important;text-align:left}
 #sheet-body .wh-foot .btn.wh-home:active{background:var(--ds-raised) !important;transform:none}
 
+/* I-118 (owner, 360x640: "it's all squashed"): on a short phone the header, the info text, the amber button and the pinned row
+   left only ~2 rows of list. Short screens: taller sheet, the info text stays for screen readers only, tighter header.
+   Rows keep their 56 px, the amber button 56 px too; the list scrolls inside the sheet. */
+#sheet-body .wh .btn.wh-main{min-height:var(--pn-row-h);flex:0 0 auto}
+#sheet-body .wh-list,#sheet-body .wh .btn,#sheet-body .wh-foot{flex-shrink:0}
+@media (max-height:700px){
+  #sheet:has(.wh){max-height:94vh;max-height:94dvh}
+  #sheet:has(.wh) .sheet-head{padding-top:0;padding-bottom:var(--sp-1);margin-bottom:0}
+  #sheet-body .wh-info{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  #sheet-body .wh .btn.wh-main{margin-top:var(--sp-1)}
+  #sheet-body .wh-h{margin-top:var(--sp-4) !important}
+  #sheet-body .wh-foot{margin-top:var(--sp-2)}
+  #sheet-body .wh-foot::before{height:var(--sp-3)}
+}
+
 /* ---------- 4 · Min kväll: "Ångra" on the newest beer while the server's 2 min are open ---------- */
 .nl-n.nl-n-u{display:inline-flex;align-items:center;gap:var(--sp-2)}
 .nl-undo{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);border:1px solid var(--ds-amber);border-radius:var(--r-pill);
