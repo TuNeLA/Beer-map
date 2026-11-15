@@ -72,7 +72,10 @@ const beers = [P(PIT, 2, "Ida"), P(PIT, 3), P(PIT, 1)];
     await view([60.1496, 15.1878], 12); await shot(sn + "-ludvika-z12");
     if (st === "mb-dusk") {
       const pin = await page.evaluate(() => [...document.querySelectorAll(".leaflet-mypins-pane .mp-pin")].map((e) => e.textContent));
-      ok(pin.some((t) => /🏃/.test(t) && /La Parma/.test(t)), "z12: 🏃 på väg pin at La Parma (no bar marker there yet) " + JSON.stringify(pin));
+      // maplight (I-115, owner 15 Nov: a readable town view): bars with people that would sit on each other are ONE town lantern
+      // (GLBARS._crowds). A bar inside it counts as drawn, so mypins.js puts no chip over the lantern; else the old 🏃 chip.
+      const inLantern = await page.evaluate(() => Object.values(window.GLBARS && GLBARS._crowds ? GLBARS._crowds() : {}).some((c) => c.ids.indexOf("x-la-parma-ludvika") >= 0));
+      ok(inLantern || pin.some((t) => /🏃/.test(t) && /La Parma/.test(t)), "z12: 🏃 på väg pin at La Parma (no bar marker there yet), or La Parma inside the town lantern " + JSON.stringify({ pin, inLantern }));
       const pitFull = await page.evaluate(() => { if (window.GLBARS && GLBARS.on()) { const v = (GLBARS._view() || []).find((x) => x.id === "n3472634175"); return !!(v && v.full); }
         const ic = document.querySelector('.cm[data-bar="n3472634175"]'); return ic && ic.classList.contains("cm-full"); });
       ok(pitFull, "z12: Pitchers (friend Ida there) = full pill");

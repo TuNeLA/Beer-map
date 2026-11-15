@@ -3,7 +3,7 @@
 //  fix 3: moveend / zoomend listeners run in slices after the frame (not one long task); html.map-moving + "pn:mapmove"
 //         while the map moves; endless map decorations pause while it moves (finite ones keep running).
 //  fix 9: a DOM pin under the finger shrinks a little (CSS scale on its child).
-//  Guards: bars never hide on zoom, my-location dot under the bar layers, clusters as c2speed set them (max zoom 13), code
+//  Guards: bars never hide on zoom, my marker layer over the bar layers (maplight I-115; was: dot under them), clusters as c2speed set them (max zoom 13), code
 //  calls (GLBARS.open) still open the sheet at once.
 // Real Mapbox when MAPBOX_TEST_TOKEN is set (CI). Without it: a STUB Mapbox (blank style), the SAME GL layers run.
 // node d4map-pw.js <port> [tag] [only: regex tap|move|pause|press|guard]
@@ -185,9 +185,11 @@ function barInView(page, k) {
       await page.evaluate((ll) => { GLBARS.me(ll[0], ll[1]); }, [LUD[0] + 0.0004, LUD[1] + 0.0004]);
       await drag(page, cdp, 200, 520, 160, 420, 8); await idle(page, 600);   // after a move too
       const ord = await page.evaluate(() => { const ids = __gm().getStyle().layers.map((l) => l.id);
-        const barIx = ids.filter((id) => /^olnu-(bar-|place$)/.test(id) && id !== "olnu-bar-blk").map((id) => ids.indexOf(id)), dot = ids.indexOf("olnu-me-dot");
-        return { dot, bars: barIx.length, under: dot >= 0 && barIx.every((i) => i > dot) }; });
-      ok(ord.under && ord.bars > 0, "guard: my-location dot layer stays under every bar / food layer", ord);
+        const barIx = ids.filter((id) => /^olnu-(bar-|place$)/.test(id) && id !== "olnu-bar-blk").map((id) => ids.indexOf(id)), dot = ids.indexOf("olnu-me-pin");
+        return { dot, bars: barIx.length, over: dot >= 0 && barIx.every((i) => i < dot) }; });
+      // maplight I-115 (owner 15 Nov: "a bar covers you, you get completely removed from the map"): my marker is the TOP layer now
+      // (it stands beside an icon, never on it). Was: the dot layer under the bars (a1map I-28).
+      ok(ord.over && ord.bars > 0, "guard: my marker layer stays over every bar / food layer (I-115)", ord);
       const cl = await page.evaluate(() => GLBARS._cl());
       ok(cl.maxz === 14, "guard: bar clusters stop at Leaflet zoom 14 (CL_MAXZ 13: c12fix put it back so close bars never disappear at z14)", { maxz: cl.maxz });
       ok(errs.length === 0, "no page errors", errs.slice(0, 5));

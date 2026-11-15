@@ -1,6 +1,6 @@
 // hotfix1-pw.js — lane hotfix1 (owner phone test 13 Nov 14:56, first fix after the release):
-//   I-63 my dot: the blue ring (GL layer olnu-me-ring) is drawn ONLY when a bar / food icon covers or touches my dot;
-//        away from the bars = the dot only (+ the accuracy circle). Checked in = no dot, the "Du" tag (unchanged).
+//   I-63 my dot: (was: a blue ring only when an icon covers the dot.) maplight I-115, owner 15 Nov: NO ring; my marker is one
+//        symbol in the top layer; on a bar / food icon it stands beside the icon; away from the bars = at my position.
 //   I-64 avatar editor labels: "Form" → "Ansiktsform", "Överdel" → "Tröja & jacka" (editor tabs, headers, wizard chips);
 //        the one tab row still fits / scrolls at 360 px (no sideways page overflow, every tab one line).
 // Map part: real Mapbox when MAPBOX_TEST_TOKEN is set, else a STUB Mapbox (fake token, blank style) with the real GL bar layers.
@@ -49,13 +49,14 @@ async function meAt(page, ctx, ll, z) {
   await page.evaluate(([ll, z]) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, z, { animate: false }); }, [ll, z]);
   await idle(page, 1200);
 }
-// what is drawn at my dot: dot / ring features, and the venue icons in a 13 px box around it (what the app tests)
+// what is drawn for me (maplight I-115: ONE marker in the top layer "olnu-me-pin"; cov = the icon my position is on, I stand beside it),
+// and the venue icons in a 13 px box around my POSITION
 const meState = (page) => page.evaluate(() => {
   const g = __gm(), me = GLBARS._me(), q = (l) => g.getLayer(l) ? g.queryRenderedFeatures({ layers: [l] }).length : -1;
   const p = me.ll ? g.project([me.ll[1], me.ll[0]]) : null, B = 13;
   const lays = GLBARS._layers().filter((l) => /^olnu-(bar-|place$)/.test(l) && l !== "olnu-bar-blk" && g.getLayer(l));
   const near = p ? g.queryRenderedFeatures([[p.x - B, p.y - B], [p.x + B, p.y + B]], { layers: lays }).map((f) => f.layer.id + ":" + (f.properties.id || "")) : null;
-  return { ll: me.ll, cov: me.cov, nDot: q("olnu-me-dot"), nRing: q("olnu-me-ring"), near };
+  return { ll: me.ll, cov: me.cov ? me.cov.id : null, n: q("olnu-me-pin"), nRing: q("olnu-me-ring"), off: p && me.px ? Math.round(Math.hypot(me.px.x - p.x, me.px.y - p.y)) : null, near };
 });
 
 (async () => {
@@ -69,25 +70,26 @@ const meState = (page) => page.evaluate(() => {
       let away = null;
       for (const ll of AWAY) { await meAt(page, ctx, ll, 16.5); const s = await meState(page); if (s.near && s.near.length === 0) { away = s; break; } }
       ok("I-63 setup: a spot with no bar / food icon on my dot", !!away, away);
-      if (away) ok("I-63 away from the bars: my dot, NO separate ring around it", away.nDot === 1 && away.nRing === 0, away);
+      // maplight I-115 replaces the I-63 ring: there is NO ring at all; on an icon my marker stands beside it
+      if (away) ok("I-63 away from the bars: my marker at my position, NO ring", away.n === 1 && away.nRing === -1 && !away.cov && away.off === 0, away);
       await page.screenshot({ path: SP + "hotfix1-i63-away.png" }).catch(() => {});
-      // 2) on Pitchers: its icon covers my dot → the ring (over the icons) shows where I am
+      // 2) on Pitchers: my marker would cover its icon → it stands beside the icon (still drawn, in the top layer)
       const pit = await page.evaluate((id) => { const x = BARS.byId(id); return x ? [+x.lat, +x.lng] : null; }, PIT);
       await meAt(page, ctx, pit, 16.5);
       const on = await meState(page);
-      ok("I-63 setup: the Pitchers icon covers my dot", on.near && on.near.length > 0, on);
-      ok("I-63 under a bar icon: my dot + the ring over the icons", on.nDot === 1 && on.nRing >= 1 && on.cov === true, on);
+      ok("I-63 setup: the Pitchers icon is at my position", on.near && on.near.length > 0, on);
+      ok("I-63 on a bar icon: my marker is drawn beside the icon (I-115), no ring", on.n === 1 && on.cov === PIT && on.off > 20 && on.nRing === -1, on);
       await page.screenshot({ path: SP + "hotfix1-i63-bar.png" }).catch(() => {});
-      // 3) move away again (pan only, moveend): the ring goes again
+      // 3) move away again (pan only, moveend): back at my own position
       if (away) {
         await meAt(page, ctx, away.ll, 16.5);
         const back = await meState(page);
-        ok("I-63 moved off the bar again: the ring is gone (re-checked)", back.nDot === 1 && back.nRing === 0 && back.cov === false, back);
-        // 4) zoom only (zoomend) with me on the spot of a bar: covered → ring
+        ok("I-63 moved off the bar again: my marker is back at my position (re-checked)", back.n === 1 && !back.cov && back.off === 0, back);
+        // 4) zoom only (zoomend) with me on the spot of a bar: beside the icon again
         await page.evaluate((ll) => GLBARS.me(ll[0], ll[1]), pit);
         await page.evaluate((ll) => __map.setView(ll, 16, { animate: false }), pit); await idle(page, 1000);
         const z = await meState(page);
-        ok("I-63 zoom (zoomend) + new position on a bar: the ring comes back", z.nRing >= 1 && z.near.length > 0, z);
+        ok("I-63 zoom (zoomend) + new position on a bar: beside the icon again", z.n === 1 && z.cov === PIT && z.near.length > 0, z);
       }
       ok("I-63 no page errors", errs.length === 0, errs.slice(0, 3));
       await closeCounted(ctx, page, "hotfix1-i63");
