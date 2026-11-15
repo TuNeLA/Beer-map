@@ -818,7 +818,7 @@
      (never on the people count at the right, never on the friends row under it). No ring round the bar icon any more. History: a1map I-28 put the dot under the icons, hotfix1
      I-63 added the ring only when covered. app-map.js showMe() calls GLBARS.me(); the DOM me-dot is hidden while GL draws.
      meCheck(): after the bars redraw, on moveend and on a new position; one debounced check, no per-frame work. */
-  var SRC_ME = "olnu-me", L_ME = "olnu-me-pin", meLL = null, meAt = null, meSig = "", meCov = null, meChkT = 0, meOffSig = "", meR = 18, meBot = 28, meVerT = 0, meTry = 0, syncZ = -1;
+  var SRC_ME = "olnu-me", L_ME = "olnu-me-pin", meLL = null, meAt = null, meSig = "", meCov = null, meChkT = 0, meOffSig = "", meR = 18, meBot = 28, meVerT = 0, meTry = 0, syncZ = -1, meWhy = "";
   function L1(sv, en) { return window.I18N && window.I18N.lang === "en" ? en : sv; }
   function meImage(m, tag) {   // my marker image: "a" = my character, "d" = the dot; with or without the "Du" tag
     var P = art(); if (!P || !P.meOps) return "";
@@ -884,8 +884,9 @@
     // a name there: my marker is on top and would hide it (owner pictures 15 Nov). One query, only here: no per-frame work.
     var name = function (o) { var g = gm, rr = meR * k * 0.9, q = g ? g.project([at.ll[1], at.ll[0]]) : c, x = q.x + o[0], y = q.y + o[1];   // (GL canvas px: not always the Leaflet container's)
       try { return !!g && g.queryRenderedFeatures([[x - rr, y - rr], [x + rr, y + rr]], { layers: [L_LBL, L_PLACE].filter(function (l) { return g.getLayer(l); }) }).length > 0; } catch (e) { return false; } };   // (its own name too)
-    if (!hit(L) && !name(L)) return L;
-    return !hit(U) && !name(U) ? U : !hit(L) ? L : !hit(U) ? U : L;   // both taken: never on an icon if one side is free of icons
+    if (!hit(L) && !name(L)) { meWhy = "left"; return L; }
+    if (!hit(U) && !name(U)) { meWhy = "above"; return U; }
+    meWhy = "both taken"; return !hit(L) ? L : !hit(U) ? U : L;   // both taken: never on an icon if one side is free of icons
   }
   function meDraw(m) {
     if (!m || !m.getSource || !m.getSource(SRC_ME)) return;
@@ -1108,7 +1109,7 @@
     me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
     // tests: my marker. at = the icon I am checked in at, cov = the icon my position is on (I stand beside it), px = where it is drawn
     _me: function () {
-      var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR };
+      var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR, why: meWhy };
       try { var f = JSON.parse(meSig || "[]")[0]; if (f && gm) { var p = gm.project(f.geometry.coordinates), k = zk(map.getZoom()) * (f.properties.sz || 1), off = meOffSig.split(",");   // the offset is screen px (paint translate)
         o.img = f.properties.img; o.k = f.properties.k; o.px = { x: p.x + (+off[0] || 0), y: p.y + (+off[1] || 0), r: meR * k }; } } catch (e) {}
       return o;

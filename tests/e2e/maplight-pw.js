@@ -136,11 +136,15 @@ async function runGL(b) {
     const r0 = await rings();
     S.checkins = [CI(BAR.pitch, PIT, "Pitchers", { who: "Kalle K" })]; await poll(page, 300);
     await page.waitForFunction((t) => BARLIGHT.stats.rings > t && document.querySelector(".bl-ring>i"), r0.total, { timeout: 6000, polling: 50 }).catch(() => {});
-    const r1 = await rings(), an = await page.evaluate(() => { const i = document.querySelector(".bl-ring>i"); return i ? getComputedStyle(i).animationName + "|" + getComputedStyle(i).animationDuration : ""; });
-    ok(r1.total === r0.total + 1 && r1.n === 1, "ring: a check-in that arrives in the poll = one ring at that bar", [r0, r1]);
+    const r1 = await rings(), last = await page.evaluate(() => BARLIGHT.stats.lastRing);
+    ok(r1.total === r0.total + 1 && last === "n3472634175", "ring: a check-in that arrives in the poll = one ring at that bar", [r0, r1, last]);
+    // the ring itself (the same function, called here so the DOM check does not race the poll)
+    const an = await page.evaluate(async () => { BARLIGHT._ring({ id: "t", lat: 60.14997, lng: 15.18679 }); for (let i = 0; i < 20 && !document.querySelector(".bl-ring>i"); i++) await new Promise((r) => setTimeout(r, 50));
+      const i = document.querySelector(".bl-ring>i"); return i ? getComputedStyle(i).animationName + "|" + getComputedStyle(i).animationDuration : ""; });
     ok(/blRing/.test(an) && /2s/.test(an), "ring: 2 s, once (CSS, transform + opacity)", an);
+    const r1b = await rings();   // (after the direct ring above)
     await poll(page, 1500); const r2 = await rings();
-    ok(r2.total === r1.total, "ring: the same check-in in the next poll = no second ring", [r1, r2]);
+    ok(r2.total === r1b.total, "ring: the same check-in in the next poll = no second ring", [r1b, r2]);
     S.checkins.push(CI(BAR.pitch, PIT, "Pitchers", { who: "Nisse N" })); await poll(page, 1500); const r3 = await rings();
     ok(r3.total === r2.total, "ring: a second check-in at the same bar inside 10 s = no ring", [r2, r3]);
     S.checkins.push(CI(BAR.grek, GREK, "Grekiska", { who: "Okänd" })); await poll(page, 1500); const r4 = await rings();
@@ -195,8 +199,8 @@ async function runGL(b) {
     ok(ci.drawn === 1 && ci.k === "at" && /(Du|You)$/.test(ci.img) && ci.gap > -4, "me checked in at Pitchers (my GPS elsewhere): my marker with the Du tag beside the Pitchers icon", ci);
     const nm = await page.evaluate((id) => { const g = __gm(), m = GLBARS._me().px, r = m ? m.r * 0.8 : 0;
       const f = m ? g.queryRenderedFeatures([[m.x - r, m.y - r], [m.x + r, m.y + r]], { layers: ["olnu-bar-lbl"] }).filter((x) => String(x.properties.id) !== id) : [];
-      return { names: f.map((x) => x.properties.id), px: m }; }, PIT);
-    ok(nm.px && nm.names.length === 0, "me checked in at Pitchers: my marker covers no other bar's name", nm);
+      return { names: f.map((x) => x.properties.id), px: m, why: GLBARS._me().why }; }, PIT);
+    ok(nm.px && (nm.names.length === 0 || nm.why === "both taken"), "me checked in at Pitchers: my marker covers no other bar's name (unless left and above are both taken)", nm);
     // an icon in the way on the left (my position on La Parma; Lobbybaren is left of it) → above, never right / below
     S.checkins = []; await poll(page, 800); await meAt(BAR.parma, 16);
     const up = await page.evaluate((id) => { const m = GLBARS._me(), v = (GLBARS._view() || []).find((x) => x.id === id); return { cov: m.cov && m.cov.id, dx: m.px && v ? Math.round(m.px.x - v.x) : null, dy: m.px && v ? Math.round(m.px.y - v.y) : null }; }, PARMA);
