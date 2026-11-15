@@ -52,7 +52,8 @@ async function phone(browser, who, flagOn) {
     // the HUD chip after a background ping (night out: the seeded check-in)
     await A.page.evaluate(() => { window.BOLD.api().setLastLoc(60.14997, 15.18679); window.BOLD.onPoll(); }); await wait(A.page, 1500);
     await A.page.evaluate(() => window.BOLD.api().updateCounts()); await wait(A.page, 800);
-    ok(await A.page.evaluate(() => /Lisa ä nära · Skål!/.test((document.querySelector(".bb-chip") || {}).textContent || "")), "HUD chip: Lisa ä nära · Skål!");
+    // cifix1: dialekt phase 2 (e1fb60e) made this UI string plain Swedish: "är nära" (was the dialect "ä nära")
+    ok(await A.page.evaluate(() => /Lisa är nära · Skål!/.test((document.querySelector(".bb-chip") || {}).textContent || "")), "HUD chip: Lisa är nära · Skål!");
     // Ikväll menu row
     await A.page.evaluate(() => { const c = document.getElementById("pn-ikv2"); if (c) c.click(); }); await wait(A.page, 400);
     const row = await A.page.evaluate(() => { const r = [...document.querySelectorAll("#pn-ikm .pn-ikm-row")].find((x) => /Skål!/.test(x.textContent)); if (r) r.click(); return !!r; });

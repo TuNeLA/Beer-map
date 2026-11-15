@@ -45,7 +45,6 @@
   background:none;color:var(--ds-muted);cursor:pointer}
 #sheet .pn-gp-mem-more svg{width:16px;height:16px}
 #sheet .gpg-now>.pn-gp-mem-l[hidden]{display:none}
-#sheet .gpg-now>.pn-gp-mem-l.pn-gp-mem-wait{min-height:82px}   /* the strip's height before the faces come: no jump */
 #sheet .gpg-now-t>.gpg-dot.on+b{color:var(--ds-text) !important}   /* pnds.css 636 makes the word after a live dot green; here the dot says "live" */
 #sheet .gpg-now-b:focus-visible,#sheet .pn-gp-mem-more:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
 #sheet .gitem:not(.gcard)>div.gp.gpg.gpg[data-gv="home"]>.gmain .gsub.gsub{display:none}
