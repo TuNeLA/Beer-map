@@ -231,7 +231,7 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     ok(await p.evaluate(() => !!document.querySelector("#sheet-body .hf-ios") && /håll skärmen på/.test(document.querySelector("#sheet-body .hf-ios").textContent)), "Följ mig hem (iPhone): 'håll skärmen på' note up front");
     await H.closeSheet(p); await wait(p, 400);
     // ÖL! without GPS: the browser denies the position
-    await t.ctx.clearPermissions(); await p.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok, bad) => setTimeout(() => bad({ code: 1, message: "denied" }), 50); localStorage.removeItem("olnu.checkin"); localStorage.setItem("olnu.night", JSON.stringify({ count: 6, expires: Date.now() + 3600e3, lastTap: Date.now() - 3600e3 })); });
+    await t.ctx.clearPermissions(); await p.evaluate(() => { if (window.FASTPOS) window.FASTPOS.last = null;   /* I-104: no kept fix, else the tap uses it and never asks */ navigator.geolocation.getCurrentPosition = (ok, bad) => setTimeout(() => bad({ code: 1, message: "denied" }), 50); localStorage.removeItem("olnu.checkin"); localStorage.setItem("olnu.night", JSON.stringify({ count: 6, expires: Date.now() + 3600e3, lastTap: Date.now() - 3600e3 })); });
     await p.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((x) => x.remove()));
     await p.evaluate(() => document.getElementById("btn-beer").click()); await wait(p, 1200);
     const tb = await p.evaluate(() => [...document.querySelectorAll("#toasts .toast button")].map((b) => b.textContent));
