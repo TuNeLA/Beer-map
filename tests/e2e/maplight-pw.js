@@ -277,9 +277,16 @@ async function runGL(b) {
       const t = await page.evaluate(async () => {
         const B = window.BARLIGHT, out = {}, time = (fn, n) => { const t0 = performance.now(); for (let i = 0; i < n; i++) fn(); return +((performance.now() - t0) / n).toFixed(2); };
         out.syncMs = time(() => GLBARS.sync(), 20);
-        const keep = window.BARLIGHT; let on = 1e9, offMs = 1e9;
-        for (let r = 0; r < 3; r++) { on = Math.min(on, time(() => PN.render(), 8)); window.BARLIGHT = null; offMs = Math.min(offMs, time(() => PN.render(), 8)); window.BARLIGHT = keep; }
-        PN.render(); out.renderMs = +on.toFixed(2); out.renderNoFeedMs = +offMs.toFixed(2);   // the same page with and without the light feed
+        // flakefix (CI red: 80.19 vs 51.32 ms, best of 3 blocks of 8): one PN.render() at 4x swings 6-60 ms in BOTH modes (GC, a
+        // shared runner), and BARLIGHT.set() itself costs ~0 ms. Now: a warm-up, then 20 pairs (on/off, the order flips every pair),
+        // the MEDIAN of the pair differences. A feed that doubles the redraw still gives a median difference far over 8 ms.
+        const keep = window.BARLIGHT, one = () => { const t0 = performance.now(); PN.render(); return performance.now() - t0; };
+        const med = (a) => { const v = a.slice().sort((x, y) => x - y), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+        const runAs = (lit) => { window.BARLIGHT = lit ? keep : null; const ms = one(); window.BARLIGHT = keep; return ms; };
+        for (let i = 0; i < 4; i++) { runAs(true); runAs(false); }   // warm-up: both icon sets made, the code is hot
+        const onA = [], offA = [], dA = [];
+        for (let i = 0; i < 20; i++) { let a, c; if (i % 2) { c = runAs(false); a = runAs(true); } else { a = runAs(true); c = runAs(false); } onA.push(a); offA.push(c); dA.push(a - c); }
+        PN.render(); out.renderMs = +med(onA).toFixed(2); out.renderNoFeedMs = +med(offA).toFixed(2); out.feedMs = +med(dA).toFixed(2);   // the same page with and without the light feed
         out.layers = __gm().getStyle().layers.filter((l) => /^pn-light/.test(l.id)).length;
         if (B && B.on()) {
           const lines = window.__PN_ROADS ? window.__PN_ROADS().map((c) => ({ c, z: 16 })) : [];
@@ -303,7 +310,7 @@ async function runGL(b) {
     ok((t.piecesMs == null || t.piecesMs < 25) && t.syncMs < 40 && t.spreadStepMs < 12 && t.setMs < 5, "4x CPU: street pieces of one bar < 25 ms (" + t.piecesMs + "), one GL bar pass < 40 ms (" + t.syncMs + "), one spread step < 12 ms (" + t.spreadStepMs + "), the feed of one poll < 5 ms (" + t.setMs + ")", t);
     ok(t.idleFrames === 0, "4x CPU: idle = no light frame work", t);
     ok(t.layers === 4 && k.layers === 0, "layers: the light adds 4 GL layers (2 street lines + 2 halo circles); none with the kill switch", [t.layers, k.layers]);
-    ok(t.renderMs - t.renderNoFeedMs < 8, "4x CPU: the light feed adds < 8 ms to the app redraw of one poll (" + t.renderMs + " ms with, " + t.renderNoFeedMs + " ms without, same page, best of 3)", t);
+    ok(t.feedMs < 8, "4x CPU: the light feed adds < 8 ms to the app redraw of one poll (median of 20 pairs: +" + t.feedMs + " ms; " + t.renderMs + " ms with, " + t.renderNoFeedMs + " ms without, same page)", t);
   }
 }
 async function runFB(b) {
