@@ -13,7 +13,7 @@ gate-a     ^(bundle-smoke|main|sec|ux3|social2)$                site=bundled gat
 gate-b     ^(start1|x8|mycount|takeover|ci1)$                   site=bundled gate par=1   # service-worker cycles and a tap-timing check: one at a time
 
 # --- timing checks (taps < 100 ms, frame budgets): one test at a time ---
-timing-1   ^(speed1|d4map|c2speed|inst|s1speed)$                par=1
+timing-1   ^(speed1|d4map|inst|s1speed)$                par=1
 timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1)$       par=1
 perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine
 
@@ -40,3 +40,5 @@ ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layo
 
 # --- 15 Nov design lanes (coordinator) ---
 ui-design  ^(d-beer|bold-bump|bold-hem|dprofile|maplight|townfix|folkhar|avwiz-ios|seasons|barsearch|hemzon)$
+
+flk        ^(c2speed)$                                         par=1

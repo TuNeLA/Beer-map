@@ -103,7 +103,7 @@ function counts(page) {
       await ctx.close().catch(() => {});
     }
     /* ---------- I-56: "Öppet nu: mat nära dig" shows rows (or a skeleton) at once, before the network answers ---------- */
-    if (ONLY.test("food")) {
+    if (ONLY.test("food")) for (let __i = 0; __i < (+process.env.C2N || 8); __i++) {
       const { ctx, page } = await open(b, { width: 390, height: 780 }, { slowTiles: 2500 });
       await page.route(/overpass/, (r) => setTimeout(() => r.abort().catch(() => {}), 15000));
       await wait(page, 1500);
