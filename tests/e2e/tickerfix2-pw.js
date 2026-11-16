@@ -21,12 +21,33 @@ const shot = (page, name) => page.screenshot({ path: SP + "logs/tickerfix2-" + n
 const QUIET = /Ingen ute|Inga prickar|Tomt på kartan|Int' en själ|Inte en själ|Lugnt läge|kartan (är|ä) tom|tom karta|Tomt i [A-ZÅÄÖ{]|Ingen på kartan|Ingen fackla|Ingen har tryckt|Lugnt i [A-ZÅÄÖ]|Tyst i [A-ZÅÄÖ]|tumbleweed|Radiotystnad/i;
 const LUD = { lat: 60.15, lng: 15.19 }, GBG = { lat: 57.70, lng: 11.97 };
 const EVT = "Pubquiz Testlaget";
-const isoIn = (m) => new Date(Date.now() + m * 60e3).toISOString();
-const EV = () => [{ id: 7701, title: EVT, kind: "quiz", starts_at: isoIn(40), ends_at: isoIn(200), place: "Hallen", bar_id: null,
-  lat: LUD.lat, lng: LUD.lng, town: "Ludvika", url: null, source: "user", is_mine: false, pending: false, km: 0.2 }];
+// tickfix (16 Nov): the times no longer depend on the hour of the run. Before, the event started at real now + 40 min, so
+// from ~04:20 to 05:00 Swedish time it started AFTER the 05:00 night end = "i morron", and V failed (CI 43796466054).
+// events.js "tonight" = start in the same evening-day as now (05:00 → 05:00 Stockholm), started < 2 h ago, not ended.
+// So the event STARTED up to 30 min ago, never before this evening's 05:00, and ends 200 min from now: tonight at any hour.
+// TF_CLOCK=HH:MM (Stockholm) fakes the browser clock (page.clock) and node uses the same "now": proof runs at 04:30 etc.
+const TZ = "Europe/Stockholm";
+function tzOff(ms) {   // Stockholm wall clock minus UTC, in ms, at the instant ms
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(ms));
+  const g = (t) => +p.find((x) => x.type === t).value;
+  return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second")) - Math.floor(ms / 1000) * 1000;
+}
+function sthlmAt(dayMs, h, m) {   // the instant of h:m Stockholm on the Stockholm date of dayMs
+  const w = new Date(dayMs + tzOff(dayMs)), guess = Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate(), h, m);
+  return guess - tzOff(guess - tzOff(guess));
+}
+const CLOCK = /^\d{1,2}:\d{2}$/.test(process.env.TF_CLOCK || "") ? process.env.TF_CLOCK.split(":").map(Number) : null;
+const CLOCK_OFF = CLOCK ? sthlmAt(Date.now(), CLOCK[0], CLOCK[1]) - Date.now() : 0;
+const nowMs = () => Date.now() + CLOCK_OFF;
+const eveStart = (ms) => sthlmAt(ms - 5 * 3600e3, 5, 0);   // this evening-day's 05:00 (00-05 belongs to the day before)
+const eve21 = () => sthlmAt(nowMs() - 5 * 3600e3, 21, 0);   // tonight 21:00 Stockholm (the build's evening clock)
+const iso = (ms) => new Date(ms).toISOString();
+const EV = () => { const n = nowMs(); return [{ id: 7701, title: EVT, kind: "quiz", starts_at: iso(Math.max(n - 30 * 60e3, eveStart(n) + 60e3)), ends_at: iso(n + 200 * 60e3), place: "Hallen", bar_id: null,
+  lat: LUD.lat, lng: LUD.lng, town: "Ludvika", url: null, source: "user", is_mine: false, pending: false, km: 0.2 }]; };
 
 async function phone(browser, world, o = {}) {
   const { ctx, page } = await H.ctxFor(browser, { width: 390, height: 844 }, { checkin: false });
+  if (CLOCK) await page.clock.setSystemTime(new Date(nowMs()));   // tickfix: the browser clock = node's nowMs(); it keeps running
   if (o.noGeo) await ctx.clearPermissions(); else if (o.geo) await ctx.setGeolocation({ latitude: o.geo.lat, longitude: o.geo.lng });
   await page.route(/rest\/v1\/rpc\/(live_beers|live_others|live_checkins|my_groups|gang_poll|home_status|poll_v2|zone_counts|events_near)\b/, (r) => {
     const fn = r.request().url().match(/rpc\/(\w+)/)[1];
@@ -52,6 +73,12 @@ async function phone(browser, world, o = {}) {
   await page.waitForFunction(() => window.__map && window.PN && window.NEWS && document.querySelector("#ticker-track .tk-item"), null, { timeout: 30000 }).catch(() => console.log("no ticker"));
   await page.evaluate(() => window.__map.setView([60.1505, 15.1872], 14, { animate: false }));
   await wait(page, 3000);
+  if (CLOCK) {   // tickfix: proof that the browser runs at TF_CLOCK (Stockholm) and that its clock still moves
+    const c = await page.evaluate(async () => { const a = Date.now(); await new Promise((r) => setTimeout(r, 300));
+      return { hm: new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit" }).format(new Date()), moved: Date.now() - a }; });
+    const [h, m] = c.hm.split(":").map(Number), d = Math.abs(h * 60 + m - (CLOCK[0] * 60 + CLOCK[1]));
+    ok("clock: the browser is at TF_CLOCK " + process.env.TF_CLOCK + " Stockholm (±10 min) and runs", Math.min(d, 1440 - d) <= 10 && c.moved >= 250, c);
+  }
   return { ctx, page };
 }
 async function noSheet(page) {
@@ -97,7 +124,7 @@ async function evNews(page, p) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ args: ["--no-sandbox"] });
+  const browser = await chromium.launch({ executablePath: require("./env.js").CHROME, args: ["--no-sandbox"] });
   try {
     /* ================= S: no "///" between items (I-70) ================= */
     if (ONLY.test("S")) {
@@ -120,7 +147,7 @@ async function evNews(page, p) {
       const l = await evNews(pl.page, LUD);
       ok("V I-72 user in Ludvika → event candidates with {stad} = 'Ludvika' (the event's own town)", l.cands.length > 0 && l.cands.every((d) => d.stad === "Ludvika"), l);
       ok("V I-72 user in Ludvika → the event line shows on the belt", l.lines.length > 0, l);
-      const lb = await pl.page.evaluate((t) => { const out = []; for (let i = 0; i < 15; i++) { try { localStorage.removeItem("olnu.tkNight"); } catch (e) {} window.NEWS.build([], { center: window.PN.s.lastLoc, now: new Date(new Date().setHours(20)), prev: [], liveTotal: 0, hdrOut: 0, others: [], checkins: [], home: [], rallies: [] }).forEach((x) => { if (x.k === "evTonight") out.push(x.text); }); } return [...new Set(out)]; }, EVT);
+      const lb = await pl.page.evaluate((t) => { const out = []; for (let i = 0; i < 15; i++) { try { localStorage.removeItem("olnu.tkNight"); } catch (e) {} window.NEWS.build([], { center: window.PN.s.lastLoc, now: new Date(t.at), prev: [], liveTotal: 0, hdrOut: 0, others: [], checkins: [], home: [], rallies: [] }).forEach((x) => { if (x.k === "evTonight") out.push(x.text); }); } return [...new Set(out)]; }, { title: EVT, at: eve21() });   // tickfix: tonight 21:00 Stockholm, not "today 20:00" of the runner's time zone
       ok("V I-72 user in Ludvika → an events.js line names 'Ludvika'", lb.some((t) => /Ludvika/.test(t)), lb);
       await pl.ctx.close();
       const w2 = { beers: [] };
