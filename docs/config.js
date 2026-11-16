@@ -12,7 +12,11 @@ window.OLNU_CONFIG = {
   MAPBOX_TOKEN: "",   // leave empty: basemap.js reads the pk token from the public_config() RPC (GitHub push protection blocks it in git)
   VAPID_PUBLIC_KEY: "BMtX3rVi1PuU-ytEsnt0udIaBKBWAELrLEUdCaWW54ltwFfISOPqqkN7DLVXbXsgMNfNxx6yWo8gnNuin8zRAtc",
   // Fast chat (lane s1speed, SQL 0507 live 13 Nov 16:57): DM chats get a Realtime nudge. true = DMs, "all" = every chat.
-  dmLive: true
+  dmLive: true,
+  // I-127 (16 Nov 2026): address search in Hemzon + the ride destination (js/placesearch.js). "mapbox" = live suggestions
+  // while typing (Mapbox Geocoding v6 temporary, the pk token above / public_config) with Nominatim as the fallback.
+  // Remove the line (or "nominatim") = search only on Sök, Nominatim only.
+  placeSearch: "mapbox"
 };
 // 🏪 SAFE: store build flag (store-compliance C). The Android TWA starts with ?app=android (and/or has an
 // android-app:// referrer); the iOS shell is Capacitor. Kept for this session so in-app links keep it.
