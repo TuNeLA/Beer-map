@@ -20,17 +20,19 @@ const GID = "11111111-2222-3333-4444-555555555555";
 
 // A fake GPS under fastpos.js (it wraps this). window.__geo: { gpsMs, gpsAcc, netMs, netAcc, netErr, deny, calls: [] }.
 function fakeGeo() {
-  const G = window.__geo = { gpsMs: 5000, gpsAcc: 12, netMs: 5000, netAcc: 800, netErr: 0, deny: 0, calls: [] };
+  const G = window.__geo = { gpsMs: 5000, gpsAcc: 12, netMs: 5000, netAcc: 800, netErr: 0, deny: 0, calls: [], pending: 0 };
+  // flakefix: G.pending = fake answers still on their way (a boot request lands 5 s later and is a NEWER fix than a seeded one)
+  const later = (fn, ms) => { G.pending++; setTimeout(() => { G.pending--; fn(); }, ms); };
   const mk = (acc) => ({ coords: { latitude: 60.1511, longitude: 15.1876, accuracy: acc, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
   const g = navigator.geolocation;
   g.getCurrentPosition = function (okF, errF, o) {
     o = o || {};
     G.calls.push({ hi: !!o.enableHighAccuracy, age: o.maximumAge, to: o.timeout, at: Date.now() });
-    if (G.deny) { setTimeout(() => errF && errF({ code: 1, message: "denied" }), 20); return; }
-    if (!o.enableHighAccuracy && G.netErr) { setTimeout(() => errF && errF({ code: G.netErr, message: "x" }), 30); return; }
+    if (G.deny) { later(() => errF && errF({ code: 1, message: "denied" }), 20); return; }
+    if (!o.enableHighAccuracy && G.netErr) { later(() => errF && errF({ code: G.netErr, message: "x" }), 30); return; }
     const ms = o.enableHighAccuracy ? G.gpsMs : G.netMs, acc = o.enableHighAccuracy ? G.gpsAcc : G.netAcc;
-    if (o.timeout && ms > o.timeout) { setTimeout(() => errF && errF({ code: 3, message: "timeout" }), o.timeout); return; }
-    setTimeout(() => okF(mk(acc)), ms);
+    if (o.timeout && ms > o.timeout) { later(() => errF && errF({ code: 3, message: "timeout" }), o.timeout); return; }
+    later(() => okF(mk(acc)), ms);
   };
   g.watchPosition = function () { return 1; };
   g.clearWatch = function () {};
@@ -75,6 +77,12 @@ const timed = (page, body) => page.evaluate(`(async () => { const t0 = performan
     /* ---------- S1: GPS wait ---------- */
     if (want("s1")) {
       const { ctx, page, errs } = await open(browser);
+      // flakefix (CI red: {"ms":0,"acc":12}): GPS answers that are still on their way land as NEWER exact fixes (12 m), and
+      // fastpos.js rightly keeps a newer exact fix. On the way: the boot's own asks (autoci.js oneShot ~0.2 s, the fastpos.js
+      // warm-up ~2 s, fake GPS 5 s) and the warm(true) that a kept-fix answer starts 50 ms later (by design). On a slow runner
+      // one landed between seedFix() and the timed call. So: before each seed / clear, wait until no fake answer is on its way.
+      const geoIdle = () => page.waitForFunction(() => window.__geo.pending === 0, null, { timeout: 15000 }).catch(() => console.log("geo still pending"));
+      await geoIdle();
       await seedFix(page, 10, 30e3);
       let r = await timed(page, "PN.getPosition()");
       ok("S1 a kept exact fix (30 s old, 10 m) answers PN.getPosition() at once (GPS takes 5 s)", r.ms < 300 && r.acc === 10, r);
@@ -83,24 +91,29 @@ const timed = (page, body) => page.evaluate(`(async () => { const t0 = performan
       let calls = await page.evaluate(() => window.__geo.calls.filter((c) => c.age === 0));
       ok("S1 a caller with its own options still gets a new exact fix (not the kept one)", r.ms >= 1000 && r.acc === 12 && calls.length === 1 && calls[0].hi, { r, calls });
       // a later coarse fix (any module's quick network fix) does not push out the kept exact fix
+      await geoIdle();
       await seedFix(page, 10, 30e3); await page.evaluate(() => { const G = window.__geo; G.netMs = 50; G.netAcc = 800; });
       await page.evaluate(() => new Promise((res) => navigator.geolocation.getCurrentPosition(res, res, { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 })));
       r = await timed(page, "PN.getPosition()");
       ok("S1 a later coarse fix (800 m) does not push out the kept exact fix", r.ms < 300 && r.acc === 10, r);
       // no kept fix, the quick network fix is coarse (800 m): the answer is the exact one, never the coarse one
+      await geoIdle();
       await noFix(page); await page.evaluate(() => { const G = window.__geo; G.gpsMs = 900; G.netMs = 100; G.netAcc = 800; G.calls.length = 0; });
       r = await timed(page, "PN.getPosition()");
       ok("S1 a coarse quick fix (800 m) is not returned: the exact wait answers (12 m)", r.acc === 12 && r.ms >= 900, r);
       // a kept COARSE fix is not used either
+      await geoIdle();
       await seedFix(page, 500, 5e3);
       r = await timed(page, "PN.getPosition()");
       ok("S1 a kept coarse fix (500 m) is not used", r.acc === 12, r);
       // no kept fix, the quick network fix is exact enough (40 m): fast, no exact GPS call
+      await geoIdle();
       await noFix(page); await page.evaluate(() => { const G = window.__geo; G.gpsMs = 5000; G.netMs = 150; G.netAcc = 40; G.calls.length = 0; });
       r = await timed(page, "PN.getPosition()");
       calls = await page.evaluate(() => window.__geo.calls.slice());
       ok("S1 no kept fix + a good quick fix (40 m): answer in < 0.6 s, no exact GPS wait", r.ms < 600 && r.acc === 40 && !calls.some((c) => c.hi), { r, calls });
       // ÖL! path (app-beer.js tapPos): forTap falls back to PN.getPosition(): only ONE quick try
+      await geoIdle();
       await noFix(page); await page.evaluate(() => { const G = window.__geo; G.gpsMs = 300; G.netErr = 2; G.calls.length = 0; });
       r = await timed(page, "FASTPOS.forTap(function () { return PN.getPosition(); })");
       calls = await page.evaluate(() => window.__geo.calls.slice());
