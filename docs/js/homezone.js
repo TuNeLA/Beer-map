@@ -99,7 +99,8 @@
     ".hz2-mapw{position:relative;z-index:0;margin:0 0 var(--sp-1)}" +
     ".hz2 .hz-map{height:clamp(120px,calc(86dvh - 370px),300px);margin:0;border-radius:var(--r-md);overflow:hidden}" +
     ".hz2 .hz-map .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-logo{display:block}" +   /* Mapbox terms: the logo shows on this map (mbx.js hides it on the main map) */
-    ".hz2-gps{position:absolute;z-index:2;top:var(--sp-2);right:var(--sp-2);display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);border:1px solid var(--ds-border-2);border-radius:var(--ds-r-pill);background:var(--ds-sheet);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);box-shadow:var(--ds-sh-1);cursor:pointer}" +
+    "#sheet-body .hz2 .hz-map button.mapboxgl-ctrl-attrib-button{min-width:0;min-height:0}" +   /* the Mapbox (i) keeps its own 24 px look (pnds.css gives sheet buttons 44 px) */
+    ".hz2-gps{position:absolute;z-index:2;top:var(--sp-2);left:var(--sp-2);display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);border:1px solid var(--ds-border-2);border-radius:var(--ds-r-pill);background:var(--ds-sheet);color:var(--ds-text);font:600 var(--fs-14)/20px var(--ds-sans);box-shadow:var(--ds-sh-1);cursor:pointer}" +
     ".hz2-gps svg{width:18px;height:18px;margin:0}.hz2-gps:disabled{opacity:.6}" +
     ".hz2-pin{width:28px;height:28px;border-radius:50%;background:var(--ds-amber);border:3px solid var(--ds-text);box-sizing:border-box;box-shadow:var(--ds-sh-1);cursor:grab;touch-action:none}" +
     ".hz2 .hz-hint{margin:0 0 var(--sp-1);font-size:var(--fs-12);line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
@@ -142,7 +143,8 @@
       // the map + "Använd nuvarande plats" on it
       var mapEl = el("div", { class: "hz-map", role: "application", "aria-label": L("Karta: tryck eller dra pinnen där du bor", "Map: tap or drag the pin where you live") });
       var gps = el("button", { type: "button", class: "hz2-gps", html: ic("locate") });
-      gps.appendChild(el("span", { text: L("Använd nuvarande plats", "Use my location") }));
+      gps.setAttribute("aria-label", L("Använd nuvarande plats", "Use my location"));
+      gps.appendChild(el("span", { text: L("Min plats", "My location") }));
       gps.addEventListener("click", function () {
         gps.disabled = true;
         A.getPosition().then(function (pos) {
