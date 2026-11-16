@@ -858,21 +858,25 @@
     meChkT = setTimeout(function () {
       if (!on || !gm || !layersReady || !gm.getSource(SRC_ME)) { meBusy = false; return; }
       if (Math.abs(map.getZoom() - syncZ) > 0.01) { lastSig = ""; sync(); return; }   // the icons are from another zoom (town lanterns!): redraw them first (sync checks me again)
-      meIdle(gm, function () {
+      meIdle(gm, function (final) {
         var c = null; try { c = meAt ? null : meCover(gm); } catch (e) {}
-        meCov = c; meBusy = false;
+        meCov = c; if (final) meBusy = false;
         meDraw(gm);   // (the bar images do not change: my marker finds its own free side, mePlace)
       });
     }, 250);
   }
   // flakefix: mePlace() asks GL which names are DRAWN. 250 ms after new bar data a slow phone (CI: 4x shared CPU) has not placed
-  // the new labels yet: a name looked free and my marker hid it (x-blackstone-ludvika, why "left") until the next move. So decide
-  // when GL is idle (one repaint, then "idle" = sources loaded, labels placed); max 1.5 s for a map that never idles (animation).
-  var meBusy = false, meIdleT = 0, meGen = 0;
+  // the new labels yet: a name looked free and my marker hid it (x-blackstone-ludvika, why "left") until the next move. So the
+  // side is decided when GL is idle (one repaint, then "idle" = sources loaded, labels placed): fn(true). A map that is not idle
+  // after 1.5 s (a slow phone, an animation) gets a first decision then, fn(false), and the final one at its next idle.
+  // meBusy (tests: GLBARS._me().busy) = the final decision is not made yet; max 10 s.
+  var meBusy = false, meIdleT = 0, meBusyT = 0, meGen = 0;
   function meIdle(m, fn) {
-    var gen = ++meGen, done = false, fire = function () { if (done || gen !== meGen) return; done = true; clearTimeout(meIdleT); if (m === gm) fn(); else meBusy = false; };
-    clearTimeout(meIdleT); meIdleT = setTimeout(fire, 1500);
-    try { m.once("idle", fire); m.triggerRepaint(); } catch (e) { fire(); }
+    var gen = ++meGen, idled = false, run = function (final) { if (gen !== meGen) return; if (m === gm) fn(final); else meBusy = false; };
+    clearTimeout(meIdleT); clearTimeout(meBusyT);
+    meIdleT = setTimeout(function () { run(false); }, 1500);
+    meBusyT = setTimeout(function () { if (gen === meGen) meBusy = false; }, 10000);
+    try { m.once("idle", function () { if (idled) return; idled = true; clearTimeout(meIdleT); run(true); }); m.triggerRepaint(); } catch (e) { run(true); }
   }
   function meEnsure(m) {
     try {

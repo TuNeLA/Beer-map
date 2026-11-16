@@ -175,8 +175,8 @@ async function runGL(b) {
     // flakefix (CI: "covers no other bar's name" why "left", and "me z13.5" drawn:0): a fixed 1.6 s wait read my marker before
     // its check had run / before GL had drawn it. Now: wait until the marker check is done (GLBARS._me().busy) and GL is idle.
     const meSettle = async () => {
-      await page.waitForFunction(() => !GLBARS._me().busy, null, { timeout: 10000 }).catch(() => console.log("me check still busy"));
-      await page.evaluate(() => new Promise((res) => { const g = __gm(), t = setTimeout(res, 3000); g.once("idle", () => { clearTimeout(t); res(); }); g.triggerRepaint(); }));
+      await page.waitForFunction(() => !GLBARS._me().busy, null, { timeout: 15000 }).catch(() => console.log("me check still busy"));
+      await page.evaluate(() => new Promise((res) => { const g = __gm(), t = setTimeout(res, 8000); g.once("idle", () => { clearTimeout(t); res(); }); g.triggerRepaint(); }));
     };
     const meAt = async (ll, z) => { await page.evaluate(([ll, z]) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, z, { animate: false }); }, [ll, z]); await wait(page, 400); await meSettle(); };
     const me = (id) => page.evaluate((id) => { const g = __gm(), m = GLBARS._me(), ids = g.getStyle().layers.map((l) => l.id), drawn = g.getLayer("olnu-me-pin") ? g.queryRenderedFeatures({ layers: ["olnu-me-pin"] }).length : -1;
