@@ -865,15 +865,15 @@
       });
     }, 250);
   }
-  // flakefix: mePlace() asks GL which names are DRAWN; 250 ms after new bar data a slow phone had not placed them (a name looked
-  // free, my marker hid it). Final side at GL idle (labels placed): fn(true); not idle after 1.5 s: a first side, fn(false).
-  var meBusy = false, meIdleT = 0, meBusyT = 0, meGen = 0;   // meBusy (GLBARS._me().busy): no final side yet (max 10 s)
-  function meIdle(m, fn) {
+  // flakefix: mePlace() asks GL which names are DRAWN; 250 ms after new bar data a slow phone had not placed them (my marker hid a
+  // name). GL idle now: decide; else at its next "idle" (no forced frame), a first side after 1.5 s. meBusy: no final side yet.
+  var meBusy = false, meIdleT = 0, meBusyT = 0, meGen = 0; function meIdle(m, fn) {
     var gen = ++meGen, idled = false, run = function (final) { if (gen !== meGen) return; if (m === gm) fn(final); else meBusy = false; };
     clearTimeout(meIdleT); clearTimeout(meBusyT);
-    meIdleT = setTimeout(function () { run(false); }, 1500);
-    meBusyT = setTimeout(function () { if (gen === meGen) meBusy = false; }, 10000);
-    try { m.once("idle", function () { if (idled) return; idled = true; clearTimeout(meIdleT); run(true); }); m.triggerRepaint(); } catch (e) { run(true); }
+    var st = m._pnIdle; if (!st) { st = m._pnIdle = { r: 1, i: 0 }; m.on("render", function () { st.r = performance.now(); }); m.on("idle", function () { st.i = performance.now(); }); }
+    try { if (st.i >= st.r && m.loaded() && !m.isMoving()) { run(true); return; } } catch (e) { run(true); return; }
+    meIdleT = setTimeout(function () { run(false); }, 1500); meBusyT = setTimeout(function () { if (gen === meGen) meBusy = false; }, 10000);
+    m.once("idle", function () { if (!idled) { idled = true; clearTimeout(meIdleT); run(true); } }); if (st.r === 1) m.triggerRepaint();   // (state not known yet)
   }
   function meEnsure(m) {
     try {
