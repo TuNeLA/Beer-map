@@ -182,6 +182,7 @@ run misc       $B misc-pw.js       # misc: X4 delete with 7 days to undo, F4 Gru
 run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, first-accept race, live driver card, 5/10 min, cancel/Tack, drink rule, flag off / old server, R1-30
 run ride3      $B ride3-pw.js      # lane ride3 (0495): destination, fast polls (fake clock: each step on the other phone <= 3 s), steps in order, role chats + read-aloud, Ring consent, LÄSK soda, ANNAT hidden while driving, flag re-ask
 run ridechip   $B ridechip-pw.js   # lane ridechip (I-124): ride status chip next to Ikväll (wait / accepted / på väg · N min / framme / du kör), tap = sheet, sheet opens once on accept, reload, one HUD row
+run barsearch  $B barsearch-pw.js  # lane barsearch (I-126): bar search on the map: rail button (no overlap 390/360), own bars first (accent free, prefix, town word, whole country), N här nu, places on tap (mocked), pick = bar card, Senaste + reload, offline, scrim tap eats the click, Esc/back, reduced = jump, store
 run placesearch $B placesearch-pw.js   # lane a3search I-07: shared address search (Hemzon; mocked geocoder): near town first, list, Enter, no jump, mapbox flag
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
 run eggs       $B eggs-pw.js       # lane s3eggs: 7 hidden Easter eggs (once a day, off in ride / Folj mig hem, reduced motion)

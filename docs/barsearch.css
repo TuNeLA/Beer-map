@@ -25,6 +25,9 @@ html body.mn-rail-lbl #pn-mine{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + 
 .bs-lic .pi{width:20px;height:20px}
 .bs-input{flex:1 1 auto;min-width:0;height:100%;margin:0;padding:0 var(--sp-2);border:0;outline:none;background:transparent;color:var(--ds-text);
   font:500 var(--fs-16)/22px var(--ds-sans);-webkit-appearance:none;appearance:none}
+/* ONE focus ring: the field's inset edge. The app's shared input focus ring is off on this input only (it drew a second,
+   square box inside the rounded field). */
+#bs-panel #bs-q,#bs-panel #bs-q:focus,#bs-panel #bs-q:focus-visible{outline:none !important;border:0 !important;box-shadow:none !important;border-radius:0 !important;background:transparent !important}
 .bs-input::placeholder{color:var(--ds-muted);opacity:1}
 .bs-input::-webkit-search-cancel-button,.bs-input::-webkit-search-decoration{-webkit-appearance:none;display:none}
 .bs-clear{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ds-muted);cursor:pointer}
