@@ -297,6 +297,7 @@ async function closeAll(page) {
         await view(page, LUD, z, 2500);
         await page.waitForFunction(() => !!document.querySelector(".leaflet-mypins-pane .mp-pin"), null, { timeout: 8000 }).catch(() => console.log("no my-pin chip"));
         await wait(page, 1600);   // mypins re-checks people under its chips at least every 1.5 s
+        await idle(page, 0);   // townfix: the map idle + 2 frames (a redrawn cluster is hidden before its first paint now; the check reads a settled map)
         const d = await page.evaluate(() => {
           const out = { chips: [], bad: [] };
           document.querySelectorAll(".leaflet-mypins-pane .mp-pin").forEach((e) => {

@@ -113,14 +113,41 @@
   var unT = 0, unT2 = 0, unT3 = 0;
   // new / re-used people markers get their place one GL frame later: check again a bit after
   function later(ms) { clearTimeout(unT); clearTimeout(unT2); clearTimeout(unT3); unT = setTimeout(unstack, ms); unT2 = setTimeout(unstack, 450); unT3 = setTimeout(unstack, 1200); }
+  // townfix (A19, owner 15 Nov): a people cluster / people pin never covers a town lantern (its number, its friends' faces) or my own
+  // marker. It is moved a few px aside (CSS `translate`, so Leaflet's own transform is not touched); no free spot within 90 px = hidden.
+  var DIRS = [[1, 0], [-1, 0], [0, -1], [0, 1], [0.7, -0.7], [-0.7, -0.7], [0.7, 0.7], [-0.7, 0.7]];
+  function hit(r, b, m) { return r[0] < b[2] + m && r[2] > b[0] - m && r[1] < b[3] + m && r[3] > b[1] - m; }
+  function keepOut() {
+    var out = [];
+    try {
+      if (!window.GLBARS || !GLBARS.on || !GLBARS.on() || !GLBARS.keepOut) return out;
+      var c = map.getContainer().getBoundingClientRect();
+      GLBARS.keepOut().forEach(function (o) { out.push([o.box[0] + c.left, o.box[1] + c.top, o.box[2] + c.left, o.box[3] + c.top]); });
+    } catch (e) {}
+    return out;
+  }
+  function aside(e, r0, boxes) {   // e = the .pn-cl / .pn-p, r0 = its rect now (with its own shift); → true when it had to hide
+    var dx0 = +e.getAttribute("data-tf-dx") || 0, dy0 = +e.getAttribute("data-tf-dy") || 0, r = [r0.left - dx0, r0.top - dy0, r0.right - dx0, r0.bottom - dy0];
+    var bad = boxes.filter(function (b) { return hit(r, b, 3); }), best = null, d, i;
+    if (bad.length) {
+      for (d = 6; d <= 90 && !best; d += 6) for (i = 0; i < DIRS.length && !best; i++) {
+        var x = DIRS[i][0] * d, y = DIRS[i][1] * d, q = [r[0] + x, r[1] + y, r[2] + x, r[3] + y];
+        if (!boxes.some(function (b) { return hit(q, b, 3); }) && q[0] > 0 && q[2] < innerWidth && q[1] > 0 && q[3] < innerHeight) best = [Math.round(x), Math.round(y)];
+      }
+    }
+    var dx = best ? best[0] : 0, dy = best ? best[1] : 0;
+    if (dx !== dx0 || dy !== dy0) { e.style.translate = dx || dy ? dx + "px " + dy + "px" : ""; e.setAttribute("data-tf-dx", dx); e.setAttribute("data-tf-dy", dy); }
+    return bad.length > 0 && !best;
+  }
   function unstack() {
     try {
       var chips = [].map.call(document.querySelectorAll(".leaflet-mypins-pane .mp-pin"), function (e) { return e.getBoundingClientRect(); }).filter(function (r) { return r.width > 0; });
       [].forEach.call(document.querySelectorAll(".leaflet-marker-icon.mp-under"), function (e) { e.classList.remove("mp-under"); });
-      if (!chips.length) return;
+      var ko = keepOut();
       [].forEach.call(document.querySelectorAll(".leaflet-marker-icon > .pn-cl, .leaflet-marker-icon > .pn-p"), function (e) {
         var r = e.getBoundingClientRect(); if (!r.width) return;
-        if (chips.some(function (c) { return r.left < c.right + 4 && r.right > c.left - 4 && r.top < c.bottom + 10 && r.bottom > c.top - 10; })) e.parentNode.classList.add("mp-under");
+        if (chips.some(function (c) { return r.left < c.right + 4 && r.right > c.left - 4 && r.top < c.bottom + 10 && r.bottom > c.top - 10; })) { e.parentNode.classList.add("mp-under"); return; }
+        if (aside(e, r, ko)) e.parentNode.classList.add("mp-under");   // nowhere to go: hidden, never over a lantern or my marker
       });
     } catch (e) {}
   }
@@ -162,8 +189,15 @@
       var st = document.createElement("style"); st.id = "mypins-css"; st.textContent = CSS; document.head.appendChild(st);
       layer = window.L.layerGroup().addTo(map);
       map.on("moveend zoomend popupopen popupclose", soon);
-      setInterval(function () { if (!document.hidden && Object.keys(drawn).length) unstack(); }, 1500);   // map 25: slow safety pass (not per frame)
-      if (window.MutationObserver) new MutationObserver(function () { later(80); }).observe(map.getContainer(), { childList: true, subtree: true });   // map 25
+      setInterval(function () { if (!document.hidden) unstack(); }, 1500);   // map 25 + townfix (lanterns too): slow safety pass (not per frame)
+      // map 25 + townfix: a marker that is ADDED is checked at once (this callback runs before the next paint), so a re-drawn cluster never
+      // shows for a few frames over a chip / lantern before the timers below catch it (the CI flake of the town-zoom test)
+      if (window.MutationObserver) new MutationObserver(function (ms) {
+        var add = ms.some(function (m) { return [].some.call(m.addedNodes, function (n) { return n.nodeType === 1 && (n.classList.contains("leaflet-marker-icon") || (n.querySelector && n.querySelector(".pn-cl, .pn-p"))); }); });
+        if (add) unstack();
+        later(80);
+      }).observe(map.getContainer(), { childList: true, subtree: true });
+      map.on("zoomend moveend", function () { unstack(); });
       soon();
     },
     onPoll: function () { soon(); },
