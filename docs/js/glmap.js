@@ -1115,6 +1115,15 @@
       return o;
     },
     _crowds: function () { return crowds; },
+    // townfix (A19): the places a people cluster / people pin must not cover, in container px: every town lantern (disc + the friends'
+    // faces row under it) and my own marker (disc + "Du" tag). mypins.js moves such a cluster aside.
+    keepOut: function () {
+      var out = [], z = map.getZoom(), k = zk(z);
+      Object.keys(crowds).forEach(function (id) { var c = crowds[id], p = map.latLngToContainerPoint(c.ll), r = c.r * k;
+        out.push({ what: "lantern", box: [p.x - r, p.y - r, p.x + r, p.y + r + (c.nf > 0 ? 20 * k : 0)] }); });
+      try { var m = this._me(); if (m && m.px && m.ll) { var q = m.px, rr = m.r + 2; out.push({ what: "me", box: [q.x - rr, q.y - rr, q.x + rr, q.y + rr + 10] }); } } catch (e) {}
+      return out;
+    },
     // app.js renderHeat: pts = [[lat, lng, w]…] or null (heat off). true = drawn in GL (leaflet.heat stays off the map).
     heat: function (pts) { if (!on) return false; heatPts = pts || null; heatData(); return true; },
     // clouds.js redraw: the snapped points {lat, lng, w, a}. true = drawn in GL (the canvas stays empty).

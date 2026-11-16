@@ -39,4 +39,4 @@ ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3)$
 ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|eggs|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome|dsocial)$
 
 # --- 15 Nov design lanes (coordinator) ---
-ui-design  ^(d-beer|bold-bump|bold-hem|dprofile|maplight|folkhar|avwiz-ios|seasons|barsearch|hemzon)$
+ui-design  ^(d-beer|bold-bump|bold-hem|dprofile|maplight|townfix|folkhar|avwiz-ios|seasons|barsearch|hemzon)$
