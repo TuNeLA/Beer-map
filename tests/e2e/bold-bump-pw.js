@@ -67,7 +67,7 @@ async function phone(browser, who, flagOn) {
     await A.page.click(".bb-btn");
     const local = await A.page.evaluate(() => window.BOLD_BUMP._state().local);
     ok(local !== undefined && local < 500 && await A.page.evaluate(() => document.querySelector(".bb-btn").classList.contains("bb-tilt")), "local feedback < 500 ms", local);
-    await wait(B.page, 800); await B.page.click(".bb-btn");
+    await wait(B.page, 800); await B.page.click(".bb-btn"); const tB = Date.now();   // barsearch2: the miss tap below must be outside this tap's 3 s window
     await B.page.waitForFunction(() => /SKÅL med Anton/.test((document.querySelector(".bb-msg") || {}).textContent || ""), null, { timeout: 8000 }).catch(() => {});
     await A.page.waitForFunction(() => /SKÅL med Lisa/.test((document.querySelector(".bb-msg") || {}).textContent || ""), null, { timeout: 8000 }).catch(() => {});
     const ma = await A.page.evaluate(() => document.querySelector(".bb-msg").textContent), mb = await B.page.evaluate(() => document.querySelector(".bb-msg").textContent);
@@ -75,9 +75,12 @@ async function phone(browser, who, flagOn) {
     ok(await A.page.evaluate(() => document.querySelector(".bb-btn").classList.contains("bb-yes")), "clink animation on the first tapper");
     await A.page.screenshot({ path: SHOTS + "bump-2-match.png" });
     // no match
-    await wait(A.page, 2500); await A.page.click(".bb-btn");
+    // barsearch2: wait for the STATE, not a fixed 2.5 s. The matcher pairs taps <= 3 s apart, so a tap 2.5 s after the
+    // match (plus a fast runner) could still pair with Lisa's tap = "SKÅL" instead of the miss (flaky on CI, 16 Nov).
+    await wait(A.page, Math.max(500, 3500 - (Date.now() - tB))); await A.page.click(".bb-btn");
     await A.page.waitForFunction(() => /Ingen skålade tillbaka/.test((document.querySelector(".bb-msg") || {}).textContent || ""), null, { timeout: 9000 }).catch(() => {});
-    ok(/Ingen skålade tillbaka/.test(await A.page.evaluate(() => document.querySelector(".bb-msg").textContent)), "no match → the friendly miss text");
+    const miss = await A.page.evaluate(() => document.querySelector(".bb-msg").textContent);
+    ok(/Ingen skålade tillbaka/.test(miss), "no match → the friendly miss text", miss);
     await A.page.screenshot({ path: SHOTS + "bump-3-miss.png" });
     ok(!(await A.page.evaluate(() => /\böl\b.*\d|\d.*\böl\b/i.test(document.querySelector(".bb-ov").textContent.replace("aldrig öl", "")))), "no drink numbers on the screen");
     await A.ctx.close(); await B.ctx.close();

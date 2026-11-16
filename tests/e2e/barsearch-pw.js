@@ -54,8 +54,14 @@ async function layout(page, vp, tag) {
   const icon = await page.evaluate(() => { const b = document.getElementById("pn-search"); return { svg: !!(b && b.querySelector("svg")), aria: b && b.getAttribute("aria-label") }; });
   ok(`${tag} a magnifier icon (svg) + aria-label "Sök krog"`, icon.svg && icon.aria === "Sök krog", icon);
   // first 3 nights: the rail has words under the buttons (68 px steps): still clear of locate
-  await page.evaluate(() => document.body.classList.add("mn-rail-lbl")); await wait(page, 100);
-  const [s2, more2, mine2, loc2] = await R(page, ["#pn-search", "#btn-more", "#pn-mine", "#btn-locate"]);
+  // barsearch2: add the class and measure in ONE synchronous step. pnds.js paintRail() sets the class again from its own state
+  // on every rail repaint (body mutations, a 2 s timer), so a class set by the test, then a 100 ms wait, was often gone again
+  // (CI 43792966550: Mer at its plain slot t222).
+  const [s2, more2, mine2, loc2] = await page.evaluate((s) => {
+    document.body.classList.add("mn-rail-lbl");
+    return s.map((q) => { const e = document.querySelector(q); if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect();
+      return { q, l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom), on: document.body.classList.contains("mn-rail-lbl") }; });
+  }, ["#pn-search", "#btn-more", "#pn-mine", "#btn-locate"]);
   ok(`${tag} rail with words: search under Mer, count under search, above locate`, s2 && more2 && s2.t >= more2.b + 18 && mine2 && mine2.t >= s2.b + 18 && (!loc2 || mine2.b <= loc2.t), { s2, more2, mine2, loc2 });
   await page.evaluate(() => { document.body.classList.remove("mn-rail-lbl"); const r = document.getElementById("rd-stat"); if (r) r.remove(); MYCOUNT.set(0); }); await wait(page, 100);
 }
