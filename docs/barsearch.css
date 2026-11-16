@@ -1,0 +1,71 @@
+/* PintsNow — BARSEARCH (I-126, owner 16 Nov 2026): search for a bar by name. See docs/js/barsearch.js. Tokens only. */
+:root{--bs-scrim: rgba(5,8,16,.62);--bs-mark-ring: rgba(245,166,35,.45)}
+
+/* the rail button: 4th slot, under ⋯ Mer. The count button (#pn-mine, mycount.css) moves to the 5th slot so the search
+   button never jumps. !important only because the ds05 rail tops are !important (pnds.css). */
+#pn-search{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + var(--pn-gap))) !important}
+body.mn-rail-lbl #pn-search{overflow:visible;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+body.mn-rail-lbl #pn-search::after{content:"";position:absolute;left:0;right:0;top:100%;height:18px}
+html body #pn-mine{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 4 * (var(--pn-rail) + var(--pn-gap))) !important}
+html body.mn-rail-lbl #pn-mine{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 4 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+#pn-search[aria-expanded="true"]{background:var(--ds-amber) !important;color:var(--ds-on-amber) !important;border-color:transparent}
+
+/* the panel: at the top, so the keyboard never covers the field. The dimmed map behind it eats the closing tap. */
+.bs-scrim{position:fixed;inset:0;z-index:1400;background:var(--bs-scrim);animation:bsFade var(--m-4,200ms) var(--e-in,ease-out) both}
+.bs-panel{position:fixed;z-index:1450;top:calc(var(--sat,0px) + var(--sp-2));left:calc(var(--sal,0px) + var(--pn-edge,12px));right:calc(var(--sar,0px) + var(--pn-edge,12px));
+  max-width:560px;margin:0 auto;display:flex;flex-direction:column;padding:var(--sp-2);box-sizing:border-box;
+  background:var(--ds-sheet);border:1px solid var(--ds-border-2);border-radius:var(--r-xl);box-shadow:var(--ds-sh-2);
+  color:var(--ds-text);font-family:var(--ds-sans);animation:bsDrop var(--m-4,200ms) var(--e-in,ease-out) both}
+.bs-bar{display:flex;align-items:center;gap:var(--sp-1)}
+/* the focus edge is INSIDE the field (inset), so no edge of the screen or the panel can cut it */
+.bs-field{flex:1 1 auto;min-width:0;display:flex;align-items:center;height:48px;box-sizing:border-box;padding:0 0 0 var(--sp-3);
+  background:var(--ds-card);border:1px solid var(--ds-border-2);border-radius:var(--r-md)}
+.bs-field:focus-within{border-color:var(--ds-amber-t);box-shadow:inset 0 0 0 1px var(--ds-amber-t)}
+.bs-lic{display:grid;place-items:center;color:var(--ds-amber-t)}
+.bs-lic .pi{width:20px;height:20px}
+.bs-input{flex:1 1 auto;min-width:0;height:100%;margin:0;padding:0 var(--sp-2);border:0;outline:none;background:transparent;color:var(--ds-text);
+  font:500 var(--fs-16)/22px var(--ds-sans);-webkit-appearance:none;appearance:none}
+.bs-input::placeholder{color:var(--ds-muted);opacity:1}
+.bs-input::-webkit-search-cancel-button,.bs-input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+.bs-clear{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ds-muted);cursor:pointer}
+.bs-clear[hidden]{display:none}
+.bs-clear .pi{width:18px;height:18px}
+.bs-close{flex:0 0 auto;min-width:44px;height:44px;padding:0 var(--sp-2);border:0;border-radius:var(--r-md);background:transparent;color:var(--ds-amber-t);
+  font:600 var(--fs-16)/22px var(--ds-sans);cursor:pointer}
+.bs-clear:focus-visible,.bs-close:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
+.bs-msg{margin:var(--sp-3) var(--sp-2) var(--sp-1);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text-2)}
+.bs-msg[hidden]{display:none}
+.bs-msg.bs-err{color:var(--ds-red-t)}
+.bs-list{list-style:none;margin:var(--sp-1) 0 0;padding:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.bs-list:empty{display:none}
+.bs-h{padding:var(--sp-3) var(--sp-2) var(--sp-1);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.bs-hit{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:56px;box-sizing:border-box;padding:var(--sp-2);margin:0;border:0;border-radius:var(--r-md);
+  background:transparent;color:var(--ds-text);text-align:left;font:inherit;cursor:pointer}
+.bs-hit:active{background:var(--ds-raised)}
+@media (hover:hover){.bs-hit:hover{background:var(--ds-card)}}
+.bs-hit:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
+.bs-ic{flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;border-radius:var(--r-md);background:var(--ds-amber-soft);color:var(--ds-amber-t)}
+.bs-ic .pi{width:20px;height:20px}
+.bs-tx{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:var(--sp-0)}
+.bs-t{font:600 var(--fs-16)/22px var(--ds-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bs-s{display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--sp-2);font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-text-2)}
+.bs-tag{padding:0 var(--sp-1);border-radius:var(--r-xs);background:var(--ds-blue-soft);color:var(--ds-blue-t);font:600 var(--fs-12)/16px var(--ds-sans)}
+.bs-now{display:inline-flex;align-items:center;gap:var(--sp-1);color:var(--ds-green-t);font-weight:600}
+.bs-dot{width:8px;height:8px;border-radius:50%;background:var(--ds-green)}
+.bs-more{display:flex;align-items:center;gap:var(--sp-2);width:100%;min-height:48px;box-sizing:border-box;margin:var(--sp-2) 0 0;padding:0 var(--sp-3);
+  border:1px dashed var(--ds-border-2);border-radius:var(--r-md);background:transparent;color:var(--ds-amber-t);text-align:left;font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}
+.bs-more .pi{width:18px;height:18px;flex:0 0 auto}
+.bs-more:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
+
+/* a "plats" pick: a short-lived amber pin (8 s), a ring that pulses 3 times (none with reduced motion) */
+.bs-mark{pointer-events:none}
+.bs-mark i{position:absolute;left:6px;top:2px;width:20px;height:20px;box-sizing:border-box;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  background:var(--ds-amber);border:2px solid var(--ds-bg);box-shadow:var(--ds-sh-1)}
+.bs-mark::before{content:"";position:absolute;left:4px;top:20px;width:24px;height:12px;border-radius:50%;border:2px solid var(--bs-mark-ring);box-sizing:border-box;
+  animation:bsRing 1.2s var(--e-out,ease-in) 3 both}
+.bs-mark.bs-still::before{animation:none}
+
+@keyframes bsFade{from{opacity:0}to{opacity:1}}
+@keyframes bsDrop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes bsRing{from{opacity:1;transform:scale(.6)}to{opacity:0;transform:scale(1.8)}}
+@media (prefers-reduced-motion:reduce){.bs-scrim,.bs-panel,.bs-mark::before{animation:none}}

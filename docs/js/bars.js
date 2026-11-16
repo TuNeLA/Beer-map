@@ -562,6 +562,17 @@
     },
     isClosed: function (id) { return !!closed[String(id)]; },
     canonId: function (id) { var o = bars[id] || canon(placesById[id]); return o ? String(o.id) : String(id || ""); },
+    // barsearch (I-126): fn(spot) for every named spot the app knows: all bars (bars.json = the whole country) + the loaded
+    // place tiles (not a bar's twin, not closed). No network: it works offline.
+    each: function (fn) {
+      var id, o;
+      for (id in bars) { o = bars[id]; if (o.name && !closed[id]) fn(o); }
+      for (id in placesById) {
+        o = placesById[id]; if (!o.name || closed[id]) continue;
+        if (o._bv !== barsVer) { o._bv = barsVer; o._twin = !!barTwin(o); }
+        if (!o._twin) fn(o);
+      }
+    },
     inBounds: function (b, max) {
       var out = [];
       for (var id in bars) { if (b.contains([bars[id].lat, bars[id].lng])) { out.push(bars[id]); if (max && out.length >= max) break; } }
