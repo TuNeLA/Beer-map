@@ -2,10 +2,10 @@
 :root{--pm-ink: #1a0f02;--pm-amber: #ffb43a;--pm-cream: #fff3d6;--pm-white: #fff;--pm-back: rgba(8,5,1,.78);--pm-back-2: rgba(8,5,1,.5)}
 
 /* B: the count button, 4th in the right rail (under ⋯ Mer). Grows to the left for 2 digits. */
-#pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 4 * (var(--pn-rail) + var(--pn-gap))) !important;
+#pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + var(--pn-gap))) !important;
   display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:0;min-width:44px;
   border:2px solid var(--ds-amber-t,var(--pm-amber)) !important;color:var(--ds-text,var(--pm-white))}
-body.mn-rail-lbl #pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 4 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
+body.mn-rail-lbl #pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
 #pn-mine[hidden]{display:none !important}
 /* the mug above the number: the rail stays one 44 px column (nothing next to the rail moves, also at 99+) */
 #pn-mine{flex-direction:column;gap:0}
