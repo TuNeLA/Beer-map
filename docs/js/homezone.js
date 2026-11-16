@@ -128,7 +128,7 @@
       box.appendChild(el("div", { class: "hz2-info" }, [el("p", { class: "muted hz2-line", text: L("Din öl hemma visas bara som område.", "A drink at home shows only as an area.") }), ib]));
       box.appendChild(more);
       // address search: suggestions while typing (Mapbox), Nominatim on Sök
-      var q = el("input", { type: "search", class: "hz-q", placeholder: L("Sök adress, t.ex. Storgatan 5 Ludvika", "Search address"), "aria-label": L("Sök adress", "Search address"), enterkeyhint: "search", autocomplete: "off", spellcheck: "false" });
+      var q = el("input", { type: "search", class: "hz-q", placeholder: L("T.ex. Storgatan 5, Ludvika", "E.g. 5 Main St, Ludvika"), "aria-label": L("Sök adress", "Search address"), enterkeyhint: "search", autocomplete: "off", spellcheck: "false" });
       var qb = A.btn(L("Sök", "Search"), "btn-small hz-qb");
       var srow = el("div", { class: "row hz-search" }, [q, qb]), sbox = el("div", { class: "hz2-sbox" }, [srow]);
       box.appendChild(sbox);
