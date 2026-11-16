@@ -55,6 +55,8 @@ const ovInfo = (page) => page.evaluate(() => {
     const row = await page.evaluate(() => { const r = [...document.querySelectorAll("#pn-ikm .pn-ikm-row")].find((x) => /Hem-läge/.test(x.textContent)); if (r) r.click(); return !!r; });
     ok(row, "Ikväll menu has a Hem-läge row");
     await wait(page, 1200);
+    // the sober-friend rows load in the background (my_groups → drivers_for): wait for them, max 6 s (CI race, 16 Nov)
+    await page.waitForFunction(() => document.querySelectorAll("#bh-ov .bh-drv").length > 0, null, { timeout: 6000 }).catch(() => {});
     let i = await ovInfo(page);
     ok(i && i.title === "Hem nu?", "Hem-läge opens from the menu", i && i.title);
     // 2. Ludvika is verified (B2: taxidalarna.se) → its number (or the map search before the first fix), never another number
