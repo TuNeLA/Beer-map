@@ -1016,9 +1016,16 @@
       render(loc, false);   // at once: local data or a skeleton, never an empty box
       // cifix2: the place tiles of this spot are not in yet (the boot loads them 1.5 s after start, or the map is elsewhere):
       // ask for them and draw the local rows as soon as they come, long before the OpenStreetMap answer
-      if (!loc.length && window.BARS && window.BARS.ensurePlacesP) {
-        try { window.BARS.ensurePlacesP(p.lat, p.lng, 2.5, 3000).then(function () { if (!done) { var l2 = localKebab(p); if (l2.length) render(l2, false); } }); } catch (e) {}
+      // flakefix: keep waiting while the sheet is open (was: one 3 s wait, then the skeleton until the network; a slow phone
+      // network gives the tiles in > 3 s). Max 5 waits of 3 s; it stops when the network answer or local rows are in.
+      function waitLocal(n) {
+        try { window.BARS.ensurePlacesP(p.lat, p.lng, 2.5, 3000).then(function () {
+          if (done || !document.body.contains(list)) return;
+          var l2 = localKebab(p);
+          if (l2.length) render(l2, false); else if (n > 1) waitLocal(n - 1);
+        }); } catch (e) {}
       }
+      if (!loc.length && window.BARS && window.BARS.ensurePlacesP) waitLocal(5);
       fetchKebab(p).then(function (all) { done = true; render(all, true); }, function () { done = true; render([], true); });
     });
   }

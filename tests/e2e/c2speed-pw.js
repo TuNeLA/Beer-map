@@ -104,7 +104,7 @@ function counts(page) {
     }
     /* ---------- I-56: "Öppet nu: mat nära dig" shows rows (or a skeleton) at once, before the network answers ---------- */
     if (ONLY.test("food")) {
-      const { ctx, page } = await open(b, { width: 390, height: 780 }, { slowTiles: 2500 });
+      const { ctx, page } = await open(b, { width: 390, height: 780 }, { slowTiles: 4500 });
       await page.route(/overpass/, (r) => setTimeout(() => r.abort().catch(() => {}), 15000));
       await wait(page, 1500);
       // c12fix: a real tap opens this list. Without a user gesture CALM holds every sheet in its 4 s quiet start (CI read 1079 ms here)
@@ -118,8 +118,12 @@ function counts(page) {
       // the old code then kept the skeleton until the network answered.
       const rowsBy = (ms) => page.evaluate((mx) => new Promise((res) => { const t0 = performance.now(), tick = () => { const n = document.querySelectorAll(".af-krow").length;
         if (n > 0) res({ rows: n, ms: Math.round(performance.now() - __t0) }); else if (performance.now() - t0 > mx) res({ rows: 0, ms: -1 }); else requestAnimationFrame(tick); }; tick(); }), ms);
-      const q2 = await rowsBy(6000);
-      ok(q2.rows > 0, "I-56 nearest food rows come from local data, long before the network (Ludvika, tiles 2.5 s late: " + q2.ms + " ms)", { q, q2 });
+      // flakefix (CI red on eefabdd: {"rows":0,"skel":4}): the app waited ONE time, max 3 s, for the tiles; with 2.5 s late tiles
+      // the rows came at 2.0-2.7 s on CI (8/8 runs per commit, no regression in the merges), and a slower run missed the 3 s and
+      // kept the skeleton until the network. The app now keeps waiting while the sheet is open. The tiles here are 4.5 s late
+      // (past the old 3 s wait), so the old code fails every time; the network is still held 15 s.
+      const q2 = await rowsBy(9000);
+      ok(q2.rows > 0 && q2.ms < 9000, "I-56 nearest food rows come from local data, long before the network (Ludvika, tiles 4.5 s late: " + q2.ms + " ms)", { q, q2 });
       await ctx.close().catch(() => {});
     }
     /* ---------- I-50 / I-51: icon + cluster counts ---------- */
