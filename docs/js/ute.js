@@ -66,7 +66,8 @@
     var nowIso = c.time || "", mx = 0, k = 0;
     for (var i = 0; i < times.length && k < 3; i++) { if (times[i] >= nowIso.slice(0, 13)) { mx = Math.max(mx, probs[i] | 0); k++; } }
     return { t: Math.round(c.temperature_2m), code: c.weather_code | 0, pr: +(c.precipitation || 0) + +(c.rain || 0) + +(c.showers || 0),
-      day: c.is_day === 1 || c.is_day === true, cloud: c.cloud_cover | 0, p2: mx };
+      day: c.is_day === 1 || c.is_day === true, cloud: c.cloud_cover | 0, p2: mx,
+      sd: Math.round((+c.snow_depth || 0) * 1000) / 10 };   // lane seasons: snow depth in cm ("snow has fallen" map colours over 2 cm, js/seasonclock.js)
   }
   function load(force) {
     var p = here(), cell = cellOf(p), h = hourNow();
@@ -76,7 +77,7 @@
     lastTry = Date.now(); busy = true;
     var c = cell.split(",");
     var url = API + "?latitude=" + c[0] + "&longitude=" + c[1] +
-      "&current=temperature_2m,precipitation,rain,showers,weather_code,cloud_cover,is_day" +
+      "&current=temperature_2m,precipitation,rain,showers,weather_code,cloud_cover,is_day,snow_depth" +
       "&hourly=precipitation_probability&forecast_hours=4&timezone=auto";
     var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { try { if (ctl) ctl.abort(); } catch (e) {} }, 8000);
     fetch(url, { signal: ctl ? ctl.signal : undefined, credentials: "omit" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {

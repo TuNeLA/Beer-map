@@ -49,13 +49,15 @@
   function crossed(prev, n) { return [5, 10, 15].some(function (k) { return prev < k && n >= k; }); }
   function burst(n, prev) {
     var calm = reduced() || n >= 8;
+    // lane seasons (I-117): the season tap effect (js/seasontap.js) takes the place of the 22 bits; calm = one still season mark
+    var TF = W.PNTapFx, useFx = !!(TF && TF.on && TF.on()), fx = null;
     var host = D.createElement("div");
     host.className = "pm-burst" + (calm ? " pm-calm" : "") + (reduced() ? " pm-rm" : "");
     host.setAttribute("aria-hidden", "true");
     var h = (calm ? "" : '<div class="pm-edge"></div>') + '<div class="pm-back"></div><div class="pm-ring"></div><div class="pm-ring pm-r2"></div><div class="pm-num">' +
       (prev > 0 ? '<span class="pm-old">' + prev + "</span>" : "") + '<span class="pm-new">' + n + "</span></div>" +
       '<div class="pm-sub">' + (sv() ? "ikväll" : "tonight") + "</div>";
-    if (!calm) {
+    if (!calm && !useFx) {
       for (var i = 0; i < 22; i++) {
         var a = (i / 22) * 360 + (Math.random() * 14 - 7), d = 120 + Math.random() * 110;
         h += '<i class="pm-p" style="--a:' + a.toFixed(0) + "deg;--d:" + d.toFixed(0) + "px;--s:" + (0.8 + Math.random() * 0.8).toFixed(2) +
@@ -64,6 +66,7 @@
     }
     host.innerHTML = h;
     D.body.appendChild(host);
+    if (useFx) try { fx = TF.play(host, calm); } catch (e) {}
     hold = true;
     var done = false;
     function land() {
@@ -71,6 +74,7 @@
       hold = false; paint(want);
       var b = $("pn-mine");
       if (b && !reduced()) { b.classList.remove("pm-bump"); void b.offsetWidth; b.classList.add("pm-bump"); setTimeout(function () { b.classList.remove("pm-bump"); }, 520); }
+      if (fx) try { fx.out(); } catch (e) {}   // the season effect plays to its end outside the number
       if (host.parentNode) host.parentNode.removeChild(host);
     }
     setTimeout(function () {

@@ -45,12 +45,13 @@ async function open(browser, o = {}) {
     const d = await page.evaluate(() => {
       MYCOUNT.set(3); MYCOUNT.onBeerAccepted({}, { total: 4 });
       const h = document.querySelector(".pm-burst");
-      return { host: !!h, aria: h && h.getAttribute("aria-hidden"), parts: document.querySelectorAll(".pm-burst .pm-p").length, edge: !!document.querySelector(".pm-burst .pm-edge"),
+      return { host: !!h, aria: h && h.getAttribute("aria-hidden"), parts: document.querySelectorAll(".pm-burst .pm-p").length, fx: !!document.querySelector(".pm-burst .ss-tap"), edge: !!document.querySelector(".pm-burst .pm-edge"),
         num: h && h.querySelector(".pm-new").textContent, old: h && h.querySelector(".pm-old") && h.querySelector(".pm-old").textContent,
         pe: h && getComputedStyle(h).pointerEvents, hold: MYCOUNT._state().hold };
     });
     ok("D burst shows the new number, old rolls away", d.host && d.num === "4" && d.old === "3", d);
-    ok("D burst has the edge flash + 22 bits, aria-hidden, no taps", d.edge && d.parts === 22 && d.aria === "true" && d.pe === "none", d);
+    // lane seasons (I-117): the season tap effect canvas (js/seasontap.js) takes the place of the 22 emoji bits
+    ok("D burst has the edge flash + the season tap effect (no old bits), aria-hidden, no taps", d.edge && d.fx && d.parts === 0 && d.aria === "true" && d.pe === "none", d);
     ok("D holds the button until the number lands", d.hold === true, d);
     await page.evaluate(() => MYCOUNT.set(4));
     await wait(page, 2000);
