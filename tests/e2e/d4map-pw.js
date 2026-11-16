@@ -42,6 +42,14 @@ async function idle(page, ms) {
   await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
   if (ms) await wait(page, ms);
 }
+// flakefix: GL is quiet = no marker check pending and no GL frame for 400 ms (max 8 s). Before a timed tap: on CI (software GL,
+// no GPU) one frame at 4x CPU costs 100-250 ms, and "loaded + not moving + 300 ms" still left frames of the sheet close / tiles /
+// labels running: taps 2 and 3 measured them (big-update: try 1 red in 4 of 7 runs, e.g. [28,179,244]; tap 1 always ~30 ms).
+async function quiet(page) {
+  await page.waitForFunction(() => !(window.GLBARS && GLBARS._me && GLBARS._me().busy), null, { timeout: 10000 }).catch(() => {});
+  await page.evaluate(() => new Promise((res) => { const g = __gm(), t0 = performance.now(); let last = t0; const on = () => { last = performance.now(); };
+    g.on("render", on); (function chk() { const n = performance.now(); if (n - last > 400 || n - t0 > 8000) { g.off("render", on); res(); } else setTimeout(chk, 50); })(); }));
+}
 async function view(page, ll, z, ms) { await page.evaluate(([ll, z]) => { __map.closePopup(); __map.setView(ll, z, { animate: false }); }, [ll, z]); await idle(page, ms == null ? 1500 : ms); }
 async function drag(page, cdp, x0, y0, x1, y1, steps) {
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x0, y: y0 }] });
@@ -66,6 +74,7 @@ function barInView(page, k) {
     if (ONLY.test("tap")) {
       const runs = [];
       for (let k = 0; k < 3; k++) {
+        await quiet(page);
         const v = await barInView(page, k); if (!v) { ok(false, "fix 2: a GL bar in view to tap"); break; }
         await page.evaluate(() => { window.__fb = null; window.__full = null; window.__tt = 0;
           window.addEventListener("touchend", () => { window.__tt = performance.now(); }, { capture: true, once: true });
