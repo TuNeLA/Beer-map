@@ -29,6 +29,8 @@
   function S() { return W.PNSeason; }
   function glm() { try { var b = W.BASEMAP; return b && b.isMapbox && b.isMapbox() && b.mapbox() ? b.mapbox().getMapboxMap() : null; } catch (e) { return null; } }
   function allowed() { var s = S(); return !!(s && !s.off() && s.alive()); }
+  // does today draw anything on the map? (normal days: no tile reading at all)
+  function needed(m) { var M = cur && cur.map; return !!(M && allowed() && (M.tree || M.lights || M.advent || M.lucia || M.midsummer || M.fire || M.autumn || (m && m.getPitch() > 30))); }
   function frag(m) { try { return m.style && m.style.getFragmentStyle ? m.style.getFragmentStyle("basemap") || null : null; } catch (e) { return null; } }
   function before(m) { for (var i = 0; i < BAR_LAYERS.length; i++) if (m.getLayer(BAR_LAYERS[i])) return BAR_LAYERS[i]; return undefined; }
   function kx(lat) { return 111320 * Math.cos(lat * PI / 180); }
@@ -185,7 +187,7 @@
     var m = gm; if (!m || !cur) return;
     stats.builds++; lastBuild = Date.now();
     var s = cur, M = s.map, f = [], b = [], w = [], pp = [], mdl = [];
-    if (!allowed() || m.getZoom() < 12.5) { push(m, f, b, w, pp, mdl); return; }
+    if (!needed(m) || m.getZoom() < 12.5) { if (feats.length || bulbs.length || wires.length || parks.length) push(m, f, b, w, pp, mdl); return; }
     var T = readTown(m), bars = T.bars;
     // Christmas: the tree on the shopping street (45 m from every bar), light strings across it
     if (M.tree && T.st) {
@@ -309,16 +311,16 @@
   function hook(m) {
     if (!m || hooked === m) return; hooked = m; gm = m; town = null; pal = { on: "", orig: {} };
     m.on("style.load", function () { pal = { on: "", orig: {} }; town = null; W.setTimeout(function () { if (ensure(m)) { palette(m, cur); need(200); } }, 400); });
-    m.on("moveend", function () { if (!feats.length && !bulbs.length && Date.now() - lastBuild < 2500) return; need(250); });
+    m.on("moveend", function () { if (!needed(m) && !feats.length && !bulbs.length) return; need(250); });
     m.on("pitchend", function () { tilt(m); need(100); });
     // pins come and go (a poll, a DOM pin mounts, a name gets placed): check the rule again when the map is still
     m.on("idle", function () {
       if (feats.length || bulbs.length) cull(m, true);
       // more tiles came after the first read (a church, the real shopping street): read the town again, at most every 10 s
-      if (town && cur && allowed() && Date.now() - town.at > 10000 && Date.now() - (town.re || 0) > 10000) { var n0 = town.n, t0 = town; town.re = Date.now();
-        town = null; var t2 = readTown(m); if (t2.n > n0) need(50); else { town = t0; town.re = Date.now(); } }
+      if (town && needed(m) && Date.now() - town.at > 10000 && Date.now() - (town.re || 0) > 10000) { town.re = Date.now();
+        (W.requestIdleCallback || function (f) { return W.setTimeout(f, 200); })(function () { if (!town) return; var n0 = town.n, t0 = town; town = null; var t2 = readTown(m); if (t2.n > n0) need(50); else town = t0; }, { timeout: 3000 }); }
     });
-    m.on("sourcedata", function (e) { if (e && e.isSourceLoaded && !town && cur && allowed()) need(600); });
+    m.on("sourcedata", function (e) { if (e && e.isSourceLoaded && !town && needed(m)) need(600); });
   }
   function check() {
     var m = glm(); if (!m || !(W.GLBARS && W.GLBARS.on && W.GLBARS.on())) return false;

@@ -125,6 +125,9 @@
     var b = btn();
     // the hat goes down with the pressed button (CSS :active) and hops once after the tap
     b.addEventListener("click", function () { W.setTimeout(hop, 120); });
+    var down = function (on) { return function () { if (el) el.classList.toggle("ss-down", on && !b.disabled); }; };
+    b.addEventListener("pointerdown", down(true), { passive: true });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (n) { b.addEventListener(n, down(false), { passive: true }); });
     W.addEventListener("resize", function () { W.requestAnimationFrame(place); });
     W.setTimeout(place, 1500);
     return true;

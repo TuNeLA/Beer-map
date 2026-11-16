@@ -32,7 +32,7 @@
 .ss-top{left:50%;top:-14px;width:112%;height:34px;transform:translateX(-50%)}
 .ss-top-snow{top:-12px;width:106%;height:32px}
 /* pressed: the piece goes down with the button; after the tap it hops once */
-.beer-wrap:has(#btn-beer:active:not(:disabled)) .ss-dress{transform:translateY(3px) scale(.95)}
+.ss-dress.ss-down{transform:translateY(3px) scale(.95)}   /* set by js/seasondress.js on pointerdown (no :has(:active): it re-checks styles on every tap anywhere) */
 .ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-top-crown{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
 @keyframes ssHop{0%{translate:0 0}35%{translate:0 -9px}62%{translate:0 1px}100%{translate:0 0}}
 /* "Ångra" and the wait: the piece stays out of the way (it sits on the rim, above the ring) */
@@ -81,5 +81,5 @@ body.ss-glogg .beer-btn.cooldown:not(.undo){background:
 
 @media (prefers-reduced-motion:reduce){
   .ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-top-crown{animation:none}
-  .beer-wrap:has(#btn-beer:active) .ss-dress{transform:none}
+  .ss-dress.ss-down{transform:none}
 }
