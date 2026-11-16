@@ -4,7 +4,8 @@
 # A shard = one GitHub runner (about 45 s setup). Target: no shard over 8 minutes. See the expected time of each shard:
 #   node scripts/ci/plan.mjs . --times        (from tests/e2e/durations.txt)
 # Every suite of run-all.sh must match exactly ONE line here: node scripts/ci/shard-guard.mjs .   (in the unit job)
-# Add a test: `run <name> $B <file>` in run-all.sh, then add <name> to the regex of a shard with room (or add a line).
+# Add a test: `run <name> $B <file>` in run-all.sh, then add <name> to the regex of the SHORTEST shard (the last full run's job
+#   times, or plan.mjs --times after a durations.txt refresh). Max 22 shards (tests/unit/plan.test.mjs).
 # Names: letters, digits, - and _ only. The regex has no spaces. Read by scripts/ci/plan.mjs (job "plan" in e2e.yml).
 # On a ci/ branch a .ci-only file (one shard name per line) cuts the run to only those shards.
 
@@ -14,7 +15,7 @@ gate-b     ^(start1|x8|mycount|takeover|ci1)$                   site=bundled gat
 
 # --- timing checks (taps < 100 ms, frame budgets): one test at a time ---
 timing-1   ^(speed1|d4map|c2speed|inst|s1speed)$                par=1
-timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1)$       par=1
+timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1|hemzon)$       par=1
 perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine
 
 # --- real Mapbox GL (need MAPBOX_TEST_TOKEN) and the map lane ---
@@ -27,16 +28,18 @@ map-lane   ^(map|map-b)$
 ui-01      ^(moments)$
 ui-02      ^(popfix)$
 ui-03      ^(fixmo)$
-ui-04      ^(mapzoom|lg|tickerfix2|ridechip)$
-ui-05      ^(social-b|fixs|camfilm)$
+ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump)$
+ui-05      ^(social-b|fixs|camfilm|dsocial)$
 ui-06      ^(games2|fixm|fixc|ownerfix)$
-ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3)$
+ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3|eggs)$
 ui-08      ^(c1menus|c5extras|cam|cln|followups|fixj|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk)$   chromium webkit   # + the WebKit (iPhone engine) runs
 ui-09      ^(uifix|dialekt|ui1|after2|bold-skal)$
 ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left)$
 ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump)$
-ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3)$
-ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|eggs|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome|dsocial)$
+ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3|dprofile)$
+ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome)$
 
-# --- 15 Nov design lanes (coordinator) ---
-ui-design  ^(d-beer|bold-bump|bold-hem|dprofile|maplight|townfix|folkhar|avwiz-ios|seasons|barsearch|hemzon)$
+# --- 15 Nov design lanes (coordinator). 16 Nov flakefix: rebalanced from the job times of run 43804457427 (ui-design was 11m46s):
+#     hemzon -> timing-2 (runs alone there, the timing tests are not disturbed), dprofile -> ui-12, barsearch + bold-bump -> ui-04,
+#     dsocial -> ui-05, eggs -> ui-07. A NEW test goes in the SHORTEST shard (plan.mjs --times), not here. ---
+ui-design  ^(d-beer|bold-hem|maplight|townfix|folkhar|avwiz-ios|seasons)$

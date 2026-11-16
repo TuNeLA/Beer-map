@@ -70,6 +70,7 @@ To run only some tests: locally `bash scripts/dev/quick.sh <names>` (guards + th
 2. Print one line per check: `PASS <text>` or `FAIL <text>`. Exit code not 0 = fail.
 3. Add `run <name> $B <file>` to `tests/e2e/run-all.sh`.
 4. Add `<name>` to the regex of ONE shard line in `tests/e2e/shards.txt` (pick a shard with room: `plan.mjs --times`), or add a line.
+   Put a new test in the SHORTEST shard (see the last full run's job times), not in ui-design.
    The unit job fails when a `*-pw.js` file is in no shard, or in two (`scripts/ci/shard-guard.mjs`).
    A test that cannot run in CI goes on `tests/e2e/not-in-ci.txt` with the reason.
 5. After an action (a click that opens a sheet, a tab, a send) use `await settle(page, 1500)` and not `await wait(page, 1500)`:
