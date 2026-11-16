@@ -854,15 +854,25 @@
     return best;
   }
   function meCheck() {   // debounced, after GL has drawn the new bars / view (no per-frame work)
-    clearTimeout(meChkT);
+    clearTimeout(meChkT); clearTimeout(meIdleT); meGen++; meBusy = true;   // a newer check replaces one that waits for idle
     meChkT = setTimeout(function () {
-      if (!on || !gm || !layersReady || !gm.getSource(SRC_ME)) return;
+      if (!on || !gm || !layersReady || !gm.getSource(SRC_ME)) { meBusy = false; return; }
       if (Math.abs(map.getZoom() - syncZ) > 0.01) { lastSig = ""; sync(); return; }   // the icons are from another zoom (town lanterns!): redraw them first (sync checks me again)
-      var c = null; try { c = meAt ? null : meCover(gm); } catch (e) {}
-      var a = c ? c.id : "", b = meCov ? meCov.id : "";
-      meCov = c;
-      meDraw(gm);   // (the bar images do not change: my marker finds its own free side, mePlace)
+      meIdle(gm, function () {
+        var c = null; try { c = meAt ? null : meCover(gm); } catch (e) {}
+        meCov = c; meBusy = false;
+        meDraw(gm);   // (the bar images do not change: my marker finds its own free side, mePlace)
+      });
     }, 250);
+  }
+  // flakefix: mePlace() asks GL which names are DRAWN. 250 ms after new bar data a slow phone (CI: 4x shared CPU) has not placed
+  // the new labels yet: a name looked free and my marker hid it (x-blackstone-ludvika, why "left") until the next move. So decide
+  // when GL is idle (one repaint, then "idle" = sources loaded, labels placed); max 1.5 s for a map that never idles (animation).
+  var meBusy = false, meIdleT = 0, meGen = 0;
+  function meIdle(m, fn) {
+    var gen = ++meGen, done = false, fire = function () { if (done || gen !== meGen) return; done = true; clearTimeout(meIdleT); if (m === gm) fn(); else meBusy = false; };
+    clearTimeout(meIdleT); meIdleT = setTimeout(fire, 1500);
+    try { m.once("idle", fire); m.triggerRepaint(); } catch (e) { fire(); }
   }
   function meEnsure(m) {
     try {
@@ -1109,7 +1119,7 @@
     me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
     // tests: my marker. at = the icon I am checked in at, cov = the icon my position is on (I stand beside it), px = where it is drawn
     _me: function () {
-      var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR, why: meWhy };
+      var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR, why: meWhy, busy: meBusy };   // busy: a check waits for GL idle
       try { var f = JSON.parse(meSig || "[]")[0]; if (f && gm) { var p = gm.project(f.geometry.coordinates), k = zk(map.getZoom()) * (f.properties.sz || 1), off = meOffSig.split(",");   // the offset is screen px (paint translate)
         o.img = f.properties.img; o.k = f.properties.k; o.px = { x: p.x + (+off[0] || 0), y: p.y + (+off[1] || 0), r: meR * k }; } } catch (e) {}
       return o;

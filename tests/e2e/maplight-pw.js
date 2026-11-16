@@ -172,7 +172,13 @@ async function runGL(b) {
   /* ---------- my marker + friends ---------- */
   if (ONLY.test("me")) {
     const { ctx, page, errs, S } = await open(b, "gl");
-    const meAt = async (ll, z) => { await page.evaluate(([ll, z]) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, z, { animate: false }); }, [ll, z]); await wait(page, 1600); };
+    // flakefix (CI: "covers no other bar's name" why "left", and "me z13.5" drawn:0): a fixed 1.6 s wait read my marker before
+    // its check had run / before GL had drawn it. Now: wait until the marker check is done (GLBARS._me().busy) and GL is idle.
+    const meSettle = async () => {
+      await page.waitForFunction(() => !GLBARS._me().busy, null, { timeout: 10000 }).catch(() => console.log("me check still busy"));
+      await page.evaluate(() => new Promise((res) => { const g = __gm(), t = setTimeout(res, 3000); g.once("idle", () => { clearTimeout(t); res(); }); g.triggerRepaint(); }));
+    };
+    const meAt = async (ll, z) => { await page.evaluate(([ll, z]) => { __map.closePopup(); GLBARS.me(ll[0], ll[1]); __map.setView(ll, z, { animate: false }); }, [ll, z]); await wait(page, 400); await meSettle(); };
     const me = (id) => page.evaluate((id) => { const g = __gm(), m = GLBARS._me(), ids = g.getStyle().layers.map((l) => l.id), drawn = g.getLayer("olnu-me-pin") ? g.queryRenderedFeatures({ layers: ["olnu-me-pin"] }).length : -1;
       const bar = id ? (GLBARS._view() || []).find((x) => x.id === id) : null, c = Object.values(GLBARS._crowds ? GLBARS._crowds() : {}).find((q) => id && q.ids.includes(id)), cp = c ? __map.latLngToContainerPoint(c.ll) : null;
       // the icon my marker stands beside: the bar's own pin, its town lantern, or what GLBARS says covers my position (a cluster)
@@ -194,12 +200,15 @@ async function runGL(b) {
     await meAt(AWAY, 16.5); const aw = await me(null);
     const here = await page.evaluate(() => { const m = GLBARS._me(), p = __gm().project([m.ll[1], m.ll[0]]); return m.px ? Math.hypot(p.x - m.px.x, p.y - m.px.y) : 99; });
     ok(aw.drawn === 1 && !aw.cov && aw.k === "me" && here < 1, "me away from every icon: my marker exactly at my own position", [aw, here]);
-    S.checkins = [CI(BAR.pitch, PIT, "Pitchers", { who: "Anton", mine: true, at: iso(20) })]; await poll(page, 800); await meAt(AWAY, 16); await view(page, LUD, 16, 1600);
+    // flakefix: a slow phone (6x CPU) for this step: the old code chose the side before GL had placed the names (5 of 6 runs red)
+    const cdpX = await ctx.newCDPSession(page); await cdpX.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+    S.checkins = [CI(BAR.pitch, PIT, "Pitchers", { who: "Anton", mine: true, at: iso(20) })]; await poll(page, 800); await meAt(AWAY, 16); await view(page, LUD, 16, 400); await meSettle();
     const ci = await me(PIT);
     ok(ci.drawn === 1 && ci.k === "at" && /(Du|You)$/.test(ci.img) && ci.gap > -4, "me checked in at Pitchers (my GPS elsewhere): my marker with the Du tag beside the Pitchers icon", ci);
     const nm = await page.evaluate((id) => { const g = __gm(), m = GLBARS._me().px, r = m ? m.r * 0.8 : 0;
       const f = m ? g.queryRenderedFeatures([[m.x - r, m.y - r], [m.x + r, m.y + r]], { layers: ["olnu-bar-lbl"] }).filter((x) => String(x.properties.id) !== id) : [];
       return { names: f.map((x) => x.properties.id), px: m, why: GLBARS._me().why }; }, PIT);
+    await cdpX.send("Emulation.setCPUThrottlingRate", { rate: 1 });
     ok(nm.px && (nm.names.length === 0 || nm.why === "both taken"), "me checked in at Pitchers: my marker covers no other bar's name (unless left and above are both taken)", nm);
     // an icon in the way on the left (my position on La Parma; Lobbybaren is left of it) → above, never right / below
     S.checkins = []; await poll(page, 800); await meAt(BAR.parma, 16);
