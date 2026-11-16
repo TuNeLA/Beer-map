@@ -44,11 +44,17 @@ async function open(b, mode) {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(async (e) => { console.log("goto retry: " + e.message.split("\n")[0]); await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 }); });
   if (mode === "gl") await page.waitForFunction(() => window.GLBARS && GLBARS.on() && window.BASEMAP && BASEMAP.isMapbox(), null, { timeout: 45000 }).catch(() => console.log("GL not on"));
   else await page.waitForFunction(() => window.__map && document.querySelectorAll(".pill").length > 3, null, { timeout: 30000 }).catch(() => console.log("no pills"));
-  await page.addStyleTag({ content: "#toasts{display:none !important}" }).catch(() => {});
+  // flakefix: delight.js's caption strip (pnds.css: top 158 px) holds while a bar sheet is open and shows right after it closes:
+  // the I-109 guard's tap on La Parma (y 172) hit the "Kapsylsamlingen" caption and opened the caps sheet (local: 2 of 3 runs).
+  await page.addStyleTag({ content: "#toasts{display:none !important}#dl-cap{display:none !important}" }).catch(() => {});
   await page.evaluate(() => {
     const M = window.__mf = { ev: [], clicks: 0 };
     const key = (e) => (e.popup && e.popup._source && e.popup._source.options && e.popup._source.options.olnuKey) || "?";
-    __map.on("popupopen", (e) => M.ev.push("open:" + key(e))); __map.on("popupclose", (e) => M.ev.push("close:" + key(e)));
+    // flakefix: a redraw (poll, avatar specs) swaps an open pop-up: close + reopen, marked data-pn-reopen by app-pins.js (whose
+    // popupopen handler runs first). Logged as "reopen:", so it is not taken for an open by a tap. M.taps() = the events without
+    // those close+reopen pairs (CI red: ["close:hx-lobbybaren-ludvika","open:hx-lobbybaren-ludvika","close:hx-lobbybaren-ludvika"]).
+    const ro = (e) => { try { const el = e.popup && e.popup.getElement && e.popup.getElement(); return !!el && el.hasAttribute("data-pn-reopen"); } catch (x) { return false; } };
+    __map.on("popupopen", (e) => M.ev.push((ro(e) ? "reopen:" : "open:") + key(e))); __map.on("popupclose", (e) => M.ev.push("close:" + key(e)));
     M.gl = () => (window.GLBARS && GLBARS.on() ? BASEMAP.mapbox().getMapboxMap() : null);
     // every bar icon on screen (page px)
     M.bars = () => { const r = __map.getContainer().getBoundingClientRect();
@@ -109,6 +115,8 @@ async function drag(page, cdp, x0, y0, x1, y1, steps) {
 }
 async function view(page, ll, z, ms) { await page.evaluate(([ll, z]) => { __map.closePopup(); __map.setView(ll, z, { animate: false }); }, [ll, z]); await wait(page, ms || 2500); await page.evaluate(() => __mf.ev.splice(0)); }
 const st = (page) => page.evaluate(() => __mf.state());
+// flakefix: drop the close + reopen pairs of a redraw (the same key, the reopen right after its close)
+const noRedraw = (ev) => { const out = []; for (let i = 0; i < ev.length; i++) { if (/^close:/.test(ev[i]) && ev[i + 1] === "reopen:" + ev[i].slice(6)) { i++; continue; } if (!/^reopen:/.test(ev[i])) out.push(ev[i]); } return out; };
 const barAt = (page, id) => page.evaluate((id) => __mf.bars().filter((b) => b.id === id)[0] || null, id);
 // open a bar with a finger tap on its icon; wait for its sheet and for the sheet's "keep the bar visible" pan
 async function tapBar(page, cdp, id) {
@@ -188,7 +196,7 @@ async function run(b, mode) {
     else {
       await tap(page, cdp, hp.x, hp.y); await wait(page, 1800);
       const s1 = await st(page);
-      ok(!s1.open && s1.ev.join() === "close:" + s0.ev.filter((x) => /^open/.test(x)).pop().slice(5), W + "I-110 a tap on the open bar's own house (" + hp.d + " px from its icon) closes the sheet and opens nothing", s1);
+      ok(!s1.open && noRedraw(s1.ev).join() === "close:" + s0.ev.filter((x) => /^open/.test(x)).pop().slice(5), W + "I-110 a tap on the open bar's own house (" + hp.d + " px from its icon) closes the sheet and opens nothing", s1);
     }
     // b) any map "click" consumer (map3d.js opens a bar from its 3D house): it must not get the tap that closed the sheet
     await codeOpen(page, LOBBY);
@@ -196,9 +204,11 @@ async function run(b, mode) {
     const s2 = await st(page), e = await page.evaluate((top) => __mf.empty(60, (top || 220) - 8, 45), s2.top);
     if (!s2.open || !e) ok(false, W + "I-110 setup: the sheet open again and an empty spot above it", { s2, e });
     else {
+      await page.evaluate(() => __mf.ev.splice(0));   // flakefix: the empty-spot scan above is slow on CI: only what the tap does counts
       await tap(page, cdp, e.x, e.y); await wait(page, 1800);
       const s3 = await st(page);
-      ok(!s3.open && s3.clicks === 0 && s3.ev.join() === "close:" + (s3.ev[0] || "").slice(6), W + "I-110 a tap on the empty map closes the sheet; no map click listener can open it again", s3);
+      const ev3 = noRedraw(s3.ev);
+      ok(!s3.open && s3.clicks === 0 && ev3.join() === "close:" + (ev3[0] || "").slice(6), W + "I-110 a tap on the empty map closes the sheet; no map click listener can open it again", s3);
       await tap(page, cdp, e.x, e.y); await wait(page, 900);
       const s4 = await st(page);
       ok(s4.clicks === 1, W + "I-110 guard: with no pop-up open the same tap is a normal map click", s4);
@@ -292,9 +302,12 @@ async function run(b, mode) {
     ok(s1.open && re.test(s1.title) && r.sheetClass && r.gone === 0 && Math.abs(r.sc[1] - r.sc[0]) <= 2, W + "I-109 " + kind + ": after 3 redraws the same bar's sheet is still open, same scroll, never missing in a frame", { s1, r });
     await page.evaluate(() => __map.closePopup()); await wait(page, 600);
     const s2 = await st(page);
+    // flakefix (CI red: {"cls":true,"open":true}): data-pn-reopen was read 1.5 s after the tap, when a poll redraw had put the
+    // sheet back (by design, marked). The tap's own open is what counts: its open animation plays, and its event is a plain open.
+    await page.evaluate(() => { __mf.w.anims = []; });
     await tapBar(page, cdp, id);
-    const r2 = await page.evaluate(() => ({ cls: !!document.querySelector(".leaflet-popup[data-pn-reopen]"), open: !!document.querySelector(".leaflet-popup .bs") }));
-    ok(!s2.open && r2.open && !r2.cls, W + "I-109 guard " + kind + ": close + a new tap opens it again the normal way (with its animation)", { s2, r2 });
+    const r2 = await page.evaluate(() => ({ anims: __mf.w.anims.filter((a) => /SheetIn|^up$/i.test(a)).length, open: !!document.querySelector(".leaflet-popup .bs"), ev: __mf.ev.slice() }));
+    ok(!s2.open && r2.open && r2.anims >= 1 && /^open:/.test(r2.ev.find((x) => /open:/.test(x)) || ""), W + "I-109 guard " + kind + ": close + a new tap opens it again the normal way (with its animation)", { s2, r2 });
     await page.evaluate(() => __map.closePopup()); await wait(page, 400);
   }
   ok(errs.length === 0, W + "no page errors", errs.slice(0, 3));
