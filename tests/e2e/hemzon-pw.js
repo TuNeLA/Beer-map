@@ -63,9 +63,17 @@ const RING = (sel) => {
 (async () => {
   const proxy = process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY, bypass: "<-loopback>,127.0.0.1,localhost" } } : {};
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME, args: ["--ignore-certificate-errors"], ...proxy });
+  // each section: its own contexts; a crash = one FAIL line, the next section still runs (the old code must show every FAIL)
+  const sec = async (name, fn) => {
+    const ctxs = [], use = async (vp, o) => { const r = await open(browser, vp, o); ctxs.push(r.ctx); return r; };
+    try { await fn(use); } catch (e) { ok(name + " (crashed: " + String(e.message).split("\n")[0] + ")", false); }
+    for (const c of ctxs) await c.close().catch(() => {});
+  };
+  const V = { width: 390, height: 844 };
   try {
+    await sec("A search", async (use) => {
     // ---------- 1+2. suggestions while typing; "23A" finds the house; a pick places the point ----------
-    let { ctx, page, errs, reqs } = await open(browser, { width: 390, height: 844 }, { tok: true });
+    let { page, reqs } = await use(V, { tok: true });
     await openHz(page);
     ok("A0 the address search runs on Mapbox (config switch placeSearch: mapbox)", await page.evaluate(() => window.PN.placeSearch.engine()) === "mapbox");
     await page.focus("#sheet-body .hz-q"); await page.keyboard.type("Köpsmansgatan 23A", { delay: 35 }); await wait(page, 1200);
@@ -75,24 +83,24 @@ const RING = (sel) => {
     ok("A3 23A: the Ludvika house is the first suggestion", /Köpmansgatan 23a/.test(l[0] || "") && /Ludvika/.test(l[0] || ""), l);
     const shot = (n) => page.screenshot({ path: require("./env.js").OUT + "hemzon-" + n + ".png" });
     await shot("typing");
-    await page.click("#sheet-body .ps-hit >> nth=0"); await wait(page, 1200);
+    await page.click("#sheet-body .ps-hit >> nth=0", { timeout: 3000 }); await wait(page, 1200);
     ok("A4 a pick places the point (hint) and closes the list", /Punkt vald/.test(await page.evaluate(() => document.querySelector("#sheet-body .hz-hint").textContent)) && (await hits(page)).length === 0);
     await clickSave(page); await wait(page, 500);
-    let h = await saved(page);
+    const h = await saved(page);
     ok("A5 Spara saves the picked house (23A, Ludvika)", h && Math.abs(h.lat - LUD[0]) < 1e-4 && Math.abs(h.lng - LUD[1]) < 1e-4, h);
-    await ctx.close();
-
-    ({ ctx, page, reqs } = await open(browser, { width: 390, height: 844 }, { tok: true, mbDown: true }));   // Mapbox says no → Nominatim on Sök, letter dropped
+    });
+    await sec("A6 fallback", async (use) => {
+    const { page, reqs } = await use(V, { tok: true, mbDown: true });   // Mapbox says no → Nominatim on Sök, letter dropped
     await openHz(page);
     await page.fill("#sheet-body .hz-q", "Köpsmansgatan 23A"); await wait(page, 900);
     const nomTyping = reqs.nom.length;
     await page.click("#sheet-body .hz-qb"); await wait(page, 2000);
-    await clickSave(page); await wait(page, 500); h = await saved(page);
+    await clickSave(page); await wait(page, 500); const h = await saved(page);
     ok("A6 Mapbox down: typing never calls Nominatim; Sök → Nominatim; '23A' unknown there → '23' found and picked", nomTyping === 0 && reqs.nom.some((q) => /23A/.test(q)) && reqs.nom.some((q) => /23$/.test(q)) && h && Math.abs(h.lat - LUD[0]) < 1e-4, { nomTyping, nom: reqs.nom, h });
-    await ctx.close();
-
+    });
     // ---------- 3. the Mapbox GL map: tap, drag, circle, destroyed on close ----------
-    ({ ctx, page, errs } = await open(browser, { width: 390, height: 844 }, { gl: true }));
+    await sec("B GL map", async (use) => {
+    const { page, errs } = await use(V, { gl: true });
     await openHz(page);
     const gl = await glOn(page);
     const g = await page.evaluate(() => {
@@ -108,7 +116,7 @@ const RING = (sel) => {
     const box = await page.$eval("#sheet-body .hz-map", (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
     await page.mouse.click(box.x + box.w * 0.25, box.y + box.h * 0.7); await wait(page, 800);
     const c0 = await page.evaluate(() => { const m = (window.MBX._maps || []).find((x) => x.getContainer().classList.contains("hz-map")); return m.getCenter(); });
-    await clickSave(page); await wait(page, 500); h = await saved(page);
+    await clickSave(page); await wait(page, 500); const h = await saved(page);
     ok("B3 a tap on the GL map places the point (west + south of the centre)", h && h.lng < c0.lng && h.lat < c0.lat, { h, c0 });
     await openHz(page); await glOn(page); await wait(page, 600);
     const pb = await page.$eval("#sheet-body .hz2-pin", (e) => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
@@ -121,17 +129,17 @@ const RING = (sel) => {
     const n1 = await page.evaluate(() => ({ maps: (window.MBX._maps || []).length, canvases: document.querySelectorAll("canvas.mapboxgl-canvas").length }));
     ok("B5 the GL map is destroyed when the sheet closes (no leak)", n1.maps === n0.maps - 1 && n1.canvases === n0.canvases - 1, { n0, n1 });
     ok("B6 no page errors", errs.length === 0, errs.slice(0, 3));
-    await ctx.close();
-
-    ({ ctx, page } = await open(browser, { width: 390, height: 844 }, {}));   // no token → the raster mini map
+    });
+    await sec("B7 raster", async (use) => {
+    const { page } = await use(V, {});   // no token → the raster mini map
     await openHz(page);
     const rs = await page.evaluate(() => { const el = document.querySelector("#sheet-body .hz-map"); return { engine: el.getAttribute("data-engine"), tiles: el.querySelectorAll("img.leaflet-tile").length, svg: el.querySelectorAll("svg.mbx-svg path").length, pin: !!el.querySelector(".hz2-pin") }; });
     ok("B7 no token / no GL → the old raster mini map still works (tiles, circle, pin)", rs.engine === "raster" && rs.tiles > 0 && rs.svg >= 1 && rs.pin, rs);
-    await ctx.close();
+    });
 
     // ---------- 4. one screen: everything incl. Spara without scrolling ----------
-    for (const vp of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
-      ({ ctx, page } = await open(browser, vp, { home: { lat: LUD[0], lng: LUD[1], r: 150, ar: 150, at: 1 } }));
+    for (const vp of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) await sec("C " + vp.width, async (use) => {
+      const { page } = await use(vp, { home: { lat: LUD[0], lng: LUD[1], r: 150, ar: 150, at: 1 } });
       await openHz(page);
       const f = await page.evaluate(() => {
         const b = document.getElementById("sheet-body"), br = b.getBoundingClientRect(), bot = Math.min(br.bottom, innerHeight) + 0.5;
@@ -141,12 +149,12 @@ const RING = (sel) => {
           mapH: Math.round(b.querySelector(".hz-map").getBoundingClientRect().height), info: b.querySelector(".hz2-line") && b.querySelector(".hz2-line").getBoundingClientRect().height };
       });
       ok(`C1 ${vp.width}x${vp.height}: search, map, radius, Spara and Ta bort all visible, no scrolling`, f.scroll <= 1 && f.save && f.del && f.q && f.map && f.r, f);
-      ok(`C2 ${vp.width}x${vp.height}: one short info line (+ an (i) for the full text)`, f.info > 0 && f.info <= 24 && await page.evaluate(() => { const i = document.querySelector("#sheet-body .hz2-i"); i.click(); const v = !document.querySelector("#hz2-more").hidden; i.click(); return v; }), f);
-      await ctx.close();
-    }
+      ok(`C2 ${vp.width}x${vp.height}: one short info line (+ an (i) for the full text)`, f.info > 0 && f.info <= 24 && await page.evaluate(() => { const i = document.querySelector("#sheet-body .hz2-i"); if (!i) return false; i.click(); const v = !document.querySelector("#hz2-more").hidden; i.click(); return v; }), f);
+    });
 
     // ---------- 5. focus ring: never cut (Hemzon, chat, Kväll search, invite, ride destination) ----------
-    ({ ctx, page } = await open(browser, { width: 390, height: 844 }, {}));
+    await sec("D ring", async (use) => {
+    const { page } = await use(V, {});
     const rings = [];
     const field = async (name, how, sel, then) => {
       await H.closeSheet(page); await wait(page, 500);
@@ -158,47 +166,52 @@ const RING = (sel) => {
     await field("chat", `window.SOCIAL.openChat({ id: "${H.GID}", name: "Ludvika Lager" })`, "#sheet-body .chat-input textarea, #sheet-body .chat-input input");
     await field("kvall", "window.EVSHEET.open()", "#sheet-body .evs-q");
     await field("invite", "window.INVITE.openCreate({})", "#sheet-body .inv-form input.inp, #sheet-body input.inp");
-    await field("ride", "window.SKJUTS.openPickup({})", "#sheet-body .rd-dq", "(() => { const b = [...document.querySelectorAll('#sheet-body .rd-dseg .rd-segb')].find((x) => /Annan/.test(x.textContent)); if (b) b.click(); })()");
+    // ride destination: the ride v2 sheet needs the ride server (ride-pw.js); here its field (same classes, full width) in a sheet
+    await field("ride", "window.HOMEZONE.open()", "#sheet-body .rd-dq", "(() => { const d = document.createElement('div'); d.className = 'rd'; d.innerHTML = '<div class=\"rd-say\"><input type=\"search\" class=\"rd-in rd-dq\"></div>'; document.getElementById('sheet-body').prepend(d); })()");
     const found = rings.filter((r) => !r.missing);
     ok("D1 the focus ring of a text field is drawn inside the field and is never cut (" + found.map((r) => r.name).join(", ") + ")",
-      found.length >= 4 && found.every((r) => r.ring && r.cutL === 0 && r.cutR === 0 && parseFloat(r.offset) <= 0), rings);
-    await ctx.close();
+      found.length >= 5 && found.every((r) => r.ring && r.cutL === 0 && r.cutR === 0 && parseFloat(r.offset) <= 0), rings);
+    });
 
     // ---------- 6. radius: 25 m minimum, privacy area stays ≥ 100 m ----------
-    ({ ctx, page } = await open(browser, { width: 390, height: 844 }, {}));
+    await sec("E radius", async (use) => {
+    const { page } = await use(V, {});
     await openHz(page);
     const rr = await page.evaluate(() => { const r = document.getElementById("hz-r"); r.value = r.min; r.dispatchEvent(new Event("input", { bubbles: true }));
       return { out: document.querySelector("#sheet-body .hz2-rv").textContent, txt: r.getAttribute("aria-valuetext") }; });
-    await clickSave(page); await wait(page, 500); h = await saved(page);
+    await clickSave(page); await wait(page, 500); const h = await saved(page);
     ok("E1 the radius goes down to 25 m (slider minimum)", /^25 m$/.test(rr.out) && h && h.ar === 25, { rr, h });
     ok("E2 a drink at home is still only an area within 100 m (privacy r = max(radius, 100))", h && h.r === 100, h);
-    await ctx.close();
+    });
 
     // ---------- 7. Auto hemma: not at a bar near home; home after 2 good readings over 2 min ----------
     const BAR = [60.14997, 15.18679];                         // Pitchers (ds-helpers: I am checked in there)
     const HOME60 = [BAR[0] + 60 / 111200, BAR[1]];            // home 60 m north of the bar
-    ({ ctx, page } = await open(browser, { width: 390, height: 844 }, { home: { lat: HOME60[0], lng: HOME60[1], r: 100, ar: 100, at: 1 } }));
+    await sec("F1", async (use) => {
+    const { page } = await use(V, { home: { lat: HOME60[0], lng: HOME60[1], r: 100, ar: 100, at: 1 } });
     await wait(page, 600);
     for (const m of [0, 3, 8]) await page.evaluate(([la, ln, m]) => { window.AUTOHOME._skew(m ? 5 * 60e3 : 0); window.AUTOHOME._fix({ lat: la, lng: ln, acc: 10 }); }, [BAR[0], BAR[1], m]);
-    let s = await page.evaluate(() => window.AUTOHOME.state());
+    const s = await page.evaluate(() => window.AUTOHOME.state());
     ok("F1 at the bar 60 m from home (checked in), 3 readings over 10 min → NOT home", !s.undo && s.why === "bar", s);
-    await ctx.close();
+    });
     const HOME = [60.1535, 15.1990];                          // a quiet street, no bar within 40 m
-    ({ ctx, page } = await open(browser, { width: 390, height: 844 }, { checkin: false, home: { lat: HOME[0], lng: HOME[1], r: 100, ar: 100, at: 1 } }));
+    await sec("F2", async (use) => {
+    const { page } = await use(V, { checkin: false, home: { lat: HOME[0], lng: HOME[1], r: 100, ar: 100, at: 1 } });
     await wait(page, 600);
     await page.evaluate(([la, ln]) => window.AUTOHOME._fix({ lat: la, lng: ln, acc: 15 }), HOME);
     await page.evaluate(([la, ln]) => { window.AUTOHOME._skew(150e3); window.AUTOHOME._fix({ lat: la + 0.0002, lng: ln, acc: 12 }); }, HOME);
     await wait(page, 1200);
-    s = await page.evaluate(() => window.AUTOHOME.state());
+    const s = await page.evaluate(() => window.AUTOHOME.state());
     const tx = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "));
     ok("F2 2 good readings inside the zone over 2.5 min → home (toast + Ångra)", s.undo && /Välkommen hem/.test(tx), { s, tx });
-    await ctx.close();
-    ({ ctx, page } = await open(browser, { width: 390, height: 844 }, { checkin: false, home: { lat: HOME[0], lng: HOME[1], r: 100, ar: 25, at: 1 } }));
+    });
+    await sec("F3", async (use) => {
+    const { page } = await use(V, { checkin: false, home: { lat: HOME[0], lng: HOME[1], r: 100, ar: 25, at: 1 } });
     await wait(page, 600);
     await page.evaluate(([la, ln]) => { window.AUTOHOME._fix({ lat: la, lng: ln, acc: 30 }); window.AUTOHOME._skew(11 * 60e3); window.AUTOHOME._fix({ lat: la, lng: ln, acc: 30 }); }, HOME);
-    s = await page.evaluate(() => window.AUTOHOME.state());
+    const s = await page.evaluate(() => window.AUTOHOME.state());
     ok("F3 a 25 m zone: readings with 30 m accuracy never count (accuracy must beat the radius)", !s.undo && s.why === "accuracy", s);
-    await ctx.close();
+    });
   } finally { await browser.close(); }
   console.log(`\n${pass} pass, ${fail} fail`); process.exit(fail ? 1 : 0);
 })();

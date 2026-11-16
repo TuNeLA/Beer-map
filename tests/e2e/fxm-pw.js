@@ -129,12 +129,13 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     const pre = await t.page.evaluate(() => window.AUTOHOME && window.AUTOHOME.state());
     ok(pre && pre.home && pre.on, "auto hemma: on by default once a home is set " + JSON.stringify(pre));
     await t.page.evaluate(([la, ln]) => window.AUTOHOME._fix({ lat: la + 0.0003, lng: ln, acc: 12 }), HOME);
-    await t.page.evaluate(() => window.AUTOHOME._skew(5 * 60e3)); await t.page.evaluate(([la, ln]) => window.AUTOHOME._fix({ lat: la, lng: ln + 0.0004, acc: 15 }), HOME);
-    ok(calls(t.srv, "check_out").length === 0, "auto hemma: nothing before 10 min (" + (await t.page.evaluate(() => window.AUTOHOME.state().why)) + ")");
-    await t.page.evaluate(() => window.AUTOHOME._skew(6 * 60e3)); await t.page.evaluate(([la, ln]) => window.AUTOHOME._fix({ lat: la, lng: ln, acc: 20 }), HOME);
+    // I-127 (lane hemzon, 16 Nov 2026): the dwell is 2 min now (was 10 min), with the stricter accuracy / not-at-a-bar rule (autohome.js header)
+    await t.page.evaluate(() => window.AUTOHOME._skew(60e3)); await t.page.evaluate(([la, ln]) => window.AUTOHOME._fix({ lat: la, lng: ln + 0.0004, acc: 15 }), HOME);
+    ok(calls(t.srv, "check_out").length === 0, "auto hemma: nothing before 2 min (" + (await t.page.evaluate(() => window.AUTOHOME.state().why)) + ")");
+    await t.page.evaluate(() => window.AUTOHOME._skew(90e3)); await t.page.evaluate(([la, ln]) => window.AUTOHOME._fix({ lat: la, lng: ln, acc: 20 }), HOME);
     await wait(t.page, 1500);
     const tx = await t.page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "));
-    ok(calls(t.srv, "check_out").length === 1 && calls(t.srv, "ikvall_set").some((c) => c.body.p_st === "hemma"), "auto hemma: 10 min at home → check_out + Ikväll = Hemma");
+    ok(calls(t.srv, "check_out").length === 1 && calls(t.srv, "ikvall_set").some((c) => c.body.p_st === "hemma"), "auto hemma: 2.5 min at home → check_out + Ikväll = Hemma");
     ok(/Välkommen hem/.test(tx) && /Ångra/.test(tx), "auto hemma: one toast 'Välkommen hem 🏠 — vi satte dig som Hemma' + Ångra (" + tx + ")");
     const sent = JSON.stringify(t.srv.calls);
     ok(!/60\.16|15\.2[^0-9]?/.test(sent.replace(/60\.14997|15\.18679/g, "")), "auto hemma: the home point is never sent to the server");

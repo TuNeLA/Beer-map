@@ -183,6 +183,7 @@ run ride       $B ride-pw.js       # lane ride F1 (0420): request, offer card, f
 run ride3      $B ride3-pw.js      # lane ride3 (0495): destination, fast polls (fake clock: each step on the other phone <= 3 s), steps in order, role chats + read-aloud, Ring consent, LÄSK soda, ANNAT hidden while driving, flag re-ask
 run ridechip   $B ridechip-pw.js   # lane ridechip (I-124): ride status chip next to Ikväll (wait / accepted / på väg · N min / framme / du kör), tap = sheet, sheet opens once on accept, reload, one HUD row
 run placesearch $B placesearch-pw.js   # lane a3search I-07: shared address search (Hemzon; mocked geocoder): near town first, list, Enter, no jump, mapbox flag
+run hemzon   $B hemzon-pw.js     # lane hemzon I-127 (owner 16 Nov): Hemzon = Mapbox GL mini map (mocked GL), live address suggestions (mocked geocoders), one screen, 25 m radius, focus ring never cut, Auto hemma not at a bar
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
 run eggs       $B eggs-pw.js       # lane s3eggs: 7 hidden Easter eggs (once a day, off in ride / Folj mig hem, reduced motion)
 run d1settings  $B d1settings-pw.js  # lane d1settings: Inställningar = 8 rows -> pages with back, one Hem row, Konto page
