@@ -865,12 +865,9 @@
       });
     }, 250);
   }
-  // flakefix: mePlace() asks GL which names are DRAWN. 250 ms after new bar data a slow phone (CI: 4x shared CPU) has not placed
-  // the new labels yet: a name looked free and my marker hid it (x-blackstone-ludvika, why "left") until the next move. So the
-  // side is decided when GL is idle (one repaint, then "idle" = sources loaded, labels placed): fn(true). A map that is not idle
-  // after 1.5 s (a slow phone, an animation) gets a first decision then, fn(false), and the final one at its next idle.
-  // meBusy (tests: GLBARS._me().busy) = the final decision is not made yet; max 10 s.
-  var meBusy = false, meIdleT = 0, meBusyT = 0, meGen = 0;
+  // flakefix: mePlace() asks GL which names are DRAWN; 250 ms after new bar data a slow phone had not placed them (a name looked
+  // free, my marker hid it). Final side at GL idle (labels placed): fn(true); not idle after 1.5 s: a first side, fn(false).
+  var meBusy = false, meIdleT = 0, meBusyT = 0, meGen = 0;   // meBusy (GLBARS._me().busy): no final side yet (max 10 s)
   function meIdle(m, fn) {
     var gen = ++meGen, idled = false, run = function (final) { if (gen !== meGen) return; if (m === gm) fn(final); else meBusy = false; };
     clearTimeout(meIdleT); clearTimeout(meBusyT);
