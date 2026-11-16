@@ -99,7 +99,7 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
 | Top row | Logo · status pill · 🏆 · profile. Pill and buttons are all 44 px high. Profile = my character's face, else a person icon. |
 | Row 2 | The LIVE ticker. **KAOS is inside the ticker** (red, label "KAOS", the headline, tap = Visa, ✕ = away), never a box on top. A call-out replaces the ticker in the same place. |
 | HUD row | Left, under row 2: at most one urgent chip ("Kolla till Oskar"). |
-| Right rail | Under row 2, top right: **Spökläge · Event · ⋯ Mer**, 44 px, 8 px apart. Mer holds Värme, Senaste dagarna, Taxi hem, Ställen nära dig, Kartstil. Usage data (client_vitals sheet opens, 2026-11-07): Event 10, Taxi 3, Mer 1; toggles are not logged. |
+| Right rail | Under row 2, top right: **Spökläge · Event · ⋯ Mer · Sök (bar search, I-126) · my count**, 44 px, 8 px apart. Mer holds Värme, Senaste dagarna, Taxi hem, Ställen nära dig, Kartstil. Usage data (client_vitals sheet opens, 2026-11-07): Event 10, Taxi 3, Mer 1; toggles are not logged. |
 | Banners, toasts, captions | Column left of the rail, under the HUD row. They never cover the rail. |
 | Locate | Bottom right, 12 px above the dock's right box (precision), right edges aligned (thumb reach). |
 | Dock | Grupper and precision are the same box (88 × 80). Precision = one toggle that shows the current mode (Exakt / Område); a short bubble after a change. ÖL! = viewport centre ± 1 px. |

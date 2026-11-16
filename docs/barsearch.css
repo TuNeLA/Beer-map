@@ -1,13 +1,10 @@
 /* PintsNow — BARSEARCH (I-126, owner 16 Nov 2026): search for a bar by name. See docs/js/barsearch.js. Tokens only. */
 :root{--bs-scrim: rgba(5,8,16,.62);--bs-mark-ring: rgba(245,166,35,.45)}
 
-/* the rail button: 4th slot, under ⋯ Mer. The count button (#pn-mine, mycount.css) moves to the 5th slot so the search
-   button never jumps. !important only because the ds05 rail tops are !important (pnds.css). */
+/* the rail button: 4th slot, under ⋯ Mer. The count button (#pn-mine) is the 5th slot (mycount.css). !important only because the ds05 rail tops are !important (pnds.css). */
 #pn-search{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + var(--pn-gap))) !important}
 body.mn-rail-lbl #pn-search{overflow:visible;top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 3 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
 body.mn-rail-lbl #pn-search::after{content:"";position:absolute;left:0;right:0;top:100%;height:18px}
-html body #pn-mine{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 4 * (var(--pn-rail) + var(--pn-gap))) !important}
-html body.mn-rail-lbl #pn-mine{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + var(--pn-gap) + 4 * (var(--pn-rail) + 18px + var(--pn-gap))) !important}
 #pn-search[aria-expanded="true"]{background:var(--ds-amber) !important;color:var(--ds-on-amber) !important;border-color:transparent}
 
 /* the panel: at the top, so the keyboard never covers the field. The dimmed map behind it eats the closing tap. */
