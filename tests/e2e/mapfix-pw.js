@@ -93,6 +93,14 @@ async function open(b, mode) {
         const d = Math.min.apply(null, bars.map((b) => Math.hypot(b.x - x, b.y - y)).concat(999));
         if (d > (far || 60) && (!best || d > best.d)) best = { x, y, d: Math.round(d) }; }
       return best; };
+    // flakefix: why no empty spot was found (a CI flake: "e": null): count the reasons, name the top DOM elements in the way
+    M.whyNot = (top, bottom, far) => { const bars = M.bars(), po = M.polys(), w = { pts: 0, notFree: 0, house: 0, drawn: 0, near: 0, els: {}, lays: {} }, r = __map.getContainer().getBoundingClientRect(), g = M.gl();
+      for (let y = top; y <= bottom; y += 8) for (let x = 12; x < innerWidth - 12; x += 8) { w.pts++;
+        if (!M.free(x, y)) { w.notFree++; const e = document.elementFromPoint(x, y), k = e ? e.tagName + "." + String(e.className && e.className.baseVal != null ? e.className.baseVal : e.className).split(" ")[0] : "-"; w.els[k] = (w.els[k] || 0) + 1; continue; }
+        if (po.some((p) => M.inside(p.pts, x, y))) { w.house++; continue; }
+        if (M.drawn(x, y)) { w.drawn++; try { g && g.queryRenderedFeatures([[x - r.left - 26, y - r.top - 26], [x - r.left + 26, y - r.top + 26]]).forEach((f) => { if (/^olnu/.test(f.layer.id) || /^olnu/.test(String(f.source))) w.lays[f.layer.id] = (w.lays[f.layer.id] || 0) + 1; }); } catch (e) {} continue; }
+        if (Math.min.apply(null, bars.map((b) => Math.hypot(b.x - x, b.y - y)).concat(999)) <= (far || 60)) w.near++; }
+      return w; };
     M.state = () => { const s = document.querySelector(".leaflet-popup.olnu-sheet"), p = document.querySelector(".leaflet-popup .bs");
       return { open: !!p, title: ((document.querySelector(".leaflet-popup .pp-title") || {}).textContent || "").trim(), top: s ? Math.round(s.getBoundingClientRect().top) : null,
         ev: M.ev.splice(0), z: +__map.getZoom().toFixed(3), clicks: M.clicks }; };
@@ -118,15 +126,23 @@ const st = (page) => page.evaluate(() => __mf.state());
 // flakefix: drop the close + reopen pairs of a redraw (the same key, the reopen right after its close)
 const noRedraw = (ev) => { const out = []; for (let i = 0; i < ev.length; i++) { if (/^close:/.test(ev[i]) && ev[i + 1] === "reopen:" + ev[i].slice(6)) { i++; continue; } if (!/^reopen:/.test(ev[i])) out.push(ev[i]); } return out; };
 const barAt = (page, id) => page.evaluate((id) => __mf.bars().filter((b) => b.id === id)[0] || null, id);
+// flakefix: the map is still = GL loaded, not moving, no GL frame for 300 ms (max 6 s); raster path: no pan / zoom running.
+// Fixed waits read a bar's place / scanned for a free spot while the sheet's pan or the tiles still ran (CI: 2 runners at once).
+const still = (page) => page.evaluate(() => new Promise((res) => { const g = __mf.gl(), t0 = performance.now(); let last = t0; const on = () => { last = performance.now(); };
+  if (g) g.on("render", on);
+  (function chk() { const n = performance.now(), busy = g ? (!g.loaded() || g.isMoving()) : !!(__map._animatingZoom || (__map._panAnim && __map._panAnim._inProgress));
+    if (busy) last = n; if (n - last > 300 || n - t0 > 6000) { if (g) g.off("render", on); res(); } else setTimeout(chk, 50); })(); }));
 // open a bar with a finger tap on its icon; wait for its sheet and for the sheet's "keep the bar visible" pan
 async function tapBar(page, cdp, id) {
+  await still(page);
   const b = await barAt(page, id); if (!b) return null;
+  b.under = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? e.tagName + "." + String(e.className && e.className.baseVal != null ? e.className.baseVal : e.className).split(" ")[0] + (e.id ? "#" + e.id : "") : "-"; }, [b.x, b.y]);   // (diagnosis: what the finger lands on)
   await tap(page, cdp, b.x, b.y);
   await page.waitForFunction(() => !!document.querySelector(".leaflet-popup .bs"), null, { timeout: 8000 }).catch(() => {});
-  await wait(page, 1500);
+  await wait(page, 1500); await still(page);
   return b;
 }
-async function codeOpen(page, id) { await page.evaluate((id) => { if (!document.querySelector(".leaflet-popup .bs")) BARLIT.open(id); }, id); await wait(page, 1300); await page.evaluate(() => __mf.ev.splice(0)); }
+async function codeOpen(page, id) { await page.evaluate((id) => { if (!document.querySelector(".leaflet-popup .bs")) BARLIT.open(id); }, id); await wait(page, 1300); await still(page); await page.evaluate(() => __mf.ev.splice(0)); }
 // screen shift of a map centre (px) between two states
 const centre = (page) => page.evaluate(() => { const c = __map.getCenter(); return { lat: c.lat, lng: c.lng, z: __map.getZoom() }; });
 const shiftPx = (page, c0) => page.evaluate((c0) => { const p = __map.latLngToContainerPoint([c0.lat, c0.lng]), s = __map.getSize(); return { dx: Math.round(p.x - s.x / 2), dy: Math.round(p.y - s.y / 2) }; }, c0);
@@ -202,7 +218,7 @@ async function run(b, mode) {
     await codeOpen(page, LOBBY);
     await page.evaluate((id) => { __mf.click = () => { __mf.clicks++; BARLIT.open(id); }; __map.on("click", __mf.click); }, LOBBY);
     const s2 = await st(page), e = await page.evaluate((top) => __mf.empty(60, (top || 220) - 8, 45), s2.top);
-    if (!s2.open || !e) ok(false, W + "I-110 setup: the sheet open again and an empty spot above it", { s2, e });
+    if (!s2.open || !e) ok(false, W + "I-110 setup: the sheet open again and an empty spot above it", { s2, e, why: await page.evaluate((top) => __mf.whyNot(60, (top || 220) - 8, 45), s2.top) });
     else {
       await page.evaluate(() => __mf.ev.splice(0));   // flakefix: the empty-spot scan above is slow on CI: only what the tap does counts
       await tap(page, cdp, e.x, e.y); await wait(page, 1800);

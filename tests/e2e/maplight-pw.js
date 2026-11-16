@@ -286,16 +286,22 @@ async function runGL(b) {
       const t = await page.evaluate(async () => {
         const B = window.BARLIGHT, out = {}, time = (fn, n) => { const t0 = performance.now(); for (let i = 0; i < n; i++) fn(); return +((performance.now() - t0) / n).toFixed(2); };
         out.syncMs = time(() => GLBARS.sync(), 20);
-        // flakefix (CI red: 80.19 vs 51.32 ms, best of 3 blocks of 8): one PN.render() at 4x swings 6-60 ms in BOTH modes (GC, a
-        // shared runner), and BARLIGHT.set() itself costs ~0 ms. Now: a warm-up, then 20 pairs (on/off, the order flips every pair),
-        // the MEDIAN of the pair differences. A feed that doubles the redraw still gives a median difference far over 8 ms.
+        // flakefix (CI red: 80.19 vs 51.32 ms, "best of 3" of with/without): one redraw at 4x on CI takes 40-100 ms and swings
+        // more than 8 ms by itself; a with/without difference (also a median of 20 pairs) read +4 ms in the KILL-SWITCH page,
+        // where the feed does nothing. So the feed is timed directly inside each redraw: from app-pins.js lightFeed()'s first
+        // read of window.BARLIGHT to the end of BARLIGHT.set(), plus every BARLIGHT.lvOf() (the lantern step of the icons).
+        // Median of 20 redraws after a warm-up. A feed that costs 12 ms more fails (mutant run in flakefix-DONE.md).
         const keep = window.BARLIGHT, one = () => { const t0 = performance.now(); PN.render(); return performance.now() - t0; };
         const med = (a) => { const v = a.slice().sort((x, y) => x - y), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
-        const runAs = (lit) => { window.BARLIGHT = lit ? keep : null; const ms = one(); window.BARLIGHT = keep; return ms; };
-        for (let i = 0; i < 4; i++) { runAs(true); runAs(false); }   // warm-up: both icon sets made, the code is hot
-        const onA = [], offA = [], dA = [];
-        for (let i = 0; i < 20; i++) { let a, c; if (i % 2) { c = runAs(false); a = runAs(true); } else { a = runAs(true); c = runAs(false); } onA.push(a); offA.push(c); dA.push(a - c); }
-        PN.render(); out.renderMs = +med(onA).toFixed(2); out.renderNoFeedMs = +med(offA).toFixed(2); out.feedMs = +med(dA).toFixed(2);   // the same page with and without the light feed
+        const feedA = [], renA = [], T = { from: 0, ms: 0 }, set0 = keep && keep.set, lv0 = keep && keep.lvOf;
+        if (keep) {
+        keep.set = function () { const r = set0.apply(this, arguments); if (T.from) { T.ms += performance.now() - T.from; T.from = 0; } return r; };
+        keep.lvOf = function () { const t = performance.now(), r = lv0.apply(this, arguments); T.ms += performance.now() - t; return r; };
+        Object.defineProperty(window, "BARLIGHT", { configurable: true, get() { if (!T.from && T.on) T.from = performance.now(); return keep; } });
+        for (let i = 0; i < 24; i++) { T.ms = 0; T.from = 0; T.on = true; const r = one(); T.on = false; if (i >= 4) { feedA.push(T.ms); renA.push(r); } }
+        delete window.BARLIGHT; window.BARLIGHT = keep; keep.set = set0; keep.lvOf = lv0;
+        }
+        PN.render(); out.renderMs = +med(renA).toFixed(2); out.feedMs = +med(feedA).toFixed(2); out.feedMax = +Math.max.apply(null, feedA).toFixed(2);
         out.layers = __gm().getStyle().layers.filter((l) => /^pn-light/.test(l.id)).length;
         if (B && B.on()) {
           const lines = window.__PN_ROADS ? window.__PN_ROADS().map((c) => ({ c, z: 16 })) : [];
@@ -319,7 +325,7 @@ async function runGL(b) {
     ok((t.piecesMs == null || t.piecesMs < 25) && t.syncMs < 40 && t.spreadStepMs < 12 && t.setMs < 5, "4x CPU: street pieces of one bar < 25 ms (" + t.piecesMs + "), one GL bar pass < 40 ms (" + t.syncMs + "), one spread step < 12 ms (" + t.spreadStepMs + "), the feed of one poll < 5 ms (" + t.setMs + ")", t);
     ok(t.idleFrames === 0, "4x CPU: idle = no light frame work", t);
     ok(t.layers === 4 && k.layers === 0, "layers: the light adds 4 GL layers (2 street lines + 2 halo circles); none with the kill switch", [t.layers, k.layers]);
-    ok(t.feedMs < 8, "4x CPU: the light feed adds < 8 ms to the app redraw of one poll (median of 20 pairs: +" + t.feedMs + " ms; " + t.renderMs + " ms with, " + t.renderNoFeedMs + " ms without, same page)", t);
+    ok(t.feedMs < 8, "4x CPU: the light feed adds < 8 ms to the app redraw of one poll (median of 20 redraws: " + t.feedMs + " ms of " + t.renderMs + " ms, timed inside the redraw)", t);
   }
 }
 async function runFB(b) {
