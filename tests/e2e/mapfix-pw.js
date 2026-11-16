@@ -180,8 +180,14 @@ async function run(b, mode) {
     if (!tb || !s0.open || !e2) ok(false, W + "I-108 setup: a bar sheet open and an empty spot above it", { tb, s0, e2 });
     else {
       c0 = await centre(page);
+      await page.evaluate(() => { const d = (e) => e ? e.tagName + "." + String(e.className && e.className.baseVal != null ? e.className.baseVal : e.className).slice(0, 60) + (e.id ? "#" + e.id : "") : "-";
+        window.__dbg = []; window.__dbgH = (ev) => { const t = ev.target; window.__dbg.push(ev.type + "@" + Math.round(performance.now()) + " " + d(t) + " < " + d(t && t.parentElement) + (ev.defaultPrevented ? " PREVENTED" : "")); };
+        ["touchstart", "touchmove", "touchend"].forEach((k) => document.addEventListener(k, window.__dbgH, { capture: true }));
+        const g = __mf.gl(); if (g) ["movestart", "dragstart", "drag", "dragend", "moveend", "zoomstart", "click", "touchstart", "touchend"].forEach((k) => g.on(k, (ev) => { if (k === "drag" && window.__dbgDrag++ > 1) return; const c = g.getCenter(); window.__dbg.push("GL " + k + "@" + Math.round(performance.now()) + " c=" + c.lat.toFixed(5) + "," + c.lng.toFixed(5) + (ev && ev.originalEvent ? " oe=" + ev.originalEvent.type : "") + " act=" + JSON.stringify(Object.keys(g._handlers && g._handlers._activeHandlers || {}).filter((h) => g._handlers._activeHandlers[h]))); })); window.__dbgDrag = 0; });
       await tap(page, cdp, e2.x, e2.y); await wait(page, 90);
+      console.log("DBG at 200,300 before drag: " + await page.evaluate(() => { const e = document.elementFromPoint(200, 300); const p = (n) => n ? n.tagName + "." + String(n.className && n.className.baseVal != null ? n.className.baseVal : n.className).slice(0, 80) : "-"; return p(e) + " < " + p(e && e.parentElement) + " | moving=" + (__mf.gl() ? __mf.gl().isMoving() : "?") + " dragPan=" + (__mf.gl() ? __mf.gl().dragPan.isEnabled() + "/" + __mf.gl().dragPan.isActive() : "?") + " body=" + document.body.className; }));
       await drag(page, cdp, 200, 300, 200, 430, 10); await wait(page, 900);
+      console.log("DBG touches: " + JSON.stringify(await page.evaluate(() => window.__dbg.filter((x, i, a) => !/^touchmove/.test(x) || i < 6))));
       const c1 = await centre(page), s = await shiftPx(page, c0), s1 = await st(page);
       ok(!s1.open && Math.abs(c1.z - c0.z) < 0.02 && s.dy > 60, W + "I-108 tap a bar, tap away, one finger moves: the sheet is closed, the map pans, no zoom (zoom " + c0.z + " -> " + c1.z + ", " + s.dy + " px)", { s, s1 });
     }
