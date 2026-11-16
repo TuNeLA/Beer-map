@@ -384,6 +384,14 @@ select{min-height:44px}
 
 /* focus: visible and the same everywhere */
 :focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+/* I-127 (owner 16 Nov 2026: "the orange lines hit the edges and get cut off ... multiple places ... the chat box"):
+   a TEXT FIELD draws its focus ring INSIDE its own box. Why: #sheet-body clips sideways (overflow-x:hidden, profile.css) and
+   chat rows / pills clip too, so a ring outside a full-width field (outline-offset 2px, or an outer box-shadow ring like
+   .inp:focus) was cut at the left and right. This ONE rule wins over the older per-field rings (!important on purpose),
+   so every field (Hemzon, chat, invite, Kväll search, ride destination, …) gets the same ring that can never be cut. */
+input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=color]):not([type=file]):not([type=image]):focus,
+textarea:focus,select:focus,[contenteditable]:not([contenteditable=false]):focus{
+  outline:2px solid var(--ds-amber-t) !important;outline-offset:-2px !important;box-shadow:none !important}
 
 @media (max-width:374px){
   .inv-tabs button,.tt-bar button{font-size:var(--ds-fs-14);padding:0 var(--ds-2)}

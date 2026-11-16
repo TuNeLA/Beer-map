@@ -95,12 +95,13 @@ const calls = (page, fn) => page.__calls.filter((c) => c.fn === fn);
       await page.focus("#sheet-body .evs-q"); await wait(page, 200);
       const m = await page.evaluate(() => {
         const i = document.querySelector("#sheet-body .evs-q"), cs = getComputedStyle(i), r = i.getBoundingClientRect();
-        const ow = cs.outlineStyle === "none" ? 0 : parseFloat(cs.outlineWidth) + parseFloat(cs.outlineOffset || 0);
+        // I-127 (lane hemzon): text fields draw the ring INSIDE (outline-offset -2px, ds.css) → ow can be <= 0; a ring must still be there
+        const ow = cs.outlineStyle === "none" ? 0 : parseFloat(cs.outlineWidth) + parseFloat(cs.outlineOffset || 0), has = cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) >= 2;
         let clip = { left: 0, right: innerWidth }, e = i.parentElement;
         while (e && e !== document.documentElement) { const s = getComputedStyle(e); if (s.overflowX !== "visible") { const b = e.getBoundingClientRect(); clip = { left: Math.max(clip.left, b.left), right: Math.min(clip.right, b.right) }; } e = e.parentElement; }
-        return { ring: [r.left - ow, r.right + ow], ow, clip: [clip.left, clip.right], sw: document.documentElement.scrollWidth, iw: innerWidth, sbw: document.getElementById("sheet-body").scrollWidth - document.getElementById("sheet-body").clientWidth };
+        return { ring: [r.left - Math.max(0, ow), r.right + Math.max(0, ow)], ow, has, clip: [clip.left, clip.right], sw: document.documentElement.scrollWidth, iw: innerWidth, sbw: document.getElementById("sheet-body").scrollWidth - document.getElementById("sheet-body").clientWidth };
       });
-      ok(m.ow >= 2 && m.ring[0] >= m.clip[0] - 0.01 && m.ring[1] <= m.clip[1] + 0.01 && m.sw <= m.iw && m.sbw <= 0, "I-97 " + w + " px: the focus ring is whole inside the sheet, no side scroll", m);
+      ok(m.has && m.ring[0] >= m.clip[0] - 0.01 && m.ring[1] <= m.clip[1] + 0.01 && m.sw <= m.iw && m.sbw <= 0, "I-97 " + w + " px: the focus ring is whole inside the sheet, no side scroll", m);
       if (OUT && w === 390) await page.screenshot({ path: OUT + "/i97-390.png", clip: { x: 0, y: 330, width: 390, height: 260 } });
       await ctx.close();
     }

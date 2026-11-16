@@ -2,20 +2,29 @@
    checks you out of the bar, sets Ikväll to "Hemma", and ends Följ mig hem with the normal "Hemma ✓" to the watchers.
    Home = the existing home zone (homezone.js, localStorage "olnu.home" {lat, lng, r}): ON THIS PHONE ONLY. The exact home is
    never sent anywhere; the server only gets what it gets today (check_out, ikvall_set "hemma", walk_end "home").
-   Rule: a home is set + the setting is on (default on once a home is set) + not spökläge + the night had activity (a
-   check-in or a drink tonight) → GPS readings from AUTOCI.listen("fix") with accuracy ≤ 50 m, inside the home point's circle
-   (min(home r, 200 m) + accuracy/2, max 250 m), ≥ 2 readings ≥ 10 min apart (any reading outside resets) → act, ONCE per
-   night. One calm toast "Välkommen hem 🏠 — vi satte dig som Hemma" + "Ångra" (back: the check-in and the old status; a
+   Gate: a home is set + the setting is on (default on once a home is set) + not spökläge + the night had activity (a
+   check-in or a drink tonight) + not done tonight. Then each GPS reading from AUTOCI.listen("fix") goes through homeStep():
+   THE RULE (I-127, owner 16 Nov 2026: "in Stockholm you can live 100 m from the bar ... more accuracy"). "Home" needs ALL of:
+     1. accuracy: the reading's accuracy is better than the zone radius AND better than 50 m. A worse reading is ignored
+        (it neither counts nor resets).
+        zone radius R = the radius the user chose in Hemzon (olnu.home ar, old saves r), 25 m … 200 m (cap 200 m).
+     2. not at a bar: my check-in place is NOT within 40 m + accuracy of the reading, and NO known bar (BARS data) is within
+        40 m of it. "At a bar" wins: it resets the run and that bar becomes "my last bar".
+     3. moved away from my last bar: the reading is more than 40 m + accuracy from my last bar (the check-in place or the
+        last bar a reading was at), so the error circle of the fix does not touch that bar's 40 m.
+     4. inside the zone: distance(reading, home) ≤ R (no extra slack). A reading outside resets the run.
+     5. time: ≥ 2 such readings, the last one ≥ 2 min after the first (DWELL; it was 10 min before I-127).
+   → act, ONCE per night. One calm toast "Välkommen hem 🏠 — vi satte dig som Hemma" + "Ångra" (back: the check-in and the old status; a
    Följ mig hem that ended stays ended). Pin-follow (pinfolj.js) already stops inside the home zone.
    Log: PNLOG.event("home", {act, d (distance bucket "<50" / "<100" / "<200" / ">200"), n}) — never a coordinate.
    Web limit: only while the app is open and visible (AUTOCI samples once a minute then). Native plan: an OS geofence on the
-   home point (iOS CLCircularRegion / Android GeofencingClient, enter + 10 min dwell) calls the same act() through the app.
-   Public: window.AUTOHOME = { on(), setOn(b), state(), settingsRows(body, el), _fix(r), _skew(ms) (tests) }. */
+   home point (iOS CLCircularRegion / Android GeofencingClient, enter + dwell) calls the same homeStep() + act() through the app.
+   Public: window.AUTOHOME = { on(), setOn(b), state(), settingsRows(body, el), _fix(r), _skew(ms), _step(x) = homeStep (tests) }. */
 (function () {
   "use strict";
   var U = window.U, KEY = "olnu.autoHome", DONE = "olnu.autoHomeNight", ACT = "olnu.nightAct";
-  var ACC = 50, R_MAX = 200, DWELL = 10 * 60e3, N_MIN = 2;
-  var st = { run: null, last: null, why: "", busy: false, undo: null }, skew = 0, hooked = false;
+  var BAR_M = 40;
+  var st = { run: null, last: null, why: "", busy: false, undo: null, lastBar: null }, skew = 0, hooked = false;
   function now() { return Date.now() + skew; }
   function api() { try { return window.PNDS && window.PNDS._A ? window.PNDS._A() : null; } catch (e) { return null; } }
   function home() { try { var h = window.HOMEZONE && window.HOMEZONE.home ? window.HOMEZONE.home() : U.ls.getJSON("olnu.home", null); return h && isFinite(h.lat) && isFinite(h.lng) ? h : null; } catch (e) { return null; } }
@@ -39,23 +48,45 @@
     try { var P = window.PNUI; if (!P || !P.setIkv) return; if (stv) { if (ikvMine() !== stv) P.setIkv(stv); } else { var m = ikvMine(); if (m) P.setIkv(m); } } catch (e) {}
   }
 
+  /* THE RULE (see the header). Pure: no window, no storage (tests/unit/autohome.test.mjs loads this function alone).
+     x = {fix: {lat, lng, acc, t}, home: {lat, lng, r, ar}, ci: {lat, lng} | null (my check-in), bars: [{lat, lng}] (known
+     bars near the fix), lastBar: {lat, lng} | null, run: {t0, n} | null} → {why, run, lastBar, d, act} */
+  function homeStep(x) {
+    var ACC = 50, R_MIN = 25, R_MAX = 200, BAR_M = 40, DWELL = 2 * 60e3, N_MIN = 2;
+    function dm(a, b) { var k = Math.PI / 180, p = (b.lat - a.lat) * k, q = (b.lng - a.lng) * k, s = Math.sin(p / 2) * Math.sin(p / 2) + Math.cos(a.lat * k) * Math.cos(b.lat * k) * Math.sin(q / 2) * Math.sin(q / 2); return 12742000 * Math.asin(Math.min(1, Math.sqrt(s))); }
+    function ok(p) { return !!p && isFinite(p.lat) && isFinite(p.lng); }
+    var f = x.fix, h = x.home, run = x.run || null, lastBar = x.lastBar || null, i;
+    var R = Math.min(R_MAX, Math.max(R_MIN, +(h.ar || h.r) || 150));
+    if (!(f.acc >= 0 && f.acc < Math.min(ACC, R))) return { why: "accuracy", run: run, lastBar: lastBar };          // 1
+    var d = dm(f, h), bar = ok(x.ci) && dm(f, x.ci) <= BAR_M + f.acc ? x.ci : null;
+    for (i = 0; !bar && x.bars && i < x.bars.length; i++) if (ok(x.bars[i]) && dm(f, x.bars[i]) <= BAR_M) bar = x.bars[i];
+    if (bar) return { why: "bar", run: null, lastBar: { lat: +bar.lat, lng: +bar.lng }, d: d };                         // 2
+    if (ok(lastBar) && dm(f, lastBar) <= BAR_M + f.acc) return { why: "near_bar", run: null, lastBar: lastBar, d: d };   // 3
+    if (d > R) return { why: "away", run: null, lastBar: lastBar, d: d };                                                  // 4
+    if (!run) return { why: "first", run: { t0: f.t, n: 1 }, lastBar: lastBar, d: d };
+    run = { t0: run.t0, n: run.n + 1 };
+    if (run.n < N_MIN || f.t - run.t0 < DWELL) return { why: "dwell", run: run, lastBar: lastBar, d: d };                // 5
+    return { why: "act", act: true, run: run, lastBar: lastBar, d: d };
+  }
+  function barsNear(r) {   // the known bars within 40 m of the reading (the loaded BARS data; restaurants do not count)
+    try { var a = window.BARS && window.BARS.around ? window.BARS.around(r.lat, r.lng, BAR_M) : null; return a ? a.bars.map(function (x) { return x.bar; }) : []; } catch (e) { return []; }
+  }
   function onFix(r) {
     var A = api(); st.last = r;
     if (!A || !A.LIVE) { st.why = "off"; return; }
     var h = home(); if (!h) { st.run = null; st.why = "no_home"; return; }
     if (!on()) { st.run = null; st.why = "setting"; return; }
     if (ghost()) { st.run = null; st.why = "ghost"; return; }
-    if (!(r.acc <= ACC)) { st.why = "accuracy"; return; }
     var nk = nightKey(A);
     if (U.ls.get(DONE, "") === nk && nk) { st.why = "done"; return; }
     if (!active(A)) { st.run = null; st.why = "no_activity"; return; }
-    var d = U.haversine(r.lat, r.lng, h.lat, h.lng), rad = Math.min(250, Math.min(+h.r || 300, R_MAX) + Math.min(r.acc, ACC) / 2);
-    if (d > rad) { if (st.run) log("left", { d: bucket(d), n: st.run.n }); st.run = null; st.why = "away"; return; }
-    var t = r.t || now();
-    if (!st.run) { st.run = { t0: t, n: 1 }; st.why = "first"; log("first", { d: bucket(d) }); return; }
-    st.run.n++;
-    if (st.run.n < N_MIN || t - st.run.t0 < DWELL) { st.why = "dwell"; return; }
-    act(A, d, nk);
+    var ci = myCi(A), had = st.run;
+    var o = homeStep({ fix: { lat: r.lat, lng: r.lng, acc: r.acc, t: r.t || now() }, home: h, ci: ci && isFinite(ci.lat) ? { lat: +ci.lat, lng: +ci.lng } : null,
+      bars: barsNear(r), lastBar: st.lastBar, run: st.run });
+    st.run = o.run; st.lastBar = o.lastBar; st.why = o.why;
+    if (o.why === "first") log("first", { d: bucket(o.d) });
+    else if (had && !o.run) log("left", { d: bucket(o.d || 0), n: had.n, why: o.why });
+    if (o.act) act(A, o.d, nk);
   }
   function act(A, d, nk) {
     if (st.busy) return;
@@ -116,7 +147,7 @@
       A.toast(nv ? "Auto hemma på. Bara när appen är öppen." : "Auto hemma av.", { id: "ah-set", ms: 3000 });
     });
     body.appendChild(el("div", { class: "row ah-set" }, [b]));
-    body.appendChild(el("p", { class: "muted ah-hint", text: "10 min hemma efter en kväll ute: utcheckad, Hemma, Följ mig hem klar. Hemmet stannar på telefonen." }));
+    body.appendChild(el("p", { class: "muted ah-hint", text: "2 min hemma (inte på en krog) efter en kväll ute: utcheckad, Hemma, Följ mig hem klar. Hemmet stannar på telefonen." }));
   }
 
   function hook() {
@@ -128,5 +159,5 @@
   setTimeout(hook, 2000);
   window.AUTOHOME = { on: on, setOn: setOn, settingsRows: settingsRows,
     state: function () { return { run: st.run, why: st.why, home: !!home(), on: on(), undo: !!st.undo }; },
-    _fix: function (r) { onFix(Object.assign({ t: now() }, r)); }, _skew: function (ms) { skew += ms; return skew; }, _undo: undo };
+    _fix: function (r) { onFix(Object.assign({ t: now() }, r)); }, _skew: function (ms) { skew += ms; return skew; }, _undo: undo, _step: homeStep };
 })();

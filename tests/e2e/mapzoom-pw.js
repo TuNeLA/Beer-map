@@ -240,21 +240,25 @@ function bars(page) {
       await closeCounted(ctx, page, "mapzoom-" + TAG + "-z10");
     }
 
-    /* ---------- I-06: the Hemzon mini map has the main map's navy look (still the free raster: no Mapbox map load) ---------- */
+    /* ---------- I-06 → I-127: the Hemzon map = a small Mapbox GL map in the app style (raster = the fallback only) ---------- */
     if (ONLY.test("z06")) {
       const { ctx, page, errs } = await open(b, { width: 412, height: 860 });
       await idle(page, 1500);
       const loads0 = await page.evaluate(() => BASEMAP.mapboxLoads());
       await page.evaluate(() => HOMEZONE.open()); await wait(page, 2000);
+      // I-127 (owner 16 Nov 2026: "add the Mapbox map when choosing homezone"): with Mapbox on, the Hemzon map is a small Mapbox GL map
+      // in the app's own style (was: the tinted free raster map of I-06, which stays the fallback; hemzon-pw.js B7 checks it).
+      await page.waitForFunction(() => { const el = document.querySelector(".hz-map"), m = el && (MBX._maps || []).find((x) => x.getContainer() === el); return m && m.isGL() && m.getMapboxMap().loaded(); }, null, { timeout: 20000 }).catch(() => {});
+      await wait(page, 1500);
       const r = await page.evaluate(() => { const el = document.querySelector(".hz-map"); if (!el) return null;
-        const tp = el.querySelector(".leaflet-tile-pane"), f = tp ? getComputedStyle(tp).filter : "", bg = getComputedStyle(el).backgroundColor;
-        const srcs = [...el.querySelectorAll("img.leaflet-tile")].map((i) => /Reference/.test(i.src) ? "ref" : /Base/.test(i.src) ? "base" : "?");
-        return { mini: el.classList.contains("pn-mini"), f, bg, base: srcs.includes("base"), ref: srcs.includes("ref"), loads: BASEMAP.mapboxLoads() }; });
-      console.log("I-06 " + JSON.stringify(r));
+        const m = (MBX._maps || []).find((x) => x.getContainer() === el), mm = m && m.getMapboxMap(), main = BASEMAP.mapbox().getMapboxMap();
+        let cfg = null; try { cfg = mm.getConfigProperty("basemap", "lightPreset"); } catch (e) {}
+        return { engine: el.getAttribute("data-engine"), gl: !!(m && m.isGL()), own: !!mm && mm !== main, preset: cfg, mainPreset: (() => { try { return main.getConfigProperty("basemap", "lightPreset"); } catch (e) { return null; } })(), loads: BASEMAP.mapboxLoads() }; });
+      console.log("I-127 " + JSON.stringify(r));
       await page.screenshot({ path: shotDir + "mapzoom-" + TAG + "-z06-hemzon.png" });
-      ok(!!r && r.mini && /sepia/.test(r.f) && /hue-rotate/.test(r.f) && r.bg === "rgb(61, 68, 115)", "I-06 the Hemzon mini map is tinted to the main map's navy (" + JSON.stringify(r && { f: r.f, bg: r.bg }) + ")");
-      ok(!!r && r.ref, "I-06 the Hemzon mini map shows street / place names like the main map (reference tiles)");
-      ok(!!r && r.loads === loads0, "I-06 no extra Mapbox map load for the mini map (" + loads0 + " → " + (r && r.loads) + ")");
+      ok(!!r && r.engine === "gl" && r.gl && r.own, "I-127 the Hemzon map is its own small Mapbox GL map (" + JSON.stringify(r) + ")");
+      ok(!!r && r.preset && r.preset === r.mainPreset, "I-127 the Hemzon map uses the app map's style config (light preset " + (r && r.preset) + ")");
+      ok(!!r && r.loads === loads0, "I-127 the app map is not reloaded (BASEMAP map loads " + loads0 + " → " + (r && r.loads) + ")");
       ok(errs.length === 0, "I-06 no page errors " + JSON.stringify(errs.slice(0, 3)));
       await closeCounted(ctx, page, "mapzoom-" + TAG + "-z06");
     }
