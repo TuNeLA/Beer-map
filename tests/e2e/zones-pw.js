@@ -60,7 +60,7 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
     out.pins = document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *, .leaflet-frdots-pane .nm-fd").length;
     out.canvas = [Math.round(cv.width), Math.round(cv.height)];
     const o1 = out.labels.find((x) => x.l === "01");   // what GL draws where the Stockholm chip should be (any layer)
-    if (o1) out.near01 = [...new Set(m.queryRenderedFeatures([[o1.q[0] - 90, o1.q[1] - 70], [o1.q[0] + 90, o1.q[1] + 70]]).map((f) => f.layer.id + (f.properties && f.properties.l ? ":" + f.properties.l : "")))];
+    if (o1) out.near01 = [...new Set(m.queryRenderedFeatures([[o1.q[0] - 90, o1.q[1] - 70], [o1.q[0] + 90, o1.q[1] + 70]]).map((f) => (f.layer && f.layer.id || f.sourceLayer || f.source || "?") + (f.properties && f.properties.l ? ":" + f.properties.l : "")))];
     return out; });
   // zonesfix: is it stuck, or late? the same query after a repaint + 1 s, and after a 1 px move and back
   const again = why ? await page.evaluate(async () => { const m = BASEMAP.mapbox().getMapboxMap(), q = () => m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l).includes("01");
