@@ -48,9 +48,47 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   await page.waitForFunction(() => { const m = BASEMAP.mapbox().getMapboxMap(); const l = m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l);
     return ["01", "14", "20"].every((c) => l.includes(c)) && l.length >= 6; }, null, { timeout: 10000 }).catch(() => {});
   const ll = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l); });
-  ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", ll);
+  // zonesfix: on a fail, say WHY a busy label is not drawn (source props, image, its sides vs the app UI boxes, the HUD on screen)
+  const why = ["01", "14", "20"].every((c) => ll.includes(c)) ? null : await page.evaluate(() => {
+    const m = BASEMAP.mapbox().getMapboxMap(), cv = m.getCanvas().getBoundingClientRect(), out = { z: +__map.getZoom().toFixed(2), labels: [] };
+    const fs = m.querySourceFeatures("olnu-zl-pt").filter((f) => ["01", "14", "20"].includes(f.properties.l));
+    const seen = {}; fs.forEach((f) => { const p = f.properties; if (seen[p.l]) return; seen[p.l] = 1; const q = m.project(f.geometry.coordinates);
+      out.labels.push({ l: p.l, an: p.an, hid: p.hid, ci: p.ci, hasCi: !!p.ci && m.hasImage(p.ci), q: [Math.round(q.x), Math.round(q.y)] }); });
+    out.ui = (ZONES._uiRects() || []).map((r) => [r.l, r.t, r.r, r.b].map(Math.round));
+    out.hud = [...document.querySelectorAll(".topbar, .ticker, .hud-left > *, .pn-rail, #btn-more, #btn-heat, #btn-ghostpins, #btn-taxi, #btn-evs, #btn-locate, #btn-attrib, #other-wrap, .dock, #chaos, #rally")]
+      .filter((e) => !e.hidden && e.getBoundingClientRect().width).map((e) => { const r = e.getBoundingClientRect(); return (e.id || e.className.split(" ")[0]) + ":" + [r.left - cv.left, r.top - cv.top, r.right - cv.left, r.bottom - cv.top].map(Math.round).join(","); });
+    out.pins = document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *, .leaflet-frdots-pane .nm-fd").length;
+    out.canvas = [Math.round(cv.width), Math.round(cv.height)];
+    const o1 = out.labels.find((x) => x.l === "01");   // what GL draws where the Stockholm chip should be (any layer)
+    if (o1) out.near01 = [...new Set(m.queryRenderedFeatures([[o1.q[0] - 90, o1.q[1] - 70], [o1.q[0] + 90, o1.q[1] + 70]]).map((f) => (f.layer && f.layer.id || f.sourceLayer || f.source || "?") + (f.properties && f.properties.l ? ":" + f.properties.l : "")))];
+    return out; });
+  // zonesfix: is it stuck, or late? the same query after a repaint + 1 s, and after a 1 px move and back
+  const again = why ? await page.evaluate(async () => { const m = BASEMAP.mapbox().getMapboxMap(), q = () => m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l).includes("01");
+    const r = {}; m.triggerRepaint(); await new Promise((z) => setTimeout(z, 1000)); r.afterRepaint = q();
+    __map.panBy([1, 0], { animate: false }); await new Promise((z) => setTimeout(z, 600)); __map.panBy([-1, 0], { animate: false }); await new Promise((z) => setTimeout(z, 1000)); r.afterMove = q(); return r; }) : null;
+  if (why) why.again = again;
+  ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", why ? { ll, why } : ll);
   const st = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return [1, 14, 20, 25].map((id) => (m.getFeatureState({ source: "olnu-zl", id }) || {}).lv); });
   ok(st[0] === 3 && st[1] === 2 && st[2] === 2 && st[3] === 0, "län levels Stockholm 15=3, VG 3=2, Dalarna 8=2, Norrbotten 0", st);
+  // zonesfix (CI red ~1 in 3 runs: "län labels" without the busy Stockholm chip). The diagnosis (near01 in the fail output): GL
+  // bar markers of the people in Ludvika drawn next to it at the whole-Sweden zoom: a town lantern (olnu-bar-crowd), or with that
+  // gone the full pill + its name (olnu-bar-full / -lbl). They sit over the zone labels and block them. The app makes no people
+  // bars below Leaflet 11 (HOT_ZOOM) and the zones view owns the map below 10.5, so these were left over from a town zoom.
+  // Forced here: the app's people bars built as at zoom 14, then the GL pass at the real zoom 5. No bar marker may be drawn.
+  await page.waitForFunction(() => window.PN && PN.s && PN.s.beers && PN.s.beers.length > 0, null, { timeout: 15000 }).catch(() => {});
+  const lt = await page.evaluate(async () => {
+    const m = BASEMAP.mapbox().getMapboxMap(), idle = () => new Promise((r) => { const t = setTimeout(r, 4000); m.once("idle", () => { clearTimeout(t); r(); }); m.triggerRepaint(); });
+    const BAR = ["olnu-bar-full", "olnu-bar-lbl", "olnu-bar-crowd"].filter((l) => m.getLayer(l));
+    const gz = __map.getZoom; __map.getZoom = () => 14; try { PN.render(); } finally { __map.getZoom = gz; }   // people bars of a town zoom, still in the list
+    GLBARS.sync(); await idle(); await new Promise((r) => setTimeout(r, 800)); await idle();
+    const src = m.querySourceFeatures("olnu-bars").filter((f) => f.properties.t === 1 || f.properties.t === 3).length;
+    const out = { z: +__map.getZoom().toFixed(2), src, drawn: m.queryRenderedFeatures({ layers: BAR }).map((f) => f.layer.id), l: m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l) };
+    PN.render(); GLBARS.sync(); await idle();   // back to the real state of zoom 5
+    return out;
+  });
+  ok(lt.src > 0, "setup: the GL bar source holds people pills / lanterns at the whole-Sweden zoom (left over from a town zoom)", lt);
+  ok(lt.drawn.length === 0, "zones view (whole Sweden): no bar pill, name or town lantern is drawn over the zone labels", lt);
+  ok(lt.l.includes("01"), "zones view: the busy Stockholm chip is drawn even with people bars left over from a town zoom", lt);
   await shot("sverige");
   // 2) Dalarna (län level)
   await view([60.75, 14.9], 6.2); await H.wait(page, 1500);
