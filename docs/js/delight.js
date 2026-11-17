@@ -271,13 +271,28 @@
       var bld = build(key, ev, r);
       stage().appendChild(bld.root);
       active = { key: key, root: bld.root, hit: bld.hit, tapped: false };
-      if (bld.hit) bld.hit.addEventListener("click", function (e) { e.stopPropagation(); bonus(); });
+      if (bld.hit) { panThrough(bld.hit); bld.hit.addEventListener("click", function (e) { e.stopPropagation(); if (Date.now() - (bld.hit._pnDrag || 0) > 400) bonus(); }); }
       active.tm = later(function () { if (active && active.root === bld.root) stopEvent(); }, bld.ms + 150);
       if (key === "ufo" || key === "dalahast" || key === "odjur") buzz([20, 40, 20]);
     }
     caption({ head: headOf(key, tn), text: fill(tx.cap, { sektor: tn.name, stad: tn.name }), onTap: tx.tap.length ? bonus : null,
       ms: reduced() ? 7000 : 6500, cls: ev.t === "r" ? "dl-cap-rare" : "", ev: key });
     return true;
+  }
+  // flakefix2 (I-108, CI red on 90213f4): the figure takes taps, so a one-finger drag that started on it never reached the map
+  // (0 px pan). Now a finger that moves > 8 px pans the map by the same amount (and is not a tap); a tap stays the figure's tap.
+  function panThrough(el) {
+    var st = null;
+    el.addEventListener("pointerdown", function (e) { if (!e.isPrimary) return; st = { x: e.clientX, y: e.clientY, moved: false }; try { el.setPointerCapture(e.pointerId); } catch (x) {} });
+    el.addEventListener("pointermove", function (e) {
+      if (!st || !e.isPrimary) return;
+      var dx = e.clientX - st.x, dy = e.clientY - st.y;
+      if (!st.moved && Math.abs(dx) + Math.abs(dy) < 8) return;
+      st.moved = true; st.x = e.clientX; st.y = e.clientY;
+      try { if (A && A.map) A.map.panBy([-dx, -dy], { animate: false }); } catch (x) {}
+    });
+    var end = function () { if (st && st.moved) el._pnDrag = Date.now(); st = null; };
+    el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
   }
   function headOf(key, tn) {
     var ev = EV[key] || {}, tier = ev.t === "r" ? (en() ? "Rare · " : "Sällsynt · ") : "";
