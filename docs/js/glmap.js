@@ -375,17 +375,17 @@
           "icon-size": ["interpolate", ["linear"], ["zoom"], 13, 0.6, 14, 0.8, 15, 1] }, paint: { "icon-emissive-strength": 1 } }, L_DOTE);   // c2speed I-50: small from Leaflet 14, full size from 16
       // names: placed after the full pills (layer above = placed first), so a name that would touch a pill or a
       // higher-priority name is left out (the old placeLabels rule); dots never block a name (they ignore placement)
-      if (!m.getLayer(L_LBL)) m.addLayer({ id: L_LBL, type: "symbol", source: SRC_B, filter: ["all", ["==", ["get", "t"], 1], ["!=", ["get", "li"], ""]],
+      if (!m.getLayer(L_LBL)) m.addLayer({ id: L_LBL, type: "symbol", source: SRC_B, minzoom: ZONE_Z - 1, filter: ["all", ["==", ["get", "t"], 1], ["!=", ["get", "li"], ""]],
         layout: { "icon-image": ["get", "li"], "icon-anchor": "top", "icon-offset": JSON.parse(JSON.stringify(offExpr()).replace('["get","oi"]', '["get","lo"]')), "icon-allow-overlap": false, "icon-ignore-placement": false,
           "icon-padding": 0, "symbol-sort-key": ["-", 0, ["get", "sk"]], "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport", "icon-size": ICON_Z },   // map M2: the name scales with its pill
         paint: { "icon-emissive-strength": 1 } });
       // mapart P3b: full pills are boxes on their REAL image (a name, layer under it, may not touch any pill or a better name).
       // a1map I-08: the pill never hides by GL collision (that hid the whole bar while there was room): sync() demotes a pill
       // that would touch another pill or another bar's icon to its dot at each tier pass; the icons (placed first) always win.
-      if (!m.getLayer(L_FULL)) m.addLayer({ id: L_FULL, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 1],
+      if (!m.getLayer(L_FULL)) m.addLayer({ id: L_FULL, type: "symbol", source: SRC_B, minzoom: ZONE_Z - 1, filter: ["==", ["get", "t"], 1],   // zonesfix: not in the zones view
         layout: Object.assign({}, common, { "icon-allow-overlap": true, "icon-ignore-placement": false, "symbol-sort-key": ["get", "sk"] }), paint: { "icon-emissive-strength": 1 } });
       // maplight: the town-crowd lanterns (zoomed out), over the pills
-      if (!m.getLayer(L_CROWD)) m.addLayer({ id: L_CROWD, type: "symbol", source: SRC_B, minzoom: CROWD_MIN - 1, filter: ["==", ["get", "t"], 3],   // zonesfix: never in the zones view
+      if (!m.getLayer(L_CROWD)) m.addLayer({ id: L_CROWD, type: "symbol", source: SRC_B, minzoom: ZONE_Z - 1, filter: ["==", ["get", "t"], 3],   // zonesfix: not in the zones view
         layout: Object.assign({}, common, { "icon-allow-overlap": true, "icon-ignore-placement": false }), paint: { "icon-emissive-strength": 1 } });
       clEnsure(m);   // ds30: dot bars cluster when zoomed out
       meEnsure(m);   // a1map I-28 → maplight: my marker, the TOP layer
@@ -460,9 +460,9 @@
   /* Town view ("it's hard to see where people are", owner 15 Nov): below Leaflet zoom 14.5 the bars with people whose
      icons would sit on each other (centres closer than 36 px) become ONE lantern with the summed people count. A bar
      that stands alone keeps its own pin. Zoom-only rule (a pan never regroups); the open bar is never grouped. */
-  var CROWD_Z = 14.5, CROWD_PX = 36, CROWD_MIN = 10.5;   // zonesfix: below 10.5 (zones.js Z_OFF) the zones view shows the people: no lantern (it hid a busy zone chip; the hot bars of a town zoom stay in the list until the next poll)
+  var CROWD_Z = 14.5, CROWD_PX = 36, ZONE_Z = 10.5;   // zonesfix: below Leaflet 10.5 (zones.js Z_OFF) the zones view shows the people: no pill / name / lantern (a stale one hid the busy Stockholm chip)
   function crowdGroups(list, z) {
-    var out = [], b = BL(); if (!b || z >= CROWD_Z || z < CROWD_MIN) return out;
+    var out = [], b = BL(); if (!b || z >= CROWD_Z || z < ZONE_Z) return out;
     var cand = list.filter(function (x) { return !x.sel && x.n > 0; });
     cand.forEach(function (x) { x.pt = map.latLngToContainerPoint([+x.c.bar.lat, +x.c.bar.lng]); });
     cand.sort(function (p, q) { return q.n - p.n || (String(p.c.bar.id) < String(q.c.bar.id) ? -1 : 1); });
