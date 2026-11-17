@@ -7,7 +7,7 @@
 .dl-ev.dl-full{inset:0}
 .dl-spr{display:inline-flex;align-items:flex-end;line-height:1;white-space:nowrap;filter:drop-shadow(0 4px 6px rgba(0,0,0,.55));user-select:none;-webkit-user-select:none}
 .dl-spr i{font-style:normal;margin-left:.08em}
-.dl-hit{pointer-events:auto;cursor:pointer}
+.dl-hit{pointer-events:auto;cursor:pointer;touch-action:none}   /* flakefix2: its pointer moves come to delight.js, which pans the map */
 .dl-hit-on{animation:dlHit var(--m-6) var(--e-in)}
 @keyframes dlHit{40%{scale:1.35}100%{scale:1}}
 .dl-svgspr svg{width:100%;height:auto;display:block}

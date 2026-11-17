@@ -185,6 +185,29 @@ async function run(b, mode) {
       const c1 = await centre(page), s = await shiftPx(page, c0), s1 = await st(page);
       ok(!s1.open && Math.abs(c1.z - c0.z) < 0.02 && s.dy > 60, W + "I-108 tap a bar, tap away, one finger moves: the sheet is closed, the map pans, no zoom (zoom " + c0.z + " -> " + c1.z + ", " + s.dy + " px)", { s, s1 });
     }
+    // flakefix2 (CI red on big-update 90213f4, run 43839037721: "tap away, one finger moves" panned 0 px, both tries): a delight.js
+    // map event (one per town + hour slot, P_EVENT 0.5) sends a figure across the map; the figure takes taps (pointer-events:auto)
+    // and ate a one-finger drag that started on it. A drag that STARTS on the figure must pan the map; a tap on it is still its tap.
+    {
+      await view(page, LUD, 16, 1500); await still(page);
+      const f = await page.evaluate(() => { if (!window.DELIGHT || !DELIGHT.run("alg")) return { why: "no event" };
+        const h = document.querySelector("#dl-stage .dl-hit"); if (!h) return { why: "no figure (reduced motion?)" };
+        document.getAnimations().forEach((a) => { const t = a.effect && a.effect.target; if (!t || !t.closest || !t.closest("#dl-stage")) return;
+          a.pause(); if (a.animationName === "dlCross") a.currentTime = a.effect.getTiming().duration * 0.5; });   // the moose stands still in the middle
+        const r = h.getBoundingClientRect(), x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2), e = document.elementFromPoint(x, y);
+        return { x, y, w: Math.round(r.width), on: !!e && (e === h || h.contains(e)) }; });
+      if (!f || !f.on) ok(false, W + "I-108 setup: a map event figure (delight 'alg') under the finger", f);
+      else {
+        const c0 = await centre(page);
+        await drag(page, cdp, f.x, f.y, f.x, f.y + 130, 10); await wait(page, 900);
+        const s = await shiftPx(page, c0), b1 = await page.evaluate(() => { const h = document.querySelector("#dl-stage .dl-hit"); return !!h && h.classList.contains("dl-hit-on"); });
+        ok(s.dy > 60 && !b1, W + "I-108 a one-finger drag that starts on a map event figure pans the map (" + s.dy + " px) and is not a tap on it", { f, s, b1 });
+        await tap(page, cdp, f.x, f.y); await wait(page, 400);
+        const b2 = await page.evaluate(() => { const h = document.querySelector("#dl-stage .dl-hit"); return !!h && h.classList.contains("dl-hit-on"); });
+        ok(b2, W + "I-108 guard: a tap on the figure is still its tap (the bonus)", { f, b2 });
+      }
+      await page.evaluate(() => document.querySelectorAll("#dl-stage > *").forEach((e) => e.remove()));
+    }
     if (isGl) {   // guards: the other zoom gestures still work
       await view(page, LUD, 16, 1500);
       const z0 = (await centre(page)).z;
