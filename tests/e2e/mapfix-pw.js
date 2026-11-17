@@ -131,7 +131,7 @@ const barAt = (page, id) => page.evaluate((id) => __mf.bars().filter((b) => b.id
 const still = (page) => page.evaluate(() => new Promise((res) => { const g = __mf.gl(), t0 = performance.now(); let last = t0; const on = () => { last = performance.now(); };
   if (g) g.on("render", on);
   (function chk() { const n = performance.now(), busy = g ? (!g.loaded() || g.isMoving()) : !!(__map._animatingZoom || (__map._panAnim && __map._panAnim._inProgress));
-    if (busy) last = n; if (n - last > 300 || n - t0 > 6000) { if (g) g.off("render", on); res(); } else setTimeout(chk, 50); })(); }));
+    if (busy) last = n; if (n - last > 300 || n - t0 > 6000) { if (g) g.off("render", on); res({ ms: Math.round(n - t0), cap: n - t0 > 6000, loaded: g ? g.loaded() : null }); } else setTimeout(chk, 50); })(); }));
 // open a bar with a finger tap on its icon; wait for its sheet and for the sheet's "keep the bar visible" pan
 async function tapBar(page, cdp, id) {
   await still(page);
@@ -184,6 +184,29 @@ async function run(b, mode) {
       await drag(page, cdp, 200, 300, 200, 430, 10); await wait(page, 900);
       const c1 = await centre(page), s = await shiftPx(page, c0), s1 = await st(page);
       ok(!s1.open && Math.abs(c1.z - c0.z) < 0.02 && s.dy > 60, W + "I-108 tap a bar, tap away, one finger moves: the sheet is closed, the map pans, no zoom (zoom " + c0.z + " -> " + c1.z + ", " + s.dy + " px)", { s, s1 });
+    }
+    if (isGl) for (let rep = 0; rep < 6; rep++) {   // PROBE (ci only): the owner's steps again, with a log
+      await view(page, LUD, 16, 2000);
+      await page.evaluate(() => { const g = __mf.gl(), d = (e) => e ? e.tagName + "." + String(e.className && e.className.baseVal != null ? e.className.baseVal : e.className).split(" ")[0] : "-";
+        window.__pl = []; const T0 = performance.now(), log = (x) => window.__pl.push(Math.round(performance.now() - T0) + " " + x);
+        window.__plog = log;
+        if (!window.__plH) { window.__plH = 1; ["touchstart", "touchend"].forEach((k) => document.addEventListener(k, (ev) => window.__plog && window.__plog(k + " " + d(ev.target) + (ev.defaultPrevented ? " PREV" : "")), { capture: true }));
+          ["movestart", "dragstart", "dragend", "moveend", "click"].forEach((k) => g.on(k, (ev) => { const c = g.getCenter(); window.__plog && window.__plog("GL " + k + " c=" + c.lat.toFixed(5) + (ev && ev.originalEvent ? " oe=" + ev.originalEvent.type : "")); }));
+          ["easeTo", "panBy", "jumpTo", "stop", "flyTo", "panTo", "setCenter", "fitBounds"].forEach((k) => { const f = g[k]; g[k] = function () { window.__plog && window.__plog("CAM " + k + " " + (new Error().stack || "").split("\n").slice(2, 6).map((l) => l.trim().replace(/https?:\/\/[^/]+\/(Beer-map\/)?/, "")).join(" | ")); return f.apply(this, arguments); }; });
+          ["setView", "panBy", "flyTo", "setZoom", "panTo", "fitBounds"].forEach((k) => { const f = __map[k]; if (!f) return; __map[k] = function () { window.__plog && window.__plog("LMAP " + k + " " + (new Error().stack || "").split("\n").slice(2, 6).map((l) => l.trim().replace(/https?:\/\/[^/]+\/(Beer-map\/)?/, "")).join(" | ")); return f.apply(this, arguments); }; }); } });
+      const st0 = await still(page);
+      const tb = await tapBar(page, cdp, PARMA), s0 = await st(page);
+      const st1 = await still(page);
+      const e2 = await page.evaluate((top) => __mf.empty(150, (top || 220) - 10, 45), s0.top);
+      if (!tb || !s0.open || !e2) { console.log("PROBE " + rep + " setup bad " + JSON.stringify({ tb, s0, e2 })); continue; }
+      const c0 = await centre(page);
+      await page.evaluate(() => window.__plog("--- tap away"));
+      await tap(page, cdp, e2.x, e2.y); await wait(page, 90);
+      await drag(page, cdp, 200, 300, 200, 430, 10); await wait(page, 900);
+      const c1 = await centre(page), s = await shiftPx(page, c0), s1 = await st(page);
+      const lg = await page.evaluate(() => window.__pl.slice(-60));
+      console.log("PROBE " + rep + " " + (s.dy > 60 && !s1.open ? "OK" : "BAD") + " dy=" + s.dy + " open=" + s1.open + " still0=" + JSON.stringify(st0) + " still1=" + JSON.stringify(st1) + " tb=" + JSON.stringify(tb) + " e2=" + JSON.stringify(e2) + " c0=" + JSON.stringify(c0) + " c1=" + JSON.stringify(c1) + " sheetTop=" + s0.top);
+      if (!(s.dy > 60)) console.log("PROBELOG " + rep + " " + JSON.stringify(lg));
     }
     if (isGl) {   // guards: the other zoom gestures still work
       await view(page, LUD, 16, 1500);
