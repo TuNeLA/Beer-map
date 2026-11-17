@@ -70,17 +70,24 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", why ? { ll, why } : ll);
   const st = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return [1, 14, 20, 25].map((id) => (m.getFeatureState({ source: "olnu-zl", id }) || {}).lv); });
   ok(st[0] === 3 && st[1] === 2 && st[2] === 2 && st[3] === 0, "län levels Stockholm 15=3, VG 3=2, Dalarna 8=2, Norrbotten 0", st);
-  // zonesfix (CI red ~1 in 3 runs: the busy Stockholm chip not drawn): the diagnosis showed GLBARS's town lantern (olnu-bar-crowd,
-  // all Ludvika bars with people merged) next to it. It is drawn over the zone labels and blocks them (icon-ignore-placement off).
-  // With the people data surely in, the whole-Sweden view must show no lantern, and GL must draw the Stockholm chip.
-  await page.waitForFunction(() => window.PN && PN.s && PN.s.beers && PN.s.beers.length > 0, null, { timeout: 15000 }).catch(() => {});
-  const lz = await page.evaluate(async () => { const m = BASEMAP.mapbox().getMapboxMap(); try { PN.render(); GLBARS.sync(); } catch (e) {}
-    await new Promise((r) => { const t = setTimeout(r, 4000); m.once("idle", () => { clearTimeout(t); r(); }); m.triggerRepaint(); });
-    await new Promise((r) => setTimeout(r, 800));
-    return { beers: PN.s.beers.length, crowds: Object.keys(GLBARS._crowds ? GLBARS._crowds() : {}).length, drawnCrowd: m.getLayer("olnu-bar-crowd") ? m.queryRenderedFeatures({ layers: ["olnu-bar-crowd"] }).length : 0,
-      l: m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l) }; });
-  ok(lz.beers > 0 && lz.crowds === 0 && lz.drawnCrowd === 0, "zones view (whole Sweden): no town lantern over the zone labels (people data in: " + lz.beers + " pins)", lz);
-  ok(lz.l.includes("01"), "zones view: the busy Stockholm chip is drawn with the people data in", lz);
+  // zonesfix (CI red ~1 in 3 runs: "län labels" without the busy Stockholm chip). The diagnosis: GLBARS's town lantern
+  // (olnu-bar-crowd: the Ludvika bars with people as one) drawn next to it, over the zone labels, blocking them. The lantern came
+  // from a town zoom: the people bars stay in the app's marker list until the next poll render(), so a zoom-out before that
+  // poll grouped them again at the whole-Sweden zoom. Forced here: lantern at town zoom 13, then the jump out (no render()).
+  const lt = await (async () => {
+    await page.waitForFunction(() => window.PN && PN.s && PN.s.beers && PN.s.beers.length > 0, null, { timeout: 15000 }).catch(() => {});
+    await view([60.1500, 15.1870], 13); await H.wait(page, 1500);
+    const at13 = await page.evaluate(() => Object.keys(GLBARS._crowds ? GLBARS._crowds() : {}).length);
+    await view([62.6, 16.4], 5.0);
+    await page.waitForFunction(() => ZONES._geo().l && ZONES._counts(), null, { timeout: 45000 }).catch(() => {});
+    return page.evaluate(async (at13) => { const m = BASEMAP.mapbox().getMapboxMap(), idle = () => new Promise((r) => { const t = setTimeout(r, 4000); m.once("idle", () => { clearTimeout(t); r(); }); m.triggerRepaint(); });
+      await idle(); await new Promise((r) => setTimeout(r, 1500)); await idle();
+      return { at13, crowds: Object.keys(GLBARS._crowds()).length, drawn: m.queryRenderedFeatures({ layers: ["olnu-bar-crowd"].filter((l) => m.getLayer(l)) }).length,
+        l: m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l) }; }, at13);
+  })();
+  ok(lt.at13 > 0, "setup: a town lantern at zoom 13 (Ludvika bars with people)", lt);
+  ok(lt.crowds === 0 && lt.drawn === 0, "zoomed out to the zones view (whole Sweden): no town lantern over the zone labels", lt);
+  ok(lt.l.includes("01"), "zones view: the busy Stockholm chip is drawn after a zoom-out from a town lantern", lt);
   await shot("sverige");
   // 2) Dalarna (län level)
   await view([60.75, 14.9], 6.2); await H.wait(page, 1500);

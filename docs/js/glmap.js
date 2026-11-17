@@ -385,7 +385,7 @@
       if (!m.getLayer(L_FULL)) m.addLayer({ id: L_FULL, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 1],
         layout: Object.assign({}, common, { "icon-allow-overlap": true, "icon-ignore-placement": false, "symbol-sort-key": ["get", "sk"] }), paint: { "icon-emissive-strength": 1 } });
       // maplight: the town-crowd lanterns (zoomed out), over the pills
-      if (!m.getLayer(L_CROWD)) m.addLayer({ id: L_CROWD, type: "symbol", source: SRC_B, filter: ["==", ["get", "t"], 3],
+      if (!m.getLayer(L_CROWD)) m.addLayer({ id: L_CROWD, type: "symbol", source: SRC_B, minzoom: CROWD_MIN - 1, filter: ["==", ["get", "t"], 3],   // zonesfix: never in the zones view
         layout: Object.assign({}, common, { "icon-allow-overlap": true, "icon-ignore-placement": false }), paint: { "icon-emissive-strength": 1 } });
       clEnsure(m);   // ds30: dot bars cluster when zoomed out
       meEnsure(m);   // a1map I-28 → maplight: my marker, the TOP layer
@@ -460,7 +460,7 @@
   /* Town view ("it's hard to see where people are", owner 15 Nov): below Leaflet zoom 14.5 the bars with people whose
      icons would sit on each other (centres closer than 36 px) become ONE lantern with the summed people count. A bar
      that stands alone keeps its own pin. Zoom-only rule (a pan never regroups); the open bar is never grouped. */
-  var CROWD_Z = 14.5, CROWD_PX = 36, CROWD_MIN = 10.5;   // zonesfix: below 10.5 (zones.js Z_OFF) the zones view shows the people: no lantern (it hid a busy zone chip)
+  var CROWD_Z = 14.5, CROWD_PX = 36, CROWD_MIN = 10.5;   // zonesfix: below 10.5 (zones.js Z_OFF) the zones view shows the people: no lantern (it hid a busy zone chip; the hot bars of a town zoom stay in the list until the next poll)
   function crowdGroups(list, z) {
     var out = [], b = BL(); if (!b || z >= CROWD_Z || z < CROWD_MIN) return out;
     var cand = list.filter(function (x) { return !x.sel && x.n > 0; });
