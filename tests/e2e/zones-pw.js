@@ -70,25 +70,17 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", why ? { ll, why } : ll);
   const st = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return [1, 14, 20, 25].map((id) => (m.getFeatureState({ source: "olnu-zl", id }) || {}).lv); });
   ok(st[0] === 3 && st[1] === 2 && st[2] === 2 && st[3] === 0, "län levels Stockholm 15=3, VG 3=2, Dalarna 8=2, Norrbotten 0", st);
-  // zonesfix (CI red ~1 in 3 runs: Södermanland drawn, the busy Stockholm chip not): when 📍 chips sit above Stockholm, its chip
-  // goes UNDER its point, onto the quiet names' spots; zones.js left those to GL collision, and GL picked either one. Forced
-  // here with a fake 📍 chip: no quiet name may keep a box that overlaps the Stockholm chip, and GL draws Stockholm.
-  const qz = await page.evaluate(async () => {
-    const m = BASEMAP.mapbox().getMapboxMap(), cv = m.getCanvas().getBoundingClientRect(), idle = () => new Promise((r) => { const t = setTimeout(r, 4000); m.once("idle", () => { clearTimeout(t); r(); }); m.triggerRepaint(); });
-    const s0 = ZONES._boxes().find((x) => x.l === "01"); if (!s0) return { why: "no 01" };
-    let pane = document.querySelector(".leaflet-mypins-pane"), made = false;
-    if (!pane) { pane = document.createElement("div"); pane.className = "leaflet-mypins-pane"; document.body.appendChild(pane); made = true; }
-    const pin = document.createElement("div"); pin.className = "mp-pin zf-fake";
-    pin.style.cssText = "position:fixed;pointer-events:none;left:" + (cv.left + s0.pt[0] - 60) + "px;top:" + (cv.top + s0.pt[1] - 62) + "px;width:120px;height:50px";
-    pane.appendChild(pin); ZONES._place(); await idle(); await new Promise((r) => setTimeout(r, 600)); await idle();
-    const bx = ZONES._boxes(), b1 = bx.find((x) => x.l === "01"), cut = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
-    const over = bx.filter((x) => x.q === 1 && !x.hid && cut(x.box, b1.box)).map((x) => x.l);
-    const drawn = m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l);
-    pin.remove(); if (made) pane.remove(); ZONES._place(); await idle();
-    return { an: b1.an, hid: b1.hid, over, drawn01: drawn.includes("01"), drawn };
-  });
-  ok(qz.an === "top" && !qz.hid, "setup: a 📍 chip above Stockholm puts its chip under the point", qz);
-  ok(qz.over && qz.over.length === 0 && qz.drawn01, "a quiet län name never takes the place of the busy Stockholm chip (GL draws Stockholm)", qz);
+  // zonesfix (CI red ~1 in 3 runs: the busy Stockholm chip not drawn): the diagnosis showed GLBARS's town lantern (olnu-bar-crowd,
+  // all Ludvika bars with people merged) next to it. It is drawn over the zone labels and blocks them (icon-ignore-placement off).
+  // With the people data surely in, the whole-Sweden view must show no lantern, and GL must draw the Stockholm chip.
+  await page.waitForFunction(() => window.PN && PN.s && PN.s.beers && PN.s.beers.length > 0, null, { timeout: 15000 }).catch(() => {});
+  const lz = await page.evaluate(async () => { const m = BASEMAP.mapbox().getMapboxMap(); try { PN.render(); GLBARS.sync(); } catch (e) {}
+    await new Promise((r) => { const t = setTimeout(r, 4000); m.once("idle", () => { clearTimeout(t); r(); }); m.triggerRepaint(); });
+    await new Promise((r) => setTimeout(r, 800));
+    return { beers: PN.s.beers.length, crowds: Object.keys(GLBARS._crowds ? GLBARS._crowds() : {}).length, drawnCrowd: m.getLayer("olnu-bar-crowd") ? m.queryRenderedFeatures({ layers: ["olnu-bar-crowd"] }).length : 0,
+      l: m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l) }; });
+  ok(lz.beers > 0 && lz.crowds === 0 && lz.drawnCrowd === 0, "zones view (whole Sweden): no town lantern over the zone labels (people data in: " + lz.beers + " pins)", lz);
+  ok(lz.l.includes("01"), "zones view: the busy Stockholm chip is drawn with the people data in", lz);
   await shot("sverige");
   // 2) Dalarna (län level)
   await view([60.75, 14.9], 6.2); await H.wait(page, 1500);

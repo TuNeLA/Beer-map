@@ -460,9 +460,9 @@
   /* Town view ("it's hard to see where people are", owner 15 Nov): below Leaflet zoom 14.5 the bars with people whose
      icons would sit on each other (centres closer than 36 px) become ONE lantern with the summed people count. A bar
      that stands alone keeps its own pin. Zoom-only rule (a pan never regroups); the open bar is never grouped. */
-  var CROWD_Z = 14.5, CROWD_PX = 36;
+  var CROWD_Z = 14.5, CROWD_PX = 36, CROWD_MIN = 10.5;   // zonesfix: below 10.5 (zones.js Z_OFF) the zones view shows the people: no lantern (it hid a busy zone chip)
   function crowdGroups(list, z) {
-    var out = [], b = BL(); if (!b || z >= CROWD_Z) return out;
+    var out = [], b = BL(); if (!b || z >= CROWD_Z || z < CROWD_MIN) return out;
     var cand = list.filter(function (x) { return !x.sel && x.n > 0; });
     cand.forEach(function (x) { x.pt = map.latLngToContainerPoint([+x.c.bar.lat, +x.c.bar.lng]); });
     cand.sort(function (p, q) { return q.n - p.n || (String(p.c.bar.id) < String(q.c.bar.id) ? -1 : 1); });
