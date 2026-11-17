@@ -48,7 +48,19 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   await page.waitForFunction(() => { const m = BASEMAP.mapbox().getMapboxMap(); const l = m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l);
     return ["01", "14", "20"].every((c) => l.includes(c)) && l.length >= 6; }, null, { timeout: 10000 }).catch(() => {});
   const ll = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l); });
-  ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", ll);
+  // zonesfix: on a fail, say WHY a busy label is not drawn (source props, image, its sides vs the app UI boxes, the HUD on screen)
+  const why = ["01", "14", "20"].every((c) => ll.includes(c)) ? null : await page.evaluate(() => {
+    const m = BASEMAP.mapbox().getMapboxMap(), cv = m.getCanvas().getBoundingClientRect(), out = { z: +__map.getZoom().toFixed(2), labels: [] };
+    const fs = m.querySourceFeatures("olnu-zl-pt").filter((f) => ["01", "14", "20"].includes(f.properties.l));
+    const seen = {}; fs.forEach((f) => { const p = f.properties; if (seen[p.l]) return; seen[p.l] = 1; const q = m.project(f.geometry.coordinates);
+      out.labels.push({ l: p.l, an: p.an, hid: p.hid, ci: p.ci, hasCi: !!p.ci && m.hasImage(p.ci), q: [Math.round(q.x), Math.round(q.y)] }); });
+    out.ui = (ZONES._uiRects() || []).map((r) => [r.l, r.t, r.r, r.b].map(Math.round));
+    out.hud = [...document.querySelectorAll(".topbar, .ticker, .hud-left > *, .pn-rail, #btn-more, #btn-heat, #btn-ghostpins, #btn-taxi, #btn-evs, #btn-locate, #btn-attrib, #other-wrap, .dock, #chaos, #rally")]
+      .filter((e) => !e.hidden && e.getBoundingClientRect().width).map((e) => { const r = e.getBoundingClientRect(); return (e.id || e.className.split(" ")[0]) + ":" + [r.left - cv.left, r.top - cv.top, r.right - cv.left, r.bottom - cv.top].map(Math.round).join(","); });
+    out.pins = document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *, .leaflet-frdots-pane .nm-fd").length;
+    out.canvas = [Math.round(cv.width), Math.round(cv.height)];
+    return out; });
+  ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", why ? { ll, why } : ll);
   const st = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return [1, 14, 20, 25].map((id) => (m.getFeatureState({ source: "olnu-zl", id }) || {}).lv); });
   ok(st[0] === 3 && st[1] === 2 && st[2] === 2 && st[3] === 0, "län levels Stockholm 15=3, VG 3=2, Dalarna 8=2, Norrbotten 0", st);
   await shot("sverige");
