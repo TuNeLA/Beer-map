@@ -59,7 +59,14 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
       .filter((e) => !e.hidden && e.getBoundingClientRect().width).map((e) => { const r = e.getBoundingClientRect(); return (e.id || e.className.split(" ")[0]) + ":" + [r.left - cv.left, r.top - cv.top, r.right - cv.left, r.bottom - cv.top].map(Math.round).join(","); });
     out.pins = document.querySelectorAll(".leaflet-mypins-pane .mp-pin, .leaflet-invites-pane .leaflet-marker-icon > *, .leaflet-frdots-pane .nm-fd").length;
     out.canvas = [Math.round(cv.width), Math.round(cv.height)];
+    const o1 = out.labels.find((x) => x.l === "01");   // what GL draws where the Stockholm chip should be (any layer)
+    if (o1) out.near01 = [...new Set(m.queryRenderedFeatures([[o1.q[0] - 90, o1.q[1] - 70], [o1.q[0] + 90, o1.q[1] + 70]]).map((f) => f.layer.id + (f.properties && f.properties.l ? ":" + f.properties.l : "")))];
     return out; });
+  // zonesfix: is it stuck, or late? the same query after a repaint + 1 s, and after a 1 px move and back
+  const again = why ? await page.evaluate(async () => { const m = BASEMAP.mapbox().getMapboxMap(), q = () => m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l).includes("01");
+    const r = {}; m.triggerRepaint(); await new Promise((z) => setTimeout(z, 1000)); r.afterRepaint = q();
+    __map.panBy([1, 0], { animate: false }); await new Promise((z) => setTimeout(z, 600)); __map.panBy([-1, 0], { animate: false }); await new Promise((z) => setTimeout(z, 1000)); r.afterMove = q(); return r; }) : null;
+  if (why) why.again = again;
   ok(["01", "14", "20"].every((c) => ll.includes(c)) && ll.length >= 6, "län labels: all busy ones + some quiet names", why ? { ll, why } : ll);
   const st = await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); return [1, 14, 20, 25].map((id) => (m.getFeatureState({ source: "olnu-zl", id }) || {}).lv); });
   ok(st[0] === 3 && st[1] === 2 && st[2] === 2 && st[3] === 0, "län levels Stockholm 15=3, VG 3=2, Dalarna 8=2, Norrbotten 0", st);
