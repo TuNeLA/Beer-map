@@ -10,7 +10,11 @@
      ONE tiny still season mark next to "ikväll" (calm). Store builds (OLNU_STORE): nothing (the burst is off there anyway).
    - Light version (PNSeason.light(): weak phones): half the pieces, no glow passes.
    - Kill switch: PN.CFG.tapfx === false or ?tapfx=0 → the old burst bits. ?tapfx=<id> (test builds) forces one effect,
-     e.g. ?tapfx=c1 = the new "cooler" candidates c1 / c2 / c3 (NOT in the random pool until the owner picks one). */
+     e.g. ?tapfx=c1 = one of the "cooler" effects c1 / c2 / c3.
+   - tapmix (owner 17 Nov 20:20, A6: "Use all of them. Just random ... I want it to be different every time"): c1 golden
+     shockwave, c2 liquid crown and c3 neon zip are in EVERY family (each season = its own 5 + these 3). Pick = a shuffle bag:
+     every effect of the pool plays once before any one comes back, and never the same one twice in a row (also across bags
+     and app starts: the last id is kept in localStorage). */
 (function () {
   "use strict";
   var W = window, D = W.document, PI = Math.PI, TAU = PI * 2;
@@ -339,10 +343,11 @@
       } };
     }
   };
+  var COOL = ["c1", "c2", "c3"];   // tapmix: the 3 "cooler" effects join every family (owner A6, 17 Nov)
   var FAM = {
-    xmas: ["x1", "x2", "x3", "x4", "x5"], newyear: ["n1", "n2", "n3", "n4", "n5"], midsummer: ["m1", "m2", "m3", "m4", "m5"],
-    valborg: ["v1", "v2", "v3", "v4", "v5"], spring: ["o1", "o2", "o3", "o4", "o5", "v3", "v4", "v5"], autumn: ["a1", "a2", "a3", "a4", "a5"],
-    normal: ["o1", "o2", "o3", "o4", "o5"]
+    xmas: ["x1", "x2", "x3", "x4", "x5"].concat(COOL), newyear: ["n1", "n2", "n3", "n4", "n5"].concat(COOL), midsummer: ["m1", "m2", "m3", "m4", "m5"].concat(COOL),
+    valborg: ["v1", "v2", "v3", "v4", "v5"].concat(COOL), spring: ["o1", "o2", "o3", "o4", "o5", "v3", "v4", "v5"].concat(COOL), autumn: ["a1", "a2", "a3", "a4", "a5"].concat(COOL),
+    normal: ["o1", "o2", "o3", "o4", "o5"].concat(COOL)
   };
   // the ring / edge colour and the calm mark of each family
   var MARK = { xmas: ["snowflake", {}], newyear: ["twinkle", {}], midsummer: ["flower", { n: 9, c: "#ffffff" }], valborg: ["tussilago", {}], spring: ["tussilago", {}], autumn: ["maple", {}], normal: ["star", {}] };
@@ -359,12 +364,23 @@
     if (!FAM[f]) f = "normal";
     return { f: f, snow: s.wx && s.wx.snow > 0 && f === "normal" };
   }
+  var LS_LAST = "pn.tapfx.last", bag = {};
+  function lastGet() { try { return W.localStorage.getItem(LS_LAST) || ""; } catch (e) { return ""; } }
+  function lastSet(id) { try { W.localStorage.setItem(LS_LAST, id); } catch (e) {} }
+  // tapmix: a shuffle bag per pool. All effects play once (random order) before the bag refills; the first of a new bag
+  // is never the one that just played (also after an app start).
   function choose(fam) {
     var pool = FAM[fam.f].slice(); if (fam.snow) pool.push("x1");   // snow weather: the snowflake burst joins the normal days
-    var k = fam.f + (fam.snow ? "+s" : ""), i = Math.floor(Math.random() * pool.length);
-    if (pool.length > 1 && pool[i] === last[k]) i = (i + 1 + Math.floor(Math.random() * (pool.length - 1))) % pool.length;   // never the same twice in a row
-    last[k] = pool[i];
-    return pool[i];
+    var k = fam.f + (fam.snow ? "+s" : ""), prev = last[k] || lastGet();
+    if (!bag[k] || !bag[k].length) {
+      var b = pool.slice();
+      for (var i = b.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = b[i]; b[i] = b[j]; b[j] = t; }
+      if (b.length > 1 && b[b.length - 1] === prev) { var z = b[0]; b[0] = b[b.length - 1]; b[b.length - 1] = z; }   // pop() takes the end
+      bag[k] = b;
+    }
+    var id = bag[k].pop();
+    last[k] = id; lastSet(id);
+    return id;
   }
   function btnXY(ox, oy) { var b = D.getElementById("btn-beer"); if (!b) return [0, 260]; var r = b.getBoundingClientRect(); return [r.left + r.width / 2 - ox, r.top + r.height / 2 - oy]; }
   function mark(host, f) {
@@ -410,6 +426,7 @@
     running: function () { return running.length; },
     on: function () { return !W.OLNU_STORE && !killed(); },
     stats: stats,
-    _choose: choose
+    _choose: choose,
+    _reset: function () { bag = {}; }   // tests: start a fresh shuffle bag
   };
 })();

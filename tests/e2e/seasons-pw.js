@@ -134,8 +134,11 @@ async function runUI(b) {
     }
     const rep = await page.evaluate(() => { let p = "", same = 0; for (let i = 0; i < 40; i++) { const x = PNTapFx._choose({ f: "xmas" }); if (x === p) same++; p = x; } return same; });
     ok(rep === 0, "never the same effect twice in a row (40 picks)", rep);
+    // tapmix (owner A6 "different every time"): 8 picks on a normal day = all 8 different effects (5 normal + c1, c2, c3)
+    const bagR = await page.evaluate(() => { PNTapFx._reset(); const a = []; for (let i = 0; i < 8; i++) a.push(PNTapFx._choose({ f: "normal" })); return a; });
+    ok(new Set(bagR).size === 8 && ["c1", "c2", "c3"].every((x) => bagR.includes(x)), "normal day: 8 taps = 8 different effects, c1/c2/c3 included", bagR);
     await page.evaluate(() => { document.querySelectorAll(".pm-burst,.ss-tap").forEach((x) => x.remove()); MYCOUNT._burst(3, 2); });
-    await wait(page, 2400);
+    await wait(page, 2900);   // tapmix: c1-c3 run 2.0-2.2 s (+ one frame)
     ok(await page.evaluate(() => !document.querySelector(".ss-tap") && PNTapFx.running() === 0), "the tap effect is gone after its time (every motion ends)");
     const calm = await page.evaluate(() => { document.querySelectorAll(".pm-burst").forEach((x) => x.remove()); MYCOUNT._burst(9, 8); const h = document.querySelector(".pm-burst"); return { tap: !!h.querySelector(".ss-tap"), mark: !!h.querySelector(".ss-mark") }; });
     ok(!calm.tap && calm.mark, "from 8 drinks: no effect, one still season mark (calm)", calm);
@@ -151,7 +154,8 @@ async function runUI(b) {
     await st.ctx.close();
   }
 }
-const FAMS = { xmas: ["x1", "x2", "x3", "x4", "x5"], newyear: ["n1", "n2", "n3", "n4", "n5"], midsummer: ["m1", "m2", "m3", "m4", "m5"], valborg: ["v1", "v2", "v3", "v4", "v5"], autumn: ["a1", "a2", "a3", "a4", "a5"], normal: ["o1", "o2", "o3", "o4", "o5"], spring: ["o1", "o2", "o3", "o4", "o5", "v3", "v4", "v5"] };
+const COOL = ["c1", "c2", "c3"];   // tapmix (owner A6, 17 Nov): the 3 cooler effects are in every family
+const FAMS = { xmas: ["x1", "x2", "x3", "x4", "x5", ...COOL], newyear: ["n1", "n2", "n3", "n4", "n5", ...COOL], midsummer: ["m1", "m2", "m3", "m4", "m5", ...COOL], valborg: ["v1", "v2", "v3", "v4", "v5", ...COOL], autumn: ["a1", "a2", "a3", "a4", "a5", ...COOL], normal: ["o1", "o2", "o3", "o4", "o5", ...COOL], spring: ["o1", "o2", "o3", "o4", "o5", "v3", "v4", "v5", ...COOL] };
 function PNfams(f) { return FAMS[f] || []; }
 
 /* ---------- map (GL) ---------- */
