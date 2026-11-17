@@ -19,7 +19,7 @@ timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1|hemzon)$       par=1
 perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine
 
 # --- real Mapbox GL (need MAPBOX_TEST_TOKEN) and the map lane ---
-map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c)$
+map-gl-1   ^(zones|zones2|zones3|zones4)$
 map-gl-2   ^(map4|glfix-avpins|mbx|ownerfix-map|ui1-map)$
 map-lane   ^(map|map-b)$
 

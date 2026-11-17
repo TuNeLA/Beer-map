@@ -101,6 +101,9 @@ NEEDS_MAPBOX=1 run map4       $A map4-pw.js mbx
 NEEDS_MAPBOX=1 run barzoom    $A barzoom-pw.js   # ds44: no glow circle over a lit house, no dashed house outlines, no heat at z18
 NEEDS_MAPBOX=1 run glfix-avpins $A glfix-avpins-pw.js mbx
 NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
+NEEDS_MAPBOX=1 run zones2     $A zones-pw.js mbx
+NEEDS_MAPBOX=1 run zones3     $A zones-pw.js mbx
+NEEDS_MAPBOX=1 run zones4     $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
 run map        $A map-pw.js t '^(b9|sh|m2)$'             # map lane part 1: B9 icon size, shots, M2 fade (stub Mapbox without a token). ci1: split in two (501 s in one run)
 run map-c      $A map-pw.js t '^(br1|r1)$'               # map lane part 3: BR1 bar types, R1
