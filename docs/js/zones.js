@@ -355,8 +355,7 @@
           an = free || noUi;   // only labels in the way: GL collision decides, as before
           // zonesfix: but never for a QUIET län name: GL picked either one (CI: Södermanland drawn, the busy Stockholm chip not,
           // when 📍 chips pushed Stockholm under its point). The busy labels are placed first, so a quiet name with no free side waits.
-          if (an && !free && pr.q === 1) hid = 1;
-          if (!an) { an = "bottom"; hid = 1; } else if (!hid) done.push(sideBox(q, wh, an));
+          if (!an) { an = "bottom"; hid = 1; } else done.push(sideBox(q, wh, an));
         }
         pr.an = an; pr.hid = hid;
       });
