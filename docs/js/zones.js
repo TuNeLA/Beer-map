@@ -353,7 +353,10 @@
             if (!hits(b, done)) free = SIDES[i];
           }
           an = free || noUi;   // only labels in the way: GL collision decides, as before
-          if (!an) { an = "bottom"; hid = 1; } else done.push(sideBox(q, wh, an));
+          // zonesfix: but never for a QUIET län name: GL picked either one (CI: Södermanland drawn, the busy Stockholm chip not,
+          // when 📍 chips pushed Stockholm under its point). The busy labels are placed first, so a quiet name with no free side waits.
+          if (an && !free && pr.q === 1) hid = 1;
+          if (!an) { an = "bottom"; hid = 1; } else if (!hid) done.push(sideBox(q, wh, an));
         }
         pr.an = an; pr.hid = hid;
       });
@@ -745,6 +748,11 @@
     _layers: function () { return [L_LF, L_LG, L_LL, L_KF, L_KG, L_KY, L_KT, L_LQ, L_LT, L_LC]; },
     _outline: function () { return KOMMUN_OUTLINE; },   // map M1: "none" | "mine"
     _place: function () { place(true); }, _uiRects: function () { return uiRects(); },   // map M3 test hooks
+    _boxes: function () {   // zonesfix test hook: the län label boxes as place() sees them (GL canvas px)
+      var m = gm, z = zoom(), key = z < Z_SWE ? "ci" : "img"; if (!m || !lastF[SLL]) return [];
+      return lastF[SLL].map(function (f) { var p = f.properties, wh = imgWH[p[key]] || [90, 44], q = m.project(f.geometry.coordinates);
+        return { l: p.l, q: p.q, an: p.an, hid: p.hid, pt: [q.x, q.y], box: sideBox(q, wh, p.an || "bottom") }; });
+    },
     // map M3: mypins.js calls this when its chips changed (labels step aside from them)
     relabel: function () { if (!ready || !wanted()) return; clearTimeout(placeT); placeT = setTimeout(function () { place(false); }, 60); },
     _ask: function () { countsAt = 0; ask(true); },
