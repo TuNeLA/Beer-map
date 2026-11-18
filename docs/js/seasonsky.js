@@ -3,7 +3,7 @@
    arena chips; over the GL map). Scenes (screen space, every one has an end):
      snow   falls DOWN in 3 depths (far small slow, near big soft fast), a slow wind, a few glints. Light 90 / normal 190 /
             heavy 380 flakes by the weather code (js/seasonclock.js). Fade in 2 s, out 5 s, 30 s in all.
-     rain   streaks at 9 degrees, small rings where drops land, the air a little darker. 30 s.
+     rain   streaks at 9 degrees (falls down-right, the same way as the snow wind; the streak points along the fall, I-131), small rings where drops land, the air a little darker. 30 s.
      leaves October: 30 leaves drift down with a pendulum swing and a shadow, 10 s.
      fog    TRIAL (owner 15 Nov: "just to try it out"): 3 soft layers at their own speed, thinner in the middle; 20 s, then
             still; weak. Off: ?fog=0 or PN.CFG.fog === false. Fireworks + northern lights: js/seasonfw.js (same canvas).
@@ -90,7 +90,7 @@
       return { id: "rain", dur: 30, fin: 2, fout: 4, still: 4, draw: function (t, a) {
         g.fillStyle = "rgba(8,12,26," + (0.14 * a).toFixed(3) + ")"; g.fillRect(0, 0, cw, ch);
         var H = ch + 60; g.lineCap = "round"; g.lineWidth = 2;
-        for (var i = 0; i < dr.length; i++) { var q = dr[i], y = (q.y * H + q.v * t) % H - 30, x = ((q.x * (cw + 80) - (y + 30) * sx) % (cw + 80) + cw + 80) % (cw + 80) - 40;
+        for (var i = 0; i < dr.length; i++) { var q = dr[i], y = (q.y * H + q.v * t) % H - 30, x = ((q.x * (cw + 80) + (y + 30) * sx) % (cw + 80) + cw + 80) % (cw + 80) - 40;   // rainfix I-131: drops move down-right, along their streak (was down-left = sideways slide)
           g.strokeStyle = "rgba(200,215,240," + (q.a * a).toFixed(3) + ")"; g.beginPath(); g.moveTo(x, y); g.lineTo(x - sx * q.l, y - cy * q.l); g.stroke(); }
         for (i = 0; i < sp.length; i++) { var s = sp[i], u = (t * s.f + s.ph) % 1; g.strokeStyle = "rgba(210,225,250," + (0.5 * (1 - u) * a).toFixed(3) + ")"; g.lineWidth = 1;
           g.beginPath(); g.ellipse(s.x * cw, s.y * ch, 2 + 9 * u, (2 + 9 * u) * 0.35, 0, 0, TAU); g.stroke(); }
@@ -197,7 +197,7 @@
     ctx: function () { return ensure() ? { g: g, w: cw, h: ch, R: R } : null; },
     holes: function () { readHoles(); return holes.slice(); },
     active: function () { return scenes.map(function (s) { return s.id; }); },
-    stats: stats, _plan: function () { sig = ""; plan(S().now(), true); }
+    stats: stats, _sc: SC, _plan: function () { sig = ""; plan(S().now(), true); }
   };
   if (W.PN && W.PN.mod) W.PN.mod("PNSky");
 })();

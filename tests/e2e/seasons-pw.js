@@ -123,6 +123,27 @@ async function runUI(b) {
     ok(errs.length === 0, "dress: no page error", errs);
     await ctx.close();
   }
+  if (ONLY.test("rain")) {
+    // I-131 (owner 18 Nov 01:21: "the rain doesn't rain in the correct way, it's like moving sideways"):
+    // each drop must move along its own streak (head - tail), not across it.
+    const { ctx, page } = await open(b, "raster", { query: "?season=normal&wx=none" });
+    await page.waitForFunction(() => window.PNSky && PNSky.ctx && PNSky.ctx(), null, { timeout: 20000 }).catch(() => {});
+    const r = await page.evaluate(() => {
+      const c = PNSky.ctx(); if (!c || !PNSky._sc) return { err: "no sky" };
+      const g = c.g, sc = PNSky._sc.rain(2, false), frames = [];
+      for (const t of [5, 5.01]) { const mv = [], ln = []; g.moveTo = (x, y) => mv.push([x, y]); g.lineTo = (x, y) => ln.push([x, y]); sc.draw(t, 1); delete g.moveTo; delete g.lineTo; frames.push({ mv, ln }); }
+      let bad = 0, n = 0, worst = 0;
+      for (let i = 0; i < Math.min(frames[0].ln.length, frames[1].ln.length); i++) {
+        const h1 = frames[0].mv[i], h2 = frames[1].mv[i], tl = frames[0].ln[i], dx = h2[0] - h1[0], dy = h2[1] - h1[1];
+        if (!(dy > 0 && dy < 40 && Math.abs(dx) < 40)) continue;   // skip a drop that wrapped to the top
+        const sx = h1[0] - tl[0], sy = h1[1] - tl[1], a = Math.abs(Math.atan2(dx, dy) - Math.atan2(sx, sy)) * 180 / Math.PI;
+        n++; worst = Math.max(worst, a); if (a > 2) bad++;
+      }
+      return { n, bad, worst: Math.round(worst * 10) / 10 };
+    });
+    ok(!r.err && r.n > 20 && r.bad === 0, "rain: every drop falls along its streak (no sideways slide)", r);
+    await ctx.close();
+  }
   if (ONLY.test("tap")) {
     const { ctx, page, errs } = await open(b, "fb");
     for (const [season, fam] of [["xmas", "xmas"], ["newyear", "newyear"], ["midsummer", "midsummer"], ["valborg", "valborg"], ["autumn", "autumn"], ["normal", "normal"], ["spring", "spring"]]) {
