@@ -17,7 +17,11 @@
      Info fold: chips (Avhämtning, Uteservering, diet, wheelchair), website / phone buttons (PNI icons), source line
      "Data: © OpenStreetMap" (+ "· Overture Maps" when a field came from there). A tile not loaded yet = the parts fill in a moment later.
    - API for RPC: PN.rpc / PN.parseData / PN.LIVE / PN.s.authed (app-core), or init(api) with the app api.
-   Missing files / RPC = the card hides quietly. Never breaks the map. Classes: plc-* (pc-* belongs to js/profilecard.js). */
+   Missing files / RPC = the card hides quietly. Never breaks the map. Classes: plc-* (pc-* belongs to js/profilecard.js).
+   I-132 "På kran" (lane beerui): docs/data/beer/taps.json (read once) says which bars have a tap list. Only for such a bar the beer
+   library loads (PN.beerlib) and a row goes right under the action row (after the photos) of the card that holds this place's
+   [data-plc-more] node. No list = no node at all (the empty state is hidden; the Mer fold gets nothing). Lists come from the bars
+   later (I-132 phase 3); none today. */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
@@ -259,7 +263,29 @@
     css();
     var i = infoSync(place), lv = priceSync(place), a = app();
     if (i === undefined || (isDrink(place) && a && a.LIVE && !prices[priceBox(place)])) load(place).then(function (d) { fill(place, d.info, d.price); });
-    return lineHTML(place, i || null, lv) + moreHTML(place, i || null);
+    return lineHTML(place, i || null, lv) + moreHTML(place, i || null) + tapSlot(place);
+  }
+  /* ---------- I-132: På kran ---------- */
+  var tapIx = null, tapIxP = null;
+  function tapIndex() {
+    if (tapIx) return Promise.resolve(tapIx);
+    if (!tapIxP) tapIxP = getJSON("./data/beer/taps.json").then(function (d) { tapIx = d && d.bars ? d.bars : {}; return tapIx; }, function () { tapIx = {}; return tapIx; });
+    return tapIxP;
+  }
+  function tapSlot(place) {
+    if (!isDrink(place)) return "";
+    var id = String(place.id);
+    tapIndex().then(function (ix) { var e = ix[id]; if (e && (e.length || (e.beers && e.beers.length))) setTimeout(function () { tapFill(id, 0); }, 0); });
+    return "";
+  }
+  function tapFill(id, n) {
+    var mark = document.querySelector("[data-plc-more=" + attr(id) + "]"), bs = mark && mark.closest(".bs");
+    if (!bs) { if (n < 10) setTimeout(function () { tapFill(id, n + 1); }, 200); return; }   // the card is drawn a moment after popupHTML
+    if (bs.querySelector("[data-plc-tap]") || !window.PN || !PN.beerlib) return;
+    var slot = document.createElement("section"); slot.setAttribute("data-plc-tap", id); slot.hidden = true;
+    var at = bs.querySelector(".pn-bs-photos") || bs.querySelector(".pp-act");
+    if (at && at.parentNode) at.after(slot); else return;
+    PN.beerlib().then(function (B) { return B.tapRow(slot, id); }).then(function (shown) { if (!shown) slot.remove(); }, function () { slot.remove(); });
   }
   var CSS = ".plc-line{justify-content:flex-start;flex-wrap:wrap;gap:4px 6px;font-size:var(--fs-14,14px);line-height:1.3}" +
     ".plc-line[hidden],.plc-more[hidden],.plc-card[hidden]{display:none}.plc-dot{font-style:normal;opacity:.5}" +
@@ -286,6 +312,6 @@
     // pure helpers (tests)
     cuisineLabel: cuisineLabel, priceLevel: priceLevel, hoursText: hoursText, median: median, rowObj: rowObj, webHref: webHref, telHref: telHref,
     _leafKey: function (lat, lng, index) { if (index) ix = index; return leafKey(lat, lng); },
-    _reset: function () { A = null; ix = null; ixP = null; tiles = {}; tileP = {}; prices = {}; priceP = {}; off = {}; }
+    _reset: function () { A = null; ix = null; ixP = null; tiles = {}; tileP = {}; prices = {}; priceP = {}; off = {}; tapIx = null; tapIxP = null; }
   };
 })();
