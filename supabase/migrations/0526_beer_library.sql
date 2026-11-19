@@ -1,4 +1,4 @@
--- 0525 · Beer library (I-132, lane beerui): favourites (max 3), ratings 1–5, short reviews with reports. OWNER-RUN via the
+-- 0526 · Beer library (I-132, lane beerui): favourites (max 3), ratings 1–5, short reviews with reports. OWNER-RUN via the
 -- coordinator (RULES §5). Staging first. NOT run by the lane.
 -- Check after the run (expect t, t, t, t, t, t, t):
 --   select to_regclass('public.beer_favourites') is not null, to_regclass('public.beer_ratings') is not null,

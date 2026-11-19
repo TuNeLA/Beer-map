@@ -3,7 +3,7 @@
    This file: data (docs/data/beer/*.json, scripts/beer/build-data.mjs), the server layer, favourites + my rating, small
    builders, the Öl tab of Sök, the DM picker and the chat card. js/beerlib-pages.js adds the style page, the beer page and
    "Tipsa en vän". CSS: docs/beerlib.css.
-   Server (supabase/migrations/0525_beer_library.sql, applied by the coordinator): beerlib_* RPCs. A missing RPC (PGRST202) or no
+   Server (supabase/migrations/0526_beer_library.sql, applied by the coordinator): beerlib_* RPCs. A missing RPC (PGRST202) or no
    session = "local": favourites and my rating stay on this phone (localStorage), reviews and averages are hidden, nothing breaks.
    Rules: no "beers tried" count, no badge, no goal, no "top rated" list, no "strongest first" sort (alphabetical / style / taste only).
    Store builds (window.OLNU_STORE): the same library; it has no celebration at all (no sound, no confetti). One text pop-up per tap.
