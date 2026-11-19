@@ -366,6 +366,13 @@
     var nm = m.is_me ? T("you") : (m.name || L("Någon", "Someone"));
     var body = String(m.body || "").replace(/^⁣/, ""), cls = "gpg-msg" + (m.is_me ? " me" : "");
     var kids = [h("b", { text: nm + " " }), h("span", { text: body }), h("small", { class: "muted", text: " " + hm(m.created_at) })];
+    var tp = tipOf(body);   // beer2: a beer tip reads "tipsar om <beer>", not the "[öl:id]" code
+    if (tp) {
+      tipCss();
+      var bd = window.BEERLIB && window.BEERLIB.data ? window.BEERLIB.data() : null, bn = bd && bd.byId[tp.id] ? bd.byId[tp.id].name : tp.name;   // the library's name once it is loaded
+      kids[1] = h("span", { class: "gpg-tip", html: ic("beer", "") + "<span>" + esc(L("tipsar om ", "recommends ")) + "<b>" + esc(bn) + "</b>" + (tp.line ? esc(": " + tp.line) : "") + "</span>" });
+      return h("li", { class: cls }, kids);
+    }
     if (!PH_RE.test(body)) return h("li", { class: cls }, kids);
     kids[1] = h("span", { text: body.replace(/^📷 ?/, "") || L("Bild", "Photo") });
     var th = h("span", { class: "gpg-thumb", "aria-hidden": "true", html: ic("image") });
@@ -387,7 +394,7 @@
   function pendRow(wrap, p) {
     var fail = p.st === "fail";
     var li = h("li", { class: "gpg-msg me gpg-pend" + (fail ? " gpg-fail" : p.st === "ok" ? " gpg-sent" : ""), "aria-busy": p.st === "send" ? "true" : null, role: fail ? "button" : null, tabindex: fail ? "0" : null }, [
-      h("b", { text: T("you") + " " }), h("span", { text: p.text }),
+      h("b", { text: T("you") + " " }), h("span", { text: tipOf(p.text) ? tipOf(p.text).plain : p.text }),
       h("small", { class: "gpg-pend-s", html: fail ? ic("refresh") + esc(T("notSent")) : p.st === "ok" ? ic("check") : esc(T("sending")) })]);
     if (!fail) return li;
     var again = function (e) {
@@ -772,9 +779,51 @@
     for (var i = 0; i < k.length; i++) x = (x * 31 + k.charCodeAt(i)) >>> 0;
     return x % GCOLS;
   }
+  /* ---------- beer2 (I-132): beer tips in group + event chats ----------
+     A tip is ONE normal chat line "Öltips: <name> [öl:<id>] <line>" (js/beerlib.js tipText). The 1:1 chat has its own button in
+     js/dm.js. Group and event chats are social.js openChat (the same code path), which has no hook for this: one small observer on
+     #sheet-body (direct children only) sees a chat sheet being built, adds the beer button left of the field and turns tip rows into
+     the same beer card as in DM (BEERLIB.chatCards). The beer library loads only on a tap or when a tip row is there. */
+  var TIP_RE = /^(?:Öltips|Beer tip): (.{1,90}?) \[öl:([0-9A-Za-z_-]{1,40})\](?: ([\s\S]*))?$/;
+  function tipOf(t) {
+    var m = TIP_RE.exec(String(t || "").trim()); if (!m) return null;
+    return { name: m[1], id: m[2], line: (m[3] || "").trim(), plain: L("Öltips: ", "Beer tip: ") + m[1] + (m[3] ? " " + m[3].trim() : "") };
+  }
+  var TIP_CSS = ".bl-dmb{flex:none;width:44px;height:44px;min-height:44px;border-radius:var(--r-pill);display:grid;place-items:center;background:var(--ds-raised);color:var(--ds-amber-t);border:0;padding:0;cursor:pointer}" +
+    ".bl-dmb svg{width:22px;height:22px}.bl-dmb:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}" +
+    ".chat-input.ck-typing .bl-dmb{width:0 !important;min-width:0 !important;padding:0 !important;margin:0 !important;overflow:hidden;opacity:0}" +   // like the mic + camera (chatkb.js)
+    ".gpg-tip{display:inline}.gpg-tip > svg{width:16px;height:16px;vertical-align:-3px;margin-right:4px;color:var(--ds-amber-t)}";
+  function tipCss() {
+    if (document.getElementById("gpg-tip-css")) return;
+    var st = document.createElement("style"); st.id = "gpg-tip-css"; st.textContent = TIP_CSS; document.head.appendChild(st);
+  }
+  function beerLib() { return window.PN && window.PN.beerlib ? window.PN.beerlib() : Promise.reject(new Error("no beerlib")); }
+  function tipCards(list) {
+    var any = [].some.call(list.querySelectorAll("li.chat-msg[data-mid] .cm-body"), function (b) { return !b.classList.contains("bl-raw") && TIP_RE.test(String(b.textContent || "").trim()); });
+    if (any) beerLib().then(function (B) { return B.load().then(function () { if (list.isConnected) B.chatCards(list); }); }).catch(function () {});
+  }
+  function tipChat(sb) {
+    var list = sb.querySelector("ul.chat-list"), inp = sb.querySelector("#chat-inp"), row = inp && inp.parentNode, send = row && row.querySelector(".chat-send");
+    if (!list || !send || list.__gpTip || row.querySelector(".bl-dmb")) return;   // a .bl-dmb here = the DM (dm.js has it)
+    list.__gpTip = 1; tipCss();
+    var b = h("button", { type: "button", class: "bl-dmb", "aria-label": L("Tipsa om en öl", "Recommend a beer"), title: L("Tipsa om en öl", "Recommend a beer"), "aria-expanded": "false", html: ic("beer", "") });
+    var box = h("div", { class: "bl bl-dmp", hidden: true });
+    row.parentNode.insertBefore(box, row); row.insertBefore(b, row.firstChild);
+    b.addEventListener("click", function () {
+      beerLib().then(function (B) { B.chatPick(b, box, inp, send); }, function () { if (A && A.toast) A.toast(L("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again."), { err: true }); });
+    });
+    try { new MutationObserver(function () { if (list.isConnected) tipCards(list); }).observe(list, { childList: true }); } catch (e) {}
+    tipCards(list);
+  }
+  function tipHook() {
+    var sb = document.getElementById("sheet-body"); if (!sb || sb.__gpTip || !window.MutationObserver) return;
+    sb.__gpTip = 1;
+    new MutationObserver(function () { try { tipChat(sb); } catch (e) {} }).observe(sb, { childList: true });
+  }
+
   window.GPAGE = {
     colorOf: colorOf,
-    init: function (api) { A = api; },
+    init: function (api) { A = api; try { tipHook(); } catch (e) {} },
     topSheet: function (body) { try { topSheet(body); } catch (e) { try { console.warn("olnu gpage top", e); } catch (x) {} } },
     groupItem: function (g, wrap, main) { try { build(g, wrap, main); } catch (e) { try { console.warn("olnu gpage", e); } catch (x) {} } },
     // inst: warm.js showed a cached group_now / group_msgs and the server now has newer data → patch the open page.

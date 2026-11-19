@@ -4,7 +4,8 @@
    (the ONE amber button), Favorit (1 of 3), Mitt betyg 1–5, Andra betyg (the PintsNow average only from 5 ratings, A27),
    Omdömen with a report flag (3 reports hide a review, A26; strangers see a first name only, A25: the server decides the name).
    No Untappd line yet (no API key): BEERLIB.untappd is a hook. "Sök på Systembolaget" is behind BEERLIB.flags.systembolaget (OFF).
-   Without the server tables: favourite + my rating stay on this phone, reviews and the average are not shown. */
+   Without the server tables: favourite + my rating stay on this phone, reviews and the average are not shown.
+   Lane beer2: "Stil (gissning)" label, the "Om data" page (about), "Tipsa en vän" also to my groups. */
 (function () {
   "use strict";
   var W = window, D = document, B = W.BEERLIB;
@@ -35,6 +36,7 @@
       var name = H.en() ? st.en : st.sv, fam = d.fam[st.fam], gl = st.glass && d.glasses[st.glass];
       sheet(name, function (el) {
         var beers = d.beers.filter(function (b) { return b.style === id; }), n = 20;
+        beers = beers.filter(function (b) { return b.photo && !b.nn; }).concat(beers.filter(function (b) { return !b.photo || b.nn; }));   // beer2: a photo + a real name first
         var sim = d.styles.filter(function (s) { return s.fam === st.fam && s.id !== id; }).slice(0, 6);
         var tags = st.tags.map(function (t) { var g = null; H.FL.forEach(function (f) { if (f[4].indexOf(t) >= 0) g = f[0]; });
           var tt = d.tags[t]; return '<span class="bl-tag">' + (g ? H.dot(g) : "") + esc(tt ? (H.en() ? tt.en : tt.sv) : t) + "</span>"; }).join("");
@@ -56,7 +58,7 @@
             '<p class="bl-msg">' + esc(tl("Vi har inga öl i den här stilen än.", "We have no beers in this style yet.")) + "</p>") +
           (sim.length ? '<h3 class="bl-h">' + esc(tl("Liknande", "Similar")) + '</h3><div class="bl-chips">' + sim.map(function (s) {
             return '<button type="button" class="bl-chip" data-bl-style="' + esc(s.id) + '">' + esc(H.en() ? s.en : s.sv) + "</button>"; }).join("") + "</div>" : "") +
-          '<p class="bl-note">' + esc(tl("Siffror: ", "Numbers: ") + (st.ref || "–") + (st.est ? tl(" (ungefär)", " (rough)") : "") + tl(". Stilen på en öl är ofta en gissning.", ". The style of a beer is often a guess.")) + "</p>";
+          '<p class="bl-note">' + esc(tl("Siffror: ", "Numbers: ") + (st.ref || "–") + (st.est ? tl(" (ungefär)", " (rough)") : "") + tl(". Stilen på en öl är ofta en gissning.", ". The style of a beer is often a guess.")) + "</p>" + H.aboutLink();
         el.innerHTML = h;
         var list = el.querySelector(".bl-sb"), more = el.querySelector("[data-bl-more]");
         function paint() { if (!list) return; list.innerHTML = beers.slice(0, n).map(H.rowHTML).join(""); more.hidden = beers.length <= n; H.fixPics(list); }
@@ -69,9 +71,11 @@
   /* ---------- beer page ---------- */
   function heroHTML(b, st) {
     var groups = st ? H.styleGroups(st).slice(0, 3) : [];
+    // beer2: the label says when the style is a guess ("Stil (gissning)"); all OFF styles are guesses today (no "high" confidence)
+    var lab = st ? (b.conf < 3 ? tl("Stil (gissning)", "Style (a guess)") : tl("Stil", "Style")) : "";
     return '<div class="bl-bh">' + H.pic(b) + "<div>" + (b.brewery ? '<div class="who">' + esc(b.brewery) + "</div>" : "") +
-      '<div class="big">' + (st ? '<button type="button" class="bl-slink" data-bl-style="' + esc(st.id) + '">' + esc(H.styleName(st.id)) + "</button>" +
-        (b.conf < 3 ? ' <span class="bl-guess">' + esc(tl("(gissning)", "(guess)")) + "</span>" : "") : esc(tl("Stil okänd", "Style unknown"))) +
+      (lab ? '<div class="bl-stl">' + esc(lab) + "</div>" : "") +
+      '<div class="big">' + (st ? '<button type="button" class="bl-slink" data-bl-style="' + esc(st.id) + '">' + esc(H.styleName(st.id)) + "</button>" : esc(tl("Stil okänd", "Style unknown"))) +
       (H.abvText(b) ? " · " + esc(H.abvText(b)) : "") + "</div>" +
       (groups.length ? '<div class="meta">' + groups.map(function (g) { return '<span class="bl-tag">' + H.dot(g) + esc(H.flName(g)) + "</span>"; }).join("") + "</div>" +
         '<div class="bl-note" style="margin:0">' + esc(tl("Typiskt för stilen", "Typical of the style")) + "</div>" : "") + "</div></div>" + H.credit(b);
@@ -135,7 +139,7 @@
       el.innerHTML = heroHTML(b, st) +
         '<div class="bl-acts"><button type="button" class="bl-btn p" data-bl-tip="1">' + ic("send") + esc(tl("Tipsa en vän", "Tell a friend")) + "</button>" + favBtn(b) + "</div>" +
         rateHTML(stars, !on) + (on ? othersHTML(info) : "") + sbHTML(b) + (on ? reviewsHTML(info) : "") +
-        '<p class="bl-note">' + esc(tl("Data: Open Food Facts (ODbL). Bilden är CC BY-SA.", "Data: Open Food Facts (ODbL). The photo is CC BY-SA.")) + "</p>";
+        '<p class="bl-note">' + esc(tl("Data: Open Food Facts (ODbL). Bilden är CC BY-SA.", "Data: Open Food Facts (ODbL). The photo is CC BY-SA.")) + "</p>" + H.aboutLink();
       H.fixPics(el);
       untappd();
     }
@@ -220,6 +224,37 @@
     });
   }
 
+  /* ---------- beer2: "Om data" (LEGAL.md (c): name the licences in the app). Plain facts, no value words. ---------- */
+  var ODBL = "https://opendatacommons.org/licenses/odbl/1-0/", OFF = "https://world.openfoodfacts.org", OFF_TERMS = "https://world.openfoodfacts.org/terms-of-use";
+  function ext(href, sv, en) { return '<a class="bl-alink" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + ic("link") + "<span>" + esc(tl(sv, en)) + "</span></a>"; }
+  function sec(head, rows, links) {
+    return '<h3 class="bl-h">' + esc(head) + '</h3><div class="bl-card bl-about-c">' + rows.map(function (r) { return "<p>" + esc(r) + "</p>"; }).join("") +
+      (links ? '<div class="bl-alinks">' + links + "</div>" : "") + "</div>";
+  }
+  function about() {
+    sheet(tl("Om data", "About the data"), function (el) {
+      el.innerHTML = '<p class="bl-lead">' + esc(tl("Så här kommer ölen, bilderna och texterna till PintsNow.", "This is where the beers, photos and texts in PintsNow come from.")) + "</p>" +
+        sec(tl("Öl och bilder", "Beers and photos"), [
+          tl("Namn, bryggeri och styrka kommer från Open Food Facts. Det är en öppen databas. Alla kan rätta i den.", "Names, breweries and strength come from Open Food Facts. It is an open database. Anyone can correct it."),
+          tl("Databasen har licensen ODbL. Vår bearbetade öllista delas under samma licens.", "The database has the ODbL licence. Our edited beer list is shared under the same licence."),
+          tl("Bilderna har licensen CC BY-SA. Vid varje bild står vem som tog den, med en länk till produkten.", "The photos have the CC BY-SA licence. Each photo names who took it, with a link to the product."),
+          tl("Etiketter och loggor på bilderna tillhör bryggerierna.", "Labels and logos in the photos belong to the breweries."),
+          tl("Vi visar styrkan bara när den verkar rimlig.", "We show the strength only when it looks right.")],
+          ext(OFF, "Open Food Facts", "Open Food Facts") + ext(ODBL, "Licensen ODbL", "The ODbL licence") + ext(OFF_TERMS, "Villkor för bilderna (CC BY-SA)", "Terms for the photos (CC BY-SA)") +
+          '<a class="bl-alink" href="./data/beer/beers.json" download="pintsnow-beers.json">' + ic("download") + "<span>" + esc(tl("Vår öllista (ODbL)", "Our beer list (ODbL)")) + "</span></a>") +
+        sec(tl("Stilar", "Styles"), [
+          tl("Texterna, bilderna och tipsen om glas, temperatur och mat skriver vi själva.", "We write the texts, pictures and the tips about glass, temperature and food ourselves."),
+          tl("Siffrorna för beska, färg och styrka kommer från BJCP 2021 och Brewers Association.", "The numbers for bitterness, colour and strength come from BJCP 2021 and the Brewers Association."),
+          tl("Stilen på en enskild öl är oftast en gissning. Då står det \u201dStil (gissning)\u201d.", "The style of a single beer is mostly a guess. Then it says \u201cStyle (a guess)\u201d.")]) +
+        sec(tl("Betyg och omdömen", "Ratings and reviews"), [
+          tl("Betyg och omdömen kommer från dem som använder PintsNow. Snittet visas först från 5 betyg.", "Ratings and reviews come from the people who use PintsNow. The average shows from 5 ratings.")]) +
+        sec(tl("Andra källor", "Other sources"), [
+          tl("Untappd: vi använder inte Untappd än.", "Untappd: We do not use Untappd yet."),
+          tl("Systembolaget: vi samarbetar inte med Systembolaget och visar inte deras logga. Vi vet inte vad som finns i butik.", "Systembolaget: we do not work with Systembolaget and do not show their logo. We do not know what is in store.")]) +
+        '<p class="bl-note">' + esc(tl("Ser du ett fel i en öl? Rätta det på Open Food Facts via länken vid bilden.", "See a mistake in a beer? Correct it on Open Food Facts with the link at the photo.")) + "</p>";
+    });
+  }
+
   /* ---------- Tipsa en vän (the send itself: DM.tipBeer in js/dm.js) ---------- */
   function targets() {
     var out = [], seen = {}, DM = W.DM;
@@ -230,10 +265,23 @@
     } catch (e) {}
     return out;
   }
+  // beer2: my groups too (the tip lands in the group chat as the same card). my_groups waits at most 1.5 s; without it: friends only.
+  function myGroups() {
+    if (!W.PN || !PN.rpc || !PN.LIVE) return Promise.resolve([]);
+    var t = new Promise(function (res) { setTimeout(function () { res([]); }, 1500); });
+    var r = PN.rpc("my_groups").then(function (x) {
+      var l = x && !x.error ? (PN.parseData ? PN.parseData(x.data) : x.data) : [];
+      return (Array.isArray(l) ? l : []).filter(function (g) { return g && g.id && !g.dm && !g.ev; }).slice(0, 10).map(function (g) { return { group_id: g.id, name: g.name || "?", grp: true }; });
+    }, function () { return []; });
+    return Promise.race([r, t]);
+  }
   function tipSheet(id) {
     var d = B.data(), b = d && d.byId[String(id)]; if (!b) return;
+    myGroups().then(function (gs) { tipOpen(b, gs); });
+  }
+  function tipOpen(b, groups) {
     sheet(tl("Tipsa en vän", "Tell a friend"), function (el) {
-      var list = targets(), DM = W.DM, canSend = !!(DM && DM.tipBeer);
+      var list = targets().concat(groups || []), DM = W.DM, canSend = !!(DM && DM.tipBeer);
       var h = '<div class="bl-cm">' + H.pic(b) + "<span><b>" + esc(b.name) + "</b><small>" + esc([b.brewery, H.styleLine(b)].filter(Boolean).join(" · ")) + "</small></span></div>";
       if (!canSend || !list.length) {
         h += '<p class="bl-msg">' + esc(tl("Du kan tipsa vänner när du har lagt till några. Gå till Grupper › Vänner.", "You can tip friends once you have added some. Go to Groups › Friends.")) + "</p>";
@@ -241,7 +289,8 @@
       }
       h += '<h3 class="bl-h">' + esc(tl("Till", "To")) + '</h3><div class="bl-list" role="group">' + list.map(function (t, i) {
         var ini = (Array.from(String(t.name).trim())[0] || "?").toUpperCase();
-        return '<button type="button" class="bl-pick" role="checkbox" aria-checked="false" data-i="' + i + '"><span class="bl-av fr" aria-hidden="true">' + esc(ini) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(tl("Vän", "Friend")) + '</small></span><span class="bl-ck">' + ic("check") + "</span></button>";
+        return '<button type="button" class="bl-pick" role="checkbox" aria-checked="false" data-i="' + i + '"' + (t.grp ? ' data-g="1"' : "") + '><span class="bl-av' + (t.grp ? " grp" : " fr") + '" aria-hidden="true">' +
+          (t.grp ? ic("users") : esc(ini)) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.grp ? tl("Grupp", "Group") : tl("Vän", "Friend")) + '</small></span><span class="bl-ck">' + ic("check") + "</span></button>";
       }).join("") + "</div>" +
         '<h3 class="bl-h">' + esc(tl("En rad (valfritt)", "A line (optional)")) + '</h3><textarea class="bl-ta" maxlength="70" aria-label="' + esc(tl("En rad (valfritt)", "A line (optional)")) + '"></textarea>' +
         '<div style="margin-top:var(--sp-4)"><button type="button" class="bl-btn p full" data-bl-go="1" disabled>' + ic("send") + esc(tl("Skicka tips", "Send tip")) + "</button></div>" +
@@ -265,6 +314,6 @@
     });
   }
 
-  B.style = stylePage; B.beer = beerPage; B.tip = tipSheet;
+  B.style = stylePage; B.beer = beerPage; B.tip = tipSheet; B.about = about;
   B._badText = badText;
 })();

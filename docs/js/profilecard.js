@@ -3,7 +3,8 @@
    Opened from: the "Gänget ikväll" strip on the group page (gpage.js) and the names in a group chat (social.js).
    PROFCARD.open({ g, name, k, is_me, live, n, back })   g = {id, name}; k = the member key of group_status_v3 (looked up when missing).
    The card is a small dialog above the sheet (no sheet navigation step): ✕, Esc and a tap outside close it.
-   Missing server functions only hide the button that needs them. */
+   Missing server functions only hide the button that needs them.
+   beer2 (I-132): "<Name>s favoritöl" under the buttons (beerlib_favs_for; js/beerlib.js friendFavs draws it). */
 (function () {
   "use strict";
   var I = window.I18N, A = null, cur = null;
@@ -113,8 +114,32 @@
       }, "pc-block");
       acts.appendChild(blk);
     }
+    if (!me && g && g.id && A.LIVE && A.rpc) favs(o, card, ov);   // beer2 (I-132)
     try { card.querySelector(".pc-x").focus(); } catch (e) {}
     return true;
+  }
+  // beer2 (I-132): the person's favourite beers, under the buttons (nothing moves under the finger). beerlib_favs_for answers only
+  // for a friend or group mate and follows THEIR Synlighet (spöke = [], vänner = friends only). [] or an old server = no section,
+  // and the beer library is loaded only when there is something to show. Tap a beer = the card closes, the beer page opens.
+  function favs(o, card, ov) {
+    var box = h("section", { class: "bl-pcf", "aria-label": L("Favoritöl", "Favourite beers") });
+    var live = function () { return cur && cur.el === ov; };
+    keyOf(o).then(function (k) {
+      return k && live() ? A.rpc("beerlib_favs_for", { p_group_id: o.g.id, p_k: k }) : null;
+    }).then(function (r) {
+      var d = r && !r.error ? A.parseData(r.data) : null;
+      if (!Array.isArray(d) || !d.length || !live() || !window.PN || !window.PN.beerlib) return;
+      return window.PN.beerlib().then(function (B) {
+        return B.load().then(function () {
+          if (!live() || !B.friendFavs(box, o.name, d)) return;
+          card.appendChild(box);
+          box.addEventListener("click", function (e) {
+            var t = e.target && e.target.closest ? e.target.closest("[data-bl-beer]") : null; if (!t) return;
+            close(); B.beer(t.getAttribute("data-bl-beer"));
+          });
+        });
+      });
+    }).catch(function () {});
   }
   window.PROFCARD = {
     open: open, close: close, isOpen: function () { return !!cur; },
