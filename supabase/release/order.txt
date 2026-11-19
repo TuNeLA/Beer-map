@@ -90,4 +90,5 @@ release 0521   # srv1 sec: claim_medal / award_medals('home') need a server fact
 release 0522   # srv1: statement_timeout 20 s for anon / authenticated only where the role has none (no function change)
 release 0523   # srv1: drink cooldown from one setting (olnu_cooldown; default 10 min; staging row = 0)
 release 0524   # folkhar: poll_v2 pins of group mates get shared_groups (groups that the caller and the person are both in)
+release 0525   # beerui (I-132): beer library tables (favourites max 3, ratings, reviews + reports) and beerlib_* RPCs; nothing existing changes
 release 0436
