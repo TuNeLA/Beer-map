@@ -68,7 +68,7 @@
   function hide() { if (card) card.hidden = true; }
   function busy() {
     if (PN.s && PN.s.sheetCur) return true;
-    var els = document.querySelectorAll(".leaflet-popup, .hf-banner, .sk-banner, .fm-banner, #intro:not([hidden]), .intro-ov");
+    var els = document.querySelectorAll(".leaflet-popup, .mapboxgl-popup, .sb-pop, .hf-banner, .sk-banner, .fm-banner, #intro:not([hidden]), .intro-ov");   // .mapboxgl-popup + .sb-pop: a GL pop-up or the Systembolaget card is open (19 Nov: the empty card caught the tap that should close it)
     for (var i = 0; i < els.length; i++) { var r = els[i].getBoundingClientRect(); if (!els[i].hidden && r.width > 0 && r.height > 0 && getComputedStyle(els[i]).visibility !== "hidden") return true; }   // shown, not only in the DOM
     return /\b(sk-on|chief-on|fm-on)\b/.test(document.body.className);
   }
