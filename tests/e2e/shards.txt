@@ -28,9 +28,9 @@ map-lane   ^(map|map-b)$
 ui-01      ^(moments)$
 ui-02      ^(popfix)$
 ui-03      ^(fixmo)$
-ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump)$
+ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump|beerui)$
 ui-05      ^(social-b|fixs|camfilm|dsocial|cln)$
-ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet|beerui)$
+ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet)$
 ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3|eggs)$
 ui-08      ^(c1menus|c5extras|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk)$   chromium webkit   # + the WebKit (iPhone engine) runs
 ui-09      ^(uifix|dialekt|ui1|after2|bold-skal|cam)$
