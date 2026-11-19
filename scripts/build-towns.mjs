@@ -92,7 +92,7 @@ async function main() {
   // 25 rows per line: the file stays far under the 1200-line module limit of tests/quality/check.mjs
   const lines = [];
   for (let i = 0; i < rows.length; i += 25) lines.push(rows.slice(i, i + 25).map((r) => JSON.stringify(r)).join(","));
-  const body = "window.TOWNS_DATA = {\n  v: 1, src: \"SCB Tätorter 2023 (CC0)\",\n  K: " + JSON.stringify(kom) + ",\n  T: [\n" + lines.join(",\n") + "\n  ]\n};\n";   // data, not a hook module: no PN.mod (like js/taxi-data.js)
+  const body = "(window.PN = window.PN || {}).townsData = {\n  v: 1, src: \"SCB Tätorter 2023 (CC0)\",\n  K: " + JSON.stringify(kom) + ",\n  T: [\n" + lines.join(",\n") + "\n  ]\n};\n";   // PN.townsData (quality rule: no new window.* globals)
   fs.writeFileSync(OUT, head + body);
   console.log("towns-data.js: " + rows.length + " towns, " + kom.length + " kommuner, " + rows.filter((r) => r[6]).length + " demonyms, " +
     Math.round((head + body).length / 1024) + " KB");

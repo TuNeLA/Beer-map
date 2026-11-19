@@ -12,7 +12,7 @@ function towns() {
   const ctx = vm.createContext(w);
   vm.runInContext(fs.readFileSync(path.join(DOCS, "js/towns-data.js"), "utf8"), ctx);
   vm.runInContext(fs.readFileSync(path.join(DOCS, "js/towns.js"), "utf8"), ctx);
-  return w.TOWNS;
+  return w.PN.towns;
 }
 
 test("towns: the data file has every tätort (≥ 1 900 rows, SCB CC0) and Ludvika with its demonym", () => {

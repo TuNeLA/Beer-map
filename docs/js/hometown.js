@@ -58,7 +58,7 @@
     TOWNS.forEach(add);
     try { (window.CITIES && window.CITIES.list || []).forEach(function (c) { add(c.name); }); } catch (e) {}
     try { (window.TAXI_DATA && window.TAXI_DATA.towns || []).concat(window.TAXI_DATA && window.TAXI_DATA.places || []).forEach(function (c) { add(c.town); }); } catch (e) {}   // bold bd09: + places
-    if (full) try { window.TOWNS.list().forEach(function (t) { if (valid(t.name)) add(t.name); }); } catch (e) {}
+    if (full) try { window.PN.towns.list().forEach(function (t) { if (valid(t.name)) add(t.name); }); } catch (e) {}
     return out;
   }
   function clean(s) { return String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -132,7 +132,7 @@
   // E7: name → [lat, lng] of the biggest tätort with that name (js/towns.js list, sorted by population). Built once.
   var txy = null, txyN = 0;
   function townXY() {
-    var l = []; try { l = window.TOWNS ? window.TOWNS.list() : []; } catch (e) {}
+    var l = []; try { l = window.PN && window.PN.towns ? window.PN.towns.list() : []; } catch (e) {}
     if (txy && txyN === l.length) return txy;
     txy = {}; txyN = l.length;
     l.forEach(function (t) { var k = t.name.toLowerCase(); if (!txy[k]) txy[k] = [t.lat, t.lng]; });
@@ -261,7 +261,7 @@
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); pickIt(inp.value); } });
       drawCur(); draw();
       // E7: the full town list loads on demand (js/towns.js); redraw once it is there (search and "Nära dig" get every tätort)
-      try { if (window.TOWNS) window.TOWNS.ready().then(function (ok) { if (ok && document.body.contains(list)) draw(); }); } catch (e) {}
+      try { if (window.PN && window.PN.towns) window.PN.towns.ready().then(function (ok) { if (ok && document.body.contains(list)) draw(); }); } catch (e) {}
       // Location already allowed: a quiet coarse fix sorts "Nära dig" (no prompt can show in this state).
       if (!pos) granted().then(function (ok) {
         if (!ok) return;

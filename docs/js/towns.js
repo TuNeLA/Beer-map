@@ -1,10 +1,10 @@
 /* PintsNow — TOWNS: the nearest Swedish town on the phone, with no network call (E7, data-sources.md item 10).
    Before: js/ride.js asked Nominatim (reverse) for the area of a pickup point. The Nominatim usage policy calls periodic
    app requests "bulk geocoding" and asks apps to be able to switch service without an update. Now: our own list.
-   Data: js/towns-data.js (window.TOWNS_DATA, made by scripts/build-towns.mjs from SCB "Statistiska tätorter 2023", CC0):
+   Data: js/towns-data.js (PN.townsData, made by scripts/build-towns.mjs from SCB "Statistiska tätorter 2023", CC0):
    2 017 tätorter, row [name, lat, lng, r, pop, kommun index, demonym?]. Loaded on demand (x-lazy data-demand in
    index.html, about 90 KB, precached by sw.js like every file index.html names).
-   Public: window.TOWNS = {
+   Public: PN.towns = {   (no window global: quality rule)
      ready() → Promise (loads the data once; rejects never: no data = nearest() stays null),
      nearest(lat, lng, maxM) → { name, lat, lng, r, pop, kommun, dem, d, edge, inside } | null (sync, null before ready),
        chosen by the EDGE distance (d − r): a point in a big city belongs to the city, not to a small village nearer its centre.
@@ -21,7 +21,7 @@
     return n ? n.getAttribute("src") : "./js/towns-data.js";
   }
   function take() {
-    var D = window.TOWNS_DATA;
+    var D = window.PN && window.PN.townsData;
     if (!D || !D.T || !D.T.length) return false;
     data = D;
     rows = D.T.map(function (x) {
@@ -35,7 +35,7 @@
     if (P) return P;
     var load = window.PN && window.PN.load;
     if (!load) return Promise.resolve(false);
-    P = load(src(), { test: function () { return !!window.TOWNS_DATA; } }).then(take, function () { P = null; return false; });
+    P = load(src(), { test: function () { return !!(window.PN && window.PN.townsData); } }).then(take, function () { P = null; return false; });
     return P;
   }
   function dist(a, b, c, d) {
@@ -71,7 +71,6 @@
   }
   function list() { if (!rows && !take()) return []; return rows.slice(); }
 
-  window.TOWNS = { ready: ready, nearest: nearest, area: area, areaNow: areaNow, near: near, list: list,
+  (window.PN = window.PN || {}).towns = { ready: ready, nearest: nearest, area: area, areaNow: areaNow, near: near, list: list,
     src: function () { return data ? data.src : ""; } };
-  if (window.PN) PN.mod("TOWNS");
 })();

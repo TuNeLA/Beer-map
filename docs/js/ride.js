@@ -186,7 +186,7 @@
     return new Promise(function (res) {
       var done = false, fin = function (v) { if (done) return; done = true; v = v || t0 || ""; if (v) areaC[k] = v; res(v); };
       setTimeout(function () { fin(null); }, 4000);
-      try { window.TOWNS.area(lat, lng).then(fin, function () { fin(null); }); } catch (e) { fin(null); }
+      try { window.PN.towns.area(lat, lng).then(fin, function () { fin(null); }); } catch (e) { fin(null); }
     });
   }
   function areaFromAddr(a, t0) {
