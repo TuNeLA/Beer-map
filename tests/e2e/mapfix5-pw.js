@@ -201,7 +201,8 @@ async function b9(browser) {
         im.parts.filter((q) => q.sel === ".pill").forEach((q) => {
           const b = [v.x + q.bb[0] * k, v.y + q.bb[1] * k, v.x + q.bb[2] * k, v.y + q.bb[3] * k], cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
           for (const off of [7, 9]) for (const [x, y] of [[cx, b[3] + off], [cx, b[1] - off], [b[0] - off, cy], [b[2] + off, cy]]) {
-            if (Math.abs(x - cx) > Math.max((b[2] - b[0]) / 2, 22) || Math.abs(y - cy) > Math.max((b[3] - b[1]) / 2, 22)) continue;
+            // 2 px inside the 44 px area (CI flake 19 Nov: a point exactly on the 22 px edge fell out by float rounding)
+            if (Math.abs(x - cx) > Math.max((b[2] - b[0]) / 2, 22) - 2 || Math.abs(y - cy) > Math.max((b[3] - b[1]) / 2, 22) - 2) continue;
             out.push({ id: v.id, x: cv.left + x, y: cv.top + y, h: Math.round(b[3] - b[1]), w: Math.round(b[2] - b[0]), off });
           }
         });
