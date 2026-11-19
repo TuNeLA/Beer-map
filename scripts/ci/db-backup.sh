@@ -27,7 +27,8 @@ union all select 'public_functions', count(*) from pg_proc p join pg_namespace n
 commit;"
 why() {   # the restore error + the failing line of roles.sql / schema.sql (never data.sql: it holds the users' data)
   # only psql's own error lines (CONTEXT / DETAIL lines can quote a row); a data.sql error shows its line number only
-  awk '/^psql:/ { if ($0 ~ /^psql:[^:]*data\.sql:/) { split($0, a, ":"); print "psql: data.sql line " a[3] ": an error (text hidden: it can hold user data)" } else print substr($0, 1, 300) }' restore.log | tail -n 20
+  if [ "$SRC_NAME" = fixture ]; then tail -n 20 restore.log | cut -c1-300; sed -n "$(grep -o '^psql:[^:]*data\.sql:[0-9]*' restore.log | head -n 1 | awk -F: '{print ($3 > 3 ? $3 - 3 : 1) "," $3 + 1}')p" "$d/data.sql" 2>/dev/null | cut -c1-200; fi   # seed data only
+  [ "$SRC_NAME" = fixture ] || awk '/^psql:/ { if ($0 ~ /^psql:[^:]*data\.sql:/) { split($0, a, ":"); print "psql: data.sql line " a[3] ": an error (text hidden: it can hold user data)" } else print substr($0, 1, 300) }' restore.log | tail -n 20
   local m; m=$(grep -o "^psql:[^:]*\(roles\|schema\)\.sql:[0-9]*" restore.log | head -n 1 || true)
   if [ -n "$m" ]; then local f=${m#psql:}; local n=${f##*:}; f=${f%:*}; echo "--- $f line $n:"; sed -n "$(( n > 3 ? n - 3 : 1 )),$(( n + 1 ))p" "$f" | cut -c1-240; fi
   say "FAIL: the restore stopped with an error (see the job log)"
@@ -63,11 +64,13 @@ restore)
   7z x -y "-p$BACKUP_KEY" "-o$w" "$arc" > /dev/null; d=$(ls "$w"); cd "$w"
   mkdir -p stack && (cd stack && supabase init --force > /dev/null 2>&1 || supabase init > /dev/null)
   sed -i 's/^major_version = .*/major_version = 17/' stack/supabase/config.toml
-  (cd stack && supabase start -x imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor)
+  (cd stack && supabase start -x imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > start.log 2>&1) || { tail -n 20 stack/start.log; say "FAIL: the local database did not start"; exit 1; }   # quiet: it prints the local default keys
   # `ALTER COLUMN .. SET (pg_attver=N)` lines: a column option that the target Postgres does not know (seen in the fixture
   # proof, run 44520381140; origin unknown). They change nothing in data or rights: skip them, and say how many.
   nv=$(grep -cE '^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$' "$d/schema.sql" || true)
   if [ "${nv:-0}" -gt 0 ]; then grep -vE '^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$' "$d/schema.sql" > "$d/schema.tmp"; mv "$d/schema.tmp" "$d/schema.sql"; say "note: $nv 'SET (pg_attver=..)' column lines skipped (unknown option; BACKUP.md restores need the same)"; fi
+  # BACKUP.md step 2 for a new project: pg_cron on first (live has cron jobs: data.sql fills cron.job)
+  psql "$LOCAL_URL" -X -q -v ON_ERROR_STOP=1 -c "create extension if not exists pg_cron with schema pg_catalog" > /dev/null
   psql "$LOCAL_URL" -X -q --single-transaction -v ON_ERROR_STOP=1 -f "$d/roles.sql" -f "$d/schema.sql" \
     -c "SET session_replication_role = replica" -f "$d/data.sql" > restore.log 2>&1 || { why; exit 1; }
   counts "$LOCAL_URL" > got.txt
