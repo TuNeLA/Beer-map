@@ -102,6 +102,7 @@ none with reduced motion. No endless animations (skeletons breathe 3 times, then
 | Right rail | Under row 2, top right: **Spökläge · Event · ⋯ Mer · Sök (bar search, I-126) · my count**, 44 px, 8 px apart. Mer holds Värme, Senaste dagarna, Taxi hem, Ställen nära dig, Kartstil. Usage data (client_vitals sheet opens, 2026-11-07): Event 10, Taxi 3, Mer 1; toggles are not logged. |
 | Banners, toasts, captions | Column left of the rail, under the HUD row. They never cover the rail. |
 | Locate | Bottom right, 12 px above the dock's right box (precision), right edges aligned (thumb reach). |
+| 3D (tilt) | Right above Locate, 8 px gap, same .pn-rail look (pressed = amber). Only on the GL map (js/tilt.js, M4, 19 Nov). |
 | Dock | Grupper and precision are the same box (88 × 80). Precision = one toggle that shows the current mode (Exakt / Område); a short bubble after a change. ÖL! = viewport centre ± 1 px. |
 | ANNAT | A 50 px satellite on the upper-right edge of the ÖL! circle (one family: beer or something else). |
 | Map credits | Mapbox wordmark (65 × 20, not styled) + ⓘ (opens © Mapbox © OpenStreetMap, Improve this map) bottom-left at the map edge, quiet. Mapbox: "You may not style the Mapbox logo", the logo may move to another corner but must stay on the map, text attribution "must be legible" (https://docs.mapbox.com/help/dive-deeper/attribution/). |

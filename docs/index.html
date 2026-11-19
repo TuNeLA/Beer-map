@@ -101,6 +101,8 @@
 <link rel="stylesheet" href="./meriter.css">
 <!-- rel="x-lazy-css": not loaded at start; js/forfest.js adds it on the first open. -->
 <link rel="x-lazy-css" href="./forfest.css">
+<!-- rel="x-lazy-css": not loaded at start; js/barsearch.js adds it when the Öl tab opens (I-132). -->
+<link rel="x-lazy-css" href="./beerlib.css">
 <link rel="stylesheet" href="./ceremony.css">
 <link rel="x-lazy-css" data-boot="1" href="./helg.css">
 <link rel="x-lazy-css" data-boot="1" href="./passport.css">
@@ -311,6 +313,9 @@
 <script defer src="./js/golden.js"></script>
 <!-- type="text/x-lazy" data-demand: only loaded on demand (js/delight.js: first shake / Testa ölglaset). -->
 <script type="text/x-lazy" data-demand="1" src="./js/olglas.js"></script>
+<!-- data-demand: the beer library (I-132); js/barsearch.js PN.beerlib() loads these when the Öl tab opens. -->
+<script type="text/x-lazy" data-demand="1" src="./js/beerlib.js"></script>
+<script type="text/x-lazy" data-demand="1" src="./js/beerlib-pages.js"></script>
 <script defer src="./js/delight-more-content.js"></script>
 <script defer src="./js/delight-more.js"></script>
 <script defer src="./js/near.js"></script>
