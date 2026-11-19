@@ -202,6 +202,7 @@ run x8         $B x8-pw.js         # lane x8: weak signal: ÖL! outbox (offline 
 run start1     $B start1-pw.js     # lane start1 (I-107 "the app opened twice"): saved map first on every start (dimmed + 'Senast uppdaterad'), new version waits (no reload under the user; real service-worker update cycle on temp copies of docs/), version-mix fix, tiles kept, no double download, wipe at logout / deletion
 run perfchat   $B perf-pw.js --part chat   # lane fixP: sign-in burst ≤ 12 / 15 s, chat tick = 1 request (7 → 15 → 30 s), hidden 0, old server (no 0466), flag cache
 run perf       $B perf-pw.js       # lane perf (load X10): ≤ 3 requests/min open, cold start ≤ 12, reopen, game 2.5 s + 0 while hidden, busy back-off, old server (no 0465)
+run srvsync    $B srvsync-pw.js    # lane srvsync: A7 pn_sync (versions, fallback to rpc_bundle2, hidden = 0), A8 draw only on change, B3 real errors (not "no network"), C6 medals not from the poll
 run left       $B left-pw.js       # lane left (11 Nov): T-05b Regler before every post RPC (photo, voice, invite, event, wish …), Z1 zone_counts in the poll bundle
 run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallback map tap rule + clusters, T-14 ticker one snapshot, T-15 top bar pill + Ute nu, T-24 crowd word
 run heat       $B heat-pw.js       # lane heat (0485/0486): client draws the server heat; no double glow on my / my mate's pin; no glow near a village home

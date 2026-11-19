@@ -16,7 +16,7 @@ gate-b     ^(start1|x8|mycount|takeover|ci1)$                   site=bundled gat
 # --- timing checks (taps < 100 ms, frame budgets): one test at a time ---
 timing-1   ^(speed1|d4map|c2speed|inst|s1speed)$                par=1
 timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1|hemzon)$       par=1
-perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine
+perf       ^(perf|perfchat|srvsync)$                            # request counts over real minutes: two at once is fine
 
 # --- real Mapbox GL (need MAPBOX_TEST_TOKEN) and the map lane ---
 map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c)$

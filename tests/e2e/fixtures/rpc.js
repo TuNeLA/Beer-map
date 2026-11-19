@@ -125,6 +125,9 @@ function build(now) {
     after_flags_get: () => ({ v: 1, flags: { morning_push: false, push_ev: false, moments: false, moment_push: false, game_push: false } }),   // moments.js
     game_launch_dates: () => ({ v: 1, games: { kort: "2026-11-07", vem: "2026-11-07", aldrig: "2026-11-07", hellre: "2026-11-07", quiz: "2026-11-07", kung: "2026-11-07" } }),
     // lane fixM T-15: zones.js asks it at every zoom now (the top bar pill = the kommun under the map centre + its count)
+    // lane srvsync (0525): pn_sync is NOT on this mocked server (an answer without pn: 1 = "no pn_sync"), so the app uses
+    // rpc_bundle2 as before and the helpers' bundle routes keep working. srvsync-pw.js answers pn_sync itself.
+    pn_sync: () => ({ code: "PGRST202", message: "Could not find the function public.pn_sync(p_calls, p_have) in the schema cache" }),
     zone_counts: () => ({ kommun: [{ c: "2085", n: 12, bar: "La Parma Pub & Restaurang" }, { c: "2080", n: 4 }, { c: "2061", n: null }], lan: [{ c: "20", n: 17, top: "2085" }], total: 31, k: 3, at: new Date(now).toISOString() }),
   };
 }

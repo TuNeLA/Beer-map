@@ -479,16 +479,20 @@
     if (total < 1) total = Math.max(1, (before | 0) + 1);   // ds19: an empty answer never says "Nr 0"
     var l = U.level(total);
     if (PN.s.meState) { PN.s.meState.beer_count = d.beer_count | 0; PN.s.meState.undo_until = d.undo_until || null; }
-    var cardClosed = null;
-    var big = drinkFx(total, Math.max(before, total - 1), { noToast: true, onClose: function () { if (cardClosed) cardClosed(); } });
-    var text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
-    // the plain fact (store toast, screen readers). Not t("lvlN"): v14.js makes that "Nr N ikväll. Skål!" (a cheer).
-    var fact = tl("Öl nr " + total + " ikväll", "Beer no. " + total + " tonight") + (spot.home ? " · " + t("homeNote") : "");
+    // B3 (srvsync): from here the server HAS the beer. Each UI part runs in uiTry: an effect / toast / map error is logged
+    // (console + PNLOG err.js) and never reaches the caller's "could not report" catch (the user would tap again).
+    var cardClosed = null, big = false, text = "", fact = "";
+    uiTry("fx", function () { big = drinkFx(total, Math.max(before, total - 1), { noToast: true, onClose: function () { if (cardClosed) cardClosed(); } }); });
+    uiTry("text", function () {
+      text = levelToast(total) + (spot.home ? " · " + t("homeNote") : "");
+      // the plain fact (store toast, screen readers). Not t("lvlN"): v14.js makes that "Nr N ikväll. Skål!" (a cheer).
+      fact = tl("Öl nr " + total + " ikväll", "Beer no. " + total + " tonight") + (spot.home ? " · " + t("homeNote") : "");
+    });
     var cls = l === 2 ? "med" : l === 1 ? "hot" : "";
     if (q) {
       // nightfix: the "sent" line REPLACES the "Skickas när du har täckning" line of the same tap (calm2 dropped it as a 2nd toast
       // when the signal came back within 8 s, so the stale "will be sent" line was the last word)
-      if (!big) { document.querySelectorAll("#toasts .x8-q").forEach(function (x) { x.remove(); }); toast(X8.say("x8.sent", { time: X8.hhmm(q.at) }) + " · " + text, { cls: cls, ms: 6000, upd: 1 }); }
+      if (!big) uiTry("toast", function () { document.querySelectorAll("#toasts .x8-q").forEach(function (x) { x.remove(); }); toast(X8.say("x8.sent", { time: X8.hhmm(q.at) }) + " · " + text, { cls: cls, ms: 6000, upd: 1 }); });
       if (ghost && !res.v2) rpc("stop_beer").then(function () { refresh(); });
       mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, queued: true });
       refresh();
@@ -496,26 +500,32 @@
     }
     // One answer per tap. 5 / 10 / 15: the card (I-105). Web build: the count burst (I-114, owner 15 Nov: "the number that comes
     // up on the screen with some effects is better" than a pop-up). Store build / no mycount.js: ONE plain fact toast.
-    if (big) beerSayClear();
-    else if (burstOn()) { beerSayClear(); srSay(fact); }
-    else beerSay(fact, { ms: 5000 });
-    if (res.v2 && d.undo_until) { if (big) cardClosed = undoAfterCard(d); else showUndo(d); }
-    if (window.FX.juice) window.FX.juice.accepted(l, big); else { if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]); window.FX.sound.beer(); }
+    uiTry("say", function () {
+      if (big) beerSayClear();
+      else if (burstOn()) { beerSayClear(); srSay(fact); }
+      else beerSay(fact, { ms: 5000 });
+    });
+    uiTry("undo", function () { if (res.v2 && d.undo_until) { if (big) cardClosed = undoAfterCard(d); else showUndo(d); } });
+    uiTry("juice", function () { if (window.FX.juice) window.FX.juice.accepted(l, big); else { if (!big) window.FX.vibrate(l ? [40, 60, 40] : [30, 40, 60]); window.FX.sound.beer(); } });
     // Spökläge: v13 server hides the pin itself (no stop_beer, no push, no record_bar). Old server: stop_beer.
     if (ghost) { if (!res.v2) rpc("stop_beer").then(function () { refresh(); }); }
     else if (res.v2 && d.undo_until) scheduleNotify(Date.parse(d.undo_until) || Date.now() + 120000);
     else notifyGroup();
     mods("onBeerAccepted", d, { precise: !!spot.precise, ghost: ghost, total: total, big: big });
-    document.querySelectorAll(".pn-beerok").forEach(function (x) { x.remove(); });   // I-105 / I-114: no "Öl #N registrerad" chip (pnui.js makes it in the hook above): the card, the burst or the store toast is the one answer
+    uiTry("chip", function () { document.querySelectorAll(".pn-beerok").forEach(function (x) { x.remove(); }); });   // I-105 / I-114: no "Öl #N registrerad" chip (pnui.js makes it in the hook above): the card, the burst or the store toast is the one answer
     if (!ghost && spot._ciBar) moveCheckin(spot._ciBar);   // fixJ T-07
     if (PUSH_ON && !ghost) window.PUSH.setLocation(rpc, +d.lat, +d.lng);
     if (PUSH_ON && window.PUSH.supported() && Notification.permission === "default" && U.ls.get("olnu.notifAsked", "") !== "1") {
       /* ux review: no notification ask on a beer tap. Calm moments only: after a group join, app start with a group. */
     }
-    if (isFinite(d.lat) && isFinite(d.lng) && !ghost) {
-      map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15));
-    }
+    if (isFinite(d.lat) && isFinite(d.lng) && !ghost) uiTry("view", function () { map.setView([d.lat, d.lng], Math.max(map.getZoom(), 15)); });
     refresh();
+  }
+  function uiTry(where, fn) {
+    try { fn(); } catch (e) {
+      try { console.warn("olnu beerDone " + where, e); } catch (x) {}
+      try { if (window.PNLOG && window.PNLOG.event) window.PNLOG.event("err.js", { m: String((e && e.message) || e).slice(0, 120), f: "app-beer.js:beerDone:" + where }); } catch (x) {}
+    }
   }
   // lane bump: a beer the server logged after a phone skål (0509 bump_finish / bump_wait → post_beer_v2). Same UI as a tap.
   function beerFromBump(d, spot, ghost) {
