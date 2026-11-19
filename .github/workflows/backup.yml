@@ -54,7 +54,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         if: steps.chk.outputs.ok == 'true'
         with:
-          version: latest
+          version: 2.122.1   # pinned: "latest" asks the GitHub API and hit its rate limit (run 44519686080)
       - name: Dump (read only) + encrypt
         if: steps.chk.outputs.ok == 'true'
         run: bash scripts/ci/db-backup.sh dump "$RUNNER_TEMP/backup"
@@ -109,7 +109,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         if: steps.chk.outputs.ok == 'true'
         with:
-          version: latest
+          version: 2.122.1   # pinned: "latest" asks the GitHub API and hit its rate limit (run 44519686080)
       - name: Dump (read only) + encrypt
         if: steps.chk.outputs.ok == 'true'
         run: bash scripts/ci/db-backup.sh dump "$RUNNER_TEMP/backup"
