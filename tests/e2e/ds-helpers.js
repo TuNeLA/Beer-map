@@ -163,7 +163,7 @@ async function ctxFor(browser, vp, o = {}) {
       set(v) { _L = v; if (v && v.Map && !v.__hooked) { v.__hooked = 1; v.Map.addInitHook(function () { window.__map = this; }); } } });
   });
   const page = await ctx.newPage();
-  page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+  page.on("pageerror", (e) => console.log("PAGEERROR", e.message, String(e.stack || "").slice(0, 900).replace(/\n/g, " | ")));
   await mock(page, o);
   return { ctx, page };
 }
