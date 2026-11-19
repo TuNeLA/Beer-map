@@ -64,6 +64,10 @@ restore)
   mkdir -p stack && (cd stack && supabase init --force > /dev/null 2>&1 || supabase init > /dev/null)
   sed -i 's/^major_version = .*/major_version = 17/' stack/supabase/config.toml
   (cd stack && supabase start -x imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor)
+  # `ALTER COLUMN .. SET (pg_attver=N)` lines: a column option that the target Postgres does not know (seen in the fixture
+  # proof, run 44520381140; origin unknown). They change nothing in data or rights: skip them, and say how many.
+  nv=$(grep -cE '^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$' "$d/schema.sql" || true)
+  if [ "${nv:-0}" -gt 0 ]; then grep -vE '^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$' "$d/schema.sql" > "$d/schema.tmp"; mv "$d/schema.tmp" "$d/schema.sql"; say "note: $nv 'SET (pg_attver=..)' column lines skipped (unknown option; BACKUP.md restores need the same)"; fi
   psql "$LOCAL_URL" -X -q --single-transaction -v ON_ERROR_STOP=1 -f "$d/roles.sql" -f "$d/schema.sql" \
     -c "SET session_replication_role = replica" -f "$d/data.sql" > restore.log 2>&1 || { why; exit 1; }
   counts "$LOCAL_URL" > got.txt
