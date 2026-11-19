@@ -1117,7 +1117,7 @@
     on: function () { return on; },
     sync: sync,
     // a1map I-28: app-map.js showMe(): my position (drawn in GL under the bar icons while GL is on). true = GL draws it.
-    me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
+    me: function (lat, lng) { meLL = lat != null && lng != null && isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null;   /* mapfix5 B11: me(null) = no dot (was [0, 0]) */ if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
     // tests: my marker. at = the icon I am checked in at, cov = the icon my position is on (I stand beside it), px = where it is drawn
     _me: function () {
       var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR, why: meWhy, busy: meBusy };   // busy: a check waits for GL idle

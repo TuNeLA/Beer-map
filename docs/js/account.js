@@ -659,7 +659,9 @@
     var unsub = window.PUSH && window.PUSH.supported && window.PUSH.supported() && A && A.PUSH_ON
       ? Promise.race([Promise.resolve(window.PUSH.disable(A.rpc)).catch(function () {}), new Promise(function (r) { setTimeout(r, 3000); })]) : Promise.resolve();
     unsub.then(function () { return c ? call(function () { return c.auth.signOut({ scope: "local" }); }) : null; }).then(function () {
-      [AUTH_KEY, AUTH_KEY + "-user", AUTH_KEY + "-code-verifier", "olnu.uid", "olnu.acct.prev", PEND_KEY, GROUP_KEY, NUDGE_KEY].forEach(function (k) { lsSet(k, null); });
+      // mapfix5 B11: where I was (the saved camera, the last own fix) leaves the phone too; app-map.js stops saving the camera
+      try { document.dispatchEvent(new CustomEvent("pn:forget-place")); } catch (e) {}
+      [AUTH_KEY, AUTH_KEY + "-user", AUTH_KEY + "-code-verifier", "olnu.uid", "olnu.acct.prev", PEND_KEY, GROUP_KEY, NUDGE_KEY, "olnu.cam", "olnu.lastFix"].forEach(function (k) { lsSet(k, null); });
       lsSet("olnu.flyttAsked", "1");
       // start1 (audit F7): logout removed only the auth keys. Now friends' pins, chats, photos and faces leave the phone too
       // (x8.js wipe: snapshot, WARM cache, outboxes, olnu-photos, olnu-film-q, olnu-bold, the faces in olnu-pending).
