@@ -1,0 +1,112 @@
+name: db backup
+# C11 (lane ciwork, 19 Nov 2026). The steps are in scripts/ci/db-backup.sh.
+#   Weekly (Sunday): a READ-ONLY dump of the LIVE database (roles, schema, data, like supabase/schema/BACKUP.md)
+#     -> ONE encrypted 7z (AES-256, file names hidden) -> a GitHub artifact of this run, kept 90 days (= about 12 backups).
+#   Monthly (the 2nd) and by hand: the same, plus the restore test: the artifact is downloaded again, opened and loaded into
+#     a LOCAL Supabase database inside the runner (Docker), then the counts are compared with the dump.
+# Where the dump is kept, and why: an encrypted artifact here, not the private ops repo. It expires by itself after 90 days,
+#   needs no second token, and never lands in a git history or on an agent's machine (agents clone the ops repo).
+#   This repo is public, so the file is always encrypted before it is uploaded. Nothing plain leaves the runner.
+# Secret (the owner adds it): LIVE_DB_URL = the Session pooler connection string, in the GitHub ENVIRONMENT `db-backup`
+#   with deployment branch `main` only, so a run on any other branch (ci/*, big-update) cannot read it.
+#   No secret yet: the job writes "SKIPPED" in its summary and stays green. Optional: BACKUP_PASSPHRASE (the 7z password;
+#   without it the 7z password is the connection string itself).
+# The restore test never writes to a Supabase project. Not into staging either: live accounts must not land in staging
+#   (its anon key is public in the /test/ build, and it has the test-kit functions).
+# Proof without live data: a ci/<lane>-<n> push that adds or changes the file `.ci-backup` (like .ci-only: `git add -f`,
+#   never merge it) runs the same steps on STAGING (read-only, secret STAGING_DB_URL). Other pushes do not start this workflow.
+on:
+  schedule:
+    - cron: "17 3 * * 0"   # Sunday 03:17 UTC: backup
+    - cron: "43 4 2 * *"   # the 2nd of each month 04:43 UTC: backup + restore test
+  workflow_dispatch:
+    inputs:
+      restore:
+        description: "also run the restore test"
+        type: boolean
+        default: true
+  push:
+    branches: ["ci/**"]
+    paths: [".ci-backup"]
+permissions:
+  contents: read
+concurrency:
+  group: db-backup-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live:
+    if: github.event_name != 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment: db-backup
+    env:
+      SRC_NAME: live
+      SRC_DB_URL: ${{ secrets.LIVE_DB_URL }}
+      BACKUP_KEY: ${{ secrets.BACKUP_PASSPHRASE || secrets.LIVE_DB_URL }}
+      RESTORE: ${{ github.event.schedule == '43 4 2 * *' || (github.event_name == 'workflow_dispatch' && inputs.restore) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Is the secret there?
+        id: chk
+        run: bash scripts/ci/db-backup.sh check
+      - uses: supabase/setup-cli@v1
+        if: steps.chk.outputs.ok == 'true'
+        with:
+          version: latest
+      - name: Dump (read only) + encrypt
+        if: steps.chk.outputs.ok == 'true'
+        run: bash scripts/ci/db-backup.sh dump "$RUNNER_TEMP/backup"
+      - uses: actions/upload-artifact@v4
+        if: steps.chk.outputs.ok == 'true'
+        with:
+          name: db-backup-live-${{ github.run_id }}
+          path: ${{ runner.temp }}/backup/*.7z
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        if: steps.chk.outputs.ok == 'true' && env.RESTORE == 'true'
+        with:
+          name: db-backup-live-${{ github.run_id }}
+          path: ${{ runner.temp }}/restore
+      - name: Restore test (into a local database on this runner)
+        if: steps.chk.outputs.ok == 'true' && env.RESTORE == 'true'
+        run: bash scripts/ci/db-backup.sh restore "$(ls "$RUNNER_TEMP"/restore/*.7z | head -n 1)"
+
+  staging-proof:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      SRC_NAME: staging
+      SRC_DB_URL: ${{ secrets.STAGING_DB_URL }}
+      BACKUP_KEY: ${{ secrets.STAGING_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Is the secret there?
+        id: chk
+        run: bash scripts/ci/db-backup.sh check
+      - uses: supabase/setup-cli@v1
+        if: steps.chk.outputs.ok == 'true'
+        with:
+          version: latest
+      - name: Dump (read only) + encrypt
+        if: steps.chk.outputs.ok == 'true'
+        run: bash scripts/ci/db-backup.sh dump "$RUNNER_TEMP/backup"
+      - uses: actions/upload-artifact@v4
+        if: steps.chk.outputs.ok == 'true'
+        with:
+          name: db-backup-staging-${{ github.run_id }}
+          path: ${{ runner.temp }}/backup/*.7z
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        if: steps.chk.outputs.ok == 'true'
+        with:
+          name: db-backup-staging-${{ github.run_id }}
+          path: ${{ runner.temp }}/restore
+      - name: Restore test (into a local database on this runner)
+        if: steps.chk.outputs.ok == 'true'
+        run: bash scripts/ci/db-backup.sh restore "$(ls "$RUNNER_TEMP"/restore/*.7z | head -n 1)"
