@@ -68,18 +68,19 @@ jobs:
       # (a new runner image without a library), the system packages are installed then.
       - name: Playwright browsers (cache)
         id: pw
+        if: ${{ !contains(matrix.browsers, 'webkit') }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.bkey }}
       - name: Install Playwright browsers (cache miss)
-        if: steps.pw.outputs.cache-hit != 'true'
+        if: ${{ !contains(matrix.browsers, 'webkit') && steps.pw.outputs.cache-hit != 'true' }}
         timeout-minutes: 12
         run: npx playwright install --with-deps ${{ matrix.browsers }}
       # 19 Nov: a cached WebKit start hung for 30 min (ui-08 cancelled twice, run 44451466712). Each launch now has a 60 s limit,
       # the probe a 150 s limit, and the step 14 min, so a bad cache falls back to a fresh install instead of eating the job.
       - name: Check that the cached browsers start (cache hit)
-        if: steps.pw.outputs.cache-hit == 'true'
+        if: ${{ !contains(matrix.browsers, 'webkit') && steps.pw.outputs.cache-hit == 'true' }}
         timeout-minutes: 14
         env:
           BROWSERS: ${{ matrix.browsers }}
@@ -89,6 +90,16 @@ jobs:
             (async () => { for (const b of process.env.BROWSERS.split(/\s+/).filter(Boolean)) { const x = await pw[b].launch({ timeout: 60000 }); await x.close(); console.log(b + " starts"); } })()
               .catch((e) => { console.log(String(e).slice(0, 300)); process.exit(1); });' \
           || timeout 660 npx playwright install --with-deps $BROWSERS
+      # G10 (19 Nov): WebKit shards run their tests inside the official Playwright image (same version as package-lock.json).
+      # Why: WebKit needs ~150 Ubuntu packages; the runner image lacks them and apt hung on the Ubuntu mirrors (runs 44485641148,
+      # 44490453143). The image has the browsers and their libraries built in: no apt. Remove when: never (cheaper and steadier).
+      - name: Pull the Playwright image (WebKit shards)
+        if: ${{ contains(matrix.browsers, 'webkit') }}
+        timeout-minutes: 8
+        run: |
+          PWV=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")
+          echo "PW_IMAGE=mcr.microsoft.com/playwright:v$PWV-noble" >> "$GITHUB_ENV"
+          timeout 420 docker pull "mcr.microsoft.com/playwright:v$PWV-noble"
       - name: Build the site that goes live (shards with site=bundled; scripts/build-site.mjs = the deploy's own build)
         if: matrix.site == 'bundled'
         run: node scripts/build-site.mjs --out "$RUNNER_TEMP/site" --bundle on --sha "$GITHUB_SHA"
@@ -117,7 +128,14 @@ jobs:
           PAR: ${{ matrix.par }}   # tests at once in this shard (shards.txt par=N, default 2; the runner has 4 CPUs)
           PLAIN_PORT: ${{ matrix.site == 'bundled' && '8872' || '' }}   # bundle-smoke compares the built site with plain docs/
           FLAKE_GATE: '1'   # a test that passes only on the rerun in 2 runs in a row = FAIL (tests/e2e/flakes.json)
-        run: bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
+        run: |
+          if [ -n "$PW_IMAGE" ]; then
+            docker run --rm --init --ipc=host --network host -v "$PWD:/w" -w /w \
+              -e MAPBOX_TEST_TOKEN -e PN_TARGET -e TO -e PAR -e PLAIN_PORT -e FLAKE_GATE -e TZ -e CI -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+              "$PW_IMAGE" bash -c "command -v curl >/dev/null || { echo 'no curl in the image'; exit 3; }; git config --global --add safe.directory /w 2>/dev/null; bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'"
+          else
+            bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
+          fi
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
