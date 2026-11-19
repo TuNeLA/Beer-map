@@ -145,6 +145,7 @@ NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + 
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
 run social2    $B social2-pw.js
+run invite     $B invite-pw.js     # lane invite E1: invite a friend in 3 taps from the map (Grupper → group pill → the app), same links as the JOIN sheet
 run placecard  $B placecard-pw.js   # lane placesdata: place card (cuisine, hours, $ level, chips, links, OSM source; data + RPC mocked)
 run fxg        $B fxg-pw.js        # ds50–ds60: bar sheet, group page, members, chat, ‹ ✕, warm, icons, join fixes
 run strip      $B strip-test.js

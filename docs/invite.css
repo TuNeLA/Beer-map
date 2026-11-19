@@ -111,3 +111,25 @@
 @media (max-width:360px){.inv-ppl-h{min-width:80px}}
 /* followups (R1-36): the invite line's PNI envelope, same box as the other legend marks */
 .inv-legend .lg-inv{flex:none;width:14px;height:14px;margin-top:0;color:var(--ds-amber-t)}
+/* E1 quick invite (lane invite): the "Bjud in en kompis" box at the top of the Grupper tab. Map → Grupper → a pill → the app = 3 taps.
+   Pills are amber-soft like the group page "Bjud in" (pnds.css .pn-gp-inv): the one filled primary stays "Skapa grupp". */
+:root{--inv-q-edge:rgba(255,194,77,.45)}
+.inv-q{margin:0 0 var(--sp-4);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);border-radius:var(--r-lg);background:var(--ds-card);border:1px solid var(--ds-border-2)}
+.inv-q-h{display:flex;align-items:center;gap:var(--sp-3)}
+.inv-q-i{flex:none;width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--ds-amber-soft);color:var(--ds-amber-t)}
+.inv-q-i .pi{width:22px;height:22px}
+.inv-q-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.inv-q-t b{font:600 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text)}
+.inv-q-t small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.inv-q-qr{flex:none;width:44px;height:44px;padding:0;border-radius:var(--r-pill);border:1px solid var(--ds-border-2);background:var(--ds-raised);color:var(--ds-text);display:grid;place-items:center;cursor:pointer}
+.inv-q-qr .pi{width:22px;height:22px}
+.inv-q-row{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
+.inv-q-p{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);max-width:100%;min-width:0;min-height:44px;padding:0 var(--sp-4) 0 var(--sp-3);
+  border-radius:var(--r-pill);border:1px solid var(--inv-q-edge);background:var(--ds-amber-soft);color:var(--ds-amber-t);font:600 var(--fs-16)/1 var(--ds-sans);cursor:pointer}
+.inv-q-p:only-child{flex:1}
+.inv-q-pi{flex:none;display:grid;place-items:center}
+.inv-q-pi .pi{width:20px;height:20px}
+.inv-q-pt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-q-p:active,.inv-q-qr:active{transform:scale(.96)}
+.inv-q-p:focus-visible,.inv-q-qr:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){ .inv-q-p:active,.inv-q-qr:active{transform:none} }

@@ -17,6 +17,8 @@
    4. Ticker: event + invite lines (24 dalmål lines). On a quiet night about 1 in 4 lines is an event line (1 or 2
       of 6), never two in a row (also across refills). Rides on NEWS.build; events.js keeps its own kinds.
    5. Map legend in the ⓘ popover: what the glow, the grey dashed rings (👻 förra veckan) and 📨 mean.
+   6. E1 quick invite (lane invite, 19 Nov 2026): a "Bjud in en kompis" box at the top of the Grupper tab. One pill per group
+      (or the app link with no group) = navigator.share at once (copy fallback). Map → Grupper → pill → the app = 3 taps.
    Hooks (app.js mods): init, onAuthed, onPoll, applyText, groupsSheet, hudChipsHTML, hudClick, barPopupHTML,
    openInviteLink(id, answer) (?inv=<id>[&ans=yes|no]; ?invite=1 is the old app-share link). Public: INVITE.openCreate(o), INVITE.open(id), INVITE.openFriendsTab(),
    INVITE.friendsMore(listBox, friends, reload, friendRow) (near.js), INVITE.evButton(e) (events.js).
@@ -395,12 +397,92 @@
     });
     body.appendChild(bar); body.appendChild(gPane); body.appendChild(fPane);
     show(tab);
+    quickBox(gPane);
   }
   function openFriendsTab() {
     if (!A || !A.LIVE || !A.showGroups) return false;
     wantTab = "f"; U.ls.set(TAB, "f");
     A.showGroups();
     return true;
+  }
+
+  /* ---------- E1 quick invite: map → Grupper → a group pill → the app in the share sheet = 3 taps (was 5) ----------
+     The SAME links as the JOIN sheet (join.js openInvite): the link card when CARDS is on, else ?join=CODE / ?invite=1,
+     plus &by=<my name>. Old and new app versions read these links, so an invite works on both. The QR + the group code
+     stay one tap away (the QR button opens the JOIN sheet). No navigator.share → copy the text + link, one toast. */
+  var QG = [], qBox = null, qObs = null;
+  var QS = {
+    g: [["Häng med i {g} på PintsNow. Ett tryck så ser du gänget på kartan:", "Join {g} on PintsNow. One tap and you see the gang on the map:"],
+      ["{g} söker förstärkning. Tryck på länken så ä du med:", "{g} needs backup. Tap the link and you are in:"],
+      ["Inkallelse till {g}! Länken här, inga frågor:", "You are drafted into {g}! Link here, no questions asked:"],
+      ["Gänget i {g} ä på kartan. Kom med:", "The {g} gang is on the map. Come along:"]],
+    a: [["Kolla PintsNow – kartan som visar var kompisarna ä ikväll:", "Check out PintsNow – the map that shows where your friends are tonight:"],
+      ["Rekrytering pågår! PintsNow, kartan för gänget:", "Recruiting now! PintsNow, the map for the gang:"]],
+    sub: [["Ensam på kartan? Kalla in förstärkning.", "Alone on the map? Call in backup."], ["Fler kompisar, roligare karta.", "More friends, a better map."],
+      ["Rekrytera en kompis. Ingen mönstring krävs.", "Recruit a friend. No medical exam needed."]]
+  };
+  function qPick(key) { var x = pick("q" + key, QS[key]); return L(x[0], x[1]); }
+  function cleanBy(s) { return String(s || "").replace(/[<>"'&\\\/]/g, "").replace(/\s+/g, " ").trim().slice(0, 24); }   // = join.js cleanBy
+  function quickLink(g) {
+    var code = g && g.code ? U.cleanCode(g.code) : "", by = cleanBy(myName() || U.ls.get("olnu.name", "")), C = window.CARDS, card = "";
+    try { if (C && C.on && C.on()) card = code ? C.joinUrl(code) : C.inviteUrl(); } catch (e) {}
+    var u = card || (location.origin + location.pathname + (code ? "?join=" + encodeURIComponent(code) : "?invite=1"));
+    return by ? u + (u.indexOf("?") >= 0 ? "&" : "?") + "by=" + encodeURIComponent(by) : u;
+  }
+  function qCopy(text, done) {
+    var fb = function () {
+      try {
+        var t = A.el("textarea", { readonly: "", style: "position:fixed;top:-100px;opacity:0" }); t.value = text; document.body.appendChild(t);
+        t.select(); var r = document.execCommand("copy"); t.remove(); if (r) done();
+      } catch (e) {}
+    };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fb); return; } } catch (e) {}
+    fb();
+  }
+  // navigator.share runs inside the tap (iOS needs that): the link is built synchronously.
+  function quickShare(g) {
+    var url = quickLink(g), text = g ? fill(qPick("g"), { g: g.name || "PintsNow" }) : qPick("a");
+    var copied = function () { try { A.toast(L("Länken ä kopierad. Klistra in den i chatten.", "Link copied. Paste it in the chat."), { id: "jn" }); } catch (e) {} };
+    if (navigator.share) {
+      try { navigator.share({ title: "PintsNow", text: text, url: url }).catch(function (e) { if (!e || e.name !== "AbortError") qCopy(text + " " + url, copied); }); return; } catch (e) {}
+    }
+    qCopy(text + " " + url, copied);
+  }
+  function qCollect() {
+    var list = qBox && qBox.parentNode ? qBox.parentNode.querySelector(".glist") : null;
+    if (!list) return;
+    var cards = list.querySelectorAll(".gcard");
+    if (!cards.length && list.children.length === 1 && list.textContent.trim() === "…") return;   // still loading: keep the last groups
+    QG = [].map.call(cards, function (li) { return li.__invG || li.__g; }).filter(function (g) { return g && g.code; });
+    qDraw();
+  }
+  function qDraw() {
+    if (!qBox) return;
+    var gs = QG.slice(0, 4), row = qBox.querySelector(".inv-q-row");
+    qBox.querySelector(".inv-q-to").textContent = gs.length ? L("Bjud in en kompis till", "Invite a friend to") : L("Bjud in en kompis", "Invite a friend");
+    row.innerHTML = "";
+    (gs.length ? gs : [null]).forEach(function (g) {
+      var name = g ? g.name || L("gruppen", "the group") : L("Dela länken till appen", "Share the app link");
+      var b = A.el("button", { type: "button", class: "inv-q-p", "data-code": g ? U.cleanCode(g.code) : "",
+        "aria-label": g ? L("Bjud in till ", "Invite to ") + name : L("Bjud in en kompis till PintsNow", "Invite a friend to PintsNow"),
+        onclick: function () { quickShare(g); } }, [A.el("span", { class: "inv-q-pi", "aria-hidden": "true", html: saIc("share") }), A.el("span", { class: "inv-q-pt", text: name })]);
+      row.appendChild(b);
+    });
+  }
+  function quickBox(gPane) {
+    if (qObs) { try { qObs.disconnect(); } catch (e) {} qObs = null; }
+    var qr = A.el("button", { type: "button", class: "inv-q-qr", "aria-label": L("Visa QR-kod och gruppkod", "Show QR code and group code"), title: L("QR-kod", "QR code"), html: saIc("qr"),
+      onclick: function () { var J = window.JOIN; if (!J) return; if (QG[0]) J.openGroup(QG[0], false); else J.openApp(); } });
+    qBox = A.el("section", { class: "inv-q", "aria-label": L("Bjud in", "Invite") }, [
+      A.el("div", { class: "inv-q-h" }, [A.el("span", { class: "inv-q-i", "aria-hidden": "true", html: saIc("user-plus") }),
+        A.el("span", { class: "inv-q-t" }, [A.el("b", { class: "inv-q-to" }), A.el("small", { text: qPick("sub") })]), window.JOIN ? qr : null]),
+      A.el("div", { class: "inv-q-row" })]);
+    var h3 = gPane.querySelector("h3");
+    gPane.insertBefore(qBox, h3 || gPane.firstChild);
+    qDraw();
+    var list = gPane.querySelector(".glist");
+    if (list && window.MutationObserver) { qObs = new MutationObserver(qCollect); qObs.observe(list, { childList: true }); }
+    qCollect();
   }
 
   /* ---------- friend picker ---------- */
@@ -953,6 +1035,8 @@
     },
     applyText: function () { var l = document.querySelector("#attrib-pop .inv-legend"); if (l) { l.remove(); legend(); } },
     groupsSheet: function (body) { groupsSheet(body); },
+    groupCard: function (g, li) { if (li && g) li.__invG = g; },   // E1: the quick invite pills read the drawn group cards
+    quickShare: function (g) { if (A) quickShare(g || null); }, quickLink: function (g) { return quickLink(g || null); },
     hudChipsHTML: function () { return chipHTML(); },
     hudClick: function (action, b) {
       if (action !== "inv") return;
