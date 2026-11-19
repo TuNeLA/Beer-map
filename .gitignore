@@ -3,3 +3,4 @@ screenshot-*.png
 .env
 supabase/.temp/
 .ci-only
+.ci-backup
