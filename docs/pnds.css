@@ -1935,6 +1935,8 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 .pn-sb-row{gap:var(--ds-3)}
 .pn-sb-go{flex:1 1 auto;min-width:0;min-height:44px;display:flex;align-items:center;gap:var(--ds-3);padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .pn-sb-go .sb-ico{display:block}
+/* uifix4 (design review small fix 10): the Systembolaget row icon box was 20 px (others 24), so its title sat 4 px left of the other rows */
+.pn-sb-go>.ds-row-i{flex:0 0 24px;width:24px;height:24px;display:grid;place-items:center}
 /* P2-4: push page. Main switch off → the sub-switches look off (grey); the help text under the main switch is never cut */
 .push-prefs.pn-push-off .switch{filter:grayscale(1);opacity:.5}
 #sheet-body.ds-set .ds-item-hint.info{display:block !important;-webkit-line-clamp:unset;overflow:visible;cursor:auto}
