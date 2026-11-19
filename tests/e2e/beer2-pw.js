@@ -47,6 +47,8 @@ async function open(browser, o = {}) {
     const m = { id: 900 + posts.length, name: "Anton", body: b.p_body, created_at: new Date().toISOString(), is_me: true }; l.push(m);
     return J(r, { id: m.id, created_at: m.created_at });
   });
+  if (o.slowGroups) await page.route(/rest\/v1\/rpc\/my_groups\b/, async (r) => { await new Promise((res) => setTimeout(res, o.slowGroups));   // a slow phone / runner
+    return J(r, [{ id: GID, name: "Ludvika Lager", code: "ABC234", member_count: 4, active_count: 3 }, { id: "22222222-2222-3333-4444-555555555555", name: "Jobbet (ABB-gänget)", code: "XYZ789", member_count: 9, active_count: 0 }]); });
   if (o.dmList) await page.route(/rest\/v1\/rpc\/my_dms\b/, (r) => J(r, { v: 1, now: new Date().toISOString(), unread: 0, threads: [RPCF.dmThread(DM)] }));
   await boot(page);
   return { ctx, page, errs, calls, posts };
@@ -218,17 +220,28 @@ const closeAll = (page) => page.evaluate(() => { try { if (window.PROFCARD) wind
   } catch (e) { fail++; console.log("FAIL exception", e && e.stack); await ctx.close().catch(() => {}); }
   try {
     // ---------- 6. Tipsa en vän: to a group too ----------
-    ({ ctx, page, errs, posts } = await open(browser, { dmList: true }));
-    await page.evaluate((id) => window.PN.beerlib().then((B) => B.load().then(() => B.tip(id))), BEER);
+    ({ ctx, page, errs, posts } = await open(browser, { dmList: true, slowGroups: 2500 }));
+    await page.evaluate(() => window.PN.beerlib().then((B) => B.load()));
+    await page.evaluate(() => { try { if (window.WARM && WARM.clear) WARM.clear(); } catch (e) {} });   // no cached my_groups: the slow answer (CI rerun 19 Nov: > 1.5 s)
+    const t0 = Date.now();
+    await page.evaluate((id) => window.BEERLIB.tip(id), BEER);
     await waitSheet(page, /Tipsa en vän/);
+    await page.waitForSelector("#sheet-body .bl-pick", { timeout: 8000 }).catch(() => {});
+    const openMs = Date.now() - t0;
+    const order = () => page.evaluate(() => [...document.querySelectorAll("#sheet-body .bl-pick")].map((x) => x.querySelector("b").textContent));
+    await page.evaluate(() => { const p = [...document.querySelectorAll("#sheet-body .bl-pick")].find((x) => /Ida/.test(x.textContent)); if (p) p.click(); });   // picked before the groups come
     await page.waitForSelector('#sheet-body .bl-pick[data-g]', { timeout: 8000 }).catch(() => {});
+    const k1 = await page.evaluate(() => { const p = [...document.querySelectorAll("#sheet-body .bl-pick")].find((x) => /Ida/.test(x.textContent)); return p ? p.getAttribute("aria-checked") : null; });
+    const o1 = await order();
+    ok("Tipsa en vän: opens at once with the friends (< 2 s); slow groups (2.5 s) still come, at the END; the pick stays", openMs < 2000 && o1[0] === "Ida" && o1.indexOf("Ludvika Lager") > 0 && k1 === "true", { openMs, o1, k1 });
+    await page.evaluate(() => { const p = [...document.querySelectorAll("#sheet-body .bl-pick")].find((x) => /Ida/.test(x.textContent)); if (p) p.click(); });   // un-pick Ida again
     const t1 = await page.evaluate(() => ({ picks: [...document.querySelectorAll("#sheet-body .bl-pick")].map((p) => p.innerText.replace(/\s+/g, " ")), hs: [...document.querySelectorAll("#sheet-body .bl-h")].map((h) => h.textContent) }));
     ok("Tipsa en vän: my groups are in the list too ('Ludvika Lager', 'Grupp')", t1.picks.some((p) => /Ludvika Lager/.test(p) && /Grupp/.test(p)), t1);
     await shot(page, "08-tipsa");
     await page.evaluate(() => { const p = [...document.querySelectorAll("#sheet-body .bl-pick")].find((x) => /Ludvika Lager/.test(x.textContent)); if (p) p.click(); });
     await page.click("#sheet-body [data-bl-go]").catch(() => {});
     await page.waitForFunction(() => document.getElementById("sheet").hidden, null, { timeout: 10000 }).catch(() => {});
-    ok("Tipsa en vän: a picked group gets ONE tip line in its chat", posts.length === 1 && posts[0].g === GID && /^Öltips: .+ \[öl:5410228158424\]$/.test(posts[0].body), posts);
+    ok("Tipsa en vän: a picked group gets ONE tip line in its chat (nothing to the un-picked friend)", posts.length === 1 && posts[0].g === GID && /^Öltips: .+ \[öl:5410228158424\]$/.test(posts[0].body), posts);
     ok("No page errors (tip to a group)", errs.length === 0, errs);
     await ctx.close();
   } catch (e) { fail++; console.log("FAIL exception", e && e.stack); await ctx.close().catch(() => {}); }

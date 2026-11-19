@@ -265,51 +265,61 @@
     } catch (e) {}
     return out;
   }
-  // beer2: my groups too (the tip lands in the group chat as the same card). my_groups waits at most 1.5 s; without it: friends only.
+  // beer2: my groups too (the tip lands in the group chat as the same card). The sheet opens at once with the friends; the groups
+  // come at the END of the list when my_groups answers (rows above never move; a slow phone still gets them; picks + text are kept).
   function myGroups() {
     if (!W.PN || !PN.rpc || !PN.LIVE) return Promise.resolve([]);
-    var t = new Promise(function (res) { setTimeout(function () { res([]); }, 1500); });
-    var r = PN.rpc("my_groups").then(function (x) {
+    return PN.rpc("my_groups").then(function (x) {
       var l = x && !x.error ? (PN.parseData ? PN.parseData(x.data) : x.data) : [];
       return (Array.isArray(l) ? l : []).filter(function (g) { return g && g.id && !g.dm && !g.ev; }).slice(0, 10).map(function (g) { return { group_id: g.id, name: g.name || "?", grp: true }; });
     }, function () { return []; });
-    return Promise.race([r, t]);
   }
   function tipSheet(id) {
     var d = B.data(), b = d && d.byId[String(id)]; if (!b) return;
-    myGroups().then(function (gs) { tipOpen(b, gs); });
-  }
-  function tipOpen(b, groups) {
     sheet(tl("Tipsa en vän", "Tell a friend"), function (el) {
-      var list = targets().concat(groups || []), DM = W.DM, canSend = !!(DM && DM.tipBeer);
-      var h = '<div class="bl-cm">' + H.pic(b) + "<span><b>" + esc(b.name) + "</b><small>" + esc([b.brewery, H.styleLine(b)].filter(Boolean).join(" · ")) + "</small></span></div>";
-      if (!canSend || !list.length) {
-        h += '<p class="bl-msg">' + esc(tl("Du kan tipsa vänner när du har lagt till några. Gå till Grupper › Vänner.", "You can tip friends once you have added some. Go to Groups › Friends.")) + "</p>";
-        el.innerHTML = h; H.fixPics(el); return;
-      }
-      h += '<h3 class="bl-h">' + esc(tl("Till", "To")) + '</h3><div class="bl-list" role="group">' + list.map(function (t, i) {
-        var ini = (Array.from(String(t.name).trim())[0] || "?").toUpperCase();
-        return '<button type="button" class="bl-pick" role="checkbox" aria-checked="false" data-i="' + i + '"' + (t.grp ? ' data-g="1"' : "") + '><span class="bl-av' + (t.grp ? " grp" : " fr") + '" aria-hidden="true">' +
-          (t.grp ? ic("users") : esc(ini)) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.grp ? tl("Grupp", "Group") : tl("Vän", "Friend")) + '</small></span><span class="bl-ck">' + ic("check") + "</span></button>";
-      }).join("") + "</div>" +
-        '<h3 class="bl-h">' + esc(tl("En rad (valfritt)", "A line (optional)")) + '</h3><textarea class="bl-ta" maxlength="70" aria-label="' + esc(tl("En rad (valfritt)", "A line (optional)")) + '"></textarea>' +
-        '<div style="margin-top:var(--sp-4)"><button type="button" class="bl-btn p full" data-bl-go="1" disabled>' + ic("send") + esc(tl("Skicka tips", "Send tip")) + "</button></div>" +
-        '<p class="bl-note">' + esc(tl("Tipset kommer i chatten som ett kort. Inget mer.", "The tip shows in the chat as a card. Nothing more.")) + "</p>";
-      el.innerHTML = h; H.fixPics(el);
-      var go = el.querySelector("[data-bl-go]"), ta = el.querySelector("textarea");
-      el.addEventListener("click", function (e) {
-        var p = e.target.closest && e.target.closest(".bl-pick");
-        if (p) { p.setAttribute("aria-checked", String(p.getAttribute("aria-checked") !== "true")); go.disabled = !el.querySelector('.bl-pick[aria-checked="true"]'); }
-      });
-      go.addEventListener("click", function () {
-        var sel = [].map.call(el.querySelectorAll('.bl-pick[aria-checked="true"]'), function (p) { return list[+p.getAttribute("data-i")]; });
-        if (!sel.length) return;
-        go.disabled = true;
-        DM.tipBeer(sel, B.tipText(b, ta.value)).then(function (r) {
-          go.disabled = false;
-          if (r && r.sent) { H.toast(r.failed ? tl("Tipset gick till " + r.sent + " av " + (r.sent + r.failed) + ".", "The tip went to " + r.sent + " of " + (r.sent + r.failed) + ".") : tl("Tipset är skickat.", "The tip is sent.")); try { if (PN.closeSheet) PN.closeSheet(); } catch (e) {} }
-          else if (r && !r.cancel) H.toast(tl("Tipset gick inte fram. Försök igen.", "The tip did not go through. Try again."), { err: true });
-        });
+      var friends = targets();
+      tipPaint(el, b, friends);
+      myGroups().then(function (gs) { if (el.isConnected && gs.length) tipPaint(el, b, friends.concat(gs)); });
+    });
+  }
+  function pickHTML(t, i) {
+    var ini = (Array.from(String(t.name).trim())[0] || "?").toUpperCase();
+    return '<button type="button" class="bl-pick" role="checkbox" aria-checked="false" data-i="' + i + '"' + (t.grp ? ' data-g="1"' : "") + '><span class="bl-av' + (t.grp ? " grp" : " fr") + '" aria-hidden="true">' +
+      (t.grp ? ic("users") : esc(ini)) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.grp ? tl("Grupp", "Group") : tl("Vän", "Friend")) + '</small></span><span class="bl-ck">' + ic("check") + "</span></button>";
+  }
+  function tipPaint(el, b, list) {
+    var DM = W.DM, canSend = !!(DM && DM.tipBeer);
+    var on = [].map.call(el.querySelectorAll('.bl-pick[aria-checked="true"]'), function (p) { return p.getAttribute("data-i"); }), ta0 = el.querySelector("textarea");
+    var line = ta0 ? ta0.value : "";
+    el.__list = list;
+    var h = '<div class="bl-cm">' + H.pic(b) + "<span><b>" + esc(b.name) + "</b><small>" + esc([b.brewery, H.styleLine(b)].filter(Boolean).join(" · ")) + "</small></span></div>";
+    if (!canSend || !list.length) {
+      h += '<p class="bl-msg">' + esc(tl("Du kan tipsa vänner när du har lagt till några. Gå till Grupper › Vänner.", "You can tip friends once you have added some. Go to Groups › Friends.")) + "</p>";
+      el.innerHTML = h; H.fixPics(el); return;
+    }
+    h += '<h3 class="bl-h">' + esc(tl("Till", "To")) + '</h3><div class="bl-list" role="group">' + list.map(pickHTML).join("") + "</div>" +
+      '<h3 class="bl-h">' + esc(tl("En rad (valfritt)", "A line (optional)")) + '</h3><textarea class="bl-ta" maxlength="70" aria-label="' + esc(tl("En rad (valfritt)", "A line (optional)")) + '"></textarea>' +
+      '<div style="margin-top:var(--sp-4)"><button type="button" class="bl-btn p full" data-bl-go="1" disabled>' + ic("send") + esc(tl("Skicka tips", "Send tip")) + "</button></div>" +
+      '<p class="bl-note">' + esc(tl("Tipset kommer i chatten som ett kort. Inget mer.", "The tip shows in the chat as a card. Nothing more.")) + "</p>";
+    el.innerHTML = h; H.fixPics(el);
+    var go = el.querySelector("[data-bl-go]");
+    el.querySelector("textarea").value = line;
+    on.forEach(function (i) { var p = el.querySelector('.bl-pick[data-i="' + i + '"]'); if (p) p.setAttribute("aria-checked", "true"); });
+    go.disabled = !on.length;
+    if (el.__tipW) return;
+    el.__tipW = 1;
+    el.addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+      var p = t.closest(".bl-pick"), g = t.closest("[data-bl-go]"), btn = el.querySelector("[data-bl-go]");
+      if (p) { p.setAttribute("aria-checked", String(p.getAttribute("aria-checked") !== "true")); btn.disabled = !el.querySelector('.bl-pick[aria-checked="true"]'); return; }
+      if (!g || g.disabled) return;
+      var sel = [].map.call(el.querySelectorAll('.bl-pick[aria-checked="true"]'), function (x) { return el.__list[+x.getAttribute("data-i")]; }).filter(Boolean);
+      if (!sel.length) return;
+      g.disabled = true;
+      W.DM.tipBeer(sel, B.tipText(b, el.querySelector("textarea").value)).then(function (r) {
+        g.disabled = false;
+        if (r && r.sent) { H.toast(r.failed ? tl("Tipset gick till " + r.sent + " av " + (r.sent + r.failed) + ".", "The tip went to " + r.sent + " of " + (r.sent + r.failed) + ".") : tl("Tipset är skickat.", "The tip is sent.")); try { if (PN.closeSheet) PN.closeSheet(); } catch (e2) {} }
+        else if (r && !r.cancel) H.toast(tl("Tipset gick inte fram. Försök igen.", "The tip did not go through. Try again."), { err: true });
       });
     });
   }
