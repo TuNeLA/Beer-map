@@ -119,7 +119,8 @@ async function routes(page, me) {
       await wait(page, 300);
       await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Fältjacka/.test(t.getAttribute("aria-label"))).click());
       await wait(page, 200);
-      ok("tops 33 (31 + 2 unlock tops) + colour row with egen färg", await page.evaluate(() => document.querySelectorAll(".ave-tile").length === 33 && !!document.querySelector(".ave-colrow .ave-own input[type=color]")));
+      // hockeybuild (I-116, 19 Nov): the top tab also has 22 hockey shirts in town colours ([data-k="tm"], own section): count the tops only
+      ok("tops 33 (31 + 2 unlock tops) + colour row with egen färg", await page.evaluate(() => document.querySelectorAll('.ave-tile[data-k="up"]').length === 33 && !!document.querySelector(".ave-colrow .ave-own input[type=color]")));
       ok("officer jacket locked (Löjtnant)", await page.evaluate(() => [...document.querySelectorAll(".ave-tile")].find((t) => /^Officersjacka/.test(t.getAttribute("aria-label"))).classList.contains("locked")));
       await page.evaluate(() => [...document.querySelectorAll(".ave-tab")].find((b) => /Medaljer/.test(b.textContent)).click());
       await wait(page, 200);

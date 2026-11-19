@@ -272,7 +272,7 @@
     if (want("ec")) d.ec = RR() < 0.5 ? 0 : pick("ec", [1, 2, 3, 4, 5, 6, 7]);
     Object.keys(EXTRA_P).forEach(function (k) { if (want(k)) d[k] = RR() < (only === k ? 0.85 : EXTRA_P[k]) ? pick(k, visible(k).filter(function (i) { return i > 0 || k === "ck"; })) : (k === "ck" ? 0 : 0); });
     if (!only && d.hw && d.gl && RR() < 0.6) d.gl = 0;   // not everything at once
-    if (want("up")) d.up = pick("up");
+    if (want("up")) { d.up = pick("up"); delete d.tm; }   // hockeybuild: a new top = no hockey shirt (PN.hockey, key tm)
     if (want("uc") || only === "up") { d.uc = pick("uc"); delete d.ux; }
     if (want("bg")) { d.bg = pick("bg"); delete d.bx; }
     // the top must stand out from the background: change what the user did not just pick
@@ -875,8 +875,8 @@
     });
     return h;
   }
-  function topMain(s) {   // colour of the sleeve (held item arm)
-    var u = s.up, col = hexOf(s.ux) || TOPC[s.uc];
+  function topMain(s) {   // colour of the sleeve (held item arm); hockeybuild: a hockey shirt (tm) = its main colour
+    var u = s.up, col = hexOf(s.ux) || TOPC[s.uc], hk = s.tm && window.PN && PN.hockey ? PN.hockey.main(s.tm) : null; if (hk) return hk;
     return [col, col, col, col, "#59613a", "#2f3b26", "#24301f", "#14223f", "#121212", "#1f5fb0", "#f6c518", col, "#f5c518", "#3f6a9a", "#1b1b1f", col, col, null, "#f4f2ec", col, col, col, "#f4f2ec", "#b3242c", "#141414", "#f4f2ec", "#7d8a5a", "#6b4426", "#14223f", "#f4f2ec", "#1f2733"][u] || col;
   }
   function topSVG(s, r, md, skin) {
@@ -1104,7 +1104,7 @@
   function xp(k, i, s, o) { var f = XP[k] && XP[k][i]; return f ? f(s, XH, o || {}) : null; }
   var hat0 = hatSVG, top0 = topSVG, nk0 = neckSVG, gl0 = glassesSVG, fr0 = frameSVG, bg0 = bgSVG;
   hatSVG = function (h, s) { var x = xp("hw", h, s); return x == null ? hat0(h, s) : x; }; neckSVG = function (n, s) { var x = xp("nk", n, s); return x == null ? nk0(n, s) : x; }; glassesSVG = function (g) { var x = xp("gl", g, null); return x == null ? gl0(g) : x; };
-  topSVG = function (s, r, md, skin) { var x = xp("up", s.up, s, { r: r, skin: skin }); return x == null ? top0(s, r, md, skin) : x + (md && md.length ? ribbonsSVG(md) : ""); }; frameSVG = function (f, r) { var x = xp("fr", f, null, { r: r }); return x == null ? fr0(f, r) : x; }; bgSVG = function (b, s) { var x = xp("bg", b, s); return x == null ? bg0(b, s) : x; };
+  topSVG = function (s, r, md, skin) { var x = (s.tm && window.PN && PN.hockey && PN.hockey.svg(s, XH)) || xp("up", s.up, s, { r: r, skin: skin }); return x == null ? top0(s, r, md, skin) : x + (md && md.length ? ribbonsSVG(md) : ""); }; frameSVG = function (f, r) { var x = xp("fr", f, null, { r: r }); return x == null ? fr0(f, r) : x; }; bgSVG = function (b, s) { var x = xp("bg", b, s); return x == null ? bg0(b, s) : x; };
   function addPart(k, i, d) { if (!N[k] || N[k].length !== i || !d || typeof d.svg !== "function") return false; N[k].push(d.name); MAX[k] = i; (XP[k] = XP[k] || {})[i] = d.svg; if (d.lock) LOCKS[k + ":" + i] = d.lock; if (d.rare) RARE[k + ":" + i] = d.rare; if (k === "hw" && d.clip) HCLIP[i] = d.clip; if (k === "nk" && d.tuck) NKL[i] = 1; svgMemo = {}; svgMemoN = 0; return true; }
   function addPath(key, lk) { var o = LOCKS[key]; if (!lk) return; if (!o) { LOCKS[key] = lk; return; } var js = JSON.stringify(lk); if ((o.o || []).some(function (x) { return JSON.stringify(x) === js; })) return; LOCKS[key] = Object.assign({}, o, { o: (o.o || []).concat([lk]) }); }
   function equip(k, i) { if (off || !me) return Promise.resolve({ ok: false, code: "no_me" }); if (!me.spec) return Promise.resolve({ ok: false, code: "no_spec" }); if (!usable(k, i, me.facts)) return Promise.resolve({ ok: false, code: "locked" }); var sp = JSON.parse(JSON.stringify(me.spec)); sp[k] = i; return saveSpec(sp); }
@@ -1420,11 +1420,11 @@
     if (friends) upd(friends.data);
     repaint();
   }
-  function setSpec(spec) {   // avt01: nl needs SQL 0397; an old server answers invalid_avatar → save again without nl
+  function setSpec(spec) {   // avt01: nl needs SQL 0397, hockeybuild: tm needs SQL (olnu_avatar_max tm); an old server answers invalid_avatar → save again without them
     return rpc("set_my_avatar", { p_spec: spec }).then(function (r) {
-      if (!r.error || !spec.nl || codeOf(r.error) !== "invalid_avatar") return r;
-      var s2 = JSON.parse(JSON.stringify(spec)); delete s2.nl;
-      return rpc("set_my_avatar", { p_spec: s2 }).then(function (r2) { if (!r2.error) r2.noNl = true; return r2; });
+      if (!r.error || !(spec.nl || spec.tm) || codeOf(r.error) !== "invalid_avatar") return r;
+      var s2 = JSON.parse(JSON.stringify(spec)); delete s2.nl; delete s2.tm;
+      return rpc("set_my_avatar", { p_spec: s2 }).then(function (r2) { if (!r2.error) { r2.noNl = !!spec.nl; r2.noTm = !!spec.tm; } return r2; });
     });
   }
   function saveSpec(spec) {   // avwiz.js: {ok, spec} | {ok:false, code}
@@ -1670,12 +1670,12 @@
     try { io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { fill(e.target); io.unobserve(e.target); } }); }, { root: body, rootMargin: "240px 0px" }); } catch (e) { io = null; }
     function fill(b) {
       var art = b.querySelector(".ave-art"); if (!art || art.firstChild) return;
-      var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(draft)); t[k] = i; t = view(t, k);
+      var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(draft)); t[k] = i; if (k === "up") delete t.tm; t = view(t, k);
       if (k === "bg" && i === 16 && !t.bx) t.bx = valOf("#f5a623");
       art.innerHTML = svg(t, { r: f.r, md: md(), vb: b.getAttribute("data-vb") || "" });
     }
     function tile(k, i, mode) {
-      var lk = lockOf(k, i), ok = usable(k, i, f), sel = (draft[k] | 0) === i, rar = rarity(k, i);
+      var lk = lockOf(k, i), ok = usable(k, i, f), sel = (draft[k] | 0) === i && !(k === "up" && draft.tm), rar = rarity(k, i);
       var b = document.createElement("button");
       b.type = "button"; b.className = "ave-tile" + (sel ? " on" : "") + (ok ? "" : " locked") + (mode === "sw" ? " sw" : "") + (rar ? " r" + rar : "") + (isNew(k, i, f) ? " is-new" : "");
       b.setAttribute("aria-pressed", sel ? "true" : "false"); b.setAttribute("data-k", k); b.setAttribute("data-i", i);
@@ -1694,7 +1694,7 @@
         (ok ? '<span class="ave-nm">' + esc(nm) + "</span>" : '<span class="ave-lk" aria-hidden="true">🔒</span><span class="ave-nm">' + esc(shortLock(lk)) + "</span>");
       b.addEventListener("click", function () {
         if (!ok) { A.toast("🔒 " + lockText(lk), { ms: 3800, id: "ave-lock" }); return; }
-        draft[k] = i;
+        draft[k] = i; if (k === "up" || k === "uc") delete draft.tm;   // hockeybuild: a top or a colour = no hockey shirt
         if (COLOR_OF[k]) delete draft[COLOR_OF[k][0]];
         if (k === "bg" && i === 16 && !draft.bx) draft.bx = valOf("#f5a623");
         if (lk && lk.d && unlocked({ d: lk.d }, f)) A.toast((SEASON[lk.d] || "📅") + " " + L("Säsongsgrej! Spara nu så behåller du den.", "Seasonal! Save now and you keep it."), { ms: 3000, id: "ave-season" });
@@ -1717,10 +1717,10 @@
         b.type = "button"; b.className = "ave-cs" + (!cur && (draft[k] | 0) === i ? " on" : "") + (ok ? "" : " locked");
         b.style.background = c; b.setAttribute("aria-label", N[k][i][sv() ? 0 : 1] + (ok ? "" : " — " + lockText(lk)));
         if (!ok) b.textContent = "🔒";
-        b.addEventListener("click", function () { if (!ok) { A.toast("🔒 " + lockText(lk), { ms: 3800, id: "ave-lock" }); return; } draft[k] = i; delete draft[ck]; paintPrev(); paintPane(true); });
+        b.addEventListener("click", function () { if (!ok) { A.toast("🔒 " + lockText(lk), { ms: 3800, id: "ave-lock" }); return; } draft[k] = i; delete draft[ck]; if (k === "uc") delete draft.tm; paintPrev(); paintPane(true); });
         row.appendChild(b);
       });
-      row.appendChild(customBtn(ck, cur || (pal ? pal[draft[k] | 0] : "#f5a623"), !!cur, function () { if (k === "bg") draft.bg = 16; }));
+      row.appendChild(customBtn(ck, cur || (pal ? pal[draft[k] | 0] : "#f5a623"), !!cur, function () { if (k === "bg") draft.bg = 16; else if (k === "uc") delete draft.tm; }));
       sec.appendChild(row);
       return sec;
     }
@@ -1759,9 +1759,9 @@
       if (k === "nk") sec.appendChild(layerSeg());
       var grid = document.createElement("div"); grid.className = "ave-grid" + (sd[3] === "sw" ? " ave-grid-sw" : "");
       visible(k).forEach(function (i) { grid.appendChild(tile(k, i, sd[3] || "")); });
-      if (k === "hc" || k === "uc") grid.appendChild(customBtn(COLOR_OF[k][0], hexOf(draft[COLOR_OF[k][0]]) || COLOR_OF[k][1][draft[k] | 0], !!draft[COLOR_OF[k][0]]));
+      if (k === "hc" || k === "uc") grid.appendChild(customBtn(COLOR_OF[k][0], hexOf(draft[COLOR_OF[k][0]]) || COLOR_OF[k][1][draft[k] | 0], !!draft[COLOR_OF[k][0]], k === "uc" ? function () { delete draft.tm; } : null));
       sec.appendChild(grid);
-      if (k === "hc") sec.appendChild(twoTone());
+      if (k === "hc") sec.appendChild(twoTone()); else if (k === "up" && window.PN && PN.hockey) sec.appendChild(PN.hockey.section({ cls: "ave", draft: draft, scope: pane, observe: function (b) { if (io) io.observe(b); else fill(b); }, onPick: function () { paintPrev(); paintPane(true); } }));   // hockeybuild (I-116)
       if (k === "bg") { var bc = swatchRow("bg", L("Egen färg (även Ränder, Prickar, Rutig duk, Dalahästar)", "Own colour (also Stripes, Dots, Gingham, Dala horses)")); sec.appendChild(bc); }
       pane.appendChild(sec);
       if (keepScroll) body.scrollTop = st;
@@ -1868,7 +1868,7 @@
         afterSave(d.spec || spec); saved = JSON.stringify(clean(me.spec));
         paintPrev();
         lastSave = pickLine(SAVE_SV, lastSave);
-        A.toast(r.noNl ? L("👤 Sparat utanpå. Instoppad kommer i nästa uppdatering.", "👤 Saved as over. Tucked in comes in the next update.") : sv() ? "👤 " + SAVE_SV[lastSave] : "👤 Saved!", { ms: r.noNl ? 4200 : 3000 });   // avt01
+        if (r.noTm) A.toast(L("Sparat. Hockeytröjan i stadens färger kommer i nästa uppdatering.", "Saved. The hockey shirt in town colours comes in the next update."), { ms: 4200 }); else A.toast(r.noNl ? L("👤 Sparat utanpå. Instoppad kommer i nästa uppdatering.", "👤 Saved as over. Tucked in comes in the next update.") : sv() ? "👤 " + SAVE_SV[lastSave] : "👤 Saved!", { ms: r.noNl ? 4200 : 3000 });   // avt01
         try { if (window.FX && window.FX.vibrate) window.FX.vibrate(12); } catch (e) {}
       });
     });
