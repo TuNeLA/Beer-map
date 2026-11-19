@@ -173,7 +173,7 @@
       box.appendChild(seg);
       var go = h("button", { type: "button", class: "btn btn-amber btn-block pk-go", text: "🆘 Välj minst en", disabled: true });
       box.appendChild(go);
-      box.appendChild(h("p", { class: "pk-muted pk-priv", text: "🔒 Bara de du väljer ser var du ä. Positionen raderas när du stoppar eller när tiden ä slut." }));
+      box.appendChild(h("p", { class: "pk-muted pk-priv", text: "Bara de du väljer ser var du ä. Positionen raderas när du stoppar eller när tiden ä slut." }));
       var sel = {}, people = [], groups = [];
       if (opts.group) sel["g:" + opts.group.id] = true;
       function n() {
@@ -228,7 +228,7 @@
   function answersEl(m) {
     var ul = h("ul", { class: "pk-ans" });
     var a = m.answers || [];
-    if (!a.length) ul.appendChild(h("li", { class: "pk-muted", text: "⏳ Väntar på svar…" }));
+    if (!a.length) ul.appendChild(h("li", { class: "pk-muted", text: "Väntar på svar…" }));
     a.forEach(function (x) { ul.appendChild(h("li", { class: x.ans === "kommer" ? "yes" : "no", text: (x.ans === "kommer" ? "🙋 " : "✋ ") + x.name + (x.ans === "kommer" ? ": Jag kommer" : ": Kan int'") + " · " + ago(x.at) })); });
     return ul;
   }
@@ -249,9 +249,9 @@
       box.appendChild(h("p", { class: "pk-muted", text: (m.has_pos ? "📍 Din position delas till " : "Gäller till ") + hm(m.ends_at) + "." }));
       box.appendChild(answersEl(m));
       box.appendChild(h("button", { type: "button", class: "btn btn-block pk-stop", text: m.kind === "skjuts" ? "⏹ Avbryt frågan" : "⏹ Stoppa – jag har skjuts nu", onclick: function (e) { stop(e.currentTarget); } }));
-      box.appendChild(h("p", { class: "pk-muted pk-priv", text: "📱 Håll appen öppen så uppdateras din position och du ser svaren." }));
+      box.appendChild(h("p", { class: "pk-muted pk-priv", text: "Håll appen öppen så uppdateras din position och du ser svaren." }));
     } else {
-      box.appendChild(h("p", { class: "pk-lead", text: "✅ Avslutad. Positionen ä raderad." }));
+      box.appendChild(h("p", { class: "pk-lead", text: "Avslutad. Positionen ä raderad." }));
       box.appendChild(answersEl(m));
     }
   }
@@ -277,15 +277,15 @@
     var box = openBox && openBox.kind === "in" ? openBox.el : null; if (!box || !document.body.contains(box)) return;
     var x = (P && P.incoming || []).filter(function (y) { return y.id === openBox.id; })[0]; if (!x) return;
     box.innerHTML = "";
-    if (!x.live) { box.appendChild(h("p", { class: "pk-lead", text: "✅ " + x.name + " har stoppat frågan." })); return; }
+    if (!x.live) { box.appendChild(h("p", { class: "pk-lead", text: x.name + " har stoppat frågan." })); return; }
     box.appendChild(h("p", { class: "pk-lead", text: x.kind === "skjuts" ? x.name + " undrar om du kan köra. Svara så ser hen det direkt." : x.name + " frågar om nån kan hämta. Svara så ser hen det direkt." }));
     if (x.lat != null) {
-      box.appendChild(h("p", { class: "pk-muted", text: "📍 Position " + (x.pos_at ? ago(x.pos_at) : "") + (x.acc ? " · ±" + x.acc + " m" : "") }));
+      box.appendChild(h("p", { class: "pk-muted", text: "Position " + (x.pos_at ? ago(x.pos_at) : "") + (x.acc ? " · ±" + x.acc + " m" : "") }));
       box.appendChild(h("div", { class: "pk-row" }, [
         h("button", { type: "button", class: "btn pk-map", text: "🗺️ Visa på kartan", onclick: function () { try { A.flyTo(x.lat, x.lng, 17); } catch (e) {} } }),
         h("a", { class: "btn pk-dir", href: "https://www.google.com/maps/dir/?api=1&destination=" + (+x.lat).toFixed(5) + "," + (+x.lng).toFixed(5), target: "_blank", rel: "noopener", text: "🧭 Vägen dit" })]));
     } else box.appendChild(h("p", { class: "pk-muted", text: "Ingen position skickad. Skriv till " + x.name + " i chatten." }));
-    if ((x.coming | 0) > 0) box.appendChild(h("p", { class: "pk-coming", text: "🙋 " + x.coming + (x.coming === 1 ? " kommer redan" : " kommer redan") }));
+    if ((x.coming | 0) > 0) box.appendChild(h("p", { class: "pk-coming", text: x.coming + (x.coming === 1 ? " kommer redan" : " kommer redan") }));
     var yes = h("button", { type: "button", class: "btn btn-amber pk-yes" + (x.my_ans === "kommer" ? " on" : ""), "aria-pressed": String(x.my_ans === "kommer"), text: "🙋 Jag kommer" });
     var no = h("button", { type: "button", class: "btn pk-no" + (x.my_ans === "kan_inte" ? " on" : ""), "aria-pressed": String(x.my_ans === "kan_inte"), text: "✋ Kan int'" });
     yes.addEventListener("click", function () { answer(x, "kommer", yes); });

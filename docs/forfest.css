@@ -51,8 +51,11 @@ html.ff-on,html.ff-on body{overscroll-behavior:none}
   transition:transform var(--m-3) var(--e-std),opacity var(--m-3) var(--e-std)}
 .ff-mode:active{transform:scale(.98)}
 .ff-mode:disabled{opacity:.5;cursor:default}
-.ff-mode.m-u{background:linear-gradient(135deg,#ff9a3c 0%,#e8562a 55%,#b8323f 100%)}
-.ff-mode.m-k{background:linear-gradient(135deg,#d6338c 0%,#8b2fd8 60%,#4b28b8 100%)}
+/* uifix4 (design review small fix 19): white text on the light orange of "Uppvärmning" was 2.1-3.6:1. Deeper stops of the
+   same warm colours: every stop is >= 5.2:1 with white (also the first pink stop of "Kaos", was 4.46). */
+:root{--ff-u1:#c2410c;--ff-u2:#b3261e;--ff-u3:#9a2333;--ff-k1:#c42d7f}
+.ff-mode.m-u{background:linear-gradient(135deg,var(--ff-u1) 0%,var(--ff-u2) 55%,var(--ff-u3) 100%)}
+.ff-mode.m-k{background:linear-gradient(135deg,var(--ff-k1) 0%,#8b2fd8 60%,#4b28b8 100%)}
 .ff-mode.m-s{background:
   radial-gradient(circle at 18% 30%,rgba(0,0,0,.18) 0 18px,transparent 19px),
   radial-gradient(circle at 70% 75%,rgba(0,0,0,.16) 0 24px,transparent 25px),

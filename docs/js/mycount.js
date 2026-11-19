@@ -46,6 +46,10 @@
   }
 
   /* ---------- D: the count burst ---------- */
+  // uifix4 D2 (motion audit 6: the burst took about 2.2 s, later 1.6 s): the number is in after 300 ms (--m-5), it stays,
+  // it flies to the rail button in 300 ms (--m-5), the button bumps 300 ms. The number is in the rail after about 1.0 s,
+  // all is over after about 1.3 s. These match mycount.css (--m-4 / --m-5 / --m-6).
+  var HOLD = 640, HOLD_CALM = 540, FLY = 300, OUT = 200;
   function crossed(prev, n) { return [5, 10, 15].some(function (k) { return prev < k && n >= k; }); }
   function burst(n, prev) {
     var calm = reduced() || n >= 8;
@@ -54,7 +58,7 @@
     var host = D.createElement("div");
     host.className = "pm-burst" + (calm ? " pm-calm" : "") + (reduced() ? " pm-rm" : "");
     host.setAttribute("aria-hidden", "true");
-    var h = (calm ? "" : '<div class="pm-edge"></div>') + '<div class="pm-back"></div><div class="pm-ring"></div><div class="pm-ring pm-r2"></div><div class="pm-num">' +
+    var h = (calm ? "" : '<div class="pm-edge"></div>') + '<div class="pm-back"></div><div class="pm-ring"></div><div class="pm-num">' +
       (prev > 0 ? '<span class="pm-old">' + prev + "</span>" : "") + '<span class="pm-new">' + n + "</span></div>" +
       '<div class="pm-sub">' + (sv() ? "ikväll" : "tonight") + "</div>";
     if (!calm && !useFx) {
@@ -73,20 +77,20 @@
       if (done) return; done = true;
       hold = false; paint(want);
       var b = $("pn-mine");
-      if (b && !reduced()) { b.classList.remove("pm-bump"); void b.offsetWidth; b.classList.add("pm-bump"); setTimeout(function () { b.classList.remove("pm-bump"); }, 520); }
+      if (b && !reduced()) { b.classList.remove("pm-bump"); void b.offsetWidth; b.classList.add("pm-bump"); setTimeout(function () { b.classList.remove("pm-bump"); }, FLY + 20); }
       if (fx) try { fx.out(); } catch (e) {}   // the season effect plays to its end outside the number
       if (host.parentNode) host.parentNode.removeChild(host);
     }
     setTimeout(function () {
       var b = $("pn-mine"), num = host.querySelector(".pm-num");
-      if (reduced() || !b || !num) { host.classList.add("pm-out"); setTimeout(land, 260); return; }
+      if (reduced() || !b || !num) { host.classList.add("pm-out"); setTimeout(land, OUT + 20); return; }
       if (b.hidden) { b.hidden = false; }   // first beer of the night: the button is the landing spot
       var r = b.getBoundingClientRect(), q = num.getBoundingClientRect();
       host.style.setProperty("--fx", (r.left + r.width / 2 - (q.left + q.width / 2)).toFixed(0) + "px");
       host.style.setProperty("--fy", (r.top + r.height / 2 - (q.top + q.height / 2)).toFixed(0) + "px");
       host.classList.add("pm-fly");
-      setTimeout(land, 370);
-    }, calm ? 680 : 820);
+      setTimeout(land, FLY + 20);
+    }, calm ? HOLD_CALM : HOLD);
     setTimeout(land, 3000);   // never stuck
     return host;
   }
