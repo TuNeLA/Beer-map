@@ -153,6 +153,8 @@ const noToasts = (page) => page.evaluate(() => document.querySelectorAll(".toast
     if (mob) ok(r.card && !r.intro, k + ": [S5] the install guide first, the tour waits", r);
     else ok(!r.card && r.intro, k + ": [S5] desktop: no install guide, the tour comes first", r);
     if (!r.card) { await page.evaluate(() => { document.getElementById("intro").hidden = true; window.INSTALL1.show(); }); await wait(page, 500); }
+    // uifix4 B5 (19 Nov): on the first open the pitch comes first; "Fortsätt" opens the guide
+    if (await page.evaluate(() => { const n = document.querySelector("#ux-inst .mn-inst-next"); if (n) n.click(); return !!n; })) await wait(page, 400);
     Object.assign(r, await page.evaluate(() => ({ card: !!document.getElementById("ux-inst"), steps: document.querySelectorAll("#ux-inst .mn-inst-step").length,
       qr: !!document.querySelector("#ux-inst .mn-inst-qr"), txt: (document.getElementById("ux-inst") || {}).textContent || "", skip: !!document.querySelector(".mn-inst-skip") })));
     ok(r.card && r.skip && /Fortsätt utan att installera/.test(r.txt), k + ": [S5] the guide with 'Fortsätt utan att installera'", r);

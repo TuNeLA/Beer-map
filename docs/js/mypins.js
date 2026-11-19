@@ -25,6 +25,7 @@
     ".mp-pin::before{content:\"\";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--amber,#f5a623);border-bottom:0;pointer-events:none}" +
     ".mp-pin::after{border:0}" +
     ".mp-pin b{overflow:hidden;text-overflow:ellipsis;font-weight:700}" +
+    ".mp-pin.mp-eta{max-width:min(210px,70vw)}" +   // uifix4 I-95: room for "På väg till …"
     ".mp-pin.mp-friends{border-color:var(--green,#3ddc84)}.mp-pin.mp-friends::before{border-top-color:var(--green,#3ddc84)}" +
     ".leaflet-marker-icon.mp-under{visibility:hidden !important;pointer-events:none !important}" +   /* map 25: people under a my-pin chip */
     ".mp-more{font-style:normal;font-weight:700;color:var(--amber-2,#ffd27a);margin-left:2px}" +
@@ -72,7 +73,12 @@
   }
   function label(x) {
     var n = String(x.name || (sv() ? "Hit" : "Here")); if (n.length > 18) n = n.slice(0, 17) + "…";
-    return '<div class="mp-pin mp-' + x.why + '" title="' + window.U.esc(x.name || "") + '"><span aria-hidden="true">' + (x.whys || EMO[x.why]) + "</span><b>" + window.U.esc(n) + "</b>" +
+    // uifix4 I-95 (owner: "På väg till O'Learys"): my departure chip says what it is, not only "🏃 O'Learys". A merged chip
+    // ("🏃👥 La Parma +1") keeps the short form. The tap opens the bar / place card with my "På väg" box (night3).
+    var eta = x.why === "eta" && !x.whys, full = (sv() ? "På väg till " : "On the way to ") + String(x.name || "");
+    if (eta) n = (sv() ? "På väg till " : "On the way to ") + n;
+    return '<div class="mp-pin mp-' + x.why + '" title="' + window.U.esc(eta ? full : x.name || "") + '"' + (eta ? ' aria-label="' + window.U.esc(full) + '"' : "") +
+      '><span aria-hidden="true">' + (x.whys || EMO[x.why]) + "</span><b>" + window.U.esc(n) + "</b>" +
       (x.more ? '<i class="mp-more">+' + x.more + "</i>" : "") + '</div><i class="mp-dot" aria-hidden="true"></i>';
   }
   function sync() {

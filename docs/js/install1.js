@@ -158,6 +158,37 @@
     lsSet("olnu.pnInst", String(Date.now())); lsSet("olnu.installSeen", String(Date.now())); lsSet("olnu.guideSeen", String(Date.now()));
     try { if (window.PNPROMPT && window.PNPROMPT.mark) window.PNPROMPT.mark("install"); } catch (e) {}
     root = h("div", { id: "ux-inst", class: "mn-inst mn-inst-" + k, role: "dialog", "aria-modal": "true", "aria-labelledby": "mn-inst-h" });
+    document.body.appendChild(root);
+    try { var ib = document.getElementById("install-banner"); if (ib) ib.hidden = true; } catch (e) {}
+    if (n === 1 && k !== "desktop") pitch(k); else guide(k, n);
+  }
+  // uifix4 B5 (blind test 3/3: "The first thing is 'Installera appen'. I do not know what the app is yet."): on the first
+  // open the pitch comes first (what the app is, the 3 things you do), ONE primary "Fortsätt", then the install guide.
+  // Owner rule 10 Nov still holds: the guide is shown before the intro (age, location) and before any beer.
+  // The intro then skips its own 3-step list in this page load (no repeated content): INSTALL1.pitched().
+  var pitchedNow = false;
+  function L(sv, en) { return window.I18N && window.I18N.lang === "en" ? en : sv; }
+  function it(key, sv) { try { var v = window.I18N && window.I18N.t ? window.I18N.t(key) : ""; return v && v !== key ? v : sv; } catch (e) { return sv; } }
+  function pitch(k) {
+    pitchedNow = true;
+    var list = h("ul", { class: "mn-inst-steps mn-inst-why" });
+    [["beer", "intro1", "Tryck ÖL! när du tar en öl"], ["map", "intro2", "Din öl syns på kartan till kl 05"], ["users", "intro3", "Gå med i en grupp med dina vänner"]].forEach(function (x) {
+      list.appendChild(h("li", { class: "mn-inst-step" }, [h("span", { class: "mn-inst-wi", "aria-hidden": "true", html: ic(x[0]) }),
+        h("span", { class: "mn-inst-tx" }, [h("b", { class: "mn-inst-st", text: it(x[1], x[2]) })])]));
+    });
+    var go = h("button", { type: "button", class: "ds-btn ds-btn-primary ds-btn-block mn-inst-go mn-inst-next", text: L("Fortsätt", "Continue"), onclick: function () {
+      if (!root) return; root.innerHTML = ""; guide(k, 1);
+      try { var f = root.querySelector(".mn-inst-go, .mn-inst-skip"); if (f) f.focus({ preventScroll: true }); } catch (e) {}
+    } });
+    root.appendChild(h("div", { class: "mn-inst-col mn-inst-pitch" }, [
+      h("img", { class: "mn-inst-icon", src: "./icons/icon-192.png", alt: "", width: "64", height: "64" }),
+      h("h2", { class: "mn-inst-h", id: "mn-inst-h", text: "PintsNow" }),
+      h("p", { class: "mn-inst-p", text: it("introTag", "Live ölkarta. Se var folk tar en öl ikväll.") }),
+      list,
+      h("div", { class: "mn-inst-act" }, [go, h("p", { class: "mn-inst-sub", text: L("Sen visar vi hur du lägger appen på hemskärmen.", "Next we show you how to put the app on your home screen.") })])
+    ]));
+  }
+  function guide(k, n) {
     act = h("div", { class: "mn-inst-act" });
     var col = h("div", { class: "mn-inst-col" }, [
       h("img", { class: "mn-inst-icon", src: "./icons/icon-192.png", alt: "", width: "64", height: "64" }),
@@ -167,8 +198,6 @@
       h("button", { type: "button", class: "mn-inst-skip", text: T("inst.skip"), onclick: close })
     ]);
     root.appendChild(col);
-    document.body.appendChild(root);
-    try { var ib = document.getElementById("install-banner"); if (ib) ib.hidden = true; } catch (e) {}
     render();
   }
   function want() {
@@ -187,5 +216,5 @@
     return new Promise(function (r) { resolveGate = r; show(); });
   }
   function owns() { return !!state() && !standalone(); }
-  window.INSTALL1 = { gate: gate, kind: kind, show: show, owns: owns, state: state, want: want, _close: close, _night: nightKey };
+  window.INSTALL1 = { gate: gate, kind: kind, show: show, owns: owns, state: state, want: want, pitched: function () { return pitchedNow; }, _close: close, _night: nightKey };
 })();

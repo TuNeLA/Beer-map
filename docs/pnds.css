@@ -308,17 +308,20 @@ body:has(#install-banner:not([hidden])) .dl-cap{top:calc(var(--sat) + 222px + va
 #rally{top:calc(var(--sat) + 64px) !important;overflow:hidden !important;border-radius:var(--r-lg) !important}
 body:has(#rally:not([hidden])) .ticker{visibility:hidden !important}
 .rl-x,.rl-a{border-radius:0 !important}
-.ticker.pn-kaos{height:46px !important;background:var(--ds-red) !important;border-color:rgba(255,123,115,.6) !important}
-.ticker.pn-kaos .tk-live{background:rgba(0,0,0,.28) !important;font-size:0 !important}
-.ticker.pn-kaos .tk-live::after{content:"KAOS";font:700 var(--fs-12)/1 var(--ds-sans);letter-spacing:.08em;color:#fff}
-.ticker.pn-kaos .tk-viewport{visibility:hidden}
+/* uifix4 (design review small fix 2): in the first seconds (html.pn-settle) the KAOS line waits, but the bar was already red
+   behind the normal green / amber ticker text (3.35:1). The red KAOS look now starts with its own white line. */
+.ticker.pn-kaos{height:46px !important}
+html:not(.pn-settle) .ticker.pn-kaos{background:var(--ds-red) !important;border-color:rgba(255,123,115,.6) !important}
+html:not(.pn-settle) .ticker.pn-kaos .tk-live{background:rgba(0,0,0,.28) !important;font-size:0 !important}
+html:not(.pn-settle) .ticker.pn-kaos .tk-live::after{content:"KAOS";font:700 var(--fs-12)/1 var(--ds-sans);letter-spacing:.08em;color:#fff}
+html:not(.pn-settle) .ticker.pn-kaos .tk-viewport{visibility:hidden}
 .pn-kaos-line{display:none}
-.ticker.pn-kaos .pn-kaos-line{display:flex;position:absolute;top:0;bottom:0;right:44px;left:var(--pn-kaos-l,64px);align-items:center;gap:var(--sp-2);
+html:not(.pn-settle) .ticker.pn-kaos .pn-kaos-line{display:flex;position:absolute;top:0;bottom:0;right:44px;left:var(--pn-kaos-l,64px);align-items:center;gap:var(--sp-2);
   padding:0 var(--sp-2);border:0;background:transparent;color:#fff;font:600 var(--fs-14)/18px var(--ds-sans);text-align:left;cursor:pointer;min-width:0}
 .pn-kaos-line>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
 .pn-kaos-line>b{flex:0 0 auto;font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .pn-kaos-x{display:none}
-.ticker.pn-kaos .pn-kaos-x{display:grid;place-items:center;position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:transparent;color:#fff;cursor:pointer}
+html:not(.pn-settle) .ticker.pn-kaos .pn-kaos-x{display:grid;place-items:center;position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:transparent;color:#fff;cursor:pointer}
 .pn-kaos-x .pi{width:18px;height:18px}
 /* 3 · top row: one height (44) */
 #live-count{height:44px !important}
@@ -932,6 +935,10 @@ body.barsheet-open #pn-ikv2,body.ba-edit #pn-ikv2{visibility:hidden}
 /* map chips: an invisible ≥ 44 px hit area around small tappable markers (arena chips, my places, people) */
 .ap-pin,.mp-pin{position:relative}
 .ap-pin::after,.mp-pin::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%);border-radius:var(--r-md)}
+/* uifix4 B9 (blind test: person pins 26-32 px, people clusters 28 px, DOM bar pills 24 px, restaurant dots 32 px): the same
+   invisible 44 px hit area. The look does not change (no colour, no size). The pins keep their own position rule. */
+.leaflet-marker-icon .pn-p::after,.leaflet-marker-icon .pn-cl::after,.leaflet-marker-icon .pill::after,.leaflet-marker-icon .pl-in::after{
+  content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%);border-radius:var(--r-pill);background:none}
 /* hemzon: address search row */
 .hz-search{display:flex !important;gap:var(--sp-2);margin:0 0 var(--sp-2) !important}
 .hz-search .hz-q{flex:1 1 auto;min-width:0;height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);border:1px solid var(--ds-border-2);background:var(--ds-bg);color:var(--ds-text);font:400 var(--fs-16)/22px var(--ds-sans)}
@@ -1395,6 +1402,11 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
 .mn-inst-n{flex:0 0 28px;width:28px;height:28px;border-radius:var(--r-pill);display:grid;place-items:center;background:var(--ds-amber-soft);color:var(--ds-amber-t);
   font:700 var(--fs-14)/1 var(--ds-sans)}
 .mn-inst-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+/* uifix4 B5: the pitch before the guide (icon tile per line, the one amber button, then the guide comes in the same card) */
+.mn-inst-wi{flex:0 0 40px;width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--ds-raised);color:var(--ds-amber-t)}
+.mn-inst-wi .pi{width:22px;height:22px}
+.mn-inst-pitch .mn-inst-act{margin-top:var(--sp-5)}
+.mn-inst-pitch .mn-inst-h{font-size:var(--fs-34);line-height:40px}
 .mn-inst-tx>b,.mn-inst-st{font:600 var(--fs-16)/24px var(--ds-sans);color:var(--ds-text)}
 .mn-inst-tx>small{font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
 .mn-inst-key{display:inline-grid;place-items:center;width:32px;height:28px;margin:0 var(--sp-1);vertical-align:-8px;border-radius:var(--r-sm);
@@ -1923,6 +1935,8 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 .pn-sb-row{gap:var(--ds-3)}
 .pn-sb-go{flex:1 1 auto;min-width:0;min-height:44px;display:flex;align-items:center;gap:var(--ds-3);padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .pn-sb-go .sb-ico{display:block}
+/* uifix4 (design review small fix 10): the Systembolaget row icon box was 20 px (others 24), so its title sat 4 px left of the other rows */
+.pn-sb-go>.ds-row-i{flex:0 0 24px;width:24px;height:24px;display:grid;place-items:center}
 /* P2-4: push page. Main switch off → the sub-switches look off (grey); the help text under the main switch is never cut */
 .push-prefs.pn-push-off .switch{filter:grayscale(1);opacity:.5}
 #sheet-body.ds-set .ds-item-hint.info{display:block !important;-webkit-line-clamp:unset;overflow:visible;cursor:auto}
