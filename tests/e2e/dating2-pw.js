@@ -245,7 +245,7 @@ const hasStopReport = (p) => p.page.evaluate(() => !!document.querySelector(".oi
     await shot(A, "02-consent-top");
     await A.page.evaluate(() => { const x = document.querySelector("#sheet-body .oi-consent"); x.click(); document.querySelector("#sheet-body").scrollTop = 9999; });
     ok("consent: the ticked box enables Jag ä med", !(await A.page.evaluate(() => document.querySelector("#sheet-body .oi-go").disabled)));
-    await shot(A, "02-consent-bottom");
+    await wait(A.page, 500); await shot(A, "02-consent-bottom");   // the button colour eases in after enable
     await click(A, "#sheet-body .oi-go"); await wait(A.page, 1500);
     ok("switch: consent version 1 sent, then oi_set_open with age group", F.calls.some((x) => x.fn === "oi_give_consent" && x.a.p_version === 1) &&
       F.calls.some((x) => x.k === "A" && x.fn === "oi_set_open" && x.a.p_on === true && x.a.p_age === "25-34"), F.calls.map((x) => x.fn));
