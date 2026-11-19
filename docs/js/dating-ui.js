@@ -20,10 +20,13 @@
   function pair() { return C.S.st && C.S.st.pair; }
   function shown() { var s = D.getElementById("sheet"), b = D.getElementById("sheet-body"); return !!(s && !s.hidden && b && b.querySelector(".oi-ui")); }
 
-  // open (or redraw) the app sheet with one of our screens
-  function sheet(title, build, sub) {
+  // open (or redraw) the app sheet with one of our screens. The game flow always opens under ONE sheet title, so the back
+  // stack (sheetnav.js: same title + same build = in place) never replays an old screen; the visible title is set after.
+  function sheet(title, build, sub, base) {
     cur.sub = sub || null;
-    A.openSheet(title, function (body) {
+    base = base || T("title");
+    A.openSheet(base, function (body) {
+      var t = D.getElementById("sheet-title"); if (t) t.textContent = title;
       var root = el("div", { class: "oi-ui oi-sheet" }); body.appendChild(root); build(root);
     }, { now: true, onClose: function (why) { if (why === "replaced") return; cur.key = ""; cur.sub = null; setTimeout(function () { C.poll(); }, 50); } });
   }
@@ -408,7 +411,7 @@
       root.appendChild(el("div", { class: "oi-btns oi-btns-1" }, [btn("Ok", "btn-amber", function () { A.closeSheet(); })]));
     }, "done");
   }
-  function reportSheet(id, alias) {
+  function reportSheet(id, alias, base) {
     if (!id) return;
     var reason = null;
     sheet(T("report"), function (root) {
@@ -438,7 +441,7 @@
             reportDone(); C.poll();
           });
         })));
-    }, "report");
+    }, "report", base);
   }
   function reportDone() {
     sheet(T("report"), function (root) {
@@ -483,11 +486,13 @@
         A.closeSheet();
       }));
       root.appendChild(list);
-    }, "safety");
+    }, "safety", T("safeTitle"));
   }
   function recentList() {
     sheet(T("recent"), function (root) {
       sub(root, T("recentSub"));
+      root.appendChild(el("button", { type: "button", class: "btn btn-small btn-ghost oi-back", html: ic("chev-left", "pi-inl") + "<span></span>", on: { click: function () { safety(); } } }));
+      root.querySelector(".oi-back span").textContent = T("safeTitle");
       var list = el("div", { class: "oi-list" }, [el("div", { class: "oi-row" }, [el("span", { class: "oi-spin", "aria-hidden": "true" })])]);
       root.appendChild(list);
       C.rpc("oi_recent", {}).then(function (r) {
@@ -496,10 +501,10 @@
         if (!rows.length) { list.appendChild(row("moon", T("recentNone"))); return; }
         rows.forEach(function (x) {
           var t = (x.name ? x.name + " · " : "") + x.alias, s = String(x.night || "");
-          list.appendChild(x.reported ? row("check", t, s + " · " + T("reported")) : row("flag", t, s, null, function () { reportSheet(x.ref, x.alias); }));
+          list.appendChild(x.reported ? row("check", t, s + " · " + T("reported")) : row("flag", t, s, null, function () { reportSheet(x.ref, x.alias, T("safeTitle")); }));
         });
       });
-    }, "recent");
+    }, "recent", T("safeTitle"));
   }
 
   function start(core) { C = core; A = core.app(); }

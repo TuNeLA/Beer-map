@@ -56,7 +56,8 @@ button.oi-row:active,a.oi-row:active,.oi-row[role="button"]:active{background:va
 .oi-vs-i svg{width:100%;height:100%}
 .oi-sr{display:flex;justify-content:space-between;gap:var(--ds-2)}
 .oi-sr .btn{display:inline-flex;align-items:center;gap:var(--ds-2);min-height:44px;border-radius:var(--ds-r-pill);padding:0 var(--ds-4)}
-.oi-stop{background:transparent;border-color:var(--oi-stop-edge);color:var(--ds-red-t)}
+#sheet-body .oi-sr .oi-stop,.oi-sr .btn.oi-stop{background:transparent;border-color:var(--oi-stop-edge);color:var(--ds-red-t)}
+#sheet-body .oi-sr .oi-rep{background:transparent}
 .oi-sr .pi-inl{width:18px;height:18px}
 
 /* progress + questions */
@@ -108,7 +109,8 @@ button.oi-row:active,a.oi-row:active,.oi-row[role="button"]:active{background:va
 .oi-pic-q{width:56px;height:56px;color:var(--ds-muted);display:inline-flex}
 .oi-name{margin:var(--ds-2) 0 0;text-align:center;font:400 var(--ds-fs-28)/var(--ds-lh-28) var(--ds-stencil);color:var(--ds-text)}
 .oi-meta{margin:0;text-align:center;font:400 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted)}
-.oi-step .oi-ok{width:28px;height:28px;flex-basis:28px;padding:5px;box-sizing:border-box;border-radius:50%;background:var(--ds-green-soft)}
+.oi-step .oi-ok{width:28px;height:28px;flex-basis:28px;padding:5px;box-sizing:border-box;border-radius:50%;background:var(--ds-raised)}
+.oi-step.done .oi-ok{background:var(--ds-green-soft)}
 .oi-step:not(.done) b{color:var(--ds-muted);font-weight:400}
 
 /* chat */
@@ -168,3 +170,4 @@ button.oi-row:active,a.oi-row:active,.oi-row[role="button"]:active{background:va
   .oi-spin{animation:none}
   .oi-opt{transition:none}
 }
+.oi-back{align-self:flex-start;display:inline-flex;align-items:center;gap:var(--ds-1)}
