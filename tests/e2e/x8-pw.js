@@ -113,7 +113,8 @@ const tapTimed = (page) => page.evaluate(() => new Promise((res) => {
     ok(/Skickas när du har täckning/.test(f.text) && !(await redToasts(page)), "offline: the toast says 'Skickas när du har täckning' (no red error)", f.text);
     ok((await outbox(page)) === 1 && srv.posts === posts0, "offline: the outbox has 1 beer, no beer RPC sent", { outbox: await outbox(page), posts: srv.posts - posts0 });
     const c = await cap(page);
-    ok(c.on && /Senast uppdaterad \d\d:\d\d/.test(c.txt) && !c.red, "offline: one calm 'Senast uppdaterad HH:MM' caption, no red offline banner", c);
+    // uifix4 (design review small fix 26): with no network the caption also says "Offline" (it hides the offline banner)
+    ok(c.on && /^Offline · senast uppdaterad \d\d:\d\d/.test(c.txt) && !c.red, "offline: one calm 'Offline · senast uppdaterad HH:MM' caption, no red offline banner", c);
     await shot(page, "offline-390");
     await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
     srv.down = false; await ctx.setOffline(false);
