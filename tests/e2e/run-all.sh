@@ -231,6 +231,7 @@ run c4drinks    $B c4drinks-pw.js   # lane c4drinks: PNI.kind drink icons, beer-
 run tickerfix2 $A tickerfix2-pw.js # lane tickerfix2 (owner 13 Nov): I-70 no '///' between ticker items, I-71 max one quiet/empty-map line per 30 min + fun lines + Systembolaget countdown, I-72 event lines only near the real position
 run evsearch   $B evsearch-pw.js   # lane evsearch: I-73 event search (town / name, Går from a result), I-74/I-76 På plats + Köp biljett in the TV match window, I-75a one row per game
 run night3     $B night3-pw.js   # lane night3: I-98/I-99 beer at the check-in place, I-97 search focus ring, I-96 stable search + grouped titles, I-95 departure chip tap
+run uifix4     $B uifix4-pw.js   # lane uifix4: A18 rank cap, D2 shorter count burst + ikväll chip, B9 44 px pin hit areas, I-95 "På väg till" chip, B5 pitch before the install guide, H2 small design fixes
 # --- the BUILT site (ci1: CI shards with `site=bundled` in tests/e2e/shards.txt; ports A/B serve scripts/build-site.mjs output) ---
 if [ -n "${PLAIN_PORT:-}" ]; then run bundle-smoke $B bundle-smoke-pw.js $PLAIN_PORT   # bundled site = plain site: modules, styles, lazy files, part errors, unbundle fallback, service worker offline
 else skip bundle-smoke 'needs PLAIN_PORT (a plain docs/ server) and the built site on port B'; fi

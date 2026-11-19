@@ -268,8 +268,9 @@ const timer = (page) => page.evaluate(() => {
         setTimeout(() => res(out), 4000);
       }));
       ok("A5 burst: a soft dark round backdrop (radial gradient, no box edge) behind the number and 'ikväll'", b.host && /radial-gradient/.test(b.back.bg) && b.back.radius === "50%" && b.back.border === 0 && b.covers && b.back.fade && b.back.pe === "none", b);
-      ok("A5 burst: the number is in the rail after about 1.2 s and all is over in about 1.6 s (was 2.2 s)", b.gone >= 900 && b.gone <= 1500 && b.done >= 1200 && b.done <= 1950 && b.n === "4", { gone: b.gone, done: b.done });
-      ok("A5 burst: the slam has no blur filter and starts at 2.2x (was 3.2x)", b.slam.filter === false && /scale\(2\.2\)/.test(b.slam.from) && b.slam.dur === 450, b.slam);
+      // uifix4 D2 (19 Nov): shorter again: the number is in the rail after about 1.0 s (hold 640 + fly 300), all over after about 1.3 s
+      ok("A5 burst: the number is in the rail after about 1.0 s and all is over in about 1.3 s (was 1.2 / 1.6 s, first 2.2 s)", b.gone >= 700 && b.gone <= 1300 && b.done >= 900 && b.done <= 1700 && b.n === "4", { gone: b.gone, done: b.done });
+      ok("A5 burst: the slam has no blur filter and starts at 1.6x in 300 ms (uifix4 D2; was 2.2x / 450 ms, first 3.2x)", b.slam.filter === false && /scale\(1\.6\)/.test(b.slam.from) && b.slam.dur === 300, b.slam);
       await wait(page, 300);
       const late = await page.evaluate(() => {
         const c = () => document.querySelectorAll(".pm-burst").length, clean = () => document.querySelectorAll(".pm-burst").forEach((x) => x.remove());

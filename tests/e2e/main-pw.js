@@ -45,8 +45,13 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
     // S5 · iPhone: the guide is the first thing, before the intro, at 3 widths
     for (const w of W3) {
       const { ctx, page, errs } = await fresh(browser, "ios", w);
+      // uifix4 B5 (19 Nov, blind test): the first open shows the pitch (PintsNow, what it is, Fortsätt); the guide comes next,
+      // still before the intro and before any beer (owner rule 10 Nov)
+      const p0 = await inst(page);
+      ok(p0.card && !p0.intro && /PintsNow/.test(p0.txt) && /Live ölkarta/.test(p0.txt) && !/Installera appen/.test(p0.txt), "S5 iPhone " + w + ": first open = the pitch, before the guide and the intro", { card: p0.card, intro: p0.intro, t: p0.txt.slice(0, 80) });
+      await page.click("#ux-inst .mn-inst-next").catch(() => {}); await wait(page, 400);
       const r = await inst(page);
-      ok(r.card && !r.intro, "S5 iPhone " + w + ": first open = 'Installera appen' before the intro (no tour behind it)", { card: r.card, intro: r.intro });
+      ok(r.card && !r.intro, "S5 iPhone " + w + ": Fortsätt → 'Installera appen' before the intro (no tour behind it)", { card: r.card, intro: r.intro });
       ok(r.steps === 3 && /Dela/.test(r.txt) && /Lägg till på hemskärmen/.test(r.txt) && /Installera appen/.test(r.txt), "S5 iPhone " + w + ": 3 steps Dela → Lägg till på hemskärmen → Lägg till", r.txt.slice(0, 160));
       ok(/notiser bara när appen ligger på hemskärmen/.test(r.txt), "S5 iPhone " + w + ": one line says push only works when installed");
       ok(r.skip && r.skipSmall, "S5 iPhone " + w + ": a small text link 'Fortsätt utan att installera'", { skip: r.skip, small: r.skipSmall });
@@ -80,6 +85,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
     // S5 · Android: steps, then the one-tap install button
     {
       const { ctx, page, errs } = await fresh(browser, "android", 390);
+      await page.click("#ux-inst .mn-inst-next").catch(() => {}); await wait(page, 400);   // uifix4 B5: the pitch first
       const r = await inst(page);
       ok(r.card && !r.intro && r.steps === 3 && /Installera app/.test(r.txt), "S5 Android: first open = guide with ⋮ → Installera app → Installera", r.txt.slice(0, 160));
       await shot(page, "s5-android-390");
