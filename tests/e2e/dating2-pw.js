@@ -289,6 +289,13 @@ const hasStopReport = (p) => p.page.evaluate(() => !!document.querySelector(".oi
     ok("game: aliases only (Du ä Gul räv · mot Blå uggla), no name", /Gul räv/.test(vs || "") && /Blå uggla/.test(vs || "") && !/Maja|Anton/.test(vs || ""), vs);
     ok("game: Stopp + Anmäl on the game screen", await hasStopReport(A));
     await shot(A, "04-game-hellre");
+    // the HUD chip "Matchspel pågår" brings a closed game back (one urgent chip, only while a game runs)
+    await A.page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); }); await wait(A.page, 700);
+    await A.page.evaluate(() => { try { PN.updateCounts(); } catch (e) {} }); await wait(A.page, 200);
+    const chip = await A.page.evaluate(() => { const c = document.querySelector('#hud-x [data-hx="oi"]'); return c ? c.textContent.trim() : null; });
+    ok("HUD: the chip 'Matchspel pågår' shows while the game runs and its sheet is closed", chip === "Matchspel pågår", chip);
+    await A.page.evaluate(() => { const c = document.querySelector('#hud-x [data-hx="oi"]'); if (c) c.click(); }); await wait(A.page, 700);
+    ok("HUD: the chip opens the game again", (await sheetTitle(A)) === "Matchspelet", await sheetTitle(A));
     // A answers the first item: B sees "Blå uggla/Gul räv har svarat", not the answer
     await answerOne(A); await settleBoth(A, B, 300);
     const st1 = await txt(B, ".oi-ui .oi-their:not([hidden])");
@@ -400,6 +407,14 @@ const hasStopReport = (p) => p.page.evaluate(() => !!document.querySelector(".oi
     ok("block: A and B are never matched again", F.pairs.length === 3);
     await A.page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); }); await B.page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); });
     await wait(B.page, 600);   // sheetnav.js closes with an async history.go(-1); a person never re-opens within a few ms (a faster re-open drains history)
+
+    /* 9a. Inställningar → Integritet & synlighet has the row "Öppen ikväll" (beta only) */
+    await B.page.evaluate(() => window.PN.showSettings("s", "synl")); await wait(B.page, 1500);
+    const setRow = await B.page.evaluate(() => { const r = document.querySelector("#sheet-body .oi-set"); return r ? { vis: !!r.offsetParent, t: r.textContent.trim() } : null; });
+    ok("settings: Integritet & synlighet has the Öppen ikväll row", setRow && setRow.vis && /Öppen ikväll/.test(setRow.t), setRow);
+    await B.page.evaluate(() => { const r = document.querySelector("#sheet-body .oi-set"); if (r) r.scrollIntoView({ block: "center" }); }); await wait(B.page, 300);
+    await shot(B, "20-settings-row");
+    await B.page.evaluate(() => { const c = document.getElementById("sheet-close"); if (c) c.click(); }); await wait(B.page, 600);
 
     /* 9. safety page, recent list, auto-off */
     await click(B, ".oi-sec .oi-row-go"); await wait(B.page, 900);
