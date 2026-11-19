@@ -406,7 +406,8 @@
       st.lastId = m.id; st.msgs.push(m); n++;
       if (!m.is_me || !st.pend) return;
       var body = String(m.body || "").replace(/^⁣/, "");
-      var hit = st.pend.filter(function (p) { return p.id === m.id; })[0] || st.pend.filter(function (p) { return p.st !== "fail" && p.id == null && p.text === body; })[0];
+      // A3b: a "lost" line (no answer: timeout / network) that the server did save also matches by text → never 2 copies
+      var hit = st.pend.filter(function (p) { return p.id === m.id; })[0] || st.pend.filter(function (p) { return (p.st !== "fail" || p.lost) && p.id == null && p.text === body && !(m.id <= p.id0); })[0];
       if (hit) st.pend.splice(st.pend.indexOf(hit), 1);
     });
     if (st.msgs.length > 20) st.msgs = st.msgs.slice(-20);
@@ -478,23 +479,49 @@
       st.pend.splice(st.pend.indexOf(p), 1); if (!inp.value) inp.value = text; paintChat(wrap);   // "Int' nu": nothing sent, the text is back
     });
   }
+  // A3b: no answer (timeout, no network) ≠ not sent. The server may have saved the line. Before it counts as failed, and
+  // before a retry posts it again, ask the chat for my line (after the last id seen at the tap): there = sent, no 2nd copy.
+  function lostErr(r) {
+    if (!r) return true;
+    try { return window.X8 && window.X8.isNet ? window.X8.isNet(r.error, r.status) : /timeout|fetch|network|load failed|abort/i.test(String(r.error && r.error.message || "")); } catch (e) { return false; }
+  }
+  function landed(g, p) {   // → my row | null (not there) | false (could not ask)
+    return A.rpc("group_msgs", { p_group_id: g.id, p_after_id: p.id0 || 0 }).then(function (r) {
+      if (!r || r.error) return false;
+      var rows = A.parseData ? A.parseData(r.data) : r.data;
+      return (Array.isArray(rows) ? rows : []).filter(function (m) { return m && m.is_me && String(m.body || "").replace(/^\u2063/, "") === p.text; })[0] || null;
+    }, function () { return false; });
+  }
   function post(wrap, g, p) {
     var st = wrap.__chat;
-    try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
+    if (p.id0 == null) p.id0 = st.lastId;
     var bad = function (r) {
       var slow = !!(r && r.error && U.errCode && U.errCode(r.error) === "slow_down");
       if (st.pend.indexOf(p) < 0) return;
       p.st = "fail"; paintChat(wrap);
       if (slow || !document.body.contains(wrap)) A.toast(slow ? T("slow") : T("fail"), { err: true });   // the line itself says "Inte skickat" (one text)
     };
-    A.rpc("post_group_msg", { p_group_id: g.id, p_body: p.text }).then(function (r) {
-      if (!r || r.error) { bad(r); return; }
-      var d = null; try { d = A.parseData ? A.parseData(r.data) : r.data; } catch (e) {}
-      if (st.pend.indexOf(p) >= 0) { p.st = "ok"; if (d && d.id != null) p.id = d.id; paintChat(wrap); }
+    var good = function (id) {
+      p.lost = false;
+      if (st.pend.indexOf(p) >= 0) { p.st = "ok"; if (id != null) p.id = id; paintChat(wrap); }
       A.invoke("notify-group", { event: "msg", group_id: g.id });
       try { if (window.EXTRAS && window.EXTRAS.award) window.EXTRAS.award("chat"); } catch (e) {}
       loadChat(wrap, g);
-    }, function () { bad(null); });
+    };
+    var lost = function (r) {   // the answer was lost: look before "Inte skickat"
+      landed(g, p).then(function (m) { if (m) good(m.id); else { p.lost = true; bad(r); } });
+    };
+    (p.lost ? landed(g, p) : Promise.resolve(null)).then(function (m0) {
+      if (m0) { good(m0.id); return; }
+      if (m0 === false) { bad(null); return; }   // still no network: stay "Inte skickat" (lost), nothing posted twice
+      p.lost = false;
+      try { if (window.olnuGroupBump) window.olnuGroupBump(g.id, 3); } catch (e) {}
+      A.rpc("post_group_msg", { p_group_id: g.id, p_body: p.text }).then(function (r) {
+        if (!r || r.error) { if (lostErr(r)) lost(r); else bad(r); return; }
+        var d = null; try { d = A.parseData ? A.parseData(r.data) : r.data; } catch (e) {}
+        good(d && d.id != null ? d.id : null);
+      }, function () { lost(null); });
+    });
   }
   function openChat(g) { try { if (window.SOCIAL && window.SOCIAL.openChat) window.SOCIAL.openChat(g); } catch (e) {} }
 

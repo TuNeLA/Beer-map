@@ -97,8 +97,34 @@
     try { if (window.PN_BETA || document.getElementById("olnu-beta")) return "beta"; } catch (e) {}
     return "stable";
   }
+  // I-129: ver = the build stamp (sw.js VERSION, written by scripts/stamp.mjs at deploy). The page reads it from the name of the
+  // service-worker cache it came from (cache name = VERSION). An update that waits = two version caches: the one whose index.html
+  // names every ?v= tag of this page is ours. No cache yet (first visit, dev server "dev"): the old app.js hash / PN_BETA.
+  var RE_BUILD = /^olnu-(?:[a-z]-)?[0-9a-f]{10}(?:-[a-z]+)?$/, BUILD = "";
+  function pageTags() {
+    var out = [];
+    try { [].forEach.call(document.querySelectorAll('script[src*="?v="], link[href*="?v="]'), function (el) { var m = (el.getAttribute("src") || el.getAttribute("href") || "").match(/[?&]v=([0-9a-f]{10})\b/); if (m && out.indexOf(m[1]) < 0) out.push(m[1]); }); } catch (e) {}
+    return out;
+  }
+  function findBuild() {
+    try {
+      if (!window.caches || !caches.keys) return Promise.resolve("");
+      return caches.keys().then(function (ks) {
+        var c = ks.filter(function (k) { return RE_BUILD.test(k); });
+        if (c.length < 2) return c[0] || "";
+        var mine = pageTags();
+        if (!mine.length) return "";   // cannot tell which one: keep the old value
+        return Promise.all(c.map(function (k) {
+          return caches.open(k).then(function (cc) { return cc.match("./index.html"); }).then(function (r) { return r ? r.text() : ""; })
+            .then(function (t) { return mine.every(function (v) { return t.indexOf("v=" + v) >= 0; }) ? k : ""; }, function () { return ""; });
+        })).then(function (hits) { hits = hits.filter(Boolean); return hits.length === 1 ? hits[0] : ""; });
+      }).then(function (k) { if (k) BUILD = k; return BUILD; }, function () { return ""; });
+    } catch (e) { return Promise.resolve(""); }
+  }
+  var buildDone = false, buildP = Promise.race([findBuild(), new Promise(function (r) { setTimeout(r, 1500); })]).then(function () { buildDone = true; }, function () { buildDone = true; });
   function ver() {
-    try { var s = ([].slice.call(document.querySelectorAll('script[src*="app.bundle"]')).pop() || document.querySelector('script[src*="app.js"]')); /* left-T25 */ var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return (window.PN_BETA ? String(window.PN_BETA).slice(0, 8) : v) || "?"; } catch (e) { return "?"; }
+    if (BUILD) return BUILD;
+    try { var s =([].slice.call(document.querySelectorAll('script[src*="app.bundle"]')).pop() || document.querySelector('script[src*="app.js"]')); /* left-T25 */ var v = s && (s.getAttribute("src").match(/v=([\w]+)/) || [])[1]; return (window.PN_BETA ? String(window.PN_BETA).slice(0, 8) : v) || "?"; } catch (e) { return "?"; }
   }
 
   /* ---------- privacy guard: no text, no ids, no e-mail, no positions in usage props ---------- */
@@ -204,6 +230,7 @@
   }
   function flush(beacon) {
     if (dead || flushing && !beacon) return Promise.resolve(false);
+    if (!beacon && !buildDone) return buildP.then(function () { return flush(false); });   // I-129: the first batch waits for the build stamp (max 1.5 s)
     var t = pnow();
     if (!beacon && Date.now() - lastSum > 600e3) { rpcSummary(); H("summary", false); lastSum = Date.now(); }   // RPC timings + hook summaries: every 10 min + at hide
     if (!Q.length && !L.length) return Promise.resolve(false);
@@ -685,6 +712,7 @@
     _askOnce: function () { askOnce(); },   // uifix test: the 20 s ask timer, one tick
     _note: function (k) { showNote(k); },
     _bye: bye,
+    _build: findBuild,   // I-129 test seam: look for the build stamp again (→ Promise of the stamp, "" = unknown)
     _fix: fix
   };
 })();
