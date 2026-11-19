@@ -23,7 +23,7 @@ async function beerServer(page, calls, o = {}) {
     calls.push([fn, b]);
     if (o.old) return J(r, { code: "PGRST202", message: "Could not find the function public." + fn }, 404);
     switch (fn) {
-      case "beerlib_favs": return J(r, favs.slice());
+      case "beerlib_favs_mine": return J(r, favs.slice());
       case "beerlib_fav_set": {
         for (let i = favs.length - 1; i >= 0; i--) if (favs[i].slot === b.p_slot || favs[i].beer === b.p_beer) favs.splice(i, 1);
         if (b.p_beer) favs.push({ slot: b.p_slot, beer: b.p_beer });
@@ -31,7 +31,7 @@ async function beerServer(page, calls, o = {}) {
       }
       case "beerlib_privacy": return J(r, { mode: b.p_mode });
       case "beerlib_rate": mine = b.p_stars || 0; return J(r, { stars: b.p_stars, n: o.n || 3, avg: null });
-      case "beerlib_beer": return J(r, { my_stars: mine, fav_slot: null, n: o.n || 3, avg: (o.n || 3) >= 5 ? 3.9 : null, reviews: [
+      case "beerlib_beer_get": return J(r, { my_stars: mine, fav_slot: null, n: o.n || 3, avg: (o.n || 3) >= 5 ? 3.9 : null, reviews: [
         { id: 11, body: "Frisk och fruktig. Bra till mat.", stars: 4, at: new Date(Date.now() - 864e5 * 3).toISOString(), status: "live", mine: false, name: "Maja", known: false },
         { id: 12, body: "Lite för söt för mig, men fin doft.", stars: 3, at: new Date(Date.now() - 864e5 * 1.2).toISOString(), status: "live", mine: false, name: "Lisa Berg", known: true }] });
       case "beerlib_review_report": return J(r, { count: 1, hidden: false });
@@ -152,6 +152,7 @@ const waitSheet = (page, re) => page.waitForFunction((r) => { const s = document
     });
     ok("Profil: 'Mina favoritöl' with the beer in slot 1 and 2 empty slots", p1.has && p1.tiles.length === 3 && /Blanche/.test(p1.tiles[0]) && /Välj/.test(p1.tiles[1]), p1);
     ok("Profil: order hero → Mina favoritöl → Vem ser mig; 'Syns för dina vänner och grupper'", !!p1.order && /Syns för dina vänner och grupper/.test(p1.priv), p1);
+    await wait(page, 3200);   // sent 3 s after the tap (warm.js write rule)
     ok("Profil: the Synlighet mode goes to the server (beerlib_privacy alla)", calls.some((c) => c[0] === "beerlib_privacy" && c[1].p_mode === "alla"), calls.map((c) => c[0]));
     await page.evaluate(() => { const f = document.querySelector(".bl-fav"); if (f) f.scrollIntoView({ block: "start" }); document.getElementById("sheet-body").scrollBy(0, -120); });
     await shot(page, "05-profil");

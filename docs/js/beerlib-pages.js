@@ -149,7 +149,7 @@
       }, function () {});
     }
     function refresh() {
-      return B.call("beerlib_beer", { p_beer: b.id }).then(function (r) {
+      return B.call("beerlib_beer_get", { p_beer: b.id }).then(function (r) {
         if (r.off) { stars = B.localRate(b.id); } else if (!r.error && r.data) { info = r.data; stars = info.my_stars | 0; }
         if (el.isConnected) paint();
       });

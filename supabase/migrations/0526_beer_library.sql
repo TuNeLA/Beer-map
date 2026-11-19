@@ -3,9 +3,9 @@
 -- Check after the run (expect t, t, t, t, t, t, t):
 --   select to_regclass('public.beer_favourites') is not null, to_regclass('public.beer_ratings') is not null,
 --     to_regclass('public.beer_reviews') is not null, to_regclass('public.beer_review_reports') is not null,
---     not has_function_privilege('anon', 'public.beerlib_beer(text)', 'execute'),
+--     not has_function_privilege('anon', 'public.beerlib_beer_get(text)', 'execute'),
 --     not has_function_privilege('anon', 'public.beerlib_fav_set(integer, text)', 'execute'),
---     has_function_privilege('authenticated', 'public.beerlib_beer(text)', 'execute');
+--     has_function_privilege('authenticated', 'public.beerlib_beer_get(text)', 'execute');
 --
 -- Why: the owner wants a beer library in the app (I-132): "choose 1 or 2 or 3 beers that are your favorites ... rate them from
 -- 1 to 5 ... review". The beer and style data are static app files (docs/data/beer/, Open Food Facts + our own texts), so a beer
@@ -20,8 +20,8 @@
 --     beer_reviews (id, beer_id, user_id, body <= 280, stars, status live|hidden|removed, report_count, times)
 --     beer_review_reports (review_id, reporter_id, reason spam|rude|wrong|other, note)   one per reporter and review
 --   RPCs (security definer, fixed search_path, auth.uid() in the body, execute for authenticated only):
---     beerlib_favs() · beerlib_fav_set(slot, beer) · beerlib_privacy(mode) · beerlib_favs_for(key | group + k)
---     beerlib_rate(beer, stars) · beerlib_beer(beer) · beerlib_review_post(beer, body, stars) · beerlib_review_remove(id)
+--     beerlib_favs_mine() · beerlib_fav_set(slot, beer) · beerlib_privacy(mode) · beerlib_favs_for(key | group + k)
+--     beerlib_rate(beer, stars) · beerlib_beer_get(beer) · beerlib_review_post(beer, body, stars) · beerlib_review_remove(id)
 --     beerlib_review_report(id, reason, note)
 --   Helpers (internal, no grant): olnu_bl_id_ok(text), olnu_bl_stats(text), olnu_bl_name(uuid, uuid)
 -- Limits: 20 reviews and 10 reports per person per day (slow_down). No links or phone numbers in a review (bad_text).
@@ -119,7 +119,7 @@ $$;
 revoke all on function public.olnu_bl_name(uuid, uuid) from public, anon, authenticated;
 
 -- ---------- favourites ----------
-create or replace function public.beerlib_favs()
+create or replace function public.beerlib_favs_mine()
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare v_uid uuid := auth.uid();
 begin
@@ -142,7 +142,7 @@ begin
   end if;
   insert into public.beer_favourites (user_id, slot, beer_id, updated_at) values (v_uid, p_slot, p_beer, now())
   on conflict (user_id, slot) do update set beer_id = excluded.beer_id, updated_at = now();
-  return public.beerlib_favs();
+  return public.beerlib_favs_mine();
 end $$;
 
 create or replace function public.beerlib_privacy(p_mode text)
@@ -198,7 +198,7 @@ begin
 end $$;
 
 -- ---------- the beer page: my rating, my favourite slot, the count / average, the reviews I may see ----------
-create or replace function public.beerlib_beer(p_beer text)
+create or replace function public.beerlib_beer_get(p_beer text)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare v_uid uuid := auth.uid();
 begin
@@ -289,8 +289,8 @@ end $$;
 do $$
 declare
   f text;
-  v_rpcs text[] := array['public.beerlib_favs()', 'public.beerlib_fav_set(integer, text)', 'public.beerlib_privacy(text)',
-    'public.beerlib_favs_for(text, uuid, text)', 'public.beerlib_rate(text, integer)', 'public.beerlib_beer(text)',
+  v_rpcs text[] := array['public.beerlib_favs_mine()', 'public.beerlib_fav_set(integer, text)', 'public.beerlib_privacy(text)',
+    'public.beerlib_favs_for(text, uuid, text)', 'public.beerlib_rate(text, integer)', 'public.beerlib_beer_get(text)',
     'public.beerlib_review_post(text, text, integer)', 'public.beerlib_review_remove(bigint)', 'public.beerlib_review_report(bigint, text, text)'];
 begin
   foreach f in array v_rpcs loop

@@ -138,7 +138,7 @@
   function loadFavs(force) {
     if (favs && !force) return Promise.resolve(favs);
     if (favP && !force) return favP;
-    favP = call("beerlib_favs").then(function (r) {
+    favP = call("beerlib_favs_mine").then(function (r) {
       favP = null;
       if (r.off) { favs = localFavs(); return favs; }
       if (r.error) { favs = favs || localFavs(); return favs; }
@@ -335,37 +335,33 @@
       tl("Syns för dina vänner och grupper.", "Seen by your friends and groups.");
   }
   // the server shows my favourites to friends / group mates by my Synlighet (never to strangers): tell it when the mode changed
+  // 3 s later, not in the tap: js/warm.js takes a non-read RPC within 2.5 s of a tap for a user write and marks every cached screen dirty
+  var privT = 0;
   function syncPrivacy() {
-    if (!online()) return;
-    var m = visMode(); if (lsGet(LS_PRIV, "") === m) return;
-    call("beerlib_privacy", { p_mode: m }).then(function (r) { if (!r.error) lsSet(LS_PRIV, m); });
+    clearTimeout(privT);
+    privT = setTimeout(function () {
+      if (!online()) return;
+      var m = visMode(); if (lsGet(LS_PRIV, "") === m) return;
+      call("beerlib_privacy", { p_mode: m }).then(function (r) { if (!r.error) lsSet(LS_PRIV, m); });
+    }, 3000);
   }
-  function openSearch() { try { if (W.BARSEARCH && W.BARSEARCH.open) { if (W.PN && PN.closeSheet) PN.closeSheet(); setTimeout(function () { W.BARSEARCH.open("beer"); }, 60); } } catch (e) {} }
-  function favTile(b, i) {
-    if (!b) return '<button type="button" class="bl-ft empty" data-bl-find="1">' + ic("plus") + "<b>" + esc(tl("Välj", "Pick")) + "</b><small>" + esc(tl("Favorit " + (i + 1), "Favourite " + (i + 1))) + "</small></button>";
-    return '<button type="button" class="bl-ft" data-bl-beer="' + esc(b.id) + '"><span class="n" aria-hidden="true">' + (i + 1) + "</span>" + pic(b) + "<b>" + esc(b.name) + "</b><small>" +
-      esc(styleName(b.style) || abvText(b) || "") + "</small></button>";
+  // the view js/profile.js draws (and keeps on this phone): 3 tiles {id, n name, s style, img, ph photo} + the privacy line
+  function favViewOf(f) {
+    return { t: f.map(function (id) {
+      var b = id && data ? data.byId[id] : null; if (!b) return null;
+      var st = beerStyle(b);
+      return { id: b.id, n: b.name, s: styleName(b.style) || abvText(b) || "", img: b.photo ? photoUrl(b) : st ? BASE + "styles/" + st.id + ".svg" : "", ph: b.photo ? 1 : 0 };
+    }), p: privText() };
   }
   function favCard(sec) {
-    sec.className = "bl bl-fav ds-keep";
-    sec.innerHTML = '<div class="bl-fav-h"><h3>' + esc(tl("Mina favoritöl", "My favourite beers")) + '</h3><button type="button" data-bl-find="1">' + esc(tl("Ändra", "Edit")) + "</button></div>" +
-      '<div class="bl-fav-g"></div><div class="bl-priv">' + ic("eye") + "<span></span></div>";
-    var grid = sec.querySelector(".bl-fav-g"), pv = sec.querySelector(".bl-priv span");
+    if (typeof sec.__blPaint !== "function") return sec;
     function paint() {
-      if (!sec.isConnected && sec.__blDone) return;
-      var f = favs || localFavs(), need = f.some(Boolean) && !data;
-      grid.innerHTML = need ? "" : f.map(function (id, i) { return favTile(id && data ? data.byId[id] || null : null, i); }).join("");
-      pv.textContent = privText(); fixPics(grid);
-      if (need) load().then(paint, function () {});
+      var f = favs || localFavs();
+      if (f.some(Boolean) && !data) { load().then(paint, function () {}); return; }   // no half card: wait for the names
+      sec.__blPaint(favViewOf(f));
     }
-    sec.addEventListener("click", function (e) {
-      var t = e.target.closest ? e.target : null; if (!t) return;
-      var b = t.closest("[data-bl-beer]"); if (b) { openBeer(b.getAttribute("data-bl-beer")); return; }
-      if (t.closest("[data-bl-find]")) openSearch();
-    });
     var off = on(function () { if (!sec.isConnected) { off(); return; } paint(); });
-    paint();
-    loadFavs(true).then(function () { sec.__blDone = 1; paint(); syncPrivacy(); });
+    loadFavs(true).then(function () { paint(); syncPrivacy(); });
     return sec;
   }
 
