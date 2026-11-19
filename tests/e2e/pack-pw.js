@@ -10,9 +10,10 @@
 // "Data" = what sw.js DATA_RE answers stale-while-revalidate (bars, hours, places tiles, dialekt packs): it is refreshed in the
 // background on every start by design, so it is counted but not judged here.
 // Checks (the today site fails P1 and P3; see the "(today)" reference lines):
-//   P1 first visit: <= 17 own scripts + stylesheets that are not x-lazy files (14 start files + sw.js + slack); today 240+
+//   P1 first visit: <= 16 own scripts + stylesheets that are not x-lazy files (14 start files + slack; sw.js not counted); today 240+
 //   P2 2nd and 3rd visit: no own app script / stylesheet comes from the network (all from the worker cache); the app runs,
-//      no page error. The 3rd visit has no own request at all except the page and the data refresh.
+//      no page error. The 3rd visit has no own request at all except the page, the data refresh and sw.js (the browser
+//      checks the worker script for an update on a navigation; CI run 44518767729 saw it on the 3rd visit).
 //   P3 first visit downloads less than the today site (gzip bytes)
 //   P4 x-lazy files with data-demand stay lazy (the page does not ask for them at start; the worker may precache them for
 //      offline), the other x-lazy files still run; the same modules as today
@@ -59,7 +60,8 @@ function startServer() {
 }
 const BASE = () => "http://127.0.0.1:" + srv.port + "/";
 const DATA = /\/(bars(-extra|-closed)?\.json|arenas\.json|hours\.json|systembolaget\.json|places\.json|places\/[^/]+\.json|buildings(3d)?\/[^/]+\.json|zones\/[^/]+\.json|data\/dialekt-kommun\.json|js\/dialekt-packs\/[^/]+\.js)$/;   // = sw.js DATA_RE
-const sum = (l) => ({ n: l.length, js_css: l.filter((x) => /\.(js|css)$/.test(x.p) && !DATA.test(x.p)).length, data: l.filter((x) => DATA.test(x.p)).length, kb: Math.round(l.reduce((a, x) => a + x.bytes, 0) / 1024), gzip_kb: Math.round(l.reduce((a, x) => a + x.gzip, 0) / 1024) });
+const SW = /^\/sw\.js$/;   // the browser's own update check of the worker script (on a navigation): not an app file
+const sum = (l) => ({ n: l.length, js_css: l.filter((x) => /\.(js|css)$/.test(x.p) && !DATA.test(x.p) && !SW.test(x.p)).length, data: l.filter((x) => DATA.test(x.p)).length, kb: Math.round(l.reduce((a, x) => a + x.bytes, 0) / 1024), gzip_kb: Math.round(l.reduce((a, x) => a + x.gzip, 0) / 1024) });
 const MODS = () => Object.keys(window).filter((k) => /^[A-Z][A-Z0-9_]{1,}$/.test(k) && window[k] != null && !/^(OLNU_BUNDLE_ERR|OLNU_UNBUNDLED)$/.test(k)).sort();
 const cached = (page, ver, ms) => page.evaluate(([v, t]) => new Promise((res) => {
   const t0 = Date.now();
@@ -107,7 +109,7 @@ async function visit(browser, site) {
   };
   const again = await re(), third = await re();
   await ctx.close();
-  const startJsCss = first.list.filter((p) => /\.(js|css)$/.test(p) && !DATA.test(p) && !lazyFiles.has(p));
+  const startJsCss = first.list.filter((p) => /\.(js|css)$/.test(p) && !DATA.test(p) && !SW.test(p) && !lazyFiles.has(p));
   return { atLoad, first, cacheN, pills, errs, demand, notRun, mods, ctl, again, third, loadList, firstAsked, startJsCss, lazyN: lazyFiles.size };
 }
 const V = (v) => v.n + " req (" + v.js_css + " app js/css, " + v.data + " data, " + v.gzip_kb + " KB gzip, " + v.kb + " KB raw)";
@@ -131,12 +133,12 @@ const row = (name, r) => console.log("     " + name.padEnd(7) + "| first visit u
     row("packed", a); row("today", p);
     if (process.env.PACK_JSON) fs.writeFileSync(process.env.PACK_JSON, JSON.stringify({ packed: a, today: p, meta: { packed: A.meta, today: P.meta } }, null, 1));
     /* P1 */
-    ok("P1 packed first visit: <= 17 own scripts + stylesheets that are not x-lazy files (" + a.startJsCss.length + "; today " + p.startJsCss.length + ")", a.pills && a.startJsCss.length > 0 && a.startJsCss.length <= 17, a.startJsCss);
+    ok("P1 packed first visit: <= 16 own scripts + stylesheets that are not x-lazy files (" + a.startJsCss.length + "; today " + p.startJsCss.length + ")", a.pills && a.startJsCss.length > 0 && a.startJsCss.length <= 16, a.startJsCss);
     ok("P1 (today) the site that is live today starts 150+ own scripts + stylesheets: this is what the switch removes", p.startJsCss.length >= 150, { n: p.startJsCss.length });
     /* P2 */
     ok("P2 2nd visit, packed: the worker controls the page; no app script / stylesheet comes from the network", a.ctl && a.again.ctl && a.again.js_css === 0, { ctl: a.ctl, ctl2: a.again.ctl, list: a.again.list });
-    const own3 = a.third.list.filter((x) => !DATA.test(x) && !/\/index\.html$/.test(x));
-    ok("P2 3rd visit, packed: only the page + the data refresh go to the network (" + a.third.n + " requests)", a.third.ctl && own3.length === 0, own3);
+    const own3 = a.third.list.filter((x) => !DATA.test(x) && !/\/index\.html$/.test(x) && !SW.test(x));
+    ok("P2 3rd visit, packed: only the page, the worker update check (sw.js) and the data refresh go to the network (" + a.third.n + " requests)", a.third.ctl && own3.length === 0, own3);
     ok("P2 packed: the app runs in all 3 visits (pins), no page error", a.pills && a.again.pills && a.third.pills && a.errs.length === 0, { pills: [a.pills, a.again.pills, a.third.pills], errs: a.errs });
     /* P3 */
     ok("P3 packed first visit downloads less than today's site (" + a.first.gzip_kb + " vs " + p.first.gzip_kb + " KB gzip)", a.first.gzip_kb > 0 && a.first.gzip_kb < p.first.gzip_kb, { a: a.first.gzip_kb, p: p.first.gzip_kb });
