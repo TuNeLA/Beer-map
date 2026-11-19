@@ -26,16 +26,17 @@ function serverEntry(v, have) {
 }
 
 function net() {
-  const scope = { sCache: {}, sKeys: [], SYNC_MAX: 3 };
-  const f = loadFunctions(["syncHave", "syncTake", "syncKeep"], scope);
+  const scope = { sCache: {}, sKeys: [], sByName: {}, SYNC_MAX: 3 };
+  const f = loadFunctions(["syncBase", "syncHave", "syncTake", "syncKeep"], scope);
   return Object.assign(f, { scope });
 }
 // one round: the phone asks with what it has, the server answers, the phone keeps the result
-function round(f, k, value) {
-  const have = f.syncHave([{ k }], f.scope.sCache)[k];
+function round(f, k, value, n) {
+  const c = { k, n: n || k.split("|")[0] }, base = {}; base[k] = f.syncBase(c, f.scope.sCache, f.scope.sByName);
+  const have = f.syncHave([c], base)[k];
   const it = serverEntry(value, have);
-  const t = f.syncTake(it, f.scope.sCache[k]);
-  if (t.ok) f.syncKeep(k, t.v, t.h);
+  const t = f.syncTake(it, base[k]);
+  if (t.ok) f.syncKeep(k, t.v, t.h, c.n);
   return { it, t, bytes: JSON.stringify(it).length };
 }
 
@@ -95,8 +96,18 @@ test("pn_sync: the cache keeps at most SYNC_MAX keys (oldest out) and sends only
   const f = net();
   ["a", "b", "c", "d"].forEach((k) => round(f, k, [k]));
   assert.deepEqual(Object.keys(f.scope.sCache).sort(), ["b", "c", "d"]);
-  const have = f.syncHave([{ k: "c" }, { k: "zz" }], f.scope.sCache);
-  assert.deepEqual(Object.keys(have), ["c"]);
+  const cs = [{ k: "c", n: "c" }, { k: "zz", n: "zz" }], base = {};
+  cs.forEach((c) => { base[c.k] = f.syncBase(c, f.scope.sCache, f.scope.sByName); });
+  assert.deepEqual(Object.keys(f.syncHave(cs, base)), ["c"]);
+});
+
+test("pn_sync: a new key of the same function (poll_v2 with a new box / p_heat) builds on the last answer of that function", () => {
+  const f = net(), v = poll(pins(20), { beer_count: 2 });
+  round(f, "poll_v2|box1", v, "poll_v2");
+  const r = round(f, "poll_v2|box2", Object.assign({}, v, { server_time: "x" }), "poll_v2");
+  assert.equal(r.t.how, "part");
+  assert.deepEqual(Object.keys(r.it.d), ["server_time"]);
+  assert.deepEqual(plain(r.t.v), Object.assign({}, v, { server_time: "x" }));
 });
 
 function gap(o) {

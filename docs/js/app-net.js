@@ -75,7 +75,7 @@
   // srvsync A7 (0525): pn_sync = rpc_bundle2 with versions. The phone sends the hash of what it has per key; the server sends
   // only what changed ({s: 1} = same; an object: only its changed fields). A server without pn_sync (PGRST202) = rpc_bundle2
   // as before, remembered 6 h (olnu.pnsync). While pn_sync is on, the "old server" flags of rpc_bundle2 do not hold names back.
-  var LS_SYNC = "olnu.pnsync", SYNC_OFF_MS = 6 * 3600e3, syncSt = null, sCache = {}, sKeys = [], SYNC_MAX = 120;
+  var LS_SYNC = "olnu.pnsync", SYNC_OFF_MS = 6 * 3600e3, syncSt = null, sCache = {}, sKeys = [], sByName = {}, SYNC_MAX = 120;
   try { syncSt = JSON.parse(localStorage.getItem(LS_SYNC) || "null"); } catch (e) { syncSt = null; }
   var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
   try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
@@ -210,10 +210,13 @@
     syncSt = { v: "off", at: Date.now() }; bundleStats.syncOff = why;
     try { localStorage.setItem(LS_SYNC, JSON.stringify(syncSt)); } catch (e) {}
   }
-  // p_have: per key the hash the phone has ({field: hash} for an object answer)
-  function syncHave(calls, cache) {
+  // the copy a call is compared with: its own key, else the last answer of the same function (poll_v2 asks with a new box or
+  // p_heat now and then: the fields that did not change still stay at home). Taken when the request goes out.
+  function syncBase(c, cache, byName) { return cache[c.k] || (byName && byName[c.n] && cache[byName[c.n]]) || null; }
+  // p_have: per key the hash of that copy ({field: hash} for an object answer)
+  function syncHave(calls, base) {
     var o = {};
-    calls.forEach(function (c) { var e = cache[c.k]; if (e && e.h != null) o[c.k] = e.h; });
+    calls.forEach(function (c) { var e = base[c.k]; if (e && e.h != null) o[c.k] = e.h; });
     return o;
   }
   // one entry of the answer + what the phone had → { ok, v, h }. ok false = the phone cannot build the value (no copy).
@@ -229,15 +232,18 @@
     if (!("d" in it)) return { ok: false };
     return { ok: true, v: it.d === undefined ? null : it.d, h: it.h != null ? it.h : null, how: "full" };
   }
-  function syncKeep(k, v, h) {
+  function syncKeep(k, v, h, n) {
     if (h == null) return;
     if (!sCache[k]) { sKeys.push(k); if (sKeys.length > SYNC_MAX) delete sCache[sKeys.shift()]; }
     sCache[k] = { h: h, d: v };
+    if (n) sByName[n] = k;
   }
   function syncClone(v) { return v && typeof v === "object" ? JSON.parse(JSON.stringify(v)) : v; }
   function syncSend(calls, list) {
     bundleStats.sent++; bundleStats.sync++; bundleStats.calls += list.length;
-    rpcNet("pn_sync", { p_calls: calls, p_have: syncHave(calls, sCache) }, true).then(function (r) {
+    var base = {};
+    calls.forEach(function (c) { base[c.k] = syncBase(c, sCache, sByName); });
+    rpcNet("pn_sync", { p_calls: calls, p_have: syncHave(calls, base) }, true).then(function (r) {
       var e = r && r.error, d = r && !e ? parseData(r.data) : null;
       if (e) {
         var em = String((e.code || "") + " " + (e.message || "")), st = +(r.status || e.status || 0);
@@ -256,9 +262,9 @@
           bAlone([x]); return;
         }
         if (it.e) { x.res({ data: null, error: { message: String(it.e.message || "error"), code: it.e.code || "" } }); return; }
-        var t = got[x.k] || (got[x.k] = syncTake(it, sCache[x.k]));
-        if (!t.ok) { delete sCache[x.k]; bAlone([x]); return; }   // the phone lost its copy: this one alone, in full
-        if (t.how && !t.kept) { bundleStats[t.how]++; syncKeep(x.k, t.v, t.h); t.kept = true; }
+        var t = got[x.k] || (got[x.k] = syncTake(it, base[x.k]));
+        if (!t.ok) { delete sCache[x.k]; bAlone([x]); return; }   // no copy to build on (should not happen): this one alone, in full
+        if (t.how && !t.kept) { bundleStats[t.how]++; syncKeep(x.k, t.v, t.h, x.n); t.kept = true; }
         x.res({ data: syncClone(t.v), error: null, status: 200, sync: t.how });
       });
     });
