@@ -4,13 +4,15 @@
 //   default research dir: ../pintsnow-ops/research/beer-library (next to this repo) or $PN_BEER_SRC.
 // Writes (only the fields the app needs; the app loads them when the Öl tab opens):
 //   docs/data/beer/styles.json   61 styles: names, family, colour, IBU / ABV ranges, taste tags, glass, serve temp, food, our texts
-//   docs/data/beer/beers.json    beers: rows [id, name, brewery, style, conf, abv, af, photo, credit, group] (see COLS)
+//   docs/data/beer/beers.json    beers: rows [id, name, brewery, style, conf, abv, af, photo, credit, group, nn] (see COLS) +
+//                                alias {id: kept id} (a duplicate beer: old chat tips and favourites still find it)
 //   docs/data/beer/styles/*.svg  the style pictures (our own art)
 //   docs/data/beer/img/<id>.jpg  photos (Open Food Facts, CC BY-SA): only for the beers we ship, resized to <= 300 px high
 //   docs/data/beer/taps.json     bar tap lists: { v, bars: { <bar id>: [beer id, ...] } }. Empty until bars send lists (I-132 phase 3).
 // Which beers ship: Sweden (beers_se), Nordic (beers_nordic) and world rows marked se_likely (a guess: sold in Sweden).
 // Data rules (coordinator 19 Nov): ABV only when plausible (0 % only on an alcohol-free beer; nothing above 16 %; not far above the
-// style's range); the style is a guess unless its confidence is "high" (the app says "gissning"). Nothing is made up here.
+// style's range; not when the name says another strength); the style is a guess unless its confidence is "high" (the app says
+// "Stil (gissning)"). Names: see "name quality" below. Nothing is made up here.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,7 +25,7 @@ const SRC = resolve(args.find((a) => !a.startsWith("--")) || process.env.PN_BEER
 const NO_IMG = args.includes("--no-img");
 const OUT = join(REPO, "docs/data/beer");
 const MAX_ABV = 16, IMG_H = 300, IMG_Q = 72;
-export const COLS = ["id", "name", "brewery", "style", "conf", "abv", "af", "photo", "credit", "group"];
+export const COLS = ["id", "name", "brewery", "style", "conf", "abv", "af", "photo", "credit", "group", "nn"];   // nn 1 = no real name (search only)
 const CONF = { low: 1, medium: 2, high: 3 };
 const GROUPS = ["se", "nordic", "world_se_likely"];
 
@@ -31,10 +33,58 @@ const rd = (p) => JSON.parse(readFileSync(join(SRC, p), "utf8"));
 const clean = (s, max) => String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max || 80);
 const cleanName = (s) => clean(s).replace(/^[^\p{L}\p{N}]+/u, "").replace(/[^\p{L}\p{N}%)]+$/u, "");   // "‘Drink’in …" sorts under D
 
+/* ---------- name quality (lane beer2, 19 Nov) ----------
+   OFF names often hold the strength, the pack size, HTML entities or SHOUTING ("6X25CL LEFFE BLONDE 6,6%").
+   A strength in the name would show the ABV without the plausible check, so it goes (an alcohol-free 0,0–0,5 % stays: it is
+   information, not a strength). A name that is only a style ("Blanche") gets the brewery in front ("Hoegaarden Blanche").
+   A name that is only "beer" words ("Bière", "Bier Dose") = no real name: nn = 1, the app shows it in search only. */
+const BEERW = new Set(("beer bier biere bière birra cerveza cervesa öl ol øl olut alus piwo pivo bryggeri brewery brewing " +
+  "pk pack boks burk burkar dose dosen can cans bottle bottles flaska flasche fles vol alc abv cl ml l x").split(" "));
+const STYLEW = new Set(("lager pils pilsner pilsener pilsener ipa apa dipa neipa iipa xpa ale pale india stout porter wheat weiss weisse weissbier weizen " +
+  "hefe hefeweizen witbier wit blanche blanc blonde blond ambrée ambree amber brune brown dunkel dunkles dark hell helles ljus ljusa mörk mork " +
+  "red rouge rosé rose rosee rosée triple tripel dubbel double sour gose saison bock märzen marzen kölsch kolsch export premium classic original " +
+  "light lätt lättöl folköl starköl mellanöl alkoholfri alkoholfritt alkoholfrei alcohol free sans alcool non alcoholic zero craft hveteøl veteöl " +
+  "session cider radler och and de la le the with mit med").split(" "));
+const ENT = { "&quot;": '"', "&amp;": "&", "&#39;": "'", "&apos;": "'", "&lt;": "", "&gt;": "" };
+const ACR = new Set(["IPA", "APA", "DIPA", "NEIPA", "IIPA", "XPA", "ESB", "BA", "IPL", "DDH", "TIPA", "AB", "XO", "NZ", "USA", "UK"]);
+const pctRe = /(\d+(?:[.,]\d+)?)\s*%\s*(?:v(?:ol)?\b\.?|alc\b\.?|abv\b)?/gi;
+export function nameStrength(s) {
+  const m = [...String(s || "").matchAll(pctRe)].map((x) => parseFloat(x[1].replace(",", "."))).filter((v) => isFinite(v) && v >= 0.6 && v <= 70);
+  return m.length ? m[0] : null;
+}
+function titleCase(s) {
+  if (/\p{Ll}/u.test(s) || !/\p{Lu}{4}/u.test(s)) return s;   // only SHOUTING names
+  return s.replace(/[\p{L}\p{N}'’]+/gu, (w) => ACR.has(w) ? w : w.charAt(0) + w.slice(1).toLowerCase());
+}
+function words(s) { return String(s || "").toLowerCase().normalize("NFC").split(/[^\p{L}\p{N}]+/u).filter(Boolean); }
+export function tidyName(raw) {
+  let s = String(raw == null ? "" : raw).replace(/&(quot|amp|#39|apos|lt|gt);?/gi, (m) => ENT[m.toLowerCase().replace(/;?$/, ";")] ?? "");
+  s = s.replace(/["“”„«»]/g, " ");                                                                                  // quotes break when cut
+  s = s.replace(pctRe, (m, n) => { const v = parseFloat(n.replace(",", ".")); return v < 0.6 ? m : " "; });            // strengths out, 0,0 % stays
+  s = s.replace(/\b\d+\s*[x×]\s*\d+(?:[.,]\d+)?\s*(?:cl|ml|l)?\b/gi, " ")                                         // 6X25CL, 6 x 33 cl
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:cl|ml|l|liter|litre)\b/gi, " ")                                                // 50 cl, 0,33 l
+    .replace(/\b\d+\s*-?\s*(?:pack|pk)\b/gi, " ").replace(/\b(?:pk|boks|burk|dose)\b/gi, " ");                    // 6 pack, PK, boks
+  s = cleanName(s.replace(/\s*[,;:–-]\s*(?=[,;:–-]|$)/g, " ").replace(/\(\s*\)/g, " "));
+  s = titleCase(s);
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+// 0 = a real name; 1 = only "beer" words (no name: search only); 2 = only style words (gets the brewery in front)
+export function nameKind(name) {
+  const w = words(name).filter((x) => !BEERW.has(x) && !/^\d+([.,]\d+)?$/.test(x));
+  if (!w.some((x) => (x.match(/\p{L}/gu) || []).length >= 2)) return 1;
+  return w.every((x) => STYLEW.has(x) || (x.match(/\p{L}/gu) || []).length < 2) ? 2 : 0;
+}
+function hasBrewery(name, brewery) {
+  const n = words(name), b = words(brewery).filter((x) => x.length >= 3 && !BEERW.has(x));
+  return b.length > 0 && b.some((x) => n.indexOf(x) >= 0);
+}
+
 // ABV that we dare to show, else null
 export function plausibleAbv(b, style) {
   const a = typeof b.abv === "number" && isFinite(b.abv) ? b.abv : null;
   if (a == null) return null;
+  const inName = nameStrength(b.name);
+  if (inName != null && Math.abs(inName - a) > 1) return null;   // the label and the data do not agree: show nothing
   if (b.alcohol_free) return a <= 0.5 ? Math.round(a * 10) / 10 : null;
   if (a < 0.6 || a > MAX_ABV) return null;
   const r = style && style.strength && style.strength.abv;
@@ -60,26 +110,37 @@ function beers(st) {
   const credit = {};
   for (const c of rd("beers/credits.json").credits || []) credit[c.barcode] = c;
   const files = [["beers/beers_se.json", 0, () => true], ["beers/beers_nordic.json", 1, () => true], ["beers/beers_world.json", 2, (b) => !!b.se_likely]];
-  const seen = new Set(), seenName = new Set(), rows = [], photos = [];
+  const seen = new Set(), seenName = new Map(), rows = [], photos = [], ids = {}, alias = {};
   for (const [f, g, keep] of files) {
     if (!existsSync(join(SRC, f))) continue;
     for (const b of rd(f).beers || []) {
       if (!keep(b) || !b.barcode || !cleanName(b.name) || seen.has(b.barcode)) continue;
       const id = String(b.barcode).replace(/[^0-9A-Za-z_-]/g, "").slice(0, 40); if (!id) continue;
-      const brewery = clean(b.brand, 60), raw = cleanName(b.name);
-      const name = (raw.match(/\p{L}/gu) || []).length >= 2 ? raw : brewery && brewery.toLowerCase() !== raw.toLowerCase() ? cleanName(brewery + " " + raw) : "";   // "1664" -> "Kronenbourg 1664"
+      ids[id] = b.barcode;
+      const brewery = tidyName(clean(b.brand, 60)), raw = tidyName(b.name);
+      let name = (raw.match(/\p{L}/gu) || []).length >= 2 ? raw : brewery && brewery.toLowerCase() !== raw.toLowerCase() ? cleanName(brewery + " " + raw) : "";   // "1664" -> "Kronenbourg 1664"
+      const kind = name ? nameKind(name) : 1;
+      if (kind && brewery && !hasBrewery(name, brewery)) name = cleanName(brewery + " " + name);   // "Blanche" -> "Hoegaarden Blanche"
       if ((name.match(/\p{L}/gu) || []).length < 2) continue;
-      const nk = (name + "|" + brewery).toLowerCase(); if (seenName.has(nk)) continue;
-      seen.add(b.barcode); seenName.add(nk);
+      const nn = kind === 1 || (kind === 2 && !brewery) ? 1 : 0;
       const sg = b.style_guess && st.byId[b.style_guess.id] ? b.style_guess : null;
       const cr = credit[b.barcode], src = cr ? join(SRC, "beers", cr.file) : null, photo = !!(src && existsSync(src));
-      if (photo) photos.push([id, src]);
-      rows.push([id, name, brewery, sg ? sg.id : "", sg ? CONF[sg.confidence] || 1 : 0, plausibleAbv(b, sg ? st.byId[sg.id] : null),
-        b.alcohol_free ? 1 : 0, photo ? 1 : 0, photo ? clean(cr.contributor, 40) : "", g]);
+      const nk = (name + "|" + brewery).toLowerCase(), had = seenName.get(nk);
+      seen.add(b.barcode);
+      // the same beer twice (often a pack and a bottle): keep the one with a photo; the other id stays an alias (old tips + favourites)
+      if (had != null && (rows[had][7] || !photo)) { alias[id] = rows[had][0]; continue; }
+      const row = [id, name, brewery, sg ? sg.id : "", sg ? CONF[sg.confidence] || 1 : 0, plausibleAbv(b, sg ? st.byId[sg.id] : null),
+        b.alcohol_free ? 1 : 0, photo ? 1 : 0, photo ? clean(cr.contributor, 40) : "", g, nn];
+      if (had != null) {
+        const old = rows[had][0]; alias[old] = id;
+        for (const k of Object.keys(alias)) if (alias[k] === old) alias[k] = id;
+        rows[had] = row;
+      } else { seenName.set(nk, rows.length); rows.push(row); }
     }
   }
   rows.sort((a, b) => a[1].localeCompare(b[1], "sv"));
-  return { rows, photos };
+  for (const r of rows) if (r[7]) photos.push([r[0], join(SRC, "beers", credit[ids[r[0]]].file)]);
+  return { rows, photos, alias };
 }
 
 function resize(src, dst) {
@@ -90,11 +151,11 @@ function resize(src, dst) {
 function main() {
   if (!existsSync(join(SRC, "styles/styles.json"))) { console.error("no research data at " + SRC); process.exit(2); }
   mkdirSync(join(OUT, "styles"), { recursive: true }); mkdirSync(join(OUT, "img"), { recursive: true });
-  const st = styles(), { rows, photos } = beers(st);
+  const st = styles(), { rows, photos, alias } = beers(st);
   const { byId, ...stOut } = st;
   writeFileSync(join(OUT, "styles.json"), JSON.stringify(stOut));
   writeFileSync(join(OUT, "beers.json"), JSON.stringify({ v: 1, made: new Date().toISOString().slice(0, 10),
-    src: "Open Food Facts (openfoodfacts.org): data ODbL, photos CC BY-SA", cols: COLS, groups: GROUPS, rows }));
+    src: "Open Food Facts (openfoodfacts.org): data ODbL, photos CC BY-SA", cols: COLS, groups: GROUPS, rows, alias }));
   if (!existsSync(join(OUT, "taps.json"))) writeFileSync(join(OUT, "taps.json"), JSON.stringify({ v: 1, bars: {} }));
   for (const s of st.styles) { const p = join(SRC, "styles/img", s.id + ".svg"); if (existsSync(p)) copyFileSync(p, join(OUT, "styles", s.id + ".svg")); }
   let made = 0, kept = 0;

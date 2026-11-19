@@ -7,7 +7,7 @@ const { ctxFor, boot, wait } = require("./d2-helpers.js");
 const { chromium } = require("playwright");
 const RPCF = require("./fixtures/rpc.js");
 const SHOTS = process.env.BEERUI_SHOTS || "";
-const BEER = "5410228158424";   // Hoegaarden Blanche: witbier (a guess), 4.9 %, a photo
+const BEER = "5410228158424";   // Hoegaarden Blanche: witbier (a guess), 4.9 %, a photo. beer2 data pass: the name is "Hoegaarden Blanche" (was "Blanche")
 const DM = RPCF.DM_GID;
 const J = (r, body, status) => r.fulfill({ status: status || 200, contentType: "application/json", body: JSON.stringify(body) });
 let pass = 0, fail = 0;
@@ -166,7 +166,7 @@ const waitSheet = (page, re) => page.waitForFunction((r) => { const s = document
     await shot(page, "06-tipsa");
     await page.click("#sheet-body [data-bl-go]");
     await page.waitForFunction(() => document.getElementById("sheet").hidden, null, { timeout: 10000 }).catch(() => {});
-    ok("Tipsa en vän: 'Skicka tips' posts ONE tip line to the picked chat", tipPosts.length === 1 && tipPosts[0].g === DM && /^Öltips: Blanche \[öl:5410228158424\] Mjuk och frisk$/.test(tipPosts[0].body), tipPosts);
+    ok("Tipsa en vän: 'Skicka tips' posts ONE tip line to the picked chat", tipPosts.length === 1 && tipPosts[0].g === DM && /^Öltips: Hoegaarden Blanche \[öl:5410228158424\] Mjuk och frisk$/.test(tipPosts[0].body), tipPosts);
     ok("No page errors (part 1)", errs.length === 0, errs);
     await ctx.close();
 

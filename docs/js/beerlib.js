@@ -7,7 +7,9 @@
    session = "local": favourites and my rating stay on this phone (localStorage), reviews and averages are hidden, nothing breaks.
    Rules: no "beers tried" count, no badge, no goal, no "top rated" list, no "strongest first" sort (alphabetical / style / taste only).
    Store builds (window.OLNU_STORE): the same library; it has no celebration at all (no sound, no confetti). One text pop-up per tap.
-   Photos: Open Food Facts, CC BY-SA; every photo shows its credit. Style pictures and texts: our own. */
+   Photos: Open Food Facts, CC BY-SA; every photo shows its credit. Style pictures and texts: our own.
+   Lane beer2: the browse list shows only beers with a photo and a real name (search finds all), aliases of duplicate beers,
+   chatCards / chatPick for group + event chats (js/gpage.js), friendFavs for the person card (js/profilecard.js), the "Om data" link. */
 (function () {
   "use strict";
   var W = window, D = document;
@@ -68,6 +70,8 @@
         o.id = String(o.id); o._n = norm(o.name + " " + (o.brewery || ""));
         d.beers.push(o); d.byId[o.id] = o;
       });
+      var al = b.alias || {};   // a duplicate beer (beer2 data pass): old chat tips and favourites still find the kept one
+      Object.keys(al).forEach(function (a) { var k = d.byId[String(al[a])]; if (k && !d.byId[a]) d.byId[a] = k; });
       data = d; return d;
     });
     dataP.catch(function () { dataP = null; });
@@ -219,6 +223,7 @@
     root.addEventListener("click", function (e) {
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var s = t.closest("[data-bl-style]"), b = t.closest("[data-bl-beer]"), f = t.closest("[data-bl-fl]"), m = t.closest("[data-bl-more]");
+      if (t.closest("[data-bl-about]")) { if (B.about) B.about(); return; }
       if (f && o.chip) { o.chip(f.getAttribute("data-bl-fl")); return; }
       if (m && o.more) { o.more(m.getAttribute("data-bl-more")); return; }
       if (b) { (o.beer || openBeer)(b.getAttribute("data-bl-beer")); return; }
@@ -226,6 +231,8 @@
     });
   }
   function openStyle(id) { if (B.style) B.style(id); }
+  // beer2: the door to the "Om data" page (js/beerlib-pages.js about()); one per screen, at the bottom
+  function aboutLink() { return '<button type="button" class="bl-about" data-bl-about="1">' + ic("info") + esc(tl("Om data och licenser", "About the data and licences")) + "</button>"; }
   function openBeer(id) { if (B.beer) B.beer(id); }
 
   /* ---------- search ---------- */
@@ -248,6 +255,7 @@
       if (sid && b.style === sid) return true;
       return ws.every(function (w) { return b._n.indexOf(w) >= 0; });
     });
+    if (!qn) out = out.filter(function (b) { return b.photo && !b.nn; });   // beer2: the browse list = a photo + a real name; search finds all
     if (!qn && !g) out = out.slice().sort(function (a, b) { return (a.group | 0) - (b.group | 0); });   // Swedish first, then A–Ö (stable)
     return out;
   }
@@ -280,7 +288,7 @@
       (bs.length > tabSt.nBeer ? '<button type="button" class="bl-more" data-bl-more="beer">' + esc(tl("Visa fler öl", "Show more beers")) + "</button>" : "");
     else h += '<p class="bl-msg">' + esc(q ? tl("Ingen öl med det namnet än.", "No beer with that name yet.") : tl("Inga öl här än.", "No beers here yet.")) + "</p>";
     h += '<p class="bl-note">' + esc(tl("Bilder och öldata: Open Food Facts (CC BY-SA, ODbL). Stilen är ofta en gissning. Texterna om stilar skriver vi själva.",
-      "Photos and beer data: Open Food Facts (CC BY-SA, ODbL). The style is often a guess. We write the style texts ourselves.")) + "</p>";
+      "Photos and beer data: Open Food Facts (CC BY-SA, ODbL). The style is often a guess. We write the style texts ourselves.")) + "</p>" + aboutLink();
     box.innerHTML = h; fixPics(box);
   }
 
@@ -323,6 +331,43 @@
     el.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("[data-bl-beer]")) e.stopPropagation(); });   // not the chat row's tap menu
     fixPics(el);
     return el;
+  }
+
+  // beer2: tip lines in any chat list (group, event; js/gpage.js wires it) -> the same card as in DM. Rows are social.js chat rows.
+  function chatCards(list) {
+    [].forEach.call(list.querySelectorAll("li.chat-msg[data-mid]"), function (li) {
+      var body = li.querySelector(".cm-body"), tip = body && !li.querySelector(".bl-chatcard") ? parseTip(body.textContent || "") : null;
+      if (!tip) return;
+      var nmEl = li.querySelector(".cm-name, .cm-head b"), who = li.classList.contains("me") ? "" : (nmEl ? String(nmEl.textContent || "").trim() : "");
+      body.classList.add("bl-raw"); li.classList.add("bl-has-card");
+      body.parentNode.insertBefore(chatCard(tip, who), body.nextSibling);
+    });
+  }
+  // beer2: the beer button of a group / event chat opens this picker; the pick goes out through the chat's own send button
+  function chatPick(btn, box, inp, send) {
+    var shut = function () { box.hidden = true; box.innerHTML = ""; btn.setAttribute("aria-expanded", "false"); };
+    if (!box.hidden) { shut(); return; }
+    box.hidden = false; btn.setAttribute("aria-expanded", "true");
+    var q = picker(box, function (beer) { if (!beer) return; shut(); inp.value = tipText(beer, "", 140); send.click(); }, shut);
+    try { q.focus(); } catch (e) {}
+  }
+
+  /* ---------- beer2: a friend's favourites on the person card (js/profilecard.js asks beerlib_favs_for; the server follows the
+     friend's Synlighet: spöke = nobody, vänner = friends only). Only filled beers, in slot order; no count, no score. ---------- */
+  function whose(name) {
+    var n = String(name || "").trim();
+    if (en()) return n + "\u2019s favourite beers";
+    return n + (/[sxz]$/i.test(n) ? "" : "s") + " favoritöl";
+  }
+  function friendFavs(box, name, rows) {
+    var ids = fromSrv(rows).filter(Boolean), l = data ? ids.map(function (id) { return data.byId[id]; }).filter(Boolean) : [];
+    if (!l.length) { box.hidden = true; return false; }
+    box.className = "bl bl-pcf";
+    box.innerHTML = "<h3>" + esc(whose(name)) + '</h3><div class="bl-pcf-g">' + l.map(function (b) {
+      return '<button type="button" class="bl-pcf-t" data-bl-beer="' + esc(b.id) + '">' + pic(b) + "<b>" + esc(b.name) + "</b><small>" + esc(styleName(b.style) || abvText(b) || "") + "</small></button>";
+    }).join("") + "</div>";
+    fixPics(box); box.hidden = false;
+    return true;
   }
 
   /* ---------- profile: "Mina favoritöl" (js/profile.js makes the section, this fills it) ---------- */
@@ -395,10 +440,11 @@
     load: load, data: function () { return data; }, call: call, online: online, on: on, srv: srv,
     favs: loadFavs, favSlot: favSlot, toggleFav: toggleFav, setSlot: setSlot, rate: rate, localRate: localRate,
     tab: tab, picker: picker, chatCard: chatCard, parseTip: parseTip, tipText: tipText, favCard: favCard, tapRow: tapRow,
+    chatCards: chatCards, chatPick: chatPick, friendFavs: friendFavs,
     // builders for js/beerlib-pages.js and the hooks in profile / placecard
     h: { tl: tl, en: en, ic: ic, esc: esc, mk: mk, num: num, numT: numT, abvText: abvText, styleName: styleName, styleLine: styleLine, oneLine: oneLine,
       beerStyle: beerStyle, styleImg: styleImg, pic: pic, dayText: dayText, fixPics: fixPics, credit: credit, rowHTML: rowHTML, tileHTML: tileHTML, starsHTML: starsHTML,
-      wire: wire, dot: dot, styleGroups: styleGroups, flName: flName, FL: FL, toast: toast, uid: function () { return ++uid; } },
+      wire: wire, dot: dot, styleGroups: styleGroups, flName: flName, FL: FL, toast: toast, aboutLink: aboutLink, uid: function () { return ++uid; } },
     // Off until a lawyer has checked the Systembolaget link rules (LEGAL.md (e), KOVFS 2023:1; coordinator 19 Nov). Code is ready.
     flags: { systembolaget: false },
     // Untappd: no API key yet. A later module may set BEERLIB.untappd = function (beer) -> Promise<{rating, count}>; nothing is shown before.

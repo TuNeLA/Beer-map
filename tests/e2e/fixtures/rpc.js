@@ -137,6 +137,7 @@ function build(now) {
     beerlib_favs_mine: () => [],                                                                     // beerlib.js loadFavs() (profile card)
     beerlib_privacy: (b) => ({ mode: (b && b.p_mode) || "alla" }),                              // beerlib.js syncPrivacy()
     beerlib_beer_get: () => ({ my_stars: null, fav_slot: null, n: 0, avg: null, reviews: [] }),     // beerlib-pages.js beer page
+    beerlib_favs_for: () => [],                                                                      // profilecard.js (beer2): a friend's favourites (none)
     zone_counts: () => ({ kommun: [{ c: "2085", n: 12, bar: "La Parma Pub & Restaurang" }, { c: "2080", n: 4 }, { c: "2061", n: null }], lan: [{ c: "20", n: 17, top: "2085" }], total: 31, k: 3, at: new Date(now).toISOString() }),
   };
 }
