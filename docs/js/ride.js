@@ -892,7 +892,8 @@
     if (!showing) openId(m.id);
   }
   function statTick() { statPaint(); autoOpen(); }
-  function statStart() { if (!scT) scT = setInterval(statTick, 1000); }
+  // timers B10: sleeps while the map is out of sight; at once when it comes back (an auto-open that waited for the sheet runs then)
+  function statStart() { if (!scT) scT = window.PN && PN.idle ? PN.idle.every(statTick, 1000) : setInterval(statTick, 1000); }
 
   /* ---------- open by id (push tap / HUD / map pin) ---------- */
   var want = null;

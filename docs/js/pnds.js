@@ -538,7 +538,8 @@
       ["chaos", "rally", "install-banner", "hud-x"].forEach(function (id) { var e = $(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ["hidden", "class"], childList: true, characterData: true, subtree: id === "hud-x" || id === "chaos" }); });
       mo.observe(document.body, { childList: true });   // #btn-evs arrives later (evsheet.js)
     }
-    setInterval(function () { var s = $("sheet"); if (s && !s.hidden) return; kaos(); rail(); place(); }, 2000);   // safety net (layout reads only, writes only on change); d3smooth: not under an open sheet
+    var net = function () { var s = $("sheet"); if (s && !s.hidden) return; kaos(); rail(); place(); };   // safety net (layout reads only, writes only on change); d3smooth: not under an open sheet
+    if (window.PN && PN.idle) PN.idle.every(net, 2000); else setInterval(net, 2000);   // timers B10: sleeps while the map is out of sight
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
@@ -583,7 +584,7 @@
     if (window.ResizeObserver) { var ro = new ResizeObserver(function () { place(); }); [".dock", ".beer-wrap"].forEach(function (s) { var e = document.querySelector(s); if (e) ro.observe(e); }); }
     var mt = 0;   // the Mapbox wordmark arrives / hides later (basemap.js): place again at once
     if (window.MutationObserver) new MutationObserver(function () { clearTimeout(mt); mt = setTimeout(place, 40); }).observe(document.body, { childList: true });
-    setInterval(place, 2500);
+    if (window.PN && PN.idle) PN.idle.every(place, 2500); else setInterval(place, 2500);   // timers B10: sleeps while the map is out of sight
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
@@ -942,8 +943,7 @@
       });
     } catch (e) {}
   }
-  setInterval(stopLoops, 1500);
-  document.addEventListener("visibilitychange", stopLoops);
+  // timers B10: stopLoops() returns at once since 13 Nov (owner): no 1.5 s timer and no listener for it any more
   /* 2. ÖL! press */
   function foam(btn) {
     if (reduced()) return;
@@ -1317,7 +1317,7 @@
       var ts = document.getElementById("toasts"); if (ts) new MutationObserver(function () { soon(); setTimeout(soon, 260); }).observe(ts, { childList: true });   // a new toast: measure (and after its 200 ms entry)
       var ph = document.getElementById("prec-hint"); if (ph) new MutationObserver(soon).observe(ph, { attributes: true, attributeFilter: ["class"] });
     }
-    setInterval(soon, 2000);
+    if (window.PN && PN.idle) PN.idle.every(soon, 2000); else setInterval(soon, 2000);   // timers B10: sleeps while the map is out of sight
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   window.PNDS_TOASTB = place;
@@ -1424,7 +1424,8 @@
   function start() {
     wrap(); setTimeout(wrap, 2000);
     try { var A = window.PNDS && window.PNDS._A && window.PNDS._A(); if (A && A.map && A.map.on) A.map.on("movestart move", function () { lastMove = Date.now(); }); } catch (e) {}
-    setInterval(tick, 400);
+    // timers B10: sleeps while the map is out of sight (a full sheet = modal: it runs once as the sheet comes and at once when it goes)
+    if (window.PN && PN.idle) PN.idle.every(tick, 400); else setInterval(tick, 400);
     var settle = function () { R.classList.add("pn-settle"); setTimeout(function () { R.classList.remove("pn-settle"); }, 5000); };
     if (window.__pnSplashGone) { if (performance.now() - window.__pnSplashGone < 5000) settle(); }
     else { var w = setInterval(function () { if (window.__pnSplashGone || !document.getElementById("pn-splash")) { clearInterval(w); settle(); } }, 100); setTimeout(function () { clearInterval(w); }, 8000); }
@@ -1584,7 +1585,7 @@
     place(); addEventListener("resize", soon);
     if (window.MutationObserver) new MutationObserver(soon).observe(document.body, { childList: true });
     if (window.ResizeObserver) { var ro = new ResizeObserver(soon); [".dock", "#other-wrap"].forEach(function (s) { var e = document.querySelector(s); if (e) ro.observe(e); }); }
-    setInterval(place, 2500);
+    if (window.PN && PN.idle) PN.idle.every(place, 2500); else setInterval(place, 2500);   // timers B10: sleeps while the map is out of sight
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();

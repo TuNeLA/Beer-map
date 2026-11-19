@@ -266,7 +266,7 @@
   }
   function start() {
     DATA();
-    setInterval(tick, 15000);
+    if (window.PN && PN.idle) PN.idle.every(tick, 15000, "hidden"); else setInterval(tick, 15000);   // timers B10: sleeps in a hidden page
     setTimeout(tick, 4000);
     document.addEventListener("visibilitychange", function () {
       if (document.hidden) { hiddenAt = Date.now(); return; }

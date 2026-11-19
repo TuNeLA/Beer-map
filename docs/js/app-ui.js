@@ -149,8 +149,10 @@
   }
   function closeSheet(reason) {
     if (window.SHEETNAV) { try { if (window.SHEETNAV.willClose(reason)) return; } catch (e) {} }   // ux3: ← = one step back
-    try { if (window.SMOOTH && !$("sheet").hidden) window.SMOOTH.sheetOut(); } catch (e) {}   // smooth: slide-down copy
-    $("sheet").hidden = true; $("backdrop").hidden = true; $("sheet-body").innerHTML = "";
+    // smooth (timers A9): the real sheet slides down; its body is cleared when the slide ends (a sheet opened meanwhile keeps its own)
+    var slid = false;
+    try { if (window.SMOOTH && !$("sheet").hidden) slid = window.SMOOTH.sheetOut(function () { if ($("sheet").hidden) $("sheet-body").innerHTML = ""; }); } catch (e) {}
+    $("sheet").hidden = true; $("backdrop").hidden = true; if (!slid) $("sheet-body").innerHTML = "";
     var cur = PN.s.sheetCur; PN.s.sheetCur = null;
     if (window.SHEETNAV) { try { window.SHEETNAV.didClose(); } catch (e) {} }
     if (cur && cur.onClose) { try { cur.onClose(typeof reason === "string" ? reason : "cancel"); } catch (e) {} }

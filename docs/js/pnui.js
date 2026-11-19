@@ -1015,14 +1015,17 @@
     swipe(box);
     new MutationObserver(function (ms) {
       ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1 && n.classList.contains("toast")) decorate(n); }); });
-      trim(box); place();
+      trim(box); place(); poll();
     }).observe(box, { childList: true });
     [].forEach.call(box.querySelectorAll(".toast"), decorate);
     new MutationObserver(place).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     addEventListener("resize", place);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", place);
-    setInterval(function () { if (document.body.classList.contains("pn-modal-on") || R.classList.contains("pn-toast-strip") || document.querySelector(".bp-strip")) place(); }, 400);
-    place();
+    var iv = null, check = function () {   // timers B10: the 400 ms check runs only while a toast shows (place() needs one); sleeps in a hidden page
+      if (!box.querySelector(".toast")) { if (iv) { if (iv.stop) iv.stop(); else clearInterval(iv); } iv = null; return; }
+      if (document.body.classList.contains("pn-modal-on") || R.classList.contains("pn-toast-strip") || document.querySelector(".bp-strip")) place(); };
+    function poll() { if (!iv && box.querySelector(".toast")) iv = window.PN && PN.idle ? PN.idle.every(check, 400, "hidden") : setInterval(check, 400); }
+    place(); poll();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();

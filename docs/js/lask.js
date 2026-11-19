@@ -83,7 +83,8 @@
       new MutationObserver(function () { sync(); }).observe(b, { attributes: true, attributeFilter: ["class", "disabled"] });
     }
     sync();
-    setInterval(sync, 1000);   // driving changes come from skjuts.js polls / the Ikväll menu switch (cheap: reads + writes on change)
+    // driving changes come from skjuts.js polls / the Ikväll menu switch (cheap: reads + writes on change); timers B10: sleeps while the map is out of sight
+    if (window.PN && PN.idle) PN.idle.every(sync, 1000); else setInterval(sync, 1000);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   window.LASK = { on: on, sync: sync };

@@ -477,7 +477,8 @@
         if (b) { e.preventDefault(); e.stopPropagation(); knuff(b); }
       }, true);
       document.addEventListener("visibilitychange", function () { if (!document.hidden) { tick(false); schedule(); } else { clearTimeout(wt.timer); wt.timer = null; } });
-      setInterval(demoTick, 5000); setTimeout(demoTick, 800);
+      if (window.PN && PN.idle) PN.idle.every(demoTick, 5000); else setInterval(demoTick, 5000);   // timers B10: sleeps while the map is out of sight
+      setTimeout(demoTick, 800);
       if (A.noAccount && safe(function () { return A.noAccount(); }, false)) setTimeout(linkPreview, 0);
       else setTimeout(linkPreview, 400);
     },

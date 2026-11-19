@@ -199,6 +199,7 @@
     var b = e.target && e.target.closest ? e.target.closest("#pn-ghost") : null; if (!b) return;
     e.stopImmediatePropagation(); e.preventDefault(); menu ? close() : open();
   }, true);
-  setInterval(function () { paint(); probe(); }, 1500);
+  var keep = function () { paint(); probe(); };
+  if (window.PN && PN.idle) PN.idle.every(keep, 1500); else setInterval(keep, 1500);   // timers B10: sleeps while the map is out of sight
   window.PNVIS = { mode: mode, setMode: setMode, open: open, close: close, label: label, settingsBlock: settingsBlock, settingsRows: settingsRows, _srv: function () { return srv; } };
 })();
