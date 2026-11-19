@@ -187,8 +187,8 @@
       pane.appendChild(h("p", { class: "avw-note", text: "Du väljer bara var du börjar. Kläder, frisyr, skägg och allt annat går att blanda hur du vill." }));
     }
     function tile(k, i, s, locked) {
-      var t = JSON.parse(JSON.stringify(st.draft)); t[k] = i;
-      var on = (st.draft[k] | 0) === i, nm = (av.NAMES[k][i] || ["", ""])[0], lk = av.lockOf(k, i);
+      var t = JSON.parse(JSON.stringify(st.draft)); t[k] = i; if (k === "up") delete t.tm;   // hockeybuild: a top tile shows the top, not the hockey shirt
+      var on = (st.draft[k] | 0) === i && !(k === "up" && st.draft.tm), nm = (av.NAMES[k][i] || ["", ""])[0], lk = av.lockOf(k, i);
       var b = h("button", { type: "button", class: "avw-tile" + (on ? " on" : "") + (locked ? " locked" : "") + (s.sw ? " sw" : ""), "aria-pressed": String(on),
         "aria-label": nm + (locked && lk ? " — " + av.lockText(lk) : ""), "data-k": k, "data-i": String(i) });
       if (s.sw) b.appendChild(h("span", { class: "avw-sw", style: "background:" + av.PAL.SKIN[i] }));
@@ -196,8 +196,8 @@
       b.appendChild(h("span", { class: "avw-nm", text: locked && lk ? "🔒 " + av.shortLock(lk) : nm }));
       b.addEventListener("click", function () {
         if (locked) { A.toast("🔒 " + (lk ? av.lockText(lk) : "Låst"), { ms: 3800, id: "avw-lock" }); return; }
-        st.draft[k] = i;
-        pane.querySelectorAll(".avw-tile.on").forEach(function (x) { if (x.getAttribute("data-k") === k) { x.classList.remove("on"); x.setAttribute("aria-pressed", "false"); } });
+        st.draft[k] = i; if (k === "up") delete st.draft.tm;
+        pane.querySelectorAll(".avw-tile.on").forEach(function (x) { if (x.getAttribute("data-k") === k || k === "up" && x.getAttribute("data-k") === "tm") { x.classList.remove("on"); x.setAttribute("aria-pressed", "false"); } });
         b.classList.add("on"); b.setAttribute("aria-pressed", "true");
         paintPrev(true);
         try { if (window.FX && window.FX.vibrate) window.FX.vibrate(8); } catch (e) {}
@@ -214,7 +214,7 @@
         var on = (st.draft[ck] | 0) === i;
         var b = h("button", { type: "button", role: "radio", "aria-checked": String(on), class: "avw-c" + (on ? " on" : ""), style: "background:" + c, "aria-label": av.NAMES[ck][i][0] });
         b.addEventListener("click", function () {
-          st.draft[ck] = i; if (ck === "hc") { delete st.draft.hx; } if (ck === "uc") delete st.draft.ux;
+          st.draft[ck] = i; if (ck === "hc") { delete st.draft.hx; } if (ck === "uc") { delete st.draft.ux; delete st.draft.tm; }
           row.querySelectorAll(".avw-c").forEach(function (x) { x.classList.remove("on"); x.setAttribute("aria-checked", "false"); });
           b.classList.add("on"); b.setAttribute("aria-checked", "true");
           paintPrev(true); refreshArt();
@@ -227,7 +227,7 @@
     function refreshArt() {   // a colour changes the art in the style tiles
       var s = step(); if (!s.k || s.sw) return;
       pane.querySelectorAll(".avw-tile").forEach(function (b) {
-        var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(st.draft)); t[k] = i;
+        var k = b.getAttribute("data-k"), i = +b.getAttribute("data-i"), t = JSON.parse(JSON.stringify(st.draft)); t[k] = i; if (k === "up") delete t.tm;
         var art = b.querySelector(".avw-art"); if (art) art.innerHTML = svgOf(view(t, k), s.vb ? av.VB[s.vb] : "");
       });
     }
@@ -237,7 +237,7 @@
       if (s.col) pane.appendChild(colRow(s.col, s.colT));
       var g = h("div", { class: "avw-grid" + (s.sw ? " avw-grid-sw" : "") });
       ok.forEach(function (i) { g.appendChild(tile(k, i, s, false)); });
-      pane.appendChild(g);
+      pane.appendChild(g); if (k === "up" && window.PN && PN.hockey) pane.appendChild(PN.hockey.section({ cls: "avw", draft: st.draft, scope: pane, art: function (sp, vb) { return svgOf(view(sp, "tm"), vb); }, onPick: function () { paintPrev(true); } }));   // hockeybuild (I-116)
       if (lockd.length) {
         var show = lockd.filter(function (i) { var lk = av.lockOf(k, i); return lk && !lk.d; }).slice(0, 6);
         if (show.length) {
