@@ -5,7 +5,9 @@
  sheet only, never in Hem-läge, until the owner confirms it.
  "places" = towns without a verified taxi number (name + position only; the Taxi sheet shows Uber / a map search there).
  fallback: null (the national TaxiKurir 0771 number could not be verified).
- B2 (taxi lane, 2026-11-10): every row re-checked on the company's OWN site (src "co"); URL + date in the comment. */
+ B2 (taxi lane, 2026-11-10): every row re-checked on the company's OWN site (src "co"); URL + date in the comment.
+ hockeybuild (A30, 2026-11-19): + Smedjebacken, Avesta, Hedemora, Falun Koppartaxi (taxidalarna.se). Mora, Leksand, Rättvik: no number on a
+ company's own site (only a register or agent sites), so they stay in "places" or out (owner default A30). */
 window.TAXI_DATA = {
 "fallback": null,
 "towns": [
@@ -21,8 +23,16 @@ window.TAXI_DATA = {
 {"town":"Uppsala","lat":59.8586,"lng":17.6389,"name":"Uppsala Taxi 100 000","text":"018-100 000","tel":"+4618100000","src":"co","url":"https://www.uppsalataxi.se/"},
 // Falun: OFFICIAL – TaxiKurir city list: 'Falun | 023-153 00' – https://www.taxikurir.se/hitta-stad-och-priser – checked 2026-11-10
 {"town":"Falun","lat":60.6065,"lng":15.6355,"name":"TaxiKurir Falun","text":"023-153 00","tel":"+462315300","src":"co","url":"https://www.taxikurir.se/hitta-stad-och-priser"},
+// Falun (2nd number, A30): OFFICIAL – Taxi Dalarna (Koppartaxi AB is a member) footer: 'Falun – Koppartaxi AB 023–63 000' – https://taxidalarna.se/ – checked 2026-11-19 (lane hockeybuild). After TaxiKurir: TaxiKurir stays the first call in Falun.
+{"town":"Falun","lat":60.6065,"lng":15.6355,"name":"Koppartaxi","text":"023-630 00","tel":"+462363000","src":"co","url":"https://taxidalarna.se/"},
 // Borlänge: OFFICIAL – Taxi Dalarna footer: 'Borlänge / Säter – Borlängetaxiservice AB 0243-131 00' (0243-22 88 00 had no official source) – https://taxidalarna.se/ – checked 2026-11-10
 {"town":"Borlänge","lat":60.4858,"lng":15.4371,"name":"Borlängetaxiservice","text":"0243-131 00","tel":"+4624313100","src":"co","url":"https://taxidalarna.se/"},
+// Smedjebacken (A30): OFFICIAL – Taxi Dalarna footer: 'Ludvika / Smedjebacken / Grängesberg – Ludvikataxi AB 0240-139 00' – https://taxidalarna.se/ – checked 2026-11-19 (lane hockeybuild; was in "places")
+{"town":"Smedjebacken","lat":60.1403,"lng":15.4122,"name":"Ludvikataxi","text":"0240-139 00","tel":"+4624013900","src":"co","url":"https://taxidalarna.se/"},
+// Avesta (A30): OFFICIAL – Taxi Dalarna footer: 'Avesta / Hedemora – Södra Dalarnas Taxi AB 0226–804 00' – https://taxidalarna.se/ – checked 2026-11-19 (lane hockeybuild; was in "places")
+{"town":"Avesta","lat":60.1455,"lng":16.1679,"name":"Södra Dalarnas Taxi","text":"0226-804 00","tel":"+4622680400","src":"co","url":"https://taxidalarna.se/"},
+// Hedemora (A30): OFFICIAL – the same Taxi Dalarna footer line as Avesta – https://taxidalarna.se/ – checked 2026-11-19 (lane hockeybuild; was in "places")
+{"town":"Hedemora","lat":60.2754,"lng":15.9883,"name":"Södra Dalarnas Taxi","text":"0226-804 00","tel":"+4622680400","src":"co","url":"https://taxidalarna.se/"},
 // Gävle: OFFICIAL – company site: 026-12 90 00 – https://www.gavletaxi.se/ – checked 2026-11-10
 {"town":"Gävle","lat":60.6749,"lng":17.1413,"name":"Gävle Taxi","text":"026-12 90 00","tel":"+4626129000","src":"co","url":"https://www.gavletaxi.se/"},
 // Örebro: OFFICIAL – TaxiKurir city list: 'Örebro | 019-12 30 30' (019-20 01 20 had no official source) – https://www.taxikurir.se/hitta-stad-och-priser – checked 2026-11-10
@@ -51,9 +61,6 @@ window.TAXI_DATA = {
 {"town":"Kiruna","lat":67.8558,"lng":20.2253,"name":"Sverigetaxi Kiruna","text":"0980-120 20","tel":"+4698012020","src":"co","url":"https://www.sverigetaxi.se/hitta-stad-och-priser"}
 ],
 "places": [
-{"town":"Smedjebacken","lat":60.1403,"lng":15.4122},
-{"town":"Avesta","lat":60.1455,"lng":16.1679},
-{"town":"Hedemora","lat":60.2754,"lng":15.9883},
 {"town":"Säter","lat":60.3478,"lng":15.7509},
 {"town":"Mora","lat":61.007,"lng":14.543},
 {"town":"Orsa","lat":61.1197,"lng":14.6155},

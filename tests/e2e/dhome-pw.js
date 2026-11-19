@@ -76,8 +76,9 @@ const titles = (rows) => rows.filter((r) => r.vis).map((r) => r.t);
       const m = document.querySelector("#sheet-body .hs-more"), sub = () => [...document.querySelectorAll("#sheet-body .hs-sub")].map((e) => ({ href: e.getAttribute("href"), hid: e.hidden || getComputedStyle(e).display === "none", h: Math.round(e.getBoundingClientRect().height), t: e.textContent.replace(/\s+/g, " ").trim() }));
       const a = sub(); m.click(); const b = sub(), ex = m.getAttribute("aria-expanded"); return { a, b, ex, sub: (m.querySelector("small") || {}).textContent };
     });
-    ok("Fler taxibolag: says the towns, a tap opens 2 more numbers as tel: rows (44 px+)", more.sub === "Borlänge, Falun" && more.a.every((x) => x.hid) && more.ex === "true" && more.b.length === 2 && more.b.every((x) => !x.hid && x.h >= 44) &&
-      more.b[0].href === "tel:+4624313100" && more.b[1].href === "tel:+462315300" && /0243-131 00/.test(more.b[0].t), more);
+    // hockeybuild (A30, 19 Nov): Hedemora (Södra Dalarnas Taxi, 46 km) now has a verified number and is nearer to Ludvika than Falun (56 km)
+    ok("Fler taxibolag: says the towns, a tap opens 2 more numbers as tel: rows (44 px+)", more.sub === "Borlänge, Hedemora" && more.a.every((x) => x.hid) && more.ex === "true" && more.b.length === 2 && more.b.every((x) => !x.hid && x.h >= 44) &&
+      more.b[0].href === "tel:+4624313100" && more.b[1].href === "tel:+4622680400" && /0243-131 00/.test(more.b[0].t), more);
     s = await snap(page);
     ok("Fler taxibolag open: still no emoji, 44 px, one row style", s.emoji === "" && s.small.length === 0 && s.looks.sort().join() === "call,row", { e: s.emoji, small: s.small, looks: s.looks });
     const again = await page.evaluate(() => { const m = document.querySelector("#sheet-body .hs-more"); m.click(); return [m.getAttribute("aria-expanded"), [...document.querySelectorAll("#sheet-body .hs-sub")].every((e) => e.hidden)]; });
