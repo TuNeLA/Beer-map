@@ -131,7 +131,7 @@
     S.bar = bar;
     var act = bs.querySelector(".pp-act");
     var sec = el("section", { class: "oi-sec", "data-bar": bar, "aria-label": T("title") });
-    sec.appendChild(el("h4", { class: "oi-h", text: T("secHead") }));
+    sec.appendChild(el("div", { role: "heading", "aria-level": "4", class: "oi-h", text: T("secHead") }));
     var list = el("div", { class: "oi-list" });
     var swb = el("button", { type: "button", class: "switch oi-switch", role: "switch", "aria-checked": "false", "aria-label": T("rowOn") });
     swb.addEventListener("click", function (e) { e.stopPropagation(); flip(swb); });
@@ -215,9 +215,9 @@
       var go = el("button", { type: "button", class: "btn btn-amber oi-go", text: needConsent ? T("imIn") : T("turnOn") });
       var box = null;
       var check = function () { go.disabled = !ch.age || (needConsent && !(box && box.checked)) || !!go.getAttribute("data-busy"); };
-      body.appendChild(el("h3", { class: "oi-h3", text: T("ageHead") }));
+      body.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("ageHead") }));
       body.appendChild(seg(T("ageHead"), T("ages"), ["18-24", "25-34", "35-44", "45+"], ch.age, function (v) { ch.age = v; check(); }));
-      body.appendChild(el("h3", { class: "oi-h3", text: T("prefHead") }));
+      body.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("prefHead") }));
       var f1 = function (v) { ch.iAm = v; }; f1.toggle = true;
       var f2 = function (v) { ch.want = v; }; f2.toggle = true;
       body.appendChild(seg(T("prefHead"), T("iAm"), ["k", "m", "a"], ch.iAm, f1));
@@ -289,7 +289,7 @@
     var id = S.st.pair.id;
     card = el("div", { class: "oi-card", role: "dialog", "aria-modal": "false", "aria-label": T("psst"), "data-k": key });
     card.appendChild(el("div", { class: "oi-card-ic", "aria-hidden": "true", html: ic("sparkle", "") }));
-    card.appendChild(el("h2", { class: "oi-psst", text: T("psst") }));
+    card.appendChild(el("div", { role: "heading", "aria-level": "2", class: "oi-psst", text: T("psst") }));
     if (sc.name === "waitOffer") {
       card.appendChild(el("p", { class: "oi-card-t", text: T("waitOffer") }));
     } else {

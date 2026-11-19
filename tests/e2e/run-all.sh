@@ -220,6 +220,7 @@ run popfix     $B popfix-pw.js     # lane popfix: the bar popup on a PC: one car
 run hooks-order $B hooks-order-pw.js   # lane w1-hooks: PN.hookList() order = the old app.js mods() list (85 names), every hooked module reached
 run polish3    $B polish3-pw.js    # lane polish3: I-65 film photo tap = big view / hold = react (no emoji row), I-66 toast exit without the amber border, I-68 Grupper button = Grupper tab, I-69 Mina förslag + owner badge
 run bump       $B bump-pw.js       # lane bump: Skåla med telefonen (flag pn_bump): shake fills, knock on 2 phones = ÖL! for both, tap fallback, pause text, iPhone permission
+run dating2    $B dating2-pw.js    # dating2 (P-088): Öppen ikväll for two users on a fake 0530 server; stable + store load no dating code; every safety rule
 # --- ci1 (code audit A1): tests that were in no CI shard. The two that fail today are in tests/e2e/not-in-ci.txt ---
 run bold-krog   $B bold-krog-pw.js    # bd: Krogrundan card (bold lane, 9 Nov)
 run bold-replay $B bold-replay-pw.js  # bd: night replay film

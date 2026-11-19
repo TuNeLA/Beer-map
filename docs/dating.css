@@ -40,6 +40,7 @@ button.oi-row:active,a.oi-row:active,.oi-row[role="button"]:active{background:va
 .oi-msg{margin:0;min-height:0;font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-amber-t)}
 .oi-msg:empty{display:none}
 .oi-seg{margin:0}
+.oi-seg+.oi-seg{margin-top:var(--ds-2)}
 .oi-seg>button{min-width:0}
 .oi-check{display:flex;align-items:flex-start;gap:var(--ds-3);min-height:44px;padding:var(--ds-2) 0;font:400 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-text-2);cursor:pointer}
 .oi-cb{flex:0 0 24px;width:24px;height:24px;margin:0;accent-color:var(--ds-amber)}
@@ -153,9 +154,9 @@ button.oi-row:active,a.oi-row:active,.oi-row[role="button"]:active{background:va
 .oi-danger .oi-i{color:var(--ds-red-t)}
 
 /* the notice card (over the map, above the dock) */
-.oi-card{position:fixed;left:var(--pn-edge,12px);right:var(--pn-edge,12px);bottom:calc(112px + env(safe-area-inset-bottom,0px));z-index:1300;max-width:480px;margin:0 auto;
+.oi-card{position:fixed;left:var(--pn-edge,12px);right:var(--pn-edge,12px);bottom:calc(112px + env(safe-area-inset-bottom,0px));max-width:480px;margin:0 auto;
   display:flex;flex-direction:column;align-items:center;gap:var(--ds-2);padding:var(--ds-5) var(--ds-4) var(--ds-4);text-align:center;
-  background:var(--ds-sheet);border:1px solid var(--ds-amber);border-radius:var(--ds-r-3);box-shadow:var(--ds-sh-2);animation:oi-in var(--ds-t-3) var(--ds-ease)}
+  background:var(--ds-sheet);border:1px solid var(--ds-amber);border-radius:var(--ds-r-3);box-shadow:var(--ds-sh-2);z-index:1650;animation:oi-in var(--ds-t-3) var(--ds-ease)}
 @keyframes oi-in{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
 .oi-card-ic{width:56px;height:56px;padding:14px;box-sizing:border-box;border-radius:50%;background:var(--ds-amber-soft);color:var(--ds-amber-t);display:inline-flex}
 .oi-card-ic svg{width:100%;height:100%}

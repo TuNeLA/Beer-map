@@ -172,3 +172,14 @@ test("sql: no remove words, ends with olnu_strip_cr, definer + search_path + aut
   for (const t of tables) assert.ok(!/^\s+(lat|lng|lon|acc|accuracy|pos|geo|dist)\b/m.test(t[2]), t[1]);
   assert.ok(/revoke all on function ' \|\| f \|\| ' from anon/.test(SQL));
 });
+
+test("texts: every Swedish text has an English one; 10 questions per game type in both", () => {
+  const win = {}; win.window = win;
+  vm.runInNewContext(fs.readFileSync(path.join(ROOT, "docs/js/dating-content.js"), "utf8"), { window: win });
+  const tx = win.PN.oiText;
+  assert.deepEqual(Object.keys(tx.sv).sort(), Object.keys(tx.en).sort());
+  for (const t of ["A", "B", "C", "D", "E"]) { assert.equal(tx.q[t].length, 10, t); assert.equal(tx.qEn[t].length, 10, t); }
+  assert.equal(tx.glass.sv.length, 6); assert.ok(tx.glass.sv.includes("Alkoholfritt"));
+  // the help numbers checked 19 Nov 2026 (RESEARCH §5)
+  assert.ok(/112/.test(tx.sv.h1) && /114 14/.test(tx.sv.h1s) && /116 016/.test(tx.sv.h2));
+});

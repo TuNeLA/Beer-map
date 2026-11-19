@@ -139,7 +139,7 @@
   }
   function pick2(root, p, item, t, n) {
     var qq = Q(t.t, t.q[item]) || ["", ""], sel = null, quick = t.t === "D";
-    root.appendChild(el("h3", { class: "oi-q", text: quick ? T("quick") : T("hellre") }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-q", text: quick ? T("quick") : T("hellre") }));
     var box = el("div", { class: "oi-opts" });
     ["a", "b"].forEach(function (v, i) { var c = choice(qq[i], v.toUpperCase()); c.setAttribute("data-v", v); box.appendChild(c); });
     radios(box, function (v) { sel = v; ok.disabled = false; });
@@ -159,14 +159,14 @@
   }
   function likely(root, p, item, t, n) {
     var s = null, g = null;
-    root.appendChild(el("h3", { class: "oi-q", text: (T("types") || {}).E }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-q", text: (T("types") || {}).E }));
     root.appendChild(el("p", { class: "oi-stmt", text: Q("E", t.q[item]) || "" }));
     var ok = btn(T("answer"), "btn-amber", function () { if (s && g) { ok.disabled = true; answer(p, item, s + g); } });
     ok.disabled = true;
     var upd = function () { ok.disabled = !(s && g); };
-    root.appendChild(el("h4", { class: "oi-h3", text: T("eSelf") }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "4", class: "oi-h3", text: T("eSelf") }));
     root.appendChild(segm([T("eMe"), T("eNotMe")], ["j", "n"], function (v) { s = v; upd(); }));
-    root.appendChild(el("h4", { class: "oi-h3", text: T("eGuess", p.them) }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "4", class: "oi-h3", text: T("eGuess", p.them) }));
     root.appendChild(segm([T("eYes"), T("eNo")], ["j", "n"], function (v) { g = v; upd(); }));
     theirStatus(root, p, item);
     root.appendChild(el("p", { class: "oi-note", text: T("qOf", item + 1, n) }));
@@ -183,7 +183,7 @@
   }
   function hint(root) { var h = el("p", { class: "oi-filter", role: "alert", hidden: true }); root.appendChild(h); return function (k) { h.hidden = !k; h.textContent = k ? (T("eFiltered") || {})[k] || T("eFail") : ""; }; }
   function lieWrite(root, p, t) {
-    root.appendChild(el("h3", { class: "oi-q", text: T("bWrite") }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-q", text: T("bWrite") }));
     root.appendChild(el("p", { class: "oi-note", text: T("bWriteSub") }));
     var lie = null, ins = [], box = el("div", { class: "oi-lines" });
     t.q.forEach(function (qn, i) {
@@ -211,7 +211,7 @@
   }
   function lieGuess(root, p) {
     var lines = String(L.ans(p, p.round, 0).them || "").split("\n"), sel = null;
-    root.appendChild(el("h3", { class: "oi-q", text: T("bGuess") }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-q", text: T("bGuess") }));
     var box = el("div", { class: "oi-opts" });
     lines.forEach(function (ln, i) { var c = choice(ln, String(i + 1)); c.setAttribute("data-v", String(i)); box.appendChild(c); });
     radios(box, function (v) { sel = v; ok.disabled = false; });
@@ -223,7 +223,7 @@
   }
   function glassGame(root, p, item, t) {
     if (item === 2) {
-      root.appendChild(el("h3", { class: "oi-q", text: T("cFollow") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-q", text: T("cFollow") }));
       root.appendChild(el("p", { class: "oi-stmt", text: Q("C", t.q[0]) || "" }));
       var inp = el("input", { type: "text", class: "inp oi-line", maxlength: "80", placeholder: T("cFollowPh"), "aria-label": Q("C", t.q[0]) || "" });
       root.appendChild(inp);
@@ -238,7 +238,7 @@
       return;
     }
     var sel = null;
-    root.appendChild(el("h3", { class: "oi-q", text: item === 0 ? T("cMine") : T("cGuess", p.them) }));
+    root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-q", text: item === 0 ? T("cMine") : T("cGuess", p.them) }));
     var box = el("div", { class: "oi-opts oi-opts-2" });
     glass().forEach(function (g, i) { var c = choice(g, String(i + 1)); c.setAttribute("data-v", String(i)); box.appendChild(c); });
     radios(box, function (v) { sel = v; ok2.disabled = false; });
@@ -292,7 +292,7 @@
       if (step >= 3) { pic.innerHTML = avatarHTML(p); pic.setAttribute("role", "img"); pic.setAttribute("aria-label", T("rPic")); }
       else pic.appendChild(el("span", { class: "oi-pic-q", html: ic("user", "") }));
       root.appendChild(pic);
-      root.appendChild(el("h2", { class: "oi-name", text: step >= 2 ? rv.name || T("noName") : p.them }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "2", class: "oi-name", text: step >= 2 ? rv.name || T("noName") : p.them }));
       root.appendChild(el("p", { class: "oi-meta", text: p.them + (rv.age ? " · " + rv.age.replace("-", "–") : "") }));
       if (step >= 3) root.appendChild(el("p", { class: "oi-note oi-center", text: T("picNote") }));
       var row = function (lb, val, done) {
@@ -416,7 +416,7 @@
     var reason = null;
     sheet(T("report"), function (root) {
       sub(root, T("reportSub", alias || "–"));
-      root.appendChild(el("h3", { class: "oi-h3", text: T("what") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("what") }));
       var box = el("div", { class: "oi-list oi-reasons", role: "radiogroup", "aria-label": T("what") });
       (T("reasons") || []).forEach(function (r) {
         var b = el("button", { type: "button", class: "oi-row oi-radio", role: "radio", "aria-checked": "false", "data-v": r[0] }, [el("span", { class: "oi-dot", "aria-hidden": "true" }), el("span", { class: "oi-t", text: r[1] })]);
@@ -446,7 +446,7 @@
   function reportDone() {
     sheet(T("report"), function (root) {
       root.appendChild(el("div", { class: "oi-banner ok", role: "status" }, [el("span", { class: "oi-ok", "aria-hidden": "true", html: ic("check", "") }), el("span", { text: T("reportDone") })]));
-      root.appendChild(el("h3", { class: "oi-h3", text: T("nextHead") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("nextHead") }));
       var ol = el("ol", { class: "oi-steps" });
       ["next1", "next2", "next3", "next4"].forEach(function (k) { ol.appendChild(el("li", { text: T(k) })); });
       root.appendChild(ol);
@@ -467,13 +467,13 @@
     var st = C.S.st || {}, hide = C.ls("olnu.oi.hide") === "1";
     sheet(T("safeTitle"), function (root) {
       sub(root, T("title"));
-      root.appendChild(el("h3", { class: "oi-h3", text: T("weDo") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("weDo") }));
       root.appendChild(el("div", { class: "oi-list" }, [row("users", T("s1"), T("s1s")), row("clock", T("s2"), T("s2s")), row("lock", T("s3"), T("s3s")), row("hand", T("s4"), T("s4s"))]));
-      root.appendChild(el("h3", { class: "oi-h3", text: T("whenMeet") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("whenMeet") }));
       root.appendChild(el("div", { class: "oi-list" }, [row("eye", T("m1"), T("m1s")), row("users", T("m2"), T("m2s"))]));
-      root.appendChild(el("h3", { class: "oi-h3", text: T("help") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("help") }));
       root.appendChild(el("div", { class: "oi-list" }, [row("sos", T("h1"), T("h1s"), "tel:112"), row("phone", T("h2"), T("h2s"), "tel:116016"), row("shield", "Polisen 114 14", "", "tel:11414")]));
-      root.appendChild(el("h3", { class: "oi-h3", text: T("yourData") }));
+      root.appendChild(el("div", { role: "heading", "aria-level": "3", class: "oi-h3", text: T("yourData") }));
       var list = el("div", { class: "oi-list" });
       list.appendChild(row("check", st.consent ? T("consentOn") : T("consentOff"), T("stored")));
       if (st.consent) list.appendChild(row("x", T("withdraw"), T("withdrawSub"), null, function () {
