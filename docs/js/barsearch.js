@@ -14,13 +14,17 @@
    - "Senaste": the last 6 picks on this phone (localStorage, names + coordinates only), shown while the field is empty.
    - Close: ✕, Esc, Android back, or a tap on the dimmed map. That tap is eaten by the scrim: it never reaches the map.
    - Store builds: the same. No drinking words: a count of people is information only.
-   Texts: tl(sv, en) here (i18n.js is at its quality limit). CSS: docs/barsearch.css. Test: tests/e2e/barsearch-pw.js. */
+   Texts: tl(sv, en) here (i18n.js is at its quality limit). CSS: docs/barsearch.css. Test: tests/e2e/barsearch-pw.js.
+   I-132 beer library (lane beerui, owner default A24 "C"): tabs "Krogar | Öl" under the field (.ds-seg, the last tab is remembered on
+   this phone). Öl = js/beerlib.js tab(): taste chips, style cards, beers; typing finds styles and beers. The Öl tab does not open the
+   keyboard by itself (browse with one hand). PN.beerlib() = the ONE loader of the beer files (beerlib.js + beerlib-pages.js + beerlib.css,
+   on demand; profile.js, placecard.js and dm.js call it too). Test: tests/e2e/beerui-pw.js. */
 (function () {
   "use strict";
   var W = window, D = document;
-  var KEY = "olnu.barsearch.recent", MAX_RECENT = 6, TYPE_MS = 200, PLACE_MS = 350, FEW = 3, MAX_OWN = 12, MARK_MS = 8000, NEAR_M = 150;
+  var KEY = "olnu.barsearch.recent", TAB_KEY = "olnu.barsearch.tab", BEER_MS = 150, MAX_RECENT = 6, TYPE_MS = 200, PLACE_MS = 350, FEW = 3, MAX_OWN = 12, MARK_MS = 8000, NEAR_M = 150;
   var A = null, btn = null, ui = null, seq = 0, tType = 0, tPlace = 0, tBtn = 0, hist = 0, selfBack = null, mark = null, sheetMo = null;
-  var st = { q: "", own: [], places: null, placeQ: "", placeBusy: false, placeErr: false };
+  var st = { q: "", own: [], places: null, placeQ: "", placeBusy: false, placeErr: false, tab: "bars" }, tBeer = 0, beerP = null;
 
   function tl(sv, en) { return W.I18N && W.I18N.lang === "en" ? en : sv; }
   function ic(n) { return W.PNI && W.PNI.svg ? W.PNI.svg(n) : ""; }
@@ -242,6 +246,7 @@
   function onType() {
     clearTimeout(tType); clearTimeout(tPlace);
     ui.clear.hidden = !ui.input.value;
+    if (st.tab === "beer") { clearTimeout(tBeer); tBeer = setTimeout(paintBeer, BEER_MS); return; }
     tType = setTimeout(function () {
       var q = String(ui.input.value || "").trim();
       if (q === st.q && st.own) return;
@@ -252,6 +257,7 @@
   }
   function onEnter() {
     clearTimeout(tType);
+    if (st.tab === "beer") { clearTimeout(tBeer); paintBeer(); try { ui.input.blur(); } catch (e) {} return; }
     var q = String(ui.input.value || "").trim(); if (!q) return;
     if (q !== st.q) { st.q = q; st.own = ownHits(q); st.places = null; }
     var first = st.own[0] ? { bar: st.own[0].bar, title: st.own[0].bar.name, lat: st.own[0].bar.lat, lng: st.own[0].bar.lng } : null;
@@ -265,6 +271,7 @@
     try {
       var vv = W.visualViewport, h = vv ? vv.height + vv.offsetTop : W.innerHeight, top = ui.list.getBoundingClientRect().top;
       ui.list.style.maxHeight = Math.max(120, Math.floor(h - top - 12)) + "px";
+      if (!ui.beer.hidden) ui.beer.style.maxHeight = Math.max(160, Math.floor(h - ui.beer.getBoundingClientRect().top - 8)) + "px";
     } catch (e) {}
   }
   function build() {
@@ -281,15 +288,22 @@
     lab.appendChild(lic); lab.appendChild(input); lab.appendChild(clear); bar.appendChild(lab); bar.appendChild(x);
     var msg = mk("p", "bs-msg"); msg.setAttribute("role", "status"); msg.hidden = true;
     var list = mk("ul", "bs-list"); list.id = "bs-list"; list.setAttribute("role", "listbox"); list.setAttribute("aria-label", tl("Träffar", "Results"));
-    box.appendChild(bar); box.appendChild(msg); box.appendChild(list);
+    var tabs = mk("div", "ds-seg bs-tabs"); tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", tl("Sök efter", "Search for"));
+    [["bars", tl("Krogar", "Bars")], ["beer", tl("Öl", "Beers")]].forEach(function (t) {
+      var b = mk("button", null, t[1]); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("data-bs-tab", t[0]); b.id = "bs-tab-" + t[0];
+      b.addEventListener("click", function () { setTab(t[0], true); });
+      tabs.appendChild(b);
+    });
+    var beer = mk("div", "bl-in-bs"); beer.id = "bs-beer"; beer.setAttribute("role", "tabpanel"); beer.setAttribute("aria-labelledby", "bs-tab-beer"); beer.hidden = true;
+    box.appendChild(bar); box.appendChild(tabs); box.appendChild(msg); box.appendChild(list); box.appendChild(beer);
     // One click router: the tap on the dimmed map closes the panel and is eaten here (it never selects a map feature).
     scrim.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); close(); });
     ["pointerdown", "touchstart", "mousedown", "wheel"].forEach(function (t) { scrim.addEventListener(t, function (e) { e.stopPropagation(); }, { passive: true }); });
     x.addEventListener("click", function () { close(); });
-    clear.addEventListener("click", function () { input.value = ""; st.q = ""; st.own = []; st.places = null; paint(); try { input.focus(); } catch (e) {} });
+    clear.addEventListener("click", function () { input.value = ""; st.q = ""; st.own = []; st.places = null; if (st.tab === "beer") paintBeer(); else paint(); try { input.focus(); } catch (e) {} });
     input.addEventListener("input", onType);
     input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); onEnter(); } });
-    return { scrim: scrim, box: box, input: input, list: list, msg: msg, clear: clear };
+    return { scrim: scrim, box: box, input: input, list: list, msg: msg, clear: clear, tabs: tabs, beer: beer };
   }
   function onKey(e) { if (e.key === "Escape" && ui) { e.preventDefault(); close(); } }
   function onVV() { fit(); }
@@ -297,15 +311,17 @@
     if (selfBack) { var f = selfBack; selfBack = null; f(); return; }
     if (ui && !(e.state && e.state.pnBs)) { hist = 0; close(); }
   }
-  function open() {
-    if (ui || !A) return;
+  function open(tab) {
+    if (ui) { if (tab) setTab(tab, false); return; }
+    if (!A) return;
     try { if (A.sheetOpen && A.sheetOpen()) A.closeSheet(); } catch (e) {}
     ui = build();
     st.q = ""; st.own = []; st.places = null; st.placeBusy = false; st.placeErr = false;
     D.body.appendChild(ui.scrim); D.body.appendChild(ui.box); D.body.classList.add("bs-on");
     if (btn) btn.setAttribute("aria-expanded", "true");
-    try { ui.input.focus({ preventScroll: true }); } catch (e) { try { ui.input.focus(); } catch (x) {} }   // in the tap: the keyboard opens at once
-    paint();
+    var t0 = tab === "beer" || tab === "bars" ? tab : lsTab();
+    setTab(t0, false);
+    if (t0 === "bars") { try { ui.input.focus({ preventScroll: true }); } catch (e) { try { ui.input.focus(); } catch (x) {} } }   // in the tap: the keyboard opens at once
     D.addEventListener("keydown", onKey, true);
     if (W.visualViewport) W.visualViewport.addEventListener("resize", onVV);
     try { var hs = history.state || {}; hist = Date.now(); history.pushState({ pnBs: hist, olnuNav: typeof hs.olnuNav === "number" ? hs.olnuNav : 0 }, ""); } catch (e) { hist = 0; }
@@ -316,7 +332,7 @@
   }
   function close(after) {
     if (!ui) { if (after) after(); return; }
-    clearTimeout(tType); clearTimeout(tPlace); seq++;
+    clearTimeout(tType); clearTimeout(tPlace); clearTimeout(tBeer); seq++;
     try { ui.input.blur(); } catch (e) {}
     ui.scrim.remove(); ui.box.remove(); ui = null; D.body.classList.remove("bs-on");
     if (sheetMo) { sheetMo.disconnect(); sheetMo = null; }
@@ -336,6 +352,55 @@
     remember(h);
     close(function () { go(h); });
   }
+
+  /* ---------- I-132: the Öl tab + the ONE beer-library loader ---------- */
+  function lsTab() { try { return W.localStorage.getItem(TAB_KEY) === "beer" ? "beer" : "bars"; } catch (e) { return "bars"; } }
+  function setTab(t, user) {
+    if (!ui) return;
+    st.tab = t === "beer" ? "beer" : "bars";
+    if (user) { try { W.localStorage.setItem(TAB_KEY, st.tab); } catch (e) {} }
+    [].forEach.call(ui.tabs.children, function (b) { var on = b.getAttribute("data-bs-tab") === st.tab; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
+    var beer = st.tab === "beer";
+    ui.box.classList.toggle("bs-beer-on", beer);
+    ui.list.hidden = beer; ui.beer.hidden = !beer;
+    ui.input.placeholder = beer ? tl("Sök öl, bryggeri eller stil", "Search beer, brewery or style") : tl("Sök bar eller ställe", "Search bar or place");
+    ui.input.setAttribute("aria-label", ui.input.placeholder); ui.input.setAttribute("aria-controls", beer ? "bs-beer" : "bs-list");
+    ui.box.setAttribute("aria-label", beer ? tl("Sök öl", "Search beer") : tl("Sök krog", "Search bar"));
+    if (beer) { say(""); paintBeer(); } else { st.q = ""; onType(); paint(); }
+  }
+  function paintBeer() {
+    if (!ui || st.tab !== "beer") return;
+    var box = ui.beer, q = String(ui.input.value || "").trim();
+    loadBeer().then(function (L) { if (ui && ui.beer === box && st.tab === "beer") { L.tab(box, String(ui.input.value || "").trim()); fit(); } }, function () {
+      if (!ui || ui.beer !== box) return;
+      box.innerHTML = ""; var p = mk("p", "bs-msg bs-err", tl("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again.")); p.setAttribute("role", "status"); box.appendChild(p);
+    });
+    if (!W.BEERLIB && !box.firstChild) { var p = mk("p", "bs-msg", tl("Laddar ölen …", "Loading the beers …")); p.setAttribute("role", "status"); box.appendChild(p); }
+    st.q = q; fit();
+  }
+  function lazyRef(re, sel, attr, def) {
+    var n = null; try { n = [].filter.call(D.querySelectorAll(sel), function (x) { return re.test(x.getAttribute(attr) || ""); })[0]; } catch (e) {}
+    return n ? n.getAttribute(attr) : def;
+  }
+  function beerCss() {
+    var href = lazyRef(/beerlib\.css/, 'link[rel="x-lazy-css"],link[rel="stylesheet"]', "href", "./beerlib.css");
+    if (D.querySelector('link[rel="stylesheet"][href="' + href + '"]')) return;
+    var l = D.createElement("link"); l.rel = "stylesheet"; l.href = href; D.head.appendChild(l);
+  }
+  // PN.beerlib() -> Promise<BEERLIB with pages>. Uses the stamped src from index.html when it is there (x-lazy data-demand).
+  function loadBeer() {
+    beerCss();
+    if (W.BEERLIB && W.BEERLIB.beer) return Promise.resolve(W.BEERLIB);
+    if (beerP) return beerP;
+    var ld = W.PN && PN.load;
+    if (!ld) return Promise.reject(new Error("no loader"));
+    beerP = ld(lazyRef(/js\/beerlib\.js/, 'script[type="text/x-lazy"]', "src", "./js/beerlib.js"), { test: function () { return !!W.BEERLIB; } })
+      .then(function () { return ld(lazyRef(/js\/beerlib-pages\.js/, 'script[type="text/x-lazy"]', "src", "./js/beerlib-pages.js"), { test: function () { return !!(W.BEERLIB && W.BEERLIB.beer); } }); })
+      .then(function () { return W.BEERLIB; });
+    beerP.catch(function () { beerP = null; });
+    return beerP;
+  }
+  if (W.PN) PN.beerlib = loadBeer;
 
   /* ---------- the rail button ---------- */
   function railBtn() {
@@ -364,7 +429,7 @@
     open: open, close: close,
     // tests
     _norm: norm, _own: function (q) { return ownHits(q).map(function (h) { return { name: h.bar.name, s: h.s, d: Math.round(h.d), id: String(h.bar.id) }; }); },
-    _state: function () { return { open: !!ui, q: st.q, own: st.own.length, places: st.places ? st.places.length : null, recent: recentGet(), mark: !!mark }; }
+    _state: function () { return { open: !!ui, q: st.q, own: st.own.length, places: st.places ? st.places.length : null, recent: recentGet(), mark: !!mark, tab: st.tab }; }
   };
   if (W.PN) PN.mod("BARSEARCH");
 })();

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" width="240" height="300" role="img" aria-label="Dark lager">
+<title>Mörk lager</title>
+<defs>
+<radialGradient id="bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#19233a"/><stop offset="1" stop-color="#121a2a"/></radialGradient>
+<linearGradient id="beer" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#993e1a"/><stop offset="1" stop-color="#742200"/></linearGradient>
+<linearGradient id="shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<clipPath id="in"><path d="M166.0 66.0 C166.0 81.7 166.2 129.3 166.0 160.0 C165.8 190.7 165.2 235.0 165.0 250.0 L165.0 246.0 L75.0 246.0 L75.0 250.0 C74.8 235.0 74.2 190.7 74.0 160.0 C73.8 129.3 74.0 81.7 74.0 66.0 Z"/></clipPath>
+</defs>
+<rect width="240" height="300" rx="24" fill="url(#bg)"/>
+<g transform="translate(120 150) scale(1.12) translate(-120 -150)">
+<ellipse cx="120" cy="272" rx="78" ry="12" fill="#f5a623" opacity=".18"/>
+<path d="M170.0 66.0 C170.0 81.7 170.2 129.3 170.0 160.0 C169.8 190.7 169.2 235.0 169.0 250.0 L169.0 250.0 L71.0 250.0 L71.0 250.0 C70.8 235.0 70.2 190.7 70.0 160.0 C69.8 129.3 70.0 81.7 70.0 66.0 Z" fill="#ffffff" fill-opacity=".05"/>
+<g clip-path="url(#in)">
+<rect x="0" y="100.0" width="240" height="300" fill="url(#beer)"/>
+<path d="M0 72.0 Q10.0 97.0 20.0 100.0 Q30.0 105.0 40.0 100.0 Q50.0 97.0 60.0 100.0 Q70.0 105.0 80.0 100.0 Q90.0 97.0 100.0 100.0 Q110.0 105.0 120.0 100.0 Q130.0 97.0 140.0 100.0 Q150.0 105.0 160.0 100.0 Q170.0 97.0 180.0 100.0 Q190.0 105.0 200.0 100.0 Q210.0 97.0 220.0 100.0 Q230.0 105.0 240.0 100.0 L240 72.0 Z" fill="#e9d6b4"/>
+<circle cx="88.9" cy="92.7" r="3.1" fill="#ffffff" opacity=".55"/>
+<circle cx="144.7" cy="82.7" r="1.7" fill="#ffffff" opacity=".55"/>
+<circle cx="145.0" cy="85.5" r="2.3" fill="#ffffff" opacity=".55"/>
+<circle cx="106.5" cy="91.8" r="2.2" fill="#ffffff" opacity=".55"/>
+<circle cx="139.0" cy="82.7" r="2.6" fill="#ffffff" opacity=".55"/>
+<circle cx="87.4" cy="83.4" r="3.0" fill="#ffffff" opacity=".55"/>
+<circle cx="95.7" cy="86.6" r="2.8" fill="#ffffff" opacity=".55"/>
+<circle cx="146.8" cy="81.1" r="1.9" fill="#ffffff" opacity=".55"/>
+<circle cx="135.9" cy="87.4" r="2.7" fill="#ffffff" opacity=".55"/>
+</g>
+<rect x="74.0" y="64.0" width="92.0" height="14.0" fill="#e9d6b4"/>
+<circle cx="84.6" cy="63.9" r="10.6" fill="#e9d6b4"/>
+<circle cx="102.3" cy="64.8" r="10.6" fill="#e9d6b4"/>
+<circle cx="120.0" cy="62.1" r="10.6" fill="#e9d6b4"/>
+<circle cx="137.7" cy="61.6" r="10.6" fill="#e9d6b4"/>
+<circle cx="155.4" cy="62.8" r="10.6" fill="#e9d6b4"/>
+<rect x="92.5" y="78.0" width="10" height="138.0" rx="5" fill="url(#shine)" clip-path="url(#in)"/>
+<path d="M170.0 66.0 C170.0 81.7 170.2 129.3 170.0 160.0 C169.8 190.7 169.2 235.0 169.0 250.0 L169.0 250.0 L71.0 250.0 L71.0 250.0 C70.8 235.0 70.2 190.7 70.0 160.0 C69.8 129.3 70.0 81.7 70.0 66.0 Z" fill="none" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3" stroke-linejoin="round"/>
+<path d="M71.0 250 L169.0 250 Q173.0 250 173.0 262 L67.0 262 Q67.0 250 71.0 250 Z" fill="#eef0ec" fill-opacity=".22" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3" stroke-linejoin="round"/>
+<path d="M170.0 96 C216.0 96 216.0 214 170.0 214" fill="none" stroke="#eef0ec" stroke-opacity=".7" stroke-width="9" stroke-linecap="round"/>
+</g></svg>

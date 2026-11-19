@@ -8,7 +8,9 @@
    the map. The rows below the hero are the modules' own "profileSheet" hooks (moved from "settingsSheet", not
    copied): Ölpasset, Vänner & Hitta (+ Låt mig hittas), Konto, Swish, Spökläge, Topplistan, Wrapped, SOS.
    A missing module or RPC hides its tile. Styles: profile.css. Public: window.PROFIL.
-   d-profile (I-114, 06): PROFIL.visSection() = the "Vem ser mig" group (js/pnui.js shapeProfil puts it right under the hero). */
+   d-profile (I-114, 06): PROFIL.visSection() = the "Vem ser mig" group (js/pnui.js shapeProfil puts it right under the hero).
+   I-132 (lane beerui): "Mina favoritöl" (max 3) comes first in that wrapper: hero, favourites, Vem ser mig. js/beerlib.js favCard()
+   fills it (loaded on demand by PN.beerlib()); it follows Synlighet (friends + groups / friends only / ghost = only me). */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
@@ -205,7 +207,14 @@
     paint();
     // a wrapper, not a section of the body: the Profil fold hides the body's own sections (pnui.css), and unlocks.js puts its
     // "Garderob" row in the first list inside .pn-pf (that stays the "Mitt" list)
-    return h("div", { class: "pn-vsm-w ds-keep" }, [sec]);
+    return h("div", { class: "pn-vsm-w ds-keep" }, [favSection(), sec]);
+  }
+  // I-132: the favourites card; a missing beer library (load error) leaves no trace
+  function favSection() {
+    var P = W("PN"); if (!P || !P.beerlib) return null;
+    var fav = h("section", { class: "bl bl-fav ds-keep", "aria-label": L("Mina favoritöl", "My favourite beers") });
+    P.beerlib().then(function (B) { if (B && B.favCard) B.favCard(fav); }, function () { fav.remove(); });
+    return fav;
   }
 
   window.PROFIL = {

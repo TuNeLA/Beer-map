@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" width="240" height="300" role="img" aria-label="Gueuze">
+<title>Gueuze</title>
+<defs>
+<radialGradient id="bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#19233a"/><stop offset="1" stop-color="#121a2a"/></radialGradient>
+<linearGradient id="beer" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#faba38"/><stop offset="1" stop-color="#cb8800"/></linearGradient>
+<linearGradient id="shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<clipPath id="in"><path d="M141.0 36.0 C141.3 50.0 143.7 92.7 143.0 120.0 C142.3 147.3 140.2 183.0 137.0 200.0 C133.8 217.0 126.2 218.3 124.0 222.0 L124.0 218.0 L116.0 218.0 L116.0 222.0 C113.8 218.3 106.2 217.0 103.0 200.0 C99.8 183.0 97.7 147.3 97.0 120.0 C96.3 92.7 98.7 50.0 99.0 36.0 Z"/></clipPath>
+</defs>
+<rect width="240" height="300" rx="24" fill="url(#bg)"/>
+<g transform="translate(120 150) scale(1.12) translate(-120 -150)">
+<ellipse cx="120" cy="272" rx="78" ry="12" fill="#f5a623" opacity=".18"/>
+<path d="M145.0 36.0 C145.3 50.0 147.7 92.7 147.0 120.0 C146.3 147.3 144.2 183.0 141.0 200.0 C137.8 217.0 130.2 218.3 128.0 222.0 L128.0 222.0 L112.0 222.0 L112.0 222.0 C109.8 218.3 102.2 217.0 99.0 200.0 C95.8 183.0 93.7 147.3 93.0 120.0 C92.3 92.7 94.7 50.0 95.0 36.0 Z" fill="#ffffff" fill-opacity=".05"/>
+<g clip-path="url(#in)">
+<rect x="0" y="62.0" width="240" height="300" fill="url(#beer)"/>
+<circle cx="106.7" cy="98.2" r="1.4" fill="#fff" opacity=".35"/>
+<circle cx="116.4" cy="105.5" r="2.1" fill="#fff" opacity=".35"/>
+<circle cx="115.5" cy="136.8" r="1.9" fill="#fff" opacity=".35"/>
+<circle cx="135.2" cy="133.7" r="2.6" fill="#fff" opacity=".35"/>
+<circle cx="134.4" cy="99.8" r="1.5" fill="#fff" opacity=".35"/>
+<circle cx="102.1" cy="129.3" r="1.9" fill="#fff" opacity=".35"/>
+<circle cx="125.4" cy="123.5" r="2.2" fill="#fff" opacity=".35"/>
+<circle cx="106.4" cy="109.4" r="1.4" fill="#fff" opacity=".35"/>
+<circle cx="119.5" cy="206.5" r="2.4" fill="#fff" opacity=".35"/>
+<circle cx="104.8" cy="149.7" r="2.1" fill="#fff" opacity=".35"/>
+<circle cx="122.3" cy="175.5" r="1.8" fill="#fff" opacity=".35"/>
+<circle cx="123.9" cy="131.6" r="1.7" fill="#fff" opacity=".35"/>
+<circle cx="134.7" cy="134.8" r="2.5" fill="#fff" opacity=".35"/>
+<circle cx="136.1" cy="138.6" r="1.3" fill="#fff" opacity=".35"/>
+<path d="M0 42.0 Q10.0 59.0 20.0 62.0 Q30.0 67.0 40.0 62.0 Q50.0 59.0 60.0 62.0 Q70.0 67.0 80.0 62.0 Q90.0 59.0 100.0 62.0 Q110.0 67.0 120.0 62.0 Q130.0 59.0 140.0 62.0 Q150.0 67.0 160.0 62.0 Q170.0 59.0 180.0 62.0 Q190.0 67.0 200.0 62.0 Q210.0 59.0 220.0 62.0 Q230.0 67.0 240.0 62.0 L240 42.0 Z" fill="#fbf6ea"/>
+<circle cx="102.8" cy="51.5" r="2.2" fill="#ffffff" opacity=".55"/>
+<circle cx="104.8" cy="53.6" r="1.6" fill="#ffffff" opacity=".55"/>
+<circle cx="108.2" cy="50.6" r="3.0" fill="#ffffff" opacity=".55"/>
+<circle cx="137.4" cy="48.0" r="1.7" fill="#ffffff" opacity=".55"/>
+<circle cx="108.1" cy="54.6" r="2.4" fill="#ffffff" opacity=".55"/>
+<circle cx="135.8" cy="53.3" r="2.7" fill="#ffffff" opacity=".55"/>
+<circle cx="123.1" cy="49.5" r="2.8" fill="#ffffff" opacity=".55"/>
+<circle cx="129.8" cy="52.8" r="2.5" fill="#ffffff" opacity=".55"/>
+<circle cx="104.4" cy="54.3" r="3.0" fill="#ffffff" opacity=".55"/>
+</g>
+<rect x="99.0" y="34.0" width="42.0" height="14.0" fill="#fbf6ea"/>
+<circle cx="105.0" cy="32.1" r="6.0" fill="#fbf6ea"/>
+<circle cx="115.0" cy="33.4" r="6.0" fill="#fbf6ea"/>
+<circle cx="125.0" cy="31.9" r="6.0" fill="#fbf6ea"/>
+<circle cx="135.0" cy="33.3" r="6.0" fill="#fbf6ea"/>
+<rect x="106.2" y="48.0" width="10" height="139.5" rx="5" fill="url(#shine)" clip-path="url(#in)"/>
+<path d="M145.0 36.0 C145.3 50.0 147.7 92.7 147.0 120.0 C146.3 147.3 144.2 183.0 141.0 200.0 C137.8 217.0 130.2 218.3 128.0 222.0 L128.0 222.0 L112.0 222.0 L112.0 222.0 C109.8 218.3 102.2 217.0 99.0 200.0 C95.8 183.0 93.7 147.3 93.0 120.0 C92.3 92.7 94.7 50.0 95.0 36.0 Z" fill="none" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3" stroke-linejoin="round"/>
+<rect x="116.0" y="220" width="8" height="34" fill="#eef0ec" fill-opacity=".25" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3"/>
+<ellipse cx="120" cy="258" rx="34" ry="7" fill="#eef0ec" fill-opacity=".22" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3"/>
+</g></svg>
