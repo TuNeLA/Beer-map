@@ -122,8 +122,13 @@ const spelOpen = (page, what) => page.evaluate(([g, w]) => w ? window.SPEL.play(
       ok("GM5 GAMES.openVemFixar is a function", api.vf === "function", api);
       ok("GM5 GAMES.menuRows(row, close) gives one 'Vem fixar nästa?' row (PNI icon game)", !!api.rows && api.rows.length === 1 && /Vem fixar/.test(api.rows[0][0]) && api.rows[0][1] === "game", api.rows);
       ok("GM5 GAMES.openGangkamp(g) opens ⚔️ Gängkamp (DUEL.open) for that group", JSON.stringify(api.duels) === JSON.stringify([GID]), api.duels);
-      await page.evaluate(() => { const b = document.createElement("div"); b.id = "gm-test-row"; document.body.appendChild(b); });
-      await page.evaluate(() => window.GAMES && window.GAMES.openVemFixar && window.GAMES.openVemFixar()); await wait(page, 1200);
+      // 19 Nov: open it with a REAL tap on the menu row (as a user does). A script call in the first 4 s after page start is an
+      // "automatic" sheet that CALM holds (calm.js QUIET_MS); a faster boot (srvsync/warm) put the call inside that window.
+      await page.evaluate(() => {
+        const rows = window.GAMES.menuRows(function (icon, title, sub, fn) { const b = document.createElement("button"); b.type = "button"; b.id = "gm-test-row"; b.textContent = title; b.onclick = fn; return b; }, function () {});
+        const b = rows[0]; b.style.cssText = "position:fixed;top:120px;left:20px;z-index:99999;min-height:44px"; document.body.appendChild(b);
+      });
+      await page.click("#gm-test-row"); await wait(page, 1200);
       const pick = await texts(page, "#sheet-body .gm-vfg");
       ok("GM5 Vem fixar from the Ikväll menu: 2 groups → a group picker", pick.length === 2 && /Ludvika Lager/.test(pick[0]), pick);
       await shot(page, "vemfixar-pick-390");
