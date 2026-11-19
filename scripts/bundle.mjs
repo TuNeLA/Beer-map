@@ -43,7 +43,8 @@ export const GROUPS = [
   ["social", "js/news.js"],          // news, medals, social, games, after
   ["fun", "js/delight-content.js"],  // delight, gang, crew, film, events
   ["more", "js/delight-more-content.js"],   // near, forfest, group page, party, inbox, dm, invite
-  ["map", "js/barea.js"],            // basemap, glmap, zones, places, ride
+  ["map", "js/barea.js"],            // basemap, glmap, zones, alive
+  ["season", "js/seasonclock.js"],   // seasons, tilt, count, bar search, places, ride (19 Nov: map alone hit the 250 KB cheap-update budget)
   ["people", "js/account.js"],       // account, profile, avatar, unlocks
   ["ui", "js/pnmove.js"],            // pnui, icons, pnds, bold, x8
   ["app", "js/app-core.js"],         // the app parts (docs/js/app-*.js)

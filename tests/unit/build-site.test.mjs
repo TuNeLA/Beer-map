@@ -46,7 +46,7 @@ test("bundled build: few start files, named groups in document order, every ?v= 
   assert.deepEqual(m.files.map((f) => f.file + f.v), m2.files.map((f) => f.file + f.v));
   assert.ok(m.start_files <= 16, "start files: " + m.start_files);
   const g = m.files.filter((f) => /^js\/app\.bundle/.test(f.file)).map((f) => f.file.replace(/^js\/app\.bundle-|\.js$/g, ""));
-  assert.deepEqual(g, ["boot", "mbx", "base", "social", "fun", "more", "map", "people", "ui", "app", "last"]);
+  assert.deepEqual(g, ["boot", "mbx", "base", "social", "fun", "more", "map", "season", "people", "ui", "app", "last"]);
   assert.ok(m.files.find((f) => f.file === "js/app.bundle-last.js").gzip < 20 * 1024, "the last group is small");
   assert.ok(Math.max(...m.files.map((f) => f.gzip)) < 300 * 1024, "no start file over 300 KB gzip");
   for (const f of m.files) assert.equal(createHash("sha256").update(readFileSync(join(T, "a", f.file))).digest("hex").slice(0, 10), f.v, f.file);
