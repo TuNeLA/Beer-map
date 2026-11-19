@@ -2,7 +2,8 @@
 //   poll_v2 with real pins, post_beer_v2, award_medals (counted), rpc_bundle2 (live today = 0297: cap 24, old list) and
 //   pn_sync (0525: the same rule as supabase/migrations/0525_pn_sync.sql: md5 per field, {s:1} = same, p:1 = only the changed
 //   fields). Inner calls are sent from the page with the header x-pn-inner (the mocks answer them) and are not counted.
-// Server modes: "sync" = live + 0525 (pn_sync there) · "live" = live today (no pn_sync, old rpc_bundle2) · "staging" = no pn_sync,
+// Server modes: "sync" = live + 0525 (pn_sync there) · "live" = live today (no pn_sync, old rpc_bundle2) · "revoked" = pn_sync there,
+//   execute revoked (403 42501) · "staging" = no pn_sync,
 //   rpc_bundle2 after 0465/0466 (cap 40).
 // usage: node srvsync-pw.js <port> [parts]                     CI checks (exit 1 on a FAIL). parts: sync,fallback,b3,medals
 //        node srvsync-pw.js <port> --measure <docs dir> <mode> [minutes]   numbers only (requests / min, bytes / poll)
@@ -104,6 +105,7 @@ async function server(ctx, page, S) {
     }
     if (fn === "pn_sync") {
       S.pnAsk++;
+      if (S.mode === "revoked") return J(r, { code: "42501", message: "permission denied for function pn_sync", details: null, hint: null }, 403);
       if (S.mode !== "sync") return J(r, { code: "PGRST202", message: "Could not find the function public.pn_sync(p_calls, p_have) in the schema cache", details: null, hint: null }, 404);
       const calls = body.p_calls || [], have = body.p_have || {};
       if (calls.length > 40) return J(r, { code: "P0001", message: "invalid_calls", details: null, hint: null }, 400);
@@ -251,6 +253,12 @@ async function measure(browser) {
       ok("A7 no pn_sync: after a reload it is not asked again (6 h)", S.pnAsk === n0 && since(log, t3).filter(isPoll).length >= 1, { ask: S.pnAsk - n0, m: mix(since(log, t3)) });
       ok("fallback: no page errors", !S.errors.length, S.errors);
       await ctx.close();
+      // the kill switch: execute on pn_sync revoked (403 42501) = rpc_bundle2, remembered, not asked again
+      const k = await open(browser, "revoked");
+      await wait(k.page, 40000);
+      const ks = await k.page.evaluate(() => JSON.parse(localStorage.getItem("olnu.pnsync") || "null"));
+      ok("A7 kill switch: pn_sync revoked = asked once, then rpc_bundle2 (remembered)", k.S.pnAsk === 1 && !!(ks && ks.v === "off") && k.log.filter(isPoll).length >= 2, { ask: k.S.pnAsk, ks, m: mix(k.log) });
+      await k.ctx.close();
     } catch (e) { console.log("FAIL fallback section:", e && e.message); fail++; }
 
     /* ---------- B3: a draw error is not "no network"; a UI error after an accepted beer is not "could not report" ---------- */

@@ -248,6 +248,7 @@
       if (e) {
         var em = String((e.code || "") + " " + (e.message || "")), st = +(r.status || e.status || 0);
         if (st === 404 || /PGRST202|could not find the function|does not exist|\b404\b/i.test(em)) { syncOff("missing"); bundleSend2(calls, list); return; }   // no 0525: today's path
+        if (/42501|permission denied/i.test(em)) { syncOff("revoked"); bundleSend2(calls, list); return; }   // the kill switch: execute revoked on the server
         if (st === 401 || st === 403 || /not_authenticated|jwt/i.test(em)) { bundleSend2(calls, list); return; }   // a session problem: this one as before
         if (st >= 400 && st < 500) { syncOff("refused"); bundleSend2(calls, list); return; }   // refused (invalid_calls …): rpc_bundle2, 6 h
         list.forEach(function (x) { x.res({ data: null, error: { message: String(e.message || "error"), code: e.code || "", quiet: true }, status: st }); });
