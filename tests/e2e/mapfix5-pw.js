@@ -100,10 +100,143 @@ async function b11(browser) {
   }
 }
 
+/* ---------- b9: GL hit areas ---------- */
+const STUB_TOKEN = "pk.mapstubmapstubmapstubmapstub.stub";
+const STYLE = { version: 8, name: "stub", sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#2b3260" } }] };
+async function openGl(browser, o = {}) {
+  const { ctx, page } = await ctxFor(browser, o.vp || { width: 390, height: 844 }, o.h || {});
+  await page.route(/rest\/v1\/rpc\/public_config/, (r) => J(r, { v: 1, mapbox_token: TOKEN || STUB_TOKEN }));
+  if (!TOKEN) await page.route(/^https:\/\/(api|events)\.mapbox\.com\//, (r) => /\/styles\/v1\//.test(r.request().url())
+    ? r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STYLE) }) : r.fulfill({ status: 204, body: "" }));
+  await page.route(/^https:\/\/tunela\.github\.io\/Beer-map\//, async (r) => {
+    const u = new URL(r.request().url()); let p = u.pathname.replace(/^\/Beer-map\//, "/"); if (p === "/") p = "/index.html";
+    try { const res = await fetch("http://127.0.0.1:" + PORT + p + u.search);
+      await r.fulfill({ status: res.status, body: Buffer.from(await res.arrayBuffer()), headers: { "content-type": res.headers.get("content-type") || "text/html" } });
+    } catch (e) { r.abort().catch(() => {}); }
+  });
+  const errs = []; page.on("pageerror", (e) => { if (!/ResizeObserver/.test(e.message)) errs.push(e.message); });
+  const url = "https://tunela.github.io/Beer-map/";
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 }).catch(async () => { await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 }); });
+  await page.waitForFunction(() => window.GLBARS && GLBARS.on() && window.BASEMAP && BASEMAP.isMapbox(), null, { timeout: 45000 }).catch(() => console.log("GL not on"));
+  await page.addStyleTag({ content: "#toasts{display:none !important}" }).catch(() => {});
+  await page.evaluate(() => { window.__gm = () => BASEMAP.mapbox().getMapboxMap(); });
+  await wait(page, 4200);   // calm.js quiet window
+  return { ctx, page, errs };
+}
+async function glIdle(page, ms) {
+  await page.waitForFunction(() => { const g = __gm(); return g.loaded() && !g.isMoving(); }, null, { timeout: 20000 }).catch(() => {});
+  await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
+  if (ms) await wait(page, ms);
+}
+// what may take a tap at (x, y) (page px) besides GL: a DOM element over the canvas (people pins, chips, HUD)
+const freeAt = (page, x, y) => page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return !!e && e.tagName === "CANVAS"; }, [x, y]);
+// everything GL draws for the bars near (x, y): discs (radius + 6 = the exact rule) and parts (± 2 px = the exact rule)
+const exactNear = (page, x, y) => page.evaluate(([x, y]) => {
+  const cv = __gm().getCanvas().getBoundingClientRect(), px = x - cv.left, py = y - cv.top, out = [];
+  (GLBARS._view() || []).filter((v) => v.shown).forEach((v) => {
+    const im = GLBARS._img(v.id), ico = im && im.parts.find((q) => q.sel === ".bar-ico"); if (!im || !ico) return;
+    const k = v.icoW / (ico.bb[2] - ico.bb[0]), d = Math.hypot(px - v.x, py - v.y);
+    if (d <= v.icoW / 2 + 6) out.push(v.id + ":disc");
+    if (v.full) im.parts.forEach((q) => { if (q.sel === ".bar-ico") return; const b = [v.x + q.bb[0] * k, v.y + q.bb[1] * k, v.x + q.bb[2] * k, v.y + q.bb[3] * k];
+      if (px >= b[0] - 2 * k - 1 && px <= b[2] + 2 * k + 1 && py >= b[1] - 2 * k - 1 && py <= b[3] + 2 * k + 1) out.push(v.id + q.sel); });
+  });
+  return out;
+}, [x, y]);
+async function tapGl(page, x, y) {
+  await page.evaluate(() => { GLBARS.stats.lastTap = ""; GLBARS.stats.tapHow = ""; window.__pe = 0; if (!window.__peOn) { window.__peOn = 1; __map.on("popupopen", () => window.__pe++); } });
+  await page.touchscreen.tap(x, y); await wait(page, 1300);
+  return page.evaluate(() => ({ tap: GLBARS.stats.lastTap, how: GLBARS.stats.tapHow, opened: window.__pe, sheet: !!document.querySelector(".leaflet-popup .bs, .olnu-sheet .bs") }));
+}
+// with a sheet open: move the map so the spot (x, y) sits 60 px above the sheet top (map moves keep the sheet: olnuSheet)
+async function aboveSheet(page, x, y) {
+  const top = await page.evaluate(() => { const s = document.querySelector(".leaflet-popup.olnu-sheet, .olnu-sheet"); return Math.min(s ? s.getBoundingClientRect().top : innerHeight, innerHeight); });
+  const dy = Math.round(y - (top - 60));
+  if (dy > 0) { await page.evaluate((dy) => __map.panBy([0, dy], { animate: false, olnuSheet: true }), dy); await glIdle(page, 900); }
+  return { x, y: dy > 0 ? y - dy : y, dy };
+}
+const closeAll = (page) => page.evaluate(() => { try { __map.closePopup(); } catch (e) {} });
+
+async function b9(browser) {
+  const { ctx, page, errs } = await openGl(browser);
+  const on = await page.evaluate(() => !!(window.GLBARS && GLBARS.on() && window.PN && PN.glhit));
+  ok("b9 setup: the GL map is on and js/glhit.js is loaded", on);
+  // a) GUARD (no code change): a restaurant dot at the smallest zoom (Leaflet 14.2). glmap.js takes any dot whose image touches
+  //    a 28 px box around the finger; the image box is r >= 11 px, so a tap 20 px from the centre opens it (a 44+ px area).
+  let pick = null; const dbg = [];
+  for (const [ll, z] of [[[60.1497, 15.1876], 14.2], [[60.1510, 15.1840], 14.2], [[60.1488, 15.1905], 14.3]]) {
+    await page.evaluate(([ll, z]) => __map.setView(ll, z, { animate: false }), [ll, z]); await glIdle(page, 1200);
+    const cands = await page.evaluate(() => {
+      const g = __gm(), cv = g.getCanvas().getBoundingClientRect(), all = g.getLayer("olnu-place") ? g.queryRenderedFeatures({ layers: ["olnu-place"] }) : [];
+      const pts = all.map((f) => { const q = g.project(f.geometry.coordinates); return { id: String(f.properties.id), x: cv.left + q.x, y: cv.top + q.y }; });
+      return pts.filter((p) => p.y > 230 && p.y < innerHeight - 260 && p.x > 40 && p.x < innerWidth - 70 && !pts.some((o) => o.id !== p.id && Math.hypot(o.x - p.x, o.y - p.y) < 50));
+    });
+    dbg.push(z + ": " + cands.length + " dots");
+    for (const c of cands) {
+      for (const [dx, dy] of [[20, 0], [-20, 0], [0, 20], [0, -20]]) {
+        const x = c.x + dx, y = c.y + dy;
+        if (!(await freeAt(page, x, y)) || (await exactNear(page, x, y)).length) continue;
+        const nearBar = await page.evaluate(([x, y]) => { const cv = __gm().getCanvas().getBoundingClientRect(); return (GLBARS._view() || []).some((v) => v.shown && Math.hypot(v.x + cv.left - x, v.y + cv.top - y) < 60); }, [x, y]);
+        if (nearBar) continue;
+        pick = { id: c.id, x, y, z }; break;
+      }
+      if (pick) break;
+    }
+    if (pick) break;
+  }
+  if (!pick) ok("b9 setup: a restaurant dot with free space around it", false, dbg);
+  else {
+    const r = await tapGl(page, pick.x, pick.y);
+    ok("b9 guard: a tap 20 px from a restaurant dot's centre at the smallest zoom (" + pick.z + ") opens that place (its area is 44+ px)", r.tap === "place:" + pick.id && r.opened === 1, { r, pick });
+  }
+  await closeAll(page);
+  // b) the faces / count pill beside a bar disc: a tap 6-9 px off the drawn part (outside the old ± 2 px) opens THAT part (Folk här)
+  let pp = null;
+  for (const [ll, z] of [[[60.15124, 15.18797], 16.5], [[60.14997, 15.18679], 16.5], [[60.15098, 15.18663], 17], [[60.1505, 15.1872], 16]]) {
+    await page.evaluate(([ll, z]) => __map.setView(ll, z, { animate: false }), [ll, z]); await glIdle(page, 1500);
+    const cands = await page.evaluate(() => {
+      const cv = __gm().getCanvas().getBoundingClientRect(), out = [];
+      (GLBARS._view() || []).filter((v) => v.shown && v.full).forEach((v) => {
+        const im = GLBARS._img(v.id), ico = im && im.parts.find((q) => q.sel === ".bar-ico"); if (!im || !ico) return;
+        const k = v.icoW / (ico.bb[2] - ico.bb[0]);
+        im.parts.filter((q) => q.sel === ".pill").forEach((q) => {
+          const b = [v.x + q.bb[0] * k, v.y + q.bb[1] * k, v.x + q.bb[2] * k, v.y + q.bb[3] * k], cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+          for (const off of [7, 9]) for (const [x, y] of [[cx, b[3] + off], [cx, b[1] - off], [b[0] - off, cy], [b[2] + off, cy]]) {
+            if (Math.abs(x - cx) > Math.max((b[2] - b[0]) / 2, 22) || Math.abs(y - cy) > Math.max((b[3] - b[1]) / 2, 22)) continue;
+            out.push({ id: v.id, x: cv.left + x, y: cv.top + y, h: Math.round(b[3] - b[1]), w: Math.round(b[2] - b[0]), off });
+          }
+        });
+      });
+      return out.filter((c) => c.y > 230 && c.y < innerHeight - 260 && c.x > 20 && c.x < innerWidth - 70);
+    });
+    for (const c of cands) {
+      if (!(await freeAt(page, c.x, c.y))) continue;
+      if ((await exactNear(page, c.x, c.y)).length) continue;
+      // no other bar's 44 px area or loose rule nearby (the expected bar is the only candidate)
+      const other = await page.evaluate(([x, y, id]) => { const cv = __gm().getCanvas().getBoundingClientRect(); return (GLBARS._view() || []).some((v) => v.shown && v.id !== id && Math.hypot(v.x + cv.left - x, v.y + cv.top - y) < 70); }, [c.x, c.y, c.id]);
+      if (other) continue;
+      pp = c; break;
+    }
+    if (pp) break;
+  }
+  if (!pp) ok("b9 setup: a bar with a faces / count pill and a free spot just off it", false);
+  else {
+    const r = await tapGl(page, pp.x, pp.y);
+    ok("b9 a tap " + pp.off + " px off a bar's faces / count pill (" + pp.w + " x " + pp.h + " px drawn) opens that part = Folk här (old: the bar icon or nothing)", r.tap === pp.id + ".pill" && r.opened === 1, { r, pp });
+    if (r.sheet) {
+      const q = await aboveSheet(page, pp.x, pp.y), free = await freeAt(page, q.x, q.y);
+      const r2 = free ? await tapGl(page, q.x, q.y) : null;
+      ok("b9 router: with the bar sheet open, the same off-part tap closes it and opens nothing", !!r2 && !r2.sheet && r2.opened === 0, { r2, q, free });
+    }
+  }
+  ok("b9 no page errors", errs.length === 0, errs);
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch(launchOpts([]));
   try {
     await sect("b11", () => b11(browser));
+    await sect("b9", () => b9(browser));
   } finally { await browser.close(); }
   console.log("\nmapfix5: " + pass + " pass, " + fail + " fail" + (TOKEN ? " (real token)" : ""));
   process.exit(fail ? 1 : 0);
