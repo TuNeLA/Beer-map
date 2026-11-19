@@ -178,17 +178,15 @@
   }
   function destTxt(d, exact) { if (!d) return ""; var n = exact && d.name ? d.name : ""; return n && d.area && n !== d.area ? n + " · " + d.area : (n || d.area || ""); }
 
-  /* ---------- the coarse area of a point (Nominatim, as homezone.js; once per point, ≤ 4 s) ---------- */
+  /* ---------- the coarse area of a point (E7: our own town list js/towns.js, no Nominatim call; once per point, ≤ 4 s) ---------- */
+  // "Ludvika" inside or near a tätort, "Ludvika kommun" in the countryside. No list (offline first load) = the CITIES name.
   function areaOf(lat, lng) {
     var k = (+lat).toFixed(3) + "," + (+lng).toFixed(3), t0 = town(lat, lng);
     if (areaC[k]) return Promise.resolve(areaC[k]);
     return new Promise(function (res) {
       var done = false, fin = function (v) { if (done) return; done = true; v = v || t0 || ""; if (v) areaC[k] = v; res(v); };
       setTimeout(function () { fin(null); }, 4000);
-      try {
-        fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=sv&lat=" + (+lat).toFixed(3) + "&lon=" + (+lng).toFixed(3))
-          .then(function (r) { return r.json(); }).then(function (j) { fin(areaFromAddr(j && j.address, t0)); }, function () { fin(null); });
-      } catch (e) { fin(null); }
+      try { window.TOWNS.area(lat, lng).then(fin, function () { fin(null); }); } catch (e) { fin(null); }
     });
   }
   function areaFromAddr(a, t0) {
