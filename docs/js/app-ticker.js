@@ -218,7 +218,7 @@
         { duration: TICK_SPAN_S * 1000, easing: "linear", fill: "both" });
       tickRate(); document.addEventListener("visibilitychange", tickRate);
     }
-    if (!tickT) tickT = setInterval(tickKeep, TICK_KEEP_MS);
+    if (!tickT) tickT = window.PN && PN.idle ? PN.idle.every(tickKeep, TICK_KEEP_MS) : setInterval(tickKeep, TICK_KEEP_MS);   // timers B10: sleeps while the map is out of sight
   }
   // ownerfix 4c (owner 11 Nov: frozen on a PC with "Animation effects" off): reduced motion = ONE headline at a time,
   // a soft opacity swap every 6 s (no sideways motion), tap = next line (pnds.js → PN_TICK_NEXT). Pauses with the
@@ -243,7 +243,7 @@
     hdrWatch();
   }
   function tickOneStart(track) {
-    if (tickAnim) { tickAnim.cancel(); tickAnim = null; } if (tickT) { clearInterval(tickT); tickT = 0; }
+    if (tickAnim) { tickAnim.cancel(); tickAnim = null; } if (tickT) { if (tickT.stop) tickT.stop(); else clearInterval(tickT); tickT = 0; }
     track.style.translate = ""; tickCut = 0; tickOff = 0;
     track.style.transform = "none"; track.classList.add("tk-one");
     try { track.parentNode.classList.add("tk-one-vp"); track.parentNode.scrollLeft = 0; } catch (e) {}

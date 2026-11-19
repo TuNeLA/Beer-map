@@ -195,7 +195,8 @@
       var st = document.createElement("style"); st.id = "mypins-css"; st.textContent = CSS; document.head.appendChild(st);
       layer = window.L.layerGroup().addTo(map);
       map.on("moveend zoomend popupopen popupclose", soon);
-      setInterval(function () { if (!document.hidden) unstack(); }, 1500);   // map 25 + townfix (lanterns too): slow safety pass (not per frame)
+      var pass = function () { if (!document.hidden) unstack(); };   // map 25 + townfix (lanterns too): slow safety pass (not per frame)
+      if (window.PN && PN.idle) PN.idle.every(pass, 1500); else setInterval(pass, 1500);   // timers B10: sleeps while the map is out of sight
       // map 25 + townfix: a marker that is ADDED is checked at once (this callback runs before the next paint), so a re-drawn cluster never
       // shows for a few frames over a chip / lantern before the timers below catch it (the CI flake of the town-zoom test)
       if (window.MutationObserver) new MutationObserver(function (ms) {

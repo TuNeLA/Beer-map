@@ -45,10 +45,13 @@
     hooked = true;
     window.PNLOG.onRpc(function (fn, params, d, ok, ms) { add("rpc", fn + " " + (ok ? "ok" : "FEL") + " " + Math.round(ms || 0) + "ms"); });
   }
-  setInterval(function () {
+  var look = function () {
     hook();
     try { var s = window.PNLOG && window.PNLOG.screen ? window.PNLOG.screen() : ""; if (s && s !== lastScr) { lastScr = s; add("screen", s); } } catch (e) {}
-  }, 1000);
+  };
+  // timers B10: sleeps in a hidden page (a sheet = a screen: it runs then). knas.js loads before smooth.js (PN.idle): start at DOMContentLoaded.
+  var arm = function () { if (window.PN && PN.idle) PN.idle.every(look, 1000, "hidden"); else setInterval(look, 1000); };
+  if (window.PN && PN.idle) arm(); else document.addEventListener("DOMContentLoaded", arm, { once: true });
   add("start", location.pathname + (location.search ? " ?" + location.search.slice(1, 60) : ""));
 
   /* ---------- helpers ---------- */

@@ -6,7 +6,7 @@
 //  S3 ticker: no layout read 4x per second; none while a sheet is open or the tab is hidden; the belt still runs.
 //  S4 check-in: the checked-in state at the tap; error / cool-down takes it back.
 //  S5 chat send: the line shows at once ("Skickar…"), then the real row; a failed send = "Inte skickat – tryck för att försöka igen".
-//  S6 smooth.js: the CSS copy for the close ghost is not rebuilt for every <head> change.
+//  S6 smooth.js: no CSS copy at all (lane timers A9: the close slides the real sheet; before: one copy per stylesheet).
 // 390 px, mocked Supabase. Usage: node speed1-pw.js <port> [only: s1,s2,...]
 const { ctxFor, boot, wait } = require("./d2-helpers.js");
 const { chromium } = require("playwright");
@@ -183,7 +183,9 @@ const timed = (page, body) => page.evaluate(`(async () => { const t0 = performan
       const iv = await page.evaluate(() => window.__iv.filter((x) => x.belt));
       console.log("     ticker 5 s idle: " + idle.reads + " layout reads in " + idle.passes + " passes; keeper timer " + JSON.stringify(iv));
       ok("S3 idle 5 s: at most 3 layout passes on the belt (old code: 20, 4 per second)", idle.passes <= 3, idle);
-      ok("S3 the keeper runs once per second (was 250 ms)", iv.length === 1 && iv[0].ms === 1000, iv);
+      // lane timers (B10): the keeper is a PN.idle.every loop: it sleeps under a full sheet / in a hidden page and starts a new
+      // 1 s interval when the map comes back, so there can be more than one registration (never two at once).
+      ok("S3 the keeper runs once per second (was 250 ms)", iv.length >= 1 && iv.every((x) => x.ms === 1000), iv);
       const b0 = await belt();
       await wait(page, 14000);
       const b1 = await belt();
@@ -325,33 +327,25 @@ const timed = (page, body) => page.evaluate(`(async () => { const t0 = performan
       }
     }
 
-    /* ---------- S6: the ghost CSS copy ---------- */
+    /* ---------- S6: no ghost CSS copy at all ---------- */
+    // lane timers (A9, 19 Nov): the close slides the REAL sheet (WAAPI on #sheet), so smooth.js copies no CSS any more.
+    // Old S6 checks (the copy is made once, a new <style> copies only itself) are replaced by: 0 copied characters.
     if (want("s6")) {
       const { ctx, page, errs } = await open(browser);
-      await page.waitForFunction(() => window.__css.reduce((n, x) => n + x.n, 0) > 200000, null, { timeout: 25000 }).catch(() => console.log("no CSS copy"));
-      await wait(page, 9000);   // load + 2.5 s, the lazy files at 3 s
-      const all = await page.evaluate(() => { let n = 0; [...document.styleSheets].forEach((sh) => { try { [...sh.cssRules].forEach((r) => { n += r.cssText.length; }); } catch (e) {} }); return n; });
-      const css = () => page.evaluate(() => ({ chars: window.__css.reduce((n, x) => n + x.n, 0), copies: window.__css.length, marks: window.__css.filter((x) => x.mark).map((x) => x.mark + ":" + x.n).join(","), sheets: document.styleSheets.length }));
-      const a = await css();
-      console.log("     ghost CSS after start: page CSS " + all + " chars; copied " + JSON.stringify(a));
-      ok("S6 start: the page CSS is copied ONCE (old code: again 2.5 s after load and for every <head> change)", a.chars > all * 0.5 && a.chars < all * 1.3, { all, a });
-      // 2 modules add a <style>, a lazy <script> comes into <head>
+      await wait(page, 9000);   // load + 2.5 s, the lazy files at 3 s (the old copy times)
       for (const k of [1, 2]) {
-        await page.evaluate((k) => { const st = document.createElement("style"); st.textContent = ".speed1-mark-" + k + "{color:red}"; document.head.appendChild(st);
-          const sc = document.createElement("script"); sc.type = "text/x-nothing"; document.head.appendChild(sc); }, k);
-        await wait(page, 7500);
+        await page.evaluate((k) => { const st = document.createElement("style"); st.textContent = ".speed1-mark-" + k + "{color:red}"; document.head.appendChild(st); }, k);
       }
-      const b = await css();
-      console.log("     ghost CSS after 2 new <style> + 2 <script> in <head>: " + JSON.stringify(b));
-      ok("S6 new <style> nodes: only the new sheet is copied (< 5 KB more; old code: all CSS again, twice)", b.chars - a.chars < 5000 && /1:\d+/.test(b.marks) && /2:\d+/.test(b.marks), { a, b });
-      // the close ghost still works
+      await wait(page, 7500);
+      const a = await page.evaluate(() => ({ chars: window.__css.reduce((n, x) => n + x.n, 0), copies: window.__css.length }));
+      ok("S6 no CSS is copied for the sheet close (start + 2 new <style>)", a.chars === 0 && a.copies === 0, a);
+      // the close still slides out: the real sheet animates
       await page.evaluate(() => document.getElementById("btn-top").click());
       await wait(page, 1500);
-      const g0 = await page.evaluate(() => window.SMOOTH.stats.ghost);
-      await page.evaluate(() => document.getElementById("sheet-close").click());
-      await wait(page, 100);
-      const g = await page.evaluate(() => ({ n: window.SMOOTH.stats.ghost, host: !!document.querySelector(".sm-ghost-host") }));
-      ok("S6 the sheet close still slides out (ghost made)", g.n === g0 + 1 && g.host, { g0, g });
+      const s0 = await page.evaluate(() => window.SMOOTH.stats.slide);
+      const g = await page.evaluate(() => { document.getElementById("sheet-close").click(); const s = document.getElementById("sheet");
+        return { n: window.SMOOTH.stats.slide, anim: s.getAnimations().filter((x) => !x.animationName).length, host: !!document.querySelector(".sm-ghost-host") }; });
+      ok("S6 the sheet close still slides out (the real sheet, no ghost)", g.n === s0 + 1 && g.anim === 1 && !g.host, { s0, g });
       ok("S6 no page error", errs.length === 0, errs);
       await ctx.close();
     }

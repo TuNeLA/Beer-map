@@ -202,7 +202,8 @@
     try { W.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", sync); } catch (e) {}
     try { new MutationObserver(sync).observe(D.body, { attributes: true, attributeFilter: ["class"] }); } catch (e) {}
     W.addEventListener("resize", sync);
-    tick = setInterval(function () { if (!hidden()) sync(); }, 10e3);   // Skåltimmen starts / ends, dusk falls, the holiday badge comes
+    var look = function () { if (!hidden()) sync(); };   // Skåltimmen starts / ends, dusk falls, the holiday badge comes
+    tick = window.PN && PN.idle ? PN.idle.every(look, 10e3) : setInterval(look, 10e3);   // timers B10: sleeps while the map is out of sight
     setTimeout(sync, 800); setTimeout(sync, 4000);
   }
 

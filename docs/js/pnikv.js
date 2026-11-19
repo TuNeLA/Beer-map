@@ -114,7 +114,8 @@
 
   function start() {
     paint();
-    setInterval(function () { paint(); if (menu && sheetOpen()) close(); }, 1000);   // cheap: reads state, writes on change
+    var keep = function () { paint(); if (menu && sheetOpen()) close(); };   // cheap: reads state, writes on change
+    if (window.PN && PN.idle) PN.idle.every(keep, 1000); else setInterval(keep, 1000);   // timers B10: sleeps while the map is out of sight (runs once as a full sheet comes: the menu closes)
     if (window.MutationObserver) new MutationObserver(function () { sig = sig; ensureChip(); }).observe(document.body, { childList: true });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();

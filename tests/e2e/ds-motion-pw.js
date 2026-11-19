@@ -31,10 +31,11 @@ const ok = (c, m, x) => { if (c) pass++; else fail++; console.log((c ? "PASS " :
       return { sq, sp };
     });
     ok(beer.sq && beer.sp, "ÖL!: squash on press, spring on release", beer);
-    // sheet close slides: a ghost copy exists right after close
+    // sheet close slides: the real sheet slides (lane timers A9: no ghost copy any more) and the scrim fades
     await clickJS(page, "#btn-more"); await wait(page, 1200);
-    const g = await page.evaluate(async () => { const x = document.getElementById("sheet-close"); x.click(); await new Promise((r) => setTimeout(r, 40)); return { ghost: !!document.querySelector(".sm-ghost-host, .sm-bd-out"), hidden: document.getElementById("sheet").hidden }; });
-    ok(g.ghost && g.hidden, "sheet close: slides down (ghost copy + backdrop fade)", g);
+    const g = await page.evaluate(async () => { const s = document.getElementById("sheet"), x = document.getElementById("sheet-close"); x.click(); await new Promise((r) => setTimeout(r, 40));
+      return { slide: s.getAnimations().some((a) => !a.animationName && a.playState === "running"), fade: !!document.querySelector(".sm-bd-out"), hidden: s.hidden }; });
+    ok(g.slide && g.fade && g.hidden, "sheet close: slides down (the real sheet + backdrop fade)", g);
     // ds18: switch knob + progress bars move with transform only
     const tr = await page.evaluate(() => {
       const out = [];

@@ -10,15 +10,16 @@
       Headers come from the app's own last RPC call (apikey + token); before that no prefetch is made.
    3. App shell first: SMOOTH.afterPaint(fn) runs fn after the next frame (max 300 ms). app.js runs start() through it,
       so the HUD and the map paint before the ~40 module inits run.
-   4. Sheet feel: closing slides the old sheet down (200 ms, a copy in a closed shadow root that nothing can query or tap),
+   4. Sheet feel: closing slides the real sheet down (200 ms, WAAPI on #sheet; no copy, no taps while it slides),
       a new content in an open sheet fades in, a lone "…" placeholder becomes a quiet skeleton row.
+   5. PN.idle (lane timers): "is the map out of sight" (a full sheet or a hidden page); loops sleep then (see section 5).
       prefers-reduced-motion: no slide, no fade (instant), skeleton without pulse. Styles: smooth.css.
-   Public: window.SMOOTH = { afterPaint, sheetOut, prefetch, stats }. Missing parts = no change. */
+   Public: window.SMOOTH = { afterPaint, sheetOut, prefetch, stats, idle }, PN.idle. Missing parts = no change. */
 (function () {
   "use strict";
   var W = window;
   function reduced() { try { return !!(W.matchMedia && W.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } }
-  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, ghost: 0, cssSync: 0, cssAdd: 0 };
+  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, slide: 0 };
 
   /* ---------- 1. Intl cache ---------- */
   (function () {
@@ -147,86 +148,48 @@
   }
 
   /* ---------- 4. Sheet feel ---------- */
-  var sheetCSS = null, cssBusy = false, cssAgain = false, cssMap = typeof WeakMap === "function" ? new WeakMap() : null;
-  function cssCan() { return !!cssMap && typeof CSSStyleSheet === "function" && "adoptedStyleSheets" in Document.prototype; }
-  // The ghost's shadow root needs the page's CSS. sheetCSS = one constructed copy per stylesheet of the page, in page order.
-  // speed1 (audit speed #5): each stylesheet is copied ONCE (cssMap: page sheet -> its copy). Before: ONE copy of all CSS
-  // (~765 KB), made again 2.5 s after load and again for every node that came into <head> (lazy scripts too): 443 ms at start,
-  // 189 ms in idle, 293 ms in a map pan. Now cssSync() walks the page's sheets: a known sheet = its copy is used again; a new
-  // one (a module's <style>, a lazy CSS file) = one small copy. The old list stays in use until the new one is ready.
-  function cssCopy(sh) {
-    var txt = [];
-    try { var r = sh.cssRules; for (var j = 0; j < r.length; j++) txt.push(r[j].cssText); } catch (e) {}   // a cross-origin sheet: empty
-    var cs = new CSSStyleSheet(); cs.replaceSync(txt.join("\n").replace(/@import[^;]+;/g, ""));
-    return cs;
+  // timers A9 (audit speed #5 / motion #9): the close slides the REAL #sheet down (WAAPI on the sheet itself). Before: a deep
+  // clone of the whole sheet in a closed shadow root, with a constructed copy of every page stylesheet (~765 KB of CSS, kept in
+  // sync in idle time): 60-100 ms at each close and the copy work in the background. Same look: 200 ms, translateY(60 % of
+  // the height, max 520 px) + opacity 1 → 0, the --sm-out curve. #sheet.hidden is true at once (the app logic sees a closed
+  // sheet); only the paint stays for the 200 ms: display is held inline, no taps (pointer-events none), focus leaves.
+  // The body is cleared at the end of the slide (done callback of the caller). A sheet that opens during the slide wins at once.
+  var outA = null, outDone = null;
+  function outEnd(reopened) {
+    var a = outA, f = outDone; outA = null; outDone = null;
+    if (!a) return;
+    try { a.cancel(); } catch (e) {}
+    var sh = document.getElementById("sheet");
+    if (sh) { sh.style.removeProperty("display"); sh.style.removeProperty("pointer-events"); }
+    if (f && !reopened) { try { f(); } catch (e) {} }
   }
-  function cssSync() {
-    if (!cssCan()) return;
-    if (cssBusy) { cssAgain = true; return; }
-    cssBusy = true;
-    // ds37: in slices of ≤ 8 ms per idle period (was ONE ~330 ms long task on a phone)
-    var list = Array.prototype.slice.call(document.styleSheets), out = [], i = 0;
-    var done = function () { cssBusy = false; if (cssAgain) { cssAgain = false; cssSync(); } };
-    var step = function () {
-      var t = performance.now();
-      try {
-        while (i < list.length && performance.now() - t < 8) {
-          var c = cssMap.get(list[i]);
-          if (!c) { c = cssCopy(list[i]); cssMap.set(list[i], c); stats.cssAdd++; }
-          out.push(c); i++;
-        }
-      } catch (e) { done(); return; }   // the old list stays
-      if (i < list.length) { idle(step, 3000); return; }
-      sheetCSS = out; stats.cssSync++; done();
-    };
-    step();
-  }
-  function idle(fn, ms) {
-    if (W.requestIdleCallback) W.requestIdleCallback(fn, { timeout: ms || 4000 }); else setTimeout(fn, 1200);
-  }
-  var cssVer = 0;
-  // ds37: never during start (it was the biggest long task of the first 2 s): after "pn:calm" (js/pnds.js), then idle
-  function afterCalm(fn) { if (W.__pnCalm) fn(); else { document.addEventListener("pn:calm", function () { fn(); }, { once: true }); setTimeout(fn, 9000); } }
-  function cssLater() { var v = ++cssVer; afterCalm(function () { idle(function () { if (v === cssVer) cssSync(); }, 6000); }); }
-  var MAX_NODES = 900;
-  // Call BEFORE #sheet is hidden and its body emptied (app.js closeSheet).
-  function sheetOut() {
+  // Call BEFORE #sheet is hidden (app-ui.js closeSheet). done = what to run when the slide is over (clear the body).
+  // Returns true when the slide runs: then the caller leaves the body as it is and done() clears it.
+  function sheetOut(done) {
     try {
-      if (reduced()) return;
+      outEnd(false);   // a slide that still runs: end it now
       var sh = document.getElementById("sheet"), bd = document.getElementById("backdrop");
-      if (!sh || sh.hidden) return;
+      if (reduced() || !sh || sh.hidden) return false;
       if (bd && !bd.hidden) {
-        var bs = getComputedStyle(bd), g2 = document.createElement("div");
+        var bs = getComputedStyle(bd), g2 = document.createElement("div");   // one empty div with the scrim colour (not a copy)
         g2.className = "sm-bd-out"; g2.setAttribute("aria-hidden", "true");
         g2.style.background = bs.backgroundColor; g2.style.zIndex = bs.zIndex;
         document.body.appendChild(g2);
         setTimeout(function () { g2.remove(); }, 260);
       }
-      if (!sheetCSS || sh.getElementsByTagName("*").length > MAX_NODES) return;
-      var r = sh.getBoundingClientRect(); if (!r.height) return;
-      var body = document.getElementById("sheet-body"), top = body ? body.scrollTop : 0;
-      var host = document.createElement("div");
-      host.className = "sm-ghost-host"; host.setAttribute("aria-hidden", "true");
-      try { host.inert = true; } catch (e) {}
-      host.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;z-index:" +
-        (getComputedStyle(sh).zIndex || 1600) + ";pointer-events:none;contain:strict";
-      var root = host.attachShadow({ mode: "closed" });
-      root.adoptedStyleSheets = sheetCSS;
-      var c = sh.cloneNode(true);
-      c.hidden = false; c.removeAttribute("aria-modal"); c.setAttribute("role", "presentation");
-      c.style.cssText += ";position:absolute;left:0;top:0;right:auto;bottom:auto;width:100%;height:100%;max-height:none;margin:0;animation:none;transition:none";
-      root.appendChild(c);
-      document.body.appendChild(host);
-      var cb = c.querySelector(".sheet-body"); if (cb && top) cb.scrollTop = top;
-      stats.ghost++;
-      var a = host.animate ? host.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(" + Math.min(r.height, 520) * 0.6 + "px)", opacity: 0 }],
-        { duration: 200, easing: "cubic-bezier(.3,0,.8,.15)", fill: "forwards" }) : null;
-      var gone = function () { host.remove(); };
-      if (a) a.onfinish = gone;
-      setTimeout(gone, 400);
-    } catch (e) {}
+      var h = sh.offsetHeight; if (!h || !sh.animate) return false;
+      var cs = getComputedStyle(sh), base = cs.transform && cs.transform !== "none" ? cs.transform + " " : "";
+      var ae = document.activeElement; if (ae && sh.contains(ae) && ae.blur) ae.blur();
+      sh.style.setProperty("display", cs.display, "important"); sh.style.setProperty("pointer-events", "none", "important");
+      var a = outA = sh.animate([{ transform: base + "translateY(0)", opacity: 1 }, { transform: base + "translateY(" + Math.min(h, 520) * 0.6 + "px)", opacity: 0 }],
+        { duration: 200, easing: "cubic-bezier(.3,0,.8,.15)", fill: "forwards" });
+      outDone = typeof done === "function" ? done : null;
+      stats.slide++;
+      var end = function () { if (outA === a) outEnd(false); };
+      a.onfinish = end; setTimeout(end, 400);   // no finish event (a hidden page): end anyway
+      return true;
+    } catch (e) { outEnd(false); return false; }
   }
-  afterCalm(function () { idle(function () { if (!sheetCSS) cssSync(); }, 6000); });   // ds37   // ds10: the style copy exists before the first close, so the first close slides too
   function watchSheet() {
     var sh = document.getElementById("sheet"), body = document.getElementById("sheet-body"), title = document.getElementById("sheet-title");
     if (!sh || !body || !W.MutationObserver) return;
@@ -240,7 +203,10 @@
       }
       wasOpen = open; lastTitle = title ? title.textContent : "";
     }).observe(title || sh, { childList: true, characterData: true, subtree: true });
-    new MutationObserver(function () { wasOpen = !sh.hidden; lastTitle = title ? title.textContent : ""; }).observe(sh, { attributes: true, attributeFilter: ["hidden"] });
+    new MutationObserver(function () {
+      wasOpen = !sh.hidden; lastTitle = title ? title.textContent : "";
+      if (!sh.hidden && outA) outEnd(true);   // A9: a sheet opened during the close slide: show it at once, keep its new body
+    }).observe(sh, { attributes: true, attributeFilter: ["hidden"] });
     // "…" placeholders (a list that is on its way) → skeleton row.
     var skT = 0;
     function skel() {
@@ -254,25 +220,93 @@
     new MutationObserver(function () { if (!skT && !sh.hidden) skT = setTimeout(skel, 0); }).observe(body, { childList: true, subtree: true });
   }
 
+  /* ---------- 5. PN.idle: the map is out of sight (lane timers, B10) ---------- */
+  // covered = a sheet covers at least half of the screen (#sheet open; the rest of the map is under the dark scrim), or a module
+  //   said so for its own full-screen layer: PN.idle.cover(key, true / false). hidden = the page is hidden.
+  // While idle:
+  //   - PN.idle.every(fn, ms, mode) sleeps (no timer wake-ups). mode "map" (default) = sleep when covered or hidden; "hidden" =
+  //     only when hidden. fn runs once at each change: a last look when it goes to sleep, a fresh look at once when the map
+  //     comes back. Then every ms again.
+  //   - Repeating CSS animations (iterations > 1: glows, pulses, clinks, ambient edges) under the scrim pause (WAAPI) and play
+  //     again at once when the map comes back. What is over the scrim (the sheet, toasts, a takeover) keeps moving. A hidden
+  //     page paints nothing (the browser stops it), so that part is for "covered" only.
+  //   - html.pn-covered (a CSS hook) and the document event "pn:idle" ({ detail: { idle, covered, hidden } }).
+  // The map visible = no change at all.
+  var IDLE = (function () {
+    var de = document.documentElement, covers = {}, subs = [], st = { covered: false, hidden: !!document.hidden }, COVER = 0.5;
+    var held = [], scanT = 0;
+    function sheetCovers() { var s = document.getElementById("sheet"); return !!(s && !s.hidden && s.offsetHeight >= (W.innerHeight || 1) * COVER); }
+    function coveredNow() { if (sheetCovers()) return true; for (var k in covers) if (covers[k]) return true; return false; }
+    // z of the outermost ancestor with its own z-index = the layer it paints in
+    function under(el, lim, cache) {
+      var z = 0;
+      for (var e = el; e && e.nodeType === 1 && e !== document.body; e = e.parentElement) {
+        var v = cache.get(e); if (v === undefined) { v = getComputedStyle(e).zIndex; cache.set(e, v); }
+        if (v !== "auto") z = +v || 0;
+      }
+      return z < lim;
+    }
+    function scan() {
+      if (!document.getAnimations) return;
+      var lim = 1500, cache = new Map(), bd = document.getElementById("backdrop"), sh = document.getElementById("sheet");
+      try { var zz = +getComputedStyle(bd && !bd.hidden ? bd : sh).zIndex; if (zz) lim = zz; } catch (e) {}
+      document.getAnimations().forEach(function (a) {
+        try {
+          if (a.playState !== "running" || !a.animationName) return;   // CSS animations only (the ticker belt has its own control)
+          var tg = a.effect && a.effect.target;
+          if (!(a.effect.getTiming().iterations > 1) || !tg || !under(tg, lim, cache)) return;
+          a.pause(); held.push(a);
+        } catch (e) {}
+      });
+    }
+    function release() {
+      var h = held; held = [];
+      h.forEach(function (a) { try { var tg = a.effect && a.effect.target; if (a.playState === "paused" && tg && tg.isConnected) a.play(); } catch (e) {} });
+    }
+    function check() {
+      var c = coveredNow(), h = !!document.hidden;
+      if (c === st.covered && h === st.hidden) return;
+      st = { covered: c, hidden: h };
+      de.classList.toggle("pn-covered", c);
+      if (c && !h) { scan(); if (!scanT) scanT = setInterval(scan, 10000); }   // a loop that starts later (a pill drawn again by a poll) pauses too
+      else { if (scanT) { clearInterval(scanT); scanT = 0; } if (!c) release(); }
+      subs.slice().forEach(function (f) { try { f(st); } catch (e) {} });
+      try { document.dispatchEvent(new CustomEvent("pn:idle", { detail: { idle: c || h, covered: c, hidden: h } })); } catch (e) {}
+    }
+    function every(fn, ms, mode) {
+      var map = mode !== "hidden", id = 0, off = false, was = null;
+      function sync() {
+        if (off) return;
+        var s = st.hidden || (map && st.covered);
+        if (s && id) { clearInterval(id); id = 0; }
+        if (!s && !id) id = setInterval(fn, ms);
+        if (was !== null && s !== was) { try { fn(); } catch (e) { setTimeout(function () { throw e; }, 0); } }
+        was = s;
+      }
+      subs.push(sync); sync();
+      return { stop: function () { off = true; if (id) clearInterval(id); id = 0; var i = subs.indexOf(sync); if (i >= 0) subs.splice(i, 1); } };
+    }
+    function start() {
+      var sh = document.getElementById("sheet");
+      if (sh && W.MutationObserver) new MutationObserver(check).observe(sh, { attributes: true, attributeFilter: ["hidden"] });
+      if (sh && W.ResizeObserver) new ResizeObserver(check).observe(sh);   // a sheet that grows when its data comes
+      document.addEventListener("visibilitychange", check);
+      W.addEventListener("resize", check);
+      check();
+    }
+    return {
+      covered: function () { return st.covered; }, hidden: function () { return st.hidden; }, now: function () { return st.covered || st.hidden; },
+      cover: function (key, on) { covers[key] = !!on; check(); }, on: function (fn) { subs.push(fn); }, every: every, check: check, start: start,
+      _held: function () { return held.length; }
+    };
+  })();
+  (W.PN = W.PN || {}).idle = IDLE;
+
   function onReady() {
     watchSheet();
-    // Rebuild the ghost CSS when a lazy stylesheet arrives (boot.js x-lazy-css, module CSS).
-    // speed1: only a stylesheet node counts (lazy <script> tags come into <head> too); a <link> is read when it has loaded.
-    function isCss(n) { return !!n && n.nodeType === 1 && (n.tagName === "STYLE" || (n.tagName === "LINK" && /(^|\s)stylesheet(\s|$)/i.test(n.rel || ""))); }
-    try {
-      new MutationObserver(function (ms) {
-        var hit = false;
-        ms.forEach(function (m) {
-          [].forEach.call(m.addedNodes, function (n) { if (!isCss(n)) return; hit = true; if (n.tagName === "LINK" && !n.sheet) n.addEventListener("load", cssLater, { once: true }); });
-          [].forEach.call(m.removedNodes, function (n) { if (isCss(n)) hit = true; });
-        });
-        if (hit) cssLater();
-      }).observe(document.head, { childList: true });
-    } catch (e) {}
-    W.addEventListener("load", function () { setTimeout(cssLater, 2500); });
-    if (document.readyState === "complete") setTimeout(cssLater, 2500);
+    IDLE.start();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", onReady); else onReady();
 
-  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, prefetch: prefetch, stats: stats, reduced: reduced };
+  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE };
 })();

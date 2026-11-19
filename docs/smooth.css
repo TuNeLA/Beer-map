@@ -1,5 +1,5 @@
 /* Öl Nu — SMOOTH feel (js/smooth.js). Loaded before ds.css (ds.js keeps ds.css last).
-   Bottom sheet: slides up with a soft spring (300 ms), slides down on close (210 ms, js ghost), content swap fades in.
+   Bottom sheet: slides up with a soft spring (300 ms), slides down on close (200 ms, js: WAAPI on the real sheet), content swap fades in.
    Material 3 tokens: enter = emphasized decelerate, exit = emphasized accelerate (exit faster than enter).
    Reduced motion: no slide, no fade, no pulse. */
 :root{--sm-in:cubic-bezier(.05,.7,.1,1);--sm-out:cubic-bezier(.3,0,.8,.15);--sm-t-in:300ms}
@@ -11,7 +11,7 @@
 @keyframes smSheetIn{from{transform:translateY(min(72%,420px))}to{transform:none}}
 .backdrop:not([hidden]){animation:smFade var(--m-4) var(--e-in) backwards}
 @keyframes smFade{from{opacity:0}}
-/* Close: a copy in a closed shadow root slides down (js); the backdrop copy fades out. */
+/* Close: the real sheet slides down (js/smooth.js sheetOut); an empty scrim-coloured div fades out over the map. */
 .sm-bd-out{position:fixed;inset:0;pointer-events:none;animation:smFadeOut var(--m-4) var(--sm-out) forwards}
 @keyframes smFadeOut{to{opacity:0}}
 /* A new sheet in an already open sheet: the content fades + rises 6 px. */
