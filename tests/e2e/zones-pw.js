@@ -79,9 +79,14 @@ const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x !== undef
   const lt = await page.evaluate(async () => {
     const m = BASEMAP.mapbox().getMapboxMap(), idle = () => new Promise((r) => { const t = setTimeout(r, 4000); m.once("idle", () => { clearTimeout(t); r(); }); m.triggerRepaint(); });
     const BAR = ["olnu-bar-full", "olnu-bar-lbl", "olnu-bar-crowd"].filter((l) => m.getLayer(l));
-    const gz = __map.getZoom; __map.getZoom = () => 14; try { PN.render(); } finally { __map.getZoom = gz; }   // people bars of a town zoom, still in the list
-    GLBARS.sync(); await idle(); await new Promise((r) => setTimeout(r, 800)); await idle();
-    const src = m.querySourceFeatures("olnu-bars").filter((f) => f.properties.t === 1 || f.properties.t === 3).length;
+    // 19 Nov (flake gate, 2 runs in a row: setup src 0): the GeoJSON worker can be later than 2 idles on a busy runner. Up to
+    // 3 rounds until the source holds the bars; the checks below run on the same state as before.
+    let src = 0;
+    for (let k = 0; k < 3 && !src; k++) {
+      const gz = __map.getZoom; __map.getZoom = () => 14; try { PN.render(); } finally { __map.getZoom = gz; }   // people bars of a town zoom, still in the list
+      GLBARS.sync(); await idle(); await new Promise((r) => setTimeout(r, 800 + 700 * k)); await idle();
+      src = m.querySourceFeatures("olnu-bars").filter((f) => f.properties.t === 1 || f.properties.t === 3).length;
+    }
     const out = { z: +__map.getZoom().toFixed(2), src, drawn: m.queryRenderedFeatures({ layers: BAR }).map((f) => f.layer.id), l: m.queryRenderedFeatures({ layers: ["olnu-zl-lblc", "olnu-zl-lblq"] }).map((f) => f.properties.l) };
     PN.render(); GLBARS.sync(); await idle();   // back to the real state of zoom 5
     return out;
