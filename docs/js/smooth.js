@@ -186,7 +186,7 @@
       outDone = typeof done === "function" ? done : null;
       stats.slide++;
       var end = function () { if (outA === a) outEnd(false); };
-      a.onfinish = end; setTimeout(end, 400);   // no finish event (a hidden page): end anyway
+      a.onfinish = end; setTimeout(end, 600);   // no finish event (a hidden page) or a very late first frame: end anyway
       return true;
     } catch (e) { outEnd(false); return false; }
   }

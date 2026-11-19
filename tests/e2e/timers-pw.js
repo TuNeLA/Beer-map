@@ -34,11 +34,11 @@ function instrument() {
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (on ? "hidden" : "visible") });
     document.dispatchEvent(new Event("visibilitychange"));
   };
-  // repeating CSS animations that run under the scrim (not in the sheet, not in the toasts)
+  // endless CSS animations that run outside the sheet and the toasts (a capped 3-loop glow ends by itself: not counted)
   window.__loops = function () {
     let n = 0;
     for (const a of document.getAnimations()) {
-      try { if (a.animationName && a.playState === "running" && a.effect.getTiming().iterations > 1 && !a.effect.target.closest("#sheet, #toasts")) n++; } catch (e) {}
+      try { if (a.animationName && a.playState === "running" && a.effect.getTiming().iterations === Infinity && !a.effect.target.closest("#sheet, #toasts")) n++; } catch (e) {}
     }
     return n;
   };
@@ -71,6 +71,7 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
 
     // ---- B10: the helper itself (flip calls, sleep, wake at once)
     const h = await page.evaluate(async () => {
+      if (!window.PN || !PN.idle) return { missing: true };   // old code: no helper
       const tick = () => new Promise((r) => setTimeout(r, 0)), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       let n = 0; const hd = PN.idle.every(() => n++, 150);
       await sleep(400); const run = n;
@@ -84,18 +85,22 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
 
     // ---- B10: a full sheet covers the map
     await clickJS(page, "#btn-more"); await wait(page, 1500);
-    const cov = await page.evaluate(() => { const s = document.getElementById("sheet"); return { open: !s.hidden, h: s.offsetHeight, vh: innerHeight, covered: PN.idle.covered(), cls: document.documentElement.classList.contains("pn-covered"), loops: window.__loops() }; });
+    const cov = await page.evaluate(() => { const s = document.getElementById("sheet"); return { open: !s.hidden, h: s.offsetHeight, vh: innerHeight, covered: (PN.idle && PN.idle.covered()), cls: document.documentElement.classList.contains("pn-covered"), loops: window.__loops(), held: (PN.idle && PN.idle._held()) }; });
     ok("B10 full sheet (⋯ Mer, " + cov.h + "/" + cov.vh + " px): PN.idle.covered + html.pn-covered", cov.open && cov.covered && cov.cls, cov);
-    ok("B10 full sheet: repeating animations under the scrim are paused (" + loops0 + " → " + cov.loops + ")", cov.loops === 0, { loops0, cov });
+    ok("B10 full sheet: repeating animations under the scrim are paused (" + loops0 + " endless → " + cov.loops + "; " + cov.held + " held)", cov.loops === 0 && cov.held >= loops0, { loops0, cov });
     const sh = await count(page, 6200);
     ok("B10 full sheet: the map loops make no timer callbacks in 6 s", sum(sh, MAPLOOPS) === 0, sh);
     // close: everything comes back at once
+    // (clinks and sparks come and go on their own: compare the SAME animations that were paused, where they still exist)
     const back = await page.evaluate(async () => {
+      const was = document.getAnimations().filter((a) => a.animationName && a.playState === "paused");
       document.getElementById("sheet-close").click();
       await new Promise((r) => setTimeout(r, 0));
-      return { covered: PN.idle.covered(), cls: document.documentElement.classList.contains("pn-covered"), loops: window.__loops() };
+      const live = was.filter((a) => a.effect && a.effect.target && a.effect.target.isConnected);
+      return { covered: (PN.idle && PN.idle.covered()), cls: document.documentElement.classList.contains("pn-covered"), loops: window.__loops(), held: (PN.idle && PN.idle._held()),
+        paused: was.length, live: live.length, playing: live.filter((a) => a.playState === "running").length };
     });
-    ok("B10 sheet closed: not covered and the paused animations play again at once (" + back.loops + ")", !back.covered && !back.cls && back.loops > 0 && back.loops >= loops0 - 1, { loops0, back });
+    ok("B10 sheet closed: not covered and the paused animations play again at once (" + back.playing + "/" + back.live + ")", !back.covered && !back.cls && back.held === 0 && back.loops > 0 && back.live > 0 && back.playing === back.live, { loops0, back });
     const wake = await count(page, 2300);
     ok("B10 sheet closed: the map loops run again", (wake["lask.js"] || 0) >= 1 && (wake["ride.js"] || 0) >= 1, wake);
     // a small sheet (under half of the screen) does not count as covered
@@ -103,7 +108,7 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
     const small = await page.evaluate(async () => {
       PN.openSheet("Liten", (b) => { b.textContent = "x"; }, { now: true });
       await new Promise((r) => setTimeout(r, 120));
-      const s = document.getElementById("sheet"), out = { h: s.offsetHeight, vh: innerHeight, covered: PN.idle.covered(), loops: window.__loops() };
+      const s = document.getElementById("sheet"), out = { h: s.offsetHeight, vh: innerHeight, covered: (PN.idle && PN.idle.covered()), loops: window.__loops() };
       PN.closeSheet ? PN.closeSheet() : document.getElementById("sheet-close").click();
       return out;
     });
@@ -113,10 +118,10 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
     await wait(page, 600);
     await page.evaluate(() => window.__tcHide(true));
     const hid = await count(page, 6200);
-    ok("B10 hidden page: PN.idle.hidden and no timer callbacks from the map / HUD loops in 6 s", sum(hid, HIDLOOPS) === 0 && await page.evaluate(() => PN.idle.hidden()), hid);
+    ok("B10 hidden page: PN.idle.hidden and no timer callbacks from the map / HUD loops in 6 s", sum(hid, HIDLOOPS) === 0 && await page.evaluate(() => (PN.idle && PN.idle.hidden())), hid);
     await page.evaluate(() => window.__tcHide(false));
     const shown = await count(page, 2300);
-    ok("B10 visible again: the loops run again", (shown["lask.js"] || 0) >= 1 && (shown["knas.js"] || 0) >= 1 && !await page.evaluate(() => PN.idle.now()), shown);
+    ok("B10 visible again: the loops run again", (shown["lask.js"] || 0) >= 1 && (shown["knas.js"] || 0) >= 1 && !await page.evaluate(() => (PN.idle && PN.idle.now())), shown);
 
     // ---- A9: close slides the real sheet, no clone
     await clickJS(page, "#btn-more"); await wait(page, 1500);
@@ -127,14 +132,17 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
       const kf = anim[0] && anim[0].effect.getKeyframes();
       const now = { hidden: s.hidden, ghost: !!document.querySelector(".sm-ghost-host"), shown: getComputedStyle(s).display !== "none", pe: getComputedStyle(s).pointerEvents,
         anim: anim.length, slide: !!(kf && /translateY/.test(kf[kf.length - 1].transform) && +kf[kf.length - 1].opacity === 0), kids: b.children.length, kids0 };
-      await new Promise((r) => setTimeout(r, 100));
-      now.mid = +getComputedStyle(s).opacity;
-      await new Promise((r) => setTimeout(r, 450));
+      // mid-slide (the first frame can come late on a busy runner: wait for the animation clock, max 600 ms)
+      const t0 = performance.now();
+      while (anim[0] && (anim[0].currentTime || 0) < 60 && anim[0].playState === "running" && performance.now() - t0 < 600) await new Promise((r) => requestAnimationFrame(r));
+      const m = getComputedStyle(s).transform.match(/matrix\(([^)]+)\)/);
+      now.mid = +getComputedStyle(s).opacity; now.dy = m ? +m[1].split(",")[5] : 0;
+      await new Promise((r) => setTimeout(r, 650));
       now.end = { display: getComputedStyle(s).display, inline: s.style.display, kids: b.children.length, anims: s.getAnimations().filter((a) => !a.animationName).length };
       return now;
     });
     ok("A9 close: #sheet.hidden at once, no clone (.sm-ghost-host)", a9.hidden && !a9.ghost, a9);
-    ok("A9 close: the real sheet slides down + fades (WAAPI on #sheet), no taps while it slides", a9.shown && a9.anim === 1 && a9.slide && a9.pe === "none" && a9.mid > 0 && a9.mid < 1, a9);
+    ok("A9 close: the real sheet slides down + fades (WAAPI on #sheet), no taps while it slides", a9.shown && a9.anim === 1 && a9.slide && a9.pe === "none" && a9.mid > 0 && a9.mid < 1 && a9.dy > 0, a9);
     ok("A9 close: the old content stays for the slide, then the body is empty and the sheet is display:none", a9.kids === a9.kids0 && a9.kids0 > 0 && a9.end.display === "none" && a9.end.inline === "" && a9.end.kids === 0 && a9.end.anims === 0, a9);
     // a sheet that opens during the slide shows at once and keeps its body
     await clickJS(page, "#btn-more"); await wait(page, 1500);
