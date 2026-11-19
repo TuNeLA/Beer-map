@@ -42,6 +42,11 @@ jobs:
         with:
           node-version: '20'
 
+      # pack (A6): after the switch (PAGES_DEPLOY = actions) the data lives on branch `data`, not on main. Start from it.
+      - name: Newest data from branch data (only when PAGES_DEPLOY = actions)
+        if: ${{ vars.PAGES_DEPLOY == 'actions' }}
+        run: bash scripts/pack/data-overlay.sh
+
       # OSM API usage policy: one request at a time, 1.5 s apart, a clear User-Agent, and a rolling refresh
       # (new spots + spots older than 28 days, max 700 calls per run).
       - name: Find the building of every bar
@@ -60,7 +65,15 @@ jobs:
         run: node scripts/arena-outlines.mjs --max 200 --refresh-days 60
 
       - name: Commit docs/buildings if changed
+        env:
+          PAGES_DEPLOY: ${{ vars.PAGES_DEPLOY }}
         run: |
+          # pack (A6): PAGES_DEPLOY = actions = commit to branch `data` (scripts/pack/data-push.sh), never to main.
+          # The deploy (pages-bundle.yml) starts from this run's end and reads `data`. Unset = the old commit to main below.
+          if [ "$PAGES_DEPLOY" = actions ]; then
+            bash scripts/pack/data-push.sh "Update bar buildings [skip ci]" docs/buildings scripts/bar-buildings-state.json docs/arenas.json
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/buildings scripts/bar-buildings-state.json docs/arenas.json
