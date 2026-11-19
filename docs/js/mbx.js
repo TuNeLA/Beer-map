@@ -318,7 +318,7 @@
       cc.appendChild(this._mapPane);
       try { gl.dragRotate.disable(); gl.touchZoomRotate.disableRotation(); gl.touchPitch && gl.touchPitch.disable(); gl.keyboard.disableRotation && gl.keyboard.disableRotation(); } catch (e) {}
       try { gl.jumpTo({ center: [this._c.lng, this._c.lat], zoom: Math.max(0, this._z - 1) }); } catch (e) {}
-      this._applyHandlers();
+      this._applyHandlers(); if (W.PNTILT) { try { W.PNTILT.attach(gl, this); } catch (e) {} }   // tilt (M4): pitch + two-finger tilt, js/tilt.js
       if (again) { if (this._glReady) this._rasterShow(false); this._shapes.styleLoaded(); this._onMove(); this._onMoveEnd(); return this; }
       gl._mbxHooked = this;
       ["movestart", "move", "moveend", "zoomstart", "zoom", "zoomend", "dragstart", "drag", "dragend", "resize"].forEach(function (t) {
@@ -347,7 +347,7 @@
       this._container.appendChild(this._mapPane);
       if (destroy) { try { gl.remove(); } catch (e) {} } else { try { gl.getCanvasContainer().style.display = "none"; } catch (e) {} }
       this._shapes.engineChanged();
-      this._rasterShow(true); this._onMove(); this._onMoveEnd();
+      this._rasterShow(true); this._onMove(); this._onMoveEnd(); if (W.PNTILT) { try { W.PNTILT.detach(); } catch (e) {} }
       return this;
     },
     _rasterShow: function (on) { this._rasterOn = on; this._raster.style.display = on ? "" : "none"; if (on) this._drawTiles(); else { DomUtil.empty(this._raster); this._tiles = {}; } },
@@ -360,7 +360,7 @@
       if (!this._size) { var c = this._container; this._size = new Point(c.clientWidth || 0, c.clientHeight || 0); }
       return this._size.clone();
     },
-    getBounds: function () { var s = this.getSize(), a = this.containerPointToLatLng([0, s.y]), b = this.containerPointToLatLng([s.x, 0]); return new LatLngBounds(a, b); },
+    getBounds: function () { var tb = W.PNTILT && this._gl && W.PNTILT.bounds(this); if (tb) return tb; var s = this.getSize(), a = this.containerPointToLatLng([0, s.y]), b = this.containerPointToLatLng([s.x, 0]); return new LatLngBounds(a, b); },
     getPixelBounds: function () { var c = this.project(this.getCenter()), h = this.getSize().divideBy(2); return new Bounds(c.subtract(h), c.add(h)); },
     getPixelOrigin: function () { return this.getPixelBounds().min; },
     getMinZoom: function () { return this.options.minZoom || 0; }, getMaxZoom: function () { return this.options.maxZoom == null ? 19 : this.options.maxZoom; },
@@ -447,7 +447,7 @@
     },
     _boundsView: function (b, o) {
       b = latLngBounds(b); if (!b.isValid()) return null;
-      var pd = this._pad(o), s = this.getSize();
+      var pd = this._pad(o), s = this.getSize(), tv = W.PNTILT && this._gl && W.PNTILT.boundsView(this, b, pd, o); if (tv) return tv;   // tilted: Mapbox cameraForBounds
       var inner = new Point(Math.max(1, s.x - pd.left - pd.right), Math.max(1, s.y - pd.top - pd.bottom));
       var z0 = 20, w = Math.abs(wx(b.getEast(), z0) - wx(b.getWest(), z0)), h = Math.abs(wy(b.getSouth(), z0) - wy(b.getNorth(), z0));
       var z = z0 + Math.log(Math.min(inner.x / Math.max(1e-9, w), inner.y / Math.max(1e-9, h))) / Math.LN2;
@@ -625,7 +625,7 @@
         var h = self[k] && self[k]._gl && gl[self[k]._gl]; if (!h) return;
         try { if (self.options[k] === false) h.disable(); else h.enable(); } catch (e) {}
       });
-      try { var tz = gl.touchZoomRotate; tz.disableRotation(); if (tz.disableTapDragZoom) tz.disableTapDragZoom(); else if (tz._tapDragZoom && tz._tapDragZoom.disable) tz._tapDragZoom.disable(); } catch (e) {}   // mapfix I-108 (owner 2026-11-14, "I tap a bar, tap away, put one finger on the screen: it zooms in and out"): Mapbox GL's "tap, then drag with one finger = zoom" gesture is off (the tap that closed a pop-up was its first tap); pinch + double-tap zoom stay on. GL JS 3.32: the public switch disableTapDragZoom() (enable() above keeps it off); an older build: the inner handler, set after every enable()
+      try { if (gl.touchPitch && W.PNTILT) { if (this.options.touchZoom === false) gl.touchPitch.disable(); else gl.touchPitch.enable(); } } catch (e) {}   /* tilt: two-finger tilt only while pinch zoom is on */ try { var tz = gl.touchZoomRotate; tz.disableRotation(); if (tz.disableTapDragZoom) tz.disableTapDragZoom(); else if (tz._tapDragZoom && tz._tapDragZoom.disable) tz._tapDragZoom.disable(); } catch (e) {}   // mapfix I-108 (owner 2026-11-14, "I tap a bar, tap away, put one finger on the screen: it zooms in and out"): Mapbox GL's "tap, then drag with one finger = zoom" gesture is off (the tap that closed a pop-up was its first tap); pinch + double-tap zoom stay on. GL JS 3.32: the public switch disableTapDragZoom() (enable() above keeps it off); an older build: the inner handler, set after every enable()
     },
     /* ---------- overlay positioning ---------- */
     _onResize: function () { this._size = null; if (!this._gl) { this._onMove(); this._cull(true); this.fire("resize"); } },
@@ -1258,24 +1258,24 @@
     onRemove: function (m) { m.off("zoomend", this._onZoom, this); m.off("moveend", this._onMoveEnd, this); var self = this;
       Object.keys(this._shown).forEach(function (id) { m.removeLayer(self._kids[id]); }); Object.keys(this._clusters).forEach(function (k) { m.removeLayer(self._clusters[k]); }); this._shown = {}; this._clusters = {}; this._parent = {}; this._map = null; },
     _onZoom: function () { if (this._map && Math.abs(this._map.getZoom() - this._z) >= 0.2) this._run(false); },
-    _onMoveEnd: function () { if (this._map && (this._z == null || Math.abs(this._map.getZoom() - this._z) >= 0.2)) this._run(false); },
+    _onMoveEnd: function () { if (this._map && (this._z == null || Math.abs(this._map.getZoom() - this._z) >= 0.2 || (W.PNTILT && (W.PNTILT.pitched(this._map) || this._tp)))) this._run(false); this._tp = !!(this._map && W.PNTILT && W.PNTILT.pitched(this._map)); },
     _soon: function () { var self = this; if (!this._t) this._t = setTimeout(function () { self._t = 0; self._run(true); }, 0); },
     _run: function (force) {
       var m = this._map; if (!m) return;
-      var t0 = performance.now(), z = m.getZoom(), o = this.options, R = typeof o.maxClusterRadius === "function" ? o.maxClusterRadius(z) : o.maxClusterRadius;
+      var t0 = performance.now(), z = m.getZoom(), tp = !!(W.PNTILT && W.PNTILT.pitched(m)), o = this.options, R = typeof o.maxClusterRadius === "function" ? o.maxClusterRadius(z) : o.maxClusterRadius;
       this._z = z;
       var kids = this.eachLayer ? this.getLayers() : [], cells = {}, groups = [], cs = Math.max(1, R);
       var noCl = o.disableClusteringAtZoom != null && z >= o.disableClusteringAtZoom;
       // friends / me first, so a group's anchor is the most interesting pin
       kids.sort(function (a, b) { return ((b.options.mine ? 2 : 0) + (b.options.friend ? 1 : 0)) - ((a.options.mine ? 2 : 0) + (a.options.friend ? 1 : 0)) || stamp(a) - stamp(b); });
       for (var i = 0; i < kids.length; i++) {
-        var k = kids[i], ll = k.getLatLng(), x = wx(ll.lng, z), y = wy(ll.lat, z), cx = Math.floor(x / cs), cy = Math.floor(y / cs), best = null, bd = R * R;
+        var k = kids[i], ll = k.getLatLng(), x = wx(ll.lng, z), y = wy(ll.lat, z), sp = tp ? m.latLngToContainerPoint(ll) : null, gx = sp ? sp.x : x, gy = sp ? sp.y : y, cx = Math.floor(gx / cs), cy = Math.floor(gy / cs), best = null, bd = R * R;   // tilted: group by the SCREEN distance (far pins sit closer)
         if (!noCl) for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
           var cell = cells[(cx + dx) + "_" + (cy + dy)]; if (!cell) continue;
-          for (var j = 0; j < cell.length; j++) { var g = cell[j], d = (g.x - x) * (g.x - x) + (g.y - y) * (g.y - y); if (d <= bd) { bd = d; best = g; } }
+          for (var j = 0; j < cell.length; j++) { var g = cell[j], d = (g.gx - gx) * (g.gx - gx) + (g.gy - gy) * (g.gy - gy); if (d <= bd) { bd = d; best = g; } }
         }
         if (best) { best.kids.push(k); best.sx += x; best.sy += y; }
-        else { var ng = { x: x, y: y, sx: x, sy: y, kids: [k] }; groups.push(ng); (cells[cx + "_" + cy] = cells[cx + "_" + cy] || []).push(ng); }
+        else { var ng = { x: x, y: y, gx: gx, gy: gy, sx: x, sy: y, kids: [k] }; groups.push(ng); (cells[cx + "_" + cy] = cells[cx + "_" + cy] || []).push(ng); }
       }
       var shown = {}, clusters = {}, parent = {}, self = this;
       groups.forEach(function (g) {

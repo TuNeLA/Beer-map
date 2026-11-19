@@ -1,0 +1,6 @@
+/* PintsNow — the tilted map (M4, owner 15 Nov 2026). See docs/js/tilt.js.
+   The "3D" button sits right above Locate (bottom right): the two camera buttons together, the top rail unchanged. */
+#pn-tilt{top:auto !important;bottom:calc(var(--pn-loc-b, calc(var(--dock-h,212px) + var(--pn-gap))) + var(--pn-rail) + var(--pn-gap)) !important}
+#pn-tilt[hidden]{display:none !important}
+#pn-tilt .pt-3d{font:800 15px/1 var(--ds-sans,system-ui);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+#pn-tilt[aria-pressed="true"]{box-shadow:var(--ds-sh-1),0 0 0 2px var(--ds-bg)}
