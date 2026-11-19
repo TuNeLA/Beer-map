@@ -26,6 +26,7 @@ esac`);
   w("psql", `url=$1; for a in "$@"; do case "$a" in *"begin read only"*) c=1;; *.sql) r=1;; esac; done
 if [ -n "$c" ]; then case "$url" in *127.0.0.1*) printf '%s\\n' "\${FAKE_LOCAL:-$FAKE_SRC}" | tr ';' '\\n';; *) printf '%s\\n' "$FAKE_SRC" | tr ';' '\\n';; esac; exit 0; fi
 case "$url" in *127.0.0.1*) ;; *) echo "psql wrote to a non-local database" >&2; exit 9;; esac
+[ -n "$FAKE_RESTORE_MSG" ] && printf '%s\\n' "$FAKE_RESTORE_MSG" | tr ';' '\\n' >&2
 exit \${FAKE_RESTORE_RC:-0}`);
   w("7z", `op=$1; shift; out=""; o=""; for a in "$@"; do case "$a" in -o*) o=\${a#-o};; -*) ;; *) [ -z "$out" ] && out=$a || src=$a;; esac; done
 case $op in a) tar -cf "$out" "$src";; t) [ -f "$out" ];; x) tar -xf "$out" -C "$o";; esac`);
@@ -69,7 +70,11 @@ test("restore: same counts = OK; a lost row block or a restore error = FAIL; the
   const fn = run(["restore", arc], { SRC_DB_URL: URL_, BACKUP_KEY: URL_, FAKE_LOCAL: "users 570;beers 9000;groups 120;public_tables 80;public_functions 399" });
   assert.equal(fn.code, 1, "one function missing must fail"); clean(fn);
   const err = run(["restore", arc], { SRC_DB_URL: URL_, BACKUP_KEY: URL_, FAKE_RESTORE_RC: "3" });
-  assert.equal(err.code, 1); assert.match(err.sum, /the restore stopped with an error/); clean(err);
+  assert.equal(err.code, 1, err.out); assert.match(err.sum, /FAIL: the restore stopped with an error/, err.out); clean(err);
+  const priv = run(["restore", arc], { SRC_DB_URL: URL_, BACKUP_KEY: URL_, FAKE_RESTORE_RC: "3",
+    FAKE_RESTORE_MSG: "psql:x/data.sql:77: ERROR:  duplicate key anna@example.se;CONTEXT:  COPY users, line 1: anna@example.se" });
+  assert.equal(priv.code, 1); assert.match(priv.out, /data\.sql line 77: an error \(text hidden/);
+  assert.ok(!/anna@example\.se/.test(priv.out + priv.sum), "a data.sql error printed user data"); clean(priv);
   clean(d);
 });
 test("the source is only read: counts in a READ ONLY transaction, no psql -f on the source, restore target is local", () => {

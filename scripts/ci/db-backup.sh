@@ -25,6 +25,13 @@ union all select 'groups', count(*) from public.groups
 union all select 'public_tables', count(*) from pg_tables where schemaname = 'public'
 union all select 'public_functions', count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public';
 commit;"
+why() {   # the restore error + the failing line of roles.sql / schema.sql (never data.sql: it holds the users' data)
+  # only psql's own error lines (CONTEXT / DETAIL lines can quote a row); a data.sql error shows its line number only
+  awk '/^psql:/ { if ($0 ~ /^psql:[^:]*data\.sql:/) { split($0, a, ":"); print "psql: data.sql line " a[3] ": an error (text hidden: it can hold user data)" } else print substr($0, 1, 300) }' restore.log | tail -n 20
+  local m; m=$(grep -o "^psql:[^:]*\(roles\|schema\)\.sql:[0-9]*" restore.log | head -n 1 || true)
+  if [ -n "$m" ]; then local f=${m#psql:}; local n=${f##*:}; f=${f%:*}; echo "--- $f line $n:"; sed -n "$(( n > 3 ? n - 3 : 1 )),$(( n + 1 ))p" "$f" | cut -c1-240; fi
+  say "FAIL: the restore stopped with an error (see the job log)"
+}
 counts() { psql "$1" -X -q -At -F ' ' -v ON_ERROR_STOP=1 -c "$COUNTS_SQL" | { grep -v '^\(BEGIN\|COMMIT\)$' || true; }; }
 
 case "$cmd" in
@@ -58,7 +65,7 @@ restore)
   sed -i 's/^major_version = .*/major_version = 17/' stack/supabase/config.toml
   (cd stack && supabase start -x imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor)
   psql "$LOCAL_URL" -X -q --single-transaction -v ON_ERROR_STOP=1 -f "$d/roles.sql" -f "$d/schema.sql" \
-    -c "SET session_replication_role = replica" -f "$d/data.sql" > restore.log 2>&1 || { tail -n 30 restore.log; say "FAIL: the restore stopped with an error (last lines above)"; exit 1; }
+    -c "SET session_replication_role = replica" -f "$d/data.sql" > restore.log 2>&1 || { why; exit 1; }
   counts "$LOCAL_URL" > got.txt
   say "### Restore test ($SRC_NAME dump $d into a local Supabase database)"; say '| what | in the dump run | restored | ok |'; say '|---|---|---|---|'
   bad=0
