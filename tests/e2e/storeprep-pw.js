@@ -45,7 +45,7 @@ async function medals(page) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: require("./env.js").CHROME });
   try {
     // ---------- F5: web build keeps the medals ----------
     let { ctx, page, errs } = await open(browser, false);
