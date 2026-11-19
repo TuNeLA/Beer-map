@@ -279,6 +279,109 @@
   }
   function onApi() { refreshState(); loadFlags(); }
 
+  /* ---------- ▶ Självtest (E10 / I-111): one tap = a short scripted walk on STAGING, then a pass/fail list ----------
+     Open app → staging check → test account → ÖL! (saved on staging) → open + close each main sheet → no page errors,
+     no failed server calls. Lives in this file because only testbar.js / testenv.js / testbar.css reach /test/
+     (pintsnow-beta beta/transform.py). The walk STOPS at step 1 when the build does not talk to staging. */
+  var STAGING_REF = "vdtmzsxajpvzwwbhnfmr", stErrs = [], stCalls = [], stRun = false;
+  window.addEventListener("error", function (e) { stErrs.push({ t: Date.now(), m: String((e && (e.message || (e.error && e.error.message))) || "error").slice(0, 160) }); });
+  window.addEventListener("unhandledrejection", function (e) { var r = e && e.reason; stErrs.push({ t: Date.now(), m: "promise: " + String((r && (r.message || r.code)) || r).slice(0, 160) }); });
+  (function () {   // keep the RPC NAME and status of each server call (never the URL, headers or body)
+    var f0 = window.fetch; if (typeof f0 !== "function") return;
+    window.fetch = function (u) {
+      var p = f0.apply(this, arguments), m = /\/rest\/v1\/rpc\/(\w+)/.exec(String(u && u.url ? u.url : u));
+      if (!m) return p;
+      var c = { t: Date.now(), n: m[1], s: 0 }; stCalls.push(c); if (stCalls.length > 300) stCalls.shift();
+      return p.then(function (r) { c.s = r.status; return r; }, function (e) { c.s = -1; throw e; });
+    };
+  })();
+  function el(id) { return document.getElementById(id); }
+  function until(fn, ms) {
+    var t0 = Date.now();
+    return new Promise(function (res) { (function tick() { var v = false; try { v = fn(); } catch (e) {} if (v || Date.now() - t0 >= ms) res(v); else setTimeout(tick, 150); })(); });
+  }
+  function pause(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function sheetShown() { var s = el("sheet"); return !!(s && !s.hidden); }
+  function closeSheet() {
+    if (!sheetShown()) return Promise.resolve(true);
+    var x = el("sheet-close"); if (x) x.click();
+    return until(function () { return !sheetShown(); }, 4000).then(function (ok) { if (ok) return true; if (x) x.click(); return until(function () { return !sheetShown(); }, 3000); });
+  }
+  function isStaging() {
+    var c = window.OLNU_CONFIG || {}, t = window.PN_TEST || {};
+    return String(c.SUPABASE_URL || "").indexOf("https://" + STAGING_REF + ".") === 0 && t.ref === STAGING_REF;
+  }
+  function stBeer() {
+    var b = el("btn-beer"); if (!b) return Promise.reject(new Error("ingen ÖL!-knapp"));
+    return until(function () { return !b.disabled && !/Ångra|Undo/i.test((el("beer-label") || {}).textContent || ""); }, 15000).then(function (free) {
+      if (!free) throw new Error("ÖL! är låst (nedräkning eller Ångra)");
+      var g0 = PN.geo.get(), fake = !(g0 && g0.on), t1 = Date.now(), picked = false;
+      if (fake) PN.geo.set(PLACES[0]);   // a known spot (Pitchers); the real GPS setting comes back after the tap
+      b.click();
+      return until(function () {
+        if (stCalls.some(function (c) { return c.t >= t1 && /^post_beer/.test(c.n) && c.s; })) return true;
+        var p = !picked && sheetShown() && document.querySelector("#sheet-body .btn-amber");   // "Var dricker du?": take the first place
+        if (p) { picked = true; p.click(); }
+        return false;
+      }, 20000).then(function () {
+        if (fake) PN.geo.set(null);
+        var c = stCalls.filter(function (x) { return x.t >= t1 && /^post_beer/.test(x.n); }).pop();
+        if (!c || !c.s) throw new Error("inget post_beer-svar på 20 s");
+        if (c.s < 200 || c.s > 299) throw new Error(c.n + " svarade " + c.s);
+        return c.n + " " + c.s + (picked ? " · valde plats" : "");
+      });
+    });
+  }
+  var ST_SHEETS = [["btn-top", "Topplistan"], ["btn-groups", "Grupper"], ["btn-settings", "Inställningar"], ["btn-taxi", "Taxi / Hem"], ["live-count", "Ute nu"]];
+  function stSheet(s) {
+    return closeSheet().then(function () {
+      var e = el(s[0]); if (!e) throw new Error("#" + s[0] + " finns int'");
+      e.click();
+      return until(function () { var t = el("sheet-title"); return sheetShown() && t && t.textContent.trim(); }, 6000);
+    }).then(function (title) {
+      if (!title) throw new Error("arket öppnades int' på 6 s");
+      return pause(600).then(function () { return until(function () { return !stCalls.some(function (c) { return !c.s; }); }, 3000); }).then(function () { return title; });   // let the sheet load its content
+    }).then(function (title) {
+      return closeSheet().then(function (ok) { if (!ok) throw new Error("\"" + title + "\" stängs int'"); return "\"" + title + "\""; });
+    });
+  }
+  function selfTest() {
+    if (stRun) return Promise.resolve();
+    stRun = true;
+    var out = box.querySelector(".tb-st"), sum = box.querySelector(".tb-st-sum"), t0 = Date.now(), rows = [], phone = isPhone();
+    out.innerHTML = ""; sum.textContent = "Kör…";
+    function add(name, ok, info) {
+      rows.push((ok ? "OK   " : "FEL  ") + name + (info ? " — " + info : ""));
+      out.appendChild(h("li", { class: ok ? "tb-st-ok" : "tb-st-bad" }, [h("b", { text: (ok ? "✅ " : "❌ ") + name }), info ? h("span", { text: " " + info }) : null]));
+    }
+    function step(name, fn) { return Promise.resolve().then(fn).then(function (i) { add(name, true, i || ""); return true; }, function (e) { add(name, false, errText(e)); return false; }); }
+    if (phone) close();
+    var p = step("Testbygget pratar med staging", function () { if (!isStaging()) throw new Error("INTE staging: testet stoppar här"); return STAGING_REF; }).then(function (ok) {
+      if (!ok) return;
+      return step("Appen har startat", function () {
+        return until(function () { return el("btn-beer") && !el("pn-splash") && A; }, 15000).then(function (r) { if (!r) throw new Error("ÖL!-knappen eller appens API saknas efter 15 s"); });
+      }).then(function () { return step("Testkonto inloggat", function () { return account().then(function () { return "id " + String(PN.uid() || "").slice(0, 8); }); }); })
+        .then(function () { return step("ÖL! sparas på staging", stBeer); })
+        .then(function () { return ST_SHEETS.reduce(function (q, s) { return q.then(function () { return step("Öppnar " + s[1], function () { return stSheet(s); }); }); }, Promise.resolve()); });
+    });
+    return p.then(function () { return pause(1500); }).then(function () {   // late async errors of the last steps
+      var e = stErrs.filter(function (x) { return x.t >= t0; }), bad = stCalls.filter(function (x) { return x.t >= t0 && (x.s < 0 || x.s >= 400); });
+      add("Inga sidfel under testet", !e.length, e.length ? e.length + " st: " + e.slice(0, 3).map(function (x) { return x.m; }).join(" | ") : "");
+      add("Inga serveranrop med fel", !bad.length, bad.length ? bad.slice(0, 5).map(function (x) { return x.n + " " + x.s; }).join(", ") : stCalls.filter(function (x) { return x.t >= t0; }).length + " anrop");
+    }).then(function () {
+      var n = out.querySelectorAll(".tb-st-ok").length, all = out.children.length;
+      sum.textContent = (n === all ? "✅ " : "❌ ") + n + " av " + all + " OK · " + Math.round((Date.now() - t0) / 1000) + " s";
+      box.setAttribute("data-st", n === all ? "pass" : "fail");
+      stText = "PintsNow självtest " + new Date().toISOString() + " · " + (window.PN_TEST && window.PN_TEST.sha || "") + "\n" + sum.textContent + "\n" + rows.join("\n");
+      stRun = false; if (phone) open();
+    });
+  }
+  var stText = "";
+  function copyResult() {
+    if (!stText) throw new Error("kör självtestet först");
+    return navigator.clipboard.writeText(stText).then(function () { say("📋 Resultatet är kopierat"); });
+  }
+
   /* ---------- UI ---------- */
   function isPhone() { return window.matchMedia("(max-width: 899px)").matches; }
   function open() { box.classList.add("tb-open"); document.documentElement.classList.add("tb-shown"); try { LS.setItem("pnt.tb", "1"); } catch (e) {} paintStatus(); }
@@ -290,6 +393,9 @@
     box = h("aside", { class: "tb", "aria-label": "Testpanel" }, [
       h("div", { class: "tb-head" }, [h("b", { text: "🧪 TESTLÄGE · staging" }), h("button", { type: "button", class: "tb-x", "aria-label": "Stäng", on: { click: close } }, ["✕"])]),
       h("div", { class: "tb-status" }), h("div", { class: "tb-say", text: "Allt här gäller bara testmiljön." }),
+      sect("▶ Självtest", true, [row([b("▶ Kör självtest", selfTest, "tb-play"), b("📋 Kopiera resultat", copyResult)]),
+        h("div", { class: "tb-st-sum tb-note", text: "Startar appen, loggar en öl på staging, öppnar varje huvudark och letar fel (ca 30 s)." }),
+        h("ol", { class: "tb-st" })]),
       sect("📱 Den här enheten", true, [
         row([nameIn, b("Spara namn", function () { PN.setLabel(nameIn.value); paintStatus(); say("✅ Enheten heter " + PN.label()); })]),
         row([b("➕ Nytt konto (ny flik)", freshAccount), b("🧹 Nollställ kontot", wipe, "tb-danger")])
@@ -337,5 +443,5 @@
 
   PN.on(function (k, v) { if (k === "state") onState(v); if (k === "auth") setTimeout(function () { refreshState(); loadFlags(); }, 1500); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
-  window.PNTESTBAR = { open: open, close: close, refresh: refreshState };
+  window.PNTESTBAR = { open: open, close: close, refresh: refreshState, selfTest: selfTest };
 })();

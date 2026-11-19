@@ -79,3 +79,8 @@ To run only some tests: locally `bash scripts/dev/quick.sh <names>` (guards + th
 
 ## Run only your shards (13 Nov)
 Put a file `.ci-only` in the root of your ci/ branch (it is in .gitignore: add it with `git add -f .ci-only`) with one shard name per line (the first word of a line in `tests/e2e/shards.txt`, e.g. `ui-04`, `map-lane`, `gate-a`). No runner starts for the other e2e shards. The guards and the schema job always run. A wrong name or an empty file fails the plan job. `.ci-only` is read only on `ci/` branches; never merge it (the unit job fails on other branches if it exists).
+## Backup proof run (C11, 19 Nov)
+`.github/workflows/backup.yml` (weekly DB backup + monthly restore test) runs on a `ci/` branch only when the push adds or
+changes a file `.ci-backup` (`git add -f .ci-backup`; never merge it). It then dumps STAGING (read only), or a fixture
+database when the STAGING_DB_URL secret is not set, and restores it into a local database on the runner. Logic and checks:
+`scripts/ci/db-backup.sh`, `tests/unit/backup.test.mjs`.

@@ -52,6 +52,10 @@ jobs:
     timeout-minutes: 30
     env:
       TZ: Europe/Stockholm   # tests were written for Swedish time (nights, "ikväll"); UTC breaks some
+      # G10b (lane ciwork, 19 Nov): '1' = EVERY shard runs its tests inside the official Playwright image (browsers + libraries
+      # built in, no apt, no browser cache). Why: the Ubuntu apt mirrors failed, so a Chromium cache miss failed in
+      # "Install Playwright browsers" (invite lane, 5 shards). The way back: set '0' (the host cache / install path below).
+      PW_IN_IMAGE: '1'
     strategy:
       fail-fast: false
       max-parallel: ${{ startsWith(github.ref, 'refs/heads/ci/') && 4 || 20 }}   # a lane run never takes all 20 runners
@@ -68,19 +72,19 @@ jobs:
       # (a new runner image without a library), the system packages are installed then.
       - name: Playwright browsers (cache)
         id: pw
-        if: ${{ !contains(matrix.browsers, 'webkit') }}
+        if: ${{ env.PW_IN_IMAGE != '1' && !contains(matrix.browsers, 'webkit') }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.bkey }}
       - name: Install Playwright browsers (cache miss)
-        if: ${{ !contains(matrix.browsers, 'webkit') && steps.pw.outputs.cache-hit != 'true' }}
+        if: ${{ env.PW_IN_IMAGE != '1' && !contains(matrix.browsers, 'webkit') && steps.pw.outputs.cache-hit != 'true' }}
         timeout-minutes: 12
         run: npx playwright install --with-deps ${{ matrix.browsers }}
       # 19 Nov: a cached WebKit start hung for 30 min (ui-08 cancelled twice, run 44451466712). Each launch now has a 60 s limit,
       # the probe a 150 s limit, and the step 14 min, so a bad cache falls back to a fresh install instead of eating the job.
       - name: Check that the cached browsers start (cache hit)
-        if: ${{ !contains(matrix.browsers, 'webkit') && steps.pw.outputs.cache-hit == 'true' }}
+        if: ${{ env.PW_IN_IMAGE != '1' && !contains(matrix.browsers, 'webkit') && steps.pw.outputs.cache-hit == 'true' }}
         timeout-minutes: 14
         env:
           BROWSERS: ${{ matrix.browsers }}
@@ -93,8 +97,8 @@ jobs:
       # G10 (19 Nov): WebKit shards run their tests inside the official Playwright image (same version as package-lock.json).
       # Why: WebKit needs ~150 Ubuntu packages; the runner image lacks them and apt hung on the Ubuntu mirrors (runs 44485641148,
       # 44490453143). The image has the browsers and their libraries built in: no apt. Remove when: never (cheaper and steadier).
-      - name: Pull the Playwright image (WebKit shards)
-        if: ${{ contains(matrix.browsers, 'webkit') }}
+      - name: Pull the Playwright image (all shards with PW_IN_IMAGE=1, else the WebKit shards)
+        if: ${{ env.PW_IN_IMAGE == '1' || contains(matrix.browsers, 'webkit') }}
         timeout-minutes: 8
         run: |
           PWV=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")
@@ -132,7 +136,10 @@ jobs:
           if [ -n "$PW_IMAGE" ]; then
             docker run --rm --init --ipc=host --network host -v "$PWD:/w" -w /w \
               -e MAPBOX_TEST_TOKEN -e PN_TARGET -e TO -e PAR -e PLAIN_PORT -e FLAKE_GATE -e TZ -e CI -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
-              "$PW_IMAGE" bash -c "command -v curl >/dev/null || { echo 'no curl in the image'; exit 3; }; git config --global --add safe.directory /w 2>/dev/null; bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'"
+              "$PW_IMAGE" bash -c "command -v curl >/dev/null || { echo 'no curl in the image'; exit 3; }; git config --global --add safe.directory /w 2>/dev/null; bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'" || rc=$?
+            # the container writes tests/e2e/out as root: give it back, so the next steps can keep the flaky list (flake gate)
+            sudo chown -R "$(id -u):$(id -g)" tests/e2e/out 2>/dev/null || true
+            exit ${rc:-0}
           else
             bash tests/e2e/run-all.sh 8793 8871 '${{ matrix.filter }}'
           fi

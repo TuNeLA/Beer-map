@@ -59,3 +59,11 @@ html.tb-shown .tb-fab { right: 330px; }
   html.tb-shown .tb-fab { right: 8px; }
   .tb-b { min-height: 40px; }
 }
+/* ▶ Självtest (E10): the play button + the pass/fail list */
+.tb-play { background: var(--tb-acc); color: var(--tb-acc-fg); border-color: var(--tb-acc); font-weight: 700; min-height: 44px; }
+.tb-st { margin: 0 0 10px; padding: 0 0 0 4px; list-style: none; font-size: 12px; }
+.tb-st li { padding: 5px 0; border-bottom: 1px solid var(--tb-line); word-break: break-word; }
+.tb-st li span { color: var(--tb-dim); }
+.tb-st-bad b { color: var(--tb-bad); }
+.tb-st-ok b { color: var(--tb-ok); }
+.tb-st-sum { font-weight: 700; margin-bottom: 6px; }
