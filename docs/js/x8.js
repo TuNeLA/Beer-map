@@ -33,6 +33,8 @@
     "x8.full": "📡 Fem öl väntar redan på täckning. Ta det lugnt en stund!",
     "x8.sent": "📡 Ölen från {time} ä skickad",
     "x8.stale": "Senast uppdaterad {time}",
+    "x8.off": "Offline · senast uppdaterad {time}",   // uifix4 (design review small fix 26): offline says so
+    "x8.offnone": "Offline · ingen täckning just nu",
     "x8.nonet": "Ingen täckning just nu",
     "x8.busy": "Det är mycket nu"   // perf: the server is overloaded (busy back-off)
   };
@@ -43,6 +45,8 @@
     "x8.full": "📡 Five beers are already waiting for signal. Take it easy for a bit!",
     "x8.sent": "📡 Your beer from {time} is sent",
     "x8.stale": "Last updated {time}",
+    "x8.off": "Offline · last updated {time}",
+    "x8.offnone": "Offline · no signal right now",
     "x8.nonet": "No signal right now",
     "x8.busy": "Lots going on right now"
   };
@@ -172,6 +176,9 @@
   (function () { var l = lsGet(LAST); if (l && isFinite(l.at)) lastGood = +l.at; })();
   function capText() {
     var at = snapOn ? snapTime : lastGood;   // snapshot pins on the map: the time of THAT data
+    // uifix4: this chip hides the offline banner (pnds.css body.x8-stale-on), so with no network it says "Offline" itself
+    var off = false; try { off = navigator.onLine === false; } catch (e) {}
+    if (off) return at ? say("x8.off", { time: hhmm(at) }) : say("x8.offnone");
     return busyN >= 2 ? say("x8.busy") : at ? say("x8.stale", { time: hhmm(at) }) : say("x8.nonet");
   }
   function show(quiet) {
@@ -214,7 +221,7 @@
     return Math.round(Math.min(60e3, 5e3 * Math.pow(2, fails - 1)) * (0.8 + Math.random() * 0.4));
   }
   window.addEventListener("offline", function () { if (live) show(); });
-  window.addEventListener("online", function () { setTimeout(function () { flush("online"); }, 1500); });
+  window.addEventListener("online", function () { if (staleOn && capEl) capEl.querySelector("span").textContent = capText(); setTimeout(function () { flush("online"); }, 1500); });
   window.addEventListener("storage", function (e) { if (e && e.key === KEY) arm(); });
 
   /* ---------- perf: busy back-off (load REPORT fix 6) ---------- */

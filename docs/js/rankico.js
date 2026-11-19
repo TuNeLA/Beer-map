@@ -18,11 +18,19 @@
   var CROWN = '<path ' + C + ' stroke="currentColor" stroke-width=".9" stroke-linejoin="round" d="M6.7 11.4 5.7 4.1l3.5 2.8L12 2l2.8 4.9 3.5-2.8-1 7.3z"/>';
   var RAYS = '<path ' + C + ' stroke="currentColor" stroke-width=".8" stroke-linejoin="round" d="M7.5 11.6 6.7 6.7l2.8 2L12 5.3l2.5 3.4 2.8-2-.8 4.9z"/>' +
     '<path ' + ST + ' stroke-width="1.4" d="M12 .9v1.9M7.7 1.9l.9 1.6M16.3 1.9l-.9 1.6M4.2 4.9l1.5 1M19.8 4.9l-1.5 1"/>';
-  // kapsyl: a disc with 14 crimps and a ring cut out (even-odd), so it reads as a bottle cap, not a sun
+  // kapsyl (uifix4, owner A18: the old top view with 14 crimps read as a sun at 20 px): a cap seen from the side and above.
+  // The top is an ellipse with a rim line cut out (even-odd); under it 6 crimps (ridges) that flare out, with pointed tips.
+  function ell(rx, ry) { return "M" + num(12 - rx) + " 4.4a" + num(rx) + " " + num(ry) + " 0 1 0 " + num(2 * rx) + " 0a" + num(rx) + " " + num(ry) + " 0 1 0 " + num(-2 * rx) + " 0z"; }
   function cap() {
-    var p = [], cx = 12, cy = 6.7;
-    for (var i = 0; i < 28; i++) { var a = Math.PI * i / 14, d = i % 2 ? 4.6 : 5.6; p.push(num(cx + d * Math.cos(a)) + " " + num(cy + d * Math.sin(a))); }
-    return '<path ' + C + ' fill-rule="evenodd" d="M' + p.join("L") + 'zM12 3.3a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zM12 4.6a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 0 1 0-4.2z"/>';
+    var K = 6, g = 0.24, cy = 4.4, rx = 6.2, ry = 3, gap = 0.8, H = 3.8, fl = 1, tip = 1.2, d = "";
+    function X(t, f) { return num(12 - (rx + f) * Math.cos(t)); }
+    function Y(t, dy) { return num(cy + ry * Math.sin(t) + gap + dy); }
+    for (var i = 0; i < K; i++) {
+      var a0 = i * Math.PI / K + g / 2, a1 = (i + 1) * Math.PI / K - g / 2, am = (a0 + a1) / 2;
+      d += "M" + X(a0, 0) + " " + Y(a0, 0) + "L" + X(am, 0) + " " + Y(am, 0) + "L" + X(a1, 0) + " " + Y(a1, 0) +
+        "L" + X(a1, fl) + " " + Y(a1, H - tip) + "L" + X(am, fl) + " " + Y(am, H) + "L" + X(a0, fl) + " " + Y(a0, H - tip) + "z";
+    }
+    return '<path ' + C + ' fill-rule="evenodd" d="' + ell(6.2, 3) + ell(5.1, 2.23) + ell(4.25, 1.64) + '"/><path ' + C + ' d="' + d + '"/>';
   }
   var CREST = [
     cap(),

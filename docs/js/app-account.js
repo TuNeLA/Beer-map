@@ -599,7 +599,8 @@
         // SAFE: Swedish only, no SV/EN buttons.
         body.appendChild(el("div", { class: "intro-brand", text: "PintsNow" }));
         body.appendChild(el("p", { class: "intro-tag", text: t("introTag") }));
-        body.appendChild(steps);
+        // uifix4 B5: the install pitch just showed these 3 lines in this page load (js/install1.js) → no repeat here
+        if (!(window.INSTALL1 && window.INSTALL1.pitched && window.INSTALL1.pitched())) body.appendChild(steps);
         if (ageOk()) { cb.checked = true; go.disabled = false; }   // fixJ T-03: 18+ already answered (join card) → no 2nd year question
         else body.appendChild(window.SAFETY && window.SAFETY.ageWidget ? window.SAFETY.ageWidget(cb) : el("label", { class: "age-row", for: "age-cb" }, [cb, el("span", { text: t("age18") })]));   // SAFE 🔞
         body.appendChild(go);
