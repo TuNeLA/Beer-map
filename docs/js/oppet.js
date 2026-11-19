@@ -140,7 +140,8 @@
       if (r && r.error) { if (U.missing && U.missing(r.error)) fixOff = true; return; }
       var d = A.parseData ? A.parseData(r.data) : r.data, n = {};
       (Array.isArray(d) ? d : []).forEach(function (x) { if (x && x.id != null && Array.isArray(x.w) && x.w.length === 7) n[String(x.id)] = { w: x.w, src: x.src, at: x.at }; });
-      fixes = n; changed();
+      // only when something changed: changed() redraws counts / open cards (beerui-pw: an open bar card lost its tap list row)
+      if (JSON.stringify(n) !== JSON.stringify(fixes)) { fixes = n; changed(); }
     }, function () { fixBusy = false; });
   }
   var t0 = Date.now();
