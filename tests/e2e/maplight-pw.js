@@ -114,10 +114,12 @@ async function runGL(b) {
     ok(idle.spreads >= 1, "the light spread once when the map opened (motion allowed here)", idle);
     await page.screenshot({ path: require("./env.js").OUT + "maplight-gl-z16.png" }).catch(() => {});
     /* ---------- poll: the same data rebuilds nothing; a step up sends once ---------- */
-    const a = await page.evaluate(() => ({ s: Object.assign({}, BARLIGHT.stats), g: GLBARS.stats.sets, n: __gm().getStyle().layers.length }));
-    await poll(page); await poll(page);
-    const c = await page.evaluate(() => ({ s: Object.assign({}, BARLIGHT.stats), g: GLBARS.stats.sets, n: __gm().getStyle().layers.length }));
-    ok(c.s.sets >= a.s.sets + 2, "setup: two more polls reached BARLIGHT.set", [a.s.sets, c.s.sets]);
+    const a = await page.evaluate(() => ({ s: Object.assign({}, BARLIGHT.stats), g: GLBARS.stats.sets, n: __gm().getStyle().layers.length, at: PN.s.lastPollAt }));
+    await poll(page); const b1 = await page.evaluate(() => PN.s.lastPollAt); await poll(page);
+    const c = await page.evaluate(() => ({ s: Object.assign({}, BARLIGHT.stats), g: GLBARS.stats.sets, n: __gm().getStyle().layers.length, at: PN.s.lastPollAt }));
+    // lane srvsync (A8): a poll with the same data does not call render() at all now (so BARLIGHT.set is not reached either);
+    // before, the check was "two more polls reached BARLIGHT.set". Setup now = the two polls really ran.
+    ok(b1 > a.at && c.at > b1, "setup: two more polls ran (the same data: no render since srvsync A8)", [a.at, b1, c.at, a.s.sets, c.s.sets]);
     ok(c.s.ptSets === a.s.ptSets && c.s.lineSets === a.s.lineSets && c.s.builds === a.s.builds && c.s.spreads === a.s.spreads && c.g === a.g && c.n === a.n,
       "a poll with the same data: no light data sent, no roads read, no spread, the bar source not sent again, no layer added", { a, c });
     S.beers = crowd({ lobby: 9 }); await poll(page, 2500);
