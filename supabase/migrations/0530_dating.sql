@@ -491,7 +491,8 @@ begin
 end $$;
 
 -- ---------- RPCs ----------
--- oi_state(p_after) -> {on, expires_at, consent, age_ok, paused, offers_left, pair}. pair = null | {id, state, ...} (olnu_oi_view)
+-- oi_state(p_after) -> {on, expires_at, consent, age_ok, paused, pair}. pair = null | {id, state, ...} (olnu_oi_view)
+-- No offers_left: it drops when a pair is made, so it would show a match before the random delay is over.
 -- An ended pair is shown 15 min (only 'ended' + phase), so the other side sees the same neutral text as a timeout.
 create or replace function public.oi_state(p_after bigint default 0)
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -512,7 +513,7 @@ begin
   return jsonb_build_object('on', o.user_id is not null, 'expires_at', o.expires_at,
     'consent', public.olnu_oi_consent_ok(v_uid),
     'age_ok', coalesce((select s.age_ok from public.user_safety s where s.user_id = v_uid), false),
-    'paused', public.olnu_oi_paused(v_uid), 'offers_left', o.offers_left,
+    'paused', public.olnu_oi_paused(v_uid),
     'pair', case when v_pair is null then null else public.olnu_oi_view(v_pair, v_uid, p_after) end);
 end $$;
 

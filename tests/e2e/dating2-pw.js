@@ -77,7 +77,7 @@ class Fake {
   oi_state(k) {
     this.tidy(k); if (this.users[k].open) this.match(k);
     const u = this.users[k], live = this.live(k), p = live && live.notice ? live : this.last(k);
-    return { on: !!u.open, expires_at: u.open ? new Date(Date.now() + 6 * 3600e3).toISOString() : null, consent: u.consent, age_ok: u.age, paused: u.paused, offers_left: u.offers, pair: this.view(p, k) };
+    return { on: !!u.open, expires_at: u.open ? new Date(Date.now() + 6 * 3600e3).toISOString() : null, consent: u.consent, age_ok: u.age, paused: u.paused, pair: this.view(p, k) };
   }
   oi_give_consent(k, a) { if (a.p_version !== 1) this.err("bad_version"); if (!this.users[k].age) this.err("need_age"); this.users[k].consent = true; return { ok: true, version: 1 }; }
   oi_withdraw(k) { const u = this.users[k]; u.consent = false; u.open = null; const p = this.live(k); if (p) this.end(p, "withdraw"); return { ok: true }; }

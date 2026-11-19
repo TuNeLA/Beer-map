@@ -133,7 +133,8 @@ SELECT 'threshold: 5 checked in = A and B are paired (F at another bar is not)',
 SELECT 'delay: the notice waits 2-8 min, the same moment for both', (SELECT notice_at BETWEEN created_at + interval '119 seconds' AND created_at + interval '481 seconds'
    AND offer_until = notice_at + interval '10 minutes' FROM public.oi_pair LIMIT 1), '';
 SELECT 'delay: before notice_at A sees no pair', v::jsonb -> 'pair' = 'null'::jsonb, v FROM r WHERE k = 'stA0';
-SELECT 'no leak: oi_state has no count, bar, place or user id', NOT (v::jsonb ?| array['count', 'n', 'bar_id', 'bar', 'lat', 'lng', 'dist', 'user_id', 'open_n'])
+SELECT 'no leak: oi_state has no count, bar, place, user id or offers left (a pair made before the notice stays hidden)',
+   NOT (v::jsonb ?| array['count', 'n', 'bar_id', 'bar', 'lat', 'lng', 'dist', 'user_id', 'open_n', 'offers_left'])
    AND position((SELECT id::text FROM u WHERE k = 'B') in v) = 0, '' FROM r WHERE k = 'stA0';
 UPDATE public.oi_pair SET notice_at = now() - interval '1 second', offer_until = now() + interval '10 minutes';
 INSERT INTO r SELECT 'stA1', pg_temp.st('A')::text;
