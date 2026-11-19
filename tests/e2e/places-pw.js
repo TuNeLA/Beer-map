@@ -158,6 +158,35 @@ const lbInfo = (page) => page.evaluate(() => { const b = document.querySelector(
       await ctx.close();
     }
 
+    /* ------------------- E4 owner: stats.html "Öppettider från gästerna" ------------------- */
+    if (want("e4o")) {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: "sv-SE", serviceWorkers: "block" });
+      const page = await ctx.newPage(), errs = [], calls = [];
+      page.on("pageerror", (e) => errs.push(e.message));
+      const W = ["", "", "", "960-1440", "960-1560", "720-1560", ""];
+      await page.route(/\/auth\/v1\//, (r) => J(r, {}));
+      await page.route(/rest\/v1\/rpc\/(\w+)/, (r) => {
+        const fn = r.request().url().match(/rpc\/(\w+)/)[1]; let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
+        calls.push([fn, b]);
+        if (b.p_key !== "test-key") return J(r, { code: "PT403", message: "forbidden", details: null, hint: null }, 403);
+        if (fn === "owner_stats2" || fn === "owner_stats") return J(r, { generated_at: new Date().toISOString(), users: { total: 400 }, beers: {}, places: {}, social: {}, care: {}, tech: {} });
+        if (fn === "owner_hours_reports") return J(r, [{ bar_id: PITCHERS, name: "Pitchers", lat: 60.14997, lng: 15.18679, last: new Date().toISOString(), yes: 1, no: 2, fix: 2, top: { w: W, n: 2 }, fixed: null }]);
+        if (fn === "owner_place_signals") return J(r, [{ bar_id: "n1", name: "Gamla Krogen", lat: 60.14, lng: 15.18, sig: { n: 2, nock: true, last_checkin: "2026-07-02T20:00:00Z", gone: 1, no: 0 } }]);
+        if (fn === "owner_set_bar_hours") return J(r, { ok: true, bar_id: b.p_bar_id, w: b.p_week });
+        return J(r, { code: "PGRST202", message: "Could not find the function", details: null, hint: null }, 404);
+      });
+      await page.addInitScript(() => { try { sessionStorage.setItem("olnu.ownerKey", "test-key"); } catch (e) {} });
+      await page.goto(`http://127.0.0.1:${PORT}/stats.html`); await wait(page, 3000);
+      const t = await page.evaluate(() => { const p = document.getElementById("pHours"); return p && !p.hidden ? p.innerText.replace(/\s+/g, " ") : null; });
+      ok("E4 owner panel: Pitchers Ja 1 · Nej 2 · Rätta 2, the fix week, 'Kanske stängt' with 2 signals", !!t && /Pitchers/.test(t) && /Ja 1 · Nej 2 · Rätta 2/.test(t) && /Fre 16:00–02:00/.test(t) && /Gamla Krogen · 2 signaler/.test(t) && /ingen incheckning/.test(t), t);
+      await page.evaluate(() => { const b = [...document.querySelectorAll("#pHours button")].find((x) => x.textContent === "Godkänn"); if (b) b.click(); }); await wait(page, 800);
+      const set = calls.find((c) => c[0] === "owner_set_bar_hours");
+      ok("E4 owner Godkänn → owner_set_bar_hours(key, Pitchers, the week)", !!set && set[1].p_bar_id === PITCHERS && JSON.stringify(set[1].p_week) === JSON.stringify(W) && set[1].p_clear === false, set);
+      if (want("shots") || process.env.PLACES_SHOTS) { await page.evaluate(() => document.getElementById("pHours").scrollIntoView()); await wait(page, 300); await page.screenshot({ path: SHOTS + "after-e4-owner.png" }); }
+      ok("E4 owner panel: no page errors", errs.length === 0, errs);
+      await ctx.close();
+    }
+
     /* ------------------------------ E3 ------------------------------ */
     if (want("e3")) {
       // a home zone 12 km away + the function answers
