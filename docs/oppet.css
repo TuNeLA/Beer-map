@@ -46,3 +46,23 @@
   box-shadow:0 0 0 2px rgba(255,170,60,.25),0 1px 4px rgba(0,0,0,.5)}
 .pl-mk.pl-nm .pl-lbl{color:#ffd9a0}
 a.btn.oh-dir{display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:inherit}
+/* E4 "Stämmer öppettiderna?" (js/hoursvote.js): the row in the Info fold + the fix sheet. Tokens only, 44 px targets. */
+.hv{display:grid;gap:6px;margin-top:4px}
+.hv-q{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.hv-t{font-size:var(--fs-14);line-height:1.3}
+.hv-bs{display:flex;flex-wrap:wrap;gap:6px}
+.hv-b,.hv-x{min-height:44px;min-width:44px;padding:6px 12px;border-radius:var(--r-md);border:1px solid rgba(255,224,138,.45);background:rgba(255,224,138,.08);
+  color:inherit;font:inherit;font-size:var(--fs-14);cursor:pointer}
+.hv-b:active,.hv-x:active{transform:translateY(1px)}
+.hv-b:disabled{opacity:.5;cursor:default}
+.hv-n{opacity:.85}
+.hv-grid{display:grid;gap:8px;margin:8px 0 6px}
+.hv-day{display:grid;grid-template-columns:2.6em minmax(0,1fr) auto minmax(0,1fr) auto;align-items:center;gap:6px}
+.hv-dn{font-weight:700;font-size:var(--fs-14)}
+.hv-to{opacity:.6}
+.hv-tm{min-width:0;width:100%;min-height:44px;padding:6px 8px;text-align:center;font-variant-numeric:tabular-nums}
+.hv-tm:disabled{opacity:.35}
+.hv-x{padding:6px 10px;border-color:var(--line)}
+.hv-x[aria-pressed="true"]{border-color:var(--amber);background:rgba(245,166,35,.18)}
+.hv-note{font-size:var(--fs-12);margin:0 0 10px}
+@media (prefers-reduced-motion: reduce){.hv-b:active,.hv-x:active{transform:none}}

@@ -58,6 +58,11 @@ function build(now) {
     kebab_top: () => ({ v: 1, town: "Ludvika", list: [] }),                                  // gang.js
     my_places: () => ({ v: 1, bars_n: 3, towns_n: 1, bars: [], towns: [] }),                  // gw.js
     bar_extra: () => ({ v: 1 }),                                                              // barinfo.js (no override / extra info)
+    // hoursvote.js + oppet.js (E4, SQL 0531): no votes yet, no fix
+    bar_hours_state: (b) => ({ bar_id: String((b && b.p_bar_id) || ""), counts: { yes: 0, no: 0, fix: 0, here: 0 }, last_yes: null, mine: null, fixed: null, need: 2, check: false }),
+    vote_bar_hours: (b) => ({ bar_id: String((b && b.p_bar_id) || ""), counts: { yes: b && b.p_kind === "yes" ? 1 : 0, no: b && b.p_kind === "no" ? 1 : 0, fix: b && b.p_kind === "fix" ? 1 : 0, here: 0 },
+      last_yes: null, mine: (b && b.p_kind) || null, fixed: null, need: 2, check: false }),
+    bar_hours_fixes: () => [],
     bar_norm: () => ({ v: 1, bars: {} }),                                                     // pnui.js (no usual crowd known)
     bar_photos: () => ({ v: 1, group: [], public: [] }),                                      // barfoto.js
     crew_dance_bar: () => ({ v: 1 }),                                                         // crew.js

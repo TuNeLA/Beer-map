@@ -175,3 +175,20 @@ body.brp-on{overflow:hidden}
 .bb-bar svg{width:20px;height:20px}
 body.bb-on{overflow:hidden}
 /* bold BUMP END */
+/* E3 "Sista bussen hem" card (js/lastbus.js, lane places): a calm info card in the Hem-läge list, same tokens as .bh-drv */
+.lb{display:flex;flex-direction:column;gap:var(--sp-1);padding:var(--sp-3) var(--sp-5);border-radius:var(--r-l);background:var(--ds-card);color:var(--ds-text)}
+.lb-h{display:flex;align-items:center;gap:var(--sp-3);font-size:var(--fs-16);line-height:24px}
+.lb-h b{font-weight:700}
+.lb .lb-i{width:24px;height:24px;flex:none;color:var(--ds-amber)}
+.lb p{margin:0}
+.lb-big{font-size:var(--fs-22);line-height:28px;font-weight:700}
+.lb-time{font-size:var(--fs-34);line-height:40px;font-variant-numeric:tabular-nums}
+.lb-in{font-size:var(--fs-16);font-weight:400;color:var(--ds-text-2)}
+.lb-s{font-size:var(--fs-14);line-height:20px;color:var(--ds-text-2);overflow-wrap:anywhere}
+.lb-walk{display:flex;align-items:center;gap:var(--sp-2)}
+.lb-walk .lb-i{width:18px;height:18px;color:var(--ds-text-2)}
+.lb-src{font-size:var(--fs-12);line-height:16px;color:var(--ds-muted);margin-top:var(--sp-1)}
+.lb-go{align-self:flex-start;min-height:48px;min-width:120px;margin-top:var(--sp-2);padding:0 var(--sp-4);border:0;border-radius:var(--r-md);
+  background:var(--ds-raised);color:var(--ds-text);font:inherit;font-size:var(--fs-16);font-weight:700;cursor:pointer}
+.lb-go:active{background:var(--ds-amber-t)}
+.lb-gone .lb-gone-t{font-size:var(--fs-18);line-height:24px}

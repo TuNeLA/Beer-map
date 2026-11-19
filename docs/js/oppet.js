@@ -17,6 +17,11 @@
   var A = null;
   var H = null, SB = null, nmList = [], nmById = {}, loaded = false;
   var overrides = {};                 // bar id → {min, closed, ev} (tonight's user report)
+  // E4 (SQL 0531): hours that guests (2 users, same week) or the owner fixed: bar id → {w, src, at}. They beat OpenStreetMap
+  // everywhere (map dim, lists, the bar sheet). bar_hours_fixes() once per 6 h, first when a bar sheet opens (js/hoursvote.js)
+  // or 10 min after the start (never in the cold start: perf-pw "≤ 12 requests in 20 s"); a missing function (PGRST202) = off.
+  // mineFix: my own fix shows at once for me (this session) until the crowd agrees.
+  var fixes = {}, mineFix = {}, fixAt = 0, fixOff = false, fixBusy = false, FIX_MS = 6 * 3600e3;
   var SEEN_KEY = "olnu.aioClose", lastMode = null, chipCache = { at: 0, key: "", v: null };
   var DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
   var DSV = ["mån", "tis", "ons", "tor", "fre", "lör", "sön"], DEN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -126,9 +131,32 @@
   function sbMap(rows) { return rows.map(function (x) { return { name: x[0], lat: x[1], lng: x[2], w: x[3], guess: !!x[4], addr: x[5] || "" }; }); }
   function sbReady() { try { document.dispatchEvent(new CustomEvent("oppet:sb")); } catch (e) {} }
   function changed() { chipCache.at = 0; try { if (A) A.updateCounts(); } catch (e) {} modeCheck(true); }
+  function loadFixes(force) {
+    if (fixOff || fixBusy || !A || !A.LIVE || !A.rpc || !(A.authed && A.authed())) return;
+    if (!force && Date.now() - fixAt < FIX_MS) return;
+    fixBusy = true; fixAt = Date.now();
+    A.rpc("bar_hours_fixes", {}).then(function (r) {
+      fixBusy = false;
+      if (r && r.error) { if (U.missing && U.missing(r.error)) fixOff = true; return; }
+      var d = A.parseData ? A.parseData(r.data) : r.data, n = {};
+      (Array.isArray(d) ? d : []).forEach(function (x) { if (x && x.id != null && Array.isArray(x.w) && x.w.length === 7) n[String(x.id)] = { w: x.w, src: x.src, at: x.at }; });
+      fixes = n; changed();
+    }, function () { fixBusy = false; });
+  }
+  var t0 = Date.now();
+  function pollFixes() { if (Date.now() - t0 > 10 * 60e3) loadFixes(false); }
+  // where the shown hours come from: {src: "me" | "crowd" | "owner" | "osm", at} (null = no hours)
+  function hoursSrc(bar) {
+    if (!bar) return null;
+    var id = String(bar.id), f = mineFix[id] || fixes[id];
+    if (f) return { src: mineFix[id] ? "me" : f.src, at: f.at || null };
+    return hoursFor(bar) ? { src: "osm", at: null } : null;
+  }
   function hoursFor(bar) {
     if (!bar) return null;
     var id = String(bar.id);
+    if (mineFix[id]) return mineFix[id].w;
+    if (fixes[id]) return fixes[id].w;
     if (H && H.bars && H.bars[id]) return H.bars[id];
     var n = nmById[id] || (isFinite(bar.lat) ? nmById[placeId(bar.lat, bar.lng)] : null);
     return n ? n.w : null;
@@ -361,7 +389,7 @@
       try { if (/[?&]hemfard=1/.test(location.search)) setTimeout(function () { hemfardSheet(myBar()); }, 2500); } catch (e) {}   // ⏰ push tap
     },
     onAuthed: function () { load(); },
-    onPoll: function () { load(); chipCache.at = 0; modeCheck(false); try { checkClosing(); } catch (e) {} },
+    onPoll: function () { load(); pollFixes(); chipCache.at = 0; modeCheck(false); try { checkClosing(); } catch (e) {} },
     hudChipsHTML: function () {
       var v = null; try { v = chip(); } catch (e) { v = null; }
       return v ? '<button type="button" class="hx-chip hx-aio" data-hx="' + v.hx + '">' + esc(v.t) + "</button>" : "";
@@ -383,6 +411,14 @@
       chipCache.at = 0;
     },
     sbList: function () { return SB; },
+    hoursSrc: hoursSrc, loadFixes: loadFixes,
+    // js/hoursvote.js: my fix shows at once for me; a fix that went live (state.fixed) for everybody
+    setFix: function (id, w, src, at) {
+      var k = String(id);
+      if (src === "me") { if (w) mineFix[k] = { w: w, src: "me", at: new Date().toISOString() }; else delete mineFix[k]; }
+      else if (w) fixes[k] = { w: w, src: src || "crowd", at: at || null };
+      changed();
+    },
     nmSheet: nmSheet, sbSheet: sbSheet, distTxt: distTxt, hemfardSheet: hemfardSheet,
     _set: function (h, sb) { if (h) { H = h; nmList = []; nmById = {}; (h.nm || []).forEach(function (x) { var o = { id: placeId(x[1], x[2]), name: x[0], lat: x[1], lng: x[2], t: x[3], w: x[4] }; nmList.push(o); nmById[o.id] = o; }); } if (sb) SB = sbMap(sb.stores); loaded = true; changed(); if (sb) sbReady(); },
     _check: checkClosing
