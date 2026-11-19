@@ -25,6 +25,45 @@
   });
   // </split:imports>
 
+  /* ---------- A11: the camera opens where the user was last (not Ludvika first) ----------
+     Order: the saved camera olnu.cam {lat, lng, z, at} (< 30 days) → the last own fix olnu.lastFix (< 7 days, z START_ZOOM) →
+     the coarse home town olnu.htPos (< 30 days, about 10 km: z 11, a town view) → Ludvika. Only the VIEW moves: no pin is drawn
+     here, so a rough position never shows as an exact pin (fastpos.js rule). Storage can throw (private mode, full): then Ludvika.
+     The camera is saved 1 s after each move and when the app is hidden. */
+  var CAM_KEY = "olnu.cam", CAM_MS = 30 * 86400e3, FIX_MS = 7 * 86400e3, TOWN_Z = 11;
+  function camRead(k, ms) {
+    try {
+      var c = JSON.parse(localStorage.getItem(k) || "null");
+      if (!c || typeof c !== "object" || !isFinite(c.lat) || !isFinite(c.lng) || !U.validPos(+c.lat, +c.lng)) return null;
+      var age = Date.now() - (+c.at || 0);
+      return age >= 0 && age < ms ? c : null;
+    } catch (e) { return null; }
+  }
+  function startView() {
+    var c = camRead(CAM_KEY, CAM_MS);
+    if (c) return [[+c.lat, +c.lng], Math.max(3, Math.min(19, isFinite(c.z) ? +c.z : START_ZOOM))];
+    c = camRead("olnu.lastFix", FIX_MS);
+    if (c) return [[+c.lat, +c.lng], START_ZOOM];
+    c = camRead("olnu.htPos", CAM_MS);
+    if (c) return [[+c.lat, +c.lng], TOWN_Z];
+    return [LUDVIKA, START_ZOOM];
+  }
+  function startCamera(m) {
+    var v = startView(), saveT = 0;
+    m.setView(v[0], v[1]);
+    function save() {
+      clearTimeout(saveT); saveT = 0;
+      try {
+        var ce = m.getCenter(), z = m.getZoom();
+        if (!ce || !U.validPos(ce.lat, ce.lng) || !isFinite(z)) return;
+        localStorage.setItem(CAM_KEY, JSON.stringify({ lat: Math.round(ce.lat * 1e5) / 1e5, lng: Math.round(ce.lng * 1e5) / 1e5, z: Math.round(z * 100) / 100, at: Date.now() }));
+      } catch (e) {}
+    }
+    m.on("moveend", function () { clearTimeout(saveT); saveT = setTimeout(save, 1000); });
+    document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") save(); });
+    window.addEventListener("pagehide", save);
+  }
+
   /* ---------- Map ---------- */
   // v14 worldwide: no Sweden bounds. worldCopyJump keeps pins visible across the date line.
   var map = L.map("map", {
@@ -33,8 +72,8 @@
   });
   PN.put({ map: map });   // <split:put/>
   smoothMoves(map);
-  // Start on Ludvika. If the user allows location, we move to them (see locate()).
-  map.setView(LUDVIKA, START_ZOOM);
+  // A11 (storage audit 5): start where the user was. If the user allows location, we move to them (see locate()).
+  startCamera(map);
   // Default tiles: Esri Dark Gray Canvas (no key, no watermark). With CFG.CARTO_KEY set: CARTO dark_all.
   // mbx: these raster layers are only the start frame and the silent fallback (js/mbx.js raster engine); the map itself is
   // the ONE Mapbox GL map js/basemap.js makes in this container. L here = js/mbx.js (no Leaflet).

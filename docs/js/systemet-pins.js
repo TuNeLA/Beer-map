@@ -105,6 +105,7 @@
     try { if (window.FX && FX.haptic) FX.haptic(8); } catch (e) {}
     popup = L.popup({ className: "olnu-bar sb-pop", offset: L.point(0, -12), autoPan: !phone(), maxWidth: Math.min(300, (window.innerWidth || 360) - 40) })
       .setLatLng([s.lat, s.lng]).setContent(cardHTML(s)).openOn(map);
+    popup._sbKey = key(s);   // A2b: the store whose card is open (onPreclick: a tap on it again = close only)
   }
 
   /* ---------- the icon (same drawing for canvas and SVG) ---------- */
@@ -176,7 +177,12 @@
     m.queryRenderedFeatures([[p.x - 18, p.y - 18], [p.x + 18, p.y + 18]], { layers: [LAY] }).forEach(function (f) {
       var q = m.project(f.geometry.coordinates), d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; best = f; }
     });
-    var s = best && byKey[best.properties.k]; if (s) { if (e.originalEvent) e.originalEvent._olnuGl = 1; openCard(s); }
+    var s = best && byKey[best.properties.k];
+    // A2b (same rule as mapfix I-110 in glmap.js): while a pop-up is open, a tap only closes it. A tap on the store whose card is
+    // open (or near it) = close only, never the same card again. A tap ON another store (the 18 px box) still switches.
+    var pop = e._pnPop !== undefined ? e._pnPop : (map._popup && map._popup._map ? map._popup : null);
+    if (s && pop && pop === popup && popup._sbKey === key(s)) return;
+    if (s) { if (e.originalEvent) e.originalEvent._olnuGl = 1; openCard(s); }
   }
 
   /* ---------- Leaflet fallback ---------- */

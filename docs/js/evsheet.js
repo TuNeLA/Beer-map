@@ -382,9 +382,24 @@
     var plats = e.tv ? L("📺 på TV", "📺 on TV") : placeOf(e) || L("stan", "town");
     var text = fill(sv() ? pick("tellMsg", T.tellMsg) : T.tellMsgEn[0], { titel: String(e.title || "").slice(0, 46), nar: whenText(e.starts_at), plats: String(plats).slice(0, 36) });
     if (text.length > 140) text = text.slice(0, 139) + "…";
-    tl = { ev: String(e.id), g: g, text: text, st: "send", told: false };
+    tl = { ev: String(e.id), g: g, text: text, st: "send", told: false, at: Date.now() };
     if (detailOpen()) drawDetail();
     tellGo(e, tl);
+  }
+  // A3b: no answer (timeout, no network) ≠ not sent: the server may have saved the line. Before "Inte skickat", and before a
+  // retry posts again, look in the group chat for my line (sent since the tap): there = sent, never a 2nd copy.
+  function lostErr(r) {
+    if (!r) return true;
+    try { return window.X8 && window.X8.isNet ? window.X8.isNet(r.error, r.status) : /timeout|fetch|network|load failed|abort/i.test(String(r.error && r.error.message || "")); } catch (x) { return false; }
+  }
+  function tellLanded(t) {   // → true (my line is there) | null (not there) | false (could not ask)
+    return A.rpc("group_msgs", { p_group_id: t.g.id, p_after_id: 0 }).then(function (r) {
+      if (!r || r.error) return false;
+      var rows = A.parseData(r.data);
+      return (Array.isArray(rows) ? rows : []).some(function (m) {
+        return m && m.is_me && String(m.body || "") === t.text && !(Date.parse(m.created_at) < t.at - 300e3);
+      }) || null;
+    }, function () { return false; });
   }
   function tellGo(e, t) {
     var g = t.g, here = function () { return detailOpen() && String(detailId) === t.ev; };
@@ -392,6 +407,12 @@
       t.st = "fail";
       if (slow || !here()) A.toast(slow ? two("slow") : two("err"), { err: true });   // the line itself says "Inte skickat" (one text)
       if (here()) drawDetail();
+    };
+    var good = function () {
+      t.st = "ok"; t.lost = false;
+      try { A.invoke("notify-group", { event: "msg", group_id: g.id }); } catch (x) {}
+      A.toast(fill(sv() ? pick("tellOk", T.tellOk) : T.tellOkEn[0], { grupp: g.name }));
+      if (detailOpen()) drawDetail();
     };
     // left T-05b: Regler first (before event_go_tell marks "told"), THEN the post ("Int' nu" = nothing sent)
     Promise.resolve(window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : true).then(function (okT) {
@@ -404,14 +425,17 @@
       if (d.first === false) { if (tl === t) tl = null; A.toast(two("tellDone")); if (detailOpen()) drawDetail(); return; }
       t.told = true;
       var st0 = goState(e.id); if (st0) st0.told = true;
-      return A.rpc("post_group_msg", { p_group_id: g.id, p_body: t.text }).then(function (r2) {
-        if (!r2 || r2.error) { bad(!!(r2 && r2.error) && U.errCode(r2.error) === "slow_down"); return; }
-        t.st = "ok";
-        try { A.invoke("notify-group", { event: "msg", group_id: g.id }); } catch (x) {}
-        A.toast(fill(sv() ? pick("tellOk", T.tellOk) : T.tellOkEn[0], { grupp: g.name }));
-        if (detailOpen()) drawDetail();
+      return (t.lost ? tellLanded(t) : Promise.resolve(null)).then(function (m0) {
+        if (m0) { good(); return; }
+        if (m0 === false) { bad(false); return; }   // still no network: stays "Inte skickat", nothing posted twice
+        t.lost = false;
+        return A.rpc("post_group_msg", { p_group_id: g.id, p_body: t.text }).then(function (r2) {
+          if (r2 && !r2.error) { good(); return; }
+          if (!lostErr(r2)) { bad(!!(r2 && r2.error) && U.errCode(r2.error) === "slow_down"); return; }
+          return tellLanded(t).then(function (m) { if (m) good(); else { t.lost = true; bad(false); } });
+        });
       });
-    }).catch(function () { bad(false); });
+    }).catch(function () { t.lost = true; bad(false); });
   }
   function tellRow(e) {
     var t = tl, fail = t.st === "fail";
