@@ -33,6 +33,19 @@ for (const f of files) {
   if (a && b) bad.push(f + " is in run-all.sh AND in not-in-ci.txt: take it off one list");
 }
 for (const f of skip.keys()) if (!existsSync(join(E2E, f))) bad.push("not-in-ci.txt names a file that does not exist: " + f);
+// 1b. (lane ciwork, B4) a test that runs twice INSIDE one shard: suites() keeps only the first line of a name, but
+//     run-all.sh runs every line. Same name on 2 lines, or the same file + args under 2 names = the same test twice.
+const seenName = new Map(), seenCmd = new Map();
+runAll.split(/\r?\n/).forEach((l, i) => {
+  const t = l.trim(); if (!t || t[0] === "#") return;
+  const m = /^(?:if .*?; then |[A-Z_]+=\S+ )*run\s+([A-Za-z0-9_-]+)\s+\S+\s+([^#;]*)/.exec(t);
+  if (!m) return;
+  const name = m[1], cmd = m[2].trim().replace(/\s+/g, " ");
+  if (seenName.has(name)) bad.push("run-all.sh lines " + seenName.get(name) + " and " + (i + 1) + ": suite `" + name + "` is written twice: it runs twice in its shard");
+  else seenName.set(name, i + 1);
+  if (seenCmd.has(cmd) && seenCmd.get(cmd).name !== name) bad.push("run-all.sh lines " + seenCmd.get(cmd).line + " and " + (i + 1) + ": `" + seenCmd.get(cmd).name + "` and `" + name + "` run the same command (" + cmd + "): the test runs twice");
+  else if (!seenCmd.has(cmd)) seenCmd.set(cmd, { name, line: i + 1 });
+});
 for (const s of all) if (/\.js$/.test(s.file) && !existsSync(join(E2E, s.file))) bad.push("run-all.sh line " + s.line + ": " + s.file + " does not exist");
 
 // 2. + 3. suites ↔ shards
