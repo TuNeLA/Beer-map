@@ -74,17 +74,21 @@ jobs:
           key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.bkey }}
       - name: Install Playwright browsers (cache miss)
         if: steps.pw.outputs.cache-hit != 'true'
+        timeout-minutes: 12
         run: npx playwright install --with-deps ${{ matrix.browsers }}
+      # 19 Nov: a cached WebKit start hung for 30 min (ui-08 cancelled twice, run 44451466712). Each launch now has a 60 s limit,
+      # the probe a 150 s limit, and the step 14 min, so a bad cache falls back to a fresh install instead of eating the job.
       - name: Check that the cached browsers start (cache hit)
         if: steps.pw.outputs.cache-hit == 'true'
+        timeout-minutes: 14
         env:
           BROWSERS: ${{ matrix.browsers }}
         run: |
-          node -e '
+          timeout 150 node -e '
             const pw = require("playwright");
-            (async () => { for (const b of process.env.BROWSERS.split(/\s+/).filter(Boolean)) { const x = await pw[b].launch(); await x.close(); console.log(b + " starts"); } })()
+            (async () => { for (const b of process.env.BROWSERS.split(/\s+/).filter(Boolean)) { const x = await pw[b].launch({ timeout: 60000 }); await x.close(); console.log(b + " starts"); } })()
               .catch((e) => { console.log(String(e).slice(0, 300)); process.exit(1); });' \
-          || npx playwright install --with-deps $BROWSERS
+          || timeout 660 npx playwright install --with-deps $BROWSERS
       - name: Build the site that goes live (shards with site=bundled; scripts/build-site.mjs = the deploy's own build)
         if: matrix.site == 'bundled'
         run: node scripts/build-site.mjs --out "$RUNNER_TEMP/site" --bundle on --sha "$GITHUB_SHA"
