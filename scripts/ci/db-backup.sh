@@ -11,6 +11,9 @@
 # database 127.0.0.1:54322 inside the runner. Nothing here connects to a Supabase project to write.
 set -euo pipefail
 cmd=${1:-}; LOCAL_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+# the local superuser of the runner's Supabase database (local default password): the local `postgres` role may not write
+# cron.job (proof run 44521489281: "permission denied for table job"). Local only, gone when the job ends.
+ADMIN_URL="postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres"
 say() { echo "$*"; [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "$*" >> "$GITHUB_STEP_SUMMARY" || true; }
 mask() {   # hide the password part of the connection string too (GitHub masks only the whole secret)
   [ -n "${GITHUB_ACTIONS:-}" ] || return 0
@@ -70,10 +73,10 @@ restore)
   nv=$(grep -cE '^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$' "$d/schema.sql" || true)
   if [ "${nv:-0}" -gt 0 ]; then grep -vE '^ALTER TABLE ONLY .* ALTER COLUMN .* SET \(pg_attver=[0-9]+\);$' "$d/schema.sql" > "$d/schema.tmp"; mv "$d/schema.tmp" "$d/schema.sql"; say "note: $nv 'SET (pg_attver=..)' column lines skipped (unknown option; BACKUP.md restores need the same)"; fi
   # BACKUP.md step 2 for a new project: pg_cron on first (live has cron jobs: data.sql fills cron.job)
-  psql "$LOCAL_URL" -X -q -v ON_ERROR_STOP=1 -c "create extension if not exists pg_cron with schema pg_catalog" > /dev/null
-  psql "$LOCAL_URL" -X -q --single-transaction -v ON_ERROR_STOP=1 -f "$d/roles.sql" -f "$d/schema.sql" \
+  psql "$ADMIN_URL" -X -q -v ON_ERROR_STOP=1 -c "create extension if not exists pg_cron with schema pg_catalog" > /dev/null
+  psql "$ADMIN_URL" -X -q --single-transaction -v ON_ERROR_STOP=1 -f "$d/roles.sql" -f "$d/schema.sql" \
     -c "SET session_replication_role = replica" -f "$d/data.sql" > restore.log 2>&1 || { why; exit 1; }
-  counts "$LOCAL_URL" > got.txt
+  counts "$ADMIN_URL" > got.txt
   say "### Restore test ($SRC_NAME dump $d into a local Supabase database)"; say '| what | in the dump run | restored | ok |'; say '|---|---|---|---|'
   bad=0
   while read -r k want; do

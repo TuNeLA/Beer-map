@@ -26,6 +26,7 @@ esac`);
   w("psql", `url=$1; for a in "$@"; do case "$a" in *"begin read only"*) c=1;; *.sql) r=1;; esac; done
 if [ -n "$c" ]; then case "$url" in *127.0.0.1*) printf '%s\\n' "\${FAKE_LOCAL:-$FAKE_SRC}" | tr ';' '\\n';; *) printf '%s\\n' "$FAKE_SRC" | tr ';' '\\n';; esac; exit 0; fi
 case "$url" in *127.0.0.1*) ;; *) echo "psql wrote to a non-local database" >&2; exit 9;; esac
+[ -n "$r" ] || exit 0
 [ -n "$FAKE_RESTORE_MSG" ] && printf '%s\\n' "$FAKE_RESTORE_MSG" | tr ';' '\\n' >&2
 exit \${FAKE_RESTORE_RC:-0}`);
   w("7z", `op=$1; shift; out=""; o=""; for a in "$@"; do case "$a" in -o*) o=\${a#-o};; -*) ;; *) [ -z "$out" ] && out=$a || src=$a;; esac; done
