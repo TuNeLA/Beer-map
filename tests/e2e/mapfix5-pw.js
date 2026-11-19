@@ -232,11 +232,72 @@ async function b9(browser) {
   await ctx.close();
 }
 
+/* ---------- d4: the empty state on the map ---------- */
+const BASE = "http://127.0.0.1:" + PORT + "/";
+const cardSt = (page) => page.evaluate(() => { const c = document.querySelector(".pn-me-card"), vis = !!c && !c.hidden && getComputedStyle(c).display !== "none";
+  const go = c && c.querySelector(".pn-me-go"), r = vis ? c.getBoundingClientRect() : null, dock = document.querySelector(".dock, #dock, .pn-dock");
+  const x = c && c.querySelector(".pn-me-x"), xr = x && vis ? x.getBoundingClientRect() : null, gr = go && !go.hidden && vis ? go.getBoundingClientRect() : null;
+  return { vis, t: vis ? c.querySelector(".pn-me-t").textContent : "", s: vis ? c.querySelector(".pn-me-s").textContent : "", go: !!gr ? go.textContent.trim() : "",
+    r: r && { t: Math.round(r.top), b: Math.round(r.bottom), l: Math.round(r.left), w: Math.round(r.width) }, x44: !!xr && xr.width >= 44 && xr.height >= 44, go44: !gr || gr.height >= 44,
+    dockTop: dock ? Math.round(dock.getBoundingClientRect().top) : null }; });
+async function openD4(browser, o = {}) {
+  const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 }, o);
+  const errs = []; page.on("pageerror", (e) => { if (!/ResizeObserver/.test(e.message)) errs.push(e.message); });
+  await page.goto(BASE);
+  await page.waitForFunction(() => window.__map && window.PN && PN.s && PN.s.firstLoadDone && PN.s.lastPollAt > 0, null, { timeout: 30000 }).catch(() => console.log("no first poll"));
+  await page.evaluate(() => window.__map.setView([60.1505, 15.1872], 15, { animate: false }));
+  await wait(page, 7000);   // calm start + one check (5 s)
+  return { ctx, page, errs };
+}
+async function d4(browser) {
+  // a) nobody out: the calm card, no fake pin, no row (nothing known elsewhere), 44 px close, above the dock
+  let { ctx, page, errs } = await openD4(browser, { empty: true });
+  let c = await cardSt(page);
+  ok("d4 empty: nobody in view = one calm card 'Inga pins här just nu' + 'Kartan visar bara folk som delar sin plats.' (old: no text at all)",
+    c.vis && c.t === "Inga pins här just nu" && /^Kartan visar bara folk/.test(c.s) && !c.go, c);
+  ok("d4 empty: the card sits above the dock, inside the screen, ✕ is 44 px", !!c.r && c.r.l >= 12 && c.r.w <= 366 && (c.dockTop == null || c.r.b <= c.dockTop) && c.x44, c);
+  // the ✕ hides it; a move does not bring it back
+  await page.evaluate(() => document.querySelector(".pn-me-card .pn-me-x").click()); await wait(page, 300);
+  await page.evaluate(() => __map.setView([60.1530, 15.1900], 15, { animate: false })); await wait(page, 6000);
+  c = await cardSt(page);
+  ok("d4 empty: ✕ hides the card and a map move does not bring it back", !c.vis, c);
+  ok("d4 empty: no page errors", errs.length === 0, errs);
+  await ctx.close();
+  // b) people out in view: no card (guard); moved away to Borlänge: the card + 'Närmast folk: N km bort' flies back to them
+  ({ ctx, page, errs } = await openD4(browser, {}));
+  c = await cardSt(page);
+  ok("d4 guard: pins in view = no card", !c.vis, c);
+  await page.evaluate(() => __map.setView([60.4858, 15.4371], 14, { animate: false })); await wait(page, 6500);
+  c = await cardSt(page);
+  ok("d4 away: no pin in view but pins 30+ km off = the card with the row 'Närmast folk: … km bort' (44 px)", c.vis && /^Närmast folk: \d+(,\d)? km bort$/.test(c.go) && c.go44, c);
+  if (c.vis && c.go) {
+    await page.evaluate(() => document.querySelector(".pn-me-card .pn-me-go").click()); await wait(page, 3500);
+    const at = await page.evaluate(() => { const ce = __map.getCenter(); return { lat: +ce.lat.toFixed(3), lng: +ce.lng.toFixed(3) }; });
+    c = await cardSt(page);
+    ok("d4 away: a tap on the row flies to the nearest people (Ludvika) and the card goes", Math.abs(at.lat - 60.15) < 0.03 && Math.abs(at.lng - 15.19) < 0.05 && !c.vis, { at, c });
+  }
+  // c) a sheet open = no card
+  await page.evaluate(() => __map.setView([60.4858, 15.4371], 14, { animate: false })); await wait(page, 6000);
+  await page.evaluate(() => { const b = document.getElementById("btn-groups") || document.querySelector(".dock-groups, #btn-grupper"); if (b) b.click(); }); await wait(page, 6000);
+  const sh = await page.evaluate(() => !!(PN.s && PN.s.sheetCur));
+  c = await cardSt(page);
+  ok("d4 guard: with a sheet open there is no card", !sh || !c.vis, { sh, c });
+  await ctx.close();
+  // d) English: the app is Swedish only for now (i18n.js, owner 7 Nov: lang is always "sv"); the en text is ready: swap I18N for one check
+  ({ ctx, page, errs } = await openD4(browser, { empty: true }));
+  await page.evaluate(() => { const I0 = window.I18N; window.I18N = { lang: "en", t: I0.t, add: I0.add, set: I0.set }; try { PN.mapEmpty.check(); } finally { window.__en = 1; window.I18N = I0; } });
+  c = await cardSt(page);
+  await page.evaluate(() => PN.mapEmpty.check());
+  ok("d4 en: 'No pins here right now' + 'The map only shows people who share their place.'", c.vis && c.t === "No pins here right now" && /^The map only shows/.test(c.s), c);
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch(launchOpts([]));
   try {
     await sect("b11", () => b11(browser));
     await sect("b9", () => b9(browser));
+    await sect("d4", () => d4(browser));
   } finally { await browser.close(); }
   console.log("\nmapfix5: " + pass + " pass, " + fail + " fail" + (TOKEN ? " (real token)" : ""));
   process.exit(fail ? 1 : 0);
