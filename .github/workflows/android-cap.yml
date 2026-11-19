@@ -18,7 +18,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: [main]
+    branches: [main, big-update, "ci/**"]   # ci/**: a lane that changes android-cap/ sees the build before the merge
     paths:
       - "android-cap/**"
       - ".github/workflows/android-cap.yml"
