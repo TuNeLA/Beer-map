@@ -72,9 +72,14 @@
     "my_stats", "my_friends", "my_event_chats", "mark_seen", "walk_timer_tick", "after_report2", "my_night_report"];
   var JSONB_ARG = { my_event_chats: { p_seen: 1 } };
   var NEWB = {}; BUNDLE_NEW.forEach(function (n) { NEWB[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_NEW);
+  // srvsync A7 (0525): pn_sync = rpc_bundle2 with versions. The phone sends the hash of what it has per key; the server sends
+  // only what changed ({s: 1} = same; an object: only its changed fields). A server without pn_sync (PGRST202) = rpc_bundle2
+  // as before, remembered 6 h (olnu.pnsync). While pn_sync is on, the "old server" flags of rpc_bundle2 do not hold names back.
+  var LS_SYNC = "olnu.pnsync", SYNC_OFF_MS = 6 * 3600e3, syncSt = null, sCache = {}, sKeys = [], SYNC_MAX = 120;
+  try { syncSt = JSON.parse(localStorage.getItem(LS_SYNC) || "null"); } catch (e) { syncSt = null; }
   var LS_BSRV = "olnu.bsrv", bSrv = null, noB = {};   // noB: names this server did not take in a bundle (page life)
   try { bSrv = JSON.parse(localStorage.getItem(LS_BSRV) || "null"); } catch (e) { bSrv = null; }
-  if (bSrv && bSrv.v === "old" && Date.now() - bSrv.at < 30 * 60e3) BUNDLE_NEW.forEach(function (n) { noB[n] = 1; });
+  if (bSrv && bSrv.v === "old" && Date.now() - bSrv.at < 30 * 60e3 && !syncOn()) BUNDLE_NEW.forEach(function (n) { noB[n] = 1; });
   // fixP N-02 (0466): the chat reads may go in a bundle too. A server with 0465 but without 0466 answers
   // not_bundled for them: they go alone for this page life, and this phone remembers it 30 min (olnu.bsrv66, own flag: the
   // 0465 names keep their cap and flag). The chat reads are screen reads (SCR66: like the 0465 names, they bundle only in the
@@ -84,7 +89,7 @@
   var BUNDLE_66 = ["group_photos", "msg_reacts", "group_voices", "group_status_v3", "group_status_v2"], N66 = {}, SCR66 = {}, LS_B66 = "olnu.bsrv66", b66 = null;
   BUNDLE_66.forEach(function (n) { N66[n] = 1; SCR66[n] = 1; }); BUNDLE = BUNDLE.concat(BUNDLE_66);
   try { b66 = JSON.parse(localStorage.getItem(LS_B66) || "null"); } catch (e) { b66 = null; }
-  if (b66 && b66.v === "old" && Date.now() - b66.at < 30 * 60e3) BUNDLE_66.forEach(function (n) { noB[n] = 1; });
+  if (b66 && b66.v === "old" && Date.now() - b66.at < 30 * 60e3 && !syncOn()) BUNDLE_66.forEach(function (n) { noB[n] = 1; });
   function b66Set(v) {
     if (b66 && b66.v === v && Date.now() - b66.at < 60e3) return;
     b66 = { v: v, at: Date.now() };
@@ -92,13 +97,13 @@
   }
   // fixP N-01: cap 40 unless this phone saw an old server (a first start used to split its burst in 24 + 24): an old server
   // answers invalid_calls once → chunks of 24, remembered 30 min
-  function bCap() { return bSrv && bSrv.v === "old" ? 24 : 40; }
+  function bCap() { return bSrv && bSrv.v === "old" && !syncOn() ? 24 : 40; }
   function bSrvSet(v) {
     if (bSrv && bSrv.v === v && Date.now() - bSrv.at < 60e3) return;
     bSrv = { v: v, at: Date.now() };
     try { localStorage.setItem(LS_BSRV, JSON.stringify(bSrv)); } catch (e) {}
   }
-  var bundleOff = false, bqT = 0, bundleStats = { sent: 0, calls: 0, alone: 0, pre: 0, preUsed: 0, busy: 0 };
+  var bundleOff = false, bqT = 0, bundleStats = { sent: 0, calls: 0, alone: 0, pre: 0, preUsed: 0, busy: 0, sync: 0, same: 0, part: 0, full: 0, syncOff: "" };
   PN.put({ bundleStats: bundleStats });   // <split:put/>
   var lastTapAt = 0;
   // fixP N-01: typing in a text field (keydown in input / textarea, not Enter) opens no screen: it does not start the tap clock
@@ -148,6 +153,7 @@
       // fixP N-01: start-up window: one lone read waits for company (≤ 2.5 s after it was asked), then goes alone as before
       var w0 = list.length && list[0].at ? 2500 - (Date.now() - list[0].at) : 0;
       if (startWin() && w0 > 50 && !bqT) { PN.s.bq = list.concat(PN.s.bq); bqDue = Date.now() + w0; bqT = setTimeout(bundleGo, w0); return; }
+      if (calls.length === 1 && syncOn()) { syncSend(calls, list); return; }   // srvsync: one call alone still gets "only what changed"
       bAlone(list); return;
     }
     bundleChunks(calls, list, bCap());
@@ -163,6 +169,10 @@
     }
   }
   function bundleSend(calls, list) {
+    if (syncOn()) { syncSend(calls, list); return; }
+    bundleSend2(calls, list);
+  }
+  function bundleSend2(calls, list) {
     bundleStats.sent++; bundleStats.calls += list.length;
     rpcNet("rpc_bundle2", { p_calls: calls }, true).then(function (r) {
       var e = r && r.error, d = r && !e ? parseData(r.data) : null;
@@ -191,6 +201,65 @@
         if (used[x.k] && v && typeof v === "object") { try { v = JSON.parse(JSON.stringify(v)); } catch (x2) {} }
         used[x.k] = 1;
         x.res({ data: v, error: null, status: 200 });
+      });
+    });
+  }
+  /* ---------- srvsync A7: pn_sync (0525) ---------- */
+  function syncOn() { return !(syncSt && syncSt.v === "off" && Date.now() - syncSt.at < SYNC_OFF_MS); }
+  function syncOff(why) {
+    syncSt = { v: "off", at: Date.now() }; bundleStats.syncOff = why;
+    try { localStorage.setItem(LS_SYNC, JSON.stringify(syncSt)); } catch (e) {}
+  }
+  // p_have: per key the hash the phone has ({field: hash} for an object answer)
+  function syncHave(calls, cache) {
+    var o = {};
+    calls.forEach(function (c) { var e = cache[c.k]; if (e && e.h != null) o[c.k] = e.h; });
+    return o;
+  }
+  // one entry of the answer + what the phone had → { ok, v, h }. ok false = the phone cannot build the value (no copy).
+  function syncTake(it, old) {
+    if (!it || typeof it !== "object") return { ok: false };
+    if (it.s) return old && old.h != null ? { ok: true, v: old.d, h: old.h, how: "same" } : { ok: false };
+    if (it.p) {
+      if (!old || !old.d || typeof old.d !== "object" || Array.isArray(old.d) || !it.h || typeof it.h !== "object") return { ok: false };
+      var v = {}, d = it.d && typeof it.d === "object" ? it.d : {};
+      Object.keys(it.h).forEach(function (f) { v[f] = Object.prototype.hasOwnProperty.call(d, f) ? d[f] : old.d[f]; });
+      return { ok: true, v: v, h: it.h, how: "part" };
+    }
+    if (!("d" in it)) return { ok: false };
+    return { ok: true, v: it.d === undefined ? null : it.d, h: it.h != null ? it.h : null, how: "full" };
+  }
+  function syncKeep(k, v, h) {
+    if (h == null) return;
+    if (!sCache[k]) { sKeys.push(k); if (sKeys.length > SYNC_MAX) delete sCache[sKeys.shift()]; }
+    sCache[k] = { h: h, d: v };
+  }
+  function syncClone(v) { return v && typeof v === "object" ? JSON.parse(JSON.stringify(v)) : v; }
+  function syncSend(calls, list) {
+    bundleStats.sent++; bundleStats.sync++; bundleStats.calls += list.length;
+    rpcNet("pn_sync", { p_calls: calls, p_have: syncHave(calls, sCache) }, true).then(function (r) {
+      var e = r && r.error, d = r && !e ? parseData(r.data) : null;
+      if (e) {
+        var em = String((e.code || "") + " " + (e.message || "")), st = +(r.status || e.status || 0);
+        if (st === 404 || /PGRST202|could not find the function|does not exist|\b404\b/i.test(em)) { syncOff("missing"); bundleSend2(calls, list); return; }   // no 0525: today's path
+        if (st === 401 || st === 403 || /not_authenticated|jwt/i.test(em)) { bundleSend2(calls, list); return; }   // a session problem: this one as before
+        if (st >= 400 && st < 500) { syncOff("refused"); bundleSend2(calls, list); return; }   // refused (invalid_calls …): rpc_bundle2, 6 h
+        list.forEach(function (x) { x.res({ data: null, error: { message: String(e.message || "error"), code: e.code || "", quiet: true }, status: st }); });
+        return;
+      }
+      if (!d || d.pn !== 1 || !d.r || typeof d.r !== "object" || Array.isArray(d.r)) { syncOff("shape"); bundleSend2(calls, list); return; }
+      var got = {};
+      list.forEach(function (x) {
+        var it = d.r[x.k];
+        if (!it || (it.e && (it.e.code === "not_bundled" || /\bnot_bundled\b/.test(String(it.e.message || ""))))) {
+          if (it) noB[x.n] = 1;
+          bAlone([x]); return;
+        }
+        if (it.e) { x.res({ data: null, error: { message: String(it.e.message || "error"), code: it.e.code || "" } }); return; }
+        var t = got[x.k] || (got[x.k] = syncTake(it, sCache[x.k]));
+        if (!t.ok) { delete sCache[x.k]; bAlone([x]); return; }   // the phone lost its copy: this one alone, in full
+        if (t.how && !t.kept) { bundleStats[t.how]++; syncKeep(x.k, t.v, t.h); t.kept = true; }
+        x.res({ data: syncClone(t.v), error: null, status: 200, sync: t.how });
       });
     });
   }

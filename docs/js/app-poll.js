@@ -135,7 +135,7 @@
     return rpc("poll_v2", p).then(function (r) {
       if (r.error) {
         if (U.missing(r.error)) { PN.s.pollV2 = "missing"; return null; }
-        throw r.error;
+        throw netErr(r.error);
       }
       var d = parseData(r.data);
       if (!d || !Array.isArray(d.pins)) { PN.s.pollV2 = "missing"; return null; }
@@ -146,7 +146,7 @@
   function fetchOld() {
     return Promise.all([rpc("live_beers"), fetchOthers(), fetchCheckins()]).then(function (res) {
       var r = res[0], others = res[1] || {};
-      if (r.error) throw r.error;
+      if (r.error) throw netErr(r.error);
       return (r.data || []).filter(function (b) {
         if (!b || !isFinite(b.lat) || !isFinite(b.lng)) return false;
         var o = others[b.id];
@@ -161,7 +161,7 @@
     if (!LIVE || !PN.s.authed || PN.s.movedState) return Promise.resolve();
     if (document.visibilityState === "hidden") return Promise.resolve();
     loading = true;
-    var startedAt = Date.now(), box = null, dv2 = null;
+    var startedAt = Date.now(), box = null, dv2 = null, prevKey = null;
     var wantHeat = !!(PN.s.heat && PN.s.heatOn && (force === "heat" || Date.now() - PN.s.heatAskAt >= HEAT_MS));
     planStart();   // perf: the calls the modules will ask for after this poll join poll_v2 in one rpc_bundle2
     var step = PN.s.pollV2 === "missing" ? Promise.resolve(null) : fetchV2(startedAt, wantHeat).catch(function (e) {
@@ -172,6 +172,7 @@
     if (PN.s.bq.length) bundleGo();   // perf: poll_v2 + the plan now, as one request
     loadingP = step.then(function (d) {
       if (PN.s.movedState) return;
+      prevKey = drawKey();   // A8: what the map shows now (a module may have changed it since the last poll)
       if (d) {
         dv2 = d;
         box = Array.isArray(d.bbox) && d.bbox.length === 4 ? d.bbox.map(Number) : null;
@@ -196,21 +197,9 @@
       if (PN.s.movedState) return;
       drinkViews = null;
       PN.s.lastPollAt = Date.now();
-      PN.s.beers.forEach(function (b) {
-        var mine = mySkals[b.id];
-        if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
-      });
-      if (window.NEWS) window.NEWS.update(beerOnly());
-      PN.s.newsDirty = true;
-      loadGroupNews();
-      render();
-      loadHeatPoints();
-      streakAlerts(box);
-      evalChaos(true);
-      skalAlert();
-      toastClear("load");
-      if (!PN.s.firstLoadDone) { PN.s.firstLoadDone = true; handleFocus(); }
-      else if (PN.s.pendingFocus != null) handleFocus();   // v27: a pin push tapped while the app is open (routeOpen)
+      drawPoll(box, prevKey);   // B3: a draw error is logged, it is not "no network" (the poll goes on to onPoll)
+      if (!PN.s.firstLoadDone) { PN.s.firstLoadDone = true; pollSafe("focus", handleFocus); }
+      else if (PN.s.pendingFocus != null) pollSafe("focus", handleFocus);   // v27: a pin push tapped while the app is open (routeOpen)
       if (window.X8) { window.X8.pollOk(dv2 ? { me: dv2.me, server_time: dv2.server_time } : null); if (dv2) window.X8.snapSave(dv2); }   // x8: stale off, outbox flush, snapshot
       mods("onPollData", dv2);
       try { persistMaybe(dv2 && dv2.me); } catch (e) {}
@@ -228,7 +217,9 @@
         if (pend && !PN.s.movedState) { finishExport(pend.kind, false); showMoved().then(signIn); return; }
         reauth(); return;
       }
-      if (window.X8) window.X8.pollFail();
+      // B3: only a failed request is a failed poll (x8 caption + back-off). A code error: logged, the real state stays.
+      if (!isNetErr(e)) jsErr("poll", e);
+      else if (window.X8) window.X8.pollFail();
       if (!PN.s.firstLoadDone && x8Snap()) return;   // x8: the last known map instead of a red error
       if (!PN.s.firstLoadDone && navigator.onLine !== false) toast(t("loadFail"), { err: true, id: "load", ms: 0, action: { label: t("retry"), fn: refresh } });
     }).then(function () {
@@ -237,6 +228,56 @@
       schedulePoll();
     });
     return loadingP;
+  }
+  /* ---------- srvsync A8 + B3: the poll draws only what changed; draw errors are not "no network" ---------- */
+  // The poll data as the map draws it: pins (after the skål merge), check-ins, counts, heat, zoom step, language and the
+  // 10-min level-name step (app-pins.js lvName). Same key as the last poll draw, and nobody changed the data since = no
+  // render(): every module that changes the map itself calls render() (rally.js, avpins.js …). "" = always draw.
+  var lastDrawKey = null, quietPolls = 0, jsErrN = {};
+  function drawKey() {
+    try {
+      var me = PN.s.meState || {};
+      return JSON.stringify([PN.s.beers, PN.s.checkins, PN.s.liveTotal, me.beer_count, me.other_count, PN.s.heatOn ? PN.s.heatAskAt : 0,
+        Math.floor(map.getZoom() || 0), document.documentElement.lang || "", Math.floor(Date.now() / 6e5)]);
+    } catch (e) { return ""; }
+  }
+  function drawPoll(box, prevKey) {
+    pollSafe("skal", function () {
+      PN.s.beers.forEach(function (b) {
+        var mine = mySkals[b.id];
+        if (mine != null && !b.is_mine) { b.i_skaled = true; if (b.skal_count < mine) b.skal_count = mine; }
+      });
+    });
+    pollSafe("news", function () { if (window.NEWS) window.NEWS.update(beerOnly()); });
+    PN.s.newsDirty = true;
+    pollSafe("groupNews", loadGroupNews);
+    var key = drawKey(), same = !!key && key === lastDrawKey && prevKey === lastDrawKey && PN.s.firstLoadDone;
+    quietPolls = same ? quietPolls + 1 : 0;
+    if (!same) { lastDrawKey = null; try { render(); lastDrawKey = key; } catch (e) { jsErr("render", e); } }
+    pollSafe("heat", loadHeatPoints);
+    pollSafe("streak", function () { streakAlerts(box); });
+    pollSafe("chaos", function () { evalChaos(true); });
+    pollSafe("skalAlert", skalAlert);
+    toastClear("load");
+  }
+  function pollSafe(where, fn) { try { fn(); } catch (e) { jsErr(where, e); } }
+  // the real error: console + the app log (err.js, max 3 of the same per page), never the "no network" caption
+  function jsErr(where, e) {
+    var m = String((e && (e.message || e.code)) || e || "error").slice(0, 120), k = where + "|" + m;
+    try { console.warn("olnu poll " + where, e); } catch (x) {}
+    jsErrN[k] = (jsErrN[k] || 0) + 1;
+    if (jsErrN[k] <= 3) try { if (window.PNLOG && window.PNLOG.event) window.PNLOG.event("err.js", { m: m, f: "app-poll.js:" + where }); } catch (x) {}
+  }
+  // a failed request (fetchV2 / fetchOld) carries pnNet; anything else that lands in the poll catch is a code error
+  function netErr(e) { try { if (e && typeof e === "object") e.pnNet = 1; } catch (x) {} return e; }
+  function isNetErr(e) { return !!(e && e.pnNet); }
+  // A7 adaptive interval: 30 s while the map is used; idle (no touch 3 min) 60 s; idle and 3 polls in a row with no change
+  // 90 s; idle 15 min and 5 quiet polls 120 s. A touch = 30 s again (touched); x8 back-off wins (schedulePoll).
+  var POLL_QUIET_MS = 90000, POLL_DEEP_MS = 120000, DEEP_IDLE_MS = 15 * 60e3;
+  function pollGap() {
+    if (!idle()) return POLL_MS;
+    if (quietPolls >= 5 && Date.now() - lastTouch > DEEP_IDLE_MS) return POLL_DEEP_MS;
+    return quietPolls >= 3 ? POLL_QUIET_MS : POLL_SLOW_MS;
   }
   // Poll every 30 s; every 60 s when the map was not touched for 3 min. Hidden tab = no timer at all.
   var pollTimer = null, lastTouch = Date.now();
@@ -269,7 +310,7 @@
   function schedulePoll() {
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
     if (!PN.s.pollOn || !LIVE || loading || document.visibilityState === "hidden") return;   // a running poll schedules the next itself
-    var wait = (idle() ? POLL_SLOW_MS : POLL_MS) - (Date.now() - PN.s.lastPollAt);
+    var wait = pollGap() - (Date.now() - PN.s.lastPollAt);
     var x8w = window.X8 ? window.X8.delay() : null;
     if (x8w != null) wait = x8w;   // x8: failed polls back off 5 → 60 s; offline: one try per 60 s (was a 1 s loop)
     pollTimer = setTimeout(function () { pollTimer = null; refresh(); }, Math.max(1000, wait));
@@ -278,7 +319,7 @@
   function stopPoll() { PN.s.pollOn = false; if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
   function touched() {
     var wasIdle = idle();
-    lastTouch = Date.now();
+    lastTouch = Date.now(); quietPolls = 0;
     if (wasIdle && PN.s.pollOn) schedulePoll();   // back from slow mode: next poll on the fast schedule
   }
   ["pointerdown", "keydown", "wheel"].forEach(function (ev) { document.addEventListener(ev, touched, { passive: true, capture: true }); });

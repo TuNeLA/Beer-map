@@ -163,7 +163,7 @@
   var AT_KEY = "olnu.medalsAt", CI_KEY = "olnu.medalsCi", IDLE_MS = 6 * 3600e3;
   lastAward = +U.ls.get(AT_KEY, "0") || 0; if (lastAward > Date.now()) lastAward = 0;
   // ⚡ SPEED (code review #7): award_medals was the 3rd biggest server cost (2502 calls). Own beer / check-in / home = at
-  // once; everything else (chat, skål / rally taps, the poll) only when the last award is older than ms.
+  // once; everything else (chat, skål / rally taps, the app start) only when the last award is older than ms (srvsync C6: not the poll).
   function soft(ms) { if (Date.now() - lastAward >= ms) award(null, true); }
   function award(ev, force) {
     if (!A || !A.LIVE || !A.authed() || off.award_medals) return Promise.resolve();
@@ -563,12 +563,14 @@
       if (o && o.ghost) setTimeout(function () { claim("spoke"); }, 1200);
       setTimeout(function () { award(null, true); }, 1500);
     },
+    // srvsync C6 (server audit 3: award_medals ran as a poll): the map poll only looks for a NEW own check-in (a local
+    // compare, no request) and then awards once. No timed award from the poll any more: a beer (onBeerAccepted), a check-in
+    // (here), going home, the actions above and the app start (onAuthed, max once per 6 h) award.
     onPoll: function () {
       if (!A || !A.authed()) return;
       var ci = A.myCheckin && A.myCheckin(), key = ci ? String(ci.bar_id || ci.id || "") + "|" + (ci.at || ci.created_at || ci.name || "") : "";
       if (!lastCi) lastCi = U.ls.get(CI_KEY, "") || "";
-      if (key && key !== lastCi) { lastCi = key; U.ls.set(CI_KEY, key); award(null, true); return; }
-      soft(IDLE_MS);
+      if (key && key !== lastCi) { lastCi = key; U.ls.set(CI_KEY, key); award(null, true); }
     },
     onStopped: function (kind) { if (kind === "home") award("home", true); },
     onChat: function () { setTimeout(function () { soft(120000); }, 800); }
