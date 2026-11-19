@@ -210,10 +210,13 @@ const scrollTo = async (page, y, sel) => { await page.evaluate(([y, sel]) => { c
           cta: cta && { h: r(cta).h, small: !!(cta.querySelector("small") && cta.querySelector("small").offsetParent) },
           vsm: vsm && { head: vsm.querySelector("h3").textContent, rows: [...vsm.querySelectorAll(".ds-row")].map((b) => ({ c: b.className.replace(/ds-row|pn-row/g, "").trim(), t: b.querySelector(".ds-row-t > span").textContent,
             v: b.querySelector(".pn-row-v") ? b.querySelector(".pn-row-v").textContent : null, sw: b.getAttribute("role") === "switch" ? b.getAttribute("aria-checked") : null, h: r(b).h })) },
-          secs, garderob: !body.querySelector(".pn-vsm .ul-row"), heroT: r(hero).t, heroB: r(hero).t + r(hero).h, vsmT: vsm ? r(vsm).t : 0, mittT: r(body.querySelector(".pn-pf > section:not(.pn-vsm)")).t };
+          secs, garderob: !body.querySelector(".pn-vsm .ul-row"), heroT: r(hero).t, heroB: r(hero).t + r(hero).h, vsmT: vsm ? r(vsm).t : 0, mittT: r(body.querySelector(".pn-pf > section:not(.pn-vsm)")).t,
+          fav: body.querySelector(".bl-fav") ? { t: r(body.querySelector(".bl-fav")).t, b: r(body.querySelector(".bl-fav")).t + r(body.querySelector(".bl-fav")).h } : null };
       });
       ok("C Profil order: strip, identity card, \"Vem ser mig\" right after it, then the rest (Mitt, Hjälp …)", p.cls.join(",") === "tabs,hero,vsm,rest,fold" && p.secs[0] === "Mitt" && p.garderob &&
-        p.heroB <= p.vsmT && p.vsmT - p.heroB <= 40 && p.vsmT < p.mittT && p.name && /pf-top/.test(p.first), { cls: p.cls, secs: p.secs, heroB: p.heroB, vsmT: p.vsmT, mittT: p.mittT });
+        // lane beerui (I-132, owner A24): "Mina favoritöl" sits between the identity card and "Vem ser mig" (inside the vsm wrapper)
+        (p.fav ? p.heroB <= p.fav.t && p.fav.t - p.heroB <= 40 && p.fav.b <= p.vsmT && p.vsmT - p.fav.b <= 40 : p.heroB <= p.vsmT && p.vsmT - p.heroB <= 40) &&
+        p.vsmT < p.mittT && p.name && /pf-top/.test(p.first), { cls: p.cls, secs: p.secs, heroB: p.heroB, vsmT: p.vsmT, mittT: p.mittT, fav: p.fav });
       ok("C no drink goal on Profil (no \"öl kvar\", no \"kvar till\")", !/öl kvar|kvar till|beers left/i.test(p.text), (/.{0,80}(öl kvar|kvar till|beers left).{0,40}/i.exec(p.text) || [])[0]);
       ok("C rank block: icon (≥ 20 px) + name, bar and text in MERITS: \"12 meriter till Premiärlöjtnant Pilsner\", bar 40 %",
         !!p.rank && p.rank.title === "Löjtnant Lager" && p.rank.ico === "11" && p.rank.icoW >= 20 && p.rank.bar === "40%" && p.rank.n === "12 meriter till Premiärlöjtnant Pilsner" && !p.rank.m && p.rank.h >= 44 && /12 meriter till/.test(p.rank.aria), p.rank);

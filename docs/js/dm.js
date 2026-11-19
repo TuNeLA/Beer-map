@@ -15,7 +15,11 @@
    (url /?chat=<group_id> → social.js openChatLink → DM.openById). 📷 photos in a DM send the same event.
    Hooks (app.js mods, after SUGGEST): init, onAuthed, onPoll, groupsSheet, beerPopupHTML, applyText.
    Public: DM.open(t), DM.openWith(params, name), DM.openById(id, fail), DM.unread(), DM.friendBtn(p),
-   DM.memberPanel(g, m, panel, openU), DM.chatOpen(g, ctx) (social.js). Missing RPC (old server) → all hides. */
+   DM.memberPanel(g, m, panel, openU), DM.chatOpen(g, ctx) (social.js). Missing RPC (old server) → all hides.
+   I-132 "Tipsa om en öl" (lane beerui): a beer button left of the field in a 1:1 chat opens a small beer search (js/beerlib.js picker);
+   the pick goes out as ONE normal chat line "Öltips: <name> [öl:<id>] <line>" (the same send path, terms gate and push), and a row
+   with such a line shows as a beer card ("Visa ölen"). DM.tipBeer(targets, text) sends the same line from the beer page
+   ("Tipsa en vän"). An old app shows the line as text. No counters. */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
@@ -217,6 +221,7 @@
     if (!t.last_id) return L("Inga meddelanden än", "No messages yet");
     var b = String(t.last_body || "");
     if (/^📷/.test(b)) b = L("📷 Bild", "📷 Photo") + b.slice(2);
+    b = b.replace(/ \[öl:[0-9A-Za-z_-]{1,40}\]/, "");   // I-132: a beer tip reads "Öltips: Name …" in the list
     return (t.last_me ? L("Du: ", "You: ") : "") + b;
   }
   function row(t) {
@@ -522,8 +527,89 @@
     }, 4000);
   }
 
+  /* ---------- I-132: beer tips ---------- */
+  var TIP_TEST = /^(?:Öltips|Beer tip): .{1,90}? \[öl:[0-9A-Za-z_-]{1,40}\]/;
+  function beerLib() { return window.PN && window.PN.beerlib ? window.PN.beerlib() : Promise.reject(new Error("no beerlib")); }
+  // targets: [{group_id} | {key}] (a friend without a thread gets one, like the 💬 button). -> {sent, failed} or {cancel}
+  function tipBeer(targets, text) {
+    if (off || !A || !A.LIVE) return Promise.resolve({ sent: 0, failed: (targets || []).length });
+    var gate = window.SAFETY && window.SAFETY.ensureTerms ? window.SAFETY.ensureTerms() : Promise.resolve(true);
+    return Promise.resolve(gate).then(function (ok) {
+      if (!ok) return { cancel: true, sent: 0, failed: 0 };
+      var res = { sent: 0, failed: 0 };
+      return (targets || []).slice(0, 10).reduce(function (p, t) {
+        return p.then(function () {
+          var gid = t.group_id ? Promise.resolve(t.group_id) : rpc("dm_open", { p_key: t.key, p_name: myName() }).then(function (r) {
+            var d = r.error ? null : A.parseData(r.data);
+            if (d && d.group_id && !byGid(d.group_id)) TH.unshift(d);
+            return d && d.group_id ? d.group_id : null;
+          });
+          return gid.then(function (id) {
+            if (!id) { res.failed++; return; }
+            return rpc("post_group_msg", { p_group_id: id, p_body: String(text).slice(0, 140) }).then(function (r) {
+              if (r.error) { res.failed++; return; }
+              res.sent++;
+              try { if (A.invoke) A.invoke("notify-group", { event: "msg", group_id: id }); } catch (e) {}
+            });
+          });
+        });
+      }, Promise.resolve()).then(function () { if (res.sent) poll(true); return res; });
+    });
+  }
+  // the beer button + picker in a 1:1 chat, and beer cards for tip lines (a MutationObserver like rundan.js)
+  function beerChat(g, ctx) {
+    if (!g || !g.dm || !ctx || !ctx.list || !window.PN || !window.PN.beerlib) return;
+    var list = ctx.list, row = ctx.input, inp = row && row.querySelector("input"), send = row && row.querySelector(".chat-send");
+    var alive = function () { return ctx.alive ? ctx.alive() : document.body.contains(list); };
+    if (row && inp && send && !row.querySelector(".bl-dmb")) {
+      var b = h("button", { type: "button", class: "bl-dmb", "aria-label": L("Tipsa om en öl", "Recommend a beer"), title: L("Tipsa om en öl", "Recommend a beer") });
+      b.innerHTML = saIc("beer", "");
+      var box = h("div", { class: "bl bl-dmp", hidden: true });
+      row.parentNode.insertBefore(box, row);
+      row.insertBefore(b, row.firstChild);
+      var shut = function () { box.hidden = true; box.innerHTML = ""; b.setAttribute("aria-expanded", "false"); };
+      b.setAttribute("aria-expanded", "false");
+      b.addEventListener("click", function () {
+        if (!box.hidden) { shut(); return; }
+        beerLib().then(function (B) {
+          box.hidden = false; b.setAttribute("aria-expanded", "true");
+          var q = B.picker(box, function (beer) {
+            if (!beer) return;
+            shut();
+            inp.value = B.tipText(beer, "", 140);
+            send.click();   // the normal send path (terms, timeout check, push)
+          }, shut);
+          try { q.focus(); } catch (e) {}
+        }, function () { A.toast(L("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again."), { err: true }); });
+      });
+    }
+    function cards() {
+      var rows = list.querySelectorAll("li.chat-msg[data-mid]"), todo = [];
+      for (var i = 0; i < rows.length; i++) {
+        var li = rows[i], body = li.querySelector(".cm-body");
+        if (!body || li.querySelector(".bl-chatcard") || !TIP_TEST.test(body.textContent || "")) continue;
+        todo.push([li, body]);
+      }
+      if (!todo.length) return;
+      beerLib().then(function (B) { return B.load().then(function () { return B; }, function () { return B; }); }).then(function (B) {
+        todo.forEach(function (x) {
+          var li = x[0], body = x[1], tip = B.parseTip(body.textContent || ""); if (!tip || li.querySelector(".bl-chatcard")) return;
+          var nmEl = li.querySelector(".cm-name, .cm-head b"), who = li.classList.contains("me") ? "" : (nmEl ? String(nmEl.textContent || "").trim() : "");
+          body.classList.add("bl-raw"); li.classList.add("bl-has-card");
+          body.parentNode.insertBefore(B.chatCard(tip, who), body.nextSibling);
+        });
+      }, function () {});
+    }
+    try {
+      var mo = new MutationObserver(function () { if (!alive()) { mo.disconnect(); return; } cards(); });
+      mo.observe(list, { childList: true });
+    } catch (e) {}
+    setTimeout(cards, 300);
+  }
+
   window.DM = {
-    T: T, open: open, openWith: openWith, openById: openById, friendBtn: friendBtn, memberPanel: memberPanel, chatOpen: chatOpen,
+    T: T, open: open, openWith: openWith, openById: openById, friendBtn: friendBtn, memberPanel: memberPanel,
+    chatOpen: function (g, ctx) { chatOpen(g, ctx); try { beerChat(g, ctx); } catch (e) {} }, tipBeer: tipBeer,
     afterUnblock: afterUnblock, blockedCount: function () { return blkN; },
     unread: function () { return off ? 0 : total; }, list: function () { return TH; }, _poll: poll,
     init: function (api) {

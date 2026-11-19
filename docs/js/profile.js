@@ -8,7 +8,9 @@
    the map. The rows below the hero are the modules' own "profileSheet" hooks (moved from "settingsSheet", not
    copied): Ölpasset, Vänner & Hitta (+ Låt mig hittas), Konto, Swish, Spökläge, Topplistan, Wrapped, SOS.
    A missing module or RPC hides its tile. Styles: profile.css. Public: window.PROFIL.
-   d-profile (I-114, 06): PROFIL.visSection() = the "Vem ser mig" group (js/pnui.js shapeProfil puts it right under the hero). */
+   d-profile (I-114, 06): PROFIL.visSection() = the "Vem ser mig" group (js/pnui.js shapeProfil puts it right under the hero).
+   I-132 (lane beerui): "Mina favoritöl" (max 3) comes first in that wrapper: hero, favourites, Vem ser mig. js/beerlib.js favCard()
+   fills it (loaded on demand by PN.beerlib()); it follows Synlighet (friends + groups / friends only / ghost = only me). */
 (function () {
   "use strict";
   var U = window.U, I = window.I18N;
@@ -205,7 +207,70 @@
     paint();
     // a wrapper, not a section of the body: the Profil fold hides the body's own sections (pnui.css), and unlocks.js puts its
     // "Garderob" row in the first list inside .pn-pf (that stays the "Mitt" list)
-    return h("div", { class: "pn-vsm-w ds-keep" }, [sec]);
+    return h("div", { class: "pn-vsm-w ds-keep" }, [favSection(), sec]);
+  }
+  /* I-132: "Mina favoritöl". inst-pw.js rule: nothing may pop in after the sheet showed. So the card is drawn AT ONCE from the
+     view this phone saved last time (olnu.beer.favView: 3 tiles + the privacy line; first time = 3 empty tiles) with its CSS here
+     (not in the lazy beerlib.css). js/beerlib.js favCard() then asks the server and repaints only on a real change (paint = same
+     HTML -> no DOM write). A missing beer library (load error) leaves the card as it is. */
+  var FAV_VIEW = "olnu.beer.favView";
+  var FAV_CSS = ".bl-fav,.bl-fav *{box-sizing:border-box}" +
+    ".bl-fav{color:var(--ds-text);font-family:var(--ds-sans)}" +
+    ".bl-fav .bl-pic{display:grid;place-items:center;overflow:hidden;border-radius:var(--r-md);background:var(--ds-raised);flex:none}" +
+    ".bl-fav .bl-pic img{width:100%;height:100%;object-fit:contain;display:block}" +
+    ".bl-fav .bl-pic.ph{background:var(--bl-photo-bg,#f3f1ea)}" +
+    ".bl-fav .bl-pic.ph img{padding:2px}" +
+    ".bl-fav{margin:var(--sp-5) 0 var(--sp-5)}" +
+    ".bl-fav-h{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-2)}" +
+    "#sheet-body .bl-fav-h h3{margin:0 !important;padding:0 !important;color:var(--ds-muted);font:400 var(--fs-14)/44px var(--ds-sans) !important}" +
+    ".bl-fav-h button{min-height:44px;padding:0 var(--sp-2);background:none;border:0;color:var(--ds-amber-t);font:600 var(--fs-14)/20px var(--ds-sans);cursor:pointer}" +
+    ".bl-fav-g{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2)}" +
+    ".bl-ft{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:var(--sp-3) var(--sp-2);border-radius:var(--r-lg);border:1px solid var(--ds-border);min-width:0; background:radial-gradient(80% 60% at 50% 30%,var(--bl-glow,rgba(232,144,42,.26)) 0,transparent 75%),var(--ds-card);text-align:center;color:inherit;font:inherit;min-height:44px;cursor:pointer}" +
+    ".bl-ft .bl-pic{width:56px;height:80px;margin-bottom:var(--sp-1)}" +
+    ".bl-ft b{font:600 var(--fs-14)/20px var(--ds-sans);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}" +
+    ".bl-ft small{color:var(--ds-text-2);font-size:var(--fs-12);line-height:16px}" +
+    ".bl-ft .n{position:absolute;top:var(--sp-2);left:var(--sp-2);width:22px;height:22px;border-radius:var(--r-pill);display:grid;place-items:center;background:var(--ds-raised);color:var(--ds-amber-t);font:600 var(--fs-12)/1 var(--ds-sans)}" +
+    ".bl-ft.empty{justify-content:center;border-style:dashed;background:var(--ds-card);color:var(--ds-text-2);min-height:150px}" +
+    ".bl-ft.empty svg{width:24px;height:24px;color:var(--ds-amber-t)}" +
+    ".bl-priv{display:flex;align-items:center;gap:var(--sp-2);color:var(--ds-muted);font-size:var(--fs-12);line-height:16px;margin-top:var(--sp-2)}" +
+    ".bl-priv svg{width:16px;height:16px;flex:none}";
+  function favCss() {
+    if (document.getElementById("pf-fav-css")) return;
+    var st = document.createElement("style"); st.id = "pf-fav-css"; st.textContent = FAV_CSS; document.head.appendChild(st);
+  }
+  function favView() { try { var v = JSON.parse(localStorage.getItem(FAV_VIEW) || "null"); return v && Array.isArray(v.t) ? v : null; } catch (e) { return null; } }
+  function favPriv() {
+    var m = safe(function () { return W("PNVIS").mode(); }, "alla");
+    return m === "spoke" ? L("Spökläge: bara du ser dem.", "Ghost mode: only you see them.") : m === "vanner" ? L("Syns bara för dina vänner.", "Seen by your friends only.") :
+      L("Syns för dina vänner och grupper.", "Seen by your friends and groups.");
+  }
+  function favTile(t, i) {
+    if (!t || !t.id) return '<button type="button" class="bl-ft empty" data-bl-find="1">' + pni("plus") + "<b>" + esc(L("Välj", "Pick")) + "</b><small>" + esc(L("Favorit ", "Favourite ") + (i + 1)) + "</small></button>";
+    var pic = t.img ? '<span class="bl-pic' + (t.ph ? " ph" : "") + '"><img src="' + esc(t.img) + '" alt="" loading="lazy" decoding="async"></span>' : '<span class="bl-pic" aria-hidden="true">' + pni("beer") + "</span>";
+    return '<button type="button" class="bl-ft" data-bl-beer="' + esc(t.id) + '"><span class="n" aria-hidden="true">' + (i + 1) + "</span>" + pic + "<b>" + esc(t.n || "") + "</b><small>" + esc(t.s || "") + "</small></button>";
+  }
+  function favPaint(sec, v) {
+    var t = v && Array.isArray(v.t) ? v.t : [];
+    var html = '<div class="bl-fav-h"><h3>' + esc(L("Mina favoritöl", "My favourite beers")) + '</h3><button type="button" data-bl-find="1">' + esc(L("Ändra", "Edit")) + "</button></div>" +
+      '<div class="bl-fav-g">' + [0, 1, 2].map(function (i) { return favTile(t[i], i); }).join("") + '</div><div class="bl-priv">' + pni("eye") + "<span>" + esc((v && v.p) || favPriv()) + "</span></div>";
+    if (sec.__h === html) return false;
+    sec.__h = html; sec.innerHTML = html;
+    return true;
+  }
+  function favSection() {
+    var P = W("PN"); if (!P || !P.beerlib) return null;
+    favCss();
+    var fav = h("section", { class: "bl bl-fav ds-keep", "aria-label": L("Mina favoritöl", "My favourite beers") });
+    favPaint(fav, favView());
+    fav.__blPaint = function (v) { try { localStorage.setItem(FAV_VIEW, JSON.stringify(v)); } catch (e) {} return favPaint(fav, v); };
+    fav.addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+      var b = t.closest("[data-bl-beer]"), id = b && b.getAttribute("data-bl-beer");
+      if (id) { P.beerlib().then(function (B) { B.beer(id); }, function () {}); return; }
+      if (t.closest("[data-bl-find]")) safe(function () { if (P.closeSheet) P.closeSheet(); setTimeout(function () { W("BARSEARCH").open("beer"); }, 60); });
+    });
+    P.beerlib().then(function (B) { if (B && B.favCard) B.favCard(fav); }, function () {});
+    return fav;
   }
 
   window.PROFIL = {

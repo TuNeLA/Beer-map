@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" width="240" height="300" role="img" aria-label="Dry stout">
+<title>Stout (torr)</title>
+<defs>
+<radialGradient id="bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#19233a"/><stop offset="1" stop-color="#121a2a"/></radialGradient>
+<linearGradient id="beer" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#45221f"/><stop offset="1" stop-color="#270805"/></linearGradient>
+<linearGradient id="shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<clipPath id="in"><path d="M163.0 52.0 C163.5 54.7 166.0 62.3 166.0 68.0 C166.0 73.7 164.7 67.3 163.0 86.0 C161.3 104.7 158.2 152.3 156.0 180.0 C153.8 207.7 151.0 240.0 150.0 252.0 L150.0 248.0 L90.0 248.0 L90.0 252.0 C89.0 240.0 86.2 207.7 84.0 180.0 C81.8 152.3 78.7 104.7 77.0 86.0 C75.3 67.3 74.0 73.7 74.0 68.0 C74.0 62.3 76.5 54.7 77.0 52.0 Z"/></clipPath>
+</defs>
+<rect width="240" height="300" rx="24" fill="url(#bg)"/>
+<g transform="translate(120 150) scale(1.12) translate(-120 -150)">
+<ellipse cx="120" cy="272" rx="78" ry="12" fill="#f5a623" opacity=".18"/>
+<path d="M167.0 52.0 C167.5 54.7 170.0 62.3 170.0 68.0 C170.0 73.7 168.7 67.3 167.0 86.0 C165.3 104.7 162.2 152.3 160.0 180.0 C157.8 207.7 155.0 240.0 154.0 252.0 L154.0 252.0 L86.0 252.0 L86.0 252.0 C85.0 240.0 82.2 207.7 80.0 180.0 C77.8 152.3 74.7 104.7 73.0 86.0 C71.3 67.3 70.0 73.7 70.0 68.0 C70.0 62.3 72.5 54.7 73.0 52.0 Z" fill="#ffffff" fill-opacity=".05"/>
+<g clip-path="url(#in)">
+<rect x="0" y="96.0" width="240" height="300" fill="url(#beer)"/>
+<path d="M0 58.0 Q10.0 93.0 20.0 96.0 Q30.0 101.0 40.0 96.0 Q50.0 93.0 60.0 96.0 Q70.0 101.0 80.0 96.0 Q90.0 93.0 100.0 96.0 Q110.0 101.0 120.0 96.0 Q130.0 93.0 140.0 96.0 Q150.0 101.0 160.0 96.0 Q170.0 93.0 180.0 96.0 Q190.0 101.0 200.0 96.0 Q210.0 93.0 220.0 96.0 Q230.0 101.0 240.0 96.0 L240 58.0 Z" fill="#d9bf95"/>
+<circle cx="86.3" cy="71.0" r="2.3" fill="#ffffff" opacity=".55"/>
+<circle cx="119.7" cy="73.0" r="1.8" fill="#ffffff" opacity=".55"/>
+<circle cx="99.3" cy="74.8" r="1.6" fill="#ffffff" opacity=".55"/>
+<circle cx="129.8" cy="67.1" r="2.3" fill="#ffffff" opacity=".55"/>
+<circle cx="103.9" cy="78.7" r="2.9" fill="#ffffff" opacity=".55"/>
+<circle cx="105.9" cy="85.3" r="3.1" fill="#ffffff" opacity=".55"/>
+<circle cx="95.1" cy="81.1" r="1.6" fill="#ffffff" opacity=".55"/>
+<circle cx="141.5" cy="78.5" r="1.6" fill="#ffffff" opacity=".55"/>
+<circle cx="106.6" cy="78.1" r="2.8" fill="#ffffff" opacity=".55"/>
+</g>
+<rect x="77.0" y="50.0" width="86.0" height="14.0" fill="#d9bf95"/>
+<circle cx="86.9" cy="48.7" r="9.9" fill="#d9bf95"/>
+<circle cx="103.4" cy="47.2" r="9.9" fill="#d9bf95"/>
+<circle cx="120.0" cy="50.7" r="9.9" fill="#d9bf95"/>
+<circle cx="136.6" cy="50.2" r="9.9" fill="#d9bf95"/>
+<circle cx="153.1" cy="48.1" r="9.9" fill="#d9bf95"/>
+<rect x="94.2" y="64.0" width="10" height="150.0" rx="5" fill="url(#shine)" clip-path="url(#in)"/>
+<path d="M167.0 52.0 C167.5 54.7 170.0 62.3 170.0 68.0 C170.0 73.7 168.7 67.3 167.0 86.0 C165.3 104.7 162.2 152.3 160.0 180.0 C157.8 207.7 155.0 240.0 154.0 252.0 L154.0 252.0 L86.0 252.0 L86.0 252.0 C85.0 240.0 82.2 207.7 80.0 180.0 C77.8 152.3 74.7 104.7 73.0 86.0 C71.3 67.3 70.0 73.7 70.0 68.0 C70.0 62.3 72.5 54.7 73.0 52.0 Z" fill="none" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3" stroke-linejoin="round"/>
+<path d="M86.0 252 L154.0 252 Q157.0 252 157.0 262 L83.0 262 Q83.0 252 86.0 252 Z" fill="#eef0ec" fill-opacity=".22" stroke="#eef0ec" stroke-opacity=".7" stroke-width="3" stroke-linejoin="round"/>
+</g></svg>

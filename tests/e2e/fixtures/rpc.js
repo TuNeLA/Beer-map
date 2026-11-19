@@ -128,6 +128,10 @@ function build(now) {
     // lane srvsync (0525): pn_sync is NOT on this mocked server (an answer without pn: 1 = "no pn_sync"), so the app uses
     // rpc_bundle2 as before and the helpers' bundle routes keep working. srvsync-pw.js answers pn_sync itself.
     pn_sync: () => ({ code: "PGRST202", message: "Could not find the function public.pn_sync(p_calls, p_have) in the schema cache" }),
+    // lane beerui (I-132, 0526): the beer library. No favourites yet; the Synlighet mode is stored; a beer page with no ratings.
+    beerlib_favs_mine: () => [],                                                                     // beerlib.js loadFavs() (profile card)
+    beerlib_privacy: (b) => ({ mode: (b && b.p_mode) || "alla" }),                              // beerlib.js syncPrivacy()
+    beerlib_beer_get: () => ({ my_stars: null, fav_slot: null, n: 0, avg: null, reviews: [] }),     // beerlib-pages.js beer page
     zone_counts: () => ({ kommun: [{ c: "2085", n: 12, bar: "La Parma Pub & Restaurang" }, { c: "2080", n: 4 }, { c: "2061", n: null }], lan: [{ c: "20", n: 17, top: "2085" }], total: 31, k: 3, at: new Date(now).toISOString() }),
   };
 }
