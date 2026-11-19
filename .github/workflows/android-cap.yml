@@ -1,0 +1,110 @@
+# F1 (lane storeprep, 19 Nov 2026): the Android STORE build. Capacitor shell, targetSdk 36, package se.tunela.pintsnow.
+# Web files: docs/ → android-cap/www (android-cap/scripts/prepare-www.mjs: store flag on, usage logging stripped, -store stamp).
+# Always: a debug APK (artifact pintsnow-debug-apk, for sideloading and the owner's test).
+# With the 4 upload-key secrets: also a signed release AAB (artifact pintsnow-release-aab) for Play Console.
+# Secrets (repo Settings → Secrets and variables → Actions; the owner adds them, never in git):
+#   ANDROID_UPLOAD_KEYSTORE_B64    the upload keystore (.jks), base64 in one line
+#   ANDROID_UPLOAD_STORE_PASSWORD  the keystore password
+#   ANDROID_UPLOAD_KEY_ALIAS       the key alias in that keystore
+#   ANDROID_UPLOAD_KEY_PASSWORD    the key password
+# versionCode = 100 + the run number (always higher than the old TWA's 1). The old TWA build is android.yml (android/).
+name: Android store build (Capacitor)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Also build the signed release AAB (needs the 4 ANDROID_UPLOAD_* secrets)"
+        type: boolean
+        default: false
+  push:
+    branches: [main, big-update, "ci/**"]   # ci/**: a lane that changes android-cap/ sees the build before the merge
+    paths:
+      - "android-cap/**"
+      - ".github/workflows/android-cap.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-cap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PN_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK platform 36 + build tools
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;35.0.0" > /dev/null
+          ls "$ANDROID_HOME/platforms"
+
+      - name: Web files (docs → android-cap/www, store build) + Capacitor sync
+        working-directory: android-cap
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/prepare-www.mjs
+          npx cap sync android
+
+      - name: Debug APK
+        working-directory: android-cap/android
+        run: ./gradlew assembleDebug --no-daemon -PpnVersionCode=$((100 + PN_VERSION_CODE))
+
+      - name: Check the APK (package, targetSdk 36, store flag)
+        run: |
+          APK=android-cap/android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/35.0.0/aapt2)
+          "$AAPT2" dump badging "$APK" | tee badging.txt | grep -E "^package|targetSdkVersion"
+          grep -q "name='se.tunela.pintsnow'" badging.txt
+          grep -q "targetSdkVersion:'36'" badging.txt
+          unzip -p "$APK" assets/public/config.js | grep -q "store build (F1)"
+          mkdir -p out && cp "$APK" out/pintsnow-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pintsnow-debug-apk
+          path: out/pintsnow-debug.apk
+          retention-days: 14
+
+      - name: Signed release AAB (only with the upload-key secrets)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release }}
+        working-directory: android-cap/android
+        env:
+          KS_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+          PN_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          PN_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          PN_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$PN_UPLOAD_STORE_PASSWORD" ] || [ -z "$PN_UPLOAD_KEY_ALIAS" ] || [ -z "$PN_UPLOAD_KEY_PASSWORD" ]; then
+            echo "::error::The 4 ANDROID_UPLOAD_* secrets are not set (android-cap/README.md)"; exit 1
+          fi
+          export PN_UPLOAD_KEYSTORE_FILE="$RUNNER_TEMP/upload.jks"
+          echo "$KS_B64" | base64 -d > "$PN_UPLOAD_KEYSTORE_FILE"
+          ./gradlew bundleRelease --no-daemon -PpnVersionCode=$((100 + PN_VERSION_CODE))
+          rm -f "$PN_UPLOAD_KEYSTORE_FILE"
+          mkdir -p ../../out && cp app/build/outputs/bundle/release/app-release.aab ../../out/pintsnow-release.aab
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release }}
+        with:
+          name: pintsnow-release-aab
+          path: out/pintsnow-release.aab
+          retention-days: 30

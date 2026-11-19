@@ -103,10 +103,23 @@
   var call = U.rpcCall(function () { return A; }, off, { authed: true });   // cln: the shared guarded RPC caller (util.js)
   function on() { return !!(A && A.LIVE && !off.my_medals && !off.award_medals); }
 
+  /* F5 (I-100, 19 Nov 2026): store builds (window.OLNU_STORE, config.js) never show a beer-count medal (10 … 1000 öl) as a
+     reward: not in the uniform, the ribbon rows, a member card, a toast or MEDALS.mine(). Play: no "binge or competition
+     drinking"; Apple 1.4.3: no encouraging excessive alcohol. The web app keeps them. The server still awards them (one
+     account on web + store); the store build only hides them. ONE list here; avatar.js asks MEDALS.storeHidden(id). */
+  var BEER_COUNT = { m10: 1, m50: 1, m100: 1, m250: 1, m500: 1, m1000: 1 };
+  function storeHidden(id) { return !!(BEER_COUNT[id] && window.OLNU_STORE); }
+  function keep(m) {
+    if (!m || !window.OLNU_STORE) return m;
+    var o = {};
+    Object.keys(m).forEach(function (id) { if (!storeHidden(id)) o[id] = m[id]; });
+    return o;
+  }
+
   var mine = null;   // id -> {count, at}
   function setMine(rows) {
     var m = {};
-    (rows || []).forEach(function (r) { if (r && r.medal && !/^void_/.test(r.medal)) m[r.medal] = { count: Math.max(1, r.count | 0), at: r.earned_at }; });   // fixJ T-21: void_ = taken back
+    (rows || []).forEach(function (r) { if (r && r.medal && !/^void_/.test(r.medal) && !storeHidden(r.medal)) m[r.medal] = { count: Math.max(1, r.count | 0), at: r.earned_at }; });   // fixJ T-21: void_ = taken back
     mine = m;
   }
   function loadMine() {
@@ -136,7 +149,7 @@
   }
   function announce(rows, quiet) {
     (rows || []).forEach(function (r) {
-      if (!r || !r.medal) return;
+      if (!r || !r.medal || storeHidden(r.medal)) return;   // F5: no toast, no row in mine
       var had = mine && mine[r.medal];
       if (!mine) mine = {};
       mine[r.medal] = { count: Math.max(1, r.count | 0), at: r.earned_at || (had && had.at) };
@@ -229,7 +242,7 @@
 
   /* ---------- Uniform sheet ---------- */
   function sortedEarned(m) {
-    return Object.keys(m || {}).map(function (id) { return { m: info(id), count: m[id].count, at: m[id].at }; })
+    return Object.keys(keep(m) || {}).map(function (id) { return { m: info(id), count: m[id].count, at: m[id].at }; })
       .sort(function (a, b) { return a.m.i - b.m.i; });
   }
   /* ---------- Ribbons (design pass 2): each medal is a striped service ribbon; colour = family, stripe pattern = medal ---------- */
@@ -322,7 +335,7 @@
           (prog ? '<div class="uni-next">' + esc(prog) + "</div>" : "") +
           (o.isMe && window.MERITER ? '<div class="uni-how"><button type="button" class="btn btn-small mer-how" data-merhow="1">' + esc(L("❓ Hur får jag meriter?", "❓ How do I earn merits?")) + "</button></div>" : "");
       }
-      var m = o.medals || {}, earned = sortedEarned(m);
+      var m = keep(o.medals || {}), earned = sortedEarned(m);
       h += '<div class="uni-ribbon" role="group" aria-label="' + esc(L("Medaljer", "Medals")) + '">' + (earned.length ? medalRowHTML(m, 99, true) : '<span class="muted">' + esc(L("Inga medaljer än. Uniformen är ren och fin.", "No medals yet.")) + "</span>") + "</div>";
       box.innerHTML = h;
       // Tap a ribbon → its medal card (with the emoji and the story) below.
@@ -334,7 +347,7 @@
         card.classList.remove("md-hl"); void card.offsetWidth; card.classList.add("md-hl");
       });
 
-      var visible = CAT.filter(function (c) { return !c[6] || m[c[0]]; });
+      var visible = CAT.filter(function (c) { return (!c[6] || m[c[0]]) && !storeHidden(c[0]); });
       body.appendChild(el("h3", { text: L(earned.length + " av " + visible.length + " medaljer", earned.length + " of " + visible.length + " medals") }));
       var grid = el("ul", { class: "medal-grid" });
       earned.forEach(function (x) {
@@ -346,7 +359,7 @@
         ]));
       });
       CAT.forEach(function (c) {
-        if (m[c[0]] || c[6]) return;
+        if (m[c[0]] || c[6] || storeHidden(c[0])) return;
         grid.appendChild(el("li", { class: "medal" }, [
           el("span", { class: "md-e", "aria-hidden": "true", text: c[1] }),
           el("span", { class: "md-n", text: c[2] }),
@@ -382,7 +395,7 @@
       if (r.error) return null;
       var v = { byName: {}, me: {} };
       (r.data || []).forEach(function (x) {
-        if (!x || !x.medal || /^void_/.test(x.medal)) return;   // fixJ T-21
+        if (!x || !x.medal || /^void_/.test(x.medal) || storeHidden(x.medal)) return;   // fixJ T-21 · F5 store
         var tgt = x.is_me ? v.me : (v.byName[x.name || ""] || (v.byName[x.name || ""] = {}));
         tgt[x.medal] = { count: Math.max(1, x.count | 0), at: x.earned_at };
       });
@@ -543,7 +556,7 @@
   /* ---------- Public ---------- */
   window.MEDALS = {
     CAT: CAT, info: info, on: on, award: award, claim: claim, showMine: showMine, showUniform: showUniform,
-    memberMedals: memberMedals, openMember: openMember, medalRowHTML: medalRowHTML, ribbonBg: ribbonBg,
+    memberMedals: memberMedals, openMember: openMember, medalRowHTML: medalRowHTML, ribbonBg: ribbonBg, storeHidden: storeHidden,
     levelUp: levelUp, waterTaken: waterTaken, noteBeer: noteBeer, calm: calm,
     LEVEL_LINES: LEVEL_LINES,
     mine: function () { return mine; },

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Start screen before the web view paints (Android 11 and older show this; 12+ use the splash attributes in styles.xml). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/pn_start_background"/>
+    <item android:gravity="center" android:drawable="@drawable/splash_icon"/>
+</layer-list>

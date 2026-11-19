@@ -1,0 +1,14 @@
+{
+  "appId": "se.tunela.pintsnow",
+  "appName": "PintsNow",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "app.pintsnow.com"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false
+  }
+}
