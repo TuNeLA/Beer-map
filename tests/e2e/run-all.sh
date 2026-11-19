@@ -205,6 +205,7 @@ run start1     $B start1-pw.js     # lane start1 (I-107 "the app opened twice"):
 run perfchat   $B perf-pw.js --part chat   # lane fixP: sign-in burst ≤ 12 / 15 s, chat tick = 1 request (7 → 15 → 30 s), hidden 0, old server (no 0466), flag cache
 run perf       $B perf-pw.js       # lane perf (load X10): ≤ 3 requests/min open, cold start ≤ 12, reopen, game 2.5 s + 0 while hidden, busy back-off, old server (no 0465)
 run srvsync    $B srvsync-pw.js    # lane srvsync: A7 pn_sync (versions, fallback to rpc_bundle2, hidden = 0), A8 draw only on change, B3 real errors (not "no network"), C6 medals not from the poll
+run selftest   $B selftest-pw.js   # lane ciwork E10 (I-111): the test build's ▶ Självtest (testenv/testbar.js): one tap = staging check, ÖL!, 5 main sheets, page errors, failed calls; stops when not staging; not in docs/
 run left       $B left-pw.js       # lane left (11 Nov): T-05b Regler before every post RPC (photo, voice, invite, event, wish …), Z1 zone_counts in the poll bundle
 run fixm       $B fixm-pw.js       # lane fixM (test teams 11 Nov): T-10 fallback map tap rule + clusters, T-14 ticker one snapshot, T-15 top bar pill + Ute nu, T-24 crowd word
 run heat       $B heat-pw.js       # lane heat (0485/0486): client draws the server heat; no double glow on my / my mate's pin; no glow near a village home
@@ -216,7 +217,8 @@ run fixc       $B fixc-pw.js       # lane fixC (test teams round 2): N-03 chat m
 run fixj       $B fixj-pw.js       # lane fixJ (test-team fixes): T-03 year once, T-04 first tap, T-06 no old morning card, T-07 beer moves check-in, T-20 lead, T-21 Barkungen week, T-22 copy
 run ownerfix   $B ownerfix-pw.js   # lane ownerfix (owner live test 11 Nov): Event sheet after Visa, Göm min pin = hide only, food icons, ticker gaps / one speed controller / reduced motion, price confirm + 1 rapport, Kontakt form
 run kpi        $B kpi-pw.js        # lane kpi: X9 Nyckeltal owner panel (owner_kpi 0460, "<3" masks, wrong key) + no emoji in safety.js UI chrome (ds12)
-run popfix     $B popfix-pw.js     # lane popfix: the bar popup on a PC: one card width (320-380 px) at every map position, no word broken mid-word, one-line buttons, the close button inside the card, no overflow (fallback + GL path, 360-2560 px)
+run popfix     $B popfix-pw.js fb  # (ciwork G6: split by path, one run was 540 s) lane popfix: the bar popup on a PC: one card width (320-380 px) at every map position, no word broken mid-word, one-line buttons, the close button inside the card, no overflow (fallback + GL path, 360-2560 px)
+run popfix-gl  $B popfix-pw.js gl  # lane popfix: the same checks on the GL path (real Mapbox in CI)
 run hooks-order $B hooks-order-pw.js   # lane w1-hooks: PN.hookList() order = the old app.js mods() list (85 names), every hooked module reached
 run polish3    $B polish3-pw.js    # lane polish3: I-65 film photo tap = big view / hold = react (no emoji row), I-66 toast exit without the amber border, I-68 Grupper button = Grupper tab, I-69 Mina förslag + owner badge
 run bump       $B bump-pw.js       # lane bump: Skåla med telefonen (flag pn_bump): shake fills, knock on 2 phones = ÖL! for both, tap fallback, pause text, iPhone permission

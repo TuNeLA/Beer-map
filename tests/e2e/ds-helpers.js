@@ -232,10 +232,22 @@ async function settle(page, cap) {
     await wait(page, 50);
   }
 }
+// ciwork (G6): boot() waited up to 30 s for map pins. A test with an empty map (`empty: true`) never gets pins, so it lost
+// 30 s per boot (moments: 15 boots = 450 s of its 595 s; fixmo: 10). Now: pins, OR the first poll is drawn
+// (app-poll.js sets PN.s.firstLoadDone right after drawPoll), then up to PINS_GRACE ms more for pins that are drawn a frame late.
+// A poll that fails keeps the old 30 s cap. "no pills" is still logged when the map has no pins.
+const PINS_GRACE = 1500;
+async function pinsOrEmpty(page) {
+  const pins = () => window.__map && document.querySelectorAll(".pill").length > 3;
+  await page.waitForFunction(() => window.__map && (document.querySelectorAll(".pill").length > 3 || !!(window.PN && window.PN.s && window.PN.s.firstLoadDone === true)),
+    null, { timeout: 30000, polling: 100 }).catch(() => {});
+  if (await page.evaluate(pins).catch(() => false)) return;
+  await page.waitForFunction(pins, null, { timeout: PINS_GRACE, polling: 100 }).catch(() => console.log("no pills"));
+}
 async function boot(page, o = {}) {
   await page.goto(BASE);
   if (o.clean) { await ready(page, true); return; }
-  await page.waitForFunction(() => window.__map && document.querySelectorAll(".pill").length > 3, null, { timeout: 30000 }).catch(() => console.log("no pills"));
+  await pinsOrEmpty(page);
   await page.evaluate(() => window.__map.setView([60.1505, 15.1872], 15, { animate: false }));
   await ready(page, false);
 }
