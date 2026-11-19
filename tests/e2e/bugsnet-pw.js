@@ -273,9 +273,10 @@ async function openUi(browser, o = {}) {
       // guard: the empty map closes it
       await page.mouse.click(pa.x, pa.y); await wait(page, 600);
       const c3 = await card();
+      const under2 = await page.evaluate(([x, y]) => { const out = []; let e = document.elementFromPoint(x, y); for (let i = 0; e && i < 6; i++, e = e.parentElement) out.push(e.tagName + "#" + e.id + "." + String(e.className).slice(0, 40)); const r = document.querySelector(".sb-card") && document.querySelector(".sb-card").getBoundingClientRect(); return { x, y, chain: out, card: r && [Math.round(r.top), Math.round(r.bottom), Math.round(r.left), Math.round(r.right)], vh: innerHeight }; }, [pa.x, pa.y + 140]);
       await page.mouse.click(pa.x, pa.y + 140); await wait(page, 600);
       const c4 = await card();
-      ok("sb guard: with no card open the pin opens it; a tap on the empty map closes it", c3.length === 1 && c4.length === 0, { c3, c4 });
+      ok("sb guard: with no card open the pin opens it; a tap on the empty map closes it", c3.length === 1 && c4.length === 0, { c3, c4, under2 });
       // guard: a tap ON another store switches (one card)
       await page.mouse.click(pa.x, pa.y); await wait(page, 600);
       await page.mouse.click(pb.x, pb.y); await wait(page, 600);
