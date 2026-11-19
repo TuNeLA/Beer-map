@@ -7,7 +7,7 @@
 #   ANDROID_UPLOAD_STORE_PASSWORD  the keystore password
 #   ANDROID_UPLOAD_KEY_ALIAS       the key alias in that keystore
 #   ANDROID_UPLOAD_KEY_PASSWORD    the key password
-# versionCode = 100 + the run number (always higher than the old TWA's 1). The old TWA build is android.yml (android/).
+# versionCode = 100 + the run number (always higher than the old TWA's 1). The old TWA build (android.yml, android/) was removed 19 Nov 2026 (C23).
 name: Android store build (Capacitor)
 
 on:

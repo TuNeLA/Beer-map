@@ -1,4 +1,4 @@
-/* PintsNow — SEASONS (lane seasons, owner 15 Nov 2026, I-115 / I-117). The ÖL! button dress (js/seasondress.js), the season
+/* PintsNow — SEASONS (lane seasons, owner 15 Nov 2026, I-115 / I-117; lane btndress I-134 19 Nov: hats on the head, white hair). The ÖL! button dress (js/seasondress.js), the season
    button colours, GLÖGG, the tap effect canvas (js/seasontap.js) and the map season canvas (js/seasonsky.js).
    Colours are tokens (custom properties) here; no raw hex in rules. Contrast of the label on the season colour (middle stop):
    Christmas cream on red 5.6:1 · New Year gold on navy 9.6:1 · Valborg ink on fire 5.7:1 · Midsummer ink on green 6.8:1 ·
@@ -19,23 +19,22 @@
   --ss-edge-sp: rgba(150,220,90,.45); --ss-edge-au: rgba(230,100,20,.5)
 }
 
-/* ---------- the dress: one piece on the top-right rim, or a band across the top rim (crown, snow) ---------- */
+/* ---------- the dress (I-134): a hat that sits ON the button like on a head, and white hair when it snows ----------
+   Each piece (.ss-p) is drawn in button units (centre 0 0, radius 50; js/seasondress.js) and mapped onto the button box
+   with --x0 --y0 --w --h, so it scales with the button. The hat flops / tilts away from Annat (.ss-flip = Annat on the right). */
 .ss-dress{position:absolute;z-index:4;left:var(--ss-bx,0);top:var(--ss-by,0);width:var(--ss-bw,106px);height:var(--ss-bw,106px);pointer-events:none;
   transition:transform var(--m-1,90ms) var(--e-out,ease-out)}
 .ss-dress[hidden]{display:none}
 .ss-dress i{position:absolute;display:block;font-style:normal;pointer-events:none}
-.ss-dress svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 2px var(--ss-shade))}
-.ss-d{width:48px;height:42px;right:-15px;top:-17px;transform:rotate(16deg);transform-origin:30% 90%}
-.ss-d-cap{width:50px;height:44px;right:-14px;top:-16px;transform:rotate(14deg)}
-.ss-d-leaves{width:50px;height:44px;right:-16px;top:-14px;transform:rotate(4deg)}
-.ss-d-party{right:-10px;top:-24px;transform:rotate(22deg)}
-.ss-top{left:50%;top:-14px;width:112%;height:34px;transform:translateX(-50%)}
-.ss-top-snow{top:-12px;width:106%;height:32px}
-/* pressed: the piece goes down with the button; after the tap it hops once */
+.ss-dress .ss-p{left:calc(50% + var(--ss-bw,106px) * var(--x0) / 100);top:calc(50% + var(--ss-bw,106px) * var(--y0) / 100);
+  width:calc(var(--ss-bw,106px) * var(--w) / 100);height:calc(var(--ss-bw,106px) * var(--h) / 100)}
+.ss-dress svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 1px 1.5px var(--ss-shade))}
+.ss-dress.ss-flip .ss-d svg{transform:scaleX(-1)}   /* the viewBox is symmetric round x = 0: the mirror keeps it centred */
+/* pressed: the piece goes down with the button; after the tap the hat hops once (the hair stays still) */
 .ss-dress.ss-down{transform:translateY(3px) scale(.95)}   /* set by js/seasondress.js on pointerdown (no :has(:active): it re-checks styles on every tap anywhere) */
-.ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-top-crown{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
+.ss-dress.ss-hop .ss-d{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
 @keyframes ssHop{0%{translate:0 0}35%{translate:0 -9px}62%{translate:0 1px}100%{translate:0 0}}
-/* "Ångra" and the wait: the piece stays out of the way (it sits on the rim, above the ring) */
+/* "Ångra" and the wait: the piece stays above the ring (it sits on the rim) */
 .beer-wrap.ud .ss-dress,.beer-wrap.cd .ss-dress{z-index:4}
 
 /* ---------- the button colour per season (at rest only: the wait and "Ångra" keep their own look) ---------- */
@@ -80,6 +79,6 @@ body.ss-glogg .beer-btn.cooldown:not(.undo){background:
 .pm-burst[data-fam="autumn"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-au),inset 0 0 160px 60px var(--ss-edge-au)}
 
 @media (prefers-reduced-motion:reduce){
-  .ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-top-crown{animation:none}
+  .ss-dress.ss-hop .ss-d{animation:none}
   .ss-dress.ss-down{transform:none}
 }

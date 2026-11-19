@@ -1,6 +1,6 @@
 // seasons-pw.js — lane seasons (owner 15 Nov 2026, I-115 / I-117 / I-120): the season look.
 //  cal    each season starts and ends on the right dates (?date= / ?season= test hook, _force): dress, colour, GLÖGG, tap family
-//  dress  the dressed ÖL! button: the piece is on the top-right rim (not on the label / Annat), GLÖGG is still ONE drink
+//  dress  the dressed ÖL! button: the hat sits centred on top (I-134; not on the label / Annat), GLÖGG is still ONE drink
 //         (the same post_beer_v2 call as ÖL!), "Ångra" works and the timer runs while dressed, the "Vilken sort?" strip ends
 //         above Annat
 //  tap    the tap effect: today's family, behind the number, never the same one twice in a row, gone after its time;
@@ -106,7 +106,9 @@ async function runUI(b) {
     const rest = await page.evaluate(() => { const rg = document.createRange(); rg.selectNodeContents(document.getElementById("beer-label")); const l = rg.getBoundingClientRect().toJSON(), o = document.getElementById("other-wrap"); return { label: document.getElementById("beer-label").textContent, lr: l, dress: PNDress.rects(), annat: o && !o.hidden ? o.getBoundingClientRect().toJSON() : null, mug: !!document.querySelector("#btn-beer .ss-mug:not([hidden])") }; });
     ok(rest.label === "GLÖGG" && rest.mug, "Christmas: the button says GLÖGG with the mug", rest);
     ok(rest.dress.length === 1 && !inter({ l: rest.dress[0].left, r: rest.dress[0].right, t: rest.dress[0].top, b: rest.dress[0].bottom }, { l: rest.lr.left, r: rest.lr.right, t: rest.lr.top, b: rest.lr.bottom }), "the Santa hat does not cover the label text", rest);
-    ok(!rest.annat || !inter({ l: rest.dress[0].left, r: rest.dress[0].right, t: rest.dress[0].top, b: rest.dress[0].bottom }, { l: rest.annat.left, r: rest.annat.right, t: rest.annat.top, b: rest.annat.bottom }), "the hat does not touch Annat (top-left)", rest);
+    // I-134 (lane btndress): the hat now sits centred ON the button, so its box corner can reach into Annat's 60 px BOX while the
+    // drawn hat stays clear of the Annat circle. The exact pixel check is in btndress-pw.js; here: the hat box misses Annat's centre.
+    ok(!rest.annat || !inter({ l: rest.dress[0].left, r: rest.dress[0].right, t: rest.dress[0].top, b: rest.dress[0].bottom }, { l: (rest.annat.left + rest.annat.right) / 2 - 1, r: (rest.annat.left + rest.annat.right) / 2 + 1, t: (rest.annat.top + rest.annat.bottom) / 2 - 1, b: (rest.annat.top + rest.annat.bottom) / 2 + 1 }), "the hat does not reach the middle of Annat (pixel check: btndress-pw.js)", rest);
     await page.click("#btn-beer"); await wait(page, 2600);
     const k1 = S.posts.length > 1 ? Object.keys(S.posts[1]).sort().join(",") : "";
     ok(S.posts.length === 2 && k0 && k0 === k1, "GLÖGG is still ONE drink: the same post_beer_v2 call as ÖL! (" + k1 + ")", { n: S.posts.length, k0, k1 });

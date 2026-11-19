@@ -154,7 +154,14 @@ const S = (p) => p.evaluate(() => {
 const tap = (p, re, sel) => p.evaluate(([r, s]) => { const e = [...document.querySelectorAll(s || "#sheet-body button, #sheet-body a")].find((x) => x.getClientRects().length && !x.disabled && new RegExp(r).test(x.textContent.trim())); if (e) e.click(); return e ? e.textContent.trim() : null; }, [re, sel]);
 const toasts = (p) => p.evaluate(() => (window.__toasts || []).join(" | "));
 const openRide = (p, id) => p.evaluate((i) => window.RIDE && window.RIDE.openId(i), id);
-const pause = async (p) => { const t = await p.evaluate(() => Date.now()); await p.clock.pauseAt(t + 20); };
+// ciwork (G10b): the 20 ms margin was too small when the round trip is slow (Playwright image, run 44527044462: "Cannot
+// fast-forward to the past" in both tries). Read the time again and take a bigger margin; the clock still stops "now".
+const pause = async (p) => {
+  for (const m of [20, 200, 1000]) {
+    const t = await p.evaluate(() => Date.now());
+    try { await p.clock.pauseAt(t + m); return; } catch (e) { if (!/to the past/.test(String(e)) || m === 1000) throw e; }
+  }
+};
 // the watching phone runs exactly `ms` of its timers; then real time for the network answers (fetch is not on the fake clock)
 const run = async (p, ms) => { await p.clock.runFor(ms); await p.waitForTimeout(900); };
 // a long window in steps, with real time between the steps so the network answers (and their follow-up timers) land
