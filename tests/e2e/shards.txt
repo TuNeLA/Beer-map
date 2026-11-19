@@ -29,17 +29,19 @@ ui-01      ^(moments)$
 ui-02      ^(popfix)$
 ui-03      ^(fixmo)$
 ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump)$
-ui-05      ^(social-b|fixs|camfilm|dsocial)$
+ui-05      ^(social-b|fixs|camfilm|dsocial|cln)$
 ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet)$
 ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3|eggs)$
-ui-08      ^(c1menus|c5extras|cam|cln|followups|fixj|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk)$   chromium webkit   # + the WebKit (iPhone engine) runs
-ui-09      ^(uifix|dialekt|ui1|after2|bold-skal)$
-ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left)$
+ui-08      ^(c1menus|c5extras|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk)$   chromium webkit   # + the WebKit (iPhone engine) runs
+ui-09      ^(uifix|dialekt|ui1|after2|bold-skal|cam)$
+ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left|fixj)$
 ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump)$
 ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3|dprofile)$
 ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome)$
 
+# 19 Nov coordinator: ui-08 hit its 30 min limit (29.4 min on 18 Nov; it runs every test in Chromium AND WebKit) ->
+#   the Chromium-only long tests moved: cam -> ui-09, followups -> ui-design, cln -> ui-05, fixj -> ui-10.
 # --- 15 Nov design lanes (coordinator). 16 Nov flakefix: rebalanced from the job times of run 43804457427 (ui-design was 11m46s):
 #     hemzon -> timing-2 (runs alone there, the timing tests are not disturbed), dprofile -> ui-12, barsearch + bold-bump -> ui-04,
 #     dsocial -> ui-05, eggs -> ui-07. A NEW test goes in the SHORTEST shard (plan.mjs --times), not here. ---
-ui-design  ^(d-beer|bold-hem|maplight|townfix|folkhar|avwiz-ios|seasons)$
+ui-design  ^(d-beer|bold-hem|maplight|townfix|folkhar|avwiz-ios|seasons|followups)$
