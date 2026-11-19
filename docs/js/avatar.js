@@ -196,7 +196,7 @@
     "hw:39": 1, "hw:23": 1, "up:14": 1, "up:20": 1, "er:8": 1, "fp:10": 1 };
   var SEASON = {}; SEASON[HALLO] = "🎃"; SEASON[JUL] = "🎄"; SEASON[MIDS] = "🌼"; SEASON[VALB] = "🔥"; SEASON[NYAR] = "🎆";
   SEASON["12-01:12-20"] = "🕯️"; SEASON["05-20:06-20"] = "🎓"; SEASON["11-15:03-15"] = "❄️";
-  var HIDDEN_MEDALS = { het: 1, medevac: 1 };
+  var HIDDEN_MEDALS = { het: 1, medevac: 1 }, mdStore = function (x) { return !(window.MEDALS && window.MEDALS.storeHidden && window.MEDALS.storeHidden(x)); }, mdShow = function (x) { return !HIDDEN_MEDALS[x] && mdStore(x); };   // F5 (I-100): store builds hide beer-count medals on every chest (one list: MEDALS.storeHidden)
   /* avt01 fit START */
   /* ---------- v4 fit + catalog clean-up (avt 2026-11-08; owner: "a billion skin colours — do we need that many?",
      "is each item unique enough?", "hair must never stick out through a hat"). Research: Unicode emoji use 5 Fitzpatrick-based
@@ -1120,7 +1120,7 @@
     var s = {}; Object.keys(MAX).forEach(function (k) { s[k] = clamp(spec, k); });
     if (!spec || spec.ms == null) s.ms = 1;
     migrate(s);
-    var small = !!o.small, md = s.ms ? (o.md || []) : [];
+    var small = !!o.small, md = s.ms ? (o.md || []).filter(mdStore) : [];
     ID = "__ID__"; CN = 0; LITE = small; SWK = small ? 1.3 : 1;
     var defs = [], skin = SKIN[s.sk], sh = shade(skin, -0.14), F = hairFills(s, defs), hcol = F.base;
     var browCol = s.hr === 0 && s.hc < 3 && !s.hx ? "#3b2618" : shade(hcol, -0.1);
@@ -1167,7 +1167,7 @@
     var s0 = {}; Object.keys(MAX).forEach(function (k) { s0[k] = clamp(spec, k); });
     if (!spec || spec.ms == null) s0.ms = 1;
     migrate(s0);
-    var md0 = s0.ms ? (o.md || []) : [];
+    var md0 = s0.ms ? (o.md || []).filter(mdStore) : [];
     var key = JSON.stringify([s0, md0, o.r | 0, o.vb || "", !!o.small]);
     var memo = svgMemo[key]; if (memo) return memo.replace(/__ID__/g, "av" + (++uid));
     var L = layers(spec, o), vb = o.vb || "0 0 100 100";
@@ -1207,7 +1207,7 @@
   function myMedals(spec, facts) {
     if (spec && spec.ms === 0) return [];
     if (spec && spec.md && spec.md.length) return spec.md.slice(0, 6);
-    return ((facts && facts.m) || []).filter(function (x) { return !HIDDEN_MEDALS[x]; }).slice(0, 5);
+    return ((facts && facts.m) || []).filter(mdShow).slice(0, 5);
   }
   function mePerson() {
     if (!me || !me.spec) return null;   // v3: nothing until you create your character
@@ -1814,7 +1814,7 @@
       row.innerHTML = '<span>' + esc(L("Visa mina medaljer", "Show my medals")) + '</span><button type="button" class="switch" role="switch" aria-checked="' + (draft.ms === 0 ? "false" : "true") + '" aria-label="' + esc(L("Visa mina medaljer", "Show my medals")) + '"></button>';
       row.addEventListener("click", function () { draft.ms = draft.ms === 0 ? 1 : 0; paintPrev(); paintPane(true); });
       sec.appendChild(row);
-      var mine = (f.m || []).filter(function (x) { return !HIDDEN_MEDALS[x]; });
+      var mine = (f.m || []).filter(mdShow);
       if (!mine.length) {
         var p0 = document.createElement("p"); p0.className = "muted ave-note"; p0.textContent = L("Inga medaljer än. Ut å förtjäna dom!", "No medals yet."); sec.appendChild(p0);
         return sec;

@@ -27,7 +27,7 @@ map-lane   ^(map|map-b)$
 # moments, popfix and fixmo are alone: each takes 8-10 minutes by itself (see ci1-DONE.md: the next thing to make faster).
 ui-01      ^(moments)$
 ui-02      ^(popfix)$
-ui-03      ^(fixmo)$
+ui-03      ^(fixmo|storeprep)$
 ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump)$
 ui-05      ^(social-b|fixs|camfilm|dsocial)$
 ui-06      ^(games2|fixm|fixc|ownerfix)$
