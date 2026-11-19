@@ -104,11 +104,16 @@ jobs:
       - name: 0517-0523 srv1 security + server fixes (check-in proof, pin ids, owner key, join codes, medals, timeout, cool-down)
         env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
         run: |
-          for t in "0517_checkin_verify checkin-0517" "0518_old_pin_ids pins-0518" "0519_owner_key_lockout ownerkey-0519" "0520_join_code_limit joincode-0520" "0521_medal_claims medals-0521" "0522_role_timeout timeout-0522" "0523_cooldown_setting cooldown-0523" "0524_shared_groups sharedgroups-0524"; do
+          for t in "0517_checkin_verify checkin-0517" "0518_old_pin_ids pins-0518" "0519_owner_key_lockout ownerkey-0519" "0520_join_code_limit joincode-0520" "0521_medal_claims medals-0521" "0522_role_timeout timeout-0522" "0523_cooldown_setting cooldown-0523" "0524_shared_groups sharedgroups-0524" "0525_pn_sync pnsync-0525"; do
             set -- $t
             psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/$1.sql -f supabase/tests/$2.test.sql | tee /tmp/srv1-$2.txt
             if grep -q '|f|' /tmp/srv1-$2.txt || ! grep -q "^$2 done|t|" /tmp/srv1-$2.txt; then echo "$2 test failed"; exit 1; fi
           done
+      - name: 0525 pn_sync on a live-like database (rh_pre = before 0500, no rpc_bundle_allow table)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          psql -d rh_pre -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0525_pn_sync.sql -f supabase/tests/pnsync-0525.test.sql | tee /tmp/pns-pre.txt
+          if grep -q '|f|' /tmp/pns-pre.txt || ! grep -q '^pnsync-0525 done|t|' /tmp/pns-pre.txt; then echo "pnsync-0525 (rh_pre) failed"; exit 1; fi
       - name: Staging drift report (optional secret STAGING_DB_URL, read-only; warn only)
         continue-on-error: true
         env:
