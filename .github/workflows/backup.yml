@@ -14,7 +14,8 @@ name: db backup
 # The restore test never writes to a Supabase project. Not into staging either: live accounts must not land in staging
 #   (its anon key is public in the /test/ build, and it has the test-kit functions).
 # Proof without live data: a ci/<lane>-<n> push that adds or changes the file `.ci-backup` (like .ci-only: `git add -f`,
-#   never merge it) runs the same steps on STAGING (read-only, secret STAGING_DB_URL). Other pushes do not start this workflow.
+#   never merge it) runs the same steps on STAGING (read-only, secret STAGING_DB_URL), or, without that secret, on a fixture
+#   database in the runner (repo schema + seed). Other pushes do not start this workflow.
 on:
   schedule:
     - cron: "17 3 * * 0"   # Sunday 03:17 UTC: backup
@@ -78,12 +79,30 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    services:   # the fixture source when STAGING_DB_URL is not set: the repo schema + seed in an empty Postgres 17 (as the schema job)
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       SRC_NAME: staging
       SRC_DB_URL: ${{ secrets.STAGING_DB_URL }}
       BACKUP_KEY: ${{ secrets.STAGING_DB_URL }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: No STAGING_DB_URL secret = use the fixture database (repo schema + seed) as the source
+        run: |
+          if [ -n "$SRC_DB_URL" ]; then echo "source: staging (read only)"; exit 0; fi
+          node supabase/staging/apply.mjs --local-stub --seed --out "$RUNNER_TEMP/apply.sql"
+          psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -X -q -v ON_ERROR_STOP=1 -1 -f "$RUNNER_TEMP/apply.sql"
+          { echo "SRC_NAME=fixture"; echo "SRC_DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres"; echo "BACKUP_KEY=fixture-$GITHUB_RUN_ID"; } >> "$GITHUB_ENV"
+          echo "source: fixture (no STAGING_DB_URL secret)"
       - name: Is the secret there?
         id: chk
         run: bash scripts/ci/db-backup.sh check
@@ -97,7 +116,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: steps.chk.outputs.ok == 'true'
         with:
-          name: db-backup-staging-${{ github.run_id }}
+          name: db-backup-proof-${{ github.run_id }}
           path: ${{ runner.temp }}/backup/*.7z
           retention-days: 1
           compression-level: 0
@@ -105,7 +124,7 @@ jobs:
       - uses: actions/download-artifact@v4
         if: steps.chk.outputs.ok == 'true'
         with:
-          name: db-backup-staging-${{ github.run_id }}
+          name: db-backup-proof-${{ github.run_id }}
           path: ${{ runner.temp }}/restore
       - name: Restore test (into a local database on this runner)
         if: steps.chk.outputs.ok == 'true'

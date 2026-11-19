@@ -44,7 +44,7 @@ dump)
   supabase db dump --db-url "$SRC_DB_URL" -f "$w/$d/data.sql" --use-copy --data-only -x "storage.buckets_vectors" -x "storage.vector_indexes"
   { echo "made $(date -u +%FT%TZ) from the $SRC_NAME project by ${GITHUB_REPOSITORY:-?} run ${GITHUB_RUN_ID:-?} (commit ${GITHUB_SHA:-?})";
     echo "restore: supabase/schema/BACKUP.md (new project) or scripts/ci/db-backup.sh restore (test)"; } > "$w/$d/README.txt"
-  min=$([ "$SRC_NAME" = live ] && echo 1000000 || echo 20000)
+  case "$SRC_NAME" in live) min=1000000;; staging) min=20000;; *) min=1000;; esac   # the owner's packed live backup of 15 Nov was 2.7 MB
   sz=$(stat -c %s "$w/$d/data.sql"); say "### DB backup ($SRC_NAME): data.sql $sz bytes, schema.sql $(stat -c %s "$w/$d/schema.sql") bytes"
   say '```'; while read -r k v; do say "$k $v"; done < "$w/$d/counts.txt"; say '```'
   [ "$sz" -ge "$min" ] || { say "FAIL: data.sql is under $min bytes: the dump is not complete"; exit 1; }
