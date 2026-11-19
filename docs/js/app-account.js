@@ -535,9 +535,18 @@
     // so the reload after a deletion finds the stores empty. An account move does no signOut: not wiped here.
     try {
       if (PN.s.client) PN.s.client.auth.onAuthStateChange(function (ev) {
-        if (ev === "SIGNED_OUT" && window.X8 && window.X8.wipe) return window.X8.wipe("signout");
+        if (ev !== "SIGNED_OUT") return;
+        forgetPlace();
+        if (window.X8 && window.X8.wipe) return window.X8.wipe("signout");
       });
     } catch (e) {}
+  }
+
+  // mapfix5 B11: the session ended (logout, account deletion, a new account): the saved camera (olnu.cam) and the last own fix
+  // (olnu.lastFix) leave the phone. The event also stops app-map.js from saving the camera again before the reload.
+  function forgetPlace() {
+    try { document.dispatchEvent(new CustomEvent("pn:forget-place")); } catch (e) {}
+    U.ls.del("olnu.cam"); U.ls.del("olnu.lastFix");
   }
 
   /* ---------- First start (shown once) ---------- */

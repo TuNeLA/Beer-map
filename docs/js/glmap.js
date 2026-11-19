@@ -984,7 +984,7 @@
         var k0 = pi0.sz * zk(z), bp0 = m.project(o.f.geometry.coordinates), dx0 = (p.x - bp0.x) / k0, dy0 = (p.y - bp0.y) / k0;   // map M2
         if (!pi0.im.parts.some(function (x) { return x.sel !== ".bar-ico" && dx0 >= x.bb[0] - 2 && dx0 <= x.bb[2] + 2 && dy0 >= x.bb[1] - 2 && dy0 <= x.bb[3] + 2; })) return;
         if (!hit || o.f.properties.sk > hit.properties.sk) { hit = o.f; how = "part"; }
-      });
+      }); var g44 = !hit && !pop && window.PN && PN.glhit ? PN.glhit.bar(m, p, list, function (i) { return parts[i]; }, zk(z), L_FULL, L_PLACE) : null; if (g44) { hit = g44.f; how = "44"; }   // mapfix5 B9: the 44 px hit areas (js/glhit.js; not while a pop-up is open: that tap only closes, I-110)
       var own = !!(pop && hit && String(hit.properties.id) === popId);   // mapfix I-110: the open bar itself = close only
       if (own) hit = null;
       if (!pop && !hit && cl.on && clTap(m, p, e)) return;   // ds30 (!pop: the loose rules 3-5 are off while a pop-up is open)
@@ -1002,7 +1002,7 @@
       if (!hit) { if (pop) { stats.lastTap = "close"; stats.tapHow = "close"; } return; }
       var id = String(hit.properties.id), mk = byId[id], el = mk && mk.getElement && mk.getElement(); if (!el) return;
       // which part was tapped (same folds as a tap on the DOM marker)
-      var bp = m.project([mk.getLatLng().lng, mk.getLatLng().lat]), pi = parts[id], kk = (pi ? pi.sz : 1) * zk(z), dx = (p.x - bp.x) / kk, dy = (p.y - bp.y) / kk, sel = ".bar-ico";
+      var bp = m.project([mk.getLatLng().lng, mk.getLatLng().lat]), pi = parts[id], kk = (pi ? pi.sz : 1) * zk(z), dx = (p.x - bp.x) / kk, dy = (p.y - bp.y) / kk, sel = how === "44" ? g44.sel : ".bar-ico";
       if (hit.properties.t === 1 && pi) pi.im.parts.forEach(function (x) { if (dx >= x.bb[0] - 2 && dx <= x.bb[2] + 2 && dy >= x.bb[1] - 2 && dy <= x.bb[3] + 2 && x.sel !== ".bar-ico") sel = x.sel; });
       var tgt = el.querySelector(sel) || el;
       stats.taps++; stats.lastTap = id + sel; stats.tapHow = how; tapAt = performance.now();
@@ -1117,7 +1117,7 @@
     on: function () { return on; },
     sync: sync,
     // a1map I-28: app-map.js showMe(): my position (drawn in GL under the bar icons while GL is on). true = GL draws it.
-    me: function (lat, lng) { meLL = isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null; if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
+    me: function (lat, lng) { meLL = lat != null && lng != null && isFinite(+lat) && isFinite(+lng) ? [+lat, +lng] : null;   /* mapfix5 B11: me(null) = no dot (was [0, 0]) */ if (on && gm && layersReady) { meDraw(gm); meCheck(); } return on; },
     // tests: my marker. at = the icon I am checked in at, cov = the icon my position is on (I stand beside it), px = where it is drawn
     _me: function () {
       var o = { ll: meLL, at: meAt, cov: meCov, sig: meSig, layers: [L_ME], img: "", px: null, r: meR, why: meWhy, busy: meBusy };   // busy: a check waits for GL idle

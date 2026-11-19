@@ -49,10 +49,11 @@
     return [LUDVIKA, START_ZOOM];
   }
   function startCamera(m) {
-    var v = startView(), saveT = 0;
+    var v = startView(), saveT = 0, camOff = false;
     m.setView(v[0], v[1]);
     function save() {
       clearTimeout(saveT); saveT = 0;
+      if (camOff) return;
       try {
         var ce = m.getCenter(), z = m.getZoom();
         if (!ce || !U.validPos(ce.lat, ce.lng) || !isFinite(z)) return;
@@ -62,6 +63,12 @@
     m.on("moveend", function () { clearTimeout(saveT); saveT = setTimeout(save, 1000); });
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") save(); });
     window.addEventListener("pagehide", save);
+    // mapfix5 B11: logout / account deletion (account.js, app-account.js SIGNED_OUT) = where I was leaves the phone. The reload
+    // after it must not save the camera again (pagehide), so saving stops here for this page.
+    document.addEventListener("pn:forget-place", function () {
+      camOff = true; clearTimeout(saveT);
+      try { localStorage.removeItem(CAM_KEY); localStorage.removeItem("olnu.lastFix"); } catch (e) {}
+    });
   }
 
   /* ---------- Map ---------- */
@@ -454,16 +461,21 @@
   }
 
   /* ---------- Locate me ---------- */
-  var meLayer = L.layerGroup().addTo(map);
+  var meLayer = L.layerGroup().addTo(map), ME_EXACT_M = 100;
+  // mapfix5 B11 (fastpos.js rule): my dot is drawn only for an EXACT fix (accuracy known and <= 100 m). A rough fix (a Wi-Fi /
+  // cell fix, an old saved fix with no accuracy) shows only its accuracy circle, never an exact dot (DOM or GL).
+  function exactAcc(acc) { return acc != null && acc !== "" && isFinite(+acc) && +acc >= 0 && +acc <= ME_EXACT_M; }
   function showMe(lat, lng, acc) {
-    PN.s.lastLoc = { lat: lat, lng: lng };
+    var exact = exactAcc(acc);
+    PN.s.lastLoc = { lat: lat, lng: lng, acc: isFinite(+acc) && acc != null ? +acc : null };
     if (PUSH_ON && PN.s.authed) window.PUSH.setLocation(rpc, lat, lng);
     if (PN.s.chaosRes) evalChaos(false);
     if (PN.s.newsNoCenter) { PN.s.newsNoCenter = false; try { if (PN.s.tickerKey) renderTickerItemsOnly(); } catch (e) {} }
     meLayer.clearLayers();
     if (acc && acc < 2000) L.circle([lat, lng], { radius: acc, className: "me-acc", interactive: false, stroke: false }).addTo(meLayer);
     // a1map I-28: the bar icons are drawn OVER my dot: in GL (glmap.js draws it under the bar layers) or, without GL, in a pane under the bar panes
-    if (window.GLBARS && window.GLBARS.me) try { window.GLBARS.me(lat, lng); } catch (e) {}
+    if (window.GLBARS && window.GLBARS.me) try { if (exact) window.GLBARS.me(lat, lng); else window.GLBARS.me(null, null); } catch (e) {}
+    if (!exact) return;
     if (!map.getPane("mepane")) { map.createPane("mepane"); map.getPane("mepane").style.zIndex = 580; }
     L.marker([lat, lng], { icon: L.divIcon({ html: '<div class="me-dot"></div>', className: "", iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false, keyboard: false, pane: "mepane" }).addTo(meLayer);
@@ -473,7 +485,7 @@
   // c2speed I-45: the last known position (PN.s.lastLoc from an earlier fix / poll / beer tap, else the fix saved in this browser)
   function lastKnown() {
     var l = PN.s.lastLoc; if (l && U.validPos(l.lat, l.lng)) return l;
-    var c = U.ls.getJSON("olnu.lastFix", null);
+    var c = U.ls.getJSON("olnu.lastFix", null);   // B11: { lat, lng, acc, at } (acc missing in fixes saved before 19 Nov = not exact)
     return c && U.validPos(c.lat, c.lng) && Date.now() - (c.at || 0) < 7 * 86400000 ? c : null;
   }
   function locate(opts) {
@@ -483,14 +495,14 @@
     // shows only when there is no position at all.
     var known = lastKnown(), moved = false;
     if (known) {
-      showMe(known.lat, known.lng, 0);
+      showMe(known.lat, known.lng, known.acc);   // B11: was 0 = always an exact dot
       map.setView([known.lat, known.lng], Math.max(opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate });
       moved = true;
     }
     return getPosition({ enableHighAccuracy: !!opts.precise && !moved, timeout: moved ? 4000 : 12000, maximumAge: 60000 }).then(function (pos) {
       var la = pos.coords.latitude, ln = pos.coords.longitude;
       showMe(la, ln, pos.coords.accuracy);
-      U.ls.setJSON("olnu.lastFix", { lat: la, lng: ln, at: Date.now() });
+      U.ls.setJSON("olnu.lastFix", { lat: la, lng: ln, acc: Math.round(pos.coords.accuracy), at: Date.now() });
       if (U.validPos(la, ln) && (!moved || U.haversine(la, ln, known.lat, known.lng) > 30))
         map.setView([la, ln], Math.max(moved || opts.keepZoom ? map.getZoom() : 0, START_ZOOM), { animate: !!opts.animate || moved });
       U.ls.set("olnu.locOk", "1");
@@ -498,7 +510,7 @@
       // A tap on "locate me" then also asks for a precise GPS fix in the background and redraws the dot + circle.
       if (moved && opts.precise) getPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }).then(function (p2) {
         if (p2.coords.accuracy < (pos.coords.accuracy || 1e9)) { showMe(p2.coords.latitude, p2.coords.longitude, p2.coords.accuracy);
-          U.ls.setJSON("olnu.lastFix", { lat: p2.coords.latitude, lng: p2.coords.longitude, at: Date.now() }); }
+          U.ls.setJSON("olnu.lastFix", { lat: p2.coords.latitude, lng: p2.coords.longitude, acc: Math.round(p2.coords.accuracy), at: Date.now() }); }
       }, function () {});
       return true;
     }, function (err) {
