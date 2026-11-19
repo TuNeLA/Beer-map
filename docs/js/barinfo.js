@@ -70,8 +70,18 @@
     var w = o.hoursFor(bar); if (!w) return "";
     var today = o.wall(Date.now()).dow, parts = o.day(w, today);
     var txt = parts.length ? parts.map(function (x) { return o.hhmm(x[0]) + "–" + (x[1] === 1440 ? "24:00" : o.hhmm(x[1])); }).join(", ") : L("stängt", "closed");
-    return '<div class="bi-r">' + esc(L("Idag: ", "Today: ") + txt) + ' <span class="muted">(OpenStreetMap)</span></div>';
+    return '<div class="bi-r">' + esc(L("Idag: ", "Today: ") + txt) + ' <span class="muted">(' + esc(srcTxt(bar)) + ")</span></div>";
   }
+  // E4: where the hours come from (OPPET.hoursSrc: osm | crowd | owner | me), with the date of a fix
+  function srcTxt(bar) {
+    var o = O(), s = o && o.hoursSrc ? o.hoursSrc(bar) : null, d = s && s.at ? new Date(s.at) : null;
+    var dt = d && isFinite(d.getTime()) ? " · " + d.getDate() + " " + (sv() ? ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"] :
+      ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])[d.getMonth()] : "";
+    if (!s || s.src === "osm") return "OpenStreetMap";
+    if (s.src === "me") return L("dina tider", "your hours");
+    return (s.src === "owner" ? L("kollat", "checked") : L("rättat av gäster", "fixed by guests")) + dt;
+  }
+  function hvHTML(bar) { try { return window.PN && window.PN.hoursvote ? window.PN.hoursvote.html(bar) : ""; } catch (e) { return ""; } }
   function infoHTML(bar) {
     var id = String(bar.id), d = cache[id] && cache[id].d, live = A && A.LIVE && A.authed(), h = "";
     var o = O(), st = o ? o.barStatus(bar) : null;
@@ -81,6 +91,7 @@
       L("Rapporterat ikväll: stänger ", "Reported tonight: closes ") + o.hhmm(d.close.min)) + ' <span class="muted">(' + esc(L(d.close.n + " rapport" + (d.close.n === 1 ? "" : "er"), d.close.n + " report" + (d.close.n === 1 ? "" : "s"))) + ")</span></div>";
     if (!hh && st == null) hh = '<div class="bi-r muted">' + esc(L("Inga öppettider i kartdatan.", "No opening hours in the map data.")) + "</div>";
     if (live && !off.report_bar_close) hh += '<button type="button" class="bi-btn" data-bia="close">🕐 ' + esc(L("Fel tider?", "Wrong hours?")) + "</button>";
+    hh += hvHTML(bar);   // E4: "Stämmer öppettiderna?" (js/hoursvote.js, SQL 0532)
     h += '<div class="bi-sec"><div class="bi-h">' + esc(L("🕐 Öppettider", "🕐 Opening hours")) + "</div>" + hh + "</div>";
     // prices (bars only)
     if (isDrink(bar) && !off.bar_extra) {
@@ -303,16 +314,22 @@
   window.BARINFO = {
     init: function (api) {
       A = api;
+      try { if (window.PN && window.PN.hoursvote) window.PN.hoursvote.init(api); } catch (e) {}
       A.map.on("popupopen", function (e) {
         var root = e.popup && e.popup.getElement && e.popup.getElement(); if (!root) return;
         root.querySelectorAll(".bi-info[data-bi]").forEach(function (x) { var id = x.getAttribute("data-bi"); fetchExtra(id, false); });
+        root.querySelectorAll(".hv[data-hv]").forEach(function (x) {
+          var hid = x.getAttribute("data-hv");
+          try { window.PN.hoursvote.fetch(hid, false, function (changed) { if (changed) refreshDom(hid); }); } catch (e) {}
+        });
         if (root._olnuBi) return;
         root._olnuBi = true;
         root.addEventListener("click", function (ev) {
-          var b = ev.target && ev.target.closest && ev.target.closest("[data-bia], [data-biq]"); if (!b) return;
+          var b = ev.target && ev.target.closest && ev.target.closest("[data-bia], [data-biq], [data-hva]"); if (!b) return;
           var box = b.closest("[data-bi]"), id = box && box.getAttribute("data-bi"), bar = id ? barOf(id) : null;
           if (!bar) return;
           ev.preventDefault(); ev.stopPropagation();
+          if (b.hasAttribute("data-hva")) { try { window.PN.hoursvote.click(b, bar, root); } catch (e) {} return; }
           var q = b.getAttribute("data-biq");
           if (q) {   // the v12 queue report (300 m rule, 10 min limit) through BARSPLUS's own button
             var real = root.querySelector('.bp[data-bp="' + id.replace(/["\\]/g, "") + '"] [data-bpq="' + q + '"]');

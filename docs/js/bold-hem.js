@@ -122,6 +122,8 @@
       var tx = taxi();
       list.appendChild(btn("bh-taxi" + (tx.kind === "map" ? " bh-map" : ""), "taxi", tx.kind === "tel" ? "Ring taxi" : tx.name,
         tx.kind === "tel" ? tx.name + " · " + tx.text : tx.text, function () { log("taxi", { k: tx.kind }); }, tx.href));
+      // E3 (lane places): "Sista bussen hem" (js/lastbus.js; null = no home zone, at home, no key on the server, offline)
+      try { var lb = window.PN && window.PN.lastbus ? window.PN.lastbus.node({ pos: pos() }) : null; if (lb) list.appendChild(lb); } catch (e) {}
       var drvBox = el("div", "bh-drv-box"); list.appendChild(drvBox);
       if (net) drivers().then(function (ds) {
         if (!ov || !document.body.contains(drvBox)) return;

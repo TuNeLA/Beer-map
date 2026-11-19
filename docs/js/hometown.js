@@ -51,12 +51,14 @@
   var KEYS = {};
   Object.keys(DEMONYM).forEach(function (k) { KEYS[k.toLowerCase()] = DEMONYM[k]; });
   // The taxi list (lazy file) and CITIES may know more towns: add them to the picker (no demonym → "från X").
-  function allTowns() {
+  // full (E7): + every Swedish tätort of js/towns.js (search and "Nära dig" only; the A–Ö list stays the short list).
+  function allTowns(full) {
     var seen = {}, out = [];
     function add(n) { n = clean(n); if (n && !seen[n.toLowerCase()]) { seen[n.toLowerCase()] = 1; out.push(n); } }
     TOWNS.forEach(add);
     try { (window.CITIES && window.CITIES.list || []).forEach(function (c) { add(c.name); }); } catch (e) {}
     try { (window.TAXI_DATA && window.TAXI_DATA.towns || []).concat(window.TAXI_DATA && window.TAXI_DATA.places || []).forEach(function (c) { add(c.town); }); } catch (e) {}   // bold bd09: + places
+    if (full) try { window.PN.towns.list().forEach(function (t) { if (valid(t.name)) add(t.name); }); } catch (e) {}
     return out;
   }
   function clean(s) { return String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -124,7 +126,18 @@
     try { var c = (window.CITIES && window.CITIES.list || []).filter(function (x) { return x.name === n; })[0]; if (c) return [c.lat, c.lng]; } catch (e) {}
     try { var t = (window.TAXI_DATA && window.TAXI_DATA.towns || []).concat(window.TAXI_DATA && window.TAXI_DATA.places || []).filter(function (x) { return x.town === n; })[0];   // bold bd09: + places
     if (t && isFinite(t.lat)) return [t.lat, t.lng]; } catch (e) {}
-    return null;
+    var x = townXY()[n.toLowerCase()];
+    return x || null;
+  }
+  function popOf(n) { var x = townXY()[n.toLowerCase()]; return x && x[2] || 0; }
+  // E7: name → [lat, lng] of the biggest tätort with that name (js/towns.js list, sorted by population). Built once.
+  var txy = null, txyN = 0;
+  function townXY() {
+    var l = []; try { l = window.PN && window.PN.towns ? window.PN.towns.list() : []; } catch (e) {}
+    if (txy && txyN === l.length) return txy;
+    txy = {}; txyN = l.length;
+    l.forEach(function (t) { var k = t.name.toLowerCase(); if (!txy[k]) txy[k] = [t.lat, t.lng, t.pop || 0]; });
+    return txy;
   }
   function kmTxt(m) { var k = m / 1000; return k < 10 ? (Math.round(k * 10) / 10).toString().replace(".", ",") + " km" : Math.round(k) + " km"; }
   function savedPos() {
@@ -197,11 +210,13 @@
         ]));
       }
       function draw() {
-        var q = fold(clean(inp.value)), towns = allTowns();
+        var q = fold(clean(inp.value)), towns = allTowns(), all = allTowns(true), shortIx = {};
+        towns.forEach(function (n) { shortIx[n] = 1; });
         list.innerHTML = "";
         if (q) {
-          var hits = towns.filter(function (n) { return fold(n).indexOf(q) >= 0 || fold(KEYS[n.toLowerCase()]).indexOf(q) >= 0; })
-            .sort(function (a, b) { return (fold(a).indexOf(q) === 0 ? 0 : 1) - (fold(b).indexOf(q) === 0 ? 0 : 1) || svSort(a, b); }).slice(0, 30);
+          var hits = all.filter(function (n) { return fold(n).indexOf(q) >= 0 || fold(KEYS[n.toLowerCase()]).indexOf(q) >= 0; })
+            .sort(function (a, b) { return (fold(a).indexOf(q) === 0 ? 0 : 1) - (fold(b).indexOf(q) === 0 ? 0 : 1) || (shortIx[a] ? 0 : 1) - (shortIx[b] ? 0 : 1) ||
+              (popOf(b) - popOf(a)) || svSort(a, b); }).slice(0, 30);   // E7: the known short list first, then big towns ("göt" → Göteborg, not Göta)
           hits.forEach(function (n) { list.appendChild(row(n, pos && xyOf(n) ? kmTxt(U.haversine(pos.lat, pos.lng, xyOf(n)[0], xyOf(n)[1])) : "")); });
           var t = clean(inp.value), exact = hits.some(function (n) { return fold(n) === fold(t); });
           if (!exact) {
@@ -218,7 +233,7 @@
         // Nära dig
         list.appendChild(head(L("Nära dig", "Near you"), "ht-h-near"));
         if (pos) {
-          towns.map(function (n) { var c = xyOf(n); return c ? { n: n, d: U.haversine(pos.lat, pos.lng, c[0], c[1]) } : null; })
+          all.map(function (n) { var c = xyOf(n); return c ? { n: n, d: U.haversine(pos.lat, pos.lng, c[0], c[1]) } : null; })
             .filter(Boolean).sort(function (a, b) { return a.d - b.d; }).slice(0, NEAR_N)
             .forEach(function (x) { list.appendChild(row(x.n, kmTxt(x.d))); });
         } else {
@@ -248,6 +263,8 @@
       inp.addEventListener("input", draw);
       inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); pickIt(inp.value); } });
       drawCur(); draw();
+      // E7: the full town list loads on demand (js/towns.js); redraw once it is there (search and "Nära dig" get every tätort)
+      try { if (window.PN && window.PN.towns) window.PN.towns.ready().then(function (ok) { if (ok && document.body.contains(list)) draw(); }); } catch (e) {}
       // Location already allowed: a quiet coarse fix sorts "Nära dig" (no prompt can show in this state).
       if (!pos) granted().then(function (ok) {
         if (!ok) return;

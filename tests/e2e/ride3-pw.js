@@ -125,7 +125,9 @@ async function page(browser, srv, who) {
     if (a && a.error) return J(r, { code: "P0001", message: a.error, details: null, hint: null }, 400);
     return J(r, a);
   });
-  await page.route(/nominatim\.openstreetmap\.org\/reverse/, (r) => J(r, { address: { suburb: "Marnäs", town: "Ludvika" } }));
+  // E7 (lane places): the pickup / home area comes from our own town list (js/towns.js), never from Nominatim reverse.
+  // The route only COUNTS a call (it must stay 0); the area is now the tätort "Ludvika" (was "Marnäs, Ludvika" from Nominatim).
+  page.__rev = 0; await page.route(/nominatim\.openstreetmap\.org\/reverse/, (r) => { page.__rev++; J(r, { address: { suburb: "Marnäs", town: "Ludvika" } }); });
   await page.route(/nominatim\.openstreetmap\.org\/search/, (r) => J(r, [{ name: "Folkets park", display_name: "Folkets park, Ludvika", lat: "60.1450", lon: "15.1700", address: { suburb: "Centrum", town: "Ludvika" } }]));
   await page.route(/functions\/v1\/notify-group/, (r) => { let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {} srv.push.push([who, b]); return J(r, { sent: 1 }); });
   await page.addInitScript((h) => {
@@ -191,7 +193,8 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     ok("R3-4 request sheet has 'Vart ska du?' (Valfritt) with [Hem] [Annan plats]", /Vart ska du\?/.test(s.text) && /Valfritt/.test(s.text) && s.btns.some((b) => b.t === "Hem") && s.btns.some((b) => b.t === "Annan plats"), s.text.slice(0, 300));
     ok("R3 no 112 link in the request sheet (owner 21:09)", !s.tel112);
     // I-30: the phone is 133 m from Pitchers (not checked in): the sheet shows only the area, never "nära Pitchers"
-    ok("I-30 request sheet at 133 m from a bar: 'Hämtning i Marnäs, Ludvika', no bar name", /Hämtning i Marnäs, Ludvika/.test(s.text) && !/Pitchers/.test(s.text) && !/[Nn]ära/.test(s.text), s.text.slice(0, 300));
+    ok("E7: no Nominatim reverse call for the pickup area (own town list)", R.page.__rev === 0, R.page.__rev);
+    ok("I-30 request sheet at 133 m from a bar: 'Hämtning i Ludvika', no bar name", /Hämtning i Ludvika(?!,)/.test(s.text) && !/Pitchers/.test(s.text) && !/[Nn]ära/.test(s.text), s.text.slice(0, 300));
     await tap(R.page, "^Annan plats$"); await wait(R.page, 400);
     await R.page.fill("#sheet-body .rd-dq", "Folkets park", { timeout: 3000 }).catch(() => {});
     await tap(R.page, "^Sök$"); await wait(R.page, 1200);
@@ -203,15 +206,15 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     await shot(R.page, "r1-request-place");
     await tap(R.page, "^Hem$"); await wait(R.page, 1500);
     s = await S(R.page);
-    ok("R3-4 'Hem' = the home zone; area from one reverse lookup: 'Hem · Marnäs, Ludvika'", /Hem · Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
+    ok("R3-4 'Hem' = the home zone; area from one reverse lookup: 'Hem · Ludvika' (E7: own town list)", /Hem · Ludvika(?!,)/.test(s.text), s.text.slice(0, 300));
     ok("R3 request sheet: no sideways scroll, buttons ≥ 44 px", s.sw <= s.iw && small(s).length === 0, small(s));
     await shot(R.page, "r2-request-home");
     await pause(D.page);
     await tap(R.page, "^Skicka$"); await wait(R.page, 1500);
     const req = srv.calls.find((c) => c[0] === "ride_request3");
-    ok("R3-4 Skicka → ride_request3 with the destination (kind home, area, exact point)", !!req && req[2].p_dest_kind === "home" && req[2].p_dest_area === "Marnäs, Ludvika" && Math.abs(req[2].p_dest_lat - HOME.lat) < 1e-6, req && req[2]);
-    ok("I-30 Skicka sends NO place name (p_place null, p_pk_chosen false) + the area 'Marnäs, Ludvika'", !!req && req[2].p_place === null && req[2].p_pk_chosen === false && req[2].p_pk_area === "Marnäs, Ludvika", req && req[2]);
-    const ride = srv.rides[0] || srv.mk({ dest: { kind: "home", name: "Hem", area: "Marnäs, Ludvika", lat: HOME.lat, lng: HOME.lng } });
+    ok("R3-4 Skicka → ride_request3 with the destination (kind home, area, exact point)", !!req && req[2].p_dest_kind === "home" && req[2].p_dest_area === "Ludvika" && Math.abs(req[2].p_dest_lat - HOME.lat) < 1e-6, req && req[2]);
+    ok("I-30 Skicka sends NO place name (p_place null, p_pk_chosen false) + the area 'Ludvika'", !!req && req[2].p_place === null && req[2].p_pk_chosen === false && req[2].p_pk_area === "Ludvika", req && req[2]);
+    const ride = srv.rides[0] || srv.mk({ dest: { kind: "home", name: "Hem", area: "Ludvika", lat: HOME.lat, lng: HOME.lng } });
 
     /* ---------- the idle driver sees it within seconds ---------- */
     t0 = Date.now();
@@ -219,7 +222,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     s = await S(D.page);
     const dt = await toasts(D.page);
     ok("R3-1 idle driver: the request shows within 6 s (fake clock): toast + the offer sheet opens by itself", /Lisa behöver skjuts/.test(dt) && s.open && /Lisa behöver skjuts/.test(s.text), { dt, title: s.title });
-    ok("R3-4 offer card: Hämtning i <area> (no bar name: I-30) / Till Marnäs, Ludvika (area only) + distance + trip estimate", /Hämtning i Marnäs, Ludvika/.test(s.text) && !/Pitchers/.test(s.text) && /Till Marnäs, Ludvika/.test(s.text) && !/Hem/.test(s.text)
+    ok("R3-4 offer card: Hämtning i <area> (no bar name: I-30) / Till Ludvika (area only) + distance + trip estimate", /Hämtning i Ludvika(?!,)/.test(s.text) && !/Pitchers/.test(s.text) && /Till Ludvika(?!,)/.test(s.text) && !/Hem/.test(s.text)
       && /1,2 km bort · ca 3 min dit/.test(s.text) && /Resa ca \d+,\d km · \d+ min/.test(s.text), s.text.slice(0, 400));
     ok("R3 offer sheet: no 112 link", !s.tel112);
     await shot(D.page, "d1-offer");
@@ -242,8 +245,8 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     s = await S(D.page);
     ok("R3-2 driver at 'taken': ONE amber step button 'På väg' (no Framme / Klar / OK)", JSON.stringify(s.amber) === JSON.stringify(["På väg"]) && !s.btns.some((b) => !/rd-qb/.test(b.c) && /^(Klar|OK|Framme vid målet|Jag är här)$/.test(b.t)), s.amber);
     ok("R3-3 driver chips = Jag är här / 2 min kvar / Hittar int' / Står utanför", JSON.stringify(s.chips) === JSON.stringify(["Jag är här", "2 min kvar", "Hittar int'", "Står utanför"]), s.chips);
-    ok("R3 driver sheet: no 112 link; 'Ring' button; 'Läs upp meddelanden' switch; Till Hem · Marnäs (exact after take)", !s.tel112 && s.btns.some((b) => /^Ring$/.test(b.t)) && /Läs upp meddelanden/.test(s.text) && /Till Hem · Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
-    ok("I-30 driver sheet after the take: still no bar name (the pin is the exact point)", !/Pitchers/.test(s.text) && /Hämtning i Marnäs, Ludvika/.test(s.text), s.text.slice(0, 300));
+    ok("R3 driver sheet: no 112 link; 'Ring' button; 'Läs upp meddelanden' switch; Till Hem · Ludvika (exact after take)", !s.tel112 && s.btns.some((b) => /^Ring$/.test(b.t)) && /Läs upp meddelanden/.test(s.text) && /Till Hem · Ludvika(?!,)/.test(s.text), s.text.slice(0, 300));
+    ok("I-30 driver sheet after the take: still no bar name (the pin is the exact point)", !/Pitchers/.test(s.text) && /Hämtning i Ludvika(?!,)/.test(s.text), s.text.slice(0, 300));
     await shot(D.page, "d2-taken");
     // owner 22:08: the focus ring of the chat field was cut on the left edge → inset ring, inside the sheet's clip box
     const ring = (p) => p.evaluate(() => {
@@ -320,7 +323,7 @@ async function shot(p, name) { await p.screenshot({ path: OUT + name + (/-\d{3}$
     const stp = srv.calls.filter((c) => c[0] === "ride_step" && c[1] === "R").slice(-1)[0];
     ok("R3-2 rider 'Jag sitter i bilen' → ride_step 'picked' (not done); the ride is still live", !!stp && stp[2].p_step === "picked" && ride.status === "arrived" && !ride.ended, stp && stp[2]);
     s = await S(R.page);
-    ok("R3-2 rider card: 'Ni åker · till Hem · Marnäs, Ludvika' + step I bilen", /Ni åker · till Hem · Marnäs, Ludvika/.test(s.state) && /I bilen/.test(s.now), { st: s.state, now: s.now });
+    ok("R3-2 rider card: 'Ni åker · till Hem · Ludvika' + step I bilen", /Ni åker · till Hem · Ludvika(?!,)/.test(s.state) && /I bilen/.test(s.now), { st: s.state, now: s.now });
     await shot(R.page, "r4-in-car");
     await run(D.page, 3000);
     s = await S(D.page);
