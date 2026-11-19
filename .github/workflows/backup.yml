@@ -101,6 +101,8 @@ jobs:
           if [ -n "$SRC_DB_URL" ]; then echo "source: staging (read only)"; exit 0; fi
           node supabase/staging/apply.mjs --local-stub --seed --out "$RUNNER_TEMP/apply.sql"
           psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -X -q -v ON_ERROR_STOP=1 -1 -f "$RUNNER_TEMP/apply.sql"
+          # the stub's cron.job sequence gets the name real pg_cron uses (proof run 44521976152), so the dump fits a real database
+          psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -X -q -v ON_ERROR_STOP=1 -c "alter sequence if exists cron.job_jobid_seq rename to jobid_seq"
           { echo "SRC_NAME=fixture"; echo "SRC_DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres"; echo "BACKUP_KEY=fixture-$GITHUB_RUN_ID"; } >> "$GITHUB_ENV"
           echo "source: fixture (no STAGING_DB_URL secret)"
       - name: Is the secret there?
