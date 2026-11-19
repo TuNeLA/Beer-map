@@ -1,0 +1,13 @@
+# pack (A6): the files that ONLY the data bots write. After the switch (repo variable PAGES_DEPLOY = actions) the bots
+# commit these to branch `data` (scripts/pack/data-push.sh), never to main. The deploy build (pages-bundle.yml) and the
+# next bot run put the `data` copy over the checkout (scripts/pack/data-overlay.sh). A path that `data` does not have
+# stays as it is on main. One path per line; a folder is replaced as a whole. Writer in brackets.
+docs/bars.json                     # bars.yml
+docs/places.json                   # bars.yml
+docs/places                        # bars.yml
+docs/placeinfo                     # bars.yml
+docs/buildings                     # buildings.yml
+docs/arenas.json                   # buildings.yml
+scripts/bar-buildings-state.json   # buildings.yml (state of the rolling refresh; not on the site)
+docs/hours.json                    # hours.yml
+docs/systembolaget.json            # hours.yml

@@ -9,8 +9,8 @@
 # Names: letters, digits, - and _ only. The regex has no spaces. Read by scripts/ci/plan.mjs (job "plan" in e2e.yml).
 # On a ci/ branch a .ci-only file (one shard name per line) cuts the run to only those shards.
 
-# --- the deploy gate: these two run on the bundled site, in tests.yml AND before a live deploy ---
-gate-a     ^(bundle-smoke|main|sec|ux3|social2)$                site=bundled gate
+# --- the deploy gate: these two run on the bundled site, in tests.yml AND before a live deploy (pack builds its own sites) ---
+gate-a     ^(bundle-smoke|main|sec|ux3|social2|pack)$           site=bundled gate
 gate-b     ^(start1|x8|mycount|takeover|ci1)$                   site=bundled gate par=1   # service-worker cycles and a tap-timing check: one at a time
 
 # --- timing checks (taps < 100 ms, frame budgets): one test at a time ---

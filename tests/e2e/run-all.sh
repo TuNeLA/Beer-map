@@ -241,6 +241,7 @@ run uifix4     $B uifix4-pw.js   # lane uifix4: A18 rank cap, D2 shorter count b
 if [ -n "${PLAIN_PORT:-}" ]; then run bundle-smoke $B bundle-smoke-pw.js $PLAIN_PORT   # bundled site = plain site: modules, styles, lazy files, part errors, unbundle fallback, service worker offline
 else skip bundle-smoke 'needs PLAIN_PORT (a plain docs/ server) and the built site on port B'; fi
 run ci1        $B ci1-pw.js        # lane ci1: the live build (scripts/build-site.mjs): <= 20 start requests, one changed file = one bundle group downloaded again, PN_BUILD, plain mode = the old stamp, dotfiles in the artifact
+run pack       $B pack-pw.js       # lane pack (A5): packed site vs today's single files: start js/css, bytes, 2nd + 3rd visit from the worker cache, data-demand files stay lazy, same modules (numbers in the log)
 collect
 # --- unit (no browser) ---
 [[ notif-sw =~ $FILTER ]] && { (cd $D && timeout 120 node notif-sw-test.js $REPO > $LOG/notif-sw.1.log 2>&1); rc=$?

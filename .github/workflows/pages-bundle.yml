@@ -6,7 +6,7 @@
 #                   build ───┘
 #   guards  .github/workflows/guards.yml: unit tests, quality, split, stamp guard, shard guard (about 1 min)
 #   e2e     .github/workflows/e2e.yml, only the `gate` shards of tests/e2e/shards.txt, on the BUILT site (about 7 min):
-#           bundle-smoke, main, sec, ux3, social2 · start1 (service-worker update), x8, mycount, takeover, ci1
+#           bundle-smoke, main, sec, ux3, social2, pack (A5: packed vs today, requests + bytes) · start1 (service-worker update), x8, mycount, takeover, ci1
 #   build   scripts/build-site.mjs on a COPY of docs/: bundle (PAGES_BUNDLE = on) or stamp only, checks, build.json.
 #           Nothing is committed. The repo keeps no ?v= and sw.js VERSION "dev" (scripts/ci/stamp-guard.mjs).
 #   deploy  only when all three are green.
@@ -23,8 +23,9 @@
 #
 # When it runs:
 #   push to main that changes the site or the build
-#   after each data bot (bars, buildings, hours). They commit data to main with [skip ci], which starts no push workflow,
-#   so without this trigger new bars / hours would not go live (code audit A7).
+#   after each data bot (bars, buildings, hours). pack (A6): with PAGES_DEPLOY = actions the bots commit their data to branch
+#   `data` (scripts/pack/data-push.sh), never to main; the build puts `data` over the checkout (scripts/pack/data-overlay.sh,
+#   paths: scripts/pack/data-paths.txt). Without this trigger new bars / hours would not go live (code audit A7).
 #   Monday 06:37 UTC: a safety net for the data, in case a bot run started no deploy. Same files = same VERSION = no phone
 #   downloads anything.
 #   by hand (Actions → Deploy live → Run workflow). skip_e2e = skip only for an emergency fix (the guards still run).
@@ -32,7 +33,7 @@ name: Deploy live (Pages)
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "index.html", "scripts/bundle.mjs", "scripts/stamp.mjs", "scripts/build-site.mjs", "package-lock.json", ".github/workflows/pages-bundle.yml"]
+    paths: ["docs/**", "index.html", "scripts/bundle.mjs", "scripts/stamp.mjs", "scripts/build-site.mjs", "scripts/pack/**", "package-lock.json", ".github/workflows/pages-bundle.yml"]
   workflow_run:
     workflows: ["Bars (OpenStreetMap)", "Bar buildings (OpenStreetMap + Microsoft footprints)", "Hours (OpenStreetMap)"]
     types: [completed]
@@ -85,6 +86,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund   # esbuild + acorn: versions from package-lock.json
+      - name: "Newest bot data: branch data over the checkout (pack A6; no branch yet = the data files of this commit)"
+        run: bash scripts/pack/data-overlay.sh
       - name: "Build a COPY of the site: bundle + stamp (PAGES_BUNDLE = on) or stamp only, then check it"
         id: site
         env:
