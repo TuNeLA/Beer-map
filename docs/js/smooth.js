@@ -10,11 +10,13 @@
       Headers come from the app's own last RPC call (apikey + token); before that no prefetch is made.
    3. App shell first: SMOOTH.afterPaint(fn) runs fn after the next frame (max 300 ms). app.js runs start() through it,
       so the HUD and the map paint before the ~40 module inits run.
-   4. Sheet feel: closing slides the real sheet down (200 ms, WAAPI on #sheet; no copy, no taps while it slides),
-      a new content in an open sheet fades in, a lone "…" placeholder becomes a quiet skeleton row.
+   4. Sheet feel: open and close are Web Animations on the real #sheet (open --m-5 --e-spring from the tap x, close --m-4
+      --e-out; no copy) that turn around from where they are (motion19a), the first list rows stagger, a new content in an
+      open sheet fades in, a lone "…" placeholder becomes a quiet skeleton row.
    5. PN.idle (lane timers): "is the map out of sight" (a full sheet or a hidden page); loops sleep then (see section 5).
       prefers-reduced-motion: no slide, no fade (instant), skeleton without pulse. Styles: smooth.css.
-   Public: window.SMOOTH = { afterPaint, sheetOut, prefetch, stats, idle }, PN.idle. Missing parts = no change. */
+   Public: window.SMOOTH = { afterPaint, sheetOut, sheetIn, inStop, closing, flip, stagger, prefetch, stats, idle }, PN.idle.
+   Missing parts = no change. */
 (function () {
   "use strict";
   var W = window;
