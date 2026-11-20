@@ -19,7 +19,7 @@
   "use strict";
   var W = window;
   function reduced() { try { return !!(W.matchMedia && W.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } }
-  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, slide: 0 };
+  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, slide: 0, open: 0, reverse: 0, caught: 0, stagger: 0 };
 
   /* ---------- 1. Intl cache ---------- */
   (function () {
@@ -150,49 +150,198 @@
   /* ---------- 4. Sheet feel ---------- */
   // timers A9 (audit speed #5 / motion #9): the close slides the REAL #sheet down (WAAPI on the sheet itself). Before: a deep
   // clone of the whole sheet in a closed shadow root, with a constructed copy of every page stylesheet (~765 KB of CSS, kept in
-  // sync in idle time): 60-100 ms at each close and the copy work in the background. Same look: 200 ms, translateY(60 % of
-  // the height, max 520 px) + opacity 1 → 0, the --sm-out curve. #sheet.hidden is true at once (the app logic sees a closed
-  // sheet); only the paint stays for the 200 ms: display is held inline, no taps (pointer-events none), focus leaves.
-  // The body is cleared at the end of the slide (done callback of the caller). A sheet that opens during the slide wins at once.
-  var outA = null, outDone = null;
+  // sync in idle time): 60-100 ms at each close and the copy work in the background. Same look: --m-4 (200 ms), translateY(60 %
+  // of the height, max 520 px) + opacity 1 → 0, --e-out. #sheet.hidden is true at once (the app logic sees a closed sheet); only
+  // the paint stays for the slide: display is held inline, focus leaves, a tap on it does nothing (it never clicks the old rows).
+  // The body is cleared at the end of the slide (done callback of the caller).
+  // motion19a (audit motion19 fixes 2 + 4, principles 2 interruptible / origin aware): the OPEN is a Web Animation too
+  // (--m-5, --e-spring; smooth.css keeps the CSS slide only as the no-WAAPI fallback). So every step can turn around from
+  // where it is: a sheet that opens during the close slide reverses from its live position (no jump to the bottom), a close
+  // during the open slide goes down from its live position, a finger that drags the sliding sheet (open or close) takes it
+  // over (pnui.js drag), and a tap opened sheet grows a little from the tap x (transform-origin, scale .97 → 1). A tap on the
+  // map (pins, map layers) opens without the scale. Reduced motion: no slide, no scale, no stagger.
+  function tokMs(name, fb) { try { var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(), m = /^([\d.]+)(ms|s)$/.exec(v); if (m) return +m[1] * (m[2] === "s" ? 1000 : 1); } catch (e) {} return fb; }
+  function tokE(name, fb) { try { var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); if (v) return v; } catch (e) {} return fb; }
+  var E_IN = "cubic-bezier(.05,.7,.1,1)", E_OUT = "cubic-bezier(.3,0,.8,.15)";
+  function anim(el, kf, o) {   // an easing the browser does not know (linear() on an old one): the --e-in curve
+    try { return el.animate(kf, o); } catch (e) { o.easing = E_IN; return el.animate(kf, o); }
+  }
+  function byId(id) { return document.getElementById(id); }
+
+  // The last tap: x and time. A tap on the map does not count (pins and map layers keep their own motion: no origin there).
+  var tap = { x: 0, t: -1e9, map: false };
+  function noteTap(e) {
+    var tg = e.target && e.target.closest ? e.target : null, x = e.clientX;
+    if (e.type === "click") {
+      if (Date.now() - tap.t < 800) return;   // the click of a pointerdown we have
+      if (!x && tg && tg.getBoundingClientRect) { var r = tg.getBoundingClientRect(); x = r.left + r.width / 2; }   // a script click or a key: the middle of the button
+    }
+    tap = { x: +x || 0, t: Date.now(), map: !!(tg && tg.closest(".leaflet-container, .mapboxgl-map, #map")) };
+  }
+  document.addEventListener("pointerdown", noteTap, { capture: true, passive: true });
+  document.addEventListener("click", noteTap, { capture: true, passive: true });
+  function originX(sh) {
+    if (Date.now() - tap.t > 700 || tap.map) return null;
+    var r = sh.getBoundingClientRect(); if (!r.width) return null;
+    return Math.max(0, Math.min(r.width, tap.x - r.left));
+  }
+
+  var inA = null, inBd = null;
+  function inEnd(keepOrigin) {
+    var a = inA, b = inBd; inA = null; inBd = null;
+    if (a) { try { a.cancel(); } catch (e) {} }
+    if (b) { try { b.cancel(); } catch (e) {} }
+    var sh = byId("sheet"); if (sh && !keepOrigin) sh.style.removeProperty("transform-origin");
+  }
+  // Called when #sheet goes from hidden to shown (watchSheet). Returns true when the open slide runs.
+  function sheetIn() {
+    var sh = byId("sheet"), bd = byId("backdrop");
+    if (!sh || sh.hidden) return false;
+    var from = null, bdFrom = null;
+    if (outA) {   // reopened during the close slide: turn around from the live position and opacity
+      try { var cs = getComputedStyle(sh); from = { transform: cs.transform && cs.transform !== "none" ? cs.transform : "translateY(0)", opacity: +cs.opacity || 0 }; } catch (e) {}
+      try { if (ghost && ghost.isConnected) bdFrom = +getComputedStyle(ghost).opacity; } catch (e) {}
+      outEnd(true);
+    }
+    if (ghost) { ghost.remove(); ghost = null; }
+    inEnd(!!from);
+    if (reduced() || !sh.animate) { sh.style.removeProperty("transform-origin"); return false; }
+    if (!from) {
+      var h = sh.offsetHeight || 400, ox = originX(sh);
+      if (ox !== null) sh.style.transformOrigin = Math.round(ox) + "px 100%"; else sh.style.removeProperty("transform-origin");
+      from = { transform: "translateY(" + Math.round(Math.min(h * 0.72, 420)) + "px)" + (ox !== null ? " scale(.97)" : ""), opacity: 1 };
+    }
+    var a = inA = anim(sh, [from, { transform: "translateY(0) scale(1)", opacity: 1 }], { duration: tokMs("--m-5", 300), easing: tokE("--e-spring", E_IN), fill: "backwards" });
+    if (bd && !bd.hidden && bdFrom !== null && bd.animate) inBd = anim(bd, [{ opacity: bdFrom }, { opacity: 1 }], { duration: tokMs("--m-4", 200), easing: tokE("--e-in", E_IN) });
+    stats.open++; if (bdFrom !== null || from.opacity < 1) stats.reverse++;
+    a.onfinish = function () { if (inA === a) inEnd(false); };
+    return true;
+  }
+  // pnui.js drag: a finger takes the sheet during the open slide. Stops the slide and returns its live translateY (or null).
+  function inStop() {
+    if (!inA) return null;
+    var sh = byId("sheet"), y = 0;
+    try { y = new DOMMatrixReadOnly(getComputedStyle(sh).transform).m42 || 0; } catch (e) {}
+    inEnd(false);
+    return y;
+  }
+
+  var outA = null, outDone = null, ghost = null, outCatch = null, eatUntil = 0;
   function outEnd(reopened) {
     var a = outA, f = outDone; outA = null; outDone = null;
+    var sh = byId("sheet");
+    if (sh && outCatch) { sh.removeEventListener("pointerdown", outCatch, true); sh.removeEventListener("pointermove", outCatch, true); sh.removeEventListener("pointerup", outCatch, true); outCatch = null; }
     if (!a) return;
     try { a.cancel(); } catch (e) {}
-    var sh = document.getElementById("sheet");
-    if (sh) { sh.style.removeProperty("display"); sh.style.removeProperty("pointer-events"); }
+    if (sh) { sh.style.removeProperty("display"); sh.style.removeProperty("pointer-events"); if (!reopened) sh.style.removeProperty("transform-origin"); }
     if (f && !reopened) { try { f(); } catch (e) {} }
   }
   // Call BEFORE #sheet is hidden (app-ui.js closeSheet). done = what to run when the slide is over (clear the body).
-  // Returns true when the slide runs: then the caller leaves the body as it is and done() clears it.
-  function sheetOut(done) {
+  // reopen = how to open the same sheet again (a finger that drags the sliding sheet). Returns true when the slide runs:
+  // then the caller leaves the body as it is and done() clears it.
+  function sheetOut(done, reopen) {
     try {
       outEnd(false);   // a slide that still runs: end it now
-      var sh = document.getElementById("sheet"), bd = document.getElementById("backdrop");
-      if (reduced() || !sh || sh.hidden) return false;
+      var sh = byId("sheet"), bd = byId("backdrop");
+      if (reduced() || !sh || sh.hidden) { inEnd(false); return false; }
+      if (ghost) { ghost.remove(); ghost = null; }
       if (bd && !bd.hidden) {
-        var bs = getComputedStyle(bd), g2 = document.createElement("div");   // one empty div with the scrim colour (not a copy)
+        var bs = getComputedStyle(bd), g2 = ghost = document.createElement("div");   // one empty div with the scrim colour (not a copy)
         g2.className = "sm-bd-out"; g2.setAttribute("aria-hidden", "true");
         g2.style.background = bs.backgroundColor; g2.style.zIndex = bs.zIndex;
+        if (inBd || bd.style.opacity) g2.style.opacity = bs.opacity;   // a scrim that was still fading in (or dragged) fades out from there
         document.body.appendChild(g2);
-        setTimeout(function () { g2.remove(); }, 260);
+        setTimeout(function () { g2.remove(); if (ghost === g2) ghost = null; }, tokMs("--m-4", 200) + 60);
       }
-      var h = sh.offsetHeight; if (!h || !sh.animate) return false;
-      var cs = getComputedStyle(sh), base = cs.transform && cs.transform !== "none" ? cs.transform + " " : "";
+      var h = sh.offsetHeight; if (!h || !sh.animate) { inEnd(false); return false; }
+      var cs = getComputedStyle(sh), base = cs.transform && cs.transform !== "none" ? cs.transform + " " : "", o0 = +cs.opacity;
+      if (!(o0 >= 0)) o0 = 1;
+      inEnd(true);   // an open slide that still runs: the close goes on from its live position (base), same origin
       var ae = document.activeElement; if (ae && sh.contains(ae) && ae.blur) ae.blur();
-      sh.style.setProperty("display", cs.display, "important"); sh.style.setProperty("pointer-events", "none", "important");
-      var a = outA = sh.animate([{ transform: base + "translateY(0)", opacity: 1 }, { transform: base + "translateY(" + Math.min(h, 520) * 0.6 + "px)", opacity: 0 }],
-        { duration: 200, easing: "cubic-bezier(.3,0,.8,.15)", fill: "forwards" });
+      sh.style.setProperty("display", cs.display, "important");
+      var a = outA = anim(sh, [{ transform: base + "translateY(0)", opacity: o0 }, { transform: base + "translateY(" + Math.min(h, 520) * 0.6 + "px)", opacity: 0 }],
+        { duration: tokMs("--m-4", 200), easing: tokE("--e-out", E_OUT), fill: "forwards" });
       outDone = typeof done === "function" ? done : null;
+      // A touch on the sliding sheet never clicks its old rows. A finger that DRAGS it (6 px) brings the sheet back: it opens
+      // again from where it is and pnui.js takes the finger. A plain tap (a double tap on ✕) does nothing.
+      if (typeof reopen === "function" && !reopen.__off) {
+        var p0 = null;
+        outCatch = function (e) {
+          if (!outA) return;
+          eatUntil = Date.now() + 500;
+          if (e.type === "pointerdown") { p0 = e.button > 0 ? null : { id: e.pointerId, x: e.clientX, y: e.clientY }; holdTouch = !!p0; return; }
+          if (e.type === "pointerup") { p0 = null; return; }
+          if (!p0 || e.pointerId !== p0.id || Math.abs(e.clientY - p0.y) < 6) return;
+          var p = p0; p0 = null; stats.caught++;
+          reopen();
+          try { if (W.PN_SHEETDRAG) W.PN_SHEETDRAG.take(e, p.y); } catch (er) {}
+        };
+        sh.addEventListener("pointerdown", outCatch, true); sh.addEventListener("pointermove", outCatch, true); sh.addEventListener("pointerup", outCatch, true);
+      } else sh.style.setProperty("pointer-events", "none", "important");
       stats.slide++;
       var end = function () { if (outA === a) outEnd(false); };
       a.onfinish = end; setTimeout(end, 600);   // no finish event (a hidden page) or a very late first frame: end anyway
       return true;
     } catch (e) { outEnd(false); return false; }
   }
+  // A finger that came down on the sliding sheet: the page does not pan under it (that would cancel the catch and the drag).
+  var holdTouch = false;
+  function touchEnd() { holdTouch = false; }
+  document.addEventListener("pointerup", touchEnd, true); document.addEventListener("pointercancel", touchEnd, true);
+  // the click after a touch on the sliding sheet: eaten (it would hit a row of the closed sheet)
+  document.addEventListener("click", function (e) {
+    if (Date.now() > eatUntil) return;
+    var sh = byId("sheet"); if (!sh || !e.target || !sh.contains(e.target) || !sh.hidden) return;
+    e.stopPropagation(); e.preventDefault();
+  }, true);
+
+  // fix 3 (principle 3, staggering): the first 8 rows of the lists in a sheet that opens from closed come in one after the
+  // other (30 ms step, --m-4, --e-in, opacity + 8 px up; smooth.css .sm-st). Rows that arrive a little later (the data of the
+  // list) join while the first 1.2 s lasts. Not on a re-render (a refresh, a tab, a sheet in the open sheet), not in a chat,
+  // not on the LIVE ticker, not when the same sheet opened again within 3 s. A row starts when warm.js shows the body.
+  var ROWS = ".ds-list > *, ul > li, ol > li, .glist > *, [role=list] > *, .pn-list > *";
+  var NOST = ".chat, .chat-list, .chat-msg, .chat-inp, .dm-box, .rl-msgs, .rd-msgs, .rd-chat, .ticker, [data-nostagger]";
+  var stLast = { title: "", t: 0 }, stMo = null;
+  function stagger(body, title) {
+    if (stMo) { stMo.disconnect(); stMo = null; }
+    if (!body || reduced() || !W.MutationObserver) return 0;
+    if (outA) return 0;   // it opened during the close slide (it turns around): the rows are on screen already
+    var now = Date.now(), again = stLast.title === title && now - stLast.t < 3000;
+    stLast = { title: title, t: now };
+    if (again || body.querySelector(NOST)) return 0;
+    var n = 0, seen = [], until = now + 1200;
+    function pick() {
+      if (n >= 8) return;
+      if (seen.length && !seen.some(function (x) { return x.isConnected; })) { n = 0; seen = []; }   // the first rows were replaced (skeleton → list)
+      var all = body.querySelectorAll(ROWS);
+      for (var i = 0; i < all.length && n < 8; i++) {
+        var r = all[i];
+        if (r.__smSt || r.classList.contains("sm-skel") || r.closest(NOST) || r.closest(".sm-st")) continue;
+        r.__smSt = 1;
+        if (!r.offsetHeight) continue;   // a hidden row
+        r.style.setProperty("--i", String(n)); r.classList.add("sm-st"); seen.push(r); n++;
+        (function (el) { setTimeout(function () { el.classList.remove("sm-st"); el.style.removeProperty("--i"); }, 1800); })(r);
+      }
+      // a row that showed later (it was hidden) keeps the reading order: number the rows again, top to bottom
+      seen = seen.filter(function (x) { return x.isConnected; }).sort(function (a, b) { return a.compareDocumentPosition(b) & 2 ? 1 : -1; });
+      seen.forEach(function (x, j) { x.style.setProperty("--i", String(j)); });
+      stats.stagger = n;
+    }
+    pick();
+    var mo = stMo = new MutationObserver(function () {
+      if (Date.now() > until || n >= 8 || byId("sheet").hidden) { mo.disconnect(); if (stMo === mo) stMo = null; return; }
+      pick();
+    });
+    mo.observe(body, { childList: true, subtree: true });
+    setTimeout(function () { mo.disconnect(); if (stMo === mo) stMo = null; }, 1200);
+    return n;
+  }
+
   function watchSheet() {
-    var sh = document.getElementById("sheet"), body = document.getElementById("sheet-body"), title = document.getElementById("sheet-title");
+    var sh = byId("sheet"), body = byId("sheet-body"), title = byId("sheet-title");
     if (!sh || !body || !W.MutationObserver) return;
+    if (sh.animate) document.documentElement.classList.add("sm-wa");   // the open is a Web Animation (smooth.css: no CSS slide then)
+    sh.addEventListener("touchmove", function (e) { if (holdTouch && e.cancelable) e.preventDefault(); }, { passive: false });
     var wasOpen = !sh.hidden, lastTitle = title ? title.textContent : "", swapT = 0;
     // Open → a new sheet replaced the old one while open: fade the new content in (the sheet itself stays).
     new MutationObserver(function () {
@@ -203,9 +352,12 @@
       }
       wasOpen = open; lastTitle = title ? title.textContent : "";
     }).observe(title || sh, { childList: true, characterData: true, subtree: true });
+    var shown = !sh.hidden;
     new MutationObserver(function () {
-      wasOpen = !sh.hidden; lastTitle = title ? title.textContent : "";
-      if (!sh.hidden && outA) outEnd(true);   // A9: a sheet opened during the close slide: show it at once, keep its new body
+      var was = shown; shown = !sh.hidden;
+      wasOpen = shown; lastTitle = title ? title.textContent : "";
+      document.documentElement.classList.toggle("sheet-open", !sh.hidden);   // fix 11 (app-ui.js sets it too; this catches other paths)
+      if (!sh.hidden && !was) sheetIn();   // shown: slide in (or turn a running close around)
     }).observe(sh, { attributes: true, attributeFilter: ["hidden"] });
     // "…" placeholders (a list that is on its way) → skeleton row.
     var skT = 0;
@@ -308,5 +460,5 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", onReady); else onReady();
 
-  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE };
+  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, sheetIn: sheetIn, inStop: inStop, closing: function () { return !!outA; }, stagger: stagger, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE };
 })();
