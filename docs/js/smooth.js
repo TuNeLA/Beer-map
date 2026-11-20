@@ -262,6 +262,7 @@
       var a = outA = anim(sh, [{ transform: base + "translateY(0)", opacity: o0 }, { transform: base + "translateY(" + Math.min(h, 520) * 0.6 + "px)", opacity: 0 }],
         { duration: tokMs("--m-4", 200), easing: tokE("--e-out", E_OUT), fill: "forwards" });
       outDone = typeof done === "function" ? done : null;
+      try { var tt = byId("sheet-title").textContent; if (tt === stLast.title) stLast.t = Date.now(); } catch (e) {}   // fix 3: "again within 3 s" counts from the close
       // A touch on the sliding sheet never clicks its old rows. A finger that DRAGS it (6 px) brings the sheet back: it opens
       // again from where it is and pnui.js takes the finger. A plain tap (a double tap on ✕) does nothing.
       if (typeof reopen === "function" && !reopen.__off) {

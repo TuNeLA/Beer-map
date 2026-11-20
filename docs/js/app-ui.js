@@ -147,7 +147,8 @@
     $("sheet-title").textContent = title;
     try { if (window.WARM) window.WARM.beginSheet(title); } catch (e) {}   // inst: render window (before the old body goes)
     var body = $("sheet-body"); body.innerHTML = ""; if (fresh) body.scrollTop = 0;
-    var later = wasHidden && !opts.sync && sheetFirstOk() && !(window.SMOOTH && window.SMOOTH.closing && window.SMOOTH.closing());   // a reopen during the close slide: its rows are on screen, build at once
+    var turn = wasHidden && !!(window.SMOOTH && window.SMOOTH.closing && window.SMOOTH.closing());   // fix 2: it opens during the close slide (it turns around)
+    var later = wasHidden && !opts.sync && !turn && sheetFirstOk();   // a turn: its rows are on screen, build at once
     if (later) body.appendChild(sheetShell(title));
     else sheetBuild(body, title, build);
     lastSheet = [title, build, opts];
@@ -156,7 +157,7 @@
     if (fresh) body.scrollTop = 0;   // ds22: again once shown (a hidden scroller ignores scrollTop and keeps its old place)
     var done = function () {
       if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
-      try { if (window.WARM) window.WARM.endSheet(body, $("sheet-title").textContent); } catch (e) {}   // inst: show it complete, in one step
+      try { if (window.WARM && !turn) window.WARM.endSheet(body, $("sheet-title").textContent); } catch (e) {}   // inst: show it complete, in one step (a turn: no hold, the rows stay in sight)
       if (wasHidden) { try { if (window.SMOOTH && window.SMOOTH.stagger) window.SMOOTH.stagger(body, title); } catch (e) {} }   // motion19a fix 3
     };
     if (!later) { done(); return true; }
