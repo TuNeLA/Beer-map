@@ -61,6 +61,7 @@
     } else if (!toastWait || rank >= toastWait._olnuT.rank) toastWait = el;
     return el;
   }
+  var lastRealTap = 0;
   var toastWait = null, lastTap = 0, lastTapOut = 0, tapShownFor = -1, tapShownAt = 0, tapN = 0, tapDownAt = -9e9;
   // calm2 fix1: a tap = its own number (pointerdown / key; a click without a pointerdown just before it = a new tap too), so a
   // fixed clock never makes two taps look like one. performance.now() for the 8 s "one toast per tap" window.
@@ -68,7 +69,7 @@
   var SAFE_RX = /Följ mig hem|går hem|är hemma|hemma!|medevac|hämtning|hämtar dig|SOS|larm|walking home|is home|pick ?up|Follow me home/i;
   function calmSafe(msg, o) { return !!(o.err || o.action || o.urgent || o.keep || /\b(med|hf|gw|ride|rd|sos|pick)\b|^(hf|gw|ride|rd|sos)-/.test((o.id || "") + " " + (o.cls || "")) || SAFE_RX.test(String(msg))); }
   ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function (e) {
-    lastTap = Date.now();
+    lastTap = Date.now(); if (e && e.isTrusted) lastRealTap = lastTap;   // motion19a: a real finger / key (sheetFirstOk)
     if (e && (e.type !== "click" || pnow() - tapDownAt > 800)) tapN++;
     if (e && e.type === "pointerdown") tapDownAt = pnow();
     // A tap outside the beer-type strip and the ÖL! button = the user asked for something (a sheet may open now).
@@ -189,7 +190,7 @@
   function sheetFirstOk() {
     if (window.PN_SHEET_FIRST === false || !window.requestAnimationFrame) return false;
     try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false; } catch (e) {}
-    return Date.now() - lastTap < 700;   // a tap asked for it (Doherty is about the answer to a tap)
+    return Date.now() - lastRealTap < 700;   // a real tap asked for it (Doherty is about the answer to a tap; a script click: as before)
   }
   // Skeleton rows at the height this sheet had last time (warm.js keeps it in localStorage "olnu.warm.h1"). The FIRST open of a
   // sheet on this phone has no known height: it builds at once, as before (a guessed height = the sheet edge jumps: layout
