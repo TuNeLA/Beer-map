@@ -1105,10 +1105,7 @@
     an.cancel(); an = null; if (ban) { ban.cancel(); ban = null; }
     s.style.transform = y ? "translateY(" + y.toFixed(1) + "px)" : ""; if (bd) bd.style.opacity = o;
   }
-  function topped(t) {   // every scroll box between the touch and the sheet is at its top
-    for (var e = t; e && e !== s; e = e.parentElement) if (e.scrollTop > 0) return false;
-    return true;
-  }
+  function topped(t) { for (var e = t; e && e !== s; e = e.parentElement) if (e.scrollTop > 0) return false; return true; }   // every scroll box between the touch and the sheet is at its top
   function snaps(h) { var a = [0], half = Math.round(h - innerHeight * 0.5); if (h > innerHeight * 0.72 && half > 80) a.push(half); a.push(h + 40); return a; }
   function go(y0, v0, y1, h, then) {   // damped spring (response 0.42 s, damping 0.86), sampled at 60 Hz, from the release speed
     var k = Math.pow(2 * Math.PI / 0.42, 2), c = 2 * 0.86 * Math.sqrt(k), x = y0 - y1, v = v0 * 1000, ks = [{ transform: "translateY(" + y0 + "px)" }], i = 0;
@@ -1141,7 +1138,8 @@
     if (!st.on) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) < (st.grip ? 4 : 7)) return;
       if (!st.grip && (Math.abs(dx) > Math.abs(dy) || !(rest > 0 || (dy > 0 && topped(st.t))))) { st = null; return; }   // a scroll or a side swipe
-      st.on = true; s.classList.add("sn-drag"); s.style.animation = "none";   // a grab during the slide-in: no replay of smSheetIn
+      st.on = true; s.classList.add("sn-drag"); s.style.animation = "none";   // a grab during the slide-in: no replay of smSheetIn; motion19a: the open slide (a Web Animation, smooth.js) stops, the drag starts from its live place
+      var yl = W.SMOOTH && W.SMOOTH.inStop ? W.SMOOTH.inStop() : null; if (yl !== null) { st.base = Math.max(0, yl); st.y0 = e.clientY; dy = 0; st.live = 1; }
       st.h = s.getBoundingClientRect().height || 400; try { s.setPointerCapture(e.pointerId); } catch (x) {}
     }
     var y = st.base + dy; if (y < 0) y = -Math.pow(-y, 0.7);   // above the top: rubber band
@@ -1154,9 +1152,11 @@
     var x = st; st = null; try { s.releasePointerCapture(x.id); } catch (er) {}
     if (!x.on) return;
     s.classList.remove("sn-drag"); eatClick = Date.now();
-    if (e.type === "pointercancel") { go(x.y, 0, x.base > 0 ? x.base : 0, x.h, null); return; }
+    if (e.type === "pointercancel") { go(x.y, 0, x.base > 0 && !x.live ? x.base : 0, x.h, null); return; }   // a grab of a moving sheet: back to open
     release(x);
   }
+  // motion19a: smooth.js hands over a finger that dragged the CLOSING sheet (the sheet opens again; this drag goes on)
+  W.PN_SHEETDRAG = { take: function (e, y0) { if (!s || s.hidden || st) return false; st = { id: e.pointerId, x0: e.clientX, y0: y0, base: 0, y: 0, h: 400, grip: true, t: e.target, on: false, live: 1, pts: [[e.timeStamp, e.clientY]] }; return true; } };
   function start() {
     s = document.getElementById("sheet"); bd = document.getElementById("backdrop"); if (!s || !s.animate) return;
     s.setAttribute("data-pn-drag", "");
