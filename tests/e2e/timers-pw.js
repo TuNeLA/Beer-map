@@ -142,7 +142,9 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
       return now;
     });
     ok("A9 close: #sheet.hidden at once, no clone (.sm-ghost-host)", a9.hidden && !a9.ghost, a9);
-    ok("A9 close: the real sheet slides down + fades (WAAPI on #sheet), no taps while it slides", a9.shown && a9.anim === 1 && a9.slide && a9.pe === "none" && a9.mid > 0 && a9.mid < 1 && a9.dy > 0, a9);
+    // motion19a (fix 2): the sliding sheet takes touches now (a drag brings it back); a tap on it clicks nothing (the click is
+    // eaten: motion19a-pw.js "a plain tap on the closing sheet"). So pointer-events is "auto" during the slide, not "none".
+    ok("A9 close: the real sheet slides down + fades (WAAPI on #sheet), no taps while it slides", a9.shown && a9.anim === 1 && a9.slide && /^(none|auto)$/.test(a9.pe) && a9.mid > 0 && a9.mid < 1 && a9.dy > 0, a9);
     ok("A9 close: the old content stays for the slide, then the body is empty and the sheet is display:none", a9.kids === a9.kids0 && a9.kids0 > 0 && a9.end.display === "none" && a9.end.inline === "" && a9.end.kids === 0 && a9.end.anims === 0, a9);
     // a sheet that opens during the slide shows at once and keeps its body
     await clickJS(page, "#btn-more"); await wait(page, 1500);
@@ -158,7 +160,8 @@ const HIDLOOPS = MAPLOOPS.concat(["knas.js", "pnui.js", "unlocks.js"]);
       document.getElementById("sheet-close").click();
       return at;
     });
-    ok("A9 a sheet opened during the slide: shown at once, slide gone, its body kept", !re.hidden && re.out === 0 && re.inline === "" && re.pe === "" && re.body === "ny text" && re.title === "Ny" && +re.op === 1, re);
+    // motion19a (fix 2): the close slide is gone; the sheet turns around from where it was = ONE open animation (was: 0, a jump)
+    ok("A9 a sheet opened during the slide: shown at once, slide gone, its body kept", !re.hidden && re.out <= 1 && re.inline === "" && re.pe === "" && re.body === "ny text" && re.title === "Ny" && +re.op === 1, re);
     ok("no page error", errs.length === 0, errs);
     await ctx.close();
 
