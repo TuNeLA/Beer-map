@@ -33,7 +33,7 @@ html.fx-shimmer #map{animation:none}   /* owner 13 Nov 21:12: the map never puls
 @keyframes fxshimmer{0%{transform:scale(1.01) skewX(-.35deg) translateY(1px)}100%{transform:scale(1.016) skewX(.35deg) translateY(-2px)}}
 
 /* fireball / lava: screen shake + shockwave */
-.fx-tk.fx-shake{animation:toin var(--m-4) var(--e-in),fxshake var(--m-6) cubic-bezier(.36,.07,.19,.97)}
+.fx-tk.fx-shake{animation:toin var(--tk-dim,80ms) var(--e-in),fxshake var(--m-6) cubic-bezier(.36,.07,.19,.97)}
 html.fx-shaking #map{animation:fxshake var(--m-6) cubic-bezier(.36,.07,.19,.97)}
 @keyframes fxshake{
   10%,90%{transform:translate3d(-2px,1px,0)} 20%,80%{transform:translate3d(5px,-3px,0)}
@@ -158,7 +158,7 @@ html.fx-shaking #map{animation:fxshake var(--m-6) cubic-bezier(.36,.07,.19,.97)}
   opacity:0;animation:fxbub .85s cubic-bezier(.3,.6,.5,1) forwards}
 @keyframes fxbub{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}15%{opacity:1}
   100%{transform:translate(calc(-50% + var(--sw)),calc(-50% + var(--rise))) scale(1.05);opacity:0}}
-.fx-clink .mugs{position:absolute;left:0;top:-74px;font-size:var(--fs-44);line-height:1;opacity:0;animation:fxmugs .85s cubic-bezier(.2,1.5,.4,1) forwards}
+.fx-clink .mugs{position:absolute;left:0;top:-74px;font-size:var(--fs-44);line-height:1;opacity:0;animation:fxmugs .85s var(--e-spring) forwards}
 @keyframes fxmugs{0%{transform:translate(-50%,-50%) scale(.2) rotate(-25deg);opacity:0}30%{transform:translate(-50%,-50%) scale(1.15) rotate(8deg);opacity:1}
   55%{transform:translate(-50%,-50%) scale(1) rotate(-5deg);opacity:1}100%{transform:translate(-50%,-80%) scale(1) rotate(0);opacity:0}}
 .fx-clink i{position:absolute;left:-2px;top:-83px;width:4px;height:18px;border-radius:var(--r-xs);background:linear-gradient(#fff,var(--gold,#ffe08a));
@@ -166,3 +166,22 @@ html.fx-shaking #map{animation:fxshake var(--m-6) cubic-bezier(.36,.07,.19,.97)}
 @keyframes fxray{0%{transform:rotate(var(--a)) translateY(-18px) scaleY(.2);opacity:0}30%{opacity:1}
   100%{transform:rotate(var(--a)) translateY(-56px) scaleY(1);opacity:0}}
 /* cln02: dead rules removed */
+
+/* ---------- motion19b: end-of-night "Hemma" card (js/nightlog.js homeCard). Calm: 450 ms in, 200 ms out, transform + opacity, no confetti ---------- */
+.hm-card{position:fixed;inset:0;z-index:2400;display:grid;place-items:center;padding:var(--sp-4);background:rgba(10,15,28,.72);animation:hmDim var(--m-5) var(--e-in) backwards}
+.hm-box{box-sizing:border-box;width:min(360px,100%);display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);text-align:center;padding:var(--sp-5) var(--sp-4);
+  border:1px solid var(--ds-border-2,var(--line));border-radius:var(--r-xl);background:var(--ds-raised,var(--night-2));box-shadow:var(--ds-sh-2);
+  animation:hmIn var(--m-6) var(--e-spring) backwards}
+.hm-ic{width:56px;height:56px;display:grid;place-items:center;border-radius:50%;background:var(--ds-amber-t,var(--amber));color:var(--on-amber)}
+.hm-ic .hm-ic-svg{width:28px;height:28px}
+.hm-title{margin:0;font:700 var(--fs-22)/28px var(--ds-sans,system-ui);color:var(--ds-text,var(--text))}
+.hm-line{margin:0;font:400 var(--fs-16)/22px var(--ds-sans,system-ui);color:var(--ds-muted,var(--muted))}
+.hm-total{display:flex;align-items:baseline;gap:var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans,system-ui);color:var(--ds-muted,var(--muted))}
+.hm-total b{font:700 var(--fs-28)/32px var(--ds-sans,system-ui);color:var(--ds-text,var(--text));font-variant-numeric:tabular-nums}
+.hm-row{display:flex;gap:var(--sp-2);width:100%;margin-top:var(--sp-2)}
+.hm-row .btn{flex:1 1 0;min-height:44px}
+.hm-card.hm-out{opacity:0;pointer-events:none;transition:opacity var(--m-4) var(--e-out)}
+.hm-card.hm-out .hm-box{transform:scale(.98);transition:transform var(--m-4) var(--e-out)}
+@keyframes hmDim{from{opacity:0}}
+@keyframes hmIn{from{opacity:0;transform:translateY(16px) scale(.96)}}
+@media (prefers-reduced-motion:reduce){.hm-card,.hm-box{animation:none}.hm-card.hm-out,.hm-card.hm-out .hm-box{transition:none}}

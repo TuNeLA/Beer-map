@@ -173,7 +173,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .inp,input.inp,textarea.inp{border-radius:var(--r-m) !important;background:var(--s0);border:1px solid var(--hair-2);color:var(--text);font-family:var(--body);font-size:var(--fs-m)}
 .inp:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.22)}
 .switch{border-radius:var(--r-pill);border:0;background:rgba(255,255,255,.14);transition:background var(--d-2)}
-.switch::after{border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4);transition:left var(--d-2) var(--ease-spring)}
+.switch::after{border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4);transition:transform var(--m-4) var(--e-std)}
 .switch[aria-checked="true"]{background:var(--green-d)}
 .tabs{border:0;border-radius:var(--r-m);background:rgba(255,255,255,.06);padding:3px;gap:2px;margin:4px 0 14px}
 .tabs button{border-radius:var(--r-s);min-height:40px;position:relative;color:var(--muted);transition:background var(--d-2),color var(--d-2)}
