@@ -49,6 +49,7 @@ const resetRec = (page) => page.evaluate(() => window.__m19.reset());
   try {
     const T = await setup(browser);
     const { page, touch, tap, close } = T;
+    let r0 = null, r = null;
 
     // ---- 1 + 4 + 3 + 11: first open of "Mer på kartan" (⋯, right side of the screen) by a finger tap ----
     await page.evaluate(() => { const box = document.createElement("div"); box.id = "m19-loops"; box.style.cssText = "position:fixed;left:0;top:120px;width:60px;height:30px;z-index:5";
@@ -56,13 +57,19 @@ const resetRec = (page) => page.evaluate(() => window.__m19.reset());
     const loops = () => page.evaluate(() => { const box = document.getElementById("m19-loops");
       return box.getAnimations({ subtree: true }).map((a) => a.animationName + ":" + a.playState).sort().join(" "); });
     const l0 = await loops();
+    // the first open on a phone builds at once (no known height = no skeleton, no layout shift): it teaches the height
+    await resetRec(page);
+    await tap("#btn-more"); await wait(page, 1000);
+    r0 = await rec(page);
+    ok("1 the very first open (height not known yet) is built at once: no skeleton step", r0.show && !r0.show.shell && r0.show.kids > 1, r0.show);
+    await close(); await wait(page, 3200);
     await resetRec(page);
     const tp = await tap("#btn-more");
     await wait(page, 60);
     const ff = await page.evaluate(() => { const s = document.getElementById("sheet"); return { rows: [...document.querySelectorAll("#sheet-body .sm-st")].map((r) => r.style.getPropertyValue("--i")).join(","), st: window.SMOOTH.stats.stagger }; });
     const lOpen = await loops();
     await wait(page, 900);
-    let r = await rec(page);
+    r = await rec(page);
     ok("1 tap → the sheet shows at once with skeleton rows (frame first, body next)", !!(r.show && r.show.shell && r.show.kids === 1), r.show);
     ok("1 the real body comes after the first frame of the slide", !!(r.show && r.fill && r.fill.frame > r.show.frame), { show: r.show && r.show.frame, fill: r.fill });
     const body1 = await page.evaluate(() => { const b = document.getElementById("sheet-body"); return { shell: !!b.querySelector(".wm-shell"), rows: b.querySelectorAll(".ds-row").length, hold: b.classList.contains("wm-hold"), lock: b.style.maxHeight }; });
@@ -166,13 +173,20 @@ const resetRec = (page) => page.evaluate(() => window.__m19.reset());
     await close();
 
     // ---- 1: the fallback, the back stack hook, the start at the top ----
+    await resetRec(page);
+    await page.evaluate(() => { const k = "olnu.warm.h1", h = JSON.parse(localStorage.getItem(k) || "{}"); h["m19 trasig"] = 200; localStorage.setItem(k, JSON.stringify(h)); });   // a known height: the build comes after the first frame
     await tap("#m19-boom"); await wait(page, 600);
+    const bmr = await rec(page);
+    ok("1 a sheet with a known height shows the skeleton first", bmr.show && bmr.show.shell, bmr.show);
     const bm = await page.evaluate(() => { const b = document.getElementById("sheet-body"); return { kids: b.children.length, shell: !!b.querySelector(".wm-shell"), text: b.textContent.trim().slice(0, 60) }; });
     ok("1 a build that throws after the first frame still gets the sheetFail text (never an empty sheet)", bm.kids > 0 && !bm.shell && bm.text.length > 0, bm);
     await close();
-    await tap("#btn-groups"); await wait(page, 1300);
+    await tap("#btn-groups"); await wait(page, 1300); await close();   // teaches the height
+    await resetRec(page); await tap("#btn-groups"); await wait(page, 1300);
+    const grr = await rec(page);
     const gr = await page.evaluate(() => { const s = document.getElementById("sheet"); return { tall: s.classList.contains("sn-tall"), tabs: !!document.querySelector("#sheet-body .inv-tabs"), cards: document.querySelectorAll("#sheet-body .gcard").length }; });
-    ok("1 Grupper: built after the first frame, SHEETNAV.didOpen still sees the tabs (sn-tall)", gr.tabs && gr.tall && gr.cards > 0, gr);
+    gr.shell = grr.show && grr.show.shell;
+    ok("1 Grupper: built after the first frame, SHEETNAV.didOpen still sees the tabs (sn-tall)", gr.shell && gr.tabs && gr.tall && gr.cards > 0, gr);
     await page.evaluate(() => { const b = document.getElementById("sheet-body"), f = document.createElement("div"); f.style.height = "1600px"; b.appendChild(f); b.scrollTop = 400; });
     await close(); await tap("#btn-groups"); await wait(page, 1300);
     ok("1 a sheet that opens fresh starts at the top (ds22)", await page.evaluate(() => document.getElementById("sheet-body").scrollTop === 0));

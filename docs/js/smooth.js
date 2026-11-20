@@ -19,7 +19,7 @@
   "use strict";
   var W = window;
   function reduced() { try { return !!(W.matchMedia && W.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } }
-  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, slide: 0, open: 0, reverse: 0, caught: 0, stagger: 0 };
+  var stats = { intlHit: 0, intlNew: 0, rpcShared: 0, rpcPrefetch: 0, slide: 0, open: 0, reverse: 0, caught: 0, stagger: 0, flip: 0 };
 
   /* ---------- 1. Intl cache ---------- */
   (function () {
@@ -224,6 +224,22 @@
     try { y = new DOMMatrixReadOnly(getComputedStyle(sh).transform).m42 || 0; } catch (e) {}
     inEnd(false);
     return y;
+  }
+
+  // fix 1 FLIP: call before a change of the sheet height (the body after its first frame); call the answer after it. The top
+  // edge stays where it was in that frame and moves on to its new place with the open spring (layout: no shift; CLS 0).
+  function flip() {
+    var sh = byId("sheet"); if (!sh || sh.hidden || reduced() || !sh.animate || outA) return null;
+    var t0 = sh.offsetTop;
+    return function () {
+      var d = t0 - sh.offsetTop; if (sh.hidden || Math.abs(d) < 1) return;
+      var cs = getComputedStyle(sh), m = new DOMMatrix(cs.transform && cs.transform !== "none" ? cs.transform : undefined);
+      m.m42 += d;
+      inEnd(true);
+      var a = inA = anim(sh, [{ transform: m.toString() }, { transform: "translateY(0) scale(1)" }], { duration: tokMs("--m-5", 300), easing: tokE("--e-spring", E_IN), fill: "backwards" });
+      a.onfinish = function () { if (inA === a) inEnd(false); };
+      stats.flip++;
+    };
   }
 
   var outA = null, outDone = null, ghost = null, outCatch = null, eatUntil = 0;
@@ -461,5 +477,5 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", onReady); else onReady();
 
-  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, sheetIn: sheetIn, inStop: inStop, closing: function () { return !!outA; }, stagger: stagger, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE };
+  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, sheetIn: sheetIn, inStop: inStop, closing: function () { return !!outA; }, flip: flip, stagger: stagger, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE };
 })();

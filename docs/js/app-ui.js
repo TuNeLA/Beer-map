@@ -126,8 +126,10 @@
   var sheetQueue = [];
   function sheetLocked() { return !!(PN.s.sheetCur && PN.s.sheetCur.lock && !$("sheet").hidden); }
   // motion19a fix 1 (Doherty < 400 ms): a sheet that opens from closed after a tap shows its frame at once (title + skeleton
-  // rows, .wm-shell in pnds.css) and slides; its body is built in the task after that first frame (sheetBuild). A sheet that
-  // replaces an open one, a refresh in place, reduced motion and opens without a tap build at once, as before.
+  // rows at its known height, .wm-shell in pnds.css) and slides; its body is built in the task after that first frame
+  // (sheetBuild), and a height change then is a FLIP (smooth.js), not a jump. This was warm.js slideFirst; it is here now, for
+  // every build (the queue, CALM and the back stack too). A sheet that replaces an open one, a refresh in place, the first
+  // open on this phone (no known height), reduced motion and opens without a tap build at once, as before.
   // Off switch: window.PN_SHEET_FIRST = false. A new open or a close while the build waits: the open builds it first, a close drops it.
   var sheetLater = null;
   function openSheet(title, build, opts) {
@@ -148,8 +150,9 @@
     try { if (window.WARM) window.WARM.beginSheet(title); } catch (e) {}   // inst: render window (before the old body goes)
     var body = $("sheet-body"); body.innerHTML = ""; if (fresh) body.scrollTop = 0;
     var turn = wasHidden && !!(window.SMOOTH && window.SMOOTH.closing && window.SMOOTH.closing());   // fix 2: it opens during the close slide (it turns around)
-    var later = wasHidden && !opts.sync && !turn && sheetFirstOk();   // a turn: its rows are on screen, build at once
-    if (later) body.appendChild(sheetShell(title));
+    var hint = wasHidden && !opts.sync && !turn ? sheetHint(title) : 0;
+    var later = hint > 0 && sheetFirstOk();   // a turn: its rows are on screen, build at once
+    if (later) body.appendChild(sheetShell(hint));
     else sheetBuild(body, title, build);
     lastSheet = [title, build, opts];
     $("sheet").hidden = false; $("backdrop").hidden = false;
@@ -164,13 +167,15 @@
     var job = sheetLater = { run: function () {
       if (sheetLater !== job) return; sheetLater = null;
       if ($("sheet").hidden || body.firstElementChild !== job.sk) return;   // closed, or something else drew the body
-      var lockH = Math.round(body.getBoundingClientRect().height);   // the skeleton height on screen now
+      // FLIP: the real body is taller or shorter than the skeleton. The sheet edge does not jump: the slide goes on from where
+      // the edge is now (smooth.js flip; no layout shift).
+      var flip = null; try { if (window.SMOOTH && window.SMOOTH.flip) flip = window.SMOOTH.flip(); } catch (e) {}
       body.innerHTML = "";
       sheetBuild(body, title, build);
       if (fresh) body.scrollTop = 0;
-      // the rows stay still while warm.js holds the body for its data (pnds.css .wm-cont): it grows at the reveal, under the fade
-      if (window.WARM) { body.classList.add("wm-cont"); body.style.maxHeight = lockH + "px"; }
+      if (window.WARM) body.classList.add("wm-cont");   // skeleton rows while warm.js holds the body for its data (pnds.css .wm-cont)
       done();
+      try { if (flip) flip(); } catch (e) {}
     }, sk: body.firstElementChild };
     var go = function () { job.run(); };
     try { requestAnimationFrame(function () { setTimeout(go, 0); }); } catch (e) {}
@@ -186,16 +191,20 @@
     try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false; } catch (e) {}
     return Date.now() - lastTap < 700;   // a tap asked for it (Doherty is about the answer to a tap)
   }
-  // Skeleton rows at the height this sheet had last time (warm.js keeps it), else 3 rows (pnds.css .wm-shell min-height).
-  function sheetShell(title) {
-    var sk = document.createElement("div"); sk.className = "wm-shell"; sk.setAttribute("aria-busy", "true");
-    var h = 0;
+  // Skeleton rows at the height this sheet had last time (warm.js keeps it in localStorage "olnu.warm.h1"). The FIRST open of a
+  // sheet on this phone has no known height: it builds at once, as before (a guessed height = the sheet edge jumps: layout
+  // shift, inst-pw.js "första gången").
+  function sheetHint(title) {
     try {
       var t = String(title || "").slice(0, 40), hh = JSON.parse(localStorage.getItem("olnu.warm.h1") || "{}") || {};
-      h = hh[t] || 0;
-      if (!h) for (var k in hh) if (k.indexOf(t + "|") === 0) { h = hh[k]; break; }
+      if (hh[t] > 0) return hh[t];
+      for (var k in hh) if (k.indexOf(t + "|") === 0 && hh[k] > 0) return hh[k];
     } catch (e) {}
-    if (h > 0) sk.style.minHeight = Math.min(h, Math.round(innerHeight * 0.8)) + "px";
+    return 0;
+  }
+  function sheetShell(h) {
+    var sk = document.createElement("div"); sk.className = "wm-shell"; sk.setAttribute("aria-busy", "true");
+    sk.style.minHeight = Math.min(h, Math.round(innerHeight * 0.8)) + "px";
     return sk;
   }
   function closeSheet(reason) {
