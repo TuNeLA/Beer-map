@@ -187,8 +187,57 @@
     row.appendChild(A.btn(L("📊 Min kväll", "📊 My night"), "btn-small", function () { open(null); }));
   }
 
+  /* ---------- motion19b: the end-of-night "Hemma" card (peak-end rule) ----------
+     ONE calm card when the night ends: "Jag är hemma" (onStopped) or the end of Följ mig hem (hemfolj.js arrive()).
+     Warm army / beer humour, never a push to drink more, no warning. The night total is information only; it is left out in
+     store builds (FX.store) and when it is 0. 450 ms in (--m-6), 200 ms out, no confetti. Styles: fx.css (.hm-*). */
+  var HOME_T = {
+    title: [["Hemma. Uppdraget slutfört.", "Home. Mission complete."], ["Framme vid basen.", "Back at base."], ["Hemma i tofflorna.", "Home in your slippers."]],
+    line: [["Bra marscherat, soldat. Gänget har fått beskedet.", "Well marched, soldier. The crew knows you are safe."],
+      ["Skorna av, dörren låst. Över och ut.", "Shoes off, door locked. Over and out."],
+      ["Eskorten är avlöst. Sov gott!", "Escort relieved. Sleep well!"]]
+  };
+  var homeAt = 0, homeEl = null;
+  function homePick(k) { var a = HOME_T[k], i = Math.floor(Math.random() * a.length); if (a.length > 1 && i === lastLine["h" + k]) i = (i + 1) % a.length; lastLine["h" + k] = i; return a[i][sv() ? 0 : 1]; }
+  function storeBuild() { try { return !!(window.FX && window.FX.store && window.FX.store()); } catch (e) { return false; } }
+  function homeClose() {
+    var c = homeEl; if (!c) return; homeEl = null;
+    document.removeEventListener("keydown", c._key);
+    c.classList.add("hm-out"); setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); }, 220);
+  }
+  function homeCard(o) {
+    o = o || {};
+    if (homeEl || Date.now() - homeAt < 90000) return !!homeEl;   // one card per ending (the walk and "Jag är hemma" can both fire)
+    homeAt = Date.now();
+    if (o.clearToast) document.querySelectorAll("#toasts .toast:not(.err):not([data-keep])").forEach(function (x) { if (!x.querySelector("button")) x.remove(); });   // the card is the one text
+    var wantN = !!(A && A.LIVE && !off) && !storeBuild();
+    var got = wantN ? Promise.race([(delete cache.now, load(null)).then(function (d) { return d && d.stats ? d.stats.drinks | 0 : 0; }, function () { return 0; }), new Promise(function (r) { setTimeout(function () { r(0); }, 700); })]) : Promise.resolve(0);
+    got.then(function (n) {
+      if (homeEl) return;
+      var ic = window.PNI && window.PNI.svg ? window.PNI.svg("home", "hm-ic-svg") : "";
+      var box = el("div", { class: "hm-box", role: "dialog", "aria-modal": "true", "aria-label": L("Hemma", "Home") });
+      box.appendChild(el("div", { class: "hm-ic", "aria-hidden": "true", html: ic }));
+      box.appendChild(el("h2", { class: "hm-title", text: homePick("title") }));
+      box.appendChild(el("p", { class: "hm-line", text: homePick("line") }));
+      if (n > 0) box.appendChild(el("div", { class: "hm-total" }, [el("b", { text: String(n) }), el("span", { text: L("drycker ikväll", "drinks tonight") })]));
+      var row = el("div", { class: "hm-row" });
+      var ok = el("button", { type: "button", class: "btn btn-amber hm-ok", text: L("Godnatt", "Good night") });
+      ok.addEventListener("click", homeClose);
+      row.appendChild(ok);
+      if (n > 0) { var lk = el("button", { type: "button", class: "btn btn-ghost hm-link", text: L("Min kväll", "My night") });
+        lk.addEventListener("click", function () { homeClose(); setTimeout(function () { open(null); }, 120); }); row.appendChild(lk); }
+      box.appendChild(row);
+      var c = el("div", { class: "hm-card" }, [box]);
+      c.addEventListener("click", function (e) { if (e.target === c) homeClose(); });
+      c._key = function (e) { if (e.key === "Escape") homeClose(); };
+      document.addEventListener("keydown", c._key);
+      document.body.appendChild(c); homeEl = c;
+      try { ok.focus({ preventScroll: true }); } catch (e) {}
+    });
+    return true;
+  }
   window.NIGHTLOG = {
-    open: open, button: button, _load: load,
+    open: open, homeCard: homeCard, onStopped: function (kind) { if (kind === "home") homeCard({ clearToast: true }); }, button: button, _load: load,
     init: function (api) { A = api; },
     hudChipsHTML: function (ctx) {
       if (!A || off || !A.LIVE || !ctx || !(ctx.n > 0)) return "";

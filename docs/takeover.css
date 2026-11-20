@@ -15,24 +15,25 @@
 .takeover.fx-tk ~ .pn-beerok{display:none}
 body:has(> .takeover.fx-tk) .pn-beerok{display:none}
 
-/* 2 · entrance: backdrop 200 ms (toin, styles.css), then the card, the emoji, the title, the line, the buttons, the hint.
+/* 2 · entrance: backdrop dim 80 ms (toin, styles.css), then, then the card, the emoji, the title, the line, the buttons, the hint.
    "backwards" = hidden while it waits, and no fill after, so the exit below can move the card. */
-.takeover.fx-tk.tk-medevac .to-core{animation:tk-card 300ms var(--e-spring) backwards}
-.takeover.fx-tk .to-icon{animation:tk-icon 300ms cubic-bezier(.2,1.4,.4,1) 60ms backwards}
-.takeover.fx-tk .to-title{animation:tk-title 300ms var(--e-in) 120ms backwards}
-.takeover.fx-tk .to-sub,.takeover.fx-tk .to-gag,.takeover.fx-tk .to-extra,.takeover.fx-tk .to-hint{animation:tk-rise 200ms var(--e-in) 220ms backwards}
-.takeover.fx-tk .to-gag{animation-delay:250ms}
-.takeover.fx-tk .to-extra{animation-delay:280ms}
-.takeover.fx-tk .to-hint{animation-delay:340ms}
+.takeover.fx-tk{--tk-dim:80ms}   /* motion19b: the dim comes first (80 ms), then the card settles with the spring */
+.takeover.fx-tk .to-core{animation:tk-card var(--m-5) var(--e-spring) var(--tk-dim) backwards}
+.takeover.fx-tk .to-icon{animation:tk-icon var(--m-5) var(--e-spring) calc(var(--tk-dim) + 60ms) backwards}
+.takeover.fx-tk .to-title{animation:tk-title var(--m-5) var(--e-in) calc(var(--tk-dim) + 120ms) backwards}
+.takeover.fx-tk .to-sub,.takeover.fx-tk .to-gag,.takeover.fx-tk .to-extra,.takeover.fx-tk .to-hint{animation:tk-rise var(--m-4) var(--e-in) calc(var(--tk-dim) + 220ms) backwards}
+.takeover.fx-tk .to-gag{animation-delay:calc(var(--tk-dim) + 250ms)}
+.takeover.fx-tk .to-extra{animation-delay:calc(var(--tk-dim) + 280ms)}
+.takeover.fx-tk .to-hint{animation-delay:calc(var(--tk-dim) + 340ms)}
 @keyframes tk-card{from{transform:translateY(16px) scale(.96)}}
 @keyframes tk-icon{from{transform:scale(.6);opacity:0}}
 @keyframes tk-title{from{transform:scale(1.25);opacity:0}}
 @keyframes tk-rise{from{transform:translateY(8px);opacity:0}}
 @keyframes tk-fade{from{opacity:0}}
 
-/* 3 · exit: 150 ms, the card sinks a little; no taps on a card that is leaving */
-.takeover.fx-tk.fx-tk-out{opacity:0;pointer-events:none;transition:opacity 150ms var(--e-out)}
-.takeover.fx-tk.fx-tk-out .to-core{transform:scale(.98);transition:transform 150ms var(--e-out)}
+/* 3 · exit: 200 ms --e-out, the card sinks a little; no taps on a card that is leaving */
+.takeover.fx-tk.fx-tk-out{opacity:0;pointer-events:none;transition:opacity var(--m-4) var(--e-out)}
+.takeover.fx-tk.fx-tk-out .to-core{transform:scale(.98);transition:transform var(--m-4) var(--e-out)}
 
 /* 4 · reduced motion (fx.js sets .still): one plain 150 ms fade in and out, nothing else moves */
 .takeover.fx-tk.still{animation:tk-fade 150ms linear !important}

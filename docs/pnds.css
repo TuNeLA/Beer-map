@@ -695,7 +695,7 @@ summary:active{transform:none}
 @keyframes pnAxBack{from{opacity:0;transform:translateX(-24px)}}
 @keyframes pnAxInT{from{transform:translateX(24px)}}
 /* tab / segment: a sliding marker (js) + the new pane fades through (out 90, in 210) */
-.pn-seg-mark{position:absolute;z-index:0;border-radius:8px;background:var(--ds-raised);pointer-events:none;transition:transform var(--m-4) var(--e-std),width var(--m-4) var(--e-std)}
+.pn-seg-mark{position:absolute;z-index:0;border-radius:8px;background:var(--ds-raised);pointer-events:none;transition:transform var(--m-4) var(--e-spring),width var(--m-4) var(--e-spring)}
 .pn-ft{animation:pnFadeThrough 300ms var(--e-std) backwards}
 @keyframes pnFadeThrough{0%{opacity:0}30%{opacity:0}100%{opacity:1}}
 /* ÖL! squash + spring + foam */
@@ -793,7 +793,7 @@ body.chief-on.sk-on .fm-banner,body.sk-on.chief-on .hf-banner{bottom:calc(var(--
 .switch[aria-checked="true"]::after{left:3px !important;transform:translateX(20px)}
 :is(.bp-st-bar span,.du-tug-us,.gm-bar>span,.gg-rbar>span,.gg-obar>span,.gw-pl-bar i,.mer-bar span,.pt-bt i){width:100% !important;transform-origin:left center;
   transform:scaleX(var(--pn-p,1));transition:transform var(--m-5) var(--e-std) !important}
-.pn-seg-mark{transition:transform var(--m-4) var(--e-std) !important}
+.pn-seg-mark{transition:transform var(--m-4) var(--e-spring) !important}
 .pn-seg-anim>:not(.pn-seg-mark){position:relative;z-index:1}
 .pn-seg-anim>:is([aria-selected="true"],.on,.active,[aria-pressed="true"],[aria-checked="true"]){background:transparent !important;box-shadow:none !important}
 .leaflet-popup.olnu-sheet{animation:none !important}
@@ -939,6 +939,8 @@ body.barsheet-open #pn-ikv2,body.ba-edit #pn-ikv2{visibility:hidden}
    invisible 44 px hit area. The look does not change (no colour, no size). The pins keep their own position rule. */
 .leaflet-marker-icon .pn-p::after,.leaflet-marker-icon .pn-cl::after,.leaflet-marker-icon .pill::after,.leaflet-marker-icon .pl-in::after{
   content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%);border-radius:var(--r-pill);background:none}
+/* motion19b: the hot-streak pills (p1/p2) draw their glow on ::after with pointer-events:none: the glow box is the 44 px box, so it takes taps too (no visual change) */
+.leaflet-marker-icon .pill.p1::after,.leaflet-marker-icon .pill.p2::after{pointer-events:auto}
 /* hemzon: address search row */
 .hz-search{display:flex !important;gap:var(--sp-2);margin:0 0 var(--sp-2) !important}
 .hz-search .hz-q{flex:1 1 auto;min-width:0;height:44px;padding:0 var(--sp-3);border-radius:var(--r-md);border:1px solid var(--ds-border-2);background:var(--ds-bg);color:var(--ds-text);font:400 var(--fs-16)/22px var(--ds-sans)}

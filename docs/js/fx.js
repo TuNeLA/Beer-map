@@ -542,8 +542,8 @@
 
   /* ---------- Full-screen takeover. level 1 = HOT STREAK, 2 = MEDEVAC ----------
      opts: {title, sub, hint, extraHTML, ms, onClose (called once when the card is gone), variant (test), noAmbient (test)}
-     I-105 (styles: takeover.css): the title is fitted to the card, close taps wait 600 ms, never shown in a store build. */
-  var current = null, lastTk = { level: 0, at: 0 }, TK_MIN_FS = 24, TK_GUARD_MS = 600;
+     I-105 (styles: takeover.css): the title is fitted to the card, close taps wait 400 ms, never shown in a store build. */
+  var current = null, lastTk = { level: 0, at: 0 }, TK_MIN_FS = 24, TK_GUARD_MS = 400;
   // The title always fits: 1 px smaller at a time while a word is wider than the card or the title is over 2 lines
   // (same idea as fitBeerLabel in app-beer.js). Only a word that no size can hold is broken (.to-brk).
   function fitTitle(el) {
@@ -605,7 +605,7 @@
       if (typeof cleanup === "function") { try { cleanup(); } catch (e) {} }
       if (current === ctl) current = null;
       if (now) el.remove();
-      else { el.classList.add("fx-tk-out"); setTimeout(function () { el.remove(); }, 180); }   // ui1 B6: own close class; 150 ms fade (takeover.css)
+      else { el.classList.add("fx-tk-out"); setTimeout(function () { el.remove(); }, 220); }   // ui1 B6: own close class; 200 ms --e-out (takeover.css)
       if (typeof opts.onClose === "function") { try { opts.onClose(); } catch (e) {} }
     }
     var tkStart = Date.now();

@@ -3,8 +3,8 @@
 //   1 one text: no tap toast behind the card; "Ångra" comes when the card closes and then lives its 10 s
 //     (d-beer, I-114: "Ångra" is the ÖL! button itself for 10 s, no floating ↩ button over Annat any more)
 //   2 fit: every name, line and gag of the 5 / 10 / 15 pools fits at 360 / 390 / 430 px (title max 2 lines, no cut word)
-//   3 tap guard: a close tap in the first 600 ms does nothing
-//   4 entrance: emoji 60 ms, title 120 ms, line / buttons / hint 220-340 ms, transform + opacity only; reduced motion = 150 ms fade
+//   3 tap guard: a close tap in the first 400 ms does nothing (motion19b: was 600)
+//   4 entrance (motion19b): 80 ms dim first, then card 80 / emoji 140 / title 200 / line / buttons / hint 300-420 ms, transform + opacity only; reduced motion = 150 ms fade
 //   5 store builds (OLNU_STORE): no foam, no squash, no card, no level pop, no edge glow; the plain toast and the count stay
 // Mocked Supabase. Usage: node takeover-pw.js <port>     (TK_SHOTS=<dir> also saves takeover-5/10/15.png at 390x844)
 const { ctxFor, boot, wait } = require("./d2-helpers.js");
@@ -106,10 +106,10 @@ const fitAll = async () => {
     ({ ctx, page, errs, calls } = await open(browser, { n: 10 }));
     await tapBeer(page);
     ok("10: the card shows after the tap", await untilCard(page));
-    await clickCard(page);   // a quick 2nd tap, < 600 ms after the card came
+    await clickCard(page);   // a quick 2nd tap, < 400 ms after the card came
     await wait(page, 150);
     let s = await page.evaluate(state);
-    ok("3 a tap in the first 600 ms does not close the card", s.tk && !s.out, s);
+    ok("3 a tap in the first 400 ms does not close the card", s.tk && !s.out, s);
     await wait(page, 250);
     s = await page.evaluate(state);
     ok("1 one text: no tap toast and no other pop-up behind the card", s.tk && s.toasts.length === 0 && s.more.length === 0, s);
@@ -119,7 +119,7 @@ const fitAll = async () => {
     await clickCard(page);
     await wait(page, 500);
     s = await page.evaluate(state);
-    ok("3 a tap after 600 ms closes the card", !s.tk, s);
+    ok("3 a tap after 400 ms closes the card", !s.tk, s);
     ok("1 Ångra shows when the card is closed, still no 2nd text", s.undo && s.toasts.length === 0 && s.more.length === 0, s);
     ok("1 no floating undo button (Annat stays free)", await page.evaluate(() => !document.querySelector(".undo-fab")));
     await wait(page, 400);   // d-beer: the first 0.5 s of the Ångra state take no tap (the tap that closed the card)
@@ -168,15 +168,15 @@ const fitAll = async () => {
       const root = tk.getAnimations()[0];
       return { out, props: Object.keys(props).sort(), root: root && root.effect.getTiming().duration };
     });
-    const d = (k) => (mo.out[k] ? mo.out[k].delay : -1), du = (k) => (mo.out[k] ? mo.out[k].dur : -1);
-    ok("4 stagger: emoji 60 ms, title 120 ms, line 220, buttons 280, hint 340", d(".to-icon") === 60 && d(".to-title") === 120 && d(".to-sub") === 220 && d(".to-extra") === 280 && d(".to-hint") === 340, mo.out);
-    ok("4 times: card / emoji / title 300 ms, line / buttons / hint 200 ms, backdrop 200 ms", du(".to-core") === 300 && du(".to-icon") === 300 && du(".to-title") === 300 && du(".to-sub") === 200 && du(".to-extra") === 200 && du(".to-hint") === 200 && mo.root === 200, mo);
+    const d = (k) => (mo.out[k] ? Math.round(mo.out[k].delay) : -1), du = (k) => (mo.out[k] ? mo.out[k].dur : -1);
+    ok("4 stagger: dim 80 ms first, card 80, emoji 140, title 200, line 300, buttons 360, hint 420", d(".to-core") === 80 && d(".to-icon") === 140 && d(".to-title") === 200 && d(".to-sub") === 300 && d(".to-extra") === 360 && d(".to-hint") === 420, mo.out);
+    ok("4 times: card / emoji / title 300 ms, line / buttons / hint 200 ms, backdrop dim 80 ms", du(".to-core") === 300 && du(".to-icon") === 300 && du(".to-title") === 300 && du(".to-sub") === 200 && du(".to-extra") === 200 && du(".to-hint") === 200 && mo.root === 80, mo);
     ok("4 only transform + opacity move", mo.props.length > 0 && mo.props.every((p) => p === "transform" || p === "opacity"), mo.props);
     ok("4 no 2.4x title slam, no spinning emoji", !!mo.out[".to-title"] && /scale\(1\.25\)/.test(mo.out[".to-title"].from) && !!mo.out[".to-icon"] && /scale\(0?\.6\)/.test(mo.out[".to-icon"].from) && !/rotate/.test(mo.out[".to-icon"].from), mo.out);
     await wait(page, 750);
     const o1 = await page.evaluate(() => { const tk = document.querySelector(".takeover"); tk.click(); const cs = getComputedStyle(tk); return { out: tk.classList.contains("fx-tk-out"), tr: cs.transitionDuration, pe: cs.pointerEvents }; });
     await wait(page, 300);
-    ok("4 exit: 150 ms fade, no taps while it leaves, then gone", o1.out && /0\.15s/.test(o1.tr) && o1.pe === "none" && !(await page.evaluate(() => !!document.querySelector(".takeover"))), o1);
+    ok("4 exit: 200 ms --e-out fade, no taps while it leaves, then gone", o1.out && /0\.2s/.test(o1.tr) && o1.pe === "none" && !(await page.evaluate(() => !!document.querySelector(".takeover"))), o1);
     ok("4 no page errors", errs.length === 0, errs);
     await ctx.close();
 
