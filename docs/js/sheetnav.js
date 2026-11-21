@@ -19,7 +19,8 @@
    4. #sheet gets .sn-tall when it holds the Grupper | Vänner | Inkorg tabs → one constant height (ux3.css).
    app.js hooks (patch ux3/01): willOpen(title, build, opts, isOpen) → null | [title, build, opts]; didOpen(title,
    build, opts); willClose(reason) → true = handled (went back a step); didClose().
-   Public: window.SHEETNAV = { init, willOpen, didOpen, willClose, didClose, back, sub, depth, _levels }. */
+   5. I-139: from(reopen) = the next fresh open came from a panel outside the sheet; its bottom level "ext" goes back to it.
+   Public: window.SHEETNAV = { init, willOpen, didOpen, willClose, didClose, back, sub, from, depth, _levels }. */
 (function () {
   "use strict";
   var A = null;
@@ -44,11 +45,13 @@
   /* ---------- open / close hooks (from app.js) ---------- */
   function willOpen(title, build, opts, open) {
     if (replay) return null;
+    var ext = takeFrom();
     if (!open) {
       // A fresh open. A sheet that closed in this same task (close → open) keeps one of its history entries.
       if (pendingUnwind > 0) { var keep = pendingUnwind; pendingUnwind = 0; levels = [{ kind: "base" }]; unwind(keep - 1); }
       else if (levels.length === 1 && levels[0].kind === "popup") levels = [{ kind: "base" }];   // the bar sheet's entry is reused
       else { levels = [{ kind: "base" }]; push(); }
+      if (ext) levels[0] = { kind: "ext", reopen: ext };   // I-139: the bottom level remembers the panel it came from
       return null;
     }
     if (levels.length === 0) { levels = [{ kind: "base" }]; push(); }   // opened before this module started
@@ -134,6 +137,24 @@
     }
   }
 
+  /* ---------- I-139: a sheet opened from a panel OUTSIDE the sheet ---------- */
+  // The search panel's Öl tab and the person card are not #sheet: a beer or style page opened from them started a fresh stack
+  // with only ✕ (owner 21 Nov: "Why is there no back button when viewing a beer"). The panel calls from(reopen) just before it
+  // opens the sheet; that open's bottom level is then "ext": back (‹, Android back) closes the sheet and calls reopen() =
+  // the panel again, as it was. ✕ still closes everything. The mark lives FROM_MS (the page may wait for its data files).
+  var fromNext = null, FROM_MS = 4000;
+  function from(reopen) { fromNext = typeof reopen === "function" ? { fn: reopen, at: Date.now() } : null; }
+  function takeFrom() {
+    var f = fromNext; fromNext = null;
+    return f && Date.now() - f.at < FROM_MS ? f.fn : null;
+  }
+  // after our own history.back(): the panel pushes its own history step, so it must open after that back has landed
+  function afterPop(fn, fromPop) {
+    if (fromPop) { setTimeout(fn, 0); return; }
+    var done = false, go = function () { if (done) return; done = true; window.removeEventListener("popstate", go); setTimeout(fn, 0); };
+    window.addEventListener("popstate", go); setTimeout(go, 450);
+  }
+
   /* ---------- one step back ---------- */
   function back(fromPop) {
     var t = levels.pop();
@@ -155,10 +176,11 @@
       try { A.openSheet(t.entry[0], t.entry[1], o); } catch (e) {}
       replay = false;
       restore(t);
-    } else if (t.kind === "base") {
+    } else if (t.kind === "base" || t.kind === "ext") {
       closingNav = true;
       try { A.closeSheet("cancel"); } catch (e) {}
       closingNav = false;
+      if (t.kind === "ext") afterPop(function () { try { t.reopen(); } catch (e) {} }, fromPop);
     } else if (t.kind === "popup") {
       try { if (A.map && A.map.closePopup) A.map.closePopup(); } catch (e) {}
     }
@@ -294,7 +316,7 @@
   window.SHEETNAV = {
     init: function (api) { A = api; initDrag(); try { initPopup(); } catch (e) {} watchGv(); },
     willOpen: willOpen, didOpen: didOpen, willClose: willClose, didClose: didClose,
-    back: function () { return back(false); }, sub: sub,
+    back: function () { return back(false); }, sub: sub, from: from,
     depth: function () { return levels.length; }, cur: function () { return cur; }, _levels: function () { return levels.map(function (l) { return l.kind + (l.entry ? ":" + l.entry[0] : ""); }); }
   };
 })();

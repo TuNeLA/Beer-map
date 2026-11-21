@@ -311,12 +311,13 @@
     if (selfBack) { var f = selfBack; selfBack = null; f(); return; }
     if (ui && !(e.state && e.state.pnBs)) { hist = 0; close(); }
   }
-  function open(tab) {
+  function open(tab, q) {   // q: the words to put back in the field (I-139 back from a beer page)
     if (ui) { if (tab) setTab(tab, false); return; }
     if (!A) return;
     try { if (A.sheetOpen && A.sheetOpen()) A.closeSheet(); } catch (e) {}
     ui = build();
     st.q = ""; st.own = []; st.places = null; st.placeBusy = false; st.placeErr = false;
+    if (q && tab === "beer") { ui.input.value = q; ui.clear.hidden = false; }
     D.body.appendChild(ui.scrim); D.body.appendChild(ui.box); D.body.classList.add("bs-on");
     if (btn) btn.setAttribute("aria-expanded", "true");
     var t0 = tab === "beer" || tab === "bars" ? tab : lsTab();
@@ -371,12 +372,32 @@
   function paintBeer() {
     if (!ui || st.tab !== "beer") return;
     var box = ui.beer, q = String(ui.input.value || "").trim();
-    loadBeer().then(function (L) { if (ui && ui.beer === box && st.tab === "beer") { L.tab(box, String(ui.input.value || "").trim()); fit(); } }, function () {
+    loadBeer().then(function (L) { if (ui && ui.beer === box && st.tab === "beer") { L.tab(box, String(ui.input.value || "").trim(), { beer: fromBeer(L, "beer"), style: fromBeer(L, "style") }); fit(); } }, function () {
       if (!ui || ui.beer !== box) return;
       box.innerHTML = ""; var p = mk("p", "bs-msg bs-err", tl("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again.")); p.setAttribute("role", "status"); box.appendChild(p);
     });
     if (!W.BEERLIB && !box.firstChild) { var p = mk("p", "bs-msg", tl("Laddar ölen …", "Loading the beers …")); p.setAttribute("role", "status"); box.appendChild(p); }
     st.q = q; fit();
+  }
+  // I-139: a beer or style page opened from the Öl tab gets a back (‹) to this tab: the same words in the field, the same
+  // scroll place (js/sheetnav.js from(): the sheet's bottom level reopens the panel). Taste chip + "show more" live in BEERLIB.
+  function fromBeer(L, kind) {
+    return function (id) {
+      var keep = ui ? { q: String(ui.input.value || ""), top: ui.beer.scrollTop } : null;
+      try { if (keep && W.SHEETNAV && W.SHEETNAV.from) W.SHEETNAV.from(function () { reopenBeer(keep); }); } catch (e) {}
+      L[kind](id);
+    };
+  }
+  function reopenBeer(keep) {
+    if (ui) return;
+    open("beer", keep.q);
+    if (!ui) return;
+    var box = ui.beer, n = 0;
+    (function put() {   // the list paints when the beer files are in (at once: they are loaded)
+      if (!ui || ui.beer !== box) return;
+      if (box.scrollHeight - box.clientHeight < keep.top && n++ < 10) { setTimeout(put, 50); return; }
+      box.scrollTop = keep.top;
+    })();
   }
   function lazyRef(re, sel, attr, def) {
     var n = null; try { n = [].filter.call(D.querySelectorAll(sel), function (x) { return re.test(x.getAttribute(attr) || ""); })[0]; } catch (e) {}

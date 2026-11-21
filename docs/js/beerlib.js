@@ -93,7 +93,9 @@
   // the beer's photo (lazy) or its style picture; a broken photo falls back to the style picture
   function pic(b, cls) {
     var st = beerStyle(b), alt = "";
-    if (b.photo) return '<span class="bl-pic ph ' + (cls || "") + '"><img src="' + photoUrl(b) + '" alt="' + esc(alt) + '" loading="lazy" decoding="async" data-bl-st="' + esc(st ? st.id : "") + '"></span>';
+    // I-142: the big picture (cls "bl-big") gets a blurred copy of the same file behind it (one download: same URL)
+    var bg = /\bbl-big\b/.test(cls || "") ? '<img class="bl-pic-bg" src="' + photoUrl(b) + '" alt="" aria-hidden="true" decoding="async">' : "";
+    if (b.photo) return '<span class="bl-pic ph ' + (cls || "") + '">' + bg + '<img src="' + photoUrl(b) + '" alt="' + esc(alt) + '" loading="lazy" decoding="async" data-bl-st="' + esc(st ? st.id : "") + '"></span>';
     if (st) return '<span class="bl-pic ' + (cls || "") + '">' + styleImg(st.id, "") + "</span>";
     return '<span class="bl-pic ' + (cls || "") + '" aria-hidden="true">' + ic("beer") + "</span>";
   }
@@ -129,7 +131,26 @@
     }, function (e) { return { data: null, error: e || { message: "net" }, off: false }; });
   }
   function online() { return srv.off === false; }
-  function emit() { subs.forEach(function (f) { try { f(); } catch (e) {} }); }
+  function emit() { saveMini(); subs.forEach(function (f) { try { f(); } catch (e) {} }); }
+  // I-143: a small copy of my favourites (id, name, photo, strip kind) for the "Vilken sort?" strip after ÖL! (js/barsplus.js):
+  // the ÖL! tap must not load this library or the beer files. Written each time the favourites are known or change; [] = none.
+  var LS_MINI = "olnu.beer.favMini";
+  function saveMini() {
+    if (!favs) return;
+    if (favs.some(Boolean) && !data) { load().then(saveMini, function () {}); return; }
+    var l = []; favs.forEach(function (id) { var b = id && data && data.byId[id]; if (b) l.push({ id: b.id, n: String(b.name).slice(0, 60), p: b.photo ? 1 : 0, t: stripKind(b) }); });
+    lsSet(LS_MINI, { at: Date.now(), l: l });
+  }
+  // a library style -> one of the strip's 10 kinds (barsplus.js TYPES; the server's set_beer_type knows only these)
+  var KIND_ID = { "tysk-pilsner": "pilsner", "tjeckisk-pilsner": "pilsner", "apa": "apa", "baltisk-porter": "stout", "alkoholfri": "alkfri",
+    "blond-ale": "ale", "golden-ale": "ale", "bitter": "ale" };
+  var KIND_FAM = { lager: "lager", wheat: "vete", "pale-ipa": "ipa", "british-ale": "ale", hybrid: "ale", belgian: "ale", dark: "stout", sour: "sour" };
+  function stripKind(b) {
+    if (b.af) return "alkfri";
+    var st = beerStyle(b);
+    if (!st) return "annan";
+    return KIND_ID[st.id] || KIND_FAM[st.fam] || "annan";
+  }
   function on(f) { subs.push(f); return function () { subs = subs.filter(function (x) { return x !== f; }); }; }
 
   /* ---------- favourites (max 3, slots 1..3) ---------- */
@@ -148,7 +169,7 @@
       if (r.error) { favs = favs || localFavs(); return favs; }
       favs = fromSrv(r.data);
       return upload().then(function () { return favs; });
-    });
+    }).then(function (f) { saveMini(); return f; });
     return favP;
   }
   // once: favourites saved on this phone before the server had the tables go up when the server list is empty
@@ -449,6 +470,7 @@
     flags: { systembolaget: false },
     // Untappd: no API key yet. A later module may set BEERLIB.untappd = function (beer) -> Promise<{rating, count}>; nothing is shown before.
     untappd: null,
+    _kind: function (b) { return stripKind(b); },
     _reset: function () { data = null; dataP = null; srv.off = null; favs = null; favP = null; taps = null; tapsP = null; tabSt = { g: null, nSt: 6, nBeer: 30, q: "" }; }
   };
   if (W.PN) PN.mod("BEERLIB");

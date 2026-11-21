@@ -429,11 +429,12 @@
       var order = last ? [last].concat(TYPES.filter(function (x) { return x !== last; })) : TYPES.slice();
       strip.setAttribute("aria-label", t("bpTypeQ"));
       strip.innerHTML = '<div class="bp-st-head"><span>' + esc(t("bpTypeQ")) + '</span><button type="button" class="bp-st-x" aria-label="✕">✕</button></div>' +
-        '<div class="bp-st-chips">' + order.map(function (k) {
+        favRowHTML() + '<div class="bp-st-chips">' + order.map(function (k) {
           var same = k === last;
           return '<button type="button" class="bp-tc' + (same ? " same" : "") + '" data-bpt="' + k + '">' +
             (same ? '<span class="bp-same">' + esc(t("bpSame")) + "</span>" : "") + styleIcon(k, emo) + '<span class="bp-tn">' + esc(names[k] || k) + "</span></button>";
         }).join("") + '</div><div class="bp-st-bar"><span></span></div>';
+      [].forEach.call(strip.querySelectorAll(".bp-fph"), function (im) { im.addEventListener("error", function () { im.remove(); }); });
       strip.hidden = false;
       stripOpened();
       try { document.documentElement.style.setProperty("--bp-strip-h", (strip.offsetHeight + 18) + "px"); } catch (e) {}
@@ -453,10 +454,45 @@
       strip.onclick = function (e) {
         var x = e.target.closest && e.target.closest(".bp-st-x");
         if (x) { hideStrip(); return; }
+        var f = e.target.closest && e.target.closest("[data-bpf]");
+        if (f) { setFav(f.getAttribute("data-bpf")); return; }
         var b = e.target.closest && e.target.closest("[data-bpt]");
         if (b) setType(b.getAttribute("data-bpt"));
       };
     }, delay || 0);
+  }
+  /* I-143 (owner 21 Nov: "can i choose to be drinking a kind of beer when i press the öl button maybe your top 3 favorites show
+     up as a option"): my 3 favourite beers (the beer library) are the first chips of THIS strip. No new step and no 2nd pop-up:
+     the strip already comes after every accepted ÖL! and is optional (ignore it = as before). No favourites = the strip as before.
+     A favourite = its kind for the server (set_beer_type, the beer library style mapped to the 10 kinds) + the beer itself on this
+     phone (olnu.beer.now; the server has no field for one beer yet: lane beerux DONE "Needs coordinator: SQL").
+     The names come from a small copy that js/beerlib.js keeps (olnu.beer.favMini): the tap loads no library files. Once a day,
+     after an accepted beer, the library refreshes that copy in the background (another phone may have changed the favourites). */
+  var FAV_MINI = "olnu.beer.favMini", FAV_NOW = "olnu.beer.now", FAV_CHK = "olnu.beer.favChk";
+  function favList() {
+    var m = U.ls.getJSON(FAV_MINI, null), l = m && Array.isArray(m.l) ? m.l : [];
+    return l.filter(function (x) { return x && typeof x.id === "string" && /^[0-9A-Za-z_-]{1,40}$/.test(x.id) && x.n && TYPES.indexOf(x.t) >= 0; }).slice(0, 3);
+  }
+  function favRowHTML() {
+    var l = favList();
+    if (!l.length) return "";
+    var lbl = !I || I.lang !== "en" ? "Dina favoriter" : "Your favourites";
+    return '<div class="bp-st-fav" role="group" aria-label="' + esc(lbl) + '" style="--bp-fav-n:' + l.length + '"><span class="bp-st-lbl">' + esc(lbl) + '</span><div class="bp-st-chips">' + l.map(function (b) {
+      var ph = b.p ? '<img class="bp-fph" src="./data/beer/img/' + encodeURIComponent(b.id) + '.jpg" alt="" decoding="async">' : "";
+      return '<button type="button" class="bp-tc bp-fav" data-bpf="' + esc(b.id) + '">' + ph + '<span class="bp-tn">' + esc(b.n) + "</span></button>";
+    }).join("") + "</div></div>";
+  }
+  function setFav(id) {
+    var b = favList().filter(function (x) { return x.id === id; })[0];
+    if (!b) return;
+    U.ls.setJSON(FAV_NOW, { id: b.id, n: b.n, t: b.t, at: Date.now() });
+    setType(b.t);
+  }
+  function favRefresh() {
+    if (Date.now() - (+U.ls.get(FAV_CHK, "0") || 0) < 24 * 3600e3) return;
+    U.ls.set(FAV_CHK, String(Date.now()));
+    var go = function () { try { if (window.PN && PN.beerlib) PN.beerlib().then(function (B) { return B.favs(true); }).catch(function () {}); } catch (e) {} };
+    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 5000 }); else setTimeout(go, 3000);
   }
   function setType(k) {
     hideStrip();
@@ -1087,6 +1123,7 @@
       if ((d && d.beer_count | 0) < 1) return;
       var n = d.beer_count | 0;
       showStrip(900);
+      favRefresh();
     },
     topSheet: topSheet,
     groupItem: function (g, wrap) { groupItem(g, wrap); }
