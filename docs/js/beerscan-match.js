@@ -41,11 +41,15 @@
   }
   // how well one word read (w) shows one beer token (t): 0..1. known = w is itself a token of the library: then "heinek" (a cut
   // name in the data) inside "heineken" counts less than the exact "heineken".
-  function sim(t, w, known) {
+  function sim(t, w, known, idf) {
     if (t === w) return 1;
     var num = /^\d+$/.test(t);
     if (num || t.length <= 3) return 0;                                   // short words and numbers: exact only
-    if (w.length > t.length && w.indexOf(t) >= 0) return known ? 0.6 : 0.9;   // "norrlandsguld" holds "guld"
+    if (w.length > t.length && w.indexOf(t) >= 0) {   // "norrlandsguld" holds "norrlands" (and "guld": the rest is a known word too)
+      if (t.length >= 5) return known ? 0.6 : 0.9;
+      var rest = w.indexOf(t) === 0 ? w.slice(t.length) : w.slice(-t.length) === t ? w.slice(0, -t.length) : "";
+      return rest && idf && idf[rest] != null ? 0.9 : 0;   // 4 letters inside noise: nothing ("zxqvbrew" is not "brew")
+    }
     var L = Math.max(t.length, w.length), k = Math.floor(L * (1 - CLOSE) + 1e-9);
     if (Math.abs(w.length - t.length) > k) return 0;
     var d = lev(t, w, k);
@@ -77,9 +81,13 @@
     }
     var seen = {};
     if (!ws.length) return seen;
+    var known = ws.map(function (w) { return ix.idf[w] != null; }), exact = {};
+    ws.forEach(function (w) { exact[w] = 1; });
     ix.vocab.forEach(function (t) {
+      if (exact[t]) { seen[t] = 1; return; }
+      if (t.length <= 3 || /^\d+$/.test(t)) return;   // short words and numbers: exact only (sim() says the same)
       var best = 0;
-      for (var k = 0; k < ws.length && best < 1; k++) { var s = sim(t, ws[k], ix.idf[ws[k]] != null); if (s > best) best = s; }
+      for (var k = 0; k < ws.length && best < 1; k++) { var s = sim(t, ws[k], known[k], ix.idf); if (s > best) best = s; }
       if (best) seen[t] = best;
     });
     return seen;
@@ -102,7 +110,7 @@
     var ws = tokens(text).filter(function (w) { return /^[a-z]{3,}$/.test(w); });
     if (data) {
       var ix = index(data), best = null, bw = 0;
-      ws.forEach(function (w) { ix.vocab.forEach(function (t) { var s = sim(t, w, ix.idf[w] != null); if (s && t.length >= 3 && /^[a-z]+$/.test(t)) { var v = s * ix.idf[t]; if (v > bw) { bw = v; best = t; } } }); });
+      ws.forEach(function (w) { ix.vocab.forEach(function (t) { var s = sim(t, w, ix.idf[w] != null, ix.idf); if (s && t.length >= 3 && /^[a-z]+$/.test(t)) { var v = s * ix.idf[t]; if (v > bw) { bw = v; best = t; } } }); });
       if (best) return best;
     }
     ws = ws.filter(function (w) { return w.length >= 4; }).sort(function (a, b) { return b.length - a.length; });

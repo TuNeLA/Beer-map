@@ -11,7 +11,7 @@ body.bsc-open{overflow:hidden}
 .bsc-x{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-pill);
   background:var(--ds-card);color:var(--ds-text);cursor:pointer}
 .bsc-x .pi{width:20px;height:20px}
-.bsc-view{position:relative;flex:1 1 auto;min-height:180px;margin:var(--sp-2) 0 0;border-radius:var(--r-lg);overflow:hidden;
+.bsc-view{position:relative;flex:1 1 auto;min-height:120px;margin:var(--sp-2) 0 0;border-radius:var(--r-lg);overflow:hidden;
   background:var(--ds-card);border:1px solid var(--ds-border-2)}
 .bsc-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity var(--ds-t-2) var(--ds-ease)}
 .bsc-on .bsc-video{opacity:1}
@@ -22,12 +22,18 @@ body.bsc-open{overflow:hidden}
   animation:bscLine calc(var(--m-6,450ms) * 4) var(--e-std,ease-in-out) infinite alternate}
 @keyframes bscLine{from{top:8%}to{top:90%}}
 .bsc-nobar .bsc-frame{height:46%}
-.bsc[data-st="busy"] .bsc-line,.bsc:not(.bsc-on) .bsc-line{animation:none;top:50%}
-.bsc[data-st="pick"] .bsc-view,.bsc[data-st="none"] .bsc-view,.bsc[data-st="unknown"] .bsc-view{flex:0 0 22vh;min-height:110px}
-.bsc[data-st="nocam"] .bsc-view,.bsc[data-st="noread"]:not(.bsc-on) .bsc-view,.bsc[data-st="err"]:not(.bsc-on) .bsc-view{display:none}
+/* the line moves only while the app really looks for a barcode */
+.bsc:not([data-st="live"]) .bsc-line,.bsc:not(.bsc-on) .bsc-line,.bsc-nobar .bsc-line{animation:none;opacity:0}
+/* no camera: a calm placeholder (camera icon) in the same box; a chosen picture is shown while it is read */
+.bsc-ph{position:absolute;inset:0;display:none;place-items:center;color:var(--ds-muted)}
+.bsc-ph .pi{width:64px;height:64px;opacity:.55}
+.bsc:not(.bsc-on):not(.bsc-still-on)[data-st="nocam"] .bsc-ph,.bsc:not(.bsc-on):not(.bsc-still-on)[data-st="err"] .bsc-ph,
+.bsc:not(.bsc-on):not(.bsc-still-on)[data-st="noread"] .bsc-ph{display:grid}
+.bsc[data-st="nocam"] .bsc-frame,.bsc-still-on .bsc-frame,.bsc:not(.bsc-on)[data-st="err"] .bsc-frame{display:none}
+.bsc-still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--ds-card)}
 .bsc-msg{margin:var(--sp-3) var(--sp-1) 0;font:500 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);text-align:center}
 .bsc-msg[hidden]{display:none}
-.bsc-panel{flex:0 0 auto;max-height:52vh;overflow-y:auto;overscroll-behavior:contain;padding:var(--sp-2) 0 0}
+.bsc-panel{flex:0 0 auto;max-height:56vh;overflow-y:auto;overscroll-behavior:contain;padding:var(--sp-2) 0 0}
 .bsc-panel:empty{display:none}
 .bsc-h{margin:var(--sp-2) var(--sp-1) var(--sp-2);font:700 var(--fs-18)/24px var(--ds-sans);color:var(--ds-text)}
 .bsc-t{margin:var(--sp-3) var(--sp-1);font:400 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text-2)}

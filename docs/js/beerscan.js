@@ -141,12 +141,23 @@
         : tl("Texten gick inte att läsa. Försök igen eller skriv namnet.", "Could not read the text. Try again or type the name.") });
     });
   }
+  // the chosen picture stays in the box while it is read (its URL is freed on close or the next picture)
+  function still(u) {
+    if (!ui) return;
+    var old = ui.box.querySelector(".bsc-still"); if (old) old.remove();
+    if (ui.stillUrl) { try { URL.revokeObjectURL(ui.stillUrl); } catch (e) {} ui.stillUrl = null; }
+    ui.box.classList.toggle("bsc-still-on", !!u);
+    if (!u) return;
+    var im = mk("img", "bsc-still"); im.alt = ""; im.src = u; ui.stillUrl = u;
+    ui.box.querySelector(".bsc-view").appendChild(im);
+  }
   function fromFile(f) {
     if (!f || !ui) return;
     var img = new Image(), u = URL.createObjectURL(f);
     img.onload = function () {
-      var cv = frame(img); URL.revokeObjectURL(u);
-      if (!cv || !ui) return;
+      var cv = frame(img);
+      if (!cv || !ui) { URL.revokeObjectURL(u); return; }
+      still(u);
       barcode().then(function (d) { return d ? d.detect(cv)["catch"](function () { return []; }) : []; }).then(function (codes) {
         if (!onCodes(codes)) readNow(cv);
       });
@@ -181,7 +192,8 @@
     else if (st === "pick") h = '<h3 class="bsc-h">' + esc(tl("Menade du …", "Did you mean …")) + "</h3>" + rowsHTML(o.list) +
       '<div class="bsc-acts">' + btn("bsc-b bsc-2", tl("Ingen av dem", "None of them"), "type", "search") + again + "</div>";
     else if (st === "none") h = '<p class="bsc-t">' + esc(tl("Ingen öl i biblioteket matchar texten.", "No beer in the library matches the text.")) + "</p>" +
-      '<div class="bsc-acts">' + btn("bsc-b bsc-1", ui.q ? tl("Sök på ”" + ui.q + "”", "Search for “" + ui.q + "”") : tl("Skriv namnet", "Type the name"), "type", "search") + again + "</div>";
+      '<div class="bsc-acts">' + btn("bsc-b bsc-1", ui.q ? tl("Sök på ”" + ui.q + "”", "Search for “" + ui.q + "”") : tl("Skriv namnet", "Type the name"), "type", "search") + "</div>" +
+      '<div class="bsc-acts">' + again + "</div>";
     else if (st === "err" || st === "noread") h = '<p class="bsc-t">' + esc(st === "noread" ? tl("Den här telefonen kan inte läsa text i appen. Skriv namnet i stället.", "This phone can not read text in the app. Type the name instead.") : o.text) + "</p>" +
       '<div class="bsc-acts">' + type + (stream || st === "err" ? again : "") + "</div>";
     else if (st === "nocam") h = '<p class="bsc-t">' + esc(o.text) + "</p>" +
@@ -201,7 +213,7 @@
     else if (a === "type") fill(ui.q || "");
     else if (a === "read") readNow();
     else if (a === "file") ui.file.click();
-    else if (a === "again") { seen = {}; if (stream) { state("live"); if (det) loop(); } else startCam(); }
+    else if (a === "again") { seen = {}; still(null); if (stream) { state("live"); if (det) loop(); } else startCam(); }
   }
   function build() {
     var box = mk("div", "bsc"); box.id = "bsc";
@@ -209,7 +221,7 @@
     box.innerHTML = '<div class="bsc-top"><h2 class="bsc-title">' + esc(tl("Skanna en öl", "Scan a beer")) + "</h2>" +
       '<button type="button" class="bsc-x" data-bsc="close" aria-label="' + esc(tl("Stäng", "Close")) + '">' + ic("x") + "</button></div>" +
       '<div class="bsc-view"><video class="bsc-video" playsinline muted autoplay aria-hidden="true"></video>' +
-      '<div class="bsc-frame" aria-hidden="true"><i class="bsc-line"></i></div></div>' +
+      '<div class="bsc-frame" aria-hidden="true"><i class="bsc-line"></i></div><span class="bsc-ph" aria-hidden="true">' + ic("camera") + "</span></div>" +
       '<p class="bsc-msg" role="status" aria-live="polite" hidden></p><div class="bsc-panel"></div>' +
       '<p class="bsc-priv">' + esc(tl("Bilden stannar i telefonen. Inget skickas.", "The picture stays on the phone. Nothing is sent.")) + "</p>" +
       '<input type="file" accept="image/*" class="bsc-file" hidden tabindex="-1" aria-hidden="true">';
@@ -247,7 +259,7 @@
   }
   function close(after) {
     if (!ui) { if (after) after(); return; }
-    stopCam();
+    stopCam(); still(null);
     ui.box.remove(); ui = null; D.body.classList.remove("bsc-open");
     W.removeEventListener("keydown", onKey, true); D.removeEventListener("visibilitychange", onVis); W.removeEventListener("pagehide", stopCam);
     var then = function () { W.removeEventListener("popstate", onPop); if (after) after(); else if (opts.back) opts.back(); };
