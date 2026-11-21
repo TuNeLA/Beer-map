@@ -245,7 +245,7 @@
   }
   function onType() {
     clearTimeout(tType); clearTimeout(tPlace);
-    ui.clear.hidden = !ui.input.value;
+    ui.clear.hidden = !ui.input.value; camShow();
     if (st.tab === "beer") { clearTimeout(tBeer); tBeer = setTimeout(paintBeer, BEER_MS); return; }
     tType = setTimeout(function () {
       var q = String(ui.input.value || "").trim();
@@ -285,7 +285,11 @@
     input.placeholder = tl("Sök bar eller ställe", "Search bar or place"); input.setAttribute("aria-label", input.placeholder);
     var clear = mk("button", "bs-clear"); clear.type = "button"; clear.hidden = true; clear.innerHTML = ic("x"); clear.setAttribute("aria-label", tl("Rensa", "Clear"));
     var x = mk("button", "bs-close"); x.type = "button"; x.textContent = tl("Stäng", "Close");
-    lab.appendChild(lic); lab.appendChild(input); lab.appendChild(clear); bar.appendChild(lab); bar.appendChild(x);
+    // I-140 (lane beerscan): the camera button = scan a beer (barcode, else the label text). Öl tab + empty field only (the ✕ takes its place).
+    var cam = mk("button", "bs-clear bs-cam"); cam.type = "button"; cam.id = "bs-cam"; cam.hidden = true; cam.innerHTML = ic("camera");
+    cam.setAttribute("aria-label", tl("Skanna en öl med kameran", "Scan a beer with the camera")); cam.title = cam.getAttribute("aria-label");
+    cam.addEventListener("click", function (e) { e.preventDefault(); scan(); });
+    lab.appendChild(lic); lab.appendChild(input); lab.appendChild(clear); lab.appendChild(cam); bar.appendChild(lab); bar.appendChild(x);
     var msg = mk("p", "bs-msg"); msg.setAttribute("role", "status"); msg.hidden = true;
     var list = mk("ul", "bs-list"); list.id = "bs-list"; list.setAttribute("role", "listbox"); list.setAttribute("aria-label", tl("Träffar", "Results"));
     var tabs = mk("div", "ds-seg bs-tabs"); tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", tl("Sök efter", "Search for"));
@@ -303,7 +307,7 @@
     clear.addEventListener("click", function () { input.value = ""; st.q = ""; st.own = []; st.places = null; if (st.tab === "beer") paintBeer(); else paint(); try { input.focus(); } catch (e) {} });
     input.addEventListener("input", onType);
     input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); onEnter(); } });
-    return { scrim: scrim, box: box, input: input, list: list, msg: msg, clear: clear, tabs: tabs, beer: beer };
+    return { scrim: scrim, box: box, input: input, list: list, msg: msg, clear: clear, tabs: tabs, beer: beer, cam: cam };
   }
   function onKey(e) { if (e.key === "Escape" && ui) { e.preventDefault(); close(); } }
   function onVV() { fit(); }
@@ -366,6 +370,7 @@
     ui.input.placeholder = beer ? tl("Sök öl, bryggeri eller stil", "Search beer, brewery or style") : tl("Sök bar eller ställe", "Search bar or place");
     ui.input.setAttribute("aria-label", ui.input.placeholder); ui.input.setAttribute("aria-controls", beer ? "bs-beer" : "bs-list");
     ui.box.setAttribute("aria-label", beer ? tl("Sök öl", "Search beer") : tl("Sök krog", "Search bar"));
+    camShow();
     if (beer) { say(""); paintBeer(); } else { st.q = ""; onType(); paint(); }
   }
   function paintBeer() {
@@ -376,7 +381,28 @@
       box.innerHTML = ""; var p = mk("p", "bs-msg bs-err", tl("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again.")); p.setAttribute("role", "status"); box.appendChild(p);
     });
     if (!W.BEERLIB && !box.firstChild) { var p = mk("p", "bs-msg", tl("Laddar ölen …", "Loading the beers …")); p.setAttribute("role", "status"); box.appendChild(p); }
-    st.q = q; fit();
+    st.q = q; camShow(); fit();
+  }
+  /* I-140 (lane beerscan): the beer scanner. js/beerscan-match.js + js/beerscan.js + beerscan.css load on the first tap only. */
+  function camShow() { if (ui && ui.cam) ui.cam.hidden = !(st.tab === "beer" && !ui.input.value); }
+  function loadScan() {
+    var ld = W.PN && PN.load;
+    if (W.BEERSCAN && W.BEERSCAN_MATCH) return Promise.resolve(W.BEERSCAN);
+    if (!ld) return Promise.reject(new Error("no loader"));
+    var href = lazyRef(/beerscan\.css/, 'link[rel="x-lazy-css"],link[rel="stylesheet"]', "href", "./beerscan.css");
+    if (!D.querySelector('link[rel="stylesheet"][href="' + href + '"]')) { var l = D.createElement("link"); l.rel = "stylesheet"; l.href = href; D.head.appendChild(l); }
+    return ld(lazyRef(/js\/beerscan-match\.js/, 'script[type="text/x-lazy"]', "src", "./js/beerscan-match.js"), { test: function () { return !!W.BEERSCAN_MATCH; } })
+      .then(function () { return ld(lazyRef(/js\/beerscan\.js/, 'script[type="text/x-lazy"]', "src", "./js/beerscan.js"), { test: function () { return !!W.BEERSCAN; } }); })
+      .then(function () { return W.BEERSCAN; });
+  }
+  function scan() {
+    if (!ui) return;
+    var box = ui.box, back = function () { try { if (ui && ui.cam && !ui.cam.hidden) ui.cam.focus({ preventScroll: true }); } catch (e) {} };
+    Promise.all([loadBeer(), loadScan()]).then(function (r) {
+      if (!ui || ui.box !== box) return;
+      r[1].open({ openBeer: function (id) { if (r[0].beer) r[0].beer(id); }, back: back,
+        fill: function (q) { if (!ui) return; ui.input.value = q || ""; st.q = ""; onType(); try { ui.input.focus({ preventScroll: true }); } catch (e) {} } });
+    }, function () { say(tl("Skannern gick inte att ladda. Försök igen.", "Could not load the scanner. Try again."), "bs-err"); });
   }
   function lazyRef(re, sel, attr, def) {
     var n = null; try { n = [].filter.call(D.querySelectorAll(sel), function (x) { return re.test(x.getAttribute(attr) || ""); })[0]; } catch (e) {}

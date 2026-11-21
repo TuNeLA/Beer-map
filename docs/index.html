@@ -103,6 +103,8 @@
 <link rel="x-lazy-css" href="./forfest.css">
 <!-- rel="x-lazy-css": not loaded at start; js/barsearch.js adds it when the Öl tab opens (I-132). -->
 <link rel="x-lazy-css" href="./beerlib.css">
+<!-- rel="x-lazy-css": not loaded at start; js/barsearch.js adds it on the first tap of the camera button in the Öl search (I-140). -->
+<link rel="x-lazy-css" href="./beerscan.css">
 <link rel="stylesheet" href="./ceremony.css">
 <link rel="x-lazy-css" data-boot="1" href="./helg.css">
 <link rel="x-lazy-css" data-boot="1" href="./passport.css">
@@ -319,6 +321,9 @@
 <!-- data-demand: the beer library (I-132); js/barsearch.js PN.beerlib() loads these when the Öl tab opens. -->
 <script type="text/x-lazy" data-demand="1" src="./js/beerlib.js"></script>
 <script type="text/x-lazy" data-demand="1" src="./js/beerlib-pages.js"></script>
+<!-- data-demand: the beer scanner (I-140); js/barsearch.js loads these on the first tap of the camera button. OCR files: vendor/tesseract/ (only on "Läs texten"). -->
+<script type="text/x-lazy" data-demand="1" src="./js/beerscan-match.js"></script>
+<script type="text/x-lazy" data-demand="1" src="./js/beerscan.js"></script>
 <!-- E7: the Swedish town list (SCB tätorter, CC0, ~90 KB). js/towns.js loads it on demand (ride pickup area, home town picker). -->
 <script type="text/x-lazy" data-demand="1" src="./js/towns-data.js"></script>
 <script defer src="./js/delight-more-content.js"></script>
