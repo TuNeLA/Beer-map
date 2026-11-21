@@ -666,15 +666,8 @@
     });
     head.insertBefore(b, head.firstChild);
   }
-  // In-body back buttons of the older sheets (they all go one step back through SHEETNAV's back intent).
-  // I-145 (owner 21 Nov: "Inställningar has a back button that does nothing"): the RULE is "a back shows only when there is a
-  // real previous step". A HIDDEN in-body back is no step: Inställningar keeps its "‹ Inställningar" page back in the body,
-  // hidden while the hub list shows (app-settings.js buildHub). Counting it gave a header ‹ whose tap did nothing.
-  // Hidden = its own [hidden] or a hidden parent (.pn-gone is OUR hiding of a live back: that one still counts).
-  function liveBack(x, body) {
-    for (var e = x; e && e !== body; e = e.parentNode) if (e.hidden) return false;
-    return true;
-  }
+  // In-body backs of older sheets (one step via SHEETNAV's back intent). I-145: only a real step; a [hidden] one gave a dead ‹
+  function liveBack(x, body) { for (var e = x; e && e !== body; e = e.parentNode) if (e.hidden) return false; return true; }
   function inBodyBack(body) {
     var x = body.querySelector(":scope > .g-back");
     if (x) return liveBack(x, body) ? x : null;
@@ -685,8 +678,7 @@
   function syncBack() {
     var b = document.getElementById("pn-back"), body = document.getElementById("sheet-body");
     if (!b || !body) return;
-    // ext = a sheet opened from a panel outside the sheet (search Öl tab, person card): back = that panel again (I-139)
-    var depth = safe(function () { return W("SHEETNAV")._levels().filter(function (k) { return /^(sheet|sub|ext)/.test(k); }).length; }, 0) | 0;
+    var depth = safe(function () { return W("SHEETNAV")._levels().filter(function (k) { return /^(sheet|sub|ext)/.test(k); }).length; }, 0) | 0;   // ext: I-139 (sheetnav.js from)
     var sub = !!body.querySelector(".gpg:not([data-gv='home'])");
     var ib = inBodyBack(body);
     if (ib) ib.classList.add("pn-gone");
