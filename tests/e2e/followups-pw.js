@@ -219,7 +219,9 @@ const SPORT = { v: 1, bars: [{ bar_id: "n3472634175", name: "Pitchers", lat: 60.
         await page.evaluate(() => { const p = document.querySelector(".ps-page"); if (p) p.scrollIntoView({ block: "start" }); }); await wait(page, 400); await shot(page, "T6-R1-49-pass-" + w);
         await closeSheet(page);
         // R1-38 Spel top bar: PNI icons from the first paint (no ‹ / ✕ text), hub ‹ only, game ‹ + ✕
-        await page.evaluate((g) => window.SPEL.open({ id: g, name: "Ludvika Lager" }), GID); await wait(page, 2500);
+        // 21 Nov: "Nytt" shows only 14 days after launch (spel-ui.js PN_LAUNCH 7 Nov), so the hub is drawn with the clock at 10 Nov
+        // (the badge CLASS is what R1-26 checks, not the date rule). Before, this check failed from 21 Nov.
+        await page.evaluate((g) => { const real = Date.now; Date.now = () => Date.parse("2026-11-10T20:00:00Z"); try { window.SPEL.open({ id: g, name: "Ludvika Lager" }); } finally { setTimeout(() => { Date.now = real; }, 1500); } }, GID); await wait(page, 2500);
         const hub = await page.evaluate(() => ({ first: window.__fuFirst.slice(), back: (() => { const b = document.querySelector("#sp .sp-back"); return b && { l: b.getAttribute("aria-label"), svg: !!b.querySelector(".pi-chev-left") }; })(), x: !!document.querySelector("#sp .sp-x"),
           badges: [...document.querySelectorAll("#sp .sp-badge")].map((b) => b.textContent), tags: document.querySelectorAll("#sp .sp-tag").length }));
         ok(`T6 R1-38 ${w}: Spel hub ‹ is a PNI icon from the first paint ('Tillbaka till gruppen'), no ✕ in the hub`, hub.first.length >= 1 && hub.first.every((f) => f.svg && !/[‹✕]/.test(f.t)) && hub.back && hub.back.svg && hub.back.l === "Tillbaka till gruppen" && !hub.x, hub);
@@ -236,7 +238,7 @@ const SPORT = { v: 1, bars: [{ bar_id: "n3472634175", name: "Pitchers", lat: 60.
       const { ctx, page } = await setup(browser, 390, { url: "?bar=n3472634175", checkin: false, settle: 6000,
         routes: async (pg) => { await pg.route(/rest\/v1\/rpc\/bar_sport_near\b/, (r) => J(r, SPORT)); await pg.route(/rest\/v1\/rpc\/vote_bar_sport\b/, (r) => J(r, { code: "PGRST202", message: "Could not find the function public.vote_bar_sport" }, 404)); } });
       const before = await page.evaluate(() => { const t = document.querySelector(".leaflet-popup .sp-tag[data-sptag]"); const c = t && getComputedStyle(t); return t ? { ls: c.letterSpacing, color: c.color, font: c.fontWeight + " " + c.fontSize } : null; });
-      await page.evaluate((g) => window.SPEL.open({ id: g, name: "Ludvika Lager" }), GID); await wait(page, 2500);
+      await page.evaluate((g) => { const real = Date.now; Date.now = () => Date.parse("2026-11-10T20:00:00Z"); try { window.SPEL.open({ id: g, name: "Ludvika Lager" }); } finally { setTimeout(() => { Date.now = real; }, 1500); } }, GID); await wait(page, 2500);   // 21 Nov: clock inside the 14-day "Nytt" window (see T6 hub above)
       const after = await page.evaluate(() => { const t = document.querySelector(".leaflet-popup .sp-tag[data-sptag]"); const c = t && getComputedStyle(t); return t ? { ls: c.letterSpacing, color: c.color, font: c.fontWeight + " " + c.fontSize } : null; });
       ok("T6 R1-26 the bar sport line looks the same after the Spel hub loaded spel.css (no .sp-tag clash)", before && after && JSON.stringify(before) === JSON.stringify(after), { before, after });
       const nb = await page.evaluate(() => document.querySelectorAll("#sp .sp-badge, #sp .sp-tag").length);
