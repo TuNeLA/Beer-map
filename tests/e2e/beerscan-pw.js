@@ -62,6 +62,7 @@ const tracksOff = (page) => page.evaluate(() => window.__tracks.length > 0 && wi
       const c = document.getElementById("bs-cam"), r = c && c.getBoundingClientRect(), f = document.querySelector(".bs-field").getBoundingClientRect();
       return { vis: !!c && !c.hidden && r.width > 0, w: r && r.width, h: r && r.height, inField: r && r.right <= f.right + 1 && r.left >= f.left, aria: c && c.getAttribute("aria-label"), svg: !!(c && c.querySelector("svg")) };
     });
+    await shot(page, "00-ol-search-camera-button");
     ok("Öl tab: a camera button in the search field, 44x44, labelled, an icon (no emoji)", b1.vis && b1.w >= 44 && b1.h >= 44 && b1.inField && /Skanna en öl/.test(b1.aria) && b1.svg, b1);
     await page.fill("#bs-q", "pri"); await wait(page, 300);
     const b2 = await page.evaluate(() => ({ cam: document.getElementById("bs-cam").hidden, clear: document.querySelector(".bs-clear:not(.bs-cam)").hidden }));
