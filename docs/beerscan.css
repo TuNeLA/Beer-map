@@ -1,0 +1,54 @@
+/* PintsNow — beer scanner (owner I-140, lane beerscan, 21 Nov 2026): js/beerscan.js. Loaded on demand by js/barsearch.js on the
+   first tap of the camera button in the Öl search. Full screen over the search panel (.bs-panel z 1450). 44 px targets.
+   Reduced motion: the scan line stands still. Tokens only (pnds.css). */
+.bsc{--bsc-dim:rgb(0 0 0 / .42);position:fixed;inset:0;z-index:1500;display:flex;flex-direction:column;box-sizing:border-box;
+  padding:calc(var(--sat,0px) + var(--sp-2)) calc(var(--sar,0px) + var(--sp-3)) calc(var(--sab,0px) + var(--sp-2)) calc(var(--sal,0px) + var(--sp-3));
+  background:var(--ds-bg);color:var(--ds-text);font-family:var(--ds-sans);animation:bscIn var(--m-4,200ms) var(--e-out,ease-out) both}
+@keyframes bscIn{from{opacity:0}to{opacity:1}}
+body.bsc-open{overflow:hidden}
+.bsc-top{display:flex;align-items:center;gap:var(--sp-2);min-height:48px}
+.bsc-title{flex:1 1 auto;margin:0;font:700 var(--fs-22)/28px var(--ds-sans);color:var(--ds-amber-t)}
+.bsc-x{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-pill);
+  background:var(--ds-card);color:var(--ds-text);cursor:pointer}
+.bsc-x .pi{width:20px;height:20px}
+.bsc-view{position:relative;flex:1 1 auto;min-height:120px;margin:var(--sp-2) 0 0;border-radius:var(--r-lg);overflow:hidden;
+  background:var(--ds-card);border:1px solid var(--ds-border-2)}
+.bsc-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity var(--ds-t-2) var(--ds-ease)}
+.bsc-on .bsc-video{opacity:1}
+/* the aiming box: a barcode is wide and low; the dim outside shows where to aim */
+.bsc-frame{position:absolute;left:11%;right:11%;top:50%;height:34%;transform:translateY(-50%);border:3px solid var(--ds-amber);
+  border-radius:var(--r-md);box-shadow:0 0 0 100vmax var(--bsc-dim);pointer-events:none}
+.bsc-line{position:absolute;left:6%;right:6%;top:8%;height:2px;border-radius:var(--r-pill);background:var(--ds-amber);
+  animation:bscLine calc(var(--m-6,450ms) * 4) var(--e-std,ease-in-out) infinite alternate}
+@keyframes bscLine{from{top:8%}to{top:90%}}
+.bsc-nobar .bsc-frame{height:46%}
+/* the line moves only while the app really looks for a barcode */
+.bsc:not([data-st="live"]) .bsc-line,.bsc:not(.bsc-on) .bsc-line,.bsc-nobar .bsc-line{animation:none;opacity:0}
+/* no camera: a calm placeholder (camera icon) in the same box; a chosen picture is shown while it is read */
+.bsc-ph{position:absolute;inset:0;display:none;place-items:center;color:var(--ds-muted)}
+.bsc-ph .pi{width:64px;height:64px;opacity:.55}
+.bsc:not(.bsc-on):not(.bsc-still-on)[data-st="nocam"] .bsc-ph,.bsc:not(.bsc-on):not(.bsc-still-on)[data-st="err"] .bsc-ph,
+.bsc:not(.bsc-on):not(.bsc-still-on)[data-st="noread"] .bsc-ph{display:grid}
+.bsc[data-st="nocam"] .bsc-frame,.bsc-still-on .bsc-frame,.bsc:not(.bsc-on)[data-st="err"] .bsc-frame{display:none}
+.bsc-still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--ds-card)}
+.bsc-msg{margin:var(--sp-3) var(--sp-1) 0;font:500 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text);text-align:center}
+.bsc-msg[hidden]{display:none}
+.bsc-panel{flex:0 0 auto;max-height:56vh;overflow-y:auto;overscroll-behavior:contain;padding:var(--sp-2) 0 0}
+.bsc-panel:empty{display:none}
+.bsc-h{margin:var(--sp-2) var(--sp-1) var(--sp-2);font:700 var(--fs-18)/24px var(--ds-sans);color:var(--ds-text)}
+.bsc-t{margin:var(--sp-3) var(--sp-1);font:400 var(--fs-16)/22px var(--ds-sans);color:var(--ds-text-2)}
+.bsc-rows{margin:0 0 var(--sp-2)}
+.bsc-acts{display:flex;gap:var(--sp-2);margin:var(--sp-2) 0 0}
+.bsc-b{flex:1 1 0;min-width:0;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+  padding:0 var(--sp-3);border-radius:var(--r-md);font:600 var(--fs-16)/20px var(--ds-sans);cursor:pointer}
+.bsc-b .pi{width:20px;height:20px;flex:0 0 auto}
+.bsc-b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bsc-1{border:0;background:var(--ds-amber);color:var(--ds-on-amber)}
+.bsc-2{border:1px solid var(--ds-border-2);background:var(--ds-card);color:var(--ds-text)}
+.bsc-x:focus-visible,.bsc-b:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
+.bsc-priv{margin:var(--sp-2) 0 0;font:400 var(--fs-12)/16px var(--ds-sans);color:var(--ds-muted);text-align:center}
+@media (prefers-reduced-motion:reduce){
+  .bsc{animation:none}
+  .bsc-video{transition:none}
+  .bsc-line{animation:none;top:50%}
+}

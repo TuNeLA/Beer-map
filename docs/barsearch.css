@@ -33,6 +33,9 @@ html body.mn-rail-lbl #pn-mine{top:calc(var(--pn-r2, calc(var(--sat) + 96px)) + 
 .bs-clear{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ds-muted);cursor:pointer}
 .bs-clear[hidden]{display:none}
 .bs-clear .pi{width:18px;height:18px}
+/* I-140 (lane beerscan): the camera button (scan a beer) in the Öl field; same 44 px slot as the ✕, amber like the magnifier. */
+.bs-cam{color:var(--ds-amber-t)}
+.bs-cam .pi{width:22px;height:22px}
 .bs-close{flex:0 0 auto;min-width:44px;height:44px;padding:0 var(--sp-2);border:0;border-radius:var(--r-md);background:transparent;color:var(--ds-amber-t);
   font:600 var(--fs-16)/22px var(--ds-sans);cursor:pointer}
 .bs-clear:focus-visible,.bs-close:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:-2px}
