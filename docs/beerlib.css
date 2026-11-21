@@ -46,10 +46,16 @@
 .bl-row small{display:block;color:var(--ds-text-2);font-size:var(--fs-14);line-height:20px}
 .bl-chev{width:16px;height:16px;color:var(--ds-muted)}
 /* pictures: a photo on a light card (labels are made for white), or the style art */
-.bl-pic{display:grid;place-items:center;overflow:hidden;border-radius:var(--r-md);background:var(--ds-raised);flex:none}
-.bl-pic img{width:100%;height:100%;object-fit:contain;display:block}
+.bl-pic{display:grid;place-items:center;overflow:hidden;border-radius:var(--r-md);background:var(--ds-raised);flex:none;position:relative}
+/* I-142: the picture fills the box from all four sides. In the grid's auto row "height:100%" did not resolve: a tall photo grew to
+   its own height (1664 Blanc: 220 px in a 150 px box) and the box cut it off (only the bottle neck showed). Whole photo, always. */
+.bl-pic>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;box-sizing:border-box}
 .bl-pic.ph{background:var(--bl-photo-bg)}
-.bl-pic.ph img{padding:2px}
+.bl-pic.ph>img{padding:2px}
+/* the beer page: the photo sits on a soft, blurred copy of itself (tall bottles and wide cans both fit, no white bars) */
+.bl-pic.ph.bl-big{background:var(--ds-raised)}
+.bl-pic.ph.bl-big>img{padding:var(--sp-2)}
+.bl-pic.ph>img.bl-pic-bg{object-fit:cover;padding:0;filter:blur(14px) saturate(1.15) brightness(.85);transform:scale(1.3);opacity:.7}
 .bl-row .bl-pic{width:44px;height:56px}
 /* style page */
 .bl-sh{display:grid;grid-template-columns:112px 1fr;gap:var(--sp-4);align-items:center;padding:var(--sp-4);border-radius:var(--r-lg);border:1px solid var(--ds-border);

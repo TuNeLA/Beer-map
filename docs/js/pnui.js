@@ -666,19 +666,19 @@
     });
     head.insertBefore(b, head.firstChild);
   }
-  // In-body back buttons of the older sheets (they all go one step back through SHEETNAV's back intent).
-  var BACK_SEL = ":scope > .g-back, :scope > .row:first-child > .btn-small:only-child";
+  // In-body backs of older sheets (one step via SHEETNAV's back intent). I-145: only a real step; a [hidden] one gave a dead ‹
+  function liveBack(x, body) { for (var e = x; e && e !== body; e = e.parentNode) if (e.hidden) return false; return true; }
   function inBodyBack(body) {
     var x = body.querySelector(":scope > .g-back");
-    if (x) return x;
+    if (x) return liveBack(x, body) ? x : null;
     var r = body.querySelector(":scope > .row:first-child > .btn-small:only-child, :scope > .rnd + .row > .btn-small:only-child");
-    if (r && /^‹|^←/.test((r.textContent || "").trim())) return r;
+    if (r && /^‹|^←/.test((r.textContent || "").trim()) && liveBack(r, body)) return r;
     return null;
   }
   function syncBack() {
     var b = document.getElementById("pn-back"), body = document.getElementById("sheet-body");
     if (!b || !body) return;
-    var depth = safe(function () { return W("SHEETNAV")._levels().filter(function (k) { return /^(sheet|sub)/.test(k); }).length; }, 0) | 0;
+    var depth = safe(function () { return W("SHEETNAV")._levels().filter(function (k) { return /^(sheet|sub|ext)/.test(k); }).length; }, 0) | 0;   // ext: I-139 (sheetnav.js from)
     var sub = !!body.querySelector(".gpg:not([data-gv='home'])");
     var ib = inBodyBack(body);
     if (ib) ib.classList.add("pn-gone");

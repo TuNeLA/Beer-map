@@ -135,6 +135,8 @@
           card.appendChild(box);
           box.addEventListener("click", function (e) {
             var t = e.target && e.target.closest ? e.target.closest("[data-bl-beer]") : null; if (!t) return;
+            // I-139: the beer page gets a back (‹) to this card (js/sheetnav.js from(); over an open sheet the sheet is the step back)
+            try { if (window.SHEETNAV && window.SHEETNAV.from) window.SHEETNAV.from(function () { open(o); }); } catch (x) {}
             close(); B.beer(t.getAttribute("data-bl-beer"));
           });
         });

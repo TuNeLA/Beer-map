@@ -216,10 +216,10 @@
   var FAV_VIEW = "olnu.beer.favView";
   var FAV_CSS = ".bl-fav,.bl-fav *{box-sizing:border-box}" +
     ".bl-fav{color:var(--ds-text);font-family:var(--ds-sans)}" +
-    ".bl-fav .bl-pic{display:grid;place-items:center;overflow:hidden;border-radius:var(--r-md);background:var(--ds-raised);flex:none}" +
-    ".bl-fav .bl-pic img{width:100%;height:100%;object-fit:contain;display:block}" +
+    ".bl-fav .bl-pic{display:grid;place-items:center;overflow:hidden;border-radius:var(--r-md);background:var(--ds-raised);flex:none;position:relative}" +
+    ".bl-fav .bl-pic>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;box-sizing:border-box}" +   // I-142: whole photo (see beerlib.css)
     ".bl-fav .bl-pic.ph{background:var(--bl-photo-bg,#f3f1ea)}" +
-    ".bl-fav .bl-pic.ph img{padding:2px}" +
+    ".bl-fav .bl-pic.ph>img{padding:2px}" +
     ".bl-fav{margin:var(--sp-5) 0 var(--sp-5)}" +
     ".bl-fav-h{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-2)}" +
     "#sheet-body .bl-fav-h h3{margin:0 !important;padding:0 !important;color:var(--ds-muted);font:400 var(--fs-14)/44px var(--ds-sans) !important}" +

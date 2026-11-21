@@ -73,7 +73,7 @@
     var groups = st ? H.styleGroups(st).slice(0, 3) : [];
     // beer2: the label says when the style is a guess ("Stil (gissning)"); all OFF styles are guesses today (no "high" confidence)
     var lab = st ? (b.conf < 3 ? tl("Stil (gissning)", "Style (a guess)") : tl("Stil", "Style")) : "";
-    return '<div class="bl-bh">' + H.pic(b) + "<div>" + (b.brewery ? '<div class="who">' + esc(b.brewery) + "</div>" : "") +
+    return '<div class="bl-bh">' + H.pic(b, "bl-big") + "<div>" + (b.brewery ? '<div class="who">' + esc(b.brewery) + "</div>" : "") +
       (lab ? '<div class="bl-stl">' + esc(lab) + "</div>" : "") +
       '<div class="big">' + (st ? '<button type="button" class="bl-slink" data-bl-style="' + esc(st.id) + '">' + esc(H.styleName(st.id)) + "</button>" : esc(tl("Stil okänd", "Style unknown"))) +
       (H.abvText(b) ? " · " + esc(H.abvText(b)) : "") + "</div>" +
