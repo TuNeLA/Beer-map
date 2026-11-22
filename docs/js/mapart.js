@@ -736,13 +736,14 @@
   function pcss() { if (typeof document === "undefined" || document.getElementById("pn-people-css")) return; var st = document.createElement("style"); st.id = "pn-people-css"; st.textContent = PCSS; (document.head || document.documentElement).appendChild(st); }
   function hesc(x) { return String(x == null ? "" : x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function cnt(n) { n = Math.max(0, n | 0); return n > 99 ? "99+" : String(n); }
-  // o = { n, lvl, friend, mine, approx, avatar (an <img> html or ""), name, nc (no number for strangers: SAFE) }
+  // o = { n, lvl, friend, mine, approx, avatar (an <img> html or ""), name, nc (no number for strangers: SAFE),
+  //       beer (lane mybeer I-146: the mini bottle html from js/mybeer.js forPin; only for me or a group mate, never a stranger) }
   function personHTML(o) {
     pcss(); o = o || {};
     var cls = "pn-p lv" + (o.lvl | 0) + (o.mine ? " pn-m" : o.friend ? " pn-f" : " pn-s") + (o.approx ? " pn-a" : "");
     var face = o.avatar ? String(o.avatar) : PERSON;
     return '<div class="' + cls + '"><span class="pn-d">' + face + "</span>" + (o.nc ? "" : '<b class="pn-c">' + cnt(o.n) + "</b>") +
-      (o.name ? '<span class="pn-nm">' + hesc(o.name) + "</span>" : "") + "</div>";
+      (o.name ? '<span class="pn-nm">' + hesc(o.name) + "</span>" : "") + (o.beer && (o.mine || o.friend) ? String(o.beer) : "") + "</div>";
   }
   function clusterHTML(o) {
     pcss(); o = o || {};

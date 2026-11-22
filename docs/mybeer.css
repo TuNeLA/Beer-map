@@ -1,0 +1,46 @@
+/* PintsNow — MYBEER (lane mybeer, I-146 P1 + I-147 Q1). js/mybeer.js sets body.pn-mybeer + #btn-beer.mb-on and the beer's
+   colours as custom properties on the button (--mb-liq fill, --mb-hi / --mb-lo gradient stops, --mb-ink text, --mb-foam head,
+   --mb-fs label size). The colours are data (js/mybeer-look.js); only the fixed parts are tokens here.
+   No motion: nothing here animates (reduced motion = still by itself). Store builds: the same look. */
+:root{--mb-edge:#FFFAF0;--mb-rim:#D9DDE3;--mb-rim2:#AEB4BC;--mb-shine:rgba(255,255,255,.35);--mb-ring:rgba(10,15,28,.9);
+  --mb-bub:rgba(255,255,255,.5);--mb-bub2:rgba(255,255,255,.35);--mb-glass:#2B2213;--mb-glass2:#0E0A04;--mb-glint:rgba(255,255,255,.09);
+  --mb-pin-shadow:rgba(0,0,0,.75)}
+
+/* ---------- I-147: the button at rest = my beer (foam head, still bubbles, the beer colour) ---------- */
+body.pn-mybeer #btn-beer.mb-on:not(.cooldown):not(.soon){
+  background:
+    radial-gradient(circle at 30% 64%,var(--mb-bub) 0 1.6px,transparent 2.4px),radial-gradient(circle at 70% 74%,var(--mb-bub) 0 2.2px,transparent 3px),
+    radial-gradient(circle at 54% 86%,var(--mb-bub) 0 1.4px,transparent 2.2px),radial-gradient(circle at 40% 80%,var(--mb-bub2) 0 1px,transparent 1.8px),
+    radial-gradient(circle at 63% 59%,var(--mb-bub2) 0 1.2px,transparent 2px),
+    radial-gradient(ellipse 30% 16% at 18% 17%,var(--mb-foam) 0 98%,transparent 100%),radial-gradient(ellipse 30% 18% at 50% 19%,var(--mb-foam) 0 98%,transparent 100%),
+    radial-gradient(ellipse 30% 16% at 82% 17%,var(--mb-foam) 0 98%,transparent 100%),
+    linear-gradient(var(--mb-foam) 0 17%,transparent 17%),
+    radial-gradient(circle at 35% 40%,var(--mb-hi) 0%,var(--mb-liq) 45%,var(--mb-lo) 100%) !important;
+  border-color:var(--mb-foam) !important;
+  box-shadow:0 0 0 3px var(--mb-ring),0 10px 30px color-mix(in srgb,var(--mb-liq) 45%,transparent),inset 0 -6px 0 rgba(0,0,0,.18) !important}
+body.pn-mybeer #btn-beer.mb-on:not(.cooldown):not(.soon) #beer-label{color:var(--mb-ink) !important;font-size:var(--mb-fs,30px) !important;
+  letter-spacing:0 !important;line-height:1 !important;padding-top:14px !important;white-space:nowrap;text-shadow:none !important}
+/* the GLÖGG mug steps back while a beer is set (the season hat stays: it is its own element above the button) */
+body.pn-mybeer #btn-beer.mb-on>.ss-mug{display:none !important}
+/* the wait: the glass fills with MY beer colour (the app's level --fill, same foam line as the pint) */
+body.pn-mybeer #btn-beer.mb-on.cooldown:not(.undo){background:
+    linear-gradient(102deg,transparent 20%,var(--mb-glint) 26%,transparent 33%),
+    linear-gradient(to top,var(--mb-lo) 0,var(--mb-liq) calc(var(--fill,0%) - 7px),var(--mb-foam) calc(var(--fill,0%) - 6px),var(--mb-foam) calc(var(--fill,0%) + 1px),transparent calc(var(--fill,0%) + 1.5px)),
+    radial-gradient(circle at 35% 30%,var(--mb-glass),var(--mb-glass2) 75%) !important;background-origin:border-box !important;background-repeat:no-repeat !important}
+
+/* ---------- I-146: the mini bottle / can beside a person pin (me, group mates) ---------- */
+.pn-p>.pn-beer{position:absolute;left:-11px;bottom:-1px;display:block;line-height:0;pointer-events:none;filter:drop-shadow(0 1px 1.5px var(--mb-pin-shadow))}
+.pn-p>.pn-beer.pn-beer-c{left:-12px;bottom:0}
+.mb-svg{display:block;overflow:visible}
+.mb-svg .e{stroke:var(--mb-edge)}
+.mb-svg .r{fill:var(--mb-rim)}
+.mb-svg .r2{fill:var(--mb-rim2)}
+.mb-svg .sh{fill:var(--mb-shine)}
+
+/* ---------- the "Vilken sort?" strip: "Vanlig ÖL!" (back to the plain button) ---------- */
+.bp-st-fav .bp-plain{border-style:dashed}
+
+/* ---------- the beer page: "Jag dricker den här" (full row under Tipsa / Favorit) ---------- */
+.bl-acts .mb-now{grid-column:1/-1}
+.bl-acts .mb-now.on{color:var(--ds-amber-t);border-color:var(--ds-amber)}
+.mb-now-ic{display:inline-flex;width:20px;height:30px;align-items:center;justify-content:center}
