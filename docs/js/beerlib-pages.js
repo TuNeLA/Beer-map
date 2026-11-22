@@ -85,6 +85,14 @@
     return '<button type="button" class="bl-btn' + (s ? " on" : "") + '" data-bl-fav="1" aria-pressed="' + !!s + '">' + ic("heart") +
       esc(s ? tl("Favorit " + s + " av 3", "Favourite " + s + " of 3") : tl("Favorit", "Favourite")) + "</button>";
   }
+  // lane mybeer (I-147): "Jag dricker den här" = my beer now (the ÖL! button + my pin until 06:00). Again = back to plain ÖL!.
+  // The button shows the drawn mini bottle / can of this beer (colours only, no logo). Only when js/mybeer.js is there.
+  function nowBtn(b) {
+    var M = W.MYBEER, lk = B.lookOf ? B.lookOf(b) : null; if (!M || !lk) return "";
+    var c = M.current(), on = !!(c && c.id === b.id), pic = W.MYBEER_LOOK ? W.MYBEER_LOOK.svg(lk) : "";
+    return '<button type="button" class="bl-btn mb-now' + (on ? " on" : "") + '" data-bl-now="1" aria-pressed="' + on + '">' + (pic ? '<span class="mb-now-ic" aria-hidden="true">' + pic + "</span>" : "") +
+      esc(on ? tl("Min öl nu", "My beer now") : tl("Jag dricker den här", "I'm drinking this")) + "</button>";
+  }
   function rateHTML(n, local) {
     return '<h3 class="bl-h">' + esc(tl("Mitt betyg", "My rating")) + '</h3><div class="bl-card"><div class="bl-rate">' + H.starsHTML(n) +
       '<span class="v">' + (n ? esc(n + tl(" av 5", " of 5")) : "") + "</span></div>" +
@@ -137,7 +145,7 @@
     function paint() {
       var on = B.online();
       el.innerHTML = heroHTML(b, st) +
-        '<div class="bl-acts"><button type="button" class="bl-btn p" data-bl-tip="1">' + ic("send") + esc(tl("Tipsa en vän", "Tell a friend")) + "</button>" + favBtn(b) + "</div>" +
+        '<div class="bl-acts"><button type="button" class="bl-btn p" data-bl-tip="1">' + ic("send") + esc(tl("Tipsa en vän", "Tell a friend")) + "</button>" + favBtn(b) + nowBtn(b) + "</div>" +
         rateHTML(stars, !on) + (on ? othersHTML(info) : "") + sbHTML(b) + (on ? reviewsHTML(info) : "") +
         '<p class="bl-note">' + esc(tl("Data: Open Food Facts (ODbL). Bilden är CC BY-SA.", "Data: Open Food Facts (ODbL). The photo is CC BY-SA.")) + "</p>" + H.aboutLink();
       H.fixPics(el);
@@ -166,11 +174,19 @@
     el.addEventListener("click", function (e) { onBeerClick(e, el, b, { refresh: refresh, paint: paint, setStars: function (n) { stars = n; }, stars: function () { return stars; },
       stats: function (r) { if (info && r && r.n != null) { info.n = r.n; info.avg = r.avg; } } }); });
   }
+  function nowTap(b) {
+    var M = W.MYBEER, c = M && M.current(); if (!M) return;
+    if (c && c.id === b.id) { M.clear(); H.toast(tl("ÖL!-knappen är vanlig igen.", "The BEER! button is plain again.")); return; }
+    var n = M.pick({ id: b.id, n: b.name, t: B._kind(b), look: B.lookOf(b) });
+    var sn = n && n.look && n.look.sn;
+    H.toast(sn ? tl("ÖL!-knappen visar nu " + sn + ".", "The BEER! button now shows " + sn + ".") : tl("Sparat som din öl nu.", "Saved as your beer now."));
+  }
   function onBeerClick(e, el, b, ctl) {
     var t = e.target && e.target.closest ? e.target : null; if (!t) return;
     var x;
     if ((x = t.closest("[data-bl-tip]"))) { tipSheet(b.id); return; }
     if ((x = t.closest("[data-bl-fav]"))) { x.disabled = true; B.toggleFav(b.id).then(ctl.paint); return; }
+    if ((x = t.closest("[data-bl-now]"))) { nowTap(b); ctl.paint(); return; }
     if ((x = t.closest("[data-bl-star]"))) {
       var n = +x.getAttribute("data-bl-star"); if (n === ctl.stars()) n = 0;
       B.rate(b.id, n).then(function (r) { if (r) { ctl.setStars(r.stars | 0); ctl.stats(r); ctl.paint(); } });

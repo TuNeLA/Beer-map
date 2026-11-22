@@ -456,6 +456,7 @@
         if (x) { hideStrip(); return; }
         var f = e.target.closest && e.target.closest("[data-bpf]");
         if (f) { setFav(f.getAttribute("data-bpf")); return; }
+        if (e.target.closest && e.target.closest("[data-bpplain]")) { setPlain(); return; }
         var b = e.target.closest && e.target.closest("[data-bpt]");
         if (b) setType(b.getAttribute("data-bpt"));
       };
@@ -473,20 +474,30 @@
     var m = U.ls.getJSON(FAV_MINI, null), l = m && Array.isArray(m.l) ? m.l : [];
     return l.filter(function (x) { return x && typeof x.id === "string" && /^[0-9A-Za-z_-]{1,40}$/.test(x.id) && x.n && TYPES.indexOf(x.t) >= 0; }).slice(0, 3);
   }
+  // lane mybeer (I-147): the beer I picked is "my beer now" (js/mybeer.js: the ÖL! button and my pin show it until 06:00).
+  // While one is set, the row starts with "Vanlig ÖL!" (= back to the plain button) and my beer's chip is marked.
+  function myNow() { try { return window.MYBEER ? window.MYBEER.current() : null; } catch (e) { return null; } }
   function favRowHTML() {
-    var l = favList();
-    if (!l.length) return "";
-    var lbl = !I || I.lang !== "en" ? "Dina favoriter" : "Your favourites";
-    return '<div class="bp-st-fav" role="group" aria-label="' + esc(lbl) + '" style="--bp-fav-n:' + l.length + '"><span class="bp-st-lbl">' + esc(lbl) + '</span><div class="bp-st-chips">' + l.map(function (b) {
+    var l = favList(), cur = myNow();
+    if (!l.length && !cur) return "";
+    var sv = !I || I.lang !== "en", lbl = sv ? "Dina favoriter" : "Your favourites";
+    var plain = cur ? '<button type="button" class="bp-tc bp-plain" data-bpplain="1">' + '<span class="bp-tn">' + esc((sv ? "Vanlig " : "Plain ") + t("beer")) + "</span></button>" : "";
+    return '<div class="bp-st-fav" role="group" aria-label="' + esc(lbl) + '" style="--bp-fav-n:' + (l.length + (cur ? 1 : 0)) + '"><span class="bp-st-lbl">' + esc(lbl) + '</span><div class="bp-st-chips">' + plain + l.map(function (b) {
       var ph = b.p ? '<img class="bp-fph" src="./data/beer/img/' + encodeURIComponent(b.id) + '.jpg" alt="" decoding="async">' : "";
-      return '<button type="button" class="bp-tc bp-fav" data-bpf="' + esc(b.id) + '">' + ph + '<span class="bp-tn">' + esc(b.n) + "</span></button>";
+      var on = cur && cur.id === b.id;
+      return '<button type="button" class="bp-tc bp-fav' + (on ? " same" : "") + '" data-bpf="' + esc(b.id) + '" aria-pressed="' + !!on + '">' + ph + '<span class="bp-tn">' + esc(b.n) + "</span></button>";
     }).join("") + "</div></div>";
   }
   function setFav(id) {
     var b = favList().filter(function (x) { return x.id === id; })[0];
     if (!b) return;
-    U.ls.setJSON(FAV_NOW, { id: b.id, n: b.n, t: b.t, at: Date.now() });
-    setType(b.t);
+    if (window.MYBEER) window.MYBEER.pick({ id: b.id, n: b.n, t: b.t, look: b.lk || null });
+    else U.ls.setJSON(FAV_NOW, { id: b.id, n: b.n, t: b.t, at: Date.now() });
+    setType(b.t, true);
+  }
+  function setPlain() {
+    hideStrip();
+    try { if (window.MYBEER) window.MYBEER.clear(); } catch (e) {}
   }
   function favRefresh() {
     if (Date.now() - (+U.ls.get(FAV_CHK, "0") || 0) < 24 * 3600e3) return;
@@ -494,8 +505,10 @@
     var go = function () { try { if (window.PN && PN.beerlib) PN.beerlib().then(function (B) { return B.favs(true); }).catch(function () {}); } catch (e) {} };
     if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 5000 }); else setTimeout(go, 3000);
   }
-  function setType(k) {
+  function setType(k, fromFav) {
     hideStrip();
+    // lane mybeer: a plain kind of ANOTHER sort = not my exact beer any more (the same sort keeps it: a Blanc is still a "vete")
+    if (!fromFav) { var cur = myNow(); if (cur && cur.t !== k) try { window.MYBEER.clear(); } catch (e) {} }
     U.ls.set(TYPE_KEY, k);
     call("set_beer_type", { p_type: k }).then(function (r) {
       if (r.error) { if (!r.off && codeOf(r.error) !== "no_beer") A.toast(t("bpTypeFail"), { err: true }); return; }

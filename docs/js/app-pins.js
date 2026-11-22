@@ -40,7 +40,8 @@
     if (avi) html = html.replace(/^(<div class="pill[^"]*">)/, "$1" + avi);
     // mbx (owner: "no long pills: avatar + small badge count"): a round face + the count badge (js/mapart.js)
     if (window.PNPINS && window.PNPINS.personHTML) html = window.PNPINS.personHTML({ n: n, lvl: U.level(n), friend: !!b.friend_name, mine: !!b.is_mine,
-      approx: !b.precise, avatar: avi, name: b.friend_name || (b.is_mine ? t("you") : ""), nc: !!b._nc });
+      approx: !b.precise, avatar: avi, name: b.friend_name || (b.is_mine ? t("you") : ""), nc: !!b._nc,
+      beer: window.MYBEER && (b.is_mine || b.friend_name) ? window.MYBEER.forPin(b) : "" });   // lane mybeer I-146: my / a group mate's beer
     return L.divIcon({ html: html, className: b.friend_name || b.is_mine ? "pp-f" : "", iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -18] });
   }
   /* ---------- Drink levels (polish): Swedish names from js/levels-content.js (LEVELS_SV at 3/5/7/10/13/16/20).

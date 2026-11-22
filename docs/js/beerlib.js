@@ -138,9 +138,11 @@
   function saveMini() {
     if (!favs) return;
     if (favs.some(Boolean) && !data) { load().then(saveMini, function () {}); return; }
-    var l = []; favs.forEach(function (id) { var b = id && data && data.byId[id]; if (b) l.push({ id: b.id, n: String(b.name).slice(0, 60), p: b.photo ? 1 : 0, t: stripKind(b) }); });
+    var l = []; favs.forEach(function (id) { var b = id && data && data.byId[id]; if (b) l.push({ id: b.id, n: String(b.name).slice(0, 60), p: b.photo ? 1 : 0, t: stripKind(b), lk: lookOf(b) }); });
     lsSet(LS_MINI, { at: Date.now(), l: l });
   }
+  // lane mybeer (I-147): the look of a beer for the ÖL! button and the pin (short name, bottle / can, 2 colours, beer colour)
+  function lookOf(b) { try { var st = beerStyle(b); return W.MYBEER_LOOK ? W.MYBEER_LOOK.look(b, st && st.hex, stripKind(b)) : null; } catch (e) { return null; } }
   // a library style -> one of the strip's 10 kinds (barsplus.js TYPES; the server's set_beer_type knows only these)
   var KIND_ID = { "tysk-pilsner": "pilsner", "tjeckisk-pilsner": "pilsner", "apa": "apa", "baltisk-porter": "stout", "alkoholfri": "alkfri",
     "blond-ale": "ale", "golden-ale": "ale", "bitter": "ale" };
@@ -470,7 +472,7 @@
     flags: { systembolaget: false },
     // Untappd: no API key yet. A later module may set BEERLIB.untappd = function (beer) -> Promise<{rating, count}>; nothing is shown before.
     untappd: null,
-    _kind: function (b) { return stripKind(b); },
+    _kind: function (b) { return stripKind(b); }, lookOf: lookOf,
     _reset: function () { data = null; dataP = null; srv.off = null; favs = null; favP = null; taps = null; tapsP = null; tabSt = { g: null, nSt: 6, nBeer: 30, q: "" }; }
   };
   if (W.PN) PN.mod("BEERLIB");
