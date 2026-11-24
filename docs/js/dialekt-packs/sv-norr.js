@@ -12,9 +12,9 @@
     "Tyst i gänget. Senaste meddelandet var ”jo”. Svara ”jo” tillbaka. Det ä en plan."
   ],
   "live.quiet": [
-    "Lugnt. Int' en hot streak. Jo.",
+    "Lugnt. Int' mycket folk. Jo.",
     "Tyst på kartan. Norrskenet ä enda som rör sig.",
-    "Lugnt läge. Inga hot streaks. Bara snöfall."
+    "Lugnt läge. Bara snöfall."
   ],
   "kaos.head": "KAOS på {bar}! Hä ä fullt. Jo.",
   "toast.skal": [
@@ -498,10 +498,10 @@
     {"mix": 0.1}
   ],
   "live.hot": [
-    "🔥 {who} {where} ä på HOT STREAK. Ta hand om varandra. Jo.",
-    "🔥 {who} {where} ä på HOT STREAK. Vatten och mat nu. Jo.",
-    "🔥 HOT STREAK för {who} {where}. Ta det lugnt. Natten ä lång.",
-    "🔥 {who} {where} brinner. Vatten, mat, kompis. I den ordningen.",
+    "🍺 {who} {where} ä ute ikväll. Ta hand om varandra. Jo.",
+    "🍺 {who} {where} ä ute ikväll. Vatten och mat nu. Jo.",
+    "🍺 {who} {where} ä ute. Ta det lugnt. Natten ä lång.",
+    "🍺 {who} {where}: vatten, mat, kompis. I den ordningen.",
     {"mix": 0.1}
   ],
   "live.emptyFirst": [
@@ -605,7 +605,7 @@
   "kaos.line": [
     "🚨 Nu händer hä saker i {stad}!",
     "🔥 KAOS i {stad}: {n} ute. Hä ä mycket. Ta hand om varandra.",
-    "🚨 {stad} har vaknat. {hot} på hot streak. Vatten finns i baren.",
+    "🚨 {stad} har vaknat. Vatten finns i baren.",
     "🚨 Det händer saker i {stad}. Folk har tagit av sig mössan.",
     "🔥 {bar} ä fullt. Fönstren immar. Ta det lugnt där inne.",
     "🚨 {stad} har vaknat ur vinterdvalan. {n} ute. Vatten på bordet.",
@@ -638,16 +638,16 @@
     {"mix": 0.1}
   ],
   "toast.cooldown": [
-    "Lugn. Nästa öl om {m}. Jo.",
-    "Lugn. Nästa öl om {m}. Sätt på kaffe så länge."
+    "Paus. {m} kvar. Jo.",
+    "Paus. {m} kvar. Sätt på kaffe så länge."
   ],
   "stop.home.toast": [
     "🏠 Välkommen hem. Gruppen vet. Bra gjort.",
     "🏠 Välkommen hem. I värmen. Gruppen vet. Jo."
   ],
   "stop.pause.toast": [
-    "🥀 Paus. Ids du int'? Tryck ÖL! när törsten kommer tillbaka.",
-    "🥀 Paus. Ta en kopp kaffe. Tryck ÖL! när du vill."
+    "🥀 Paus. Din pin ä borta från kartan. Jo.",
+    "🥀 Paus. Ta en kopp kaffe."
   ],
   "lask.toast": [
     "Skål i läsk, chaufför. Gänget kommer hem tack vare dig. Int' illa.",
@@ -1041,7 +1041,7 @@
   ],
   "live.med": [
     "🚁 {who}{where} på {n}. Kompisar: vatten, mat och en blick. Jo.",
-    "🎖️ {who}{where} ä kvällens huvudperson. Ta hand om hen. Hemvägen ä lång.",
+    "🚑 {who}{where} har haft en lång kväll. Ta hand om hen. Hemvägen ä lång.",
     {"mix": 0.1}
   ],
   "live.medClose": [

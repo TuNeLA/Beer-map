@@ -70,12 +70,12 @@ t("nearestTown: Ludvika and fallback", () => {
   assert.ok(m.TOWNS.length >= 40);
 });
 
-t("line lists: about 6 per level, all use {namn}", () => {
+t("line lists (B2, 24 Nov): ONE fixed line per level, all use {namn}", () => {
   for (const lvl of [1, 5, 10]) {
-    assert.ok(m.FRIEND_LINES[lvl].length >= 6);
+    assert.equal(m.FRIEND_LINES[lvl].length, 1);
     for (const l of m.FRIEND_LINES[lvl]) assert.ok(l.includes("{namn}"), l);
   }
-  assert.ok(m.KAOS_LINES.length >= 7);
+  assert.deepEqual(m.KAOS_LINES, ["{n} ute i {stad}"]);
 });
 
 t("pickIndex never repeats the last line", () => {
@@ -97,30 +97,16 @@ t("pickIndex never repeats the last line", () => {
   assert.equal(m.pickIndex(3, 0, () => 0), 1);
 });
 
-t("kaosLineIndex differs on consecutive nights for the same user", () => {
-  const n = m.KAOS_LINES.length;
-  const nights = ["2026-10-18T03:00:00Z", "2026-10-19T03:00:00Z", "2026-10-26T04:00:00Z", "2026-10-27T04:00:00Z"];
-  for (const u of ["a1b2c3d4-0000-0000-0000-000000000001", "ffffffff-ffff-ffff-ffff-ffffffffffff"]) {
-    const ids = nights.map((x) => m.kaosLineIndex(n, x, u));
-    assert.notEqual(ids[0], ids[1]);
-    assert.notEqual(ids[2], ids[3]);
-    for (const i of ids) assert.ok(i >= 0 && i < n);
-  }
+t("kaosLineIndex stays in range (B2: one KAOS line)", () => {
+  for (const x of ["2026-10-18T03:00:00Z", "2026-10-19T03:00:00Z"]) assert.equal(m.kaosLineIndex(1, x, "a1b2c3d4-0000-0000-0000-000000000001"), 0);
 });
 
-t("kaosPayload text, body and tag (no names, no user id)", () => {
+t("kaosPayload text, body and tag (B2 row 7: no names, no user id, no hot-streak count)", () => {
   const p = m.kaosPayload(0, "Ludvika", 12, 3, "2026-10-18T03:00:00Z");
-  assert.equal(p.title, "🚨 Nu ballar det ur i Ludvika!");
-  assert.equal(p.body, "12 ute · 3 på hot streak");
+  assert.equal(p.title, "12 ute i Ludvika");
+  assert.equal(p.body, "Det är liv i stan ikväll.");
   assert.equal(p.url, "/");
   assert.equal(p.tag, "olnu-kaos-2026-10-17");
-  const q = m.kaosPayload(8, "Falun", 10, 0, "2026-10-26T04:00:00Z");
-  assert.equal(q.body, "10 ute");
-  assert.equal(q.title, "🍻 10 pers är ute i Falun just nu. Och du då?");
-  assert.equal(q.tag, "olnu-kaos-2026-10-25");
-  for (let i = 0; i < m.KAOS_LINES.length; i++) {
-    assert.ok(!/\{\w+\}/.test(m.kaosPayload(i, "X", 1, 1, "2026-10-18T03:00:00Z").title));
-  }
 });
 
 t("fill leaves unknown placeholders", () => {

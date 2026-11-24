@@ -23,7 +23,6 @@
   function getPosition() { return PN.getPosition.apply(null, arguments); }
   function locError() { return PN.locError.apply(null, arguments); }
   function lvList() { return PN.lvList.apply(null, arguments); }
-  function lvOf() { return PN.lvOf.apply(null, arguments); }
   function lvAt() { return PN.lvAt.apply(null, arguments); }
   function lvName() { return PN.lvName.apply(null, arguments); }
   function lvLine() { return PN.lvLine.apply(null, arguments); }
@@ -149,20 +148,9 @@
     clearTimeout(PN.s.busyT); if (v) PN.s.busyT = setTimeout(function () { if (PN.s.busy) b.classList.add("busy"); }, 900); else b.classList.remove("busy");
     if (!v) setTimeout(drainSheets, 80);
   }
-  function levelToast(n) {
-    if (n === 1) return t("lvl1");
-    var lv = lvOf(n);
-    if (lv) {
-      var nm = lvName(lv, "me");
-      if (n === lv.at) return lv.emoji + " " + nm + "! " + t("lvlN", n) + " · " + noLeadEmoji(lvLine(lv));
-      return lv.emoji + " " + t("lvlN", n) + " · " + nm;
-    }
-    if (n === 5) return t("lvl5");
-    if (n === 10) return t("lvl10");
-    if (n > 10) return t("lvlMed", n);
-    if (n > 5) return t("lvlHot", n);
-    return t("lvlN", n);
-  }
+  // E2 / B1 (owner default 24 Nov): the after-beer text is ONE plain fact (the outbox "sent" line used the level name + a
+  // joke about the number before). The 5 / 10 / 15 card keeps its own tease + care text (owner 7 Nov).
+  function levelToast(n) { return tl("Öl nr " + n + " ikväll", "Beer no. " + n + " tonight"); }
   // v14: all drinks count. Drinks tonight after an accepted beer = beers + other drinks (server "me" or pin).
   function othersNow() {
     var oc = PN.s.meState ? PN.s.meState.other_count | 0 : 0, mine = myBeer();

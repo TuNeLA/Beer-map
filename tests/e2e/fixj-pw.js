@@ -189,7 +189,8 @@ function report() {
         return { tie1: run(1, 1), tie3: run(3, 3), one: run(1, 0), ahead: run(4, 1) };
       });
       ok("J20 no 'Du leder' on a tie (1–1, 3–3) or with 1 beer", r.tie1 === 0 && r.tie3 === 0 && r.one === 0, r);
-      ok("J20 'Du leder' still there with a real lead (4 vs 1)", r.ahead > 0, r);
+      // E2 / B1 (owner default 24 Nov, lane texts): "Du leder" is a drink race. It is skipped in every build now (was: store only).
+      ok("J20 'Du leder' never shows, also with a lead (4 vs 1): no drink race in the ticker (E2)", r.ahead === 0, r);
       await ctx.close();
     }
     /* ================= J21 Barkungen: migration 0475 + void_ medals hidden ================= */

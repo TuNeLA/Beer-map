@@ -45,13 +45,13 @@ t("ikvall: nattro is respected (pushGate)", () => {
 });
 t("texts: short titles, info first, no drink counts", () => {
   const ik = m.tidyPayload(m.ikvallPayload(0, at("2026-11-06T19:00:00Z")));
-  assert.equal(ik.title, "Ute ikväll? 🍺"); assert.match(String(ik.tag), /^olnu-ikvall-2026-11-06$/); assert.equal(ik.url, "/?ikvall=1");
+  assert.equal(ik.title, "Ute ikväll?");   // B2 (24 Nov): the PUSH-TEXTS "Proposed" text assert.match(String(ik.tag), /^olnu-ikvall-2026-11-06$/); assert.equal(ik.url, "/?ikvall=1");
   const k = m.tidyPayload(m.knuffPayload("Anton", 7));
-  assert.equal(k.title, "Anton knuffar dig 👋"); assert.equal(m.pushCat(String(k.tag)), "ute");
+  assert.equal(k.title, "Anton knuffade dig"); assert.equal(m.pushCat(String(k.tag)), "ute");
   const r = m.tidyPayload(m.walkRemindPayload(5));
   assert.equal(m.pushCat(String(r.tag)), "safe"); assert.match(String(r.url), /walk=5&chk=1/);
   const a = m.tidyPayload(m.walkAlertPayload("Lisa", 5, at("2026-11-06T22:40:00Z"), at("2026-11-06T22:31:00Z")));
-  assert.equal(m.pushCat(String(a.tag)), "safe"); assert.equal(a.title, "Lisa har inte svarat ⚠️");
+  assert.equal(m.pushCat(String(a.tag)), "safe"); assert.equal(a.title, "Lisa har inte svarat"); assert.match(String(a.body), /^Ring Lisa\. Vid fara: 112\./);
   assert.match(String(a.body), /23:40/); assert.match(String(a.body), /23:31/); assert.match(String(a.body), /112/);
   for (const p of [ik, k, r, a]) assert.ok(![...String(p.title)].length || [...String(p.title)].length <= 40, p.title);
 });
