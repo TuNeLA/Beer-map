@@ -73,12 +73,27 @@ function brandWords(brewery) { return fold(brewery).split(" ").filter((w) => w.l
 // "Heineken" by Heineken = "Heineken" by Hansa Borg (licence brewer); "Juicy IPA" by Ringnes != "Juicy IPA" by Carlsberg.
 // Never across the alcohol-free mark (a.af / b.af when given). No "leading article" rule: "A ship full of IPA" (7310401034799)
 // is the alcohol-free bottle, "Ship Full Of IPA" (7310401039992) the normal can.
-export const nameKey = (s) => fold(s);
+// Lane fixC (P-11, 24 Nov): the CORE name. Open Food Facts has the same beer under its name in many languages and packs:
+// "Heineken", "Beer Heineken", "Heineken Bier", "Birra Heineken", "Heineken st 330" (Heineken x 12 in the list). The core drops
+// the word "beer" in any language, pack words and pack sizes, the words "brewery / bryggeri", and the word order. Kept: every
+// other word and every number that is not a pack size ("Heineken 0", "Karhu 4,6" / "5,3", "Amstel Radler 2.0", "5 / 9 luppoli"),
+// and "premium" (a real product word for some brands). An empty core (only beer words) never matches.
+export const BEERWORDS = new Set(("beer bier biere birra cerveza cervesa cervezas cerveja ol olut alus piwo pivo bryggeri brewery brewing brauerei " +
+  "flaske flaska flasche fles botella bouteille bottle bottles can cans canette lata garrafa doza puszka butelka btl boks burk blik blikje plech sklo dose dosen " +
+  "st stk pk pack x cl ml l").split(" "));
+const PACKNUM = /^(?:33|50|150|250|275|330|355|440|500|568|660|750)$/;   // a size written without the unit ("Heineken st 330", "Lata 33")
+// packs written into the name: "0,33lx10", "0,5 l x 6", "4 x Cans", "6stk x", "12-pack"
+const PACK = /\b\d+(?:[.,]\d+)?\s*(?:l|cl|ml)\s*[x×]\s*\d+\b|\b\d+\s*(?:stk|pk|-?\s*pack)\b|\b\d+\s*[x×](?=\s|$)/gi;
+export function coreKey(s) {
+  const w = fold(String(s == null ? "" : s).replace(PACK, " ")).split(" ").filter((x) => x && !BEERWORDS.has(x) && !PACKNUM.test(x) && !/^x\d+$/.test(x));
+  return [...new Set(w)].sort().join(" ");
+}
+export const nameKey = (s) => coreKey(s);
 export function sameBeer(a, b) {
   const n = nameKey(a.name); if (!n || n !== nameKey(b.name)) return false;
   if (a.af != null && b.af != null && !a.af !== !b.af) return false;
   if (fold(a.brewery) === fold(b.brewery)) return true;
-  const words = " " + n + " ";
+  const words = " " + fold(a.name) + " " + fold(b.name) + " ";
   return brandWords(a.brewery).concat(brandWords(b.brewery)).some((w) => words.indexOf(" " + w + " ") >= 0);
 }
 

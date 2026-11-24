@@ -104,3 +104,8 @@
 /* fixC P-25: the care line is a calm note (icon + text), not a blue link look */
 .pn-bs7 .pp-care1.pn-bs-care{display:flex;align-items:center;gap:var(--ds-2);color:var(--ds-text-2) !important}
 .pn-bs7 .pp-care1.pn-bs-care>svg{width:20px;height:20px;flex:0 0 20px;color:var(--ds-amber-t)}
+/* fixC P-28: "Vänner här" / "Du är här" under a coloured bar name in Topplista (js/boards.js frTags): colour is never the only sign */
+.top-row .bd-frtag{display:flex;align-items:center;gap:var(--ds-1);margin-top:2px;font:600 var(--fs-12)/16px var(--ds-sans,inherit)}
+.top-row .bd-frtag svg{width:14px;height:14px;flex:0 0 14px}
+.top-row .bd-frtag-fr{color:var(--green)}
+.top-row .bd-frtag-mine{color:var(--amber-2)}
