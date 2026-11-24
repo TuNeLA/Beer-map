@@ -1064,7 +1064,12 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #sheet .gpg-plus.pn-gp-ikv .pn-gp-chev svg{width:16px;height:16px}
 #sheet .gpg-plus.pn-gp-ikv:active{transform:scale(.98)}
 
-/* order on the page: status · Nu · Chatten · Spel · Engångskamera · Om gruppen · Ikväll */
+/* fixD P-08: Ikväll is an ordinary row in the page flow, after Spel and before Om gruppen. It was a sticky dock that covered
+   the chat preview and the chat field (polish p3-05, s360-03). The ds52 look of the button stays. */
+#sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gpg-bar{position:static !important;order:70 !important;background:none !important;padding:0 !important;margin:0 !important;box-shadow:none !important}
+#sheet .gpg-plus.pn-gp-ikv{box-shadow:none !important;border-color:var(--ds-border) !important;background:var(--ds-card) !important}
+
+/* order on the page: status · Nu · Chatten · Spel · Ikväll · Om gruppen (fixD P-08 / P-09) */
 #sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.gpg-chat{order:-1 !important}
 #sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.sp-gi{order:1 !important}
 #sheet .gitem:not(.gcard)>div.gp.gpg[data-gv="home"]>.fm-gi{order:2 !important}
@@ -1103,6 +1108,10 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 #sheet .gpg[data-gv="plus"]>[data-ga="spel"] .pi-lead,#sheet .gpg[data-gv="plus"]>.gg-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.cr-gi .pi-lead,#sheet .gpg[data-gv="plus"]>.cer-gi .pi-lead{color:var(--pn-acc-games)}
 #sheet .gpg[data-gv="plus"]>[data-ga="gpg-ev"] .pi-lead{color:var(--pn-acc-event)}
 #sheet .gpg[data-gv="plus"]>.rnd-gi .pi-lead{color:var(--pn-acc-money)}
+/* fixD P-16: Kalla in has its own icon now (gpage.js rowIcons: megaphone), still in the Skåltimmen / Kalla in accent (DESIGN ds52 table);
+   every row hint starts with a capital (sentence case, ds13), also the hints other modules write in lower case ("kvitt") */
+#sheet .gpg[data-gv="plus"]>.row .pi-megaphone{color:var(--pn-acc-skal)}
+#sheet .gpg[data-gv="plus"]>.sa-gl [class$="-gs"]::first-letter{text-transform:uppercase}
 /* + / ⋯ view head: a plain heading (no card, no icon) — the header ‹ is the way back */
 #sheet .gitem:not(.gcard)>div.gp.gpg>.gpg-ph{background:none !important;border:0 !important;padding:0 !important;min-height:0 !important;box-shadow:none !important}
 #sheet .gpg-ph .gpg-ph-t{font:600 var(--fs-18)/24px var(--ds-sans) !important;color:var(--ds-text) !important}
@@ -1854,6 +1863,14 @@ html body .dock-row>#btn-groups{justify-content:flex-start !important}
 #sheet .gpg .gpg-send{display:inline-flex;align-items:center;justify-content:center}
 #sheet .gpg .gpg-send .pi{width:22px;height:22px}
 .chat-send .pi{width:18px;height:18px;margin-right:var(--sp-1);vertical-align:-3px}
+/* fixD P-22: the chat field was 150 px (4 icon buttons beside it). While you type, mic + camera step aside so the field
+   gets the room (WhatsApp pattern); they come back when the field is empty. Send is quiet (not amber) while there is nothing
+   to send. The beer counts next to the names stay (owner default 24 Nov: information only). */
+.chat-input:has(.chat-inp:not(:placeholder-shown)) .af-mic:not(.rec),.chat-input:has(.chat-inp:not(:placeholder-shown)) .ph-btn{display:none !important}
+.chat-input:has(.chat-inp:placeholder-shown) .chat-send{background:var(--ds-raised) !important;color:var(--ds-muted) !important;box-shadow:none !important;border-color:var(--ds-border) !important}
+/* fixD P-29: Grupper invite card: "Bjud in en kompis" + a small "Till:" over the group pills (was "Bjud in en kompis till" + pills) */
+.inv-q-lbl{margin:var(--sp-3) 0 0;font:400 var(--fs-14)/20px var(--ds-sans);color:var(--ds-muted)}
+.inv-q-lbl+.inv-q-row{margin-top:var(--sp-1)}
 /* lane:b1people group top card END */
 /* lane:b1people member strip START — I-12: the strip is a block; the header is its own button, each face opens the profile card */
 #sheet .pn-gp-mem-h{width:100%;min-height:24px;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}

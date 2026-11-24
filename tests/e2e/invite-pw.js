@@ -61,7 +61,7 @@ async function tapsToShare(page, code) {
     ok("E1 pills + QR button are 44 px targets, inside the screen", pills.concat(qr).every((p) => p.h >= 44 && p.w >= 44 && p.l >= 0 && p.r <= 390) && qr.length === 1, { pills, qr });
     const box = await page.evaluate(() => { const b = document.querySelector(".inv-q"), h = b && b.parentNode.querySelector("h3"); return { to: b && b.querySelector(".inv-q-to").textContent,
       sub: b && b.querySelector("small").textContent, beforeList: !!(b && h && (b.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING)), tab: b && b.closest("#inv-pane-g") ? 1 : 0 }; });
-    ok("E1 box sits in the Grupper tab, above Mina grupper, sv text", box.tab === 1 && box.beforeList && box.to === "Bjud in en kompis till" && box.sub.length > 5, box);
+    ok("E1 box sits in the Grupper tab, above Mina grupper, sv text (fixD P-29: title \"Bjud in en kompis\" + \"Till:\" over the pills)", box.tab === 1 && box.beforeList && box.to === "Bjud in en kompis" && box.sub.length > 5, box);
 
     // 2. the links = the JOIN sheet links (old + new versions read them)
     const mine = await page.evaluate(() => { window.__shared = []; document.querySelector('.inv-q-p[data-code="XYZ789"]').click(); return window.__shared[0]; });
@@ -118,7 +118,7 @@ async function tapsToShare(page, code) {
     await page.tap("#btn-groups"); await wait(page, 1500);
     const en = await page.evaluate(() => { const b = document.querySelector(".inv-q"), p = b.querySelector(".inv-q-p"), r = p.getBoundingClientRect();
       return { to: b.querySelector(".inv-q-to").textContent, aria: p.getAttribute("aria-label"), qr: b.querySelector(".inv-q-qr").getAttribute("aria-label"), l: r.left, r: r.right, sw: document.documentElement.scrollWidth }; });
-    ok("E1 English texts", en.to === "Invite a friend to" && /^Invite to /.test(en.aria) && /QR/.test(en.qr), en);
+    ok("E1 English texts", en.to === "Invite a friend" && /^Invite to /.test(en.aria) && /QR/.test(en.qr), en);
     ok("E1 a long name stays inside the box (ellipsis), no side scroll", en.l >= 0 && en.r <= 390 && en.sw <= 390, en);
     const es = await page.evaluate(() => { window.__shared = []; document.querySelector(".inv-q-p").click(); return window.__shared[0]; });
     ok("E1 English share text", es && /LNG234/.test(es.url) && /(Join|backup|drafted|gang)/.test(es.text), es);

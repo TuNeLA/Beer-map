@@ -70,6 +70,8 @@
     tellFail: ["Inte skickat – tryck för att försöka igen", "Not sent – tap to try again"],
     jumped: DIALEKT.list("evsheet.jumped", ["Ikväll är det dödtyst, så det är helgen istället.", "Ikväll händer inget – spaningen visar helgen.", "Tomt ikväll. Vi hoppade fram till helgen åt dig."], {n: 3}),
     jumpedEn: ["Nothing tonight – here's the weekend instead."],
+    jumpedMonth: ["Inget den närmaste veckan. Här är resten av månaden.", "Nothing this week. Here is the rest of the month."], noneDays: ["de närmaste {n} dagarna", "in the next {n} days"],   // fixD P-21
+    next: ["Nästa: {nar} · {titel}", "Next: {nar} · {titel}"], nextAct: ["Visa nästa event", "Show the next event"],
     whenTxt: { tonight: ["ikväll", "tonight"], tomorrow: ["i morron", "tomorrow"], weekend: ["i helgen", "this weekend"], week: ["den här veckan", "this week"], month: ["den närmaste månaden", "this month"] },
     whatTxt: { all: ["event", "events"], quiz: ["quiz", "quizzes"], live: ["livespelningar", "live gigs"], fotboll: ["fotbollsmatcher", "football matches"],
       hockey: ["hockeymatcher", "hockey games"], tv: ["TV-matcher", "TV matches"], fest: ["fester", "parties"] },
@@ -491,11 +493,11 @@
   function save() { try { localStorage.setItem(FILTER_KEY, JSON.stringify({ type: st.type })); } catch (e) {} }
   function two(k) { return L(T[k][0], T[k][1]); }
   var listBox = null, bodyEl = null, segEl = null, chipsEl = null, toolsEl = null, frEl = null, tipEl = null, detailEl = null, detailId = null, detailTimer = 0;
-  var tvOpen = {}, jumpedOnce = false, jumpNote = "";
+  var tvOpen = {}, jumpedOnce = false, jumpNote = "", userTime = false, emptyAsked = false;   // fixD P-21: userTime = the user picked a range
   function open() {
     if (!A) return;
     A.openSheet(two("title"), function (body) {
-      bodyEl = body; detailEl = null; detailId = null; tvOpen = {};
+      bodyEl = body; detailEl = null; detailId = null; tvOpen = {}; emptyAsked = false;
       sq.q = ""; sq.rows = []; sq.done = false; sq.busy = false;   // evsearch: a new sheet starts without a search
       body.classList.remove("evs-in-detail");   // ownerfix 1: a detail view left over on the shared #sheet-body hid the list
       body.classList.add("evs-body");
@@ -540,7 +542,7 @@
   }
   function tip() { try { if (window.EVENTS && window.EVENTS.tip) window.EVENTS.tip(null); } catch (e) {} }
   function setTime(t, user) {
-    if (user) leaveQ();
+    if (user) { leaveQ(); userTime = true; }
     st.time = t; shown = 80; jumpNote = user ? "" : jumpNote;
     if (segEl) segEl.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", String(x.getAttribute("data-t") === st.time)); });
     draw();
@@ -554,10 +556,16 @@
     var c = function (t) { return cache.rows.filter(function (e) { return inTime(e, t) && inType(e, st.type); }).length; };
     if (c("tonight")) return;
     var to = c("weekend") ? "weekend" : c("week") ? "week" : null;
-    if (!to) return;
+    if (!to) { jumpMonth(c); return; }
     jumpNote = sv() ? pick("jumped", T.jumped) : T.jumpedEn[0];
     setTime(to, false);
   }
+  // fixD P-21: nothing in 7 days → ask for the month (events_near3), show it at once when it has something (not after a user pick)
+  function jumpMonth(c) {
+    if (maxDays() >= 31 && listBox) load(false, 31).then(function () { if (!listBox || !document.body.contains(listBox) || userTime || st.time !== "tonight" || searching()) return;
+      if (c("month")) { jumpNote = two("jumpedMonth"); setTime("month", false); } else draw(); }); }
+  function rangeOf(e) { for (var i = 0; i < T.times.length; i++) if (inTime(e, T.times[i][0])) return T.times[i][0]; return null; }
+  function nextAfter() { var now = Date.now(); return sorted(cache.rows.filter(function (e) { return e && !e.pending && now < endMs(e) && !inTime(e, st.time) && inType(e, st.type) && rangeOf(e); }))[0] || null; }
   function counts() {
     var per = { all: 0 }, tt = { tonight: 0, weekend: 0, week: 0, month: 0 };
     cache.rows.forEach(function (e) {
@@ -670,11 +678,22 @@
       "ds-btn ds-btn-secondary btn-block evs-more", function () { shown += 80; draw(); }));
   }
   // d-social (design 09, I-114): the ONE empty state (ds.css .ds-estate): what is missing, what the screen shows, one action.
+  // fixD P-21: a later event → "Nästa: lör 29/11 19:00 · Pubquiz" + "Visa nästa event" (its tab); none in all that is loaded → the text names
+  // the whole span ("… den närmaste månaden"). Empty with only 7 days loaded → ask for the month once, then draw again.
   function emptyState() {
     var w = T.whenTxt[st.time], v = T.whatTxt[st.type] || T.whatTxt.all;
+    var nx = nextAfter(), days = cache.days || 7, full = days >= maxDays();
+    if (!nx && !full && !busy && !emptyAsked) { emptyAsked = true; load(false, 31).then(function () { if (listBox && document.body.contains(listBox) && !searching()) draw(); }); }
+    var nar = !nx && full && st.time !== "month" ? (days >= 31 ? L(T.whenTxt.month[0], T.whenTxt.month[1]) : fill(two("noneDays"), { n: days })) : L(w[0], w[1]);
     var box = A.el("div", { class: "ds-estate evs-empty" });
     box.appendChild(A.el("span", { class: "ds-estate-i", "aria-hidden": "true", html: pni("calendar") }));
-    box.appendChild(A.el("b", { text: fill(two("none"), { nar: L(w[0], w[1]), vad: L(v[0], v[1]) }) }));
+    box.appendChild(A.el("b", { text: fill(two("none"), { nar: nar, vad: L(v[0], v[1]) }) }));
+    if (nx) {
+      box.appendChild(A.el("p", { class: "evs-next", text: fill(two("next"), { nar: whenText(nx.starts_at), titel: nx.title || "" }) }));
+      var go = A.el("button", { type: "button", class: "ds-estate-a evs-next-go", "data-t": rangeOf(nx), html: pni("calendar") + "<span>" + U.esc(two("nextAct")) + "</span>", onclick: function () { setTime(go.getAttribute("data-t"), true); } });
+      box.appendChild(go); if (tipEl) tipEl.hidden = false;   // the box's ONE action = "Visa nästa event"; Tipsa stays as the ghost button below
+      return box;
+    }
     box.appendChild(A.el("p", { text: two("noneHelp") }));
     var b = A.el("button", { type: "button", class: "ds-estate-a evs-none-tip", html: pni("plus") + "<span>" + U.esc(two("noneAct")) + "</span>" });
     b.addEventListener("click", tip);

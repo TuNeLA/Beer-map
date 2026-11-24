@@ -473,7 +473,10 @@
   function qDraw() {
     if (!qBox) return;
     var gs = QG.slice(0, 4), row = qBox.querySelector(".inv-q-row");
-    qBox.querySelector(".inv-q-to").textContent = gs.length ? L("Bjud in en kompis till", "Invite a friend to") : L("Bjud in en kompis", "Invite a friend");
+    // fixD P-29: the title is a whole phrase; "Till:" sits over the group pills (was "Bjud in en kompis till" + pills, read as cut off)
+    qBox.querySelector(".inv-q-to").textContent = L("Bjud in en kompis", "Invite a friend");
+    var lbl = qBox.querySelector(".inv-q-lbl");
+    if (lbl) { lbl.textContent = L("Till:", "To:"); lbl.hidden = !gs.length; }
     row.innerHTML = "";
     (gs.length ? gs : [null]).forEach(function (g) {
       var name = g ? g.name || L("gruppen", "the group") : L("Dela länken till appen", "Share the app link");
@@ -490,7 +493,7 @@
     qBox = A.el("section", { class: "inv-q", "aria-label": L("Bjud in", "Invite") }, [
       A.el("div", { class: "inv-q-h" }, [A.el("span", { class: "inv-q-i", "aria-hidden": "true", html: saIc("user-plus") }),
         A.el("span", { class: "inv-q-t" }, [A.el("b", { class: "inv-q-to" }), A.el("small", { text: qPick("sub") })]), window.JOIN ? qr : null]),
-      A.el("div", { class: "inv-q-row" })]);
+      A.el("p", { class: "inv-q-lbl", hidden: "" }), A.el("div", { class: "inv-q-row" })]);
     var h3 = gPane.querySelector("h3");
     gPane.insertBefore(qBox, h3 || gPane.firstChild);
     qDraw();
