@@ -726,6 +726,8 @@ body .fx-amb.amb-calm .a-sweep,body .fx-amb.amb-calm b{display:none}
 .cm-lbl{display:none;position:absolute;left:50%;top:calc(50% + 14px);transform:translateX(-50%);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;
   font:600 var(--fs-14)/1.2 var(--body);color:var(--text);text-shadow:0 1px 2px #000,0 0 4px #000,0 0 2px #000;pointer-events:none}
 .cm-lbl.below{top:calc(50% + 36px)}
+.cm-lbl.below.below2{top:calc(50% + 60px)}   /* mapcrowd I-137: the friends' totals chip (.pft) sits between the pill and the name */
+.tz-hi .cm .cm-lbl.below.below2{top:calc(50% + 67px)}   /* (tiers.js .tz-hi moves the pill 7 px down) */
 .cm-labels .cm-lbl{display:block}
 .cm-labels .cm-lbl.lbl-hide{display:none}
 @media (prefers-reduced-motion:reduce){.cm-rally{animation:none}.cm-in{transition:none}}
