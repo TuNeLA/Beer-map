@@ -17,7 +17,6 @@ async function open(browser, o = {}) {
   const { ctx, page } = await ctxFor(browser, { width: 390, height: 844 });
   const errs = [], calls = [], favs = (o.favs || []).slice();   // server slots: [{slot, beer}]
   page.on("pageerror", (e) => errs.push(e.message));
-  if (o.failData) await ctx.route(/data\/beer\/beers\.json/, (r) => r.fulfill({ status: 500, body: "no" }));   // ctx: also the service worker
   await page.route(/rest\/v1\/rpc\/(beerlib_\w+)\b/, (r) => {
     const fn = r.request().url().match(/rpc\/(\w+)/)[1];
     let b = {}; try { b = JSON.parse(r.request().postData() || "{}"); } catch (e) {}
@@ -167,7 +166,13 @@ const waitPanel = (page) => page.waitForFunction(() => !!document.querySelector(
   });
 
   await part("polish states", async () => {
-    ({ ctx, page, errs } = await open(browser, { failData: true }));
+    ({ ctx, page, errs } = await open(browser));
+    // the beer files fail (no net): load the library once, forget its data, and make fetch of beers.json fail (a route is not
+    // enough: the service worker / HTTP cache can answer it, as on the CI runner)
+    await tab(page);
+    await page.evaluate(() => { window.BARSEARCH.close(); window.BEERLIB._reset(); const f = window.fetch;
+      window.fetch = function (u, o) { return /beers\.json/.test(String(u && u.url || u)) ? Promise.reject(new TypeError("offline")) : f.call(this, u, o); }; });
+    await wait(page, 600);
     await page.evaluate(() => window.BARSEARCH.open("beer"));
     await page.waitForFunction(() => !!document.querySelector("#bs-beer .bl-empty, #bs-beer .bs-err, #bs-beer [data-bl-retry]"), null, { timeout: 15000 }).catch(() => {});
     const e = await page.evaluate(() => { const x = document.querySelector("#bs-beer .bl-empty"), r = document.querySelector("#bs-beer [data-bl-retry]");
