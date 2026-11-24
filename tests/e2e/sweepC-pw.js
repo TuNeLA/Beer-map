@@ -157,12 +157,14 @@ async function step(page, name, f) {
     await page.evaluate(() => { localStorage.removeItem("olnu.barsearch.recent"); localStorage.setItem("olnu.barsearch.tab", "bars"); document.getElementById("pn-search").click(); }); await wait(page, 1200);
     const s = await page.evaluate(() => ({ head: [...document.querySelectorAll("#bs-list .bs-h")].map((x) => x.textContent), rows: [...document.querySelectorAll("#bs-list .bs-hit.bs-near")].map((b) => b.textContent.trim()),
       msg: (document.querySelector(".bs-msg") || {}).textContent }));
-    ok("P-20 empty Krogar: the hint + 'Nära dig' with the 5 nearest bars (distance, crowd word)", s.head[0] === "Nära dig" && s.rows.length === 5 && s.rows.every((x) => /\d+ (m|km)/.test(x)) && s.rows.some((x) => /Livligt|Lugnt|Packat/.test(x)) && /Skriv namnet/.test(s.msg || ""), s);
+    // with a good position the list is lane walktime's "Inom 10 min promenad" (ca N min), else "Nära dig" (distance)
+    ok("P-20 empty Krogar: the hint + up to 5 nearest bars (crowd word · walking time or distance)", /^(Nära dig|Inom 10 min promenad)$/.test(s.head[0] || "") && s.rows.length >= 3 && s.rows.length <= 5 &&
+      s.rows.every((x) => /\d+ (m|km)$|ca \d+ min$/.test(x)) && s.rows.some((x) => /Livligt|Lugnt|Packat/.test(x)) && /Skriv namnet/.test(s.msg || ""), s);
     await shot(page, "5-krogar");
     await page.keyboard.press("Escape"); await wait(page, 500);
     await page.evaluate(() => { localStorage.setItem("olnu.barsearch.recent", JSON.stringify([{ n: "Pitchers", lat: 60.14997, lng: 15.18679, k: "b" }])); document.getElementById("pn-search").click(); }); await wait(page, 1200);
     const s2 = await page.evaluate(() => [...document.querySelectorAll("#bs-list .bs-h")].map((x) => x.textContent));
-    ok("P-20 with recent picks: 'Senaste' first, then 'Nära dig'", s2.join("|") === "Senaste|Nära dig", s2);
+    ok("P-20 with recent picks: 'Senaste' first, then the near list", /^Senaste\|(Nära dig|Inom 10 min promenad)$/.test(s2.join("|")), s2);
     });
 
     await step(page, "P-11 Öl list", async () => {

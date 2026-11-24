@@ -94,7 +94,7 @@
 .pn-bs7 .pn-bs-rep{margin:0}
 .pn-bs7 .pn-bs-rep>summary{list-style:none;cursor:pointer}
 .pn-bs7 .pn-bs-rep>summary::-webkit-details-marker{display:none}
-.pn-bs7 .pn-bs-rep .pf-chev{margin-left:var(--ds-1);transition:transform var(--m-3)}
+.pn-bs7 .pn-bs-rep .pf-chev{margin-left:var(--ds-1);transition:transform var(--m-3) var(--e-std)}
 .pn-bs7 .pn-bs-rep[open] .pf-chev{transform:rotate(90deg)}
 .pn-bs7 .pn-bs-repl{display:flex;flex-direction:column;gap:var(--ds-2);margin-top:var(--ds-2);padding-left:var(--ds-4)}
 .pn-bs7 .pn-bs-repl .gone-sec{margin:0}
