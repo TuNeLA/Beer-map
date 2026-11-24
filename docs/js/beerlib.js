@@ -31,7 +31,14 @@
   }
   function num(x, d) { var s = (Math.round(x * 10) / 10).toFixed(d == null ? 1 : d); return en() ? s : s.replace(".", ","); }
   function numT(x) { return num(x, x % 1 ? 1 : 0); }
-  function abvText(b) { return b.abv != null ? num(b.abv) + "\u00a0%" : b.af ? tl("Alkoholfri", "Alcohol-free") : ""; }   // no break before %
+  // no break before %. Lane beerlist (24 Nov): an alcohol-free beer always SAYS it ("Alkoholfri 0,0 %"): "A ship full of IPA" is the
+  // alcohol-free bottle but showed "IPA (amerikansk) · 0,0 %", which read like a normal IPA with a wrong number. A number only
+  // when it fits the mark (alcohol-free 0–0,5 %, else 0,6–16 %); scripts/beer/checks.mjs keeps the data clean, this is the second lock.
+  function abvText(b) {
+    var a = b.abv, ok = typeof a === "number" && isFinite(a) && (b.af ? a >= 0 && a <= 0.5 : a >= 0.6 && a <= 16);
+    var w = b.af ? tl("Alkoholfri", "Alcohol-free") : "";
+    return ok ? (w ? w + " " : "") + num(a) + "\u00a0%" : w;
+  }
   function dayText(iso) { var t = Date.parse(iso || ""); if (!isFinite(t)) return ""; try { return new Date(t).toLocaleDateString(en() ? "en-GB" : "sv-SE", { day: "numeric", month: "short" }); } catch (e) { return ""; } }
 
   /* ---------- taste groups (the chips) = groups of the styles' taste tags ---------- */
@@ -83,6 +90,7 @@
   function styleLine(b) {
     var s = styleName(b.style), a = abvText(b), out = [];
     if (s) out.push(s + (b.conf < 3 ? " " + tl("(gissning)", "(guess)") : ""));
+    if (s && b.style === "alkoholfri" && b.af) a = a.replace(tl("Alkoholfri", "Alcohol-free"), "").trim();   // not "Alkoholfri öl · Alkoholfri"
     if (a) out.push(a);
     return out.join(" · ");
   }
@@ -225,9 +233,15 @@
       return '<button type="button" class="bl-chip" data-bl-fl="' + f[0] + '" aria-pressed="' + on + '">' + dot(f[0]) + esc(en() ? f[2] : f[1]) + "</button>";
     }).join("") + "</div>";
   }
+  // I-141 (lane beerlist, owner default "A3 with A1 cards"): one style card = the glass on a glow in the style's own beer colour
+  // (styles.json hex), the family line, the name, one line of text and up to 2 flavour tags WITH words. Cards in a row have one height.
+  function famName(k) { var f = data && data.fam[k]; return f ? String(en() ? f.en : f.sv).replace(/ \(.*\)/, "") : ""; }
+  function tagHTML(g) { var f = FLK[g]; return f ? '<span class="bl-tag" style="--c:var(' + f[3] + ')">' + dot(g) + esc(flName(g)) + "</span>" : ""; }
   function tileHTML(st) {
-    return '<button type="button" class="bl-tile" data-bl-style="' + esc(st.id) + '">' + styleImg(st.id, "") + "<b>" + esc(en() ? st.en : st.sv) + "</b><small>" +
-      esc(oneLine(st)) + '</small><span class="bl-dots">' + styleGroups(st).slice(0, 3).map(dot).join("") + "</span></button>";
+    var sc = /^#[0-9a-fA-F]{3,8}$/.test(st.hex || "") ? ' style="--bl-sc:' + st.hex + '"' : "";
+    return '<button type="button" class="bl-tile bl-f-' + esc(st.fam || "x") + '" data-bl-style="' + esc(st.id) + '"' + sc + '><span class="bl-stage">' + styleImg(st.id, "") +
+      '</span><span class="bl-body"><span class="bl-fam">' + esc(famName(st.fam)) + "</span><b>" + esc(en() ? st.en : st.sv) + "</b><small>" + esc(oneLine(st)) +
+      '</small><span class="bl-dots">' + styleGroups(st).slice(0, 2).map(tagHTML).join("") + "</span></span></button>";
   }
   function rowHTML(b) {
     return '<button type="button" class="bl-row" data-bl-beer="' + esc(b.id) + '">' + pic(b) + "<span><b>" + esc(b.name) + "</b>" +
@@ -283,36 +297,121 @@
     return out;
   }
 
-  /* ---------- the Öl tab of Sök (js/barsearch.js calls tab()) ---------- */
-  var tabSt = { g: null, nSt: 6, nBeer: 30, q: "" };
-  function tab(box, q, opts) {
-    opts = opts || {};
-    if (q !== tabSt.q) { tabSt.q = q; tabSt.nBeer = 30; tabSt.nSt = 6; }
-    if (!box.__bl) { box.__bl = 1; wire(box, { chip: function (k) { tabSt.g = tabSt.g === k ? null : k; tabSt.nSt = 6; tabSt.nBeer = 30; tab(box, tabSt.q, opts); },
-      more: function (k) { if (k === "st") tabSt.nSt = 99; else tabSt.nBeer += 60; tab(box, tabSt.q, opts); }, beer: opts.beer, style: opts.style }); }
-    if (!data) {
-      box.innerHTML = '<p class="bl-msg" role="status">' + esc(tl("Laddar ölen …", "Loading the beers …")) + "</p>";
-      load().then(function () { if (box.isConnected) tab(box, tabSt.q, opts); }, function () {
-        if (!box.isConnected) return;
-        box.innerHTML = '<p class="bl-msg" role="status">' + esc(tl("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again.")) + '</p><button type="button" class="bl-more" data-bl-retry="1">' + esc(tl("Försök igen", "Try again")) + "</button>";
-        box.querySelector("[data-bl-retry]").addEventListener("click", function () { tab(box, tabSt.q, opts); });
-      });
-      return;
+  /* ---------- the Öl tab of Sök (js/barsearch.js calls tab()) ----------
+     I-141 (lane beerlist, 24 Nov; owner default "A3 with A1 cards", pictures lanes/d-beerlook-shots/A-contact-sheet.png):
+     "Mina favoriter" (3 slots) on top, the Smak chips, then one sideways row per beer family (Lager, Veteöl, Pale ale och IPA …),
+     each with its family colour, then the beers. An empty slot "+ Lägg till" = pick mode: the beer list + the Sök field pick
+     the favourite (no style rows, no chips); Avbryt or a pick ends it. A beer or style opened here keeps the I-139 back (‹):
+     barsearch.js fromBeer() keeps the field + scroll place, tabSt keeps the chip and each row's sideways place. */
+  var FAM_ORDER = ["lager", "wheat", "pale-ipa", "dark", "sour", "belgian", "british-ale", "hybrid", "nordic", "class"];
+  var tabSt = { g: null, nBeer: 30, q: "", pick: 0, sx: {}, opts: {} };
+  function famsHTML(sts, g) {
+    var by = {}, order = FAM_ORDER.slice();
+    sts.forEach(function (s) { (by[s.fam] = by[s.fam] || []).push(s); if (order.indexOf(s.fam) < 0) order.push(s.fam); });
+    order = order.filter(function (k) { return by[k]; });
+    if (g) order.sort(function (a, b) { return styleScore(by[b][0], g) - styleScore(by[a][0], g); });   // the family with the most "fruktig" first
+    return order.map(function (k) {
+      var nm = famName(k) || tl("Övrigt", "Other");
+      return '<section class="bl-fs bl-f-' + esc(k) + '"><h4 class="bl-fh">' + esc(nm) + "<em>" + by[k].length + "</em></h4>" +
+        '<div class="bl-car" role="group" aria-label="' + esc(nm) + '" data-bl-car="' + esc(k) + '">' + by[k].map(tileHTML).join("") + "</div></section>";
+    }).join("");
+  }
+  function favsHTML() {
+    var f = favs || localFavs(), o = "";
+    for (var i = 0; i < FAV_N; i++) {
+      var b = f[i] && data.byId[f[i]];
+      o += b ? '<button type="button" class="bl-fav" data-bl-beer="' + esc(b.id) + '"><span class="bl-fav-p">' + pic(b) + '<i class="bl-fav-n" aria-hidden="true">' + (i + 1) + "</i></span><b>" +
+          esc(b.name) + "</b><small>" + esc(b.af && b.style !== "alkoholfri" ? tl("Alkoholfri", "Alcohol-free") : styleName(b.style) || abvText(b) || "") + "</small></button>"
+        : '<button type="button" class="bl-fav empty" data-bl-add="' + (i + 1) + '" aria-label="' + esc(tl("Lägg till favorit nr " + (i + 1), "Add favourite no. " + (i + 1))) +
+          '"><span class="bl-fav-p"><span class="bl-pic">' + ic("plus") + "</span></span><b>" + esc(tl("Lägg till", "Add")) + "</b><small>" + esc(tl("Plats " + (i + 1), "Slot " + (i + 1))) + "</small></button>";
     }
-    var g = tabSt.g, sts = matchStyles(q, g), bs = matchBeers(q, g), h = "";
-    h += '<h3 class="bl-h">' + esc(tl("Smak", "Taste")) + "</h3>" + chipsHTML(g);
-    if (sts.length) {
-      h += '<h3 class="bl-h">' + esc(tl("Stilar", "Styles")) + "<b>" + (g ? esc(tl("Mest " + flName(g).toLowerCase() + " först", "Most " + flName(g).toLowerCase() + " first")) : sts.length) + "</b></h3>" +
-        '<div class="bl-grid">' + sts.slice(0, tabSt.nSt).map(tileHTML).join("") + "</div>" +
-        (sts.length > tabSt.nSt ? '<button type="button" class="bl-more" data-bl-more="st">' + esc(tl("Visa alla " + sts.length + " stilar", "Show all " + sts.length + " styles")) + "</button>" : "");
+    return '<h3 class="bl-h">' + esc(tl("Mina favoriter", "My favourites")) + '</h3><div class="bl-favs">' + o + "</div>" +
+      (f.some(Boolean) ? '<p class="bl-note">' + esc(privText()) + "</p>" : "");
+  }
+  function pickHTML() {
+    return '<div class="bl-pickbar" role="status"><span class="bl-pb-i" aria-hidden="true">' + ic("star") + "</span><span><b>" + esc(tl("Välj favorit nr " + tabSt.pick, "Pick favourite no. " + tabSt.pick)) +
+      "</b><small>" + esc(tl("Sök i fältet ovan eller tryck på en öl.", "Search in the field above or tap a beer.")) + '</small></span><button type="button" class="bl-pb-x" data-bl-pickx="1">' +
+      esc(tl("Avbryt", "Cancel")) + "</button></div>";
+  }
+  function msgHTML(icon, text, more) {
+    return '<div class="bl-empty" role="status">' + ic(icon) + "<p>" + esc(text) + "</p>" + (more ? "<small>" + esc(more) + "</small>" : "") + "</div>";
+  }
+  function skelHTML() {   // loading: the shape of the list, still (no motion), plus the words for screen readers
+    var card = '<span class="bl-sk-c"></span>', row = '<span class="bl-sk-h"></span><span class="bl-sk-r">' + card + card + card + "</span>";
+    return '<p class="bl-msg" role="status">' + esc(tl("Laddar ölen …", "Loading the beers …")) + '</p><div class="bl-skel" aria-hidden="true">' + row + row + "</div>";
+  }
+  function tabInput() { return D.getElementById("bs-q"); }
+  function setField(v) {   // the Sök field is barsearch.js's: set it and let its own input handler paint (it calls tab())
+    var i = tabInput(); if (!i || i.value === v) return false;
+    i.value = v; try { i.dispatchEvent(new Event("input", { bubbles: true })); } catch (e) {}
+    return true;
+  }
+  function tabTop(box) { var e = box; while (e && e.scrollHeight <= e.clientHeight + 2) e = e.parentElement; if (e) e.scrollTop = 0; }
+  function startPick(box, slot) {
+    tabSt.pick = slot; tabSt.nBeer = 30;
+    tab(box, tabSt.q, tabSt.opts); tabTop(box);
+    var i = tabInput(); try { if (i) i.focus({ preventScroll: true }); } catch (e) {}
+  }
+  function endPick(box) { tabSt.pick = 0; if (!setField("")) tab(box, tabSt.q, tabSt.opts); tabTop(box); }
+  function pickFav(box, id) {
+    var slot = tabSt.pick, f = favs || localFavs();
+    if (f.indexOf(String(id)) >= 0) { toast(tl("Den ölen är redan en av dina favoriter.", "That beer is already one of your favourites.")); return; }
+    endPick(box);
+    setSlot(slot, String(id)).then(function (now) {
+      if (now && now[slot - 1] === String(id)) toast(tl("Sparad som favorit nr " + slot + ".", "Saved as favourite no. " + slot + "."));
+      if (box.isConnected) tab(box, tabSt.q, tabSt.opts);
+    });
+  }
+  function tabWire(box) {
+    wire(box, {
+      chip: function (k) { tabSt.g = tabSt.g === k ? null : k; tabSt.nBeer = 30; tabSt.sx = {}; tab(box, tabSt.q, tabSt.opts); },
+      more: function () { tabSt.nBeer += 60; tab(box, tabSt.q, tabSt.opts); },
+      beer: function (id) { if (tabSt.pick) pickFav(box, id); else (tabSt.opts.beer || openBeer)(id); },
+      style: function (id) { (tabSt.opts.style || openStyle)(id); }
+    });
+    box.addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+      var a = t.closest("[data-bl-add]");
+      if (a) { startPick(box, +a.getAttribute("data-bl-add") || 1); return; }
+      if (t.closest("[data-bl-pickx]")) endPick(box);
+    });
+    // each family row keeps its sideways place (a back from a style page paints the tab again)
+    box.addEventListener("scroll", function (e) { var c = e.target; if (c && c.getAttribute && c.getAttribute("data-bl-car")) tabSt.sx[c.getAttribute("data-bl-car")] = c.scrollLeft; }, true);
+    var off = on(function () { if (!box.isConnected) { off(); return; } if (data && !tabSt.pick && !tabSt.q) tab(box, tabSt.q, tabSt.opts); });   // favourites changed
+  }
+  function tabBody(q) {
+    var g = tabSt.pick ? null : tabSt.g, sts = tabSt.pick ? [] : matchStyles(q, g), bs = matchBeers(q, g), h = "";
+    if (tabSt.pick) h += pickHTML();
+    else {
+      if (!q) h += favsHTML();
+      h += '<h3 class="bl-h">' + esc(tl("Smak", "Taste")) + "</h3>" + chipsHTML(g);
+      if (sts.length) h += '<h3 class="bl-h">' + esc(q ? tl("Stilar", "Styles") : tl("Stilar per familj", "Styles by family")) + "<b>" +
+        (g ? esc(tl("Mest " + flName(g).toLowerCase() + " först", "Most " + flName(g).toLowerCase() + " first")) : sts.length) + "</b></h3>" + famsHTML(sts, g);
     }
     h += '<h3 class="bl-h">' + esc(tl("Öl", "Beers")) + "<b>" + bs.length + "</b></h3>";
     if (bs.length) h += '<div class="bl-list">' + bs.slice(0, tabSt.nBeer).map(rowHTML).join("") + "</div>" +
       (bs.length > tabSt.nBeer ? '<button type="button" class="bl-more" data-bl-more="beer">' + esc(tl("Visa fler öl", "Show more beers")) + "</button>" : "");
-    else h += '<p class="bl-msg">' + esc(q ? tl("Ingen öl med det namnet än.", "No beer with that name yet.") : tl("Inga öl här än.", "No beers here yet.")) + "</p>";
-    h += '<p class="bl-note">' + esc(tl("Bilder och öldata: Open Food Facts (CC BY-SA, ODbL). Stilen är ofta en gissning. Texterna om stilar skriver vi själva.",
+    else h += q ? msgHTML("search", tl("Ingen öl med det namnet än.", "No beer with that name yet."), tl("Prova ett kortare ord, en stil (till exempel IPA) eller skanna burken.", "Try a shorter word, a style (for example IPA) or scan the can."))
+      : msgHTML("beer", tl("Inga öl här än.", "No beers here yet."), g ? tl("Tryck på smaken igen för att se alla.", "Tap the taste again to see all.") : "");
+    return h + '<p class="bl-note">' + esc(tl("Bilder och öldata: Open Food Facts (CC BY-SA, ODbL). Stilen är ofta en gissning. Texterna om stilar skriver vi själva.",
       "Photos and beer data: Open Food Facts (CC BY-SA, ODbL). The style is often a guess. We write the style texts ourselves.")) + "</p>" + aboutLink();
-    box.innerHTML = h; fixPics(box);
+  }
+  function tab(box, q, opts) {
+    tabSt.opts = opts || tabSt.opts || {};
+    if (q !== tabSt.q) { tabSt.q = q; tabSt.nBeer = 30; tabSt.sx = {}; }
+    if (!box.__bl) { box.__bl = 1; tabSt.pick = 0; tabWire(box); if (!favs) loadFavs().then(function () { if (box.isConnected && data && !tabSt.q && !tabSt.pick) tab(box, tabSt.q, tabSt.opts); }, function () {}); }
+    if (!data) {
+      box.innerHTML = skelHTML();
+      load().then(function () { if (box.isConnected) tab(box, tabSt.q, tabSt.opts); }, function () {
+        if (!box.isConnected) return;
+        box.innerHTML = msgHTML("info", tl("Ölen gick inte att ladda.", "Could not load the beers."), tl("Kolla nätet och försök igen.", "Check the network and try again.")) +
+          '<button type="button" class="bl-more" data-bl-retry="1">' + ic("refresh") + esc(tl("Försök igen", "Try again")) + "</button>";
+        box.querySelector("[data-bl-retry]").addEventListener("click", function () { tab(box, tabSt.q, tabSt.opts); });
+      });
+      return;
+    }
+    box.innerHTML = tabBody(q); fixPics(box);
+    [].forEach.call(box.querySelectorAll("[data-bl-car]"), function (c) { var x = tabSt.sx[c.getAttribute("data-bl-car")]; if (x) c.scrollLeft = x; });
   }
 
   /* ---------- DM: inline picker (js/dm.js) + the beer card in a chat row ---------- */
@@ -473,7 +572,7 @@
     // Untappd: no API key yet. A later module may set BEERLIB.untappd = function (beer) -> Promise<{rating, count}>; nothing is shown before.
     untappd: null,
     _kind: function (b) { return stripKind(b); }, lookOf: lookOf,
-    _reset: function () { data = null; dataP = null; srv.off = null; favs = null; favP = null; taps = null; tapsP = null; tabSt = { g: null, nSt: 6, nBeer: 30, q: "" }; }
+    _reset: function () { data = null; dataP = null; srv.off = null; favs = null; favP = null; taps = null; tapsP = null; tabSt = { g: null, nBeer: 30, q: "", pick: 0, sx: {}, opts: {} }; }
   };
   if (W.PN) PN.mod("BEERLIB");
 })();
