@@ -723,12 +723,46 @@
       if (n) { var s = document.createElement("span"); s.innerHTML = P.svg(n, "pi-lead"); el.insertBefore(s.firstChild, t); }
     });
   }
+  // fixC P-07: the two report buttons ("Fel plats / stängt?" from events.js, "Finns inte längre" from gone.js) said nearly the same.
+  // Now ONE "Rapportera fel" row that opens the two choices. Both buttons are moved, not rebuilt: their own click code still works.
+  function L7(s, e) { return window.I18N && window.I18N.lang === "en" ? e : s; }
+  function repGroup(pinfo, gone) {
+    var rb = null;
+    pinfo.forEach(function (p) { var b = p.querySelector("[data-evrep]"); if (b && !rb) rb = b; });
+    if (!rb || !gone.length) return null;
+    var d = mk("details", "pn-bs-rep");
+    d.innerHTML = '<summary class="pn-bs-repb">' + ico("flag") + "<span>" + esc(L7("Rapportera fel", "Report a problem")) + '</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
+    var box = mk("div", "pn-bs-repl");
+    rb.innerHTML = ico("pin");
+    rb.appendChild(document.createTextNode(L7("Fel plats, dubblett eller annat", "Wrong place, duplicate or other")));
+    box.appendChild(rb);
+    pinfo.forEach(function (p) { if (!p.querySelector("button, a")) p.remove(); });
+    gone.forEach(function (g) { box.appendChild(g); });
+    d.appendChild(box);
+    return d;
+  }
+  // fixC P-25: the care line (someone here at 10+) says what it is: who to check on. No count, no praise.
+  function careLine(k, list) {
+    var U = window.U, top = null;
+    try { (list || []).forEach(function (b) { if (b && (!top || U.drinks(b) > U.drinks(top))) top = b; }); } catch (e) { top = null; }
+    var t = top && top.is_mine ? L7("Ta det lugnt nu: vatten och taxi finns i Ikväll-menyn.", "Take it easy now: water and a taxi are in the Tonight menu.") :
+      top && top.friend_name ? L7("Kolla till " + top.friend_name + " ikväll.", "Check on " + top.friend_name + " tonight.") :
+      L7("Någon här har druckit mycket. Kolla läget.", "Someone here has had a lot. Check on them.");
+    k.innerHTML = ico("heart") + "<span>" + esc(t) + "</span>";
+    k.classList.add("pn-bs-care");
+  }
   function barSheet(html, bar, list) {
     try {
       var t = document.createElement("template"); t.innerHTML = html;
       var bs = t.content.firstElementChild;
       if (!bs || !bs.classList.contains("bs") || bs.classList.contains("pn-bs7")) return html;
       bs.classList.add("pn-bs7");
+      // fixC P-25: the top drinker's level name ("Radion har talat", blue, looked like a link and opened nothing) is not shown on the
+      // bar card: the friend rows already say each night total. The care line (.pp-care) stays.
+      [].slice.call(bs.children).forEach(function (k) {
+        if (k.matches(".pp-lv, .pp-hot, .pp-med")) k.remove();
+        else if (k.matches(".pp-care1")) careLine(k, list);   // the 10+ care line said only a level name ("Sjukvårdare till plats 3")
+      });
       var kids = [].slice.call(bs.children), head = kid(bs, ".bs-head");
       // header: subtitle "Pub · Öppet till 01:00" (hours from OPPET, the same source as the info line)
       var meta = head && kid(head, ".bs-meta");
@@ -779,7 +813,8 @@
       if (inv) mer.push(inv);
       if (fCi) { var n = fCi.querySelector(".pf-n"); mer.push(sec("pn-bs-ci", "Incheckade" + (n && n.textContent.trim() ? " · " + n.textContent.trim() : ""), bodyOf(fCi))); fCi.remove(); }
       if (fStam) { mer.push(sec("pn-bs-stam", "Stammis & kung", bodyOf(fStam))); fStam.remove(); }
-      mer = mer.concat(pick(".bi-info"), pick(".cr-dance"), pick(".af-qr"), pick(".pp-info"), pick(".gone-sec"), infoNodes);
+      var bi7 = pick(".bi-info"), cr7 = pick(".cr-dance"), qr7 = pick(".af-qr"), pi7 = pick(".pp-info"), go7 = pick(".gone-sec"), rep7 = repGroup(pi7, go7);
+      mer = mer.concat(bi7, cr7, qr7, pi7, rep7 ? [rep7] : go7, infoNodes);
       if (fInfo) fInfo.remove();
       // photos right under the action row
       var act = kid(bs, ".pp-act");
@@ -798,7 +833,7 @@
       if (mer.length) {
         var md = mk("details", "pp-fold pp-sec pp-sec-mer");
         md.setAttribute("data-fold", "mer"); if (merOpen) md.setAttribute("open", "");
-        md.innerHTML = '<summary><span class="pp-sec-h">Mer</span><span class="pn-bs-sub">Stammis, bjud in, QR</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
+        md.innerHTML = '<summary><span class="pp-sec-h">Mer</span><span class="pn-bs-sub">Tider, pris, stammis, QR</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
         var body = mk("div", "pf-body"); mer.forEach(function (x) { body.appendChild(x); }); md.appendChild(body);
         var wrap = mk("div", "pp-folds pn-bs-folds2"); wrap.appendChild(md); tail.after(wrap);
       }
@@ -809,7 +844,12 @@
   // Live tweaks after modules repaint their parts: sport vote buttons say Ja / Nej (+ count) instead of 👍 / 👎; the weather value
   // next to the sun icon loses its weather emoji (one sun, not two).
   function fix(root) {
-    root.querySelectorAll(".pn-bs7 .ute-wx").forEach(function (w) { var v = noEmo(w.textContent); if (v && w.textContent !== v) w.textContent = v; });
+    root.querySelectorAll(".pn-bs7 .ute-wx").forEach(function (w) {
+      var v = noEmo(w.textContent);
+      if (/^[-−]?\d+(?:[.,]\d+)?°$/.test(v)) v = L7("Ute nu ", "Outside now ") + v;   // fixC P-25: "-2°" alone read like a status of the patio
+      if (v && w.textContent !== v) w.textContent = v;
+    });
+    dedupeHere(root);
     root.querySelectorAll(".pn-bs7 .sp-b[data-spvote]").forEach(function (b) {
       var c = (b.textContent.match(/\d+/) || [""])[0], up = b.getAttribute("data-spvote") === "1", sig = (up ? "u" : "d") + c;
       if (b.__pnv === sig && b.querySelector("svg")) return;
@@ -823,6 +863,18 @@
       b.innerHTML = ico("cheers") + (c && c !== "0" ? '<i class="pn-bs-sk">' + c + "</i>" : ""); b.classList.add("on");
     });
     infoIcons(root); paintFav(root);
+  }
+  // fixC P-25: friends were listed twice (hero rows + the Folk här wall). A friend with a hero row (Chatta + Skål) is not drawn
+  // again in the wall; the wall keeps me, the other friends and the strangers. More than 3 friends (hero "+ N till här"): no change.
+  function dedupeHere(root) {
+    root.querySelectorAll(".pn-bs7").forEach(function (bs) {
+      var rows = bs.querySelectorAll(".pn-bs-frs .pn-bs-fr2 .pn-bs-ft > b"), all = !bs.querySelector(".pn-bs-frs .pn-bs-more"), names = {};
+      if (all) rows.forEach(function (b) { names[b.textContent.trim()] = 1; });
+      bs.querySelectorAll(".pn-fh-wall .pn-fh-fr").forEach(function (t) {
+        var n = t.querySelector(".pn-fh-n"), dup = !!(n && names[n.textContent.trim()]);
+        if (t.classList.contains("pn-fh-dup") !== dup) t.classList.toggle("pn-fh-dup", dup);
+      });
+    });
   }
   function onOpen(e) {
     var root = e.popup && e.popup.getElement && e.popup.getElement();
@@ -853,6 +905,24 @@
     return true;
   }
   if (!hook()) { var iv = setInterval(function () { if (hook()) clearInterval(iv); }, 400); }
+  // fixC P-06: a tap that opens "Mer" scrolls it up under the sticky name bar (it opened below the fold: nothing seemed to happen)
+  function merScroll(d) {
+    var sc = d && d.closest(".leaflet-popup-content"); if (!sc || !d.open) return;
+    var mini = sc.querySelector(".pn-bc-mini"), top = d.getBoundingClientRect().top - sc.getBoundingClientRect().top - (mini ? 64 : 8);
+    if (Math.abs(top) < 4) return;
+    var rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    try { sc.scrollTo({ top: sc.scrollTop + top, behavior: rm ? "auto" : "smooth" }); } catch (e) { sc.scrollTop += top; }
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+    // fixC P-07: hoursvote "Nej, stängt" presses the gone button (now inside "Rapportera fel"): open the group so the confirm shows
+    var hv = t.closest('.pn-bs7 [data-hva="gone"]');
+    if (hv) { var bs = hv.closest(".pn-bs7"), g = bs && bs.querySelector("details.pn-bs-rep"), m = bs && bs.querySelector('details[data-fold="mer"]');
+      if (g) { g.open = true; if (m && !m.open) m.open = true; } return; }
+    var s = t.closest('.pn-bs7 details[data-fold="mer"] > summary'); if (!s) return;
+    var d = s.parentNode; if (d.open) return;   // this tap closes it
+    setTimeout(function () { merScroll(d); }, 60);
+  }, true);
   window.PNDS = window.PNDS || {};
   window.PNDS.barSheet = barSheet;
 })();

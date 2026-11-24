@@ -51,6 +51,7 @@
     var id = String(bar.id), d = cache[id] && cache[id].d, parts = [], o = O();
     var st = o ? o.barStatus(bar) : null, lb = o && st ? o.label(st) : null;
     if (lb) parts.push('<span class="' + lb.cls + '">' + esc(lb.t) + "</span>");
+    else if (isDrink(bar)) parts.push(noHoursHTML(bar));   // fixC P-06: "Is it open?" never hides: no hours = say so + Lägg till
     var p = d && d.prices && d.prices.stor;
     if (p && isDrink(bar)) parts.push('<span class="bi-pr">🍺 ' + (p.kr | 0) + " kr</span>");
     if (isClub(bar)) {
@@ -59,6 +60,12 @@
       if (c && (c.age || c.fee != null)) parts.push("<span>" + esc([c.age ? c.age + L(" år", "+") : "", c.fee != null ? (c.fee ? c.fee + " kr" : L("fri entré", "free entry")) : ""].filter(Boolean).join(" · ")) + "</span>");
     }
     return '<div class="ev-line bi-line" data-bi="' + esc(id) + '"' + (parts.length ? "" : " hidden") + ">" + parts.join('<i class="bi-dot">·</i>') + "</div>";
+  }
+  // fixC P-06: the first Info row when there are no hours: "Öppettider saknas" + [Lägg till] (the hoursvote fix sheet, signed in only)
+  function noHoursHTML(bar) {
+    var P = window.PNI, ic = P && P.svg ? P.svg("clock", "pi-lead") : "", hv = window.PN && window.PN.hoursvote;
+    var add = hvHTML(bar) && hv.click ? '<button type="button" class="hv-b bi-add" data-hva="fix">' + esc(L("Lägg till", "Add")) + "</button>" : "";
+    return '<span class="oh-none">' + ic + '<span class="bi-ohn">' + esc(L("Öppettider saknas", "Opening hours missing")) + "</span>" + add + "</span>";
   }
   function clubOf(bar, d) {
     var c = d && d.club ? d.club : null, o = O();
@@ -89,8 +96,9 @@
     var hh = weekHTML(bar);
     if (d && d.close) hh += '<div class="bi-r">' + esc(d.close.closed ? L("Rapporterat: stängt ikväll", "Reported: closed tonight") :
       L("Rapporterat ikväll: stänger ", "Reported tonight: closes ") + o.hhmm(d.close.min)) + ' <span class="muted">(' + esc(L(d.close.n + " rapport" + (d.close.n === 1 ? "" : "er"), d.close.n + " report" + (d.close.n === 1 ? "" : "s"))) + ")</span></div>";
-    if (!hh && st == null) hh = '<div class="bi-r muted">' + esc(L("Inga öppettider i kartdatan.", "No opening hours in the map data.")) + "</div>";
-    if (live && !off.report_bar_close) hh += '<button type="button" class="bi-btn" data-bia="close">🕐 ' + esc(L("Fel tider?", "Wrong hours?")) + "</button>";
+    var known = !!hh || st != null;   // fixC P-06: "Fel tider?" only when there are hours to be wrong (no hours = Lägg till)
+    if (!known) hh = '<div class="bi-r muted">' + esc(L("Inga öppettider i kartdatan.", "No opening hours in the map data.")) + "</div>";
+    if (live && known && !off.report_bar_close) hh += '<button type="button" class="bi-btn" data-bia="close">🕐 ' + esc(L("Fel tider?", "Wrong hours?")) + "</button>";
     hh += hvHTML(bar);   // E4: "Stämmer öppettiderna?" (js/hoursvote.js, SQL 0532)
     h += '<div class="bi-sec"><div class="bi-h">' + esc(L("🕐 Öppettider", "🕐 Opening hours")) + "</div>" + hh + "</div>";
     // prices (bars only)
