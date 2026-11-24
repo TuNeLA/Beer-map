@@ -34,9 +34,10 @@ async function phone(browser, o = {}) {
     const h0 = await page.evaluate(() => document.documentElement.scrollHeight);
     await tap(page, ".brand-name", 4); await wait(page, 300);
     ok(/Ölguden har sett dig/.test(await toasts(page)), "logo x7: Ölguden toast");
-    ok(await page.evaluate(() => document.querySelectorAll("i[style*='fixed']").length > 0), "logo x7: foam burst");
+    // D1 (motiontok): the egg foam is the ÖL! foam (.pn-foam, motion tokens), no inline position:fixed any more
+    ok(await page.evaluate(() => document.querySelectorAll("i.pn-foam").length > 0), "logo x7: foam burst");
     await wait(page, 1200);
-    ok(await page.evaluate(() => document.querySelectorAll("i[style*='fixed']").length === 0), "foam gone after 1 s");
+    ok(await page.evaluate(() => document.querySelectorAll("i.pn-foam").length === 0), "foam gone after 1 s");
     ok((await page.evaluate(() => document.documentElement.scrollHeight)) === h0, "no layout shift");
     await clear(page); await tap(page, ".brand-name", 7); await wait(page, 400);
     ok((await toasts(page)) === "", "logo again the same day: nothing");
@@ -120,7 +121,7 @@ async function phone(browser, o = {}) {
     ok((await found(page)).indexOf("swipe") >= 0, "swipe egg counted as found");
     await clear(page); await resetDay(page);
     await tap(page, ".brand-name", 7); await wait(page, 300);
-    ok(/Ölguden/.test(await toasts(page)) && (await page.evaluate(() => document.querySelectorAll("i[style*='fixed']").length)) === 0, "reduced motion: toast, no foam");
+    ok(/Ölguden/.test(await toasts(page)) && (await page.evaluate(() => document.querySelectorAll("i.pn-foam").length)) === 0, "reduced motion: toast, no foam");
     await ctx.close();
   }
   { // c4fix: automation without the switch = no eggs (x8: the 05:0x morning toast replaced the test's ÖL! toast)

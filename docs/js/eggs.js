@@ -29,13 +29,13 @@
   function toast(k, el) {
     try { PN.toast(I.t("eg_" + k), { ms: 4000 }); if (el && !matchMedia("(prefers-reduced-motion: reduce)").matches) foam(el); } catch (e) {}
   }
-  function foam(el) {
-    var r = el.getBoundingClientRect(), S = window.SMOOTH, EGG_MS = S ? S.ms("--m-8", 900) : 900, E = S ? S.ease("--e-lin", "linear") : "linear";   // D1 tokens
+  function foam(el) {   // the ÖL! foam: pnds.css .pn-foam (tokens)
+    var r = el.getBoundingClientRect();
     for (var i = 0; i < 9; i++) {
       var b = D.createElement("i"), a = Math.PI * (1 + (i + 0.5) / 9), d = 36;
-      b.style.cssText = "position:fixed;width:10px;height:10px;border-radius:50%;background:var(--foam);pointer-events:none;z-index:900;left:" + (r.left + r.width / 2) + "px;top:" + (r.top + r.height / 2) + "px"; D.body.appendChild(b);
-      b.animate([{ opacity: 1 }, { transform: "translate(" + Math.cos(a) * d + "px," + (Math.sin(a) * -d + 30) + "px)", opacity: 0 }], { duration: EGG_MS, easing: E });
-      setTimeout(b.remove.bind(b), EGG_MS + 50);
+      b.className = "pn-foam"; b.style.left = r.left + r.width / 2 + "px"; b.style.top = r.top + r.height / 2 + "px";
+      b.style.setProperty("--dx", Math.cos(a) * d + "px"); b.style.setProperty("--dy", Math.sin(a) * -d + 30 + "px");
+      b.style.animationDuration = "var(--m-8)"; D.body.appendChild(b); setTimeout(b.remove.bind(b), 950);
     }
   }
   function taps(sel, n, go) {
