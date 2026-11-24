@@ -82,7 +82,8 @@ async function newCtx(browser, o = {}) {
     userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36" });
   await ctx.addInitScript(({ SESSION, clean }) => {
     window.__boot = Math.random();
-    try { const o = JSON.parse(sessionStorage.getItem("t.or") || "[]"); o.push(performance.timeOrigin); sessionStorage.setItem("t.or", JSON.stringify(o)); } catch (e) {}   // every page load of this tab
+    // every page load of this tab (top frame only: swfix upd0 kick() loads a hidden frame, that is not a page load)
+    try { if (window.top === window) { const o = JSON.parse(sessionStorage.getItem("t.or") || "[]"); o.push(performance.timeOrigin); sessionStorage.setItem("t.or", JSON.stringify(o)); } } catch (e) {}
     if (clean || localStorage.getItem("t.seeded")) return;   // once per phone (a new tab must not undo a logout)
     localStorage.setItem("t.seeded", "1");
     const S = (k, v) => localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
