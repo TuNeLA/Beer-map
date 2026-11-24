@@ -55,8 +55,8 @@
 /* TX PICK START */
   /* tx04: (1) no template twice in one night per phone (olnu.tkNight = {n: night key, u: {kind: [index…]}}); a kind
      starts a new shuffled round only when all its lines were shown tonight. (2) Lines about Ludvika-area places (any kind)
-     show only near Ludvika, Dalarna filler lines only in Dalarna. (3) Store builds (OLNU_STORE) skip drink-race kinds (who
-     leads, records, beers per hour, "one more to…"). (4) Time of day / weekday / month / real weather / town joke kinds. */
+     show only near Ludvika, Dalarna filler lines only in Dalarna. (3) Every build skips drink-race kinds (who leads,
+     records, "one more to…"; E2 24 Nov); store builds (OLNU_STORE) also skip beers per hour. (4) Time of day / weekday / month / real weather / town joke kinds. */
   var TK_NIGHT = "olnu.tkNight", tkNight = null;
   function usedTonight(now) {
     var key = nightKey(now);
@@ -96,9 +96,12 @@
     if (FILLER_RE.test(k) && DAL_RE.test(t) && !DAL_TOWNS[here]) return false;
     return true;
   }
-  var STORE_SKIP = { meBehind: 1, meLead: 1, groupLeader: 1, recNew: 1, recChase: 1, recClose: 1, meRecNew: 1, meRec: 1, barRate: 1, barRateHigh: 1,
-    hotClose: 1, medClose: 1, meHotClose: 1, meMedClose: 1 };   // "one more and you hit…" lines push drinking
-  function storeSkip(k) { return !!(window.OLNU_STORE && STORE_SKIP[k]); }
+  // E2 / B1 / A36 (owner default 24 Nov): the drink-race kinds (who leads, records, "one more and you hit…") push drinking.
+  // They are skipped in EVERY build now (was: store builds only). A count is information only.
+  var RACE_SKIP = { meBehind: 1, meLead: 1, groupLeader: 1, recNew: 1, recChase: 1, recClose: 1, meRecNew: 1, meRec: 1,
+    hotClose: 1, medClose: 1, meHotClose: 1, meMedClose: 1 };
+  var STORE_SKIP = { barRate: 1, barRateHigh: 1 };   // beers per hour at a bar: store builds only
+  function storeSkip(k) { return !!(RACE_SKIP[k] || window.OLNU_STORE && STORE_SKIP[k]); }
   function partsNow(now) {   // evening weekday (1 = Monday) and month: the night belongs to the evening before 05:00
     try {
       var d = new Date(now.getTime() - 5 * 3600e3);
@@ -758,7 +761,7 @@
 
   window.NEWS = { build: build, hintN: hintN, emptyLine: emptyLine, isQuiet: isQuiet, quietOk: quietOk, quietMark: quietMark, funLine: funLine,   // tickerfix2 I-71
     _sys: function (now) { var m = sysLeft(sthlm(now || new Date())); return m == null ? null : durTxt(m); }, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
-    freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
+    freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _skip: storeSkip, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
     // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
     last: function () { return { beers: lastBeers, ctx: lastCtx }; } };
   /* dialect2 (owner 11 Nov): the ticker speaks the dialect of the map area it shows (DIALEKT.tickerArea: the map view, else

@@ -207,9 +207,21 @@
     rpc("my_push_prefs").then(function (r) {
       if (!r || r.error) return;                               // old database without 0190: no section
       var d = r.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
-      if (d && typeof d === "object") { if (v2Cats(d)) drawV2(box, d, rpc, toast, function (p) { saving = p; }); else draw(d); }   // ntf v2
+      if (d && typeof d === "object") { if (v2Cats(d)) drawV2(box, d, rpc, toast, function (p) { saving = p; }); else draw(d); reinstallNote(box); }   // ntf v2
     }).catch(function () {});
     return { box: box, saved: function () { return saving || Promise.resolve(); } };
+  }
+  /* I-19b (owner 12 Nov: the installed app's notices still say "Öl Nu"): a phone that installed the app before the name
+     PintsNow keeps the old name on its notices and icon until the app is installed again. Shown only in the installed
+     app (standalone) on a phone that used the app before (js/privstart.js state "old"). One calm line, sv + en. */
+  function reinstallNote(box) {
+    var home = false; try { home = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; } catch (e) {}
+    var ps = window.PN && window.PN.privStart, old = !ps || !ps.state || ps.state() !== "new";
+    if (!home || !old || box.querySelector(".pn-np-reinstall")) return;
+    var en = !!(window.I18N && window.I18N.lang === "en");
+    box.appendChild(mk("p", { class: "muted pn-np-reinstall", style: "font-size:var(--fs-14);margin:10px 0 0",
+      text: en ? "Do your notices still say \u201cÖl Nu\u201d? Save your account first (Settings › Account). Then remove the app from your home screen and add PintsNow again."
+        : "Står det fortfarande \u201dÖl Nu\u201d på dina notiser? Spara kontot först (Inställningar › Konto). Ta sedan bort appen från hemskärmen och lägg till PintsNow igen." }));
   }
   // ---- ntf v2 🔔 NOTISER v2 (agent ntf 2026-11-08, migration 0390) ----
   // A. Log: the service worker queues push.shown / push.open / push.action {k kind, v variant, a button} in the Cache API

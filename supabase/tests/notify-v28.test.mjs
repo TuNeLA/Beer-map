@@ -69,10 +69,10 @@ t("digest: 1 line = that line; 3 lines = count + newest first", () => {
   const one = m.digestPayload(["11:38|Lisa på Tegera Arena"], "Gänget");
   assert.equal(one.title, "Lisa på Tegera Arena"); assert.equal(one.body, "kl 11:38 · Gänget"); assert.equal(one.tag, "olnu-digest");
   const three = m.digestPayload(["11:27|Oskar är ute", "11:28|Gänget äger Chinatown", "11:38|Lisa på Tegera Arena"], "Gänget");
-  assert.equal(three.title, "3 nya i Gänget 🍻");
+  assert.equal(three.title, "3 nya i Gänget");   // B2 row 42 (24 Nov)
   assert.ok(three.body.startsWith("Lisa på Tegera Arena"), three.body);
   const five = m.digestPayload(["1|a", "2|b", "3|c", "4|d", "5|e"], "");
-  assert.match(five.body, /\+2 till$/); assert.equal(five.title, "5 nya från vänner 🍻");
+  assert.match(five.body, /^e · d · \+3 till$/); assert.equal(five.title, "5 nya från vänner");   // B2: first 2 lines
 });
 t("tidyPayload keeps chat titles long (the text is the info) and names no 'Öl Nu'", () => {
   const p = m.tidyPayload(m.msgPayload28("Anton", "Vi ses på Pitchers om tio minuter, ta med Lisa", "Gänget", "g"));

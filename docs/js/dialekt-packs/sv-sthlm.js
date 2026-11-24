@@ -13,7 +13,7 @@
   ],
   "live.quiet": [
     "Lugnt på stan. Typ helt tomt.",
-    "Inga hot streaks än. Stockholm ba chillar."
+    "Lugnt än. Stockholm ba chillar."
   ],
   "kaos.head": "KAOS på {bar}, asså! Folk väller in.",
   "toast.skal": [
@@ -369,7 +369,7 @@
     {"mix": 0.1}
   ],
   "live.hot": [
-    "🔥 {who} {where} är på HOT STREAK! Asså, ta hand om varandra.",
+    "🍺 {who} {where} är ute ikväll. Asså, ta hand om varandra.",
     {"mix": 0.1}
   ],
   "live.emptyFirst": [
@@ -447,7 +447,7 @@
   "kaos.line": [
     "🚨 Nu ballar det ur i {stad}, asså!",
     "🔥 KAOS i {stad}: {n} ute. Fett, men ta hand om varandra.",
-    "🚨 {stad} är typ helt galet ikväll. {hot} på hot streak. Vatten finns.",
+    "🚨 {stad} är typ helt galet ikväll. Vatten finns.",
     "🚨 {stad} har vaknat, asså! {n} ute. Ta hand om varandra.",
     "🔥 Kaos på {bar}. Kön ser ut som Stureplan en lördag.",
     {"mix": 0.1}
@@ -474,7 +474,7 @@
     "💧 Vatten! Stockholms kranvatten är bland Europas bästa. Ta ett glas.",
     {"mix": 0.1}
   ],
-  "toast.cooldown": "Lugn, brorsan. Nästa öl om {m}.",
+  "toast.cooldown": "Paus. {m} kvar, brorsan.",
   "stop.home.toast": "🏠 Välkommen hem. Asså, gruppen vet att du är hemma.",
   "lask.toast": [
     "Skål i läsk, chaufför! Gänget slipper nattbussen tack vare dig.",
@@ -736,7 +736,7 @@
   "live.medevac": "🚁 MEDEVAC {where}! {who} har druckit 10. Vatten och en kompis nära, brorsan.",
   "bar.lost.toast": "🏳️ Ni tappade {bar}. Asså, ta tillbaka den!",
   "ghost.toast": "👻 Spökläge: ölen räknas, men du syns inte. Typ inkognito.",
-  "stop.pause.toast": "🥀 Paus. Ba chilla. Tryck ÖL! när törsten kommer tillbaka.",
+  "stop.pause.toast": "🥀 Paus. Ba chilla.",
   "mom.toast.vad": "Gänget ska ut. Kvällens vad: {q} Asså, kör!",
   "mom.toast.agent": "Du är kvällens hemliga agent. Asså, avslöja dig inte!",
   "mom.toast.vote": "Vem är agenten? Rösta nu, typ.",
@@ -783,7 +783,7 @@
     {"mix": 0.1}
   ],
   "live.med": [
-    "🦅 {who}{where} har gått in i legendläge. Hela tunnelbanelinjen hyllar.",
+    "🚑 {who}{where} har haft en lång kväll. Kolla läget, asså.",
     "🚁 {who}{where} har tagit {n}. Kompisar: kolla läget, typ nu.",
     "🚁 Rapport: {who}{where} på {n}. Vatten och käk, asså, det är gratis att bry sig.",
     "🚁 {who}{where} har nått {n}. Taxi eller nattbuss hem är ett vinnande drag.",

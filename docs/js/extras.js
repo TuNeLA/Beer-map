@@ -190,7 +190,6 @@
     return { key: l.key, beers: l.beers | 0, others: l.others | 0, bars: (l.bars || []).length, skal: l.skal | 0, best: l.best | 0,
       badges: (l.badges || []).map(badgeEmoji), title: st ? st.title : "" };
   }
-  function streakText(n) { return n > 0 ? n + " 🍺" : t("nightStreakNone"); }   // SAFE: no HOT STREAK / MEDEVAC label
   function fontsReady() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     var p = Promise.all(['64px "Black Ops One"', '600 40px "Chakra Petch"', '700 40px "Chakra Petch"'].map(function (f) { return document.fonts.load(f).catch(function () {}); }));
@@ -223,7 +222,7 @@
     c.fillText(String(s.beers), W / 2 - 90, 690);
     c.font = '190px sans-serif'; c.fillText("🍺", W / 2 + 190, 660);
     // Stat boxes
-    var stats = [[t("nightBars"), String(s.bars)], [t("nightSkal"), String(s.skal)], [t("nightStreak"), streakText(s.best)]];
+    var stats = [[t("nightBars"), String(s.bars)], [t("nightSkal"), String(s.skal)]];   // E2 (design2 small fix 5): no "Bästa streak" box
     if (s.others) stats.push([t("nightOther"), s.others + " 🥃"]);
     var bw = (W - 180 - (stats.length - 1) * 24) / stats.length;
     stats.forEach(function (st, i) {

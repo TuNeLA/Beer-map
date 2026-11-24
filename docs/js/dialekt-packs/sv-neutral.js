@@ -3765,16 +3765,16 @@
   "gw.inga_krogar_an": "Inga krogar än. Checka in nästa gång!",
   "gw.text": "Checka in på en krog så hamnar den här.",
   "helg.risk": [
-  "🔥 Din helgstreak på {n} {v} hänger på en tråd. En incheckning fre–sön räcker!",
-  "🧊 Inga frysbiljetter kvar. En kväll ute i helgen så lever streaken ({n} {v}).",
-  "🫡 Streaken ({n} {v}) står i givakt och väntar på helgen. Ingen press – en incheckning räcker."
+  "Helgstreak: {n} {v}. Vila är också bra.",
+  "Helgstreak: {n} {v}. Ingen press.",
+  "Helgstreak: {n} {v}."
 ],
   "helg.freeze": [
   "🧊 Ingen fara: missar du helgen tar en frysbiljett smällen.",
   "🧊 Du har frysbiljetter. Streaken klarar en vilohelg."
 ],
   "helg.done": [
-  "✅ Helgen är räddad! Streaken lever: {n} {v}.",
+  "Den här helgen är med. {n} {v} i rad.",
   "✅ Veckan är bokad i streaken. {n} {v} i rad!",
   "✅ Snyggt, soldat. {n} {v} i rad."
 ],
@@ -4085,41 +4085,41 @@
   "rally.no": "❌ Desertör! Nåja, vila du.",
   "rally.nobody": "Ingen på väg än. Bli den första!",
   "rally.closed": "Inkallelsen är stängd. Vila i frid, skyttegraven.",
-  "toast.cooldown": "Lugn, soldat. Nästa öl om {m}.",
+  "toast.cooldown": "Paus. {m} kvar.",
   "level.n1": "Uppdrag startat. Skål!",
   "level.n5": "💧 Nr 5. Vattenbärare utsedd.",
   "level.n10": "🚑 Nr 10. Sjukvårdare till plats 3!",
   "level.med": "🚑 Nr {n} ikväll. Vatten och en kompis nära.",
-  "live.hotTick": "🔥 {who} {where} är på HOT STREAK ({n})",
+  "live.hotTick": "🍺 {who} {where}: {n} öl ikväll",
   "live.medevacTick": "🚁 MEDEVAC: {who} {where} ({n})",
-  "live.quiet": "Lugnt läge. Inga hot streaks än.",
+  "live.quiet": "Lugnt läge i stan.",
   "live.hot": [
-  "🔥 {who} {where} är på HOT STREAK!",
-  "🔥 HOT STREAK: {who}{where} är på öl nr {n}. Experterna är oroliga.",
-  "🔥 Det brinner! {who}{where} har tagit {n}. Brandkåren meddelad.",
-  "🔥 {who}{where} har fått upp farten: öl nr {n}.",
-  "🔥 Rykten säger att {who}{where} är på öl nr {n}. Vi kan bekräfta.",
-  "📺 Brandlarm! {who}{where} har nått {n} öl.",
-  "🔥 {who}{where} kör hårt: {n} öl. Respekt från redaktionen."
+  "🍺 {who} {where} är ute ikväll. Ta hand om varandra.",
+  "🍺 {who}{where}: öl nr {n} ikväll. Vatten emellan?",
+  "📺 {who}{where} är på {n}. Kebaben väntar på sin tur.",
+  "🍺 {who}{where}: öl nr {n}. Ett glas vatten gör susen.",
+  "📺 Rykten säger att {who}{where} är på öl nr {n}. Vi rekommenderar mat.",
+  "📺 {who}{where} har nått {n} öl. Brandkåren föreslår vatten.",
+  "📺 {who}{where}: {n} öl. Redaktionen skickar vatten och en macka."
 ],
   "live.medevac": "🚁 MEDEVAC {where}! {who} har druckit 10.",
   "stop.home.toast": "🏠 Välkommen hem, soldat. Gruppen vet att du är hemma.",
-  "stop.pause.toast": "🥀 Paus. Tryck ÖL! när törsten kommer tillbaka.",
+  "stop.pause.toast": "🥀 Paus. Din pin är borta från kartan.",
   "level.hot.sub": "Nr 5 ikväll. Ett glas vatten nu.",
   "level.med.title": "SJUKVÅRDARE TILL PLATS 3",
   "level.med.sub": "Nr 10. Förstärkning på väg: vatten, mat och en kompis.",
   "kaos.line": [
   "🚨 Nu ballar det ur i {stad}!",
   "🍺 Ölbilen har kommit till {stad}!",
-  "😳 Hörru, inte kan du sitta hemma nu?",
+  "😳 Hörru, det händer grejer i {stad}.",
   "🔥 Fullt ös i {stad}. Mest drag på {bar}!",
-  "🚨 Larm i {stad}: {hot} st har tappat räkningen!",
+  "🚨 Larm i {stad}: kebabkön växer!",
   "💥 Ja men nu jäklar, {stad}!",
   "🍻 Raggarna har parkerat vid {bar}!",
   "📞 Kaos i {stad}! Nån borde ringa morsan.",
   "🕺 Det svänger i {stad} som på dansbandsgala!",
-  "🛋️ {n} pers ute i {stad} – och du sitter i soffan?",
-  "😱 Va i hela friden! {hot} på hot streak i {stad}!",
+  "🛋️ {n} pers ute i {stad}. Soffan är också ett bra val.",
+  "😱 Va i hela friden! Mycket folk ute i {stad}!",
   "🏃 Nu går det undan i {stad}, kompis. Kolla {bar}!",
   "🌲 Sånt här har inte hänt sen midsommar!",
   "🚜 Hela {stad} har släppt traktorn och gått ut!",
@@ -4141,8 +4141,8 @@
   "🧭 Alla vägar leder till {bar} ikväll!",
   "📍 {bar} är kvällens samlingsplats i {stad}!",
   "🍻 Mest folk på {bar}. Säg hej från oss!",
-  "🔥 {hot} på hot streak i {stad}. Ta hand om varandra!",
-  "🚑 {hot} på hot streak i {stad}. Kolla läget med gänget!",
+  "🔥 Fullt ös i {stad}. Ta hand om varandra!",
+  "🚑 Mycket folk ute i {stad}. Kolla läget med gänget!",
   "🗣️ Hörru {stad}! Nu händer det grejer!",
   "🎪 Hela {stad} har gått ut på stan samtidigt!",
   "🦌 Älgarna har gett upp. {stad} tillhör festfolket ikväll.",
@@ -4415,7 +4415,7 @@
   "📺 {name} på {n} öl. Bra stil, lugnt tempo."
 ],
   "live.fTitle": [
-  "🎖️ {title} {name} dricker för fullo!",
+  "🎖️ {title} {name} är ute ikväll.",
   "📺 {title} {name} är ute på uppdrag. Öl nr {n}.",
   "🎖️ Gör honnör! {title} {name} har gått in i baren.",
   "📺 Rang förpliktigar: {title} {name} står på {n} öl."
@@ -4673,7 +4673,7 @@
 ],
   "live.meRec": [
   "📺 Du är på {n}. Gårdagens rekord: {rek}. Ska du inte ta det?",
-  "📺 Ditt rekord är {rek}. Du är på {n}. Bara att köra.",
+  "📺 Du är på {n} ikväll. Vatten emellan?",
   "📺 Gårdagens du drack {rek}. Dagens du står på {n}. Vem vinner?"
 ],
   "live.meRecNew": [
@@ -4682,16 +4682,16 @@
   "🎉 Personbästa! {n} öl. Pressen väntar utanför."
 ],
   "live.hotClose": [
-  "📺 SPÄNNING: {name} är en öl från HOT STREAK!",
+  "📺 {name} är ute ikväll. Vatten finns i baren.",
   "🔥 {name} står på 4. En till så brinner det, är det sagt.",
-  "📺 Alla ögon på {name}: en öl till och det blir HOT STREAK.",
+  "📺 {name} är ute ikväll. Maten är också god här.",
   "📺 Uppvärmningen är klar. {name} är en öl från att brinna.",
   "🔥 Tändstickan är tänd. {name} behöver bara en öl till."
 ],
   "live.meHotClose": [
-  "📺 SPÄNNING: Du är en öl från HOT STREAK!",
+  "📺 Du är ute ikväll. Vatten finns i baren.",
   "🔥 Du står på 4. En öl till så tänder vi på!",
-  "📺 Hela byn väntar på din femte öl."
+  "📺 Du är ute ikväll. Ta det i din takt."
 ],
   "live.medClose": [
   "📺 {name} har stämning på topp ikväll. Truppen hejar.",
@@ -4703,8 +4703,8 @@
   "📺 Rapport: du är i toppform ikväll. Proviant laddad?"
 ],
   "live.med": [
-  "🦅 {who}{where} har gått in i legendläge. Skicka en hyllning!",
-  "🎖️ Legendrapport: {who}{where} är kvällens huvudperson.",
+  "🚑 {who}{where} har haft en lång kväll. Kompisar: kolla läget!",
+  "🚁 Rapport: {who}{where} behöver nog vatten och mat nu.",
   "🚁 {who}{where} har tagit {n}. Kompisar: kolla läget!",
   "🚁 Rapport: {who}{where} på {n}. Vatten rekommenderas starkt.",
   "🚁 {who}{where} har nått {n}. Taxi hem är ett vinnande drag."
@@ -4753,9 +4753,9 @@
   "📺 Lugnt i {stad}. Bartendern har tagit en selfie med den tomma baren. Den fick fler likes än det finns gäster.",
   "📺 Tyst i {stad}. Inte en själ ute. Bartendern pratar med disken.",
   "📺 {stad} sover. Den har ställt väckarklockan på fredag.",
-  "📺 Lugnet lägger sig över {stad}. Nån måste ta första ölen.",
+  "📺 Lugnet lägger sig över {stad}. Bartendern putsar glasen.",
   "📺 Så tyst i {stad} att någon har anmält en kylskåpsdörr för störning.",
-  "📺 {stad} väntar på en hjälte. Är det du?",
+  "📺 {stad} vilar. Imorgon är också en dag.",
   "📺 Rapport från {stad}: en katt gick över torget. Lokaltidningen har redan gjort ett extranummer.",
   "📺 {stad} laddar upp. Tolv gruppchattar har samma fråga: ”Ska vi?” Ingen har svarat ”ja”.",
   "📺 Ingen på kartan i {stad} än. Bli den första pricken ikväll?",
@@ -4763,7 +4763,7 @@
   "📺 Stilla i {stad}. Bartendern har vikt 40 servetter till fina svanar.",
   "📺 Lugn kväll i {stad}. Perfekt för ett lugnt glas och ett långt snack.",
   "📺 I {stad} är det så lugnt att gatlyktorna har börjat prata med varandra.",
-  "📺 Stiltje i {stad}. Kartan väntar på sin första hjälte.",
+  "📺 Stiltje i {stad}. Kartan tar en tupplur.",
   "📺 {stad} har inga prickar än. Nån måste ju börja.",
   "📺 Lugnet i {stad} beskrivs som ”nästan misstänkt”.",
   "📺 Tyst i {stad}. Dörrvakten övar på sitt bästa leende.",
@@ -4837,9 +4837,9 @@
   "💧 Halvtidsvila: ett glas vatten nu och du tackar dig själv imorn."
 ],
   "live.t4": [
-  "🌙 Klockan är {hh}. Bara de starkaste är kvar.",
+  "🌙 Klockan är {hh}. Sängen saknar dig.",
   "🌙 Klockan {hh}. Taxikön växer. Nån i kön har börjat hålla föredrag. Kön lyssnar. Den har inget val.",
-  "🌙 {hh} och fortfarande igång. Respekt.",
+  "🌙 {hh} och fortfarande igång. Vatten och en taxi hem är en bra plan.",
   "🌙 Klockan är {hh}. Hjältarna vet vilka de är.",
   "🌯 Kebabkön har fler filosofer än universitetet.",
   "🚕 Taxi-tetris: fyra kompisar, tre adresser, en bil. Lycka till.",
@@ -4851,7 +4851,7 @@
   "live.t5": [
   "🌭 Kebabrapporten: kön till korvkiosken är rekordlång.",
   "🌭 Korvkiosken har aldrig sålt så mycket bröd.",
-  "🌅 Solen funderar på att gå upp. Den vill se legenderna.",
+  "🌅 Solen funderar på att gå upp. Den undrar var alla ska sova.",
   "🍕 Pizzerian vid torget har kö ut på gatan.",
   "🌅 Gryningen tittar fram. Den har hört att det var en bra kväll.",
   "🐦 Fåglarna har börjat sjunga. De har inga ackord, men mycket hjärta.",
@@ -4866,7 +4866,7 @@
   "📺 Du är på öl nr {n}. Grannarna har börjat prata.",
   "📺 Du är på {n}. Vi följer dig noga.",
   "📺 Öl nr {n} för dig. Kroppen säger tack. Typ.",
-  "📺 Du har {n} öl i systemet. Fortsätt rapportera.",
+  "📺 Du har {n} öl i systemet. Glöm inte vattnet.",
   "📺 Du är på öl nr {n}. Redaktionen har sett det.",
   "🍺 Öl nr {n} är din. Skål, soldat.",
   "🎖️ Du har tagit {n} öl. Rapportera vidare.",
@@ -5803,7 +5803,7 @@
   "🚨 {group}: noll man ute. Sofforna har vunnit. Än.",
   "🎖️ Väckarklocka till {group}: kvällen väntar inte.",
   "📡 Ingen signal från {group}. Kolla att ni inte somnat framför tv:n.",
-  "📺 {group} sitter hemma. Bartendrarna har börjat oroa sig.",
+  "📺 {group} vilar ikväll. Klokt.",
   "🕵️ Spanare rapporterar: {group} har inte lämnat basen. Mössorna hänger kvar.",
   "📺 Inte en enda från {group} ute än. Vem tar första steget?",
   "🚨 Krisläge i {group}: alla är hemma. Nån måste trycka på knappen.",
@@ -6071,7 +6071,7 @@
   "📺 Byanytt {town}: ingenting. Det är nyheten.",
   "📡 {town} sänder tystnad på alla kanaler. Tystnaden har fler tittare än Melodifestivalen.",
   "📺 {town} sover. Eller tittar på tv. Svårt att säga utifrån.",
-  "🚨 {town} behöver en hjälte. Nån som tar första ölen.",
+  "🚨 Tyst i {town}. Någon har säkert en bra film på gång.",
   "📺 Rapport från {town}: bussen gick förbi. Ingen klev av.",
   "🦉 {town} ikväll: ugglan är enda gästen. Hon har tagit fönsterbordet och vägrar flytta.",
   "📺 {town} är så tyst att man hör kranen droppa.",
@@ -6821,8 +6821,8 @@
 ],
   "nightlog.empty": [
   "Inga drycker loggade ikväll. Kasernen är tyst – än så länge.",
-  "Tomt i loggboken. Tryck ÖL! så börjar rapporten.",
-  "The log is empty. Tap ÖL! to start the report.",
+  "Ingen dryck loggad ikväll.",
+  "No drink logged tonight.",
   "Ingen aktivitet i fält. Levern har skickat ett tackkort.",
   "Nollrapport, chefen. Inte en droppe."
 ],

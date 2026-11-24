@@ -154,183 +154,36 @@ export function nearestTown(p: Pt): string {
   return best;
 }
 
-export const FRIEND_LINES: Record<1 | 5 | 10, string[]> = {
-  1: [
-    "🍻 Grabbarna går loss på stan! {namn} är ute",
-    "🍺 {namn} har öppnat första ölen. Hänger du på?",
-    "🚨 {namn} är ute och rör sig. Int' sitta hemma nu!",
-    "🍺 {namn} har knäckt en kall. Var ä du?",
-    "🚜 {namn} har parkerat traktorn och gått ut!",
-    "📣 {namn} är ute på byn. Ska du bara sitta där?",
-    "🛋️ {namn} har lämnat soffan. Historiskt ögonblick!",
-    "🍺 Första ölen för {namn}. Kvällen har officiellt börjat.",
-    "📡 Radarn har fått utslag: {namn} är ute!",
-    "🚀 {namn} har lyft. Uppdrag: ölen.",
-    "🧥 {namn} har tagit på sig finjackan. Det betyder bara en sak.",
-    "🐻 Björnen har vaknat: {namn} är ute!",
-    "🔔 Ding ding! {namn} har ringt in kvällen.",
-    "🍺 {namn} säger skål. Du säger …?",
-    "🎣 {namn} har kastat ut kroken. Nappar du?",
-    "🚌 {namn} har hoppat på festbussen. Nästa hållplats: du?",
-    "😎 {namn} är ute och ser bra ut. Kom och bevisa motsatsen.",
-    "🏁 Startskottet har gått! {namn} är igång.",
-    "🦌 {namn} har brutit sig ut ur skogen och tagit en öl.",
-    "📞 {namn} är ute. Morsan vet inte om det än.",
-    "🎖️ {titel} {namn} dricker för fullo!",
-    "🍻 {titel} {namn} är ute på uppdrag",
-    "📣 {titel} {namn} har lämnat basen!",
-    "🫡 {titel} {namn} har ryckt ut. Uppdrag: öl.",
-    "🪖 {titel} {namn} rapporterar: första ölen är i hand.",
-    "📡 Spaning: {titel} {namn} har setts med en kall.",
-    "🚁 {titel} {namn} har landat på krogen.",
-  ],
-  5: [
-    "🔥 {namn} är på HOT STREAK! Öl nr 5",
-    "🔥 {namn} har fått upp ångan – fem öl!",
-    "🔥 Fem öl för {namn}. Det här går int' att stoppa.",
-    "🥵 {namn} är varm i kläderna nu. Öl nr 5!",
-    "🐎 {namn} går som en dalahäst i galopp – fem öl!",
-    "🔥 {namn} har tagit fem. Nu börjar det likna nåt!",
-    "🚂 Tåget har gått! {namn} är på öl nr 5.",
-    "🎸 {namn} har kommit till refrängen. Fem öl!",
-    "🖐️ En hel hand öl för {namn}!",
-    "🌡️ Termometern visar: {namn} är HET. Öl nr 5",
-    "🎳 Strike! {namn} har fällt fem öl.",
-    "🧨 {namn} har tänt stubinen. Fem öl och räknar.",
-    "🏒 Hattrick plus två. {namn} är på öl nr 5!",
-    "🕺 {namn} har börjat dansa utan musik. Öl nr 5.",
-    "📈 Kurvan pekar uppåt: {namn} på fem öl!",
-    "🔥 {namn} har slutat räkna. Vi gör det: fem.",
-    "🦅 {namn} flyger högt nu. Öl nr 5!",
-    "🍺🍺🍺🍺🍺 {namn}. Mer behöver vi inte säga.",
-    "🚒 Ring brandkåren – {namn} brinner! Öl nr 5",
-    "🎤 {namn} har börjat prata om att starta band. Fem öl.",
-    "🔥 {titel} {namn} är på HOT STREAK! Öl nr 5",
-    "🎖️ {titel} {namn} kör hårt – fem öl!",
-    "🪖 {titel} {namn} har tagit fem. Truppen följer efter?",
-  ],
-  10: [
-    "🚁 MEDEVAC: kolla till {namn}! Öl nr 10",
-    "🚁 {namn} har druckit 10. Nån borde kolla läget.",
-    "🚁 Tio öl för {namn}. Ring och hör hur det står till.",
-    "🚕 {namn} är uppe i 10. Dags att ordna taxi hem?",
-    "💧 {namn} har tagit 10. Nån som har en flaska vatten?",
-    "🚁 MEDEVAC till {namn}! Kolla att allt ä lugnt.",
-    "🛟 {namn} har tagit tio. Kasta ut en livboj!",
-    "🍕 {namn} är på öl nr 10. Nån borde mata hen med en pizza.",
-    "🧭 {namn} har tagit tio. Hittar hen hem? Kolla!",
-    "📞 Tio öl för {namn}. Ett samtal nu kan rädda kvällen.",
-    "🚁 Helikoptern är på väg till {namn}. Du är närmast – kolla!",
-    "🥤 {namn} har nått tio. Byt nästa öl mot en vatten?",
-    "🫂 {namn} har tagit tio. Ge hen en kram och ett glas vatten.",
-    "🚕 Öl nr 10 för {namn}. Taxinumret är din bästa vän nu.",
-    "🧯 {namn} har tagit tio. Dags att släcka med vatten.",
-    "🌭 {namn} på 10 öl. Korvkiosken kallar – följ med hen dit!",
-    "🚁 Kod röd: {namn} har tagit 10. Kolla att hen har sällskap.",
-    "🔋 {namn} kör på reservbatteri. Öl nr 10 – kolla läget.",
-    "🧑‍🚒 Nån måste vara vuxen nu. {namn} har druckit 10.",
-    "🏠 {namn} har tagit tio. Se till att hen kommer hem helt.",
-  ],
+export const FRIEND_LINES: Record<1 | 5 | 10, string[]> = {   // B2 rows 1-3: one fixed line each
+  1: ["{namn} är ute"],
+  5: ["{namn} är igång"],
+  10: ["Hör av dig till {namn}"],
 };
 
 export const FRIEND_BODY: Record<1 | 5 | 10, string> = {
-  1: "Öppna kartan och se var.",
-  5: "Öppna kartan och se var.",
-  10: "Kolla kartan. Vatten och taxi hem 🚕",
+  1: "Hänger du på?",
+  5: "Fem öl ikväll.",
+  10: "Tio öl ikväll. Fråga hur det är.",
 };
 
 export const KAOS_LINES: string[] = [
-  "🚨 Nu ballar det ur i {stad}!",
-  "🍺 Ölbilen har kommit till {stad}!",
-  "😳 Hörru, int' kan du sitta hemma nu?",
-  "💥 Ja men nu jäklar, {stad}!",
-  "📞 Kaos i {stad}! Nån borde ringa morsan.",
-  "🚜 Hela {stad} har släppt traktorn och gått ut!",
-  "🌲 Sånt här har int' hänt sen midsommar!",
-  "🦌 Till och med älgarna i {stad} har gått ut!",
-  "🍻 {n} pers är ute i {stad} just nu. Och du då?",
-  "🎪 Cirkusen har kommit till {stad}! {n} pers ute.",
-  "🔥 {stad} står i lågor! (Inte på riktigt.)",
-  "📢 Detta är inte en övning. Det är kaos i {stad}!",
-  "🎉 {stad} har gått bananas. {n} pers är ute!",
-  "🐄 Korna i {stad} undrar vad som händer. Svar: öl.",
-  "🛸 UFO? Nej. Bara {n} pers som är ute i {stad}.",
-  "🚓 Grannarna har ringt. {stad} har gått loss!",
-  "🌋 Vulkanen {stad} har fått utbrott!",
-  "🎺 Dansbandet har dragit igång i {stad}. Var ä du?",
-  "🍺 Bryggerierna går på högvarv i {stad} ikväll!",
-  "🧨 {stad} har tänt alla smällare samtidigt. Kaos!",
-  "🏃 Alla springer till krogen i {stad}. Hänger du med?",
-  "🦆 Till och med änderna i {stad} har gått ut.",
-  // tx04: 24 more
-  "🎺 Generalen har blåst till samling i {stad}!",
-  "📡 Radarn över {stad} ä full. {n} pers ute!",
-  "🗺️ Kartan över {stad} lyser som en julgran!",
-  "🕺 {stad} har hittat dansskorna. {n} ute!",
-  "🎉 Folkfest i {stad}! {n} pers ute just nu.",
-  "📢 Extra nyhetssändning: {stad} ä ute!",
-  "🚀 {stad} har lyft! {n} pers på kartan.",
-  "🐺 Flocken har samlats i {stad}!",
-  "🌋 {stad} kokar! {n} pers ute.",
-  "🎆 Fyrverkeri i {stad}? Nej, bara {n} glada människor.",
-  "🥁 Trummorna går i {stad}. Hör du takten?",
-  "🗣️ Hörru {stad}! Nu händer det grejer!",
-  "🎪 Hela {stad} har gått ut samtidigt!",
-  "🏰 {stad} har intagits av glada människor!",
-  "🎶 Allsången hörs över hela {stad}!",
-  "🌟 {stad} lyser starkast på kartan just nu!",
-  "🚨 Kod röd i {stad}: rolig kväll pågår!",
-  "🛋️ Soffan känner sig ensam ikväll. {stad} ä ute.",
-  "📻 Alla kanaler i {stad}: folk ä ute!",
-  "🦉 Ugglorna i {stad} undrar vad allt ljud ä.",
-  "🫂 {n} ute i {stad}. Häng på gänget!",
-  "📸 {stad} ä sällan så här levande. Kolla kartan!",
-  "🏟️ {stad} ikväll: som en hemmamatch, fast på krogen.",
-  "🎸 Det rockar i {stad}. {n} ute!",
+  "{n} ute i {stad}",
 ];
 
 /** tx04: town lines for the KAOS push, mixed into the pool for that town only ({stad} {n}). */
-export const KAOS_TOWN: Record<string, string[]> = {
-  "Ludvika": ["⚡ Högspänning i Ludvika! {n} pers ute.", "🌊 Väsman glittrar och Ludvika ä ute!", "🪖 Högkvarteret Ludvika har gått ut!"],
-  "Smedjebacken": ["⚒️ Smedjebacken glöder som en smedja!", "⛵ Kanalstaden ä ute! {n} pers i Smedjebacken."],
-  "Borlänge": ["🔥 Borlänge kokar som Domnarvet!", "🚦 All trafik i Borlänge går mot krogen!"],
-  "Falun": ["🎿 Lugnet i Falun? Int' ikväll!", "⛏️ Falun har grävt fram festhumöret!"],
-  "Stockholm": ["🚇 Hela Stockholm ä på väg ut!", "🏰 Gamla stan, Söder och Kungsholmen: alla ä ute!"],
-  "Göteborg": ["🎢 Göteborg kör sin egen Liseberg-åktur ikväll!", "🚋 Spårvagnarna i Göteborg ä fulla av festfolk!"],
-  "Malmö": ["🌀 Malmö vrider upp volymen som Turning Torso!", "🌉 Malmö lyser hela vägen till bron!"],
-  "Uppsala": ["🎓 Nationerna i Uppsala har vaknat!", "⛪ Uppsala siktar högre än Domkyrkan ikväll!"],
-  "Västerås": ["🥒 Gurkstaden Västerås har gått ut!", "🏢 Skrapan i Västerås ser bara folk ikväll!"],
-  "Örebro": ["🏰 Slottet i Örebro har fått sällskap!", "🍄 Svampen i Örebro ser {n} pers ute!"],
-};
+/** B2: no town variants any more (one fixed KAOS text). Kept as an empty map for kaosPool. */
+export const KAOS_TOWN: Record<string, string[]> = {};
 export function kaosPool(stad: string): string[] {
   const t = KAOS_TOWN[stad];
   return t ? KAOS_LINES.concat(t) : KAOS_LINES;
 }
 
 export const HOME_LINES: string[] = [
-  "🏠 {namn} har kommit hem. Uppdraget slutfört!",
-  "🛌 {namn} är hemma och i säng. God natt, soldat.",
-  "🏠 {namn} har landat hemma. Inga förluster rapporterade.",
-  "🦉 {namn} är hemma. Resten av er får klara er själva.",
-  "🏡 {namn} har tagit sig hem helskinnad. Skål för det!",
-  "🧦 {namn} är hemma i tofflorna. Kvällen är över.",
-  "📦 Leverans klar: {namn} är hemma.",
-  "🛬 {namn} har landat på hemmaplan.",
-  "🌙 {namn} har checkat ut. Hemma och säker.",
-  "🐻 Björnen har gått i ide. {namn} är hemma.",
+  "{namn} är hemma",
 ];
 
 export const PAUSE_LINES: string[] = [
-  "🥀 {namn} har fått öltorsk. Nån borde skicka hjälp!",
-  "🏜️ Torka i glaset hos {namn}. Öltorsk konstaterad.",
-  "😢 {namn} har slutat dricka. Ska vi ringa nån?",
-  "🍺❌ {namn} har lagt ner glaset. Vad är det som händer?!",
-  "🚱 {namn} har drabbats av akut öltorsk.",
-  "😴 {namn} har tagit paus. Svag insats, soldat.",
-  "🐢 {namn} tar det lugnt nu. Tråkmåns.",
-  "🧊 {namn} har frusit fast. Inget mer öl på ett tag.",
-  "🫗 Glaset är tomt och {namn} fyller inte på. Larm!",
-  "🪦 Här vilar kvällen för {namn}. Den var kort men fin.",
+  "{namn} tar en paus",
 ];
 
 export function fill(tpl: string, vars: Record<string, string | number>): string {
@@ -381,38 +234,24 @@ export function fillFriend(tpl: string, namn: string, titel: string): string {
 }
 
 export const LEVELUP_LINES: string[] = [
-  "⬆️ {namn} har blivit befordrad till {titel}!",
-  "🎖️ Ceremoni! {namn} är nu {titel}. Applåder.",
-  "📜 Generalstaben meddelar: {namn} är nu {titel}.",
-  "🎺 Fanfar! {namn} har avancerat till {titel}.",
-  "🫡 Givakt! Hälsa på {titel} {namn}.",
-  "🏅 Ny rang i gruppen: {namn} är {titel}!",
+  "{namn} blev {titel}",
 ];
 
 export function levelUpPayload(idx: number, namn: string, titel: string, beerId: number) {
   return {
     title: fill(LEVELUP_LINES[((idx % LEVELUP_LINES.length) + LEVELUP_LINES.length) % LEVELUP_LINES.length], { namn, titel }),
-    body: "Ny rang i PintsNow. Skål för det! 🍻",
+    body: "Ny rang. Grattis!",
     url: `/?focus=${beerId}`,
     tag: `olnu-title-${beerId}`,
   };
 }
 
 export const COMEHERE_LINES: string[] = [
-  "📍 {namn} vill att du kommer till {bar}!",
-  "🍺 {namn}: Kom hit till {bar}, det ä fest!",
-  "🚨 Inkallelse! {namn} behöver förstärkning på {bar}.",
-  "📣 {namn} ropar från {bar}: Var ä du?!",
-  "🍻 {namn} har ställt fram ett glas åt dig på {bar}.",
-  "🫡 Order från {namn}: Infinna dig på {bar}. Nu.",
-  "🎉 Det händer grejer på {bar}! {namn} väntar på dig.",
-  "🚕 Ta en taxi till {bar}. {namn} saknar dig redan.",
+  "{namn} vill ses",
 ];
 
 export const COMEHERE_NOBAR_LINES: string[] = [
-  "📍 {namn} vill att du kommer hit",
-  "🍺 {namn}: Kom hit, det ä fest!",
-  "📣 {namn} kallar på förstärkning. Kolla kartan!",
+  "{namn} vill ses",
 ];
 
 /** Bar names come from the client: one line, no control chars, max 60 chars. */
@@ -426,7 +265,7 @@ export function comeherePayload(idx: number, namn: string, bar: string, beerId: 
   const lines = bar ? COMEHERE_LINES : COMEHERE_NOBAR_LINES;
   return {
     title: fill(lines[((idx % lines.length) + lines.length) % lines.length], { namn, bar }),
-    body: "Tryck för att se var.",
+    body: bar ? `Kom till ${bar}.` : "Kom hit.",
     url: `/?focus=${beerId}`,
     tag: `olnu-come-${beerId}`,
   };
@@ -482,38 +321,11 @@ export const RATE_SEC = { comehere: 600, sos: 180, msg: 30, checkin: 600, eta: 6
 
 // ---- v10 CHECKA IN ----
 export const CHECKIN_LINES: string[] = [
-  "📍 {namn} har anlänt till {bar}",
-  "🍺 {namn} har checkat in på {bar}. Ölen är beställd.",
-  "🚪 Dörren till {bar} slogs upp. In klev {namn}.",
-  "🫡 {namn} rapporterar: på plats vid {bar}.",
-  "🪖 {namn} har intagit {bar}. Positionen är säkrad.",
-  "📡 Spaning: {namn} har setts gå in på {bar}.",
-  "🎺 Fanfar! {namn} har gjort entré på {bar}.",
-  "🚁 {namn} har landat på {bar}. Ölbasen är bemannad.",
-  "🛬 Touchdown! {namn} är på {bar}.",
-  "📣 Hör upp! {namn} har anlänt till {bar}.",
-  "🐻 Björnen har lämnat idet. {namn} är på {bar}.",
-  "🍻 {namn} har tagit plats på {bar}. Stolen bredvid är ledig.",
-  "🚜 {namn} har parkerat traktorn utanför {bar}.",
-  "🦌 En vild {namn} har setts på {bar}!",
-  "🧭 Koordinaterna är bekräftade: {namn} är på {bar}.",
-  "🎯 Målet nått! {namn} står i baren på {bar}.",
-  "🕵️ Hemlig källa: {namn} sitter på {bar} just nu.",
-  "📯 {namn} blåser i hornet från {bar}. Kom!",
-  "🏁 {namn} har gått i mål på {bar}. Nu börjar kvällen.",
-  "🚕 Taxin har lämnat av {namn} vid {bar}.",
-  "🎪 Cirkusen har kommit till stan: {namn} är på {bar}.",
-  "🧲 {bar} drog till sig {namn}. Vem blir nästa?",
-  "🎤 {namn} har tagit över {bar}. Karaoke kan inte uteslutas.",
-  "⚓ {namn} har kastat ankar på {bar}.",
-  "🛎️ Pling! {namn} har checkat in på {bar}.",
+  "{namn} är på {bar}",
 ];
 
 export const CHECKIN_BODY: string[] = [
-  "Tryck för att se var. Hänger du på?",
-  "Öppna kartan. Det finns plats för en till.",
-  "Tryck för att se baren på kartan.",
-  "Ska du bara sitta hemma? Kolla kartan.",
+  "Incheckad nyss.",
 ];
 
 export function checkinPayload(idx: number, namn: string, bar: string, stamp: number, barId = "") {
@@ -562,7 +374,7 @@ export function nightLabel(nightIso: string): string {
 
 export function kaosPayload(idx: number, stad: string, out: number, hot: number, nightIso: string) {
   const title = fill(KAOS_LINES[idx % KAOS_LINES.length], { stad, n: out, hot });
-  const body = hot > 0 ? `${out} ute · ${hot} på hot streak` : `${out} ute`;
+  const body = "Det är liv i stan ikväll.";
   return { title, body, url: "/", tag: `olnu-kaos-${nightLabel(nightIso)}` };
 }
 
@@ -570,25 +382,12 @@ export function kaosPayload(idx: number, stad: string, out: number, hot: number,
 
 /** Call-out lines to group-mates. {namn} = creator, {body} = rally text. */
 export const RALLY_LINES: string[] = [
-  "🪖 {namn}: {body}",
-  "📯 {namn} blåser till samling! {body}",
-  "🚨 Förstärkning behövs! {namn} kallar",
-  "🍻 {namn} har öppnat baren. Kommer du?",
-  "🫡 Inkallelse från {namn}. Uppdrag: öl.",
-  "📣 {namn} kallar in trupperna: {body}",
-  "🥁 Trummorna går! {namn}: {body}",
-  "📡 Nödsignal från {namn}: {body}",
-  "🎖️ Order från {namn}: {body}",
-  "🚁 {namn} begär luftunderstöd. {body}",
+  "{namn}: {body}",
 ];
 
 /** "Someone is coming" lines to the creator. {yes} = number on the way. */
 export const RALLY_YES_LINES: string[] = [
-  "✅ {namn} är på väg! {yes} på väg nu",
-  "🪖 {namn} har anslutit till skyttegraven! {yes} på väg",
-  "🏃 {namn} springer mot dig. {yes} på väg.",
-  "🫡 {namn} har tagit emot ordern. {yes} på väg",
-  "🚕 {namn} har hoppat in i taxin. {yes} på väg nu",
+  "{yes} kommer",
 ];
 
 /** Rally id from the request body: a positive safe integer (number or digit string), else null. */
@@ -605,7 +404,7 @@ function wrapIdx(idx: number, n: number): number {
 export function rallyPayload(idx: number, namn: string, body: string, place: string | null | undefined, rallyId: number) {
   return {
     title: fill(RALLY_LINES[wrapIdx(idx, RALLY_LINES.length)], { namn, body }),
-    body: place ? `📍 ${place} · Svara i appen` : "Svara i appen",
+    body: place ? `${place}. Svara i appen.` : "Svara i appen.",
     url: `/?rally=${rallyId}`,
     tag: `olnu-rally-${rallyId}`,
     rally_id: rallyId,
@@ -620,7 +419,7 @@ export function rallyPayload(idx: number, namn: string, body: string, place: str
 export function rallyYesPayload(idx: number, namn: string, yes: number, rallyId: number) {
   return {
     title: fill(RALLY_YES_LINES[wrapIdx(idx, RALLY_YES_LINES.length)], { namn, yes }),
-    body: "Tryck för att se vilka som kommer.",
+    body: "Se vilka som kommer.",
     url: `/?rally=${rallyId}`,
     tag: `olnu-rally-${rallyId}-yes`,
     rally_id: rallyId,
@@ -630,21 +429,7 @@ export function rallyYesPayload(idx: number, namn: string, yes: number, rallyId:
 
 // ---- v12 KROGARNA: bar tips + takeovers ----
 export const TIP_LINES: string[] = [
-  "📣 {namn} tipsar: Kom till {bar}!",
-  "🍻 {namn} har spanat: {bar} är stället ikväll!",
-  "📡 Underrättelse från {namn}: läget är bra på {bar}.",
-  "🪖 {namn} beordrar: samling på {bar}!",
-  "🦌 {namn} har hittat bästa betet. Det är {bar}.",
-  "🎯 {namn} pekar ut målet: {bar}.",
-  "📯 {namn} blåser i luren. Alla till {bar}!",
-  "🗺️ Krogtips från {namn}: {bar}. Lita på kartan.",
-  "🔥 {namn} säger att det brinner på {bar}. Positivt menat.",
-  "🚕 {namn} tycker du ska ta taxin till {bar}. Nu.",
-  "🕵️ Hemligt tips från {namn}: {bar}. Sprid det inte (sprid det).",
-  "🐻 Björnen {namn} har lämnat idet för {bar}. Följ spåren.",
-  "📻 Ronny & Ragge-radion rapporterar via {namn}: {bar} är grejen!",
-  "🛎️ Pling! {namn} har ett tips: {bar}.",
-  "🍺 {namn} har provsmakat {bar}. Betyg: kom hit.",
+  "{namn} tipsar om {bar}",
 ];
 export function tipPayload(idx: number, namn: string, bar: string, body: string | null | undefined, barId: string, tipId: number) {
   const b = cleanBarName(bar) || "baren";
@@ -652,34 +437,20 @@ export function tipPayload(idx: number, namn: string, bar: string, body: string 
   const extra = typeof body === "string" ? body.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 40) : "";
   return {
     title: fill(TIP_LINES[wrapIdx(idx, TIP_LINES.length)], { namn, bar: b }),
-    body: extra ? `”${extra}” · Tryck för att se baren.` : "Tryck för att se baren på kartan.",
+    body: extra ? `”${extra}”` : "Tryck för att se baren.",
     url: `/?bar=${encodeURIComponent(barId)}`,
     tag: `olnu-tip-${tipId}`,
   };
 }
 export const TAKEOVER_LINES: string[] = [
-  "🏰 Ni har tagit över {bar}!",
-  "🚩 Flaggan är hissad! {grupp} äger {bar} ikväll.",
-  "👑 {bar} är ert. Kungariket {grupp} växer.",
-  "🪖 Uppdrag slutfört: {grupp} har intagit {bar}.",
-  "🏴 {bar} har fallit. {grupp} håller positionen.",
-  "🎺 Fanfar! {grupp} styr {bar} just nu.",
-  "🛡️ {bar} är säkrat av {grupp}. Försvara det!",
-  "🐴 Dalahästen nickar: {bar} tillhör {grupp} ikväll.",
-  "⚔️ Krogen är erövrad! {grupp} äger {bar}.",
-  "📡 Spaning bekräftar: {grupp} har flest man på {bar}.",
-  "🏰 Borgen {bar} är er. Glöm inte att skåla för segern.",
-  "🍻 {grupp} äger {bar}. Ronny och Ragge hade varit stolta.",
-  "🚁 Luftlandsättning lyckad. {bar} är {grupp}s.",
-  "🗺️ Nytt territorium: {bar}. Kartan är ändrad.",
-  "🔥 {bar} är ert ikväll. Håll ställningarna (och drick vatten).",
+  "{grupp} har {bar}",
 ];
 export function takeoverPayload(idx: number, grupp: string, bar: string, barId: string, groupId: string) {
   const b = cleanBarName(bar) || "krogen";
   const g = cleanBarName(grupp) || "Ni";
   return {
     title: fill(TAKEOVER_LINES[wrapIdx(idx, TAKEOVER_LINES.length)], { grupp: g, bar: b }),
-    body: "Tryck för att se kartan. Håll krogen!",
+    body: "Ni är flest här just nu.",
     url: `/?bar=${encodeURIComponent(barId)}`,
     tag: `olnu-takeover-${groupId}-${barId}`.slice(0, 120),
   };
@@ -689,70 +460,12 @@ export function takeoverPayload(idx: number, grupp: string, bar: string, barId: 
 // ---- v16 EFTERÅT ----
 // Kom hem säkert: extra home lines (content B23). {namn}, {tid} = HH:MM.
 export const SAFE_HOME_LINES: string[] = [
-  "🏠 {namn} ä hemma. Basen ä säkrad.",
-  "🏠 {namn} har tryckt Jag är hemma. Högkvarteret andas ut.",
-  "🏠 {namn} ä i säng, eller på väg dit. Snyggt, soldat.",
-  "🏠 Landat: {namn} ä hemma {tid}. Tornet tackar.",
-  "🏠 {namn} ä hemma. Ölguden bockar av ett namn i sin bok.",
-  "🏠 {namn} har nått basen. Inga skadade, inga saknade.",
-  "🏠 Kudden rapporterar: {namn} ä på plats.",
-  "🏠 {namn} ä hemma kl. {tid}. Morsan hade varit nöjd.",
-  "🏠 Ett namn mindre att oroa sig för: {namn} ä hemma.",
-  "🏠 {namn} ä hemma. Drick ett glas vatten innan du somnar, pojk.",
-  "🏠 Högkvarteret bekräftar: {namn} ä tillbaka på basen.",
-  "🏠 {namn} gick hem som en hjälte. Eller i alla fall som en människa.",
-  "🏠 {namn} ä hemma och i säkerhet. Bra jobbat, soldat.",
-  "🏠 Dörren ä låst, skorna ä av: {namn} ä hemma.",
-  "🏠 {namn} har checkat ut från stan och in i sängen.",
-  "🏠 Pling! {namn} ä hemma. Gruppen kan pusta ut.",
-  "🏠 {namn} ä hemma {tid}. Ingen behöver skicka ut sökpatrull.",
-  "🏠 {namn} ä på basen. Ladda mobilen, ladda dig själv.",
-  "🏠 {namn} ä hemma. Ölguden höjer sitt vattenglas.",
-  "🏠 Säker hemkomst: {namn}. Kvällens bästa nyhet.",
-  "🏠 {namn} ä hemma. Kylskåpet hälsar välkommen, men gå och lägg dig.",
-  "🏠 Reträtt genomförd: {namn} ä hemma kl. {tid}.",
-  "🏠 {namn} ä hemma. Grannkatten såg alltihop och godkände.",
-  "🏠 {namn} har lämnat slagfältet för täcket.",
-  "🏠 {namn} ä hemma. Den som trycker på knappen ä en ansvarsfull själ.",
-  "🏠 Uppdrag Hemgång klart: {namn} ä hemma.",
-  "🏠 {namn} ä i hamn. Ankaret ä kastat i sängen.",
-  "🏠 {namn} ä hemma {tid}. Bakisrapporten kommer i morgon.",
-  "🏠 Till gruppen: {namn} ä hemma och mår bra.",
-  "🏠 {namn} ä hemma. En soldat i sängen ä värd två på stan.",
-  "🏠 {namn} har tryckt på knappen. Kvällens viktigaste tryck.",
-  "🏠 Basen meddelar ankomst: {namn}. Lampan ä släckt.",
-  "🏠 {namn} ä hemma. Sov gott, vi ses i morgon.",
-  "🏠 {namn} ä hemma säkert. Ölguden somnar lite lugnare.",
-  "🏠 Hemkomst registrerad för {namn}. Vattenglaset ä obligatoriskt.",
-  "🏠 {namn} ä hemma. Tack till den som följde med en bit på vägen.",
-  "🏠 {namn} ä tillbaka i baracken. Tystnad i logementet.",
-  "🏠 {namn} ä hemma. Gruppchatten kan sänka beredskapen ett snäpp.",
-  "🏠 Bekräftat från fältet: {namn} ä hemma kl. {tid}. Utmärkt.",
-  "🏠 {namn} ä hemma. Det ä så det ska va', dä.",
+  "{namn} är hemma",
 ];
 
 // Röstskål in the group chat. {namn}
 export const VOICE_LINES: string[] = [
-  "🎙️ {namn} skickade ett röstskål.",
-  "🎙️ {namn} har spelat in ett röstmeddelande från fältet.",
-  "🎙️ Radio {namn} sänder live från krogen.",
-  "🎙️ {namn} rapporterar via kommradion. Över.",
-  "🎙️ Ljudbevis från {namn}: stämningen ä god.",
-  "🎙️ {namn} har skickat ett röstskål. Volymen står på tolv.",
-  "🎙️ Högkvarteret har tagit emot en ljudfil från {namn}. Analys pågår.",
-  "🎙️ {namn} skålar med rösten. Det låter som Dalarna.",
-  "🎙️ Röstbrev från {namn}. Bakgrundsljud: glada människor.",
-  "🎙️ {namn} skickade ett 'skååål' med äkta dalmål.",
-  "🎙️ Ny sändning från {namn}. Sänk volymen innan du lyssnar.",
-  "🎙️ {namn} har talat. Gruppen lyssnar andäktigt.",
-  "🎙️ Kommradion sprakar: det ä {namn} med en hälsning.",
-  "🎙️ {namn} spelade in en lägesrapport. Ingen förstod, alla skrattade.",
-  "🎙️ Ett röstskål från {namn}. Ölguden nickar i takt.",
-  "🎙️ {namn} sänder från frontlinjen. Över och ut.",
-  "🎙️ Röstmeddelande från {namn}. Innehåll: hemligt, men roligt.",
-  "🎙️ {namn} har lagt till ljud i kvällens krönika.",
-  "🎙️ {namn} skickade en skål i ljudform. Skåla tillbaka, pojk.",
-  "🎙️ Ljudsignal från {namn}. Antingen en skål eller en raggarbil som startar.",
+  "{namn} skålar",
 ];
 
 /** HH:MM in Europe/Stockholm. */
@@ -775,30 +488,17 @@ export function homeLineCount(): number { return HOME_LINES.length + SAFE_HOME_L
 
 // "🚑 Jag kollar": a friend takes care of a mate on MEDEVAC (10 beers). Caring, never shaming.
 export const MEDCHECK_LINES: string[] = [
-  "🚑 {namn} kollar läget med {mal}. Bra jobbat, kompis.",
-  "💚 {namn} har koll på {mal} ikväll.",
-  "🫡 {namn} tar hand om {mal}. Ingen soldat lämnas kvar.",
-  "🚑 {namn} är på väg till {mal} med ett glas vatten.",
-  "🤝 {namn} kollar till {mal}. Så gör riktiga vänner.",
-  "💧 {namn} har {mal} under uppsikt. Vatten är beställt.",
-  "🛡️ {namn} står vakt vid {mal}. Lugnt läge.",
-  "🚕 {namn} kollar läget med {mal} och har taxinumret redo.",
-  "💚 Kompisvakten {namn} har koll på {mal}.",
-  "🫂 {namn} ser efter {mal} ikväll. Tack!",
+  "{namn} frågar hur {mal} mår",
 ];
 export const MEDCHECK_ME_LINES: string[] = [
-  "💚 {namn} kommer och kollar läget med dig.",
-  "🚑 {namn} har koll på dig ikväll. Ta ett glas vatten.",
-  "🫂 {namn} ser efter dig. Säg till om du vill hem.",
-  "💧 {namn} är på väg med vatten. Du är i goda händer.",
-  "🛡️ {namn} står vakt. Ta det lugnt nu.",
+  "{namn} frågar hur det är",
 ];
 export function medcheckPayload(idx: number, namn: string, mal: string | null, beerId: number | null, checkId: number) {
   const me = mal === null;
   const lines = me ? MEDCHECK_ME_LINES : MEDCHECK_LINES;
   return {
     title: fill(lines[wrapIdx(idx, lines.length)], { namn: cleanBarName(namn) || "En vän", mal: cleanBarName(mal ?? "") || "kompisen" }),
-    body: me ? "Drick vatten. Ta taxi hem. 🚕" : "Tack för att ni tar hand om varandra.",
+    body: me ? "Drick vatten. Ta taxi hem." : "Tack för att ni tar hand om varandra.",
     url: beerId ? `/?focus=${beerId}` : "/",
     tag: `olnu-medcheck-${checkId}`,
   };
@@ -807,7 +507,7 @@ export function medcheckPayload(idx: number, namn: string, mal: string | null, b
 export function voicePayload(idx: number, namn: string, groupName: string, groupId: string) {
   return {
     title: fill(VOICE_LINES[wrapIdx(idx, VOICE_LINES.length)], { namn: cleanBarName(namn) || "En vän" }),
-    body: `i ${cleanBarName(groupName) || "gruppen"} · Tryck för att lyssna`,
+    body: "Tryck för att lyssna.",
     url: `/?chat=${groupId}`,
     tag: `olnu-voice-${groupId}`,
     renotify: true,
@@ -817,128 +517,14 @@ export function voicePayload(idx: number, namn: string, groupName: string, group
 
 // ---- v18 ETA ("🏃 Jag ä på väg") ----
 // Titles by distance in time: short (≤ 5 min), mid (10–15), long (20–30). {namn}, {min}, {bar}.
-export const ETA_LINES: Record<"short" | "mid" | "long", string[]> = {
-  short: [
-    "🏃 {namn} ä nästan framme vid {bar}. {min} min. Håll dörren!",
-    "🪖 {namn} ä på marsch mot {bar}. ETA {min} min. Håll en stol!",
-    "📡 {namn} syns på radarn. {min} min till {bar}.",
-    "🚪 {namn} står typ i dörren till {bar}. {min} min.",
-    "⏱️ T minus {min} min: {namn} landar på {bar}.",
-    "🐎 {namn} galopperar som en dalahäst mot {bar}. {min} min kvar.",
-    "🫡 {namn} rapporterar: {min} min från {bar}. Över.",
-    "🎯 Målet i sikte! {namn} ä {min} min från {bar}.",
-    "🏁 Upploppet! {namn} ä {min} min från {bar}.",
-    "🚁 {namn} har påbörjat inflygning mot {bar}. {min} min.",
-    "🦌 {namn} har setts korsa vägen mot {bar}. {min} min bort.",
-    "🔔 Pling! {namn} ä runt hörnet. {min} min till {bar}.",
-    "🥾 Kängorna slår i asfalten: {namn} ä {min} min från {bar}.",
-    "📣 Givakt vid {bar}! {namn} anländer om {min} min.",
-    "🧭 {namn} har {bar} i kikarsiktet. {min} min.",
-    "🚶 {namn} går så det ryker. {bar} om {min} min.",
-    "🛬 {namn} har fällt ut landningsstället. {bar} om {min} min.",
-    "🪑 Håll en stol varm på {bar}. {namn} ä där om {min} min.",
-    "💨 {namn} har bråttom som en dalkarl till midsommarstången. {min} min till {bar}.",
-    "🏃 {namn} springer mot {bar} som en pistvakt i nedförsbacke. {min} min.",
-    "📻 Sprak sprak: {namn} ä {min} min bort. {bar}, ta emot!",
-    "🐻 Björnen ä nästan ute ur skogen: {namn}, {min} min till {bar}.",
-    "👟 {namn} har tagit sista backen. {min} min till {bar}.",
-    "🎺 Fanfaren kan börja öva: {namn} ä vid {bar} om {min} min.",
-    "🕵️ Spaningen bekräftar: {namn} ä {min} min från {bar}.",
-    "🚨 Nära kontakt! {namn} når {bar} om {min} min.",
-  ],
-  mid: [
-    "📡 Förstärkning på väg: {namn}, {min} minuter bort. Ställ fram en kall.",
-    "🪖 Kolonnen rör sig. {namn} når {bar} om {min} min.",
-    "🚌 {namn} ä på väg mot {bar}. ETA {min} min, inga stopp planerade.",
-    "🗺️ {namn} har lagt ut kursen mot {bar}. {min} min.",
-    "🛷 {namn} åker kälke mot {bar}. Beräknad ankomst: {min} min.",
-    "🚜 {namn} har startat traktorn mot {bar}. {min} min, om det int' ä kö i rondellen.",
-    "🫡 Order mottagen. {namn} marscherar mot {bar}, {min} min.",
-    "🦆 {namn} flyger i formation mot {bar}. {min} min.",
-    "⏳ Timglaset ä vänt: {namn} ä på {bar} om {min} min.",
-    "📯 {namn} har blåst till uppbrott. {bar} om {min} min.",
-    "🥁 Trummorna går: {namn} ä på väg till {bar}. {min} min.",
-    "🎒 {namn} har packat ryggsäcken. Destination {bar}, {min} min.",
-    "🛰️ Satelliten ser {namn} på väg mot {bar}. {min} min kvar.",
-    "🐴 Dalahästen ä sadlad. {namn} rider mot {bar}, {min} min.",
-    "🚂 Tåget {namn} avgår mot {bar}. Ankomst om {min} min.",
-    "🧥 {namn} har tagit på sig finjackan och ä {min} min från {bar}.",
-    "📍 {namn} ä på väg till {bar}. {min} min. Säg till vakten!",
-    "🔭 Utkiken rapporterar: {namn} närmar sig {bar}. {min} min.",
-    "🚴 {namn} trampar mot {bar} som i Vasaloppet fast på cykel. {min} min.",
-    "🛶 {namn} paddlar mot {bar}. Motström, men {min} min.",
-    "🎖️ Uppdrag {bar}: {namn} ä i rörelse. {min} min till mål.",
-    "🌲 {namn} har lämnat skogen och siktar på {bar}. {min} min.",
-    "☎️ {namn} ringer int', {namn} kommer. {bar} om {min} min.",
-    "🏃 Kompis på ingång! {namn} ä vid {bar} om {min} min.",
-    "📦 Leverans på väg till {bar}: en {namn}. Beräknad tid {min} min.",
-    "🚕 {namn} har hoppat in i taxin mot {bar}. {min} min, dä.",
-    "🪂 {namn} har hoppat ut över {bar}. Landning om {min} min.",
-    "⚓ {namn} har lättat ankar mot {bar}. {min} min.",
-  ],
-  long: [
-    "🌭 {namn} tar omvägen förbi korvkiosken. {bar} om {min} min.",
-    "🐢 {namn} ä på väg mot {bar}. Lugnt tempo: {min} min.",
-    "🗻 {namn} har en bit kvar till {bar}. {min} min. Håll ut!",
-    "🚜 {namn} kör traktor mot {bar}. {min} min, i medvind.",
-    "🧭 {namn} navigerar efter stjärnorna mot {bar}. ETA {min} min.",
-    "🪖 Långmarsch! {namn} når {bar} om {min} min.",
-    "🚿 {namn} ska bara duscha först. Sen {bar}. {min} min, säger hen.",
-    "👔 {namn} väljer skjorta. Det kan ta tid. {bar} om {min} min.",
-    "🦌 {namn} tar skogsvägen till {bar}. Räkna med {min} min.",
-    "🛤️ {namn} har lång väg men stort hjärta. {bar} om {min} min.",
-    "📻 Långdistansradio: {namn} ä {min} min från {bar}. Över.",
-    "🐌 Snigelpost från {namn}: anländer till {bar} om {min} min.",
-    "⛽ {namn} tankar och kör (nykter chaufför!). {bar} om {min} min.",
-    "🎿 {namn} åker Vasaloppet till {bar}. Mål om {min} min.",
-    "🏔️ {namn} har påbörjat bestigningen av {bar}. {min} min till toppen.",
-    "🚌 {namn} väntar på bussen till {bar}. {min} min, om busschauffören vill.",
-    "🍕 {namn} käkar först (klokt!). {bar} om {min} min.",
-    "💧 {namn} dricker ett glas vatten och drar. {bar} om {min} min.",
-    "🧦 {namn} letar efter den andra strumpan. {bar} om {min} min.",
-    "🛰️ Fjärrspaning: {namn} ä långt bort. {min} min till {bar}.",
-    "🎒 {namn} har packat för expedition {bar}. {min} min.",
-    "🐕 {namn} rastar hunden först. Sen {bar}, {min} min.",
-    "🚣 {namn} ror över sjön till {bar}. {min} min, om vinden ä snäll.",
-    "📜 Generalstaben meddelar: {namn} anländer till {bar} om {min} min.",
-    "🌙 {namn} ä på väg i månskenet. {bar} om {min} min.",
-    "🦉 Ugglan har sett {namn} på väg mot {bar}. {min} min.",
-    "🪵 {namn} har stängt spjället hemma. {bar} om {min} min.",
-    "🏃 {namn} ä på väg till {bar} men har långt. {min} min, pojk.",
-  ],
+export const ETA_LINES: Record<"short" | "mid" | "long", string[]> = {   // B2 row 19: one fixed line
+  short: ["{namn} är nära {bar}"],
+  mid: ["{namn} är på väg till {bar}"],
+  long: ["{namn} är på väg till {bar}"],
 };
 
 export const ETA_BODIES: string[] = [
-  "Tryck för att se var {namn} ä.",
-  "Håll en plats åt {namn}. Tryck för kartan.",
-  "Tryck för att följa {namn} på kartan.",
-  "Kolla kartan. Förstärkningen ä på väg.",
-  "Tryck för att se {namn} på kartan. Över.",
-  "Ingen panik. {namn} ä på väg. Tryck för kartan.",
-  "Ställ fram ett glas vatten åt {namn}. Tryck för kartan.",
-  "Spara en stol. Tryck för att se kartan.",
-  "Tryck för att se var {namn} ä. Vinka när hen kommer.",
-  "Truppen växer. Tryck för att se kartan.",
-  "Tryck för lägesbilden.",
-  "Lägesrapport: {namn} rör sig. Tryck för kartan.",
-  "Tryck för att se baren och vem som kommer.",
-  "Möt upp i dörren? Tryck för kartan.",
-  "Tryck för att se var {namn} ä, dä.",
-  "Radion sprakar. Tryck för att se kartan.",
-  "Säg hej när {namn} kliver in. Tryck för kartan.",
-  "Tryck för att se vilka som ä på väg.",
-  "Fältpost från {namn}. Tryck för kartan.",
-  "Håll ställningarna tills {namn} ä framme.",
-  "Tryck för att se hur långt {namn} har kvar.",
-  "Öppna kartan. {namn} ä på väg.",
-  "Tryck för att se {bar} på kartan.",
-  "Bered plats i skyttegraven. Tryck för kartan.",
-  "Hälsa {namn} välkommen. Tryck för kartan.",
-  "Ingen soldat lämnas kvar. Tryck för kartan.",
-  "Tryck för att se var {namn} ä. Över och ut.",
-  "Ta det lugnt, {namn} ä snart där.",
-  "Spaningsbild uppdaterad. Tryck för kartan.",
-  "Tryck och se när {namn} ä framme.",
+  "Ca {min} min.",
 ];
 
 export type EtaKind = "short" | "mid" | "long";
@@ -1007,26 +593,12 @@ export function etaRecipients(o: {
 
 // ---- v22 GRUPPCHEF: lägesrapport ----
 export const STATUS_LINES: string[] = [
-  "📸 Lägesrapport! Gruppchef {namn} vill se läget",
-  "🎖️ Gruppchef {namn} begär lägesrapport. Foto, nu!",
-  "📡 {namn} ropar på radion: lägesrapport, över!",
-  "🪖 Uppställning! {namn} vill ha bildbevis",
-  "📸 Spaningsorder från {namn}: fota vad som händer",
-  "🔭 {namn} spanar efter truppen. Skicka en bild!",
-  "📻 Högkvarteret ({namn}) begär lägesbild",
-  "🎯 Uppdrag från {namn}: ett foto på läget",
-  "🚨 Lägesrapport! {namn} vill veta hur dä ser ut",
-  "🦌 {namn} undrar var truppen ä. Bild, tack!",
-  "🗺️ {namn} ritar om kartan. Skicka läget!",
-  "📸 Klick-order från gruppchef {namn}",
-  "🪖 Gruppchef {namn}: visa mä vad som händer, soldat",
-  "📡 Underrättelse behövs! {namn} vill se läget",
-  "🎖️ {namn} kräver bildbevis. Klockan tickar",
+  "{namn} vill se läget",
 ];
 export function statusReqPayload(idx: number, namn: string, groupName: string, reqId: number) {
   return {
     title: fill(STATUS_LINES[wrapIdx(idx, STATUS_LINES.length)], { namn: cleanBarName(namn) || "Gruppchefen" }),
-    body: `Ta ett foto på vad som händer – 10 min · ${cleanBarName(groupName) || "gruppen"}`,
+    body: "Ta ett foto. 10 min.",
     url: `/?status=${reqId}`,
     tag: `olnu-status-${reqId}`,
   };
@@ -1034,43 +606,22 @@ export function statusReqPayload(idx: number, namn: string, groupName: string, r
 
 // ---- v27 HELGSTREAK: Friday 17:00 reminder (gentle; a check-in is enough) ----
 export const HELG_LINES = [
-  "🗓️ Fredag! Din helgstreak på {n} {veckor} vill gärna leva vidare",
-  "🔥 Helgstreaken ({n} {veckor}) hänger på en tråd, soldat",
-  "📯 Helgen ä här. Din streak på {n} {veckor} väntar på dig",
-  "🪖 Rapport från högkvarteret: streaken ({n} {veckor}) behöver en helgkväll",
-  "🌙 {n} {veckor} i rad! En incheckning i helgen räddar dem",
-  "🧊 Inga frysbiljetter kvar. Streaken på {n} {veckor} hänger på helgen",
-  "🫡 Fredag kl fem. Streaken ({n} {veckor}) står i givakt och väntar",
-  "📍 En liten incheckning fre–sön så lever streaken ({n} {veckor})",
+  "Din helgrad: {n} v",
 ];
 export function helgRemindPayload(idx: number, streak: number, week: string) {
   const n = Math.max(1, Math.floor(streak) || 1);
   return {
     title: fill(HELG_LINES[wrapIdx(idx, HELG_LINES.length)], { n: String(n), veckor: n === 1 ? "vecka" : "veckor" }),
-    body: "En öl eller en incheckning fre–sön räcker. Vila ä oxå bra – ingen press.",
+    body: "Vila är också bra. Ingen press.",
     url: "/?helg=1",
     tag: `olnu-helg-${week}`,
   };
 }
 
 // ---- v27 SKÅLTIMMEN + ENGÅNGSKAMERAN ----
-export const SKAL_HOUR_TITLE = "🍻 SKÅLTIMMEN! 3 min – visa din dricka!";
+export const SKAL_HOUR_TITLE = "Skål! 3 min";
 export const SKAL_HOUR_BODIES: string[] = [
-  "Glaset i kameran, nu! · {grupp}",
-  "Alla trupper: visa vad ni dricker · {grupp}",
-  "Klockan tickar. Bildbevis på drickan · {grupp}",
-  "Skål-larm! Höj glaset och fota · {grupp}",
-  "Ingen fusk – det som står på bordet nu · {grupp}",
-  "{namn} drog i skålsnöret · {grupp}",
-  "Dricka fram, kamera upp, 3 min · {grupp}",
-  "Radion: skåltimme, över! · {grupp}",
-  "Truppen samlas runt glasen · {grupp}",
-  "Visa din dricka, sen ser du dom andras · {grupp}",
-  "Plutonen höjer glasen – var ä du? · {grupp}",
-  "Ett glas, ett foto, en legend · {grupp}",
-  "Spaningsorder: vad dricker du just nu? · {grupp}",
-  "Glöm int' – först fota, sen skåla · {grupp}",
-  "Skålgeneralen kallar! 3 minuter · {grupp}",
+  "Visa din dricka.",
 ];
 export function skalHourPayload(idx: number, namn: string, groupName: string, hourId: number) {
   return {
@@ -1081,18 +632,9 @@ export function skalHourPayload(idx: number, namn: string, groupName: string, ho
     tag: `olnu-skal-${hourId}`,
   };
 }
-export const FILM_TITLE = "Filmen är framkallad! 📸";
+export const FILM_TITLE = "Filmen är klar";
 export const FILM_BODIES: string[] = [
-  "{n} bilder från igår väntar · {grupp}",
-  "Mörkrummet ä klart. {n} bilder · {grupp}",
-  "Gårdagens bevis ä framkallade · {grupp}",
-  "Kom och se vad ni gjorde i natt · {grupp}",
-  "Fotolabbet har jobbat hela natten · {grupp}",
-  "{n} bilder. Ingen kan förneka nåt nu · {grupp}",
-  "Rullen ä tillbaka från framkallningen · {grupp}",
-  "Engångskameran har talat · {grupp}",
-  "Gårdagen i bilder – reagera nu · {grupp}",
-  "Dags att minnas (eller glömma) · {grupp}",
+  "{n} bilder från kvällen.",
 ];
 export function filmPayload(idx: number, groupName: string, n: number, groupId: string) {
   return {
@@ -1104,19 +646,10 @@ export function filmPayload(idx: number, groupName: string, n: number, groupId: 
 }
 // 0195 📸 FILMSTART: the first film shot of the night in a group → the rest of the group. {namn} = the starter.
 export const FILM_START_LINES: string[] = [
-  "📸 {namn} har börjat fota med engångskameran – hoppa in!",
-  "📸 {namn} har laddat engångskameran. Ställ upp er!",
-  "📸 Klick! {namn} tog kvällens första bild.",
-  "📸 {namn} vevar filmen. Kom med på bild ikväll!",
-  "📸 Engångskameran ä igång – {namn} knäppte först.",
-  "📸 {namn} dokumenterar kvällen. Var med på rullen!",
-  "📸 Fotolabbet öppnar: {namn} har börjat knäppa.",
-  "📸 {namn} har kameran framme. Tummen bort från linsen!",
+  "{namn} startade film",
 ];
 export const FILM_START_BODIES: string[] = [
-  "10 bilder var. Ingen ser nåt förrän kl 10 · {grupp}",
-  "Tryck och ta din första bild · {grupp}",
-  "Framkallas kl 10 i morron · {grupp}",
+  "Ta bilder med gänget.",
 ];
 export function filmStartPayload(idx: number, namn: string, groupName: string, groupId: string) {
   return {
@@ -1187,18 +720,13 @@ export function shortText(s: string, max = 90): string {
   return b.length > max ? b.slice(0, max - 1) + "…" : b;
 }
 export const COMING_LINES: string[] = [
-  "🏃 {namn} kommer! Håll en plats.",
-  "🍺 {namn} är på väg till dig!",
-  "🚀 {namn} har lyft. Destination: du.",
-  "🪖 {namn} rycker ut. Förstärkning på väg!",
-  "🧥 {namn} tar på sig jackan. Kommer strax!",
-  "🍻 {namn} hänger på! Beställ en till.",
+  "{namn} kommer",
 ];
 /** "Kommer!" from a friend-is-out push: to the pin owner only. */
 export function comingPayload(idx: number, namn: string, n: number, beerId: number) {
   return {
     title: fill(COMING_LINES[wrapIdx(idx, COMING_LINES.length)], { namn: cleanBarName(namn) || "En vän" }),
-    body: n > 1 ? `${n} på väg till dig nu.` : "Tryck för att se kartan.",
+    body: n > 1 ? `${n} på väg till dig nu.` : "Hen är på väg till dig.",
     url: `/?focus=${beerId}`,
     tag: `olnu-coming-${beerId}`,
     renotify: true,
@@ -1260,21 +788,23 @@ export function ikvallWindowV2(ms: number): boolean {
     return (wd === "Fri" || wd === "Sat") && m >= 17 * 60 + 30 && m < 21 * 60;
   } catch (_e) { return false; }
 }
-export const IKVALL_LINES: string[] = ["Ute ikväll? 🍺", "Blir det ute ikväll? 🍻", "Vad blir det ikväll? 🌙"];
+export const IKVALL_LINES: string[] = [
+  "Ute ikväll?",
+];
 /** "Ute ikväll?" (no counts: you see the gang's answers after you answer). */
 export function ikvallPayload(idx: number, ms: number) {
   const d = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
   return { title: IKVALL_LINES[((Math.floor(idx) % IKVALL_LINES.length) + IKVALL_LINES.length) % IKVALL_LINES.length],
-    body: "Svara Ute, Kanske eller Hemma. Då ser du vilka som ska ut.", url: "/?ikvall=1", tag: `olnu-ikvall-${d}`, dg: "Ute ikväll?" };
+    body: "Svara Ute, Kanske eller Hemma.", url: "/?ikvall=1", tag: `olnu-ikvall-${d}`, dg: "Ute ikväll?" };
 }
 /** 👋 Knuff from a friend. */
 export function knuffPayload(namn: string, id: number) {
   const n = cleanBarName(namn) || "En kompis";
-  return { title: `${n} knuffar dig 👋`, body: "Tryck för att se var gänget är.", url: "/", tag: `olnu-knuff-${id}`, dg: `${n} knuffade dig` };
+  return { title: `${n} knuffade dig`, body: "Se var gänget är.", url: "/", tag: `olnu-knuff-${id}`, dg: `${n} knuffade dig` };
 }
 /** Följ mig hem timer: to the walker when the time is up. */
 export function walkRemindPayload(walkId: number) {
-  return { title: "Är du hemma? 🏠", body: "Svara inom 30 sekunder. Annars får dina vänner ett larm.", url: `/?walk=${walkId}&chk=1`,
+  return { title: "Är du hemma?", body: "Svara inom 30 s, annars larmas vännerna.", url: `/?walk=${walkId}&chk=1`,
     tag: `olnu-walk-chk-${walkId}`, renotify: true };
 }
 /** Följ mig hem timer: to the viewers 30 s after an unanswered reminder. dueMs / lastMs: ms or NaN. */
@@ -1282,7 +812,8 @@ export function walkAlertPayload(namn: string, walkId: number, dueMs: number, la
   const n = cleanBarName(namn) || "Din kompis";
   const due = Number.isFinite(dueMs) ? ` kl ${hhmm(dueMs)}` : "";
   const last = Number.isFinite(lastMs) ? `Senaste plats kl ${hhmm(lastMs)}. ` : "";
-  return { title: `${n} har inte svarat ⚠️`, body: `Skulle höra av sig${due}. ${last}Ring ${n}. Vid fara: ring 112.`,
+  // B2 row 29 + safety: the call to action first, the due time and the last position time stay (useful when it is real)
+  return { title: `${n} har inte svarat`, body: `Ring ${n}. Vid fara: 112. Skulle höra av sig${due}. ${last}`.trim(),
     url: `/?walk=${walkId}&alert=1`, tag: `olnu-walk-alert-${walkId}`, renotify: true };
 }
 export function paceOf(pref: PushPref | null | undefined): { gap: number; max: number } {
@@ -1324,7 +855,7 @@ export function tidyTitle(s: string, max = TITLE_MAX): string {
 /** Bodies that say nothing (owner: "Ska du bara sitta hemma? Kolla kartan." ×3). Removed from any body. */
 export const GENERIC_BODIES: string[] = [
   "Öppna kartan och se var.", "Tryck för att se var. Hänger du på?", "Öppna kartan. Det finns plats för en till.",
-  "Tryck för att se baren på kartan.", "Ska du bara sitta hemma? Kolla kartan.", "Tryck för att se kartan. Håll krogen!",
+  "Tryck för att se baren på kartan.", "Ska du bara sitta hemma? Kolla kartan.", "Tryck för att se kartan. Håll krogen!",   // pushban-ok: a filter list (removed from bodies)
   "Tryck för att se kartan.", "Tryck för att se var.", "Tryck för att se baren.",
 ];
 export function tidyBody(b: string): string {
@@ -1354,10 +885,10 @@ export function digestPayload(lines: string[], grp: string | null | undefined): 
     return { title: tidyTitle(o.x), body: [o.t ? `kl ${o.t}` : "", g || "från vänner"].filter(Boolean).join(" · "), url: "/", tag: "olnu-digest", renotify: true, cat: "digest" };
   }
   const news = items.slice().reverse();
-  const shown = news.slice(0, 3).map((o) => o.x);
+  const shown = news.slice(0, 2).map((o) => o.x);   // B2 row 42: the first 2 lines
   const more = news.length - shown.length;
   return {
-    title: tidyTitle(g ? `${items.length} nya i ${g} 🍻` : `${items.length} nya från vänner 🍻`),
+    title: tidyTitle(g ? `${items.length} nya i ${g}` : `${items.length} nya från vänner`),
     body: shown.join(" · ") + (more > 0 ? ` · +${more} till` : ""),
     url: "/",
     tag: "olnu-digest",
@@ -1377,21 +908,17 @@ export function friendPayload28(level: 1 | 5 | 10, idx: number, namn: string, ti
   const b = cleanBarName(bar);
   const vid = b ? ` på ${b}` : "";
   let title: string, bodies: string[];
+  // B2 (PUSH-TEXTS rows 1-3, owner default 24 Nov): ONE fixed text per level, no hype, the count is information only.
+  void titel; void vid;
   if (level === 1) {
-    title = b ? `${n} på ${b} 🍺` : `${n} är ute 🍺`;
-    bodies = [
-      `Första ölen kl ${tid}${vid}. Hänger du på?`,
-      `${titel ? titel + " " : ""}${n} har startat kvällen kl ${tid}.`,
-      `Öl 1 kl ${tid}${vid}. Kvällen har börjat.`,
-      `${n} har lämnat soffan kl ${tid}${vid}.`,
-    ];
+    title = b ? `${n} på ${b}` : `${n} är ute`;
+    bodies = [tid ? `Sedan ${tid}. Hänger du på?` : "Hänger du på?"];
   } else if (level === 5) {
-    title = `${n}: 5 öl ikväll 🔥`;
-    bodies = [`Öl nr 5 kl ${tid}${vid}. HOT STREAK.`, `${n} har tagit fem${vid}. Kurvan pekar uppåt.`, `Fem öl kl ${tid}. Nu börjar det likna nåt.`];
+    title = `${n} är igång`;
+    bodies = [tid ? `Fem öl, senast kl ${tid}.` : "Fem öl ikväll."];
   } else {
-    title = `Kolla läget med ${n} 🚁`;
-    bodies = [`${n} har druckit 10${vid}. Ring eller gå dit. Vatten och taxi hem 🚕`,
-      `Tio öl kl ${tid}${vid}. Ett samtal nu kan rädda kvällen.`];
+    title = `Hör av dig till ${n}`;
+    bodies = ["Tio öl ikväll. Fråga hur det är."];
   }
   return {
     title: tidyTitle(title),
@@ -1411,11 +938,10 @@ export function checkinPayload28(idx: number, namn: string, bar: string, stamp: 
   const n = cleanBarName(namn) || "En vän";
   const b = cleanBarName(bar) || "en krog";
   const bid = String(barId || "").slice(0, 80);
-  const bodies = here >= 2
-    ? [`${here} från gänget är där nu. Hänger du på?`, `${here} vänner på ${b} just nu.`]
-    : [`Incheckad kl ${tid}. Stolen bredvid är ledig.`, `${b} kl ${tid}. Bli nummer två?`, `Checkade in kl ${tid}. Kom förbi!`];
+  // B2 row 4: one fixed text. The number of mates there stays as information.
+  const bodies = [(tid ? `Incheckad ${tid}.` : "Incheckad nyss.") + (here >= 2 ? ` ${here} från gänget är där.` : "")];
   return {
-    title: tidyTitle(`${n} på ${b} 📍`),
+    title: tidyTitle(`${n} är på ${b}`),
     body: pick28(bodies, idx),
     url: bid ? `/?bar=${encodeURIComponent(bid)}` : "/",
     tag: bid ? `olnu-checkin-${bid}`.slice(0, 120) : `olnu-checkin-${stamp}`,
@@ -1427,25 +953,23 @@ export function checkinPayload28(idx: number, namn: string, bar: string, stamp: 
 export function takeoverPayload28(idx: number, grupp: string, bar: string, barId: string, groupId: string, n: number) {
   const b = cleanBarName(bar) || "krogen";
   const g = cleanBarName(grupp) || "Ni";
-  const bodies = [
-    `${n >= 2 ? n + " från " + g : g} på plats. Flest av alla grupper ikväll.`,
-    `${g} har flest på ${b} just nu. Håll krogen!`,
-    `Nytt territorium för ${g}. Kartan är ändrad.`,
-  ];
+  void n;   // B2 row 5: one fixed text
+  const bodies = ["Ni är flest här just nu."];
   return {
-    title: tidyTitle(g === "Ni" ? `Ni äger ${b} 🏰` : `${g} äger ${b} 🏰`),
+    title: tidyTitle(`${g} har ${b}`),
     body: pick28(bodies, idx),
     url: `/?bar=${encodeURIComponent(barId)}`,
     tag: `olnu-takeover-${groupId}-${barId}`.slice(0, 120),
     grp: g === "Ni" ? "" : g,
-    dg: `${g} äger ${b}`,
+    dg: `${g} har ${b}`,
   };
 }
 export function levelUpPayload28(idx: number, namn: string, titel: string, beerId: number, nextTitel: string | null) {
   const n = cleanBarName(namn) || "En vän";
-  const bodies = [`Ny rang: ${titel}. Skål för det! 🍻`, `${n} är nu ${titel}.${nextTitel ? " Nästa: " + nextTitel + "." : ""}`];
+  void nextTitel;   // B2 row 6: one fixed text
+  const bodies = ["Ny rang. Grattis!"];
   return {
-    title: tidyTitle(`${n} befordrad 🎖️`),
+    title: tidyTitle(`${n} blev ${titel}`),
     body: pick28(bodies, idx),
     url: `/?focus=${beerId}`,
     tag: `olnu-title-${beerId}`,
@@ -1453,11 +977,10 @@ export function levelUpPayload28(idx: number, namn: string, titel: string, beerI
   };
 }
 export function kaosPayload28(idx: number, stad: string, out: number, hot: number, nightIso: string) {
-  const pool = kaosPool(stad);   // tx04
-  const fun = splitEmoji(fill(pool[wrapIdx(idx, pool.length)], { stad, n: out, hot })).text;
+  void idx; void hot;   // B2 row 7: one fixed text, no "hot streak" count
   return {
-    title: tidyTitle(`${out} ute i ${stad} 🔥`),
-    body: `${hot > 0 ? hot + " på hot streak inom 5 km. " : "Inom 5 km just nu. "}${fun}`,
+    title: tidyTitle(`${out} ute i ${stad}`),
+    body: "Det är liv i stan ikväll.",
     url: "/",
     tag: `olnu-kaos-${nightLabel(nightIso)}`,
     dg: `${out} ute i ${stad}`,
@@ -1467,8 +990,8 @@ export function comeherePayload28(namn: string, bar: string, beerId: number) {
   const n = cleanBarName(namn) || "En vän";
   const b = cleanBarName(bar);
   return {
-    title: tidyTitle(b ? `${n}: kom till ${b} 📍` : `${n}: kom hit 📍`),
-    body: b ? `${n} väntar på dig på ${b}.` : `${n} vill ha sällskap. Pinnen visar var.`,
+    title: tidyTitle(`${n} vill ses`),   // B2 row 8
+    body: b ? `Kom till ${b}.` : "Kom hit.",
     url: `/?focus=${beerId}`,
     tag: `olnu-come-${beerId}`,
     dg: b ? `${n} vill att du kommer till ${b}` : `${n} vill att du kommer`,
@@ -1477,7 +1000,7 @@ export function comeherePayload28(namn: string, bar: string, beerId: number) {
 export function msgPayload28(namn: string, body: string, groupName: string, groupId: string) {
   const n = cleanBarName(namn) || "Nån";
   const g = cleanBarName(groupName);
-  const text = shortText(body, 120);
+  const text = shortText(body, 60);   // B2 row 10: the message, cut at 60
   return {
     title: tidyTitle(g ? `${n} i ${g} 💬` : `${n} 💬`, 40),
     body: text,
@@ -1574,7 +1097,7 @@ export function friendOutV2(namn: string, bar: string, tid: string, beerId: numb
     tag: `olnu-${beerId}-f1`,
     dg: b ? `${n} på ${b}` : `${n} är ute`,
     face,
-    fold: { key: `ute-${nightKey(ms)}`, title: "{n} vänner ute ikväll 🍻", line: `${n}${b ? " · " + b : ""} · ${tid}` },
+    fold: { key: `ute-${nightKey(ms)}`, title: "{n} vänner är ute", line: `${n}${b ? " · " + b : ""} · ${tid}` },
     actions: [
       { action: "coming", title: "🏃 Jag kommer", url: `/?focus=${beerId}&act=coming` },
       { action: "skal", title: "🍻 Skål", url: `/?focus=${beerId}&act=skal` },
@@ -1611,7 +1134,7 @@ export function checkinV2(namn: string, bar: string, barId: string, stamp: numbe
     url: bid ? `/?bar=${encodeURIComponent(bid)}` : "/",
     tag: bid ? `olnu-checkin-${bid}`.slice(0, 120) : `olnu-checkin-${stamp}`,
     dg: `${n} på ${b}`, face,
-    fold: { key: `ute-${nightKey(ms)}`, title: "{n} vänner ute ikväll 🍻", line: `${n} · ${b} · ${tid}` },
+    fold: { key: `ute-${nightKey(ms)}`, title: "{n} vänner är ute", line: `${n} · ${b} · ${tid}` },
     actions: [{ action: "skal", title: "🍻 Skål", url: bid ? `/?bar=${encodeURIComponent(bid)}&act=skal` : "/" }],
   };
 }
@@ -2121,7 +1644,11 @@ async function v2Stats(admin: Admin, uids: string[]): Promise<Map<string, V2Stat
   return m;
 }
 /** Shared group per recipient (the sender's first group they are in) → avatar key for the icon. */
+// I-19e (owner 12 Nov: "a different icon in each group"): ONE icon on every push (the app icon + the monochrome badge,
+// docs/sw.js). The sender's face as the icon is off. Set true again only on an owner decision.
+export const FACE_ICON = false;
 async function v2Faces(admin: Admin, uid: string, rids: string[]): Promise<Map<string, string>> {
+  if (!FACE_ICON) return new Map<string, string>();
   const out = new Map<string, string>();
   if (!V2.on || !rids.length) return out;
   try {
@@ -2353,6 +1880,23 @@ export function tidyRideText(s: string): string {
   return String(s ?? "").replace(/\b(Igen: från|Från) nära [^·→]*?(?=\s*(?:→|·|$))/g, (_m, p) => (p === "Från" ? "Hämtning" : "Igen: hämtning"))
     .replace(/\bVid nära [^·→]*?(?=\s*(?:·|$))/g, "").replace(/^\s*·\s*/, "").replace(/(\s·){2,}/g, " ·").replace(/\s*·\s*$/, "");
 }
+
+/** I-19d + B2 rows 33-38 (owner default 24 Nov): short ride texts, one idea each, no dialect in system texts. The SQL
+ *  (ride_push_claim, 0506) still writes the old words; this maps them at send time (no SQL change needed). */
+export function rideTitle(s: string): string {
+  const t = String(s ?? "").trim();
+  return t.replace(/^(.+) tar dig!$/, "$1 kommer").replace(/^(.+) ä framme$/, "$1 är här").replace(/^(.+) vill ringa dig$/, "$1 vill ringa")
+    .replace(/^.+ behöver int' skjuts längre$/, "Skjutsen är avbokad").replace(/^.+ kunde int' köra$/, "Ny förare söks");
+}
+export function rideBody(s: string): string {
+  let b = tidyRideText(s);
+  b = b.replace(/\s*→[^·]*?(?=\s·|$)/g, "").replace(/\s*·\s*resa ca [\d,]+ km/g, "");   // offer: from · pax · distance
+  b = b.replace(/\s*·\s*Tryck för att följa bilen$/, "").replace(/^Tryck för att följa bilen$/, "På väg.");   // taken
+  if (/Kolla att det ä rätt bil$/.test(b)) b = b.replace(/^Vid /, "").replace(/\s*·?\s*Kolla att det ä rätt bil$/, "").trim() + (b.startsWith("Kolla") ? "Kolla bilen." : ". Kolla bilen.");   // arrived
+  return b.replace(/^Visa ditt nummer\? Tryck för att svara\.$/, "Visa ditt nummer?").replace(/^Du kan släppa den\. Tack ändå!$/, "Tack ändå!")
+    .replace(/^Vi frågar de andra\. Tryck för att se läget\.$/, "Vi frågar de andra.");
+}
+export function rideAction(t: string): string { return String(t ?? "").replace(/^Kan int'$/, "Kan inte"); }
 
 async function sendAll(admin: Admin, allJobs: Job[], ttl = 3600, raw = false) {
   // v28 (deploy): gate28 (falls back to the v27 gate); raw = digest flush, already paced.
@@ -3026,7 +2570,11 @@ async function statusReqPush(admin: Admin, uid: string, b: Body) {
 // {event:"helg_remind"}: group-mates of the caller whose weekend streak would break (streak > 0, no freeze pass
 // left, not out yet this week). Friday 17:00-23:59 Europe/Stockholm only; max 1 per recipient per week (claimed in
 // push_sent kind 'helg' by the SQL function helg_remind_targets). Reason when nobody: no_target.
+// E2 / B1 (owner default 24 Nov; product report: "switch off the helg-streak push"): streak pressure pushes drinking.
+// Off for every client (old apps still call {event:"helg_remind"} on Fridays). Set true again only on an owner decision.
+export const HELG_PUSH_ON = false;
 async function helgRemindPush(admin: Admin, uid: string) {
+  if (!HELG_PUSH_ON) return { ...NONE, reason: "off" };
   if (V2.on) return { ...NONE, reason: "v2_off" };   // ntf v2: no personal "streak at risk" push (gang streak celebrates instead)
   const { data, error } = await admin.rpc("helg_remind_targets", { p_caller: uid });
   if (error) throw error;
@@ -3206,18 +2754,10 @@ async function findPush(admin: Admin, uid: string, b: Body) {
 
 // ---- v26 🏠 FÖLJ MIG HEM (0141): {event:"walk"|"walk_home", walk_id} ----
 export const WALK_LINES: string[] = [
-  "🏠 {namn} går hem – följ med på kartan",
-  "🏠 {namn} ä på marsch hemåt. Håll koll på kartan!",
-  "🏠 Hemtransport: {namn} går nu. Du ä med som eskort.",
-  "🏠 {namn} drar hemåt – spana in kartan",
-  "🏠 Operation Hemfärd: {namn} ä på väg. Du har bevakningen.",
-  "🏠 {namn} vill att du ser till att hen kommer hem",
+  "{namn} går hem",
 ];
 export const WALK_HOME_LINES: string[] = [
-  "✅ {namn} ä hemma! 🏠",
-  "✅ {namn} ä hemma. Uppdraget slutfört! 🏠",
-  "✅ {namn} har landat hemma. Bra eskortat! 🏠",
-  "✅ Hemma! {namn} ä i säkerhet. Över och ut. 🏠",
+  "{namn} är hemma",
 ];
 async function walkPush(admin: Admin, uid: string, b: Body, home: boolean) {
   const wid = parseRallyId(b.walk_id);
@@ -3237,7 +2777,7 @@ async function walkPush(admin: Admin, uid: string, b: Body, home: boolean) {
   const namn = cleanBarName(await nameOf(admin, uid, w.group_id as string | null)) || "En kompis";
   const lines = home ? WALK_HOME_LINES : WALK_LINES;
   const line = lines[Math.floor(Math.random() * lines.length)];
-  const body = home ? "Tryck för att säga godnatt." : "Hen delar sin position tills hen ä hemma (max 2 h). Tryck för att följa.";
+  const body = home ? "Hen kom fram." : "Hen delar sin position tills hen är hemma (max 2 h).";
   const payload = JSON.stringify({ title: fill(line, { namn }), body, url: `/?walk=${wid}`, tag: `olnu-walk-${wid}` });
   const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, home ? 3600 : 1800) : NONE;
@@ -3382,13 +2922,11 @@ async function evDuePush(admin: Admin, uid: string, _b: Body) {
 //   skjuts -> "🚗 Anton undrar: Skjuts?" to the one driver (tag olnu-ride-<id> = kind "plan": push_prefs + nattro apply)
 // {event:"pickup_yes", req_id}: the caller answered "kommer" (pickup_answers.notified claim) -> "🙋 Lisa kommer och hämtar dig!"
 // Cron: close_remind_claim() -> "⏰ Pitchers stänger om 20 min. Dags att planera hemfärden 🚕" (tag olnu-close-<bar> = "plan").
-export const CLOSE_LINES: string[] = [   // v28 style: short title, the advice in the body
-  "⏰ {bar} stänger om {min} min",
-  "⏰ {min} min kvar på {bar}",
+export const CLOSE_LINES: string[] = [
+  "{bar} stänger om {min} min",
 ];
 export const CLOSE_BODIES: string[] = [
-  "Dags att planera hemfärden 🚕 Tryck för Följ mig hem, Hämta mig eller taxi.",
-  "Hur tar du dig hem? 🚕 Tryck för Följ mig hem, Hämta mig eller taxi.",
+  "Dags att tänka på hemvägen.",
 ];
 async function pickupPush(admin: Admin, uid: string, b: Body) {
   const id = parseRallyId(b.req_id);
@@ -3404,8 +2942,8 @@ async function pickupPush(admin: Admin, uid: string, b: Body) {
   if (!to.length) return { ...NONE, reason: "no_viewers" };
   const namn = cleanBarName(await nameOf(admin, uid, r.group_id as string | null)) || "En kompis";
   const payload = JSON.stringify(r.kind === "skjuts"
-    ? { title: `🚗 ${namn} undrar: Skjuts?`, body: "Du kör ikväll. Tryck för att svara.", url: `/?pickup=${id}`, tag: `olnu-ride-${id}` }
-    : { title: `🆘 ${namn}: Kan nån hämta mig?`, body: "Tryck för att se var och svara \"Jag kommer\".", url: `/?pickup=${id}`, tag: `olnu-pickup-${id}`, renotify: true });
+    ? { title: `${namn} undrar: skjuts?`, body: "Tryck för att svara.", url: `/?pickup=${id}`, tag: `olnu-ride-${id}` }
+    : { title: `${namn} vill ha skjuts`, body: "Tryck för att svara.", url: `/?pickup=${id}`, tag: `olnu-pickup-${id}`, renotify: true });
   const jobs = (await subsOf(admin, to)).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 3600) : NONE;
 }
@@ -3420,8 +2958,8 @@ async function pickupYesPush(admin: Admin, uid: string, b: Body) {
   if (rErr) throw rErr;
   if (!r || r.ended_at) return { ...NONE, reason: "no_req" };
   const namn = cleanBarName(await nameOf(admin, uid, r.group_id as string | null)) || "En kompis";
-  const payload = JSON.stringify({ title: r.kind === "skjuts" ? `🚗 ${namn} kör dig!` : `🙋 ${namn} kommer och hämtar dig!`,
-    body: "Tryck för att se vilka som svarat.", url: `/?pickup=${id}`, tag: `olnu-pickup-${id}`, renotify: true });
+  const payload = JSON.stringify({ title: `${namn} kommer`,
+    body: r.kind === "skjuts" ? "Hen kör dig." : "Hen hämtar dig.", url: `/?pickup=${id}`, tag: `olnu-pickup-${id}`, renotify: true });
   const jobs = (await subsOf(admin, [r.user_id as string])).map((s) => ({ sub: s, payload }));
   return jobs.length ? await sendAll(admin, jobs, 1800) : NONE;
 }
@@ -3446,8 +2984,8 @@ async function ridePush(admin: Admin, uid: string, b: Body) {
   const jobs: Job[] = [];
   for (const r of rows) {
     if (!r || !r.to || !isUuid(r.to)) continue;
-    const payload = JSON.stringify({ title: r.title, body: tidyRideText(r.body), url: r.url, tag: r.tag, requireInteraction: !!r.requireInteraction,
-      actions: Array.isArray(r.actions) ? r.actions.slice(0, 2) : undefined, renotify: true, k: "safe", v: "ride.1", ts: Date.now() });
+    const payload = JSON.stringify({ title: rideTitle(r.title), body: rideBody(r.body), url: r.url, tag: r.tag, requireInteraction: !!r.requireInteraction,
+      actions: Array.isArray(r.actions) ? r.actions.slice(0, 2).map((a) => ({ ...a, title: rideAction(a.title) })) : undefined, renotify: true, k: "safe", v: "ride.1", ts: Date.now() });
     for (const s of await subsOf(admin, [r.to])) jobs.push({ sub: s, payload });
   }
   return jobs.length ? await sendAll(admin, jobs, 1800) : { ...NONE, reason: rows.length ? "no_subs" : "nothing_due" };

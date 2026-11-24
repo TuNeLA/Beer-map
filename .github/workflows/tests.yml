@@ -109,6 +109,11 @@ jobs:
             psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/$1.sql -f supabase/tests/$2.test.sql | tee /tmp/srv1-$2.txt
             if grep -q '|f|' /tmp/srv1-$2.txt || ! grep -q "^$2 done|t|" /tmp/srv1-$2.txt; then echo "$2 test failed"; exit 1; fi
           done
+      - name: 0534 new-user privacy start state (lane texts, B3/B8)
+        env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
+        run: |
+          psql -d rh_lf -X -v ON_ERROR_STOP=1 -v mig=supabase/migrations/0534_new_user_privacy.sql -f supabase/tests/privstart-0534.test.sql | tee /tmp/p0534.txt
+          if grep -q '|f|' /tmp/p0534.txt || ! grep -q '^privstart-0534 done|t|' /tmp/p0534.txt; then echo "0534 test failed"; exit 1; fi
       - name: 0525 pn_sync on a live-like database (rh_pre = before 0500, no rpc_bundle_allow table)
         env: { PGHOST: 127.0.0.1, PGPORT: '5432', PGUSER: postgres, PGPASSWORD: postgres }
         run: |

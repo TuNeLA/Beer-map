@@ -51,7 +51,13 @@
       // fixS T-18: only a missing RPC (old server) hides "Bara vänner"; no_session / timeout / 5xx → ask again later
       if (r && r.error) { if (window.U && window.U.missing && window.U.missing(r.error)) srv = false; else setTimeout(function () { asked = false; }, 15000); return; }
       var d = A.parseData ? A.parseData(r.data) : r.data; srv = true;
-      if (d && d.friends_only && !ghost()) ls(KEY, "vanner");
+      // B3/B8 (24 Nov): a NEW install starts as "Bara vänner" (js/privstart.js). A server without 0534 answers false:
+      // tell it once (a failed call = back to Alla, the server's answer).
+      var PS = window.PN && window.PN.privStart, sync = PS && PS.needSync && PS.needSync();
+      if (sync) { try { PS.synced(); } catch (e) {} }
+      if (sync && !(d && d.friends_only) && !ghost() && ls(KEY) === "vanner") {
+        A.rpc("set_visibility", { p_friends_only: true }).then(function (x) { if (x && x.error) { ls(KEY, "alla"); paint(); } });
+      } else if (d && d.friends_only && !ghost()) ls(KEY, "vanner");
       paint();
     }, function () { setTimeout(function () { asked = false; }, 15000); });
   }
