@@ -157,6 +157,13 @@ async function layout(page, vp, tag) {
         // covered the pin at the screen centre. The pin now sits about 220 px below the centre (map centre 0.0012° north), on the
         // dimmed map under the panel. The check itself is the same.
         await page.evaluate((p) => __map.setView([p.lat + 0.0012, p.lng], 17, { animate: false }), PIT); await wait(page, 1200);
+        // fixC P-20 (24 Nov): "Senaste" + 3 near rows can still reach the pin: measure the open panel and move the map so the
+        // pin sits 80 px below it.
+        await tapSearch(page);
+        const pb = await page.evaluate(() => Math.round(document.getElementById("bs-panel").getBoundingClientRect().bottom));
+        await page.keyboard.press("Escape"); await wait(page, 600);
+        await page.evaluate((b) => { const m = [...document.querySelectorAll(".leaflet-marker-icon.cm")].find((e) => /Pitchers/.test(e.textContent)); if (!m) return;
+          const r = m.getBoundingClientRect(), y = r.top + r.height / 2; if (y < b + 80) __map.panBy([0, -(b + 80 - y)], { animate: false }); }, pb); await wait(page, 900);
         const pt = await page.evaluate(() => {
           const m = [...document.querySelectorAll(".leaflet-marker-icon.cm")].find((e) => /Pitchers/.test(e.textContent)); if (!m) return null;
           const r = m.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
