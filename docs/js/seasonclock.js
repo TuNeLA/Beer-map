@@ -17,7 +17,10 @@
    Rules: nothing here depends on how much anyone drank. Store builds get map decorations, never tap effects (seasontap.js).
    Test hook (test builds only: local, staging config, /test/ or PN_DEV): ?season=xmas|lucia|newyear|fireworks|valborg|spring|
    midsummer|autumn|winter|normal, ?date=2026-12-13T20:00 (Stockholm time; the clock then runs on from it), ?wx=snow|snow1|snow3|
-   rain|rain3|fog|clear|snowfall (depth), ?kp=6. PNSeason._force({...}) does the same from a test. */
+   rain|rain3|fog|clear|snowfall (depth), ?kp=6, ?snow=clean|frost|beanie|frost+beanie|flakes|frost+flakes (the look of the day on
+   a snow day, see snowLook). PNSeason._force({...}) does the same from a test (snow: "<look>", "" = back to the daily pick).
+   I-144 (owner 21 Nov "the snow on the button looks bad"; default B4, lane olbtn 24 Nov): on a snow day the ÖL! button gets ONE
+   look per day, the same all day, picked by a number seeded by the Stockholm date (snowLook). js/seasondress.js draws it. */
 (function () {
   "use strict";
   var W = window, D = W.document;
@@ -74,6 +77,24 @@
     return s;
   }
 
+  // I-144 B4: the snow look of one Stockholm day. Same date = same look (all day, on every phone); never the same look two days
+  // in a row, and each look once in every block of 4 days (a shuffle of the 4 looks seeded by the block number).
+  // No hat that day: clean (B1) / frost rim (B2) / knit beanie + flakes (B3) / frost + beanie (B2 + B3).
+  // A season-hat day (Christmas, New Year ...): the hat stays, so no beanie: clean / frost / flakes / frost + flakes.
+  var SNOW_LOOKS = ["clean", "frost", "beanie", "frost+beanie"], SNOW_LOOKS_HAT = ["clean", "frost", "flakes", "frost+flakes"];
+  function shuffle4(block) {   // a fixed order of 0-3 for this block of 4 days (FNV-1a seed, then an LCG)
+    var o = [0, 1, 2, 3], h = 2166136261, str = "pn-snow-" + block, i, j, t;
+    for (i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    for (i = 3; i > 0; i--) { h = (Math.imul(h, 1664525) + 1013904223) >>> 0; j = (h >>> 8) % (i + 1); t = o[i]; o[i] = o[j]; o[j] = t; }
+    return o;
+  }
+  function snowLook(y, mo, d, hat) {
+    var n = Math.floor(Date.UTC(y, mo - 1, d) / 864e5), blk = Math.floor(n / 4), o = shuffle4(blk), t;
+    if (shuffle4(blk - 1)[3] === o[0]) { t = o[0]; o[0] = o[1]; o[1] = t; }   // the 4th day of the last block never repeats (only o[0], o[1] move)
+    return (hat ? SNOW_LOOKS_HAT : SNOW_LOOKS)[o[n - blk * 4]];
+  }
+  function snowOk(v) { return SNOW_LOOKS.indexOf(v) >= 0 || SNOW_LOOKS_HAT.indexOf(v) >= 0; }
+
   /* ---------- weather (js/ute.js data) ---------- */
   var SNOW = { 71: 1, 77: 1, 85: 1, 73: 2, 75: 3, 86: 3 };
   var RAIN = { 51: 1, 53: 1, 56: 1, 61: 1, 66: 1, 80: 1, 55: 2, 57: 2, 63: 2, 81: 2, 65: 3, 67: 3, 82: 3, 95: 3, 96: 3, 99: 3 };
@@ -109,7 +130,7 @@
     for (var i = 0; i < 2; i++) { var p = parts(guess), got = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi); guess += Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 20), +(m[5] || 0)) - got; }
     return guess;
   }
-  var force = { off: 0, wx: null, kp: null, set: false };
+  var force = { off: 0, wx: null, kp: null, snow: "", set: false };
   function readQuery() {
     if (!testBuild()) return;
     var q = {}; try { (W.location.search || "").replace(/^\?/, "").split("&").forEach(function (kv) { var a = kv.split("="); if (a[0]) q[decodeURIComponent(a[0])] = decodeURIComponent(a[1] || ""); }); } catch (e) {}
@@ -117,7 +138,8 @@
     if (q.date) o.date = q.date; else if (q.season && NAMED[q.season]) o.date = NAMED[q.season];
     if (q.wx) o.wx = q.wx;
     if (q.kp) o.kp = +q.kp;
-    if (o.date || o.wx || o.kp != null) setForce(o);
+    if (q.snow) o.snow = q.snow.replace(/ /g, "+");   // "+" in a query string arrives as a space
+    if (o.date || o.wx || o.kp != null || o.snow) setForce(o);
   }
   function wxPreset(s) {
     var P = { snow: { code: 73, cloud: 100, day: false, sd: 0 }, snow1: { code: 71, cloud: 100, day: false, sd: 0 }, snow3: { code: 75, cloud: 100, day: false, sd: 6 },
@@ -133,6 +155,7 @@
     if (o.season && NAMED[o.season] && !o.date) force.off = sthlmMs(NAMED[o.season]) - Date.now();
     if (o.wx !== undefined) force.wx = o.wx ? wxPreset(o.wx) : null;
     if (o.kp !== undefined) force.kp = o.kp;
+    if (o.snow !== undefined) force.snow = snowOk(o.snow) ? o.snow : "";
     force.set = true; check(true);
     return true;
   }
@@ -167,11 +190,14 @@
     s.now = t; s.wx = wx; s.kp = kpNow();
     // the weather grows the tap family and the dress (sheet 13: "Normal + snowflake burst when it snows", "Snow cap when it snows")
     s.snowcap = wx.snow > 0;
+    // I-144 B4: the look of the snow on the button today ("" = no snow). A hat day never gets the beanie (the hat stays).
+    s.snowlook = !s.snowcap ? "" : force.snow ? (s.dress ? force.snow.replace("beanie", "flakes") : force.snow.replace("flakes", "beanie"))
+      : snowLook(s.p.y, s.p.mo, s.p.d, !!s.dress);
     s.forced = force.set;
     return s;
   }
   function check(loud) {
-    var s = state(), g = [s.key, s.tap, s.dress, s.color, s.glogg, s.snowcap, s.wx.snow, s.wx.rain, s.wx.fog, s.wx.fallen, s.wx.clear, s.kp, s.map.advent, s.map.fireworks, s.map.fire, s.p.h].join("|");
+    var s = state(), g = [s.key, s.tap, s.dress, s.color, s.glogg, s.snowcap, s.snowlook, s.wx.snow, s.wx.rain, s.wx.fog, s.wx.fallen, s.wx.clear, s.kp, s.map.advent, s.map.fireworks, s.map.fire, s.p.h].join("|");
     cur = s;
     if (g !== sig || loud) { sig = g; subs.slice().forEach(function (f) { try { f(s); } catch (e) {} }); try { D.dispatchEvent(new CustomEvent("pnseason:change", { detail: s })); } catch (e) {} }
     return s;
@@ -202,7 +228,7 @@
     reduced: reduced, alive: alive, light: light, off: off, store: function () { return !!W.OLNU_STORE; },
     testBuild: testBuild,
     _force: setForce,
-    _at: at, _parts: parts, _advent1: advent1, _adventN: adventN, _midsummerEve: midsummerEve, _wxOf: wxOf, _sthlmMs: sthlmMs
+    _at: at, _parts: parts, _advent1: advent1, _adventN: adventN, _midsummerEve: midsummerEve, _snowLook: snowLook, _wxOf: wxOf, _sthlmMs: sthlmMs
   };
   readQuery();
   check(false);
