@@ -325,7 +325,8 @@
         : '<button type="button" class="bl-fav empty" data-bl-add="' + (i + 1) + '" aria-label="' + esc(tl("Lägg till favorit nr " + (i + 1), "Add favourite no. " + (i + 1))) +
           '"><span class="bl-fav-p"><span class="bl-pic">' + ic("plus") + "</span></span><b>" + esc(tl("Lägg till", "Add")) + "</b><small>" + esc(tl("Plats " + (i + 1), "Slot " + (i + 1))) + "</small></button>";
     }
-    return '<h3 class="bl-h">' + esc(tl("Mina favoriter", "My favourites")) + '</h3><div class="bl-favs">' + o + '</div><p class="bl-note">' + esc(privText()) + "</p>";
+    return '<h3 class="bl-h">' + esc(tl("Mina favoriter", "My favourites")) + '</h3><div class="bl-favs">' + o + "</div>" +
+      (f.some(Boolean) ? '<p class="bl-note">' + esc(privText()) + "</p>" : "");
   }
   function pickHTML() {
     return '<div class="bl-pickbar" role="status"><span class="bl-pb-i" aria-hidden="true">' + ic("star") + "</span><span><b>" + esc(tl("Välj favorit nr " + tabSt.pick, "Pick favourite no. " + tabSt.pick)) +
