@@ -104,7 +104,7 @@ NEEDS_MAPBOX=1 run zones      $A zones-pw.js mbx
 NEEDS_MAPBOX=1 run mbx        $A mbx-pw.js mbx
 run map        $A map-pw.js t '^(b9|sh|m2)$'             # map lane part 1: B9 icon size, shots, M2 fade (stub Mapbox without a token). ci1: split in two (501 s in one run)
 run map-c      $A map-pw.js t '^(br1|r1)$'               # map lane part 3: BR1 bar types, R1
-run map-b      $A map-pw.js t '^(tz|b8|m1|m3|m3sw|m4)$'  # map lane part 2: town zoom, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo. c4fix: split, one run was ~830-1000 s on CI (TO 900)
+run map-b      $A zz-map-pw.js t '^(tz|b8|m1|m3|m3sw|m4)$'  # map lane part 2: town zoom, B8 tap, M1 kommun lines, M3 UI-safe, M4 no demo. c4fix: split, one run was ~830-1000 s on CI (TO 900)
 NEEDS_MAPBOX=1 run ownerfix-map $A ownerfix-map-pw.js   # lane ownerfix 3: food icons +20 % on the real map, no overlap, tap box, shots z15-17
 run c2speed    $A c2speed-pw.js    # lane c2speed: I-45 locate-me < 1 s, I-56 food list at once, I-50 food icons from z14, I-51 bars at city zoom
 run alive      $A alive-pw.js      # lane alive: Levande karta (clink, event pulse, sparks, night glow; cap 12, pause on move, reduced motion, raster fallback)
@@ -138,7 +138,7 @@ run uxfix     $A uxfix-pw.js      # lane uxfix (blind test 13 Nov): P1-1 age she
 run calm2     $B calm2-pw.js      # lane calm2 (owner 13 Nov): I-79/I-84 calm toasts (13 medals + merit + mission = 1 line, 1 toast per Skål, none over a sheet / typing), I-82 Ingen data once per night, I-80 chat input above the keyboard, I-87 no lines under the input, icon send, mic + camera fold while typing
 run d3smooth  $B d3smooth-pw.js   # lane d3smooth: sheet slides first then fills (skeleton, not an empty box), pull down from content + snap points + spring, ticker on the compositor, no infinite box-shadow animation, press feedback, bold fonts, reduced motion
 run motion19a $B motion19a-pw.js  # lane motion19a (I-135, audit motion19 1-4 + 11): sheet frame first then body, open/close Web Animations that turn around (reopen, drag), list stagger, tap-x origin, ambient loops pause under a sheet, reduced motion
-run d4map     $A d4map-pw.js      # lane d4map: SMOOTH fix 2 bar tap ring < 100 ms then sheet, fix 3 moveend slices + html.map-moving / pn:mapmove + endless map animations paused while moving, fix 9 pin press (stub Mapbox without a token)
+run d4map     $A zz-d4-pw.js      # lane d4map: SMOOTH fix 2 bar tap ring < 100 ms then sheet, fix 3 moveend slices + html.map-moving / pn:mapmove + endless map animations paused while moving, fix 9 pin press (stub Mapbox without a token)
 run mapfix    $A mapfix-pw.js     # lane mapfix (owner 14 Nov): I-108 tap then one-finger drag = pan (GL tap-drag-zoom off, pinch + double tap kept), I-110 a tap outside the bar pop-up only closes it (not its lit house / a map click listener / the "near" rule), I-109 a redraw with the sheet open shows no second open (stub Mapbox without a token + raster path)
 run mapfix5   $A mapfix5-pw.js    # lane mapfix5 (19 Nov): B11 rough fix = no exact dot, logout/deletion forget olnu.cam + olnu.lastFix; B9 GL 44 px hit areas (faces / count pill), one click router; D4 empty state
 run maplight  $A maplight-pw.js   # lane maplight (owner 15 Nov, I-115): crowd steps -> lantern + halo + street light, < 3 people = nothing, same poll sends nothing, check-in ring, my marker always on top, friends faces, no foam, amber heat, town lantern, kill switch (stub Mapbox without a token)
@@ -230,7 +230,7 @@ run fixj       $B fixj-pw.js       # lane fixJ (test-team fixes): T-03 year once
 run ownerfix   $B ownerfix-pw.js   # lane ownerfix (owner live test 11 Nov): Event sheet after Visa, Göm min pin = hide only, food icons, ticker gaps / one speed controller / reduced motion, price confirm + 1 rapport, Kontakt form
 run kpi        $B kpi-pw.js        # lane kpi: X9 Nyckeltal owner panel (owner_kpi 0460, "<3" masks, wrong key) + no emoji in safety.js UI chrome (ds12)
 run popfix     $B popfix-pw.js fb  # (ciwork G6: split by path, one run was 540 s) lane popfix: the bar popup on a PC: one card width (320-380 px) at every map position, no word broken mid-word, one-line buttons, the close button inside the card, no overflow (fallback + GL path, 360-2560 px)
-run popfix-gl  $B popfix-pw.js gl  # lane popfix: the same checks on the GL path (real Mapbox in CI)
+run popfix-gl  $B zz-probe-pw.js gl  # lane popfix: the same checks on the GL path (real Mapbox in CI)
 run hooks-order $B hooks-order-pw.js   # lane w1-hooks: PN.hookList() order = the old app.js mods() list (85 names), every hooked module reached
 run polish3    $B polish3-pw.js    # lane polish3: I-65 film photo tap = big view / hold = react (no emoji row), I-66 toast exit without the amber border, I-68 Grupper button = Grupper tab, I-69 Mina förslag + owner badge
 run bump       $B bump-pw.js       # lane bump: Skåla med telefonen (flag pn_bump): shake fills, knock on 2 phones = ÖL! for both, tap fallback, pause text, iPhone permission
