@@ -31,7 +31,12 @@
   }
   function num(x, d) { var s = (Math.round(x * 10) / 10).toFixed(d == null ? 1 : d); return en() ? s : s.replace(".", ","); }
   function numT(x) { return num(x, x % 1 ? 1 : 0); }
-  function abvText(b) { return b.abv != null ? num(b.abv) + "\u00a0%" : b.af ? tl("Alkoholfri", "Alcohol-free") : ""; }   // no break before %
+  // no break before %. Lane beerlist: a number only when it fits the mark (alcohol-free 0\u20130,5 %, else 0,6\u201316 %): never "0,0 %" on a
+  // normal beer (the old data had "A ship full of IPA" at 0 %; scripts/beer/checks.mjs keeps the data clean, this is the second lock)
+  function abvText(b) {
+    var a = b.abv, ok = typeof a === "number" && isFinite(a) && (b.af ? a >= 0 && a <= 0.5 : a >= 0.6 && a <= 16);
+    return ok ? num(a) + "\u00a0%" : b.af ? tl("Alkoholfri", "Alcohol-free") : "";
+  }
   function dayText(iso) { var t = Date.parse(iso || ""); if (!isFinite(t)) return ""; try { return new Date(t).toLocaleDateString(en() ? "en-GB" : "sv-SE", { day: "numeric", month: "short" }); } catch (e) { return ""; } }
 
   /* ---------- taste groups (the chips) = groups of the styles' taste tags ---------- */

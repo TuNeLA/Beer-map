@@ -13,10 +13,18 @@
 // Data rules (coordinator 19 Nov): ABV only when plausible (0 % only on an alcohol-free beer; nothing above 16 %; not far above the
 // style's range; not when the name says another strength); the style is a guess unless its confidence is "high" (the app says
 // "Stil (gissning)"). Names: see "name quality" below. Nothing is made up here.
+// Lane beerlist (24 Nov; the rules live in scripts/beer/checks.mjs, tests/unit/beerdata.test.mjs audits the output):
+// - alcohol-free needs evidence (afOk): the name says it, an alcohol-free brand, or a real low number. Without it: not marked
+//   alcohol-free and NO strength ("A ship full of IPA" was 0,0 %: the source had the normal IPA in "non-alcoholic beers").
+// - a name that says alcohol-free makes the beer alcohol-free; an alcohol-free beer with no style gets the style "alkoholfri".
+// - no ABV far below the style's range unless the name says light / low (Corona Extra had 1,4 %).
+// - a name that is only a big brand gets the brand's flagship style as a guess (flagshipStyle).
+// - the same beer twice (sameBeer: same name + same brand) is one row; the other ids are aliases. Vinegar is not a drink: out.
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { MAX_ABV as AUDIT_MAX, AF_NAME_RE, LIGHT_RE, NOT_DRINK_RE, afOk, sameBeer, fold, flagshipStyle } from "./checks.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../..");
@@ -24,7 +32,7 @@ const args = process.argv.slice(2);
 const SRC = resolve(args.find((a) => !a.startsWith("--")) || process.env.PN_BEER_SRC || join(REPO, "../pintsnow-ops/research/beer-library"));
 const NO_IMG = args.includes("--no-img");
 const OUT = join(REPO, "docs/data/beer");
-const MAX_ABV = 16, IMG_H = 300, IMG_Q = 72;
+const MAX_ABV = AUDIT_MAX, IMG_H = 300, IMG_Q = 72;
 export const COLS = ["id", "name", "brewery", "style", "conf", "abv", "af", "photo", "credit", "group", "nn"];   // nn 1 = no real name (search only)
 const CONF = { low: 1, medium: 2, high: 3 };
 const GROUPS = ["se", "nordic", "world_se_likely"];
@@ -89,6 +97,7 @@ export function plausibleAbv(b, style) {
   if (a < 0.6 || a > MAX_ABV) return null;
   const r = style && style.strength && style.strength.abv;
   if (r && r[1] && a > r[1] + 4) return null;
+  if (r && r[0] && a < r[0] - 2 && !LIGHT_RE.test(b.name || "")) return null;   // 1,4 % on Corona Extra: the source is wrong
   return Math.round(a * 10) / 10;
 }
 
@@ -123,19 +132,29 @@ function beers(st) {
       if (kind && brewery && !hasBrewery(name, brewery)) name = cleanName(brewery + " " + name);   // "Blanche" -> "Hoegaarden Blanche"
       if ((name.match(/\p{L}/gu) || []).length < 2) continue;
       const nn = kind === 1 || (kind === 2 && !brewery) ? 1 : 0;
-      const sg = b.style_guess && st.byId[b.style_guess.id] ? b.style_guess : null;
+      if (NOT_DRINK_RE.test(name) || NOT_DRINK_RE.test(b.name)) continue;   // "Lager eddike" = vinegar
+      const rawAbv = typeof b.abv === "number" && isFinite(b.abv) ? b.abv : null;
+      const af = afOk({ name, brewery, abv: rawAbv, af: !!b.alcohol_free || AF_NAME_RE.test(name) });
+      let sg = b.style_guess && st.byId[b.style_guess.id] ? b.style_guess : null;
+      if (sg && sg.id === "alkoholfri" && !af) sg = null;                    // the guess came from the wrong alcohol-free mark
+      if (!sg && af && st.byId.alkoholfri) sg = { id: "alkoholfri", confidence: "low" };
+      if (!sg && !af && flagshipStyle(name)) sg = { id: flagshipStyle(name), confidence: "low" };   // "Heineken Bier" -> Ljus lager (gissning)
+      const abv = b.alcohol_free && !af ? null : plausibleAbv({ ...b, alcohol_free: af }, sg ? st.byId[sg.id] : null);
       const cr = credit[b.barcode], src = cr ? join(SRC, "beers", cr.file) : null, photo = !!(src && existsSync(src));
-      const nk = (name + "|" + brewery).toLowerCase(), had = seenName.get(nk);
+      const nk = fold(name), same = seenName.get(nk) || [];
+      const had = same.find((i) => sameBeer({ name, brewery }, { name: rows[i][1], brewery: rows[i][2] }));
       seen.add(b.barcode);
-      // the same beer twice (often a pack and a bottle): keep the one with a photo; the other id stays an alias (old tips + favourites)
-      if (had != null && (rows[had][7] || !photo)) { alias[id] = rows[had][0]; continue; }
-      const row = [id, name, brewery, sg ? sg.id : "", sg ? CONF[sg.confidence] || 1 : 0, plausibleAbv(b, sg ? st.byId[sg.id] : null),
-        b.alcohol_free ? 1 : 0, photo ? 1 : 0, photo ? clean(cr.contributor, 40) : "", g, nn];
+      const row = [id, name, brewery, sg ? sg.id : "", sg ? CONF[sg.confidence] || 1 : 0, abv,
+        af ? 1 : 0, photo ? 1 : 0, photo ? clean(cr.contributor, 40) || "openfoodfacts-contributors" : "", g, nn];
+      // the same beer twice (a pack and a bottle, or a licence brewer): keep the best row (photo, then style, then ABV; a tie
+      // keeps the first = the Swedish list first); the other id stays an alias (old tips + favourites + the scanner find it)
+      const score = (r) => (r[7] ? 4 : 0) + (r[3] ? 2 : 0) + (r[5] != null ? 1 : 0);
+      if (had != null && score(row) <= score(rows[had])) { alias[id] = rows[had][0]; continue; }
       if (had != null) {
-        const old = rows[had][0]; alias[old] = id;
+        const old = rows[had][0]; alias[old] = id; row[9] = Math.min(row[9], rows[had][9]);
         for (const k of Object.keys(alias)) if (alias[k] === old) alias[k] = id;
         rows[had] = row;
-      } else { seenName.set(nk, rows.length); rows.push(row); }
+      } else { same.push(rows.length); seenName.set(nk, same); rows.push(row); }
     }
   }
   rows.sort((a, b) => a[1].localeCompare(b[1], "sv"));
