@@ -862,8 +862,7 @@
     try {
       obs.observe(document.getElementById("sheet-body"), { childList: true, subtree: true, attributes: true, attributeFilter: ["data-gv", "hidden"] });
       ["groups-badge", "btn-heat", "btn-ghostpins", "btn-taxi"].forEach(function (id) { var e = document.getElementById(id); if (e) obs.observe(e, { attributes: true, childList: true, characterData: true, subtree: true }); });
-      obs.observe(document.body, { childList: true });   // #btn-evs is added later by evsheet.js
-      new MutationObserver(syncBack).observe(document.getElementById("sheet-title"), { childList: true, characterData: true, subtree: true });   // motionfix: a new sheet gets its ‹ in the same task as its title (pnds.js axis slides once, at once; the 30 ms wait above can last seconds while the body fills: a late 24 px slide of a body already in view)
+      obs.observe(document.body, { childList: true }); new MutationObserver(syncBack).observe(document.getElementById("sheet-title"), { childList: true, characterData: true, subtree: true });   // #btn-evs comes later (evsheet.js). motionfix: a new sheet gets its ‹ in the same task as its title (pnds.js axis slides once, at once; the 30 ms wait above can last seconds while the body fills: a late 24 px slide of a body already in view)
     } catch (e) {}
   }
 
