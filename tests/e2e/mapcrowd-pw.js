@@ -66,7 +66,8 @@ async function open(b, mode, o = {}) {
   await page.addStyleTag({ content: "#toasts{display:none !important}" }).catch(() => {});
   await wait(page, 3000);
   await page.evaluate(([ll, z]) => { __map.closePopup(); __map.setView(ll, z, { animate: false }); }, [[PITLL[0] - 0.0002, PITLL[1]], o.z || 17]);
-  await page.waitForFunction(() => document.querySelector(".inv-pin") || true, null, { timeout: 8000 }).catch(() => {});
+  // mapcrowd2: wait for the data, not a fixed time (CI try 1 on a slow runner read Pitchers before the pins had come)
+  await page.waitForFunction((inv) => PN.s.beers.length >= 9 && (!inv || document.querySelector(".inv-pin")), !o.noInv, { timeout: 30000 }).catch(() => console.log("data late"));
   await wait(page, 3000);
   return { ctx, page, errs, S };
 }
