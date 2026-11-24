@@ -30,6 +30,8 @@ export function files() {
   return out.map((f) => path.relative(ROOT, f)).filter((f) => !SKIP_FILE.test(f)).sort();
 }
 // CSS value tokens inside JS strings (motion / colour tokens): never text for people
+// HTML attribute names + class/data/id values ("bl-ta", "bl-av") are markup, not text (coordinator 24 Nov: fixC false positive).
+const MARKUP_ATTR = /\b(?:class|id|data-[\w-]+|maxlength|type|role|for|name)\s*=\s*\\?["'][^"'\\]*\\?["']?/g;
 const CSS_TOKEN = /var\(--[\w-]+(?:\s*,[^()]*(?:\([^()]*\))?[^()]*)?\)|cubic-bezier\([^)]*\)|calc\([^)]*\)/g;
 // CSS text inside JS (a style sheet string): "a{b:c}" / "x:y;z:w"
 function isCss(s) { return /[a-z-]+\s*:\s*[^;{}]+;|\{[^}]*:[^}]*\}/.test(s) && !/[.!?]\s+[A-ZÅÄÖ]/.test(s); }
@@ -50,7 +52,7 @@ export function scanSource(src) {
     stack.push({ n, key });
     const s = n.type === "Literal" ? (typeof n.value === "string" ? n.value : null) : n.type === "TemplateElement" ? (n.value.cooked || "") : null;
     if (s != null && !(parent && parent.type === "Property" && key === "key")) {
-      const w = svWords(s.replace(CSS_TOKEN, " "));   // var(--x) etc. are CSS, not the Swedish word "var"
+      const w = svWords(s.replace(CSS_TOKEN, " ").replace(MARKUP_ATTR, " "));   // var(--x) etc. are CSS, not the Swedish word "var"
       if (w.length && !/^[a-z0-9_.:-]*[-_.:][a-z0-9_.:-]*$/.test(s) && !isCss(s)) { const why = cover(stack); out.push({ line: n.loc.start.line, text: s.slice(0, 120), covered: !!why && why !== "skip", why: why || "", skip: why === "skip" }); }
     }
     for (const k of Object.keys(n)) {
