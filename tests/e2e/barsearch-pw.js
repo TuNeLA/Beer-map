@@ -153,7 +153,10 @@ async function layout(page, vp, tag) {
         ok(`Android back closes the panel and stays in the app`, !(await panelOpen(page)) && page.url() === u0 && (await page.evaluate(() => !!window.BARSEARCH)), page.url());
 
         // One click router: the tap that closes the panel never opens a pin card under it
-        await page.evaluate((p) => __map.setView([p.lat, p.lng], 17, { animate: false }), PIT); await wait(page, 1200);
+        // lane walktime (E6, 24 Nov): the empty panel now also lists "Inom 10 min promenad" (up to 5 rows), so it is taller and
+        // covered the pin at the screen centre. The pin now sits about 220 px below the centre (map centre 0.0012° north), on the
+        // dimmed map under the panel. The check itself is the same.
+        await page.evaluate((p) => __map.setView([p.lat + 0.0012, p.lng], 17, { animate: false }), PIT); await wait(page, 1200);
         const pt = await page.evaluate(() => {
           const m = [...document.querySelectorAll(".leaflet-marker-icon.cm")].find((e) => /Pitchers/.test(e.textContent)); if (!m) return null;
           const r = m.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
