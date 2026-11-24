@@ -88,3 +88,14 @@
   background:transparent;color:var(--ds-amber-t);font:700 var(--fs-14)/1 var(--ds-sans);cursor:pointer}
 .nl-undo .undo-ic{width:16px;height:16px}
 .nl-undo:disabled{opacity:.6}
+
+/* fixC P-11: a guessed style = one small "?" chip in the list row; one line above the list says what it means */
+.bl-guess{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:2px;border-radius:var(--r-pill,999px);
+  border:1px solid var(--ds-border-2);color:var(--ds-text-2);font:700 var(--fs-12)/1 var(--ds-sans);font-style:normal;vertical-align:1px}
+.bl-guess-n{display:flex;align-items:center;gap:var(--ds-2,8px);margin:0 0 var(--ds-2,8px);color:var(--ds-text-2);font-size:var(--fs-14);line-height:20px}
+.bl-guess-n .bl-guess{margin:0}
+/* fixC P-26: beer page: one data line with the "Om data" link inline; "no average yet" is a plain empty state */
+.bl-note.bl-src{display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--ds-2,8px)}
+.bl-note.bl-src .bl-about{margin-top:0}
+.bl-card.bl-none{padding:var(--ds-3,12px) var(--ds-4,16px)}
+.bl-none-t{margin:0;color:var(--ds-text-2);font-size:var(--fs-14);line-height:20px}

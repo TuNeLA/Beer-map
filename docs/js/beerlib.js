@@ -243,9 +243,21 @@
       '</span><span class="bl-body"><span class="bl-fam">' + esc(famName(st.fam)) + "</span><b>" + esc(en() ? st.en : st.sv) + "</b><small>" + esc(oneLine(st)) +
       '</small><span class="bl-dots">' + styleGroups(st).slice(0, 2).map(tagHTML).join("") + "</span></span></button>";
   }
+  // fixC P-11: in a list row a guessed style gets one small "?" chip (the list says once what it means), not "(gissning)" on most rows
+  function guessChip() { return '<i class="bl-guess" role="img" aria-label="' + esc(tl("gissning", "guess")) + '">?</i>'; }
+  function styleLineHTML(b) {
+    var s = styleName(b.style), a = abvText(b), out = [];
+    if (s) out.push(esc(s) + (b.conf < 3 ? " " + guessChip() : ""));
+    if (s && b.style === "alkoholfri" && b.af) a = a.replace(tl("Alkoholfri", "Alcohol-free"), "").trim();
+    if (a) out.push(esc(a));
+    return out.join(" · ");
+  }
+  function guessNote(list) {
+    return list.some(function (b) { return b.style && b.conf < 3; }) ? '<p class="bl-guess-n">' + guessChip() + esc(tl("= stilen är en gissning från namnet.", "= the style is a guess from the name.")) + "</p>" : "";
+  }
   function rowHTML(b) {
     return '<button type="button" class="bl-row" data-bl-beer="' + esc(b.id) + '">' + pic(b) + "<span><b>" + esc(b.name) + "</b>" +
-      (b.brewery ? "<small>" + esc(b.brewery) + "</small>" : "") + "<small>" + esc(styleLine(b) || tl("Stil okänd", "Style unknown")) + "</small></span>" + ic("chev-right", "bl-chev") + "</button>";
+      (b.brewery ? "<small>" + esc(b.brewery) + "</small>" : "") + "<small>" + (styleLineHTML(b) || esc(tl("Stil okänd", "Style unknown"))) + "</small></span>" + ic("chev-right", "bl-chev") + "</button>";
   }
   function starsHTML(n, mini) {
     var o = "";
@@ -293,7 +305,10 @@
       return ws.every(function (w) { return b._n.indexOf(w) >= 0; });
     });
     if (!qn) out = out.filter(function (b) { return b.photo && !b.nn; });   // beer2: the browse list = a photo + a real name; search finds all
-    if (!qn && !g) out = out.slice().sort(function (a, b) { return (a.group | 0) - (b.group | 0); });   // Swedish first, then A–Ö (stable)
+    // Swedish first; fixC P-11: then a photo, then a known style (a sure style before a guess), then A–Ö (stable). No strength, no rating.
+    var rank = function (b) { return (b.photo ? 0 : 4) + (b.style ? (b.conf < 3 ? 1 : 0) : 2); };
+    if (!qn && !g) out = out.slice().sort(function (a, b) { return (a.group | 0) - (b.group | 0) || rank(a) - rank(b); });
+    else if (!sid) out = out.slice().sort(function (a, b) { return rank(a) - rank(b); });
     return out;
   }
 
@@ -353,12 +368,15 @@
     var i = tabInput(); try { if (i) i.focus({ preventScroll: true }); } catch (e) {}
   }
   function endPick(box) { tabSt.pick = 0; if (!setField("")) tab(box, tabSt.q, tabSt.opts); tabTop(box); }
+  // fixC P-14: pick mode that came from Profil goes back there when it ends (after the save or Avbryt)
+  function pickBack() { var f = tabSt.opts && tabSt.opts.pickDone; if (f) { tabSt.opts.pickDone = null; f(); } }
   function pickFav(box, id) {
     var slot = tabSt.pick, f = favs || localFavs();
     if (f.indexOf(String(id)) >= 0) { toast(tl("Den ölen är redan en av dina favoriter.", "That beer is already one of your favourites.")); return; }
     endPick(box);
     setSlot(slot, String(id)).then(function (now) {
       if (now && now[slot - 1] === String(id)) toast(tl("Sparad som favorit nr " + slot + ".", "Saved as favourite no. " + slot + "."));
+      if (tabSt.opts && tabSt.opts.pickDone) { pickBack(); return; }
       if (box.isConnected) tab(box, tabSt.q, tabSt.opts);
     });
   }
@@ -373,7 +391,7 @@
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var a = t.closest("[data-bl-add]");
       if (a) { startPick(box, +a.getAttribute("data-bl-add") || 1); return; }
-      if (t.closest("[data-bl-pickx]")) endPick(box);
+      if (t.closest("[data-bl-pickx]")) { endPick(box); pickBack(); }
     });
     // each family row keeps its sideways place (a back from a style page paints the tab again)
     box.addEventListener("scroll", function (e) { var c = e.target; if (c && c.getAttribute && c.getAttribute("data-bl-car")) tabSt.sx[c.getAttribute("data-bl-car")] = c.scrollLeft; }, true);
@@ -389,7 +407,7 @@
         (g ? esc(tl("Mest " + flName(g).toLowerCase() + " först", "Most " + flName(g).toLowerCase() + " first")) : sts.length) + "</b></h3>" + famsHTML(sts, g);
     }
     h += '<h3 class="bl-h">' + esc(tl("Öl", "Beers")) + "<b>" + bs.length + "</b></h3>";
-    if (bs.length) h += '<div class="bl-list">' + bs.slice(0, tabSt.nBeer).map(rowHTML).join("") + "</div>" +
+    if (bs.length) h += guessNote(bs.slice(0, tabSt.nBeer)) + '<div class="bl-list">' + bs.slice(0, tabSt.nBeer).map(rowHTML).join("") + "</div>" +
       (bs.length > tabSt.nBeer ? '<button type="button" class="bl-more" data-bl-more="beer">' + esc(tl("Visa fler öl", "Show more beers")) + "</button>" : "");
     else h += q ? msgHTML("search", tl("Ingen öl med det namnet än.", "No beer with that name yet."), tl("Prova ett kortare ord, en stil (till exempel IPA) eller skanna burken.", "Try a shorter word, a style (for example IPA) or scan the can."))
       : msgHTML("beer", tl("Inga öl här än.", "No beers here yet."), g ? tl("Tryck på smaken igen för att se alla.", "Tap the taste again to see all.") : "");
@@ -399,7 +417,7 @@
   function tab(box, q, opts) {
     tabSt.opts = opts || tabSt.opts || {};
     if (q !== tabSt.q) { tabSt.q = q; tabSt.nBeer = 30; tabSt.sx = {}; }
-    if (!box.__bl) { box.__bl = 1; tabSt.pick = 0; tabWire(box); if (!favs) loadFavs().then(function () { if (box.isConnected && data && !tabSt.q && !tabSt.pick) tab(box, tabSt.q, tabSt.opts); }, function () {}); }
+    if (!box.__bl) { box.__bl = 1; tabSt.pick = (opts && opts.pick) | 0; tabWire(box); if (!favs) loadFavs().then(function () { if (box.isConnected && data && !tabSt.q && !tabSt.pick) tab(box, tabSt.q, tabSt.opts); }, function () {}); }
     if (!data) {
       box.innerHTML = skelHTML();
       load().then(function () { if (box.isConnected) tab(box, tabSt.q, tabSt.opts); }, function () {

@@ -245,7 +245,7 @@
       L("Syns för dina vänner och grupper.", "Seen by your friends and groups.");
   }
   function favTile(t, i) {
-    if (!t || !t.id) return '<button type="button" class="bl-ft empty" data-bl-find="1">' + pni("plus") + "<b>" + esc(L("Välj", "Pick")) + "</b><small>" + esc(L("Favorit ", "Favourite ") + (i + 1)) + "</small></button>";
+    if (!t || !t.id) return '<button type="button" class="bl-ft empty" data-bl-find="1" data-bl-slot="' + (i + 1) + '">' + pni("plus") + "<b>" + esc(L("Välj", "Pick")) + "</b><small>" + esc(L("Favorit ", "Favourite ") + (i + 1)) + "</small></button>";
     var pic = t.img ? '<span class="bl-pic' + (t.ph ? " ph" : "") + '"><img src="' + esc(t.img) + '" alt="" loading="lazy" decoding="async"></span>' : '<span class="bl-pic" aria-hidden="true">' + pni("beer") + "</span>";
     return '<button type="button" class="bl-ft" data-bl-beer="' + esc(t.id) + '"><span class="n" aria-hidden="true">' + (i + 1) + "</span>" + pic + "<b>" + esc(t.n || "") + "</b><small>" + esc(t.s || "") + "</small></button>";
   }
@@ -267,7 +267,14 @@
       var t = e.target && e.target.closest ? e.target : null; if (!t) return;
       var b = t.closest("[data-bl-beer]"), id = b && b.getAttribute("data-bl-beer");
       if (id) { P.beerlib().then(function (B) { B.beer(id); }, function () {}); return; }
-      if (t.closest("[data-bl-find]")) safe(function () { if (P.closeSheet) P.closeSheet(); setTimeout(function () { W("BARSEARCH").open("beer"); }, 60); });
+      // fixC P-14: an empty tile opens the pick mode for ITS slot at once (no extra "Lägg till" tap) and comes back to Profil after
+      // the save (or Avbryt). "Ändra" opens the Öl tab as before.
+      var f = t.closest("[data-bl-find]"), slot = f ? +f.getAttribute("data-bl-slot") || 0 : 0;
+      var back = function () {
+        var b = document.getElementById("btn-settings"); if (b) b.click();
+        setTimeout(function () { var f = document.querySelector("#sheet .bl.bl-fav"); try { if (f) f.scrollIntoView({ block: "center" }); } catch (e) {} }, 350);   // the card with the new favourite in view
+      };
+      if (f) safe(function () { if (P.closeSheet) P.closeSheet(); setTimeout(function () { W("BARSEARCH").open("beer", "", slot ? { pick: slot, done: back } : null); }, 60); });
     });
     P.beerlib().then(function (B) { if (B && B.favCard) B.favCard(fav); }, function () {});
     return fav;

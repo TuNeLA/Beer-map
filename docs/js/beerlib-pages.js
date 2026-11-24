@@ -86,11 +86,11 @@
       esc(s ? tl("Favorit " + s + " av 3", "Favourite " + s + " of 3") : tl("Favorit", "Favourite")) + "</button>";
   }
   // lane mybeer (I-147): "Jag dricker den här" = my beer now (the ÖL! button + my pin until 06:00). Again = back to plain ÖL!.
-  // The button shows the drawn mini bottle / can of this beer (colours only, no logo). Only when js/mybeer.js is there.
+  // fixC P-26: the button shows the app's beer icon (the drawn bottle / can is on the ÖL! button and the pin). Only when js/mybeer.js is there.
   function nowBtn(b) {
     var M = W.MYBEER, lk = B.lookOf ? B.lookOf(b) : null; if (!M || !lk) return "";
-    var c = M.current(), on = !!(c && c.id === b.id), pic = W.MYBEER_LOOK ? W.MYBEER_LOOK.svg(lk) : "";
-    return '<button type="button" class="bl-btn mb-now' + (on ? " on" : "") + '" data-bl-now="1" aria-pressed="' + on + '">' + (pic ? '<span class="mb-now-ic" aria-hidden="true">' + pic + "</span>" : "") +
+    var c = M.current(), on = !!(c && c.id === b.id), pic = ic("beer");   // fixC P-26: the app icon like the other buttons here (the drawn can stays on the ÖL! button + pin)
+    return '<button type="button" class="bl-btn mb-now' + (on ? " on" : "") + '" data-bl-now="1" aria-pressed="' + on + '">' + pic +
       esc(on ? tl("Min öl nu", "My beer now") : tl("Jag dricker den här", "I'm drinking this")) + "</button>";
   }
   function rateHTML(n, local) {
@@ -102,7 +102,12 @@
   function othersHTML(info) {
     var row = info && info.avg != null && (info.n | 0) >= 5 ?
       "<b>PintsNow " + esc(H.num(info.avg) + tl(" av 5", " of 5")) + "</b><small>" + esc(tl(info.n + " betyg i appen", info.n + " ratings in the app")) + "</small>" :
-      "<b>PintsNow</b><small>" + esc(tl("Snittet visas från 5 betyg.", "The average shows from 5 ratings.")) + "</small>";
+      null;
+    // fixC P-26: no average yet = an empty state, not a list row that looks like a rating ("PintsNow — Snittet visas från 5 betyg.")
+    var n = info ? info.n | 0 : 0;
+    if (!row) return '<h3 class="bl-h">' + esc(tl("Andra betyg", "Other ratings")) + '</h3><div class="bl-card bl-none"><p class="bl-none-t">' +
+      esc(n > 0 ? tl(n + " betyg än. ", n + (n === 1 ? " rating" : " ratings") + " so far. ") : tl("Inga betyg än. ", "No ratings yet. ")) + esc(tl("Snittet visas från 5 betyg.", "The average shows from 5 ratings.")) + "</p>" +
+      '<div class="bl-ext bl-ut" data-bl-untappd hidden></div></div>';
     return '<h3 class="bl-h">' + esc(tl("Andra betyg", "Other ratings")) + '</h3><div class="bl-card"><div class="bl-ext"><span class="ico">' + ic("users") + '</span><span class="tx">' + row + "</span></div>" +
       '<div class="bl-ext bl-ut" data-bl-untappd hidden></div></div>';
   }
@@ -147,7 +152,8 @@
       el.innerHTML = heroHTML(b, st) +
         '<div class="bl-acts"><button type="button" class="bl-btn p" data-bl-tip="1">' + ic("send") + esc(tl("Tipsa en vän", "Tell a friend")) + "</button>" + favBtn(b) + nowBtn(b) + "</div>" +
         rateHTML(stars, !on) + (on ? othersHTML(info) : "") + sbHTML(b) + (on ? reviewsHTML(info) : "") +
-        '<p class="bl-note">' + esc(tl("Data: Open Food Facts (ODbL). Bilden är CC BY-SA.", "Data: Open Food Facts (ODbL). The photo is CC BY-SA.")) + "</p>" + H.aboutLink();
+        // fixC P-26: ONE data line with the "Om data" link in it (the photo keeps its own credit under the picture)
+        '<p class="bl-note bl-src">' + esc(tl("Data: Open Food Facts (ODbL).", "Data: Open Food Facts (ODbL).")) + " " + H.aboutLink() + "</p>";
       H.fixPics(el);
       untappd();
     }

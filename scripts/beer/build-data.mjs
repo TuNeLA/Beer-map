@@ -24,7 +24,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, readd
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { MAX_ABV as AUDIT_MAX, LIGHT_RE, NOT_DRINK_RE, afOk, strongStyle, sameBeer, nameKey, flagshipStyle } from "./checks.mjs";
+import { MAX_ABV as AUDIT_MAX, LIGHT_RE, NOT_DRINK_RE, afOk, strongStyle, sameBeer, nameKey, flagshipStyle, fold, coreKey } from "./checks.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../..");
@@ -150,9 +150,9 @@ function beers(st) {
       // the same beer twice (a pack and a bottle, or a licence brewer): keep the best row (photo, then style, then ABV; a tie
       // keeps the first = the Swedish list first); the other id stays an alias (old tips + favourites + the scanner find it)
       const score = (r) => (r[7] ? 4 : 0) + (r[3] ? 2 : 0) + (r[5] != null ? 1 : 0);
-      if (had != null && score(row) <= score(rows[had])) { alias[id] = rows[had][0]; continue; }
+      if (had != null && score(row) <= score(rows[had])) { alias[id] = rows[had][0]; rows[had][1] = cleaner(rows[had][1], name); rows[had][10] = Math.min(rows[had][10], nn); continue; }
       if (had != null) {
-        const old = rows[had][0]; alias[old] = id; row[9] = Math.min(row[9], rows[had][9]);
+        const old = rows[had][0]; alias[old] = id; row[9] = Math.min(row[9], rows[had][9]); row[1] = cleaner(row[1], rows[had][1]); row[10] = Math.min(row[10], rows[had][10]);
         for (const k of Object.keys(alias)) if (alias[k] === old) alias[k] = id;
         rows[had] = row;
       } else { same.push(rows.length); seenName.set(nk, same); rows.push(row); }
@@ -163,6 +163,10 @@ function beers(st) {
   return { rows, photos, alias };
 }
 
+// fixC P-11: the kept row shows the cleanest name of its group ("Heineken", not "Beer Heineken" or "Heineken st 330"):
+// the name with the fewest beer / pack words, then the shorter one. Same core name = the same words, so nothing is lost.
+function noise(n) { const w = fold(n).split(" ").filter(Boolean); return w.length - coreKey(n).split(" ").filter(Boolean).length; }
+function cleaner(a, b) { const d = noise(b) - noise(a); return d < 0 || (d === 0 && b.length < a.length) ? b : a; }
 function resize(src, dst) {
   const r = spawnSync("convert", [src, "-auto-orient", "-strip", "-resize", "x" + IMG_H + ">", "-quality", String(IMG_Q), "-interlace", "JPEG", dst], { encoding: "utf8" });
   if (r.status !== 0) copyFileSync(src, dst);
