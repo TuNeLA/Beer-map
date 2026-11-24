@@ -193,7 +193,7 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
           loc: rr(document.getElementById("btn-locate")), vw: innerWidth };
       });
       const words = g.lbl.map((x) => x && x.t2);
-      ok(g.on && words.join(",") === "Synlig,Event,Mer", "rail " + w + ": a new user's first night = a word under each rail button", words);
+      ok(g.on && words.join(",") === "Syns: Alla,Event,Mer", "rail " + w + ": a new user's first night = a word under each rail button (fixA P-05: 'Syns: Alla', was 'Synlig')", words);
       ok(g.btn.every((b) => b && Math.round(b.w) === 44 && Math.round(b.h) === 44), "rail " + w + ": the buttons stay 44 × 44", g.btn.map((b) => b && [b.w, b.h]));
       ok(g.lbl.every((l, i) => l && l.r <= g.vw - 2 && l.t >= g.btn[i].b && (i === 2 || l.b <= g.btn[i + 1].t - 2)), "rail " + w + ": each label is under its button, inside the screen, never on the next button", g.lbl);
       ok(!g.lbl.some((l) => hit(l, g.loc)) && !g.btn.some((b) => hit(b, g.loc)), "rail " + w + ": labels and buttons never over locate");

@@ -76,7 +76,7 @@ const onWhite = (c) => 1.05 / (lum(c) + 0.05);
         if (!had) t.classList.remove("pn-kaos"); if (H0) document.documentElement.classList.add("pn-settle");
         return { bg, bg2 };
       });
-      ok(k.bg !== "rgb(200, 32, 42)" && k.bg2 === "rgb(200, 32, 42)", "H2-2 KAOS: no red bar behind the green ticker text in the first seconds; red with the KAOS line", k);
+      ok(k.bg !== "rgb(200, 32, 42)" && k.bg2 !== "rgb(200, 32, 42)" && k.bg2 !== k.bg, "H2-2 KAOS: no red bar behind the green ticker text in the first seconds; the KAOS look (fixA P-04: dark + amber, no longer red) with the KAOS line", k);
       // 10: Mer → Systembolaget row title in line with the other rows
       await page.evaluate(() => document.getElementById("btn-more").click()); await wait(page, 1500);
       const m = await page.evaluate(() => [...document.querySelectorAll("#sheet-body .ds-row.pn-row")].filter((r) => r.getClientRects().length && r.getBoundingClientRect().height > 0)

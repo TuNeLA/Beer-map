@@ -53,7 +53,7 @@ const closeAll = (page) => page.evaluate(() => {
               left: hitIs(br.l + 2, cy, id), right: hitIs(br.r - 2, cy, id) };   // 44 px wide at the word's line
           }) };
         }, ids);
-        ok(P + " R rail words are on (first night)", g.on && g.out.map((x) => x.word).join(",") === "Synlig,Event,Mer", g);
+        ok(P + " R rail words are on (first night)", g.on && g.out.map((x) => x.word).join(",") === "Syns: Alla,Event,Mer", g);   // fixA P-05: was "Synlig"
         ok(P + " R P2-2 a tap on each word hits its button", g.out.every((x) => x.mid), g.out);
         ok(P + " R P2-2 no dead gap between button and word, and the word line is 44 px wide", g.out.every((x) => x.gap && x.left && x.right), g.out);
         ok(P + " R buttons stay 44 × 44 (no layout shift)", g.out.every((x) => Math.round(x.w) === 44 && Math.round(x.h) === 44), g.out.map((x) => [x.w, x.h]));

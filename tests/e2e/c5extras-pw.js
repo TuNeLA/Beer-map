@@ -88,6 +88,9 @@ const G = "11111111-2222-3333-4444-555555555555";
       });
       ok("I-31: caption is not visible while a bar popup is open", r.shown === false, r);
       const r2 = await page.evaluate(async () => {
+        // fixA P-04: the "Dagens order" card is hidden while the care chip "Kolla till X" / KAOS shows (html.pn-greet-off);
+        // this check is about the bar popup rule only, so clear those 2 cards first (as on a plain map).
+        document.querySelectorAll(".hud-left .af-chip-med").forEach((e) => { e.hidden = true; }); const cc = document.getElementById("chaos-close"); if (cc && !document.getElementById("chaos").hidden) cc.click();
         window.DELIGHT.caption({ text: "Test caption 2", now: true, ms: 3000 });
         await new Promise((res) => setTimeout(res, 300));
         const b = document.getElementById("dl-cap"); return { shown: !!b && !b.hidden && getComputedStyle(b).display !== "none" };

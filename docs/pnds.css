@@ -311,17 +311,19 @@ body:has(#rally:not([hidden])) .ticker{visibility:hidden !important}
 /* uifix4 (design review small fix 2): in the first seconds (html.pn-settle) the KAOS line waits, but the bar was already red
    behind the normal green / amber ticker text (3.35:1). The red KAOS look now starts with its own white line. */
 .ticker.pn-kaos{height:46px !important}
-html:not(.pn-settle) .ticker.pn-kaos{background:var(--ds-red) !important;border-color:rgba(255,123,115,.6) !important}
-html:not(.pn-settle) .ticker.pn-kaos .tk-live{background:rgba(0,0,0,.28) !important;font-size:0 !important}
-html:not(.pn-settle) .ticker.pn-kaos .tk-live::after{content:"KAOS";font:700 var(--fs-12)/1 var(--ds-sans);letter-spacing:.08em;color:#fff}
+/* fixA P-04 (polish 24 Nov): KAOS is a fun event, not danger: amber tag + amber ring on the normal dark bar (was full red, louder
+   than the real care alert "Kolla till X"). P-23: the line may use 2 lines (it was always cut at 1 line). */
+html:not(.pn-settle) .ticker.pn-kaos{background:var(--pn-float-2) !important;border-color:var(--ds-amber) !important}
+html:not(.pn-settle) .ticker.pn-kaos .tk-live{background:var(--ds-amber) !important;font-size:0 !important}
+html:not(.pn-settle) .ticker.pn-kaos .tk-live::after{content:"KAOS";font:700 var(--fs-12)/1 var(--ds-sans);letter-spacing:.08em;color:var(--ds-on-amber)}
 html:not(.pn-settle) .ticker.pn-kaos .tk-viewport{visibility:hidden}
 .pn-kaos-line{display:none}
 html:not(.pn-settle) .ticker.pn-kaos .pn-kaos-line{display:flex;position:absolute;top:0;bottom:0;right:44px;left:var(--pn-kaos-l,64px);align-items:center;gap:var(--sp-2);
-  padding:0 var(--sp-2);border:0;background:transparent;color:#fff;font:600 var(--fs-14)/18px var(--ds-sans);text-align:left;cursor:pointer;min-width:0}
-.pn-kaos-line>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
-.pn-kaos-line>b{flex:0 0 auto;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  padding:0 var(--sp-2);border:0;background:transparent;color:var(--ds-text);font:600 var(--fs-14)/18px var(--ds-sans);text-align:left;cursor:pointer;min-width:0}
+.pn-kaos-line>span{overflow:hidden;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;min-width:0}
+.pn-kaos-line>b{flex:0 0 auto;font-weight:700;color:var(--ds-amber-t);text-decoration:underline;text-underline-offset:3px}
 .pn-kaos-x{display:none}
-html:not(.pn-settle) .ticker.pn-kaos .pn-kaos-x{display:grid;place-items:center;position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:transparent;color:#fff;cursor:pointer}
+html:not(.pn-settle) .ticker.pn-kaos .pn-kaos-x{display:grid;place-items:center;position:absolute;top:0;right:0;width:44px;height:44px;border:0;background:transparent;color:var(--ds-text);cursor:pointer}
 .pn-kaos-x .pi{width:18px;height:18px}
 /* 3 · top row: one height (44) */
 #live-count{height:44px !important}

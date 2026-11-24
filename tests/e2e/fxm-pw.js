@@ -220,7 +220,7 @@ const calls = (srv, fn) => srv.calls.filter((c) => c.fn === fn);
     const p = t.page;
     await p.evaluate(() => document.getElementById("pn-ghost").click()); await wait(p, 800);
     const v = await p.evaluate(() => { const m = document.getElementById("pn-vis"); return m ? { opts: [...m.querySelectorAll("[role=radio]")].map((b) => b.textContent.trim()), on: (m.querySelector('[aria-checked="true"]') || {}).textContent, note: (m.querySelector(".pn-vis-note") || {}).textContent } : null; });
-    ok(v && v.opts.join("|") === "Alla|Bara vänner|Spöke" && v.on === "Alla" && v.note, "Synlighet: one control Alla · Bara vänner · Spöke, state + one line " + JSON.stringify(v));
+    ok(v && v.opts.join("|") === "Alla|Vänner|Spöke" && v.on === "Alla" && v.note, "Synlighet: one control Alla · Vänner · Spöke (fixA P-05: one word set, was Bara vänner), state + one line " + JSON.stringify(v));
     await p.screenshot({ path: SP + "fxm-shots/t-synlighet-390.png" });
     await p.evaluate(() => document.querySelector('#pn-vis [data-vis="vanner"]').click()); await wait(p, 800);
     ok(calls(t.srv, "set_visibility").some((c) => c.body.p_friends_only === true) && (await p.evaluate(() => document.getElementById("pn-ghost").getAttribute("data-vis"))) === "vanner", "Synlighet: Bara vänner → set_visibility(true), the button shows it");
