@@ -153,7 +153,8 @@ const SHEETS = [
       const b = m.bar;
       ok(b.head < b.hero && b.hero < b.act && b.act < b.info && b.info < b.mer, n + " order: header < hero < actions < Info < Mer", b);
       ok(b.btn.length && b.btn.every((x) => x.h === 48), n + " action buttons 48 high", b.btn);
-      ok(b.btn.filter((x) => /245, 166, 35/.test(x.bg)).length === 1, n + " exactly one amber action", b.btn);
+      // fixC P-07 (polish sweep 24 Nov): checked in, "Checka ut" is an outline button (the loudest action is not leaving): 0 amber then
+      ok(b.btn.filter((x) => /245, 166, 35/.test(x.bg)).length === (b.btn.some((x) => /ci-out/.test(x.c)) ? 0 : 1), n + " exactly one amber action (none when the only action is Checka ut)", b.btn);
       if (name === "krog") ok(b.btn.length === 1 && /ci-out/.test(b.btn[0].c), n + " checked in: only Checka ut (På väg hidden)", b.btn);
       if (name === "krog2") ok(b.btn.length === 2 && b.btn[0].w === b.btn[1].w && /ci-btn/.test(b.btn[0].c) && /eta-go/.test(b.btn[1].c), n + " not checked in: Checka in + På väg, equal width", b.btn);
       ok(b.merHas, n + " Bjud in hit + QR-affisch are inside Mer");

@@ -319,6 +319,99 @@
       "A small price tag (large beer) on bars from zoom 14. Prices come from users and are info only.") }));
   }
 
+
+  /* ---------- fixC (polish sweep 24 Nov): bar card polish on top of PNDS.barSheet (js/pnds.js "ds07 bar", wrapped like
+     js/barcard.js does; pnds.js is at its size limit). All on the finished card HTML, so the modules' own hooks stay.
+     P-07 one "Rapportera fel" row with the two report choices (events.js "Fel plats / stängt?" + gone.js "Finns inte längre");
+     P-25 the 10+ care line says who to check on (it said only a level name: "Sjukvårdare till plats 3", blue like a link) and
+          the top drinker's level name is not on the bar card; the weather value says "Ute nu -2°"; a friend with a hero row
+          (Chatta + Skål) is not drawn again in the Folk här wall;
+     P-06 a tap that opens "Mer" scrolls it up under the sticky name bar. ---------- */
+  function ico7(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
+  function repGroup(body) {
+    var rb = body.querySelector(":scope > .pp-info [data-evrep]"), gone = body.querySelectorAll(":scope > .gone-sec");
+    if (!rb || !gone.length || body.querySelector(":scope > .pn-bs-rep")) return;
+    var pinfo = rb.parentNode, d = document.createElement("details"), box = document.createElement("div");
+    d.className = "pn-bs-rep"; box.className = "pn-bs-repl";
+    d.innerHTML = '<summary class="pn-bs-repb">' + ico7("flag") + "<span>" + esc(L("Rapportera fel", "Report a problem")) + '</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
+    rb.innerHTML = ico7("pin"); rb.appendChild(document.createTextNode(L("Fel plats, dubblett eller annat", "Wrong place, duplicate or other")));
+    box.appendChild(rb);
+    [].forEach.call(gone, function (g) { box.appendChild(g); });
+    d.appendChild(box);
+    if (pinfo.querySelector("button, a")) pinfo.after(d); else pinfo.replaceWith(d);
+  }
+  function careLine(k, list) {
+    var top = null;
+    try { (list || []).forEach(function (b) { if (b && (!top || U.drinks(b) > U.drinks(top))) top = b; }); } catch (e) { top = null; }
+    var t = top && top.is_mine ? L("Ta det lugnt nu: vatten och taxi finns i Ikväll-menyn.", "Take it easy now: water and a taxi are in the Tonight menu.") :
+      top && top.friend_name ? L("Kolla till " + top.friend_name + " ikväll.", "Check on " + top.friend_name + " tonight.") :
+      L("Någon här har druckit mycket. Kolla läget.", "Someone here has had a lot. Check on them.");
+    k.innerHTML = ico7("heart") + "<span>" + esc(t) + "</span>";
+    k.classList.add("pn-bs-care");
+  }
+  function cardPost(html, bar, list) {
+    try {
+      var tp = document.createElement("template"); tp.innerHTML = html;
+      var bs = tp.content.firstElementChild; if (!bs || !bs.classList.contains("pn-bs7")) return html;
+      [].slice.call(bs.children).forEach(function (k) {
+        if (k.matches(".pp-lv, .pp-hot, .pp-med")) k.remove();
+        else if (k.matches(".pp-care1")) careLine(k, list);
+      });
+      var mb = bs.querySelector('details[data-fold="mer"] > .pf-body'); if (mb) repGroup(mb);
+      polish(bs);
+      return bs.outerHTML;
+    } catch (e) { return html; }
+  }
+  // live parts (modules repaint them): the weather value, the Folk här wall
+  function polish(root) {
+    root.querySelectorAll(".ute-wx").forEach(function (w) {
+      var v = String(w.textContent || "").replace(/^[^\p{L}\p{N}−-]+/u, "").trim();
+      if (/^[-−]?\d+(?:[.,]\d+)?°$/.test(v)) w.textContent = L("Ute nu ", "Outside now ") + v;
+    });
+    var bss = root.classList && root.classList.contains("pn-bs7") ? [root] : root.querySelectorAll(".pn-bs7");
+    [].forEach.call(bss, function (bs) {
+      var names = {};
+      if (!bs.querySelector(".pn-bs-frs .pn-bs-more")) bs.querySelectorAll(".pn-bs-frs .pn-bs-fr2 .pn-bs-ft > b").forEach(function (b) { names[b.textContent.trim()] = 1; });
+      bs.querySelectorAll(".pn-fh-wall .pn-fh-fr").forEach(function (t) {
+        var n = t.querySelector(".pn-fh-n"), dup = !!(n && names[n.textContent.trim()]);
+        if (t.classList.contains("pn-fh-dup") !== dup) t.classList.toggle("pn-fh-dup", dup);
+      });
+    });
+  }
+  function watchCard(root) {
+    if (root._fixC || !window.MutationObserver) return;
+    var tm = 0; root._fixC = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { polish(root); }, 40); });
+    root._fixC.observe(root, { childList: true, subtree: true, characterData: true });
+    polish(root);
+  }
+  function merScroll(d) {
+    var sc = d && d.closest(".leaflet-popup-content"); if (!sc || !d.open) return;
+    var mini = sc.querySelector(".pn-bc-mini"), top = d.getBoundingClientRect().top - sc.getBoundingClientRect().top - (mini ? 64 : 8);
+    if (Math.abs(top) < 4) return;
+    var rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    try { sc.scrollTo({ top: sc.scrollTop + top, behavior: rm ? "auto" : "smooth" }); } catch (e) { sc.scrollTop += top; }
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+    // hoursvote "Nej, stängt" presses the gone button (now inside "Rapportera fel"): open the group so its confirm step shows
+    var hv = t.closest('.pn-bs7 [data-hva="gone"]');
+    if (hv) { var bs = hv.closest(".pn-bs7"), g = bs && bs.querySelector("details.pn-bs-rep"), m = bs && bs.querySelector('details[data-fold="mer"]');
+      if (g) { g.open = true; if (m) m.open = true; } return; }
+    var s = t.closest('.pn-bs7 details[data-fold="mer"] > summary'); if (!s) return;
+    var d = s.parentNode; if (d.open) return;   // this tap closes it
+    setTimeout(function () { merScroll(d); }, 60);
+  }, true);
+  (function hook() {
+    var n = 0, go = function () {
+      var P = window.PNDS; if (!P || !P.barSheet) return false;
+      if (P.barSheet._fixC) return true;
+      var b0 = P.barSheet, f = function (html, bar, list) { return cardPost(b0.call(this, html, bar, list), bar, list); };
+      for (var k in b0) if (Object.prototype.hasOwnProperty.call(b0, k)) f[k] = b0[k];   // keep barcard's _bc mark
+      f._fixC = true; P.barSheet = f; return true;
+    };
+    if (!go()) { var iv = setInterval(function () { if (go() || ++n > 50) clearInterval(iv); }, 100); }
+  })();
+
   window.BARINFO = {
     init: function (api) {
       A = api;
@@ -330,6 +423,7 @@
           var hid = x.getAttribute("data-hv");
           try { window.PN.hoursvote.fetch(hid, false, function (changed) { if (changed) refreshDom(hid); }); } catch (e) {}
         });
+        if (root.querySelector(".pn-bs7")) watchCard(root);   // fixC: live polish of the bar card
         if (root._olnuBi) return;
         root._olnuBi = true;
         root.addEventListener("click", function (ev) {
