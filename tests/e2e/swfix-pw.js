@@ -62,7 +62,7 @@ async function swCtx(browser) {
     geolocation: { latitude: 60.1511, longitude: 15.1876 }, permissions: ["geolocation"],
     userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36" });
   await ctx.addInitScript(({ SESSION }) => {
-    try { const o = JSON.parse(sessionStorage.getItem("t.or") || "[]"); o.push(performance.timeOrigin); sessionStorage.setItem("t.or", JSON.stringify(o)); } catch (e) {}
+
     try { navigator.serviceWorker.addEventListener("controllerchange", () => { window.__cc = (window.__cc || 0) + 1; }); } catch (e) {}
     if (localStorage.getItem("t.seeded")) return;
     localStorage.setItem("t.seeded", "1");
