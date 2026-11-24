@@ -14,8 +14,8 @@
 // style's range; not when the name says another strength); the style is a guess unless its confidence is "high" (the app says
 // "Stil (gissning)"). Names: see "name quality" below. Nothing is made up here.
 // Lane beerlist (24 Nov; the rules live in scripts/beer/checks.mjs, tests/unit/beerdata.test.mjs audits the output):
-// - alcohol-free needs evidence (afOk): the name says it, an alcohol-free brand, or a real low number. Without it: not marked
-//   alcohol-free and NO strength ("A ship full of IPA" was 0,0 %: the source had the normal IPA in "non-alcoholic beers").
+// - alcohol-free needs evidence (afOk: the name, an alcohol-free brand, the source's "non-alcoholic beers" category, or a real
+//   0,05-0,5 % number) and no contradiction (a strong name or style, or more than 0,5 %). Without it: no mark and NO strength.
 // - a name that says alcohol-free makes the beer alcohol-free; an alcohol-free beer with no style gets the style "alkoholfri".
 // - no ABV far below the style's range unless the name says light / low (Corona Extra had 1,4 %).
 // - a name that is only a big brand gets the brand's flagship style as a guess (flagshipStyle).
@@ -24,7 +24,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, readd
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { MAX_ABV as AUDIT_MAX, AF_NAME_RE, LIGHT_RE, NOT_DRINK_RE, afOk, sameBeer, fold, flagshipStyle } from "./checks.mjs";
+import { MAX_ABV as AUDIT_MAX, LIGHT_RE, NOT_DRINK_RE, afOk, strongStyle, sameBeer, nameKey, flagshipStyle } from "./checks.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../..");
@@ -134,15 +134,16 @@ function beers(st) {
       const nn = kind === 1 || (kind === 2 && !brewery) ? 1 : 0;
       if (NOT_DRINK_RE.test(name) || NOT_DRINK_RE.test(b.name)) continue;   // "Lager eddike" = vinegar
       const rawAbv = typeof b.abv === "number" && isFinite(b.abv) ? b.abv : null;
-      const af = afOk({ name, brewery, abv: rawAbv, af: !!b.alcohol_free || AF_NAME_RE.test(name) });
       let sg = b.style_guess && st.byId[b.style_guess.id] ? b.style_guess : null;
+      const sgLo = sg && st.byId[sg.id].strength && st.byId[sg.id].strength.abv ? st.byId[sg.id].strength.abv[0] : null;
+      const af = afOk({ name, brewery, abv: rawAbv, af: !!b.alcohol_free, cat: (b.categories || []).indexOf("en:non-alcoholic-beers") >= 0, strongStyle: strongStyle(sgLo) });
       if (sg && sg.id === "alkoholfri" && !af) sg = null;                    // the guess came from the wrong alcohol-free mark
       if (!sg && af && st.byId.alkoholfri) sg = { id: "alkoholfri", confidence: "low" };
       if (!sg && !af && flagshipStyle(name)) sg = { id: flagshipStyle(name), confidence: "low" };   // "Heineken Bier" -> Ljus lager (gissning)
       const abv = b.alcohol_free && !af ? null : plausibleAbv({ ...b, alcohol_free: af }, sg ? st.byId[sg.id] : null);
       const cr = credit[b.barcode], src = cr ? join(SRC, "beers", cr.file) : null, photo = !!(src && existsSync(src));
-      const nk = fold(name), same = seenName.get(nk) || [];
-      const had = same.find((i) => sameBeer({ name, brewery }, { name: rows[i][1], brewery: rows[i][2] }));
+      const nk = nameKey(name), same = seenName.get(nk) || [];
+      const had = same.find((i) => sameBeer({ name, brewery, af }, { name: rows[i][1], brewery: rows[i][2], af: rows[i][6] }));
       seen.add(b.barcode);
       const row = [id, name, brewery, sg ? sg.id : "", sg ? CONF[sg.confidence] || 1 : 0, abv,
         af ? 1 : 0, photo ? 1 : 0, photo ? clean(cr.contributor, 40) || "openfoodfacts-contributors" : "", g, nn];

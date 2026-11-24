@@ -1,38 +1,49 @@
 // Beer data rules + audit (lane beerlist, 24 Nov 2026). Used by scripts/beer/build-data.mjs (the rules) and by
 // tests/unit/beerdata.test.mjs (the audit of the shipped docs/data/beer/*.json), so a bad row cannot come back.
-// Why: "A ship full of IPA" showed "0,0 %". Open Food Facts had it in the category "non-alcoholic beers" with alcohol 0
-// (the form's empty default), but it is the normal IPA (the alcohol-free one is a separate product, "... Alcohol Free").
-// Rule: an alcohol-free mark needs evidence. Without it the beer gets NO strength (we show nothing, never a wrong 0 %).
+// The owner's case: "A ship full of IPA" showed "IPA (amerikansk) (gissning) · 0,0 %". That barcode (7310401034799) IS the
+// alcohol-free bottle (its photo says "ALCOHOL FREE 33cl, 0.0%"; Open Food Facts has it in "non-alcoholic beers"), but its name
+// has no "alcohol free" and the style guess came from "IPA", so the line read like a normal IPA with a wrong 0 %.
+// Fix: the app says "Alkoholfri 0,0 %" (js/beerlib.js styleLine/abvText), and the data rules below. Other rows of the same
+// class were really wrong (Open Food Facts' alcohol 0 is often the empty form default: Kasteel Donker "0 %", #500 Imperial IPA
+// "0,1 %"), so an alcohol-free mark needs evidence and nothing that contradicts it. Without it: no mark and NO strength.
 // Safety direction: a strong beer shown as alcohol-free is the dangerous error; an alcohol-free beer with no mark is not.
 
 export const MAX_ABV = 16;
 
-// evidence in the name that a beer is alcohol-free (sv, no, da, fi, de, fr, it, es, en)
+// evidence in the name that a beer is alcohol-free (sv, no, da, fi, de, fr, it, es, cz, en)
 export const AF_NAME_RE = new RegExp([
   "alkohol ?fri", "akoholfri", "alcohol[- ]?free", "alkoholfrei", "alkoholiton", "analcolica", "sans alcool", "sin alcohol",
   "non[- ]?alc", "\\balc\\.? ?0\\b", "\\b0[.,]0\\b", "(?:^|[^\\d.,])0(?:[.,][0-5])?\\s*%", "\\bzero\\b", "\\buten\\b(?! tilsatt)",
   "\\bhelt fri\\b", "\\bfri (?:ipa|pils|lager|øl|öl)\\b", "\\bnolo\\b", "luovutusolut", "\\b0 alc", "\\bcero\\b", "nealko",
   "alkoholit+om", "no buzz", "\\balko\\.? ?fri"
 ].join("|"), "i");
-// brands that make only alcohol-free beer
-export const AF_BRAND_RE = /\b(?:munkholm|clausthaler)\b/i;
+// brands that make only alcohol-free beer (seen in the data)
+export const AF_BRAND_RE = /\b(?:munkholm|clausthaler|birell|helt fri|sol zero|tourtel)\b/i;
 // a name that says "strong": never alcohol-free on a guess
-export const STRONG_NAME_RE = /\b(?:imperial|double|dubbel|tripel|triple|quad(?:rupel)?|barley ?wine|dipa|iipa|tipa)\b/i;
+export const STRONG_NAME_RE = /\b(?:imperial|double|dubbel|tripel|triple|quad(?:rupel)?|barley ?wine|dipa|iipa|tipa|extra stark|strong)\b/i;
 // a name that says "light / low strength": a low ABV is real
 export const LIGHT_RE = /l[äa]tt|\blett|light|\blite\b|\bmild\b|folk[öo]l|kevyt|\blow\b|klass ?(?:i|1|ii|2)\b/i;
 // not a drink at all (seen: "Lager eddike" = lager vinegar)
 export const NOT_DRINK_RE = /\b(?:eddike|ättika|vinegar|vinaigre|essig|aceto)\b/i;
 
-// one alcohol-free decision for the build (raw OFF row) and the audit (shipped row)
-// b: { name, brewery, abv (raw number or null), af (the source says alcohol-free) }
+// the alcohol-free decision of the build (raw Open Food Facts row)
+// b: { name, brewery, abv (raw number or null), af (the source says alcohol-free), cat (the source's category is "non-alcoholic
+//      beers"), strongStyle (the guessed style starts at 7 % or more) }
 export function afOk(b) {
+  const nm = String(b.name || ""), txt = nm + " " + String(b.brewery || "");
+  if (AF_NAME_RE.test(nm) || AF_BRAND_RE.test(txt)) return true;          // the name or the brand says it: wins
   if (!b.af) return false;
-  const txt = String(b.name || "") + " " + String(b.brewery || "");
-  if (AF_NAME_RE.test(b.name || "") || AF_BRAND_RE.test(txt)) return true;
-  if (STRONG_NAME_RE.test(b.name || "")) return false;
+  if (afConflict({ name: nm, abv: b.abv, strongStyle: b.strongStyle })) return false;
   const a = typeof b.abv === "number" && isFinite(b.abv) ? b.abv : null;
-  return a != null && a > 0 && a <= 0.5;   // a real low number (0,3 %); an exact 0 is often the empty default of the source
+  if (b.cat) return true;                                                 // a contributor put it in "non-alcoholic beers"
+  return a != null && a > 0 && a <= 0.5;   // a real low number (0,3 %); an exact 0 alone is often the empty form default
 }
+// something says this "alcohol-free" beer is not: a strong name, a strong style, or a strength above 0,5 %
+export function afConflict(r) {
+  const a = typeof r.abv === "number" && isFinite(r.abv) ? r.abv : null;
+  return STRONG_NAME_RE.test(String(r.name || "")) || !!r.strongStyle || (a != null && a > 0.5);
+}
+export const strongStyle = (lo) => typeof lo === "number" && lo >= 7;
 
 // a beer whose name is only a big brand ("Heineken Bier", "Corona Alus", "Staropramen st 330") had no style: it gets the brand's
 // flagship style as a guess (confidence low, the app says "(gissning)"). Any other word in the name ("Dunkel", "Radler", "0") = no guess.
@@ -60,8 +71,12 @@ const CO = new Set(("as ab a s sa bv b v ag gmbh ltd inc co oy aps nv srl spa pl
 function brandWords(brewery) { return fold(brewery).split(" ").filter((w) => w.length >= 3 && !CO.has(w)); }
 // a and b: { name, brewery }. Same folded name AND (same brewery, or the name holds the brand of one of them):
 // "Heineken" by Heineken = "Heineken" by Hansa Borg (licence brewer); "Juicy IPA" by Ringnes != "Juicy IPA" by Carlsberg.
+// Never across the alcohol-free mark (a.af / b.af when given). No "leading article" rule: "A ship full of IPA" (7310401034799)
+// is the alcohol-free bottle, "Ship Full Of IPA" (7310401039992) the normal can.
+export const nameKey = (s) => fold(s);
 export function sameBeer(a, b) {
-  const n = fold(a.name); if (!n || n !== fold(b.name)) return false;
+  const n = nameKey(a.name); if (!n || n !== nameKey(b.name)) return false;
+  if (a.af != null && b.af != null && !a.af !== !b.af) return false;
   if (fold(a.brewery) === fold(b.brewery)) return true;
   const words = " " + n + " ";
   return brandWords(a.brewery).concat(brandWords(b.brewery)).some((w) => words.indexOf(" " + w + " ") >= 0);
@@ -84,14 +99,15 @@ export function audit(beers, styles, img) {
     else if (a != null && r.af && a > 0.5) say("af-abv", r, "alcohol-free but " + a + " %");
     else if (a != null && rng && !r.af && a > rng[1] + 4) say("abv-hi", r, a + " % is far above the style " + r.style);
     else if (a != null && rng && !r.af && a < rng[0] - 2 && !LIGHT_RE.test(r.name)) say("abv-lo", r, a + " % is far below the style " + r.style);
-    if (r.af && !afOk({ name: r.name, brewery: r.brewery, abv: a, af: 1 })) say("af", r, "alcohol-free with no evidence (" + a + " %)");
+    if (r.af && afConflict({ name: r.name, abv: a, strongStyle: strongStyle(rng && rng[0]) })) say("af", r, "alcohol-free, but the name, style or " + a + " % says strong");
     if (r.style && !s) say("style", r, "unknown style " + r.style);
     if (r.style === "alkoholfri" && !r.af) say("style-af", r, "style alkoholfri on a beer that is not marked alcohol-free");
     if (r.af && !r.style) say("style-af", r, "alcohol-free with no style");
     if (r.photo && !r.credit) say("photo", r, "a photo with no credit");
     if (img && r.photo && !img.has(r.id + ".jpg")) say("photo", r, "photo file missing");
-    const k = fold(r.name), l = byName.get(k) || [];
+    const k = nameKey(r.name), l = byName.get(k) || [];
     for (const o of l) if (sameBeer(o, r)) say("dup", r, "the same beer as " + o.id);
+    if (r.af && !AF_NAME_RE.test(r.name) && !r.style) say("style-af", r, "alcohol-free with no word for it and no style");
     l.push(r); byName.set(k, l);
   }
   if (img) for (const f of img) if (!ids.has(f.replace(/\.jpg$/, ""))) out.push("photo " + f + ": a file with no beer");
