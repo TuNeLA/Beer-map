@@ -52,6 +52,20 @@ const mount = (page, extra) => page.evaluate(([pl, extra]) => {
     ok("På kran: the new card gets its row while a stale card with the same id still has one", !b.stale && b.fresh && !b.fresh.hidden && /2 öl/.test(b.fresh.text), b);
     ok("No page errors (G12)", errs.length === 0, errs);
     await ctx.close();
+
+    // ---------- G14: own town list first, Nominatim only as the last fallback for addresses ----------
+    ({ ctx, page, errs } = await open(browser));
+    const reqs = [];
+    await page.route(/nominatim\.openstreetmap\.org\/search|api\.mapbox\.com\/search\/geocode/, (r) => { reqs.push(r.request().url().split("?")[0].replace(/https:\/\//, "") + "?" + decodeURIComponent((r.request().url().match(/[?&]q=([^&]*)/) || [])[1] || "")); r.fulfill({ status: 200, contentType: "application/json", body: "[]" }); });
+    await page.evaluate(() => window.PN.towns.ready());
+    const g1 = await page.evaluate(() => PN.placeSearch.query("Ludvika", { center: { lat: 59.3, lng: 18.1 } }).then((l) => l.map((h) => [h.title, h.src, h.sub])));
+    ok("G14: the text 'Ludvika' answers from our own town list (src town, Dalarna kommun), 0 geocoder requests", g1.length >= 1 && g1[0][0] === "Ludvika" && g1[0][1] === "town" && reqs.length === 0, { g1, reqs });
+    const g2 = await page.evaluate(() => PN.placeSearch.query("Grängesb", { center: { lat: 60.1, lng: 15.2 } }).then((l) => l.map((h) => [h.title, h.src])));
+    ok("G14: no token (Nominatim engine): 'Grängesb' answers from the town list, 0 Nominatim requests", g2.length >= 1 && /^Grängesberg/.test(g2[0][0]) && g2[0][1] === "town" && reqs.length === 0, { g2, reqs });
+    await page.evaluate(() => PN.placeSearch.query("Storgatan 5", { center: { lat: 60.1, lng: 15.2 } }));
+    ok("G14: a street address still reaches the last-fallback geocoder (Nominatim, once per ladder step)", reqs.length >= 1 && /nominatim/.test(reqs[0]) && /Storgatan 5/.test(reqs[0]), reqs);
+    ok("No page errors (G14)", errs.length === 0, errs);
+    await ctx.close();
   } catch (e) { fail++; console.log("FAIL exception", e && e.stack); }
   await browser.close();
   console.log(`\n${pass} pass, ${fail} fail`);
