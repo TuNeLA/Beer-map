@@ -1,4 +1,5 @@
-/* PintsNow — SEASONS (lane seasons, owner 15 Nov 2026, I-115 / I-117; lane btndress I-134 19 Nov: hats on the head, white hair). The ÖL! button dress (js/seasondress.js), the season
+/* PintsNow — SEASONS (lane seasons, owner 15 Nov 2026, I-115 / I-117; lane btndress I-134 19 Nov: hats on the head;
+   lane olbtn I-144 24 Nov: the snow look of the day = clean / frost rim / knit beanie + flakes, in place of the white hair). The ÖL! button dress (js/seasondress.js), the season
    button colours, GLÖGG, the tap effect canvas (js/seasontap.js) and the map season canvas (js/seasonsky.js).
    Colours are tokens (custom properties) here; no raw hex in rules. Contrast of the label on the season colour (middle stop):
    Christmas cream on red 5.6:1 · New Year gold on navy 9.6:1 · Valborg ink on fire 5.7:1 · Midsummer ink on green 6.8:1 ·
@@ -10,6 +11,9 @@
   --ss-ms-1: #c8f07a; --ss-ms-2: #5cbf3a; --ss-ms-3: #2a7a1e; --ss-ms-ink: #0d2806; --ss-ms-rim: #fffbe0; --ss-ms-glow: rgba(150,230,90,.4);
   --ss-au-1: #ffb766; --ss-au-2: #e2681c; --ss-au-3: #8a3006; --ss-au-ink: #2a0f00; --ss-au-rim: #ffe9c8; --ss-au-glow: rgba(240,120,30,.42);
   --ss-dark: rgba(10,15,28,.9); --ss-shade: rgba(0,0,0,.35);
+  /* I-144 snow (frost rim, knit beanie, flakes): ice blues, navy knit with the amber band, a cream pompom */
+  --ss-snow: #ffffff; --ss-ice-1: #e9f6ff; --ss-ice-2: #a9d8ff; --ss-ice-3: #6fb7ef; --ss-flake-edge: rgba(10,15,28,.38);
+  --ss-knit-1: #2c3f69; --ss-knit-2: #1f2d4d; --ss-knit-rib: #16213a; --ss-knit-band: #f5a623; --ss-pom-1: #f3ecd9; --ss-pom-2: #d9cfb4;
   /* glögg in the glass while you wait: deep red wine, a warm spice line on top (no foam) */
   --ss-glogg-deep: #5a0612; --ss-glogg: #a3192c; --ss-glogg-top: #e8a050; --ss-glogg-line: #f6d7a0; --ss-glass: #2b1416; --ss-glass-2: #0e0405;
   /* ring + edge of the count burst per family */
@@ -19,7 +23,7 @@
   --ss-edge-sp: rgba(150,220,90,.45); --ss-edge-au: rgba(230,100,20,.5)
 }
 
-/* ---------- the dress (I-134): a hat that sits ON the button like on a head, and white hair when it snows ----------
+/* ---------- the dress (I-134): a hat that sits ON the button like on a head; I-144: the snow look of the day ----------
    Each piece (.ss-p) is drawn in button units (centre 0 0, radius 50; js/seasondress.js) and mapped onto the button box
    with --x0 --y0 --w --h, so it scales with the button. The hat flops / tilts away from Annat (.ss-flip = Annat on the right). */
 .ss-dress{position:absolute;z-index:4;left:var(--ss-bx,0);top:var(--ss-by,0);width:var(--ss-bw,106px);height:var(--ss-bw,106px);pointer-events:none;
@@ -29,13 +33,16 @@
 .ss-dress .ss-p{left:calc(50% + var(--ss-bw,106px) * var(--x0) / 100);top:calc(50% + var(--ss-bw,106px) * var(--y0) / 100);
   width:calc(var(--ss-bw,106px) * var(--w) / 100);height:calc(var(--ss-bw,106px) * var(--h) / 100)}
 .ss-dress svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 1px 1.5px var(--ss-shade))}
-.ss-dress.ss-flip .ss-d svg{transform:scaleX(-1)}   /* the viewBox is symmetric round x = 0: the mirror keeps it centred */
-/* pressed: the piece goes down with the button; after the tap the hat hops once (the hair stays still) */
+.ss-dress.ss-flip .ss-d svg,.ss-dress.ss-flip .ss-fl-hat svg{transform:scaleX(-1)}   /* the viewBox is symmetric round x = 0: the mirror keeps it centred */
+/* pressed: the piece goes down with the button; after the tap the hat (and the flakes on it) hops once; frost and rim stay still */
 .ss-dress.ss-down{transform:translateY(3px) scale(.95)}   /* set by js/seasondress.js on pointerdown (no :has(:active): it re-checks styles on every tap anywhere) */
-.ss-dress.ss-hop .ss-d{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
+.ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-fl-hat{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
 @keyframes ssHop{0%{translate:0 0}35%{translate:0 -9px}62%{translate:0 1px}100%{translate:0 0}}
 /* "Ångra" and the wait: the piece stays above the ring (it sits on the rim) */
 .beer-wrap.ud .ss-dress,.beer-wrap.cd .ss-dress{z-index:4}
+/* I-144: the frost rim and the rim flakes are for the button at rest; they would lie on the 10 s ring and the wait ring */
+.beer-wrap.cd .ss-frost,.beer-wrap.cd .ss-fl-rim{display:none}
+.ss-dress .ss-frost svg{filter:none}
 
 /* ---------- the button colour per season (at rest only: the wait and "Ångra" keep their own look) ---------- */
 body.ss-c-xmas #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-xmas-1);--ss-2:var(--ss-xmas-2);--ss-3:var(--ss-xmas-3);--ss-ink:var(--ss-xmas-ink);--ss-rim:var(--ss-xmas-rim);--ss-glow:var(--ss-xmas-glow)}
@@ -43,18 +50,21 @@ body.ss-c-newyear #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-ny-1);--ss
 body.ss-c-valborg #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-vb-1);--ss-2:var(--ss-vb-2);--ss-3:var(--ss-vb-3);--ss-ink:var(--ss-vb-ink);--ss-rim:var(--ss-vb-rim);--ss-glow:var(--ss-vb-glow)}
 body.ss-c-midsummer #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-ms-1);--ss-2:var(--ss-ms-2);--ss-3:var(--ss-ms-3);--ss-ink:var(--ss-ms-ink);--ss-rim:var(--ss-ms-rim);--ss-glow:var(--ss-ms-glow)}
 body.ss-c-autumn #btn-beer:not(.cooldown):not(.soon){--ss-1:var(--ss-au-1);--ss-2:var(--ss-au-2);--ss-3:var(--ss-au-3);--ss-ink:var(--ss-au-ink);--ss-rim:var(--ss-au-rim);--ss-glow:var(--ss-au-glow)}
-body[class*="ss-c-"] #btn-beer:not(.cooldown):not(.soon){background:radial-gradient(circle at 35% 30%,var(--ss-1) 0%,var(--ss-2) 45%,var(--ss-3) 100%) !important;
+body[class*="ss-c-"]:where(:not(.mn-lask)) #btn-beer:not(.cooldown):not(.soon){background:radial-gradient(circle at 35% 30%,var(--ss-1) 0%,var(--ss-2) 30%,var(--ss-2) 60%,var(--ss-3) 100%) !important;
   border-color:var(--ss-rim) !important;box-shadow:0 0 0 3px var(--ss-dark),0 8px 26px var(--ss-glow),0 0 34px var(--ss-glow),inset 0 -8px 16px var(--ss-shade) !important}
-body[class*="ss-c-"] #btn-beer:not(.cooldown):not(.soon) #beer-label{color:var(--ss-ink) !important}
-body.ss-c-xmas #btn-beer:not(.cooldown):not(.soon) #beer-label,body.ss-c-newyear #btn-beer:not(.cooldown):not(.soon) #beer-label{text-shadow:0 2px 0 var(--ss-shade),0 0 10px var(--ss-shade)}
-body.mn-lask[class*="ss-c-"] #btn-beer:not(.cooldown):not(.soon){background:var(--ss-2) !important}
+body[class*="ss-c-"]:where(:not(.mn-lask)) #btn-beer:not(.cooldown):not(.soon) #beer-label{color:var(--ss-ink) !important}
+body.ss-c-xmas:where(:not(.mn-lask)) #btn-beer:not(.cooldown):not(.soon) #beer-label,body.ss-c-newyear:where(:not(.mn-lask)) #btn-beer:not(.cooldown):not(.soon) #beer-label{text-shadow:0 2px 0 var(--ss-shade),0 0 10px var(--ss-shade)}
+/* lane olbtn (A3 + LÄSK!): "Jag kör ikväll" keeps its own soda-can look on season days (pnds.css body.mn-lask). The season
+   colour was painted over it before (red LÄSK! at Christmas); the driver's button must read as soda, never as a drink.
+   The hats stay (look only). The GLÖGG mug and its label size never show on LÄSK! (no glögg sign on the driver's button). */
+body.mn-lask #btn-beer>.ss-mug{display:none}
 
 /* ---------- GLÖGG (1 - 26 Dec): a small steaming mug above the word; still one drink ---------- */
 #btn-beer>.ss-mug{position:absolute;z-index:2;left:50%;top:17px;width:30px;height:22px;transform:translateX(-50%);color:var(--ss-xmas-ink);pointer-events:none}
 .ss-mug[hidden],#btn-beer.cooldown .ss-mug,#btn-beer.soon .ss-mug{display:none}
 .ss-mug svg{display:block;width:100%;height:100%}
-body.ss-glogg #btn-beer:not(.cooldown):not(.soon) #beer-label{font-size:23px !important;letter-spacing:0 !important;padding-top:22px}
-@media (max-width:380px){ body.ss-glogg #btn-beer:not(.cooldown):not(.soon) #beer-label{font-size:20px !important;padding-top:20px} body.ss-glogg #btn-beer>.ss-mug{top:14px} }
+body.ss-glogg:where(:not(.mn-lask)) #btn-beer:not(.cooldown):not(.soon) #beer-label{font-size:23px !important;letter-spacing:0 !important;padding-top:22px}
+@media (max-width:380px){ body.ss-glogg:where(:not(.mn-lask)) #btn-beer:not(.cooldown):not(.soon) #beer-label{font-size:20px !important;padding-top:20px} body.ss-glogg #btn-beer>.ss-mug{top:14px} }
 /* the wait in the glögg month: the glass fills with glögg (dark red) under a warm spice line */
 body.ss-glogg .beer-btn.cooldown:not(.undo){background:
     linear-gradient(102deg,transparent 20%,rgba(255,255,255,.09) 26%,transparent 33%),
@@ -79,6 +89,6 @@ body.ss-glogg .beer-btn.cooldown:not(.undo){background:
 .pm-burst[data-fam="autumn"] .pm-edge{box-shadow:inset 0 0 90px 30px var(--ss-edge-au),inset 0 0 160px 60px var(--ss-edge-au)}
 
 @media (prefers-reduced-motion:reduce){
-  .ss-dress.ss-hop .ss-d{animation:none}
+  .ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-fl-hat{animation:none}
   .ss-dress.ss-down{transform:none}
 }

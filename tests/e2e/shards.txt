@@ -35,7 +35,7 @@ ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3|eggs|dating2)$
 ui-08      ^(c1menus|c5extras|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk|uifix4|srvsync|selftest|places)$   chromium webkit   # + the WebKit (iPhone engine) runs
 ui-09      ^(uifix|dialekt|ui1|after2|bold-skal|cam)$
 ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left|fixj)$
-ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump|btndress)$
+ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump|btndress|olbtn)$
 ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3|dprofile|timers)$
 ui-13      ^(hitta2|polishB|consent|placecard|strip|av2-wizard|notif|evx|ds-layout|ds-motion|placesearch|d1settings|icons|c3chat|friends2|heat|unlocks|kpi|bold-krog|bold-replay|c4drinks|evsearch|dhome|hockeybuild)$
 

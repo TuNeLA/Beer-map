@@ -86,3 +86,34 @@ test("seasons: the test hook works only in a test build (never on the live confi
   const stg = loadScript("js/seasonclock.js", { OLNU_CONFIG: { SUPABASE_URL: "https://staging.supabase.co" }, location: { hostname: "tunela.github.io", pathname: "/Beer-map/", search: "?season=lucia&wx=snow3" } }).PNSeason;
   assert.equal(stg.testBuild(), true); const s = stg.now(); assert.equal(s.map.lucia, true); assert.equal(s.wx.snow, 3); assert.equal(s.snowcap, true);
 });
+
+// I-144 (owner 21 Nov "the snow on the button looks bad"; default B4, lane olbtn 24 Nov): one snow look per Stockholm day.
+test("seasons I-144: the snow look is the same all day, never the same two days in a row, each look once per 4 days", () => {
+  const L = (y, mo, d, hat) => S._snowLook(y, mo, d, hat);
+  assert.equal(typeof S._snowLook, "function");
+  const looks = new Set(), hatLooks = new Set(); let prev = null, repeats = 0;
+  const count = {};
+  for (let t = Date.UTC(2026, 10, 1); t < Date.UTC(2028, 10, 1); t += 864e5) {
+    const x = new Date(t), y = x.getUTCFullYear(), mo = x.getUTCMonth() + 1, d = x.getUTCDate(), l = L(y, mo, d, false), h = L(y, mo, d, true);
+    looks.add(l); hatLooks.add(h); count[l] = (count[l] || 0) + 1;
+    if (l === prev) repeats++; prev = l;
+    assert.equal(h, l.replace("beanie", "flakes"), "a hat day maps the same pick to the hat-safe look");
+  }
+  assert.deepEqual([...looks].sort(), ["beanie", "clean", "frost", "frost+beanie"]);
+  assert.deepEqual([...hatLooks].sort(), ["clean", "flakes", "frost", "frost+flakes"], "a hat day never gets the beanie");
+  assert.equal(repeats, 0, "never the same look two days in a row");
+  Object.values(count).forEach((n) => assert.ok(Math.abs(n - 730 / 4) <= 2, "even share: " + JSON.stringify(count)));
+  // the same all day: 00:05, 12:00 and 23:55 Stockholm time give the same look (through the live state, snow weather)
+  const day = (iso) => { const w = loadScript("js/seasonclock.js", { location: { hostname: "localhost", pathname: "/", search: "" } }).PNSeason; w._force({ date: iso, wx: "snow" }); return w.now(); };
+  const a = day("2027-02-11T00:05"), b = day("2027-02-11T12:00"), c = day("2027-02-11T23:55"), n = day("2027-02-12T00:05");
+  assert.equal(a.snowlook, b.snowlook); assert.equal(b.snowlook, c.snowlook); assert.notEqual(c.snowlook, n.snowlook);
+  assert.equal(a.snowlook, L(2027, 2, 11, false));
+  // Christmas (Santa hat): no beanie; no snow = no look
+  const x = day("2026-12-06T20:00"); assert.equal(x.dress, "santa"); assert.ok(!/beanie/.test(x.snowlook) && x.snowlook, x.snowlook);
+  const w = loadScript("js/seasonclock.js", { location: { hostname: "localhost", pathname: "/", search: "" } }).PNSeason;
+  w._force({ date: "2027-02-11T20:00", wx: "clear" }); assert.equal(w.now().snowlook, "");
+  // the test hook: snow=beanie on a hat day = flakes; "" = back to the daily pick
+  w._force({ date: "2026-12-06T20:00", wx: "snow", snow: "frost+beanie" }); assert.equal(w.now().snowlook, "frost+flakes");
+  w._force({ date: "2027-02-11T20:00", snow: "flakes" }); assert.equal(w.now().snowlook, "beanie");
+  w._force({ snow: "" }); assert.equal(w.now().snowlook, L(2027, 2, 11, false));
+});

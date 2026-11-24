@@ -18,19 +18,27 @@
   var CROWN = '<path ' + C + ' stroke="currentColor" stroke-width=".9" stroke-linejoin="round" d="M6.7 11.4 5.7 4.1l3.5 2.8L12 2l2.8 4.9 3.5-2.8-1 7.3z"/>';
   var RAYS = '<path ' + C + ' stroke="currentColor" stroke-width=".8" stroke-linejoin="round" d="M7.5 11.6 6.7 6.7l2.8 2L12 5.3l2.5 3.4 2.8-2-.8 4.9z"/>' +
     '<path ' + ST + ' stroke-width="1.4" d="M12 .9v1.9M7.7 1.9l.9 1.6M16.3 1.9l-.9 1.6M4.2 4.9l1.5 1M19.8 4.9l-1.5 1"/>';
-  // kapsyl (uifix4, owner A18: the old top view with 14 crimps read as a sun at 20 px): a cap seen from the side and above.
-  // The top is an ellipse with a rim line cut out (even-odd); under it 6 crimps (ridges) that flare out, with pointed tips.
-  function ell(rx, ry) { return "M" + num(12 - rx) + " 4.4a" + num(rx) + " " + num(ry) + " 0 1 0 " + num(2 * rx) + " 0a" + num(rx) + " " + num(ry) + " 0 1 0 " + num(-2 * rx) + " 0z"; }
+  // kapsyl (uifix4 + lane olbtn 24 Nov, owner A18 "the cap looks a bit like a sun at small size": redraw with clearer ridges).
+  // A crown cap seen from the side and a little above: a flat top disc (rim ring cut out, even-odd), then ONE solid skirt
+  // (a band that follows the curve of the cap) with deep V crimps cut up from its bottom edge. The skirt is joined at the
+  // top, so the crimps read as the folds of one cap and not as separate rays (the uifix4 cap was 6 loose flared pieces).
+  // Readable at 16-48 px (lane olbtn sheet A18-caps-*.png).
+  function ell(cy, rx, ry) { return "M" + num(12 - rx) + " " + num(cy) + "a" + num(rx) + " " + num(ry) + " 0 1 0 " + num(2 * rx) + " 0a" + num(rx) + " " + num(ry) + " 0 1 0 " + num(-2 * rx) + " 0z"; }
   function cap() {
-    var K = 6, g = 0.24, cy = 4.4, rx = 6.2, ry = 3, gap = 0.8, H = 3.8, fl = 1, tip = 1.2, d = "";
-    function X(t, f) { return num(12 - (rx + f) * Math.cos(t)); }
-    function Y(t, dy) { return num(cy + ry * Math.sin(t) + gap + dy); }
-    for (var i = 0; i < K; i++) {
-      var a0 = i * Math.PI / K + g / 2, a1 = (i + 1) * Math.PI / K - g / 2, am = (a0 + a1) / 2;
-      d += "M" + X(a0, 0) + " " + Y(a0, 0) + "L" + X(am, 0) + " " + Y(am, 0) + "L" + X(a1, 0) + " " + Y(a1, 0) +
-        "L" + X(a1, fl) + " " + Y(a1, H - tip) + "L" + X(am, fl) + " " + Y(am, H) + "L" + X(a0, fl) + " " + Y(a0, H - tip) + "z";
+    var cy = 3.5, rx = 6.6, ry = 2.4, gap = 0.85, H = 4.6, fl = 0.55, K = 6, deep = 2.3, d = "", i;
+    function P(t, f, dy) { return num(12 - (rx + f) * Math.cos(t)) + " " + num(cy + gap + ry * Math.sin(t) + dy); }
+    d = "M" + P(0, 0, 0);
+    for (i = 1; i <= 24; i++) d += "L" + P(i * Math.PI / 24, 0, 0);   // top edge of the skirt: the lower half of the disc
+    // the bottom edge back from right to left: crimp tips (odd i) and V notches (even i). Each inner notch goes on up the
+    // skirt as a thin slot (a fold line), so the ridges stay clear at 32-48 px; at 16 px the slots close and the V's remain.
+    for (i = 2 * K; i >= 0; i--) {
+      var t = i * Math.PI / (2 * K), w = .045 * Math.sin(t) + .018;
+      if (i % 2) d += "L" + P(t, fl, H);
+      else if (i === 0 || i === 2 * K) d += "L" + P(t, fl * .6, H - .4);
+      else d += "L" + P(t + w, fl * .6, H - deep) + "L" + P(t + w, 0, 1.3) + "L" + P(t - w, 0, 1.3) + "L" + P(t - w, fl * .6, H - deep);
     }
-    return '<path ' + C + ' fill-rule="evenodd" d="' + ell(6.2, 3) + ell(5.1, 2.23) + ell(4.25, 1.64) + '"/><path ' + C + ' d="' + d + '"/>';
+    d += "z";
+    return '<path ' + C + ' fill-rule="evenodd" d="' + ell(cy, rx, ry) + ell(cy, 5.3, 1.75) + ell(cy, 4.3, 1.2) + '"/><path ' + C + ' d="' + d + '"/>';
   }
   var CREST = [
     cap(),

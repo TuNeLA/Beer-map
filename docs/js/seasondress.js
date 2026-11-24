@@ -4,10 +4,15 @@
    - One hat that SITS ON the ÖL! button like on a head (I-134, lane btndress 19 Nov: centred, the brim follows the circle
      with a little overlap on the rim and a soft shadow under it; the tip flops / tilts away from Annat, .ss-flip when Annat
      is up-right): Santa hat (Christmas), party hat (New Year), flower crown (Midsummer), student cap (Valborg), leaves +
-     acorn (October). When it snows the button gets fluffy WHITE HAIR (round tufts along the top, a fringe, down the sides),
-     and the hat sits on the hair. It never takes a tap (pointer-events: none), never covers the label, the GLÖGG mug, the
-     timer, "Ångra" or Annat. It goes down with the pressed button and the hat hops once after the tap (the hair stays
-     still). Reduced motion: no hop. Check: tests/e2e/btndress-pw.js (pixel mask).
+     acorn (October). It never takes a tap (pointer-events: none), never covers the label, the GLÖGG mug, the
+     timer, "Ångra" or Annat. It goes down with the pressed button and the hat hops once after the tap. Reduced motion: no
+     hop. Check: tests/e2e/btndress-pw.js (pixel mask).
+   - Snow (I-144, owner 21 Nov "the snow on the button looks bad", also after the I-134 white hair; default B4 from the
+     d-beerlook pictures, lane olbtn 24 Nov): on a snow day the button gets ONE look per day, the same all day
+     (PNSeason snowlook, seeded by the Stockholm date): clean (B1) / a thin frost rim (B2) / a small knit beanie, navy with an
+     amber band, with 4 flakes (B3) / frost + beanie. On a season-hat day the hat stays and only the flakes are added (on
+     the hat and on the rim). The white hair is gone: it read as a snow mass, not as hair. The frost and the rim flakes are
+     for the button at rest; the wait and "Ångra" hide them (the hat, the beanie and its flakes stay, OWNER-INPUTS A37).
    - The button colour per season (body.ss-c-<season>): Christmas, New Year, Valborg, Midsummer, Autumn. Normal days keep
      today's amber. The wait (pint glass + timer) and "Ångra" keep their own look (the colour is for the button at rest).
    - Christmas 1 - 26 Dec: the button says GLÖGG with a small mug (I18N "beer" = "GLÖGG"). It is still ONE drink, exactly
@@ -17,15 +22,15 @@
 (function () {
   "use strict";
   var W = window, D = W.document;
-  var el = null, mug = null, cur = "", curC = "", curG = null, hopT = 0;
-  // I-134 (owner 19 Nov: "I want it to feel like they're actually sitting on the button, like the button is a head" /
-  // "change [the snow] in a way, like it looks like white hair"). Every piece is drawn in BUTTON UNITS: the ÖL! circle has
+  var el = null, mug = null, cur = "", curS = "", curC = "", curG = null, hopT = 0;
+  // I-134 (owner 19 Nov: "I want it to feel like they're actually sitting on the button, like the button is a head").
+  // Every piece is drawn in BUTTON UNITS: the ÖL! circle has
   // its centre at (0, 0) and radius 50, so a brim is simply an arc of that circle. The piece box (CSS .ss-p) maps the
   // viewBox onto the button with --x0 / --y0 / --w / --h (units), so it scales with the button (106 px at 390, 96 at 360).
   // Safe zones (measured at 390 and 360 px): Annat's 50 px circle is centred near (-61, -75) r 24-26 (or mirrored);
   // the label starts at y = -3; the GLÖGG mug spans x -15..15 from y = -32. Brims end above y = -30 at x = +-36.
   var BOX = { santa: [-62, -122, 124, 100], party: [-62, -130, 124, 108], cap: [-62, -96, 124, 74], leaves: [-62, -96, 124, 74],
-    crown: [-62, -78, 124, 62], hair: [-64, -68, 128, 66] };
+    crown: [-62, -78, 124, 62], beanie: [-62, -112, 124, 90], frost: [-62, -62, 124, 124], fl: [-62, -130, 124, 112] };
   // a point on the circle of radius r, a degrees from the top (clockwise): [x, y]
   function pt(r, a) { var t = a * Math.PI / 180; return [+(r * Math.sin(t)).toFixed(1), +(-r * Math.cos(t)).toFixed(1)]; }
   // an arc of radius r from -a to +a over the top (left to right)
@@ -33,26 +38,56 @@
   // the soft shadow a brim throws on the button (blurred dark arc just under it)
   var BLUR = '<filter id="ss-bl" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="1.8"/></filter>';
   function shade(r, a, w) { return '<path class="ss-sh" d="' + arc(r, a) + '" stroke="#000" stroke-opacity=".34" stroke-width="' + w + '" fill="none" stroke-linecap="round" filter="url(#ss-bl)"/>'; }
-  function hairSvg() {
-    var o = "", i, j, p, c, R, rows = [[43, 36, 7, 6.6], [48.5, 42, 9, 7], [53, 48, 11, 7.2]];
-    // the mass, then three rows of round tufts (inner row = a scalloped fringe, outer row = the bumpy top), each outer tuft
-    // with a small curl, and two small tufts down each side outside the label (|x| > 45: the label box reaches y = -27)
-    o += '<path d="' + arc(49, 40) + '" stroke="url(#ss-hb)" stroke-width="15" fill="none" stroke-linecap="round"/>';
-    [[47.5, -33.5, 5.5], [50.5, -26, 4.4]].forEach(function (t) { [-1, 1].forEach(function (k) { o += '<circle cx="' + k * t[0] + '" cy="' + t[1] + '" r="' + t[2] + '" fill="url(#ss-hw)"/>'; }); });
-    for (j = 0; j < 3; j++) {
-      R = rows[j];
-      for (i = 0; i < R[2]; i++) {
-        p = pt(R[0], -R[1] + i * 2 * R[1] / (R[2] - 1)); c = (i % 2 ? 1 : -1);
-        o += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + R[3] + '" fill="url(#ss-hw)"/>';
-        if (j === 0) o += '<path d="M' + (p[0] - 2.6 * c) + " " + (p[1] + 2) + "q" + (2.6 * c) + " 2.4 " + (5 * c) + ' -.4" stroke="#c0c8d3" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
-        if (j === 2) o += '<path d="M' + (p[0] - 3 * c) + " " + (p[1] + 1.5) + "a3.2 3.2 0 1 " + (c > 0 ? 1 : 0) + " " + (4.6 * c) + ' -2.4" stroke="#b4bdc9" stroke-width="1.2" fill="none" stroke-linecap="round"/>';
-      }
-    }
-    o += '<path d="' + arc(55, 30) + '" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-dasharray="5 9" opacity=".9"/>';
-    return '<svg viewBox="' + BOX.hair.join(" ") + '" aria-hidden="true"><defs>' + BLUR +
-      '<radialGradient id="ss-hw" cx=".38" cy=".3" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef1f5"/><stop offset="1" stop-color="#c9d0da"/></radialGradient>' +
-      '<linearGradient id="ss-hb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9edf2"/><stop offset="1" stop-color="#bcc5d1"/></linearGradient></defs>' +
-      shade(41, 36, 6) + '<g class="ss-g">' + o + "</g></svg>";
+  // I-144 snow pieces (port of the d-beerlook B2/B3 pictures). Colours are tokens (docs/season.css --ss-ice-*, --ss-knit-*).
+  // B2 frost rim: a thin ice ring round the edge, a soft frost crust with a jagged inner edge on the top of the rim
+  // (|angle| <= 62 deg, so it ends above the label at y = -24), and 2 small glints. Still: it never moves.
+  function frostSvg() {
+    var o = "", i, pts = [], d, a, q;
+    o += '<defs><linearGradient id="ss-ig" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ss-ice-1)"/><stop offset=".5" style="stop-color:var(--ss-ice-2)"/><stop offset="1" style="stop-color:var(--ss-ice-3);stop-opacity:.15"/></linearGradient>' +
+      '<filter id="ss-soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation=".45"/></filter><linearGradient id="ss-ic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ss-snow)"/><stop offset="1" style="stop-color:var(--ss-ice-2)"/></linearGradient></defs>';
+    o += '<circle r="50.6" fill="none" style="stroke:url(#ss-ig)" stroke-width="3"/>';
+    for (i = 0; i <= 31; i++) pts.push(pt(52, -62 + i * 4));
+    d = "M" + pts.map(function (p) { return p.join(" "); }).join("L");
+    for (i = 31; i >= 0; i--) { a = -62 + i * 4; q = pt(Math.abs(a) > 50 ? 50.5 : [49.2, 46.6, 48.6, 45.8, 47.9, 49][i % 6], a); d += "L" + q[0] + " " + q[1]; }
+    o += '<path d="' + d + 'Z" style="fill:url(#ss-ic)" opacity=".82" filter="url(#ss-soft)"/>';
+    [[pt(51.5, -46), 6], [pt(51.5, 34), 4.5]].forEach(function (g) { var x = g[0][0], y = g[0][1], k = g[1];
+      o += '<path d="M' + x + " " + (y - k) + "Q" + x + " " + y + " " + (x + k) + " " + y + "Q" + x + " " + y + " " + x + " " + (y + k) + "Q" + x + " " + y + " " + (x - k) + " " + y + "Q" + x + " " + y + " " + x + " " + (y - k) + 'Z" style="fill:var(--ss-snow)"/>'; });
+    return '<svg viewBox="' + BOX.frost.join(" ") + '" aria-hidden="true"><g class="ss-g">' + o + "</g></svg>";
+  }
+  // B3 knit beanie: navy dome with rib lines and an amber band, a cream pompom, a ribbed brim that follows the circle
+  function beanieSvg() {
+    var b = "", x, i, q;
+    b += '<defs>' + BLUR + '<linearGradient id="ss-kn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--ss-knit-1)"/><stop offset="1" style="stop-color:var(--ss-knit-2)"/></linearGradient>' +
+      '<radialGradient id="ss-pm" cx=".38" cy=".32" r=".8"><stop offset="0" style="stop-color:var(--ss-pom-1)"/><stop offset="1" style="stop-color:var(--ss-pom-2)"/></radialGradient>' +
+      '<clipPath id="ss-dc"><path d="M-34 -42C-35 -76 -17 -92 0 -92C17 -92 35 -76 34 -42Z"/></clipPath></defs>' + shade(45.5, 41, 6);
+    b += '<g class="ss-g"><g transform="rotate(5 0 -50)"><path d="M-34 -42C-35 -76 -17 -92 0 -92C17 -92 35 -76 34 -42Z" style="fill:url(#ss-kn)"/>';
+    b += '<g clip-path="url(#ss-dc)"><path d="M-40 -66H40v7H-40Z" style="fill:var(--ss-knit-band)"/>';
+    for (x = -30; x <= 30; x += 6) b += '<path d="M' + x + ' -94V-40" style="stroke:var(--ss-knit-rib)" stroke-width="1" opacity=".55"/>';
+    b += '</g><g transform="translate(0 -96)">';
+    for (i = 0; i < 10; i++) { q = pt(8, i * 36); b += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="3.6" style="fill:url(#ss-pm)"/>'; }
+    b += '<circle r="8.5" style="fill:url(#ss-pm)"/></g></g>';
+    // the brim is not tilted: it hugs the circle and stays centred on the head (only the dome and the pompom lean a little)
+    b += '<path class="ss-brim" d="' + arc(51, 41) + '" fill="none" style="stroke:var(--ss-knit-1)" stroke-width="13" stroke-linecap="round"/>';
+    b += '<path d="' + arc(51, 39) + '" fill="none" style="stroke:var(--ss-knit-rib)" stroke-width="11" stroke-dasharray="1.4 2.6"/></g>';
+    return '<svg viewBox="' + BOX.beanie.join(" ") + '" aria-hidden="true">' + b + "</svg>";
+  }
+  // a small six-armed snowflake (s = size in button units), white on a thin dark edge so it shows on light hats too
+  function flake(x, y, k, rot) {
+    var arms = '<path d="M0-5V5M-4.3-2.5 4.3 2.5M-4.3 2.5 4.3-2.5"/><path d="M-1.4-3.6 0-2.4 1.4-3.6M-1.4 3.6 0 2.4 1.4 3.6" stroke-width="1.1"/>';
+    return '<g transform="translate(' + x + " " + y + ") rotate(" + (rot || 0) + ") scale(" + k / 10 + ')" stroke-linecap="round" fill="none">' +
+      '<g style="stroke:var(--ss-flake-edge)" stroke-width="3">' + arms.replace(' stroke-width="1.1"', ' stroke-width="2.4"') + "</g>" +
+      '<g style="stroke:var(--ss-snow)" stroke-width="1.6">' + arms + "</g></g>";
+  }
+  // where 2 flakes settle on each hat (button units, the hat's own drawing; they flip with the hat). Never on the label,
+  // the GLÖGG mug or Annat: all above y = -44 and inside |x| < 27.
+  var FLAKES = { beanie: [[-14, -80, 10, 12], [15, -72, 8, -10]], santa: [[-16, -74, 11, 10], [10, -92, 8.5, -8]],
+    party: [[-5, -68, 8, 15], [6, -93, 6.5, -10]], cap: [[-26, -46, 7, 12], [26, -46, 7, -12]],
+    crown: [[-20, -58, 7, 10], [26, -55, 7, -14]], leaves: [[-13, -59, 8, 12], [14, -64, 7, -10]] };
+  function flakesSvg(kind, rim) {
+    var o = "";
+    if (rim) o = flake(46, -27, 8, 20) + flake(-46, -26, 8, -15);   // on the rim, outside the label box
+    else (FLAKES[kind] || []).forEach(function (f) { o += flake(f[0], f[1], f[2], f[3]); });
+    return '<svg viewBox="' + BOX.fl.join(" ") + '" aria-hidden="true"><g class="ss-g">' + o + "</g></svg>";
   }
   function crownSvg() {
     var o = "", i, p, cols = [["#ffffff", "#ffc928"], ["#ffd21c", "#ff9f00"], ["#5f86ff", "#1d2f8a"], ["#ff8cc0", "#ffd84a"]];
@@ -106,9 +141,9 @@
       '<path d="M8 9h24v12a7 7 0 0 1-7 7H15a7 7 0 0 1-7-7Z" fill="currentColor"/><path d="M32 12h2a5 5 0 0 1 0 10h-2" stroke="currentColor" stroke-width="3" fill="none"/>' +
       '<path d="M11 15h18" stroke="var(--ss-glogg-deep)" stroke-width="2" opacity=".55"/></svg>'
   };
-  SVG.crown = crownSvg(); SVG.hair = hairSvg();
-  // one piece: <i class="ss-p ..."> placed in button units (CSS .ss-p)
-  function piece(cls, kind) { var b = BOX[kind]; return '<i class="ss-p ' + cls + '" style="--x0:' + b[0] + ";--y0:" + b[1] + ";--w:" + b[2] + ";--h:" + b[3] + '">' + SVG[kind] + "</i>"; }
+  SVG.crown = crownSvg(); SVG.frost = frostSvg(); SVG.beanie = beanieSvg();
+  // one piece: <i class="ss-p ..."> placed in button units (CSS .ss-p); box = BOX key, svg = its drawing (default SVG[box])
+  function piece(cls, box, svg) { var b = BOX[box]; return '<i class="ss-p ' + cls + '" style="--x0:' + b[0] + ";--y0:" + b[1] + ";--w:" + b[2] + ";--h:" + b[3] + '">' + (svg || SVG[box]) + "</i>"; }
   function S() { return W.PNSeason; }
   function btn() { return D.getElementById("btn-beer"); }
   function place() {
@@ -141,14 +176,16 @@
   }
   function apply(s) {
     var b = btn(); if (!b || !s) return;
-    var off = S().off(), kind = off ? "" : s.dress || "", snow = !off && s.snowcap, col = off ? "" : s.color || "";
-    var want = kind + (snow ? "+snow" : "");
+    var off = S().off(), kind = off ? "" : s.dress || "", look = off || !s.snowcap ? "" : s.snowlook || "clean", col = off ? "" : s.color || "";
+    var want = kind + (look ? "+snow:" + look : "");
     if (want !== cur) {
-      cur = want;
+      cur = want; curS = look;
       if (!el) { el = D.createElement("span"); el.className = "ss-dress"; el.setAttribute("aria-hidden", "true"); b.parentNode.insertBefore(el, b.nextSibling); }
-      // snow weather = white hair; the hat (if any) sits on top of the hair
-      el.innerHTML = (snow ? piece("ss-hair", "hair") : "") + (kind && SVG[kind] ? piece("ss-d ss-d-" + kind, kind) : "");
-      el.hidden = !want;
+      // I-144 B4, paint order: frost (on the rim) - the beanie (no-hat days) or the season hat - the flakes on the hat - the rim flakes
+      var hat = kind && SVG[kind] ? kind : /beanie/.test(look) ? "beanie" : "", fl = /beanie|flakes/.test(look);
+      el.innerHTML = (/frost/.test(look) ? piece("ss-frost", "frost") : "") + (hat ? piece("ss-d ss-d-" + hat, hat) : "") +
+        (fl ? piece("ss-fl ss-fl-hat", "fl", flakesSvg(hat, false)) + piece("ss-fl ss-fl-rim", "fl", flakesSvg(hat, true)) : "");
+      el.hidden = !el.children.length;
       el.setAttribute("data-dress", want);
       place();
     }
@@ -185,9 +222,9 @@
   }
   if (!init()) D.addEventListener("DOMContentLoaded", init);
   W.PNDress = {
-    state: function () { return { dress: cur, color: curC, glogg: !!curG, shown: !!(el && !el.hidden), label: (D.getElementById("beer-label") || {}).textContent || "" }; },
-    // the drawn part of each piece, in paint order (hair, then hat): screen rects of the .ss-g groups
-    rects: function () { var out = []; if (el && !el.hidden) el.querySelectorAll(".ss-d .ss-g, .ss-hair .ss-g").forEach(function (g) { out.push(g.getBoundingClientRect().toJSON()); }); return out; },
+    state: function () { return { dress: cur, snow: curS, color: curC, glogg: !!curG, shown: !!(el && !el.hidden), label: (D.getElementById("beer-label") || {}).textContent || "" }; },
+    // the drawn part of each piece, in paint order (frost, hat or beanie, flakes): screen rects of the .ss-g groups
+    rects: function () { var out = []; if (el && !el.hidden) el.querySelectorAll(".ss-p .ss-g").forEach(function (g) { out.push(g.getBoundingClientRect().toJSON()); }); return out; },
     hop: hop, place: place, stripFix: stripFix
   };
 })();

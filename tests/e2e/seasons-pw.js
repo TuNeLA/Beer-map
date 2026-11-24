@@ -88,7 +88,8 @@ async function runUI(b) {
     for (const [d, want] of C) { await force(page, { date: d, wx: "none" }); await wait(page, 150); s = await st();
       const bad = Object.keys(want).filter((k) => s[k] !== want[k]); ok(!bad.length, "date " + d + ": " + JSON.stringify(want), { got: s, bad }); }
     await force(page, { date: "2027-02-12T20:00", wx: "snow" }); await wait(page, 150); s = await st();
-    ok(s.dress === "+snow", "snow weather: snow lies on the button (snow cap), no hat in winter", s);
+    // lane olbtn (I-144 B4): the snow look of the day replaced the snow cap / white hair: "+snow:<look>", still no season hat in winter
+    ok(/^\+snow:(clean|frost|beanie|frost\+beanie)$/.test(s.dress), "snow weather: the snow look of the day on the button, no season hat in winter", s);
     ok(errs.length === 0, "cal: no page error", errs);
     await ctx.close();
   }

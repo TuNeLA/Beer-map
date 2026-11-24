@@ -3,12 +3,14 @@
 //  button is a head" / "the snow on the button looks kind of bad ... like it looks like white hair".
 //  fit     every dress at 390x844 and 360x640: the hat is CENTRED on the button (symmetric where it meets the top of the
 //          circle), sits ON it (above the top, a little over the rim), never covers the label, the GLÖGG mug, the Annat
-//          circle, never leaves the screen. Snow = white hair: tufts down both sides of the head, a bumpy (tufted) top edge,
-//          the fringe stays above the mug. Pixel check: only the dress is painted (the rest is hidden), alpha mask.
+//          circle, never leaves the screen. Pixel check: only the dress is painted (the rest is hidden), alpha mask.
+//          Snow (lane olbtn 24 Nov, I-144 B4; was "white hair", the owner still said 21 Nov "the snow on the button looks
+//          bad"): the look of the day. The knit beanie gets the same hat checks; the frost rim and the flakes stay off the
+//          label, the mug and Annat. The old hair checks (tufts down both sides, bumpy top) were removed with the hair.
 //  states  "Ångra" and the wait (timer) while dressed: no dress pixel on the text; taps still reach ÖL! (pointer-events none,
 //          same button box with and without the dress)
 //  flip    Annat on the right: the hat flops to the left (away from Annat) and still misses it
-//  still   reduced motion: no hop after a tap; the hair never moves
+//  still   reduced motion: no hop after a tap; the frost never moves
 // usage: node btndress-pw.js <port> [sections regex]
 const { ctxFor, wait } = require("./d2-helpers.js");
 const { launchOpts } = require("./map3-lib.js");
@@ -32,7 +34,8 @@ async function open(b, vp, o = {}) {
   await page.addStyleTag({ content: "#toasts{display:none !important}" });
   return { ctx, page, errs, S };
 }
-const force = async (page, season, wx) => { await page.evaluate(([s, w]) => { PNSeason._force({ season: s, wx: w }); PNDress.place(); }, [season, wx]); await wait(page, 500); };
+// snow = the snow look (I-144); "" = the daily pick. A fixed look keeps the pictures and the checks the same on every day.
+const force = async (page, season, wx, snow) => { await page.evaluate(([s, w, n]) => { PNSeason._force({ season: s, wx: w, snow: n || "" }); PNDress.place(); }, [season, wx, snow]); await wait(page, 500); };
 const rest = (page) => page.evaluate(() => { const m = JSON.parse(localStorage.getItem("olnu.night") || "{}"); m.lastTap = 0; localStorage.setItem("olnu.night", JSON.stringify(m));
   try { PN.s.meState && (PN.s.meState.undo_until = null); } catch (e) {} PN.tickCooldown(); });
 
@@ -91,24 +94,21 @@ async function fit(b, vp) {
     ok(st.dress === kind && st.shown, `${tag} ${season}: dress ${kind}`, st);
     hatChecks(await mask(page, ".ss-dress .ss-d", g), g, `${tag} ${kind}`);
   }
-  // snow weather = white hair (winter: no hat), and Christmas + snow = hair under the Santa hat
-  for (const [season, name] of [["winter", "hair"], ["xmas", "hair under the hat"]]) {
-    await force(page, season, "snow");
-    const g = await geo(page), m = await mask(page, ".ss-dress .ss-hair", g), cx = (g.btn.l + g.btn.r) / 2, cy = (g.btn.t + g.btn.b) / 2, bw = g.btn.w;
-    const st = await page.evaluate(() => PNDress.state());
-    ok(/\+snow$/.test(st.dress) && m.n > 300, `${tag} ${name}: snow weather draws the hair (${st.dress}, ${m.n} px)`, { st, n: m.n });
-    // hair comes down BOTH sides of the head: pixels near the rim at 30 % of the button above its centre (it stops above the label box)
-    const yS = cy - bw * 0.30, side = (s) => { for (let d = 0.3; d <= 0.58; d += 0.02) if (m.at(cx + s * bw * d, yS)) return true; return false; };
-    ok(side(-1) && side(1), `${tag} ${name}: tufts down both sides of the head (row ${yS.toFixed(0)})`, { yS });
-    const rw = m.row(g.btn.t + 3);
-    ok(!!rw && Math.abs((rw.l + rw.r) / 2 - cx) <= 3, `${tag} ${name}: centred on the head`, { rw, cx });
-    // a tufted top edge: count the bumps (local tops) of the outline across the head
-    const tops = []; for (let x = Math.round(cx - bw * 0.45); x <= cx + bw * 0.45; x++) tops.push(m.colTop(x));
-    let bumps = 0; for (let i = 2; i < tops.length - 2; i++) if (tops[i] != null && tops[i - 2] != null && tops[i + 2] != null && tops[i] < tops[i - 2] && tops[i] <= tops[i + 2] && tops[i] <= tops[i - 1] && tops[i] <= tops[i + 1]) bumps++;
-    ok(bumps >= 6, `${tag} ${name}: soft rounded tufts along the top (${bumps} bumps; flat snow had 1-2)`, bumps);
-    ok(m.inRect(g.label) === 0 && (!g.mug || m.inRect(g.mug) === 0), `${tag} ${name}: the fringe stays above the label and the mug`, { label: m.inRect(g.label), mug: g.mug && m.inRect(g.mug) });
-    ok(!g.annat || m.inCircle(g.annat, 2) === 0, `${tag} ${name}: not on the Annat circle`, g.annat && m.inCircle(g.annat, 2));
-    ok(m.l > 0 && m.r < g.vw - 1 && !m.edgeT, `${tag} ${name}: inside the screen`, { l: m.l, r: m.r });
+  // I-144 snow looks: winter (no hat) gets the beanie, Christmas keeps the Santa hat (flakes only). No white hair any more.
+  for (const [season, look, hat] of [["winter", "frost+beanie", "beanie"], ["xmas", "frost+flakes", "santa"]]) {
+    await force(page, season, "snow", look);
+    const g = await geo(page), st = await page.evaluate(() => ({ s: PNDress.state(), hair: document.querySelectorAll(".ss-hair").length,
+      frost: document.querySelectorAll(".ss-dress .ss-frost").length, fl: document.querySelectorAll(".ss-dress .ss-fl").length, hat: (document.querySelector(".ss-dress .ss-d") || {}).className || "" }));
+    ok(st.hair === 0 && st.frost === 1 && st.fl === 2 && new RegExp("ss-d-" + hat).test(st.hat) && st.s.snow === look, `${tag} ${season} snow ${look}: frost + ${hat} + flakes, no white hair`, st);
+    hatChecks(await mask(page, ".ss-dress .ss-d", g), g, `${tag} ${season} snow: the ${hat}`);
+    for (const [sel, name] of [[".ss-dress .ss-frost", "frost rim"], [".ss-dress .ss-fl", "flakes"]]) {
+      const m = await mask(page, sel, g), cx = (g.btn.l + g.btn.r) / 2;
+      ok(m.n > 40, `${tag} ${season} ${name}: drawn (${m.n} px)`, m.n);
+      ok(m.inRect(g.label) === 0 && (!g.mug || m.inRect(g.mug) === 0), `${tag} ${season} ${name}: not on the label or the mug`, { label: m.inRect(g.label), mug: g.mug && m.inRect(g.mug) });
+      ok(!g.annat || m.inCircle(g.annat, 2) === 0, `${tag} ${season} ${name}: not on the Annat circle`, g.annat && m.inCircle(g.annat, 2));
+      ok(m.l > 0 && m.r < g.vw - 1 && !m.edgeT, `${tag} ${season} ${name}: inside the screen`, { l: m.l, r: m.r });
+      if (name === "frost rim") ok(Math.abs((m.l + m.r) / 2 - cx) <= 3 && m.top >= g.btn.t - 4 && m.top <= g.btn.t + 3, `${tag} ${season} frost: a ring ON the rim (centred, top ${m.top} at the button top ${g.btn.t.toFixed(0)})`, { l: m.l, r: m.r, cx, top: m.top });
+    }
   }
   ok(errs.length === 0, `${tag} fit: no page error`, errs);
   await ctx.close();
@@ -119,7 +119,7 @@ async function states(b, vp) {
   const tag = vp.width + "x" + vp.height;
   await force(page, "normal", "none"); await rest(page); await wait(page, 300);
   const plain = (await geo(page)).btn;
-  await force(page, "xmas", "snow"); await rest(page); await wait(page, 300);
+  await force(page, "xmas", "snow", "frost+flakes"); await rest(page); await wait(page, 300);
   const dressed = await geo(page);
   ok(Math.abs(plain.l - dressed.btn.l) < 0.5 && Math.abs(plain.w - dressed.btn.w) < 0.5 && Math.abs(plain.t - dressed.btn.t) < 0.5, `${tag}: the ÖL! button box is the same with and without the dress`, { plain, dressed: dressed.btn });
   const pe = await page.evaluate(() => { const d = document.querySelector(".ss-dress"), b = document.getElementById("btn-beer").getBoundingClientRect(), e = document.elementFromPoint(b.left + b.width / 2, b.top + 5);
@@ -130,16 +130,16 @@ async function states(b, vp) {
   const u = await page.evaluate(() => ({ cls: document.getElementById("btn-beer").className, label: document.getElementById("beer-label").textContent }));
   ok(S.posts === 1 && /undo/.test(u.cls) && /Ångra/.test(u.label), `${tag}: the tap went through; Ångra shows`, { posts: S.posts, u });
   let m = await mask(page, ".ss-dress", g);
-  ok(m.inRect(g.label) === 0, `${tag} Ångra: the hat + hair do not cover the Ångra text`, m.inRect(g.label));
+  ok(m.inRect(g.label) === 0, `${tag} Ångra: the hat + flakes do not cover the Ångra text`, m.inRect(g.label));
   await wait(page, 11000);
   g = await geo(page);
   const w = await page.evaluate(() => ({ cls: document.getElementById("btn-beer").className, label: document.getElementById("beer-label").textContent }));
   m = await mask(page, ".ss-dress", g);
   ok(/cooldown/.test(w.cls) && /^\d+:\d\d$/.test(w.label) && m.n > 300 && m.inRect(g.label) === 0, `${tag} wait: the timer (${w.label}) is free, the dress stays`, { w, onLabel: m.inRect(g.label) });
-  // the timer is the widest text on the button: every dress (with hair) stays off it
-  for (const [season] of DRESS) {
-    await force(page, season, "snow"); g = await geo(page); m = await mask(page, ".ss-dress", g);
-    ok(m.n > 300 && m.inRect(g.label) === 0, `${tag} wait + ${season} + hair: the timer is free`, m.inRect(g.label));
+  // the timer is the widest text on the button: every dress (with snow flakes) stays off it; the beanie too
+  for (const [season, look] of DRESS.map((d) => [d[0], "frost+flakes"]).concat([["winter", "frost+beanie"]])) {
+    await force(page, season, "snow", look); g = await geo(page); m = await mask(page, ".ss-dress", g);
+    ok(m.n > 300 && m.inRect(g.label) === 0, `${tag} wait + ${season} + ${look}: the timer is free`, m.inRect(g.label));
   }
   ok(errs.length === 0, `${tag} states: no page error`, errs);
   await ctx.close();
@@ -164,16 +164,17 @@ async function flip(b) {
 
 async function still(b) {
   const { ctx, page, errs } = await open(b, { width: 390, height: 844 }, { reduced: true });
-  await force(page, "xmas", "snow"); await rest(page); await wait(page, 300);
+  await force(page, "xmas", "snow", "frost+flakes"); await rest(page); await wait(page, 300);
   await page.click("#btn-beer"); await wait(page, 200);
   const a = await page.evaluate(() => ({ hop: document.querySelector(".ss-dress").classList.contains("ss-hop"), anims: document.querySelector(".ss-dress").getAnimations({ subtree: true }).length }));
   ok(!a.hop && a.anims === 0, "reduced motion: no hop after the tap, nothing in the dress moves", a);
   await ctx.close();
   const o2 = await open(b, { width: 390, height: 844 });
-  await force(o2.page, "xmas", "snow"); await rest(o2.page); await wait(o2.page, 300);
+  await force(o2.page, "xmas", "snow", "frost+flakes"); await rest(o2.page); await wait(o2.page, 300);
   await o2.page.click("#btn-beer"); await wait(o2.page, 250);
-  const h = await o2.page.evaluate(() => ({ hat: document.querySelector(".ss-dress .ss-d").getAnimations().length, hair: document.querySelector(".ss-dress .ss-hair").getAnimations().length }));
-  ok(h.hat >= 1 && h.hair === 0, "normal motion: the hat hops once after the tap, the hair stays still", h);
+  const h = await o2.page.evaluate(() => ({ hat: document.querySelector(".ss-dress .ss-d").getAnimations().length, flakes: document.querySelector(".ss-dress .ss-fl-hat").getAnimations().length,
+    frost: document.querySelector(".ss-dress .ss-frost").getAnimations({ subtree: true }).length }));
+  ok(h.hat >= 1 && h.flakes >= 1 && h.frost === 0, "normal motion: the hat hops once after the tap (with its flakes), the frost stays still", h);
   ok(errs.length === 0 && o2.errs.length === 0, "still: no page error", errs.concat(o2.errs));
   await o2.ctx.close();
 }
