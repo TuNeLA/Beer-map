@@ -143,6 +143,8 @@ async function page(browser, srv, who) {
   }, HOME);
   await page.clock.install();
   await boot(page);
+  // fixB P-01 (24 Nov): driver mode is refused while drinks are logged tonight. The fixture phone has 6; the driver here is sober.
+  if (who === "D1") await page.evaluate(() => { if (window.LASK) window.LASK.drinksTonight = () => 0; });
   await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach((t) => t.remove()));
   return { ctx, page };
 }
