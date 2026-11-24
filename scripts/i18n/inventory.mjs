@@ -5,6 +5,8 @@
 //     argument is not Swedish (the module's own pair helper)
 //   - a branch of `cond ? a : b` where cond reads the language (sv(), en(), lang, I18N.lang, isSv ...)
 //   - an array [sv, en] of exactly 2 strings where the 2nd is not Swedish (TX = { k: ["sv", "en"] } tables)
+//   - a twin list: X = [Swedish …] when the same file has X_EN = [English …] (mapart WORDS / WORDS_EN)
+// CSS value tokens (var(--x), cubic-bezier(), calc()) are removed first: "var" is also a Swedish word.
 // Everything else = BYPASS (the English user sees Swedish). Not counted: comments, console.* / Error texts, object keys,
 // "sv"/"en" dictionaries' keys, the dialect pack files (Swedish only on purpose), stats*.html files (owner panel).
 // Usage: node scripts/i18n/inventory.mjs [--json] [--file docs/js/x.js] [--write-baseline]   (default: a per-file table + coverage %)
@@ -27,6 +29,8 @@ export function files() {
   walk(dir); out.push(path.join(ROOT, "docs", "app.js"));
   return out.map((f) => path.relative(ROOT, f)).filter((f) => !SKIP_FILE.test(f)).sort();
 }
+// CSS value tokens inside JS strings (motion / colour tokens): never text for people
+const CSS_TOKEN = /var\(--[\w-]+(?:\s*,[^()]*(?:\([^()]*\))?[^()]*)?\)|cubic-bezier\([^)]*\)|calc\([^)]*\)/g;
 // CSS text inside JS (a style sheet string): "a{b:c}" / "x:y;z:w"
 function isCss(s) { return /[a-z-]+\s*:\s*[^;{}]+;|\{[^}]*:[^}]*\}/.test(s) && !/[.!?]\s+[A-ZÅÄÖ]/.test(s); }
 function keyName(p) { return p && p.key ? (p.key.type === "Identifier" ? p.key.name : p.key.value) : null; }
@@ -39,12 +43,14 @@ export function scanFile(rel) { return scanSource(fs.readFileSync(path.join(ROOT
 export function scanSource(src) {
   let ast; try { ast = acorn.parse(src, { ecmaVersion: 2022, sourceType: "script", locations: true, allowHashBang: true }); } catch (e) { return [{ line: 0, text: "PARSE ERROR " + e.message, covered: false, why: "parse" }]; }
   const out = [], stack = [];
+  // twin lists: WORDS = [...Swedish] next to WORDS_EN = [...English] (the code picks one by language)
+  const twins = new Set([...src.matchAll(/\b([A-Za-z][\w$]*?)_?EN\s*=/g)].map((m) => m[1]).filter((n) => new RegExp("\\b" + n + "\\s*=").test(src)));
   const visit = (n, parent, key) => {
     if (!n || typeof n.type !== "string") return;
     stack.push({ n, key });
     const s = n.type === "Literal" ? (typeof n.value === "string" ? n.value : null) : n.type === "TemplateElement" ? (n.value.cooked || "") : null;
     if (s != null && !(parent && parent.type === "Property" && key === "key")) {
-      const w = svWords(s);
+      const w = svWords(s.replace(CSS_TOKEN, " "));   // var(--x) etc. are CSS, not the Swedish word "var"
       if (w.length && !/^[a-z0-9_.:-]*[-_.:][a-z0-9_.:-]*$/.test(s) && !isCss(s)) { const why = cover(stack); out.push({ line: n.loc.start.line, text: s.slice(0, 120), covered: !!why && why !== "skip", why: why || "", skip: why === "skip" }); }
     }
     for (const k of Object.keys(n)) {
@@ -77,6 +83,7 @@ export function scanSource(src) {
       if (a.type === "ArrayExpression" && a.elements.length === 2 && a.elements[0] === child.n) { const s2 = strOf(a.elements[1]); if (s2 != null && !svWords(s2).length) return "pair:[]"; }
       if (a.type === "Property" && keyName(a) === "sv") { const o = st[i - 1] && st[i - 1].n; if (objHas(o, "en")) return "dict"; }
       if (a.type === "Property" && keyName(a) === "en") return "dict-en";
+      if (a.type === "VariableDeclarator" && a.id && twins.has(a.id.name)) return "twin";
     }
     return null;
   };
