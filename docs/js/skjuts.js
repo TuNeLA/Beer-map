@@ -446,7 +446,7 @@
     if (inc) return '<button type="button" class="hx-chip pk-chip-hud" data-hx="pk-in:' + esc(String(inc.id)) + '">' + esc((inc.kind === "skjuts" ? "🚗 " + inc.name + ": Skjuts?" : "🆘 " + inc.name + " vill bli hämtad") + (inc.my_ans === "kommer" ? " · du kommer" : "")) + "</button>";
     var m = mineLive();
     if (m) { var y = (m.answers || []).filter(function (a) { return a.ans === "kommer"; }).length;
-      return '<button type="button" class="hx-chip pk-chip-hud" data-hx="pk-mine">' + esc((m.kind === "skjuts" ? "🚗 Skjuts? · " : "🆘 Hämta mig · ") + (y ? y + " kommer" : "väntar på svar")) + "</button>"; }
+      return '<button type="button" class="hx-chip pk-chip-hud" data-hx="pk-mine">' + esc((m.kind === "skjuts" ? "🚗 Skjuts? · " : "🆘 Hämta mig · ") + (y ? y + " kommer" : (window.I18N && I18N.L ? I18N.L("väntar på svar", "waiting for answers") : "väntar på svar"))) + "</button>"; }
     return "";
   }
 
