@@ -10,20 +10,22 @@
    tonight → app.js showStopSheet), Hemzon (state in the sub line → homezone.js), SOS till gänget (only when SOS works →
    the existing social.js block with Ring 112, in a small sheet), Alla inställningar (→ the Inställningar tab).
    R1-12: the menu never covers the rail (width = min(320, rail left − 8 − 12)).
-   Rail label (first nights, js/pnds.js ds05 rail): the word under the eye follows the state (Synlig / Vänner / Spöke).
+   Rail label (first nights, js/pnds.js ds05 rail): the word under the eye follows the state (Syns: Alla / Syns: Vänner / Spöke).
+   fixA P-05 (polish 24 Nov: new users tapped the people icon + "Vänner" to find friends): the rail button is ALWAYS an eye
+   (eye-off for Spöke), never the people icon. One word set everywhere: Alla / Vänner / Spöke.
    window.PNVIS = { mode, setMode, open, close, label, settingsBlock, _srv }. Copy: DIALEKT keys "vis.*" (sv-neutral). */
 (function () {
   "use strict";
   var KEY = "olnu.visMode", menu = null, srv = null, asked = false;
   var P = {
     "vis.head": "Vem ser dig?",
-    "vis.alla": "Alla", "vis.vanner": "Bara vänner", "vis.spoke": "Spöke",
+    "vis.alla": "Alla", "vis.vanner": "Vänner", "vis.spoke": "Spöke",
     // fixS T-09: honest per group of people (server rule 0340, unchanged): your groups see the pin + name; a friend
     // outside your groups and strangers see only the area (or the bar), no name.
     "vis.allaNote": "Gänget ser din pin och ditt namn. Vänner utanför gänget och alla andra ser bara området eller krogen, utan namn.",
     "vis.vannerNote": "Gänget ser din pin och ditt namn. Vänner utanför gänget ser bara området. Andra ser ingenting.",
     "vis.spokeNote": "Ingen ser dig på kartan. Dina öl räknas ändå.",
-    "vis.lblAlla": "Synlig", "vis.lblVanner": "Vänner", "vis.lblSpoke": "Spöke",
+    "vis.lblAlla": "Syns: Alla", "vis.lblVanner": "Syns: Vänner", "vis.lblSpoke": "Spöke",
     "vis.hide": "Göm min pin", "vis.hideSub": "Ta bort pinnen från kartan ikväll",
     "vis.home": "Hemzon", "vis.homeOn": "På · {r} m · hemma syns bara ett område", "vis.homeOff": "Av · sätt ditt hem",
     "vis.sos": "SOS till gänget", "vis.sosSub": "Skicka din exakta plats till gruppen",
@@ -79,7 +81,7 @@
     var m = mode(), t = TXT[m], name = T(t[0]);
     if (b.getAttribute("data-vis") !== m) {
       b.setAttribute("data-vis", m);
-      var dot = b.querySelector(".pn-rail-dot"), lb = b.querySelector(".mn-rail-l"); b.innerHTML = ic(t[1]); if (dot) b.appendChild(dot); if (lb) b.appendChild(lb);
+      var dot = b.querySelector(".pn-rail-dot"), lb = b.querySelector(".mn-rail-l"); b.innerHTML = ic(m === "spoke" ? "eye-off" : "eye"); if (dot) b.appendChild(dot); if (lb) b.appendChild(lb);   // fixA P-05: an eye, never the people icon
     }
     var l = b.querySelector(".mn-rail-l"); if (l && l.textContent !== T(t[3])) l.textContent = T(t[3]);
     b.setAttribute("aria-label", "Synlighet: " + name + ". Ändra"); b.title = "Synlighet: " + name;

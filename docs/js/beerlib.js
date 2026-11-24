@@ -358,7 +358,7 @@
     if (f.indexOf(String(id)) >= 0) { toast(tl("Den ölen är redan en av dina favoriter.", "That beer is already one of your favourites.")); return; }
     endPick(box);
     setSlot(slot, String(id)).then(function (now) {
-      if (now && now[slot - 1] === String(id)) toast(tl("Sparad som favorit nr " + slot + ".", "Saved as favourite no. " + slot + "."));
+      if (now && now[slot - 1] === String(id)) toast(tl("Sparad som favorit nr " + slot + ".", "Saved as favourite no. " + slot + "."), { ok: true });   // fixA P-27: check icon
       if (box.isConnected) tab(box, tabSt.q, tabSt.opts);
     });
   }

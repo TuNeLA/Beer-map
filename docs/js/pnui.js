@@ -941,7 +941,7 @@
     el.__pnT = 1;
     var tn = sp.firstChild, name = "";
     if (tn && tn.nodeType === 3 && EMO) { var m = EMO.exec(tn.nodeValue); if (m) { name = iconName(m[1], el); tn.nodeValue = tn.nodeValue.slice(m[0].length); } }
-    if (!name) name = el.classList.contains("err") ? "info" : (/\b(med|chaos-toast)\b/.test(el.className) ? "sos" : "info");
+    if (!name) name = el.classList.contains("err") ? "info" : el.classList.contains("ok") ? "check" : (/\b(med|chaos-toast)\b/.test(el.className) ? "sos" : "info");   // fixA P-27: status = icon + word
     var i = document.createElement("i"); i.className = "pn-toast-i"; i.setAttribute("aria-hidden", "true"); i.innerHTML = P.svg(name, "");
     el.insertBefore(i, el.firstChild);
     // cifix3: A.toast update path (x8 beerSay turns "Ölen räknas…" into the answer by setting the text span): new text gets the same icon treatment

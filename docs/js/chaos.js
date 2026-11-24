@@ -46,3 +46,29 @@
 
   window.CHAOS = { compute: compute, RADIUS_M: RADIUS_M };
 })();
+
+/* fixA P-04 (polish 24 Nov: 4 layers over the map at start): the "Dagens order" card (js/delight.js greet) shows only when no
+   other card shows. A care chip ("Kolla till X", top priority), the KAOS line or a call-out removes it at once (before it
+   paints); it still goes by itself after ~6 s (delight.js). Cheap: a watch on body children + the card box class, and a
+   400 ms check only while the card is up. Here and not in pnui.js: pnui.js is at its 1200-line limit. */
+(function () {
+  "use strict";
+  function on(e) { return !!e && !e.hidden && e.getClientRects().length > 0; }
+  function busy() { return on(document.querySelector(".hud-left .af-chip-med")) || on(document.querySelector(".ticker.pn-kaos")) || on(document.getElementById("rally")); }
+  function drop() {   // true = the card is still up (check again)
+    var c = document.querySelector(".dl-cap-greet");
+    if (!c || c.hidden || !busy()) return !!c && !c.hidden;
+    c.remove(); return false;
+  }
+  function start() {
+    var tm = 0, n = 0, box = null, tick = function () { tm = 0; if (drop() && ++n < 20) tm = setTimeout(tick, 400); };
+    var kick = function () {
+      var b = document.getElementById("dl-cap");
+      if (b && b !== box) { box = b; try { new MutationObserver(kick).observe(b, { attributes: true, attributeFilter: ["class", "hidden"] }); } catch (e) {} }
+      if (!tm && document.querySelector(".dl-cap-greet")) { n = 0; tick(); }
+    };
+    try { new MutationObserver(kick).observe(document.body, { childList: true }); } catch (e) {}
+    kick();
+  }
+  if (document.body) start(); else document.addEventListener("DOMContentLoaded", start);
+})();

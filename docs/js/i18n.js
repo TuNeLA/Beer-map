@@ -477,7 +477,7 @@
       stop: "Sluta dricka",
       stopped: "Din pin är dold. Dina öl räknas till kl 05.",
       stopHint: "Döljer din pin. Antalet finns kvar till kl 05.",
-      exact: "Exakt plats", area: "Bara område",
+      exact: "Exakt plats: på", area: "Exakt plats: av",   // fixA P-05: the name = the words on the button (was "Bara område")
       hintExact: "Exakt plats räknas till barer i närheten",
       hintArea: "Bara område ≈ 500 m, räknas inte till barer",
       groups: "Grupper",
@@ -1117,7 +1117,7 @@
       stop: "Stop drinking",
       stopped: "Your pin is hidden. Your beers count until 05:00.",
       stopHint: "Hides your pin. The count stays until 05:00.",
-      exact: "Exact spot", area: "Area only",
+      exact: "Exact spot: on", area: "Exact spot: off",
       hintExact: "Exact spot counts toward nearby bars",
       hintArea: "Area only ≈ 500 m, not counted at bars",
       groups: "Groups",

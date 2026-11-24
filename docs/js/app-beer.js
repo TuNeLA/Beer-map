@@ -309,7 +309,7 @@
         return;
       }
       cancelNotify();   // an undone milestone sends no push
-      toast(tl("Ölen togs bort.", "The beer was removed."), { ms: 4000, id: "undo" });   // ONE calm line: the answer to this tap
+      toast(tl("Ölen togs bort.", "The beer was removed."), { ms: 4000, id: "undo", ok: true });   // ONE calm line: the answer to this tap (fixA P-27: check icon)
       window.FX.vibrate([15, 30, 15]);
       var m = myNight() || {};
       m.count = d.beer_count | 0; m.lastTap = 0;   // the old cooldown comes back with the next poll
