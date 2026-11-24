@@ -145,7 +145,7 @@
     g.setTransform(R, 0, 0, R, 0, 0); g.clearRect(0, 0, cw, ch);
     var live = [];
     scenes.forEach(function (s) {
-      var t = s.rm ? s.still : (now - s.t0) / 1000;
+      var t = s.rm ? s.still : Math.max(0, (now - s.t0) / 1000);   // swfix B9: a frame stamp from before start() = 0
       if (!s.rm && t > s.dur && !s.hold) { stats.ended.push(s.id); return; }
       var a = s.rm ? 1 : cl(t / s.fin) * (s.fout ? cl((s.dur - t) / s.fout) : 1);
       try { s.draw(s.hold ? Math.min(t, s.dur) : t, a); } catch (e) { stats.ended.push(s.id + "!"); return; }

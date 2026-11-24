@@ -216,7 +216,7 @@
     loadBg(bgUrl(v)).then(function (img) { if (P && P.ov === ov) { P.bg = img; draw(cx, M, v, img, P.ms); } });
     function frame(now) {
       if (!P || P.ov !== ov) return;
-      if (P.playing) { P.ms = Math.min(TOTAL, P.ms + (now - P.last)); sl.value = String(Math.round(P.ms / TOTAL * 1000)); }
+      if (P.playing) { P.ms = Math.min(TOTAL, P.ms + Math.max(0, now - P.last)); sl.value = String(Math.round(P.ms / TOTAL * 1000)); }
       P.last = now; draw(cx, M, v, P.bg, P.ms);
       if (P.ms >= TOTAL && P.playing && !P.rec) { P.playing = false; setPP(); }
       P.raf = requestAnimationFrame(frame);
