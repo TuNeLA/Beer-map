@@ -35,7 +35,12 @@
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function missing(e) { var m = String((e && (e.code || "")) + " " + (e && e.message || "")); return /PGRST202|42883|does not exist|Could not find the function/i.test(m); }
   function codeOf(e) { var m = String((e && e.message) || ""), x = m.match(/(no_viewers|too_many|slow_down|not_driving|ended|not_found|not_member|invalid_answer)/); return x ? x[1] : ""; }
-  function errText(e) { return ERR[codeOf(e)] || "Det gick int'. Försök igen."; }
+  // dbhealth I-138: not_authenticated (driver_set failed 6 times on live, logs1.md 3) = the session ran out. The app's errMsg
+  // refreshes the session (reauth) and says so (sv + en), instead of "try again", which can never work.
+  function errText(e) {
+    try { if (U.errCode(e) === "not_authenticated" && A && A.errMsg) return A.errMsg(e); } catch (x) {}
+    return ERR[codeOf(e)] || "Det gick int'. Försök igen.";
+  }
   function call(name, params) {
     if (!A || !A.rpc) return Promise.resolve({ data: null, error: { message: "no_api" } });
     return A.rpc(name, params || {}).then(function (r) { r = r || { error: { message: "error" } }; if (r.error && missing(r.error)) off = true; return r; });

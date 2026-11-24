@@ -497,7 +497,7 @@
       // 0029: "💾 Spara chatten efter kl 05" (group setting). Hidden on an old server (RPC missing).
       var keepOn = false;
       (function () {
-        if (off.group_keep_history || g.dm) return;   // dm B1: a 1:1 chat has no group setting (the server answers not_member)
+        if (off.group_keep_history || g.dm || g.ev) return;   // dm B1 + dbhealth I-138: a DM or an event chat (g.ev) has no members: not_member (8 on live)
         // social-a R1-22: an on/off setting is a switch row (ds08/ds17), PNI icon, no 💾 and no native checkbox.
         // cb keeps the old checkbox API (.checked, .disabled, "change") so the code below stays the same.
         var cb = el("button", { type: "button", class: "switch chat-keep-cb", role: "switch", "aria-checked": "false", "aria-label": KT("keepLabel"), "aria-describedby": "chat-keep-info" });
@@ -511,10 +511,10 @@
         ]);
         list.parentNode.insertBefore(box, list);
         function paint(v) { keepOn = !!v; cb.checked = keepOn; note.textContent = keepOn ? KT("keepNote") : t("chatNote"); }
-        call("group_keep_history", { p_group_id: g.id }).then(function (r) {
-          if (r.error || !alive()) return;
+        (function keepRead(n) { call("group_keep_history", { p_group_id: g.id }).then(function (r) {   // dbhealth I-138: time-out = 1 more try in 4 s
+          if (!alive()) return; if (r.error) { if (!n && !r.off && !U.missing(r.error) && codeOf(r.error) !== "not_member") setTimeout(function () { keepRead(1); }, 4000); return; }
           box.hidden = false; paint(r.data === true || r.data === "true");
-        });
+        }); })(0);
         cb.addEventListener("change", function () {
           var want = cb.checked; cb.disabled = true;
           call("set_group_keep_history", { p_group_id: g.id, p_on: want }).then(function (r) {

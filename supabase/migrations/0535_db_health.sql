@@ -28,35 +28,26 @@
 --        and a.attrelid in (select to_regclass(t) from unnest(array['public.join_fails', 'public.olnu_event_fix_log',
 --          'public.owner_key_fails', 'public.oi_hits']) t));
 
--- 1. Indexes for the foreign keys (only where the table exists; a fresh staging may not have every table).
-do $$
-declare
-  x text[];
-begin
-  foreach x slice 1 in array array[
-    array['app_feedback', 'user_id', 'app_feedback_user_id_idx'],
-    array['pickup_answers', 'user_id', 'pickup_answers_user_id_idx'],
-    array['olnu_zone_kommun', 'ln', 'olnu_zone_kommun_ln_idx'],
-    array['olnu_zone_poly', 'kn', 'olnu_zone_poly_kn_idx']]
-  loop
-    if to_regclass('public.' || x[1]) is not null then
-      execute format('create index if not exists %I on public.%I (%I)', x[3], x[1], x[2]);
-    end if;
-  end loop;
-end $$;
+-- 1. Indexes for the foreign keys. Plain statements (scripts/db/objects.mjs reads them for the pre-apply snapshot).
+create index if not exists app_feedback_user_id_idx on public.app_feedback (user_id);
+create index if not exists pickup_answers_user_id_idx on public.pickup_answers (user_id);
+create index if not exists olnu_zone_kommun_ln_idx on public.olnu_zone_kommun (ln);
+create index if not exists olnu_zone_poly_kn_idx on public.olnu_zone_poly (kn);
 
--- 2. A primary key for the log tables that have none.
+-- 2. A primary key for the log tables that have none. The column first (safe to run twice), then the key, only where the
+--    table has no primary key yet. All 4 tables exist on live and staging (oi_hits: 0530, live 19 Nov).
+alter table public.join_fails add column if not exists row_id bigint generated always as identity;
+alter table public.olnu_event_fix_log add column if not exists row_id bigint generated always as identity;
+alter table public.owner_key_fails add column if not exists row_id bigint generated always as identity;
+alter table public.oi_hits add column if not exists row_id bigint generated always as identity;
 do $$
 declare
   t text;
-  r regclass;
 begin
   foreach t in array array['join_fails', 'olnu_event_fix_log', 'owner_key_fails', 'oi_hits'] loop
-    r := to_regclass('public.' || t);
-    continue when r is null;
-    continue when exists (select 1 from pg_constraint k where k.conrelid = r and k.contype = 'p');
-    execute format('alter table public.%I add column if not exists row_id bigint generated always as identity', t);
-    execute format('alter table public.%I add constraint %I primary key (row_id)', t, t || '_pkey');
+    if not exists (select 1 from pg_constraint k where k.conrelid = ('public.' || t)::regclass and k.contype = 'p') then
+      execute format('alter table public.%I add constraint %I primary key (row_id)', t, t || '_pkey');
+    end if;
   end loop;
 end $$;
 
