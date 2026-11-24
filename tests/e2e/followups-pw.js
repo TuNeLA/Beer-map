@@ -103,7 +103,9 @@ const SPORT = { v: 1, bars: [{ bar_id: "n3472634175", name: "Pitchers", lat: 60.
     /* ================= T2 Dagens order: PNI rules icon ================= */
     if (ONLY.test("T2")) for (const w of W3) {
       const { ctx, page } = await setup(browser, w);
-      await page.waitForSelector(".dl-cap-greet", { timeout: 9000 }).catch(() => page.evaluate(() => window.DELIGHT && window.DELIGHT.greet()));
+      // fixA P-04: the card shows only when no other card shows (care chip "Kolla till X", KAOS, call-out): clear them first
+      await page.evaluate(() => { document.querySelectorAll(".hud-left .af-chip-med").forEach((e) => { e.hidden = true; }); const c = document.getElementById("chaos-close"); if (c && !document.getElementById("chaos").hidden) c.click(); });
+      await page.waitForSelector("#dl-cap.dl-cap-greet:not([hidden])", { timeout: 9000 }).catch(() => page.evaluate(() => window.DELIGHT && window.DELIGHT.greet()));
       await page.waitForFunction(() => { const c = document.querySelector(".dl-cap-greet .dl-cap-h"); return c && c.querySelector("svg"); }, null, { timeout: 8000 }).catch(() => {});
       const h = await page.evaluate(() => { const c = document.querySelector(".dl-cap-greet .dl-cap-h"); return c ? { t: c.textContent, rules: !!c.querySelector(".pi-rules"), copy: !!c.querySelector(".pi-copy") } : null; });
       ok(`T2 ${w}: "Dagens order" head has the PNI rules icon, not the copy icon, no emoji`, h && /Dagens order/.test(h.t) && h.rules && !h.copy && !EMO.test(h.t), h);
