@@ -97,4 +97,5 @@ release 0530   # dating2 (P-088): Öppen ikväll tables + oi_* RPCs (beta client
 release 0531   # hockeybuild (I-116): olnu_avatar_max gets "tm":28 (hockey town shirt); applied staging + live 19 Nov (md5 b6dadb31)
 release 0532   # places (E4): opening-hours votes (yes / no / fix / here), crowd + owner fixes, closed-place signals; additive, the client hides it without it (PGRST202)
 release 0533   # mybeer (I-146 / I-147): beers.beer_lib + beer_lib_night, set_beer_lib + beer_lib_pins (authenticated only), bundle row; additive, the client hides friends' beers without it (PGRST202)
+release 0537   # swhguard (drift audit 24 Nov R1): ONE olnu_swh_guard = 0291 (new id hides old game-id twin + log) + 0293 (tv / tickster copies); live has 0291, staging 0293
 release 0436
