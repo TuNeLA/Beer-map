@@ -265,6 +265,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
   }
 
   /* ---------- N-19 copy + T-22 plurals (source + runtime) ---------- */
+  // E8 (lane i18n 24 Nov): pnui.js / gw.js wrap these words in I18N.L(sv, en) (English behind a test flag): same Swedish words
   if (want("copy")) {
     const pf = await src("js/pinfolj.js");
     ok("N-19 \"Pinnen följer med dig\" hint = the T-09 rule (gang sees, friends outside the gang only the area, no name)", /Gänget ser var du ä nu\. Vänner utanför gänget och andra ser bara området eller krogen, utan namn/.test(pf) && !/Bara vänner och gänget ser var du/.test(pf), pf.length);
@@ -274,7 +275,7 @@ const src = async (p) => { try { const r = await fetch(BASE + p); return r.ok ? 
     const pr = await src("js/profile.js"), a2 = await src("js/after2.js"), ps = await src("js/passport.js"), pu = await src("js/pnui.js"), gw = await src("js/gw.js"), av = await src("js/avatar.js");
     ok("T-22 Profil \"Stamkrog i år: … · 1 kväll\" (U.pl)", /U\.pl\(y\.fav_bar_nights, "kväll", "kvällar"\)/.test(pr));
     ok("T-22 morning report numbers card \"1 krog\"", /\(m\.bars \| 0\) === 1 \? String\(U\.n1\("1 " \+ T\("after\.r2\.num\.bars"\)\)\)/.test(a2));
-    ok("T-22 Ölpasset / Profil rows / Hemma-stan / avatar unlock: 1 krog, 1 medalj", /U\.pl\(data\.bars\.length, "krog", "krogar"\)/.test(ps) && /U\.pl\(nBars, "krog", "krogar"\)/.test(pu) && /U\.pl\(nMed, "medalj", "medaljer"\)/.test(pu) && /U\.n1\(\(t\.visited \| 0\) \+ " av "/.test(gw) && /U\.n1\(lk\.b \+ " krogar"\)/.test(av));
+    ok("T-22 Ölpasset / Profil rows / Hemma-stan / avatar unlock: 1 krog, 1 medalj", /U\.pl\(data\.bars\.length, "krog", "krogar"\)/.test(ps) && /U\.pl\(nBars, I18N\.L\("krog", "bar"\), I18N\.L\("krogar", "bars"\)\)/.test(pu) && /U\.pl\(nMed, I18N\.L\("medalj", "medal"\), I18N\.L\("medaljer", "medals"\)\)/.test(pu) && /U\.n1\(\(t\.visited \| 0\) \+ I18N\.L\(" av ", " of "\)/.test(gw) && /U\.n1\(lk\.b \+ " krogar"\)/.test(av));
     const { ctx, page } = await app(browser, 390);
     const rt = await page.evaluate(() => ({ a: window.U.pl(1, "kväll", "kvällar"), b: window.U.n1("1 av 1 krogar"), c: window.U.pl(2, "vald", "valda") }));
     ok("T-22 runtime: U.pl(1) = \"1 kväll\", U.n1(\"1 av 1 krogar\") = \"1 av 1 krog\", 2 = \"2 valda\"", rt.a === "1 kväll" && rt.b === "1 av 1 krog" && rt.c === "2 valda", rt);
