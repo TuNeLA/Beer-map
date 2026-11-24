@@ -21,7 +21,7 @@
     if (!safe && window.CALM && window.CALM.filter && window.CALM.filter(msg, opts)) return document.createElement("div");
     var box = $("toasts"), el = document.createElement("div");
     if (opts.id) { toastClear(opts.id); el.setAttribute("data-id", opts.id); }
-    el.className = "toast" + (opts.err ? " err" : "") + (opts.cls ? " " + opts.cls : "");
+    el.className = "toast" + (opts.err ? " err" : opts.ok ? " ok" : "") + (opts.cls ? " " + opts.cls : "");   // fixA P-27: opts.ok = a done/success line (check icon, not "i")
     el.setAttribute("role", opts.err ? "alert" : "status");
     var span = document.createElement("span"); span.textContent = msg; el.appendChild(span);
     if (opts.action) {

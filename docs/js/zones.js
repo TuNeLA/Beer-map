@@ -423,7 +423,7 @@
   function outN() { return pillD && pillD.known ? ((pillD.n | 0) || (pillD.some ? 1 : 0)) : null; }
   function pillEsc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }); }
   /* ui1 B10 (owner): the town name is NEVER cut. Fit order, first that fits wins:
-     1. one line "Dalarna · 47 ute ikväll" → "· 47 ute" → "· 47"
+     1. one line "Dalarna · 47 ute ikväll" → "· 47 ute" (fixA P-23: the bare "· 47" step is gone: the word "ute" always stays)
      2. two lines: the name (14 px) on top, the status (12 px, green dot when people are out) under it
      3. two lines, the name a little tighter (−0.02 em)
      4. a narrow phone and a long name: the PintsNow wordmark goes 22 → 18 px (body.pn-pill-tight), then 2 again.
@@ -433,7 +433,7 @@
     var e = pillEsc, nm = '<span class="zn-pn">' + e(d.name) + "</span>", sep = '<i class="zn-sep"> · </i>';
     var num = !d.known ? "–" : d.n ? nf(d.n) : d.some ? "några" : null;
     var one = num == null ? [" · lugnt ikväll", " · lugnt", " · lugnt"].map(function (x) { return nm + '<span class="zn-ps">' + x + "</span>"; })
-      : [" ute ikväll", " ute", ""].map(function (x) { return nm + '<span class="zn-ps"> · <b>' + num + "</b>" + x + "</span>"; });
+      : [" ute ikväll", " ute"].map(function (x) { return nm + '<span class="zn-ps"> · <b>' + num + "</b>" + x + "</span>"; });   // fixA P-23: never "Ludvika · 12" (a bare number is unclear): 2 lines first
     var dot = d.known && (d.n || d.some) ? '<i class="zn-dot" aria-hidden="true"></i>' : "";
     var two = num == null ? [nm + '<span class="zn-ps">' + sep + "lugnt ikväll</span>"]
       : [" ute ikväll", " ute"].map(function (x) { return nm + '<span class="zn-ps">' + dot + sep + '<span class="zn-n">' + num + "</span>" + x + "</span>"; });

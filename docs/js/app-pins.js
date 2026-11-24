@@ -209,7 +209,7 @@
     // Check-in badge: always on a bar without drinkers; next to a people pill only when zoomed in (less clutter).
     // Check-in count: zoom ≥ 16 only (below it the bar icon is just "lit", not a number).
     if (c.cis.length >= 3 && z >= LABEL_ZOOM && kp.ci) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";   // gw: no check-in number below 3 (the green 'lit' ring stays)
-    if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + (list.length && friendTotHTML(list) ? " below2" : "") + '">' + U.esc(bar.name) + "</span>";   // mapcrowd: under the friends' totals chip (raster map), not on it
+    if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";   // fixA P-03: the friends' totals are inside the pill now (one row), so the name sits right under it
     h += "</div>";
     // maplight (I-115): people I know stand beside the disc (GL draws them itself, glmap.js: only the raster map needs this HTML)
     if (!(window.GLBARS && window.GLBARS.on && window.GLBARS.on())) h += facesHTML(c);
@@ -591,13 +591,15 @@
     var hideB = [];
     var kept = [], W = cont.clientWidth, H = cont.clientHeight, cr = cont.getBoundingClientRect();
     var hit = function (a, b) { return a.left < b.right + 2 && a.right > b.left - 2 && a.top < b.bottom + 1 && a.bottom > b.top - 1; };
-    badges.forEach(function (x) {
+    var crowd = [], place1 = function (x, out) {   // fixA P-03: the crowd word goes last (after the names), as in tiers.js
       var r = x.r; if (!r.width) return;
       var bad = kept.some(function (k) { return hit(r, k); }) || obstacles.some(function (o) { return o.ic !== x.ic && hit(r, o.r); });
-      if (bad) hideB.push(x.el); else kept.push(r);
-    });
+      if (bad) out.push(x.el); else kept.push(r);
+    };
+    badges.forEach(function (x) { if (x.el.classList.contains("bm-crowd")) crowd.push(x); else place1(x, hideB); });
     hideB.forEach(function (e) { e.classList.add("lbl-hide"); });
-    if (!labels.length) return;
+    var hideC = [], crowdLast = function () { crowd.forEach(function (x) { place1(x, hideC); }); hideC.forEach(function (e) { e.classList.add("lbl-hide"); }); };
+    if (!labels.length) { crowdLast(); return; }
     labels.forEach(function (x) { x.r = x.el.getBoundingClientRect(); });   // smooth: one layout after the badge hides
     var hideL = [];
     labels.forEach(function (x) {
@@ -608,6 +610,7 @@
       if (bad) hideL.push(x.el); else kept.push(r);
     });
     hideL.forEach(function (e) { e.classList.add("lbl-hide"); });
+    crowdLast();
   }
   map.on("zoomend moveend", labelsSoon);
   map.on("moveend popupopen", function () { tiersNow(); labelsSoon(); });

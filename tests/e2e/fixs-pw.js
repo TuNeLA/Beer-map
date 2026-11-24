@@ -283,7 +283,7 @@ const n = (st, fn) => st.calls.filter((c) => c[0] === fn);
     await page.waitForSelector("#sheet-body [data-pf=s]", { timeout: 10000 }).catch(() => {});
     await clickJS(page, "#sheet-body [data-pf=s]"); await settle(page, 1800);
     const v = await page.evaluate(() => { const s = document.querySelector("#sheet-body .mn-vis-set"); return s ? { opts: [...s.querySelectorAll("[role=radio]")].map((b) => b.textContent.trim()), note: (s.querySelector(".pn-vis-note") || {}).textContent } : null; });
-    ok(`[${w}] T-18 Inställningar "Vem ser dig?" has Alla · Bara vänner · Spöke (also after a failed my_visibility)`, !!v && v.opts.join("|") === "Alla|Bara vänner|Spöke", v);
+    ok(`[${w}] T-18 Inställningar "Vem ser dig?" has Alla · Vänner · Spöke (also after a failed my_visibility; fixA P-05: was Bara vänner)`, !!v && v.opts.join("|") === "Alla|Vänner|Spöke", v);
     ok(`[${w}] T-09 Alla note is honest: the gang sees the pin, friends outside the gang see only the area, no name`, !!v && /Gänget ser din pin/.test(v.note) && /utan namn/.test(v.note) && !/Vänner ser din pin/.test(v.note), v && v.note);
     await clickJS(page, "#sheet-body .set-r-karta"); await wait(page, 700);   // d1settings hub (setfix): Dialekt is a row on the page Karta & dialekt
     const dk = await page.evaluate(() => { const r = document.querySelector("#sheet-body .dk-set"); if (!r) return null; const it = r.closest(".ds-item"), sec = r.closest("section.ds-section, .set-page");

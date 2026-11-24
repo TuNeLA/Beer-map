@@ -235,12 +235,20 @@
       for (q = 0; q < obstacles.length; q++) if (obstacles[q].ic !== x.ic && hit(x.a, obstacles[q].r)) return true;
       return false;
     };
-    badges.forEach(function (x) { if (!x.a.w) return; if (blocked(x)) hide.push(x.el); else { kept.push(x.a); show.push(x.el); } });
+    // fixA P-03 (polish 24 Nov: "Livligt" boxes on top of other bars' chips and names): the crowd word is the LAST thing placed.
+    // Badges first, then the names, then the crowd words; a crowd word that touches a kept part, another marker or the HUD
+    // (rail buttons, ticker) hides. The word is extra: the count on the pill says the same.
+    var crowd = [], zs = hudZones(map, W, H), hudHit = function (a) {
+      for (var q = 0; q < zs.length; q++) { var u = zs[q]; if (a.left < u.r && a.right > u.l && a.top < u.b && a.bottom > u.t) return true; }
+      return false;
+    };
+    badges.forEach(function (x) { if (!x.a.w) return; if (x.el.classList.contains("bm-crowd")) { crowd.push(x); return; } if (blocked(x)) hide.push(x.el); else { kept.push(x.a); show.push(x.el); } });
     labs.forEach(function (x) {
       var a = x.a;
       if (a.right < 0 || a.left > W || a.bottom < 0 || a.top > H) { show.push(x.el); return; }   // off screen: keep, costs nothing
       if (blocked(x)) hide.push(x.el); else { kept.push(a); show.push(x.el); }
     });
+    crowd.forEach(function (x) { if (blocked(x) || hudHit(x.a)) hide.push(x.el); else { kept.push(x.a); show.push(x.el); } });
     for (k = 0; k < show.length; k++) if (show[k].classList.contains("lbl-hide")) show[k].classList.remove("lbl-hide");
     for (k = 0; k < hide.length; k++) if (!hide[k].classList.contains("lbl-hide")) hide[k].classList.add("lbl-hide");
     lstats.n++; lstats.last = performance.now() - t0; lstats.items = items.length; lstats.todo = todo.length; lstats.parts = obstacles.length + badges.length + labs.length;
