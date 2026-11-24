@@ -423,6 +423,17 @@ async function closeAll(page) {
         await view(page, ll, z, 500);
         await page.waitForFunction(() => window.ZONES && ZONES._geo().k && ZONES._counts() && __mpw.gm().getLayer("olnu-zk-lbl"), null, { timeout: 30000 }).catch(() => console.log("zones late"));
         await page.evaluate(() => { __map.panBy([1, 0], { animate: false }); }); await idle(page, 1800);   // one more moveend (labels placed after the chips)
+        // motionfix (24 Nov, CI map-b flaky 2 runs in a row): the my-pin chip can change LATE (people data: "🚪Pitchers" became
+        // "👥Pitchers+1" 400 ms after this pan on CI); zones.js re-places the labels (relabel → 60 ms → setData), and on CI that
+        // landed 650 ms later still. The check read the map in between. Wait until the chips are still for 700 ms, no re-place
+        // waits (ZONES._pending) and GL has drawn it (max 8 s).
+        await page.evaluate(() => new Promise((res) => {
+          const sig = () => [...document.querySelectorAll(".leaflet-mypins-pane .mp-pin")].map((e) => { const r = e.getBoundingClientRect(); return e.textContent + Math.round(r.left) + "," + Math.round(r.top) + "," + Math.round(r.width); }).join("|");
+          const t0 = performance.now(); let s0 = sig(), at = t0;
+          (function chk() { const s = sig(), n = performance.now(); if (s !== s0) { s0 = s; at = n; }
+            if ((n - at > 700 && !(window.ZONES && ZONES._pending && ZONES._pending())) || n - t0 > 8000) res(); else setTimeout(chk, 50); })();
+        }));
+        await idle(page, 300);
         const d = await page.evaluate((UI) => {
           const g = __mpw.gm(), cv = g.getCanvas().getBoundingClientRect(), R = (r) => ({ l: r.left, t: r.top, r: r.right, b: r.bottom });
           const ui = [...document.querySelectorAll(UI)].filter((e) => { const r = e.getBoundingClientRect(), st = getComputedStyle(e); return r.width > 4 && r.height > 4 && st.visibility !== "hidden" && st.display !== "none" && +st.opacity > 0.1; })

@@ -644,7 +644,7 @@
   function moved() {
     cls();
     if (!map) return;
-    if (ready && wanted()) { clearTimeout(placeT); placeT = setTimeout(function () { place(false); }, 60); }   // map M3 (after the my-pin chips moved)
+    if (ready && wanted()) { clearTimeout(placeT); placeT = setTimeout(function () { placeT = 0; place(false); }, 60); }   // map M3 (after the my-pin chips moved)
     if (wanted()) {
       if (!geo.l && !geo.k) { check(); return; }
       if (!ready) ensure();
@@ -746,7 +746,7 @@
     _outline: function () { return KOMMUN_OUTLINE; },   // map M1: "none" | "mine"
     _place: function () { place(true); }, _uiRects: function () { return uiRects(); },   // map M3 test hooks
     // map M3: mypins.js calls this when its chips changed (labels step aside from them)
-    relabel: function () { if (!ready || !wanted()) return; clearTimeout(placeT); placeT = setTimeout(function () { place(false); }, 60); },
+    relabel: function () { if (!ready || !wanted()) return; clearTimeout(placeT); placeT = setTimeout(function () { placeT = 0; place(false); }, 60); }, _pending: function () { return !!placeT; },   // motionfix: test hook (a re-place waits)
     _ask: function () { countsAt = 0; ask(true); },
     _geo: function () { return { l: !!geo.l, k: !!geo.k, loadMs: stats.loadMs }; },
     // nightmap I-85: a friend's character as a 32 px round <img> ("" = none: the caller keeps its initial), I-78 test hooks
