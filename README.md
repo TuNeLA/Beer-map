@@ -113,18 +113,45 @@ The app is at https://tunela.github.io/Beer-map/. Push to `main` to update it.
 
 ## Android app
 
-The Android app is a Trusted Web Activity (TWA). It opens the live site in Chrome, so location, offline mode and push notifications work.
+The Android store app is a Capacitor shell in `android-cap/` (package `se.tunela.pintsnow`, targetSdk 36, minSdk 24). It carries a copy of `docs/` with the store flag on (`window.OLNU_STORE = true`). Full details: `android-cap/README.md`. The old TWA (`android/`, `.github/workflows/android.yml`, the public sideload test key) was removed on 19 Nov 2026 (C23). Its old commits stay in the git history.
 
-Install:
+### Build the APK (debug, to sideload)
 
-1. On your phone, open https://github.com/TuNeLA/Beer-map/releases/latest
-2. Download `olnu.apk`.
-3. When Android asks, allow "Install unknown apps" for Chrome.
-4. Open the file and tap Install.
+On GitHub (no tools needed on your computer):
 
-Notes:
+1. Actions > "Android store build (Capacitor)" > Run workflow.
+2. When it is green, open the run and download the artifact `pintsnow-debug-apk`.
+3. On the phone: open the `.apk`, allow "Install unknown apps" when Android asks, tap Install.
 
-- The APK is built by GitHub Actions (`.github/workflows/android.yml`) when `android/**` changes. You can also start it by hand (Actions > Android APK > Run workflow).
-- **Test key:** the APK is signed with `android/olnu-test.keystore`. Its password is in the workflow file. This key is public. Use it for sideloading only. Make a new private key (kept as a GitHub secret) before any Play Store release, and update `docs/.well-known/assetlinks.json` with the new SHA-256 fingerprint.
-- Test key SHA-256: `C5:59:91:C6:3F:67:3A:BF:31:06:14:73:27:DF:A7:F2:B9:E6:C8:63:1B:25:3C:97:D4:E1:64:EB:AF:80:07:19`
-- **Thin URL bar:** the app shows a thin URL bar at the top. The reason: Android looks for `assetlinks.json` at the domain root (`https://tunela.github.io/.well-known/assetlinks.json`). This repo only puts it at `/Beer-map/.well-known/`. To fix it, make a repo `TuNeLA.github.io` with `.well-known/assetlinks.json` (copy from `docs/.well-known/`), or use a custom domain.
+On your own computer (Node 22, JDK 21, Android SDK platform 36 + build-tools 35):
+
+```
+cd android-cap
+npm ci
+node scripts/prepare-www.mjs        # docs/ -> android-cap/www (store flag on, usage logging stripped)
+npx cap sync android
+cd android && ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
+```
+
+The workflow starts by itself on a push that changes `android-cap/**` (branches main, big-update, ci/**). `versionCode` = 100 + the run number.
+
+### Signed release (AAB for Play Console)
+
+Run the workflow with "release" ticked. It needs 4 repository secrets (Settings > Secrets and variables > Actions). Names only; the values stay in the owner's password manager and never go into git, a log or a commit message:
+
+- `ANDROID_UPLOAD_KEYSTORE_B64` (the upload keystore `.jks`, base64 in one line)
+- `ANDROID_UPLOAD_STORE_PASSWORD`
+- `ANDROID_UPLOAD_KEY_ALIAS`
+- `ANDROID_UPLOAD_KEY_PASSWORD`
+
+The workflow turns them into the variables `PN_UPLOAD_KEYSTORE_FILE`, `PN_UPLOAD_STORE_PASSWORD`, `PN_UPLOAD_KEY_ALIAS`, `PN_UPLOAD_KEY_PASSWORD` for Gradle, and deletes the keystore file after the build. No secrets = an unsigned release; debug builds always work. The artifact is `pintsnow-release-aab`. Steps to make the key: `android-cap/README.md`, section "Signing".
+
+## Secret scan (gitleaks)
+
+`.github/workflows/secrets.yml` runs gitleaks (v8.21.2, full history, redacted output) and `scripts/check-jwt-roles.py` on every push to main / big-update. The config is `.gitleaks.toml`: the default rules plus these exceptions, each with a reason:
+
+- JWT-shaped strings: the Supabase ANON keys are public by design (`docs/config.js` and others). gitleaks cannot tell an anon key from a `service_role` key. So the JWT match is allowed there, and `scripts/check-jwt-roles.py` decodes every JWT and FAILS on any role but `anon`. A service key in git is still caught.
+- `rt-abcdef-123`: a fake refresh token in unit tests (a generic-api-key false positive).
+- The path `.github/workflows/android.yml`: the old TWA workflow held the public sideload TEST key password. The file is gone, but gitleaks scans the whole history, so the exception stays. That test key is never used for the Play Store.
+
+Do not add a new exception to make a scan pass without a reason. If gitleaks finds a real key: rotate the key first, then clean up.

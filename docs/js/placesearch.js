@@ -12,6 +12,10 @@
      (its policy), live suggestions pause for 5 min and the field says "tryck Sök".
    I-127: "Köpsmansgatan 23A" gave nothing (Nominatim does not know the letter). Each engine tries the text as typed; if that
    finds nothing it tries the house number without the letter ("23"), then the whole world (Sweden first, never Sweden only).
+   G14 (coordfix, 24 Nov): our own town list (PN.towns, js/towns.js, 2 017 SCB tätorter) comes FIRST, with no network call: a text that is exactly a
+   town name ("Ludvika") answers from the list; before any Nominatim call a text that starts like a town name also answers from the list.
+   Nominatim stays ONLY as the last fallback for street addresses, on Sök / Enter (the usage policy allows a user search; no rule in RULES / DESIGN forbids it;
+   owner default 24 Nov = keep). hit.src "town".
    API: PN.placeSearch.query(q, {center}) → Promise<hit[]>;  PN.placeSearch.attach({input, button, host, center, onPick, subOf, state}) → ctl.
    hit = {title, sub, lat, lng, addr (raw Nominatim address or null), src}. */
 (function () {
@@ -78,6 +82,20 @@
       return fn(nl, c, signal);
     }).then(function (l) { return clean(l).length ? l : fn(q, c, signal, true); });
   }
+  // G14: our own town list. exact = the text IS a town name (any engine, no network); prefix = it starts like one (only before a Nominatim call).
+  var STREET = /(gatan|gata|vägen|väg|gränd|torg|stigen|allén|plan|backen|gården|platsen|\d)/i;
+  function ownTowns(q, exact) {
+    var T = window.PN && window.PN.towns; if (!T || STREET.test(q)) return Promise.resolve([]);
+    var n = q.toLowerCase();
+    return T.ready().then(function () {
+      var l = T.list().filter(function (t) { var x = t.name.toLowerCase(); return exact ? x === n : x.indexOf(n) === 0; });
+      l.sort(function (a, b) { return b.pop - a.pop; });
+      return l.slice(0, 5).map(function (t) { return { title: t.name, sub: t.kommun ? t.kommun + " kommun" : "", lat: t.lat, lng: t.lng, addr: null, src: "town" }; });
+    }, function () { return []; });
+  }
+  function nomFallback(q, c, signal) {
+    return ownTowns(q, false).then(function (l) { return l.length ? l : ladder(nominatim, q, c, signal); });
+  }
   function clean(l) { return (l || []).filter(function (h) { return isFinite(h.lat) && isFinite(h.lng) && h.title; }).slice(0, 5); }
   function query(q, o) {
     o = o || {}; q = String(q || "").trim(); if (q.length < 3) return Promise.resolve([]);
@@ -85,7 +103,10 @@
     if (e && Date.now() - e.at < TTL) return Promise.resolve(e.list);
     // o.live (typing): Mapbox only, never Nominatim (its usage policy); a Mapbox error pauses live suggestions (mbDown)
     var mb = function () { return ladder(mapbox, q, c, o.signal).catch(function (err) { mbDown = Date.now(); throw err; }); };
-    var run = eng !== "mapbox" ? ladder(nominatim, q, c, o.signal) : o.live ? mb() : mb().catch(function () { return ladder(nominatim, q, c, o.signal); });
+    var run = ownTowns(q, true).then(function (own) {
+      if (own.length) return own;
+      return eng !== "mapbox" ? nomFallback(q, c, o.signal) : o.live ? mb() : mb().catch(function () { return nomFallback(q, c, o.signal); });
+    });
     return run.then(function (l) {
       l = clean(l);
       if (l.length) { if (cacheN >= MAXC) { cache = {}; cacheN = 0; } cache[key] = { at: Date.now(), list: l }; cacheN++; }
