@@ -8,7 +8,7 @@
 //   SWFIX_DOCS=<dir> tests another docs/ folder (the old code: W2, W3 and the fx checks must FAIL there).
 const H = require("./ds-helpers.js");
 const { chromium } = require("playwright");
-const fs = require("fs"), path = require("path"), os = require("os"), http = require("http"), { execFileSync } = require("child_process");
+const fs = require("fs"), path = require("path"), os = require("os"), http = require("http"), { execFileSync, spawn } = require("child_process");
 const PORT = process.argv[2] || 8824;
 const PARTS = (process.argv[3] || "sw,fx").split(",");
 const REPO = path.join(__dirname, "..", ".."), DOCS = path.resolve(process.env.SWFIX_DOCS || path.join(REPO, "docs"));
@@ -92,73 +92,94 @@ async function until(page, fn, arg, ms) {
   }
   return false;
 }
-const nLoads = (page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("t.or") || "[]").length).catch(() => -1);
 const firstLoad = (page, ms) => page.waitForFunction(() => window.PN && PN.s && PN.s.firstLoadDone, null, { timeout: ms || 40000 }).then(() => true, () => false);
 const cacheReady = (page, v) => until(page, (v) => !!navigator.serviceWorker.controller && caches.has(v).then((h) => h && caches.open(v).then((c) => c.match("./index.html")).then((r) => !!r)), v, 90000);
-const waitingNow = (page) => until(page, () => navigator.serviceWorker.getRegistration().then((r) => !!(r && r.waiting && !r.installing)), null, 60000);
-// B runs: the page is build B and no worker waits. Does not send anything to the worker (a message would wake it).
-const onB = (page) => page.evaluate(() => (document.querySelector('meta[name="pn-build"]') || {}).content === "B" && navigator.serviceWorker.getRegistration().then((r) => !!(r && r.active && !r.waiting && r.active.state === "activated"))).catch(() => false);
-const verOfCtl = (page) => page.evaluate(() => new Promise((res) => { const c = navigator.serviceWorker.controller; if (!c) return res(null);
-  const ch = new MessageChannel(); ch.port1.onmessage = (e) => res(e.data && e.data.v); c.postMessage({ type: "pn-ver" }, [ch.port2]); setTimeout(() => res("?"), 1500); })).catch(() => "x");
 async function stopWorkers(cdp) { try { await cdp.send("ServiceWorker.stopAllWorkers"); return true; } catch (e) { return false; } }
-// time (ms) until build B runs, max ms; -1 = not in time
-async function timeToB(page, t0, ms) {
-  while (Date.now() - t0 < ms) { if (await onB(page)) return Date.now() - t0; await new Promise((r) => setTimeout(r, 200)); }
-  return -1;
-}
-// a phone with build A, then the site gets build B; the new worker installs and WAITS
-async function setupAB(browser, A, B) {
+
+/* ---------- W1 / W2 run in a Chromium with NO DevTools on the service workers ----------
+   Playwright attaches DevTools to every service worker, and Chromium then keeps a worker alive and has other stop rules
+   (service_worker_version.cc OnRequestTermination: "won't be terminated if DevTools is attached"). That is not a phone.
+   So W1 / W2 start the same Chromium binary by hand and speak raw CDP to the PAGE only. Supabase points to a dead host
+   (no network calls; the app shows its offline state, the update flow does not need Supabase). */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const SEED = `(function () { const S = (k, v) => localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
+  S("olnu.name", "Anton"); S("olnu.age18", "1"); S("olnu.intro", "1"); S("olnu.newsPn", "1"); S("olnu.notifAsked", "1"); S("olnu.notifAskAt", String(Date.now()));
+  S("olnu.guideSeen", String(Date.now())); S("olnu.installSeen", "1"); S("olnu.lang", "sv"); S("olnu.inst1", { n: 2, how: "test" }); S("olnu.flyttAsked", "1");
+  S("olnu.pnAha", "1"); S("olnu.pnOb", "1"); S("olnu.terms", "1"); return 1; })()`;
+const IS_B = "(document.querySelector('meta[name=pn-build]') || {}).content === 'B' && navigator.serviceWorker.getRegistration().then((r) => !!(r && r.active && !r.waiting && r.active.state === 'activated'))";
+// mode reload: the app is started again (a reload: the old page goes, a new one comes) · mode back: the app comes back after
+// 31 min; the old worker had stopped by itself (30 s with no event, like a phone in the background); the resume burst and a
+// poll every 4 s go through the worker. Returns { setup, ms (-1 = not in 30 s), loads, errs, state }.
+async function rawRun(mode, A, B) {
   srv.root = A.dir;
-  const { ctx, page, cdp } = await swCtx(browser);
-  await page.goto(BASE()); await firstLoad(page); const ready = await cacheReady(page, A.ver);
-  await page.reload(); await firstLoad(page); await wait(page, 1500);
-  srv.root = B.dir;
-  await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r.update()));
-  const waiting = await waitingNow(page);
-  return { ctx, page, cdp, ok: ready && waiting && (await verOfCtl(page)) === A.ver };
+  const ud = fs.mkdtempSync(path.join(TMP, "ud-"));
+  const ch = spawn(require("./env.js").CHROME || chromium.executablePath(), ["--headless=new", "--no-sandbox", "--disable-background-networking", "--no-first-run",
+    "--remote-debugging-port=0", "--user-data-dir=" + ud, "--window-size=390,844",
+    "--host-resolver-rules=MAP *.invalid ~NOTFOUND, MAP *.arcgisonline.com ~NOTFOUND, MAP *.cartocdn.com ~NOTFOUND, MAP *.openfreemap.org ~NOTFOUND, MAP *.mapbox.com ~NOTFOUND", "about:blank"],
+    { stdio: ["ignore", "ignore", "pipe"] });
+  const out = { setup: false, ms: -1, loads: 0, errs: [], state: null };
+  try {
+    const wsUrl = await Promise.race([new Promise((res) => { let b = ""; ch.stderr.on("data", (d) => { b += d; const m = /DevTools listening on (ws:\S+)/.exec(b); if (m) res(m[1]); }); }), sleep(20000).then(() => null)]);
+    if (!wsUrl) { out.state = "no DevTools url"; return out; }
+    const ws = new WebSocket(wsUrl); await new Promise((r) => ws.addEventListener("open", r));
+    let id = 0; const pend = new Map(); let sid = null;
+    ws.addEventListener("message", (m) => { const d = JSON.parse(m.data);
+      if (d.id && pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); }
+      if (d.sessionId === sid && d.method === "Runtime.exceptionThrown") out.errs.push(String((d.params.exceptionDetails.exception || {}).description || d.params.exceptionDetails.text).slice(0, 140));
+      if (d.sessionId === sid && d.method === "Page.frameNavigated" && !d.params.frame.parentId) out.loads++; });
+    const send = (method, params = {}, sessionId) => new Promise((res) => { const i = ++id; pend.set(i, res); ws.send(JSON.stringify({ id: i, method, params, sessionId })); });
+    const { result: { targetId } } = await send("Target.createTarget", { url: "about:blank" });
+    sid = (await send("Target.attachToTarget", { targetId, flatten: true })).result.sessionId;
+    const ev = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }, sid); return r.result && r.result.result ? r.result.result.value : undefined; };
+    const until = async (expr, ms) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr).catch(() => false)) return true; await sleep(250); } return false; };
+    await send("Page.enable", {}, sid); await send("Runtime.enable", {}, sid);
+    await send("Page.navigate", { url: BASE() }, sid); await sleep(3000);
+    await ev(SEED);
+    await send("Page.navigate", { url: BASE() }, sid); await sleep(4000);
+    const ctl = await until("navigator.serviceWorker.getRegistration().then((r) => !!(r && r.active && navigator.serviceWorker.controller))", 60000);
+    await send("Page.navigate", { url: BASE() }, sid); await sleep(5000);
+    srv.root = B.dir;
+    await ev("navigator.serviceWorker.getRegistration().then((r) => r.update()).then(() => 1, () => 0)");
+    const waiting = await until("navigator.serviceWorker.getRegistration().then((r) => !!(r && r.waiting && !r.installing))", 60000);
+    out.setup = ctl && waiting && (await ev("(document.querySelector('meta[name=pn-build]') || {}).content")) === "A";
+    await sleep(mode === "back" ? 40000 : 3000);
+    out.errs = []; const l0 = out.loads, t0 = Date.now();
+    if (mode === "reload") send("Page.reload", {}, sid);
+    else await ev(`(function () {
+      const hit = () => { fetch("https://swfix-poll.invalid/rpc?" + Math.random()).catch(() => {}); fetch("./manifest.webmanifest?p=" + Math.random()).catch(() => {}); };
+      hit(); UPD0._back(31 * 60e3);
+      let n = 0; const t = setInterval(() => { hit(); if (++n > 25) { clearInterval(t); setInterval(hit, 4000); } }, 80); return 1; })()`);
+    while (Date.now() - t0 < 30000) { if (await ev(IS_B).catch(() => false)) { out.ms = Date.now() - t0; break; } await sleep(250); }
+    await sleep(1500);
+    out.loads -= l0;
+    out.state = await ev("JSON.stringify({ upd: window.UPD0 && UPD0.state(), build: (document.querySelector('meta[name=pn-build]') || {}).content })").catch(() => null);
+    ws.close();
+  } finally {
+    ch.kill("SIGKILL"); await sleep(400);
+  }
+  return out;
 }
 
 async function swPart(browser, cfg) {
-  const A = build("A", cfg, 1500), B = build("B", cfg, 0);
+  const A = build("A", 'window.OLNU_CONFIG = { SUPABASE_URL: "https://swfix-sb.invalid", SUPABASE_ANON_KEY: "x" };\n', 1500);
+  const B = build("B", 'window.OLNU_CONFIG = { SUPABASE_URL: "https://swfix-sb.invalid", SUPABASE_ANON_KEY: "x" };\n', 0);
   console.log("builds:", A.ver, B.ver, "from", DOCS);
   await startServer();
-
   const wOn = (n) => PARTS.includes("sw") || PARTS.includes(n);   // parts w1, w2, w3 = one check only
-  // W1 the plain path: the app is opened again with a reload (a second start while the old page is gone)
+  const N = +(process.env.SWFIX_RUNS || 2);
+  // W1 the app is started again (reload) while B waits
   if (wOn("w1")) {
-    const { ctx, page, ok: up } = await setupAB(browser, A, B);
-    ok("W0 setup: build A runs under worker A, worker B waits", up);
-    const l0 = await nLoads(page), t0 = Date.now();
-    if (process.env.SWFIX_DEBUG) console.log("  reload at", (t0 % 100000) / 1000);
-    page.reload().catch(() => {});
-    const ms = await timeToB(page, t0, 15000);
-    await wait(page, 1500);
-    const upd = await page.evaluate(() => ({ s: window.UPD0 && UPD0.state(), splash: !!document.getElementById("pn-splash"), why: sessionStorage.getItem("pn.upd.why"), dbg: [] })).then((o) => page.evaluate(() => caches.open("olnu-dbg").then((c) => c.keys()).then((k) => k.map((r) => r.url.split("/").pop()))).then((d) => { if (o) o.dbg = d; return o; })).catch(() => null);
-    ok("W1 start again (reload) with B waiting: B runs within 6 s, at most ONE extra page load", ms >= 0 && ms < 6000 && (await nLoads(page)) - l0 <= 2 && page.errs.length === 0, { ms, loads: (await nLoads(page)) - l0, errs: page.errs, upd, workers: page.sw });
-    await ctx.close();
+    const r = []; for (let i = 0; i < N; i++) r.push(await rawRun("reload", A, B));
+    ok("W1 start again (reload) with B waiting, no DevTools: B runs within 6 s every time, at most 2 page loads, no page error (" + N + " runs)",
+      r.every((x) => x.setup && x.ms >= 0 && x.ms < 6000 && x.loads <= 2 && x.errs.length === 0), r);
   }
-
-  // W2 back from the background (>= 30 min): the old worker was stopped by the phone. The app's resume calls wake it while
-  // worker B asks to take over. Before: Chromium kept the old worker (30 s idle wait, polls every ~25 s = never idle).
+  // W2 back after 31 min: the old worker had stopped; the app's resume calls wake it while B asks to take over.
+  // Before: Chromium kept the old worker (its 30 s idle wait, a poll every few seconds = never idle): no switch in 30 s.
   if (wOn("w2")) {
-    const { ctx, page, cdp, ok: up } = await setupAB(browser, A, B);
-    await stopWorkers(cdp); await wait(page, 800);
-    const l0 = await nLoads(page), t0 = Date.now();
-    await page.evaluate(() => {
-      // the resume burst: the app's calls go out at once, then a poll every 4 s (same-origin + cross-origin, through the worker)
-      const hit = () => { fetch("https://swfix-poll.invalid/rpc?" + Math.random()).catch(() => {}); fetch("./manifest.webmanifest?p=" + Math.random()).catch(() => {}); };
-      hit(); UPD0._back(31 * 60e3);
-      let n = 0; const t = setInterval(() => { hit(); if (++n > 25) { clearInterval(t); window.__poll = setInterval(hit, 4000); } }, 80);
-    });
-    const ms = await timeToB(page, t0, 20000);
-    await wait(page, 2000);
-    const ver = await verOfCtl(page), loads = (await nLoads(page)) - l0;
-    ok("W2 back after 31 min, the old worker wakes while B asks: B runs within 8 s with ONE page load (was: 30 s+ or never)", up && ms >= 0 && ms < 8000 && ver === B.ver && loads === 1,
-      { setup: up, ms, ver: ver === B.ver ? "B" : ver === A.ver ? "A" : ver, loads, workers: page.sw });
-    ok("W2b no page errors", page.errs.length === 0, page.errs);
-    await ctx.close();
+    const r = []; for (let i = 0; i < N; i++) r.push(await rawRun("back", A, B));
+    ok("W2 back after 31 min, no DevTools: B runs within 6 s every time with ONE page load, no page error (was: no switch in 30 s) (" + N + " runs)",
+      r.every((x) => x.setup && x.ms >= 0 && x.ms < 6000 && x.loads === 1 && x.errs.length === 0), r);
   }
-
   // W3 a Supabase call does not wake a stopped worker (static route to the network). Only on Chromium 123+ (addRoutes).
   if (wOn("w3")) {
     srv.root = B.dir;
@@ -169,7 +190,7 @@ async function swPart(browser, cfg) {
     await page.evaluate(() => { for (let i = 0; i < 999; i++) clearInterval(i); });   // the app's own timers (polls) off
     await stopWorkers(cdp); await wait(page, 1500);
     const before = Object.values(page.sw).filter((s) => /^activated\//.test(s));
-    await page.evaluate(() => fetch((window.OLNU_CONFIG || {}).SUPABASE_URL + "/rest/v1/rpc/swfix_probe", { method: "POST", body: "{}" }).catch(() => {}));
+    await page.evaluate(() => fetch("https://swfix-probe.supabase.co/rest/v1/rpc/swfix_probe", { method: "POST", body: "{}" }).catch(() => {}));
     await page.evaluate(() => fetch("https://api.mapbox.com/swfix-probe").catch(() => {}));
     await wait(page, 1500);
     const after = Object.values(page.sw).filter((s) => /^activated\//.test(s));
@@ -254,7 +275,7 @@ async function fxRun(browser, vp, zero) {
   try { cfg = await (await fetch(`http://127.0.0.1:${PORT}/config.js`)).text(); } catch (e) {}
   if (!/SUPABASE_URL/.test(cfg) || /wcdskpcevbhouvbytkhv/.test(cfg)) { console.log("FAIL the server on port " + PORT + " must serve the STAGING config.js (PN_TARGET=staging python3 tests/e2e/serve.py " + PORT + " docs)"); process.exit(1); }
   const browser = await chromium.launch({ executablePath: require("./env.js").CHROME, args: ["--ignore-certificate-errors",
-    "--host-resolver-rules=MAP *.arcgisonline.com ~NOTFOUND, MAP *.cartocdn.com ~NOTFOUND, MAP *.openfreemap.org ~NOTFOUND, MAP swfix-poll.invalid ~NOTFOUND"] });
+    "--host-resolver-rules=MAP *.arcgisonline.com ~NOTFOUND, MAP *.cartocdn.com ~NOTFOUND, MAP *.openfreemap.org ~NOTFOUND, MAP *.invalid ~NOTFOUND, MAP swfix-probe.supabase.co ~NOTFOUND, MAP api.mapbox.com ~NOTFOUND"] });
   try {
     if (["sw", "w1", "w2", "w3"].some((p) => PARTS.includes(p))) await swPart(browser, cfg);
     if (PARTS.includes("fx")) {

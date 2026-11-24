@@ -95,8 +95,7 @@ function wakeOld() {
     } catch (err) { clearTimeout(t); done(); }
   });
 }
-function DBG(m) { var t = Date.now() % 100000 / 1000; return caches.open("olnu-dbg").then(function (c) { return c.put("./" + t + "-" + m, new Response("")); }).catch(function () {}); }
-function skipNow() { DBG("ask-" + VERSION); return wakeOld().then(function () { DBG("woke"); return self.skipWaiting(); }).then(function (x) { DBG("skipped"); return x; }); }
+function skipNow() { return wakeOld().then(function () { return self.skipWaiting(); }); }
 
 // swfix (A4b): calls that this worker never answers go straight to the network (Static Routing API, Chrome 123+; other
 // browsers skip it). Why: each Supabase poll and Mapbox request woke the worker for nothing, and a worker that wakes every
@@ -534,7 +533,7 @@ self.addEventListener("message", function (e) {
   var d = e.data || {}, id = e.source && e.source.id, reply = function () { try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {} };
   var all = function (f) { for (var b in kanalBoots) if (!id || b === id || !b) kanalBoots[b][f] = true; };   // Safari may not give resultingClientId
   if (d.type === "pn-skip") { keep(e, skipNow().then(reply, reply)); return; }   // start1: js/upd0.js says "take over now" (swfix: wake the old worker first)
-  if (d.type === "pn-ver") { DBG("ver-" + VERSION); try { if (e.ports && e.ports[0]) e.ports[0].postMessage({ v: VERSION }); } catch (err) {} return; }
+  if (d.type === "pn-ver") { try { if (e.ports && e.ports[0]) e.ports[0].postMessage({ v: VERSION }); } catch (err) {} return; }
   if (d.type === "pn-kanal-alive") { all("alive"); reply(); return; }
   if (d.type === "pn-kanal-ok") {
     all("ok");
