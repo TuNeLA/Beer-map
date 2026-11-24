@@ -407,7 +407,7 @@
     function stop() { if (done) return; done = true; W.cancelAnimationFrame(raf); if (c.parentNode) c.parentNode.removeChild(c); running = running.filter(function (h) { return h !== H; }); }
     function frame(now) {
       if (done) return;
-      var t = (now - t0) / 1000; if (t > dur || !c.isConnected) { stop(); return; }
+      var t = Math.max(0, (now - t0) / 1000); if (t > dur || !c.isConnected) { stop(); return; }   // swfix B9: a frame stamp from before play() = 0
       stats.frames++;
       g.setTransform(R, 0, 0, R, 0, 0); g.clearRect(0, 0, vw, vh); g.translate(ox, oy);
       try { if (fx.fx) fx.fx(g, t); for (var i = 0; i < fx.ps.length; i++) drawP(g, fx.ps[i], t, 1); } catch (x) { stop(); return; }

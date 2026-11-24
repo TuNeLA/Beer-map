@@ -260,7 +260,7 @@
     function stop() { dead = true; cancelAnimationFrame(raf); if (cv.parentNode) cv.remove(); }
     function frame(now) {
       if (dead || !cv.isConnected) { stop(); return; }
-      var dt = Math.min(0.05, (now - last) / 1000), t = (now - t0) / 1000; last = now;
+      var dt = Math.max(0, Math.min(0.05, (now - last) / 1000)), t = Math.max(0, (now - t0) / 1000); last = Math.max(last, now);   // swfix B9: no negative time
       if (t < cfg.emitFor && ps.length < MAXP) cfg.emit(ps, dt, t, W, H, MAXP - ps.length);
       g.globalCompositeOperation = "source-over"; g.globalAlpha = 1; g.clearRect(0, 0, W, H);
       g.globalCompositeOperation = "lighter";

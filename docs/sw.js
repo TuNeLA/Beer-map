@@ -77,13 +77,45 @@ function oldIntact() {
   }).then(function (rs) { return rs.some(Boolean); }, function () { return false; });
 }
 
+// swfix (A4b, 24 Nov): the new version came in late in Chromium (lane mapcrowd: only after the old worker had ~30 s with no
+// request). Why: after skipWaiting() Chromium waits until the OLD worker is idle. It cuts the old worker's idle wait from 30 s
+// to 0 only when the old worker RUNS at that moment (service_worker_registration.cc ActivateWaitingVersionWhenReady ->
+// TriggerIdleTerminationAsap). After some time in the background the old worker is stopped; the page's first requests on
+// return START it again, and a skipWaiting() that lands while it is still starting gets no short wait (30 s of full quiet,
+// or 5 min). Fix: wake the old worker first (pn-ver: it answers only when it runs), then skipWaiting(). Max 2 s wait.
+function wakeOld() {
+  var old = self.registration.active;
+  if (!old || old === self.serviceWorker) return Promise.resolve();
+  return new Promise(function (done) {
+    var t = setTimeout(done, 2000);
+    try {
+      var ch = new MessageChannel();
+      ch.port1.onmessage = function () { clearTimeout(t); done(); };
+      old.postMessage({ type: "pn-ver" }, [ch.port2]);
+    } catch (err) { clearTimeout(t); done(); }
+  });
+}
+function DBG(m) { var t = Date.now() % 100000 / 1000; return caches.open("olnu-dbg").then(function (c) { return c.put("./" + t + "-" + m, new Response("")); }).catch(function () {}); }
+function skipNow() { DBG("ask-" + VERSION); return wakeOld().then(function () { DBG("woke"); return self.skipWaiting(); }).then(function (x) { DBG("skipped"); return x; }); }
+
+// swfix (A4b): calls that this worker never answers go straight to the network (Static Routing API, Chrome 123+; other
+// browsers skip it). Why: each Supabase poll and Mapbox request woke the worker for nothing, and a worker that wakes every
+// ~25 s is never idle, so a waiting new version could not come in. Also: no worker hop before each API call.
+var NET_ROUTES = ["https://*.supabase.co/*", "https://api.mapbox.com/*", "https://events.mapbox.com/*"];
+function netRoutes(e) {
+  try {
+    if (!e.addRoutes) return;
+    e.waitUntil(e.addRoutes(NET_ROUTES.map(function (u) { return { condition: { urlPattern: u }, source: "network" }; })).catch(function () {}));
+  } catch (err) {}
+}
 self.addEventListener("install", function (e) {
+  netRoutes(e);
   e.waitUntil(precache().then(function () {
     // start1: first install (no active worker), an emergency release, or the old version lost its cache ("Uppdatera nu", storage
     // pressure) → take over now. Else WAIT: the open app keeps its version, with its own files, until js/upd0.js says pn-skip
     // or the app was closed.
-    if (TAKE_OVER_NOW || !self.registration.active) return self.skipWaiting();
-    return oldIntact().then(function (yes) { if (!yes) return self.skipWaiting(); });
+    if (TAKE_OVER_NOW || !self.registration.active) return skipNow();
+    return oldIntact().then(function (yes) { if (!yes) return skipNow(); });
   }, function (err) {
     // the new version is not complete: drop it, keep the old worker + cache (install is retried on the next update check)
     return caches.delete(VERSION).then(function () { throw err; });
@@ -501,8 +533,8 @@ function kanalRoute(req, e, url, scopePath, route) {
 self.addEventListener("message", function (e) {
   var d = e.data || {}, id = e.source && e.source.id, reply = function () { try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (err) {} };
   var all = function (f) { for (var b in kanalBoots) if (!id || b === id || !b) kanalBoots[b][f] = true; };   // Safari may not give resultingClientId
-  if (d.type === "pn-skip") { keep(e, Promise.resolve(self.skipWaiting()).then(reply, reply)); return; }   // start1: js/upd0.js says "take over now"
-  if (d.type === "pn-ver") { try { if (e.ports && e.ports[0]) e.ports[0].postMessage({ v: VERSION }); } catch (err) {} return; }
+  if (d.type === "pn-skip") { keep(e, skipNow().then(reply, reply)); return; }   // start1: js/upd0.js says "take over now" (swfix: wake the old worker first)
+  if (d.type === "pn-ver") { DBG("ver-" + VERSION); try { if (e.ports && e.ports[0]) e.ports[0].postMessage({ v: VERSION }); } catch (err) {} return; }
   if (d.type === "pn-kanal-alive") { all("alive"); reply(); return; }
   if (d.type === "pn-kanal-ok") {
     all("ok");
