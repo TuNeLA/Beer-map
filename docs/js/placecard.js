@@ -282,7 +282,7 @@
   // case retries (card not mounted, no action row yet, PN.beerlib not loaded) for about 8 s. Before: one early return lost the row for good on a slow runner.
   function tapCard(id) {
     var marks = document.querySelectorAll("[data-plc-more=" + attr(id) + "]");
-    for (var i = marks.length - 1; i >= 0; i--) { var bs = marks[i].closest(".bs"); if (bs && !bs.querySelector("[data-plc-tap]")) return bs; }
+    for (var i = 0; i < marks.length; i++) { var bs = marks[i].closest(".bs"); if (bs && !bs.querySelector("[data-plc-tap]")) return bs; }
     return null;
   }
   function tapFill(id, n) {
