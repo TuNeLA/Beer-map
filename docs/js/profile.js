@@ -274,7 +274,11 @@
         var b = document.getElementById("btn-settings"); if (b) b.click();
         setTimeout(function () { var f = document.querySelector("#sheet .bl.bl-fav"); try { if (f) f.scrollIntoView({ block: "center" }); } catch (e) {} }, 350);   // the card with the new favourite in view
       };
-      if (f) safe(function () { if (P.closeSheet) P.closeSheet(); setTimeout(function () { W("BARSEARCH").open("beer", "", slot ? { pick: slot, done: back } : null); }, 60); });
+      // open Sök only after the sheet's own history step is gone: its late popstate closed the new panel at once (seen after an
+      // earlier Sök visit). No popstate within 400 ms = go anyway.
+      var gone = false, go = function () { if (gone) return; gone = true; window.removeEventListener("popstate", go);
+        setTimeout(function () { W("BARSEARCH").open("beer", "", slot ? { pick: slot, done: back } : null); }, 30); };
+      if (f) safe(function () { window.addEventListener("popstate", go); if (P.closeSheet) P.closeSheet(); setTimeout(go, 400); });
     });
     P.beerlib().then(function (B) { if (B && B.favCard) B.favCard(fav); }, function () {});
     return fav;
