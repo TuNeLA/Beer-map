@@ -1112,7 +1112,8 @@
       // ✏️ BAREA editor (body.ba-edit) hides the marker panes: the GL bar layers hide with them
       if (window.MutationObserver) new MutationObserver(editVis).observe(document.body, { attributes: true, attributeFilter: ["class"] });
       setTimeout(check, 0);
-      setInterval(pkSync, 5000); document.addEventListener("visibilitychange", function () { if (!document.hidden) setTimeout(pkSync, 300); });
+      if (window.PN && PN.idle) PN.idle.every(pkSync, 5000); else setInterval(pkSync, 5000);   // coordfix (timers note): no 5 s wake-up while the page is hidden or a full sheet covers the map
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) setTimeout(pkSync, 300); });
     },
     on: function () { return on; },
     sync: sync,

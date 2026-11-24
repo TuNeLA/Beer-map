@@ -15,6 +15,11 @@ async function open(browser, o = {}) {
   if (o.taps) await ctx.addInitScript((bars) => { const f = window.fetch; window.fetch = function (u) {
     if (/\/data\/beer\/taps\.json/.test(String(u && u.url || u))) return Promise.resolve(new Response(JSON.stringify({ v: 1, bars }), { status: 200, headers: { "Content-Type": "application/json" } }));
     return f.apply(this, arguments); }; }, o.taps);
+  if (o.spyTimers) await ctx.addInitScript(() => {   // live setInterval timers named pkSync (glmap.js) at 5000 ms
+    const si = window.setInterval, ci = window.clearInterval; window.__cfxLive = {};
+    window.setInterval = function (fn, ms) { const id = si.apply(this, arguments); if (typeof fn === "function" && fn.name === "pkSync" && ms === 5000) window.__cfxLive[id] = 1; return id; };
+    window.clearInterval = function (id) { delete window.__cfxLive[id]; return ci.apply(this, arguments); };
+  });
   await boot(page);
   return { ctx, page, errs };
 }
@@ -65,6 +70,20 @@ const mount = (page, extra) => page.evaluate(([pl, extra]) => {
     await page.evaluate(() => PN.placeSearch.query("Storgatan 5", { center: { lat: 60.1, lng: 15.2 } }));
     ok("G14: a street address still reaches the last-fallback geocoder (Nominatim, once per ladder step)", reqs.length >= 1 && /nominatim/.test(reqs[0]) && /Storgatan 5/.test(reqs[0]), reqs);
     ok("No page errors (G14)", errs.length === 0, errs);
+    await ctx.close();
+
+    // ---------- glmap 5 s wake: the pickup sync interval sleeps while the map is covered / the page is hidden ----------
+    ({ ctx, page, errs } = await open(browser, { spyTimers: true }));
+    await wait(page, 1500);
+    const live = () => page.evaluate(() => Object.keys(window.__cfxLive || {}).length);
+    const w0 = await live();
+    await page.evaluate(() => PN.idle.cover("cfx", true)); await wait(page, 200);
+    const w1 = await live();
+    await page.evaluate(() => PN.idle.cover("cfx", false)); await wait(page, 200);
+    const w2 = await live();
+    ok("glmap: one live 5 s pickup-sync timer while the map is in sight", w0 === 1, { w0 });
+    ok("glmap: no 5 s timer while a full layer covers the map; it comes back after", w1 === 0 && w2 === 1, { w1, w2 });
+    ok("No page errors (glmap)", errs.length === 0, errs);
     await ctx.close();
   } catch (e) { fail++; console.log("FAIL exception", e && e.stack); }
   await browser.close();

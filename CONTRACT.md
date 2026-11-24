@@ -3183,3 +3183,17 @@ runs the code of the beta build. No other URL, no handover ticket, no "you are i
 - **Rapportera fel**: in beta code the text starts with "[beta <sha>] " and meta `v` = "beta <sha> · <app.js v>".
 - **Keep in the beta build**: kanal.js + the mods hook (the ok signal). The direct beta URL works as before.
 - Tests: scratchpad `beta-tests/beta-pw.js` (three local servers, live Supabase with a fresh anonymous user; WebKit not installed here).
+
+## 🍺 ÖLBIBLIOTEK · beer RPCs used by the person card and the pins (beer2 I-132 + mybeer I-146 / I-147; migrations 0526, 0533; additive; note added by coordfix 24 Nov 2026)
+- **`beerlib_favs_for(p_key text, p_group_id uuid, p_k text)`** (0526, authenticated only) → `[{slot, beer}]`. Who uses it: `js/profilecard.js` (the person card:
+  "<Name>s favoritöl" under the buttons, via the group + member key `p_group_id` + `p_k`; `p_key` = the invite key form). Only a friend or group mate,
+  never across a block, and it follows THEIR privacy switch (`beer_prefs.fav_mode`: spoke = `[]`, vanner = friends only, alla = friends + group mates).
+  `[]` or PGRST202 (old server) = no section; the beer library is loaded only when there is something to show.
+- **`set_beer_lib(p_beer text)`** (0533, authenticated only, security definer) → `{ok, beer}`. Writes `beers.beer_lib` + `beers.beer_lib_night` on MY OWN live pin row
+  (null = take it away; id must match `^[0-9A-Za-z_-]{1,40}$`; no live row = `no_beer`). Client: `js/mybeer.js`. A beer never leaks into another night.
+- **`beer_lib_pins(p_ids jsonb)`** (0533, authenticated only, security definer; rides the poll bundle: `rpc_bundle_allow` row + `BUNDLE` in `js/app-net.js`)
+  → `[{id, beer}]`. The beer of the pins the caller may see by name (group mates' live pins; max 200 ids; other entries skipped; a stranger's rotating
+  `p…` id never matches). Same beer privacy switch as the favourites (`fav_mode`); never across a block, a stopped or ghost pin, or another night.
+  Client: `js/mybeer.js`, at most once a minute and only while group mates' pins are on the map.
+- **Old server / old client**: a new client without 0526 or 0533 gets PGRST202 once, hides the part and does not retry. An old client never calls them.
+- Rules that hold for all three: a count is information only; store builds show no drinking celebration; the beer is shown only where the owner's privacy switch allows it.
