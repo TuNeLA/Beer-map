@@ -269,6 +269,9 @@
       s = pick(key, p[key], vars, cs, seed, i, n, al, okT); if (s === MIX) continue; if (s != null) { stats.region++; if (trace) trace.push([key, ch[j]]); return fill2(s, vars); }
     }
     if (trace) trace.push([key, null]);
+    // E8 (lane i18n): in English the def (plain Swedish) is not the neutral line: an "en-neutral" pack row wins (js/lang.js)
+    var pe = N !== "sv-neutral" ? packs[N] : null;
+    if (pe && Object.prototype.hasOwnProperty.call(pe, key)) { s = pick(key, pe[key], vars, cs, seed, i, n, al, okT); if (s != null && s !== MIX) return fill2(s, vars); }
     if (def != null) return fill2(String(def), vars);
     return t(key, vars);
   }

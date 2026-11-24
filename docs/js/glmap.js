@@ -140,7 +140,7 @@
     if (full) {
       if (s.p) {
         var p = s.p, py = hi ? 30 : 23, fB = "700 13px " + FONT, segs = [];
-        if (p.q) segs.push(["Lugnt", "#cfc6b4"]);   // gw: honest crowd, no count below 3
+        if (p.q) segs.push([I18N.L("Lugnt", "Chill"), "#cfc6b4"]);   // gw: honest crowd, no count below 3
         else if (p.n && p.n !== "0") { segs.push([p.n, p.m ? "#ffe08a" : "#ffc24d"]); if (p.e) segs.push([p.u ? " 👥" : " 🍺", "#fff"]); if (p.o) segs.push([" " + p.o, "#d9b8ff"]); }
         else if (p.o) segs.push([p.o.replace(/^·\s*/, ""), "#d9b8ff"]);
         else segs.push([p.n || "0", "#ffc24d"]);

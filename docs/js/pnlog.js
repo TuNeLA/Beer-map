@@ -542,7 +542,12 @@
     "lognote.use": "Under betan sparar vi vad du trycker på, och din position när plats är på. 30 dagar, inga namn.",
     "lognote.offLoc": "Stäng av position", "lognote.offUse": "Ändra", "lognote.ok": "OK"
   };
-  function NT(k) { try { var D = window.DIALEKT; if (D && D.t) { if (!NT.reg && D.register) { D.register("sv-neutral", NOTE_P); NT.reg = 1; } return D.t(k, {}, NOTE_P[k]); } } catch (e) {} return NOTE_P[k]; }
+  var NOTE_EN = {   // E8 (lane i18n): English (DIALEKT reads "en-neutral" when the app is in English)
+    "lognote.loc": "During the beta we keep your position (max once a minute) and what you tap for 30 days. No names. Change it in Settings → Privacy & visibility.",
+    "lognote.use": "During the beta we keep what you tap, and your position when location is on. 30 days, no names.",
+    "lognote.offLoc": "Turn off position", "lognote.offUse": "Change", "lognote.ok": "OK"
+  };
+  function NT(k) { try { var D = window.DIALEKT; if (D && D.t) { if (!NT.reg && D.register) { D.register("sv-neutral", NOTE_P); D.register("en-neutral", NOTE_EN); NT.reg = 1; } return D.t(k, {}, NOTE_P[k]); } } catch (e) {} return NOTE_P[k]; }
   function noteCard(text, label, fn, ms) {
     var old = document.getElementById("pnlog-note"); if (old) old.remove();
     var c = document.createElement("div"); c.id = "pnlog-note"; c.className = "pnlog-note mn-note"; c.setAttribute("role", "status");
@@ -638,15 +643,15 @@
     body.appendChild(el("h3", { text: "Integritet – förbättra appen" }));
     var evNow = m === "on" ? ls(K_EV) !== "0" : cons() && ls(K_EV) !== "0";
     var locNow = m === "on" ? ls(K_LOC) !== "0" : cons() && ls(K_LOC) !== "0";
-    if (m === "off") { body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vi sparar bara felrapporter (utan position) just nu." })); return; }
-    if (m === "lite") { body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vi sparar bara felrapporter och teknisk data (system, nät, hastighet – utan position) just nu." })); return; }
-    body.appendChild(swRow("Hjälp till att förbättra appen", evNow, "bulb", function (v) {
+    if (m === "off") { body.appendChild(el("p", { class: "muted pnlog-hint", text: I18N.L("Vi sparar bara felrapporter (utan position) just nu.", "We only keep error reports (no position) right now.") })); return; }
+    if (m === "lite") { body.appendChild(el("p", { class: "muted pnlog-hint", text: I18N.L("Vi sparar bara felrapporter och teknisk data (system, nät, hastighet – utan position) just nu.", "We only keep error reports and technical data (system, network, speed – no position) right now.") })); return; }
+    body.appendChild(swRow(I18N.L("Hjälp till att förbättra appen", "Help make the app better"), evNow, "bulb", function (v) {
       lsSet(K_EV, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
       consChanged();   // consent lane: on = held diagnostics go; off = usage + (real app) diagnostics dropped
-      A.toast(v ? "Tack! Vi sparar hur appen används (inga texter, inga namn)." : "Av. Vi sparar bara felrapporter.", { id: "pnlog-set", ms: 3000 });
+      A.toast(v ? I18N.L("Tack! Vi sparar hur appen används (inga texter, inga namn).", "Thanks! We keep how the app is used (no texts, no names).") : I18N.L("Av. Vi sparar bara felrapporter.", "Off. We only keep error reports."), { id: "pnlog-set", ms: 3000 });
     }));
-    body.appendChild(el("p", { class: "muted pnlog-hint", text: "Vad du trycker på, menyer, kartan (område avrundat ~1 km), funktioner och hur snabb appen är. Inga texter, inga namn. Sparas 30 dagar. " + (m === "on" ? "Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid." : "Teknisk data (system, nät, hastighet) bara när den är på. Felrapporter (utan position, utan uppgifter om telefonen) skickas alltid.") }));
-    body.appendChild(swRow("Spara position för bättre incheckning", locNow, "pin", function (v) {
+    body.appendChild(el("p", { class: "muted pnlog-hint", text: I18N.L("Vad du trycker på, menyer, kartan (område avrundat ~1 km), funktioner och hur snabb appen är. Inga texter, inga namn. Sparas 30 dagar. ", "What you tap, menus, the map (area rounded to ~1 km), features and how fast the app is. No texts, no names. Kept 30 days. ") + (m === "on" ? I18N.L("Felrapporter och teknisk data (system, nät, hastighet – utan position) skickas alltid.", "Error reports and technical data (system, network, speed – no position) are always sent.") : I18N.L("Teknisk data (system, nät, hastighet) bara när den är på. Felrapporter (utan position, utan uppgifter om telefonen) skickas alltid.", "Technical data (system, network, speed) only when it is on. Error reports (no position, no phone details) are always sent.")) }));
+    body.appendChild(swRow(I18N.L("Spara position för bättre incheckning", "Keep position for better check-in"), locNow, "pin", function (v) {
       lsSet(K_LOC, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
       if (!v) {
         L = [];
@@ -655,9 +660,9 @@
           try { fetch(CFG.SUPABASE_URL + "/rest/v1/rpc/pnlog_forget_loc", { method: "POST", credentials: "omit", headers: { "Content-Type": "application/json", apikey: CFG.SUPABASE_ANON_KEY, Authorization: "Bearer " + tok }, body: "{}" }).catch(function () {}); } catch (e) {}
         }
       }
-      A.toast(v ? "På. Vi sparar din position under kvällen (30 dagar)." : "Av. Din sparade positionslogg är borttagen.", { id: "pnlog-set", ms: 3500 });
+      A.toast(v ? I18N.L("På. Vi sparar din position under kvällen (30 dagar).", "On. We keep your position during the night (30 days).") : I18N.L("Av. Din sparade positionslogg är borttagen.", "Off. Your kept position log is removed."), { id: "pnlog-set", ms: 3500 });
     }));
-    body.appendChild(el("p", { class: "muted pnlog-hint", text: (m === "on" ? "Under betan: " : "") + "din position max 1 gång/min när appen är öppen, och dina in- och utcheckningar. Bara för att göra automatisk incheckning bättre. Sparas 30 dagar. Av = vi tar bort det sparade." }));
+    body.appendChild(el("p", { class: "muted pnlog-hint", text: (m === "on" ? I18N.L("Under betan: ", "During the beta: ") : "") + I18N.L("din position max 1 gång/min när appen är öppen, och dina in- och utcheckningar. Bara för att göra automatisk incheckning bättre. Sparas 30 dagar. Av = vi tar bort det sparade.", "your position at most once a minute while the app is open, and your check-ins and check-outs. Only to make automatic check-in better. Kept 30 days. Off = we remove what is kept.") }));
   }
 
   /* ---------- perf ---------- */

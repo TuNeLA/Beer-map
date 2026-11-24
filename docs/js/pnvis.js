@@ -32,6 +32,14 @@
     "vis.setHead": "Synlighet & trygghet"
   };
   try { if (window.DIALEKT && window.DIALEKT.register) window.DIALEKT.register("sv-neutral", P); } catch (e) {}
+  // E8 (lane i18n): the English pack (DIALEKT.t reads "en-neutral" when the app is in English; js/lang.js)
+  try { if (window.DIALEKT && window.DIALEKT.register) window.DIALEKT.register("en-neutral", { "vis.head": "Who sees you?", "vis.alla": "Everyone", "vis.vanner": "Friends only", "vis.spoke": "Ghost",
+    "vis.allaNote": "The crew sees your pin and your name. Friends outside the crew and everyone else see only the area or the bar, no name.",
+    "vis.vannerNote": "The crew sees your pin and your name. Friends outside the crew see only the area. Others see nothing.",
+    "vis.spokeNote": "Nobody sees you on the map. Your beers still count.", "vis.lblAlla": "Visible", "vis.lblVanner": "Friends", "vis.lblSpoke": "Ghost",
+    "vis.hide": "Hide my pin", "vis.hideSub": "Remove the pin from the map tonight", "vis.home": "Home zone", "vis.homeOn": "On · {r} m · at home only an area shows",
+    "vis.homeOff": "Off · set your home", "vis.sos": "SOS to the crew", "vis.sosSub": "Send your exact position to the group", "vis.sosTitle": "SOS",
+    "vis.sosLead": "Only when something is wrong. In danger: call 112.", "vis.all": "All settings", "vis.allSub": "Privacy, place and safety", "vis.setHead": "Visibility & safety" }); } catch (e) {}
   function T(k, v) { try { if (window.DIALEKT && window.DIALEKT.t) return window.DIALEKT.t(k, v || {}, P[k]); } catch (e) {} return String(P[k] || k).replace(/\{(\w+)\}/g, function (m, n) { return v && v[n] != null ? v[n] : ""; }); }
   function W(n) { return window[n] || null; }
   function api() { try { return W("PNDS") && W("PNDS")._A ? W("PNDS")._A() : null; } catch (e) { return null; } }
@@ -68,10 +76,10 @@
     if (m === "spoke" && A && A.rpc && A.LIVE) { try { A.rpc("stop_beer").then(function () { try { if (A.refresh) A.refresh(); } catch (e) {} }); A.rpc("check_out"); } catch (e) {} }
     if (m !== "spoke") ls(KEY, m);
     if (srv && A && A.rpc) A.rpc("set_visibility", { p_friends_only: m === "vanner" }).then(function (r) {
-      if (r && r.error) { ls(KEY, prev === "vanner" ? "vanner" : "alla"); paint(); try { A.toast("Det gick int' att ändra. Försök igen.", { err: true }); } catch (e) {} }
+      if (r && r.error) { ls(KEY, prev === "vanner" ? "vanner" : "alla"); paint(); try { A.toast(I18N.L("Det gick int' att ändra. Försök igen.", "Could not change it. Try again."), { err: true }); } catch (e) {} }
     });
     try { if (A && A.updateCounts) A.updateCounts(); } catch (e) {}
-    try { if (A && A.toast) A.toast(m === "spoke" ? "Spöke: ingen ser dig. Ölen räknas ändå." : prev === "spoke" ? "Synlig igen. Din pin syns från nästa ÖL!" : m === "vanner" ? "Bara gänget och vänner ser dig nu." : "Alla ser ditt område igen. Gänget ser din pin.", { id: "pn-vis", ms: 3000 }); } catch (e) {}
+    try { if (A && A.toast) A.toast(m === "spoke" ? I18N.L("Spöke: ingen ser dig. Ölen räknas ändå.", "Ghost: nobody sees you. Your beers still count.") : prev === "spoke" ? I18N.L("Synlig igen. Din pin syns från nästa ÖL!", "Visible again. Your pin shows from the next BEER!") : m === "vanner" ? I18N.L("Bara gänget och vänner ser dig nu.", "Only the crew and friends see you now.") : I18N.L("Alla ser ditt område igen. Gänget ser din pin.", "Everyone sees your area again. The crew sees your pin."), { id: "pn-vis", ms: 3000 }); } catch (e) {}
     paint(); if (menu) fill();
   }
   function paint() {
@@ -82,7 +90,7 @@
       var dot = b.querySelector(".pn-rail-dot"), lb = b.querySelector(".mn-rail-l"); b.innerHTML = ic(t[1]); if (dot) b.appendChild(dot); if (lb) b.appendChild(lb);
     }
     var l = b.querySelector(".mn-rail-l"); if (l && l.textContent !== T(t[3])) l.textContent = T(t[3]);
-    b.setAttribute("aria-label", "Synlighet: " + name + ". Ändra"); b.title = "Synlighet: " + name;
+    b.setAttribute("aria-label", I18N.L("Synlighet: ", "Visibility: ") + name + I18N.L(". Ändra", ". Change")); b.title = I18N.L("Synlighet: ", "Visibility: ") + name;
     b.setAttribute("aria-pressed", String(m !== "alla")); b.setAttribute("aria-haspopup", "menu");
   }
 

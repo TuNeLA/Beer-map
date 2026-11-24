@@ -8,7 +8,8 @@
    sits right after it in the same row. Hidden while a sheet is open, in public / demo mode and before sign-in. window.PNIKV. */
 (function () {
   "use strict";
-  var ST = { ute: ["beer", "Ute"], kanske: ["help", "Kanske"], hemma: ["home", "Hemma"] };
+  function L(s, e) { return window.I18N && window.I18N.lang === "en" ? e : s; }   // E8: sv / en (the language is fixed per page load)
+  var ST = { ute: ["beer", L("Ute", "Out")], kanske: ["help", L("Kanske", "Maybe")], hemma: ["home", L("Hemma", "Home")] };
   var chip = null, menu = null, sig = "";
   function W(n) { return window[n] || null; }
   function ic(n, c) { try { return W("PNI") ? W("PNI").svg(n, c || "") : ""; } catch (e) { return ""; } }
@@ -38,12 +39,12 @@
     var k = [on, m, drv, w].join("|");
     if (c.hidden !== !on) c.hidden = !on;
     if (k === sig) return; sig = k;
-    var word = s ? s[1] : "Ikväll?";
+    var word = s ? s[1] : L("Ikväll?", "Tonight?");
     c.className = "pn-ikv2" + (m ? " pn-ikv2-" + m : "");
     c.innerHTML = ic(s ? s[0] : "moon", "pn-ikv2-i") + '<span class="pn-ikv2-t">' + word + "</span>" +
-      (drv ? '<span class="pn-ikv2-x" title="Du kör ikväll">' + ic("taxi", "") + "</span>" : "") +
-      (w ? '<span class="pn-ikv2-x" title="Följ mig hem på">' + ic("walk", "") + "</span>" : "") + ic("chev-down", "pn-ikv2-c");
-    c.setAttribute("aria-label", "Ikväll: " + (s ? s[1] : "inte sagt än") + (drv ? ", du kör" : "") + (w ? ", Följ mig hem på" : "") + ". Öppna menyn");
+      (drv ? '<span class="pn-ikv2-x" title="' + L("Du kör ikväll", "You drive tonight") + '">' + ic("taxi", "") + "</span>" : "") +
+      (w ? '<span class="pn-ikv2-x" title="' + L("Följ mig hem på", "Walk me home on") + '">' + ic("walk", "") + "</span>" : "") + ic("chev-down", "pn-ikv2-c");
+    c.setAttribute("aria-label", L("Ikväll: ", "Tonight: ") + (s ? s[1] : L("inte sagt än", "not set yet")) + (drv ? L(", du kör", ", you drive") : "") + (w ? L(", Följ mig hem på", ", Walk me home on") : "") + L(". Öppna menyn", ". Open the menu"));
     if (menu) fill();
   }
 
@@ -56,8 +57,8 @@
     if (!menu) return;
     var m = mine(), drv = driving(), w = walk();
     menu.innerHTML = "";
-    menu.appendChild(el("p", "pn-ikm-h", "Ikväll"));
-    var seg = el("div", "gm-seg pn-ikm-seg"); seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", "Ikväll");
+    menu.appendChild(el("p", "pn-ikm-h", L("Ikväll", "Tonight")));
+    var seg = el("div", "gm-seg pn-ikm-seg"); seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", L("Ikväll", "Tonight"));
     ["ute", "kanske", "hemma"].forEach(function (k) {
       var b = el("button", "pn-ikm-s", ic(ST[k][0], "") + "<span>" + ST[k][1] + "</span>");
       b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(m === k)); b.setAttribute("data-st", k);
@@ -75,17 +76,17 @@
     try { if (W("GAMES") && W("GAMES").menuRows) W("GAMES").menuRows(row, close).forEach(function (x) { list.appendChild(x); }); } catch (x) {}   // games: Vem fixar nästa?
     if (W("SKJUTS") && W("SKJUTS").setDriver) {
       var sw = '<span class="switch" aria-hidden="true" aria-checked="' + drv + '"></span>';
-      var dr = row("taxi", "Jag kör ikväll", drv ? "Gänget ser att du kör" : "Visa gänget att du kör", function (e) {
+      var dr = row("taxi", L("Jag kör ikväll", "I drive tonight"), drv ? L("Gänget ser att du kör", "The crew sees that you drive") : L("Visa gänget att du kör", "Show the crew that you drive"), function (e) {
         e.stopPropagation(); var on = !driving(); dr.disabled = true; try { W("SKJUTS").setDriver(on, dr); } catch (x) {}
         setTimeout(function () { dr.disabled = false; sig = ""; paint(); }, 900);
       }, sw);
       dr.setAttribute("role", "switch"); dr.setAttribute("aria-checked", String(drv)); dr.classList.add("pn-ikm-sw");
       list.appendChild(dr);
     }
-    if (W("HEMFOLJ") && W("HEMFOLJ").open) list.appendChild(row("home", "Följ mig hem", w ? "På · " + (w.watching | 0) + " följer" : "Vänner ser dig hela vägen hem",
+    if (W("HEMFOLJ") && W("HEMFOLJ").open) list.appendChild(row("home", L("Följ mig hem", "Walk me home"), w ? L("På · ", "On · ") + (w.watching | 0) + L(" följer", " watching") : L("Vänner ser dig hela vägen hem", "Friends see you all the way home"),
       function () { close(); try { W("HEMFOLJ").open({}); } catch (x) {} }));
-    if (W("SKJUTS") && W("SKJUTS").openPickup) list.appendChild(row("sos", "Hämta mig", "Kan nån hämta mig?", function () { close(); try { W("SKJUTS").openPickup({}); } catch (x) {} }));
-    if (W("PNUI") && W("PNUI").openIkvall) list.appendChild(row("users", "Vilka ska ut?", "Dina vänner och gänget", function () { close(); try { W("PNUI").openIkvall(); } catch (x) {} }));
+    if (W("SKJUTS") && W("SKJUTS").openPickup) list.appendChild(row("sos", L("Hämta mig", "Pick me up"), L("Kan nån hämta mig?", "Can someone pick me up?"), function () { close(); try { W("SKJUTS").openPickup({}); } catch (x) {} }));
+    if (W("PNUI") && W("PNUI").openIkvall) list.appendChild(row("users", L("Vilka ska ut?", "Who is going out?"), L("Dina vänner och gänget", "Your friends and the crew"), function () { close(); try { W("PNUI").openIkvall(); } catch (x) {} }));
     menu.appendChild(list);
   }
   function place() {
@@ -96,7 +97,7 @@
   }
   function open() {
     if (menu || !chip) return;
-    menu = el("div", "pn-ikm"); menu.id = "pn-ikm"; menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Ikväll");
+    menu = el("div", "pn-ikm"); menu.id = "pn-ikm"; menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", L("Ikväll", "Tonight"));
     menu.addEventListener("click", function (e) { e.stopPropagation(); });
     document.body.appendChild(menu); fill(); place();
     chip.setAttribute("aria-expanded", "true");
@@ -123,12 +124,12 @@
   function safeRows() {
     var hasH = W("HEMFOLJ") && W("HEMFOLJ").open, hasP = W("SKJUTS") && W("SKJUTS").openPickup; if (!hasH && !hasP) return null;
     var f = document.createDocumentFragment(), w = walk();
-    f.appendChild(el("h3", "pn-safe-h", "Säker hem"));
+    f.appendChild(el("h3", "pn-safe-h", L("Säker hem", "Safe home")));
     var list = el("div", "ds-list pn-list pn-safe");
     var mk = function (icon, t, s, fn) { var b = el("button", "ds-row pn-row", '<span class="ds-row-i">' + ic(icon, "") + '</span><span class="ds-row-t"><span>' + t + "</span><small>" + s + '</small></span><span class="ds-chev"></span>');
       b.type = "button"; b.addEventListener("click", function () { var A = api(); try { if (A && A.closeSheet) A.closeSheet(); } catch (e) {} setTimeout(fn, 80); }); list.appendChild(b); };
-    if (hasH) mk("home", "Följ mig hem", w ? "På · " + (w.watching | 0) + " följer" : "Vänner ser dig hela vägen hem", function () { W("HEMFOLJ").open({}); });
-    if (hasP) mk("sos", "Hämta mig", "Kan nån hämta mig?", function () { W("SKJUTS").openPickup({}); });
+    if (hasH) mk("home", L("Följ mig hem", "Walk me home"), w ? L("På · ", "On · ") + (w.watching | 0) + L(" följer", " watching") : L("Vänner ser dig hela vägen hem", "Friends see you all the way home"), function () { W("HEMFOLJ").open({}); });
+    if (hasP) mk("sos", L("Hämta mig", "Pick me up"), L("Kan nån hämta mig?", "Can someone pick me up?"), function () { W("SKJUTS").openPickup({}); });
     f.appendChild(list); return f;
   }
   window.PNIKV = { open: open, close: close, safeRows: safeRows, paint: function () { sig = ""; paint(); }, _menu: function () { return menu; } };

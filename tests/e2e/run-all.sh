@@ -117,6 +117,7 @@ run f13       $B f13-pw.js        # lane f13 (owner 13 Nov): Fredag 13 badge = S
 run alive2    $B alive2-pw.js     # lane alive2 (I-77): friend ÖL! ripple, holiday ÖL! pulse + bob, Skåltimmen glow, my ÖL! foam, weekend dusk; pause on move/hidden, reduced motion still, budget 12, store = no drink FX
 run mycount   $B mycount-pw.js    # I-102 (owner 14 Nov): B = 🍺 count rail button under ⋯ (tap = Min kväll), D = count burst on my ÖL! (calm 8+, reduced = fade, store = off)
 run texts     $B texts-pw.js      # lane texts (24 Nov): B3 new-user privacy start, E2 no count praise in ticker / Min kväll / rank line, I-19b reinstall note
+run i18n      $B i18n-pw.js       # E8 (lane i18n 24 Nov): English behind a test flag: 20 screens in English with no Swedish left, the switch in Karta & dialekt, sv pictures
 run takeover  $B takeover-pw.js   # lane takeover, I-105: the 5/10/15 card fits at 360/390/430 (every pool string), one text (no toast under it, Ångra after it), 400 ms tap guard (motion19b), staggered entrance, store = no celebration
 run motion19b $B motion19b-pw.js   # lane motion19b: takeover 80 ms dim + 400 ms tap guard + 200 ms exit, Hemma end-of-night card, tab marker spring, switch knob + ambient by transform, 44 px hot-pill hit box, bottom dock hit boxes do not overlap
 run storeprep $B storeprep-pw.js  # lane storeprep: F5 (I-100) store builds show no beer-count medal (mine, uniform, member, ribbon row, toast, avatar chest), web keeps them; F4 radera.html shows only the delete text that is live (direct today, del-7d after 0402)

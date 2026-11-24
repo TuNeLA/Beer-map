@@ -489,11 +489,11 @@
     var sw = box.querySelectorAll(".switch[data-kind]"), on = [].filter.call(sw, function (x) { return x.getAttribute("aria-checked") === "true"; }).length;
     var ios = /iPad|iPhone|iPod/.test(navigator.userAgent || "") || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     var home = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
-    if (ios && !home) return Promise.resolve("Av – kräver att appen läggs på hemskärmen");   // ux: iPhone Safari has no web push
-    if (!supported() || Notification.permission !== "granted" || want() === "0") return Promise.resolve("Av");
+    if (ios && !home) return Promise.resolve(I18N.L("Av – kräver att appen läggs på hemskärmen", "Off – needs the app on the home screen"));   // ux: iPhone Safari has no web push
+    if (!supported() || Notification.permission !== "granted" || want() === "0") return Promise.resolve(I18N.L("Av", "Off"));
     var t = new Promise(function (res) { setTimeout(function () { res(undefined); }, 1500); });
     return Promise.race([current(), t]).then(function (sub) {
-      return sub === null ? "Av" : on + " av " + sw.length + " på";   // undefined (slow) = trust the permission
+      return sub === null ? I18N.L("Av", "Off") : on + I18N.L(" av ", " of ") + sw.length + I18N.L(" på", " on");   // undefined (slow) = trust the permission
     });
   }
   function watchCount(box) {

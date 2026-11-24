@@ -79,19 +79,19 @@
   var LOGTXT = "I betan loggar vi allt för att förbättra appen: vad du trycker på, menyer, fel, telefontyp och (om du tillåtit platsen) position max 1 gång/min. Sparas 30 dagar. Stäng av i Integritet.";
   function subOf(on) {
     var s = sha();
-    if (direct) return "Testadressen kör alltid betan, kan inte byta.";
-    if (on && running()) return "Beta" + (s ? " " + s : "") + ". Av = vanliga appen, samma konto.";
-    if (on) return "Startar betan nästa gång appen öppnas.";
-    return "Nya grejer först. Kan ha buggar.";
+    if (direct) return I18N.L("Testadressen kör alltid betan, kan inte byta.", "The test address always runs the beta, no switch.");
+    if (on && running()) return "Beta" + (s ? " " + s : "") + I18N.L(". Av = vanliga appen, samma konto.", ". Off = the normal app, same account.");
+    if (on) return I18N.L("Startar betan nästa gång appen öppnas.", "The beta starts the next time the app opens.");
+    return I18N.L("Nya grejer först. Kan ha buggar.", "New things first. Can have bugs.");
   }
   function row(on) {
     var label = document.createElement("span");
     label.innerHTML = ic("sparkle");
-    label.appendChild(document.createTextNode("Betaversion"));
+    label.appendChild(document.createTextNode(I18N.L("Betaversion", "Beta version")));
     var sm = document.createElement("small"); sm.className = "kn-sub"; sm.textContent = subOf(on); label.appendChild(sm);
     // an inline text link (a <button> gets the 44 px row button height from the sheet rules and breaks the 2 lines)
     var more = document.createElement("a"); more.href = "#"; more.setAttribute("role", "button"); more.className = "kn-more";
-    more.textContent = direct ? "Varför?" : "Vad loggas?"; more.setAttribute("aria-expanded", "false");
+    more.textContent = direct ? I18N.L("Varför?", "Why?") : I18N.L("Vad loggas?", "What is logged?"); more.setAttribute("aria-expanded", "false");
     sm.appendChild(document.createTextNode(" ")); sm.appendChild(more);
     var swb = document.createElement("button");
     swb.type = "button"; swb.className = "switch"; swb.setAttribute("role", "switch");
@@ -104,10 +104,10 @@
     var info = document.createElement("span"); info.className = "kn-info"; info.hidden = true;
     info.addEventListener("click", function (e) { e.stopPropagation(); });
     if (direct) {
-      info.appendChild(document.createTextNode("Testadressen kan inte byta kanal. Vill du tillbaka? Öppna vanliga appen och stäng av Betaversion där. Samma konto. "));
-      var a = document.createElement("a"); a.className = "kn-open"; a.href = STABLE + "?kanal=stabil"; a.textContent = "Öppna vanliga appen";
+      info.appendChild(document.createTextNode(I18N.L("Testadressen kan inte byta kanal. Vill du tillbaka? Öppna vanliga appen och stäng av Betaversion där. Samma konto. ", "The test address cannot switch channel. Want to go back? Open the normal app and turn off Beta version there. Same account. ")));
+      var a = document.createElement("a"); a.className = "kn-open"; a.href = STABLE + "?kanal=stabil"; a.textContent = I18N.L("Öppna vanliga appen", "Open the normal app");
       info.appendChild(a);
-    } else info.textContent = LOGTXT;
+    } else info.textContent = I18N.L(LOGTXT, "In the beta we log everything to make the app better: what you tap, menus, errors, phone type and (if you allowed the place) position at most once a minute. Kept 30 days. Turn it off in Privacy.");
     label.appendChild(info);
     var showInfo = function (v) { info.hidden = !v; more.setAttribute("aria-expanded", String(!!v)); };
     more.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); showInfo(info.hidden); });
@@ -148,11 +148,11 @@
     }).then(function (html) {
       if (!/id="olnu-beta"/.test(html)) throw new Error("not a beta");
       return setRec({ ch: "beta", url: BETA, at: Date.now(), by: "user" }).then(function (saved) {
-        if (!saved) { undo("Det gick inte att slå på betan. Uppdatera appen och försök igen."); return writeRec({ ch: "stable", at: Date.now() }); }
+        if (!saved) { undo(I18N.L("Det gick inte att slå på betan. Uppdatera appen och försök igen.", "Could not turn on the beta. Update the app and try again.")); return writeRec({ ch: "stable", at: Date.now() }); }
         toast("Startar betan… I betan loggar vi allt för att förbättra appen (stäng av i Inställningar → Integritet & synlighet).", { ms: 4000 });
         setTimeout(function () { location.reload(); }, 600);
       });
-    }).catch(function () { clearTimeout(tm); undo("Betan går inte att nå just nu. Försök igen senare."); });
+    }).catch(function () { clearTimeout(tm); undo(I18N.L("Betan går inte att nå just nu. Försök igen senare.", "The beta cannot be reached right now. Try again later.")); });
   }
   function settingsSheet(body) {
     if (!BETA || !body || body.querySelector(".pn-kanal")) return;

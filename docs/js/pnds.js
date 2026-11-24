@@ -140,7 +140,7 @@
   }
   function fixChrome() {
     setIcon($("btn-top"), "trophy", "Topplistor");
-    setIcon($("btn-locate"), "locate", "Visa var jag är");
+    setIcon($("btn-locate"), "locate", I18N.L("Visa var jag är", "Show where I am"));
     var gi = document.querySelector("#btn-groups .side-ico"); if (gi && !gi.querySelector(".pi")) gi.innerHTML = ic("users");
     var x = $("sheet-close"); if (x && !x.querySelector(".pi")) x.innerHTML = ic("x");
     var bk = $("pn-back"); if (bk && !bk.querySelector(".pi")) bk.innerHTML = ic("chev-left");
@@ -152,11 +152,11 @@
       if (b.querySelector(".pi")) return;
       var toGroup = /✕/.test(b.textContent);
       b.innerHTML = ic("chev-left");
-      b.setAttribute("aria-label", toGroup ? "Tillbaka till gruppen" : "Tillbaka till spelen");
+      b.setAttribute("aria-label", toGroup ? I18N.L("Tillbaka till gruppen", "Back to the group") : I18N.L("Tillbaka till spelen", "Back to the games"));
     });
     document.querySelectorAll(".skj-ic").forEach(function (x) { if (!x.querySelector(".pi")) x.innerHTML = ic("taxi"); });
     document.querySelectorAll(".sp-gi-ic").forEach(function (x) { if (!x.querySelector(".pi-game")) x.innerHTML = ic("game"); });
-    document.querySelectorAll("#sp .sp-x").forEach(function (b) { if (!b.querySelector(".pi")) { b.innerHTML = ic("x"); b.setAttribute("aria-label", "Stäng spelet"); } });
+    document.querySelectorAll("#sp .sp-x").forEach(function (b) { if (!b.querySelector(".pi")) { b.innerHTML = ic("x"); b.setAttribute("aria-label", I18N.L("Stäng spelet", "Close the game")); } });
     liveCount(); merExtra(); profileBtn();
   }
   // top-right: my own character's face if I made one, else a clean person icon (no initial on a bottle cap)
@@ -170,15 +170,15 @@
     b.innerHTML = '<span class="pn-me' + (html ? " pn-me-av" : "") + '" aria-hidden="true">' + (html || ic("user")) + "</span>";
     b.__pnds = sig;
     b.__pnCap = "c:" + (safe(function () { return A.getName(); }, "") || safe(function () { return localStorage.getItem("olnu.name"); }, "") || "?");   // PNUI.avatarBtn leaves it
-    b.setAttribute("aria-label", "Profil och inställningar");
+    b.setAttribute("aria-label", I18N.L("Profil och inställningar", "Profile and settings"));
   }
   // Mer på kartan: + "Ställen nära dig" (js/nearplaces.js, same as the ?nara=1 link)
   function merExtra() {
     var t = $("sheet-title"), b = $("sheet-body"), np = W("NEARPLACES");
-    if (!t || !b || !sheetOpen() || txt(t) !== "Mer på kartan" || !np || typeof np.open !== "function") return;
+    if (!t || !b || !sheetOpen() || txt(t) !== I18N.L("Mer på kartan", "More on the map") || !np || typeof np.open !== "function") return;
     var list = b.querySelector(".pn-list"); if (!list || list.querySelector("[data-pn-near]")) return;
     var r = h("button", { type: "button", class: "ds-row pn-row", "data-pn-near": "1" }, [h("span", { class: "ds-row-i", html: ic("food") }),
-      h("span", { class: "ds-row-t" }, [h("span", { text: "Ställen nära dig" }), h("small", { text: "Krogar och restauranger runt dig" })]), h("span", { class: "ds-chev" })]);
+      h("span", { class: "ds-row-t" }, [h("span", { text: I18N.L("Ställen nära dig", "Places near you") }), h("small", { text: I18N.L("Krogar och restauranger runt dig", "Bars and restaurants around you") })]), h("span", { class: "ds-chev" })]);
     r.addEventListener("click", function () { try { np.open(); } catch (e) {} });
     var rows = list.querySelectorAll(":scope > .pn-row"), last = rows[rows.length - 1];
     if (last && /Kartstil/.test(txt(last))) list.insertBefore(r, last); else list.appendChild(r);
@@ -194,8 +194,8 @@
     var n = b.textContent.trim();
     if (!/^[\d\s–-]+$/.test(n)) return;
     lcBusy = true;
-    lc.innerHTML = ic("globe") + "<b>" + n.replace(/[<>&]/g, "") + "</b>&nbsp;ute";
-    lc.setAttribute("aria-label", n + " ute just nu");
+    lc.innerHTML = ic("globe") + "<b>" + n.replace(/[<>&]/g, "") + "</b>&nbsp;" + I18N.L("ute", "out");
+    lc.setAttribute("aria-label", n + I18N.L(" ute just nu", " out right now"));
     lcBusy = false;
   }
   function watchLive() {
@@ -206,7 +206,7 @@
   // ÖL! shows only the word now: the button keeps a spoken name (app.js removes aria-label in the ready state)
   function beerName() {
     var b = $("btn-beer"); if (!b) return;
-    var fix = function () { if (!b.getAttribute("aria-label") && !b.classList.contains("cooldown")) b.setAttribute("aria-label", "Rapportera öl"); };
+    var fix = function () { if (!b.getAttribute("aria-label") && !b.classList.contains("cooldown")) b.setAttribute("aria-label", I18N.L("Rapportera öl", "Report a beer")); };
     fix();
     if (window.MutationObserver) new MutationObserver(fix).observe(b, { attributes: true, attributeFilter: ["aria-label", "class"] });
   }
@@ -287,7 +287,7 @@
   }
   function names(list) {
     var n = list.map(function (p) { return p.name; });
-    if (n.length <= 2) return n.join(" och ");
+    if (n.length <= 2) return n.join(I18N.L(" och ", " and "));
     return n.slice(0, 2).join(", ") + " +" + (n.length - 2);   // ds23: short, fits one line at 360 px
   }
   function outCard() {
@@ -295,11 +295,11 @@
     var faces = h("span", { class: "pn-out-faces", "aria-hidden": "true" });
     all.slice(0, 4).forEach(function (p) { var av = window.ZONES && window.ZONES.avatarHTML ? window.ZONES.avatarHTML(p.name, 32) : ""; faces.appendChild(h("span", { html: av || (cap ? cap(p.name, 32) : "") })); });   // nightmap I-85: the real character, the initial cap as fallback
     var t, s;
-    if (o.live.length) { t = o.live.length === 1 ? "1 vän ute nu" : o.live.length + " vänner ute nu"; s = names(o.live) + (o.plan.length ? " · " + o.plan.length + " ska ut" : ""); }
-    else if (o.plan.length) { t = o.plan.length + " ska ut ikväll"; s = names(o.plan); }
-    else { t = "Ingen ute än"; s = evening() ? "Säg om du ska ut ikväll" : "Dina vänner syns här när de är ute"; }
-    var me = o.mine === "ute" ? "Du: Ute" : o.mine === "kanske" ? "Du: Kanske" : o.mine === "hemma" ? "Du: Hemma" : "";
-    var b = h("button", { type: "button", class: "pn-out" + (all.length ? "" : " pn-none"), "data-pnout": "1", "aria-label": t + ". " + s + ". Ikväll?" }, [
+    if (o.live.length) { t = o.live.length === 1 ? I18N.L("1 vän ute nu", "1 friend out now") : o.live.length + I18N.L(" vänner ute nu", " friends out now"); s = names(o.live) + (o.plan.length ? " · " + o.plan.length + I18N.L(" ska ut", " going out") : ""); }
+    else if (o.plan.length) { t = o.plan.length + I18N.L(" ska ut ikväll", " going out tonight"); s = names(o.plan); }
+    else { t = I18N.L("Ingen ute än", "Nobody out yet"); s = evening() ? I18N.L("Säg om du ska ut ikväll", "Say if you are going out tonight") : I18N.L("Dina vänner syns här när de är ute", "Your friends show here when they are out"); }
+    var me = o.mine === "ute" ? I18N.L("Du: Ute", "You: Out") : o.mine === "kanske" ? I18N.L("Du: Kanske", "You: Maybe") : o.mine === "hemma" ? I18N.L("Du: Hemma", "You: Home") : "";
+    var b = h("button", { type: "button", class: "pn-out" + (all.length ? "" : " pn-none"), "data-pnout": "1", "aria-label": t + ". " + s + I18N.L(". Ikväll?", ". Tonight?") }, [
       h("span", { class: "pn-out-dot", "aria-hidden": "true" }),
       h("span", { class: "pn-out-t" }, [h("b", { text: t }), h("small", { text: me ? s + " · " + me : s })]),
       all.length ? faces : null,
@@ -346,7 +346,7 @@
     if (pit && !pit.classList.contains("pn-fold")) {
       pit.classList.add("pn-fold");
       pp.querySelectorAll(":scope > h3").forEach(function (x, i) { if (i > 0) x.classList.add("pn-sub"); });
-      var row = h("button", { type: "button", class: "pn-fold-row", "aria-expanded": "false" }, [h("span", { html: ic("bell", "pi-lead") }), h("span", { text: "Välj notiser" }), h("small", { class: "pn-fold-n" }), h("span", { html: ic("chev-down") })]);
+      var row = h("button", { type: "button", class: "pn-fold-row", "aria-expanded": "false" }, [h("span", { html: ic("bell", "pi-lead") }), h("span", { text: I18N.L("Välj notiser", "Pick notifications") }), h("small", { class: "pn-fold-n" }), h("span", { html: ic("chev-down") })]);
       // b1people I-02: ONE fold rule. An inline fold = ⌄ closed / ⌃ open and NEVER adds a back step (› + back is for a sub-page).
       var set = function (open) {
         pit.classList.toggle("pn-open", open); row.setAttribute("aria-expanded", String(open));
@@ -360,7 +360,7 @@
     }
     if (pp) {
       var sw = pp.querySelectorAll(":scope > .toggle-row .switch"), on = [].filter.call(sw, function (s) { return s.getAttribute("aria-checked") === "true"; }).length;
-      var n = body.querySelector(".pn-fold-n"); if (n && sw.length) n.textContent = on + " av " + sw.length + " på";
+      var n = body.querySelector(".pn-fold-n"); if (n && sw.length) n.textContent = on + I18N.L(" av ", " of ") + sw.length + I18N.L(" på", " on");
     }
     // d) a section with nothing visible left hides
     body.querySelectorAll(":scope > section.ds-section").forEach(function (sec) {
@@ -389,8 +389,8 @@
     body = body || $("sheet-body"); if (!body) return;
     body.innerHTML = "";
     body.appendChild(h("div", { class: "pn-fail", role: "alert" }, [
-      h("p", { text: "Det här gick int' att öppna just nu." }),
-      h("p", { class: "muted", text: "Uppdatera appen och försök igen." }),
+      h("p", { text: I18N.L("Det här gick int' att öppna just nu.", "This could not open right now.") }),
+      h("p", { class: "muted", text: I18N.L("Uppdatera appen och försök igen.", "Update the app and try again.") }),
       h("button", { type: "button", class: "btn btn-amber", text: "Uppdatera appen", onclick: hardUpdate })
     ]));
     try { if (W("VITALS") && W("VITALS").note) W("VITALS").note("sheet_empty", String(title || "").slice(0, 40)); } catch (e) {}
@@ -440,7 +440,7 @@
       if (vis(pr)) { var lb = Math.round(innerHeight - pr.getBoundingClientRect().top + 12) + "px"; if (root.style.getPropertyValue("--pn-loc-b") !== lb) root.style.setProperty("--pn-loc-b", lb); }
       document.querySelectorAll(".hx-chip.af-chip-med").forEach(function (c) {
         var t = [].filter.call(c.childNodes, function (n) { return n.nodeType === 3 && n.nodeValue.trim(); }).pop();
-        if (t && !/^\s*Kolla till /.test(t.nodeValue)) t.nodeValue = "Kolla till " + t.nodeValue.replace(/^\s*🚑\s*/, "").trim();
+        if (t && !/^\s*(Kolla till|Check on) /.test(t.nodeValue)) t.nodeValue = I18N.L("Kolla till ", "Check on ") + t.nodeValue.replace(/^\s*🚑\s*/, "").trim();
       });
     } catch (e) {}
     busy = false;
@@ -451,9 +451,9 @@
     var on = !c.hidden, ln = tk.querySelector(".pn-kaos-line");
     if (on && !ln) {
       ln = document.createElement("button"); ln.type = "button"; ln.className = "pn-kaos-line";
-      ln.innerHTML = "<span></span><b>Visa</b>";
+      ln.innerHTML = "<span></span><b>" + I18N.L("Visa", "Show") + "</b>";
       ln.addEventListener("click", function () { var s = $("chaos-show"); if (s) s.click(); });
-      var x = document.createElement("button"); x.type = "button"; x.className = "pn-kaos-x"; x.setAttribute("aria-label", "Dölj kaos-larmet");
+      var x = document.createElement("button"); x.type = "button"; x.className = "pn-kaos-x"; x.setAttribute("aria-label", I18N.L("Dölj kaos-larmet", "Hide the chaos alert"));
       x.innerHTML = window.PNI ? window.PNI.svg("x") : "✕";
       x.addEventListener("click", function () { var s = $("chaos-close"); if (s) s.click(); });
       tk.appendChild(ln); tk.appendChild(x);
@@ -462,7 +462,7 @@
       var hd = ($("chaos-head") || {}).textContent || "", fc = ($("chaos-facts") || {}).textContent || "";
       var txt = (hd + (fc ? " · " + fc : "")).trim();
       if (ln.firstChild.textContent !== txt) ln.firstChild.textContent = txt;
-      ln.setAttribute("aria-label", "Kaos: " + txt + ". Visa");
+      ln.setAttribute("aria-label", I18N.L("Kaos: ", "Chaos: ") + txt + I18N.L(". Visa", ". Show"));
       var lv = tk.querySelector(".tk-live"); if (lv) root.style.setProperty("--pn-kaos-l", Math.round(lv.getBoundingClientRect().width) + "px");
     }
     tk.classList.toggle("pn-kaos", on);
@@ -480,7 +480,7 @@
   function ghostOn() { try { return localStorage.getItem("olnu.ghostMode") === "1"; } catch (e) { return false; } }
   function rail() {
     if (!$("btn-more")) return;
-    var g = railBtn("pn-ghost", "eye-off", "Spökläge", function () {
+    var g = railBtn("pn-ghost", "eye-off", I18N.L("Spökläge", "Ghost mode"), function () {
       var on = !ghostOn();
       try { localStorage.setItem("olnu.ghostMode", on ? "1" : "0"); } catch (e) {}
       var A = window.PNDS && window.PNDS._A && window.PNDS._A();
@@ -489,7 +489,7 @@
       paintRail();
     });
     var ev = $("btn-evs");
-    if (ev) railBtn("pn-evs", "calendar", "Event ikväll", function () { var e = $("btn-evs"); if (e) e.click(); });
+    if (ev) railBtn("pn-evs", "calendar", I18N.L("Event ikväll", "Events tonight"), function () { var e = $("btn-evs"); if (e) e.click(); });
     paintRail();
   }
   // lane main (R1 first-time user #6): a short word under each rail button for the first 3 nights a NEW user opens the app
@@ -508,7 +508,7 @@
   }
   function railWord(id) {
     if (id === "pn-ghost") { try { if (window.PNVIS && window.PNVIS.label) return window.PNVIS.label(); } catch (e) {} return "Synlig"; }
-    return id === "pn-evs" ? "Event" : "Mer";
+    return id === "pn-evs" ? "Event" : I18N.L("Mer", "More");
   }
   function railLabels() {
     var on = railLabelsOn();
@@ -523,7 +523,7 @@
   function paintRail() {
     try { railLabels(); } catch (e) {}
     var g = $("pn-ghost");
-    if (g && !g.hasAttribute("data-vis")) { var on = ghostOn(); g.setAttribute("aria-pressed", String(on)); g.title = on ? "Spökläge på (du syns int')" : "Spökläge av"; g.setAttribute("aria-label", g.title); }
+    if (g && !g.hasAttribute("data-vis")) { var on = ghostOn(); g.setAttribute("aria-pressed", String(on)); g.title = on ? I18N.L("Spökläge på (du syns int')", "Ghost mode on (you are hidden)") : I18N.L("Spökläge av", "Ghost mode off"); g.setAttribute("aria-label", g.title); }
     var e = $("pn-evs"), b = document.querySelector("#btn-evs .evs-badge");
     if (e) { var d = e.querySelector(".pn-rail-dot"); if (d) d.hidden = !(b && !b.hidden && (b.textContent || "0") !== "0"); }
   }
@@ -645,9 +645,9 @@
   function mk(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
   function kid(p, sel) { if (!p) return null; for (var i = 0; i < p.children.length; i++) if (p.children[i].matches(sel)) return p.children[i]; return null; }
   function who(n) {
-    if (n.length === 1) return n[0] + " är här";
-    if (n.length === 2) return n[0] + " och " + n[1] + " är här";
-    return n[0] + ", " + n[1] + " och " + (n.length - 2) + " till är här";
+    if (n.length === 1) return n[0] + I18N.L(" är här", " is here");
+    if (n.length === 2) return n[0] + I18N.L(" och ", " and ") + n[1] + I18N.L(" är här", " are here");
+    return n[0] + ", " + n[1] + I18N.L(" och ", " and ") + (n.length - 2) + I18N.L(" till är här", " more are here");
   }
   function bodyOf(d) { var b = d && kid(d, ".pf-body"); return b ? [].slice.call(b.childNodes) : []; }
   function sec(cls, title, nodes) {
@@ -682,17 +682,17 @@
       var b = by[n], k = b.beer_count | 0, id = esc(String(b.id)), done = !!b.i_skaled, sk = Math.max(0, b.skal_count | 0);
       if (b._ci) {   // fixMo N-09: checked in, no pin: no Chatta / Skål (both need the pin)
         box.appendChild(mk("div", "pn-bs-fr2 pn-bs-frci", '<span class="av av-40 pn-bs-fav av-ph" data-pnav="' + esc(n) + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + "</span>" +
-          '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="Incheckad här">' + ico("pin") + "<span>Incheckad</span></small></span>"));
+          '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="' + I18N.L("Incheckad här", "Checked in here") + '">' + ico("pin") + "<span>" + I18N.L("Incheckad", "Checked in") + "</span></small></span>"));
         return;
       }
-      var sub = k > 0 ? '<span class="pn-bs-fn">' + k + "</span>" + ico("beer") + "<span>ikväll</span>" : "<span>Här nu</span>";
+      var sub = k > 0 ? '<span class="pn-bs-fn">' + k + "</span>" + ico("beer") + "<span>" + I18N.L("ikväll", "tonight") + "</span>" : "<span>" + I18N.L("Här nu", "Here now") + "</span>";
       box.appendChild(mk("div", "pn-bs-fr2", '<span class="av av-40 pn-bs-fav av-ph" data-pnav="' + esc(n) + '" aria-hidden="true">' + esc(n.charAt(0).toUpperCase()) + "</span>" +
-        '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="' + esc(k > 0 ? k + " öl ikväll" : "Här nu") + '">' + sub + "</small></span>" +
-        '<button type="button" class="pn-bs-fb pn-bs-chat" data-dmpin="' + id + '" data-dmname="' + esc(n) + '" aria-label="Chatta med ' + esc(n) + '" title="Chatta">' + ico("chat") + "</button>" +
+        '<span class="pn-bs-ft"><b>' + esc(n) + '</b><small class="pn-bs-fs" aria-label="' + esc(k > 0 ? k + I18N.L(" öl ikväll", " beers tonight") : I18N.L("Här nu", "Here now")) + '">' + sub + "</small></span>" +
+        '<button type="button" class="pn-bs-fb pn-bs-chat" data-dmpin="' + id + '" data-dmname="' + esc(n) + '" aria-label="' + I18N.L("Chatta med ", "Chat with ") + esc(n) + '" title="' + I18N.L("Chatta", "Chat") + '">' + ico("chat") + "</button>" +
         '<button type="button" class="skal-btn pn-bs-fb pn-bs-skal' + (done ? " on" : "") + '" data-skal="' + id + '"' + (done ? " disabled" : "") +
-        ' aria-label="' + esc((done ? "Du har skålat med " : "Skåla med ") + n) + '" title="Skål">' + ico("cheers") + (sk ? '<i class="pn-bs-sk">' + sk + "</i>" : "") + "</button>"));
+        ' aria-label="' + esc((done ? I18N.L("Du har skålat med ", "You said cheers to ") : I18N.L("Skåla med ", "Cheers with ")) + n) + '" title="' + I18N.L("Skål", "Cheers") + '">' + ico("cheers") + (sk ? '<i class="pn-bs-sk">' + sk + "</i>" : "") + "</button>"));
     });
-    if (order.length > 3) box.appendChild(mk("p", "pn-bs-more", esc("+ " + (order.length - 3) + " till här")));
+    if (order.length > 3) box.appendChild(mk("p", "pn-bs-more", esc("+ " + (order.length - 3) + I18N.L(" till här", " more here"))));
     return box;
   }
   // ds51: paint the friends' own characters (no saved character = the initial stays, as everywhere)
@@ -773,7 +773,7 @@
       pick(".sp-tag").forEach(function (n) { info.appendChild(n); });
       if (fBp) {
         var h = fBp.querySelector("summary .pp-sec-h");
-        if (h) { h.textContent = "Kö och erbjudanden"; if (!fBp.querySelector("summary > .pi")) h.insertAdjacentHTML("beforebegin", ico("megaphone")); }   // ui1 B7: same icon column as the other Info rows
+        if (h) { h.textContent = I18N.L("Kö och erbjudanden", "Queue and offers"); if (!fBp.querySelector("summary > .pi")) h.insertAdjacentHTML("beforebegin", ico("megaphone")); }   // ui1 B7: same icon column as the other Info rows
         info.appendChild(fBp);
       }
       if (inv) mer.push(inv);
@@ -798,7 +798,7 @@
       if (mer.length) {
         var md = mk("details", "pp-fold pp-sec pp-sec-mer");
         md.setAttribute("data-fold", "mer"); if (merOpen) md.setAttribute("open", "");
-        md.innerHTML = '<summary><span class="pp-sec-h">Mer</span><span class="pn-bs-sub">Stammis, bjud in, QR</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
+        md.innerHTML = '<summary><span class="pp-sec-h">' + I18N.L("Mer", "More") + '</span><span class="pn-bs-sub">' + I18N.L("Stammis, bjud in, QR", "Regulars, invite, QR") + '</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
         var body = mk("div", "pf-body"); mer.forEach(function (x) { body.appendChild(x); }); md.appendChild(body);
         var wrap = mk("div", "pp-folds pn-bs-folds2"); wrap.appendChild(md); tail.after(wrap);
       }
@@ -829,7 +829,7 @@
     if (!root || !root.querySelector(".pn-bs7")) return;
     root.classList.add("pn-bs7-root");
     var x = root.querySelector(".leaflet-popup-close-button");
-    if (x && !x.querySelector("svg")) { x.innerHTML = ico("x") || "×"; x.setAttribute("aria-label", "Stäng"); x.setAttribute("title", "Stäng"); }
+    if (x && !x.querySelector("svg")) { x.innerHTML = ico("x") || "×"; x.setAttribute("aria-label", I18N.L("Stäng", "Close")); x.setAttribute("title", I18N.L("Stäng", "Close")); }
     fix(root);
     if (!root._pnBs7) {
       var tm = 0;
@@ -1086,7 +1086,7 @@
       if (tr && tr.classList.contains("tk-one") && W.PN_TICK_NEXT) { W.PN_TICK_NEXT(); return; }
       // ownerfix 4b: the ONE controller (pnui.js PNTICK) owns the speed; this only toggles its stop state
       stop = W.PNTICK ? W.PNTICK.toggle() : !stop;   // (no own write of PN_TICK_F here any more)
-      tk.classList.toggle("pn-tk-stop", stop); tk.setAttribute("aria-label", stop ? "Nyheter (stoppad, tryck för att fortsätta)" : "Nyheter (tryck för att stoppa)");
+      tk.classList.toggle("pn-tk-stop", stop); tk.setAttribute("aria-label", stop ? I18N.L("Nyheter (stoppad, tryck för att fortsätta)", "News (stopped, tap to go on)") : I18N.L("Nyheter (tryck för att stoppa)", "News (tap to stop)"));
     });
   }
   function start() {
@@ -1438,7 +1438,7 @@
       if (n <= 1 && document.querySelector("#toasts .toast")) return;   // uxfix P1-3: the 1st beer = the beer toast + "Vilken sort?" only (max 2 things)
       var old = document.querySelector(".pn-beerok"); if (old) old.remove();
       var c = document.createElement("div"); c.className = "pn-beerok"; c.setAttribute("role", "status");
-      c.innerHTML = (window.PNI ? window.PNI.svg("check", "") : "") + "<span>" + (n ? "Öl #" + n + " registrerad" : "Öl registrerad") + "</span><small>" + (ghost ? "spökläge" : "syns för gänget") + "</small>";
+      c.innerHTML = (window.PNI ? window.PNI.svg("check", "") : "") + "<span>" + (n ? I18N.L("Öl #", "Beer #") + n + I18N.L(" registrerad", " logged") : I18N.L("Öl registrerad", "Beer logged")) + "</span><small>" + (ghost ? I18N.L("spökläge", "ghost mode") : I18N.L("syns för gänget", "the crew sees it")) + "</small>";
       document.body.appendChild(c); setTimeout(function () { c.remove(); }, 2300);
     } catch (e) {}
   };
@@ -1525,8 +1525,8 @@
         body.appendChild(h("h3", { class: "ds-section-h pn-un-h", text: title }));
         var ul = h("div", { class: "ds-list pn-un-list" });
         list.forEach(function (p) {
-          var sub = live ? (p.n > 0 ? '<b>' + p.n + "</b>" + ic("beer") + "<span>ikväll</span>" : "<span>Ute nu</span>") : "<span>Ska ut ikväll</span>";
-          var row = h("button", { type: "button", class: "ds-row pn-row pn-un-row" + (live ? " live" : ""), "aria-label": p.name + (live ? (p.n > 0 ? ", " + p.n + " öl ikväll" : ", ute nu") : ", ska ut ikväll") }, [
+          var sub = live ? (p.n > 0 ? '<b>' + p.n + "</b>" + ic("beer") + "<span>" + I18N.L("ikväll", "tonight") + "</span>" : "<span>" + I18N.L("Ute nu", "Out now") + "</span>") : "<span>" + I18N.L("Ska ut ikväll", "Going out tonight") + "</span>";
+          var row = h("button", { type: "button", class: "ds-row pn-row pn-un-row" + (live ? " live" : ""), "aria-label": p.name + (live ? (p.n > 0 ? ", " + p.n + I18N.L(" öl ikväll", " beers tonight") : I18N.L(", ute nu", ", out now")) : I18N.L(", ska ut ikväll", ", going out tonight")) }, [
             face(p.name), h("span", { class: "ds-row-t" }, [h("span", { text: p.name }), h("small", { html: sub })]), live && p.lat != null ? h("span", { class: "ds-chev" }) : null]);
           if (live && p.lat != null) row.addEventListener("click", function () { try { A.closeSheet(); A.map.flyTo([p.lat, p.lng], 16, { duration: 0.8 }); } catch (e) {} });
           ul.appendChild(row);
@@ -1535,9 +1535,9 @@
       };
       sec("Ute nu", o.live, true);
       sec("Ska ut ikväll", o.plan, false);
-      if (!o.live.length && !o.plan.length) body.appendChild(h("p", { class: "muted pn-un-empty", text: "Ingen av dina vänner är ute just nu." }));
+      if (!o.live.length && !o.plan.length) body.appendChild(h("p", { class: "muted pn-un-empty", text: I18N.L("Ingen av dina vänner är ute just nu.", "None of your friends are out right now.") }));
       var ik = h("button", { type: "button", class: "ds-row pn-row pn-un-ikv" }, [h("span", { class: "ds-row-i", html: ic("moon") }),
-        h("span", { class: "ds-row-t" }, [h("span", { text: "Ikväll?" }), h("small", { text: o.mine ? "Du har svarat. Ändra här." : "Säg om du ska ut (valfritt)" })]), h("span", { class: "ds-chev" })]);
+        h("span", { class: "ds-row-t" }, [h("span", { text: I18N.L("Ikväll?", "Tonight?") }), h("small", { text: o.mine ? I18N.L("Du har svarat. Ändra här.", "You have answered. Change it here.") : I18N.L("Säg om du ska ut (valfritt)", "Say if you are going out (optional)") })]), h("span", { class: "ds-chev" })]);
       ik.addEventListener("click", function () { try { window.PNUI.openIkvall(); } catch (e) {} });
       body.appendChild(h("div", { class: "ds-list pn-un-list pn-un-ikvl" }, [ik]));
     });
@@ -1605,7 +1605,7 @@
   function has(n, s) { try { return !!(n.matches && n.matches(s)) || !!n.querySelector(s); } catch (e) { return false; } }
   function reduced() { try { return W.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
   var ORDER = ["karta", "plats", "notis", "konto", "integ", "om", "mer"];
-  var HEAD = { karta: "Karta", plats: "Plats & incheckning", notis: "Notiser & ljud", integ: "Integritet & säkerhet", om: "Om appen" };
+  var HEAD = { karta: I18N.L("Karta", "Map"), plats: I18N.L("Plats & incheckning", "Place & check-in"), notis: I18N.L("Notiser & ljud", "Notifications & sound"), integ: I18N.L("Integritet & säkerhet", "Privacy & safety"), om: I18N.L("Om appen", "About the app") };
   function sTab(b) { var t = b.querySelector(':scope > .pf-tabs [data-pf="s"]'); return !!t && t.getAttribute("aria-selected") === "true"; }
   /* where a row goes: [section, rank, fold] (null = stays where ds.js put it, rank 50) */
   function place(it, from) {
@@ -1652,15 +1652,15 @@
     trygg: { icon: "shield", title: "Trygghet", sub: function (items) {
       var p = []; items.forEach(function (it) { [].forEach.call(it.querySelectorAll(".sf-set-row > .btn"), function (b) { var x = txt(b); if (x) p.push(x); }); });
       return p.map(function (x, i) { return i ? x.toLowerCase() : x; }).join(", "); } },
-    mer: { icon: "dots", title: "Mer", sub: function (items) {
+    mer: { icon: "dots", title: I18N.L("Mer", "More"), sub: function (items) {
       var p = [];
       items.forEach(function (it) { var t = txt(it);
-        if (/introduktion/i.test(t)) p.push("introduktionen");
-        if (/kapsyl/i.test(t)) p.push("kapsylsamlingen");
-        if (/överrask/i.test(t)) p.push("överraskningar");
-        if (/skaka/i.test(t)) p.push("skaka");
-        if (/ölglaset/i.test(t)) p.push("ölglaset");
-        if (it.classList.contains("ds-text")) p.push("om kartan"); });
+        if (/introduktion|intro/i.test(t)) p.push(I18N.L("introduktionen", "the intro"));
+        if (/kapsyl|bottle cap/i.test(t)) p.push(I18N.L("kapsylsamlingen", "bottle caps"));
+        if (/överrask|surprise/i.test(t)) p.push(I18N.L("överraskningar", "surprises"));
+        if (/skaka|shake/i.test(t)) p.push(I18N.L("skaka", "shake"));
+        if (/ölglaset|beer glass/i.test(t)) p.push(I18N.L("ölglaset", "the beer glass"));
+        if (it.classList.contains("ds-text")) p.push(I18N.L("om kartan", "about the map")); });
       var s = p.slice(0, 2).join(", ") + (p.length > 2 ? " +" + (p.length - 2) : ""); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; } }
   };
   function foldRow(list, key) {
@@ -1792,7 +1792,7 @@
       [].forEach.call(body.querySelectorAll(":scope > section.ds-section:not(.pn-danger-sec)"), function (s) {
         var vis = s.querySelectorAll(":scope > .ds-list > .ds-item:not(.pn-gone)").length;
         if (s.querySelector(":scope > .ds-list > .ds-item") && !vis && !s.classList.contains("pn-gone")) s.classList.add("pn-gone");
-        if (s.getAttribute("data-ds") === "integ") { var h = s.querySelector(":scope > h3"), tn = h && [].filter.call(h.childNodes, function (c) { return c.nodeType === 3; }).pop(); if (tn && tn.nodeValue !== "Synlighet & säkerhet") tn.nodeValue = "Synlighet & säkerhet"; }
+        if (s.getAttribute("data-ds") === "integ") { var h = s.querySelector(":scope > h3"), tn = h && [].filter.call(h.childNodes, function (c) { return c.nodeType === 3; }).pop(); if (tn && tn.nodeValue !== I18N.L("Synlighet & säkerhet", "Visibility & safety")) tn.nodeValue = I18N.L("Synlighet & säkerhet", "Visibility & safety"); }
       });
     } catch (e) {}
     busy = false;
@@ -1865,14 +1865,14 @@
     var sec = body.querySelector(':scope > section.ds-section[data-ds="konto"]');
     if (!sec) {
       sec = document.createElement("section"); sec.className = "ds-section"; sec.setAttribute("data-ds", "konto");
-      var h = document.createElement("h3"); h.className = "ds-section-h"; h.textContent = "Konto & Swish";
+      var h = document.createElement("h3"); h.className = "ds-section-h"; h.textContent = I18N.L("Konto & Swish", "Account & Swish");
       var l = document.createElement("div"); l.className = "ds-list"; sec.appendChild(h); sec.appendChild(l);
       body.insertBefore(sec, body.querySelector(':scope > section.ds-section[data-ds="integ"], :scope > section.ds-section[data-ds="mer"], :scope > section.pn-danger-sec'));
     }
     var it = document.createElement("div"); it.className = "ds-item pn-logout-it";
     var row = document.createElement("div"); row.className = "row";
     var b = document.createElement("button"); b.type = "button"; b.className = "btn btn-block pn-logout";
-    b.innerHTML = ic("door", "pi-lead"); b.appendChild(document.createTextNode("Logga ut"));
+    b.innerHTML = ic("door", "pi-lead"); b.appendChild(document.createTextNode(I18N.L("Logga ut", "Log out")));
     b.addEventListener("click", function () { A.logout(); });
     row.appendChild(b); it.appendChild(row); sec.querySelector(".ds-list").appendChild(it);
   }

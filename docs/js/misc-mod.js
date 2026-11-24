@@ -42,9 +42,9 @@
   }
 
   /* ---------- 🗑️ Radera kontot: 7 days to undo (0402) ---------- */
-  function daysTxt(n) { n = n | 0; return n <= 0 ? "i natt" : n === 1 ? "om 1 dag" : "om " + n + " dagar"; }
+  function daysTxt(n) { n = n | 0; return n <= 0 ? I18N.L("i natt", "tonight") : n === 1 ? I18N.L("om 1 dag", "in 1 day") : I18N.L("om ", "in ") + n + I18N.L(" dagar", " days"); }
   function dayTxt(iso) {
-    try { return new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Stockholm" }).format(new Date(iso)); }
+    try { return new Intl.DateTimeFormat(I18N.locale(), { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Stockholm" }).format(new Date(iso)); }
     catch (e) { return ""; }
   }
   function loadDel(force) {
@@ -145,7 +145,7 @@
   }
   function deleteAccountRow() {
     var row = h("button", { type: "button", class: "ds-row mm-del-row", "data-mm": "del" });
-    row.innerHTML = '<span class="ds-row-i mm-del-i">' + icon("trash") + '</span><span class="ds-row-t"><span class="mm-del-rt">Radera mitt konto</span><small class="mm-del-sub" hidden></small></span>';
+    row.innerHTML = '<span class="ds-row-i mm-del-i">' + icon("trash") + '</span><span class="ds-row-t"><span class="mm-del-rt">' + I18N.L("Radera mitt konto", "Delete my account") + '</span><small class="mm-del-sub" hidden></small></span>';
     row.addEventListener("click", openDelete);
     rows.push(row); paintRows();
     if (!del) loadDel();
@@ -157,7 +157,7 @@
       r.__mmSeen = r.__mmSeen || r.isConnected;
       var s = r.querySelector(".mm-del-sub"); if (!s) return;
       var p = !!(del && del.pending);
-      s.hidden = !p; s.textContent = p ? "Raderas " + daysTxt(del.days_left) + " · tryck för att ångra" : "";
+      s.hidden = !p; s.textContent = p ? I18N.L("Raderas ", "Deleted ") + daysTxt(del.days_left) + I18N.L(" · tryck för att ångra", " · tap to undo") : "";
       r.classList.toggle("mm-pending", p);
     });
   }

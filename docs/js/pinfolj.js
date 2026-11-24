@@ -95,16 +95,16 @@
     if (!A || !A.LIVE) return;
     var el = A.el, v0 = on();
     var b = el("button", { type: "button", class: "btn btn-block pn-swb pf-row", role: "switch", "aria-checked": String(v0) });
-    b.innerHTML = ic("pin") + '<span class="pn-sw-l">Pinnen följer med dig</span><span class="switch" aria-hidden="true" aria-checked="' + v0 + '"></span>';
+    b.innerHTML = ic("pin") + '<span class="pn-sw-l">' + I18N.L("Pinnen följer med dig", "The pin follows you") + '</span><span class="switch" aria-hidden="true" aria-checked="' + v0 + '"></span>';
     b.addEventListener("click", function () {
       var v = b.getAttribute("aria-checked") !== "true";
       setOn(v); b.setAttribute("aria-checked", String(v));
       var dot = b.querySelector(".switch"); if (dot) dot.setAttribute("aria-checked", String(v));
-      A.toast(v ? "Pinnen följer med dig när appen ä öppen." : "Pinnen stannar där du loggade senast.", { id: "pf-set", ms: 3000 });
+      A.toast(v ? I18N.L("Pinnen följer med dig när appen ä öppen.", "The pin follows you while the app is open.") : I18N.L("Pinnen stannar där du loggade senast.", "The pin stays where you last logged."), { id: "pf-set", ms: 3000 });
     });
     // under the auto check-in row (same "Karta – incheckning" group) when it is there
     var ac = body.querySelector(".ac-hint");
-    var row = el("div", { class: "row pf-set" }, [b]), hint = el("p", { class: "muted pf-hint", text: "Gänget ser var du ä nu. Vänner utanför gänget och andra ser bara området eller krogen, utan namn. Aldrig i spökläge eller hemma." });   // fixC N-19: the T-09 rule
+    var row = el("div", { class: "row pf-set" }, [b]), hint = el("p", { class: "muted pf-hint", text: I18N.L("Gänget ser var du ä nu. Vänner utanför gänget och andra ser bara området eller krogen, utan namn. Aldrig i spökläge eller hemma.", "The crew sees where you are now. Friends outside the crew and others see only the area or the bar, no name. Never in ghost mode or at home.") });   // fixC N-19: the T-09 rule
     if (ac && ac.parentNode === body) { ac.after(row); row.after(hint); } else { body.appendChild(row); body.appendChild(hint); }
   }
 

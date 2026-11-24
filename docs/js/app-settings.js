@@ -214,27 +214,27 @@
     mods("settingsName", body);   // v25: 📍 Hemstad (js/hometown.js), next to the name
     mods("profileSheet", body);   // about me: passport, friends + find-me, account, Swish, ghost, top list, Wrapped, SOS
     [].forEach.call(body.querySelectorAll(":scope > .acct-sect, :scope > .rnd-set"), function (n) { n.remove(); });   // now in Inställningar › Konto
-    if (LIVE) body.appendChild(setRow("user", "Konto", "Spara konto, Swish, flytta, logga ut", function () { showSettings("s", "konto"); }, "pf-konto-row"));
+    if (LIVE) body.appendChild(setRow("user", I18N.L("Konto", "Account"), I18N.L("Spara konto, Swish, flytta, logga ut", "Save account, Swish, move, log out"), function () { showSettings("s", "konto"); }, "pf-konto-row"));
     if (LIVE && window.PRIVACY) window.PRIVACY.homeBlock(body);
   }
 
   /* ---------- ⚙️ Inställningar: 8 rows, each opens a page with ‹ (d1settings, moves 3 / 6 / 9) ---------- */
   var PAGES = [
-    ["konto", "user", "Konto", "Spara konto, Swish, flytta, logga ut"],
-    ["synl", "shield", "Integritet & synlighet", "Vem ser dig, loggning, spökläge, blockerade", "Integritet"],   // relrisk + polishA: copy says "Inställningar → Integritet & synlighet"
-    ["notis", "bell", "Notiser & ljud", "Push, ljud, vad du vill höra"],
-    ["plats", "pin", "Plats & hem", "Hem, pinnen följer, checka in"],
-    ["karta", "map", "Karta & dialekt", "Kartlager, kartstil, dialekt"],
-    ["bjud", "heart", "Bjud in vänner", "Länk och QR-kod"],
-    ["hjalp", "help", "Hjälp oss", "Rapportera fel, önska något"],
-    ["om", "info", "Om appen", "Hemskärm, uppdatera, introduktion"]
+    ["konto", "user", I18N.L("Konto", "Account"), I18N.L("Spara konto, Swish, flytta, logga ut", "Save account, Swish, move, log out")],
+    ["synl", "shield", I18N.L("Integritet & synlighet", "Privacy & visibility"), I18N.L("Vem ser dig, loggning, spökläge, blockerade", "Who sees you, logging, ghost mode, blocked"), I18N.L("Integritet", "Privacy")],   // relrisk + polishA: copy says "Inställningar → Integritet & synlighet"
+    ["notis", "bell", I18N.L("Notiser & ljud", "Notifications & sound"), I18N.L("Push, ljud, vad du vill höra", "Push, sound, what you want to hear")],
+    ["plats", "pin", I18N.L("Plats & hem", "Place & home"), I18N.L("Hem, pinnen följer, checka in", "Home, pin follows, check in")],
+    ["karta", "map", I18N.L("Karta & dialekt", "Map & language"), I18N.L("Kartlager, kartstil, dialekt", "Map layers, map style, language")],
+    ["bjud", "heart", I18N.L("Bjud in vänner", "Invite friends"), I18N.L("Länk och QR-kod", "Link and QR code")],
+    ["hjalp", "help", I18N.L("Hjälp oss", "Help us"), I18N.L("Rapportera fel, önska något", "Report a bug, wish for something")],
+    ["om", "info", I18N.L("Om appen", "About the app"), I18N.L("Hemskärm, uppdatera, introduktion", "Home screen, update, intro")]
   ];
   // which page a module block belongs to: by what the block holds first, else by the ds.js section it was sorted into
   var PAGE_SEL = [
     ["konto", ".acct-sect, .rnd-set"],
     ["hjalp", ".mn-knas-row, .ws-entry, .ws-entry-set"],
     ["plats", ".ht-set, .hz-row, .hz-set, .pf-set, .pf-row, .ac-set, .ac-row, .ah-set, .ah-row, .mn-vis-home"],
-    ["karta", ".dk-set, .bm-seg, .bi-switch, .sb-switch"],   // setfix: + Systembolaget på kartan (a map layer, was on Om appen)
+    ["karta", ".dk-set, .pn-lang, .bm-seg, .bi-switch, .sb-switch"],   // setfix: + Systembolaget på kartan (a map layer, was on Om appen); E8: + Språk (i18n.js)
     ["synl", ".mn-vis-set, .mn-vis-srow, .bd-optin, .sos-block, .nr-share, .sf-set, .pnlog-hint"],
     ["om", ".pn-kanal"]
   ];
@@ -301,16 +301,16 @@
   function kontoRows(list) {
     var acc = window.ACCOUNT, back = function () { showSettings("s", "konto"); };
     if (LIVE && acc && acc.on && acc.on()) {
-      if (acc.saved()) list.appendChild(setRow("key", "Konto sparat", "Byt e-post", acc.openChange, "set-acc-change"));
+      if (acc.saved()) list.appendChild(setRow("key", I18N.L("Konto sparat", "Account saved"), I18N.L("Byt e-post", "Change e-mail"), acc.openChange, "set-acc-change"));
       else {
-        list.appendChild(setRow("key", "Spara ditt konto", "Med e-post, så du aldrig tappar kvällarna", acc.openSave, "set-acc-save"));
-        list.appendChild(setRow("user", "Logga in mä e-post", "Du har redan ett konto", acc.openLogin, "set-acc-login"));
+        list.appendChild(setRow("key", I18N.L("Spara ditt konto", "Save your account"), I18N.L("Med e-post, så du aldrig tappar kvällarna", "With e-mail, so you never lose your nights"), acc.openSave, "set-acc-save"));
+        list.appendChild(setRow("user", I18N.L("Logga in mä e-post", "Log in with e-mail"), I18N.L("Du har redan ett konto", "You already have an account"), acc.openLogin, "set-acc-login"));
       }
     }
     if (LIVE && PN.s.authed) { var sw = el("div", { class: "ds-item ds-blk set-swish" }); list.appendChild(sw); try { if (window.RUNDAN && window.RUNDAN.profileSheet) window.RUNDAN.profileSheet(sw); } catch (e) {} swishRow(sw); }   // Swish-nummer (fills in when the server answers)
-    if (LIVE && storedAuth() && !PN.s.movedState) list.appendChild(setRow("phone", "Flytta till annan app/telefon", t("flyttSection"), showFlyttExport, "set-flytt"));
-    if (LIVE) list.appendChild(setRow("key", "Jag har en flyttkod", "Hämta ditt konto hit", showFlyttImport, "set-flytt-in"));
-    if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("door", "Logga ut", "", acc.logout, "set-acc-logout acct-logout"));   // uifix: "out" is no PNI icon (empty column)
+    if (LIVE && storedAuth() && !PN.s.movedState) list.appendChild(setRow("phone", I18N.L("Flytta till annan app/telefon", "Move to another app/phone"), t("flyttSection"), showFlyttExport, "set-flytt"));
+    if (LIVE) list.appendChild(setRow("key", I18N.L("Jag har en flyttkod", "I have a move code"), I18N.L("Hämta ditt konto hit", "Bring your account here"), showFlyttImport, "set-flytt-in"));
+    if (LIVE && acc && acc.logout && (storedAuth() || (acc.saved && acc.saved()))) list.appendChild(setRow("door", I18N.L("Logga ut", "Log out"), "", acc.logout, "set-acc-logout acct-logout"));   // uifix: "out" is no PNI icon (empty column)
     if (LIVE && PN.s.authed && window.PRIVACY) list.appendChild(delRow());
   }
   // d-profile (design review, small fix 11): "Mitt Swish-nummer" = a normal row (icon, title, the number as the sub line, chevron),
@@ -337,7 +337,7 @@
   function delRow() {
     var r = null;
     try { if (window.MISC && window.MISC.deleteAccountRow) r = window.MISC.deleteAccountRow(); } catch (e) { r = null; }
-    if (!r) return setRow("trash", "Radera mitt konto", "Tar bort allt för alltid", window.PRIVACY.showDelete, "set-del");
+    if (!r) return setRow("trash", I18N.L("Radera mitt konto", "Delete my account"), I18N.L("Tar bort allt för alltid", "Removes everything for good"), window.PRIVACY.showDelete, "set-del");
     r.classList.add("pn-row", "set-del");
     if (!r.querySelector(".ds-chev")) r.appendChild(el("span", { class: "ds-chev", "aria-hidden": "true" }));
     return r;
@@ -345,15 +345,15 @@
   function ownRows(key, list) {
     var sf = window.SAFETY;   // Trygghet as rows (safety.js opens the sheets; its own 3 small buttons are hidden in fill())
     if (key === "synl" && sf) {
-      if (sf.showRules) list.appendChild(setRow("rules", "Regler", "Så funkar PintsNow", function () { sf.showRules(); }, "set-rules set-end"));
-      if (sf.blocked && LIVE && PN.s.authed) list.appendChild(setRow("block", "Blockerade", "Avblockera personer", function () { sf.blocked(); }, "set-blocked set-end"));
-      if (sf.contact) list.appendChild(setRow("mail", "Kontakt", "Mejla oss", function () { sf.contact(); }, "set-contact set-end"));
+      if (sf.showRules) list.appendChild(setRow("rules", I18N.L("Regler", "Rules"), I18N.L("Så funkar PintsNow", "How PintsNow works"), function () { sf.showRules(); }, "set-rules set-end"));
+      if (sf.blocked && LIVE && PN.s.authed) list.appendChild(setRow("block", I18N.L("Blockerade", "Blocked"), I18N.L("Avblockera personer", "Unblock people"), function () { sf.blocked(); }, "set-blocked set-end"));
+      if (sf.contact) list.appendChild(setRow("mail", I18N.L("Kontakt", "Contact"), I18N.L("Mejla oss", "E-mail us"), function () { sf.contact(); }, "set-contact set-end"));
     }
-    if (key === "bjud") list.appendChild(setRow("heart", "Bjud in vänner", "Länk och QR-kod", showInvite, "set-invite"));
+    if (key === "bjud") list.appendChild(setRow("heart", I18N.L("Bjud in vänner", "Invite friends"), I18N.L("Länk och QR-kod", "Link and QR code"), showInvite, "set-invite"));
     if (key !== "om") return;
-    list.appendChild(setRow("info", "Visa introduktionen", "", function () { closeSheet(); showIntro(true); }, "set-intro"));
+    list.appendChild(setRow("info", I18N.L("Visa introduktionen", "Show the intro"), "", function () { closeSheet(); showIntro(true); }, "set-intro"));
     if (!U.isStandalone()) list.appendChild(setRow("home", t("guideTitle"), "", showInstallGuide, "set-guide"));
-    if (window.PRIVACY && window.PRIVACY.showPrivacy) list.appendChild(setRow("lock", "Integritet", "Vad vi sparar och varför", function () { window.PRIVACY.showPrivacy(function () { showSettings("s", "om"); }); }, "set-priv"));   // setfix: the privacy text says "Läs mer under Integritet"
+    if (window.PRIVACY && window.PRIVACY.showPrivacy) list.appendChild(setRow("lock", I18N.L("Integritet", "Privacy"), I18N.L("Vad vi sparar och varför", "What we keep and why"), function () { window.PRIVACY.showPrivacy(function () { showSettings("s", "om"); }); }, "set-priv"));   // setfix: the privacy text says "Läs mer under Integritet"
     // uifix (final check): the about text sits in its own card row with the ds row padding; PNI lock instead of the lock emoji
     var about = el("p", { class: "muted set-about-t" }), P = window.PNI;
     String(t("privacy") + " " + t("aboutMore")).split(String.fromCodePoint(0x1F512)).forEach(function (part, i) {
@@ -382,7 +382,7 @@
       if (p[0] === "bjud") return;
       hub.appendChild(setRow(p[1], p[2], p[3], function () { openPage(p[0]); }, "set-r-" + p[0]));
     });
-    hub.insertBefore(setRow("heart", "Bjud in vänner", "Länk och QR-kod", showInvite, "set-r-bjud"), hub.querySelector(".set-r-hjalp"));
+    hub.insertBefore(setRow("heart", I18N.L("Bjud in vänner", "Invite friends"), I18N.L("Länk och QR-kod", "Link and QR code"), showInvite, "set-r-bjud"), hub.querySelector(".set-r-hjalp"));
     function openPage(key) {
       fill();
       hub.hidden = true; if (tabs) tabs.hidden = true; backBtn.hidden = false;
@@ -416,18 +416,18 @@
       [].forEach.call(list.querySelectorAll(":scope > .ds-item"), function (it) {
         var wb = it.querySelector(".ws-entry"); if (!wb || it.querySelector(".set-wish")) return;
         wb.style.setProperty("display", "none", "important");   // pnds.css shows ".ds-item > .btn" with !important
-        var lab = (wb.textContent || "").replace(/^[^0-9A-Za-zÅÄÖåäö]+/, "").trim() || "Önska en feature";
+        var lab = (wb.textContent || "").replace(/^[^0-9A-Za-zÅÄÖåäö]+/, "").trim() || I18N.L("Önska en feature", "Wish for a feature");
         it.insertBefore(setRow("bulb", lab, "", function () { wb.click(); }, "set-wish"), wb);
       });
     }
     // move 9: ONE "Hem" row (opens the Hemzon sheet). The Synlighet-menu row is reused; every other Hemzon / "Ställ in hem" copy is hidden.
     function oneHome(list) {
       var rows = [].slice.call(list.querySelectorAll(".mn-vis-home, .hz-row")), keep = list.querySelector(".mn-vis-home") || rows[0];
-      if (!keep && LIVE && window.HOMEZONE && window.HOMEZONE.open) { keep = setRow("home", "Hem", "", function () { window.HOMEZONE.open(); }, "set-home"); list.appendChild(keep); }
+      if (!keep && LIVE && window.HOMEZONE && window.HOMEZONE.open) { keep = setRow("home", I18N.L("Hem", "Home"), "", function () { window.HOMEZONE.open(); }, "set-home"); list.appendChild(keep); }
       rows.forEach(function (r) { if (r !== keep) (r.closest(".ds-item") || r).classList.add("pn-gone"); });
       [].forEach.call(list.querySelectorAll(".ds-item"), function (it) { if (/^\s*Ställ in hem/.test(it.textContent || "")) it.classList.add("pn-gone"); });   // autohome.js "Ställ in hem" = the same setting
       if (!keep) return;
-      var tt = keep.querySelector(".ds-row-t > span"); if (tt) tt.textContent = "Hem";
+      var tt = keep.querySelector(".ds-row-t > span"); if (tt) tt.textContent = I18N.L("Hem", "Home");
       var it = keep.closest(".ds-item") || keep; it.style.order = "-1"; keep.classList.add("set-home");
     }
     notifRows(stage); soundRow(stage);
