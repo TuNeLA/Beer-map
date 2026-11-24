@@ -1067,3 +1067,5 @@ html body #toasts>.toast.ok>.pn-toast-i,body>.toast.pn-toast-out.ok>.pn-toast-i{
    !important only because icons.js sets the .ic-on look with !important. */
 #btn-top.icon-btn.ic-btn.ic-on,#btn-settings.icon-btn.ic-btn.ic-on{background:var(--pn-float) !important;color:var(--ds-amber-t) !important;
   box-shadow:inset 0 0 0 3px var(--ds-amber),0 0 0 3px var(--ds-amber-soft) !important}
+/* fixA P-04: "Dagens order" (delight.js greet card) does not show next to the care chip / KAOS / a call-out (js/chaos.js sets the class) */
+html.pn-greet-off #dl-cap.dl-cap-greet{display:none !important}
