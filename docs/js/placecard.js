@@ -278,13 +278,22 @@
     tapIndex().then(function (ix) { var e = ix[id]; if (e && (e.length || (e.beers && e.beers.length))) setTimeout(function () { tapFill(id, 0); }, 0); });
     return "";
   }
+  // G12 (coordfix): the slot is made for the card that has NO slot yet (a stale card with the same id is skipped), and every "not ready yet"
+  // case retries (card not mounted, no action row yet, PN.beerlib not loaded) for about 8 s. Before: one early return lost the row for good on a slow runner.
+  function tapCard(id) {
+    var marks = document.querySelectorAll("[data-plc-more=" + attr(id) + "]");
+    for (var i = marks.length - 1; i >= 0; i--) { var bs = marks[i].closest(".bs"); if (bs && !bs.querySelector("[data-plc-tap]")) return bs; }
+    return null;
+  }
   function tapFill(id, n) {
-    var mark = document.querySelector("[data-plc-more=" + attr(id) + "]"), bs = mark && mark.closest(".bs");
-    if (!bs) { if (n < 10) setTimeout(function () { tapFill(id, n + 1); }, 200); return; }   // the card is drawn a moment after popupHTML
-    if (bs.querySelector("[data-plc-tap]") || !window.PN || !PN.beerlib) return;
+    var bs = tapCard(id), at = bs && (bs.querySelector(".pn-bs-photos") || bs.querySelector(".pp-act"));
+    if (!bs || !at || !at.parentNode || !window.PN || !PN.beerlib) {
+      var marks = document.querySelectorAll("[data-plc-more=" + attr(id) + "]"), done = marks.length > 0 && !bs && Array.prototype.every.call(marks, function (m) { var c = m.closest(".bs"); return !c || c.querySelector("[data-plc-tap]"); });
+      if (!done && n < 40) setTimeout(function () { tapFill(id, n + 1); }, 200);   // the card is drawn a moment after popupHTML
+      return;
+    }
     var slot = document.createElement("section"); slot.setAttribute("data-plc-tap", id); slot.hidden = true;
-    var at = bs.querySelector(".pn-bs-photos") || bs.querySelector(".pp-act");
-    if (at && at.parentNode) at.after(slot); else return;
+    at.after(slot);
     PN.beerlib().then(function (B) { return B.tapRow(slot, id); }).then(function (shown) { if (!shown) slot.remove(); }, function () { slot.remove(); });
   }
   var CSS = ".plc-line{justify-content:flex-start;flex-wrap:wrap;gap:4px 6px;font-size:var(--fs-14,14px);line-height:1.3}" +
