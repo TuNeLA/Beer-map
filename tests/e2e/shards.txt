@@ -19,7 +19,7 @@ timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1|hemzon)$       par=1
 perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine (ciwork G6: srvsync -> ui-08)
 
 # --- real Mapbox GL (need MAPBOX_TEST_TOKEN) and the map lane ---
-map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c|mapcrowd)$
+map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c|mapcrowd|barcard-map)$
 map-gl-2   ^(map4|glfix-avpins|mbx|ownerfix-map|ui1-map|tilt|mapfix5)$
 map-lane   ^(map|map-b)$
 
@@ -30,7 +30,7 @@ ui-02      ^(popfix|mybeer|motion19a|coordfix|beerlist)$
 ui-03      ^(fixmo|storeprep|popfix-gl|invite|dbhealth)$
 ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump|beerui|beer2)$
 ui-05      ^(social-b|fixs|camfilm|dsocial|cln|texts)$
-ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet)$
+ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet|barcard)$
 ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3|eggs|dating2)$
 ui-08      ^(c1menus|c5extras|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk|uifix4|srvsync|selftest|places)$   chromium webkit   # + the WebKit (iPhone engine) runs
 ui-09      ^(uifix|dialekt|ui1|after2|bold-skal|cam)$
