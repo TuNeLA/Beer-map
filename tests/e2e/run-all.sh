@@ -213,6 +213,7 @@ run beerlist   $B beerlist-pw.js   # lane beerlist (I-141): Öl tab = favourites
 run barcard    $B barcard-pw.js    # lane barcard (owner 24 Nov, I-133 option A, A34 defaults): unique bar card band (9 themes, crest, seeded picture, Ölhall, chain/photo only with brand data), 56 px name bar, old parts kept, map tap closes, store, reduced, desktop
 run placesearch $B placesearch-pw.js   # lane a3search I-07: shared address search (Hemzon; mocked geocoder): near town first, list, Enter, no jump, mapbox flag
 run hemzon   $B hemzon-pw.js     # lane hemzon I-127 (owner 16 Nov): Hemzon = Mapbox GL mini map (mocked GL), live address suggestions (mocked geocoders), one screen, 25 m radius, focus ring never cut, Auto hemma not at a bar
+run walktime  $B walktime-pw.js   # lane walktime (PLAN E6, 24 Nov): "ca N min promenad" on the bar card (on-phone estimate, no call), none with a rough fix / no position, follows a new fix, Sök rows + "Inom 10 min promenad", route option (mocked Directions): cell centre not the GPS point, cache, error = estimate, hidden = no call
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)
 run eggs       $B eggs-pw.js       # lane s3eggs: 7 hidden Easter eggs (once a day, off in ride / Folj mig hem, reduced motion)
 run d1settings  $B d1settings-pw.js  # lane d1settings: Inställningar = 8 rows -> pages with back, one Hem row, Konto page
