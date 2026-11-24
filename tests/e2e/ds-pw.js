@@ -134,7 +134,8 @@ const dock = (page) => page.evaluate(() => {
         });
         // d1settings hub (setfix): Trygghet = rows on the page "Synlighet & trygghet"; the notification types fold on "Notiser & ljud"
         const synl = document.querySelector('.set-page[data-pg="synl"]'), notis = document.querySelector('.set-page[data-pg="notis"]');
-        return { bad: out, sfInSynl: !!(synl && synl.querySelector(".set-rules") && synl.querySelector(".set-contact")), fold: !!(notis && notis.querySelector(".pn-fold-row")) };
+        const om = document.querySelector('.set-page[data-pg="om"]');   // fixE P-18: Kontakt moved to Om appen
+        return { bad: out, sfInSynl: !!(synl && synl.querySelector(".set-rules") && om && om.querySelector(".set-contact")), fold: !!(notis && notis.querySelector(".pn-fold-row")) };
       });
       ok(!st.bad.length, "Inställningar: every row has 12 px+ inner padding, 40 px+ height, switches 12 px+ from the edge", st.bad);
       await shot(page, "settings");

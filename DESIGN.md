@@ -23,7 +23,7 @@ Use tokens only. No hex, px font size, radius or spacing in component code.
 **Dark only, by design** (P-24, owner default 24 Nov 2026). PintsNow is used at night, in bars, often with low screen
 brightness. A light theme would blind the user and the people next to them. So there is ONE token set (dark) and no
 `prefers-color-scheme` rule. The phone's light mode shows the same dark app: `<meta name="color-scheme" content="dark">`
-(index.html, integritet / regler / radera / stats) makes the browser draw form fields, scroll bars and pickers dark
+(index.html and every other page in docs/: integritet, regler, radera, stats, flytta, qr, 404, karta3d) makes the browser draw form fields, scroll bars and pickers dark
 too, whatever the phone's mode is. Checked by `tests/e2e/fixE-pw.js` (light and dark system mode give the same
 screen). Daylight screens (events, beer pages, settings) keep the contrast rule (≥ 4.5:1) instead of a light theme.
 Remove when: the owner orders a light theme (then: a second token set + this check flips).

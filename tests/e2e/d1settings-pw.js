@@ -10,7 +10,8 @@ const PAGES = ["konto", "synl", "notis", "plats", "karta", "bjud", "hjalp", "om"
 const OLD = [
   ["Ölpriser", "karta"], ["Restauranger på kartan", "karta"], ["Kartstil", "karta"], ["Dialekt", "karta"], ["Systembolaget på kartan", "karta"],
   ["Pinnen följer med dig", "plats"], ["Checka in automatiskt", "plats"], ["^Hem", "plats"],
-  ["Vem ser dig", "synl"], ["Göm min pin", "synl"], ["SOS till gänget", "synl"], ["Integritet – förbättra appen", "synl"], ["Regler", "synl"], ["Blockerade", "synl"], ["Kontakt", "synl"],
+  ["Vem ser dig", "synl"], ["Göm min pin", "synl"], ["SOS till gänget", "synl"], ["Integritet – förbättra appen", "synl"], ["Regler", "synl"], ["Blockerade", "synl"],
+  ["Kontakt", "om"], ["Levande karta", "karta"],   // fixE P-18 (polish 24 Nov): Kontakt is not a privacy setting; Levande karta is a map setting
   ["Notiser", "notis"], ["Välj notiser", "notis"], ["Ljud", "notis"],
   ["Något knas", "hjalp"],
   ["Betaversion", "om"], ["Uppdatera nu", "om"], ["Introduktionen|introduktionen", "om"],
