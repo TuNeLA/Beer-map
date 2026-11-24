@@ -15,7 +15,7 @@ const { H, TOKEN, launchOpts } = require("./map3-lib.js");
 const { chromium } = require("playwright");
 const PORT = process.argv[2], ONLY = new RegExp(process.argv[3] || ".");
 const BASE = "http://127.0.0.1:" + PORT + "/";
-let pass = 0, fail = 0; const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x === undefined || c ? "" : " " + JSON.stringify(x).slice(0, 700))); c ? pass++ : fail++; };
+let pass = 0, fail = 0; const ok = (c, m, x) => { console.log((c ? "PASS " : "FAIL ") + m + (x === undefined || (c && !process.env.SF_DEBUG) ? "" : " " + JSON.stringify(x).slice(0, 700))); c ? pass++ : fail++; };
 const wait = (p, ms) => p.waitForTimeout(ms);
 const J = (r, b) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
 const STUB_TOKEN = "pk.mapstubmapstubmapstubmapstub.stub";
@@ -197,19 +197,31 @@ const pinBoxes = (page) => page.evaluate(() => {
   const out = GLBARS.rects().map((r) => ({ l: r.l, r: r.r, t: r.t, b: r.b, id: r.id }));
   const me = GLBARS._me(); if (me && me.px) out.push({ l: me.px.x - me.px.r, r: me.px.x + me.px.r, t: me.px.y - me.px.r, b: me.px.y + me.px.r, id: "me" });
   const c = __map.getContainer(), cr = c.getBoundingClientRect();
-  c.querySelectorAll(".leaflet-marker-icon").forEach((el) => { if (el.offsetParent === null) return; const r = el.getBoundingClientRect(); if (r.width > 2 && r.width < 200) out.push({ l: r.left - cr.left, r: r.right - cr.left, t: r.top - cr.top, b: r.bottom - cr.top, id: "dom" }); });
+  c.querySelectorAll(".leaflet-marker-icon").forEach((el) => { if (el.offsetParent === null) return; const r = el.getBoundingClientRect(); if (r.width > 2 && r.width < 200) out.push({ l: r.left - cr.left, r: r.right - cr.left, t: r.top - cr.top, b: r.bottom - cr.top, id: "dom", cls: el.className.replace(/leaflet-\S+/g, "").trim().slice(0, 30) }); });
   return out;
 });
+// wait until the season map has DONE its work for this view (seasonsfix 24 Nov: fixed waits read the tree half-way:
+// CI saw the tree culled at pitch 50 but read 'hidden' after the view was flat again). Map still + loaded, no build or pin
+// check waiting (PNSeasonMap._pending), the build / cull counters still for 4 checks (600 ms), then 2 frames (drawn).
+const settle = (page, ms) => page.evaluate((ms) => new Promise((res) => { const m = __gm(), t0 = Date.now(); let last = "", same = 0;
+  const tick = () => { const s = PNSeasonMap.stats, k = s.builds + "," + (s.culls || 0), calm = m.loaded() && !m.isMoving() && !(PNSeasonMap._pending && PNSeasonMap._pending());
+    same = calm && k === last ? same + 1 : 0; last = k;
+    if (same >= 4 || Date.now() - t0 > ms) return requestAnimationFrame(() => requestAnimationFrame(() => res(same >= 4)));
+    setTimeout(tick, 150); };
+  tick(); }), ms || 12000);
+// the tree now: the app's flag, the 3D layer, and what is DRAWN (rendered features of the drawn tree)
+const treeNow = (page) => page.evaluate(() => { const m = __gm(), tr = PNSeasonMap.feats().filter((x) => x.k === "tree")[0];
+  const drawn = m.getLayer("pn-ss-deco") ? m.queryRenderedFeatures({ layers: ["pn-ss-deco"] }).filter((f) => f.properties.k === "tree").length : 0;
+  return { tree: !!tr, h: tr ? tr.h : -1, p: tr ? tr.p : null, model: PNSeasonMap.stats.model, vis: m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none", drawn, pitch: Math.round(m.getPitch()), bearing: Math.round(m.getBearing()) }; });
 async function runGL(b) {
   if (ONLY.test("map") || ONLY.test("sky")) {
     const { ctx, page, errs } = await open(b, "gl", { query: "?season=xmas&wx=none&light=0" });
     let worst = [], drawn = 0;
     await page.waitForFunction(() => window.PNSeasonMap && PNSeasonMap.stats.feats > 0, null, { timeout: 30000 }).catch(() => {});
     for (const z of [17, 16.5, 16, 15.5, 15]) {
-      await view(page, LUD, z, 2500);
-      await page.evaluate(() => new Promise((res) => { const m = __gm(); let d = 0; const f = () => { if (!d) { d = 1; res(); } }; if (m.loaded() && !m.isMoving()) setTimeout(f, 300); m.once("idle", () => setTimeout(f, 300)); setTimeout(f, 8000); }));
+      await view(page, LUD, z, 1500); await settle(page);
       const d = await decoBoxes(page), p = await pinBoxes(page); drawn = Math.max(drawn, d.length);
-      d.forEach((x) => p.forEach((y) => { if (inter(x, y)) worst.push({ z, k: x.k, pin: y.id }); }));
+      d.forEach((x) => p.forEach((y) => { if (inter(x, y)) worst.push({ z, k: x.k, pin: y.id, cls: y.cls, deco: [x.l, x.t, x.r, x.b].map(Math.round), box: [y.l, y.t, y.r, y.b].map(Math.round) }); }));
     }
     const st = await page.evaluate(() => PNSeasonMap.stats);
     const fk = await page.evaluate(() => PNSeasonMap.feats().map((x) => x.k));
@@ -220,10 +232,30 @@ async function runGL(b) {
     const lay = await page.evaluate(() => { const S = __gm().getStyle().layers, L = S.map((l) => l.id), first = L.findIndex((id) => /^olnu-(place|bar-)/.test(id));
       return { ss: PNSeasonMap._layers().map((id) => { const l = S.find((x) => x.id === id); return { id, i: L.indexOf(id), slot: l && l.slot || "" }; }), first }; });
     ok(lay.first < 0 || lay.ss.every((x) => x.slot === "middle" || x.slot === "bottom" || (x.i >= 0 && x.i < lay.first)), "every decoration layer is UNDER the bar layers", lay);
-    // the 3D tree only in the tilted view
-    const tp = await page.evaluate(() => PNSeasonMap.stats.tree); if (tp) await view(page, [tp[1], tp[0]], 17, 2000);
-    const t3 = await page.evaluate(async () => { const m = __gm(), vis = () => m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none"; const a = vis(); m.setMaxPitch(70); m.jumpTo({ pitch: 50 }); m.fire("pitchend"); await new Promise((r) => setTimeout(r, 800)); const c = vis(); m.jumpTo({ pitch: 0 }); m.fire("pitchend"); await new Promise((r) => setTimeout(r, 600)); const tr = PNSeasonMap.feats().filter((x) => x.k === "tree")[0]; return { flat: a, tilt: c, model: PNSeasonMap.stats.model, tree: !!tr, hidden: tr ? tr.h : 1 }; });
-    ok(t3.flat !== "visible" && (!t3.model || !t3.tree || t3.hidden || t3.tilt === "visible") && t3.tree && !t3.hidden, "the real 3D tree shows only in the tilted view (and the drawn tree is shown flat)", t3);
+    // the 3D tree only in the tilted view. The rule holds in EVERY tilted view: the 3D tree shows exactly when the tree is not
+    // hidden (its box touches no pin), the drawn tree never shows tilted. At least one tilted view (4 directions, z 17, then
+    // z 18) must show the 3D tree. All read after the app settled in THAT view (old test: a fixed 800 ms, 'hidden' read flat).
+    const t0 = await treeNow(page); if (t0.p) { await view(page, [t0.p[1], t0.p[0]], 17, 800); await settle(page); }
+    const flat = await treeNow(page), tl = [];
+    for (const z of [17, 18]) {
+      if (tl.some((x) => x.vis === "visible")) break;
+      if (z !== 17 && t0.p) { await view(page, [t0.p[1], t0.p[0]], z, 800); await settle(page); }
+      for (const bearing of [0, 90, 180, 270]) {
+        // at once (same task as pitchend, before any rebuild): the 3D tree must not show while the tree box touches a pin
+        const early = await page.evaluate((bearing) => { const m = __gm(); m.setMaxPitch(70); m.jumpTo({ pitch: 50, bearing }); m.fire("pitchend");
+          const tr = PNSeasonMap.feats().filter((x) => x.k === "tree")[0], P = PNSeasonMap.pins(); if (!tr) return { touch: false, vis: "none" };
+          const s = [[13, 0.32], [15, 0.55], [17, 0.9], [19, 1.3]], z = m.getZoom(); let k = 1.3; for (let i = 1; i < s.length; i++) if (z <= s[i][0]) { k = s[i - 1][1] + (s[i][1] - s[i - 1][1]) * (z - s[i - 1][0]) / (s[i][0] - s[i - 1][0]); break; }
+          const c = m.project(tr.p), w = 100 * k, h = 132 * k, x = [c.x - w / 2, c.y - h, c.x + w / 2, c.y];
+          return { touch: P.some((r) => x[0] < r[2] && x[2] > r[0] && x[1] < r[3] && x[3] > r[1]), vis: m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none" }; }, bearing);
+        await settle(page); const t = await treeNow(page); t.z = z; t.early = early; tl.push(t);
+        if (t.vis === "visible") break;
+      }
+    }
+    await page.evaluate(() => { const m = __gm(); m.jumpTo({ pitch: 0, bearing: 0 }); m.fire("pitchend"); }); await settle(page);
+    const back = await treeNow(page);
+    const same = tl.every((t) => t.pitch >= 45 && t.drawn === 0 && (t.vis === "visible") === (t.h === 0) && !(t.early.touch && t.early.vis === "visible"));
+    ok(flat.tree && flat.model && flat.vis !== "visible" && flat.h === 0 && flat.drawn > 0 && same && tl.some((t) => t.vis === "visible") && back.vis !== "visible" && back.h === 0 && back.drawn > 0,
+      "the real 3D tree shows only in the tilted view, exactly when the tree touches no pin (and the drawn tree is shown flat)", { flat, tl, back });
     // the snow canvas: snow falls, and every pin centre stays clear (a hole)
     await view(page, LUD, 16, 1500);
     await force(page, { wx: "snow3" }); await wait(page, 3000);
@@ -250,6 +282,28 @@ async function runGL(b) {
     const r2 = await off.page.evaluate(() => ({ feats: PNSeasonMap.stats.feats, bulbs: PNSeasonMap.stats.bulbs, sky: PNSky.active() }));
     ok(r2.feats === 0 && r2.bulbs === 0 && r2.sky.length === 0, "'Levande karta: av': no decorations and no snow", r2);
     await off.ctx.close();
+  }
+  // seasonsfix (24 Nov, CI run 45454158432: the tree on a DOM pin at z 15.5): a DOM pin that comes, moves or goes while the
+  // map stands still (a poll, my position, Levande karta sparks) gives NO map "idle" when nothing else moves. Reduced motion =
+  // no twinkle = no idle at all, so only a pin watch can see it. The tree must hide at once and come back when the pin goes.
+  if (ONLY.test("map")) {
+    const { ctx, page, errs } = await open(b, "gl", { reduced: true, query: "?season=xmas&wx=none&light=0" });
+    await page.waitForFunction(() => window.PNSeasonMap && PNSeasonMap.stats.tree, null, { timeout: 30000 }).catch(() => {});
+    await view(page, LUD, 16.5, 800); await settle(page);
+    let t = await treeNow(page); if (t.p) { await view(page, [t.p[1] - 0.0004, t.p[0]], 16.5, 800); await settle(page); }
+    const a = await treeNow(page), q = [];
+    const pin = (ll) => page.evaluate((ll) => { if (!window.__xpin) window.__xpin = L.marker(ll, { interactive: false, icon: L.divIcon({ className: "x-pin", iconSize: [30, 30], iconAnchor: [15, 30] }) }).addTo(__map); else __xpin.setLatLng(ll); }, ll);
+    if (a.p) {
+      await pin([a.p[1], a.p[0]]); await wait(page, 300); await settle(page); q.push(["comes", await treeNow(page)]);
+      await pin([a.p[1] + 0.01, a.p[0]]); await wait(page, 300); await settle(page); q.push(["moves away", await treeNow(page)]);
+      await pin([a.p[1], a.p[0]]); await wait(page, 300); await settle(page); q.push(["moves on", await treeNow(page)]);
+      await page.evaluate(() => { __map.removeLayer(__xpin); }); await wait(page, 300); await settle(page); q.push(["goes", await treeNow(page)]);
+    }
+    const want = [1, 0, 1, 0];
+    ok(a.tree && a.h === 0 && a.drawn > 0 && q.length === 4 && q.every((x, i) => x[1].h === want[i] && (x[1].drawn > 0) === !want[i]),
+      "a DOM pin that comes / moves onto / leaves the tree while the map stands still: the tree hides at once and comes back", { a, q: q.map((x) => [x[0], x[1].h, x[1].drawn]) });
+    ok(errs.length === 0, "pin watch: no page error", errs);
+    await ctx.close();
   }
   if (ONLY.test("ends")) {
     const { ctx, page, errs } = await open(b, "gl", { clock: true, query: "?season=xmas&wx=snow&light=0" });

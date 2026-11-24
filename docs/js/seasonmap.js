@@ -12,7 +12,9 @@
      autumn leaves in the parks; light beams over bars with 15+ people (tilted view only).
    - RULE (owner 15 Nov: "as long as it doesn't cover any bars"): every piece sits UNDER every bar layer (before the first
      olnu bar layer), is never placed within 45 m of a bar, and is hidden when its box on screen touches a bar icon, a bar
-     name, my marker or any DOM pin (faces, people) — checked again after every move / zoom.
+     name, my marker or any DOM pin (faces, people) — checked again after every move / zoom / tilt, and when a DOM pin comes,
+     goes or moves while the map stands still (seasonsfix 24 Nov: a pin that came with a poll stayed under the tree). The 3D
+     tree follows the same hidden flag at once.
    - Every motion ends: twinkle / flame / swing run 40 s at most after the map opens or the season changes, then stand still.
    - "Levande karta: av" = no decorations, no palette (js/alive.js pn_alive_off). Kill switch: PNSeason.off(). */
 (function () {
@@ -24,7 +26,7 @@
   var CLS = ["street", "street_limited", "pedestrian", "primary", "secondary", "tertiary"];
   var EMPTY = { type: "FeatureCollection", features: [] };
   var map = null, gm = null, hooked = null, cur = null, town = null, feats = [], bulbs = [], wires = [], parks = [], buildT = 0, animT = 0, animEnd = 0, frame = 0, swingT0 = 0;
-  var pal = { on: "", orig: {} }, made = {}, sig = "", lastBuild = 0, treeAt = {};
+  var pal = { on: "", orig: {} }, made = {}, sig = "", lastBuild = 0, treeAt = {}, pend = 0, pinT = 0, mo = null, moOn = null;
   var stats = { builds: 0, ms: 0, roads: 0, churches: 0, parks: 0, feats: 0, bulbs: 0, hidden: 0, street: "", tree: null, palette: "", model: false, anim: 0 };
   function S() { return W.PNSeason; }
   function glm() { try { var b = W.BASEMAP; return b && b.isMapbox && b.isMapbox() && b.mapbox() ? b.mapbox().getMapboxMap() : null; } catch (e) { return null; } }
@@ -275,6 +277,7 @@
     if (quiet && sg === cullSig) return;
     cullSig = sg; stats.culls = (stats.culls || 0) + 1;
     try { m.getSource(SRC).setData({ type: "FeatureCollection", features: feats }); m.getSource(SRC_B).setData({ type: "FeatureCollection", features: bulbs }); } catch (e) {}
+    tilt(m);   // the 3D tree is hidden with the drawn one (it showed over a pin until the next build)
   }
 
   /* ---------- motion: twinkle, flame, swing (40 s at most, then still) ---------- */
@@ -307,12 +310,30 @@
   }
 
   /* ---------- wiring ---------- */
-  function need(delay) { W.clearTimeout(buildT); buildT = W.setTimeout(function () { (W.requestIdleCallback || function (f) { return W.setTimeout(f, 30); })(build, { timeout: 1200 }); }, delay == null ? 350 : delay); }
+  function need(delay) { pend = 1; W.clearTimeout(buildT); buildT = W.setTimeout(function () { (W.requestIdleCallback || function (f) { return W.setTimeout(f, 30); })(function () { pend = 0; build(); }, { timeout: 1200 }); }, delay == null ? 350 : delay); }
+  // DOM pins come, go and move without a map "idle" (a poll, my position, Levande karta sparks): check the rule again then
+  function isPin(n) { return !!(n && n.nodeType === 1 && n.classList && n.classList.contains("leaflet-marker-icon")); }
+  function pinRec(r) {
+    if (r.type === "attributes") return isPin(r.target);
+    var L2 = [r.addedNodes, r.removedNodes];
+    for (var j = 0; j < 2; j++) for (var i = 0; i < L2[j].length; i++) { var n = L2[j][i]; if (isPin(n) || (n.querySelector && n.querySelector(".leaflet-marker-icon"))) return true; }
+    return false;
+  }
+  function pinsSoon(m) {
+    if (pinT) return;
+    pinT = W.setTimeout(function () { pinT = 0; if (gm !== m || (m.isMoving && m.isMoving())) return; cull(m, true); }, 150);   // moving: moveend builds + culls
+  }
+  function watchPins(m) {
+    if (moOn === m || !W.MutationObserver) return;
+    try { if (mo) mo.disconnect(); moOn = m;
+      mo = new W.MutationObserver(function (recs) { if (!feats.length && !bulbs.length) return; for (var i = 0; i < recs.length; i++) if (pinRec(recs[i])) { pinsSoon(m); return; } });
+      mo.observe(m.getContainer(), { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] }); } catch (e) {}
+  }
   function hook(m) {
-    if (!m || hooked === m) return; hooked = m; gm = m; town = null; pal = { on: "", orig: {} };
+    if (!m || hooked === m) return; hooked = m; gm = m; town = null; pal = { on: "", orig: {} }; watchPins(m);
     m.on("style.load", function () { pal = { on: "", orig: {} }; town = null; W.setTimeout(function () { if (ensure(m)) { palette(m, cur); need(200); } }, 400); });
     m.on("moveend", function () { if (!needed(m) && !feats.length && !bulbs.length) return; need(250); });
-    m.on("pitchend", function () { tilt(m); need(100); });
+    m.on("pitchend", function () { cull(m, true); tilt(m); need(100); });   // the boxes of the new view first (the 3D tree must not show over a pin)
     // pins come and go (a poll, a DOM pin mounts, a name gets placed): check the rule again when the map is still
     m.on("idle", function () {
       if (feats.length || bulbs.length) cull(m, true);
@@ -344,6 +365,7 @@
     pins: function () { return gm ? pinRects(gm) : []; },
     feats: function () { return feats.map(function (x) { return { k: x.properties.k, h: x.properties.h || 0, p: x.geometry.coordinates }; }); },
     _build: function () { town = null; build(); return stats; },
+    _pending: function () { return !!(pend || pinT); },   // tests: a build or a pin check still waits
     _layers: function () { return [L_PARK, L_GLOW, L_WIRE, L_BB, L_BC, L_SYM, L_MODEL, "pn-ss-beam"].filter(function (id) { return gm && gm.getLayer(id); }); }
   };
   if (W.PN && W.PN.mod) W.PN.mod("PNSeasonMap");

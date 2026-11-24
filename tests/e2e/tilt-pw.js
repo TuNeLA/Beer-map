@@ -74,6 +74,13 @@ async function open(b, mode, o = {}) {
 }
 const view = async (page, ll, z, ms) => { await page.evaluate(([ll, z]) => { __map.closePopup(); __map.setView(ll, z, { animate: false }); }, [ll, z]); await wait(page, ms || 1500); };
 const pitch = (page) => page.evaluate(() => Math.round(__gm().getPitch() * 10) / 10);
+// the season map finished its work for this view (map still + loaded, no build / pin check waiting, counters still 600 ms)
+const ssSettle = (page, ms) => page.evaluate((ms) => new Promise((res) => { const m = __gm(), t0 = Date.now(); let last = "", same = 0;
+  const tick = () => { const s = PNSeasonMap.stats, k = s.builds + "," + (s.culls || 0), calm = m.loaded() && !m.isMoving() && !(PNSeasonMap._pending && PNSeasonMap._pending());
+    same = calm && k === last ? same + 1 : 0; last = k;
+    if (same >= 4 || Date.now() - t0 > ms) return requestAnimationFrame(() => requestAnimationFrame(() => res(same >= 4)));
+    setTimeout(tick, 150); };
+  tick(); }), ms || 12000);
 const settleCam = (page, ms) => page.waitForFunction(() => !__gm().isMoving() && !__gm().isEasing(), null, { timeout: ms || 6000 }).catch(() => {});
 const btnBox = (page) => page.evaluate(() => { const e = document.getElementById("pn-tilt"), l = document.getElementById("btn-locate"); const r = (x) => x && x.getClientRects().length ? x.getBoundingClientRect().toJSON() : null;
   return { has: !!e, shown: !!(e && !e.hidden && e.getClientRects().length), b: r(e), loc: r(l), pressed: e && e.getAttribute("aria-pressed"), label: e && e.getAttribute("aria-label"),
@@ -251,10 +258,21 @@ async function runOther(b) {
       return { n: at.length, bad: at.filter((a) => a > 0).length }; });
     ok(hs.n > 0 && hs.bad === 0, "tilted with the aurora: the sky canvas has a hole at every bar icon (" + hs.n + " bars)", hs);
     // the 3D Christmas tree in the tilted view (seasonmap.js: pitch > 25)
+    // seasonsfix (24 Nov): the tree is hidden in a tilted view where its box touches a pin (bars behind it come close on
+    // screen), so the old check (visible after a fixed 2.5 s, one direction) was red on some runs. Now: read after the season
+    // map settled; in each direction the 3D tree shows exactly when the tree is not hidden; one of 4 directions shows it.
     const tp = await page.evaluate(() => PNSeasonMap.stats.tree);
-    if (tp) await view(page, [tp[1], tp[0]], 17.5, 2500);
-    const t3 = await page.evaluate(() => { const m = __gm(); return { model: PNSeasonMap.stats.model, vis: m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none", p: Math.round(m.getPitch()) }; });
-    ok(!!tp && t3.p > 25 && (!t3.model || t3.vis === "visible"), "Christmas: the real 3D tree shows in the tilted view (pitch " + t3.p + ")", t3);
+    if (tp) await view(page, [tp[1], tp[0]], 17.5, 1500);
+    const tl = [];
+    for (const bearing of [0, 90, 180, 270]) {
+      await page.evaluate((bearing) => __gm().jumpTo({ bearing }), bearing); await ssSettle(page);
+      const t = await page.evaluate(() => { const m = __gm(), tr = PNSeasonMap.feats().filter((x) => x.k === "tree")[0];
+        return { model: PNSeasonMap.stats.model, vis: m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none", p: Math.round(m.getPitch()), b: Math.round(m.getBearing()), h: tr ? tr.h : -1 }; });
+      tl.push(t); if (t.vis === "visible") break;
+    }
+    await page.evaluate(() => __gm().jumpTo({ bearing: 0 })); await ssSettle(page);
+    const t3 = tl[tl.length - 1];
+    ok(!!tp && t3.model && tl.every((t) => t.p > 25 && (t.vis === "visible") === (t.h === 0)) && tl.some((t) => t.vis === "visible"), "Christmas: the real 3D tree shows in the tilted view (pitch " + t3.p + "), exactly when the tree touches no pin", tl);
     // flat again: aurora off, 3D tree off
     await tapTilt(page); await settleCam(page); await wait(page, 800);
     const s2 = await page.evaluate(() => { const m = __gm(); return { p: Math.round(m.getPitch()), sky: PNSky.active(), vis: m.getLayer("pn-ss-tree3d") ? m.getLayoutProperty("pn-ss-tree3d", "visibility") : "none" }; });
