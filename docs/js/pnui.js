@@ -154,7 +154,7 @@
     return '<div class="pn-meter" role="img" aria-label="' + esc(label) + '"' + (barId ? ' data-bar="' + esc(barId) + '" data-n="' + n + '"' + (word ? ' data-w="' + esc(word) + '"' : "") : "") + ">" +
       glassSVG(L, size || 64, still) +
       '<div class="pn-mt"><b>' + esc(L.word) + (n >= 3 ? ' <span class="pn-mt-n">· ' + n + I18N.L(" här", " here") + "</span>" : "") + "</b>" +   // fixM T-24: no number below 3 (gw)
-      (L.cmp ? '<small class="pn-mt-cmp">' + cue(L.arrow) + esc(L.cmp) + "</small>" : '<small class="pn-mt-cmp pn-mt-none">' + I18N.L("Inget snitt än för den här krogen", "No average yet for this bar") + "</small>") +
+      (L.cmp ? '<small class="pn-mt-cmp">' + cue(L.arrow) + esc(L.cmp) + "</small>" : '<small class="pn-mt-cmp pn-mt-none">' + I18N.L("Okänt än hur fullt det brukar vara", "Not known yet how busy it usually is") + "</small>") +
       '<small class="pn-mt-up">' + esc(freshText()) + "</small></div></div>";
   }
   function barMeterHTML(bar, list) {

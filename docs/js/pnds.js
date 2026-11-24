@@ -798,7 +798,7 @@
       if (mer.length) {
         var md = mk("details", "pp-fold pp-sec pp-sec-mer");
         md.setAttribute("data-fold", "mer"); if (merOpen) md.setAttribute("open", "");
-        md.innerHTML = '<summary><span class="pp-sec-h">' + I18N.L("Mer", "More") + '</span><span class="pn-bs-sub">' + I18N.L("Stammis, bjud in, QR", "Regulars, invite, QR") + '</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
+        md.innerHTML = '<summary><span class="pp-sec-h">' + I18N.L("Mer", "More") + '</span><span class="pn-bs-sub">' + I18N.L("Tider, pris, stammis, QR", "Hours, price, regulars, QR") + '</span><span class="pf-chev" aria-hidden="true">›</span></summary>';
         var body = mk("div", "pf-body"); mer.forEach(function (x) { body.appendChild(x); }); md.appendChild(body);
         var wrap = mk("div", "pp-folds pn-bs-folds2"); wrap.appendChild(md); tail.after(wrap);
       }

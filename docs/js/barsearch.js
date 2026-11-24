@@ -206,9 +206,37 @@
   }
   function head(txt) { var h = mk("li", "bs-h", txt); h.setAttribute("role", "presentation"); return h; }
   function say(txt, cls) { ui.msg.textContent = txt || ""; ui.msg.className = "bs-msg" + (cls ? " " + cls : ""); ui.msg.hidden = !txt; }
+  // fixC P-20 + lane walktime (E6): an empty field is not a dead end. With a good position: "Inom 10 min promenad" (walktime's
+  // on-phone estimate); else "Nära dig" / "Nära kartans mitt" by distance. Each row: crowd word · open / closed · ca N min or
+  // distance. max 5 on an empty field, 3 under "Senaste".
+  function nearRows(max) {
+    var nb = [], o = origin(), B = W.BARS, h0 = tl("Inom 10 min promenad", "Within a 10 min walk");
+    try { nb = W.WALKTIME && W.WALKTIME.near ? W.WALKTIME.near() || [] : []; } catch (e) { nb = []; }
+    var l = nb.map(function (x) { return { bar: x.bar, lab: x.label }; });
+    if (!l.length && o && B && B.around) {
+      l = B.around(o.lat, o.lng, 3000).bars.filter(function (x) { return x.bar && x.bar.name && !x.bar.place && !x.bar.arena; })
+        .sort(function (a, b) { return a.d - b.d; }).map(function (x) { return { bar: x.bar, lab: km(x.d) }; });
+      h0 = o.me ? tl("Nära dig", "Near you") : tl("Nära kartans mitt", "Near the map centre");
+    }
+    l = l.slice(0, max || 5);
+    if (!l.length) return 0;
+    var cr = crowd();
+    ui.list.appendChild(head(h0));
+    l.forEach(function (x) {
+      var b = x.bar, bits = [], c = null, st0 = null;
+      try { var agg = cr.per[String(b.id)]; c = W.PNCROWD && W.PNCROWD.at ? W.PNCROWD.at(b, agg ? agg.beers : [], cr.cis) : null; } catch (e) { c = null; }
+      if (c && c.lv > 0 && c.word) bits.push(c.word);
+      try { var O = W.OPPET, s0 = O && O.barStatus ? O.barStatus(b) : null; st0 = s0 && O.label(s0); } catch (e) { st0 = null; }
+      if (st0 && st0.t) bits.push(String(st0.t).replace(/^[^\p{L}\p{N}]+/u, ""));
+      if (x.lab) bits.push(x.lab);
+      var li = row({ bar: b, title: b.name, lat: b.lat, lng: b.lng }, bits.join(" · "), iconOf(b));
+      li.firstChild.classList.add("bs-near"); ui.list.appendChild(li);
+    });
+    return l.length;
+  }
   function paintRecent() {
-    var l = recentGet(), nb = W.WALKTIME && W.WALKTIME.near ? W.WALKTIME.near() : [];
-    if (!l.length && !nb.length) { say(tl("Skriv namnet på en krog eller ett ställe.", "Type the name of a bar or a place.")); return; }
+    var l = recentGet();
+    if (!l.length) { say(tl("Skriv namnet på en krog eller ett ställe.", "Type the name of a bar or a place.")); nearRows(5); return; }
     say("");
     if (l.length) ui.list.appendChild(head(tl("Senaste", "Recent")));
     l.forEach(function (r) {
@@ -216,11 +244,7 @@
       try { var c = W.CITIES && W.CITIES.nearest(r.lat, r.lng); tn = c ? c.name : ""; } catch (e) {}
       ui.list.appendChild(row(h, tn, "history"));
     });
-    // lane walktime (E6): bars within 10 min on foot (on-phone estimate, only with a good position), under "Senaste"
-    if (nb.length) {
-      ui.list.appendChild(head(tl("Inom 10 min promenad", "Within a 10 min walk")));
-      nb.forEach(function (x) { ui.list.appendChild(row({ bar: x.bar, title: x.bar.name, lat: x.bar.lat, lng: x.bar.lng }, [town(x.bar), x.label].filter(Boolean).join(" · "), iconOf(x.bar))); });
-    }
+    nearRows(3);
   }
   function paintPlaces() {
     if (!online()) { if (!st.own.length) say(tl("Du är offline. Bara krogar som appen redan känner.", "You are offline. Only bars the app already knows."), "bs-off"); return; }
@@ -322,9 +346,10 @@
     if (selfBack) { var f = selfBack; selfBack = null; f(); return; }
     if (ui && !(e.state && e.state.pnBs)) { hist = 0; close(); }
   }
-  function open(tab, q) {   // q: the words to put back in the field (I-139 back from a beer page)
+  function open(tab, q, o) {   // q: the words to put back in the field (I-139 back from a beer page); o: { pick: slot, done() } (fixC P-14)
     if (ui) { if (tab) setTab(tab, false); return; }
     if (!A) return;
+    st.pickO = tab === "beer" && o && o.pick ? o : null;
     try { if (A.sheetOpen && A.sheetOpen()) A.closeSheet(); } catch (e) {}
     ui = build();
     st.q = ""; st.own = []; st.places = null; st.placeBusy = false; st.placeErr = false;
@@ -384,7 +409,9 @@
   function paintBeer() {
     if (!ui || st.tab !== "beer") return;
     var box = ui.beer, q = String(ui.input.value || "").trim();
-    loadBeer().then(function (L) { if (ui && ui.beer === box && st.tab === "beer") { L.tab(box, String(ui.input.value || "").trim(), { beer: fromBeer(L, "beer"), style: fromBeer(L, "style") }); fit(); } }, function () {
+    var po = st.pickO;
+    loadBeer().then(function (L) { if (ui && ui.beer === box && st.tab === "beer") { L.tab(box, String(ui.input.value || "").trim(), { beer: fromBeer(L, "beer"), style: fromBeer(L, "style"),
+      pick: po ? po.pick : 0, pickDone: po ? function () { st.pickO = null; close(po.done); } : null }); fit(); } }, function () {
       if (!ui || ui.beer !== box) return;
       box.innerHTML = ""; var p = mk("p", "bs-msg bs-err", tl("Ölen gick inte att ladda. Försök igen.", "Could not load the beers. Try again.")); p.setAttribute("role", "status"); box.appendChild(p);
     });

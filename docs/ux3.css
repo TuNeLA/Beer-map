@@ -76,3 +76,36 @@
 .ui-arrow.ui-arrow-r{left:auto;right:18px;transform:none}
 @keyframes uiBob{50%{translate:0 8px}}
 @media (prefers-reduced-motion: reduce){.ui-arrow{animation:none}}
+
+/* fixC P-06: Info row "Öppettider saknas" + [Lägg till] (js/barinfo.js noHoursHTML) */
+.bi-line .oh-none{color:var(--ds-text-2,inherit)}
+.bi-line .oh-none .bi-ohn{flex:1 1 auto}
+.bi-line .oh-none .bi-add{flex:0 0 auto;margin-left:auto}
+
+/* fixC P-07: checked in = "Checka ut" is an outline button (the loudest action is not leaving). Beats pnds.css (0,3,0) by specificity. */
+.pn-bs7 .pp-act.pn-bs-act .ci-out{background:transparent !important;color:var(--ds-text) !important;border:1px solid var(--ds-border-2) !important;font-weight:600 !important}
+/* fixC P-07: ONE button style for the actions in "Mer" (outline, full width, 48 px, 16 px text, icon + label) */
+.pn-bs7 .pp-sec-mer .pf-body .pp-info{display:flex !important;flex-direction:column;gap:var(--ds-2)}
+.pn-bs7 .pp-sec-mer .pf-body .pp-info .btn,.pn-bs7 .pp-sec-mer .pf-body .plc-btn,.pn-bs7 .pp-sec-mer .pf-body .pn-bs-repb,
+.pn-bs7 .pp-sec-mer .pf-body .pn-bs-repl .btn{display:flex !important;align-items:center;justify-content:center;gap:var(--ds-2);width:100%;min-height:48px;margin:0 !important;
+  border-radius:var(--ds-r-1) !important;background:transparent !important;border:1px solid var(--ds-border-2) !important;color:var(--ds-text) !important;
+  font:600 var(--ds-fs-16)/24px var(--ds-sans) !important;text-decoration:none;padding:var(--ds-2) var(--ds-3) !important;white-space:normal;text-align:center;box-shadow:none !important}
+.pn-bs7 .pp-sec-mer .pf-body .plc-btns{flex-direction:column;gap:var(--ds-2);margin:0}
+.pn-bs7 .pn-bs-rep{margin:0}
+.pn-bs7 .pn-bs-rep>summary{list-style:none;cursor:pointer}
+.pn-bs7 .pn-bs-rep>summary::-webkit-details-marker{display:none}
+.pn-bs7 .pn-bs-rep .pf-chev{margin-left:var(--ds-1);transition:transform var(--m-3) var(--e-std)}
+.pn-bs7 .pn-bs-rep[open] .pf-chev{transform:rotate(90deg)}
+.pn-bs7 .pn-bs-repl{display:flex;flex-direction:column;gap:var(--ds-2);margin-top:var(--ds-2);padding-left:var(--ds-4)}
+.pn-bs7 .pn-bs-repl .gone-sec{margin:0}
+@media (prefers-reduced-motion: reduce){.pn-bs7 .pn-bs-rep .pf-chev{transition:none}}
+/* fixC P-25: a friend with a hero row on the bar card is not drawn again in the Folk här wall (js/pnds.js dedupeHere) */
+.pn-bs7 .pn-fh-wall .pn-fh-fr.pn-fh-dup{display:none !important}
+/* fixC P-25: the care line is a calm note (icon + text), not a blue link look */
+.pn-bs7 .pp-care1.pn-bs-care{display:flex;align-items:center;gap:var(--ds-2);color:var(--ds-text-2) !important}
+.pn-bs7 .pp-care1.pn-bs-care>svg{width:20px;height:20px;flex:0 0 20px;color:var(--ds-amber-t)}
+/* fixC P-28: "Vänner här" / "Du är här" under a coloured bar name in Topplista (js/boards.js frTags): colour is never the only sign */
+.top-row .bd-frtag{display:flex;align-items:center;gap:var(--ds-1);margin-top:2px;font:600 var(--fs-12)/16px var(--ds-sans,inherit)}
+.top-row .bd-frtag svg{width:14px;height:14px;flex:0 0 14px}
+.top-row .bd-frtag-fr{color:var(--green)}
+.top-row .bd-frtag-mine{color:var(--amber-2)}

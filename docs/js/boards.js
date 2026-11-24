@@ -327,7 +327,21 @@
     if (!none && box) box.remove();
     if (list.hidden !== none) list.hidden = none;
     if (note && note.hidden !== none) note.hidden = none;
+    frTags(list);
     return true;
+  }
+  // fixC P-28: a green bar name meant "a friend is here", with no word for it (colour alone). Now an icon + word under the name.
+  // Idempotent (the observer calls tidyTop again after this change).
+  function frTags(list) {
+    list.querySelectorAll(":scope > li > .top-row").forEach(function (r) {
+      var m = r.querySelector(".top-main"), tag = m && m.querySelector(":scope > .bd-frtag"), k = r.classList.contains("mine") ? "mine" : r.classList.contains("friend") ? "fr" : "";
+      if (!m || (tag ? tag.getAttribute("data-k") : "") === k) return;
+      if (tag) tag.remove();
+      if (!k) return;
+      var t = document.createElement("span"); t.className = "bd-frtag bd-frtag-" + k; t.setAttribute("data-k", k);
+      t.innerHTML = ic(k === "mine" ? "pin" : "users") + "<span>" + U.esc(k === "mine" ? L("Du är här", "You are here") : L("Vänner här", "Friends here")) + "</span>";
+      m.appendChild(t);
+    });
   }
   function watchTop(body) {
     if (!tidyTop(body) || !window.MutationObserver) return;
