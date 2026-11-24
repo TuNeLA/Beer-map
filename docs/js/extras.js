@@ -309,20 +309,80 @@
   function pickOther() {
     if (otherBusy) return;
     var left = otherLeft();
-    if (left > 0) { A.toast(t("otherWait", U.mmss(left))); return; }
+    // fixB P-17: the 10-min wait is for alcohol only. During it the sheet still opens (water / soda work), the alcohol
+    // buttons are off and say the time. Without the soft-drink server (softMissing) it is the old toast.
+    if (left > 0 && softMissing) { A.toast(t("otherWait", U.mmss(left))); return; }
     // QA #19: offline is fine here; postOther() keeps the drink until we are online.
     var kinds = t("kinds") || {};
-    A.openSheet(t("otherTitle"), function (body) {
-      body.appendChild(A.el("p", { class: "muted", text: t("otherInfo") }));
+    A.openSheet(t("softTitle"), function (body) {
+      if (!softMissing) body.appendChild(softRow());
+      body.appendChild(A.el("p", { class: "muted", text: left > 0 ? t("otherWait", U.mmss(left)) : t("otherInfo") }));
       var grid = A.el("div", { class: "kind-grid" });
       KINDS.forEach(function (k) {
         var kk = kinds[k] || ["❓", k];
-        grid.appendChild(A.el("button", { type: "button", class: "kind-btn", "data-kind": k, onclick: function () { A.closeSheet(); postOther(k); } }, [
+        var kb = A.el("button", { type: "button", class: "kind-btn", "data-kind": k, onclick: function () { A.closeSheet(); postOther(k); } }, [
           A.el("span", Object.assign({ class: "kb-e", "aria-hidden": "true" }, window.PNI && window.PNI.kind ? { html: window.PNI.kind(k, "pn-kind-i"), "data-a2k": k } : { text: kk[0] })), A.el("span", { class: "kb-n", text: kk[1] })
-        ]));
+        ]);
+        if (left > 0) kb.disabled = true;
+        grid.appendChild(kb);
       });
       body.appendChild(grid);
     });
+  }
+
+  /* ---------- fixB P-17 (polish sweep 24 Nov): water and soda in the same sheet ----------
+     "Annat" had only alcohol, so a person who drinks water between beers could not log it. Now the sheet "Annan dryck" starts
+     with "Utan alkohol": Vatten and Läsk. They go to their own server table (post_soft, migration 0538: public.soft_log), never
+     to beers / drink_log: they are never a drink, never in a count, a streak, a medal, a 5/10 push or the driver rule. No
+     clink, no burst, no praise: one plain line with tonight's number (information only). Min kväll shows the same numbers.
+     Old server (no post_soft, PGRST202): one calm line, and the row hides from then on. */
+  var SOFT = ["vatten", "lask"], softMissing = false, softBusy = false;
+  I.add({
+    sv: { softTitle: "Annan dryck", softHead: "Utan alkohol", softNote: "Räknas aldrig som dryck. Bara du ser det.",
+      softName: { vatten: "Vatten", lask: "Läsk" }, softDone: { vatten: "Vatten loggat · {n} glas ikväll", lask: "Läsk loggad · {n} ikväll" },
+      softSlow: "Vänta en halv minut mellan två loggningar.", softOff: "Vatten och läsk kan inte loggas än. Det kommer snart." },
+    en: { softTitle: "Other drink", softHead: "No alcohol", softNote: "Never counted as a drink. Only you see it.",
+      softName: { vatten: "Water", lask: "Soda" }, softDone: { vatten: "Water logged · {n} tonight", lask: "Soda logged · {n} tonight" },
+      softSlow: "Wait half a minute between two logs.", softOff: "Water and soda cannot be logged yet. Coming soon." }
+  });
+  // Two own icons in the PNI format (grid 24, stroke 2, currentColor), added like pnicons-more.js does: a glass with a water line, a can.
+  // Added when the sheet opens (pnicons.js loads after this file).
+  function softIcons() {
+    var P = window.PNI; if (!P || !P._I || !P.KIND) return;
+    if (!P._I["k-vatten"]) P._I["k-vatten"] = ["M6.5 4h11l-1.6 15.3a2 2 0 0 1-2 1.7h-3.8a2 2 0 0 1-2-1.7z", "M7.4 10.5c1.5.9 3.1.9 4.6 0s3.1-.9 4.6 0"];
+    if (!P._I["k-lask"]) P._I["k-lask"] = ["r 7 4.5 10 16.5 2.5", "M7 8.5h10", "M7 17h10", "M10.5 2.5h3"];
+    if (!P.KIND.vatten) P.KIND.vatten = "k-vatten";
+    if (!P.KIND.lask) P.KIND.lask = "k-lask";
+  }
+  function softRow() {
+    softIcons();
+    var names = t("softName") || {}, wrap = A.el("div", { class: "soft-box" });
+    wrap.appendChild(A.el("p", { class: "soft-h", text: t("softHead") }));
+    var grid = A.el("div", { class: "kind-grid soft-grid" });
+    SOFT.forEach(function (k) {
+      grid.appendChild(A.el("button", { type: "button", class: "kind-btn soft-btn", "data-soft": k, onclick: function () { A.closeSheet(); postSoft(k); } }, [
+        A.el("span", { class: "kb-e", "aria-hidden": "true", html: window.PNI && window.PNI.kind ? window.PNI.kind(k, "pn-kind-i") : "" }), A.el("span", { class: "kb-n", text: names[k] || k })
+      ]));
+    });
+    wrap.appendChild(grid);
+    wrap.appendChild(A.el("p", { class: "muted soft-note", text: t("softNote") }));
+    return wrap;
+  }
+  function postSoft(kind) {
+    if (softBusy || SOFT.indexOf(kind) < 0) return;
+    if (navigator.onLine === false || !A.authed()) { A.toast(t("postFail"), { err: true }); return; }
+    softBusy = true;
+    try { window.FX.vibrate(12); } catch (e) {}
+    A.rpc("post_soft", { p_kind: kind }).then(function (r) {
+      softBusy = false;
+      if (r.error) {
+        if (U.missing(r.error)) { softMissing = true; A.toast(t("softOff"), { ms: 5000 }); return; }
+        A.toast(U.errCode(r.error) === "slow_down" ? t("softSlow") : A.errMsg(r.error, t("postFail")), { err: U.errCode(r.error) !== "slow_down", ms: 5000 });
+        return;
+      }
+      var d = A.parseData(r.data) || {}, n = Math.max(1, d.n | 0);
+      A.toast(String((t("softDone") || {})[kind] || "").replace("{n}", n), { cls: "water", ms: 4000 });
+    }, function () { softBusy = false; A.toast(t("postFail"), { err: true }); });
   }
   // Random line that was not shown in the last 8 picks for this drink.
   var recentDrink = {};

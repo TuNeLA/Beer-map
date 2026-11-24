@@ -226,6 +226,8 @@ const tapSkip = (page) => page.evaluate(() => { const b = [...document.querySele
       });
       await page.addInitScript(() => { try { const n = JSON.parse(localStorage.getItem("olnu.night") || "null"); if (n) { n.lastTap = Date.now() - 40 * 60e3; localStorage.setItem("olnu.night", JSON.stringify(n)); } } catch (e) {} });
       await H.boot(page);
+      // fixB P-01 (24 Nov): with drinks logged (the fixture has 6) the LÄSK! line is information, not a skål; F2 is a sober driver
+      await page.evaluate(() => { if (window.LASK) window.LASK.drinksTonight = () => 0; });
       await page.evaluate(() => window.SKJUTS && window.SKJUTS._force && window.SKJUTS._force()); await settle(page, 2200);
       const g = await page.evaluate(() => { const b = document.getElementById("btn-beer"), l = document.getElementById("beer-label"); const cs = getComputedStyle(b), lr = l.getBoundingClientRect(), br = b.getBoundingClientRect();
         return { on: document.body.classList.contains("mn-lask"), t: l.textContent, sub: getComputedStyle(l, "::after").content, bg: cs.backgroundImage, cd: b.classList.contains("cooldown"), fit: lr.left >= br.left + 4 && lr.right <= br.right - 4, aria: b.getAttribute("aria-label") }; });

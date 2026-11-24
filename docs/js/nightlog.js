@@ -127,6 +127,7 @@
         grid.appendChild(el("div", { class: "nl-stat" }, [el("b", { class: x[0].length > 6 ? "nl-sm" : "", text: x[0] }), el("span", { text: x[1] })]));
       });
       root.appendChild(grid);
+      if (d.tonight) softLine(root, grid);
       // kinds
       var kinds = s.kinds || {}, kk = Object.keys(kinds).sort(function (a, b) { return kinds[b] - kinds[a]; });
       if (kk.length) {
@@ -173,6 +174,22 @@
     });
   }
 
+  // fixB P-17: water and soda tonight (extras.js post_soft → my_soft_tonight, migration 0538). Its own quiet line under the
+  // numbers, never inside "drycker" (they are not drinks). Information only. Old server (PGRST202) or 0 of both = no line.
+  var softOff = false;
+  function softLine(root, after) {
+    if (softOff || !A || !A.LIVE) return;
+    A.rpc("my_soft_tonight", {}).then(function (r) {
+      if (r.error) { if (missing(r.error)) softOff = true; return; }
+      var s = A.parseData(r.data) || {}, v = s.vatten | 0, l = s.lask | 0;
+      if ((!v && !l) || !document.body.contains(after)) return;
+      var parts = [];
+      if (v) parts.push(v + " " + L("vatten", "water"));
+      if (l) parts.push(l + " " + L("läsk", "soda"));
+      var p = el("p", { class: "muted nl-soft", text: L("Utan alkohol ikväll: ", "No alcohol tonight: ") + parts.join(" · ") });
+      after.parentNode.insertBefore(p, after.nextSibling);
+    }, function () {});
+  }
   // "Ångra" on the newest beer row: the same undo as the ÖL! button (undo_beer). Done → the log is read again.
   function undoBtn(root, night) {
     var P = window.PNI, b = el("button", { type: "button", class: "nl-undo", "aria-label": L("Ångra senaste ölen", "Undo the last beer") });
