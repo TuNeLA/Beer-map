@@ -9,6 +9,10 @@
 }
 .sheet:not([hidden]){animation:smSheetIn var(--sm-t-in) var(--sm-in) backwards}
 @keyframes smSheetIn{from{transform:translateY(min(72%,420px))}to{transform:none}}
+/* motion19a: #sheet opens with a Web Animation (js/smooth.js sheetIn: --m-5 --e-spring, from the tap x, can turn around).
+   The CSS slide above stays for the bar sheet and for a browser without Element.animate (no html.sm-wa then). The closing
+   sheet (hidden, its display held for the slide) gets no CSS animation either (polish.css .sheet sheetIn). */
+html.sm-wa #sheet.sheet,html.sm-wa #sheet.sheet:not([hidden]){animation:none}
 .backdrop:not([hidden]){animation:smFade var(--m-4) var(--e-in) backwards}
 @keyframes smFade{from{opacity:0}}
 /* Close: the real sheet slides down (js/smooth.js sheetOut); an empty scrim-coloured div fades out over the map. */
@@ -26,10 +30,18 @@
   background:rgba(255,255,255,.06);animation:smBreath 1.1s var(--e-std) infinite alternate}
 li.sm-skel{min-height:64px}
 @keyframes smBreath{from{opacity:.55}to{opacity:1}}
+/* motion19a fix 3: the first 8 list rows of a sheet that opens come in one after the other (js/smooth.js stagger sets
+   .sm-st and --i). They wait while warm.js holds the body (.wm-hold), so they start when the body shows. */
+#sheet-body:not(.wm-hold) .sm-st{animation:smRow var(--m-4) var(--e-in) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+@keyframes smRow{from{opacity:0;transform:translateY(8px)}}
+/* motion19a fix 11 (battery): ambient loops under an open sheet pause (pill glow, alive2, the 5/10 ambient edges).
+   html.sheet-open: app-ui.js openSheet / closeSheet. The LIVE ticker keeps its own rule (styles.css). */
+html.sheet-open .pill::after,html.sheet-open .fx-amb i,html.sheet-open .a2-holring,html.sheet-open #a2-skal,
+html.sheet-open #a2-dusk i,html.sheet-open .af-hol-e[data-a2bob]{animation-play-state:paused}
 /* Taps never wait for double-tap zoom; no text selection flash on long press. */
 button,.btn,[role=button],.gcard,.top-row{touch-action:manipulation}
 @media (prefers-reduced-motion: reduce){
-  .sheet:not([hidden]),.backdrop:not([hidden]),#sheet-body.sm-swap,.sm-bd-out{animation:none !important}
+  .sheet:not([hidden]),.backdrop:not([hidden]),#sheet-body.sm-swap,.sm-bd-out,#sheet-body .sm-st{animation:none !important}
   .sm-bd-out{display:none}
   .sm-skel{animation:none}
 }

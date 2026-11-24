@@ -32,9 +32,10 @@
   background:radial-gradient(circle at 50% 0,rgba(232,184,74,.25),transparent 60%),linear-gradient(180deg,#2a2412,#151208);
   border:2px solid var(--gold,#e8b84a);box-shadow:0 0 0 4px rgba(232,184,74,.12),0 10px 30px rgba(0,0,0,.45)}
 .cer-card-k{font-family:var(--hud);font-size:var(--fs-12);letter-spacing:.28em;color:var(--gold,#e8b84a)}
-.cer-card-m{font-size:var(--fs-44);line-height:1.2;margin:6px 0;animation:cerShine 2.4s var(--e-std) 2}
+.cer-card-m{font-size:var(--fs-44);line-height:1.2;margin:6px 0;animation:cerSettle var(--m-6) var(--e-spring) backwards}
 .cer-card-t{font-weight:700;font-size:var(--fs-16)}
 .cer-card-l{margin-top:6px;font-size:var(--fs-14);color:var(--text-2,#c4cbc8);line-height:1.4}
 .cer-card-f{margin-top:8px;font-family:var(--hud);font-size:var(--fs-12);color:var(--muted,#a3aca8);letter-spacing:.08em}
-@keyframes cerShine{0%,100%{transform:scale(1);filter:none}50%{transform:scale(1.08);filter:drop-shadow(0 0 8px rgba(232,184,74,.7))}}
+/* motion19b: one calm settle on the badge (was two 2.4 s shine pulses with a filter) */
+@keyframes cerSettle{from{transform:scale(.8);opacity:0}}
 @media (prefers-reduced-motion: reduce){.cer-card-m{animation:none}}

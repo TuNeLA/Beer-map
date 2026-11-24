@@ -61,6 +61,7 @@
     } else if (!toastWait || rank >= toastWait._olnuT.rank) toastWait = el;
     return el;
   }
+  var lastRealTap = 0;
   var toastWait = null, lastTap = 0, lastTapOut = 0, tapShownFor = -1, tapShownAt = 0, tapN = 0, tapDownAt = -9e9;
   // calm2 fix1: a tap = its own number (pointerdown / key; a click without a pointerdown just before it = a new tap too), so a
   // fixed clock never makes two taps look like one. performance.now() for the 8 s "one toast per tap" window.
@@ -68,7 +69,7 @@
   var SAFE_RX = /Följ mig hem|går hem|är hemma|hemma!|medevac|hämtning|hämtar dig|SOS|larm|walking home|is home|pick ?up|Follow me home/i;
   function calmSafe(msg, o) { return !!(o.err || o.action || o.urgent || o.keep || /\b(med|hf|gw|ride|rd|sos|pick)\b|^(hf|gw|ride|rd|sos)-/.test((o.id || "") + " " + (o.cls || "")) || SAFE_RX.test(String(msg))); }
   ["pointerdown", "keydown", "click"].forEach(function (ev) { document.addEventListener(ev, function (e) {
-    lastTap = Date.now();
+    lastTap = Date.now(); if (e && e.isTrusted) lastRealTap = lastTap;   // motion19a: a real finger / key (sheetFirstOk)
     if (e && (e.type !== "click" || pnow() - tapDownAt > 800)) tapN++;
     if (e && e.type === "pointerdown") tapDownAt = pnow();
     // A tap outside the beer-type strip and the ÖL! button = the user asked for something (a sheet may open now).
@@ -125,8 +126,16 @@
      with ✕ / backdrop / Escape gives onClose("cancel"). */
   var sheetQueue = [];
   function sheetLocked() { return !!(PN.s.sheetCur && PN.s.sheetCur.lock && !$("sheet").hidden); }
+  // motion19a fix 1 (Doherty < 400 ms): a sheet that opens from closed after a tap shows its frame at once (title + skeleton
+  // rows at its known height, .wm-shell in pnds.css) and slides; its body is built in the task after that first frame
+  // (sheetBuild), and a height change then is a FLIP (smooth.js), not a jump. This was warm.js slideFirst; it is here now, for
+  // every build (the queue, CALM and the back stack too). A sheet that replaces an open one, a refresh in place, the first
+  // open on this phone (no known height), reduced motion and opens without a tap build at once, as before.
+  // Off switch: window.PN_SHEET_FIRST = false. A new open or a close while the build waits: the open builds it first, a close drops it.
+  var sheetLater = null;
   function openSheet(title, build, opts) {
     opts = opts || {};
+    if (sheetLater) sheetLater.run();   // the waiting build first: the back stack and onClose see the same order as before
     try { if (window.OLNU_LAZY_NOW) window.OLNU_LAZY_NOW(); } catch (e) {}   // review2: lazy texts + sheet CSS now
     if (!opts.now && (sheetLocked() || PN.s.busy)) { sheetQueue.push([title, build, opts]); return false; }
     if (window.CALM && window.CALM.sheet(title, build, opts)) return false;   // calm: an automatic sheet waits for its slot
@@ -136,23 +145,79 @@
     var prev = PN.s.sheetCur; PN.s.sheetCur = null;
     if (prev && prev.onClose) { try { prev.onClose("replaced"); } catch (e) {} }
     PN.s.sheetCur = { onClose: opts.onClose || null, lock: !!opts.lock };
-    var fresh = $("sheet").hidden || $("sheet-title").textContent !== title;   // ds22: a new sheet starts at the top
+    var wasHidden = $("sheet").hidden;
+    var fresh = wasHidden || $("sheet-title").textContent !== title;   // ds22: a new sheet starts at the top
     $("sheet-title").textContent = title;
     try { if (window.WARM) window.WARM.beginSheet(title); } catch (e) {}   // inst: render window (before the old body goes)
     var body = $("sheet-body"); body.innerHTML = ""; if (fresh) body.scrollTop = 0;
-    try { build(body); } catch (e) { try { console.warn("olnu sheet", title, e); } catch (x) {} try { if (window.PNDS && window.PNDS.sheetFail) window.PNDS.sheetFail(body, title); } catch (x) {} }   // pnds: never an empty sheet
+    var turn = wasHidden && !!(window.SMOOTH && window.SMOOTH.closing && window.SMOOTH.closing());   // fix 2: it opens during the close slide (it turns around)
+    var hint = wasHidden && !opts.sync && !turn ? sheetHint(title) : 0;
+    var later = hint > 0 && sheetFirstOk();   // a turn: its rows are on screen, build at once
+    if (later) body.appendChild(sheetShell(hint));
+    else sheetBuild(body, title, build);
+    lastSheet = [title, build, opts];
     $("sheet").hidden = false; $("backdrop").hidden = false;
+    document.documentElement.classList.add("sheet-open");   // motion19a fix 11: ambient loops pause under a sheet (smooth.css)
     if (fresh) body.scrollTop = 0;   // ds22: again once shown (a hidden scroller ignores scrollTop and keeps its old place)
-    if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
-    try { if (window.WARM) window.WARM.endSheet(body, $("sheet-title").textContent); } catch (e) {}   // inst: show it complete, in one step
+    var done = function () {
+      if (window.SHEETNAV) { try { window.SHEETNAV.didOpen(title, build, opts); } catch (e) {} }
+      try { if (window.WARM && !turn) window.WARM.endSheet(body, $("sheet-title").textContent); } catch (e) {}   // inst: show it complete, in one step (a turn: no hold, the rows stay in sight)
+      if (wasHidden) { try { if (window.SMOOTH && window.SMOOTH.stagger) window.SMOOTH.stagger(body, title); } catch (e) {} }   // motion19a fix 3
+    };
+    if (!later) { done(); return true; }
+    var job = sheetLater = { run: function () {
+      if (sheetLater !== job) return; sheetLater = null;
+      if ($("sheet").hidden || body.firstElementChild !== job.sk) return;   // closed, or something else drew the body
+      // FLIP: the real body is taller or shorter than the skeleton. The sheet edge does not jump: the slide goes on from where
+      // the edge is now (smooth.js flip; no layout shift).
+      var flip = null; try { if (window.SMOOTH && window.SMOOTH.flip) flip = window.SMOOTH.flip(); } catch (e) {}
+      body.innerHTML = "";
+      sheetBuild(body, title, build);
+      if (fresh) body.scrollTop = 0;
+      if (window.WARM) body.classList.add("wm-cont");   // skeleton rows while warm.js holds the body for its data (pnds.css .wm-cont)
+      done();
+      try { if (flip) flip(); } catch (e) {}
+    }, sk: body.firstElementChild };
+    var go = function () { job.run(); };
+    try { requestAnimationFrame(function () { setTimeout(go, 0); }); } catch (e) {}
+    setTimeout(go, 300);   // a hidden tab gets no frame
     return true;
+  }
+  var lastSheet = null;
+  function sheetBuild(body, title, build) {
+    try { build(body); } catch (e) { try { console.warn("olnu sheet", title, e); } catch (x) {} try { if (window.PNDS && window.PNDS.sheetFail) window.PNDS.sheetFail(body, title); } catch (x) {} }   // pnds: never an empty sheet
+  }
+  function sheetFirstOk() {
+    if (window.PN_SHEET_FIRST === false || !window.requestAnimationFrame) return false;
+    try { if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false; } catch (e) {}
+    return Date.now() - lastRealTap < 700;   // a real tap asked for it (Doherty is about the answer to a tap; a script click: as before)
+  }
+  // Skeleton rows at the height this sheet had last time (warm.js keeps it in localStorage "olnu.warm.h1"). The FIRST open of a
+  // sheet on this phone has no known height: it builds at once, as before (a guessed height = the sheet edge jumps: layout
+  // shift, inst-pw.js "första gången").
+  function sheetHint(title) {
+    try {
+      var t = String(title || "").slice(0, 40), hh = JSON.parse(localStorage.getItem("olnu.warm.h1") || "{}") || {};
+      if (hh[t] > 0) return hh[t];
+      for (var k in hh) if (k.indexOf(t + "|") === 0 && hh[k] > 0) return hh[k];
+    } catch (e) {}
+    return 0;
+  }
+  function sheetShell(h) {
+    var sk = document.createElement("div"); sk.className = "wm-shell"; sk.setAttribute("aria-busy", "true");
+    sk.style.minHeight = Math.min(h, Math.round(innerHeight * 0.8)) + "px";
+    return sk;
   }
   function closeSheet(reason) {
     if (window.SHEETNAV) { try { if (window.SHEETNAV.willClose(reason)) return; } catch (e) {} }   // ux3: ← = one step back
-    // smooth (timers A9): the real sheet slides down; its body is cleared when the slide ends (a sheet opened meanwhile keeps its own)
-    var slid = false;
-    try { if (window.SMOOTH && !$("sheet").hidden) slid = window.SMOOTH.sheetOut(function () { if ($("sheet").hidden) $("sheet-body").innerHTML = ""; }); } catch (e) {}
+    sheetLater = null;   // fix 1: a build that still waits is dropped (the sheet is gone)
+    // smooth (timers A9 + motion19a fix 2): the real sheet slides down (WAAPI); its body is cleared when the slide ends (a sheet
+    // opened meanwhile keeps its own). A touch on the sliding sheet catches it: the same sheet opens again from where it is.
+    var slid = false, again = lastSheet;
+    var reopen = again ? function () { var o = {}; Object.keys(again[2] || {}).forEach(function (k) { o[k] = again[2][k]; }); o.now = true; o.sync = true; openSheet(again[0], again[1], o); } : null;
+    try { if (window.SMOOTH && !$("sheet").hidden) slid = window.SMOOTH.sheetOut(function () { if ($("sheet").hidden) $("sheet-body").innerHTML = ""; }, reopen); } catch (e) {}
     $("sheet").hidden = true; $("backdrop").hidden = true; if (!slid) $("sheet-body").innerHTML = "";
+    document.documentElement.classList.remove("sheet-open");
     var cur = PN.s.sheetCur; PN.s.sheetCur = null;
     if (window.SHEETNAV) { try { window.SHEETNAV.didClose(); } catch (e) {} }
     if (cur && cur.onClose) { try { cur.onClose(typeof reason === "string" ? reason : "cancel"); } catch (e) {} }

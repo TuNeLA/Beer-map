@@ -216,7 +216,9 @@
       push({ event: "walk_home", walk_id: id });
       try { if (window.GW && window.GW.walkHome) window.GW.walkHome(id); } catch (e) {}   // gw 0313
       onMine(A.parseData(r.data));
-      A.toast((sv() ? pick("hme", T.homeMe) : "✅ Home! Well marched.") + (auto ? "" : ""), { cls: "skal", ms: 6000 });
+      // motion19b: the end of the night is ONE calm card (nightlog.js homeCard); the toast stays as the fallback
+      var carded = false; try { carded = !!(window.NIGHTLOG && window.NIGHTLOG.homeCard && window.NIGHTLOG.homeCard({ clearToast: true })); } catch (e) {}
+      if (!carded) A.toast((sv() ? pick("hme", T.homeMe) : "✅ Home! Well marched.") + (auto ? "" : ""), { cls: "skal", ms: 6000 });
       try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (e) {}
       poll(true);
     });
