@@ -67,7 +67,7 @@
     fold: ["Mer… ", "More… "], foldLess: ["Mindre ▴", "Less ▴"],
     members: ["👥 Medlemmar & roller", "👥 Members & roles"],
     invite: ["➕ Bjud in", "➕ Invite"], status: ["📸 Begär lägesrapport", "📸 Ask for a status report"], statusSub: ["gruppchefen", "the chief"],
-    event: ["📨 Skapa event", "📨 Make an event"], eventSub: ["bjud in gänget", "invite the gang"],
+    event: ["📨 Skapa event", "📨 Make an event"], eventSub: ["Bjud in gänget", "Invite the gang"],
     out1: ["{n} ute nu", "{n} out now"], last: ["Senast:", "Latest:"], at: ["på", "at"],
     ci: ["checkade in", "checked in"], fail: ["Kunde int' skicka. Försök igen.", "Could not send. Try again."],
     slow: ["Lugn i stormen – vänta nån sekund.", "Easy – wait a few seconds."],
@@ -88,11 +88,15 @@
     if (k.contains("gmain")) return "home info";
     if (k.contains("gpg-now") || k.contains("gpg-chat") || k.contains("gpg-bar") || k.contains("gpg-dots") || k.contains("pn-gp-inv") || k.contains("pn-gp-code")) return "home";
     if (k.contains("pn-gp-mem")) return "home";   // ds58: Gänget ikväll
-    // d2group (AUDIT-NAV move 8): a calm home. 🎉 Spel shows on home only while a game runs (spel.js .sp-live); else it is the
-    // Spel row in Ikväll (+) (spel.js groupActions). 📸 Engångskamera = the first row of Ikväll (+); a new film roll (.new) shows on home too.
-    if (k.contains("sp-gi")) return k.contains("sp-live") ? "home" : "none";
+    // fixD P-09 (polish blind test: nobody found the games 4 levels deep): 🎉 Spel is ONE ordinary card on home again (DESIGN ds52),
+    // and the only way in (spel.js has no Ikväll row any more). Was (d2group, AUDIT-NAV move 8): home only while a game runs.
+    // 📸 Engångskamera = the first row of Ikväll (+); a new film roll (.new) shows on home too.
+    if (k.contains("sp-gi")) return "home";
     if (k.contains("fm-gi")) return hot(c) ? "home plus" : "plus";
-    if (k.contains("gg-gi") && window.SPEL && window.SPEL.open) return "none";   // d2group (Q13): the Gänget fun pack is a section of the 🎉 Spel hub (spelGang)
+    if (k.contains("gg-gi") && window.SPEL && window.SPEL.open) return "none";
+    // fixD P-09: the old Förfest / Partyspel / Lek / Duell tiles are in the Spel hub (spel.js hides them with CSS). "none" here too,
+    // so an Ikväll section head ("Spel & kul") never shows for tiles that cannot show.
+    if (/(^| )(ff|pt|gm|du)-gi( |$)/.test(c.className) && window.SPEL && window.SPEL.open) return "none";   // d2group (Q13): the Gänget fun pack is a section of the 🎉 Spel hub (spelGang)
     if (k.contains("sa-gk")) return "home";
     if (k.contains("a2-gcard")) return "home";
     if (k.contains("mo-gcard")) return "home";   // social-a: MOMENTS.groupCard (under Kvällsrapporten) + roomCard (in the Spel area)   // social-a: after lane Kvällsrapporten row (under Nu)   // social-a: ⚔️ Gängkamp (GM5 moved it out of the Spel list)   // 0195 📸 Engångskamera: always on the page (owner: "hard to find")
@@ -153,6 +157,7 @@
       if (v !== "home" || sb.scrollTop > top) sb.scrollTop = Math.max(0, top);
     }
     if (v === "home") paintChat(wrap);
+    if (v === "plus") rowIcons(wrap);   // fixD P-16: the emoji → icon pass may run after the last sort
     var f = v === "plus" ? wrap.querySelector(".gpg-ph .gpg-back") : v === "info" ? wrap.querySelector(".gpg-ph .gpg-back") : wrap.querySelector(".gpg-plus");
     try { if (f) f.focus({ preventScroll: true }); } catch (e) {}
   }
@@ -209,7 +214,23 @@
       if (fb.textContent !== ft) fb.textContent = ft;
     }
     if (!wrap.hasAttribute("data-gv")) wrap.setAttribute("data-gv", "home");
-    groupRows(wrap);
+    groupRows(wrap); rowIcons(wrap);
+  }
+  // fixD P-16: one own icon per Ikväll row. The emoji → icon pass gives 🎖️ Ceremoni, 🎖️ Truppen and 🪖 Kalla in the same medal.
+  // Ceremoni keeps the medal; Truppen = the squad (users), Kalla in = a call-out (megaphone). Only swaps when the icon differs.
+  var ROW_IC = [
+    [function (c) { return c.classList.contains("cr-gi"); }, "users"],
+    [function (c) { var b = c.classList.contains("row") && c.querySelector("button"); return !!b && /^(Kalla in|Call in)$/.test(String(b.textContent || "").replace(/\s+/g, " ").trim()); }, "megaphone"]
+  ];
+  function rowIcons(wrap) {
+    [].slice.call(wrap.children).forEach(function (c) {
+      for (var i = 0; i < ROW_IC.length; i++) {
+        if (!ROW_IC[i][0](c)) continue;
+        var s = c.querySelector("svg.pi-lead"), n = ROW_IC[i][1];
+        if (s && !s.classList.contains("pi-" + n)) { var t = document.createElement("span"); t.innerHTML = ic(n, "pi-lead"); if (t.firstChild) s.parentNode.replaceChild(t.firstChild, s); }
+        return;
+      }
+    });
   }
   // social-a R1-23: the Ikväll view (+) shows each section as ONE grouped list. The tiles keep their own DOM place
   // (polish2 orders them with CSS order), so mark the first / last visible tile of each section; CSS joins the rest.
@@ -652,13 +673,14 @@
       wrap.__chat = { msgs: [], lastId: 0, busy: false, painted: false, pend: [] };
     }
 
-    // bottom bar: + and the ONE main action
     // ds52: no ÖL! here (it lives on the map). ONE labelled button for tonight's actions.
-    var plus = h("button", { type: "button", class: "gpg-plus pn-gp-ikv", "aria-label": L("Ikväll: Engångskamera, Skåltimmen, Spel och mer", "Tonight: camera, cheers hour, games and more"),
+    // fixD P-08: an ordinary row in the page flow (pnds.css), no longer a dock floating over the chat; so a chevron right.
+    // fixD P-09: Spel is its own card on home, so this row names what is left inside.
+    var plus = h("button", { type: "button", class: "gpg-plus pn-gp-ikv", "aria-label": L("Ikväll: Engångskamera, Skåltimmen, Kvällens nota och mer", "Tonight: camera, cheers hour, the tab and more"),
       onclick: function () { view(wrap, "plus"); } }, [
       h("span", { class: "pn-gp-ti pn-acc-live", "aria-hidden": "true", html: ic("moon") }),
-      h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Ikväll", "Tonight") }), h("small", { text: L("Kamera, Skåltimmen, Spel…", "Camera, cheers hour, games…") })]),
-      h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-up") })]);
+      h("span", { class: "pn-gp-tx" }, [h("b", { text: L("Ikväll", "Tonight") }), h("small", { text: L("Kamera, Skåltimmen, Kvällens nota…", "Camera, cheers hour, the tab…") })]),
+      h("span", { class: "pn-gp-chev", "aria-hidden": "true", html: ic("chev-right") })]);
     var bar = h("div", { class: "gpg-bar" }, [plus]);
 
     // + / ⋯ panel head

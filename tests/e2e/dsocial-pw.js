@@ -92,7 +92,11 @@ const sect = async (k, fn) => { if (!want(k)) return; try { await fn(); } catch 
         if (typeof a === "string") { if (a !== b) diff.push(k + ": " + a + " → " + b); return; }
         Object.keys(a).forEach((p) => { if (a[p] !== b[p]) diff.push(k + "." + p + ": " + a[p] + " → " + b[p]); });
       });
-      ok('grp the "Ikväll" bar, its button and its neighbours (Chatten, Om gruppen) have the computed styles of the old code (no strip, no border)', diff.length === 0, diff);
+      // fixD P-08 (polish sweep, 24 Nov): the bar is a row in the page flow now (no sticky strip, no float shadow, card look): these
+      // values changed on purpose. Everything else of the bar, the button and its neighbours must stay as it was.
+      const fixD = /^(bar\.(position|padding-top|padding-bottom|background-image|height|order)|btn\.(background-color|border-(top|right|bottom|left)-color|box-shadow)):/;
+      const diff2 = diff.filter((d) => !fixD.test(d));
+      ok('grp the "Ikväll" bar, its button and its neighbours (Chatten, Om gruppen) have the computed styles of the old code (no strip, no border; fixD P-08 changes excepted)', diff2.length === 0, diff2);
       ok("grp order on the page: top card, the one card, …, chat, Om gruppen (the bar floats)", G.order.indexOf("gpg-now") > G.order.indexOf("gmain") && G.order.indexOf("gpg-now") < G.order.indexOf("gpg-chat") && G.order.indexOf("gpg-chat") < G.order.indexOf("gpg-dots"), G.order);
       await shot(page, "group");
       // the Nu text is still a way to "show them"; the arrow opens Medlemmar
@@ -219,12 +223,13 @@ const sect = async (k, fn) => { if (!want(k)) return; try { await fn(); } catch 
       const ev = await look(page, "#sheet-body");
       const evx = await page.evaluate(() => { const V = (e) => !!e && e.getClientRects().length > 0; return { chips: [...document.querySelectorAll("#sheet-body .evs-chip")].filter(V).length, sw: [...document.querySelectorAll("#sheet-body .evs-maptg")].filter(V).length,
         tips: [...document.querySelectorAll("#sheet-body button")].filter((b) => V(b) && /Tipsa om ett event/.test(b.textContent)).length, seg: [...document.querySelectorAll("#sheet-body .evs-time button")].filter(V).length }; });
-      ok('empty Event: ONE card, one sentence "Inga event ikväll", one help line, one button, no emoji', ev.cards === 1 && ev.b.length === 1 && ev.b[0] === "Inga event ikväll" && ev.p.length === 1 && ev.btns.length === 1 && ev.btns[0].h >= 44 && ev.emoji === false, ev);
+      ok('empty Event: ONE card, one sentence "Inga event den närmaste månaden" (fixD P-21: nothing in 31 days is said at once), one help line, one button, no emoji', ev.cards === 1 && ev.b.length === 1 && ev.b[0] === "Inga event den närmaste månaden" && ev.p.length === 1 && ev.btns.length === 1 && ev.btns[0].h >= 44 && ev.emoji === false, ev);
       ok('empty Event fix 7: no single "Alla" chip, no disabled "Visa på kartan" switch, no disabled control, no dashed joke box, ONE "Tipsa" button', evx.chips === 0 && evx.sw === 0 && ev.disabled.length === 0 && ev.dashed.length === 0 && evx.tips === 1 && evx.seg === 4, { evx, ev });
       const tipN = await page.evaluate(() => { let n = 0; const k = window.EVENTS.tip; window.EVENTS.tip = function () { n++; }; document.querySelector("#sheet-body .ds-estate button").click(); window.EVENTS.tip = k; return n; });
       ok("empty Event: the button works (opens the tip form: EVENTS.tip)", tipN === 1, tipN);
       await page.evaluate(() => document.querySelector('#sheet-body .evs-time button[data-t="weekend"]').click()); await wait(page, 500);
-      ok('empty Event: the sentence follows the time filter ("Inga event i helgen")', (await look(page, "#sheet-body")).b[0] === "Inga event i helgen");
+      // fixD P-21: the whole month is empty, so every tab says so (was: "Inga event i helgen", then the user tapped on)
+      ok('empty Event: an empty month says "den närmaste månaden" on the Helgen tab too', (await look(page, "#sheet-body")).b[0] === "Inga event den närmaste månaden");
       await shot(page, "empty-event");
       await closeAll(page);
       // Inkorg

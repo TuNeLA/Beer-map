@@ -82,13 +82,13 @@ const shot = (page, n) => page.screenshot({ path: SP + "ui-testshots/social2-" +
     // + menu
     await page.click(".gpg-plus"); await wait(page, 600);
     const plusVis = await page.evaluate(() => [...document.querySelectorAll(".gpg > *")].filter((e) => e.getBoundingClientRect().height > 0).map((e) => (e.textContent || "").trim().slice(0, 22)));
-    ok("+: [ui-build] Kalla in + Spel visible, Bjud in only in ⋯", ["Kalla in", "Spel"].every((w) => plusVis.some((t) => t.indexOf(w) >= 0)) && !plusVis.some((t) => /Bjud in till/.test(t)), plusVis);
+    ok("+: [ui-build] Kalla in visible (fixD P-09: Spel is a card on home now), Bjud in only in ⋯", ["Kalla in"].every((w) => plusVis.some((t) => t.indexOf(w) >= 0)) && !plusVis.some((t) => /Bjud in till/.test(t)), plusVis);
     ok("+: groupActions item (Jag bjöd)", plusVis.some((t) => /Jag bjöd/.test(t)), plusVis);
     ok("+: Nu/chat/bar hidden", !(await vis(page, ".gpg-now")) && !(await vis(page, ".gpg-chat")) && !(await vis(page, ".gpg-bar")));
     ok("+: [ui-build] one list, no fold: no Mer… button; [d2group] no Gänget row (it is a section of the Spel hub)", !plusVis.some((t) => /^Gänget/.test(t)) && !(await vis(page, ".gpg-fold")), plusVis);
     ok("+: chief/leave not here", !plusVis.some((t) => /Lämna|Gruppchef/.test(t)), plusVis);
     await shot(page, "plus");
-    ok("+ [ui-build] list: Spel (duels + [d2group] Gänget live in the 🎉 Spel hub)", plusVis.some((t) => /Spel/.test(t)), plusVis);
+    ok("+ [fixD P-09] no Spel row here: the Spel card on home is the one way in (duels + Gänget live in the hub)", !plusVis.some((t) => /^Spel/.test(t)) && await page.evaluate(() => !!document.querySelector(".gpg > .sp-gi")), plusVis);
     await page.evaluate(() => [...document.querySelectorAll(".gpg-ga .btn")].find((b) => /Jag bjöd/.test(b.textContent)).click());
     ok("groupActions onClick gets g", await page.evaluate((gid) => window.__ga === gid, GID));
     await page.click("#pn-back"); await wait(page, 300);

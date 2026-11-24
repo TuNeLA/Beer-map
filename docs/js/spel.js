@@ -1,5 +1,5 @@
 /* Öl Nu — 🎉 SPEL hub (CONTRACT "🎉 SPEL"). ONE way into every game of a group (and of an event group):
-   a big "🎉 Spel" card on the group page home (hook groupItem, row .sp-gi), a "🎉 Spel" tile in + (groupActions),
+   a big "🎉 Spel" card on the group page home (hook groupItem, row .sp-gi; fixD P-09: the only entry, no tile in + any more),
    and one "🎉 Alla spel" button in the Lek sheets (games.js calls SPEL.lekButton(g)). The old Förfest / Partyspel /
    Lek / Duell tiles are hidden on the group page (still reachable from the hub, so nothing is lost).
    This file is the small always-loaded part. The hub + the room screens are lazy: js/spel-ui.js (window.SPEL_UI),
@@ -15,11 +15,11 @@
 
   var S = {
     sv: { tile: "Spel", tileSub: "{0} spel · Skämskort, Kungaleken…",
-      live: "{0} pågår", liveSub: "{0} är med · Tryck för att hoppa in!", plus: "Spel", plusSub: "alla spelen på ett ställe",
+      live: "{0} pågår", liveSub: "{0} är med · Tryck för att hoppa in!", plus: "Spel", plusSub: "Alla spelen på ett ställe",
       lek: "🎉 Alla spel", load: "Laddar spelen…", fail: "Spelen kunde int' laddas. Kolla nätet.",
       resume: "{0} · du är med i ett spel", back: "Tillbaka" },
     en: { tile: "Games", tileSub: "{0} games · Shame Cards, King's game…",
-      live: "{0} is on", liveSub: "{0} in · Tap to jump in!", plus: "Games", plusSub: "every game in one place",
+      live: "{0} is on", liveSub: "{0} in · Tap to jump in!", plus: "Games", plusSub: "Every game in one place",
       lek: "🎉 All games", load: "Loading the games…", fail: "Could not load the games. Check the network.",
       resume: "{0} · you are in a game", back: "Back" }
   };
@@ -281,8 +281,7 @@
     init: function (api) { A = api; },
     onAuthed: function () { onAuthed(); },
     groupItem: function (g, wrap) { try { groupItem(g, wrap); } catch (e) { try { console.warn("olnu spel", e); } catch (x) {} } },
-    groupActions: function (g) {
-      return { id: "spel", icon: "🎉", label: T("plus"), sub: T("plusSub"), sect: 2, onClick: function () { go(g, null); } };
-    }
+    // fixD P-09: ONE way in = the Spel card on the group page (gpage.js shows .sp-gi on home). No second Spel row in Ikväll (+).
+    groupActions: function () { return null; }
   };
 })();

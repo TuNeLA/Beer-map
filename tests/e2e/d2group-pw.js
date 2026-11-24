@@ -1,6 +1,6 @@
 // d2group: a calm group page (AUDIT-NAV moves 7 + 8, Q5, Q13) + I-42 (a bigger chat preview).
-// Home: no Spel row (only while a game runs), no Engångskamera row, no Gängkamp, "Kod" under "N av M dricker nu".
-// Ikväll (+): Engångskamera = the first row, Spel row, no "Chatt" row, no "Gänget" row (it is a section of the Spel hub now).
+// Home: the Spel card (fixD P-09; was: only while a game runs), no Engångskamera row, no Gängkamp, "Kod" under "N av M dricker nu".
+// Ikväll (+): Engångskamera = the first row, no Spel row (fixD P-09), no "Chatt" row, no "Gänget" row (it is a section of the Spel hub now).
 // Om gruppen: no Kod / Bjud in row. Chat preview: the last 5 messages, a photo row = a fixed 48 px thumb.
 // Mocked server (ds-helpers + fixtures/rpc.js). Usage: node d2group-pw.js <port> [shotsDir]
 const { ctxFor, boot, wait, clickJS } = require("./ds-helpers.js");
@@ -49,7 +49,7 @@ const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: SH
       // ---------- home ----------
       const home = await visList(page);
       const has = (re) => home.some((x) => re.test(x.c));
-      ok(`${P} home: no Spel row (no game running)`, !has(/^sp-gi$/), home);
+      ok(`${P} home: the Spel card is there (fixD P-09: the one way into the games; was: only while a game runs)`, has(/^sp-gi$/), home);
       ok(`${P} home: no Engångskamera row`, !has(/^fm-gi$/), home);
       ok(`${P} home: no Gängkamp row`, !has(/^sa-gk$/), home);
       ok(`${P} home: no old Chatt button row`, !home.some((x) => x.c === "row" && /^(Chatt|Chat)$/.test(x.t)), home);
@@ -88,20 +88,20 @@ const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: SH
       // a running game: the Spel row comes back on home (live)
       const live = await page.evaluate(async () => { const s = document.querySelector(".gpg > .sp-gi"); if (!s) return null; s.classList.add("sp-live"); await new Promise((r) => setTimeout(r, 400));
         const v = s.getClientRects().length > 0 && getComputedStyle(s).display !== "none"; s.classList.remove("sp-live"); await new Promise((r) => setTimeout(r, 400)); return { v, after: s.getClientRects().length > 0 && getComputedStyle(s).display !== "none" }; });
-      ok(`${P} home: a running game (sp-live) shows the Spel row on home, then it goes again`, !!live && live.v && !live.after, live);
+      ok(`${P} home: a running game (sp-live) shows the Spel row on home, and it stays after (fixD P-09)`, !!live && live.v && live.after, live);
       // ---------- Ikväll (+) ----------
       await clickJS(page, ".gpg-plus"); await wait(page, 900);
       const plus = await visList(page);
       const ikv = plus.filter((x) => x.c !== "gpg-ph").sort((a, b) => a.top - b.top);
       const head = ikv.findIndex((x) => x.c === "gp-h" && /Ikväll/.test(x.t));
       ok(`${P} +: Engångskamera = the first row of Ikväll`, head >= 0 && ikv[head + 1] && ikv[head + 1].c === "fm-gi" && /Engångskamera/.test(ikv[head + 1].t), ikv.slice(0, 4));
-      ok(`${P} +: a Spel row`, plus.some((x) => /^gpg-ga$/.test(x.c) && /^Spel/.test(x.t)), plus.map((x) => x.t));
+      ok(`${P} +: no Spel row (fixD P-09: the Spel card on home is the one way in)`, !plus.some((x) => /^gpg-ga$/.test(x.c) && /^Spel/.test(x.t)), plus.map((x) => x.t));
       ok(`${P} +: no Chatt row (the chat is on the page)`, !plus.some((x) => x.c === "row" && /^(Chatt|Chat)$/.test(x.t)), plus.map((x) => x.c + ":" + x.t));
       ok(`${P} +: no separate Gänget row (it is in Spel)`, !plus.some((x) => x.c === "gg-gi"), plus.map((x) => x.c + ":" + x.t));
       const fmRow = await page.evaluate(() => { const b = document.querySelector(".gpg > .fm-gi > .btn"); const r = b && b.getBoundingClientRect(); return r ? { h: Math.round(r.height), svg: !!b.querySelector("svg"), emoji: b.textContent } : null; });
       ok(`${P} +: the Engångskamera row is a full row (≥ 64 px, PNI icon, no emoji)`, !!fmRow && fmRow.h >= 60 && fmRow.svg && !EMOJI.test(fmRow.emoji), fmRow);
       const plusSub = await page.evaluate(() => (document.querySelector(".gpg-plus small") || {}).textContent || "");
-      ok(`${P} home Ikväll button names what is inside (Kamera, Skåltimmen, Spel)`, /Kamera/.test(plusSub) && /Spel/.test(plusSub) && !/Jag kör|Följ mig hem/.test(plusSub), plusSub);
+      ok(`${P} home Ikväll button names what is inside (Kamera, Skåltimmen; fixD P-09: no Spel, it has its own card)`, /Kamera/.test(plusSub) && /Skåltimmen/.test(plusSub) && !/Spel|Jag kör|Följ mig hem/.test(plusSub), plusSub);
       await shot(page, w + "-plus");
       await clickJS(page, "#pn-back"); await wait(page, 500);
       // ---------- Om gruppen ----------
@@ -113,8 +113,7 @@ const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: SH
       await shot(page, w + "-info");
       await clickJS(page, "#pn-back"); await wait(page, 500);
       // ---------- Spel hub: the Gänget section ----------
-      await clickJS(page, ".gpg-plus"); await wait(page, 600);
-      await page.evaluate(() => { const b = document.querySelector('.gpg > [data-ga="spel"] .btn'); if (b) b.click(); });
+      await page.evaluate(() => { const b = document.querySelector(".gpg > .sp-gi .sp-gbtn"); if (b) b.click(); });   // fixD P-09: the Spel card on home
       await page.waitForSelector(".sp-hub .pn-ggs", { timeout: 8000 }).catch(() => {});
       await wait(page, 600);
       const gg = await page.evaluate(() => {
