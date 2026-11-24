@@ -289,7 +289,7 @@
     if (b.snap != null || b.bar_id != null) return b.snap === "bar" || (b.bar_id != null && b.snap !== "area" && b.snap !== "home");
     try { return !!(window.BARS && b.precise && window.BARS.describe(b).kind === "at"); } catch (e) { return false; }
   }
-  var BELT_CSS = ".tk-item.tk-stale{opacity:0;transition:opacity .25s var(--e-std,ease)}@media (prefers-reduced-motion:reduce){.tk-item.tk-stale{transition:none}}";
+  var BELT_CSS = ".tk-item.tk-stale{opacity:0;transition:opacity var(--m-4) var(--e-std,ease)}@media (prefers-reduced-motion:reduce){.tk-item.tk-stale{transition:none}}";
   function freshBelt(track) {
     if (!track || !track.parentNode) return 0;
     if (!document.getElementById("news-belt-css") && document.head) { var st = document.createElement("style"); st.id = "news-belt-css"; st.textContent = BELT_CSS; document.head.appendChild(st); }
@@ -319,11 +319,11 @@
     var gone = function () { parts.forEach(function (x) { if (x.parentNode) x.parentNode.removeChild(x); }); };
     var red = false; try { red = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (x) {}
     if (red) { gone(); return; }
-    if (sep) { sep.style.transition = "opacity .25s ease"; sep.style.opacity = "0"; }
+    if (sep) { sep.style.transition = "opacity var(--m-4) var(--e-std)"; sep.style.opacity = "0"; }
     setTimeout(function () {
       parts.forEach(function (x) { x.style.maxWidth = x.offsetWidth + "px"; x.style.overflow = "hidden"; x.style.boxSizing = "border-box"; });
       void e.offsetWidth;
-      parts.forEach(function (x) { x.style.transition = "max-width .3s ease, padding .3s ease, opacity .25s ease"; x.style.maxWidth = "0px"; x.style.paddingLeft = "0px"; x.style.paddingRight = "0px"; });
+      parts.forEach(function (x) { x.style.transition = "max-width var(--m-5) var(--e-std), padding var(--m-5) var(--e-std), opacity var(--m-4) var(--e-std)"; x.style.maxWidth = "0px"; x.style.paddingLeft = "0px"; x.style.paddingRight = "0px"; });
       setTimeout(gone, 330);
     }, 260);
   }

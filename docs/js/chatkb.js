@@ -15,7 +15,7 @@
   var baseH = window.innerHeight || 0, raf = 0;
   var CSS = "#sheet-body > .chat-note,#sheet-body > .cmx-tip{display:none !important}" +
     "#sheet.ck-kb .chat-list{min-height:0 !important}" +
-    ".chat-input .af-mic,.chat-input .ph-btn{transition:width .18s ease,opacity .15s ease,margin .18s ease,border-width .18s ease}" +
+    ".chat-input .af-mic,.chat-input .ph-btn{transition:width var(--m-4) var(--e-std),opacity var(--m-3) var(--e-std),margin var(--m-4) var(--e-std),border-width var(--m-4) var(--e-std)}" +
     ".chat-input.ck-typing .af-mic,.chat-input.ck-typing .ph-btn{width:0 !important;min-width:0 !important;padding:0 !important;border-width:0 !important;" +
     "opacity:0;overflow:hidden;pointer-events:none;margin-left:calc(-1 * var(--sp-2,8px))}" +
     // owner 17:35: the send button is ALWAYS a round paper-plane icon (44 x 44 tap target), the label is the aria-label

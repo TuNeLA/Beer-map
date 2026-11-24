@@ -8,6 +8,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
+import { scanRepo as motionScan, bad as motionBad } from "./motion.mjs";
 
 const argv = process.argv.slice(2);
 const repo = path.resolve(argv.find((a) => !a.startsWith("--")) || ".");
@@ -48,7 +49,7 @@ const lineCount = (s) => (s.match(/\n/g) || []).length + (s.endsWith("\n") || !s
 
 // ---- facts: each rule yields a map key -> number (or 0/1 for presence). "bad" = key not in baseline or value grew.
 const facts = {
-  fileSize: {}, functions: {}, windowGlobals: {}, appFunctions: {}, duplicates: {}, unusedExports: {}, emoji: {}, rawHex: {},
+  fileSize: {}, functions: {}, windowGlobals: {}, appFunctions: {}, duplicates: {}, unusedExports: {}, emoji: {}, rawHex: {}, motion: {},
 };
 const warns = [];
 
@@ -150,6 +151,9 @@ for (const f of cssFiles) {
   }
   if (c) facts.rawHex[f] = c;
 }
+// D1 motion tokens: every duration under 1 s and every easing uses --m-* / --e-* (tests/quality/motion.mjs; no baseline:
+// the app was moved to the tokens on 24 Nov). Key = file:line, value = raw values there.
+for (const r of motionBad(motionScan(repo, acorn))) { const k = r.file + ":" + r.line; facts.motion[k] = (facts.motion[k] || 0) + 1; }
 // duplicate code: runs of > 30 identical normalised lines in 2 places. Key = file pair, value = matching windows.
 {
   const W = LIM.dupLines + 1, lines = {}, byHash = new Map();
@@ -192,6 +196,7 @@ const RULES = {
   unusedExports: "no new unused PN.* / window.* export",
   emoji: "no new emoji in user-facing strings (docs/js)",
   rawHex: "no new raw hex colour in CSS outside token files",
+  motion: "motion: durations < 1 s and easings use the tokens (node tests/quality/motion.mjs . --list)",
 };
 if (MODE === "init") {
   const out = { _doc: "Baseline = today's problems. It may only shrink: CI fails on a new entry or a bigger value. See tests/quality/README.md.", limits: LIM, rules: {} };

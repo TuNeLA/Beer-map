@@ -978,9 +978,9 @@
       var s = t; t = null; if (!s.on) return;
       var fast = Math.abs(s.dx) / Math.max(1, Date.now() - s.t0) > .5;
       if (Math.abs(s.dx) > 70 || (fast && Math.abs(s.dx) > 30)) {
-        s.el.setAttribute("data-leaving", "1"); s.el.style.transition = "transform .15s ease-out,opacity .15s"; s.el.style.transform = "translateX(" + (s.dx > 0 ? 420 : -420) + "px)"; s.el.style.opacity = "0";
+        s.el.setAttribute("data-leaving", "1"); s.el.style.transition = "transform var(--m-3) var(--e-std),opacity var(--m-3) var(--e-std)"; s.el.style.transform = "translateX(" + (s.dx > 0 ? 420 : -420) + "px)"; s.el.style.opacity = "0";
         setTimeout(function () { s.el.remove(); }, 150);
-      } else { s.el.style.transition = "transform .15s ease-out,opacity .15s"; s.el.style.transform = ""; s.el.style.opacity = ""; setTimeout(function () { s.el.style.transition = ""; }, 170); }
+      } else { s.el.style.transition = "transform var(--m-3) var(--e-std),opacity var(--m-3) var(--e-std)"; s.el.style.transform = ""; s.el.style.opacity = ""; setTimeout(function () { s.el.style.transition = ""; }, 170); }
     }
     box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
   }

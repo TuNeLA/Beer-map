@@ -27,9 +27,9 @@
   function toast(m, o) { try { PN.toast(m, o || {}); } catch (e) {} }
 
   var CSS = ".ul-hero{position:relative;height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:var(--ds-r-3,16px);background:var(--ds-raised,rgba(255,255,255,.06));margin:4px 0 12px}" +
-    ".ul-rays{position:absolute;inset:-60%;background:repeating-conic-gradient(from 0deg,var(--ds-amber-soft,rgba(255,194,77,.18)) 0 10deg,transparent 10deg 30deg);animation:ul-spin 14s linear infinite;opacity:.9}" +
-    ".ul-av{position:relative;width:150px;height:150px;animation:ul-pop .7s cubic-bezier(.2,1.6,.4,1) both}.ul-av svg{width:100%;height:100%;display:block}" +
-    ".ul-sp{position:absolute;width:10px;height:10px;color:var(--ds-amber,#ffc24d);animation:ul-tw 1.6s ease-in-out infinite}.ul-sp svg{width:100%;height:100%}" +
+    ".ul-rays{position:absolute;inset:-60%;background:repeating-conic-gradient(from 0deg,var(--ds-amber-soft,rgba(255,194,77,.18)) 0 10deg,transparent 10deg 30deg);animation:ul-spin 14s var(--e-lin) infinite;opacity:.9}" +
+    ".ul-av{position:relative;width:150px;height:150px;animation:ul-pop var(--m-7) var(--e-pop) both}.ul-av svg{width:100%;height:100%;display:block}" +
+    ".ul-sp{position:absolute;width:10px;height:10px;color:var(--ds-amber,#ffc24d);animation:ul-tw 1.6s var(--e-io) infinite}.ul-sp svg{width:100%;height:100%}" +
     ".ul-sp.a{left:18%;top:20%}.ul-sp.b{right:20%;top:28%;animation-delay:.5s}.ul-sp.c{left:26%;bottom:16%;animation-delay:1s}.ul-sp.d{right:16%;bottom:22%;animation-delay:.25s}" +
     "@keyframes ul-spin{to{transform:rotate(360deg)}}@keyframes ul-pop{0%{transform:scale(.55);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}" +
     "@keyframes ul-tw{0%,100%{transform:scale(.4);opacity:.2}50%{transform:scale(1.15);opacity:1}}" +

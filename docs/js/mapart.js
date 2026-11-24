@@ -40,7 +40,7 @@
     typeMap: { pub: "pub", bar: "bar", cocktail: "cocktail", vinbar: "vinbar", olbar: "olbar", brewery: "olbar", nattklubb: "nightclub",
       nightclub: "nightclub", club: "nightclub", sportbar: "sportsbar", sports_bar: "sportsbar", karaoke: "karaoke", karaoke_box: "karaoke",
       livescen: "livescen", music_venue: "livescen", restbar: "restbar", restaurant_bar: "restbar", hotellbar: "hotellbar",
-      oltradgard: "biergarten", biergarten: "biergarten", beer_garden: "biergarten", spelbar: "spelbar", nation: "nation",
+      oltradgard: "biergarten", olhall: "biergarten", biergarten: "biergarten", beer_garden: "biergarten", spelbar: "spelbar", nation: "nation",
       restaurant: "restaurant", cafe: "cafe", fast_food: "fastfood", kebab: "kebab", hockey: "hockey", fotboll: "fotboll", arena: "arena" },
     // maplight (I-115) lantern pin: the bar disc gets warmer with the crowd. Step 1 = 3-7 people, 2 = 8-14, 3 = 15+ (under 3: no lantern)
     lantern: { 1: { body: ["#3B2F5E", "#241E4A"], ring: "#F5A623" }, 2: { body: ["#F0A12A", "#B8690E"], ring: "#FFD27A", glyph: "#2A1600" },
@@ -165,16 +165,17 @@
 
 /* map BR1 — PNVTYPE: venue type of a bar from OSM tags (+ name words as the fallback). ONE source: the app (glmap.js for
    rows without vt, bars.js Overpass fallback) and scripts/fetch-bars.mjs (runs this file in a vm). Import rule order:
-   karaoke → livescen → nattklubb → spelbar → nation → hotellbar → olbar → sportbar → vinbar → cocktail → oltradgard → pub → bar.
+   karaoke → livescen → nattklubb → spelbar → nation → hotellbar → olhall → olbar → sportbar → vinbar → cocktail → oltradgard → pub → bar.
    BR2 (manual Ludvika check) can override a row with "vt" in bars-extra.json / bars.json. */
 (function (root) {
-  var ORDER = ["karaoke", "livescen", "nattklubb", "spelbar", "nation", "hotellbar", "olbar", "sportbar", "vinbar", "cocktail", "oltradgard", "pub", "bar", "restbar"];
+  var ORDER = ["karaoke", "livescen", "nattklubb", "spelbar", "nation", "hotellbar", "olhall", "olbar", "sportbar", "vinbar", "cocktail", "oltradgard", "pub", "bar", "restbar"];
   var LABEL = { pub: "Pub", bar: "Bar", cocktail: "Cocktailbar", vinbar: "Vinbar", olbar: "Ölbar / bryggeri", nattklubb: "Nattklubb", sportbar: "Sportbar",
-    karaoke: "Karaoke", livescen: "Livemusik", restbar: "Mat & bar", hotellbar: "Hotellbar", oltradgard: "Ölträdgård", spelbar: "Spelbar", nation: "Studentpub / nation" };
+    karaoke: "Karaoke", livescen: "Livemusik", restbar: "Mat & bar", hotellbar: "Hotellbar", oltradgard: "Ölträdgård", olhall: "Ölhall", spelbar: "Spelbar", nation: "Studentpub / nation" };
   var RX = {
     karaoke: /karaoke/, livescen: /(^|[^a-zåäö])(jazz\w*|live|livescen\w*|scen(en)?|rockklubb\w*|musikpub|konserthus)([^a-zåäö]|$)/,
     spelbar: /(boule|shuffle|bowling|dart|minigolf|biljard|pingis|curling)/, nation: /(nation(en)?([^a-zåäö]|$)|studentpub|studentkår|kårhus|(^|[^a-zåäö])kåren?([^a-zåäö]|$))/,
-    hotellbar: /(lobby|(^|[^a-zåäö])hote(l|ll))/, olbar: /(bryggeri|brew|taproom|tap ?room|ölhall|ölbar|beer ?bar|craft ?beer|ölkaf[eé]|ölcaf[eé])/,
+    hotellbar: /(lobby|(^|[^a-zåäö])hote(l|ll))/, olhall: /(ölhall|bierhalle|beer ?hall)/,   // barcard A34 q4: beer halls are their own kind (was under olbar)
+    olbar: /(bryggeri|brew|taproom|tap ?room|ölbar|beer ?bar|craft ?beer|ölkaf[eé]|ölcaf[eé])/,
     sportbar: /(^|[^a-zåäö])sport/, vinbar: /((^|[^a-zåäö])vin(bar(en)?|bod(en)?|stugan?|oteket|teket|källare(n)?)?([^a-zåäö]|$)|wine|champagne)/, cocktail: /(cocktail|speakeasy|tiki)/
   };
   function low(v) { return String(v == null ? "" : v).toLowerCase(); }
@@ -187,6 +188,7 @@
     if (barish && (/^(bowling_alley|miniature_golf)$/.test(low(t.leisure)) || RX.spelbar.test(n))) return "spelbar";
     if (barish && RX.nation.test(n)) return "nation";
     if (barish && (low(t.tourism) === "hotel" || RX.hotellbar.test(n))) return "hotellbar";
+    if (barish && RX.olhall.test(n)) return "olhall";
     if (a === "brewery" || low(t.craft) === "brewery" || (barish && (yes(t.microbrewery) || RX.olbar.test(n)))) return "olbar";
     if (barish && (t.sport || /^(sports_bar|sportsbar)$/.test(bar) || RX.sportbar.test(n))) return "sportbar";
     if (barish && (yes(t["drink:wine"]) && a === "bar" || /^(wine_bar|wine|winebar)$/.test(bar) || RX.vinbar.test(n))) return "vinbar";
@@ -731,7 +733,7 @@
       "font:700 12px/1 var(--body,'Chakra Petch',system-ui,sans-serif);color:#FFFAF0;font-variant-numeric:tabular-nums;cursor:pointer;white-space:nowrap}" +
     ".pn-cl.lv1{border-color:#FF8A1F}.pn-cl.lv2{border-color:#FF5A4E}.pn-cl.pn-f{border-color:#3DDC84}" +
     ".pn-cl>img{width:20px;height:20px;border-radius:50%;margin-left:-8px;box-shadow:0 0 0 1.5px #3DDC84}.pn-cl>img:first-child{margin-left:-4px}.pn-cl>img+b{margin-left:2px}" +
-    "@media (prefers-reduced-motion:no-preference){.pn-p,.pn-cl{transition:transform .12s var(--e-std)}.leaflet-marker-icon:active>.pn-p,.leaflet-marker-icon:active>.pn-cl{transform:translate(-50%,-50%) scale(.92)}}";
+    "@media (prefers-reduced-motion:no-preference){.pn-p,.pn-cl{transition:transform var(--m-2) var(--e-std)}.leaflet-marker-icon:active>.pn-p,.leaflet-marker-icon:active>.pn-cl{transform:translate(-50%,-50%) scale(.92)}}";
   var PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + GL.G.person.map(function (L) { return L.d; }).join("") + '"/></svg>';
   function pcss() { if (typeof document === "undefined" || document.getElementById("pn-people-css")) return; var st = document.createElement("style"); st.id = "pn-people-css"; st.textContent = PCSS; (document.head || document.documentElement).appendChild(st); }
   function hesc(x) { return String(x == null ? "" : x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }

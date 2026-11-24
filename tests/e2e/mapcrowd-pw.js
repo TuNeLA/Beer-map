@@ -1,5 +1,5 @@
 // mapcrowd-pw.js — lane mapcrowd (24 Nov 2026). 390 × 844 @2x, mocked Supabase.
-// usage: node mapcrowd-pw.js <port> [parts: crowd,dim,a12]   (default: all)
+// usage: node mapcrowd-pw.js <port> [parts: crowd,dim,a12,plbar]   (default: all)
 //  crowd (I-137, owner photo Pitchers 19 Nov: "8 things on one spot"): a busy bar shows people first + at most ONE extra mark.
 //        The Pitchers case: me, 2 group mates, 4 strangers, my check-in, a quiz tonight (🎤), my invite there (📨), a price.
 //        GL (stub Mapbox, or the real one with MAPBOX_TEST_TOKEN) and the raster map read the same marker HTML.
@@ -11,7 +11,7 @@
 // Old code: crowd and dim checks FAIL (a12 is a check of the current rule: it passes on both).
 const { H, TOKEN, launchOpts } = require("./map3-lib.js");
 const { chromium } = require("playwright");
-const PORT = process.argv[2] || 8871, PARTS = (process.argv[3] || "crowd,dim,a12").split(",");
+const PORT = process.argv[2] || 8871, PARTS = (process.argv[3] || "crowd,dim,a12,plbar").split(",");
 const BASE = "http://127.0.0.1:" + PORT + "/";
 const SHOTS = process.env.MC_SHOTS || "";
 let pass = 0, fail = 0;
@@ -39,7 +39,7 @@ async function open(b, mode, o = {}) {
   const { ctx, page } = await H.ctxFor(b, { width: 390, height: 844 }, {});
   await ctx.addInitScript(() => { try { localStorage.setItem("olnu.prices", "1"); localStorage.setItem("olnu.map.ute", "0"); } catch (e) {} });
   const S = { beers: scene(), inv: o.noInv ? [] : INV() };
-  await page.route(/rest\/v1\/rpc\/live_beers/, (r) => J(r, S.beers));
+  await page.route(/rest\/v1\/rpc\/live_beers/, (r) => S.down ? r.fulfill({ status: 503, contentType: "application/json", body: "{}" }) : J(r, S.beers));
   await page.route(/rest\/v1\/rpc\/live_others/, (r) => J(r, []));
   await page.route(/rest\/v1\/rpc\/live_checkins/, (r) => J(r, CIS));
   await page.route(/rest\/v1\/rpc\/heat_points/, (r) => J(r, S.beers.map((x) => ({ lat: x.lat, lng: x.lng, w: 1 }))));
@@ -66,7 +66,8 @@ async function open(b, mode, o = {}) {
   await page.addStyleTag({ content: "#toasts{display:none !important}" }).catch(() => {});
   await wait(page, 3000);
   await page.evaluate(([ll, z]) => { __map.closePopup(); __map.setView(ll, z, { animate: false }); }, [[PITLL[0] - 0.0002, PITLL[1]], o.z || 17]);
-  await page.waitForFunction(() => document.querySelector(".inv-pin") || true, null, { timeout: 8000 }).catch(() => {});
+  // mapcrowd2: wait for the data, not a fixed time (CI try 1 on a slow runner read Pitchers before the pins had come)
+  await page.waitForFunction((inv) => PN.s.beers.length >= 9 && (!inv || document.querySelector(".inv-pin")), !o.noInv, { timeout: 30000 }).catch(() => console.log("data late"));
   await wait(page, 3000);
   return { ctx, page, errs, S };
 }
@@ -122,21 +123,68 @@ async function partCrowd(b) {
   }
 }
 async function partDim(b) {
-  const { ctx, page, errs } = await open(b, "gl");
+  const { ctx, page, errs, S } = await open(b, "gl");
   const op = () => page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(), o = {}; GLBARS._layers().forEach((id) => { const l = m.getLayer(id); if (l && l.type === "symbol") { const v = m.getPaintProperty(id, "icon-opacity"); o[id] = typeof v === "number" ? v : 1; } }); return o; });
+  const info = () => page.evaluate(() => ({ snap: document.body.classList.contains("x8-snap"), syncs: GLBARS.stats.syncs, sets: GLBARS.stats.sets || 0, same: window.__mcMap === BASEMAP.mapbox().getMapboxMap() }));
   const a = await op();
-  await page.evaluate(() => X8.snapShow(Date.now() - 10 * 60e3)); await wait(page, 500);
-  const d = await op(), body = await page.evaluate(() => document.body.classList.contains("x8-snap"));
-  ok("A4b setup: GL on and the saved-view class is set", body && "olnu-bar-full" in a, { body, a });
+  // mapcrowd2: the saved view lasts until a GOOD poll. The test is hermetic: no good poll may come in between (the server is
+  // "down" from here), else the app is right to take the dim away (it did on CI with real GL: a scheduled poll came in).
+  S.down = true;
+  await page.evaluate(() => { window.__mcMap = BASEMAP.mapbox().getMapboxMap(); X8.snapShow(Date.now() - 10 * 60e3); }); await wait(page, 500);
+  const d = await op(), i0 = await info();
+  ok("A4b setup: GL on and the saved-view class is set", i0.snap && "olnu-bar-full" in a, { i0, a });
   ok("A4b saved view: the GL bar pills dim like the DOM pins (full / names / dots 0.6, quiet dots 0.82 x 0.6)", d["olnu-bar-full"] === 0.6 && d["olnu-bar-dot"] === 0.6 && Math.abs((d["olnu-bar-dote"] || 0) - 0.49) < 0.011 && d["olnu-bar-lbl"] === 0.6, d);
   ok("A4b the restaurants, heat and clouds do not dim", d["olnu-place"] === a["olnu-place"], { a: a["olnu-place"], d: d["olnu-place"] });
-  await page.evaluate(() => { __map.setView([60.1505, 15.1872], 16, { animate: false }); }); await wait(page, 1800);
-  const d2 = await op();
-  ok("A4b the dim stays after a redraw (pan / zoom)", d2["olnu-bar-full"] === 0.6, d2);
+  await page.evaluate(() => { __map.setView([60.1505, 15.1872], 16, { animate: false }); }); await wait(page, 2500);
+  await page.evaluate(() => { try { PN.refresh(); } catch (e) {} }); await wait(page, 2500);   // a poll that FAILS: the saved view stays
+  const d2 = await op(), i2 = await info();
+  ok("A4b the dim stays after a redraw (pan / zoom + a failed poll)", i2.snap && i2.syncs > i0.syncs && d2["olnu-bar-full"] === 0.6 && d2["olnu-bar-dot"] === 0.6, { i0, i2, d2 });
+  // a style reload (Mapbox makes the GL bar layers again): the dim comes back on the new layers
+  await page.evaluate(() => { const m = BASEMAP.mapbox().getMapboxMap(); m.setStyle(m.getStyle(), { diff: false }); }); await wait(page, 4000);
+  const d3 = await op(), i3 = await info();
+  ok("A4b the dim stays after a style reload (new GL layers)", i3.snap && d3["olnu-bar-full"] === 0.6 && d3["olnu-bar-lbl"] === 0.6, { i3, d3 });
+  S.down = false;
   await page.evaluate(() => X8.pollOk(null)); await wait(page, 500);
   const u = await op();
   ok("A4b the next good poll: the GL layers are back to their own opacity", Object.keys(a).every((k) => u[k] === a[k]), { a, u });
   ok("A4b no page error", errs.length === 0, errs);
+  await ctx.close();
+}
+/* ---------- plbar (mapcrowd2): a place that became a bar (OSM refresh 23 Nov: "O'Learys Borlänge" n3137239829) ----------
+   Old rows still carry the place id pl_6048761_1543531: a friend's check-in, my "På väg", a beer there. The app must treat
+   them as the new bar: one venue, the check-in and the beer on the bar, my På väg box in the bar's card. */
+async function partPlbar(b) {
+  const OL = { id: "n3137239829", name: "O'Learys Borlänge", lat: 60.48761, lng: 15.43531, type: "pub", vt: "pub" }, PL = "pl_6048761_1543531";
+  const fs = require("fs"), list = JSON.parse(fs.readFileSync(require("./fixed-data.js").barsJsonPath(), "utf8")).filter((x) => x.id !== OL.id).concat([OL]);
+  const { ctx, page } = await H.ctxFor(b, { width: 390, height: 844 }, {});
+  const now = (m) => new Date(Date.now() - m * 60e3).toISOString();
+  const beers = [{ id: 9801, lat: 60.48761, lng: 15.43531, beer_count: 1, other_count: 0, precise: true, created_at: now(20), is_mine: false, friend_name: "Kalle", bar_id: "n3911317766", snap: "bar", skal_count: 0, i_skaled: false }];
+  const cis = [{ id: 7801, bar_id: PL, bar_name: "O'Learys", lat: 60.48761, lng: 15.43531, is_friend: true, is_mine: false, name: "Kalle", created_at: now(40) }];
+  await page.route(/\/bars\.json(\?|$)/, (r) => J(r, list));
+  await page.route(/rest\/v1\/rpc\/live_beers/, (r) => J(r, beers));
+  const st = { ci: false };   // the check-in comes later: first the place id must resolve with NO row that made the place
+  await page.route(/rest\/v1\/rpc\/live_checkins/, (r) => J(r, st.ci ? cis : []));
+  await page.route(/rest\/v1\/rpc\/public_config/, (r) => J(r, { v: 1, mapbox_token: "" }));
+  await page.route(/rest\/v1\/rpc\/group_etas\b/, (r) => J(r, [{ id: 91, is_me: true, bar_id: PL, bar_name: "O'Learys", lat: OL.lat, lng: OL.lng,
+    eta_at: new Date(Date.now() + 10 * 60e3).toISOString(), created_at: now(5) }]));
+  const errs = []; page.on("pageerror", (e) => errs.push(e.message.slice(0, 200)));
+  await H.boot(page);
+  await page.waitForFunction(() => window.BARS && BARS.byId("n3137239829"), null, { timeout: 30000 }).catch(() => console.log("no O'Learys bar"));
+  // (1) the place id resolves to the bar with no place row at all (no tile loaded: the map is in Ludvika; no check-in yet)
+  const c1 = await page.evaluate((pl) => ({ canon: BARS.canonId(pl), by: (BARS.byId(pl) || {}).id || null, cis: PN.s.checkins.length }), PL);
+  ok("plbar: the old place id = the new bar (no check-in yet)", c1.canon === OL.id && c1.by === OL.id && c1.cis === 0, c1);
+  st.ci = true; await page.evaluate(() => { try { PN.refresh(); } catch (e) {} });
+  await page.waitForFunction(() => PN.s.checkins.length > 0, null, { timeout: 20000 }).catch(() => console.log("no check-ins"));
+  await page.evaluate(() => __map.setView([60.48745, 15.43515], 17, { animate: false })); await wait(page, 3500);
+  const r = await page.evaluate((pl) => {
+    const per = BARS.assign(PN.s.beers).perBar, mk = document.querySelector('.cm[data-bar="n3137239829"]'), mkPl = document.querySelector('.cm[data-bar="' + pl + '"]');
+    return { kalle: Object.keys(per).find((k) => per[k].beers.some((x) => x.id === 9801)) || null, mk: !!mk, mkPl: !!mkPl, canon: BARS.canonId(pl) };
+  }, PL);
+  ok("plbar: Kalle's beer (checked in at the old place id) is on the bar, one marker, no second place marker", r.kalle === OL.id && r.mk && !r.mkPl && r.canon === OL.id, r);
+  await page.evaluate(() => PN.openBarById("n3137239829", 0)); await wait(page, 2500);
+  const card = await page.evaluate(() => { const p = document.querySelector(".leaflet-popup.olnu-bar"); return { open: !!p, name: !!(p && /O'Learys/.test(p.textContent)), eta: !!(p && p.querySelector(".pp-sec-eta .eta-me")) }; });
+  ok("plbar: the bar's card shows my På väg box (my ETA row still has the old place id)", card.open && card.name && card.eta, card);
+  ok("plbar: no page error", errs.length === 0, errs);
   await ctx.close();
 }
 async function partA12(b) {
@@ -156,7 +204,7 @@ async function partA12(b) {
 (async () => {
   const b = await chromium.launch(launchOpts());
   const run = async (n, fn) => { if (!PARTS.includes(n)) return; try { await fn(b); } catch (e) { ok(n + " ran", false, String(e && e.stack).slice(0, 400)); } };
-  await run("crowd", partCrowd); await run("dim", partDim); await run("a12", partA12);
+  await run("crowd", partCrowd); await run("dim", partDim); await run("a12", partA12); await run("plbar", partPlbar);
   await b.close();
   console.log("\nmapcrowd-pw: " + pass + " pass, " + fail + " fail");
   process.exit(fail ? 1 : 0);

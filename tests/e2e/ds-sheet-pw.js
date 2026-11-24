@@ -75,7 +75,7 @@ const SCAN = () => {
     const q = (s) => root.querySelector(s), top = (e) => e ? e.getBoundingClientRect().top : null;
     const btn = [...root.querySelectorAll(".pp-act .ci-btn, .pp-act .ci-out, .pp-act .eta-go")].filter(vis).map((e) => { const r = R(e); return { c: e.className, w: Math.round(r.width), h: Math.round(r.height), bg: getComputedStyle(e).backgroundColor }; });
     o.bar = { hero: top(q(".pn-bs-hero")), act: top(q(".pp-act")), info: top(q(".pn-bs-info")), mer: top(q("details[data-fold=mer]")), head: top(q(".bs-head")),
-      btn, merHas: !!(q("details[data-fold=mer] .inv-here") && q("details[data-fold=mer] .af-qr")), stickyHead: getComputedStyle(q(".bs-head")).position };
+      btn, merHas: !!(q("details[data-fold=mer] .inv-here") && q("details[data-fold=mer] .af-qr")), stickyHead: getComputedStyle(q(".pn-bc-mini") || q(".bs-head")).position };   // barcard I-133: the tall band scrolls away, its 56 px name bar is the sticky header
   }
   o.padB = Math.round(pb);
   o.thin = [...root.querySelectorAll("p, h3, h4")].filter((e) => vis(e) && e.textContent.trim().length > 12 && R(e).width < 60).map((e) => e.className + " " + Math.round(R(e).width));
@@ -157,7 +157,7 @@ const SHEETS = [
       if (name === "krog") ok(b.btn.length === 1 && /ci-out/.test(b.btn[0].c), n + " checked in: only Checka ut (På väg hidden)", b.btn);
       if (name === "krog2") ok(b.btn.length === 2 && b.btn[0].w === b.btn[1].w && /ci-btn/.test(b.btn[0].c) && /eta-go/.test(b.btn[1].c), n + " not checked in: Checka in + På väg, equal width", b.btn);
       ok(b.merHas, n + " Bjud in hit + QR-affisch are inside Mer");
-      ok(b.stickyHead === "sticky", n + " header stays on top while the sheet scrolls", b.stickyHead);
+      ok(b.stickyHead === "sticky", n + " header (or the barcard name bar) stays on top while the sheet scrolls", b.stickyHead);
     }
     await ctx.close();
   }

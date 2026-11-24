@@ -12,7 +12,7 @@
               --ds-amber --ds-green --ds-red --ds-blue (+ --ds-on-* ink for each fill)
      radius   --ds-r-1 12 · --ds-r-2 16 · --ds-r-3 20 · --ds-r-pill
      depth    --ds-sh-1 --ds-sh-2 --ds-sh-sticky
-     motion   --ds-ease --ds-t-1 120ms --ds-t-2 200ms --ds-t-3 320ms (0 with reduced motion)
+     motion   pnds.css "ds10 motion": --m-1..8, --e-std/in/out/io/pop/spring/lin (old --ds-t-*, --ds-ease = aliases)
    COMPONENTS (class = what new code uses; the selector list after it = existing markup it styles)
      .ds-section .ds-list .ds-row .ds-btn(-primary/-secondary/-ghost/-danger) .ds-seg .ds-toggle-row
      .ds-card .ds-chip .ds-badge .ds-empty
@@ -41,8 +41,7 @@
   --ds-sh-1:0 1px 2px rgba(0,0,0,.45),0 4px 12px rgba(0,0,0,.28);
   --ds-sh-2:0 2px 6px rgba(0,0,0,.45),0 14px 36px rgba(0,0,0,.45);
   --ds-sh-sticky:0 10px 14px -10px rgba(0,0,0,.75);
-  /* motion */
-  --ds-ease:cubic-bezier(.2,.8,.2,1); --ds-t-1:120ms; --ds-t-2:200ms; --ds-t-3:320ms;
+  /* motion: the tokens are in pnds.css "ds10 motion" (--m-*, --e-*); the old names here are aliases there (D1) */
 
   /* the old token names now point at the system (polish.css + modules follow automatically) */
   --night:var(--ds-bg); --night-2:var(--ds-sheet); --night-3:var(--ds-raised);
@@ -53,10 +52,8 @@
   --r-xs:var(--ds-r-1); --r-s:var(--ds-r-1); --r-m:var(--ds-r-2); --r-l:var(--ds-r-3);
   --sp-1:var(--ds-1); --sp-2:var(--ds-2); --sp-3:var(--ds-3); --sp-4:var(--ds-4); --sp-5:var(--ds-5); --sp-6:var(--ds-6);
   --fs-xs:var(--ds-fs-12); --fs-s:var(--ds-fs-14); --fs-m:var(--ds-fs-16); --fs-l:var(--ds-fs-22); --fs-xl:var(--ds-fs-28);
-  --ease:var(--ds-ease); --d-1:var(--ds-t-1); --d-2:var(--ds-t-2); --d-3:var(--ds-t-3);
   --sh-1:var(--ds-sh-1); --sh-2:var(--ds-sh-2); --tap:44px;
 }
-@media (prefers-reduced-motion: reduce){ :root{ --ds-t-1:0ms; --ds-t-2:0ms; --ds-t-3:0ms; --d-1:0ms; --d-2:0ms; --d-3:0ms } }
 
 /* ---------- Type ---------- */
 body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialiased}
@@ -98,11 +95,11 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
    A soft shadow appears when the list is scrolled under it (js/ds.js sets .ds-scrolled). */
 .inv-tabs,.tt-bar{position:sticky;top:calc(-1 * var(--ds-4));z-index:20;isolation:isolate}   /* Chromium measures sticky top inside the 16 px body padding */
 .sheet .tabs.inv-tabs{display:flex;flex-direction:row;gap:4px;margin:calc(-1 * var(--ds-4)) 0 var(--ds-3);padding:var(--ds-3) 4px;
-  background:var(--ds-sheet);border:0;border-radius:0;box-shadow:none;transition:box-shadow var(--ds-t-2)}
+  background:var(--ds-sheet);border:0;border-radius:0;box-shadow:none;transition:box-shadow var(--m-4) var(--e-std)}
 .sheet .tabs.inv-tabs::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:var(--ds-3);bottom:var(--ds-3);
   border-radius:var(--ds-r-1);background:var(--ds-bg);box-shadow:inset 0 0 0 1px var(--ds-border)}
 .sheet .tabs.inv-tabs>button{flex:1 1 0;min-height:44px;margin:4px 0;padding:0 var(--ds-3)}
-.tt-bar{margin:calc(-1 * var(--ds-4)) 0 var(--ds-4);padding:var(--ds-1) 0 0;background:var(--ds-sheet);transition:box-shadow var(--ds-t-2)}
+.tt-bar{margin:calc(-1 * var(--ds-4)) 0 var(--ds-4);padding:var(--ds-1) 0 0;background:var(--ds-sheet);transition:box-shadow var(--m-4) var(--e-std)}
 .tt-bar button{min-height:48px;font:700 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);color:var(--ds-muted)}
 .sheet .ds-scrolled .tabs.inv-tabs,.ds-scrolled>.tt-bar{box-shadow:var(--ds-sh-sticky)}
 .inv-pane{position:relative;z-index:0}
@@ -113,7 +110,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
   background:var(--ds-bg);box-shadow:inset 0 0 0 1px var(--ds-border);width:auto}
 .ds-seg>button,.sheet .tabs>button,.sheet .seg:not(.bm-seg)>button,.bp-seg>button,.leaflet-popup .tabs>button{flex:1 1 0;min-width:0;min-height:44px;padding:0 var(--ds-2);border:0 !important;
   border-radius:var(--r-sm);background:transparent;color:var(--ds-muted);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);letter-spacing:0;text-transform:none;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:none;transition:background var(--ds-t-2),color var(--ds-t-2)}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:none;transition:background var(--m-4) var(--e-std),color var(--m-4) var(--e-std)}
 .ds-seg>button[aria-selected="true"],.ds-seg>button[aria-checked="true"],.sheet .tabs>button[aria-selected="true"],.sheet .seg:not(.bm-seg)>button[aria-checked="true"],
 .bp-seg>button[aria-selected="true"],.leaflet-popup .tabs>button[aria-selected="true"]{background:var(--ds-raised);color:var(--ds-amber-t);
   box-shadow:0 1px 3px rgba(0,0,0,.45),inset 0 0 0 1px rgba(245,166,35,.45)}
@@ -124,7 +121,7 @@ body{font-family:var(--ds-sans);font-weight:400;-webkit-font-smoothing:antialias
 /* ---------- .ds-btn = .btn ---------- */
 /* shape + colour at class level (same scope polish.css had); size + type at zero specificity so a module's own button class still wins */
 .ds-btn,.btn{border-radius:var(--ds-r-1);clip-path:none;border:1px solid var(--ds-border-2);background:var(--ds-raised);color:var(--ds-text);font-family:var(--ds-sans);
-  letter-spacing:0;box-shadow:none;transition:transform var(--ds-t-1) var(--ds-ease),background var(--ds-t-2),border-color var(--ds-t-2)}
+  letter-spacing:0;box-shadow:none;transition:transform var(--m-2) var(--e-std),background var(--m-4) var(--e-std),border-color var(--m-4) var(--e-std)}
 :where(.ds-btn,.btn){min-height:48px;padding:0 var(--ds-4);font-weight:600;font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
 .ds-btn:active,.btn:active{transform:scale(.97);background:#2a3756}
 .btn-block,.ds-btn-block{width:100%}

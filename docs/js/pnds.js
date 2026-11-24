@@ -998,7 +998,7 @@
           b.classList.remove("sm-swap");   // ds18: one animation per element (smooth.js content fade off)
           var hold = b.classList.contains("wm-hold"), x = (24 * dir) + "px";
           b._pnAx = b.animate(hold ? [{ transform: "translateX(" + x + ")" }, { transform: "none" }] : [{ transform: "translateX(" + x + ")", opacity: 0 }, { transform: "none", opacity: 1 }],
-            { duration: 300, easing: "cubic-bezier(.05,.7,.1,1)" });
+            { duration: window.SMOOTH ? SMOOTH.ms("--m-5", 300) : 300, easing: window.SMOOTH ? SMOOTH.ease("--e-in", "ease-out") : "ease-out" });
           b._pnAx.id = dir > 0 ? "pn-ax-in" : "pn-ax-back";
         }
       }

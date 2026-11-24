@@ -71,7 +71,9 @@ const frame = (page) => page.evaluate(() => {
   const d = document.querySelector('details[data-fold="here"]'); if (!d) return "no fold";
   let sc = d.parentElement; while (sc && !(sc.scrollHeight > sc.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
   const head = document.querySelector(".pn-bs7 .bs-head"); if (!sc) return "no scroller";
-  sc.scrollTop += d.getBoundingClientRect().top - ((head ? head.getBoundingClientRect().bottom : 0) + 8); return "ok";
+  // barcard I-133: the band header scrolls away; the 56 px name bar (.pn-bc-mini) is what stays on top
+  const mini = document.querySelector(".pn-bc-mini"), hb = mini ? sc.getBoundingClientRect().top + 56 : (head ? head.getBoundingClientRect().bottom : 0);
+  sc.scrollTop += d.getBoundingClientRect().top - (hb + 8); return "ok";
 });
 const shot = async (page, n) => { if (SHOTS) { await wait(page, 350); await page.screenshot({ path: SHOTS.replace(/\/?$/, "/") + n + ".png" }); } };
 // the wall as data

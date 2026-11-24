@@ -144,7 +144,7 @@
 
   /* ---------- look ---------- */
   var CSS =
-    ".leaflet-arenaglow-pane path.ap-g{stroke-linejoin:round;stroke-linecap:round;transition:fill-opacity .4s,stroke-opacity .4s}" +
+    ".leaflet-arenaglow-pane path.ap-g{stroke-linejoin:round;stroke-linecap:round;transition:fill-opacity var(--m-6) var(--e-std),stroke-opacity var(--m-6) var(--e-std)}" +
     ".leaflet-arenaglow-pane path.ap-g-live{animation:ap-glow 2s var(--e-std) infinite}" +
     ".leaflet-arenaglow-pane path.ap-h-live{animation:ap-halo 2s var(--e-std) infinite}" +
     "@keyframes ap-glow{0%,100%{fill-opacity:.3;stroke-opacity:.85}50%{fill-opacity:.5;stroke-opacity:1}}" +

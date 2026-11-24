@@ -27,7 +27,7 @@
 .gm-m.done .gm-m-t{color:#c9ffd9}
 .gm-m-p{display:flex;align-items:center;gap:8px;margin-top:6px}
 .gm-bar{flex:1 1 auto;height:6px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
-.gm-bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width var(--m-5)}
+.gm-bar>span{position:absolute;left:0;top:0;bottom:0;background:var(--amber);transition:width var(--m-5) var(--e-std)}
 .gm-m.done .gm-bar>span{background:var(--green)}
 .gm-m-n{font-family:var(--hud);font-size:var(--fs-12);color:var(--amber-2);flex:0 0 auto}
 .gm-water{margin-top:7px;min-height:36px;border-color:var(--ds-blue);color:#cfe6ff}

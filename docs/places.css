@@ -34,8 +34,8 @@
 .evs-maptg{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px 0 10px;border:0;background:none;
   color:var(--ds-text);font:600 var(--ds-fs-14)/var(--ds-lh-14) var(--ds-sans);cursor:pointer}
 .evs-maptg:disabled{opacity:.45;cursor:default}
-.evs-sw{position:relative;width:36px;height:22px;border-radius:var(--ds-r-pill);background:var(--ds-raised);border:1px solid var(--ds-border);transition:background var(--ds-t-1)}
-.evs-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ds-text-2);transition:transform var(--ds-t-1) var(--ds-ease)}
+.evs-sw{position:relative;width:36px;height:22px;border-radius:var(--ds-r-pill);background:var(--ds-raised);border:1px solid var(--ds-border);transition:background var(--m-2) var(--e-std)}
+.evs-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ds-text-2);transition:transform var(--m-2) var(--e-std)}
 .evs-maptg[aria-checked="true"] .evs-sw{background:var(--ds-green);border-color:var(--ds-green)}
 .evs-maptg[aria-checked="true"] .evs-sw::after{transform:translateX(14px);background:var(--ds-on-green)}
 /* 👥 Vänner går */
@@ -77,12 +77,12 @@
   padding:10px 12px;text-align:left;border-color:var(--ds-blue);background:linear-gradient(180deg,var(--ds-blue-soft),transparent),var(--ds-card);color:var(--ds-text);cursor:pointer;font:inherit}
 .evs-tvh-t{font-size:var(--ds-fs-16);line-height:var(--ds-lh-16)}
 .evs-tvh-s{grid-row:2;font-size:var(--ds-fs-12);color:var(--ds-muted)}
-.evs-chev{grid-row:1 / span 2;grid-column:2;font-style:normal;font-size:var(--fs-18);color:var(--ds-blue-t);transition:transform var(--ds-t-1)}
+.evs-chev{grid-row:1 / span 2;grid-column:2;font-style:normal;font-size:var(--fs-18);color:var(--ds-blue-t);transition:transform var(--m-2) var(--e-std)}
 .evs-tvfold.evs-open .evs-chev{transform:rotate(180deg)}
 .evs-tvlist{display:flex;flex-direction:column;gap:var(--ds-2);padding-left:10px;border-left:2px solid var(--ds-blue)}
 /* detail view */
 .evs-in-detail>:not(.evs-detail){display:none !important}
-.evs-detail{display:flex;flex-direction:column;gap:var(--ds-3);animation:evs-in var(--ds-t-2) var(--ds-ease) both}
+.evs-detail{display:flex;flex-direction:column;gap:var(--ds-3);animation:evs-in var(--m-4) var(--e-std) both}
 @keyframes evs-in{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.evs-detail{animation:none}}
 .evs-back{align-self:flex-start;min-height:44px;padding:0 var(--ds-2)}

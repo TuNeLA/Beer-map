@@ -486,7 +486,7 @@
     if (!amb) return;
     var a = amb; amb = null; clearTimeout(a.timer); clearTimeout(a.calmT);
     if (fast) { a.el.remove(); return; }
-    a.el.style.transition = "opacity 1.5s ease"; a.el.style.opacity = "0";
+    a.el.style.transition = "opacity 1.5s var(--e-std)"; a.el.style.opacity = "0";
     a.el.classList.add("fx-amb-out");   // ui1 B6: own close class ("out" also means "out now" elsewhere)
     setTimeout(function () { a.el.remove(); }, 1600);
   }

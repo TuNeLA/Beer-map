@@ -74,7 +74,7 @@
   overflow-x:auto;scrollbar-width:none}
 .tt-bar::-webkit-scrollbar{display:none}
 .tt-bar button{flex:1 0 auto;min-height:44px;padding:0 10px;border:0;background:transparent;color:var(--muted);font:700 var(--fs-s) var(--body);letter-spacing:.02em;
-  border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:color var(--d-2),border-color var(--d-2)}
+  border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:color var(--m-4) var(--e-std),border-color var(--m-4) var(--e-std)}
 .tt-bar button[aria-selected="true"]{color:var(--amber-2);border-bottom-color:var(--amber)}
 .tt-bar button[hidden]{display:none}
 #sheet-body[data-tt="top"]>[data-tt]:not([data-tt="top"]):not([data-tt="all"]),
