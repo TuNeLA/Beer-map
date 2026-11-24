@@ -13,8 +13,8 @@
     {"t": "Ingen ute än. Grannen har redan frågat varför. Svara honom: gå ut.", "not": ["sv-smaland"]}
   ],
   "live.quiet": [
-    "Lugnt i stan. Ente en hot streak.",
-    "Stilla som slätten en söndag. Inga hot streaks än."
+    "Lugnt i stan. Ente mycket folk.",
+    "Stilla som slätten en söndag."
   ],
   "kaos.head": "KAOS på {bar}! Folk blåser in som en västanvind.",
   "toast.skal": [
@@ -528,11 +528,11 @@
     {"mix": 0.1}
   ],
   "live.hot": [
-    "🔥 {who} {where} e på HOT STREAK! Ta hand om varandra.",
+    "🍺 {who} {where} e ute ikväll. Ta hand om varandra.",
     {"mix": 0.1}
   ],
   "live.med": [
-    "🦅 {who}{where} har gått in i legendläge. Vatten och en kompis nära.",
+    "🚑 {who}{where} har haft en lång kväll. Vatten och en kompis nära.",
     "🚁 {who}{where} har nått {n}. Taxi hem e ett vinnande drag, hörru.",
     "🚁 Rapport: {who}{where} på {n}. Vatten nu, och en kompis nära.",
     {"mix": 0.1}
@@ -655,14 +655,14 @@
   ],
   "kaos.line": [
     "🔥 KAOS i {stad}: {n} ute. Ta hand om varandra.",
-    "🚨 {stad} har vaknat! {hot} på hot streak. Vatten finns i baren.",
+    "🚨 {stad} har vaknat! Vatten finns i baren.",
     {"t": "🚨 Sjukt mycket folk i {stad} ikväll, hörru!", "not": ["sv-smaland"]},
     "📞 Kaos i {stad}! Nån borde ringa mormor på slätten.",
     {"t": "🎪 Hela {stad} har gått ut samtidigt. Pågatåget e fullt.", "not": ["sv-smaland"]},
     "🎸 Det rockar i {stad}. {n} ute och fler cyklar in.",
     {"t": "🚨 {stad} har vaknat! Det hörs ända över sundet.", "not": ["sv-smaland"]},
     {"t": "🚨 {stad} har vaknat! Så mycket folk har ingen sett sen marknaden.", "only": ["sv-smaland"]},
-    "🔥 Mycket folk på {bar}! {hot} på hot streak. Vatten och mat finns i baren.",
+    "🔥 Mycket folk på {bar}! Vatten och mat finns i baren.",
     "🚨 Nu ballar det ur i {stad}! Måsarna har gått och lagt sig i protest.",
     {"mix": 0.1}
   ],
@@ -1174,10 +1174,10 @@
     {"t": "🏳️ Ni tappade {bar}. Ente okej, hörru. Ta tillbaka den!", "not": ["sv-smaland"]}
   ],
   "toast.cooldown": [
-    "Lugn i blåsten, soldat. Nästa öl om {m}.",
-    "Lugn, soldat. Nästa öl om {m}. Ta ett glas vatten under tiden."
+    "Paus. {m} kvar.",
+    "Paus. {m} kvar. Ta ett glas vatten under tiden."
   ],
-  "stop.pause.toast": "🥀 Paus. Lägg daj i lä. Tryck ÖL! när törsten kommer tillbaka.",
+  "stop.pause.toast": "🥀 Paus. Lägg daj i lä. Din pin är borta från kartan.",
   "mom.toast.vad": "Gänget ska ut. Kvällens vad: {q} Nämen!",
   "mom.toast.bord": "{n} i plutonen på {bar}. Uppdrag, hörru!",
   "mom.toast.agent": "Du e kvällens hemliga agent. Avslöja daj ente!",

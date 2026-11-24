@@ -61,7 +61,7 @@ const fitAll = async () => {
   // the texts without the Swedish level pools (English, old content)
   cases.push({ at: 5, level: 1, title: t("hotTitle", "VATTENBÄRAREN"), sub: t("hotSub", "Nr 5 ikväll. Ett glas vatten nu."), variant: "wall" });
   cases.push({ at: 10, level: 2, title: t("medTitle", "SJUKVÅRDARE TILL PLATS 3"), sub: t("medSub", "Nr 10. Förstärkning på väg."), variant: "lightbar", extra: taxi });
-  cases.push({ at: 10, level: 2, title: "LEGEND MODE", sub: "No. 10 tonight. The squad salutes you.", variant: "stripes", extra: taxi });
+  cases.push({ at: 10, level: 2, title: "MEDIC TO SEAT 3", sub: "No. 10. Backup on the way: water, food and a friend.", variant: "stripes", extra: taxi });
   cases.push({ at: 0, level: 2, title: "Vattenbärarförstärkningskompaniet", sub: "x", variant: "beacons", long: true });   // a word no screen can hold: wrap, never cut
   for (const c of cases) {
     document.querySelectorAll(".takeover").forEach((x) => x.remove());

@@ -10,11 +10,15 @@
 BEGIN;
 \i :mig
 \i :mig
+-- 0534 (lane texts, 24 Nov): a NEW account now starts as "Bara vänner". These test people stand for accounts that
+-- choose Alla (strangers may see them): replica mode keeps the 0534 trigger off for this insert only.
+SET LOCAL session_replication_role = replica;
 INSERT INTO auth.users (id, aud, role, is_anonymous) VALUES
   ('00000000-0000-4000-8000-0000000524a1', 'authenticated', 'authenticated', true),
   ('00000000-0000-4000-8000-0000000524a2', 'authenticated', 'authenticated', true),
   ('00000000-0000-4000-8000-0000000524a3', 'authenticated', 'authenticated', true),
   ('00000000-0000-4000-8000-0000000524a4', 'authenticated', 'authenticated', true);
+SET LOCAL session_replication_role = origin;
 CREATE OR REPLACE FUNCTION pg_temp.as_u(p text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', '{"sub":"' || p || '","role":"authenticated"}', true);

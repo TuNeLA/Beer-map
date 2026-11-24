@@ -304,13 +304,35 @@
       } catch (e) {}
     }
     document.body.classList.add("x8-snap");
+    glDim();
     show(true);
     log("snap", { min: Math.round((now() - snapTime) / 60e3) });
   }
   function snapHide() {
     if (!snapOn) return;
     snapOn = false; document.body.classList.remove("x8-snap");
+    glDim();
   }
+  // mapcrowd (A4b, start1 limit 2): the bar pills that Mapbox GL draws (glmap.js) are not in the marker panes, so the CSS above
+  // does not reach them: the same 0.6 dim on the GL bar / lantern / cluster layers (not the restaurants, heat or clouds).
+  // GL can come up after the snapshot is drawn: glmap.js says "glbars:sync" after each redraw, then the dim is set again.
+  var dimMap = null, dimBase = {}, DIM_SKIP = /^olnu-(place|heat|clouds)$/;
+  function glDim() {
+    try {
+      var G = window.GLBARS, B = window.BASEMAP, m = G && G.on && G.on() && B && B.isMapbox && B.isMapbox() && B.mapbox() ? B.mapbox().getMapboxMap() : null;
+      if (!m || !G._layers) return;
+      if (m !== dimMap) { dimMap = m; dimBase = {}; }
+      G._layers().forEach(function (id) {
+        var ly = m.getLayer(id); if (DIM_SKIP.test(id) || !ly || ly.type !== "symbol") return;
+        var b = m.getPaintProperty(id, "icon-opacity"), was = m.__x8dim && m.__x8dim[id];
+        if (!(id in dimBase) || !was) dimBase[id] = typeof b === "number" ? b : 1;   // a layer made again after a style reload: its own value
+        var v = snapOn ? Math.round(dimBase[id] * 60) / 100 : dimBase[id];
+        if (b !== v) m.setPaintProperty(id, "icon-opacity", v);
+        (m.__x8dim = m.__x8dim || {})[id] = snapOn;
+      });
+    } catch (e) {}
+  }
+  document.addEventListener("glbars:sync", function () { if (snapOn || dimMap) glDim(); });
 
   /* ---------- persistent storage (start1; audit item 9) ---------- */
   // The anonymous account lives in localStorage only: under storage pressure (and on iPhone Safari after 7 days away) the

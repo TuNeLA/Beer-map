@@ -15,7 +15,7 @@
     {"t": "Ingen ute än. Glenn har tagit på sig jackan tre gånger. Skriv nu, innan han ger upp.", "not": ["sv-varmland"]}
   ],
   "live.quiet": [
-    "Lugnt i stan. Inga hot streaks, bara gôtt häng.",
+    "Lugnt i stan. Bara gôtt häng.",
     "Tyst på kartan. Någon får väl dra igång, tjommen.",
     "Lugnt läge. Bara måsarna ä uppe."
   ],
@@ -424,7 +424,7 @@
   ],
   "live.t4": [
     "🌭 Korvkön har fler filosofer än Chalmers.",
-    "🌙 Klockan ä {hh}. Bara de starkaste ä kvar. Och måsarna.",
+    "🌙 Klockan ä {hh}. Måsarna har gått och lagt sig.",
     "🌙 {hh}. Tid för vatten, korv med mos och hemvägen.",
     {"mix": 0.1}
   ],
@@ -462,13 +462,13 @@
     {"mix": 0.1}
   ],
   "live.hot": [
-    "🔥 {who} {where} är på HOT STREAK! Ta hand om varandra, tjommen.",
-    "🔥 {who} {where} brinner som en fyr! Vatten och kompisar nära.",
-    "🔥 {who}{where} är på HOT STREAK! Vatten emellan, tjommen.",
+    "🍺 {who} {where} är ute ikväll. Ta hand om varandra, tjommen.",
+    "🍺 {who} {where} lyser som en fyr. Vatten och kompisar nära.",
+    "🍺 {who}{where} är ute ikväll. Vatten emellan, tjommen.",
     {"mix": 0.1}
   ],
   "live.med": [
-    "🦅 {who}{where} har gått in i legendläge. Vatten och en kompis nära.",
+    "🚑 {who}{where} har haft en lång kväll. Vatten och en kompis nära.",
     {"mix": 0.1}
   ],
   "live.emptyFirst": [
@@ -571,11 +571,11 @@
   "kaos.line": [
     "🚨 Nu ballar det ur i {stad}, tjommen!",
     "🔥 KAOS i {stad}: {n} ute. Gôtt, men ta hand om varandra.",
-    "🚨 Sicken kväll i {stad}! {hot} på hot streak. Vatten finns i baren.",
+    "🚨 Sicken kväll i {stad}! Vatten finns i baren.",
     "🚨 Kaj-os i {stad}! {n} ute, vatten finns i baren.",
     "😳 Hörru tjommen, sitter du inne nu? Det är ju bara regn.",
     "🔥 {stad} kokar som en hummergryta. Ta hand om varandra.",
-    "🚨 {hot} på hot streak i {stad}. Fyren blinkar: vatten och vänner.",
+    "🚨 Fullt i {stad}. Fyren blinkar: vatten och vänner.",
     {"t": "🚨 Det ä fullt i {stad}, som spårvagnen en lördag.", "not": ["sv-varmland"]},
     {"mix": 0.1}
   ],
@@ -607,16 +607,16 @@
     {"mix": 0.1}
   ],
   "toast.cooldown": [
-    "Lugn, tjommen. Nästa öl om {m}.",
-    "Lugn, soldat. Nästa öl om {m}. Ta ett glas vatten under tiden."
+    "Paus. {m} kvar, tjommen.",
+    "Paus. {m} kvar. Ta ett glas vatten under tiden."
   ],
   "stop.home.toast": [
     "🏠 Välkommen hem, tjommen. Gruppen vet att du är hemma.",
     "🏠 I hamn! Gruppen vet att du är hemma. Gôtt."
   ],
   "stop.pause.toast": [
-    "🥀 Paus. Gôtt så. Tryck ÖL! när törsten kommer tillbaka.",
-    "🥀 Paus. Lyssna på regnet en stund. Tryck ÖL! när du vill igen."
+    "🥀 Paus. Gôtt så. Din pin är borta från kartan.",
+    "🥀 Paus. Lyssna på regnet en stund."
   ],
   "lask.toast": [
     "Skål i läsk, chaufför! Gänget kommer hem tack vare dig. Gôtt jobbat.",

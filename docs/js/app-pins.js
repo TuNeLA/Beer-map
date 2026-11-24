@@ -163,9 +163,34 @@
     if (out.z < LABEL_ZOOM) tplBox.querySelectorAll(window.TIERS ? ".bm-q" : ".bm-q, .bm-crowd").forEach(function (x) { x.remove(); });
     var r = tplBox.innerHTML; tplBox.innerHTML = ""; return r;
   }
+  /* mapcrowd (I-137, owner 20 Nov: "8 things on one spot" at Pitchers) — a busy bar shows people first, then at most ONE
+     extra mark. Kept always: the disc, the count (A35: as today), my friends' row, the name. Extras by rank:
+     🪖 call-out > 🚪 check-ins > 📅/🎤 tonight > 👑 > 🏰. The price tag goes when my friends' row is there (one row under
+     the disc). My own invite at the bar (js/invite.js, a short "📨 19:00" chip) takes the extra slot and the price slot.
+     A quiet bar (nobody there) keeps every mark, as before. The bar sheet always has everything (one tap). Both map paths
+     read this HTML (glmap.js parses it), so the raster map and GL show the same marks. */
+  var XTRA = ["rl", "ci", "ev", "king", "flag"];
+  function invAtBar(bar) { try { return !!(window.INVITE && window.INVITE.atBar && window.INVITE.atBar(bar.id)); } catch (e) { return false; } }
+  function budget(c, bx, ico, z) {
+    var cis = c.cis || [], people = c.beers.length > 0 || cis.length > 0, inv = invAtBar(c.bar);
+    var has = { rl: c.rallies.length > 0, ci: cis.length >= 3 && z >= LABEL_ZOOM, ev: ico.indexOf("bi-ev") >= 0, king: !!bx.king && z >= LABEL_ZOOM, flag: !!bx.flag && z >= LABEL_ZOOM };
+    var keep = { rl: true, ci: true, ev: true, king: true, flag: true, tag: true, inv: inv };
+    if (!people && !inv) return keep;
+    var row = friendHere(c.beers) || cis.some(function (x) { return x && x.is_friend && !x.is_mine; }), first = inv ? "" : XTRA.filter(function (k) { return has[k]; })[0] || "";
+    XTRA.forEach(function (k) { keep[k] = k === first; });
+    keep.tag = !inv && !row;
+    return keep;
+  }
+  function stripIco(html, keep) {
+    if (keep.ev && keep.tag) return html;
+    tplBox.innerHTML = html;
+    if (!keep.ev) tplBox.querySelectorAll(".bi-ev").forEach(function (x) { x.remove(); });
+    if (!keep.tag) tplBox.querySelectorAll(".bi-tag").forEach(function (x) { x.remove(); });
+    var r = tplBox.innerHTML; tplBox.innerHTML = ""; return r;
+  }
   function compositeIcon(c) {
     var bar = c.bar, z = map.getZoom(), list = c.beers, h = '<div class="cm-in">', bx = { z: z };
-    var ico = pickBadges(mods("barIcoHTML", bar), bx);
+    var ico0 = pickBadges(mods("barIcoHTML", bar), bx), kp = budget(c, bx, ico0, z), ico = stripIco(ico0, kp);
     h += window.ICONS ? window.ICONS.barIco(bar, ico) : bar.place ? '<div class="bar-ico place-ico" aria-hidden="true">🍽️' + ico + "</div>" :
       '<div class="bar-ico">' + U.GLASS_OUTLINE_SVG + ico + "</div>";
     if (list.length) {
@@ -173,25 +198,25 @@
         label: friendTotHTML(list) + pickBadges(mods("barBadgeHTML", bar, list, window.TIERS ? Math.max(z, LABEL_ZOOM) : z), bx) });
     }
     if (z >= LABEL_ZOOM) {
-      if (bx.king) h += '<span class="cm-b cm-king" aria-hidden="true">👑</span>';
-      if (bx.flag) h += '<span class="cm-b cm-flag' + (bx.flagMine ? " mine" : "") + '" aria-hidden="true">🏰</span>';
+      if (bx.king && kp.king) h += '<span class="cm-b cm-king" aria-hidden="true">👑</span>';
+      if (bx.flag && kp.flag) h += '<span class="cm-b cm-flag' + (bx.flagMine ? " mine" : "") + '" aria-hidden="true">🏰</span>';
     }
-    if (c.rallies.length) {
+    if (c.rallies.length && kp.rl) {
       var yes = 0, me = false;
       c.rallies.forEach(function (r) { yes = Math.max(yes, r.yes | 0); if (r.my_answer === "yes") me = true; });
       h += '<span class="cm-rally' + (me ? " me" : "") + '" title="' + U.esc(t("cmRallyAria", yes)) + '">🪖<b>' + yes + "</b>" + (c.rallies.length > 1 ? '<i class="cm-dot"></i>' : "") + "</span>";
     }
     // Check-in badge: always on a bar without drinkers; next to a people pill only when zoomed in (less clutter).
     // Check-in count: zoom ≥ 16 only (below it the bar icon is just "lit", not a number).
-    if (c.cis.length >= 3 && z >= LABEL_ZOOM) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";   // gw: no check-in number below 3 (the green 'lit' ring stays)
-    if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + '">' + U.esc(bar.name) + "</span>";
+    if (c.cis.length >= 3 && z >= LABEL_ZOOM && kp.ci) h += '<span class="cm-ci" aria-hidden="true">🚪<b>' + c.cis.length + "</b></span>";   // gw: no check-in number below 3 (the green 'lit' ring stays)
+    if (bar.name) h += '<span class="cm-lbl' + (list.length ? " below" : "") + (list.length && friendTotHTML(list) ? " below2" : "") + '">' + U.esc(bar.name) + "</span>";   // mapcrowd: under the friends' totals chip (raster map), not on it
     h += "</div>";
     // maplight (I-115): people I know stand beside the disc (GL draws them itself, glmap.js: only the raster map needs this HTML)
     if (!(window.GLBARS && window.GLBARS.on && window.GLBARS.on())) h += facesHTML(c);
-    c.tk = { king: !!bx.king, ev: ico.indexOf("bi-ev") >= 0 };   // 🏷️ tiers: 👑 / 📅 tonight priority
+    c.tk = { king: !!bx.king, ev: ico0.indexOf("bi-ev") >= 0 };   // 🏷️ tiers: 👑 / 📅 tonight priority
     var quiet = !list.length && !c.rallies.length && !c.cis.length && z < LABEL_ZOOM && !window.TIERS;
     var lv = 0; try { lv = window.BARLIGHT && window.BARLIGHT.lvOf ? window.BARLIGHT.lvOf(bar.id) : 0; } catch (e) {}   // maplight: the lantern step (raster map: CSS, barlight.css)
-    return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : "") +
+    return L.divIcon({ html: h, className: "cm" + (list.length ? " cm-hot" : "") + (c.rallies.length ? " cm-has-rally" : "") + (kp.inv ? " cm-inv" : "") +
         (quiet ? " cm-quiet" : "") + (!list.length && c.cis.length ? " cm-lit" : "") + (lv ? " cm-lv" + lv : ""),
       iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -20] });
   }

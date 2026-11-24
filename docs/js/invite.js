@@ -228,17 +228,31 @@
       A.map.on("zoomend", farClass); farClass();
     }
     pinLayer.clearLayers();
+    var was = barKey;
+    barInv = {};
     INV.forEach(function (x) {
-      if (!x.live || x.status !== "open" || x.my_answer === "no" || !isFinite(x.lat) || x.lat == null) return;
-      var html = '<div class="inv-pin' + (x.my_answer === "yes" ? " yes" : "") + '"><span class="inv-pin-e" aria-hidden="true">📨</span>' +
-        '<span class="inv-pin-t"><b>' + esc(shortTitle(x)) + "</b> " + esc(dayDiff(x.starts_at) === 0 ? hhmm(x.starts_at) : whenText(x.starts_at)) + "</span></div>";
+      if (!pinShown(x)) return;
       var bar = null; try { bar = x.bar_id && window.BARS && window.BARS.byId ? window.BARS.byId(x.bar_id) : null; } catch (e) { bar = null; }   // tiers: fixed slot
-      var m = Lf.marker(bar ? [bar.lat, bar.lng] : [x.lat, x.lng], { pane: "invites", keyboard: true, title: x.title,
-        icon: Lf.divIcon({ html: html, className: "inv-pin-w", iconSize: [0, 0], iconAnchor: bar ? [-17, 40] : x.bar_id ? [-10, 34] : [12, 28] }) });
+      var when = dayDiff(x.starts_at) === 0 ? hhmm(x.starts_at) : whenText(x.starts_at), k = bar ? canon(bar.id) : "";
+      if (k && barInv[k]) return;   // mapcrowd: one invite chip per bar (the bar sheet lists them all)
+      if (k) barInv[k] = x.id;
+      // mapcrowd (I-137): at a known bar the chip is short (envelope + time) and sits right of the disc, under the count
+      // (the title is in the HUD chip, the tooltip and the invite sheet); away from a bar it keeps the title
+      var html = '<div class="inv-pin' + (x.my_answer === "yes" ? " yes" : "") + (bar ? " inv-at" : "") + '"><span class="inv-pin-e" aria-hidden="true">📨</span>' +
+        '<span class="inv-pin-t">' + (bar ? "" : "<b>" + esc(shortTitle(x)) + "</b> ") + esc(when) + "</span></div>";
+      var m = Lf.marker(bar ? [bar.lat, bar.lng] : [x.lat, x.lng], { pane: "invites", keyboard: true, title: shortTitle(x) + " " + when,
+        icon: Lf.divIcon({ html: html, className: "inv-pin-w", iconSize: [0, 0], iconAnchor: bar ? [-21, 1] : x.bar_id ? [-10, 34] : [12, 28] }) });
       m.on("click", function () { openInvite(x.id); });
       m.addTo(pinLayer);
     });
+    barKey = Object.keys(barInv).sort().join(",");
+    if (barKey !== was) { try { A.render(); } catch (e) {} }   // the bar marks make room for the chip (app-pins.js budget)
   }
+  // mapcrowd: the shown invite pins, and which bar has one (app-pins.js reads INVITE.atBar for its one-extra rule)
+  var barInv = {}, barKey = "";
+  function pinShown(x) { return !!x && x.live && x.status === "open" && x.my_answer !== "no" && x.lat != null && isFinite(x.lat); }
+  function canon(id) { try { return String(window.BARS && window.BARS.canonId ? window.BARS.canonId(id) : id); } catch (e) { return String(id); } }
+  function atBar(id) { return id == null ? null : barInv[canon(id)] || null; }
   function farClass() { try { A.map.getPane("invites").classList.toggle("inv-far", A.map.getZoom() < 13); } catch (e) {} }
 
   /* ---------- ⏳ HUD chip ---------- */
@@ -1012,7 +1026,7 @@
 
   window.INVITE = {
     T: T, openCreate: openCreate, open: openInvite, openFriendsTab: openFriendsTab, friendsMore: friendsMore, evButton: evButton,
-    _mix: mixEvents, _list: function () { return INV; }, _poll: poll, chipText: chipText, cleanTitle: cleanTitle, _autoTitle: function (o) { return autoTitle(o); },
+    _mix: mixEvents, _list: function () { return INV; }, atBar: atBar, _poll: poll, chipText: chipText, cleanTitle: cleanTitle, _autoTitle: function (o) { return autoTitle(o); },
     init: function (api) {
       A = api;
       document.addEventListener("click", onDocClick, true);
