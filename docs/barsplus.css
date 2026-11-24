@@ -160,3 +160,30 @@
 .bp-tc.bp-fav .bp-tn{max-width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;text-align:center;line-height:18px;overflow-wrap:anywhere}
 .bp-fph{width:36px;height:36px;flex:none;border-radius:var(--r-pill);object-fit:contain;background:var(--bl-photo-bg,var(--bp-fav-photo));padding:2px;box-sizing:border-box}
 /* lane beerux END */
+
+/* lane fixB START — P-12 (polish sweep 24 Nov): the "Vilken sort?" strip in the app's shape. Rounded panel and chips (radius
+   tokens, no HUD corner marks), the 10 kinds in an even 3-column grid (icon over the name, so "Stout/Porter" fits at 360 px;
+   a lone last chip spans the row), a 44 px round close button with a PNI icon and the name "Stäng" / "Close". */
+.bp-strip{border-radius:var(--r-lg);overflow:hidden}
+.bp-strip.hud-panel::before,.bp-strip.hud-panel::after{display:none}
+.bp-strip>.bp-st-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-1)}
+.bp-strip>.bp-st-chips>.bp-tc{flex-direction:column;flex-wrap:nowrap;gap:var(--sp-0);min-width:0;min-height:56px;padding:var(--sp-1);
+  white-space:normal;line-height:1.15;text-align:center}
+.bp-strip>.bp-st-chips>.bp-tc:last-child:nth-child(3n+1){grid-column:1/-1;flex-direction:row;gap:var(--sp-2);min-height:44px}
+.bp-strip>.bp-st-chips>.bp-tc .bp-tn{max-width:100%;overflow-wrap:anywhere}
+.bp-tc{border-radius:var(--r-md)}
+.bp-st-head{margin-bottom:var(--sp-1)}
+.bp-st-x{display:inline-flex;align-items:center;justify-content:center;padding:0;margin:-6px -6px -6px 0;border-radius:var(--r-pill)}
+.bp-st-x .bp-st-xi{width:20px;height:20px}
+/* P-17: "Annan dryck" starts with "Utan alkohol" (Vatten, Läsk): blue tokens (= the water toast), not amber, so it never reads
+   as a drink. Alcohol kinds during the 10-min wait: off (the sheet says the time). */
+.soft-box{margin:0 0 var(--sp-3);padding:var(--sp-3);border:1px solid var(--ds-border);border-radius:var(--r-lg);background:var(--ds-blue-soft)}
+.sheet-body .soft-box .soft-h{margin:0 0 var(--sp-2);font:600 var(--fs-14)/20px var(--ds-sans);color:var(--ds-blue-t)}
+.kind-grid.soft-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0}
+.kind-btn.soft-btn{min-height:56px;flex-direction:row;gap:var(--sp-2);border-color:var(--ds-blue)}
+.kind-btn.soft-btn .kb-e{color:var(--ds-blue-t)}
+.soft-note{margin:var(--sp-2) 0 0;font-size:var(--fs-12)}
+.kind-btn:disabled{opacity:.45;cursor:default}
+/* P-19: Kompisvakt (after.js) has ONE filled button, "Jag kollar"; its taxi row is outline (elsewhere the local taxi stays amber). */
+.af-med-taxi .taxi-btn.taxi-local{background:transparent;border-color:var(--ds-border-2);color:var(--ds-text)}
+/* lane fixB END */

@@ -49,6 +49,8 @@ function build(now) {
     spel_act: () => room("kort"),
     drivers_for: () => ({ v: 1, drivers: [{ name: "Lisa", k: "cccccccccccc", is_me: false }] }),
     pickup_poll: () => ({ v: 1, driving: false, incoming: [], mine: null }),
+    post_soft: (b) => ({ ok: true, kind: b && b.p_kind, n: 1, vatten: b && b.p_kind === "vatten" ? 1 : 0, lask: b && b.p_kind === "lask" ? 1 : 0 }),   // fixB P-17 (0538): extras.js
+    my_soft_tonight: () => ({ vatten: 0, lask: 0 }),                                         // fixB P-17 (0538): nightlog.js Min kväll
     submit_knas: () => ({ ok: true, id: 1, left: 4 }),                                     // lane main X6 knas.js (Något knas?)
     ride_flags_get: () => ({ ride_v2: false, ride_v2_more: false }),                         // lane ride (0420): ride.js / skjuts.js (flags OFF until release)
     ride_poll: () => ({ v: 1, driving: false, incoming: [], mine: null, ride: { v: 1, on: false } }),   // lane ride: only polled with ride_v2 ON

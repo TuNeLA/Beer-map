@@ -120,7 +120,8 @@ function countRpc(page) {
       const { ctx, page } = await open(browser, { routes: async (p) => {
         await p.route(/rest\/v1\/rpc\/driver_set/, (r) => r.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "P0001", message: "not_authenticated" }) }));
       } });
-      await page.evaluate(() => { document.querySelectorAll("#toasts .toast").forEach((x) => x.remove()); window.SKJUTS.setDriver(true, null); });
+      // fixB P-01 (24 Nov): driver mode is refused while drinks are logged (the fixture has 6); this check is about the session text
+      await page.evaluate(() => { if (window.LASK) window.LASK.drinksTonight = () => 0; document.querySelectorAll("#toasts .toast").forEach((x) => x.remove()); window.SKJUTS.setDriver(true, null); });
       await wait(page, 1200);
       const t = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map((x) => x.textContent).join(" | "));
       ok("4 driver_set not_authenticated: the signed-out text, not 'try again'", /utloggad|signed out/i.test(t) && !/Försök igen/.test(t), t);

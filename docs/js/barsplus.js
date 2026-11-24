@@ -398,6 +398,11 @@
     if (strip && !strip.hidden && !(e.state && e.state.bpStrip)) { stripHist = false; hideStrip(); }
   }
   function stripMapTap() { if (strip && !strip.hidden) hideStrip(); }
+  // fixB P-02 (polish sweep 24 Nov): "Ångra" took the beer away, but "Vilken sort?" stayed open (or opened 900 ms later) and
+  // asked the kind of a beer that is gone. Undo (app-beer.js doUndo → mods "onBeerUndone") cancels a strip that is on its way
+  // (stripGen) and closes one that is up.
+  var stripGen = 0;
+  function stripCancel() { stripGen++; hideStrip(); }
   function stripOpened() {
     if (!stripKeysOn) { stripKeysOn = true; document.addEventListener("keydown", stripKey); window.addEventListener("popstate", stripPop); try { A.map.on("click", stripMapTap); } catch (e) {} }
     if (stripHist) return;
@@ -418,9 +423,10 @@
   function showStrip(delay) {
     // Old server (0014 missing): bar_status is known missing by now -> no strip at all.
     if (off.set_beer_type || state === "missing" || !A || !A.authed()) return;
-    var waitUntil = Date.now() + (delay || 0) + 15000;
+    var waitUntil = Date.now() + (delay || 0) + 15000, gen = stripGen;
     gateUntil = Date.now() + (delay || 0) + 600;
     setTimeout(function open() {
+      if (gen !== stripGen) return;   // P-02: the beer was undone before the strip came
       // A HOT / MEDEVAC takeover from this same tap is on screen: show the strip after it (max ~15 s).
       if (document.querySelector(".takeover") && Date.now() < waitUntil) { gateUntil = Date.now() + 900; setTimeout(open, 300); return; }
       if (!strip) { strip = document.createElement("div"); strip.className = "bp-strip hud-panel"; strip.setAttribute("role", "group"); document.body.appendChild(strip); }
@@ -428,7 +434,7 @@
       if (TYPES.indexOf(last) < 0) last = "";
       var order = last ? [last].concat(TYPES.filter(function (x) { return x !== last; })) : TYPES.slice();
       strip.setAttribute("aria-label", t("bpTypeQ"));
-      strip.innerHTML = '<div class="bp-st-head"><span>' + esc(t("bpTypeQ")) + '</span><button type="button" class="bp-st-x" aria-label="✕">✕</button></div>' +
+      strip.innerHTML = '<div class="bp-st-head"><span>' + esc(t("bpTypeQ")) + '</span><button type="button" class="bp-st-x" aria-label="' + esc(I.lang === "en" ? "Close" : "Stäng") + '">' + (window.PNI && window.PNI.has && window.PNI.has("x") ? window.PNI.svg("x", "bp-st-xi") : "✕") + '</button></div>' +
         favRowHTML() + '<div class="bp-st-chips">' + order.map(function (k) {
           var same = k === last;
           return '<button type="button" class="bp-tc' + (same ? " same" : "") + '" data-bpt="' + k + '">' +
@@ -1134,6 +1140,8 @@
     barPopupHTML: barPopupHTML,
     barBadgeHTML: barBadgeHTML,
     barIcoHTML: barIcoHTML,
+    onBeerUndone: function () { stripCancel(); },   // fixB P-02
+    hideStrip: stripCancel,
     onBeerAccepted: function (d) {
       if ((d && d.beer_count | 0) < 1) return;
       var n = d.beer_count | 0;

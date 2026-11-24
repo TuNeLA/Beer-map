@@ -28,13 +28,13 @@
     no_viewers: "Välj minst en kompis eller grupp.", too_many: "Max 30 personer åt gången.",
     slow_down: "Vänta en liten stund innan du frågar igen.", not_driving: "Hen kör int' längre ikväll.",
     ended: "Förfrågan ä redan avslutad.", not_found: "Förfrågan finns int' längre.", not_member: "Du ä int' med i gruppen.",
-    invalid_answer: "Välj ett svar."
+    invalid_answer: "Välj ett svar.", drinking: "Du har loggat dryck ikväll. Då kör du inte bil."   // fixB P-01 (0538 driver_set)
   };
   function esc(s) { return U.esc(s); }
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function missing(e) { var m = String((e && (e.code || "")) + " " + (e && e.message || "")); return /PGRST202|42883|does not exist|Could not find the function/i.test(m); }
-  function codeOf(e) { var m = String((e && e.message) || ""), x = m.match(/(no_viewers|too_many|slow_down|not_driving|ended|not_found|not_member|invalid_answer)/); return x ? x[1] : ""; }
+  function codeOf(e) { var m = String((e && e.message) || ""), x = m.match(/(no_viewers|too_many|slow_down|not_driving|ended|not_found|not_member|invalid_answer|drinking)/); return x ? x[1] : ""; }
   // dbhealth I-138: not_authenticated (driver_set failed 6 times on live, logs1.md 3) = the session ran out. The app's errMsg
   // refreshes the session (reauth) and says so (sv + en), instead of "try again", which can never work.
   function errText(e) {
@@ -313,6 +313,7 @@
   /* ---------- 🚗 Jag kör ikväll ---------- */
   function driving() { return !!(P && P.driving); }
   function setDriver(on, btn) {
+    try { if (on && window.LASK && window.LASK.driverBlock && window.LASK.driverBlock()) return; } catch (e) {}   // fixB P-01: drinks logged tonight = no driver mode (lask.js sheet)
     if (btn) btn.disabled = true;
     call("driver_set", { p_on: !!on }).then(function (r) {
       if (btn) btn.disabled = false;

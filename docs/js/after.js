@@ -351,21 +351,27 @@
   }
   // lane:after R1-11: the HUD chip "Kolla till …" is THE signal. One small caption once per pin (the seen map above), only
   // when no sheet or overlay is open (ds40); tap = the Kompisvakt sheet. Otherwise nothing: the chip stays.
+  // fixB P-19 (polish sweep 24 Nov): the lines said "{name} är på 10" also when the pin, the chat and the ticker said 11
+  // (the chip comes at 10 beers and stays). A count is information: the milestone now reads "10+" (all packs: the packs keep
+  // their words, only the number changes here; lane E can move the packs to "10+" too).
+  function med10(s) { return String(s || "").replace(/(\bp[åa]) 10(?![\d+])/g, "$1 10+"); }
   function medCaption(b) {
     if (!b || A.sheetOpen() || document.documentElement.classList.contains("a2-on")) return;
     var D = window.DELIGHT, R2 = window.AFTER_R2, txt = R2 ? R2.t("after.med.cap", { name: b.friend_name }) : fill(medAsk()[1], { name: b.friend_name });
+    txt = med10(txt);
     if (D && D.caption) D.caption({ text: txt, cls: "af-med-cap", ms: 6000, onTap: function () { openMedSheet(b); } });
   }
   function openMedSheet(m) {
     if (!m) return;
     A.openSheet(L("🚑 Kompisvakt", "🚑 Buddy check"), function (body) {
-      body.appendChild(A.el("p", { class: "af-lead", text: fill(pick(medAsk()), { name: m.friend_name }) }));
+      body.appendChild(A.el("p", { class: "af-lead", text: med10(fill(pick(medAsk()), { name: m.friend_name })) }));
       body.appendChild(A.el("p", { class: "muted", text: L("Gå dit, ta ett snack, bjud på vatten. Den som trycker först har koll. Gruppen får veta.", "Go there, talk, bring water. First to tap owns it.") }));
       body.appendChild(A.el("div", { class: "row", style: "margin-top:10px" }, [
         A.btn(L("🚑 Jag kollar", "🚑 I'll check"), "btn-green btn-block", function () { A.closeSheet(); claim(m); })]));
       body.appendChild(A.el("div", { class: "row", style: "margin-top:8px" }, [
         A.btn(L("📍 Visa på kartan", "📍 Show on map"), "btn-block", function () { A.closeSheet(); A.flyTo(m.lat, m.lng, 17, m.id); })]));
-      if (window.EXTRAS && window.EXTRAS.taxiHTML) body.appendChild(A.el("div", { html: window.EXTRAS.taxiHTML("btn btn-small taxi-btn") }));
+      // P-19: ONE filled button ("Jag kollar"); the taxi row is outline here (.af-med-taxi, barsplus.css)
+      if (window.EXTRAS && window.EXTRAS.taxiHTML) body.appendChild(A.el("div", { class: "af-med-taxi", html: window.EXTRAS.taxiHTML("btn btn-small taxi-btn") }));
     });
   }
   function openMed() {

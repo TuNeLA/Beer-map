@@ -235,7 +235,8 @@ async function openGroup(page) {
       await page.waitForSelector(".pk-ikv", { timeout: 6000 }).catch(() => {});
       ok("Ikväll? sheet has '🚗 Jag kör ikväll'", await page.evaluate(() => /Jag kör ikväll/.test((document.querySelector(".pk-ikv") || {}).textContent || "")));
       ok("text says it never counts as a drink", await page.evaluate(() => /Räknas aldrig som dryck/.test(document.querySelector(".pk-ikv").textContent)));
-      await page.evaluate(() => document.querySelector(".pk-ikv .switch").click()); await wait(page, 600);
+      // fixB P-01 (24 Nov): driver mode is refused while drinks are logged (the fixture has 6); this part is about the toggle itself
+      await page.evaluate(() => { if (window.LASK) window.LASK.drinksTonight = () => 0; document.querySelector(".pk-ikv .switch").click(); }); await wait(page, 600);
       const ds = calls.filter((c) => c.fn === "driver_set").pop();
       ok("toggle → driver_set(true)", !!ds && ds.body.p_on === true);
       ok("switch shows on", await page.evaluate(() => document.querySelector(".pk-ikv .switch").getAttribute("aria-checked") === "true"));
