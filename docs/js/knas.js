@@ -21,7 +21,14 @@
     "knas.taking": "Tar en bild av skärmen …", "knas.left": "{n} kvar idag"
   };
   try { if (window.DIALEKT && window.DIALEKT.register) window.DIALEKT.register("sv-neutral", P); } catch (e) {}
-  function T(k, v) { try { if (window.DIALEKT && window.DIALEKT.t) return window.DIALEKT.t(k, v || {}, P[k]); } catch (e) {} return String(P[k] || k).replace(/\{(\w+)\}/g, function (m, n) { return v && v[n] != null ? v[n] : ""; }); }
+  // E8 (lane i18n): English (js/lang.js test flag). This file loads before lang.js and dialekt.js: T reads the language when called.
+  var PE = { "knas.title": "Something wrong?", "knas.row": "Something wrong?", "knas.rowSub": "Send us a screenshot and the log",
+    "knas.lead": "Tell us what happened. We get the screenshot and the log, so we find the bug faster.", "knas.what": "What happened?",
+    "knas.ph": "E.g. Check in did nothing at Pitchers.", "knas.shot": "Send the screenshot", "knas.log": "Send the log",
+    "knas.noshot": "No screenshot this time.", "knas.send": "Send", "knas.short": "Write what happened.", "knas.thanks": "Thanks! We will look at it.",
+    "knas.limit": "Max 5 a day. Thanks for the help, soldier!", "knas.fail": "Could not send. Try again.", "knas.taking": "Taking a picture of the screen …",
+    "knas.left": "{n} left today" };
+  function T(k, v) { if (window.I18N && window.I18N.lang === "en" && PE[k] != null) P = Object.assign({}, P, PE); try { if (window.DIALEKT && window.DIALEKT.t) return window.DIALEKT.t(k, v || {}, P[k]); } catch (e) {} return String(P[k] || k).replace(/\{(\w+)\}/g, function (m, n) { return v && v[n] != null ? v[n] : ""; }); }
   var H2C = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
   var H2C_SRI = "sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H";   // A17
   var MAX = 200, LOG = [], t0 = Date.now(), DAY = "olnu.knasDay";

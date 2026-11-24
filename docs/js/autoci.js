@@ -317,15 +317,15 @@
     body.appendChild(el("h3", { text: "Karta – incheckning" }));
     // ds08 switch row (.pn-swb): a row button with icon + label + switch; the button holds aria-checked (pnds.js keeps the dot in step)
     var b = el("button", { type: "button", class: "btn btn-block pn-swb ac-row", role: "switch", "aria-checked": String(on()) });
-    b.innerHTML = ic("pin") + '<span class="pn-sw-l">Checka in automatiskt</span><span class="switch" aria-hidden="true" aria-checked="' + on() + '"></span>';
+    b.innerHTML = ic("pin") + '<span class="pn-sw-l">' + I18N.L("Checka in automatiskt", "Check in automatically") + '</span><span class="switch" aria-hidden="true" aria-checked="' + on() + '"></span>';
     b.addEventListener("click", function () {
       var v = b.getAttribute("aria-checked") !== "true";
       setOn(v); b.setAttribute("aria-checked", String(v));
       var dot = b.querySelector(".switch"); if (dot) dot.setAttribute("aria-checked", String(v));
-      A.toast(v ? "Auto-incheckning på. Bara när appen ä öppen." : "Auto-incheckning av. Du får en fråga i stället.", { id: "ac-set", ms: 3000 });
+      A.toast(v ? I18N.L("Auto-incheckning på. Bara när appen ä öppen.", "Auto check-in on. Only while the app is open.") : I18N.L("Auto-incheckning av. Du får en fråga i stället.", "Auto check-in off. You get a question instead."), { id: "ac-set", ms: 3000 });
     });
     body.appendChild(el("div", { class: "row ac-set" }, [b]));
-    body.appendChild(el("p", { class: "muted ac-hint", text: "Efter 5 min på samma krog, när appen ä öppen. Av: du får en fråga." }));
+    body.appendChild(el("p", { class: "muted ac-hint", text: I18N.L("Efter 5 min på samma krog, när appen ä öppen. Av: du får en fråga.", "After 5 min at the same bar, while the app is open. Off: you get a question.") }));
     try { if (window.AUTOHOME && window.AUTOHOME.settingsRows) window.AUTOHOME.settingsRows(body, el); } catch (e) {}   // ds38 Auto hemma
   }
 

@@ -14,6 +14,9 @@
      position), asked when zones are in view and the last answer is > 60 s old (shared poll + moveend), never while hidden. */
 (function () {
   "use strict";
+  // E8 (lane i18n): the zone words in the language of the app (fixed for the page: a language change reloads)
+  var ZEN = !!(window.I18N && window.I18N.lang === "en");
+  var ZW = ZEN ? { ute: "out", lugnt: "quiet", nagra: "a few", ikv: "tonight", se: "Sweden" } : { ute: "ute", lugnt: "lugnt", nagra: "några", ikv: "ikväll", se: "Sverige" };
   var A = null, map = null, gm = null, hooked = null, ready = false;
   var Z_OFF = 10.5, Z_KOM = 6.6, Z_SWE = 5.2, K_MIN = 3, AGE_MS = 60000;
   /* a1map I-11 (owner 2026-11-11): the Nordic view (Leaflet z < 4.8) = ONE chip per country ("Sverige 🍺 23 ute"), the län chips
@@ -125,7 +128,7 @@
      are IN the pill instead: a row of up to 3 green initial discs + "Oskar" / "Oskar +2" (the clearest at city zoom: Snap Map
      and Zenly show friends as faces, never on top of a place name). The 🍺 / 👑 emoji are our glyphs now (PNGLYPHS pub /
      crown). Every pill is sized to its text: never cut. */
-  function countLine(c) { return !c ? "lugnt" : c.some || !c.n ? "några ute" : nf(c.n) + " ute"; }
+  function countLine(c) { return !c ? ZW.lugnt : c.some || !c.n ? ZW.nagra + " " + ZW.ute : nf(c.n) + " " + ZW.ute; }
   function gl(g, name, x, y, s, col) {   // a PNGLYPHS glyph (24 grid) with its top-left at x, y
     try { var G = window.PNGLYPHS && window.PNGLYPHS.G[name]; if (!G) return; g.save(); g.translate(x, y); g.scale(s / 24, s / 24);
       G.forEach(function (L) { if (L.k === "b") return; g.fillStyle = col; g.fill(new Path2D(L.d)); }); g.restore(); } catch (e) {}
@@ -134,10 +137,10 @@
   function labelImg(m, name, line2, line3, big, hot, fr) {
     var ft = frText(fr), key = "zn|" + name + "|" + line2 + "|" + (line3 || "") + "|" + (big ? 1 : 0) + (hot ? 1 : 0) + "|" + (fr ? fr.slice(0, 3).join(",") + ft : "");
     if (imgs[key]) { if (!m.hasImage(imgs[key])) m.addImage(imgs[key], imgs["d|" + key], { pixelRatio: R }); return imgs[key]; }
-    var quiet = line2 === "lugnt" && !ft, f1 = (quiet ? "600 11px " : "700 " + (big ? 13 : 12) + "px ") + FONT, f2 = "700 12px " + FONT, f3 = "600 11px " + FONT, f4 = "700 12px " + FONT;
-    if (line2 === "lugnt") line2 = quiet ? "" : "lugnt";
+    var quiet = line2 === ZW.lugnt && !ft, f1 = (quiet ? "600 11px " : "700 " + (big ? 13 : 12) + "px ") + FONT, f2 = "700 12px " + FONT, f3 = "600 11px " + FONT, f4 = "700 12px " + FONT;
+    if (line2 === ZW.lugnt) line2 = quiet ? "" : ZW.lugnt;
     var GW = 14, nd = fr ? Math.min(3, fr.length) : 0, dW = nd ? 16 + (nd - 1) * 10 + 4 : 0;
-    var w2 = line2 ? tw(line2, f2) + (line2 !== "lugnt" ? GW + 3 : 0) : 0, w3 = line3 ? tw(line3, f3) + GW + 3 : 0, w4 = ft ? dW + tw(ft, f4) : 0;
+    var w2 = line2 ? tw(line2, f2) + (line2 !== ZW.lugnt ? GW + 3 : 0) : 0, w3 = line3 ? tw(line3, f3) + GW + 3 : 0, w4 = ft ? dW + tw(ft, f4) : 0;
     var w = Math.ceil(Math.max(tw(name, f1), w2, w3, w4)) + (quiet ? 10 : 16), h = quiet ? 20 : 6 + 16 + 15 + (line3 ? 14 : 0) + (ft ? 20 : 0) + 4;
     var cv = document.createElement("canvas"); cv.width = (w + 4) * R; cv.height = (h + 4) * R;
     var g = cv.getContext("2d"); g.scale(R, R); g.translate(2, 2);
@@ -147,8 +150,8 @@
     g.textAlign = "center"; g.font = f1; g.fillStyle = quiet ? "rgba(255,246,229,.78)" : "#FFF6E5"; g.fillText(name, w / 2, quiet ? h / 2 + 0.5 : 6 + 8);
     var y = 6 + 16;
     if (line2) {
-      g.font = f2; g.fillStyle = line2 === "lugnt" ? "#E9D9BA" : "#FFC24D"; g.textAlign = "left";
-      var x2 = (w - w2) / 2; if (line2 !== "lugnt") { gl(g, "pub", x2, y + 1, GW, "#FFC24D"); x2 += GW + 3; } g.fillText(line2, x2, y + 8); y += 15;
+      g.font = f2; g.fillStyle = line2 === ZW.lugnt ? "#E9D9BA" : "#FFC24D"; g.textAlign = "left";
+      var x2 = (w - w2) / 2; if (line2 !== ZW.lugnt) { gl(g, "pub", x2, y + 1, GW, "#FFC24D"); x2 += GW + 3; } g.fillText(line2, x2, y + 8); y += 15;
     }
     if (line3) { g.font = f3; g.fillStyle = "#E9D9BA"; g.textAlign = "left"; var x3 = (w - w3) / 2; gl(g, "crown", x3, y + 1, GW - 2, "#FFC24D"); g.fillText(line3, x3 + GW + 3, y + 7); y += 14; }
     if (ft) {   // the friends row: initial discs + "Oskar +2"
@@ -273,7 +276,7 @@
         var lf = geo.l.features.map(function (f) {
           var p = f.properties, c = lc(p.l), top = c && c.top && byK[c.top] ? byK[c.top].properties.n : null;
           var img = labelImg(m, p.n, countLine(c), top, true, c && c.n >= 10, frL[p.l]);
-          return { type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] }, properties: { img: img, ci: c ? chipImg(m, p.n, c.some || !c.n ? "några" : nf(c.n), frL[p.l]) : "", sk: -(c ? (c.n || 1) : 0), l: p.l, q: c ? 0 : 1 } };
+          return { type: "Feature", id: f.id, geometry: { type: "Point", coordinates: [p.x, p.y] }, properties: { img: img, ci: c ? chipImg(m, p.n, c.some || !c.n ? ZW.nagra : nf(c.n), frL[p.l]) : "", sk: -(c ? (c.n || 1) : 0), l: p.l, q: c ? 0 : 1 } };
         }), s1 = lf.map(function (f) { return f.properties.img; }).join();
         lastF[SLL] = lf; if (s1 !== sigL) { sigL = s1; place(SLL); }   // map M3: place() picks the free side, then setData
       }
@@ -300,7 +303,7 @@
     (Array.isArray(counts.countries) ? counts.countries : []).forEach(function (x) { if (x && x.c && x.c !== "SE" && (x.n || x.some) && (CTRY[x.c] || isFinite(x.x))) rows.push(x); });
     return rows.map(function (x) {
       var d = CTRY[x.c] || [x.name || x.c, x.name || x.c, +x.x, +x.y], n = x.n >= K_MIN ? nf(x.n) : "några";
-      var t = (en ? n.replace("några", "a few") + " out" : n + " ute") + (x.d >= K_MIN ? " · " + nf(x.d) + (en ? " beers" : " öl") : "");
+      var t = (en ? n.replace("några", "a few") + " out" : n + " " + ZW.ute) + (x.d >= K_MIN ? " · " + nf(x.d) + (en ? " beers" : " öl") : "");
       return { c: x.c, name: en ? d[1] : d[0], t: t, x: d[2], y: d[3], n: x.n || 1 };
     });
   }
@@ -397,7 +400,7 @@
   function inSwe(lat, lng) { return lat > 55 && lat < 69.2 && lng > 10.8 && lng < 24.3; }
   function areaNow() {   // {name, k (kommun code or null), n, some}
     var z = zoom(), c = map.getCenter(), ko = z >= Z_SWE && inSwe(c.lat, c.lng) ? kommunAt(c.lat, c.lng) : null;
-    if (!ko) return { name: "Sverige", k: null, n: counts ? counts.total : null, some: counts ? counts.some : false };
+    if (!ko) return { name: ZW.se, k: null, n: counts ? counts.total : null, some: counts ? counts.some : false };
     var y = kc(ko.k); return { name: ko.n, k: ko.k, n: counts ? (y ? y.n : 0) : null, some: !!(y && y.some), bar: y && y.bar };
   }
   function pillHTML() {
@@ -406,18 +409,18 @@
       var ar = areaNow(), e0 = pillEsc;
       pillD = { name: ar.name, n: counts ? ar.n : null, some: !!ar.some, known: !!counts };
       if (!counts) return e0(ar.name) + " · <b>–</b> ute ikväll";
-      return e0(ar.name) + (ar.n ? " · <b>" + nf(ar.n) + "</b> ute ikväll" : ar.some ? " · <b>några</b> ute ikväll" : " · lugnt ikväll");
+      return e0(ar.name) + (ar.n ? " · <b>" + nf(ar.n) + "</b> " + ZW.ute + " " + ZW.ikv : ar.some ? " · <b>" + ZW.nagra + "</b> " + ZW.ute + " " + ZW.ikv : " · " + ZW.lugnt + " " + ZW.ikv);
     }
     /* fixM T-15 PILL END (the län branch follows) */
     if (!wanted() || (!geo.l && !geo.k) || missing) return null;
     var z = zoom(), c = map.getCenter(), name, n = null, some = false;
-    if (z < Z_SWE) { name = "Sverige"; if (counts) { n = counts.total; some = counts.some; } }
+    if (z < Z_SWE) { name = ZW.se; if (counts) { n = counts.total; some = counts.some; } }
     else if (z < Z_KOM) { var lf = zoneAt("l", c.lat, c.lng); if (!lf) return null; name = lf.properties.n; var x = lc(lf.properties.l); if (x) { n = x.n; some = x.some; } }
     else { var kf = zoneAt("k", c.lat, c.lng); if (!kf) return null; name = kf.properties.n; var y = kc(kf.properties.k); if (y) { n = y.n; some = y.some; } }
     pillD = { name: name, n: counts ? n : null, some: !!some, known: !!counts };
     var e = pillEsc;
     if (!counts) return e(name) + " · <b>–</b> ute ikväll";
-    return e(name) + (n ? " · <b>" + nf(n) + "</b> ute ikväll" : some ? " · <b>några</b> ute ikväll" : " · lugnt ikväll");
+    return e(name) + (n ? " · <b>" + nf(n) + "</b> " + ZW.ute + " " + ZW.ikv : some ? " · <b>" + ZW.nagra + "</b> " + ZW.ute + " " + ZW.ikv : " · " + ZW.lugnt + " " + ZW.ikv);
   }
   // uxfix P1-5: people out in the area the pill names (null = not known yet; "några" counts as 1)
   function outN() { return pillD && pillD.known ? ((pillD.n | 0) || (pillD.some ? 1 : 0)) : null; }
@@ -431,12 +434,12 @@
   var pillD = null;
   function pillVariants(d) {
     var e = pillEsc, nm = '<span class="zn-pn">' + e(d.name) + "</span>", sep = '<i class="zn-sep"> · </i>';
-    var num = !d.known ? "–" : d.n ? nf(d.n) : d.some ? "några" : null;
-    var one = num == null ? [" · lugnt ikväll", " · lugnt", " · lugnt"].map(function (x) { return nm + '<span class="zn-ps">' + x + "</span>"; })
-      : [" ute ikväll", " ute", ""].map(function (x) { return nm + '<span class="zn-ps"> · <b>' + num + "</b>" + x + "</span>"; });
+    var num = !d.known ? "–" : d.n ? nf(d.n) : d.some ? ZW.nagra : null;
+    var one = num == null ? [" · " + ZW.lugnt + " " + ZW.ikv, " · " + ZW.lugnt, " · " + ZW.lugnt].map(function (x) { return nm + '<span class="zn-ps">' + x + "</span>"; })
+      : [" " + ZW.ute + " " + ZW.ikv, " " + ZW.ute, ""].map(function (x) { return nm + '<span class="zn-ps"> · <b>' + num + "</b>" + x + "</span>"; });
     var dot = d.known && (d.n || d.some) ? '<i class="zn-dot" aria-hidden="true"></i>' : "";
-    var two = num == null ? [nm + '<span class="zn-ps">' + sep + "lugnt ikväll</span>"]
-      : [" ute ikväll", " ute"].map(function (x) { return nm + '<span class="zn-ps">' + dot + sep + '<span class="zn-n">' + num + "</span>" + x + "</span>"; });
+    var two = num == null ? [nm + '<span class="zn-ps">' + sep + ZW.lugnt + " " + ZW.ikv + "</span>"]
+      : [" " + ZW.ute + " " + ZW.ikv, " " + ZW.ute].map(function (x) { return nm + '<span class="zn-ps">' + dot + sep + '<span class="zn-n">' + num + "</span>" + x + "</span>"; });
     return { one: one, two: two };
   }
   function pillFits(el) {
@@ -665,7 +668,7 @@
      the friends out (tap = fly there), one plain line on what is counted, the whole country. Same classes as the ds57 sheet. */
   function mk(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
   function icon(n) { try { return window.PNI && window.PNI.has(n) ? window.PNI.svg(n) : ""; } catch (e) { return ""; } }
-  function countWords(n, some) { return n ? nf(n) + " ute ikväll" : some ? "några ute ikväll" : "lugnt ikväll"; }
+  function countWords(n, some) { return n ? nf(n) + " " + ZW.ute + " " + ZW.ikv : some ? ZW.nagra + " " + ZW.ute + " " + ZW.ikv : ZW.lugnt + " " + ZW.ikv; }
   function openOut() {
     if (!A || !A.openSheet || !map) return false;
     stats.outOpen = (stats.outOpen || 0) + 1;

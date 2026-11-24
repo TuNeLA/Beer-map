@@ -67,6 +67,7 @@
   function rank() {
     var R = W("RANKICO"), r = R ? safe(function () { return R.mine(); }, null) : null;
     if (!r || !r.title) return null;
+    if (window.I18N && I18N.rank) r = Object.assign({}, r, { title: I18N.rank(r.title), next: r.next ? I18N.rank(r.next) : r.next });   // E8: English rank names
     r.text = safe(function () { return R.progText(r); }, "");
     r.ico = safe(function () { return R.svg(r.idx, 28); }, "");
     return r;

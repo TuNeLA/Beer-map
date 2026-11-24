@@ -9,7 +9,9 @@ const R = new URL("../../docs/", import.meta.url);
 const read = (f) => fs.readFileSync(new URL(f, R), "utf8");
 const settings = read("js/app-settings.js");
 const pages = settings.slice(settings.indexOf("var PAGES = ["), settings.indexOf("];", settings.indexOf("var PAGES = [")));
-const titles = [...pages.matchAll(/\[\s*"[a-z]+",\s*"[a-z]+",\s*"([^"]+)"/g)].map((m) => m[1]);
+// E8 (lane i18n 24 Nov): a title is "Konto" or I18N.L("Konto", "Account") (the English switch): the Swedish one is read
+const titles = [...pages.matchAll(/\[\s*"[a-z]+",\s*"[a-z]+",\s*(?:I18N\.L\()?"([^"]+)"/g)].map((m) => m[1]);
+const titlesEn = [...pages.matchAll(/\[\s*"[a-z]+",\s*"[a-z]+",\s*I18N\.L\("[^"]+",\s*"([^"]+)"/g)].map((m) => m[1]);
 // The app's own privacy path. "Integritet och säkerhet" is the iPhone system setting, not ours.
 const FILES = ["js/i18n.js", "js/kanal.js", "js/pnlog.js", "integritet.html"];
 
@@ -38,7 +40,7 @@ test("every 'Inställningar → X' in the app copy names a hub page (polishA)", 
       const before = s.slice(Math.max(0, m.index - 12), m.index);
       const x = m[2].replace(/\\"|"|\p{Extended_Pictographic}|️/gu, "").trim();
       if (/iPhone|Android/.test(before) || SYS.test(x)) continue;
-      if (!titles.includes(x)) bad.push(f + ": '" + m[0].slice(0, 60) + "'");
+      if (!(m[1] === "Settings" ? titlesEn : titles).includes(x)) bad.push(f + ": '" + m[0].slice(0, 60) + "'");
     }
   }
   assert.deepEqual(bad, [], "paths that name no hub page (" + titles.join(" | ") + ")");

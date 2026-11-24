@@ -183,6 +183,7 @@ async function safetyMocks(page, st, calls) {
   // ---------- 4. map, top list, settings, SOS, delete, effects ----------
   {
     const { ctx, page } = await ctxFor(browser, { width: 412, height: 915 }, {});
+    await ctx.addInitScript(() => { try { localStorage.setItem("olnu.langtest", "0"); } catch (e) {} });   // E8: a normal user (no English test flag)
     page.on("pageerror", (e) => errs.push("4:" + e.message));
     const calls = [], st = { age_ok: true, terms_ver: 1, notices: [{ id: 3, kind: "msg", text: "Något du la upp togs bort efter en anmälan, för att det bröt mot Reglerna.", at: new Date().toISOString() }] };
     await safetyMocks(page, st, calls);
@@ -213,6 +214,10 @@ async function safetyMocks(page, st, calls) {
     if (!/Trygghet/.test(setTxt)) { await page.evaluate(() => { const b = [...document.querySelectorAll("#sheet button, #sheet [role=tab]")].find((x) => /Inställningar/.test(x.textContent)); if (b) b.click(); }); await wait(page, 1000); setTxt = await page.evaluate(() => document.querySelector("#sheet").textContent); }
     ok("⚙️: 'Vi räknar kvällar och kompisar, inte glas.' (one line)", (setTxt.match(/Vi räknar kvällar och kompisar, inte glas\./g) || []).length === 1, setTxt.slice(0, 200));
     ok("⚙️: no SV/EN language switch", !/Språk/.test(setTxt) && !/\bEN\b/.test(setTxt));
+    // E8 (lane i18n 24 Nov): the test server is a TEST build, where the English switch (Språk) shows on purpose. A normal
+    // user = flag off: the same check with olnu.langtest = "0" (js/lang.js), and the row shows only on the test build.
+    const lg = await page.evaluate(() => ({ av: window.I18N.available(), row: !!document.querySelector("#sheet .pn-lang") }));
+    ok("⚙️: the Språk row only when the test flag is on", lg.row === lg.av, lg);
     ok("⚙️: 🗑️ Radera mitt konto", /Radera mitt konto/.test(setTxt));
     await page.evaluate(() => { const s = document.querySelector(".sf-set"); if (s) s.scrollIntoView(); }); await wait(page, 300);
     await shot(page, "settings");

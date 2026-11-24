@@ -98,15 +98,15 @@
       if (tmp.firstChild) m.parentNode.replaceChild(tmp.firstChild, m);
     });
   }
-  function crowdWord(n) { return n >= 8 ? "Packat" : n >= 3 ? "Livligt" : "Lugnt"; }
+  function crowdWord(n) { return n >= 8 ? I18N.L("Packat", "Packed") : n >= 3 ? I18N.L("Livligt", "Lively") : I18N.L("Lugnt", "Chill"); }
   function level(n, nm) {
     var u = nm && nm.usual > 0 ? nm.usual : null, cmp = null, arrow = null;
     if (u) {
       var r = n / u;
-      if (r < 0.75) { cmp = "Lugnare än vanligt"; arrow = "down"; }
-      else if (r <= 1.3) { cmp = "Som vanligt"; arrow = "eq"; }
-      else if (r <= 2) { cmp = "Mer än vanligt"; arrow = "up"; }
-      else { cmp = "Mycket mer än vanligt"; arrow = "up"; }
+      if (r < 0.75) { cmp = I18N.L("Lugnare än vanligt", "Calmer than usual"); arrow = "down"; }
+      else if (r <= 1.3) { cmp = I18N.L("Som vanligt", "As usual"); arrow = "eq"; }
+      else if (r <= 2) { cmp = I18N.L("Mer än vanligt", "Busier than usual"); arrow = "up"; }
+      else { cmp = I18N.L("Mycket mer än vanligt", "Much busier than usual"); arrow = "up"; }
     }
     var cap = Math.max(10, u ? u * 2 : 0, n * 1.12);
     return { n: n, word: crowdWord(n), cmp: cmp, arrow: arrow, fill: Math.max(0.1, Math.min(0.94, n / cap)), usual: u ? Math.max(0.12, Math.min(0.9, u / cap)) : null };
@@ -145,16 +145,16 @@
   function freshText() {
     if (!lastPollAt) return "";
     var m = Math.floor((Date.now() - lastPollAt) / 60000);
-    return m < 1 ? "uppdaterad nyss" : "uppdaterad " + m + " min sen";
+    return m < 1 ? I18N.L("uppdaterad nyss", "updated just now") : I18N.L("uppdaterad ", "updated ") + m + I18N.L(" min sen", " min ago");
   }
   function meterHTML(n, nm, size, barId, still, word) {
     var L = level(n, nm);
     if (word) L.word = word;   // fixM T-24: the held crowd word (PNCROWD hysteresis)
-    var label = L.word + ", " + n + " här" + (L.cmp ? ", " + L.cmp.toLowerCase() : "");
+    var label = L.word + ", " + n + I18N.L(" här", " here") + (L.cmp ? ", " + L.cmp.toLowerCase() : "");
     return '<div class="pn-meter" role="img" aria-label="' + esc(label) + '"' + (barId ? ' data-bar="' + esc(barId) + '" data-n="' + n + '"' + (word ? ' data-w="' + esc(word) + '"' : "") : "") + ">" +
       glassSVG(L, size || 64, still) +
-      '<div class="pn-mt"><b>' + esc(L.word) + (n >= 3 ? ' <span class="pn-mt-n">· ' + n + " här</span>" : "") + "</b>" +   // fixM T-24: no number below 3 (gw)
-      (L.cmp ? '<small class="pn-mt-cmp">' + cue(L.arrow) + esc(L.cmp) + "</small>" : '<small class="pn-mt-cmp pn-mt-none">Inget snitt än för den här krogen</small>') +
+      '<div class="pn-mt"><b>' + esc(L.word) + (n >= 3 ? ' <span class="pn-mt-n">· ' + n + I18N.L(" här", " here") + "</span>" : "") + "</b>" +   // fixM T-24: no number below 3 (gw)
+      (L.cmp ? '<small class="pn-mt-cmp">' + cue(L.arrow) + esc(L.cmp) + "</small>" : '<small class="pn-mt-cmp pn-mt-none">' + I18N.L("Inget snitt än för den här krogen", "No average yet for this bar") + "</small>") +
       '<small class="pn-mt-up">' + esc(freshText()) + "</small></div></div>";
   }
   function barMeterHTML(bar, list) {
@@ -196,7 +196,7 @@
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (e) { tk.addEventListener(e, up); });
     window.addEventListener("blur", up);   // ownerfix 4b: a lost pointerup (alt-tab, a dialog) never leaves it held
     try { new MutationObserver(tickTarget).observe(document.getElementById("sheet"), { attributes: true, attributeFilter: ["hidden"] }); } catch (e) {}
-    tk.setAttribute("title", "Håll fingret på raden för att pausa");
+    tk.setAttribute("title", I18N.L("Håll fingret på raden för att pausa", "Hold your finger on the line to pause it"));
   }
 
   // ownerfix 4b: public face of the one controller (pnds.js tap, app.js reduced-motion line swap, tests)
@@ -210,17 +210,17 @@
   };
 
   /* ---------- 3. Calm main screen ---------- */
-  var MORE = [["btn-heat", "fire", "Värme", "Var det är mest folk", true], ["btn-ghostpins", "ghost", "Senaste dagarna", "Var folk va förra helgen", true],
-    ["btn-taxi", "taxi", "Taxi hem", "Ring, Uber eller dela taxin", false], ["btn-evs", "calendar-dots", "Event", "Vad händer ikväll", false]];
+  var MORE = [["btn-heat", "fire", I18N.L("Värme", "Heat"), I18N.L("Var det är mest folk", "Where most people are"), true], ["btn-ghostpins", "ghost", I18N.L("Senaste dagarna", "Last few days"), I18N.L("Var folk va förra helgen", "Where people were last weekend"), true],
+    ["btn-taxi", "taxi", I18N.L("Taxi hem", "Taxi home"), I18N.L("Ring, Uber eller dela taxin", "Call, Uber or share the taxi"), false], ["btn-evs", "calendar-dots", "Event", I18N.L("Vad händer ikväll", "What is on tonight"), false]];
   function moreBtn() {
     if (document.getElementById("btn-more")) return;
-    var b = h("button", { id: "btn-more", class: "locate-btn pn-more", type: "button", "aria-label": "Mer på kartan", title: "Mer på kartan", html: ic("dots-three") + '<i class="pn-more-dot" hidden></i>' });
+    var b = h("button", { id: "btn-more", class: "locate-btn pn-more", type: "button", "aria-label": I18N.L("Mer på kartan", "More on the map"), title: I18N.L("Mer på kartan", "More on the map"), html: ic("dots-three") + '<i class="pn-more-dot" hidden></i>' });
     b.addEventListener("click", openMore);
     var loc = document.getElementById("btn-locate");
     if (loc && loc.parentNode) loc.parentNode.insertBefore(b, loc); else document.body.appendChild(b);
   }
   function openMore() {
-    A.openSheet("Mer på kartan", function (body) {
+    A.openSheet(I18N.L("Mer på kartan", "More on the map"), function (body) {
       var list = h("div", { class: "ds-list pn-list" });
       MORE.forEach(function (m) {
         var src = document.getElementById(m[0]);
@@ -243,22 +243,22 @@
       var b2 = W("BASEMAP");
       if (b2 && typeof b2.open === "function") {
         var r = h("button", { type: "button", class: "ds-row pn-row" }, [h("span", { class: "ds-row-i", html: ic("map-trifold") }),
-          h("span", { class: "ds-row-t" }, [h("span", { text: "Kartstil" }), h("small", { text: "Hur kartan ser ut" })]), h("span", { class: "ds-chev" })]);
+          h("span", { class: "ds-row-t" }, [h("span", { text: I18N.L("Kartstil", "Map style") }), h("small", { text: I18N.L("Hur kartan ser ut", "How the map looks") })]), h("span", { class: "ds-chev" })]);
         r.addEventListener("click", function () { try { b2.open(); } catch (e) {} });
         list.appendChild(r);
       }
       body.appendChild(list);
       try { var sh = W("PNIKV") && W("PNIKV").safeRows ? W("PNIKV").safeRows() : null; if (sh) body.appendChild(sh); } catch (e) {}   // ds39 Säker hem
-      try { if (W("KNAS") && W("KNAS").moreRow) { body.appendChild(h("h3", { class: "pn-safe-h mn-knas-h", text: "Hjälp oss" })); body.appendChild(h("div", { class: "ds-list pn-list mn-knas-list" }, [W("KNAS").moreRow()])); } } catch (e) {}   // lane main X6: "Något knas?"
-      body.appendChild(h("p", { class: "pn-note", text: "Tips: håll fingret på kartan för att skapa ett event eller lägga till ett ställe." }));
+      try { if (W("KNAS") && W("KNAS").moreRow) { body.appendChild(h("h3", { class: "pn-safe-h mn-knas-h", text: I18N.L("Hjälp oss", "Help us") })); body.appendChild(h("div", { class: "ds-list pn-list mn-knas-list" }, [W("KNAS").moreRow()])); } } catch (e) {}   // lane main X6: "Något knas?"
+      body.appendChild(h("p", { class: "pn-note", text: I18N.L("Tips: håll fingret på kartan för att skapa ett event eller lägga till ett ställe.", "Tip: hold your finger on the map to make an event or add a place.") }));
     });
   }
   // uxfix P1-4: Systembolaget in "Mer på kartan". The row opens the nearest store card (pins on); the switch only shows / hides the pins.
   function sbRow(list) {
     var S = W("SYSTEMET"); if (!S || !S.openNearest || !S.isOn) return;
-    var sw = h("button", { type: "button", class: "switch pn-sb-sw", role: "switch", "aria-checked": String(!!S.isOn()), "aria-label": "Systembolaget på kartan" });
+    var sw = h("button", { type: "button", class: "switch pn-sb-sw", role: "switch", "aria-checked": String(!!S.isOn()), "aria-label": I18N.L("Systembolaget på kartan", "Systembolaget on the map") });
     var go = h("button", { type: "button", class: "pn-sb-go" }, [h("span", { class: "ds-row-i", html: S.icon ? S.icon(24) : ic("clock") }),
-      h("span", { class: "ds-row-t" }, [h("span", { text: "Systembolaget" }), h("small", { text: "Närmaste butik och öppettider" })])]);
+      h("span", { class: "ds-row-t" }, [h("span", { text: "Systembolaget" }), h("small", { text: I18N.L("Närmaste butik och öppettider", "Nearest store and opening hours") })])]);
     go.addEventListener("click", function () { A.closeSheet(); setTimeout(function () { S.openNearest(); }, 320); });
     sw.addEventListener("click", function () { var now = sw.getAttribute("aria-checked") !== "true"; S.setOn(now); sw.setAttribute("aria-checked", String(now)); });
     list.appendChild(h("div", { class: "ds-row pn-row pn-sb-row" }, [go, sw]));
@@ -275,7 +275,7 @@
     var s = g.querySelector(".pn-gout");
     if (!s) { s = h("span", { class: "pn-gout" }); var lb = document.getElementById("groups-label"); if (lb && lb.parentNode) lb.parentNode.insertBefore(s, lb.nextSibling); else g.appendChild(s); }
     var n = bd && !bd.hidden ? +bd.textContent || 0 : 0;
-    s.textContent = n ? "● " + n + " ute" : ""; s.hidden = !n;
+    s.textContent = n ? "● " + n + I18N.L(" ute", " out") : ""; s.hidden = !n;
   }
   function avatarBtn() {
     var b = document.getElementById("btn-settings");
@@ -285,7 +285,7 @@
     b.__pnCap = key;
     b.classList.add("pn-avbtn");
     b.innerHTML = capSVG(nm, 36, true);
-    b.setAttribute("aria-label", "Profil och inställningar");
+    b.setAttribute("aria-label", I18N.L("Profil och inställningar", "Profile and settings"));
   }
   function calmFlags() {
     var night = safe(function () { return U.ls.getJSON("olnu.night", null); }, null);
@@ -296,7 +296,7 @@
   function precToggle() {
     var seg = document.getElementById("prec-seg"); if (!seg || seg.__pn) return;
     seg.__pn = true;
-    seg.setAttribute("aria-label", "Plats för nästa öl (tryck för att byta)");
+    seg.setAttribute("aria-label", I18N.L("Plats för nästa öl (tryck för att byta)", "Place for the next beer (tap to change)"));
     seg.addEventListener("click", function (e) {
       var b = e.target.closest("button[data-prec]"); if (!b || b.getAttribute("aria-checked") !== "true" || seg.__pnBusy) return;
       var other = seg.querySelector('button[data-prec]:not([data-prec="' + b.getAttribute("data-prec") + '"])');
@@ -345,7 +345,7 @@
     if (s) return s;
     var hl = document.querySelector(".hud-left");
     if (!hl) return null;
-    s = h("div", { id: "pn-strip", class: "pn-strip", role: "group", "aria-label": "Kompisar ikväll" });
+    s = h("div", { id: "pn-strip", class: "pn-strip", role: "group", "aria-label": I18N.L("Kompisar ikväll", "Friends tonight") });
     hl.appendChild(s);
     s.addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
@@ -374,21 +374,21 @@
     stripSig = sig;
     s.innerHTML = "";
     if (eve) {
-      var lab = mine === "ute" ? "🍺 Ute ikväll" : mine === "kanske" ? "🤔 Kanske" : mine === "hemma" ? "🛋️ Hemma" : "Ikväll?";
+      var lab = mine === "ute" ? "🍺 " + I18N.L("Ute ikväll", "Out tonight") : mine === "kanske" ? "🤔 " + I18N.L("Kanske", "Maybe") : mine === "hemma" ? "🛋️ " + I18N.L("Hemma", "Home") : I18N.L("Ikväll?", "Tonight?");
       var cnt = d && d.counts ? (d.counts.ute | 0) : 0;
-      s.appendChild(h("button", { type: "button", class: "pn-ikv-chip" + (mine ? " set" : ""), "data-ikv": "1", "aria-label": "Ikväll? " + (mine ? lab : "Säg om du ska ut") + (cnt ? ". " + cnt + " ska ut" : "") },
-        [h("span", { text: lab }), cnt ? h("small", { text: cnt + " ska ut" }) : null]));
+      s.appendChild(h("button", { type: "button", class: "pn-ikv-chip" + (mine ? " set" : ""), "data-ikv": "1", "aria-label": I18N.L("Ikväll? ", "Tonight? ") + (mine ? lab : I18N.L("Säg om du ska ut", "Say if you are going out")) + (cnt ? ". " + cnt + I18N.L(" ska ut", " going out") : "") },
+        [h("span", { text: lab }), cnt ? h("small", { text: cnt + I18N.L(" ska ut", " going out") }) : null]));
     }
     var faces = fo.slice(0, 4);
     faces.forEach(function (f) {
       s.appendChild(h("button", { type: "button", class: "pn-face", "data-lat": String(f.lat), "data-lng": String(f.lng), "data-id": f.id != null ? String(f.id) : null,
-        "aria-label": f.name + "{name} är ute. Visa på kartan", title: f.name, html: capSVG(f.name, 32) + '<i class="pn-live" aria-hidden="true"></i>' }));
+        "aria-label": f.name + I18N.L(" är ute. Visa på kartan", " is out. Show on the map"), title: f.name, html: capSVG(f.name, 32) + '<i class="pn-live" aria-hidden="true"></i>' }));
     });
     planned.slice(0, Math.max(0, 4 - faces.length)).forEach(function (p) {
-      s.appendChild(h("button", { type: "button", class: "pn-face plan", "aria-label": p.name + " ska ut ikväll", title: p.name, html: capSVG(p.name, 32) }));
+      s.appendChild(h("button", { type: "button", class: "pn-face plan", "aria-label": p.name + I18N.L(" ska ut ikväll", " is going out tonight"), title: p.name, html: capSVG(p.name, 32) }));
     });
     var more = fo.length - faces.length;
-    if (more > 0) s.appendChild(h("button", { type: "button", class: "pn-face pn-more-n", "data-ikv": "1", text: "+" + more, "aria-label": more + " till ute" }));
+    if (more > 0) s.appendChild(h("button", { type: "button", class: "pn-face pn-more-n", "data-ikv": "1", text: "+" + more, "aria-label": more + I18N.L(" till ute", " more out") }));
     s.hidden = !s.firstChild;
   }
   function loadIkvall(force) {
@@ -409,10 +409,10 @@
   }
 
   /* ---------- 4. Ikväll? ---------- */
-  var IKV = [["ute", "🍺", "Ute", "Jag ska ut"], ["kanske", "🤔", "Kanske", "Vi får se"], ["hemma", "🛋️", "Hemma", "Inte ikväll"]];
+  var IKV = [["ute", "🍺", I18N.L("Ute", "Out"), I18N.L("Jag ska ut", "I am going out")], ["kanske", "🤔", I18N.L("Kanske", "Maybe"), I18N.L("Vi får se", "We will see")], ["hemma", "🛋️", I18N.L("Hemma", "Home"), I18N.L("Inte ikväll", "Not tonight")]];
   var ikvBox = null;
   function openIkvall() {
-    A.openSheet("Ikväll?", function (body) {
+    A.openSheet(I18N.L("Ikväll?", "Tonight?"), function (body) {
       ikvBox = h("div", { class: "pn-ikv" });
       body.appendChild(ikvBox);
       paintIkvSheet();
@@ -426,7 +426,7 @@
     call("ikvall_set", { p_st: nxt }).then(function (r) {
       if (r.error) {
         ikv.d.mine = prev; saveIkv(); stripSig = ""; paintStrip(); paintIkvSheet();
-        toast(errCode(r.error) === "slow_down" ? "Lugn, korpral. Vänta en sekund." : "Det gick int'. Försök igen.", { err: true });
+        toast(errCode(r.error) === "slow_down" ? I18N.L("Lugn, korpral. Vänta en sekund.", "Easy, corporal. Wait a second.") : I18N.L("Det gick int'. Försök igen.", "That did not work. Try again."), { err: true });
       }
     });
   }
@@ -434,8 +434,8 @@
     if (!ikvBox || !document.body.contains(ikvBox)) { ikvBox = null; return; }
     var d = ikv.d || { mine: null, people: [], counts: {} }, mine = d.mine;
     ikvBox.innerHTML = "";
-    ikvBox.appendChild(h("p", { class: "pn-lead", text: "Säg till gänget och dina vänner. Det nollställs kl 05." }));
-    var seg = h("div", { class: "pn-ikv-seg", role: "radiogroup", "aria-label": "Ikväll" });
+    ikvBox.appendChild(h("p", { class: "pn-lead", text: I18N.L("Säg till gänget och dina vänner. Det nollställs kl 05.", "Tell the crew and your friends. It resets at 05:00.") }));
+    var seg = h("div", { class: "pn-ikv-seg", role: "radiogroup", "aria-label": I18N.L("Ikväll", "Tonight") });
     IKV.forEach(function (x) {
       var b = h("button", { type: "button", role: "radio", class: "pn-ikv-b pn-" + x[0], "aria-checked": String(mine === x[0]) }, [
         h("span", { class: "pn-ikv-e", "aria-hidden": "true", text: x[1] }), h("b", { text: x[2] }), h("small", { text: x[3] })]);
@@ -443,11 +443,11 @@
       seg.appendChild(b);
     });
     ikvBox.appendChild(seg);
-    if (mine) ikvBox.appendChild(h("button", { type: "button", class: "pn-textbtn pn-ikv-clear", text: "Ta bort mitt svar", onclick: function () { setIkv(mine); } }));   // ds60: explicit
+    if (mine) ikvBox.appendChild(h("button", { type: "button", class: "pn-textbtn pn-ikv-clear", text: I18N.L("Ta bort mitt svar", "Remove my answer"), onclick: function () { setIkv(mine); } }));   // ds60: explicit
     try { var skj = W("SKJUTS") && W("SKJUTS").ikvNode(); if (skj) ikvBox.appendChild(skj); } catch (e) {}   // 🚗 Jag kör ikväll
     if (mine === "ute" && W("SOCIAL") && W("SOCIAL").hudClick) {
-      ikvBox.appendChild(h("div", { class: "ds-card pn-ikv-next" }, [h("span", { text: "Ska gänget med? Kalla in dem till samma ställe." }),
-        h("button", { type: "button", class: "btn btn-small", text: "Kalla in gänget", onclick: function () {
+      ikvBox.appendChild(h("div", { class: "ds-card pn-ikv-next" }, [h("span", { text: I18N.L("Ska gänget med? Kalla in dem till samma ställe.", "Bring the crew? Call them to the same place.") }),
+        h("button", { type: "button", class: "btn btn-small", text: I18N.L("Kalla in gänget", "Call the crew"), onclick: function () {
           var tmp = h("button", { type: "button" }); try { W("SOCIAL").hudClick("come", tmp); } catch (e) {} } })]));
     }
     var gw = W("GW");   // gw: answer to see (BeReal): the names come only after your own answer
@@ -459,8 +459,8 @@
     try { var gsum = gw && gw.ikvSummary ? gw.ikvSummary(d) : ""; if (gsum) ikvBox.appendChild(h("p", { class: "gw-ikv-sum", text: gsum })); } catch (e) {}
     var ppl = d.people || [];
     var sec = h("section", { class: "ds-section pn-ikv-ppl" });
-    sec.appendChild(h("h3", { class: "ds-section-h", text: "Dina vänner och gänget" }));
-    if (!ppl.length) sec.appendChild(h("p", { class: "pn-empty-l", text: ikv.at ? "Ingen har sagt nåt än. Bli först, då." : "…" }));
+    sec.appendChild(h("h3", { class: "ds-section-h", text: I18N.L("Dina vänner och gänget", "Your friends and the crew") }));
+    if (!ppl.length) sec.appendChild(h("p", { class: "pn-empty-l", text: ikv.at ? I18N.L("Ingen har sagt nåt än. Bli först, då.", "Nobody has said anything yet. Be the first.") : "…" }));
     IKV.forEach(function (x) {
       var g = ppl.filter(function (p) { return p.st === x[0]; });
       if (!g.length) return;
@@ -491,7 +491,7 @@
     document.querySelectorAll(".gpg > .gpg-now").forEach(function (now) {
       var w = now.parentNode, g = w && w.__pnG, c = g && gikv[g.id];
       var cn = c && c.d && c.d.counts, txt = "";
-      if (cn && ((cn.ute | 0) || (cn.kanske | 0))) txt = [(cn.ute | 0) ? cn.ute + " ska ut" : "", (cn.kanske | 0) ? cn.kanske + " kanske" : ""].filter(Boolean).join(" · ");
+      if (cn && ((cn.ute | 0) || (cn.kanske | 0))) txt = [(cn.ute | 0) ? cn.ute + I18N.L(" ska ut", " going out") : "", (cn.kanske | 0) ? cn.kanske + I18N.L(" kanske", " maybe") : ""].filter(Boolean).join(" · ");
       var el0 = now.querySelector(".pn-gikv");
       if (!txt) { if (el0) el0.remove(); return; }
       if (!el0) { el0 = h("span", { class: "pn-gikv" }); (now.querySelector(".gpg-now-main") || now).appendChild(el0); }
@@ -505,28 +505,28 @@
       '<path d="M61 50 H99 L97 84 H63 Z" fill="#f5a623" opacity=".9"/><path d="M60 50 q6 -7 12 -3 q7 -6 13 -1 q7 -6 14 1 v5 H60 Z" fill="#f3ecd9"/>' +
       '<g transform="translate(14 46) scale(.7)">' + capSVG("O", 50).replace(/<svg[^>]*>|<\/svg>/g, "") + '</g><g transform="translate(112 40) scale(.7)">' + capSVG("L", 50).replace(/<svg[^>]*>|<\/svg>/g, "") + "</g></svg>";
   }
-  function genitive(n) { n = String(n || "").trim(); if (!n) return "Gänget"; return /[sxz]$/i.test(n) ? n + " gäng" : n + "s gäng"; }
+  function genitive(n) { n = String(n || "").trim(); if (!n) return I18N.L("Gänget", "The crew"); if (I18N.lang === "en") return n + (/s$/i.test(n) ? "' crew" : "'s crew"); return /[sxz]$/i.test(n) ? n + " gäng" : n + "s gäng"; }
   function openOnboard() {
     lsSet("olnu.pnOb", String(Date.now()));
-    A.openSheet("Vem går du ut med?", function (body) {
+    A.openSheet(I18N.L("Vem går du ut med?", "Who do you go out with?"), function (body) {
       var box = h("div", { class: "pn-ob" });
       body.appendChild(box);
       function step1() {
         box.innerHTML = "";
         box.appendChild(h("div", { class: "pn-ob-art", html: glassArt() }));
-        box.appendChild(h("h3", { class: "pn-ob-h", text: "Kartan är roligast med gänget" }));
-        box.appendChild(h("p", { class: "pn-lead", text: "Skapa ert gäng och skicka länken i gruppchatten. Då ser ni varandra på kartan ikväll." }));
-        box.appendChild(h("button", { type: "button", class: "btn btn-amber btn-block pn-ob-make", html: ic("users-three") + "<span>Skapa gänget</span>", onclick: step2 }));
-        box.appendChild(h("button", { type: "button", class: "btn btn-block pn-ob-code", html: ic("link") + "<span>Jag har en länk eller kod</span>", onclick: stepCode }));
-        box.appendChild(h("button", { type: "button", class: "pn-textbtn pn-ob-skip", text: "Bara kika runt", onclick: function () { A.closeSheet(); } }));
+        box.appendChild(h("h3", { class: "pn-ob-h", text: I18N.L("Kartan är roligast med gänget", "The map is most fun with your crew") }));
+        box.appendChild(h("p", { class: "pn-lead", text: I18N.L("Skapa ert gäng och skicka länken i gruppchatten. Då ser ni varandra på kartan ikväll.", "Make your crew and send the link in the group chat. Then you see each other on the map tonight.") }));
+        box.appendChild(h("button", { type: "button", class: "btn btn-amber btn-block pn-ob-make", html: ic("users-three") + "<span>" + I18N.L("Skapa gänget", "Make the crew") + "</span>", onclick: step2 }));
+        box.appendChild(h("button", { type: "button", class: "btn btn-block pn-ob-code", html: ic("link") + "<span>" + I18N.L("Jag har en länk eller kod", "I have a link or code") + "</span>", onclick: stepCode }));
+        box.appendChild(h("button", { type: "button", class: "pn-textbtn pn-ob-skip", text: I18N.L("Bara kika runt", "Just look around"), onclick: function () { A.closeSheet(); } }));
       }
       function step2() {
         box.innerHTML = "";
-        box.appendChild(h("label", { class: "fld", for: "pn-ob-name", text: "Vad heter gänget?" }));
+        box.appendChild(h("label", { class: "fld", for: "pn-ob-name", text: I18N.L("Vad heter gänget?", "What is the crew called?") }));
         var inp = h("input", { class: "inp", id: "pn-ob-name", maxlength: "40", enterkeyhint: "go", value: genitive(myName()) });
         box.appendChild(inp);
-        box.appendChild(h("p", { class: "pn-note", text: "Du kan byta namn sen." }));
-        var go = h("button", { type: "button", class: "btn btn-amber btn-block", html: ic("share-network") + "<span>Skapa och dela länken</span>" });
+        box.appendChild(h("p", { class: "pn-note", text: I18N.L("Du kan byta namn sen.", "You can change the name later.") }));
+        var go = h("button", { type: "button", class: "btn btn-amber btn-block", html: ic("share-network") + "<span>" + I18N.L("Skapa och dela länken", "Make and share the link") + "</span>" });
         go.addEventListener("click", function () {
           var n = String(inp.value || "").trim();
           if (n.length < 1 || n.length > 40) { toast("Skriv ett namn på gänget.", { err: true }); return; }
@@ -544,15 +544,15 @@
         });
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
         box.appendChild(go);
-        box.appendChild(h("button", { type: "button", class: "pn-textbtn", text: "Tillbaka", onclick: step1 }));
+        box.appendChild(h("button", { type: "button", class: "pn-textbtn", text: I18N.L("Tillbaka", "Back"), onclick: step1 }));
         setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 80);
       }
       function stepCode() {
         box.innerHTML = "";
-        box.appendChild(h("label", { class: "fld", for: "pn-ob-c", text: "Klistra in länken eller skriv koden" }));
+        box.appendChild(h("label", { class: "fld", for: "pn-ob-c", text: I18N.L("Klistra in länken eller skriv koden", "Paste the link or type the code") }));
         var inp = h("input", { class: "inp code-inp", id: "pn-ob-c", maxlength: "200", autocapitalize: "characters", autocomplete: "off", spellcheck: "false", enterkeyhint: "go", placeholder: "t.ex. ABC234" });
         box.appendChild(inp);
-        var go = h("button", { type: "button", class: "btn btn-amber btn-block", text: "Gå med" });
+        var go = h("button", { type: "button", class: "btn btn-amber btn-block", text: I18N.L("Gå med", "Join") });
         go.addEventListener("click", function () {
           var v = String(inp.value || ""), c = U.codeFrom ? U.codeFrom(v) : U.cleanCode(v);   // ds59: link or code
           if (c.length !== 6) { toast("Koden har 6 tecken.", { err: true }); return; }
@@ -563,7 +563,7 @@
               if (r.error) { toast(safe(function () { return A.errMsg(r.error); }, "Hittade int' gruppen."), { err: true }); return; }
               var g = data(r) || {};
               lsSet("olnu.pnAha", "1"); vib(15);
-              toast("Du ä med i " + (g.name || "gänget") + " 🎉");
+              toast(I18N.L("Du ä med i ", "You are in ") + (g.name || I18N.L("gänget", "the crew")) + " 🎉");
               try { A.refresh(); } catch (e) {}
               A.showGroups();
               // scout #3: right after joining a group = the moment to ask for the home screen (once)
@@ -577,7 +577,7 @@
         });
         inp.addEventListener("keydown", function (e) { if (e.key === "Enter") go.click(); });
         box.appendChild(go);
-        box.appendChild(h("button", { type: "button", class: "pn-textbtn", text: "Tillbaka", onclick: step1 }));
+        box.appendChild(h("button", { type: "button", class: "pn-textbtn", text: I18N.L("Tillbaka", "Back"), onclick: step1 }));
         setTimeout(function () { try { inp.focus(); } catch (e) {} }, 80);
       }
       step1();
@@ -625,7 +625,7 @@
     var pane = body.querySelector("#inv-pane-g") || body;
     pane.querySelectorAll(":scope > .row").forEach(function (r) {
       var join = r.querySelector(".btn-green:not(.btn-block)");
-      if (join && !join.__pn) { join.__pn = true; join.classList.add("pn-textlink"); join.textContent = "Har du en kod? Gå med"; }
+      if (join && !join.__pn) { join.__pn = true; join.classList.add("pn-textlink"); join.textContent = I18N.L("Har du en kod? Gå med", "Have a code? Join"); }
       var come = r.querySelector(".btn-block.btn-green");
       if (come && /Kom hit/.test(come.textContent)) r.classList.add("pn-gone");
     });
@@ -641,9 +641,9 @@
     if (cards && !ls("olnu.pnAcct") && ac && safe(function () { return ac.on() && !ac.saved(); }, false)) {
       lsSet("olnu.pnAcct", String(Date.now()));
       var c = h("div", { class: "ds-card pn-nudge pn-acct" }, [h("span", { class: "pn-nudge-i", html: ic("shield-check") }),
-        h("div", { class: "pn-nudge-t" }, [h("b", { text: "Spara kontot" }), h("small", { text: "Med e-post tappar du int' gänget om du byter telefon." })]),
-        h("button", { type: "button", class: "btn btn-small", text: "Spara", onclick: function () { try { ac.openSave(); } catch (e) {} } }),
-        h("button", { type: "button", class: "pn-x", "aria-label": "Stäng", html: ic("x"), onclick: function () { c.remove(); } })]);
+        h("div", { class: "pn-nudge-t" }, [h("b", { text: I18N.L("Spara kontot", "Save the account") }), h("small", { text: I18N.L("Med e-post tappar du int' gänget om du byter telefon.", "With e-mail you keep the crew when you change phones.") })]),
+        h("button", { type: "button", class: "btn btn-small", text: I18N.L("Spara", "Save"), onclick: function () { try { ac.openSave(); } catch (e) {} } }),
+        h("button", { type: "button", class: "pn-x", "aria-label": I18N.L("Stäng", "Close"), html: ic("x"), onclick: function () { c.remove(); } })]);
       if (first) pane.insertBefore(c, first); return;
     }
     // b) (I-36: the "Bjud in 1 till" nudge for a solo group is removed)
@@ -653,7 +653,7 @@
   function backBtn() {
     var head = document.querySelector("#sheet .sheet-head");
     if (!head || document.getElementById("pn-back")) return;
-    var b = h("button", { id: "pn-back", class: "icon-btn pn-back", type: "button", "aria-label": "Tillbaka", title: "Tillbaka", html: ic("caret-left"), hidden: true });
+    var b = h("button", { id: "pn-back", class: "icon-btn pn-back", type: "button", "aria-label": I18N.L("Tillbaka", "Back"), title: I18N.L("Tillbaka", "Back"), html: ic("caret-left"), hidden: true });
     b.addEventListener("click", function () {
       var body = document.getElementById("sheet-body"); if (!body) return;
       var sub = body.querySelector(".gpg:not([data-gv='home']) .gpg-back");
@@ -704,24 +704,24 @@
     var md = safe(function () { return W("MEDALS").mine(); }, null), nMed = md ? (Array.isArray(md) ? md.length : Object.keys(md).length) : 0;
     var ps = safe(function () { return W("PASSPORT").data(); }, null), nBars = ps && ps.bars ? (Array.isArray(ps.bars) ? ps.bars.length : ps.bars | 0) : 0;
     var box = h("div", { class: "pn-pf" });
-    var mitt = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Mitt" })]);
+    var mitt = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: I18N.L("Mitt", "Mine") })]);
     var l1 = h("div", { class: "ds-list" });
-    if (W("MEDALS") && W("MEDALS").showMine) l1.appendChild(rowBtn("shield-check", "Min uniform", nMed ? U.pl(nMed, "medalj", "medaljer") : "Medaljer och grad", function () { W("MEDALS").showMine(); }));
-    if (W("PASSPORT") && W("PASSPORT").open) l1.appendChild(rowBtn("map-trifold", "Ölpasset", nBars ? U.pl(nBars, "krog", "krogar") : "Krogarna du har besökt", function () { W("PASSPORT").open(); }));
+    if (W("MEDALS") && W("MEDALS").showMine) l1.appendChild(rowBtn("shield-check", I18N.L("Min uniform", "My uniform"), nMed ? U.pl(nMed, I18N.L("medalj", "medal"), I18N.L("medaljer", "medals")) : I18N.L("Medaljer och grad", "Medals and rank"), function () { W("MEDALS").showMine(); }));
+    if (W("PASSPORT") && W("PASSPORT").open) l1.appendChild(rowBtn("map-trifold", I18N.L("Ölpasset", "Beer passport"), nBars ? U.pl(nBars, I18N.L("krog", "bar"), I18N.L("krogar", "bars")) : I18N.L("Krogarna du har besökt", "The bars you have been to"), function () { W("PASSPORT").open(); }));
     try { var gwr = W("GW") && W("GW").placesRow ? W("GW").placesRow(rowBtn) : null; if (gwr) l1.appendChild(gwr); } catch (e) {}   // gw: Mina ställen
     var nl = W("NIGHTLOG"), af = W("AFTER");
-    if ((nl && nl.open) || (af && af.openWrapped)) l1.appendChild(rowBtn("clock", "Mina kvällar", "Din kväll, dagen efter, Wrapped", function () { if (nl && nl.open) nl.open(); else af.openWrapped("year", 0); }));
-    if (W("NEAR") && W("NEAR").openFriends) l1.appendChild(rowBtn("hand-waving", "Vänner", "Lägg till med länk eller QR", function () { W("NEAR").openFriends(); }));
+    if ((nl && nl.open) || (af && af.openWrapped)) l1.appendChild(rowBtn("clock", I18N.L("Mina kvällar", "My nights"), I18N.L("Din kväll, dagen efter, Wrapped", "Your night, the day after, Wrapped"), function () { if (nl && nl.open) nl.open(); else af.openWrapped("year", 0); }));
+    if (W("NEAR") && W("NEAR").openFriends) l1.appendChild(rowBtn("hand-waving", I18N.L("Vänner", "Friends"), I18N.L("Lägg till med länk eller QR", "Add with a link or QR"), function () { W("NEAR").openFriends(); }));
     mitt.appendChild(l1);
-    var help = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Hjälp oss bli bättre" })]);
+    var help = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: I18N.L("Hjälp oss bli bättre", "Help us get better") })]);
     var l2 = h("div", { class: "ds-list" });
-    if (W("WISH") && W("WISH").open) l2.appendChild(rowBtn("lightbulb", "Önska något", "Vad saknar du i appen?", function () { W("WISH").open(); }, "pn-wish"));
-    l2.appendChild(rowBtn("bug", "Rapportera fel", "Nåt som strulade?", openBug, "pn-bugrow"));
+    if (W("WISH") && W("WISH").open) l2.appendChild(rowBtn("lightbulb", I18N.L("Önska något", "Wish for something"), I18N.L("Vad saknar du i appen?", "What do you miss in the app?"), function () { W("WISH").open(); }, "pn-wish"));
+    l2.appendChild(rowBtn("bug", I18N.L("Rapportera fel", "Report a bug"), I18N.L("Nåt som strulade?", "Something went wrong?"), openBug, "pn-bugrow"));
     help.appendChild(l2);
     box.appendChild(mitt); box.appendChild(help);
     // The rest (name, hemstad, pin, module rows, flytt, integritet = ds.js sections) folds away behind one row.
     var tog = h("button", { type: "button", class: "ds-row pn-row pn-fold-t ds-keep", "aria-expanded": "false" }, [h("span", { class: "ds-row-i", html: ic("sliders-horizontal") }),
-      h("span", { class: "ds-row-t" }, [h("span", { text: "Namn, konto och mer" }), h("small", { text: "Hemstad, vänner, Swish, flytta" })]), h("span", { class: "pn-fold-c", html: ic("caret-right") })]);
+      h("span", { class: "ds-row-t" }, [h("span", { text: I18N.L("Namn, konto och mer", "Name, account and more") }), h("small", { text: I18N.L("Hemstad, vänner, Swish, flytta", "Home town, friends, Swish, move") })]), h("span", { class: "pn-fold-c", html: ic("caret-right") })]);
     var setOpen = function (o) { body.classList.toggle("pn-pfopen", o); tog.setAttribute("aria-expanded", String(o));  };
     tog.addEventListener("click", function () { setOpen(!body.classList.contains("pn-pfopen")); });
     box.classList.add("ds-keep");

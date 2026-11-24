@@ -299,6 +299,11 @@
     "🫂 {name} är på 10. Vem går dit med ett glas vatten?",
     "📻 Radion: {name} är på 10. Truppen, kolla läget."
   ], {n: 6});
+  // E8 (lane i18n): the same care lines in English (the dialect packs are Swedish only); the icon = the Swedish line's first sign
+  var MED_ASK_EN = ["{name} has hit kebab level. Who brings water and a steady hand?", "{name} is on 10. Can someone check in?",
+    "{name} is on 10. Nobody is left behind – who is the wingman?", "The squad calls: {name} needs a map reader home. Who takes it?",
+    "{name} is on 10. Who goes over with a glass of water?", "Radio: {name} is on 10. Squad, check in."];
+  function medAsk() { return sv() ? MED_ASK : MED_ASK_EN.map(function (e, i) { return ((String(MED_ASK[i] || "").match(/^\S+\s/) || [""])[0]) + e; }); }
   var MED_SEEN_KEY = "olnu.afMedSeen";
   var medPins = [], checks = [], checksAt = 0, checksBusy = false, checkSeen = {};
   function medSeen() { var o = U.ls.getJSON(MED_SEEN_KEY, {}) || {}; return typeof o === "object" ? o : {}; }
@@ -348,13 +353,13 @@
   // when no sheet or overlay is open (ds40); tap = the Kompisvakt sheet. Otherwise nothing: the chip stays.
   function medCaption(b) {
     if (!b || A.sheetOpen() || document.documentElement.classList.contains("a2-on")) return;
-    var D = window.DELIGHT, R2 = window.AFTER_R2, txt = R2 ? R2.t("after.med.cap", { name: b.friend_name }) : fill(MED_ASK[1], { name: b.friend_name });
+    var D = window.DELIGHT, R2 = window.AFTER_R2, txt = R2 ? R2.t("after.med.cap", { name: b.friend_name }) : fill(medAsk()[1], { name: b.friend_name });
     if (D && D.caption) D.caption({ text: txt, cls: "af-med-cap", ms: 6000, onTap: function () { openMedSheet(b); } });
   }
   function openMedSheet(m) {
     if (!m) return;
     A.openSheet(L("🚑 Kompisvakt", "🚑 Buddy check"), function (body) {
-      body.appendChild(A.el("p", { class: "af-lead", text: fill(pick(MED_ASK), { name: m.friend_name }) }));
+      body.appendChild(A.el("p", { class: "af-lead", text: fill(pick(medAsk()), { name: m.friend_name }) }));
       body.appendChild(A.el("p", { class: "muted", text: L("Gå dit, ta ett snack, bjud på vatten. Den som trycker först har koll. Gruppen får veta.", "Go there, talk, bring water. First to tap owns it.") }));
       body.appendChild(A.el("div", { class: "row", style: "margin-top:10px" }, [
         A.btn(L("🚑 Jag kollar", "🚑 I'll check"), "btn-green btn-block", function () { A.closeSheet(); claim(m); })]));
@@ -1145,7 +1150,7 @@
       // lane:after: the Ikväll panel shows every chip; the closed pill picks the urgent one (app.js), so 🚑 stays first
       var a2 = window.AFTER2 && window.AFTER2.chipHTML ? window.AFTER2.chipHTML() : "";   // A2: Kvällsrapporten ä klar
       var mo = window.MOMENTS && window.MOMENTS.chipHTML ? window.MOMENTS.chipHTML() : "";   // GM7: a moment card
-      if (m) return '<button type="button" class="hx-chip af-chip-med" data-hx="afmed" aria-label="' + esc(fill(MED_ASK[0], { name: m.friend_name })) + '">🚑 ' + esc(m.friend_name) + "</button>" + a2 + mo;
+      if (m) return '<button type="button" class="hx-chip af-chip-med" data-hx="afmed" aria-label="' + esc(fill(medAsk()[0], { name: m.friend_name })) + '">🚑 ' + esc(m.friend_name) + "</button>" + a2 + mo;
       if (a2 || mo) return a2 + mo;
       if (lateNight() && (ctx && ctx.n | 0) >= 1) return '<button type="button" class="hx-chip af-chip-kebab" data-hx="afkebab" aria-label="' + esc(L("Öppet nu: mat nära dig", "Open now: food nearby")) + '">🌯 ' + esc(L("Mat nu", "Food now")) + '</button>';
       return "";

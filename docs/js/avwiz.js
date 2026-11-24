@@ -72,7 +72,7 @@
       var had = !!me.spec;
       var st = { i: opts.from || me.spec ? 1 : 0, base: null, draft: JSON.parse(JSON.stringify(opts.from || me.spec || BASES[2].spec)), had: had, saving: false };
       cur = st;
-      A.openSheet(had ? "Steg för steg" : "Skapa din karaktär", function (body) { build(body, st); });
+      A.openSheet(had ? I18N.L("Steg för steg", "Step by step") : I18N.L("Skapa din karaktär", "Create your character"), function (body) { build(body, st); });
     };
     if (av.meRaw()) go(); else av.loadMe().then(go);
   }
@@ -318,14 +318,14 @@
     document.querySelectorAll('.pf-av[data-avk="me"]').forEach(function (pf) {
       pf.classList.toggle("av-new", none);
       var pen = pf.querySelector(".av-pen"); if (pen) pen.textContent = none ? "+" : "✎";
-      pf.setAttribute("aria-label", none ? "Skapa din karaktär" : "Ändra din karaktär");
+      pf.setAttribute("aria-label", none ? I18N.L("Skapa din karaktär", "Create your character") : I18N.L("Ändra din karaktär", "Edit your character"));
       var top = pf.closest(".pf-top"); if (!top || !top.parentNode) return;
       var card = top.parentNode.querySelector(":scope > .avw-cta");
       if (!none) { if (card) card.remove(); return; }
       if (card) return;
       card = h("button", { type: "button", class: "avw-cta", "data-av-edit": "1" }, [
         h("span", { class: "avw-cta-ic", html: SIL }),
-        h("span", { class: "avw-cta-t" }, [h("b", { text: "Skapa din karaktär" }), h("small", { text: "Steg för steg, tar en minut. Gänget ser den i chatten och på kartan." })]),
+        h("span", { class: "avw-cta-t" }, [h("b", { text: I18N.L("Skapa din karaktär", "Create your character") }), h("small", { text: I18N.L("Steg för steg, tar en minut. Gänget ser den i chatten och på kartan.", "Step by step, takes a minute. The crew sees it in the chat and on the map.") })]),
         h("span", { class: "avw-cta-go", "aria-hidden": "true", text: "›" })]);
       top.parentNode.insertBefore(card, top.nextSibling);
     });
@@ -348,7 +348,7 @@
     if (days < 3 || nd.n >= 3 || Date.now() - (nd.at || 0) < 4 * 86400000) return;
     try { if (A.sheetOpen && A.sheetOpen()) return; } catch (e) {}
     lsSet("olnu.avwNudge", { n: (nd.n | 0) + 1, at: Date.now() });
-    A.toast("👤 Skapa din karaktär? Då känner gänget igen dig i chatten och på kartan.", { id: "avw-nudge", ms: 9000, action: { label: "Skapa", fn: function () { open(); } } });
+    A.toast("👤 " + I18N.L("Skapa din karaktär? Då känner gänget igen dig i chatten och på kartan.", "Create your character? Then the crew knows you in the chat and on the map."), { id: "avw-nudge", ms: 9000, action: { label: I18N.L("Skapa", "Create"), fn: function () { open(); } } });
   }
 
   window.AVWIZ = {

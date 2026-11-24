@@ -136,6 +136,7 @@
     $("btn-attrib").title = t("mapSources");
     $("btn-locate").title = t("locate");
     $("offline-text").textContent = t("offline");
+    $("map").setAttribute("aria-label", I18N.L("Karta", "Map"));   // E8: index.html says "Karta"
     $("btn-top").setAttribute("aria-label", t("top"));
     $("btn-top").title = t("top");
     applyHeatBtn();

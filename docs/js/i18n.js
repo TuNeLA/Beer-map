@@ -1198,7 +1198,7 @@
       done: "Done", show: "Show code",
       fail: "Something went wrong. Try again.",
       notif: "Get notices (friends out + CHAOS IN TOWN)",
-      notifAskTitle: "🔔 Know when the gang heads out", notifAskText: "Get a notice when your friends go out, write in the chat or call you in. You choose which ones in Settings → Notiser & ljud. Max one chaos notice per night.",
+      notifAskTitle: "🔔 Know when the gang heads out", notifAskText: "Get a notice when your friends go out, write in the chat or call you in. You choose which ones in Settings → Notifications & sound. Max one chaos notice per night.",
       notifBlockedHelp: "Notifications are blocked. iPhone: Settings → Notifications → PintsNow. Android: tap the lock 🔒 by the address → Permissions → Notifications.",
       notifOn: "Notifications are on.", notifOff: "Notifications are off.",
       notifDenied: "Notifications are blocked. Allow them in your browser settings.",
@@ -1208,7 +1208,7 @@
       installAndroid: "Put PintsNow on your home screen", install: "Install",
       yes: "Yes please", notNow: "Not now",
       language: "Language", notifications: "Notifications", about: "About PintsNow",
-      privacy: "No e-mail login. The server keeps an anonymous account, your beers with place (exact only for your group), your name in your groups and stats for medals. No ads, no selling. We log errors and how the app is used (no texts, no names) – turn it off in Settings → Integritet & synlighet. Read more under 🔒 Privacy.",
+      privacy: "No e-mail login. The server keeps an anonymous account, your beers with place (exact only for your group), your name in your groups and stats for medals. No ads, no selling. We log errors and how the app is used (no texts, no names) – turn it off in Settings → Privacy & visibility. Read more under 🔒 Privacy.",
       aboutMore: "Your beer shows on the map until 05:00. 10 min between beers. Map data © OpenStreetMap contributors.",
       soonChip: "Soon", soonBtn: "SOON", soonSub: "Coming soon",
       soonLive: "Coming soon",
@@ -1231,7 +1231,7 @@
       age18: "I am 18 years or older",
       ageNeeded: "You must be 18 years or older.",
       introGo: "Let's go!",
-      introPrivacy: "No e-mail, no ads. We log errors and how the app is used (no texts, no names) to improve it – turn it off in Settings → Integritet & synlighet. A new account is seen only by friends and your groups, and only as an area. Change it under Visibility. Read more under 🔒 Privacy.",
+      introPrivacy: "No e-mail, no ads. We log errors and how the app is used (no texts, no names) to improve it – turn it off in Settings → Privacy & visibility. A new account is seen only by friends and your groups, and only as an area. Change it under Visibility. Read more under 🔒 Privacy.",
       locTitle: "Allow location",
       locWhy: "We need your location to show the map where you are and to put your beer in the right place.",
       locWhy2: "Your location is sent when you tap BEER! or check in (and a ~1 km area if notifications are on). Strangers only see the bar or a ~500 m area.",
@@ -1353,23 +1353,17 @@
       ]
     }
   };
-  // SAFE (owner 2026-11-07): Swedish only. No auto-English, a stored "en" is ignored and removed.
-  var lang = "sv";
-  try { if (localStorage.getItem("olnu.lang") === "en") localStorage.setItem("olnu.lang", "sv"); } catch (e) {}
-  window.I18N = {
-    get lang() { return lang; },
-    set: function () { lang = "sv"; try { localStorage.setItem("olnu.lang", "sv"); } catch (e) {} document.documentElement.lang = "sv"; },   // SAFE: always sv
-    // v14: modules can add or override strings with I18N.add({sv: {...}, en: {...}}).
-    add: function (o) {
-      ["sv", "en"].forEach(function (l) { if (o && o[l]) Object.keys(o[l]).forEach(function (k) { STR[l][k] = o[l][k]; }); });
-    },
-    t: function (k) {
-      var v = STR[lang][k]; if (v === undefined) v = STR.sv[k];
-      if (typeof v === "function") return v.apply(null, Array.prototype.slice.call(arguments, 1));
-      return v;
-    }
+  // SAFE (owner 2026-11-07): Swedish for every normal user. E8: js/lang.js (loads first) made window.I18N with the language,
+  // the test flag and the switch; this file adds the strings. v14: modules add or override strings with I18N.add({sv, en}).
+  var I18N = window.I18N || (window.I18N = { lang: "sv" }), lang = I18N.lang === "en" ? "en" : "sv";
+  I18N.add = function (o) {
+    ["sv", "en"].forEach(function (l) { if (o && o[l]) Object.keys(o[l]).forEach(function (k) { STR[l][k] = o[l][k]; }); });
   };
-  document.documentElement.lang = lang;
+  I18N.t = function (k) {
+    var v = STR[lang][k]; if (v === undefined) v = STR.sv[k];
+    if (typeof v === "function") return v.apply(null, Array.prototype.slice.call(arguments, 1));
+    return v;
+  };
   // Polish 2026-10-17: one marker per bar (popup sections), levels, haptics.
   window.I18N.add({
     sv: {

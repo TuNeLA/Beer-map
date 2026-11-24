@@ -392,52 +392,52 @@
     return call("my_places").then(function (r) { var d = data(r); if (d) { places.d = d; places.at = Date.now(); } return places.d; });
   }
   function placesSub(d) {
-    if (!d) return "Krogar och städer du har besökt";
+    if (!d) return I18N.L("Krogar och städer du har besökt", "Bars and towns you have been to");
     var b = d.bars_n | 0, t = d.towns_n | 0;
-    return b ? b + (b === 1 ? " krog" : " krogar") + " · " + t + (t === 1 ? " stad" : " städer") : DIALEKT.v("gw.inga_krogar_an", 0, {}, "Inga krogar än. Checka in nästa gång!");
+    return b ? b + (b === 1 ? I18N.L(" krog", " bar") : I18N.L(" krogar", " bars")) + " · " + t + (t === 1 ? I18N.L(" stad", " town") : I18N.L(" städer", " towns")) : I18N.L(DIALEKT.v("gw.inga_krogar_an", 0, {}, "Inga krogar än. Checka in nästa gång!"), "No bars yet. Check in next time!");
   }
   function placesRow(rowBtn) {   // pnui.js Mitt list (same row factory as its other rows)
     if (!authed() || off.my_places) return null;
-    var r = rowBtn("beer-stein", "Mina ställen", placesSub(places.d), openPlaces, "gw-places-row");
+    var r = rowBtn("beer-stein", I18N.L("Mina ställen", "My places"), placesSub(places.d), openPlaces, "gw-places-row");
     loadPlaces(false).then(function (d) { var s = r.querySelector("small"); if (s && d) s.textContent = placesSub(d); });
     return r;
   }
   function openPlaces() {
-    A.openSheet("Mina ställen", function (body) {
-      var box = h("div", { class: "gw-pl" }, [h("p", { class: "muted", text: "Hämtar…" })]);
+    A.openSheet(I18N.L("Mina ställen", "My places"), function (body) {
+      var box = h("div", { class: "gw-pl" }, [h("p", { class: "muted", text: I18N.L("Hämtar…", "Loading…") })]);
       body.appendChild(box);
       loadPlaces(true).then(function (d) {
         if (!document.body.contains(box)) return;
         box.innerHTML = "";
-        if (!d) { box.appendChild(h("p", { class: "muted", text: "Det gick int' att hämta just nu." })); return; }
+        if (!d) { box.appendChild(h("p", { class: "muted", text: I18N.L("Det gick int' att hämta just nu.", "Could not load it right now.") })); return; }
         var dn = Math.min(d.dalarna_n | 0, d.dalarna_goal | 0 || 3), goal = d.dalarna_goal | 0 || 3;
         box.appendChild(h("div", { class: "gw-pl-tiles" }, [
-          h("div", { class: "ds-card gw-pl-tile" }, [h("b", { text: String(d.bars_n | 0) }), h("small", { text: (d.bars_n | 0) === 1 ? "krog" : "krogar" })]),
-          h("div", { class: "ds-card gw-pl-tile" }, [h("b", { text: String(d.towns_n | 0) }), h("small", { text: (d.towns_n | 0) === 1 ? "stad" : "städer" })])]));
-        var dal = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Utforskat Dalarna" }),
+          h("div", { class: "ds-card gw-pl-tile" }, [h("b", { text: String(d.bars_n | 0) }), h("small", { text: (d.bars_n | 0) === 1 ? I18N.L("krog", "bar") : I18N.L("krogar", "bars") })]),
+          h("div", { class: "ds-card gw-pl-tile" }, [h("b", { text: String(d.towns_n | 0) }), h("small", { text: (d.towns_n | 0) === 1 ? I18N.L("stad", "town") : I18N.L("städer", "towns") })])]));
+        var dal = h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: I18N.L("Utforskat Dalarna", "Explored Dalarna") }),
           h("div", { class: "ds-card gw-pl-goal" }, [
-            h("div", { class: "gw-pl-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(goal), "aria-valuenow": String(dn), "aria-label": dn + " av " + goal + " städer i Dalarna" },
+            h("div", { class: "gw-pl-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(goal), "aria-valuenow": String(dn), "aria-label": dn + I18N.L(" av ", " of ") + goal + I18N.L(" städer i Dalarna", " towns in Dalarna") },
               [h("i", { style: "width:" + Math.round(100 * dn / goal) + "%" })]),
-            h("small", { text: dn >= goal ? "Klart! Märket är ditt." : dn + " av " + goal + " städer i Dalarna" })])]);
+            h("small", { text: dn >= goal ? I18N.L("Klart! Märket är ditt.", "Done! The badge is yours.") : dn + I18N.L(" av ", " of ") + goal + I18N.L(" städer i Dalarna", " towns in Dalarna") })])]);
         box.appendChild(dal);
         var towns = d.towns || [];
         if (towns.length) {
           var tl = h("div", { class: "ds-list" });
           towns.forEach(function (t) {
-            var sub = t.total ? U.n1((t.visited | 0) + " av " + (t.total | 0) + " krogar") + (t.all ? " · alla!" : "") : "Besökt";
+            var sub = t.total ? U.n1((t.visited | 0) + I18N.L(" av ", " of ") + (t.total | 0) + I18N.L(" krogar", " bars")) + (t.all ? I18N.L(" · alla!", " · all!") : "") : I18N.L("Besökt", "Visited");
             tl.appendChild(row(t.all ? "check" : "pin", t.town, sub, null, t.all ? "gw-pl-all" : ""));
           });
-          box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Städer" }), tl]));
+          box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: I18N.L("Städer", "Towns") }), tl]));
         }
         var bars = (d.bars || []).filter(function (b) { return b.name; });
         if (bars.length) {
           var bl = h("div", { class: "ds-list" });
           bars.slice(0, 40).forEach(function (b) {
-            bl.appendChild(row("beer", b.name, (b.town || "") + (b.first ? (b.town ? " · " : "") + "första gången " + new Date(b.first).toLocaleDateString("sv-SE", { day: "numeric", month: "short" }) : ""),
+            bl.appendChild(row("beer", b.name, (b.town || "") + (b.first ? (b.town ? " · " : "") + I18N.L("första gången ", "first time ") + I18N.date(b.first, { day: "numeric", month: "short" }) : ""),
               isFinite(b.lat) && b.lat != null ? function () { A.closeSheet(); try { A.flyTo(+b.lat, +b.lng, 17); } catch (e) {} } : null));
           });
-          box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: "Krogar" }), bl]));
-        } else box.appendChild(h("p", { class: "muted", text: "Checka in på en krog så hamnar den här." }));
+          box.appendChild(h("section", { class: "ds-section" }, [h("h3", { class: "ds-section-h", text: I18N.L("Krogar", "Bars") }), bl]));
+        } else box.appendChild(h("p", { class: "muted", text: I18N.L("Checka in på en krog så hamnar den här.", "Check in at a bar and it shows here.") }));
         if (W("PASSPORT") && W("PASSPORT").open) {
           box.appendChild(h("section", { class: "ds-section" }, [h("div", { class: "ds-list" }, [row("map", "Visa på kartan", "Ölpasset med alla stämplar", function () { W("PASSPORT").open(); })])]));
         }
