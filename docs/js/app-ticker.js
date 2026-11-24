@@ -251,7 +251,7 @@
       var st = document.createElement("style"); st.id = "of-tick-one-css";
       st.textContent = ".ticker .tk-viewport.tk-one-vp{overflow:hidden}" +
         ".tk-track.tk-one{width:100%;transform:none!important}" +
-        ".tk-track.tk-one>.tk-one-i{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.15;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 8px;opacity:1;transition:opacity .25s ease}" +
+        ".tk-track.tk-one>.tk-one-i{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.15;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 8px;opacity:1;transition:opacity var(--m-4) var(--e-std)}" +
         ".tk-track.tk-one>.tk-one-i.tk-one-out{opacity:0}";
       document.head.appendChild(st);
     }

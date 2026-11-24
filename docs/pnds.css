@@ -84,7 +84,7 @@ body #prec-seg>button:active{transform:none !important;background:rgba(255,255,2
 #prec-hint{position:absolute;right:calc(var(--sar) + var(--sp-3));bottom:calc(100% - var(--sp-2));max-width:min(260px,calc(100vw - 32px));min-height:0 !important;
   margin:0;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--pn-float-2);border:1px solid var(--ds-border-2);box-shadow:var(--ds-sh-2);
   color:var(--ds-text-2) !important;font:400 var(--fs-14)/1.3 var(--ds-sans) !important;text-align:left;opacity:0;transform:translateY(4px);pointer-events:none;
-  transition:opacity var(--ds-t-2),transform var(--ds-t-2);visibility:visible !important;display:block !important;z-index:3}
+  transition:opacity var(--m-4) var(--e-std),transform var(--m-4) var(--e-std);visibility:visible !important;display:block !important;z-index:3}
 #prec-hint:empty,body.pn-calm:not(.pn-first) #prec-hint:not(.pn-show){opacity:0}
 #prec-hint.pn-show{opacity:1;transform:none}
 .dock{position:fixed}
@@ -659,14 +659,19 @@ html,body{font-synthesis:none}
 .hud,[class*="hud"],.pf-n,.tk-track,.ticker{font-variant-numeric:tabular-nums}
 /* ds09 fonts END */
 /* ds10 motion START — motion tokens (design review "Rörelse"; Material 3 / Fluent 2 / Apple HIG). DESIGN.md "Motion".
-   in = --e-in, out = --e-out and one step shorter (300 in, 200 out). Only transform and opacity move. */
+   in = --e-in, out = --e-out and one step shorter (300 in, 200 out). Only transform and opacity move.
+   D1 (24 Nov): THE one motion token set. Every duration under 1 s and every easing in docs/ uses these (CSS, CSS in JS,
+   el.style.transition, el.animate via SMOOTH.ms / SMOOTH.ease). 1 s and more = a loop period or a scene: own seconds.
+   Guard: tests/quality/motion.mjs (in check.mjs). */
 :root{
-  --m-1:50ms;--m-2:100ms;--m-3:150ms;--m-4:200ms;--m-5:300ms;--m-6:450ms;
+  --m-1:50ms;--m-2:100ms;--m-3:150ms;--m-4:200ms;--m-5:300ms;--m-6:450ms;--m-7:600ms;--m-8:900ms;
   --e-std:cubic-bezier(.2,0,0,1);--e-in:cubic-bezier(.05,.7,.1,1);--e-out:cubic-bezier(.3,0,.8,.15);--e-lin:linear;
+  --e-io:cubic-bezier(.42,0,.58,1);--e-pop:cubic-bezier(.2,1.4,.4,1);
   --e-spring:cubic-bezier(.2,1.2,.4,1);
-  /* old names → the new tokens (one set of numbers in the app) */
-  --ds-t-1:var(--m-2);--ds-t-2:var(--m-4);--ds-t-3:var(--m-5);--ds-ease:var(--e-std);--ease:var(--e-std);
-  --sm-out:var(--e-out);--sm-t-in:var(--m-5)
+  /* old names → the new tokens. Do not use them (the motion guard fails on a use); kept for code in flight only. */
+  --ds-t-1:var(--m-2);--ds-t-2:var(--m-4);--ds-t-3:var(--m-5);--d-1:var(--m-2);--d-2:var(--m-4);--d-3:var(--m-5);--sm-t-in:var(--m-5);
+  --ds-ease:var(--e-std);--ease:var(--e-std);--sm-out:var(--e-out);--sm-in:var(--e-spring);--pn-dec:var(--e-in);--pn-acc:var(--e-out);
+  --ease-spring:var(--e-spring)
 }
 @supports (animation-timing-function:linear(0,1)){
   /* spring: damping 0.9, stiffness 700 (Material "default spatial"), ~3 % overshoot, sampled into 21 stops */
@@ -696,13 +701,13 @@ summary:active{transform:none}
 @keyframes pnAxInT{from{transform:translateX(24px)}}
 /* tab / segment: a sliding marker (js) + the new pane fades through (out 90, in 210) */
 .pn-seg-mark{position:absolute;z-index:0;border-radius:8px;background:var(--ds-raised);pointer-events:none;transition:transform var(--m-4) var(--e-spring),width var(--m-4) var(--e-spring)}
-.pn-ft{animation:pnFadeThrough 300ms var(--e-std) backwards}
+.pn-ft{animation:pnFadeThrough var(--m-5) var(--e-std) backwards}
 @keyframes pnFadeThrough{0%{opacity:0}30%{opacity:0}100%{opacity:1}}
 /* ÖL! squash + spring + foam */
 #btn-beer.pn-squash{transform:scale(.92) !important;transition:transform var(--m-2) var(--e-std) !important}
 #btn-beer.pn-spring{transition:transform var(--m-5) var(--e-spring) !important}
 .pn-foam{position:fixed;width:10px;height:10px;border-radius:50%;background:#fff6e0;box-shadow:0 0 0 1px rgba(245,166,35,.5);pointer-events:none;z-index:2000;
-  animation:pnFoam 400ms var(--e-out) forwards}
+  animation:pnFoam var(--m-6) var(--e-out) forwards}
 @keyframes pnFoam{from{transform:translate(-50%,-50%) scale(.6);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.1);opacity:0}}
 /* DOM people pins pop in once (bars are GL layers) */
 .pn-p.pn-pop{animation:pnPinPop var(--m-5) var(--e-spring) backwards}
@@ -966,7 +971,7 @@ body #prec-seg>#prec-area[aria-checked="true"]::after{content:"Exakt plats\A Av"
 .pn-beerok small{font:600 var(--fs-14)/20px var(--ds-sans);opacity:.85}
 .pn-beerok svg{width:20px;height:20px}
 @keyframes pnBeerOk{0%{opacity:0}8%{opacity:1}85%{opacity:1}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.pn-beerok{animation:pnBeerOkR 2.2s linear forwards}@keyframes pnBeerOkR{0%,90%{opacity:1}100%{opacity:0}}}
+@media (prefers-reduced-motion:reduce){.pn-beerok{animation:pnBeerOkR 2.2s var(--e-lin) forwards}@keyframes pnBeerOkR{0%,90%{opacity:1}100%{opacity:0}}}
 /* ds40 ux END */
 /* ds42 ux3 START — Synlighet menu (same popover as the Ikväll menu) + the iPhone note in Följ mig hem. */
 .pn-vis .pn-vis-seg{margin:0 0 var(--sp-2) !important}
@@ -1306,7 +1311,7 @@ body #prec-seg>button[aria-checked="true"]::after{white-space:pre !important;fon
 .pn-cdbub>i:nth-child(2){background-image:radial-gradient(circle,rgba(255,248,225,.55) 0 1px,transparent 1.6px);background-size:13px 17px;background-position:9px 5px;--pn-cdbub-y:-34px}
 .pn-cdbub>i:nth-child(3){background-image:radial-gradient(circle,rgba(255,248,225,.65) 0 1.7px,transparent 2.4px);background-size:29px 37px;background-position:15px 11px;--pn-cdbub-y:-37px;--pn-cdbub-t:3.7s}
 @keyframes pnCdBub{to{transform:translate3d(0,var(--pn-cdbub-y),0)}}
-.du-tug-kw{position:absolute;inset:0;pointer-events:none;transition:transform .8s var(--e-std)}
+.du-tug-kw{position:absolute;inset:0;pointer-events:none;transition:transform var(--m-8) var(--e-std)}
 .du-tug-kw>.du-tug-knot{left:0 !important}
 @media (prefers-reduced-motion: reduce){.pn-cdbub>i{animation:none}.du-tug-kw{transition:none}}
 /* Truppen "Vart?" place chips: the chosen one is secondary (tonal); "Sätt avgång" is the one amber primary */
@@ -1365,10 +1370,10 @@ body>.toast.pn-toast-out.err>.pn-toast-i{color:var(--ds-red-t,#ff7b73)}
 body>.toast.pn-toast-out>.pn-toast-i .pi{width:20px;height:20px;margin:0}
 body>.toast.pn-toast-out>span:not(.pn-toast-i){flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 #pn-splash.pn-splash-out{opacity:0}
-.dl-cap-greet.dl-cap-greet-out{opacity:0;transform:translateY(-6px);transition:opacity var(--ds-t-2) var(--pn-acc),transform var(--ds-t-2) var(--pn-acc)}
+.dl-cap-greet.dl-cap-greet-out{opacity:0;transform:translateY(-6px);transition:opacity var(--m-4) var(--e-out),transform var(--m-4) var(--e-out)}
 .fx-amb.fx-amb-out{opacity:0;transition:opacity 1.5s var(--e-std)}
-.takeover.fx-tk-out{opacity:0;transition:opacity var(--m-4)}
-.mx-pop.mx-pop-out{opacity:0;transition:opacity var(--m-4)}
+.takeover.fx-tk-out{opacity:0;transition:opacity var(--m-4) var(--e-std)}
+.mx-pop.mx-pop-out{opacity:0;transition:opacity var(--m-4) var(--e-std)}
 @media (prefers-reduced-motion: reduce){.pn-ikm.pn-vis-out{animation:none}.dl-cap-greet.dl-cap-greet-out{transition:none}}
 /* B10 top bar pill: the town name is never cut (zones.js fitPill). Two lines: name 14 px over the status 12 px. */
 #live-count.zn-pill .zn-pn{white-space:nowrap}
@@ -1441,7 +1446,7 @@ body.pn-pill-tight .topbar .brand-name{font-size:var(--fs-18) !important}
   font:600 var(--fs-14)/20px var(--ds-sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .mn-inst-skip:focus-visible,.mn-inst-go:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}
 .mn-inst-arrow{position:fixed;left:50%;bottom:calc(var(--sab,0px) + var(--sp-2));margin-left:-16px;width:32px;height:32px;display:grid;place-items:center;color:var(--ds-amber-t);
-  pointer-events:none;animation:mnInstBob .9s var(--e-std,ease) 3}
+  pointer-events:none;animation:mnInstBob var(--m-8) var(--e-std,ease) 3}
 .mn-inst-arrow.mn-inst-arrow-r{left:auto;right:calc(var(--sar,0px) + var(--sp-4));margin-left:0}
 .mn-inst-arrow .pi{width:28px;height:28px}
 @keyframes mnInstBob{50%{transform:translateY(6px)}}

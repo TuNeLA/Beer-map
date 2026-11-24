@@ -841,7 +841,7 @@
   function relevant(r) {
     try {
       var ci = A.myCheckin && A.myCheckin();
-      if (ci && r.bar_id && String(ci.id) === String(r.bar_id)) return true;
+      if (ci && r.bar_id && cid(ci.id) === cid(r.bar_id)) return true;   // mapcrowd2: same venue, old place id
       if (r.rally_id != null && window.RALLY && window.RALLY.list) {
         return window.RALLY.list().some(function (x) { return String(x.id) === String(r.rally_id) && x.is_mine; });
       }
@@ -890,9 +890,11 @@
     var list = ex("row") || [], n = list.length || 1, idx = (Math.abs(+r.id || 0) + (i || 0)) % n;
     return fillE(list[idx], { namn: nameOf(r), min: minText(r), bar: r.bar_name || ex("place") });
   }
+  // mapcrowd2: the same venue under 2 ids (a place that became a bar): compare the canonical ids (bars.js canonId)
+  function cid(x) { try { return window.BARS && window.BARS.canonId ? window.BARS.canonId(x) : String(x); } catch (e) { return String(x); } }
   function rowsFor(barId) {
-    var id = String(barId);
-    return eta.rows.filter(function (r) { return !r.is_me && r.bar_id != null && String(r.bar_id) === id && (isLive(r) || r.arrived); });
+    var id = cid(barId);
+    return eta.rows.filter(function (r) { return !r.is_me && r.bar_id != null && cid(r.bar_id) === id && (isLive(r) || r.arrived); });
   }
   function cdText(r) { var ms = msLeft(r); return ms > 0 ? U.mmss(ms) : ex("soon"); }
   // Inner HTML of the ETA box in a bar popup.
@@ -906,7 +908,7 @@
       h += '<div class="eta-row">' + esc(line) + "</div>";
     });
     var me = myEta();
-    if (me && String(me.bar_id) === id && (isLive(me) || me.arrived)) {
+    if (me && cid(me.bar_id) === cid(id) && (isLive(me) || me.arrived)) {
       if (me.arrived) h += '<div class="eta-me arr">' + esc(ex("mineArr")) + "</div>";
       else {
         var late = msLeft(me) <= 0;

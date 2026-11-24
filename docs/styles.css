@@ -29,7 +29,7 @@ button{font:inherit;color:inherit}
     linear-gradient(90deg,rgba(245,166,35,.05) 1px,transparent 1px) 0 0/64px 64px,
     radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.45) 100%)}
 .hud-overlay::after{content:"";position:absolute;left:0;right:0;height:120px;top:-120px;
-  background:linear-gradient(180deg,transparent,rgba(245,166,35,.06),transparent);animation:sweep 7s linear infinite}
+  background:linear-gradient(180deg,transparent,rgba(245,166,35,.06),transparent);animation:sweep 7s var(--e-lin) infinite}
 @keyframes sweep{to{transform:translateY(calc(100vh + 120px))}}
 /* Review: phones: no endless sweep (keeps the GPU making 60 frames/s while idle, and costs a layer). */
 @media (hover:none) and (pointer:coarse){.hud-overlay::after{display:none}}
@@ -68,7 +68,7 @@ button{font:inherit;color:inherit}
 .tk-viewport{flex:1;overflow:hidden;height:100%;position:relative;mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
 .tk-track{display:flex;white-space:nowrap;height:100%;align-items:center;font-family:var(--hud);font-size:13px;width:max-content;will-change:transform}
 .tk-track>span{flex:0 0 auto}
-.tk-track.moving{animation:tick 30s linear infinite}
+.tk-track.moving{animation:tick 30s var(--e-lin) infinite}
 .tk-item{color:var(--amber-2)}
 .tk-item.tk-med{color:#fff;text-shadow:0 0 6px var(--red)}
 .tk-item.tk-friend{color:var(--green)}
@@ -102,11 +102,11 @@ button{font:inherit;color:inherit}
 .beer-wrap{position:relative;width:124px;height:124px;display:grid;place-items:center}
 .cd-svg{position:absolute;inset:0;transform:rotate(-90deg);pointer-events:none}
 .cd-track{fill:none;stroke:rgba(245,166,35,.18);stroke-width:4;stroke-dasharray:4 5}
-.cd-ring{fill:none;stroke:var(--amber-2);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.cd-ring{fill:none;stroke:var(--amber-2);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s var(--e-lin)}
 .beer-btn{width:106px;height:106px;border-radius:50%;border:4px solid var(--foam);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
   background:radial-gradient(circle at 35% 30%,var(--amber-2) 0%,var(--amber) 45%,var(--amber-d) 100%);
   color:var(--on-amber);box-shadow:0 0 0 3px rgba(10,15,28,.9),0 10px 30px rgba(245,166,35,.4),inset 0 -6px 0 rgba(0,0,0,.18);
-  transition:transform var(--m-2) var(--e-std),filter var(--m-4)}
+  transition:transform var(--m-2) var(--e-std),filter var(--m-4) var(--e-std)}
 .beer-label{font-family:var(--display);font-size:var(--fs-34);line-height:1;letter-spacing:1px}
 .beer-sub{font-family:var(--body);font-weight:600;font-size:var(--fs-12);margin-top:3px;opacity:.85}
 .beer-btn:active{transform:scale(.94)}
@@ -228,7 +228,7 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 /* Review: the pulse is an opacity animation on a pseudo layer (compositor), not a box-shadow animation (repaint). */
 .pill.p1::after,.pill.p2::after{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;opacity:0}
 .pill.p1::after{box-shadow:0 0 8px 3px rgba(255,170,40,.85),0 0 16px 5px rgba(255,90,20,.45);animation:pillglow 1.2s var(--e-std) infinite}
-.pill.p2::after{box-shadow:0 0 0 2px var(--red),0 0 14px 5px rgba(255,255,255,.45);animation:pillglow .9s steps(1) infinite}
+.pill.p2::after{box-shadow:0 0 0 2px var(--red),0 0 14px 5px rgba(255,255,255,.45);animation:pillglow var(--m-8) steps(1) infinite}
 @keyframes pillglow{50%{opacity:1}}
 @keyframes pillfire{
   0%,100%{border-color:var(--fire);box-shadow:0 0 4px 1px rgba(255,122,26,.8),0 0 10px 2px rgba(255,59,59,.35),0 2px 8px #000a}
@@ -357,7 +357,7 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 .foam-splash{position:fixed;z-index:1400;width:0;height:0;pointer-events:none}
 .foam-ring{position:absolute;left:-58px;top:-58px;width:116px;height:116px;border-radius:50%;border:5px solid var(--foam);opacity:.9;animation:foamring var(--m-6) var(--e-in) forwards}
 .foam-drop{position:absolute;left:0;top:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--foam) 60%,#f3e3c0);
-  box-shadow:0 0 6px rgba(255,250,240,.6);transform:translate(-50%,-50%);animation:foamdrop .8s cubic-bezier(.2,.7,.3,1) forwards}
+  box-shadow:0 0 6px rgba(255,250,240,.6);transform:translate(-50%,-50%);animation:foamdrop var(--m-8) var(--e-std) forwards}
 @keyframes foamring{to{transform:scale(1.7);opacity:0;border-width:1px}}
 @keyframes foamdrop{
   0%{transform:translate(-50%,-50%) scale(.4);opacity:1}
@@ -366,8 +366,8 @@ input.code-inp{text-transform:none;letter-spacing:.35em;font-size:var(--fs-28);t
 
 /* ---------- v3: full-screen takeover (fit to the screen, entrance and exit motion: takeover.css) ---------- */
 .takeover{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;overflow:hidden;cursor:pointer;
-  animation:toin var(--tk-dim,80ms) var(--e-in);-webkit-user-select:none;user-select:none}
-.takeover.out{opacity:0;transition:opacity var(--m-4)}
+  animation:toin var(--tk-dim,var(--m-2)) var(--e-in);-webkit-user-select:none;user-select:none}
+.takeover.out{opacity:0;transition:opacity var(--m-4) var(--e-std)}
 .tk-hot{background:radial-gradient(ellipse at 50% 70%,rgba(255,122,26,.55),rgba(60,12,0,.92) 60%,rgba(10,6,4,.97))}
 .tk-medevac{background:radial-gradient(ellipse at center,rgba(179,18,27,.75),rgba(10,15,28,.97) 70%)}
 .to-core{position:relative;text-align:center;padding:0 20px}
@@ -464,7 +464,7 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px))
 .other-wrap{position:absolute;left:-74px;top:-42px;width:58px;height:58px;display:grid;place-items:center}
 .ocd-svg{position:absolute;inset:0;transform:rotate(-90deg);pointer-events:none}
 .ocd-track{fill:none;stroke:rgba(217,184,255,.18);stroke-width:3}
-.ocd-ring{fill:none;stroke:var(--other);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.ocd-ring{fill:none;stroke:var(--other);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s var(--e-lin)}
 .other-btn{width:50px;height:50px;border-radius:50%;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;
   background:radial-gradient(circle at 35% 30%,#4a2f66,#2a1840 70%);border:2px solid var(--other);color:#f3e8ff;box-shadow:0 0 0 2px rgba(10,15,28,.9),0 4px 14px rgba(160,100,220,.35)}
 .other-btn:active{transform:scale(.94)}
@@ -699,12 +699,12 @@ body.ghost-chip-on .locate-btn{top:calc(var(--sat) + 192px + var(--chaos-h,0px) 
 .rl-zoomed .rl-pin-lbl{display:inline}
 /* ---------- Polish 2026-10-17: ambient calm state (fx.js ambientCalm): thin edges only, opacity ≤ .15 ---------- */
 /* motion19b: the shrink moves by transform (scale from the screen edge), not width / height. Ratios = 3.5vw / 13vw (hot) or 14vw (med), 5vh / 34vh, 3vh / 12vh. */
-body .fx-amb.amb-calm .a-l,body .fx-amb.amb-calm .a-r{transform:scaleX(.27);transition:transform 10s linear;will-change:transform,opacity}
+body .fx-amb.amb-calm .a-l,body .fx-amb.amb-calm .a-r{transform:scaleX(.27);transition:transform 10s var(--e-lin);will-change:transform,opacity}
 body .fx-amb.amb-med.amb-calm .a-l,body .fx-amb.amb-med.amb-calm .a-r{transform:scaleX(.25)}
 body .fx-amb.amb-calm .a-l{transform-origin:0 50%}
 body .fx-amb.amb-calm .a-r{transform-origin:100% 50%}
-body .fx-amb.amb-calm .a-b{transform:scaleY(.15);transform-origin:50% 100%;transition:transform 10s linear;will-change:transform,opacity}
-body .fx-amb.amb-calm .a-t{transform:scaleY(.25);transform-origin:50% 0;transition:transform 10s linear;will-change:transform,opacity}
+body .fx-amb.amb-calm .a-b{transform:scaleY(.15);transform-origin:50% 100%;transition:transform 10s var(--e-lin);will-change:transform,opacity}
+body .fx-amb.amb-calm .a-t{transform:scaleY(.25);transform-origin:50% 0;transition:transform 10s var(--e-lin);will-change:transform,opacity}
 body .fx-amb.amb-calm .a-sweep,body .fx-amb.amb-calm b{display:none}
 /* ---------- Polish 2026-10-17: one composite marker per bar (app.js compositeIcon) ---------- */
 .leaflet-marker-icon.cm{background:transparent;border:0}
@@ -803,7 +803,7 @@ html{font-variant-numeric:tabular-nums}
 .my-streak b{font-family:var(--hud);font-size:var(--fs-l);line-height:1;color:var(--amber-2)}
 .my-streak .ms-tag{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .my-streak .ms-k{color:var(--muted)}
-.my-streak .ms-chev{flex:0 0 auto;color:var(--amber);font-size:var(--fs-xs);transition:transform var(--m-3),opacity var(--m-3)}
+.my-streak .ms-chev{flex:0 0 auto;color:var(--amber);font-size:var(--fs-xs);transition:transform var(--m-3) var(--e-std),opacity var(--m-3) var(--e-std)}
 .hud-left.open .my-streak .ms-chev{transform:rotate(180deg)}
 .hud-left.open .my-streak{border-color:var(--amber)}
 .sr-only{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -877,7 +877,7 @@ body:has(#sheet:not([hidden])) .tk-track,body:has(#sheet:not([hidden])) .chaos{a
   box-shadow:83px 6px 0 -1px var(--foam),70px -4px 0 -2px var(--foam);pointer-events:none;animation:drip 1.1s var(--e-out) forwards}
 @keyframes spill{0%{transform:translate(-50%,14px) scaleY(.3);opacity:0}30%{transform:translate(-50%,-6px) scaleY(1.1);opacity:1}70%{opacity:1}100%{transform:translate(-50%,0) scaleY(.9);opacity:0}}
 @keyframes drip{0%,25%{transform:translateY(-8px);opacity:0}40%{opacity:1}100%{transform:translateY(34px);opacity:0}}
-.beer-btn.ready-pop{animation:readypop var(--m-6) cubic-bezier(.2,1.6,.4,1)}
+.beer-btn.ready-pop{animation:readypop var(--m-6) var(--e-pop)}
 @keyframes readypop{40%{transform:scale(1.07)}}
 /* group card: actions on their own row; Lämna is a quiet text button at the bottom, behind a confirm */
 .g-acts{display:flex;gap:8px;margin-top:8px}
@@ -957,7 +957,7 @@ body.barsheet-open .toasts{top:calc(var(--sat) + 108px) !important;bottom:auto !
 .pp-fold>summary:focus-visible{outline:2px solid var(--amber-2);outline-offset:-2px}
 .pp-fold .pp-sec-h{flex:1 1 auto;min-width:0;margin:0;font:700 var(--fs-m)/1.2 var(--body);color:var(--text)}
 .pf-n{flex:0 0 auto;min-width:26px;padding:1px 6px;text-align:center;font:400 var(--fs-s)/1.4 var(--hud);color:var(--amber-2);background:rgba(245,166,35,.1);border:1px solid var(--line)}
-.pf-chev{flex:0 0 auto;width:20px;text-align:center;color:var(--amber);font-size:var(--fs-l);line-height:1;transition:transform var(--m-3),opacity var(--m-3)}
+.pf-chev{flex:0 0 auto;width:20px;text-align:center;color:var(--amber);font-size:var(--fs-l);line-height:1;transition:transform var(--m-3) var(--e-std),opacity var(--m-3) var(--e-std)}
 .pp-fold[open]>summary .pf-chev{transform:rotate(90deg)}
 .pf-body{padding:0 0 10px}
 .pf-body .pp-list{max-height:none}

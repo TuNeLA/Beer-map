@@ -283,9 +283,9 @@
           if (bd) { bd.style.transition = ""; bd.style.opacity = ""; }
         }, ms + 10);
       } else {
-        s.style.transition = reduced() ? "none" : "transform 220ms cubic-bezier(.2,.9,.3,1.2)";
+        s.style.transition = reduced() ? "none" : "transform var(--m-4) var(--e-spring)";
         s.style.transform = "";
-        if (bd) { bd.style.transition = "opacity 200ms linear"; bd.style.opacity = ""; }
+        if (bd) { bd.style.transition = "opacity var(--m-4) var(--e-lin)"; bd.style.opacity = ""; }
         setTimeout(function () { s.style.transition = ""; if (bd) bd.style.transition = ""; }, 260);
       }
     }

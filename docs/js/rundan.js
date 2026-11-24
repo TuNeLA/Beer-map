@@ -795,7 +795,7 @@
           if (reduced()) { reel.style.transform = "translateY(0)"; finish(); return; }
           reel.style.transition = "none"; reel.style.transform = "translateY(0)";
           void reel.offsetHeight;
-          reel.style.transition = "transform 3.2s cubic-bezier(.12,.6,.18,1)";
+          reel.style.transition = "transform 3.2s var(--e-in)";
           reel.style.transform = "translateY(" + (-(seq.length - 1) * cellH) + "px)";
           var fired = false;
           reel.addEventListener("transitionend", function te(ev) {

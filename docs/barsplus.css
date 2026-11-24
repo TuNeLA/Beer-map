@@ -72,7 +72,7 @@
 .bp-same{display:block;font-family:var(--hud);font-weight:400;font-size:var(--fs-12);letter-spacing:.06em;text-transform:none;line-height:1;margin-top:3px}
 .bp-tc:active{transform:scale(.96)}
 .bp-st-bar{height:3px;margin:8px -8px 0;background:rgba(255,255,255,.06)}
-.bp-st-bar span{display:block;height:100%;width:100%;background:var(--amber);transition:width var(--m-2) linear}
+.bp-st-bar span{display:block;height:100%;width:100%;background:var(--amber);transition:width var(--m-2) var(--e-lin)}
 @media (prefers-reduced-motion: reduce){.bp-strip{animation:none}.bp-st-bar span{transition:none}}
 
 /* ---------- "Vad dricker stan?" ---------- */

@@ -51,7 +51,7 @@
 .fc-flip.one,.fc-flip[hidden]{visibility:hidden}
 .fc-sp{width:56px}
 .fc-shutter{width:86px;height:86px;border-radius:50%;border:5px solid #0a0e16;cursor:pointer;
-  background:radial-gradient(circle at 35% 30%,#ff8a7a,#d7261e 60%,#8f1210);box-shadow:0 5px 0 #0a0e16,0 0 0 3px rgba(255,255,255,.18);transition:transform var(--m-2),opacity var(--m-2)}
+  background:radial-gradient(circle at 35% 30%,#ff8a7a,#d7261e 60%,#8f1210);box-shadow:0 5px 0 #0a0e16,0 0 0 3px rgba(255,255,255,.18);transition:transform var(--m-2) var(--e-std),opacity var(--m-2) var(--e-std)}
 .fc-shutter:active{transform:translateY(4px);box-shadow:0 1px 0 #0a0e16,0 0 0 3px rgba(255,255,255,.18)}
 .fc-shutter:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
 .fc-pend,.fc-note{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;min-height:20px;font-size:var(--fs-14);color:#cfd8e8;text-align:center}
@@ -70,7 +70,7 @@
 .fm-vf.fm-live .fm-vf-t,.fm-vf.fm-live .fm-vf-s:empty{display:none}
 .fm-vf.fm-live .fm-vf-s{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);padding:3px 10px;border-radius:var(--r-pill);background:rgba(0,0,0,.55);color:#fff;font-size:var(--fs-12);z-index:2}
 .fm-vf .fm-c{z-index:2}
-.fm-vf.winding .fm-video{filter:brightness(.25);transition:filter var(--m-3)}
+.fm-vf.winding .fm-video{filter:brightness(.25);transition:filter var(--m-3) var(--e-std)}
 .fm-flip{position:absolute;top:8px;right:8px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:var(--fs-18);display:none;align-items:center;justify-content:center;cursor:pointer}
 .fm-vf.fm-live .fm-flip:not([hidden]){display:flex}
 .fm-torch{position:absolute;top:8px;right:56px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:var(--foam);font-size:var(--fs-18);display:none;align-items:center;justify-content:center;cursor:pointer}

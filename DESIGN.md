@@ -62,7 +62,7 @@ and `avatar.css` excluded).
 
 ### Depth + motion
 
-`--ds-sh-1` (floating chrome), `--ds-sh-2` (popovers, bubbles). Motion 120 / 200 / 320 ms, transform + opacity only,
+`--ds-sh-1` (floating chrome), `--ds-sh-2` (popovers, bubbles). Motion: the tokens in "Motion (ds10)" below, transform + opacity only,
 none with reduced motion. No endless animations (skeletons breathe 3 times, then stop).
 
 ## Rules
@@ -203,11 +203,15 @@ Tokens (`docs/pnds.css` "ds10 motion"; Material 3 / Fluent 2 / Apple HIG):
 | `--m-4` | 200 ms | tab change, switch, fade, sheet close |
 | `--m-5` | 300 ms | sheet open, sub-screen |
 | `--m-6` | 450 ms | full screen (takeover, rank up) |
+| `--m-7` | 600 ms | a long moment (count fly start, hop, burst ring) (D1) |
+| `--m-8` | 900 ms | the longest one-shot: burst, bloom, reward pop; short loops (blink) (D1) |
 | `--e-std` | cubic-bezier(.2,0,0,1) | moves on screen |
 | `--e-in` | cubic-bezier(.05,.7,.1,1) | comes in |
 | `--e-out` | cubic-bezier(.3,0,.8,.15) | goes out |
+| `--e-io` | cubic-bezier(.42,0,.58,1) | loops that go and come back: pulse, bob, breath (= ease-in-out) (D1) |
 | `--e-spring` | linear(…) ~3 % overshoot | sheet, ÖL! |
-| `--e-lin` | linear | meters, countdown, ticker |
+| `--e-pop` | cubic-bezier(.2,1.4,.4,1) ~10 % overshoot | moments only: a reward or a pin that pops (D1) |
+| `--e-lin` | linear | meters, countdown, ticker, spin, belt |
 
 Rules:
 
@@ -220,6 +224,15 @@ Rules:
 7. Toast: in 200 ms, out 150 ms. People pins pop in once (300 ms spring). Bars are map layers.
 8. LIVE ticker: tap = stop / go, hold = pause. With reduced motion it is a still list you scroll.
 9. Reduced motion: nothing moves; colour and opacity changes stay ≤ 100 ms; no loops.
+10. ONE token set (D1, 24 Nov). Every duration under 1 s and every easing in `docs/` is a token: CSS files, CSS text in JS,
+    `el.style.transition = "…"`, and Web Animations (`SMOOTH.ms("--m-5", 300)`, `SMOOTH.ease("--e-in", fallback)`).
+    The old names (`--ds-t-*`, `--d-*`, `--ds-ease`, `--ease`, `--sm-*`, `--pn-dec`, `--pn-acc`, `--ease-spring`) are
+    aliases in pnds.css only; do not use them.
+11. 1 s and more is not a motion step: it is a loop period (pulse, glow, drift) or a scene (an easter egg, a countdown, the
+    LIVE belt), often in step with a JS timer. It keeps its own seconds; its easing is still a token. `steps()` is allowed
+    (a blink, not a curve). Map camera moves (flyTo, panBy) and the sheet drag spring (pnui, physics) are out of scope.
+12. Guard: `node tests/quality/motion.mjs . --list` lists every raw value; `tests/quality/check.mjs` fails on one.
+    A real-time case that must stay raw goes into `ALLOW` in motion.mjs with its reason.
 <!-- ds10 motion END -->
 
 <!-- ds11 banners START -->

@@ -15,7 +15,7 @@
       open sheet fades in, a lone "…" placeholder becomes a quiet skeleton row.
    5. PN.idle (lane timers): "is the map out of sight" (a full sheet or a hidden page); loops sleep then (see section 5).
       prefers-reduced-motion: no slide, no fade (instant), skeleton without pulse. Styles: smooth.css.
-   Public: window.SMOOTH = { afterPaint, sheetOut, sheetIn, inStop, closing, flip, stagger, prefetch, stats, idle }, PN.idle.
+   Public: window.SMOOTH = { afterPaint, sheetOut, sheetIn, inStop, closing, flip, stagger, prefetch, stats, idle, ms, ease }, PN.idle.
    Missing parts = no change. */
 (function () {
   "use strict";
@@ -479,5 +479,6 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", onReady); else onReady();
 
-  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, sheetIn: sheetIn, inStop: inStop, closing: function () { return !!outA; }, flip: flip, stagger: stagger, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE };
+  W.SMOOTH = { afterPaint: afterPaint, sheetOut: sheetOut, sheetIn: sheetIn, inStop: inStop, closing: function () { return !!outA; }, flip: flip, stagger: stagger, prefetch: prefetch, stats: stats, reduced: reduced, idle: IDLE,
+    ms: tokMs, ease: tokE };   // D1: motion tokens for Web Animations (SMOOTH.ms("--m-5", 300), SMOOTH.ease("--e-in", fallback))
 })();
