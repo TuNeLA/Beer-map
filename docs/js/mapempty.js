@@ -42,7 +42,7 @@
       ".pn-me-go svg{width:16px;height:16px;color:var(--ds-muted);flex:none}" +
       ".pn-me-go[hidden]{display:none}" +
       ".pn-me-x:focus-visible,.pn-me-go:focus-visible{outline:2px solid var(--ds-amber-t);outline-offset:2px}" +
-      "@media (prefers-reduced-motion:no-preference){.pn-me-card{animation:pnMeIn var(--m-2,200ms) ease-out}}" +
+      "@media (prefers-reduced-motion:no-preference){.pn-me-card{animation:pnMeIn var(--m-2,200ms) var(--e-std)}}" +
       "@keyframes pnMeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}";
     document.head.appendChild(st);
   }

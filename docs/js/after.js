@@ -983,7 +983,7 @@
   function L_bounds(a, b, c, d) { return window.L && window.L.latLngBounds ? window.L.latLngBounds([a, b], [c, d]) : null; }
   function skelRows(list) {
     if (!document.getElementById("af-skel-css")) { var st = document.createElement("style"); st.id = "af-skel-css";
-      st.textContent = ".af-skel{height:52px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.10),rgba(255,255,255,.04));background-size:200% 100%;border:1px solid var(--line-soft,#333)}@media (prefers-reduced-motion:no-preference){.af-skel{animation:afSk 1.2s linear infinite}}@keyframes afSk{to{background-position:-200% 0}}";
+      st.textContent = ".af-skel{height:52px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.10),rgba(255,255,255,.04));background-size:200% 100%;border:1px solid var(--line-soft,#333)}@media (prefers-reduced-motion:no-preference){.af-skel{animation:afSk 1.2s var(--e-lin) infinite}}@keyframes afSk{to{background-position:-200% 0}}";
       document.head.appendChild(st); }
     for (var i = 0; i < 4; i++) list.appendChild(A.el("li", { class: "af-skel", "aria-hidden": "true" }));
   }

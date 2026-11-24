@@ -28,7 +28,7 @@ body.mn-rail-lbl #pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--
 .pm-back{position:absolute;left:-190px;top:-145px;width:380px;height:330px;border-radius:50%;pointer-events:none;
   background:radial-gradient(closest-side,var(--pm-back) 0,var(--pm-back) 38%,var(--pm-back-2) 62%,transparent 100%);animation:pmFade var(--m-3,150ms) var(--e-in,ease-out) both}
 .pm-calm .pm-back{left:-150px;top:-112px;width:300px;height:250px}
-.pm-burst.pm-fly .pm-back{animation:none;opacity:0;transition:opacity var(--m-4,200ms)}
+.pm-burst.pm-fly .pm-back{animation:none;opacity:0;transition:opacity var(--m-4,200ms) var(--e-std)}
 /* uifix4 D2 (motion audit 6, owner list): "ikväll" was a loose 22 px ALL-CAPS word that sat on top of the map's pin labels.
    Now it is a solid chip (the map float colour, no see-through) right under the number: it never mixes with a pin label,
    and it is sentence case (DESIGN ds13). */
@@ -41,7 +41,7 @@ body.mn-rail-lbl #pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--
   border:6px solid rgba(255,190,70,.9);box-shadow:0 0 30px rgba(255,150,30,.6),inset 0 0 20px rgba(255,150,30,.5);
   animation:pmRing var(--m-6,450ms) var(--m-1,50ms) var(--e-out,ease-out) both}   /* uifix4 D2: one ring (was 2, 700 + 800 ms) */
 .pm-p{position:absolute;left:0;top:0;font-style:normal;font-size:calc(30px * var(--s,1));line-height:1;margin:-.5em 0 0 -.5em;
-  animation:pmFly .8s var(--t,0ms) cubic-bezier(.15,.8,.3,1) both}
+  animation:pmFly var(--m-8) var(--t,0ms) var(--e-in) both}
 /* no filter:blur in the slam (motion audit 6: it repainted a 150 px stroked text every frame); in from 2.2x, not 3.2x (2 digits stay on screen) */
 /* uifix4 D2: in from 1.6x and at most 6 degrees (motion audit 6), 300 ms */
 @keyframes pmSlam{0%{transform:scale(1.6) rotate(-6deg);opacity:0}55%{transform:scale(.94) rotate(2deg);opacity:1}
@@ -60,20 +60,20 @@ body.mn-rail-lbl #pn-mine{padding:0 !important;top:calc(var(--pn-r2, calc(var(--
 /* the whole number flies into the 🍺 button */
 .pm-burst.pm-fly .pm-num{transition:transform var(--m-5,300ms) var(--e-out,ease-in),opacity var(--m-5,300ms) var(--e-out,ease-in);
   transform:translate(calc(-50% + var(--fx,0px)),calc(-50% + var(--fy,0px))) scale(.16);opacity:.35}
-.pm-burst.pm-fly .pm-sub,.pm-burst.pm-fly .pm-ring,.pm-burst.pm-fly .pm-edge{animation:none !important;opacity:0;transition:opacity var(--m-3,150ms)}
+.pm-burst.pm-fly .pm-sub,.pm-burst.pm-fly .pm-ring,.pm-burst.pm-fly .pm-edge{animation:none !important;opacity:0;transition:opacity var(--m-3,150ms) var(--e-std)}
 /* calm (8+): number only, smaller, no ring, no burst */
 .pm-calm .pm-ring{display:none}
 .pm-calm .pm-num>span{font-size:110px}
 .pm-calm .pm-sub{top:60px}
 /* reduced motion: fade in, fade out, no fly */
-.pm-rm .pm-new,.pm-rm .pm-sub{animation:pmFade var(--m-2,100ms) both}
+.pm-rm .pm-new,.pm-rm .pm-sub{animation:pmFade var(--m-2,100ms) var(--e-std) both}
 .pm-rm .pm-old{display:none}
-.pm-rm .pm-back{animation:pmFade var(--m-2,100ms) both}
+.pm-rm .pm-back{animation:pmFade var(--m-2,100ms) var(--e-std) both}
 /* the level emoji (FX.levelPop at 3 / 7 / 13 …, styles.css .fx-pop) lands on the same spot as the number: while the burst
    shows it sits above the number, so the count stays readable (the number is the answer to the tap now) */
 body:has(> .pm-burst) .fx-pop .fp-emo{top:calc(42% - 122px)}
 body:has(> .pm-burst.pm-calm) .fx-pop .fp-emo{top:calc(42% - 96px)}
-.pm-burst.pm-out{opacity:0;transition:opacity var(--m-4,200ms)}
+.pm-burst.pm-out{opacity:0;transition:opacity var(--m-4,200ms) var(--e-std)}
 @keyframes pmFade{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){#pn-mine.pm-bump{animation:none}}
 /* the mug and the burst bits (CSS, not JS strings: quality rule "no new emoji in docs/js") */

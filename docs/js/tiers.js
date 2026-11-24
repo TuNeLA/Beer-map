@@ -25,11 +25,11 @@
   var CSS =
     // dot: icon scaled to ~19 px, everything else faded out (visibility so it is not tappable / not read by screen readers)
     // map B9: the icon keeps its size in both tiers (only pill, badges and name fade); no transform transition on markers
-    ".cm .bar-ico{transition:opacity .16s var(--e-std)}" +
+    ".cm .bar-ico{transition:opacity var(--m-3) var(--e-std)}" +
     ".cm.cm-dot.cm-empty .bar-ico{opacity:.82}" +
-    ".cm .pill,.cm .cm-rally,.cm .cm-ci,.cm .cm-b,.cm .cm-lbl,.cm .bi-tag,.cm .bi-ev,.cm .bi-flag,.cm .bi-q{transition:opacity .16s var(--e-std),visibility 0s linear 0s}" +
+    ".cm .pill,.cm .cm-rally,.cm .cm-ci,.cm .cm-b,.cm .cm-lbl,.cm .bi-tag,.cm .bi-ev,.cm .bi-flag,.cm .bi-q{transition:opacity var(--m-3) var(--e-std),visibility 0s linear 0s}" +
     ".cm.cm-dot .pill,.cm.cm-dot .cm-rally,.cm.cm-dot .cm-ci,.cm.cm-dot .cm-b,.cm.cm-dot .cm-lbl,.cm.cm-dot .bi-tag,.cm.cm-dot .bi-ev,.cm.cm-dot .bi-flag,.cm.cm-dot .bi-q" +
-      "{opacity:0;visibility:hidden;transition:opacity .16s var(--e-std),visibility 0s linear .16s}" +
+      "{opacity:0;visibility:hidden;transition:opacity var(--m-3) var(--e-std),visibility 0s linear .16s}" +
     ".cm.cm-dot .cm-rally{animation:none}" +
     // full: the name label shows at every zoom (collision pass in app.js placeLabels still hides one that would touch)
     ".cm.cm-full .cm-lbl,.olnu-zlo .cm.cm-full .cm-lbl{display:block}" +
@@ -41,7 +41,7 @@
     ".olnu-zlo .cm.cm-dot.cm-empty{opacity:0;pointer-events:none}" +
     // town view (z ≤ 12): only heat + the top pills
     ".olnu-zxlo .cm.cm-dot{opacity:0;pointer-events:none}" +
-    ".leaflet-marker-icon.cm{transition:opacity .16s var(--e-std)}" +
+    ".leaflet-marker-icon.cm{transition:opacity var(--m-3) var(--e-std)}" +
     // zoom ≥ 16 (.tz-hi): a clear centred disc (full 32 px, dot 28 px) and every badge in a fixed slot around it:
     // 👑 top-left · 🪖 top-right · 🎤/📅 event top-left on the disc · price tag top-right · 🚪 left · 🏰 right · pill below · name under it
     ".tz-hi .cm .bar-ico{width:32px;height:32px}" +

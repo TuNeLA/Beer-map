@@ -4,7 +4,7 @@
 //     (d-beer, I-114: "Ångra" is the ÖL! button itself for 10 s, no floating ↩ button over Annat any more)
 //   2 fit: every name, line and gag of the 5 / 10 / 15 pools fits at 360 / 390 / 430 px (title max 2 lines, no cut word)
 //   3 tap guard: a close tap in the first 400 ms does nothing (motion19b: was 600)
-//   4 entrance (motion19b): 80 ms dim first, then card 80 / emoji 140 / title 200 / line / buttons / hint 300-420 ms, transform + opacity only; reduced motion = 150 ms fade
+//   4 entrance (motion19b; D1: dim = --m-2): 100 ms dim first, then card 100 / emoji 160 / title 220 / line / buttons / hint 320-440 ms, transform + opacity only; reduced motion = 150 ms fade
 //   5 store builds (OLNU_STORE): no foam, no squash, no card, no level pop, no edge glow; the plain toast and the count stay
 // Mocked Supabase. Usage: node takeover-pw.js <port>     (TK_SHOTS=<dir> also saves takeover-5/10/15.png at 390x844)
 const { ctxFor, boot, wait } = require("./d2-helpers.js");
@@ -169,8 +169,9 @@ const fitAll = async () => {
       return { out, props: Object.keys(props).sort(), root: root && root.effect.getTiming().duration };
     });
     const d = (k) => (mo.out[k] ? Math.round(mo.out[k].delay) : -1), du = (k) => (mo.out[k] ? mo.out[k].dur : -1);
-    ok("4 stagger: dim 80 ms first, card 80, emoji 140, title 200, line 300, buttons 360, hint 420", d(".to-core") === 80 && d(".to-icon") === 140 && d(".to-title") === 200 && d(".to-sub") === 300 && d(".to-extra") === 360 && d(".to-hint") === 420, mo.out);
-    ok("4 times: card / emoji / title 300 ms, line / buttons / hint 200 ms, backdrop dim 80 ms", du(".to-core") === 300 && du(".to-icon") === 300 && du(".to-title") === 300 && du(".to-sub") === 200 && du(".to-extra") === 200 && du(".to-hint") === 200 && mo.root === 80, mo);
+    // D1 (motiontok, 24 Nov): the dim is the token --m-2 (100 ms, was a raw 80 ms); every step after it moves 20 ms later
+    ok("4 stagger: dim 100 ms first, card 100, emoji 160, title 220, line 320, buttons 380, hint 440", d(".to-core") === 100 && d(".to-icon") === 160 && d(".to-title") === 220 && d(".to-sub") === 320 && d(".to-extra") === 380 && d(".to-hint") === 440, mo.out);
+    ok("4 times: card / emoji / title 300 ms, line / buttons / hint 200 ms, backdrop dim 100 ms (D1 token --m-2)", du(".to-core") === 300 && du(".to-icon") === 300 && du(".to-title") === 300 && du(".to-sub") === 200 && du(".to-extra") === 200 && du(".to-hint") === 200 && mo.root === 100, mo);
     ok("4 only transform + opacity move", mo.props.length > 0 && mo.props.every((p) => p === "transform" || p === "opacity"), mo.props);
     ok("4 no 2.4x title slam, no spinning emoji", !!mo.out[".to-title"] && /scale\(1\.25\)/.test(mo.out[".to-title"].from) && !!mo.out[".to-icon"] && /scale\(0?\.6\)/.test(mo.out[".to-icon"].from) && !/rotate/.test(mo.out[".to-icon"].from), mo.out);
     await wait(page, 750);

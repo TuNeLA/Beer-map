@@ -17,7 +17,7 @@ body:has(> .takeover.fx-tk) .pn-beerok{display:none}
 
 /* 2 · entrance: backdrop dim 80 ms (toin, styles.css), then, then the card, the emoji, the title, the line, the buttons, the hint.
    "backwards" = hidden while it waits, and no fill after, so the exit below can move the card. */
-.takeover.fx-tk{--tk-dim:80ms}   /* motion19b: the dim comes first (80 ms), then the card settles with the spring */
+.takeover.fx-tk{--tk-dim:var(--m-2)}   /* motion19b: the dim comes first (D1: --m-2 = 100 ms, was 80), then the card settles with the spring */
 .takeover.fx-tk .to-core{animation:tk-card var(--m-5) var(--e-spring) var(--tk-dim) backwards}
 .takeover.fx-tk .to-icon{animation:tk-icon var(--m-5) var(--e-spring) calc(var(--tk-dim) + 60ms) backwards}
 .takeover.fx-tk .to-title{animation:tk-title var(--m-5) var(--e-in) calc(var(--tk-dim) + 120ms) backwards}
@@ -36,7 +36,7 @@ body:has(> .takeover.fx-tk) .pn-beerok{display:none}
 .takeover.fx-tk.fx-tk-out .to-core{transform:scale(.98);transition:transform var(--m-4) var(--e-out)}
 
 /* 4 · reduced motion (fx.js sets .still): one plain 150 ms fade in and out, nothing else moves */
-.takeover.fx-tk.still{animation:tk-fade 150ms linear !important}
+.takeover.fx-tk.still{animation:tk-fade var(--m-3) var(--e-lin) !important}
 .takeover.fx-tk.still .to-core,.takeover.fx-tk.still .to-core *{animation:none !important}
-.takeover.fx-tk.still.fx-tk-out{transition:opacity 150ms linear !important}
+.takeover.fx-tk.still.fx-tk-out{transition:opacity var(--m-3) var(--e-lin) !important}
 .takeover.fx-tk.still.fx-tk-out .to-core{transform:none;transition:none}

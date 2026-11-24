@@ -1852,7 +1852,7 @@
       paintPrev(); paintPane(true);
       lastDice = pickLine(DICE_SV, lastDice);
       A.toast(sv() ? "🎲 " + DICE_SV[lastDice] : "🎲 New look!", { ms: 2200, id: "ave-dice" });
-      try { prev.animate && !reduced() && prev.animate([{ transform: "rotate(-8deg) scale(.94)" }, { transform: "none" }], { duration: 260, easing: "cubic-bezier(.05,.7,.1,1)" }); } catch (e) {}
+      try { prev.animate && !reduced() && prev.animate([{ transform: "rotate(-8deg) scale(.94)" }, { transform: "none" }], { duration: window.SMOOTH ? SMOOTH.ms("--m-5", 300) : 300, easing: window.SMOOTH ? SMOOTH.ease("--e-in", "ease-out") : "ease-out" }); } catch (e) {}
     });
     save.addEventListener("click", function () {
       if (save.disabled) return;

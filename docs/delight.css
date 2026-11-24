@@ -13,7 +13,7 @@
 .dl-svgspr svg{width:100%;height:auto;display:block}
 
 /* cross: right → left across the band */
-.dl-move{position:absolute;left:0;top:0;will-change:transform;animation:dlCross var(--dur,6s) linear forwards}
+.dl-move{position:absolute;left:0;top:0;will-change:transform;animation:dlCross var(--dur,6s) var(--e-lin) forwards}
 @keyframes dlCross{from{transform:translateX(100vw)}to{transform:translateX(calc(-100% - 40px))}}
 .dl-move.dl-diag{animation-name:dlDiag}
 @keyframes dlDiag{from{transform:translate(100vw,-30px)}to{transform:translate(calc(-100% - 40px),130px)}}
@@ -51,7 +51,7 @@
 .dl-saucer{position:relative;z-index:2;animation:dlHover 1s var(--e-std) infinite}
 @keyframes dlHover{50%{transform:translateY(-5px)}}
 .dl-beam{position:absolute;left:-18px;top:46px;width:100px;height:170px;z-index:1;opacity:0;transform-origin:50% 0;
-  background:linear-gradient(180deg,rgba(127,255,127,.65),rgba(127,255,127,.05));clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);animation:dlBeam 6s linear forwards}
+  background:linear-gradient(180deg,rgba(127,255,127,.65),rgba(127,255,127,.05));clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);animation:dlBeam 6s var(--e-lin) forwards}
 @keyframes dlBeam{0%,26%{opacity:0;transform:scaleY(.2)}32%,70%{opacity:1;transform:scaleY(1)}76%,100%{opacity:0;transform:scaleY(.2)}}
 .dl-lift{position:absolute;left:18px;top:180px;font-size:var(--fs-28);z-index:1;opacity:0;animation:dlLift 6s var(--e-out) forwards}
 @keyframes dlLift{0%,30%{opacity:0;transform:translateY(0) rotate(0)}36%{opacity:1}70%{opacity:1;transform:translateY(-130px) rotate(200deg)}74%,100%{opacity:0;transform:translateY(-140px) rotate(220deg)}}
@@ -74,7 +74,7 @@
 .dl-ripple{position:absolute;left:-40px;top:20px;width:80px;height:22px;border:2px solid rgba(160,210,255,.7);border-radius:50%;opacity:0;animation:dlRip 1.4s var(--e-in) var(--m-4) 2}
 .dl-ripple.dl-r2{animation-delay:3.4s}
 @keyframes dlRip{0%{transform:scale(.3);opacity:.9}100%{transform:scale(1.8);opacity:0}}
-.dl-arc{position:absolute;left:-27px;top:0;animation:dlArc 2.6s cubic-bezier(.3,0,.7,1) var(--m-4) 2 both}
+.dl-arc{position:absolute;left:-27px;top:0;animation:dlArc 2.6s var(--e-io) var(--m-4) 2 both}
 @keyframes dlArc{0%{transform:translate(-80px,20px) rotate(-60deg);opacity:0}10%{opacity:1}50%{transform:translate(0,-130px) rotate(0)}
   90%{opacity:1}100%{transform:translate(80px,20px) rotate(70deg);opacity:0}}
 .dl-water{position:absolute;left:-60px;top:-110px;width:120px;height:130px;overflow:hidden}
@@ -90,7 +90,7 @@
 .dl-k-spoke .dl-spr{opacity:.88}
 
 /* snow */
-.dl-flake{position:absolute;top:-40px;opacity:0;animation:dlFall var(--d,4.5s) linear both;filter:none}
+.dl-flake{position:absolute;top:-40px;opacity:0;animation:dlFall var(--d,4.5s) var(--e-lin) both;filter:none}
 @keyframes dlFall{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:.95}90%{opacity:.9}100%{transform:translate(var(--sx,0),100vh) rotate(200deg);opacity:0}}
 
 /* mosquitoes */
@@ -109,12 +109,12 @@
 @keyframes dlAurW{from{transform:translateX(-12%) skewX(-12deg) scaleY(.8)}to{transform:translateX(12%) skewX(10deg) scaleY(1.15)}}
 
 /* thunder: two soft flashes 3 s apart (≤ 2 Hz, low contrast) */
-.dl-flash{position:absolute;inset:0;background:#dfe9ff;opacity:0;animation:dlFlash 6s linear forwards}
+.dl-flash{position:absolute;inset:0;background:#dfe9ff;opacity:0;animation:dlFlash 6s var(--e-lin) forwards}
 @keyframes dlFlash{0%,18%{opacity:0}20%{opacity:.2}24%{opacity:0}70%{opacity:0}72%{opacity:.16}76%,100%{opacity:0}}
-.dl-cloud{position:absolute;left:0;animation:dlCross 6s linear forwards}
+.dl-cloud{position:absolute;left:0;animation:dlCross 6s var(--e-lin) forwards}
 
 /* orbit (kebab) */
-.dl-orbit{position:absolute;left:0;top:0;width:0;height:0;animation:dlOrbit 6s linear forwards}
+.dl-orbit{position:absolute;left:0;top:0;width:0;height:0;animation:dlOrbit 6s var(--e-lin) forwards}
 @keyframes dlOrbit{0%{transform:rotate(0);opacity:0}8%{opacity:1}92%{opacity:1}100%{transform:rotate(720deg);opacity:0}}
 .dl-arm{position:absolute;left:0;top:0;transform:translate(96px,-25px)}
 .dl-orbit-ring{position:absolute;left:-110px;top:-110px;width:220px;height:220px;border-radius:50%;border:1px dashed rgba(245,166,35,.45);opacity:0;animation:dlRing 6s var(--e-std) forwards}
@@ -161,7 +161,7 @@
 .dl-bl:last-child{opacity:1}
 .dl-bl b{font-weight:400;color:var(--green,#3ddc84);visibility:hidden}
 .dl-bl.dl-ok b{visibility:visible}
-.dl-bl:last-child:not(.dl-ok):not(.dl-done)::after{content:"▌";animation:blink .8s steps(2) infinite;color:var(--green,#3ddc84)}
+.dl-bl:last-child:not(.dl-ok):not(.dl-done)::after{content:"▌";animation:blink var(--m-8) steps(2) infinite;color:var(--green,#3ddc84)}
 .dl-done{color:var(--amber-2,#ffc24d)}
 
 /* ---------- empty state (centre of the map, no pointer events) ---------- */
@@ -172,7 +172,7 @@
 .dl-empty-h{font:400 var(--fs-12)/1.3 var(--hud,monospace);letter-spacing:.16em;color:var(--muted,#9aa3a0);margin-bottom:5px}
 .dl-empty-t{font:600 var(--fs-16)/1.35 var(--body,system-ui);color:var(--text,#ece6d6)}
 .dl-radar{position:absolute;left:50%;top:-26px;width:44px;height:44px;margin-left:-22px;border-radius:50%;border:1px solid rgba(61,220,132,.5);background:rgba(10,15,28,.9);overflow:hidden}
-.dl-radar i{position:absolute;left:50%;top:50%;width:50%;height:50%;transform-origin:0 0;background:linear-gradient(45deg,rgba(61,220,132,.6),transparent 70%);animation:dlSweep 2s linear infinite}
+.dl-radar i{position:absolute;left:50%;top:50%;width:50%;height:50%;transform-origin:0 0;background:linear-gradient(45deg,rgba(61,220,132,.6),transparent 70%);animation:dlSweep 2s var(--e-lin) infinite}
 @keyframes dlSweep{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
 /* ---------- Ölguden (logo ×7) ---------- */
@@ -182,7 +182,7 @@
 .dl-gud-glow{position:absolute;left:50%;top:40%;width:320px;height:320px;margin:-160px 0 0 -160px;border-radius:50%;
   background:radial-gradient(circle,rgba(255,224,138,.35),rgba(255,224,138,0) 65%);animation:dlGlow 2.4s var(--e-std) infinite}
 @keyframes dlGlow{50%{transform:scale(1.12);opacity:.7}}
-.dl-gud-drop{position:relative;width:min(46vw,190px);animation:dlDrop .9s cubic-bezier(.3,1.5,.5,1) both}
+.dl-gud-drop{position:relative;width:min(46vw,190px);animation:dlDrop var(--m-8) var(--e-pop) both}
 @keyframes dlDrop{0%{transform:translateY(-75vh) rotate(-12deg)}70%{transform:translateY(8px) rotate(3deg)}100%{transform:translateY(0) rotate(0)}}
 .dl-gud-svg{width:100%;height:auto;display:block;overflow:visible}
 .dl-gud-eyes{transform-origin:62px 66px;animation:dlBlink 3.2s var(--e-std) 1s infinite}
@@ -205,7 +205,7 @@
 @keyframes dlWig{25%{transform:rotate(-6deg) scale(1.06)}75%{transform:rotate(5deg)}}
 
 /* long-press ÖL! during cooldown: a slow charge ring */
-.beer-btn.dl-press{animation:dlCharge 3s linear forwards}
+.beer-btn.dl-press{animation:dlCharge 3s var(--e-lin) forwards}
 @keyframes dlCharge{0%{scale:1}90%{scale:.94}100%{scale:1.02}}
 
 /* ---------- shake foam ---------- */
@@ -214,7 +214,7 @@
   transform:translateY(102%);animation:dlSea 2.8s var(--e-std) forwards}
 @keyframes dlSea{0%{transform:translateY(102%)}35%,62%{transform:translateY(38%)}100%{transform:translateY(102%)}}
 .dl-foam-top{position:absolute;left:0;right:0;top:-26px;height:40px;
-  background:radial-gradient(circle at 20px 26px,var(--foam) 18px,transparent 19px) 0 0/40px 40px repeat-x;animation:dlFoamW .7s linear infinite}
+  background:radial-gradient(circle at 20px 26px,var(--foam) 18px,transparent 19px) 0 0/40px 40px repeat-x;animation:dlFoamW var(--m-7) var(--e-lin) infinite}
 @keyframes dlFoamW{to{transform:translateX(-40px)}}
 .dl-fb{position:absolute;bottom:-20px;width:var(--s,12px);height:var(--s,12px);border-radius:50%;border:2px solid rgba(255,250,240,.9);opacity:0;animation:dlFb 1.8s var(--e-in) forwards}
 @keyframes dlFb{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-60vh);opacity:0}}
@@ -237,14 +237,14 @@
 @keyframes dlCt{0%,30%{opacity:0;transform:translate(-50%,6px)}45%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
 
 /* ---------- sunrise at 05:00 ---------- */
-.dl-sunrise{position:fixed;inset:0;z-index:985;pointer-events:none;overflow:hidden;transition:opacity .9s var(--e-std)}
+.dl-sunrise{position:fixed;inset:0;z-index:985;pointer-events:none;overflow:hidden;transition:opacity var(--m-8) var(--e-std)}
 .dl-sunrise.dl-out{opacity:0}
 .dl-sky{position:absolute;inset:0;background:linear-gradient(0deg,rgba(255,138,61,.5),rgba(255,94,98,.22) 35%,rgba(10,15,28,0) 70%);opacity:0;animation:dlSky 5.6s var(--e-in) forwards}
 @keyframes dlSky{to{opacity:1}}
 .dl-sun{position:absolute;left:50%;bottom:-120px;width:180px;height:180px;margin-left:-90px;border-radius:50%;
   background:radial-gradient(circle,#fff3c4 0 38%,#ffb74d 55%,rgba(255,138,61,0) 72%);animation:dlSun 5.6s var(--e-in) forwards}
 @keyframes dlSun{from{transform:translateY(40px)}to{transform:translateY(-38vh)}}
-.dl-rays{position:absolute;inset:-60px;border-radius:50%;background:repeating-conic-gradient(rgba(255,224,138,.22) 0 8deg,transparent 8deg 22deg);animation:dlSweep 14s linear infinite}
+.dl-rays{position:absolute;inset:-60px;border-radius:50%;background:repeating-conic-gradient(rgba(255,224,138,.22) 0 8deg,transparent 8deg 22deg);animation:dlSweep 14s var(--e-lin) infinite}
 #map.dl-lanterns .pill{animation:dlLantern 4.6s var(--e-out) forwards}
 @keyframes dlLantern{0%{translate:0 0;opacity:1}30%{translate:4px -30px}60%{translate:-4px -90px;opacity:.85}100%{translate:0 -220px;opacity:0}}
 
@@ -270,7 +270,7 @@
 @keyframes dlShine{0%,60%{opacity:0;transform:translateX(-30%)}75%{opacity:1}100%{opacity:0;transform:translateX(30%)}}
 .dl-caps{padding-bottom:6px}
 .dl-reveal{display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 14px;margin-bottom:10px;border-bottom:1px solid var(--line-soft,rgba(255,255,255,.1))}
-.dl-reveal.dl-anim .dl-capx{animation:dlPop .9s cubic-bezier(.3,1.6,.5,1) both}
+.dl-reveal.dl-anim .dl-capx{animation:dlPop var(--m-8) var(--e-pop) both}
 @keyframes dlPop{0%{transform:scale(.2) rotate(-200deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
 .dl-rv-n{font:400 var(--fs-22)/1.2 var(--display,Impact);color:var(--amber-2,#ffc24d);margin-top:12px}
 .dl-rv-r{font:400 var(--fs-12)/1.4 var(--hud,monospace);letter-spacing:.16em;text-transform:none;color:var(--muted,#9aa3a0)}
