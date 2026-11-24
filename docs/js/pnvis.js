@@ -198,7 +198,7 @@
     var top = document.createElement("div"); top.className = "mn-vis-set";
     var paintTop = function () {
       probe();
-      var m = mode(), opts = srv === false ? ["alla", "spoke"] : ["alla", "vanner", "spoke"];
+      var m = mode(), opts = srv === false ? ["alla", "spoke"] : ["alla", "vanner", "spoke"];   // i18n: keys
       top.innerHTML = '<span class="mn-vis-set-l">' + ic("eye", "pi-lead") + "<span>" + esc(T("vis.head")) + "</span></span>";
       var sg = seg(m, opts); sg.__fill = function () { setTimeout(paintTop, 0); }; top.appendChild(sg);
       var p = document.createElement("small"); p.className = "pn-vis-note mn-vis-set-n"; p.textContent = T(TXT[m][2]); top.appendChild(p);

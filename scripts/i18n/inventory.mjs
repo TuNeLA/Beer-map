@@ -45,13 +45,15 @@ export function scanFile(rel) { return scanSource(fs.readFileSync(path.join(ROOT
 export function scanSource(src) {
   let ast; try { ast = acorn.parse(src, { ecmaVersion: 2022, sourceType: "script", locations: true, allowHashBang: true }); } catch (e) { return [{ line: 0, text: "PARSE ERROR " + e.message, covered: false, why: "parse" }]; }
   const out = [], stack = [];
+  // a line that ends with the comment "i18n: keys" holds data keys (mode names like "alla"/"spoke"), not text (coordinator 24 Nov)
+  const keyLines = new Set(src.split("\n").map((l, i) => (/\/\/\s*i18n: keys\b/.test(l) ? i + 1 : 0)).filter(Boolean));
   // twin lists: WORDS = [...Swedish] next to WORDS_EN = [...English] (the code picks one by language)
   const twins = new Set([...src.matchAll(/\b([A-Za-z][\w$]*?)_?EN\s*=/g)].map((m) => m[1]).filter((n) => new RegExp("\\b" + n + "\\s*=").test(src)));
   const visit = (n, parent, key) => {
     if (!n || typeof n.type !== "string") return;
     stack.push({ n, key });
     const s = n.type === "Literal" ? (typeof n.value === "string" ? n.value : null) : n.type === "TemplateElement" ? (n.value.cooked || "") : null;
-    if (s != null && !(parent && parent.type === "Property" && key === "key")) {
+    if (s != null && !(parent && parent.type === "Property" && key === "key") && !keyLines.has(n.loc.start.line)) {
       const w = svWords(s.replace(CSS_TOKEN, " ").replace(MARKUP_ATTR, " "));   // var(--x) etc. are CSS, not the Swedish word "var"
       if (w.length && !/^[a-z0-9_.:-]*[-_.:][a-z0-9_.:-]*$/.test(s) && !isCss(s)) { const why = cover(stack); out.push({ line: n.loc.start.line, text: s.slice(0, 120), covered: !!why && why !== "skip", why: why || "", skip: why === "skip" }); }
     }
