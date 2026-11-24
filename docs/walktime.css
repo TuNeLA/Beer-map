@@ -1,0 +1,7 @@
+/* PintsNow — WALKTIME (lane walktime, PLAN E6): "ca 8 min promenad" at the end of the bar card's meta line. See docs/js/walktime.js.
+   One element: span.pn-wt (walk icon + text). Its own "·" separator is here, so a hidden row leaves no dangling dot. Tokens only. */
+.pn-wt{white-space:nowrap}
+.pn-wt[hidden]{display:none !important}
+.pn-wt::before{content:"\00B7";margin:0 var(--sp-1)}
+.pn-wt.pn-wt-1::before{content:none}
+.pn-wt .pi,.pn-wt svg{width:1.1em;height:1.1em;vertical-align:-0.2em;margin-right:var(--sp-0)}

@@ -1,6 +1,6 @@
 // motion19b-pw.js — lane motion19b (owner GO 20 Nov 2026, audit motion19.md fixes 5, 7, 9, 10, 12-15 + the end-of-night card).
 //   5  tap areas: hot-streak pills (p1/p2) take taps in a 44 px box; toast button is 44 px; the bottom dock hit boxes do not overlap
-//   7  takeover: 80 ms dim, then the card; a 2nd tap in the first 400 ms is ignored; exit 200 ms; store = no card
+//   7  takeover: 100 ms dim (--m-2, D1), then the card; a 2nd tap in the first 400 ms is ignored; exit 200 ms; store = no card
 //   6  "Hemma" card (nightlog.js homeCard): one card, 450 ms in, no confetti, "Godnatt" closes, "Min kväll" opens the log, store = no count
 //   9  tab marker slides with --e-spring; 10 switch knob + ambient shrink use transform (not left / width / height); badge settles once
 // Mocked Supabase. Usage: node motion19b-pw.js <port>
@@ -83,7 +83,8 @@ async function open(browser, o = {}) {
       await W(300); r.gone = !document.body.contains(tk);
       return r;
     });
-    ok("7 backdrop dim 80 ms, card starts after it", t7.dim === 80 && t7.coreDelay === 80, t7);
+    // D1 (motiontok, 24 Nov): the dim is the token --m-2 (100 ms, was a raw 80 ms)
+    ok("7 backdrop dim 100 ms (--m-2), card starts after it", t7.dim === 100 && t7.coreDelay === 100, t7);
     ok("7 a tap at ~230 ms is ignored, a tap after 400 ms closes it", t7.at230 === true && t7.out === true, t7);
     ok("7 exit is 200 ms and the card is removed", /0\.2s/.test(t7.exit) && t7.gone, t7);
     await ctx.close();

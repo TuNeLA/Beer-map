@@ -19,21 +19,21 @@ timing-2   ^(mapfix|d3smooth|alive|alive2|juice|hotfix1|hemzon)$       par=1
 perf       ^(perf|perfchat)$                                    # request counts over real minutes: two at once is fine (ciwork G6: srvsync -> ui-08)
 
 # --- real Mapbox GL (need MAPBOX_TEST_TOKEN) and the map lane ---
-map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c|mapcrowd)$
+map-gl-1   ^(glmap|tiers2|tiers3|barzoom|zones|map-c|mapcrowd|barcard-map)$
 map-gl-2   ^(map4|glfix-avpins|mbx|ownerfix-map|ui1-map|tilt|mapfix5)$
 map-lane   ^(map|map-b)$
 
 # --- UI (mocked Supabase), packed by measured time: 2 tests at once, about 7 minutes each (plan.mjs --times) ---
 # moments, popfix and fixmo are alone: each takes 8-10 minutes by itself (see ci1-DONE.md: the next thing to make faster).
-ui-01      ^(moments|beerux|beerscan|motion19b|motionfix|i18n)$
+ui-01      ^(moments|beerux|beerscan|motion19b|motionfix|motiontok)$
 ui-02      ^(popfix|mybeer|motion19a|coordfix|beerlist)$
-ui-03      ^(fixmo|storeprep|popfix-gl|invite|dbhealth)$
+ui-03      ^(fixmo|storeprep|popfix-gl|invite|dbhealth|walktime)$
 ui-04      ^(mapzoom|lg|tickerfix2|ridechip|barsearch|bold-bump|beerui|beer2)$
 ui-05      ^(social-b|fixs|camfilm|dsocial|cln|texts)$
-ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet)$
+ui-06      ^(games2|fixm|fixc|ownerfix|bugsnet|barcard)$
 ui-07      ^(uxfix|ntf|pf|txtfit|b1people|night3|eggs|dating2)$
 ui-08      ^(c1menus|c5extras|hooks-order|notif-sw|local-lines|dialekt-packs|ds-motion-wk|ds-layout-wk|avwiz-ios-wk|uifix4|srvsync|selftest|places)$   chromium webkit   # + the WebKit (iPhone engine) runs
-ui-09      ^(uifix|dialekt|ui1|after2|bold-skal|cam)$
+ui-09      ^(uifix|dialekt|ui1|after2|bold-skal|cam|i18n)$
 ui-10      ^(systemet|f13|safe|ds-sheet|rpc-cover|social-a|ride3|left|fixj)$
 ui-11      ^(menufix|tickerfix|fxg|nf|autoci|fxm|dm|ride|bump|btndress|olbtn)$
 ui-12      ^(nightmap|polishA|d2group|calm2|feat|ds|gw|a4rel|misc|a2ui|polish3|dprofile|timers)$

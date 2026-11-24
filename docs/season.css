@@ -36,7 +36,7 @@
 .ss-dress.ss-flip .ss-d svg,.ss-dress.ss-flip .ss-fl-hat svg{transform:scaleX(-1)}   /* the viewBox is symmetric round x = 0: the mirror keeps it centred */
 /* pressed: the piece goes down with the button; after the tap the hat (and the flakes on it) hops once; frost and rim stay still */
 .ss-dress.ss-down{transform:translateY(3px) scale(.95)}   /* set by js/seasondress.js on pointerdown (no :has(:active): it re-checks styles on every tap anywhere) */
-.ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-fl-hat{animation:ssHop .62s cubic-bezier(.3,1.5,.5,1)}
+.ss-dress.ss-hop .ss-d,.ss-dress.ss-hop .ss-fl-hat{animation:ssHop var(--m-7) var(--e-pop)}
 @keyframes ssHop{0%{translate:0 0}35%{translate:0 -9px}62%{translate:0 1px}100%{translate:0 0}}
 /* "Ångra" and the wait: the piece stays above the ring (it sits on the rim) */
 .beer-wrap.ud .ss-dress,.beer-wrap.cd .ss-dress{z-index:4}

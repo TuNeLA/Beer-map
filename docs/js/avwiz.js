@@ -132,7 +132,7 @@
       if (av2 && av2.focusPill) av2.focusPill(acc, !prev.hidden && !!(av2.focusSpec && av2.focusSpec(st.draft, k0)), !!st.showAll); else acc.hidden = true;
       var small = ""; try { small = AV().svg(shown, { r: facts().r, md: [], small: true }); } catch (e) {}
       pin.innerHTML = '<span class="avw-pin-map">' + small + '</span><span class="avw-pin-chat">' + small + '</span><small>Kartan · chatten</small>';
-      if (pop && !reduced() && prev.animate) try { prev.animate([{ transform: "scale(.94)" }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }); } catch (e) {}
+      if (pop && !reduced() && prev.animate) try { prev.animate([{ transform: "scale(.94)" }, { transform: "none" }], { duration: window.SMOOTH ? SMOOTH.ms("--m-4", 200) : 200, easing: window.SMOOTH ? SMOOTH.ease("--e-in", "ease-out") : "ease-out" }); } catch (e) {}
     }
     function paint() {
       var s = step(), n = STEPS.length - 1;

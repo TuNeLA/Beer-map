@@ -1,0 +1,113 @@
+/* barcard (I-133 option A, owner 24 Nov: A34 defaults = yes) — the unique bar card header. Structure: js/barcard.js.
+   Tokens: accent = the map pin tint family (js/mapart.js tint), band = a dark tinted base. The header is always dark
+   (art, like a photo): its own text tokens, so a light UI never changes it. Contrast (measured): text >= 6.6:1 on every band. */
+:root{
+  --bc-pub-acc:#FFC24D; --bc-pub-band:#33231a;
+  --bc-bar-acc:#FFA3C7; --bc-bar-band:#2c1a33;
+  --bc-cocktail-acc:#FF8FB8; --bc-cocktail-band:#33142e;
+  --bc-sportbar-acc:#8CC6FF; --bc-sportbar-band:#0e2a26;
+  --bc-nattklubb-acc:#BCA6FF; --bc-nattklubb-band:#21154a;
+  --bc-olbar-acc:#F2A86E; --bc-olbar-band:#132a30;
+  --bc-restbar-acc:#C6E26E; --bc-restbar-band:#1c2814;
+  --bc-hotellbar-acc:#FFB8DC; --bc-hotellbar-band:#2a1630;
+  --bc-olhall-acc:#E3C45C; --bc-olhall-band:#262612;
+  --bc-chain-acc:#7FE0B8; --bc-chain-band:#0c2b22;
+  --bc-sheet:#121a2a; --bc-text:#eef0ec; --bc-text-2:#c9d0cd; --bc-title:#ffc24d; --bc-grip:rgba(238,240,236,.55);
+  --bc-h-mini:56px; --bc-pt:32px;
+}
+.pn-bc--pub{--bc-acc:var(--bc-pub-acc);--bc-band:var(--bc-pub-band)}
+.pn-bc--bar{--bc-acc:var(--bc-bar-acc);--bc-band:var(--bc-bar-band)}
+.pn-bc--cocktail{--bc-acc:var(--bc-cocktail-acc);--bc-band:var(--bc-cocktail-band)}
+.pn-bc--sportbar{--bc-acc:var(--bc-sportbar-acc);--bc-band:var(--bc-sportbar-band)}
+.pn-bc--nattklubb{--bc-acc:var(--bc-nattklubb-acc);--bc-band:var(--bc-nattklubb-band)}
+.pn-bc--olbar{--bc-acc:var(--bc-olbar-acc);--bc-band:var(--bc-olbar-band)}
+.pn-bc--restbar{--bc-acc:var(--bc-restbar-acc);--bc-band:var(--bc-restbar-band)}
+.pn-bc--hotellbar{--bc-acc:var(--bc-hotellbar-acc);--bc-band:var(--bc-hotellbar-band)}
+.pn-bc--olhall{--bc-acc:var(--bc-olhall-acc);--bc-band:var(--bc-olhall-band)}
+.pn-bc--chain{--bc-acc:var(--bc-chain-acc);--bc-band:var(--bc-chain-band)}
+
+/* frame: the band starts at the sheet top, full width (the scroller gets padding instead of margin, so nothing clips it) */
+html body .leaflet-popup.olnu-sheet.pn-bs7-root:has(.pn-bc) .leaflet-popup-content{margin:0 !important;padding:0 calc(var(--sar,0px) + 16px) 16px calc(var(--sal,0px) + 16px) !important;
+  width:auto !important;box-sizing:border-box;max-height:min(calc(72dvh + 25px),calc(100dvh - 135px)) !important}
+/* + 25 px = the 12 px top margin + the 13 px grip row that the band now covers: the sheet keeps today's height and top edge, so
+   the hidden rail buttons (⋯ at 222-266 px) stay under it (mapfix I-108 / I-110: a tap that closes must not land on them) */
+.leaflet-popup.olnu-sheet:has(.pn-bc) .leaflet-popup-content-wrapper{position:relative}
+html body .leaflet-popup.olnu-sheet:has(.pn-bc) .leaflet-popup-content-wrapper::before{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;margin:0 !important;background:var(--bc-grip)}
+html body .leaflet-popup:not(.olnu-sheet):has(.pn-bc) .leaflet-popup-content{margin:0 !important;padding:0 var(--ds-4,16px) var(--ds-3,12px) !important;width:auto !important;box-sizing:border-box}
+.leaflet-popup:not(.olnu-sheet):has(.pn-bc) .leaflet-popup-content-wrapper{overflow:hidden}
+.leaflet-popup:not(.olnu-sheet):has(.pn-bc){--bc-pt:20px}
+html body .leaflet-popup:not(.olnu-sheet):has(.pn-bc)>a.leaflet-popup-close-button{top:20px !important}
+/* the header is no longer sticky (the band is tall): the compact name bar takes that job */
+html body .leaflet-popup:has(.pn-bc) .pn-bs7 .bs-head.pn-bch{position:relative !important;top:auto !important;z-index:1 !important;display:block !important;padding:0 !important;margin:0 -16px var(--ds-3,12px) !important;min-height:0 !important;background:transparent !important}
+
+/* the band */
+.pn-bc{position:relative;overflow:hidden;border-radius:var(--r-xl,24px) var(--r-xl,24px) 0 0;isolation:isolate;color:var(--bc-acc);
+  background:linear-gradient(160deg,var(--bc-band) 0%,var(--bc-band) 35%,var(--bc-sheet) 100%)}
+.leaflet-popup:not(.olnu-sheet) .pn-bc{border-radius:0}
+.pn-bc-pat{position:absolute;inset:0;z-index:0;opacity:.13;background:var(--bc-acc);-webkit-mask-position:var(--bc-po) 0;mask-position:var(--bc-po) 0}
+.pn-bc-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(180deg,transparent 0%,transparent 34%,color-mix(in srgb,var(--bc-sheet) 55%,transparent) 62%,color-mix(in srgb,var(--bc-sheet) 80%,transparent) 100%)}
+.pn-bc-in{position:relative;z-index:3;padding:var(--bc-pt) 16px 30px;display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:12px;row-gap:12px;align-items:center}
+.pn-bc-crest{width:44px;height:44px;position:relative;color:var(--bc-acc)}
+.pn-bc-crest svg,.pn-bc-crest img{position:absolute;inset:0;width:44px;height:44px}
+.pn-bc-crest img{object-fit:contain;border-radius:var(--r-md,12px)}
+.pn-bc-crest b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--ds-stencil);font-weight:400;font-size:18px;line-height:1;color:var(--bc-acc);letter-spacing:0}
+.pn-bc-top{display:flex;align-items:center;gap:8px;padding-right:56px;min-width:0;align-self:stretch}
+.pn-bc-chip{position:relative;display:inline-flex;align-items:center;gap:6px;flex:none;height:28px;padding:0 10px 0 8px;border-radius:var(--r-pill,999px);
+  font-size:14px;line-height:20px;font-weight:600;color:var(--bc-text);white-space:nowrap;
+  background:color-mix(in srgb,var(--bc-acc) 16%,transparent);border:1px solid color-mix(in srgb,var(--bc-acc) 42%,transparent)}
+.pn-bc-chip .pn-bc-gl{flex:none;color:var(--bc-acc)}
+.pn-bc-chip.pn-bc-chain{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;display:block;line-height:26px;padding:0 10px;
+  background:color-mix(in srgb,var(--bc-sheet) 70%,transparent);border-color:rgba(255,255,255,.22)}
+/* the picture: in the space right of the chips (never behind a chip, the title or the hours), seeded slot / shift / mirror */
+.pn-bc-motw{position:relative;flex:1 1 0;min-width:0;align-self:stretch;pointer-events:none}
+.pn-bc-mot{position:absolute;top:calc(2px - var(--bc-pt));right:max(-28px,min(var(--bc-r,0px),calc(100% - 101px)));width:156px;height:96px;opacity:.72;
+  -webkit-mask-image:linear-gradient(180deg,black 0,black 56%,transparent 80%);mask-image:linear-gradient(180deg,black 0,black 56%,transparent 80%);
+  transform:translate(var(--bc-dx,0px),var(--bc-dy,0px)) rotate(var(--bc-rot,0deg)) scaleX(var(--bc-flip,1));transform-origin:70% 50%}
+.pn-bs7 .bs-head .pn-bc .pp-title{grid-column:1 / -1;margin:0 !important;padding:0 !important;color:var(--bc-title) !important;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.pn-bs7 .bs-head .pn-bc .bs-meta{grid-column:1 / -1;margin:-8px 0 0 !important;color:var(--bc-text-2) !important}
+.pn-bs7 .bs-head .pn-bc .bs-meta:empty{display:none}
+.pn-bs7 .bs-head .pn-bc .pn-bs-oh.oh-soon,.pn-bs7 .bs-head .pn-bc .bs-n{color:var(--bc-title)}
+.pn-bc-edge{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:24px;z-index:4;display:block;pointer-events:none}
+.pn-bc-ef{fill:var(--s1,var(--ds-sheet))}
+.pn-bc-el{fill:none;stroke:var(--bc-acc);stroke-opacity:.55;stroke-width:1.5px;vector-effect:non-scaling-stroke}
+/* the bar's own photo (approved + licence): photo zone on top, credit chip, dark scrim under the text */
+.pn-bc-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.pn-bc.pn-bc-ph .pn-bc-in{padding-top:88px;padding-bottom:14px}
+.pn-bc.pn-bc-ph .pn-bc-scrim{background:linear-gradient(0deg,var(--bc-sheet) 0%,color-mix(in srgb,var(--bc-sheet) 86%,transparent) 34%,color-mix(in srgb,var(--bc-sheet) 35%,transparent) 72%,color-mix(in srgb,var(--bc-sheet) 20%,transparent) 100%),
+  linear-gradient(90deg,color-mix(in srgb,var(--bc-sheet) 55%,transparent) 0%,transparent 70%)}
+.pn-bc-cred{position:absolute;z-index:3;left:16px;top:calc(var(--bc-pt) + 11px);height:24px;padding:0 8px;border-radius:var(--r-pill,999px);font-size:12px;line-height:24px;
+  background:color-mix(in srgb,var(--bc-sheet) 72%,transparent);color:var(--bc-text-2)}
+
+/* patterns: one SVG tile each, as a mask (the colour is the accent token) */
+.pn-bc--pub .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='140' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M.5 0V140'/%3E%3Cellipse cx='14' cy='42' rx='3' ry='1.6'/%3E%3Cpath d='M14 0V12M14 100V140' opacity='.5'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='140' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M.5 0V140'/%3E%3Cellipse cx='14' cy='42' rx='3' ry='1.6'/%3E%3Cpath d='M14 0V12M14 100V140' opacity='.5'/%3E%3C/svg%3E")}
+.pn-bc--bar .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 14L14 0'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 14L14 0'/%3E%3C/svg%3E")}
+.pn-bc--cocktail .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='16' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 16A16 16 0 0 1 32 16M8 16A8 8 0 0 1 24 16'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='16' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 16A16 16 0 0 1 32 16M8 16A8 8 0 0 1 24 16'/%3E%3C/svg%3E")}
+.pn-bc--sportbar .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='140'%3E%3Crect width='28' height='140' fill='black' opacity='.45'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='140'%3E%3Crect width='28' height='140' fill='black' opacity='.45'/%3E%3C/svg%3E")}
+.pn-bc--nattklubb .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='1.3' fill='black'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='1.3' fill='black'/%3E%3C/svg%3E")}
+.pn-bc--olbar .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30' fill='none' stroke='black' stroke-width='1.2'%3E%3Crect x='.5' y='.5' width='43' height='29' rx='2'/%3E%3Cg fill='black'%3E%3Ccircle cx='4' cy='4' r='1'/%3E%3Ccircle cx='40' cy='4' r='1'/%3E%3Ccircle cx='4' cy='26' r='1'/%3E%3Ccircle cx='40' cy='26' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30' fill='none' stroke='black' stroke-width='1.2'%3E%3Crect x='.5' y='.5' width='43' height='29' rx='2'/%3E%3Cg fill='black'%3E%3Ccircle cx='4' cy='4' r='1'/%3E%3Ccircle cx='40' cy='4' r='1'/%3E%3Ccircle cx='4' cy='26' r='1'/%3E%3Ccircle cx='40' cy='26' r='1'/%3E%3C/g%3E%3C/svg%3E")}
+.pn-bc--restbar .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='black'%3E%3Crect width='12' height='12' opacity='.55'/%3E%3Crect x='12' y='12' width='12' height='12' opacity='.55'/%3E%3Crect x='12' width='12' height='12' opacity='.2'/%3E%3Crect y='12' width='12' height='12' opacity='.2'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='black'%3E%3Crect width='12' height='12' opacity='.55'/%3E%3Crect x='12' y='12' width='12' height='12' opacity='.55'/%3E%3Crect x='12' width='12' height='12' opacity='.2'/%3E%3Crect y='12' width='12' height='12' opacity='.2'/%3E%3C/svg%3E")}
+.pn-bc--hotellbar .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M10 0L20 10L10 20L0 10Z'/%3E%3Ccircle cx='10' cy='10' r='1' fill='black'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M10 0L20 10L10 20L0 10Z'/%3E%3Ccircle cx='10' cy='10' r='1' fill='black'/%3E%3C/svg%3E")}
+.pn-bc--olhall .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='36' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 .5H60M0 18.5L18 .5M42 .5L60 18.5'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='36' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 .5H60M0 18.5L18 .5M42 .5L60 18.5'/%3E%3C/svg%3E")}
+.pn-bc--chain .pn-bc-pat{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 20L20 0M-5 5L5 -5M15 25L25 15'/%3E%3Cpath d='M0 0L20 20' opacity='.4'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='black' stroke-width='1.2'%3E%3Cpath d='M0 20L20 0M-5 5L5 -5M15 25L25 15'/%3E%3Cpath d='M0 0L20 20' opacity='.4'/%3E%3C/svg%3E")}
+
+/* the compact name bar (owner A34 q1: the band scrolls away, a 56 px name bar comes back). No animation (reduced motion = still). */
+.pn-bc-mini{position:sticky;top:0;z-index:4;height:var(--bc-h-mini);margin:0 -16px calc(-1 * var(--bc-h-mini));padding:0 72px 0 16px;display:flex;align-items:center;gap:12px;
+  background:var(--bc-band);border-bottom:1px solid color-mix(in srgb,var(--bc-acc) 45%,transparent);visibility:hidden;pointer-events:none}
+.bs.pn-bc-stuck>.pn-bc-mini{visibility:visible}
+.pn-bc-mi{flex:none;width:32px;height:32px;display:grid;place-items:center;border:2px solid var(--bc-acc);border-radius:var(--r-sm,8px);color:var(--bc-acc);
+  font:400 14px/1 var(--ds-stencil);letter-spacing:0}
+.pn-bc-mn{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:400 18px/28px var(--ds-stencil);color:var(--bc-title)}
+html body .leaflet-popup.olnu-sheet:has(.bs.pn-bc-stuck) a.leaflet-popup-close-button{top:6px !important}
+html body .leaflet-popup:not(.olnu-sheet):has(.bs.pn-bc-stuck)>a.leaflet-popup-close-button{top:6px !important}

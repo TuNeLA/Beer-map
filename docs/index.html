@@ -48,7 +48,7 @@
 <link rel="preload" href="./fonts/chakra-petch-600-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>/* ds37 splash: painted before any script; js/pnds.js "ds37" fades it */
 #pn-splash{position:fixed;inset:0;z-index:1990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0a0f1c;pointer-events:none;
-  transition:opacity .28s cubic-bezier(.3,0,.8,.15);animation:pnSplashSafe .3s 4s forwards}
+  transition:opacity var(--m-5) var(--e-out);animation:pnSplashSafe var(--m-5) var(--e-std) 4s forwards}
 #pn-splash img{width:96px;height:96px;border-radius:22px}
 #pn-splash b{font:400 28px/32px 'Black Ops One',system-ui,sans-serif;color:#f5a623;letter-spacing:.5px}
 #pn-splash small{font:600 14px/20px 'Chakra Petch',system-ui,sans-serif;color:#a7b0ac}
@@ -82,6 +82,7 @@
 <link rel="stylesheet" href="./barlight.css">
 <link rel="stylesheet" href="./mycount.css">
 <link rel="stylesheet" href="./barsearch.css">
+<link rel="stylesheet" href="./walktime.css">
 <link rel="stylesheet" href="./beerui.css">
 <link rel="stylesheet" href="./after2.css">
 <link rel="stylesheet" href="./moments.css">
@@ -147,6 +148,7 @@
 <link rel="stylesheet" href="./season.css">
 <link rel="stylesheet" href="./mybeer.css">
 <link rel="stylesheet" href="./tilt.css">
+<link rel="stylesheet" href="./barcard.css">
 </head>
 <body>
 <div id="pn-splash" aria-hidden="true"><img src="./icons/icon-192.png" alt="" width="96" height="96" decoding="sync"><b>PintsNow</b><small>Laddar PintsNow…</small></div>
@@ -432,11 +434,13 @@
 <script defer src="./js/mybeer-look.js"></script>
 <script defer src="./js/mybeer.js"></script>
 <script defer src="./js/pnds.js"></script>
+<script defer src="./js/barcard.js"></script>
 <script defer src="./js/sheetfade.js"></script>
 <script defer src="./js/gw.js"></script>
 <script defer src="./js/bold-taxi.js"></script>
 <script defer src="./js/bold.js"></script>
 <script defer src="./js/lastbus.js"></script>
+<script defer src="./js/walktime.js"></script>
 <script defer src="./js/bold-hem.js"></script>
 <script defer src="./js/bold-krog.js"></script>
 <script defer src="./js/bold-skal.js"></script>
