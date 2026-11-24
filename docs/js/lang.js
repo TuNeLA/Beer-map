@@ -1,7 +1,7 @@
 /* PintsNow — the app language (E8, owner 14 Nov 2026 "start English texts"; OWNER-INPUTS D5: Swedish only until the Nordic
    plan, the English switch later). Loads right before js/i18n.js and makes window.I18N; i18n.js adds the strings (add, t).
    - Every normal user gets Swedish. English is BEHIND A TEST FLAG: on in a test build (the /test/ path, the staging config,
-     window.PN_DEV) or on this device after ?langtest=1 (?langtest=0 = off again). With the flag off a stored "en" is ignored
+     window.PN_DEV) or on this device after ?langtest=1 (?langtest=0 = off, even on a test build). With the flag off a stored "en" is ignored
      and removed (the old SAFE rule of 7 Nov).
    - With the flag on: ?lang=en|sv picks the language, and Inställningar > Karta & dialekt has the switch (settingsRow, put
      there by account.js). The choice is per device (localStorage "olnu.lang"). A change reloads the app: the modules read
@@ -40,8 +40,8 @@
   }
   var q = ""; try { q = String(location.search || ""); } catch (e) {}
   var mFlag = /[?&]langtest=([01])(?:&|$)/.exec(q);
-  if (mFlag) lsSet(FK, mFlag[1] === "1" ? "1" : null);
-  var FLAG = testBuild() || lsGet(FK) === "1";
+  if (mFlag) lsSet(FK, mFlag[1]);
+  var FLAG = lsGet(FK) !== "0" && (testBuild() || lsGet(FK) === "1");   // "0" = off, also on a test build (a normal-user check)
   var mLang = /[?&]lang=(sv|en)(?:&|$)/.exec(q);
   if (FLAG && mLang) lsSet(LK, mLang[1]);
   if (mFlag || mLang) {   // a reload or a shared link must not set it again

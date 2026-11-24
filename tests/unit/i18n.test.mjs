@@ -52,7 +52,9 @@ test("the test flag: test build, /test/ path, PN_DEV or ?langtest=1", () => {
   assert.equal(f.I.available(), true); assert.equal(f.I.lang, "en"); assert.equal(f.store["olnu.langtest"], "1");
   assert.deepEqual(f.urls, ["/?join=ABC"], "langtest + lang leave the address, other params stay");
   const off = lang({ url: "?langtest=0", store: { "olnu.langtest": "1", "olnu.lang": "en" } });
-  assert.equal(off.I.available(), false); assert.equal(off.I.lang, "sv"); assert.equal(off.store["olnu.langtest"], undefined);
+  assert.equal(off.I.available(), false); assert.equal(off.I.lang, "sv"); assert.equal(off.store["olnu.langtest"], "0");
+  const offTest = lang({ cfg: STAGING, store: { "olnu.langtest": "0", "olnu.lang": "en" } });
+  assert.equal(offTest.I.available(), false, "langtest=0 = a normal user, also on a test build"); assert.equal(offTest.I.lang, "sv");
 });
 
 test("the switch stores the choice per device and reloads once", () => {
