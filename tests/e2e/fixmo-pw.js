@@ -232,7 +232,7 @@ const REPORT = { v: 1, night: NIGHT.toISOString(), evening: at(18, 0).slice(0, 1
     if (want("takeover")) {
       const STH = { id: "fixmo-sth-bar", name: "Fixmo Söderbar", lat: SODER.lat, lng: SODER.lng, type: "pub" };
       const { ctx, page } = await setup(browser, { routes: async (p) => {
-        await p.route(/\/bars\.json(\?|$)/, (r) => { let list = []; try { list = JSON.parse(fs.readFileSync(path.join(DOCS, "bars.json"), "utf8")); } catch (e) {} return J(r, list.concat([STH])); });
+        await p.route(/\/bars\.json(\?|$)/, (r) => { let list = []; try { list = JSON.parse(fs.readFileSync(require("./fixed-data.js").barsJsonPath(DOCS), "utf8")); } catch (e) {} return J(r, list.concat([STH])); });
         await p.route(/rest\/v1\/rpc\/bar_status\b/, (r) => J(r, [{ bar_id: STH.id, owner_n: 4, owner_name: "Söderligan", owner_mine: false, queue: "long", queue_at: iso(3), offers: [] }]));
         await p.route(/overpass/, (r) => r.abort());
       } });
