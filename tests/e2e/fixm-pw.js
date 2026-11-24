@@ -43,7 +43,7 @@ async function serveOld(page) {
 async function denseBars(page) {
   await page.route(/\/bars\.json(\?|$)/, async (r) => {
     let list = [];
-    try { list = JSON.parse(fs.readFileSync(path.join(OLD || path.join(__dirname, "..", "..", "docs"), "bars.json"), "utf8")); } catch (e) {}
+    try { list = JSON.parse(fs.readFileSync(require("./fixed-data.js").barsJsonPath(OLD || null), "utf8")); } catch (e) {}
     return J(r, list.concat(DENSE));
   });
   await page.route(/overpass/, (r) => r.abort());

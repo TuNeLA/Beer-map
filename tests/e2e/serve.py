@@ -33,6 +33,13 @@ def config_js():
     return s.encode("utf-8")
 
 
+# mapcrowd2 (24 Nov): the e2e tests must not depend on the weekly OSM refresh of docs/bars.json (the bot turned the place
+# "O'Learys Borlänge" into a bar and broke night3 I-98 + uifix4 I-95). /bars.json is served from the frozen copy
+# tests/e2e/fixtures/bars.json (= docs/bars.json before 23 Nov). PN_LIVE_DATA=1 = serve the real file (to see what a refresh changes).
+FIXED = {} if os.environ.get("PN_LIVE_DATA") == "1" else {
+    "/bars.json": os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "bars.json")}
+
+
 class H(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("X-PN-Target", TARGET)
@@ -53,14 +60,31 @@ class H(http.server.SimpleHTTPRequestHandler):
         if not head:
             self.wfile.write(body)
 
+    def _fixed(self, f, head):
+        with open(f, "rb") as fh:
+            body = fh.read()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-PN-Fixed", "1")
+        self.end_headers()
+        if not head:
+            self.wfile.write(body)
+
     def do_GET(self):
-        if self.path.split("?")[0] == "/config.js":
+        p = self.path.split("?")[0]
+        if p == "/config.js":
             return self._cfg(False)
+        if p in FIXED and os.path.exists(FIXED[p]):
+            return self._fixed(FIXED[p], False)
         return super().do_GET()
 
     def do_HEAD(self):
-        if self.path.split("?")[0] == "/config.js":
+        p = self.path.split("?")[0]
+        if p == "/config.js":
             return self._cfg(True)
+        if p in FIXED and os.path.exists(FIXED[p]):
+            return self._fixed(FIXED[p], True)
         return super().do_HEAD()
 
     def log_message(self, *a):
