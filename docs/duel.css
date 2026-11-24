@@ -37,7 +37,7 @@
 .du-big.them{color:var(--fire)}
 .du-dash{font-size:var(--fs-28);color:var(--muted)}
 .du-tug{position:relative;height:14px;margin:6px 4px 10px;background:linear-gradient(90deg,rgba(255,122,26,.35),rgba(255,122,26,.6));border:1px solid var(--line-soft);overflow:visible}
-.du-tug-us{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width .8s var(--e-std)}
+.du-tug-us{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width var(--m-8) var(--e-std)}
 .du-tug-mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--foam);opacity:.7}
 .du-tug-knot{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:var(--fs-18);line-height:1;left:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 .du-line{font-size:var(--fs-14);color:var(--gold);line-height:1.4;margin:6px 0 8px;font-style:italic}
@@ -52,7 +52,7 @@
 .du-lock{font-family:var(--hud);font-size:var(--fs-12);color:var(--muted)}
 .du-result{text-align:center;margin:8px 0}
 .du-medal{font-size:var(--fs-44);line-height:1.1}
-.du-w-us .du-medal{animation:du-pop .7s var(--e-in)}
+.du-w-us .du-medal{animation:du-pop var(--m-7) var(--e-in)}
 .du-rt{font-family:var(--display);font-size:var(--fs-18);color:var(--gold);margin-top:4px;overflow-wrap:anywhere}
 .du-rs{font-family:var(--hud);font-size:var(--fs-14);color:var(--text);margin-top:2px}
 @keyframes du-pop{0%{transform:scale(.3) rotate(-20deg);opacity:0}70%{transform:scale(1.15) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}

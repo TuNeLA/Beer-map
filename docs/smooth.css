@@ -2,12 +2,8 @@
    Bottom sheet: slides up with a soft spring (300 ms), slides down on close (200 ms, js: WAAPI on the real sheet), content swap fades in.
    Material 3 tokens: enter = emphasized decelerate, exit = emphasized accelerate (exit faster than enter).
    Reduced motion: no slide, no fade, no pulse. */
-:root{--sm-in:cubic-bezier(.05,.7,.1,1);--sm-out:cubic-bezier(.3,0,.8,.15);--sm-t-in:300ms}
-@supports (animation-timing-function:linear(0,1)){
-  /* spring: damping 0.75, peak at 55 % of 300 ms, 2.8 % overshoot (sampled into 21 stops) */
-  :root{--sm-in:linear(0,.075,.239,.428,.604,.75,.86,.936,.985,1.012,1.025,1.028,1.026,1.022,1.016,1.011,1.007,1.004,1.002,1,1)}
-}
-.sheet:not([hidden]){animation:smSheetIn var(--sm-t-in) var(--sm-in) backwards}
+/* D1: the old --sm-in / --sm-out / --sm-t-in are now --e-spring / --e-out / --m-5 (pnds.css "ds10 motion") */
+.sheet:not([hidden]){animation:smSheetIn var(--m-5) var(--e-spring) backwards}
 @keyframes smSheetIn{from{transform:translateY(min(72%,420px))}to{transform:none}}
 /* motion19a: #sheet opens with a Web Animation (js/smooth.js sheetIn: --m-5 --e-spring, from the tap x, can turn around).
    The CSS slide above stays for the bar sheet and for a browser without Element.animate (no html.sm-wa then). The closing
@@ -16,10 +12,10 @@ html.sm-wa #sheet.sheet,html.sm-wa #sheet.sheet:not([hidden]){animation:none}
 .backdrop:not([hidden]){animation:smFade var(--m-4) var(--e-in) backwards}
 @keyframes smFade{from{opacity:0}}
 /* Close: the real sheet slides down (js/smooth.js sheetOut); an empty scrim-coloured div fades out over the map. */
-.sm-bd-out{position:fixed;inset:0;pointer-events:none;animation:smFadeOut var(--m-4) var(--sm-out) forwards}
+.sm-bd-out{position:fixed;inset:0;pointer-events:none;animation:smFadeOut var(--m-4) var(--e-out) forwards}
 @keyframes smFadeOut{to{opacity:0}}
 /* A new sheet in an already open sheet: the content fades + rises 6 px. */
-#sheet-body.sm-swap{animation:smSwap var(--m-4) var(--sm-in) backwards}
+#sheet-body.sm-swap{animation:smSwap var(--m-4) var(--e-spring) backwards}
 @keyframes smSwap{from{opacity:0;transform:translateY(6px)}}
 /* Sheets always reach the screen bottom: the surface paints 120 px further down (off screen normally, no layout).
    Android Chrome edge-to-edge moves the gesture-bar "chin" / safe-area inset; a lifted sheet must never show the map below it. */
@@ -50,6 +46,6 @@ button,.btn,[role=button],.gcard,.top-row{touch-action:manipulation}
 #sheet-body.wm-hold,#sheet-body .wm-hold{opacity:0}
 #sheet-body.wm-in,#sheet-body .wm-in{animation:wm-in var(--m-2) var(--e-in)}
 @keyframes wm-in{from{opacity:0}to{opacity:1}}
-#sheet>.wm-age{position:absolute;top:2px;left:50%;transform:translateX(-50%);margin:0;padding:0 8px;font-size:12px;line-height:16px;white-space:nowrap;color:var(--ds-muted,#9aa3c0);background:var(--ds-sheet,#141a33);border-radius:8px;pointer-events:none;z-index:3;transition:opacity var(--m-4)}
+#sheet>.wm-age{position:absolute;top:2px;left:50%;transform:translateX(-50%);margin:0;padding:0 8px;font-size:12px;line-height:16px;white-space:nowrap;color:var(--ds-muted,#9aa3c0);background:var(--ds-sheet,#141a33);border-radius:8px;pointer-events:none;z-index:3;transition:opacity var(--m-4) var(--e-std)}
 #sheet>.wm-age.wm-age-out{opacity:0}
 @media (prefers-reduced-motion: reduce){#sheet-body.wm-in,#sheet-body .wm-in{animation:none}#sheet>.wm-age{transition:none}}

@@ -24,13 +24,13 @@
 .af-f13 .f13-tail{transform-origin:0 85%}
 .af-f13 .f13-mist{transform-box:view-box;transform-origin:15px 22px}
 @media (prefers-reduced-motion:no-preference){
-  .af-f13 .f13-mist{animation:f13-mist 7s linear infinite}
+  .af-f13 .f13-mist{animation:f13-mist 7s var(--e-lin) infinite}
   .af-f13 .f13-shine{animation:f13-shine 3.6s var(--e-std) infinite}
   .af-f13 .f13-star{animation:f13-twinkle 2.8s var(--e-std) infinite}
   .af-f13 .f13-s2{animation-delay:-1.4s}
   .af-f13 .f13-eyes{animation:f13-glow 3s var(--e-std) infinite}
-  .af-f13.f13-hop .f13-cat{animation:f13-hop .6s var(--e-std)}
-  .af-f13.f13-flick .f13-tail,.af-f13.f13-hop .f13-tail{animation:f13-flick .6s var(--e-std)}
+  .af-f13.f13-hop .f13-cat{animation:f13-hop var(--m-7) var(--e-std)}
+  .af-f13.f13-flick .f13-tail,.af-f13.f13-hop .f13-tail{animation:f13-flick var(--m-7) var(--e-std)}
   .af-f13.f13-blink .f13-eyes{animation:f13-blink 1.4s var(--e-std)}
   .af-f13.f13-swish .f13-tail{animation:f13-swish 1.5s var(--e-std)}
   html.map-moving .af-f13 *{animation-play-state:paused}

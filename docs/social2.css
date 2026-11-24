@@ -164,7 +164,7 @@
 .sg-box[hidden]{display:none}
 .sg-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .sg-row{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 10px 8px 12px;border-radius:var(--r-m);border:1px solid var(--hair);background:var(--s2);
-  transition:opacity var(--d-2),transform var(--d-2)}
+  transition:opacity var(--m-4) var(--e-std),transform var(--m-4) var(--e-std)}
 .sg-row.sg-gone{opacity:0;transform:translateX(12px)}
 .sg-face{flex:0 0 36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--s3);color:var(--text);font:700 var(--fs-16)/1 var(--body);
   box-shadow:0 0 0 1px var(--hair-2)}

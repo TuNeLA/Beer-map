@@ -56,14 +56,14 @@
 .gh-chip{color:var(--on-amber);background:linear-gradient(90deg,var(--gold),#f2c23c);border-color:#f2c23c}
 .gh-win{position:fixed;inset:0;z-index:1300;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--scrim)}
 .gh-win-card{max-width:360px;width:100%;text-align:center;padding:18px 16px;border:2px solid #f2c23c;background:linear-gradient(180deg,#1d1606,var(--ds-bg))}
-.gh-win-horse{width:160px;height:128px;margin:0 auto;animation:ghIn .9s cubic-bezier(.2,1.4,.4,1) both}
+.gh-win-horse{width:160px;height:128px;margin:0 auto;animation:ghIn var(--m-8) var(--e-pop) both}
 .gh-win-horse svg{width:100%;height:100%}
 @keyframes ghIn{from{transform:translateY(30px) scale(.6) rotate(-8deg);opacity:0}}
 .gh-win-h{font-family:var(--display);font-size:var(--fs-l);color:var(--gold);margin-top:6px}
 .gh-win-t{margin:8px 0}
 .gh-win-m{font-size:var(--fs-12);color:var(--muted);margin-bottom:12px}
 .dl2-drops{position:fixed;inset:0;z-index:900;pointer-events:none;overflow:hidden}
-.dl2-drops i{position:absolute;top:-30px;font-style:normal;font-size:var(--fs-22);animation:dl2Drop 2.2s linear both}
+.dl2-drops i{position:absolute;top:-30px;font-style:normal;font-size:var(--fs-22);animation:dl2Drop 2.2s var(--e-lin) both}
 @keyframes dl2Drop{to{transform:translateY(110vh);opacity:.4}}
 @media (prefers-reduced-motion: reduce){
   .gh-pin .gh-glow,.gh-win-horse,.dl2-drops i{animation:none}

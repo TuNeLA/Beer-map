@@ -240,18 +240,18 @@
     ".al-m{pointer-events:none!important;background:none!important;border:0!important}.al-m i,.al-m b{position:absolute;display:block;pointer-events:none}" +
     ".al-move .al-m *,html.is-moving .al-m *{animation-play-state:paused!important}" +
     // 🍻 clink: two mugs swing in, touch, a spark; then rest (2.6 s)
-    ".al-skal .al-g{bottom:0;width:15px;height:18px;transform-origin:50% 100%;animation:2.6s ease-in-out infinite both}" +
+    ".al-skal .al-g{bottom:0;width:15px;height:18px;transform-origin:50% 100%;animation:2.6s var(--e-io) infinite both}" +
     ".al-skal .al-gl{left:2px;animation-name:alCl}.al-skal .al-gr{right:2px;animation-name:alCr}.al-skal .al-gr b{transform:scaleX(-1)}" +
     ".al-skal svg{display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}" +
-    ".al-skal .al-sp{left:13px;top:0;width:8px;height:8px;border-radius:50%;background:radial-gradient(#fff6e5,rgba(255,194,77,0) 70%);opacity:0;animation:alSp 2.6s ease-out infinite}" +
+    ".al-skal .al-sp{left:13px;top:0;width:8px;height:8px;border-radius:50%;background:radial-gradient(#fff6e5,rgba(255,194,77,0) 70%);opacity:0;animation:alSp 2.6s var(--e-std) infinite}" +
     "@keyframes alCl{0%,58%,100%{transform:translateX(0) rotate(-16deg)}30%{transform:translateX(4px) rotate(9deg)}36%{transform:translateX(3px) rotate(5deg)}}" +
     "@keyframes alCr{0%,58%,100%{transform:translateX(0) rotate(16deg)}30%{transform:translateX(-4px) rotate(-9deg)}36%{transform:translateX(-3px) rotate(-5deg)}}" +
     "@keyframes alSp{0%,27%{opacity:0;transform:scale(.3)}32%{opacity:1;transform:scale(1.2)}48%,100%{opacity:0;transform:scale(1.8)}}" +
     // 📅 event: two soft rings
-    ".al-event i{inset:0;border-radius:50%;border:2px solid var(--ds-blue-t,#8cc6ff);opacity:0;animation:alPu 2.8s ease-out infinite}.al-event i+i{animation-delay:1.4s}" +
+    ".al-event i{inset:0;border-radius:50%;border:2px solid var(--ds-blue-t,#8cc6ff);opacity:0;animation:alPu 2.8s var(--e-std) infinite}.al-event i+i{animation-delay:1.4s}" +
     "@keyframes alPu{0%{transform:scale(.35);opacity:.85}100%{transform:scale(1.15);opacity:0}}" +
     // ✨ lively: 3 sparks rise and fade
-    ".al-lively i{bottom:0;width:5px;height:5px;border-radius:50%;background:var(--ds-amber-t,#ffc24d);box-shadow:0 0 4px var(--ds-amber,#f5a623);opacity:0;animation:alUp 2.4s ease-out infinite}" +
+    ".al-lively i{bottom:0;width:5px;height:5px;border-radius:50%;background:var(--ds-amber-t,#ffc24d);box-shadow:0 0 4px var(--ds-amber,#f5a623);opacity:0;animation:alUp 2.4s var(--e-std) infinite}" +
     ".al-lively i:nth-child(1){left:5px}.al-lively i:nth-child(2){left:13px;animation-delay:.8s}.al-lively i:nth-child(3){left:21px;animation-delay:1.6s}" +
     "@keyframes alUp{0%{transform:translateY(0) scale(.6);opacity:0}25%{opacity:.95}100%{transform:translateY(-20px) scale(1);opacity:0}}" +
     // 🌙 raster fallback glow (static)

@@ -481,9 +481,9 @@
   // property: the inline transform that places the marker is not touched). No html.map-moving guard here: a :not() on the root
   // class would restyle the whole page at every movestart / moveend.
   var TAP_CSS = ".pn-tapring{position:absolute;z-index:690;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;pointer-events:none;" +
-    "border:3px solid var(--amber,#f5a623);box-shadow:0 0 12px rgba(245,166,35,.55);animation:pnTapRing .5s cubic-bezier(.2,.7,.3,1) forwards}" +
+    "border:3px solid var(--amber,#f5a623);box-shadow:0 0 12px rgba(245,166,35,.55);animation:pnTapRing var(--m-6) var(--e-std) forwards}" +
     "@keyframes pnTapRing{from{transform:scale(.45);opacity:1}to{transform:scale(1.25);opacity:0}}" +
-    ".leaflet-marker-icon:active>*{animation:pnPinPress 90ms ease-out forwards}" +
+    ".leaflet-marker-icon:active>*{animation:pnPinPress var(--m-2) var(--e-std) forwards}" +
     "@keyframes pnPinPress{to{scale:.92;filter:brightness(1.18)}}" +
     "@media (prefers-reduced-motion:reduce){.pn-tapring{animation-name:pnTapFade}}@keyframes pnTapFade{from{opacity:1}to{opacity:0}}" +
     // mapfix I-109: a pop-up that a redraw put back does not play its open animation again (and its pnds.js copy, a clone

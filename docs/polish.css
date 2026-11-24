@@ -19,9 +19,6 @@
   /* depth */
   --sh-1:0 1px 2px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.3);
   --sh-2:0 2px 6px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.45);
-  /* motion */
-  --ease:cubic-bezier(.2,.8,.2,1); --ease-spring:cubic-bezier(.34,1.4,.5,1);
-  --d-1:.12s; --d-2:.22s; --d-3:.36s;
   --blur:saturate(150%) blur(14px);
 }
 
@@ -42,7 +39,7 @@
   display:flex;align-items:center;font-size:var(--fs-s);white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset;color:var(--text-2)}
 .live-count b{font-family:var(--body);font-weight:700;font-size:var(--fs-m);color:var(--amber-2);margin-right:2px;font-variant-numeric:tabular-nums}
 .icon-btn{width:44px;height:44px;border-radius:var(--r-m);clip-path:none;background:var(--glass);border:1px solid var(--hair);color:var(--text);
-  transition:transform var(--d-1) var(--ease),background var(--d-2)}
+  transition:transform var(--m-2) var(--e-std),background var(--m-4) var(--e-std)}
 .icon-btn:active{transform:scale(.92);background:var(--s3)}
 .icon-btn-small{border-radius:var(--r-s)}
 
@@ -63,7 +60,7 @@
 
 /* HUD row: "Ikväll" pill + one urgent chip */
 .hud-left .my-streak{border-radius:var(--r-pill);background:var(--glass);border:1px solid var(--hair);padding:0 14px 0 12px;
-  transition:transform var(--d-1) var(--ease),border-color var(--d-2)}
+  transition:transform var(--m-2) var(--e-std),border-color var(--m-4) var(--e-std)}
 .hud-left .my-streak.hot{border-color:rgba(255,122,26,.55)}
 .my-streak b{font-family:var(--body);font-weight:700;font-variant-numeric:tabular-nums}
 .my-streak .ms-tag{text-decoration:none;color:var(--text)}
@@ -79,7 +76,7 @@
 #btn-heat,#btn-ghostpins,.map-chip{border-radius:var(--r-pill);clip-path:none;background:var(--glass);border:1px solid var(--hair);color:var(--text-2);box-shadow:var(--sh-1)}
 .map-chip[aria-pressed="true"]{background:linear-gradient(135deg,var(--amber-2),var(--fire));border-color:transparent;color:var(--on-amber);box-shadow:0 0 0 3px rgba(245,166,35,.22),var(--sh-1)}
 .locate-btn{border-radius:var(--r-pill);clip-path:none;background:var(--glass);border:1px solid var(--hair);box-shadow:var(--sh-1);
-  transition:transform var(--d-1) var(--ease)}
+  transition:transform var(--m-2) var(--e-std)}
 .locate-btn:active{transform:scale(.92)}
 .attrib-btn{background:var(--glass);border:1px solid var(--hair);color:var(--text-2);opacity:.75}
 .attrib-pop{border-radius:var(--r-m)}
@@ -87,23 +84,23 @@
 /* ---------- Dock: ÖL! is the hero, the rest steps back ---------- */
 .dock{gap:var(--sp-1);padding-top:22px;background:linear-gradient(0deg,rgba(8,12,22,.97) 0%,rgba(8,12,22,.86) 58%,rgba(8,12,22,0) 100%)}
 .side-btn{min-height:56px;min-width:76px;border-radius:var(--r-m);background:var(--glass);border:1px solid var(--hair);gap:3px;
-  transition:transform var(--d-1) var(--ease),background var(--d-2)}
+  transition:transform var(--m-2) var(--e-std),background var(--m-4) var(--e-std)}
 .side-btn:active{transform:scale(.94);background:var(--s3)}
 .side-label{font-size:var(--fs-s);font-weight:600;color:var(--text)}
 .badge-green{border-radius:var(--r-pill);top:-7px;right:-7px;font-weight:700;box-shadow:0 0 0 2px var(--s0)}
-.beer-btn{border-width:3px;transition:transform var(--d-1) var(--ease),filter var(--d-2);
+.beer-btn{border-width:3px;transition:transform var(--m-2) var(--e-std),filter var(--m-4) var(--e-std);
   box-shadow:0 0 0 4px rgba(8,12,22,.92),0 0 0 5px rgba(255,194,77,.25),0 14px 36px rgba(245,166,35,.35),inset 0 -6px 0 rgba(0,0,0,.16),inset 0 2px 0 rgba(255,255,255,.35)}
 .beer-btn:active{transform:scale(.93)}
 .beer-sub{font-size:var(--fs-xs);font-weight:700;opacity:.8}
 .cd-track{stroke:rgba(245,166,35,.14);stroke-dasharray:none;stroke-width:3}
 /* ANNAT: a calm satellite button (still a 44+ target), not a second glowing hero */
 .other-btn{background:var(--glass-strong);border:1px solid var(--hair);color:var(--ds-text);   /* uifix3 I-125: neutral edge (pnds.css ds32 wins) */
-  box-shadow:0 0 0 2px rgba(8,12,22,.9),var(--sh-1);transition:transform var(--d-1) var(--ease)}
+  box-shadow:0 0 0 2px rgba(8,12,22,.9),var(--sh-1);transition:transform var(--m-2) var(--e-std)}
 .other-btn .ol-t{font-weight:700;letter-spacing:.06em;font-size:var(--fs-12)}
 .ocd-track{stroke:rgba(217,184,255,.12)}
 /* Exakt / Område: one compact glass segmented control */
 .seg{border-radius:var(--r-m);border:1px solid var(--hair);background:var(--glass);padding:3px;gap:2px}
-.seg button{min-height:44px;border-radius:var(--r-s);font-size:var(--fs-s);color:var(--muted);transition:background var(--d-2),color var(--d-2)}
+.seg button{min-height:44px;border-radius:var(--r-s);font-size:var(--fs-s);color:var(--muted);transition:background var(--m-4) var(--e-std),color var(--m-4) var(--e-std)}
 .seg button+button{border-top:0}
 .seg button[aria-checked="true"]{background:rgba(245,166,35,.16);color:var(--amber-2);box-shadow:inset 0 0 0 1px rgba(245,166,35,.55)}
 .prec-hint{font-size:var(--fs-xs);font-weight:400;color:var(--muted);opacity:.9}
@@ -112,7 +109,7 @@
 /* ---------- Toasts: rounded glass, one at a time in focus ---------- */
 .toast{border-radius:var(--r-m);border-width:1px;border-left-width:1px;background:rgba(12,17,29,.94);font-size:var(--fs-16);line-height:1.35;
   padding:12px 14px;box-shadow:inset 3px 0 0 var(--amber),var(--sh-2);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
-  animation:toastIn var(--d-3) var(--ease-spring)}
+  animation:toastIn var(--m-5) var(--e-spring)}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
 .toast .btn{border-radius:var(--r-s);flex:0 0 auto}
 .toast.med{background:linear-gradient(135deg,var(--red-d),#7d0c14);border-color:rgba(255,255,255,.5);box-shadow:0 0 0 1px rgba(255,59,59,.4),0 10px 30px rgba(179,18,27,.45)}
@@ -135,7 +132,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .pill.p-cl{min-width:30px;height:30px;border-radius:15px;font-size:var(--fs-s);
   box-shadow:0 0 0 4px rgba(245,166,35,.16),0 0 0 1px rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.45)}
 .cm .bar-ico{box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.5)}
-.cm-in{transition:transform var(--d-2) var(--ease-spring)}
+.cm-in{transition:transform var(--m-4) var(--e-spring)}
 .rl-pin{border-radius:var(--r-s)}
 .rl-flag{border-radius:var(--r-s)}
 
@@ -143,10 +140,10 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .leaflet-popup-content-wrapper{border-radius:var(--r-l) !important;box-shadow:var(--sh-2) !important}
 
 /* ---------- Bottom sheet: one premium surface ---------- */
-.backdrop{background:rgba(2,4,10,.62);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fadeIn var(--d-2) var(--ease)}
+.backdrop{background:rgba(2,4,10,.62);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fadeIn var(--m-4) var(--e-std)}
 @keyframes fadeIn{from{opacity:0}}
 .sheet{background:var(--s1);background-image:none;border:0;border-top:1px solid var(--hair-2);border-radius:var(--r-l) var(--r-l) 0 0;
-  box-shadow:0 -12px 48px rgba(0,0,0,.6);animation:sheetIn var(--d-3) var(--ease)}
+  box-shadow:0 -12px 48px rgba(0,0,0,.6);animation:sheetIn var(--m-5) var(--e-std)}
 @keyframes sheetIn{from{transform:translateY(40px);opacity:0}}
 .sheet::before,.sheet::after{display:none}
 .sheet-grip{width:40px;height:5px;border-radius:var(--r-xs);background:rgba(255,255,255,.22);margin:8px auto 4px}
@@ -162,7 +159,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 
 /* Buttons: rounded, calm; filled colour only for the main action of a sheet */
 .btn{border-radius:var(--r-m);clip-path:none;background:var(--s3);border:1px solid var(--hair);color:var(--text);
-  transition:transform var(--d-1) var(--ease),background var(--d-2),box-shadow var(--d-2)}
+  transition:transform var(--m-2) var(--e-std),background var(--m-4) var(--e-std),box-shadow var(--m-4) var(--e-std)}
 .btn:active{transform:scale(.97)}
 .btn-amber{background:linear-gradient(180deg,var(--amber-2),var(--amber));border-color:transparent;color:var(--on-amber);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(245,166,35,.22)}
 .btn-green{background:linear-gradient(180deg,#5be89a,var(--green));border-color:transparent;color:var(--on-green)}
@@ -172,11 +169,11 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .btn:disabled,.intro .btn-block:disabled{background:rgba(255,255,255,.05);border:1px solid var(--hair);color:var(--muted)}
 .inp,input.inp,textarea.inp{border-radius:var(--r-m) !important;background:var(--s0);border:1px solid var(--hair-2);color:var(--text);font-family:var(--body);font-size:var(--fs-m)}
 .inp:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.22)}
-.switch{border-radius:var(--r-pill);border:0;background:rgba(255,255,255,.14);transition:background var(--d-2)}
+.switch{border-radius:var(--r-pill);border:0;background:rgba(255,255,255,.14);transition:background var(--m-4) var(--e-std)}
 .switch::after{border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4);transition:transform var(--m-4) var(--e-std)}
 .switch[aria-checked="true"]{background:var(--green-d)}
 .tabs{border:0;border-radius:var(--r-m);background:rgba(255,255,255,.06);padding:3px;gap:2px;margin:4px 0 14px}
-.tabs button{border-radius:var(--r-s);min-height:40px;position:relative;color:var(--muted);transition:background var(--d-2),color var(--d-2)}
+.tabs button{border-radius:var(--r-s);min-height:40px;position:relative;color:var(--muted);transition:background var(--m-4) var(--e-std),color var(--m-4) var(--e-std)}
 .tabs button::after{content:"";position:absolute;inset:-2px 0}
 .tabs button+button{border-left:0}
 .tabs button[aria-selected="true"]{background:var(--s3);color:var(--amber-2);box-shadow:0 1px 3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(245,166,35,.4)}
@@ -185,7 +182,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 /* ---------- 🏆 Topplista: a clean ranked list ---------- */
 .toplist{gap:0;background:var(--s2);border-radius:var(--r-m);overflow:hidden;border:1px solid var(--hair)}
 .toplist>li+li .top-row{border-top:1px solid var(--hair)}
-.top-row{background:transparent;border:0;border-left:0;border-radius:0;min-height:60px;padding:8px 14px;gap:12px;transition:background var(--d-2)}
+.top-row{background:transparent;border:0;border-left:0;border-radius:0;min-height:60px;padding:8px 14px;gap:12px;transition:background var(--m-4) var(--e-std)}
 .top-row:active{background:var(--s3);transform:none}
 .top-rank{font-family:var(--body);font-weight:700;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:var(--fs-xs);
   background:rgba(255,255,255,.06);color:var(--muted);font-variant-numeric:tabular-nums}
@@ -200,7 +197,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 /* ---------- Groups list ---------- */
 .glist{gap:var(--sp-2)}
 .gitem{background:var(--s2);border:1px solid var(--hair);border-left:1px solid var(--hair);border-radius:var(--r-m);padding:var(--sp-4)}
-.glist .gcard{padding:14px 16px;min-height:68px;transition:transform var(--d-1) var(--ease),background var(--d-2)}
+.glist .gcard{padding:14px 16px;min-height:68px;transition:transform var(--m-2) var(--e-std),background var(--m-4) var(--e-std)}
 .glist .gcard:active{transform:scale(.985);filter:none;background:var(--s3)}
 .glist .gcard::before{content:"";flex:0 0 auto;width:40px;height:40px;border-radius:var(--r-md);
   background:radial-gradient(circle at 35% 30%,rgba(255,194,77,.35),rgba(245,166,35,.08));box-shadow:inset 0 0 0 1px rgba(245,166,35,.35)}
@@ -266,7 +263,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 
 /* ---------- Intro ---------- */
 .intro{background:rgba(2,4,10,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.intro-card{border-radius:var(--r-xl);background:var(--s1);border:1px solid var(--hair-2);box-shadow:var(--sh-2);padding:20px;animation:sheetIn var(--d-3) var(--ease)}
+.intro-card{border-radius:var(--r-xl);background:var(--s1);border:1px solid var(--hair-2);box-shadow:var(--sh-2);padding:20px;animation:sheetIn var(--m-5) var(--e-std)}
 .intro-card.hud-panel::before,.intro-card.hud-panel::after{display:none}
 
 
@@ -320,7 +317,7 @@ body:has(#toasts .toast) .dl-cap{opacity:0 !important;pointer-events:none}
 .olnu-sheet .leaflet-popup-content-wrapper{border-radius:var(--r-l) var(--r-l) 0 0 !important;border:0;border-top:1px solid var(--hair-2);background:var(--s1);
   box-shadow:0 -12px 48px rgba(0,0,0,.6) !important}
 .olnu-sheet::before,.olnu-sheet::after{display:none}
-.leaflet-popup.olnu-sheet{animation:sheetIn var(--d-3) var(--ease)}
+.leaflet-popup.olnu-sheet{animation:sheetIn var(--m-5) var(--e-std)}
 .olnu-sheet .leaflet-popup-content-wrapper::before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);margin:8px auto 0}
 .olnu-sheet a.leaflet-popup-close-button{top:14px;width:40px;height:40px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);border:0;color:var(--text-2);font-size:22px}
 .olnu-sheet a.leaflet-popup-close-button::after{content:"";position:absolute;inset:-4px}

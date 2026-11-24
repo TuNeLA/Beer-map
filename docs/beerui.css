@@ -31,7 +31,7 @@
 #btn-beer.undo:disabled{opacity:.75}
 .beer-wrap.ud .cd-svg{z-index:3}
 .beer-wrap.ud .cd-track{stroke:var(--bu-edge)}
-.beer-wrap.cd.ud .cd-ring{opacity:1;stroke:var(--ds-amber-t);transition:none;animation:buRing 10s linear both}
+.beer-wrap.cd.ud .cd-ring{opacity:1;stroke:var(--ds-amber-t);transition:none;animation:buRing 10s var(--e-lin) both}
 @keyframes buRing{from{stroke-dashoffset:0}to{stroke-dashoffset:var(--bu-ring-len)}}
 @keyframes buIn{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){
