@@ -104,6 +104,11 @@ const shot = (page, n) => page.screenshot({ path: SP + n + ".png" });
     ok("A: pattern (mask) + shaped edge are drawn", f.pat !== "none" && f.edge, f.pat);
     ok("A: the old parts follow in order: header < crowd hero < actions < Info < Mer", f.order.every((v, i, a) => v != null && (i === 0 || a[i - 1] < v)), f.order);
     ok("A: Checka in / På väg are not covered by anything", f.actFree);
+    // mapfix I-108 / I-110 (CI run 45405541593): the sheet keeps today's height, so the hidden rail buttons stay under it and a
+    // tap in the map strip that closes the card cannot land on ⋯ when it comes back
+    const rail = await page.evaluate(() => { const p = document.querySelector(".leaflet-popup:has(.bs)").getBoundingClientRect(), m = document.getElementById("btn-more");
+      return { top: Math.round(p.top), more: m ? Math.round(m.getBoundingClientRect().top) : null, h: Math.round(p.height), vh: innerHeight }; });
+    ok("A: the sheet is as tall as before (top <= the hidden ⋯ button)", rail.more == null || rail.top <= rail.more, rail);
     ok("A: the band has no buttons or links (the ✕ stays the only control up there)", f.links === 0, f.links);
     const tap = await page.evaluate(() => { const s = document.querySelector("[data-plc-tap]"); return s && !s.hidden ? s.textContent.replace(/\s+/g, " ").slice(0, 60) : null; });
     ok("A: 'På kran' (beer library) still shows under the actions", !!tap && /På kran/.test(tap), tap);

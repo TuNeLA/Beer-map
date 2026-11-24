@@ -107,6 +107,9 @@ test("contrast >= 4.5:1 for every text on every band (title, hours, chip text on
     const band = tok["bc-" + t + "-band"], acc = tok["bc-" + t + "-acc"], chip = mix(acc, band, 0.16);
     const c = { title: cr(tok["bc-title"], band), hours: cr(tok["bc-text-2"], band), chip: cr(tok["bc-text"], chip), crest: cr(acc, mix(acc, band, 0.14)), glyph: cr(acc, chip) };
     for (const k in c) if (c[k] < 4.5) bad.push(t + " " + k + " " + c[k].toFixed(2));
+    // the hours status colours (oppet.css .oh-open / .oh-soon / .oh-shut) sit on the band too
+    const oc = fs.readFileSync(new URL("oppet.css", DOCS), "utf8");
+    for (const k of ["oh-open", "oh-soon", "oh-shut"]) { const m = oc.match(new RegExp("\\." + k + "\\{color:(#[0-9a-fA-F]{6})")); if (!m || cr(m[1], band) < 4.5) bad.push(t + " " + k); }
     // the darkest point of the band gradient is the sheet colour: text there too
     if (cr(tok["bc-text-2"], tok["bc-sheet"]) < 4.5) bad.push("hours on sheet");
   }

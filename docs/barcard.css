@@ -28,7 +28,9 @@
 
 /* frame: the band starts at the sheet top, full width (the scroller gets padding instead of margin, so nothing clips it) */
 html body .leaflet-popup.olnu-sheet.pn-bs7-root:has(.pn-bc) .leaflet-popup-content{margin:0 !important;padding:0 calc(var(--sar,0px) + 16px) 16px calc(var(--sal,0px) + 16px) !important;
-  width:auto !important;box-sizing:border-box}
+  width:auto !important;box-sizing:border-box;max-height:min(calc(72dvh + 25px),calc(100dvh - 135px)) !important}
+/* + 25 px = the 12 px top margin + the 13 px grip row that the band now covers: the sheet keeps today's height and top edge, so
+   the hidden rail buttons (⋯ at 222-266 px) stay under it (mapfix I-108 / I-110: a tap that closes must not land on them) */
 .leaflet-popup.olnu-sheet:has(.pn-bc) .leaflet-popup-content-wrapper{position:relative}
 html body .leaflet-popup.olnu-sheet:has(.pn-bc) .leaflet-popup-content-wrapper::before{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;margin:0 !important;background:var(--bc-grip)}
 html body .leaflet-popup:not(.olnu-sheet):has(.pn-bc) .leaflet-popup-content{margin:0 !important;padding:0 var(--ds-4,16px) var(--ds-3,12px) !important;width:auto !important;box-sizing:border-box}
