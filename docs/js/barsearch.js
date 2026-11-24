@@ -194,6 +194,8 @@
     var b = x.bar, bits = [], n = peopleNow(cr.per, cr.cis, b), tn = town(b);
     if (tn) bits.push(tn);
     if (o) bits.push(km(x.d));
+    var wt = o && o.me && W.WALKTIME ? W.WALKTIME.short(b) : "";   // lane walktime (E6): "ca 8 min", only with a good position
+    if (wt) bits.push(wt);
     var li = row({ bar: b, title: b.name, lat: b.lat, lng: b.lng }, bits.join(" · "), iconOf(b));
     if (n > 0) {
       var s = li.querySelector(".bs-s") || li.querySelector(".bs-tx").appendChild(mk("small", "bs-s"));
@@ -205,15 +207,20 @@
   function head(txt) { var h = mk("li", "bs-h", txt); h.setAttribute("role", "presentation"); return h; }
   function say(txt, cls) { ui.msg.textContent = txt || ""; ui.msg.className = "bs-msg" + (cls ? " " + cls : ""); ui.msg.hidden = !txt; }
   function paintRecent() {
-    var l = recentGet();
-    if (!l.length) { say(tl("Skriv namnet på en krog eller ett ställe.", "Type the name of a bar or a place.")); return; }
+    var l = recentGet(), nb = W.WALKTIME && W.WALKTIME.near ? W.WALKTIME.near() : [];
+    if (!l.length && !nb.length) { say(tl("Skriv namnet på en krog eller ett ställe.", "Type the name of a bar or a place.")); return; }
     say("");
-    ui.list.appendChild(head(tl("Senaste", "Recent")));
+    if (l.length) ui.list.appendChild(head(tl("Senaste", "Recent")));
     l.forEach(function (r) {
       var h = { title: r.n, lat: r.lat, lng: r.lng, recent: true, k: r.k }, tn = "";
       try { var c = W.CITIES && W.CITIES.nearest(r.lat, r.lng); tn = c ? c.name : ""; } catch (e) {}
       ui.list.appendChild(row(h, tn, "history"));
     });
+    // lane walktime (E6): bars within 10 min on foot (on-phone estimate, only with a good position), under "Senaste"
+    if (nb.length) {
+      ui.list.appendChild(head(tl("Inom 10 min promenad", "Within a 10 min walk")));
+      nb.forEach(function (x) { ui.list.appendChild(row({ bar: x.bar, title: x.bar.name, lat: x.bar.lat, lng: x.bar.lng }, [town(x.bar), x.label].filter(Boolean).join(" · "), iconOf(x.bar))); });
+    }
   }
   function paintPlaces() {
     if (!online()) { if (!st.own.length) say(tl("Du är offline. Bara krogar som appen redan känner.", "You are offline. Only bars the app already knows."), "bs-off"); return; }
