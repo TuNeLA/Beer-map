@@ -236,9 +236,11 @@
     return cv;
   }
   function frame(now) {
-    var w0 = performance.now(), dt = Math.min(0.05, (now - last) / 1000), age = now - t0; last = now;
+    // swfix B9: after a slow tap handler the first frame's time stamp is from BEFORE burst() (Chromium: about minus the handler
+    // time, -200 ms seen). Then age < 0 and the ring radius below went negative: arc() threw, the canvas stayed on the screen.
+    var w0 = performance.now(), dt = Math.max(0, Math.min(0.05, (now - last) / 1000)), age = Math.max(0, now - t0); last = Math.max(last, now);
     g2.clearRect(0, 0, 320, 360);
-    if (ring && age < 360) { var k = age / 360; g2.globalAlpha = 0.55 * (1 - k); g2.strokeStyle = cssVar("--foam", "#fff"); g2.lineWidth = 4 * (1 - k) + 1; g2.beginPath(); g2.arc(160, 260, ring + 70 * k, 0, 7); g2.stroke(); }
+    if (ring && age < 360) { var k = age / 360; g2.globalAlpha = 0.55 * (1 - k); g2.strokeStyle = cssVar("--foam", "#fff"); g2.lineWidth = 4 * (1 - k) + 1; g2.beginPath(); g2.arc(160, 260, Math.max(0, ring + 70 * k), 0, 7); g2.stroke(); }
     for (var i = ps.length - 1; i >= 0; i--) {
       var p = ps[i]; p.age += dt;
       if (p.age >= p.life) { ps.splice(i, 1); continue; }

@@ -8,7 +8,8 @@
         splash is still up and only for a plain start (no link in the address: a reload would lose it);
      b) when the app comes back after 30 min or more in the background and nothing is open (calm): splash, pn-skip, ONE reload.
         The browser lets the new worker in only when the old one has no request in flight. If that takes longer than
-        3 s, or the user has touched the app meanwhile: no reload now ("mixed" below);
+        3 s, or the user has touched the app meanwhile: no reload now ("mixed" below). swfix: kick() below makes the browser
+        ask again while the old worker is kept busy by this page;
      c) "Uppdatera nu" in Inställningar (app-settings.js forceUpdate / pnds.js hardUpdate reload to ?v=<time>): that page
         is already the new version from the network, so the waiting worker takes over at once with NO second reload.
    Never while the app is in use. No "Ny version" button on the map any more.
@@ -24,7 +25,7 @@
   var KEY = "pn.upd.at", WHY = "pn.upd.why", GAP = 10 * 60e3, HIDE_MS = 30 * 60e3, BOOT_MS = 1500, CHECK_MS = 10 * 60e3, T0 = Date.now();
   var st = { had: !!(SW && SW.controller), ready: false, asked: "", mixed: false, reloading: false, hiddenAt: 0,
     manual: /[?&]v=\d{12,}(&|$)/.test(location.search), plain: !location.search && location.hash.length < 2 };
-  var reg = null, coverEl = null, coverT = 0, askedAt = 0, touched = false, BACK_MS = 3000;
+  var reg = null, coverEl = null, coverT = 0, askedAt = 0, touched = false, BACK_MS = 3000, KICK_MS = 900, KICKS = 3;
   ["pointerdown", "keydown"].forEach(function (ev) { document.addEventListener(ev, function () { touched = true; }, { capture: true, passive: true }); });
   function log(ev, o) { try { if (W.PNLOG && W.PNLOG.event) W.PNLOG.event(ev, o || {}); } catch (e) {} }
   function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
@@ -76,6 +77,27 @@
     try { w.postMessage({ type: "pn-skip" }); } catch (e) { st.asked = ""; return false; }
     return true;
   }
+  // swfix (A4b part 2): after pn-skip Chromium lets the waiting worker in only when the old worker is idle, and it cuts the old
+  // worker's idle wait to 0 only if the old worker runs at the moment of the ask. When the old worker is stopped and started
+  // again by this page's requests (resume burst, polls), that short wait is lost: 30 s of full quiet or never (lane swfix
+  // measured "back" with no DevTools: no switch in 45 s). A navigation makes the browser ask again
+  // (service_worker_controllee_request_handler.cc: ActivateWaitingVersionWhenReady). So: a hidden frame loads a small
+  // precached file, up to 3 times, until the new worker is in. No reload, nothing on the screen; the normal
+  // "controllerchange" path above does the rest.
+  function kick(why, n) {
+    n = n || 0;
+    setTimeout(function () {
+      if (st.asked !== why || st.reloading || n >= KICKS || !(reg && reg.waiting)) return;
+      try {
+        var f = document.createElement("iframe"), gone = function () { if (f.parentNode) f.parentNode.removeChild(f); };
+        f.hidden = true; f.tabIndex = -1; f.setAttribute("aria-hidden", "true"); f.title = "";
+        f.onload = gone; setTimeout(gone, 3000);
+        f.src = "./icons/badge-96.png?swkick=" + n;
+        document.body.appendChild(f);
+      } catch (e) {}
+      kick(why, n + 1);
+    }, n ? KICK_MS : 400);
+  }
   function manualNow() { return st.manual && Date.now() - T0 < 120e3; }
   function watch(r) {
     if (!r || r.__upd0) return;
@@ -99,13 +121,14 @@
     if (!calm() || !guardOk()) return;
     cover();
     if (st.mixed) { if (!reload("mixed")) uncover(); return; }
-    if (!take("back")) uncover();
+    if (!take("back")) { uncover(); return; }
+    kick("back");
   }
 
   W.UPD0 = {
     state: function () { return { had: st.had, ready: st.ready, waiting: !!(reg && reg.waiting), mixed: st.mixed, asked: st.asked, manual: st.manual }; },
     // a settings button: the waiting version now (the user asked: no calm check). false = nothing waits.
-    apply: function () { if (!(reg && reg.waiting)) { try { if (reg) reg.update().catch(function () {}); } catch (e) {} return false; } if (st.asked) st.asked = ""; cover(); return take("now") || (uncover(), false); },
+    apply: function () { if (!(reg && reg.waiting)) { try { if (reg) reg.update().catch(function () {}); } catch (e) {} return false; } if (st.asked) st.asked = ""; cover(); if (take("now")) { kick("now"); return true; } uncover(); return false; },
     _back: back
   };
   if (!SW) return;
@@ -115,7 +138,9 @@
     var why = st.asked;
     st.asked = ""; st.ready = false;
     if (why === "manual" || manualNow()) return;   // c) this page came from the network after "Uppdatera nu": already new
-    if (why === "boot" && inBoot() && reload("boot")) return;
+    // swfix: the browser let the new worker in during this start without an ask (the start's own navigation asked): same as
+    // a): still under the splash, a plain start → the one reload now (was: "mixed", the old page ran on until the next return)
+    if ((why === "boot" || (!why && st.plain)) && inBoot() && reload("boot")) return;
     if (why === "back" && !touched && Date.now() - askedAt < BACK_MS && calm() && (cover(), reload("back"))) return;
     if (why === "now" && reload("now")) return;
     uncover();
@@ -130,7 +155,7 @@
       if (!r.waiting) return;
       st.ready = true;
       if (st.manual) { take("manual"); return; }
-      if (st.plain && inBoot() && guardOk()) take("boot");
+      if (st.plain && inBoot() && guardOk() && take("boot")) kick("boot");
     }, function () {});
   }
 
