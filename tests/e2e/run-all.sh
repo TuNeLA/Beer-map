@@ -148,6 +148,7 @@ run btndress  $B btndress-pw.js   # lane btndress (owner 19 Nov, I-134): every s
 run tilt      $A tilt-pw.js       # lane tilt (owner 15 Nov, I-115/I-117 M4): '3D' button above Locate, pitch 50 + two-finger tilt, stored choice, flat when zoomed far out, bounds/fitBounds/clusters when tilted, GL bar tap + one click router, pins on top, reduced = jump, raster = no tilt, aurora night = 62 + 3D tree, frame time flat vs tilted (stub Mapbox without a token)
 run consent   $A consent-pw.js    # lane consent: real app (live site / store) sends no diagnostics before "Ja"; beta + test builds keep them; errors without device fields
 NEEDS_MAPBOX=1 run ui1-map    $A ui1-map-pw.js   # ui1 B5 Ölpasset map style + B10 real zone pill at 360 px
+NEEDS_MAPBOX=1 run barcard-map $A barcard-map-pw.js   # lane barcard I-133: the 9 bar card themes over the light (Skymning) and dark (Natt) GL map + a tap on the open bar's own pin only closes
 # --- UI (mocked Supabase). GATING in CI ---
 run ux3        $B ux3-pw.js
 run social2    $B social2-pw.js
@@ -201,6 +202,7 @@ run beerscan   $B beerscan-pw.js   # lane beerscan (I-140): camera button in the
 run beer2      $B beer2-pw.js      # lane beer2 (I-132 follow-ups): friends' favourite beers on the person card, beer tips in group + event chats and the group page preview, Tipsa en vän to a group, "Om data" licence page, data pass (no % / pack sizes in names, browse list = photo + real name, "Stil (gissning)")
 run beerux     $B beerux-pw.js     # lane beerux (owner 21 Nov): I-139 ‹ back from a beer / style page opened in Sök › Öl, the person card, a style page, a chat tip; I-145 no dead ‹ (Inställningar + sweep); I-142 whole beer photo (contain, blurred copy); I-143 my 3 favourite beers first in the "Vilken sort?" strip after ÖL!
 run mybeer     $B mybeer-pw.js     # lane mybeer (owner 22 Nov, I-146 P1 + I-147 Q1): ÖL! button = my beer (colour + foam, BLANC / GUINNESS, contrast, fit, wait colour, Vanlig ÖL!, 06:00, store, reduced, xmas hat, LÄSK wins, beer page), mini bottle on my / a group mate's pin (beer_lib_pins; never strangers / clusters; spoke; old server)
+run barcard    $B barcard-pw.js    # lane barcard (owner 24 Nov, I-133 option A, A34 defaults): unique bar card band (9 themes, crest, seeded picture, Ölhall, chain/photo only with brand data), 56 px name bar, old parts kept, map tap closes, store, reduced, desktop
 run placesearch $B placesearch-pw.js   # lane a3search I-07: shared address search (Hemzon; mocked geocoder): near town first, list, Enter, no jump, mapbox flag
 run hemzon   $B hemzon-pw.js     # lane hemzon I-127 (owner 16 Nov): Hemzon = Mapbox GL mini map (mocked GL), live address suggestions (mocked geocoders), one screen, 25 m radius, focus ring never cut, Auto hemma not at a bar
 run main       $B main-pw.js       # lane main: S5 install guide first, R1-03 beta note caption, S2 Synlighet quick rows + R1-12, rail labels (first nights)

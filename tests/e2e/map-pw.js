@@ -243,7 +243,8 @@ async function closeAll(page) {
         const on = await page.evaluate((ids) => ids.map(([id, k]) => { const v = GLBARS._vt(id); const cat = PNPINS.cat(k); return [k, v ? v.k : null, v ? v.at : null, cat]; }), ids);
         console.log("BR1 map " + JSON.stringify(on));
         await page.screenshot({ path: shotDir + "map-" + TAG + "-br1-map-z17.png" });
-        ok(on.length === 14 && on.every((x) => x[1] === x[0]), "BR1: all 14 bar types drawn on the map with their own glyph (" + on.filter((x) => x[1] !== x[0]).map((x) => x[0]).join(",") + ")");
+        // barcard A34 q4 (24 Nov): + "olhall" (beer halls) = 15 kinds; the count follows PNVTYPE.ORDER
+        ok(on.length === ids.length && ids.length >= 15 && on.every((x) => x[1] === x[0]), "BR1: all " + ids.length + " bar types drawn on the map with their own glyph (" + on.filter((x) => x[1] !== x[0]).map((x) => x[0]).join(",") + ")");
         ok(on.some((x) => x[0] === "pub" && x[2] === "sn"), "BR1: name badges uteservering + live music in front of the name (" + JSON.stringify(on.filter((x) => x[0] === "pub")) + ")");
       }
       ok(errs.length === 0, "BR1 no page errors " + JSON.stringify(errs.slice(0, 3)));
