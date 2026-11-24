@@ -7,9 +7,11 @@
 @keyframes bscIn{from{opacity:0}to{opacity:1}}
 body.bsc-open{overflow:hidden}
 .bsc-top{display:flex;align-items:center;gap:var(--sp-2);min-height:48px}
-.bsc-title{flex:1 1 auto;margin:0;font:700 var(--fs-22)/28px var(--ds-sans);color:var(--ds-amber-t)}
+/* P-15 (polish sweep 24 Nov, lane fixE): the title has the ONE sheet title style (DESIGN sheet rule 4: stencil 22/28 amber) and the
+   ✕ the sheet ✕ look (round 44 px, --ds-raised) */
+.bsc-title{flex:1 1 auto;margin:0;font:400 var(--fs-22)/28px var(--ds-stencil);color:var(--ds-amber-t);letter-spacing:0}
 .bsc-x{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--r-pill);
-  background:var(--ds-card);color:var(--ds-text);cursor:pointer}
+  background:var(--ds-raised);color:var(--ds-text);cursor:pointer}
 .bsc-x .pi{width:20px;height:20px}
 .bsc-view{position:relative;flex:1 1 auto;min-height:120px;margin:var(--sp-2) 0 0;border-radius:var(--r-lg);overflow:hidden;
   background:var(--ds-card);border:1px solid var(--ds-border-2)}

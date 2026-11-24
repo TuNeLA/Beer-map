@@ -227,9 +227,9 @@
     var ch = chain(), cs = ctxCodes(), s;
     for (var i = 0; i < ch.length; i++) {
       var p = packs[ch[i]]; if (!p || !Object.prototype.hasOwnProperty.call(p, key)) continue;
-      s = pick(key, p[key], vars, cs); if (s === MIX) continue; if (s != null) return fill(s, vars);
+      s = pick(key, p[key], vars, cs); if (s === MIX) continue; if (s != null) return fill(form(s, ch), vars);
     }
-    if (def != null) { s = pick(key, def, vars, cs); if (s != null && s !== MIX) return fill(s, vars); }
+    if (def != null) { s = pick(key, def, vars, cs); if (s != null && s !== MIX) return fill(form(s, ch), vars); }
     stats.miss[key] = (stats.miss[key] || 0) + 1;
     return String(key);
   }
@@ -261,18 +261,43 @@
       return true;
     };
   }
+  /* ---------- P-13 (polish sweep 24 Nov, owner default): one screen never mixes dialect and standard forms ----------
+     The chosen pack decides the form of "är": COP[code] (Dalarna, Norrland, Väst: "ä"; Syd: "e"). Every other pack,
+     Dialekt Av and no region = standard Swedish. form(s, ch) rewrites a Swedish TEMPLATE (before {vars} are filled, so a
+     name or a group name is never changed) to that form. A standard target also turns the other spoken words (mä, dä, hä,
+     int', int, va') into standard words. A word in quotes stays (”ä” as a word about the dialect). v() and t() run every line
+     through it, so one ticker list never shows "är" and "ä" side by side. DIALEKT.form(s) is the same for plain texts. */
+  var COP = { "sv-dalarna": "ä", "sv-norr": "ä", "sv-vast": "ä", "sv-syd": "e" };
+  var STDW = { "ä": "är", "mä": "med", "dä": "det", "hä": "här", "int'": "inte", "int": "inte", "va'": "var" };
+  var FORM_RE = /(^|[^A-Za-zÅÄÖåäöÉéÜü'’”"“»«])(är|Är|ÄR|ä|Ä|mä|Mä|dä|Dä|hä|Hä|int'|Int'|int|INT|va'|Va')(?=$|[^A-Za-zÅÄÖåäöÉéÜü'’”"“»«-])/g;
+  function copOf(ch) {
+    if (lang() !== "sv" || st.mode === "off") return "är";
+    for (var i = 0; i < ch.length; i++) { if (COP[ch[i]]) return COP[ch[i]]; if (ch[i] === neutral()) break; }
+    return "är";
+  }
+  function cap(w, up, all) { return all ? w.toUpperCase() : up ? w.charAt(0).toUpperCase() + w.slice(1) : w; }
+  function form(s, ch) {
+    if (typeof s !== "string" || !s || lang() !== "sv") return s;
+    var c = copOf(ch || chain());
+    return s.replace(FORM_RE, function (m, pre, w) {
+      var lw = w.toLowerCase(), up = w !== lw, all = w.length > 1 && w === w.toUpperCase(), out;
+      if (lw === "är" || lw === "ä") out = c === "är" ? "är" : c;
+      else out = c !== "ä" ? STDW[lw] : lw;   // an "ä" pack keeps its own mä / dä / int'
+      return pre + cap(out, up, all);
+    });
+  }
   function v(key, i, vars, def, n, al) {
     var ch = chain(), N = neutral(), cs = ctxCodes(), s, seed = String(i == null ? 0 : i) + (vars && vars._seed != null ? "|" + vars._seed : ""), okT = varsOk(vars, def);
     for (var j = 0; j < ch.length; j++) {
       if (ch[j] === N) break;
       var p = packs[ch[j]]; if (!p || !Object.prototype.hasOwnProperty.call(p, key)) continue;
-      s = pick(key, p[key], vars, cs, seed, i, n, al, okT); if (s === MIX) continue; if (s != null) { stats.region++; if (trace) trace.push([key, ch[j]]); return fill2(s, vars); }
+      s = pick(key, p[key], vars, cs, seed, i, n, al, okT); if (s === MIX) continue; if (s != null) { stats.region++; if (trace) trace.push([key, ch[j]]); return fill2(form(s, ch), vars); }
     }
     if (trace) trace.push([key, null]);
     // E8 (lane i18n): in English the def (plain Swedish) is not the neutral line: an "en-neutral" pack row wins (js/lang.js)
     var pe = N !== "sv-neutral" ? packs[N] : null;
-    if (pe && Object.prototype.hasOwnProperty.call(pe, key)) { s = pick(key, pe[key], vars, cs, seed, i, n, al, okT); if (s != null && s !== MIX) return fill2(s, vars); }
-    if (def != null) return fill2(String(def), vars);
+    if (pe && Object.prototype.hasOwnProperty.call(pe, key)) { s = pick(key, pe[key], vars, cs, seed, i, n, al, okT); if (s != null && s !== MIX) return fill2(form(s, ch), vars); }
+    if (def != null) return fill2(form(String(def), ch), vars);
     return t(key, vars);
   }
   // A content array that keeps its length, order and type (Array.isArray, forEach, slice, JSON) but reads every
@@ -501,7 +526,7 @@
   lastSig = sig();   // the cached region is the start state: onChange fires only on a real change
 
   window.DIALEKT = {
-    t: t, v: v, list: list, region: region, chain: chain, register: register, onChange: onChange, settingsRow: settingsRow, setMode: setMode,
+    t: t, v: v, list: list, form: function (s) { return form(s); }, region: region, chain: chain, register: register, onChange: onChange, settingsRow: settingsRow, setMode: setMode,
     mode: function () { return st.mode; },
     area: function () { ensure(); return area ? Object.assign({}, area) : null; },
     // explicit position / kommun from a call site: {lat, lng} | {code, cc} | {name}; null clears it

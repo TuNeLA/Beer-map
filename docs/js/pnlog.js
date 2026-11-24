@@ -79,6 +79,10 @@
   function errOn() { return mode() !== "none"; }
   function keepOn() { var m = mode(); return m === "on" || (m === "optin" || m === "lite") && cons() && ls(K_EV) !== "0"; }   // diagnostics: beta always; the real app only after "Ja" (consent lane)
   function heavyOn() { return fullOn() && ls(K_HEAVY) !== "0"; }
+  // P-18 (polish sweep 24 Nov, owner default): "Hjälp till att förbättra appen" is OFF for a NEW install also in the beta
+  // (mode "on"): opt-in. New = privstart.js says "new" (no app state before it ran). Existing users keep their choice.
+  // The real app (mode "optin") already asks first. A yes is stored as "1" (not removed), so this default runs only once.
+  (function () { try { if (mode() === "on" && window.PN && PN.privStart && PN.privStart.isNew() && ls(K_EV) == null) lsSet(K_EV, "0"); } catch (e) {} })();
   // LX classes. KEEP = crash / error context / device / network / speed (no usage, no position). HEAVY = high volume usage.
   var KEEP_RE = /^(crash\.|dev$|dev\.|net\.|sw\.|perf\.(boot|load|fcp|lcp|cls|long|map|rpc|self|inp|ft|mem)$)/;
   var HEAVY_RE = /^(tap$|tap\.|sheet\.view$|map\.cam$|perf\.sheet$|set\.ls$|ac\.eval$)/;
@@ -359,19 +363,24 @@
   }
 
   // 🔒 Integritet sheet (v14.js): one more block, the same words as integritet.html
+  // P-13/P-18 (fixE): standard Swedish (no dialect in privacy texts), an English twin, and the switch state as it is now
   function privText() {
-    var m = mode();
+    var m = mode(), L = I18N.L;
     if (m === "none") return null;
-    if (m === "off") return ["Felrapporter (fel i appen, appversion, ingen position) sparas i 30 dagar för att hitta buggar."];
-    var tech = "Felrapporter och teknisk data: fel i appen, appversion, system och webbläsare, nät (fel, typ, hastighet) och hur snabb appen ä. Ingen position, inga texter, inga namn.";
-    if (m === "lite") return [tech + " Sparas i 30 dagar för att hitta buggar."];
-    var pre = m === "on" ? "Under betan, om du int' stänger av det: " : "Bara om du har sagt ja: ";
-    return [pre + "vad du trycker på, vilka menyer och flikar du öppnar och hur länge, hur du använder kartan (zoom, och vilket område du tittar på – avrundat till ca 1 km, aldrig nära hemmet), vilka funktioner och spel du använder, notiser, installation, telefonmodell, minne, skärm och batterinivå. Inga texter, inga namn.",
-      pre + "din position max 1 gång/min när appen ä öppen, och dina in- och utcheckningar – för att göra automatisk incheckning bättre. Inte i spökläge, inte i hemzonen.",
-      m === "on" ? "Alltid (också om du stänger av): " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Vid ett fel skickas dina senaste knapptryck med, bara om användning ä på."
-        : "Bara om du har sagt ja: " + tech.charAt(0).toLowerCase() + tech.slice(1) + " Alltid: felrapporter (fel i appen, appversion) – utan position och utan uppgifter om telefonen.",
-      "Sparas i 30 dagar, sen tas det bort. Bara vi (PintsNow) ser det. Inga andra företag.",
-      "Stäng av i Inställningar → Integritet & synlighet. Stänger du av positionen tar vi bort det sparade."];
+    if (m === "off") return [L("Felrapporter (fel i appen, appversion, ingen position) sparas i 30 dagar för att hitta buggar.", "Error reports (app errors, app version, no position) are kept for 30 days to find bugs.")];
+    var tech = L("Felrapporter och teknisk data: fel i appen, appversion, system och webbläsare, nät (fel, typ, hastighet) och hur snabb appen är. Ingen position, inga texter, inga namn.",
+      "Error reports and technical data: app errors, app version, system and browser, network (errors, type, speed) and how fast the app is. No position, no texts, no names.");
+    if (m === "lite") return [tech + L(" Sparas i 30 dagar för att hitta buggar.", " Kept for 30 days to find bugs.")];
+    var yes = L("Bara om du har sagt ja: ", "Only if you said yes: "), on = L("På nu (stäng av i Inställningar): ", "On now (turn it off in Settings): ");
+    var low = function (x) { return x.charAt(0).toLowerCase() + x.slice(1); };
+    return [(fullOn() ? on : yes) + L("vad du trycker på, vilka menyer och flikar du öppnar och hur länge, hur du använder kartan (zoom, och vilket område du tittar på – avrundat till ca 1 km, aldrig nära hemmet), vilka funktioner och spel du använder, notiser, installation, telefonmodell, minne, skärm och batteri. Inga texter, inga namn.",
+      "what you tap, which menus and tabs you open and for how long, how you use the map (zoom, and which area you look at – rounded to about 1 km, never near home), which features and games you use, notifications, install, phone model, memory, screen and battery. No texts, no names."),
+      (locOn() ? on : yes) + L("din position max 1 gång/min när appen är öppen, och dina in- och utcheckningar – för att göra automatisk incheckning bättre. Inte i spökläge, inte i hemzonen.",
+      "your position at most once a minute while the app is open, and your check-ins and check-outs – to make automatic check-in better. Not in ghost mode, not in your home zone."),
+      m === "on" ? L("Alltid (också om du stänger av): ", "Always (also when you turn it off): ") + low(tech) + L(" Vid ett fel skickas dina senaste knapptryck med, bara om användning är på.", " With an error, your last taps are sent too, only if usage is on.")
+        : yes + low(tech) + L(" Alltid: felrapporter (fel i appen, appversion) – utan position och utan uppgifter om telefonen.", " Always: error reports (app errors, app version) – no position and no phone details."),
+      L("Sparas i 30 dagar, sen tas det bort. Bara vi (PintsNow) ser det. Inga andra företag.", "Kept for 30 days, then removed. Only we (PintsNow) see it. No other companies."),
+      L("Stäng av i Inställningar → Integritet & synlighet. Stänger du av positionen tar vi bort det sparade.", "Turn it off in Settings → Privacy & visibility. When you turn off the position, we remove what is kept.")];
   }
   function privBlock(into) {
     var b = into && into.nodeType ? into : document.getElementById("sheet-body"); if (!b || b.querySelector(".pnlog-priv") || !A || !A.el) return;
@@ -646,7 +655,7 @@
     if (m === "off") { body.appendChild(el("p", { class: "muted pnlog-hint", text: I18N.L("Vi sparar bara felrapporter (utan position) just nu.", "We only keep error reports (no position) right now.") })); return; }
     if (m === "lite") { body.appendChild(el("p", { class: "muted pnlog-hint", text: I18N.L("Vi sparar bara felrapporter och teknisk data (system, nät, hastighet – utan position) just nu.", "We only keep error reports and technical data (system, network, speed – no position) right now.") })); return; }
     body.appendChild(swRow(I18N.L("Hjälp till att förbättra appen", "Help make the app better"), evNow, "bulb", function (v) {
-      lsSet(K_EV, v ? null : "0"); if (v && m !== "on") lsSet(K_CONS, "1");
+      lsSet(K_EV, v ? "1" : "0"); if (v && m !== "on") lsSet(K_CONS, "1");   // P-18: a yes is "1" (the new-install default is "0")
       consChanged();   // consent lane: on = held diagnostics go; off = usage + (real app) diagnostics dropped
       A.toast(v ? I18N.L("Tack! Vi sparar hur appen används (inga texter, inga namn).", "Thanks! We keep how the app is used (no texts, no names).") : I18N.L("Av. Vi sparar bara felrapporter.", "Off. We only keep error reports."), { id: "pnlog-set", ms: 3000 });
     }));

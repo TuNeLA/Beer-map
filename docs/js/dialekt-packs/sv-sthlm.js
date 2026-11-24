@@ -2259,7 +2259,7 @@
     "Nu kör vi, asså! Telefonen går runt."
   ],
   "after.med.cap": [
-    "{name} är på 10. Nån som kollar läget, typ nu?",
+    "{name} är på 10+. Nån som kollar läget, typ nu?",
     "{name} behöver en wingman. Tryck på chippet, brorsan."
   ],
   "after.r2.ready": [

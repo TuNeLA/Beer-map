@@ -260,16 +260,25 @@
 
   /* ---------- settings row ---------- */
   function paint(row) {
-    var b = row.querySelector("button"); if (b) b.setAttribute("aria-checked", String(!isOff()));
+    var on = String(!isOff());
+    [].forEach.call(row.querySelectorAll("button, .switch"), function (b) { b.setAttribute("aria-checked", on); });
   }
+  // P-18 (polish sweep 24 Nov, lane fixE): the row has an icon and ONE line that says what it does (it had only a title
+  // tooltip), and it sits on Inställningar › Karta & dialekt (app-settings.js PAGE_SEL ".al-row"), not on Integritet.
+  // Same shape as the other switch rows (.pn-swb: icon, label + sub line, switch; the whole row is the button).
+  var ROW_CSS = ".al-row .pn-sw-l{display:flex;flex-direction:column;min-width:0;text-align:left}" +
+    ".al-row .al-sub{display:block;font-size:var(--ds-fs-14,14px);line-height:var(--ds-lh-14,20px);font-weight:400;color:var(--ds-muted);white-space:normal}";
   function settingsRow() {
-    var row = D.createElement("div"), sp = D.createElement("span"), b = D.createElement("button");
-    row.className = "toggle-row al-row";
-    sp.textContent = en() ? "Living map" : "Levande karta";
-    sp.title = en() ? "Small animations on the map: cheers, events, lively bars, lights at night." : "Små animationer på kartan: skål, event, livliga krogar, ljus på kvällen.";
-    b.type = "button"; b.className = "switch"; b.setAttribute("role", "switch"); b.setAttribute("aria-label", sp.textContent);
+    var row = D.createElement("div"), b = D.createElement("button"), P = W.PNI;
+    var lab = en() ? "Living map" : "Levande karta";
+    var sub = en() ? "Small animations on the map: cheers, events, lively bars, lights at night." : "Små animationer på kartan: skål, event, livliga krogar, ljus på kvällen.";
+    if (!D.getElementById("al-row-css")) { var c = D.createElement("style"); c.id = "al-row-css"; c.textContent = ROW_CSS; D.head.appendChild(c); }
+    row.className = "row al-row";
+    b.type = "button"; b.className = "btn btn-block pn-swb al-sw"; b.setAttribute("role", "switch");
+    b.innerHTML = (P && P.svg ? P.svg("sparkle", "pi-lead") : "") + '<span class="pn-sw-l"><span class="al-lab"></span><small class="al-sub"></small></span><span class="switch" aria-hidden="true"></span>';
+    b.querySelector(".al-lab").textContent = lab; b.querySelector(".al-sub").textContent = sub;
     b.addEventListener("click", function () { setOff(!isOff()); });
-    row.appendChild(sp); row.appendChild(b); rows.push(row); paint(row);
+    row.appendChild(b); rows.push(row); paint(row);
     return row;
   }
   function setOff(off) {

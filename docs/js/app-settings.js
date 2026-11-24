@@ -214,7 +214,7 @@
     mods("settingsName", body);   // v25: 📍 Hemstad (js/hometown.js), next to the name
     mods("profileSheet", body);   // about me: passport, friends + find-me, account, Swish, ghost, top list, Wrapped, SOS
     [].forEach.call(body.querySelectorAll(":scope > .acct-sect, :scope > .rnd-set"), function (n) { n.remove(); });   // now in Inställningar › Konto
-    if (LIVE) body.appendChild(setRow("user", I18N.L("Konto", "Account"), I18N.L("Spara konto, Swish, flytta, logga ut", "Save account, Swish, move, log out"), function () { showSettings("s", "konto"); }, "pf-konto-row"));
+    if (LIVE) body.appendChild(setRow("user", I18N.L("Konto", "Account"), kontoSub(), function () { showSettings("s", "konto"); }, "pf-konto-row"));
     if (LIVE && window.PRIVACY) window.PRIVACY.homeBlock(body);
   }
 
@@ -234,7 +234,7 @@
     ["konto", ".acct-sect, .rnd-set"],
     ["hjalp", ".mn-knas-row, .ws-entry, .ws-entry-set"],
     ["plats", ".ht-set, .hz-row, .hz-set, .pf-set, .pf-row, .ac-set, .ac-row, .ah-set, .ah-row, .mn-vis-home"],
-    ["karta", ".dk-set, .pn-lang, .bm-seg, .bi-switch, .sb-switch"],   // setfix: + Systembolaget på kartan (a map layer, was on Om appen); E8: + Språk (i18n.js)
+    ["karta", ".dk-set, .pn-lang, .bm-seg, .bi-switch, .sb-switch, .al-row"],   // P-18 (fixE): + Levande karta (alive.js), was on Integritet   // setfix: + Systembolaget på kartan (a map layer, was on Om appen); E8: + Språk (i18n.js)
     ["synl", ".mn-vis-set, .mn-vis-srow, .bd-optin, .sos-block, .nr-share, .sf-set, .pnlog-hint"],
     ["om", ".pn-kanal"]
   ];
@@ -297,6 +297,13 @@
     });
     stage.appendChild(el("div", { class: "toggle-row" }, [el("span", { text: t("soundLabel") }), snd]));
   }
+  // P-18 (fixE): the Konto sub line names only what the Konto page has ("Spara konto" only when e-mail accounts are on)
+  function kontoSub() {
+    var acc = window.ACCOUNT, on = false, saved = false;
+    try { on = !!(LIVE && acc && acc.on && acc.on()); saved = on && !!(acc.saved && acc.saved()); } catch (e) {}
+    return on ? (saved ? I18N.L("Konto sparat, Swish, flytta, logga ut", "Account saved, Swish, move, log out") : I18N.L("Spara konto, Swish, flytta, logga ut", "Save account, Swish, move, log out"))
+      : I18N.L("Swish, flytta, logga ut", "Swish, move, log out");
+  }
   // Konto page: the account rows of the Profil sheet + Flytta + Radera, as one list of rows
   function kontoRows(list) {
     var acc = window.ACCOUNT, back = function () { showSettings("s", "konto"); };
@@ -304,7 +311,7 @@
       if (acc.saved()) list.appendChild(setRow("key", I18N.L("Konto sparat", "Account saved"), I18N.L("Byt e-post", "Change e-mail"), acc.openChange, "set-acc-change"));
       else {
         list.appendChild(setRow("key", I18N.L("Spara ditt konto", "Save your account"), I18N.L("Med e-post, så du aldrig tappar kvällarna", "With e-mail, so you never lose your nights"), acc.openSave, "set-acc-save"));
-        list.appendChild(setRow("user", I18N.L("Logga in mä e-post", "Log in with e-mail"), I18N.L("Du har redan ett konto", "You already have an account"), acc.openLogin, "set-acc-login"));
+        list.appendChild(setRow("user", I18N.L("Logga in med e-post", "Log in with e-mail"), I18N.L("Du har redan ett konto", "You already have an account"), acc.openLogin, "set-acc-login"));
       }
     }
     if (LIVE && PN.s.authed) { var sw = el("div", { class: "ds-item ds-blk set-swish" }); list.appendChild(sw); try { if (window.RUNDAN && window.RUNDAN.profileSheet) window.RUNDAN.profileSheet(sw); } catch (e) {} swishRow(sw); }   // Swish-nummer (fills in when the server answers)
@@ -347,8 +354,9 @@
     if (key === "synl" && sf) {
       if (sf.showRules) list.appendChild(setRow("rules", I18N.L("Regler", "Rules"), I18N.L("Så funkar PintsNow", "How PintsNow works"), function () { sf.showRules(); }, "set-rules set-end"));
       if (sf.blocked && LIVE && PN.s.authed) list.appendChild(setRow("block", I18N.L("Blockerade", "Blocked"), I18N.L("Avblockera personer", "Unblock people"), function () { sf.blocked(); }, "set-blocked set-end"));
-      if (sf.contact) list.appendChild(setRow("mail", I18N.L("Kontakt", "Contact"), I18N.L("Mejla oss", "E-mail us"), function () { sf.contact(); }, "set-contact set-end"));
     }
+    // P-18 (fixE): Kontakt is not a privacy setting: it sits on Om appen
+    if (key === "om" && sf && sf.contact) list.appendChild(setRow("mail", I18N.L("Kontakt", "Contact"), I18N.L("Mejla oss", "E-mail us"), function () { sf.contact(); }, "set-contact set-end"));
     if (key === "bjud") list.appendChild(setRow("heart", I18N.L("Bjud in vänner", "Invite friends"), I18N.L("Länk och QR-kod", "Link and QR code"), showInvite, "set-invite"));
     if (key !== "om") return;
     list.appendChild(setRow("info", I18N.L("Visa introduktionen", "Show the intro"), "", function () { closeSheet(); showIntro(true); }, "set-intro"));
@@ -380,7 +388,7 @@
       pages[p[0]] = { el: pg, list: list };
       if (p[0] === "konto") kontoRows(list); else ownRows(p[0], list);
       if (p[0] === "bjud") return;
-      hub.appendChild(setRow(p[1], p[2], p[3], function () { openPage(p[0]); }, "set-r-" + p[0]));
+      hub.appendChild(setRow(p[1], p[2], p[0] === "konto" ? kontoSub() : p[3], function () { openPage(p[0]); }, "set-r-" + p[0]));
     });
     hub.insertBefore(setRow("heart", I18N.L("Bjud in vänner", "Invite friends"), I18N.L("Länk och QR-kod", "Link and QR code"), showInvite, "set-r-bjud"), hub.querySelector(".set-r-hjalp"));
     function openPage(key) {

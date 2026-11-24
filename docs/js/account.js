@@ -249,6 +249,8 @@
   function T(k) {
     var v = (sv() ? TX.sv : TX.en)[k]; if (v == null) v = TX.sv[k];
     if (Array.isArray(v)) v = pick(v);
+    // P-13 (fixE): the Swedish text follows the chosen dialect pack (DIALEKT.form); the {0} values (e-mail, names) stay as typed
+    if (sv() && window.DIALEKT && window.DIALEKT.form) v = window.DIALEKT.form(String(v));
     var args = Array.prototype.slice.call(arguments, 1);
     return String(v).replace(/\{(\d)\}/g, function (m, i) { return args[+i] != null ? args[+i] : ""; });
   }

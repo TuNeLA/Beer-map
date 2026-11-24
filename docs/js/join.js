@@ -25,7 +25,9 @@
   "use strict";
   var U = window.U, I = window.I18N, A = null;
   function sv() { return !I || I.lang !== "en"; }
-  function L(a, b) { return sv() ? a : b; }
+  // P-13 (fixE): the Swedish text follows the chosen dialect pack (DIALEKT.form: "ä" only where the pack says "ä").
+  // Names never go through L: they are joined outside it.
+  function L(a, b) { return sv() ? (window.DIALEKT && window.DIALEKT.form ? window.DIALEKT.form(a) : a) : b; }
   function pick(l) { return l[Math.floor(Math.random() * l.length)]; }
   function ls(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
@@ -130,8 +132,8 @@
     A.openSheet(L("➕ Bjud in", "➕ Invite"), function (body) {
       body.classList.add("jn-sheet-body");
       var box = h("div", { class: "jn-inv" });
-      box.appendChild(h("p", { class: "jn-to", text: isG ? L("Bjud in till " + (g.name || ""), "Invite to " + (g.name || "")) : L("Bjud in en kompis till PintsNow", "Invite a friend to PintsNow") }));
-      if (isNew) box.appendChild(h("div", { class: "ds-card jn-new", html: "<b>🎉 " + esc(L("Gruppen " + (g.name || "") + " ä skapad!", (g.name || "") + " is ready!")) + "</b><br>" +
+      box.appendChild(h("p", { class: "jn-to", text: isG ? L("Bjud in till ", "Invite to ") + (g.name || "") : L("Bjud in en kompis till PintsNow", "Invite a friend to PintsNow") }));
+      if (isNew) box.appendChild(h("div", { class: "ds-card jn-new", html: "<b>🎉 " + esc(L("Gruppen ", "") + (g.name || "") + L(" ä skapad!", " is ready!")) + "</b><br>" +
         esc(L("Nu fixar vi gänget. Visa koden eller skicka länken.", "Now get the gang in. Show the code or send the link.")) }));
       var qbox = h("div", { class: "qr jn-qr", id: "qr", "aria-hidden": "true" });
       box.appendChild(h("div", { class: "jn-qr-wrap" }, [qbox]));
@@ -190,10 +192,10 @@
       var who = BY || (evd && evd.from) || "";
       return who ? L(who + " har bjudit in dig 🍺", who + " invited you 🍺") : L("Du är bjuden 🍺", "You're invited 🍺");
     }
-    if (inv) return BY ? L(BY + " har bjudit in dig till PintsNow 🍺", BY + " invited you to PintsNow 🍺") : L("Du är inbjuden till PintsNow 🍺", "You're invited to PintsNow 🍺");
+    if (inv) return BY ? BY + L(" har bjudit in dig till PintsNow 🍺", " invited you to PintsNow 🍺") : L("Du är inbjuden till PintsNow 🍺", "You're invited to PintsNow 🍺");
     if (BY && g) return L(BY + " har bjudit in dig till " + g + " 🍺", BY + " invited you to " + g + " 🍺");
     if (BY) return L(BY + " har bjudit in dig till gänget 🍺", BY + " invited you to the gang 🍺");
-    if (g) return L("Du är inbjuden till " + g + " 🍺", "You're invited to " + g + " 🍺");
+    if (g) return L("Du är inbjuden till ", "You're invited to ") + g + " 🍺";
     return L("Du är inbjuden till ett gäng på PintsNow 🍺", "You're invited to a gang on PintsNow 🍺");
   }
   function needName() { return ARR && (ARR.kind === "join" || ARR.kind === "ev") && !myName(); }
@@ -221,7 +223,7 @@
     if (!A || !A.LIVE || !A.authed || !A.authed()) { lsSet("olnu.jn.pending", ARR.code); queueTap("join"); return; }
     joinQ = 0;
     joining = true;
-    status(L("⏳ Skriver in dig i " + (gname || "gruppen") + "…", "⏳ Adding you to " + (gname || "the group") + "…"));
+    status(L("⏳ Skriver in dig i ", "⏳ Adding you to ") + (gname || L("gruppen", "the group")) + "…");
     A.rpc("join_group", { p_code: ARR.code, p_display_name: n }).then(function (r) {
       if (r.error && !/group_not_found/.test(JSON.stringify(r.error)) && !tryJoin.__fixing) {   // ds59: member already? else retry once
         tryJoin.__fixing = true;
@@ -446,8 +448,8 @@
   // Above the install guide once answered: what happened + the code to type in the app.
   function doneBox() {
     var ev = ARR.kind === "ev";
-    var t = ev ? (evAns === "yes" ? L("✅ Du ä anmäld! " + ((evd && evd.title) || ""), "✅ You're going! " + ((evd && evd.title) || "")) : L("🤔 Noterat: kanske.", "🤔 Noted: maybe."))
-      : L("✅ Du ä med i " + (gname || "gänget") + "!", "✅ You're in " + (gname || "the gang") + "!");
+    var t = ev ? (evAns === "yes" ? L("✅ Du ä anmäld! ", "✅ You're going! ") + ((evd && evd.title) || "") : L("🤔 Noterat: kanske.", "🤔 Noted: maybe."))
+      : L("✅ Du ä med i ", "✅ You're in ") + (gname || L("gänget", "the gang")) + "!";
     var box = h("div", { class: "jn-donebox" }, [h("p", { class: "jn-done-h", text: t }),
       h("p", { class: "jn-then", text: L("Vill du ha appen på hemskärmen? Då får du push när gänget drar ut. Valfritt:", "Want the app on your home screen? You get a push when the gang heads out. Optional:") })]);
     var code = h("button", { type: "button", class: "jn-code jn-code-fb", onclick: function () { copy(ARR.code, function () { status(L("📋 Koden ä kopierad", "📋 Code copied"), "ok"); }); } },
@@ -617,7 +619,7 @@
     document.body.classList.remove("jn-on");
     clearTimeout(waitT);
     if (gateRes) { var r = gateRes; gateRes = null; r(); }
-    if (joined && A && A.toast) A.toast(L("✅ Du ä med i " + (gname || "gruppen"), "✅ You're in " + (gname || "the group")), { id: "jn" });
+    if (joined && A && A.toast) A.toast(L("✅ Du ä med i ", "✅ You're in ") + (gname || L("gruppen", "the group")), { id: "jn" });
     if (joined) { try { document.dispatchEvent(new CustomEvent("pn:group-joined", { detail: { name: gname || "" } })); } catch (e) {} }   // ntf: calm notification ask
     else if (evAns && A && A.toast) A.toast(evAns === "yes" ? L("✅ Du ä anmäld – vi ses!", "✅ You're going – see you!") : L("🤔 Noterat: kanske.", "🤔 Noted: maybe."), { id: "jn" });
   }
@@ -676,7 +678,7 @@
           if (r.error) { lsSet("olnu.jn.pending", null); return; }
           var g = A.parseData(r.data) || {};
           lsSet("olnu.jn.done", c); lsSet("olnu.jn.pending", null);
-          A.toast(L("✅ Du ä med i " + (g.name || "gruppen") + "!", "✅ You're in " + (g.name || "the group") + "!"), { id: "jn" });
+          A.toast(L("✅ Du ä med i ", "✅ You're in ") + (g.name || L("gruppen", "the group")) + "!", { id: "jn" });
           try { A.refresh(); } catch (e) {}
         });
       });

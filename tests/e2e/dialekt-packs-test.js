@@ -133,7 +133,8 @@ D.preview("sv-sthlm");
 { // a {mix} key gives both region and neutral lines over many seeds
   const k = "live.checkin", R = list(packs["sv-sthlm"][k]).filter((x) => !isMix(x)).map(txt), NT = neutralTexts(k);
   const got = []; for (let i = 0; i < 200; i++) got.push(D.t(k, { name: "Kim", bar: "Pitchers", _seed: i }));
-  const f = (t) => t.split("{name}").join("Kim").split("{bar}").join("Pitchers");
+  // P-13 (fixE): every line is read in the pack's own form (DIALEKT.form: sthlm = "är"), so compare the formed lines
+  const f = (t) => D.form(t).split("{name}").join("Kim").split("{bar}").join("Pitchers");
   const r = got.filter((s) => R.some((t) => f(t) === s)).length;
   const n = got.filter((s) => NT.some((t) => f(t) === s)).length;
   ok(r > 0 && n > 0 && r + n === got.length, "mix: live.checkin in sv-sthlm gives region and neutral lines, nothing else", { region: r, neutral: n });

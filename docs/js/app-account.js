@@ -310,8 +310,8 @@
         busyNow = true; pb.disabled = true; gob.disabled = true;
         PN.s.client.rpc("redeem_recovery", { p_code: rc.replace(/^([A-Z0-9]{4})([A-Z0-9]{4})$/, "$1-$2") }).then(function (r) {
           busyNow = false; pb.disabled = false; gob.disabled = false;
-          if (r.error) { toast(/same_account/.test(r.error.message || "") ? "Det här ä redan ditt konto." : "Koden funkar int' (fel eller redan använd).", { err: true, ms: 6000, id: "flytt" }); form.hidden = false; return; }
-          toast("✅ Kontot ä tillbaka! Laddar om…", { ms: 4000, id: "flytt" });
+          if (r.error) { toast(/same_account/.test(r.error.message || "") ? I18N.L("Det här är redan ditt konto.", "This is already your account.") : I18N.L("Koden fungerar inte (fel eller redan använd).", "The code does not work (wrong or already used)."), { err: true, ms: 6000, id: "flytt" }); form.hidden = false; return; }
+          toast(I18N.L("Kontot är tillbaka! Laddar om…", "Your account is back! Reloading…"), { ok: true, ms: 4000, id: "flytt" });   // fixA P-27: ok = the check icon
           setTimeout(function () { location.reload(); }, 1500);
         });
         return;
@@ -643,4 +643,24 @@
       root.hidden = false;
     });
   }
+  // P-31 (polish sweep 24 Nov, lane fixE): the intro is a modal dialog (role=dialog aria-modal). While it shows, the app
+  // behind it is inert, so TalkBack / VoiceOver / Tab cannot reach "Rapportera öl" behind the age gate. One observer on
+  // #intro[hidden] covers every module that opens it (age gate, flytt, safety, join …). Toasts, the sheet and other open
+  // dialogs stay reachable. Only the inert this code set is removed again (data-intro-inert).
+  var INERT_KEEP = { intro: 1, toasts: 1, sheet: 1, backdrop: 1 };
+  function introInert(on) {
+    [].forEach.call(document.body ? document.body.children : [], function (n) {
+      if (!on) { if (n.hasAttribute("data-intro-inert")) { n.removeAttribute("inert"); n.removeAttribute("data-intro-inert"); } return; }
+      var r = n.getAttribute("role");
+      if (INERT_KEEP[n.id] || /^(SCRIPT|STYLE|LINK|TEMPLATE|NOSCRIPT)$/.test(n.tagName) || n.hasAttribute("inert") || r === "dialog" || r === "alertdialog") return;
+      n.setAttribute("inert", ""); n.setAttribute("data-intro-inert", "1");
+    });
+  }
+  (function () {
+    var root = document.getElementById("intro"); if (!root || !window.MutationObserver) return;
+    var kids = new MutationObserver(function () { if (!root.hidden) introInert(true); });   // HUD parts a module adds later
+    var sync = function () { var open = !root.hidden; introInert(open); if (open) kids.observe(document.body, { childList: true }); else kids.disconnect(); };
+    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ["hidden"] });
+    sync();
+  })();
 })();

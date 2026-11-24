@@ -180,6 +180,17 @@
      user's own fallback word (t("you") = "Du" / "You") keeps "Du" only as the subject that opens a sentence, followed by a verb;
      there sv "sin / sitt / sina" becomes "din / ditt / dina" and en "has / is / was / their" becomes "have / are / were / your".
      Any other place ("Namn: Du.", "Grattis Du", "Kalla inte Du") = the template is skipped (the next one is tried). */
+  // P-13 (polish sweep 24 Nov): one ticker list never mixes "är" and "ä". Lines built in code (not via DIALEKT.v) get the
+  // same form as the pack of the ticker area (DIALEKT.form inside NEWS.build's scope). Names and group names in d stay as typed.
+  function formFix(tx, d) {
+    var D = window.DIALEKT; if (!tx || !D || !D.form) return tx;
+    var out = D.form(tx);
+    if (out !== tx && d) Object.keys(d).forEach(function (k) {
+      var x = d[k]; if (typeof x !== "string" || !x) return;
+      var fx = D.form(x); if (fx !== x) out = out.split(fx).join(x);
+    });
+    return out;
+  }
   var YOU_L = "A-Za-zÅÄÖåäöÉéÜü";
   function youFix(tx, d) {
     var you = t("you"); if (!you || !d || typeof you !== "string") return tx;
@@ -277,7 +288,7 @@
       for (var i = 0; i < c.length; i++) {
         var fs = shuffle(g.filter(function (x) { return x && x.k === c[i].k; }));
         for (var j = 0; j < fs.length; j++) {
-          var tx = ""; try { tx = String(fs[j].f(c[i].d)); } catch (e) { tx = ""; }
+          var tx = ""; try { tx = formFix(String(fs[j].f(c[i].d)), c[i].d); } catch (e) { tx = ""; }
           if (tx && tx.trim() && timeOk(tx) && !emptyLine(tx)) return { text: sentences(tx), cls: "", k: c[i].k };
         }
       }
@@ -722,7 +733,7 @@
       var text = "", usedId = null, usedIx = null;
       for (var i = 0; i < ids.length; i++) {
         var tx = "";
-        try { tx = String(ids[i].f(x.d)); if (U.n1) tx = U.n1(tx); tx = youFix(tx, x.d); } catch (e) { tx = ""; }   // fixJ T-22: "1 prickar" → "1 prick" · tickerfix 2: "Du" lines in 2nd person
+        try { tx = String(ids[i].f(x.d)); if (U.n1) tx = U.n1(tx); tx = formFix(youFix(tx, x.d), x.d); } catch (e) { tx = ""; }   // fixJ T-22: "1 prickar" → "1 prick" · tickerfix 2: "Du" lines in 2nd person
         if (!tx || !tx.trim() || seen[tx] || !localOk(x.k, tx, x.d) || ((snap.hdr > 0 || !qok) && emptyLine(tx))) continue;   // tickerfix 3: never a blank line · tickerfix 4: no "empty map" line (any kind) while the header says N ute
         text = tx; usedId = ids[i].id; usedIx = ids[i].i;
         if (prev.indexOf(tx) < 0) break;
@@ -761,7 +772,7 @@
 
   window.NEWS = { build: build, hintN: hintN, emptyLine: emptyLine, isQuiet: isQuiet, quietOk: quietOk, quietMark: quietMark, funLine: funLine,   // tickerfix2 I-71
     _sys: function (now) { var m = sysLeft(sthlm(now || new Date())); return m == null ? null : durTxt(m); }, update: update, stats: stats, nightKey: nightKey, prevNightKey: prevNightKey,
-    freshBelt: freshBelt, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _skip: storeSkip, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
+    freshBelt: freshBelt, _formFix: formFix, snap: function () { return Object.assign({}, snap); }, _areaOk: areaOk, _skip: storeSkip, _timeOk: function (t, h) { var o = hourCur; hourCur = h; try { return timeOk(t); } finally { hourCur = o; } },   // fixM T-14
     // last build input (debug / tests): NEWS.build(NEWS.last().beers, NEWS.last().ctx)
     last: function () { return { beers: lastBeers, ctx: lastCtx }; } };
   /* dialect2 (owner 11 Nov): the ticker speaks the dialect of the map area it shows (DIALEKT.tickerArea: the map view, else
@@ -773,6 +784,14 @@
       if (!D || !D.within || !D.tickerArea) return b0(beers, ctx);
       var a = null; try { a = D.tickerArea(ctx && ctx.center ? ctx.center : null); } catch (e) { a = null; }
       return D.within(a, function () { return b0(beers, ctx); });
+    };
+    // P-13: the belt's fun filler line speaks the same pack as the rest of the ticker
+    var f0 = window.NEWS.funLine;
+    window.NEWS.funLine = function (now) {
+      var D = window.DIALEKT;
+      if (!D || !D.within || !D.tickerArea) return f0(now);
+      var a = null; try { a = D.tickerArea(); } catch (e) { a = null; }
+      return D.within(a, function () { return f0(now); });
     };
   })();
 })();

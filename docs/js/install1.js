@@ -19,24 +19,26 @@
   var U = window.U;
   var KEY = "olnu.inst1";
   var prompt = null, installed = false, root = null, act = null, resolveGate = null, cur = null;
+  // P-30 (polish sweep 24 Nov, lane fixE): our own words say "hemskärmen" (as the intro does). "startskärmen" / "Startskärm"
+  // stay only where they name the menu item as Chrome / Samsung Internet write it (inst.and2s, inst.sam2s).
   var P = {
     "inst.title": "Installera appen",
     "inst.lead": "Då startar PintsNow som en riktig app, och du får notiser när gänget drar ut. Tar 10 sekunder.",
     "inst.lead2": "Andra kvällen! På hemskärmen startar appen snabbare, och du missar inga notiser.",
     "inst.ios1": "Tryck på {i} Dela", "inst.ios1s": "Nere i mitten av Safari",
     "inst.ios1n": "Tryck på {i} nere till höger", "inst.ios1ns": "Sen på Dela",
-    "inst.ios2": "Välj {i} Lägg till på hemskärmen", "inst.ios2s": "Scrolla ner i listan om du int' ser den",
+    "inst.ios2": "Välj {i} Lägg till på hemskärmen", "inst.ios2s": "Scrolla ner i listan om du inte ser den",
     "inst.ios3": "Tryck Lägg till", "inst.ios3s": "Öppna sen PintsNow från hemskärmen",
     "inst.iospush": "På iPhone kommer notiser bara när appen ligger på hemskärmen.",
     "inst.and1": "Tryck på {i} uppe till höger", "inst.and1s": "Menyn i Chrome",
     "inst.and2": "Välj {i} Installera app", "inst.and2s": "Eller Lägg till på startskärmen",
-    "inst.and3": "Tryck Installera", "inst.and3s": "Öppna sen PintsNow från startskärmen",
+    "inst.and3": "Tryck Installera", "inst.and3s": "Öppna sen PintsNow från hemskärmen",
     "inst.sam1": "Tryck på {i} nere till höger", "inst.sam1s": "Menyn i Samsung Internet",
     "inst.sam2": "Välj {i} Lägg till sida på", "inst.sam2s": "Sen Startskärm",
-    "inst.sam3": "Tryck Lägg till", "inst.sam3s": "Öppna sen PintsNow från startskärmen",
-    "inst.btn": "Installera appen", "inst.btns": "Ett tryck, sen ligger den på startskärmen.",
+    "inst.sam3": "Tryck Lägg till", "inst.sam3s": "Öppna sen PintsNow från hemskärmen",
+    "inst.btn": "Installera appen", "inst.btns": "Ett tryck, sen ligger den på hemskärmen.",
     "inst.done": "Klart! PintsNow ligger på hemskärmen.", "inst.dones": "Öppna appen därifrån. Du kan stänga den här fliken.",
-    "inst.inapp": "Den här appen kan int' installera PintsNow. Öppna länken i {b}:",
+    "inst.inapp": "Den här appen kan inte installera PintsNow. Öppna länken i {b}:",
     "inst.inapp1": "Tryck på {i} uppe i hörnet", "inst.inapp2": "Välj Öppna i webbläsaren",
     "inst.copy": "Kopiera länk", "inst.copied": "Kopierad!",
     "inst.desk": "PintsNow bor i mobilen", "inst.deskp": "Skanna koden med mobilkameran. Funkar på iPhone och Android.",

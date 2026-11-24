@@ -1341,7 +1341,7 @@
   "medal.lekledare.line": "Tio partyspel. Du är anledningen till att alla skrattar. Lattjo.",
   "medal.tuppen.line": "Först incheckad i stan, och fler kom efter. Du öppnade kvällen, tjommen.",
   "medal.skalrunda.line": "Skål till fem olika personer på en kväll. Västkustens mest sociala soldat.",
-  "after.med.cap": "{name} är på 10. Nån som kollar läget, tjommen?",
+  "after.med.cap": "{name} är på 10+. Nån som kollar läget, tjommen?",
   "after.r2.ready": "{group}: rapporten ä klar. Läs den med en räkmacka.",
   "after.r2.intro.head": "Rapporten ä klar. Regnet har räknat med.",
   "after.r2.intro.line": "Läs högt för truppen. Det är tradition nu, tjommen.",

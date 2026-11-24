@@ -1301,7 +1301,7 @@
   "medal.riksturne.line": "Fem olika städer. Mil efter mil. Du har sett Norrland från krogfönstret.",
   "medal.tuppen.line": "Först incheckad i stan, och fler kom efter. Du skottade upp kvällen.",
   "medal.skalrunda.line": "Skål till fem olika personer på en kväll. Stans mest sociala. Här uppe ä det mycket.",
-  "after.med.cap": "{name} ä på 10. Nån som kollar läget? Jo, nu.",
+  "after.med.cap": "{name} ä på 10+. Nån som kollar läget? Jo, nu.",
   "after.r2.ready": "Kvällsrapporten från {group} ä klar. Int' illa.",
   "after.r2.intro.head": [
     "Högkvarteret har räknat. Jo.",

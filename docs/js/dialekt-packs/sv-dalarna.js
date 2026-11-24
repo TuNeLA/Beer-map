@@ -633,11 +633,11 @@
   ],
   "after.MED_ASK": [
     "🚑 {name} har nått kebabläget. Vem tar vatten och ett stadigt grepp?",
-    "🚑 {name} ä på 10. Nån som kollar läget?",
-    "💚 {name} ä på 10. Ingen lämnas kvar – vem ä wingman?",
+    "🚑 {name} ä på 10+. Nån som kollar läget?",
+    "💚 {name} ä på 10+. Ingen lämnas kvar – vem ä wingman?",
     "🗺️ Truppen kallar: {name} behöver en kartläsare hem. Vem tar uppdraget?",
-    "🫂 {name} ä på 10. Vem går dit med ett glas vatten?",
-    "📻 Radion: {name} ä på 10. Truppen, kolla läget."
+    "🫂 {name} ä på 10+. Vem går dit med ett glas vatten?",
+    "📻 Radion: {name} ä på 10+. Truppen, kolla läget."
   ],
   "after.c_a_din": "💚 {c} ä din wingman ikväll. Truppen håller ihop. 🫡",
   "after.cards.skalen_flog_det": "Skålen flög. Det ä det som räknas.",
@@ -5966,7 +5966,7 @@
     "✨ Tack! Fler röster = snabbare bygge. Tipsa gänget!"
   ],
   "after.med.cap": [
-    "{name} ä på 10. Nån som kollar läget?",
+    "{name} ä på 10+. Nån som kollar läget?",
     "{name} behöver en wingman. Tryck på chippet."
   ],
   "after.r2.ready": [

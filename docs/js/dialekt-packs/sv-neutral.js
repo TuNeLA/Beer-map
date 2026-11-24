@@ -626,11 +626,11 @@
 ],
   "after.MED_ASK": [
   "🚑 {name} har nått kebabläget. Vem tar vatten och ett stadigt grepp?",
-  "🚑 {name} är på 10. Nån som kollar läget?",
-  "💚 {name} är på 10. Ingen lämnas kvar – vem är wingman?",
+  "🚑 {name} är på 10+. Nån som kollar läget?",
+  "💚 {name} är på 10+. Ingen lämnas kvar – vem är wingman?",
   "🗺️ Truppen kallar: {name} behöver en kartläsare hem. Vem tar uppdraget?",
-  "🫂 {name} är på 10. Vem går dit med ett glas vatten?",
-  "📻 Radion: {name} är på 10. Truppen, kolla läget."
+  "🫂 {name} är på 10+. Vem går dit med ett glas vatten?",
+  "📻 Radion: {name} är på 10+. Truppen, kolla läget."
 ],
   "after.c_a_din": "💚 {c} är din wingman ikväll. Truppen håller ihop. 🫡",
   "after.bra_du_kollar": "💚 Bra. Du kollar på {friend_name}. Ta med ett glas vatten.",
