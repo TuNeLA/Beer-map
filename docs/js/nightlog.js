@@ -69,12 +69,16 @@
     } catch (e) { return String(n.evening || ""); }
   }
 
+  // dbhealth B6 (blind test 3: "the toast says 7, the button 6, the sheet 0"): the server gives one number in all three places
+  // (supabase/tests/counts-b6.test.sql), but this 30 s cache could show the count from before the last ÖL! / other drink /
+  // undo. Tonight's cache is now kept only while the app's count (MYCOUNT, the rail button) is the same as when it was read.
+  function liveN() { try { var s = window.MYCOUNT && window.MYCOUNT._state ? window.MYCOUNT._state() : null; return s ? s.want | 0 : -1; } catch (e) { return -1; } }
   function load(night) {
-    var key = night || "now", c = cache[key];
-    if (c && Date.now() - c.at < 30000) return Promise.resolve(c.d);
+    var key = night || "now", c = cache[key], n0 = liveN();
+    if (c && Date.now() - c.at < 30000 && (night || c.n === n0)) return Promise.resolve(c.d);
     return A.rpc("my_night_log", night ? { p_night: night } : {}).then(function (r) {
       if (r.error) { if (missing(r.error)) off = true; return null; }
-      var d = A.parseData(r.data); cache[key] = { at: Date.now(), d: d }; return d;
+      var d = A.parseData(r.data); cache[key] = { at: Date.now(), d: d, n: n0 }; return d;
     });
   }
 

@@ -432,7 +432,21 @@
   var notMember = {};
   var CHAT_RPC = { group_msgs: 1, post_group_msg: 1, msg_reacts: 1, msg_likes: 1, group_photos: 1, post_photo: 1, group_voices: 1,
     post_voice: 1, avatars_for: 1, dm_seen: 1, dm_mute: 1, dm_block: 1 };
+  // dbhealth I-138 (logs1.md 1): a function this server does not have (PGRST202: 0401 / 0402 / 0451 missing on live gave
+  // ~180 errors) is asked ONCE per page life. Every later call of that name answers at once with the same error (quiet, off:
+  // true, no request, no err.rpc): the module's own "missing" check turns the feature off, and no poll can loop on it.
+  // Strict match only (code PGRST202 or "could not find the function"): a "does not exist" from inside a function is a bug, not
+  // a missing function, and keeps its normal path. rpc_bundle2 / pn_sync have their own fall-backs (bundleOff, syncOff).
+  var GONE = {}, GONE_SKIP = { rpc_bundle2: 1, pn_sync: 1 };
+  function goneErr(e) { return !!e && (e.code === "PGRST202" || /could not find the function/i.test(String(e.message || ""))); }
   function rpcNet(name, params, noBundle) {
+    if (GONE[name]) return Promise.resolve({ data: null, error: { code: "PGRST202", message: "Could not find the function " + name, quiet: true }, off: true });
+    return rpcNet0(name, params, noBundle).then(function (r) {
+      if (r && r.error && !GONE_SKIP[name] && goneErr(r.error)) GONE[name] = Date.now();
+      return r;
+    });
+  }
+  function rpcNet0(name, params, noBundle) {
     if (!PN.s.client) return Promise.resolve({ data: null, error: { message: "no_client" } });
     var gid = params && params.p_group_id;
     if (gid && notMember[gid] && (notMember[gid] > 1 || !CHAT_RPC[name])) return Promise.resolve({ data: null, error: { message: "not_member", code: "P0001", quiet: true } });

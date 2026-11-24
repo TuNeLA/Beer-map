@@ -120,6 +120,9 @@
   function data(r) { return r && !r.error ? A.parseData(r.data) : null; }
   function errText(e) {
     var m = String((e && e.message) || "");
+    // dbhealth I-138: not_authenticated (ride_request3 failed 6 times on live, logs1.md 3) = the session ran out: the app's errMsg
+    // refreshes it (reauth) and says so (sv + en), instead of "try again", which can never work.
+    try { if (U.errCode(e) === "not_authenticated" && A && A.errMsg) return A.errMsg(e); } catch (x) {}
     if (/slow_down/.test(m)) return T("ride.err.slow");
     if (/no_position|invalid_position/.test(m)) return T("ride.err.pos");
     if (/invalid_phone/.test(m)) return T("ride.call.bad");

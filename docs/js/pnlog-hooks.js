@@ -20,7 +20,8 @@
   var CFG = window.OLNU_CONFIG || {};
   function pnow() { return window.performance && performance.now ? performance.now() : Date.now(); }
   function cost(t) { try { P._self(pnow() - t); } catch (e) {} }
-  function ev(n, p) { try { P.event(n, p || {}); } catch (e) {} }
+  var evAt = 0;   // dbhealth: the last hook event (share, copy, cam ...): a reaction for the dead-tap watch
+  function ev(n, p) { if (!/^(ux|perf|net)\./.test(n)) evAt = pnow(); try { P.event(n, p || {}); } catch (e) {} }
   function can(c) { try { return P.allowed(c); } catch (e) { return false; } }
   function scr() { try { return P.screen(); } catch (e) { return "?"; } }
   function key(el) { try { return P._key(el); } catch (e) { return "?"; } }
@@ -357,18 +358,52 @@
   document.addEventListener("click", function (e) {
     var t = pnow(), el = e.target;
     try {
+      if (!e.isTrusted) { deadAct = t; return; }   // a click made by code (a file picker, a forwarded tap) is a reaction
       if (!el || !el.closest || el === document.body || !can("use")) return;
       var btn = el.closest("button, a, input, select, label, [role]");
-      if (btn) {
-        if (btn.getAttribute("role") === "switch") setTimeout(function () { var v = btn.getAttribute("aria-checked"); ev("set", { s: scr(), k: key(btn), v: v === "true" ? "on" : v === "false" ? "off" : "?" }); }, 0);
-        return;
-      }
-      if (deadN > 60 || el.closest("#map, " + INTER)) return;
-      var k = key(el), s = scr(), seen = false, mo = new MutationObserver(function () { seen = true; mo.disconnect(); }), f0 = fetchAt;
-      mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "hidden", "aria-expanded", "open"] });
-      setTimeout(function () { mo.disconnect(); if (!seen && fetchAt === f0) { deadN++; inc(DEAD, s + "|" + k); } }, 800);
+      if (btn && btn.getAttribute("role") === "switch") setTimeout(function () { var v = btn.getAttribute("aria-checked"); ev("set", { s: scr(), k: key(btn), v: v === "true" ? "on" : v === "false" ? "off" : "?" }); }, 0);
+      deadWatch(el, el.closest(TAPPABLE));
     } catch (x) {} finally { cost(t); }
   }, { capture: true, passive: true });
+  // dbhealth I-138 (logs1.md 6): the dead-tap watch was blind to buttons (it returned for every button, link and [role]),
+  // so ux.dead was 0 ever. Now a tap on a button also counts as dead when in 800 ms nothing reacts: no DOM change outside the
+  // map and the ticker belt (a press effect on the button itself does not count), no request, no focus move, no scroll, no history change, the page
+  // keeps focus, and no other hook event (share, copy, cam ...). Skipped: the map (map taps have their own log), text fields,
+  // selects, labels, disabled buttons and real links (they leave the page). ux.dead gets b: 1 for a button.
+  var DEAD_SKIP = "#map, input, select, textarea, label, [contenteditable], [disabled], [aria-disabled=true], a[href]:not([href='']):not([href='#']):not([href^='javascript'])";
+  var TAPPABLE = "button, a, [role=button], [role=tab], [role=menuitem], [role=link], [role=option], [role=radio], [role=checkbox], [onclick], [data-act], [data-pn], [data-hx]";
+  var PRESS_RE = /(press|squash|spring|tap|pop|bump|ripple)/, deadAct = 0;
+  function pressOnly(r, btn) {   // a class change on the tapped button itself that only adds / removes press-effect classes
+    if (r.type !== "attributes" || r.attributeName !== "class" || !btn || !(r.target === btn || btn.contains(r.target))) return false;
+    var a = String(r.oldValue || "").split(/\s+/), b = String(r.target.getAttribute("class") || "").split(/\s+/);
+    var d = a.filter(function (x) { return x && b.indexOf(x) < 0; }).concat(b.filter(function (x) { return x && a.indexOf(x) < 0; }));
+    return d.every(function (x) { return PRESS_RE.test(x); });
+  }
+  function deadWatch(el, btn) {
+    if (deadN > 60 || el.closest(DEAD_SKIP) || (!btn && el.closest(INTER))) return;
+    var tgt = btn || el, k = key(tgt), s = scr(), seen = false, f0 = fetchAt, t0 = pnow(), href = location.href, foc = document.activeElement;
+    var mo = new MutationObserver(function (rs) {
+      for (var i = 0; i < rs.length; i++) {
+        var n = rs[i].target, ne = n && n.nodeType === 1 ? n : n && n.parentElement;
+        if (!ne) continue;
+        if (ne.closest && ne.closest("#map, #ticker, .ticker")) continue;   // the map and the ticker belt move on their own
+        if (rs[i].type === "attributes" && rs[i].oldValue === ne.getAttribute(rs[i].attributeName)) continue;   // a write of the same value (the HUD repaints): no change
+        if (pressOnly(rs[i], btn)) continue;
+        seen = true; mo.disconnect(); return;
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeOldValue: true,
+      attributeFilter: ["class", "hidden", "aria-expanded", "aria-pressed", "aria-checked", "aria-selected", "open", "disabled", "value"] });
+    var onScroll = function () { seen = true; };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    setTimeout(function () {
+      mo.disconnect(); window.removeEventListener("scroll", onScroll, { capture: true });
+      var af = document.activeElement;
+      if (seen || fetchAt !== f0 || deadAct >= t0 || evAt >= t0 || location.href !== href || document.hidden || !document.hasFocus() ||
+        (af !== foc && af !== tgt && af !== document.body)) return;
+      deadN++; inc(DEAD, s + "|" + k + "|" + (btn ? 1 : 0));
+    }, 800);
+  }
   var popAt = 0;
   window.addEventListener("popstate", function () {   // a real back gesture / button has no tap right before it (the app's own history.back() follows a tap)
     popAt = pnow(); var s = scr();
@@ -659,7 +694,7 @@
       Object.keys(RES).forEach(function (k) { var a = RES[k]; if (a.n) ev("net.res", { k: k, n: a.n, hit: a.hit, kb: Math.round(a.kb), s: a.s, avg: Math.round(a.ms / a.n) }); });
       RES = {};
       ftSum(); inpSum(); memSum(); mapSum();
-      Object.keys(DEAD).sort(function (a, b) { return DEAD[b] - DEAD[a]; }).slice(0, 8).forEach(function (k) { var x = k.split("|"); ev("ux.dead", { s: x[0], k: x[1], n: DEAD[k] }); });
+      Object.keys(DEAD).sort(function (a, b) { return DEAD[b] - DEAD[a]; }).slice(0, 8).forEach(function (k) { var x = k.split("|"), o = { s: x[0], k: x[1], n: DEAD[k] }; if (x[2] === "1") o.b = 1; ev("ux.dead", o); });
       DEAD = {};
       gameSum(hide === "close");
       if (hide) battery(true);

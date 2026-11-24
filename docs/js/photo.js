@@ -221,7 +221,8 @@
     else {
       privText(L("Bilden syns bara för gruppen och försvinner kl 05.", "Only the group sees the photo. It is gone at 05:00."));
       // 0029: a group that keeps its chat keeps photos too. Missing RPC = the 05:00 rule.
-      call("group_keep_history", { p_group_id: g.id }).then(function (r) {
+      // dbhealth I-138: an event chat (g.ev) has no members, so the server answers not_member: do not ask
+      if (!g.ev) call("group_keep_history", { p_group_id: g.id }).then(function (r) {
         if (r.error || closed || r.data !== true) return;
         keeps = true;
         privText(L("Bilden syns bara för gruppen. Gruppen sparar chatten, så bilden ligger kvar.", "Only the group sees the photo. This group keeps its chat, so the photo stays."));
