@@ -119,6 +119,16 @@
     return st;
   }
   function webHref(u) { return !u ? "" : /^https?:\/\//i.test(u) ? u : "https://" + u; }
+  // fixC P-25: a Swedish number as Swedes write it: "+4624010100" → "0240-101 00" (sv only; the tel: link keeps +46)
+  var AC2 = /^(8)/, AC3 = /^(1[0136-9]|2[136]|3[1356]|4[0246]|54|6[03]|7[0236-9]|90)/;
+  function telTxt(p) {
+    var d = String(p || "").replace(/[^\d+]/g, "");
+    if (!sv() || !/^\+46\d{6,10}$/.test(d)) return p;
+    var n = d.slice(3), m = AC2.exec(n) || AC3.exec(n), ac = "0" + (m ? m[1] : n.slice(0, 3)), r = n.slice(ac.length - 1);
+    var g = r.length === 5 ? [3, 2] : r.length === 6 ? [2, 2, 2] : r.length === 7 ? [3, 2, 2] : r.length === 8 ? [3, 3, 2] : [r.length], out = [], i = 0;
+    g.forEach(function (k) { out.push(r.slice(i, i + k)); i += k; });
+    return ac + "-" + out.join(" ");
+  }
   function telHref(p) { return p ? "tel:" + String(p).replace(/[^\d+]/g, "") : ""; }
 
   /* ---------- data ---------- */
@@ -208,7 +218,7 @@
     if (!i || (!i.u && !i.p)) return "";
     var b = "";
     if (i.u) b += '<a class="btn plc-btn plc-web" href="' + esc(webHref(i.u)) + '" target="_blank" rel="noopener nofollow">' + ico("globe") + "<span>" + esc(L("Webbplats", "Website")) + "</span></a>";
-    if (i.p) b += '<a class="btn plc-btn plc-tel" href="' + esc(telHref(i.p)) + '">' + ico("phone") + "<span>" + esc(L("Ring ", "Call ") + i.p) + "</span></a>";
+    if (i.p) b += '<a class="btn plc-btn plc-tel" href="' + esc(telHref(i.p)) + '">' + ico("phone") + "<span>" + esc(L("Ring ", "Call ") + telTxt(i.p)) + "</span></a>";
     return '<div class="plc-btns">' + b + "</div>";
   }
   function srcHTML(i) {
